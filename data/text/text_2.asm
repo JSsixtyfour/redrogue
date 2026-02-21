@@ -1696,7 +1696,8 @@ _LinkCanceledText::
 _OakSpeechText1::
 	text "Hello there!"
 	line "Welcome to the"
-	cont "world of #MON!"
+	cont "world of #MON"
+    cont "Red Rogue!"
 
 	para "My name is OAK!"
 	line "People call me"
@@ -1704,24 +1705,21 @@ _OakSpeechText1::
 	prompt
 
 _OakSpeechText2A::
-	text "This world is"
-	line "inhabited by"
-	cont "creatures called"
-	cont "#MON!@"
+	text "We have"
+	line "developed a new"
+	cont "VR training"
+	cont "program for"
+    cont "new trainers"
 	text_end
 
 _OakSpeechText2B::
 	text_start
 
-	para "For some people,"
-	line "#MON are"
-	cont "pets. Others use"
-	cont "them for fights."
+	para "And you and,"
+	line "my grandson"
+	cont "will be the first"
+	cont "pupils."
 
-	para "Myself..."
-
-	para "I study #MON"
-	line "as a profession."
 	prompt
 
 _IntroducePlayerText::
@@ -1742,14 +1740,14 @@ _IntroduceRivalText::
 _OakSpeechText3::
 	text "<PLAYER>!"
 
-	para "Your very own"
-	line "#MON legend is"
-	cont "about to unfold!"
+	para "Your #MON"
+	line "training is"
+	cont "about to begin!"
 
-	para "A world of dreams"
-	line "and adventures"
-	cont "with #MON"
-	cont "awaits! Let's go!"
+	para "Meet me at my"
+	line "lab and start"
+	cont "your journey"
+	cont "Let's go!"
 	done
 
 _DoYouWantToNicknameText::

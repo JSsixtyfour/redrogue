@@ -72,7 +72,7 @@ OakSpeech:
 	call PrintText
 	call GBFadeOutToWhite
 	call ClearScreen
-	ld a, NIDORINO
+	ld a, PORYGON
 	ld [wCurSpecies], a
 	ld [wCurPartySpecies], a
 	call GetMonHeader
@@ -172,7 +172,7 @@ OakSpeechText1:
 OakSpeechText2:
 	text_far _OakSpeechText2A
 	; BUG: The cry played does not match the sprite displayed.
-	sound_cry_nidorina
+	sound_cry_porygon
 	text_far _OakSpeechText2B
 	text_end
 
