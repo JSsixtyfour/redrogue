@@ -43,7 +43,7 @@ ToggleableObjectStates:
 	table_width 3
 
 	toggleable_objects_for PALLET_TOWN
-	toggle_object_state PALLETTOWN_OAK, OFF
+	toggle_object_state SPRITE_GIRL, ON
 
 	toggleable_objects_for VIRIDIAN_CITY
 	toggle_object_state VIRIDIANCITY_OLD_MAN_SLEEPY, ON

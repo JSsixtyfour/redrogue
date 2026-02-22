@@ -8,21 +8,21 @@
 ;    * db level, move
 ; - db 0 ; no more level-up moves
 
-// imported from yellow legacy
-// don't know if I agree with how sleep moves are now so late for all sleep move having pokemon, poliwag, lapras, parasect, gengar
-// horn drill is also later on rhydon andd guillotine on pinsir and all one hits like krabby too
-// barrier was pushed back for tentacool, unclear why as well as hydro pump
-// double team and swords dance have been pushed back on scyther, probably others
-// mirror move delayed for pidgey
-// much of gravelers and golems learnset delayed
-// low kick no longer in machokes
-// bind pushed way back on Onix
-// amnesia pushed back
-// leer removed from moltres
-// hyper beam pushed back for dragonair and agility
-// jigglypuff double edge pushed back
-// thunderwave pushed back jolteon
-// left off at ekans
+; imported from yellow legacy
+; don't know if I agree with how sleep moves are now so late for all sleep move having pokemon, poliwag, lapras, parasect, gengar
+; horn drill is also later on rhydon andd guillotine on pinsir and all one hits like krabby too
+; barrier was pushed back for tentacool, unclear why as well as hydro pump
+; double team and swords dance have been pushed back on scyther, probably others
+; mirror move delayed for pidgey
+; much of gravelers and golems learnset delayed
+; low kick no longer in machokes
+; bind pushed way back on Onix
+; amnesia pushed back
+; leer removed from moltres
+; hyper beam pushed back for dragonair and agility
+; jigglypuff double edge pushed back
+; thunderwave pushed back jolteon
+; left off at ekans
 
 EvosMovesPointerTable:
 	table_width 2, EvosMovesPointerTable

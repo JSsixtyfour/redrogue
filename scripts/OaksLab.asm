@@ -1,5 +1,5 @@
 OaksLab_Script:
-	CheckEvent EVENT_PALLET_AFTER_GETTING_POKEBALLS_2
+	CheckEvent EVENT_PALLET_AFTER_FIRST_RUN
 	call nz, OaksLabLoadTextPointers2Script
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
@@ -964,7 +964,7 @@ OaksLabLastMonText:
 
 OaksLabOak1Text:
 	text_asm
-	CheckEvent EVENT_PALLET_AFTER_GETTING_POKEBALLS
+	CheckEvent EVENT_PALLET_AFTER_FIRST_RUN
 	jr nz, .already_got_poke_balls
 	ld hl, wPokedexOwned
 	ld b, wPokedexOwnedEnd - wPokedexOwned
@@ -1020,7 +1020,7 @@ OaksLabOak1Text:
 	call PrintText
 	jr .done
 .give_poke_balls
-	CheckAndSetEvent EVENT_GOT_POKEBALLS_FROM_OAK
+	CheckAndSetEvent EVENT_FIRST_RUN
 	jr nz, .come_see_me_sometimes
 	lb bc, POKE_BALL, 5
 	call GiveItem
