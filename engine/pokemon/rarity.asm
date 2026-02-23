@@ -1,0 +1,102 @@
+; assigned class for each pokemon and odds
+
+;pokeball_odds
+DEF greatball_odds EQU 40
+DEF ultraball_odds EQU 10
+DEF masterball_odds EQU 10 ; if prerequisites met
+
+
+pokemon_classes:
+table_width 1
+pokeball_class:
+db CATERPIE
+db WEEDLE
+db PIDGEY
+db RATTATA
+db FARFETCHD
+db EKANS
+db DITTO
+db MANKEY
+db KRABBY
+db CUBONE
+db GRIMER
+db KRABBY
+db GROWLITHE
+db SEEL
+db VOLTORB
+db SPEAROW
+db KABUTO
+db MAGNEMITE
+db POLIWAG
+db ODDISH
+db ZUBAT
+db JIGGLYPUFF
+db SANDSHREW
+db PARAS
+db PSYDUCK
+db BELLSPROUT
+db GRIMER
+db KOFFING
+db HORSEA
+db GOLDEEN
+
+greatball_class:
+db BULBASAUR
+db CHARMANDER
+db SQUIRTLE
+db EEVEE
+db DODUO
+db DRATINI
+db OMANYTE
+db MACHOP
+db SHELLDER
+db GEODUDE
+db LICKITUNG
+db NIDORAN_F
+db CLEFAIRY
+db DIGLETT 
+db MAGIKARP
+db PIKACHU
+db SLOWPOKE
+db DROWZEE
+db PONYTA
+db MEOWTH
+db VULPIX
+db TANGELA
+db VENONAT
+db NIDORAN_M
+db HITMONCHAN
+db TENTACOOL
+db ONIX
+db PORYGON
+
+ultraball_class:
+db GASTLY
+db ABRA
+db JYNX
+db ARTICUNO
+db MOLTRES
+db CHANSEY
+db RHYHORN
+db LAPRAS
+db KANGASKHAN
+db SCYTHER
+db HITMONLEE
+db MR_MIME
+db ELECTABUZZ
+db MAGMAR
+db PINSIR
+db AERODACTYL
+
+masterball_class:
+db TAUROS
+db SNORLAX
+db EXEGGCUTE
+db EXEGGUTOR
+db STARYU
+db STARMIE
+db ZAPDOS
+
+uber_class:
+db MEW
+db MEWTWO

@@ -1,9 +1,9 @@
 TitleMons:
 ; mons on the title screen are randomly chosen from here
 IF DEF(_RED)
-	db STARTER1
-	db STARTER2
-	db STARTER3
+	db CHARMANDER
+	db SQUIRTLE
+	db BULBASAUR
 	db WEEDLE
 	db NIDORAN_M
 	db SCYTHER
@@ -14,14 +14,14 @@ IF DEF(_RED)
 	db GASTLY
 	db DITTO
 	db PIDGEOTTO
-	db ONIX
+	db PORYGON
 	db PONYTA
 	db MAGIKARP
 ENDC
 IF DEF(_BLUE)
-	db STARTER2
-	db STARTER1
-	db STARTER3
+	db SQUIRTLE
+	db CHARMANDER
+	db BULBASAUR
 	db MANKEY
 	db HITMONLEE
 	db VULPIX
