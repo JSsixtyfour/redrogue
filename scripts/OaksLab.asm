@@ -1,3 +1,6 @@
+INCLUDE "engine/pokemon/rarity.asm"
+INCLUDE "engine/rogue_pointers.asm"
+
 OaksLab_Script:
 	CheckEvent EVENT_PALLET_AFTER_FIRST_RUN
 	call nz, OaksLabLoadTextPointers2Script
@@ -193,9 +196,13 @@ OaksLabPlayerForcedToWalkBackScript:
 
 OaksLabChoseStarterScript:
 	ld a, [wPlayerStarter]
-	cp STARTER1
+    ld hl, ROGUE_STARTER1
+    ld b, [hl]
+	cp a, b
 	jr z, .Charmander
-	cp STARTER2
+	ld hl, ROGUE_STARTER2
+    ld b, [hl]
+	cp a, b
 	jr z, .Squirtle
 	jr .Bulbasaur
 .Charmander
@@ -385,12 +392,16 @@ OaksLabRivalStartBattleScript:
 	ld a, OPP_RIVAL1
 	ld [wCurOpponent], a
 	ld a, [wRivalStarter]
-	cp STARTER2
+	ld hl, ROGUE_STARTER2
+    ld b, [hl]
+	cp a, b
 	jr nz, .not_squirtle
 	ld a, $1
 	jr .done
 .not_squirtle
-	cp STARTER3
+	ld hl, ROGUE_STARTER3
+    ld b, [hl]
+	cp a, b
 	jr nz, .not_bulbasaur
 	ld a, $2
 	jr .done
@@ -796,31 +807,37 @@ OaksLabRivalText:
 
 OaksLabCharmanderPokeBallText:
 	text_asm
-	ld a, STARTER2
+	ld hl, ROGUE_STARTER2
+    ld a, [hl]
 	ld [wRivalStarterTemp], a
 	ld a, OAKSLAB_SQUIRTLE_POKE_BALL
 	ld [wRivalStarterBallSpriteIndex], a
-	ld a, STARTER1
+    ld hl, ROGUE_STARTER1
+	ld a, [hl]
 	ld b, OAKSLAB_CHARMANDER_POKE_BALL
 	jr OaksLabSelectedPokeBallScript
 
 OaksLabSquirtlePokeBallText:
 	text_asm
-	ld a, STARTER3
+	ld hl, ROGUE_STARTER3
+    ld a, [hl]
 	ld [wRivalStarterTemp], a
 	ld a, OAKSLAB_BULBASAUR_POKE_BALL
 	ld [wRivalStarterBallSpriteIndex], a
-	ld a, STARTER2
+	ld hl, ROGUE_STARTER2
+    ld a, [hl]
 	ld b, OAKSLAB_SQUIRTLE_POKE_BALL
 	jr OaksLabSelectedPokeBallScript
 
 OaksLabBulbasaurPokeBallText:
 	text_asm
-	ld a, STARTER1
+	ld hl, ROGUE_STARTER1
+    ld a, [hl]
 	ld [wRivalStarterTemp], a
 	ld a, OAKSLAB_CHARMANDER_POKE_BALL
 	ld [wRivalStarterBallSpriteIndex], a
-	ld a, STARTER3
+	ld hl, ROGUE_STARTER3
+    ld a, [hl]
 	ld b, OAKSLAB_BULBASAUR_POKE_BALL
 
 OaksLabSelectedPokeBallScript:
