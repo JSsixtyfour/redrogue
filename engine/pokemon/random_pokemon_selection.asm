@@ -19,33 +19,38 @@ jp ultraball_class_selection
 ; common
 pokeball_class_selection:
 call Random
-ldh a, [hRandomAdd]
-ld  b, a
-sla a
-sla a
-sla a
-sla a
-sla a
-
-sla b
-
-sub a, b
-ld b, a
-; 32-2=30 pokemon in this class
-
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-; sra a ; forgo one shift right because structs are two bytes in size
-
-ld hl, pokeball_class
-add hl, bc
-ld b, [hl]
+ldh [hMultiplicand+2], a
 xor a
+ldh [hMultiplicand], a
+ldh [hMultiplicand+1], a
+ld a, $1E
+ldh [hMultiplier], a
+call Multiply
+ldh   a, [hProduct+2]
+ldh [hDividend], a
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
+
+ld a, $FF
+ld b, $2
+ldh [hDivisor], a
+call Divide
+ldh   a, [hQuotient+3]
+ldh [hMultiplicand], a
+ld a, $2
+ldh [hMultiplier], a
+xor a
+ldh [hMultiplicand+1], a
+ldh [hMultiplicand+2], a
+;; need to adjust where I pull and save things
+call Multiply
+ld hl, hProduct+1
+ld c,[hl]
+ld b, $0
+
+ld hl, pokeball_class+1
+add hl, bc
+ld a, [hld]
 cp b
 jr z, pokeball_load
 jp pokeball_class_selection

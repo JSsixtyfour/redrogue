@@ -360,3 +360,5 @@ SECTION "rogue", ROMX
 INCLUDE "engine/pokemon/rarity.asm"
 INCLUDE "engine/pokemon/random_pokemon_selection.asm"
 INCLUDE "engine/rogue_pointers.asm"
+;INCLUDE "custom_functions/func_enc_gen.asm"
+;INCLUDE "custom_functions/func_monlists.asm"

@@ -1,10 +1,10 @@
 ; assigned class for each pokemon and odds
 
 pokemon_class_odds:
-DEF pokeball_odds EQU 0x7F
-DEF greatball_odds EQU 0x66 + 0x7F
-DEF ultraball_odds EQU 0x1A + 0x66 + 0x7F
-DEF masterball_odds EQU 0xA ; if prerequisites met
+DEF pokeball_odds EQU $7F
+DEF greatball_odds EQU $66 + $7F
+DEF ultraball_odds EQU $1A + $66 + $7F
+DEF masterball_odds EQU $A ; if prerequisites met
 
 
 pokemon_classes:

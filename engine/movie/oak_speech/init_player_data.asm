@@ -47,18 +47,18 @@ DEF START_MONEY EQU $3000
     
 InitializeStarters:
 
-    call Random_Pokemon_Selection
+    farcall Random_Pokemon_Selection
     ld hl, ROGUE_STARTER1
     ld [hl], a
     
     call Random
-    call Random_Pokemon_Selection
+    farcall Random_Pokemon_Selection
     
     ld hl, ROGUE_STARTER2
     ld [hl], a
     
     call Random
-    call Random_Pokemon_Selection
+    farcall Random_Pokemon_Selection
     
     ld hl, ROGUE_STARTER3
     ld [hl], a
