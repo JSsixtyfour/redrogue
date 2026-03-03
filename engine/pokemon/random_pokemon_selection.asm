@@ -42,7 +42,6 @@ ldh [hMultiplier], a
 xor a
 ldh [hMultiplicand+1], a
 ldh [hMultiplicand+2], a
-;; need to adjust where I pull and save things
 call Multiply
 ld hl, hProduct+1
 ld c,[hl]
@@ -67,43 +66,43 @@ RET
 
 greatball_class_selection:
 call Random
-ldh a, [hRandomAdd]
-ld b, a
-sla a
-sla a
-sla a
-sla a
-sla a
-
-
-sla b
-sla b
-
-; 32-4=28 pokemon in this class
-
-sub a, b
-ld b, a
-
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-; sra a ; forgo one shift right because structs are two bytes in size
-
-ld hl, greatball_class
-add hl, bc
-
-ld b, [hl]
+ldh [hMultiplicand+2], a
 xor a
+ldh [hMultiplicand], a
+ldh [hMultiplicand+1], a
+ld a, $1C
+ldh [hMultiplier], a
+call Multiply
+ldh   a, [hProduct+2]
+ldh [hDividend], a
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
+
+ld a, $FF
+ld b, $2
+ldh [hDivisor], a
+call Divide
+ldh   a, [hQuotient+3]
+ldh [hMultiplicand], a
+ld a, $2
+ldh [hMultiplier], a
+xor a
+ldh [hMultiplicand+1], a
+ldh [hMultiplicand+2], a
+call Multiply
+ld hl, hProduct+1
+ld c,[hl]
+ld b, $0
+
+ld hl, greatball_class+1
+add hl, bc
+ld a, [hld]
 cp b
-jr z, .greatball_load
+jr z, greatball_load
 jp greatball_class_selection
 
 
-.greatball_load
+greatball_load:
 ld [hl], 0x1
 inc [hl]
 ld a, [hl]
@@ -113,29 +112,37 @@ RET
 ultraball_class_selection:
 
 call Random
-
-ldh a, [hRandomAdd]
-
-sla a
-sla a
-sla a
-sla a
-ld b, a
-; 16 in this class
-
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-sra b
-; sra a ; forgo one shift right because structs are two bytes in size
-
-ld hl, ultraball_class
-add hl, bc
-ld b, [hl]
+ldh [hMultiplicand+2], a
 xor a
+ldh [hMultiplicand], a
+ldh [hMultiplicand+1], a
+ld a, $10
+ldh [hMultiplier], a
+call Multiply
+ldh   a, [hProduct+2]
+ldh [hDividend], a
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
+
+ld a, $FF
+ld b, $2
+ldh [hDivisor], a
+call Divide
+ldh   a, [hQuotient+3]
+ldh [hMultiplicand], a
+ld a, $2
+ldh [hMultiplier], a
+xor a
+ldh [hMultiplicand+1], a
+ldh [hMultiplicand+2], a
+call Multiply
+ld hl, hProduct+1
+ld c,[hl]
+ld b, $0
+
+ld hl, ultraball_class+1
+add hl, bc
+ld a, [hld]
 cp b
 jr z, ultraball_load
 jp ultraball_class_selection
