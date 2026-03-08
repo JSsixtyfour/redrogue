@@ -115,14 +115,9 @@ ToggleableObjectStates:
 	toggle_object_state BLUESHOUSE_TOWN_MAP, ON
 
 	toggleable_objects_for OAKS_LAB
-	toggle_object_state OAKSLAB_RIVAL,                ON
-	toggle_object_state OAKSLAB_CHARMANDER_POKE_BALL, ON
-	toggle_object_state OAKSLAB_SQUIRTLE_POKE_BALL,   ON
-	toggle_object_state OAKSLAB_BULBASAUR_POKE_BALL,  ON
-	toggle_object_state OAKSLAB_OAK1,                 OFF
-	toggle_object_state OAKSLAB_POKEDEX1,             ON
-	toggle_object_state OAKSLAB_POKEDEX2,             ON
-	toggle_object_state OAKSLAB_OAK2,                 OFF
+	toggle_object_state ROGUE_STARTER_POKEBALL_1, ON
+	toggle_object_state ROGUE_STARTER_POKEBALL_2, ON
+	toggle_object_state ROGUE_STARTER_POKEBALL_3, ON
 
 	toggleable_objects_for VIRIDIAN_GYM
 	toggle_object_state VIRIDIANGYM_GIOVANNI, ON

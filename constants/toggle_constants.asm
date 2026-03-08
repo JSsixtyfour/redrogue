@@ -88,14 +88,9 @@ ENDM
 	const TOGGLE_TOWN_MAP                      ; 29
 
 	toggle_consts_for OAKS_LAB
-	const TOGGLE_OAKS_LAB_RIVAL                ; 2A
-	const TOGGLE_STARTER_BALL_1                ; 2B
-	const TOGGLE_STARTER_BALL_2                ; 2C
-	const TOGGLE_STARTER_BALL_3                ; 2D
-	const TOGGLE_OAKS_LAB_OAK_1                ; 2E
-	const TOGGLE_POKEDEX_1                     ; 2F
-	const TOGGLE_POKEDEX_2                     ; 30
-	const TOGGLE_OAKS_LAB_OAK_2                ; 31
+	const TOGGLE_ROGUE_STARTER_POKEBALL_1      ; 2B
+	const TOGGLE_ROGUE_STARTER_POKEBALL_2      ; 2C
+	const TOGGLE_ROGUE_STARTER_POKEBALL_3      ; 2D
 
 	toggle_consts_for VIRIDIAN_GYM
 	const TOGGLE_VIRIDIAN_GYM_GIOVANNI         ; 32

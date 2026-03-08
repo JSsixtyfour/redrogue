@@ -1,3 +1,8 @@
+
+
+
+
+
 ; This code is meant to handle any time a pokemon is selected at random, be it starters or for regular prizes
 ; The code outputs a pokemon ID into a
 ; masterball class check will be here, will require separate events to occur before active
@@ -58,7 +63,7 @@ jp pokeball_class_selection
 pokeball_load:
 ld [hl], 0x1
 inc [hl]
-ld a, [hl]
+ld d, [hl]
 
 RET
 
@@ -105,7 +110,7 @@ jp greatball_class_selection
 greatball_load:
 ld [hl], 0x1
 inc [hl]
-ld a, [hl]
+ld d, [hl]
 
 RET
 
@@ -151,7 +156,7 @@ jp ultraball_class_selection
 ultraball_load:
 ld [hl], 0x1
 inc [hl]
-ld a, [hl]
+ld d, [hl]
 
 RET
 
