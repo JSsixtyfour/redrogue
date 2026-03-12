@@ -161,3 +161,19 @@ ld d, [hl]
 RET
 
 masterball_class_selection:
+
+rogue_pokemon_randomized_batch:
+   call Random
+   call Random_Pokemon_Selection
+   ld hl, wRoguePokemon1
+   ld [hl], d
+   call Random
+   call Random_Pokemon_Selection
+   ld hl, wRoguePokemon2
+   ld [hl], d
+   call Random
+   call Random_Pokemon_Selection
+   ld hl, wRoguePokemon3
+   ld [hl], d
+   
+RET

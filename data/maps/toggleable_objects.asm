@@ -118,6 +118,7 @@ ToggleableObjectStates:
 	toggle_object_state ROGUE_STARTER_POKEBALL_1, ON
 	toggle_object_state ROGUE_STARTER_POKEBALL_2, ON
 	toggle_object_state ROGUE_STARTER_POKEBALL_3, ON
+    toggle_object_state OAKSLAB_RIVAL, ON
 
 	toggleable_objects_for VIRIDIAN_GYM
 	toggle_object_state VIRIDIANGYM_GIOVANNI, ON

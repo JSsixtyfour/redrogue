@@ -149,6 +149,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  5,  0, DisplayOakLabRightPoster, SPRITE_FACING_UP
 	hidden_event  0,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  1,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
+    ;hidden_event  6,  3, Rogue_Pokemon_Display_1, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_POKECENTER

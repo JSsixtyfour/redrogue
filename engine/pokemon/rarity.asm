@@ -6,8 +6,6 @@ DEF greatball_odds EQU $66 + $7F
 DEF ultraball_odds EQU $1A + $66 + $7F
 DEF masterball_odds EQU $A ; if prerequisites met
 
-
-
 pokemon_classes:
 table_width 1
 pokeball_class:
@@ -184,11 +182,4 @@ uber_class:
 db MEW
 db 0x0
 db MEWTWO
-db 0x0
-
-ROGUE_POKEMON_1:
-db 0x0
-ROGUE_POKEMON_2:
-db 0x0
-ROGUE_POKEMON_3:
 db 0x0

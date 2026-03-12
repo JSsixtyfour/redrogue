@@ -12,8 +12,8 @@ OaksLab_Script:
    jp .end
    
    .default
-   CheckEvent EVENT_GOT_STARTER
-   jr z, .end
+   CheckEvent RIVAL_EXIT
+   jr nz, .end
    
    ld hl, OaksLab_ScriptPointers
    ld a, [wOaksLabCurScript]
@@ -93,14 +93,7 @@ Rogue_Lab_Script_PokeballText_1:
 	call MoveSprite
     
 	.done
-    ld a, [wRoguePokemon2]
-    ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_2
-    ld [wRivalStarterBallSpriteIndex], a
-    SetEvent EVENT_GOT_STARTER
-	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
-	ld [wOaksLabCurScript], a
-	jp TextScriptEnd
+	jp OaksLabRivalChoosesStarterScript
     
     .MiddleBallMovement1
 	db NPC_MOVEMENT_DOWN
@@ -161,13 +154,7 @@ Rogue_Lab_Script_PokeballText_2:
 
 
 	.done
-    ld a, [wRoguePokemon3]
-    ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_3
-    ld [wRivalStarterBallSpriteIndex], a
-	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
-	ld [wOaksLabCurScript], a
-	jp TextScriptEnd
+	jp OaksLabRivalChoosesStarterScript
     
     .RightBallMovement1
 	db NPC_MOVEMENT_DOWN
@@ -247,13 +234,7 @@ Rogue_Lab_Script_PokeballText_3:
 	call MoveSprite
     
     .done
-    ld a, [wRoguePokemon1]
-	ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_1
-    ld [wRivalStarterBallSpriteIndex], a
-	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
-	ld [wOaksLabCurScript], a
-	jp TextScriptEnd
+	jp OaksLabRivalChoosesStarterScript
     
     .LeftBallMovement1
 	db NPC_MOVEMENT_DOWN
@@ -308,9 +289,6 @@ OaksLabRivalChoosesStarterScript:
 	SetEvent EVENT_GOT_STARTER
 	xor a
 	ld [wJoyIgnore], a
-    ld a, SCRIPT_OAKSLAB_RIVAL_CHALLENGES_PLAYER
-	ld [wOaksLabCurScript], a
-	ret
 
 OaksLabRivalChallengesPlayerScript:
 	ld a, [wYCoord]
@@ -343,9 +321,6 @@ OaksLabRivalChallengesPlayerScript:
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	call MoveSprite
-    ld a, SCRIPT_OAKSLAB_RIVAL_START_BATTLE
-	ld [wOaksLabCurScript], a
-	ret
 
 OaksLabRivalStartBattleScript:
 	ld a, [wStatusFlags5]
@@ -382,9 +357,6 @@ OaksLabRivalStartBattleScript:
 	ld [wJoyIgnore], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
-    ld a, SCRIPT_OAKSLAB_RIVAL_END_BATTLE
-	ld [wOaksLabCurScript], a
-	ret
 
 OaksLabRivalEndBattleScript:
 	ld a, PAD_CTRL_PAD
@@ -402,9 +374,6 @@ OaksLabRivalEndBattleScript:
 	call SetSpriteFacingDirectionAndDelay
 	predef HealParty
 	SetEvent EVENT_BATTLED_RIVAL_IN_OAKS_LAB
-    ld a, SCRIPT_OAKSLAB_RIVAL_STARTS_EXIT
-	ld [wOaksLabCurScript], a
-	ret
 
 OaksLabRivalStartsExitScript:
 	ld c, 20
@@ -428,9 +397,7 @@ OaksLabRivalStartsExitScript:
 .next
 	ld [wNPCMovementDirections], a
 
-    ld a, SCRIPT_OAKSLAB_PLAYER_WATCH_RIVAL_EXIT
-	ld [wOaksLabCurScript], a
-	ret
+    jp OaksLabPlayerWatchRivalExitScript
     
 .RivalExitMovement
 	db NPC_CHANGE_FACING
@@ -451,8 +418,7 @@ OaksLabPlayerWatchRivalExitScript:
 	xor a
 	ld [wJoyIgnore], a
 	call PlayDefaultMusic ; reset to map music
-	ld a, SCRIPT_OAKSLAB_NOOP
-	ld [wOaksLabCurScript], a
+	ret
     
 ; make the player keep facing the rival as he walks away
 .checkRivalPosition

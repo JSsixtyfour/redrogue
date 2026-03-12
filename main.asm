@@ -288,6 +288,7 @@ INCLUDE "engine/events/hidden_events/route_15_binoculars.asm"
 INCLUDE "engine/events/hidden_events/museum_fossils.asm"
 INCLUDE "engine/events/hidden_events/school_blackboard.asm"
 INCLUDE "engine/events/hidden_events/vermilion_gym_trash.asm"
+INCLUDE "engine/events/hidden_events/rogue_pokemon.asm"
 
 
 SECTION "Cinnabar Lab Fossils", ROMX

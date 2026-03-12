@@ -2220,6 +2220,10 @@ wDayCareMonOT::   ds NAME_LENGTH
 
 wDayCareMon:: box_struct wDayCareMon
 
+wRoguePokemon1:: db
+wRoguePokemon2:: db
+wRoguePokemon3:: db
+
 wMainDataEnd::
 
 

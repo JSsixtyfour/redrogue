@@ -44,38 +44,7 @@ DEF START_MONEY EQU $3000
 	ld hl, wGameProgressFlags
 	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
 	call FillMemory ; clear all game progress flags
-    
-;InitializeStarters:
-
-    ;;farcall Random_Pokemon_Selection
-    ;;ld hl, randomized_pokemon
-    ;;ld a, [hl]
-    ;;ld hl, ROGUE_STARTER1
-    ;;ld [hl], a
-    ;;
-    ;;call Random
-    ;;farcall Random_Pokemon_Selection
-    ;;ld hl, randomized_pokemon
-    ;;ld a, [hl]
-    ;;ld hl, ROGUE_STARTER2
-    ;;ld [hl], a
-    ;;
-    ;;call Random
-    ;;farcall Random_Pokemon_Selection
-    ;;ld hl, randomized_pokemon
-    ;;ld a, [hl]
-    ;;ld hl, ROGUE_STARTER3
-    ;;ld [hl], a
-    ;;
-    ;;SetEvent EVENT_OAK_ASKED_TO_CHOOSE_MON
-    ;;ld a, 0x1
-    ;;ld bc, 0x28
-    ;;call FillMemory
-    ;;ld a, 0x5
-    ;;ld hl, wGameProgressFlags
-    ;;ld [hl], a
-    
-
+   
 	jp InitializeToggleableObjectsFlags
 
 InitializeEmptyList:
