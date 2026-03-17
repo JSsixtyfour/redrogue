@@ -11,12 +11,12 @@ _PickPokeBallText::
 	text_end
     
 _OaksLabRivalIPickedTheWrongPokemonText::
-	text "Take your prize"
-	line "#MON in the next"
-	cont "room. You'll"
-	cont "need it to "
-    cont "keep pace"
-    cont "with me"
+	text "Get your"
+	line "reward in the "
+	cont "next room."
+	cont "You'll need"
+    cont "it to keep"
+    cont "pace with me"
 	prompt
 
 _OaksLabRivalAmIGreatOrWhatText::

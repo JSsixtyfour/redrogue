@@ -76,10 +76,14 @@ ToggleableObjectStates:
 	toggle_object_state SAFFRONCITY_ROCKER,         OFF
 	toggle_object_state SAFFRONCITY_ROCKET8,        ON
 	toggle_object_state SAFFRONCITY_ROCKET9,        OFF
+    
+    toggleable_objects_for REWARD_ROOM
 
 	toggleable_objects_for ROUTE_2
-	toggle_object_state ROUTE2_MOON_STONE, ON
+    toggle_object_state ROUTE2_MOON_STONE, ON
 	toggle_object_state ROUTE2_HP_UP,      ON
+
+
 
 	toggleable_objects_for ROUTE_4
 	toggle_object_state ROUTE4_TM_WHIRLWIND, ON

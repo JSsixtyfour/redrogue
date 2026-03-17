@@ -1,6 +1,5 @@
 Rogue_Pokemon_Display_1::
-	;ld hl, LAB_POKEMON_1
-    ld [hl], a
+	ld a, [wRoguePokemon1]
 	ld [wCurPartySpecies], a
 	call DisplayRogueMonFrontSpriteInBox
 	call EnableAutoTextBoxDrawing

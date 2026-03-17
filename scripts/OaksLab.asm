@@ -137,7 +137,7 @@ Rogue_Lab_Script_PokeballText_2:
 	and a
 	jr nz, .done
 
-	ld a, [wRoguePokemon1]
+	ld a, [wRoguePokemon2]
 	ld b, a
     ld c, 5
 	call GivePokemon
@@ -207,7 +207,7 @@ Rogue_Lab_Script_PokeballText_3:
 	and a
 	jr nz, .done
 
-	ld a, [wRoguePokemon1]
+	ld a, [wRoguePokemon3]
 	ld b, a
     ld c, 5
 	call GivePokemon
@@ -314,8 +314,8 @@ OaksLabRivalChoosesStarterScript:
 
 OaksLabRivalChallengesPlayerScript:
 	ld a, [wYCoord]
-	cp 6
-	ret nz
+	;cp 6
+	;ret nz
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	xor a ; SPRITE_FACING_DOWN

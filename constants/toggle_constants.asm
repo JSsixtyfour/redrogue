@@ -49,6 +49,8 @@ ENDM
 	const TOGGLE_SAFFRON_CITY_D                ; 16
 	const TOGGLE_SAFFRON_CITY_E                ; 17
 	const TOGGLE_SAFFRON_CITY_F                ; 18
+    
+    toggle_consts_for REWARD_ROOM
 
 	toggle_consts_for ROUTE_2
 	const TOGGLE_ROUTE_2_ITEM_1                ; 19 X
