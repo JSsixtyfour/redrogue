@@ -1,7 +1,7 @@
 object_const_def
-	;const_export ROGUE_STARTER_POKEBALL_1
-    ;const_export ROGUE_STARTER_POKEBALL_2
-    ;const_export ROGUE_STARTER_POKEBALL_3
+	const_export ROGUE_REWARD_POKEBALL_1
+    const_export ROGUE_REWARD_POKEBALL_2
+    const_export ROGUE_REWARD_POKEBALL_3
 
 RewardRoom_Object:
 	db $F ; border block
@@ -13,8 +13,8 @@ RewardRoom_Object:
 	def_bg_events
 
 	def_object_events
-	object_event  5,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_1
-	object_event  8,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_2
-	object_event 11,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_3
+	object_event  5,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_1
+	object_event  8,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_2
+	object_event 11,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_3
     
-	def_warps_to REWARD_ROOM
+	def_warps_to OAKS_LAB

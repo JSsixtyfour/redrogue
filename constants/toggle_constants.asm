@@ -51,6 +51,9 @@ ENDM
 	const TOGGLE_SAFFRON_CITY_F                ; 18
     
     toggle_consts_for REWARD_ROOM
+    const TOGGLE_ROGUE_REWARD_POKEBALL_1      ; 2B
+	const TOGGLE_ROGUE_REWARD_POKEBALL_2      ; 2C
+	const TOGGLE_ROGUE_REWARD_POKEBALL_3      ; 2D
 
 	toggle_consts_for ROUTE_2
 	const TOGGLE_ROUTE_2_ITEM_1                ; 19 X

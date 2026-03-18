@@ -1,12 +1,12 @@
-INCLUDE "engine/pokemon/rarity.asm"
-INCLUDE "engine/rogue_pointers.asm"
-INCLUDE "engine/pokemon/random_pokemon_selection.asm"
+;INCLUDE "engine/pokemon/rarity.asm"
+;INCLUDE "engine/rogue_pointers.asm"
+;INCLUDE "engine/pokemon/random_pokemon_selection.asm"
 
 OaksLab_Script:  
    CheckEvent EVENT_ESTABLISHED_STARTER
    jr nz, .default
    
-   call rogue_pokemon_randomized_batch
+   farcall rogue_pokemon_randomized_batch
    SetEvent EVENT_ESTABLISHED_STARTER
    
    jp .end

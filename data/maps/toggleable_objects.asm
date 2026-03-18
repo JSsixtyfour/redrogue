@@ -78,6 +78,9 @@ ToggleableObjectStates:
 	toggle_object_state SAFFRONCITY_ROCKET9,        OFF
     
     toggleable_objects_for REWARD_ROOM
+    toggle_object_state ROGUE_REWARD_POKEBALL_1, ON
+	toggle_object_state ROGUE_REWARD_POKEBALL_2, ON
+	toggle_object_state ROGUE_REWARD_POKEBALL_3, ON
 
 	toggleable_objects_for ROUTE_2
     toggle_object_state ROUTE2_MOON_STONE, ON

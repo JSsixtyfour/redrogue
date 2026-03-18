@@ -6,7 +6,7 @@
 ; This code is meant to handle any time a pokemon is selected at random, be it starters or for regular prizes
 ; The code outputs a pokemon ID into a
 ; masterball class check will be here, will require separate events to occur before active
-Random_Pokemon_Selection:
+Random_Pokemon_Selection::
 ldh a, [hRandomAdd]
 ld  b, a
 ld hl, pokemon_class_odds
@@ -162,7 +162,7 @@ RET
 
 masterball_class_selection:
 
-rogue_pokemon_randomized_batch:
+rogue_pokemon_randomized_batch::
    call Random
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
