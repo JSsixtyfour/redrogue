@@ -37,7 +37,7 @@ Rogue_RewardRoom_Script_PokeballText_1:
 	text_asm
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
-	ld hl, GreedyText
+	ld hl, GreedyText_Reward
 	call PrintText
 	jr .done
     
@@ -45,7 +45,7 @@ Rogue_RewardRoom_Script_PokeballText_1:
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
     call GetMonName
-    ld hl, PickPokeballText
+    ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
@@ -75,7 +75,7 @@ Rogue_RewardRoom_Script_PokeballText_2:
 	text_asm
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
-	ld hl, GreedyText
+	ld hl, GreedyText_Reward
 	call PrintText
 	jr .done
     
@@ -83,7 +83,7 @@ Rogue_RewardRoom_Script_PokeballText_2:
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
     call GetMonName
-    ld hl, PickPokeballText
+    ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
@@ -113,7 +113,7 @@ Rogue_RewardRoom_Script_PokeballText_3:
 	text_asm
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
-	ld hl, GreedyText
+	ld hl, GreedyText_Reward
 	call PrintText
 	jr .done
     
@@ -121,7 +121,7 @@ Rogue_RewardRoom_Script_PokeballText_3:
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
     call GetMonName
-    ld hl, PickPokeballText
+    ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
@@ -146,3 +146,11 @@ Rogue_RewardRoom_Script_PokeballText_3:
     
     .done
 	jp TextScriptEnd
+    
+    PickRewardPokeballText:
+	text_far _PickPokeBallText
+	text_end
+    
+    GreedyText_Reward:
+	text_far _GreedyText
+	text_end

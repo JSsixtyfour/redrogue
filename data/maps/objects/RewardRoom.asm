@@ -17,4 +17,4 @@ RewardRoom_Object:
 	object_event  8,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_2
 	object_event 11,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_3
     
-	def_warps_to OAKS_LAB
+	def_warps_to REWARD_ROOM
