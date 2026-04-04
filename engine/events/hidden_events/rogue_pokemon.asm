@@ -14,8 +14,8 @@ DisplayRogueMonFrontSpriteInBox:
 	ldh [hWY], a
 	call SaveScreenTilesToBuffer1
 	ld a, MON_SPRITE_POPUP
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
+	;ld [wTextBoxID], a
+	;call DisplayTextBoxID
 	call UpdateSprites
 	ld a, [wCurPartySpecies]
 	ld [wCurSpecies], a
@@ -24,7 +24,7 @@ DisplayRogueMonFrontSpriteInBox:
 	call LoadMonFrontSprite
 	ld a, $80
 	ldh [hStartTileID], a
-	hlcoord 10, 11
+	hlcoord 5, 5
 	predef AnimateSendingOutMon
 	;call WaitForTextScrollButtonPress
 	;call LoadScreenTilesFromBuffer1

@@ -243,6 +243,7 @@ SECTION "Hidden Events 2", ROMX
 
 INCLUDE "engine/events/card_key.asm"
 INCLUDE "engine/events/prize_menu.asm"
+INCLUDE "engine/events/rogue_reward_menu.asm"
 INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
 INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"

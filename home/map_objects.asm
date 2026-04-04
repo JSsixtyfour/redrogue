@@ -44,6 +44,11 @@ TextScript_GameCornerPrizeMenu::
 BankswitchAndContinue::
 	call Bankswitch
 	jp HoldTextDisplayOpen        ; continue to main text-engine function
+    
+TextScript_RogueRewardMenu::
+	ld b, BANK(RogueRewardMenu)
+	ld hl, RogueRewardMenu
+    jp BankswitchAndContinue
 
 TextScript_PokemonCenterPC::
 	ld b, BANK(ActivatePC)

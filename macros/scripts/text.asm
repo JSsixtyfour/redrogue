@@ -235,3 +235,8 @@ ENDM
 MACRO script_vending_machine
 	db TX_SCRIPT_VENDING_MACHINE
 ENDM
+
+    const TX_SCRIPT_ROGUE_VENDOR ; $f7
+MACRO script_rogue_reward
+	db TX_SCRIPT_ROGUE_VENDOR
+ENDM

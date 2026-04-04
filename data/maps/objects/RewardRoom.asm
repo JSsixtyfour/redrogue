@@ -11,6 +11,7 @@ RewardRoom_Object:
 	warp_event $9, $7, LAST_MAP, 3
 
 	def_bg_events
+    bg_event  5,  4, TEXT_REWARDROOM_REWARD_VENDOR_1
 
 	def_object_events
 	object_event  5,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_1

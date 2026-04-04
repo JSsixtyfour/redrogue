@@ -11,9 +11,10 @@ RewardRoom_Script:
     ;CheckEvent EVENT_GOT_ROGUE_POKEMON
     ;jr nz, .default
     
-    ;call Rogue_Pokemon_Display_1
+    
     
     .default
+    ;farcall Rogue_Pokemon_Display_1
 	jp EnableAutoTextBoxDrawing
 
 RewardRoom_TextPointers:
@@ -23,6 +24,8 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Script_PokeballText_1, TEXT_ROGUE_REWARD_POKEBALL_1
     dw_const Rogue_RewardRoom_Script_PokeballText_2, TEXT_ROGUE_REWARD_POKEBALL_2
     dw_const Rogue_RewardRoom_Script_PokeballText_3, TEXT_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_RewardRoom_Reward_Text, TEXT_REWARDROOM_REWARD_VENDOR_1
+    EXPORT TEXT_REWARDROOM_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	
 
 RewardRoom1SignText:
@@ -154,3 +157,6 @@ Rogue_RewardRoom_Script_PokeballText_3:
     GreedyText_Reward:
 	text_far _GreedyText
 	text_end
+    
+    Rogue_RewardRoom_Reward_Text:
+	script_rogue_reward
