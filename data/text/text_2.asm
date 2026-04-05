@@ -1659,6 +1659,15 @@ _OopsYouDontHaveEnoughRoomText::
 _OhFineThenText::
 	text "Oh, fine then.@"
 	text_end
+    
+_Goodluck::
+	text "Good luck!@"
+	text_end
+    
+_RogueRewardText::
+	text "You may choose" 
+    line "one reward."
+	prompt
 
 _GetDexRatedText::
 	text "Want to get your"

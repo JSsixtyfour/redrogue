@@ -1,4 +1,8 @@
 RogueRewardMenu::
+    ld hl, wStatusFlags5
+	set BIT_NO_TEXT_DELAY, [hl]
+	ld hl, RogueRewardText
+	call PrintText
 ; the following are the menu settings
 	xor a
 	ld [wCurrentMenuItem], a
@@ -17,7 +21,7 @@ RogueRewardMenu::
 	call TextBoxBorder
 	call GetRogueRewardMenuId
 	call UpdateSprites
-	ld hl, RogueRewardText
+	ld hl, RogueRewardTextChoice
 	call PrintText
 	call HandleMenuInput ; menu choice handler
 	bit B_PAD_B, a
@@ -32,6 +36,10 @@ RogueRewardMenu::
 	ret
 
 RogueRewardText:
+    text_far _RogueRewardText
+	text_end
+    
+RogueRewardTextChoice:
 	text_far _WhichPrizeText
 	text_end
 
@@ -85,7 +93,8 @@ GetRogueRewardMenuId:
 	hlcoord 2, 10
 	ld de, NoThanksText
 	call PlaceString
-; put prices on the right side of the textbox
+    ret
+
 
 
 HandleRewardChoice:
@@ -115,6 +124,7 @@ HandleRewardChoice:
 	pop af
 	ld b, a
 	call GivePokemon
+    SetEvent EVENT_GOT_ROGUE_POKEMON
 
 ; If either the party or box was full, wait after displaying message.
 	push af
@@ -126,7 +136,9 @@ HandleRewardChoice:
 ; If the mon couldn't be given to the player (because both the party and box
 ; were full), return without subtracting coins.
 	ret nc
-
+.normal
+	ld hl, Goodluck
+	jp PrintText
 .bagFull
 	ld hl, RewardRoomBagIsFullText
 	jp PrintText
@@ -149,6 +161,11 @@ RewardRoomBagIsFullText:
 
 OhFineThenRewardText:
 	text_far _OhFineThenText
+	text_waitbutton
+	text_end
+    
+Goodluck:
+	text_far _Goodluck
 	text_waitbutton
 	text_end
 

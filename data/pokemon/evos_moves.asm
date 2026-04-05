@@ -284,7 +284,6 @@ SpearowEvosMoves:
 	db 18, SWIFT
 	db 21, MIRROR_MOVE
 	db 24, DRILL_PECK
-	db 28, WHIRLWIND
 	db 30, SHARPEN
 	db 40, AGILITY
 	db 0
@@ -705,7 +704,6 @@ FearowEvosMoves:
 	db 18, SWIFT
 	db 20, MIRROR_MOVE
 	db 24, DRILL_PECK
-	db 28, WHIRLWIND
 	db 30, SHARPEN
 	db 40, AGILITY
 	db 0
@@ -718,7 +716,6 @@ PidgeyEvosMoves:
 	db 5, SAND_ATTACK
 	db 12, QUICK_ATTACK
 	db 19, WING_ATTACK
-	db 21, WHIRLWIND
 	db 29, TAKE_DOWN
 	db 34, AGILITY
 	db 49, MIRROR_MOVE
@@ -1812,7 +1809,6 @@ ButterfreeEvosMoves:
 	db 18, SUPERSONIC
 	db 24, GUST
 	db 24, PSYBEAM
-	db 28, WHIRLWIND
 	db 32, PSYCHIC_M
 	db 0
 
@@ -2088,7 +2084,6 @@ PidgeottoEvosMoves:
 	db 5, SAND_ATTACK
 	db 12, QUICK_ATTACK
 	db 18, WING_ATTACK
-	db 21, WHIRLWIND
 	db 29, TAKE_DOWN
 	db 34, AGILITY
 	db 49, MIRROR_MOVE
@@ -2101,7 +2096,6 @@ PidgeotEvosMoves:
 	db 5, SAND_ATTACK
 	db 12, QUICK_ATTACK
 	db 18, WING_ATTACK
-	db 21, WHIRLWIND
 	db 29, TAKE_DOWN
 	db 34, AGILITY
 	db 40, SKY_ATTACK
