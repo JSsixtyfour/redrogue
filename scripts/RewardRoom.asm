@@ -7,6 +7,28 @@ RewardRoom_Script:
     SetEvent EVENT_ENTER_ROOM
     farcall rogue_pokemon_randomized_batch
     
+	;call Delay3
+	;ld hl, wSimulatedJoypadStatesEnd
+	;ld de, PlayerEntryMovementRLE
+	;call DecodeRLEList
+	;dec a
+	;ld [wSimulatedJoypadStatesIndex], a
+	;call StartSimulatingJoypadStates
+	;ld a, OAKSLAB_RIVAL
+	;ldh [hSpriteIndex], a
+	;xor a
+	;ldh [hSpriteFacingDirection], a
+	;call SetSpriteFacingDirectionAndDelay
+	;ld a, OAKSLAB_OAK1
+	;ldh [hSpriteIndex], a
+	;xor a
+	;ldh [hSpriteFacingDirection], a
+	;call SetSpriteFacingDirectionAndDelay
+    ;
+	;ld a, SCRIPT_OAKSLAB_FOLLOWED_OAK
+	;ld [wOaksLabCurScript], a
+	;ret
+    
     .check_2
     ;CheckEvent EVENT_GOT_ROGUE_POKEMON
     ;jr nz, .default
