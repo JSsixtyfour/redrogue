@@ -94,7 +94,8 @@ GetRandMon:
 GetRandRoster:
 	push bc
 	push de
-	ld b, 6
+	;ld b, 6
+    ld b, 2         ; two pokemon
 	ld de, ListNonMythPkmn
 	;;CheckEvent EVENT_90B	;check for diploma
 	;jp z, GetRandRosterLoop	;no mew if no diploma

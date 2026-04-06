@@ -86,7 +86,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const VIRIDIAN_FOREST_SOUTH_GATE,     5,  4 ; $32
 	end_indoor_group ROUTE_2
 
-	map_const VIRIDIAN_FOREST,               17, 24 ; $33
+	map_const VIRIDIAN_FOREST,               12, 17 ; $33
 	end_indoor_group VIRIDIAN_FOREST
 
 	map_const MUSEUM_1F,                     10,  4 ; $34
