@@ -6,7 +6,7 @@ RewardRoom_Script:
     
     SetEvent EVENT_ENTER_ROOM
     farcall rogue_pokemon_randomized_batch
-    
+    call EnableAutoTextBoxDrawing
 	;call Delay3
 	;ld hl, wSimulatedJoypadStatesEnd
 	;ld de, PlayerEntryMovementRLE
@@ -14,20 +14,13 @@ RewardRoom_Script:
 	;dec a
 	;ld [wSimulatedJoypadStatesIndex], a
 	;call StartSimulatingJoypadStates
-	;ld a, OAKSLAB_RIVAL
-	;ldh [hSpriteIndex], a
-	;xor a
-	;ldh [hSpriteFacingDirection], a
-	;call SetSpriteFacingDirectionAndDelay
-	;ld a, OAKSLAB_OAK1
-	;ldh [hSpriteIndex], a
-	;xor a
-	;ldh [hSpriteFacingDirection], a
-	;call SetSpriteFacingDirectionAndDelay
-    ;
-	;ld a, SCRIPT_OAKSLAB_FOLLOWED_OAK
-	;ld [wOaksLabCurScript], a
-	;ret
+    ;call Delay3
+    ;farcall RogueRewardMenu
+    call Delay3
+    xor a
+    ld a, TEXT_REWARDROOM_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
     
     .check_2
     ;CheckEvent EVENT_GOT_ROGUE_POKEMON
@@ -49,6 +42,9 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Reward_Text, TEXT_REWARDROOM_REWARD_VENDOR_1
     EXPORT TEXT_REWARDROOM_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	
+PlayerEntryMovementRLE:
+	db PAD_UP, 1
+	db -1 ; end
 
 RewardRoom1SignText:
 	text_far _Route2SignText
