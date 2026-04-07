@@ -95,15 +95,18 @@ GetRogueRewardMenuId:
 	call PlaceString
     ret
 
-
-
 HandleRewardChoice:
     ld a, [wCurrentMenuItem]
+    ld b, a
 	ld [wWhichPrize], a
 	ld d, 0
 	ld e, a
 	ld hl, wRoguePokemon1
 	add hl, de
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+    add a, b
+	ld [wToggleableObjectIndex], a
+	predef HideObject
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
 .getMonName
