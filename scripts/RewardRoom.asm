@@ -2,34 +2,35 @@
 
 RewardRoom_Script:
     CheckEvent EVENT_ENTER_ROOM
-    jr nz, .check_2
+    jr nz, .step_forward
     
     SetEvent EVENT_ENTER_ROOM
     farcall rogue_pokemon_randomized_batch
+    
     call EnableAutoTextBoxDrawing
-	;call Delay3
-	;ld hl, wSimulatedJoypadStatesEnd
-	;ld de, PlayerEntryMovementRLE
-	;call DecodeRLEList
-	;dec a
-	;ld [wSimulatedJoypadStatesIndex], a
-	;call StartSimulatingJoypadStates
-    ;call Delay3
-    ;farcall RogueRewardMenu
+	call Delay3
+	ld hl, wSimulatedJoypadStatesEnd
+	ld de, PlayerEntryMovementRLE
+	call DecodeRLEList
+	dec a
+	ld [wSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+    
+    .step_forward
+    CheckEvent EVENT_STEP_FORWARD
+    jr nz, .default
+    ld a, [wYCoord]
+	cp 6 ; has player stepped forward
+    jr nz, .default
+    
     call Delay3
     xor a
     ld a, TEXT_REWARDROOM_REWARD_VENDOR_1
 	ldh [hTextID], a
 	call DisplayTextID
-    
-    .check_2
-    ;CheckEvent EVENT_GOT_ROGUE_POKEMON
-    ;jr nz, .default
-    
-    
-    
+    SetEvent EVENT_STEP_FORWARD
+
     .default
-    ;farcall Rogue_Pokemon_Display_1
 	jp EnableAutoTextBoxDrawing
 
 RewardRoom_TextPointers:

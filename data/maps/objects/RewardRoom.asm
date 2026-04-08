@@ -8,12 +8,11 @@ RewardRoom_Object:
 
 	def_warp_events
 	warp_event $8, $7, LAST_MAP, 2
-	warp_event $9, $7, LAST_MAP, 3
-    warp_event $6, $1, VIRIDIAN_FOREST, 4
-    warp_event $A, $1, VIRIDIAN_FOREST, 5
+	warp_event $8, $7, LAST_MAP, 3
+	warp_event $6, $1, VIRIDIAN_FOREST, 4
+	warp_event $A, $1, VIRIDIAN_FOREST, 5
 
 	def_bg_events
-    bg_event  5,  4, TEXT_REWARDROOM_REWARD_VENDOR_1
 
 	def_object_events
 	object_event  5,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_1
