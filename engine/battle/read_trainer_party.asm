@@ -46,8 +46,8 @@ ReadTrainer:
 ; - if [wLoneAttackNo] != 0, one pokemon on the team has a special move
 ; else the first byte is the level of every pokemon on the team
 .IterateTrainer
-    ;farcall GetRandRoster
-    ;jp z, .FinishUp
+    farcall GetRandRoster
+    jp z, .FinishUp
 
 	ld a, [hli]
 	cp $FF ; is the trainer special?

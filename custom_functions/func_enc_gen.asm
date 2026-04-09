@@ -1,6 +1,6 @@
 ;replace random mew encounters with ditto if dex diploma not attained
 DisallowWildMew:
-	ld a, [wcf91]	;get the current pokemon in question
+	ld a, [wCurPartySpecies]	;get the current pokemon in question
 	cp MEW	;is it mew? zet zero flag if true
 	ret nz	;if not mew, then return
 	;else we have a potential mew encounter on our hands
@@ -10,7 +10,7 @@ DisallowWildMew:
 	jr z, .mew_allowed	;mew can appear if not already encountered
 .replace_mew
 	ld a, DITTO	;load the ditto constant
-	ld [wcf91], a	;overwrite mew with ditto
+	ld [wCurPartySpecies], a	;overwrite mew with ditto
 	ld [wEnemyMonSpecies2], a
 	ret
 .mew_allowed
@@ -87,7 +87,7 @@ GetRandMon:
 	ld a, [hl]
 	pop bc
 	pop hl
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	ret
 	
 ;generates a randomized 6-party enemy trainer roster
@@ -99,12 +99,12 @@ GetRandRoster:
 	ld de, ListNonMythPkmn
 	;;CheckEvent EVENT_90B	;check for diploma
 	;jp z, GetRandRosterLoop	;no mew if no diploma
-	;ld de, ListRealPkmn
+	ld de, pokemon_classes
 	jp GetRandRosterLoop
 GetRandRoster3:	;3-mon party
 	push bc
 	push de
-	ld de, ListNonMewPkmn
+	;ld de, ListNonMewPkmn
 	ld b, 3
 GetRandRosterLoop:
 	call GetHighestLevel
@@ -127,7 +127,7 @@ GetRandRosterLoop:
 	pop bc
 	
 .loadbaselvl	
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 
 .loop	
 	push bc
@@ -145,10 +145,10 @@ GetRandRosterLoop:
 	call Random
 	and $01
 	ld b, a
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	add b
 	call PreventARegOverflow
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	pop hl
 	
 	pop de
@@ -174,7 +174,7 @@ GetWeightedLevel:
 	
 	ld hl, wBoxDataEnd+5	;need 6 bytes of working space
 	
-	ld de, wStartBattleLevels
+	ld de, wPartyMenuHPBarColors
 	ld a, [wPartyCount]
 	ld c, a
 .loop
@@ -273,12 +273,12 @@ GetWeightedLevel:
 
 .prepareDividend
 	ld a, d
-	ld [H_DIVIDEND+0], a
+	ld [hDividend+0], a
 	ld a, e
-	ld [H_DIVIDEND+1], a
+	ld [hDividend+1], a
 	xor a
-	ld [H_DIVIDEND+2], a
-	ld [H_DIVIDEND+3], a
+	ld [hDividend+2], a
+	ld [hDividend+3], a
 
 .getdivisor
 	ld a, [wPartyCount]
@@ -291,11 +291,11 @@ GetWeightedLevel:
 	add b
 	dec c
 	jr nz, .loop7
-	ld [H_DIVISOR], a
+	ld [hDivisor], a
 
 	ld b, 2
 	call Divide
-	ld a, [H_QUOTIENT+3]
+	ld a, [hQuotient+3]
 	
 	pop de
 	pop bc
@@ -307,7 +307,7 @@ GetWeightedLevel:
 GetHighestLevel:	;gets the highest party level into A
 	push hl
 	push bc
-	ld hl, wStartBattleLevels
+	ld hl, wPartyMenuHPBarColors
 	ld a, [wPartyCount]	;1 to 6
 	ld b, a	;use b for countdown
 .loadHigher
@@ -338,18 +338,18 @@ ScaleTrainer_level:
 
 	ld a, [wGymLeaderNo]
 	and a
-	jr nz, .hard	;if fighting a boss like a gym leader, use the harder level scaling
-	ld a, [wOptions]
-	bit BIT_BATTLE_HARD, a
-	jr z, .normal	;if it's a regular trainer but playing on hard mode, use the harder level scaling
-.hard
-	call GetHighestLevel
-	jr .got_level
+	;jr nz, .hard	;if fighting a boss like a gym leader, use the harder level scaling
+	;ld a, [wOptions]
+	;bit BIT_BATTLE_HARD, a
+	;jr z, .normal	;if it's a regular trainer but playing on hard mode, use the harder level scaling
+;.hard
+	;call GetHighestLevel
+	;jr .got_level
 .normal
 	call GetWeightedLevel
 .got_level
 	push af
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	ld b, a
 	pop af
 	
@@ -360,25 +360,25 @@ ScaleTrainer_level:
 	ret z
 	
 	push bc
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	call Random
 	and $03
 	ld b, a
 	ld a, [wGymLeaderNo]
 	and a
 	jr z, .notboss
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	add b
 	call PreventARegOverflow
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	call Random
 	and $03
 	ld b, a
 .notboss
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	add b
 	call PreventARegOverflow
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	pop bc
 	ret
 
@@ -387,7 +387,7 @@ ScaleTrainer_evolution:
 	ret z
 	
 	push bc
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	ld b, a
 	;proceed to bias the enemy mon level against evolving for the sake of progression balance
 	;B holds the enemy current level at this line
@@ -399,78 +399,14 @@ ScaleTrainer_evolution:
 	srl b
 	srl b
 	sub b
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	call EnemyMonEvolve
 	pop af
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	pop bc
 	ret
 
 
-; return a = 0 if not in safari zone, else a = 1 if in safari zone
-IsInSafariZone:
-	ld a, [wCurMap]
-	cp SAFARI_ZONE_EAST
-	jr c, .notSafari
-	cp SAFARI_ZONE_REST_HOUSE_1
-	jr nc, .notSafari
-	ld a, $01
-	jr .return
-.notSafari
-	ld a, $00
-.return
-	and a
-	ret
-
-;Generate a random mon for an expanded safari zone roster
-GetRandMonSafari:
-	;return if special safari zone not activated
-	;CheckEvent EVENT_90F
-	ret z	
-	;return if not in safari zone
-	call IsInSafariZone
-	ret z
-	;else continue on
-	call Random
-	cp 26
-	ret nc	;only a 26/256 chance to have an expanded encounter
-	push hl
-	push bc
-	call GetSafariList
-	call Random
-	ld b, a
-.loop
-	ld a, b
-	and a
-	jr z, .endloop
-	inc hl
-	dec b
-	ld a, [hl]
-	and a
-	jr nz, .loop
-	call GetSafariList
-	jr .loop
-.endloop
-	ld a, [hl]
-	pop bc
-	pop hl
-	ld [wcf91], a
-	ld [wEnemyMonSpecies2], a
-	ret	
-
-GetSafariList:	
-	ld a, [wCurMap]
-	cp SAFARI_ZONE_CENTER
-	ld hl, ListNonLegendPkmn
-	ret z
-	cp SAFARI_ZONE_EAST
-	ld hl, ListMidEvolvedPkmn
-	ret z
-	cp SAFARI_ZONE_NORTH
-	ld hl, ListNonEvolvingPkmn
-	ret z
-	ld hl, ListMostEvolvedPkmn
-	ret
 	
 
 ;this will prevent an overflow of the A register
@@ -484,7 +420,7 @@ PreventARegOverflow:
 	ret
 
 
-;randomizes the 'mon in wcf91 to an unevolved 'mon then tries to evolve it	
+;randomizes the 'mon in wCurPartySpecies to an unevolved 'mon then tries to evolve it	
 ;A bias is applied so that trainer 'mons need more levels to evolve
 ;Also, the stronger end of unevolved pokemon will only show up in level-30 or higher trainer teams
 RandomizeRegularTrainerMons:
@@ -492,7 +428,7 @@ RandomizeRegularTrainerMons:
 	ret z
 	push de
 	ld de, ListNonLegendUnEvoPkmn_early
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	push af
 	ld b, a
 	cp 30
@@ -508,52 +444,52 @@ RandomizeRegularTrainerMons:
 	srl b
 	srl b
 	sub b
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	call GetRandMon
 	call EnemyMonEvolve
 	pop af
-	ld [wCurEnemyLVL], a
+	ld [wCurEnemyLevel], a
 	pop de
 	ret
 
 
-;joenote - evolve an enemy mon in wcf91 based on wCurEnemyLVL
+;joenote - evolve an enemy mon in wCurPartySpecies based on wCurEnemyLevel
 EnemyMonEvolve:
 	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
 	ld b, 0
-	ld a, [wcf91]
+	ld a, [wCurPartySpecies]
 	dec a
 	add a
 	rl b
 	ld c, a		;BC now contains the pokemon's offset in the pointer table
 	add hl, bc	;and HL now points to the correct position in the pointer table
-	ld de, wEvosMoves
+	ld de, wEvoDataBufferEnd
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvosMoves
-	ld hl, wEvosMoves	;let's now point HL to said address
+	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBufferEnd
+	ld hl, wEvoDataBufferEnd	;let's now point HL to said address
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a				;HL now points to the address of the pokemon's evolution list
-	ld de, wEvosMoves
+	ld de, wEvoDataBufferEnd
 	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvosMoves.end - wEvosMoves
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvosMoves
-	ld hl, wEvosMoves	;we can now reference the evolution list by pointing HL to it
+	ld bc, wEvoDataBufferEnd - wEvoDataBufferEnd
+	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBufferEnd
+	ld hl, wEvoDataBufferEnd	;we can now reference the evolution list by pointing HL to it
 	
 .evoloop
 	ld a, [hli]
 	and a
 	ret z
-	cp EV_LEVEL
+	cp EVOLVE_LEVEL
 	jr z, .lvl_evolve
-	cp EV_TRADE
+	cp EVOLVE_TRADE
 	jr z, .trade_evolve
 	;else item evolve
 	inc hl
 	;only item evolve if lvl 35 or more
 	ld b, 35
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	cp b
 	jr nc, .lvl_evolve ;after incrementing hl one space, maintains the same structure as lvl evolving
 .trade_evolve
@@ -562,16 +498,16 @@ EnemyMonEvolve:
 	jr .evoloop
 
 .lvl_evolve
-	ld a, [wcf91]
+	ld a, [wCurPartySpecies]
 	cp EEVEE	;deal with eevee separately
 	jr z, .handleeevee
 	ld a, [hli]
 	ld b, a
-	ld a, [wCurEnemyLVL]
+	ld a, [wCurEnemyLevel]
 	cp b
 	ret c
 	ld a, [hl]
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	jp EnemyMonEvolve
 
 .handleeevee
@@ -581,47 +517,47 @@ EnemyMonEvolve:
 	ret c	;eevee
 	push af
 	ld a, FLAREON
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	pop af
 	cp $07
 	ret c ;flareon
 	push af
 	ld a, VAPOREON
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	pop af
 	cp $0B
 	ret c ;vaporeon
 	;else jolteon
 	ld a, JOLTEON
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	ret
 	
 
-;joenote - take the 'mon in wcf91, find its previous evolution, and put it back in wcf91
+;joenote - take the 'mon in wCurPartySpecies, find its previous evolution, and put it back in wCurPartySpecies
 DevolveMon:	
 	ld hl, EvosMovesPointerTable
 .nextmonloop
-	ld de, wEvosMoves
+	ld de, wEvoDataBufferEnd
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvosMoves
+	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBufferEnd
 	;note, HL is now already incremented
-	ld a, [wEvosMoves + 1]
+	ld a, [wEvoDataBufferEnd + 1]
 	cp $FF
 	ret z	;return if reached end of evolution pointer list
 
 	push hl
-	ld hl, wEvosMoves	;let's now point HL to said address
+	ld hl, wEvoDataBufferEnd	;let's now point HL to said address
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a				;HL now points to the address of the pokemon's evolution list
 
-	ld de, wEvosMoves
+	ld de, wEvoDataBufferEnd
 	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvosMoves.end - wEvosMoves
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvosMoves
+	ld bc, wEvoDataBufferEnd - wEvoDataBufferEnd
+	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBufferEnd
 	
-	ld hl, wEvosMoves	;we can now reference the evolution list by pointing HL to it
+	ld hl, wEvoDataBufferEnd	;we can now reference the evolution list by pointing HL to it
 	call .evosloop
 	pop hl
 	jr nz, .nextmonloop
@@ -631,19 +567,19 @@ DevolveMon:
 	srl h
 	rr l
 	ld a, l
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	ret
 	
 .evosloop
 	ld a, [hli]
 	and a
 	jr z, .notfound
-	cp EV_ITEM
+	cp EVOLVE_ITEM
 	jr nz, .not_item
 	inc hl
 .not_item
 	inc hl
-	ld a, [wcf91]
+	ld a, [wCurPartySpecies]
 	ld b, a
 	ld a, [hli]
 	cp b
