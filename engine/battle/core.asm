@@ -913,6 +913,8 @@ ReplaceFaintedEnemyMon:
 	ret
 
 TrainerBattleVictory:
+    ld hl, wBattleCount
+    inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
 	call EndLowHealthAlarm
 	ld b, MUSIC_DEFEATED_GYM_LEADER
 	ld a, [wGymLeaderNo]

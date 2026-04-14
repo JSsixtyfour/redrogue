@@ -65,26 +65,180 @@ GetRandMonAny:
 	ld de, ListRealPkmn
 	;fall through
 GetRandMon:
+; revise this to use similar stuff to rogue reward and allow customization, always caterpie currently
 	push hl
 	push bc
-	ld h, d
-	ld l, e
+	;ld h, d
+	;ld l, e
 	call Random
 	ld b, a
-.loop
-	ld a, b
-	and a
-	jr z, .endloop
-	inc hl
-	dec b
-	ld a, [hl]
-	and a
-	jr nz, .loop
-	ld h, d
-	ld l, e
-	jr .loop
-.endloop
-	ld a, [hl]
+    ld a, [wBattleCount]
+    cp a, $A
+    jr c, pokeball_class_selection_trainer
+    
+; common
+pokeball_class_selection_trainer:
+call Random                 ; get a random number to determine pokemon
+ldh [hMultiplicand+2], a    ; place number in for multiplication
+xor a
+ldh [hMultiplicand], a      ; put zero in highest byte
+ldh [hMultiplicand+1], a    ; put second byte for multiplication
+ld a, $1E                   ; multiply by amount of this class
+ldh [hMultiplier], a        ; place amount of class in multiplier
+call Multiply               ; multiply random number by amount in class
+ldh   a, [hProduct+2]       ; load product into a
+ldh [hDividend], a          ; place product in divident
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
+
+ld a, $FF                   ; load 255
+ld b, $2
+ldh [hDivisor], a           ; place 255 as divisor
+call Divide
+ldh   a, [hQuotient+3]      ; load in quotient
+ldh [hMultiplicand], a      ; set quotient as multiplier
+ld a, $2
+ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
+xor a
+ldh [hMultiplicand+1], a    ; clear out other digits
+ldh [hMultiplicand+2], a
+call Multiply               ; multiply result by size of struct to add to base address
+ld hl, hProduct+1           ; load pokemon pointer
+ld c,[hl]                   ; load offset to add to pointer, to get address
+ld b, $0
+
+ld hl, pokeball_class+2     ; load base pointer
+add hl, bc                  ; add product to get address of pokemon
+ld a, [hl]                  ; load pokemon from address
+ld [wCurPartySpecies], a    ; place pokemon in Current Party Speciies
+pop hl
+pop bc
+RET
+
+; rare
+
+;greatball_class_selection:
+;call Random
+;ldh [hMultiplicand+2], a
+;xor a
+;ldh [hMultiplicand], a
+;ldh [hMultiplicand+1], a
+;ld a, $1C
+;ldh [hMultiplier], a
+;call Multiply
+;ldh   a, [hProduct+2]
+;ldh [hDividend], a
+;ldh   a, [hProduct+3]
+;ldh [hDividend+1], a
+;
+;ld a, $FF
+;ld b, $2
+;ldh [hDivisor], a
+;call Divide
+;ldh   a, [hQuotient+3]
+;ldh [hMultiplicand], a
+;ld a, $2
+;ldh [hMultiplier], a
+;xor a
+;ldh [hMultiplicand+1], a
+;ldh [hMultiplicand+2], a
+;call Multiply
+;ld hl, hProduct+1
+;ld c,[hl]
+;ld b, $0
+;
+;ld hl, greatball_class+1
+;add hl, bc
+;ld a, [hld]
+;cp b
+;jr z, greatball_load
+;jp greatball_class_selection
+;
+;
+;greatball_load:
+;ld [hl], 0x1
+;inc [hl]
+;ld d, [hl]
+;
+;RET
+;
+;ultraball_class_selection:
+;
+;call Random
+;ldh [hMultiplicand+2], a
+;xor a
+;ldh [hMultiplicand], a
+;ldh [hMultiplicand+1], a
+;ld a, $10
+;ldh [hMultiplier], a
+;call Multiply
+;ldh   a, [hProduct+2]
+;ldh [hDividend], a
+;ldh   a, [hProduct+3]
+;ldh [hDividend+1], a
+;
+;ld a, $FF
+;ld b, $2
+;ldh [hDivisor], a
+;call Divide
+;ldh   a, [hQuotient+3]
+;ldh [hMultiplicand], a
+;ld a, $2
+;ldh [hMultiplier], a
+;xor a
+;ldh [hMultiplicand+1], a
+;ldh [hMultiplicand+2], a
+;call Multiply
+;ld hl, hProduct+1
+;ld c,[hl]
+;ld b, $0
+;
+;ld hl, ultraball_class+1
+;add hl, bc
+;ld a, [hld]
+;cp b
+;jr z, ultraball_load
+;jp ultraball_class_selection
+;
+;
+;ultraball_load:
+;ld [hl], 0x1
+;inc [hl]
+;ld d, [hl]
+;
+;RET
+;
+;masterball_class_selection:
+;
+;rogue_pokemon_randomized_batch::
+;   call Random
+;   call Random_Pokemon_Selection
+;   ld hl, wRoguePokemon1
+;   ld [hl], d
+;   call Random
+;   call Random_Pokemon_Selection
+;   ld hl, wRoguePokemon2
+;   ld [hl], d
+;   call Random
+;   call Random_Pokemon_Selection
+;   ld hl, wRoguePokemon3
+;   ld [hl], d
+;   
+;RET
+;.loop
+;	ld a, b
+;	and a
+;	jr z, .endloop
+;	inc hl
+;	dec b
+;	ld a, [hl]
+;	and a
+;	jr nz, .loop
+;	ld h, d
+;	ld l, e
+;	jr .loop
+;.endloop
+;	ld a, [hl]
 	pop bc
 	pop hl
 	ld [wCurPartySpecies], a
@@ -94,12 +248,14 @@ GetRandMon:
 GetRandRoster:
 	push bc
 	push de
-	;ld b, 6
-    ld b, 2         ; two pokemon
-	ld de, ListNonMythPkmn
+	ld b, 2         ; two pokemon
+    ld a, [wBattleCount]	; load how many battles the player has won
+    cp a, $B;
+    jr c, GetRandRosterLoop ; jump if have won less than 11 battles
+	; ld de, ListNonMythPkmn
 	;;CheckEvent EVENT_90B	;check for diploma
 	;jp z, GetRandRosterLoop	;no mew if no diploma
-	ld de, pokemon_classes
+	;ld de, pokemon_classes
 	jp GetRandRosterLoop
 GetRandRoster3:	;3-mon party
 	push bc
@@ -107,17 +263,20 @@ GetRandRoster3:	;3-mon party
 	;ld de, ListNonMewPkmn
 	ld b, 3
 GetRandRosterLoop:
-	call GetHighestLevel
+	ld d, 5 ; load level 5 as max level
+    cp a, $5 ; see if less than 5 battles have occured
+    jr c, .highest_level_set; jump if have won less than 11 battles
 
+.highest_level_set:
 	push bc
-	ld b, a
+	ld b, d     ; places highest level in b
 	ld c, 4
 .calibrate1	;subtract 3 from the highest party level or make it zero if it underflows
-	ld a, b
+	ld a, b     ; places highest level in a
 	dec c
 	sub c
 	jr c, .calibrate1
-	ld b, a	
+	ld b, a	    ; places calibrated level in b
 .calibrate2
 	call Random
 	and %11
@@ -136,9 +295,9 @@ GetRandRosterLoop:
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	
-	push hl
-	call ScaleTrainer
-	pop hl
+	;push hl
+	;call ScaleTrainer
+	;pop hl
 	
 	push hl
 	call AddPartyMon
@@ -305,6 +464,7 @@ GetWeightedLevel:
 
 	
 GetHighestLevel:	;gets the highest party level into A
+; UPDATE, should look to current battle count
 	push hl
 	push bc
 	ld hl, wPartyMenuHPBarColors

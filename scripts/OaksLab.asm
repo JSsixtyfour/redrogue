@@ -56,7 +56,7 @@ Rogue_Lab_Script_PokeballText_1:
 	jr z, .GetMon
 	ld hl, GreedyText
 	call PrintText
-	jr .done
+	jr .end_text
     
     .GetMon
     ld a, [wRoguePokemon1]
@@ -67,7 +67,7 @@ Rogue_Lab_Script_PokeballText_1:
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
-	jr nz, .done
+	jr nz, .end_text
 
     ld a, [wRoguePokemon1]
 	ld b, a
@@ -100,6 +100,7 @@ Rogue_Lab_Script_PokeballText_1:
     SetEvent EVENT_GOT_STARTER
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
 	ld [wOaksLabCurScript], a
+    .end_text
 	jp TextScriptEnd
     
     .MiddleBallMovement1
@@ -124,7 +125,7 @@ Rogue_Lab_Script_PokeballText_2:
 	jr z, .GetMon
 	ld hl, GreedyText
 	call PrintText
-	jr .done
+	jr .end_text
     
     .GetMon
     ld a, [wRoguePokemon2]
@@ -135,7 +136,7 @@ Rogue_Lab_Script_PokeballText_2:
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
-	jr nz, .done
+	jr nz, .end_text
 
 	ld a, [wRoguePokemon2]
 	ld b, a
@@ -167,6 +168,7 @@ Rogue_Lab_Script_PokeballText_2:
     ld [wRivalStarterBallSpriteIndex], a
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
 	ld [wOaksLabCurScript], a
+    .end_text
 	jp TextScriptEnd
     
     .RightBallMovement1
@@ -194,7 +196,7 @@ Rogue_Lab_Script_PokeballText_3:
     
 	ld hl, GreedyText
 	call PrintText
-	jr .done
+	jr .end_text
     
     .GetMon
     ld a, [wRoguePokemon3]
@@ -205,7 +207,7 @@ Rogue_Lab_Script_PokeballText_3:
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
-	jr nz, .done
+	jr nz, .end_text
 
 	ld a, [wRoguePokemon3]
 	ld b, a
@@ -253,6 +255,7 @@ Rogue_Lab_Script_PokeballText_3:
     ld [wRivalStarterBallSpriteIndex], a
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
 	ld [wOaksLabCurScript], a
+    .end_text
 	jp TextScriptEnd
     
     .LeftBallMovement1

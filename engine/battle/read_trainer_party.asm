@@ -46,12 +46,14 @@ ReadTrainer:
 ; - if [wLoneAttackNo] != 0, one pokemon on the team has a special move
 ; else the first byte is the level of every pokemon on the team
 .IterateTrainer
-    farcall GetRandRoster
-    jp z, .FinishUp
+    ;farcall GetRandRoster      ; need to make this avoid special trainers like blue and such, also it's crashing
+    ;jp z, .FinishUp
 
 	ld a, [hli]
 	cp $FF ; is the trainer special?
 	jr z, .SpecialTrainer ; if so, check for special moves
+    farcall GetRandRoster
+    jp z, .FinishUp
 	ld [wCurEnemyLevel], a
 .LoopTrainerData
 	ld a, [hli]

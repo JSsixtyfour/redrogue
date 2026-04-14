@@ -2224,6 +2224,8 @@ wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
 
+wBattleCount:: db
+
 wMainDataEnd::
 
 
