@@ -29,3 +29,8 @@ PickUpItemText::
 	text_asm
 	predef PickUpItem
 	jp TextScriptEnd
+
+RandomPickUpItemText::
+	text_asm
+	predef RandomPickUpItem
+	jp TextScriptEnd

@@ -64,7 +64,7 @@ GetRogueRewardMenuId:
 	inc hl
 	push hl
 	ld hl, wRoguePokemon1
-	call CopyString
+	;call CopyString
 	pop hl
 	ld a, [hli]
 	ld h, [hl]
@@ -97,6 +97,8 @@ GetRogueRewardMenuId:
 
 HandleRewardChoice:
     ld a, [wCurrentMenuItem]
+    ld b, a
+    push bc
 	ld [wWhichPrize], a
 	ld d, 0
 	ld e, a
@@ -112,10 +114,10 @@ HandleRewardChoice:
 	call YesNoChoice
 	ld a, [wCurrentMenuItem] ; yes/no answer (Y=0, N=1)
 	and a
+    pop bc
 	jr nz, .printOhFineThen
 .giveMon
-    ld a, [wCurrentMenuItem]
-    ld b, TOGGLE_ROGUE_REWARD_POKEBALL_1
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
     add a, b
 	ld [wToggleableObjectIndex], a
 	predef HideObject

@@ -270,23 +270,22 @@ GetRandRosterLoop:
 .highest_level_set:
 	push bc
 	ld b, d     ; places highest level in b
-	ld c, 4
+	ld c, 3
 .calibrate1	;subtract 3 from the highest party level or make it zero if it underflows
 	ld a, b     ; places highest level in a
-	dec c
 	sub c
 	jr c, .calibrate1
-	ld b, a	    ; places calibrated level in b
-.calibrate2
-	call Random
-	and %11
-	add b	;add 0 to 3 to the adjusted highest party level
-	cp 2
-	jr c, .calibrate2	;do not allow the adjusted highest party level to be less than 2
+	ld e, a	    ; places calibrated level in b
+;.calibrate2
+;	call Random
+;	and %11
+;	add b	;add 0 to 3 to the adjusted highest party level
+;	cp 2
+;	jr c, .calibrate2	;do not allow the adjusted highest party level to be less than 2
 	pop bc
 	
-.loadbaselvl	
-	ld [wCurEnemyLevel], a
+;.loadbaselvl	
+	;ld e, a
 
 .loop	
 	push bc
@@ -298,16 +297,16 @@ GetRandRosterLoop:
 	;push hl
 	;call ScaleTrainer
 	;pop hl
-	
+    call Random
+	and $3
+    ld b, a
+	ld a, e
+	add b
+	;call PreventARegOverflow
+	ld [wCurEnemyLevel], a
 	push hl
 	call AddPartyMon
-	call Random
-	and $01
-	ld b, a
-	ld a, [wCurEnemyLevel]
-	add b
-	call PreventARegOverflow
-	ld [wCurEnemyLevel], a
+
 	pop hl
 	
 	pop de
