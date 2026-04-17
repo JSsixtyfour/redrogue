@@ -23,7 +23,7 @@ ldh [hMultiplicand+2], a    ; place number in for multiplication
 xor a
 ldh [hMultiplicand], a      ; put zero in highest byte
 ldh [hMultiplicand+1], a    ; put second byte for multiplication
-ld a, $1E                   ; multiply by amount of this class
+ld a, $1D                   ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a, [hProduct+2]       ; load product into a

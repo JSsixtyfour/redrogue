@@ -61,20 +61,14 @@ GetRandTrainer:
 	ret
 
 ;gets a random pokemon and puts its hex ID in register a and wcf91
-GetRandMonAny:
-	ld de, ListRealPkmn
-	;fall through
 GetRandMon:
-; revise this to use similar stuff to rogue reward and allow customization, always caterpie currently
 	push hl
 	push bc
-	;ld h, d
-	;ld l, e
-	call Random
-	ld b, a
-    ld a, [wBattleCount]
-    cp a, $A
-    jr c, pokeball_class_selection_trainer
+    ld a, b
+    cp a, $4
+    jr z, pokeball_class_selection_trainer
+    cp a, $3
+    jr z, greatball_class_selection_trainer
     
 ; common
 pokeball_class_selection_trainer:
@@ -83,7 +77,7 @@ ldh [hMultiplicand+2], a    ; place number in for multiplication
 xor a
 ldh [hMultiplicand], a      ; put zero in highest byte
 ldh [hMultiplicand+1], a    ; put second byte for multiplication
-ld a, $1E                   ; multiply by amount of this class
+ld a, $1D                   ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a, [hProduct+2]       ; load product into a
@@ -111,56 +105,50 @@ ld hl, pokeball_class+2     ; load base pointer
 add hl, bc                  ; add product to get address of pokemon
 ld a, [hl]                  ; load pokemon from address
 ld [wCurPartySpecies], a    ; place pokemon in Current Party Speciies
-pop hl
+
 pop bc
+pop hl
 RET
 
 ; rare
 
-;greatball_class_selection:
-;call Random
-;ldh [hMultiplicand+2], a
-;xor a
-;ldh [hMultiplicand], a
-;ldh [hMultiplicand+1], a
-;ld a, $1C
-;ldh [hMultiplier], a
-;call Multiply
-;ldh   a, [hProduct+2]
-;ldh [hDividend], a
-;ldh   a, [hProduct+3]
-;ldh [hDividend+1], a
-;
-;ld a, $FF
-;ld b, $2
-;ldh [hDivisor], a
-;call Divide
-;ldh   a, [hQuotient+3]
-;ldh [hMultiplicand], a
-;ld a, $2
-;ldh [hMultiplier], a
-;xor a
-;ldh [hMultiplicand+1], a
-;ldh [hMultiplicand+2], a
-;call Multiply
-;ld hl, hProduct+1
-;ld c,[hl]
-;ld b, $0
-;
-;ld hl, greatball_class+1
-;add hl, bc
-;ld a, [hld]
-;cp b
-;jr z, greatball_load
-;jp greatball_class_selection
-;
-;
-;greatball_load:
-;ld [hl], 0x1
-;inc [hl]
-;ld d, [hl]
-;
-;RET
+greatball_class_selection_trainer:
+call Random
+ldh [hMultiplicand+2], a
+xor a
+ldh [hMultiplicand], a
+ldh [hMultiplicand+1], a
+ld a, $1C
+ldh [hMultiplier], a
+call Multiply
+ldh   a, [hProduct+2]
+ldh [hDividend], a
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
+
+ld a, $FF
+ld b, $2
+ldh [hDivisor], a
+call Divide
+ldh   a, [hQuotient+3]
+ldh [hMultiplicand], a
+ld a, $2
+ldh [hMultiplier], a
+xor a
+ldh [hMultiplicand+1], a
+ldh [hMultiplicand+2], a
+call Multiply
+ld hl, hProduct+1
+ld c,[hl]
+ld b, $0
+
+ld hl, greatball_class+1
+add hl, bc                  ; add product to get address of pokemon
+ld a, [hl]                  ; load pokemon from address
+ld [wCurPartySpecies], a    ; place pokemon in Current Party Speciies
+pop bc
+pop hl
+RET
 ;
 ;ultraball_class_selection:
 ;
@@ -248,78 +236,110 @@ RET
 GetRandRoster:
 	push bc
 	push de
-	ld b, 2         ; two pokemon
+    push hl
+    ld hl, trainer_difficulty_settings
     ld a, [wBattleCount]	; load how many battles the player has won
-    cp a, $B;
-    jr c, GetRandRosterLoop ; jump if have won less than 11 battles
-	; ld de, ListNonMythPkmn
-	;;CheckEvent EVENT_90B	;check for diploma
-	;jp z, GetRandRosterLoop	;no mew if no diploma
-	;ld de, pokemon_classes
+    cp a, $4   
+    jr c, GetRandRosterLoop ; jump if have won less than 5 battles
+    ld de, $6
+    add hl, de
+    cp a, $5
+    jr c, GetRandRosterLoop ; jump if have won less than 6 battles
 	jp GetRandRosterLoop
-GetRandRoster3:	;3-mon party
-	push bc
-	push de
-	;ld de, ListNonMewPkmn
-	ld b, 3
+
+
 GetRandRosterLoop:
-	ld d, 5 ; load level 5 as max level
-    cp a, $5 ; see if less than 5 battles have occured
-    jr c, .highest_level_set; jump if have won less than 11 battles
+	ld c, [hl]   ; load level range
+    inc hl      ; move to next byte, minimum level
+    ld e, [hl]  ; load minimum level
 
-.highest_level_set:
-	push bc
-	ld b, d     ; places highest level in b
-	ld c, 3
-.calibrate1	;subtract 3 from the highest party level or make it zero if it underflows
-	ld a, b     ; places highest level in a
-	sub c
-	jr c, .calibrate1
-	ld e, a	    ; places calibrated level in b
-;.calibrate2
-;	call Random
-;	and %11
-;	add b	;add 0 to 3 to the adjusted highest party level
-;	cp 2
-;	jr c, .calibrate2	;do not allow the adjusted highest party level to be less than 2
-	pop bc
-	
-;.loadbaselvl	
-	;ld e, a
-
-.loop	
-	push bc
-	push de
-	call GetRandMon
+;.highest_level_set:
+	;push bc
+	;ld a, d     ; places highest level in a
+;    sub a, e    ; subtract minimum level from a
+;	ld c, a     ; place difference in c
+;.calibrate1	    ; subtract result from the highest party level or make it zero if it underflows
+;	ld a, d     ; places highest level in a
+;	sub a, c    ; subtract to get lowest level
+;    dec c       ; lower c if the result is below 2
+;	jr c, .calibrate1 
+;	ld e, a	    ; places calibrated level in e
+	;pop bc
+    ;push bc
+	;push de
+    ld b, 0x4   ; overarching loop
+    inc hl      ; move to next byte, number pokeball class pokemon
+    
+	.overloop
+    ld  a, [hl] ; load number of pokemon/loops
+    cp  a, 0
+    jr  z, .miniloop    ; overarching class loop
+    ld  d, a
+    
+    .loop
+    call GetRandMon
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
-	
-	;push hl
-	;call ScaleTrainer
-	;pop hl
-    call Random
-	and $3
-    ld b, a
-	ld a, e
-	add b
-	;call PreventARegOverflow
-	ld [wCurEnemyLevel], a
-	push hl
-	call AddPartyMon
-
-	pop hl
-	
-	pop de
-	pop bc
-	dec b
-	jr nz, .loop
+    call Rangerandom
+	add a, e   ; minimum level added to random number
+	ld [wCurEnemyLevel], a  ; place level of pokemon in
+	;push hl                 ; preserve h1
+	call AddPartyMon    ; add the pokemon
+	dec d           ; decrease loop/run through pokemon
+    jr nz, .loop    ; pokeball class loop
+    
+.miniloop
+    inc hl          ; next class
+    dec b           ; decrease overarching loop
+    jr nz, .overloop    ; overarching class loop
+    
 ;end of loop
 	pop de
 	pop bc
+    pop hl
 	xor a	;set the zero flag before returning
 	ret	
+    
+trainer_difficulty_settings:
+;firsttrainers
+db 0x3  ; level range
+db 0x2  ; minimum level
+db 0x2  ; pokeball class pokemon
+db 0x0  ; greatball class pokemon
+db 0x0  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+;firstboss
+db 0x0  ; Level range
+db 0x5  ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x0  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
 
+; get a random number in a certain range
+; c is the range
+Rangerandom::
+push bc
+call Random                 ; get a random number to determine pokemon
+ldh [hMultiplicand+2], a    ; place number in for multiplication
+xor a
+ldh [hMultiplicand], a      ; put zero in highest byte
+ldh [hMultiplicand+1], a    ; put second byte for multiplication
+ld a, c                     ; multiply by amount of this class
+ldh [hMultiplier], a        ; place amount of class in multiplier
+call Multiply               ; multiply random number by amount in class
+ldh   a, [hProduct+2]       ; load product into a
+ldh [hDividend], a          ; place product in divident
+ldh   a, [hProduct+3]
+ldh [hDividend+1], a
 
+ld a, $FF                   ; load 255
+ld b, $2
+ldh [hDivisor], a           ; place 255 as divisor
+call Divide
+ldh   a, [hQuotient+3]      ; load in quotient
+pop bc
+ret
 
 GetWeightedLevel:
 	ld a, [wPartyCount]
