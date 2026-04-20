@@ -15,180 +15,268 @@ DEF item_greatball_odds EQU 77 + 51
 DEF item_ultraball_odds EQU 76 + 77 + 51
 DEF item_masterball_odds EQU 51 + 76 + 77 + 51
 
-healing__classes:
+DEF NUM_HEALING_POKEBALL_CLASS EQU $6
+DEF NUM_HEALING_GREATBALL_CLASS EQU $5
+DEF NUM_HEALING_ULTRABALL_CLASS EQU $2
+DEF NUM_HEALING_MASTERBALL_CLASS EQU $3
+
+DEF NUM_TM_POKEBALL_CLASS EQU $A
+DEF NUM_TM_GREATBALL_CLASS EQU $13
+DEF NUM_TM_ULTRABALL_CLASS EQU $C
+DEF NUM_TM_MASTERBALL_CLASS EQU $A
+
+DEF NUM_MONEY_POKEBALL_CLASS EQU $0
+DEF NUM_MONEY_GREATBALL_CLASS EQU $0
+DEF NUM_MONEY_ULTRABALL_CLASS EQU $0
+DEF NUM_MONEY_MASTERBALL_CLASS EQU $0
+
+DEF NUM_STAT_POKEBALL_CLASS EQU $3
+DEF NUM_STAT_GREATBALL_CLASS EQU $1
+DEF NUM_STAT_ULTRABALL_CLASS EQU $4
+DEF NUM_STAT_MASTERBALL_CLASS EQU $0
+
+item_pokeball_classes::
+dw healing_pokeball_class
+dw stat_pokeball_class
+dw tm_pokeball_class
+dw money_pokeball_class
+
+item_greatball_classes::
+dw healing_greatball_class
+dw tm_greatball_class
+dw stat_greatball_class
+dw healing_ultraball_class
+
+item_ultraball_classes::
+dw healing_ultraball_class
+dw stat_ultraball_class
+dw tm_ultraball_class
+dw money_ultraball_class
+
+item_masterball_classes::
+dw healing_masterball_class
+dw stat_masterball_class
+dw tm_masterball_class
+dw money_masterball_class
+
+healing_classes:
 table_width 1
 healing_pokeball_class:
-db CATERPIE
+db ANTIDOTE
 db 0x0
-db WEEDLE
+db BURN_HEAL
 db 0x0
-db PIDGEY
+db ICE_HEAL
 db 0x0
-db RATTATA
+db AWAKENING 
 db 0x0
-db FARFETCHD
+db PARLYZ_HEAL
 db 0x0
-db EKANS
+db POTION
 db 0x0
-db DITTO
-db 0x0
-db MANKEY
-db 0x0
-db KRABBY
-db 0x0
-db CUBONE
-db 0x0
-db GRIMER
-db 0x0
-db KRABBY
-db 0x0
-db GROWLITHE
-db 0x0
-db SEEL
-db 0x0
-db VOLTORB
-db 0x0
-db SPEAROW
-db 0x0
-db KABUTO
-db 0x0
-db MAGNEMITE
-db 0x0
-db POLIWAG
-db 0x0
-db ODDISH
-db 0x0
-db ZUBAT
-db 0x0
-db JIGGLYPUFF
-db 0x0
-db SANDSHREW
-db 0x0
-db PARAS
-db 0x0
-db PSYDUCK
-db 0x0
-db BELLSPROUT
-db 0x0
-db GRIMER
-db 0x0
-db KOFFING
-db 0x0
-db HORSEA
-db 0x0
-db GOLDEEN
+db ETHER
 db 0x0
 
-greatball_class:
-db BULBASAUR
+healing_greatball_class:
+db SUPER_POTION
 db 0x0
-db CHARMANDER
+db ELIXER
 db 0x0
-db SQUIRTLE
+db LEMONADE
 db 0x0
-db EEVEE
+db SODA_POP
 db 0x0
-db DODUO
+db FRESH_WATER
 db 0x0
-db DRATINI
-db 0x0
-db OMANYTE
-db 0x0
-db MACHOP
-db 0x0
-db SHELLDER
-db 0x0
-db GEODUDE
-db 0x0
-db LICKITUNG
-db 0x0
-db NIDORAN_F
-db 0x0
-db CLEFAIRY
-db 0x0
-db DIGLETT 
-db 0x0
-db MAGIKARP
-db 0x0
-db PIKACHU
-db 0x0
-db SLOWPOKE
-db 0x0
-db DROWZEE
-db 0x0
-db PONYTA
-db 0x0
-db MEOWTH
-db 0x0
-db VULPIX
-db 0x0
-db TANGELA
-db 0x0
-db VENONAT
-db 0x0
-db NIDORAN_M
-db 0x0
-db HITMONCHAN
-db 0x0
-db TENTACOOL
-db 0x0
-db ONIX
-db 0x0
-db PORYGON
+db FULL_HEAL
 db 0x0
 
-ultraball_class:
-db GASTLY
+healing_ultraball_class:
+db MAX_ETHER
 db 0x0
-db ABRA
+db HYPER_POTION
 db 0x0
-db JYNX
-db 0x0
-db ARTICUNO
-db 0x0
-db MOLTRES
-db 0x0
-db CHANSEY
-db 0x0
-db RHYHORN
-db 0x0
-db LAPRAS
-db 0x0
-db KANGASKHAN
-db 0x0
-db SCYTHER
-db 0x0
-db HITMONLEE
-db 0x0
-db MR_MIME
-db 0x0
-db ELECTABUZZ
-db 0x0
-db MAGMAR
-db 0x0
-db PINSIR
-db 0x0
-db AERODACTYL
+db REVIVE
 db 0x0
 
-masterball_class:
-db TAUROS
+healing_masterball_class:
+db FULL_RESTORE
 db 0x0
-db SNORLAX
+db MAX_POTION
 db 0x0
-db EXEGGCUTE
+db MAX_REVIVE
 db 0x0
-db EXEGGUTOR
-db 0x0
-db STARYU
-db 0x0
-db STARMIE
-db 0x0
-db ZAPDOS
+db MAX_ELIXER
 db 0x0
 
-uber_class:
-db MEW
+tm_classes:
+table_width 1
+tm_pokeball_class:
+db TM_BIDE
 db 0x0
-db MEWTWO
+db TM_RAZOR_WIND
+db 0x0
+db TM_PAY_DAY
+db 0x0
+db TM_COUNTER
+db 0x0
+db TM_RAGE
+db 0x0
+db TM_MIMIC
+db 0x0
+db TM_METRONOME
+db 0x0
+db TM_EGG_BOMB
+db 0x0
+db TM_PSYWAVE
+db 0x0
+db HM_CUT
+db 0x0
+db HM_FLASH
+db 0x0
+
+tm_greatball_class:
+db TM_SKY_ATTACK
+db 0x0
+db TM_SUBSTITUTE
+db 0x0
+db TM_DRAGON_RAGE
+db 0x0
+db TM_MEGA_PUNCH
+db 0x0
+db TM_MEGA_KICK
+db 0x0
+db TM_HORN_DRILL
+db 0x0
+db TM_TAKE_DOWN
+db 0x0
+db TM_WATER_GUN
+db 0x0
+db TM_SEISMIC_TOSS
+db 0x0
+db TM_MEGA_DRAIN
+db 0x0
+db TM_SOLARBEAM
+db 0x0
+db TM_FISSURE
+db 0x0
+db TM_SWIFT
+db 0x0
+db TM_SKULL_BASH
+db 0x0
+db TM_SOFTBOILED
+db 0x0
+db TM_DREAM_EATER
+db 0x0
+db TM_REST
+db 0x0
+db TM_TRI_ATTACK
+db 0x0
+db HM_FLY
+db 0x0
+db HM_STRENGTH
+db 0x0
+
+tm_ultraball_class:
+db TM_LIGHT_SCREEN
+db 0x0
+db TM_REFLECT
+db 0x0
+db TM_TOXIC
+db 0x0
+db TM_DOUBLE_EDGE
+db 0x0
+db TM_BUBBLEBEAM
+db 0x0
+db TM_ICE_BEAM
+db 0x0
+db TM_SUBMISSION
+db 0x0
+db TM_THUNDER
+db 0x0
+db TM_DIG
+db 0x0
+db TM_DOUBLE_TEAM
+db 0x0
+db TM_SELFDESTRUCT
+db 0x0
+db TM_FLAMETHROWER
+db 0x0
+db TM_ROCK_SLIDE
+db 0x0
+
+tm_masterball_class:
+db TM_BODY_SLAM
+db 0x0
+db HM_SURF
+db 0x0
+db TM_BLIZZARD
+db 0x0
+db TM_SWORDS_DANCE
+db 0x0
+db TM_PSYCHIC_M
+db 0x0
+db TM_EARTHQUAKE
+db 0x0
+db TM_HYPER_BEAM
+db 0x0
+db TM_THUNDERBOLT
+db 0x0
+db TM_THUNDER_WAVE
+db 0x0
+db TM_FIRE_BLAST
+db 0x0
+db TM_EXPLOSION
+db 0x0
+
+money_classes:
+table_width 1
+money_pokeball_class:
+db NUGGET ; MUSHROOM
+db 0x0
+
+money_greatball_class:
+db NUGGET ; PEARL
+db 0x0
+
+money_ultraball_class:
+db NUGGET
+db 0x0
+
+money_masterball_class:
+db NUGGET ; BIG_NUGGET
+db 0x0
+
+stat_classes:
+table_width 1
+stat_pokeball_class:
+db PROTEIN
+db 0x0
+db CARBOS
+db 0x0
+db CALCIUM
+db 0x0
+db IRON
+db 0x0
+
+stat_greatball_class:
+db HP_UP
+db 0x0
+db PP_UP
+db 0x0
+
+stat_ultraball_class:
+db MOON_STONE
+db 0x0
+db FIRE_STONE
+db 0x0
+db WATER_STONE
+db 0x0
+db THUNDER_STONE
+db 0x0
+db LEAF_STONE
+db 0x0
+
+stat_masterball_class:
+db RARE_CANDY
 db 0x0

@@ -2227,6 +2227,7 @@ wRoguePokemon3:: db
 wRogueItem:: dw
 WRogueDoor1:: db
 WRogueDoor2:: db
+wRogueDoorSelection:: db
 wBattleCount:: db
 
 wMainDataEnd::

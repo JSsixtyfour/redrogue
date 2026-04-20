@@ -19,12 +19,11 @@ ViridianForest_TextPointers:
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
+    dw_const ViridianForestYoungster5Text,      TEXT_VIRIDIANFOREST_YOUNGSTER5
+    dw_const ViridianForestCooltrainer_FText,   TEXT_VIRIDIANFOREST_COOLTRAINER_F
     dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_ANTIDOTE
 	dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_POTION
 	dw_const RandomPickUpItemText,              TEXT_VIRIDIANFOREST_RANDOM
-	dw_const ViridianForestYoungster5Text,      TEXT_VIRIDIANFOREST_YOUNGSTER5
-    dw_const ViridianForestYoungster6Text,      TEXT_VIRIDIANFOREST_YOUNGSTER6
-    dw_const ViridianForestCooltrainer_FText,   TEXT_VIRIDIANFOREST_COOLTRAINER_F
 	dw_const ViridianForestTrainerTips1Text,    TEXT_VIRIDIANFOREST_TRAINER_TIPS1
 	dw_const ViridianForestUseAntidoteSignText, TEXT_VIRIDIANFOREST_USE_ANTIDOTE_SIGN
 	dw_const ViridianForestTrainerTips2Text,    TEXT_VIRIDIANFOREST_TRAINER_TIPS2

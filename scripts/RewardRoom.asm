@@ -6,6 +6,7 @@ RewardRoom_Script:
     
     SetEvent EVENT_ENTER_ROOM
     farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
     
     call EnableAutoTextBoxDrawing
 	call Delay3

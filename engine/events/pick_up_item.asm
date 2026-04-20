@@ -71,14 +71,6 @@ RandomPickUpItem:
 .isToggleable
 	ld a, [hl]
 	ldh [hToggleableObjectIndex], a
-
-	;ld hl, wMapSpriteExtraData
-	;ldh a, [hSpriteIndex]
-	;dec a
-	;add a
-	;ld d, 0
-	;ld e, a
-	;add hl, de
 	ld a, [wRogueItem]
 	ld b, a ; item
 	ld c, 1 ; quantity
