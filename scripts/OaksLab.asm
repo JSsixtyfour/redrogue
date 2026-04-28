@@ -540,14 +540,6 @@ OaksLabRivalText:
     
     jp TextScriptEnd
 
-GreedyText:
-	text_far _GreedyText
-	text_end
-    
-PickPokeballText:
-	text_far _PickPokeBallText
-	text_end
-
 NoTurningBack:
 	text_asm
 	ld hl, .Text
@@ -607,3 +599,10 @@ OaksLabRivalIllTakeYouOnText:
 	text_far _OaksLabRivalIllTakeYouOnText
 	text_end
     
+PickPokeballText:
+	text_far _PickPokeBallText
+	text_end
+    
+GreedyText:
+	text_far _GreedyText
+	text_end

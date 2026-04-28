@@ -219,6 +219,9 @@ ToggleableObjectStates:
 	toggle_object_state VIRIDIANFOREST_ANTIDOTE,  ON
 	toggle_object_state VIRIDIANFOREST_POTION,    ON
 	toggle_object_state VIRIDIANFOREST_POKE_BALL, ON
+    ;toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1, ON
+    ;toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2, ON
+    ;toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_3, ON
 
 	toggleable_objects_for MT_MOON_1F
 	toggle_object_state MTMOON1F_POTION1,      ON

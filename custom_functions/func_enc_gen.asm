@@ -118,7 +118,7 @@ ldh [hMultiplicand+2], a
 xor a
 ldh [hMultiplicand], a
 ldh [hMultiplicand+1], a
-ld a, $1C
+ld a, $1B
 ldh [hMultiplier], a
 call Multiply
 ldh   a, [hProduct+2]
@@ -142,7 +142,7 @@ ld hl, hProduct+1
 ld c,[hl]
 ld b, $0
 
-ld hl, greatball_class+1
+ld hl, greatball_class+2
 add hl, bc                  ; add product to get address of pokemon
 ld a, [hl]                  ; load pokemon from address
 ld [wCurPartySpecies], a    ; place pokemon in Current Party Speciies
