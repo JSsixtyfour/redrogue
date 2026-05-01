@@ -2,7 +2,7 @@
 ; d should be the toggleable item for each stage
 
 Rogue_Reward_Script_PokeballText_1::
-	text_asm
+    call DisableWaitingAfterTextDisplay
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
 	ld hl, GreedyText_Reward
@@ -12,18 +12,21 @@ Rogue_Reward_Script_PokeballText_1::
     .GetMon
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
+    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
+    pop de
 	jr nz, .done
-
+    push de
     ld a, [wRoguePokemon1]
 	ld b, a
     ld c, 5
 	call GivePokemon
+    pop de
 	jr nc, .done
     
     ld a, d
@@ -33,10 +36,10 @@ Rogue_Reward_Script_PokeballText_1::
     SetEvent EVENT_GOT_ROGUE_POKEMON
     
     .done
-	jp TextScriptEnd
+    ret
     
 Rogue_Reward_Script_PokeballText_2::
-	text_asm
+    call DisableWaitingAfterTextDisplay
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
 	ld hl, GreedyText_Reward
@@ -46,18 +49,22 @@ Rogue_Reward_Script_PokeballText_2::
     .GetMon
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
+    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
+    pop de
 	jr nz, .done
 
     ld a, [wRoguePokemon2]
 	ld b, a
     ld c, 5
+    push de
 	call GivePokemon
+    pop de
 	jr nc, .done
     
 	ld a, d
@@ -67,10 +74,10 @@ Rogue_Reward_Script_PokeballText_2::
     SetEvent EVENT_GOT_ROGUE_POKEMON
     
     .done
-	jp TextScriptEnd
+	ret
 
 Rogue_Reward_Script_PokeballText_3::
-	text_asm
+    call DisableWaitingAfterTextDisplay
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
 	ld hl, GreedyText_Reward
@@ -80,18 +87,22 @@ Rogue_Reward_Script_PokeballText_3::
     .GetMon
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
+    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
+    pop de
 	jr nz, .done
 
     ld a, [wRoguePokemon3]
 	ld b, a
     ld c, 5
+    push de
 	call GivePokemon
+    pop de
 	jr nc, .done
     
 	ld a, d
@@ -101,7 +112,7 @@ Rogue_Reward_Script_PokeballText_3::
     SetEvent EVENT_GOT_ROGUE_POKEMON
     
     .done
-	jp TextScriptEnd
+	ret
     
 PickRewardPokeballText:
 	text_far _PickPokeBallText

@@ -480,6 +480,9 @@ WarpFound1::
 	ldh [hWarpDestinationMap], a
 
 WarpFound2::
+    push hl
+    ResetEvent EVENT_ENTER_ROOM
+    pop hl
 	ld a, [wNumberOfWarps]
 	sub c
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
