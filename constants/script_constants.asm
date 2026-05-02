@@ -30,6 +30,7 @@ DEF SLOTS_SOMEONESKEYS EQU $ff
 	const TRADE_FOR_DORIS
 	const TRADE_FOR_CRINKLES
 	const TRADE_FOR_SPOT
+    const TRADE_FOR_RANDOM
 DEF NUM_NPC_TRADES EQU const_value
 
 ; in game trade dialog sets

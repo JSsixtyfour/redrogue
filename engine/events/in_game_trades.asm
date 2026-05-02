@@ -7,6 +7,11 @@
 	const TRADETEXT_AFTER_TRADE ; 4
 DEF NUM_TRADE_TEXTS EQU const_value
 
+RogueDoInGameTradeDialogue::
+; skip over part of the code so we can use
+    call SaveScreenTilesToBuffer2
+    ld hl, [roguenpctrade]
+    jp roguenpctrade_dialogue_continue
 DoInGameTradeDialogue:
 ; trigger the trade offer/action specified by wWhichTrade
 	call SaveScreenTilesToBuffer2
@@ -19,6 +24,7 @@ DoInGameTradeDialogue:
 	ld c, a
 	ld b, 0
 	add hl, bc
+    roguenpctrade_dialogue_continue:
 	ld a, [hli]
 	ld [wInGameTradeGiveMonSpecies], a
 	ld a, [hli]

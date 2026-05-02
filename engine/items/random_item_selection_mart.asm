@@ -1,48 +1,18 @@
-; This code is meant to handle any time an item is randomly generated for the player to pick up
+; This code is meant to handle items generated for the pokemart
 ; The code outputs an item ID into ram
 ; need to push bc and de
-Random_Item_Selection::
-ld a, [wRogueDoorSelection]
-ld b, HEALING
+Random_Mart_Selection::
+ld b, $0
 cp a, b
-jr z, healing_items
-ld b, STAT
-cp a, b
-jr z, stat_items
-ld b, TM
-cp a, b
-jr z, tm_items 
+jr z, healing_mart
 
-.money_items
-ld b, NUM_MONEY_POKEBALL_CLASS
-ld c, NUM_MONEY_GREATBALL_CLASS 
-ld d, NUM_MONEY_ULTRABALL_CLASS 
-ld e, NUM_MONEY_MASTERBALL_CLASS
-push bc
-jp item_determineClassSlot
+; if not healing mart, must be stat and TM
+ldh a, [hRandomAdd]
+ld b, add
+ld $7F
+cp b
+jr nc, st
 
-healing_items:
-ld b, NUM_HEALING_POKEBALL_CLASS
-ld c, NUM_HEALING_GREATBALL_CLASS 
-ld d, NUM_HEALING_ULTRABALL_CLASS 
-ld e, NUM_HEALING_MASTERBALL_CLASS
-push bc
-jp item_determineClassSlot
-
-stat_items:
-ld b, NUM_STAT_POKEBALL_CLASS
-ld c, NUM_STAT_GREATBALL_CLASS 
-ld d, NUM_STAT_ULTRABALL_CLASS 
-ld e, NUM_STAT_MASTERBALL_CLASS
-push bc
-jp item_determineClassSlot
-
-tm_items:
-ld b, NUM_TM_POKEBALL_CLASS
-ld c, NUM_TM_GREATBALL_CLASS 
-ld d, NUM_TM_ULTRABALL_CLASS 
-ld e, NUM_TM_MASTERBALL_CLASS
-push bc
 
 
 item_determineClassSlot:

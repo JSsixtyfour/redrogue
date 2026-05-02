@@ -15,9 +15,6 @@ InGameTrade_CheckForTradeEvo:
 	cp 'P'
 	ret nz
 .nameMatched
-	ld a, [wPartyCount]
-	dec a
-	ld [wWhichPokemon], a
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, LINK_STATE_TRADING

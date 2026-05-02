@@ -232,11 +232,11 @@ db 0x0
 money_classes:
 table_width 1
 money_pokeball_class:
-db NUGGET ; MUSHROOM
+db NUGGET ; PEARL
 db 0x0
 
 money_greatball_class:
-db NUGGET ; PEARL
+db BIG_PEARL ; BIG PEARL
 db 0x0
 
 money_ultraball_class:
@@ -244,7 +244,7 @@ db NUGGET
 db 0x0
 
 money_masterball_class:
-db NUGGET ; BIG_NUGGET
+db BIG_NUGGET ; BIG_NUGGET
 db 0x0
 
 stat_classes:

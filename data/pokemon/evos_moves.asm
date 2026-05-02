@@ -232,6 +232,16 @@ RhydonEvosMoves:
 	db 49, TAKE_DOWN
 	db 55, HORN_DRILL
 	db 0
+    
+; Tutor Learnset
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BLIZZARD
+    db 2, COUNTER
+    db 2, HEADBUTT
+    db 2, ICE_BEAM
+    db 2, THRASH
+    db 0
 
 KangaskhanEvosMoves:
 ; Evolutions
@@ -246,6 +256,16 @@ KangaskhanEvosMoves:
 	db 48, DOUBLE_EDGE
 	db 0
 
+; Tutor Learnset
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, ICE_PUNCH
+    db 2, HEADBUTT
+    db 2, DISABLE
+    db 2, FOCUS_ENERGY
+    db 2, STOMP
+    db 0
+
 NidoranMEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, NIDORINO
@@ -258,6 +278,17 @@ NidoranMEvosMoves:
 	db 30, FURY_ATTACK
 	db 38, HORN_DRILL
 	db 0
+
+; Tutor Learnset
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, AMNESIA
+    db 2, CONFUSION
+    db 2, COUNTER
+    db 2, DISABLE
+    db 2, SUPERSONIC
+    db 2, LOVELY_KISS
+    db 0
 
 ClefairyEvosMoves:
 ; Evolutions
@@ -272,6 +303,20 @@ ClefairyEvosMoves:
 	db 35, BODY_SLAM
 	db 43, LIGHT_SCREEN
 	db 0
+    
+; Tutor Learnset
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, ICE_PUNCH
+    db 2, HEADBUTT
+    db 2, DIZZY_PUNCH
+    db 2, AMNESIA
+    db 2, SPLASH
+    db 2, PETAL_DANCE
+    db 2, SWIFT
+    db 0
 
 SpearowEvosMoves:
 ; Evolutions
@@ -288,6 +333,12 @@ SpearowEvosMoves:
 	db 40, AGILITY
 	db 0
 
+; Tutor Learnset
+    db 2, QUICK_ATTACK
+    db 2, TRI_ATTACK
+    db 2, SONICBOOM
+    db 0
+
 VoltorbEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 30, ELECTRODE
@@ -302,6 +353,11 @@ VoltorbEvosMoves:
 	db 44, EXPLOSION
 	db 50, THUNDER
 	db 0
+    
+; Tutor Learnset
+    db 2, AGILITY
+    db 2, HEADBUTT
+    db 0
 
 NidokingEvosMoves:
 ; Evolutions
@@ -317,6 +373,12 @@ NidokingEvosMoves:
 	db 40, EARTHQUAKE
 	db 46, HORN_DRILL
 	db 0
+    
+; Tutor Learnset
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, ICE_PUNCH
+    db 0    
 	
 SlowbroEvosMoves:
 ; Evolutions
@@ -333,6 +395,13 @@ SlowbroEvosMoves:
 	db 40, AMNESIA
 	db 45, PSYCHIC_M
 	db 0
+ 
+; Tutor Learnset
+    db 2, TACKLE
+    db 2, DREAM_EATER
+    db 2, STOMP
+    db 2, ICE_PUNCH
+    db 0  
 
 IvysaurEvosMoves:
 ; Evolutions
@@ -349,6 +418,16 @@ IvysaurEvosMoves:
 	db 42, BODY_SLAM
 	db 54, SOLARBEAM
 	db 0
+    
+; Tutor Learnset
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0  
 
 ExeggutorEvosMoves:
 ; Evolutions
@@ -366,6 +445,13 @@ ExeggutorEvosMoves:
 	db 48, SLEEP_POWDER
 	db 0
 
+; Tutor Learnset
+    db 2, DREAM_EATER
+    db 2, FLASH
+    db 2, STRENGTH
+    db 2, HEADBUTT
+    db 0  
+
 LickitungEvosMoves:
 ; Evolutions
 	db 0
@@ -378,6 +464,16 @@ LickitungEvosMoves:
 	db 39, SCREECH
 	db 44, WRAP
 	db 0
+
+; Tutor Learnset
+    db 2, LICK
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HEADBUTT
+    db 2, DOUBLESLAP
+    db 0
 
 ExeggcuteEvosMoves:
 ; Evolutions
@@ -395,6 +491,12 @@ ExeggcuteEvosMoves:
 	db 48, SLEEP_POWDER
 	db 0
 
+; Tutor Learnset
+    db 2, DREAM_EATER
+    db 2, FLASH
+    db 2, STRENGTH
+    db 0
+
 GrimerEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 38, MUK
@@ -410,6 +512,14 @@ GrimerEvosMoves:
 	db 42, TOXIC
 	db 45, SCREECH
 	db 0
+; Tutor Learnset
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, LICK
+    db 0
 
 GengarEvosMoves:
 ; Evolutions
@@ -422,6 +532,13 @@ GengarEvosMoves:
 	db 55, HYPNOSIS
 	db 55, DREAM_EATER
 	db 0
+    
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HEADBUTT
+    db 0
 
 NidoranFEvosMoves:
 ; Evolutions
@@ -436,6 +553,14 @@ NidoranFEvosMoves:
 	db 38, FURY_SWIPES
 	db 0
 
+; Tutoring Learnset   
+    db 2, COUNTER
+    db 2, DISABLE
+    db 2, FOCUS_ENERGY
+    db 2, SUPERSONIC
+    db 2, LOVELY_KISS
+    db 0
+
 NidoqueenEvosMoves:
 ; Evolutions
 	db 0
@@ -448,6 +573,17 @@ NidoqueenEvosMoves:
 	db 32, SLUDGE
 	db 40, EARTHQUAKE
 	db 0
+    
+; Tutoring Learnset   
+    db 2, COUNTER
+    db 2, DISABLE
+    db 2, FOCUS_ENERGY
+    db 2, SUPERSONIC
+    db 2, LOVELY_KISS
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 0
 
 CuboneEvosMoves:
 ; Evolutions
@@ -463,6 +599,14 @@ CuboneEvosMoves:
 	db 38, THRASH
 	db 46, RAGE
 	db 0
+; Tutoring Learnset   
+    db 2, ROCK_SLIDE
+    db 2, SCREECH
+    db 2, SWORDS_DANCE
+    db 2, FURY_ATTACK
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 0
 
 RhyhornEvosMoves:
 ; Evolutions
@@ -480,6 +624,14 @@ RhyhornEvosMoves:
 	db 55, HORN_DRILL
 	db 0
 
+; Tutoring Learnset   
+    db 2, BLIZZARD
+    db 2, COUNTER
+    db 2, HEADBUTT
+    db 2, ICE_BEAM
+    db 2, THRASH
+    db 0
+
 LaprasEvosMoves:
 ; Evolutions
 	db 0
@@ -494,6 +646,11 @@ LaprasEvosMoves:
 	db 51, HYDRO_PUMP
 	db 55, BLIZZARD
 	db 0
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, BITE
+    db 2, HEADBUTT
+    db 0
 
 ArcanineEvosMoves:
 ; Evolutions
@@ -505,7 +662,12 @@ ArcanineEvosMoves:
 	db 45, FLAMETHROWER
 	db 46, AGILITY
 	db 0
-
+; Tutoring Learnset   
+    db 2, FIRE_SPIN
+    db 2, THRASH
+    db 2, HEADBUTT
+    db 0
+    
 MewEvosMoves:
 ; Evolutions
 	db 0
@@ -517,6 +679,14 @@ MewEvosMoves:
 	db 30, METRONOME
 	db 40, PSYCHIC_M
 	db 0
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, WATERFALL
+    db 2, HEADBUTT
+    db 0
 
 GyaradosEvosMoves:
 ; Evolutions
@@ -533,6 +703,11 @@ GyaradosEvosMoves:
 	db 52, HYPER_BEAM
 	db 0
 
+; Tutoring Learnset   
+    db 2, BUBBLE
+    db 2, HEADBUTT
+    db 0
+
 ShellderEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, WATER_STONE, 1, CLOYSTER
@@ -548,6 +723,10 @@ ShellderEvosMoves:
 	db 50, BLIZZARD
 	db 55, EXPLOSION
 	db 0
+; Tutoring Learnset   
+    db 2, BARRIER
+    db 2, SCREECH
+    db 0
 
 TentacoolEvosMoves:
 ; Evolutions
@@ -566,6 +745,12 @@ TentacoolEvosMoves:
 	db 50, HYDRO_PUMP
 	db 0
 
+; Tutoring Learnset   
+    db 2, AURORA_BEAM
+    db 2, HAZE
+    db 2, CONFUSE_RAY
+    db 0
+
 GastlyEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 25, HAUNTER
@@ -579,6 +764,9 @@ GastlyEvosMoves:
 	db 55, DREAM_EATER
 	db 0
 
+; Tutoring Learnset   
+    db 2, HAZE
+    db 0
 ScytherEvosMoves:
 ; Evolutions
 	db 0
@@ -593,6 +781,13 @@ ScytherEvosMoves:
 	db 54, SWORDS_DANCE
 	db 0
 
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, COUNTER
+    db 2, LIGHT_SCREEN
+    db 2, RAZOR_WIND
+    db 2, SONICBOOM
+    db 0
 StaryuEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, WATER_STONE, 1, STARMIE
@@ -609,7 +804,9 @@ StaryuEvosMoves:
 	db 42, LIGHT_SCREEN
 	db 47, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, WATERFALL
+    db 0
 BlastoiseEvosMoves:
 ; Evolutions
 	db 0
@@ -625,6 +822,16 @@ BlastoiseEvosMoves:
 	db 45, ICE_BEAM
 	db 52, HYDRO_PUMP
 	db 0
+    
+; Tutoring Learnset   
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, WATERFALL
+    db 2, CONFUSION
+    db 2, HAZE
+    db 2, MIST
+    db 0
 
 PinsirEvosMoves:
 ; Evolutions
@@ -641,6 +848,12 @@ PinsirEvosMoves:
 	db 54, SWORDS_DANCE
 	db 0
 
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, FURY_ATTACK
+    db 2, ROCK_THROW
+    db 0
+
 TangelaEvosMoves:
 ; Evolutions
 	db 0
@@ -655,6 +868,14 @@ TangelaEvosMoves:
 	db 45, GROWTH
 	db 48, BIND
 	db 0
+    
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, FLASH
+    db 2, AMNESIA
+    db 2, CONFUSION
+    db 2, REFLECT
+    db 0
 
 MissingNo1FEvosMoves:
 ; Evolutions
@@ -679,6 +900,12 @@ GrowlitheEvosMoves:
 	db 35, FLAMETHROWER
 	db 36, AGILITY
 	db 0
+    
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, FIRE_SPIN
+    db 2, THRASH
+    db 0
 
 OnixEvosMoves:
 ; Evolutions
@@ -693,6 +920,11 @@ OnixEvosMoves:
 	db 43, EARTHQUAKE
 	db 48, BIND
 	db 0
+    
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, SHARPEN
+    db 0
 
 FearowEvosMoves:
 ; Evolutions
@@ -707,6 +939,13 @@ FearowEvosMoves:
 	db 30, SHARPEN
 	db 40, AGILITY
 	db 0
+    
+; Tutoring Learnset   
+    db 2, QUICK_ATTACK
+    db 2, TRI_ATTACK
+    db 2, SONICBOOM
+    db 2, PAY_DAY
+    db 0
 
 PidgeyEvosMoves:
 ; Evolutions
@@ -720,6 +959,10 @@ PidgeyEvosMoves:
 	db 34, AGILITY
 	db 49, MIRROR_MOVE
 	db 0
+    
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 0
 
 SlowpokeEvosMoves:
 ; Evolutions
@@ -737,7 +980,12 @@ SlowpokeEvosMoves:
 	db 40, AMNESIA
 	db 45, PSYCHIC_M
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 2, DREAM_EATER
+    db 2, STOMP
+    db 0
+    
 KadabraEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 42, ALAKAZAM
@@ -750,6 +998,16 @@ KadabraEvosMoves:
 	db 38, PSYCHIC_M
 	db 42, REFLECT
 	db 0
+    
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BARRIER
+    db 2, LIGHT_SCREEN
+    db 0
 
 GravelerEvosMoves:
 ; Evolutions
@@ -765,6 +1023,11 @@ GravelerEvosMoves:
 	db 45, EARTHQUAKE
 	db 48, EXPLOSION
 	db 0
+    
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 
 ChanseyEvosMoves:
 ; Evolutions
@@ -779,6 +1042,10 @@ ChanseyEvosMoves:
 	db 50, MEGA_PUNCH
 	db 54, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 0
 
 MachokeEvosMoves:
 ; Evolutions
@@ -793,6 +1060,16 @@ MachokeEvosMoves:
 	db 37, COUNTER
 	db 41, KARATE_CHOP
 	db 0
+; Tutoring Learnset   
+    db 2, MEDITATE
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, ROLLING_KICK
+    db 2, LIGHT_SCREEN
+    db 2, THRASH
+    db 0
 
 MrMimeEvosMoves:
 ; Evolutions
@@ -808,7 +1085,14 @@ MrMimeEvosMoves:
 	db 47, SUBSTITUTE
 	db 50, BARRIER
 	db 0
-
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HYPNOSIS
+    db 0
 HitmonleeEvosMoves:
 ; Evolutions
 	db 0
@@ -820,6 +1104,11 @@ HitmonleeEvosMoves:
 	db 48, HI_JUMP_KICK
 	db 53, MEGA_KICK
 	db 0
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, TACKLE
+    db 2, DIZZY_PUNCH
+    db 0
 
 HitmonchanEvosMoves:
 ; Evolutions
@@ -834,7 +1123,11 @@ HitmonchanEvosMoves:
 	db 48, MEGA_PUNCH
 	db 53, COUNTER
 	db 0
-
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, TACKLE
+    db 2, DIZZY_PUNCH
+    db 0
 ArbokEvosMoves:
 ; Evolutions
 	db 0
@@ -848,6 +1141,11 @@ ArbokEvosMoves:
 	db 35, SLUDGE
 	db 38, WRAP
 	db 0
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, SLAM
+    db 0
 
 ParasectEvosMoves:
 ; Evolutions
@@ -862,6 +1160,13 @@ ParasectEvosMoves:
 	db 30, SLASH
 	db 36, GROWTH
 	db 0
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, COUNTER
+    db 2, LIGHT_SCREEN
+    db 2, PSYBEAM
+    db 2, SCREECH
+    db 0
 
 PsyduckEvosMoves:
 ; Evolutions
@@ -877,6 +1182,19 @@ PsyduckEvosMoves:
 	db 45, AMNESIA
 	db 50, HYDRO_PUMP
 	db 0
+    
+; Tutoring Learnset   
+    db 2, SCREECH
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, WATERFALL
+    db 2, HYPNOSIS
+    db 2, LIGHT_SCREEN
+    db 2, PSYBEAM
+    db 2, PETAL_DANCE
+    db 2, TRI_ATTACK
+    db 0
 
 DrowzeeEvosMoves:
 ; Evolutions
@@ -892,6 +1210,15 @@ DrowzeeEvosMoves:
 	db 40, HYPNOSIS
 	db 45, DREAM_EATER
 	db 0
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BARRIER
+    db 2, LIGHT_SCREEN
+    db 2, AMNESIA
+    db 0
 
 GolemEvosMoves:
 ; Evolutions
@@ -906,6 +1233,11 @@ GolemEvosMoves:
 	db 45, EARTHQUAKE
 	db 48, EXPLOSION
 	db 0
+    
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 
 MissingNo32EvosMoves:
 ; Evolutions
@@ -925,6 +1257,13 @@ MagmarEvosMoves:
 	db 43, FLAMETHROWER
 	db 54, FIRE_BLAST
 	db 0
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, THUNDERPUNCH
+    db 2, DIZZY_PUNCH
+    db 2, KARATE_CHOP
+    db 2, SCREECH
+    db 0
 
 MissingNo34EvosMoves:
 ; Evolutions
@@ -944,6 +1283,17 @@ ElectabuzzEvosMoves:
 	db 43, THUNDERBOLT
 	db 54, THUNDER
 	db 0
+    
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, BARRIER
+    db 2, DIZZY_PUNCH
+    db 2, KARATE_CHOP
+    db 2, MEDITATE
+    db 2, ROLLING_KICK
+    db 0
 
 MagnetonEvosMoves:
 ; Evolutions
@@ -960,6 +1310,10 @@ MagnetonEvosMoves:
 	db 43, SCREECH
 	db 50, THUNDER
 	db 0
+; Tutoring Learnset   
+    db 2, AGILITY
+    db 2, TRI_ATTACK
+    db 0
 
 KoffingEvosMoves:
 ; Evolutions
@@ -974,6 +1328,13 @@ KoffingEvosMoves:
 	db 45, HAZE
 	db 48, EXPLOSION
 	db 0
+    
+; Tutoring Learnset   
+    db 2, POISON_GAS
+    db 2, PSYBEAM
+    db 2, PSYWAVE
+    db 2, SCREECH
+    db 0
 
 MissingNo38EvosMoves:
 ; Evolutions
@@ -994,7 +1355,14 @@ MankeyEvosMoves:
 	db 39, THRASH
 	db 45, SCREECH
 	db 0
-
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, DEFENSE_CURL
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, MEDITATE
+    db 0
 SeelEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 34, DEWGONG
@@ -1009,7 +1377,13 @@ SeelEvosMoves:
 	db 40, ICE_BEAM
 	db 50, BLIZZARD
 	db 0
-
+; Tutoring Learnset   
+    db 2, WATERFALL
+    db 2, DISABLE
+    db 2, LICK
+    db 2, PECK
+    db 2, SLAM
+    db 0
 DiglettEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 26, DUGTRIO
@@ -1023,7 +1397,9 @@ DiglettEvosMoves:
 	db 40, EARTHQUAKE
 	db 55, FISSURE
 	db 0
-
+; Tutoring Learnset   
+    db 2, SCREECH
+    db 0
 TaurosEvosMoves:
 ; Evolutions
 	db 0
@@ -1038,6 +1414,10 @@ TaurosEvosMoves:
 	db 45, THRASH
 	db 50, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset   
+    db 2, SURF
+    db 2, QUICK_ATTACK
+    db 0
 
 MissingNo3DEvosMoves:
 ; Evolutions
@@ -1070,6 +1450,12 @@ FarfetchdEvosMoves:
 	db 31, DRILL_PECK
 	db 39, AGILITY
 	db 0
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, GUST
+    db 2, MIRROR_MOVE
+    db 2, QUICK_ATTACK
+    db 0
 
 VenonatEvosMoves:
 ; Evolutions
@@ -1085,6 +1471,10 @@ VenonatEvosMoves:
 	db 36, SLEEP_POWDER
 	db 41, PSYCHIC_M
 	db 0
+; Tutoring Learnset   
+    db 2, SWIFT
+    db 2, SCREECH
+    db 0
 
 DragoniteEvosMoves:
 ; Evolutions
@@ -1097,7 +1487,18 @@ DragoniteEvosMoves:
 	db 55, WING_ATTACK
 	db 60, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset  
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, HYDRO_PUMP
+    db 2, HAZE
+    db 2, LIGHT_SCREEN
+    db 2, MIST
+    db 2, SUPERSONIC
+    db 0 
 MissingNo43EvosMoves:
 ; Evolutions
 	db 0
@@ -1129,7 +1530,13 @@ DoduoEvosMoves:
 	db 45, LOW_KICK
 	db 51, AGILITY
 	db 0
-
+; Tutoring Learnset  
+    db 2, SWIFT
+    db 2, HAZE
+    db 2, QUICK_ATTACK
+    db 2, SUPERSONIC
+    db 2, LOW_KICK
+    db 0 
 PoliwagEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 18, POLIWHIRL
@@ -1144,7 +1551,16 @@ PoliwagEvosMoves:
 	db 48, AMNESIA
 	db 53, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, WATERFALL
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, MIST
+    db 2, SPLASH
+    db 2, GROWTH
+    db 2, LOVELY_KISS
+    db 0 
 JynxEvosMoves:
 ; Evolutions
 	db 0
@@ -1158,30 +1574,42 @@ JynxEvosMoves:
 	db 47, BODY_SLAM
 	db 54, BLIZZARD
 	db 0
-
+; Tutoring Learnset  
+    db 2, SING
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 2, DIZZY_PUNCH
+    db 2, PETAL_DANCE
+    db 2, MEDITATE
+    db 0 
 MoltresEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 6,  EMBER
 	db 35, AGILITY
-	db 40, DRILL_PECK
 	db 45, FLAMETHROWER
 	db 51, FIRE_BLAST
 	db 55, SKY_ATTACK
 	db 60, FIRE_SPIN
 	db 0
-
+; Tutoring Learnset  
+    db 2, WING_ATTACK
+    db 0 
 ArticunoEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 6,  AURORA_BEAM
 	db 35, AGILITY
-	db 40, DRILL_PECK
 	db 45, ICE_BEAM
 	db 51, BLIZZARD
 	db 55, SKY_ATTACK
 	db 60, MIST
 	db 0
+ ; Tutoring Learnset  
+    db 2, GUST
+    db 0    
 
 ZapdosEvosMoves:
 ; Evolutions
@@ -1191,9 +1619,12 @@ ZapdosEvosMoves:
 	db 40, DRILL_PECK
 	db 45, THUNDERBOLT
 	db 51, THUNDER
-	db 55, SKY_ATTACK
 	db 60, LIGHT_SCREEN
 	db 0
+    
+; Tutoring Learnset  
+    db 2, PECK
+    db 0 
 
 DittoEvosMoves:
 ; Evolutions
@@ -1214,7 +1645,13 @@ MeowthEvosMoves:
 	db 34, SLASH
 	db 45, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 2, AMNESIA
+    db 2, HYPNOSIS
+    db 0 
 KrabbyEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 28, KINGLER
@@ -1228,7 +1665,12 @@ KrabbyEvosMoves:
 	db 40, HARDEN
 	db 50, GUILLOTINE
 	db 0
-
+; Tutoring Learnset  
+    db 2, AMNESIA
+    db 2, DIG
+    db 2, HAZE
+    db 2, SLAM
+    db 0 
 MissingNo4FEvosMoves:
 ; Evolutions
 	db 0
@@ -1260,7 +1702,11 @@ VulpixEvosMoves:
 	db 37, NIGHT_SHADE
 	db 42, FIRE_SPIN
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, DISABLE
+    db 2, HYPNOSIS
+    db 0 
 NinetalesEvosMoves:
 ; Evolutions
 	db 0
@@ -1273,7 +1719,11 @@ NinetalesEvosMoves:
 	db 37, NIGHT_SHADE
 	db 42, FIRE_SPIN
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, DISABLE
+    db 2, HYPNOSIS
+    db 0 
 PikachuEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, THUNDER_STONE, 1, RAICHU
@@ -1290,6 +1740,19 @@ PikachuEvosMoves:
 	db 41, THUNDER
 	db 50, LIGHT_SCREEN
 	db 0
+    
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, DEFENSE_CURL
+    db 2, STRENGTH
+    db 2, THUNDERPUNCH
+    db 2, DIZZY_PUNCH
+    db 2, DOUBLESLAP
+    db 2, PETAL_DANCE
+    db 2, SING
+    db 2, FLY
+    db 2, SURF
+    db 0 
 
 RaichuEvosMoves:
 ; Evolutions
@@ -1306,7 +1769,18 @@ RaichuEvosMoves:
 	db 41, THUNDER
 	db 50, LIGHT_SCREEN
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, DEFENSE_CURL
+    db 2, STRENGTH
+    db 2, THUNDERPUNCH
+    db 2, DIZZY_PUNCH
+    db 2, DOUBLESLAP
+    db 2, PETAL_DANCE
+    db 2, SING
+    db 2, FLY
+    db 2, SURF
+    db 0 
 MissingNo56EvosMoves:
 ; Evolutions
 	db 0
@@ -1330,6 +1804,15 @@ DratiniEvosMoves:
 	db 30, SLAM
 	db 60, HYPER_BEAM
 	db 0
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, HAZE
+    db 2, LIGHT_SCREEN
+    db 2, MIST
+    db 2, SUPERSONIC
+    db 2, HYDRO_PUMP
+    db 0 
 
 DragonairEvosMoves:
 ; Evolutions
@@ -1343,7 +1826,15 @@ DragonairEvosMoves:
 	db 45, DRAGON_RAGE
 	db 60, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, HAZE
+    db 2, LIGHT_SCREEN
+    db 2, MIST
+    db 2, SUPERSONIC
+    db 2, HYDRO_PUMP
+    db 0 
 KabutoEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 40, KABUTOPS
@@ -1359,7 +1850,11 @@ KabutoEvosMoves:
 	db 46, ROCK_SLIDE
 	db 53, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, SAND_ATTACK
+    db 2, AURORA_BEAM
+    db 2, DIG
+    db 0 
 KabutopsEvosMoves:
 ; Evolutions
 	db 0
@@ -1374,7 +1869,12 @@ KabutopsEvosMoves:
 	db 46, ROCK_SLIDE
 	db 53, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, SAND_ATTACK
+    db 2, AURORA_BEAM
+    db 2, DIG
+    db 2, HEADBUTT
+    db 0 
 HorseaEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 32, SEADRA
@@ -1390,7 +1890,15 @@ HorseaEvosMoves:
 	db 37, AGILITY
 	db 45, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, AURORA_BEAM
+    db 2, DISABLE
+    db 2, DRAGON_RAGE
+    db 2, SPLASH
+    db 2, HAZE
+    db 0 
 SeadraEvosMoves:
 ; Evolutions
 	db 0
@@ -1406,7 +1914,15 @@ SeadraEvosMoves:
 	db 41, SLAM
 	db 45, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, AURORA_BEAM
+    db 2, DISABLE
+    db 2, DRAGON_RAGE
+    db 2, SPLASH
+    db 2, HAZE
+    db 0 
 MissingNo5EEvosMoves:
 ; Evolutions
 	db 0
@@ -1432,7 +1948,11 @@ SandshrewEvosMoves:
 	db 22, SLASH
 	db 33, EARTHQUAKE
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, COUNTER
+    db 0 
 SandslashEvosMoves:
 ; Evolutions
 	db 0
@@ -1446,7 +1966,11 @@ SandslashEvosMoves:
 	db 30, EARTHQUAKE
 	db 42, SWORDS_DANCE
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, COUNTER
+    db 0 
 OmanyteEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 40, OMASTAR
@@ -1461,7 +1985,14 @@ OmanyteEvosMoves:
 	db 37, ROCK_SLIDE
 	db 46, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, BITE
+    db 2, HEADBUTT
+    db 2, AURORA_BEAM
+    db 2, HAZE
+    db 2, SLAM
+    db 2, SUPERSONIC
+    db 0 
 OmastarEvosMoves:
 ; Evolutions
 	db 0
@@ -1476,7 +2007,14 @@ OmastarEvosMoves:
 	db 42, CLAMP
 	db 46, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, BITE
+    db 2, HEADBUTT
+    db 2, AURORA_BEAM
+    db 2, HAZE
+    db 2, SLAM
+    db 2, SUPERSONIC
+    db 0 
 JigglypuffEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, MOON_STONE, 1, WIGGLYTUFF
@@ -1491,7 +2029,15 @@ JigglypuffEvosMoves:
 	db 38, LOVELY_KISS,
 	db 43, DOUBLE_EDGE
 	db 0
-
+; Tutoring Learnset  
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, DIZZY_PUNCH
+    db 2, PETAL_DANCE
+    db 0 
 WigglytuffEvosMoves:
 ; Evolutions
 	db 0
@@ -1505,7 +2051,15 @@ WigglytuffEvosMoves:
 	db 38, LOVELY_KISS,
 	db 43, DOUBLE_EDGE
 	db 0
-
+; Tutoring Learnset  
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, DIZZY_PUNCH
+    db 2, PETAL_DANCE
+    db 0
 EeveeEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, FIRE_STONE, 1, FLAREON
@@ -1524,7 +2078,10 @@ EeveeEvosMoves:
 	db 36, JUMP_KICK
 	db 42, TAKE_DOWN
 	db 0
-
+; Tutoring Learnset  
+    db 2, GROWTH
+    db 2, HEADBUTT
+    db 0
 FlareonEvosMoves:
 ; Evolutions
 	db 0
@@ -1540,7 +2097,10 @@ FlareonEvosMoves:
 	db 47, FIRE_SPIN
 	db 52, FIRE_BLAST
 	db 0
-
+; Tutoring Learnset  
+    db 2, GROWTH
+    db 2, HEADBUTT
+    db 0
 JolteonEvosMoves:
 ; Evolutions
 	db 0
@@ -1555,7 +2115,10 @@ JolteonEvosMoves:
 	db 47, THUNDER_WAVE
 	db 52, THUNDER
 	db 0
-
+; Tutoring Learnset  
+    db 2, GROWTH
+    db 2, HEADBUTT
+    db 0
 VaporeonEvosMoves:
 ; Evolutions
 	db 0
@@ -1572,7 +2135,11 @@ VaporeonEvosMoves:
 	db 47, REST
 	db 52, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, GROWTH
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 0
 MachopEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 28, MACHOKE
@@ -1586,7 +2153,16 @@ MachopEvosMoves:
 	db 37, COUNTER
 	db 45, KARATE_CHOP
 	db 0
-
+; Tutoring Learnset  
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, THUNDERPUNCH
+    db 2, ICE_PUNCH
+    db 2, LIGHT_SCREEN
+    db 2, MEDITATE
+    db 2, ROLLING_KICK
+    db 2, THRASH
+    db 0
 ZubatEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 22, GOLBAT
@@ -1602,6 +2178,9 @@ ZubatEvosMoves:
 	db 46, HAZE
 	db 0
 
+; Tutoring Learnset  
+    db 2, QUICK_ATTACK
+    db 0
 EkansEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 22, ARBOK
@@ -1616,7 +2195,11 @@ EkansEvosMoves:
 	db 35, SLUDGE
 	db 47, WRAP
 	db 0
-
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, SLAM
+    db 0
 ParasEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 24, PARASECT
@@ -1631,7 +2214,13 @@ ParasEvosMoves:
 	db 30, SLASH
 	db 36, GROWTH
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, COUNTER
+    db 2, LIGHT_SCREEN
+    db 2, PSYBEAM
+    db 2, SCREECH
+    db 0
 PoliwhirlEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, WATER_STONE, 1, POLIWRATH
@@ -1648,7 +2237,17 @@ PoliwhirlEvosMoves:
 	db 48, AMNESIA
 	db 53, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, WATERFALL
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, MIST
+    db 2, SPLASH
+    db 2, GROWTH
+    db 2, ICE_PUNCH
+    db 2, LOVELY_KISS
+    db 0 
 PoliwrathEvosMoves:
 ; Evolutions
 	db 0
@@ -1664,7 +2263,17 @@ PoliwrathEvosMoves:
 	db 48, AMNESIA
 	db 53, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, WATERFALL
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, MIST
+    db 2, SPLASH
+    db 2, GROWTH
+    db 2, ICE_PUNCH
+    db 2, LOVELY_KISS
+    db 0 
 WeedleEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 7, KAKUNA
@@ -1713,7 +2322,13 @@ DodrioEvosMoves:
 	db 45, JUMP_KICK
 	db 51, AGILITY
 	db 0
-
+; Tutoring Learnset  
+    db 2, SWIFT
+    db 2, HAZE
+    db 2, QUICK_ATTACK
+    db 2, SUPERSONIC
+    db 2, LOW_KICK
+    db 0
 PrimeapeEvosMoves:
 ; Evolutions
 	db 0
@@ -1726,7 +2341,14 @@ PrimeapeEvosMoves:
 	db 39, THRASH
 	db 45, SCREECH
 	db 0
-
+; Tutoring Learnset   
+    db 2, HEADBUTT
+    db 2, DEFENSE_CURL
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, MEDITATE
+    db 0
 DugtrioEvosMoves:
 ; Evolutions
 	db 0
@@ -1739,7 +2361,10 @@ DugtrioEvosMoves:
 	db 40, EARTHQUAKE
 	db 55, FISSURE
 	db 0
-
+; Tutoring Learnset   
+    db 2, SCREECH
+    db 2, TRI_ATTACK
+    db 0
 VenomothEvosMoves:
 ; Evolutions
 	db 0
@@ -1755,7 +2380,11 @@ VenomothEvosMoves:
 	db 41, PSYCHIC_M
 	db 46, SLUDGE
 	db 0
-
+; Tutoring Learnset   
+    db 2, GUST
+    db 2, SWIFT
+    db 2, SCREECH
+    db 0
 DewgongEvosMoves:
 ; Evolutions
 	db 0
@@ -1769,7 +2398,13 @@ DewgongEvosMoves:
 	db 40, ICE_BEAM
 	db 50, BLIZZARD
 	db 0
-
+; Tutoring Learnset   
+    db 2, WATERFALL
+    db 2, DISABLE
+    db 2, LICK
+    db 2, PECK
+    db 2, SLAM
+    db 0
 MissingNo79EvosMoves:
 ; Evolutions
 	db 0
@@ -1824,7 +2459,16 @@ MachampEvosMoves:
 	db 37, COUNTER
 	db 45, KARATE_CHOP
 	db 0
-
+; Tutoring Learnset   
+    db 2, MEDITATE
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, ROLLING_KICK
+    db 2, LIGHT_SCREEN
+    db 2, THRASH
+    db 0
 MissingNo7FEvosMoves:
 ; Evolutions
 	db 0
@@ -1845,7 +2489,18 @@ GolduckEvosMoves:
 	db 45, AMNESIA
 	db 50, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, SCREECH
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, WATERFALL
+    db 2, HYPNOSIS
+    db 2, LIGHT_SCREEN
+    db 2, PSYBEAM
+    db 2, PETAL_DANCE
+    db 2, TRI_ATTACK
+    db 0
 HypnoEvosMoves:
 ; Evolutions
 	db 0
@@ -1859,7 +2514,15 @@ HypnoEvosMoves:
 	db 40, HYPNOSIS
 	db 45, DREAM_EATER
 	db 0
-
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BARRIER
+    db 2, LIGHT_SCREEN
+    db 2, AMNESIA
+    db 0
 GolbatEvosMoves:
 ; Evolutions
 	db 0
@@ -1873,7 +2536,9 @@ GolbatEvosMoves:
 	db 36, SLUDGE
 	db 46, HAZE
 	db 0
-
+; Tutoring Learnset   
+    db 2, QUICK_ATTACK
+    db 0
 MewtwoEvosMoves:
 ; Evolutions
 	db 0
@@ -1884,7 +2549,13 @@ MewtwoEvosMoves:
 	db 75, MIST
 	db 81, AMNESIA
 	db 0
-
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, FIRE_PUNCH
+    db 0
 SnorlaxEvosMoves:
 ; Evolutions
 	db 0
@@ -1896,7 +2567,16 @@ SnorlaxEvosMoves:
 	db 48, DOUBLE_EDGE
 	db 56, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 2, DEFENSE_CURL
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, FIRE_PUNCH
+    db 2, LICK
+    db 2, LOVELY_KISS
+    db 2, SPLASH
+    db 0
 MagikarpEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 20, GYARADOS
@@ -1904,7 +2584,10 @@ MagikarpEvosMoves:
 ; Learnset
 	db 15, TACKLE
 	db 0
-
+; Tutoring Learnset   
+    db 2, BUBBLE
+    db 2, DRAGON_RAGE
+    db 0
 MissingNo86EvosMoves:
 ; Evolutions
 	db 0
@@ -1931,7 +2614,14 @@ MukEvosMoves:
 	db 42, TOXIC
 	db 45, SCREECH
 	db 0
-
+; Tutor Learnset
+    db 2, FIRE_PUNCH
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, HEADBUTT
+    db 2, HAZE
+    db 2, LICK
+    db 0
 MissingNo8AEvosMoves:
 ; Evolutions
 	db 0
@@ -1950,7 +2640,12 @@ KinglerEvosMoves:
 	db 40, HARDEN
 	db 50, GUILLOTINE
 	db 0
-
+; Tutoring Learnset  
+    db 2, AMNESIA
+    db 2, DIG
+    db 2, HAZE
+    db 2, SLAM
+    db 0 
 CloysterEvosMoves:
 ; Evolutions
 	db 0
@@ -1965,7 +2660,10 @@ CloysterEvosMoves:
 	db 46, SPIKE_CANNON
 	db 50, BLIZZARD
 	db 0
-
+; Tutoring Learnset  
+    db 2, BARRIER
+    db 2, SCREECH
+    db 0 
 MissingNo8CEvosMoves:
 ; Evolutions
 	db 0
@@ -1998,7 +2696,10 @@ ClefableEvosMoves:
 	db 43, LIGHT_SCREEN
 	db 48, SING
 	db 0
-
+; Tutoring Learnset  
+    db 2, HEADBUTT
+    db 2, AGILITY
+    db 0 
 WeezingEvosMoves:
 ; Evolutions
 	db 0
@@ -2011,7 +2712,12 @@ WeezingEvosMoves:
 	db 45, HAZE
 	db 48, EXPLOSION
 	db 0
-
+; Tutoring Learnset  
+    db 2, POISON_GAS
+    db 2, PSYBEAM
+    db 2, PSYWAVE
+    db 2, SCREECH
+    db 0 
 PersianEvosMoves:
 ; Evolutions
 	db 0
@@ -2024,7 +2730,13 @@ PersianEvosMoves:
 	db 34, SLASH
 	db 50, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, DREAM_EATER
+    db 2, HEADBUTT
+    db 2, AMNESIA
+    db 2, HYPNOSIS
+    db 0
 MarowakEvosMoves:
 ; Evolutions
 	db 0
@@ -2038,7 +2750,14 @@ MarowakEvosMoves:
 	db 38, THRASH
 	db 46, EARTHQUAKE
 	db 0
-
+; Tutoring Learnset   
+    db 2, ROCK_SLIDE
+    db 2, SCREECH
+    db 2, SWORDS_DANCE
+    db 2, FURY_ATTACK
+    db 2, FIRE_PUNCH
+    db 2, THUNDERPUNCH
+    db 0
 MissingNo92EvosMoves:
 ; Evolutions
 	db 0
@@ -2056,14 +2775,24 @@ HaunterEvosMoves:
 	db 55, HYPNOSIS
 	db 55, DREAM_EATER
 	db 0
-
+; Tutoring Learnset   
+    db 2, HAZE
+    db 0
 AbraEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, KADABRA
 	db 0
 ; Learnset
 	db 0
-
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BARRIER
+    db 2, LIGHT_SCREEN
+    db 0
 AlakazamEvosMoves:
 ; Evolutions
 	db 0
@@ -2075,7 +2804,15 @@ AlakazamEvosMoves:
 	db 38, PSYCHIC_M
 	db 42, REFLECT
 	db 0
-
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 2, ICE_PUNCH
+    db 2, THUNDERPUNCH
+    db 2, BARRIER
+    db 2, LIGHT_SCREEN
+    db 0
 PidgeottoEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 36, PIDGEOT
@@ -2088,7 +2825,9 @@ PidgeottoEvosMoves:
 	db 34, AGILITY
 	db 49, MIRROR_MOVE
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 0
 PidgeotEvosMoves:
 ; Evolutions
 	db 0
@@ -2101,7 +2840,9 @@ PidgeotEvosMoves:
 	db 40, SKY_ATTACK
 	db 49, MIRROR_MOVE
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 0
 StarmieEvosMoves:
 ; Evolutions
 	db 0
@@ -2113,7 +2854,9 @@ StarmieEvosMoves:
 	db 42, LIGHT_SCREEN
 	db 47, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, WATERFALL
+    db 0
 BulbasaurEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, IVYSAUR
@@ -2128,6 +2871,17 @@ BulbasaurEvosMoves:
 	db 42, BODY_SLAM
 	db 52, SOLARBEAM
 	db 0
+
+; Tutoring Learnset
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0  
+
 
 VenusaurEvosMoves:
 ; Evolutions
@@ -2144,7 +2898,15 @@ VenusaurEvosMoves:
 	db 42, BODY_SLAM
 	db 54, SOLARBEAM
 	db 0
-
+; Tutoring Learnset  
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0 
 TentacruelEvosMoves:
 ; Evolutions
 	db 0
@@ -2160,7 +2922,11 @@ TentacruelEvosMoves:
 	db 47, WRAP
 	db 50, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, AURORA_BEAM
+    db 2, HAZE
+    db 2, CONFUSE_RAY
+    db 0
 MissingNo9CEvosMoves:
 ; Evolutions
 	db 0
@@ -2182,7 +2948,12 @@ GoldeenEvosMoves:
 	db 43, HORN_DRILL
 	db 48, AGILITY
 	db 0
-
+; Tutoring Learnset   
+    db 2, HYDRO_PUMP
+    db 2, HAZE
+    db 2, PSYBEAM
+    db 2, SWORDS_DANCE
+    db 0
 SeakingEvosMoves:
 ; Evolutions
 	db 0
@@ -2197,7 +2968,12 @@ SeakingEvosMoves:
 	db 43, HORN_DRILL
 	db 48, AGILITY
 	db 0
-
+; Tutoring Learnset   
+    db 2, HYDRO_PUMP
+    db 2, HAZE
+    db 2, PSYBEAM
+    db 2, SWORDS_DANCE
+    db 0
 MissingNo9FEvosMoves:
 ; Evolutions
 	db 0
@@ -2236,7 +3012,15 @@ PonytaEvosMoves:
 	db 40, TAKE_DOWN
 	db 45, FIRE_BLAST
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 2, HEADBUTT
+    db 2, DOUBLE_KICK
+    db 2, HYPNOSIS
+    db 2, QUICK_ATTACK
+    db 2, THRASH
+    db 2, LOW_KICK
+    db 0
 RapidashEvosMoves:
 ; Evolutions
 	db 0
@@ -2252,7 +3036,17 @@ RapidashEvosMoves:
 	db 45, FIRE_BLAST
 	db 50, HI_JUMP_KICK
 	db 0
-
+; Tutoring Learnset   
+    db 2, TACKLE
+    db 2, HEADBUTT
+    db 2, DOUBLE_KICK
+    db 2, HYPNOSIS
+    db 2, QUICK_ATTACK
+    db 2, THRASH
+    db 2, LOW_KICK
+    db 2, FURY_ATTACK
+    db 2, PAY_DAY
+    db 0
 RattataEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 20, RATICATE
@@ -2265,7 +3059,13 @@ RattataEvosMoves:
 	db 24, DIG
 	db 28, SUPER_FANG
 	db 0
-
+; Tutoring Learnset   
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, COUNTER
+    db 2, FURY_SWIPES
+    db 2, SCREECH
+    db 0
 RaticateEvosMoves:
 ; Evolutions
 	db 0
@@ -2277,7 +3077,15 @@ RaticateEvosMoves:
 	db 24, DIG
 	db 28, SUPER_FANG
 	db 0
-
+; Tutoring Learnset   
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, COUNTER
+    db 2, FURY_SWIPES
+    db 2, SCREECH
+    db 2, CUT
+    db 2, STRENGTH
+    db 0
 NidorinoEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, MOON_STONE, 1, NIDOKING
@@ -2294,7 +3102,17 @@ NidorinoEvosMoves:
 	db 40, EARTHQUAKE
 	db 46, HORN_DRILL
 	db 0
-
+; Tutor Learnset
+    db 2, DEFENSE_CURL
+    db 2, HEADBUTT
+    db 2, AMNESIA
+    db 2, CONFUSION
+    db 2, COUNTER
+    db 2, DISABLE
+    db 2, SUPERSONIC
+    db 2, LOVELY_KISS
+    db 2, STRENGTH
+    db 0
 NidorinaEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, MOON_STONE, 1, NIDOQUEEN
@@ -2310,7 +3128,14 @@ NidorinaEvosMoves:
 	db 36, FURY_SWIPES
 	db 40, EARTHQUAKE
 	db 0
-
+; Tutoring Learnset   
+    db 2, COUNTER
+    db 2, DISABLE
+    db 2, FOCUS_ENERGY
+    db 2, SUPERSONIC
+    db 2, LOVELY_KISS
+    db 2, STRENGTH
+    db 0
 GeodudeEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 25, GRAVELER
@@ -2325,7 +3150,10 @@ GeodudeEvosMoves:
 	db 45, EARTHQUAKE
 	db 48, EXPLOSION
 	db 0
-
+; Tutoring Learnset   
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 PorygonEvosMoves:
 ; Evolutions
 	db 0
@@ -2338,7 +3166,10 @@ PorygonEvosMoves:
 	db 40, BARRIER
 	db 50, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, DREAM_EATER
+    db 2, BARRIER
+    db 0
 AerodactylEvosMoves:
 ; Evolutions
 	db 0
@@ -2351,7 +3182,10 @@ AerodactylEvosMoves:
 	db 43, TAKE_DOWN
 	db 50, HYPER_BEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, EARTHQUAKE
+    db 2, HEADBUTT
+    db 0
 MissingNoACEvosMoves:
 ; Evolutions
 	db 0
@@ -2373,7 +3207,9 @@ MagnemiteEvosMoves:
 	db 43, SCREECH
 	db 50, THUNDER
 	db 0
-
+; Tutoring Learnset   
+    db 2, AGILITY
+    db 0
 MissingNoAEEvosMoves:
 ; Evolutions
 	db 0
@@ -2401,7 +3237,13 @@ CharmanderEvosMoves:
 	db 46, FIRE_SPIN
 	db 50, SLAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, SMOKESCREEN
+    db 2, ROCK_SLIDE
+    db 2, DEFENSE_CURL
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 SquirtleEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, WARTORTLE
@@ -2418,7 +3260,15 @@ SquirtleEvosMoves:
 	db 45, ICE_BEAM
 	db 52, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, CONFUSION
+    db 2, HAZE
+    db 2, DEFENSE_CURL
+    db 2, ICE_PUNCH
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, MIST
+    db 0
 CharmeleonEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 36, CHARIZARD
@@ -2434,7 +3284,13 @@ CharmeleonEvosMoves:
 	db 48, SLAM
 	db 56, FIRE_SPIN
 	db 0
-
+; Tutoring Learnset   
+    db 2, SMOKESCREEN
+    db 2, ROCK_SLIDE
+    db 2, DEFENSE_CURL
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 WartortleEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 36, BLASTOISE
@@ -2451,7 +3307,15 @@ WartortleEvosMoves:
 	db 45, ICE_BEAM
 	db 52, HYDRO_PUMP
 	db 0
-
+; Tutoring Learnset   
+    db 2, CONFUSION
+    db 2, HAZE
+    db 2, DEFENSE_CURL
+    db 2, ICE_PUNCH
+    db 2, HEADBUTT
+    db 2, WATERFALL
+    db 2, MIST
+    db 0
 CharizardEvosMoves:
 ; Evolutions
 	db 0
@@ -2467,7 +3331,13 @@ CharizardEvosMoves:
 	db 48, SLAM
 	db 56, FIRE_SPIN
 	db 0
-
+; Tutoring Learnset   
+    db 2, SMOKESCREEN
+    db 2, ROCK_SLIDE
+    db 2, DEFENSE_CURL
+    db 2, FIRE_PUNCH
+    db 2, HEADBUTT
+    db 0
 MissingNoB5EvosMoves:
 ; Evolutions
 	db 0
@@ -2508,7 +3378,10 @@ OddishEvosMoves:
 	db 40, SLUDGE
 	db 50, SOLARBEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, RAZOR_LEAF
+    db 0
 GloomEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, LEAF_STONE, 1, VILEPLUME
@@ -2525,7 +3398,10 @@ GloomEvosMoves:
 	db 40, SLUDGE
 	db 50, SOLARBEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, RAZOR_LEAF
+    db 0
 VileplumeEvosMoves:
 ; Evolutions
 	db 0
@@ -2541,7 +3417,10 @@ VileplumeEvosMoves:
 	db 40, SLUDGE
 	db 50, SOLARBEAM
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, RAZOR_LEAF
+    db 0
 BellsproutEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 21, WEEPINBELL
@@ -2556,7 +3435,11 @@ BellsproutEvosMoves:
 	db 43, WRAP
 	db 48, SLEEP_POWDER
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, LEECH_LIFE
+    db 2, LOVELY_KISS
+    db 0
 WeepinbellEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, LEAF_STONE, 1, VICTREEBEL
@@ -2570,7 +3453,11 @@ WeepinbellEvosMoves:
 	db 43, WRAP
 	db 48, SLEEP_POWDER
 	db 0
-
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, LEECH_LIFE
+    db 2, LOVELY_KISS
+    db 0
 VictreebelEvosMoves:
 ; Evolutions
 	db 0
@@ -2585,3 +3472,8 @@ VictreebelEvosMoves:
 	db 43, WRAP
 	db 48, SLEEP_POWDER
 	db 0
+; Tutoring Learnset   
+    db 2, FLASH
+    db 2, LEECH_LIFE
+    db 2, LOVELY_KISS
+    db 0

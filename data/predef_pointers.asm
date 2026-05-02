@@ -110,3 +110,4 @@ PredefPointers::
 	add_predef DisplayElevatorFloorMenu
 	add_predef OaksAideScript
     add_predef RandomPickUpItem
+    add_predef RogueDoInGameTradeDialogue

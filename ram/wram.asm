@@ -177,10 +177,10 @@ wShadowOAMBackupEnd::
 
 NEXTU
 ; list of indexes to patch with SERIAL_NO_DATA_BYTE after transfer
-wSerialPartyMonsPatchList:: ds 200
+;wSerialPartyMonsPatchList:: ds 200
 
 ; list of indexes to patch with SERIAL_NO_DATA_BYTE after transfer
-wSerialEnemyMonsPatchList:: ds 200
+;wSerialEnemyMonsPatchList:: ds 200
 ENDU
 
 
@@ -389,7 +389,7 @@ wSlotMachineSevenAndBarModeChance:: db
 	ds 2
 ; ROM back to return to when the player is done with the slot machine
 wSlotMachineSavedROMBank:: db
-	ds 166
+; removed ds stack here for move relearner
 wLuckySlotHiddenEventIndex:: db
 
 NEXTU
@@ -2229,6 +2229,49 @@ WRogueDoor1:: db
 WRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
+
+roguenpctrade::
+roguenpctradegive:: db
+roguenpctradeget:: db
+roguenpctradedialogue:: db
+roguenpctrade:: dname, NAME_LENGTH
+
+PCClerkText1::
+	db TX_SCRIPT_MART
+    db $9
+PCClerkText1Items::
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db -1 ; end
+    
+PCClerkText2::
+	db TX_SCRIPT_MART
+    db $9
+PCClerkText1Items::
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db
+    db -1 ; end
+; Move Buffer stuff for Mateo's code
+wMoveBuffer::
+wRelearnableMoves::
+	ds 164
+; Try not to use this stack. 
+; A good amount of space is needed to store data for the move relearner.
+; If it's like, 2, it'll lag like crazy and show garbage from elsewhere.	
 
 wMainDataEnd::
 

@@ -395,5 +395,13 @@ ENDM
 	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_1 ; E1
 	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_2 ; E2
 	const TOGGLE_ARTICUNO                      ; E3 X
+    
+    toggle_consts_for INDIGO_PLATEAU_LOBBY
+    const TOGGLE_PC_PSYCHIC, OFF        ; E4
+	const TOGGLE_PC_WITCH, OFF      ; E5
+	const TOGGLE_PC_POKESALESMAN, OFF   ; E6
+    const TOGGLE_PC_TRADENERD, OFF      ; E7
+    const TOGGLE_PC_MOVETUTOR, OFF      ; E7
+    
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value
