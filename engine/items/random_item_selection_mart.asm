@@ -235,3 +235,11 @@ ld a, [hl]                  ; load item from address
 ld [wRogueItem], a            ; place item in 
 
 RET
+
+PCClerkText1::
+	db TX_SCRIPT_MART
+    db $9
+    
+PCClerkText2::
+	db TX_SCRIPT_MART
+    db $9

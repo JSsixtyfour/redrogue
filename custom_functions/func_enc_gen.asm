@@ -27,17 +27,17 @@ DisallowWildMew:
 	
 	
 
-CheckIfPkmnReal:
-;set the carry if pokemon number in 'a' is found on the list of legit pokemon
-	push hl
-	push de
-	push bc
-	ld hl, ListRealPkmn
-	ld de, $0001
-	call IsInArray
-	pop bc
-	pop de
-	pop hl
+;CheckIfPkmnReal:
+;;set the carry if pokemon number in 'a' is found on the list of legit pokemon
+;	push hl
+;	push de
+;	push bc
+;	ld hl, ListRealPkmn
+;	ld de, $0001
+;	call IsInArray
+;	pop bc
+;	pop de
+;	pop hl
 
 ;This function loads a random trainer class (value of $01 to $2F)
 GetRandTrainer:
@@ -341,167 +341,167 @@ ldh   a, [hQuotient+3]      ; load in quotient
 pop bc
 ret
 
-GetWeightedLevel:
-	ld a, [wPartyCount]
-	dec a
-	jp z, GetHighestLevel
-
-	push hl
-	push bc
-	push de
-	
-	ld hl, wBoxDataEnd+5	;need 6 bytes of working space
-	
-	ld de, wPartyMenuHPBarColors
-	ld a, [wPartyCount]
-	ld c, a
-.loop
-	ld a, [de]
-	ld [hld], a
-	inc de
-	dec c
-	jr nz, .loop
-
-	ld a, [wPartyCount]
-	ld c, a
-.loop2
-	inc hl
-	dec c
-	jr nz, .loop2
-	
-	ld d, h
-	ld e, l
-	
-.sortingpass
-	ld h, d
-	ld l, e
-	ld a, [wPartyCount]	;if in this sorting pass loop, then this number is 2 to 6
-	dec a
-	ld c, a
-.loop3A
-	ld a, [hld]
-	cp [hl]
-	jr c, .swapping
-	dec c
-	jr z, .weight	;if an entire pass was made with no swapping, then the bytes are sorted
-	jr .loop3A
-.swapping
-	;current [HL] is greater than [HL+1] which is in A
-	;need to swap them
-	ld b, a
-	ld a, [hli]
-	ld [hld], a
-	ld a, b
-	ld [hl], a
-	;did the swap
-	;if this is the end of the pass, do another pass
-	dec c
-	jr z, .sortingpass
-	;else keep looping through this pass
-.loop3B
-	ld a, [hld]
-	cp [hl]
-	jr c, .swapping
-	dec c
-	jr z, .sortingpass	;if the pass is complete, then then do another pass because a swap was done
-	jr .loop3B
-	
-.weight
-	ld h, d
-	ld l, e
-	ld a, [wPartyCount]
-	ld c, a
-	dec c	
-	ld d, 1
-	ld e, 1
-.loop4
-	dec hl
-	ld a, [hl]
-.loop4sub1
-	srl a
-	dec e
-	jr nz, .loop4sub1
-	ld [hl], a
-	inc d
-	ld e, d
-	dec c
-	jr nz, .loop4
-
-.summation
-	ld de, $0000
-	ld a, [wPartyCount]
-	ld c, a
-.loop5
-	ld a, [hli]
-	add e
-	ld e, a
-	ld a, d
-	adc d
-	ld d, a
-	dec c
-	jr nz, .loop5	
-
-.multiplication	;do x32
-	ld c, 5
-.loop6
-	sla e
-	rl d
-	dec c
-	jr nz, .loop6
-
-.prepareDividend
-	ld a, d
-	ld [hDividend+0], a
-	ld a, e
-	ld [hDividend+1], a
-	xor a
-	ld [hDividend+2], a
-	ld [hDividend+3], a
-
-.getdivisor
-	ld a, [wPartyCount]
-	ld c, a
-	dec c
-	ld a, 32
-	ld b, 32
-.loop7
-	srl b
-	add b
-	dec c
-	jr nz, .loop7
-	ld [hDivisor], a
-
-	ld b, 2
-	call Divide
-	ld a, [hQuotient+3]
-	
-	pop de
-	pop bc
-	pop hl
-	ret
-	
-
-	
-GetHighestLevel:	;gets the highest party level into A
-; UPDATE, should look to current battle count
-	push hl
-	push bc
-	ld hl, wPartyMenuHPBarColors
-	ld a, [wPartyCount]	;1 to 6
-	ld b, a	;use b for countdown
-.loadHigher
-	ld a, [hl]
-.keepCurrent
-	dec b
-	jr z, .highestLVLfound
-	inc hl
-	cp a, [hl]
-	jr c, .loadHigher
-	jr .keepCurrent
-.highestLVLfound
-	pop bc
-	pop hl
-	ret
+;GetWeightedLevel:
+;	ld a, [wPartyCount]
+;	dec a
+;	jp z, GetHighestLevel
+;
+;	push hl
+;	push bc
+;	push de
+;	
+;	ld hl, wBoxDataEnd+5	;need 6 bytes of working space
+;	
+;	ld de, wPartyMenuHPBarColors
+;	ld a, [wPartyCount]
+;	ld c, a
+;.loop
+;	ld a, [de]
+;	ld [hld], a
+;	inc de
+;	dec c
+;	jr nz, .loop
+;
+;	ld a, [wPartyCount]
+;	ld c, a
+;.loop2
+;	inc hl
+;	dec c
+;	jr nz, .loop2
+;	
+;	ld d, h
+;	ld e, l
+;	
+;.sortingpass
+;	ld h, d
+;	ld l, e
+;	ld a, [wPartyCount]	;if in this sorting pass loop, then this number is 2 to 6
+;	dec a
+;	ld c, a
+;.loop3A
+;	ld a, [hld]
+;	cp [hl]
+;	jr c, .swapping
+;	dec c
+;	jr z, .weight	;if an entire pass was made with no swapping, then the bytes are sorted
+;	jr .loop3A
+;.swapping
+;	;current [HL] is greater than [HL+1] which is in A
+;	;need to swap them
+;	ld b, a
+;	ld a, [hli]
+;	ld [hld], a
+;	ld a, b
+;	ld [hl], a
+;	;did the swap
+;	;if this is the end of the pass, do another pass
+;	dec c
+;	jr z, .sortingpass
+;	;else keep looping through this pass
+;.loop3B
+;	ld a, [hld]
+;	cp [hl]
+;	jr c, .swapping
+;	dec c
+;	jr z, .sortingpass	;if the pass is complete, then then do another pass because a swap was done
+;	jr .loop3B
+;	
+;.weight
+;	ld h, d
+;	ld l, e
+;	ld a, [wPartyCount]
+;	ld c, a
+;	dec c	
+;	ld d, 1
+;	ld e, 1
+;.loop4
+;	dec hl
+;	ld a, [hl]
+;.loop4sub1
+;	srl a
+;	dec e
+;	jr nz, .loop4sub1
+;	ld [hl], a
+;	inc d
+;	ld e, d
+;	dec c
+;	jr nz, .loop4
+;
+;.summation
+;	ld de, $0000
+;	ld a, [wPartyCount]
+;	ld c, a
+;.loop5
+;	ld a, [hli]
+;	add e
+;	ld e, a
+;	ld a, d
+;	adc d
+;	ld d, a
+;	dec c
+;	jr nz, .loop5	
+;
+;.multiplication	;do x32
+;	ld c, 5
+;.loop6
+;	sla e
+;	rl d
+;	dec c
+;	jr nz, .loop6
+;
+;.prepareDividend
+;	ld a, d
+;	ld [hDividend+0], a
+;	ld a, e
+;	ld [hDividend+1], a
+;	xor a
+;	ld [hDividend+2], a
+;	ld [hDividend+3], a
+;
+;.getdivisor
+;	ld a, [wPartyCount]
+;	ld c, a
+;	dec c
+;	ld a, 32
+;	ld b, 32
+;.loop7
+;	srl b
+;	add b
+;	dec c
+;	jr nz, .loop7
+;	ld [hDivisor], a
+;
+;	ld b, 2
+;	call Divide
+;	ld a, [hQuotient+3]
+;	
+;	pop de
+;	pop bc
+;	pop hl
+;	ret
+;	
+;
+;	
+;GetHighestLevel:	;gets the highest party level into A
+;; UPDATE, should look to current battle count
+;	push hl
+;	push bc
+;	ld hl, wPartyMenuHPBarColors
+;	ld a, [wPartyCount]	;1 to 6
+;	ld b, a	;use b for countdown
+;.loadHigher
+;	ld a, [hl]
+;.keepCurrent
+;	dec b
+;	jr z, .highestLVLfound
+;	inc hl
+;	cp a, [hl]
+;	jr c, .loadHigher
+;	jr .keepCurrent
+;.highestLVLfound
+;	pop bc
+;	pop hl
+;	ret
 	
 	
 ;implement a function to scale trainer levels
@@ -525,7 +525,7 @@ ScaleTrainer_level:
 	;call GetHighestLevel
 	;jr .got_level
 .normal
-	call GetWeightedLevel
+	;call GetWeightedLevel
 .got_level
 	push af
 	ld a, [wCurEnemyLevel]

@@ -16,9 +16,9 @@ ViridianForest_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event  2,  0, VIRIDIAN_FOREST_NORTH_GATE, 3
-	warp_event  3,  0, VIRIDIAN_FOREST_NORTH_GATE, 4
-	warp_event  4,  0, VIRIDIAN_FOREST_NORTH_GATE, 5
+	warp_event  2,  0, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  3,  0, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  4,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 11, 33, VIRIDIAN_FOREST_SOUTH_GATE, 2
 	warp_event 12, 33, VIRIDIAN_FOREST_SOUTH_GATE, 2
 	warp_event 13, 33, VIRIDIAN_FOREST_SOUTH_GATE, 2

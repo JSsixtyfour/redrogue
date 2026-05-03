@@ -777,6 +777,7 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 ; Rogue events
 
     const EVENT_STEP_FORWARD
+    const EVENT_BOUGHT_POKEMON
 
 ; End of events
 	const_next $A00

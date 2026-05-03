@@ -53,7 +53,7 @@ PCWitchText:
 	ld hl, .Accept
 	call PrintText
     call GBFadeOutToBlack
-    ld a, TOGGLE_INDIGOPLATEAULOBBY_CHANNELER
+    ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef HideObject
     call UpdateSprites
@@ -348,7 +348,7 @@ PCDaycareGentlemanText:
 	text_far _DaycareGentlemanNotEnoughMoneyText
 	text_end
 
-PokecenterPokemonSalesmanText:
+PCPokemonSalesmanText:
 	text_asm
 	CheckEvent EVENT_BOUGHT_POKEMON, 1
 	jp c, .alreadyBoughtPokemon
@@ -438,11 +438,11 @@ PCMoveTutorText::
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	; not enough money
-	ld hl, MoveTutorNotEnoughMoneyText
+	ld hl, PCMoveTutorNotEnoughMoneyText
 	call PrintText
 	jp TextScriptEnd
 .enoughMoney
-	ld hl, MoveTutorSaidYesText
+	ld hl, PCMoveTutorSaidYesText
 	call PrintText
 	; Select pokemon from party.
 	call SaveScreenTilesToBuffer2

@@ -525,7 +525,7 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	ld hl, wPartySpecies
 	add hl, bc
 	ld a, [hl] ; a = mon id
-	ld [wd0b5], a	;joenote - put mon id into wram for potential later usage of GetMonHeader
+	ld [wCurSpecies], a	;joenote - put mon id into wram for potential later usage of GetMonHeader
 	; Get pointer to evos moves data.
 	dec a
 	ld c, a
@@ -717,7 +717,7 @@ PrepareMoveTutorList::
 	ld hl, wPartySpecies
 	add hl, bc
 	ld a, [hl] ; a = mon id
-	ld [wd0b5], a	;joenote - put mon id into wram for potential later usage of GetMonHeader
+	ld [wCurSpecies], a	;joenote - put mon id into wram for potential later usage of GetMonHeader
 	; Get pointer to evos moves data.
 	dec a
 	ld c, a

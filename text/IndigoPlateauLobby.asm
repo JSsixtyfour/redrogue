@@ -26,7 +26,7 @@ _WitchChallengeText::
     cont "in the next zone"
     
     para "In exchange your"
-	line "next reward #MON""
+	line "next reward #MON"
 	cont "will have higher"
 	cont "rarity"
 	
