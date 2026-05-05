@@ -1968,7 +1968,7 @@ wRedsHouse2FCurScript:: db
 wViridianMartCurScript:: db
 wRoute22GateCurScript:: db
 wCeruleanCityCurScript:: db
-	ds 7
+	; ds 7 will this cause an issue? Probably not
 wSSAnneBowCurScript:: db
 wViridianForestCurScript:: db
 wMuseum1FCurScript:: db
@@ -2050,7 +2050,7 @@ wSeafoamIslandsB3FCurScript:: db
 wRoute23CurScript:: db
 wSeafoamIslandsB4FCurScript:: db
 wRoute18Gate1FCurScript:: db
-	;ds 78
+	;ds 78  I REMOVED THIS, COULD BE AN ISSUE
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2061,10 +2061,15 @@ WRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
 
-roguenpctradegive:: db
-roguenpctradeget:: db
-roguenpctradedialogue:: db
-roguenpctrade:: ds NAME_LENGTH
+wroguenpctradegive:: db
+wroguenpctradeget:: db
+wroguenpctradedialogue:: db
+wroguenpctrade:: ds NAME_LENGTH
+
+wroguenpcsell:: db
+
+wAllSpecies::
+ds $40
 
 PCClerkText1::
 	db ;TX_SCRIPT_MART

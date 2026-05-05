@@ -425,11 +425,11 @@ ToggleableObjectStates:
 	toggle_object_state SEAFOAMISLANDSB4F_ARTICUNO, ON
     
     toggleable_objects_for INDIGO_PLATEAU_LOBBY
-	toggle_object_state PC_PSYCHIC, OFF
-	toggle_object_state PC_WITCH, OFF
-	toggle_object_state PC_POKESALESMAN, OFF
-    toggle_object_state PC_TRADENERD, OFF
-    toggle_object_state PC_MOVETUTOR, OFF
+	toggle_object_state PC_PSYCHIC, ON
+	toggle_object_state PC_WITCH, ON
+	toggle_object_state PC_POKESALESMAN, ON
+    toggle_object_state PC_TRADENERD, ON
+    toggle_object_state PC_MOVETUTOR, ON
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

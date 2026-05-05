@@ -1,16 +1,26 @@
 IndigoPlateauLobby_Script:
 	call EnableAutoTextBoxDrawing
-	ld hl, wCurrentMapScriptFlags
+	
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+    
+    SetEvent EVENT_ENTER_ROOM
+    call PCTraderSuperNerdSetup
+    ;call PCPokemonSalesmanSetup
+    ;call PCClerksSetup
+    
+    .normal
+    ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
 	ret z
-	ResetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
+	;ResetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
 	; Reset Elite Four events if the player started challenging them before
-	ld hl, wElite4Flags
-	bit BIT_STARTED_ELITE_4, [hl]
-	res BIT_STARTED_ELITE_4, [hl]
-	ret z
-	ResetEventRange INDIGO_PLATEAU_EVENTS_START, EVENT_LANCES_ROOM_LOCK_DOOR
+	;ld hl, wElite4Flags
+	;bit BIT_STARTED_ELITE_4, [hl]
+	;res BIT_STARTED_ELITE_4, [hl]
+	;ret z
+	;ResetEventRange INDIGO_PLATEAU_EVENTS_START, EVENT_LANCES_ROOM_LOCK_DOOR
 	ret
 
 IndigoPlateauLobby_TextPointers:
@@ -551,3 +561,90 @@ PCMoveTutorByeText:
 PCMoveTutorNoMovesText:
 	text_far _PCMoveTutorNoMovesText
 	text_end
+    
+PCTraderSuperNerdSetup:
+    ld b, 0
+    ld c, 0
+    ld hl, wPartySpecies
+    push hl
+    
+    .loop
+    pop hl
+    ld a, [hli]
+    push hl
+	cp $ff
+	jr z, .box
+    
+    inc c
+    ld hl, wAllSpecies - 1
+    add hl, bc
+    ld [hl], a ; load mon into allspecies
+    jr .loop
+    
+    .box ;
+    pop hl
+    ld hl, wBoxSpecies
+    push hl
+    
+    .loop2
+    pop hl
+    ld a, [hli]
+    push hl
+	cp $ff
+	jr z, .randomselect
+    
+    inc c
+    ld hl, wAllSpecies - 1
+    add hl, bc
+    ld [hl], a ; load mon into allspecies
+    jr .loop2
+    
+    
+	.randomselect
+    call Rangerandom
+    ld hl, wAllSpecies
+    add hl, bc
+    ld a, [hl]    ; get the pokemon the trader wants
+    ld [wroguenpctradegive], a
+    
+    ; begin finding pokemon that you get
+    ld c, $2
+    ld b, 0
+    ld d, a ; place giving pokemon in d
+    ld hl, pokemon_classes -2 ; list of all pokemon
+    ld e, 0
+    
+    .loopclass
+    add hl, bc  ; get next pokemon address
+    inc e    ; keep adding to get how far down the list we
+    ld a, [hl] ; load pokemon
+    cp d     ; see if we found the pokemon the trader wants from player
+    jr nz, .loopclass   ; loop back until we find the pokemon
+    
+    ld a, 31 ; there are 30 pokeball class pokemon
+    ld c, 1 ; auto pokeball class
+    cp e ; see if pokeball class
+    jr c, .get_pokemon
+    
+    ld a, 59
+    inc c
+    cp e ; see if pokeball class
+    jr c, .get_pokemon
+    
+    inc c
+    ld a, 75
+    cp e ; see if pokeball class
+    jr c, .get_pokemon
+    ; if we're here, it's masterball class
+    ; will need to make some exception for mew and mewtwo UPDATE
+    .get_pokemon
+    call Random  
+    ; c will be a flag to pick a pokemon of equivalent rarity
+    call Random_Pokemon_Selection
+    ld [wroguenpctradeget], a ; load in pokemon that they will give player
+    call GetMonName         ; get name of pokemon to receive
+    ld [wroguenpctrade], a   ; load name into location
+    ; could make a list of random names to choose from
+    
+    pop hl
+    ret 

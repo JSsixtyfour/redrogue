@@ -6,7 +6,7 @@ DEF greatball_odds EQU $66 + $7F
 DEF ultraball_odds EQU $1A + $66 + $7F
 DEF masterball_odds EQU $A ; if prerequisites met
 
-pokemon_classes:
+pokemon_classes::
 table_width 1
 pokeball_class:
 db CATERPIE

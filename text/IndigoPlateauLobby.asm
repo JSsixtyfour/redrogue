@@ -15,20 +15,22 @@ _IndigoPlateauLobbyGymGuideText::
 
 _WitchIntroText::
 	text "Kekeke...."
-	line "I have a challenge"
-	cont "for you if you dare"
+    para "I have a"
+	line "challenge for you"
+    cont "if you dare"
 	done
 
 _WitchChallengeText::
 	text "All #MON"
 	line "will be one level"
-    cont "higher than normal"
-    cont "in the next zone"
+    cont "higher than"
+    cont "normal in the"
+    cont "next zone"
     
     para "In exchange your"
-	line "next reward #MON"
-	cont "will have higher"
-	cont "rarity"
+	line "next reward"
+	cont "#MON will have"
+	cont "higher rarity"
 	
     para "Do we have a"
 	line "bargain?"
@@ -45,9 +47,10 @@ _WitchRefusalText::
     
 _PCMoveTutorGreetingText::
     text "I have a pathway"
-	line "for your #MON to"
-	cont "learn many abilities"
-    cont "some might consider"
+	line "for your #MON"
+	cont "to learn many"
+    cont "abilities some"
+    cont "might consider"
     cont "...unnatural."
     
     para "¥3000 per move."
@@ -59,8 +62,9 @@ _PCMoveTutorByeText::
 	done
     
 _PCMoveTutorNotEnoughMoneyText::
-    text "You lack the funds"
-	line "for my services"
+    text "You lack the"
+	line "funds for my"
+    line "services"
 	done
     
 _PCMoveTutorSaidYesText::
@@ -75,6 +79,6 @@ _PCMoveTutorWhichMoveText::
     
 _PCMoveTutorNoMovesText::
 	text "I have nothing to"
-	line "to teach this"
+	line "teach this"
 	cont "#MON."
 	done

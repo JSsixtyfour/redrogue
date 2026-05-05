@@ -1,7 +1,23 @@
 ; This code is meant to handle any time a pokemon is selected at random, be it starters or for regular prizes
 ; The code outputs a pokemon ID into a
 ; masterball class check will be here, will require separate events to occur before active
+; auto class by putting a number in c
 Random_Pokemon_Selection::
+; set class check
+ld a, 0x1
+cp c
+jp z, pokeball_class_selection
+
+ld a, 0x2
+cp c
+jp z, greatball_class_selection
+
+ld a, 0x3
+cp c
+jp z, ultraball_class_selection
+
+; UPDATE, need masterball stuff
+
 ldh a, [hRandomAdd]
 ld  b, a
 ld hl, pokemon_class_odds
