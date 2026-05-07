@@ -5,6 +5,10 @@ IndigoPlateauLobby_Script:
     jr nz, .normal
     
     SetEvent EVENT_ENTER_ROOM
+	ld c, TRADE_FOR_RANDOM
+	ld b, FLAG_RESET
+    ld hl, wCompletedInGameTradeFlags
+	predef FlagActionPredef
     call PCTraderSuperNerdSetup
     ;call PCPokemonSalesmanSetup
     ;call PCClerksSetup
@@ -425,8 +429,8 @@ PCPokemonSalesmanText:
 
 PCTraderSuperNerdText:
 	text_asm
-	;ld a, TRADE_FOR_CRINKLES
-	;ld [wWhichTrade], a
+	ld a, TRADE_FOR_RANDOM
+	ld [wWhichTrade], a
     predef RogueDoInGameTradeDialogue
 	jp TextScriptEnd
     
@@ -562,6 +566,15 @@ PCMoveTutorNoMovesText:
 	text_far _PCMoveTutorNoMovesText
 	text_end
     
+DEF pokeball_pokemon_line_number EQU 28
+DEF pokeball_pokemon_number EQU 28 + 26 + 6
+DEF greatball_pokemon_line_number EQU pokeball_pokemon_line_number + 28
+DEF greatball_pokemon_number EQU pokeball_pokemon_number + 28 + 25 + 8
+DEF ultraball_pokemon_line_number EQU greatball_pokemon_line_number+ 16
+DEF ultraball_pokemon_number EQU greatball_pokemon_number + 16 + 3 + 2
+DEF masterball_pokemon_line_number EQU ultraball_pokemon_line_number + 5
+DEF masterball_pokemon_number EQU ultraball_pokemon_number + 5 + 2
+    
 PCTraderSuperNerdSetup:
     ld b, 0
     ld c, 0
@@ -602,45 +615,51 @@ PCTraderSuperNerdSetup:
     
 	.randomselect
     call Rangerandom
+    ld c, a     ; place random number in c
     ld hl, wAllSpecies
     add hl, bc
     ld a, [hl]    ; get the pokemon the trader wants
     ld [wroguenpctradegive], a
     
     ; begin finding pokemon that you get
-    ld c, $2
-    ld b, 0
     ld d, a ; place giving pokemon in d
-    ld hl, pokemon_classes -2 ; list of all pokemon
+    ld hl, pokemon_classes ; list of all pokemon
     ld e, 0
     
     .loopclass
-    add hl, bc  ; get next pokemon address
     inc e    ; keep adding to get how far down the list we
-    ld a, [hl] ; load pokemon
+    ld a, [hli] ; load pokemon
     cp d     ; see if we found the pokemon the trader wants from player
     jr nz, .loopclass   ; loop back until we find the pokemon
     
-    ld a, 31 ; there are 30 pokeball class pokemon
+    ld a, pokeball_pokemon_number
     ld c, 1 ; auto pokeball class
     cp e ; see if pokeball class
-    jr c, .get_pokemon
+    jr nc, .get_pokemon
     
-    ld a, 59
+    ld a, greatball_pokemon_number
     inc c
     cp e ; see if pokeball class
-    jr c, .get_pokemon
+    jr nc, .get_pokemon
     
     inc c
-    ld a, 75
+    ld a, ultraball_pokemon_number
     cp e ; see if pokeball class
-    jr c, .get_pokemon
+    jr nc, .get_pokemon
+    inc c
     ; if we're here, it's masterball class
     ; will need to make some exception for mew and mewtwo UPDATE
     .get_pokemon
-    call Random  
+    ;push de
     ; c will be a flag to pick a pokemon of equivalent rarity
+    ;.looptradeget
     call Random_Pokemon_Selection
+    ld a, d
+    ;pop de
+    ;push de
+    ;cp d
+    ;jr z, .looptradeget
+    ;pop de
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
     call GetMonName         ; get name of pokemon to receive
     ld [wroguenpctrade], a   ; load name into location
@@ -648,3 +667,5 @@ PCTraderSuperNerdSetup:
     
     pop hl
     ret 
+    
+    

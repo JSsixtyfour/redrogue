@@ -16,7 +16,9 @@ ld a, 0x3
 cp c
 jp z, ultraball_class_selection
 
-; UPDATE, need masterball stuff
+ld a, 0x4
+cp c
+jp z, masterball_class_selection
 
 ldh a, [hRandomAdd]
 ld  b, a
@@ -32,14 +34,52 @@ cp b
 jr nc, greatball_class_selection
 jp ultraball_class_selection
 
-; common
+
 pokeball_class_selection:
+ld hl, pokeball_class_selection
+push hl
+ld hl, pokeball_class
+push hl
+ld a, pokeball_pokemon_line_amount
+push af
+jp pokemon_selection
+
+greatball_class_selection:
+ld hl, greatball_class_selection
+push hl
+ld hl, greatball_class
+push hl
+ld a, greatball_pokemon_line_amount
+push af
+jp pokemon_selection
+
+ultraball_class_selection:
+ld hl, ultraball_class_selection
+push hl
+ld hl, ultraball_class
+push hl
+ld a, ultraball_pokemon_line_amount
+push af
+jp pokemon_selection
+
+masterball_class_selection:
+ld hl, masterball_class_selection
+push hl
+ld hl, masterball_class
+push hl
+ld a, masterball_pokemon_line_amount
+push af
+jp pokemon_selection
+
+; common
+pokemon_selection:
 call Random                 ; get a random number to determine pokemon
 ldh [hMultiplicand+2], a    ; place number in for multiplication
 xor a
 ldh [hMultiplicand], a      ; put zero in highest byte
 ldh [hMultiplicand+1], a    ; put second byte for multiplication
-ld a, $1D                   ; multiply by amount of this class
+pop af                      ; restore line amount to multiply by amount in class
+;ld a, pokeball_pokemon_line_number                   ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a, [hProduct+2]       ; load product into a
@@ -48,130 +88,38 @@ ldh   a, [hProduct+3]
 ldh [hDividend+1], a
 
 ld a, $FF                   ; load 255
-ld b, $2
+ld b, $2                    ; b determines how many bytes the number is, do not remove!
 ldh [hDivisor], a           ; place 255 as divisor
 call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
-ldh [hMultiplicand], a      ; set quotient as multiplier
-ld a, $2
-ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
-xor a
-ldh [hMultiplicand+1], a    ; clear out other digits
-ldh [hMultiplicand+2], a
-call Multiply               ; multiply result by size of struct to add to base address
-ld hl, hProduct+1           ; load pokemon pointer
-ld c,[hl]                   ; load offset to add to pointer, to get address
+ldh   a, [hQuotient+3]      ; load in quotient, which will be the offset
+ld c, a                     ; place in c
+;ldh [hMultiplicand], a      ; set quotient as multiplier
+;ld a, $2
+;ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
+;xor a
+;ldh [hMultiplicand+1], a    ; clear out other digits
+;ldh [hMultiplicand+2], a
+;call Multiply               ; multiply result by size of struct to add to base address
+;ld hl, hProduct+1           ; load pokemon pointer
+;ld c,[hl]                   ; load offset to add to pointer, to get address
 ld b, $0
 
-ld hl, pokeball_class+1     ; load base pointer
+
+pop hl                      ; restore base pointer
+;ld hl, pokeball_class       ; load base pointer
 add hl, bc                  ; add product to get address of pokemon
-ld a, [hld]                 ; load flag to see if offered before
-cp b                        ; compare to see if pokemon was already offered
-jr z, pokeball_load         ; look for new pokemon if already offered
-jp pokeball_class_selection ; try again if already offered
 
+                      
+ld d, [hl]                  ; load selected pokemon
+call AllSpeciesCheck        ; check if pokemon already in box or party
+xor a                       ; clear out a
+pop hl                      ; reload selection class
+cp c
+jr z, .done                 ; if 0, you have found a suitable pokemon
+jp hl                       ; if 1, you have selected an already existing team member and need to redo
 
-pokeball_load:
-ld [hl], 0x1                ; save 1 to flag for offered pokemon [probably need to update so this only triggers when chosen, instead of offered, could be a medium challenge though]
-inc [hl]                    ; increase address to get to address of the pokemon
-ld d, [hl]                  ; load pokemon from address
-
+.done
 RET
-
-; rare
-
-greatball_class_selection:
-call Random
-ldh [hMultiplicand+2], a
-xor a
-ldh [hMultiplicand], a
-ldh [hMultiplicand+1], a
-ld a, $1C
-ldh [hMultiplier], a
-call Multiply
-ldh   a, [hProduct+2]
-ldh [hDividend], a
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF
-ld b, $2
-ldh [hDivisor], a
-call Divide
-ldh   a, [hQuotient+3]
-ldh [hMultiplicand], a
-ld a, $2
-ldh [hMultiplier], a
-xor a
-ldh [hMultiplicand+1], a
-ldh [hMultiplicand+2], a
-call Multiply
-ld hl, hProduct+1
-ld c,[hl]
-ld b, $0
-
-ld hl, greatball_class+1
-add hl, bc
-ld a, [hld]
-cp b
-jr z, greatball_load
-jp greatball_class_selection
-
-
-greatball_load:
-ld [hl], 0x1
-inc [hl]
-ld d, [hl]
-
-RET
-
-ultraball_class_selection:
-
-call Random
-ldh [hMultiplicand+2], a
-xor a
-ldh [hMultiplicand], a
-ldh [hMultiplicand+1], a
-ld a, $10
-ldh [hMultiplier], a
-call Multiply
-ldh   a, [hProduct+2]
-ldh [hDividend], a
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF
-ld b, $2
-ldh [hDivisor], a
-call Divide
-ldh   a, [hQuotient+3]
-ldh [hMultiplicand], a
-ld a, $2
-ldh [hMultiplier], a
-xor a
-ldh [hMultiplicand+1], a
-ldh [hMultiplicand+2], a
-call Multiply
-ld hl, hProduct+1
-ld c,[hl]
-ld b, $0
-
-ld hl, ultraball_class+1
-add hl, bc
-ld a, [hld]
-cp b
-jr z, ultraball_load
-jp ultraball_class_selection
-
-
-ultraball_load:
-ld [hl], 0x1
-inc [hl]
-ld d, [hl]
-
-RET
-
-masterball_class_selection:
 
 rogue_pokemon_randomized_batch::
    call Random
@@ -188,3 +136,64 @@ rogue_pokemon_randomized_batch::
    ld [hl], d
    
 RET
+
+; a check to see if pokemon is already in players box or party
+; returns a 0 if no and a 1 if yes
+
+; UPDATE, need a way to check if evolution
+AllSpeciesCheck::
+    ld b, 0
+    ld c, 0
+    ld hl, wPartySpecies
+    push hl
+    
+    .loop
+    pop hl
+    ld a, [hli]
+    push hl
+	cp $ff
+	jr z, .box
+    
+    inc c
+    ld hl, wAllSpecies - 1
+    add hl, bc
+    ld [hl], a ; load mon into allspecies
+    jr .loop
+    
+    .box ;
+    pop hl
+    ld hl, wBoxSpecies
+    push hl
+    
+    .loop2
+    pop hl
+    ld a, [hli]
+    push hl
+	cp $ff
+	jr z, .begin_checking
+    
+    inc c
+    ld hl, wAllSpecies - 1
+    add hl, bc
+    ld [hl], a ; load mon into allspecies
+    jr .loop2
+    
+    .begin_checking
+    pop hl
+    ld hl, wAllSpecies
+    
+    .checkloop
+    ld a, [hli]         ; load pokemon
+    cp d                ; compare to selected random pokemon
+    jr z, .rejection    ; if the same pokemon flag for rejection
+    cp $ff              
+    jr nz, .checkloop   ; if not end of list, loop
+    
+    ld c, $0               ; set c to 0 as the pokemon isn't on players team
+    jp  .end
+    
+    .rejection
+    ld c, $1            ; set c to 1 as the pokemon is already on players team
+    
+    .end
+    RET
