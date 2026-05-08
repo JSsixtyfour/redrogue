@@ -82,3 +82,64 @@ _PCMoveTutorNoMovesText::
 	line "teach this"
 	cont "#MON."
 	done
+    
+_PCPokemonSalesmanIGotADealPokeballText::
+	text "MAN: Hello, there!"
+	line "Have I got a deal"
+	cont "just for you!"
+
+	para "I'll let you have"
+	line "a swell"
+    cont "@"
+    text_ram wNameBuffer
+    text "!"
+    
+    para "for just 1000!"
+	line "What do you say?"
+	done
+    
+_PCPokemonSalesmanIGotADealGreatballText::
+	text "MAN: Hello, there!"
+	line "Have I got a deal"
+	cont "just for you!"
+
+	para "I'll let you have"
+	line "a swell"
+    cont "@"
+    text_ram wNameBuffer
+    text "!"
+    
+    para  "for just 3000!"
+	line "What do you say?"
+	done
+    
+_PCPokemonSalesmanIGotADealUltraballText::
+	text "MAN: Hello, there!"
+	line "Have I got a deal"
+	cont "just for you!"
+
+	para "I'll let you have"
+	line "a swell"
+    cont "@"
+    text_ram wNameBuffer
+    text "!"
+    
+    para  "for just 5000!"
+	line "What do you say?"
+	done
+
+_PCPokemonSalesmanNoText::
+	text "No? I'm only"
+	line "doing this as a"
+	cont "favor to you!"
+	done
+
+_PCPokemonSalesmanNoMoneyText::
+	text "You'll need more"
+	line "money than that!"
+	done
+
+_PCPokemonSalesmanNoRefundsText::
+	text "MAN: Well, I don't"
+	line "give refunds!"
+	done

@@ -69,7 +69,6 @@ ld a, masterball_pokemon_line_amount
 push af
 jp pokemon_selection
 
-; common
 pokemon_selection:
 call Random                 ; get a random number to determine pokemon
 ldh [hMultiplicand+2], a    ; place number in for multiplication
@@ -77,7 +76,6 @@ xor a
 ldh [hMultiplicand], a      ; put zero in highest byte
 ldh [hMultiplicand+1], a    ; put second byte for multiplication
 pop af                      ; restore line amount to multiply by amount in class
-;ld a, pokeball_pokemon_line_number                   ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a, [hProduct+2]       ; load product into a
@@ -91,20 +89,10 @@ ldh [hDivisor], a           ; place 255 as divisor
 call Divide
 ldh   a, [hQuotient+3]      ; load in quotient, which will be the offset
 ld c, a                     ; place in c
-;ldh [hMultiplicand], a      ; set quotient as multiplier
-;ld a, $2
-;ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
-;xor a
-;ldh [hMultiplicand+1], a    ; clear out other digits
-;ldh [hMultiplicand+2], a
-;call Multiply               ; multiply result by size of struct to add to base address
-;ld hl, hProduct+1           ; load pokemon pointer
-;ld c,[hl]                   ; load offset to add to pointer, to get address
 ld b, $0
 
 
 pop hl                      ; restore base pointer
-;ld hl, pokeball_class       ; load base pointer
 add hl, bc                  ; add product to get address of pokemon
 
                       

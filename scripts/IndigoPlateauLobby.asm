@@ -9,8 +9,9 @@ IndigoPlateauLobby_Script:
 	ld b, FLAG_RESET
     ld hl, wCompletedInGameTradeFlags
 	predef FlagActionPredef
+    ResetEvent EVENT_BOUGHT_POKEMON
     call PCTraderSuperNerdSetup
-    ;call PCPokemonSalesmanSetup
+    call PCPokemonSalesmanSetup
     ;call PCClerksSetup
     
     .normal
@@ -97,6 +98,7 @@ PCWitchText:
 
 IndigoPlateauLobbyLinkReceptionistText:
 	script_cable_club_receptionist
+
 
 PCDaycareGentlemanText:
 	text_asm
@@ -362,11 +364,29 @@ PCDaycareGentlemanText:
 	text_far _DaycareGentlemanNotEnoughMoneyText
 	text_end
 
+
+
 PCPokemonSalesmanText:
 	text_asm
-	CheckEvent EVENT_BOUGHT_POKEMON, 1
+	CheckEvent EVENT_BOUGHT_POKEMON
 	jp c, .alreadyBoughtPokemon
-	ld hl, .IGotADealText
+    
+    ld a, [wroguenpcsell]   ; load pokemon for sale
+    ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
+    call GetMonName         ; get name of pokemon to receive
+    
+    ld a, [wroguenpcclass]
+    ld hl, .IGotADealTextPokeball
+    ld c, 1
+    cp c
+    jr z, .print
+    inc c       ; greatball class
+    ld hl, .IGotADealTextGreatball
+    ld b, $30
+    cp c
+    jr z, .print
+	ld hl, .IGotADealTextUltraball
+    .print
 	call PrintText
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
@@ -377,20 +397,55 @@ PCPokemonSalesmanText:
 	jp nz, .choseNo
 	ldh [hMoney], a
 	ldh [hMoney + 2], a
-	ld a, $5
+    
+    ld a, [wroguenpcclass]
+    ld b, $10
+    ld c, 1
+    cp c
+    jr z, .pokemon_cost
+    inc c       ; greatball class
+
+    ld b, $30
+    cp c
+    jr z, .pokemon_cost
+    
+    ; ultraball class
+    ld b, $50
+    
+    .pokemon_cost
+    ld a, b
 	ldh [hMoney + 1], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	ld hl, .NoMoneyText
 	jr .printText
 .enoughMoney
-	lb bc, MAGIKARP, 5
+    ld a, [wroguenpcsell]   ; load pokemon for sale
+    ld b, a                 ; move pokemon ID to b
+	ld c, 5                 ; temporary set level, will need some sort of system
 	call GivePokemon
 	jr nc, .done
 	xor a
 	ld [wPriceTemp], a
 	ld [wPriceTemp + 2], a
-	ld a, $5
+    
+    ld a, [wroguenpcclass]
+    ld b, $10
+    ld c, 1
+    cp c
+    jr z, .pokemon_cost_2
+    inc c       ; greatball class
+
+    ld b, $30
+    cp c
+    jr z, .pokemon_cost_2
+    
+    ; ultraball class
+    ld b, $50
+    
+    
+	.pokemon_cost_2
+    ld a, b
 	ld [wPriceTemp + 1], a
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2
@@ -411,20 +466,28 @@ PCPokemonSalesmanText:
 .done
 	jp TextScriptEnd
 
-.IGotADealText
-	text_far _MtMoonPokecenterMagikarpSalesmanIGotADealText
+.IGotADealTextPokeball
+	text_far _PCPokemonSalesmanIGotADealPokeballText
+	text_end
+
+.IGotADealTextGreatball
+	text_far _PCPokemonSalesmanIGotADealGreatballText
+	text_end
+    
+.IGotADealTextUltraball
+	text_far _PCPokemonSalesmanIGotADealUltraballText
 	text_end
 
 .NoText
-	text_far _MtMoonPokecenterMagikarpSalesmanNoText
+	text_far _PCPokemonSalesmanNoText
 	text_end
 
 .NoMoneyText
-	text_far _MtMoonPokecenterMagikarpSalesmanNoMoneyText
+	text_far _PCPokemonSalesmanNoMoneyText
 	text_end
 
 .NoRefundsText
-	text_far _MtMoonPokecenterMagikarpSalesmanNoRefundsText
+	text_far _PCPokemonSalesmanNoRefundsText
 	text_end
 
 PCTraderSuperNerdText:
@@ -650,17 +713,47 @@ PCTraderSuperNerdSetup:
     ; if we're here, it's masterball class
     ; will need to make some exception for mew and mewtwo UPDATE
     .get_pokemon
-    ;push de
-    ; c will be a flag to pick a pokemon of equivalent rarity
-    ;.looptradeget
     call Random_Pokemon_Selection
     ld a, d
-    ;pop de
-    ;push de
-    ;cp d
-    ;jr z, .looptradeget
-    ;pop de
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
+    ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
+    call GetMonName         ; get name of pokemon to receive
+    ld hl, wNameBuffer      ; name address
+    ld de, wroguenpctradename   ; load name into this location
+    ld bc, NAME_LENGTH      ; name length
+    call CopyData           ; copy name to location
+    ; could make a list of random names to choose from
+    
+    pop hl
+    ret 
+    
+    DEF salesman_pokeball_odds EQU $99
+    DEF salesman_greatball_odds EQU $99 + $5E
+    DEF salesman_ultraball_odds EQU $8 + $5E + $99
+
+PCPokemonSalesmanSetup:
+    call Random
+    ld b, a     ; move random number to b
+    ld c, 1     ; auto pokeball class
+    ld hl, wroguenpcclass
+    
+    .determineClassSlot
+    ld a, salesman_pokeball_odds
+    ld [hl], c
+    cp b
+    jr nc, .get_pokemon
+    inc c       ; greatball class
+    ld [hl], c
+    ld a, salesman_greatball_odds
+    cp b
+    jr nc, .get_pokemon
+    inc c       ; ultraball class
+    ld [hl], c
+    
+    .get_pokemon
+    call Random_Pokemon_Selection
+    ld a, d
+    ld [wroguenpcsell], a ; load in pokemon that they will give player
     
     
     ; this ain't working! Name is glitched
@@ -674,5 +767,3 @@ PCTraderSuperNerdSetup:
     
     pop hl
     ret 
-    
-    

@@ -2067,6 +2067,7 @@ wroguenpctradedialogue:: db
 wroguenpctradename:: ds NAME_LENGTH
 
 wroguenpcsell:: db
+wroguenpcclass:: db
 
 wAllSpecies::
 ds $40
