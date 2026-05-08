@@ -661,8 +661,15 @@ PCTraderSuperNerdSetup:
     ;jr z, .looptradeget
     ;pop de
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
+    
+    
+    ; this ain't working! Name is glitched
+    ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
     call GetMonName         ; get name of pokemon to receive
-    ld [wroguenpctrade], a   ; load name into location
+    ld hl, wNameBuffer      ; name address
+    ld de, wroguenpctradename   ; load name into this location
+    ld bc, NAME_LENGTH      ; name length
+    call CopyData           ; copy name to location
     ; could make a list of random names to choose from
     
     pop hl

@@ -1,7 +1,6 @@
 ; assigned class for each pokemon and odds
 
 
-pokemon_class_odds:
 DEF pokeball_odds EQU $7F
 DEF greatball_odds EQU $66 + $7F
 DEF ultraball_odds EQU $1A + $66 + $7F
@@ -9,16 +8,16 @@ DEF masterball_odds EQU $A ; if prerequisites met
 
 DEF pokeball_pokemon_line_number EQU 28
 DEF pokeball_pokemon_number EQU 28 + 26 + 6
-DEF pokeball_pokemon_line_amount EQU 28
+DEF pokeball_pokemon_line_amount EQU 28 - 1
 DEF greatball_pokemon_line_number EQU pokeball_pokemon_line_number + 28
 DEF greatball_pokemon_number EQU pokeball_pokemon_number + 28 + 25 + 8
 DEF greatball_pokemon_line_amount EQU 28
 DEF ultraball_pokemon_line_number EQU greatball_pokemon_line_number+ 16
 DEF ultraball_pokemon_number EQU greatball_pokemon_number + 16 + 3 + 2
-DEF ultraball_pokemon_line_amount EQU 16
+DEF ultraball_pokemon_line_amount EQU 16 - 1
 DEF masterball_pokemon_line_number EQU ultraball_pokemon_line_number + 5
 DEF masterball_pokemon_number EQU ultraball_pokemon_number + 5 + 2
-DEF masterball_pokemon_line_amount EQU 5
+DEF masterball_pokemon_line_amount EQU 5 - 1
 
 pokemon_classes::
 table_width 1

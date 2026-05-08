@@ -21,15 +21,13 @@ cp c
 jp z, masterball_class_selection
 
 ldh a, [hRandomAdd]
-ld  b, a
-ld hl, pokemon_class_odds
+ld b, a
 
 .determineClassSlot
-ld a, [hli]
+ld a, pokeball_odds
 cp b
 jr nc, pokeball_class_selection
-inc hl
-ld a, [hli]
+ld a, greatball_odds
 cp b
 jr nc, greatball_class_selection
 jp ultraball_class_selection
@@ -122,16 +120,33 @@ jp hl                       ; if 1, you have selected an already existing team m
 RET
 
 rogue_pokemon_randomized_batch::
+   ld hl, wRoguePokemon1
+   xor a
+   ld [hli], a          ; clear out prior pokemon
+   ld [hli], a          ; clear out prior pokemon
+   ld [hl], a           ; clear out prior pokemon
+   
    call Random
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
    ld [hl], d
+   .roguepokemon2
    call Random
    call Random_Pokemon_Selection
+   ld a, [wRoguePokemon1]
+   cp d
+   jr z, .roguepokemon2
    ld hl, wRoguePokemon2
    ld [hl], d
+   .roguepokemon3
    call Random
    call Random_Pokemon_Selection
+   ld a, [wRoguePokemon1]
+   cp d
+   jr z, .roguepokemon3
+   ld a, [wRoguePokemon2]
+   cp d
+   jr z, .roguepokemon3
    ld hl, wRoguePokemon3
    ld [hl], d
    

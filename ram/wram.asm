@@ -2064,7 +2064,7 @@ wBattleCount:: db
 wroguenpctradegive:: db
 wroguenpctradeget:: db
 wroguenpctradedialogue:: db
-wroguenpctrade:: ds NAME_LENGTH
+wroguenpctradename:: ds NAME_LENGTH
 
 wroguenpcsell:: db
 
