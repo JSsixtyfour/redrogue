@@ -12,7 +12,7 @@ IndigoPlateauLobby_Script:
     ResetEvent EVENT_BOUGHT_POKEMON
     call PCTraderSuperNerdSetup
     call PCPokemonSalesmanSetup
-    ;call PCClerksSetup
+    call PCClerksSetup
     
     .normal
     ld hl, wCurrentMapScriptFlags
@@ -723,7 +723,6 @@ PCTraderSuperNerdSetup:
     ld bc, NAME_LENGTH      ; name length
     call CopyData           ; copy name to location
     ; could make a list of random names to choose from
-    
     pop hl
     ret 
     
@@ -765,5 +764,22 @@ PCPokemonSalesmanSetup:
     call CopyData           ; copy name to location
     ; could make a list of random names to choose from
     
-    pop hl
     ret 
+    
+    PCClerksSetup:
+    ld  hl, PCClerkText1    ; begining of address used for generating marts
+    ld  a, TX_SCRIPT_MART
+    ld [hli], a
+    ld [hl], $A       ; Amount of items
+    
+    ld hl, PCClerkText1Items    ; ram address to save ids to
+    call Random_Healing_Mart_Selection
+    
+    ld hl, PCClerkText2    ; begining of address used for generating marts
+    ld  a, TX_SCRIPT_MART
+    ld [hli], a
+    ld [hl], $A       ; Amount of items
+    
+    ld hl, PCClerkText2Items    ; ram address to save ids to
+    call Random_StatTM_Mart_Selection
+    ret

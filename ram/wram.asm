@@ -2085,12 +2085,14 @@ PCClerkText1Items::
     db
     db
     db
+    db
     db ;-1 ; end
 
 PCClerkText2::
 	db ;TX_SCRIPT_MART
     db ;$9  
 PCClerkText2Items::
+    db
     db
     db
     db

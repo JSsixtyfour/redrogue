@@ -1,6 +1,5 @@
-; This code is meant to handle any time an item is randomly generated for the player to pick up
-; The code outputs an item ID into ram
-; need to push bc and de
+; This code is meant to handle any time an item is randomly generated
+; The code outputs an item ID
 Random_Item_Selection::
 ld a, [wRogueDoorSelection]
 ld b, HEALING
@@ -48,16 +47,13 @@ push bc
 item_determineClassSlot:
 ldh a, [hRandomAdd]
 ld  b, a
-ld hl, item_class_odds
-ld a, [hli]
+ld a, item_pokeball_odds
 cp b
 jr nc, item_pokeball_class_selection
-inc hl
-ld a, [hli]
+ld a, item_greatball_odds
 cp b
 jr nc, item_greatball_class_selection
-inc hl
-ld a, [hli]
+ld a, item_ultraball_odds
 cp b
 jr nc, item_ultraball_class_selection_jump
 jp item_masterball_class_selection
@@ -80,23 +76,13 @@ ldh   a,  [hProduct+2]   ; load product into a
 ldh [hDividend], a          ; place product in dividend
 ldh   a, [hProduct+3]
 ldh [hDividend+1], a
-;ldh   a, [hMultiplicand+2]
-;ldh [hDividend+2], a
 
 ld a, $FF                   ; load 255
 ldh [hDivisor], a           ; place 255 as divisor
 ld b, $2                    ; number of bytes
 call Divide
 ldh   a, [hQuotient+3]      ; load in quotient
-ldh [hMultiplicand], a      ; set quotient as multiplier
-ld a, $2
-ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
-xor a
-ldh [hMultiplicand+1], a    ; clear out other digits
-ldh [hMultiplicand+2], a
-call Multiply               ; multiply result by size of struct to add to base address
-ld hl, hProduct+1           ; load address of offset
-ld c,[hl]                   ; load offset to add to pointer, to get address
+ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
 ld hl,item_pokeball_classes ; class pointer array
@@ -134,20 +120,12 @@ ldh [hDividend], a
 ldh   a, [hProduct+3]
 ldh [hDividend+1], a
 
-ld a, $FF
-ld b, $2
-ldh [hDivisor], a
+ld a, $FF                   ; load 255
+ldh [hDivisor], a           ; place 255 as divisor
+ld b, $2                    ; number of bytes
 call Divide
-ldh   a, [hQuotient+3]
-ldh [hMultiplicand], a
-ld a, $2
-ldh [hMultiplier], a
-xor a
-ldh [hMultiplicand+1], a
-ldh [hMultiplicand+2], a
-call Multiply
-ld hl, hProduct+1
-ld c,[hl]
+ldh   a, [hQuotient+3]      ; load in quotient
+ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
 ld hl,item_greatball_classes ; class pointer array
@@ -183,20 +161,12 @@ ldh [hDividend], a
 ldh   a, [hProduct+3]
 ldh [hDividend+1], a
 
-ld a, $FF
-ld b, $2
-ldh [hDivisor], a
+ld a, $FF                   ; load 255
+ldh [hDivisor], a           ; place 255 as divisor
+ld b, $2                    ; number of bytes
 call Divide
-ldh   a, [hQuotient+3]
-ldh [hMultiplicand], a
-ld a, $2
-ldh [hMultiplier], a
-xor a
-ldh [hMultiplicand+1], a
-ldh [hMultiplicand+2], a
-call Multiply
-ld hl, hProduct+1
-ld c,[hl]
+ldh   a, [hQuotient+3]      ; load in quotient
+ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
 ld hl,item_ultraball_classes ; class pointer array
@@ -233,19 +203,11 @@ ldh   a, [hProduct+3]
 ldh [hDividend+1], a
 
 ld a, $FF                   ; load 255
-ld b, $2
 ldh [hDivisor], a           ; place 255 as divisor
+ld b, $2                    ; number of bytes
 call Divide
 ldh   a, [hQuotient+3]      ; load in quotient
-ldh [hMultiplicand], a      ; set quotient as multiplier
-ld a, $2
-ldh [hMultiplier], a        ; load 2, which is the size of each struct in array
-xor a
-ldh [hMultiplicand+1], a    ; clear out other digits
-ldh [hMultiplicand+2], a
-call Multiply               ; multiply result by size of struct to add to base address
-ld hl, hProduct+1           ; load address of offset
-ld c,[hl]                   ; load offset to add to pointer, to get address
+ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
 ld hl,item_masterball_classes ; class pointer array
