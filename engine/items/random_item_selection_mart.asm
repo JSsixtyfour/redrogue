@@ -104,9 +104,11 @@ Random_StatTM_Mart_Selection::
 ld a, 10
 
 stattm_item_loop:
-add a, -1
+dec a
+
+stattm_duplicate_repeat:
 push af
-push hl 
+push hl
 call Random
 ldh a, [hRandomAdd]
 ld b, a
@@ -185,15 +187,42 @@ ld b, $0
 pop hl                      ; class pointer array
 add hl, bc                  ; add item offset to pointer
 
-.stattm_item_load
-ld a, [hl]                  ; load item from address
+ld c, [hl]                  ; load item from address
+
 pop hl
-ld [hli], a                 ; load item to list
+ld [hl], c                  ; load item to list
+pop af
+push hl
+
+push af
+ld d, a
+ld a, $9
+sub a, d
+ld d, a
+
+.stattm_duplicate_check_loop
+xor a
+cp d    ; see if we reached end of prior items
+jr z, .nonrepeat_item       ; take if we've reached end of prior items
+
+dec d                       ; decrease amount of items left
+dec hl                      ; work one back through prior items
+ld b, [hl]                  ; load prior item
+ld a, c                     ; put current item in a
+cp b                        ; compare current and prior item
+jr nz, .stattm_duplicate_check_loop    ; if not the same, do the next one
+pop af
+pop hl                      ; restore hl
+jp stattm_duplicate_repeat         ; if we're here it means the result was zero, thus they are identical, so restart the whole process for this item
+
+.nonrepeat_item
 pop af                      ; load loop count
+pop hl                      ; load list
+inc hl                      ; increase to next position in list
 ld b, 0
 cp b                        ; see if loop reached end
-jr nz, stattm_item_loop_jump     ; jump to get next item if not done
-ld [hl], $FF                   ; add FF to end the list
+jr nz, stattm_item_loop_jump    ; jump to get next item if not done
+ld [hl], $FF                ; add FF to end the list
 
 RET
 
