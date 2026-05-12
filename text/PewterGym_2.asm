@@ -7,8 +7,8 @@ _PewterGymBrockPostBattleAdviceText::
 	line "very gifted as a"
 	cont "#MON trainer!"
 
-	para "Go to the GYM in"
-	line "CERULEAN and test"
+	para "Go to the next"
+	line "GYM and test"
 	cont "your abilities!"
 	done
 
@@ -30,10 +30,11 @@ _TM34ExplanationText::
 	cont "can be taught to"
 	cont "#MON!"
 
-	para "A TM is good only"
-	line "once! So when you"
-	cont "use one to teach"
-	cont "a new technique,"
+	para "A TM is good as"
+	line "many times as you"
+    cont "need it."
+	para "Use one to teach"
+	line "a new technique,"
 	cont "pick the #MON"
 	cont "carefully!"
 
@@ -73,10 +74,7 @@ _PewterGymBrockBoulderBadgeInfoText::
 	para "Its bearer's"
 	line "#MON become"
 	cont "more powerful!"
-
-	para "The technique"
-	line "FLASH can now be"
-	cont "used any time!"
+    
 	prompt
 
 _PewterGymCooltrainerMBattleText::

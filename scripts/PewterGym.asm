@@ -69,21 +69,24 @@ PewterGymScriptReceiveTM34:
 	ld a, TOGGLE_GYM_GUY
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-	ld a, TOGGLE_ROUTE_22_RIVAL_1
-	ld [wToggleableObjectIndex], a
+	;ld a, TOGGLE_ROUTE_22_RIVAL_1
+	;ld [wToggleableObjectIndex], a
 	predef HideObject
 
-	ResetEvents EVENT_1ST_ROUTE22_RIVAL_BATTLE, EVENT_ROUTE22_RIVAL_WANTS_BATTLE
+	;ResetEvents EVENT_1ST_ROUTE22_RIVAL_BATTLE, EVENT_ROUTE22_RIVAL_WANTS_BATTLE
 
 	; deactivate gym trainers
-	SetEvent EVENT_BEAT_PEWTER_GYM_TRAINER_0
+	;SetEvent EVENT_BEAT_PEWTER_GYM_TRAINER_0
 
 	jp PewterGymResetScripts
 
 PewterGym_TextPointers:
 	def_text_pointers
 	dw_const PewterGymBrockText,             TEXT_PEWTERGYM_BROCK
-	dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M
+	dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M1
+    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M2
+    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M3
+    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M4
 	dw_const PewterGymGuideText,             TEXT_PEWTERGYM_GYM_GUIDE
 	dw_const PewterGymBrockWaitTakeThisText, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
 	dw_const PewterGymReceivedTM34Text,      TEXT_PEWTERGYM_RECEIVED_TM34
@@ -92,7 +95,13 @@ PewterGym_TextPointers:
 PewterGymTrainerHeaders:
 	def_trainers 2
 PewterGymTrainerHeader0:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerMBattleText, PewterGymCooltrainerMEndBattleText, PewterGymCooltrainerMAfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM1BattleText, PewterGymCooltrainerM1EndBattleText, PewterGymCooltrainerM1AfterBattleText
+PewterGymTrainerHeader1:
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
+PewterGymTrainerHeader2:
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM3BattleText, PewterGymCooltrainerM3EndBattleText, PewterGymCooltrainerM3AfterBattleText
+PewterGymTrainerHeader3:
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
 	db -1 ; end
 
 PewterGymBrockText:
@@ -159,21 +168,75 @@ PewterGymBrockReceivedBoulderBadgeText:
 	text_far _PewterGymBrockBoulderBadgeInfoText ; Text to tell that the flash technique can be used
 	text_end
 
-PewterGymCooltrainerMText:
+PewterGymCooltrainerM1Text:
 	text_asm
 	ld hl, PewterGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PewterGymCooltrainerMBattleText:
+PewterGymCooltrainerM1BattleText:
 	text_far _PewterGymCooltrainerMBattleText
 	text_end
 
-PewterGymCooltrainerMEndBattleText:
+PewterGymCooltrainerM1EndBattleText:
 	text_far _PewterGymCooltrainerMEndBattleText
 	text_end
 
-PewterGymCooltrainerMAfterBattleText:
+PewterGymCooltrainerM1AfterBattleText:
+	text_far _PewterGymCooltrainerMAfterBattleText
+	text_end
+    
+PewterGymCooltrainerM2Text:
+	text_asm
+	ld hl, PewterGymTrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PewterGymCooltrainerM2BattleText:
+	text_far _PewterGymCooltrainerMBattleText
+	text_end
+
+PewterGymCooltrainerM2EndBattleText:
+	text_far _PewterGymCooltrainerMEndBattleText
+	text_end
+
+PewterGymCooltrainerM2AfterBattleText:
+	text_far _PewterGymCooltrainerMAfterBattleText
+	text_end
+    
+PewterGymCooltrainerM3Text:
+	text_asm
+	ld hl, PewterGymTrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PewterGymCooltrainerM3BattleText:
+	text_far _PewterGymCooltrainerMBattleText
+	text_end
+
+PewterGymCooltrainerM3EndBattleText:
+	text_far _PewterGymCooltrainerMEndBattleText
+	text_end
+
+PewterGymCooltrainerM3AfterBattleText:
+	text_far _PewterGymCooltrainerMAfterBattleText
+	text_end
+
+PewterGymCooltrainerM4Text:
+	text_asm
+	ld hl, PewterGymTrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PewterGymCooltrainerM4BattleText:
+	text_far _PewterGymCooltrainerMBattleText
+	text_end
+
+PewterGymCooltrainerM4EndBattleText:
+	text_far _PewterGymCooltrainerMEndBattleText
+	text_end
+
+PewterGymCooltrainerM4AfterBattleText:
 	text_far _PewterGymCooltrainerMAfterBattleText
 	text_end
 
