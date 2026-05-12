@@ -344,8 +344,13 @@ _MoveMon::
 	jr z, .checkPartyMonSlots
 	cp DAYCARE_TO_PARTY
 	jr z, .checkPartyMonSlots
+    cp DAYCARE_TO_PARTY2
+	jr z, .checkPartyMonSlots
 	cp PARTY_TO_DAYCARE
 	ld hl, wDayCareMon
+	jr z, .findMonDataSrc
+    cp PARTY_TO_DAYCARE2
+	ld hl, wDayCareMon2
 	jr z, .findMonDataSrc
 	; else it's PARTY_TO_BOX
 	ld hl, wBoxCount
@@ -370,6 +375,9 @@ _MoveMon::
 	ld a, [wMoveMonType]
 	cp DAYCARE_TO_PARTY
 	ld a, [wDayCareMon]
+	jr z, .copySpecies
+    cp DAYCARE_TO_PARTY2
+	ld a, [wDayCareMon2]
 	jr z, .copySpecies
 	ld a, [wCurPartySpecies]
 .copySpecies
@@ -401,6 +409,9 @@ _MoveMon::
 	cp DAYCARE_TO_PARTY
 	ld hl, wDayCareMon
 	jr z, .copyMonData
+    cp DAYCARE_TO_PARTY2
+	ld hl, wDayCareMon2
+	jr z, .copyMonData
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
 .addMonOffset2
@@ -418,6 +429,8 @@ _MoveMon::
 	jr z, .findOTdest
 	cp DAYCARE_TO_PARTY
 	jr z, .findOTdest
+    cp DAYCARE_TO_PARTY2
+	jr z, .findOTdest
 	ld bc, BOXMON_STRUCT_LENGTH
 	add hl, bc
 	ld a, [hl] ; hl = Level
@@ -429,6 +442,9 @@ _MoveMon::
 	ld a, [wMoveMonType]
 	cp PARTY_TO_DAYCARE
 	ld de, wDayCareMonOT
+	jr z, .findOTsrc
+    cp PARTY_TO_DAYCARE2
+	ld de, wDayCareMonOT2
 	jr z, .findOTsrc
 	dec a
 	ld hl, wPartyMonOT
@@ -449,6 +465,9 @@ _MoveMon::
 	ld hl, wDayCareMonOT
 	cp DAYCARE_TO_PARTY
 	jr z, .copyOT
+    ld hl, wDayCareMonOT2
+	cp DAYCARE_TO_PARTY2
+	jr z, .copyOT
 	ld hl, wPartyMonOT
 .addOToffset2
 	ld a, [wWhichPokemon]
@@ -460,6 +479,9 @@ _MoveMon::
 ; find nick dest
 	cp PARTY_TO_DAYCARE
 	ld de, wDayCareMonName
+	jr z, .findNickSrc
+    cp PARTY_TO_DAYCARE2
+	ld de, wDayCareMonName2
 	jr z, .findNickSrc
 	dec a
 	ld hl, wPartyMonNicks
@@ -480,6 +502,9 @@ _MoveMon::
 	ld hl, wDayCareMonName
 	cp DAYCARE_TO_PARTY
 	jr z, .copyNick
+    ld hl, wDayCareMonName2
+	cp DAYCARE_TO_PARTY2
+	jr z, .copyNick
 	ld hl, wPartyMonNicks
 .addNickOffset2
 	ld a, [wWhichPokemon]
@@ -492,6 +517,8 @@ _MoveMon::
 	cp PARTY_TO_BOX
 	jr z, .done
 	cp PARTY_TO_DAYCARE
+	jr z, .done
+    cp PARTY_TO_DAYCARE2
 	jr z, .done
 	; returning mon to party, compute level and stats
 	push hl

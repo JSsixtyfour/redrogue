@@ -72,6 +72,7 @@ DEF HOF_TEAM_CAPACITY EQU 50
 	const BOX_DATA          ; 2
 	const DAYCARE_DATA      ; 3
 	const BATTLE_MON_DATA   ; 4
+    const DAYCARE_DATA2     ; 5
 
 ; Evolution types
 	const_def 1

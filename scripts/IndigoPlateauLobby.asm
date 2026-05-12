@@ -34,7 +34,7 @@ IndigoPlateauLobby_TextPointers:
     dw_const PCClerkText1,                           TEXT_PC_CLERK1
     dw_const PCClerkText2,                           TEXT_PC_CLERK2
     dw_const PCDaycareGentlemanText,                 TEXT_PC_DAYCARE_GENTLEMAN
-    dw_const PCDaycareGentlemanText,                 TEXT_PC_DAYCARE_LADY
+    dw_const PCDaycareLadyText,                 TEXT_PC_DAYCARE_LADY
     dw_const MoveRelearnerText1,                     TEXT_PC_MOVE_RELEARNER
     dw_const IndigoPlateauLobbyGymGuideText,         TEXT_PC_PSYCHIC
 	dw_const PCWitchText,                            TEXT_PC_WITCH
@@ -99,25 +99,24 @@ PCWitchText:
 IndigoPlateauLobbyLinkReceptionistText:
 	script_cable_club_receptionist
 
-
-PCDaycareGentlemanText:
+PCDaycareLadyText:
 	text_asm
 	call SaveScreenTilesToBuffer2
-	ld a, [wDayCareInUse]
+	ld a, [wDayCareInUse2]
 	and a
 	jp nz, .daycareInUse
-	ld hl, .IntroText
+	ld hl, IntroText
 	call PrintText
 	call YesNoChoice
 	ld a, [wCurrentMenuItem]
 	and a
-	ld hl, .ComeAgainText
+	ld hl, ComeAgainText
 	jp nz, .done
 	ld a, [wPartyCount]
 	dec a
-	ld hl, .OnlyHaveOneMonText
+	ld hl, OnlyHaveOneMonText
 	jp z, .done
-	ld hl, .WhichMonText
+	ld hl, WhichMonText
 	call PrintText
 	xor a
 	ld [wUpdateSpritesEnabled], a
@@ -129,17 +128,229 @@ PCDaycareGentlemanText:
 	call RestoreScreenTilesAndReloadTilePatterns
 	call LoadGBPal
 	pop af
-	ld hl, .AllRightThenText
+	ld hl, AllRightThenText
 	jp c, .done
-	callfar KnowsHMMove
-	ld hl, .CantAcceptMonWithHMText
-	jp c, .done
+	;callfar KnowsHMMove
+	;ld hl, .CantAcceptMonWithHMText
+	;jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ld a, [wWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
-	ld hl, .WillLookAfterMonText
+	ld hl, WillLookAfterMonText
+	call PrintText
+	ld a, 1
+	ld [wDayCareInUse2], a
+	ld a, PARTY_TO_DAYCARE2
+	ld [wMoveMonType], a
+	call MoveMon
+	xor a
+	ld [wRemoveMonFromBox], a
+	call RemovePokemon
+	ld a, [wCurPartySpecies]
+	call PlayCry
+	ld hl, ComeSeeMeInAWhileText
+	jp .done
+
+.daycareInUse
+	xor a
+	ld hl, wDayCareMonName2
+	call GetPartyMonName
+	ld a, DAYCARE_DATA2
+	ld [wMonDataLocation], a
+	call LoadMonData
+	callfar CalcLevelFromExperience
+	ld a, d
+	cp MAX_LEVEL
+	jr c, .skipCalcExp
+
+	ld d, MAX_LEVEL
+	callfar CalcExperience
+	ld hl, wDayCareMon2Exp
+	ldh a, [hExperience]
+	ld [hli], a
+	ldh a, [hExperience + 1]
+	ld [hli], a
+	ldh a, [hExperience + 2]
+	ld [hl], a
+	ld d, MAX_LEVEL
+
+.skipCalcExp
+	xor a
+	ld [wDayCareNumLevelsGrown2], a
+	ld hl, wDayCareMon2BoxLevel
+	ld a, [hl]
+	ld [wDayCareStartLevel2], a
+	cp d
+	ld [hl], d
+	ld hl, MonNeedsMoreTimeText
+	jr z, .next
+	ld a, [wDayCareStartLevel2]
+	ld b, a
+	ld a, d
+	sub b
+	ld [wDayCareNumLevelsGrown2], a
+	ld hl, MonHasGrownText
+
+.next
+	call PrintText
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	ld hl, NoRoomForMonText
+	jp z, .leaveMonInDayCare
+	ld de, wDayCareTotalCost
+	xor a
+	ld [de], a
+	inc de
+	ld [de], a
+	ld hl, wDayCarePerLevelCost2
+	ld a, $1
+	ld [hli], a
+	ld [hl], $0
+	ld a, [wDayCareNumLevelsGrown2]
+	inc a
+	ld b, a
+	ld c, 2
+.calcPriceLoop
+	push hl
+	push de
+	push bc
+	predef AddBCDPredef
+	pop bc
+	pop de
+	pop hl
+	dec b
+	jr nz, .calcPriceLoop
+	ld hl, OweMoneyText
+	call PrintText
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	call YesNoChoice
+	ld hl, AllRightThenText
+	ld a, [wCurrentMenuItem]
+	and a
+	jp nz, .leaveMonInDayCare
+	ld hl, wDayCareTotalCost2
+	ldh [hMoney], a
+	ld a, [hli]
+	ldh [hMoney + 1], a
+	ld a, [hl]
+	ldh [hMoney + 2], a
+	call HasEnoughMoney
+	jr nc, .enoughMoney
+	ld hl, NotEnoughMoneyText
+	jp .leaveMonInDayCare
+
+.enoughMoney
+	xor a
+	ld [wDayCareInUse2], a
+	ld hl, wDayCareNumLevelsGrown2
+	ld [hli], a
+	inc hl
+	ld de, wPlayerMoney + 2
+	ld c, $3
+	predef SubBCDPredef
+	ld a, SFX_PURCHASE
+	call PlaySoundWaitForCurrent
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	ld hl, HeresYourMonText
+	call PrintText
+	ld a, DAYCARE_TO_PARTY2
+	ld [wMoveMonType], a
+	call MoveMon
+	ld a, [wDayCareMon2Species]
+	ld [wCurPartySpecies], a
+	ld a, [wPartyCount]
+	dec a
+	push af
+	ld bc, PARTYMON_STRUCT_LENGTH
+	push bc
+	ld hl, wPartyMon1Moves
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld a, 1
+	ld [wLearningMovesFromDayCare], a
+	predef WriteMonMoves
+	pop bc
+	pop af
+
+; set mon's HP to max
+	ld hl, wPartyMon1HP
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld bc, MON_MAXHP - MON_HP
+	add hl, bc
+	ld a, [hli]
+	ld [de], a
+	inc de
+	ld a, [hl]
+	ld [de], a
+
+	ld a, [wCurPartySpecies]
+	call PlayCry
+	ld hl, GotMonBackText
+	jr .done
+
+.leaveMonInDayCare
+	ld a, [wDayCareStartLevel]
+	ld [wDayCareMonBoxLevel], a
+
+.done
+	call PrintText
+	jp TextScriptEnd
+
+
+; just needs ram update for woman
+; data constants
+; experience calc
+; second wram location
+; update daycare_exp.asm
+PCDaycareGentlemanText:
+	text_asm
+	call SaveScreenTilesToBuffer2
+	ld a, [wDayCareInUse]
+	and a
+	jp nz, .daycareInUse
+	ld hl, IntroText
+	call PrintText
+	call YesNoChoice
+	ld a, [wCurrentMenuItem]
+	and a
+	ld hl, ComeAgainText
+	jp nz, .done
+	ld a, [wPartyCount]
+	dec a
+	ld hl, OnlyHaveOneMonText
+	jp z, .done
+	ld hl, WhichMonText
+	call PrintText
+	xor a
+	ld [wUpdateSpritesEnabled], a
+	ld [wPartyMenuTypeOrMessageID], a
+	ld [wMenuItemToSwap], a
+	call DisplayPartyMenu
+	push af
+	call GBPalWhiteOutWithDelay3
+	call RestoreScreenTilesAndReloadTilePatterns
+	call LoadGBPal
+	pop af
+	ld hl, AllRightThenText
+	jp c, .done
+	;callfar KnowsHMMove
+	;ld hl, .CantAcceptMonWithHMText
+	;jp c, .done
+	xor a
+	ld [wPartyAndBillsPCSavedMenuItem], a
+	ld a, [wWhichPokemon]
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	ld hl, WillLookAfterMonText
 	call PrintText
 	ld a, 1
 	ld [wDayCareInUse], a
@@ -151,7 +362,7 @@ PCDaycareGentlemanText:
 	call RemovePokemon
 	ld a, [wCurPartySpecies]
 	call PlayCry
-	ld hl, .ComeSeeMeInAWhileText
+	ld hl, ComeSeeMeInAWhileText
 	jp .done
 
 .daycareInUse
@@ -185,20 +396,20 @@ PCDaycareGentlemanText:
 	ld [wDayCareStartLevel], a
 	cp d
 	ld [hl], d
-	ld hl, .MonNeedsMoreTimeText
+	ld hl, MonNeedsMoreTimeText
 	jr z, .next
 	ld a, [wDayCareStartLevel]
 	ld b, a
 	ld a, d
 	sub b
 	ld [wDayCareNumLevelsGrown], a
-	ld hl, .MonHasGrownText
+	ld hl, MonHasGrownText
 
 .next
 	call PrintText
 	ld a, [wPartyCount]
 	cp PARTY_LENGTH
-	ld hl, .NoRoomForMonText
+	ld hl, NoRoomForMonText
 	jp z, .leaveMonInDayCare
 	ld de, wDayCareTotalCost
 	xor a
@@ -223,13 +434,13 @@ PCDaycareGentlemanText:
 	pop hl
 	dec b
 	jr nz, .calcPriceLoop
-	ld hl, .OweMoneyText
+	ld hl, OweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	call YesNoChoice
-	ld hl, .AllRightThenText
+	ld hl, AllRightThenText
 	ld a, [wCurrentMenuItem]
 	and a
 	jp nz, .leaveMonInDayCare
@@ -241,7 +452,7 @@ PCDaycareGentlemanText:
 	ldh [hMoney + 2], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
-	ld hl, .NotEnoughMoneyText
+	ld hl, NotEnoughMoneyText
 	jp .leaveMonInDayCare
 
 .enoughMoney
@@ -258,7 +469,7 @@ PCDaycareGentlemanText:
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-	ld hl, .HeresYourMonText
+	ld hl, HeresYourMonText
 	call PrintText
 	ld a, DAYCARE_TO_PARTY
 	ld [wMoveMonType], a
@@ -295,7 +506,7 @@ PCDaycareGentlemanText:
 
 	ld a, [wCurPartySpecies]
 	call PlayCry
-	ld hl, .GotMonBackText
+	ld hl, GotMonBackText
 	jr .done
 
 .leaveMonInDayCare
@@ -306,65 +517,63 @@ PCDaycareGentlemanText:
 	call PrintText
 	jp TextScriptEnd
 
-.IntroText:
+IntroText:
 	text_far _DaycareGentlemanIntroText
 	text_end
 
-.WhichMonText:
+WhichMonText:
 	text_far _DaycareGentlemanWhichMonText
 	text_end
 
-.WillLookAfterMonText:
+WillLookAfterMonText:
 	text_far _DaycareGentlemanWillLookAfterMonText
 	text_end
 
-.ComeSeeMeInAWhileText:
+ComeSeeMeInAWhileText:
 	text_far _DaycareGentlemanComeSeeMeInAWhileText
 	text_end
 
-.MonHasGrownText:
+MonHasGrownText:
 	text_far _DaycareGentlemanMonHasGrownText
 	text_end
 
-.OweMoneyText:
+OweMoneyText:
 	text_far _DaycareGentlemanOweMoneyText
 	text_end
 
-.GotMonBackText:
+GotMonBackText:
 	text_far _DaycareGentlemanGotMonBackText
 	text_end
 
-.MonNeedsMoreTimeText:
+MonNeedsMoreTimeText:
 	text_far _DaycareGentlemanMonNeedsMoreTimeText
 	text_end
 
-.AllRightThenText:
+AllRightThenText:
 	text_far _DaycareGentlemanAllRightThenText
-.ComeAgainText:
+ComeAgainText:
 	text_far _DaycareGentlemanComeAgainText
 	text_end
 
-.NoRoomForMonText:
+NoRoomForMonText:
 	text_far _DaycareGentlemanNoRoomForMonText
 	text_end
 
-.OnlyHaveOneMonText:
+OnlyHaveOneMonText:
 	text_far _DaycareGentlemanOnlyHaveOneMonText
 	text_end
 
-.CantAcceptMonWithHMText:
+CantAcceptMonWithHMText:
 	text_far _DaycareGentlemanCantAcceptMonWithHMText
 	text_end
 
-.HeresYourMonText:
+HeresYourMonText:
 	text_far _DaycareGentlemanHeresYourMonText
 	text_end
 
-.NotEnoughMoneyText:
+NotEnoughMoneyText:
 	text_far _DaycareGentlemanNotEnoughMoneyText
 	text_end
-
-
 
 PCPokemonSalesmanText:
 	text_asm
@@ -490,6 +699,7 @@ PCPokemonSalesmanText:
 	text_far _PCPokemonSalesmanNoRefundsText
 	text_end
 
+; need a way to prevent trading for same pokemon or evolution
 PCTraderSuperNerdText:
 	text_asm
 	ld a, TRADE_FOR_RANDOM

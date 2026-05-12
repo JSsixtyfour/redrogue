@@ -187,6 +187,8 @@ StatusScreen:
 	ld a, [wMonDataLocation]
 	cp DAYCARE_DATA
 	ret z
+    cp DAYCARE_DATA2
+	ret z
 	ld a, [wWhichPokemon]
 	jp SkipFixedLengthTextEntries
 
@@ -195,12 +197,14 @@ OTPointers:
 	dw wEnemyMonOT
 	dw wBoxMonOT
 	dw wDayCareMonOT
+    dw wDayCareMonOT2
 
 NamePointers2:
 	dw wPartyMonNicks
 	dw wEnemyMonNicks
 	dw wBoxMonNicks
 	dw wDayCareMonName
+    dw wDayCareMonName2
 
 TypesIDNoOTText:
 	db   "TYPE1/"

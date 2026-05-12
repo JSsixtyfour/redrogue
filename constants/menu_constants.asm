@@ -61,6 +61,8 @@ DEF CHOSE_SECOND_ITEM EQU 2
 	const PARTY_TO_BOX     ; 1
 	const DAYCARE_TO_PARTY ; 2
 	const PARTY_TO_DAYCARE ; 3
+    const DAYCARE_TO_PARTY2 ; 4
+    const PARTY_TO_DAYCARE2 ; 5
 
 ; party menu types
 ; PartyMenuMessagePointers indexes (see engine/menus/party_menu.asm)

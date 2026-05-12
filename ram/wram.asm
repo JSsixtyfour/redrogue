@@ -517,6 +517,11 @@ wLowHealthAlarmDisabled:: db
 wPlayerMonMinimized:: db
 
 	ds 13
+    
+NEXTU
+
+wAllSpecies::
+ds $40
 
 UNION
 ; the amount of damage accumulated by the enemy while biding
@@ -710,6 +715,13 @@ wDayCareStartLevel:: db
 wDayCareNumLevelsGrown:: db
 wDayCareTotalCost:: dw ; BCD
 wDayCarePerLevelCost:: dw ; BCD (always $100)
+
+NEXTU
+; the level of the mon at the time it entered day care
+wDayCareStartLevel2:: ;db
+wDayCareNumLevelsGrown2:: ;db
+wDayCareTotalCost2:: ;dw ; BCD
+wDayCarePerLevelCost2:: ;dw ; BCD (always $100)
 
 NEXTU
 ; which wheel the player is trying to stop
@@ -2069,9 +2081,6 @@ wroguenpctradename:: ds NAME_LENGTH
 wroguenpcsell:: db
 wroguenpcclass:: db
 
-wAllSpecies::
-ds $40
-
 PCClerkText1::
 	db ;TX_SCRIPT_MART
     db ;$9
@@ -2283,7 +2292,12 @@ wDayCareMonOT::   ds NAME_LENGTH
 
 wDayCareMon:: box_struct wDayCareMon
 
+wDayCareInUse2:: db
 
+wDayCareMonName2:: ds NAME_LENGTH
+wDayCareMonOT2::   ds NAME_LENGTH
+
+wDayCareMon2:: box_struct wDayCareMon2
 
 
 wMainDataEnd::

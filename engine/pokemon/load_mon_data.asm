@@ -6,8 +6,16 @@ LoadMonData_::
 ;  3: daycaremon
 ; Return monster id at wCurPartySpecies and its data at wLoadedMon.
 ; Also load base stats at wMonHeader for convenience.
-
-	ld a, [wDayCareMonSpecies]
+    ld a, [wMonDataLocation]
+    cp DAYCARE_DATA2
+	
+    jr nz, .DayCare1check
+	ld a, [wDayCareMon2Species]
+    ld [wCurPartySpecies], a
+    jp .GetMonHeader
+    
+    .DayCare1check
+    ld a, [wDayCareMonSpecies]
 	ld [wCurPartySpecies], a
 	ld a, [wMonDataLocation]
 	cp DAYCARE_DATA
@@ -35,7 +43,13 @@ LoadMonData_::
 	ld hl, wBoxMons
 	ld bc, BOXMON_STRUCT_LENGTH
 	jr z, .getMonEntry
+    
+    cp DAYCARE_DATA2
+    jr nz, .DayCare1copy
+    ld hl, wDayCareMon2
+	jr .copyMonData
 
+    .DayCare1copy
 	ld hl, wDayCareMon
 	jr .copyMonData
 
