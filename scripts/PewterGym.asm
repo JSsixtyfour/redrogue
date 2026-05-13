@@ -83,10 +83,10 @@ PewterGymScriptReceiveTM34:
 PewterGym_TextPointers:
 	def_text_pointers
 	dw_const PewterGymBrockText,             TEXT_PEWTERGYM_BROCK
-	dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M1
-    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M2
-    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M3
-    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M4
+	dw_const PewterGymCooltrainerM1Text,      TEXT_PEWTERGYM_COOLTRAINER_M1
+    dw_const PewterGymCooltrainerM2Text,      TEXT_PEWTERGYM_COOLTRAINER_M2
+    dw_const PewterGymCooltrainerM3Text,      TEXT_PEWTERGYM_COOLTRAINER_M3
+    dw_const PewterGymCooltrainerM4Text,      TEXT_PEWTERGYM_COOLTRAINER_M4
 	dw_const PewterGymGuideText,             TEXT_PEWTERGYM_GYM_GUIDE
 	dw_const PewterGymBrockWaitTakeThisText, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
 	dw_const PewterGymReceivedTM34Text,      TEXT_PEWTERGYM_RECEIVED_TM34
@@ -97,11 +97,11 @@ PewterGymTrainerHeaders:
 PewterGymTrainerHeader0:
 	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM1BattleText, PewterGymCooltrainerM1EndBattleText, PewterGymCooltrainerM1AfterBattleText
 PewterGymTrainerHeader1:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 5, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
 PewterGymTrainerHeader2:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM3BattleText, PewterGymCooltrainerM3EndBattleText, PewterGymCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 5, PewterGymCooltrainerM3BattleText, PewterGymCooltrainerM3EndBattleText, PewterGymCooltrainerM3AfterBattleText
 PewterGymTrainerHeader3:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_3, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
 	db -1 ; end
 
 PewterGymBrockText:
