@@ -1,8 +1,11 @@
 PewterGym_Script:
+    call BrockShowOrHideExitBlock
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
 	call nz, .LoadNames
+    
+    
 	call EnableAutoTextBoxDrawing
 	ld hl, PewterGymTrainerHeaders
 	ld de, PewterGym_ScriptPointers
@@ -10,8 +13,27 @@ PewterGym_Script:
 	call ExecuteCurMapScriptInTable
 	ld [wPewterGymCurScript], a
 	ret
+    
+BrockShowOrHideExitBlock:
+; Blocks or clears the exit to the next room.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_BEAT_BROCK
+	jr z, .blockExitToNextRoom
+	ld a, $5
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, $24
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, 0, 2
+	predef_jump ReplaceTileBlock
 
 .LoadNames:
+    ld a, TM                    ; set to generate a random TM
+    farcall Random_Item_Selection
 	ld hl, .CityName
 	ld de, .LeaderName
 	jp LoadGymLeaderAndCityName
@@ -48,7 +70,8 @@ PewterGymScriptReceiveTM34:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_BEAT_BROCK
-	lb bc, TM_BIDE, 1
+    ld b, [wRogueItem]      ; load TM
+	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
 	ld a, TEXT_PEWTERGYM_RECEIVED_TM34
@@ -71,7 +94,7 @@ PewterGymScriptReceiveTM34:
 	predef HideObject
 	;ld a, TOGGLE_ROUTE_22_RIVAL_1
 	;ld [wToggleableObjectIndex], a
-	predef HideObject
+	;predef HideObject
 
 	;ResetEvents EVENT_1ST_ROUTE22_RIVAL_BATTLE, EVENT_ROUTE22_RIVAL_WANTS_BATTLE
 

@@ -1,5 +1,6 @@
 ; This code is meant to handle any time an item is randomly generated
 ; The code outputs an item ID
+; a = Specific type of item: HEALING, STAT, TM, MONEY
 Random_Item_Selection::
 ld a, [wRogueDoorSelection]
 ld b, HEALING
@@ -224,6 +225,6 @@ add hl, bc                  ; add item offset to pointer
 
 .item_masterball_load
 ld a, [hl]                  ; load item from address
-ld [wRogueItem], a            ; place item in 
+ld [wRogueItem], a          ; place item in 
 
 RET
