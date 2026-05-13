@@ -76,6 +76,9 @@ PewterGymScriptReceiveTM34:
 	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
+    ld a, [wRogueItem]      ; load TM
+    ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    call GetItemName         ; get name of item to receive
 	ld a, TEXT_PEWTERGYM_RECEIVED_TM34
 	ldh [hTextID], a
 	call DisplayTextID
