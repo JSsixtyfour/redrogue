@@ -3,7 +3,7 @@ PewterGym_Script:
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, .LoadNames
+	call nz, initial
     
     
 	call EnableAutoTextBoxDrawing
@@ -31,8 +31,9 @@ BrockShowOrHideExitBlock:
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
 
-.LoadNames:
+initial:
     ld a, TM                    ; set to generate a random TM
+    ld [wRogueDoorSelection], a
     farcall Random_Item_Selection
 	ld hl, .CityName
 	ld de, .LeaderName
@@ -69,8 +70,9 @@ PewterGymScriptReceiveTM34:
 	ld a, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
 	ldh [hTextID], a
 	call DisplayTextID
-	SetEvent EVENT_BEAT_BROCK
-    ld b, [wRogueItem]      ; load TM
+
+    ld a, [wRogueItem]      ; load TM
+    ld b, a
 	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
@@ -112,7 +114,7 @@ PewterGym_TextPointers:
     dw_const PewterGymCooltrainerM4Text,      TEXT_PEWTERGYM_COOLTRAINER_M4
 	dw_const PewterGymGuideText,             TEXT_PEWTERGYM_GYM_GUIDE
 	dw_const PewterGymBrockWaitTakeThisText, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
-	dw_const PewterGymReceivedTM34Text,      TEXT_PEWTERGYM_RECEIVED_TM34
+	dw_const PewterGymReceivedTMText,      TEXT_PEWTERGYM_RECEIVED_TM34
 	dw_const PewterGymTM34NoRoomText,        TEXT_PEWTERGYM_TM34_NO_ROOM
 
 PewterGymTrainerHeaders:
@@ -120,12 +122,27 @@ PewterGymTrainerHeaders:
 PewterGymTrainerHeader0:
 	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM1BattleText, PewterGymCooltrainerM1EndBattleText, PewterGymCooltrainerM1AfterBattleText
 PewterGymTrainerHeader1:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 5, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 2, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
 PewterGymTrainerHeader2:
 	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 5, PewterGymCooltrainerM3BattleText, PewterGymCooltrainerM3EndBattleText, PewterGymCooltrainerM3AfterBattleText
 PewterGymTrainerHeader3:
 	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_3, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
 	db -1 ; end
+    
+PewterGymReceivedTMText:
+    text_far _PewterGymReceivedTM34Text
+	sound_get_item_1
+	text_far _TM34ExplanationText
+	text_end
+    ;text_asm
+    ;call EnableAutoTextBoxDrawing
+    ;ld a, [wRogueItem]      ; load TM
+    ;ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    ;call GetItemName         ; get name of item to receive
+	;ld hl, _PewterGymReceivedTMText
+    ;call PrintText
+	;sound_get_item_1
+	;jp TextScriptEnd
 
 PewterGymBrockText:
 	text_asm
@@ -175,10 +192,8 @@ PewterGymBrockWaitTakeThisText:
 	text_far _PewterGymBrockWaitTakeThisText
 	text_end
 
-PewterGymReceivedTM34Text:
-	text_far _PewterGymReceivedTM34Text
-	sound_get_item_1
-	text_far _TM34ExplanationText
+_PewterGymReceivedTMText:
+    text_far _TM34ExplanationText
 	text_end
 
 PewterGymTM34NoRoomText:
@@ -186,10 +201,18 @@ PewterGymTM34NoRoomText:
 	text_end
 
 PewterGymBrockReceivedBoulderBadgeText:
-	text_far _PewterGymBrockReceivedBoulderBadgeText
+    text_asm
+    SetEvent EVENT_BEAT_BROCK
+    ld hl, ReceivedBoulderBadgeText
+    call PrintText
+	jp TextScriptEnd
 	sound_level_up ; probably supposed to play SFX_GET_ITEM_1 but the wrong music bank is loaded
-	text_far _PewterGymBrockBoulderBadgeInfoText ; Text to tell that the flash technique can be used
 	text_end
+    
+ReceivedBoulderBadgeText:
+	text_far _PewterGymBrockReceivedBoulderBadgeText
+    text_end
+
 
 PewterGymCooltrainerM1Text:
 	text_asm

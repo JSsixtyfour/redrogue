@@ -965,7 +965,6 @@ PCPokemonSalesmanSetup:
     ld [wroguenpcsell], a ; load in pokemon that they will give player
     
     
-    ; this ain't working! Name is glitched
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
     call GetMonName         ; get name of pokemon to receive
     ld hl, wNameBuffer      ; name address

@@ -8,8 +8,9 @@ _PewterGymBrockPostBattleAdviceText::
 	cont "#MON trainer!"
 
 	para "Go to the next"
-	line "GYM and test"
-	cont "your abilities!"
+	line "challenge and"
+	cont "test your"
+    cont "abilities!"
 	done
 
 _PewterGymBrockWaitTakeThisText::
@@ -19,8 +20,10 @@ _PewterGymBrockWaitTakeThisText::
 
 _PewterGymReceivedTM34Text::
 	text "<PLAYER> received"
-	line "TM34!@"
-	text_end
+	line "@"
+    text_ram wNameBuffer
+    text "!"
+	done
 
 _TM34ExplanationText::
 	text_start
@@ -34,17 +37,7 @@ _TM34ExplanationText::
 	line "many times as you"
     cont "need it."
 	para "Use one to teach"
-	line "a new technique,"
-	cont "pick the #MON"
-	cont "carefully!"
-
-	para "TM34 contains"
-	line "BIDE!"
-
-	para "Your #MON will"
-	line "absorb damage in"
-	cont "battle then pay"
-	cont "it back double!"
+	line "a new technique."
 	done
 
 _PewterGymTM34NoRoomText::

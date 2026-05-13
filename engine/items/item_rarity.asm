@@ -2,10 +2,10 @@
 
 ; Item Groupings
 const_def
-	const HEALING            ; $00
-	const STAT               ; $01
-	const TM                 ; $02
-	const MONEY              ; $03
+	const_export HEALING            ; $00
+	const_export STAT               ; $01
+	const_export TM                 ; $02
+	const_export MONEY              ; $03
 
 DEF NUM_ITEM_GROUPS EQU const_value - 1
 
