@@ -34,6 +34,8 @@ Route16DefaultScript:
 	ld [wCurOpponent], a
 	ld a, 30
 	ld [wCurEnemyLevel], a
+    xor a
+	ld [wIsTrainerBattle], a
 	ld a, TOGGLE_ROUTE_16_SNORLAX
 	ld [wToggleableObjectIndex], a
 	predef HideObject

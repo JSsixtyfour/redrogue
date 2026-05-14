@@ -22,7 +22,7 @@ CeruleanCaveB1F_TextPointers:
 CeruleanCaveB1FTrainerHeaders:
 	def_trainers
 MewtwoTrainerHeader:
-	trainer EVENT_BEAT_MEWTWO, 0, MewtwoBattleText, MewtwoBattleText, MewtwoBattleText
+	trainer EVENT_BEAT_MEWTWO, 0, MewtwoBattleText, MewtwoBattleText, MewtwoBattleText | OW_POKEMON
 	db -1 ; end
 
 CeruleanCaveB1FMewtwoText:

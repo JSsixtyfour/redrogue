@@ -356,7 +356,9 @@ OaksLabRivalStartBattleScript:
 	ret nz
 
 	; define which team rival uses, and fight it
-	ld a, OPP_RIVAL1
+	ld a, 1
+	ld [wIsTrainerBattle], a
+    ld a, OPP_RIVAL1
 	ld [wCurOpponent], a
 	ld a, [wRivalStarter]
 	cp STARTER2
@@ -390,6 +392,8 @@ OaksLabRivalStartBattleScript:
 	ret
 
 OaksLabRivalEndBattleScript:
+    xor a
+	ld [wIsTrainerBattle], a
 	ld a, PAD_CTRL_PAD
 	ld [wJoyIgnore], a
 	ld a, PLAYER_DIR_UP
