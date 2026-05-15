@@ -673,6 +673,34 @@ DevolveMon:
 	and a
 	ret
 	
+; d = Current Gym Leader/Battle, ie. OPP_BROCK
+InitGymBattle::
+    ld a, d
+	ld [wCurOpponent], a
+	ld a, [wBattleCount]
+    ldh [hDividend], a          ; place battle count in dividend
+    ld   a, 10
+    ldh [hDivisor], a           ; place 10 as divisor
+    ld b, $1                    ; b determines how many bytes the number is, do not remove!
+    call Divide
+    ldh   a, [hQuotient+3]      ; load in quotient
+    sub a, 1                    ; subtract for multiplication to get base trainer number
+    ldh [hMultiplicand+2], a    ; place number in for multiplication
+    ld a, 3                     ; multiply by 3, which is the amount of teams per each ranking
+    ldh [hMultiplier], a        ; place amount of class in multiplier
+    call Multiply               ; multiply number by 3, to get our base number
+    ldh   a, [hProduct+3]       ; load product into a
+    add a, 1                    ; add one (not zero based), to get trainer number base
+    push af
+    ld c, 3                     ; amount of options per rankings
+    call Rangerandom
+    ld b, a                     ; load random number into be
+    pop af
+    add a, b                    ; add random number to base trainer to get party
+    ld [wTrainerNo], a          ; set trainer no within gym leaders options
+    ld a, 1
+	ld [wIsTrainerBattle], a    ; start battle
+	ret
 	
 	
 	

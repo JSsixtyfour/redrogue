@@ -97,14 +97,6 @@ PewterGymScriptReceiveTM34:
 	ld a, TOGGLE_GYM_GUY
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-	;ld a, TOGGLE_ROUTE_22_RIVAL_1
-	;ld [wToggleableObjectIndex], a
-	;predef HideObject
-
-	;ResetEvents EVENT_1ST_ROUTE22_RIVAL_BATTLE, EVENT_ROUTE22_RIVAL_WANTS_BATTLE
-
-	; deactivate gym trainers
-	;SetEvent EVENT_BEAT_PEWTER_GYM_TRAINER_0
 
 	jp PewterGymResetScripts
 
@@ -137,15 +129,6 @@ PewterGymReceivedTMText:
 	sound_get_item_1
 	text_far _TM34ExplanationText
 	text_end
-    ;text_asm
-    ;call EnableAutoTextBoxDrawing
-    ;ld a, [wRogueItem]      ; load TM
-    ;ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
-    ;call GetItemName         ; get name of item to receive
-	;ld hl, _PewterGymReceivedTMText
-    ;call PrintText
-	;sound_get_item_1
-	;jp TextScriptEnd
 
 PewterGymBrockText:
 	text_asm
@@ -172,7 +155,9 @@ PewterGymBrockText:
 	ldh a, [hSpriteIndex]
 	ld [wSpriteIndex], a
 	call EngageMapTrainer
-	call InitBattleEnemyParameters
+    ;call InitBattleEnemyParameters
+    ld d, OPP_BROCK
+	farcall InitGymBattle
 	ld a, $1
 	ld [wGymLeaderNo], a
 	xor a

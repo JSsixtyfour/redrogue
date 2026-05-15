@@ -1,9 +1,9 @@
 ReadTrainer:
 
 ; don't change any moves in a link battle
-	ld a, [wLinkState]
-	and a
-	ret nz
+	;ld a, [wLinkState]
+	;and a
+	;ret nz
 
 ; set [wEnemyPartyCount] to 0, [wEnemyPartySpecies] to FF
 ; XXX first is total enemy pokemon?
