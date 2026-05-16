@@ -48,6 +48,14 @@ push bc
 item_determineClassSlot:
 ldh a, [hRandomAdd]
 ld  b, a
+
+; bonus rarity check
+ld a, [wItemBonusRarity]
+add a, b
+jr nc, .no_overflow
+ld a, $FF
+
+.no_overflow
 ld a, item_pokeball_odds
 cp b
 jr nc, item_pokeball_class_selection

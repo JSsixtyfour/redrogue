@@ -523,6 +523,11 @@ NEXTU
 wAllSpecies::
 ds $40
 
+NEXTU
+
+wAllItem::
+ds $40
+
 UNION
 ; the amount of damage accumulated by the enemy while biding
 wEnemyBideAccumulatedDamage:: dw
@@ -2070,8 +2075,8 @@ wRoguePokemon2:: db
 wRoguePokemon3:: db
 
 wRogueItem:: dw
-WRogueDoor1:: db
-WRogueDoor2:: db
+wRogueDoor1:: db
+wRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
 
@@ -2082,6 +2087,8 @@ wroguenpctradename:: ds NAME_LENGTH
 
 wroguenpcsell:: db
 wroguenpcclass:: db
+
+wItemBonusRarity:: db
 
 PCClerkText1::
 	db ;TX_SCRIPT_MART

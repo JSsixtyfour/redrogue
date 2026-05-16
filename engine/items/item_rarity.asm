@@ -7,10 +7,7 @@ const_def
 	const_export TM                 ; $02
 	const_export MONEY              ; $03
 
-DEF NUM_ITEM_GROUPS EQU const_value - 1
-
-item_class_odds:
-DEF item_pokeball_odds EQU 51
+EXPORT DEF item_pokeball_odds EQU 51
 DEF item_greatball_odds EQU 77 + 51
 DEF item_ultraball_odds EQU 76 + 77 + 51
 DEF item_masterball_odds EQU 51 + 76 + 77 + 51
