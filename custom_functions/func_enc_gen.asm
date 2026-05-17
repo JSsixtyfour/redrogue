@@ -694,7 +694,7 @@ InitGymBattle::
     push af
     ld c, 3                     ; amount of options per rankings
     call Rangerandom
-    ld b, a                     ; load random number into be
+    ld b, a                     ; load random number into b
     pop af
     add a, b                    ; add random number to base trainer to get party
     ld [wTrainerNo], a          ; set trainer no within gym leaders options

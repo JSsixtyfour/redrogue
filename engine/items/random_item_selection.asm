@@ -2,6 +2,7 @@
 ; The code outputs an item ID
 ; a = Specific type of item: HEALING, STAT, TM, MONEY
 Random_Item_Selection::
+call Random
 ld a, [wRogueDoorSelection]
 ld b, HEALING
 cp a, b
@@ -52,8 +53,9 @@ ld  b, a
 ; bonus rarity check
 ld a, [wItemBonusRarity]
 add a, b
+ld b, a
 jr nc, .no_overflow
-ld a, $FF
+ld b, $FF
 
 .no_overflow
 ld a, item_pokeball_odds
@@ -107,8 +109,12 @@ add hl, bc                  ; add item offset to pointer
 
 
 .item_pokeball_load
-ld a, [hl]                  ; load item from address
-ld [wRogueItem], a            ; place item in 
+ld b, [hl]                  ; load item from address
+call AllTMCheck
+cp 0
+jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+ld a, b                     ; place item in a
+ld [wRogueItem], a          ; place item in 
 
 RET
 
@@ -149,8 +155,12 @@ ld l, a                     ; place first part into l
 add hl, bc                  ; add item offset to pointer
 
 .item_greatball_load
-ld a, [hl]                  ; load item from address
-ld [wRogueItem], a            ; place item in 
+ld b, [hl]                  ; load item from address
+call AllTMCheck
+cp 0
+jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+ld a, b                     ; place item in a
+ld [wRogueItem], a          ; place item in 
 
 RET
 
@@ -185,13 +195,17 @@ ld d, 0                     ; clear out
 ld e, a                     ; place offset into e
 add hl, de                  ; add offset to pointer
 ld a, [hli]                 ; load first part of pointer into a and increment
-ld h, [hl]                  ; load second part of point
+ld h, [hl]                  ; load second part of pointer
 ld l, a                     ; place first part into l
 add hl, bc                  ; add item offset to pointer
 
 
 .item_ultraball_load
-ld a, [hl]                  ; load item from address
+ld b, [hl]                  ; load item from address
+call AllTMCheck
+cp 0
+jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+ld a, b                     ; place item in a
 ld [wRogueItem], a          ; place item in 
 
 RET
@@ -232,7 +246,49 @@ add hl, bc                  ; add item offset to pointer
 
 
 .item_masterball_load
-ld a, [hl]                  ; load item from address
+ld b, [hl]                  ; load item from address
+call AllTMCheck
+cp 0
+jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+ld a, b                     ; place item in a
 ld [wRogueItem], a          ; place item in 
 
 RET
+
+; a check to see if TM is already owned by player
+; returns a 0 if no and a 1 if yes
+; b = item ID
+; UPDATE, need a way to check if evolution
+AllTMCheck::
+    ld a, $c3       ; last item before TM and HM
+    cp b            ; compare to current item
+    jr nc, .notInBox          ; if b is not greater than a, skip
+    ld a, $FA       ; last item before TM and HM
+    cp b            ; compare to current item
+    jr c, .notInBox  ; if greater than last TM, skip
+    
+    .tm
+    ld hl, wNumBagItems
+    .loop
+	inc hl
+	ld a, [hli]
+	cp $ff
+	jr z, .notInBag
+	cp b
+	jr nz, .loop
+	ld a, 1
+	ret
+    .notInBag
+    ld hl, wNumBoxItems
+    .loop2
+	inc hl
+	ld a, [hli]
+	cp $ff
+	jr z, .notInBox
+	cp b
+	jr nz, .loop2
+	ld a, 1
+	ret
+    .notInBox
+	ld a, 0
+	ret
