@@ -523,11 +523,6 @@ NEXTU
 wAllSpecies::
 ds $40
 
-NEXTU
-
-wAllItem::
-ds $40
-
 UNION
 ; the amount of damage accumulated by the enemy while biding
 wEnemyBideAccumulatedDamage:: dw
