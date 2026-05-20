@@ -15,29 +15,22 @@ _VermilionGymLTSurgeThunderBadgeInfoText::
 	line "cranks up your"
 	cont "#MON's SPEED!"
 
-	para "It also lets your"
-	line "#MON FLY any"
-	cont "time, kid!"
-
 	para "You're special,"
 	line "kid! Take this!"
 	done
 
 _VermilionGymLTSurgeReceivedTM24Text::
 	text "<PLAYER> received "
-	line "@"
-	text_ram wStringBuffer
-	text "!@"
-	text_end
+    line "@"
+    text_ram wNameBuffer
+    text "!"
+    done
 
 _TM24ExplanationText::
 	text_start
 
-	para "TM24 contains"
-	line "THUNDERBOLT!"
-
-	para "Teach it to an"
-	line "electric #MON!"
+	para "Try it out"
+	line "it's a fun one"
 	done
 
 _VermilionGymLTSurgeTM24NoRoomText::

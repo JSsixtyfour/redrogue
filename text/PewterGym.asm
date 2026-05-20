@@ -7,8 +7,8 @@ _PewterGymBrockPreBattleText::
 	line "hard defense and"
 	cont "determination!"
 
-	para "That's why my"
-	line "#MON are all"
+	para "That's why I"
+	line "specialize in the"
 	cont "the rock-type!"
 
 	para "Do you still want"
