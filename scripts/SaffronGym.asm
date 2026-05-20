@@ -180,24 +180,6 @@ SaffronGymYoungster2Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-SaffronGymChanneler3Text:
-	text_asm
-	ld hl, SaffronGymTrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SaffronGymYoungster3Text:
-	text_asm
-	ld hl, SaffronGymTrainerHeader5
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SaffronGymYoungster4Text:
-	text_asm
-	ld hl, SaffronGymTrainerHeader6
-	call TalkToTrainer
-	jp TextScriptEnd
-
 SaffronGymGymGuideText:
 	text_asm
 	CheckEvent EVENT_BEAT_SABRINA

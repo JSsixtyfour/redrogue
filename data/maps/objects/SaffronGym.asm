@@ -11,7 +11,7 @@ SaffronGym_Object:
 
 	def_warp_events
 	warp_event  8, 17, LAST_MAP, 3      ; 0
-	warp_event  9, 17, LAST_MAP, 3      : 1
+	warp_event  9, 17, LAST_MAP, 3      ; 1
 	warp_event  1,  3, SAFFRON_GYM, 17; 2
 	warp_event  5,  3, SAFFRON_GYM, 21; 3
 	warp_event  1,  5, SAFFRON_GYM, 17 ; 4
