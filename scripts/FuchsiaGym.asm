@@ -1,5 +1,6 @@
 FuchsiaGym_Script:
-	call .LoadNames
+    call KogaShowOrHideExitBlock
+	call .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, FuchsiaGymTrainerHeaders
 	ld de, FuchsiaGym_ScriptPointers
@@ -8,7 +9,8 @@ FuchsiaGym_Script:
 	ld [wFuchsiaGymCurScript], a
 	ret
 
-.LoadNames:
+.initial:
+    farcall GymLeaderRandomItem
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
@@ -17,12 +19,31 @@ FuchsiaGym_Script:
 	ld de, .LeaderName
 	call LoadGymLeaderAndCityName
 	ret
+    
+
 
 .CityName:
 	db "FUCHSIA CITY@"
 
 .LeaderName:
 	db "KOGA@"
+    
+    KogaShowOrHideExitBlock:
+; Blocks or clears the exit to the next room.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_BEAT_KOGA
+	jr z, .blockExitToNextRoom
+	ld a, $5
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, $24
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, 0, 2
+	predef_jump ReplaceTileBlock
 
 FuchsiaGymResetScripts:
 	xor a ; SCRIPT_FUCHSIAGYM_DEFAULT
@@ -49,10 +70,16 @@ FuchsiaGymReceiveTM06:
 	ld a, TEXT_FUCHSIAGYM_KOGA_SOUL_BADGE_INFO
 	ldh [hTextID], a
 	call DisplayTextID
-	SetEvent EVENT_BEAT_KOGA
-	lb bc, TM_TOXIC, 1
+	
+    
+    ld a, [wRogueItem]      ; load TM
+    ld b, a
+	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
+    ld a, [wRogueItem]      ; load TM
+    ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    call GetItemName         ; get name of item to receive
 	ld a, TEXT_FUCHSIAGYM_KOGA_RECEIVED_TM06
 	ldh [hTextID], a
 	call DisplayTextID
@@ -80,8 +107,6 @@ FuchsiaGym_TextPointers:
 	dw_const FuchsiaGymRocker2Text,           TEXT_FUCHSIAGYM_ROCKER2
 	dw_const FuchsiaGymRocker3Text,           TEXT_FUCHSIAGYM_ROCKER3
 	dw_const FuchsiaGymRocker4Text,           TEXT_FUCHSIAGYM_ROCKER4
-	dw_const FuchsiaGymRocker5Text,           TEXT_FUCHSIAGYM_ROCKER5
-	dw_const FuchsiaGymRocker6Text,           TEXT_FUCHSIAGYM_ROCKER6
 	dw_const FuchsiaGymGymGuideText,          TEXT_FUCHSIAGYM_GYM_GUIDE
 	dw_const FuchsiaGymKogaSoulBadgeInfoText, TEXT_FUCHSIAGYM_KOGA_SOUL_BADGE_INFO
 	dw_const FuchsiaGymKogaReceivedTM06Text,  TEXT_FUCHSIAGYM_KOGA_RECEIVED_TM06
@@ -92,15 +117,11 @@ FuchsiaGymTrainerHeaders:
 FuchsiaGymTrainerHeader0:
 	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_0, 2, FuchsiaGymRocker1BattleText, FuchsiaGymRocker1EndBattleText, FuchsiaGymRocker1AfterBattleText
 FuchsiaGymTrainerHeader1:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_1, 2, FuchsiaGymRocker2BattleText, FuchsiaGymRocker2EndBattleText, FuchsiaGymRocker2AfterBattleText
+	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_1, 1, FuchsiaGymRocker2BattleText, FuchsiaGymRocker2EndBattleText, FuchsiaGymRocker2AfterBattleText
 FuchsiaGymTrainerHeader2:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_2, 4, FuchsiaGymRocker3BattleText, FuchsiaGymRocker3EndBattleText, FuchsiaGymRocker3AfterBattleText
+	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_2, 1, FuchsiaGymRocker3BattleText, FuchsiaGymRocker3EndBattleText, FuchsiaGymRocker3AfterBattleText
 FuchsiaGymTrainerHeader3:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_3, 2, FuchsiaGymRocker4BattleText, FuchsiaGymRocker4EndBattleText, FuchsiaGymRocker4AfterBattleText
-FuchsiaGymTrainerHeader4:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_4, 2, FuchsiaGymRocker5BattleText, FuchsiaGymRocker5EndBattleText, FuchsiaGymRocker5AfterBattleText
-FuchsiaGymTrainerHeader5:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_5, 2, FuchsiaGymRocker6BattleText, FuchsiaGymRocker6EndBattleText, FuchsiaGymRocker6AfterBattleText
+	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_3, 1, FuchsiaGymRocker4BattleText, FuchsiaGymRocker4EndBattleText, FuchsiaGymRocker4AfterBattleText
 	db -1 ; end
 
 FuchsiaGymKogaText:
@@ -128,7 +149,8 @@ FuchsiaGymKogaText:
 	ldh a, [hSpriteIndex]
 	ld [wSpriteIndex], a
 	call EngageMapTrainer
-	call InitBattleEnemyParameters
+	ld d, OPP_KOGA
+    farcall InitGymBattle
 	ld a, $5
 	ld [wGymLeaderNo], a
 	xor a
@@ -143,7 +165,16 @@ FuchsiaGymKogaText:
 	text_end
 
 .ReceivedSoulBadgeText:
-	text_far _FuchsiaGymKogaReceivedSoulBadgeText
+    text_asm
+    SetEvent EVENT_BEAT_KOGA
+    ld hl, .FuchsiaGymKogaReceivedSoulBadgeText
+    call PrintText
+    jp TextScriptEnd
+    text_promptbutton
+	text_end
+    
+    .FuchsiaGymKogaReceivedSoulBadgeText
+    text_far _FuchsiaGymKogaReceivedSoulBadgeText
 	text_end
 
 .PostBattleAdviceText:
@@ -236,12 +267,6 @@ FuchsiaGymRocker4AfterBattleText:
 	text_far _FuchsiaGymRocker4AfterBattleText
 	text_end
 
-FuchsiaGymRocker5Text:
-	text_asm
-	ld hl, FuchsiaGymTrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
-
 FuchsiaGymRocker5BattleText:
 	text_far _FuchsiaGymRocker5BattleText
 	text_end
@@ -254,11 +279,6 @@ FuchsiaGymRocker5AfterBattleText:
 	text_far _FuchsiaGymRocker5AfterBattleText
 	text_end
 
-FuchsiaGymRocker6Text:
-	text_asm
-	ld hl, FuchsiaGymTrainerHeader5
-	call TalkToTrainer
-	jp TextScriptEnd
 
 FuchsiaGymRocker6BattleText:
 	text_far _FuchsiaGymRocker6BattleText

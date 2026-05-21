@@ -16,26 +16,19 @@ _FuchsiaGymKogaSoulBadgeInfoText::
 	cont "your #MON"
 	cont "increases!"
 
-	para "It also lets you"
-	line "SURF outside of"
-	cont "battle!"
-
 	para "Ah! Take this"
 	line "too!"
 	done
 
 _FuchsiaGymKogaReceivedTM06Text::
 	text "<PLAYER> received"
-	line "@"
-	text_ram wStringBuffer
-	text "!@"
-	text_end
+    line "@"
+    text_ram wNameBuffer
+    text "!"
+    done
 
 _FuchsiaGymKogaTM06ExplanationText::
 	text_start
-	para "TM06 contains"
-	line "TOXIC!"
-
 	para "It is a secret"
 	line "technique over"
 	cont "400 years old!"
