@@ -1,8 +1,9 @@
 SaffronGym_Script:
+    call SabrinaShowOrHideExitBlock
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, .LoadNames
+	call nz, .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, SaffronGymTrainerHeaders
 	ld de, SaffronGym_ScriptPointers
@@ -11,7 +12,7 @@ SaffronGym_Script:
 	ld [wSaffronGymCurScript], a
 	ret
 
-.LoadNames:
+.initial:
 	ld hl, .CityName
 	ld de, .LeaderName
 	jp LoadGymLeaderAndCityName
@@ -21,6 +22,23 @@ SaffronGym_Script:
 
 .LeaderName:
 	db "SABRINA@"
+    
+SabrinaShowOrHideExitBlock:
+; Blocks or clears the exit to the next room.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_BEAT_SABRINA
+	jr z, .blockExitToNextRoom
+	ld a, 14
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, 85
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, 0, 2
+	predef_jump ReplaceTileBlock
 
 SaffronGymResetScripts:
 	xor a ; SCRIPT_SAFFRONGYM_DEFAULT
@@ -47,10 +65,15 @@ SaffronGymSabrinaReceiveTM46Script:
 	ld a, TEXT_SAFFRONGYM_SABRINA_MARSH_BADGE_INFO
 	ldh [hTextID], a
 	call DisplayTextID
-	SetEvent EVENT_BEAT_SABRINA
-	lb bc, TM_PSYWAVE, 1
+	
+	ld a, [wRogueItem]      ; load TM
+    ld b, a
+	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
+    ld a, [wRogueItem]      ; load TM
+    ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    call GetItemName         ; get name of item to receive
 	ld a, TEXT_SAFFRONGYM_SABRINA_RECEIVED_TM46
 	ldh [hTextID], a
 	call DisplayTextID
@@ -65,9 +88,6 @@ SaffronGymSabrinaReceiveTM46Script:
 	set BIT_MARSHBADGE, [hl]
 	ld hl, wBeatGymFlags
 	set BIT_MARSHBADGE, [hl]
-
-	; deactivate gym trainers
-	SetEventRange EVENT_BEAT_SAFFRON_GYM_TRAINER_0, EVENT_BEAT_SAFFRON_GYM_TRAINER_6
 
 	jp SaffronGymResetScripts
 
@@ -120,7 +140,9 @@ SaffronGymSabrinaText:
 	ldh a, [hSpriteIndex]
 	ld [wSpriteIndex], a
 	call EngageMapTrainer
-	call InitBattleEnemyParameters
+	;call InitBattleEnemyParameters
+    ld d, OPP_SABRINA
+    farcall InitGymBattle
 	ld a, $6
 	ld [wGymLeaderNo], a
 	ld a, SCRIPT_SAFFRONGYM_SABRINA_POST_BATTLE
@@ -133,10 +155,18 @@ SaffronGymSabrinaText:
 	text_end
 
 .ReceivedMarshBadgeText:
-	text_far _SaffronGymSabrinaReceivedMarshBadgeText
+    text_asm
+    SetEvent EVENT_BEAT_SABRINA
+	ld hl, .SaffronGymSabrinaReceivedMarshBadgeText
+    call PrintText
 	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
+    jp TextScriptEnd
 	text_promptbutton
 	text_end
+
+.SaffronGymSabrinaReceivedMarshBadgeText
+    text_far _SaffronGymSabrinaReceivedMarshBadgeText
+    text_end
 
 .PostBattleAdviceText:
 	text_far _SaffronGymSabrinaPostBattleAdviceText
