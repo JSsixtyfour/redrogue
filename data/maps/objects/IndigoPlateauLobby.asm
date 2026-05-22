@@ -18,7 +18,7 @@ IndigoPlateauLobby_Object:
 	def_warp_events
 	warp_event  7, 11, LAST_MAP, 1
 	warp_event  8, 11, LAST_MAP, 2
-	warp_event  8,  0, FUCHSIA_GYM, 1
+	warp_event  8,  0, SAFFRON_GYM, 1
 
 	def_bg_events
 

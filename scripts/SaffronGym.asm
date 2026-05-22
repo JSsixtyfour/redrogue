@@ -31,13 +31,13 @@ SabrinaShowOrHideExitBlock:
 	ret z
 	CheckEvent EVENT_BEAT_SABRINA
 	jr z, .blockExitToNextRoom
-	ld a, 14
+	ld a, $E
 	jp .setExitBlock
 .blockExitToNextRoom
-	ld a, 85
+	ld a, $54
 .setExitBlock
 	ld [wNewTileBlockID], a
-	lb bc, 0, 2
+	lb bc, 0, 4
 	predef_jump ReplaceTileBlock
 
 SaffronGymResetScripts:
@@ -106,13 +106,13 @@ SaffronGym_TextPointers:
 SaffronGymTrainerHeaders:
 	def_trainers 2
 SaffronGymTrainerHeader0:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_0, 4, SaffronGymChanneler1BattleText, SaffronGymChanneler1EndBattleText, SaffronGymChanneler1AfterBattleText
+	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_0, 3, SaffronGymChanneler1BattleText, SaffronGymChanneler1EndBattleText, SaffronGymChanneler1AfterBattleText
 SaffronGymTrainerHeader1:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_1, 4, SaffronGymYoungster1BattleText, SaffronGymYoungster1EndBattleText, SaffronGymYoungster1AfterBattleText
+	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_1, 3, SaffronGymYoungster1BattleText, SaffronGymYoungster1EndBattleText, SaffronGymYoungster1AfterBattleText
 SaffronGymTrainerHeader2:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_2, 4, SaffronGymChanneler2BattleText, SaffronGymChanneler2EndBattleText, SaffronGymChanneler2AfterBattleText
+	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_2, 3, SaffronGymChanneler2BattleText, SaffronGymChanneler2EndBattleText, SaffronGymChanneler2AfterBattleText
 SaffronGymTrainerHeader3:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_3, 4, SaffronGymYoungster2BattleText, SaffronGymYoungster2EndBattleText, SaffronGymYoungster2AfterBattleText
+	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_3, 3, SaffronGymYoungster2BattleText, SaffronGymYoungster2EndBattleText, SaffronGymYoungster2AfterBattleText
 	db -1 ; end
 
 SaffronGymSabrinaText:
@@ -159,8 +159,8 @@ SaffronGymSabrinaText:
     SetEvent EVENT_BEAT_SABRINA
 	ld hl, .SaffronGymSabrinaReceivedMarshBadgeText
     call PrintText
-	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
     jp TextScriptEnd
+	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
 	text_promptbutton
 	text_end
 
