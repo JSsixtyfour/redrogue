@@ -13,6 +13,7 @@ SaffronGym_Script:
 	ret
 
 .initial:
+    farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
 	jp LoadGymLeaderAndCityName

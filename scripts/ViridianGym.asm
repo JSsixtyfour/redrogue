@@ -1,4 +1,9 @@
 ViridianGym_Script:
+    call GiovanniShowOrHideExitBlock
+    ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	call nz, .initial
 	ld hl, .CityName
 	ld de, .LeaderName
 	call LoadGymLeaderAndCityName
@@ -15,6 +20,27 @@ ViridianGym_Script:
 
 .LeaderName:
 	db "GIOVANNI@"
+    
+.initial:
+farcall GymLeaderRandomItem
+ret
+
+GiovanniShowOrHideExitBlock:
+; Blocks or clears the exit to the next room.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI
+	jr z, .blockExitToNextRoom
+	ld a, $5
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, $24
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, 0, 1
+	predef_jump ReplaceTileBlock
 
 ViridianGymResetScripts:
 	xor a
@@ -52,11 +78,12 @@ ViridianGymDefaultScript:
 	ret
 
 ViridianGymArrowTilePlayerMovement:
-	map_coord_movement 19, 11, ViridianGymArrowMovement1
-	map_coord_movement 19,  1, ViridianGymArrowMovement2
-	map_coord_movement 18,  2, ViridianGymArrowMovement3
-	map_coord_movement 11,  2, ViridianGymArrowMovement4
-	map_coord_movement 16, 10, ViridianGymArrowMovement5
+	map_coord_movement 18, 11, ViridianGymArrowMovement1 ; good
+	map_coord_movement 19,  1, ViridianGymArrowMovement2 ; good
+	map_coord_movement 18,  2, ViridianGymArrowMovement3 ; good
+	map_coord_movement 11,  2, ViridianGymArrowMovement4 ; good
+	map_coord_movement 16, 10, ViridianGymArrowMovement5 ; good
+    
 	map_coord_movement  4,  6, ViridianGymArrowMovement6
 	map_coord_movement  5, 13, ViridianGymArrowMovement7
 	map_coord_movement  4, 14, ViridianGymArrowMovement8
@@ -64,10 +91,12 @@ ViridianGymArrowTilePlayerMovement:
 	map_coord_movement  1, 15, ViridianGymArrowMovement10
 	map_coord_movement 13, 16, ViridianGymArrowMovement11
 	map_coord_movement 13, 17, ViridianGymArrowMovement12
+    
+    map_coord_movement 16, 6, ViridianGymArrowMovement13
 	db -1 ; end
 
 ViridianGymArrowMovement1:
-	db PAD_UP, 9
+	db PAD_DOWN, 3
 	db -1 ; end
 
 ViridianGymArrowMovement2:
@@ -75,7 +104,7 @@ ViridianGymArrowMovement2:
 	db -1 ; end
 
 ViridianGymArrowMovement3:
-	db PAD_DOWN, 9
+	db PAD_DOWN, 8
 	db -1 ; end
 
 ViridianGymArrowMovement4:
@@ -83,7 +112,7 @@ ViridianGymArrowMovement4:
 	db -1 ; end
 
 ViridianGymArrowMovement5:
-	db PAD_DOWN, 2
+	db PAD_RIGHT, 2
 	db -1 ; end
 
 ViridianGymArrowMovement6:
@@ -114,6 +143,10 @@ ViridianGymArrowMovement12:
 	db PAD_LEFT, 12
 	db -1 ; end
 
+ViridianGymArrowMovement13:
+	db PAD_DOWN, 4
+	db -1 ; end   
+
 ViridianGymPlayerSpinningScript:
 	ld a, [wSimulatedJoypadStatesIndex]
 	and a
@@ -139,10 +172,15 @@ ViridianGymReceiveTM27:
 	ld a, TEXT_VIRIDIANGYM_GIOVANNI_EARTH_BADGE_INFO
 	ldh [hTextID], a
 	call DisplayTextID
-	SetEvent EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI
-	lb bc, TM_FISSURE, 1
+	;SetEvent EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI
+	ld a, [wRogueItem]      ; load TM
+    ld b, a
+	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .bag_full
+    ld a, [wRogueItem]      ; load TM
+    ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    call GetItemName         ; get name of item to receive
 	ld a, TEXT_VIRIDIANGYM_GIOVANNI_RECEIVED_TM27
 	ldh [hTextID], a
 	call DisplayTextID
@@ -159,7 +197,7 @@ ViridianGymReceiveTM27:
 	set BIT_EARTHBADGE, [hl]
 
 	; deactivate gym trainers
-	SetEventRange EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0, EVENT_BEAT_VIRIDIAN_GYM_TRAINER_7
+	;SetEventRange EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0, EVENT_BEAT_VIRIDIAN_GYM_TRAINER_7
 
 	ld a, TOGGLE_ROUTE_22_RIVAL_2
 	ld [wToggleableObjectIndex], a
@@ -174,12 +212,8 @@ ViridianGym_TextPointers:
 	dw_const ViridianGymHiker1Text,                 TEXT_VIRIDIANGYM_HIKER1
 	dw_const ViridianGymRocker1Text,                TEXT_VIRIDIANGYM_ROCKER1
 	dw_const ViridianGymHiker2Text,                 TEXT_VIRIDIANGYM_HIKER2
-	dw_const ViridianGymCooltrainerM2Text,          TEXT_VIRIDIANGYM_COOLTRAINER_M2
-	dw_const ViridianGymHiker3Text,                 TEXT_VIRIDIANGYM_HIKER3
-	dw_const ViridianGymRocker2Text,                TEXT_VIRIDIANGYM_ROCKER2
-	dw_const ViridianGymCooltrainerM3Text,          TEXT_VIRIDIANGYM_COOLTRAINER_M3
 	dw_const ViridianGymGymGuideText,               TEXT_VIRIDIANGYM_GYM_GUIDE
-	dw_const PickUpItemText,                        TEXT_VIRIDIANGYM_REVIVE
+    ;dw_const PickUpItemText,                        TEXT_VIRIDIANGYM_REVIVE
 	dw_const ViridianGymGiovanniEarthBadgeInfoText, TEXT_VIRIDIANGYM_GIOVANNI_EARTH_BADGE_INFO
 	dw_const ViridianGymGiovanniReceivedTM27Text,   TEXT_VIRIDIANGYM_GIOVANNI_RECEIVED_TM27
 	dw_const ViridianGymGiovanniTM27NoRoomText,     TEXT_VIRIDIANGYM_GIOVANNI_TM27_NO_ROOM
@@ -187,21 +221,13 @@ ViridianGym_TextPointers:
 ViridianGymTrainerHeaders:
 	def_trainers 2
 ViridianGymTrainerHeader0:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0, 4, ViridianGymCooltrainerM1BattleText, ViridianGymCooltrainerM1EndBattleText, ViridianGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0, 3, ViridianGymCooltrainerM1BattleText, ViridianGymCooltrainerM1EndBattleText, ViridianGymCooltrainerM1AfterBattleText
 ViridianGymTrainerHeader1:
 	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_1, 4, ViridianGymHiker1BattleText, ViridianGymHiker1EndBattleText, ViridianGymHiker1AfterBattleText
 ViridianGymTrainerHeader2:
 	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_2, 4, ViridianGymRocker1BattleText, ViridianGymRocker1EndBattleText, ViridianGymRocker1AfterBattleText
 ViridianGymTrainerHeader3:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_3, 2, ViridianGymHiker2BattleText, ViridianGymHiker2EndBattleText, ViridianGymHiker2AfterBattleText
-ViridianGymTrainerHeader4:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_4, 3, ViridianGymCooltrainerM2BattleText, ViridianGymCooltrainerM2EndBattleText, ViridianGymCooltrainerM2AfterBattleText
-ViridianGymTrainerHeader5:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_5, 4, ViridianGymHiker3BattleText, ViridianGymHiker3EndBattleText, ViridianGymHiker3AfterBattleText
-ViridianGymTrainerHeader6:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_6, 3, ViridianGymRocker2BattleText, ViridianGymRocker2EndBattleText, ViridianGymRocker2AfterBattleText
-ViridianGymTrainerHeader7:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_7, 4, ViridianGymCooltrainerM3BattleText, ViridianGymCooltrainerM3EndBattleText, ViridianGymCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_3, 1, ViridianGymHiker2BattleText, ViridianGymHiker2EndBattleText, ViridianGymHiker2AfterBattleText
 	db -1 ; end
 
 ViridianGymGiovanniText:
@@ -238,7 +264,9 @@ ViridianGymGiovanniText:
 	ldh a, [hSpriteIndex]
 	ld [wSpriteIndex], a
 	call EngageMapTrainer
-	call InitBattleEnemyParameters
+	;call InitBattleEnemyParameters
+    ld d, OPP_GIOVANNI
+    farcall InitGymBattle
 	ld a, $8
 	ld [wGymLeaderNo], a
 	ld a, SCRIPT_VIRIDIANGYM_GIOVANNI_POST_BATTLE
@@ -251,7 +279,15 @@ ViridianGymGiovanniText:
 	text_end
 
 .ReceivedEarthBadgeText:
-	text_far _ViridianGymGiovanniReceivedEarthBadgeText
+    text_asm
+    SetEvent EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI
+    ld hl, .ViridianGymGiovanniReceivedEarthBadgeText
+    call PrintText
+    jp TextScriptEnd
+	text_end
+
+.ViridianGymGiovanniReceivedEarthBadgeText:	
+    text_far _ViridianGymGiovanniReceivedEarthBadgeText
 	sound_level_up ; probably supposed to play SFX_GET_ITEM_1 but the wrong music bank is loaded
 	text_end
 
@@ -348,12 +384,6 @@ ViridianGymHiker2AfterBattleText:
 	text_far _ViridianGymHiker2AfterBattleText
 	text_end
 
-ViridianGymCooltrainerM2Text:
-	text_asm
-	ld hl, ViridianGymTrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
-
 ViridianGymCooltrainerM2BattleText:
 	text_far _ViridianGymCooltrainerM2BattleText
 	text_end
@@ -366,11 +396,6 @@ ViridianGymCooltrainerM2AfterBattleText:
 	text_far _ViridianGymCooltrainerM2AfterBattleText
 	text_end
 
-ViridianGymHiker3Text:
-	text_asm
-	ld hl, ViridianGymTrainerHeader5
-	call TalkToTrainer
-	jp TextScriptEnd
 
 ViridianGymHiker3BattleText:
 	text_far _ViridianGymHiker3BattleText
@@ -384,11 +409,6 @@ ViridianGymHiker3AfterBattleText:
 	text_far _ViridianGymHiker3AfterBattleText
 	text_end
 
-ViridianGymRocker2Text:
-	text_asm
-	ld hl, ViridianGymTrainerHeader6
-	call TalkToTrainer
-	jp TextScriptEnd
 
 ViridianGymRocker2BattleText:
 	text_far _ViridianGymRocker2BattleText
@@ -402,11 +422,6 @@ ViridianGymRocker2AfterBattleText:
 	text_far _ViridianGymRocker2AfterBattleText
 	text_end
 
-ViridianGymCooltrainerM3Text:
-	text_asm
-	ld hl, ViridianGymTrainerHeader7
-	call TalkToTrainer
-	jp TextScriptEnd
 
 ViridianGymCooltrainerM3BattleText:
 	text_far _ViridianGymCooltrainerM3BattleText

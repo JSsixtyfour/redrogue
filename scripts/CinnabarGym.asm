@@ -10,7 +10,7 @@ CinnabarGymSetMapAndTiles:
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
 	push hl
-	call nz, .LoadNames
+	call nz, .initial
 	pop hl
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
@@ -18,7 +18,8 @@ CinnabarGymSetMapAndTiles:
 	ResetEvent EVENT_2A7
 	ret
 
-.LoadNames:
+.initial:
+    farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
 	jp LoadGymLeaderAndCityName

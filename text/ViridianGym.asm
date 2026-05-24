@@ -45,16 +45,9 @@ _ViridianGymGiovanniPostBattleAdviceText::
 
 _ViridianGymGiovanniEarthBadgeInfoText::
 	text "The EARTHBADGE"
-	line "makes #MON of"
-	cont "any level obey!"
-
-	para "It is evidence of"
-	line "your mastery as a"
+	line "is evidence of"
+	cont "your skill as a"
 	cont "#MON trainer!"
-
-	para "With it, you can"
-	line "enter the #MON"
-	cont "LEAGUE!"
 
 	para "It is my gift for"
 	line "your #MON"
@@ -62,9 +55,11 @@ _ViridianGymGiovanniEarthBadgeInfoText::
 	done
 
 _ViridianGymGiovanniReceivedTM27Text::
-	text "<PLAYER> received"
-	line "TM27!@"
-	text_end
+	text "<PLAYER> received "
+    line "@"
+    text_ram wNameBuffer
+    text "!"
+    done
 
 _ViridianGymGiovanniTM27ExplanationText::
 	text_start
