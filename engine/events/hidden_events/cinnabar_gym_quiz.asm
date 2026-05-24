@@ -143,7 +143,7 @@ CinnabarGymQuizIncorrectText:
 UpdateCinnabarGymGateTileBlocks_::
 ; Update the overworld map with open floor blocks or locked gate blocks
 ; depending on event flags.
-	ld a, 6
+	ld a, 4
 	ldh [hGymGateIndex], a
 .loop
 	ldh a, [hGymGateIndex]
@@ -181,6 +181,17 @@ UpdateCinnabarGymGateTileBlocks_::
 	ld hl, hGymGateIndex
 	dec [hl]
 	jr nz, .loop
+    
+	CheckEvent EVENT_BEAT_BLAINE
+	jr z, .blockExitToNextRoom
+	ld a, $E
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, $54
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, 0, 1
+    predef_jump ReplaceTileBlock
 	ret
 
 MACRO gym_gate_coord
@@ -193,8 +204,7 @@ DEF VERTICAL_GATE_BLOCK   EQU $5f
 CinnabarGymGateCoords:
 	; x coord, y coord, block id
 	gym_gate_coord 9, 3, HORIZONTAL_GATE_BLOCK
-	gym_gate_coord 6, 3, HORIZONTAL_GATE_BLOCK
 	gym_gate_coord 6, 6, HORIZONTAL_GATE_BLOCK
-	gym_gate_coord 3, 8, VERTICAL_GATE_BLOCK
 	gym_gate_coord 2, 6, HORIZONTAL_GATE_BLOCK
 	gym_gate_coord 2, 3, HORIZONTAL_GATE_BLOCK
+    ;gym_gate_coord 1, 0, HORIZONTAL_GATE_BLOCK

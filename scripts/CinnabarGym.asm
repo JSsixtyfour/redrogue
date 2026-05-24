@@ -28,6 +28,7 @@ CinnabarGymSetMapAndTiles:
 
 .LeaderName:
 	db "BLAINE@"
+   
 
 CinnabarGymResetScripts:
 	xor a ; SCRIPT_CINNABARGYM_DEFAULT
@@ -50,35 +51,16 @@ CinnabarGym_ScriptPointers:
 	dw_const CinnabarGymBlainePostBattleScript, SCRIPT_CINNABARGYM_BLAINE_POST_BATTLE
 
 CinnabarGymDefaultScript:
-	ld a, [wOpponentAfterWrongAnswer]
-	and a
-	ret z
-	ldh [hSpriteIndex], a
-	cp CINNABARGYM_SUPER_NERD3
-	jr nz, .not_super_nerd3
-	ld a, PLAYER_DIR_DOWN
-	ld [wPlayerMovingDirection], a
-	ld de, MovementNpcToLeftAndUp
-	jr .MoveSprite
-.not_super_nerd3
-	ld de, MovementNpcToLeft
-	ld a, PLAYER_DIR_RIGHT
-	ld [wPlayerMovingDirection], a
-.MoveSprite
-	call MoveSprite
-	ld a, SCRIPT_CINNABARGYM_GET_OPPONENT_TEXT
-	ld [wCinnabarGymCurScript], a
-	ld [wCurMapScript], a
 	ret
 
-MovementNpcToLeftAndUp:
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_UP
-	db -1 ; end
-
-MovementNpcToLeft:
-	db NPC_MOVEMENT_LEFT
-	db -1 ; end
+;MovementNpcToLeftAndUp:
+;	db NPC_MOVEMENT_LEFT
+;	db NPC_MOVEMENT_UP
+;	db -1 ; end
+;
+;MovementNpcToLeft:
+;	db NPC_MOVEMENT_LEFT
+;	db -1 ; end
 
 CinnabarGymGetOpponentTextScript:
 	ld a, [wStatusFlags5]
@@ -121,7 +103,7 @@ CinnabarGymOpenGateScript:
 	EventFlagAddress hl, EVENT_BEAT_CINNABAR_GYM_TRAINER_0
 	call CinnabarGymFlagAction
 	ld a, [wTrainerHeaderFlagBit]
-	sub $2
+	sub $1
 	AdjustEventBit EVENT_CINNABAR_GYM_GATE0_UNLOCKED, 0
 	ld c, a
 	ld b, FLAG_SET
@@ -148,9 +130,14 @@ CinnabarGymReceiveTM38:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_BEAT_BLAINE
-	lb bc, TM_FIRE_BLAST, 1
+    ld a, [wRogueItem]      ; load TM
+    ld b, a
+	ld c, 1                 ; load amount of TM
 	call GiveItem
 	jr nc, .BagFull
+    ld a, [wRogueItem]      ; load TM
+    ld [wNamedObjectIndex], a   ; place item id in spot for GetItemName
+    call GetItemName         ; get name of item to receive
 	ld a, TEXT_CINNABARGYM_BLAINE_RECEIVED_TM38
 	ldh [hTextID], a
 	call DisplayTextID
@@ -176,14 +163,11 @@ CinnabarGymReceiveTM38:
 
 CinnabarGym_TextPointers:
 	def_text_pointers
-	dw_const CinnabarGymBlaineText,                 TEXT_CINNABARGYM_BLAINE
 	dw_const CinnabarGymSuperNerd1,                 TEXT_CINNABARGYM_SUPER_NERD1
 	dw_const CinnabarGymSuperNerd2,                 TEXT_CINNABARGYM_SUPER_NERD2
 	dw_const CinnabarGymSuperNerd3,                 TEXT_CINNABARGYM_SUPER_NERD3
 	dw_const CinnabarGymSuperNerd4,                 TEXT_CINNABARGYM_SUPER_NERD4
-	dw_const CinnabarGymSuperNerd5,                 TEXT_CINNABARGYM_SUPER_NERD5
-	dw_const CinnabarGymSuperNerd6,                 TEXT_CINNABARGYM_SUPER_NERD6
-	dw_const CinnabarGymSuperNerd7,                 TEXT_CINNABARGYM_SUPER_NERD7
+    dw_const CinnabarGymBlaineText,                 TEXT_CINNABARGYM_BLAINE
 	dw_const CinnabarGymGymGuideText,               TEXT_CINNABARGYM_GYM_GUIDE
 	dw_const CinnabarGymBlaineVolcanoBadgeInfoText, TEXT_CINNABARGYM_BLAINE_VOLCANO_BADGE_INFO
 	dw_const CinnabarGymBlaineReceivedTM38Text,     TEXT_CINNABARGYM_BLAINE_RECEIVED_TM38
@@ -237,11 +221,19 @@ CinnabarGymBlaineText:
 	text_end
 
 .ReceivedVolcanoBadgeText:
-	text_far _CinnabarGymBlaineReceivedVolcanoBadgeText
+    text_asm
+    SetEvent EVENT_BEAT_BLAINE
+	ld hl, .CinnabarGymBlaineReceivedVolcanoBadgeText
+    call PrintText
+    jp TextScriptEnd
 	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
 	text_waitbutton
 	text_end
-
+    
+.CinnabarGymBlaineReceivedVolcanoBadgeText    
+    text_far _CinnabarGymBlaineReceivedVolcanoBadgeText
+    text_end
+    
 .PostBattleAdviceText:
 	text_far _CinnabarGymBlainePostBattleAdviceText
 	text_end

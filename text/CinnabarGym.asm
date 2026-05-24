@@ -45,7 +45,7 @@ _CinnabarGymBlaineVolcanoBadgeInfoText::
 _CinnabarGymBlaineReceivedTM38Text::
 	text "<PLAYER> received"
 	line "@"
-	text_ram wStringBuffer
+	text_ram wNameBuffer
 	text "!@"
 	text_end
 
