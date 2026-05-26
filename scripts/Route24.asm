@@ -1,4 +1,16 @@
 Route24_Script:
+    
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+    
+    SetEvent EVENT_ENTER_ROOM
+    
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+    
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, Route24TrainerHeaders
 	ld de, Route24_ScriptPointers
@@ -46,7 +58,7 @@ Route24DefaultScript:
 	ret
 
 .PlayerCoordsArray:
-	dbmapcoord 10, 15
+	dbmapcoord 10, $C
 	db -1 ; end
 
 Route24PlayerMovingScript:
@@ -87,6 +99,12 @@ Route24_TextPointers:
 	dw_const Route24CooltrainerF2Text, TEXT_ROUTE24_COOLTRAINER_F2
 	dw_const Route24Youngster2Text,    TEXT_ROUTE24_YOUNGSTER2
 	dw_const PickUpItemText,           TEXT_ROUTE24_TM_THUNDER_WAVE
+    dw_const RandomPickUpItemText,     TEXT_ROUTE24_RANDOM
+    dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_1
+    dw_const Route24_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_2
+    dw_const Route24_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_Route24_Reward_Text, TEXT_ROUTE24_REWARD_VENDOR_1
+    EXPORT TEXT_ROUTE24_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 Route24TrainerHeaders:
 	def_trainers 2
@@ -105,50 +123,29 @@ Route24TrainerHeader5:
 	db -1 ; end
 
 Route24CooltrainerM1Text:
-	text_asm
-	ResetEvent EVENT_NUGGET_REWARD_AVAILABLE
-	CheckEvent EVENT_GOT_NUGGET
-	jr nz, .got_item
-	ld hl, .YouBeatOurContestText
+    text_asm
+    SetEvent EVENT_GOT_NUGGET
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+   
+    ld hl, .YouCouldBecomeATopLeaderText
 	call PrintText
-	lb bc, NUGGET, 1
-	call GiveItem
-	jr nc, .bag_full
-	SetEvent EVENT_GOT_NUGGET
-	ld hl, .ReceivedNuggetText
+	jr .done
+    
+    .GetMon
+    ld hl, .YouBeatOurContestText
 	call PrintText
-	ld hl, .JoinTeamRocketText
-	call PrintText
-	ld hl, wStatusFlags3
-	set BIT_TALKED_TO_TRAINER, [hl]
-	set BIT_PRINT_END_BATTLE_TEXT, [hl]
-	ld hl, .DefeatedText
-	ld de, .DefeatedText
-	call SaveEndBattleTextPointers
-	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
-	call EngageMapTrainer
-	call InitBattleEnemyParameters
-	xor a
-	ldh [hJoyHeld], a
-	ld a, SCRIPT_ROUTE24_AFTER_ROCKET_BATTLE
-	ld [wRoute24CurScript], a
-	ld [wCurMapScript], a
-	jp TextScriptEnd
-.got_item
-	ld hl, .YouCouldBecomeATopLeaderText
-	call PrintText
-	jp TextScriptEnd
-.bag_full
-	ld hl, .NoRoomText
-	call PrintText
-	SetEvent EVENT_NUGGET_REWARD_AVAILABLE
-	jp TextScriptEnd
+    xor a
+    ld a, TEXT_ROUTE24_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+    .done
+    ;xor a
+	;ld [wJoyIgnore], a
+    jp TextScriptEnd
 
 .YouBeatOurContestText:
 	text_far _Route24CooltrainerM1YouBeatOurContestText
-	sound_get_item_1
-	text_far _Route24CooltrainerM1YouJustEarnedAPrizeText
 	text_end
 
 .ReceivedNuggetText:
@@ -279,4 +276,30 @@ Route24Youngster2EndBattleText:
 
 Route24Youngster2AfterBattleText:
 	text_far _Route24Youngster2AfterBattleText
+	text_end
+
+Rogue_Route24_Reward_Text:
+script_rogue_reward
+
+Route24_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+Route24_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+Route24_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+
+Route24GreedyText:
+	text_far _GreedyText
 	text_end

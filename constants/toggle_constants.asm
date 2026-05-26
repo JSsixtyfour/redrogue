@@ -83,6 +83,10 @@ ENDM
 	toggle_consts_for ROUTE_24
 	const TOGGLE_NUGGET_BRIDGE_GUY             ; 24
 	const TOGGLE_ROUTE_24_ITEM                 ; 25 X
+    const TOGGLE_ROUTE_24_ITEM_2        ; 66 X
+    const TOGGLE_ROUTE_24_ROGUE_REWARD_POKEBALL_1 ; 67
+    const TOGGLE_ROUTE_24_ROGUE_REWARD_POKEBALL_2 ; 68
+    const TOGGLE_ROUTE_24_ROGUE_REWARD_POKEBALL_3 ; 69
 
 	toggle_consts_for ROUTE_25
 	const TOGGLE_ROUTE_25_ITEM                 ; 26 X

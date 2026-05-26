@@ -1,15 +1,10 @@
 _Route24CooltrainerM1YouBeatOurContestText::
 	text "Congratulations!"
 	line "You beat our 5"
-	cont "contest trainers!@"
-	text_end
-
-_Route24CooltrainerM1YouJustEarnedAPrizeText::
-	text_start
-
+	cont "contest trainers!"
 	para "You just earned a"
 	line "fabulous prize!"
-	prompt
+    done
 
 _Route24CooltrainerM1ReceivedNuggetText::
 	text "<PLAYER> received"

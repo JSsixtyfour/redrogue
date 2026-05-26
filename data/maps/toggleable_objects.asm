@@ -112,6 +112,10 @@ ToggleableObjectStates:
 	toggleable_objects_for ROUTE_24
 	toggle_object_state ROUTE24_COOLTRAINER_M1,  ON
 	toggle_object_state ROUTE24_TM_THUNDER_WAVE, ON
+    toggle_object_state ROUTE24_POKE_BALL, ON
+    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_1, ON
+    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_2, ON
+    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_3, ON
 
 	toggleable_objects_for ROUTE_25
 	toggle_object_state ROUTE25_TM_SEISMIC_TOSS, ON
