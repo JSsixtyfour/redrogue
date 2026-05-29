@@ -200,6 +200,7 @@ ViridianForestCooltrainer_FAfterBattleText:
     ld a, TEXT_VIRIDIANFOREST_REWARD_VENDOR_1
 	ldh [hTextID], a
 	call DisplayTextID
+    call DisableWaitingAfterTextDisplay
     .done
     jp TextScriptEnd
 

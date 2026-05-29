@@ -161,17 +161,17 @@ SoYouWantRewardText:
 
 RewardRoomBagIsFullText:
 	text_far _OopsYouDontHaveEnoughRoomText
-	text_waitbutton
+	;text_waitbutton
 	text_end
 
 OhFineThenRewardText:
 	text_far _OhFineThenText
-	text_waitbutton
+	;text_waitbutton
 	text_end
     
 Goodluck:
 	text_far _Goodluck
-	text_waitbutton
+	;text_waitbutton
 	text_end
 
 GetRewardMonLevel:

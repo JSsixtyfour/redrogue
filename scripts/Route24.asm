@@ -139,9 +139,8 @@ Route24CooltrainerM1Text:
     ld a, TEXT_ROUTE24_REWARD_VENDOR_1
 	ldh [hTextID], a
 	call DisplayTextID
+    call DisableWaitingAfterTextDisplay
     .done
-    ;xor a
-	;ld [wJoyIgnore], a
     jp TextScriptEnd
 
 .YouBeatOurContestText:
