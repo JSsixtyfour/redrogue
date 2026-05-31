@@ -56,6 +56,26 @@ NoMoreRoomForItemText:
 RandomPickUpItem:
 	call EnableAutoTextBoxDrawing
 
+	; Hardcoded path for roguelike stage maps (random item always at sprite slot 6)
+	farcall IsRogueStageMap
+	jr z, .normalPickup
+	ldh a, [hSpriteIndex]
+	cp 6
+	jr nz, .normalPickup
+	ld a, [wRogueItem]
+	ld b, a
+	ld c, 1
+	call GiveItem
+	jr nc, .BagFull
+	ld a, TOGGLE_STAGE_RANDOM_ITEM
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, 1
+	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ld hl, FoundItemText
+	jr .print
+
+.normalPickup
 	ldh a, [hSpriteIndex]
 	ld b, a
 	ld hl, wToggleableObjectList
@@ -72,8 +92,8 @@ RandomPickUpItem:
 	ld a, [hl]
 	ldh [hToggleableObjectIndex], a
 	ld a, [wRogueItem]
-	ld b, a ; item
-	ld c, 1 ; quantity
+	ld b, a
+	ld c, 1
 	call GiveItem
 	jr nc, .BagFull
 
@@ -84,9 +104,9 @@ RandomPickUpItem:
 	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
 	ld hl, FoundItemText
 	jr .print
-    
-    .BagFull
+
+.BagFull
 	ld hl, NoMoreRoomForItemText
-    .print
+.print
 	call PrintText
 	ret

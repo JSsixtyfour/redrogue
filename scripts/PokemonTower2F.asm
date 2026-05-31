@@ -1,8 +1,24 @@
 PokemonTower2F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
-	ld hl, PokemonTower2F_ScriptPointers
+	ld hl, PokemonTower2FTrainerHeaders
+	ld de, PokemonTower2F_ScriptPointers
 	ld a, [wPokemonTower2FCurScript]
-	jp CallFunctionInTable
+	call ExecuteCurMapScriptInTable
+	ld [wPokemonTower2FCurScript], a
+	ret
 
 PokemonTower2FResetRivalEncounter:
 	xor a ; SCRIPT_POKEMONTOWER2F_DEFAULT
@@ -16,6 +32,8 @@ PokemonTower2F_ScriptPointers:
 	dw_const PokemonTower2FDefaultScript,       SCRIPT_POKEMONTOWER2F_DEFAULT
 	dw_const PokemonTower2FDefeatedRivalScript, SCRIPT_POKEMONTOWER2F_DEFEATED_RIVAL
 	dw_const PokemonTower2FRivalExitsScript,    SCRIPT_POKEMONTOWER2F_RIVAL_EXITS
+	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POKEMONTOWER2F_START_BATTLE
+	dw_const EndTrainerBattle,                      SCRIPT_POKEMONTOWER2F_END_BATTLE
 
 PokemonTower2FDefaultScript:
 IF DEF(_DEBUG)
@@ -23,10 +41,10 @@ IF DEF(_DEBUG)
 	ret nz
 ENDC
 	CheckEvent EVENT_BEAT_POKEMON_TOWER_RIVAL
-	ret nz
+	jr nz, .checkTrainers
 	ld hl, PokemonTower2FRivalEncounterEventCoords
 	call ArePlayerCoordsInArray
-	ret nc
+	jr nc, .checkTrainers
 	ld a, SFX_STOP_ALL_MUSIC
 	ld [wNewSoundID], a
 	call PlaySound
@@ -56,6 +74,9 @@ ENDC
 	xor a
 	ldh [hJoyHeld], a
 	ldh [hJoyPressed], a
+	ret
+.checkTrainers
+	call CheckFightingMapTrainers
 	ret
 
 PokemonTower2FRivalEncounterEventCoords:
@@ -131,8 +152,138 @@ PokemonTower2FRivalExitsScript:
 
 PokemonTower2F_TextPointers:
 	def_text_pointers
-	dw_const PokemonTower2FRivalText,     TEXT_POKEMONTOWER2F_RIVAL
-	dw_const PokemonTower2FChannelerText, TEXT_POKEMONTOWER2F_CHANNELER
+	dw_const PokemonTower2FChanneler1Text, TEXT_POKEMONTOWER2F_CHANNELER1
+	dw_const PokemonTower2FChanneler2Text, TEXT_POKEMONTOWER2F_CHANNELER2
+	dw_const PokemonTower2FChanneler3Text, TEXT_POKEMONTOWER2F_CHANNELER3
+	dw_const PokemonTower2FChanneler4Text, TEXT_POKEMONTOWER2F_CHANNELER4
+	dw_const PokemonTower2FChanneler5Text, TEXT_POKEMONTOWER2F_CHANNELER5
+	dw_const PokemonTower2FRivalText,      TEXT_POKEMONTOWER2F_RIVAL
+	dw_const PokemonTower2FChannelerText,  TEXT_POKEMONTOWER2F_CHANNELER
+    dw_const RandomPickUpItemText,         TEXT_POKEMONTOWER2F_RANDOM
+    dw_const PokemonTower2F_Rogue_Reward_Script_PokeballText_1, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_1
+    dw_const PokemonTower2F_Rogue_Reward_Script_PokeballText_2, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_2
+    dw_const PokemonTower2F_Rogue_Reward_Script_PokeballText_3, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_PokemonTower2F_Reward_Text, TEXT_POKEMONTOWER2F_REWARD_VENDOR_1
+    EXPORT TEXT_POKEMONTOWER2F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+
+PokemonTower2FTrainerHeaders:
+	def_trainers 1
+PokemonTower2FTrainerHeader0:
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0, 1, PokemonTower2FChanneler1BattleText, PokemonTower2FChanneler1EndBattleText, PokemonTower2FChanneler1AfterBattleText
+PokemonTower2FTrainerHeader1:
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_1, 1, PokemonTower2FChanneler2BattleText, PokemonTower2FChanneler2EndBattleText, PokemonTower2FChanneler2AfterBattleText
+PokemonTower2FTrainerHeader2:
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2, 1, PokemonTower2FChanneler3BattleText, PokemonTower2FChanneler3EndBattleText, PokemonTower2FChanneler3AfterBattleText
+PokemonTower2FTrainerHeader3:
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 1, PokemonTower2FChanneler4BattleText, PokemonTower2FChanneler4EndBattleText, PokemonTower2FChanneler4AfterBattleText
+PokemonTower2FTrainerHeader4:
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_4, 1, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
+	db -1 ; end
+
+PokemonTower2FChanneler1Text:
+	text_asm
+	ld hl, PokemonTower2FTrainerHeader0
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower2FChanneler2Text:
+	text_asm
+	ld hl, PokemonTower2FTrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower2FChanneler3Text:
+	text_asm
+	ld hl, PokemonTower2FTrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower2FChanneler4Text:
+	text_asm
+	ld hl, PokemonTower2FTrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower2FChanneler5Text:
+	text_asm
+	ld hl, PokemonTower2FTrainerHeader4
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower2FChanneler1BattleText:
+	text_far _PokemonTower2FChanneler1BattleText
+	text_end
+
+PokemonTower2FChanneler1EndBattleText:
+	text_far _PokemonTower2FChanneler1EndBattleText
+	text_end
+
+PokemonTower2FChanneler1AfterBattleText:
+	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_end
+
+PokemonTower2FChanneler2BattleText:
+	text_far _PokemonTower2FChanneler1BattleText
+	text_end
+
+PokemonTower2FChanneler2EndBattleText:
+	text_far _PokemonTower2FChanneler1EndBattleText
+	text_end
+
+PokemonTower2FChanneler2AfterBattleText:
+	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_end
+
+PokemonTower2FChanneler3BattleText:
+	text_far _PokemonTower2FChanneler1BattleText
+	text_end
+
+PokemonTower2FChanneler3EndBattleText:
+	text_far _PokemonTower2FChanneler1EndBattleText
+	text_end
+
+PokemonTower2FChanneler3AfterBattleText:
+	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_end
+
+PokemonTower2FChanneler4BattleText:
+	text_far _PokemonTower2FChanneler1BattleText
+	text_end
+
+PokemonTower2FChanneler4EndBattleText:
+	text_far _PokemonTower2FChanneler1EndBattleText
+	text_end
+
+PokemonTower2FChanneler4AfterBattleText:
+	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_end
+
+PokemonTower2FChanneler5BattleText:
+	text_far _PokemonTower2FChanneler1BattleText
+	text_end
+
+PokemonTower2FChanneler5EndBattleText:
+	text_far _PokemonTower2FChanneler1EndBattleText
+	text_end
+
+PokemonTower2FChanneler5AfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, PokemonTower2FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_POKEMONTOWER2F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 PokemonTower2FRivalText:
 	text_asm
@@ -168,7 +319,7 @@ PokemonTower2FRivalText:
 	ld a, $6
 .done
 	ld [wTrainerNo], a
-    
+
     ld a, 1
 	ld [wIsTrainerBattle], a
 	ld a, SCRIPT_POKEMONTOWER2F_DEFEATED_RIVAL
@@ -195,4 +346,29 @@ PokemonTower2FRivalText:
 
 PokemonTower2FChannelerText:
 	text_far _PokemonTower2FChannelerText
+	text_end
+
+Rogue_PokemonTower2F_Reward_Text:
+script_rogue_reward
+
+PokemonTower2F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+PokemonTower2F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+PokemonTower2F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+PokemonTower2FGreedyText:
+	text_far _GreedyText
 	text_end

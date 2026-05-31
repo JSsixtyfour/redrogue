@@ -1,4 +1,17 @@
 RocketHideoutB1F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call RocketHideoutB1FDoorCallbackScript
 	call EnableAutoTextBoxDrawing
 	ld hl, RocketHideout1TrainerHeaders
@@ -46,9 +59,15 @@ RocketHideoutB1F_TextPointers:
 	dw_const RocketHideoutB1FRocket5Text, TEXT_ROCKETHIDEOUTB1F_ROCKET5
 	dw_const PickUpItemText,              TEXT_ROCKETHIDEOUTB1F_ESCAPE_ROPE
 	dw_const PickUpItemText,              TEXT_ROCKETHIDEOUTB1F_HYPER_POTION
+    dw_const RandomPickUpItemText,        TEXT_ROCKETHIDEOUTB1F_RANDOM
+    dw_const RocketHideoutB1F_Rogue_Reward_Script_PokeballText_1, TEXT_ROCKETHIDEOUTB1F_ROGUE_REWARD_POKEBALL_1
+    dw_const RocketHideoutB1F_Rogue_Reward_Script_PokeballText_2, TEXT_ROCKETHIDEOUTB1F_ROGUE_REWARD_POKEBALL_2
+    dw_const RocketHideoutB1F_Rogue_Reward_Script_PokeballText_3, TEXT_ROCKETHIDEOUTB1F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_RocketHideoutB1F_Reward_Text, TEXT_ROCKETHIDEOUTB1F_REWARD_VENDOR_1
+    EXPORT TEXT_ROCKETHIDEOUTB1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 RocketHideout1TrainerHeaders:
-	def_trainers
+	def_trainers 1
 RocketHideout1TrainerHeader0:
 	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0, 3, RocketHideoutB1FRocket1BattleText, RocketHideoutB1FRocket1EndBattleText, RocketHideoutB1FRocket1AfterBattleText
 RocketHideout1TrainerHeader1:
@@ -155,5 +174,45 @@ RocketHideoutB1FRocket5BattleText:
 	text_end
 
 RocketHideoutB1FRocket5AfterBattleText:
-	text_far _RocketHideoutB1FRocket5AfterBattleText
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, RocketHideoutB1FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_ROCKETHIDEOUTB1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
+
+Rogue_RocketHideoutB1F_Reward_Text:
+script_rogue_reward
+
+RocketHideoutB1F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+RocketHideoutB1F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+RocketHideoutB1F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+RocketHideoutB1FGreedyText:
+	text_far _GreedyText
 	text_end

@@ -188,3 +188,18 @@ GetRewardMonLevel:
 	ld a, 5
 	ld [wCurEnemyLevel], a
 	ret
+
+RogueRefresh::
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    ld a, TOGGLE_STAGE_RANDOM_ITEM
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    ret

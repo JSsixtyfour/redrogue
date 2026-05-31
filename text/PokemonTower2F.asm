@@ -55,3 +55,19 @@ _PokemonTower2FChannelerText::
 	line "might be able to"
 	cont "unmask them."
 	done
+
+_PokemonTower2FChanneler1BattleText::
+	text "I can feel the"
+	line "spirits guiding"
+	cont "my #MON!"
+	done
+
+_PokemonTower2FChanneler1EndBattleText::
+	text "The spirits have"
+	line "abandoned me..."
+	prompt
+
+_PokemonTower2FChanneler1AfterBattleText::
+	text "This tower is full"
+	line "of lost souls..."
+	done

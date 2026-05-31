@@ -1,4 +1,17 @@
 PokemonMansion1F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call Mansion1CheckReplaceSwitchDoorBlocks
 	call EnableAutoTextBoxDrawing
 	ld hl, Mansion1TrainerHeaders
@@ -63,20 +76,62 @@ PokemonMansion1F_ScriptPointers:
 
 PokemonMansion1F_TextPointers:
 	def_text_pointers
-	dw_const PokemonMansion1FScientistText, TEXT_POKEMONMANSION1F_SCIENTIST
-	dw_const PickUpItemText,                TEXT_POKEMONMANSION1F_ESCAPE_ROPE
-	dw_const PickUpItemText,                TEXT_POKEMONMANSION1F_CARBOS
-	dw_const PokemonMansion1FSwitchText,    TEXT_POKEMONMANSION1F_SWITCH
+	dw_const PokemonMansion1FScientistText,                        TEXT_POKEMONMANSION1F_SCIENTIST
+    dw_const PokemonMansion1FScientist2Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_2
+    dw_const PokemonMansion1FScientist3Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_3
+    dw_const PokemonMansion1FScientist4Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_4
+    dw_const PokemonMansion1FScientist5Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_5
+	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_ESCAPE_ROPE
+	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_CARBOS
+    dw_const RandomPickUpItemText,                                 TEXT_POKEMONMANSION1F_RANDOM
+    dw_const PokemonMansion1F_Rogue_Reward_Script_PokeballText_1,  TEXT_POKEMONMANSION1F_ROGUE_REWARD_POKEBALL_1
+    dw_const PokemonMansion1F_Rogue_Reward_Script_PokeballText_2,  TEXT_POKEMONMANSION1F_ROGUE_REWARD_POKEBALL_2
+    dw_const PokemonMansion1F_Rogue_Reward_Script_PokeballText_3,  TEXT_POKEMONMANSION1F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_PokemonMansion1F_Reward_Text,                   TEXT_POKEMONMANSION1F_REWARD_VENDOR_1
+    EXPORT TEXT_POKEMONMANSION1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const PokemonMansion1FSwitchText,                           TEXT_POKEMONMANSION1F_SWITCH
 
 Mansion1TrainerHeaders:
-	def_trainers
+	def_trainers 1
 Mansion1TrainerHeader0:
 	trainer EVENT_BEAT_MANSION_1_TRAINER_0, 3, PokemonMansion1FScientistBattleText, PokemonMansion1FScientistEndBattleText, PokemonMansion1FScientistAfterBattleText
+Mansion1TrainerHeader1:
+	trainer EVENT_BEAT_MANSION_1_TRAINER_1, 2, PokemonMansion1FScientist2BattleText, PokemonMansion1FScientist2EndBattleText, PokemonMansion1FScientist2AfterBattleText
+Mansion1TrainerHeader2:
+	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 2, PokemonMansion1FScientist3BattleText, PokemonMansion1FScientist3EndBattleText, PokemonMansion1FScientist3AfterBattleText
+Mansion1TrainerHeader3:
+	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist4BattleText, PokemonMansion1FScientist4EndBattleText, PokemonMansion1FScientist4AfterBattleText
+Mansion1TrainerHeader4:
+	trainer EVENT_BEAT_MANSION_1_TRAINER_4, 2, PokemonMansion1FScientist5BattleText, PokemonMansion1FScientist5EndBattleText, PokemonMansion1FScientist5AfterBattleText
 	db -1 ; end
 
 PokemonMansion1FScientistText:
 	text_asm
 	ld hl, Mansion1TrainerHeader0
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonMansion1FScientist2Text:
+	text_asm
+	ld hl, Mansion1TrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonMansion1FScientist3Text:
+	text_asm
+	ld hl, Mansion1TrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonMansion1FScientist4Text:
+	text_asm
+	ld hl, Mansion1TrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonMansion1FScientist5Text:
+	text_asm
+	ld hl, Mansion1TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -91,6 +146,69 @@ PokemonMansion1FScientistEndBattleText:
 PokemonMansion1FScientistAfterBattleText:
 	text_far _PokemonMansion1FScientistAfterBattleText
 	text_end
+
+PokemonMansion1FScientist2BattleText:
+	text_far _PokemonMansion1FScientist2BattleText
+	text_end
+
+PokemonMansion1FScientist2EndBattleText:
+	text_far _PokemonMansion1FScientist2EndBattleText
+	text_end
+
+PokemonMansion1FScientist2AfterBattleText:
+	text_far _PokemonMansion1FScientist2AfterBattleText
+	text_end
+
+PokemonMansion1FScientist3BattleText:
+	text_far _PokemonMansion1FScientist3BattleText
+	text_end
+
+PokemonMansion1FScientist3EndBattleText:
+	text_far _PokemonMansion1FScientist3EndBattleText
+	text_end
+
+PokemonMansion1FScientist3AfterBattleText:
+	text_far _PokemonMansion1FScientist3AfterBattleText
+	text_end
+
+PokemonMansion1FScientist4BattleText:
+	text_far _PokemonMansion1FScientist4BattleText
+	text_end
+
+PokemonMansion1FScientist4EndBattleText:
+	text_far _PokemonMansion1FScientist4EndBattleText
+	text_end
+
+PokemonMansion1FScientist4AfterBattleText:
+	text_far _PokemonMansion1FScientist4AfterBattleText
+	text_end
+
+PokemonMansion1FScientist5BattleText:
+	text_far _PokemonMansion1FScientist5BattleText
+	text_end
+
+PokemonMansion1FScientist5EndBattleText:
+	text_far _PokemonMansion1FScientist5EndBattleText
+	text_end
+
+PokemonMansion1FScientist5AfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, PokemonMansion1FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_POKEMONMANSION1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 PokemonMansion1FSwitchText:
 	text_asm
@@ -128,4 +246,29 @@ PokemonMansion1FSwitchText:
 
 .NotPressedText:
 	text_far _PokemonMansion1FSwitchNotPressedText
+	text_end
+
+Rogue_PokemonMansion1F_Reward_Text:
+script_rogue_reward
+
+PokemonMansion1F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+PokemonMansion1F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+PokemonMansion1F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+PokemonMansion1FGreedyText:
+	text_far _GreedyText
 	text_end

@@ -81,6 +81,7 @@ ToggleableObjectStates:
     toggle_object_state ROGUE_REWARD_POKEBALL_1, ON
 	toggle_object_state ROGUE_REWARD_POKEBALL_2, ON
 	toggle_object_state ROGUE_REWARD_POKEBALL_3, ON
+    toggle_object_state ROGUE_STAGE_RANDOM_ITEM, ON
 
 	toggleable_objects_for ROUTE_2
     toggle_object_state ROUTE2_MOON_STONE, ON
@@ -113,9 +114,6 @@ ToggleableObjectStates:
 	toggle_object_state ROUTE24_COOLTRAINER_M1,  ON
 	toggle_object_state ROUTE24_TM_THUNDER_WAVE, ON
     toggle_object_state ROUTE24_POKE_BALL, ON
-    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_1, ON
-    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_2, ON
-    toggle_object_state ROUTE24_ROGUE_REWARD_POKEBALL_3, ON
 
 	toggleable_objects_for ROUTE_25
 	toggle_object_state ROUTE25_TM_SEISMIC_TOSS, ON
@@ -191,20 +189,6 @@ ToggleableObjectStates:
 	toggle_object_state SILPHCO1F_LINK_RECEPTIONIST, OFF
 
 	toggleable_objects_for POWER_PLANT
-	toggle_object_state POWERPLANT_VOLTORB1,   ON
-	toggle_object_state POWERPLANT_VOLTORB2,   ON
-	toggle_object_state POWERPLANT_VOLTORB3,   ON
-	toggle_object_state POWERPLANT_ELECTRODE1, ON
-	toggle_object_state POWERPLANT_VOLTORB4,   ON
-	toggle_object_state POWERPLANT_VOLTORB5,   ON
-	toggle_object_state POWERPLANT_ELECTRODE2, ON
-	toggle_object_state POWERPLANT_VOLTORB6,   ON
-	toggle_object_state POWERPLANT_ZAPDOS,     ON
-	toggle_object_state POWERPLANT_CARBOS,     ON
-	toggle_object_state POWERPLANT_HP_UP,      ON
-	toggle_object_state POWERPLANT_RARE_CANDY, ON
-	toggle_object_state POWERPLANT_TM_THUNDER, ON
-	toggle_object_state POWERPLANT_TM_REFLECT, ON
 
 	toggleable_objects_for VICTORY_ROAD_2F
 	toggle_object_state VICTORYROAD2F_MOLTRES,       ON
@@ -223,9 +207,6 @@ ToggleableObjectStates:
 	toggle_object_state VIRIDIANFOREST_ANTIDOTE,  ON
 	toggle_object_state VIRIDIANFOREST_POTION,    ON
 	toggle_object_state VIRIDIANFOREST_POKE_BALL, ON
-    toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1, ON
-    toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2, ON
-    toggle_object_state VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_3, ON
 
 	toggleable_objects_for MT_MOON_1F
 	toggle_object_state MTMOON1F_POTION1,      ON

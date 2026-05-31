@@ -1,4 +1,17 @@
 Route17_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, Route17TrainerHeaders
 	ld de, Route17_ScriptPointers
@@ -15,16 +28,17 @@ Route17_ScriptPointers:
 
 Route17_TextPointers:
 	def_text_pointers
-	dw_const Route17Biker1Text,              TEXT_ROUTE17_BIKER1
-	dw_const Route17Biker2Text,              TEXT_ROUTE17_BIKER2
+	dw_const Route17CueBall1Text,              TEXT_ROUTE17_CUE_BALL1
+	dw_const Route17CueBall2Text,              TEXT_ROUTE17_CUE_BALL2
 	dw_const Route17Biker3Text,              TEXT_ROUTE17_BIKER3
 	dw_const Route17Biker4Text,              TEXT_ROUTE17_BIKER4
 	dw_const Route17Biker5Text,              TEXT_ROUTE17_BIKER5
-	dw_const Route17Biker6Text,              TEXT_ROUTE17_BIKER6
-	dw_const Route17Biker7Text,              TEXT_ROUTE17_BIKER7
-	dw_const Route17Biker8Text,              TEXT_ROUTE17_BIKER8
-	dw_const Route17Biker9Text,              TEXT_ROUTE17_BIKER9
-	dw_const Route17Biker10Text,             TEXT_ROUTE17_BIKER10
+    dw_const RandomPickUpItemText,           TEXT_ROUTE17_RANDOM
+    dw_const Route17_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE17_ROGUE_REWARD_POKEBALL_1
+    dw_const Route17_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE17_ROGUE_REWARD_POKEBALL_2
+    dw_const Route17_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE17_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_Route17_Reward_Text,      TEXT_ROUTE17_REWARD_VENDOR_1
+    EXPORT TEXT_ROUTE17_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route17NoticeSign1Text,         TEXT_ROUTE17_NOTICE_SIGN1
 	dw_const Route17TrainerTips1Text,        TEXT_ROUTE17_TRAINER_TIPS1
 	dw_const Route17TrainerTips2Text,        TEXT_ROUTE17_TRAINER_TIPS2
@@ -33,63 +47,53 @@ Route17_TextPointers:
 	dw_const Route17CyclingRoadEndsSignText, TEXT_ROUTE17_CYCLING_ROAD_ENDS_SIGN
 
 Route17TrainerHeaders:
-	def_trainers
+	def_trainers 1
 Route17TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_0, 3, Route17Biker1BattleText, Route17Biker1EndBattleText, Route17Biker1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_17_TRAINER_0, 3, Route17CueBall1BattleText, Route17CueBall1EndBattleText, Route17CueBall1AfterBattleText
 Route17TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_1, 4, Route17Biker2BattleText, Route17Biker2EndBattleText, Route17Biker2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_17_TRAINER_1, 4, Route17CueBall2BattleText, Route17CueBall2EndBattleText, Route17CueBall2AfterBattleText
 Route17TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_17_TRAINER_2, 4, Route17Biker3BattleText, Route17Biker3EndBattleText, Route17Biker3AfterBattleText
 Route17TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_17_TRAINER_3, 4, Route17Biker4BattleText, Route17Biker4EndBattleText, Route17Biker4AfterBattleText
 Route17TrainerHeader4:
 	trainer EVENT_BEAT_ROUTE_17_TRAINER_4, 3, Route17Biker5BattleText, Route17Biker5EndBattleText, Route17Biker5AfterBattleText
-Route17TrainerHeader5:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_5, 2, Route17Biker6BattleText, Route17Biker6EndBattleText, Route17Biker6AfterBattleText
-Route17TrainerHeader6:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_6, 4, Route17Biker7BattleText, Route17Biker7EndBattleText, Route17Biker7AfterBattleText
-Route17TrainerHeader7:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_7, 2, Route17Biker8BattleText, Route17Biker8EndBattleText, Route17Biker8AfterBattleText
-Route17TrainerHeader8:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_8, 3, Route17Biker9BattleText, Route17Biker9EndBattleText, Route17Biker9AfterBattleText
-Route17TrainerHeader9:
-	trainer EVENT_BEAT_ROUTE_17_TRAINER_9, 4, Route17Biker10BattleText, Route17Biker10EndBattleText, Route17Biker10AfterBattleText
 	db -1 ; end
 
-Route17Biker1Text:
+Route17CueBall1Text:
 	text_asm
 	ld hl, Route17TrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route17Biker1BattleText:
-	text_far _Route17Biker1BattleText
+Route17CueBall1BattleText:
+	text_far _Route17CueBall1BattleText
 	text_end
 
-Route17Biker1EndBattleText:
-	text_far _Route17Biker1EndBattleText
+Route17CueBall1EndBattleText:
+	text_far _Route17CueBall1EndBattleText
 	text_end
 
-Route17Biker1AfterBattleText:
-	text_far _Route17Biker1AfterBattleText
+Route17CueBall1AfterBattleText:
+	text_far _Route17CueBall1AfterBattleText
 	text_end
 
-Route17Biker2Text:
+Route17CueBall2Text:
 	text_asm
 	ld hl, Route17TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route17Biker2BattleText:
-	text_far _Route17Biker2BattleText
+Route17CueBall2BattleText:
+	text_far _Route17CueBall2BattleText
 	text_end
 
-Route17Biker2EndBattleText:
-	text_far _Route17Biker2EndBattleText
+Route17CueBall2EndBattleText:
+	text_far _Route17CueBall2EndBattleText
 	text_end
 
-Route17Biker2AfterBattleText:
-	text_far _Route17Biker2AfterBattleText
+Route17CueBall2AfterBattleText:
+	text_far _Route17CueBall2AfterBattleText
 	text_end
 
 Route17Biker3Text:
@@ -143,98 +147,23 @@ Route17Biker5EndBattleText:
 	text_end
 
 Route17Biker5AfterBattleText:
-	text_far _Route17Biker5AfterBattleText
-	text_end
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
 
-Route17Biker6Text:
-	text_asm
-	ld hl, Route17TrainerHeader5
-	call TalkToTrainer
-	jp TextScriptEnd
+    ld hl, Route17GreedyText
+    call PrintText
+    jr .done
 
-Route17Biker6BattleText:
-	text_far _Route17Biker6BattleText
-	text_end
-
-Route17Biker6EndBattleText:
-	text_far _Route17Biker6EndBattleText
-	text_end
-
-Route17Biker6AfterBattleText:
-	text_far _Route17Biker6AfterBattleText
-	text_end
-
-Route17Biker7Text:
-	text_asm
-	ld hl, Route17TrainerHeader6
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route17Biker7BattleText:
-	text_far _Route17Biker7BattleText
-	text_end
-
-Route17Biker7EndBattleText:
-	text_far _Route17Biker7EndBattleText
-	text_end
-
-Route17Biker7AfterBattleText:
-	text_far _Route17Biker7AfterBattleText
-	text_end
-
-Route17Biker8Text:
-	text_asm
-	ld hl, Route17TrainerHeader7
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route17Biker8BattleText:
-	text_far _Route17Biker8BattleText
-	text_end
-
-Route17Biker8EndBattleText:
-	text_far _Route17Biker8EndBattleText
-	text_end
-
-Route17Biker8AfterBattleText:
-	text_far _Route17Biker8AfterBattleText
-	text_end
-
-Route17Biker9Text:
-	text_asm
-	ld hl, Route17TrainerHeader8
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route17Biker9BattleText:
-	text_far _Route17Biker9BattleText
-	text_end
-
-Route17Biker9EndBattleText:
-	text_far _Route17Biker9EndBattleText
-	text_end
-
-Route17Biker9AfterBattleText:
-	text_far _Route17Biker9AfterBattleText
-	text_end
-
-Route17Biker10Text:
-	text_asm
-	ld hl, Route17TrainerHeader9
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route17Biker10BattleText:
-	text_far _Route17Biker10BattleText
-	text_end
-
-Route17Biker10EndBattleText:
-	text_far _Route17Biker10EndBattleText
-	text_end
-
-Route17Biker10AfterBattleText:
-	text_far _Route17Biker10AfterBattleText
-	text_end
+    .GetMon
+    xor a
+    ld a, TEXT_ROUTE17_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 Route17NoticeSign1Text:
 	text_far _Route17NoticeSign1Text
@@ -258,4 +187,29 @@ Route17NoticeSign2Text:
 
 Route17CyclingRoadEndsSignText:
 	text_far _Route17CyclingRoadEndsSignText
+	text_end
+
+Rogue_Route17_Reward_Text:
+script_rogue_reward
+
+Route17_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+Route17_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+Route17_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+Route17GreedyText:
+	text_far _GreedyText
 	text_end

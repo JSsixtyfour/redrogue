@@ -12,23 +12,23 @@ WildDataPointers:
 	dw NothingWildMons         ; INDIGO_PLATEAU
 	dw NothingWildMons         ; SAFFRON_CITY
 	dw NothingWildMons         ; unused
-	dw Route1WildMons          ; ROUTE_1
+	dw NothingWildMons         ; ROUTE_1
 	dw Route2WildMons          ; ROUTE_2
-	dw Route3WildMons          ; ROUTE_3
+	dw NothingWildMons         ; ROUTE_3
 	dw Route4WildMons          ; ROUTE_4
-	dw Route5WildMons          ; ROUTE_5
-	dw Route6WildMons          ; ROUTE_6
+	dw NothingWildMons         ; ROUTE_5
+	dw NothingWildMons         ; ROUTE_6
 	dw Route7WildMons          ; ROUTE_7
 	dw Route8WildMons          ; ROUTE_8
-	dw Route9WildMons          ; ROUTE_9
+	dw NothingWildMons         ; ROUTE_9
 	dw Route10WildMons         ; ROUTE_10
 	dw Route11WildMons         ; ROUTE_11
-	dw Route12WildMons         ; ROUTE_12
-	dw Route13WildMons         ; ROUTE_13
+	dw NothingWildMons         ; ROUTE_12
+	dw NothingWildMons         ; ROUTE_13
 	dw Route14WildMons         ; ROUTE_14
-	dw Route15WildMons         ; ROUTE_15
+	dw NothingWildMons         ; ROUTE_15
 	dw Route16WildMons         ; ROUTE_16
-	dw Route17WildMons         ; ROUTE_17
+	dw NothingWildMons         ; ROUTE_17
 	dw Route18WildMons         ; ROUTE_18
 	dw SeaRoutesWildMons       ; ROUTE_19
 	dw SeaRoutesWildMons       ; ROUTE_20
@@ -36,7 +36,7 @@ WildDataPointers:
 	dw Route22WildMons         ; ROUTE_22
 	dw Route23WildMons         ; ROUTE_23
 	dw Route24WildMons         ; ROUTE_24
-	dw Route25WildMons         ; ROUTE_25
+	dw NothingWildMons         ; ROUTE_25
 	dw NothingWildMons         ; REDS_HOUSE_1F
 	dw NothingWildMons
 	dw NothingWildMons
@@ -59,7 +59,7 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw MtMoon1FWildMons
+	dw NothingWildMons        ; MtMoon1F
 	dw MtMoonB1FWildMons
 	dw MtMoonB2FWildMons
 	dw NothingWildMons
@@ -82,8 +82,8 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw RockTunnel1FWildMons
-	dw PowerPlantWildMons
+	dw NothingWildMons        ; RockTunnel1F
+	dw NothingWildMons        ; PowerPlant
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -108,7 +108,7 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw VictoryRoad1FWildMons
+	dw NothingWildMons        ; VictoryRoad1F
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -143,12 +143,12 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw PokemonTower1FWildMons
-	dw PokemonTower2FWildMons
+	dw NothingWildMons        ; PokemonTower2F
 	dw PokemonTower3FWildMons
 	dw PokemonTower4FWildMons
 	dw PokemonTower5FWildMons
 	dw PokemonTower6FWildMons
-	dw PokemonTower7FWildMons
+	dw NothingWildMons        ; PokemonTower7F
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -165,7 +165,7 @@ WildDataPointers:
 	dw SeafoamIslandsB4FWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw PokemonMansion1FWildMons
+	dw NothingWildMons        ; PokemonMansion1F
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -192,12 +192,12 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw SeafoamIslands1FWildMons
+	dw NothingWildMons        ; SeafoamIslands1F
 	dw NothingWildMons
 	dw VictoryRoad2FWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw DiglettsCaveWildMons
+	dw NothingWildMons        ; DiglettsCave
 	dw VictoryRoad3FWildMons
 	dw NothingWildMons
 	dw NothingWildMons

@@ -1,37 +1,33 @@
 SeafoamIslands1F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
-	SetEvent EVENT_IN_SEAFOAM_ISLANDS
-	ld hl, wMiscFlags
-	bit BIT_PUSHED_BOULDER, [hl]
-	res BIT_PUSHED_BOULDER, [hl]
-	jr z, .noBoulderWasPushed
-	ld hl, Seafoam1HolesCoords
-	call CheckBoulderCoords
-	ret nc
-	EventFlagAddress hl, EVENT_SEAFOAM1_BOULDER1_DOWN_HOLE
-	ld a, [wCoordIndex]
-	cp $1
-	jr nz, .boulder2FellDownHole
-	SetEventReuseHL EVENT_SEAFOAM1_BOULDER1_DOWN_HOLE
-	ld a, TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_1
-	ld [wObjectToHide], a
-	ld a, TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_1
-	ld [wObjectToShow], a
-	jr .hideAndShowBoulderObjects
-.boulder2FellDownHole
-	SetEventAfterBranchReuseHL EVENT_SEAFOAM1_BOULDER2_DOWN_HOLE, EVENT_SEAFOAM1_BOULDER1_DOWN_HOLE
-	ld a, TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_2
-	ld [wObjectToHide], a
-	ld a, TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_2
-	ld [wObjectToShow], a
-.hideAndShowBoulderObjects
-	ld a, [wObjectToHide]
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ld a, [wObjectToShow]
-	ld [wToggleableObjectIndex], a
-	predef_jump ShowObject
-.noBoulderWasPushed
+	ld hl, SeafoamIslands1FTrainerHeaders
+	ld de, SeafoamIslands1F_ScriptPointers
+	ld a, [wSeafoamIslands1FCurScript]
+	call ExecuteCurMapScriptInTable
+	ld [wSeafoamIslands1FCurScript], a
+	ret
+
+SeafoamIslands1F_ScriptPointers:
+	def_script_pointers
+	dw_const SeafoamIslands1FDefaultScript,         SCRIPT_SEAFOAMISLANDS1F_DEFAULT
+	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_SEAFOAMISLANDS1F_START_BATTLE
+	dw_const EndTrainerBattle,                      SCRIPT_SEAFOAMISLANDS1F_END_BATTLE
+
+SeafoamIslands1FDefaultScript:
+	call CheckFightingMapTrainers
 	ld a, SEAFOAM_ISLANDS_B1F
 	ld [wDungeonWarpDestinationMap], a
 	ld hl, Seafoam1HolesCoords
@@ -44,5 +40,160 @@ Seafoam1HolesCoords:
 
 SeafoamIslands1F_TextPointers:
 	def_text_pointers
-	dw_const BoulderText, TEXT_SEAFOAMISLANDS1F_BOULDER1
-	dw_const BoulderText, TEXT_SEAFOAMISLANDS1F_BOULDER2
+	dw_const SeafoamIslands1FSwimmerText,      TEXT_SEAFOAMISLANDS1F_SWIMMER
+	dw_const SeafoamIslands1FCueBallText,      TEXT_SEAFOAMISLANDS1F_CUE_BALL
+	dw_const SeafoamIslands1FCooltrainerFText, TEXT_SEAFOAMISLANDS1F_COOLTRAINER_F
+	dw_const SeafoamIslands1FHikerText,        TEXT_SEAFOAMISLANDS1F_HIKER
+	dw_const SeafoamIslands1FPokemaniacText,   TEXT_SEAFOAMISLANDS1F_POKEMANIAC
+	dw_const BoulderText,                  TEXT_SEAFOAMISLANDS1F_BOULDER1
+	dw_const BoulderText,                  TEXT_SEAFOAMISLANDS1F_BOULDER2
+    dw_const RandomPickUpItemText,         TEXT_SEAFOAMISLANDS1F_RANDOM
+    dw_const SeafoamIslands1F_Rogue_Reward_Script_PokeballText_1, TEXT_SEAFOAMISLANDS1F_ROGUE_REWARD_POKEBALL_1
+    dw_const SeafoamIslands1F_Rogue_Reward_Script_PokeballText_2, TEXT_SEAFOAMISLANDS1F_ROGUE_REWARD_POKEBALL_2
+    dw_const SeafoamIslands1F_Rogue_Reward_Script_PokeballText_3, TEXT_SEAFOAMISLANDS1F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_SeafoamIslands1F_Reward_Text, TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1
+    EXPORT TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+
+SeafoamIslands1FTrainerHeaders:
+	def_trainers 1
+SeafoamIslands1FTrainerHeader0:
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0, 1, SeafoamIslands1FSwimmerBattleText, SeafoamIslands1FSwimmerEndBattleText, SeafoamIslands1FSwimmerAfterBattleText
+SeafoamIslands1FTrainerHeader1:
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1, 1, SeafoamIslands1FCueBallBattleText, SeafoamIslands1FCueBallEndBattleText, SeafoamIslands1FCueBallAfterBattleText
+SeafoamIslands1FTrainerHeader2:
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2, 1, SeafoamIslands1FCooltrainerFBattleText, SeafoamIslands1FCooltrainerFEndBattleText, SeafoamIslands1FCooltrainerFAfterBattleText
+SeafoamIslands1FTrainerHeader3:
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3, 1, SeafoamIslands1FHikerBattleText, SeafoamIslands1FHikerEndBattleText, SeafoamIslands1FHikerAfterBattleText
+SeafoamIslands1FTrainerHeader4:
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4, 1, SeafoamIslands1FPokemaniacBattleText, SeafoamIslands1FPokemaniacEndBattleText, SeafoamIslands1FPokemaniacAfterBattleText
+	db -1 ; end
+
+SeafoamIslands1FSwimmerText:
+	text_asm
+	ld hl, SeafoamIslands1FTrainerHeader0
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SeafoamIslands1FSwimmerBattleText:
+	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_end
+
+SeafoamIslands1FSwimmerEndBattleText:
+	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_end
+
+SeafoamIslands1FSwimmerAfterBattleText:
+	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_end
+
+SeafoamIslands1FCueBallText:
+	text_asm
+	ld hl, SeafoamIslands1FTrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SeafoamIslands1FCueBallBattleText:
+	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_end
+
+SeafoamIslands1FCueBallEndBattleText:
+	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_end
+
+SeafoamIslands1FCueBallAfterBattleText:
+	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_end
+
+SeafoamIslands1FCooltrainerFText:
+	text_asm
+	ld hl, SeafoamIslands1FTrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SeafoamIslands1FCooltrainerFBattleText:
+	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_end
+
+SeafoamIslands1FCooltrainerFEndBattleText:
+	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_end
+
+SeafoamIslands1FCooltrainerFAfterBattleText:
+	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_end
+
+SeafoamIslands1FHikerText:
+	text_asm
+	ld hl, SeafoamIslands1FTrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SeafoamIslands1FHikerBattleText:
+	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_end
+
+SeafoamIslands1FHikerEndBattleText:
+	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_end
+
+SeafoamIslands1FHikerAfterBattleText:
+	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_end
+
+SeafoamIslands1FPokemaniacText:
+	text_asm
+	ld hl, SeafoamIslands1FTrainerHeader4
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SeafoamIslands1FPokemaniacBattleText:
+	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_end
+
+SeafoamIslands1FPokemaniacEndBattleText:
+	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_end
+
+SeafoamIslands1FPokemaniacAfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, SeafoamIslands1FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
+
+Rogue_SeafoamIslands1F_Reward_Text:
+script_rogue_reward
+
+SeafoamIslands1F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+SeafoamIslands1F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+SeafoamIslands1F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+SeafoamIslands1FGreedyText:
+	text_far _GreedyText
+	text_end

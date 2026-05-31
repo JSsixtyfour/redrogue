@@ -2065,6 +2065,14 @@ wRoute23CurScript:: db
 wSeafoamIslandsB4FCurScript:: db
 wRoute18Gate1FCurScript:: db
 	;ds 78  I REMOVED THIS, COULD BE AN ISSUE
+; Rogue stage map script (added for rogue stages that lacked trainers and such in the past)
+wDiglettsCaveCurScript:: db
+wSeafoamIslands1FCurScript:: db
+wSilphCo1FCurScript:: db
+wSSAnneB1FCurScript:: db
+wRoute1CurScript:: db
+wRoute5CurScript:: db
+wUndergroundPathRoute5CurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2176,8 +2184,6 @@ wDungeonWarpDestinationMap:: db
 ; which dungeon warp within the source map was used
 wWhichDungeonWarp:: db
 
-wUnusedCardKeyGateID:: db
-
 	ds 8
 
 wStatusFlags1:: db
@@ -2214,7 +2220,7 @@ wCardKeyDoorX:: db
 wFirstLockTrashCanIndex:: db
 wSecondLockTrashCanIndex:: db
 
-	ds 2
+	ds 1
 
 wEventFlags:: flag_array NUM_EVENTS
 

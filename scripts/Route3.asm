@@ -1,4 +1,17 @@
 Route3_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, Route3TrainerHeaders
 	ld de, Route3_ScriptPointers
@@ -15,185 +28,168 @@ Route3_ScriptPointers:
 
 Route3_TextPointers:
 	def_text_pointers
-	dw_const Route3SuperNerdText,     TEXT_ROUTE3_SUPER_NERD
-	dw_const Route3Youngster1Text,    TEXT_ROUTE3_YOUNGSTER1
-	dw_const Route3Youngster2Text,    TEXT_ROUTE3_YOUNGSTER2
-	dw_const Route3CooltrainerF1Text, TEXT_ROUTE3_COOLTRAINER_F1
-	dw_const Route3Youngster3Text,    TEXT_ROUTE3_YOUNGSTER3
-	dw_const Route3CooltrainerF2Text, TEXT_ROUTE3_COOLTRAINER_F2
-	dw_const Route3Youngster4Text,    TEXT_ROUTE3_YOUNGSTER4
-	dw_const Route3Youngster5Text,    TEXT_ROUTE3_YOUNGSTER5
-	dw_const Route3CooltrainerF3Text, TEXT_ROUTE3_COOLTRAINER_F3
+	dw_const Route3SuperNerdText,    TEXT_ROUTE3_SUPER_NERD
+	dw_const Route3BugCatcherText,   TEXT_ROUTE3_BUG_CATCHER
+	dw_const Route3LassText,         TEXT_ROUTE3_LASS
+	dw_const Route3Youngster1Text,   TEXT_ROUTE3_YOUNGSTER1
+	dw_const Route3Youngster2Text,   TEXT_ROUTE3_YOUNGSTER2
+	dw_const Route3JrTrainerMText,   TEXT_ROUTE3_JR_TRAINER_M
+    dw_const RandomPickUpItemText,    TEXT_ROUTE3_RANDOM
+    dw_const Route3_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_1
+    dw_const Route3_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_2
+    dw_const Route3_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_Route3_Reward_Text, TEXT_ROUTE3_REWARD_VENDOR_1
+    EXPORT TEXT_ROUTE3_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route3SignText,          TEXT_ROUTE3_SIGN
 
 Route3TrainerHeaders:
-	def_trainers 2
+	def_trainers 1
 Route3TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_0, 2, Route3Youngster1BattleText, Route3Youngster1EndBattleText, Route3Youngster1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_0, 2, Route3BugCatcherBattleText, Route3BugCatcherEndBattleText, Route3BugCatcherAfterBattleText
 Route3TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 3, Route3Youngster2BattleText, Route3Youngster2EndBattleText, Route3Youngster2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 3, Route3LassBattleText, Route3LassEndBattleText, Route3LassAfterBattleText
 Route3TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_2, 2, Route3CooltrainerF1BattleText, Route3CooltrainerF1EndBattleText, Route3CooltrainerF1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_2, 2, Route3Youngster1BattleText, Route3Youngster1EndBattleText, Route3Youngster1AfterBattleText
 Route3TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_3, 1, Route3Youngster3BattleText, Route3Youngster3EndBattleText, Route3Youngster3AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_3, 1, Route3Youngster2BattleText, Route3Youngster2EndBattleText, Route3Youngster2AfterBattleText
 Route3TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_4, 4, Route3CooltrainerF2BattleText, Route3CooltrainerF2EndBattleText, Route3CooltrainerF2AfterBattleText
-Route3TrainerHeader5:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_5, 3, Route3Youngster4BattleText, Route3Youngster4EndBattleText, Route3Youngster4AfterBattleText
-Route3TrainerHeader6:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_6, 3, Route3Youngster5BattleText, Route3Youngster5EndBattleText, Route3Youngster5AfterBattleText
-Route3TrainerHeader7:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_7, 2, Route3CooltrainerF3BattleText, Route3CooltrainerF3EndBattleText, Route3CooltrainerF3AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_4, 4, Route3JrTrainerMBattleText, Route3JrTrainerMEndBattleText, Route3JrTrainerMAfterBattleText
 	db -1 ; end
 
 Route3SuperNerdText:
 	text_far _Route3Text1
 	text_end
 
-Route3Youngster1Text:
+Route3BugCatcherText:
 	text_asm
 	ld hl, Route3TrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3Youngster1BattleText:
+Route3BugCatcherBattleText:
 	text_far _Route3Youngster1BattleText
 	text_end
 
-Route3Youngster1EndBattleText:
+Route3BugCatcherEndBattleText:
 	text_far _Route3Youngster1EndBattleText
 	text_end
 
-Route3Youngster1AfterBattleText:
+Route3BugCatcherAfterBattleText:
 	text_far _Route3Youngster1AfterBattleText
 	text_end
 
-Route3Youngster2Text:
+Route3LassText:
 	text_asm
 	ld hl, Route3TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3Youngster2BattleText:
-	text_far _Route3Youngster2BattleText
+Route3LassBattleText:
+	text_far _Route3CooltrainerF1BattleText
 	text_end
 
-Route3Youngster2EndBattleText:
-	text_far _Route3Youngster2EndBattleText
+Route3LassEndBattleText:
+	text_far _Route3CooltrainerF1EndBattleText
 	text_end
 
-Route3Youngster2AfterBattleText:
-	text_far _Route3Youngster2AfterBattleText
+Route3LassAfterBattleText:
+	text_far _Route3CooltrainerF1AfterBattleText
 	text_end
 
-Route3CooltrainerF1Text:
+Route3Youngster1Text:
 	text_asm
 	ld hl, Route3TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3CooltrainerF1BattleText:
-	text_far _Route3CooltrainerF1BattleText
+Route3Youngster1BattleText:
+	text_far _Route3Youngster2BattleText
 	text_end
 
-Route3CooltrainerF1EndBattleText:
-	text_far _Route3CooltrainerF1EndBattleText
+Route3Youngster1EndBattleText:
+	text_far _Route3Youngster2EndBattleText
 	text_end
 
-Route3CooltrainerF1AfterBattleText:
-	text_far _Route3CooltrainerF1AfterBattleText
+Route3Youngster1AfterBattleText:
+	text_far _Route3Youngster2AfterBattleText
 	text_end
 
-Route3Youngster3Text:
+Route3Youngster2Text:
 	text_asm
 	ld hl, Route3TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3Youngster3BattleText:
+Route3Youngster2BattleText:
 	text_far _Route3Youngster3BattleText
 	text_end
 
-Route3Youngster3EndBattleText:
+Route3Youngster2EndBattleText:
 	text_far _Route3Youngster3EndBattleText
 	text_end
 
-Route3Youngster3AfterBattleText:
+Route3Youngster2AfterBattleText:
 	text_far _Route3Youngster3AfterBattleText
 	text_end
 
-Route3CooltrainerF2Text:
+Route3JrTrainerMText:
 	text_asm
 	ld hl, Route3TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3CooltrainerF2BattleText:
-	text_far _Route3CooltrainerF2BattleText
-	text_end
-
-Route3CooltrainerF2EndBattleText:
-	text_far _Route3CooltrainerF2EndBattleText
-	text_end
-
-Route3CooltrainerF2AfterBattleText:
-	text_far _Route3CooltrainerF2AfterBattleText
-	text_end
-
-Route3Youngster4Text:
-	text_asm
-	ld hl, Route3TrainerHeader5
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route3Youngster4BattleText:
-	text_far _Route3Youngster4BattleText
-	text_end
-
-Route3Youngster4EndBattleText:
-	text_far _Route3Youngster4EndBattleText
-	text_end
-
-Route3Youngster4AfterBattleText:
-	text_far _Route3Youngster4AfterBattleText
-	text_end
-
-Route3Youngster5Text:
-	text_asm
-	ld hl, Route3TrainerHeader6
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route3Youngster5BattleText:
-	text_far _Route3Youngster5BattleText
-	text_end
-
-Route3Youngster5EndBattleText:
-	text_far _Route3Youngster5EndBattleText
-	text_end
-
-Route3Youngster5AfterBattleText:
-	text_far _Route3Youngster5AfterBattleText
-	text_end
-
-Route3CooltrainerF3Text:
-	text_asm
-	ld hl, Route3TrainerHeader7
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route3CooltrainerF3BattleText:
+Route3JrTrainerMBattleText:
 	text_far _Route3CooltrainerF3BattleText
 	text_end
 
-Route3CooltrainerF3EndBattleText:
+Route3JrTrainerMEndBattleText:
 	text_far _Route3CooltrainerF3EndBattleText
 	text_end
 
-Route3CooltrainerF3AfterBattleText:
-	text_far _Route3CooltrainerF3AfterBattleText
-	text_end
+Route3JrTrainerMAfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, Route3GreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_ROUTE3_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 Route3SignText:
 	text_far _Route3SignText
+	text_end
+
+Rogue_Route3_Reward_Text:
+script_rogue_reward
+
+Route3_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+Route3_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+Route3_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+Route3GreedyText:
+	text_far _GreedyText
 	text_end

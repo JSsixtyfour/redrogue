@@ -1,4 +1,17 @@
 VictoryRoad1F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
@@ -41,20 +54,35 @@ VictoryRoad1FDefaultScript:
 
 VictoryRoad1F_TextPointers:
 	def_text_pointers
-	dw_const VictoryRoad1FCooltrainerFText, TEXT_VICTORYROAD1F_COOLTRAINER_F
-	dw_const VictoryRoad1FCooltrainerMText, TEXT_VICTORYROAD1F_COOLTRAINER_M
-	dw_const PickUpItemText,                TEXT_VICTORYROAD1F_TM_SKY_ATTACK
-	dw_const PickUpItemText,                TEXT_VICTORYROAD1F_RARE_CANDY
-	dw_const BoulderText,                   TEXT_VICTORYROAD1F_BOULDER1
-	dw_const BoulderText,                   TEXT_VICTORYROAD1F_BOULDER2
-	dw_const BoulderText,                   TEXT_VICTORYROAD1F_BOULDER3
+	dw_const VictoryRoad1FCooltrainerFText,  TEXT_VICTORYROAD1F_COOLTRAINER_F
+	dw_const VictoryRoad1FCooltrainerMText,  TEXT_VICTORYROAD1F_COOLTRAINER_M
+	dw_const VictoryRoad1FCooltrainerM2Text, TEXT_VICTORYROAD1F_COOLTRAINER_M2
+	dw_const VictoryRoad1FCooltrainerM3Text, TEXT_VICTORYROAD1F_COOLTRAINER_M3
+	dw_const VictoryRoad1FCooltrainerM4Text, TEXT_VICTORYROAD1F_COOLTRAINER_M4
+	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_TM_SKY_ATTACK
+	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_RARE_CANDY
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER1
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER2
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER3
+    dw_const RandomPickUpItemText,           TEXT_VICTORYROAD1F_RANDOM
+    dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_1, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_1
+    dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_2, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_2
+    dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_3, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_VictoryRoad1F_Reward_Text, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
+    EXPORT TEXT_VICTORYROAD1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 VictoryRoad1TrainerHeaders:
-	def_trainers
+	def_trainers 1
 VictoryRoad1TrainerHeader0:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0, 2, VictoryRoad1FCooltrainerFBattleText, VictoryRoad1FCooltrainerFEndBattleText, VictoryRoad1FCooltrainerFAfterBattleText
 VictoryRoad1TrainerHeader1:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1, 2, VictoryRoad1FCooltrainerMBattleText, VictoryRoad1FCooltrainerMEndBattleText, VictoryRoad1FCooltrainerMAfterBattleText
+VictoryRoad1TrainerHeader2:
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2, 2, VictoryRoad1FCooltrainerM2BattleText, VictoryRoad1FCooltrainerM2EndBattleText, VictoryRoad1FCooltrainerM2AfterBattleText
+VictoryRoad1TrainerHeader3:
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3, 2, VictoryRoad1FCooltrainerM3BattleText, VictoryRoad1FCooltrainerM3EndBattleText, VictoryRoad1FCooltrainerM3AfterBattleText
+VictoryRoad1TrainerHeader4:
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_4, 2, VictoryRoad1FCooltrainerM4BattleText, VictoryRoad1FCooltrainerM4EndBattleText, VictoryRoad1FCooltrainerM4AfterBattleText
 	db -1 ; end
 
 VictoryRoad1FCooltrainerFText:
@@ -66,6 +94,24 @@ VictoryRoad1FCooltrainerFText:
 VictoryRoad1FCooltrainerMText:
 	text_asm
 	ld hl, VictoryRoad1TrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+VictoryRoad1FCooltrainerM2Text:
+	text_asm
+	ld hl, VictoryRoad1TrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+VictoryRoad1FCooltrainerM3Text:
+	text_asm
+	ld hl, VictoryRoad1TrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+VictoryRoad1FCooltrainerM4Text:
+	text_asm
+	ld hl, VictoryRoad1TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -91,4 +137,80 @@ VictoryRoad1FCooltrainerMEndBattleText:
 
 VictoryRoad1FCooltrainerMAfterBattleText:
 	text_far _VictoryRoad1FCooltrainerMAfterBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM2BattleText:
+	text_far _VictoryRoad1FCooltrainerMBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM2EndBattleText:
+	text_far _VictoryRoad1FCooltrainerMEndBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM2AfterBattleText:
+	text_far _VictoryRoad1FCooltrainerMAfterBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM3BattleText:
+	text_far _VictoryRoad1FCooltrainerMBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM3EndBattleText:
+	text_far _VictoryRoad1FCooltrainerMEndBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM3AfterBattleText:
+	text_far _VictoryRoad1FCooltrainerMAfterBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM4BattleText:
+	text_far _VictoryRoad1FCooltrainerMBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM4EndBattleText:
+	text_far _VictoryRoad1FCooltrainerMEndBattleText
+	text_end
+
+VictoryRoad1FCooltrainerM4AfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, VictoryRoad1FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
+
+Rogue_VictoryRoad1F_Reward_Text:
+script_rogue_reward
+
+VictoryRoad1F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+VictoryRoad1F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+VictoryRoad1F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+VictoryRoad1FGreedyText:
+	text_far _GreedyText
 	text_end

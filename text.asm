@@ -10,6 +10,7 @@ INCLUDE "text/SSAnne1F.asm"
 INCLUDE "text/SSAnne2F.asm"
 INCLUDE "text/SSAnne3F.asm"
 INCLUDE "text/SSAnneBow.asm"
+INCLUDE "text/SSAnneB1F.asm"
 INCLUDE "text/SSAnneKitchen.asm"
 INCLUDE "text/SSAnneCaptainsRoom.asm"
 INCLUDE "text/SSAnne1FRooms.asm"
@@ -63,10 +64,12 @@ SECTION "Text 3", ROMX
 
 INCLUDE "text/RockTunnelB1F_2.asm"
 INCLUDE "text/SeafoamIslandsB4F.asm"
+INCLUDE "text/SeafoamIslands1F.asm"
 
 INCLUDE "data/text/text_2.asm"
 
 INCLUDE "text/DiglettsCaveRoute2.asm"
+INCLUDE "text/DiglettsCave.asm"
 INCLUDE "text/ViridianForestNorthGate.asm"
 INCLUDE "text/Route2TradeHouse.asm"
 INCLUDE "text/Route2Gate.asm"
@@ -79,6 +82,7 @@ INCLUDE "text/Daycare.asm"
 SECTION "Text 4", ROMX
 
 INCLUDE "text/Daycare_2.asm"
+INCLUDE "text/UndergroundPathRoute5.asm"
 INCLUDE "text/UndergroundPathRoute6.asm"
 INCLUDE "text/UndergroundPathRoute7.asm"
 INCLUDE "text/UndergroundPathRoute7Copy.asm"

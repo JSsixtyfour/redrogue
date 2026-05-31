@@ -1,4 +1,17 @@
 PokemonTower7F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, PokemonTower7TrainerHeaders
 	ld de, PokemonTower7F_ScriptPointers
@@ -130,6 +143,10 @@ PokemonTower7FNPCCoordMovementTable:
 	map_coord_movement 10,  7, PokemonTower7FRocketExitDownMovement
 	map_coord_movement 11,  7, PokemonTower7FRocketExitDownMovement
 	map_coord_movement 12,  7, PokemonTower7FRocketExitDownMovement
+	map_coord_movement  7,  5, PokemonTower7FRocketExitDownMovement
+	map_coord_movement  6,  6, PokemonTower7FRocketExitDownMovement
+	map_coord_movement  9,  4, PokemonTower7FRocketExitDownMovement
+	map_coord_movement  8,  4, PokemonTower7FRocketExitDownMovement
 
 PokemonTower7FRocket1ExitRightDownMovement:
 	db NPC_MOVEMENT_RIGHT
@@ -189,19 +206,31 @@ PokemonTower7FRocket3ExitRightDownMovement:
 
 PokemonTower7F_TextPointers:
 	def_text_pointers
-	dw_const PokemonTower7FRocket1Text, TEXT_POKEMONTOWER7F_ROCKET1
-	dw_const PokemonTower7FRocket2Text, TEXT_POKEMONTOWER7F_ROCKET2
-	dw_const PokemonTower7FRocket3Text, TEXT_POKEMONTOWER7F_ROCKET3
-	dw_const PokemonTower7FMrFujiText,  TEXT_POKEMONTOWER7F_MR_FUJI
+	dw_const PokemonTower7FRocket1Text,   TEXT_POKEMONTOWER7F_ROCKET1
+	dw_const PokemonTower7FRocket2Text,   TEXT_POKEMONTOWER7F_ROCKET2
+	dw_const PokemonTower7FRocket3Text,   TEXT_POKEMONTOWER7F_ROCKET3
+	dw_const PokemonTower7FRocket4Text, TEXT_POKEMONTOWER7F_ROCKET4
+	dw_const PokemonTower7FRocket5Text, TEXT_POKEMONTOWER7F_ROCKET5
+	dw_const PokemonTower7FMrFujiText,    TEXT_POKEMONTOWER7F_MR_FUJI
+    dw_const RandomPickUpItemText,        TEXT_POKEMONTOWER7F_RANDOM
+    dw_const PokemonTower7F_Rogue_Reward_Script_PokeballText_1, TEXT_POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_1
+    dw_const PokemonTower7F_Rogue_Reward_Script_PokeballText_2, TEXT_POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_2
+    dw_const PokemonTower7F_Rogue_Reward_Script_PokeballText_3, TEXT_POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_PokemonTower7F_Reward_Text, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
+    EXPORT TEXT_POKEMONTOWER7F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 PokemonTower7TrainerHeaders:
-	def_trainers
+	def_trainers 1
 PokemonTower7TrainerHeader0:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_0, 3, PokemonTower7FRocket1BattleText, PokemonTower7FRocket1EndBattleText, PokemonTower7FRocket1AfterBattleText
 PokemonTower7TrainerHeader1:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_1, 3, PokemonTower7FRocket2BattleText, PokemonTower7FRocket2EndBattleText, PokemonTower7FRocket2AfterBattleText
 PokemonTower7TrainerHeader2:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_2, 3, PokemonTower7FRocket3BattleText, PokemonTower7FRocket3EndBattleText, PokemonTower7FRocket3AfterBattleText
+PokemonTower7TrainerHeader3:
+	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_3, 1, PokemonTower7FRocket4BattleText, PokemonTower7FRocket4EndBattleText, PokemonTower7FRocket4AfterBattleText
+PokemonTower7TrainerHeader4:
+	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_4, 1, PokemonTower7FRocket5BattleText, PokemonTower7FRocket5EndBattleText, PokemonTower7FRocket5AfterBattleText
 	db -1 ; end
 
 PokemonTower7FRocket1Text:
@@ -219,6 +248,18 @@ PokemonTower7FRocket2Text:
 PokemonTower7FRocket3Text:
 	text_asm
 	ld hl, PokemonTower7TrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower7FRocket4Text:
+	text_asm
+	ld hl, PokemonTower7TrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+PokemonTower7FRocket5Text:
+	text_asm
+	ld hl, PokemonTower7TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -280,4 +321,68 @@ PokemonTower7FRocket3EndBattleText:
 
 PokemonTower7FRocket3AfterBattleText:
 	text_far _PokemonTower7FRocket3AfterBattleText
+	text_end
+
+PokemonTower7FRocket4BattleText:
+	text_far _PokemonTower7FRocket1BattleText
+	text_end
+
+PokemonTower7FRocket4EndBattleText:
+	text_far _PokemonTower7FRocket1EndBattleText
+	text_end
+
+PokemonTower7FRocket4AfterBattleText:
+	text_far _PokemonTower7FRocket1AfterBattleText
+	text_end
+
+PokemonTower7FRocket5BattleText:
+	text_far _PokemonTower7FRocket2BattleText
+	text_end
+
+PokemonTower7FRocket5EndBattleText:
+	text_far _PokemonTower7FRocket2EndBattleText
+	text_end
+
+PokemonTower7FRocket5AfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, PokemonTower7FGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
+
+Rogue_PokemonTower7F_Reward_Text:
+script_rogue_reward
+
+PokemonTower7F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+PokemonTower7F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+PokemonTower7F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+PokemonTower7FGreedyText:
+	text_far _GreedyText
 	text_end

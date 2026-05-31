@@ -9,6 +9,7 @@ Route24_Script:
     
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
+    farcall RogueRefresh
     
     .normal
 	call EnableAutoTextBoxDrawing
@@ -282,19 +283,19 @@ script_rogue_reward
 
 Route24_Rogue_Reward_Script_PokeballText_1:
 text_asm
-ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
 farcall Rogue_Reward_Script_PokeballText_1
 jp TextScriptEnd
 
 Route24_Rogue_Reward_Script_PokeballText_2:
 text_asm
-ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
 farcall Rogue_Reward_Script_PokeballText_2
 jp TextScriptEnd
 
 Route24_Rogue_Reward_Script_PokeballText_3:
 text_asm
-ld d, TOGGLE_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_3
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 

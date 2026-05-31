@@ -26,7 +26,7 @@ RewardRoom_Script:
     
     call Delay3
     xor a
-    ld a, TEXT_REWARDROOM_REWARD_VENDOR_1
+    ld a, LOW(TEXT_REWARDROOM_REWARD_VENDOR_1)
 	ldh [hTextID], a
 	call DisplayTextID
     SetEvent EVENT_STEP_FORWARD

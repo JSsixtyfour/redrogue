@@ -1,4 +1,17 @@
 SSAnneBow_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, SSAnne5TrainerHeaders
 	ld de, SSAnneBow_ScriptPointers
@@ -15,19 +28,139 @@ SSAnneBow_ScriptPointers:
 
 SSAnneBow_TextPointers:
 	def_text_pointers
-	dw_const SSAnneBowSuperNerdText,    TEXT_SSANNEBOW_SUPER_NERD
-	dw_const SSAnneBowSailor1Text,      TEXT_SSANNEBOW_SAILOR1
-	dw_const SSAnneBowCooltrainerMText, TEXT_SSANNEBOW_COOLTRAINER_M
-	dw_const SSAnneBowSailor2Text,      TEXT_SSANNEBOW_SAILOR2
-	dw_const SSAnneBowSailor3Text,      TEXT_SSANNEBOW_SAILOR3
+	dw_const SSAnneBowSailor1TrainerText,      TEXT_SSANNEBOW_SAILOR1_TRAINER
+	dw_const SSAnneBowSailor2TrainerText,      TEXT_SSANNEBOW_SAILOR2_TRAINER
+	dw_const SSAnneBowSuperNerdTrainerText,    TEXT_SSANNEBOW_SUPER_NERD_TRAINER
+	dw_const SSAnneBowCooltrainerMTrainerText, TEXT_SSANNEBOW_COOLTRAINER_M_TRAINER
+	dw_const SSAnneBowJrTrainerFText,          TEXT_SSANNEBOW_JR_TRAINER_F
+	dw_const SSAnneBowSuperNerdText,       TEXT_SSANNEBOW_SUPER_NERD
+	dw_const SSAnneBowSailor1Text,         TEXT_SSANNEBOW_SAILOR1
+	dw_const SSAnneBowCooltrainerMText,    TEXT_SSANNEBOW_COOLTRAINER_M
+    dw_const RandomPickUpItemText,         TEXT_SSANNEBOW_RANDOM
+    dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_1, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_1
+    dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_2, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_2
+    dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_3, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_SSAnneBow_Reward_Text,  TEXT_SSANNEBOW_REWARD_VENDOR_1
+    EXPORT TEXT_SSANNEBOW_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 SSAnne5TrainerHeaders:
-	def_trainers 4
+	def_trainers 1
 SSAnne5TrainerHeader0:
-	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_0, 3, SSAnneBowSailor2BattleText, SSAnneBowSailor2EndBattleText, SSAnneBowSailor2AfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_0, 3, SSAnneBowSailor1TrainerBattleText, SSAnneBowSailor1TrainerEndBattleText, SSAnneBowSailor1TrainerAfterBattleText
 SSAnne5TrainerHeader1:
-	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_1, 3, SSAnneBowSailor3BattleText, SSAnneBowSailor3EndBattleText, SSAnneBowSailor3AfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_1, 3, SSAnneBowSailor2TrainerBattleText, SSAnneBowSailor2TrainerEndBattleText, SSAnneBowSailor2TrainerAfterBattleText
+SSAnne5TrainerHeader2:
+	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_2, 1, SSAnneBowSuperNerdTrainerBattleText, SSAnneBowSuperNerdTrainerEndBattleText, SSAnneBowSuperNerdTrainerAfterBattleText
+SSAnne5TrainerHeader3:
+	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_3, 1, SSAnneBowCooltrainerMTrainerBattleText, SSAnneBowCooltrainerMTrainerEndBattleText, SSAnneBowCooltrainerMTrainerAfterBattleText
+SSAnne5TrainerHeader4:
+	trainer EVENT_BEAT_SS_ANNE_5_TRAINER_4, 1, SSAnneBowJrTrainerFBattleText, SSAnneBowJrTrainerFEndBattleText, SSAnneBowJrTrainerFAfterBattleText
 	db -1 ; end
+
+SSAnneBowSailor1TrainerText:
+	text_asm
+	ld hl, SSAnne5TrainerHeader0
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SSAnneBowSailor1TrainerBattleText:
+	text_far _SSAnneBowSailor2BattleText
+	text_end
+
+SSAnneBowSailor1TrainerEndBattleText:
+	text_far _SSAnneBowSailor2EndBattleText
+	text_end
+
+SSAnneBowSailor1TrainerAfterBattleText:
+	text_far _SSAnneBowSailor2AfterBattleText
+	text_end
+
+SSAnneBowSailor2TrainerText:
+	text_asm
+	ld hl, SSAnne5TrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SSAnneBowSailor2TrainerBattleText:
+	text_far _SSAnneBowSailor3BattleText
+	text_end
+
+SSAnneBowSailor2TrainerEndBattleText:
+	text_far _SSAnneBowSailor3EndBattleText
+	text_end
+
+SSAnneBowSailor2TrainerAfterBattleText:
+	text_far _SSAnneBowSailor3AfterBattleText
+	text_end
+
+SSAnneBowSuperNerdTrainerText:
+	text_asm
+	ld hl, SSAnne5TrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SSAnneBowSuperNerdTrainerBattleText:
+	text_far _SSAnneBowSailor2BattleText
+	text_end
+
+SSAnneBowSuperNerdTrainerEndBattleText:
+	text_far _SSAnneBowSailor2EndBattleText
+	text_end
+
+SSAnneBowSuperNerdTrainerAfterBattleText:
+	text_far _SSAnneBowSailor2AfterBattleText
+	text_end
+
+SSAnneBowCooltrainerMTrainerText:
+	text_asm
+	ld hl, SSAnne5TrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SSAnneBowCooltrainerMTrainerBattleText:
+	text_far _SSAnneBowSailor2BattleText
+	text_end
+
+SSAnneBowCooltrainerMTrainerEndBattleText:
+	text_far _SSAnneBowSailor2EndBattleText
+	text_end
+
+SSAnneBowCooltrainerMTrainerAfterBattleText:
+	text_far _SSAnneBowSailor2AfterBattleText
+	text_end
+
+SSAnneBowJrTrainerFText:
+	text_asm
+	ld hl, SSAnne5TrainerHeader4
+	call TalkToTrainer
+	jp TextScriptEnd
+
+SSAnneBowJrTrainerFBattleText:
+	text_far _SSAnneBowSailor3BattleText
+	text_end
+
+SSAnneBowJrTrainerFEndBattleText:
+	text_far _SSAnneBowSailor3EndBattleText
+	text_end
+
+SSAnneBowJrTrainerFAfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
+
+    ld hl, SSAnneBowGreedyText
+    call PrintText
+    jr .done
+
+    .GetMon
+    xor a
+    ld a, TEXT_SSANNEBOW_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 SSAnneBowSuperNerdText:
 	text_far _SSAnneBowSuperNerdText
@@ -41,38 +174,27 @@ SSAnneBowCooltrainerMText:
 	text_far _SSAnneBowCooltrainerMText
 	text_end
 
-SSAnneBowSailor2Text:
-	text_asm
-	ld hl, SSAnne5TrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
+Rogue_SSAnneBow_Reward_Text:
+script_rogue_reward
 
-SSAnneBowSailor2BattleText:
-	text_far _SSAnneBowSailor2BattleText
-	text_end
+SSAnneBow_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
 
-SSAnneBowSailor2EndBattleText:
-	text_far _SSAnneBowSailor2EndBattleText
-	text_end
+SSAnneBow_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
 
-SSAnneBowSailor2AfterBattleText:
-	text_far _SSAnneBowSailor2AfterBattleText
-	text_end
+SSAnneBow_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
 
-SSAnneBowSailor3Text:
-	text_asm
-	ld hl, SSAnne5TrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneBowSailor3BattleText:
-	text_far _SSAnneBowSailor3BattleText
-	text_end
-
-SSAnneBowSailor3EndBattleText:
-	text_far _SSAnneBowSailor3EndBattleText
-	text_end
-
-SSAnneBowSailor3AfterBattleText:
-	text_far _SSAnneBowSailor3AfterBattleText
+SSAnneBowGreedyText:
+	text_far _GreedyText
 	text_end

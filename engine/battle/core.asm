@@ -1583,6 +1583,13 @@ TryRunningFromBattle:
 	ld hl, CantEscapeText
 	jr .printCantEscapeOrNoRunningText
 .trainerBattle
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG_MODE, a
+	jr z, .normalTrainerBattle
+	call TrainerBattleVictory ; plays victory fanfare + awards prize money, then returns here
+	scf                        ; signal battle over to BattleMenu_RunWasSelected
+	ret
+.normalTrainerBattle
 	ld hl, NoRunningText
 .printCantEscapeOrNoRunningText
 	call PrintText

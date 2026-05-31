@@ -1,29 +1,29 @@
-_Route17Biker1BattleText::
+_Route17CueBall1BattleText::
 	text "There's no money"
 	line "in fighting kids!"
 	done
 
-_Route17Biker1EndBattleText::
+_Route17CueBall1EndBattleText::
 	text "Burned"
 	line "out!"
 	prompt
 
-_Route17Biker1AfterBattleText::
+_Route17CueBall1AfterBattleText::
 	text "Good stuff is"
 	line "lying around on"
 	cont "CYCLING ROAD!"
 	done
 
-_Route17Biker2BattleText::
+_Route17CueBall2BattleText::
 	text "What do you want,"
 	line "kiddo?"
 	done
 
-_Route17Biker2EndBattleText::
+_Route17CueBall2EndBattleText::
 	text "Whoo!"
 	prompt
 
-_Route17Biker2AfterBattleText::
+_Route17CueBall2AfterBattleText::
 	text "I could belly-"
 	line "bump you outta"
 	cont "here!"

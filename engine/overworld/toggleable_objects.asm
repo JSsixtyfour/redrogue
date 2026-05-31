@@ -63,6 +63,13 @@ MarkTownVisitedAndLoadToggleableObjects::
 .done
 	ld a, -1
 	ld [de], a                 ; write sentinel
+	; Reset random item flag when entering a roguelike stage
+	call IsRogueStageMap
+	ret z
+	ld hl, wToggleableObjectFlags
+	ld c, TOGGLE_STAGE_RANDOM_ITEM
+	ld b, FLAG_RESET
+	call ToggleableObjectFlagAction
 	ret
 
 InitializeToggleableObjectsFlags:
@@ -99,12 +106,47 @@ InitializeToggleableObjectsFlags:
 IsObjectHidden:
 	ldh a, [hCurrentSpriteOffset]
 	swap a
-	ld b, a
+	ld b, a                         ; b = sprite slot number
+	; Hardcoded check for roguelike pokeball slots (6-9) on stage maps
+	cp 6
+	jr z, .checkMaybeRoguePB
+	cp 7
+	jr z, .checkMaybeRoguePB
+	cp 8
+	jr z, .checkMaybeRoguePB
+	cp 9
+	jr z, .checkMaybeRoguePB
+	jr .normalCheck
+.checkMaybeRoguePB
+	push bc
+	call IsRogueStageMap
+	pop bc
+	jr z, .normalCheck              ; Z set = not a stage map
+	ld c, TOGGLE_STAGE_RANDOM_ITEM  ; slot 6 = random item
+	ld a, b
+	cp 6
+	jr z, .checkRewardBit
+	ld c, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	cp 7
+	jr z, .checkRewardBit
+	ld c, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	cp 8
+	jr z, .checkRewardBit
+	ld c, TOGGLE_ROGUE_REWARD_POKEBALL_3
+.checkRewardBit
+	ld b, FLAG_TEST
+	ld hl, wToggleableObjectFlags
+	call ToggleableObjectFlagAction
+	ld a, c
+	and a
+	jr nz, .hidden
+	jr .notHidden
+.normalCheck
 	ld hl, wToggleableObjectList
 .loop
 	ld a, [hli]
 	cp -1
-	jr z, .notHidden ; not toggleable -> not hidden
+	jr z, .notHidden                ; not toggleable -> not hidden
 	cp b
 	ld a, [hli]
 	jr nz, .loop
@@ -120,6 +162,53 @@ IsObjectHidden:
 .hidden
 	ldh [hIsToggleableObjectOff], a
 	ret
+
+; Returns: Z clear if current map is a roguelike stage, Z set if not
+IsRogueStageMap:
+	ld a, [wCurMap]
+	ld hl, RogueStageMapTable
+.stageLoop
+	ld c, [hl]
+	inc hl
+	inc c
+	jr z, .notStage                 ; c was $FF (end of table)
+	dec c
+	cp c
+	jr nz, .stageLoop
+	xor a
+	inc a                           ; a = 1, Z clear = is a stage map
+	ret
+.notStage
+	xor a                           ; a = 0, Z set = not a stage map
+	ret
+
+RogueStageMapTable:
+	db ROUTE_1
+	db ROUTE_3
+	db ROUTE_5
+	db ROUTE_6
+	db ROUTE_9
+	db ROUTE_12
+	db ROUTE_13
+	db ROUTE_15
+	db ROUTE_17
+    db ROUTE_24
+	db ROUTE_25
+    db VIRIDIAN_FOREST
+	db DIGLETTS_CAVE
+	db MT_MOON_1F
+	db ROCK_TUNNEL_1F
+	db ROCKET_HIDEOUT_B1F
+	db POKEMON_TOWER_2F
+	db POKEMON_TOWER_7F
+	db SS_ANNE_B1F
+	db SS_ANNE_BOW
+	db POWER_PLANT
+	db SILPH_CO_1F
+	db POKEMON_MANSION_1F
+	db SEAFOAM_ISLANDS_1F
+	db VICTORY_ROAD_1F
+	db -1
 
 ; adds toggleable object (items, leg. pokemon, etc.) to the map
 ; [wToggleableObjectIndex]: index of the toggleable object to be added (global index)

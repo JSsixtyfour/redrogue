@@ -1,4 +1,17 @@
 RockTunnel1F_Script:
+
+    CheckEvent EVENT_ENTER_ROOM
+    jr nz, .normal
+
+    SetEvent EVENT_ENTER_ROOM
+
+    ResetEvent EVENT_GOT_ROGUE_POKEMON
+
+    farcall rogue_pokemon_randomized_batch
+    farcall Random_Item_Selection
+    farcall RogueRefresh
+
+    .normal
 	call EnableAutoTextBoxDrawing
 	ld hl, RockTunnel1TrainerHeaders
 	ld de, RockTunnel1F_ScriptPointers
@@ -15,31 +28,31 @@ RockTunnel1F_ScriptPointers:
 
 RockTunnel1F_TextPointers:
 	def_text_pointers
-	dw_const RockTunnel1FHiker1Text,        TEXT_ROCKTUNNEL1F_HIKER1
-	dw_const RockTunnel1FHiker2Text,        TEXT_ROCKTUNNEL1F_HIKER2
-	dw_const RockTunnel1FHiker3Text,        TEXT_ROCKTUNNEL1F_HIKER3
-	dw_const RockTunnel1FSuperNerdText,     TEXT_ROCKTUNNEL1F_SUPER_NERD
-	dw_const RockTunnel1FCooltrainerF1Text, TEXT_ROCKTUNNEL1F_COOLTRAINER_F1
-	dw_const RockTunnel1FCooltrainerF2Text, TEXT_ROCKTUNNEL1F_COOLTRAINER_F2
-	dw_const RockTunnel1FCooltrainerF3Text, TEXT_ROCKTUNNEL1F_COOLTRAINER_F3
+	dw_const RockTunnel1FHiker1Text,       TEXT_ROCKTUNNEL1F_HIKER1
+	dw_const RockTunnel1FHiker2Text,       TEXT_ROCKTUNNEL1F_HIKER2
+	dw_const RockTunnel1FJrTrainerFText,   TEXT_ROCKTUNNEL1F_JR_TRAINER_F
+	dw_const RockTunnel1FPokemaniacText,   TEXT_ROCKTUNNEL1F_POKEMANIAC
+	dw_const RockTunnel1FCooltrainerMText, TEXT_ROCKTUNNEL1F_COOLTRAINER_M
+    dw_const RandomPickUpItemText,          TEXT_ROCKTUNNEL1F_RANDOM
+    dw_const RockTunnel1F_Rogue_Reward_Script_PokeballText_1, TEXT_ROCKTUNNEL1F_ROGUE_REWARD_POKEBALL_1
+    dw_const RockTunnel1F_Rogue_Reward_Script_PokeballText_2, TEXT_ROCKTUNNEL1F_ROGUE_REWARD_POKEBALL_2
+    dw_const RockTunnel1F_Rogue_Reward_Script_PokeballText_3, TEXT_ROCKTUNNEL1F_ROGUE_REWARD_POKEBALL_3
+    dw_const Rogue_RockTunnel1F_Reward_Text, TEXT_ROCKTUNNEL1F_REWARD_VENDOR_1
+    EXPORT TEXT_ROCKTUNNEL1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const RockTunnel1FSignText,          TEXT_ROCKTUNNEL1F_SIGN
 
 RockTunnel1TrainerHeaders:
-	def_trainers
+	def_trainers 1
 RockTunnel1TrainerHeader0:
 	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0, 4, RockTunnel1FHiker1BattleText, RockTunnel1FHiker1EndBattleText, RockTunnel1FHiker1AfterBattleText
 RockTunnel1TrainerHeader1:
 	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1, 4, RockTunnel1FHiker2BattleText, RockTunnel1FHiker2EndBattleText, RockTunnel1FHiker2AfterBattleText
 RockTunnel1TrainerHeader2:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2, 3, RockTunnel1FHiker3BattleText, RockTunnel1FHiker3EndBattleText, RockTunnel1FHiker3AfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2, 3, RockTunnel1FJrTrainerFBattleText, RockTunnel1FJrTrainerFEndBattleText, RockTunnel1FJrTrainerFAfterBattleText
 RockTunnel1TrainerHeader3:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3, 3, RockTunnel1FSuperNerdBattleText, RockTunnel1FSuperNerdEndBattleText, RockTunnel1FSuperNerdAfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3, 3, RockTunnel1FPokemaniacBattleText, RockTunnel1FPokemaniacEndBattleText, RockTunnel1FPokemaniacAfterBattleText
 RockTunnel1TrainerHeader4:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4, 4, RockTunnel1FCooltrainerF1BattleText, RockTunnel1FCooltrainerF1EndBattleText, RockTunnel1FCooltrainerF1AfterBattleText
-RockTunnel1TrainerHeader5:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_5, 4, RockTunnel1FCooltrainerF2BattleText, RockTunnel1FCooltrainerF2EndBattleText, RockTunnel1FCooltrainerF2AfterBattleText
-RockTunnel1TrainerHeader6:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_6, 4, RockTunnel1FCooltrainerF3BattleText, RockTunnel1FCooltrainerF3EndBattleText, RockTunnel1FCooltrainerF3AfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4, 4, RockTunnel1FCooltrainerMBattleText, RockTunnel1FCooltrainerMEndBattleText, RockTunnel1FCooltrainerMAfterBattleText
 	db -1 ; end
 
 RockTunnel1FHiker1Text:
@@ -52,29 +65,19 @@ RockTunnel1FHiker2Text:
 	ld hl, RockTunnel1TrainerHeader1
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FHiker3Text:
+RockTunnel1FJrTrainerFText:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader2
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FSuperNerdText:
+RockTunnel1FPokemaniacText:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader3
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FCooltrainerF1Text:
+RockTunnel1FCooltrainerMText:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader4
-	jr RockTunnel1FTalkToTrainer
-
-RockTunnel1FCooltrainerF2Text:
-	text_asm
-	ld hl, RockTunnel1TrainerHeader5
-	jr RockTunnel1FTalkToTrainer
-
-RockTunnel1FCooltrainerF3Text:
-	text_asm
-	ld hl, RockTunnel1TrainerHeader6
 RockTunnel1FTalkToTrainer:
 	call TalkToTrainer
 	jp TextScriptEnd
@@ -103,66 +106,82 @@ RockTunnel1FHiker2AfterBattleText:
 	text_far _RockTunnel1FHiker2AfterBattleText
 	text_end
 
-RockTunnel1FHiker3BattleText:
+RockTunnel1FJrTrainerFBattleText:
 	text_far _RockTunnel1FHiker3BattleText
 	text_end
 
-RockTunnel1FHiker3EndBattleText:
+RockTunnel1FJrTrainerFEndBattleText:
 	text_far _RockTunnel1FHiker3EndBattleText
 	text_end
 
-RockTunnel1FHiker3AfterBattleText:
+RockTunnel1FJrTrainerFAfterBattleText:
 	text_far _RockTunnel1FHiker3AfterBattleText
 	text_end
 
-RockTunnel1FSuperNerdBattleText:
+RockTunnel1FPokemaniacBattleText:
 	text_far _RockTunnel1FSuperNerdBattleText
 	text_end
 
-RockTunnel1FSuperNerdEndBattleText:
+RockTunnel1FPokemaniacEndBattleText:
 	text_far _RockTunnel1FSuperNerdEndBattleText
 	text_end
 
-RockTunnel1FSuperNerdAfterBattleText:
+RockTunnel1FPokemaniacAfterBattleText:
 	text_far _RockTunnel1FSuperNerdAfterBattleText
 	text_end
 
-RockTunnel1FCooltrainerF1BattleText:
+RockTunnel1FCooltrainerMBattleText:
 	text_far _RockTunnel1FCooltrainerF1BattleText
 	text_end
 
-RockTunnel1FCooltrainerF1EndBattleText:
+RockTunnel1FCooltrainerMEndBattleText:
 	text_far _RockTunnel1FCooltrainerF1EndBattleText
 	text_end
 
-RockTunnel1FCooltrainerF1AfterBattleText:
-	text_far _RockTunnel1FCooltrainerF1AfterBattleText
-	text_end
+RockTunnel1FCooltrainerMAfterBattleText:
+    text_asm
+    farcall Delay3
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    jr z, .GetMon
 
-RockTunnel1FCooltrainerF2BattleText:
-	text_far _RockTunnel1FCooltrainerF2BattleText
-	text_end
+    ld hl, RockTunnel1FGreedyText
+    call PrintText
+    jr .done
 
-RockTunnel1FCooltrainerF2EndBattleText:
-	text_far _RockTunnel1FCooltrainerF2EndBattleText
-	text_end
-
-RockTunnel1FCooltrainerF2AfterBattleText:
-	text_far _RockTunnel1FCooltrainerF2AfterBattleText
-	text_end
-
-RockTunnel1FCooltrainerF3BattleText:
-	text_far _RockTunnel1FCooltrainerF3BattleText
-	text_end
-
-RockTunnel1FCooltrainerF3EndBattleText:
-	text_far _RockTunnel1FCooltrainerF3EndBattleText
-	text_end
-
-RockTunnel1FCooltrainerF3AfterBattleText:
-	text_far _RockTunnel1FCooltrainerF3AfterBattleText
-	text_end
+    .GetMon
+    xor a
+    ld a, TEXT_ROCKTUNNEL1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .done
+    jp TextScriptEnd
 
 RockTunnel1FSignText:
 	text_far _RockTunnel1FSignText
+	text_end
+
+Rogue_RockTunnel1F_Reward_Text:
+script_rogue_reward
+
+RockTunnel1F_Rogue_Reward_Script_PokeballText_1:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+farcall Rogue_Reward_Script_PokeballText_1
+jp TextScriptEnd
+
+RockTunnel1F_Rogue_Reward_Script_PokeballText_2:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+farcall Rogue_Reward_Script_PokeballText_2
+jp TextScriptEnd
+
+RockTunnel1F_Rogue_Reward_Script_PokeballText_3:
+text_asm
+ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+farcall Rogue_Reward_Script_PokeballText_3
+jp TextScriptEnd
+
+RockTunnel1FGreedyText:
+	text_far _GreedyText
 	text_end
