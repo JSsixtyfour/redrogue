@@ -4,14 +4,14 @@ PKMNLeaguePC:
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	push hl
-	ld a, [wUpdateSpritesEnabled]
+	ldh a, [hUpdateSpritesEnabled]
 	push af
 	ldh a, [hTileAnimations]
 	push af
 	xor a
 	ldh [hTileAnimations], a
 	ld [wSpriteFlipped], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wHoFTeamIndex2], a
 	ld [wHoFTeamNo], a
 	ld a, [wNumHoFTeams]
@@ -42,7 +42,7 @@ PKMNLeaguePC:
 	pop af
 	ldh [hTileAnimations], a
 	pop af
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	pop hl
 	res BIT_NO_TEXT_DELAY, [hl]
 	call GBPalWhiteOutWithDelay3

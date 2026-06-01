@@ -4,7 +4,7 @@ NameRatersHouse_Script:
 NameRatersHouseYesNoScript:
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret
 
@@ -12,7 +12,7 @@ NameRatersHouseCheckMonOTScript:
 ; return carry if mon's OT name or OT ID do not match the player's
 	ld hl, wPartyMonOT
 	ld bc, NAME_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld de, wPlayerName
 	ld c, NAME_LENGTH
@@ -20,7 +20,7 @@ NameRatersHouseCheckMonOTScript:
 	jr c, .no_match
 	ld hl, wPartyMon1OTID
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld de, wPlayerID
 	ld c, $2
@@ -52,7 +52,7 @@ NameRatersHouseNameRaterText:
 	call PrintText
 	xor a
 	ld [wPartyMenuTypeOrMessageID], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
 	push af

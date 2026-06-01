@@ -9,7 +9,7 @@ _RemovePokemon::
 	dec a
 	ld [hli], a
 
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, 0
 	add hl, bc
@@ -31,9 +31,9 @@ _RemovePokemon::
 	ld hl, wBoxMonOT
 	ld d, MONS_PER_BOX - 1
 .gotOTsPointer
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp d ; are we removing the last pokemon?
 	jr nz, .notRemovingLastMon ; if not, shift the pokemon below
 
@@ -64,7 +64,7 @@ _RemovePokemon::
 	ld hl, wBoxMons
 	ld bc, BOXMON_STRUCT_LENGTH
 .gotMonStructs
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes ; get address of the pokemon removed
 
 	ld d, h ; de = start address for CopyDataUntil
@@ -91,7 +91,7 @@ _RemovePokemon::
 	ld hl, wBoxMonNicks
 .gotNicksPointer2
 	ld bc, NAME_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 
 	ld d, h

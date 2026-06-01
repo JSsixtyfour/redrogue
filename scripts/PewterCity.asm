@@ -32,7 +32,7 @@ ENDC
 	call ArePlayerCoordsInArray
 	ret nc
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_PEWTERCITY_YOUNGSTER
 	ldh [hTextID], a
 	jp DisplayTextID
@@ -71,7 +71,7 @@ PewterCitySuperNerd1ShowsPlayerMuseumScript:
 	ld a, 17
 	ldh [hSpriteMapXCoord], a
 	ld a, PEWTERCITY_SUPER_NERD1
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, PEWTERCITY_SUPER_NERD1
 	ldh [hSpriteIndex], a
@@ -101,13 +101,13 @@ PewterCityHideSuperNerd1Script:
 
 PewterCityResetSuperNerd1Script:
 	ld a, PEWTERCITY_SUPER_NERD1
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition2
 	ld a, TOGGLE_MUSEUM_GUY
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_PEWTERCITY_DEFAULT
 	ld [wPewterCityCurScript], a
 	ret
@@ -139,7 +139,7 @@ PewterCityYoungsterShowsPlayerGymScript:
 	ld a, 16
 	ldh [hSpriteMapXCoord], a
 	ld a, PEWTERCITY_YOUNGSTER
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, PEWTERCITY_YOUNGSTER
 	ldh [hSpriteIndex], a
@@ -170,13 +170,13 @@ PewterCityHideYoungsterScript:
 
 PewterCityResetYoungsterScript:
 	ld a, PEWTERCITY_YOUNGSTER
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition2
 	ld a, TOGGLE_GYM_GUY
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_PEWTERCITY_DEFAULT
 	ld [wPewterCityCurScript], a
 	ret
@@ -211,7 +211,7 @@ PewterCitySuperNerd1Text:
 	ld hl, .DidYouCheckOutMuseumText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .playerDidNotGoIntoMuseum
 	ld hl, .WerentThoseFossilsAmazingText
@@ -229,7 +229,7 @@ PewterCitySuperNerd1Text:
 	ldh a, [hLoadedROMBank]
 	ld [wNPCMovementScriptBank], a
 	ld a, PEWTERCITY_SUPER_NERD1
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call GetSpritePosition2
 	ld a, SCRIPT_PEWTERCITY_SUPER_NERD1_SHOWS_PLAYER_MUSEUM
 	ld [wPewterCityCurScript], a
@@ -257,7 +257,7 @@ PewterCitySuperNerd2Text:
 	ld hl, .DoYouKnowWhatImDoingText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $0
 	jr nz, .playerDoesNotKnow
 	ld hl, .ThatsRightText
@@ -293,7 +293,7 @@ PewterCityYoungsterText:
 	ldh a, [hLoadedROMBank]
 	ld [wNPCMovementScriptBank], a
 	ld a, PEWTERCITY_YOUNGSTER
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call GetSpritePosition2
 	ld a, SCRIPT_PEWTERCITY_YOUNGSTER_SHOWS_PLAYER_GYM
 	ld [wPewterCityCurScript], a

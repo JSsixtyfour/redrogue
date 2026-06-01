@@ -26,7 +26,7 @@ _Joypad::
 	ldh a, [hJoyLast]
 	ldh [hJoyHeld], a
 
-	ld a, [wJoyIgnore]
+	ldh a, [hJoyIgnore]
 	and a
 	ret z
 

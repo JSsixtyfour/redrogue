@@ -9,11 +9,11 @@ PromptUserToPlaySlots:
 	ld hl, PlaySlotMachineText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done ; if player chose No
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld hl, wSlotMachineRerollCounter
 	xor a
 	ld [hli], a
@@ -41,7 +41,7 @@ PromptUserToPlaySlots:
 	ld [wSlotMachineAllowMatchesCounter], a
 	call GBPalWhiteOutWithDelay3
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call RunDefaultPaletteCommand
 	call ReloadMapSpriteTilePatterns
 	call ReloadTilesetTilePatterns
@@ -77,7 +77,7 @@ MainSlotMachineLoop:
 	ld a, 15
 	ld [wTopMenuItemX], a
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuWatchMovingOutOfBounds], a
 	hlcoord 14, 11
@@ -90,7 +90,7 @@ MainSlotMachineLoop:
 	call HandleMenuInput
 	and PAD_B
 	jp nz, LoadScreenTilesFromBuffer1
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, 3
 	sub b
@@ -141,7 +141,7 @@ MainSlotMachineLoop:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret nz
 	call SlotMachine_PutOutLitBalls

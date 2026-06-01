@@ -54,7 +54,7 @@ LoreleiScriptWalkIntoRoom:
 	ld [hli], a
 	ld [hl], a
 	ld a, $6
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_LORELEISROOM_PLAYER_IS_MOVING
 	ld [wLoreleisRoomCurScript], a
@@ -69,7 +69,7 @@ LoreleisRoomDefaultScript:
 	ldh [hJoyPressed], a
 	ldh [hJoyHeld], a
 	ld [wSimulatedJoypadStatesEnd], a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, [wCoordIndex]
 	cp $3  ; Is player standing one tile above the exit?
 	jr c, .stopPlayerFromLeaving
@@ -82,7 +82,7 @@ LoreleisRoomDefaultScript:
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_LORELEISROOM_PLAYER_IS_MOVING
 	ld [wLoreleisRoomCurScript], a
@@ -97,19 +97,19 @@ LoreleiEntranceCoords:
 	db -1 ; end
 
 LoreleisRoomPlayerIsMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wLoreleisRoomCurScript], a
 	ld [wCurMapScript], a
 	ret
 
 LoreleisRoomLoreleiEndBattleScript:
 	call EndTrainerBattle
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetLoreleiScript
 	ld a, TEXT_LORELEISROOM_LORELEI

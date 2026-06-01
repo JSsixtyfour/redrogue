@@ -32,7 +32,7 @@ RedrawPartyMenu_::
 	call PlaceString ; print the pokemon's name
 	farcall WriteMonPartySpriteOAMByPartyIndex ; place the appropriate pokemon icon
 	ldh a, [hPartyMonIndex]
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	inc a
 	ldh [hPartyMonIndex], a
 	call LoadMonData
@@ -44,7 +44,7 @@ RedrawPartyMenu_::
 ; if the player is swapping pokemon positions
 	dec a
 	ld b, a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp b ; is the player swapping the current pokemon in the list?
 	jr nz, .skipUnfilledRightArrow
 ; the player is swapping the current pokemon in the list

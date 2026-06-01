@@ -9,7 +9,7 @@ Route16_Script:
 
 Route16ResetScripts:
 	xor a ; SCRIPT_ROUTE16_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute16CurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -46,7 +46,7 @@ Route16DefaultScript:
 	ret
 
 Route16SnorlaxPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, Route16ResetScripts
 	call UpdateSprites

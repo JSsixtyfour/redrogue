@@ -54,7 +54,7 @@ BillsHousePokemonEntersMachineScript:
 	predef HideObject
 	SetEvent EVENT_BILL_SAID_USE_CELL_SEPARATOR
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_BILLSHOUSE_BILL_EXITS_MACHINE
 	ld [wBillsHouseCurScript], a
 	ret
@@ -63,9 +63,9 @@ BillsHouseBillExitsMachineScript:
 	CheckEvent EVENT_USED_CELL_SEPARATOR_ON_BILL
 	ret z
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, BILLSHOUSE_BILL1
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	ld a, $c
 	ldh [hSpriteScreenYCoord], a
 	ld a, $40
@@ -101,7 +101,7 @@ BillsHouseCleanupScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_MET_BILL_2 ; this event seems redundant
 	SetEvent EVENT_MET_BILL
 	ld a, SCRIPT_BILLSHOUSE_DEFAULT
@@ -131,7 +131,7 @@ BillsHouseBillPokemonText:
 	ld hl, .ImNotAPokemonText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .answered_no
 .use_machine

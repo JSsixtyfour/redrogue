@@ -18,7 +18,7 @@ PlayerPC::
 
 PlayerPCMenu:
 	ld a, [wParentMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld hl, wMiscFlags
 	set BIT_NO_MENU_BUTTON_SOUND, [hl]
 	call LoadScreenTilesFromBuffer2
@@ -35,8 +35,7 @@ PlayerPCMenu:
 	ld [hli], a ; wTopMenuItemY
 	dec a
 	ld [hli], a ; wTopMenuItemX
-	inc hl
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, 3
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
@@ -53,7 +52,7 @@ PlayerPCMenu:
 	bit B_PAD_B, a
 	jp nz, ExitPlayerPC
 	call PlaceUnfilledArrowMenuCursor
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wParentMenuItem], a
 	and a
 	jp z, PlayerPCWithdraw
@@ -80,12 +79,12 @@ ExitPlayerPC:
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ret
 
 PlayerPCDeposit:
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 	ld a, [wNumBagItems]
 	and a
@@ -139,7 +138,7 @@ PlayerPCDeposit:
 
 PlayerPCWithdraw:
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 	ld a, [wNumBoxItems]
 	and a
@@ -193,7 +192,7 @@ PlayerPCWithdraw:
 
 PlayerPCToss:
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 	ld a, [wNumBoxItems]
 	and a

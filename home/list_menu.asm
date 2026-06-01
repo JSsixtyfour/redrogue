@@ -71,7 +71,7 @@ DisplayListMenuIDLoop::
 	ld c, 80
 	call DelayFrames
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	hlcoord 5, 4
 	ld a, l
 	ld [wMenuCursorLocation], a
@@ -87,7 +87,7 @@ DisplayListMenuIDLoop::
 	bit B_PAD_A, a
 	jp z, .checkOtherKeys
 .buttonAPressed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call PlaceUnfilledArrowMenuCursor
 
 ; pointless because both values are overwritten before they are read
@@ -97,7 +97,7 @@ DisplayListMenuIDLoop::
 
 	xor a
 	ld [wMenuWatchMovingOutOfBounds], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld a, [wListScrollOffset]
 	add c
@@ -109,7 +109,7 @@ DisplayListMenuIDLoop::
 	cp c ; did the player select Cancel?
 	jp c, ExitListMenu ; if so, exit the menu
 	ld a, c
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jr nz, .skipMultiplying
@@ -163,7 +163,7 @@ DisplayListMenuIDLoop::
 	jr z, .getPokemonName
 	ld hl, wBoxMonNicks ; box pokemon names
 .getPokemonName
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call GetPartyMonName
 .storeChosenEntry ; store the menu entry that the player chose and return
 	ld de, wNameBuffer
@@ -171,7 +171,7 @@ DisplayListMenuIDLoop::
     .skipStoringItemName    ; skip here if skipping storing item name
 	ld a, CHOSE_MENU_ITEM
 	ld [wMenuExitMethod], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wChosenMenuItem], a
 	xor a
 	ld [hJoy7], a ; joypad state update flag, changed for move relearner
@@ -329,7 +329,7 @@ SpacesBetweenQuantityAndPriceText::
 	db "      @"
 
 ExitListMenu::
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wChosenMenuItem], a
 	ld a, CANCELLED_MENU
 	ld [wMenuExitMethod], a
@@ -374,7 +374,7 @@ PrintListMenuEntries::
 	ld b, 4 ; print 4 names
 .loop
 	ld a, b
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [de]
 	ld [wNamedObjectIndex], a
 	cp $ff
@@ -401,7 +401,7 @@ PrintListMenuEntries::
 	jr z, .getPokemonName
 	ld hl, wBoxMonNicks ; box pokemon names
 .getPokemonName
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	ld a, 4
 	sub b
@@ -447,7 +447,7 @@ PrintListMenuEntries::
 	ld a, BOX_DATA
 .next
 	ld [wMonDataLocation], a
-	ld hl, wWhichPokemon
+	ld hl, hWhichPokemon
 	ld a, [hl]
 	ld b, a
 	ld a, $04

@@ -4,7 +4,7 @@ MoveRelearnerText1:
 	ld hl, MoveRelearnerGreetingText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
 	xor a
@@ -27,7 +27,7 @@ MoveRelearnerText1:
 	xor a
 	ld [wListScrollOffset], a
 	ld [wPartyMenuTypeOrMessageID], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
 	push af
@@ -36,7 +36,7 @@ MoveRelearnerText1:
 	call LoadGBPal
 	pop af
 	jp c, .exit
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	push bc
 	ld hl, PrepareRelearnableMoveList
@@ -53,7 +53,7 @@ MoveRelearnerText1:
 	ld hl, MoveRelearnerWhichMoveText
 	call PrintText
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, MOVESLISTMENU
 	ld [wListMenuID], a
@@ -76,7 +76,7 @@ MoveRelearnerText1:
 	call CopyToStringBuffer ; copy name to wcf4b
 	pop bc
 	ld a, b
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [wLetterPrintingDelayFlags]
 	push af
 	xor a

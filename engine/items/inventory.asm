@@ -95,12 +95,12 @@ AddItemToInventory_::
 ; function to remove an item (in varying quantities) from the player's bag or PC box
 ; INPUT:
 ; hl = address of inventory (either wNumBagItems or wNumBoxItems)
-; [wWhichPokemon] = index (within the inventory) of the item to remove
+; [hWhichPokemon] = index (within the inventory) of the item to remove
 ; [wItemQuantity] = quantity to remove
 RemoveItemFromInventory_::
 	push hl
 	inc hl
-	ld a, [wWhichPokemon] ; index (within the inventory) of the item being removed
+	ldh a, [hWhichPokemon] ; index (within the inventory) of the item being removed
 	sla a
 	add l
 	ld l, a
@@ -131,7 +131,7 @@ RemoveItemFromInventory_::
 ; update menu info
 	xor a
 	ld [wListScrollOffset], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wBagSavedMenuItem], a
 	ld [wSavedListScrollOffset], a
 	pop hl

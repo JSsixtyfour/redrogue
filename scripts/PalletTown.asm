@@ -35,7 +35,7 @@ PalletTown_ScriptPointers:
 ;	ld a, MUSIC_MEET_PROF_OAK ; "oak appears" music
 ;	call PlayMusic
 ;	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-;	ld [wJoyIgnore], a
+;	ldh [hJoyIgnore], a
 ;	SetEvent EVENT_OAK_APPEARED_IN_PALLET
 ;
 ;	; trigger the next script
@@ -50,7 +50,7 @@ PalletTown_ScriptPointers:
 ;	ldh [hTextID], a
 ;	call DisplayTextID
 ;	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-;	ld [wJoyIgnore], a
+;	ldh [hJoyIgnore], a
 ;	ld a, TOGGLE_PALLET_TOWN_OAK
 ;	ld [wToggleableObjectIndex], a
 ;	predef ShowObject
@@ -83,7 +83,7 @@ PalletTown_ScriptPointers:
 ;	ldh [hSpriteIndex], a
 ;	call MoveSprite
 ;	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-;	ld [wJoyIgnore], a
+;	ldh [hJoyIgnore], a
 ;
 ;	; trigger the next script
 ;	ld a, SCRIPT_PALLETTOWN_OAK_NOT_SAFE_COME_WITH_ME
@@ -99,15 +99,15 @@ PalletTown_ScriptPointers:
 ;	ld a, TRUE
 ;	ld [wOakWalkedToPlayer], a
 ;	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-;	ld [wJoyIgnore], a
+;	ldh [hJoyIgnore], a
 ;	ld a, TEXT_PALLETTOWN_OAK
 ;	ldh [hTextID], a
 ;	call DisplayTextID
 ;; set up movement script that causes the player to follow Oak to his lab
 ;	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-;	ld [wJoyIgnore], a
+;	ldh [hJoyIgnore], a
 ;	ld a, PALLETTOWN_OAK
-;	ld [wSpriteIndex], a
+;	ldh [hActiveSpriteIndex], a
 ;	xor a
 ;	ld [wNPCMovementScriptFunctionNum], a
 ;	ld a, 1
@@ -165,7 +165,7 @@ PalletTown_TextPointers:
 ; 	and a
 ; 	jr nz, .next
 ; 	ld a, 1
-; 	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+; 	ldh [hNoWaitAfterText], a
 ; 	ld hl, .HeyWaitDontGoOutText
 ; 	jr .done
 ; .next

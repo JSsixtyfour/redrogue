@@ -1,7 +1,7 @@
 _GetSpritePosition1::
 	ld hl, wSpriteStateData1
 	ld de, SPRITESTATEDATA1_YPIXELS
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call GetSpriteDataPointer
 	ld a, [hli] ; x#SPRITESTATEDATA1_YPIXELS
@@ -20,7 +20,7 @@ _GetSpritePosition1::
 _GetSpritePosition2::
 	ld hl, wSpriteStateData1
 	ld de, SPRITESTATEDATA1_YPIXELS
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call GetSpriteDataPointer
 	ld a, [hli] ; x#SPRITESTATEDATA1_YPIXELS
@@ -39,7 +39,7 @@ _GetSpritePosition2::
 _SetSpritePosition1::
 	ld hl, wSpriteStateData1
 	ld de, SPRITESTATEDATA1_YPIXELS
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call GetSpriteDataPointer
 	ldh a, [hSpriteScreenYCoord] ; x#SPRITESTATEDATA1_YPIXELS
@@ -58,7 +58,7 @@ _SetSpritePosition1::
 _SetSpritePosition2::
 	ld hl, wSpriteStateData1
 	ld de, SPRITESTATEDATA1_YPIXELS
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call GetSpriteDataPointer
 	ld a, [wSavedSpriteScreenY]
@@ -75,7 +75,7 @@ _SetSpritePosition2::
 	ret
 
 TrainerWalkUpToPlayer::
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wTrainerSpriteOffset], a
 	call ReadTrainerScreenPosition
@@ -143,7 +143,7 @@ TrainerWalkUpToPlayer::
 	ld de, wNPCMovementDirections2
 	call FillMemory     ; write the necessary steps to reach player
 	ld [hl], $ff        ; write end of list sentinel
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp MoveSprite_
 
@@ -291,7 +291,7 @@ CheckSpriteCanSeePlayer:
 
 ; tests if the player is in front of the sprite (rather than behind it)
 CheckPlayerIsInFrontOfSprite:
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POWER_PLANT
 	jp z, .engage       ; bypass this for power plant to get voltorb fake items to work
 	ld a, [wTrainerSpriteOffset]

@@ -103,7 +103,7 @@ SilphCo7F_UnlockedDoorEventScript:
 
 SilphCo7FSetDefaultScript:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 SilphCo7FSetCurScript:
 	ld [wSilphCo7FCurScript], a
@@ -128,7 +128,7 @@ SilphCo7FDefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_DOWN
 	ld [wPlayerMovingDirection], a
 	ld a, SFX_STOP_ALL_MUSIC
@@ -173,7 +173,7 @@ SilphCo7FRivalStartBattleScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SILPHCO7F_RIVAL_WAITED_HERE
 	ldh [hTextID], a
 	call DisplayTextID
@@ -206,13 +206,13 @@ SilphCo7FRivalStartBattleScript:
 	jp SilphCo7FSetCurScript
 
 SilphCo7FRivalAfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, SilphCo7FSetDefaultScript
     xor a
 	ld [wIsTrainerBattle], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_SILPH_CO_RIVAL
 	ld a, PLAYER_DIR_DOWN
 	ld [wPlayerMovingDirection], a
@@ -264,7 +264,7 @@ SilphCo7FRivalExitScript:
 	predef HideObject
 	call PlayDefaultMusic
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	jp SilphCo7FSetCurScript
 
 SilphCo7F_TextPointers:

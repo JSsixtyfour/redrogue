@@ -1,6 +1,6 @@
-; checks if the mon in [wWhichPokemon] already knows the move in [wMoveNum]
+; checks if the mon in [hWhichPokemon] already knows the move in [wMoveNum]
 CheckIfMoveIsKnown:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes

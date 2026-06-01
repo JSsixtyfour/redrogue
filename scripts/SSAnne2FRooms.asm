@@ -2,7 +2,7 @@ SSAnne2FRooms_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, SSAnne9TrainerHeaders
 	ld de, SSAnne2FRooms_ScriptPointers
 	ld a, [wSSAnne2FRoomsCurScript]

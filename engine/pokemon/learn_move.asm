@@ -1,6 +1,6 @@
 LearnMove:
 	call SaveScreenTilesToBuffer1
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, wNameBuffer
@@ -11,7 +11,7 @@ LearnMove:
 DontAbandonLearning:
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld d, h
 	ld e, l
@@ -53,10 +53,10 @@ DontAbandonLearning:
 	pop de
 	pop hl
 	ld [hl], a
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, PrintLearnedMove
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	ld a, [wPlayerMonNumber]
 	cp b
@@ -81,7 +81,7 @@ AbandonLearning:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; yes/no menu
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, DontAbandonLearning
 	ld hl, DidNotLearnText
@@ -105,7 +105,7 @@ TryingToLearn:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; yes/no menu
 	pop hl
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	rra
 	ret c
 	ld bc, -NUM_MOVES
@@ -133,14 +133,14 @@ TryingToLearn:
 	ldh a, [hUILayoutFlags]
 	res BIT_SINGLE_SPACED_LINES, a
 	ldh [hUILayoutFlags], a
+	xor a
+	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, 8
 	ld [hli], a ; wTopMenuItemY
 	ld a, 5
 	ld [hli], a ; wTopMenuItemX
-	xor a
-	ld [hli], a ; wCurrentMenuItem
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, [wNumMovesMinusOne]
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
@@ -158,7 +158,7 @@ TryingToLearn:
 	bit B_PAD_B, a
 	jr nz, .cancel
 	push hl
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, 0
 	add hl, bc

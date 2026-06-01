@@ -52,7 +52,7 @@ AgathaScriptWalkIntoRoom:
 	ld [hli], a
 	ld [hl], a
 	ld a, $6
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_AGATHASROOM_PLAYER_IS_MOVING
 	ld [wAgathasRoomCurScript], a
@@ -67,7 +67,7 @@ AgathasRoomDefaultScript:
 	ldh [hJoyPressed], a
 	ldh [hJoyHeld], a
 	ld [wSimulatedJoypadStatesEnd], a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, [wCoordIndex]
 	cp $3  ; Is player standing one tile above the exit?
 	jr c, .stopPlayerFromLeaving
@@ -80,7 +80,7 @@ AgathasRoomDefaultScript:
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_AGATHASROOM_PLAYER_IS_MOVING
 	ld [wAgathasRoomCurScript], a
@@ -95,19 +95,19 @@ AgathaEntranceCoords:
 	db -1 ; end
 
 AgathasRoomPlayerIsMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wAgathasRoomCurScript], a
 	ld [wCurMapScript], a
 	ret
 
 AgathasRoomAgathaEndBattleScript:
 	call EndTrainerBattle
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetAgathaScript
 	ld a, TEXT_AGATHASROOM_AGATHA

@@ -122,16 +122,16 @@ CascadeBadgeText:
 
 Route23MovePlayerDownScript:
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	xor a
 	ld [wSpritePlayerStateData1FacingDirection], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	jp StartSimulatingJoypadStates
 
 Route23PlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 Route23ResetToDefaultScript:

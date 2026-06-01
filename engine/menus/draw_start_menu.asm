@@ -19,7 +19,7 @@ DrawStartMenu::
 	ld a, $0b
 	ld [wTopMenuItemX], a ; X position of first menu choice
 	ld a, [wBattleAndStartSavedMenuItem] ; remembered menu selection from last time
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	xor a
 	ld [wMenuWatchMovingOutOfBounds], a

@@ -1,5 +1,5 @@
 MarkTownVisitedAndLoadToggleableObjects::
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp FIRST_ROUTE_MAP
 	jr nc, .notInTown
 	ld c, a
@@ -8,7 +8,7 @@ MarkTownVisitedAndLoadToggleableObjects::
 	predef FlagActionPredef
 .notInTown
 	ld hl, ToggleableObjectMapPointers
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, $0
 	ld c, a
 	add hl, bc
@@ -39,7 +39,7 @@ MarkTownVisitedAndLoadToggleableObjects::
 	ldh [hDivisor], a
 	ld b, $2
 	call Divide
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 	ldh a, [hDividend+3]
 	ld c, a                    ; store global offset in c
@@ -165,7 +165,7 @@ IsObjectHidden:
 
 ; Returns: Z clear if current map is a roguelike stage, Z set if not
 IsRogueStageMap:
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld hl, RogueStageMapTable
 .stageLoop
 	ld c, [hl]

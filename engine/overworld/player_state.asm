@@ -40,7 +40,7 @@ CheckForceBikeOrSurf::
 	ld b, a
 	ld a, [wXCoord]
 	ld c, a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld d, a
 .loop
 	ld a, [hli]
@@ -54,12 +54,12 @@ CheckForceBikeOrSurf::
 	ld a, [hli]
 	cp c ; compare x-coord
 	jr nz, .loop ; incorrect x-coord, check next item
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SEAFOAM_ISLANDS_B3F
 	ld a, SCRIPT_SEAFOAMISLANDSB3F_MOVE_OBJECT
 	ld [wSeafoamIslandsB3FCurScript], a
 	jr z, .forceSurfing
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SEAFOAM_ISLANDS_B4F
 	ld a, SCRIPT_SEAFOAMISLANDSB4F_MOVE_OBJECT
 	ld [wSeafoamIslandsB4FCurScript], a
@@ -154,7 +154,7 @@ IsWarpTileInFrontOfPlayer::
 	push de
 	push bc
 	call _GetTileAndCoordsInFrontOfPlayer
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SS_ANNE_BOW
 	jr z, IsSSAnneBowWarpTileInFrontOfPlayer
 	ld a, [wSpritePlayerStateData1FacingDirection]
@@ -217,7 +217,7 @@ IsPlayerStandingOnDoorTileOrWarpTile::
 INCLUDE "data/tilesets/warp_tile_ids.asm"
 
 PrintSafariZoneSteps::
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SAFARI_ZONE_EAST
 	ret c
 	cp CERULEAN_CAVE_2F

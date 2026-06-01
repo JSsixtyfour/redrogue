@@ -159,7 +159,7 @@ OakSpeech:
 	call ClearScreenArea
 	call LoadTextBoxTilePatterns
 	ld a, 1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld c, 50
 	call DelayFrames
 	call GBFadeOutToWhite

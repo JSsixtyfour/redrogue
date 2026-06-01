@@ -811,7 +811,7 @@ SwitchAndTeleportEffect:
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .handleEnemy
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .notWildBattle1
 	ld a, [wCurEnemyLevel]
@@ -853,7 +853,7 @@ SwitchAndTeleportEffect:
 	jp nz, PrintText
 	jp PrintButItFailedText_
 .handleEnemy
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .notWildBattle2
 	ld a, [wBattleMonLevel]
@@ -1244,14 +1244,14 @@ MimicEffect:
 	ld a, [wEnemyBattleStatus1]
 	bit INVULNERABLE, a
 	jr nz, .mimicMissed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	push af
 	ld a, $1
 	ld [wMoveMenuType], a
 	call MoveSelectionMenu
 	call LoadScreenTilesFromBuffer1
 	ld hl, wEnemyMonMoves
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, $0
 	add hl, bc

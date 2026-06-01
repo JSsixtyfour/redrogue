@@ -17,7 +17,7 @@ RedisplayStartMenu::
 ; check if Up pressed
 	bit B_PAD_UP, a
 	jr z, .checkIfDownPressed
-	ld a, [wCurrentMenuItem] ; menu selection
+	ldh a, [hCurrentMenuItem] ; menu selection
 	and a
 	jr nz, .loop
 	ld a, [wLastMenuItem]
@@ -29,7 +29,7 @@ RedisplayStartMenu::
 	jr nz, .wrapMenuItemId
 	dec a ; there are only 6 menu items without the pokedex
 .wrapMenuItemId
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call EraseMenuCursor
 	jr .loop
 .checkIfDownPressed
@@ -37,7 +37,7 @@ RedisplayStartMenu::
 	jr z, .buttonPressed
 ; if the player pressed tried to go past the bottom item, wrap around to the top
 	CheckEvent EVENT_GOT_POKEDEX
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, 7 ; there are 7 menu items with the pokedex
 	jr nz, .checkIfPastBottom
 	dec c ; there are only 6 menu items without the pokedex
@@ -46,19 +46,19 @@ RedisplayStartMenu::
 	jr nz, .loop
 ; the player went past the bottom, so wrap to the top
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call EraseMenuCursor
 	jr .loop
 .buttonPressed ; A, B, or Start button pressed
 	call PlaceUnfilledArrowMenuCursor
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wBattleAndStartSavedMenuItem], a ; save current menu selection
 	ld a, b
 	and PAD_B | PAD_START ; was the Start button or B button pressed?
 	jp nz, CloseStartMenu
 	call SaveScreenTilesToBuffer2 ; copy background from wTileMap to wTileMapBackup2
 	CheckEvent EVENT_GOT_POKEDEX
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	jr nz, .displayMenuItem
 	inc a ; adjust position to account for missing pokedex menu item
 .displayMenuItem

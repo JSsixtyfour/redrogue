@@ -47,7 +47,7 @@ LTSurgeShowOrHideExitBlock:
 
 VermilionGymResetScripts:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wVermilionGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -60,11 +60,11 @@ VermilionGym_ScriptPointers:
 	dw_const VermilionGymLTSurgeAfterBattleScript,  SCRIPT_VERMILIONGYM_LT_SURGE_AFTER_BATTLE
 
 VermilionGymLTSurgeAfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff ; did we lose?
 	jp z, VermilionGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 VermilionGymLTSurgeReceiveTM24Script:
 	ld a, TEXT_VERMILIONGYM_LT_SURGE_THUNDER_BADGE_INFO
@@ -90,8 +90,6 @@ VermilionGymLTSurgeReceiveTM24Script:
 	call DisplayTextID
 .gym_victory
 	ld hl, wObtainedBadges
-	set BIT_THUNDERBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_THUNDERBADGE, [hl]
 
 	; deactivate gym trainers
@@ -146,7 +144,7 @@ VermilionGymLTSurgeText:
 	ld de, VermilionGymLTSurgeReceivedThunderBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_LT_SURGE
@@ -269,7 +267,7 @@ VermilionGymBikerAfterBattleText:
 
 VermilionGymGymGuideText:
 	text_asm
-	ld a, [wBeatGymFlags]
+	ld a, [wObtainedBadges]
 	bit BIT_THUNDERBADGE, a
 	jr nz, .got_thunderbadge
 	ld hl, .ChampInMakingText

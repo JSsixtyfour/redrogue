@@ -203,7 +203,7 @@ FlyAnimationScreenCoords2:
 
 LeaveMapThroughHoleAnim:
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a ; disable UpdateSprites
+	ldh [hUpdateSpritesEnabled], a ; disable UpdateSprites
 	; shift upper half of player's sprite down 8 pixels and hide lower half
 	ld a, [wShadowOAMSprite00TileID]
 	ld [wShadowOAMSprite02TileID], a
@@ -220,7 +220,7 @@ LeaveMapThroughHoleAnim:
 	ld [wShadowOAMSprite03YCoord], a
 	call GBFadeOutToWhite
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a ; enable UpdateSprites
+	ldh [hUpdateSpritesEnabled], a ; enable UpdateSprites
 	jp RestoreFacingDirectionAndYScreenPos
 
 DoFlyAnimation:
@@ -517,7 +517,7 @@ _HandleMidJump::
 	ld hl, wStatusFlags5
 	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 PlayerJumpingYScreenCoords:

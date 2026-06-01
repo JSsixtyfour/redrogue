@@ -94,7 +94,7 @@ Init::
 	xor a
 	ldh [hAutoBGTransferDest], a
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 
 	predef PlayIntro
 

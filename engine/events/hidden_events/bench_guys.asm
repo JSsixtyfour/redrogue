@@ -1,7 +1,7 @@
 PrintBenchGuyText:
 	call EnableAutoTextBoxDrawing
 	ld hl, BenchGuyTextPointers
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 .loop
 	ld a, [hli]

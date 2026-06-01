@@ -1,7 +1,7 @@
 RestoreScreenTilesAndReloadTilePatterns::
 	call ClearSprites
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call ReloadMapSpriteTilePatterns
 	call LoadScreenTilesFromBuffer2
 	call LoadTextBoxTilePatterns

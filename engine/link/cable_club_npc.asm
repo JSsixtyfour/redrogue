@@ -60,7 +60,7 @@ CableClubNPC::
 	call YesNoChoice
 	ld a, $1
 	ld [wMenuJoypadPollCount], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .choseNo
 	vc_hook Wireless_TryQuickSave_block_input

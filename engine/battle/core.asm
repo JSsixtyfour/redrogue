@@ -54,7 +54,7 @@ SlidePlayerAndEnemySilhouettesOnScreen:
 	ldh [hTileAnimations], a
 	ldh [hSCY], a
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call Delay3
 	xor a
 	ldh [hAutoBGTransferEnabled], a
@@ -149,7 +149,7 @@ StartBattle:
 .foundFirstAliveEnemyMon
 	ld a, d
 	ld [wSerialExchangeNybbleReceiveData], a
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	call nz, EnemySendOutFirstMon ; if it is a trainer battle, send out enemy mon
 	ld c, 40
@@ -212,16 +212,16 @@ StartBattle:
 
 .playerSendOutFirstMon
 	xor a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 .findFirstAliveMonLoop
 	call HasMonFainted
 	jr nz, .foundFirstAliveMon
 ; fainted, go to the next one
-	ld hl, wWhichPokemon
+	ld hl, hWhichPokemon
 	inc [hl]
 	jr .findFirstAliveMonLoop
 .foundFirstAliveMon
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wPlayerMonNumber], a
 	inc a
 	ld hl, wPartySpecies - 1
@@ -236,7 +236,7 @@ StartBattle:
 	ld a, $9
 	call SlideTrainerPicOffScreen
 	call SaveScreenTilesToBuffer1
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, FLAG_SET
 	push bc
@@ -708,7 +708,7 @@ HandleEnemyMonFainted:
 	ld a, [hli]
 	or [hl] ; is battle mon HP zero?
 	call nz, DrawPlayerHUDAndHPBar ; if battle mon HP is not zero, draw player HD and HP bar
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	ret z ; return if it's a wild battle
 	call AnyEnemyPokemonAliveCheck
@@ -731,7 +731,7 @@ HandleEnemyMonFainted:
 
 FaintEnemyPokemon:
 	call ReadPlayerMonCurHPAndStatus
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr z, .wild
 	ld a, [wEnemyMonPartyPos]
@@ -773,7 +773,7 @@ FaintEnemyPokemon:
 	hlcoord 0, 0
 	lb bc, 4, 11
 	call ClearScreenArea
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr z, .wild_win
 	xor a
@@ -988,7 +988,7 @@ HandlePlayerMonFainted:
 	jr nz, .doUseNextMonDialogue ; if not, jump
 ; the enemy mon has 0 HP
 	call FaintEnemyPokemon
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	ret z            ; if wild encounter, battle is over
 	call AnyEnemyPokemonAliveCheck
@@ -1060,7 +1060,7 @@ PlayerMonFaintedText:
 DoUseNextMonDialogue:
 	call PrintEmptyString
 	call SaveScreenTilesToBuffer1
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	dec a
 	ret nz ; return if it's a trainer battle
@@ -1078,7 +1078,7 @@ DoUseNextMonDialogue:
 	and a ; reset carry
 	ret
 .tryRunning
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .displayYesNoBox ; xxx when does this happen?
 	ld hl, wPartyMon1Speed
@@ -1113,7 +1113,7 @@ ChooseNextMon:
 	xor a
 	ld [wActionResultOrTookBattleTurn], a
 	call ClearSprites
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wPlayerMonNumber], a
 	ld c, a
 	ld hl, wPartyGainExpFlags
@@ -1154,7 +1154,7 @@ HandlePlayerBlackOut:
 	call DelayFrames
 	ld hl, Rival1WinText
 	call PrintText
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp OAKS_LAB
 	ret z            ; starter battle in oak's lab: don't black out
 .notRival1Battle
@@ -1327,7 +1327,7 @@ EnemySendOutFirstMon:
 	jr nz, .next
 	ld a, [wSerialExchangeNybbleReceiveData]
 	sub 4
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	jr .next3
 .next
 	ld b, $ff
@@ -1338,7 +1338,7 @@ EnemySendOutFirstMon:
 	jr z, .next2
 	ld hl, wEnemyMon1
 	ld a, b
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	push bc
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -1350,13 +1350,13 @@ EnemySendOutFirstMon:
 	or c
 	jr z, .next2
 .next3
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wEnemyMon1Level
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	ld a, [hl]
 	ld [wCurEnemyLevel], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	inc a
 	ld hl, wEnemyPartyCount
 	ld c, a
@@ -1372,7 +1372,7 @@ EnemySendOutFirstMon:
 	ld a, [hl]
 	ld [wLastSwitchInEnemyMonHP + 1], a
 	ld a, 1
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, [wFirstMonsNotOutYet]
 	dec a
 	jr z, .next4
@@ -1392,7 +1392,7 @@ EnemySendOutFirstMon:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .next4
 	ld a, BATTLE_PARTY_MENU
@@ -1400,10 +1400,10 @@ EnemySendOutFirstMon:
 	call DisplayPartyMenu
 .next9
 	ld a, 1
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jr c, .next7
 	ld hl, wPlayerMonNumber
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp [hl]
 	jr nz, .next6
 	ld hl, AlreadyOutText
@@ -1415,7 +1415,7 @@ EnemySendOutFirstMon:
 	call HasMonFainted
 	jr z, .next8
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .next7
 	call GBPalWhiteOut
 	call LoadHudTilePatterns
@@ -1443,7 +1443,7 @@ EnemySendOutFirstMon:
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
 	call DrawEnemyHUDAndHPBar
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret nz
 	xor a
@@ -1481,7 +1481,7 @@ AnyPartyAlive::
 ; tests if player mon has fainted
 ; stores whether mon has fainted in Z flag
 HasMonFainted:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1HP
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -1512,7 +1512,7 @@ TryRunningFromBattle:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jp z, .canEscape
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .trainerBattle ; jump if it's a trainer battle
 	ld a, [wNumRunAttempts]
@@ -1641,7 +1641,7 @@ GotAwayText:
 
 ; copies from party data to battle mon data when sending out a new player mon
 LoadBattleMonFromParty:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	ld hl, wPartyMon1Species
 	call AddNTimes
@@ -1685,7 +1685,7 @@ LoadBattleMonFromParty:
 
 ; copies from enemy party data to current enemy mon data when sending out a new enemy mon
 LoadEnemyMonFromParty:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	ld hl, wEnemyMons
 	call AddNTimes
@@ -1707,7 +1707,7 @@ LoadEnemyMonFromParty:
 	ld [wCurSpecies], a
 	call GetMonHeader
 	ld hl, wEnemyMonNicks
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
 	ld de, wEnemyMonNick
 	ld bc, NAME_LENGTH
@@ -1733,7 +1733,7 @@ LoadEnemyMonFromParty:
 	ld [hli], a
 	dec b
 	jr nz, .statModLoop
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wEnemyMonPartyPos], a
 	ret
 
@@ -2069,12 +2069,12 @@ DisplayBattleMenu::
 	db "OLD MAN@"
 .handleBattleMenuInput
 	ld a, [wBattleAndStartSavedMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	sub 2 ; check if the cursor is in the left column
 	jr c, .leftColumn
 ; cursor is in the right column
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	jr .rightColumn
 .leftColumn ; put cursor in left column of menu
@@ -2101,8 +2101,7 @@ DisplayBattleMenu::
 	ld [hli], a ; wTopMenuItemY
 	ld a, b
 	ld [hli], a ; wTopMenuItemX
-	inc hl
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, $1
 	ld [hli], a ; wMaxMenuItem
 	ld [hl], PAD_RIGHT | PAD_A ; wMenuWatchedKeys
@@ -2134,8 +2133,7 @@ DisplayBattleMenu::
 	ld [hli], a ; wTopMenuItemY
 	ld a, b
 	ld [hli], a ; wTopMenuItemX
-	inc hl
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, $1
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_LEFT | PAD_A
@@ -2143,14 +2141,14 @@ DisplayBattleMenu::
 	call HandleMenuInput
 	bit B_PAD_LEFT, a
 	jr nz, .leftColumn ; if left was pressed, jump
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	add $2 ; if we're in the right column, the actual id is +2
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .AButtonPressed
 	call PlaceUnfilledArrowMenuCursor
 	ld a, [wBattleType]
 	cp BATTLE_TYPE_SAFARI
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wBattleAndStartSavedMenuItem], a
 	jr z, .handleMenuSelection
 ; not Safari battle
@@ -2245,9 +2243,9 @@ DisplayBagMenu:
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	ld a, [wBagSavedMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call DisplayListMenuID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wBagSavedMenuItem], a
 	ld a, $0
 	ld [wMenuWatchMovingOutOfBounds], a
@@ -2266,7 +2264,7 @@ UseBagItem:
 	call LoadHudTilePatterns
 	call ClearSprites
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, [wBattleType]
 	cp BATTLE_TYPE_SAFARI
 	jr z, .checkIfMonCaptured
@@ -2356,13 +2354,13 @@ PartyMenuOrRockOrRun:
 	ld a, SWITCH_STATS_CANCEL_MENU_TEMPLATE
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
+	xor a
+	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, $c
 	ld [hli], a ; wTopMenuItemY
 	ld [hli], a ; wTopMenuItemX
-	xor a
-	ld [hli], a ; wCurrentMenuItem
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, $2
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_B | PAD_A
@@ -2374,7 +2372,7 @@ PartyMenuOrRockOrRun:
 	jr nz, .partyMonDeselected ; if B was pressed, jump
 ; A was pressed
 	call PlaceUnfilledArrowMenuCursor
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $2 ; was Cancel selected?
 	jr z, .quitPartyMenu ; if so, quit the party menu entirely
 	and a ; was Switch selected?
@@ -2413,7 +2411,7 @@ PartyMenuOrRockOrRun:
 .switchMon
 	ld a, [wPlayerMonNumber]
 	ld d, a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp d ; check if the mon to switch to is already out
 	jr nz, .notAlreadyOut
 ; mon is already out
@@ -2438,7 +2436,7 @@ SwitchPlayerMon:
 	ld c, 50
 	call DelayFrames
 	call AnimateRetreatingPlayerMon
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wPlayerMonNumber], a
 	ld c, a
 	ld b, FLAG_SET
@@ -2452,7 +2450,7 @@ SwitchPlayerMon:
 	call SendOutMon
 	call SaveScreenTilesToBuffer1
 	ld a, $2
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	and a
 	ret
 
@@ -2463,7 +2461,7 @@ AlreadyOutText:
 BattleMenu_RunWasSelected:
 	call LoadScreenTilesFromBuffer1
 	ld a, $3
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld hl, wBattleMonSpeed
 	ld de, wEnemyMonSpeed
 	call TryRunningFromBattle
@@ -2535,7 +2533,7 @@ MoveSelectionMenu:
 	ld a, $7
 	jr .menuset
 .relearnmenu
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -2561,7 +2559,7 @@ MoveSelectionMenu:
 	ld a, [wPlayerMoveListIndex]
 	inc a
 .selectedmoveknown
-	ld [hli], a ; wCurrentMenuItem
+	ldh [hCurrentMenuItem], a
 	inc hl ; wTileBehindCursor untouched
 	ld a, [wNumMovesMinusOne]
 	inc a
@@ -2638,9 +2636,9 @@ SelectMenuItem:
 	push af
 	xor a
 	ld [wMenuItemToSwap], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	dec a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld b, a
 	ld a, [wMoveMenuType]
 	dec a ; if not mimic
@@ -2658,7 +2656,7 @@ SelectMenuItem:
 	pop af
 	ret nz
 	ld hl, wBattleMonPP
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, $0
 	add hl, bc
@@ -2676,7 +2674,7 @@ SelectMenuItem:
 	jr nz, .transformedMoveSelected
 .transformedMoveSelected ; pointless
 	; Allow moves copied by Transform to be used.
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld hl, wBattleMonMoves
 	ld c, a
 	ld b, $0
@@ -2707,17 +2705,17 @@ WhichTechniqueString:
 	db "WHICH TECHNIQUE?@"
 
 SelectMenuItem_CursorUp:
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, SelectMenuItem
 	call EraseMenuCursor
 	ld a, [wNumMovesMinusOne]
 	inc a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jp SelectMenuItem
 
 SelectMenuItem_CursorDown:
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wNumMovesMinusOne]
 	inc a
@@ -2726,7 +2724,7 @@ SelectMenuItem_CursorDown:
 	jp nz, SelectMenuItem
 	call EraseMenuCursor
 	ld a, $1
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jp SelectMenuItem
 
 AnyMoveToSelect:
@@ -2790,7 +2788,7 @@ SwapMovesInMenu:
 	swap a
 	and $f
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp b
 	jr nz, .next
 	ld a, [hl]
@@ -2808,7 +2806,7 @@ SwapMovesInMenu:
 	ld a, [hl]
 	and $f
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	swap a
 	add b
 	ld [hl], a
@@ -2836,7 +2834,7 @@ SwapMovesInMenu:
 	ld d, h
 	ld e, l
 	pop hl
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	dec a
 	ld c, a
 	ld b, 0
@@ -2848,7 +2846,7 @@ SwapMovesInMenu:
 	ld [de], a
 	ret
 .noMenuItemSelected
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wMenuItemToSwap], a ; select the current menu item for swapping
 	jp MoveSelectionMenu
 
@@ -2865,7 +2863,7 @@ PrintMenuItem:
 	swap a
 	and $f
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp b
 	jr nz, .notDisabled
 	hlcoord 1, 10
@@ -2873,12 +2871,12 @@ PrintMenuItem:
 	call PlaceString
 	jr .moveDisabled
 .notDisabled
-	ld hl, wCurrentMenuItem
+	ld hl, hCurrentMenuItem
 	dec [hl]
 	xor a
 	ldh [hWhoseTurn], a
 	ld hl, wBattleMonMoves
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, $0 ; which item in the menu is the cursor pointing to? (0-3)
 	add hl, bc ; point to the item (move) in memory
@@ -2886,11 +2884,11 @@ PrintMenuItem:
 	ld [wPlayerSelectedMove], a ; update wPlayerSelectedMove even if the move
 	                            ; isn't actually selected (just pointed to by the cursor)
 	ld a, [wPlayerMonNumber]
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, BATTLE_MON_DATA
 	ld [wMonDataLocation], a
 	callfar GetMaxPP
-	ld hl, wCurrentMenuItem
+	ld hl, hCurrentMenuItem
 	ld c, [hl]
 	inc [hl]
 	ld b, $0
@@ -2981,7 +2979,7 @@ SelectEnemyMove:
 	ld a, STRUGGLE ; struggle if the only move is disabled
 	jr nz, .done
 .atLeastTwoMovesAvailable
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr z, .chooseRandomMove ; wild encounter
 	callfar AIEnemyTrainerChooseMoves
@@ -3043,7 +3041,7 @@ LinkBattleExchangeData:
 	ld a, [wPlayerMoveListIndex]
 	jr .doExchange
 .switching
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	add 4
 	ld b, a
 .next
@@ -3324,10 +3322,10 @@ GetOutText:
 	text_end
 
 IsGhostBattle:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	ret nz
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POKEMON_TOWER_1F
 	jr c, .next
 	cp POKEMON_TOWER_7F + 1
@@ -3976,7 +3974,7 @@ CheckForDisobedience:
 	add b
 	pop hl
 	push af
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, $0
 	add hl, bc
@@ -3990,7 +3988,7 @@ CheckForDisobedience:
 	ld [wMonIsDisobedient], a
 	ld a, [wMaxMenuItem]
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 .chooseMove
 	call BattleRandom
@@ -3999,7 +3997,7 @@ CheckForDisobedience:
 	jr nc, .chooseMove ; if the random number is greater than the move count, choose another
 	cp c
 	jr z, .chooseMove ; if the random number matches the move the player selected, choose another
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld hl, wBattleMonPP
 	ld e, a
 	ld d, $0
@@ -4007,7 +4005,7 @@ CheckForDisobedience:
 	ld a, [hl]
 	and a ; does the move have any PP left?
 	jr z, .chooseMove ; if the move has no PP left, choose another
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, $0
 	ld hl, wBattleMonMoves
@@ -6020,7 +6018,7 @@ LoadEnemyMonData:
 	ld a, [hli]
 	ld b, [hl]
 	jr nz, .storeDVs
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $2 ; is it a trainer battle?
 ; fixed DVs for trainer mon
 	ld a, ATKDEFDV_TRAINER
@@ -6043,7 +6041,7 @@ LoadEnemyMonData:
 	push hl
 	call CalcStats
 	pop hl
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $2 ; is it a trainer battle?
 	jr z, .copyHPAndStatusFromPartyData
 	ld a, [wEnemyBattleStatus3]
@@ -6061,14 +6059,14 @@ LoadEnemyMonData:
 ; if it's a trainer mon, copy the HP and status from the enemy party data
 .copyHPAndStatusFromPartyData
 	ld hl, wEnemyMon1HP
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, wEnemyMon2 - wEnemyMon1
 	call AddNTimes
 	ld a, [hli]
 	ld [wEnemyMonHP], a
 	ld a, [hli]
 	ld [wEnemyMonHP + 1], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wEnemyMonPartyPos], a
 	inc hl
 	ld a, [hl]
@@ -6086,12 +6084,12 @@ LoadEnemyMonData:
 	ld a, [hli]            ; copy catch rate
 	ld [de], a
 	inc de
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $2 ; is it a trainer battle?
 	jr nz, .copyStandardMoves
 ; if it's a trainer battle, copy moves from enemy party data
 	ld hl, wEnemyMon1Moves
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	ld bc, NUM_MOVES
@@ -6175,7 +6173,7 @@ DoBattleTransitionAndInitBattleVariables:
 	ld [wMenuJoypadPollCount], a
 	callfar DisplayLinkBattleVersusTextBox
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call ClearScreen
 .next
 	call DelayFrame
@@ -6184,7 +6182,7 @@ DoBattleTransitionAndInitBattleVariables:
 	ld a, $1
 	ldh [hAutoBGTransferEnabled], a
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call ClearSprites
 	call ClearScreen
 	xor a
@@ -6708,12 +6706,12 @@ InitBattleCommon:
 	ld a, $ff
 	ld [wEnemyMonPartyPos], a
 	ld a, $2
-	ld [wIsInBattle], a
+	ldh [hIsInBattle], a
 	jp _InitBattleCommon
 
 InitWildBattle:
 	ld a, $1
-	ld [wIsInBattle], a
+	ldh [hIsInBattle], a
 	call LoadEnemyMonData
 	call DoBattleTransitionAndInitBattleVariables
 	ld a, [wCurOpponent]
@@ -6776,7 +6774,7 @@ _InitBattleCommon:
 	lb bc, 4, 10
 	call ClearScreenArea
 	call ClearSprites
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a ; is it a wild battle?
 	call z, DrawEnemyHUDAndHPBar ; draw enemy HUD and HP bar if it's a wild battle
 	call StartBattle
@@ -6825,7 +6823,7 @@ AnimateSendingOutMon:
 	ldh a, [hStartTileID]
 	ldh [hBaseTileID], a
 	ld b, $4c
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr z, .notInBattle
 	add b

@@ -22,7 +22,7 @@ Route12_Script:
 
 Route12ResetScripts:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute12CurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -58,7 +58,7 @@ Route12DefaultScript:
 	ret
 
 Route12SnorlaxPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jr z, Route12ResetScripts
 	call UpdateSprites

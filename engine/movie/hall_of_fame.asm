@@ -18,7 +18,7 @@ AnimateHallOfFame:
 	ld bc, HOF_TEAM
 	call FillMemory
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ldh [hTileAnimations], a
 	ld [wSpriteFlipped], a
 	ld [wLetterPrintingDelayFlags], a ; no delay

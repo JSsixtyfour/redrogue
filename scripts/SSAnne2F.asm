@@ -6,7 +6,7 @@ SSAnne2F_Script:
 
 SSAnne2FResetScripts:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wSSAnne2FCurScript], a
 	ret
 
@@ -43,7 +43,7 @@ SSAnne2FDefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ldh a, [hSavedCoordIndex]
 	cp $2
 	jr nz, .player_standing_right
@@ -92,7 +92,7 @@ SSAnne2FRivalStartBattleScript:
 	ret nz
 	call SSAnne2FSetFacingDirectionScript
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SSANNE2F_RIVAL
 	ldh [hTextID], a
 	call DisplayTextID
@@ -124,14 +124,14 @@ SSAnne2FRivalStartBattleScript:
 	ret
 
 SSAnne2FRivalAfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, SSAnne2FResetScripts
     xor a
 	ld [wIsTrainerBattle], a
 	call SSAnne2FSetFacingDirectionScript
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SSANNE2F_RIVAL_CUT_MASTER
 	ldh [hTextID], a
 	call DisplayTextID
@@ -172,7 +172,7 @@ SSAnne2FRivalExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_SS_ANNE_2F_RIVAL
 	ld [wToggleableObjectIndex], a
 	predef HideObject

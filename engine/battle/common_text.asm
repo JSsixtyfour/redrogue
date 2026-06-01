@@ -1,8 +1,8 @@
 PrintBeginningBattleText:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .trainerBattle
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POKEMON_TOWER_3F
 	jr c, .notPokemonTower
 	cp POKEMON_TOWER_7F + 1

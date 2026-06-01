@@ -4,11 +4,11 @@ PlayerStepOutFromDoor::
 	call IsPlayerStandingOnDoorTile
 	jr nc, .notStandingOnDoor
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wMovementFlags
 	set BIT_EXITING_DOOR, [hl]
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	xor a
@@ -17,8 +17,7 @@ PlayerStepOutFromDoor::
 	ret
 .notStandingOnDoor
 	xor a
-	ld [wUnusedOverrideSimulatedJoypadStatesIndex], a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld [wSimulatedJoypadStatesEnd], a
 	ld hl, wMovementFlags
 	res BIT_STANDING_ON_DOOR, [hl]
@@ -39,8 +38,7 @@ _EndNPCMovementScript::
 	ld [wNPCMovementScriptSpriteOffset], a
 	ld [wNPCMovementScriptPointerTableNum], a
 	ld [wNPCMovementScriptFunctionNum], a
-	ld [wUnusedOverrideSimulatedJoypadStatesIndex], a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld [wSimulatedJoypadStatesEnd], a
 	ret
 
@@ -65,7 +63,7 @@ PalletMovementScript_OakMoveLeft:
 	ld a, NPC_MOVEMENT_LEFT
 	call FillMemory
 	ld [hl], $ff
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	ld de, wNPCMovementDirections2
 	call MoveSprite
@@ -82,7 +80,7 @@ PalletMovementScript_OakMoveLeft:
 	ld hl, wStatusFlags7
 	set BIT_NO_MAP_MUSIC, [hl]
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 PalletMovementScript_PlayerMoveLeft:
@@ -90,7 +88,7 @@ PalletMovementScript_PlayerMoveLeft:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz ; return if Oak is still moving
 	ld a, [wNumStepsToTake]
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ldh [hNPCMovementDirections2Index], a
 	predef ConvertNPCMovementDirectionsToJoypadMasks
 	call StartSimulatingJoypadStates
@@ -99,14 +97,14 @@ PalletMovementScript_PlayerMoveLeft:
 	ret
 
 PalletMovementScript_WaitAndWalkToLab:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a ; is the player done moving left yet?
 	ret nz
 
 PalletMovementScript_WalkToLab:
 	xor a
 	ld [wOverrideSimulatedJoypadStatesMask], a
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	xor a
@@ -115,7 +113,7 @@ PalletMovementScript_WalkToLab:
 	ld de, RLEList_PlayerWalkToLab
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld hl, wNPCMovementDirections2
 	ld de, RLEList_ProfOakWalkToLab
 	call DecodeRLEList
@@ -145,7 +143,7 @@ RLEList_PlayerWalkToLab:
 	db -1 ; end
 
 PalletMovementScript_Done:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld a, TOGGLE_PALLET_TOWN_OAK
@@ -168,7 +166,7 @@ PewterMovementScript_WalkToMuseum:
 	ld a, MUSIC_MUSEUM_GUY
 	ld [wNewSoundID], a
 	call PlaySound
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	call StartSimulatingJoypadStates
@@ -176,7 +174,7 @@ PewterMovementScript_WalkToMuseum:
 	ld de, RLEList_PewterMuseumPlayer
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wWhichPewterGuy], a
 	predef PewterGuys
@@ -204,7 +202,7 @@ RLEList_PewterMuseumGuy:
 	db -1 ; end
 
 PewterMovementScript_Done:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld hl, wStatusFlags5
@@ -224,7 +222,7 @@ PewterMovementScript_WalkToGym:
 	ld a, MUSIC_MUSEUM_GUY
 	ld [wNewSoundID], a
 	call PlaySound
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	xor a
@@ -233,7 +231,7 @@ PewterMovementScript_WalkToGym:
 	ld de, RLEList_PewterGymPlayer
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, 1
 	ld [wWhichPewterGuy], a
 	predef PewterGuys
@@ -267,7 +265,7 @@ RLEList_PewterGymGuy:
 	db -1 ; end
 
 SetEnemyTrainerToStayAndFaceAnyDirection::
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POKEMON_TOWER_7F
 	ret z ; the Rockets on Pokemon Tower 7F leave after battling, so don't set them
 	ld hl, RivalIDs
@@ -281,7 +279,7 @@ SetEnemyTrainerToStayAndFaceAnyDirection::
 	ret z ; the rival leaves after battling, so don't set him
 	jr .loop
 .notRival
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp SetSpriteMovementBytesToFF
 

@@ -6,7 +6,7 @@ ChampionsRoom_Script:
 
 ResetRivalScript:
 	xor a ; SCRIPT_CHAMPIONSROOM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wChampionsRoomCurScript], a
 	ret
 
@@ -29,12 +29,12 @@ ChampionsRoomDefaultScript:
 
 ChampionsRoomPlayerEntersScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wSimulatedJoypadStatesEnd
 	ld de, RivalEntrance_RLEMovement
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_CHAMPIONSROOM_RIVAL_READY_TO_BATTLE
 	ld [wChampionsRoomCurScript], a
@@ -47,12 +47,12 @@ RivalEntrance_RLEMovement:
 	db -1 ; end
 
 ChampionsRoomRivalReadyToBattleScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wOptions
 	res BIT_BATTLE_ANIMATION, [hl]
 	ld a, TEXT_CHAMPIONSROOM_RIVAL
@@ -93,7 +93,7 @@ ChampionsRoomRivalReadyToBattleScript:
 	ret
 
 ChampionsRoomRivalDefeatedScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetRivalScript
     xor a
@@ -101,7 +101,7 @@ ChampionsRoomRivalDefeatedScript:
 	call UpdateSprites
 	SetEvent EVENT_BEAT_CHAMPION_RIVAL
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_CHAMPIONSROOM_RIVAL
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
@@ -210,12 +210,12 @@ ChampionsRoomOakExitsScript:
 
 ChampionsRoomPlayerFollowsOakScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wSimulatedJoypadStatesEnd
 	ld de, WalkToHallOfFame_RLEMovement
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_CHAMPIONSROOM_CLEANUP_SCRIPT
 	ld [wChampionsRoomCurScript], a
@@ -227,21 +227,21 @@ WalkToHallOfFame_RLEMovement:
 	db -1 ; end
 
 ChampionsRoomCleanupScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_CHAMPIONSROOM_DEFAULT
 	ld [wChampionsRoomCurScript], a
 	ret
 
 ChampionsRoom_DisplayTextID_AllowABSelectStart:
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 ChampionsRoom_TextPointers:

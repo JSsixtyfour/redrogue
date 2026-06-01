@@ -17,7 +17,7 @@ Rogue_Reward_Script_PokeballText_1::
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
     pop de
 	jr nz, .done
@@ -54,7 +54,7 @@ Rogue_Reward_Script_PokeballText_2::
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
     pop de
 	jr nz, .done
@@ -92,7 +92,7 @@ Rogue_Reward_Script_PokeballText_3::
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
     pop de
 	jr nz, .done

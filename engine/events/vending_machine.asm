@@ -5,7 +5,7 @@ VendingMachineMenu::
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -33,7 +33,7 @@ VendingMachineMenu::
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jr nz, .notThirsty
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp 3 ; chose Cancel?
 	jr z, .notThirsty
 	xor a
@@ -114,7 +114,7 @@ VendingMachineText7:
 
 LoadVendingMachineItem:
 	ld hl, VendingPrices
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	add a
 	add a
 	ld d, 0

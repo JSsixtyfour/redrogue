@@ -27,7 +27,7 @@ IsSurfingAllowed:
 	ld a, [wStatusFlags6]
 	bit BIT_ALWAYS_ON_BIKE, a
 	jr nz, .forcedToRideBike
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SEAFOAM_ISLANDS_B4F
 	ret nz
 	CheckBothEventsSet EVENT_SEAFOAM4_BOULDER1_DOWN_HOLE, EVENT_SEAFOAM4_BOULDER2_DOWN_HOLE

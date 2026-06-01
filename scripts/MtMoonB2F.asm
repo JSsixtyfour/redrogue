@@ -39,7 +39,7 @@ MtMoonB2FFossilAreaCoords:
 
 MtMoonB2FResetScripts:
 	xor a ; SCRIPT_MTMOONB2F_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wMtMoonB2FCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -74,14 +74,14 @@ MtMoonB2FCheckGotAFossil:
 	ret
 
 MtMoonB2FDefeatedSuperNerdScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, MtMoonB2FResetScripts
 	call UpdateSprites
 	call Delay3
 	SetEvent EVENT_BEAT_MT_MOON_EXIT_SUPER_NERD
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_MTMOONB2F_DEFAULT
 	ld [wMtMoonB2FCurScript], a
 	ld [wCurMapScript], a
@@ -133,9 +133,9 @@ MtMoonB2FSuperNerdTakesOtherFossilScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld a, TEXT_MTMOONB2F_SUPER_NERD_THEN_THIS_IS_MINE
 	ldh [hTextID], a
 	call DisplayTextID
@@ -149,7 +149,7 @@ MtMoonB2FSuperNerdTakesOtherFossilScript:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_MTMOONB2F_DEFAULT
 	ld [wMtMoonB2FCurScript], a
 	ld [wCurMapScript], a
@@ -199,7 +199,7 @@ MtMoonB2FSuperNerdText:
 	ld de, MtMoonB2FSuperNerdOkIllShareText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_MTMOONB2F_DEFEATED_SUPER_NERD
@@ -239,11 +239,11 @@ MtMoonB2FRocket4Text:
 MtMoonB2FDomeFossilText:
 	text_asm
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .YouWantText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 	lb bc, DOME_FOSSIL, 1
@@ -267,11 +267,11 @@ MtMoonB2FDomeFossilText:
 MtMoonB2FHelixFossilText:
 	text_asm
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .YouWantText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 	lb bc, HELIX_FOSSIL, 1

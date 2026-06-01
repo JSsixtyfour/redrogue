@@ -28,7 +28,7 @@ InitBattleVariables:
 	jr nz, .loop
 	inc a ; POUND
 	ld [wTestBattlePlayerSelectedMove], a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SAFARI_ZONE_EAST
 	jr c, .notSafariBattle
 	cp SAFARI_ZONE_CENTER_REST_HOUSE

@@ -8,7 +8,7 @@ HandleItemListSwapping::
 	ld h, [hl]
 	ld l, a
 	inc hl ; hl = beginning of list entries
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wListScrollOffset]
 	add b
@@ -24,7 +24,7 @@ HandleItemListSwapping::
 	and a ; has the first item to swap already been chosen?
 	jr nz, .swapItems
 ; if not, set the currently selected item as the first item
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	inc a
 	ld b, a
 	ld a, [wListScrollOffset] ; index of top (visible) menu item within the list
@@ -34,7 +34,7 @@ HandleItemListSwapping::
 	call DelayFrames
 	jp DisplayListMenuIDLoop
 .swapItems
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	inc a
 	ld b, a
 	ld a, [wListScrollOffset]
@@ -56,7 +56,7 @@ HandleItemListSwapping::
 	inc hl ; hl = beginning of list entries
 	ld d, h
 	ld e, l ; de = beginning of list entries
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wListScrollOffset]
 	add b
@@ -140,7 +140,7 @@ HandleItemListSwapping::
 .afterMovingItemsUp
 	xor a
 	ld [wListScrollOffset], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .done
 	xor a
 	ld [wMenuItemToSwap], a ; 0 means no item is currently being swapped

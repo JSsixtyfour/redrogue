@@ -47,7 +47,7 @@ CeladonMartRoofScript_GiveDrinkToGirl:
 	ld hl, CeladonMartRoofLittleGirlGiveHerWhichDrinkText
 	call PrintText
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
 	ld a, [wFilteredBagItemsCount]
@@ -75,7 +75,7 @@ CeladonMartRoofScript_GiveDrinkToGirl:
 	bit B_PAD_B, a
 	ret nz
 	ld hl, wFilteredBagItems
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld d, 0
 	ld e, a
 	add hl, de
@@ -226,11 +226,11 @@ CeladonMartRoofLittleGirlText:
 	and a
 	jr z, .noDrinksInBag
 	ld a, 1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .GiveHerADrinkText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 	call CeladonMartRoofScript_GiveDrinkToGirl

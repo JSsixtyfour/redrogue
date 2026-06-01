@@ -40,7 +40,7 @@ HandleLedges::
 	and e
 	ret z
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wMovementFlags
 	set BIT_LEDGE_OR_FISHING, [hl]
 	call StartSimulatingJoypadStates
@@ -48,7 +48,7 @@ HandleLedges::
 	ld [wSimulatedJoypadStatesEnd], a
 	ld [wSimulatedJoypadStatesEnd + 1], a
 	ld a, $2
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call LoadHoppingShadowOAM
 	ld a, SFX_LEDGE
 	call PlaySound

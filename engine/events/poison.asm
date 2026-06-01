@@ -10,7 +10,7 @@ ApplyOutOfBattlePoisonDamage:
 	ld a, [wStepCounter]
 	and $3 ; is the counter a multiple of 4?
 	jp nz, .noBlackOut ; only apply poison damage every fourth step
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld hl, wPartyMon1Status
 	ld de, wPartySpecies
 .applyDamageLoop
@@ -46,11 +46,11 @@ ApplyOutOfBattlePoisonDamage:
 	ld a, [de]
 	ld [wPokedexNum], a
 	push de
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call EnableAutoTextBoxDrawing
 	ld a, TEXT_MON_FAINTED
 	ldh [hTextID], a
@@ -68,7 +68,7 @@ ApplyOutOfBattlePoisonDamage:
 	ld bc, PARTYMON_STRUCT_LENGTH
 	add hl, bc
 	push hl
-	ld hl, wWhichPokemon
+	ld hl, hWhichPokemon
 	inc [hl]
 	pop hl
 	jr .applyDamageLoop

@@ -5,7 +5,7 @@ RogueRewardMenu::
 	call PrintText
 ; the following are the menu settings
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -26,7 +26,7 @@ RogueRewardMenu::
 	call HandleMenuInput ; menu choice handler
 	bit B_PAD_B, a
 	jr nz, .noChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp 3 ; "NO,THANKS" choice
 	jr z, .noChoice
 	call HandleRewardChoice
@@ -96,7 +96,7 @@ GetRogueRewardMenuId:
     ret
 
 HandleRewardChoice:
-    ld a, [wCurrentMenuItem]
+    ldh a, [hCurrentMenuItem]
     ld b, a
     push bc
 	ld [wWhichPrize], a
@@ -112,7 +112,7 @@ HandleRewardChoice:
 	ld hl, SoYouWantRewardText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem] ; yes/no answer (Y=0, N=1)
+	ldh a, [hCurrentMenuItem] ; yes/no answer (Y=0, N=1)
 	and a
     pop bc
 	jr nz, .printOhFineThen

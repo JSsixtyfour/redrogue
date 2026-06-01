@@ -33,7 +33,7 @@ CinnabarGymSetMapAndTiles:
 
 CinnabarGymResetScripts:
 	xor a ; SCRIPT_CINNABARGYM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wCinnabarGymCurScript], a
 	ld [wCurMapScript], a
 	ld [wOpponentAfterWrongAnswer], a
@@ -68,7 +68,7 @@ CinnabarGymGetOpponentTextScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, [wOpponentAfterWrongAnswer]
 	ld [wTrainerHeaderFlagBit], a
 	ldh [hTextID], a
@@ -78,7 +78,7 @@ CinnabarGymFlagAction:
 	predef_jump FlagActionPredef
 
 CinnabarGymOpenGateScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CinnabarGymResetScripts
 	ld a, [wTrainerHeaderFlagBit]
@@ -112,7 +112,7 @@ CinnabarGymOpenGateScript:
 	call CinnabarGymFlagAction
 	call UpdateCinnabarGymGateTileBlocks
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wOpponentAfterWrongAnswer], a
 	ld a, SCRIPT_CINNABARGYM_DEFAULT
 	ld [wCinnabarGymCurScript], a
@@ -120,11 +120,11 @@ CinnabarGymOpenGateScript:
 	ret
 
 CinnabarGymBlainePostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CinnabarGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 ; fallthrough
 CinnabarGymReceiveTM38:
 	ld a, TEXT_CINNABARGYM_BLAINE_VOLCANO_BADGE_INFO
@@ -151,8 +151,6 @@ CinnabarGymReceiveTM38:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_VOLCANOBADGE, [hl]
-	ld hl, wBeatGymFlags
-	set BIT_VOLCANOBADGE, [hl]
 
 	; deactivate gym trainers
 	SetEventRange EVENT_BEAT_CINNABAR_GYM_TRAINER_0, EVENT_BEAT_CINNABAR_GYM_TRAINER_6
@@ -176,13 +174,13 @@ CinnabarGym_TextPointers:
 
 CinnabarGymStartBattleScript:
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	cp CINNABARGYM_BLAINE
 	jr z, .blaine
 	ld a, SCRIPT_CINNABARGYM_OPEN_GATE

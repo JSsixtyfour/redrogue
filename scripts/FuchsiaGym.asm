@@ -47,7 +47,7 @@ FuchsiaGym_Script:
 
 FuchsiaGymResetScripts:
 	xor a ; SCRIPT_FUCHSIAGYM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wFuchsiaGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -60,11 +60,11 @@ FuchsiaGym_ScriptPointers:
 	dw_const FuchsiaGymKogaPostBattleScript,        SCRIPT_FUCHSIAGYM_KOGA_POST_BATTLE
 
 FuchsiaGymKogaPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, FuchsiaGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 ; fallthrough
 FuchsiaGymReceiveTM06:
 	ld a, TEXT_FUCHSIAGYM_KOGA_SOUL_BADGE_INFO
@@ -91,8 +91,6 @@ FuchsiaGymReceiveTM06:
 	call DisplayTextID
 .gymVictory
 	ld hl, wObtainedBadges
-	set BIT_SOULBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_SOULBADGE, [hl]
 
 	; deactivate gym trainers
@@ -147,7 +145,7 @@ FuchsiaGymKogaText:
 	ld de, .ReceivedSoulBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	ld d, OPP_KOGA
     farcall InitGymBattle

@@ -9,9 +9,6 @@ InitPlayerData2:
 	ldh a, [hRandomAdd]
 	ld [wPlayerID + 1], a
 
-	ld a, $ff
-	ld [wUnusedPlayerDataByte], a
-
 	ld hl, wPartyCount
 	call InitializeEmptyList
 	ld hl, wBoxCount
@@ -34,7 +31,6 @@ DEF START_MONEY EQU $3000
 
 	ld hl, wObtainedBadges
 	ld [hli], a
-	ASSERT wObtainedBadges + 1 == wUnusedObtainedBadges
 	ld [hl], a
 
 	ld hl, wPlayerCoins

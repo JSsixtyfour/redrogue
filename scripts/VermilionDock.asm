@@ -19,27 +19,27 @@ VermilionDock_Script:
 	ld [hli], a
 	ld [hl], a
 	ld a, $3
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld [wOverrideSimulatedJoypadStatesMask], a
 	dec a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 .walking_out_of_dock
 	CheckEventAfterBranchReuseHL EVENT_WALKED_OUT_OF_DOCK, EVENT_STARTED_WALKING_OUT_OF_DOCK
 	ret nz
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEventReuseHL EVENT_WALKED_OUT_OF_DOCK
 	ret
 
 VermilionDockSSAnneLeavesScript:
 	SetEventForceReuseHL EVENT_SS_ANNE_LEFT
 	ld a, SFX_STOP_ALL_MUSIC
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wNewSoundID], a
 	call PlaySound
 	ld c, BANK(Music_Surfing)
@@ -74,7 +74,7 @@ VermilionDockSSAnneLeavesScript:
 	ld a, SFX_SS_ANNE_HORN
 	call PlaySoundWaitForCurrent
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld d, $0
 	ld e, $8
 .shift_columns_up
@@ -110,7 +110,7 @@ VermilionDockSSAnneLeavesScript:
 	ld a, $90
 	ldh [hWY], a
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	pop hl
 	pop bc
 	ld [hl], b

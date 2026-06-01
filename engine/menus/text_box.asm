@@ -166,7 +166,7 @@ DoBuySellQuitMenu:
 	ld a, $1
 	ld [wTopMenuItemX], a
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuWatchMovingOutOfBounds], a
 	ld a, [wStatusFlags5]
@@ -184,7 +184,7 @@ DoBuySellQuitMenu:
 .pressedA
 	ld a, CHOSE_MENU_ITEM
 	ld [wMenuExitMethod], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wChosenMenuItem], a
 	ld b, a
 	ld a, [wMaxMenuItem]
@@ -194,7 +194,7 @@ DoBuySellQuitMenu:
 .quit
 	ld a, CANCELLED_MENU
 	ld [wMenuExitMethod], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wChosenMenuItem], a
 	scf
 	ret
@@ -232,7 +232,7 @@ DisplayTwoOptionMenu:
 	jr z, .storeCurrentMenuItem
 	inc a
 .storeCurrentMenuItem
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	pop hl
 	push hl
 	push hl
@@ -312,7 +312,7 @@ DisplayTwoOptionMenu:
 	bit B_PAD_B, a
 	jr nz, .choseSecondMenuItem ; automatically choose the second option if B is pressed
 .pressedAButton
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wChosenMenuItem], a
 	and a
 	jr nz, .choseSecondMenuItem
@@ -326,7 +326,7 @@ DisplayTwoOptionMenu:
 	ret
 .choseSecondMenuItem
 	ld a, 1
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wChosenMenuItem], a
 	ld a, CHOSE_SECOND_ITEM
 	ld [wMenuExitMethod], a
@@ -507,7 +507,7 @@ PokemonMenuEntries:
 	next "CANCEL@"
 
 GetMonFieldMoves:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -537,7 +537,7 @@ GetMonFieldMoves:
 	jr .fieldMoveLoop
 .foundFieldMove
 	ld a, b
-	ld [wLastFieldMoveID], a
+	ldh [hSwapTemp], a              ; save field move ID to HRAM scratch
 	ld a, [hli] ; field move name index
 	ld b, [hl] ; field move leftmost X coordinate
 	pop hl
@@ -551,7 +551,7 @@ GetMonFieldMoves:
 	ld a, b
 	ld [wFieldMovesLeftmostXCoord], a
 .skipUpdatingLeftmostXCoord
-	ld a, [wLastFieldMoveID]
+	ldh a, [hSwapTemp]              ; restore field move ID
 	ld b, a
 	jr .loop
 .done

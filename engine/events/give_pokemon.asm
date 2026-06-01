@@ -46,7 +46,7 @@ _GivePokemon::
 	call SetPokedexOwnedFlag
 	call AddPartyMon
 	ld a, 1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld [wAddedToParty], a
 	scf
 	ret

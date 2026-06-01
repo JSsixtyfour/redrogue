@@ -92,7 +92,6 @@ _AddPartyMon::
 	ld hl, wPokedexOwned
 	call FlagAction
 	ld a, c ; whether the mon was already flagged as owned
-	ld [wUnusedAlreadyOwnedFlag], a
 	ld a, [wPokedexNum]
 	dec a
 	ld c, a
@@ -106,7 +105,7 @@ _AddPartyMon::
 	pop hl
 	push hl
 
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a ; is this a wild mon caught in battle?
 	jr nz, .copyEnemyMonData
 
@@ -227,7 +226,7 @@ _AddPartyMon::
 	ld a, [wCurEnemyLevel]
 	ld [de], a
 	inc de
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .calcFreshStats
 	ld hl, wEnemyMonMaxHP
@@ -275,7 +274,7 @@ AddPartyMon_WriteMovePP:
 	jr nz, .pploop ; there are still moves to read
 	ret
 
-; adds enemy mon [wCurPartySpecies] (at position [wWhichPokemon] in enemy list) to own party
+; adds enemy mon [wCurPartySpecies] (at position [hWhichPokemon] in enemy list) to own party
 ; used in the cable club trade center
 _AddEnemyMonToPlayerParty::
 	ld hl, wPartyCount
@@ -307,7 +306,7 @@ _AddEnemyMonToPlayerParty::
 	ld d, h
 	ld e, l
 	ld hl, wEnemyMonOT
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
 	ld bc, NAME_LENGTH
 	call CopyData    ; write new mon's OT name (from an enemy mon)
@@ -318,7 +317,7 @@ _AddEnemyMonToPlayerParty::
 	ld d, h
 	ld e, l
 	ld hl, wEnemyMonNicks
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
 	ld bc, NAME_LENGTH
 	call CopyData    ; write new mon's nickname (from an enemy mon)
@@ -415,7 +414,7 @@ _MoveMon::
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
 .addMonOffset2
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 .copyMonData
 	push hl
@@ -470,7 +469,7 @@ _MoveMon::
 	jr z, .copyOT
 	ld hl, wPartyMonOT
 .addOToffset2
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
 .copyOT
 	ld bc, NAME_LENGTH
@@ -507,7 +506,7 @@ _MoveMon::
 	jr z, .copyNick
 	ld hl, wPartyMonNicks
 .addNickOffset2
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call SkipFixedLengthTextEntries
 .copyNick
 	ld bc, NAME_LENGTH

@@ -2,7 +2,7 @@ Museum1F_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, Museum1F_ScriptPointers
 	ld a, [wMuseum1FCurScript]
 	jp CallFunctionInTable
@@ -77,7 +77,7 @@ Museum1FScientist1Text:
 	ld hl, .WouldYouLikeToComeInText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .deny_entry
 	xor a
@@ -114,7 +114,7 @@ Museum1FScientist1Text:
 	ld hl, .ComeAgainText
 	call PrintText
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
@@ -129,7 +129,7 @@ Museum1FScientist1Text:
 	ld hl, .DoYouKnowWhatAmberIsText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $0
 	jr nz, .explain_amber
 	ld hl, .TheresALabSomewhereText

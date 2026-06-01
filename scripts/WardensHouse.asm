@@ -21,7 +21,7 @@ WardensHouseWardenText:
 	ld hl, .Gibberish1Text
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, .Gibberish3Text
 	jr nz, .refused

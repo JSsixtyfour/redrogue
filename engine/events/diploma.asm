@@ -5,7 +5,7 @@ DisplayDiploma::
 	call GBPalWhiteOutWithDelay3
 	call ClearScreen
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	call DisableLCD

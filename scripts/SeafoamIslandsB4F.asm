@@ -7,7 +7,7 @@ SeafoamIslandsB4F_Script:
 SeafoamIslandsB4FResetScript:
 	xor a
 	ld [wSeafoamIslandsB4FCurScript], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 SeafoamIslandsB4F_ScriptPointers:
@@ -20,7 +20,7 @@ SeafoamIslandsB4F_ScriptPointers:
 	EXPORT SCRIPT_SEAFOAMISLANDSB4F_MOVE_OBJECT ; used by engine/overworld/player_state.asm
 
 SeafoamIslandsB4FObjectMoving3Script:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jr z, SeafoamIslandsB4FResetScript
 	call EndTrainerBattle
@@ -44,7 +44,7 @@ SeafoamIslandsB4FDefaultScript:
 .only1UpInputNeeded
 	ld a, 1
 .forcePlayerUpFromSurfExit
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
@@ -62,11 +62,11 @@ SeafoamIslandsB4FDefaultScript:
 	db -1 ; end
 
 SeafoamIslandsB4FObjectMoving1Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SEAFOAMISLANDSB4F_DEFAULT
 	ld [wSeafoamIslandsB4FCurScript], a
 	ret
@@ -90,7 +90,7 @@ SeafoamIslandsB4FMoveObjectScript:
 	ld hl, wSimulatedJoypadStatesEnd
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_SEAFOAMISLANDSB4F_OBJECT_MOVING2
 .playerNotInStrongCurrent
@@ -115,7 +115,7 @@ SeafoamIslandsB4FMoveObjectScript:
 	db -1 ; end
 
 SeafoamIslandsB4FObjectMoving2Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	ld b, a
 	cp $1
 	call z, .doneForcedSurfMovement

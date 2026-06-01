@@ -11,7 +11,7 @@ DisplayPokemonCenterDialogue_::
 	call PrintText
 .skipShallWeHealYourPokemon
 	call YesNoChoicePokeCenter ; yes/no menu
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .declinedHealing ; if the player chose No
 	call SetLastBlackoutMap

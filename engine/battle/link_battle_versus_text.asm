@@ -15,7 +15,7 @@ DisplayLinkBattleVersusTextBox:
 	hlcoord 9, 8
 	ld_hli_a_string "<BOLD_V><BOLD_S>"
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	callfar SetupPlayerAndEnemyPokeballs
 	ld c, 150
 	jp DelayFrames

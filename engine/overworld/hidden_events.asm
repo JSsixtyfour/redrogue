@@ -29,7 +29,7 @@ CheckForHiddenEvent::
 	ld b, a
 	cp $ff
 	jr z, .noMatch
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp b
 	jr z, .foundMatchingMap
 	inc de

@@ -37,7 +37,7 @@ GameCornerSetRocketHideoutDoorTile:
 
 GameCornerReenterMapAfterPlayerLoss:
 	xor a ; SCRIPT_GAMECORNER_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wGameCornerCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -52,11 +52,11 @@ GameCornerDefaultScript:
 	ret
 
 GameCornerRocketBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, GameCornerReenterMapAfterPlayerLoss
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_GAMECORNER_ROCKET_AFTER_BATTLE
 	ldh [hTextID], a
 	call DisplayTextID
@@ -106,7 +106,7 @@ GameCornerRocketExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_GAME_CORNER_ROCKET
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -144,7 +144,7 @@ GameCornerClerk1Text:
 	ld hl, .DoYouNeedSomeGameCoins
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .declined
 	; Can only get more coins if you
@@ -256,7 +256,7 @@ GameCornerFishingGuruText:
 	predef AddBCDPredef
 	SetEvent EVENT_GOT_10_COINS
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .Received10CoinsText
 	jr .print_ret
 .alreadyGotNpcCoins
@@ -429,7 +429,7 @@ GameCornerRocketText:
 	ld de, .BattleEndText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a
@@ -455,7 +455,7 @@ GameCornerRocketAfterBattleText:
 GameCornerPosterText:
 	text_asm
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .SwitchBehindPosterText
 	call PrintText
 	call WaitForSoundToFinish

@@ -29,7 +29,7 @@ UsedCut:
 	ld [wCutTile], a
 	ld a, 1
 	ld [wActionResultOrTookBattleTurn], a ; used cut
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, wStatusFlags5
@@ -52,14 +52,14 @@ UsedCut:
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call InitCutAnimOAM
 	ld de, CutTreeBlockSwaps
 	call ReplaceTreeTileBlock
 	call RedrawMapView
 	farcall AnimCut
 	ld a, $1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, SFX_CUT
 	call PlaySound
 	ld a, $90

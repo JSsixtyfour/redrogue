@@ -14,7 +14,7 @@ LoadSpinnerArrowTiles::
 	jr z, .gotSpinnerArrows
 	ld hl, GymSpinnerArrows
 .gotSpinnerArrows
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	bit 0, a ; even or odd?
 	jr nz, .alternateGraphics
 	ld de, 6 * 4

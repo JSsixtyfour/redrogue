@@ -6,7 +6,7 @@ HallOfFame_Script:
 
 HallofFameRoomClearScripts: ; unreferenced
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wHallOfFameCurScript], a
 	ret
 
@@ -25,7 +25,7 @@ HallOfFameResetEventsAndSaveScript:
 	ld a, [wLetterPrintingDelayFlags]
 	push af
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	predef HallOfFamePC
 	pop af
 	ld [wLetterPrintingDelayFlags], a
@@ -59,12 +59,12 @@ HallOfFameResetEventsAndSaveScript:
 
 HallOfFameDefaultScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wSimulatedJoypadStatesEnd
 	ld de, HallOfFameEntryMovement
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_HALLOFFAME_OAK_CONGRATULATIONS
 	ld [wHallOfFameCurScript], a
@@ -75,7 +75,7 @@ HallOfFameEntryMovement:
 	db -1 ; end
 
 HallOfFameOakCongratulationsScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld a, PLAYER_DIR_RIGHT
@@ -88,14 +88,14 @@ HallOfFameOakCongratulationsScript:
 	call SetSpriteFacingDirectionAndDelay
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	inc a ; PLAYER_DIR_RIGHT
 	ld [wPlayerMovingDirection], a
 	ld a, TEXT_HALLOFFAME_OAK
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_CERULEAN_CAVE_GUY
 	ld [wToggleableObjectIndex], a
 	predef HideObject

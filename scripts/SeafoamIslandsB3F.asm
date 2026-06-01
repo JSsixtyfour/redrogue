@@ -70,7 +70,7 @@ SeafoamIslandsB3FDefaultScript:
 	ld de, RLEList_ForcedSurfingStrongCurrentNearSteps
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld hl, wStatusFlags7
 	set BIT_FORCED_WARP, [hl]
@@ -85,7 +85,7 @@ RLEList_ForcedSurfingStrongCurrentNearSteps:
 	db -1 ; end
 
 SeafoamIslandsB3FObjectMoving1Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld a, SCRIPT_SEAFOAMISLANDSB3F_DEFAULT
@@ -109,7 +109,7 @@ SeafoamIslandsB3FMoveObjectScript:
 	ld hl, wSimulatedJoypadStatesEnd
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld hl, wStatusFlags5
@@ -135,7 +135,7 @@ SeafoamIslandsB3FMoveObjectScript:
 	db -1 ; end
 
 SeafoamIslandsB3FObjectMoving2Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld a, SCRIPT_SEAFOAMISLANDSB3F_DEFAULT

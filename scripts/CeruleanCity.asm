@@ -6,7 +6,7 @@ CeruleanCity_Script:
 
 CeruleanCityClearScripts:
 	xor a ; SCRIPT_CERULEANCITY_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wCeruleanCityCurScript], a
 	ld a, TOGGLE_CERULEAN_RIVAL
 	ld [wToggleableObjectIndex], a
@@ -21,17 +21,17 @@ CeruleanCity_ScriptPointers:
 	dw_const CeruleanCityRocketDefeatedScript, SCRIPT_CERULEANCITY_ROCKET_DEFEATED
 
 CeruleanCityRocketDefeatedScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CeruleanCityClearScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_CERULEAN_ROCKET_THIEF
 	ld a, TEXT_CERULEANCITY_ROCKET
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a ; SCRIPT_CERULEANCITY_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wCeruleanCityCurScript], a
 	ret
 
@@ -79,7 +79,7 @@ ENDC
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, [wXCoord]
 	cp 20 ; is the player standing on the right side of the bridge?
 	jr z, .playerOnRightSideOfBridge
@@ -129,7 +129,7 @@ CeruleanCityRivalBattleScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_CERULEANCITY_RIVAL
 	ldh [hTextID], a
 	call DisplayTextID
@@ -168,14 +168,14 @@ CeruleanCityRivalBattleScript:
 	ret
 
 CeruleanCityRivalDefeatedScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CeruleanCityClearScripts
     xor a
 	ld [wIsTrainerBattle], a
 	call CeruleanCityFaceRivalScript
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_CERULEAN_RIVAL
 	ld a, TEXT_CERULEANCITY_RIVAL
 	ldh [hTextID], a
@@ -230,7 +230,7 @@ CeruleanCityRivalCleanupScript:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call PlayDefaultMusic
 	ld a, SCRIPT_CERULEANCITY_DEFAULT
 	ld [wCeruleanCityCurScript], a
@@ -300,7 +300,7 @@ CeruleanCityRocketText:
 	ld de, .IGiveUpText
 	call SaveEndBattleTextPointers
 	ldh a, [hTextID]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_CERULEANCITY_ROCKET_DEFEATED
@@ -317,7 +317,7 @@ CeruleanCityRocketText:
 	jr .Done
 .Success
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .ReceivedTM28Text
 	call PrintText
 	farcall CeruleanHideRocket

@@ -1,8 +1,8 @@
 PewterGuys:
 	ld hl, wSimulatedJoypadStatesEnd
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	dec a ; this decrement causes it to overwrite the last byte before $FF in the list
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld d, 0
 	ld e, a
 	add hl, de
@@ -37,9 +37,9 @@ PewterGuys:
 	ret z
 	ld [de], a
 	inc de
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	inc a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	jr .copyMovementDataLoop
 .nextEntry1
 	inc hl

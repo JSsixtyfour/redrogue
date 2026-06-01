@@ -13,7 +13,7 @@ VermilionOldRodHouseFishingGuruText:
 	ld hl, .DoYouLikeToFishText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .refused
 	lb bc, OLD_ROD, 1

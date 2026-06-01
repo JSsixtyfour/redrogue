@@ -38,7 +38,7 @@ BikeShopClerkText:
 	ld hl, BikeShopClerkWelcomeText
 	call PrintText
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -68,7 +68,7 @@ BikeShopClerkText:
 	jr nz, .cancel
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .cancel
 	ld hl, BikeShopCantAffordText

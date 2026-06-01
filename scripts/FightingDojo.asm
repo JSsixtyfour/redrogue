@@ -9,7 +9,7 @@ FightingDojo_Script:
 
 FightingDojoResetScripts:
 	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wFightingDojoCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -54,7 +54,7 @@ FightingDojoDefaultScript:
 	ret
 
 FightingDojoKarateMasterPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, FightingDojoResetScripts
 	ld a, [wSavedCoordIndex]
@@ -69,13 +69,13 @@ FightingDojoKarateMasterPostBattleScript:
 	call SetSpriteFacingDirectionAndDelay
 .already_facing
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEventRange EVENT_BEAT_KARATE_MASTER, EVENT_BEAT_FIGHTING_DOJO_TRAINER_3
 	ld a, TEXT_FIGHTINGDOJO_KARATE_MASTER_I_WILL_GIVE_YOU_A_POKEMON
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wFightingDojoCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -118,7 +118,7 @@ FightingDojoKarateMasterText:
 	ld de, .DefeatedText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_FIGHTINGDOJO_KARATE_MASTER_POST_BATTLE
@@ -236,7 +236,7 @@ FightingDojoHitmonleePokeBallText:
 	ld hl, .Text
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 	ld a, [wCurPartySpecies]
@@ -270,7 +270,7 @@ FightingDojoHitmonchanPokeBallText:
 	ld hl, .Text
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 	ld a, [wCurPartySpecies]

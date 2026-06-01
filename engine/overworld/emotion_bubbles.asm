@@ -11,10 +11,10 @@ EmotionBubble:
 	ld hl, vChars1 tile $78
 	lb bc, BANK(EmotionBubbles), 4
 	call CopyVideoData
-	ld a, [wUpdateSpritesEnabled]
+	ldh a, [hUpdateSpritesEnabled]
 	push af
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a ; are the last 4 OAM entries reserved for a shadow or fishing rod?
 	ld hl, wShadowOAMSprite35Attributes
@@ -57,7 +57,7 @@ EmotionBubble:
 	ld c, 60
 	call DelayFrames
 	pop af
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call DelayFrame
 	jp UpdateSprites
 

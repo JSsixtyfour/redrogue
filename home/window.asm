@@ -53,25 +53,25 @@ HandleMenuInput_::
 	bit B_PAD_UP, a
 	jr z, .checkIfDownPressed
 ; Up pressed
-	ld a, [wCurrentMenuItem] ; selected menu item
+	ldh a, [hCurrentMenuItem] ; selected menu item
 	and a ; already at the top of the menu?
 	jr z, .alreadyAtTop
 ; not at top
 	dec a
-	ld [wCurrentMenuItem], a ; move selected menu item up one space
+	ldh [hCurrentMenuItem], a ; move selected menu item up one space
 	jr .checkOtherKeys
 .alreadyAtTop
 	ld a, [wMenuWrappingEnabled]
 	and a ; is wrapping around enabled?
 	jr z, .noWrappingAround
 	ld a, [wMaxMenuItem]
-	ld [wCurrentMenuItem], a ; wrap to the bottom of the menu
+	ldh [hCurrentMenuItem], a ; wrap to the bottom of the menu
 	jr .checkOtherKeys
 .checkIfDownPressed
 	bit B_PAD_DOWN, a
 	jr z, .checkOtherKeys
 ; Down pressed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	inc a
 	ld c, a
 	ld a, [wMaxMenuItem]
@@ -84,7 +84,7 @@ HandleMenuInput_::
 	ld c, $00 ; wrap from bottom to top
 .notAtBottom
 	ld a, c
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .checkOtherKeys
 	ld a, [wMenuWatchedKeys]
 	and b ; does the menu care about any of the pressed keys?
@@ -158,7 +158,7 @@ PlaceMenuCursor::
 	ld [hl], a
 .skipClearingArrow
 	pop hl
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .checkForArrow2
 	push af
@@ -187,7 +187,7 @@ PlaceMenuCursor::
 	ld [wMenuCursorLocation], a
 	ld a, h
 	ld [wMenuCursorLocation + 1], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wLastMenuItem], a
 	ret
 
@@ -277,7 +277,7 @@ DisableAutoTextBoxDrawing::
 AutoTextBoxDrawingCommon::
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a ; make DisplayTextID wait for button press
+	ldh [hNoWaitAfterText], a ; make DisplayTextID wait for button press
 	ret
 
 PrintText::

@@ -18,7 +18,7 @@ LavenderTownLittleGirlText:
 	ld hl, .DoYouBelieveInGhostsText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, .HaHaGuessNotText
 	jr nz, .got_text

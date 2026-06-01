@@ -2,7 +2,7 @@ ChoosePlayerName:
 	call OakSpeechSlidePicRight
 	ld de, DefaultNamesPlayer
 	call DisplayIntroNameTextBox
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .customName
 	ld hl, DefaultNamesPlayerList
@@ -35,7 +35,7 @@ ChooseRivalName:
 	call OakSpeechSlidePicRight
 	ld de, DefaultNamesRival
 	call DisplayIntroNameTextBox
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .customName
 	ld hl, DefaultNamesRivalList
@@ -173,7 +173,7 @@ DisplayIntroNameTextBox:
 	call PlaceString
 	call UpdateSprites
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	inc a
 	ld [wTopMenuItemX], a

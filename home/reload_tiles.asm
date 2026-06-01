@@ -2,7 +2,7 @@
 ReloadMapData::
 	ldh a, [hLoadedROMBank]
 	push af
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 	call DisableLCD
 	call LoadTextBoxTilePatterns
@@ -18,7 +18,7 @@ ReloadMapData::
 ReloadTilesetTilePatterns::
 	ldh a, [hLoadedROMBank]
 	push af
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 	call DisableLCD
 	call LoadTilesetTilePatternData
@@ -37,5 +37,5 @@ ChooseFlyDestination::
 ; causes the text box to close without waiting for a button press after displaying text
 DisableWaitingAfterTextDisplay::
 	ld a, $01
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ret

@@ -29,7 +29,7 @@ Route18Gate1FDefaultScript:
 	jr z, .next_to_counter
 	ld a, [wCoordIndex]
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld b, 0
 	ld c, a
 	ld a, PAD_UP
@@ -52,18 +52,18 @@ Route18Gate1FDefaultScript:
 	db -1 ; end
 
 Route18Gate1FPlayerMovingUpScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 Route18Gate1FGuardScript:
 	ld a, TEXT_ROUTE18GATE1F_GUARD
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_RIGHT
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
@@ -72,11 +72,11 @@ Route18Gate1FGuardScript:
 	ret
 
 Route18Gate1FPlayerMovingRightScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wStatusFlags5
 	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
 	ld a, SCRIPT_ROUTE18GATE1F_DEFAULT

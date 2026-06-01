@@ -4,7 +4,7 @@ MoveDeleterText1:
 	call PrintText
 .jumpback
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
 	ld hl, MoveDeleterSaidYesText
@@ -14,7 +14,7 @@ MoveDeleterText1:
 	xor a
 	ld [wListScrollOffset], a
 	ld [wPartyMenuTypeOrMessageID], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
 	push af
@@ -23,7 +23,7 @@ MoveDeleterText1:
 	call LoadGBPal
 	pop af
 	jp c, .exit
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	push bc
 	call PrepareDeletableMoveList
@@ -38,7 +38,7 @@ MoveDeleterText1:
 	push bc
 	xor a
 	ld [wListScrollOffset], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld hl, MoveDeleterWhichMoveText
 	call PrintText
 	ld a, MOVESLISTMENU
@@ -67,7 +67,7 @@ MoveDeleterText1:
 	call YesNoChoice
 	pop bc
 	pop de
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .chooseMove
 	push de
@@ -123,8 +123,8 @@ DeleteMove:
 PrepareDeletableMoveList:
 ; Places a list of the selected pokemon's moves at wMoveBuffer.
 ; First byte is count, and last byte is $ff.
-; Input: party mon index = [wWhichPokemon]
-	ld a, [wWhichPokemon]
+; Input: party mon index = [hWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, wPartyMon2 - wPartyMon1
 	call AddNTimes

@@ -11,7 +11,7 @@ RocketHideoutElevator_Script:
 	xor a
 	ld [wAutoTextBoxDrawingControl], a
 	inc a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ret
 
 RocketHideoutElevatorStoreWarpEntriesScript:

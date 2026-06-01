@@ -9,7 +9,7 @@ PokemonTower6F_Script:
 
 PokemonTower6FSetDefaultScript:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wPokemonTower6FCurScript], a ; SCRIPT_POKEMONTOWER6F_DEFAULT
 	ld [wCurMapScript], a ; SCRIPT_POKEMONTOWER6F_DEFAULT
 	ret
@@ -47,17 +47,17 @@ PokemonTower6FMarowakCoords:
 	db -1 ; end
 
 PokemonTower6FMarowakBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, PokemonTower6FSetDefaultScript
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, [wStatusFlags3]
 	bit BIT_TALKED_TO_TRAINER, a
 	ret nz
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, [wBattleResult]
 	and a
 	jr nz, .did_not_defeat
@@ -66,14 +66,14 @@ PokemonTower6FMarowakBattleScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_POKEMONTOWER6F_DEFAULT
 	ld [wPokemonTower6FCurScript], a
 	ld [wCurMapScript], a
 	ret
 .did_not_defeat
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_RIGHT
 	ld [wSimulatedJoypadStatesEnd], a
 	xor a
@@ -87,7 +87,7 @@ PokemonTower6FMarowakBattleScript:
 	ret
 
 PokemonTower6FPlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3

@@ -45,12 +45,12 @@ Route6GateDefaultScript:
 	db -1 ; end
 
 Route6GatePlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute6GateCurScript], a
 	ret
 
@@ -60,7 +60,7 @@ Route6GateMovePlayerDownScript:
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld [wOverrideSimulatedJoypadStatesMask], a

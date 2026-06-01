@@ -5,7 +5,7 @@ SetLastBlackoutMap:
 
 	push hl
 	ld hl, SafariZoneRestHouses
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 .loop
 	ld a, [hli]

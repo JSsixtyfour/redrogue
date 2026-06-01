@@ -9,7 +9,7 @@ DisplayTextID::
 	bit BIT_TEXT_PREDEF, [hl]
 	res BIT_TEXT_PREDEF, [hl]
 	jr nz, .skipSwitchToMapBank
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 .skipSwitchToMapBank
 	ld a, 30 ; half a second
@@ -20,7 +20,7 @@ DisplayTextID::
 	ld l, a ; hl = map text pointer
 	ld d, $00
 	ldh a, [hTextID]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 
 	dict TEXT_START_MENU,       DisplayStartMenu
 	dict TEXT_SAFARI_GAME_OVER, DisplaySafariGameOverText
@@ -86,7 +86,7 @@ ENDM
     dict  TX_SCRIPT_ROGUE_VENDOR,            TextScript_RogueRewardMenu
 
 	call PrintText_NoCreatingTextBox
-	ld a, [wDoNotWaitForButtonPressAfterDisplayingText]
+	ldh a, [hNoWaitAfterText]
 	and a
 	jr nz, HoldTextDisplayOpen
 
@@ -104,7 +104,7 @@ HoldTextDisplayOpen::
 	jr nz, HoldTextDisplayOpen
 
 CloseTextDisplay::
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 	ld a, $90
 	ldh [hWY], a ; move the window off the screen
@@ -157,7 +157,7 @@ PokemartGreetingText::
 
 LoadItemList::
 	ld a, 1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, h
 	ld [wItemListPointer], a
 	ld a, l

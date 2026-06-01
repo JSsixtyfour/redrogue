@@ -5,7 +5,7 @@ GainExperience:
 	call DivideExpDataByNumMonsGainingExp
 	ld hl, wPartyMon1
 	xor a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 .partyMonLoop ; loop over each mon and add gained exp
 	inc hl
 	ld a, [hli]
@@ -13,7 +13,7 @@ GainExperience:
 	jp z, .nextMon ; if so, go to next mon
 	push hl
 	ld hl, wPartyGainExpFlags
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, FLAG_TEST
 	predef FlagActionPredef
@@ -83,7 +83,7 @@ GainExperience:
 	ld a, 1
 .next
 	ld [wGainBoostedExp], a
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	call nz, BoostExp ; if so, boost exp
 	inc hl
@@ -108,7 +108,7 @@ GainExperience:
 ; calculate exp for the mon at max level, and cap the exp at that value
 	inc hl
 	push hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, 0
 	ld hl, wPartySpecies
@@ -143,7 +143,7 @@ GainExperience:
 	dec hl
 .next2
 	push hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, GainedText
@@ -204,7 +204,7 @@ GainExperience:
 	ld [hl], a ; wPartyMon*HP
 	ld a, [wPlayerMonNumber]
 	ld b, a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp b ; is the current mon in battle?
 	jr nz, .printGrewLevelText
 ; current mon is in battle
@@ -255,7 +255,7 @@ GainExperience:
 	ld [wPokedexNum], a
 	predef LearnMoveFromLevelUp
 	ld hl, wCanEvolveFlags
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, FLAG_SET
 	predef FlagActionPredef
@@ -266,11 +266,11 @@ GainExperience:
 .nextMon
 	ld a, [wPartyCount]
 	ld b, a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	inc a
 	cp b
 	jr z, .done
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld bc, PARTYMON_STRUCT_LENGTH
 	ld hl, wPartyMon1
 	call AddNTimes

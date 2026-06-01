@@ -31,19 +31,19 @@ CinnabarIslandDefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
 	xor a
 	ld [wSpritePlayerStateData1FacingDirection], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_CINNABARISLAND_PLAYER_MOVING
 	ld [wCinnabarIslandCurScript], a
 	ret
 
 CinnabarIslandPlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3

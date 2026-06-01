@@ -5,7 +5,7 @@ ShowPokedexMenu:
 	ld a, [wListScrollOffset]
 	push af
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 	ld [wLastMenuItem], a
 	inc a
@@ -23,8 +23,7 @@ ShowPokedexMenu:
 	ld [hli], a ; top menu item X
 	inc a
 	ld [wMenuWatchMovingOutOfBounds], a
-	inc hl
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, 6
 	ld [hli], a ; max menu item ID
 	ld [hl], PAD_LEFT | PAD_RIGHT | PAD_B | PAD_A
@@ -33,10 +32,9 @@ ShowPokedexMenu:
 .exitPokedex
 	xor a
 	ld [wMenuWatchMovingOutOfBounds], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ldh [hJoy7], a
-	ld [wUnusedOverrideSimulatedJoypadStatesIndex], a
 	ld [wOverrideSimulatedJoypadStatesMask], a
 	pop af
 	ld [wListScrollOffset], a
@@ -59,7 +57,7 @@ ShowPokedexMenu:
 ; 02: the pokemon has not been seen yet or the player pressed the B button
 HandlePokedexSideMenu:
 	call PlaceUnfilledArrowMenuCursor
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	push af
 	ld b, a
 	ld a, [wLastMenuItem]
@@ -84,8 +82,8 @@ HandlePokedexSideMenu:
 	ld a, 15
 	ld [hli], a ; top menu item X
 	xor a
-	ld [hli], a ; current menu item ID
-	inc hl
+	ldh [hCurrentMenuItem], a ; current menu item ID
+	inc hl ; wTileBehindCursor
 	ld a, 3
 	ld [hli], a ; max menu item ID
 	;ld a, PAD_A | PAD_B
@@ -98,7 +96,7 @@ HandlePokedexSideMenu:
 	bit B_PAD_B, a
 	ld b, 2
 	jr nz, .buttonBPressed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .choseData
 	dec a
@@ -117,7 +115,7 @@ HandlePokedexSideMenu:
 	pop af
 	ld [wLastMenuItem], a
 	pop af
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	push bc
 	hlcoord 0, 3
 	ld de, 20

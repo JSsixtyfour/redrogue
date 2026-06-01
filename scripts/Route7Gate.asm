@@ -16,7 +16,7 @@ Route7GateMovePlayerLeftScript:
 	ld a, PAD_LEFT
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld [wOverrideSimulatedJoypadStatesMask], a
@@ -58,12 +58,12 @@ Route7DefaultScript:
 	db -1 ; end
 
 Route7PlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute7GateCurScript], a
 	ld [wCurMapScript], a
 	ret

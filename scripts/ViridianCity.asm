@@ -94,19 +94,19 @@ ViridianCityOldManEndCatchTrainingScript:
 	call UpdateSprites
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_VIRIDIANCITY_OLD_MAN_YOU_NEED_TO_WEAKEN_THE_TARGET
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a
 	ld [wBattleType], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_VIRIDIANCITY_DEFAULT
 	ld [wViridianCityCurScript], a
 	ret
 
 ViridianCityPlayerMovingDownScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
@@ -117,12 +117,12 @@ ViridianCityPlayerMovingDownScript:
 ViridianCityMovePlayerDownScript:
 	call StartSimulatingJoypadStates
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	xor a
 	ld [wSpritePlayerStateData1FacingDirection], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 ViridianCity_TextPointers:
@@ -173,7 +173,7 @@ ViridianCityYoungster2Text:
 	ld hl, .YouWantToKnowAboutText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .no
 	ld hl, .CaterpieAndWeedleDescriptionText
@@ -278,7 +278,7 @@ ViridianCityOldManText:
 	ld c, 2
 	call DelayFrames
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .refused
 	ld hl, .KnowHowToCatchPokemonText

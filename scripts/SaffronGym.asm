@@ -43,7 +43,7 @@ SabrinaShowOrHideExitBlock:
 
 SaffronGymResetScripts:
 	xor a ; SCRIPT_SAFFRONGYM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wSaffronGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -56,11 +56,11 @@ SaffronGym_ScriptPointers:
 	dw_const SaffronGymSabrinaPostBattle,           SCRIPT_SAFFRONGYM_SABRINA_POST_BATTLE
 
 SaffronGymSabrinaPostBattle:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, SaffronGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 SaffronGymSabrinaReceiveTM46Script:
 	ld a, TEXT_SAFFRONGYM_SABRINA_MARSH_BADGE_INFO
@@ -86,8 +86,6 @@ SaffronGymSabrinaReceiveTM46Script:
 	call DisplayTextID
 .gymVictory
 	ld hl, wObtainedBadges
-	set BIT_MARSHBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_MARSHBADGE, [hl]
 
 	jp SaffronGymResetScripts
@@ -139,7 +137,7 @@ SaffronGymSabrinaText:
 	ld de, .ReceivedMarshBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_SABRINA

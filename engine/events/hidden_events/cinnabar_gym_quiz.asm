@@ -31,7 +31,7 @@ CinnabarGymQuiz::
 	ld l, a
 	call PrintText
 	ld a, 1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	call CinnabarGymQuiz_AskQuestion
 	jp TextScriptEnd
 
@@ -79,7 +79,7 @@ CinnabarGymQuiz_AskQuestion:
 	call YesNoChoice
 	ldh a, [hGymGateAnswer]
 	ld c, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp c
 	jr nz, .wrongAnswer
 	ld hl, wCurrentMapScriptFlags

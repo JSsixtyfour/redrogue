@@ -54,7 +54,7 @@ MainMenu:
 	res BIT_NO_TEXT_DELAY, [hl]
 	call UpdateSprites
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuJoypadPollCount], a
 	inc a
@@ -70,7 +70,7 @@ MainMenu:
 	jp nz, DisplayTitleScreen ; if so, go back to the title screen
 	ld c, 20
 	call DelayFrames
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wSaveFileStatus]
 	cp 2
@@ -114,7 +114,7 @@ MainMenu:
 	ld a, [wNumHoFTeams]
 	and a
 	jp z, SpecialEnterMap
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp HALL_OF_FAME
 	jp nz, SpecialEnterMap
 	xor a
@@ -152,17 +152,16 @@ LinkMenu:
 	xor a
 	ld [wUnusedLinkMenuByte], a
 	ld [wCableClubDestinationMap], a
+	xor a
+	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, 7
 	ld [hli], a
 	ASSERT wTopMenuItemY + 1 == wTopMenuItemX
 	ld a, 6
 	ld [hli], a
-	ASSERT wTopMenuItemX + 1 == wCurrentMenuItem
-	xor a
-	ld [hli], a
 	inc hl
-	ASSERT wCurrentMenuItem + 2 == wMaxMenuItem
+	ASSERT wTopMenuItemX + 2 == wMaxMenuItem
 	ld a, 2
 	ld [hli], a
 	ASSERT wMaxMenuItem + 1 == wMenuWatchedKeys
@@ -178,7 +177,7 @@ LinkMenu:
 	add a
 	add a
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	add b
 	add $d0
 	ld [wLinkMenuSelectionSendBuffer], a
@@ -217,7 +216,7 @@ LinkMenu:
 	ld a, b
 	ld [wLinkMenuSelectionSendBuffer], a
 	and $3
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .doneChoosingMenuSelection
 	ldh a, [hSerialConnectionStatus]
 	cp USING_INTERNAL_CLOCK
@@ -234,7 +233,7 @@ LinkMenu:
 	and PAD_B << 2 ; was B button pressed?
 	jr nz, .updateCursorPosition
 ; A button was pressed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $2
 	jr z, .updateCursorPosition
 	ld c, d
@@ -256,12 +255,12 @@ LinkMenu:
 	ld a, [wLinkMenuSelectionSendBuffer]
 	and PAD_B << 2 ; was B button pressed?
 	jr nz, .choseCancel ; cancel if B pressed
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $2
 	jr z, .choseCancel
 	xor a
 	ld [wWalkBikeSurfState], a ; start walking
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld a, COLOSSEUM
 	jr nz, .next
@@ -466,7 +465,7 @@ DisplayOptionMenu:
 	ld de, OptionMenuCancelText
 	call PlaceString
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ASSERT BIT_FAST_TEXT_DELAY == 0
 	inc a ; 1 << BIT_FAST_TEXT_DELAY

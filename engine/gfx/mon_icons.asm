@@ -1,6 +1,6 @@
 AnimatePartyMon_ForceSpeed1:
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld b, a
 	inc a
 	jr GetAnimationSpeed
@@ -11,7 +11,7 @@ AnimatePartyMon_ForceSpeed1:
 ; 2: red
 AnimatePartyMon::
 	ld hl, wPartyMenuHPBarColors
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, 0
 	add hl, bc
@@ -53,7 +53,7 @@ GetAnimationSpeed:
 	push bc
 	ld hl, wShadowOAMSprite00TileID
 	ld bc, OBJ_SIZE * 4
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call AddNTimes
 	ld c, ICONOFFSET
 	ld a, [hl]

@@ -83,7 +83,7 @@ HealParty:
 
 .done
 	xor a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld [wUsingPPUp], a
 
 	ld a, [wPartyCount]
@@ -92,7 +92,7 @@ HealParty:
 	push bc
 	call RestoreBonusPP
 	pop bc
-	ld hl, wWhichPokemon
+	ld hl, hWhichPokemon
 	inc [hl]
 	dec b
 	jr nz, .ppup

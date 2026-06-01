@@ -1,5 +1,5 @@
 LoadMonData_::
-; Load monster [wWhichPokemon] from list [wMonDataLocation]:
+; Load monster [hWhichPokemon] from list [wMonDataLocation]:
 ;  0: partymon
 ;  1: enemymon
 ;  2: boxmon
@@ -21,7 +21,7 @@ LoadMonData_::
 	cp DAYCARE_DATA
 	jr z, .GetMonHeader
 
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld e, a
 	callfar GetMonSpecies
 
@@ -54,7 +54,7 @@ LoadMonData_::
 	jr .copyMonData
 
 .getMonEntry
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 
 .copyMonData

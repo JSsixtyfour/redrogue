@@ -13,7 +13,7 @@ BillsHousePC:
 	tx_pre_jump BillsHouseMonitorText
 .doCellSeparator
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	tx_pre BillsHouseInitiatedText
 	ld c, 32
 	call DelayFrames
@@ -40,7 +40,7 @@ BillsHousePC:
 	ret
 .displayBillsHousePokemonList
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	tx_pre BillsHousePokemonList
 	ret
 
@@ -71,7 +71,7 @@ BillsHousePokemonList::
 	call PrintText
 	xor a
 	ld [wMenuItemOffset], a ; not used
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -97,7 +97,7 @@ BillsHousePokemonList::
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jr nz, .cancel
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	add EEVEE
 	cp EEVEE
 	jr z, .displayPokedex

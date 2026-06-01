@@ -14,7 +14,7 @@ DaycareGentlemanText:
 	ld hl, .IntroText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, .ComeAgainText
 	jp nz, .done
@@ -25,7 +25,7 @@ DaycareGentlemanText:
 	ld hl, .WhichMonText
 	call PrintText
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wPartyMenuTypeOrMessageID], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
@@ -41,7 +41,7 @@ DaycareGentlemanText:
 	jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, .WillLookAfterMonText
@@ -135,7 +135,7 @@ DaycareGentlemanText:
 	call DisplayTextBoxID
 	call YesNoChoice
 	ld hl, .AllRightThenText
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .leaveMonInDayCare
 	ld hl, wDayCareTotalCost

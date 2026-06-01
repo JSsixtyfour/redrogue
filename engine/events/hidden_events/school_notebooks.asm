@@ -1,7 +1,7 @@
 PrintNotebookText:
 	call EnableAutoTextBoxDrawing
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld a, [wHiddenEventFunctionArgument]
 	jp PrintPredefTextID
 
@@ -35,7 +35,7 @@ TurnPageSchoolNotebook:
 	ld hl, TurnPageText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret
 

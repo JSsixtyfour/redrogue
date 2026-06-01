@@ -17,7 +17,7 @@ DecodeArrowMovementRLE::
 	ld hl, wSimulatedJoypadStatesEnd
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ret
 .nextArrowMovementTileEntry1
 	inc hl

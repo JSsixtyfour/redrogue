@@ -50,7 +50,7 @@ CeladonMansion3FGameDesignerText:
 	text_asm
 	callfar DisplayDiploma
 	ld a, TRUE
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	jp TextScriptEnd
 
 CeladonMansion3FGameProgramPCText:

@@ -35,19 +35,19 @@ Route22GateScriptCoords:
 
 Route22GateMovePlayerDownScript:
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	ld [wSpritePlayerStateData1FacingDirection], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	jp StartSimulatingJoypadStates
 
 Route22GatePlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call Delay3
 	ld a, SCRIPT_ROUTE22GATE_DEFAULT
 	ld [wRoute22GateCurScript], a

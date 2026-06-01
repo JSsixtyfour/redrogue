@@ -52,7 +52,7 @@ IndigoPlateauLobbyGymGuideText:
 YesNoScript:
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret
 
@@ -108,7 +108,7 @@ PCDaycareLadyText:
 	ld hl, IntroText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, ComeAgainText
 	jp nz, .done
@@ -119,7 +119,7 @@ PCDaycareLadyText:
 	ld hl, WhichMonText
 	call PrintText
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wPartyMenuTypeOrMessageID], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
@@ -135,7 +135,7 @@ PCDaycareLadyText:
 	;jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, WillLookAfterMonText
@@ -229,7 +229,7 @@ PCDaycareLadyText:
 	call DisplayTextBoxID
 	call YesNoChoice
 	ld hl, AllRightThenText
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .leaveMonInDayCare
 	ld hl, wDayCareTotalCost2
@@ -320,7 +320,7 @@ PCDaycareGentlemanText:
 	ld hl, IntroText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, ComeAgainText
 	jp nz, .done
@@ -331,7 +331,7 @@ PCDaycareGentlemanText:
 	ld hl, WhichMonText
 	call PrintText
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wPartyMenuTypeOrMessageID], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
@@ -347,7 +347,7 @@ PCDaycareGentlemanText:
 	;jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, WillLookAfterMonText
@@ -441,7 +441,7 @@ PCDaycareGentlemanText:
 	call DisplayTextBoxID
 	call YesNoChoice
 	ld hl, AllRightThenText
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .leaveMonInDayCare
 	ld hl, wDayCareTotalCost
@@ -601,7 +601,7 @@ PCPokemonSalesmanText:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .choseNo
 	ldh [hMoney], a
@@ -713,7 +713,7 @@ PCMoveTutorText::
 	ld hl, PCMoveTutorGreetingText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
 	xor a
@@ -736,7 +736,7 @@ PCMoveTutorText::
 	xor a
 	ld [wListScrollOffset], a
 	ld [wPartyMenuTypeOrMessageID], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld [wMenuItemToSwap], a
 	call DisplayPartyMenu
 	push af
@@ -745,7 +745,7 @@ PCMoveTutorText::
 	call LoadGBPal
 	pop af
 	jp c, .exit
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	push bc
 	ld hl, PrepareMoveTutorList
@@ -762,7 +762,7 @@ PCMoveTutorText::
 	ld hl, PCMoveTutorWhichMoveText
 	call PrintText
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, MOVESLISTMENU
 	ld [wListMenuID], a
@@ -785,7 +785,7 @@ PCMoveTutorText::
 	call CopyToStringBuffer ; copy name to wcf4b
 	pop bc
 	ld a, b
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [wLetterPrintingDelayFlags]
 	push af
 	xor a

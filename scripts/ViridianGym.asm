@@ -44,7 +44,7 @@ GiovanniShowOrHideExitBlock:
 
 ViridianGymResetScripts:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wViridianGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -72,7 +72,7 @@ ViridianGymDefaultScript:
 	ld a, SFX_ARROW_TILES
 	call PlaySound
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_VIRIDIANGYM_PLAYER_SPINNING
 	ld [wCurMapScript], a
 	ret
@@ -148,11 +148,11 @@ ViridianGymArrowMovement13:
 	db -1 ; end   
 
 ViridianGymPlayerSpinningScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	jr nz, .ViridianGymLoadSpinnerArrow
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wMovementFlags
 	res BIT_SPINNING, [hl]
 	ld a, SCRIPT_VIRIDIANGYM_DEFAULT
@@ -162,11 +162,11 @@ ViridianGymPlayerSpinningScript:
 	farjp LoadSpinnerArrowTiles
 
 ViridianGymGiovanniPostBattle:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ViridianGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 ; fallthrough
 ViridianGymReceiveTM27:
 	ld a, TEXT_VIRIDIANGYM_GIOVANNI_EARTH_BADGE_INFO
@@ -192,8 +192,6 @@ ViridianGymReceiveTM27:
 	call DisplayTextID
 .gym_victory
 	ld hl, wObtainedBadges
-	set BIT_EARTHBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_EARTHBADGE, [hl]
 
 	; deactivate gym trainers
@@ -241,7 +239,7 @@ ViridianGymGiovanniText:
 	jr .text_script_end
 .afterBeat
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	call GBFadeOutToBlack
@@ -262,7 +260,7 @@ ViridianGymGiovanniText:
 	ld de, .ReceivedEarthBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_GIOVANNI

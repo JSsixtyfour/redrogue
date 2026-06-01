@@ -7,7 +7,7 @@ DisplayPokemartDialogue_::
 .loop
 	xor a
 	ld [wListScrollOffset], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wPlayerMonNumber], a
 	inc a
 	ld [wPrintItemPrices], a
@@ -62,7 +62,7 @@ DisplayPokemartDialogue_::
 	ld [wListPointer + 1], a
 	xor a
 	ld [wPrintItemPrices], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
@@ -142,7 +142,7 @@ DisplayPokemartDialogue_::
 	ld a, h
 	ld [wListPointer + 1], a
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	inc a
 	ld [wPrintItemPrices], a
 	inc a ; a = 2 (PRICEDITEMLISTMENU)
@@ -221,7 +221,7 @@ DisplayPokemartDialogue_::
 	ld hl, PokemartThankYouText
 	call PrintText
 	ld a, 1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call UpdateSprites
 	ld a, [wSavedListScrollOffset]
 	ld [wListScrollOffset], a

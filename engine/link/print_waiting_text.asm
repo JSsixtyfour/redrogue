@@ -2,7 +2,7 @@ PrintWaitingText::
 	hlcoord 3, 10
 	ld b, 1
 	ld c, 11
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr z, .trade
 ; battle

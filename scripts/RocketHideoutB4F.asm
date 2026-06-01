@@ -32,7 +32,7 @@ RocketHideoutB4FDoorCallbackScript:
 
 RocketHideoutB4FSetDefaultScript:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRocketHideoutB4FCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -45,12 +45,12 @@ RocketHideoutB4F_ScriptPointers:
 	dw_const RocketHideoutB4FBeatGiovanniScript,    SCRIPT_ROCKETHIDEOUTB4F_BEAT_GIOVANNI
 
 RocketHideoutB4FBeatGiovanniScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, RocketHideoutB4FSetDefaultScript
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI
 	ld a, TEXT_ROCKETHIDEOUTB4F_GIOVANNI_HOPE_WE_MEET_AGAIN
 	ldh [hTextID], a
@@ -65,7 +65,7 @@ RocketHideoutB4FBeatGiovanniScript:
 	call UpdateSprites
 	call GBFadeInFromBlack
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wCurrentMapScriptFlags
 	set BIT_CUR_MAP_LOADED_1, [hl]
 	ld a, SCRIPT_ROCKETHIDEOUTB4F_DEFAULT
@@ -109,7 +109,7 @@ RocketHideoutB4FGiovanniText:
 	ld de, .WhatCannotBeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a

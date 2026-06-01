@@ -2,13 +2,13 @@ PrepareOAMData::
 ; Determine OAM data for currently visible
 ; sprites and write it to wShadowOAM.
 
-	ld a, [wUpdateSpritesEnabled]
+	ldh a, [hUpdateSpritesEnabled]
 	dec a
 	jr z, .updateEnabled
 
 	cp -1
 	ret nz
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	jp HideSprites
 
 .updateEnabled

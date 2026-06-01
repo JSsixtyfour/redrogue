@@ -258,10 +258,6 @@ CableClub_DoBattleOrTradeAgain:
 	ld hl, wEnemyMons + (SERIAL_PREAMBLE_BYTE - 1)
 	dec c
 	jr nz, .unpatchEnemyMonsLoop
-	ld a, LOW(wEnemyMonOT)
-	ld [wUnusedNamePointer], a
-	ld a, HIGH(wEnemyMonOT)
-	ld [wUnusedNamePointer + 1], a
 	xor a
 	ld [wTradeCenterPointerTableIndex], a
 	ld a, SFX_STOP_ALL_MUSIC
@@ -321,7 +317,7 @@ TradeCenter_SelectMon:
 	ld [hli], a
 	ld [hl], a
 	ld [wMenuWatchMovingOutOfBounds], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuJoypadPollCount], a
 	inc a
@@ -353,12 +349,12 @@ TradeCenter_SelectMon:
 ; if A button pressed
 	ld a, [wMaxMenuItem]
 	ld c, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp c
 	jr c, .displayEnemyMonStats
 	ld a, [wMaxMenuItem]
 	dec a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .displayEnemyMonStats
 	ld a, INIT_ENEMYOT_LIST
 	ld [wInitListType], a
@@ -378,13 +374,13 @@ TradeCenter_SelectMon:
 	ld h, a
 	ld a, [wTileBehindCursor]
 	ld [hl], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wPartyCount]
 	dec a
 	cp b
 	jr nc, .playerMonMenu
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jr .playerMonMenu
 .enemyMonMenu_LeftNotPressed
 	bit B_PAD_DOWN, a
@@ -436,14 +432,14 @@ TradeCenter_SelectMon:
 	ld h, a
 	ld a, [wTileBehindCursor]
 	ld [hl], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wEnemyPartyCount]
 	dec a
 	cp b
 	jr nc, .notPastLastEnemyMon
 ; when switching to the enemy mon menu, if the menu selection would be past the last enemy mon, select the last enemy mon
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 .notPastLastEnemyMon
 	jp .enemyMonMenu
 .playerMonMenu_RightNotPressed
@@ -460,7 +456,7 @@ TradeCenter_SelectMon:
 	call PlaceUnfilledArrowMenuCursor
 	ld a, [wMaxMenuItem]
 	ld c, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp c
 	jr c, .displayStatsTradeMenu
 	ld a, [wMaxMenuItem]
@@ -475,7 +471,7 @@ TradeCenter_SelectMon:
 	ld de, .statsTrade
 	call PlaceString
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuJoypadPollCount], a
 	ld [wMaxMenuItem], a
@@ -495,7 +491,7 @@ TradeCenter_SelectMon:
 	jr z, .displayPlayerMonStats
 .cancelPlayerMonChoice
 	pop af
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call LoadScreenTilesFromBuffer1
 	jp .playerMonMenu
 .selectTradeMenuItem
@@ -513,7 +509,7 @@ TradeCenter_SelectMon:
 	jr .choseTrade
 .displayPlayerMonStats
 	pop af
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, INIT_PLAYEROT_LIST
 	ld [wInitListType], a
 	callfar InitList ; the list isn't used
@@ -523,7 +519,7 @@ TradeCenter_SelectMon:
 .choseTrade
 	call PlaceUnfilledArrowMenuCursor
 	pop af
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wTradingWhichPlayerMon], a
 	ld [wSerialExchangeNybbleSendData], a
 	call Serial_PrintWaitingTextAndSyncAndExchangeNybble
@@ -538,7 +534,7 @@ TradeCenter_SelectMon:
 .statsTrade
 	db "STATS     TRADE@"
 .selectedCancelMenuItem
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wMaxMenuItem]
 	cp b
@@ -566,7 +562,7 @@ TradeCenter_SelectMon:
 	ldcoord_a 1, 16
 	ld a, [wPartyCount]
 	dec a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jp .playerMonMenu
 .cancelMenuItem_APressed
 	ld a, '▷' ; unfilled arrow cursor
@@ -623,8 +619,8 @@ TradeCenter_PlaceSelectedEnemyMonMenuCursor:
 	ret
 
 TradeCenter_DisplayStats:
-	ld a, [wCurrentMenuItem]
-	ld [wWhichPokemon], a
+	ldh a, [hCurrentMenuItem]
+	ldh [hWhichPokemon], a
 	predef StatusScreen
 	predef StatusScreen2
 	call GBPalNormal
@@ -723,7 +719,7 @@ TradeCenter_Trade:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	call LoadScreenTilesFromBuffer1
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .tradeConfirmed
 ; if trade cancelled
@@ -788,7 +784,7 @@ TradeCenter_Trade:
 	ld a, [hl]
 	ld [wTradedEnemyMonOTID + 1], a
 	ld a, [wTradingWhichPlayerMon]
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld hl, wPartySpecies
 	ld b, 0
 	ld c, a
@@ -800,7 +796,7 @@ TradeCenter_Trade:
 	call RemovePokemon
 	ld a, [wTradingWhichEnemyMon]
 	ld c, a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld hl, wEnemyPartySpecies
 	ld d, 0
 	ld e, a
@@ -817,7 +813,7 @@ TradeCenter_Trade:
 	call AddEnemyMonToPlayerParty
 	ld a, [wPartyCount]
 	dec a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, [wTradingWhichEnemyMon]

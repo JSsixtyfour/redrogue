@@ -79,7 +79,7 @@ DisplayPCMainMenu::
 	ld a, 1
 	ld [wTopMenuItemX], a
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, 1
 	ldh [hAutoBGTransferEnabled], a
@@ -113,7 +113,7 @@ BillsPC_::
 
 BillsPCMenu:
 	ld a, [wParentMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld hl, vChars2 tile $78
 	ld de, PokeballTileGraphics
 	lb bc, BANK(PokeballTileGraphics), 1
@@ -131,8 +131,7 @@ BillsPCMenu:
 	ld [hli], a ; wTopMenuItemY
 	dec a
 	ld [hli], a ; wTopMenuItemX
-	inc hl
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, 4
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
@@ -174,7 +173,7 @@ BillsPCMenu:
 	bit B_PAD_B, a
 	jp nz, ExitBillsPC
 	call PlaceUnfilledArrowMenuCursor
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wParentMenuItem], a
 	and a
 	jp z, BillsPCWithdraw ; withdraw
@@ -273,7 +272,7 @@ BillsPCWithdraw:
 	jp c, BillsPCMenu
 	call DisplayDepositWithdrawMenu
 	jp nc, BillsPCMenu
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wBoxMonNicks
 	call GetPartyMonName
 	ld a, [wCurPartySpecies]
@@ -304,7 +303,7 @@ BillsPCRelease:
 	ld hl, OnceReleasedText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .loop
 	inc a
@@ -332,9 +331,9 @@ DisplayMonListMenu:
 	inc a                ; MONSTER_NAME
 	ld [wNameListType], a
 	ld a, [wPartyAndBillsPCSavedMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call DisplayListMenuID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ret
 
@@ -350,7 +349,7 @@ BoxNoPCText:
 	db "BOX No.@"
 
 KnowsHMMove::
-; returns whether mon with party index [wWhichPokemon] knows an HM move
+; returns whether mon with party index [hWhichPokemon] knows an HM move
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	jr .next
@@ -358,7 +357,7 @@ KnowsHMMove::
 	ld hl, wBoxMon1Moves
 	ld bc, BOXMON_STRUCT_LENGTH
 .next
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld b, NUM_MOVES
 .loop
@@ -395,14 +394,14 @@ DisplayDepositWithdrawMenu:
 	hlcoord 11, 14
 	ld de, StatsCancelPCText
 	call PlaceString
+	xor a
+	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, 12
 	ld [hli], a ; wTopMenuItemY
 	ld a, 10
 	ld [hli], a ; wTopMenuItemX
-	xor a
-	ld [hli], a ; wCurrentMenuItem
-	inc hl
+	inc hl ; wTileBehindCursor
 	ld a, 2
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
@@ -418,7 +417,7 @@ DisplayDepositWithdrawMenu:
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jr nz, .exit
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .choseDepositWithdraw
 	dec a
@@ -507,7 +506,7 @@ CableClubLeftGameboy::
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	cp SPRITE_FACING_RIGHT
 	ret nz
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp TRADE_CENTER
 	ld a, LINK_STATE_START_TRADE
 	jr z, .next
@@ -524,7 +523,7 @@ CableClubRightGameboy::
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	cp SPRITE_FACING_LEFT
 	ret nz
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp TRADE_CENTER
 	ld a, LINK_STATE_START_TRADE
 	jr z, .next

@@ -2,7 +2,7 @@ OaksAideScript:
 	ld hl, OaksAideHiText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .choseNo
 	ld hl, wPokedexOwned

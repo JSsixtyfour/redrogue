@@ -12,7 +12,7 @@ HiddenItems:
 	ret nz
 	call EnableAutoTextBoxDrawing
 	ld a, 1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld a, [wHiddenEventFunctionArgument] ; item ID
 	ld [wNamedObjectIndex], a
 	call GetItemName
@@ -40,7 +40,7 @@ FoundHiddenItemText::
 .bagFull
 	call WaitForTextScrollButtonPress ; wait for button press
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, HiddenItemBagFullText
 	call PrintText
 	jp TextScriptEnd
@@ -136,7 +136,7 @@ FindHiddenItemOrCoinsIndex:
 	ld d, a
 	ld a, [wHiddenEventX]
 	ld e, a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 	ld c, -1
 .loop

@@ -3,7 +3,7 @@ AnimateHealingMachine:
 	ld hl, vChars0 tile $7c
 	lb bc, BANK(PokeCenterFlashingMonitorAndHealBall), 3 ; should be 2
 	call CopyVideoData
-	ld hl, wUpdateSpritesEnabled
+	ld hl, hUpdateSpritesEnabled
 	ld a, [hl]
 	push af
 	ld [hl], $ff

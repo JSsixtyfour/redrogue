@@ -9,7 +9,7 @@ DisplayElevatorFloorMenu:
 	ld a, [wListScrollOffset]
 	push af
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 	ld [wPrintItemPrices], a
 	ld a, SPECIALLISTMENU
@@ -22,7 +22,7 @@ DisplayElevatorFloorMenu:
 	ld hl, wCurrentMapScriptFlags
 	set BIT_CUR_MAP_USED_ELEVATOR, [hl]
 	ld hl, wElevatorWarpMaps
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	add a
 	ld d, 0
 	ld e, a

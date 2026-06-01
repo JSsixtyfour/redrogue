@@ -34,7 +34,7 @@ ViridianMartDefaultScript:
 	ld de, .PlayerMovement
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_VIRIDIANMART_OAKS_PARCEL
 	ld [wViridianMartCurScript], a
@@ -46,7 +46,7 @@ ViridianMartDefaultScript:
 	db -1 ; end
 
 ViridianMartOaksParcelScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3

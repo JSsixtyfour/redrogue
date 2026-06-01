@@ -3,7 +3,7 @@ ResetStatusAndHalveMoneyOnBlackout::
 	xor a
 	ld [wBattleResult], a
 	ld [wWalkBikeSurfState], a
-	ld [wIsInBattle], a
+	ldh [hIsInBattle], a
 	ld [wMapPalOffset], a
 	ld [wNPCMovementScriptFunctionNum], a
 	ldh [hJoyHeld], a
@@ -42,5 +42,5 @@ ResetStatusAndHalveMoneyOnBlackout::
 	res BIT_FLY_WARP, [hl]
 	set BIT_ESCAPE_WARP, [hl]
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	predef_jump HealParty

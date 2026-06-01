@@ -6,7 +6,7 @@ HandleMidJump::
 EnterMap::
 ; Load a new map.
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call LoadMapData
 	farcall ClearVariablesOnEnterMap
 	ld hl, wStatusFlags2
@@ -36,7 +36,7 @@ EnterMap::
 	set BIT_CUR_MAP_LOADED_1, [hl]
 	set BIT_CUR_MAP_LOADED_2, [hl]
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 OverworldLoop::
 	call DelayFrame
@@ -115,10 +115,10 @@ OverworldLoopLessDelay::
 	jr z, .changeMap
 ; XXX can this code be reached?
 	predef TryLoadSaveFile
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld [wDestinationMap], a
 	call PrepareForSpecialWarp
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 	ld hl, wCurMapTileset
 	set BIT_NO_PREVIOUS_MAP, [hl]
@@ -311,7 +311,7 @@ OverworldLoopLessDelay::
 	and a
 	jp nz, WarpFound2
 .notSafariZone
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, CheckWarpsNoCollision
 	predef ApplyOutOfBattlePoisonDamage ; also increment daycare mon exp
@@ -333,14 +333,14 @@ OverworldLoopLessDelay::
 	set BIT_CUR_MAP_LOADED_2, [hl]
 	xor a
 	ldh [hJoyHeld], a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp CINNABAR_GYM
 	jr nz, .notCinnabarGym
 	SetEvent EVENT_2A7
 .notCinnabarGym
 	ld hl, wStatusFlags4
 	set BIT_BATTLE_OVER_OR_BLACKOUT, [hl]
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp OAKS_LAB
 	jp z, .noFaintCheck ; no blacking out if the player lost to the rival in Oak's lab
 	callfar AnyPartyAlive
@@ -353,7 +353,7 @@ OverworldLoopLessDelay::
 	jp EnterMap
 .allPokemonFainted
 	ld a, $ff
-	ld [wIsInBattle], a
+	ldh [hIsInBattle], a
 	call RunMapScript
 	jp HandleBlackOut
 
@@ -378,7 +378,7 @@ DoBikeSpeedup::
 	ld a, [wNPCMovementScriptPointerTableNum]
 	and a
 	ret nz
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp ROUTE_17 ; Cycling Road
 	jr nz, .goFaster
 	ldh a, [hJoyHeld]
@@ -486,17 +486,15 @@ WarpFound2::
 	ld a, [wNumberOfWarps]
 	sub c
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
 	call CheckIfInOutsideMap
 	jr nz, .indoorMaps
 ; this is for handling "outside" maps that can't have the 0xFF destination map
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld [wLastMap], a
-	ld a, [wCurMapWidth]
-	ld [wUnusedLastMapWidth], a
 	ldh a, [hWarpDestinationMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	cp ROCK_TUNNEL_1F
 	jr nz, .notRockTunnel
 	ld a, $06
@@ -513,7 +511,7 @@ WarpFound2::
 	cp LAST_MAP
 	jr z, .goBackOutside
 ; if not going back to the previous map
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	farcall IsPlayerStandingOnWarpPadOrHole
 	ld a, [wStandingOnWarpPadOrHole]
 	dec a ; is the player on a warp pad?
@@ -532,7 +530,7 @@ WarpFound2::
 	jr .done
 .goBackOutside
 	ld a, [wLastMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	call PlayMapChangeSound
 	xor a
 	ld [wMapPalOffset], a
@@ -554,7 +552,7 @@ CheckMapConnections::
 	cp $ff
 	jr nz, .checkEastMap
 	ld a, [wWestConnectedMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld a, [wWestConnectedMapXAlignment] ; new X coordinate upon entering west map
 	ld [wXCoord], a
 	ld a, [wYCoord]
@@ -591,7 +589,7 @@ CheckMapConnections::
 	cp b
 	jr nz, .checkNorthMap
 	ld a, [wEastConnectedMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld a, [wEastConnectedMapXAlignment] ; new X coordinate upon entering east map
 	ld [wXCoord], a
 	ld a, [wYCoord]
@@ -627,7 +625,7 @@ CheckMapConnections::
 	cp $ff
 	jr nz, .checkSouthMap
 	ld a, [wNorthConnectedMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld a, [wNorthConnectedMapYAlignment] ; new Y coordinate upon entering north map
 	ld [wYCoord], a
 	ld a, [wXCoord]
@@ -655,7 +653,7 @@ CheckMapConnections::
 	cp b
 	jr nz, .didNotEnterConnectedMap
 	ld a, [wSouthConnectedMap]
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld a, [wSouthConnectedMapYAlignment] ; new Y coordinate upon entering south map
 	ld [wYCoord], a
 	ld a, [wXCoord]
@@ -720,7 +718,7 @@ CheckIfInOutsideMap::
 ; "function 2" passes when the the tile in front of the player is among a certain set
 ; sets carry if the check passes, otherwise clears carry
 ExtraWarpCheck::
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SS_ANNE_3F
 	jr z, .useFunction1
 	cp ROCKET_HIDEOUT_B1F
@@ -789,7 +787,7 @@ HandleFlyWarpOrDungeonWarp::
 	xor a
 	ld [wBattleResult], a
 	ld [wWalkBikeSurfState], a
-	ld [wIsInBattle], a
+	ldh [hIsInBattle], a
 	ld [wMapPalOffset], a
 	ld hl, wStatusFlags6
 	set BIT_FLY_OR_DUNGEON_WARP, [hl]
@@ -847,7 +845,7 @@ IsBikeRidingAllowed::
 ; or maps with tilesets in BikeRidingTilesets.
 ; Return carry if biking is allowed.
 
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp ROUTE_23
 	jr z, .allowed
 	cp INDIGO_PLATEAU
@@ -1224,7 +1222,7 @@ CollisionCheckOnLand::
 	bit BIT_LEDGE_OR_FISHING, a
 	jr nz, .noCollision
 ; if not jumping a ledge
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	jr nz, .noCollision ; no collisions when the player's movements are being controlled by the game
 	ld a, [wPlayerDirection] ; the direction that the player is trying to go in
@@ -1826,7 +1824,7 @@ JoypadOverworld::
 	ld a, [wStatusFlags7]
 	bit BIT_TRAINER_BATTLE, a
 	jr nz, .notForcedDownwards
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp ROUTE_17 ; Cycling Road
 	jr nz, .notForcedDownwards
 	ldh a, [hJoyHeld]
@@ -1844,7 +1842,7 @@ JoypadOverworld::
 	ld a, [wOverrideSimulatedJoypadStatesMask] ; bit mask for button presses that override simulated ones
 	and b
 	ret nz ; return if the simulated button presses are overridden
-	ld hl, wSimulatedJoypadStatesIndex
+	ld hl, hSimulatedJoypadStatesIndex
 	dec [hl]
 	ld a, [hl]
 	cp $ff
@@ -1866,10 +1864,9 @@ JoypadOverworld::
 ; if done simulating button presses
 .doneSimulating
 	xor a
-	ld [wUnusedOverrideSimulatedJoypadStatesIndex], a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld [wSimulatedJoypadStatesEnd], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ldh [hJoyHeld], a
 	ld hl, wMovementFlags
 	ld a, [hl]
@@ -1961,7 +1958,7 @@ RunMapScript::
 	pop de
 	pop hl
 	call RunNPCMovementScript
-	ld a, [wCurMap] ; current map number
+	ldh a, [hCurMap] ; current map number
 	call SwitchToMapRomBank ; change to the ROM bank the map's data is in
 	ld hl, wCurMapScriptPtr
 	ld a, [hli]
@@ -2008,8 +2005,7 @@ LoadPlayerSpriteGraphicsCommon::
 LoadMapHeader::
 	farcall MarkTownVisitedAndLoadToggleableObjects
 	ld a, [wCurMapTileset]
-	ld [wUnusedCurMapTilesetCopy], a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call SwitchToMapRomBank
 	ld a, [wCurMapTileset]
 	ld b, a
@@ -2019,7 +2015,7 @@ LoadMapHeader::
 	bit BIT_NO_PREVIOUS_MAP, b
 	ret nz
 	ld hl, MapHeaderPointers
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	sla a
 	jr nc, .noCarry1
 	inc h
@@ -2261,7 +2257,7 @@ LoadMapHeader::
 	ld a, [wCurMapWidth] ; map width in 4x4 tile blocks
 	add a ; double it
 	ld [wCurrentMapWidth2], a ; map width in 2x2 tile blocks
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld c, a
 	ld b, $00
 	ldh a, [hLoadedROMBank]
@@ -2305,7 +2301,6 @@ LoadMapData::
 	ldh [hSCY], a
 	ldh [hSCX], a
 	ld [wWalkCounter], a
-	ld [wUnusedCurMapTilesetCopy], a
 	ld [wWalkBikeSurfStateCopy], a
 	ld [wSpriteSetID], a
 	call LoadTextBoxTilePatterns
@@ -2335,7 +2330,7 @@ LoadMapData::
 	dec b
 	jr nz, .vramCopyLoop
 	ld a, $01
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call EnableLCD
 	ld b, SET_PAL_OVERWORLD
 	call RunPaletteCommand

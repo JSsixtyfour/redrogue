@@ -1,9 +1,9 @@
-; try to evolve the mon in [wWhichPokemon]
+; try to evolve the mon in [hWhichPokemon]
 TryEvolvingMon:
 	ld hl, wCanEvolveFlags
 	xor a
 	ld [hl], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, FLAG_SET
 	call Evolution_FlagAction
@@ -16,7 +16,7 @@ EvolutionAfterBattle:
 	xor a
 	ld [wEvolutionOccurred], a
 	dec a
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	push hl
 	push bc
 	push de
@@ -24,7 +24,7 @@ EvolutionAfterBattle:
 	push hl
 
 Evolution_PartyMonLoop: ; loop over party mons
-	ld hl, wWhichPokemon
+	ld hl, hWhichPokemon
 	inc [hl]
 	pop hl
 	inc hl
@@ -33,7 +33,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jp z, .done
 	ld [wEvoOldSpecies], a
 	push hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld hl, wCanEvolveFlags
 	ld b, FLAG_TEST
@@ -113,7 +113,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	push hl
 	ld a, [hl]
 	ld [wEvoNewSpecies], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	call CopyToStringBuffer
@@ -129,7 +129,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, $1
 	ldh [hAutoBGTransferEnabled], a
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call ClearSprites
 	callfar EvolveMon
 	jp c, CancelledEvolution
@@ -175,7 +175,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld de, wLoadedMonStats
 	ld b, $1
 	call CalcStats
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -212,7 +212,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	call LearnMoveFromLevelUp
 	pop hl
 	predef SetPartyMonTypes
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	call z, Evolution_ReloadTilesetTilePatterns
 	predef IndexToPokedex
@@ -251,7 +251,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, [wLinkState]
 	cp LINK_STATE_TRADING
 	ret z
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	ret nz
 	ld a, [wEvolutionOccurred]
@@ -280,7 +280,7 @@ RenameEvolvedMon:
 	ret nz
 	cp '@'
 	jr nz, .compareNamesLoop
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, NAME_LENGTH
 	ld hl, wPartyMonNicks
 	call AddNTimes
@@ -356,7 +356,7 @@ LearnMoveFromLevelUp:
 ; [wMonDataLocation] to 0 because other data locations are not supported.
 ; If it is not 0, this function will not work properly.
 	ld hl, wPartyMon1Moves
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 .next
@@ -517,9 +517,9 @@ Evolution_FlagAction:
 ;joenote - custom function by Mateo for move relearner
 PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon in shin pokered but it sure as shit doesn't work here - PvK
 ; Loads relearnable move list to wRelearnableMoves.
-; Input: party mon index = [wWhichPokemon]
+; Input: party mon index = [hWhichPokemon]
 	; Get mon id.
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, 0
 	ld hl, wPartySpecies
@@ -538,14 +538,14 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	ld l, a  ; hl = pointer to evos moves data for our mon
 	push hl
 	; Get pointer to mon's currently-known moves.
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Level
 	ld bc, wPartyMon2 - wPartyMon1
 	call AddNTimes
 	ld a, [hl]
 	ld b, a
 	push bc
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, wPartyMon2 - wPartyMon1
 	call AddNTimes
@@ -709,9 +709,9 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 ; Modified version of Move Relearner code used for Move Tutors
 PrepareMoveTutorList::
 ; Loads relearnable move list to wRelearnableMoves.
-; Input: party mon index = [wWhichPokemon]
+; Input: party mon index = [hWhichPokemon]
 	; Get mon id.
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, 0
 	ld hl, wPartySpecies
@@ -730,14 +730,14 @@ PrepareMoveTutorList::
 	ld l, a  ; hl = pointer to evos moves data for our mon
 	push hl
 	; Get pointer to mon's currently-known moves.
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Level
 	ld bc, wPartyMon2 - wPartyMon1
 	call AddNTimes
 	ld a, [hl]
 	ld b, a
 	push bc
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Moves
 	ld bc, wPartyMon2 - wPartyMon1
 	call AddNTimes

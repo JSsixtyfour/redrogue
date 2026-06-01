@@ -86,7 +86,7 @@ LanceTriggerMovementCoords:
 
 LancesRoomLanceEndBattleScript:
 	call EndTrainerBattle
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetLanceScript
 	ld a, TEXT_LANCESROOM_LANCE
@@ -96,12 +96,12 @@ LancesRoomLanceEndBattleScript:
 WalkToLance:
 ; Moves the player down the hallway to Lance's room.
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wSimulatedJoypadStatesEnd
 	ld de, WalkToLance_RLEList
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_LANCESROOM_PLAYER_IS_MOVING
 	ld [wLancesRoomCurScript], a
@@ -116,12 +116,12 @@ WalkToLance_RLEList:
 	db -1 ; end
 
 LancesRoomPlayerIsMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a ; SCRIPT_LANCESROOM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wLancesRoomCurScript], a
 	ld [wCurMapScript], a
 	ret

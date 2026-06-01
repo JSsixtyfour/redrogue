@@ -22,7 +22,7 @@ PokemonTower7F_Script:
 
 PokemonTower7FSetDefaultScript:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wPokemonTower7FCurScript], a ; SCRIPT_POKEMONTOWER7F_DEFAULT
 	ld [wCurMapScript], a ; SCRIPT_POKEMONTOWER7F_DEFAULT
 	ret
@@ -38,13 +38,13 @@ PokemonTower7F_ScriptPointers:
 PokemonTower7FEndBattleScript:
 	ld hl, wMiscFlags
 	res BIT_SEEN_BY_TRAINER, [hl]
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, PokemonTower7FSetDefaultScript
 	call EndTrainerBattle
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
-	ld a, [wSpriteIndex]
+	ldh [hJoyIgnore], a
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call DisplayTextID
 	call PokemonTower7FRocketLeaveMovementScript
@@ -58,7 +58,7 @@ PokemonTower7FHideNPCScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	ld hl, wToggleableObjectList
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ld b, a
 .toggleableObjectsListLoop
 	ld a, [hli]
@@ -68,8 +68,8 @@ PokemonTower7FHideNPCScript:
 	ld [wToggleableObjectIndex], a   ; remove toggleable object
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
-	ld [wSpriteIndex], a
+	ldh [hJoyIgnore], a
+	ldh [hActiveSpriteIndex], a
 	ld [wTrainerHeaderFlagBit], a
 	ld [wOpponentAfterWrongAnswer], a ; not used here; likely a mistake copied from maps/CinnabarGym.asm
 	ld a, SCRIPT_POKEMONTOWER7F_DEFAULT
@@ -79,7 +79,7 @@ PokemonTower7FHideNPCScript:
 
 PokemonTower7FWarpToMrFujiHouseScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_POKEMON_TOWER_7F_MR_FUJI
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -100,7 +100,7 @@ PokemonTower7FWarpToMrFujiHouseScript:
 
 PokemonTower7FRocketLeaveMovementScript:
 	ld hl, PokemonTower7FNPCCoordMovementTable
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	dec a
 	swap a
 	ld d, $0
@@ -120,7 +120,7 @@ PokemonTower7FRocketLeaveMovementScript:
 	ld a, [hli]
 	ld d, [hl]
 	ld e, a
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp MoveSprite
 .inc_and_skip

@@ -147,7 +147,7 @@ SilphCo11FTeamRocketLeavesScript:
 
 SilphCo11FResetCurScript:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 ; fallthrough
 SilphCo11FSetCurScript:
 	ld [wSilphCo11FCurScript], a
@@ -174,7 +174,7 @@ SilphCo11FDefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SILPHCO11F_GIOVANNI
 	ldh [hTextID], a
 	call DisplayTextID
@@ -206,7 +206,7 @@ SilphCo11FSetPlayerAndSpriteFacingDirectionScript:
 	jp SetSpriteFacingDirectionAndDelay
 
 SilphCo11FGiovanniAfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, SilphCo11FResetCurScript
 	ld a, [wSavedCoordIndex]
@@ -221,7 +221,7 @@ SilphCo11FGiovanniAfterBattleScript:
 .continue
 	call SilphCo11FSetPlayerAndSpriteFacingDirectionScript
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SILPHCO11F_GIOVANNI_YOU_RUINED_OUR_PLANS
 	ldh [hTextID], a
 	call DisplayTextID
@@ -232,7 +232,7 @@ SilphCo11FGiovanniAfterBattleScript:
 	call GBFadeInFromBlack
 	SetEvent EVENT_BEAT_SILPH_CO_GIOVANNI
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	jp SilphCo11FSetCurScript
 
 SilphCo11FGiovanniBattleFacingScript:
@@ -265,11 +265,11 @@ SilphCo11FGiovanniStartBattleScript:
 	ld de, SilphCo10FGiovanniILostAgainText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SILPHCO11F_GIOVANNI_AFTER_BATTLE
 	jp SilphCo11FSetCurScript
 

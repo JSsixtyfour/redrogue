@@ -189,7 +189,7 @@ StatusScreen:
 	ret z
     cp DAYCARE_DATA2
 	ret z
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	jp SkipFixedLengthTextEntries
 
 OTPointers:
@@ -343,7 +343,7 @@ StatusScreen2:
 	push bc
 	push hl
 	push de
-	ld hl, wCurrentMenuItem
+	ld hl, hCurrentMenuItem
 	ld a, [hl]
 	push af
 	ld a, b

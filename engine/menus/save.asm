@@ -190,7 +190,7 @@ SaveTheGame_YesOrNo:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ret
 
 WouldYouLikeToSaveText:
@@ -359,7 +359,7 @@ ChangeBox::
 	ld hl, WhenYouChangeBoxText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ret nz ; return if No was chosen
 	ld hl, wCurrentBoxNum
@@ -379,7 +379,7 @@ ChangeBox::
 	ld d, h
 	ld hl, wBoxDataStart
 	call CopyBoxToOrFromSRAM ; copy old box from WRAM to SRAM
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	set BIT_HAS_CHANGED_BOXES, a
 	ld [wCurrentBoxNum], a
 	call GetBoxSRAMLocation
@@ -449,7 +449,7 @@ DisplayChangeBoxMenu:
 	ld [wMenuWatchMovingOutOfBounds], a
 	ld a, [wCurrentBoxNum]
 	and BOX_NUM_MASK
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	hlcoord 0, 0
 	ld b, 2

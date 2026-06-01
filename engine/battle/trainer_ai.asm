@@ -289,7 +289,7 @@ INCLUDE "data/trainers/parties.asm"
 
 TrainerAI:
 	and a
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	ret z ; if not a trainer, we're done here
 	ld a, [wLinkState]

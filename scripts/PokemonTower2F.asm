@@ -22,7 +22,7 @@ PokemonTower2F_Script:
 
 PokemonTower2FResetRivalEncounter:
 	xor a ; SCRIPT_POKEMONTOWER2F_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wPokemonTower2FCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -85,13 +85,13 @@ PokemonTower2FRivalEncounterEventCoords:
 	db $0F ; end? (should be $ff?)
 
 PokemonTower2FDefeatedRivalScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, PokemonTower2FResetRivalEncounter
     xor a
 	ld [wIsTrainerBattle], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_POKEMON_TOWER_RIVAL
 	ld a, TEXT_POKEMONTOWER2F_RIVAL
 	ldh [hTextID], a
@@ -143,7 +143,7 @@ PokemonTower2FRivalExitsScript:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call PlayDefaultMusic
 	ld a, SCRIPT_POKEMONTOWER2F_DEFAULT
 	ld [wPokemonTower2FCurScript], a

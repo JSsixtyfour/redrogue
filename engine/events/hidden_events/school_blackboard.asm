@@ -1,7 +1,7 @@
 PrintBlackboardLinkCableText:
 	call EnableAutoTextBoxDrawing
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld a, [wHiddenEventFunctionArgument]
 	call PrintPredefTextID
 	ret
@@ -13,7 +13,7 @@ LinkCableHelp::
 	call PrintText
 	xor a
 	ld [wMenuItemOffset], a ; not used
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -38,7 +38,7 @@ LinkCableHelp::
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jr nz, .exit
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp 3 ; pressed a on "STOP READING"
 	jr z, .exit
 	ld hl, wStatusFlags5
@@ -97,7 +97,7 @@ ViridianSchoolBlackboard::
 	call PrintText
 	xor a
 	ld [wMenuItemOffset], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld a, PAD_LEFT | PAD_RIGHT | PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
@@ -150,7 +150,7 @@ ViridianSchoolBlackboard::
 	ld [wMenuItemOffset], a
 	jr .blackboardLoop
 .didNotPressLeftOrRight
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wMenuItemOffset]
 	add b

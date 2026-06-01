@@ -2,7 +2,7 @@ CeruleanBadgeHouse_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	dec a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ret
 
 CeruleanBadgeHouse_TextPointers:
@@ -14,7 +14,7 @@ CeruleanBadgeHouseMiddleAgedManText:
 	ld hl, .Text
 	call PrintText
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
 .loop
 	ld hl, .WhichBadgeText

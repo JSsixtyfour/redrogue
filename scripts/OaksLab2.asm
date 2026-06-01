@@ -7,7 +7,7 @@ OaksLab_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, OaksLab_ScriptPointers
 	ld a, [wOaksLabCurScript]
 	jp CallFunctionInTable
@@ -87,7 +87,7 @@ OaksLabPlayerEntersLabScript:
 	ld de, PlayerEntryMovementRLE
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -109,7 +109,7 @@ PlayerEntryMovementRLE:
 	db -1 ; end
 
 OaksLabFollowedOakScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	SetEvent EVENT_FOLLOWED_OAK_INTO_LAB
@@ -130,7 +130,7 @@ OaksLabFollowedOakScript:
 
 OaksLabOakChooseMonSpeechScript:
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_OAKSLAB_RIVAL_FED_UP_WITH_WAITING
 	ldh [hTextID], a
 	call DisplayTextID
@@ -148,7 +148,7 @@ OaksLabOakChooseMonSpeechScript:
 	call DisplayTextID
 	SetEvent EVENT_OAK_ASKED_TO_CHOOSE_MON
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 	ld a, SCRIPT_OAKSLAB_PLAYER_DONT_GO_AWAY_SCRIPT
 	ld [wOaksLabCurScript], a
@@ -173,7 +173,7 @@ OaksLabPlayerDontGoAwayScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
@@ -185,7 +185,7 @@ OaksLabPlayerDontGoAwayScript:
 	ret
 
 OaksLabPlayerForcedToWalkBackScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
@@ -301,7 +301,7 @@ OaksLabRivalChoosesStarterScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	ld a, SPRITE_FACING_UP
@@ -341,7 +341,7 @@ OaksLabRivalChoosesStarterScript:
 	call DisplayTextID
 	SetEvent EVENT_GOT_STARTER
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHALLENGES_PLAYER
 	ld [wOaksLabCurScript], a
@@ -410,7 +410,7 @@ OaksLabRivalStartBattleScript:
 .done
 	ld [wTrainerNo], a
 	ld a, OAKSLAB_RIVAL
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call GetSpritePosition1
 	ld hl, OaksLabRivalIPickedTheWrongPokemonText
 	ld de, OaksLabRivalAmIGreatOrWhatText
@@ -419,7 +419,7 @@ OaksLabRivalStartBattleScript:
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
 	ld a, SCRIPT_OAKSLAB_RIVAL_END_BATTLE
@@ -428,12 +428,12 @@ OaksLabRivalStartBattleScript:
 
 OaksLabRivalEndBattleScript:
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld a, OAKSLAB_RIVAL
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -490,7 +490,7 @@ OaksLabPlayerWatchRivalExitScript:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call PlayDefaultMusic ; reset to map music
 	ld a, SCRIPT_OAKSLAB_NOOP
 	ld [wOaksLabCurScript], a
@@ -569,7 +569,7 @@ OaksLabOakGivesPokedexScript:
 	call EnableAutoTextBoxDrawing
 	call PlayDefaultMusic
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call OaksLabRivalFaceUpOakFaceDownScript
 	ld a, TEXT_OAKSLAB_RIVAL_WHAT_DID_YOU_CALL_ME_FOR
 	ldh [hTextID], a
@@ -653,7 +653,7 @@ OaksLabRivalLeavesWithPokedexScript:
 	ld a, SCRIPT_PALLETTOWN_DAISY
 	ld [wPalletTownCurScript], a
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 	ld a, SCRIPT_OAKSLAB_NOOP
 	ld [wOaksLabCurScript], a
@@ -677,7 +677,7 @@ OaksLabScript_RemoveParcel:
 .foundParcel
 	ld hl, wNumBagItems
 	ld a, c
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, 1
 	ld [wItemQuantity], a
 	jp RemoveItemFromInventory
@@ -719,7 +719,7 @@ OaksLabCalcRivalMovementScript:
 	ld a, b
 	ldh [hSpriteMapYCoord], a
 	ld a, OAKSLAB_RIVAL
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
 	ret
 
@@ -844,7 +844,7 @@ OaksLabSelectedPokeBallScript:
 	ld [wCurPartySpecies], a
 	ld [wPokedexNum], a
 	ld a, b
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	CheckEvent EVENT_GOT_STARTER
 	jp nz, OaksLabLastMonScript
 	CheckEventReuseA EVENT_OAK_ASKED_TO_CHOOSE_MON
@@ -878,7 +878,7 @@ OaksLabShowPokeBallPokemonScript:
 	call ReloadMapData
 	ld c, 10
 	call DelayFrames
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	cp OAKSLAB_CHARMANDER_POKE_BALL
 	jr z, OaksLabYouWantCharmanderText
 	cp OAKSLAB_SQUIRTLE_POKE_BALL
@@ -909,16 +909,16 @@ OaksLabYouWantBulbasaurText:
 OaksLabMonChoiceMenu:
 	call PrintText
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	call YesNoChoice ; yes/no menu
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, OaksLabMonChoiceEnd
 	ld a, [wCurPartySpecies]
 	ld [wPlayerStarter], a
 	ld [wNamedObjectIndex], a
 	call GetMonName
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	cp OAKSLAB_CHARMANDER_POKE_BALL
 	jr nz, .not_charmander
 	ld a, TOGGLE_STARTER_BALL_1
@@ -934,7 +934,7 @@ OaksLabMonChoiceMenu:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ld hl, OaksLabMonEnergeticText
 	call PrintText
 	ld hl, OaksLabReceivedMonText
@@ -949,7 +949,7 @@ OaksLabMonChoiceMenu:
 	ld hl, wStatusFlags4
 	set BIT_GOT_STARTER, [hl]
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_OAKSLAB_CHOSE_STARTER_SCRIPT
 	ld [wOaksLabCurScript], a
 OaksLabMonChoiceEnd:
@@ -995,7 +995,7 @@ OaksLabOak1Text:
 	ld hl, .HowIsYourPokedexComingText
 	call PrintText
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	predef DisplayDexRating
 	jp .done
 .check_for_poke_balls

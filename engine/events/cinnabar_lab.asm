@@ -2,7 +2,7 @@ GiveFossilToCinnabarLab::
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
 	ld a, [wFilteredBagItemsCount]
@@ -30,7 +30,7 @@ GiveFossilToCinnabarLab::
 	bit B_PAD_B, a
 	jr nz, .cancelledGivingFossil
 	ld hl, wFilteredBagItems
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld d, 0
 	ld e, a
 	add hl, de
@@ -55,7 +55,7 @@ GiveFossilToCinnabarLab::
 	ld hl, .ScientistSeesFossilText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .cancelledGivingFossil
 	ld hl, .ScientistTakesFossilText

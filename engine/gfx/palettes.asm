@@ -144,7 +144,7 @@ SetPal_Overworld:
 	jr z, .PokemonTowerOrAgatha
 	cp CAVERN
 	jr z, .caveOrBruno
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP
 	jr c, .townOrRoute
 	cp CERULEAN_CAVE_2F

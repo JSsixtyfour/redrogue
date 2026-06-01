@@ -3,7 +3,7 @@ HiddenItemNear:
 	ld b, 0
 .loop
 	ld de, 3
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	call IsInRestOfArray
 	ret nc ; return if current map has no hidden items
 	push bc

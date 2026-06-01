@@ -29,7 +29,7 @@ RocketHideoutB2FDefaultScript:
 	ld a, SFX_ARROW_TILES
 	call PlaySound
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_ROCKETHIDEOUTB2F_PLAYER_SPINNING
 	ld [wCurMapScript], a
 	ret
@@ -257,11 +257,11 @@ RocketHideout2ArrowMovement36:
 	db -1 ; end
 
 RocketHideoutB2FPlayerSpinningScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	jr nz, LoadSpinnerArrowTiles
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wMovementFlags
 	res BIT_SPINNING, [hl]
 	ld a, SCRIPT_ROCKETHIDEOUTB2F_DEFAULT

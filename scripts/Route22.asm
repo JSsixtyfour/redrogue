@@ -17,7 +17,7 @@ Route22_ScriptPointers:
 
 Route22SetDefaultScript:
 	xor a ; SCRIPT_ROUTE22_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute22CurScript], a
 Route22NoopScript:
 	ret
@@ -68,7 +68,7 @@ Route22DefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_LEFT
 	ld [wPlayerMovingDirection], a
 	CheckEvent EVENT_1ST_ROUTE22_RIVAL_BATTLE
@@ -124,7 +124,7 @@ Route22Rival1StartBattleScript:
 	ldh [hSpriteIndex], a
 	call SetSpriteFacingDirectionAndDelay
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_ROUTE22_RIVAL1
 	ldh [hTextID], a
 	call DisplayTextID
@@ -149,7 +149,7 @@ Route22Rival1StartBattleScript:
 	db STARTER1, 6
 
 Route22Rival1AfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, Route22SetDefaultScript
     xor a
@@ -167,7 +167,7 @@ Route22Rival1AfterBattleScript:
 	ldh [hSpriteIndex], a
 	call SetSpriteFacingDirectionAndDelay
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_ROUTE22_RIVAL_1ST_BATTLE
 	ld a, TEXT_ROUTE22_RIVAL1
 	ldh [hTextID], a
@@ -227,7 +227,7 @@ Route22Rival1ExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_ROUTE_22_RIVAL_1
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -282,7 +282,7 @@ Route22Rival2StartBattleScript:
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_ROUTE22_RIVAL2
 	ldh [hTextID], a
 	call DisplayTextID
@@ -306,7 +306,7 @@ Route22Rival2StartBattleScript:
 	db STARTER1, 12
 
 Route22Rival2AfterBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, Route22SetDefaultScript
     xor a
@@ -328,7 +328,7 @@ Route22Rival2AfterBattleScript:
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_ROUTE22_RIVAL_2ND_BATTLE
 	ld a, TEXT_ROUTE22_RIVAL2
 	ldh [hTextID], a
@@ -373,7 +373,7 @@ Route22Rival2ExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TOGGLE_ROUTE_22_RIVAL_2
 	ld [wToggleableObjectIndex], a
 	predef HideObject

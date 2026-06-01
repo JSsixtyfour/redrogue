@@ -56,7 +56,7 @@ LoadSpecialWarpData:
 	jr nz, .notNewGameWarp
 	ld hl, NewGameWarp
 .copyWarpData
-	ld de, wCurMap
+	ld de, hCurMap
 	ld c, $7
 .copyWarpDataLoop
 	ld a, [hli]
@@ -83,7 +83,7 @@ LoadSpecialWarpData:
 	res BIT_ON_DUNGEON_WARP, [hl]
 	ld a, [wDungeonWarpDestinationMap]
 	ld b, a
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld a, [wWhichDungeonWarp]
 	ld c, a
 	ld hl, DungeonWarpList
@@ -113,7 +113,7 @@ LoadSpecialWarpData:
 	ld a, [wDestinationMap]
 .usedFlyWarp
 	ld b, a
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	ld hl, FlyWarpDataPtr
 .flyWarpDataPtrLoop
 	ld a, [hli]

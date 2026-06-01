@@ -44,7 +44,7 @@ MistyShowOrHideExitBlock:
 
 CeruleanGymResetScripts:
 	xor a ; SCRIPT_CERULEANGYM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wCeruleanGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -57,11 +57,11 @@ CeruleanGym_ScriptPointers:
 	dw_const CeruleanGymMistyPostBattleScript,      SCRIPT_CERULEANGYM_MISTY_POST_BATTLE
 
 CeruleanGymMistyPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CeruleanGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 CeruleanGymReceiveTM11:
 	ld a, TEXT_CERULEANGYM_MISTY_CASCADE_BADGE_INFO
@@ -87,8 +87,6 @@ CeruleanGymReceiveTM11:
 	call DisplayTextID
 .gymVictory
 	ld hl, wObtainedBadges
-	set BIT_CASCADEBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_CASCADEBADGE, [hl]
 
 	jp CeruleanGymResetScripts
@@ -140,7 +138,7 @@ CeruleanGymMistyText:
 	ld de, CeruleanGymMistyReceivedCascadeBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
     ;call InitBattleEnemyParameters
     ld d, OPP_MISTY

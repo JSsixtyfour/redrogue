@@ -13,7 +13,7 @@ FuchsiaGoodRodHouseFishingGuruText:
 	ld hl, .Text
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .refused
 	lb bc, GOOD_ROD, 1

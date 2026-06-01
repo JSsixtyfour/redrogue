@@ -22,7 +22,7 @@ Route24_Script:
 
 Route24SetDefaultScript:
 	xor a ; SCRIPT_ROUTE24_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute24CurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -51,7 +51,7 @@ Route24DefaultScript:
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_ROUTE24_PLAYER_MOVING
 	ld [wRoute24CurScript], a
@@ -63,7 +63,7 @@ Route24DefaultScript:
 	db -1 ; end
 
 Route24PlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
@@ -73,18 +73,18 @@ Route24PlayerMovingScript:
 	ret
 
 Route24AfterRocketBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, Route24SetDefaultScript
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	SetEvent EVENT_BEAT_ROUTE24_ROCKET
 	ld a, TEXT_ROUTE24_COOLTRAINER_M1
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_ROUTE24_DEFAULT
 	ld [wRoute24CurScript], a
 	ld [wCurMapScript], a
@@ -108,19 +108,17 @@ Route24_TextPointers:
     EXPORT TEXT_ROUTE24_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 Route24TrainerHeaders:
-	def_trainers 2
+	def_trainers 1
 Route24TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_0, 4, Route24CooltrainerM2BattleText, Route24CooltrainerM2EndBattleText, Route24CooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_0, 4, Route24CooltrainerM3BattleText, Route24CooltrainerM3EndBattleText, Route24CooltrainerM3AfterBattleText
 Route24TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_1, 1, Route24CooltrainerM3BattleText, Route24CooltrainerM3EndBattleText, Route24CooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_1, 1, Route24CooltrainerF1BattleText, Route24CooltrainerF1EndBattleText, Route24CooltrainerF1AfterBattleText
 Route24TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_2, 1, Route24CooltrainerF1BattleText, Route24CooltrainerF1EndBattleText, Route24CooltrainerF1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_2, 1, Route24Youngster1BattleText, Route24Youngster1EndBattleText, Route24Youngster1AfterBattleText
 Route24TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_3, 1, Route24Youngster1BattleText, Route24Youngster1EndBattleText, Route24Youngster1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_3, 1, Route24CooltrainerF2BattleText, Route24CooltrainerF2EndBattleText, Route24CooltrainerF2AfterBattleText
 Route24TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_4, 1, Route24CooltrainerF2BattleText, Route24CooltrainerF2EndBattleText, Route24CooltrainerF2AfterBattleText
-Route24TrainerHeader5:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_5, 1, Route24Youngster2BattleText, Route24Youngster2EndBattleText, Route24Youngster2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_4, 1, Route24Youngster2BattleText, Route24Youngster2EndBattleText, Route24Youngster2AfterBattleText
 	db -1 ; end
 
 Route24CooltrainerM1Text:
@@ -171,38 +169,36 @@ Route24CooltrainerM1Text:
 	text_end
 
 Route24CooltrainerM2Text:
+	text_far _Route24CooltrainerM1YouCouldBecomeATopLeaderText
+	text_end
+
+Route24CooltrainerM3Text:
 	text_asm
 	ld hl, Route24TrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24CooltrainerM3Text:
+Route24CooltrainerF1Text:
 	text_asm
 	ld hl, Route24TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24CooltrainerF1Text:
+Route24Youngster1Text:
 	text_asm
 	ld hl, Route24TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24Youngster1Text:
+Route24CooltrainerF2Text:
 	text_asm
 	ld hl, Route24TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24CooltrainerF2Text:
-	text_asm
-	ld hl, Route24TrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
-
 Route24Youngster2Text:
 	text_asm
-	ld hl, Route24TrainerHeader5
+	ld hl, Route24TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 

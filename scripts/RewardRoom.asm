@@ -14,7 +14,7 @@ RewardRoom_Script:
 	ld de, PlayerEntryMovementRLE
 	call DecodeRLEList
 	dec a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
     
     .step_forward
@@ -71,7 +71,7 @@ Rogue_RewardRoom_Script_PokeballText_1:
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 
@@ -109,7 +109,7 @@ Rogue_RewardRoom_Script_PokeballText_2:
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 
@@ -147,7 +147,7 @@ Rogue_RewardRoom_Script_PokeballText_3:
     ld hl, PickRewardPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 

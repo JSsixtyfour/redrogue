@@ -62,7 +62,7 @@ VermilionCityDefaultScript:
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_VERMILIONCITY_PLAYER_MOVING_UP1
 	ld [wVermilionCityCurScript], a
@@ -82,30 +82,30 @@ VermilionCityPlayerAllowedToPassScript:
 
 VermilionCityPlayerExitShipScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	ld [wSimulatedJoypadStatesEnd + 1], a
 	ld a, 2
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_VERMILIONCITY_PLAYER_MOVING_UP2
 	ld [wVermilionCityCurScript], a
 	ret
 
 VermilionCityPlayerMovingUp2Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ldh [hJoyHeld], a
 	ld a, SCRIPT_VERMILIONCITY_DEFAULT
 	ld [wVermilionCityCurScript], a
 	ret
 
 VermilionCityPlayerMovingUp1Script:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	ld c, 10

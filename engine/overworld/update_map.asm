@@ -47,7 +47,7 @@ ReplaceTileBlock:
 	ret c ; return if the replaced tile block is above the map view in memory
 
 RedrawMapView:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	inc a
 	ret z
 	ldh a, [hAutoBGTransferEnabled]

@@ -13,7 +13,7 @@ StartMenu_Pokemon::
 	xor a
 	ld [wMenuItemToSwap], a
 	ld [wPartyMenuTypeOrMessageID], a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call DisplayPartyMenu
 	jr .checkIfPokemonChosen
 .loop
@@ -53,8 +53,8 @@ StartMenu_Pokemon::
 	ldh a, [hFieldMoveMonMenuTopMenuItemX]
 	ld [hli], a ; top menu item X
 	xor a
-	ld [hli], a ; current menu item ID
-	inc hl
+	ldh [hCurrentMenuItem], a ; current menu item ID
+	inc hl ; wTileBehindCursor
 	ld a, b
 	ld [hli], a ; max menu item ID
 	ld a, PAD_A | PAD_B
@@ -70,7 +70,7 @@ StartMenu_Pokemon::
 ; if the B button wasn't pressed
 	ld a, [wMaxMenuItem]
 	ld b, a
-	ld a, [wCurrentMenuItem] ; menu selection
+	ldh a, [hCurrentMenuItem] ; menu selection
 	cp b
 	jp z, .exitMenu ; if the player chose Cancel
 	dec b
@@ -103,7 +103,7 @@ StartMenu_Pokemon::
 	jp StartMenu_Pokemon
 .choseOutOfBattleMove
 	push hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	pop hl
@@ -134,7 +134,7 @@ StartMenu_Pokemon::
 	jp z, .newBadgeRequired
 	call CheckIfInOutsideMap
 	jr z, .canFly
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, .cannotFlyHereText
@@ -205,7 +205,7 @@ StartMenu_Pokemon::
 .teleport
 	call CheckIfInOutsideMap
 	jr z, .canTeleport
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	ld hl, .cannotUseTeleportNowText
@@ -235,7 +235,7 @@ StartMenu_Pokemon::
 	text_end
 .softboiled
 	ld hl, wPartyMon1MaxHP
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	ld a, [hli]
@@ -317,9 +317,9 @@ StartMenu_Item::
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	ld a, [wBagSavedMenuItem]
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call DisplayListMenuID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wBagSavedMenuItem], a
 	jr nc, .choseItem
 .exitMenu
@@ -350,8 +350,8 @@ StartMenu_Item::
 	ld a, 14
 	ld [hli], a ; top menu item X
 	xor a
-	ld [hli], a ; current menu item ID
-	inc hl
+	ldh [hCurrentMenuItem], a ; current menu item ID
+	inc hl ; wTileBehindCursor
 	inc a ; a = 1
 	ld [hli], a ; max menu item ID
 	ld a, PAD_A | PAD_B
@@ -378,7 +378,7 @@ StartMenu_Item::
 	call PrintText
 	jp ItemMenuLoop
 .notBicycle
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .tossItem
 ; use item
@@ -406,7 +406,7 @@ StartMenu_Item::
 	jp z, ItemMenuLoop
 	jp CloseStartMenu
 .useItem_partyMenu
-	ld a, [wUpdateSpritesEnabled]
+	ldh a, [hUpdateSpritesEnabled]
 	push af
 	call UseItem
 	ld a, [wActionResultOrTookBattleTurn]
@@ -415,11 +415,11 @@ StartMenu_Item::
 	call GBPalWhiteOutWithDelay3
 	call RestoreScreenTilesAndReloadTilePatterns
 	pop af
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	jp StartMenu_Item
 .partyMenuNotDisplayed
 	pop af
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	jp ItemMenuLoop
 .tossItem
 	call IsKeyItem
@@ -661,7 +661,7 @@ SwitchPartyMon::
 	call SwitchPartyMon_InitVarOrSwapData ; swap data
 	ld a, [wSwappedMenuItem]
 	call SwitchPartyMon_ClearGfx
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call SwitchPartyMon_ClearGfx
 	jp RedrawPartyMenu_
 
@@ -697,7 +697,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	and a ; has [wMenuItemToSwap] been initialised yet?
 	jr nz, .pickedMonsToSwap
 ; If not, initialise [wMenuItemToSwap] so that it matches the current mon.
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	inc a ; [wMenuItemToSwap] counts from 1
 	ld [wMenuItemToSwap], a
 	ret
@@ -707,7 +707,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	ld a, [wMenuItemToSwap]
 	dec a
 	ld b, a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wSwappedMenuItem], a
 	cp b ; swapping a mon with itself?
 	jr nz, .swappingDifferentMons
@@ -724,7 +724,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	ld hl, wPartySpecies
 	ld d, h
 	ld e, l
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	add l
 	ld l, a
 	jr nc, .noCarry
@@ -744,7 +744,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	ld [de], a
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call AddNTimes
 	push hl
 	ld de, wSwitchPartyMonTempBuffer
@@ -763,7 +763,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call CopyData
 	ld hl, wPartyMonOT
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call SkipFixedLengthTextEntries
 	push hl
 	ld de, wSwitchPartyMonTempBuffer
@@ -781,7 +781,7 @@ SwitchPartyMon_InitVarOrSwapData:
 	ld bc, NAME_LENGTH
 	call CopyData
 	ld hl, wPartyMonNicks
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	call SkipFixedLengthTextEntries
 	push hl
 	ld de, wSwitchPartyMonTempBuffer

@@ -1,6 +1,6 @@
 PrintCardKeyText:
 	ld hl, SilphCoMapList
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 .silphCoMapListLoop
 	ld a, [hli]
@@ -15,7 +15,7 @@ PrintCardKeyText:
 	cp $24
 	jr z, .cardKeyDoorInFrontOfPlayer
 	ld b, a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SILPH_CO_11F
 	ret nz
 	ld a, b
@@ -39,7 +39,7 @@ PrintCardKeyText:
 	ld a, e
 	ld c, a
 	ld [wCardKeyDoorX], a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp SILPH_CO_11F
 	jr nz, .notSilphCo11F
 	ld a, $3

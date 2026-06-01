@@ -439,7 +439,6 @@ MoveAnimation:
 	call WaitForSoundToFinish
 	xor a
 	ld [wSubAnimSubEntryAddr], a
-	ld [wUnusedMoveAnimByte], a
 	ld [wSubAnimTransform], a
 	dec a ; NO_MOVE - 1
 	ld [wAnimSoundID], a
@@ -698,7 +697,7 @@ DoBallTossSpecialEffects:
 	ld a, SFX_BALL_TOSS
 	call PlaySound
 .skipPlayingSound
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp 2 ; is it a trainer battle?
 	jr z, .isTrainerBattle
 	ld a, [wPokeBallAnimData]
@@ -2580,7 +2579,7 @@ BattleAnimCopyTileMapToVRAM:
 	jp Delay3
 
 TossBallAnimation:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp 2
 	jr z, .BlockBall ; if in trainer battle, play different animation
 	ld a, [wPokeBallAnimData]

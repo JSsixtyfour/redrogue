@@ -27,7 +27,7 @@ PokemonTower5FDefaultScript:
 	xor a
 	ldh [hJoyHeld], a
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, wStatusFlags4
 	set BIT_NO_BATTLES, [hl]
 	predef HealParty
@@ -39,7 +39,7 @@ PokemonTower5FDefaultScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 PokemonTower5FPurifiedZoneCoords:

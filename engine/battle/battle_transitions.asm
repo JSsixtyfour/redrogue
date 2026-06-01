@@ -5,7 +5,7 @@ BattleTransition:
 	xor a
 	ldh [hWY], a
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call DelayFrame
 
 ; Determine which OAM block is being used by the enemy trainer sprite (if there
@@ -127,7 +127,7 @@ GetBattleTransitionID_CompareLevels:
 	ret
 
 GetBattleTransitionID_IsDungeonMap:
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld e, a
 	ld hl, DungeonMaps1
 .loop1

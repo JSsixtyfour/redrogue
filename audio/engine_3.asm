@@ -1342,7 +1342,6 @@ Audio3_PlaySound::
 
 .playMusic
 	xor a
-	ld [wUnusedMusicByte], a
 	ld [wDisableChannelOutputWhenSfxEnds], a
 	ld [wMusicTempo + 1], a
 	ld [wMusicWaveInstrument], a
@@ -1583,7 +1582,6 @@ Audio3_PlaySound::
 	ld a, $77
 	ldh [rAUDVOL], a ; full volume
 	xor a
-	ld [wUnusedMusicByte], a
 	ld [wDisableChannelOutputWhenSfxEnds], a
 	ld [wMuteAudioAndPauseMusic], a
 	ld [wMusicTempo + 1], a

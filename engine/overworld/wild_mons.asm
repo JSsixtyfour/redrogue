@@ -1,6 +1,6 @@
 LoadWildData::
 	ld hl, WildDataPointers
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 
 	; get wild data for current map
 	ld c, a

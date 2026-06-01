@@ -92,7 +92,7 @@ DoBoulderDustAnimation::
 	ret nz
 	callfar AnimateBoulderDust
 	call DiscardButtonPresses
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call ResetBoulderPushFlags
 	set BIT_PUSHED_BOULDER, [hl]
 	ld a, [wBoulderSpriteIndex]

@@ -15,7 +15,7 @@ Route8GateMovePlayerRightScript:
 	ld a, PAD_RIGHT
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld [wOverrideSimulatedJoypadStatesMask], a
@@ -56,12 +56,12 @@ Route8GateDefaultScript:
 	db -1 ; end
 
 Route8GatePlayerMovingScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wRoute8GateCurScript], a
 	ret
 

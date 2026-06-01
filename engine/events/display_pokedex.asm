@@ -15,5 +15,5 @@ _DisplayPokedex::
 	ld hl, wPokedexSeen
 	predef FlagActionPredef
 	ld a, $1
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	ret

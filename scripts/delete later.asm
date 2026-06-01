@@ -65,7 +65,7 @@ Rogue_Lab_Script_PokeballText_1:
     ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 
@@ -126,7 +126,7 @@ Rogue_Lab_Script_PokeballText_2:
     ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 
@@ -190,7 +190,7 @@ Rogue_Lab_Script_PokeballText_3:
     ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
 
@@ -248,7 +248,7 @@ OaksLabRivalChoosesStarterScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	ld a, SPRITE_FACING_UP
@@ -288,7 +288,7 @@ OaksLabRivalChoosesStarterScript:
 	call DisplayTextID
 	SetEvent EVENT_GOT_STARTER
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 OaksLabRivalChallengesPlayerScript:
 	ld a, [wYCoord]
@@ -345,7 +345,7 @@ OaksLabRivalStartBattleScript:
 .done
 	ld [wTrainerNo], a
 	ld a, OAKSLAB_RIVAL
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call GetSpritePosition1
 	ld hl, OaksLabRivalIPickedTheWrongPokemonText
 	ld de, OaksLabRivalAmIGreatOrWhatText
@@ -354,18 +354,18 @@ OaksLabRivalStartBattleScript:
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
 
 OaksLabRivalEndBattleScript:
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld a, OAKSLAB_RIVAL
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -416,7 +416,7 @@ OaksLabPlayerWatchRivalExitScript:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call PlayDefaultMusic ; reset to map music
 	ret
     
@@ -457,7 +457,7 @@ OaksLabPlayerDontGoAwayScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, $1
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	call StartSimulatingJoypadStates
@@ -469,7 +469,7 @@ OaksLabPlayerDontGoAwayScript:
 	ret
     
 OaksLabPlayerForcedToWalkBackScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
 	call Delay3

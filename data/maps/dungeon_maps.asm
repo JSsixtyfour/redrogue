@@ -3,7 +3,7 @@
 ; POKEMON_MANSION_1F, SEAFOAM_ISLANDS_[B1F-B4F], POWER_PLANT,
 ; DIGLETTS_CAVE, and SILPH_CO_[9-11]F as dungeon maps
 
-; GetBattleTransitionID_IsDungeonMap checks if wCurMap
+; GetBattleTransitionID_IsDungeonMap checks if hCurMap
 ; is equal to one of these maps
 DungeonMaps1:
 	db VIRIDIAN_FOREST
@@ -12,7 +12,7 @@ DungeonMaps1:
 	db ROCK_TUNNEL_B1F
 	db -1 ; end
 
-; GetBattleTransitionID_IsDungeonMap checks if wCurMap
+; GetBattleTransitionID_IsDungeonMap checks if hCurMap
 ; is in between or equal to each pair of maps
 DungeonMaps2:
 	; all MT_MOON maps

@@ -70,7 +70,7 @@ DrawHPBar::
 ; loads pokemon data from one of multiple sources to wLoadedMon
 ; loads base stats to wMonHeader
 ; INPUT:
-; [wWhichPokemon] = index of pokemon within party/box
+; [hWhichPokemon] = index of pokemon within party/box
 ; [wMonDataLocation] = source
 ; 00: player's party
 ; 01: enemy's party
@@ -214,8 +214,8 @@ PartyMenuInit::
 	ld [hli], a ; top menu item X
 	ld a, [wPartyAndBillsPCSavedMenuItem]
 	push af
-	ld [hli], a ; current menu item ID
-	inc hl
+	ldh [hCurrentMenuItem], a ; current menu item ID
+	inc hl ; wTileBehindCursor
 	ld a, [wPartyCount]
 	and a ; are there more than 0 pokemon in the party?
 	jr z, .storeMaxMenuItemID
@@ -247,7 +247,7 @@ HandlePartyMenuInput::
 	ld b, a
 	xor a
 	ld [wPartyMenuAnimMonEnabled], a
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
@@ -261,8 +261,8 @@ HandlePartyMenuInput::
 	ld a, [wPartyCount]
 	and a
 	jr z, .noPokemonChosen
-	ld a, [wCurrentMenuItem]
-	ld [wWhichPokemon], a
+	ldh a, [hCurrentMenuItem]
+	ldh [hWhichPokemon], a
 	ld hl, wPartySpecies
 	ld b, 0
 	ld c, a
@@ -288,8 +288,8 @@ HandlePartyMenuInput::
 	call RedrawPartyMenu
 	jr HandlePartyMenuInput
 .handleSwap
-	ld a, [wCurrentMenuItem]
-	ld [wWhichPokemon], a
+	ldh a, [hCurrentMenuItem]
+	ldh [hWhichPokemon], a
 	farcall SwitchPartyMon
 	jr HandlePartyMenuInput
 
@@ -437,7 +437,7 @@ GetMonHeader::
 
 ; copy party pokemon's name to wNameBuffer
 GetPartyMonName2::
-	ld a, [wWhichPokemon] ; index within party
+	ldh a, [hWhichPokemon] ; index within party
 	ld hl, wPartyMonNicks
 
 ; this is called more often

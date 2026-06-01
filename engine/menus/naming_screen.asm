@@ -2,7 +2,7 @@ AskName:
 	call SaveScreenTilesToBuffer1
 	call GetPredefRegisters
 	push hl
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	hlcoord 0, 0
 	ld b, 4
@@ -19,18 +19,18 @@ AskName:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	pop hl
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .declinedNickname
-	ld a, [wUpdateSpritesEnabled]
+	ldh a, [hUpdateSpritesEnabled]
 	push af
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	push hl
 	ld a, NAME_MON_SCREEN
 	ld [wNamingScreenType], a
 	call DisplayNamingScreen
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr nz, .inBattle
 	call ReloadMapSpriteTilePatterns
@@ -38,7 +38,7 @@ AskName:
 	call LoadScreenTilesFromBuffer1
 	pop hl
 	pop af
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, [wStringBuffer]
 	cp '@'
 	ret nz
@@ -56,7 +56,7 @@ DoYouWantToNicknameText:
 DisplayNameRaterScreen::
 	ld hl, wBuffer
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, NAME_MON_SCREEN
 	ld [wNamingScreenType], a
 	call DisplayNamingScreen
@@ -68,7 +68,7 @@ DisplayNameRaterScreen::
 	jr z, .playerCancelled
 	ld hl, wPartyMonNicks
 	ld bc, NAME_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld e, l
 	ld d, h
@@ -103,7 +103,7 @@ DisplayNamingScreen:
 	ld a, 1
 	ld [wTopMenuItemX], a
 	ld [wLastMenuItem], a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, $ff
 	ld [wMenuWatchedKeys], a
 	ld a, 7
@@ -126,11 +126,11 @@ DisplayNamingScreen:
 .dPadReturnPoint
 	call PlaceMenuCursor
 .inputLoop
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	push af
 	farcall AnimatePartyMon_ForceSpeed1
 	pop af
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	call JoypadLowSensitivity
 	ldh a, [hJoyPressed]
 	and a
@@ -169,7 +169,7 @@ DisplayNamingScreen:
 	ld [wAnimCounter], a
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, LoadTextBoxTilePatterns
 	jpfar LoadHudTilePatterns
@@ -208,14 +208,14 @@ DisplayNamingScreen:
 	ret
 
 .pressedA
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $5 ; "ED" row
 	jr nz, .didNotPressED
 	ld a, [wTopMenuItemX]
 	cp $11 ; "ED" column
 	jr z, .pressedStart
 .didNotPressED
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $6 ; case switch row
 	jr nz, .didNotPressCaseSwitch
 	ld a, [wTopMenuItemX]
@@ -259,7 +259,7 @@ DisplayNamingScreen:
 	ld [hl], '@'
 	ret
 .pressedRight
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $6
 	ret z ; can't scroll right on bottom row
 	ld a, [wTopMenuItemX]
@@ -272,7 +272,7 @@ DisplayNamingScreen:
 	ld a, $1
 	jr .done
 .pressedLeft
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	cp $6
 	ret z ; can't scroll right on bottom row
 	ld a, [wTopMenuItemX]
@@ -284,23 +284,23 @@ DisplayNamingScreen:
 	ld a, $11 ; max
 	jr .done
 .pressedUp
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	dec a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	and a
 	ret nz
 	ld a, $6 ; wrap to bottom row
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, $1 ; force left column
 	jr .done
 .pressedDown
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	inc a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	cp $7
 	jr nz, .wrapToTopRow
 	ld a, $1
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	jr .done
 .wrapToTopRow
 	cp $6
@@ -395,7 +395,7 @@ PrintNicknameAndUnderscores:
 	ld a, $11 ; "ED" x coord
 	ld [wTopMenuItemX], a
 	ld a, $5 ; "ED" y coord
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld a, [wNamingScreenType]
 	cp NAME_MON_SCREEN
 	ld a, NAME_LENGTH - 2

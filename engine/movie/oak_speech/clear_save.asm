@@ -12,7 +12,7 @@ DoClearSaveDialogue:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp z, Init
 	farcall ClearAllSRAMBanks

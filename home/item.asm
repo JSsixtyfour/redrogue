@@ -14,7 +14,7 @@ UseItem::
 ; INPUT:
 ; hl = address of inventory (either wNumBagItems or wNumBoxItems)
 ; [wCurItem] = item ID
-; [wWhichPokemon] = index of item within inventory
+; [hWhichPokemon] = index of item within inventory
 ; [wItemQuantity] = quantity to toss
 ; OUTPUT:
 ; clears carry flag if the item is tossed, sets carry flag if not

@@ -104,7 +104,7 @@ ItemUsePtrTable:
 ItemUseBall:
 
 ; Balls can't be used out of battle.
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, ItemUseNotTime
 
@@ -166,7 +166,7 @@ ItemUseBall:
 .notOldManBattle
 ; If the player is fighting the ghost Marowak, set the value that indicates the
 ; Pokémon can't be caught and skip the capture calculations.
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POKEMON_TOWER_6F
 	jr nz, .loop
 	ld a, [wEnemyMonSpecies2]
@@ -426,7 +426,7 @@ ItemUseBall:
 	ldh [hWhoseTurn], a
 	ld [wAnimationType], a
 	ld [wDamageMultipliers], a
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	push af
@@ -434,7 +434,7 @@ ItemUseBall:
 	pop af
 	ld [wCurItem], a
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 
 ; Determine the message to display from the animation.
 	ld a, [wPokeBallAnimData]
@@ -630,13 +630,13 @@ ItemUseBallText06:
 	text_end
 
 ItemUseTownMap:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	farjp DisplayTownMap
 
 ItemUseBicycle:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	ld a, [wWalkBikeSurfState]
@@ -720,7 +720,7 @@ ItemUseSurfboard:
 	xor a
 	ld [wWalkBikeSurfState], a ; change player state to walking
 	dec a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call PlayDefaultMusic ; play walking music
 	jp LoadWalkingPlayerSpriteGraphics
 ; uses a simulated button press to make the player move forward
@@ -740,9 +740,8 @@ ItemUseSurfboard:
 	ld a, b
 	ld [wSimulatedJoypadStatesEnd], a
 	xor a
-	ld [wUnusedSimulatedJoypadStatesMask], a
 	inc a
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ret
 
 SurfingGotOnText:
@@ -757,10 +756,10 @@ ItemUsePokedex:
 	predef_jump ShowPokedexMenu
 
 ItemUseEvoStone:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	ld [wEvoStoneItemID], a
@@ -768,7 +767,7 @@ ItemUseEvoStone:
 	ld a, EVO_STONE_PARTY_MENU
 	ld [wPartyMenuTypeOrMessageID], a
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call DisplayPartyMenu
 	pop bc
 	jr c, .canceledItemUse
@@ -784,7 +783,7 @@ ItemUseEvoStone:
 	and a
 	jr z, .noEffect
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld hl, wNumBagItems
 	ld a, 1 ; remove 1 stone
 	ld [wItemQuantity], a
@@ -798,7 +797,7 @@ ItemUseEvoStone:
 	ret
 
 ItemUseVitamin:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 
@@ -806,14 +805,14 @@ ItemUseMedicine:
 	ld a, [wPartyCount]
 	and a
 	jp z, .emptyParty
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	push af
 	ld a, USE_ITEM_PARTY_MENU
 	ld [wPartyMenuTypeOrMessageID], a
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, [wPseudoItemID]
 	and a ; using Softboiled?
 	jr z, .notUsingSoftboiled
@@ -835,9 +834,9 @@ ItemUseMedicine:
 	jp c, .canceledItemUse
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld [wUsedItemOnWhichPokemon], a
 	ld d, a
 	ld a, [wCurPartySpecies]
@@ -846,12 +845,12 @@ ItemUseMedicine:
 	pop af
 	ld [wCurItem], a
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [wPseudoItemID]
 	and a ; using Softboiled?
 	jr z, .checkItemType
 ; if using softboiled
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	cp d ; is the pokemon trying to use softboiled on itself?
 	jr z, ItemUseMedicine ; if so, force another choice
 .checkItemType
@@ -929,7 +928,7 @@ ItemUseMedicine:
 	jr z, .updateInBattleFaintedData
 	jp .healingItemNoEffect
 .updateInBattleFaintedData
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr z, .compareCurrentHPToMaxHP
 	push hl
@@ -1014,7 +1013,7 @@ ItemUseMedicine:
 	ld a, [hl]
 	push af
 	ld hl, wPartyMon1MaxHP
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	ld a, [hli]
@@ -1046,7 +1045,7 @@ ItemUseMedicine:
 	ld [hl], a
 	ld [wHPBarNewHP+1], a
 	hlcoord 4, 1
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld bc, 2 * SCREEN_WIDTH
 	call AddNTimes ; calculate coordinates of HP bar of pokemon that used Softboiled
 	ld a, SFX_HEAL_HP
@@ -1228,7 +1227,7 @@ ItemUseMedicine:
 	ldh [hAutoBGTransferEnabled], a
 	call ClearScreen
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call RedrawPartyMenu ; redraws the party menu and displays the message
 	ld a, 1
 	ldh [hAutoBGTransferEnabled], a
@@ -1247,7 +1246,7 @@ ItemUseMedicine:
 	ret nz ; if so, return
 	call GBPalWhiteOut
 	call z, RunDefaultPaletteCommand
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	ret nz
 	jp ReloadMapData
@@ -1355,7 +1354,7 @@ ItemUseMedicine:
 	ldh a, [hExperience + 2]
 	ld [hl], a
 	pop hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	push af
@@ -1394,7 +1393,7 @@ ItemUseMedicine:
 	call RedrawPartyMenu
 	pop de
 	ld a, d
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, e
 	ld [wPokedexNum], a
 	xor a ; PLAYER_PARTY_DATA
@@ -1410,11 +1409,11 @@ ItemUseMedicine:
 	ld [wForceEvolution], a
 	callfar TryEvolvingMon
 	ld a, $01
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	pop af
 	ld [wCurItem], a
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	jp RemoveUsedItem
 
 VitaminStatRoseText:
@@ -1490,10 +1489,10 @@ ThrewRockText:
 
 ; indirectly used by DIG in StartMenu_Pokemon.dig
 ItemUseEscapeRope:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr nz, .notUsable
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp AGATHAS_ROOM
 	jr z, .notUsable
 	ld a, [wCurMapTileset]
@@ -1533,7 +1532,7 @@ ItemUseRepel:
 	ld b, 100
 
 ItemUseRepelCommon:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	ld a, b
@@ -1542,7 +1541,7 @@ ItemUseRepelCommon:
 
 ; handles X Accuracy item
 ItemUseXAccuracy:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, ItemUseNotTime
 	ld hl, wPlayerBattleStatus2
@@ -1550,7 +1549,7 @@ ItemUseXAccuracy:
 	jp PrintItemUseTextAndRemoveItem
 
 ItemUsePokeDoll:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a
 	jp nz, ItemUseNotTime
 	ld a, $01
@@ -1558,7 +1557,7 @@ ItemUsePokeDoll:
 	jp PrintItemUseTextAndRemoveItem
 
 ItemUseGuardSpec:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, ItemUseNotTime
 	ld hl, wPlayerBattleStatus2
@@ -1574,7 +1573,7 @@ ItemUseMaxRepel:
 	jp ItemUseRepelCommon
 
 ItemUseDireHit:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp z, ItemUseNotTime
 	ld hl, wPlayerBattleStatus2
@@ -1582,7 +1581,7 @@ ItemUseDireHit:
 	jp PrintItemUseTextAndRemoveItem
 
 ItemUseXStat:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr nz, .inBattle
 	call ItemUseNotTime
@@ -1615,12 +1614,12 @@ ItemUseXStat:
 	ret
 
 ItemUsePokeFlute:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr nz, .inBattle
 ; if not in battle
 	call ItemUseReloadOverworldData
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp ROUTE_12
 	jr nz, .notRoute12
 	CheckEvent EVENT_BEAT_ROUTE12_SNORLAX
@@ -1655,7 +1654,7 @@ ItemUsePokeFlute:
 	ld b, ~SLP_MASK
 	ld hl, wPartyMon1Status
 	call WakeUpEntireParty
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	jr z, .skipWakingUpEnemyParty
 ; if it's a trainer battle
@@ -1741,7 +1740,7 @@ PlayedFluteHadEffectText:
 	text_far _PlayedFluteHadEffectText
 	text_promptbutton
 	text_asm
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr nz, .done
 ; play out-of-battle pokeflute music
@@ -1759,7 +1758,7 @@ PlayedFluteHadEffectText:
 	jp TextScriptEnd ; end text
 
 ItemUseCoinCase:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	ld hl, CoinCaseNumCoinsText
@@ -1837,7 +1836,7 @@ RodResponse:
 ; checks if fishing is possible and if so, runs initialization code common to all rods
 ; unsets carry if fishing is possible, sets carry if not
 FishingInit:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jr z, .notInBattle
 	scf ; can't fish during battle
@@ -1865,7 +1864,7 @@ ItemUseOaksParcel:
 	jp ItemUseNotYoursToUse
 
 ItemUseItemfinder:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	call ItemUseReloadOverworldData
@@ -1893,18 +1892,18 @@ ItemfinderFoundNothingText:
 	text_end
 
 ItemUsePPUp:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 
 ItemUsePPRestore:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	ld [wPPRestoreItem], a
 .chooseMon
 	xor a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, USE_ITEM_PARTY_MENU
 	ld [wPartyMenuTypeOrMessageID], a
 	call DisplayPartyMenu
@@ -1961,12 +1960,12 @@ ItemUsePPRestore:
 	call PrintText
 .done
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	call GBPalWhiteOut
 	call RunDefaultPaletteCommand
 	jp RemoveUsedItem
 .afterRestoringPP ; after using a (Max) Ether/Elixir
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld b, a
 	ld a, [wPlayerMonNumber]
 	cp b ; is the pokemon whose PP was restored active in battle?
@@ -2036,9 +2035,8 @@ ItemUsePPRestore:
 	dec [hl]
 	dec [hl]
 	xor a
-	ld hl, wCurrentMenuItem
-	ld [hli], a
-	ld [hl], a ; zero the counter for number of moves that had their PP restored
+	ldh [hCurrentMenuItem], a
+	ld [wTileBehindCursor], a ; zero the counter for number of moves that had their PP restored
 	ld b, 4
 ; loop through each move and restore PP
 .elixirLoop
@@ -2055,7 +2053,7 @@ ItemUsePPRestore:
 	ld hl, wTileBehindCursor ; counter for number of moves that had their PP restored
 	inc [hl]
 .nextMove
-	ld hl, wCurrentMenuItem
+	ld hl, hCurrentMenuItem
 	inc [hl]
 	pop bc
 	dec b
@@ -2098,7 +2096,7 @@ UnusableItem:
 	jp ItemUseNotTime
 
 ItemUseTMHM:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	jp nz, ItemUseNotTime
 	ld a, [wCurItem]
@@ -2127,14 +2125,14 @@ ItemUseTMHM:
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; yes/no menu
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr z, .useMachine
 	ld a, 2
 	ld [wActionResultOrTookBattleTurn], a ; item not used
 	ret
 .useMachine
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
 	push af
@@ -2144,7 +2142,7 @@ ItemUseTMHM:
 	ld bc, MOVE_NAME_LENGTH
 	call CopyData ; save the move name because DisplayPartyMenu will overwrite it
 	ld a, $ff
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ld a, TMHM_PARTY_MENU
 	ld [wPartyMenuTypeOrMessageID], a
 	call DisplayPartyMenu
@@ -2165,7 +2163,7 @@ ItemUseTMHM:
 .checkIfAbleToLearnMove
 	predef CanLearnTM ; check if the pokemon can learn the move
 	push bc
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
 	call GetPartyMonName
 	pop bc
@@ -2185,7 +2183,7 @@ ItemUseTMHM:
 	pop af
 	ld [wCurItem], a
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ret
 
 BootedUpTMText:
@@ -2311,12 +2309,12 @@ GotOffBicycleText:
 ; restores bonus PP (from PP Ups) when healing at a pokemon center
 ; also, when a PP Up is used, it increases the current PP by one PP Up bonus
 ; INPUT:
-; [wWhichPokemon] = index of pokemon in party
-; [wCurrentMenuItem] = index of move (when using a PP Up)
+; [hWhichPokemon] = index of pokemon in party
+; [hCurrentMenuItem] = index of move (when using a PP Up)
 RestoreBonusPP:
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	push hl
 	ld de, wNormalMaxPPList - 1
@@ -2337,7 +2335,7 @@ RestoreBonusPP:
 	dec a ; using a PP Up?
 	jr nz, .skipMenuItemIDCheck
 ; if using a PP Up, check if this is the move it's being used on
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	inc a
 	cp b
 	jr nz, .nextMove
@@ -2394,14 +2392,14 @@ AddBonusPP:
 
 ; gets max PP of a pokemon's move (including PP from PP Ups)
 ; INPUT:
-; [wWhichPokemon] = index of pokemon within party/box
+; [hWhichPokemon] = index of pokemon within party/box
 ; [wMonDataLocation] = pokemon source
 ; 00: player's party
 ; 01: enemy's party
 ; 02: current box
 ; 03: daycare
 ; 04: player's in-battle pokemon
-; [wCurrentMenuItem] = move index
+; [hCurrentMenuItem] = move index
 ; OUTPUT:
 ; [wMaxPP] = max PP
 GetMaxPP:
@@ -2466,11 +2464,11 @@ GetMaxPP:
 	ret
 
 GetSelectedMoveOffset:
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 
 GetSelectedMoveOffset2:
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld b, 0
 	add hl, bc
@@ -2480,7 +2478,7 @@ GetSelectedMoveOffset2:
 ; INPUT:
 ; hl = address of inventory (either wNumBagItems or wNumBoxItems)
 ; [wCurItem] = item ID
-; [wWhichPokemon] = index of item within inventory
+; [hWhichPokemon] = index of item within inventory
 ; [wItemQuantity] = quantity to toss
 ; OUTPUT:
 ; clears carry flag if the item is tossed, sets carry flag if not
@@ -2515,7 +2513,7 @@ TossItem_::
 	ret z ; return if the player chose No
 ; if the player chose Yes
 	push hl
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call RemoveItemFromInventory
 	ld a, [wCurItem]
 	ld [wNamedObjectIndex], a
@@ -2796,7 +2794,7 @@ ReadSuperRodData:
 ; return e = 2 if no fish on this map
 ; return e = 1 if a bite, bc = level,species
 ; return e = 0 if no bite
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld de, 3 ; each fishing group is three bytes wide
 	ld hl, SuperRodData
 	call IsInArray

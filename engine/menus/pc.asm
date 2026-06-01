@@ -19,7 +19,7 @@ PCMainMenu:
 	ld a, [wMaxMenuItem]
 	cp 2
 	jr nz, .next ;if not 2 menu items (not counting log off) (2 occurs before you get the pokedex)
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
 	cp 1
@@ -28,7 +28,7 @@ PCMainMenu:
 .next
 	cp 3
 	jr nz, .next2 ;if not 3 menu items (not counting log off) (3 occurs after you get the pokedex, before you beat the pokemon league)
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
 	cp 1
@@ -37,7 +37,7 @@ PCMainMenu:
 	jp z, OaksPC     ;if current menu item id is 2, it's oaks pc
 	jp LogOff        ;otherwise, it's 3, and you're logging off
 .next2
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
 	cp 1
@@ -85,7 +85,7 @@ BillsPC:
 	farcall BillsPC_
 ReloadMainMenu:
 	xor a
-	ld [wDoNotWaitForButtonPressAfterDisplayingText], a
+	ldh [hNoWaitAfterText], a
 	call ReloadMapData
 	call UpdateSprites
 	jp PCMainMenu
@@ -136,6 +136,6 @@ RemoveItemByID::
 	ld a, $1
 	ld [wItemQuantity], a
 	ldh a, [hItemToRemoveIndex]
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld hl, wNumBagItems
 	jp RemoveItemFromInventory

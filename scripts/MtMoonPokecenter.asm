@@ -32,7 +32,7 @@ MtMoonPokecenterMagikarpSalesmanText:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .choseNo
 	ldh [hMoney], a

@@ -29,18 +29,18 @@ ViridianForest_ScriptPointers:
 
 ViridianForest_TextPointers:
 	def_text_pointers
-	dw_const ViridianForestYoungster1Text,      TEXT_VIRIDIANFOREST_YOUNGSTER1
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
     dw_const ViridianForestYoungster5Text,      TEXT_VIRIDIANFOREST_YOUNGSTER5
     dw_const ViridianForestCooltrainer_FText,   TEXT_VIRIDIANFOREST_COOLTRAINER_F
-    dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_ANTIDOTE
-	dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_POTION
-	dw_const RandomPickUpItemText,              TEXT_VIRIDIANFOREST_RANDOM
+    dw_const RandomPickUpItemText,              TEXT_VIRIDIANFOREST_RANDOM
     dw_const ViridianForestRogue_Reward_Script_PokeballText_1, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1
     dw_const ViridianForestRogue_Reward_Script_PokeballText_2, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2
     dw_const ViridianForestRogue_Reward_Script_PokeballText_3, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_3
+    dw_const ViridianForestYoungster1Text,      TEXT_VIRIDIANFOREST_YOUNGSTER1
+    dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_ANTIDOTE
+	dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_POTION
     dw_const Rogue_ViridianForest_Reward_Text, TEXT_VIRIDIANFOREST_REWARD_VENDOR_1
     EXPORT TEXT_VIRIDIANFOREST_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
     
@@ -53,7 +53,7 @@ ViridianForest_TextPointers:
     
 
 ViridianForestTrainerHeaders:
-	def_trainers 2
+	def_trainers 1
 ViridianForestTrainerHeader0:
 	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0, 4, ViridianForestYoungster2BattleText, ViridianForestYoungster2EndBattleText, ViridianForestYoungster2AfterBattleText
 ViridianForestTrainerHeader1:

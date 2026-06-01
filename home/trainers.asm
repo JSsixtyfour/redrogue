@@ -132,14 +132,14 @@ IF DEF(_DEBUG)
 	jr nz, .trainerNotEngaging
 ENDC
 	call CheckForEngagingTrainers
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	cp $ff
 	jr nz, .trainerEngaging
 IF DEF(_DEBUG)
 .trainerNotEngaging
 ENDC
 	xor a
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	ld [wTrainerHeaderFlagBit], a
 	ret
 .trainerEngaging
@@ -150,7 +150,7 @@ ENDC
 	ld [wWhichEmotionBubble], a
 	predef EmotionBubble
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	xor a
 	ldh [hJoyHeld], a
 	call TrainerWalkUpToPlayer_Bank0
@@ -163,15 +163,15 @@ DisplayEnemyTrainerTextAndStartBattle::
 	ld a, [wStatusFlags5]
 	and 1 << BIT_SCRIPTED_NPC_MOVEMENT
 	ret nz ; return if the enemy trainer hasn't finished walking to the player's sprite
-	ld [wJoyIgnore], a
-	ld a, [wSpriteIndex]
+	ldh [hJoyIgnore], a
+	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call DisplayTextID
 	; fall through
 
 StartTrainerBattle::
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call InitBattleEnemyParameters
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
@@ -190,7 +190,7 @@ EndTrainerBattle::
 	res BIT_PRINT_END_BATTLE_TEXT, [hl]
 	ld hl, wMiscFlags
 	res BIT_SEEN_BY_TRAINER, [hl] ; player is no longer engaged by any trainer
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jr z, EndTrainerBattleWhiteout
 	ld a, $2
@@ -202,12 +202,12 @@ EndTrainerBattle::
 	ld a, [wWasTrainerBattle]
 	and a
 	jr nz, .skipRemoveSprite ; test if trainer was fought (in that case skip removing the corresponding sprite)
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	cp POKEMON_TOWER_7F
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
 	ld hl, wToggleableObjectList
 	ld de, $2
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	call IsInArray ; search for sprite ID
 	inc hl
 	ld a, [hl]
@@ -225,7 +225,7 @@ EndTrainerBattleWhiteout::
 	xor a
     ld [wIsTrainerBattle], a
 	ld [wWasTrainerBattle], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ldh [hJoyHeld], a
 	ldh [hJoyPressed], a
 	ldh [hJoyReleased], a
@@ -277,7 +277,7 @@ CheckForEngagingTrainers::
 .trainerLoop
 	call StoreTrainerHeaderPointer   ; set trainer header pointer to current trainer
 	ld a, [de]
-	ld [wSpriteIndex], a             ; store trainer flag's bit
+	ldh [hActiveSpriteIndex], a             ; store trainer flag's bit
 	ld [wTrainerHeaderFlagBit], a
 	cp -1
 	ret z
@@ -299,7 +299,7 @@ CheckForEngagingTrainers::
 	ld a, [hl]                       ; read trainer engage distance
 	pop hl
 	ld [wTrainerEngageDistance], a
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wTrainerSpriteOffset], a
 	predef TrainerEngage
@@ -331,11 +331,11 @@ SaveEndBattleTextPointers::
 	ret
 
 ; loads data of some trainer on the current map and plays pre-battle music
-; [wSpriteIndex]: sprite ID of trainer who is engaged
+; [hActiveSpriteIndex]: sprite ID of trainer who is engaged
 EngageMapTrainer::
 	ld hl, wMapSpriteExtraData
 	ld d, $0
-	ld a, [wSpriteIndex]
+	ldh a, [hActiveSpriteIndex]
 	dec a
 	add a
 	ld e, a

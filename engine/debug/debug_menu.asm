@@ -42,7 +42,7 @@ IF DEF(_DEBUG)
 	dec a
 	ld [wTopMenuItemX], a
 	xor a
-	ld [wCurrentMenuItem], a
+	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wMenuWatchMovingOutOfBounds], a
 
@@ -50,7 +50,7 @@ IF DEF(_DEBUG)
 	bit B_PAD_B, a
 	jp nz, DisplayTitleScreen
 
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a ; FIGHT?
 	jp z, TestBattle
 
@@ -103,7 +103,7 @@ TestBattle: ; unreferenced except in _DEBUG
 	ld [wCurEnemyLevel], a
 	xor a
 	ld [wMonDataLocation], a
-	ld [wCurMap], a
+	ldh [hCurMap], a
 	call AddPartyMon
 
 	; Fight against a level 20 Rhydon.
@@ -115,6 +115,6 @@ TestBattle: ; unreferenced except in _DEBUG
 	; When the battle ends, do it all again.
 	; There are some graphical quirks in SGB mode.
 	ld a, 1
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	ldh [hAutoBGTransferEnabled], a
 	jr .loop

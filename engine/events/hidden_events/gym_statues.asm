@@ -7,7 +7,7 @@ GymStatues:
 	cp SPRITE_FACING_UP
 	ret nz
 	ld hl, MapBadgeFlags
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, a
 .loop
 	ld a, [hli]
@@ -19,7 +19,7 @@ GymStatues:
 	jr .loop
 .match
 	ld b, [hl]
-	ld a, [wBeatGymFlags]
+	ld a, [wObtainedBadges]
 	and b
 	cp b
 	tx_pre_id GymStatueText2

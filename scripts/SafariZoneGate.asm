@@ -23,7 +23,7 @@ SafariZoneGateDefaultScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	xor a
 	ldh [hJoyHeld], a
 	ld a, SPRITE_FACING_RIGHT
@@ -39,7 +39,7 @@ SafariZoneGateDefaultScript:
 	ld c, 1
 	call SafariZoneEntranceAutoWalk
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SAFARIZONEGATE_PLAYER_MOVING_RIGHT
 	ld [wSafariZoneGateCurScript], a
 	ret
@@ -55,20 +55,20 @@ SafariZoneGatePlayerMovingRightScript:
 SafariZoneGateWouldYouLikeToJoinScript:
 	xor a
 	ldh [hJoyHeld], a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	call UpdateSprites
 	ld a, TEXT_SAFARIZONEGATE_SAFARI_ZONE_WORKER1_WOULD_YOU_LIKE_TO_JOIN
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ret
 
 SafariZoneGatePlayerMovingUpScript:
 	call SafariZoneGateReturnSimulatedJoypadStateScript
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SAFARIZONEGATE_LEAVING_SAFARI
 	ld [wSafariZoneGateCurScript], a
 	ret
@@ -81,7 +81,7 @@ SafariZoneGateLeavingSafariScript:
 	ResetEventReuseHL EVENT_IN_SAFARI_ZONE
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_SAFARIZONEGATE_SAFARI_ZONE_WORKER1_GOOD_HAUL_COME_AGAIN
 	ldh [hTextID], a
 	call DisplayTextID
@@ -104,7 +104,7 @@ SafariZoneGatePlayerMovingDownScript:
 	call SafariZoneGateReturnSimulatedJoypadStateScript
 	ret nz
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SAFARIZONEGATE_DEFAULT
 	ld [wSafariZoneGateCurScript], a
 	ret
@@ -121,14 +121,14 @@ SafariZoneEntranceAutoWalk:
 	push af
 	ld b, 0
 	ld a, c
-	ld [wSimulatedJoypadStatesIndex], a
+	ldh [hSimulatedJoypadStatesIndex], a
 	ld hl, wSimulatedJoypadStatesEnd
 	pop af
 	call FillMemory
 	jp StartSimulatingJoypadStates
 
 SafariZoneGateReturnSimulatedJoypadStateScript:
-	ld a, [wSimulatedJoypadStatesIndex]
+	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret
 
@@ -152,7 +152,7 @@ SafariZoneGateSafariZoneWorker1WouldYouLikeToJoinText:
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .PleaseComeAgain
 	xor a
@@ -228,7 +228,7 @@ SafariZoneGateSafariZoneWorker1LeavingEarlyText:
 	text_far _SafariZoneGateSafariZoneWorker1LeavingEarlyText
 	text_asm
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .not_ready_to_leave
 	ld hl, .ReturnSafariBallsText
@@ -274,7 +274,7 @@ SafariZoneGateSafariZoneWorker2Text:
 	ld hl, .FirstTimeHereText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	ld hl, .YoureARegularHereText
 	jr nz, .print_text

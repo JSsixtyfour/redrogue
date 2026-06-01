@@ -1,7 +1,5 @@
 SECTION "Audio RAM", WRAM0
 
-wUnusedMusicByte:: db
-
 wSoundID:: db
 
 ; bit 7: whether sound has been muted
@@ -206,12 +204,6 @@ wRedrawRowOrColumnSrcTiles:: ds SCREEN_WIDTH * 2
 wTopMenuItemY:: db
 wTopMenuItemX:: db
 
-; the id of the currently selected menu item
-; the top item has id 0, the one below that has id 1, etc.
-; note that the "top item" means the top item currently visible on the screen
-; add this value to [wListScrollOffset] to get the item's position within the list
-wCurrentMenuItem:: db
-
 ; the tile that was behind the menu cursor's current location
 wTileBehindCursor:: db
 
@@ -275,9 +267,6 @@ wTradeCenterPointerTableIndex:: db
 ; destination pointer for text output
 ; this variable is written to, but is never read from
 wTextDest:: dw
-
-; if non-zero, skip waiting for a button press after displaying text in DisplayTextID
-wDoNotWaitForButtonPressAfterDisplayingText:: db
 
 UNION
 ; the received menu selection is stored twice
@@ -601,13 +590,6 @@ wUnusedLinkMenuByte::
 ; number of items in wFilteredBagItems list
 wFilteredBagItemsCount:: db
 
-; the next simulated joypad state is at wSimulatedJoypadStatesEnd plus this value minus 1
-; 0 if the joypad state is not being simulated
-wSimulatedJoypadStatesIndex:: db
-; written to but nothing ever reads it
-wUnusedSimulatedJoypadStatesMask:: db
-; written to but nothing ever reads it
-wUnusedOverrideSimulatedJoypadStatesIndex:: db
 ; mask indicating which real button presses can override simulated ones
 ; XXX is it ever not 0?
 wOverrideSimulatedJoypadStatesMask:: db
@@ -645,8 +627,6 @@ NEXTU
 wFieldMoves:: ds NUM_MOVES
 wNumFieldMoves:: db
 wFieldMovesLeftmostXCoord:: db
-wLastFieldMoveID:: db ; unused
-
 NEXTU
 wBoxNumString:: ds 3
 
@@ -824,7 +804,6 @@ wBadgeOrFaceTiles:: ds NUM_BADGES + 1
 wTempObtainedBadgesBooleans:: ds NUM_BADGES
 
 NEXTU
-wUnusedCreditsByte:: db
 ; the number of credits mons that have been displayed so far
 wNumCreditsMonsDisplayed:: db
 
@@ -905,9 +884,6 @@ wMiscFlags:: db
 ; So, when an item is successfully used in battle, this value becomes non-zero
 ; and the player is not allowed to make a move and the two uses are compatible.
 wActionResultOrTookBattleTurn:: db
-
-; Set buttons are ignored.
-wJoyIgnore:: db
 
 ; size of downscaled mon pic used in pokeball entering/exiting animation
 ; $00 = 5×5
@@ -1043,8 +1019,6 @@ wTextPredefFlag:: db
 
 wPredefParentBank:: db
 
-wSpriteIndex:: db
-
 ; movement byte 2 of current sprite
 wCurSpriteMovement2:: db
 
@@ -1113,18 +1087,12 @@ wItemList:: ds 16
 
 wListPointer:: dw
 
-; used to store pointers, but never read
-wUnusedNamePointer:: dw
-
 wItemPrices:: dw
 
 wCurPartySpecies::
 wCurItem::
 wCurListMenuItem::
 	db
-
-; which pokemon you selected
-wWhichPokemon:: db
 
 ; if non-zero, then print item prices when displaying lists
 wPrintItemPrices:: db
@@ -1191,12 +1159,6 @@ wAudioFadeOutCounter:: db
 ; the music).
 wLastMusicSoundID:: db
 
-; $00 = causes sprites to be hidden and the value to change to $ff
-; $01 = enabled
-; $ff = disabled
-; other values aren't used
-wUpdateSpritesEnabled:: db
-
 wEnemyMoveNum:: db
 wEnemyMoveEffect:: db
 wEnemyMovePower:: db
@@ -1254,12 +1216,6 @@ wToggleableObjectCounter:: db
 ; the name is terminated with $50 with possible
 ; unused trailing letters
 wTrainerName:: ds 13
-
-; lost battle, this is -1
-; no battle, this is 0
-; wild battle, this is 1
-; trainer battle, this is 2
-wIsInBattle:: db
 
 ; flags that indicate which party members should be be given exp when GainExperience is called
 wPartyGainExpFlags:: flag_array PARTY_LENGTH
@@ -1472,8 +1428,7 @@ wOutwardSpiralTileMapPointer:: db
 wPartyMenuAnimMonEnabled::
 ; non-zero when enabled. causes nest locations to blink on and off.
 ; the town selection cursor will blink regardless of what this value is
-wTownMapSpriteBlinkingEnabled::
-wUnusedMoveAnimByte:: db
+wTownMapSpriteBlinkingEnabled:: db
 
 ; current destination address in OAM for frame blocks (big endian)
 wFBDestAddr:: dw
@@ -1587,7 +1542,6 @@ wMoveNum:: db
 ; concatenated move name list where intermediate '@' are replaced with '<NEXT>'
 wMovesString:: ds NUM_MOVES * MOVE_NAME_LENGTH
 
-wUnusedCurMapTilesetCopy:: db
 
 ; wWalkBikeSurfState is sometimes copied here, but it doesn't seem to be used for anything
 wWalkBikeSurfStateCopy:: db
@@ -1728,8 +1682,6 @@ wSerialPlayerDataBlock:: ; ds $1a8
 ; that case, this would be ESCAPE_ROPE.
 wPseudoItemID:: db
 
-wUnusedAlreadyOwnedFlag:: db
-
 wIsTrainerBattle:: db
 
 wWasTrainerBattle:: db
@@ -1792,8 +1744,6 @@ wOptions:: db
 
 wObtainedBadges:: flag_array NUM_BADGES
 
-wUnusedObtainedBadges:: db
-
 wLetterPrintingDelayFlags:: db
 
 wPlayerID:: dw
@@ -1804,8 +1754,6 @@ wMapMusicROMBank:: db
 ; offset subtracted from FadePal4 to get the background and object palettes for the current map
 ; normally, it is 0. it is 6 when Flash is needed, causing FadePal2 to be used instead of FadePal4
 wMapPalOffset:: db
-
-wCurMap:: db
 
 ; pointer to the upper left corner of the current view in the tile block map
 wCurrentTileBlockMapViewPointer:: dw
@@ -1819,7 +1767,6 @@ wYBlockCoord:: db
 wXBlockCoord:: db
 
 wLastMap:: db
-wUnusedLastMapWidth:: db
 
 wCurMapHeader::
 wCurMapTileset:: db
@@ -1928,8 +1875,6 @@ wCurrentBoxNum:: db
 
 ; number of HOF teams
 wNumHoFTeams:: db
-
-wUnusedMapVariable:: db
 
 wPlayerCoins:: dw ; BCD
 
@@ -2171,8 +2116,6 @@ wLastBlackoutMap:: db
 ; destination map (for certain types of special warps, not ordinary walking)
 wDestinationMap:: db
 
-; initialized to $ff, but nothing ever reads it
-wUnusedPlayerDataByte:: db
 
 ; used to store the tile in front of the boulder when trying to push a boulder
 ; also used to store the result of the collision check ($ff for a collision and $00 for no collision)
@@ -2187,8 +2130,6 @@ wWhichDungeonWarp:: db
 	ds 8
 
 wStatusFlags1:: db
-	ds 1
-wBeatGymFlags:: db ; redundant because it matches wObtainedBadges
 	ds 1
 wStatusFlags2:: db
 wCableClubDestinationMap::
@@ -2219,8 +2160,6 @@ wCardKeyDoorX:: db
 
 wFirstLockTrashCanIndex:: db
 wSecondLockTrashCanIndex:: db
-
-	ds 1
 
 wEventFlags:: flag_array NUM_EVENTS
 

@@ -52,7 +52,7 @@ initial:
 
 PewterGymResetScripts:
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wPewterGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -65,11 +65,11 @@ PewterGym_ScriptPointers:
 	dw_const PewterGymBrockPostBattle,              SCRIPT_PEWTERGYM_BROCK_POST_BATTLE
 
 PewterGymBrockPostBattle:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, PewterGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 ; fallthrough
 PewterGymScriptReceiveTM34:
 	ld a, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
@@ -95,8 +95,6 @@ PewterGymScriptReceiveTM34:
 	call DisplayTextID
 .gymVictory
 	ld hl, wObtainedBadges
-	set BIT_BOULDERBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_BOULDERBADGE, [hl]
 
 	ld a, TOGGLE_GYM_GUY
@@ -158,7 +156,7 @@ PewterGymBrockText:
 	ld de, PewterGymBrockReceivedBoulderBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
     ;call InitBattleEnemyParameters
     ld d, OPP_BROCK
@@ -281,13 +279,13 @@ PewterGymCooltrainerM4AfterBattleText:
 
 PewterGymGuideText:
 	text_asm
-	ld a, [wBeatGymFlags]
+	ld a, [wObtainedBadges]
 	bit BIT_BOULDERBADGE, a
 	jr nz, .afterBeat
 	ld hl, PewterGymGuidePreAdviceText
 	call PrintText
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .PewterGymGuideBeginAdviceText
 	ld hl, PewterGymGuideBeginAdviceText

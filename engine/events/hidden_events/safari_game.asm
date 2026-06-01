@@ -58,7 +58,7 @@ SafariZoneGameOver:
 
 PrintSafariGameOverText::
 	xor a
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld hl, SafariGameOverText
 	jp PrintText
 

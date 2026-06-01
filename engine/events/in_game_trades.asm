@@ -68,7 +68,7 @@ DoInGameTradeDialogue:
 	ld a, TRADETEXT_NO_TRADE
 	ld [wInGameTradeTextPointerTableIndex], a
 	call YesNoChoice
-	ld a, [wCurrentMenuItem]
+	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .printText
 	call InGameTrade_DoTrade
@@ -106,7 +106,7 @@ InGameTrade_DoTrade:
 	xor a ; NORMAL_PARTY_MENU
 	ld [wPartyMenuTypeOrMessageID], a
 	dec a
-	ld [wUpdateSpritesEnabled], a
+	ldh [hUpdateSpritesEnabled], a
 	call DisplayPartyMenu
 	push af
 	call InGameTrade_RestoreScreen
@@ -119,7 +119,7 @@ InGameTrade_DoTrade:
 	cp b
 	ld a, TRADETEXT_WRONG_MON
 	jr nz, .tradeFailed ; jump if the selected mon's species is not the required one
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Level
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -132,7 +132,7 @@ InGameTrade_DoTrade:
 	predef FlagActionPredef
 	ld hl, ConnectCableText
 	call PrintText
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurEnemyLevel]
 	push af
@@ -142,7 +142,7 @@ InGameTrade_DoTrade:
 	pop af
 	ld [wCurEnemyLevel], a
 	pop af
-	ld [wWhichPokemon], a
+	ldh [hWhichPokemon], a
 	ld a, [wInGameTradeReceiveMonSpecies]
 	ld [wCurPartySpecies], a
 	xor a
@@ -186,7 +186,7 @@ InGameTrade_PrepareTradeData:
 	ld [hl], a ; wTradedEnemyMonSpecies
 	ld hl, wPartyMonOT
 	ld bc, NAME_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld de, wTradedPlayerMonOT
 	ld bc, NAME_LENGTH
@@ -198,7 +198,7 @@ InGameTrade_PrepareTradeData:
 	call InGameTrade_CopyData
 	ld hl, wPartyMon1OTID
 	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wWhichPokemon]
+	ldh a, [hWhichPokemon]
 	call AddNTimes
 	ld de, wTradedPlayerMonOTID
 	ld bc, $2

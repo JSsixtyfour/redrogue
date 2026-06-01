@@ -4,14 +4,14 @@ DEF BIRD_BASE_TILE EQU $04
 
 DisplayTownMap:
 	call LoadTownMap
-	ld hl, wUpdateSpritesEnabled
+	ld hl, hUpdateSpritesEnabled
 	ld a, [hl]
 	push af
 	ld [hl], $ff
 	push hl
 	ld a, $1
 	ldh [hJoy7], a
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	push af
 	ld b, $0
 	call DrawPlayerOrBirdSprite
@@ -115,7 +115,7 @@ TownMapCursorEnd:
 
 LoadTownMap_Nest:
 	call LoadTownMap
-	ld hl, wUpdateSpritesEnabled
+	ld hl, hUpdateSpritesEnabled
 	ld a, [hl]
 	push af
 	ld [hl], $ff
@@ -152,7 +152,7 @@ LoadTownMap_Fly::
 	lb bc, BANK(TownMapUpArrow), (TownMapUpArrowEnd - TownMapUpArrow) / TILE_1BPP_SIZE
 	call CopyVideoDataDouble
 	call BuildFlyLocationsList
-	ld hl, wUpdateSpritesEnabled
+	ld hl, hUpdateSpritesEnabled
 	ld a, [hl]
 	push af
 	ld [hl], $ff
@@ -160,7 +160,7 @@ LoadTownMap_Fly::
 	hlcoord 0, 0
 	ld de, ToText
 	call PlaceString
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, $0
 	call DrawPlayerOrBirdSprite
 	ld hl, wFlyLocationsList
@@ -409,7 +409,7 @@ DisplayWildLocations:
 	call PlaceString
 	jr .done
 .drawPlayerSprite
-	ld a, [wCurMap]
+	ldh a, [hCurMap]
 	ld b, $0
 	call DrawPlayerOrBirdSprite
 .done

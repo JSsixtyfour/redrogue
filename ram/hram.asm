@@ -378,8 +378,6 @@ hSavedMapTextPtr:: dw
 	ds 1
 ENDU
 
-	ds 4
-
 hWhoseTurn:: db ; 0 on player's turn, 1 on enemy's turn
 
 hClearLetterPrintingDelayFlags:: db
@@ -397,6 +395,36 @@ hJoyInput:: db
 
 hDisableJoypadPolling:: db
 
-	ds 5
+; Hot variables promoted from WRAM for ldh access (were converted ldh;
+; some pointer-based calls still work but don't gain the ldh benefit)
+; All have some performance benefits, but some are more beneficial than others,
+; the primary goal was freeing wRam, things can be adjusted if need be in the future
+
+; the id of the currently selected menu item (was wCurrentMenuItem)
+hCurrentMenuItem:: db
+
+; if nonzero, certain joypad inputs are ignored (was wJoyIgnore)
+hJoyIgnore:: db
+
+; index of which pokemon is selected in the party/box menu (was wWhichPokemon)
+hWhichPokemon:: db
+
+; index into the simulated joypad states (was wSimulatedJoypadStatesIndex)
+hSimulatedJoypadStatesIndex:: db
+
+; nonzero when in a battle (was wIsInBattle)
+hIsInBattle:: db
+
+; the current map ID (was wCurMap, extra benefit for IsRogueStageMap called per-sprite)
+hCurMap:: db
+
+; if nonzero, UpdateSprites will run (was wUpdateSpritesEnabled)
+hUpdateSpritesEnabled:: db
+
+; sprite index of the NPC the player is currently interacting with (was wSpriteIndex)
+hActiveSpriteIndex:: db
+
+; if nonzero, skip waiting for button press after text display (was wDoNotWaitForButtonPressAfterDisplayingText)
+hNoWaitAfterText:: db
 
 ENDSECTION

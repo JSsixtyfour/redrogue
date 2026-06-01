@@ -43,7 +43,7 @@ ErikaShowOrHideExitBlock:
 
 CeladonGymResetScripts:
 	xor a ; SCRIPT_CELADONGYM_DEFAULT
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 	ld [wCeladonGymCurScript], a
 	ld [wCurMapScript], a
 	ret
@@ -56,11 +56,11 @@ CeladonGym_ScriptPointers:
 	dw_const CeladonGymErikaPostBattleScript,       SCRIPT_CELADONGYM_ERIKA_POST_BATTLE
 
 CeladonGymErikaPostBattleScript:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, CeladonGymResetScripts
 	ld a, PAD_CTRL_PAD
-	ld [wJoyIgnore], a
+	ldh [hJoyIgnore], a
 
 CeladonGymReceiveTM21:
 	ld a, TEXT_CELADONGYM_RAINBOWBADGE_INFO
@@ -86,8 +86,6 @@ CeladonGymReceiveTM21:
 	call DisplayTextID
 .gymVictory
 	ld hl, wObtainedBadges
-	set BIT_RAINBOWBADGE, [hl]
-	ld hl, wBeatGymFlags
 	set BIT_RAINBOWBADGE, [hl]
 
 	jp CeladonGymResetScripts
@@ -138,7 +136,7 @@ CeladonGymErikaText:
 	ld de, .ReceivedRainbowBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ld [wSpriteIndex], a
+	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_ERIKA
