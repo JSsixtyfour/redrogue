@@ -382,13 +382,15 @@ wSlotMachineSevenAndBarModeChance:: db
 wSlotMachineSavedROMBank:: db
 ;ds 166
 ; removed ds stack here for move relearner
-; Move Buffer stuff for Mateo's code
+; Move relearner / move tutor buffer (Mateo's code).
+; Layout: [0]=count, [1..N]=move IDs, [N+1]=$FF sentinel.
+; Max Gen 1 learnset is 20 level-up + 4 level-0 = 24 moves → 26 bytes worst case.
+; ds 32 gives 30 slots + count + sentinel (6 bytes headroom). Do not shrink below 28.
+DEF MOVE_RELEARNER_BUFFER_SIZE EQU 32
+ASSERT MOVE_RELEARNER_BUFFER_SIZE >= 28, "Move relearner buffer too small (need >= 28: 26 max moves + count + sentinel)"
 wMoveBuffer::
 wRelearnableMoves::
-	ds 164
-; Try not to use this stack. 
-; A good amount of space is needed to store data for the move relearner.
-; If it's like, 2, it'll lag like crazy and show garbage from elsewhere
+	ds MOVE_RELEARNER_BUFFER_SIZE
 wLuckySlotHiddenEventIndex:: db
 
 NEXTU
@@ -1804,7 +1806,7 @@ wWarpEntries:: ds MAX_WARP_EVENTS * 4 ; Y, X, warp ID, map ID
 ; if $ff, the player's coordinates are not updated when entering the map
 wDestinationWarpID:: db
 
-	ds 128
+	ds 100 ; was 128; 28 bytes carved for follower vars (see follower vars below)
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)
 wNumSigns:: db
@@ -1814,6 +1816,20 @@ wSignTextIDs:: ds MAX_BG_EVENTS
 
 ; number of sprites on the current map (up to MAX_OBJECT_EVENTS)
 wNumSprites:: db
+
+; Pokemon follower system (pokeyellow Pikachu architecture: dedicated structs
+; completely outside wSpriteStateData1/2 - no slot reservation needed).
+; FIFO command buffer using pokeyellow's size-sentinel encoding: the size byte
+; doubles as the last written index ($ff = empty). Commands are appended to the
+; back and popped from the front with a linear shift (see Func_fcc92 and
+; AppendPikachuFollowCommandToBuffer in pokeyellow's pikachu_follow.asm).
+wFollowerCommandBufferSize:: db ; last written index; $ff = empty sentinel
+wFollowerCommandBuffer:: ds 16  ; linear FIFO buffer of encoded directions (1-4)
+wFollowerActive:: db            ; nonzero when a follower is active this session
+wFollowerSpriteType:: db        ; NPC sprite type (0 = player sprite, 1+ = loaded species)
+; Dedicated follower sprite state structs (same field layout as wSpriteStateData1/2)
+wFollowerStateData1:: ds 16
+wFollowerStateData2:: ds 16
 
 ; these two variables track the X and Y offset in blocks from the last special warp used
 ; they don't seem to be used for anything

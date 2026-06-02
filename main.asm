@@ -372,3 +372,7 @@ INCLUDE "engine/items/random_item_selection.asm"
 INCLUDE "engine/items/random_item_selection_mart.asm"
 INCLUDE "engine/events/reward_poke_balls.asm"
 INCLUDE "gfx/trade.asm"  ; marcelnote - moved from Battle Engine 7, LoadTradingGFXAndMonNames uses BANK()
+
+SECTION "follower", ROMX
+
+INCLUDE "engine/overworld/follower.asm"

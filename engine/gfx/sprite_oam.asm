@@ -161,10 +161,16 @@ PrepareOAMData::
 
 .clear
 	cp l
-	ret z
+	jr z, .doneClearing
 	ld [hl], b
 	add hl, de
 	jr .clear
+
+.doneClearing
+	; Append the Pokemon follower's OAM into its reserved slot. FollowerWriteOAM
+	; is now in its own ROMX section; use farcall so the bank is properly restored.
+	farcall FollowerWriteOAM
+	ret
 
 GetSpriteScreenXY:
 	inc e

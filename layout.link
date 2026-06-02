@@ -43,6 +43,7 @@ ROMX $2
 	"Music 1"
 ROMX $3
 	"bank3"
+	"Follower"
 ROMX $4
 	"NPC Sprites 1"
 	"Font Graphics"

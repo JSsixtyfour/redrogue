@@ -39,6 +39,7 @@ EnterMap::
 	ldh [hJoyIgnore], a
 
 OverworldLoop::
+	farcall FollowerTick
 	call DelayFrame
 OverworldLoopLessDelay::
 	call DelayFrame
@@ -263,6 +264,7 @@ OverworldLoopLessDelay::
 .noCollision
 	ld a, $08
 	ld [wWalkCounter], a
+	farcall FollowerPushCommand     ; player confirmed stepping — push to follower buffer
 	jr .moveAhead2
 
 .moveAhead
@@ -681,6 +683,7 @@ CheckMapConnections::
 ; Since the sprite set shouldn't change, this will just update VRAM slots at
 ; x#SPRITESTATEDATA2_IMAGEBASEOFFSET without loading any tile patterns.
 	farcall InitMapSprites
+	farcall SpawnFollower           ; place follower sprite after map NPCs
 	call LoadTileBlockMap
 	jp OverworldLoopLessDelay
 
@@ -1630,6 +1633,16 @@ AdvancePlayerSprite::
 	dec e
 	jr nz, .spriteShiftLoop
 .done
+	; shift follower sprite the same as all map NPCs (it lives outside wSpriteStateData1)
+	ld a, [wFollowerActive]
+	and a
+	ret z
+	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS]
+	sub b
+	ld [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS]
+	sub c
+	ld [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS], a
 	ret
 
 ; the following four functions are used to move the pointer to the upper left
@@ -2306,6 +2319,7 @@ LoadMapData::
 	call LoadTextBoxTilePatterns
 	call LoadMapHeader
 	farcall InitMapSprites ; load tile pattern data for sprites
+	farcall SpawnFollower           ; place follower sprite after map NPCs
 	call LoadTileBlockMap
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView

@@ -80,6 +80,13 @@ LoadMainData:
 	ld bc, wBoxDataEnd - wBoxDataStart
 	call CopyData
 
+; Restore the Pokemon follower from its saved position. This must run with SRAM
+; still mapped as it reads the follower save bytes; LoadFollowerPosition manages
+; the RAMG enable/disable itself, so disable SRAM after it returns.
+	push af
+	farcall LoadFollowerPosition
+	pop af
+
 	and a
 	jp GoodCheckSum
 
@@ -290,6 +297,7 @@ SavePartyAndDexData:
 SaveGameData::
 	ld a, $2
 	ld [wSaveFileStatus], a
+	farcall SaveFollowerPosition
 	call SaveMainData
 	call SaveCurrentBoxData
 	jp SavePartyAndDexData

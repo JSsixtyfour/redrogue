@@ -39,3 +39,31 @@ DisableWaitingAfterTextDisplay::
 	ld a, $01
 	ldh [hNoWaitAfterText], a
 	ret
+
+; Load a follower sprite into VRAM slot 1 (standing + walking tile areas).
+; Safe to call from any ROM bank -- runs from HOME bank, handles bank switch internally.
+; INPUT: a = ROM bank containing sprite, hl = sprite data address (24 tiles, 384 bytes)
+; Copies tiles 0-11 (standing) to $80C0, tiles 12-23 (walking) to $88C0.
+LoadFollowerSprite::
+	call BankswitchHome         ; switch to sprite bank (a), saves current bank
+	ld de, $80C0                ; VRAM slot 1 standing tiles
+	ld bc, 12 * 16
+.copyStanding
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec bc
+	ld a, b
+	or c
+	jr nz, .copyStanding
+	ld de, $88C0                ; VRAM slot 1 walking tiles
+	ld bc, 12 * 16
+.copyWalking
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec bc
+	ld a, b
+	or c
+	jr nz, .copyWalking
+	jp BankswitchBack           ; restore original bank and return
