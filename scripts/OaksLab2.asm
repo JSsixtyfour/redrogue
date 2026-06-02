@@ -7,7 +7,7 @@ OaksLab_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, OaksLab_ScriptPointers
 	ld a, [wOaksLabCurScript]
 	jp CallFunctionInTable
@@ -410,7 +410,7 @@ OaksLabRivalStartBattleScript:
 .done
 	ld [wTrainerNo], a
 	ld a, OAKSLAB_RIVAL
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call GetSpritePosition1
 	ld hl, OaksLabRivalIPickedTheWrongPokemonText
 	ld de, OaksLabRivalAmIGreatOrWhatText
@@ -433,7 +433,7 @@ OaksLabRivalEndBattleScript:
 	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld a, OAKSLAB_RIVAL
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -719,7 +719,7 @@ OaksLabCalcRivalMovementScript:
 	ld a, b
 	ldh [hSpriteMapYCoord], a
 	ld a, OAKSLAB_RIVAL
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition1
 	ret
 
@@ -844,7 +844,7 @@ OaksLabSelectedPokeBallScript:
 	ld [wCurPartySpecies], a
 	ld [wPokedexNum], a
 	ld a, b
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	CheckEvent EVENT_GOT_STARTER
 	jp nz, OaksLabLastMonScript
 	CheckEventReuseA EVENT_OAK_ASKED_TO_CHOOSE_MON
@@ -878,7 +878,7 @@ OaksLabShowPokeBallPokemonScript:
 	call ReloadMapData
 	ld c, 10
 	call DelayFrames
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	cp OAKSLAB_CHARMANDER_POKE_BALL
 	jr z, OaksLabYouWantCharmanderText
 	cp OAKSLAB_SQUIRTLE_POKE_BALL
@@ -909,7 +909,7 @@ OaksLabYouWantBulbasaurText:
 OaksLabMonChoiceMenu:
 	call PrintText
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	call YesNoChoice ; yes/no menu
 	ldh a, [hCurrentMenuItem]
 	and a
@@ -918,7 +918,7 @@ OaksLabMonChoiceMenu:
 	ld [wPlayerStarter], a
 	ld [wNamedObjectIndex], a
 	call GetMonName
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	cp OAKSLAB_CHARMANDER_POKE_BALL
 	jr nz, .not_charmander
 	ld a, TOGGLE_STARTER_BALL_1
@@ -934,7 +934,7 @@ OaksLabMonChoiceMenu:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, OaksLabMonEnergeticText
 	call PrintText
 	ld hl, OaksLabReceivedMonText
@@ -995,7 +995,7 @@ OaksLabOak1Text:
 	ld hl, .HowIsYourPokedexComingText
 	call PrintText
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	predef DisplayDexRating
 	jp .done
 .check_for_poke_balls

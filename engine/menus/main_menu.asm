@@ -108,7 +108,7 @@ MainMenu:
 	call GBPalWhiteOutWithDelay3
 	call ClearScreen
 	ld a, PLAYER_DIR_DOWN
-	ld [wPlayerDirection], a
+	ldh [hPlayerDirection], a
 	ld c, 10
 	call DelayFrames
 	ld a, [wNumHoFTeams]

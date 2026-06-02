@@ -300,7 +300,7 @@ CeruleanCityRocketText:
 	ld de, .IGiveUpText
 	call SaveEndBattleTextPointers
 	ldh a, [hTextID]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_CERULEANCITY_ROCKET_DEFEATED
@@ -317,7 +317,7 @@ CeruleanCityRocketText:
 	jr .Done
 .Success
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .ReceivedTM28Text
 	call PrintText
 	farcall CeruleanHideRocket

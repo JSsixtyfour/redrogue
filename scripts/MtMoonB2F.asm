@@ -135,7 +135,7 @@ MtMoonB2FSuperNerdTakesOtherFossilScript:
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld a, TEXT_MTMOONB2F_SUPER_NERD_THEN_THIS_IS_MINE
 	ldh [hTextID], a
 	call DisplayTextID
@@ -199,7 +199,7 @@ MtMoonB2FSuperNerdText:
 	ld de, MtMoonB2FSuperNerdOkIllShareText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_MTMOONB2F_DEFEATED_SUPER_NERD
@@ -239,7 +239,7 @@ MtMoonB2FRocket4Text:
 MtMoonB2FDomeFossilText:
 	text_asm
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .YouWantText
 	call PrintText
 	call YesNoChoice
@@ -267,7 +267,7 @@ MtMoonB2FDomeFossilText:
 MtMoonB2FHelixFossilText:
 	text_asm
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .YouWantText
 	call PrintText
 	call YesNoChoice

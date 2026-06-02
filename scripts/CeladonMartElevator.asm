@@ -11,7 +11,7 @@ CeladonMartElevator_Script:
 	xor a
 	ld [wAutoTextBoxDrawingControl], a
 	inc a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ret
 
 CeladonMartElevatorStoreWarpEntriesScript:

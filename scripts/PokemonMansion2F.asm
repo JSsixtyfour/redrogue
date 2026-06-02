@@ -106,7 +106,7 @@ PokemonMansion2FSwitchText:
 	and a
 	jr nz, .not_pressed
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, wCurrentMapScriptFlags
 	set BIT_CUR_MAP_LOADED_1, [hl]
 	ld hl, .PressedText

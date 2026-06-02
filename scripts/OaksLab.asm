@@ -375,7 +375,7 @@ OaksLabRivalStartBattleScript:
 .done
 	ld [wTrainerNo], a
 	ld a, OAKSLAB_RIVAL
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call GetSpritePosition1
 	ld hl, OaksLabRivalIPickedTheWrongPokemonText
 	ld de, OaksLabRivalAmIGreatOrWhatText
@@ -400,7 +400,7 @@ OaksLabRivalEndBattleScript:
 	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld a, OAKSLAB_RIVAL
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a

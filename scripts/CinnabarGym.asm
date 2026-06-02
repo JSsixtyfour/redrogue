@@ -174,13 +174,13 @@ CinnabarGym_TextPointers:
 
 CinnabarGymStartBattleScript:
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	cp CINNABARGYM_BLAINE
 	jr z, .blaine
 	ld a, SCRIPT_CINNABARGYM_OPEN_GATE

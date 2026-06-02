@@ -2,7 +2,7 @@ CeruleanBadgeHouse_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	dec a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ret
 
 CeruleanBadgeHouse_TextPointers:

@@ -63,7 +63,7 @@ PalletMovementScript_OakMoveLeft:
 	ld a, NPC_MOVEMENT_LEFT
 	call FillMemory
 	ld [hl], $ff
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	ld de, wNPCMovementDirections2
 	call MoveSprite
@@ -104,7 +104,7 @@ PalletMovementScript_WaitAndWalkToLab:
 PalletMovementScript_WalkToLab:
 	xor a
 	ld [wOverrideSimulatedJoypadStatesMask], a
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	xor a
@@ -166,7 +166,7 @@ PewterMovementScript_WalkToMuseum:
 	ld a, MUSIC_MUSEUM_GUY
 	ld [wNewSoundID], a
 	call PlaySound
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	call StartSimulatingJoypadStates
@@ -222,7 +222,7 @@ PewterMovementScript_WalkToGym:
 	ld a, MUSIC_MUSEUM_GUY
 	ld [wNewSoundID], a
 	call PlaySound
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
 	xor a
@@ -279,7 +279,7 @@ SetEnemyTrainerToStayAndFaceAnyDirection::
 	ret z ; the rival leaves after battling, so don't set him
 	jr .loop
 .notRival
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp SetSpriteMovementBytesToFF
 

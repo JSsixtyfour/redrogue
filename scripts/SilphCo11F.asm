@@ -265,7 +265,7 @@ SilphCo11FGiovanniStartBattleScript:
 	ld de, SilphCo10FGiovanniILostAgainText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a

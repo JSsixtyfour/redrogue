@@ -109,7 +109,7 @@ RocketHideoutB4FGiovanniText:
 	ld de, .WhatCannotBeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a

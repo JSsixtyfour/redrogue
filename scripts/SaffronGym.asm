@@ -137,7 +137,7 @@ SaffronGymSabrinaText:
 	ld de, .ReceivedMarshBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_SABRINA

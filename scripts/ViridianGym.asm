@@ -239,7 +239,7 @@ ViridianGymGiovanniText:
 	jr .text_script_end
 .afterBeat
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	call GBFadeOutToBlack
@@ -260,7 +260,7 @@ ViridianGymGiovanniText:
 	ld de, .ReceivedEarthBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_GIOVANNI

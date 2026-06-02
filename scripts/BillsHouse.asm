@@ -65,7 +65,7 @@ BillsHouseBillExitsMachineScript:
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, BILLSHOUSE_BILL1
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	ld a, $c
 	ldh [hSpriteScreenYCoord], a
 	ld a, $40

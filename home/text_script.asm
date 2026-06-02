@@ -20,7 +20,7 @@ DisplayTextID::
 	ld l, a ; hl = map text pointer
 	ld d, $00
 	ldh a, [hTextID]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 
 	dict TEXT_START_MENU,       DisplayStartMenu
 	dict TEXT_SAFARI_GAME_OVER, DisplaySafariGameOverText
@@ -86,7 +86,7 @@ ENDM
     dict  TX_SCRIPT_ROGUE_VENDOR,            TextScript_RogueRewardMenu
 
 	call PrintText_NoCreatingTextBox
-	ldh a, [hNoWaitAfterText]
+	ld a, [wNoWaitAfterText]
 	and a
 	jr nz, HoldTextDisplayOpen
 
@@ -128,6 +128,7 @@ CloseTextDisplay::
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
 	call InitMapSprites ; reload sprite tile pattern data (since it was partially overwritten by text tile patterns)
+	call ReloadFollowerSprite ; restore follower sprite overwritten by InitMapSprites above
 	ld hl, wFontLoaded
 	res BIT_FONT_LOADED, [hl]
 	ld a, [wStatusFlags6]

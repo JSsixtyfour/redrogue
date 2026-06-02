@@ -145,7 +145,7 @@ FuchsiaGymKogaText:
 	ld de, .ReceivedSoulBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	ld d, OPP_KOGA
     farcall InitGymBattle

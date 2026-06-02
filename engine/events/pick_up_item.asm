@@ -34,7 +34,7 @@ PickUpItem:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, FoundItemText
 	jr .print
 
@@ -71,7 +71,7 @@ RandomPickUpItem:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, FoundItemText
 	jr .print
 
@@ -101,7 +101,7 @@ RandomPickUpItem:
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, FoundItemText
 	jr .print
 

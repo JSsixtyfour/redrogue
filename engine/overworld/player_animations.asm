@@ -502,7 +502,7 @@ _HandleMidJump::
 	ld [wSpritePlayerStateData1YPixels], a
 	ret
 .finishedJump
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	cp 0
 	ret nz
 	call UpdateSprites

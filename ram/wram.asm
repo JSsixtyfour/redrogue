@@ -1129,8 +1129,8 @@ wLoadedMon:: party_struct wLoadedMon
 ; The other bits are unused.
 wFontLoaded:: db
 
-; walk animation counter
-wWalkCounter:: db
+; sprite index of the NPC the player is currently interacting with (demoted from hActiveSpriteIndex)
+wActiveSpriteIndex:: db
 
 ; background tile number in front of the player (either 1 or 2 steps ahead)
 wTileInFrontOfPlayer:: db
@@ -1806,7 +1806,7 @@ wWarpEntries:: ds MAX_WARP_EVENTS * 4 ; Y, X, warp ID, map ID
 ; if $ff, the player's coordinates are not updated when entering the map
 wDestinationWarpID:: db
 
-	ds 100 ; was 128; 28 bytes carved for follower vars (see follower vars below)
+	ds 97 ; was 128; 31 bytes carved for follower vars (see follower vars below)
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)
 wNumSigns:: db
@@ -1826,7 +1826,11 @@ wNumSprites:: db
 wFollowerCommandBufferSize:: db ; last written index; $ff = empty sentinel
 wFollowerCommandBuffer:: ds 16  ; linear FIFO buffer of encoded directions (1-4)
 wFollowerActive:: db            ; nonzero when a follower is active this session
-wFollowerSpriteType:: db        ; NPC sprite type (0 = player sprite, 1+ = loaded species)
+wFollowerSpriteType:: db        ; NPC sprite type (always 1 = slot 1 standing area)
+; Saved sprite address so walking tiles can be swapped in/out of $80C0 per step
+wFollowerSpriteBank:: db        ; ROM bank of current follower sprite file
+wFollowerSpriteAddrLo:: db      ; low  byte of sprite file start address
+wFollowerSpriteAddrHi:: db      ; high byte of sprite file start address
 ; Dedicated follower sprite state structs (same field layout as wSpriteStateData1/2)
 wFollowerStateData1:: ds 16
 wFollowerStateData2:: ds 16
@@ -1859,9 +1863,8 @@ wPlayerMovingDirection:: db
 ; the direction in which the player was moving before the player last stopped
 wPlayerLastStopDirection:: db
 
-; if the player is moving, the current direction
-; if the player is not moving, the last the direction in which the player moved
-wPlayerDirection:: db
+; if nonzero, skip waiting for button press after text display (demoted from hNoWaitAfterText)
+wNoWaitAfterText:: db
 
 wTilesetBank:: db
 

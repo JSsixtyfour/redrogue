@@ -107,7 +107,7 @@ PalletTown_ScriptPointers:
 ;	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 ;	ldh [hJoyIgnore], a
 ;	ld a, PALLETTOWN_OAK
-;	ldh [hActiveSpriteIndex], a
+;	ld [wActiveSpriteIndex], a
 ;	xor a
 ;	ld [wNPCMovementScriptFunctionNum], a
 ;	ld a, 1
@@ -165,7 +165,7 @@ PalletTown_TextPointers:
 ; 	and a
 ; 	jr nz, .next
 ; 	ld a, 1
-; 	ldh [hNoWaitAfterText], a
+; 	ld [wNoWaitAfterText], a
 ; 	ld hl, .HeyWaitDontGoOutText
 ; 	jr .done
 ; .next

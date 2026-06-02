@@ -19,7 +19,7 @@ PewterPokecenterGentlemanText:
 PewterPokecenterJigglypuffText:
 	text_asm
 	ld a, TRUE
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .Text
 	call PrintText
 

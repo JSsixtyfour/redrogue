@@ -277,7 +277,7 @@ DisableAutoTextBoxDrawing::
 AutoTextBoxDrawingCommon::
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ldh [hNoWaitAfterText], a ; make DisplayTextID wait for button press
+	ld [wNoWaitAfterText], a ; make DisplayTextID wait for button press
 	ret
 
 PrintText::

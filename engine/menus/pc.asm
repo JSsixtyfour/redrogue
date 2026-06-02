@@ -85,7 +85,7 @@ BillsPC:
 	farcall BillsPC_
 ReloadMainMenu:
 	xor a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	call ReloadMapData
 	call UpdateSprites
 	jp PCMainMenu

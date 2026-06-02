@@ -360,6 +360,8 @@ INCLUDE "engine/movie/evolution.asm"
 INCLUDE "engine/overworld/elevator.asm"
 INCLUDE "engine/items/tm_prices.asm"
 
+INCLUDE "gfx/followers.asm"
+
 SECTION "rogue", ROMX
 
 INCLUDE "engine/pokemon/rarity.asm"

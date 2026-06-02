@@ -2,7 +2,7 @@ Museum1F_Script:
 	ld a, 1 << BIT_NO_AUTO_TEXT_BOX
 	ld [wAutoTextBoxDrawingControl], a
 	xor a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, Museum1F_ScriptPointers
 	ld a, [wMuseum1FCurScript]
 	jp CallFunctionInTable

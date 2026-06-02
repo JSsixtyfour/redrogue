@@ -13,7 +13,7 @@ BillsHousePC:
 	tx_pre_jump BillsHouseMonitorText
 .doCellSeparator
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	tx_pre BillsHouseInitiatedText
 	ld c, 32
 	call DelayFrames
@@ -40,7 +40,7 @@ BillsHousePC:
 	ret
 .displayBillsHousePokemonList
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	tx_pre BillsHousePokemonList
 	ret
 

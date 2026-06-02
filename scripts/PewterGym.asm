@@ -156,7 +156,7 @@ PewterGymBrockText:
 	ld de, PewterGymBrockReceivedBoulderBadgeText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
     ;call InitBattleEnemyParameters
     ld d, OPP_BROCK

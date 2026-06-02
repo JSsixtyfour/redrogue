@@ -226,7 +226,7 @@ CeladonMartRoofLittleGirlText:
 	and a
 	jr z, .noDrinksInBag
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .GiveHerADrinkText
 	call PrintText
 	call YesNoChoice

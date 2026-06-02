@@ -31,7 +31,7 @@ CinnabarGymQuiz::
 	ld l, a
 	call PrintText
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	call CinnabarGymQuiz_AskQuestion
 	jp TextScriptEnd
 

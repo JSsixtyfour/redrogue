@@ -421,10 +421,10 @@ hCurMap:: db
 ; if nonzero, UpdateSprites will run (was wUpdateSpritesEnabled)
 hUpdateSpritesEnabled:: db
 
-; sprite index of the NPC the player is currently interacting with (was wSpriteIndex)
-hActiveSpriteIndex:: db
+; player walk step counter: counts down 8→0 each tile step, decremented every frame (was wWalkCounter)
+hWalkCounter:: db
 
-; if nonzero, skip waiting for button press after text display (was wDoNotWaitForButtonPressAfterDisplayingText)
-hNoWaitAfterText:: db
+; bitmask of the direction the player is moving: PLAYER_DIR_* bits (was wPlayerDirection)
+hPlayerDirection:: db
 
 ENDSECTION

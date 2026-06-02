@@ -105,7 +105,6 @@ SpawnFollower::
 
 	call FollowerInitState
 	; select the sprite type for the lead party member
-	ld a, [wPartyMon1Species]
 	call FollowerSelectSprite
 	; place 1 tile behind the player based on the player's facing direction
 	call FollowerPlaceBehindPlayer
@@ -179,39 +178,40 @@ DEF FSPRITE_FAIRY    EQU 3
 DEF FSPRITE_POKEBALL EQU 4
 DEF FSPRITE_SNORLAX  EQU 5
 DEF FSPRITE_FOSSIL   EQU 6
+DEF FSPRITE_PIKACHU  EQU 7  ; dedicated Pikachu sprite from pokeyellow
 
-FollowerSelectSprite:
-	dec a                        ; 0-based species index
-	ld b, a                      ; b = index (save for parity check)
-	srl a                        ; a = index / 2 (byte offset in nibble table)
+FollowerSelectSprite::
+	ld a, [wPartyMon1Species]    ; internal species ID (1-based, NOT Pokedex order)
+	dec a                        ; 0-based index (ID $01→0, $BE→189)
+	ld b, a                      ; b = original index (saved — add hl,de clobbers carry)
+	srl a                        ; a = index/2 (byte offset)
 	ld hl, FollowerSpriteTable
 	ld d, 0
 	ld e, a
-	add hl, de                   ; hl = &table[index/2]
+	add hl, de                   ; hl = &table[index/2]  (carry clobbered here)
 	ld a, [hl]                   ; packed byte: high nibble = even idx, low = odd
-	bit 0, b                     ; was original index odd?
-	jr z, .evenIndex
+	bit 0, b                     ; check parity from saved original index
+	jr z, .evenIndex             ; bit 0 = 0 → even → high nibble
 	and $0F                      ; odd: low nibble
 	jr .gotCategory
 .evenIndex
 	swap a
 	and $0F                      ; even: high nibble
 .gotCategory
-	; a = category (FSPRITE_*)
 	ld b, a
 	add a
 	add b                        ; a = category * 3
 	ld hl, FollowerSpriteDataTable
 	ld d, 0
 	ld e, a
-	add hl, de                   ; hl = &FollowerSpriteDataTable[cat*3]
-	ld a, [hli]                  ; a = ROM bank
+	add hl, de
+	ld a, [hli]                  ; ROM bank
 	ld e, [hl]
 	inc hl
 	ld d, [hl]
 	ld h, d
-	ld l, e                      ; hl = sprite data address
-	call LoadFollowerSprite      ; HOME fn: a=bank, hl=src → copies to VRAM slot 1
+	ld l, e
+	call LoadFollowerSprite
 	ld a, 1
 	ld [wFollowerSpriteType], a
 	ret
@@ -225,43 +225,108 @@ FollowerSpriteDataTable:
 	db BANK(PokeBallSprite), LOW(PokeBallSprite), HIGH(PokeBallSprite) ; POKEBALL
 	db BANK(SnorlaxSprite),  LOW(SnorlaxSprite),  HIGH(SnorlaxSprite)  ; SNORLAX
 	db BANK(FossilSprite),   LOW(FossilSprite),   HIGH(FossilSprite)   ; FOSSIL
+	db BANK(PikachuFollowerSprite), LOW(PikachuFollowerSprite), HIGH(PikachuFollowerSprite) ; PIKACHU
 
-; 151-entry nibble-packed species→sprite table.
-; Each byte holds two consecutive species (even index in high nibble, odd in low).
-; Encoding: M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6)
+; 95-byte nibble-packed table indexed by (internal species ID - 1).
+; Each byte: high nibble = even index, low nibble = odd index.
+; Gaps (const_skip IDs) default to MONSTER(0).
+; M=0 B=1 S=2 F=3 P=4 N=5 O=6 K=7(Pikachu)
 FollowerSpriteTable:
-;       idx 0,1     2,3     4,5     6,7     8,9
-	db  $00,    $00,    $00,    $22,    $20
-;       10,11   12,13   14,15   16,17   18,19
-	db  $00,    $00,    $01,    $11,    $00
-;       20,21   22,23   24,25   26,27   28,29  (Raichu idx25→fairy)
-	db  $11,    $00,    $03,    $00,    $00
-;       30,31   32,33   34,35   36,37   38,39
-	db  $00,    $00,    $33,    $00,    $33
-;       40,41   42,43   44,45   46,47   48,49
-	db  $00,    $00,    $00,    $00,    $00
-;       50,51   52,53   54,55   56,57   58,59
-	db  $00,    $02,    $20,    $00,    $02
-;       60,61   62,63   64,65   66,67   68,69
-	db  $22,    $00,    $00,    $00,    $00
-;       70,71   72,73   74,75   76,77   78,79
-	db  $02,    $20,    $00,    $00,    $22
-;       80,81   82,83   84,85   86,87   88,89  (Magnemite/Magneton→pokeball, Shellder→fossil)
-	db  $44,    $11,    $12,    $20,    $06
-;       90,91   92,93   94,95   96,97   98,99  (Cloyster→fossil)
-	db  $60,    $00,    $00,    $02,    $24
-;       100,101 102,103 104,105 106,107 108,109
-	db  $40,    $00,    $00,    $00,    $00
-;       110,111 112,113 114,115 116,117 118,119  (Staryu idx119→fossil)
-	db  $00,    $30,    $02,    $22,    $26
-;       120,121 122,123 124,125 126,127 128,129  (Starmie idx120→fossil)
-	db  $60,    $00,    $00,    $00,    $20
-;       130,131 132,133 134,135 136,137 138,139
-	db  $20,    $02,    $00,    $06,    $66
-;       140,141 142,143 144,145 146,147 148,149  (Aerodactyl idx141→bird)
-	db  $01,    $51,    $11,    $22,    $00
-;       150 (Mew, idx 150 = even → high nibble; low = padding)
-	db  $00
+	db $00 ; $01,$02 RHYDON,KANGASKHAN
+	db $03 ; $03,$04 NIDORAN_M,CLEFAIRY
+	db $14 ; $05,$06 SPEAROW,VOLTORB
+	db $02 ; $07,$08 NIDOKING,SLOWBRO
+	db $00 ; $09,$0A IVYSAUR,EXEGGUTOR
+	db $00 ; $0B,$0C LICKITUNG,EXEGGCUTE
+	db $00 ; $0D,$0E GRIMER,GENGAR
+	db $00 ; $0F,$10 NIDORAN_F,NIDOQUEEN
+	db $00 ; $11,$12 CUBONE,RHYHORN
+	db $20 ; $13,$14 LAPRAS,ARCANINE
+	db $00 ; $15,$16 MEW,GYARADOS
+	db $62 ; $17,$18 SHELLDER,TENTACOOL
+	db $00 ; $19,$1A GASTLY,SCYTHER
+	db $62 ; $1B,$1C STARYU,BLASTOISE
+	db $00 ; $1D,$1E PINSIR,TANGELA
+	db $00 ; $1F,$20 skip,skip
+	db $00 ; $21,$22 GROWLITHE,ONIX
+	db $11 ; $23,$24 FEAROW,PIDGEY
+	db $20 ; $25,$26 SLOWPOKE,KADABRA
+	db $03 ; $27,$28 GRAVELER,CHANSEY
+	db $00 ; $29,$2A MACHOKE,MR_MIME
+	db $00 ; $2B,$2C HITMONLEE,HITMONCHAN
+	db $00 ; $2D,$2E ARBOK,PARASECT
+	db $20 ; $2F,$30 PSYDUCK,DROWZEE
+	db $00 ; $31,$32 GOLEM,skip
+	db $00 ; $33,$34 MAGMAR,skip
+	db $04 ; $35,$36 ELECTABUZZ,MAGNETON
+	db $00 ; $37,$38 KOFFING,skip
+	db $02 ; $39,$3A MANKEY,SEEL
+	db $00 ; $3B,$3C DIGLETT,TAUROS
+	db $00 ; $3D,$3E skip,skip
+	db $01 ; $3F,$40 skip,FARFETCHD
+	db $00 ; $41,$42 VENONAT,DRAGONITE
+	db $00 ; $43,$44 skip,skip
+	db $01 ; $45,$46 skip,DODUO
+	db $20 ; $47,$48 POLIWAG,JYNX
+	db $11 ; $49,$4A MOLTRES,ARTICUNO
+	db $10 ; $4B,$4C ZAPDOS,DITTO
+	db $02 ; $4D,$4E MEOWTH,KRABBY
+	db $00 ; $4F,$50 skip,skip
+	db $00 ; $51,$52 skip,VULPIX
+	db $07 ; $53,$54 NINETALES,PIKACHU
+	db $30 ; $55,$56 RAICHU,skip
+	db $02 ; $57,$58 skip,DRATINI
+	db $26 ; $59,$5A DRAGONAIR,KABUTO
+	db $02 ; $5B,$5C KABUTOPS,HORSEA
+	db $20 ; $5D,$5E SEADRA,skip
+	db $00 ; $5F,$60 skip,SANDSHREW
+	db $06 ; $61,$62 SANDSLASH,OMANYTE
+	db $63 ; $63,$64 OMASTAR,JIGGLYPUFF
+	db $30 ; $65,$66 WIGGLYTUFF,EEVEE
+	db $00 ; $67,$68 FLAREON,JOLTEON
+	db $20 ; $69,$6A VAPOREON,MACHOP
+	db $00 ; $6B,$6C ZUBAT,EKANS
+	db $02 ; $6D,$6E PARAS,POLIWHIRL
+	db $20 ; $6F,$70 POLIWRATH,WEEDLE
+	db $00 ; $71,$72 KAKUNA,BEEDRILL
+	db $01 ; $73,$74 skip,DODRIO
+	db $00 ; $75,$76 PRIMEAPE,DUGTRIO
+	db $02 ; $77,$78 VENOMOTH,DEWGONG
+	db $00 ; $79,$7A skip,skip
+	db $00 ; $7B,$7C CATERPIE,METAPOD
+	db $00 ; $7D,$7E BUTTERFREE,MACHAMP
+	db $02 ; $7F,$80 skip,GOLDUCK
+	db $00 ; $81,$82 HYPNO,GOLBAT
+	db $05 ; $83,$84 MEWTWO,SNORLAX
+	db $20 ; $85,$86 MAGIKARP,skip
+	db $00 ; $87,$88 skip,MUK
+	db $02 ; $89,$8A skip,KINGLER
+	db $60 ; $8B,$8C CLOYSTER,skip
+	db $43 ; $8D,$8E ELECTRODE,CLEFABLE
+	db $00 ; $8F,$90 WEEZING,PERSIAN
+	db $00 ; $91,$92 MAROWAK,skip
+	db $00 ; $93,$94 HAUNTER,ABRA
+	db $01 ; $95,$96 ALAKAZAM,PIDGEOTTO
+	db $16 ; $97,$98 PIDGEOT,STARMIE
+	db $00 ; $99,$9A BULBASAUR,VENUSAUR
+	db $20 ; $9B,$9C TENTACRUEL,skip
+	db $22 ; $9D,$9E GOLDEEN,SEAKING
+	db $00 ; $9F,$A0 skip,skip
+	db $00 ; $A1,$A2 skip,skip
+	db $00 ; $A3,$A4 PONYTA,RAPIDASH
+	db $00 ; $A5,$A6 RATTATA,RATICATE
+	db $00 ; $A7,$A8 NIDORINO,NIDORINA
+	db $00 ; $A9,$AA GEODUDE,PORYGON
+	db $10 ; $AB,$AC AERODACTYL,skip
+	db $40 ; $AD,$AE MAGNEMITE,skip
+	db $00 ; $AF,$B0 skip,CHARMANDER
+	db $20 ; $B1,$B2 SQUIRTLE,CHARMELEON
+	db $20 ; $B3,$B4 WARTORTLE,CHARIZARD
+	db $00 ; $B5,$B6 skip,FOSSIL_KABUTOPS
+	db $00 ; $B7,$B8 FOSSIL_AERODACTYL,MON_GHOST
+	db $00 ; $B9,$BA ODDISH,GLOOM
+	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
+	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
 
 ; Initialise the dedicated follower state structs to a clean idle state.
 ; Leaves MAPY/MAPX/FACINGDIRECTION at their defaults (player-derived); callers
@@ -412,7 +477,7 @@ FollowerPushCommand::
 ;   a = 1 (DOWN) / 2 (UP) / 3 (LEFT) / 4 (RIGHT), carry clear
 ;   carry set if no direction bit is set.
 FollowerEncodeDirection:
-	ld a, [wPlayerDirection]
+	ldh a, [hPlayerDirection]
 	bit PLAYER_DIR_BIT_UP, a
 	jr nz, .up
 	bit PLAYER_DIR_BIT_DOWN, a
@@ -775,9 +840,9 @@ FollowerWriteOAM::
 	ld b, 8                     ; right uses left tiles, flipped
 	ld e, 1
 .checkAnim
-	; --- walk flag: ANIMFRAMECOUNTER bit 0 selects standing (0) or walking ($80) ---
+	; --- walk flag: ANIMFRAMECOUNTER bit 0 → standing (0) or walking ($80) ---
 	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
-	ld c, 0                     ; c = walk page flag
+	ld c, 0
 	bit 0, a
 	jr z, .isStanding
 	ld c, $80

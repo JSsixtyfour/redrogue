@@ -3,7 +3,7 @@ TownMapText::
 	text_promptbutton
 	text_asm
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	call GBPalWhiteOutWithDelay3

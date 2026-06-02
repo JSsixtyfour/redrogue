@@ -47,7 +47,7 @@ OverworldLoopLessDelay::
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a
 	call nz, HandleMidJump
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	and a
 	jp nz, .moveAhead ; if the player sprite has not yet completed the walking animation
 	call JoypadOverworld ; get joypad state (which is possibly simulated)
@@ -178,14 +178,14 @@ OverworldLoopLessDelay::
 
 
 .handleDirectionButtonPress
-	ld [wPlayerDirection], a ; new direction
+	ldh [hPlayerDirection], a ; new direction
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_MOVEMENT_STATE, a
 	jr nz, .noDirectionChange ; ignore direction changes if we are
 	ld a, [wCheckFor180DegreeTurn]
 	and a
 	jr z, .noDirectionChange
-	ld a, [wPlayerDirection] ; new direction
+	ldh a, [hPlayerDirection] ; new direction
 	ld b, a
 	ld a, [wPlayerLastStopDirection] ; old direction
 	cp b
@@ -228,14 +228,14 @@ OverworldLoopLessDelay::
 	ld hl, wCheckFor180DegreeTurn
 	dec [hl]
 	jr nz, .holdIntermediateDirectionLoop
-	ld a, [wPlayerDirection]
+	ldh a, [hPlayerDirection]
 	ld [wPlayerMovingDirection], a
 	call NewBattle
 	jp c, .battleOccurred
 	jp OverworldLoop
 
 .noDirectionChange
-	ld a, [wPlayerDirection] ; current direction
+	ldh a, [hPlayerDirection] ; current direction
 	ld [wPlayerMovingDirection], a ; save direction
 	call UpdateSprites
 	ld a, [wWalkBikeSurfState]
@@ -263,7 +263,7 @@ OverworldLoopLessDelay::
 
 .noCollision
 	ld a, $08
-	ld [wWalkCounter], a
+	ldh [hWalkCounter], a
 	farcall FollowerPushCommand     ; player confirmed stepping — push to follower buffer
 	jr .moveAhead2
 
@@ -287,7 +287,7 @@ OverworldLoopLessDelay::
 	call DoBikeSpeedup
 .normalPlayerSpriteAdvancement
 	call AdvancePlayerSprite
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	and a
 	jp nz, CheckMapConnections ; it seems like this check will never succeed (the other place where CheckMapConnections is run works)
 ; walking animation finished
@@ -1173,7 +1173,7 @@ IsSpriteInFrontOfPlayer2::
 	ld c, a
 	ld a, PLAYER_DIR_LEFT
 .doneCheckingDirection
-	ld [wPlayerDirection], a
+	ldh [hPlayerDirection], a
 	ld a, [wNumSprites]
 	and a
 	ret z
@@ -1228,7 +1228,7 @@ CollisionCheckOnLand::
 	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	jr nz, .noCollision ; no collisions when the player's movements are being controlled by the game
-	ld a, [wPlayerDirection] ; the direction that the player is trying to go in
+	ldh a, [hPlayerDirection] ; the direction that the player is trying to go in
 	ld d, a
 	ld a, [wSpritePlayerStateData1CollisionData]
 	and d ; check if a sprite is in the direction the player is trying to go
@@ -1445,7 +1445,7 @@ AdvancePlayerSprite::
 	ld b, a
 	ld a, [wSpritePlayerStateData1XStepVector]
 	ld c, a
-	ld hl, wWalkCounter
+	ld hl, hWalkCounter
 	dec [hl]
 	jr nz, .afterUpdateMapCoords
 ; if it's the end of the animation, update the player's map coordinates
@@ -1456,7 +1456,7 @@ AdvancePlayerSprite::
 	add c
 	ld [wXCoord], a
 .afterUpdateMapCoords
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	cp $07
 	jp nz, .scrollBackgroundAndSprites
 ; if this is the first iteration of the animation
@@ -1902,7 +1902,7 @@ CollisionCheckOnWater::
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_MOVEMENT_STATE, a
 	jp nz, .noCollision ; return and clear carry if button presses are being simulated
-	ld a, [wPlayerDirection] ; the direction that the player is trying to go in
+	ldh a, [hPlayerDirection] ; the direction that the player is trying to go in
 	ld d, a
 	ld a, [wSpritePlayerStateData1CollisionData]
 	and d ; check if a sprite is in the direction the player is trying to go
@@ -2313,7 +2313,7 @@ LoadMapData::
 	ld [wMapViewVRAMPointer], a
 	ldh [hSCY], a
 	ldh [hSCX], a
-	ld [wWalkCounter], a
+	ldh [hWalkCounter], a
 	ld [wWalkBikeSurfStateCopy], a
 	ld [wSpriteSetID], a
 	call LoadTextBoxTilePatterns

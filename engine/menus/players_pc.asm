@@ -79,7 +79,7 @@ ExitPlayerPC:
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	xor a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ret
 
 PlayerPCDeposit:

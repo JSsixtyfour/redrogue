@@ -132,14 +132,14 @@ IF DEF(_DEBUG)
 	jr nz, .trainerNotEngaging
 ENDC
 	call CheckForEngagingTrainers
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	cp $ff
 	jr nz, .trainerEngaging
 IF DEF(_DEBUG)
 .trainerNotEngaging
 ENDC
 	xor a
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	ld [wTrainerHeaderFlagBit], a
 	ret
 .trainerEngaging
@@ -164,7 +164,7 @@ DisplayEnemyTrainerTextAndStartBattle::
 	and 1 << BIT_SCRIPTED_NPC_MOVEMENT
 	ret nz ; return if the enemy trainer hasn't finished walking to the player's sprite
 	ldh [hJoyIgnore], a
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call DisplayTextID
 	; fall through
@@ -207,7 +207,7 @@ EndTrainerBattle::
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
 	ld hl, wToggleableObjectList
 	ld de, $2
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	call IsInArray ; search for sprite ID
 	inc hl
 	ld a, [hl]
@@ -277,7 +277,7 @@ CheckForEngagingTrainers::
 .trainerLoop
 	call StoreTrainerHeaderPointer   ; set trainer header pointer to current trainer
 	ld a, [de]
-	ldh [hActiveSpriteIndex], a             ; store trainer flag's bit
+	ld [wActiveSpriteIndex], a             ; store trainer flag's bit
 	ld [wTrainerHeaderFlagBit], a
 	cp -1
 	ret z
@@ -299,7 +299,7 @@ CheckForEngagingTrainers::
 	ld a, [hl]                       ; read trainer engage distance
 	pop hl
 	ld [wTrainerEngageDistance], a
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	swap a
 	ld [wTrainerSpriteOffset], a
 	predef TrainerEngage
@@ -335,7 +335,7 @@ SaveEndBattleTextPointers::
 EngageMapTrainer::
 	ld hl, wMapSpriteExtraData
 	ld d, $0
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	dec a
 	add a
 	ld e, a

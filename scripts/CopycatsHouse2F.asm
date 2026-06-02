@@ -16,7 +16,7 @@ CopycatsHouse2FCopycatText:
 	CheckEvent EVENT_GOT_TM31
 	jr nz, .got_item
 	ld a, TRUE
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .DoYouLikePokemonText
 	call PrintText
 	ld b, POKE_DOLL

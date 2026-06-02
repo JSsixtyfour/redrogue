@@ -118,7 +118,7 @@ FightingDojoKarateMasterText:
 	ld de, .DefeatedText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	ld a, SCRIPT_FIGHTINGDOJO_KARATE_MASTER_POST_BATTLE

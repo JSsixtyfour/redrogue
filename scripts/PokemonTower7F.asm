@@ -44,7 +44,7 @@ PokemonTower7FEndBattleScript:
 	call EndTrainerBattle
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	call DisplayTextID
 	call PokemonTower7FRocketLeaveMovementScript
@@ -58,7 +58,7 @@ PokemonTower7FHideNPCScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 	ld hl, wToggleableObjectList
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ld b, a
 .toggleableObjectsListLoop
 	ld a, [hli]
@@ -69,7 +69,7 @@ PokemonTower7FHideNPCScript:
 	predef HideObject
 	xor a
 	ldh [hJoyIgnore], a
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	ld [wTrainerHeaderFlagBit], a
 	ld [wOpponentAfterWrongAnswer], a ; not used here; likely a mistake copied from maps/CinnabarGym.asm
 	ld a, SCRIPT_POKEMONTOWER7F_DEFAULT
@@ -100,7 +100,7 @@ PokemonTower7FWarpToMrFujiHouseScript:
 
 PokemonTower7FRocketLeaveMovementScript:
 	ld hl, PokemonTower7FNPCCoordMovementTable
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	dec a
 	swap a
 	ld d, $0
@@ -120,7 +120,7 @@ PokemonTower7FRocketLeaveMovementScript:
 	ld a, [hli]
 	ld d, [hl]
 	ld e, a
-	ldh a, [hActiveSpriteIndex]
+	ld a, [wActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp MoveSprite
 .inc_and_skip

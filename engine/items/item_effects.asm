@@ -725,7 +725,7 @@ ItemUseSurfboard:
 	jp LoadWalkingPlayerSpriteGraphics
 ; uses a simulated button press to make the player move forward
 .makePlayerMoveForward
-	ld a, [wPlayerDirection] ; direction the player is going
+	ldh a, [hPlayerDirection] ; direction the player is going
 	bit PLAYER_DIR_BIT_UP, a
 	ld b, PAD_UP
 	jr nz, .storeSimulatedButtonPress

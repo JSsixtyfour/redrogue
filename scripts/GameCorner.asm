@@ -256,7 +256,7 @@ GameCornerFishingGuruText:
 	predef AddBCDPredef
 	SetEvent EVENT_GOT_10_COINS
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .Received10CoinsText
 	jr .print_ret
 .alreadyGotNpcCoins
@@ -429,7 +429,7 @@ GameCornerRocketText:
 	ld de, .BattleEndText
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
 	xor a
@@ -455,7 +455,7 @@ GameCornerRocketAfterBattleText:
 GameCornerPosterText:
 	text_asm
 	ld a, $1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, .SwitchBehindPosterText
 	call PrintText
 	call WaitForSoundToFinish

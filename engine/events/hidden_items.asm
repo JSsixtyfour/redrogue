@@ -12,7 +12,7 @@ HiddenItems:
 	ret nz
 	call EnableAutoTextBoxDrawing
 	ld a, 1
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld a, [wHiddenEventFunctionArgument] ; item ID
 	ld [wNamedObjectIndex], a
 	call GetItemName
@@ -40,7 +40,7 @@ FoundHiddenItemText::
 .bagFull
 	call WaitForTextScrollButtonPress ; wait for button press
 	xor a
-	ldh [hNoWaitAfterText], a
+	ld [wNoWaitAfterText], a
 	ld hl, HiddenItemBagFullText
 	call PrintText
 	jp TextScriptEnd

@@ -24,7 +24,7 @@ UpdatePlayerSprite:
 .lowerLeftTileIsMapTile
 	call DetectCollisionBetweenSprites
 	ld h, HIGH(wSpriteStateData1)
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	and a
 	jr nz, .moving
 	ld a, [wPlayerMovingDirection]
@@ -146,7 +146,7 @@ UpdateNPCSprite:
 	jp z, UpdateSpriteMovementDelay  ; [x#SPRITESTATEDATA1_MOVEMENTSTATUS] == 2
 	cp $3
 	jp z, UpdateSpriteInWalkingAnimation  ; [x#SPRITESTATEDATA1_MOVEMENTSTATUS] == 3
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	and a
 	ret nz           ; don't do anything yet if player is currently moving
 	call InitializeSpriteScreenPosition
@@ -413,7 +413,7 @@ MakeNPCFacePlayer:
 	bit BIT_NO_NPC_FACE_PLAYER, a
 	jr nz, NotYetMoving
 	res BIT_FACE_PLAYER, [hl]
-	ld a, [wPlayerDirection]
+	ldh a, [hPlayerDirection]
 	bit PLAYER_DIR_BIT_UP, a
 	jr z, .notFacingDown
 	ld c, SPRITE_FACING_DOWN
@@ -537,7 +537,7 @@ CheckSpriteAvailability:
 	jr .done
 .spriteVisible
 	ld c, a
-	ld a, [wWalkCounter]
+	ldh a, [hWalkCounter]
 	and a
 	jr nz, .done           ; if player is currently walking, we're done
 	call UpdateSpriteImage

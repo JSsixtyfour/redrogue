@@ -71,7 +71,7 @@ PewterCitySuperNerd1ShowsPlayerMuseumScript:
 	ld a, 17
 	ldh [hSpriteMapXCoord], a
 	ld a, PEWTERCITY_SUPER_NERD1
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, PEWTERCITY_SUPER_NERD1
 	ldh [hSpriteIndex], a
@@ -101,7 +101,7 @@ PewterCityHideSuperNerd1Script:
 
 PewterCityResetSuperNerd1Script:
 	ld a, PEWTERCITY_SUPER_NERD1
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition2
 	ld a, TOGGLE_MUSEUM_GUY
 	ld [wToggleableObjectIndex], a
@@ -139,7 +139,7 @@ PewterCityYoungsterShowsPlayerGymScript:
 	ld a, 16
 	ldh [hSpriteMapXCoord], a
 	ld a, PEWTERCITY_YOUNGSTER
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition1
 	ld a, PEWTERCITY_YOUNGSTER
 	ldh [hSpriteIndex], a
@@ -170,7 +170,7 @@ PewterCityHideYoungsterScript:
 
 PewterCityResetYoungsterScript:
 	ld a, PEWTERCITY_YOUNGSTER
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call SetSpritePosition2
 	ld a, TOGGLE_GYM_GUY
 	ld [wToggleableObjectIndex], a
@@ -229,7 +229,7 @@ PewterCitySuperNerd1Text:
 	ldh a, [hLoadedROMBank]
 	ld [wNPCMovementScriptBank], a
 	ld a, PEWTERCITY_SUPER_NERD1
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call GetSpritePosition2
 	ld a, SCRIPT_PEWTERCITY_SUPER_NERD1_SHOWS_PLAYER_MUSEUM
 	ld [wPewterCityCurScript], a
@@ -293,7 +293,7 @@ PewterCityYoungsterText:
 	ldh a, [hLoadedROMBank]
 	ld [wNPCMovementScriptBank], a
 	ld a, PEWTERCITY_YOUNGSTER
-	ldh [hActiveSpriteIndex], a
+	ld [wActiveSpriteIndex], a
 	call GetSpritePosition2
 	ld a, SCRIPT_PEWTERCITY_YOUNGSTER_SHOWS_PLAYER_GYM
 	ld [wPewterCityCurScript], a
