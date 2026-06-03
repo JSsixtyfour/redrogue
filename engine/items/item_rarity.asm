@@ -40,8 +40,8 @@ dw money_pokeball_class
 
 item_greatball_classes::
 dw healing_greatball_class
-dw tm_greatball_class
 dw stat_greatball_class
+dw tm_greatball_class
 dw healing_ultraball_class
 
 item_ultraball_classes::

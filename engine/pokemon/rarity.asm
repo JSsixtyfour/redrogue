@@ -11,7 +11,7 @@ DEF pokeball_pokemon_number EQU 28 + 26 + 6
 DEF pokeball_pokemon_line_amount EQU 28 - 1
 DEF greatball_pokemon_line_number EQU pokeball_pokemon_line_number + 28
 DEF greatball_pokemon_number EQU pokeball_pokemon_number + 28 + 25 + 8
-DEF greatball_pokemon_line_amount EQU 28
+DEF greatball_pokemon_line_amount EQU 28 - 1
 DEF ultraball_pokemon_line_number EQU greatball_pokemon_line_number+ 16
 DEF ultraball_pokemon_number EQU greatball_pokemon_number + 16 + 3 + 2
 DEF ultraball_pokemon_line_amount EQU 16 - 1

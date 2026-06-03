@@ -255,7 +255,7 @@ ld [wRogueItem], a          ; place item in
 
 RET
 
-; a check to see if TM is already owned by player
+; a check to see if TM or HM is already owned by player
 ; returns a 0 if no and a 1 if yes
 ; b = item ID
 ; UPDATE, need a way to check if evolution

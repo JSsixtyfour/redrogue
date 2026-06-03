@@ -1,4 +1,7 @@
 IndigoPlateauLobby_Script:
+	; force facing up on every entry regardless of which warp brought the player here
+	ld a, SPRITE_FACING_UP
+	ld [wSpritePlayerStateData1FacingDirection], a
 	call EnableAutoTextBoxDrawing
 	; When player steps on the exit tile (8,0), pick the next stage dynamically
 	; instead of always going to ROUTE_1.  BIT_WARP_FROM_CUR_SCRIPT overrides
