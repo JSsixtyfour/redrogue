@@ -1,6 +1,17 @@
 IndigoPlateauLobby_Script:
 	call EnableAutoTextBoxDrawing
-	
+	; When player steps on the exit tile (8,0), pick the next stage dynamically
+	; instead of always going to ROUTE_1.  BIT_WARP_FROM_CUR_SCRIPT overrides
+	; the normal tile warp so the player goes to the selected stage.
+	ld a, [wYCoord]
+	and a              ; Y == 0?
+	jr nz, .notExit
+	ld a, [wXCoord]
+	cp 8
+	jr nz, .notExit
+	farcall SelectRandomUnvisitedStage
+	ret
+.notExit
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .normal
     

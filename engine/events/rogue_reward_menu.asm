@@ -190,6 +190,7 @@ GetRewardMonLevel:
 	ret
 
 RogueRefresh::
+	farcall MarkCurrentStageVisited  ; record this stage as visited for no-duplicate selection
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
 	ld [wToggleableObjectIndex], a
 	predef ShowObject

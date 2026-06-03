@@ -210,6 +210,9 @@ RogueStageMapTable:
 	db VICTORY_ROAD_1F
 	db -1
 
+DEF NUM_STAGE_MAPS EQU 25 ; must match RogueStageMapTable entry count above
+; Stage selection logic lives in custom_functions/random_stage_selection.asm
+
 ; adds toggleable object (items, leg. pokemon, etc.) to the map
 ; [wToggleableObjectIndex]: index of the toggleable object to be added (global index)
 ShowObject:

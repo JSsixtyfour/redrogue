@@ -2022,6 +2022,9 @@ wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
 
+; 32-bit bitfield: bit N = stage N visited this run (by index in RogueStageMapTable)
+wVisitedStagesBitfield:: ds 4
+
 wRogueItem:: dw
 wRogueDoor1:: db
 wRogueDoor2:: db
