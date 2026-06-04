@@ -74,7 +74,7 @@ LoadMapSpriteTilePatterns:
 	jr .checkIfAlreadyLoadedLoop
 .notAlreadyLoaded
 	ld de, wSpritePlayerStateData2ImageBaseOffset
-	ld b, 1
+	ld b, 2 ; slot 2 reserved for follower (Yellow: Pikachu is always slot 2)
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
 .findNextVRAMSlotLoop
@@ -363,7 +363,8 @@ InitOutsideMapSprites:
 	inc de
 	cp b ; does the picture ID match?
 	jr nz, .getPictureIndexLoop
-	inc c
+	inc c ; +1 for player slot
+	inc c ; +1 for reserved follower slot 2 (Yellow: Pikachu always slot 2)
 .skipGettingPictureIndex
 	push hl
 	inc h ; HIGH(wSpriteStateData2)

@@ -24,9 +24,19 @@ _UpdateSprites::
 	jr nz, .spriteLoop
 	ret
 .updateCurrentSprite
-	cp $1
-	jp nz, UpdateNonPlayerSprite
-	jp UpdatePlayerSprite
+	ldh a, [hCurrentSpriteOffset]
+	and a
+	jp z, UpdatePlayerSprite    ; offset $00 = player
+	cp $f0                       ; offset $F0 = follower slot 15 (Yellow: cp $f0; jp z, SpawnPikachu)
+	jr nz, .notFollower
+	; Run standard visibility check: CheckSpriteAvailability reads wTileMap at the
+	; follower's screen position and sets IMAGEINDEX=$FF only when a text/menu tile
+	; (>=$60) is drawn there — position-dependent hiding, matches Yellow's behaviour.
+	ld a, $10                    ; (IMAGEBASEOFFSET=2 - 1) << 4 = $10
+	ldh [hTilePlayerStandingOn], a
+	jp CheckSpriteAvailability
+.notFollower
+	ld a, [hl]                   ; restore IMAGEBASEOFFSET for UpdateNonPlayerSprite
 
 UpdateNonPlayerSprite:
 	dec a
@@ -114,6 +124,8 @@ DetectCollisionBetweenSprites:
 	ldh [hCollidingSpriteOffset], a
 	swap a
 	ld e, a
+	cp $f0          ; skip follower slot 15 (Yellow: Pikachu doesn't block movement)
+	jp z, .next
 	ldh a, [hCurrentSpriteOffset]
 	cp e ; does the loop sprite match the current sprite?
 	jp z, .next ; go to the next sprite if they match

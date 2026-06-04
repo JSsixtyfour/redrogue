@@ -26,12 +26,10 @@ DEF MAX_BG_EVENTS EQU 16
 DEF MAX_OBJECT_EVENTS EQU 16
 
 ; Hard limit for map object events: sprite state data structs only exist for
-; slots 1-15 (15 NPC slots). Any map defining 16+ objects would write past the
-; allocated arrays and corrupt adjacent WRAM.
-; The follower uses dedicated wFollowerStateData1/2 (pokeyellow architecture) and
-; does NOT reserve any sprite slot, so all 15 slots are available to maps.
+; slots 1-15. Slot 15 is permanently reserved for the Pokemon follower
+; (Yellow-style wSprite15StateData1/2), so maps may only use slots 1-14.
 ; Add ASSERT const_value <= MAX_OBJECT_EVENTS_SAFE + 1 to each map's object file.
-DEF MAX_OBJECT_EVENTS_SAFE EQU 15
+DEF MAX_OBJECT_EVENTS_SAFE EQU 14
 
 ; flower and water tile animations
 	const_def

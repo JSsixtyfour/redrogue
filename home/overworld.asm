@@ -1612,13 +1612,11 @@ AdvancePlayerSprite::
 	ldh a, [hSCX]
 	add c
 	ldh [hSCX], a ; update background scroll X
-; shift all the sprites in the direction opposite of the player's motion
-; so that the player appears to move relative to them
+; shift all 15 NPC sprite slots (hardcoded like Yellow) opposite to player's motion
+; so that the player appears to move relative to them.
+; Slot 15 is the follower — included here automatically (Yellow's approach).
 	ld hl, wSprite01StateData1YPixels
-	ld a, [wNumSprites]
-	and a ; are there any sprites?
-	jr z, .done
-	ld e, a
+	ld e, 15
 .spriteShiftLoop
 	ld a, [hl]
 	sub b
@@ -1632,17 +1630,6 @@ AdvancePlayerSprite::
 	ld l, a
 	dec e
 	jr nz, .spriteShiftLoop
-.done
-	; shift follower sprite the same as all map NPCs (it lives outside wSpriteStateData1)
-	ld a, [wFollowerActive]
-	and a
-	ret z
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS]
-	sub b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS], a
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS]
-	sub c
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS], a
 	ret
 
 ; the following four functions are used to move the pointer to the upper left
@@ -2147,23 +2134,27 @@ LoadMapHeader::
 	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
 	jp nz, .finishUp ; if so, skip this because battles don't destroy this data
 	ld a, [hli]
+	cp 15         ; cap at 14: slot 15 is reserved for the follower (Yellow style)
+	jr c, .npcCountOk
+	ld a, 14
+.npcCountOk
 	ld [wNumSprites], a ; save the number of sprites
 	push hl
-; zero out sprite state data for sprites 01-15
+; zero out sprite state data for sprites 01-14 only (slot 15 reserved for follower, Yellow style)
 	ld hl, wSprite01StateData1
 	ld de, wSprite01StateData2
 	xor a
-	ld b, $f0
+	ld b, $e0
 .zeroSpriteDataLoop
 	ld [hli], a
 	ld [de], a
 	inc e
 	dec b
 	jr nz, .zeroSpriteDataLoop
-; disable SPRITESTATEDATA1_IMAGEINDEX (set to $ff) for sprites 01-15
+; disable SPRITESTATEDATA1_IMAGEINDEX (set to $ff) for sprites 01-14 only
 	ld hl, wSprite01StateData1ImageIndex
 	ld de, SPRITESTATEDATA1_LENGTH
-	ld c, NUM_SPRITESTATEDATA_STRUCTS - 1
+	ld c, NUM_SPRITESTATEDATA_STRUCTS - 2
 .disableSpriteEntriesLoop
 	ld [hl], $ff
 	add hl, de

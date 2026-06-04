@@ -40,28 +40,23 @@ DisableWaitingAfterTextDisplay::
 	ld [wNoWaitAfterText], a
 	ret
 
-; Load all 24 follower sprite tiles into VRAM.
+; Load all 24 follower sprite tiles into VRAM (Yellow: Pikachu at slot 2, $80C0).
+; IMAGEBASEOFFSET=2 → tile base = (2-1)*12 = $0C → VRAM $80C0.
 ; If LCD is OFF: direct copy (fast) — used at map entry / ReloadMapSpriteTilePatterns.
-; If LCD is ON:  CopyVideoData (HBlank-safe, ~2 frames per 12 tiles) — used after text/menu close.
-; This mirrors how Yellow's LoadSpriteGraphics handles LCD state.
-; Standing tiles → $80C0 (slot 1 standing, always safe from font tiles)
-; Walking  tiles → $88C0 (slot 1 walking; font will overwrite, hooks restore them)
-; Saves bank+addr to wFollowerSpriteBank/Addr for ReloadFollowerSprite.
+; If LCD is ON:  CopyVideoData (HBlank-safe) — used after text/menu close.
+; Standing tiles → $80C0 (IMAGEBASEOFFSET=2: vNPCSprites + 1*$C0)
+; Walking  tiles → $88C0 ($80C0 + $800)
 ; INPUT: a = ROM bank, hl = sprite data address (24-tile sprite, 384 bytes)
 LoadFollowerSprite::
-	ld [wFollowerSpriteBank], a
-	ld a, l
-	ld [wFollowerSpriteAddrLo], a
-	ld a, h
-	ld [wFollowerSpriteAddrHi], a
+	ld b, a                 ; b = ROM bank (preserved across LCD check)
 	ldh a, [rLCDC]
 	bit B_LCDC_ENABLE, a
 	jr nz, .lcdOn
 
 .lcdOff ; direct copy — safe when LCD is disabled
-	ld a, [wFollowerSpriteBank]
+	ld a, b
 	call BankswitchHome
-	ld de, $80C0
+	ld de, $80C0            ; slot 2 standing tiles (IMAGEBASEOFFSET=2, tile $0C)
 	ld bc, 12 * 16
 .copyStanding
 	ld a, [hli]
@@ -71,7 +66,7 @@ LoadFollowerSprite::
 	ld a, b
 	or c
 	jr nz, .copyStanding
-	ld de, $88C0
+	ld de, $88C0            ; slot 2 walking tiles ($80C0 + $800)
 	ld bc, 12 * 16
 .copyWalking
 	ld a, [hli]
@@ -83,22 +78,25 @@ LoadFollowerSprite::
 	jr nz, .copyWalking
 	jp BankswitchBack
 
-.lcdOn ; direct copy for standing tiles only — fast single-frame write avoids
-	; the CopyVideoData multi-frame flicker that corrupts NPC sprites on screen.
-	; Walking tiles ($88C0) skipped to avoid corrupting font mid-display.
-	ld a, [wFollowerSpriteBank]
-	call BankswitchHome
-	ld de, $80C0
-	ld bc, 12 * 16
-.copyStandingLCDOn
-	ld a, [hli]
-	ld [de], a
-	inc de
-	dec bc
-	ld a, b
-	or c
-	jr nz, .copyStandingLCDOn
-	jp BankswitchBack
+.lcdOn ; CopyVideoData (HBlank-safe) for both standing and walking tiles
+	ld d, h
+	ld e, l                 ; de = sprite source start
+	push de                 ; save for walking tiles calculation
+	push bc                 ; save b (ROM bank) across first CopyVideoData call
+	ld hl, $80C0            ; slot 2 standing VRAM
+	ld c, 12                ; 12 tiles
+	call CopyVideoData      ; b=bank, c=12, de=source, hl=dest
+	pop bc                  ; restore b = ROM bank
+	pop de                  ; restore de = sprite source start
+	ld a, e
+	add 12 * 16             ; advance source by $C0 bytes (12 standing tiles)
+	ld e, a
+	jr nc, .noCarry
+	inc d
+.noCarry
+	ld hl, $88C0            ; slot 2 walking VRAM
+	ld c, 12
+	jp CopyVideoData        ; tail call — b still holds ROM bank
 
 ; If a follower is active, reload its sprite into VRAM slots 1 ($80C0 + $88C0).
 ; Must be called after any map sprite reload since those overwrite slot 1.

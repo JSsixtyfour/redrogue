@@ -2,41 +2,21 @@
 ;
 ; Pokemon follower system, ported from pokeyellow's Pikachu follow code.
 ;
-; ARCHITECTURE (matches pokeyellow):
-;   The follower has DEDICATED sprite state structs completely outside
-;   wSpriteStateData1/2 (wFollowerStateData1 / wFollowerStateData2). This
-;   avoids every slot conflict with map NPCs and never touches the
-;   UpdateSprites / UpdateNPCSprite path.
+; ARCHITECTURE (Yellow-faithful):
+;   The follower uses wSprite15StateData1/2 — sprite slot 15, same as Yellow's
+;   Pikachu. VRAM slot 2 is reserved (NPCs start from slot 3). The NPC shift
+;   loop runs hardcoded for 15 sprites so scroll compensation is automatic.
+;   OAM is written by the standard PrepareOAMData path (IMAGEBASEOFFSET=2 in
+;   IMAGEINDEX high nibble). Tiles are loaded to $8180/$8980 (slot 2).
 ;
-;   - The player's direction is encoded (1-4) and appended to a linear FIFO
-;     command buffer each step (FollowerPushCommand, called at .noCollision in
-;     home/overworld.asm). The buffer uses pokeyellow's size-sentinel scheme:
-;     wFollowerCommandBufferSize is the "size index" ($ff = empty), and commands
-;     pop from the FRONT with a linear shift (Func_fcc92). NOTE: because the
-;     pop treats size index 0 as empty, the buffer carries a built-in one-step
-;     lag (a command only becomes poppable once a second command is queued
-;     behind it), which is exactly how the follower trails one tile behind.
-;   - Each frame FollowerTick advances the walking animation, and when the
-;     follower is idle and a command is poppable it pops one and starts a step.
-;     If the size index is still >= 2 (three or more commands backed up) the
-;     step runs in 4 frames (FastPikachuFollow) so the follower catches up;
-;     otherwise it runs in the standard 8 frames (NormalPikachuFollow).
-;   - FollowerWriteOAM writes the follower's OAM entry directly into wShadowOAM
-;     (it is called at the end of PrepareOAMData, which lives in the same bank).
-;
-; LIMITATIONS (Gen 1 specific - see report):
-;   Gen 1 Red/Blue has NO per-species overworld sprite table (unlike Gen 2 or
-;   Yellow's dedicated Pikachu art). There is therefore no way to render an
-;   arbitrary party species' walking sprite without adding new artwork. The
-;   follower reuses the player's own sprite tiles (VRAM tile block starting at
-;   tile $00 = the Red walking sprite) so no extra VRAM load is required.
-;   SpawnFollower records the lead species for the save file, but the rendered
-;   graphic is the generic walking sprite.
+;   - Command buffer: player direction encoded (1-4) and pushed each step.
+;     Size-sentinel scheme ($ff = empty); one-step lag is intentional.
+;   - FollowerTick advances animation each frame, pops commands when idle.
+;     Fast mode (4 frames) when 3+ commands backed up; normal 8 frames otherwise.
 
 ; Give the follower its own ROM bank section (mirrors pokeyellow's dedicated
 ; Pikachu bank), keeping it out of bank1 so that bank doesn't overflow.
-; All external callers already use farcall/farjp; the one exception is
-; FollowerWriteOAM which sprite_oam.asm reaches via farjp.
+; All external callers use farcall/farjp.
 SECTION "Follower", ROMX
 
 ; Field layout constants shared with wSpriteStateData1/2 (see
@@ -53,12 +33,6 @@ DEF FOLLOWER_WALK_FRAMES_FAST   EQU $04
 DEF FOLLOWER_STEP_PX     EQU  1
 ; Empty-buffer sentinel for wFollowerCommandBufferSize (pokeyellow uses $ff).
 DEF FOLLOWER_BUFFER_EMPTY EQU $ff
-; OAM region reserved for the follower: the last 4 OBJ slots (slots 36-39).
-; PrepareOAMData already leaves these uncleared during the ledge/fishing
-; animation; here we always overwrite slot 36..39 with the follower's 2x2 sprite
-; after the clear loop, so a single dedicated 4-tile block is safe.
-DEF FOLLOWER_OAM_OFFSET  EQU  36 * OBJ_SIZE
-
 ; movement status values
 DEF FOLLOWER_STATUS_IDLE    EQU 1
 DEF FOLLOWER_STATUS_WALKING EQU 3
@@ -93,6 +67,19 @@ FollowerClearBuffer::
 SpawnFollower::
 	xor a
 	ld [wFollowerActive], a
+
+	; Always clear slot 15 first (Yellow: ClearPikachuSpriteStateData).
+	; Prevents ghost rendering when follower transitions from active to inactive.
+	ld hl, wSprite15StateData1
+	ld de, wSprite15StateData2
+	xor a
+	ld b, 16
+.clearLoop
+	ld [hli], a
+	ld [de], a
+	inc e
+	dec b
+	jr nz, .clearLoop
 
 	; skip on roguelike stage maps (no follower during trainer stages)
 	farcall IsRogueStageMap
@@ -147,14 +134,14 @@ SpawnFollowerFromSave::
 	pop bc
 
 	; MAPY / MAPX from the save
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_MAPY
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_MAPY
 	ld [hl], b
 	inc hl
 	ld [hl], c
 
 	; facing from the save
 	ld a, d
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 
 	call FollowerInitPixelsFromMap
 
@@ -169,7 +156,7 @@ SpawnFollowerFromSave::
 ; All 151 Gen 1 species are mapped to one of 7 existing sprite categories.
 ; Calls LoadFollowerSprite (HOME bank) which handles the ROM bank switch.
 ; INPUT: a = species (wPartyMon1Species, 1-based)
-; RESULT: wFollowerSpriteType = 1 (slot 1 is now loaded with the correct tiles)
+; RESULT: follower sprite tiles loaded to VRAM slot 2 ($8180/$8980)
 ; ============================================================
 DEF FSPRITE_MONSTER  EQU 0
 DEF FSPRITE_BIRD     EQU 1
@@ -211,10 +198,7 @@ FollowerSelectSprite::
 	ld d, [hl]
 	ld h, d
 	ld l, e
-	call LoadFollowerSprite
-	ld a, 1
-	ld [wFollowerSpriteType], a
-	ret
+	jp LoadFollowerSprite
 
 ; Sprite data table: bank, addr_lo, addr_hi  (one entry per FSPRITE_* category)
 FollowerSpriteDataTable:
@@ -332,32 +316,37 @@ FollowerSpriteTable:
 ; Leaves MAPY/MAPX/FACINGDIRECTION at their defaults (player-derived); callers
 ; overwrite those as needed.
 FollowerInitState:
-	; zero both 16-byte structs
-	ld hl, wFollowerStateData1
-	ld bc, 16 * 2
+	; zero StateData1 for slot 15
+	ld hl, wSprite15StateData1
+	ld bc, 16
+	xor a
+	call FillMemory
+	; zero StateData2 for slot 15 (not contiguous with StateData1)
+	ld hl, wSprite15StateData2
+	ld bc, 16
 	xor a
 	call FillMemory
 
-	; PICTUREID: mark slot as used (non-zero). The rendered graphic is the
-	; player's sprite tiles; see file header for the Gen 1 limitation.
+	; IMAGEBASEOFFSET = 2: must be non-zero so _UpdateSprites enters .updateCurrentSprite
+	; for slot 15, which is where our cp $f0 / BIT_FONT_LOADED dispatch lives.
+	ld a, 2
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
+
+	; PICTUREID: non-zero so PrepareOAMData renders this slot
 	ld a, SPRITE_RED
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID], a
 
 	; MOVEMENTSTATUS = idle
 	ld a, FOLLOWER_STATUS_IDLE
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
 
 	; FACINGDIRECTION: face same direction as player initially
 	ld a, [wSpritePlayerStateData1FacingDirection]
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 
 	; IMAGEINDEX: hidden until first rendered with a valid facing
 	ld a, $ff
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
-
-	; sprite type 0 by default (player sprite, always loaded in VRAM)
-	xor a
-	ld [wFollowerSpriteType], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
 	ret
 
 ; Place follower MAPY/MAPX 1 map tile behind the player based on facing.
@@ -386,7 +375,7 @@ FollowerPlaceBehindPlayer:
 .behindRight
 	dec c               ; player facing right -> follower 1 tile west
 .write
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_MAPY
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_MAPY
 	ld [hl], b
 	inc hl
 	ld [hl], c
@@ -397,7 +386,7 @@ FollowerPlaceBehindPlayer:
 ; Player is drawn at screen pixel (Y=$3c, X=$40) (tile 4,4 of the view).
 FollowerInitPixelsFromMap:
 	; Y pixels = player_Y_pixels + (followerMapY - playerMapY) * 16
-	ld a, [wFollowerStateData2 + SPRITESTATEDATA2_MAPY]
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
 	ld b, a
 	ld a, [wSpritePlayerStateData2MapY]
 	ld c, a
@@ -407,10 +396,10 @@ FollowerInitPixelsFromMap:
 	ld b, a
 	ld a, [wSpritePlayerStateData1YPixels]
 	add b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
 
 	; X pixels
-	ld a, [wFollowerStateData2 + SPRITESTATEDATA2_MAPX]
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
 	ld b, a
 	ld a, [wSpritePlayerStateData2MapX]
 	ld c, a
@@ -420,7 +409,7 @@ FollowerInitPixelsFromMap:
 	ld b, a
 	ld a, [wSpritePlayerStateData1XPixels]
 	add b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
 	ret
 
 ; Multiply a signed byte in a by 16 (two's-complement, low byte). Returns in a.
@@ -514,7 +503,7 @@ FollowerTick::
 	and a
 	ret z                       ; follower not active
 
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_WALKING
 	jp z, FollowerAdvanceStep   ; mid-step: advance animation
 
@@ -624,24 +613,24 @@ FollowerStartStep:
 .apply
 	; c = facing, d = Y step vector (+-1), e = X step vector (+-1)
 	ld a, c
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 	ld a, d
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
 	ld a, e
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
 
 	ld a, FOLLOWER_STATUS_WALKING
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
 	pop bc                      ; b = frame count
 	ld a, b
-	ld [wFollowerStateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
 
 	; advance MAPY/MAPX by one tile in the step direction now, at step start
 	; (matches AddPikachuStepVector updating MAPY/MAPX up front).
 	ld a, d
 	and a
 	jr z, .checkX
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_MAPY
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_MAPY
 	bit 7, a                    ; negative (north)?
 	jr nz, .north
 	inc [hl]                    ; south
@@ -652,7 +641,7 @@ FollowerStartStep:
 	ld a, e
 	and a
 	jr z, .doneStep
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_MAPX
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_MAPX
 	bit 7, a                    ; negative (west)?
 	jr nz, .west
 	inc [hl]                    ; east
@@ -676,29 +665,31 @@ FollowerStartStep:
 ;   XPIXELS += XSTEPVECTOR * 2
 ; ============================================================
 FollowerAdvanceStep:
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
 	ld a, [hl]
 	and a
 	jr z, .stepDone             ; safety: counter already 0 (no advance)
 
 	; YPIXELS += YSTEPVECTOR * 2 (scroll compensation is applied separately by
 	; the scrollBackgroundAndSprites hook in overworld.asm)
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_YSTEPVECTOR]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR]
 	add a                       ; * 2
 	ld b, a
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
 	add b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
 	; XPIXELS += XSTEPVECTOR * 2
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_XSTEPVECTOR]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR]
 	add a                       ; * 2
 	ld b, a
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
 	add b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
 
-	; advance the walk animation frame counter (every 4 frames bump the frame)
-	ld hl, wFollowerStateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
+	; advance the walk animation frame counter.
+	; Yellow uses d=2 (happy Pikachu) or d=5 (sad) in GetPikachuWalkingAnimationSpeed.
+	; cp 4 matches original NPC speed (2 frames: stand/walk). cp 2 = Yellow happy (all 4 frames).
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
 	ld a, [hl]
 	inc a
 	cp 4
@@ -717,14 +708,17 @@ FollowerAdvanceStep:
 	; dec AFTER pixel advance + animation (Yellow asm_fc9c3: advance → dec → ret nz).
 	; This means the step ends on the SAME frame as the last pixel advance, so
 	; scroll compensation and advance cancel correctly — no accumulative drift.
-	ld hl, wFollowerStateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
 	dec [hl]
-	ret nz                      ; counter > 0: still stepping
+	jr z, .stepDone             ; counter hit 0: process step completion below
+	; still stepping: update IMAGEINDEX now so animation plays each frame
+	call FollowerUpdateImage
+	ret
 
 .stepDone
 	; walk finished: clear step vectors + animation counters, return to idle
 	; Use hl+inc: YSTEPVECTOR(3) skip(4) XSTEPVECTOR(5) skip(6) INTRA(7) ANIM(8)
-	ld hl, wFollowerStateData1 + SPRITESTATEDATA1_YSTEPVECTOR
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR
 	xor a
 	ld [hli], a         ; YSTEPVECTOR = 0
 	inc hl              ; skip YPIXELS
@@ -733,7 +727,7 @@ FollowerAdvanceStep:
 	ld [hli], a         ; INTRAANIMFRAMECOUNTER = 0
 	ld [hl], a          ; ANIMFRAMECOUNTER = 0 (show idle frame)
 	ld a, FOLLOWER_STATUS_IDLE
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
 	call FollowerComputeFacing  ; port of ComputePikachuFacingDirection
 	; fallthrough to refresh image
 
@@ -741,12 +735,13 @@ FollowerAdvanceStep:
 ; IMAGEINDEX layout (matches the engine): facing in bits 2-3 from
 ; FACINGDIRECTION ($0/$4/$8/$c), animation frame in bits 0-1.
 FollowerUpdateImage:
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
 	ld b, a
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
 	and $03
 	or b
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	or $10  ; high nibble encodes tile base: (IMAGEBASEOFFSET-1)<<4 = (2-1)<<4 = $10 → tiles at $80C0
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
 	ret
 
 ; ============================================================
@@ -781,188 +776,10 @@ FollowerComputeFacing:
 	; follower is always directly behind the player so same facing looks correct.
 	ld a, [wSpritePlayerStateData1FacingDirection]
 .setFacing
-	ld [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 	ret
 
-; ============================================================
-; FollowerWriteOAM
-; Write the follower's 2×2 OAM entry into the reserved slots (36-39).
-; Called at the end of PrepareOAMData (same bank), after the normal sprite
-; OAM has been built and unused slots cleared.
-;
-; Tile layout matches SpriteFacingAndAnimationTable / facings.asm:
-;   Sprite tiles are split across two VRAM pages:
-;     Standing frames: tile = type*12 + facing_offset   (page $00-)
-;     Walking  frames: tile = type*12 + facing_offset + $80  (page $80-)
-;   facing_offset: 0=down, 4=up, 8=left/right
-;   Walk flag: ANIMFRAMECOUNTER bit 0 set -> walking ($80 page), else standing.
-;   OAM frame layout (NormalOAM): TL=(y,x,t), TR=(y,x+8,t+1),
-;                                  BL=(y+8,x,t+2), BR=(y+8,x+8,t+3)
-;   FlippedOAM (right-facing or ANIMFRAMECOUNTER=3):
-;                TL=(y,x+8,t,XFLIP), TR=(y,x,t+1,XFLIP),
-;                BL=(y+8,x+8,t+2,XFLIP), BR=(y+8,x,t+3,XFLIP)
-;   Bottom tiles get OAM_PRIO ($80 attr) for correct grass priority.
-; ============================================================
-FollowerWriteOAM::
-	ld a, [wFollowerActive]
-	and a
-	ret z
 
-	; The follower shares the last 4 OAM slots with the ledge-jump shadow and
-	; fishing rod animations, so suppress it while either is active.
-	ld a, [wMovementFlags]
-	bit BIT_LEDGE_OR_FISHING, a
-	ret nz
-
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_IMAGEINDEX]
-	cp $ff
-	ret z                       ; hidden / off-screen
-
-	; --- determine facing tile offset (b) and flip flag (e) ---
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
-	ld e, 0                     ; e = 0 (no flip) or 1 (flip)
-	ld b, 0                     ; b = facing_offset: 0=down, 4=up, 8=left/right
-	cp SPRITE_FACING_UP
-	jr z, .facingUp
-	cp SPRITE_FACING_LEFT
-	jr z, .facingLeft
-	cp SPRITE_FACING_RIGHT
-	jr z, .facingRight
-	; SPRITE_FACING_DOWN: b=0
-	jr .checkAnim
-.facingUp
-	ld b, 4
-	jr .checkAnim
-.facingLeft
-	ld b, 8
-	jr .checkAnim
-.facingRight
-	ld b, 8                     ; right uses left tiles, flipped
-	ld e, 1
-.checkAnim
-	; --- walk flag: ANIMFRAMECOUNTER bit 0 → standing (0) or walking ($80) ---
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
-	ld c, 0
-	bit 0, a
-	jr z, .isStanding
-	ld c, $80
-.isStanding
-	; (ANIM=3 FlippedOAM not needed: ANIM resets to 0 at each stepDone, never reaches 3)
-
-	; --- compute base tile = wFollowerSpriteType * 12 + facing_offset + walk_flag ---
-	; type * 12: add a (×2), add a (×4), save to d, add a (×8), add d (×12)
-	ld a, [wFollowerSpriteType]
-	add a                       ; ×2
-	add a                       ; ×4
-	ld d, a
-	add a                       ; ×8
-	add d                       ; ×12
-	add b                       ; + facing_offset
-	add c                       ; + walk_flag
-	ld d, a                     ; d = base tile
-
-	; --- screen Y/X ---
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_YPIXELS]
-	add OAM_Y_OFS
-	ld b, a                     ; b = OAM Y
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_XPIXELS]
-	add OAM_X_OFS
-	ld c, a                     ; c = OAM X
-
-	ld hl, wShadowOAM + FOLLOWER_OAM_OFFSET
-
-	ld a, e
-	and a
-	jr nz, .writeFlipped
-
-.writeNormal
-	; NormalOAM: TL=(y,x,t,0), TR=(y,x+8,t+1,0),
-	;            BL=(y+8,x,t+2,$80), BR=(y+8,x+8,t+3,$80)
-	ld a, b
-	ld [hli], a                 ; TL Y
-	ld a, c
-	ld [hli], a                 ; TL X
-	ld a, d
-	ld [hli], a                 ; TL tile
-	xor a
-	ld [hli], a                 ; TL attr = 0
-	ld a, b
-	ld [hli], a                 ; TR Y
-	ld a, c
-	add 8
-	ld [hli], a                 ; TR X+8
-	ld a, d
-	inc a
-	ld [hli], a                 ; TR tile+1
-	xor a
-	ld [hli], a                 ; TR attr = 0
-	ld a, b
-	add 8
-	ld [hli], a                 ; BL Y+8
-	ld a, c
-	ld [hli], a                 ; BL X
-	ld a, d
-	add 2
-	ld [hli], a                 ; BL tile+2
-	xor a ; OAM_PRIO removed: only set in grass (not needed for dungeon maps)
-	ld [hli], a                 ; BL attr: behind BG (grass priority)
-	ld a, b
-	add 8
-	ld [hli], a                 ; BR Y+8
-	ld a, c
-	add 8
-	ld [hli], a                 ; BR X+8
-	ld a, d
-	add 3
-	ld [hli], a                 ; BR tile+3
-	xor a ; OAM_PRIO removed: only set in grass (not needed for dungeon maps)
-	ld [hl], a                  ; BR attr
-	ret
-
-.writeFlipped
-	; FlippedOAM: tiles same but X positions swapped, all tiles H-flipped.
-	; TL=(y,x+8,t,XFLIP), TR=(y,x,t+1,XFLIP),
-	; BL=(y+8,x+8,t+2,XFLIP|BG), BR=(y+8,x,t+3,XFLIP|BG)
-	ld a, b
-	ld [hli], a                 ; TL Y
-	ld a, c
-	add 8
-	ld [hli], a                 ; TL X+8
-	ld a, d
-	ld [hli], a                 ; TL tile
-	ld a, OAM_XFLIP
-	ld [hli], a                 ; TL attr
-	ld a, b
-	ld [hli], a                 ; TR Y
-	ld a, c
-	ld [hli], a                 ; TR X
-	ld a, d
-	inc a
-	ld [hli], a                 ; TR tile+1
-	ld a, OAM_XFLIP
-	ld [hli], a                 ; TR attr
-	ld a, b
-	add 8
-	ld [hli], a                 ; BL Y+8
-	ld a, c
-	add 8
-	ld [hli], a                 ; BL X+8
-	ld a, d
-	add 2
-	ld [hli], a                 ; BL tile+2
-	ld a, OAM_XFLIP
-	ld [hli], a                 ; BL attr
-	ld a, b
-	add 8
-	ld [hli], a                 ; BR Y+8
-	ld a, c
-	ld [hli], a                 ; BR X
-	ld a, d
-	add 3
-	ld [hli], a                 ; BR tile+3
-	ld a, OAM_XFLIP
-	ld [hl], a                  ; BR attr
-	ret
 
 ; ============================================================
 ; SaveFollowerPosition
@@ -981,11 +798,11 @@ SaveFollowerPosition::
 
 	ld a, [wPartyMon1Species]
 	ld [sFollowerSpecies], a
-	ld a, [wFollowerStateData2 + SPRITESTATEDATA2_MAPY]
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
 	ld [sFollowerMapY], a
-	ld a, [wFollowerStateData2 + SPRITESTATEDATA2_MAPX]
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
 	ld [sFollowerMapX], a
-	ld a, [wFollowerStateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
 	ld [sFollowerFacingDirection], a
 .disable
 	xor a

@@ -1817,8 +1817,8 @@ wSignTextIDs:: ds MAX_BG_EVENTS
 ; number of sprites on the current map (up to MAX_OBJECT_EVENTS)
 wNumSprites:: db
 
-; Pokemon follower system (pokeyellow Pikachu architecture: dedicated structs
-; completely outside wSpriteStateData1/2 - no slot reservation needed).
+; Pokemon follower system (pokeyellow Pikachu architecture: uses wSprite15StateData1/2,
+; VRAM slot 2 reserved, shift loop hardcoded to 15 sprites).
 ; FIFO command buffer using pokeyellow's size-sentinel encoding: the size byte
 ; doubles as the last written index ($ff = empty). Commands are appended to the
 ; back and popped from the front with a linear shift (see Func_fcc92 and
@@ -1826,14 +1826,6 @@ wNumSprites:: db
 wFollowerCommandBufferSize:: db ; last written index; $ff = empty sentinel
 wFollowerCommandBuffer:: ds 16  ; linear FIFO buffer of encoded directions (1-4)
 wFollowerActive:: db            ; nonzero when a follower is active this session
-wFollowerSpriteType:: db        ; NPC sprite type (always 1 = slot 1 standing area)
-; Saved sprite address so walking tiles can be swapped in/out of $80C0 per step
-wFollowerSpriteBank:: db        ; ROM bank of current follower sprite file
-wFollowerSpriteAddrLo:: db      ; low  byte of sprite file start address
-wFollowerSpriteAddrHi:: db      ; high byte of sprite file start address
-; Dedicated follower sprite state structs (same field layout as wSpriteStateData1/2)
-wFollowerStateData1:: ds 16
-wFollowerStateData2:: ds 16
 
 ; these two variables track the X and Y offset in blocks from the last special warp used
 ; they don't seem to be used for anything

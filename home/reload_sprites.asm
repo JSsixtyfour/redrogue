@@ -19,6 +19,6 @@ ReloadMapSpriteTilePatterns::
 	call LoadFontTilePatterns    ; font overwrites $88C0 walking tiles (accepted)
 	jp UpdateSprites
 
-; If a follower is active, reload its sprite into VRAM slot 1.
-; Must be called after any map sprite reload since those overwrite slot 1.
+; If a follower is active, reload its sprite into VRAM slot 2 ($8180/$8980).
+; Must be called after any map sprite reload since those may overwrite slot 2.
 ; Uses Bankswitch to call FollowerSelectSprite (bank 3) from here (HOME bank).
