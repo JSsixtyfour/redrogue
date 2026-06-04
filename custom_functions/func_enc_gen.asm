@@ -112,17 +112,8 @@ ldh [hMultiplicand+1], a    ; put second byte for multiplication
 pop af                      ; restore line amount to multiply by amount in class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
-ldh   a, [hProduct+2]       ; load product into a
-ldh [hDividend], a          ; place product in divident
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ld b, $2                    ; b determines how many bytes the number is, do not remove!
-ldh [hDivisor], a           ; place 255 as divisor
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient, which will be the offset
-ld c, a                     ; place in c
+ldh a, [hProduct+2]         ; high byte = floor(random*N/256), always in [0,N-1]
+ld c, a
 ld b, $0
 
 pop hl                      ; restore base pointer
@@ -232,16 +223,7 @@ ldh [hMultiplicand+1], a    ; put second byte for multiplication
 ld a, c                     ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
-ldh   a, [hProduct+2]       ; load product into a
-ldh [hDividend], a          ; place product in divident
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ld b, $2
-ldh [hDivisor], a           ; place 255 as divisor
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
+ldh a, [hProduct+2]         ; high byte = floor(random*N/256), always in [0,N-1]
 pop bc
 ret
 

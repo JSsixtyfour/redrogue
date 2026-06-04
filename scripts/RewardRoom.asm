@@ -5,6 +5,9 @@ RewardRoom_Script:
     jr nz, .step_forward
     
     SetEvent EVENT_ENTER_ROOM
+    ; Pick the next random stage and patch exit warps before the player can walk out.
+    ; Uses SelectAndPatchRewardRoomExit (no BIT_WARP_FROM_CUR_SCRIPT).
+    farcall SelectAndPatchRewardRoomExit
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     

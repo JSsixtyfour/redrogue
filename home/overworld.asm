@@ -488,6 +488,10 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
+	; Check for ROGUE_MAP before the outdoor/indoor split so tileset doesn't matter
+	ldh a, [hWarpDestinationMap]
+	cp ROGUE_MAP
+	jr z, .randomStage
 	call CheckIfInOutsideMap
 	jr nz, .indoorMaps
 ; this is for handling "outside" maps that can't have the 0xFF destination map
@@ -510,6 +514,8 @@ WarpFound2::
 	ldh a, [hWarpDestinationMap]
 	cp LAST_MAP
 	jr z, .goBackOutside
+	cp ROGUE_MAP
+	jr z, .randomStage
 ; if not going back to the previous map
 	ldh [hCurMap], a
 	farcall IsPlayerStandingOnWarpPadOrHole
@@ -528,6 +534,14 @@ WarpFound2::
 	res BIT_STANDING_ON_DOOR, [hl]
 	res BIT_EXITING_DOOR, [hl]
 	jr .done
+.randomStage
+	ld a, [wRogueMap]
+	ldh [hCurMap], a
+	call PlayMapChangeSound
+	xor a
+	ld [wMapPalOffset], a
+	jr .done
+
 .goBackOutside
 	ld a, [wLastMap]
 	ldh [hCurMap], a

@@ -3,22 +3,14 @@ IndigoPlateauLobby_Script:
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
 	call EnableAutoTextBoxDrawing
-	; When player steps on the exit tile (8,0), pick the next stage dynamically
-	; instead of always going to ROUTE_1.  BIT_WARP_FROM_CUR_SCRIPT overrides
-	; the normal tile warp so the player goes to the selected stage.
-	ld a, [wYCoord]
-	and a              ; Y == 0?
-	jr nz, .notExit
-	ld a, [wXCoord]
-	cp 8
-	jr nz, .notExit
-	farcall SelectRandomUnvisitedStage
-	ret
-.notExit
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .normal
-    
+
     SetEvent EVENT_ENTER_ROOM
+	; Pick the next random stage on map entry and patch the exit warp.
+	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
+	; would cause an immediate warp before the player could do anything).
+	farcall SelectAndPatchLobbyExit
 	ld c, TRADE_FOR_RANDOM
 	ld b, FLAG_RESET
     ld hl, wCompletedInGameTradeFlags
@@ -55,6 +47,30 @@ IndigoPlateauLobby_TextPointers:
 	dw_const PCPokemonSalesmanText,                  TEXT_PC_POKEMON_SALESMAN
     dw_const PCTraderSuperNerdText,                  TEXT_PC_TRADER_SUPER_NERD
     dw_const PCMoveTutorText,                        TEXT_PC_MOVE_TUTOR
+	dw_const LobbyDoor1SignText,                     TEXT_PC_DOOR1_SIGN
+	dw_const LobbyDoor2SignText,                     TEXT_PC_DOOR2_SIGN
+
+LobbyDoor1SignText:
+; Dynamic: show "ROUTE STAGE" for door 1
+	text_asm
+	ld hl, .routeText
+	call PrintText
+	jp TextScriptEnd
+.routeText
+	text "DOOR 1:"
+	line "ROUTE STAGE@"
+	text_end
+
+LobbyDoor2SignText:
+; Dynamic: show "GYM STAGE" for door 2
+	text_asm
+	ld hl, .gymText
+	call PrintText
+	jp TextScriptEnd
+.gymText
+	text "DOOR 2:"
+	line "GYM STAGE@"
+	text_end
 
 IndigoPlateauLobbyNurseText:
 	script_pokecenter_nurse

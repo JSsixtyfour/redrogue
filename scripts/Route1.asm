@@ -1,17 +1,78 @@
 Route1_Script:
-
+	; One-time setup on first map entry
     CheckEvent EVENT_ENTER_ROOM
-    jr nz, .normal
-
+    jr nz, .afterSetup
     SetEvent EVENT_ENTER_ROOM
-
     ResetEvent EVENT_GOT_ROGUE_POKEMON
-
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
 	farcall RogueRefresh
+.afterSetup
+	; Bruno-style: detect player near the entrance (X=34 side) and push them in
+	ld hl, Route1EntranceCoords
+	call ArePlayerCoordsInArray
+	jp nc, Route1NormalFlow    ; not near entrance: normal script
+	; Player is near the entrance
+	xor a
+	ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ldh [hSimulatedJoypadStatesIndex], a
+	CheckAndSetEvent EVENT_AUTOWALKED_INTO_ROUTE_1
+	jr z, Route1WalkIntoStage  ; first time: auto-walk 6 steps
+	; Already walked in before — show no-turning-back text then push 1 step
+	ld a, TEXT_ROUTE1_NO_TURNING_BACK
+	ldh [hTextID], a
+	call DisplayTextID
+	ld a, PAD_UP
+	ld [wSimulatedJoypadStatesEnd], a
+	ld a, $1
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, SCRIPT_ROUTE1_PLAYER_IS_MOVING
+	ld [wRoute1CurScript], a
+	ld [wCurMapScript], a
+	ret
 
-    .normal
+Route1WalkIntoStage:
+; Force 6 steps UP into the stage (same count as Bruno's room)
+	ld hl, wSimulatedJoypadStatesEnd
+	ld a, PAD_UP
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	ld a, $6
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, SCRIPT_ROUTE1_PLAYER_IS_MOVING
+	ld [wRoute1CurScript], a
+	ld [wCurMapScript], a
+	ret
+
+Route1PlayerIsMovingScript:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	call Delay3
+	xor a
+	ldh [hJoyIgnore], a
+	ld [wRoute1CurScript], a
+	ld [wCurMapScript], a
+	ret
+
+; warp_event 10,34 → X=10,Y=34 → player lands at wYCoord=34,wXCoord=10
+; dbmapcoord takes (Y, X) matching wYCoord/wXCoord
+Route1EntranceCoords:
+	dbmapcoord 34, 10
+	dbmapcoord 34, 11
+	dbmapcoord 33, 10
+	dbmapcoord 33, 11
+	db -1
+
+Route1NormalFlow:
 	call EnableAutoTextBoxDrawing
 	ld hl, Route1TrainerHeaders
 	ld de, Route1_ScriptPointers
@@ -25,6 +86,7 @@ Route1_ScriptPointers:
 	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE1_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE1_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE1_END_BATTLE
+	dw_const Route1PlayerIsMovingScript,            SCRIPT_ROUTE1_PLAYER_IS_MOVING
 
 Route1_TextPointers:
 	def_text_pointers
@@ -42,6 +104,7 @@ Route1_TextPointers:
     dw_const Rogue_Route1_Reward_Text, TEXT_ROUTE1_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE1_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route1SignText,       TEXT_ROUTE1_SIGN
+	dw_const Route1NoTurningBackText, TEXT_ROUTE1_NO_TURNING_BACK
 
 Route1TrainerHeaders:
 	def_trainers 1
@@ -203,6 +266,11 @@ Route1Youngster2Text:
 
 Route1SignText:
 	text_far _Route1SignText
+	text_end
+
+Route1NoTurningBackText:
+	text "There's no"
+	line "turning back!@"
 	text_end
 
 Rogue_Route1_Reward_Text:

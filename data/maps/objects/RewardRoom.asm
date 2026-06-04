@@ -10,8 +10,8 @@ RewardRoom_Object:
 	def_warp_events
 	warp_event $8, $7, LAST_MAP, 2
 	warp_event $8, $7, LAST_MAP, 3
-	warp_event $6, $1, VIRIDIAN_FOREST, 4
-	warp_event $A, $1, VIRIDIAN_FOREST, 5
+	warp_event $6, $1, ROGUE_MAP, 1
+	warp_event $A, $1, ROGUE_MAP, 1
 
 	def_bg_events
 

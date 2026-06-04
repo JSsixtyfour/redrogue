@@ -2021,11 +2021,15 @@ wUndergroundPathRoute5CurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
+wRogueMap:: db
 
 ; 32-bit bitfield: bit N = stage N visited this run (by index in RogueStageMapTable)
 wVisitedStagesBitfield:: ds 4
-
+wRogueFlagsBitfield:: db
 wRogueItem:: dw
+; Lobby door sign data: map IDs of the two staged stages currently behind each door
+wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — route stage map ID
+wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — gym stage map ID
 wRogueDoor1:: db
 wRogueDoor2:: db
 wRogueDoorSelection:: db

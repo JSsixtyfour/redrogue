@@ -402,4 +402,7 @@ DEF NUM_MAPS EQU const_value
 ; This map ID takes the player back to the last outdoor map they were on, stored in wLastMap
 DEF LAST_MAP EQU $ff
 
+; This map ID takes the player to a random stage via random_stage_selection
+DEF ROGUE_MAP EQU $fe
+
 ASSERT NUM_MAPS <= LAST_MAP, "map IDs overlap LAST_MAP"

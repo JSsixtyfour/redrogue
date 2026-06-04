@@ -84,16 +84,7 @@ ld a, b                     ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a,  [hProduct+2]   ; load product into a
-ldh [hDividend], a          ; place product in dividend
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
-ld c, a                     ; load offset to add to pointer, to get address
+ld c, a                     ; high byte of product = floor(random*N/256), always in [0,N-1]
 ld b, $0
 
 ld hl,item_pokeball_classes ; class pointer array

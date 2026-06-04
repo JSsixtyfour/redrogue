@@ -246,6 +246,7 @@
 	const EVENT_BEAT_ROUTE_1_TRAINER_2
 	const EVENT_BEAT_ROUTE_1_TRAINER_3
 	const EVENT_BEAT_ROUTE_1_TRAINER_4
+	const EVENT_AUTOWALKED_INTO_ROUTE_1  ; set after first auto-walk; keeps "no turning back" active
 
 ; Underground Path Route 5 rogue trainers
 	const_next $3D1

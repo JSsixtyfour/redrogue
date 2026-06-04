@@ -18,7 +18,7 @@ Route1_Object:
 	warp_event 10, 34, LAST_MAP, 1
 	warp_event 11, 34, LAST_MAP, 1
 	warp_event 11,  1, INDIGO_PLATEAU_LOBBY, 1
-	warp_event 10,  1, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  7,  0, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 	bg_event  9, 27, TEXT_ROUTE1_SIGN

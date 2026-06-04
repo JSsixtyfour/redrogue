@@ -45,7 +45,11 @@ IF DEF(_DEBUG)
 	ld a, ~(1 << BIT_EARTHBADGE)
 	ld [wObtainedBadges], a
 
+	ld a, $10             ; skip naming screen (non-zero) but keep player party (low nibble 0)
+	ld [wMonDataLocation], a
 	call SetDebugNewGameParty
+	xor a
+	ld [wMonDataLocation], a
 
 	; Exeggutor gets four HM moves.
 	ld hl, wPartyMon1Moves

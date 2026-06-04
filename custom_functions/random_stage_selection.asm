@@ -4,6 +4,124 @@
 ; Uses a 4-byte bitfield (wVisitedStagesBitfield) where bit N
 ; tracks whether stage N (by index in RogueStageMapTable) has
 ; been visited this run.
+;
+; RogueStageMapTable and IsRogueStageMap live here (rogue bank) so that
+; _PickRandomUnvisitedStage can read the table directly without a bank switch.
+DEF NUM_STAGE_MAPS EQU 25
+
+RogueStageMapTable:
+	db ROUTE_1
+	db ROUTE_3
+	db ROUTE_5
+	db ROUTE_6
+	db ROUTE_9
+	db ROUTE_12
+	db ROUTE_13
+	db ROUTE_15
+	db ROUTE_17
+	db ROUTE_24
+	db ROUTE_25
+	db VIRIDIAN_FOREST
+	db DIGLETTS_CAVE
+	db MT_MOON_1F
+	db ROCK_TUNNEL_1F
+	db ROCKET_HIDEOUT_B1F
+	db POKEMON_TOWER_2F
+	db POKEMON_TOWER_7F
+	db SS_ANNE_B1F
+	db SS_ANNE_BOW
+	db POWER_PLANT
+	db SILPH_CO_1F
+	db POKEMON_MANSION_1F
+	db SEAFOAM_ISLANDS_1F
+	db VICTORY_ROAD_1F
+	db -1
+
+; Badge bit → gym map. Index matches wObtainedBadges bit position (0=Boulder…7=Earth).
+; Used by _PickNextGym to find which gym the player should face next.
+GymMapByBadge:
+	db PEWTER_GYM      ; bit 0 – Boulder Badge
+	db CERULEAN_GYM    ; bit 1 – Cascade Badge
+	db VERMILION_GYM   ; bit 2 – Thunder Badge
+	db CELADON_GYM     ; bit 3 – Rainbow Badge
+	db FUCHSIA_GYM     ; bit 4 – Soul Badge
+	db SAFFRON_GYM     ; bit 5 – Marsh Badge
+	db CINNABAR_GYM    ; bit 6 – Volcano Badge
+	db VIRIDIAN_GYM    ; bit 7 – Earth Badge
+
+; ============================================================
+; _PickNextGym  (private)
+; Picks a RANDOM unvisited gym using wObtainedBadges as the visited
+; bitfield (unset bit = gym not yet beaten this run).
+; If all 8 gyms are done, treats all 8 as available again.
+; ============================================================
+_PickNextGym:
+	; Pass 1: count unvisited gyms (unset bits in wObtainedBadges)
+	ld a, [wObtainedBadges]
+	ld b, 0             ; b = unvisited count
+	ld d, a             ; d = badges copy for iteration
+	ld e, 8             ; e = loop counter (8 gyms)
+.gym_cnt
+	bit 0, d
+	jr nz, .gym_cntSkip
+	inc b
+.gym_cntSkip
+	srl d
+	dec e
+	jr nz, .gym_cnt
+	ld a, b
+	and a
+	jr nz, .gym_has
+	; All gyms beaten — pick from all 8
+	ld b, 8
+.gym_has
+	; Pick random index in [0, b-1]
+	ld c, b
+	call Rangerandom    ; a = random in [0, c-1] (same bank, safe call)
+	ld c, a             ; c = target (0-based index into unvisited gyms)
+
+	; Pass 2: find the c-th unset bit in wObtainedBadges
+	ld a, [wObtainedBadges]
+	ld e, 0             ; e = gym index (= GymMapByBadge offset)
+.gym_pick
+	bit 0, a            ; is this gym already beaten?
+	jr nz, .gym_pickSkip
+	ld b, a             ; stash badges while checking counter
+	ld a, c
+	and a               ; reached target?
+	jr z, .gym_chosen
+	dec c
+	ld a, b
+.gym_pickSkip
+	srl a
+	inc e
+	jr .gym_pick
+.gym_chosen
+	ld hl, GymMapByBadge
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	ldh [hWarpDestinationMap], a
+	ret
+
+; Returns: Z clear if current map is a roguelike stage, Z set if not
+IsRogueStageMap::
+	ldh a, [hCurMap]
+	ld hl, RogueStageMapTable
+.stageLoop
+	ld c, [hl]
+	inc hl
+	inc c
+	jr z, .notStage   ; c was $FF sentinel (db -1 = $FF)
+	dec c
+	cp c
+	jr nz, .stageLoop
+	xor a
+	inc a             ; Z clear = is a stage map
+	ret
+.notStage
+	xor a             ; Z set = not a stage map
+	ret
 
 ; ============================================================
 ; _StageBitInfo  (private helper)
@@ -77,7 +195,11 @@ MarkCurrentStageVisited::
 ; Sets: hWarpDestinationMap, wDestinationWarpID, wLastMap,
 ;       BIT_WARP_FROM_CUR_SCRIPT
 ; ============================================================
-SelectRandomUnvisitedStage::
+; Private helper: pick a random unvisited stage and store its map ID in
+; hWarpDestinationMap. Does NOT set BIT_WARP_FROM_CUR_SCRIPT or wLastMap.
+; Use SelectRandomUnvisitedStage for the full exit-tile behaviour, or call
+; this directly when patching the warp table on map entry instead.
+_PickRandomUnvisitedStage:
 	; --- Pass 1: count how many stages are unvisited ---
 	ld hl, RogueStageMapTable
 	ld b, 0             ; b = running unvisited count
@@ -112,15 +234,10 @@ SelectRandomUnvisitedStage::
 	ld b, NUM_STAGE_MAPS
 .srus_has
 	; Pick a random number in [0, unvisited_count - 1]
-	push bc
-	call BattleRandom   ; a = random byte
-	pop bc
-.srus_mod               ; reduce a to range [0, b-1] via repeated subtraction
-	cp b
-	jr c, .srus_modDone
-	sub b
-	jr .srus_mod
-.srus_modDone
+	; Use Rangerandom (same rogue bank, no cross-bank issue) to pick an index
+	; in [0, b-1]. Rangerandom takes c = count and returns a = result.
+	ld c, b             ; c = unvisited count
+	call Rangerandom    ; a = random in [0, c-1]; bc and de preserved internally
 	ld c, a             ; c = which unvisited stage to pick (0-based)
 
 	; --- Pass 2: walk the table and find the c-th unvisited stage ---
@@ -134,12 +251,15 @@ SelectRandomUnvisitedStage::
 	ld c, e             ; pass stage index to _StageBitInfo
 	call _StageBitInfo
 	ld a, [hl]
-	and b               ; Z = unvisited
+	and b               ; 0 = unvisited, non-zero = visited
+	ld d, a             ; save bit-check result — pop af below clobbers Z flag
 	pop bc
-	pop af              ; restore map ID into a
+	pop af              ; a = map ID
+	ld b, a             ; stash map ID NOW before a gets clobbered by ld a,d below
 	pop hl
-	jr nz, .srus_pickSkip   ; visited: skip this stage
-	ld b, a             ; stash map ID in b while we check the counter
+	ld a, d
+	and a               ; re-establish Z from saved bit check
+	jr nz, .srus_pickSkip   ; non-zero = visited: skip
 	ld a, c
 	and a               ; is target counter 0?
 	jr z, .srus_chosen  ; yes — this is the stage we want
@@ -150,11 +270,91 @@ SelectRandomUnvisitedStage::
 
 .srus_chosen
 	ld a, b             ; a = chosen stage map ID
-	ldh [hWarpDestinationMap], a
-	ld a, 1             ; warp ID 1 = lobby-entrance position in every stage map
+	ld [wRogueMap], a
+	ret                 ; caller sets warp flags if needed
+
+SelectRandomUnvisitedStage::
+	; Full exit-tile behaviour: pick stage AND trigger the script warp.
+	call _PickRandomUnvisitedStage
+	ld a, 1
 	ld [wDestinationWarpID], a
 	ld a, INDIGO_PLATEAU_LOBBY
 	ld [wLastMap], a
 	ld hl, wStatusFlags3
 	set BIT_WARP_FROM_CUR_SCRIPT, [hl]
 	ret
+
+; ============================================================
+; SelectAndPatchLobbyExit / SelectAndPatchRewardRoomExit
+; Wrappers that combine SelectRandomUnvisitedStage + PatchWarpEntry in one
+; internal call (same bank), avoiding the farcall-clobbers-b problem.
+; Scripts use farcall to reach these; the internal calls use direct call.
+; ============================================================
+SelectAndPatchLobbyExit::
+	; Patch door 1 (Y=7,X=11) with a random unvisited ROUTE stage.
+	call _PickRandomUnvisitedStage
+	ldh a, [hWarpDestinationMap]
+	ld [wLobbyDoor1StageMap], a    ; save for lobby sign display
+	ld b, 11                       ; warp_event 7,11 → X=7,Y=11 → wWarpEntries{Y=11,X=7}
+	ld c, 7
+	call PatchWarpEntry
+	; Patch door 2 (warp_event 8,11) with a random unvisited GYM stage.
+	call _PickNextGym
+	ldh a, [hWarpDestinationMap]
+	ld [wLobbyDoor2StageMap], a    ; save for lobby sign display
+	ld b, 11                       ; warp_event 8,11 → X=8,Y=11 → wWarpEntries{Y=11,X=8}
+	ld c, 8
+	call PatchWarpEntry
+	ret
+
+SelectAndPatchRewardRoomExit::
+	; Reward room always precedes a route — clear bit 0 so lobby picks route next.
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]
+	call _PickRandomUnvisitedStage ; pick the route stage for the exit
+	ldh a, [hWarpDestinationMap]
+	ld b, $7                       ; warp_event $8,$7 → X=$8,Y=$7 → wWarpEntries{Y=7,X=8}
+	ld c, $8
+	call PatchWarpEntry
+	ret
+
+; ============================================================
+; PatchWarpEntry
+; Patches ALL warp entries in wWarpEntries that have Y==b and X==c,
+; changing their destination map ID to a.
+; Call this after SelectRandomUnvisitedStage to redirect exit warps.
+;
+; INPUT: a = new destination map ID, b = exit tile Y, c = exit tile X
+; ============================================================
+PatchWarpEntry::
+	ld d, a                    ; d = new map ID to write
+	ld a, [wNumberOfWarps]
+	ld e, a                    ; e = remaining entries to check
+	ld hl, wWarpEntries
+.pwe_loop
+	ld a, e
+	and a
+	ret z                      ; exhausted all entries
+	ld a, [hli]                ; read Y coord
+	cp b                       ; Y match?
+	jr nz, .pwe_skip
+	ld a, [hli]                ; read X coord
+	cp c                       ; X match?
+	jr nz, .pwe_skip2
+	ld [hl], 1                 ; patch warpID = 1 (stage lobby-entrance position)
+	inc hl
+	ld [hl], d                 ; patch map ID
+	inc hl                     ; advance past patched byte
+	dec e
+	jr .pwe_loop
+.pwe_skip2
+	inc hl                     ; skip warpID
+	inc hl                     ; skip map ID
+	dec e
+	jr .pwe_loop
+.pwe_skip
+	inc hl                     ; skip X
+	inc hl                     ; skip warpID
+	inc hl                     ; skip map ID
+	dec e
+	jr .pwe_loop
