@@ -11,7 +11,7 @@ RewardRoom_Object:
 	warp_event $8, $7, LAST_MAP, 2
 	warp_event $8, $7, LAST_MAP, 3
 	warp_event $6, $1, ROGUE_MAP, 1
-	warp_event $A, $1, ROGUE_MAP, 1
+	warp_event $A, $1, ROGUE_MAP, 2
 
 	def_bg_events
 

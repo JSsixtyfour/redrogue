@@ -535,8 +535,14 @@ WarpFound2::
 	res BIT_EXITING_DOOR, [hl]
 	jr .done
 .randomStage
+	ldh a, [hCurMap]
+	ld [wLastMap], a
 	ld a, [wRogueMap]
 	ldh [hCurMap], a
+	ld a, INDIGO_PLATEAU_LOBBY
+	ld [wWarpedFromWhichMap], a
+	ld a, 1
+	ld [wWarpedFromWhichWarp], a
 	call PlayMapChangeSound
 	xor a
 	ld [wMapPalOffset], a

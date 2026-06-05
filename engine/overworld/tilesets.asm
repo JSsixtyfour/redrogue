@@ -40,7 +40,6 @@ LoadTilesetHeader:
 	ld b, a
 	ldh a, [hPreviousTileset]
 	cp b
-	jr z, .done
 .dungeon
 	ld a, [wDestinationWarpID]
 	cp $ff
