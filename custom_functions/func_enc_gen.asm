@@ -518,11 +518,11 @@ RandomizeRegularTrainerMons:
 	ret
 
 
-;joenote - evolve an enemy mon in wCurPartySpecies based on wCurEnemyLevel
+; Pokemon needs to be in d
 EnemyMonEvolve:
 	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
 	ld b, 0
-	ld a, [wCurPartySpecies]
+	ld a, d
 	dec a
 	add a
 	rl b
@@ -563,7 +563,7 @@ EnemyMonEvolve:
 	jr .evoloop
 
 .lvl_evolve
-	ld a, [wCurPartySpecies]
+	ld a, d
 	cp EEVEE	;deal with eevee separately
 	jr z, .handleeevee
 	ld a, [hli]
@@ -682,6 +682,8 @@ InitGymBattle::
     ld [wTrainerNo], a          ; set trainer no within gym leaders options
     ld a, 1
 	ld [wIsTrainerBattle], a    ; start battle
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 	ret
 	
 	

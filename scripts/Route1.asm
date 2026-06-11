@@ -1,29 +1,89 @@
 Route1_Script:
 	; One-time setup on first map entry
-    CheckEvent EVENT_ENTER_ROOM
-    jr nz, .afterSetup
-    SetEvent EVENT_ENTER_ROOM
-    ResetEvent EVENT_GOT_ROGUE_POKEMON
-    farcall rogue_pokemon_randomized_batch
-    farcall Random_Item_Selection
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+	ld hl, wRogueFlagsBitfield
+	set 0, [hl]                 ; gym is next after this route
+	ResetEvent EVENT_GOT_ROGUE_POKEMON
+	farcall rogue_pokemon_randomized_batch
+	farcall Random_Item_Selection
 	farcall RogueRefresh
-.afterSetup
-	; Bruno-style: detect player near the entrance (X=34 side) and push them in
-	ld hl, Route1EntranceCoords
+    
+    .afterSetup
+    call EnableAutoTextBoxDrawing
+	ld hl, Route1TrainerHeaders
+	ld de, Route1_ScriptPointers
+	ld a, [wRoute1CurScript]
+	call ExecuteCurMapScriptInTable
+	ld [wRoute1CurScript], a
+	ret
+	ret
+    
+Route1ScriptWalkIntoRoom:
+; Walk six steps upward.
+	ld hl, wSimulatedJoypadStatesEnd
+	ld a, PAD_UP
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	ld a, $4
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, SCRIPT_ROUTE1_PLAYER_IS_MOVING
+	ld [wRoute1CurScript], a
+	ld [wCurMapScript], a
+	ret
+
+Route1EntranceCoords:
+	dbmapcoord 10, 35
+	dbmapcoord 11, 35
+    dbmapcoord 10, 34
+	dbmapcoord 11, 34
+	db -1
+    
+Route1NoCoords:
+	dbmapcoord 10, 34
+	dbmapcoord 11, 34
+    dbmapcoord 10, 33
+	dbmapcoord 11, 33
+	db -1
+    
+Route1PlayerIsMovingScript:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	call Delay3
+	xor a ; SCRIPT_ROUTE1_DEFAULT
+	ldh [hJoyIgnore], a
+	ld [wRoute1CurScript], a
+	ld [wCurMapScript], a
+	ret
+    
+Route1DefaultScript:
+	ld hl, Route1NoCoords
+    call ArePlayerCoordsInArray
+    jp c, .stopPlayerFromLeaving
+    ld hl, Route1EntranceCoords
 	call ArePlayerCoordsInArray
-	jp nc, Route1NormalFlow    ; not near entrance: normal script
-	; Player is near the entrance
+	jp nc, CheckFightingMapTrainers
 	xor a
 	ldh [hJoyPressed], a
 	ldh [hJoyHeld], a
 	ld [wSimulatedJoypadStatesEnd], a
 	ldh [hSimulatedJoypadStatesIndex], a
 	CheckAndSetEvent EVENT_AUTOWALKED_INTO_ROUTE_1
-	jr z, Route1WalkIntoStage  ; first time: auto-walk 6 steps
-	; Already walked in before — show no-turning-back text then push 1 step
+	jr z, Route1ScriptWalkIntoRoom
+.stopPlayerFromLeaving
+    ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
 	ld a, TEXT_ROUTE1_NO_TURNING_BACK
 	ldh [hTextID], a
-	call DisplayTextID
+	call DisplayTextID  ; "No turning back"
 	ld a, PAD_UP
 	ld [wSimulatedJoypadStatesEnd], a
 	ld a, $1
@@ -34,56 +94,9 @@ Route1_Script:
 	ld [wCurMapScript], a
 	ret
 
-Route1WalkIntoStage:
-; Force 6 steps UP into the stage (same count as Bruno's room)
-	ld hl, wSimulatedJoypadStatesEnd
-	ld a, PAD_UP
-	ld [hli], a
-	ld [hli], a
-	ld [hli], a
-	ld [hli], a
-	ld [hli], a
-	ld [hl], a
-	ld a, $6
-	ldh [hSimulatedJoypadStatesIndex], a
-	call StartSimulatingJoypadStates
-	ld a, SCRIPT_ROUTE1_PLAYER_IS_MOVING
-	ld [wRoute1CurScript], a
-	ld [wCurMapScript], a
-	ret
-
-Route1PlayerIsMovingScript:
-	ldh a, [hSimulatedJoypadStatesIndex]
-	and a
-	ret nz
-	call Delay3
-	xor a
-	ldh [hJoyIgnore], a
-	ld [wRoute1CurScript], a
-	ld [wCurMapScript], a
-	ret
-
-; warp_event 10,34 → X=10,Y=34 → player lands at wYCoord=34,wXCoord=10
-; dbmapcoord takes (Y, X) matching wYCoord/wXCoord
-Route1EntranceCoords:
-	dbmapcoord 34, 10
-	dbmapcoord 34, 11
-	dbmapcoord 33, 10
-	dbmapcoord 33, 11
-	db -1
-
-Route1NormalFlow:
-	call EnableAutoTextBoxDrawing
-	ld hl, Route1TrainerHeaders
-	ld de, Route1_ScriptPointers
-	ld a, [wRoute1CurScript]
-	call ExecuteCurMapScriptInTable
-	ld [wRoute1CurScript], a
-	ret
-
 Route1_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE1_DEFAULT
+    dw_const Route1DefaultScript,                   SCRIPT_ROUTE1_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE1_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE1_END_BATTLE
 	dw_const Route1PlayerIsMovingScript,            SCRIPT_ROUTE1_PLAYER_IS_MOVING

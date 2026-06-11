@@ -7,7 +7,7 @@
 ;
 ; RogueStageMapTable and IsRogueStageMap live here (rogue bank) so that
 ; _PickRandomUnvisitedStage can read the table directly without a bank switch.
-DEF NUM_STAGE_MAPS EQU 25
+DEF NUM_STAGE_MAPS EQU 23
 
 RogueStageMapTable:
 	db ROUTE_1
@@ -31,10 +31,10 @@ RogueStageMapTable:
 	db SS_ANNE_B1F
 	db SS_ANNE_BOW
 	db POWER_PLANT
-	db SILPH_CO_1F
+	;db SILPH_CO_1F
 	db POKEMON_MANSION_1F
 	db SEAFOAM_ISLANDS_1F
-	db VICTORY_ROAD_1F
+	;db VICTORY_ROAD_1F
 	db -1
 
 ; Badge bit → gym map. Index matches wObtainedBadges bit position (0=Boulder…7=Earth).
@@ -102,6 +102,7 @@ _PickNextGym:
 	add hl, de
 	ld a, [hl]
 	ldh [hWarpDestinationMap], a
+	ld [wRogueMap], a
 	ret
 
 ; Returns: Z clear if current map is a roguelike stage, Z set if not
@@ -291,18 +292,33 @@ SelectRandomUnvisitedStage::
 ; Scripts use farcall to reach these; the internal calls use direct call.
 ; ============================================================
 SelectAndPatchLobbyExit::
-	; Patch door 1 (Y=7,X=11) with a random unvisited ROUTE stage.
+	; Pick two distinct random item types (HEALING=0, STAT=1, TM=2, MONEY=3).
+	; Door 1: pick freely from 4.
+	ld c, 4
+	call Rangerandom
+	ld [wRogueDoor1], a
+	ld b, a                        ; b = door 1 type
+	; Door 2: pick from remaining 3, then shift up past door 1 to avoid duplicate.
+	ld c, 3
+	call Rangerandom               ; a = 0, 1, or 2
+	cp b                           ; if a >= door1 type, increment to skip it
+	jr c, .door2Done
+	inc a
+.door2Done
+	ld [wRogueDoor2], a
+
+	; Patch door 1 (warp_event 7,11 → Y=11,X=7) with a random unvisited ROUTE stage.
 	call _PickRandomUnvisitedStage
-	ldh a, [hWarpDestinationMap]
-	ld [wLobbyDoor1StageMap], a    ; save for lobby sign display
-	ld b, 11                       ; warp_event 7,11 → X=7,Y=11 → wWarpEntries{Y=11,X=7}
+	ld a, [wRogueMap]
+	ld [wLobbyDoor1StageMap], a
+	ld b, 11
 	ld c, 7
 	call PatchWarpEntry
-	; Patch door 2 (warp_event 8,11) with a random unvisited GYM stage.
+	; Patch door 2 (warp_event 8,11 → Y=11,X=8) with a random unvisited GYM stage.
 	call _PickNextGym
 	ldh a, [hWarpDestinationMap]
-	ld [wLobbyDoor2StageMap], a    ; save for lobby sign display
-	ld b, 11                       ; warp_event 8,11 → X=8,Y=11 → wWarpEntries{Y=11,X=8}
+	ld [wLobbyDoor2StageMap], a
+	ld b, 11
 	ld c, 8
 	call PatchWarpEntry
 	ret

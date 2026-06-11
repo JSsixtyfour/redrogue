@@ -51,25 +51,73 @@ IndigoPlateauLobby_TextPointers:
 	dw_const LobbyDoor2SignText,                     TEXT_PC_DOOR2_SIGN
 
 LobbyDoor1SignText:
-; Dynamic: show "ROUTE STAGE" for door 1
 	text_asm
-	ld hl, .routeText
+	ld a, [wRogueDoor1]
+	ld hl, .itemPtrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de          ; hl += 2 * class (each entry is a dw)
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 	call PrintText
 	jp TextScriptEnd
-.routeText
+.itemPtrs
+	dw .healingText
+	dw .statText
+	dw .tmText
+	dw .moneyText
+.healingText
 	text "DOOR 1:"
-	line "ROUTE STAGE@"
+	line "HEALING ITEMS@"
+	text_end
+.statText
+	text "DOOR 1:"
+	line "STAT BOOSTS@"
+	text_end
+.tmText
+	text "DOOR 1:"
+	line "TM ITEMS@"
+	text_end
+.moneyText
+	text "DOOR 1:"
+	line "MONEY@"
 	text_end
 
 LobbyDoor2SignText:
-; Dynamic: show "GYM STAGE" for door 2
 	text_asm
-	ld hl, .gymText
+	ld a, [wRogueDoor2]
+	ld hl, .itemPtrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 	call PrintText
 	jp TextScriptEnd
-.gymText
+.itemPtrs
+	dw .healingText
+	dw .statText
+	dw .tmText
+	dw .moneyText
+.healingText
 	text "DOOR 2:"
-	line "GYM STAGE@"
+	line "HEALING ITEMS@"
+	text_end
+.statText
+	text "DOOR 2:"
+	line "STAT BOOSTS@"
+	text_end
+.tmText
+	text "DOOR 2:"
+	line "TM ITEMS@"
+	text_end
+.moneyText
+	text "DOOR 2:"
+	line "MONEY@"
 	text_end
 
 IndigoPlateauLobbyNurseText:

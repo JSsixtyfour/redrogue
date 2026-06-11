@@ -278,11 +278,16 @@ OverworldLoopLessDelay::
 	res BIT_TURNING, [hl]
 	ld a, [wWalkBikeSurfState]
 	dec a ; riding a bike?
-	jr nz, .normalPlayerSpriteAdvancement
+	jr nz, .checkRunning
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a
 	jr nz, .normalPlayerSpriteAdvancement
 	call DoBikeSpeedup
+	jr .normalPlayerSpriteAdvancement
+.checkRunning
+	ldh a, [hJoyHeld]
+	and PAD_B
+	call nz, DoBikeSpeedup
 .normalPlayerSpriteAdvancement
 	call AdvancePlayerSprite
 	ld a, [wWalkCounter]
@@ -488,6 +493,22 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
+	; If leaving the lobby through door 1 (warp 0) or door 2 (warp 1),
+	; capture that door's item type into wRogueDoorSelection now.
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .notLobbyDoor
+	ld a, [wWarpedFromWhichWarp]
+	and a                          ; warp index 0 = door 1?
+	jr nz, .checkDoor2Sel
+	ld a, [wRogueDoor1]
+	ld [wRogueDoorSelection], a
+	jr .notLobbyDoor
+.checkDoor2Sel
+	dec a                          ; now 0 if warp index was 1 = door 2
+	jr nz, .notLobbyDoor
+	ld a, [wRogueDoor2]
+	ld [wRogueDoorSelection], a
+.notLobbyDoor
 	; Check for ROGUE_MAP before the outdoor/indoor split so tileset doesn't matter
 	ldh a, [hWarpDestinationMap]
 	cp ROGUE_MAP

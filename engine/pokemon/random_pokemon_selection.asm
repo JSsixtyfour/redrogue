@@ -103,6 +103,8 @@ pop hl                      ; reload selection class
 cp c
 jr z, .done                 ; if 0, you have found a suitable pokemon
 jp hl                       ; if 1, you have selected an already existing team member and need to redo
+ld a, d                     ; place pokemon in a
+Call EnemyMonEvolve
 
 .done
 RET

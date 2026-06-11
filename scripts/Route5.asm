@@ -4,6 +4,8 @@ Route5_Script:
     jr nz, .normal
 
     SetEvent EVENT_ENTER_ROOM
+    ld hl, wRogueFlagsBitfield
+    set 0, [hl]                 ; gym is next after this route
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
 
