@@ -22,11 +22,26 @@ SSAnneBow_Script:
 	ld [wSSAnneBowCurScript], a
 	ret
 
+	RogueAutoWalkScripts SSAnneBow, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SS_ANNE_BOW, TEXT_SSANNEBOW_NO_TURNING_BACK, SCRIPT_SSANNEBOW_PLAYER_IS_MOVING, wSSAnneBowCurScript
+
+SSAnneBowEntranceCoords:
+	dbmapcoord 6, 13
+	dbmapcoord 7, 13
+	db -1
+
+SSAnneBowNoCoords:
+	dbmapcoord 6, 12
+	dbmapcoord 7, 12
+	dbmapcoord 6, 11
+	dbmapcoord 7, 11
+	db -1
+
 SSAnneBow_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_SSANNEBOW_DEFAULT
+	dw_const SSAnneBowDefaultScript,                SCRIPT_SSANNEBOW_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_SSANNEBOW_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_SSANNEBOW_END_BATTLE
+	dw_const SSAnneBowPlayerIsMovingScript,         SCRIPT_SSANNEBOW_PLAYER_IS_MOVING
 
 SSAnneBow_TextPointers:
 	def_text_pointers
@@ -44,6 +59,7 @@ SSAnneBow_TextPointers:
     dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_3, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_SSAnneBow_Reward_Text,  TEXT_SSANNEBOW_REWARD_VENDOR_1
     EXPORT TEXT_SSANNEBOW_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const SSAnneBowNoTurningBackText, TEXT_SSANNEBOW_NO_TURNING_BACK
 
 SSAnne5TrainerHeaders:
 	def_trainers 1
@@ -196,6 +212,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+SSAnneBowNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 SSAnneBowGreedyText:
 	text_far _GreedyText

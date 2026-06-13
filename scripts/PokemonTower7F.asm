@@ -29,13 +29,25 @@ PokemonTower7FSetDefaultScript:
 	ld [wCurMapScript], a ; SCRIPT_POKEMONTOWER7F_DEFAULT
 	ret
 
+	RogueAutoWalkScripts PokemonTower7F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_7F, TEXT_POKEMONTOWER7F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER7F_PLAYER_IS_MOVING, wPokemonTower7FCurScript
+
+PokemonTower7FEntranceCoords:
+	dbmapcoord 16, 9
+	db -1
+
+PokemonTower7FNoCoords:
+	dbmapcoord 16, 8
+	dbmapcoord 16, 7
+	db -1
+
 PokemonTower7F_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_POKEMONTOWER7F_DEFAULT
+	dw_const PokemonTower7FDefaultScript,           SCRIPT_POKEMONTOWER7F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POKEMONTOWER7F_START_BATTLE
 	dw_const PokemonTower7FEndBattleScript,         SCRIPT_POKEMONTOWER7F_END_BATTLE
 	dw_const PokemonTower7FHideNPCScript,           SCRIPT_POKEMONTOWER7F_HIDE_NPC
 	dw_const PokemonTower7FWarpToMrFujiHouseScript, SCRIPT_POKEMONTOWER7F_WARP_TO_MR_FUJI_HOUSE
+	dw_const PokemonTower7FPlayerIsMovingScript,    SCRIPT_POKEMONTOWER7F_PLAYER_IS_MOVING
 
 PokemonTower7FEndBattleScript:
 	ld hl, wMiscFlags
@@ -220,6 +232,7 @@ PokemonTower7F_TextPointers:
     dw_const PokemonTower7F_Rogue_Reward_Script_PokeballText_3, TEXT_POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_PokemonTower7F_Reward_Text, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
     EXPORT TEXT_POKEMONTOWER7F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const PokemonTower7FNoTurningBackText, TEXT_POKEMONTOWER7F_NO_TURNING_BACK
 
 PokemonTower7TrainerHeaders:
 	def_trainers 1
@@ -384,6 +397,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+PokemonTower7FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 PokemonTower7FGreedyText:
 	text_far _GreedyText

@@ -144,16 +144,19 @@ CeruleanCityRivalBattleScript:
 
 	; select which team to use during the encounter
 	ld a, [wRivalStarter]
-	cp STARTER2
-	jr nz, .NotSquirtle
+	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr nz, .NotSlot2
 	ld a, $7
 	jr .done
-.NotSquirtle
-	cp STARTER3
-	jr nz, .Charmander
+.NotSlot2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr nz, .Slot1
 	ld a, $8
 	jr .done
-.Charmander
+.Slot1
 	ld a, $9
 .done
 	ld [wTrainerNo], a

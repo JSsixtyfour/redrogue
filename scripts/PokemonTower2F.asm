@@ -29,6 +29,17 @@ PokemonTower2FResetRivalEncounter:
 	ld [wCurMapScript], a
 	ret
 
+	RogueAutoWalkScripts PokemonTower2F, PAD_RIGHT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
+
+PokemonTower2FEntranceCoords:
+	dbmapcoord 9, 3
+	db -1
+
+PokemonTower2FNoCoords:
+	dbmapcoord 9, 2
+	dbmapcoord 9, 1
+	db -1
+
 PokemonTower2F_ScriptPointers:
 	def_script_pointers
 	dw_const PokemonTower2FDefaultScript,       SCRIPT_POKEMONTOWER2F_DEFAULT
@@ -36,8 +47,9 @@ PokemonTower2F_ScriptPointers:
 	dw_const PokemonTower2FRivalExitsScript,    SCRIPT_POKEMONTOWER2F_RIVAL_EXITS
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POKEMONTOWER2F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_POKEMONTOWER2F_END_BATTLE
+	dw_const PokemonTower2FPlayerIsMovingScript,    SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING
 
-PokemonTower2FDefaultScript:
+PokemonTower2FNormalScript:
 IF DEF(_DEBUG)
 	call DebugPressedOrHeldB
 	ret nz
@@ -167,6 +179,7 @@ PokemonTower2F_TextPointers:
     dw_const PokemonTower2F_Rogue_Reward_Script_PokeballText_3, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_PokemonTower2F_Reward_Text, TEXT_POKEMONTOWER2F_REWARD_VENDOR_1
     EXPORT TEXT_POKEMONTOWER2F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const PokemonTower2FNoTurningBackText, TEXT_POKEMONTOWER2F_NO_TURNING_BACK
 
 PokemonTower2FTrainerHeaders:
 	def_trainers 1
@@ -308,16 +321,19 @@ PokemonTower2FRivalText:
 
 	; select which team to use during the encounter
 	ld a, [wRivalStarter]
-	cp STARTER2
-	jr nz, .NotSquirtle
+	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr nz, .NotSlot2
 	ld a, $4
 	jr .done
-.NotSquirtle
-	cp STARTER3
-	jr nz, .Charmander
+.NotSlot2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr nz, .Slot1
 	ld a, $5
 	jr .done
-.Charmander
+.Slot1
 	ld a, $6
 .done
 	ld [wTrainerNo], a
@@ -370,6 +386,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+PokemonTower2FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 PokemonTower2FGreedyText:
 	text_far _GreedyText

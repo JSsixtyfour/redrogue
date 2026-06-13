@@ -9,3 +9,8 @@ _PickPokeBallText::
 	text_ram wNameBuffer
 	text "?@"
 	text_end
+
+_NoTurningBackText::
+	text "There's no"
+	line "turning back!@"
+	done

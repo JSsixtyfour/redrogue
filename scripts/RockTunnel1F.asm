@@ -22,11 +22,23 @@ RockTunnel1F_Script:
 	ld [wRockTunnel1FCurScript], a
 	ret
 
+	RogueAutoWalkScripts RockTunnel1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROCK_TUNNEL_1F, TEXT_ROCKTUNNEL1F_NO_TURNING_BACK, SCRIPT_ROCKTUNNEL1F_PLAYER_IS_MOVING, wRockTunnel1FCurScript
+
+RockTunnel1FEntranceCoords:
+	dbmapcoord 33, 15
+	db -1
+
+RockTunnel1FNoCoords:
+	dbmapcoord 32, 15
+	dbmapcoord 31, 15
+	db -1
+
 RockTunnel1F_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROCKTUNNEL1F_DEFAULT
+	dw_const RockTunnel1FDefaultScript,             SCRIPT_ROCKTUNNEL1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROCKTUNNEL1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROCKTUNNEL1F_END_BATTLE
+	dw_const RockTunnel1FPlayerIsMovingScript,      SCRIPT_ROCKTUNNEL1F_PLAYER_IS_MOVING
 
 RockTunnel1F_TextPointers:
 	def_text_pointers
@@ -42,6 +54,7 @@ RockTunnel1F_TextPointers:
     dw_const Rogue_RockTunnel1F_Reward_Text, TEXT_ROCKTUNNEL1F_REWARD_VENDOR_1
     EXPORT TEXT_ROCKTUNNEL1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const RockTunnel1FSignText,          TEXT_ROCKTUNNEL1F_SIGN
+	dw_const RockTunnel1FNoTurningBackText, TEXT_ROCKTUNNEL1F_NO_TURNING_BACK
 
 RockTunnel1TrainerHeaders:
 	def_trainers 1
@@ -183,6 +196,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+RockTunnel1FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 RockTunnel1FGreedyText:
 	text_far _GreedyText

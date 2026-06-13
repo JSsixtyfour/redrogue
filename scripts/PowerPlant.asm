@@ -22,11 +22,26 @@ PowerPlant_Script:
 	ld [wPowerPlantCurScript], a
 	ret
 
+	RogueAutoWalkScripts PowerPlant, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POWER_PLANT, TEXT_POWERPLANT_NO_TURNING_BACK, SCRIPT_POWERPLANT_PLAYER_IS_MOVING, wPowerPlantCurScript
+
+PowerPlantEntranceCoords:
+	dbmapcoord 35, 4
+	dbmapcoord 35, 5
+	db -1
+
+PowerPlantNoCoords:
+	dbmapcoord 34, 4
+	dbmapcoord 34, 5
+	dbmapcoord 33, 4
+	dbmapcoord 33, 5
+	db -1
+
 PowerPlant_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_POWERPLANT_DEFAULT
+	dw_const PowerPlantDefaultScript,               SCRIPT_POWERPLANT_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POWERPLANT_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_POWERPLANT_END_BATTLE
+	dw_const PowerPlantPlayerIsMovingScript,        SCRIPT_POWERPLANT_PLAYER_IS_MOVING
 
 PowerPlant_TextPointers:
 	def_text_pointers
@@ -48,6 +63,7 @@ PowerPlant_TextPointers:
     dw_const PowerPlant_Rogue_Reward_Script_PokeballText_3, TEXT_POWERPLANT_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_PowerPlant_Reward_Text, TEXT_POWERPLANT_REWARD_VENDOR_1
     EXPORT TEXT_POWERPLANT_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const PowerPlantNoTurningBackText, TEXT_POWERPLANT_NO_TURNING_BACK
 
 PowerPlantTrainerHeaders:
 	def_trainers 1
@@ -234,6 +250,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+PowerPlantNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 PowerPlantGreedyText:
 	text_far _GreedyText

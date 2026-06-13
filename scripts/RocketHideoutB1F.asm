@@ -14,7 +14,7 @@ RocketHideoutB1F_Script:
     farcall RogueRefresh
 
     .normal
-	call RocketHideoutB1FDoorCallbackScript
+	;call RocketHideoutB1FDoorCallbackScript
 	call EnableAutoTextBoxDrawing
 	ld hl, RocketHideout1TrainerHeaders
 	ld de, RocketHideoutB1F_ScriptPointers
@@ -23,34 +23,47 @@ RocketHideoutB1F_Script:
 	ld [wRocketHideoutB1FCurScript], a
 	ret
 
-RocketHideoutB1FDoorCallbackScript:
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	res BIT_CUR_MAP_LOADED_1, [hl]
-	ret z
-	CheckEvent EVENT_ENTERED_ROCKET_HIDEOUT
-	jr nz, .door_open
-	CheckEventReuseA EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
-	jr nz, .play_sound_door_open
-	ld a, $54 ; Door Block
-	jr .set_door_block
-.play_sound_door_open
-	ld a, SFX_GO_INSIDE
-	call PlaySound
-	; BUG: should be SetEvent to avoid the SFX playing every time you enter the map
-	CheckEventHL EVENT_ENTERED_ROCKET_HIDEOUT
-.door_open
-	ld a, $e ; Floor Block
-.set_door_block
-	ld [wNewTileBlockID], a
-	lb bc, 8, 12
-	predef_jump ReplaceTileBlock
+;RocketHideoutB1FDoorCallbackScript:
+;	ld hl, wCurrentMapScriptFlags
+;	bit BIT_CUR_MAP_LOADED_1, [hl]
+;	res BIT_CUR_MAP_LOADED_1, [hl]
+;	ret z
+;	CheckEvent EVENT_ENTERED_ROCKET_HIDEOUT
+;	jr nz, .door_open
+;	CheckEventReuseA EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
+;	jr nz, .play_sound_door_open
+;	ld a, $54 ; Door Block
+;	jr .set_door_block
+;.play_sound_door_open
+;	ld a, SFX_GO_INSIDE
+;	call PlaySound
+;	; BUG: should be SetEvent to avoid the SFX playing every time you enter the map
+;	CheckEventHL EVENT_ENTERED_ROCKET_HIDEOUT
+;.door_open
+;	ld a, $e ; Floor Block
+;.set_door_block
+;	ld [wNewTileBlockID], a
+;	lb bc, 8, 12
+;	predef_jump ReplaceTileBlock
+
+	RogueAutoWalkScripts RocketHideoutB1F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROCKET_HIDEOUT_B1F, TEXT_ROCKETHIDEOUTB1F_NO_TURNING_BACK, SCRIPT_ROCKETHIDEOUTB1F_PLAYER_IS_MOVING, wRocketHideoutB1FCurScript
+
+RocketHideoutB1FEntranceCoords:
+	dbmapcoord 19, 24
+	dbmapcoord 19, 25
+	db -1
+
+RocketHideoutB1FNoCoords:
+	dbmapcoord 19, 23
+	dbmapcoord 19, 22
+	db -1
 
 RocketHideoutB1F_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROCKETHIDEOUTB1F_DEFAULT
+	dw_const RocketHideoutB1FDefaultScript,         SCRIPT_ROCKETHIDEOUTB1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROCKETHIDEOUTB1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROCKETHIDEOUTB1F_END_BATTLE
+	dw_const RocketHideoutB1FPlayerIsMovingScript,  SCRIPT_ROCKETHIDEOUTB1F_PLAYER_IS_MOVING
 
 RocketHideoutB1F_TextPointers:
 	def_text_pointers
@@ -67,6 +80,7 @@ RocketHideoutB1F_TextPointers:
     dw_const RocketHideoutB1F_Rogue_Reward_Script_PokeballText_3, TEXT_ROCKETHIDEOUTB1F_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_RocketHideoutB1F_Reward_Text, TEXT_ROCKETHIDEOUTB1F_REWARD_VENDOR_1
     EXPORT TEXT_ROCKETHIDEOUTB1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const RocketHideoutB1FNoTurningBackText, TEXT_ROCKETHIDEOUTB1F_NO_TURNING_BACK
 
 RocketHideout1TrainerHeaders:
 	def_trainers 1
@@ -214,6 +228,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+RocketHideoutB1FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 RocketHideoutB1FGreedyText:
 	text_far _GreedyText

@@ -493,18 +493,25 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
-	; If leaving the lobby through door 1 (warp 0) or door 2 (warp 1),
+	; If leaving the lobby or reward room through door 1 or door 2,
 	; capture that door's item type into wRogueDoorSelection now.
 	cp INDIGO_PLATEAU_LOBBY
+	jr z, .checkDoorWarp
+	cp REWARD_ROOM
 	jr nz, .notLobbyDoor
 	ld a, [wWarpedFromWhichWarp]
-	and a                          ; warp index 0 = door 1?
+	sub 2                          ; reward room doors are warp index 2/3 -> 0/1
+	jr .gotDoorIndex
+.checkDoorWarp
+	ld a, [wWarpedFromWhichWarp]   ; lobby doors are warp index 0/1
+.gotDoorIndex
+	and a                          ; door index 0 = door 1?
 	jr nz, .checkDoor2Sel
 	ld a, [wRogueDoor1]
 	ld [wRogueDoorSelection], a
 	jr .notLobbyDoor
 .checkDoor2Sel
-	dec a                          ; now 0 if warp index was 1 = door 2
+	dec a                          ; now 0 if door index was 1 = door 2
 	jr nz, .notLobbyDoor
 	ld a, [wRogueDoor2]
 	ld [wRogueDoorSelection], a

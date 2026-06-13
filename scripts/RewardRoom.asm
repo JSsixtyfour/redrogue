@@ -44,21 +44,85 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Script_PokeballText_1, TEXT_ROGUE_REWARD_POKEBALL_1
     dw_const Rogue_RewardRoom_Script_PokeballText_2, TEXT_ROGUE_REWARD_POKEBALL_2
     dw_const Rogue_RewardRoom_Script_PokeballText_3, TEXT_ROGUE_REWARD_POKEBALL_3
+	dw_const RewardRoomDoor1SignText,    TEXT_REWARDROOM_DOOR1_SIGN
+	dw_const RewardRoomDoor2SignText,    TEXT_REWARDROOM_DOOR2_SIGN
     dw_const Rogue_RewardRoom_Reward_Text, TEXT_REWARDROOM_REWARD_VENDOR_1
     EXPORT TEXT_REWARDROOM_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+
+RewardRoomDoor1SignText:
+	text_asm
+	ld a, [wRogueDoor1]
+	ld hl, .itemPtrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de          ; hl += 2 * class (each entry is a dw)
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText
+	jp TextScriptEnd
+.itemPtrs
+	dw .healingText
+	dw .statText
+	dw .tmText
+	dw .moneyText
+.healingText
+	text "DOOR 1:"
+	line "HEALING ITEMS@"
+	text_end
+.statText
+	text "DOOR 1:"
+	line "STAT BOOSTS@"
+	text_end
+.tmText
+	text "DOOR 1:"
+	line "TM ITEMS@"
+	text_end
+.moneyText
+	text "DOOR 1:"
+	line "MONEY@"
+	text_end
+
+RewardRoomDoor2SignText:
+	text_asm
+	ld a, [wRogueDoor2]
+	ld hl, .itemPtrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText
+	jp TextScriptEnd
+.itemPtrs
+	dw .healingText
+	dw .statText
+	dw .tmText
+	dw .moneyText
+.healingText
+	text "DOOR 2:"
+	line "HEALING ITEMS@"
+	text_end
+.statText
+	text "DOOR 2:"
+	line "STAT BOOSTS@"
+	text_end
+.tmText
+	text "DOOR 2:"
+	line "TM ITEMS@"
+	text_end
+.moneyText
+	text "DOOR 2:"
+	line "MONEY@"
+	text_end
 	
 PlayerEntryMovementRLE:
 	db PAD_UP, 1
 	db -1 ; end
 
-RewardRoom1SignText:
-	text_far _Route2SignText
-	text_end
-
-RewardRoom2SignText:
-	text_far _Route2DiglettsCaveSignText
-	text_end
-    
 Rogue_RewardRoom_Script_PokeballText_1:
 	text_asm
     CheckEvent EVENT_GOT_ROGUE_POKEMON

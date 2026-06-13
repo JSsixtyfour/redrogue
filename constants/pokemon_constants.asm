@@ -205,5 +205,9 @@ DEF STARTER1 EQU CHARMANDER
 DEF STARTER2 EQU SQUIRTLE
 DEF STARTER3 EQU BULBASAUR
 
+; placeholder species ($1F is unused) used in the rival's trainer party data
+; to mark the slot that should be dynamically replaced with wRivalStarter
+DEF RIVAL_STARTER_PLACEHOLDER EQU $1F
+
 ; ghost Marowak in Pokémon Tower
 DEF RESTLESS_SOUL EQU MAROWAK

@@ -56,8 +56,10 @@ LoadSpecialWarpData:
 	jr nz, .notNewGameWarp
 	ld hl, NewGameWarp
 .copyWarpData
-	ld de, hCurMap
-	ld c, $7
+	ld a, [hli]
+	ldh [hCurMap], a
+	ld de, wCurrentTileBlockMapViewPointer
+	ld c, $6
 .copyWarpDataLoop
 	ld a, [hli]
 	ld [de], a

@@ -19,10 +19,10 @@ ViridianForest_Object:
 	warp_event  2,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event  3,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event  4,  0, INDIGO_PLATEAU_LOBBY, 1
-	warp_event 11, 33, INDIGO_PLATEAU_LOBBY, 2
-	warp_event 12, 33, INDIGO_PLATEAU_LOBBY, 2
-	warp_event 13, 33, INDIGO_PLATEAU_LOBBY, 2
-	warp_event 14, 33, INDIGO_PLATEAU_LOBBY, 2
+	warp_event 11, 33, LAST_MAP, 1
+	warp_event 12, 33, LAST_MAP, 1
+	warp_event 13, 33, LAST_MAP, 1
+	warp_event 14, 33, LAST_MAP, 1
 
 	def_bg_events
 	bg_event 20, 26, TEXT_VIRIDIANFOREST_TRAINER_TIPS1

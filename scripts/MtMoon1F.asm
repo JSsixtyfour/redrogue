@@ -22,11 +22,26 @@ MtMoon1F_Script:
 	ld [wMtMoon1FCurScript], a
 	ret
 
+	RogueAutoWalkScripts MtMoon1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_MT_MOON_1F, TEXT_MTMOON1F_NO_TURNING_BACK, SCRIPT_MTMOON1F_PLAYER_IS_MOVING, wMtMoon1FCurScript
+
+MtMoon1FEntranceCoords:
+	dbmapcoord 35, 14
+	dbmapcoord 35, 15
+	db -1
+
+MtMoon1FNoCoords:
+	dbmapcoord 34, 14
+	dbmapcoord 34, 15
+	dbmapcoord 33, 14
+	dbmapcoord 33, 15
+	db -1
+
 MtMoon1F_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_MTMOON1F_DEFAULT
+	dw_const MtMoon1FDefaultScript,                 SCRIPT_MTMOON1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_MTMOON1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_MTMOON1F_END_BATTLE
+	dw_const MtMoon1FPlayerIsMovingScript,          SCRIPT_MTMOON1F_PLAYER_IS_MOVING
 
 MtMoon1F_TextPointers:
 	def_text_pointers
@@ -48,6 +63,7 @@ MtMoon1F_TextPointers:
     dw_const Rogue_MtMoon1F_Reward_Text, TEXT_MTMOON1F_REWARD_VENDOR_1
     EXPORT TEXT_MTMOON1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const MtMoon1FBewareZubatSign,   TEXT_MTMOON1F_BEWARE_ZUBAT_SIGN
+	dw_const MtMoon1FNoTurningBackText, TEXT_MTMOON1F_NO_TURNING_BACK
 
 MtMoon1TrainerHeaders:
 	def_trainers 1
@@ -192,6 +208,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+MtMoon1FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 MtMoon1FGreedyText:
 	text_far _GreedyText

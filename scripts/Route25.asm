@@ -50,11 +50,26 @@ Route25ToggleBillsScript:
 	ld [wToggleableObjectIndex], a
 	predef_jump ShowObject
 
+	RogueAutoWalkScripts Route25, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_25, TEXT_ROUTE25_NO_TURNING_BACK, SCRIPT_ROUTE25_PLAYER_IS_MOVING, wRoute25CurScript
+
+Route25EntranceCoords:
+	dbmapcoord 0, 8
+	dbmapcoord 0, 9
+	db -1
+
+Route25NoCoords:
+	dbmapcoord 1, 8
+	dbmapcoord 1, 9
+	dbmapcoord 2, 8
+	dbmapcoord 2, 9
+	db -1
+
 Route25_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE25_DEFAULT
+	dw_const Route25DefaultScript,                  SCRIPT_ROUTE25_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE25_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE25_END_BATTLE
+	dw_const Route25PlayerIsMovingScript,           SCRIPT_ROUTE25_PLAYER_IS_MOVING
 
 Route25_TextPointers:
 	def_text_pointers
@@ -71,6 +86,7 @@ Route25_TextPointers:
     dw_const Rogue_Route25_Reward_Text, TEXT_ROUTE25_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE25_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route25BillSignText,      TEXT_ROUTE25_BILL_SIGN
+	dw_const Route25NoTurningBackText, TEXT_ROUTE25_NO_TURNING_BACK
 
 Route25TrainerHeaders:
 	def_trainers 1
@@ -218,4 +234,8 @@ jp TextScriptEnd
 
 Route25GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route25NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

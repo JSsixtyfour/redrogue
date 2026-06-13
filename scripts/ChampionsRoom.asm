@@ -70,16 +70,19 @@ ChampionsRoomRivalReadyToBattleScript:
 
 	; select which team to use during the encounter
 	ld a, [wRivalStarter]
-	cp STARTER2
-	jr nz, .NotStarter2
+	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr nz, .NotSlot2
 	ld a, $1
 	jr .saveTrainerId
-.NotStarter2
-	cp STARTER3
-	jr nz, .NotStarter3
+.NotSlot2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr nz, .NotSlot3
 	ld a, $2
 	jr .saveTrainerId
-.NotStarter3
+.NotSlot3
 	ld a, $3
 .saveTrainerId
 	ld [wTrainerNo], a

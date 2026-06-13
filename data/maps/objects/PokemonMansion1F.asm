@@ -19,11 +19,7 @@ PokemonMansion1F_Object:
 	warp_event  5, 27, LAST_MAP, 1
 	warp_event  6, 27, LAST_MAP, 1
 	warp_event  7, 27, LAST_MAP, 1
-	warp_event  5, 10, POKEMON_MANSION_2F, 1
-	warp_event 21, 23, POKEMON_MANSION_B1F, 1
-	warp_event 26, 27, LAST_MAP, 1
-	warp_event 27, 27, LAST_MAP, 1
-	warp_event  3, 27, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  5, 10, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 

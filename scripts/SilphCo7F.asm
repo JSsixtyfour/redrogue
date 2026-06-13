@@ -187,16 +187,19 @@ SilphCo7FRivalStartBattleScript:
 	ld a, OPP_RIVAL2
 	ld [wCurOpponent], a
 	ld a, [wRivalStarter]
-	cp STARTER2
-	jr nz, .not_starter_2
+	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr nz, .not_slot_2
 	ld a, $7
 	jr .set_trainer_no
-.not_starter_2
-	cp STARTER3
-	jr nz, .no_starter_3
+.not_slot_2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr nz, .not_slot_3
 	ld a, $8
 	jr .set_trainer_no
-.no_starter_3
+.not_slot_3
 	ld a, $9
 .set_trainer_no
 	ld [wTrainerNo], a

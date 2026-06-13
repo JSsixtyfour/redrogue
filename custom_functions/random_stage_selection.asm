@@ -324,13 +324,36 @@ SelectAndPatchLobbyExit::
 	ret
 
 SelectAndPatchRewardRoomExit::
-	; Reward room always precedes a route — clear bit 0 so lobby picks route next.
-	ld hl, wRogueFlagsBitfield
-	res 0, [hl]
-	call _PickRandomUnvisitedStage ; pick the route stage for the exit
+	; Mirrors SelectAndPatchLobbyExit: the reward room is its own route+gym
+	; choice hub, using its two ROGUE_MAP-dest door warps.
+	; Pick two distinct random item types (HEALING=0, STAT=1, TM=2, MONEY=3).
+	; Door 1: pick freely from 4.
+	ld c, 4
+	call Rangerandom
+	ld [wRogueDoor1], a
+	ld b, a                        ; b = door 1 type
+	; Door 2: pick from remaining 3, then shift up past door 1 to avoid duplicate.
+	ld c, 3
+	call Rangerandom               ; a = 0, 1, or 2
+	cp b                           ; if a >= door1 type, increment to skip it
+	jr c, .door2Done
+	inc a
+.door2Done
+	ld [wRogueDoor2], a
+
+	; Patch door 1 (warp_event $6,$1 → Y=1,X=6) with a random unvisited ROUTE stage.
+	call _PickRandomUnvisitedStage
+	ld a, [wRogueMap]
+	ld [wLobbyDoor1StageMap], a
+	ld b, 1
+	ld c, $6
+	call PatchWarpEntry
+	; Patch door 2 (warp_event $A,$1 → Y=1,X=$A) with a random unvisited GYM stage.
+	call _PickNextGym
 	ldh a, [hWarpDestinationMap]
-	ld b, $7                       ; warp_event $8,$7 → X=$8,Y=$7 → wWarpEntries{Y=7,X=8}
-	ld c, $8
+	ld [wLobbyDoor2StageMap], a
+	ld b, 1
+	ld c, $A
 	call PatchWarpEntry
 	ret
 

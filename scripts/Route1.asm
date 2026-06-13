@@ -282,8 +282,7 @@ Route1SignText:
 	text_end
 
 Route1NoTurningBackText:
-	text "There's no"
-	line "turning back!@"
+	text_far _NoTurningBackText
 	text_end
 
 Rogue_Route1_Reward_Text:

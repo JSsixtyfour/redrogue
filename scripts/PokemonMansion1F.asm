@@ -70,11 +70,32 @@ Mansion1Script_Switches::
 	ldh [hTextID], a
 	jp DisplayTextID
 
+	RogueAutoWalkScripts PokemonMansion1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_MANSION_1F, TEXT_POKEMONMANSION1F_NO_TURNING_BACK, SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING, wPokemonMansion1FCurScript
+
+PokemonMansion1FEntranceCoords:
+	dbmapcoord 27, 4
+	dbmapcoord 27, 5
+	dbmapcoord 27, 6
+	dbmapcoord 27, 7
+	db -1
+
+PokemonMansion1FNoCoords:
+	dbmapcoord 26, 4
+	dbmapcoord 26, 5
+	dbmapcoord 26, 6
+	dbmapcoord 26, 7
+	dbmapcoord 25, 4
+	dbmapcoord 25, 5
+	dbmapcoord 25, 6
+	dbmapcoord 25, 7
+	db -1
+
 PokemonMansion1F_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_POKEMONMANSION1F_DEFAULT
+	dw_const PokemonMansion1FDefaultScript,         SCRIPT_POKEMONMANSION1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POKEMONMANSION1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_POKEMONMANSION1F_END_BATTLE
+	dw_const PokemonMansion1FPlayerIsMovingScript,  SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING
 
 PokemonMansion1F_TextPointers:
 	def_text_pointers
@@ -92,6 +113,7 @@ PokemonMansion1F_TextPointers:
     dw_const Rogue_PokemonMansion1F_Reward_Text,                   TEXT_POKEMONMANSION1F_REWARD_VENDOR_1
     EXPORT TEXT_POKEMONMANSION1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const PokemonMansion1FSwitchText,                           TEXT_POKEMONMANSION1F_SWITCH
+	dw_const PokemonMansion1FNoTurningBackText, TEXT_POKEMONMANSION1F_NO_TURNING_BACK
 
 Mansion1TrainerHeaders:
 	def_trainers 1
@@ -270,6 +292,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+PokemonMansion1FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 PokemonMansion1FGreedyText:
 	text_far _GreedyText

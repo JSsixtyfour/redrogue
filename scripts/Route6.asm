@@ -22,11 +22,23 @@ Route6_Script:
 	ld [wRoute6CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route6, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_6, TEXT_ROUTE6_NO_TURNING_BACK, SCRIPT_ROUTE6_PLAYER_IS_MOVING, wRoute6CurScript
+
+Route6EntranceCoords:
+	dbmapcoord 14, 24
+	db -1
+
+Route6NoCoords:
+	dbmapcoord 14, 25
+	dbmapcoord 14, 26
+	db -1
+
 Route6_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE6_DEFAULT
+	dw_const Route6DefaultScript,                   SCRIPT_ROUTE6_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE6_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE6_END_BATTLE
+	dw_const Route6PlayerIsMovingScript,            SCRIPT_ROUTE6_PLAYER_IS_MOVING
 
 Route6_TextPointers:
 	def_text_pointers
@@ -42,6 +54,7 @@ Route6_TextPointers:
     dw_const Rogue_Route6_Reward_Text,      TEXT_ROUTE6_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE6_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route6UndergroundPathSignText, TEXT_ROUTE6_UNDERGROUND_PATH_SIGN
+	dw_const Route6NoTurningBackText, TEXT_ROUTE6_NO_TURNING_BACK
 
 Route6TrainerHeaders:
 	def_trainers 1
@@ -182,6 +195,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+Route6NoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 Route6GreedyText:
 	text_far _GreedyText

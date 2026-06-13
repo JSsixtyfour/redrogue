@@ -12,8 +12,8 @@ CinnabarGym_Object:
 	def_warp_events
 	warp_event 16, 17, LAST_MAP, 2
 	warp_event 17, 17, LAST_MAP, 2
-	warp_event 2, 0, LAST_MAP, 2
-	warp_event 3, 0, LAST_MAP, 2
+	warp_event 2, 0, INDIGO_PLATEAU_LOBBY, 1
+	warp_event 3, 0, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 

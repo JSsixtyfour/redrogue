@@ -1,8 +1,8 @@
 ViridianGym_Script:
     call GiovanniShowOrHideExitBlock
     ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	res BIT_CUR_MAP_LOADED_1, [hl]
+	bit BIT_CUR_MAP_LOADED_2, [hl]
+	res BIT_CUR_MAP_LOADED_2, [hl]
 	call nz, .initial
 	ld hl, .CityName
 	ld de, .LeaderName

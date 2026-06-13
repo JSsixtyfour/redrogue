@@ -29,14 +29,26 @@ Route12ResetScripts:
 	ld [wCurMapScript], a
 	ret
 
+	RogueAutoWalkScripts Route12, PAD_UP, Route12SnorlaxScript, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
+
+Route12EntranceCoords:
+	dbmapcoord 62, 1
+	db -1
+
+Route12NoCoords:
+	dbmapcoord 61, 1
+	dbmapcoord 60, 1
+	db -1
+
 Route12_ScriptPointers:
 	def_script_pointers
 	dw_const Route12DefaultScript,                  SCRIPT_ROUTE12_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE12_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE12_END_BATTLE
 	dw_const Route12SnorlaxPostBattleScript,        SCRIPT_ROUTE12_SNORLAX_POST_BATTLE
+	dw_const Route12PlayerIsMovingScript,           SCRIPT_ROUTE12_PLAYER_IS_MOVING
 
-Route12DefaultScript:
+Route12SnorlaxScript:
 	CheckEventHL EVENT_BEAT_ROUTE12_SNORLAX
 	jp nz, CheckFightingMapTrainers
 	CheckEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX
@@ -62,7 +74,7 @@ Route12DefaultScript:
 Route12SnorlaxPostBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
-	jr z, Route12ResetScripts
+	jp z, Route12ResetScripts
 	call UpdateSprites
 	ld a, [wBattleResult]
 	cp $2
@@ -98,6 +110,7 @@ Route12_TextPointers:
 	dw_const Route12SportFishingSignText,  TEXT_ROUTE12_SPORT_FISHING_SIGN
 	dw_const Route12SnorlaxWokeUpText,     TEXT_ROUTE12_SNORLAX_WOKE_UP
 	dw_const Route12SnorlaxCalmedDownText, TEXT_ROUTE12_SNORLAX_CALMED_DOWN
+	dw_const Route12NoTurningBackText,     TEXT_ROUTE12_NO_TURNING_BACK
 
 Route12TrainerHeaders:
 	def_trainers 1
@@ -258,6 +271,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+Route12NoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 Route12GreedyText:
 	text_far _GreedyText

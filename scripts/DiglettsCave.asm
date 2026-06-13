@@ -22,11 +22,23 @@ DiglettsCave_Script:
 	ld [wDiglettsCaveCurScript], a
 	ret
 
+	RogueAutoWalkScripts DiglettsCave, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_DIGLETTS_CAVE, TEXT_DIGLETTSCAVE_NO_TURNING_BACK, SCRIPT_DIGLETTSCAVE_PLAYER_IS_MOVING, wDiglettsCaveCurScript
+
+DiglettsCaveEntranceCoords:
+	dbmapcoord 5, 5
+	db -1
+
+DiglettsCaveNoCoords:
+	dbmapcoord 5, 4
+	dbmapcoord 5, 3
+	db -1
+
 DiglettsCave_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_DIGLETTSCAVE_DEFAULT
+	dw_const DiglettsCaveDefaultScript,             SCRIPT_DIGLETTSCAVE_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_DIGLETTSCAVE_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_DIGLETTSCAVE_END_BATTLE
+	dw_const DiglettsCavePlayerIsMovingScript,      SCRIPT_DIGLETTSCAVE_PLAYER_IS_MOVING
 
 DiglettsCave_TextPointers:
 	def_text_pointers
@@ -41,6 +53,7 @@ DiglettsCave_TextPointers:
     dw_const DiglettsCave_Rogue_Reward_Script_PokeballText_3, TEXT_DIGLETTSCAVE_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_DiglettsCave_Reward_Text, TEXT_DIGLETTSCAVE_REWARD_VENDOR_1
     EXPORT TEXT_DIGLETTSCAVE_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const DiglettsCaveNoTurningBackText, TEXT_DIGLETTSCAVE_NO_TURNING_BACK
 
 DiglettsCaveTrainerHeaders:
 	def_trainers 1
@@ -181,6 +194,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+DiglettsCaveNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 DiglettsCaveGreedyText:
 	text_far _GreedyText

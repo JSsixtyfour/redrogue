@@ -74,6 +74,9 @@ ReadTrainer:
 	ld [wCurEnemyLevel], a
 	ld a, [hli]
 	ld [wCurPartySpecies], a
+	push hl
+	farcall PatchRivalStarterSpecies
+	pop hl
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	push hl

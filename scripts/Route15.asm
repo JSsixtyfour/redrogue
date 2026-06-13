@@ -22,11 +22,26 @@ Route15_Script:
 	ld [wRoute15CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route15, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_15, TEXT_ROUTE15_NO_TURNING_BACK, SCRIPT_ROUTE15_PLAYER_IS_MOVING, wRoute15CurScript
+
+Route15EntranceCoords:
+	dbmapcoord 59, 10
+	dbmapcoord 59, 11
+	db -1
+
+Route15NoCoords:
+	dbmapcoord 58, 10
+	dbmapcoord 58, 11
+	dbmapcoord 57, 10
+	dbmapcoord 57, 11
+	db -1
+
 Route15_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE15_DEFAULT
+	dw_const Route15DefaultScript,                  SCRIPT_ROUTE15_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE15_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE15_END_BATTLE
+	dw_const Route15PlayerIsMovingScript,           SCRIPT_ROUTE15_PLAYER_IS_MOVING
 
 Route15_TextPointers:
 	def_text_pointers
@@ -42,6 +57,7 @@ Route15_TextPointers:
     dw_const Route15_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE15_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_Route15_Reward_Text, TEXT_ROUTE15_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE15_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const Route15NoTurningBackText, TEXT_ROUTE15_NO_TURNING_BACK
 	dw_const Route15SignText,          TEXT_ROUTE15_SIGN
 
 Route15TrainerHeaders:
@@ -187,4 +203,8 @@ jp TextScriptEnd
 
 Route15GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route15NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

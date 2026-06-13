@@ -57,7 +57,7 @@ _Route1Youngster3BattleText::
 _Route1Youngster3EndBattleText::
 	text "You're pretty"
 	line "good already!"
-	prompt
+	done
 
 _Route1Youngster3AfterBattleText::
 	text "VIRIDIAN CITY"

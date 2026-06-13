@@ -361,16 +361,19 @@ OaksLabRivalStartBattleScript:
     ld a, OPP_RIVAL1
 	ld [wCurOpponent], a
 	ld a, [wRivalStarter]
-	cp STARTER2
-	jr nz, .not_squirtle
+	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr nz, .not_slot2
 	ld a, $1
 	jr .done
-.not_squirtle
-	cp STARTER3
-	jr nz, .not_bulbasaur
+.not_slot2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr nz, .not_slot3
 	ld a, $2
 	jr .done
-.not_bulbasaur
+.not_slot3
 	ld a, $3
 .done
 	ld [wTrainerNo], a

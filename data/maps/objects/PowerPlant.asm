@@ -23,7 +23,7 @@ PowerPlant_Object:
 	warp_event  4, 35, LAST_MAP, 4
 	warp_event  5, 35, LAST_MAP, 4
 	warp_event  0, 11, LAST_MAP, 4
-	warp_event  6, 35, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  0,  3, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 

@@ -16,8 +16,8 @@ SaffronGym_Object:
 	warp_event  5,  3, SAFFRON_GYM, 21; 4
 	warp_event  1,  5, SAFFRON_GYM, 18 ; 5
 	warp_event  5,  5, SAFFRON_GYM, 23; 6
-	warp_event  8, 0,  LAST_MAP, 3      ; 7
-	warp_event  9, 0,  LAST_MAP, 3      ; 8
+	warp_event  8, 0,  INDIGO_PLATEAU_LOBBY, 1      ; 7
+	warp_event  9, 0,  INDIGO_PLATEAU_LOBBY, 1      ; 8
 	warp_event  1, 11, SAFFRON_GYM, 6; 9
 	warp_event  5, 11, SAFFRON_GYM, 14; 10
 	warp_event  1, 15, SAFFRON_GYM, 31; 11

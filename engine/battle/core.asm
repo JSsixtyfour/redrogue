@@ -1156,7 +1156,10 @@ HandlePlayerBlackOut:
 	call PrintText
 	ldh a, [hCurMap]
 	cp OAKS_LAB
-	ret z            ; starter battle in oak's lab: don't black out
+	jr nz, .notRival1Battle
+	ld hl, wBattleCount
+	inc [hl]
+	ret              ; starter battle in oak's lab: don't black out
 .notRival1Battle
 	ld b, SET_PAL_BATTLE_BLACK
 	call RunPaletteCommand

@@ -22,11 +22,26 @@ Route17_Script:
 	ld [wRoute17CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route17, PAD_DOWN, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_17, TEXT_ROUTE17_NO_TURNING_BACK, SCRIPT_ROUTE17_PLAYER_IS_MOVING, wRoute17CurScript
+
+Route17EntranceCoords:
+	dbmapcoord 5, 1
+	dbmapcoord 6, 1
+	db -1
+
+Route17NoCoords:
+	dbmapcoord 5, 2
+	dbmapcoord 6, 2
+	dbmapcoord 5, 3
+	dbmapcoord 6, 3
+	db -1
+
 Route17_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE17_DEFAULT
+	dw_const Route17DefaultScript,                  SCRIPT_ROUTE17_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE17_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE17_END_BATTLE
+	dw_const Route17PlayerIsMovingScript,           SCRIPT_ROUTE17_PLAYER_IS_MOVING
 
 Route17_TextPointers:
 	def_text_pointers
@@ -47,6 +62,7 @@ Route17_TextPointers:
 	dw_const Route17SignText,                TEXT_ROUTE17_SIGN
 	dw_const Route17NoticeSign2Text,         TEXT_ROUTE17_NOTICE_SIGN2
 	dw_const Route17CyclingRoadEndsSignText, TEXT_ROUTE17_CYCLING_ROAD_ENDS_SIGN
+	dw_const Route17NoTurningBackText, TEXT_ROUTE17_NO_TURNING_BACK
 
 Route17TrainerHeaders:
 	def_trainers 1
@@ -214,4 +230,8 @@ jp TextScriptEnd
 
 Route17GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route17NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

@@ -22,11 +22,26 @@ Route5_Script:
 	ld [wRoute5CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route5, PAD_DOWN, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_5, TEXT_ROUTE5_NO_TURNING_BACK, SCRIPT_ROUTE5_PLAYER_IS_MOVING, wRoute5CurScript
+
+Route5EntranceCoords:
+	dbmapcoord 2, 1
+	dbmapcoord 3, 1
+	db -1
+
+Route5NoCoords:
+	dbmapcoord 2, 2
+	dbmapcoord 3, 2
+	dbmapcoord 2, 3
+	dbmapcoord 3, 3
+	db -1
+
 Route5_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE5_DEFAULT
+	dw_const Route5DefaultScript,                   SCRIPT_ROUTE5_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE5_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE5_END_BATTLE
+	dw_const Route5PlayerIsMovingScript,            SCRIPT_ROUTE5_PLAYER_IS_MOVING
 
 Route5_TextPointers:
 	def_text_pointers
@@ -42,6 +57,7 @@ Route5_TextPointers:
     dw_const Rogue_Route5_Reward_Text, TEXT_ROUTE5_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE5_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route5UndergroundPathSignText, TEXT_ROUTE5_UNDERGROUND_PATH_SIGN
+	dw_const Route5NoTurningBackText, TEXT_ROUTE5_NO_TURNING_BACK
 
 Route5TrainerHeaders:
 	def_trainers 1
@@ -189,4 +205,8 @@ jp TextScriptEnd
 
 Route5GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route5NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

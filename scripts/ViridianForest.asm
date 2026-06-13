@@ -23,14 +23,36 @@ ViridianForest_Script:
 	ld [wViridianForestCurScript], a
 	ret
 
+	RogueAutoWalkScripts ViridianForest, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_VIRIDIAN_FOREST, TEXT_VIRIDIANFOREST_NO_TURNING_BACK, SCRIPT_VIRIDIANFOREST_PLAYER_IS_MOVING, wViridianForestCurScript
+
+ViridianForestEntranceCoords:
+	dbmapcoord 33, 11
+	dbmapcoord 33, 12
+	dbmapcoord 33, 13
+	dbmapcoord 33, 14
+	db -1
+
+ViridianForestNoCoords:
+	dbmapcoord 32, 11
+	dbmapcoord 32, 12
+	dbmapcoord 32, 13
+	dbmapcoord 32, 14
+	dbmapcoord 31, 11
+	dbmapcoord 31, 12
+	dbmapcoord 31, 13
+	dbmapcoord 31, 14
+	db -1
+
 ViridianForest_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_VIRIDIANFOREST_DEFAULT
+	dw_const ViridianForestDefaultScript,           SCRIPT_VIRIDIANFOREST_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_VIRIDIANFOREST_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_VIRIDIANFOREST_END_BATTLE
+	dw_const ViridianForestPlayerIsMovingScript,    SCRIPT_VIRIDIANFOREST_PLAYER_IS_MOVING
 
 ViridianForest_TextPointers:
 	def_text_pointers
+	dw_const ViridianForestNoTurningBackText,   TEXT_VIRIDIANFOREST_NO_TURNING_BACK
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
@@ -232,4 +254,8 @@ jp TextScriptEnd
 
 viridianforestGreedyText:
 	text_far _GreedyText
+	text_end
+
+ViridianForestNoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

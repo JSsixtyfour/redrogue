@@ -22,11 +22,26 @@ Route13_Script:
 	ld [wRoute13CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route13, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_13, TEXT_ROUTE13_NO_TURNING_BACK, SCRIPT_ROUTE13_PLAYER_IS_MOVING, wRoute13CurScript
+
+Route13EntranceCoords:
+	dbmapcoord 10, 44
+	dbmapcoord 11, 44
+	db -1
+
+Route13NoCoords:
+	dbmapcoord 10, 43
+	dbmapcoord 11, 43
+	dbmapcoord 10, 42
+	dbmapcoord 11, 42
+	db -1
+
 Route13_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE13_DEFAULT
+	dw_const Route13DefaultScript,                  SCRIPT_ROUTE13_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE13_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE13_END_BATTLE
+	dw_const Route13PlayerIsMovingScript,           SCRIPT_ROUTE13_PLAYER_IS_MOVING
 
 Route13_TextPointers:
 	def_text_pointers
@@ -44,6 +59,7 @@ Route13_TextPointers:
 	dw_const Route13TrainerTips1Text,  TEXT_ROUTE13_TRAINER_TIPS1
 	dw_const Route13TrainerTips2Text,  TEXT_ROUTE13_TRAINER_TIPS2
 	dw_const Route13SignText,          TEXT_ROUTE13_SIGN
+	dw_const Route13NoTurningBackText, TEXT_ROUTE13_NO_TURNING_BACK
 
 Route13TrainerHeaders:
 	def_trainers 1
@@ -199,4 +215,8 @@ jp TextScriptEnd
 
 Route13GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route13NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

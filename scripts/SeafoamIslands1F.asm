@@ -22,13 +22,28 @@ SeafoamIslands1F_Script:
 	ld [wSeafoamIslands1FCurScript], a
 	ret
 
+	RogueAutoWalkScripts SeafoamIslands1F, PAD_UP, SeafoamIslands1FNormalScript, EVENT_AUTOWALKED_INTO_SEAFOAM_ISLANDS_1F, TEXT_SEAFOAMISLANDS1F_NO_TURNING_BACK, SCRIPT_SEAFOAMISLANDS1F_PLAYER_IS_MOVING, wSeafoamIslands1FCurScript
+
+SeafoamIslands1FEntranceCoords:
+	dbmapcoord 17, 4
+	dbmapcoord 17, 5
+	db -1
+
+SeafoamIslands1FNoCoords:
+	dbmapcoord 16, 4
+	dbmapcoord 16, 5
+	dbmapcoord 15, 4
+	dbmapcoord 15, 5
+	db -1
+
 SeafoamIslands1F_ScriptPointers:
 	def_script_pointers
 	dw_const SeafoamIslands1FDefaultScript,         SCRIPT_SEAFOAMISLANDS1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_SEAFOAMISLANDS1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_SEAFOAMISLANDS1F_END_BATTLE
+	dw_const SeafoamIslands1FPlayerIsMovingScript,  SCRIPT_SEAFOAMISLANDS1F_PLAYER_IS_MOVING
 
-SeafoamIslands1FDefaultScript:
+SeafoamIslands1FNormalScript:
 	call CheckFightingMapTrainers
 	ld a, SEAFOAM_ISLANDS_B1F
 	ld [wDungeonWarpDestinationMap], a
@@ -55,6 +70,7 @@ SeafoamIslands1F_TextPointers:
     dw_const SeafoamIslands1F_Rogue_Reward_Script_PokeballText_3, TEXT_SEAFOAMISLANDS1F_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_SeafoamIslands1F_Reward_Text, TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1
     EXPORT TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const SeafoamIslands1FNoTurningBackText, TEXT_SEAFOAMISLANDS1F_NO_TURNING_BACK
 
 SeafoamIslands1FTrainerHeaders:
 	def_trainers 1
@@ -195,6 +211,10 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
+
+SeafoamIslands1FNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 SeafoamIslands1FGreedyText:
 	text_far _GreedyText

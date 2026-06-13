@@ -19,5 +19,7 @@ RewardRoom_Object:
 	object_event  5,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_1
 	object_event  8,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_2
 	object_event 11,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_3
-    
+	object_event  5,  1, SPRITE_CLIPBOARD, STAY, NONE, TEXT_REWARDROOM_DOOR1_SIGN   ; sign for door 1 (route 1)
+	object_event  9,  1, SPRITE_CLIPBOARD, STAY, NONE, TEXT_REWARDROOM_DOOR2_SIGN   ; sign for door 2 (route 2)
+
 	def_warps_to REWARD_ROOM

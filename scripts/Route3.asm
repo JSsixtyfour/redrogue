@@ -22,11 +22,26 @@ Route3_Script:
 	ld [wRoute3CurScript], a
 	ret
 
+	RogueAutoWalkScripts Route3, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_3, TEXT_ROUTE3_NO_TURNING_BACK, SCRIPT_ROUTE3_PLAYER_IS_MOVING, wRoute3CurScript
+
+Route3EntranceCoords:
+	dbmapcoord 0, 9
+	dbmapcoord 0, 10
+	db -1
+
+Route3NoCoords:
+	dbmapcoord 1, 9
+	dbmapcoord 1, 10
+	dbmapcoord 2, 9
+	dbmapcoord 2, 10
+	db -1
+
 Route3_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_ROUTE3_DEFAULT
+	dw_const Route3DefaultScript,                   SCRIPT_ROUTE3_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_ROUTE3_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE3_END_BATTLE
+	dw_const Route3PlayerIsMovingScript,            SCRIPT_ROUTE3_PLAYER_IS_MOVING
 
 Route3_TextPointers:
 	def_text_pointers
@@ -43,6 +58,7 @@ Route3_TextPointers:
     dw_const Rogue_Route3_Reward_Text, TEXT_ROUTE3_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE3_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route3SignText,          TEXT_ROUTE3_SIGN
+	dw_const Route3NoTurningBackText, TEXT_ROUTE3_NO_TURNING_BACK
 
 Route3TrainerHeaders:
 	def_trainers 1
@@ -194,4 +210,8 @@ jp TextScriptEnd
 
 Route3GreedyText:
 	text_far _GreedyText
+	text_end
+
+Route3NoTurningBackText:
+	text_far _NoTurningBackText
 	text_end

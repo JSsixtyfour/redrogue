@@ -29,6 +29,20 @@ Route24SetDefaultScript:
 	ld [wCurMapScript], a
 	ret
 
+	RogueAutoWalkScripts Route24, PAD_UP, Route24NuggetScript, EVENT_AUTOWALKED_INTO_ROUTE_24, TEXT_ROUTE24_NO_TURNING_BACK, SCRIPT_ROUTE24_PLAYER_IS_MOVING, wRoute24CurScript
+
+Route24EntranceCoords:
+	dbmapcoord 31, 10
+	dbmapcoord 31, 11
+	db -1
+
+Route24NoCoords:
+	dbmapcoord 30, 10
+	dbmapcoord 30, 11
+	dbmapcoord 29, 10
+	dbmapcoord 29, 11
+	db -1
+
 Route24_ScriptPointers:
 	def_script_pointers
 	dw_const Route24DefaultScript,                  SCRIPT_ROUTE24_DEFAULT
@@ -36,8 +50,9 @@ Route24_ScriptPointers:
 	dw_const EndTrainerBattle,                      SCRIPT_ROUTE24_END_BATTLE
 	dw_const Route24AfterRocketBattleScript,        SCRIPT_ROUTE24_AFTER_ROCKET_BATTLE
 	dw_const Route24PlayerMovingScript,             SCRIPT_ROUTE24_PLAYER_MOVING
+	dw_const Route24PlayerIsMovingScript,           SCRIPT_ROUTE24_PLAYER_IS_MOVING
 
-Route24DefaultScript:
+Route24NuggetScript:
 	CheckEvent EVENT_GOT_NUGGET
 	jp nz, CheckFightingMapTrainers
 	ld hl, .PlayerCoordsArray
@@ -108,6 +123,7 @@ Route24_TextPointers:
     dw_const Route24_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_3
     dw_const Rogue_Route24_Reward_Text, TEXT_ROUTE24_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE24_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
+	dw_const Route24NoTurningBackText, TEXT_ROUTE24_NO_TURNING_BACK
 
 Route24TrainerHeaders:
 	def_trainers 1
@@ -297,6 +313,10 @@ ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 
+
+Route24NoTurningBackText:
+	text_far _NoTurningBackText
+	text_end
 
 Route24GreedyText:
 	text_far _GreedyText

@@ -25,6 +25,19 @@ Route22NoopScript:
 Route22GetRivalTrainerNoByStarterScript:
 	ld a, [wRivalStarter]
 	ld b, a
+	ld a, [wRoguePokemon2]
+	cp b
+	jr z, .slot2
+	ld a, [wRoguePokemon3]
+	cp b
+	jr z, .slot3
+	ld b, 1
+	jr .next_trainer_no
+.slot2
+	ld b, 2
+	jr .next_trainer_no
+.slot3
+	ld b, 3
 .next_trainer_no
 	ld a, [hli]
 	cp b
@@ -143,10 +156,10 @@ Route22Rival1StartBattleScript:
 	ret
 
 .StarterTable:
-; starter the rival picked, rival trainer number
-	db STARTER2, 4
-	db STARTER3, 5
-	db STARTER1, 6
+; rival starter slot (wRivalStarterSlot), rival trainer number
+	db 2, 4
+	db 3, 5
+	db 1, 6
 
 Route22Rival1AfterBattleScript:
 	ldh a, [hIsInBattle]
@@ -301,9 +314,10 @@ Route22Rival2StartBattleScript:
 	ret
 
 .StarterTable:
-	db STARTER2, 10
-	db STARTER3, 11
-	db STARTER1, 12
+; rival starter slot (wRivalStarterSlot), rival trainer number
+	db 2, 10
+	db 3, 11
+	db 1, 12
 
 Route22Rival2AfterBattleScript:
 	ldh a, [hIsInBattle]

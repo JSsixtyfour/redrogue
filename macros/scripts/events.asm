@@ -111,6 +111,81 @@ MACRO CheckAndSetEvent
 ENDM
 
 
+; Generates the three "rogue stage entrance auto-walk / no turning back"
+; script functions, modeled on Route1's working implementation.
+; Requires the caller to also define <prefix>EntranceCoords and
+; <prefix>NoCoords (dbmapcoord lists terminated with db -1).
+;
+; \1 = label prefix (e.g. Route3)
+; \2 = walk-in direction (PAD_UP, PAD_DOWN, PAD_LEFT, PAD_RIGHT)
+; \3 = normal-flow script to fall through to (e.g. CheckFightingMapTrainers)
+; \4 = EVENT_AUTOWALKED_INTO_xxx constant
+; \5 = TEXT_xxx_NO_TURNING_BACK constant
+; \6 = SCRIPT_xxx_PLAYER_IS_MOVING constant
+; \7 = wXXXCurScript wram variable
+MACRO RogueAutoWalkScripts
+\1DefaultScript:
+	ld hl, \1NoCoords
+	call ArePlayerCoordsInArray
+	jp c, .stopPlayerFromLeaving
+	ld hl, \1EntranceCoords
+	call ArePlayerCoordsInArray
+	jp nc, \3
+	xor a
+	ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ldh [hSimulatedJoypadStatesIndex], a
+	CheckAndSetEvent \4
+	jr z, \1ScriptWalkIntoRoom
+.stopPlayerFromLeaving
+	ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ld a, \5
+	ldh [hTextID], a
+	call DisplayTextID  ; "No turning back"
+	ld a, \2
+	ld [wSimulatedJoypadStatesEnd], a
+	ld a, $1
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, \6
+	ld [\7], a
+	ld [wCurMapScript], a
+	ret
+
+\1ScriptWalkIntoRoom:
+; Walk six steps in.
+	ld hl, wSimulatedJoypadStatesEnd
+	ld a, \2
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	ld a, $4
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, \6
+	ld [\7], a
+	ld [wCurMapScript], a
+	ret
+
+\1PlayerIsMovingScript:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	call Delay3
+	xor a
+	ldh [hJoyIgnore], a
+	ld [\7], a
+	ld [wCurMapScript], a
+	ret
+ENDM
+
+
 ;\1 = event index
 MACRO CheckAndResetEvent
 	DEF event_byte = ((\1) / 8)

@@ -685,6 +685,91 @@ InitGymBattle::
 	ld hl, wRogueFlagsBitfield
 	res 0, [hl]                 ; route is next after this gym
 	ret
+
+
+; If the species about to be loaded is the rival starter placeholder,
+; replace it with the rival's actual rogue starter (wRivalStarter), evolved
+; to match wCurEnemyLevel. Works for any trainer/location.
+; Input: wCurPartySpecies = species byte just read from trainer data
+PatchRivalStarterSpecies::
+	push hl
+	push bc
+	push de
+	ld a, [wCurPartySpecies]
+	cp RIVAL_STARTER_PLACEHOLDER
+	jr nz, .done
+	ld a, [wRivalStarter]
+	ld d, a
+	call RivalStarterEvolve
+.done
+	pop de
+	pop bc
+	pop hl
+	ret
+
+; Input: d = base species, wCurEnemyLevel = level
+; Output: wCurPartySpecies = species evolved up to 2 stages based on level
+;         (item/trade evolutions and Eevee's stone evolutions are skipped,
+;          since the rival can't perform those)
+RivalStarterEvolve::
+	ld a, d
+	ld [wCurPartySpecies], a
+	cp EEVEE
+	ret z
+	call EvolveStep
+	ret nc
+	call EvolveStep
+	ret
+
+; Input: d = species, wCurEnemyLevel = level
+; Output: if a level-evolution threshold is met, carry set, d and
+;         wCurPartySpecies updated to the evolved species; else carry clear
+EvolveStep:
+	push hl
+	push bc
+	ld hl, EvosMovesPointerTable
+	ld b, 0
+	ld a, d
+	dec a
+	add a
+	rl b
+	ld c, a
+	add hl, bc
+	ld de, wEvoDataBufferEnd
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, 2
+	call FarCopyData
+	ld hl, wEvoDataBufferEnd
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld de, wEvoDataBufferEnd
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, 4
+	call FarCopyData
+	ld hl, wEvoDataBufferEnd
+	ld a, [hl]
+	cp EVOLVE_LEVEL
+	jr nz, .noEvo
+	inc hl
+	ld a, [hl]
+	ld b, a
+	ld a, [wCurEnemyLevel]
+	cp b
+	jr c, .noEvo
+	inc hl
+	ld a, [hl]
+	ld d, a
+	ld [wCurPartySpecies], a
+	pop bc
+	pop hl
+	scf
+	ret
+.noEvo
+	pop bc
+	pop hl
+	and a
+	ret
 	
 	
 	

@@ -1,7 +1,12 @@
 IndigoPlateauLobby_Script:
-	; force facing up on every entry regardless of which warp brought the player here
+	; force facing up on entry only, regardless of which warp brought the player here
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .skipFaceUp
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
+.skipFaceUp
 	call EnableAutoTextBoxDrawing
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .normal
