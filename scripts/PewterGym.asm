@@ -96,6 +96,8 @@ PewterGymScriptReceiveTM34:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_BOULDERBADGE, [hl]
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 
 	ld a, TOGGLE_GYM_GUY
 	ld [wToggleableObjectIndex], a

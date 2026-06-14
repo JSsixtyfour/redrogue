@@ -87,6 +87,8 @@ SaffronGymSabrinaReceiveTM46Script:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_MARSHBADGE, [hl]
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 
 	jp SaffronGymResetScripts
 

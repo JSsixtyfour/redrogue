@@ -12,5 +12,30 @@ _PickPokeBallText::
 
 _NoTurningBackText::
 	text "There's no"
-	line "turning back!@"
+	line "turning back!"
+	done
+
+_LeftoversText::
+	text "Your party"
+	line "was healed!"
+	done
+
+_LeftoversDescriptionText::
+	text "Heals your"
+	line "team a bit"
+	cont "after each"
+	cont "battle!"
+	done
+
+_PPTonicText::
+	text "Your party's"
+	line "PP was"
+	cont "restored!"
+	done
+
+_PPTonicDescriptionText::
+	text "Restores PP"
+	line "a bit after"
+	cont "each"
+	cont "battle!"
 	done

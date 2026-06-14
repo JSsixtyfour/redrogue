@@ -22,6 +22,9 @@ GetTrainerInformation::
 	inc de
 	ld a, [hli]
 	ld [de], a
+	inc de
+	ld a, [hli]
+	ld [de], a
 	jp BankswitchBack
 .linkBattle
 	ld hl, wTrainerPicPointer

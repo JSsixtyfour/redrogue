@@ -98,4 +98,7 @@ ItemNames::
 	li "10F"
 	li "11F"
 	li "B4F"
-	assert_list_length NUM_ITEMS + NUM_FLOORS
+	li "LEFTOVERS"
+	li "PEARL"
+	li "PP TONIC"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 3

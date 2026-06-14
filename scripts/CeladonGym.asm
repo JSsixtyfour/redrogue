@@ -87,6 +87,8 @@ CeladonGymReceiveTM21:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_RAINBOWBADGE, [hl]
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 
 	jp CeladonGymResetScripts
 

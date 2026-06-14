@@ -92,6 +92,8 @@ FuchsiaGymReceiveTM06:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_SOULBADGE, [hl]
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 
 	; deactivate gym trainers
 	SetEventRange EVENT_BEAT_FUCHSIA_GYM_TRAINER_0, EVENT_BEAT_FUCHSIA_GYM_TRAINER_5

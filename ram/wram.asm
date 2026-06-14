@@ -1206,7 +1206,7 @@ ENDU
 	ds 2
 
 ; money received after battle = base money × level of last enemy mon
-wTrainerBaseMoney:: dw ; BCD
+wTrainerBaseMoney:: ds 3 ; BCD
 
 wToggleableObjectCounter:: db
 
@@ -2025,6 +2025,10 @@ wRogueMap:: db
 
 ; 32-bit bitfield: bit N = stage N visited this run (by index in RogueStageMapTable)
 wVisitedStagesBitfield:: ds 4
+; bit 0: route is next after this gym / gym is next after this route
+; bit 1: set by GetRandRoster when the current trainer is the final (5th)
+;        trainer of a route, signalling GetRandRosterLoop to apply the level
+;        bonus and rarer class distribution from trainer_difficulty_settings
 wRogueFlagsBitfield:: db
 wRogueItem:: dw
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
@@ -2034,6 +2038,13 @@ wRogueDoor1:: db
 wRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
+; LEFTOVERS fraction level: heals 1/(16-level) of each mon's max HP.
+; Level 0 = 1/16 ... level 15 = 1/1 (full heal). Increment to "upgrade" the item.
+wHealAllItemLevel:: db
+
+; PP_TONIC fraction level: restores 1/(16-level) of max PP for every move.
+; Level 0 = 1/16 ... level 15 = 1/1 (full restore). Increment to "upgrade" the item.
+wRestorePPItemLevel:: db
 
 wroguenpctradegive:: db
 wroguenpctradeget:: db

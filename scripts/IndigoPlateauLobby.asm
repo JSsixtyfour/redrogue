@@ -7,6 +7,17 @@ IndigoPlateauLobby_Script:
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
 .skipFaceUp
+    ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	jp nz, .blockExitToSecondDoor ; bit not clear = gym next
+	ld a, $D
+	jp .setExitDoor
+.blockExitToSecondDoor
+	ld a, $C
+.setExitDoor
+	ld [wNewTileBlockID], a
+	lb bc, 0, 5
+	predef_jump ReplaceTileBlock
 	call EnableAutoTextBoxDrawing
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .normal

@@ -2,6 +2,12 @@ UseItem_::
 	ld a, 1
 	ld [wActionResultOrTookBattleTurn], a ; initialise to success value
 	ld a, [wCurItem]
+	cp LEFTOVERS ; outside ItemUsePtrTable's range (added after the elevator floors)
+	jp z, ItemUseLeftovers
+	cp PEARL ; outside ItemUsePtrTable's range (added after the elevator floors)
+	jp z, UnusableItem
+	cp PP_TONIC ; outside ItemUsePtrTable's range (added after the elevator floors)
+	jp z, ItemUsePPTonic
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable
@@ -2544,6 +2550,247 @@ TooImportantToTossText:
 	text_far _TooImportantToTossText
 	text_end
 
+; ============================================================
+; ItemUseLeftovers
+; LEFTOVERS is a key item: using it from the bag just shows a description.
+; The actual healing happens in LeftoversRecovery, called from EndOfBattle.
+; ============================================================
+ItemUseLeftovers:
+	ld hl, LeftoversDescriptionText
+	jp PrintText
+
+; ============================================================
+; LeftoversRecovery
+; Heals every party mon by maxHP / (16 - wHealAllItemLevel), capped at maxHP.
+; wHealAllItemLevel 0 = 1/16 of max HP, 15 = 1/1 (full heal). Incrementing
+; wHealAllItemLevel "upgrades" the item without touching this routine.
+; Called from EndOfBattle if the player has LEFTOVERS in their bag.
+; ============================================================
+LeftoversRecovery::
+	ld a, [wHealAllItemLevel]
+	ld b, a
+	ld a, 16
+	sub b
+	ld c, a                        ; c = heal divisor (16 - level), 1-16
+
+	ld hl, wPartySpecies
+	ld de, wPartyMon1HP
+.healLoop
+	ld a, [hli]
+	cp -1
+	jr z, .done
+	push hl                        ; save species-list pointer
+
+	push de                        ; save &MON_HP (clobbered by the divide below)
+	ld hl, MON_MAXHP - MON_HP
+	add hl, de
+	ld a, [hl]
+	inc hl
+	ld b, a                        ; b = maxHP high byte
+	ld a, [hl]                     ; a = maxHP low byte
+	ld h, b
+	ld l, a                        ; hl = maxHP
+	push hl                         ; stash maxHP
+
+	; divide hl (maxHP) by c -> hl = heal amount
+	ld e, c                         ; heal divisor put in e
+	ld d, 16                        ; iteration counter
+	xor a                           ; clear to function as hl remainder accumulator
+.divLoop
+	add hl, hl                      ; double max hp, moving bits left one
+	rla                             ; using hl and a as one 24 bit register, moves carry bit from hl into a
+	cp e                            ; compare a to heal divisor
+	jr c, .noSub                    ; if divisor bigger than remainder, don't subtract
+	sub e                           ; subtract divisor from remainder
+	inc l                           ; increase doubled max hp by 1
+.noSub
+	dec d                           ; decrease iteration counter
+	jr nz, .divLoop                 ; if not past 16 loops, keep going
+
+	push hl                         ; stash heal amount
+	pop bc                          ; bc = heal amount
+	pop de                          ; de = maxHP
+	pop hl                          ; hl = &MON_HP
+
+	inc hl
+	ld a, [hl]                      ; current HP low
+	add c                           ; + heal amount low
+	ld c, a
+	dec hl
+	ld a, [hl]                      ; current HP high
+	adc b                           ; + heal amount high (+ carry)
+	ld b, a                         ; bc = new HP
+
+	; cap bc (new HP) at de (maxHP)
+	ld a, b
+	cp d
+	jr c, .noCap
+	jr nz, .cap
+	ld a, c
+	cp e
+	jr c, .noCap
+.cap
+	ld b, d
+	ld c, e
+.noCap
+	ld a, b
+	ld [hl], a                      ; write back HP high
+	inc hl
+	ld a, c
+	ld [hl], a                      ; write back HP low
+
+	ld de, PARTYMON_STRUCT_LENGTH - 1
+	add hl, de                      ; hl = next mon's &MON_HP
+	ld d, h
+	ld e, l                         ; de = next mon's &MON_HP
+	pop hl                          ; hl = species-list pointer
+	jr .healLoop
+
+.done
+	ld hl, LeftoversText
+	jp PrintText
+
+LeftoversText:
+	text_far _LeftoversText
+	text_end
+
+LeftoversDescriptionText:
+	text_far _LeftoversDescriptionText
+	text_end
+
+; ============================================================
+; ItemUsePPTonic
+; PP_TONIC is a key item: using it from the bag just shows a description.
+; The actual restoration happens in PPTonicRecovery, called from EndOfBattle.
+; ============================================================
+ItemUsePPTonic:
+	ld hl, PPTonicDescriptionText
+	jp PrintText
+
+; ============================================================
+; PPTonicRecovery
+; Restores maxPP / (16 - wRestorePPItemLevel) PP to every move of every party
+; mon, capped at that move's max PP (base PP plus PP Up bonus). Level 0 = 1/16
+; of max PP, 15 = 1/1 (full restore). Incrementing wRestorePPItemLevel
+; "upgrades" the item without touching this routine.
+; Called from EndOfBattle if the player has PP_TONIC in their bag.
+; ============================================================
+PPTonicRecovery::
+	ld a, [wPartyCount]
+	ldh [hMultiplicand], a         ; mons remaining
+
+	ld hl, wPartyMon1Moves
+.monLoop
+	ld a, NUM_MOVES
+	ldh [hMultiplier], a           ; moves remaining for this mon
+.moveLoop
+	ld a, [hl]                      ; move id
+	and a                           ; confirm not 0
+	jr z, .nextMove                 ; jump if 0
+
+	push hl                         ; save move-id ptr
+	dec a                           ; a = move index (0-based)
+	ld hl, Moves                    ; table with move data
+	ld bc, MOVE_LENGTH
+	call AddNTimes
+	ld de, wMoveData
+	ld a, BANK(Moves)
+	call FarCopyData                ; wMoveData = this move's data 
+
+	pop hl                          ; hl = move-id ptr
+	push hl                         ; keep for the write-back below
+	ld bc, MON_PP - MON_MOVES
+	add hl, bc                      ; hl = pp byte addr
+	ld a, [hl]
+	and PP_UP_MASK
+	ld b, a                         ; b = ppup bits, isolated
+	ld a, [wMoveData + MOVE_PP]
+	or b
+	ld [wMoveData + MOVE_PP + 1], a ; (ppup bits | base pp)
+	xor a
+	ld [wUsingPPUp], a
+	ld de, wMoveData + MOVE_PP
+	ld hl, wMoveData + MOVE_PP + 1
+	call AddBonusPP                 ; [hl] += bonus per PP Up, once per PP Up
+	ld a, [hl]
+	and PP_MASK
+	ld d, a                          ; d = max PP
+
+	; restore = max PP / (16 - wRestorePPItemLevel)
+	xor a
+	ldh [hDividend], a
+	ldh [hDividend + 1], a
+	ldh [hDividend + 2], a
+	ld a, d
+	ldh [hDividend + 3], a
+	ld a, [wRestorePPItemLevel]
+	ld e, a
+	ld a, 16
+	sub e
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ldh a, [hQuotient + 3]            ; a = restore amount
+
+	pop hl                            ; hl = move-id ptr
+	push hl
+	ld bc, MON_PP - MON_MOVES
+	add hl, bc                        ; hl = pp byte addr
+	ld b, a                           ; b = restore amount
+	ld a, [hl]
+	ld c, a
+	and PP_UP_MASK
+	ld e, a                           ; e = ppup bits
+
+	; restore at least 1 PP if the division rounded down to 0 and the move
+	; isn't already at max PP
+	ld a, c
+	and PP_MASK                       ; a = current PP
+	cp d
+	jr nc, .skipMinPP                  ; already at (or above) max PP
+	ld a, b
+	and a
+	jr nz, .skipMinPP                  ; restore amount already nonzero
+	ld b, 1
+.skipMinPP
+
+	ld a, c
+	and PP_MASK
+	add b                              ; current PP + restore
+	cp d
+	jr c, .noCapPP
+	ld a, d                            ; cap at max PP
+.noCapPP
+	or e
+	ld [hl], a
+
+	pop hl                             ; hl = move-id ptr
+
+.nextMove
+	inc hl
+	ldh a, [hMultiplier]
+	dec a
+	ldh [hMultiplier], a
+	jr nz, .moveLoop
+
+	ld bc, PARTYMON_STRUCT_LENGTH - NUM_MOVES
+	add hl, bc                         ; hl = next mon's MON_MOVES
+	ldh a, [hMultiplicand]
+	dec a
+	ldh [hMultiplicand], a
+	jp nz, .monLoop
+
+	ld hl, PPTonicText
+	jp PrintText
+
+PPTonicText:
+	text_far _PPTonicText
+	text_end
+
+PPTonicDescriptionText:
+	text_far _PPTonicDescriptionText
+	text_end
+
 ; checks if an item is a key item
 ; INPUT:
 ; [wCurItem] = item ID
@@ -2555,6 +2802,17 @@ IsKeyItem_::
 	ld a, $01
 	ld [wIsKeyItem], a
 	ld a, [wCurItem]
+	cp LEFTOVERS ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; LEFTOVERS is a key item: can't be tossed, heals the party after battles
+	cp PP_TONIC ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; PP_TONIC is a key item: can't be tossed, restores PP after battles
+.notLeftovers
+	cp PEARL ; outside KeyItemFlags' range (added after the elevator floors)
+	jr nz, .notPearl
+	xor a
+	ld [wIsKeyItem], a
+	ret
+.notPearl
 	cp HM01 ; is the item an HM or TM?
 	jr nc, .checkIfItemIsHM
 ; if the item is not an HM or TM

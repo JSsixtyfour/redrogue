@@ -112,6 +112,17 @@ DEF NUM_ITEMS EQU const_value - 1
 	const FLOOR_B4F     ; $61
 DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 
+; rogue-mode reward item: heals the whole party by a fraction of each mon's
+; max HP (see wHealAllItemLevel / ItemUseLeftovers)
+	const LEFTOVERS     ; $62
+
+; sellable treasure item, worth less than NUGGET
+	const PEARL         ; $63
+
+; rogue-mode reward item: restores a fraction of every party mon's PP for
+; every move (see wRestorePPItemLevel / PPTonicRecovery)
+	const PP_TONIC      ; $64
+
 	const_next $C4
 
 ; HMs are defined before TMs, so the actual number of TM definitions

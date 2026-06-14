@@ -286,10 +286,26 @@ SelectRandomUnvisitedStage::
 	ret
 
 ; ============================================================
+; _PickNextStage  (private)
+; Decides whether the next stage should be a ROUTE or a GYM and picks it,
+; based on wRogueFlagsBitfield bit 0: route scripts set this bit on entry
+; ("gym is next"), and gym leader scripts clear it on badge receipt
+; ("route is next"), giving the sequence route, gym, route, gym, ...
+; OUTPUT: wRogueMap = picked stage's map ID
+; ============================================================
+_PickNextStage:
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	jp z, _PickRandomUnvisitedStage ; bit clear = route next
+	jp _PickNextGym                 ; bit set = gym next (sets wRogueMap)
+
+; ============================================================
 ; SelectAndPatchLobbyExit / SelectAndPatchRewardRoomExit
-; Wrappers that combine SelectRandomUnvisitedStage + PatchWarpEntry in one
+; Wrappers that combine _PickNextStage + PatchWarpEntry in one
 ; internal call (same bank), avoiding the farcall-clobbers-b problem.
 ; Scripts use farcall to reach these; the internal calls use direct call.
+; Both doors lead to the SAME next stage (route/gym alternating); the
+; door choice only determines which item-category reward is offered.
 ; ============================================================
 SelectAndPatchLobbyExit::
 	; Pick two distinct random item types (HEALING=0, STAT=1, TM=2, MONEY=3).
@@ -307,17 +323,17 @@ SelectAndPatchLobbyExit::
 .door2Done
 	ld [wRogueDoor2], a
 
-	; Patch door 1 (warp_event 7,11 → Y=11,X=7) with a random unvisited ROUTE stage.
-	call _PickRandomUnvisitedStage
+	; Pick the next stage (alternates route/gym) and patch both doors to it.
+	call _PickNextStage
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
+	ld [wLobbyDoor2StageMap], a
+	; Patch door 1 (warp_event 7,11 → Y=11,X=7).
 	ld b, 11
 	ld c, 7
 	call PatchWarpEntry
-	; Patch door 2 (warp_event 8,11 → Y=11,X=8) with a random unvisited GYM stage.
-	call _PickNextGym
-	ldh a, [hWarpDestinationMap]
-	ld [wLobbyDoor2StageMap], a
+	; Patch door 2 (warp_event 8,11 → Y=11,X=8).
+	ld a, [wLobbyDoor2StageMap]
 	ld b, 11
 	ld c, 8
 	call PatchWarpEntry
@@ -341,17 +357,17 @@ SelectAndPatchRewardRoomExit::
 .door2Done
 	ld [wRogueDoor2], a
 
-	; Patch door 1 (warp_event $6,$1 → Y=1,X=6) with a random unvisited ROUTE stage.
-	call _PickRandomUnvisitedStage
+	; Pick the next stage (alternates route/gym) and patch both doors to it.
+	call _PickNextStage
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
+	ld [wLobbyDoor2StageMap], a
+	; Patch door 1 (warp_event $6,$1 → Y=1,X=6).
 	ld b, 1
 	ld c, $6
 	call PatchWarpEntry
-	; Patch door 2 (warp_event $A,$1 → Y=1,X=$A) with a random unvisited GYM stage.
-	call _PickNextGym
-	ldh a, [hWarpDestinationMap]
-	ld [wLobbyDoor2StageMap], a
+	; Patch door 2 (warp_event $A,$1 → Y=1,X=$A).
+	ld a, [wLobbyDoor2StageMap]
 	ld b, 1
 	ld c, $A
 	call PatchWarpEntry

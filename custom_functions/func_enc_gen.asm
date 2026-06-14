@@ -128,18 +128,66 @@ pop hl
 RET
 	
 ;generates a randomized 6-party enemy trainer roster
+; difficulty ramps up every 10 battles won: within each round of 10,
+; wBattleCount mod 10 = 1-4 are the first 4 route trainers, 5 is the final
+; (strongest) route trainer, 6-9 are the gym trainers, and 10 is the gym
+; leader (handled separately by InitGymBattle, never reaches GetRandRoster).
+; wBattleCount/10 (integer) gives the "round" (0-7 for gyms 1-8, 8 for
+; Victory Road), matching up with the gym leader's tier for that round.
+; route trainers (1-5) use trainer_difficulty_settings, gym trainers (6-9)
+; use the separate, higher-level trainer_difficulty_settings_gym table.
 GetRandRoster:
 	push bc
 	push de
     push hl
-    ld hl, trainer_difficulty_settings
     ld a, [wBattleCount]	; load how many battles the player has won
-    cp a, $4   
-    jr c, GetRandRosterLoop ; jump if have won less than 5 battles
-    ld de, $6
-    add hl, de
-    cp a, $5
-    jr c, GetRandRosterLoop ; jump if have won less than 6 battles
+    cp 90
+    jr c, .noClampRound
+    ld a, 89                ; clamp to round 9's settings (Victory Road/Elite Four)
+.noClampRound
+    ld b, 0                 ; b = round index (0-8)
+.getRoundIndex
+    cp 10
+    jr c, .gotRoundIndex
+    sub 10
+    inc b
+    jr .getRoundIndex
+.gotRoundIndex
+    ; a = remainder within the round (1-9).
+    ; 1-5 = route trainers, 6-9 = gym trainers -> pick the matching table.
+    ld hl, trainer_difficulty_settings
+    cp 6
+    jr c, .pickedTable
+    ld hl, trainer_difficulty_settings_gym
+.pickedTable
+    ; the final trainer of each tier (5 = last route trainer, 9 = last gym
+    ; trainer) gets the level bonus and rarer class distribution, signalled
+    ; via wRogueFlagsBitfield bit 1 for GetRandRosterLoop
+    cp 5
+    jr z, .isFinalTrainer
+    cp 9
+    jr nz, .notFinalTrainer
+.isFinalTrainer
+    ld a, [wRogueFlagsBitfield]
+    set 1, a
+    jr .gotFlag
+.notFinalTrainer
+    ld a, [wRogueFlagsBitfield]
+    res 1, a ; clears out the flag for bonus level so a regular trainer doesn't receive it
+.gotFlag
+    ld [wRogueFlagsBitfield], a
+
+    ld a, b                 ; each settings block is 11 bytes
+    ld d, a                 ; d = b
+    add a, a                ; *2
+    add a, a                ; *4
+    add a, a                ; *8
+    add a, d                ; *9
+    add a, d                ; *10
+    add a, d                ; *11
+    ld c, a                 ; offset is placed in c
+    ld b, 0
+    add hl, bc              ; offset it added to pointer to get round
 	jp GetRandRosterLoop
 
 
@@ -147,6 +195,20 @@ GetRandRosterLoop:
 	ld c, [hl]   ; load level range
     inc hl      ; move to next byte, minimum level
     ld e, [hl]  ; load minimum level
+    inc hl      ; move to next byte, normal class counts start
+    ld a, [wRogueFlagsBitfield]
+    bit 1, a
+    jr z, .overloopSetup
+; final route trainer: apply the level bonus and use the rarer class distribution
+    inc hl
+    inc hl
+    inc hl
+    inc hl      ; hl = level bonus byte
+    ld a, [hl]
+    add a, e
+    ld e, a
+    inc hl      ; hl = final-trainer class counts
+.overloopSetup
 
 ;.highest_level_set:
 	;push bc
@@ -163,8 +225,7 @@ GetRandRosterLoop:
     ;push bc
 	;push de
     ld b, 0x4   ; overarching loop
-    inc hl      ; move to next byte, number pokeball class pokemon
-    
+
 	.overloop
     ld  a, [hl] ; load number of pokemon/loops
     cp  a, 0
@@ -195,21 +256,247 @@ GetRandRosterLoop:
 	xor a	;set the zero flag before returning
 	ret	
     
+; one 7-byte block per round (round = wBattleCount / 10, capped at 8).
+; each round's trainers ramp up to just under that round's gym leader tier:
+; gym tiers are 8-10, 18-21, 21-24, 29, 37-43, 37-43, 40-47, 42-50
+;
+; each 11-byte block:
+;   0: level range
+;   1: minimum level
+;   2-5: normal class counts (pokeball, greatball, ultraball, masterball)
+;   6: level bonus for the final (5th) route trainer of the round
+;      (wBattleCount mod 10 == 5), making it "somewhat stronger"
+;   7-10: class counts for that final route trainer - same total as 2-5,
+;      but shifted toward rarer classes
 trainer_difficulty_settings:
-;firsttrainers
+;round 1 (-> Gym 1, 8-10)
 db 0x3  ; level range
 db 0x2  ; minimum level
 db 0x2  ; pokeball class pokemon
 db 0x0  ; greatball class pokemon
 db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
-;firstboss
-db 0x0  ; Level range
+db 0x2  ; final route trainer level bonus
+db 0x1  ; final trainer: pokeball class pokemon
+db 0x1  ; final trainer: greatball class pokemon
+db 0x0  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 2 (-> Gym 2, 18-21)
+db 0x4  ; level range
+db 0xC  ; minimum level
+db 0x2  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x0  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x3  ; final route trainer level bonus
+db 0x1  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x0  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 3 (-> Gym 3, 21-24)
+db 0x4  ; level range
+db 0x11 ; minimum level
+db 0x2  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x3  ; final route trainer level bonus
+db 0x1  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 4 (-> Gym 4, 29)
+db 0x5  ; level range
+db 0x16 ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x3  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x3  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 5 (-> Gym 5, 37-43)
+db 0x6  ; level range
+db 0x1C ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x1  ; masterball class pokemon
+db 0x4  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x3  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x1  ; final trainer: masterball class pokemon
+;round 6 (-> Gym 6, 37-43)
+db 0x6  ; level range
+db 0x21 ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x2  ; ultraball class pokemon
+db 0x1  ; masterball class pokemon
+db 0x3  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x1  ; final trainer: masterball class pokemon
+;round 7 (-> Gym 7, 40-47)
+db 0x6  ; level range
+db 0x26 ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x2  ; ultraball class pokemon
+db 0x2  ; masterball class pokemon
+db 0x2  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x2  ; final trainer: masterball class pokemon
+;round 8 (-> Gym 8, 42-50)
+db 0x7  ; level range
+db 0x2A ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x3  ; masterball class pokemon
+db 0x2  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x3  ; final trainer: masterball class pokemon
+;round 9 (-> Victory Road, no gym leader; also covers Elite Four overflow)
+db 0x8  ; level range
+db 0x2E ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x1  ; greatball class pokemon
+db 0x2  ; ultraball class pokemon
+db 0x3  ; masterball class pokemon
+db 0x4  ; final route trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x0  ; final trainer: greatball class pokemon
+db 0x3  ; final trainer: ultraball class pokemon
+db 0x3  ; final trainer: masterball class pokemon
+
+; gym trainers (wBattleCount mod 10 == 6-9): same 11-byte layout as
+; trainer_difficulty_settings, but with higher levels that approach the
+; round's gym leader tier. The 4th gym trainer (mod 10 == 9), fought right
+; before the leader, gets the level bonus + rarer class distribution.
+;   0: level range
+;   1: minimum level
+;   2-5: normal class counts (pokeball, greatball, ultraball, masterball)
+;   6: level bonus for the final (4th) gym trainer of the round
+;   7-10: class counts for that final gym trainer - same total as 2-5,
+;      but shifted toward rarer classes
+trainer_difficulty_settings_gym:
+;round 1 (-> Gym 1, 8-10)
+db 0x3  ; level range
 db 0x5  ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
+db 0x2  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x1  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 2 (-> Gym 2, 18-21)
+db 0x4  ; level range
+db 0x10 ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x0  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x2  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 3 (-> Gym 3, 21-24)
+db 0x4  ; level range
+db 0x15 ; minimum level
+db 0x1  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x2  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 4 (-> Gym 4, 29)
+db 0x5  ; level range
+db 0x1A ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x3  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x0  ; masterball class pokemon
+db 0x2  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x0  ; final trainer: masterball class pokemon
+;round 5 (-> Gym 5, 37-43)
+db 0x6  ; level range
+db 0x22 ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x3  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x1  ; masterball class pokemon
+db 0x3  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x1  ; final trainer: masterball class pokemon
+;round 6 (-> Gym 6, 37-43)
+db 0x6  ; level range
+db 0x26 ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x2  ; ultraball class pokemon
+db 0x1  ; masterball class pokemon
+db 0x3  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x1  ; final trainer: greatball class pokemon
+db 0x3  ; final trainer: ultraball class pokemon
+db 0x1  ; final trainer: masterball class pokemon
+;round 7 (-> Gym 7, 40-47)
+db 0x6  ; level range
+db 0x2A ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x2  ; ultraball class pokemon
+db 0x2  ; masterball class pokemon
+db 0x3  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x1  ; final trainer: greatball class pokemon
+db 0x3  ; final trainer: ultraball class pokemon
+db 0x2  ; final trainer: masterball class pokemon
+;round 8 (-> Gym 8, 42-50)
+db 0x7  ; level range
+db 0x2E ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x2  ; greatball class pokemon
+db 0x1  ; ultraball class pokemon
+db 0x3  ; masterball class pokemon
+db 0x3  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x1  ; final trainer: greatball class pokemon
+db 0x2  ; final trainer: ultraball class pokemon
+db 0x3  ; final trainer: masterball class pokemon
+;round 9 (-> Victory Road, no gym leader; also covers Elite Four overflow)
+db 0x8  ; level range
+db 0x36 ; minimum level
+db 0x0  ; pokeball class pokemon
+db 0x0  ; greatball class pokemon
+db 0x3  ; ultraball class pokemon
+db 0x3  ; masterball class pokemon
+db 0x4  ; final gym trainer level bonus
+db 0x0  ; final trainer: pokeball class pokemon
+db 0x0  ; final trainer: greatball class pokemon
+db 0x1  ; final trainer: ultraball class pokemon
+db 0x5  ; final trainer: masterball class pokemon
 
 ; get a random number in a certain range
 ; c is the range

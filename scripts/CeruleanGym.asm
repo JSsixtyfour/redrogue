@@ -88,6 +88,8 @@ CeruleanGymReceiveTM11:
 .gymVictory
 	ld hl, wObtainedBadges
 	set BIT_CASCADEBADGE, [hl]
+	ld hl, wRogueFlagsBitfield
+	res 0, [hl]                 ; route is next after this gym
 
 	jp CeruleanGymResetScripts
 

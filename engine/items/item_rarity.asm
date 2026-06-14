@@ -154,7 +154,7 @@ db TM_EXPLOSION
 money_classes:
 table_width 1
 money_pokeball_class:
-db NUGGET ; PEARL
+db PEARL
 
 money_greatball_class:
 db BIG_PEARL ; BIG PEARL

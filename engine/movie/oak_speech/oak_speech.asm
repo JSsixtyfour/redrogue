@@ -56,6 +56,21 @@ OakSpeech:
 	ld a, 1
 	ld [wItemQuantity], a
 	call AddItemToInventory
+	ld a, EXP_ALL
+	ld [wCurItem], a
+	ld a, 1
+	ld [wItemQuantity], a
+	call AddItemToInventory
+	ld a, LEFTOVERS
+	ld [wCurItem], a
+	ld a, 1
+	ld [wItemQuantity], a
+	call AddItemToInventory
+    ld a, PP_TONIC
+	ld [wCurItem], a
+	ld a, 1
+	ld [wItemQuantity], a
+	call AddItemToInventory
 	ld a, [wDefaultMap]
 	ld [wDestinationMap], a
 	call PrepareForSpecialWarp

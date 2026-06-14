@@ -44,6 +44,19 @@ EndOfBattle:
 	ld [wForceEvolution], a
 	predef EvolutionAfterBattle
 .resetVariables
+	ld a, [wBattleResult]
+	and a
+	jr nz, .noPPTonic ; don't restore HP/PP from a battle the player lost (or drew)
+	ld b, LEFTOVERS
+	call IsItemInBag
+	jr z, .noLeftovers
+	farcall LeftoversRecovery
+.noLeftovers
+	ld b, PP_TONIC
+	call IsItemInBag
+	jr z, .noPPTonic
+	farcall PPTonicRecovery
+.noPPTonic
 	xor a
 	ld [wLowHealthAlarm], a ;disable low health alarm
 	ld [wChannelSoundIDs + CHAN5], a
