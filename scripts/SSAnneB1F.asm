@@ -1,8 +1,12 @@
 SSAnneB1F_Script:
-
+    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
+    jr z .rogue
+    
+    .entry
+   
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .normal
-
+    
     SetEvent EVENT_ENTER_ROOM
     ld hl, wRogueFlagsBitfield
     set 0, [hl]                 ; gym is next after this route
@@ -12,8 +16,28 @@ SSAnneB1F_Script:
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+
+    
 
     .normal
+    ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_2, [hl]
+	res BIT_CUR_MAP_LOADED_2, [hl]
+	call nz, .initial
+    
+    .normal_2
 	call EnableAutoTextBoxDrawing
 	ld hl, SSAnneB1FTrainerHeaders
 	ld de, SSAnneB1F_ScriptPointers
@@ -21,6 +45,50 @@ SSAnneB1F_Script:
 	call ExecuteCurMapScriptInTable
 	ld [wSSAnneB1FCurScript], a
 	ret
+    
+    
+    .rogue
+    CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_0
+    jr z .entry
+    CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_1
+    jr z .entry
+    CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_2
+    jr z .entry
+    CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_3
+    jr z .entry
+    CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_4
+    jr z .entry
+    
+    SetEvent SSANNE_ALL_TRAINERS_DEFEATED
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+    
+    ld a, TOGGLE_SS_ANNE_B1F_CAPTAIN
+    ld [wToggleableObjectIndex], a
+    predef HideObject
+     
+    jp .entry
+    
+    .initial
+    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
+    jr z .normal_2
+    xor a
+	ldh [hJoyHeld], a
+	ld a, TEXT_SSANNEB1F_SAILOR
+	ldh [hTextID], a
+	call DisplayTextID
+    jp .normal_2
+    
 
 	RogueAutoWalkScripts SSAnneB1F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SS_ANNE_B1F, TEXT_SSANNEB1F_NO_TURNING_BACK, SCRIPT_SSANNEB1F_PLAYER_IS_MOVING, wSSAnneB1FCurScript
 
@@ -42,8 +110,8 @@ SSAnneB1F_ScriptPointers:
 
 SSAnneB1F_TextPointers:
 	def_text_pointers
-	dw_const SSAnneB1FJrTrainerM1Text, TEXT_SSANNEB1F_JR_TRAINER_M1
-	dw_const SSAnneB1FJrTrainerM2Text, TEXT_SSANNEB1F_JR_TRAINER_M2
+	dw_const SSAnneB1FCaptainText, TEXT_SSANNEB1F_CAPTAIN
+	dw_const SSAnneB1FSailorText, TEXT_SSANNEB1F_SAILOR
 	dw_const SSAnneB1FJrTrainerM3Text, TEXT_SSANNEB1F_JR_TRAINER_M3
 	dw_const SSAnneB1FJrTrainerM4Text, TEXT_SSANNEB1F_JR_TRAINER_M4
 	dw_const SSAnneB1FJrTrainerM5Text, TEXT_SSANNEB1F_JR_TRAINER_M5
@@ -55,109 +123,24 @@ SSAnneB1F_TextPointers:
     EXPORT TEXT_SSANNEB1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const SSAnneB1FNoTurningBackText, TEXT_SSANNEB1F_NO_TURNING_BACK
 
-SSAnneB1FTrainerHeaders:
-	def_trainers 1
-SSAnneB1FTrainerHeader0:
-	trainer EVENT_BEAT_SS_ANNE_B1F_TRAINER_0, 1, SSAnneB1FJrTrainerM1BattleText, SSAnneB1FJrTrainerM1EndBattleText, SSAnneB1FJrTrainerM1AfterBattleText
-SSAnneB1FTrainerHeader1:
-	trainer EVENT_BEAT_SS_ANNE_B1F_TRAINER_1, 1, SSAnneB1FJrTrainerM2BattleText, SSAnneB1FJrTrainerM2EndBattleText, SSAnneB1FJrTrainerM2AfterBattleText
-SSAnneB1FTrainerHeader2:
-	trainer EVENT_BEAT_SS_ANNE_B1F_TRAINER_2, 1, SSAnneB1FJrTrainerM3BattleText, SSAnneB1FJrTrainerM3EndBattleText, SSAnneB1FJrTrainerM3AfterBattleText
-SSAnneB1FTrainerHeader3:
-	trainer EVENT_BEAT_SS_ANNE_B1F_TRAINER_3, 1, SSAnneB1FJrTrainerM4BattleText, SSAnneB1FJrTrainerM4EndBattleText, SSAnneB1FJrTrainerM4AfterBattleText
-SSAnneB1FTrainerHeader4:
-	trainer EVENT_BEAT_SS_ANNE_B1F_TRAINER_4, 1, SSAnneB1FJrTrainerM5BattleText, SSAnneB1FJrTrainerM5EndBattleText, SSAnneB1FJrTrainerM5AfterBattleText
-	db -1 ; end
 
-SSAnneB1FJrTrainerM1Text:
-	text_asm
-	ld hl, SSAnneB1FTrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FJrTrainerM1BattleText:
-	text_far _SSAnneB1FJrTrainerM1BattleText
+SSAnneB1FCaptainText:
+	text_far _SSAnneB1FCaptainText
 	text_end
 
-SSAnneB1FJrTrainerM1EndBattleText:
-	text_far _SSAnneB1FJrTrainerM1EndBattleText
-	text_end
-
-SSAnneB1FJrTrainerM1AfterBattleText:
-	text_far _SSAnneB1FJrTrainerM1AfterBattleText
-	text_end
-
-SSAnneB1FJrTrainerM2Text:
-	text_asm
-	ld hl, SSAnneB1FTrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FJrTrainerM2BattleText:
-	text_far _SSAnneB1FJrTrainerM1BattleText
-	text_end
-
-SSAnneB1FJrTrainerM2EndBattleText:
-	text_far _SSAnneB1FJrTrainerM1EndBattleText
-	text_end
-
-SSAnneB1FJrTrainerM2AfterBattleText:
-	text_far _SSAnneB1FJrTrainerM1AfterBattleText
-	text_end
-
-SSAnneB1FJrTrainerM3Text:
-	text_asm
-	ld hl, SSAnneB1FTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FJrTrainerM3BattleText:
-	text_far _SSAnneB1FJrTrainerM1BattleText
-	text_end
-
-SSAnneB1FJrTrainerM3EndBattleText:
-	text_far _SSAnneB1FJrTrainerM1EndBattleText
-	text_end
-
-SSAnneB1FJrTrainerM3AfterBattleText:
-	text_far _SSAnneB1FJrTrainerM1AfterBattleText
-	text_end
-
-SSAnneB1FJrTrainerM4Text:
-	text_asm
-	ld hl, SSAnneB1FTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FJrTrainerM4BattleText:
-	text_far _SSAnneB1FJrTrainerM1BattleText
-	text_end
-
-SSAnneB1FJrTrainerM4EndBattleText:
-	text_far _SSAnneB1FJrTrainerM1EndBattleText
-	text_end
-
-SSAnneB1FJrTrainerM4AfterBattleText:
-	text_far _SSAnneB1FJrTrainerM1AfterBattleText
-	text_end
-
-SSAnneB1FJrTrainerM5Text:
-	text_asm
-	ld hl, SSAnneB1FTrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FJrTrainerM5BattleText:
-	text_far _SSAnneB1FJrTrainerM1BattleText
-	text_end
-
-SSAnneB1FJrTrainerM5EndBattleText:
-	text_far _SSAnneB1FJrTrainerM1EndBattleText
-	text_end
-
-SSAnneB1FJrTrainerM5AfterBattleText:
+SSAnneB1FSailorText:
     text_asm
-    farcall Delay3
+    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
+    jr nz .reward
+    
+	text_far _SSAnneB1FSailorText
+	text_end
+    
+    ld hl, .SSAnneB1FSailorText
+	call PrintText
+	jr .done
+    
+    .reward
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 
@@ -173,6 +156,10 @@ SSAnneB1FJrTrainerM5AfterBattleText:
     call DisableWaitingAfterTextDisplay
     .done
     jp TextScriptEnd
+    
+.SSAnneB1FSailorText
+text_far _SSAnneB1FSailorText
+text_end
 
 Rogue_SSAnneB1F_Reward_Text:
 script_rogue_reward
@@ -201,4 +188,16 @@ SSAnneB1FNoTurningBackText:
 
 SSAnneB1FGreedyText:
 	text_far _GreedyText
+	text_end
+
+SSAnneB1FJrTrainerM3Text:
+	text_far _SSAnneB1FCaptainText
+	text_end
+    
+SSAnneB1FJrTrainerM4Text:
+	text_far _SSAnneB1FCaptainText
+	text_end
+    
+SSAnneB1FJrTrainerM5Text:
+	text_far _SSAnneB1FCaptainText
 	text_end

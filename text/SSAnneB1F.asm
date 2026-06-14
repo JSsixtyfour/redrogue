@@ -1,14 +1,14 @@
-_SSAnneB1FJrTrainerM1BattleText::
-	text "A trainer on the"
-	line "S.S. ANNE!"
+_SSAnneB1FSailorText::
+	text "The captain is"
+	line "under the"
+    cont "weather. Let me "
+    cont "clean this before"
+    cont "you go up the"
+    cont "stairs."
 	done
 
-_SSAnneB1FJrTrainerM1EndBattleText::
-	text "You're better"
-	line "than the crew!"
-	prompt
-
-_SSAnneB1FJrTrainerM1AfterBattleText::
-	text "The seas of KANTO"
-	line "are rough indeed!"
-	done
+_SSAnneB1FCaptainText::
+	text "CAPTAIN: Ooargh..."
+	line "I feel hideous..."
+	cont "Urrp! Seasick..."
+    text_end

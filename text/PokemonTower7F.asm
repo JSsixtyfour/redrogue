@@ -18,9 +18,9 @@ _PokemonTower7FMrFujiRescueText::
 	line "for your kind"
 	cont "concern!"
 
-	para "Follow me to my"
-	line "home, #MON"
-	cont "HOUSE at the foot"
+	para "Follow me to the"
+	line "#MON Center"
+	cont "at the foot"
 	cont "of this tower."
 	done
 

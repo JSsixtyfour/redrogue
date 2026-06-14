@@ -14,6 +14,18 @@ PokemonTower7F_Script:
     farcall RogueRefresh
 
     .normal
+    CheckEvent EVENT_POKEMON_TOWER_7_REWARD_OFFERED
+    jr nz, .default
+    CheckEvent EVENT_BEAT_POKEMON_TOWER_7_TRAINER_4
+    jr z, .default
+    call Delay3
+    xor a
+    ld a, LOW(TEXT_POKEMONTOWER7F_REWARD_VENDOR_1)
+	ldh [hTextID], a
+	call DisplayTextID
+    SetEvent EVENT_POKEMON_TOWER_7_REWARD_OFFERED
+    
+    .default
 	call EnableAutoTextBoxDrawing
 	ld hl, PokemonTower7TrainerHeaders
 	ld de, PokemonTower7F_ScriptPointers
@@ -85,7 +97,6 @@ PokemonTower7FHideNPCScript:
 	ldh [hJoyIgnore], a
 	ldh [hActiveSpriteIndex], a
 	ld [wTrainerHeaderFlagBit], a
-	ld [wOpponentAfterWrongAnswer], a ; not used here; likely a mistake copied from maps/CinnabarGym.asm
 	ld a, SCRIPT_POKEMONTOWER7F_DEFAULT
 	ld [wPokemonTower7FCurScript], a
 	ld [wCurMapScript], a
@@ -99,7 +110,7 @@ PokemonTower7FWarpToMrFujiHouseScript:
 	predef HideObject
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
-	ld a, MR_FUJIS_HOUSE
+	ld a, INDIGO_PLATEAU_LOBBY
 	ldh [hWarpDestinationMap], a
 	ld a, $1
 	ld [wDestinationWarpID], a

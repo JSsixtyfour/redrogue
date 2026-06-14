@@ -225,17 +225,8 @@ ToggleableObjectStates:
 	toggleable_objects_for SS_ANNE_2F
 	toggle_object_state SSANNE2F_RIVAL, OFF
 
-	toggleable_objects_for SS_ANNE_1F_ROOMS
-	toggle_object_state SSANNE1FROOMS_TM_BODY_SLAM, ON
-
-	toggleable_objects_for SS_ANNE_2F_ROOMS
-	toggle_object_state SSANNE2FROOMS_MAX_ETHER,  ON
-	toggle_object_state SSANNE2FROOMS_RARE_CANDY, ON
-
-	toggleable_objects_for SS_ANNE_B1F_ROOMS
-	toggle_object_state SSANNEB1FROOMS_ETHER,      ON
-	toggle_object_state SSANNEB1FROOMS_TM_REST,    ON
-	toggle_object_state SSANNEB1FROOMS_MAX_POTION, ON
+	toggleable_objects_for SS_ANNE_B1F
+    const TOGGLE_SS_ANNE_B1F_CAPTAIN, ON
 
 	toggleable_objects_for VICTORY_ROAD_3F
 	toggle_object_state VICTORYROAD3F_MAX_REVIVE,   ON

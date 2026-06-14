@@ -20,90 +20,73 @@ _SSAnneB1FRoomsSailor1AfterBattleText::
 	done
 
 _SSAnneB1FRoomsSailor2BattleText::
-	text "My sailor's pride"
-	line "is at stake!"
+	text "Hey matey!"
+
+	para "Let's do a little"
+	line "jig!"
 	done
 
 _SSAnneB1FRoomsSailor2EndBattleText::
-	text "Your"
-	line "spirit sank me!"
+	text "You're"
+	line "impressive!"
 	prompt
 
 _SSAnneB1FRoomsSailor2AfterBattleText::
-	text "Did you see the"
-	line "FISHING GURU in"
-	cont "VERMILION CITY?"
-	done
-
-_SSAnneB1FRoomsSailor3BattleText::
-	text "Us sailors have"
-	line "#MON too!"
-	done
-
-_SSAnneB1FRoomsSailor3EndBattleText::
-	text "OK, "
-	line "you're not bad."
-	prompt
-
-_SSAnneB1FRoomsSailor3AfterBattleText::
-	text "We caught all our"
-	line "#MON while"
-	cont "out at sea!"
-	done
-
-_SSAnneB1FRoomsSailor4BattleText::
-	text "I like feisty"
-	line "kids like you!@"
-	text_end
-
-_SSAnneB1FRoomsSailor4EndBattleText::
-	text "Argh!"
-	line "Lost it!"
-	prompt
-
-_SSAnneB1FRoomsSailor4AfterBattleText::
-	text "Sea #MON live"
-	line "in deep water."
-	cont "You'll need a ROD!"
-	done
-
-_SSAnneB1FRoomsSailor5BattleText::
-	text "Matey, you're"
-	line "walking the plank"
-	cont "if you lose!"
-	done
-
-_SSAnneB1FRoomsSailor5EndBattleText::
-	text "Argh!"
-	line "Beaten by a kid!"
-	prompt
-
-_SSAnneB1FRoomsSailor5AfterBattleText::
-	text "Jellyfish some-"
-	line "times drift into"
-	cont "the ship."
+	text "How many kinds of"
+	line "#MON do you"
+	cont "think there are?"
 	done
 
 _SSAnneB1FRoomsFisherBattleText::
-	text "Hello stranger!"
-	line "Stop and chat!"
-
-	para "All my #MON"
-	line "are from the sea!"
+	text "Check out what I"
+	line "fished up!"
 	done
 
 _SSAnneB1FRoomsFisherEndBattleText::
-	text "Darn!"
-	line "I let that one"
-	cont "get away!"
+	text "I'm"
+	line "all out!"
 	prompt
 
 _SSAnneB1FRoomsFisherAfterBattleText::
-	text "I was going to"
-	line "make you my"
-	cont "assistant too!"
+	text "Party?"
+
+	para "The cruise ship's"
+	line "party should be"
+	cont "over by now."
 	done
 
+
+_SSAnneB1FRoomsCooltrainerFBattleText::
+	text "I never saw you"
+	line "at the party."
+	done
+
+_SSAnneB1FRoomsCooltrainerFEndBattleText::
+	text "Take"
+	line "it easy!"
+	prompt
+
+_SSAnneB1FRoomsCooltrainerFAfterBattleText::
+	text "Oh, I adore your"
+	line "strong #MON!"
+	done
+    
+
+_SSAnneB1FRoomsGentlemanBattleText::
+	text "My son really"
+	line "likes MACHOKE..."
+	done
+
+_SSAnneB1FRoomsGentlemanEndBattleText::
+	text "I should've used"
+	line "MACHOKE!"
+	prompt
+
+_SSAnneB1FRoomsGentlemanAfterBattleText::
+	text "Maybe it's just"
+	line "a phase..."
+	done
+    
 _SSAnneB1FRoomsSuperNerdText::
 	text "My buddy, MACHOKE,"
 	line "is super strong!"
