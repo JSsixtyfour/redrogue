@@ -54,8 +54,6 @@ PowerPlant_TextPointers:
 	dw_const PowerPlantVoltorb2Text,    TEXT_POWERPLANT_VOLTORB2
 	dw_const PowerPlantVoltorb3Text,    TEXT_POWERPLANT_VOLTORB3
 	dw_const PowerPlantVoltorb4Text,    TEXT_POWERPLANT_VOLTORB4
-	dw_const PowerPlantVoltorb5Text,    TEXT_POWERPLANT_VOLTORB5
-	dw_const PowerPlantVoltorb6Text,    TEXT_POWERPLANT_VOLTORB6
 	dw_const PowerPlantZapdosText,      TEXT_POWERPLANT_ZAPDOS
     dw_const RandomPickUpItemText,      TEXT_POWERPLANT_RANDOM
     dw_const PowerPlant_Rogue_Reward_Script_PokeballText_1, TEXT_POWERPLANT_ROGUE_REWARD_POKEBALL_1
@@ -98,14 +96,6 @@ PowerPlantVoltorb3Text:
 	text_end
 
 PowerPlantVoltorb4Text:
-	text_far _PowerPlantVoltorbBattleText
-	text_end
-
-PowerPlantVoltorb5Text:
-	text_far _PowerPlantVoltorbBattleText
-	text_end
-
-PowerPlantVoltorb6Text:
 	text_far _PowerPlantVoltorbBattleText
 	text_end
 

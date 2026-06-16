@@ -1321,6 +1321,14 @@ wAmountMoneyWon:: ds 3 ; BCD
 NEXTU
 wObjectToHide:: db
 wObjectToShow:: db
+
+NEXTU
+; loop counters for PPTonicRecovery; safe to alias here because by the time
+; EndOfBattle reaches PPTonicRecovery, wAmountMoneyWon has already been
+; printed (PickUpPayDayMoneyText) and wObjectToHide/wObjectToShow are only
+; used by Seafoam Islands boulder scripts, never during battle
+wPPTonicMonsLeft:: db
+wPPTonicMovesLeft:: db
 ENDU
 
 ; the map you will start at when the debug bit is set

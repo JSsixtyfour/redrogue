@@ -62,15 +62,15 @@ Route5_TextPointers:
 Route5TrainerHeaders:
 	def_trainers 1
 Route5TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_0, 1, Route5Youngster1BattleText, Route5Youngster1EndBattleText, Route5Youngster1AfterBattleText
-Route5TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_1, 1, Route5Youngster2BattleText, Route5Youngster2EndBattleText, Route5Youngster2AfterBattleText
-Route5TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_2, 1, Route5Lass1BattleText, Route5Lass1EndBattleText, Route5Lass1AfterBattleText
-Route5TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_3, 1, Route5Lass2BattleText, Route5Lass2EndBattleText, Route5Lass2AfterBattleText
-Route5TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_4, 1, Route5JrTrainerFBattleText, Route5JrTrainerFEndBattleText, Route5JrTrainerFAfterBattleText
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_0, 3, Route5Youngster1BattleText, Route5Youngster1EndBattleText, Route5Youngster1AfterBattleText
+Route5TrainerHeader1:                     
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_1, 3, Route5Youngster2BattleText, Route5Youngster2EndBattleText, Route5Youngster2AfterBattleText
+Route5TrainerHeader2:                     
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_2, 3, Route5Lass1BattleText, Route5Lass1EndBattleText, Route5Lass1AfterBattleText
+Route5TrainerHeader3:                     
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_3, 3, Route5Lass2BattleText, Route5Lass2EndBattleText, Route5Lass2AfterBattleText
+Route5TrainerHeader4:                     
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_4, 3, Route5JrTrainerFBattleText, Route5JrTrainerFEndBattleText, Route5JrTrainerFAfterBattleText
 	db -1 ; end
 
 Route5Youngster1Text:

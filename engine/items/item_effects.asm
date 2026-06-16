@@ -2647,8 +2647,9 @@ LeftoversRecovery::
 	jr .healLoop
 
 .done
-	ld hl, LeftoversText
-	jp PrintText
+	; ld hl, LeftoversText
+	; jp PrintText
+	ret
 
 LeftoversText:
 	text_far _LeftoversText
@@ -2677,12 +2678,12 @@ ItemUsePPTonic:
 ; ============================================================
 PPTonicRecovery::
 	ld a, [wPartyCount]
-	ldh [hMultiplicand], a         ; mons remaining
+	ld [wPPTonicMonsLeft], a        ; mons remaining
 
 	ld hl, wPartyMon1Moves
 .monLoop
 	ld a, NUM_MOVES
-	ldh [hMultiplier], a           ; moves remaining for this mon
+	ld [wPPTonicMovesLeft], a       ; moves remaining for this mon
 .moveLoop
 	ld a, [hl]                      ; move id
 	and a                           ; confirm not 0
@@ -2768,20 +2769,21 @@ PPTonicRecovery::
 
 .nextMove
 	inc hl
-	ldh a, [hMultiplier]
+	ld a, [wPPTonicMovesLeft]
 	dec a
-	ldh [hMultiplier], a
+	ld [wPPTonicMovesLeft], a
 	jr nz, .moveLoop
 
 	ld bc, PARTYMON_STRUCT_LENGTH - NUM_MOVES
 	add hl, bc                         ; hl = next mon's MON_MOVES
-	ldh a, [hMultiplicand]
+	ld a, [wPPTonicMonsLeft]
 	dec a
-	ldh [hMultiplicand], a
+	ld [wPPTonicMonsLeft], a
 	jp nz, .monLoop
 
-	ld hl, PPTonicText
-	jp PrintText
+	; ld hl, PPTonicText
+	; jp PrintText
+	ret
 
 PPTonicText:
 	text_far _PPTonicText

@@ -181,11 +181,11 @@ Route25HikerAfterBattleText:
 	text_end
 
 Route25CooltrainerMBattleText:
-	text_far _Route25Hiker3BattleText
+	text_far _Route25CooltrainerMBattleText
 	text_end
 
 Route25CooltrainerMEndBattleText:
-	text_far _Route25Hiker3EndBattleText
+	text_far _Route25CooltrainerMEndBattleText
 	text_end
 
 Route25CooltrainerMAfterBattleText:

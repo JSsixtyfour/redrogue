@@ -1,6 +1,6 @@
 SSAnneB1F_Script:
-    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
-    jr z .rogue
+    CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
+    jr z, .rogue
     
     .entry
    
@@ -39,7 +39,7 @@ SSAnneB1F_Script:
     
     .normal_2
 	call EnableAutoTextBoxDrawing
-	ld hl, SSAnneB1FTrainerHeaders
+	;ld hl, SSAnneB1FTrainerHeaders
 	ld de, SSAnneB1F_ScriptPointers
 	ld a, [wSSAnneB1FCurScript]
 	call ExecuteCurMapScriptInTable
@@ -49,17 +49,17 @@ SSAnneB1F_Script:
     
     .rogue
     CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_0
-    jr z .entry
+    jr z, .entry
     CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_1
-    jr z .entry
+    jr z, .entry
     CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_2
-    jr z .entry
+    jr z, .entry
     CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_3
-    jr z .entry
+    jp z, .entry
     CheckEvent EVENT_BEAT_SS_ANNE_10_TRAINER_4
-    jr z .entry
-    
-    SetEvent SSANNE_ALL_TRAINERS_DEFEATED
+    jp z, .entry
+
+    SetEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
     
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
 	ld [wToggleableObjectIndex], a
@@ -80,8 +80,8 @@ SSAnneB1F_Script:
     jp .entry
     
     .initial
-    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
-    jr z .normal_2
+    CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
+    jr z, .normal_2
     xor a
 	ldh [hJoyHeld], a
 	ld a, TEXT_SSANNEB1F_SAILOR
@@ -130,8 +130,8 @@ SSAnneB1FCaptainText:
 
 SSAnneB1FSailorText:
     text_asm
-    CheckEvent SSANNE_ALL_TRAINERS_DEFEATED
-    jr nz .reward
+    CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
+    jr nz, .reward
     
 	text_far _SSAnneB1FSailorText
 	text_end

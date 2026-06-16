@@ -1,3 +1,9 @@
+DEF ROUTE15_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_15_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_15_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_15_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_15_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_15_TRAINER_4 % 8))
+
 Route15_Script:
 
     CheckEvent EVENT_ENTER_ROOM
@@ -8,12 +14,35 @@ Route15_Script:
     set 0, [hl]                 ; gym is next after this route
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
+    ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
 
     .normal
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+    jr nz, .afterRewardCheck
+
+    ; wait until the trainer's end-battle text has finished printing
+    ; so the auto reward popup doesn't race/overlap with it
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+
+    ld a, [wEventFlags + (EVENT_BEAT_ROUTE_15_TRAINER_0 / 8)]
+    and ROUTE15_ALL_TRAINERS_MASK
+    cp ROUTE15_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
+
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
+    farcall Delay3
+    ld a, TEXT_ROUTE15_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+
+    .afterRewardCheck
 	call EnableAutoTextBoxDrawing
 	ld hl, Route15TrainerHeaders
 	ld de, Route15_ScriptPointers
@@ -25,15 +54,15 @@ Route15_Script:
 	RogueAutoWalkScripts Route15, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_15, TEXT_ROUTE15_NO_TURNING_BACK, SCRIPT_ROUTE15_PLAYER_IS_MOVING, wRoute15CurScript
 
 Route15EntranceCoords:
-	dbmapcoord 59, 10
-	dbmapcoord 59, 11
+	dbmapcoord 54, 10
+	dbmapcoord 54, 11
 	db -1
 
 Route15NoCoords:
-	dbmapcoord 58, 10
-	dbmapcoord 58, 11
-	dbmapcoord 57, 10
-	dbmapcoord 57, 11
+	dbmapcoord 53, 10
+	dbmapcoord 53, 11
+	dbmapcoord 52, 10
+	dbmapcoord 52, 11
 	db -1
 
 Route15_ScriptPointers:

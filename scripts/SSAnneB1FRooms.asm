@@ -114,7 +114,7 @@ SSAnneB1FRoomsGentlemanAfterBattleText:
 	text_end
 
 SSAnneB1FRoomsCooltrainer_FBattleText:
-	text_far _SSAnneB1FRoomsSailor4BattleText
+	text_far _SSAnneB1FRoomsCooltrainer_FBattleText
 	text_end
 
 SSAnneB1FRoomsCooltrainer_FEndBattleText:

@@ -18,7 +18,7 @@ _NoTurningBackText::
 _LeftoversText::
 	text "Your party"
 	line "was healed!"
-	done
+	prompt
 
 _LeftoversDescriptionText::
 	text "Heals your"
@@ -31,7 +31,7 @@ _PPTonicText::
 	text "Your party's"
 	line "PP was"
 	cont "restored!"
-	done
+	prompt
 
 _PPTonicDescriptionText::
 	text "Restores PP"

@@ -7,37 +7,38 @@ IndigoPlateauLobby_Script:
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
 .skipFaceUp
-    ld a, [wRogueFlagsBitfield]
+	call EnableAutoTextBoxDrawing
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .normal
+
+	SetEvent EVENT_ENTER_ROOM
+	; update exit door tile based on whether gym or route is next
+	ld a, [wRogueFlagsBitfield]
 	bit 0, a
-	jp nz, .blockExitToSecondDoor ; bit not clear = gym next
+	jr nz, .blockExitToSecondDoor
 	ld a, $D
-	jp .setExitDoor
+	jr .setExitDoor
 .blockExitToSecondDoor
 	ld a, $C
 .setExitDoor
 	ld [wNewTileBlockID], a
 	lb bc, 0, 5
-	predef_jump ReplaceTileBlock
-	call EnableAutoTextBoxDrawing
-    CheckEvent EVENT_ENTER_ROOM
-    jr nz, .normal
-
-    SetEvent EVENT_ENTER_ROOM
+	predef ReplaceTileBlock
 	; Pick the next random stage on map entry and patch the exit warp.
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
 	; would cause an immediate warp before the player could do anything).
 	farcall SelectAndPatchLobbyExit
 	ld c, TRADE_FOR_RANDOM
 	ld b, FLAG_RESET
-    ld hl, wCompletedInGameTradeFlags
+	ld hl, wCompletedInGameTradeFlags
 	predef FlagActionPredef
-    ResetEvent EVENT_BOUGHT_POKEMON
-    call PCTraderSuperNerdSetup
-    call PCPokemonSalesmanSetup
-    call PCClerksSetup
-    
-    .normal
-    ld hl, wCurrentMapScriptFlags
+	ResetEvent EVENT_BOUGHT_POKEMON
+	call PCTraderSuperNerdSetup
+	call PCPokemonSalesmanSetup
+	call PCClerksSetup
+
+.normal
+	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
 	ret z

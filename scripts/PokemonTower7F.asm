@@ -8,22 +8,23 @@ PokemonTower7F_Script:
     set 0, [hl]                 ; gym is next after this route
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
+    ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
 
     .normal
-    CheckEvent EVENT_POKEMON_TOWER_7_REWARD_OFFERED
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .default
-    CheckEvent EVENT_BEAT_POKEMON_TOWER_7_TRAINER_4
+    CheckEvent EVENT_BEAT_POKEMONTOWER_7_TRAINER_4
     jr z, .default
     call Delay3
     xor a
     ld a, LOW(TEXT_POKEMONTOWER7F_REWARD_VENDOR_1)
 	ldh [hTextID], a
 	call DisplayTextID
-    SetEvent EVENT_POKEMON_TOWER_7_REWARD_OFFERED
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
     
     .default
 	call EnableAutoTextBoxDrawing

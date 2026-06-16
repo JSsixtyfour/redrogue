@@ -203,4 +203,10 @@ RogueRefresh::
     ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	; if the double-pickup guard in RandomPickUpItem (pick_up_item.asm) ever
+	; blocks legitimate new-stage pickups, uncomment this to reset the flag here:
+	; ld hl, wToggleableObjectFlags
+	; ld c, TOGGLE_STAGE_RANDOM_ITEM
+	; ld b, FLAG_RESET
+	; call ToggleableObjectFlagAction
     ret

@@ -181,15 +181,15 @@ Route12RockerText:
 	jp TextScriptEnd
 
 Route12RockerBattleText:
-	text_far _Route12CooltrainerMBattleText
+	text_far _Route12SuperNerdBattleText
 	text_end
 
 Route12RockerEndBattleText:
-	text_far _Route12CooltrainerMEndBattleText
+	text_far _Route12SuperNerdEndBattleText
 	text_end
 
 Route12RockerAfterBattleText:
-	text_far _Route12CooltrainerMAfterBattleText
+	text_far _Route12SuperNerdAfterBattleText
 	text_end
 
 Route12JrTrainerMText:
@@ -199,15 +199,15 @@ Route12JrTrainerMText:
 	jp TextScriptEnd
 
 Route12JrTrainerMBattleText:
-	text_far _Route12SuperNerdBattleText
+	text_far _Route12CooltrainerMBattleText
 	text_end
 
 Route12JrTrainerMEndBattleText:
-	text_far _Route12SuperNerdEndBattleText
+	text_far _Route12CooltrainerMEndBattleText
 	text_end
 
 Route12JrTrainerMAfterBattleText:
-	text_far _Route12SuperNerdAfterBattleText
+	text_far _Route12CooltrainerMAfterBattleText
 	text_end
 
 Route12CooltrainerFText:

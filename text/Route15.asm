@@ -156,8 +156,9 @@ _Route15CooltrainerF4BattleText::
 	done
 
 _Route15CooltrainerF4EndBattleText::
-	text "I was"
-	line "too impatient!"
+	text "Oh!"
+	line "I was too"
+	cont "impatient!"
 	prompt
 
 _Route15CooltrainerF4AfterBattleText::

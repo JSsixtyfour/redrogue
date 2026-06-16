@@ -56,17 +56,17 @@ _SSAnneB1FRoomsFisherAfterBattleText::
 	done
 
 
-_SSAnneB1FRoomsCooltrainerFBattleText::
+_SSAnneB1FRoomsCooltrainer_FBattleText::
 	text "I never saw you"
 	line "at the party."
 	done
 
-_SSAnneB1FRoomsCooltrainerFEndBattleText::
+_SSAnneB1FRoomsCooltrainer_FEndBattleText::
 	text "Take"
 	line "it easy!"
 	prompt
 
-_SSAnneB1FRoomsCooltrainerFAfterBattleText::
+_SSAnneB1FRoomsCooltrainer_FAfterBattleText::
 	text "Oh, I adore your"
 	line "strong #MON!"
 	done

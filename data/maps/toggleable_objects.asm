@@ -142,7 +142,7 @@ ToggleableObjectStates:
 	toggle_object_state CERULEANCAVE1F_NUGGET,       ON
 
 	toggleable_objects_for POKEMON_TOWER_2F
-	toggle_object_state POKEMONTOWER2F_RIVAL, ON
+	;toggle_object_state POKEMONTOWER2F_RIVAL, ON
 
 	toggleable_objects_for POKEMON_TOWER_3F
 	toggle_object_state POKEMONTOWER3F_ESCAPE_ROPE, ON
@@ -226,7 +226,7 @@ ToggleableObjectStates:
 	toggle_object_state SSANNE2F_RIVAL, OFF
 
 	toggleable_objects_for SS_ANNE_B1F
-    const TOGGLE_SS_ANNE_B1F_CAPTAIN, ON
+	toggle_object_state SSANNEB1F_CAPTAIN, ON
 
 	toggleable_objects_for VICTORY_ROAD_3F
 	toggle_object_state VICTORYROAD3F_MAX_REVIVE,   ON

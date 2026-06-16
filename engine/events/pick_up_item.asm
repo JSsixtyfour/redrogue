@@ -62,6 +62,17 @@ RandomPickUpItem:
 	ldh a, [hSpriteIndex]
 	cp 6
 	jr nz, .normalPickup
+
+	; bail out if this ball has already been collected (prevents double-give
+	; if this object's interaction fires more than once, e.g. re-entering
+	; the stage re-shows the sprite via RogueRefresh)
+	;ld hl, wToggleableObjectFlags
+	;ld c, TOGGLE_STAGE_RANDOM_ITEM
+	;ld b, FLAG_TEST
+	;call ToggleableObjectFlagAction
+	;and a
+	;ret nz
+
 	ld a, [wRogueItem]
 	ld b, a
 	ld c, 1

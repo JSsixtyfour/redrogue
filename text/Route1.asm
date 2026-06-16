@@ -55,8 +55,9 @@ _Route1Youngster3BattleText::
 	done
 
 _Route1Youngster3EndBattleText::
-	text "You're pretty"
-	line "good already!"
+	text "Wow!"
+	line "You're pretty"
+	cont "good already!"
 	done
 
 _Route1Youngster3AfterBattleText::

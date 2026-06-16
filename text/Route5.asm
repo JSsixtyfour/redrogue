@@ -10,8 +10,9 @@ _Route5Youngster1BattleText::
 	done
 
 _Route5Youngster1EndBattleText::
-	text "Whoa, you're"
-	line "really strong!"
+	text "Wow!"
+	line "You're really"
+	cont "strong!"
 	prompt
 
 _Route5Youngster1AfterBattleText::

@@ -161,7 +161,7 @@ Route3JrTrainerMBattleText:
 	text_end
 
 Route3JrTrainerMEndBattleText:
-	text_far _Route3CooltrainerF3EndBattleText
+	text_far _Route3Youngster4EndBattleText
 	text_end
 
 Route3JrTrainerMAfterBattleText:
