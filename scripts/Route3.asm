@@ -1,3 +1,9 @@
+DEF ROUTE3_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_3_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_4 % 8))
+
 Route3_Script:
 
     CheckEvent EVENT_ENTER_ROOM
@@ -8,12 +14,33 @@ Route3_Script:
     set 0, [hl]                 ; gym is next after this route
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
+    ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
 
     .normal
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+    jr nz, .afterRewardCheck
+
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+
+    ld a, [wEventFlags + (EVENT_BEAT_ROUTE_3_TRAINER_0 / 8)]
+    and ROUTE3_ALL_TRAINERS_MASK
+    cp ROUTE3_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
+
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
+    farcall Delay3
+    ld a, TEXT_ROUTE3_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+
+    .afterRewardCheck
 	call EnableAutoTextBoxDrawing
 	ld hl, Route3TrainerHeaders
 	ld de, Route3_ScriptPointers

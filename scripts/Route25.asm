@@ -1,3 +1,9 @@
+DEF ROUTE25_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_25_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_4 % 8))
+
 Route25_Script:
 
     CheckEvent EVENT_ENTER_ROOM
@@ -8,6 +14,7 @@ Route25_Script:
     set 0, [hl]                 ; gym is next after this route
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
+    ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
@@ -15,6 +22,26 @@ Route25_Script:
 
     .normal
 	call Route25ToggleBillsScript
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+    jr nz, .afterRewardCheck
+
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+
+    ld a, [wEventFlags + (EVENT_BEAT_ROUTE_25_TRAINER_0 / 8)]
+    and ROUTE25_ALL_TRAINERS_MASK
+    cp ROUTE25_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
+
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
+    farcall Delay3
+    ld a, TEXT_ROUTE25_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+
+    .afterRewardCheck
 	call EnableAutoTextBoxDrawing
 	ld hl, Route25TrainerHeaders
 	ld de, Route25_ScriptPointers
@@ -91,7 +118,7 @@ Route25_TextPointers:
 Route25TrainerHeaders:
 	def_trainers 1
 Route25TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_25_TRAINER_0, 1, Route25YoungsterBattleText, Route25YoungsterEndBattleText, Route25YoungsterAfterBattleText
+	trainer EVENT_BEAT_ROUTE_25_TRAINER_0, 3, Route25YoungsterBattleText, Route25YoungsterEndBattleText, Route25YoungsterAfterBattleText
 Route25TrainerHeader1:
 	trainer EVENT_BEAT_ROUTE_25_TRAINER_1, 2, Route25LassBattleText, Route25LassEndBattleText, Route25LassAfterBattleText
 Route25TrainerHeader2:

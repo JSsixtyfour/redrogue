@@ -145,6 +145,12 @@ DEF NUM_BADGES EQU const_value
 	const BIT_LEDGE_OR_FISHING ; 6
 	const BIT_SPINNING         ; 7
 
+; wRogueFlagsBitfield
+	const_def
+	const BIT_ROGUE_GYM_NEXT        ; 0 — set on route entry, cleared on badge receipt
+	const BIT_ROGUE_FINAL_TRAINER   ; 1 — final trainer of tier (level/class bonus)
+	const BIT_ROGUE_TRADE_ACTIVE    ; 2 — trade offer is live for this reward batch
+
 ; hFindPathFlags
 	const_def
 	const BIT_PATH_FOUND_Y ; 0

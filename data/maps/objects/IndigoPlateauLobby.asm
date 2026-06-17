@@ -21,6 +21,7 @@ IndigoPlateauLobby_Object:
 	warp_event  7, 11, LAST_MAP, 1
 	warp_event  8, 11, LAST_MAP, 2
 	warp_event  8,  0, ROGUE_MAP, 1
+    warp_event  10,  0, ROGUE_MAP, 1
 
 	def_bg_events
 

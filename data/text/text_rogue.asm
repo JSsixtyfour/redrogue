@@ -3,6 +3,15 @@ _GreedyText::
 	line "greedy..."
 	done
 
+_RogueTradeOfferText::
+	text "Your @"
+	text_ram wNameBuffer
+	text "@"
+	line "for a @"
+	text_ram wroguenpctradename
+	text "?@"
+	done
+
 _PickPokeBallText::
 	text "You want"
 	line "@"

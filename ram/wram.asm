@@ -2035,6 +2035,7 @@ wRogueMap:: db
 wVisitedStagesBitfield:: ds 4
 ; bit 0: route is next after this gym / gym is next after this route
 ; bit 1: set by GetRandRoster when the current trainer is the final (5th)
+; bit 2: trade offered for RogueRewardMenu
 ;        trainer of a route, signalling GetRandRosterLoop to apply the level
 ;        bonus and rarer class distribution from trainer_difficulty_settings
 wRogueFlagsBitfield:: db

@@ -1,3 +1,6 @@
+; UNIQUE STAGE: SS Anne B1F has custom multi-room door/lock mechanics and a separate
+; EVENT_SSANNE_ALL_TRAINERS_DEFEATED gate. Reward trigger handled via custom flow,
+; not the standard ALL_TRAINERS_MASK pattern.
 SSAnneB1F_Script:
     CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
     jr z, .rogue

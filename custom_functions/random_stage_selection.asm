@@ -19,7 +19,7 @@ RogueStageMapTable:
 	db ROUTE_13
 	db ROUTE_15
 	db ROUTE_17
-	db ROUTE_24
+	db ROUTE_24          ; unique: reward gated by Nugget Bridge NPC (vanilla nugget flow), not ALL_TRAINERS_MASK
 	db ROUTE_25
 	db VIRIDIAN_FOREST
 	db DIGLETTS_CAVE
@@ -28,7 +28,7 @@ RogueStageMapTable:
 	db ROCKET_HIDEOUT_B1F
 	db POKEMON_TOWER_2F
 	db POKEMON_TOWER_7F
-	db SS_ANNE_B1F
+	db SS_ANNE_B1F       ; unique: custom multi-room mechanics and EVENT_SSANNE_ALL_TRAINERS_DEFEATED gate
 	db SS_ANNE_BOW
 	db POWER_PLANT
 	;db SILPH_CO_1F

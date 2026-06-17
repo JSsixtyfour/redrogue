@@ -109,37 +109,151 @@ Call EnemyMonEvolve
 .done
 RET
 
+; Roll ~10% chance of one reward slot becoming a trade offer.
+; If triggered: picks a random party mon, looks up its class, bumps one tier,
+; rolls an offered species at that tier, picks a slot (1-3), and pre-fills
+; wRoguePokemonN for that slot.  Always sets wRogueTradeSlot (0=no trade).
+; Call AFTER clearing wRoguePokemon1-3 to 0.
+RogueRewardTradeRoll::
+    xor a
+    ld [wroguenpctradegive], a      ; 0 = no trade (cleared first; set on success)
+    ; ~10.2% chance (26/255)
+    call Random
+    cp 26
+    ret nc              ; no trade
+    ; require at least 2 party members (can't trade away last mon)
+    ld a, [wPartyCount]
+    cp 2
+    ret c               ; fewer than 2 members, skip
+    ; e = partyCount, d = retry counter (8 attempts; rejection sampling needs more headroom)
+    ld e, a
+    ld d, 8
+.tryPickMember
+    ld c, e
+    call Rangerandom    ; a = 0..partyCount-1
+    ld c, a                         ; c = party index for species lookup
+    ld b, 0
+    ld hl, wPartySpecies
+    add hl, bc
+    ld a, [hl]
+    ld [wroguenpctradegive], a      ; species player gives up (non-zero = trade active)
+    ; find this species in pokemon_classes to get its tier
+    ; b = species, c = 1-based scan position
+    ld b, a
+    ld hl, pokemon_classes
+    ld c, 0
+.findClass
+    inc c
+    ld a, [hli]
+    cp b
+    jr nz, .findClass
+    ; determine class (1-4) into b
+    ld a, pokeball_pokemon_number
+    ld b, 1
+    cp c
+    jr nc, .gotClass
+    ld a, greatball_pokemon_number
+    inc b
+    cp c
+    jr nc, .gotClass
+    inc b
+    ld a, ultraball_pokemon_number
+    cp c
+    jr nc, .gotClass
+    inc b               ; masterball
+.gotClass
+    ; masterball always excluded (no higher tier to offer)
+    ld a, b
+    cp 4
+    jr z, .retry
+    ; rejection sampling: pick threshold 1-3; accept if class >= threshold
+    ; class-3 (ultraball): always accepted; class-2: 2/3; class-1 (pokeball): 1/3
+    push bc             ; save b=class across Rangerandom
+    ld c, 3
+    call Rangerandom    ; a = 0..2
+    pop bc              ; restore b=class
+    cp b                ; C set if roll < class
+    jr c, .doTrade      ; accept
+.retry
+    dec d
+    jr nz, .tryPickMember
+    ret                 ; all retries exhausted, no trade
+.doTrade
+    ; b = class (1-3), offer one tier higher; trade always pre-fills slot 1
+    ld hl, wRogueFlagsBitfield
+    set BIT_ROGUE_TRADE_ACTIVE, [hl]
+    inc b
+    ld c, b
+    call Random_Pokemon_Selection   ; offered species -> d
+    ld a, d
+    ld [wRoguePokemon1], a
+    ld [wroguenpctradeget], a
+    ld [wNamedObjectIndex], a
+    call GetMonName                 ; offered mon's name → wNameBuffer
+    ld hl, wNameBuffer
+    ld de, wroguenpctradename
+    ld bc, NAME_LENGTH
+    jp CopyData                     ; wroguenpctradename = offered mon's name; tail call
+
 rogue_pokemon_randomized_batch::
+   ; clear trade-active bit so stale wram never shows a phantom trade offer
+   ld hl, wRogueFlagsBitfield
+   res BIT_ROGUE_TRADE_ACTIVE, [hl]
+   ; reset TRADE_FOR_RANDOM flag so trade offer is always available on stage entry
+   ld c, TRADE_FOR_RANDOM
+   ld b, FLAG_RESET
+   ld hl, wCompletedInGameTradeFlags
+   predef FlagActionPredef
    ld hl, wRoguePokemon1
    xor a
    ld [hli], a          ; clear out prior pokemon
    ld [hli], a          ; clear out prior pokemon
    ld [hl], a           ; clear out prior pokemon
-   
+
+   call RogueRewardTradeRoll   ; may pre-fill wRoguePokemon1; wroguenpctradeget=0 if no trade
+
+   ; slot 1 (skip if pre-filled by trade roll)
+   ld a, [wRoguePokemon1]
+   and a
+   jr nz, .roguepokemon2
+   .rollpokemon1
    call Random
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
    ld [hl], d
+
    .roguepokemon2
+   ; slot 2 (skip if pre-filled by trade roll)
+   ld a, [wRoguePokemon2]
+   and a
+   jr nz, .roguepokemon3
+   .rollpokemon2
    call Random
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d
-   jr z, .roguepokemon2
+   jr z, .rollpokemon2
    ld hl, wRoguePokemon2
    ld [hl], d
+
    .roguepokemon3
+   ; slot 3 (skip if pre-filled by trade roll)
+   ld a, [wRoguePokemon3]
+   and a
+   jr nz, .doneBatch
+   .rollpokemon3
    call Random
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d
-   jr z, .roguepokemon3
+   jr z, .rollpokemon3
    ld a, [wRoguePokemon2]
    cp d
-   jr z, .roguepokemon3
+   jr z, .rollpokemon3
    ld hl, wRoguePokemon3
    ld [hl], d
-   
+
+   .doneBatch
 RET
 
 ; a check to see if pokemon is already in players box or party

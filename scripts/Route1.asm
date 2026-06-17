@@ -1,3 +1,9 @@
+DEF ROUTE1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_1_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_4 % 8))
+
 Route1_Script:
 	; One-time setup on first map entry
 	CheckEvent EVENT_ENTER_ROOM
@@ -6,11 +12,32 @@ Route1_Script:
 	ld hl, wRogueFlagsBitfield
 	set 0, [hl]                 ; gym is next after this route
 	ResetEvent EVENT_GOT_ROGUE_POKEMON
+	ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 	farcall rogue_pokemon_randomized_batch
 	farcall Random_Item_Selection
 	farcall RogueRefresh
     
     .afterSetup
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+    jr nz, .afterRewardCheck
+
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+
+    ld a, [wEventFlags + (EVENT_BEAT_ROUTE_1_TRAINER_0 / 8)]
+    and ROUTE1_ALL_TRAINERS_MASK
+    cp ROUTE1_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
+
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
+    farcall Delay3
+    ld a, TEXT_ROUTE1_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+
+    .afterRewardCheck
     call EnableAutoTextBoxDrawing
 	ld hl, Route1TrainerHeaders
 	ld de, Route1_ScriptPointers

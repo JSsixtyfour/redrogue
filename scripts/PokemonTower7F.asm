@@ -1,3 +1,9 @@
+DEF POKEMONTOWER_7_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_4 % 8))
+
 PokemonTower7F_Script:
 
     CheckEvent EVENT_ENTER_ROOM
@@ -16,17 +22,21 @@ PokemonTower7F_Script:
 
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
-    jr nz, .default
-    CheckEvent EVENT_BEAT_POKEMONTOWER_7_TRAINER_4
-    jr z, .default
-    call Delay3
-    xor a
-    ld a, LOW(TEXT_POKEMONTOWER7F_REWARD_VENDOR_1)
-	ldh [hTextID], a
-	call DisplayTextID
+    jr nz, .afterRewardCheck
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+    ld a, [wEventFlags + (EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 / 8)]
+    and POKEMONTOWER_7_ALL_TRAINERS_MASK
+    cp POKEMONTOWER_7_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    
-    .default
+    farcall Delay3
+    ld a, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .afterRewardCheck
 	call EnableAutoTextBoxDrawing
 	ld hl, PokemonTower7TrainerHeaders
 	ld de, PokemonTower7F_ScriptPointers

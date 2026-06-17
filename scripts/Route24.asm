@@ -1,3 +1,6 @@
+; UNIQUE STAGE: reward is gated by Route24CooltrainerM1Text (the Nugget Bridge NPC),
+; which fires after all bridge trainers are beaten — mirrors the vanilla nugget award flow.
+; Does NOT use ALL_TRAINERS_MASK in the main loop.
 Route24_Script:
     
     CheckEvent EVENT_ENTER_ROOM
@@ -8,7 +11,7 @@ Route24_Script:
     set 0, [hl]                 ; gym is next after this route
     
     ResetEvent EVENT_GOT_ROGUE_POKEMON
-    
+
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh

@@ -7,7 +7,7 @@ RogueRewardMenu::
 	xor a
 	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
-	ld a, PAD_A | PAD_B
+	ld a, PAD_A | PAD_B | PAD_UP | PAD_DOWN
 	ld [wMenuWatchedKeys], a
 	ld a, $03
 	ld [wMaxMenuItem], a
@@ -23,11 +23,47 @@ RogueRewardMenu::
 	call UpdateSprites
 	ld hl, RogueRewardTextChoice
 	call PrintText
-	call HandleMenuInput ; menu choice handler
+	; if trade is active, show hover box immediately (cursor starts at slot 0)
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .menuLoop
+	jr .showTradeHover
+.menuLoop
+	call HandleMenuInput
+	bit B_PAD_A, a
+	jr nz, .aPressed
 	bit B_PAD_B, a
 	jr nz, .noChoice
+	; cursor moved — update hover box if trade is active
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .menuLoop
 	ldh a, [hCurrentMenuItem]
-	cp 3 ; "NO,THANKS" choice
+	and a
+	jr nz, .eraseTradeHover
+.showTradeHover
+	hlcoord 0, 12
+	ld b, 2
+	ld c, 16
+	call TextBoxBorder
+	hlcoord 2, 13
+	ld de, TradeHoverLabel
+	call PlaceString
+	ld a, [wroguenpctradegive]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	hlcoord 2, 14
+	call PlaceString
+	jr .menuLoop
+.eraseTradeHover
+	hlcoord 0, 12
+	ld b, 4
+	ld c, 18
+	call ClearScreenArea
+	jr .menuLoop
+.aPressed
+	ldh a, [hCurrentMenuItem]
+	cp 3
 	jr z, .noChoice
 	call HandleRewardChoice
 .noChoice
@@ -79,6 +115,14 @@ GetRogueRewardMenuId:
 	call GetMonName
 	hlcoord 2, 4
 	call PlaceString
+	; if slot 1 is a trade offer, show "TRADE" label (name shown in hover box)
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .slot1NoTrade
+	hlcoord 12, 4
+	ld de, TradeSlotLabel
+	call PlaceString
+.slot1NoTrade
 	ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
 	call GetMonName
@@ -108,6 +152,31 @@ HandleRewardChoice:
 	ld [wNamedObjectIndex], a
 .getMonName
 	call GetMonName
+    ; trade offer always occupies slot 1 (index 0); BIT_ROGUE_TRADE_ACTIVE gates it
+    ldh a, [hCurrentMenuItem]
+    and a
+    jr nz, .givePrize
+    ld a, [wRogueFlagsBitfield]
+    bit BIT_ROGUE_TRADE_ACTIVE, a
+    jr z, .givePrize
+    ; trade slot selected — run full in-game trade dialogue with animation
+    pop bc                          ; balance push bc from top of HandleRewardChoice
+    ld a, TRADE_FOR_RANDOM
+    ld [wWhichTrade], a
+    predef RogueDoInGameTradeDialogue
+    ; TRADE_FOR_RANDOM flag is set by InGameTrade_DoTrade on success
+    ld c, TRADE_FOR_RANDOM
+    ld b, FLAG_TEST
+    ld hl, wCompletedInGameTradeFlags
+    predef FlagActionPredef
+    ld a, c
+    and a
+    ret z                           ; declined or wrong mon selected
+    SetEvent EVENT_GOT_ROGUE_POKEMON
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+    ld [wToggleableObjectIndex], a
+    predef HideObject
+    ret
 .givePrize
 	ld hl, SoYouWantRewardText
 	call PrintText
@@ -115,7 +184,7 @@ HandleRewardChoice:
 	ldh a, [hCurrentMenuItem] ; yes/no answer (Y=0, N=1)
 	and a
     pop bc
-	jr nz, .printOhFineThen
+	jp nz, .printOhFineThen
 .giveMon
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
     add a, b
@@ -158,6 +227,16 @@ HandleRewardChoice:
 SoYouWantRewardText:
 	text_far _SoYouWantPrizeText
 	text_end
+
+RogueTradeOfferText:
+	text_far _RogueTradeOfferText
+	text_end
+
+TradeSlotLabel:
+	db "TRADE@"
+
+TradeHoverLabel:
+	db "GIVE:@"
 
 RewardRoomBagIsFullText:
 	text_far _OopsYouDontHaveEnoughRoomText
