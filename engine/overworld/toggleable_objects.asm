@@ -63,13 +63,6 @@ MarkTownVisitedAndLoadToggleableObjects::
 .done
 	ld a, -1
 	ld [de], a                 ; write sentinel
-	; Reset random item flag when entering a roguelike stage
-	farcall IsRogueStageMap
-	ret z
-	ld hl, wToggleableObjectFlags
-	ld c, TOGGLE_STAGE_RANDOM_ITEM
-	ld b, FLAG_RESET
-	call ToggleableObjectFlagAction
 	ret
 
 InitializeToggleableObjectsFlags:

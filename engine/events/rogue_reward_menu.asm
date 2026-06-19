@@ -42,24 +42,27 @@ RogueRewardMenu::
 	and a
 	jr nz, .eraseTradeHover
 .showTradeHover
-	hlcoord 0, 12
-	ld b, 2
+    hlcoord 0, 0
+	lb bc, 18, 3
+	predef SaveScreenTileAreaToBuffer3
+	hlcoord 0, 0
+	ld b, 1
 	ld c, 16
 	call TextBoxBorder
-	hlcoord 2, 13
+	hlcoord 1, 1
 	ld de, TradeHoverLabel
 	call PlaceString
 	ld a, [wroguenpctradegive]
 	ld [wNamedObjectIndex], a
 	call GetMonName
-	hlcoord 2, 14
+	hlcoord 7, 1
+	ld de, wNameBuffer
 	call PlaceString
 	jr .menuLoop
 .eraseTradeHover
-	hlcoord 0, 12
-	ld b, 4
-	ld c, 18
-	call ClearScreenArea
+	hlcoord 0, 0
+	lb bc, 18, 3
+	predef LoadScreenTileAreaFromBuffer3
 	jr .menuLoop
 .aPressed
 	ldh a, [hCurrentMenuItem]
@@ -161,9 +164,17 @@ HandleRewardChoice:
     jr z, .givePrize
     ; trade slot selected — run full in-game trade dialogue with animation
     pop bc                          ; balance push bc from top of HandleRewardChoice
+    ld hl, wStatusFlags5
+    res BIT_NO_TEXT_DELAY, [hl]     ; restore normal text speed for animation
     ld a, TRADE_FOR_RANDOM
     ld [wWhichTrade], a
+    ldh a, [hTileAnimations]
+    push af
+    xor a
+    ldh [hTileAnimations], a
     predef RogueDoInGameTradeDialogue
+    pop af
+    ldh [hTileAnimations], a
     ; TRADE_FOR_RANDOM flag is set by InGameTrade_DoTrade on success
     ld c, TRADE_FOR_RANDOM
     ld b, FLAG_TEST
@@ -254,17 +265,26 @@ Goodluck:
 	text_end
 
 GetRewardMonLevel:
-;	ld a, [wCurPartySpecies]
-;	ld b, a
-;	ld hl, PrizeMonLevelDictionary
-;.loop
-;	ld a, [hli]
-;	cp b
-;	jr z, .matchFound
-;	inc hl
-;	jr .loop
-;.matchFound
-	ld a, 5
+	; level = 5 + (wBattleCount / 10) * 5, capped at 50
+	ld a, [wBattleCount]
+	ld b, 0             ; b = round counter
+.countRounds
+	cp 10
+	jr c, .roundsDone
+	sub 10
+	inc b
+	jr .countRounds
+.roundsDone
+	; b = round (0-8+)
+	ld a, b
+	add a               ; a = round*2
+	add a               ; a = round*4
+	add b               ; a = round*5
+	add 5               ; a = 5 + round*5
+	cp 51
+	jr c, .levelOk
+	ld a, 50
+.levelOk
 	ld [wCurEnemyLevel], a
 	ret
 
@@ -282,10 +302,4 @@ RogueRefresh::
     ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
-	; if the double-pickup guard in RandomPickUpItem (pick_up_item.asm) ever
-	; blocks legitimate new-stage pickups, uncomment this to reset the flag here:
-	; ld hl, wToggleableObjectFlags
-	; ld c, TOGGLE_STAGE_RANDOM_ITEM
-	; ld b, FLAG_RESET
-	; call ToggleableObjectFlagAction
     ret

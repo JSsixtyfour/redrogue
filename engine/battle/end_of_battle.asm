@@ -49,13 +49,26 @@ EndOfBattle:
 	jr nz, .noPPTonic ; don't restore HP/PP from a battle the player lost (or drew)
 	ld b, LEFTOVERS
 	call IsItemInBag
-	jr z, .noLeftovers
+	jr z, .checkPPTonic
 	farcall LeftoversRecovery
-.noLeftovers
+	ld b, PP_TONIC
+	call IsItemInBag
+	jr z, .hpOnlyMsg
+	farcall PPTonicRecovery
+	ld hl, PartyHPAndPPRecoveredText
+	call PrintText
+	jr .noPPTonic
+.hpOnlyMsg
+	ld hl, PartyHPRecoveredText
+	call PrintText
+	jr .noPPTonic
+.checkPPTonic
 	ld b, PP_TONIC
 	call IsItemInBag
 	jr z, .noPPTonic
 	farcall PPTonicRecovery
+	ld hl, PartyPPRecoveredText
+	call PrintText
 .noPPTonic
 	xor a
 	ld [wLowHealthAlarm], a ;disable low health alarm
@@ -98,4 +111,16 @@ DrawText:
 
 PickUpPayDayMoneyText:
 	text_far _PickUpPayDayMoneyText
+	text_end
+
+PartyHPRecoveredText:
+	text_far _PartyHPRecoveredText
+	text_end
+
+PartyPPRecoveredText:
+	text_far _PartyPPRecoveredText
+	text_end
+
+PartyHPAndPPRecoveredText:
+	text_far _PartyHPAndPPRecoveredText
 	text_end

@@ -55,12 +55,12 @@ PokemonTower2F_Script:
 	RogueAutoWalkScripts PokemonTower2F, PAD_RIGHT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
 
 PokemonTower2FEntranceCoords:
-	dbmapcoord 9, 3
+	dbmapcoord 18, 9
 	db -1
 
 PokemonTower2FNoCoords:
-	dbmapcoord 9, 2
-	dbmapcoord 9, 1
+	dbmapcoord 19, 9
+	dbmapcoord 20, 9
 	db -1
 
 PokemonTower2F_ScriptPointers:
@@ -77,6 +77,8 @@ IF DEF(_DEBUG)
 	call DebugPressedOrHeldB
 	ret nz
 ENDC
+	call CheckFightingMapTrainers
+	ret
 	;CheckEvent EVENT_BEAT_POKEMON_TOWER_RIVAL
 	;jr nz, .checkTrainers
 	;ld hl, PokemonTower2FRivalEncounterEventCoords

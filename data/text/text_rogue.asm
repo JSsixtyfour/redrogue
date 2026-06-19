@@ -24,6 +24,21 @@ _NoTurningBackText::
 	line "turning back!"
 	done
 
+_PartyHPRecoveredText::
+	text "Party HP"
+	line "partly recovered!"
+	prompt
+
+_PartyPPRecoveredText::
+	text "Party PP"
+	line "partly recovered!"
+	prompt
+
+_PartyHPAndPPRecoveredText::
+	text "Party HP/PP"
+	line "partly recovered!"
+	prompt
+
 _LeftoversText::
 	text "Your party"
 	line "was healed!"

@@ -35,23 +35,23 @@ TrainerPicAndMoneyPointers::
 	pic_money ProfOakPic,      1000
 	pic_money ChiefPic,        250
 	pic_money ScientistPic,    250
-	pic_money GiovanniPic,     800
+	pic_money GiovanniPic,     700
 	pic_money RocketPic,       250
 	pic_money CooltrainerMPic, 250
 	pic_money CooltrainerFPic, 250
-	pic_money BrunoPic,        800
-	pic_money BrockPic,        800
-	pic_money MistyPic,        800
-	pic_money LtSurgePic,      800
-	pic_money ErikaPic,        800
-	pic_money KogaPic,         800
-	pic_money BlainePic,       800
-	pic_money SabrinaPic,      800
+	pic_money BrunoPic,        700
+	pic_money BrockPic,        700
+	pic_money MistyPic,        700
+	pic_money LtSurgePic,      700
+	pic_money ErikaPic,        700
+	pic_money KogaPic,         700
+	pic_money BlainePic,       700
+	pic_money SabrinaPic,      700
 	pic_money GentlemanPic,    250
-	pic_money Rival2Pic,       800
-	pic_money Rival3Pic,       800
-	pic_money LoreleiPic,      800
+	pic_money Rival2Pic,       700
+	pic_money Rival3Pic,       700
+	pic_money LoreleiPic,      700
 	pic_money ChannelerPic,    250
-	pic_money AgathaPic,       800
-	pic_money LancePic,        800
+	pic_money AgathaPic,       700
+	pic_money LancePic,        700
 	assert_table_length NUM_TRAINERS

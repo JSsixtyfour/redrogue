@@ -398,8 +398,8 @@ db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
 db 0x2  ; final gym trainer level bonus
 db 0x0  ; final trainer: pokeball class pokemon
-db 0x1  ; final trainer: greatball class pokemon
-db 0x1  ; final trainer: ultraball class pokemon
+db 0x2  ; final trainer: greatball class pokemon
+db 0x0  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
 ;round 2 (-> Gym 2, 18-21)
 db 0x4  ; level range

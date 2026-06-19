@@ -73,6 +73,9 @@ DoInGameTradeDialogue:
 	jr nz, .printText
 	call InGameTrade_DoTrade
 	jr c, .printText
+	ld a, [wWhichTrade]
+	cp TRADE_FOR_RANDOM
+	ret z
 	ld hl, TradedForText
 	call PrintText
 .printText

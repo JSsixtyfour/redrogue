@@ -363,6 +363,11 @@ NEXTU
 wHallOfFame:: ds HOF_TEAM
 
 NEXTU
+
+wTileMapBackup3:: ; partial tilemap backup for saving a portion of the screen's contents.
+ds 160 
+
+NEXTU
 wNPCMovementDirections:: ds 180
 
 NEXTU

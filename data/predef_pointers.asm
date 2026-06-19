@@ -111,3 +111,5 @@ PredefPointers::
 	add_predef OaksAideScript
     add_predef RandomPickUpItem
     add_predef RogueDoInGameTradeDialogue
+    add_predef SaveScreenTileAreaToBuffer3
+	add_predef LoadScreenTileAreaFromBuffer3

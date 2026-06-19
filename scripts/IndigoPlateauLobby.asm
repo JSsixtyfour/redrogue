@@ -78,8 +78,7 @@ LobbyDoor1SignText:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
-	call PrintText
-	jp TextScriptEnd
+	ret
 .itemPtrs
 	dw .healingText
 	dw .statText
@@ -113,8 +112,7 @@ LobbyDoor2SignText:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
-	call PrintText
-	jp TextScriptEnd
+	ret
 .itemPtrs
 	dw .healingText
 	dw .statText
@@ -724,9 +722,28 @@ PCPokemonSalesmanText:
 	ld hl, .NoMoneyText
 	jr .printText
 .enoughMoney
-    ld a, [wroguenpcsell]   ; load pokemon for sale
-    ld b, a                 ; move pokemon ID to b
-	ld c, 5                 ; temporary set level, will need some sort of system
+    ; compute level = 5 + (wBattleCount/10)*5, capped at 50
+    ld a, [wBattleCount]
+    ld c, 0
+.salesLevel
+    cp 10
+    jr c, .salesLevelDone
+    sub 10
+    inc c
+    jr .salesLevel
+.salesLevelDone
+    ld a, c
+    add a               ; a = round*2
+    add a               ; a = round*4
+    add c               ; a = round*5
+    add 5               ; a = 5 + round*5
+    cp 51
+    jr c, .salesLevelCap
+    ld a, 50
+.salesLevelCap
+    ld c, a             ; c = level
+    ld a, [wroguenpcsell]
+    ld b, a             ; b = species
 	call GivePokemon
 	jr nc, .done
 	xor a

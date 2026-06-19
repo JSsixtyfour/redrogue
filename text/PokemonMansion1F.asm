@@ -21,7 +21,7 @@ _PokemonMansion1FScientist2BattleText::
 	done
 
 _PokemonMansion1FScientist2EndBattleText::
-	text "Impossible!"
+	line "Impossible!"
 	prompt
 
 _PokemonMansion1FScientist2AfterBattleText::

@@ -92,7 +92,7 @@ Route3TrainerHeaders:
 Route3TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_3_TRAINER_0, 2, Route3BugCatcherBattleText, Route3BugCatcherEndBattleText, Route3BugCatcherAfterBattleText
 Route3TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 3, Route3LassBattleText, Route3LassEndBattleText, Route3LassAfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 2, Route3LassBattleText, Route3LassEndBattleText, Route3LassAfterBattleText
 Route3TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_3_TRAINER_2, 2, Route3Youngster1BattleText, Route3Youngster1EndBattleText, Route3Youngster1AfterBattleText
 Route3TrainerHeader3:

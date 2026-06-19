@@ -48,15 +48,15 @@ MtMoon1F_Script:
 	RogueAutoWalkScripts MtMoon1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_MT_MOON_1F, TEXT_MTMOON1F_NO_TURNING_BACK, SCRIPT_MTMOON1F_PLAYER_IS_MOVING, wMtMoon1FCurScript
 
 MtMoon1FEntranceCoords:
-	dbmapcoord 35, 14
-	dbmapcoord 35, 15
+	dbmapcoord 14, 35
+	dbmapcoord 15, 35
 	db -1
 
 MtMoon1FNoCoords:
-	dbmapcoord 34, 14
-	dbmapcoord 34, 15
-	dbmapcoord 33, 14
-	dbmapcoord 33, 15
+	dbmapcoord 14, 34
+	dbmapcoord 15, 34
+	dbmapcoord 14, 33
+	dbmapcoord 15, 33
 	db -1
 
 MtMoon1F_ScriptPointers:

@@ -2,12 +2,6 @@ GainExperience:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; return if link battle
-    ld a, [wBoostExpByExpAll] ;load in a if the EXP All is being used
-	ld hl, WithExpAllText ; this is preparing the text to show
-	and a ;check wBoostExpByExpAll value
-	jr z, .skipExpAll ; if wBoostExpByExpAll is zero, we are not using it, so we don't show anything and keep going on
-	call PrintText ; if the code reaches this point it means we have the Exp.All, so show the message
-.skipExpAll
 	ld hl, wPartyMon1
 	xor a
 	ldh [hWhichPokemon], a
@@ -286,6 +280,13 @@ GainExperience:
 	call AddNTimes
 	jp .partyMonLoop
 .done
+	; show "Party gained X EXP. Points!" once, now that wExpAmountGained is set
+	ld a, [wBoostExpByExpAll]
+	and a
+	jr z, .skipExpAllText
+	ld hl, WithExpAllText
+	call PrintText
+.skipExpAllText
 	ld hl, wPartyGainExpFlags
 	xor a
 	ld [hl], a ; clear gain exp flags

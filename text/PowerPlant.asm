@@ -12,7 +12,7 @@ _PowerPlantScientist1BattleText::
 	done
 
 _PowerPlantScientist1EndBattleText::
-	text "Impossible!"
+	line "Impossible!"
 	prompt
 
 _PowerPlantScientist1AfterBattleText::

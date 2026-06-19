@@ -76,6 +76,7 @@ xor a
 ldh [hMultiplicand], a      ; put zero in highest byte
 ldh [hMultiplicand+1], a    ; put second byte for multiplication
 pop af                      ; restore line amount to multiply by amount in class
+;dec a                       ; max index is line_amount-1; prevents out-of-bounds on random=255
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
 ldh   a, [hProduct+2]       ; load product into a
@@ -182,6 +183,8 @@ RogueRewardTradeRoll::
     ; b = class (1-3), offer one tier higher; trade always pre-fills slot 1
     ld hl, wRogueFlagsBitfield
     set BIT_ROGUE_TRADE_ACTIVE, [hl]
+    xor a
+    ld [wroguenpctradedialogue], a  ; use TRADE_DIALOGSET_CASUAL (0) for text lookup
     inc b
     ld c, b
     call Random_Pokemon_Selection   ; offered species -> d

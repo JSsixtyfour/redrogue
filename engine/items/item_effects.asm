@@ -2612,7 +2612,11 @@ LeftoversRecovery::
 	pop de                          ; de = maxHP
 	pop hl                          ; hl = &MON_HP
 
-	inc hl
+	; skip fainted pokemon — don't heal if both HP bytes are zero
+	ld a, [hl]                      ; HP high byte
+	inc hl                          ; hl = HP low address
+	or [hl]                         ; nonzero if alive
+	jr z, .skipFainted
 	ld a, [hl]                      ; current HP low
 	add c                           ; + heal amount low
 	ld c, a
@@ -2644,6 +2648,15 @@ LeftoversRecovery::
 	ld d, h
 	ld e, l                         ; de = next mon's &MON_HP
 	pop hl                          ; hl = species-list pointer
+	jr .healLoop
+
+.skipFainted
+	; hl = HP low of fainted mon; advance de to next mon without healing
+	ld de, PARTYMON_STRUCT_LENGTH - 1
+	add hl, de
+	ld d, h
+	ld e, l
+	pop hl
 	jr .healLoop
 
 .done

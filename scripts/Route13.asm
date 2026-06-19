@@ -52,15 +52,15 @@ Route13_Script:
 	RogueAutoWalkScripts Route13, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_13, TEXT_ROUTE13_NO_TURNING_BACK, SCRIPT_ROUTE13_PLAYER_IS_MOVING, wRoute13CurScript
 
 Route13EntranceCoords:
-	dbmapcoord 10, 44
-	dbmapcoord 11, 44
+	dbmapcoord 44, 10
+	dbmapcoord 44, 11
 	db -1
 
 Route13NoCoords:
-	dbmapcoord 10, 43
-	dbmapcoord 11, 43
-	dbmapcoord 10, 42
-	dbmapcoord 11, 42
+	dbmapcoord 43, 10
+	dbmapcoord 43, 11
+	dbmapcoord 42, 10
+	dbmapcoord 42, 11
 	db -1
 
 Route13_ScriptPointers:
@@ -93,7 +93,7 @@ Route13TrainerHeaders:
 Route13TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_13_TRAINER_0, 2, Route13BirdKeeperBattleText, Route13BirdKeeperEndBattleText, Route13BirdKeeperAfterBattleText
 Route13TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_13_TRAINER_1, 2, Route13BeautyBattleText, Route13BeautyEndBattleText, Route13BeautyAfterBattleText
+	trainer EVENT_BEAT_ROUTE_13_TRAINER_1, 1, Route13BeautyBattleText, Route13BeautyEndBattleText, Route13BeautyAfterBattleText
 Route13TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_13_TRAINER_2, 2, Route13JrTrainerFBattleText, Route13JrTrainerFEndBattleText, Route13JrTrainerFAfterBattleText
 Route13TrainerHeader3:
