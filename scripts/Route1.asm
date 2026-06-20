@@ -141,6 +141,7 @@ Route1_TextPointers:
     dw_const Route1_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE1_ROGUE_REWARD_POKEBALL_1
     dw_const Route1_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE1_ROGUE_REWARD_POKEBALL_2
     dw_const Route1_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE1_ROGUE_REWARD_POKEBALL_3
+    dw_const Route1_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE1_ROGUE_TRADE_NPC
     dw_const Rogue_Route1_Reward_Text, TEXT_ROUTE1_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE1_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route1SignText,       TEXT_ROUTE1_SIGN

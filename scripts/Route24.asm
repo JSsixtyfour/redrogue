@@ -124,6 +124,7 @@ Route24_TextPointers:
     dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_1
     dw_const Route24_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_2
     dw_const Route24_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_3
+    dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_TRADE_NPC
     dw_const Rogue_Route24_Reward_Text, TEXT_ROUTE24_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE24_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route24NoTurningBackText, TEXT_ROUTE24_NO_TURNING_BACK

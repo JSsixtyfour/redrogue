@@ -42,6 +42,7 @@ UndergroundPathRoute5_TextPointers:
     dw_const UndergroundPathRoute5_Rogue_Reward_Script_PokeballText_1, TEXT_UNDERGROUNDPATHROUTE5_ROGUE_REWARD_POKEBALL_1
     dw_const UndergroundPathRoute5_Rogue_Reward_Script_PokeballText_2, TEXT_UNDERGROUNDPATHROUTE5_ROGUE_REWARD_POKEBALL_2
     dw_const UndergroundPathRoute5_Rogue_Reward_Script_PokeballText_3, TEXT_UNDERGROUNDPATHROUTE5_ROGUE_REWARD_POKEBALL_3
+    dw_const UndergroundPathRoute5_Rogue_Reward_Script_PokeballText_1, TEXT_UNDERGROUNDPATHROUTE5_ROGUE_TRADE_NPC
     dw_const Rogue_UndergroundPathRoute5_Reward_Text, TEXT_UNDERGROUNDPATHROUTE5_REWARD_VENDOR_1
     EXPORT TEXT_UNDERGROUNDPATHROUTE5_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 

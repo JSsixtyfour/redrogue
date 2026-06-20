@@ -78,11 +78,11 @@ MtMoon1F_TextPointers:
 	dw_const PickUpItemText,            TEXT_MTMOON1F_RARE_CANDY
 	dw_const PickUpItemText,            TEXT_MTMOON1F_ESCAPE_ROPE
 	dw_const PickUpItemText,            TEXT_MTMOON1F_POTION2
-	dw_const PickUpItemText,            TEXT_MTMOON1F_TM_WATER_GUN
     dw_const RandomPickUpItemText,      TEXT_MTMOON1F_RANDOM
     dw_const MtMoon1F_Rogue_Reward_Script_PokeballText_1, TEXT_MTMOON1F_ROGUE_REWARD_POKEBALL_1
     dw_const MtMoon1F_Rogue_Reward_Script_PokeballText_2, TEXT_MTMOON1F_ROGUE_REWARD_POKEBALL_2
     dw_const MtMoon1F_Rogue_Reward_Script_PokeballText_3, TEXT_MTMOON1F_ROGUE_REWARD_POKEBALL_3
+    dw_const MtMoon1F_Rogue_Reward_Script_PokeballText_1, TEXT_MTMOON1F_ROGUE_TRADE_NPC
     dw_const Rogue_MtMoon1F_Reward_Text, TEXT_MTMOON1F_REWARD_VENDOR_1
     EXPORT TEXT_MTMOON1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const MtMoon1FBewareZubatSign,   TEXT_MTMOON1F_BEWARE_ZUBAT_SIGN

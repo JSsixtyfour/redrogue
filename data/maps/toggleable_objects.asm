@@ -82,6 +82,7 @@ ToggleableObjectStates:
 	toggle_object_state ROGUE_REWARD_POKEBALL_2, ON
 	toggle_object_state ROGUE_REWARD_POKEBALL_3, ON
     toggle_object_state ROGUE_STAGE_RANDOM_ITEM, ON
+    toggle_object_state ROGUE_TRADE_NPC, OFF
 
 	toggleable_objects_for ROUTE_2
     toggle_object_state ROUTE2_MOON_STONE, ON
@@ -214,7 +215,7 @@ ToggleableObjectStates:
 	toggle_object_state MTMOON1F_RARE_CANDY,   ON
 	toggle_object_state MTMOON1F_ESCAPE_ROPE,  ON
 	toggle_object_state MTMOON1F_POTION2,      ON
-	toggle_object_state MTMOON1F_TM_WATER_GUN, ON
+	toggle_object_state MTMOON1F_ROGUE_TRADE_NPC, OFF
 
 	toggleable_objects_for MT_MOON_B2F
 	toggle_object_state MTMOONB2F_DOME_FOSSIL,   ON

@@ -3,6 +3,7 @@ object_const_def
     const_export ROGUE_REWARD_POKEBALL_2
     const_export ROGUE_REWARD_POKEBALL_3
     const_export ROGUE_STAGE_RANDOM_ITEM
+    const_export ROGUE_TRADE_NPC
 
 RewardRoom_Object:
 	db $F ; border block

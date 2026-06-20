@@ -8,6 +8,7 @@
     const_export ROUTE12_ROGUE_REWARD_POKEBALL_1
     const_export ROUTE12_ROGUE_REWARD_POKEBALL_2
     const_export ROUTE12_ROGUE_REWARD_POKEBALL_3
+    const_export ROUTE12_ROGUE_TRADE_NPC
 	const_export ROUTE12_SNORLAX
 	const_export ROUTE12_TM_PAY_DAY
 	const_export ROUTE12_IRON
@@ -16,8 +17,8 @@ Route12_Object:
 	db $43 ; border block
 
 	def_warp_events
-	warp_event  1, 62, LAST_MAP, 1
-	warp_event  1, 62, LAST_MAP, 1
+	warp_event  4, 62, LAST_MAP, 1
+	warp_event  4, 62, LAST_MAP, 1
 	warp_event 10, 21, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 10, 21, INDIGO_PLATEAU_LOBBY, 1
 
@@ -35,6 +36,7 @@ Route12_Object:
 	object_event  5, 26, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_1
 	object_event  7, 26, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_2
 	object_event  9, 26, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_3
+	object_event  5, 26, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_ROUTE12_ROGUE_TRADE_NPC
 	object_event  7, 77, SPRITE_SNORLAX, STAY, DOWN, TEXT_ROUTE12_SNORLAX
 	object_event 14, 35, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_TM_PAY_DAY, TM_PAY_DAY
 	object_event  5, 89, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_IRON, IRON

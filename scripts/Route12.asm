@@ -59,12 +59,12 @@ Route12ResetScripts:
 	RogueAutoWalkScripts Route12, PAD_UP, Route12SnorlaxScript, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
 
 Route12EntranceCoords:
-	dbmapcoord 62, 1
+	dbmapcoord 4, 62
 	db -1
 
 Route12NoCoords:
-	dbmapcoord 61, 1
-	dbmapcoord 60, 1
+	dbmapcoord 4, 61
+	dbmapcoord 4, 60
 	db -1
 
 Route12_ScriptPointers:
@@ -131,6 +131,7 @@ Route12_TextPointers:
     dw_const Route12_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_1
     dw_const Route12_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_2
     dw_const Route12_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_3
+    dw_const Route12_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE12_ROGUE_TRADE_NPC
     dw_const Rogue_Route12_Reward_Text,    TEXT_ROUTE12_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE12_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route12SignText,              TEXT_ROUTE12_SIGN

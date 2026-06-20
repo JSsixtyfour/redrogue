@@ -184,10 +184,7 @@ HandleRewardChoice:
     and a
     ret z                           ; declined or wrong mon selected
     SetEvent EVENT_GOT_ROGUE_POKEMON
-    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
-    ld [wToggleableObjectIndex], a
-    predef HideObject
-    ret
+    ret                             ; trade NPC stays visible, unlike the pokeballs
 .givePrize
 	ld hl, SoYouWantRewardText
 	call PrintText
@@ -290,9 +287,27 @@ GetRewardMonLevel:
 
 RogueRefresh::
 	farcall MarkCurrentStageVisited  ; record this stage as visited for no-duplicate selection
-    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	; show/hide pokeball 1 and trade NPC based on trade active flag
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr nz, .tradeActive
+	; no trade: show pokeball 1, hide trade NPC
+	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	ld a, TOGGLE_ROGUE_TRADE_NPC
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	jr .showRest
+.tradeActive
+	; trade: hide pokeball 1, show trade NPC
+	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_ROGUE_TRADE_NPC
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+.showRest
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
 	ld [wToggleableObjectIndex], a
 	predef ShowObject

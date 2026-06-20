@@ -80,6 +80,7 @@ SSAnneBow_TextPointers:
     dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_1, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_1
     dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_2, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_2
     dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_3, TEXT_SSANNEBOW_ROGUE_REWARD_POKEBALL_3
+    dw_const SSAnneBow_Rogue_Reward_Script_PokeballText_1, TEXT_SSANNEBOW_ROGUE_TRADE_NPC
     dw_const Rogue_SSAnneBow_Reward_Text,  TEXT_SSANNEBOW_REWARD_VENDOR_1
     EXPORT TEXT_SSANNEBOW_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const SSAnneBowNoTurningBackText, TEXT_SSANNEBOW_NO_TURNING_BACK

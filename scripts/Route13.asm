@@ -81,6 +81,7 @@ Route13_TextPointers:
     dw_const Route13_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE13_ROGUE_REWARD_POKEBALL_1
     dw_const Route13_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE13_ROGUE_REWARD_POKEBALL_2
     dw_const Route13_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE13_ROGUE_REWARD_POKEBALL_3
+    dw_const Route13_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE13_ROGUE_TRADE_NPC
     dw_const Rogue_Route13_Reward_Text, TEXT_ROUTE13_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE13_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route13TrainerTips1Text,  TEXT_ROUTE13_TRAINER_TIPS1

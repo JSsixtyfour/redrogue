@@ -55,6 +55,7 @@ ENDM
 	const TOGGLE_ROGUE_REWARD_POKEBALL_2 ; 1A
 	const TOGGLE_ROGUE_REWARD_POKEBALL_3 ; 1B
     const TOGGLE_STAGE_RANDOM_ITEM       ; 1C
+    const TOGGLE_ROGUE_TRADE_NPC         ; 1D
 
 	toggle_consts_for ROUTE_2
 	const TOGGLE_ROUTE_2_ITEM_1 ; 1C X

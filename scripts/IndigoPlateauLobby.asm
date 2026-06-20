@@ -57,7 +57,7 @@ IndigoPlateauLobby_TextPointers:
     dw_const PCClerkText1,                           TEXT_PC_CLERK1
     dw_const PCClerkText2,                           TEXT_PC_CLERK2
     dw_const PCDaycareGentlemanText,                 TEXT_PC_DAYCARE_GENTLEMAN
-    dw_const PCDaycareLadyText,                 TEXT_PC_DAYCARE_LADY
+    dw_const PCDaycareLadyText,                      TEXT_PC_DAYCARE_LADY
     dw_const MoveRelearnerText1,                     TEXT_PC_MOVE_RELEARNER
     dw_const IndigoPlateauLobbyGymGuideText,         TEXT_PC_PSYCHIC
 	dw_const PCWitchText,                            TEXT_PC_WITCH

@@ -100,7 +100,7 @@ IsObjectHidden:
 	ldh a, [hCurrentSpriteOffset]
 	swap a
 	ld b, a                         ; b = sprite slot number
-	; Hardcoded check for roguelike pokeball slots (6-9) on stage maps
+	; Hardcoded check for roguelike pokeball/NPC slots (6-10) on stage maps
 	cp 6
 	jr z, .checkMaybeRoguePB
 	cp 7
@@ -108,6 +108,8 @@ IsObjectHidden:
 	cp 8
 	jr z, .checkMaybeRoguePB
 	cp 9
+	jr z, .checkMaybeRoguePB
+	cp 10
 	jr z, .checkMaybeRoguePB
 	jr .normalCheck
 .checkMaybeRoguePB
@@ -126,6 +128,9 @@ IsObjectHidden:
 	cp 8
 	jr z, .checkRewardBit
 	ld c, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	cp 9
+	jr z, .checkRewardBit
+	ld c, TOGGLE_ROGUE_TRADE_NPC    ; slot 10 = trade NPC
 .checkRewardBit
 	ld b, FLAG_TEST
 	ld hl, wToggleableObjectFlags
