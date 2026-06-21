@@ -498,21 +498,11 @@ db 0x0  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x5  ; final trainer: masterball class pokemon
 
-; get a random number in a certain range
-; c is the range
-Rangerandom::
-push bc
-call Random                 ; get a random number to determine pokemon
-ldh [hMultiplicand+2], a    ; place number in for multiplication
-xor a
-ldh [hMultiplicand], a      ; put zero in highest byte
-ldh [hMultiplicand+1], a    ; put second byte for multiplication
-ld a, c                     ; multiply by amount of this class
-ldh [hMultiplier], a        ; place amount of class in multiplier
-call Multiply               ; multiply random number by amount in class
-ldh a, [hProduct+2]         ; high byte = floor(random*N/256), always in [0,N-1]
-pop bc
-ret
+; Rangerandom moved to home/random.asm (HOME bank) so every bank can reach it
+; with a plain `call` - it used to live here (bank 07 / "rogue" section) and
+; every cross-bank caller was using a plain `call` instead of `farcall`,
+; silently executing whatever happened to be at that address in the caller's
+; own bank instead of this function.
 
 ;GetWeightedLevel:
 ;	ld a, [wPartyCount]
@@ -752,7 +742,7 @@ ScaleTrainer_evolution:
 	srl b
 	sub b
 	ld [wCurEnemyLevel], a
-	call EnemyMonEvolve
+	call EvolveMonByLevel
 	pop af
 	ld [wCurEnemyLevel], a
 	pop bc
@@ -798,15 +788,17 @@ RandomizeRegularTrainerMons:
 	sub b
 	ld [wCurEnemyLevel], a
 	call GetRandMon
-	call EnemyMonEvolve
+	call EvolveMonByLevel
 	pop af
 	ld [wCurEnemyLevel], a
 	pop de
 	ret
 
 
-; Pokemon needs to be in d
-EnemyMonEvolve:
+; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
+; allows (used for enemy trainer mons AND reward/given mons - despite the
+; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
+EvolveMonByLevel:
 	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
 	ld b, 0
 	ld a, d
@@ -815,20 +807,20 @@ EnemyMonEvolve:
 	rl b
 	ld c, a		;BC now contains the pokemon's offset in the pointer table
 	add hl, bc	;and HL now points to the correct position in the pointer table
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBufferEnd
-	ld hl, wEvoDataBufferEnd	;let's now point HL to said address
+	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBuffer
+	ld hl, wEvoDataBuffer	;let's now point HL to said address
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a				;HL now points to the address of the pokemon's evolution list
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvoDataBufferEnd - wEvoDataBufferEnd
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBufferEnd
-	ld hl, wEvoDataBufferEnd	;we can now reference the evolution list by pointing HL to it
-	
+	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
+	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
+	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
+
 .evoloop
 	ld a, [hli]
 	and a
@@ -860,7 +852,8 @@ EnemyMonEvolve:
 	ret c
 	ld a, [hl]
 	ld [wCurPartySpecies], a
-	jp EnemyMonEvolve
+	ld d, a             ; carry the evolved species forward so chains (e.g. Charmander->Charmeleon->Charizard) cascade
+	jp EvolveMonByLevel
 
 .handleeevee
 	call Random
@@ -889,27 +882,27 @@ EnemyMonEvolve:
 DevolveMon:	
 	ld hl, EvosMovesPointerTable
 .nextmonloop
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBufferEnd
+	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBuffer
 	;note, HL is now already incremented
-	ld a, [wEvoDataBufferEnd + 1]
+	ld a, [wEvoDataBuffer + 1]
 	cp $FF
 	ret z	;return if reached end of evolution pointer list
 
 	push hl
-	ld hl, wEvoDataBufferEnd	;let's now point HL to said address
+	ld hl, wEvoDataBuffer	;let's now point HL to said address
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a				;HL now points to the address of the pokemon's evolution list
 
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvoDataBufferEnd - wEvoDataBufferEnd
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBufferEnd
-	
-	ld hl, wEvoDataBufferEnd	;we can now reference the evolution list by pointing HL to it
+	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
+	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
+
+	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
 	call .evosloop
 	pop hl
 	jr nz, .nextmonloop
@@ -1022,19 +1015,19 @@ EvolveStep:
 	rl b
 	ld c, a
 	add hl, bc
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 2
 	call FarCopyData
-	ld hl, wEvoDataBufferEnd
+	ld hl, wEvoDataBuffer
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
-	ld de, wEvoDataBufferEnd
+	ld de, wEvoDataBuffer
 	ld a, BANK(EvosMovesPointerTable)
 	ld bc, 4
 	call FarCopyData
-	ld hl, wEvoDataBufferEnd
+	ld hl, wEvoDataBuffer
 	ld a, [hl]
 	cp EVOLVE_LEVEL
 	jr nz, .noEvo

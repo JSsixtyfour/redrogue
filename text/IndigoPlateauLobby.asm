@@ -20,22 +20,133 @@ _WitchIntroText::
     cont "if you dare"
 	done
 
-_WitchChallengeText::
-	text "All #MON"
-	line "will be one level"
-    cont "higher than"
-    cont "normal in the"
-    cont "next zone"
-    
-    para "In exchange your"
-	line "next reward"
-	cont "#MON will have"
-	cont "higher rarity"
-	
-    para "Do we have a"
+_WitchChallenge1Text::
+	text "This zone hands"
+	line "out no free"
+	cont "#MON"
+	done
+
+_WitchChallenge2Text::
+	text "No hidden item"
+	line "in this zone"
+	done
+
+_WitchChallenge3Text::
+	text "No money from"
+	line "battles this zone"
+	done
+
+_WitchChallenge4Text::
+	text "Rolls favor"
+	line "common #MON"
+	cont "this zone"
+	done
+
+_WitchChallenge5Text::
+	text "Foes will be"
+	line "tougher, higher"
+	cont "level"
+	done
+
+_WitchChallenge6Text::
+	text "Foes will be"
+	line "rarer breeds"
+	done
+
+_WitchChallenge7Text::
+	text "Your party stays"
+	line "smaller this"
+	cont "zone"
+	done
+
+_WitchChallenge8Text::
+	text "Your #MON will"
+	line "feel sluggish"
+	done
+
+_WitchChallenge9Text::
+	text "Your whole team"
+	line "starts poisoned"
+	done
+
+_WitchChallenge10Text::
+	text "Drag a fight out"
+	line "too long and"
+	cont "you'll pay for it"
+	done
+
+_WitchChallenge11Text::
+	text "This zone's boss"
+	line "keeps fearsome"
+	cont "company"
+	done
+
+_WitchChallenge12Text::
+	text "Every hit you"
+	line "land hurts you"
+	cont "too"
+	done
+
+_WitchChallenge13Text::
+	text "Step into my"
+	line "GAMBLER'S"
+	cont "PARADISE"
+	done
+
+_WitchPrize1Text::
+	text "Win and your"
+	line "reward #MON"
+	cont "will be rarer"
+
+	para "Do we have a"
 	line "bargain?"
 	done
-    
+
+_WitchPrize2Text::
+	text "Win and your"
+	line "item finds"
+	cont "get rarer"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize3Text::
+	text "Win and I'll"
+	line "boost your prize"
+	cont "money"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize4Text::
+	text "Win and your"
+	line "#MON gain"
+	cont "extra EXP"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize5Text::
+	text "Win and your"
+	line "critical hits"
+	cont "increase"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize6Text::
+	text "Win and your"
+	line "moves land"
+	cont "more often"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
 _WitchAcceptanceText::
 	text "So mote it be"
 	done

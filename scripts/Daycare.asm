@@ -48,6 +48,8 @@ DaycareGentlemanText:
 	call PrintText
 	ld a, 1
 	ld [wDayCareInUse], a
+	ld a, [wBattleCount]
+	ld [wDayCareDepositBattleCount], a
 	ld a, PARTY_TO_DAYCARE
 	ld [wMoveMonType], a
 	call MoveMon
@@ -65,13 +67,14 @@ DaycareGentlemanText:
 	call GetPartyMonName
 	ld a, DAYCARE_DATA
 	ld [wMonDataLocation], a
-	call LoadMonData
-	callfar CalcLevelFromExperience
-	ld a, d
-	cp MAX_LEVEL
-	jr c, .skipCalcExp
-
-	ld d, MAX_LEVEL
+	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
+	farcall GetRewardMonLevel   ; a = current salesman-tier level (also sets wCurEnemyLevel)
+	ld d, a
+	ld hl, wDayCareMonBoxLevel
+	ld a, [hl]
+	ld [wDayCareStartLevel], a
+	cp d
+	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
 	callfar CalcExperience
 	ld hl, wDayCareMonExp
 	ldh a, [hExperience]
@@ -80,24 +83,17 @@ DaycareGentlemanText:
 	ld [hli], a
 	ldh a, [hExperience + 2]
 	ld [hl], a
-	ld d, MAX_LEVEL
-
-.skipCalcExp
-	xor a
-	ld [wDayCareNumLevelsGrown], a
 	ld hl, wDayCareMonBoxLevel
-	ld a, [hl]
-	ld [wDayCareStartLevel], a
-	cp d
 	ld [hl], d
-	ld hl, .MonNeedsMoreTimeText
-	jr z, .next
-	ld a, [wDayCareStartLevel]
+	ld a, [wDayCareStartLevel]  ; display-only: how many levels it gained, no longer used for pricing
 	ld b, a
 	ld a, d
 	sub b
 	ld [wDayCareNumLevelsGrown], a
 	ld hl, .MonHasGrownText
+	jr .next
+.noGrowth
+	ld hl, .MonNeedsMoreTimeText
 
 .next
 	call PrintText
@@ -105,17 +101,33 @@ DaycareGentlemanText:
 	cp PARTY_LENGTH
 	ld hl, .NoRoomForMonText
 	jp z, .leaveMonInDayCare
+	; price = $500 per stage (route/gym) completed since deposit
+	ld a, [wBattleCount]
+	ld b, a
+	ld a, [wDayCareDepositBattleCount]
+	ld c, a
+	ld a, b
+	sub c                       ; a = battles fought since deposit
+	ld b, 0                     ; b = stages elapsed
+.countStagesElapsed
+	cp 10
+	jr c, .stagesElapsedDone
+	sub 10
+	inc b
+	jr .countStagesElapsed
+.stagesElapsedDone
 	ld de, wDayCareTotalCost
 	xor a
 	ld [de], a
 	inc de
 	ld [de], a
 	ld hl, wDayCarePerLevelCost
-	ld a, $1
+	ld a, $5
 	ld [hli], a
 	ld [hl], $0
-	ld a, [wDayCareNumLevelsGrown]
-	inc a
+	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
+	and a
+	jr z, .noCost
 	ld b, a
 	ld c, 2
 .calcPriceLoop
@@ -128,6 +140,7 @@ DaycareGentlemanText:
 	pop hl
 	dec b
 	jr nz, .calcPriceLoop
+.noCost
 	ld hl, .OweMoneyText
 	call PrintText
 	ld a, MONEY_BOX

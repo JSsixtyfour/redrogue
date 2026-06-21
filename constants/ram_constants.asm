@@ -150,6 +150,33 @@ DEF NUM_BADGES EQU const_value
 	const BIT_ROGUE_GYM_NEXT        ; 0 — set on route entry, cleared on badge receipt
 	const BIT_ROGUE_FINAL_TRAINER   ; 1 — final trainer of tier (level/class bonus)
 	const BIT_ROGUE_TRADE_ACTIVE    ; 2 — trade offer is live for this reward batch
+	const BIT_WITCH_ACCEPTED        ; 3 — player accepted the active witch challenge
+
+; wWitchChallenge values (1-NUM_WITCH_CHALLENGES; challenge and prize are
+; rolled independently in PCWitchSetup, no fixed pairing)
+DEF CHALLENGE_NO_REWARD_POKEMON     EQU 1  ; tier: low
+DEF CHALLENGE_NO_RANDOM_ITEM        EQU 2  ; tier: low
+DEF CHALLENGE_NO_MONEY              EQU 3  ; tier: low
+DEF CHALLENGE_REDUCED_RARITY        EQU 4  ; tier: low
+DEF CHALLENGE_INCREASED_LEVELS      EQU 5  ; tier: medium
+DEF CHALLENGE_INCREASED_RARITY_FOES EQU 6  ; tier: medium
+DEF CHALLENGE_PARTY_LIMIT           EQU 7  ; tier: medium
+DEF CHALLENGE_SLOWED_POKEMON        EQU 8  ; tier: medium
+DEF CHALLENGE_ALL_POISONED          EQU 9  ; tier: hard
+DEF CHALLENGE_TURN_LIMIT            EQU 10 ; tier: hard
+DEF CHALLENGE_LEGENDARY_BOSS        EQU 11 ; tier: hard
+DEF CHALLENGE_RECOIL_ATTACKS        EQU 12 ; tier: hard
+DEF CHALLENGE_GAMBLERS_PARADISE     EQU 13 ; tier: special
+DEF NUM_WITCH_CHALLENGES            EQU 13
+
+; wWitchPrize values
+DEF PRIZE_RARITY_POKEMON EQU 1 ; a: bonus added to reward mon class roll
+DEF PRIZE_RARITY_ITEM    EQU 2 ; b: bonus added to item tier roll
+DEF PRIZE_MONEY          EQU 3 ; c: multiplies wAmountMoneyWon
+DEF PRIZE_EXP_BOOST      EQU 4 ; d: extra BoostExp pass
+DEF PRIZE_CRIT_BOOST     EQU 5 ; e: halves speed threshold in crit check
+DEF PRIZE_ACC_BOOST      EQU 6 ; f: re-rolls once on a miss
+DEF NUM_WITCH_PRIZES     EQU 6
 
 ; hFindPathFlags
 	const_def

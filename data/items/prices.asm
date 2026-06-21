@@ -101,4 +101,5 @@ ItemPrices::
 	bcd3 0     ; LEFTOVERS
 	bcd3 5000  ; PEARL
 	bcd3 0     ; PP_TONIC
-	assert_table_length NUM_ITEMS + NUM_FLOORS + 3
+	bcd3 0     ; KO_DEFIANCE
+	assert_table_length NUM_ITEMS + NUM_FLOORS + 4

@@ -102,10 +102,16 @@ call AllSpeciesCheck        ; check if pokemon already in box or party
 xor a                       ; clear out a
 pop hl                      ; reload selection class
 cp c
-jr z, .done                 ; if 0, you have found a suitable pokemon
-jp hl                       ; if 1, you have selected an already existing team member and need to redo
-ld a, d                     ; place pokemon in a
-Call EnemyMonEvolve
+jr nz, .retry                ; if 1, you have selected an already existing team member and need to redo
+; evolve based on wCurEnemyLevel (caller must set it before calling Random_Pokemon_Selection)
+ld a, d
+ld [wCurPartySpecies], a    ; EvolveMonByLevel reads d for lookup, writes evolved species here if applicable
+call EvolveMonByLevel
+ld a, [wCurPartySpecies]
+ld d, a                     ; d = possibly-evolved species, matches existing caller convention
+jr .done
+.retry
+jp hl
 
 .done
 RET
@@ -185,6 +191,9 @@ RogueRewardTradeRoll::
     set BIT_ROGUE_TRADE_ACTIVE, [hl]
     xor a
     ld [wroguenpctradedialogue], a  ; use TRADE_DIALOGSET_CASUAL (0) for text lookup
+    push bc
+    farcall GetRewardMonLevel       ; wCurEnemyLevel must be set before species pick for evolution check
+    pop bc
     inc b
     ld c, b
     call Random_Pokemon_Selection   ; offered species -> d
@@ -220,6 +229,7 @@ rogue_pokemon_randomized_batch::
    and a
    jr nz, .roguepokemon2
    .rollpokemon1
+   farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
    call Random
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
@@ -231,6 +241,7 @@ rogue_pokemon_randomized_batch::
    and a
    jr nz, .roguepokemon3
    .rollpokemon2
+   farcall GetRewardMonLevel
    call Random
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
@@ -245,6 +256,7 @@ rogue_pokemon_randomized_batch::
    and a
    jr nz, .doneBatch
    .rollpokemon3
+   farcall GetRewardMonLevel
    call Random
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]

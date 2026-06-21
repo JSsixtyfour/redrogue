@@ -282,7 +282,11 @@ MainInBattleLoop:
 	ld hl, wBattleMonHP
 	ld a, [hli]
 	or [hl] ; is battle mon HP 0?
-	jp z, HandlePlayerMonFainted  ; if battle mon HP is 0, jump
+	jr nz, .mainLoopPlayerAlive
+	call TryKODefiance
+	jr z, .mainLoopPlayerAlive
+	jp HandlePlayerMonFainted  ; if battle mon HP is 0 and defiance didn't save it, jump
+.mainLoopPlayerAlive
 	ld hl, wEnemyMonHP
 	ld a, [hli]
 	or [hl] ; is enemy mon HP 0?
@@ -421,7 +425,10 @@ MainInBattleLoop:
 	ret nz ; if so, return
 	ld a, b
 	and a
-	jp z, HandlePlayerMonFainted
+	jr nz, .AIActionUsedEnemyFirst
+	call TryKODefiance
+	jr z, .AIActionUsedEnemyFirst
+	jp HandlePlayerMonFainted
 .AIActionUsedEnemyFirst
 	call HandlePoisonBurnLeechSeed
 	jp z, HandleEnemyMonFainted
@@ -434,7 +441,11 @@ MainInBattleLoop:
 	and a
 	jp z, HandleEnemyMonFainted
 	call HandlePoisonBurnLeechSeed
-	jp z, HandlePlayerMonFainted
+	jr nz, .enemyFirstPoisonPlayerAlive
+	call TryKODefiance
+	jr z, .enemyFirstPoisonPlayerAlive
+	jp HandlePlayerMonFainted
+.enemyFirstPoisonPlayerAlive
 	call DrawHUDsAndHPBars
 	call CheckNumAttacksLeft
 	jp MainInBattleLoop
@@ -447,7 +458,11 @@ MainInBattleLoop:
 	and a
 	jp z, HandleEnemyMonFainted
 	call HandlePoisonBurnLeechSeed
-	jp z, HandlePlayerMonFainted
+	jr nz, .playerFirstPoisonPlayerAlive
+	call TryKODefiance
+	jr z, .playerFirstPoisonPlayerAlive
+	jp HandlePlayerMonFainted
+.playerFirstPoisonPlayerAlive
 	call DrawHUDsAndHPBars
 	ld a, $1
 	ldh [hWhoseTurn], a
@@ -459,7 +474,10 @@ MainInBattleLoop:
 	ret nz ; if so, return
 	ld a, b
 	and a
-	jp z, HandlePlayerMonFainted
+	jr nz, .AIActionUsedPlayerFirst
+	call TryKODefiance
+	jr z, .AIActionUsedPlayerFirst
+	jp HandlePlayerMonFainted
 .AIActionUsedPlayerFirst
 	call HandlePoisonBurnLeechSeed
 	jp z, HandleEnemyMonFainted
@@ -703,7 +721,10 @@ HandleEnemyMonFainted:
 	call AnyPartyAlive
 	ld a, d
 	and a
-	jp z, HandlePlayerBlackOut ; if no party mons are alive, the player blacks out
+	jr nz, .someoneAlive
+	call TryKODefiance
+	jp nz, HandlePlayerBlackOut ; if no party mons are alive (and defiance didn't save us), the player blacks out
+.someoneAlive
 	ld hl, wBattleMonHP
 	ld a, [hli]
 	or [hl] ; is battle mon HP zero?
@@ -943,14 +964,37 @@ TrainerBattleVictory:
 	call DelayFrames
 	call PrintEndBattleText
 ; win money
+	; witch's "no money" challenge zeroes the win before it's shown or added;
+	; her "increased money" prize doubles it instead (independent rolls, so
+	; both could be active at once - zero doubled is still zero, which is fine)
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noWitchMoneyEffect
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_MONEY
+	jr nz, .checkMoneyPrize
+	xor a
+	ld hl, wAmountMoneyWon
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+.checkMoneyPrize
+	ld a, [wWitchPrize]
+	cp PRIZE_MONEY
+	jr nz, .noWitchMoneyEffect
+	ld de, wAmountMoneyWon + 2
+	ld hl, wAmountMoneyWon + 2
+	ld c, $3
+	predef AddBCDPredef ; double it: wAmountMoneyWon += wAmountMoneyWon
+.noWitchMoneyEffect
 	ld hl, MoneyForWinningText
 	call PrintText
-    
+
     xor a
 	ld [wIsTrainerBattle], a
 	inc a
 	ld [wWasTrainerBattle], a
-    
+
 	ld de, wPlayerMoney + 2
 	ld hl, wAmountMoneyWon + 2
 	ld c, $3
@@ -981,7 +1025,7 @@ HandlePlayerMonFainted:
 	call AnyPartyAlive     ; test if any more mons are alive
 	ld a, d
 	and a
-	jp z, HandlePlayerBlackOut
+	jp z, HandlePlayerBlackOut ; KO Defiance is checked upstream, before this function is ever reached
 	ld hl, wEnemyMonHP
 	ld a, [hli]
 	or [hl] ; is enemy mon's HP 0?
@@ -1134,6 +1178,128 @@ ChooseNextMon:
 	ld a, [hli]
 	or [hl]
 	ret
+
+; ============================================================
+; TryKODefiance
+; Called as soon as the player's active mon's HP is detected at 0, BEFORE
+; any fainting visuals/text play (RemoveFaintedPlayerMon's slide-down etc.).
+; Self-contained: syncs wBattleMonHP to the party array, then checks whether
+; this is actually the last conscious mon. If some other party mon still has
+; HP, this isn't a defiance situation at all (the normal single-mon-fainted
+; flow should run), so it returns with the zero flag CLEAR.
+; If this IS the last mon and KO_DEFIANCE is in the bag with uses remaining
+; (and it's not a link battle), revives wPlayerMonNumber's mon at half max
+; HP, clears its status, and returns with the zero flag SET so the caller
+; can fall through to its normal "mon is fine, continue" path as if HP had
+; never reached 0 in the first place, no faint animation ever plays.
+; If defiance isn't available, returns with the zero flag CLEAR (caller
+; should proceed to the normal fainted/blackout handling).
+; ============================================================
+TryKODefiance::
+	call ReadPlayerMonCurHPAndStatus ; commit wBattleMonHP to the party array before checking
+	call AnyPartyAlive
+	ld a, d
+	and a
+	jp nz, .noDefiance        ; someone else is still alive - this isn't a defiance situation
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jp z, .noDefiance        ; skip in link battles
+	ld b, KO_DEFIANCE
+	call IsItemInBag
+	jr z, .noDefiance
+	ld a, [wKODefianceUsages]
+	and a
+	jr z, .noDefiance
+	dec a
+	ld [wKODefianceUsages], a
+
+	; half of max HP, minimum 1
+	ld hl, wBattleMonMaxHP
+	ld a, [hli]
+	ld b, a                  ; b = max HP high byte
+	ld a, [hl]
+	ld c, a                  ; c = max HP low byte
+	srl b
+	rr c
+	ld a, b
+	or c
+	jr nz, .haveRevivalHP
+	ld c, 1
+.haveRevivalHP
+	ld hl, wBattleMonHP
+	ld [hl], b
+	inc hl
+	ld [hl], c
+	xor a
+	ld [wBattleMonStatus], a
+
+	; sync the same HP/status to the party slot
+	ld a, [wPlayerMonNumber]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ld hl, wPartyMon1HP
+	call AddNTimes
+	push hl
+	ld a, [wBattleMonHP]
+	ld [hl], a
+	inc hl
+	ld a, [wBattleMonHP + 1]
+	ld [hl], a
+	pop hl
+	ld bc, MON_STATUS - MON_HP
+	add hl, bc
+	xor a
+	ld [hl], a
+
+	ld a, SFX_HEAL_HP
+	call PlaySoundWaitForCurrent
+
+	; animate the HP bar filling from empty up to b:c (the revival HP just
+	; written above), same predef Recover/Revive/etc. use for their bar fills
+	xor a
+	ld [wHPBarOldHP], a
+	ld [wHPBarOldHP + 1], a
+	ld a, c
+	ld [wHPBarNewHP], a
+	ld a, b
+	ld [wHPBarNewHP + 1], a
+	ld hl, wBattleMonMaxHP
+	ld a, [hli]
+	ld [wHPBarMaxHP + 1], a
+	ld a, [hl]
+	ld [wHPBarMaxHP], a
+	hlcoord 10, 9    ; tile pointer to player HP bar
+	ld a, 1
+	ld [wHPBarType], a
+	predef UpdateHPBar2
+
+	; TODO: a short sprite-blink (à la SE_BLINK_MON) on the revived mon could
+	; sell the "clutch save" moment further. Not wired up yet - AnimationBlinkMon
+	; lives in a different bank (engine/battle/animations.asm) and always
+	; targets whichever mon hWhoseTurn currently points at, so it needs the
+	; turn forced to the player and a real farcall (requires exporting
+	; AnimationBlinkMon::) before this is safe to enable.
+;	ldh a, [hWhoseTurn]
+;	push af
+;	xor a
+;	ldh [hWhoseTurn], a
+;	farcall AnimationBlinkMon
+;	pop af
+;	ldh [hWhoseTurn], a
+
+	call DrawPlayerHUDAndHPBar
+	call LoadScreenTilesFromBuffer1
+	ld hl, KODefianceActivatedText
+	call PrintText
+	xor a
+	ret
+.noDefiance
+	ld a, 1
+	and a
+	ret
+
+KODefianceActivatedText:
+	text_far _KODefianceActivatedText
+	text_end
 
 ; called when player is out of usable mons.
 ; prints appropriate lose message, sets carry flag if player blacked out (special case for initial rival fight)

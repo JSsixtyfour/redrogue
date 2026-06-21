@@ -36,6 +36,7 @@ IndigoPlateauLobby_Script:
 	call PCTraderSuperNerdSetup
 	call PCPokemonSalesmanSetup
 	call PCClerksSetup
+	call PCWitchSetup
 
 .normal
 	ld hl, wCurrentMapScriptFlags
@@ -155,9 +156,31 @@ PCWitchText:
 	ld hl, .WitchIntroText
 	call YesNoScript
 	jr nz, .refuse
-	ld hl, .Challenge
-	call YesNoScript
+	ld a, [wWitchChallenge]
+	dec a                    ; 0-based index
+	ld hl, .ChallengeTextTable
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de                ; hl += 2 * index (each entry is a dw)
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText             ; just the challenge description, no question yet
+	ld a, [wWitchPrize]
+	dec a                    ; 0-based index
+	ld hl, .PrizeTextTable
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de                ; hl += 2 * index (each entry is a dw)
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call YesNoScript           ; prize teaser + "Do we have a bargain?"
 	jr nz, .refuse
+	ld hl, wRogueFlagsBitfield
+	set BIT_WITCH_ACCEPTED, [hl]
 	ld hl, .Accept
 	call PrintText
     call GBFadeOutToBlack
@@ -177,8 +200,105 @@ PCWitchText:
 	text_far _WitchIntroText
 	text_end
 
-.Challenge:
-	text_far _WitchChallengeText
+.ChallengeTextTable:
+	dw .Challenge1
+	dw .Challenge2
+	dw .Challenge3
+	dw .Challenge4
+	dw .Challenge5
+	dw .Challenge6
+	dw .Challenge7
+	dw .Challenge8
+	dw .Challenge9
+	dw .Challenge10
+	dw .Challenge11
+	dw .Challenge12
+	dw .Challenge13
+
+.Challenge1:
+	text_far _WitchChallenge1Text
+	text_end
+
+.Challenge2:
+	text_far _WitchChallenge2Text
+	text_end
+
+.Challenge3:
+	text_far _WitchChallenge3Text
+	text_end
+
+.Challenge4:
+	text_far _WitchChallenge4Text
+	text_end
+
+.Challenge5:
+	text_far _WitchChallenge5Text
+	text_end
+
+.Challenge6:
+	text_far _WitchChallenge6Text
+	text_end
+
+.Challenge7:
+	text_far _WitchChallenge7Text
+	text_end
+
+.Challenge8:
+	text_far _WitchChallenge8Text
+	text_end
+
+.Challenge9:
+	text_far _WitchChallenge9Text
+	text_end
+
+.Challenge10:
+	text_far _WitchChallenge10Text
+	text_end
+
+.Challenge11:
+	text_far _WitchChallenge11Text
+	text_end
+
+.Challenge12:
+	text_far _WitchChallenge12Text
+	text_end
+
+.Challenge13:
+	text_far _WitchChallenge13Text
+	text_end
+
+; index = wWitchPrize - 1; see constants/ram_constants.asm for the PRIZE_* ids.
+; Rolled independently of the challenge - no fixed pairing.
+.PrizeTextTable:
+	dw .Prize1
+	dw .Prize2
+	dw .Prize3
+	dw .Prize4
+	dw .Prize5
+	dw .Prize6
+
+.Prize1:
+	text_far _WitchPrize1Text
+	text_end
+
+.Prize2:
+	text_far _WitchPrize2Text
+	text_end
+
+.Prize3:
+	text_far _WitchPrize3Text
+	text_end
+
+.Prize4:
+	text_far _WitchPrize4Text
+	text_end
+
+.Prize5:
+	text_far _WitchPrize5Text
+	text_end
+
+.Prize6:
+	text_far _WitchPrize6Text
 	text_end
 
 .Accept:
@@ -235,6 +355,8 @@ PCDaycareLadyText:
 	call PrintText
 	ld a, 1
 	ld [wDayCareInUse2], a
+	ld a, [wBattleCount]
+	ld [wDayCareDepositBattleCount2], a
 	ld a, PARTY_TO_DAYCARE2
 	ld [wMoveMonType], a
 	call MoveMon
@@ -252,13 +374,14 @@ PCDaycareLadyText:
 	call GetPartyMonName
 	ld a, DAYCARE_DATA2
 	ld [wMonDataLocation], a
-	call LoadMonData
-	callfar CalcLevelFromExperience
-	ld a, d
-	cp MAX_LEVEL
-	jr c, .skipCalcExp
-
-	ld d, MAX_LEVEL
+	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
+	farcall GetRewardMonLevel   ; a = current salesman-tier level (also sets wCurEnemyLevel)
+	ld d, a
+	ld hl, wDayCareMon2BoxLevel
+	ld a, [hl]
+	ld [wDayCareStartLevel2], a
+	cp d
+	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
 	callfar CalcExperience
 	ld hl, wDayCareMon2Exp
 	ldh a, [hExperience]
@@ -267,24 +390,18 @@ PCDaycareLadyText:
 	ld [hli], a
 	ldh a, [hExperience + 2]
 	ld [hl], a
-	ld d, MAX_LEVEL
-
-.skipCalcExp
-	xor a
-	ld [wDayCareNumLevelsGrown2], a
 	ld hl, wDayCareMon2BoxLevel
-	ld a, [hl]
-	ld [wDayCareStartLevel2], a
-	cp d
 	ld [hl], d
-	ld hl, MonNeedsMoreTimeText
-	jr z, .next
-	ld a, [wDayCareStartLevel2]
+	ld a, [wDayCareStartLevel2]  ; display-only: how many levels it gained, no longer used for pricing
 	ld b, a
 	ld a, d
 	sub b
 	ld [wDayCareNumLevelsGrown2], a
+	ld [wDayCareNumLevelsGrown], a  ; MonHasGrownText is shared with the Gentleman and hardcodes this variable
 	ld hl, MonHasGrownText
+	jr .next
+.noGrowth
+	ld hl, MonNeedsMoreTimeText
 
 .next
 	call PrintText
@@ -292,17 +409,33 @@ PCDaycareLadyText:
 	cp PARTY_LENGTH
 	ld hl, NoRoomForMonText
 	jp z, .leaveMonInDayCare
-	ld de, wDayCareTotalCost
+	; price = $500 per stage (route/gym) completed since deposit
+	ld a, [wBattleCount]
+	ld b, a
+	ld a, [wDayCareDepositBattleCount2]
+	ld c, a
+	ld a, b
+	sub c                       ; a = battles fought since deposit
+	ld b, 0                     ; b = stages elapsed
+.countStagesElapsed
+	cp 10
+	jr c, .stagesElapsedDone
+	sub 10
+	inc b
+	jr .countStagesElapsed
+.stagesElapsedDone
+	ld de, wDayCareTotalCost2
 	xor a
 	ld [de], a
 	inc de
 	ld [de], a
 	ld hl, wDayCarePerLevelCost2
-	ld a, $1
+	ld a, $5
 	ld [hli], a
 	ld [hl], $0
-	ld a, [wDayCareNumLevelsGrown2]
-	inc a
+	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
+	and a
+	jr z, .noCost
 	ld b, a
 	ld c, 2
 .calcPriceLoop
@@ -315,6 +448,7 @@ PCDaycareLadyText:
 	pop hl
 	dec b
 	jr nz, .calcPriceLoop
+.noCost
 	ld hl, OweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
@@ -391,19 +525,14 @@ PCDaycareLadyText:
 	jr .done
 
 .leaveMonInDayCare
-	ld a, [wDayCareStartLevel]
-	ld [wDayCareMonBoxLevel], a
+	ld a, [wDayCareStartLevel2]
+	ld [wDayCareMon2BoxLevel], a
 
 .done
 	call PrintText
 	jp TextScriptEnd
 
 
-; just needs ram update for woman
-; data constants
-; experience calc
-; second wram location
-; update daycare_exp.asm
 PCDaycareGentlemanText:
 	text_asm
 	call SaveScreenTilesToBuffer2
@@ -447,6 +576,8 @@ PCDaycareGentlemanText:
 	call PrintText
 	ld a, 1
 	ld [wDayCareInUse], a
+	ld a, [wBattleCount]
+	ld [wDayCareDepositBattleCount], a
 	ld a, PARTY_TO_DAYCARE
 	ld [wMoveMonType], a
 	call MoveMon
@@ -464,13 +595,14 @@ PCDaycareGentlemanText:
 	call GetPartyMonName
 	ld a, DAYCARE_DATA
 	ld [wMonDataLocation], a
-	call LoadMonData
-	callfar CalcLevelFromExperience
-	ld a, d
-	cp MAX_LEVEL
-	jr c, .skipCalcExp
-
-	ld d, MAX_LEVEL
+	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
+	farcall GetRewardMonLevel   ; a = current salesman-tier level (also sets wCurEnemyLevel)
+	ld d, a
+	ld hl, wDayCareMonBoxLevel
+	ld a, [hl]
+	ld [wDayCareStartLevel], a
+	cp d
+	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
 	callfar CalcExperience
 	ld hl, wDayCareMonExp
 	ldh a, [hExperience]
@@ -479,24 +611,17 @@ PCDaycareGentlemanText:
 	ld [hli], a
 	ldh a, [hExperience + 2]
 	ld [hl], a
-	ld d, MAX_LEVEL
-
-.skipCalcExp
-	xor a
-	ld [wDayCareNumLevelsGrown], a
 	ld hl, wDayCareMonBoxLevel
-	ld a, [hl]
-	ld [wDayCareStartLevel], a
-	cp d
 	ld [hl], d
-	ld hl, MonNeedsMoreTimeText
-	jr z, .next
-	ld a, [wDayCareStartLevel]
+	ld a, [wDayCareStartLevel]  ; display-only: how many levels it gained, no longer used for pricing
 	ld b, a
 	ld a, d
 	sub b
 	ld [wDayCareNumLevelsGrown], a
 	ld hl, MonHasGrownText
+	jr .next
+.noGrowth
+	ld hl, MonNeedsMoreTimeText
 
 .next
 	call PrintText
@@ -504,17 +629,33 @@ PCDaycareGentlemanText:
 	cp PARTY_LENGTH
 	ld hl, NoRoomForMonText
 	jp z, .leaveMonInDayCare
+	; price = $500 per stage (route/gym) completed since deposit
+	ld a, [wBattleCount]
+	ld b, a
+	ld a, [wDayCareDepositBattleCount]
+	ld c, a
+	ld a, b
+	sub c                       ; a = battles fought since deposit
+	ld b, 0                     ; b = stages elapsed
+.countStagesElapsed
+	cp 10
+	jr c, .stagesElapsedDone
+	sub 10
+	inc b
+	jr .countStagesElapsed
+.stagesElapsedDone
 	ld de, wDayCareTotalCost
 	xor a
 	ld [de], a
 	inc de
 	ld [de], a
 	ld hl, wDayCarePerLevelCost
-	ld a, $1
+	ld a, $5
 	ld [hli], a
 	ld [hl], $0
-	ld a, [wDayCareNumLevelsGrown]
-	inc a
+	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
+	and a
+	jr z, .noCost
 	ld b, a
 	ld c, 2
 .calcPriceLoop
@@ -527,6 +668,7 @@ PCDaycareGentlemanText:
 	pop hl
 	dec b
 	jr nz, .calcPriceLoop
+.noCost
 	ld hl, OweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
@@ -999,7 +1141,7 @@ PCTraderSuperNerdSetup:
     
     
 	.randomselect
-    call Rangerandom
+    call Rangerandom    ; now in HOME bank (home/random.asm), safe to call from any bank
     ld c, a     ; place random number in c
     ld hl, wAllSpecies
     add hl, bc
@@ -1035,7 +1177,10 @@ PCTraderSuperNerdSetup:
     ; if we're here, it's masterball class
     ; will need to make some exception for mew and mewtwo UPDATE
     .get_pokemon
-    call Random_Pokemon_Selection
+    push bc
+    farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
+    pop bc
+    farcall Random_Pokemon_Selection  ; lives in a different bank (07) than this file (06) - plain call would execute garbage
     ld a, d
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
@@ -1072,7 +1217,10 @@ PCPokemonSalesmanSetup:
     ld [hl], c
     
     .get_pokemon
-    call Random_Pokemon_Selection
+    push bc
+    farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
+    pop bc
+    farcall Random_Pokemon_Selection  ; lives in a different bank (07) than this file (06) - plain call would execute garbage
     ld a, d
     ld [wroguenpcsell], a ; load in pokemon that they will give player
     
@@ -1093,14 +1241,67 @@ PCPokemonSalesmanSetup:
     ld [hli], a
     ld [hl], $A       ; Amount of items
     
-    ld hl, PCClerkText1Items    ; ram address to save ids to
-    call Random_Healing_Mart_Selection
-    
+    ld de, PCClerkText1Items    ; ram address to save ids to (passed via de - farcall clobbers hl/bc, not de)
+    farcall Random_Healing_Mart_Selection  ; lives in bank 07, this file is bank 06
+
     ld hl, PCClerkText2    ; begining of address used for generating marts
     ld  a, TX_SCRIPT_MART
     ld [hli], a
     ld [hl], $A       ; Amount of items
-    
-    ld hl, PCClerkText2Items    ; ram address to save ids to
-    call Random_StatTM_Mart_Selection
+
+    ld de, PCClerkText2Items    ; ram address to save ids to
+    farcall Random_StatTM_Mart_Selection  ; same bank-mismatch issue as above
+    ret
+
+; Rolls whether the witch appears this lobby visit (~1/3 chance). If she
+; appears, rolls her challenge and prize independently. BIT_WITCH_ACCEPTED
+; stays clear until the player actually accepts in PCWitchText. Effects of
+; the challenge/prize are not applied here - just the roll and bookkeeping.
+; Rolls whether a lobby NPC appears this lobby visit (~1/3 chance) and shows
+; or hides its toggleable object accordingly. Shared by every lobby resident
+; that should get an independent appear-or-not roll - currently only the
+; witch uses it; trader/salesman/clerks still always appear.
+; Input:  a = toggle index of the NPC's toggleable object
+; Output: Z set (and a = 0) if the NPC appears this visit, NZ (a = 1) if hidden
+RollLobbyNPCAppearance:
+    ld [wToggleableObjectIndex], a
+    ld c, 3
+    call Rangerandom         ; a = 0..2
+    and a
+    jr nz, .hide              ; nonzero = stays hidden this visit (2/3 chance)
+    predef ShowObject
+    xor a
+    ret
+.hide
+    predef HideObject
+    ld a, 1
+    ret
+
+; Rolls whether the witch appears, and if so, her challenge and prize as two
+; independent factors (no fixed challenge->prize pairing - either can be any
+; tier). Effects of the challenge/prize are applied elsewhere (Phase 2 hooks),
+; not here - this is just the roll and bookkeeping.
+PCWitchSetup:
+    ld hl, wRogueFlagsBitfield
+    res BIT_WITCH_ACCEPTED, [hl]
+    ; TESTING: appearance roll disabled, witch is always active
+;   ld a, TOGGLE_PC_WITCH
+;   call RollLobbyNPCAppearance
+;   jr nz, .noWitch
+    ld a, TOGGLE_PC_WITCH
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
+    ld c, NUM_WITCH_CHALLENGES
+    call Rangerandom          ; a = 0..NUM_WITCH_CHALLENGES-1
+    inc a
+    ld [wWitchChallenge], a   ; a = 1-based challenge id
+    ld c, NUM_WITCH_PRIZES
+    call Rangerandom          ; a = 0..NUM_WITCH_PRIZES-1
+    inc a
+    ld [wWitchPrize], a       ; a = 1-based prize id - independent of the challenge roll
+    ret
+.noWitch
+    xor a
+    ld [wWitchChallenge], a
+    ld [wWitchPrize], a
     ret

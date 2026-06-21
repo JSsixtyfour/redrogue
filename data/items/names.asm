@@ -101,4 +101,5 @@ ItemNames::
 	li "LEFTOVERS"
 	li "PEARL"
 	li "PP TONIC"
-	assert_list_length NUM_ITEMS + NUM_FLOORS + 3
+	li "KO DEFIANCE"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 4

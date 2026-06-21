@@ -123,6 +123,10 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 ; every move (see wRestorePPItemLevel / PPTonicRecovery)
 	const PP_TONIC      ; $64
 
+; rogue-mode key item: when the last conscious party mon would faint in any
+; battle, revives it at half HP instead (see wKODefianceUsages / TryKODefiance)
+	const KO_DEFIANCE   ; $65
+
 	const_next $C4
 
 ; HMs are defined before TMs, so the actual number of TM definitions

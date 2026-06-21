@@ -48,15 +48,15 @@ PowerPlant_Script:
 	RogueAutoWalkScripts PowerPlant, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POWER_PLANT, TEXT_POWERPLANT_NO_TURNING_BACK, SCRIPT_POWERPLANT_PLAYER_IS_MOVING, wPowerPlantCurScript
 
 PowerPlantEntranceCoords:
-	dbmapcoord 35, 4
-	dbmapcoord 35, 5
+	dbmapcoord 4, 35
+	dbmapcoord 5, 35
 	db -1
 
 PowerPlantNoCoords:
-	dbmapcoord 34, 4
-	dbmapcoord 34, 5
-	dbmapcoord 33, 4
-	dbmapcoord 33, 5
+	dbmapcoord 4, 34
+	dbmapcoord 5, 34
+	dbmapcoord 4, 33
+	dbmapcoord 5, 33
 	db -1
 
 PowerPlant_ScriptPointers:

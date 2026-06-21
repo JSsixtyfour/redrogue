@@ -219,6 +219,11 @@ HandleRewardChoice:
 ; were full), return without subtracting coins.
 	ret nc
 .normal
+	; _GivePokemon's add-to-party success path sets hNoWaitAfterText=1 for its
+	; own purposes and never clears it - without this, Goodluck below would
+	; flash by without waiting for a button press.
+	xor a
+	ldh [hNoWaitAfterText], a
 	ld hl, Goodluck
 	jp PrintText
 .bagFull
@@ -261,32 +266,120 @@ Goodluck:
 	;text_waitbutton
 	text_end
 
-GetRewardMonLevel:
-	; level = 5 + (wBattleCount / 10) * 5, capped at 50
+GetRewardMonLevel::
+	; Reward Room and Oak's Lab (starter selection) always use a flat level 5
+	; regardless of progress. Everywhere else, the level is tailored to
+	; whichever tier is relevant (1 higher than the highest standard,
+	; non-final-bonus trainer level in that tier), read directly from
+	; trainer_difficulty_settings/_gym so it can never drift out of sync with
+	; the actual trainer data.
+	;
+	; Two different callers, two different tiers:
+	; - A stage's own reward pokeballs are rolled at stage entry, while still
+	;   on a route - the gym of the SAME round is always what's coming up
+	;   next, so this case always uses the gym tier, no remainder check.
+	; - The salesman/trader (lobby only) needs to know which door is
+	;   literally next, which does depend on wBattleCount's position within
+	;   the round (remainder 0-4 = route next, 5-9 = gym next).
+	ldh a, [hCurMap]
+	cp REWARD_ROOM
+	jr z, .flatFive
+	cp OAKS_LAB
+	jr z, .flatFive
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .lobbyCaller
+
 	ld a, [wBattleCount]
-	ld b, 0             ; b = round counter
-.countRounds
+	cp 90
+	jr c, .noClampRoundStage
+	ld a, 89
+.noClampRoundStage
+	ld b, 0                 ; b = round index (0-8)
+.getRoundIndexStage
 	cp 10
-	jr c, .roundsDone
+	jr c, .gotTable
 	sub 10
 	inc b
-	jr .countRounds
-.roundsDone
-	; b = round (0-8+)
-	ld a, b
-	add a               ; a = round*2
-	add a               ; a = round*4
-	add b               ; a = round*5
-	add 5               ; a = 5 + round*5
+	jr .getRoundIndexStage
+
+.lobbyCaller
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClampRound
+	ld a, 89                ; clamp to round 9's settings, same as GetRandRoster
+.noClampRound
+	ld b, 0                 ; b = round index (0-8)
+.getRoundIndex
+	cp 10
+	jr c, .gotRoundIndex
+	sub 10
+	inc b
+	jr .getRoundIndex
+.gotRoundIndex
+	; a = remainder within the round (0-9): 0-4 means a gym was just cleared
+	; (or no battles yet) and a route is next; 5-9 means a route was just
+	; cleared and the gym is next.
+	cp 5
+	jr nc, .gotTable
+	ld hl, trainer_difficulty_settings
+	jr .pickedTable
+.gotTable
+	ld hl, trainer_difficulty_settings_gym
+.pickedTable
+	ld a, b                 ; each settings block is 11 bytes
+	ld d, a
+	add a, a                ; *2
+	add a, a                ; *4
+	add a, a                ; *8
+	add a, d                ; *9
+	add a, d                ; *10
+	add a, d                ; *11
+	ld c, a
+	ld b, 0
+	add hl, bc               ; hl -> this round's 11-byte block (still bank 07 address)
+	ld de, wEvoDataBuffer    ; trainer_difficulty_settings/_gym live in bank 07,
+	ld a, BANK(trainer_difficulty_settings) ; this function doesn't - read across
+	ld bc, 2                ; banks instead of a plain (same-bank-only) [hl] read
+	call FarCopyData
+	ld a, [wEvoDataBuffer]   ; byte 0: level range
+	ld b, a
+	ld a, [wEvoDataBuffer + 1] ; byte 1: minimum level
+	add b                    ; minimum + range = (max standard level) + 1
 	cp 51
 	jr c, .levelOk
 	ld a, 50
 .levelOk
 	ld [wCurEnemyLevel], a
 	ret
+.flatFive
+	ld a, 5
+	ld [wCurEnemyLevel], a
+	ret
 
 RogueRefresh::
 	farcall MarkCurrentStageVisited  ; record this stage as visited for no-duplicate selection
+	; witch's "no reward pokemon" challenge: hide all 3 pokeballs and the
+	; trade NPC instead of the usual show/hide-by-trade-flag logic below
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .normalPokeballLogic
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_REWARD_POKEMON
+	jr nz, .normalPokeballLogic
+	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_ROGUE_TRADE_NPC
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	jr .randomItemCheck
+.normalPokeballLogic
 	; show/hide pokeball 1 and trade NPC based on trade active flag
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_TRADE_ACTIVE, a
@@ -314,6 +407,20 @@ RogueRefresh::
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+.randomItemCheck
+	; witch's "no random item" challenge: hide the random item instead of
+	; the usual unconditional show
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .showRandomItem
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_RANDOM_ITEM
+	jr nz, .showRandomItem
+	ld a, TOGGLE_STAGE_RANDOM_ITEM
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ret
+.showRandomItem
     ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef ShowObject

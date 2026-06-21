@@ -63,3 +63,15 @@ _PPTonicDescriptionText::
 	cont "each"
 	cont "battle!"
 	done
+
+_KODefianceDescriptionText::
+	text "Revives your"
+	line "last mon if"
+	cont "it would"
+	cont "faint!"
+	done
+
+_KODefianceActivatedText::
+	text "KO DEFIANCE"
+	line "activated!"
+	done

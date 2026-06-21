@@ -21,8 +21,8 @@ PowerPlant_Object:
 	def_warp_events
 	warp_event  4, 35, LAST_MAP, 4
 	warp_event  5, 35, LAST_MAP, 4
-	warp_event  0, 11, LAST_MAP, 4
-	warp_event  0,  3, INDIGO_PLATEAU_LOBBY, 1
+	warp_event 10, 28, LAST_MAP, 4
+	warp_event  0, 11, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 

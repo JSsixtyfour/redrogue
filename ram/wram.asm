@@ -700,13 +700,15 @@ wDayCareStartLevel:: db
 wDayCareNumLevelsGrown:: db
 wDayCareTotalCost:: dw ; BCD
 wDayCarePerLevelCost:: dw ; BCD (always $100)
+wDayCareDepositBattleCount:: db ; wBattleCount snapshot at deposit time
 
 NEXTU
 ; the level of the mon at the time it entered day care
-wDayCareStartLevel2:: ;db
-wDayCareNumLevelsGrown2:: ;db
-wDayCareTotalCost2:: ;dw ; BCD
-wDayCarePerLevelCost2:: ;dw ; BCD (always $100)
+wDayCareStartLevel2:: db
+wDayCareNumLevelsGrown2:: db
+wDayCareTotalCost2:: dw ; BCD
+wDayCarePerLevelCost2:: dw ; BCD (always $100)
+wDayCareDepositBattleCount2:: db ; wBattleCount snapshot at deposit time
 
 NEXTU
 ; which wheel the player is trying to stop
@@ -2060,6 +2062,10 @@ wHealAllItemLevel:: db
 ; Level 0 = 1/16 ... level 15 = 1/1 (full restore). Increment to "upgrade" the item.
 wRestorePPItemLevel:: db
 
+; KO_DEFIANCE remaining activations. 0 = exhausted (item stays in bag but does
+; nothing). Does not auto-replenish; only increased by future upgrades.
+wKODefianceUsages:: db
+
 wroguenpctradegive:: db
 wroguenpctradeget:: db
 wroguenpctradedialogue:: db
@@ -2100,11 +2106,40 @@ PCClerkText2Items::
     db
     db
     db
-    db ;-1 ; end    
+    db ;-1 ; end
+
+; Lobby witch challenge/prize state. wWitchChallenge/wWitchPrize are re-rolled
+; (or zeroed) every lobby entry; wWitchAccepted lives in wRogueFlagsBitfield
+; (BIT_WITCH_ACCEPTED) since it's a plain flag, not a value.
+;
+; Challenge effect parameters share a union: only one challenge is ever
+; active at a time, so only one of these interpretations is ever live.
+; Prize effect parameters do NOT share a union: challenges vary in how long
+; they last (some end with the current map, some linger for the rest of the
+; run), so it's possible to complete more than one over a run and have more
+; than one prize permanently active simultaneously - each needs its own byte.
+wWitchChallenge:: db      ; 0 = no witch/challenge this lobby visit, 1-NUM_WITCH_CHALLENGES = challenge id
+wWitchPrize:: db          ; 0 = none, 1-NUM_WITCH_PRIZES = prize id, rolled independently of the challenge
+
+UNION
+wWitchLevelBonus:: db     ; CHALLENGE_INCREASED_LEVELS: added to enemy levels
+NEXTU
+wPartyLimit:: db          ; CHALLENGE_PARTY_LIMIT: max party size (default PARTY_LENGTH)
+NEXTU
+wBattleTurnLimit:: db     ; CHALLENGE_TURN_LIMIT: turns before HP drain begins
+wBattleTurnCount:: db     ; CHALLENGE_TURN_LIMIT: current turn count this battle
+ENDU
+
+wRewardClassBonus:: db    ; prize a: added to reward mon class arg
+wItemClassBonus:: db      ; prize b: added to item tier
+wMoneyMultiplier:: db     ; prize c: multiplier for wAmountMoneyWon
+wPrizeExpBoost:: db       ; prize d: extra BoostExp pass in GainExperience
+wPrizeCritBoost:: db      ; prize e: halve speed threshold in crit check
+wPrizeAccBoost:: db       ; prize f: re-roll once on miss in MoveHitTest
 
 wGameProgressFlagsEnd::
 
-	ds 56
+	ds 46
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

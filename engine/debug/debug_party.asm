@@ -51,6 +51,30 @@ IF DEF(_DEBUG)
 	xor a
 	ld [wMonDataLocation], a
 
+	; Skipping the naming screen above means AskName never runs, so every
+	; debug party member's nickname slot is left blank instead of defaulting
+	; to anything - rendering that blank name later (e.g. in a party menu)
+	; reads past the end of an unterminated string. Give them all a generic
+	; placeholder name instead.
+	ld a, [wPartyCount]
+	ld b, a
+	ld de, wPartyMonNicks
+.debugNameLoop
+	ld hl, .DebugMonName
+	push de
+	ld bc, .DebugMonNameEnd - .DebugMonName
+	call CopyData       ; copies hl (source) -> de (dest), advancing both - but
+	pop de               ; restore de to the start of this slot, then advance it
+	ld hl, NAME_LENGTH   ; by the slot's full width, not just the bytes written,
+	add hl, de           ; so the next nickname starts at the next slot
+	ld d, h
+	ld e, l
+	dec b
+	jr nz, .debugNameLoop
+.DebugMonName
+	db "TEST@"
+.DebugMonNameEnd
+
 	; Exeggutor gets four HM moves.
 	ld hl, wPartyMon1Moves
 	ld a, FLY

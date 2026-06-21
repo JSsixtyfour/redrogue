@@ -2,6 +2,10 @@
 ; The code outputs 10 item IDs into ram
 ; need to push bc and de
 Random_Healing_Mart_Selection::
+; output-list pointer arrives in de, not hl - farcall clobbers hl/bc to do the
+; bank switch, so the caller can't pass it directly in hl
+ld h, d
+ld l, e
 ld a, 10
 
 healing_item_loop:
@@ -101,6 +105,9 @@ ld [hl], $FF                ; add FF to end the list
 RET
 
 Random_StatTM_Mart_Selection::
+; output-list pointer arrives in de, not hl - same reason as Random_Healing_Mart_Selection above
+ld h, d
+ld l, e
 ld a, 10
 
 stattm_item_loop:

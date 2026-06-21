@@ -85,6 +85,13 @@ GainExperience:
 	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	call nz, BoostExp ; if so, boost exp
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noWitchExpBoost
+	ld a, [wWitchPrize]
+	cp PRIZE_EXP_BOOST
+	call z, BoostExp ; witch's "extra EXP" prize: one more 1.5x pass
+.noWitchExpBoost
 	inc hl
 	inc hl
 	inc hl

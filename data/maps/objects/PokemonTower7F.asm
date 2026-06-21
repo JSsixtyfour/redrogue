@@ -16,6 +16,7 @@ PokemonTower7F_Object:
 
 	def_warp_events
 	warp_event  9, 16, LAST_MAP, 1
+    warp_event  9, 16, LAST_MAP, 1
 	warp_event 10,  1, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

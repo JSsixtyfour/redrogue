@@ -8,6 +8,8 @@ UseItem_::
 	jp z, UnusableItem
 	cp PP_TONIC ; outside ItemUsePtrTable's range (added after the elevator floors)
 	jp z, ItemUsePPTonic
+	cp KO_DEFIANCE ; outside ItemUsePtrTable's range (added after the elevator floors)
+	jp z, ItemUseKODefiance
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable
@@ -2673,6 +2675,19 @@ LeftoversDescriptionText:
 	text_end
 
 ; ============================================================
+; ItemUseKODefiance
+; KO_DEFIANCE is a key item: using it from the bag just shows a description.
+; The actual revival happens in TryKODefiance, called from the battle engine.
+; ============================================================
+ItemUseKODefiance:
+	ld hl, KODefianceDescriptionText
+	jp PrintText
+
+KODefianceDescriptionText:
+	text_far _KODefianceDescriptionText
+	text_end
+
+; ============================================================
 ; ItemUsePPTonic
 ; PP_TONIC is a key item: using it from the bag just shows a description.
 ; The actual restoration happens in PPTonicRecovery, called from EndOfBattle.
@@ -2821,6 +2836,8 @@ IsKeyItem_::
 	ret z ; LEFTOVERS is a key item: can't be tossed, heals the party after battles
 	cp PP_TONIC ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; PP_TONIC is a key item: can't be tossed, restores PP after battles
+	cp KO_DEFIANCE ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; KO_DEFIANCE is a key item: can't be tossed, revives your last mon once
 .notLeftovers
 	cp PEARL ; outside KeyItemFlags' range (added after the elevator floors)
 	jr nz, .notPearl

@@ -12,7 +12,6 @@ Rogue_Reward_Script_PokeballText_1::
 	jr .done
 
     .GetMon
-    call DisableWaitingAfterTextDisplay
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
     push de
@@ -87,7 +86,6 @@ Rogue_Reward_Script_PokeballText_2::
 	jr .done
 
     .GetMon
-    call DisableWaitingAfterTextDisplay
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
     push de
@@ -125,7 +123,6 @@ Rogue_Reward_Script_PokeballText_3::
 	jr .done
 
     .GetMon
-    call DisableWaitingAfterTextDisplay
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
     push de
