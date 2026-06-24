@@ -1,9 +1,7 @@
 CeladonGym_Script:
     call ErikaShowOrHideExitBlock
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, .initial
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, CeladonGymTrainerHeaders
 	ld de, CeladonGym_ScriptPointers
@@ -11,8 +9,9 @@ CeladonGym_Script:
 	call ExecuteCurMapScriptInTable
 	ld [wCeladonGymCurScript], a
 	ret
-    
+
 .initial:
+	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName

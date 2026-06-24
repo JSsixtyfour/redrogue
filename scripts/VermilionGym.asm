@@ -1,13 +1,12 @@
 VermilionGym_Script:
     call LTSurgeShowOrHideExitBlock
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	res BIT_CUR_MAP_LOADED_1, [hl]
-	push hl
-	call nz, .initial
-	pop hl
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
+	; gated on EVENT_ENTER_ROOM (resets only on warp, unlike the
+	; BIT_CUR_MAP_LOADED_1/_2 flags which EndTrainerBattle also sets after
+	; every trainer fight) so the gym's TM is rolled exactly once per visit
+	; instead of repeatedly - also avoids colliding with
+	; LTSurgeShowOrHideExitBlock's own use of BIT_CUR_MAP_LOADED_1 above
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, VermilionGymTrainerHeaders
 	ld de, VermilionGym_ScriptPointers
@@ -17,6 +16,7 @@ VermilionGym_Script:
 	ret
 
 .initial:
+	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName

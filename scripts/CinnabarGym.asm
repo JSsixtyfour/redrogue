@@ -6,12 +6,9 @@ CinnabarGym_Script:
 	jp CallFunctionInTable
 
 CinnabarGymSetMapAndTiles:
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	push hl
-	call nz, .initial
-	pop hl
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	call nz, UpdateCinnabarGymGateTileBlocks
@@ -19,6 +16,7 @@ CinnabarGymSetMapAndTiles:
 	ret
 
 .initial:
+	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName

@@ -1,11 +1,7 @@
 PewterGym_Script:
     call BrockShowOrHideExitBlock
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, initial
-    
-    
+	CheckEvent EVENT_ENTER_ROOM
+	call z, initial
 	call EnableAutoTextBoxDrawing
 	ld hl, PewterGymTrainerHeaders
 	ld de, PewterGym_ScriptPointers
@@ -32,14 +28,8 @@ BrockShowOrHideExitBlock:
 	predef_jump ReplaceTileBlock
 
 initial:
-    ld a, [wItemBonusRarity]
-    add a, item_pokeball_odds       ; increased rarity for gym leaders, prevents a pokeball class TM
-    ld [wItemBonusRarity], a
-    ld a, TM                    ; set to generate a random TM
-    ld [wRogueDoorSelection], a
-    farcall Random_Item_Selection
-    ld a, [wItemBonusRarity]
-    sub a, item_pokeball_odds       ; restores Bonus Rarity to normal
+	SetEvent EVENT_ENTER_ROOM
+    farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
 	jp LoadGymLeaderAndCityName

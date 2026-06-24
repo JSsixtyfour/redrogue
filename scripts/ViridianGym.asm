@@ -1,9 +1,7 @@
 ViridianGym_Script:
     call GiovanniShowOrHideExitBlock
-    ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, .initial
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	ld hl, .CityName
 	ld de, .LeaderName
 	call LoadGymLeaderAndCityName
@@ -22,6 +20,7 @@ ViridianGym_Script:
 	db "GIOVANNI@"
     
 .initial:
+SetEvent EVENT_ENTER_ROOM
 farcall GymLeaderRandomItem
 ret
 

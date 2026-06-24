@@ -1,6 +1,7 @@
 FuchsiaGym_Script:
     call KogaShowOrHideExitBlock
-	call .initial
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, FuchsiaGymTrainerHeaders
 	ld de, FuchsiaGym_ScriptPointers
@@ -10,15 +11,11 @@ FuchsiaGym_Script:
 	ret
 
 .initial:
+	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	ret z
 	ld hl, .CityName
 	ld de, .LeaderName
-	call LoadGymLeaderAndCityName
-	ret
+	jp LoadGymLeaderAndCityName
     
 
 

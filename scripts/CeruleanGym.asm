@@ -1,10 +1,7 @@
 CeruleanGym_Script:
     call MistyShowOrHideExitBlock
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_2, [hl]
-	res BIT_CUR_MAP_LOADED_2, [hl]
-	call nz, .initial
-    
+	CheckEvent EVENT_ENTER_ROOM
+	call z, .initial
 	call EnableAutoTextBoxDrawing
 	ld hl, CeruleanGymTrainerHeaders
 	ld de, CeruleanGym_ScriptPointers
@@ -14,6 +11,7 @@ CeruleanGym_Script:
 	ret
 
 .initial:
+	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
