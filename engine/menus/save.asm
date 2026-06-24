@@ -73,6 +73,8 @@ LoadMainData:
 	call CopyData
 	ld a, [sTileAnimations]
 	ldh [hTileAnimations], a
+	ld a, [sCurMap]         ; restore current map id into HRAM so Continue enters
+	ldh [hCurMap], a        ; the saved map (not map 0), fixing the sprite-set glitch
 
 ; this part is redundant, LoadCurrentBoxData is always called next
 	ld hl, sCurBoxData
@@ -234,6 +236,8 @@ SaveMainData:
 
 	ldh a, [hTileAnimations]
 	ld [sTileAnimations], a
+	ldh a, [hCurMap]        ; hCurMap is HRAM (not in wMainData), save it explicitly
+	ld [sCurMap], a
 	ld hl, sGameData
 	ld bc, sGameDataEnd - sGameData
 	call CalcCheckSum

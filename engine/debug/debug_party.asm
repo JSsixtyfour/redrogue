@@ -60,6 +60,11 @@ IF DEF(_DEBUG)
 	ld b, a
 	ld de, wPartyMonNicks
 .debugNameLoop
+	push bc              ; preserve loop counter - both `ld bc` below and CopyData
+	                     ; clobber b, which otherwise underflows to $ff on the first
+	                     ; `dec b` and turns this into a near-infinite loop that
+	                     ; marches de through all of WRAM, corrupting the stack and
+	                     ; crashing the debug new game
 	ld hl, .DebugMonName
 	push de
 	ld bc, .DebugMonNameEnd - .DebugMonName
@@ -69,6 +74,7 @@ IF DEF(_DEBUG)
 	add hl, de           ; so the next nickname starts at the next slot
 	ld d, h
 	ld e, l
+	pop bc               ; restore loop counter
 	dec b
 	jr nz, .debugNameLoop
 .DebugMonName

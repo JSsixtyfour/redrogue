@@ -20,6 +20,10 @@ sSpriteData::  ds wSpriteDataEnd - wSpriteDataStart
 sPartyData::   ds wPartyDataEnd - wPartyDataStart
 sCurBoxData::  ds wBoxDataEnd - wBoxDataStart
 sTileAnimations:: db
+; current map id - hCurMap lives in HRAM (not in the saved wMainData block), so
+; it must be saved/restored explicitly like hTileAnimations above, or Continue
+; loads with hCurMap=0 and InitOutsideMapSprites loads the wrong sprite set
+sCurMap:: db
 sGameDataEnd::
 sMainDataCheckSum:: db
 
