@@ -2355,6 +2355,11 @@ LoadMapData::
 	call LoadMapHeader
 	farcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
+	ldh a, [hCurMap]            ; load current map
+	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
+	jr nz, .notProcCave         ; proceed as normal if not procedural stage
+	homecall GenerateProceduralCave ; use procedural generation routine
+.notProcCave
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
 ; copy current map view to VRAM
