@@ -47,7 +47,7 @@ DEF PC_EDGE_BOTTOM EQU 1
 DEF PC_EDGE_LEFT   EQU 2
 DEF PC_EDGE_RIGHT  EQU 3
 
-DEF NUM_PC_OBSTACLES EQU 3
+DEF NUM_PC_OBSTACLES EQU 2  ; PCObstacleTable - 117 moved to its own pass, see PCDecorateLast
 DEF NUM_PC_ROCKS     EQU 7  ; PCRockTable - stray-corner fallback decoration
 
 ; Scratch storage: WRAM0 has no free bytes left for a new dedicated section
@@ -81,9 +81,19 @@ DEF wProcCaveDY           EQU 14
 DEF wProcCaveLoopI        EQU 15
 DEF wProcCaveLoopX        EQU 16
 DEF wProcCaveLoopY        EQU 17
-; offsets 18/19/20/21 (SaveX/Y, BulgeX/Y) were used by an earlier live-
-; during-carving autotiling design, now removed - see the note above
+; offsets 19/20/21 (SaveY, BulgeX/Y) were used by an earlier live-during-
+; carving autotiling design, now removed - see the note above
 ; PCAutotilePass for why. Free again; reuse before adding new offsets.
+DEF wProcCaveIncludeRocks EQU 18  ; toggle read by PCClassifyCell's floor-check -
+                                  ; see PCIsFloorLike. 0 (default) = only real
+                                  ; floor/entrance count; set to 1 only during
+                                  ; PCAutotilePass's Pass C, which treats
+                                  ; PCRockTable IDs as floor-like too, purely
+                                  ; for cosmetic edge placement around rocks -
+                                  ; rocks are NOT passable, so this must never
+                                  ; be allowed to trigger the peninsula rule's
+                                  ; floor escalation (Pass C's caller guards
+                                  ; against that explicitly, see its comment).
 DEF wProcCaveFlags        EQU 22  ; PCClassifyCell's own scratch - must NOT reuse
                                   ; LoopI, which is live across PCCarveOne in the
                                   ; outer target loop in GenerateProceduralCave.
@@ -154,8 +164,6 @@ GenerateProceduralCave::
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, PC_BLOCK_ENTRANCE
 	call PCWriteCell
-
-	call PCDecorate
 
 	; --- 5 target points, each walked from the entrance ---
 	xor a
@@ -232,6 +240,20 @@ GenerateProceduralCave::
 	; the early-termination ambiguity that broke reachability - see
 	; [[redrogue-procedural-cave]] memory for the full story. ---
 	call PCAutotilePass
+
+	; --- decoration, now that the cave's final shape is fully settled ---
+	; Moved to run here (after carving + autotiling) instead of before
+	; carving, on purpose: placing decoration BEFORE the cave's shape was
+	; known meant a decoration could end up on the carved path (overwritten,
+	; harmless) or immediately adjacent to it (NOT harmless - it would get
+	; swept into the autotile pass's floor-adjacency rules like any other
+	; fill cell, which is how a decoration like 117 ended up only ever
+	; making visual sense as a north-wall edge in one observed case). Doing
+	; it last means 60/61 only ever land on cells PCAutotilePass left alone
+	; entirely (genuinely zero real floor neighbors - guaranteed isolated),
+	; and 117 is reframed as a rare decorative variant of an ALREADY-PLACED
+	; 21, never placed as loose fill at all. See PCDecorateLast below.
+	call PCDecorateLast
 
 	; --- patch the exit warp (wWarpEntries entry 1) to its chosen position ---
 	; The entrance is now a genuinely static warp_event (see the comment at
@@ -438,6 +460,47 @@ PCIsConvertible:
 	ret
 
 ; ============================================================
+; PCIsFloorLike
+; INPUT: a = a cell's current block ID.
+; OUTPUT: carry SET if floor-like for adjacency purposes - always true for
+;   PC_BLOCK_FLOOR/PC_BLOCK_ENTRANCE. ALSO true for any PCRockTable ID, but
+;   ONLY when wProcCaveIncludeRocks is set (see that flag's comment - this
+;   must stay off except during PCAutotilePass's Pass C, since rocks are
+;   not passable and must never be allowed to trigger the peninsula rule's
+;   floor escalation in PCClassifyCell).
+; ============================================================
+PCIsFloorLike:
+	cp PC_BLOCK_FLOOR
+	jr z, .yes
+	cp PC_BLOCK_ENTRANCE
+	jr z, .yes
+	ld b, a
+	ld a, [wBuffer + wProcCaveIncludeRocks]
+	and a
+	ld a, b
+	jr z, .no
+	cp 2
+	jr z, .yes
+	cp 77
+	jr z, .yes
+	cp 78
+	jr z, .yes
+	cp 79
+	jr z, .yes
+	cp 81
+	jr z, .yes
+	cp 82
+	jr z, .yes
+	cp 83
+	jr z, .yes
+.no
+	and a
+	ret
+.yes
+	scf
+	ret
+
+; ============================================================
 ; PCClassifyCell
 ; INPUT: wProcCaveCurX/Y = the cell to classify (must not itself be floor).
 ; OUTPUT: if at least one orthogonal neighbor is floor-like (PC_BLOCK_FLOOR
@@ -469,11 +532,8 @@ PCClassifyCell:
 	ld a, [wBuffer + wProcCaveDX]
 	ld [wBuffer + wProcCaveCurX], a
 	call PCReadCell
-	cp PC_BLOCK_FLOOR
-	jr z, .northFloor
-	cp PC_BLOCK_ENTRANCE
-	jr nz, .skipNorth
-.northFloor
+	call PCIsFloorLike
+	jr nc, .skipNorth
 	ld a, [wBuffer + wProcCaveFlags]
 	or 1
 	ld [wBuffer + wProcCaveFlags], a
@@ -487,11 +547,8 @@ PCClassifyCell:
 	ld a, [wBuffer + wProcCaveDX]
 	ld [wBuffer + wProcCaveCurX], a
 	call PCReadCell
-	cp PC_BLOCK_FLOOR
-	jr z, .southFloor
-	cp PC_BLOCK_ENTRANCE
-	jr nz, .skipSouth
-.southFloor
+	call PCIsFloorLike
+	jr nc, .skipSouth
 	ld a, [wBuffer + wProcCaveFlags]
 	or 2
 	ld [wBuffer + wProcCaveFlags], a
@@ -505,11 +562,8 @@ PCClassifyCell:
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
 	call PCReadCell
-	cp PC_BLOCK_FLOOR
-	jr z, .eastFloor
-	cp PC_BLOCK_ENTRANCE
-	jr nz, .skipEast
-.eastFloor
+	call PCIsFloorLike
+	jr nc, .skipEast
 	ld a, [wBuffer + wProcCaveFlags]
 	or 4
 	ld [wBuffer + wProcCaveFlags], a
@@ -523,11 +577,8 @@ PCClassifyCell:
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
 	call PCReadCell
-	cp PC_BLOCK_FLOOR
-	jr z, .westFloor
-	cp PC_BLOCK_ENTRANCE
-	jr nz, .skipWest
-.westFloor
+	call PCIsFloorLike
+	jr nc, .skipWest
 	ld a, [wBuffer + wProcCaveFlags]
 	or 8
 	ld [wBuffer + wProcCaveFlags], a
@@ -581,6 +632,27 @@ PCClassifyCell:
 	scf
 	ret
 .twoOrFewerSides
+
+	; opposite-sides exception: floor on both north+south, or both east+west
+	; (a wall cell sandwiched between two parallel corridors) isn't a corner
+	; pattern either - no 2-sided corner ID represents "open on two opposite
+	; sides", and picking one side via the priority chain below would hide
+	; the other (confirmed by an actual report: a "24" with floor genuinely
+	; on its east too). Resolve it the same way as the 3+ case: just open
+	; it into floor, merging the two corridors at that point - a wider
+	; merge point reads as a natural cave feature, and it needs no tile a
+	; clean 9-slice kit doesn't have. Same PC_BLOCK_PENDING_FLOOR sentinel,
+	; same reasoning, so this is automatically cascade-safe too.
+	ld a, b
+	cp %0011                ; exactly north+south, nothing else
+	jr z, .openOppositeSides
+	cp %1100                ; exactly east+west, nothing else
+	jr nz, .notOppositeSides
+.openOppositeSides
+	ld a, PC_BLOCK_PENDING_FLOOR
+	scf
+	ret
+.notOppositeSides
 
 	; IDs confirmed 2026-06-25 against the user's hand-drawn Polished Map
 	; intersection reference (ground truth - the static border template
@@ -1018,6 +1090,74 @@ PCAutotilePass:
 	ld [wBuffer + wProcCaveLoopY], a
 	cp PC_SIZE
 	jr nz, .yLoop
+
+	; --- Pass C: cosmetic edges around rocks ---
+	; Rocks (PCRockTable) only exist after Pass B places them, so this has
+	; to run as its own pass afterward - same order-dependency reasoning as
+	; the Pass A/B split. wProcCaveIncludeRocks makes PCIsFloorLike (used
+	; inside PCClassifyCell) treat rocks as floor-like for this pass only.
+	;
+	; Touches plain fill (25) AND any already-placed straight edge
+	; (21/29/26/24) - NOT existing corners (22/20/30/28), which are already
+	; the maximal 2-sided representation and have no further upgrade path.
+	; Revisiting straight edges matters: Pass B classifies purely from real
+	; floor, so an edge that's ALSO rock-adjacent on a second, adjacent side
+	; (e.g. a "26" with a rock to its north) was finalized before Pass C
+	; could ever see the rock - confirmed via an actual report ("26 north
+	; of a 2"). Reclassifying it here can upgrade it to the correct corner.
+	;
+	; A PC_BLOCK_PENDING_FLOOR result is deliberately discarded (cell is
+	; left exactly as it was, whether that's 25 or its prior edge ID), not
+	; written - rocks are NOT passable, so rock-adjacency must never open a
+	; cell into real floor, unlike a genuine 3-real-floor-sides peninsula.
+	; Corners produced here skip PCVerifyCorner too - that check is about
+	; real-path continuity, which doesn't apply when triggered by
+	; rock-adjacency.
+	ld a, 1
+	ld [wBuffer + wProcCaveIncludeRocks], a
+	xor a
+	ld [wBuffer + wProcCaveLoopY], a
+.cYLoop
+	xor a
+	ld [wBuffer + wProcCaveLoopX], a
+.cXLoop
+	ld a, [wBuffer + wProcCaveLoopX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveLoopY]
+	ld [wBuffer + wProcCaveCurY], a
+
+	call PCReadCell
+	cp 25
+	jr z, .cEligible
+	cp 21
+	jr z, .cEligible
+	cp 29
+	jr z, .cEligible
+	cp 26
+	jr z, .cEligible
+	cp 24
+	jr z, .cEligible
+	jr .cSkipCell
+.cEligible
+	call PCClassifyCell
+	jr nc, .cSkipCell
+	cp PC_BLOCK_PENDING_FLOOR
+	jr z, .cSkipCell
+	call PCWriteCell
+.cSkipCell
+	ld a, [wBuffer + wProcCaveLoopX]
+	inc a
+	ld [wBuffer + wProcCaveLoopX], a
+	cp PC_SIZE
+	jr nz, .cXLoop
+	ld a, [wBuffer + wProcCaveLoopY]
+	inc a
+	ld [wBuffer + wProcCaveLoopY], a
+	cp PC_SIZE
+	jr nz, .cYLoop
+
+	xor a
+	ld [wBuffer + wProcCaveIncludeRocks], a
 	ret
 
 ; ============================================================
@@ -1032,30 +1172,41 @@ PCAbs:
 	ret
 
 ; ============================================================
-; PCDecorate
-; Sprinkles obstacle blocks across the 18x18 interior (~1-in-40 cells,
-; deliberately rare) before any carving happens, so the carve pass below
-; always overwrites obstacles that land on the path. Obstacles are treated
-; just like plain fill by the autotiling in PCClassifyCell/PCIsConvertible -
-; any obstacle that survives next to carved floor gets edge/corner-ified
-; the same way a fill cell would.
+; PCDecorateLast
+; Two decoration passes over the 18x18 interior, run AFTER carving and the
+; full PCAutotilePass sweep (see the call site comment in
+; GenerateProceduralCave for why this moved here instead of running
+; before carving, like the original PCDecorate did).
+;
+; Pass 1: 60/61 (~1-in-40 chance) on any cell STILL plain fill (25) at this
+; point. PCAutotilePass would already have converted anything with a real
+; floor neighbor, so anything still 25 here is guaranteed genuinely
+; isolated - these can never end up adjacent to the cave structure at all.
+;
+; Pass 2: 117 (~1-in-40 chance) replacing an ALREADY-PLACED 21. Reframed as
+; a decorative variant of that one wall type specifically, never placed as
+; loose fill - 117 only ever made visual sense in a 21-adjacent context
+; (confirmed by an actual in-game screenshot report).
 ; ============================================================
-PCDecorate:
+PCDecorateLast:
 	ld a, 1
 	ld [wBuffer + wProcCaveLoopY], a
-.yLoop
+.fillYLoop
 	ld a, 1
 	ld [wBuffer + wProcCaveLoopX], a
-.xLoop
-	ld c, 40
-	call Rangerandom
-	and a
-	jr nz, .skipCell
-
+.fillXLoop
 	ld a, [wBuffer + wProcCaveLoopX]
 	ld [wBuffer + wProcCaveCurX], a
 	ld a, [wBuffer + wProcCaveLoopY]
 	ld [wBuffer + wProcCaveCurY], a
+	call PCReadCell
+	cp 25
+	jr nz, .fillSkipCell
+
+	ld c, 40
+	call Rangerandom
+	and a
+	jr nz, .fillSkipCell
 
 	ld c, NUM_PC_OBSTACLES
 	call Rangerandom
@@ -1065,29 +1216,61 @@ PCDecorate:
 	add hl, bc
 	ld a, [hl]
 	call PCWriteCell
-
-.skipCell
+.fillSkipCell
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
 	cp PC_SIZE - 1
-	jr nz, .xLoop
-
+	jr nz, .fillXLoop
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
 	cp PC_SIZE - 1
-	jr nz, .yLoop
+	jr nz, .fillYLoop
+
+	; Pass 2: 117 as a rare decorative variant of existing 21s
+	ld a, 1
+	ld [wBuffer + wProcCaveLoopY], a
+.wallYLoop
+	ld a, 1
+	ld [wBuffer + wProcCaveLoopX], a
+.wallXLoop
+	ld a, [wBuffer + wProcCaveLoopX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveLoopY]
+	ld [wBuffer + wProcCaveCurY], a
+	call PCReadCell
+	cp 21
+	jr nz, .wallSkipCell
+
+	ld c, 40
+	call Rangerandom
+	and a
+	jr nz, .wallSkipCell
+
+	ld a, 117
+	call PCWriteCell
+.wallSkipCell
+	ld a, [wBuffer + wProcCaveLoopX]
+	inc a
+	ld [wBuffer + wProcCaveLoopX], a
+	cp PC_SIZE - 1
+	jr nz, .wallXLoop
+	ld a, [wBuffer + wProcCaveLoopY]
+	inc a
+	ld [wBuffer + wProcCaveLoopY], a
+	cp PC_SIZE - 1
+	jr nz, .wallYLoop
 	ret
 
-; obstacle block IDs: 60/61 are classified as warp_ladder in the catalog, but
-; confirmed safe here - warp behavior is driven entirely by wWarpEntries
-; entries, not tile ID, and nothing ever creates a warp_event at a random
-; decoration position, so these are purely cosmetic when sprinkled. 117 is
-; an irregular_corner/corner-bucket piece that isn't a true corner (see the
-; classification doc's Prototype B note) but reads fine as a rare obstacle.
+; obstacle block IDs for PCDecorateLast's fill pass. 60/61 are classified as
+; warp_ladder in the catalog, but confirmed safe here - warp behavior is
+; driven entirely by wWarpEntries entries, not tile ID, and nothing ever
+; creates a warp_event at a random decoration position, so these are
+; purely cosmetic when sprinkled. 117 is handled separately (see
+; PCDecorateLast's second pass), not part of this table anymore.
 PCObstacleTable:
-	db 60, 61, 117
+	db 60, 61
 
 ; ============================================================
 ; PCCarveOne
@@ -1340,4 +1523,151 @@ PCBulge:
 	ld [wBuffer + wProcCaveCurX], a
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
+	ret
+
+; ============================================================================
+; DRAFT SKETCHES, 2026-06-25/26 - NOT WIRED IN, NOT TESTED, NOT ACTIVE.
+;
+; Everything below is commented out and not called from anywhere. Priority
+; order for implementing these (user's explicit order): exit warp ladder
+; tile -> random items in dead-ends -> rivers -> floor decor -> copy/paste
+; feature stamps. Pick up each one at a time, build+test before starting
+; the next - that discipline is what got the autotiling system working
+; after several rounds of "fixed it" that weren't.
+; ============================================================================
+
+; ----------------------------------------------------------------------
+; DRAFT 1: exit warp ladder tile
+; Pool {40, 39, 98} (user explicitly excluded 35 "to be safe"). Random
+; pick, no direction-matching needed - confirmed placeable on any floor
+; tile safely. Call this right after the exit's wWarpEntries patch in
+; GenerateProceduralCave (the exit's block position is already known at
+; that point as wProcCaveExitX/Y).
+; ----------------------------------------------------------------------
+;DEF NUM_PC_LADDER_IDS EQU 3
+;PCLadderTable:
+;	db 40, 39, 98
+;
+;PCPlaceExitLadder:
+;	ld a, [wBuffer + wProcCaveExitX]
+;	ld [wBuffer + wProcCaveCurX], a
+;	ld a, [wBuffer + wProcCaveExitY]
+;	ld [wBuffer + wProcCaveCurY], a
+;	ld c, NUM_PC_LADDER_IDS
+;	call Rangerandom
+;	ld hl, PCLadderTable
+;	ld c, a
+;	ld b, 0
+;	add hl, bc
+;	ld a, [hl]
+;	call PCWriteCell
+;	ret
+; Call site (after the exit wWarpEntries patch, before GenerateProceduralCave's ret):
+;	call PCPlaceExitLadder
+
+; ----------------------------------------------------------------------
+; DRAFT 2: random items in the 4 non-exit dead-ends
+; Researched the EXISTING mechanism (not invented) - see
+; engine/items/random_item_selection.asm (Random_Item_Selection, stores
+; result in wRogueItem) and engine/events/pick_up_item.asm (RandomPickUpItem,
+; which special-cases "sprite slot 6 on a recognized rogue stage map" to
+; call GiveItem with wRogueItem and then hide the sprite via the toggleable-
+; object system). Existing callers (e.g. scripts/RockTunnel1F.asm) call
+; `farcall Random_Item_Selection` once on EVENT_ENTER_ROOM, then rely on a
+; pre-placed object_event at sprite slot 6 in that map's object data.
+;
+; TWO real gaps to resolve before this works, both touching SHARED files,
+; not just this one:
+; 1. The pickup logic hardcodes "sprite slot 6" as THE rogue-item slot
+;    (singular) - see pick_up_item.asm:62-64 (`cp 6`). We need 4
+;    independent items, not 1, so this check needs extending to slots
+;    6/7/8/9 (or similar), each presumably needing its own wRogueItem-style
+;    variable (wRogueItem2/3/4?) so 4 different items can be rolled
+;    independently and given independently.
+; 2. IsRogueStageMap (custom_functions/random_stage_selection.asm) checks
+;    hCurMap against a literal table (RogueStageMapTable). PROCEDURAL_CAVE_1
+;    isn't in it - needs adding (`db PROCEDURAL_CAVE_1` appended, matching
+;    the existing append-is-safe pattern already used for
+;    data/maps/dungeon_maps.asm this session - verify NUM_STAGE_MAPS isn't
+;    a literal count the loop relies on before assuming append-only is safe;
+;    the loop here uses a $FF sentinel, which suggests it probably is, but
+;    confirm before trusting that).
+;
+; On TOP of the shared-file changes: object_events have to be declared at
+; BUILD TIME (def_object_events can't add a sprite at runtime), so
+; ProceduralCave1's object data needs 4 placeholder object_events
+; (matching IndigoPlateau-style minimal sprites, picture ID for a pokeball/
+; item presumably), and the generator needs to PATCH their X/Y at runtime
+; to the 4 dead-end target positions - same *category* of work as patching
+; wWarpEntries for the exit, but for sprite coordinates
+; (wSpritePlayerStateData-adjacent structures, not yet traced this
+; session - find the object_event sprite coordinate table's runtime
+; location before attempting this, the same way wWarpEntries was traced
+; earlier).
+;
+; Sketch of the generator-side piece only (the four dead-end positions are
+; already known as part of the existing target loop - wProcCaveTargetX/Y
+; for each of the 5 targets, skipping whichever index equals
+; wProcCaveExitIndex):
+;PCPlaceDeadEndItem:
+;	; INPUT: wProcCaveTargetX/Y = a confirmed non-exit dead-end this round.
+;	; would need: farcall Random_Item_Selection (or a per-slot variant),
+;	; then patch the matching object_event's sprite coordinate to
+;	; wProcCaveTargetX/Y*4 (tile conversion, same as the warp patches).
+;	ret
+
+; ----------------------------------------------------------------------
+; DRAFT 3: rivers
+; A second, independent carve pass using a water tile (118 - the Prototype
+; B kit's water ID, see Red Rogue Files/cavern-blockset-classification.md)
+; instead of floor, run AFTER the main 5-target carving is fully done so
+; it can check "is this cell already real floor" and route around it
+; (never overwrite a real path cell - "doesn't interfere with paths").
+; Water tiles would need to be collision-PASSABLE ("function like a floor
+; 1") - confirm 118's actual collision behavior before assuming this
+; (Cavern_Coll allowlist, decode rather than guess, per this whole
+; session's established practice on visual/collision IDs).
+;
+; Rough shape: pick a random start edge point (reuse PCEdgePoint) and a
+; random end edge point on a DIFFERENT edge, wobble-walk between them
+; exactly like PCCarveOne but writing 118 instead of PC_BLOCK_FLOOR, and
+; skip-instead-of-overwrite whenever the current cell already reads as
+; real floor (1/36) rather than fill. Needs its own autotile consideration
+; too - does water need edge transition tiles where it meets fill, the
+; way floor does? Not yet researched.
+
+; ----------------------------------------------------------------------
+; DRAFT 4: floor decor (16/17/18/19)
+; Genuinely different from PCDecorateLast's fill-decor (60/61 on untouched
+; 25) and the 117-as-21-variant pass - per the user's correction, 16-19
+; visually resemble FLOOR, not fill, and should be able to REPLACE a real
+; floor tile (not just sit on isolated fill), gated only on not blocking
+; a target.
+;
+; Open question worth resolving first: are 16-19 actually collision-
+; passable? If yes, replacing a floor tile with one of these is safe
+; automatically (the player can still walk through it, so it can never
+; truly "block" anything) - the only real constraint becomes "don't
+; overwrite the entrance (36), the exit ladder tile, or another dead-end's
+; force-stamped target cell," which are all already-known positions by
+; the time this could run (after carving, after the exit-ladder draft
+; above). If 16-19 are NOT passable, this needs a real graph-connectivity
+; check (e.g. only replace a floor cell if it has exactly 2 floor
+; neighbors that are direct opposites, i.e. a straight-through corridor
+; segment with no branch - much more involved, don't build this without
+; confirming passability first).
+
+; ----------------------------------------------------------------------
+; DRAFT 5: copy/paste feature stamps (e.g. pools)
+; User's plan: hand-author small .bin block-grids (not extracted from
+; existing ROM maps), then randomly stamp one into a procedurally
+; "acceptable" spot. Most open-ended item on the list, lowest priority,
+; deliberately not sketched in code yet - needs a design conversation
+; first: how is a stamp's size/shape declared (fixed NxM, or with its own
+; embedded width/height header), how is an "acceptable spot" defined
+; (probably: an NxM block of cells that are ALL still plain 25 - reuses
+; the same "still untouched fill" guarantee PCDecorateLast already relies
+; on), and how does the stamp get loaded into ROM (INCBIN per stamp file,
+; with a lookup table of pointers + dimensions). Come back to this only
+; after drafts 1-4 are real and tested.
 	ret
