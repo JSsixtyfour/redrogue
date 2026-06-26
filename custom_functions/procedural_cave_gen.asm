@@ -49,6 +49,7 @@ DEF PC_EDGE_RIGHT  EQU 3
 
 DEF NUM_PC_OBSTACLES EQU 2  ; PCObstacleTable - 117 moved to its own pass, see PCDecorateLast
 DEF NUM_PC_ROCKS     EQU 7  ; PCRockTable - stray-corner fallback decoration
+DEF NUM_PC_LADDER_IDS EQU 3 ; PCLadderTable - exit warp ladder tile, 35 deliberately excluded
 
 ; Scratch storage: WRAM0 has no free bytes left for a new dedicated section
 ; (confirmed via the linker map), so this borrows wBuffer (ram/wram.asm,
@@ -84,6 +85,9 @@ DEF wProcCaveLoopY        EQU 17
 ; offsets 19/20/21 (SaveY, BulgeX/Y) were used by an earlier live-during-
 ; carving autotiling design, now removed - see the note above
 ; PCAutotilePass for why. Free again; reuse before adding new offsets.
+DEF wProcCaveLadderOffset EQU 19  ; 0 or 1 - sub-tile remainder for the exit ladder's
+                                  ; wWarpEntries position, set by PCPlaceExitLadder
+                                  ; based on which ID got picked - see that function.
 DEF wProcCaveIncludeRocks EQU 18  ; toggle read by PCClassifyCell's floor-check -
                                   ; see PCIsFloorLike. 0 (default) = only real
                                   ; floor/entrance count; set to 1 only during
@@ -255,6 +259,14 @@ GenerateProceduralCave::
 	; 21, never placed as loose fill at all. See PCDecorateLast below.
 	call PCDecorateLast
 
+	; --- exit ladder tile: pick BEFORE patching wWarpEntries, since which ID
+	; gets picked determines the sub-tile remainder needed below ---
+	ld a, [wBuffer + wProcCaveExitX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveExitY]
+	ld [wBuffer + wProcCaveCurY], a
+	call PCPlaceExitLadder
+
 	; --- patch the exit warp (wWarpEntries entry 1) to its chosen position ---
 	; The entrance is now a genuinely static warp_event (see the comment at
 	; the top of this function), so it needs no runtime patching at all -
@@ -266,16 +278,87 @@ GenerateProceduralCave::
 	; on it, so none of the position-cache machinery above applies to it.
 	;
 	; wWarpEntries stores TILE coordinates (same units as wYCoord/wXCoord) -
-	; convert block -> tile by *4 (one block is 4x4 tiles) before writing.
+	; convert block -> tile by *2, NOT *4. A PC block is 4x4 RAW tiles for
+	; rendering (PC_BASE/PC_STRIDE addressing into wOverworldMap, confirmed
+	; correct against the real .blk file), but wYCoord/wXCoord's "tile" unit
+	; is a 2x2-raw-tile movement step, i.e. a PC block = exactly 2x2
+	; movement-tile units. *4 was the same mistake the entrance's position
+	; made early on (tried tile=block*4, e.g. (36,76) for block (9,19) -
+	; wrong, see [[redrogue-procedural-cave]]) before being corrected to
+	; ~block*2 (19,38) by hand. Confirmed against EVERY real warp_event in
+	; data/maps/objects/SeafoamIslandsB1F.asm cross-referenced against
+	; maps/SeafoamIslandsB1F.blk: tile = block*2 lands exactly on a sensible
+	; ladder-style block ID for all 7 real warps; tile = block*4 lands on
+	; garbage (border/plain floor) for all 7. Not in doubt.
+	;
+	; PLUS a per-ID sub-tile remainder (0 or 1, SAME value added to both axes -
+	; confirmed not independent per-axis below) - the engine's warp-tile-
+	; recognition check (CheckWarpsNoCollision -> ExtraWarpCheck ->
+	; IsWarpTileInFrontOfPlayer, home/overworld.asm + engine/overworld/
+	; player_state.asm) requires either the player's resting raw tile or the
+	; tile ahead of them (depending on approach direction) to match a
+	; recognized ID for the Cavern tileset - a bare position match alone is
+	; NOT enough (verified: every reachable approach direction at a plain
+	; block*2 position fired nothing). Checking all 7 real SeafoamIslandsB1F
+	; warps' (tile%2) against their block IDs showed block 39 always uses
+	; remainder (0,0), while blocks 40/60/62/124 always use remainder (1,1) -
+	; tied to which corner each block's distinctive icon graphic sits in
+	; (39's icon is top-left; 40/60/62/124's is bottom-right).
+	; PCPlaceExitLadder sets wProcCaveLadderOffset to the correct value (0 or
+	; 1) for whichever ID it just picked - apply it here.
 	ld hl, wWarpEntries + 4
 	ld a, [wBuffer + wProcCaveExitY]
 	add a, a
-	add a, a
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
 	ld [hli], a
 	ld a, [wBuffer + wProcCaveExitX]
 	add a, a
-	add a, a
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
 	ld [hl], a
+	ret
+
+; ============================================================
+; PCPlaceExitLadder
+; Stamps a random ladder-pool tile onto the exit's block position
+; (wProcCaveCurX/Y must already be set to the exit position by the caller).
+; No neighbor/direction logic needed - confirmed safe to place on any
+; floor tile. Pool is {40, 39, 62}; 35 deliberately excluded ("to be
+; safe" per user instruction), 98 dropped after decoding gfx/blocksets/
+; cavern.bst: 98 is 15/16 impassable raw tiles (almost entirely a wall
+; graphic), unlike 39/40/62 which are mostly open floor with the ladder
+; icon tucked into just one corner - confirmed via real PyBoy collision
+; test that 98 specifically blocked movement, see
+; [[redrogue-procedural-cave]].
+; ============================================================
+PCLadderTable:
+	db 40, 39, 62
+; Parallel table (same index) - sub-tile remainder needed for that ID's
+; wWarpEntries position to land on its recognized raw tile, see the long
+; comment above the wWarpEntries patch in GenerateProceduralCave. Derived
+; from every real warp_event in SeafoamIslandsB1F: 39 always uses
+; remainder 0 (icon is top-left), 40/62 always use remainder 1 (icon is
+; bottom-right).
+PCLadderOffsetTable:
+	db 1, 0, 1
+
+PCPlaceExitLadder:
+	ld c, NUM_PC_LADDER_IDS
+	call Rangerandom
+	ld c, a
+	ld hl, PCLadderTable
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	call PCWriteCell
+	ld hl, PCLadderOffsetTable
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	ld [wBuffer + wProcCaveLadderOffset], a
 	ret
 
 ; ============================================================
@@ -1530,40 +1613,12 @@ PCBulge:
 ;
 ; Everything below is commented out and not called from anywhere. Priority
 ; order for implementing these (user's explicit order): exit warp ladder
-; tile -> random items in dead-ends -> rivers -> floor decor -> copy/paste
-; feature stamps. Pick up each one at a time, build+test before starting
-; the next - that discipline is what got the autotiling system working
-; after several rounds of "fixed it" that weren't.
+; tile [IMPLEMENTED 2026-06-26, see PCPlaceExitLadder above] -> random
+; items in dead-ends -> rivers -> floor decor -> copy/paste feature
+; stamps. Pick up each one at a time, build+test before starting the
+; next - that discipline is what got the autotiling system working after
+; several rounds of "fixed it" that weren't.
 ; ============================================================================
-
-; ----------------------------------------------------------------------
-; DRAFT 1: exit warp ladder tile
-; Pool {40, 39, 98} (user explicitly excluded 35 "to be safe"). Random
-; pick, no direction-matching needed - confirmed placeable on any floor
-; tile safely. Call this right after the exit's wWarpEntries patch in
-; GenerateProceduralCave (the exit's block position is already known at
-; that point as wProcCaveExitX/Y).
-; ----------------------------------------------------------------------
-;DEF NUM_PC_LADDER_IDS EQU 3
-;PCLadderTable:
-;	db 40, 39, 98
-;
-;PCPlaceExitLadder:
-;	ld a, [wBuffer + wProcCaveExitX]
-;	ld [wBuffer + wProcCaveCurX], a
-;	ld a, [wBuffer + wProcCaveExitY]
-;	ld [wBuffer + wProcCaveCurY], a
-;	ld c, NUM_PC_LADDER_IDS
-;	call Rangerandom
-;	ld hl, PCLadderTable
-;	ld c, a
-;	ld b, 0
-;	add hl, bc
-;	ld a, [hl]
-;	call PCWriteCell
-;	ret
-; Call site (after the exit wWarpEntries patch, before GenerateProceduralCave's ret):
-;	call PCPlaceExitLadder
 
 ; ----------------------------------------------------------------------
 ; DRAFT 2: random items in the 4 non-exit dead-ends
