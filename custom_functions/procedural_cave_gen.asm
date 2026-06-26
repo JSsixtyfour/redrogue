@@ -32,6 +32,15 @@ DEF PC_BASE    EQU 81  ; MAP_BORDER + MAP_BORDER*PC_STRIDE
 
 DEF PC_BLOCK_FLOOR    EQU 1
 DEF PC_BLOCK_ENTRANCE EQU 36  ; distinct floor variant used for the entrance cell only
+; Temporary sentinel used ONLY during PCAutotilePass's peninsula fix (see
+; the comment there) - confirmed via a real before/after memory dump
+; (2026-06-25) that writing PC_BLOCK_FLOOR directly during the main sweep
+; let later-scanned cells mistake a JUST-converted cell for genuine
+; pre-existing floor, cascading false peninsula triggers down a row. This
+; value is never floor-like to PCClassifyCell during the main sweep, so it
+; can't cascade; a cleanup pass at the end converts every leftover sentinel
+; to real floor once the whole sweep (which can no longer see it) is done.
+DEF PC_BLOCK_PENDING_FLOOR EQU 255
 
 DEF PC_EDGE_TOP    EQU 0    ; procedural cave edge top of map, ect
 DEF PC_EDGE_BOTTOM EQU 1
@@ -562,7 +571,13 @@ PCClassifyCell:
 	ld a, c
 	cp 3
 	jr c, .twoOrFewerSides
-	ld a, PC_BLOCK_FLOOR
+	; PC_BLOCK_PENDING_FLOOR, NOT PC_BLOCK_FLOOR - see the constant's comment.
+	; Writing real floor here would let a cell scanned moments later mistake
+	; this just-converted cell for genuine pre-existing floor, cascading
+	; false peninsula triggers down a row - confirmed via a real before/after
+	; memory dump, not theorized. PCAutotilePass's cleanup pass converts this
+	; to real floor only after the whole sweep (which can't see it) is done.
+	ld a, PC_BLOCK_PENDING_FLOOR
 	scf
 	ret
 .twoOrFewerSides
@@ -862,7 +877,94 @@ PCRockTable:
 ; runs, a single pass is enough - no need to revisit a cell once it's been
 ; classified, unlike a live-during-carving approach would.
 ; ============================================================
+; ============================================================
+; PCAutotilePass
+; Two genuinely separate passes over the whole map, not one combined sweep.
+;
+; Pass A resolves ALL peninsula-driven floor first (a cell with 3+ real
+; floor neighbors becomes floor itself), using the same pending-sentinel
+; trick to stop false cascades WITHIN this pass. Only after Pass A's own
+; cleanup runs is the floor layout for the WHOLE map fully and finally
+; settled - both originally-carved floor AND peninsula-created floor.
+;
+; Pass B then does edge/corner classification using that complete, final
+; floor layout. This is necessary, not just tidier: even with Pass A's
+; anti-cascade fix, a single combined sweep can still legitimately produce
+; a cell that becomes new floor via the peninsula rule (using only ITS OWN
+; real original neighbors - not a cascade, a perfectly correct conversion)
+; AFTER an EARLIER-SCANNED neighbor has already been finalized as a plain
+; edge. That earlier neighbor never gets a chance to learn it now also
+; borders real floor. Confirmed via real before/after dumps: a `26` cell
+; with floor genuinely to its south too (which should have made it a `30`
+; corner) - the south neighbor only became floor moments later in the
+; same sweep, after the `26` was already written and never revisited.
+; Splitting into two passes removes the order-dependency entirely instead
+; of patching around it - by the time Pass B runs, ALL floor is fixed, so
+; it doesn't matter what order Pass B itself visits cells in.
+; ============================================================
 PCAutotilePass:
+	; --- Pass A: peninsula resolution only ---
+	xor a
+	ld [wBuffer + wProcCaveLoopY], a
+.aYLoop
+	xor a
+	ld [wBuffer + wProcCaveLoopX], a
+.aXLoop
+	ld a, [wBuffer + wProcCaveLoopX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveLoopY]
+	ld [wBuffer + wProcCaveCurY], a
+
+	call PCReadCell
+	call PCIsConvertible
+	jr nc, .aSkipCell
+	call PCClassifyCell
+	jr nc, .aSkipCell
+	cp PC_BLOCK_PENDING_FLOOR
+	jr nz, .aSkipCell           ; an edge/corner result - leave it for Pass B
+	call PCWriteCell
+.aSkipCell
+	ld a, [wBuffer + wProcCaveLoopX]
+	inc a
+	ld [wBuffer + wProcCaveLoopX], a
+	cp PC_SIZE
+	jr nz, .aXLoop
+	ld a, [wBuffer + wProcCaveLoopY]
+	inc a
+	ld [wBuffer + wProcCaveLoopY], a
+	cp PC_SIZE
+	jr nz, .aYLoop
+
+	; Pass A cleanup: convert this pass's own pending-floor sentinels to
+	; real floor now that Pass A's own sweep is fully finished.
+	xor a
+	ld [wBuffer + wProcCaveLoopY], a
+.cleanYLoop
+	xor a
+	ld [wBuffer + wProcCaveLoopX], a
+.cleanXLoop
+	ld a, [wBuffer + wProcCaveLoopX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveLoopY]
+	ld [wBuffer + wProcCaveCurY], a
+	call PCReadCell
+	cp PC_BLOCK_PENDING_FLOOR
+	jr nz, .cleanSkip
+	ld a, PC_BLOCK_FLOOR
+	call PCWriteCell
+.cleanSkip
+	ld a, [wBuffer + wProcCaveLoopX]
+	inc a
+	ld [wBuffer + wProcCaveLoopX], a
+	cp PC_SIZE
+	jr nz, .cleanXLoop
+	ld a, [wBuffer + wProcCaveLoopY]
+	inc a
+	ld [wBuffer + wProcCaveLoopY], a
+	cp PC_SIZE
+	jr nz, .cleanYLoop
+
+	; --- Pass B: edge/corner classification, floor layout now fully fixed ---
 	xor a
 	ld [wBuffer + wProcCaveLoopY], a
 .yLoop
@@ -880,6 +982,14 @@ PCAutotilePass:
 	call PCClassifyCell
 	jr nc, .skipCell
 
+	; Pass A already resolved every real peninsula case, so this shouldn't
+	; fire - but if it somehow does, just write floor directly (no cascade
+	; risk: this is the last pass, nothing left to read it as a false signal).
+	cp PC_BLOCK_PENDING_FLOOR
+	jr nz, .notPending
+	ld a, PC_BLOCK_FLOOR
+	jr .haveValue
+.notPending
 	; if the result is a corner, verify it's a real turn and not just two
 	; dead-end nubs (almost always a PCBulge poke) meeting by coincidence
 	cp 22
