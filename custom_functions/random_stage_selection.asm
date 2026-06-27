@@ -124,6 +124,38 @@ IsRogueStageMap::
 	xor a             ; Z set = not a stage map
 	ret
 
+; Procedurally generated stage maps that use the 4-slot "wild area pokeball"
+; random-item mechanism (TOGGLE_WILD_AREA_POKEBALL_1-4, see
+; engine/overworld/toggleable_objects.asm's IsObjectHidden and
+; engine/events/pick_up_item.asm's RandomPickUpItem) instead of the
+; Route1-style single TOGGLE_STAGE_RANDOM_ITEM. Deliberately a SEPARATE
+; table/check from RogueStageMapTable/IsRogueStageMap above - this map ID
+; range (slots 1-4) would otherwise collide with Route1-style maps' existing
+; slot 7-10 usage (reward pokeballs / trade NPC) if checked together.
+WildAreaStageMapTable:
+	db PROCEDURAL_CAVE_1
+	db -1
+
+; Returns: Z clear if current map uses the wild-area-pokeball mechanism,
+; Z set if not
+IsWildAreaStageMap::
+	ldh a, [hCurMap]
+	ld hl, WildAreaStageMapTable
+.stageLoop
+	ld c, [hl]
+	inc hl
+	inc c
+	jr z, .notStage   ; c was $FF sentinel (db -1 = $FF)
+	dec c
+	cp c
+	jr nz, .stageLoop
+	xor a
+	inc a             ; Z clear = is a wild-area stage map
+	ret
+.notStage
+	xor a             ; Z set = not a wild-area stage map
+	ret
+
 ; ============================================================
 ; _StageBitInfo  (private helper)
 ; Converts a stage index into the byte address and bit mask

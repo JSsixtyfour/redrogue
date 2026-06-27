@@ -408,6 +408,20 @@ ToggleableObjectStates:
     toggle_object_state PC_TRADENERD, ON
     toggle_object_state PC_MOVETUTOR, ON
 
+	; Wild area pokeballs - see constants/toggle_constants.asm. The hardcoded
+	; slot 1-4 bypass in IsObjectHidden/RandomPickUpItem never actually reads
+	; these (it never consults wToggleableObjectList for those slots), but
+	; assert_table_length still requires a matching entry per toggle const.
+	; Object-id values (1-4) are arbitrary/unused here - just need to be valid
+	; bytes, since data/maps/objects/ProceduralCave1.asm doesn't const_export
+	; per-ball names (not needed, positions/items are patched at runtime by
+	; sprite slot number, not by name).
+	toggleable_objects_for PROCEDURAL_CAVE_1
+	toggle_object_state 1, ON
+	toggle_object_state 2, ON
+	toggle_object_state 3, ON
+	toggle_object_state 4, ON
+
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 
 	db -1, 1, ON ; end

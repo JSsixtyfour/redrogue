@@ -2033,6 +2033,7 @@ wSSAnneB1FCurScript:: db
 wRoute1CurScript:: db
 wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
+wProceduralCave1CurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2047,6 +2048,9 @@ wVisitedStagesBitfield:: ds 4
 ;        bonus and rarer class distribution from trainer_difficulty_settings
 wRogueFlagsBitfield:: db
 wRogueItem:: dw
+wRogueItem2:: dw  ; wild area pokeball 2-4 (custom_functions/procedural_cave_gen.asm) -
+wRogueItem3:: dw  ; same single-byte-in-practice convention as wRogueItem above,
+wRogueItem4:: dw  ; nothing reads/writes the high byte of any of these
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
 wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — route stage map ID
 wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — gym stage map ID

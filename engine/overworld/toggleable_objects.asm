@@ -100,6 +100,18 @@ IsObjectHidden:
 	ldh a, [hCurrentSpriteOffset]
 	swap a
 	ld b, a                         ; b = sprite slot number
+	; Hardcoded check for wild-area pokeball slots (1-4) on procedurally
+	; generated stage maps - checked first, with its OWN map-gate
+	; (IsWildAreaStageMap), so it can't collide with Route1-style maps'
+	; existing slot 6-10 usage below.
+	cp 1
+	jr z, .checkMaybeWildArea
+	cp 2
+	jr z, .checkMaybeWildArea
+	cp 3
+	jr z, .checkMaybeWildArea
+	cp 4
+	jr z, .checkMaybeWildArea
 	; Hardcoded check for roguelike pokeball/NPC slots (6-10) on stage maps
 	cp 6
 	jr z, .checkMaybeRoguePB
@@ -112,6 +124,23 @@ IsObjectHidden:
 	cp 10
 	jr z, .checkMaybeRoguePB
 	jr .normalCheck
+.checkMaybeWildArea
+	push bc
+	farcall IsWildAreaStageMap
+	pop bc
+	jr z, .normalCheck              ; Z set = not a wild-area stage map
+	ld c, TOGGLE_WILD_AREA_POKEBALL_1
+	ld a, b
+	cp 1
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_2
+	cp 2
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_3
+	cp 3
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_4
+	jr .checkRewardBit
 .checkMaybeRoguePB
 	push bc
 	farcall IsRogueStageMap

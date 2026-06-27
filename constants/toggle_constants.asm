@@ -378,6 +378,22 @@ ENDM
 	const TOGGLE_PC_POKESALESMAN, ; D8
     const TOGGLE_PC_TRADENERD, ; D9
     const TOGGLE_PC_MOVETUTOR, ; DA
-    
+
+	; Wild area pokeballs (procedurally generated stages, e.g. ProceduralCave1) -
+	; 4 independent random items, one per dead-end. Hardcoded slot check lives
+	; in engine/overworld/toggleable_objects.asm's IsObjectHidden and
+	; engine/events/pick_up_item.asm's RandomPickUpItem, same pattern as the
+	; existing single TOGGLE_STAGE_RANDOM_ITEM but gated on the map being a
+	; wild-area stage specifically, not the generic IsRogueStageMap check -
+	; avoids colliding with Route1-style maps' existing slot 7-10 usage
+	; (reward pokeballs / trade NPC). Still needs a toggleable_objects_for
+	; block in data/maps/toggleable_objects.asm even though the hardcoded
+	; bypass never actually reads it - assert_table_length enforces every
+	; toggle const has a matching declared state.
+	toggle_consts_for PROCEDURAL_CAVE_1
+	const TOGGLE_WILD_AREA_POKEBALL_1
+	const TOGGLE_WILD_AREA_POKEBALL_2
+	const TOGGLE_WILD_AREA_POKEBALL_3
+	const TOGGLE_WILD_AREA_POKEBALL_4
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value
