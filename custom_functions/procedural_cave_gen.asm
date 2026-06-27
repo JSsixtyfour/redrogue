@@ -886,7 +886,10 @@ PCDropInWriteRect:
 
 	ld a, [de]
 	inc de
-	call PCWriteCell
+	push de                ; PERFORMANCE FIX 2026-06-26 regression: PCWriteCell
+	call PCWriteCell        ; now clobbers de too (used for its computed write
+	pop de                  ; address) - this relied on de surviving as the
+	                        ; running stamp-data pointer across each iteration.
 
 	ld a, [wBuffer + wProcCaveDropInCol]
 	inc a
@@ -1093,7 +1096,13 @@ PCPlaceExitLadder:
 	ld b, 0
 	add hl, bc
 	ld a, [hl]
-	call PCWriteCell
+	push bc                ; PERFORMANCE FIX 2026-06-26 regression: PCWriteCell
+	call PCWriteCell        ; now clobbers c too (used for its row-table index) -
+	pop bc                  ; this relied on c surviving across the call to
+	                        ; reuse the SAME ladder index into PCLadderOffsetTable
+	                        ; right after. Confirmed via a real A/B test (random
+	                        ; wWarpEntries garbage appeared only with the new
+	                        ; PCWriteCell, disappeared when temporarily reverted).
 	ld hl, PCLadderOffsetTable
 	ld b, 0
 	add hl, bc
@@ -1191,31 +1200,43 @@ PCOtherEdgesTable:
 ; PCWriteCell
 ; INPUT: a = block ID to write, wProcCaveCurX/Y = cell coords (0-19)
 ; ============================================================
+; Row-base lookup table for PCReadCell/PCWriteCell - PERFORMANCE FIX
+; 2026-06-26: these used to recompute the row offset from scratch on
+; EVERY call via a loop that added PC_STRIDE once per row of Y (0-19,
+; average ~9.5 iterations) - an O(Y) cost paid on every single read/
+; write, called many hundreds of times across PCAutotilePass alone.
+; This table turns it into an O(1) lookup + 2 adds, no loop. Each entry
+; is the absolute address of column 0 of that row, computed at link
+; time (row*PC_STRIDE is a pure assemble-time constant, so this reduces
+; to the same "label + constant" relocatable expression already used
+; everywhere else in this file, e.g. `ld hl, wOverworldMap + PC_BASE`).
+; See Red Rogue Files/procedural-cave-performance-plan.md for the
+; measured before/after - this was the plan's recommended first step.
+PCRowBaseTable:
+	FOR row, PC_SIZE
+	dw wOverworldMap + PC_BASE + row * PC_STRIDE
+	ENDR
+
 PCWriteCell:
 	push af
-	ld hl, wOverworldMap + PC_BASE
-	ld a, [wBuffer + wProcCaveCurX]
-	add a, l
-	ld l, a
-	jr nc, .noCarryX
-	inc h
-.noCarryX
 	ld a, [wBuffer + wProcCaveCurY]
-	and a
-	jr z, .doneY
-	ld b, a
-.yLoop
-	ld a, l
-	add a, PC_STRIDE
-	ld l, a
-	jr nc, .noCarryY
-	inc h
-.noCarryY
-	dec b
-	jr nz, .yLoop
-.doneY
+	add a, a                ; *2, table is 2 bytes/entry
+	ld c, a
+	ld b, 0
+	ld hl, PCRowBaseTable
+	add hl, bc
+	ld a, [hli]
+	ld e, a
+	ld a, [hl]
+	ld d, a                 ; de = this row's base address
+	ld a, [wBuffer + wProcCaveCurX]
+	add a, e
+	ld e, a
+	jr nc, .noCarryX
+	inc d
+.noCarryX
 	pop af
-	ld [hl], a
+	ld [de], a
 	ret
 
 ; ============================================================
@@ -1224,28 +1245,23 @@ PCWriteCell:
 ; INPUT: wProcCaveCurX/Y = cell coords (0-19). OUTPUT: a = current block ID.
 ; ============================================================
 PCReadCell:
-	ld hl, wOverworldMap + PC_BASE
-	ld a, [wBuffer + wProcCaveCurX]
-	add a, l
-	ld l, a
-	jr nc, .noCarryX
-	inc h
-.noCarryX
 	ld a, [wBuffer + wProcCaveCurY]
-	and a
-	jr z, .doneY
-	ld b, a
-.yLoop
-	ld a, l
-	add a, PC_STRIDE
-	ld l, a
-	jr nc, .noCarryY
-	inc h
-.noCarryY
-	dec b
-	jr nz, .yLoop
-.doneY
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, PCRowBaseTable
+	add hl, bc
+	ld a, [hli]
+	ld e, a
 	ld a, [hl]
+	ld d, a
+	ld a, [wBuffer + wProcCaveCurX]
+	add a, e
+	ld e, a
+	jr nc, .noCarryX
+	inc d
+.noCarryX
+	ld a, [de]
 	ret
 
 ; ============================================================
