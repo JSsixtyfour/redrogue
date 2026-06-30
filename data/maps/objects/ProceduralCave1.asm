@@ -1,3 +1,6 @@
+object_const_def
+    const_export WILD_AREA_BOSS
+
 ProceduralCave1_Object:
 	db 46 ; border block (solid_wall, confirmed impassable in both classification passes)
 
@@ -45,6 +48,6 @@ ProceduralCave1_Object:
 	; is a generic SPRITE_BIRD placeholder for now - matching the rolled
 	; species' actual appearance is a separate, not-yet-implemented step
 	; (see [[redrogue-procedural-cave]]).
-	object_event 18, 38, SPRITE_BIRD, STAY, RIGHT, TEXT_PROCEDURALCAVE1_BOSS, 0, 0 | OW_POKEMON
+	object_event 18, 38, SPRITE_BIRD, STAY, DOWN, TEXT_PROCEDURALCAVE1_BOSS, PINSIR, 5 | OW_POKEMON
 
 	def_warps_to PROCEDURAL_CAVE_1

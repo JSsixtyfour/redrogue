@@ -421,6 +421,7 @@ ToggleableObjectStates:
 	toggle_object_state 2, ON
 	toggle_object_state 3, ON
 	toggle_object_state 4, ON
+    toggle_object_state WILD_AREA_BOSS, ON
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

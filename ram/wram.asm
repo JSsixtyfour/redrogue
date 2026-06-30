@@ -2325,6 +2325,7 @@ wMainDataEnd::
 
 SECTION "Current Box Data", WRAM0
 
+UNION
 wBoxDataStart::
 
 wBoxCount:: db
@@ -2350,6 +2351,36 @@ ENDR
 wBoxMonNicksEnd::
 
 wBoxDataEnd::
+
+NEXTU
+; TEMPORARY test-only overlay for the procedural-cave lobby-preload
+; prototype (custom_functions/procedural_cave_gen.asm) - shares space
+; with "Current Box Data" since that's genuinely unused while walking
+; the overworld (only touched when the player opens PC box storage),
+; safe for this specific test scenario (boot -> walk Pallet Town ->
+; generate into here -> walk to warp -> blit). NOT the permanent home -
+; the real version needs SRAM (see Red Rogue Files/
+; procedural-cave-performance-plan.md) since WRAM0 otherwise has only 2
+; free bytes. Revert/remove this UNION before any real release.
+;
+; Grid: same PC_BASE/PC_STRIDE addressing as wOverworldMap, unchanged -
+; needs PC_BASE + 19*PC_STRIDE + 19 = 594 bytes minimum, 600 for margin.
+wProcCaveStagingBuffer:: ds 600
+
+; Remembered metadata - just the entrance/exit block coords carving
+; picked, needed by PCFinalizeCave to resume work against the real,
+; now-blitted wOverworldMap. ASYMMETRIC SPLIT 2026-06-27: item/boss
+; rolls and the exit ladder ID used to be staged here too, back when
+; PCPreloadCave ran the ENTIRE generator - now those run live, inside
+; PCFinalizeCave itself, since preloading all of it just relocated the
+; full ~1.7s cost to Pallet-Town-entry instead of reducing it anywhere.
+wProcCaveStagingEntranceY:: db
+wProcCaveStagingEntranceX:: db
+wProcCaveStagingExitY:: db
+wProcCaveStagingExitX:: db
+wProcCaveStagingReady:: db     ; 0 = not staged / already consumed, 1 = a
+                               ; complete, unconsumed preload is waiting
+ENDU
 
 
 SECTION "Stack", WRAM0

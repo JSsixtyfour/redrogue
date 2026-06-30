@@ -2356,9 +2356,19 @@ LoadMapData::
 	farcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
 	ldh a, [hCurMap]            ; load current map
+	; PRELOAD PROTOTYPE 2026-06-27: PALLET_TOWN now kicks off generation
+	; into the WRAM staging buffer (see custom_functions/
+	; procedural_cave_gen.asm's PCPreloadCave) - testing whether hiding
+	; the cost behind however long the player spends walking around town
+	; works better than paying it all at once on the actual warp-in.
+	cp PALLET_TOWN
+	jr nz, .notPalletTown
+	homecall PCPreloadCave
+.notPalletTown
 	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
 	jr nz, .notProcCave         ; proceed as normal if not procedural stage
-	homecall GenerateProceduralCave ; use procedural generation routine
+	homecall PCFinalizeCave     ; blit the staged cave + apply everything
+	                            ; PCPreloadCave deferred (warp/sprite state)
 .notProcCave
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView

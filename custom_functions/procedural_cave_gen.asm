@@ -168,12 +168,67 @@ DEF wProcCaveDropInOX         EQU 12
 DEF wProcCaveDropInOY         EQU 13
 DEF wProcCaveDropInRow        EQU 14
 DEF wProcCaveDropInCol        EQU 15
+; PRELOAD PROTOTYPE 2026-06-27: dedicated, NEVER-reused-mid-generation
+; slot (unlike almost everything else in this scratch area) - every
+; single PCReadCell/PCWriteCell call depends on this holding the correct
+; target base for the cell's WHOLE duration, whether that's the real
+; wOverworldMap (direct generation) or the temporary WRAM staging buffer
+; (preload prototype - see wProcCaveStagingBuffer in ram/wram.asm).
+DEF wProcCaveTargetBase       EQU 27 ; 2 bytes (27,28) - low,high
 
 ; ============================================================
 ; GenerateProceduralCave
 ; Entry point. See header comment for the hook site and call convention.
 ; ============================================================
-GenerateProceduralCave::
+; ============================================================
+; PCPreloadCave (PRELOAD PROTOTYPE 2026-06-27, renamed from
+; GenerateProceduralCave - see PCFinalizeCave further down for the half
+; that was split out)
+; The "safe to preload" half of cave generation - runs while the player
+; may still be standing in Pallet Town (see home/overworld.asm's
+; LoadMapData hook), so touches ONLY the staging buffer/metadata
+; (wProcCaveStagingBuffer and friends, ram/wram.asm) and dedicated,
+; not-currently-shared scratch (wBuffer, wRoguePokemon1, wRogueItem) -
+; NEVER wOverworldMap, wWarpEntries, wSprite01StateData2MapY, or
+; wMapSpriteExtraData directly, all of which are live, shared engine
+; state for whatever map is actually loaded right now (Pallet Town's
+; own warps/NPCs while the player is standing in it). PCFinalizeCave
+; applies everything deferred here, at actual warp-in time.
+;
+; KNOWN SIMPLIFICATION, deliberate for this prototype: assumes a preload
+; always completes before the player reaches the warp - no fallback path
+; (e.g. direct generation) if they somehow reach it first. Fine for the
+; controlled test scenario this was built for; revisit before any real
+; use.
+; ============================================================
+PCPreloadCave::
+	ld a, LOW(wProcCaveStagingBuffer + PC_BASE)
+	ld [wBuffer + wProcCaveTargetBase], a
+	ld a, HIGH(wProcCaveStagingBuffer + PC_BASE)
+	ld [wBuffer + wProcCaveTargetBase + 1], a
+
+	; the real wOverworldMap path gets its baseline "25 (plain fill)
+	; everywhere" from LoadTileBlockMap copying the static .blk template
+	; BEFORE this generator ever runs - carving/autotiling/decoration only
+	; ever touch SPECIFIC cells, relying on every untouched cell already
+	; reading as real fill. The staging buffer has no such template copy -
+	; it's raw, never-initialized WRAM - so it needs the same baseline
+	; filled in by hand here, or every untouched cell stays at whatever
+	; garbage/zero was already sitting in that WRAM (confirmed for real:
+	; without this, a blitted cave came out mostly 0s with only the
+	; explicitly-written cells correct).
+	ld hl, wProcCaveStagingBuffer
+	ld bc, 600
+	ld d, 25                ; keep the fill value out of a's way - the
+	                        ; loop-condition check below needs a too
+.fillLoop
+	ld a, d
+	ld [hli], a
+	dec bc
+	ld a, c
+	or b
+	jr nz, .fillLoop
+
 	; --- entrance: PINNED to a hardcoded interior block for now (2026-06-25) ---
 	; Was: random edge + offset via two Rangerandom calls (see git history /
 	; the [[redrogue-procedural-cave]] memory for the exact original lines -
@@ -296,6 +351,100 @@ GenerateProceduralCave::
 	ld a, PC_BLOCK_ENTRANCE
 	call PCWriteCell
 
+	; ASYMMETRIC SPLIT 2026-06-27: PCPreloadCave used to also run
+	; autotiling/decoration/river/ladder/items/boss/floor-decor/dropin
+	; here - moved to PCFinalizeCave instead, after measuring that doing
+	; the FULL generation during preload just relocates the entire ~1.7s
+	; cost to Pallet-Town-entry rather than reducing it anywhere (the
+	; user's own "robbing Peter to pay Paul" assessment, confirmed by the
+	; numbers). Carving alone is ~29 of the total ~101 frames - preloading
+	; ONLY this keeps the Pallet-Town-entry hit small (~0.5s) while still
+	; cutting the warp-in hit for real (~1.7s -> ~1.2s), instead of just
+	; moving the whole block around.
+	;
+	; Only wProcCaveEntranceX/Y and wProcCaveExitX/Y need to survive to
+	; PCFinalizeCave (everything else either gets consumed within this
+	; same call, like wProcCaveTargetX/Y/ExitIndex during the loop above,
+	; or gets decided fresh at finalize time now, like item/boss rolls and
+	; the ladder ID) - staged explicitly here rather than left sitting in
+	; wBuffer, since wBuffer is generic, frequently-reused scratch and the
+	; player may do an arbitrary amount of unrelated stuff in Pallet Town
+	; between this call returning and PCFinalizeCave eventually running.
+	ld a, [wBuffer + wProcCaveEntranceY]
+	ld [wProcCaveStagingEntranceY], a
+	ld a, [wBuffer + wProcCaveEntranceX]
+	ld [wProcCaveStagingEntranceX], a
+	ld a, [wBuffer + wProcCaveExitY]
+	ld [wProcCaveStagingExitY], a
+	ld a, [wBuffer + wProcCaveExitX]
+	ld [wProcCaveStagingExitX], a
+
+	ld a, 1
+	ld [wProcCaveStagingReady], a
+	ret
+
+; ============================================================
+; PCFinalizeCave (PRELOAD PROTOTYPE 2026-06-27)
+; Runs at actual warp-in time (the real ProceduralCave1 hook in
+; home/overworld.asm's LoadMapData) - blits the staged grid into the
+; real wOverworldMap and applies everything PCPreloadCave deferred: the
+; exit warp patch and the item/boss sprite positioning.
+; ============================================================
+PCFinalizeCave::
+	; blit: identical PC_BASE/PC_STRIDE layout on both sides (the staging
+	; buffer was deliberately sized to match), so this is a straight
+	; PC_SIZE-bytes-per-row copy, PC_SIZE rows, skipping the same border
+	; padding gap (PC_STRIDE-PC_SIZE) on both pointers between rows.
+	ld hl, wProcCaveStagingBuffer + PC_BASE
+	ld de, wOverworldMap + PC_BASE
+	ld b, PC_SIZE
+.blitRowLoop
+	push bc
+	ld c, PC_SIZE
+.blitColLoop
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .blitColLoop
+	ld a, l
+	add a, PC_STRIDE - PC_SIZE
+	ld l, a
+	jr nc, .blitNoCarryHL
+	inc h
+.blitNoCarryHL
+	ld a, e
+	add a, PC_STRIDE - PC_SIZE
+	ld e, a
+	jr nc, .blitNoCarryDE
+	inc d
+.blitNoCarryDE
+	pop bc
+	dec b
+	jr nz, .blitRowLoop
+
+	; restore the entrance/exit block coords PCPreloadCave staged - every
+	; call below addresses cells via wBuffer + wProcCaveEntranceX/Y/
+	; ExitX/Y, same as direct (non-preloaded) generation always did
+	ld a, [wProcCaveStagingEntranceY]
+	ld [wBuffer + wProcCaveEntranceY], a
+	ld a, [wProcCaveStagingEntranceX]
+	ld [wBuffer + wProcCaveEntranceX], a
+	ld a, [wProcCaveStagingExitY]
+	ld [wBuffer + wProcCaveExitY], a
+	ld a, [wProcCaveStagingExitX]
+	ld [wBuffer + wProcCaveExitX], a
+
+	; re-target PCReadCell/PCWriteCell at the real, now-blitted
+	; wOverworldMap - PCPreloadCave pointed this at the staging buffer for
+	; the carving phase, and everything from here on is live, shared
+	; engine state for whatever map is actually loaded (which, by the time
+	; PCFinalizeCave runs, is genuinely ProceduralCave1 itself)
+	ld a, LOW(wOverworldMap + PC_BASE)
+	ld [wBuffer + wProcCaveTargetBase], a
+	ld a, HIGH(wOverworldMap + PC_BASE)
+	ld [wBuffer + wProcCaveTargetBase + 1], a
+
 	; --- one final autotiling sweep over the whole map, now that all floor
 	; is in its final position - see PCAutotilePass. Doing this once at the
 	; end instead of live during carving avoids redundant re-classification
@@ -338,11 +487,11 @@ GenerateProceduralCave::
 
 	; --- patch the exit warp (wWarpEntries entry 1) to its chosen position ---
 	; The entrance is now a genuinely static warp_event (see the comment at
-	; the top of this function), so it needs no runtime patching at all -
+	; the top of PCPreloadCave), so it needs no runtime patching at all -
 	; wWarpEntries entry 0, wYCoord/wXCoord, the sprite-state pair, the
 	; view-pointer, and the parity-bit pair are all set correctly by the
 	; normal map-load process before this generator even runs. Only the
-	; exit's position is still chosen here at runtime, and only its
+	; exit's position is still chosen at carve time, and only its
 	; wWarpEntries entry needs patching - the player never initially lands
 	; on it, so none of the position-cache machinery above applies to it.
 	;
@@ -377,8 +526,8 @@ GenerateProceduralCave::
 	; 1) for whichever ID it just picked - apply it here.
 	ld hl, wWarpEntries + 4
 	ld a, [wBuffer + wProcCaveExitY]
-	add a, a
-	ld b, a
+	add a, a            ; double tile to get object placement address
+	ld b, a             ; move object y to b
 	ld a, [wBuffer + wProcCaveLadderOffset]
 	add a, b
 	ld [hli], a
@@ -399,10 +548,16 @@ GenerateProceduralCave::
 	call PCPlaceBoss
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
+
+	xor a
+	ld [wProcCaveStagingReady], a   ; mark consumed
 	ret
 
 ; ============================================================
-; PCPlaceBoss
+; PCPlaceBoss (reverted 2026-06-27 to its original, single-phase form -
+; the lighter "carve-only" preload split no longer needs this staged,
+; since it now runs entirely during PCFinalizeCave, directly against
+; live state, same as before any of this preload work existed)
 ; Rolls a random species (reusing the EXISTING reward-pokemon machinery -
 ; GetRewardMonLevel + Random_Pokemon_Selection, same calls
 ; rogue_pokemon_randomized_batch already makes for wRoguePokemon1-3 - and
@@ -446,7 +601,11 @@ PCPlaceBoss:
 	ret                             ; treat this as a wild mon, not a trainer
 
 ; ============================================================
-; PCPlaceWildAreaItems
+; PCPlaceWildAreaItems (reverted 2026-06-27 to its original, single-
+; phase form - the lighter "carve-only" preload split no longer needs
+; this staged, since it now runs entirely during PCFinalizeCave,
+; directly against live state, same as before any of this preload work
+; existed)
 ; Places the 4 wild area pokeballs by picking straight from the cave's
 ; REAL, FINAL floor layout - not by tracking any particular carve walk's
 ; endpoint. Each candidate must (a) be real floor (PC_BLOCK_FLOOR) right
@@ -784,21 +943,22 @@ PCSprinkleFloorDecor:
 ; ============================================================
 DEF PC_DROPIN_BUF_FLOOR EQU 1   ; 1-tile runtime-checked buffer, floor-backed
 DEF PC_DROPIN_BUF_FILL  EQU 0   ; fill-backed stamps bake their own buffer/edges
-DEF NUM_PC_DROPINS      EQU 4
+DEF NUM_PC_DROPINS      EQU 3
+; 1tilepooldrop.blk (a 2x2 plain-96 pool patch) axed 2026-06-27 - user's
+; direct call after seeing it in actual play: "doesn't work visually."
+; The file itself is left in maps/ in case it's revisited later, just no
+; longer wired into the table below.
 
-PCDropIn1tilePoolData:     INCBIN "maps/1tilepooldrop.blk"
 PCDropIn1tileTallRockData: INCBIN "maps/1tiletallrockdrop.blk"
 PCDropIn1tileWideRockData: INCBIN "maps/1tilewiderockdrop.blk"
 PCDropIn25tilePoolData:    INCBIN "maps/25tilepooldrop.blk"
 
 ; one row per stamp: width, height, background value, buffer
 PCDropInTable:
-	db 2, 2, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1tilepooldrop
 	db 1, 3, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1tiletallrockdrop
 	db 3, 1, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1tilewiderockdrop
 	db 4, 4, 25,             PC_DROPIN_BUF_FILL   ; 25tilepooldrop
 PCDropInPtrTable:
-	dw PCDropIn1tilePoolData
 	dw PCDropIn1tileTallRockData
 	dw PCDropIn1tileWideRockData
 	dw PCDropIn25tilePoolData
@@ -921,6 +1081,19 @@ PCDropInWriteRect:
 ; so a stamp could (and did, in a real run) land directly on top of an
 ; already-placed item, overwriting its floor tile underneath it.
 ; ============================================================
+; PRELOAD PROTOTYPE 2026-06-27: used to read the LIVE wSprite01StateData2MapY
+; table directly - but during preload, items 1-4 haven't been positioned
+; there yet (that's deferred to finalize time, since that table is live,
+; shared engine state for whatever map is actually loaded - Pallet Town's
+; own NPCs while the player is standing in it, not yet our cave's). Reads
+; the STAGED tile-coord metadata for items instead, and the boss's fixed,
+; build-time-declared tile position (18,38 - data/maps/objects/
+; ProceduralCave1.asm - never runtime-patched, so no staging needed for it).
+; Reverted 2026-06-27 to reading the LIVE wSprite01StateData2MapY table
+; directly - the lighter "carve-only" preload split runs this entirely
+; during PCFinalizeCave, AFTER PCPlaceWildAreaItems/PCPlaceBoss have
+; already positioned items/boss for real, so the live table is correct
+; and current by the time this runs (no staging needed).
 PCDropInOverlapsSprite:
 	ld c, 0                         ; slot index 0-3 = items 1-4, 4 = boss
 .slotLoop
@@ -1212,31 +1385,47 @@ PCOtherEdgesTable:
 ; everywhere else in this file, e.g. `ld hl, wOverworldMap + PC_BASE`).
 ; See Red Rogue Files/procedural-cave-performance-plan.md for the
 ; measured before/after - this was the plan's recommended first step.
-PCRowBaseTable:
+; Row-offset table (relative, no base baked in - see wProcCaveTargetBase).
+; PRELOAD PROTOTYPE 2026-06-27: was a table of ABSOLUTE wOverworldMap
+; addresses, but the preload prototype needs PCReadCell/PCWriteCell to
+; sometimes target the temporary WRAM staging buffer instead - so the
+; base address now lives in wProcCaveTargetBase (set once per generation
+; run, by whichever entry point is running) and this table holds just
+; the per-row BYTE OFFSET (still a pure assemble-time constant, still
+; O(1) - one extra 16-bit add per call versus the single-target version,
+; not a return to the old O(Y) loop).
+PCRowOffsetTable:
 	FOR row, PC_SIZE
-	dw wOverworldMap + PC_BASE + row * PC_STRIDE
+	dw row * PC_STRIDE
 	ENDR
 
 PCWriteCell:
 	push af
+	ld a, [wBuffer + wProcCaveTargetBase]
+	ld l, a
+	ld a, [wBuffer + wProcCaveTargetBase + 1]
+	ld h, a                 ; hl = target base
+	push hl
 	ld a, [wBuffer + wProcCaveCurY]
 	add a, a                ; *2, table is 2 bytes/entry
 	ld c, a
 	ld b, 0
-	ld hl, PCRowBaseTable
+	ld hl, PCRowOffsetTable
 	add hl, bc
 	ld a, [hli]
 	ld e, a
 	ld a, [hl]
-	ld d, a                 ; de = this row's base address
+	ld d, a                 ; de = this row's byte offset
+	pop hl                   ; hl = target base again
+	add hl, de               ; hl = target base + row offset
 	ld a, [wBuffer + wProcCaveCurX]
-	add a, e
-	ld e, a
+	add a, l
+	ld l, a
 	jr nc, .noCarryX
-	inc d
+	inc h
 .noCarryX
 	pop af
-	ld [de], a
+	ld [hl], a
 	ret
 
 ; ============================================================
@@ -1245,23 +1434,30 @@ PCWriteCell:
 ; INPUT: wProcCaveCurX/Y = cell coords (0-19). OUTPUT: a = current block ID.
 ; ============================================================
 PCReadCell:
+	ld a, [wBuffer + wProcCaveTargetBase]
+	ld l, a
+	ld a, [wBuffer + wProcCaveTargetBase + 1]
+	ld h, a
+	push hl
 	ld a, [wBuffer + wProcCaveCurY]
 	add a, a
 	ld c, a
 	ld b, 0
-	ld hl, PCRowBaseTable
+	ld hl, PCRowOffsetTable
 	add hl, bc
 	ld a, [hli]
 	ld e, a
 	ld a, [hl]
 	ld d, a
+	pop hl
+	add hl, de
 	ld a, [wBuffer + wProcCaveCurX]
-	add a, e
-	ld e, a
+	add a, l
+	ld l, a
 	jr nc, .noCarryX
-	inc d
+	inc h
 .noCarryX
-	ld a, [de]
+	ld a, [hl]
 	ret
 
 ; ============================================================
@@ -2257,8 +2453,23 @@ PCObstacleTable:
 ; ============================================================
 ; PCCarveOne
 ; Wobble-walks from the entrance to wProcCaveTargetX/Y, writing floor along
-; the way, then force-stamps the exact target cell regardless of how the
-; walk ended (guarantees the breach/dead-end point is always connected).
+; the way. CORRECTED 2026-06-26/27: this comment used to claim the final
+; force-stamp of the target cell alone "guarantees the breach/dead-end
+; point is always connected" - it didn't. It only guaranteed the target
+; CELL became floor, not that anything actually led to it. Confirmed via
+; a player-submitted WRAM dump of a real, reproduced soft-lock: the exit
+; ladder ended up fully surrounded by wall/rock on every side, with the
+; nearest real floor several cells away - the wobble-walk had exhausted
+; its step budget well short of the target, and the old final stamp just
+; planted an isolated floor island with nothing leading to it. Once
+; PCDecorateLast later sprinkled rocks onto the untouched fill cells in
+; the gap, the exit became fully unreachable.
+;
+; Fix: once the wobble-walk stops (reached the target OR ran out of
+; budget), walk a straight, deterministic L-shaped connector from
+; wherever it actually is back to the target, writing floor the whole
+; way, before the final stamp - same idea as the wobble-walk, just
+; guaranteed instead of probabilistic, so it can never fall short.
 ; ============================================================
 PCCarveOne:
 	ld a, [wBuffer + wProcCaveEntranceX]
@@ -2306,12 +2517,41 @@ PCCarveOne:
 	jr .walkLoop
 
 .done
+.connectXLoop
+	ld a, [wBuffer + wProcCaveCurX]
+	ld b, a
 	ld a, [wBuffer + wProcCaveTargetX]
+	cp b
+	jr z, .connectYLoop
+	jr nc, .connectXInc
+	dec b
+	jr .connectXStore
+.connectXInc
+	inc b
+.connectXStore
+	ld a, b
 	ld [wBuffer + wProcCaveCurX], a
+	ld a, PC_BLOCK_FLOOR
+	call PCWriteCell
+	jr .connectXLoop
+.connectYLoop
+	ld a, [wBuffer + wProcCaveCurY]
+	ld b, a
 	ld a, [wBuffer + wProcCaveTargetY]
+	cp b
+	jr z, .connectDone
+	jr nc, .connectYInc
+	dec b
+	jr .connectYStore
+.connectYInc
+	inc b
+.connectYStore
+	ld a, b
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, PC_BLOCK_FLOOR
 	call PCWriteCell
+	jr .connectYLoop
+.connectDone
 	ret
 
 ; ============================================================

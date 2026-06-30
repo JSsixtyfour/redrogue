@@ -26,6 +26,11 @@ ProceduralCave1_Script:
 	predef ShowObject
 .afterSetup
 	call EnableAutoTextBoxDrawing
+    ld hl, ProceduralCave1TrainerHeaders
+	ld de, ProceduralCave1_ScriptPointers
+	ld a, [wProceduralCave1CurScript]
+	call ExecuteCurMapScriptInTable
+	ld [wProceduralCave1CurScript], a
 	ret
 
 ; TODO: boss encounter trigger. The species/level roll (PCPlaceBoss,
@@ -40,9 +45,13 @@ ProceduralCave1_Script:
 ; hack to satisfy the `trainer` macro's ASSERT, see git history on this
 ; file if curious). Follow the real Zapdos pattern instead.
 
-ProceduralCave1BossText:
-	text_far _ProceduralCave1BossBattleText
-	text_end
+
+    
+ProceduralCave1_ScriptPointers:
+	def_script_pointers
+	dw_const CheckFightingMapTrainers,              SCRIPT_PROCEDURALCAVE1_DEFAULT
+	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_PROCEDURALCAVE1_START_BATTLE
+	dw_const EndTrainerBattle,                      SCRIPT_PROCEDURALCAVE1_END_BATTLE
 
 ProceduralCave1_TextPointers:
 	def_text_pointers
@@ -51,3 +60,31 @@ ProceduralCave1_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_3
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_4
 	dw_const ProceduralCave1BossText, TEXT_PROCEDURALCAVE1_BOSS
+    
+ProceduralCave1TrainerHeaders:
+	def_trainers 6
+PCBossTrainerHeader:
+	trainer EVENT_BEAT_PC_BOSS, 0, ProceduralCave1BossBattleText, ProceduralCave1BossBattleText, ProceduralCave1BossBattleText
+	db -1 ; end
+    
+ProceduralCave1InitBattleScript:
+	call TalkToTrainer
+	ld a, [wCurMapScript]
+	ld [wPowerPlantCurScript], a
+	jp TextScriptEnd    
+    
+
+    
+ProceduralCave1BossText:
+	text_asm
+	ld hl, PCBossTrainerHeader
+	call TalkToTrainer
+	jp TextScriptEnd
+
+ProceduralCave1BossBattleText:
+	text_far _ProceduralCave1BossBattleText
+	text_asm
+	ld a, PINSIR
+	call PlayCry
+	call WaitForSoundToFinish
+	jp TextScriptEnd

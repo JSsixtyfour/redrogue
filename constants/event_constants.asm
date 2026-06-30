@@ -899,6 +899,10 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 	const EVENT_ROGUE_POKEMON_OFFERED
 	const EVENT_SSANNE_ALL_TRAINERS_DEFEATED
 
+; Procedural Cave Events
+    const_next $A26
+    const EVENT_BEAT_PC_BOSS
+
 ; End of events
-	const_next $A26
+	const_next $A27
 DEF NUM_EVENTS EQU const_value
