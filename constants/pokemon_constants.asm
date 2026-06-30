@@ -208,6 +208,11 @@ DEF STARTER3 EQU BULBASAUR
 ; placeholder species ($1F is unused) used in the rival's trainer party data
 ; to mark the slot that should be dynamically replaced with wRivalStarter
 DEF RIVAL_STARTER_PLACEHOLDER EQU $1F
+DEF PLACEHOLDER_POKEBALL EQU $20
+DEF PLACHOLDER_GREATBALL EQU $32
+DEF PLACEHOLDER_ULTRABALL EQU $34
+DEF PLACEHOLDER_MASTERBALL EQU $38
+DEF PLACEHOLDER_LEGENDARY EQU $3D
 
 ; ghost Marowak in Pokémon Tower
 DEF RESTLESS_SOUL EQU MAROWAK

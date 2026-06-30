@@ -1221,7 +1221,7 @@ _BoostedText::
 	text_end
 
 _ExpPointsText::
-	text_decimal wExpAmountGained, 2, 4
+	text_decimal wExpAmountGained, 2, 5
 	text " EXP. Points!"
 	prompt
 
@@ -1531,6 +1531,13 @@ _CantCarryMoreText::
 _WhatToTossText::
 	text "What do you want"
 	line "to toss away?"
+	done
+    
+_TMItContainsText:: ; marcelnote - new for TM printing
+	text "It contains"
+	line "@"
+	text_ram wStringBuffer
+	text "."
 	done
 
 _TossHowManyText::

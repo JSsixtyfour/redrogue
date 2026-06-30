@@ -407,6 +407,7 @@ ToggleableObjectStates:
 	toggle_object_state PC_POKESALESMAN, ON
     toggle_object_state PC_TRADENERD, ON
     toggle_object_state PC_MOVETUTOR, ON
+    toggle_object_state PC_DOOR2_SIGN, ON
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

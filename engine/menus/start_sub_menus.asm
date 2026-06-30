@@ -307,13 +307,26 @@ StartMenu_Item::
 	call PrintText
 	jr .exitMenu
 .notInCableClubRoom
+    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
+	ld a, [wBagPocketsFlags]
+	bit BIT_KEY_ITEMS_POCKET, a
 	ld bc, wNumBagItems
+    jr z, .gotBagPocket
+	ld bc, wNumBagKeyItems
+.gotBagPocket
 	ld hl, wListPointer
 	ld a, c
 	ld [hli], a
 	ld [hl], b ; store item bag pointer in wListPointer (for DisplayListMenuID)
 	xor a
 	ld [wPrintItemPrices], a
+    ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
+	ld hl, wBagPocketsFlags ; marcelnote - don't display the Info box in the PC, new for bag pockets
+	set BIT_PRINT_INFO_BOX, [hl]
+	ld a, BAG_INFO_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	;;;;;;;;;;
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	ld a, [wBagSavedMenuItem]
@@ -321,8 +334,14 @@ StartMenu_Item::
 	call DisplayListMenuID
 	ldh a, [hCurrentMenuItem]
 	ld [wBagSavedMenuItem], a
+    ld a, NOLISTMENU    ; no xor to preserve flag
+	ld [wListMenuID], a ; marcelnote - for TM printing
 	jr nc, .choseItem
 .exitMenu
+    ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
+	ld hl, wBagPocketsFlags ; marcelnote - stop showing the Info box, new for bag pockets
+	res BIT_PRINT_INFO_BOX, [hl]
+	;;;;;;;;;;
 	call LoadScreenTilesFromBuffer2
 	call LoadTextBoxTilePatterns
 	call UpdateSprites
@@ -433,7 +452,14 @@ StartMenu_Item::
 	inc a
 	jr z, .tossZeroItems
 .skipAskingQuantity
+	;;;;;;;;;; marcelnote - toss from whichever pocket is currently open, new for bag pockets
+	ld a, [wBagPocketsFlags]
+	bit BIT_KEY_ITEMS_POCKET, a
 	ld hl, wNumBagItems
+	jr z, .gotTossPocket
+	ld hl, wNumBagKeyItems
+.gotTossPocket
+	;;;;;;;;;;
 	call TossItem
 .tossZeroItems
 	jp ItemMenuLoop

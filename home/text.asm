@@ -96,7 +96,7 @@ PlaceNextChar::
 	dict '<TM>',      TMChar
 	dict '<TRAINER>', TrainerChar
 	dict '<CONT>',    ContText
-	dict '<……>',      SixDotsChar
+	;dict '<……>',      SixDotsChar ; marcelnote - unused, removed
 	dict '<DONE>',    DoneText
 	dict '<PROMPT>',  PromptText
 	dict '<PKMN>',    PlacePKMN
@@ -141,7 +141,7 @@ TMChar::      print_name TMCharText
 PCChar::      print_name PCCharText
 RocketChar::  print_name RocketCharText
 PlacePOKe::   print_name PlacePOKeText
-SixDotsChar:: print_name SixDotsCharText
+; SixDotsChar:: print_name SixDotsCharText ; marcelnote - unused, removed
 PlacePKMN::   print_name PlacePKMNText
 
 PlaceMoveTargetsName::
@@ -181,7 +181,7 @@ TrainerCharText:: db "TRAINER@"
 PCCharText::      db "PC@"
 RocketCharText::  db "ROCKET@"
 PlacePOKeText::   db "POKé@"
-SixDotsCharText:: db "……@"
+;SixDotsCharText:: db "……@"
 EnemyText::       db "Enemy @"
 PlacePKMNText::   db "<PK><MN>@"
 

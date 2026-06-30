@@ -337,13 +337,13 @@ GetRewardMonLevel::
 	ld c, a
 	ld b, 0
 	add hl, bc               ; hl -> this round's 11-byte block (still bank 07 address)
-	ld de, wEvoDataBuffer    ; trainer_difficulty_settings/_gym live in bank 07,
+	ld de, wRewardLevelDataBuffer ; trainer_difficulty_settings/_gym live in bank 07,
 	ld a, BANK(trainer_difficulty_settings) ; this function doesn't - read across
 	ld bc, 2                ; banks instead of a plain (same-bank-only) [hl] read
 	call FarCopyData
-	ld a, [wEvoDataBuffer]   ; byte 0: level range
+	ld a, [wRewardLevelDataBuffer]   ; byte 0: level range
 	ld b, a
-	ld a, [wEvoDataBuffer + 1] ; byte 1: minimum level
+	ld a, [wRewardLevelDataBuffer + 1] ; byte 1: minimum level
 	add b                    ; minimum + range = (max standard level) + 1
 	cp 51
 	jr c, .levelOk

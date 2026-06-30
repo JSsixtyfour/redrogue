@@ -15,6 +15,8 @@ InitPlayerData2:
 	call InitializeEmptyList
 	ld hl, wNumBagItems
 	call InitializeEmptyList
+    ld hl, wNumBagKeyItems    ; marcelnote - new for Key Items pocket
+	call InitializeEmptyList
 	ld hl, wNumBoxItems
 	call InitializeEmptyList
 

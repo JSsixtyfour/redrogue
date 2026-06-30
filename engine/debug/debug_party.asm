@@ -139,6 +139,22 @@ IF DEF(_DEBUG)
 	call AddItemToInventory
 	jr .items_loop
 .items_end
+    
+    ; Get some more debug items. ; marcelnote - new for Key items pocket
+	ld hl, wNumBagKeyItems
+	ld de, DebugKeyItemsList
+.keyItemsLoop
+	ld a, [de]
+	cp -1
+	jr z, .keyItemsEnd
+	ld [wCurItem], a
+	inc de
+	ld a, [de]
+	inc de
+	ld [wItemQuantity], a
+	call AddItemToInventory
+	jr .keyItemsLoop
+.keyItemsEnd
 
 	; Complete the Pokédex.
 	ld hl, wPokedexOwned
@@ -169,18 +185,44 @@ DebugSetPokedexEntries:
 	ld [hl], %01111111
 	ret
 
-DebugNewGameItemsList:
-	db BICYCLE, 1
+DebugNewGameItemsList: ; marcelnote - moved some to key items pocket
+	;db BICYCLE, 1
+	db MASTER_BALL, 99
+	db RARE_CANDY, 99
 	db FULL_RESTORE, 99
 	db FULL_HEAL, 99
 	db ESCAPE_ROPE, 99
-	db RARE_CANDY, 99
-	db MASTER_BALL, 99
+	;db MAX_ELIXIR, 99 ; marcelnote - added
+;	db TOWN_MAP, 1
+;	db SECRET_KEY, 1
+;	db CARD_KEY, 1
+;	db S_S_TICKET, 1
+;	db LIFT_KEY, 1
+	;db TM_TELEPORT, 1
+	db TM_DIG, 1
+	db TM_SOFTBOILED, 1
+	db -1 ; end
+
+DebugKeyItemsList:    ; marcelnote - new for Key Items pocket
+	db BICYCLE, 1
 	db TOWN_MAP, 1
-	db SECRET_KEY, 1
-	db CARD_KEY, 1
-	db S_S_TICKET, 1
-	db LIFT_KEY, 1
+	;db POKE_BEEPER, 1 ; marcelnote - added
+	db OLD_ROD, 1
+	;db ITEMFINDER, 1
+	;db POKE_FLUTE, 1
+	;db SECRET_KEY, 1
+	;db CARD_KEY, 1
+	;db S_S_TICKET, 1
+	;db LIFT_KEY, 1
+	;db SILPH_SCOPE, 1 ; marcelnote - added
+	;db CITRUS_PASS, 1 ; marcelnote - added
+	;db COIN_CASE, 1 ; marcelnote - added
+;	db SURFBOARD, 1 ; marcelnote - added
+	;db HM_CUT, 1 ; marcelnote - added
+	;db HM_FLY, 1 ; marcelnote - added
+	;db HM_SURF, 1 ; marcelnote - added
+	;db HM_STRENGTH, 1 ; marcelnote - added
+	;db HM_FLASH, 1 ; marcelnote - added
 	db -1 ; end
 
 DebugUnusedList: ; unreferenced

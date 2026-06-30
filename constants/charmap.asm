@@ -28,9 +28,10 @@
 
 ; Actual characters (from gfx/font/font_extra.png)
 
-	charmap "<BOLD_A>",  $60 ; unused
-	charmap "<BOLD_B>",  $61 ; unused
-	charmap "<BOLD_C>",  $62 ; unused
+    charmap "◀",         $62 ; marcelnote - new
+	;charmap "<BOLD_A>",  $60 ; unused
+	;charmap "<BOLD_B>",  $61 ; unused
+	;charmap "<BOLD_C>",  $62 ; unused
 	charmap "<BOLD_D>",  $63 ; unused
 	charmap "<BOLD_E>",  $64 ; unused
 	charmap "<BOLD_F>",  $65 ; unused

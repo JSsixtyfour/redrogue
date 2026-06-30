@@ -56,7 +56,7 @@ Moves:
 	move LEER,         DEFENSE_DOWN1_EFFECT,         0, NORMAL,       100, 30
 	move BITE,         FLINCH_SIDE_EFFECT1,         60, NORMAL,       100, 25
 	move GROWL,        ATTACK_DOWN1_EFFECT,          0, NORMAL,       100, 40
-	move ROAR,         SWITCH_AND_TELEPORT_EFFECT,   0, NORMAL,       100, 20
+	move TRANSFORM,    SUPER_TRANSFORM_EFFECT,       0, NORMAL,       100, 10 ; was ROAR's slot; reuses Transform's animation
 	move SING,         SLEEP_EFFECT,                 0, NORMAL,        55, 15
 	move SUPERSONIC,   CONFUSION_EFFECT,             0, NORMAL,        55, 20
 	move SONICBOOM,    SPECIAL_DAMAGE_EFFECT,        1, NORMAL,        90, 20

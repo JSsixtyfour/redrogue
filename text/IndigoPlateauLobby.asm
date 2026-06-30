@@ -24,74 +24,74 @@ _WitchChallenge1Text::
 	text "This zone hands"
 	line "out no free"
 	cont "#MON"
-	done
+	prompt
 
 _WitchChallenge2Text::
 	text "No hidden item"
 	line "in this zone"
-	done
+	prompt
 
 _WitchChallenge3Text::
 	text "No money from"
 	line "battles this zone"
-	done
+	prompt
 
 _WitchChallenge4Text::
 	text "Rolls favor"
 	line "common #MON"
 	cont "this zone"
-	done
+	prompt
 
 _WitchChallenge5Text::
 	text "Foes will be"
 	line "tougher, higher"
 	cont "level"
-	done
+	prompt
 
 _WitchChallenge6Text::
 	text "Foes will be"
 	line "rarer breeds"
-	done
+	prompt
 
 _WitchChallenge7Text::
 	text "Your party stays"
 	line "smaller this"
 	cont "zone"
-	done
+	prompt
 
 _WitchChallenge8Text::
 	text "Your #MON will"
 	line "feel sluggish"
-	done
+	prompt
 
 _WitchChallenge9Text::
 	text "Your whole team"
 	line "starts poisoned"
-	done
+	prompt
 
 _WitchChallenge10Text::
 	text "Drag a fight out"
 	line "too long and"
 	cont "you'll pay for it"
-	done
+	prompt
 
 _WitchChallenge11Text::
 	text "This zone's boss"
 	line "keeps fearsome"
 	cont "company"
-	done
+	prompt
 
 _WitchChallenge12Text::
 	text "Every hit you"
 	line "land hurts you"
 	cont "too"
-	done
+	prompt
 
 _WitchChallenge13Text::
 	text "Step into my"
 	line "GAMBLER'S"
 	cont "PARADISE"
-	done
+	prompt
 
 _WitchPrize1Text::
 	text "Win and your"
@@ -164,7 +164,7 @@ _PCMoveTutorGreetingText::
     cont "might consider"
     cont "...unnatural."
     
-    para "¥3000 per move."
+    para "¥5000 per move."
 	line "Interested?"
 	done
     

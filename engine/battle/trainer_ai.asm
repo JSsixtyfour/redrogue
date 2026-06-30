@@ -387,6 +387,12 @@ KogaAI:
 BlaineAI:
 	cp 25 percent + 1
 	ret nc
+	; was missing the HP-fraction check every other potion-using AI here has
+	; (Erika/Sabrina/Lance/CooltrainerF) - used Super Potion on every 25%
+	; roll regardless of HP, even near-full
+	ld a, 10
+	call AICheckIfHPBelowFraction
+	ret nc
 	jp AIUseSuperPotion
 
 SabrinaAI:

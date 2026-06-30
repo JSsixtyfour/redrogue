@@ -388,6 +388,7 @@ wSlotMachineSavedROMBank:: db
 ;ds 166
 ; removed ds stack here for move relearner
 ; Move Buffer stuff for Mateo's code
+wTextBoxBuffer::
 wMoveBuffer::
 wRelearnableMoves::
 	ds 164
@@ -1751,6 +1752,13 @@ wNumBagItems:: db
 ; item, quantity
 wBagItems:: ds BAG_ITEM_CAPACITY * 2 + 1
 
+wNumBagKeyItems:: db ; marcelnote - for Key Items pocket
+; item, quantity (but quantity will always be 1 so could look into decreasing it)
+wBagKeyItems:: ds BAG_KEY_ITEM_CAPACITY * 2 + 1
+
+; bits related to bag pockets (see ram_constants.asm) ; marcelnote - new for bag pockets
+wBagPocketsFlags:: db
+
 wPlayerMoney:: ds 3 ; BCD
 
 wRivalName:: ds NAME_LENGTH
@@ -2038,6 +2046,17 @@ wRoguePokemon2:: db
 wRoguePokemon3:: db
 wRogueMap:: db
 
+; scratch for GetRewardMonLevel's cross-bank table read - must NOT be wEvoDataBuffer
+; or any other union member, since some callers (e.g. Daycare's withdraw text) still
+; need wNameBuffer intact after calling GetRewardMonLevel
+; POTENTIAL CUT if WRAM gets tight: only 2 bytes, but FarCopyData needs a real
+; addressable WRAM destination (can't target registers/stack), so reclaiming
+; this would mean pointing it at some other existing scratch buffer instead -
+; safe only if that buffer is never live across GetRewardMonLevel's callers
+; (re-review the note above before doing that, to avoid reintroducing the same
+; union-clobbering bug class that caused the Mr. Mime name glitch)
+wRewardLevelDataBuffer:: ds 2
+
 ; 32-bit bitfield: bit N = stage N visited this run (by index in RogueStageMapTable)
 wVisitedStagesBitfield:: ds 4
 ; bit 0: route is next after this gym / gym is next after this route
@@ -2139,7 +2158,7 @@ wPrizeAccBoost:: db       ; prize f: re-roll once on miss in MoveHitTest
 
 wGameProgressFlagsEnd::
 
-	ds 46
+	ds 40
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

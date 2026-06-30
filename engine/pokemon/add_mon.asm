@@ -168,6 +168,16 @@ _AddPartyMon::
 	ld [de], a
 	inc de
 	ld a, [hli]       ; catch rate (held item in gen 2)
+; This byte is otherwise dead once a mon is owned (nothing reads a stored
+; mon's own catch rate - only a live enemy's, via wEnemyMonActualCatchRate,
+; which is loaded separately in battle core and never touches this copy).
+; Bit 0 is repurposed as the Ghost Variant flag (func_ghost_variant.asm).
+; Species catch rate values aren't designed with that bit in mind (e.g.
+; Bulbasaur's 45 has bit 0 set), so without this clear, some species would
+; spawn pre-flagged as ghost variants by sheer coincidence. If catching is
+; ever fully removed from this mod, this whole byte goes back to being
+; truly free and this clear becomes unnecessary (but harmless either way).
+	res 0, a
 	ld [de], a
 	ld hl, wMonHMoves
 	ld a, [hli]

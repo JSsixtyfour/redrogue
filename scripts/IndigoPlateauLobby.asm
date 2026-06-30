@@ -24,6 +24,17 @@ IndigoPlateauLobby_Script:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 5
 	predef ReplaceTileBlock
+	; show/hide door 2's sign in sync with whether door 2 itself is blocked
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	ld a, TOGGLE_PC_DOOR2_SIGN
+	ld [wToggleableObjectIndex], a
+	jr nz, .hideDoor2Sign
+	predef ShowObject
+	jr .doorSignDone
+.hideDoor2Sign
+	predef HideObject
+.doorSignDone
 	; Pick the next random stage on map entry and patch the exit warp.
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
 	; would cause an immediate warp before the player could do anything).
@@ -70,8 +81,17 @@ IndigoPlateauLobby_TextPointers:
 
 LobbyDoor1SignText:
 	text_asm
-	ld a, [wRogueDoor1]
+; door 2 is hidden whenever a gym is next (see IndigoPlateauLobby_Script),
+; so this is the only sign visible in that case - call out the gym here
+; rather than the usual "DOOR 1" framing, since there's no longer a choice
+; of doors to make.
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	ld hl, .itemPtrsGym
+	jr nz, .gotTable
 	ld hl, .itemPtrs
+.gotTable
+	ld a, [wRogueDoor1]
 	ld d, 0
 	ld e, a
 	add hl, de
@@ -85,6 +105,11 @@ LobbyDoor1SignText:
 	dw .statText
 	dw .tmText
 	dw .moneyText
+.itemPtrsGym
+	dw .healingTextGym
+	dw .statTextGym
+	dw .tmTextGym
+	dw .moneyTextGym
 .healingText
 	text "DOOR 1:"
 	line "HEALING ITEMS@"
@@ -99,6 +124,22 @@ LobbyDoor1SignText:
 	text_end
 .moneyText
 	text "DOOR 1:"
+	line "MONEY@"
+	text_end
+.healingTextGym
+	text "GYM:"
+	line "HEALING ITEMS@"
+	text_end
+.statTextGym
+	text "GYM:"
+	line "STAT BOOSTS@"
+	text_end
+.tmTextGym
+	text "GYM:"
+	line "TM ITEMS@"
+	text_end
+.moneyTextGym
+	text "GYM:"
 	line "MONEY@"
 	text_end
 
@@ -813,7 +854,7 @@ NotEnoughMoneyText:
 PCPokemonSalesmanText:
 	text_asm
 	CheckEvent EVENT_BOUGHT_POKEMON
-	jp c, .alreadyBoughtPokemon
+	jp nz, .alreadyBoughtPokemon ; CheckEvent's 1-arg form returns via Z, not carry - jp c never fired
     
     ld a, [wroguenpcsell]   ; load pokemon for sale
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
@@ -864,25 +905,12 @@ PCPokemonSalesmanText:
 	ld hl, .NoMoneyText
 	jr .printText
 .enoughMoney
-    ; compute level = 5 + (wBattleCount/10)*5, capped at 50
-    ld a, [wBattleCount]
-    ld c, 0
-.salesLevel
-    cp 10
-    jr c, .salesLevelDone
-    sub 10
-    inc c
-    jr .salesLevel
-.salesLevelDone
-    ld a, c
-    add a               ; a = round*2
-    add a               ; a = round*4
-    add c               ; a = round*5
-    add 5               ; a = 5 + round*5
-    cp 51
-    jr c, .salesLevelCap
-    ld a, 50
-.salesLevelCap
+    ; this used to be its own hardcoded copy of the old flat formula, computed
+    ; fresh and never updated when GetRewardMonLevel was redesigned to be
+    ; tailored - the species was already being picked correctly at setup time
+    ; using the new logic, but the level given here was silently using the
+    ; stale formula. Call the real thing instead so they can't drift apart.
+    farcall GetRewardMonLevel
     ld c, a             ; c = level
     ld a, [wroguenpcsell]
     ld b, a             ; b = species
@@ -966,16 +994,19 @@ PCMoveTutorText::
 ; Display the list of moves to the player.
 	ld hl, PCMoveTutorGreetingText
 	call PrintText
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
 	call YesNoChoice
 	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
 	xor a
-	;charge 3000 money
-	ld [hMoney], a	
-	ld [hMoney + 2], a	
-	ld a, $12
-	ld [hMoney + 1], a  
+	;charge 5000 money
+	ld [hMoney], a
+	ld [hMoney + 2], a
+	ld a, $50                ; bcd3 5000 is $00,$50,$00
+	ld [hMoney + 1], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	; not enough money
@@ -1050,12 +1081,12 @@ PCMoveTutorText::
 	ld a, b
 	and a
 	jr z, .exit
-	; Charge 3000 money
+	; Charge 5000 money
 	xor a
 	ld [wPriceTemp], a
-	ld [wPriceTemp + 2], a	
-	ld a, $12               ; there is predef list of the sales price of items that can be used to easily subtract, this is for Full Restore, which is 3000
-	ld [wPriceTemp + 1], a	
+	ld [wPriceTemp + 2], a
+	ld a, $50                ; bcd3 5000 is $00,$50,$00
+	ld [wPriceTemp + 1], a
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2
 	ld c, $3
@@ -1291,9 +1322,22 @@ PCWitchSetup:
     ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef ShowObject
+.rollChallenge
     ld c, NUM_WITCH_CHALLENGES
     call Rangerandom          ; a = 0..NUM_WITCH_CHALLENGES-1
     inc a
+    ; CHALLENGE_NO_REWARD_POKEMON and CHALLENGE_NO_RANDOM_ITEM both suppress
+    ; the reward menu, which never runs before a gym (gyms are fixed vanilla
+    ; maps, not a randomized stage) - reroll so a gym visit never offers a
+    ; challenge with no real downside
+    ld hl, wRogueFlagsBitfield
+    bit BIT_ROGUE_GYM_NEXT, [hl]
+    jr z, .gotChallenge
+    cp CHALLENGE_NO_REWARD_POKEMON
+    jr z, .rollChallenge
+    cp CHALLENGE_NO_RANDOM_ITEM
+    jr z, .rollChallenge
+.gotChallenge
     ld [wWitchChallenge], a   ; a = 1-based challenge id
     ld c, NUM_WITCH_PRIZES
     call Rangerandom          ; a = 0..NUM_WITCH_PRIZES-1

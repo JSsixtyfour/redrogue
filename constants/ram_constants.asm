@@ -187,6 +187,14 @@ DEF NUM_WITCH_PRIZES     EQU 6
 	const_def
 	const BIT_PLAYER_LOWER_Y ; 0
 	const BIT_PLAYER_LOWER_X ; 1
+    
+    ; wBagPocketsFlags ; marcelnote - new for bag pockets
+	const_def
+	const BIT_KEY_ITEMS_POCKET   ; 0 ; is 1 if currently in Key Items pocket
+	const_skip                   ; 1 ; unused, leave space for a possible TM pocket
+	const BIT_PRINT_INFO_BOX     ; 2 ; whether to print Item info box (i.e. only in start menu bag and battle)
+	const BIT_PC_WITHDRAWING     ; 3 ; to prevent switching pockets when withdrawing from PC
+	const_skip                   ; 4-7 ; unused
 
 ; rLCDC
 DEF LCDC_DEFAULT EQU LCDC_ON | LCDC_WIN_9C00 | LCDC_WIN_ON | LCDC_BLOCK21 | LCDC_BG_9800 | LCDC_OBJ_8 | LCDC_OBJ_ON | LCDC_BG_ON

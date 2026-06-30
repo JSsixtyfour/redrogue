@@ -46,7 +46,9 @@ MoveNames::
 	li "LEER"
 	li "BITE"
 	li "GROWL"
-	li "ROAR"
+	li "TRANSFORM" ; SUPER_TRANSFORM - "SUPER TRANSFORM" is 15 chars, over the
+	               ; 12-char in-battle text limit, so this reuses TRANSFORM's
+	               ; display name. Swap for a distinct name here if preferred.
 	li "SING"
 	li "SUPERSONIC"
 	li "SONICBOOM"

@@ -38,15 +38,15 @@ DisplayPokemartDialogue_::
 .sellMenu
 
 ; the same variables are set again below, so this code has no effect
-	xor a
-	ld [wPrintItemPrices], a
+	;xor a
+	;ld [wPrintItemPrices], a
 	ld a, INIT_BAG_ITEM_LIST
 	ld [wInitListType], a
 	callfar InitList
 
 	ld a, [wNumBagItems]
 	and a
-	jp z, .bagEmpty
+	jp z, .bagEmpty ; marcelnote - not checking that Key Items pocket is not empty since cannot sell them
 	ld hl, PokemonSellingGreetingText
 	call PrintText
 	call SaveScreenTilesToBuffer1 ; save screen
@@ -54,8 +54,17 @@ DisplayPokemartDialogue_::
 	call LoadScreenTilesFromBuffer1 ; restore saved screen
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
-	call DisplayTextBoxID ; draw money text box
+	
+    call DisplayTextBoxID ; draw money text box
+    
+    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
+	ld a, [wBagPocketsFlags]
+	bit BIT_KEY_ITEMS_POCKET, a
 	ld hl, wNumBagItems
+	jr z, .gotBagPocket
+	ld hl, wNumBagKeyItems
+.gotBagPocket
+	;;;;;;;;;;
 	ld a, l
 	ld [wListPointer], a
 	ld a, h
@@ -72,9 +81,9 @@ DisplayPokemartDialogue_::
 	ld a, [wIsKeyItem]
 	and a
 	jr nz, .unsellableItem
-	ld a, [wCurItem]
-	call IsItemHM
-	jr c, .unsellableItem
+	;ld a, [wCurItem]
+	;call IsItemHM
+	;jr c, .unsellableItem
 	ld a, PRICEDITEMLISTMENU
 	ld [wListMenuID], a
 	ldh [hHalveItemPrices], a ; halve prices when selling
@@ -86,6 +95,8 @@ DisplayPokemartDialogue_::
 	call PrintText
 	hlcoord 14, 7
 	lb bc, 8, 15
+    xor a               ; NOLISTMENU
+    ld [wListMenuID], a ; marcelnote - for TM printing
 	ld a, TWO_OPTION_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; yes/no menu
@@ -128,8 +139,12 @@ DisplayPokemartDialogue_::
 	ld [wInitListType], a
 	callfar InitList
 
+
+
 	ld hl, PokemartBuyingGreetingText
 	call PrintText
+    call SaveTextBoxTilesToBuffer ; marcelnote - for TM printing
+    call Delay3
 	call SaveScreenTilesToBuffer1
 .buyMenuLoop
 	call LoadScreenTilesFromBuffer1

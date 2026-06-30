@@ -59,6 +59,9 @@ HandleMenuInput_::
 ; not at top
 	dec a
 	ldh [hCurrentMenuItem], a ; move selected menu item up one space
+    push bc
+	call PrintBagInfoText ; marcelnote - for bag pockets and TM printing
+	pop bc
 	jr .checkOtherKeys
 .alreadyAtTop
 	ld a, [wMenuWrappingEnabled]
@@ -85,6 +88,9 @@ HandleMenuInput_::
 .notAtBottom
 	ld a, c
 	ldh [hCurrentMenuItem], a
+    push bc
+	call PrintBagInfoText ; marcelnote - for bag pockets and TM printing
+	pop bc
 .checkOtherKeys
 	ld a, [wMenuWatchedKeys]
 	and b ; does the menu care about any of the pressed keys?

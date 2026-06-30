@@ -2240,8 +2240,9 @@ IsCryMove:
 	ld a, [wAnimationID]
 	cp GROWL
 	jr z, .CryMove
-	cp ROAR
-	jr z, .CryMove
+	; ROAR used to also trigger a cry here; its move slot is now
+	; SUPER_TRANSFORM, whose animation field points at TRANSFORM (not its
+	; own id), so wAnimationID can never equal SUPER_TRANSFORM's value here
 	and a ; clear carry
 	ret
 .CryMove

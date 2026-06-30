@@ -288,10 +288,17 @@ GymLeaderRandomItem::
     ld a, [wItemBonusRarity]
     add a, item_pokeball_odds       ; increased rarity for gym leaders, prevents a pokeball class TM
     ld [wItemBonusRarity], a
+    ld a, [wRogueDoorSelection]
+    push af                         ; restored below via pop - this call forces TM
+                                     ; regardless of which door was actually
+                                     ; picked, and the next route's own roll
+                                     ; must not be left stuck on TM
     ld a, TM                        ; set to generate a random TM
     ld [wRogueDoorSelection], a
     farcall Random_Item_Selection
     ld a, [wItemBonusRarity]
     sub a, item_pokeball_odds       ; restores Bonus Rarity to normal
     ld [wItemBonusRarity], a
+    pop af
+    ld [wRogueDoorSelection], a
     ret

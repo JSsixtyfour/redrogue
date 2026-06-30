@@ -128,10 +128,11 @@ RogueRewardTradeRoll::
     call Random
     cp 26
     ret nc              ; no trade
-    ; require at least 2 party members (can't trade away last mon)
+    ; require at least 3 party members (so trading one away never leaves
+    ; the player down to a single mon)
     ld a, [wPartyCount]
-    cp 2
-    ret c               ; fewer than 2 members, skip
+    cp 3
+    ret c               ; fewer than 3 members, skip
     ; e = partyCount, d = retry counter (8 attempts; rejection sampling needs more headroom)
     ld e, a
     ld d, 8

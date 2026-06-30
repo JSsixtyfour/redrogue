@@ -903,9 +903,9 @@ SwitchAndTeleportEffect:
 	ld hl, RanFromBattleText
 	cp TELEPORT
 	jr z, .printText
-	ld hl, RanAwayScaredText
-	cp ROAR
-	jr z, .printText
+	; ROAR used to share this effect and printed RanAwayScaredText here; its
+	; move slot is now SUPER_TRANSFORM, which uses its own dedicated effect
+	; and never reaches this code, so only WHIRLWIND falls through below now
 	ld hl, WasBlownAwayText
 .printText
 	jp PrintText
@@ -1384,6 +1384,9 @@ HealEffect:
 
 TransformEffect:
 	jpfar TransformEffect_
+
+SuperTransformEffect:
+	jpfar SuperTransformEffect_
 
 ReflectLightScreenEffect:
 	jpfar ReflectLightScreenEffect_

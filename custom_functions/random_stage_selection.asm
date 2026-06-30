@@ -7,7 +7,7 @@
 ;
 ; RogueStageMapTable and IsRogueStageMap live here (rogue bank) so that
 ; _PickRandomUnvisitedStage can read the table directly without a bank switch.
-DEF NUM_STAGE_MAPS EQU 23
+DEF NUM_STAGE_MAPS EQU 22
 
 RogueStageMapTable:
 	db ROUTE_1
@@ -18,7 +18,7 @@ RogueStageMapTable:
 	db ROUTE_12
 	db ROUTE_13
 	db ROUTE_15
-	db ROUTE_17
+	; db ROUTE_17
 	db ROUTE_24          ; unique: reward gated by Nugget Bridge NPC (vanilla nugget flow), not ALL_TRAINERS_MASK
 	db ROUTE_25
 	db VIRIDIAN_FOREST

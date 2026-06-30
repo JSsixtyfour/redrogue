@@ -40,7 +40,6 @@ MoveGrammar:
 	db LEER
 	db BITE
 	db GROWL
-	db ROAR
 	db SING
 	db PECK
 	db COUNTER

@@ -51,7 +51,9 @@
 	const LEER         ; 2b
 	const BITE         ; 2c
 	const GROWL        ; 2d
-	const ROAR         ; 2e
+	const SUPER_TRANSFORM ; 2e - repurposed from ROAR (unused: removed from Red Rogue as served no purpose). Like normal Transform, but also
+	                       ; copies the target's current HP (clamped to the user's
+	                       ; own max HP). See engine/battle/move_effects/transform.asm.
 	const SING         ; 2f
 	const SUPERSONIC   ; 30
 	const SONICBOOM    ; 31

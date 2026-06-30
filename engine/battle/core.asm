@@ -1204,12 +1204,15 @@ TryKODefiance::
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jp z, .noDefiance        ; skip in link battles
+	ldh a, [hCurMap]
+	cp OAKS_LAB
+	jp z, .noDefiance        ; skip during the first rival fight (Oak's Lab, right after starter pick) - meant to be losable
 	ld b, KO_DEFIANCE
 	call IsItemInBag
-	jr z, .noDefiance
+	jp z, .noDefiance
 	ld a, [wKODefianceUsages]
 	and a
-	jr z, .noDefiance
+	jp z, .noDefiance
 	dec a
 	ld [wKODefianceUsages], a
 
@@ -1232,6 +1235,17 @@ TryKODefiance::
 	ld [hl], c
 	xor a
 	ld [wBattleMonStatus], a
+
+	; clear stat-stage modifiers (Attack/Defense/Speed/Special/Accuracy/
+	; Evasion drops or boosts) too, not just the major status - same reset
+	; LoadBattleMonFromParty does when a mon is freshly sent out
+	ld a, $7 ; default stat modifier
+	ld b, NUM_STAT_MODS
+	ld hl, wPlayerMonStatMods
+.statModResetLoop
+	ld [hli], a
+	dec b
+	jr nz, .statModResetLoop
 
 	; sync the same HP/status to the party slot
 	ld a, [wPlayerMonNumber]
@@ -1288,6 +1302,11 @@ TryKODefiance::
 
 	call DrawPlayerHUDAndHPBar
 	call LoadScreenTilesFromBuffer1
+	; explicitly clear this in case something earlier in the same turn left it
+	; set - otherwise this text closes immediately with no wait, same bug
+	; class as the reward pokeball/reward menu text-cutoff fixes this session
+	xor a
+	ldh [hNoWaitAfterText], a
 	ld hl, KODefianceActivatedText
 	call PrintText
 	xor a
@@ -2347,7 +2366,7 @@ DisplayBattleMenu::
 .throwSafariBallWasSelected
 	ld a, SAFARI_BALL
 	ld [wCurItem], a
-	jr UseBagItem
+	jp UseBagItem   ; I don't think this should cause an issue
 
 .upperLeftMenuItemWasNotSelected ; a menu item other than the upper left item was selected
 	cp $2
@@ -2401,14 +2420,28 @@ OldManItemList:
 DisplayPlayerBag:
 	; get the pointer to player's bag when in a normal battle
 	ld hl, wNumBagItems
-	ld a, l
+    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
+	ld a, [wBagPocketsFlags]
+	bit BIT_KEY_ITEMS_POCKET, a
+	jr z, DisplayBagMenu
+	ld hl, wNumBagKeyItems
+	;;;;;;;;;;
+	; fallthrough
+
+DisplayBagMenu:
+    ld a, l
 	ld [wListPointer], a
 	ld a, h
 	ld [wListPointer + 1], a
-
-DisplayBagMenu:
 	xor a
 	ld [wPrintItemPrices], a
+    ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
+	ld hl, wBagPocketsFlags
+	set BIT_PRINT_INFO_BOX, [hl] ; set bit before displaying list
+	ld a, BAG_INFO_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	;;;;;;;;;;
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	ld a, [wBagSavedMenuItem]
@@ -2419,6 +2452,10 @@ DisplayBagMenu:
 	ld a, $0
 	ld [wMenuWatchMovingOutOfBounds], a
 	ld [wMenuItemToSwap], a
+    ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
+	ld hl, wBagPocketsFlags
+	res BIT_PRINT_INFO_BOX, [hl] ; reset bit when using item or exiting menu
+	;;;;;;;;;;
 	jp c, DisplayBattleMenu ; go back to battle menu if an item was not selected
 
 UseBagItem:
@@ -5218,6 +5255,8 @@ MetronomePickMove:
 	jr nc, .pickMoveLoop
 	cp METRONOME
 	jr z, .pickMoveLoop
+	cp SUPER_TRANSFORM ; gift-mon-exclusive move; don't let Metronome grant it
+	jr z, .pickMoveLoop
 	ld [hl], a
 	jr ReloadMoveData
 
@@ -6299,6 +6338,12 @@ LoadEnemyMonData:
 	jr nz, .copyBaseStatsLoop
 	ld hl, wMonHCatchRate
 	ld a, [hli]
+; bit 0 is the Ghost Variant flag on the enemy mon's struct - clear it here
+; so a normal wild/trainer mon never spawns pre-flagged as ghost just
+; because its species' catch rate happens to be odd (see add_mon.asm for
+; the matching clear on the player-party-creation path, and
+; func_ghost_variant.asm for the full writeup)
+	res 0, a
 	ld [de], a
 	inc de
 	ld a, [hl]     ; base exp

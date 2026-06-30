@@ -12,6 +12,7 @@
 	const_export PC_POKESALESMAN
     const_export PC_TRADENERD
     const_export PC_MOVETUTOR
+    const_export PC_DOOR2_SIGN
 
 
 IndigoPlateauLobby_Object:
@@ -37,7 +38,7 @@ IndigoPlateauLobby_Object:
 	object_event  2, 10, SPRITE_MIDDLE_AGED_MAN, WALK, LEFT_RIGHT, TEXT_PC_POKEMON_SALESMAN     ; sells a random pokemon to trainer
 	object_event  5, 11, SPRITE_SUPER_NERD, STAY, UP, TEXT_PC_TRADER_SUPER_NERD                 ; trades a random pokemon of the same rarity as a pokemon you currently have
 	object_event  4,  1, SPRITE_GAMEBOY_KID, STAY, DOWN, TEXT_PC_MOVE_TUTOR                     ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
-	object_event  7,  0, SPRITE_CLIPBOARD, STAY, RIGHT, TEXT_PC_DOOR1_SIGN                      ; sign for door 1 (route stage)
-	object_event  9,  0, SPRITE_CLIPBOARD, STAY, RIGHT, TEXT_PC_DOOR2_SIGN                      ; sign for door 2 (gym stage)
+	object_event  7,  0, SPRITE_CLIPBOARD, STAY, NONE, TEXT_PC_DOOR1_SIGN                       ; sign for door 1 (route stage)
+	object_event  9,  0, SPRITE_CLIPBOARD, STAY, NONE, TEXT_PC_DOOR2_SIGN                       ; sign for door 2 (gym stage)
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

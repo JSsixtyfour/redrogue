@@ -460,10 +460,12 @@ GrowlAnim:
 	battle_anim GROWL, SUBANIM_0_HEART_1_MUSIC, 1, 6
 	db -1 ; end
 
-RoarAnim:
-	battle_anim ROAR, SUBANIM_1_SHOUT, 1, 6
-	battle_anim ROAR, SUBANIM_1_SHOUT, 1, 6
-	battle_anim ROAR, SUBANIM_1_SHOUT, 1, 6
+RoarAnim: ; orphaned: nothing dispatches here anymore (SUPER_TRANSFORM_EFFECT
+          ; reuses TRANSFORM's animation field instead of its own), kept for
+          ; reference since SonicBoomAnim below still borrows this sub-anim
+	battle_anim SUPER_TRANSFORM, SUBANIM_1_SHOUT, 1, 6
+	battle_anim SUPER_TRANSFORM, SUBANIM_1_SHOUT, 1, 6
+	battle_anim SUPER_TRANSFORM, SUBANIM_1_SHOUT, 1, 6
 	db -1 ; end
 
 SingAnim:
@@ -477,8 +479,11 @@ SupersonicAnim:
 	db -1 ; end
 
 SonicBoomAnim:
-	battle_anim ROAR, SUBANIM_1_SHOUT, 1, 6
-	battle_anim ROAR, SUBANIM_1_SHOUT, 1, 6
+	; these two borrow SUPER_TRANSFORM's $2e encoding purely for its
+	; SUBANIM_1_SHOUT byte value - unrelated to that move, same as before
+	; this slot was repurposed (it used to borrow ROAR's encoding the same way)
+	battle_anim SUPER_TRANSFORM, SUBANIM_1_SHOUT, 1, 6
+	battle_anim SUPER_TRANSFORM, SUBANIM_1_SHOUT, 1, 6
 	battle_anim GUST, SUBANIM_1_TORNADO, 1, 6
 	battle_anim NO_MOVE, SUBANIM_1_STAR_BIG, 1, 6
 	db -1 ; end
