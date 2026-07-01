@@ -45,7 +45,7 @@ GetIndexOfItemInBag:
 	ld a, [wIsKeyItem]
 	and a
 	jr z, .loop
-	ld hl, wBagKeyItems - 1
+	ld hl, wKeyItemSlot1 - 1  ; key items now stored in wKeyItemSlot1/2/3 (no qty bytes)
 	;;;;;;;;;;
 .loop
 	inc c

@@ -1,5 +1,9 @@
 InitPlayerData:
 InitPlayerData2:
+	; clear TM/HM bitfield so SRAM $FF default doesn't grant all TMs
+	farcall ClearTMBitfield
+	; clear key items ownership bitfield (true new game only — death/run-reset does NOT clear this)
+	farcall ClearKeyItemsBitfield
 
 	call Random
 	ldh a, [hRandomSub]
@@ -15,8 +19,19 @@ InitPlayerData2:
 	call InitializeEmptyList
 	ld hl, wNumBagItems
 	call InitializeEmptyList
-    ld hl, wNumBagKeyItems    ; marcelnote - new for Key Items pocket
-	call InitializeEmptyList
+	; Zero key item carry slots (count + 8 item slots) on new game.
+	; Ownership bitfield (sKeyItemsBitfield) is cleared separately above.
+	ld hl, wNumBagKeyItems
+	xor a
+	ld [hli], a    ; wNumBagKeyItems = 0
+	ld [hli], a    ; wKeyItemSlot1
+	ld [hli], a    ; wKeyItemSlot2
+	ld [hli], a    ; wKeyItemSlot3
+	ld [hli], a    ; wKeyItemSlot4
+	ld [hli], a    ; wKeyItemSlot5
+	ld [hli], a    ; wKeyItemSlot6
+	ld [hli], a    ; wKeyItemSlot7
+	ld [hl], a     ; wKeyItemSlot8
 	ld hl, wNumBoxItems
 	call InitializeEmptyList
 

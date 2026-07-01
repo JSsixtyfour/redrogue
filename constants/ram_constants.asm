@@ -191,10 +191,19 @@ DEF NUM_WITCH_PRIZES     EQU 6
     ; wBagPocketsFlags ; marcelnote - new for bag pockets
 	const_def
 	const BIT_KEY_ITEMS_POCKET   ; 0 ; is 1 if currently in Key Items pocket
-	const_skip                   ; 1 ; unused, leave space for a possible TM pocket
+	const BIT_TM_POCKET          ; 1 ; is 1 if currently in TM Pack pocket (never set at the same time as BIT_KEY_ITEMS_POCKET)
 	const BIT_PRINT_INFO_BOX     ; 2 ; whether to print Item info box (i.e. only in start menu bag and battle)
 	const BIT_PC_WITHDRAWING     ; 3 ; to prevent switching pockets when withdrawing from PC
 	const_skip                   ; 4-7 ; unused
+
+; sKeyItemsBitfield bit indices (must remain stable once save data exists)
+DEF KEY_ITEM_BIT_LEFTOVERS   EQU 0
+DEF KEY_ITEM_BIT_PP_TONIC    EQU 1
+DEF KEY_ITEM_BIT_KO_DEFIANCE EQU 2
+DEF KEY_ITEM_BIT_EXP_ALL     EQU 3
+; 4 = Mom's Allowance (planned)
+; 5 = First Aid Kit (planned)
+; 6-31 = per-type attack boosters (planned, ~18 types)
 
 ; rLCDC
 DEF LCDC_DEFAULT EQU LCDC_ON | LCDC_WIN_9C00 | LCDC_WIN_ON | LCDC_BLOCK21 | LCDC_BG_9800 | LCDC_OBJ_8 | LCDC_OBJ_ON | LCDC_BG_ON

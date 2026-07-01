@@ -328,6 +328,6 @@ TossHowManyText:
 	text_far _TossHowManyText
 	text_end
 
-TMItContainsText:: ; marcelnote - for TM printing
-	text_far _TMItContainsText
+; TMItContainsText moved to custom_functions/tm_bag.asm (same ROMX bank as
+; PrintBagInfoText, which needs to read it with that bank active)
 	text_end

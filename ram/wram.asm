@@ -360,6 +360,20 @@ NEXTU
 wTrainerCardBlkPacket:: ds $40
 
 NEXTU
+; Temporary TM/HM list for the TM Pack pocket menu display.
+; Format: count byte + {item_id, qty} pairs + $FF sentinel.
+; $80 = 128 bytes, covers all 55 TMs/HMs (needs 1+55*2+1=113 bytes).
+; Overlaps wTrainerCardBlkPacket and shares this union with wNPCMovementDirections
+; (180 bytes) — the union is 180 bytes regardless, so this costs nothing.
+wTMPocketBuf:: ds $80
+
+NEXTU
+; Key items carry-slot display list, built on demand by BuildKeyItemPocketList.
+; Format: count byte + {item_id, 1} pairs + $FF sentinel. 8 items max = 18 bytes.
+; Union member — mutually exclusive with trainer card / TM list (union is 180 bytes).
+wKeyItemPocketBuf:: ds 18
+
+NEXTU
 wHallOfFame:: ds HOF_TEAM
 
 NEXTU
@@ -1752,9 +1766,21 @@ wNumBagItems:: db
 ; item, quantity
 wBagItems:: ds BAG_ITEM_CAPACITY * 2 + 1
 
-wNumBagKeyItems:: db ; marcelnote - for Key Items pocket
-; item, quantity (but quantity will always be 1 so could look into decreasing it)
-wBagKeyItems:: ds BAG_KEY_ITEM_CAPACITY * 2 + 1
+; Key items pocket — binary carry slots.
+; Ownership lives in sKeyItemsBitfield (SRAM); these WRAM bytes track the
+; active loadout. Carry limit TBD — raised to 8 until the PC swap UI exists
+; (with only 4 starting items and no way to swap yet, a cap of 3 would
+; permanently lock out items beyond the first three acquired).
+; Persists through death/run-reset via normal save; clears only on true new game.
+wNumBagKeyItems:: db         ; number of occupied carry slots
+wKeyItemSlot1:: db           ; item ID in carry slot 1 ($00 = empty)
+wKeyItemSlot2:: db           ; item ID in carry slot 2 ($00 = empty)
+wKeyItemSlot3:: db           ; item ID in carry slot 3 ($00 = empty)
+wKeyItemSlot4:: db           ; item ID in carry slot 4 ($00 = empty)
+wKeyItemSlot5:: db           ; item ID in carry slot 5 ($00 = empty)
+wKeyItemSlot6:: db           ; item ID in carry slot 6 ($00 = empty)
+wKeyItemSlot7:: db           ; item ID in carry slot 7 ($00 = empty)
+wKeyItemSlot8:: db           ; item ID in carry slot 8 ($00 = empty)
 
 ; bits related to bag pockets (see ram_constants.asm) ; marcelnote - new for bag pockets
 wBagPocketsFlags:: db

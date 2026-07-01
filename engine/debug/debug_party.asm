@@ -45,6 +45,22 @@ IF DEF(_DEBUG)
 	ld a, ~(1 << BIT_EARTHBADGE)
 	ld [wObtainedBadges], a
 
+	; Own all TMs and HMs in the debug build (InitPlayerData already cleared
+	; sTMBitfield, so just fill it here).
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld hl, sTMBitfield
+	ld a, $ff
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	xor a
+	ld [rRAMG], a
+
 	ld a, $10             ; skip naming screen (non-zero) but keep player party (low nibble 0)
 	ld [wMonDataLocation], a
 	call SetDebugNewGameParty
@@ -124,35 +140,40 @@ IF DEF(_DEBUG)
 	ld a, 15
 	ld [hl], a
 
-	; Get some debug items.
-	ld hl, wNumBagItems
+	; Get some debug items. Use GiveItem (not AddItemToInventory directly)
+	; so TMs/HMs are routed to sTMBitfield instead of the regular bag.
+	; push/pop de preserves the list pointer — GiveItem clobbers de via
+	; CopyToStringBuffer and other internal calls.
 	ld de, DebugNewGameItemsList
 .items_loop
 	ld a, [de]
 	cp -1
 	jr z, .items_end
-	ld [wCurItem], a
+	ld b, a
 	inc de
 	ld a, [de]
+	ld c, a
 	inc de
-	ld [wItemQuantity], a
-	call AddItemToInventory
+	push de
+	call GiveItem
+	pop de
 	jr .items_loop
 .items_end
-    
-    ; Get some more debug items. ; marcelnote - new for Key items pocket
-	ld hl, wNumBagKeyItems
+
+	; Give debug key pocket items via GiveItem (same de-preservation needed).
 	ld de, DebugKeyItemsList
 .keyItemsLoop
 	ld a, [de]
 	cp -1
 	jr z, .keyItemsEnd
-	ld [wCurItem], a
+	ld b, a
 	inc de
 	ld a, [de]
+	ld c, a
 	inc de
-	ld [wItemQuantity], a
-	call AddItemToInventory
+	push de
+	call GiveItem
+	pop de
 	jr .keyItemsLoop
 .keyItemsEnd
 
@@ -187,11 +208,11 @@ DebugSetPokedexEntries:
 
 DebugNewGameItemsList: ; marcelnote - moved some to key items pocket
 	;db BICYCLE, 1
-	db MASTER_BALL, 99
+	;db MASTER_BALL, 99
 	db RARE_CANDY, 99
 	db FULL_RESTORE, 99
 	db FULL_HEAL, 99
-	db ESCAPE_ROPE, 99
+	;db ESCAPE_ROPE, 99
 	;db MAX_ELIXIR, 99 ; marcelnote - added
 ;	db TOWN_MAP, 1
 ;	db SECRET_KEY, 1

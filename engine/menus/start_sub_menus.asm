@@ -309,10 +309,17 @@ StartMenu_Item::
 .notInCableClubRoom
     ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
 	ld a, [wBagPocketsFlags]
+	bit BIT_TM_POCKET, a
+	jr nz, .startTMPocket
 	bit BIT_KEY_ITEMS_POCKET, a
 	ld bc, wNumBagItems
-    jr z, .gotBagPocket
-	ld bc, wNumBagKeyItems
+	jr z, .gotBagPocket
+	farcall BuildKeyItemPocketList
+	ld bc, wKeyItemPocketBuf
+	jr .gotBagPocket
+.startTMPocket
+	farcall BuildTMPocketList
+	ld bc, wTMPocketBuf
 .gotBagPocket
 	ld hl, wListPointer
 	ld a, c
@@ -454,6 +461,8 @@ StartMenu_Item::
 .skipAskingQuantity
 	;;;;;;;;;; marcelnote - toss from whichever pocket is currently open, new for bag pockets
 	ld a, [wBagPocketsFlags]
+	bit BIT_TM_POCKET, a
+	jr nz, .tossZeroItems ; TMs are owned permanently in the bitfield, can't toss
 	bit BIT_KEY_ITEMS_POCKET, a
 	ld hl, wNumBagItems
 	jr z, .gotTossPocket

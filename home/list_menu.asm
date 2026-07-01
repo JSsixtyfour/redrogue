@@ -9,7 +9,7 @@ DisplayListMenuID::
 	ld a, [wBattleType]
 	and a ; is it the Old Man battle?
 	jr nz, .specialBattleType
-    call PrintBagInfoText ; marcelnote - new for bag pockets
+    farcall PrintBagInfoText ; in ROMX; marcelnote - new for bag pockets
 	ld a, $01 ; hardcoded bank
 	jr .bankswitch
 .specialBattleType ; Old Man battle
@@ -81,7 +81,7 @@ DisplayListMenuIDLoop::
 	jr .buttonAPressed
 .notOldManBattle
 	call LoadGBPal
-    call PrintBagInfoText ; marcelnote - for bag pockets and TM printing
+    farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
 	call HandleMenuInput
 	push af
 	call PlaceMenuCursor
@@ -189,9 +189,9 @@ DisplayListMenuIDLoop::
 	jp nz, HandleItemListSwapping ; if so, allow the player to swap menu entries
 	;;;;;;;;;; marcelnote - for bag pockets
 	bit B_PAD_RIGHT, a
-	jr nz, .switchBagPocket
+	jr nz, .switchPocketForward
 	bit B_PAD_LEFT, a
-	jr nz, .switchBagPocket
+	jr nz, .switchPocketBackward
 	;;;;;;;;;;
     
     
@@ -213,31 +213,22 @@ DisplayListMenuIDLoop::
 	jp z, DisplayListMenuIDLoop
 	dec [hl]
 	jp DisplayListMenuIDLoop
-.switchBagPocket ; marcelnote - new for bag pockets
-	ld a, SFX_TINK
-	call PlaySound
-	ld a, [wListMenuID]
-	cp ITEMLISTMENU
-	jp nz, DisplayListMenuIDLoop
-	ld hl, wBagPocketsFlags
-	bit BIT_PC_WITHDRAWING, [hl] ; if withdrawing from PC then cannot switch pocket
-	jp nz, DisplayListMenuIDLoop
-	ld bc, wNumBagItems
-	ld a, [wBagPocketsFlags]
-	bit BIT_KEY_ITEMS_POCKET, a
-	jr nz, .switchToMainPocket
-	ld bc, wNumBagKeyItems
-.switchToMainPocket
-	xor (1 << BIT_KEY_ITEMS_POCKET) ; this switches bit BIT_KEY_ITEMS_POCKET of a
-	ld [wBagPocketsFlags], a
-	ld a, c
-	ld hl, wListPointer
-	ld [hli], a
-	ld [hl], b ; store item bag pointer in wListPointer (for DisplayListMenuID)
+; marcelnote - new for bag pockets; 3 pockets (items/key items/TM pack) cycle
+; in ROMX (PocketSwitchROMX) to keep this HOME-bank stub small. a = direction
+; (1 = forward/RIGHT, 0 = backward/LEFT) going in; carry set coming back means
+; the switch was rejected (wrong menu, or withdrawing from PC).
+.switchPocketForward
+	ld a, 1
+	jr .doPocketSwitch
+.switchPocketBackward
+	xor a
+.doPocketSwitch
+	farcall PocketSwitchROMX
+	jp c, DisplayListMenuIDLoop
 	xor a
 	ldh [hCurrentMenuItem], a
 	ld [wListScrollOffset], a
-	call ExitListMenu ; this is to prevent an issue with BankswitchHome in DisplayListMenuID
+	call ExitListMenu  ; prevents BankswitchHome issue in DisplayListMenuID
 	jp DisplayListMenuID
 
 DisplayChooseQuantityMenu::
@@ -515,6 +506,9 @@ PrintListMenuEntries::
 	cp ITEMLISTMENU
 	jr nz, .nextListEntry
 ; print item quantity
+	ld a, [wBagPocketsFlags]
+	bit BIT_TM_POCKET, a
+	jr nz, .skipPrintingItemQuantity ; TMs are binary owned/not-owned, no qty to show
 	ld a, [wNamedObjectIndex]
 	ld [wCurItem], a
 	call IsKeyItem ; check if item is unsellable
@@ -570,118 +564,10 @@ PrintListMenuEntries::
 	ld de, ListMenuCancelText
 	jp PlaceString
 
-PrintBagInfoText: ; marcelnote - new for bag pockets and TM printing
-	ld hl, wBagPocketsFlags
-	bit BIT_PRINT_INFO_BOX, [hl]
-	jr z, .notBag
-	ld de, BagItemsText
-	ld a, [wBagPocketsFlags]
-	bit BIT_KEY_ITEMS_POCKET, a
-	jr z, .mainPocket
-	ld de, BagKeyItemsText
-.mainPocket
-	call GetCurrentMenuItem ; returns a = current menu item
-	hlcoord 5, 14
-	cp $ff ; CANCEL?
-	jr z, .notTM
-	cp HM_CUT
-	jr c, .notTM
-	call GetTMHMContent
-	hlcoord 5, 14
-	ld a, ' '
-	ld b, 14 ; clear whole line
-.clearLine
-	ld [hli], a
-	dec b
-	jr nz, .clearLine
-	ld de, wStringBuffer
-	hlcoord 6, 14
-.notTM
-	jp PlaceString
-
-.notBag
-	ld a, [wListMenuID]
-	cp ITEMLISTMENU
-	jr z, .continue
-	cp PRICEDITEMLISTMENU
-	ret nz
-.continue
-	call GetCurrentMenuItem
-	cp $ff
-	jr z, .restoreDefaultText
-	cp HM_CUT
-	jr c, .restoreDefaultText
-	call GetTMHMContent
-	hlcoord 1, 14
-	lb bc, 3, 18
-	call ClearScreenArea
-	ld hl, TMItContainsText
-	jp PrintText_NoCreatingTextBox
-.restoreDefaultText
-	; restore the saved text from wTextBoxBuffer (2 rows × 18 tiles at x=1,y=14)
-	ld de, wTextBoxBuffer
-	hlcoord 1, 14
-	ld b, 18
-.placeTiles
-	ld a, [de]
-	inc de
-	ld [hli], a
-	dec b
-	jr nz, .placeTiles
-	hlcoord 1, 16
-	ld b, 18
-.placeTiles2
-	ld a, [de]
-	inc de
-	ld [hli], a
-	dec b
-	jr nz, .placeTiles2
-	ret
-
-
-GetCurrentMenuItem: ; marcelnote - new for bag pockets and TM printing
-	; hovered index = wListScrollOffset + hCurrentMenuItem
-	ld a, [wListScrollOffset]
-	ld c, a
-	ldh a, [hCurrentMenuItem]
-	add c
-	ld c, a
-	; hl = list start + 2*index
-	ld hl, wListPointer
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	inc hl ; hl = beginning of list entries
-	ld b, 0
-	ld a, [wListMenuID]
-	cp PRICEDITEMLISTMENU
-	jr z, .continue
-	sla c
-.continue
-	add hl, bc
-	ld a, [hl] ; item id under cursor
-	ret
-
-
-GetTMHMContent: ; marcelnote - new for bag pockets and TM printing
-	sub TM01 ; underflows below 0 for HM items (before TM items)
-	jr nc, .skipAdding
-	add NUM_TMS + NUM_HMS ; adjust HM IDs to come after TM IDs
-.skipAdding
-	inc a
-	ld [wTempTMHM], a
-	predef TMToMove ; get move ID from TM/HM ID
-	ld a, [wTempTMHM]
-	ld [wMoveNum], a
-	call GetMoveName
-	jp CopyToStringBuffer
+; PrintBagInfoText, GetCurrentMenuItem, GetTMHMContent and their strings
+; live in ROMX (custom_functions/tm_bag.asm) to keep the HOME bank free.
+; All callers use farcall.
 
 ; marcelnote - moved from home/list_menu.asm
 ListMenuCancelText::
 	db "CANCEL@"
-
-BagItemsText:
-	db "◀ ITEMS      ▶@"
-
-BagKeyItemsText:
-	db "◀ KEY ITEMS  ▶@"

@@ -28,7 +28,6 @@
 
 ; Actual characters (from gfx/font/font_extra.png)
 
-    charmap "◀",         $62 ; marcelnote - new
 	;charmap "<BOLD_A>",  $60 ; unused
 	;charmap "<BOLD_B>",  $61 ; unused
 	;charmap "<BOLD_C>",  $62 ; unused
@@ -157,6 +156,11 @@
 	charmap "'s",        $bd
 	charmap "'t",        $be
 	charmap "'v",        $bf
+
+; $c0-$df: safe vChars1 area (offset $40-$5F from $8000), not touched by Town Map.
+; Town Map writes vChars1 at $6d ($ed) and up, so $c0-$ec are all persistent.
+; Draw the tile at font.png offset $c0 to get the actual glyph on screen.
+	charmap "◀",         $c0 ; left-pointing arrow; tile graphic not yet drawn in font.png
 
 	charmap "'",         $e0
 	charmap "<PK>",      $e1

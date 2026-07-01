@@ -60,7 +60,7 @@ HandleMenuInput_::
 	dec a
 	ldh [hCurrentMenuItem], a ; move selected menu item up one space
     push bc
-	call PrintBagInfoText ; marcelnote - for bag pockets and TM printing
+	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
 	pop bc
 	jr .checkOtherKeys
 .alreadyAtTop
@@ -89,7 +89,7 @@ HandleMenuInput_::
 	ld a, c
 	ldh [hCurrentMenuItem], a
     push bc
-	call PrintBagInfoText ; marcelnote - for bag pockets and TM printing
+	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
 	pop bc
 .checkOtherKeys
 	ld a, [wMenuWatchedKeys]

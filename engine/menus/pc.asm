@@ -125,7 +125,7 @@ RemoveItemByID::
 	ld a, [wIsKeyItem]
 	and a
 	jr z, .notKeyItem
-	ld hl, wBagKeyItems
+	ld hl, wKeyItemSlot1  ; key items now in slot array (PC key items UI is future work)
 .notKeyItem
 	;;;;;;;;;;
 	xor a

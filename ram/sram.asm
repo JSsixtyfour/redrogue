@@ -11,7 +11,25 @@ sHallOfFame:: ds HOF_TEAM * HOF_TEAM_CAPACITY
 
 SECTION "Save Data", SRAM
 
-	ds $598
+	ds $591 ; was $291; 784 bytes could be carved for sFusionSpriteA0/A1 below
+
+; Sprite fusion: hold species_a's aligned 1bpp planes while species_b loads.
+; Only used by LoadFusedFrontSprite (custom_functions/func_fusion_sprite.asm).
+;sFusionSpriteA0:: ds SPRITEBUFFERSIZE ; species_a MSB plane (392 bytes)
+;sFusionSpriteA1:: ds SPRITEBUFFERSIZE ; species_a LSB plane (392 bytes)
+
+; TM/HM ownership bitfield for the roguelike run.
+; Bit N = owned: bits 0-49 = TM01-TM50, bits 50-54 = HM01-HM05.
+; Cleared at run reset. Saved across power cycles.
+sTMBitfield:: ds 7
+
+; Key items pocket ownership bitfield. Persists through death and new runs;
+; only cleared on a true new game (ClearKeyItemsBitfield in InitPlayerData).
+; Bit assignments (must remain stable once save data exists):
+;   0 = LEFTOVERS, 1 = PP_TONIC, 2 = KO_DEFIANCE, 3 = EXP_ALL
+;   4-7 reserved (Mom's Allowance, First Aid Kit, etc.)
+;   8-31 reserved (per-type attack boosters)
+sKeyItemsBitfield:: ds 4
 
 sGameData::
 sPlayerName::  ds NAME_LENGTH

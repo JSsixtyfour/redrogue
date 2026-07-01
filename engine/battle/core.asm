@@ -2391,7 +2391,7 @@ DisplayBattleMenu::
 ; bait was selected
 	ld a, SAFARI_BAIT
 	ld [wCurItem], a
-	jr UseBagItem
+	jp UseBagItem
 
 BagWasSelected:
 	call LoadScreenTilesFromBuffer1
@@ -2422,9 +2422,16 @@ DisplayPlayerBag:
 	ld hl, wNumBagItems
     ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
 	ld a, [wBagPocketsFlags]
+	bit BIT_TM_POCKET, a
+	jr nz, .battleTMPocket
 	bit BIT_KEY_ITEMS_POCKET, a
-	jr z, DisplayBagMenu
-	ld hl, wNumBagKeyItems
+	jp z, DisplayBagMenu
+	farcall BuildKeyItemPocketList
+	ld hl, wKeyItemPocketBuf
+	jp DisplayBagMenu
+.battleTMPocket
+	farcall BuildTMPocketList
+	ld hl, wTMPocketBuf
 	;;;;;;;;;;
 	; fallthrough
 
