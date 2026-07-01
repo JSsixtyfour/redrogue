@@ -50,32 +50,27 @@ OakSpeech:
 	call LoadTextBoxTilePatterns
 	call PrepareOakSpeech
 	predef InitPlayerData2
-	ld hl, wNumBoxItems
+	; Give starting items. Key pocket items (EXP_ALL, LEFTOVERS, PP_TONIC,
+	; KO_DEFIANCE) route through GiveItem so they hit sKeyItemsBitfield +
+	; wKeyItemSlot1/2/3 instead of the item bag. POTION goes to the regular bag.
+	ld hl, wNumBagItems
 	ld a, POTION
 	ld [wCurItem], a
 	ld a, 1
 	ld [wItemQuantity], a
 	call AddItemToInventory
-	ld a, EXP_ALL
-	ld [wCurItem], a
-	ld a, 1
-	ld [wItemQuantity], a
-	call AddItemToInventory
-	ld a, LEFTOVERS
-	ld [wCurItem], a
-	ld a, 1
-	ld [wItemQuantity], a
-	call AddItemToInventory
-    ld a, PP_TONIC
-	ld [wCurItem], a
-	ld a, 1
-	ld [wItemQuantity], a
-	call AddItemToInventory
-	ld a, KO_DEFIANCE
-	ld [wCurItem], a
-	ld a, 1
-	ld [wItemQuantity], a
-	call AddItemToInventory
+	ld b, EXP_ALL
+	ld c, 1
+	call GiveItem
+	ld b, LEFTOVERS
+	ld c, 1
+	call GiveItem
+	ld b, PP_TONIC
+	ld c, 1
+	call GiveItem
+	ld b, KO_DEFIANCE
+	ld c, 1
+	call GiveItem
 	ld a, 1
 	ld [wKODefianceUsages], a
 	ld a, [wDefaultMap]
@@ -94,6 +89,8 @@ OakSpeech:
 	call PrintText
 	call GBFadeOutToWhite
 	call ClearScreen
+	; Fusion sprite WIP — reverted to Porygon until the approach is finalized.
+	; See SESSION_NOTES_fusion_sprite.md for status.
 	ld a, PORYGON
 	ld [wCurSpecies], a
 	ld [wCurPartySpecies], a
