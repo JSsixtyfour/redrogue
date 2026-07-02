@@ -194,6 +194,37 @@ HandleRewardChoice:
     pop bc
 	jp nz, .printOhFineThen
 .giveMon
+    ; Challenge 7 (PARTY_LIMIT): limit = min(2 + wBattleCount/10, 5).
+    ; Increases by 1 each round (every 10 battles), starting at 2. Cap 5.
+    ld a, [wRogueFlagsBitfield]
+    bit BIT_WITCH_ACCEPTED, a
+    jr z, .noPartyLimit
+    ld a, [wWitchChallenge]
+    cp CHALLENGE_PARTY_LIMIT
+    jr nz, .noPartyLimit
+    ld a, [wBattleCount]
+    ld c, 0
+.limitDivLoop
+    cp 10
+    jr c, .limitDivDone
+    sub 10
+    inc c
+    jr .limitDivLoop
+.limitDivDone
+    ld a, c
+    add 2               ; limit = 2 + rounds_completed
+    cp 6
+    jr c, .limitCapped
+    ld a, 5
+.limitCapped
+    ld c, a             ; c = party limit
+    ld a, [wPartyCount]
+    cp c
+    jr c, .noPartyLimit ; wPartyCount < limit: allow
+    ld hl, WitchPartyLimitText
+    call PrintText
+    ret
+.noPartyLimit
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
     add a, b
 	ld [wToggleableObjectIndex], a
@@ -236,6 +267,10 @@ HandleRewardChoice:
 ;UnknownPrizeData:
 ; XXX what's this?
 	db $00,$01,$00,$01,$00,$01,$00,$00,$01
+
+WitchPartyLimitText:
+	text_far _WitchPartyLimitText
+	text_end
 
 SoYouWantRewardText:
 	text_far _SoYouWantPrizeText
@@ -424,4 +459,22 @@ RogueRefresh::
     ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
-    ret
+	; Challenge 9 (ALL_POISONED): poison every party member at stage entry.
+	; Fainted mons are included visually but PSN does no additional battle damage to them.
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_ALL_POISONED
+	ret nz
+	ld a, [wPartyCount]
+	and a
+	ret z
+	ld b, a          ; b = party count
+	ld hl, wPartyMon1Status
+	ld de, PARTYMON_STRUCT_LENGTH
+.poisonLoop
+	set PSN, [hl]            ; set PSN bit on status byte (PSN = bit 3 = $08)
+	add hl, de               ; advance to next mon's status byte
+	dec b
+	jr nz, .poisonLoop

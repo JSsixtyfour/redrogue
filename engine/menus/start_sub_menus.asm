@@ -305,21 +305,38 @@ StartMenu_Item::
 	jr nz, .notInCableClubRoom
 	ld hl, CannotUseItemsHereText
 	call PrintText
-	jr .exitMenu
+	jp .exitMenu
 .notInCableClubRoom
     ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
 	ld a, [wBagPocketsFlags]
-	bit BIT_TM_POCKET, a
-	jr nz, .startTMPocket
-	bit BIT_KEY_ITEMS_POCKET, a
-	ld bc, wNumBagItems
-	jr z, .gotBagPocket
+	and POCKET_INDEX_MASK
+	cp POCKET_RECOVERY
+	jr z, .pocketRecovery
+	cp POCKET_KEY_ITEMS
+	jr z, .pocketKey
+	cp POCKET_TM_PACK
+	jr z, .pocketTM
+	cp POCKET_STAT
+	jr z, .pocketStat
+	; POCKET_VALUABLE
+	farcall BuildValuablePocketList
+	ld bc, wValuablePocketBuf
+	jr .gotBagPocket
+.pocketRecovery
+	farcall BuildRecoveryPocketList
+	ld bc, wRecoveryPocketBuf
+	jr .gotBagPocket
+.pocketKey
 	farcall BuildKeyItemPocketList
 	ld bc, wKeyItemPocketBuf
 	jr .gotBagPocket
-.startTMPocket
+.pocketTM
 	farcall BuildTMPocketList
 	ld bc, wTMPocketBuf
+	jr .gotBagPocket
+.pocketStat
+	farcall BuildStatPocketList
+	ld bc, wStatPocketBuf
 .gotBagPocket
 	ld hl, wListPointer
 	ld a, c
@@ -459,16 +476,28 @@ StartMenu_Item::
 	inc a
 	jr z, .tossZeroItems
 .skipAskingQuantity
-	;;;;;;;;;; marcelnote - toss from whichever pocket is currently open, new for bag pockets
+	; For count-array pockets (Recovery/Stat/Valuable): decrement via RemovePocketItem.
+	; TMs and Key Items are bitfield-owned — never tossed.
 	ld a, [wBagPocketsFlags]
-	bit BIT_TM_POCKET, a
-	jr nz, .tossZeroItems ; TMs are owned permanently in the bitfield, can't toss
-	bit BIT_KEY_ITEMS_POCKET, a
+	and POCKET_INDEX_MASK
+	cp POCKET_TM_PACK
+	jr z, .tossZeroItems  ; TMs: permanent ownership, no toss
+	cp POCKET_KEY_ITEMS
+	jr z, .tossZeroItems  ; Key items: persistent, no toss
+	cp POCKET_RECOVERY
+	jr c, .tossLegacy     ; POCKET_RECOVERY = 0, handled below (shouldn't underflow)
+	; Recovery / Stat / Valuable: decrement count via RemovePocketItem
+	; (wCurItem is set by the bag display selection flow)
+	ld a, [wItemQuantity]
+	and a
+	jr z, .tossZeroItems  ; tossing 0 items
+	push bc
+	farcall RemovePocketItem
+	pop bc
+	jr .tossZeroItems
+.tossLegacy
+	; Fallback to legacy wBagItems (effectively empty in normal play)
 	ld hl, wNumBagItems
-	jr z, .gotTossPocket
-	ld hl, wNumBagKeyItems
-.gotTossPocket
-	;;;;;;;;;;
 	call TossItem
 .tossZeroItems
 	jp ItemMenuLoop

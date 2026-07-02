@@ -1,81 +1,70 @@
 ; custom_functions/key_item_pocket.asm
 ;
-; Binary key items pocket: passive-effect items that persist between runs.
-; Ownership tracked in sKeyItemsBitfield (SRAM, 4 bytes = 32 bit-slots).
-; Active loadout: wKeyItemSlot1/2/3 in WRAM save data (max 3 carried at once).
+; Key items: own vs carry split.
+;   sKeyItemsBitfield: everything owned (SRAM, persists forever)
+;   sKeyItemCarry[3]:  active loadout (SRAM, 3 item IDs, $00=empty)
 ;
-; Items that belong here (see KEY_ITEM_BIT_* in ram_constants.asm):
-;   LEFTOVERS (bit 0), PP_TONIC (bit 1), KO_DEFIANCE (bit 2), EXP_ALL (bit 3)
-;   Future: Mom's Allowance, First Aid Kit, per-type attack boosters
+; Owned but not carrying = stored in PC. Swap at the PC menu.
+; Only CARRIED items are usable in battle/field.
 ;
-; NOT in this pocket: Poke Flute (goes in regular items bag — infinite-use usable,
-;   not a passive effect, doesn't need to persist between runs).
+; Bit assignments (stable once saves exist):
+;   0=LEFTOVERS, 1=PP_TONIC, 2=KO_DEFIANCE, 3=EXP_ALL, 4-31 reserved
+;
+; All functions read wCurItem (not b) — farcall clobbers b.
 
-; Stable item-ID → bit-index mapping table.
-; Format: {item_id, bit_index} pairs, $FF sentinel.
-; NEVER reorder or remove entries once save data exists.
 KeyItemPocketTable::
     db LEFTOVERS,   KEY_ITEM_BIT_LEFTOVERS
     db PP_TONIC,    KEY_ITEM_BIT_PP_TONIC
     db KO_DEFIANCE, KEY_ITEM_BIT_KO_DEFIANCE
     db EXP_ALL,     KEY_ITEM_BIT_EXP_ALL
-    db $FF          ; sentinel
+    db $FF
 
 ; ============================================================
-; IsKeyPocketItem
-; Test whether item b belongs in the key items pocket.
-; INPUT: b = item_id
-; OUTPUT: carry set = yes, c = bit_index
-;         carry clear = no
-; CLOBBERS: a, hl
+; IsKeyPocketItem — does wCurItem belong here?
+; OUTPUT: carry set = yes, c = bit_index; carry clear = no
 ; ============================================================
 IsKeyPocketItem::
-    ; farcall clobbers b before reaching here; read search target from wCurItem
-    ; (GiveItem sets wCurItem at entry, before any farcalls)
     ld a, [wCurItem]
-    ld d, a              ; d = item_id to find (save a for table reads)
+    ld d, a
     ld hl, KeyItemPocketTable
 .scan
-    ld a, [hli]          ; a = table item_id
+    ld a, [hli]
     cp $FF
-    jr z, .notFound      ; end of table
-    cp d                 ; does it match?
-    jr z, .found
-    inc hl               ; skip bit_index byte
+    jr z, .no
+    cp d
+    jr z, .yes
+    inc hl
     jr .scan
-.found
-    ld c, [hl]           ; c = bit_index
+.yes
+    ld c, [hl]
     scf
     ret
-.notFound
-    and a                ; carry clear
+.no
+    and a
     ret
 
 ; ============================================================
-; _KeyBitInfo (private, analogous to _TMBitInfo)
-; INPUT: c = bit_index (0-31)
-; OUTPUT: hl = &sKeyItemsBitfield[bit_index >> 3]
-;         b  = 1 << (bit_index & 7)
-; CLOBBERS: a, d, e
-; Caller must enable SRAM before calling.
+; _KeyBitInfo (same-bank private)
+; INPUT: c = bit_index; SRAM must be enabled by caller.
+; OUTPUT: hl = &sKeyItemsBitfield[c>>3], b = 1<<(c&7)
 ; ============================================================
 _KeyBitInfo:
     ld a, c
-    and 7                ; bit position within byte
+    and 7
     ld d, a
-    inc d                ; d = bit_pos+1
+    inc d
     ld a, 1
 .shift
     dec d
-    jr z, .shiftDone
+    jr z, .done
     rlca
     jr .shift
-.shiftDone
-    ld b, a              ; b = 1 << bit_pos
+.done
+    ld b, a
     ld a, c
     srl a
     srl a
-    srl a                ; a = byte offset = bit_index >> 3
+    srl a
     ld hl, sKeyItemsBitfield
     ld d, 0
     ld e, a
@@ -83,105 +72,207 @@ _KeyBitInfo:
     ret
 
 ; ============================================================
-; HasKeyPocketItem
-; Check if item b is owned (bit set in sKeyItemsBitfield).
-; INPUT: b = item_id
-; OUTPUT: Z set = not owned, Z clear (NZ) = owned
-; CLOBBERS: a, c, d, e, hl
+; _IsCarried (same-bank private; SRAM must be enabled)
+; Is wCurItem in sKeyItemCarry?
+; OUTPUT: NZ = carrying (a != 0), Z = not carrying
 ; ============================================================
-HasKeyPocketItem::
+_IsCarried:
+    ld a, [wCurItem]
+    ld d, a
+    ld hl, sKeyItemCarry
+    ld c, 3
+.loop
+    ld a, [hli]
+    cp d
+    ret z        ; Z cleared by cp if equal → but cp sets Z if equal, so ret z = return if found
+    dec c
+    jr nz, .loop
+    xor a        ; Z = not carrying
+    ret
+; Note: when found, Z=1 from cp d (equal). Callers check: ret z = found → to .found label.
+; When not found, xor a sets Z=1 (also Z). This means callers can't distinguish
+; "found" from "not found" by Z flag alone from the return point after the loop.
+; Restructure: use NZ for found.
+
+; ============================================================
+; _FindInCarry (same-bank private; SRAM must be enabled)
+; Scan sKeyItemCarry for wCurItem.
+; OUTPUT: carry set = found, hl = slot address; carry clear = not found
+; ============================================================
+_FindInCarry:
+    ld a, [wCurItem]
+    ld d, a
+    ld hl, sKeyItemCarry
+    ld c, 3
+.loop
+    ld a, [hl]
+    cp d
+    jr z, .found
+    inc hl
+    dec c
+    jr nz, .loop
+    and a        ; carry clear
+    ret
+.found
+    scf
+    ret
+
+; ============================================================
+; _FindEmptyCarry (same-bank private; SRAM must be enabled)
+; Find first empty slot ($00) in sKeyItemCarry.
+; OUTPUT: carry set = found empty, hl = slot address; carry clear = full
+; ============================================================
+_FindEmptyCarry:
+    ld hl, sKeyItemCarry
+    ld c, 3
+.loop
+    ld a, [hl]
+    and a
+    jr z, .found
+    inc hl
+    dec c
+    jr nz, .loop
+    and a        ; carry clear = full
+    ret
+.found
+    scf
+    ret
+
+; ============================================================
+; IsKeyItemOwned — is wCurItem in sKeyItemsBitfield?
+; OUTPUT: Z=not owned, NZ=owned
+; ============================================================
+IsKeyItemOwned::
     call IsKeyPocketItem
-    ret nc               ; not a key pocket item → Z state from IsKeyPocketItem (set)
-    ; c = bit_index
+    jr nc, .no
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    call _KeyBitInfo     ; hl = byte addr, b = mask
+    call _KeyBitInfo
     ld a, [hl]
-    and b                ; Z set = bit 0 = not owned
+    and b
     push af
     xor a
     ld [rRAMG], a
     pop af
     ret
+.no
+    xor a    ; Z = not owned
+    ret
+
+; ============================================================
+; HasKeyPocketItem — is wCurItem in the ACTIVE CARRY (sKeyItemCarry)?
+; Used by battle/field effects (e.g. TryKODefiance).
+; OUTPUT: Z=not carrying, NZ=carrying
+; ============================================================
+HasKeyPocketItem::
+    call IsKeyPocketItem
+    jr nc, .notCarried
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    call _FindInCarry    ; carry set = found
+    push af
+    xor a
+    ld [rRAMG], a
+    pop af               ; restore carry
+    ; Convert carry to NZ/Z: scf set = carrying (NZ), else Z
+    jr c, .carried
+    xor a                ; Z = not carrying
+    ret
+.carried
+    ld a, 1              ; NZ = carrying
+    ret
+.notCarried
+    xor a
+    ret
 
 ; ============================================================
 ; AcquireKeyPocketItem
-; Mark item b as owned and add to carry slot if below the 3-item limit.
-; INPUT: b = item_id (must be a key pocket item)
+; Set ownership bit. Try to equip (fill a carry slot).
+; If carry full: ownership bit is set but not carried (sent to PC).
+; Signals result via hSpriteOffset: 0 = equipped, $FF = sent to PC.
 ; ============================================================
 AcquireKeyPocketItem::
     call IsKeyPocketItem
-    ret nc               ; safety: not a key pocket item, ignore
-    ; c = bit_index, b = item_id
-    ; Set bit in sKeyItemsBitfield — save b (item_id) first since _KeyBitInfo clobbers it
-    push bc              ; save c=bit_index, b=item_id across the bitfield write
+    ret nc
+    ; c = bit_index
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    call _KeyBitInfo     ; c=bit_index → hl = byte addr, b = mask (clobbers b!)
+    push bc
+    call _KeyBitInfo
     ld a, [hl]
     or b
-    ld [hl], a           ; set the ownership bit
+    ld [hl], a           ; set ownership bit
+    ; Already carrying? (don't double-add)
+    call _FindInCarry
+    pop bc
+    jr c, .alreadyCarried
+    ; Find empty carry slot
+    call _FindEmptyCarry
+    jr nc, .sentToPC
+    ; Empty slot found — equip it
+    ld a, [wCurItem]
+    ld [hl], a
+.alreadyCarried
     xor a
     ld [rRAMG], a
-    pop bc               ; restores bc (note: b is still garbage from farcall — don't use it)
-    ; Add to active carry slot if not already carrying it and slots available.
-    ; Use wCurItem throughout since b is clobbered by the farcall entry.
-    call IsCarryingKeyItem
-    ret z                ; already carrying (Z=1, match found) → done
-    ; Check carry count < 8 (no hard cap until PC swap UI exists)
-    ld a, [wNumBagKeyItems]
-    cp 8
-    ret nc               ; carry limit reached
-    ; Find first empty slot and fill with the CORRECT item_id from wCurItem
-    ld a, [wCurItem]     ; real item_id (b is clobbered garbage from farcall)
-    ldh [hSpriteOffset], a  ; borrow this free HRAM byte as temp
-    ld hl, wKeyItemSlot1
-    ld b, 8              ; 8 slots to search
-.findEmptySlot
-    ld a, [hl]
-    and a
-    jr z, .emptyFound
-    inc hl
-    dec b
-    jr nz, .findEmptySlot
-    ret                  ; all 8 filled (shouldn't happen given the count check above)
-.emptyFound
-    ldh a, [hSpriteOffset]
-    ld [hl], a           ; write item_id to first empty slot
-.added
-    ld a, [wNumBagKeyItems]
-    inc a
-    ld [wNumBagKeyItems], a
+    xor a
+    ldh [hSpriteOffset], a   ; 0 = equipped / already had it
+    ret
+.sentToPC
+    xor a
+    ld [rRAMG], a
+    ld a, $FF
+    ldh [hSpriteOffset], a   ; $FF = sent to PC (carry full)
     ret
 
 ; ============================================================
-; IsCarryingKeyItem (private)
-; Check if item b is in any carry slot.
-; OUTPUT: NZ if yes, Z if no
-; CLOBBERS: a
+; EquipKeyItem — add wCurItem to sKeyItemCarry if room.
+; OUTPUT: carry set = now equipped; carry clear = no room or already had it
 ; ============================================================
-IsCarryingKeyItem:
-    ; b is clobbered by farcall — compare all 8 slots against wCurItem
+EquipKeyItem::
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    call _FindInCarry
+    jr c, .alreadyCarried
+    call _FindEmptyCarry
+    jr nc, .full
     ld a, [wCurItem]
-    ld d, a              ; d = item_id to find
-    ld hl, wKeyItemSlot1
-    ld b, 8
-.checkSlot
-    ld a, [hli]
-    cp d
-    ret z               ; Z=1 → found (already carrying)
-    dec b
-    jr nz, .checkSlot
-    ; not found: ensure Z=0 (cp with last value, if no match then Z was cleared
-    ; on the last iteration — but if b went to 0 and last slot was 0, cp d with
-    ; 0 might accidentally set Z if d=0, but d=wCurItem which is a valid item
-    ; id (non-zero). Safe.)
+    ld [hl], a
+    xor a
+    ld [rRAMG], a
+    scf
+    ret
+.alreadyCarried
+.full
+    xor a
+    ld [rRAMG], a
+    and a    ; carry clear
     ret
 
 ; ============================================================
-; ClearKeyItemsBitfield
-; Wipe all key item ownership. Call on true new game only
-; (NOT on death/run-reset — key items persist between runs).
+; UnequipKeyItem — remove wCurItem from sKeyItemCarry.
+; Item remains owned in sKeyItemsBitfield (goes to PC storage).
+; OUTPUT: carry set = removed; carry clear = wasn't carrying
+; ============================================================
+UnequipKeyItem::
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    call _FindInCarry
+    jr nc, .notCarried
+    xor a
+    ld [hl], a           ; clear this carry slot
+    ld [rRAMG], a
+    scf
+    ret
+.notCarried
+    xor a
+    ld [rRAMG], a
+    and a    ; carry clear
+    ret
+
+; ============================================================
+; ClearKeyItemsBitfield — wipe ownership AND carry slots.
+; Call on true new game ONLY (not on death/run-reset).
 ; ============================================================
 ClearKeyItemsBitfield::
     ld a, RAMG_SRAM_ENABLE
@@ -192,36 +283,152 @@ ClearKeyItemsBitfield::
     ld [hli], a
     ld [hli], a
     ld [hl], a
+    ld hl, sKeyItemCarry
+    xor a
+    ld [hli], a
+    ld [hli], a
+    ld [hl], a
     xor a
     ld [rRAMG], a
     ret
 
 ; ============================================================
-; BuildKeyItemPocketList
-; Build a display list in wKeyItemPocketBuf from all carry slots.
-; Format: count byte + {item_id, 1} pairs + $FF sentinel.
+; BuildKeyItemPocketList — display list for the BAG KEY ITEMS pocket.
+; Shows only the 3 CARRIED items (sKeyItemCarry).
+; Format: count + {item_id, 1} pairs + $FF.
 ; ============================================================
 BuildKeyItemPocketList::
-    ld hl, wKeyItemPocketBuf + 1 ; skip count byte
-    ld b, 0                       ; b = output count
-    ld de, wKeyItemSlot1
-    ld c, 8                       ; 8 slots to scan
-.scanLoop
-    ld a, [de]
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, HIGH(wKeyItemPocketBuf + 1)
+    ldh [hSpriteHeight], a
+    ld a, LOW(wKeyItemPocketBuf + 1)
+    ldh [hSpriteWidth], a
+    ld b, 0
+    ld c, 0          ; slot index (0-2)
+.bagScan
+    ld a, c
+    cp 3
+    jr z, .bagDone
+    ld hl, sKeyItemCarry
+    ld d, 0
+    ld e, c
+    add hl, de
+    ld a, [hl]       ; item_id in this carry slot
     and a
-    jr z, .skipSlot
-    ld [hli], a           ; item_id
-    push af
-    ld a, 1
-    ld [hli], a           ; qty = 1 (no quantity display, but format requires it)
+    jr z, .bagSkip   ; $00 = empty
+    push bc
+    push af          ; item_id
+    ldh a, [hSpriteHeight]
+    ld h, a
+    ldh a, [hSpriteWidth]
+    ld l, a
     pop af
+    ld [hli], a      ; item_id
+    ld a, 1
+    ld [hli], a      ; qty
+    ld a, h
+    ldh [hSpriteHeight], a
+    ld a, l
+    ldh [hSpriteWidth], a
+    pop bc
     inc b
-.skipSlot
-    inc de
-    dec c
-    jr nz, .scanLoop
+.bagSkip
+    inc c
+    jr .bagScan
+.bagDone
     ld a, b
-    ld [wKeyItemPocketBuf], a     ; write count
+    ld [wKeyItemPocketBuf], a
+    ldh a, [hSpriteHeight]
+    ld h, a
+    ldh a, [hSpriteWidth]
+    ld l, a
     ld a, $FF
-    ld [hl], a                    ; write sentinel
+    ld [hl], a
+    xor a
+    ld [rRAMG], a
+    ret
+
+; ============================================================
+; BuildKeyItemPCList — display list for the PC KEY ITEMS screen.
+; Shows ALL OWNED items. qty=2 means currently carried (equipped),
+; qty=1 means owned but stored in PC.
+; ============================================================
+BuildKeyItemPCList::
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, HIGH(wKeyItemPocketBuf + 1)
+    ldh [hSpriteHeight], a
+    ld a, LOW(wKeyItemPocketBuf + 1)
+    ldh [hSpriteWidth], a
+    ld b, 0          ; output count
+    ld c, 0          ; table index
+.pcScan
+    ; Get {item_id, bit_index} at table[c]
+    push bc
+    ld hl, KeyItemPocketTable
+    ld d, 0
+    ld e, c
+    sla e            ; *2 (2 bytes per entry)
+    add hl, de
+    ld a, [hli]      ; a = item_id
+    cp $FF
+    jr z, .pcDone
+    ld d, a          ; d = item_id
+    ld a, [hl]       ; a = bit_index
+    ld c, a
+    ; Check if owned
+    call _KeyBitInfo ; hl = &bitfield[c>>3], b = mask
+    ld a, [hl]
+    and b
+    pop bc
+    jr z, .pcNotOwned
+    ; Owned — check if carrying
+    push bc
+    push de
+    ; Temporarily set wCurItem so _FindInCarry works
+    ld a, [wCurItem]
+    push af          ; save original wCurItem
+    ld a, d
+    ld [wCurItem], a
+    call _FindInCarry ; carry set = carrying
+    pop af
+    ld [wCurItem], a  ; restore wCurItem
+    ld a, 1          ; default qty=1 (stored in PC)
+    jr nc, .pcEmit
+    ld a, 2          ; qty=2 = currently carrying
+.pcEmit
+    push af          ; save qty
+    ldh a, [hSpriteHeight]
+    ld h, a
+    ldh a, [hSpriteWidth]
+    ld l, a
+    ld a, d          ; item_id
+    ld [hli], a
+    pop af           ; qty
+    ld [hli], a
+    ld a, h
+    ldh [hSpriteHeight], a
+    ld a, l
+    ldh [hSpriteWidth], a
+    pop de
+    pop bc
+    inc b
+    inc c
+    jr .pcScan
+.pcNotOwned
+    inc c
+    jr .pcScan
+.pcDone
+    pop bc
+    ld a, b
+    ld [wKeyItemPocketBuf], a
+    ldh a, [hSpriteHeight]
+    ld h, a
+    ldh a, [hSpriteWidth]
+    ld l, a
+    ld a, $FF
+    ld [hl], a
+    xor a
+    ld [rRAMG], a
     ret

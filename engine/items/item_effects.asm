@@ -2218,9 +2218,13 @@ PrintItemUseTextAndRemoveItem:
 	call WaitForTextScrollButtonPress ; wait for button press
 
 RemoveUsedItem:
-	ld hl, wNumBagItems
-	ld a, 1 ; one item
+	; Route to the correct count array for the new pocket system.
+	; wCurItem must be set by the caller (item use code sets it before use).
+	ld a, 1
 	ld [wItemQuantity], a
+	farcall RemovePocketItem    ; handles Recovery/Stat/Valuable/Poke Flute
+	; Also try legacy wBagItems for anything uncategorized
+	ld hl, wNumBagItems
 	jp RemoveItemFromInventory
 
 ItemUseNoEffect:

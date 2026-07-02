@@ -64,6 +64,19 @@ GetRandTrainer:
 GetRandMon:
 	push hl
 	push bc
+	; Challenge 6 (INCREASED_RARITY_FOES): bump class by 1 tier (lower b = rarer).
+	; b=4=pokeball, b=3=greatball, b=2=ultraball, b=1=masterball. Cap at b=1.
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noRarityBump
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_INCREASED_RARITY_FOES
+	jr nz, .noRarityBump
+	ld a, b
+	cp 2
+	jr c, .noRarityBump    ; already masterball (b=1), can't go rarer
+	dec b
+.noRarityBump
     ld a, b
     cp a, $4
     jr z, trainer_pokeball_class_selection
@@ -239,6 +252,33 @@ GetRandRosterLoop:
     call Rangerandom
 	add a, e   ; minimum level added to random number
 	ld [wCurEnemyLevel], a  ; place level of pokemon in
+	; Challenge 5 (INCREASED_LEVELS): add ~10% of level, minimum +1
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noLvlBoost
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_INCREASED_LEVELS
+	jr nz, .noLvlBoost
+	ld a, [wCurEnemyLevel]
+	ld b, a
+	ldh [hMultiplicand+2], a
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand+1], a
+	ld a, 26
+	ldh [hMultiplier], a
+	call Multiply              ; level * 26; hProduct+2 = high byte ≈ level/10
+	ldh a, [hProduct+2]
+	and a
+	jr nz, .hasLvlBonus
+	ld a, 1                    ; minimum +1
+.hasLvlBonus
+	add b
+	jr nc, .lvlBonusOk
+	ld a, 255
+.lvlBonusOk
+	ld [wCurEnemyLevel], a
+.noLvlBoost
 	;push hl                 ; preserve h1
 	call AddPartyMon    ; add the pokemon
 	dec d           ; decrease loop/run through pokemon

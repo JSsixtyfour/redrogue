@@ -11,25 +11,28 @@ sHallOfFame:: ds HOF_TEAM * HOF_TEAM_CAPACITY
 
 SECTION "Save Data", SRAM
 
-	ds $591 ; was $291; 784 bytes could be carved for sFusionSpriteA0/A1 below
+	ds $479 ; was $591; 112 bytes carved for sFusionDiagBuf below
 
-; Sprite fusion: hold species_a's aligned 1bpp planes while species_b loads.
-; Only used by LoadFusedFrontSprite (custom_functions/func_fusion_sprite.asm).
-;sFusionSpriteA0:: ds SPRITEBUFFERSIZE ; species_a MSB plane (392 bytes)
-;sFusionSpriteA1:: ds SPRITEBUFFERSIZE ; species_a LSB plane (392 bytes)
+; Diagonal tile save buffer for sprite fusion.
+; Holds the 7 diagonal tiles (col==row) from species_a's 2bpp interleaved
+; output (sSpriteBuffer1+2), saved before species_b overwrites them.
+; 7 tiles * 16 bytes = 112 bytes.
+sFusionDiagBuf:: ds 112
 
 ; TM/HM ownership bitfield for the roguelike run.
 ; Bit N = owned: bits 0-49 = TM01-TM50, bits 50-54 = HM01-HM05.
 ; Cleared at run reset. Saved across power cycles.
 sTMBitfield:: ds 7
 
-; Key items pocket ownership bitfield. Persists through death and new runs;
-; only cleared on a true new game (ClearKeyItemsBitfield in InitPlayerData).
-; Bit assignments (must remain stable once save data exists):
-;   0 = LEFTOVERS, 1 = PP_TONIC, 2 = KO_DEFIANCE, 3 = EXP_ALL
-;   4-7 reserved (Mom's Allowance, First Aid Kit, etc.)
-;   8-31 reserved (per-type attack boosters)
+; Key items pocket.
+; sKeyItemsBitfield: everything ever found (owns). Persists through runs.
+; sKeyItemCarry:     active loadout (3 item IDs, $00=empty). Persists through death.
+;   Carry an item = it is usable in battle and field.
+;   Own but not carry = stored in PC, must swap at PC to use.
+; Bit assignments for sKeyItemsBitfield (must remain stable):
+;   0=LEFTOVERS, 1=PP_TONIC, 2=KO_DEFIANCE, 3=EXP_ALL, 4-31 reserved
 sKeyItemsBitfield:: ds 4
+sKeyItemCarry:: ds 3        ; item IDs of the 3 equipped key items ($00=empty)
 
 sGameData::
 sPlayerName::  ds NAME_LENGTH

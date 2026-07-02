@@ -36,8 +36,8 @@ PlayerPCMenu:
 	dec a
 	ld [hli], a ; wTopMenuItemX
 	inc hl ; wTileBehindCursor
-	ld a, 3
-	ld [hli], a ; wMaxMenuItem
+	ld a, 4
+	ld [hli], a ; wMaxMenuItem (0=Withdraw,1=Deposit,2=Toss,3=KeyItems,4=LogOff)
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
 	xor a
@@ -60,6 +60,8 @@ PlayerPCMenu:
 	jp z, PlayerPCDeposit
 	dec a
 	jp z, PlayerPCToss
+	dec a
+	jp z, PlayerPCKeyItems
 
 ExitPlayerPC:
 	ld a, [wMiscFlags]
@@ -89,11 +91,7 @@ PlayerPCDeposit:
 	ld a, [wNumBagItems]
 	and a
 	jr nz, .loop
-    ;;;;;;;;;; marcelnote - new for bag pockets
-	ld a, [wNumBagKeyItems]
-	and a
-	jr nz, .loop
-	;;;;;;;;;;
+	; PC deposit of count-array pocket items is future work — check legacy bag only
     
 	ld hl, NothingToDepositText
 	call PrintText
@@ -107,7 +105,7 @@ PlayerPCDeposit:
 	bit BIT_KEY_ITEMS_POCKET, a
 	ld hl, wNumBagItems
 	jr z, .gotBagPocket
-	ld hl, wNumBagKeyItems
+	ld hl, wNumBagItems
 .gotBagPocket
 	;;;;;;;;;;
 	ld a, l
@@ -183,7 +181,7 @@ PlayerPCWithdraw:
 	ld [wItemQuantity], a
 	ld a, [wIsKeyItem]
 	and a
-    ld hl, wNumBagKeyItems ; marcelnote - new for bag pockets
+    ld hl, wNumBagItems ; marcelnote - new for bag pockets
 	jr nz, .next
 ; if it's not a key item, there can be more than one of the item
 	ld hl, WithdrawHowManyText
@@ -205,7 +203,7 @@ PlayerPCWithdraw:
 	bit BIT_KEY_ITEMS_POCKET, a
 	ld hl, wNumBagItems
 	jr z, .gotBagPocket2
-	ld hl, wNumBagKeyItems
+	ld hl, wNumBagItems
 .gotBagPocket2
 	;;;;;;;;;;
 	call RemoveItemFromInventory
@@ -270,6 +268,7 @@ PlayersPCMenuEntries:
 	db   "WITHDRAW ITEM"
 	next "DEPOSIT ITEM"
 	next "TOSS ITEM"
+	next "KEY ITEMS"
 	next "LOG OFF@"
 
 TurnedOnPC2Text:
@@ -330,4 +329,79 @@ TossHowManyText:
 
 ; TMItContainsText moved to custom_functions/tm_bag.asm (same ROMX bank as
 ; PrintBagInfoText, which needs to read it with that bank active)
+	text_end
+
+; ============================================================
+; PlayerPCKeyItems — swap key item loadout (carry ↔ PC storage).
+; Shows all OWNED key items. Select:
+;   qty=2 (carrying) → unequip (deposit to PC storage)
+;   qty=1 (stored)   → equip (if carry < 3) or show "carry is full"
+; ============================================================
+PlayerPCKeyItems:
+	call LoadScreenTilesFromBuffer2
+	call GBPalWhiteOut
+	call ClearScreen
+.keyItemsMenuLoop
+	call GBPalNormal
+	farcall BuildKeyItemPCList    ; build list: all owned, qty=2=carrying, qty=1=PC
+	ld a, [wKeyItemPocketBuf]
+	and a
+	jr nz, .hasItems
+	; No owned key items
+	ld hl, .noKeyItemsText
+	call PrintText
+	jp PlayerPCMenu
+.hasItems
+	; Display the list
+	ld a, l
+	ld [wKeyItemPocketBuf], a     ; (already in buf, just set list pointer)
+	ld hl, wKeyItemPocketBuf
+	ld a, l
+	ld [wListPointer], a
+	ld a, h
+	ld [wListPointer + 1], a
+	xor a
+	ld [wPrintItemPrices], a
+	ldh [hCurrentMenuItem], a
+	ld a, ITEMLISTMENU
+	ld [wListMenuID], a
+	call DisplayListMenuID
+	jp c, PlayerPCMenu            ; B pressed — return to PC menu
+	; Player selected an item — wCurItem is set by DisplayListMenuID
+	; Check qty: qty=2 = carrying, qty=1 = stored
+	ld a, [wMaxItemQuantity]      ; DisplayListMenuID stores qty here
+	cp 2
+	jr z, .unequipSelected        ; carrying → unequip
+	; Stored item selected — try to equip
+	farcall EquipKeyItem          ; carry set = equipped
+	jr c, .equipped
+	; Carry full
+	ld hl, .carryFullText
+	call PrintText
+	jr .keyItemsMenuLoop
+.equipped
+	ld hl, .equippedText
+	call PrintText
+	jr .keyItemsMenuLoop
+.unequipSelected
+	farcall UnequipKeyItem        ; carry set = unequipped
+	ld hl, .depositedText
+	call PrintText
+	jr .keyItemsMenuLoop
+
+.noKeyItemsText
+	text "No KEY ITEMS"
+	line "found yet!@"
+	text_end
+.carryFullText
+	text "Can't carry"
+	line "more! Deposit"
+	cont "one first.@"
+	text_end
+.equippedText
+	text "Equipped!@"
+	text_end
+.depositedText
+	text "Deposited to"
+	line "PC.@"
 	text_end

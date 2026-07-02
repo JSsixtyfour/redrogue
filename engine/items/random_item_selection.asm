@@ -50,12 +50,26 @@ item_determineClassSlot:
 ldh a, [hRandomAdd]
 ld  b, a
 
-; bonus rarity check
+; bonus rarity check — existing gym bonus
 ld a, [wItemBonusRarity]
 add a, b
 ld b, a
-jr nc, .no_overflow
+jr nc, .no_overflow1
 ld b, $FF
+.no_overflow1
+; Witch prize b (PRIZE_RARITY_ITEM): extra item class bonus — larger b = better tier
+ld a, [wRogueFlagsBitfield]
+bit BIT_WITCH_ACCEPTED, a
+jr z, .no_overflow
+ld a, [wWitchPrize]
+cp PRIZE_RARITY_ITEM
+jr nz, .no_overflow
+ld a, b
+add 51             ; same bump as the gym leader bonus
+jr nc, .witchItemDone
+ld a, $FF
+.witchItemDone
+ld b, a
 
 .no_overflow
 ld a, item_pokeball_odds
@@ -248,41 +262,22 @@ RET
 
 ; a check to see if TM or HM is already owned by player
 ; returns a 0 if no and a 1 if yes
-; b = item ID
-; UPDATE, need a way to check if evolution
+; b = item ID (plain same-bank call — b is preserved, not clobbered like farcall)
 AllTMCheck::
-    ld a, $c3       ; last item before TM and HM
-    cp b            ; compare to current item
-    jr nc, .notInBox          ; if b is not greater than a, skip
-    ld a, $FA       ; last item before TM and HM
-    cp b            ; compare to current item
-    jr c, .notInBox  ; if greater than last TM, skip
-    
-    .tm
-    ld hl, wNumBagItems
-    .loop
-	inc hl
-	ld a, [hli]
-	cp $ff
-	jr z, .notInBag
-	cp b
-	jr nz, .loop
-	ld a, 1
-	ret
-    .notInBag
-    ld hl, wNumBoxItems
-    .loop2
-	inc hl
-	ld a, [hli]
-	cp $ff
-	jr z, .notInBox
-	cp b
-	jr nz, .loop2
-	ld a, 1
-	ret
-    .notInBox
-	ld a, 0
-	ret
+    ld a, $c3       ; first TM item ID minus 1
+    cp b
+    jr nc, .notOwned          ; b <= $c3: not a TM/HM
+    ld a, $FA       ; last TM/HM item ID
+    cp b
+    jr c, .notOwned           ; b > $FA: beyond TM/HM range
+    ; TM/HM: check sTMBitfield via HasTMHM (same bank, plain call, reads b)
+    call HasTMHM              ; Z = not owned, NZ = owned
+    jr z, .notOwned
+    ld a, 1
+    ret
+.notOwned
+    ld a, 0
+    ret
 
 GymLeaderRandomItem::
     ld a, [wItemBonusRarity]

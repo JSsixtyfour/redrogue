@@ -365,7 +365,8 @@ SECTION "rogue", ROMX
 INCLUDE "custom_functions/random_stage_selection.asm"
 INCLUDE "custom_functions/tm_bag.asm"
 INCLUDE "custom_functions/key_item_pocket.asm"
-;INCLUDE "custom_functions/func_fusion_sprite.asm"  ; WIP — see SESSION_NOTES_fusion_sprite.md
+INCLUDE "custom_functions/pocket_items.asm"
+INCLUDE "custom_functions/func_fusion_sprite.asm"
 
 INCLUDE "engine/pokemon/rarity.asm"
 INCLUDE "engine/pokemon/random_pokemon_selection.asm"

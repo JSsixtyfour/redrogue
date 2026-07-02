@@ -147,6 +147,12 @@ _WitchPrize6Text::
 	line "bargain?"
 	done
 
+_WitchPartyLimitText::
+	text "The bargain won't"
+	line "allow it. Your"
+	cont "party is full."
+	done
+
 _WitchAcceptanceText::
 	text "So mote it be"
 	done

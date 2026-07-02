@@ -19,19 +19,23 @@ InitPlayerData2:
 	call InitializeEmptyList
 	ld hl, wNumBagItems
 	call InitializeEmptyList
-	; Zero key item carry slots (count + 8 item slots) on new game.
-	; Ownership bitfield (sKeyItemsBitfield) is cleared separately above.
-	ld hl, wNumBagKeyItems
+	; Key items are pure bitfield in sKeyItemsBitfield (SRAM) — no WRAM slots.
+	; ClearKeyItemsBitfield above already handles the SRAM side.
+	; Clear count arrays for Recovery, Stat, Valuable pockets.
+	ld hl, wRecoveryItemCounts
 	xor a
-	ld [hli], a    ; wNumBagKeyItems = 0
-	ld [hli], a    ; wKeyItemSlot1
-	ld [hli], a    ; wKeyItemSlot2
-	ld [hli], a    ; wKeyItemSlot3
-	ld [hli], a    ; wKeyItemSlot4
-	ld [hli], a    ; wKeyItemSlot5
-	ld [hli], a    ; wKeyItemSlot6
-	ld [hli], a    ; wKeyItemSlot7
-	ld [hl], a     ; wKeyItemSlot8
+	ld bc, NUM_RECOVERY_ITEMS + NUM_STAT_ITEMS + NUM_VALUABLE_ITEMS
+.clearCounts
+	ld [hli], a
+	dec bc
+	ld a, b
+	or c
+	ld a, 0
+	jr nz, .clearCounts
+	; Clear the legacy bag stub
+	ld [wNumBagItems], a
+	ld [wBagItems], a
+	ld [wNumBagKeyItems], a
 	ld hl, wNumBoxItems
 	call InitializeEmptyList
 

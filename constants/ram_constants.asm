@@ -188,13 +188,24 @@ DEF NUM_WITCH_PRIZES     EQU 6
 	const BIT_PLAYER_LOWER_Y ; 0
 	const BIT_PLAYER_LOWER_X ; 1
     
-    ; wBagPocketsFlags ; marcelnote - new for bag pockets
-	const_def
-	const BIT_KEY_ITEMS_POCKET   ; 0 ; is 1 if currently in Key Items pocket
-	const BIT_TM_POCKET          ; 1 ; is 1 if currently in TM Pack pocket (never set at the same time as BIT_KEY_ITEMS_POCKET)
-	const BIT_PRINT_INFO_BOX     ; 2 ; whether to print Item info box (i.e. only in start menu bag and battle)
-	const BIT_PC_WITHDRAWING     ; 3 ; to prevent switching pockets when withdrawing from PC
-	const_skip                   ; 4-7 ; unused
+    ; wBagPocketsFlags: bits 0-2 = pocket index (0-4), bits 3-4 = flags
+	; Pocket indices:
+	DEF POCKET_RECOVERY     EQU 0   ; potions/status/PP/drinks/revives/flute
+	DEF POCKET_KEY_ITEMS    EQU 1   ; passive items (owned via sKeyItemsBitfield)
+	DEF POCKET_TM_PACK      EQU 2   ; TMs/HMs (owned via sTMBitfield)
+	DEF POCKET_STAT         EQU 3   ; vitamins, candy, stones
+	DEF POCKET_VALUABLE     EQU 4   ; nuggets, pearls (sell-only)
+	DEF NUM_POCKETS         EQU 5
+	DEF POCKET_INDEX_MASK   EQU $07 ; bits 0-2 hold the pocket index
+	; Legacy flag aliases kept for code that still checks specific bits 0-1
+	DEF BIT_KEY_ITEMS_POCKET EQU 0  ; bit 0 set → pocket index has bit 0 set (= key items = 1)
+	DEF BIT_TM_POCKET        EQU 1  ; bit 1 set → pocket index has bit 1 set (= TM = 2)
+	; Higher flags (bits 3-4, moved up to make room for 3-bit pocket index)
+	DEF BIT_PRINT_INFO_BOX   EQU 3  ; was bit 2; print pocket name info box
+	DEF BIT_PC_WITHDRAWING   EQU 4  ; was bit 3; prevent pocket switching during PC withdraw
+	DEF NUM_RECOVERY_ITEMS  EQU 21
+	DEF NUM_STAT_ITEMS      EQU 12
+	DEF NUM_VALUABLE_ITEMS  EQU 4
 
 ; sKeyItemsBitfield bit indices (must remain stable once save data exists)
 DEF KEY_ITEM_BIT_LEFTOVERS   EQU 0

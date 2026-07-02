@@ -1207,8 +1207,10 @@ TryKODefiance::
 	ldh a, [hCurMap]
 	cp OAKS_LAB
 	jp z, .noDefiance        ; skip during the first rival fight (Oak's Lab, right after starter pick) - meant to be losable
-	ld b, KO_DEFIANCE
-	call IsItemInBag
+	; Check if KO_DEFIANCE is in the active carry loadout (not just owned)
+	ld a, KO_DEFIANCE
+	ld [wCurItem], a
+	farcall HasKeyPocketItem     ; NZ = carrying it
 	jp z, .noDefiance
 	ld a, [wKODefianceUsages]
 	and a
@@ -2422,16 +2424,34 @@ DisplayPlayerBag:
 	ld hl, wNumBagItems
     ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
 	ld a, [wBagPocketsFlags]
-	bit BIT_TM_POCKET, a
-	jr nz, .battleTMPocket
-	bit BIT_KEY_ITEMS_POCKET, a
-	jp z, DisplayBagMenu
+	and POCKET_INDEX_MASK
+	cp POCKET_RECOVERY
+	jr z, .bagRecovery
+	cp POCKET_KEY_ITEMS
+	jr z, .bagKey
+	cp POCKET_TM_PACK
+	jr z, .bagTM
+	cp POCKET_STAT
+	jr z, .bagStat
+	; POCKET_VALUABLE
+	farcall BuildValuablePocketList
+	ld hl, wValuablePocketBuf
+	jp DisplayBagMenu
+.bagRecovery
+	farcall BuildRecoveryPocketList
+	ld hl, wRecoveryPocketBuf
+	jp DisplayBagMenu
+.bagKey
 	farcall BuildKeyItemPocketList
 	ld hl, wKeyItemPocketBuf
 	jp DisplayBagMenu
-.battleTMPocket
+.bagTM
 	farcall BuildTMPocketList
 	ld hl, wTMPocketBuf
+	jp DisplayBagMenu
+.bagStat
+	farcall BuildStatPocketList
+	ld hl, wStatPocketBuf
 	;;;;;;;;;;
 	; fallthrough
 

@@ -116,18 +116,9 @@ AccessedMyPCText:
 
 ; removes one of the specified item ID [hItemToRemoveID] from bag (if existent)
 RemoveItemByID::
-	ld hl, wBagItems
+	ld hl, wBagItems      ; PC key item operations deferred — use legacy bag for now
 	ldh a, [hItemToRemoveID]
 	ld b, a
-    ;;;;;;;;;; marcelnote - new for bag pockets
-	ld [wCurItem], a ; should we save what's in wCurItem before?
-	call IsKeyItem
-	ld a, [wIsKeyItem]
-	and a
-	jr z, .notKeyItem
-	ld hl, wKeyItemSlot1  ; key items now in slot array (PC key items UI is future work)
-.notKeyItem
-	;;;;;;;;;;
 	xor a
 	ldh [hItemToRemoveIndex], a
 .loop

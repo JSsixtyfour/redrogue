@@ -368,10 +368,19 @@ NEXTU
 wTMPocketBuf:: ds $80
 
 NEXTU
-; Key items carry-slot display list, built on demand by BuildKeyItemPocketList.
-; Format: count byte + {item_id, 1} pairs + $FF sentinel. 8 items max = 18 bytes.
-; Union member — mutually exclusive with trainer card / TM list (union is 180 bytes).
-wKeyItemPocketBuf:: ds 18
+; Per-pocket display list buffers — all are union members (mutually exclusive,
+; union is 180 bytes so all fit comfortably).
+; Format: count byte + {item_id, qty} pairs + $FF sentinel.
+wKeyItemPocketBuf:: ds 10    ; up to 4 key items: 1+4*2+1 = 10 bytes
+
+NEXTU
+wRecoveryPocketBuf:: ds 44  ; up to 21 recovery items: 1+21*2+1 = 44 bytes
+
+NEXTU
+wStatPocketBuf:: ds 26      ; up to 12 stat items: 1+12*2+1 = 26 bytes
+
+NEXTU
+wValuablePocketBuf:: ds 10  ; up to 4 valuable items: 1+4*2+1 = 10 bytes
 
 NEXTU
 wHallOfFame:: ds HOF_TEAM
@@ -1762,25 +1771,26 @@ wPokedexOwnedEnd::
 wPokedexSeen:: flag_array NUM_POKEMON
 wPokedexSeenEnd::
 
-wNumBagItems:: db
-; item, quantity
-wBagItems:: ds BAG_ITEM_CAPACITY * 2 + 1
+; Recovery pocket — one count byte per item type (0=none, N=have N).
+; Display order matches RecoveryItemTable in custom_functions/pocket_items.asm.
+wRecoveryItemCounts:: ds NUM_RECOVERY_ITEMS  ; 21 bytes
 
-; Key items pocket — binary carry slots.
-; Ownership lives in sKeyItemsBitfield (SRAM); these WRAM bytes track the
-; active loadout. Carry limit TBD — raised to 8 until the PC swap UI exists
-; (with only 4 starting items and no way to swap yet, a cap of 3 would
-; permanently lock out items beyond the first three acquired).
-; Persists through death/run-reset via normal save; clears only on true new game.
-wNumBagKeyItems:: db         ; number of occupied carry slots
-wKeyItemSlot1:: db           ; item ID in carry slot 1 ($00 = empty)
-wKeyItemSlot2:: db           ; item ID in carry slot 2 ($00 = empty)
-wKeyItemSlot3:: db           ; item ID in carry slot 3 ($00 = empty)
-wKeyItemSlot4:: db           ; item ID in carry slot 4 ($00 = empty)
-wKeyItemSlot5:: db           ; item ID in carry slot 5 ($00 = empty)
-wKeyItemSlot6:: db           ; item ID in carry slot 6 ($00 = empty)
-wKeyItemSlot7:: db           ; item ID in carry slot 7 ($00 = empty)
-wKeyItemSlot8:: db           ; item ID in carry slot 8 ($00 = empty)
+; Stat pocket — evolution stones, vitamins, Rare Candy, PP Up.
+wStatItemCounts:: ds NUM_STAT_ITEMS          ; 12 bytes
+
+; Valuable pocket — sell-only items (Nugget, Pearl, etc.).
+wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
+
+; Key items pocket is pure bitfield in sKeyItemsBitfield (SRAM), no WRAM needed.
+; The display list is built on demand by BuildKeyItemPocketList (ROMX).
+
+; Legacy stubs — wBagItems/wNumBagItems kept at minimal size so old item-use,
+; pokemart, and inventory code compiles while it is migrated to the new system.
+; Nothing should route here in normal play (GiveItem dispatches to count arrays).
+wNumBagItems:: db
+wBagItems:: ds 3        ; tiny — effectively empty, migrated code should bypass this
+; wNumBagKeyItems alias pointing at the old byte; now meaningless (0 always)
+wNumBagKeyItems:: db
 
 ; bits related to bag pockets (see ram_constants.asm) ; marcelnote - new for bag pockets
 wBagPocketsFlags:: db

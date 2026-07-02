@@ -44,27 +44,60 @@ DisplayPokemartDialogue_::
 	ld [wInitListType], a
 	callfar InitList
 
-	ld a, [wNumBagItems]
+	; Build the current pocket's display list and check if anything to sell.
+	; Recovery pocket is the default sell pocket (potions, etc. are most sellable).
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_RECOVERY
+	jr z, .sellRecovery
+	cp POCKET_STAT
+	jr z, .sellStat
+	cp POCKET_VALUABLE
+	jr z, .sellValuable
+	; Key items and TM Pack can't be sold — redirect to Recovery
+	xor a
+	ld [wBagPocketsFlags], a   ; switch to Recovery pocket
+.sellRecovery
+	farcall BuildRecoveryPocketList
+	ld hl, wRecoveryPocketBuf
+	jr .checkSellEmpty
+.sellStat
+	farcall BuildStatPocketList
+	ld hl, wStatPocketBuf
+	jr .checkSellEmpty
+.sellValuable
+	farcall BuildValuablePocketList
+	ld hl, wValuablePocketBuf
+.checkSellEmpty
+	ld a, [hl]                  ; a = count of items in this pocket
 	and a
-	jp z, .bagEmpty ; marcelnote - not checking that Key Items pocket is not empty since cannot sell them
+	jp z, .bagEmpty
 	ld hl, PokemonSellingGreetingText
 	call PrintText
-	call SaveScreenTilesToBuffer1 ; save screen
+	call SaveScreenTilesToBuffer1
 .sellMenuLoop
-	call LoadScreenTilesFromBuffer1 ; restore saved screen
+	call LoadScreenTilesFromBuffer1
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
-	
-    call DisplayTextBoxID ; draw money text box
-    
-    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
+	call DisplayTextBoxID
+	; Rebuild display list for current pocket
 	ld a, [wBagPocketsFlags]
-	bit BIT_KEY_ITEMS_POCKET, a
-	ld hl, wNumBagItems
-	jr z, .gotBagPocket
-	ld hl, wNumBagKeyItems
-.gotBagPocket
-	;;;;;;;;;;
+	and POCKET_INDEX_MASK
+	cp POCKET_STAT
+	jr z, .sellDisplayStat
+	cp POCKET_VALUABLE
+	jr z, .sellDisplayValuable
+	farcall BuildRecoveryPocketList
+	ld hl, wRecoveryPocketBuf
+	jr .gotSellSource
+.sellDisplayStat
+	farcall BuildStatPocketList
+	ld hl, wStatPocketBuf
+	jr .gotSellSource
+.sellDisplayValuable
+	farcall BuildValuablePocketList
+	ld hl, wValuablePocketBuf
+.gotSellSource
 	ld a, l
 	ld [wListPointer], a
 	ld a, h
@@ -102,15 +135,15 @@ DisplayPokemartDialogue_::
 	call DisplayTextBoxID ; yes/no menu
 	ld a, [wMenuExitMethod]
 	cp CHOSE_SECOND_ITEM
-	jr z, .sellMenuLoop ; if the player chose No or pressed the B button
+	jp z, .sellMenuLoop ; if the player chose No or pressed the B button
 
 ; The following code is supposed to check if the player chose No, but the above
 ; check already catches it.
 	ld a, [wChosenMenuItem]
 	dec a
-	jr z, .sellMenuLoop
+	jp z, .sellMenuLoop
 
-; sell item
+; sell item — decrement count in the appropriate count-array pocket
 	ld a, [wBoughtOrSoldItemInMart]
 	and a
 	jr nz, .skipSettingFlag1
@@ -118,8 +151,8 @@ DisplayPokemartDialogue_::
 	ld [wBoughtOrSoldItemInMart], a
 .skipSettingFlag1
 	call AddAmountSoldToMoney
-	ld hl, wNumBagItems
-	call RemoveItemFromInventory
+	; wCurItem set by item selection; wItemQuantity set by DisplayChooseQuantityMenu
+	farcall RemovePocketItem
 	jp .sellMenuLoop
 .unsellableItem
 	ld hl, PokemartUnsellableItemText
@@ -192,11 +225,14 @@ DisplayPokemartDialogue_::
 	dec a
 	jr z, .buyMenuLoop
 
-; buy item
+; buy item — route through GiveItem so it lands in the correct pocket
 	call .isThereEnoughMoney
 	jr c, .notEnoughMoney
-	ld hl, wNumBagItems
-	call AddItemToInventory
+	ld a, [wCurItem]       ; GiveItem reads wCurItem (farcall clobbers b)
+	ld b, a
+	ld a, [wItemQuantity]  ; GiveItem reads wItemQuantity (farcall clobbers c)
+	ld c, a
+	call GiveItem          ; HOME function, plain call OK; routes to correct pocket
 	jr nc, .bagFull
 	call SubtractAmountPaidFromMoney
 	ld a, [wBoughtOrSoldItemInMart]

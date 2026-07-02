@@ -187,6 +187,36 @@ _CalcStat::
 	ldh [hMultiplicand+1], a
 	ld a, LOW(MAX_STAT_VALUE)
 	ldh [hMultiplicand+2], a
+	; Challenge 8 (SLOWED_POKEMON): halve Speed for player party mons.
+	; c=4 at this point is Speed. Only applies to non-enemy mons.
+	ld a, c
+	cp 4
+	jr nz, .noSpdHalve
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noSpdHalve
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_SLOWED_POKEMON
+	jr nz, .noSpdHalve
+	ld a, [wMonDataLocation]
+	cp ENEMY_PARTY_DATA
+	jr z, .noSpdHalve
+	ldh a, [hMultiplicand+1]
+	srl a
+	ldh [hMultiplicand+1], a
+	ldh a, [hMultiplicand+2]
+	rr a
+	ldh [hMultiplicand+2], a
+	; ensure minimum 1
+	ldh a, [hMultiplicand+1]
+	or a
+	jr nz, .noSpdHalve
+	ldh a, [hMultiplicand+2]
+	and a
+	jr nz, .noSpdHalve
+	ld a, 1
+	ldh [hMultiplicand+2], a
+.noSpdHalve
 .noOverflow
 	pop bc
 	pop de

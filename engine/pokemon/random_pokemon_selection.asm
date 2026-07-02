@@ -24,6 +24,36 @@ ldh a, [hRandomAdd]
 ld b, a
 
 .determineClassSlot
+; Apply witch prize/challenge rarity modifier to the class roll.
+; PRIZE_RARITY_POKEMON (a): wRewardClassBonus > 0 → subtract from b (lower b = better class).
+; CHALLENGE_REDUCED_RARITY (4): wRewardClassBonus < 0 (stored as two's complement) → adds, pushing toward pokeball.
+; Using addition only: if wRewardClassBonus is set as a signed byte, ld a,b / add [wRewardClassBonus] handles both.
+ld a, [wRogueFlagsBitfield]
+bit BIT_WITCH_ACCEPTED, a
+jr z, .noRarityMod
+ld a, [wWitchPrize]
+cp PRIZE_RARITY_POKEMON
+jr z, .rarityBonus
+ld a, [wWitchChallenge]
+cp CHALLENGE_REDUCED_RARITY
+jr nz, .noRarityMod
+; Challenge 4: push roll toward pokeball (SUBTRACT from b → smaller b = more likely pokeball)
+ld a, b
+sub 64         ; smaller b = more likely pokeball class (worse)
+jr nc, .rarityMod
+xor a          ; clamp at 0
+.rarityMod
+ld b, a
+jr .noRarityMod
+.rarityBonus
+; Prize a: push roll toward ultraball/masterball (ADD to b → larger b = more likely ultraball)
+ld a, b
+add 51         ; +51 shifts distribution: pokeball only on roll=0 (~0.4%), mostly ultraball
+jr nc, .rarityBonusDone
+ld a, $FF      ; clamp at 255
+.rarityBonusDone
+ld b, a
+.noRarityMod
 ld a, pokeball_odds
 cp b
 jr nc, pokeball_class_selection

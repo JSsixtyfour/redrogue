@@ -225,66 +225,81 @@ TeachTMHM::
 ; CLOBBERS: a, b, c, hl
 ; ============================================================
 PocketSwitchROMX::
+; 5 pockets: 0=Recovery 1=Key Items 2=TM Pack 3=Stat 4=Valuable (mod-5 cycling).
 	push af                    ; save direction across the menu/PC checks
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jr nz, .rejected
 	ld hl, wBagPocketsFlags
-	bit BIT_PC_WITHDRAWING, [hl] ; if withdrawing from PC then cannot switch pocket
+	bit BIT_PC_WITHDRAWING, [hl]
 	jr nz, .rejected
 	ld a, SFX_TINK
 	farcall PlaySound
 	pop af                     ; a = direction
 	ld b, a
 	ld a, [wBagPocketsFlags]
-	and $03                    ; a = current pocket index (0-2)
+	and POCKET_INDEX_MASK      ; a = current pocket index (0-4)
 	ld c, a
-	ld a, b                    ; a = direction
+	ld a, b
 	and a
 	jr z, .backward
-.forward                       ; 0->1->2->0
+.forward                       ; 0->1->2->3->4->0
 	ld a, c
 	inc a
-	cp 3
+	cp NUM_POCKETS
 	jr c, .gotIndex
-	xor a                      ; wrap 3 -> 0
+	xor a
 	jr .gotIndex
-.backward                      ; 0->2->1->0
+.backward                      ; 0->4->3->2->1->0
 	ld a, c
 	dec a
-	cp $ff                     ; underflowed? (0 - 1 = $ff)
+	cp $ff
 	jr nz, .gotIndex
-	ld a, 2                    ; wrap -1 -> 2
+	ld a, NUM_POCKETS - 1
 .gotIndex
-	ld b, a                    ; b = new pocket index
+	ld b, a
 	ld a, [wBagPocketsFlags]
-	and $fc                    ; preserve upper bits, clear pocket index
+	and $F8                    ; clear bits 0-2 (pocket index), preserve bits 3-7
 	or b
 	ld [wBagPocketsFlags], a
-	ld a, b
-	cp 2
-	jr z, .tmPocket
-	cp 1
+	ld a, b                    ; a = new pocket index
+	; Route to the right source / build the display list
+	cp POCKET_RECOVERY
+	jr z, .recoveryPocket
+	cp POCKET_KEY_ITEMS
 	jr z, .keyPocket
-.mainPocket
-	ld bc, wNumBagItems
+	cp POCKET_TM_PACK
+	jr z, .tmPocket
+	cp POCKET_STAT
+	jr z, .statPocket
+	; POCKET_VALUABLE
+	call BuildValuablePocketList
+	ld bc, wValuablePocketBuf
+	jr .gotSource
+.recoveryPocket
+	call BuildRecoveryPocketList
+	ld bc, wRecoveryPocketBuf
 	jr .gotSource
 .keyPocket
-	call BuildKeyItemPocketList ; rebuild display list from carry slots (same bank)
+	call BuildKeyItemPocketList
 	ld bc, wKeyItemPocketBuf
 	jr .gotSource
 .tmPocket
-	call BuildTMPocketList     ; rebuild display list from sTMBitfield (same bank)
+	call BuildTMPocketList
 	ld bc, wTMPocketBuf
+	jr .gotSource
+.statPocket
+	call BuildStatPocketList
+	ld bc, wStatPocketBuf
 .gotSource
 	ld a, c
 	ld hl, wListPointer
 	ld [hli], a
 	ld [hl], b
-	and a                       ; carry clear = success
+	and a
 	ret
 .rejected
-	pop af                      ; balance the stack
+	pop af
 	scf
 	ret
 
@@ -304,8 +319,8 @@ TMItContainsText:: ; moved from engine/menus/players_pc.asm (bank1) so the
 ; ◀ moved from $62 (vChars2/$60 region, overwritten by Town Map) to $c0
 ; (vChars1/$40 region, safe). The actual glyph still needs to be drawn at
 ; position $c0 in font.png — until then it shows whatever tile is there.
-BagItemsText:
-	db "◀ ITEMS      ▶@"
+BagRecoveryText:
+	db "◀ RECOVERY   ▶@"
 
 BagKeyItemsText:
 	db "◀ KEY ITEMS  ▶@"
@@ -313,20 +328,38 @@ BagKeyItemsText:
 BagTMPackText:
 	db "◀ TM PACK    ▶@"
 
+BagStatText:
+	db "◀ STAT ITEMS ▶@"
+
+BagValuableText:
+	db "◀ VALUABLES  ▶@"
+
 PrintBagInfoText::
 	ld hl, wBagPocketsFlags
 	bit BIT_PRINT_INFO_BOX, [hl]
 	jr z, .notBag
-	ld de, BagItemsText
 	ld a, [wBagPocketsFlags]
-	bit BIT_TM_POCKET, a
-	jr nz, .tmPocket
-	bit BIT_KEY_ITEMS_POCKET, a
-	jr z, .mainPocket
+	and POCKET_INDEX_MASK      ; a = pocket index 0-4
+	; Pick the label string for this pocket
+	ld de, BagRecoveryText
+	and a
+	jr z, .mainPocket          ; POCKET_RECOVERY (0)
+	cp POCKET_KEY_ITEMS
+	jr nz, .notKey
 	ld de, BagKeyItemsText
 	jr .mainPocket
-.tmPocket
+.notKey
+	cp POCKET_TM_PACK
+	jr nz, .notTM2
 	ld de, BagTMPackText
+	jr .mainPocket
+.notTM2
+	cp POCKET_STAT
+	jr nz, .notStat2
+	ld de, BagStatText
+	jr .mainPocket
+.notStat2
+	ld de, BagValuableText
 .mainPocket
 	call GetCurrentMenuItem
 	hlcoord 5, 14
