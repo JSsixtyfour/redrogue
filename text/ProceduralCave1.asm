@@ -1,14 +1,18 @@
 _PCBossEncounterText::
 	text_ram wNameBuffer
 	text "!@"
-	;text_promptbutton   ; show ▼ arrow, wait for A/B so the name isn't a blip
 	text_end
 
+; Post-battle join offer. Structure mirrors the working BluesHouse pattern:
+; a normal string that ends with "@" (returns to command mode), then
+; text_ram to drop in the boss's name, then more string, then text_end.
+; NOTE: never put "@" right before a line/cont - "@" returns to command
+; mode and the <LINE>/<CONT> control byte would be misread as a command.
 _PCBossJoinText::
-	text_start
-	text_ram wNameBuffer
+	text "The wild"
 	line "@"
-_PCBossJoinText2::
-	text "wants to join your"
-	line "party!@"
+	text_ram wNameBuffer
+	text " wants"
+	cont "to join your"
+	cont "party!@"
 	text_end

@@ -988,21 +988,16 @@ PCPlaceWildAreaItems:
 	add a, 4                       ; this because warps use a different origin)
 	ld [hl], a
 
-	; roll an independent item for this slot. Random_Item_Selection reads
-	; wRogueDoorSelection to pick its class (HEALING=0/STAT=1/TM=2/MONEY=3,
-	; see engine/items/item_rarity.asm) - we never set it before this, so
-	; it just held whatever stale value the last unrelated write left
-	; there (0 on a fresh debug game, since nothing else had touched it
-	; yet), which is why every wild-area item rolled as a healing item.
-	; Roll our own random class here instead.
+	; Roll a random item class then pick from it.
+	; TODO: add duplicate rejection - revert here was for stack crash fix.
 	ld c, 4
 	call Rangerandom
 	ld [wRogueDoorSelection], a
 	farcall Random_Item_Selection   ; always writes its result to wRogueItem
 	ld a, [wBuffer + wProcCaveItemCounter]
 	and a
-	jr z, .afterItemCopy            ; slot 0 (ball 1) - wRogueItem already correct
-	add a, a                        ; *2 - wRogueItem/2/3/4 are 4 consecutive dw's
+	jr z, .afterItemCopy            ; slot 0 - wRogueItem already correct
+	add a, a                        ; *2 - wRogueItem/2/3/4 are consecutive dw's
 	ld c, a
 	ld b, 0
 	ld hl, wRogueItem
