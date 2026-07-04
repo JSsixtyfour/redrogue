@@ -1,5 +1,5 @@
 object_const_def
-    const_export WILD_AREA_BOSS
+    const_export WILD_AREA_BOSS ; = 1 (first object_event = sprite slot 1)
 
 ProceduralCave1_Object:
 	db 46 ; border block (solid_wall, confirmed impassable in both classification passes)
@@ -11,43 +11,22 @@ ProceduralCave1_Object:
 	def_bg_events
 
 	def_object_events
-	; 4 wild area pokeballs - random item per dead-end target, see
-	; custom_functions/procedural_cave_gen.asm's GenerateProceduralCave.
-	; Placeholder coords (arbitrary, inside the map) - the generator
-	; runtime-patches wSprite0{N}StateData2MapY/MapX to the real dead-end
-	; tile position for each, the same proven pattern as the exit warp's
-	; wWarpEntries patch. These become sprite slots 1-4 (first 4 declared
-	; objects) - see engine/overworld/toggleable_objects.asm's
-	; IsObjectHidden and engine/events/pick_up_item.asm's RandomPickUpItem.
+	; Boss pokemon first (slot 1) so toggle-table lookup via hActiveSpriteIndex
+	; hits slot 1 after battle and HideObject works correctly via EndTrainerBattle.
+	; Species (PINSIR) and level below are placeholders patched at runtime by
+	; PCPlaceBoss (custom_functions/procedural_cave_gen.asm) via wMapSpriteExtraData.
+	; Position is also runtime-patched to the exit ladder in PCFinalizeCave.
+	; SPRITE_MONSTER is the most common follower-sprite category (~60% of all species).
+	; Dynamic per-species sprite loading requires the follower branch's LoadFollowerSprite
+	; to force-write tiles into the boss's VRAM slot - deferred until that branch merges.
+	object_event 18, 38, SPRITE_MONSTER, STAY, DOWN, TEXT_PROCEDURALCAVE1_BOSS, PINSIR, 5 | OW_POKEMON
+
+	; 4 wild area pokeballs (slots 2-5) - random item per dead-end target.
+	; Position runtime-patched by PCPlaceWildAreaItems via wSprite0{N}StateData2MapY/MapX.
+	; Standard toggle mechanism (toggleable_objects_for table) handles visibility.
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_1, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_2, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_3, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_4, 0
-
-	; Boss pokemon - mirrors the vanilla legendary-bird pattern (e.g.
-	; PowerPlant's Zapdos: `object_event 4, 5, SPRITE_BIRD, STAY, UP,
-	; TEXT_POWERPLANT_ZAPDOS, ZAPDOS, 50 | OW_POKEMON`, confirmed still
-	; intact in our own data/maps/objects/PowerPlant.asm despite that map
-	; being heavily modified elsewhere) - the OW_POKEMON flag bit ($80, on
-	; the level byte) makes engine/overworld/home/trainers.asm's
-	; EngageMapTrainer treat the "trainer class" slot as a real species and
-	; start a WILD battle at the given level instead of looking up a
-	; trainer's party. Confirmed Zapdos/the PowerPlant Voltorbs need NO
-	; TrainerHeader entry for this - it's driven purely by this object's
-	; compiled byte data, not the sight-engagement system.
-	;
-	; FIXED POSITION FOR TESTING (2026-06-26, explicit user request): tile
-	; (18,38), directly in front of the static entrance warp (19,38) - no
-	; runtime position patch needed since this is declared statically, same
-	; reasoning as why the entrance itself never needed one.
-	;
-	; Species (0) and level (0 | OW_POKEMON) below are placeholders -
-	; GenerateProceduralCave patches wMapSpriteExtraData for this sprite's
-	; slot (5th declared object_event here) with a freshly-rolled random
-	; species + an appropriate level each time the cave generates. Sprite
-	; is a generic SPRITE_BIRD placeholder for now - matching the rolled
-	; species' actual appearance is a separate, not-yet-implemented step
-	; (see [[redrogue-procedural-cave]]).
-	object_event 18, 38, SPRITE_BIRD, STAY, DOWN, TEXT_PROCEDURALCAVE1_BOSS, PINSIR, 5 | OW_POKEMON
 
 	def_warps_to PROCEDURAL_CAVE_1

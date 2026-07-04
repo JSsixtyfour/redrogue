@@ -106,11 +106,11 @@ MapHeaderPointers::
 	dw SSAnne1FRooms_h
 	dw SSAnne2FRooms_h
 	dw SSAnneB1FRooms_h
-	dw LancesRoom_h ; UNUSED_MAP_69
-	dw LancesRoom_h ; UNUSED_MAP_6A
-	dw LancesRoom_h ; UNUSED_MAP_6B
+	dw ProceduralCemetary1_h
+	dw ProceduralCemetary2_h
+	dw ProceduralCemetary3_h
 	dw VictoryRoad1F_h
-	dw LancesRoom_h ; UNUSED_MAP_6D
+	dw ProceduralCemetary4_h
 	dw LancesRoom_h ; UNUSED_MAP_6E
 	dw LancesRoom_h ; UNUSED_MAP_6F
 	dw LancesRoom_h ; UNUSED_MAP_70

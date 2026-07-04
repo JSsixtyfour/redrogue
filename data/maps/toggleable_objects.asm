@@ -417,11 +417,23 @@ ToggleableObjectStates:
 	; per-ball names (not needed, positions/items are patched at runtime by
 	; sprite slot number, not by name).
 	toggleable_objects_for PROCEDURAL_CAVE_1
+    toggle_object_state WILD_AREA_BOSS, ON ; slot 1 = boss
+	toggle_object_state 2, ON              ; slot 2 = pokeball 1
+	toggle_object_state 3, ON              ; slot 3 = pokeball 2
+	toggle_object_state 4, ON              ; slot 4 = pokeball 3
+	toggle_object_state 5, ON              ; slot 5 = pokeball 4
+
+	toggleable_objects_for PROCEDURAL_CEMETARY_1
+	toggle_object_state 1, ON    ; slot 1 = pokeball
+
+	toggleable_objects_for PROCEDURAL_CEMETARY_2
 	toggle_object_state 1, ON
-	toggle_object_state 2, ON
-	toggle_object_state 3, ON
-	toggle_object_state 4, ON
-    toggle_object_state WILD_AREA_BOSS, ON
+
+	toggleable_objects_for PROCEDURAL_CEMETARY_3
+	toggle_object_state 1, ON
+
+	toggleable_objects_for PROCEDURAL_CEMETARY_4
+	toggle_object_state 1, ON
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

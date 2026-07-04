@@ -901,8 +901,10 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 
 ; Procedural Cave Events
     const_next $A26
+    const EVENT_PC_BOSS_OFFERED   ; set after join-party offer shown, prevents repeat
+; $A29 % 8 == 1, matching def_trainers 1 in scripts/ProceduralCave1.asm
+    const_next $A29
     const EVENT_BEAT_PC_BOSS
 
 ; End of events
-	const_next $A27
 DEF NUM_EVENTS EQU const_value

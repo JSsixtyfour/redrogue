@@ -202,22 +202,28 @@ DEF wProcCaveTargetBase       EQU 27 ; 2 bytes (27,28) - low,high
 ; use.
 ; ============================================================
 PCPreloadCave::
-	ld a, LOW(wProcCaveStagingBuffer + PC_BASE)
+	; enable SRAM (bank 0, "Sprite Buffers") for the duration of preload -
+	; all PCReadCell/PCWriteCell calls go through wProcCaveTargetBase, which
+	; we point at the SRAM staging buffer below, so SRAM must stay open until
+	; we're fully done writing (including staging the metadata at the end).
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a                          ; SRAM bank 0
+	ld [rRAMB], a
+
+	ld a, LOW(sProcCaveStagingBuffer + PC_BASE)
 	ld [wBuffer + wProcCaveTargetBase], a
-	ld a, HIGH(wProcCaveStagingBuffer + PC_BASE)
+	ld a, HIGH(sProcCaveStagingBuffer + PC_BASE)
 	ld [wBuffer + wProcCaveTargetBase + 1], a
 
-	; the real wOverworldMap path gets its baseline "25 (plain fill)
-	; everywhere" from LoadTileBlockMap copying the static .blk template
-	; BEFORE this generator ever runs - carving/autotiling/decoration only
-	; ever touch SPECIFIC cells, relying on every untouched cell already
-	; reading as real fill. The staging buffer has no such template copy -
-	; it's raw, never-initialized WRAM - so it needs the same baseline
-	; filled in by hand here, or every untouched cell stays at whatever
-	; garbage/zero was already sitting in that WRAM (confirmed for real:
-	; without this, a blitted cave came out mostly 0s with only the
-	; explicitly-written cells correct).
-	ld hl, wProcCaveStagingBuffer
+	; SRAM is raw uninitialized storage - it has no template fill (unlike the
+	; real wOverworldMap path, which gets "25 everywhere" from LoadTileBlockMap
+	; copying the static .blk before we run). Fill manually with plain-fill (25)
+	; so every untouched cell reads correctly when PCFinalizeCave blits it out.
+	ld hl, sProcCaveStagingBuffer
 	ld bc, 600
 	ld d, 25                ; keep the fill value out of a's way - the
 	                        ; loop-condition check below needs a too
@@ -371,17 +377,212 @@ PCPreloadCave::
 	; player may do an arbitrary amount of unrelated stuff in Pallet Town
 	; between this call returning and PCFinalizeCave eventually running.
 	ld a, [wBuffer + wProcCaveEntranceY]
-	ld [wProcCaveStagingEntranceY], a
+	ld [sProcCaveStagingEntranceY], a
 	ld a, [wBuffer + wProcCaveEntranceX]
-	ld [wProcCaveStagingEntranceX], a
+	ld [sProcCaveStagingEntranceX], a
 	ld a, [wBuffer + wProcCaveExitY]
-	ld [wProcCaveStagingExitY], a
+	ld [sProcCaveStagingExitY], a
 	ld a, [wBuffer + wProcCaveExitX]
-	ld [wProcCaveStagingExitX], a
+	ld [sProcCaveStagingExitX], a
+
+	; roll exit ladder and boss species while SRAM is still open
+	call PCRollExitLadder
+	call PCRollBoss
+
+	; close SRAM before setting the ready flag - the flag itself is WRAM
+	; so PyBoy scripts can poll it without SRAM enabled
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
 
 	ld a, 1
-	ld [wProcCaveStagingReady], a
+	ld [wProcCavePreloadReady], a
 	ret
+
+; ============================================================
+; PCRollExitLadder
+; Rolls the exit ladder ID and offset during PCPreloadCave (SRAM open).
+; Stores sProcCaveStagingLadderID/Offset so PCPlaceExitLadder can read
+; the same values on every cave entry instead of re-rolling each time.
+; ============================================================
+PCRollExitLadder:
+	ld c, NUM_PC_LADDER_IDS
+	call Rangerandom        ; 0-2 in a
+	ld [sProcCaveStagingLadderID], a
+	ld hl, PCLadderOffsetTable
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]              ; 0 or 1 sub-tile offset for this ladder ID
+	ld [sProcCaveStagingLadderOffset], a
+	ret
+
+; ============================================================
+; PCRollBoss
+; Rolls boss species/level (called during PCPreloadCave while SRAM is
+; open). Stages the resulting SPRITE_* constant in sProcCaveStagingBossSprite
+; so overworld.asm can patch wSprite01StateData1.PICTUREID before
+; farcall InitMapSprites loads the wrong sprite tiles.
+; Sets wRoguePokemon1 = species (used by PCPlaceBoss in PCFinalizeCave).
+; ============================================================
+PCRollBoss:
+	call PCGetBossLevel             ; sets wCurEnemyLevel
+	call Random
+	ld c, 0
+	farcall Random_Pokemon_Selection ; → d = species
+	ld a, d
+	ld [wRoguePokemon1], a
+	; look up the matching SPRITE_* for this species
+	call PCGetBossOWSprite          ; a = species → a = SPRITE_* constant
+	ld [sProcCaveStagingBossSprite], a
+	ret
+
+; ============================================================
+; PCGetBossOWSprite
+; INPUT:  wRoguePokemon1 = species (1-based internal ID)
+; OUTPUT: a = SPRITE_* constant for the boss's overworld sprite
+; Uses the same nibble-packed table as the follower branch.
+; ============================================================
+PCGetBossOWSprite:
+	ld a, [wRoguePokemon1]
+	dec a                        ; 0-based index
+	ld b, a                      ; save
+	srl a                        ; byte offset into table
+	ld hl, PCBossFollowerSpriteTable
+	add a, l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld a, [hl]                   ; packed nibble byte
+	bit 0, b                     ; odd/even check
+	jr z, .even
+	and $0F                      ; odd: low nibble
+	jr .gotCategory
+.even
+	swap a
+	and $0F                      ; even: high nibble
+.gotCategory
+	; a = FSPRITE category (0-7) → SPRITE_* constant
+	ld hl, PCBossSpriteCategoryTable
+	add a, l
+	ld l, a
+	jr nc, .noCarry2
+	inc h
+.noCarry2
+	ld a, [hl]
+	ret
+
+PCBossSpriteCategoryTable:
+	db SPRITE_MONSTER   ; FSPRITE_MONSTER (0) - most species
+	db SPRITE_BIRD      ; FSPRITE_BIRD (1)
+	db SPRITE_SEEL      ; FSPRITE_SEEL (2)
+	db SPRITE_FAIRY     ; FSPRITE_FAIRY (3)
+	db SPRITE_POKE_BALL ; FSPRITE_POKEBALL (4)
+	db SPRITE_SNORLAX   ; FSPRITE_SNORLAX (5)
+	db SPRITE_FOSSIL    ; FSPRITE_FOSSIL (6)
+	db SPRITE_MONSTER   ; FSPRITE_PIKACHU (7) - no Pikachu NPC sprite
+
+; 95-byte nibble-packed species→FSPRITE table, ported from follower branch.
+; High nibble = even species index, low nibble = odd.
+; M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6) K=PIKACHU(7)
+PCBossFollowerSpriteTable:
+	db $00 ; $01,$02 RHYDON,KANGASKHAN
+	db $03 ; $03,$04 NIDORAN_M,CLEFAIRY
+	db $14 ; $05,$06 SPEAROW,VOLTORB
+	db $02 ; $07,$08 NIDOKING,SLOWBRO
+	db $00 ; $09,$0A IVYSAUR,EXEGGUTOR
+	db $00 ; $0B,$0C LICKITUNG,EXEGGCUTE
+	db $00 ; $0D,$0E GRIMER,GENGAR
+	db $00 ; $0F,$10 NIDORAN_F,NIDOQUEEN
+	db $00 ; $11,$12 CUBONE,RHYHORN
+	db $20 ; $13,$14 LAPRAS,ARCANINE
+	db $00 ; $15,$16 MEW,GYARADOS
+	db $62 ; $17,$18 SHELLDER,TENTACOOL
+	db $00 ; $19,$1A GASTLY,SCYTHER
+	db $62 ; $1B,$1C STARYU,BLASTOISE
+	db $00 ; $1D,$1E PINSIR,TANGELA
+	db $00 ; $1F,$20 skip,skip
+	db $00 ; $21,$22 GROWLITHE,ONIX
+	db $11 ; $23,$24 FEAROW,PIDGEY
+	db $20 ; $25,$26 SLOWPOKE,KADABRA
+	db $03 ; $27,$28 GRAVELER,CHANSEY
+	db $00 ; $29,$2A MACHOKE,MR_MIME
+	db $00 ; $2B,$2C HITMONLEE,HITMONCHAN
+	db $00 ; $2D,$2E ARBOK,PARASECT
+	db $20 ; $2F,$30 PSYDUCK,DROWZEE
+	db $00 ; $31,$32 GOLEM,skip
+	db $00 ; $33,$34 MAGMAR,skip
+	db $04 ; $35,$36 ELECTABUZZ,MAGNETON
+	db $00 ; $37,$38 KOFFING,skip
+	db $02 ; $39,$3A MANKEY,SEEL
+	db $00 ; $3B,$3C DIGLETT,TAUROS
+	db $00 ; $3D,$3E skip,skip
+	db $01 ; $3F,$40 skip,FARFETCHD
+	db $00 ; $41,$42 VENONAT,DRAGONITE
+	db $00 ; $43,$44 skip,skip
+	db $01 ; $45,$46 skip,DODUO
+	db $20 ; $47,$48 POLIWAG,JYNX
+	db $11 ; $49,$4A MOLTRES,ARTICUNO
+	db $10 ; $4B,$4C ZAPDOS,DITTO
+	db $02 ; $4D,$4E MEOWTH,KRABBY
+	db $00 ; $4F,$50 skip,skip
+	db $00 ; $51,$52 skip,VULPIX
+	db $07 ; $53,$54 NINETALES,PIKACHU
+	db $30 ; $55,$56 RAICHU,skip
+	db $02 ; $57,$58 skip,DRATINI
+	db $26 ; $59,$5A DRAGONAIR,KABUTO
+	db $02 ; $5B,$5C KABUTOPS,HORSEA
+	db $20 ; $5D,$5E SEADRA,skip
+	db $00 ; $5F,$60 skip,SANDSHREW
+	db $06 ; $61,$62 SANDSLASH,OMANYTE
+	db $63 ; $63,$64 OMASTAR,JIGGLYPUFF
+	db $30 ; $65,$66 WIGGLYTUFF,EEVEE
+	db $00 ; $67,$68 FLAREON,JOLTEON
+	db $20 ; $69,$6A VAPOREON,MACHOP
+	db $00 ; $6B,$6C ZUBAT,EKANS
+	db $02 ; $6D,$6E PARAS,POLIWHIRL
+	db $20 ; $6F,$70 POLIWRATH,WEEDLE
+	db $00 ; $71,$72 KAKUNA,BEEDRILL
+	db $01 ; $73,$74 skip,DODRIO
+	db $00 ; $75,$76 PRIMEAPE,DUGTRIO
+	db $02 ; $77,$78 VENOMOTH,DEWGONG
+	db $00 ; $79,$7A skip,skip
+	db $00 ; $7B,$7C CATERPIE,METAPOD
+	db $00 ; $7D,$7E BUTTERFREE,MACHAMP
+	db $02 ; $7F,$80 skip,GOLDUCK
+	db $00 ; $81,$82 HYPNO,GOLBAT
+	db $05 ; $83,$84 MEWTWO,SNORLAX
+	db $20 ; $85,$86 MAGIKARP,skip
+	db $00 ; $87,$88 skip,MUK
+	db $02 ; $89,$8A skip,KINGLER
+	db $60 ; $8B,$8C CLOYSTER,skip
+	db $43 ; $8D,$8E ELECTRODE,CLEFABLE
+	db $00 ; $8F,$90 WEEZING,PERSIAN
+	db $00 ; $91,$92 MAROWAK,skip
+	db $00 ; $93,$94 HAUNTER,ABRA
+	db $01 ; $95,$96 ALAKAZAM,PIDGEOTTO
+	db $16 ; $97,$98 PIDGEOT,STARMIE
+	db $00 ; $99,$9A BULBASAUR,VENUSAUR
+	db $20 ; $9B,$9C TENTACRUEL,skip
+	db $22 ; $9D,$9E GOLDEEN,SEAKING
+	db $00 ; $9F,$A0 skip,skip
+	db $00 ; $A1,$A2 skip,skip
+	db $00 ; $A3,$A4 PONYTA,RAPIDASH
+	db $00 ; $A5,$A6 RATTATA,RATICATE
+	db $00 ; $A7,$A8 NIDORINO,NIDORINA
+	db $00 ; $A9,$AA GEODUDE,PORYGON
+	db $10 ; $AB,$AC AERODACTYL,skip
+	db $40 ; $AD,$AE MAGNEMITE,skip
+	db $00 ; $AF,$B0 skip,CHARMANDER
+	db $20 ; $B1,$B2 SQUIRTLE,CHARMELEON
+	db $20 ; $B3,$B4 WARTORTLE,CHARIZARD
+	db $00 ; $B5,$B6 skip,FOSSIL_KABUTOPS
+	db $00 ; $B7,$B8 FOSSIL_AERODACTYL,MON_GHOST
+	db $00 ; $B9,$BA ODDISH,GLOOM
+	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
+	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
 
 ; ============================================================
 ; PCFinalizeCave (PRELOAD PROTOTYPE 2026-06-27)
@@ -391,11 +592,19 @@ PCPreloadCave::
 ; exit warp patch and the item/boss sprite positioning.
 ; ============================================================
 PCFinalizeCave::
-	; blit: identical PC_BASE/PC_STRIDE layout on both sides (the staging
-	; buffer was deliberately sized to match), so this is a straight
-	; PC_SIZE-bytes-per-row copy, PC_SIZE rows, skipping the same border
-	; padding gap (PC_STRIDE-PC_SIZE) on both pointers between rows.
-	ld hl, wProcCaveStagingBuffer + PC_BASE
+	; open SRAM bank 0 to read the staged carve data
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+
+	; blit: identical PC_BASE/PC_STRIDE layout on both sides, so this is a
+	; straight PC_SIZE-bytes-per-row copy, PC_SIZE rows, skipping the border
+	; padding gap on both pointers between rows.
+	ld hl, sProcCaveStagingBuffer + PC_BASE
 	ld de, wOverworldMap + PC_BASE
 	ld b, PC_SIZE
 .blitRowLoop
@@ -423,23 +632,23 @@ PCFinalizeCave::
 	dec b
 	jr nz, .blitRowLoop
 
-	; restore the entrance/exit block coords PCPreloadCave staged - every
-	; call below addresses cells via wBuffer + wProcCaveEntranceX/Y/
-	; ExitX/Y, same as direct (non-preloaded) generation always did
-	ld a, [wProcCaveStagingEntranceY]
+	; read staged entrance/exit coords from SRAM while it's still open
+	ld a, [sProcCaveStagingEntranceY]
 	ld [wBuffer + wProcCaveEntranceY], a
-	ld a, [wProcCaveStagingEntranceX]
+	ld a, [sProcCaveStagingEntranceX]
 	ld [wBuffer + wProcCaveEntranceX], a
-	ld a, [wProcCaveStagingExitY]
+	ld a, [sProcCaveStagingExitY]
 	ld [wBuffer + wProcCaveExitY], a
-	ld a, [wProcCaveStagingExitX]
+	ld a, [sProcCaveStagingExitX]
 	ld [wBuffer + wProcCaveExitX], a
 
-	; re-target PCReadCell/PCWriteCell at the real, now-blitted
-	; wOverworldMap - PCPreloadCave pointed this at the staging buffer for
-	; the carving phase, and everything from here on is live, shared
-	; engine state for whatever map is actually loaded (which, by the time
-	; PCFinalizeCave runs, is genuinely ProceduralCave1 itself)
+	; close SRAM - everything after this works only against WRAM/live state
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	; re-target PCReadCell/PCWriteCell at the real, now-blitted wOverworldMap
 	ld a, LOW(wOverworldMap + PC_BASE)
 	ld [wBuffer + wProcCaveTargetBase], a
 	ld a, HIGH(wOverworldMap + PC_BASE)
@@ -538,6 +747,26 @@ PCFinalizeCave::
 	add a, b
 	ld [hl], a
 
+	; --- boss sprite position: place on the exit ladder tile ---
+	; Slot 1 = wSprite01StateData2MapY + 0*$10 = wSprite01StateData2MapY.
+	; Same block->tile formula as pokeballs (block*2+4), same sub-tile
+	; remainder (wProcCaveLadderOffset) so boss stands on recognized tile.
+	ld hl, wSprite01StateData2MapY
+	ld a, [wBuffer + wProcCaveExitY]
+	add a, a
+	add a, 4
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hli], a
+	ld a, [wBuffer + wProcCaveExitX]
+	add a, a
+	add a, 4
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hl], a
+
 	; --- wild area pokeballs: 4 independent items, placed LAST, after
 	; everything else (carving/autotile/decoration/exit ladder) has
 	; permanently settled. Originally tried positioning these at each
@@ -549,8 +778,10 @@ PCFinalizeCave::
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
 
+	; clear the ready flag in SRAM so a stale preload isn't mistaken for a
+	; fresh one if the player somehow re-enters Pallet Town before warping in
 	xor a
-	ld [wProcCaveStagingReady], a   ; mark consumed
+	ld [wProcCavePreloadReady], a   ; mark consumed (WRAM, no SRAM needed)
 	ret
 
 ; ============================================================
@@ -570,30 +801,59 @@ PCFinalizeCave::
 ; no runtime position patch. See that object_event's comment for the
 ; OW_POKEMON/EngageMapTrainer mechanism this relies on.
 ; ============================================================
-PCPlaceBoss:
-	farcall GetRewardMonLevel       ; sets wCurEnemyLevel
-	call Random
-	ld c, 0                         ; auto-determine class via rarity odds
-	; Random_Pokemon_Selection lives in bank 06 (confirmed via .sym), this
-	; generator's own code is bank 07 - MUST be farcall, not call. A plain
-	; call here silently executed bank 07's own bytes at that address
-	; instead (the cross-bank call gotcha), corrupting the stack/control
-	; flow enough that PCSprinkleFloorDecor's call right after PCPlaceBoss
-	; in GenerateProceduralCave never ran - confirmed via a PyBoy execution
-	; hook showing zero hits on PCSprinkleFloorDecor despite the call
-	; being right there in the disassembly. The earlier "boss species/level
-	; data looks correct" PyBoy confirmation this session was real but
-	; lucky - whatever bank-07 garbage sat at Random_Pokemon_Selection's
-	; address apparently left a plausible-looking d/wCurEnemyLevel by
-	; coincidence often enough to not look broken.
-	farcall Random_Pokemon_Selection ; -> d = species (possibly evolved)
-	ld a, d
-	ld [wRoguePokemon1], a
+; ============================================================
+; PCGetBossLevel
+; Sets wCurEnemyLevel to the boss's level based on wBattleCount,
+; using a separate table with higher levels than GetRewardMonLevel
+; (which caps reward pokemon at 50 - boss should be notably stronger).
+; ============================================================
+PCGetBossLevel::
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89
+.noClamp
+	ld b, 0
+.getRound
+	cp 10
+	jr c, .gotRound
+	sub 10
+	inc b
+	jr .getRound
+.gotRound
+	ld hl, PCBossLevelTable
+	ld c, b
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	ret
 
-	; wMapSpriteExtraData is 2 bytes/slot, (slot-1)*2 offset - slot 5
-	; (the boss, 5th declared object_event) = offset 8
-	ld hl, wMapSpriteExtraData + 8
-	ld a, [wRoguePokemon1]
+PCBossLevelTable:
+; one entry per round (0-8, based on wBattleCount / 10)
+; designed to be ~15-20 levels above typical reward pokemon at the same
+; battle count (reward pokemon cap at 50; boss reaches up to 80)
+	db 11  ; round 0 (battles  0-9)
+	db 22  ; round 1 (battles 10-19)
+	db 25  ; round 2 (battles 20-29)
+	db 30  ; round 3 (battles 30-39)
+	db 44  ; round 4 (battles 40-49)
+	db 44  ; round 5 (battles 50-59)
+	db 48  ; round 6 (battles 60-69)
+	db 51  ; round 7 (battles 70-79)
+	db 60  ; round 8 (battles 80-89)
+
+PCPlaceBoss:
+	; Species already rolled by PCRollBoss during PCPreloadCave and stored
+	; in wRoguePokemon1. Re-rolling here would draw different RNG values
+	; and produce a different species than the sprite that was loaded.
+	; Level is re-derived (deterministic from wBattleCount, same result).
+	call PCGetBossLevel             ; sets wCurEnemyLevel
+
+	; wMapSpriteExtraData is 2 bytes/slot, (slot-1)*2 offset - slot 1
+	; (the boss, 1st declared object_event) = offset 0
+	ld hl, wMapSpriteExtraData + 0
+	ld a, [wRoguePokemon1]          ; species from PCRollBoss in PCPreloadCave
 	ld [hli], a                     ; "trainer class" slot = species
 	ld a, [wCurEnemyLevel]
 	set 7, a                        ; OW_POKEMON ($80) - confirmed this is
@@ -621,10 +881,9 @@ PCPlaceWildAreaItems:
 	ld [wBuffer + wProcCaveItemCounter], a
 .placeLoop
 	ld a, 80
-	ld [wBuffer + wProcCaveIncludeRocks], a   ; spacing-retry budget, see its DEF
+	ld [wBuffer + wProcCaveIncludeRocks], a   ; spacing-retry budget
 .spacingRetry
-	; --- find ANY real floor cell first - never skipped, generously
-	; bounded only as a safety net against a pathological map ---
+	; --- find ANY real floor cell first ---
 	ld b, 200
 .floorRetry
 	ld c, PC_SIZE
@@ -634,18 +893,15 @@ PCPlaceWildAreaItems:
 	call Rangerandom
 	ld [wBuffer + wProcCaveCurY], a
 	push bc
-	call PCReadCell                ; clobbers b - preserve our retry counter
+	call PCReadCell
 	pop bc
 	cp PC_BLOCK_FLOOR
 	jr z, .gotFloor
 	dec b
 	jr nz, .floorRetry
-	ret                             ; couldn't find ANY floor cell - bail out
-	                                ; rather than hang (should never happen -
-	                                ; the cave always has well over 100)
+	ret
 .gotFloor
-
-	; --- must be far enough from the entrance ---
+	; --- must be far enough from entrance ---
 	ld a, [wBuffer + wProcCaveCurX]
 	ld c, a
 	ld a, [wBuffer + wProcCaveEntranceX]
@@ -660,26 +916,25 @@ PCPlaceWildAreaItems:
 	cp c
 	jr nc, .haveMaxEnt
 	ld a, c
-.haveMaxEnt                        ; a = max(|dx|,|dy|) to entrance
+.haveMaxEnt
 	cp PC_ITEM_MIN_DIST
 	jr c, .spaceFail
-
 	; --- must be far enough from each already-placed ball ---
 	ld a, [wBuffer + wProcCaveItemCounter]
 	and a
-	jr z, .distOK                  ; no balls placed yet
+	jr z, .distOK
 	ld b, a
 	ld hl, wBuffer + wProcCaveBallPos
 .checkBallLoop
 	ld a, [wBuffer + wProcCaveCurX]
 	ld c, a
-	ld a, [hli]                    ; placed ball's X
+	ld a, [hli]
 	sub c
 	call PCAbs
 	ld c, a
 	ld a, [wBuffer + wProcCaveCurY]
 	ld e, a
-	ld a, [hli]                    ; placed ball's Y
+	ld a, [hli]
 	sub e
 	call PCAbs
 	cp c
@@ -697,12 +952,10 @@ PCPlaceWildAreaItems:
 	dec a
 	ld [wBuffer + wProcCaveIncludeRocks], a
 	jr nz, .spacingRetry
-	; budget exhausted - accept this candidate anyway (it's still
-	; confirmed real floor, just closer than ideal to something)
 .accept
-	; remember this ball's position for future spacing checks
+	; record position for future spacing checks
 	ld a, [wBuffer + wProcCaveItemCounter]
-	add a, a                       ; *2 (X,Y pair)
+	add a, a
 	ld c, a
 	ld b, 0
 	ld hl, wBuffer + wProcCaveBallPos
@@ -712,9 +965,10 @@ PCPlaceWildAreaItems:
 	ld a, [wBuffer + wProcCaveCurY]
 	ld [hl], a
 
-	; position the matching sprite slot (itemCounter+1, 1-indexed -
-	; sprite slots 1-4, see data/maps/objects/ProceduralCave1.asm)
+	; position the matching sprite slot (itemCounter+2 - boss is slot 1,
+	; pokeballs start at slot 2, see data/maps/objects/ProceduralCave1.asm)
 	ld a, [wBuffer + wProcCaveItemCounter]
+	inc a                          ; +1: item 0->slot 2, item 1->slot 3, etc.
 	add a, a
 	add a, a
 	add a, a
@@ -726,11 +980,13 @@ PCPlaceWildAreaItems:
 	inc h
 .noCarrySpriteSlot
 	ld a, [wBuffer + wProcCaveCurY]
-	add a, a                       ; block -> tile, *2 (no sub-tile remainder
-	ld [hli], a                    ; needed here - that was specifically about
-	ld a, [wBuffer + wProcCaveCurX] ; satisfying the warp-tile-recognition
-	add a, a                       ; check, irrelevant to plain object/NPC
-	ld [hl], a                     ; collision - see [[redrogue-procedural-cave]]
+	add a, a                       ; block -> tile (*2) + 4 fixed offset to
+	add a, 4                       ; match the object_event coordinate origin
+	ld [hli], a                    ; (block 0,0 = event location 4,4 in the
+	ld a, [wBuffer + wProcCaveCurX] ; engine's sprite table convention, confirmed
+	add a, a                       ; by user measurement - warp coords don't need
+	add a, 4                       ; this because warps use a different origin)
+	ld [hl], a
 
 	; roll an independent item for this slot. Random_Item_Selection reads
 	; wRogueDoorSelection to pick its class (HEALING=0/STAT=1/TM=2/MONEY=3,
@@ -1095,7 +1351,7 @@ PCDropInWriteRect:
 ; already positioned items/boss for real, so the live table is correct
 ; and current by the time this runs (no staging needed).
 PCDropInOverlapsSprite:
-	ld c, 0                         ; slot index 0-3 = items 1-4, 4 = boss
+	ld c, 0                         ; slot index 0 = boss (slot 1), 1-4 = pokeballs (slots 2-5)
 .slotLoop
 	ld a, c
 	add a, a
@@ -1108,10 +1364,12 @@ PCDropInOverlapsSprite:
 	jr nc, .noCarrySlot
 	inc h
 .noCarrySlot
-	ld a, [hli]                     ; tile Y
-	srl a                           ; tile -> block, /2
+	ld a, [hli]                     ; tile Y (stored as block*2+4, see PCPlaceWildAreaItems)
+	sub 4                           ; undo the fixed origin offset before /2
+	srl a                           ; tile -> block
 	ld b, a                         ; b = sprite's block Y
-	ld a, [hl]                      ; tile X (MapX immediately follows MapY)
+	ld a, [hl]                      ; tile X
+	sub 4
 	srl a
 	ld d, a                         ; d = sprite's block X
 
@@ -1262,9 +1520,24 @@ PCLadderOffsetTable:
 	db 1, 0, 1
 
 PCPlaceExitLadder:
-	ld c, NUM_PC_LADDER_IDS
-	call Rangerandom
-	ld c, a
+	; read staged ladder ID from SRAM (rolled during PCPreloadCave so it
+	; stays consistent across all cave entries in the same session)
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCaveStagingLadderID]
+	ld [wBuffer + wProcCaveLadderOffset], a ; temp: reuse slot to pass id
+	ld a, [sProcCaveStagingLadderOffset]
+	push af                                 ; save offset for later
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	ld c, a                                 ; c = ladder table index
 	ld hl, PCLadderTable
 	ld b, 0
 	add hl, bc
@@ -1276,10 +1549,10 @@ PCPlaceExitLadder:
 	                        ; right after. Confirmed via a real A/B test (random
 	                        ; wWarpEntries garbage appeared only with the new
 	                        ; PCWriteCell, disappeared when temporarily reverted).
-	ld hl, PCLadderOffsetTable
-	ld b, 0
-	add hl, bc
-	ld a, [hl]
+	; use staged offset (pushed at start of this function) instead of
+	; re-reading PCLadderOffsetTable, which would require the same c value
+	; and risks getting the wrong offset if c was clobbered
+	pop af                  ; restore staged ladder offset
 	ld [wBuffer + wProcCaveLadderOffset], a
 	ret
 

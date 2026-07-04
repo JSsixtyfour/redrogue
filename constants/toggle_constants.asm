@@ -391,10 +391,22 @@ ENDM
 	; bypass never actually reads it - assert_table_length enforces every
 	; toggle const has a matching declared state.
 	toggle_consts_for PROCEDURAL_CAVE_1
-	const TOGGLE_WILD_AREA_POKEBALL_1
-	const TOGGLE_WILD_AREA_POKEBALL_2
-	const TOGGLE_WILD_AREA_POKEBALL_3
-	const TOGGLE_WILD_AREA_POKEBALL_4
-    const TOGGLE_WILD_AREA_BOSS
+    const TOGGLE_WILD_AREA_BOSS       ; slot 1 (first object_event)
+	const TOGGLE_WILD_AREA_POKEBALL_1 ; slot 2
+	const TOGGLE_WILD_AREA_POKEBALL_2 ; slot 3
+	const TOGGLE_WILD_AREA_POKEBALL_3 ; slot 4
+	const TOGGLE_WILD_AREA_POKEBALL_4 ; slot 5
+
+	toggle_consts_for PROCEDURAL_CEMETARY_1
+	const TOGGLE_CEMETARY_1_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETARY_2
+	const TOGGLE_CEMETARY_2_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETARY_3
+	const TOGGLE_CEMETARY_3_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETARY_4
+	const TOGGLE_CEMETARY_4_POKEBALL
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

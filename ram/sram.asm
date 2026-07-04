@@ -8,6 +8,29 @@ sSpriteBuffer2:: ds SPRITEBUFFERSIZE
 
 sHallOfFame:: ds HOF_TEAM * HOF_TEAM_CAPACITY
 
+; Cave generation staging buffer - written at Pallet-Town-entry by PCPreloadCave
+; (custom_functions/procedural_cave_gen.asm), read at warp-in by PCFinalizeCave.
+; Lives here because this is regenerable data (ClearAllSRAMBanks wiping it is
+; harmless - PCPreloadCave will just refill it next Pallet-Town-entry), and SRAM
+; bank 0 has ~1960 bytes free after the sprite/HoF data above.
+sProcCaveStagingBuffer:: ds 600
+
+; Procedural cemetery: four 10x9 maps concatenated (4x90=360 bytes) plus
+; one pokeball position (X,Y) and one item per map. Lives in the same bank
+; as the cave buffer since only one system runs at a time.
+sProcCemetaryMaps:: ds 4 * 90  ; indexed by (mapIndex*90 + row*10 + col)
+sProcCemetaryBallX:: ds 4      ; pokeball block X per map
+sProcCemetaryBallY:: ds 4      ; pokeball block Y per map
+sProcCemetaryItem:: ds 4       ; item ID per map (for pickup)
+sProcCemetaryReady:: db        ; 1 = all 4 maps generated, 0 = not ready
+sProcCaveStagingEntranceY:: db
+sProcCaveStagingEntranceX:: db
+sProcCaveStagingExitY:: db
+sProcCaveStagingExitX:: db
+sProcCaveStagingBossSprite:: db    ; SPRITE_* constant for the boss, set during PCPreloadCave
+sProcCaveStagingLadderID:: db      ; index into PCLadderTable (0-2), rolled during PCPreloadCave
+sProcCaveStagingLadderOffset:: db  ; sub-tile remainder (0 or 1) for wWarpEntries
+
 
 SECTION "Save Data", SRAM
 

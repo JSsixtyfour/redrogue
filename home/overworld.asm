@@ -2353,6 +2353,29 @@ LoadMapData::
 	ld [wSpriteSetID], a
 	call LoadTextBoxTilePatterns
 	call LoadMapHeader
+	; For PROCEDURAL_CAVE_1: patch the boss sprite's PICTUREID in StateData1
+	; BEFORE InitMapSprites reads it to load tile patterns. The correct
+	; SPRITE_* constant was determined from the rolled species during
+	; PCPreloadCave (PCRollBoss) and staged in SRAM.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr nz, .noBossSpritePatch
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCaveStagingBossSprite]
+	ld b, a                          ; save sprite constant before closing SRAM
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+.noBossSpritePatch
 	farcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
 	ldh a, [hCurMap]            ; load current map
@@ -2364,12 +2387,25 @@ LoadMapData::
 	cp PALLET_TOWN
 	jr nz, .notPalletTown
 	homecall PCPreloadCave
+	homecall PCemGenerateMaps
 .notPalletTown
 	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
 	jr nz, .notProcCave         ; proceed as normal if not procedural stage
 	homecall PCFinalizeCave     ; blit the staged cave + apply everything
 	                            ; PCPreloadCave deferred (warp/sprite state)
 .notProcCave
+	; Cemetery: blit the pre-generated map for whichever of the 4 floors is loading
+	cp PROCEDURAL_CEMETARY_1
+	jr z, .isCemetary
+	cp PROCEDURAL_CEMETARY_2
+	jr z, .isCemetary
+	cp PROCEDURAL_CEMETARY_3
+	jr z, .isCemetary
+	cp PROCEDURAL_CEMETARY_4
+	jr nz, .notCemetary
+.isCemetary
+	homecall PCemFinalizeMap
+.notCemetary
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
 ; copy current map view to VRAM

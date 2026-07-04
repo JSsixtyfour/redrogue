@@ -286,6 +286,26 @@ INCLUDE "scripts/ProceduralCave1.asm"
 INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
+INCLUDE "data/maps/headers/ProceduralCemetary1.asm"
+INCLUDE "scripts/ProceduralCemetary1.asm"
+INCLUDE "data/maps/objects/ProceduralCemetary1.asm"
+ProceduralCemetary1_Blocks: INCBIN "maps/ProceduralCemetary1.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetary2.asm"
+INCLUDE "scripts/ProceduralCemetary2.asm"
+INCLUDE "data/maps/objects/ProceduralCemetary2.asm"
+ProceduralCemetary2_Blocks: INCBIN "maps/ProceduralCemetary2.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetary3.asm"
+INCLUDE "scripts/ProceduralCemetary3.asm"
+INCLUDE "data/maps/objects/ProceduralCemetary3.asm"
+ProceduralCemetary3_Blocks: INCBIN "maps/ProceduralCemetary3.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetary4.asm"
+INCLUDE "scripts/ProceduralCemetary4.asm"
+INCLUDE "data/maps/objects/ProceduralCemetary4.asm"
+ProceduralCemetary4_Blocks: INCBIN "maps/ProceduralCemetary4.blk"
+
 INCLUDE "data/maps/headers/SeafoamIslands1F.asm"
 INCLUDE "scripts/SeafoamIslands1F.asm"
 INCLUDE "data/maps/objects/SeafoamIslands1F.asm"

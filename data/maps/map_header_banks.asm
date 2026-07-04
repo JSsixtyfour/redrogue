@@ -106,11 +106,11 @@ MapHeaderBanks::
 	db BANK(SSAnne1FRooms_h)
 	db BANK(SSAnne2FRooms_h)
 	db BANK(SSAnneB1FRooms_h)
-	db $1D ; UNUSED_MAP_69
-	db $1D ; UNUSED_MAP_6A
-	db $1D ; UNUSED_MAP_6B
+	db BANK(ProceduralCemetary1_h) ; PROCEDURAL_CEMETARY_1
+	db BANK(ProceduralCemetary2_h) ; PROCEDURAL_CEMETARY_2
+	db BANK(ProceduralCemetary3_h) ; PROCEDURAL_CEMETARY_3
 	db BANK(VictoryRoad1F_h)
-	db $1D ; UNUSED_MAP_6D
+	db BANK(ProceduralCemetary4_h) ; PROCEDURAL_CEMETARY_4
 	db $1D ; UNUSED_MAP_6E
 	db $1D ; UNUSED_MAP_6F
 	db $1D ; UNUSED_MAP_70
