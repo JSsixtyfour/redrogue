@@ -99,6 +99,45 @@ PCWildCalmedText:
 	text_far _PCWildCalmedText
 	text_end
 
+PCSignText:
+	text_asm
+	; Read sign variant from SRAM (rolled at preload, stable for the whole cave).
+	; Use call PrintText — ld hl/ret causes TX_START to pop the text stream
+	; pointer as the tile cursor, so line 1 writes off-screen (invisible).
+	; PrintText sets up its own tile cursor through the normal init path.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCaveSignVariant]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	ld a, b
+	and a
+	jr nz, .showBoss
+	ld hl, PCSignItemsText
+	jr .show
+.showBoss
+	ld hl, PCSignBossText
+.show
+	call PrintText
+	ld hl, .signEnd    ; point NextTextCommand at TX_END for clean exit
+	jp TextScriptEnd
+.signEnd
+	text_end
+
+PCSignItemsText:
+	text_far _PCSignItemsText
+	text_end
+
+PCSignBossText:
+	text_far _PCSignBossText
+	text_end
+
 ProceduralCave1_TextPointers:
 	def_text_pointers
     dw_const ProceduralCave1BossText, TEXT_PROCEDURALCAVE1_BOSS
@@ -109,6 +148,7 @@ ProceduralCave1_TextPointers:
 	dw_const ProceduralCave1BossOfferText, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
 	EXPORT TEXT_PROCEDURALCAVE1_CALMED ; used by engine/battle/wild_encounters.asm
+	dw_const PCSignText, TEXT_PROCEDURALCAVE1_SIGN
     ;dw_const PCBossEncounterText, TEXT_PROCEDURALCAVE1_BOSS_ENCOUNTER
     ;dw_const ProceduralCave1BossRoarText, TEXT_PROCEDURALCAVE1_BOSS_ROAR
 

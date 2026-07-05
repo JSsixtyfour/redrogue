@@ -184,6 +184,9 @@ DEF wProcCaveDropInCol        EQU 15
 ; target base for the cell's WHOLE duration, whether that's the real
 ; wOverworldMap (direct generation) or the temporary WRAM staging buffer
 ; (preload prototype - see wProcCaveStagingBuffer in ram/wram.asm).
+; DEF wProcCaveWidthMargin EQU 21  ; EXPERIMENT (disabled): random X right-margin
+; DEF wProcCaveTopMargin   EQU 29  ; EXPERIMENT (disabled): random Y north-margin
+; See Red Rogue Files/size-randomization-notes.md for findings and next steps.
 DEF wProcCaveTargetBase       EQU 27 ; 2 bytes (27,28) - low,high
 
 ; ============================================================
@@ -286,6 +289,40 @@ PCPreloadCave::
 	ld [wBuffer + wProcCaveEntranceX], a
 	ld a, 19
 	ld [wBuffer + wProcCaveEntranceY], a
+
+	; --- EXPERIMENT (commented): randomized entrance ---
+	; Goal: pick one of 4 static warp_events (one per edge) at random, then
+	; patch the SOURCE warp (in PalletTown.asm / lobby) to target that warp ID.
+	; Problem: LoadDestinationWarpPosition reads from ROM, not wWarpEntries,
+	; so it sets wYCoord/wXCoord/sprite-state/view-pointer from the ROM warp_event
+	; data before the generator runs. Only the exit (wWarpEntries patch) avoids this
+	; because the player never lands on it directly. To get a random entrance:
+	; Option A: declare 4 warp_events in ProceduralCave1_Object (one per edge),
+	;           then have the source warp (Pallet Town or lobby) pick a random
+	;           target warp ID (1-4). Requires patching the source warp's target
+	;           field in wWarpEntries before EnterMap fires.
+	; Option B: pick at preload time, store the entrance block here, then sync
+	;           ALL four position caches (wYCoord, wXCoord, wSprite*StateData2MapY/X,
+	;           wCurrentTileBlockMapViewPointer, wYBlockCoord, wXBlockCoord) at
+	;           finalize time. Historically: attempts broke on the 6th cache
+	;           (wYBlockCoord/wXBlockCoord parity bits). Option A is lower risk.
+	; Uncomment to experiment — still needs source-warp patch code and 3 more
+	; warp_events declared in ProceduralCave1_Object.
+	;ld c, 4
+	;call Rangerandom
+	;inc a                      ; warp ID 1-4
+	;ld [wBuffer + wProcCaveEntranceEdge], a  ; store chosen entrance warp ID
+	;; also update wProcCaveEntranceX/Y to match the chosen edge position
+
+	; --- EXPERIMENT (disabled): random cave size margins ---
+	; See size-randomization-notes.md. Disabled because right-side floor
+	; still appeared beyond the clamp bound; root cause not yet found.
+	;ld c, 5
+	;call Rangerandom           ; 0-4 -- X right margin
+	;ld [wBuffer + 21], a       ; wProcCaveWidthMargin
+	;ld c, 5
+	;call Rangerandom           ; 0-4 -- Y north margin
+	;ld [wBuffer + 29], a       ; wProcCaveTopMargin
 
 	; --- which of the 5 targets is the exit ---
 	ld c, 5
@@ -438,7 +475,7 @@ PCRollExitLadder:
 ; ============================================================
 PCRollBoss:
 	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
-	ld b, 24                        ; boss rarity bump (notably rarer than wild)
+	ld b, 48                        ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	farcall Random_Pokemon_Selection ; → d = species
 	ld a, d
@@ -446,6 +483,10 @@ PCRollBoss:
 	; look up the matching SPRITE_* for this species
 	call PCGetBossOWSprite          ; a = species → a = SPRITE_* constant
 	ld [sProcCaveStagingBossSprite], a
+	; roll sign variant (0=items text, 1=boss text) while SRAM is open
+	call Random
+	and 1
+	ld [sProcCaveSignVariant], a
 	; new cave preloaded: invalidate ball staging AND the baked-tiles flag so
 	; the first entry re-runs the full pipeline and re-rolls item positions.
 	; Also clear boss events so the new cave's boss actually appears.
@@ -3035,12 +3076,11 @@ PCAbs:
 ; (confirmed by an actual in-game screenshot report).
 ; ============================================================
 PCDecorateLast:
-	; Place entrance sign first at fixed block (10,18) — one right/up from
-	; the entrance at (9,19). Treated as the initial decor piece; scatter
-	; loop below skips the 3x3 area around it to prevent crowding.
-	ld a, 10
+	; Place entrance sign at fixed block (9,17) — two blocks directly north
+	; of the hardcoded entrance at (9,19). Scatter loop skips 3x3 around it.
+	ld a, 9
 	ld [wBuffer + wProcCaveCurX], a
-	ld a, 18
+	ld a, 17
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, 42
 	call PCWriteCell
@@ -3058,16 +3098,16 @@ PCDecorateLast:
 	call PCReadCell
 	cp 25
 	jr nz, .fillSkipCell
-	; skip the 3x3 area around the sign at block (10,18)
+	; skip the 3x3 area around the sign at block (9,17)
 	ld a, [wBuffer + wProcCaveLoopX]
-	cp 9
+	cp 8
 	jr c, .fillNotNearSign
-	cp 12
+	cp 11
 	jr nc, .fillNotNearSign
 	ld a, [wBuffer + wProcCaveLoopY]
-	cp 17
+	cp 16
 	jr c, .fillNotNearSign
-	cp 20
+	cp 19
 	jr nc, .fillNotNearSign
 	jr .fillSkipCell
 .fillNotNearSign

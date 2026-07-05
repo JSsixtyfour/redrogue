@@ -1,3 +1,15 @@
+_PCSignItemsText::
+	text "Four items lie"
+	line "hidden here.@"
+	text_end
+
+_PCSignBossText::
+	text "A guardian"
+	line "blocks your way.@"
+	text_end
+
+
+
 _PCBossEncounterText::
 	text_ram wNameBuffer
 	text "!@"

@@ -9,6 +9,7 @@ ProceduralCave1_Object:
 	warp_event 15, 15, LAST_MAP, 1
 
 	def_bg_events
+	bg_event 19, 35, TEXT_PROCEDURALCAVE1_SIGN
 
 	def_object_events
 	; Boss pokemon first (slot 1) so toggle-table lookup via hActiveSpriteIndex

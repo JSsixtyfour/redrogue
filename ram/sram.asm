@@ -30,6 +30,7 @@ sProcCaveStagingExitX:: db
 sProcCaveStagingBossSprite:: db    ; SPRITE_* constant for the boss, set during PCPreloadCave
 sProcCaveStagingLadderID:: db      ; index into PCLadderTable (0-2), rolled during PCPreloadCave
 sProcCaveStagingLadderOffset:: db  ; sub-tile remainder (0 or 1) for wWarpEntries
+sProcCaveSignVariant:: db          ; 0=items text, 1=boss text; rolled in PCRollBoss
 sProcCaveBallsStaged:: db          ; non-zero = ball positions/items already rolled
 sProcCaveBallXY:: ds 8             ; X,Y interleaved for each of the 4 pokeballs
 sProcCaveBallItems:: ds 4          ; item ID for each pokeball
