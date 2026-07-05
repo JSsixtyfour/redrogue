@@ -22,6 +22,19 @@ ProceduralCave1_Script:
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 .afterSetup
+	; Wild budget calmed check — runs every frame, independent of boss state.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .afterCalm
+	CheckEvent EVENT_PC_CALMED_SHOWN
+	jr nz, .afterCalm
+	CheckEvent EVENT_PC_BUDGET_ENDED
+	jr z, .afterCalm
+	SetEvent EVENT_PC_CALMED_SHOWN
+	ld a, TEXT_PROCEDURALCAVE1_CALMED
+	ldh [hTextID], a
+	call DisplayTextID
+.afterCalm
 	; One-time join offer, shown after the boss is beaten and the end-battle
 	; text has fully cleared (same shape PowerPlant uses for its reward).
 	CheckEvent EVENT_PC_BOSS_OFFERED
@@ -82,6 +95,10 @@ PCBossJoinText:
 	text_far _PCBossJoinText
 	text_end
 
+PCWildCalmedText:
+	text_far _PCWildCalmedText
+	text_end
+
 ProceduralCave1_TextPointers:
 	def_text_pointers
     dw_const ProceduralCave1BossText, TEXT_PROCEDURALCAVE1_BOSS
@@ -90,6 +107,8 @@ ProceduralCave1_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_3
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_4
 	dw_const ProceduralCave1BossOfferText, TEXT_PROCEDURALCAVE1_BOSS_OFFER
+	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
+	EXPORT TEXT_PROCEDURALCAVE1_CALMED ; used by engine/battle/wild_encounters.asm
     ;dw_const PCBossEncounterText, TEXT_PROCEDURALCAVE1_BOSS_ENCOUNTER
     ;dw_const ProceduralCave1BossRoarText, TEXT_PROCEDURALCAVE1_BOSS_ROAR
 

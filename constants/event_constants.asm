@@ -905,6 +905,8 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 ; $A29 % 8 == 1, matching def_trainers 1 in scripts/ProceduralCave1.asm
     const_next $A29
     const EVENT_BEAT_PC_BOSS
+    const EVENT_PC_BUDGET_ENDED   ; set when wild battle budget hits 0
+    const EVENT_PC_CALMED_SHOWN   ; set after "calmed" message displayed
 
 ; End of events
 DEF NUM_EVENTS EQU const_value

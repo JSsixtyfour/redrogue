@@ -116,6 +116,83 @@ jp hl
 .done
 RET
 
+; Like Random_Pokemon_Selection but skips AllSpeciesCheck entirely - the
+; rolled species may already be in the player's party or box.  Used for
+; procedural-cave wild encounters (player CAN fight mons they own; only the
+; boss needs the uniqueness guarantee).
+; c = class (0=random, 1=pokeball, 2=greatball, 3=ultraball, 4=masterball)
+; wCurEnemyLevel must be set by the caller (EvolveMonByLevel reads it).
+; → d = species
+Random_Pokemon_Selection_Any::
+	ld a, 1
+	cp c
+	jp z, .any_pokeball
+	ld a, 2
+	cp c
+	jp z, .any_greatball
+	ld a, 3
+	cp c
+	jp z, .any_ultraball
+	ld a, 4
+	cp c
+	jp z, .any_masterball
+	; c == 0: random class from odds table
+	ldh a, [hRandomAdd]
+	ld b, a
+	ld a, pokeball_odds
+	cp b
+	jr nc, .any_pokeball
+	ld a, greatball_odds
+	cp b
+	jr nc, .any_greatball
+	jp .any_ultraball
+.any_pokeball
+	ld hl, pokeball_class
+	ld a, pokeball_pokemon_line_amount
+	jr .any_pick
+.any_greatball
+	ld hl, greatball_class
+	ld a, greatball_pokemon_line_amount
+	jr .any_pick
+.any_ultraball
+	ld hl, ultraball_class
+	ld a, ultraball_pokemon_line_amount
+	jr .any_pick
+.any_masterball
+	ld hl, masterball_class
+	ld a, masterball_pokemon_line_amount
+.any_pick
+	push hl       ; save class list base
+	push af       ; save line_amount (Random overwrites a)
+	call Random
+	ldh [hMultiplicand+2], a
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand+1], a
+	pop af        ; restore line_amount
+	ldh [hMultiplier], a
+	call Multiply
+	ldh a, [hProduct+2]
+	ldh [hDividend], a
+	ldh a, [hProduct+3]
+	ldh [hDividend+1], a
+	ld a, $FF
+	ld b, $2
+	ldh [hDivisor], a
+	call Divide
+	ldh a, [hQuotient+3]
+	ld c, a
+	ld b, 0
+	pop hl        ; restore class list base
+	add hl, bc
+	ld d, [hl]    ; d = selected species (no ownership check)
+	ld a, d
+	ld [wCurPartySpecies], a
+	call EvolveMonByLevel
+	ld a, [wCurPartySpecies]
+	ld d, a
+	ret
+
 ; Roll ~10% chance of one reward slot becoming a trade offer.
 ; If triggered: picks a random party mon, looks up its class, bumps one tier,
 ; rolls an offered species at that tier, picks a slot (1-3), and pre-fills

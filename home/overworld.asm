@@ -493,6 +493,17 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
+	; Leaving the procedural cave advances difficulty: +5 battles fought.
+	cp PROCEDURAL_CAVE_1
+	jr nz, .notLeavingProcCave
+	ld a, [wBattleCount]
+	add a, 5
+	jr nc, .procCaveBattleNoClamp
+	ld a, 255
+.procCaveBattleNoClamp
+	ld [wBattleCount], a
+	ldh a, [hCurMap]               ; restore a for the map checks below
+.notLeavingProcCave
 	; If leaving the lobby or reward room through door 1 or door 2,
 	; capture that door's item type into wRogueDoorSelection now.
 	cp INDIGO_PLATEAU_LOBBY

@@ -8,6 +8,12 @@ _PCBossEncounterText::
 ; text_ram to drop in the boss's name, then more string, then text_end.
 ; NOTE: never put "@" right before a line/cont - "@" returns to command
 ; mode and the <LINE>/<CONT> control byte would be misread as a command.
+_PCWildCalmedText::
+	text "The wild #MON"
+	line "were calmed.@"
+	text_promptbutton
+	text_end
+
 _PCBossJoinText::
 	text "The wild"
 	line "@"

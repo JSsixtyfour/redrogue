@@ -106,6 +106,16 @@ DEF wProcCaveLadderOffset EQU 19  ; 0 or 1 - sub-tile remainder for the exit lad
 DEF wProcCaveItemCounter  EQU 20  ; PCPlaceWildAreaItems: 0-3, which of the 4 wild
                                   ; area pokeballs (sprite slots 1-4, wRogueItem/2/3/4)
                                   ; is currently being placed.
+DEF wProcCaveItemTemp     EQU 3   ; PCPlaceWildAreaItems: 4 bytes (3-6), each ball's
+                                  ; rolled item ID. All 4 are written out to
+                                  ; wRogueItem/2/3/4 together AFTER the loop - rolling
+                                  ; into wRogueItem directly per ball is broken because
+                                  ; Random_Item_Selection always writes wRogueItem (=
+                                  ; slot 0's storage), clobbering earlier balls. Reuses
+                                  ; Exit/Target scratch (3-6), already consumed by the
+                                  ; warp patch + boss position before items run.
+DEF wProcCaveItemRetry    EQU 7   ; PCPlaceWildAreaItems: dedup re-roll budget (offset 7
+                                  ; = TargetY, free during item placement).
 DEF wProcCaveBallPos      EQU 10  ; PCPlaceWildAreaItems: 8 bytes, X/Y interleaved for
                                   ; each of the 4 already-placed balls (offset+i*2 = X,
                                   ; +i*2+1 = Y) - used to reject new candidates that
@@ -427,15 +437,25 @@ PCRollExitLadder:
 ; Sets wRoguePokemon1 = species (used by PCPlaceBoss in PCFinalizeCave).
 ; ============================================================
 PCRollBoss:
-	call PCGetBossLevel             ; sets wCurEnemyLevel
-	call Random
-	ld c, 0
+	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
+	ld b, 24                        ; boss rarity bump (notably rarer than wild)
+	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	farcall Random_Pokemon_Selection ; → d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	; look up the matching SPRITE_* for this species
 	call PCGetBossOWSprite          ; a = species → a = SPRITE_* constant
 	ld [sProcCaveStagingBossSprite], a
+	; new cave preloaded: invalidate ball staging AND the baked-tiles flag so
+	; the first entry re-runs the full pipeline and re-rolls item positions.
+	; Also clear boss events so the new cave's boss actually appears.
+	xor a
+	ld [sProcCaveBallsStaged], a
+	ld [sProcCaveBaked], a
+	ResetEvent EVENT_BEAT_PC_BOSS
+	ResetEvent EVENT_PC_BOSS_OFFERED
+	ResetEvent EVENT_PC_BUDGET_ENDED
+	ResetEvent EVENT_PC_CALMED_SHOWN
 	ret
 
 ; ============================================================
@@ -600,6 +620,12 @@ PCFinalizeCave::
 	ASSERT BANK("Sprite Buffers") == 0
 	xor a
 	ld [rRAMB], a
+
+	; Fast re-entry: if the finished tiles were already baked into the staging
+	; buffer on a previous entry, skip the whole pipeline (see PCFinalizeCaveFast).
+	ld a, [sProcCaveBaked]
+	and a
+	jp nz, PCFinalizeCaveFast
 
 	; blit: identical PC_BASE/PC_STRIDE layout on both sides, so this is a
 	; straight PC_SIZE-bytes-per-row copy, PC_SIZE rows, skipping the border
@@ -778,10 +804,163 @@ PCFinalizeCave::
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
 
+	; --- BAKE: copy the now-finished tiles back into the staging buffer, so
+	; every subsequent entry (returning from a battle, mainly) can skip this
+	; whole pipeline and just blit. Also stops the RNG-driven decoration and
+	; river from re-rolling (and visibly changing) on every reload. ---
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld hl, wOverworldMap + PC_BASE
+	ld de, sProcCaveStagingBuffer + PC_BASE
+	ld b, PC_SIZE
+.bakeRowLoop
+	push bc
+	ld c, PC_SIZE
+.bakeColLoop
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .bakeColLoop
+	ld a, l
+	add a, PC_STRIDE - PC_SIZE
+	ld l, a
+	jr nc, .bakeNoCarryHL
+	inc h
+.bakeNoCarryHL
+	ld a, e
+	add a, PC_STRIDE - PC_SIZE
+	ld e, a
+	jr nc, .bakeNoCarryDE
+	inc d
+.bakeNoCarryDE
+	pop bc
+	dec b
+	jr nz, .bakeRowLoop
+	ld a, 1
+	ld [sProcCaveBaked], a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	; Fresh entry only (slow path): set the wild-battle budget for this visit.
+	; cap = 10 + wBattleCount/5, saturating at 255.
+	ld a, [wBattleCount]
+	ld b, 0
+.budgetDivLoop
+	cp 5
+	jr c, .budgetGotQuotient
+	sub 5
+	inc b
+	jr .budgetDivLoop
+.budgetGotQuotient
+	ld a, b
+	add a, 10                       ; 10 + wBattleCount/5
+	jr nc, .budgetNoClamp
+	ld a, 255
+.budgetNoClamp
+	ld [wProcCaveWildBudget], a
+
 	; clear the ready flag in SRAM so a stale preload isn't mistaken for a
 	; fresh one if the player somehow re-enters Pallet Town before warping in
 	xor a
 	ld [wProcCavePreloadReady], a   ; mark consumed (WRAM, no SRAM needed)
+	ret
+
+; ============================================================
+; PCFinalizeCaveFast
+; Re-entry path (SRAM already open, bank 0). The staging buffer already
+; holds the FINISHED tiles (baked at the end of the first PCFinalizeCave),
+; so skip autotile/decoration/river/ladder entirely - just blit the tiles
+; and re-apply the live engine state that LoadMapData wiped: the exit warp
+; entry and the boss/item sprite positions.
+; ============================================================
+PCFinalizeCaveFast:
+	; blit finished tiles: staging -> wOverworldMap (same layout, straight copy)
+	ld hl, sProcCaveStagingBuffer + PC_BASE
+	ld de, wOverworldMap + PC_BASE
+	ld b, PC_SIZE
+.blitRowLoop
+	push bc
+	ld c, PC_SIZE
+.blitColLoop
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .blitColLoop
+	ld a, l
+	add a, PC_STRIDE - PC_SIZE
+	ld l, a
+	jr nc, .blitNoCarryHL
+	inc h
+.blitNoCarryHL
+	ld a, e
+	add a, PC_STRIDE - PC_SIZE
+	ld e, a
+	jr nc, .blitNoCarryDE
+	inc d
+.blitNoCarryDE
+	pop bc
+	dec b
+	jr nz, .blitRowLoop
+
+	; exit coords + ladder offset (for the warp entry + boss position below)
+	ld a, [sProcCaveStagingExitY]
+	ld [wBuffer + wProcCaveExitY], a
+	ld a, [sProcCaveStagingExitX]
+	ld [wBuffer + wProcCaveExitX], a
+	ld a, [sProcCaveStagingLadderOffset]
+	ld [wBuffer + wProcCaveLadderOffset], a
+
+	; close SRAM
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	; --- re-apply exit warp entry (wWarpEntries entry 1) ---
+	ld hl, wWarpEntries + 4
+	ld a, [wBuffer + wProcCaveExitY]
+	add a, a
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hli], a
+	ld a, [wBuffer + wProcCaveExitX]
+	add a, a
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hl], a
+
+	; --- boss sprite position (slot 1 = wSprite01StateData2MapY) ---
+	ld hl, wSprite01StateData2MapY
+	ld a, [wBuffer + wProcCaveExitY]
+	add a, a
+	add a, 4
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hli], a
+	ld a, [wBuffer + wProcCaveExitX]
+	add a, a
+	add a, 4
+	ld b, a
+	ld a, [wBuffer + wProcCaveLadderOffset]
+	add a, b
+	ld [hl], a
+
+	call PCPlaceWildAreaItems        ; restores positions/items from SRAM
+	call PCPlaceBoss                 ; species/level into wMapSpriteExtraData
+
+	xor a
+	ld [wProcCavePreloadReady], a
 	ret
 
 ; ============================================================
@@ -843,6 +1022,99 @@ PCBossLevelTable:
 	db 51  ; round 7 (battles 70-79)
 	db 60  ; round 8 (battles 80-89)
 
+; ============================================================
+; PCRollMonClass
+; Rolls a Random_Pokemon_Selection class (1=pokeball .. 4=masterball),
+; biased toward rarer tiers as wBattleCount rises. Reuses the existing
+; reward-pool class system instead of a bespoke species table.
+; INPUT:  b = extra rarity bump (0 = wild baseline, higher = rarer, e.g. boss)
+; OUTPUT: c = class 1-4.  Clobbers a, d (b preserved).
+; ============================================================
+PCRollMonClass:
+	; round = clamp(wBattleCount, 0, 89) / 10  → 0-8
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89
+.noClamp
+	ld d, 0
+.divLoop
+	cp 10
+	jr c, .gotRound
+	sub 10
+	inc d
+	jr .divLoop
+.gotRound
+	; shift = round*8 + bump (saturating at 255)
+	ld a, d
+	add a, a
+	add a, a
+	add a, a            ; round * 8
+	add a, b            ; + bump
+	jr nc, .noShiftClamp
+	ld a, 255
+.noShiftClamp
+	ld d, a
+	call Random         ; a = 0-255
+	add a, d            ; effective rarity (saturating)
+	jr nc, .noEffClamp
+	ld a, 255
+.noEffClamp
+	ld c, 1             ; pokeball
+	cp 205
+	jr c, .done
+	inc c               ; greatball
+	cp 243
+	jr c, .done
+	inc c               ; ultraball
+	cp 253
+	jr c, .done
+	inc c               ; masterball
+.done
+	ret
+
+; ============================================================
+; PCGetWildLevel / PCRollWildEncounter
+; Wild encounter substitution for the procedural cave. Level scales with
+; wBattleCount (lower than the boss table); species come from the rarity-
+; class pool, biased by wBattleCount. Called from the wild-encounter hijack
+; in engine/battle/wild_encounters.asm.
+; ============================================================
+PCGetWildLevel:
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89
+.noClamp
+	ld b, 0
+.getRound
+	cp 10
+	jr c, .gotRound
+	sub 10
+	inc b
+	jr .getRound
+.gotRound
+	ld hl, PCWildLevelTable
+	ld c, b
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	ret
+
+PCWildLevelTable:
+	db 6, 10, 14, 18, 22, 26, 30, 34, 38 ; rounds 0-8
+
+PCRollWildEncounter::
+	call PCGetWildLevel                  ; wCurEnemyLevel (set before species pick)
+	ld b, 0                              ; no extra bump - wild is the baseline
+	call PCRollMonClass                  ; c = rarity class biased by wBattleCount
+	farcall Random_Pokemon_Selection_Any ; → d = species, NO ownership check
+	ld a, d
+	ld [wCurPartySpecies], a
+	ld [wEnemyMonSpecies2], a
+	ret
+
 PCPlaceBoss:
 	; Species already rolled by PCRollBoss during PCPreloadCave and stored
 	; in wRoguePokemon1. Re-rolling here would draw different RNG values
@@ -877,6 +1149,57 @@ PCPlaceBoss:
 ; so "is this cell floor" can never go stale afterward.
 ; ============================================================
 PCPlaceWildAreaItems:
+	; On re-entry, restore positions/items from SRAM instead of re-rolling.
+	; (Re-rolling moves the balls every time the player enters the cave.)
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCaveBallsStaged]
+	and a
+	jr z, .pcbFreshRoll
+	; --- restore: SRAM XY → sprite MapY/MapX, SRAM items → wRogueItem/2/3/4 ---
+	; XY layout in SRAM: Y0,X0,Y1,X1,Y2,X2,Y3,X3 (already *2+4 transformed)
+	; Sprite layout: wSprite01StateData2MapY + 16*(ball+1) for balls 0-3
+	ld hl, sProcCaveBallXY
+	ld de, wSprite01StateData2MapY + 16 ; slot 2 = first pokeball
+	ld b, 4
+.pcbRestoreXY
+	ld a, [hli]                    ; tile Y
+	ld [de], a
+	inc de
+	ld a, [hli]                    ; tile X
+	ld [de], a
+	ld a, e                        ; advance DE by 15 → next slot's MapY (+16 total)
+	add a, 15
+	ld e, a
+	jr nc, .pcbNoCarryRXY
+	inc d
+.pcbNoCarryRXY
+	dec b
+	jr nz, .pcbRestoreXY
+	; restore items: HL now = sProcCaveBallXY+8 = sProcCaveBallItems
+	ld hl, sProcCaveBallItems
+	ld de, wRogueItem
+	ld b, 4
+.pcbRestoreItem
+	ld a, [hli]
+	ld [de], a                     ; low byte of each dw slot
+	inc de
+	inc de                         ; skip high byte
+	dec b
+	jr nz, .pcbRestoreItem
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	ret
+.pcbFreshRoll
+	; first entry: close SRAM and run the placement algorithm
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
 	xor a
 	ld [wBuffer + wProcCaveItemCounter], a
 .placeLoop
@@ -988,29 +1311,101 @@ PCPlaceWildAreaItems:
 	add a, 4                       ; this because warps use a different origin)
 	ld [hl], a
 
-	; Roll a random item class then pick from it.
-	; TODO: add duplicate rejection - revert here was for stack crash fix.
+	; Roll a random item, rejecting an exact duplicate of any already-placed
+	; ball (same item class is fine, same exact item ID is not). Store into
+	; a per-ball temp slot; all 4 are written to wRogueItem/2/3/4 together
+	; after the loop.
+	ld a, 8
+	ld [wBuffer + wProcCaveItemRetry], a
+.pcbRollItem
 	ld c, 4
 	call Rangerandom
 	ld [wRogueDoorSelection], a
-	farcall Random_Item_Selection   ; always writes its result to wRogueItem
+	farcall Random_Item_Selection   ; result → wRogueItem
 	ld a, [wBuffer + wProcCaveItemCounter]
 	and a
-	jr z, .afterItemCopy            ; slot 0 - wRogueItem already correct
-	add a, a                        ; *2 - wRogueItem/2/3/4 are consecutive dw's
+	jr z, .pcbItemOK                ; first ball - nothing to compare against
+	ld b, a                         ; b = number of earlier balls
+	ld hl, wBuffer + wProcCaveItemTemp
+	ld a, [wRogueItem]
+	ld c, a                         ; c = candidate item ID
+.pcbDupCheck
+	ld a, [hli]
+	cp c
+	jr z, .pcbDup
+	dec b
+	jr nz, .pcbDupCheck
+	jr .pcbItemOK
+.pcbDup
+	ld a, [wBuffer + wProcCaveItemRetry]
+	dec a
+	ld [wBuffer + wProcCaveItemRetry], a
+	jr nz, .pcbRollItem             ; re-roll
+	; budget exhausted - accept the duplicate rather than loop forever
+.pcbItemOK
+	ld a, [wBuffer + wProcCaveItemCounter]
 	ld c, a
 	ld b, 0
-	ld hl, wRogueItem
+	ld hl, wBuffer + wProcCaveItemTemp
 	add hl, bc
 	ld a, [wRogueItem]
-	ld [hl], a
-.afterItemCopy
+	ld [hl], a                      ; temp[counter] = candidate
 
 	ld a, [wBuffer + wProcCaveItemCounter]
 	inc a
 	ld [wBuffer + wProcCaveItemCounter], a
 	cp 4
 	jp nz, .placeLoop
+	; all 4 rolled - write the temp items out to wRogueItem/2/3/4 (dw low bytes)
+	ld hl, wBuffer + wProcCaveItemTemp
+	ld de, wRogueItem
+	ld b, 4
+.pcbWriteItems
+	ld a, [hli]
+	ld [de], a
+	inc de
+	inc de
+	dec b
+	jr nz, .pcbWriteItems
+	; all 4 balls placed - save positions and items to SRAM for future entries
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld hl, sProcCaveBallXY
+	ld de, wSprite01StateData2MapY + 16
+	ld b, 4
+.pcbSaveXY
+	ld a, [de]                     ; tile Y already in sprite table
+	ld [hli], a
+	inc de
+	ld a, [de]                     ; tile X
+	ld [hli], a
+	ld a, e
+	add a, 15
+	ld e, a
+	jr nc, .pcbNoCarrySXY
+	inc d
+.pcbNoCarrySXY
+	dec b
+	jr nz, .pcbSaveXY
+	ld hl, sProcCaveBallItems
+	ld de, wRogueItem
+	ld b, 4
+.pcbSaveItem
+	ld a, [de]
+	ld [hli], a
+	inc de
+	inc de
+	dec b
+	jr nz, .pcbSaveItem
+	ld a, 1
+	ld [sProcCaveBallsStaged], a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
 	ret
 
 ; ============================================================

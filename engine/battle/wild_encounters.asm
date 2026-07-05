@@ -63,6 +63,14 @@ TryDoWildEncounter:
 .gotEncounterSlot
 ; determine which wild pokemon (grass or water) can appear in the half-block we're standing in
 	ld c, [hl]
+; Procedural cave: ignore the static wild table; roll a battlecount-scaled
+; species + level from the rarity-class pool instead.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr nz, .normalEncounterData
+	farcall PCRollWildEncounter ; sets wCurEnemyLevel/wCurPartySpecies/wEnemyMonSpecies2
+	jr .afterEncounterData
+.normalEncounterData
 	ld hl, wGrassMons
 	lda_coord 8, 9
 	cp $14 ; is the bottom left tile (8,9) of the half-block we're standing in a water tile?
@@ -78,6 +86,7 @@ TryDoWildEncounter:
 	ld a, [hl]
 	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a
+.afterEncounterData
 	ld a, [wRepelRemainingSteps]
 	and a
 	jr z, .willEncounter
@@ -98,6 +107,20 @@ TryDoWildEncounter:
 	and a
 	ret
 .willEncounter
+; Procedural cave: enforce the per-visit wild-battle budget.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr nz, .commitEncounter
+	ld a, [wProcCaveWildBudget]
+	and a
+	jr z, .CantEncounter2 ; already 0 - silent, no repeat message
+	dec a
+	ld [wProcCaveWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags   ; signal map script to show calmed message
+	set BIT_CUR_MAP_LOADED_1, [hl]  ; after this battle returns
+.commitEncounter
 	xor a
     ld [wIsTrainerBattle], a
 	ret

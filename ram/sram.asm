@@ -30,6 +30,13 @@ sProcCaveStagingExitX:: db
 sProcCaveStagingBossSprite:: db    ; SPRITE_* constant for the boss, set during PCPreloadCave
 sProcCaveStagingLadderID:: db      ; index into PCLadderTable (0-2), rolled during PCPreloadCave
 sProcCaveStagingLadderOffset:: db  ; sub-tile remainder (0 or 1) for wWarpEntries
+sProcCaveBallsStaged:: db          ; non-zero = ball positions/items already rolled
+sProcCaveBallXY:: ds 8             ; X,Y interleaved for each of the 4 pokeballs
+sProcCaveBallItems:: ds 4          ; item ID for each pokeball
+sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED tiles
+                                   ; (autotile/decor/river/ladder already applied),
+                                   ; so re-entry just blits instead of re-running
+                                   ; the whole pipeline
 
 
 SECTION "Save Data", SRAM

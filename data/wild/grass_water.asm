@@ -241,7 +241,7 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw NothingWildMons
+	dw ProceduralCave1WildMons ; PROCEDURAL_CAVE_1 = $F1
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -250,6 +250,8 @@ WildDataPointers:
 	dw NothingWildMons
 	assert_table_length NUM_MAPS
 	dw -1 ; end
+
+INCLUDE "data/wild/maps/ProceduralCave1.asm"
 
 ; wild pokemon data is divided into two parts.
 ; first part:  pokemon found in grass

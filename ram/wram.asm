@@ -2080,6 +2080,7 @@ wroguenpcclass:: db
 
 wItemBonusRarity:: db
 
+UNION
 PCClerkText1::
 	db ;TX_SCRIPT_MART
     db ;$9
@@ -2111,6 +2112,12 @@ PCClerkText2Items::
     db
     db
     db ;-1 ; end
+    
+NEXTU
+
+wProcCaveWildBudget::
+
+ENDU
 
 ; Lobby witch challenge/prize state. wWitchChallenge/wWitchPrize are re-rolled
 ; (or zeroed) every lobby entry; wWitchAccepted lives in wRogueFlagsBitfield
