@@ -1098,12 +1098,17 @@ PCGetWildLevel:
 	ld c, b
 	ld b, 0
 	add hl, bc
-	ld a, [hl]
+	ld a, [hl]          ; base level (minimum for this round)
+	push af
+	ld c, 3
+	call Rangerandom    ; 0, 1, or 2
+	pop bc              ; b = base level
+	add a, b            ; base + rand(3)
 	ld [wCurEnemyLevel], a
 	ret
 
 PCWildLevelTable:
-	db 6, 10, 14, 18, 22, 26, 30, 34, 38 ; rounds 0-8
+	db 5, 9, 13, 17, 21, 25, 29, 33, 37 ; rounds 0-8, min level (add 0-2 for range)
 
 PCRollWildEncounter::
 	call PCGetWildLevel                  ; wCurEnemyLevel (set before species pick)
@@ -3030,6 +3035,16 @@ PCAbs:
 ; (confirmed by an actual in-game screenshot report).
 ; ============================================================
 PCDecorateLast:
+	; Place entrance sign first at fixed block (10,18) — one right/up from
+	; the entrance at (9,19). Treated as the initial decor piece; scatter
+	; loop below skips the 3x3 area around it to prevent crowding.
+	ld a, 10
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, 18
+	ld [wBuffer + wProcCaveCurY], a
+	ld a, 42
+	call PCWriteCell
+
 	ld a, 1
 	ld [wBuffer + wProcCaveLoopY], a
 .fillYLoop
@@ -3043,6 +3058,19 @@ PCDecorateLast:
 	call PCReadCell
 	cp 25
 	jr nz, .fillSkipCell
+	; skip the 3x3 area around the sign at block (10,18)
+	ld a, [wBuffer + wProcCaveLoopX]
+	cp 9
+	jr c, .fillNotNearSign
+	cp 12
+	jr nc, .fillNotNearSign
+	ld a, [wBuffer + wProcCaveLoopY]
+	cp 17
+	jr c, .fillNotNearSign
+	cp 20
+	jr nc, .fillNotNearSign
+	jr .fillSkipCell
+.fillNotNearSign
 
 	ld c, 40
 	call Rangerandom
