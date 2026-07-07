@@ -36,7 +36,8 @@ DisplayPokemartDialogue_::
 	dec a ; quitting?
 	jp z, .done
 .sellMenu
-
+	call SaveTextBoxTilesToBuffer   ; capture "Take your time." so PrintBagInfoText
+	call Delay3                     ; restoreDefaultText path has correct data
 ; the same variables are set again below, so this code has no effect
 	;xor a
 	;ld [wPrintItemPrices], a
@@ -193,7 +194,7 @@ DisplayPokemartDialogue_::
 	ldh [hCurrentMenuItem], a
 	inc a
 	ld [wPrintItemPrices], a
-	inc a ; a = 2 (PRICEDITEMLISTMENU)
+	ld a, PRICEDITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
 	jr c, .returnToMainPokemartMenu ; if the player closed the menu

@@ -17,7 +17,7 @@ Route13_Object:
 	warp_event 44, 10, LAST_MAP, 1
 	warp_event 44, 11, LAST_MAP, 1
 	warp_event  2,  1, INDIGO_PLATEAU_LOBBY, 1
-	warp_event  3,  6, INDIGO_PLATEAU_LOBBY, 1
+	warp_event  4,  6, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 	bg_event 15, 13, TEXT_ROUTE13_TRAINER_TIPS1

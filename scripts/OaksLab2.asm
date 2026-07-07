@@ -1039,10 +1039,7 @@ OaksLabOak1Text:
 .give_poke_balls
 	CheckAndSetEvent EVENT_FIRST_RUN
 	jr nz, .come_see_me_sometimes
-	lb bc, POKE_BALL, 5
-	call GiveItem
-	ld hl, .GivePokeballsText
-	call PrintText
+	; Rogue: no catching, so no pokéballs
 	jr .done
 .come_see_me_sometimes
 	ld hl, .ComeSeeMeSometimesText

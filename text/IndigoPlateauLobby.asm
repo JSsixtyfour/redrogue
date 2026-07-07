@@ -181,7 +181,7 @@ _PCMoveTutorByeText::
 _PCMoveTutorNotEnoughMoneyText::
     text "You lack the"
 	line "funds for my"
-    line "services"
+    cont "services"
 	done
     
 _PCMoveTutorSaidYesText::

@@ -836,8 +836,9 @@ FaintEnemyPokemon:
 	call SaveScreenTilesToBuffer1
 	xor a
 	ld [wBattleResult], a
-	ld b, EXP_ALL
-	call IsItemInBag
+	ld a, EXP_ALL
+	ld [wCurItem], a
+	farcall IsKeyItemOwned     ; checks sKeyItemsBitfield — no carry required
 	push af
 	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
 
@@ -6371,6 +6372,7 @@ LoadEnemyMonData:
 ; the matching clear on the player-party-creation path, and
 ; func_ghost_variant.asm for the full writeup)
 	res 0, a
+	res 1, a
 	ld [de], a
 	inc de
 	ld a, [hl]     ; base exp

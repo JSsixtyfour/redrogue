@@ -1271,7 +1271,7 @@ PCPokemonSalesmanSetup:
     ld  a, TX_SCRIPT_MART
     ld [hli], a
     ld [hl], $A       ; Amount of items
-    
+
     ld de, PCClerkText1Items    ; ram address to save ids to (passed via de - farcall clobbers hl/bc, not de)
     farcall Random_Healing_Mart_Selection  ; lives in bank 07, this file is bank 06
 

@@ -7,7 +7,7 @@
 ;
 ; RogueStageMapTable and IsRogueStageMap live here (rogue bank) so that
 ; _PickRandomUnvisitedStage can read the table directly without a bank switch.
-DEF NUM_STAGE_MAPS EQU 22
+DEF NUM_STAGE_MAPS EQU 21
 
 RogueStageMapTable:
 	db ROUTE_1
@@ -29,7 +29,7 @@ RogueStageMapTable:
 	db POKEMON_TOWER_2F
 	db POKEMON_TOWER_7F
 	db SS_ANNE_B1F       ; unique: custom multi-room mechanics and EVENT_SSANNE_ALL_TRAINERS_DEFEATED gate
-	db SS_ANNE_BOW
+	;db SS_ANNE_BOW
 	db POWER_PLANT
 	;db SILPH_CO_1F
 	db POKEMON_MANSION_1F

@@ -61,7 +61,11 @@ DEF START_MONEY EQU $3000
 	ld hl, wGameProgressFlags
 	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
 	call FillMemory ; clear all game progress flags
-   
+	; Rogue: auto-set Pokedex and Town Map events so Daisy skips her
+	; "rival is at the lab" gate and goes straight to the fusion trigger.
+	SetEvent EVENT_GOT_POKEDEX
+	SetEvent EVENT_GOT_TOWN_MAP
+
 	jp InitializeToggleableObjectsFlags
 
 InitializeEmptyList:

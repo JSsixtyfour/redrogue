@@ -52,15 +52,15 @@ Route5_Script:
 	RogueAutoWalkScripts Route5, PAD_DOWN, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_5, TEXT_ROUTE5_NO_TURNING_BACK, SCRIPT_ROUTE5_PLAYER_IS_MOVING, wRoute5CurScript
 
 Route5EntranceCoords:
-	dbmapcoord 2, 1
-	dbmapcoord 3, 1
+	dbmapcoord 2, 2
+	dbmapcoord 3, 2
 	db -1
 
 Route5NoCoords:
-	dbmapcoord 2, 2
-	dbmapcoord 3, 2
 	dbmapcoord 2, 3
 	dbmapcoord 3, 3
+	dbmapcoord 2, 4
+	dbmapcoord 3, 4
 	db -1
 
 Route5_ScriptPointers:

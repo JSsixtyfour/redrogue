@@ -56,7 +56,7 @@ Route12ResetScripts:
 	ld [wCurMapScript], a
 	ret
 
-	RogueAutoWalkScripts Route12, PAD_UP, Route12SnorlaxScript, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
+	RogueAutoWalkScripts Route12, PAD_RIGHT, Route12SnorlaxScript, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
 
 Route12EntranceCoords:
 	dbmapcoord 4, 62
@@ -76,45 +76,45 @@ Route12_ScriptPointers:
 	dw_const Route12PlayerIsMovingScript,           SCRIPT_ROUTE12_PLAYER_IS_MOVING
 
 Route12SnorlaxScript:
-	CheckEventHL EVENT_BEAT_ROUTE12_SNORLAX
-	jp nz, CheckFightingMapTrainers
-	CheckEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX
-	ResetEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX
-	jp z, CheckFightingMapTrainers
-	ld a, TEXT_ROUTE12_SNORLAX_WOKE_UP
-	ldh [hTextID], a
-	call DisplayTextID
-	ld a, SNORLAX
-	ld [wCurOpponent], a
-	ld a, 30
-	ld [wCurEnemyLevel], a
-    xor a
-	ld [wIsTrainerBattle], a
-	ld a, TOGGLE_ROUTE_12_SNORLAX
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ld a, SCRIPT_ROUTE12_SNORLAX_POST_BATTLE
-	ld [wRoute12CurScript], a
-	ld [wCurMapScript], a
+;	CheckEventHL EVENT_BEAT_ROUTE12_SNORLAX
+;	jp nz, CheckFightingMapTrainers
+;	CheckEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX
+;	ResetEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX
+;	jp z, CheckFightingMapTrainers
+;	ld a, TEXT_ROUTE12_SNORLAX_WOKE_UP
+;	ldh [hTextID], a
+;	call DisplayTextID
+;	ld a, SNORLAX
+;	ld [wCurOpponent], a
+;	ld a, 30
+;	ld [wCurEnemyLevel], a
+;    xor a
+;	ld [wIsTrainerBattle], a
+;	ld a, TOGGLE_ROUTE_12_SNORLAX
+;	ld [wToggleableObjectIndex], a
+;	predef HideObject
+;	ld a, SCRIPT_ROUTE12_SNORLAX_POST_BATTLE
+;	ld [wRoute12CurScript], a
+;	ld [wCurMapScript], a
 	ret
-
+;
 Route12SnorlaxPostBattleScript:
-	ldh a, [hIsInBattle]
-	cp $ff
-	jp z, Route12ResetScripts
-	call UpdateSprites
-	ld a, [wBattleResult]
-	cp $2
-	jr z, .caught_snorlax
-	ld a, TEXT_ROUTE12_SNORLAX_CALMED_DOWN
-	ldh [hTextID], a
-	call DisplayTextID
-.caught_snorlax
-	SetEvent EVENT_BEAT_ROUTE12_SNORLAX
-	call Delay3
-	ld a, SCRIPT_ROUTE12_DEFAULT
-	ld [wRoute12CurScript], a
-	ld [wCurMapScript], a
+;	ldh a, [hIsInBattle]
+;	cp $ff
+;	jp z, Route12ResetScripts
+;	call UpdateSprites
+;	ld a, [wBattleResult]
+;	cp $2
+;	jr z, .caught_snorlax
+;	ld a, TEXT_ROUTE12_SNORLAX_CALMED_DOWN
+;	ldh [hTextID], a
+;	call DisplayTextID
+;.caught_snorlax
+;	SetEvent EVENT_BEAT_ROUTE12_SNORLAX
+;	call Delay3
+;	ld a, SCRIPT_ROUTE12_DEFAULT
+;	ld [wRoute12CurScript], a
+;	ld [wCurMapScript], a
 	ret
 
 Route12_TextPointers:

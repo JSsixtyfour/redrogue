@@ -315,6 +315,7 @@ PocketSwitchROMX::
 
 TMItContainsText:: ; moved from engine/menus/players_pc.asm (bank1) so the
 	text_far _TMItContainsText   ; bank is active when PrintText reads [hl]
+    text_end
 
 ; ◀ moved from $62 (vChars2/$60 region, overwritten by Town Map) to $c0
 ; (vChars1/$40 region, safe). The actual glyph still needs to be drawn at
@@ -397,7 +398,8 @@ PrintBagInfoText::
 	lb bc, 3, 18
 	call ClearScreenArea
 	ld hl, TMItContainsText
-	jp PrintText_NoCreatingTextBox
+	call PrintText_NoCreatingTextBox
+    ret
 .restoreDefaultText
 	ld de, wTextBoxBuffer
 	hlcoord 1, 14

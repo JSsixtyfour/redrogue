@@ -375,12 +375,14 @@ BuildKeyItemPCList::
     cp $FF
     jr z, .pcDone
     ld d, a          ; d = item_id
+    push de          ; save item_id before _KeyBitInfo clobbers d
     ld a, [hl]       ; a = bit_index
     ld c, a
-    ; Check if owned
+    ; Check if owned (_KeyBitInfo uses d internally and zeroes it on exit)
     call _KeyBitInfo ; hl = &bitfield[c>>3], b = mask
     ld a, [hl]
     and b
+    pop de           ; restore d = item_id
     pop bc
     jr z, .pcNotOwned
     ; Owned — check if carrying

@@ -51,6 +51,8 @@ PrintBCDNumber::
 
 PrintBCDDigit::
 	and $f
+	cp $a
+	jr nc, .invalidDigit   ; nibble A-F: invalid BCD, print '?' and flag
 	and a
 	jr z, .zeroDigit
 .nonzeroDigit
@@ -75,3 +77,11 @@ PrintBCDDigit::
 	ret nz
 	inc hl ; if right-aligned, "print" a space by advancing the pointer
 	ret
+.invalidDigit
+	; nibble A-F: not valid BCD — print '?' so corruption is visible but
+	; doesn't wrap into a control tile that kills the rest of the display.
+	; Also clear LEADING_ZEROES so subsequent digits still print.
+	res BIT_LEADING_ZEROES, b
+	ld a, '?'
+	ld [hli], a
+	jp PrintLetterDelay

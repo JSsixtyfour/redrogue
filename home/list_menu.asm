@@ -9,7 +9,15 @@ DisplayListMenuID::
 	ld a, [wBattleType]
 	and a ; is it the Old Man battle?
 	jr nz, .specialBattleType
-    farcall PrintBagInfoText ; in ROMX; marcelnote - new for bag pockets
+	; Print bag info box for bag (ITEMLISTMENU) or mart (PRICEDITEMLISTMENU)
+	ld a, [wListMenuID]
+	cp ITEMLISTMENU
+	jr z, .doPrintBagInfo
+	cp PRICEDITEMLISTMENU
+	jr nz, .skipBagInfo
+.doPrintBagInfo
+    farcall PrintBagInfoText ; in ROMX
+.skipBagInfo
 	ld a, $01 ; hardcoded bank
 	jr .bankswitch
 .specialBattleType ; Old Man battle
@@ -81,7 +89,12 @@ DisplayListMenuIDLoop::
 	jr .buttonAPressed
 .notOldManBattle
 	call LoadGBPal
-    farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
+	; Only print bag info box in the bag pocket context, not mart/PC/other menus
+	ld a, [wListMenuID]
+	cp ITEMLISTMENU
+	jr nz, .skipBagInfoLoop
+    farcall PrintBagInfoText ; in ROMX
+.skipBagInfoLoop
 	call HandleMenuInput
 	push af
 	call PlaceMenuCursor
@@ -206,13 +219,24 @@ DisplayListMenuIDLoop::
 	cp b ; will going down scroll past the Cancel button?
 	jp c, DisplayListMenuIDLoop
 	inc [hl] ; if not, go down
+	call .martTMRefresh
 	jp DisplayListMenuIDLoop
 .upPressed
 	ld a, [hl]
 	and a
 	jp z, DisplayListMenuIDLoop
 	dec [hl]
+	call .martTMRefresh
 	jp DisplayListMenuIDLoop
+.martTMRefresh
+	; For PRICEDITEMLISTMENU (mart buy): update TM content display immediately
+	; after cursor moves so it reflects the item NOW under the cursor, not the
+	; previous one. hCurrentMenuItem and wListScrollOffset are already updated.
+	ld a, [wListMenuID]
+	cp PRICEDITEMLISTMENU
+	ret nz
+	farcall PrintBagInfoText
+	ret
 ; marcelnote - new for bag pockets; 3 pockets (items/key items/TM pack) cycle
 ; in ROMX (PocketSwitchROMX) to keep this HOME-bank stub small. a = direction
 ; (1 = forward/RIGHT, 0 = backward/LEFT) going in; carry set coming back means

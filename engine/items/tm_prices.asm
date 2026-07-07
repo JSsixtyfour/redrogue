@@ -2,8 +2,16 @@ GetMachinePrice::
 ; Input:  [wCurItem] = Item ID of a TM
 ; Output: Stores the TM price at hItemPrice
 	ld a, [wCurItem]
-	sub TM01 ; underflows below 0 for HM items (before TM items)
-	ret c ; HMs are priceless
+	sub TM01 ; underflows if item is an HM (HMs sit below TM01)
+	jr nc, .isTM
+	; HM: fixed price ₽3000
+	ld a, $30
+	ldh [hItemPrice + 1], a
+	xor a
+	ldh [hItemPrice], a
+	ldh [hItemPrice + 2], a
+	ret
+.isTM
 	ld d, a
 	ld hl, TechnicalMachinePrices
 	srl a

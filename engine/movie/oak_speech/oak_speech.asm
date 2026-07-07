@@ -53,12 +53,11 @@ OakSpeech:
 	; Give starting items. Key pocket items (EXP_ALL, LEFTOVERS, PP_TONIC,
 	; KO_DEFIANCE) route through GiveItem so they hit sKeyItemsBitfield +
 	; wKeyItemSlot1/2/3 instead of the item bag. POTION goes to the regular bag.
-	ld hl, wNumBagItems
 	ld a, POTION
 	ld [wCurItem], a
 	ld a, 1
 	ld [wItemQuantity], a
-	call AddItemToInventory
+	farcall GiveRecoveryItem
 	ld b, EXP_ALL
 	ld c, 1
 	call GiveItem

@@ -49,8 +49,8 @@ BluesHouseDaisySittingText:
 	jr .done
 
 .got_town_map
-	ld hl, BluesHouseDaisyUseMapText
-	call PrintText
+	; TEMP: Daisy triggers fusion for testing. Remove when bridge stage exists.
+	farcall CreateFusion
 	jr .done
 
 .bag_full

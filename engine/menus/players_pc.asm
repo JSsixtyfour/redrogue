@@ -23,7 +23,7 @@ PlayerPCMenu:
 	set BIT_NO_MENU_BUTTON_SOUND, [hl]
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	ld b, $8
+	ld b, $6
 	ld c, $e
 	call TextBoxBorder
 	call UpdateSprites
@@ -36,8 +36,8 @@ PlayerPCMenu:
 	dec a
 	ld [hli], a ; wTopMenuItemX
 	inc hl ; wTileBehindCursor
-	ld a, 4
-	ld [hli], a ; wMaxMenuItem (0=Withdraw,1=Deposit,2=Toss,3=KeyItems,4=LogOff)
+	ld a, 1
+	ld [hli], a ; wMaxMenuItem (0=KeyItems, 1=LogOff)
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
 	xor a
@@ -55,12 +55,6 @@ PlayerPCMenu:
 	ldh a, [hCurrentMenuItem]
 	ld [wParentMenuItem], a
 	and a
-	jp z, PlayerPCWithdraw
-	dec a
-	jp z, PlayerPCDeposit
-	dec a
-	jp z, PlayerPCToss
-	dec a
 	jp z, PlayerPCKeyItems
 
 ExitPlayerPC:
@@ -265,10 +259,7 @@ PlayerPCToss:
 	jp .loop
 
 PlayersPCMenuEntries:
-	db   "WITHDRAW ITEM"
-	next "DEPOSIT ITEM"
-	next "TOSS ITEM"
-	next "KEY ITEMS"
+	db   "KEY ITEMS"
 	next "LOG OFF@"
 
 TurnedOnPC2Text:
@@ -352,9 +343,7 @@ PlayerPCKeyItems:
 	call PrintText
 	jp PlayerPCMenu
 .hasItems
-	; Display the list
-	ld a, l
-	ld [wKeyItemPocketBuf], a     ; (already in buf, just set list pointer)
+	; Display the list — count and entries already written by BuildKeyItemPCList.
 	ld hl, wKeyItemPocketBuf
 	ld a, l
 	ld [wListPointer], a

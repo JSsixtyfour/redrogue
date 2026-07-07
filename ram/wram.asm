@@ -1788,7 +1788,7 @@ wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
 ; pokemart, and inventory code compiles while it is migrated to the new system.
 ; Nothing should route here in normal play (GiveItem dispatches to count arrays).
 wNumBagItems:: db
-wBagItems:: ds 3        ; tiny — effectively empty, migrated code should bypass this
+wBagItems:: ds 7        ; padded — enough clearance so sentinel can't reach wPlayerMoney
 ; wNumBagKeyItems alias pointing at the old byte; now meaningless (0 always)
 wNumBagKeyItems:: db
 
@@ -2149,7 +2149,7 @@ PCClerkText1Items::
 
 PCClerkText2::
 	db ;TX_SCRIPT_MART
-    db ;$9  
+    db ;$9
 PCClerkText2Items::
     db
     db
@@ -2191,6 +2191,8 @@ wMoneyMultiplier:: db     ; prize c: multiplier for wAmountMoneyWon
 wPrizeExpBoost:: db       ; prize d: extra BoostExp pass in GainExperience
 wPrizeCritBoost:: db      ; prize e: halve speed threshold in crit check
 wPrizeAccBoost:: db       ; prize f: re-roll once on miss in MoveHitTest
+
+wFusionSecondarySpecies:: db  ; 0 = no fusion active this run; else = secondary mon's species ID
 
 wGameProgressFlagsEnd::
 
