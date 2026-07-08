@@ -907,6 +907,8 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
     const EVENT_BEAT_PC_BOSS
     const EVENT_PC_BUDGET_ENDED   ; set when wild battle budget hits 0
     const EVENT_PC_CALMED_SHOWN   ; set after "calmed" message displayed
+    const EVENT_PC_CEM_BUDGET_ENDED ; cemetery: budget hit 0
+    const EVENT_PC_CEM_CALMED_SHOWN ; cemetery: calmed message shown
 
 ; End of events
 DEF NUM_EVENTS EQU const_value

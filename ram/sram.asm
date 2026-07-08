@@ -22,7 +22,8 @@ sProcCemetaryMaps:: ds 4 * 90  ; indexed by (mapIndex*90 + row*10 + col)
 sProcCemetaryBallX:: ds 4      ; pokeball block X per map
 sProcCemetaryBallY:: ds 4      ; pokeball block Y per map
 sProcCemetaryItem:: ds 4       ; item ID per map (for pickup)
-sProcCemetaryReady:: db        ; 1 = all 4 maps generated, 0 = not ready
+sProcCemetaryReady:: db        ; bit N = floor N has been generated (lazy per-map)
+sProcCemetaryItemGot:: db      ; bit N = floor N item has been collected; cleared on new generation
 sProcCaveStagingEntranceY:: db
 sProcCaveStagingEntranceX:: db
 sProcCaveStagingExitY:: db
@@ -31,10 +32,18 @@ sProcCaveStagingBossSprite:: db    ; SPRITE_* constant for the boss, set during 
 sProcCaveStagingLadderID:: db      ; index into PCLadderTable (0-2), rolled during PCPreloadCave
 sProcCaveStagingLadderOffset:: db  ; sub-tile remainder (0 or 1) for wWarpEntries
 sProcCaveSignVariant:: db          ; 0=items text, 1=boss text; rolled in PCRollBoss
+sProcCaveEntranceWarpID:: db       ; 1/3/4/5 = bottom/top/left/right; patched into source wWarpEntries
 sProcCaveBallsStaged:: db          ; non-zero = ball positions/items already rolled
 sProcCaveBallXY:: ds 8             ; X,Y interleaved for each of the 4 pokeballs
 sProcCaveBallItems:: ds 4          ; item ID for each pokeball
 sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED tiles
+
+; Procedural forest maze: 20x20 block map staged here at warp-in time.
+; Separate from cave staging buffer so cave→forest→cave bouncing doesn't
+; require cave regeneration. 400 bytes = 20*20 blocks.
+sProcForestStagingBuffer:: ds 600  ; same as cave: stride layout needs PF_BASE+(PF_SIZE-1)*PF_STRIDE+PF_SIZE = 595
+sProcForestExitI:: db              ; 0-8: which top-row cell column is the exit
+sProcForestBaked:: db              ; non-zero = buffer holds finished baked maze
                                    ; (autotile/decor/river/ladder already applied),
                                    ; so re-entry just blits instead of re-running
                                    ; the whole pipeline

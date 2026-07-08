@@ -67,8 +67,17 @@ TryDoWildEncounter:
 ; species + level from the rarity-class pool instead.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
+	;jr z, .isProcedural
+	;cp PROCEDURAL_CEMETARY_1
+	;jr z, .isProcedural
+	;cp PROCEDURAL_CEMETARY_2
+	;jr z, .isProcedural
+	;cp PROCEDURAL_CEMETARY_3
+	;jr z, .isProcedural
+	;cp PROCEDURAL_CEMETARY_4
 	jr nz, .normalEncounterData
-	farcall PCRollWildEncounter ; sets wCurEnemyLevel/wCurPartySpecies/wEnemyMonSpecies2
+.isProcedural
+	farcall PCRollWildEncounter ; battlecount-scaled species/level, no ownership check
 	jr .afterEncounterData
 .normalEncounterData
 	ld hl, wGrassMons
@@ -107,10 +116,31 @@ TryDoWildEncounter:
 	and a
 	ret
 .willEncounter
-; Procedural cave: enforce the per-visit wild-battle budget.
+; Procedural areas: enforce per-visit wild-battle budget.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
+	jr z, .checkCaveBudget
+	cp PROCEDURAL_CEMETARY_1
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETARY_2
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETARY_3
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETARY_4
+	jr z, .checkCemBudget
+	jr .commitEncounter
+.checkCemBudget
+	ld a, [wProcCemWildBudget]
+	and a
+	jr z, .CantEncounter2   ; already 0, silent
+	dec a
+	ld [wProcCemWildBudget], a
 	jr nz, .commitEncounter
+	SetEvent EVENT_PC_CEM_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	jr .commitEncounter
+.checkCaveBudget
 	ld a, [wProcCaveWildBudget]
 	and a
 	jr z, .CantEncounter2 ; already 0 - silent, no repeat message

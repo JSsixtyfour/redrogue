@@ -243,7 +243,7 @@ MapHeaderPointers::
 	dw TradeCenter_h
 	dw Colosseum_h
 	dw ProceduralCave1_h ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1 -> SilphCo2F_h)
-	dw SilphCo2F_h ; UNUSED_MAP_F2
+	dw ProceduralForest_h ; PROCEDURAL_FOREST (was UNUSED_MAP_F2 -> SilphCo2F_h)
 	dw SilphCo2F_h ; UNUSED_MAP_F3
 	dw SilphCo2F_h ; UNUSED_MAP_F4
 	dw LoreleisRoom_h

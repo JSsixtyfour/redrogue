@@ -1684,9 +1684,17 @@ TryRunningFromBattle:
 	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .trainerBattle ; jump if it's a trainer battle
-	ldh a, [hCurMap]      ; procedural cave: wild battles also can't run
+	ldh a, [hCurMap]      ; procedural areas: wild battles can't run
 	cp PROCEDURAL_CAVE_1
 	jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETARY_1
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETARY_2
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETARY_3
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETARY_4
+	;jr z, .trainerBattle
 	ld a, [wNumRunAttempts]
 	inc a
 	ld [wNumRunAttempts], a

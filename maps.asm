@@ -286,6 +286,11 @@ INCLUDE "scripts/ProceduralCave1.asm"
 INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
+INCLUDE "data/maps/headers/ProceduralForest.asm"
+INCLUDE "scripts/ProceduralForest.asm"
+INCLUDE "data/maps/objects/ProceduralForest.asm"
+ProceduralForest_Blocks: INCBIN "maps/ProceduralForest.blk"
+
 INCLUDE "data/maps/headers/ProceduralCemetary1.asm"
 INCLUDE "scripts/ProceduralCemetary1.asm"
 INCLUDE "data/maps/objects/ProceduralCemetary1.asm"
@@ -305,6 +310,34 @@ INCLUDE "data/maps/headers/ProceduralCemetary4.asm"
 INCLUDE "scripts/ProceduralCemetary4.asm"
 INCLUDE "data/maps/objects/ProceduralCemetary4.asm"
 ProceduralCemetary4_Blocks: INCBIN "maps/ProceduralCemetary4.blk"
+
+; Shared cemetery calmed-message check called from all 4 cemetery scripts.
+PCemCalmedCheck::
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_PC_CEM_CALMED_SHOWN
+	ret nz
+	CheckEvent EVENT_PC_CEM_BUDGET_ENDED
+	ret z
+	SetEvent EVENT_PC_CEM_CALMED_SHOWN
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETARY_1
+	ld a, TEXT_PROCEDURALCEMETARY1_CALMED
+	jr z, .showCemCalmed
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETARY_2
+	ld a, TEXT_PROCEDURALCEMETARY2_CALMED
+	jr z, .showCemCalmed
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETARY_3
+	ld a, TEXT_PROCEDURALCEMETARY3_CALMED
+	jr z, .showCemCalmed
+	ld a, TEXT_PROCEDURALCEMETARY4_CALMED
+.showCemCalmed
+	ldh [hTextID], a
+	call DisplayTextID
+	ret
 
 INCLUDE "data/maps/headers/SeafoamIslands1F.asm"
 INCLUDE "scripts/SeafoamIslands1F.asm"

@@ -6,7 +6,11 @@ ProceduralCave1_Object:
 
 	def_warp_events
 	warp_event 19, 38, LAST_MAP, 1 ; tile coords = block (9,19), matches generator's hardcoded entrance
-	warp_event 15, 15, LAST_MAP, 1
+	warp_event 15, 15, LAST_MAP, 1 ; exit (runtime-patched position)
+	; EXPERIMENT (tabled): random entrance — see size-randomization-notes.md for findings.
+	; Confirmed warp_event format: (tile_X, tile_Y) where tile_X=block_X*2+1, tile_Y=block_Y*2.
+	; Bottom confirmed: block(9,19)→warp_event(19,38). Left block(1,9)→(3,18), Right block(18,9)→(37,18).
+	; Top view ptr falls below PC_BASE. Left/right spawn in fill — not yet solved.
 
 	def_bg_events
 	bg_event 19, 35, TEXT_PROCEDURALCAVE1_SIGN

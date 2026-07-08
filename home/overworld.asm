@@ -493,17 +493,20 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
-	; Leaving the procedural cave advances difficulty: +5 battles fought.
+	; Leaving the procedural cave or the last cemetery floor: +5 battles fought.
 	cp PROCEDURAL_CAVE_1
-	jr nz, .notLeavingProcCave
+	jr z, .addFive
+	cp PROCEDURAL_CEMETARY_4
+	jr nz, .notLeavingProcArea
+.addFive
 	ld a, [wBattleCount]
 	add a, 5
-	jr nc, .procCaveBattleNoClamp
+	jr nc, .procBattleNoClamp
 	ld a, 255
-.procCaveBattleNoClamp
+.procBattleNoClamp
 	ld [wBattleCount], a
 	ldh a, [hCurMap]               ; restore a for the map checks below
-.notLeavingProcCave
+.notLeavingProcArea
 	; If leaving the lobby or reward room through door 1 or door 2,
 	; capture that door's item type into wRogueDoorSelection now.
 	cp INDIGO_PLATEAU_LOBBY
@@ -2399,12 +2402,17 @@ LoadMapData::
 	jr nz, .notPalletTown
 	homecall PCPreloadCave
 	homecall PCemGenerateMaps
+	homecall PFPreloadForest    ; reset forest baked flag so next visit gets fresh maze
 .notPalletTown
 	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
 	jr nz, .notProcCave         ; proceed as normal if not procedural stage
 	homecall PCFinalizeCave     ; blit the staged cave + apply everything
 	                            ; PCPreloadCave deferred (warp/sprite state)
 .notProcCave
+	cp PROCEDURAL_FOREST
+	jr nz, .notProcForest
+	homecall PFinalizeForest    ; generate (if needed) and blit maze
+.notProcForest
 	; Cemetery: blit the pre-generated map for whichever of the 4 floors is loading
 	cp PROCEDURAL_CEMETARY_1
 	jr z, .isCemetary

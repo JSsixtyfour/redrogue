@@ -283,36 +283,33 @@ PCPreloadCave::
 	; wProcCaveEntranceEdge is set to PC_EDGE_BOTTOM since the entrance
 	; really is on the bottom edge again - PCOtherEdgesTable picks the 3
 	; OTHER edges for targets, same as the original random-entrance design.
+	; EXPERIMENT (tabled): randomized entrance — see size-randomization-notes.md.
+	; Left/right spawn inside fill even 1 block in. Needs further investigation.
+	;ld c, 4
+	;call Random
+	;and 3
+	;add a, a
+	;add a, a
+	;ld c, a
+	;ld b, 0
+	;ld hl, PCEntranceTable
+	;add hl, bc
+	;ld a, [hli]
+	;ld [wBuffer + wProcCaveEntranceX], a
+	;ld a, [hli]
+	;ld [wBuffer + wProcCaveEntranceY], a
+	;ld a, [hli]
+	;ld [wBuffer + wProcCaveEntranceEdge], a
+	;ld a, [hl]
+	;ld [sProcCaveEntranceWarpID], a
+	;ld hl, wWarpEntries + 4 + 2
+	;ld [hl], a
 	ld a, PC_EDGE_BOTTOM
 	ld [wBuffer + wProcCaveEntranceEdge], a
 	ld a, 9
 	ld [wBuffer + wProcCaveEntranceX], a
 	ld a, 19
 	ld [wBuffer + wProcCaveEntranceY], a
-
-	; --- EXPERIMENT (commented): randomized entrance ---
-	; Goal: pick one of 4 static warp_events (one per edge) at random, then
-	; patch the SOURCE warp (in PalletTown.asm / lobby) to target that warp ID.
-	; Problem: LoadDestinationWarpPosition reads from ROM, not wWarpEntries,
-	; so it sets wYCoord/wXCoord/sprite-state/view-pointer from the ROM warp_event
-	; data before the generator runs. Only the exit (wWarpEntries patch) avoids this
-	; because the player never lands on it directly. To get a random entrance:
-	; Option A: declare 4 warp_events in ProceduralCave1_Object (one per edge),
-	;           then have the source warp (Pallet Town or lobby) pick a random
-	;           target warp ID (1-4). Requires patching the source warp's target
-	;           field in wWarpEntries before EnterMap fires.
-	; Option B: pick at preload time, store the entrance block here, then sync
-	;           ALL four position caches (wYCoord, wXCoord, wSprite*StateData2MapY/X,
-	;           wCurrentTileBlockMapViewPointer, wYBlockCoord, wXBlockCoord) at
-	;           finalize time. Historically: attempts broke on the 6th cache
-	;           (wYBlockCoord/wXBlockCoord parity bits). Option A is lower risk.
-	; Uncomment to experiment — still needs source-warp patch code and 3 more
-	; warp_events declared in ProceduralCave1_Object.
-	;ld c, 4
-	;call Rangerandom
-	;inc a                      ; warp ID 1-4
-	;ld [wBuffer + wProcCaveEntranceEdge], a  ; store chosen entrance warp ID
-	;; also update wProcCaveEntranceX/Y to match the chosen edge position
 
 	; --- EXPERIMENT (disabled): random cave size margins ---
 	; See size-randomization-notes.md. Disabled because right-side floor
@@ -1048,6 +1045,16 @@ PCGetBossLevel::
 	ld a, [hl]
 	ld [wCurEnemyLevel], a
 	ret
+
+; Entrance table for randomized entrance experiment.
+; 4 bytes per entry: EntranceX, EntranceY, EntranceEdge, warp_id
+; warp_id matches the warp_event index in ProceduralCave1_Object (1-based):
+;   1=bottom(9,19), 3=top(9,0), 4=left(0,9), 5=right(19,9)
+PCEntranceTable:
+	db  9, 19, PC_EDGE_BOTTOM, 1  ; bottom (confirmed working, block 9,19)
+	db  1,  9, PC_EDGE_LEFT,   4  ; left  (1 block inside border, block 1,9)
+	db 18,  9, PC_EDGE_RIGHT,  5  ; right (1 block inside border, block 18,9)
+	db  1,  9, PC_EDGE_LEFT,   4  ; left repeated (top dropped: view ptr in border at Y=0)
 
 PCBossLevelTable:
 ; one entry per round (0-8, based on wBattleCount / 10)

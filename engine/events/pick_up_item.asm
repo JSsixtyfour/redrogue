@@ -87,6 +87,32 @@ RandomPickUpItem:
 .gotCemToggle
 	ld [wToggleableObjectIndex], a
 	predef HideObject
+	; Mark this floor's item as collected in SRAM so it stays hidden on re-entry
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	; Compute bit mask for current cemetery floor (bit 0-3 = floor 0-3)
+	ldh a, [hCurMap]
+	ld b, 1                     ; bit 0 = CEMETERY_1
+	cp PROCEDURAL_CEMETARY_1
+	jr z, .cemGotMask
+	sla b                       ; bit 1 = CEMETERY_2
+	cp PROCEDURAL_CEMETARY_2
+	jr z, .cemGotMask
+	sla b                       ; bit 2 = CEMETERY_3
+	cp PROCEDURAL_CEMETARY_3
+	jr z, .cemGotMask
+	sla b                       ; bit 3 = CEMETERY_4
+.cemGotMask
+	ld a, [sProcCemetaryItemGot]
+	or b
+	ld [sProcCemetaryItemGot], a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
 	ld a, 1
 	ldh [hNoWaitAfterText], a
 	ld hl, FoundItemText

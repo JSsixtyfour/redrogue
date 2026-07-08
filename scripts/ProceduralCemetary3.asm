@@ -6,9 +6,11 @@ ProceduralCemetary3_Script:
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 .afterSetup
+	call PCemCalmedCheck
 	call EnableAutoTextBoxDrawing
 	ret
 
 ProceduralCemetary3_TextPointers:
 	def_text_pointers
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETARY3_POKEBALL
+	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETARY3_CALMED

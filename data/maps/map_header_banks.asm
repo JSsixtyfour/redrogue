@@ -243,7 +243,7 @@ MapHeaderBanks::
 	db BANK(TradeCenter_h)
 	db BANK(Colosseum_h)
 	db BANK(ProceduralCave1_h) ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1, $11)
-	db $11 ; UNUSED_MAP_F2
+	db BANK(ProceduralForest_h) ; PROCEDURAL_FOREST (was UNUSED_MAP_F2)
 	db $11 ; UNUSED_MAP_F3
 	db $11 ; UNUSED_MAP_F4
 	db BANK(LoreleisRoom_h)

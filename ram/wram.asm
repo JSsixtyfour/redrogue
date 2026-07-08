@@ -2034,6 +2034,7 @@ wRoute1CurScript:: db
 wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
 wProceduralCave1CurScript:: db
+wProceduralCemetary4CurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2117,6 +2118,10 @@ NEXTU
 
 wProcCaveWildBudget::
 
+NEXTU
+
+wProcCemWildBudget::  ; per-floor wild battle budget for cemetery (same mechanic as cave)
+
 ENDU
 
 ; Lobby witch challenge/prize state. wWitchChallenge/wWitchPrize are re-rolled
@@ -2150,7 +2155,7 @@ wPrizeAccBoost:: db       ; prize f: re-roll once on miss in MoveHitTest
 
 wGameProgressFlagsEnd::
 
-	ds 46
+	ds 45
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 
