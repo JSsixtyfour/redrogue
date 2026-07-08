@@ -44,6 +44,9 @@ sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED ti
 sProcForestStagingBuffer:: ds 600  ; same as cave: stride layout needs PF_BASE+(PF_SIZE-1)*PF_STRIDE+PF_SIZE = 595
 sProcForestExitI:: db              ; 0-8: which top-row cell column is the exit
 sProcForestBaked:: db              ; non-zero = buffer holds finished baked maze
+; Debug: set to 1-4 in debugger to force specific algo (0=random).
+; 1=Sidewinder 2=BinaryTree 3=Backtracker 4=HuntAndKill. Persists in SRAM.
+sProcForestAlgoForce:: db
                                    ; (autotile/decor/river/ladder already applied),
                                    ; so re-entry just blits instead of re-running
                                    ; the whole pipeline

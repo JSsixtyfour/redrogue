@@ -29,14 +29,23 @@ DEF PF_CELL_H  EQU 9
 DEF PF_TREE    EQU 2   ; base tree block
 DEF PF_EXIT_N  EQU 88  ; north-edge exit block (FOREST tileset, recognized warp)
 
-; wBuffer scratch offsets (forest-specific; safe since forest never runs
-; concurrently with cave/cemetery gen)
+; wBuffer scratch offsets (18 bytes; safe — forest never runs concurrently with
+; cave/cemetery gen which also uses wBuffer)
 DEF wPFTargetBaseLo EQU 0
 DEF wPFTargetBaseHi EQU 1
-DEF wPFCurX         EQU 2
-DEF wPFCurY         EQU 3
-DEF wPFRowJ         EQU 4   ; Sidewinder outer loop row counter (0-8)
-DEF wPFRunStart     EQU 5   ; Sidewinder current run's start column
+DEF wPFCurX         EQU 2   ; block-space X for PFWriteBlock/PFReadBlock
+DEF wPFCurY         EQU 3   ; block-space Y
+DEF wPFRowJ         EQU 4   ; Sidewinder: outer row counter (0-8)
+DEF wPFRunStart     EQU 5   ; Sidewinder: current run start col
+DEF wPFCellI        EQU 6   ; BinaryTree: cell index 0-80
+DEF wPFStackPtr     EQU 7   ; Backtracker: stack pointer into wOverworldMap[0..80]
+DEF wPFCellCol      EQU 8   ; Backtracker/HuntAndKill: current cell col (0-8)
+DEF wPFCellRow      EQU 9   ; Backtracker/HuntAndKill: current cell row (0-8)
+DEF wPFNeighborCnt  EQU 10  ; Backtracker/HuntAndKill: count of unvisited neighbors
+DEF wPFNeighbors    EQU 11  ; 4 bytes: packed neighbor list (col | row<<4)
+DEF wPFNCol         EQU 15  ; chosen neighbor col
+DEF wPFNRow         EQU 16  ; chosen neighbor row
+DEF wPFAlgoForce    EQU 17  ; saved from sProcForestAlgoForce (read while SRAM open)
 
 ; ============================================================
 ; PFRowOffsetTable
@@ -83,6 +92,40 @@ PFWriteBlock:
     pop bc          ; push order was af,bc,hl — pop hl above, then bc, then af
     pop af          ; A = original block ID
     ld [hl], a
+    ret
+
+; ============================================================
+; PFReadBlock
+; INPUT: [wBuffer+wPFCurX/Y] = logical coords. OUTPUT: a = block value.
+; Preserves BC.
+; ============================================================
+PFReadBlock:
+    push bc
+    ld a, [wBuffer + wPFTargetBaseLo]
+    ld l, a
+    ld a, [wBuffer + wPFTargetBaseHi]
+    ld h, a
+    push hl
+    ld a, [wBuffer + wPFCurY]
+    add a, a
+    ld c, a
+    ld b, 0
+    ld hl, PFRowOffsetTable
+    add hl, bc
+    ld a, [hli]
+    ld e, a
+    ld a, [hl]
+    ld d, a
+    pop hl
+    add hl, de
+    ld a, [wBuffer + wPFCurX]
+    add a, l
+    ld l, a
+    jr nc, .noCarry
+    inc h
+.noCarry
+    ld a, [hl]
+    pop bc
     ret
 
 ; ============================================================
@@ -222,6 +265,461 @@ PFSidewinder:
 
 
 ; ============================================================
+; PFBinaryTree
+; For each cell (col,row) in row-major order: carve cell, then randomly
+; carve North wall (if row>0) OR East wall (if col<8). Top row always
+; East-only; right column always North-only. Guarantees connectivity.
+; ============================================================
+PFBinaryTree:
+    xor a
+    ld [wBuffer + wPFCellI], a
+
+.btCellLoop
+    ld a, [wBuffer + wPFCellI]
+    cp 81
+    jp nc, .btDone
+
+    ; Divide cell index by 9: col = i%9, row = i/9
+    ld b, a
+    ld c, 0
+.btDiv
+    sub 9
+    jr c, .btDivDone
+    inc c
+    jr .btDiv
+.btDivDone
+    ; a = col (i%9), c = row (i/9)
+    ld d, a     ; d = col
+    ld e, c     ; e = row
+
+    ; Carve cell at block (2*col+1, 2*row+1)
+    ld a, d
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, e
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock   ; D,E clobbered — reload after
+
+    ld a, [wBuffer + wPFCellI]
+    ld b, a
+    ld c, 0
+.btDiv2
+    sub 9
+    jr c, .btDiv2Done
+    inc c
+    jr .btDiv2
+.btDiv2Done
+    ld d, a     ; d = col
+    ld e, c     ; e = row
+
+    ; Determine which walls we can carve
+    ld a, e
+    and a           ; row == 0?
+    jr z, .btOnlyEast
+    ld a, d
+    cp 8            ; col == 8?
+    jr z, .btOnlyNorth
+    ; Both possible: flip coin
+    call Random
+    and 1
+    jr z, .btDoNorth
+
+.btDoEast
+    ; East wall at (2*col+2, 2*row+1)
+    ld a, d
+    add a, a
+    add a, 2
+    ld [wBuffer + wPFCurX], a
+    ld a, e
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+    jr .btNext
+
+.btOnlyNorth
+.btDoNorth
+    ; North wall at (2*col+1, 2*row)
+    ld a, d
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, e
+    add a, a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+    jr .btNext
+
+.btOnlyEast
+    ld a, d
+    cp 8
+    jr z, .btNext   ; top-right corner: no wall to carve
+    ld a, d
+    add a, a
+    add a, 2
+    ld [wBuffer + wPFCurX], a
+    ld a, 1         ; row=0 → 2*0+1=1
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+
+.btNext
+    ld a, [wBuffer + wPFCellI]
+    inc a
+    ld [wBuffer + wPFCellI], a
+    jp .btCellLoop
+
+.btDone
+    ret
+
+; ============================================================
+; PFCheckUnvisited
+; INPUT: B=neighbor row (0-8), C=neighbor col (0-8).
+; If cell (C,B) is unvisited (still PF_TREE), appends packed (C|B<<4)
+; to wBuffer+wPFNeighbors list and increments wPFNeighborCnt.
+; Preserves B, C.
+; ============================================================
+PFCheckUnvisited:
+    ; Set block coords: (2*C+1, 2*B+1)
+    ld a, c
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock        ; A = block; BC preserved
+    cp PF_TREE
+    ret nz                  ; already visited
+    ; Append packed neighbor: C | (B<<4)
+    ld a, [wBuffer + wPFNeighborCnt]
+    ld e, a
+    inc a
+    ld [wBuffer + wPFNeighborCnt], a
+    ld a, b
+    swap a              ; B (row) into high nibble
+    or c                ; OR with col (low nibble)
+    ld d, 0
+    ld hl, wBuffer + wPFNeighbors
+    add hl, de
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFCarveToNeighbor
+; Pick random entry from wPFNeighbors list, carve the wall between
+; current cell (wPFCellCol/Row) and neighbor, carve neighbor cell.
+; Updates wPFCellCol/Row to the neighbor.
+; Requires: wPFNeighborCnt > 0.
+; ============================================================
+PFCarveToNeighbor:
+    ld a, [wBuffer + wPFNeighborCnt]
+    ld c, a
+    call Rangerandom        ; a = 0..count-1
+    ld e, a
+    ld d, 0
+    ld hl, wBuffer + wPFNeighbors
+    add hl, de
+    ld a, [hl]              ; packed neighbor
+    ld b, a
+    and $0F
+    ld [wBuffer + wPFNCol], a
+    ld a, b
+    swap a
+    and $0F
+    ld [wBuffer + wPFNRow], a
+
+    ; Carve wall block: coords = (curCol+nCol+1, curRow+nRow+1)
+    ld a, [wBuffer + wPFCellCol]
+    ld b, a
+    ld a, [wBuffer + wPFNCol]
+    add a, b
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFCellRow]
+    ld b, a
+    ld a, [wBuffer + wPFNRow]
+    add a, b
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+
+    ; Carve neighbor cell: (2*nCol+1, 2*nRow+1)
+    ld a, [wBuffer + wPFNCol]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFNRow]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+
+    ; Advance current cell
+    ld a, [wBuffer + wPFNCol]
+    ld [wBuffer + wPFCellCol], a
+    ld a, [wBuffer + wPFNRow]
+    ld [wBuffer + wPFCellRow], a
+    ret
+
+; ============================================================
+; PFBacktracker
+; Iterative recursive backtracker. Stack at wOverworldMap[0..80]
+; (the border area before PF_BASE — not part of the logical map blit).
+; Each stack entry: packed (col | row<<4). Visited = block != PF_TREE.
+; ============================================================
+PFBacktracker:
+    ; Push entrance cell (col=4, row=8) → packed 0x84
+    xor a
+    ld [wBuffer + wPFStackPtr], a
+    ld a, (4 | (8 << 4))
+    ld hl, wOverworldMap
+    ld [hl], a
+    ld a, 1
+    ld [wBuffer + wPFStackPtr], a
+
+    ; Carve entrance cell at block (9, 17)
+    ld a, 9
+    ld [wBuffer + wPFCurX], a
+    ld a, 17
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+
+.bkLoop
+    ld a, [wBuffer + wPFStackPtr]
+    and a
+    ret z
+
+    ; Peek top: wOverworldMap[sp-1]
+    dec a
+    ld e, a
+    ld d, 0
+    ld hl, wOverworldMap
+    add hl, de
+    ld a, [hl]
+    ld b, a
+    and $0F
+    ld [wBuffer + wPFCellCol], a
+    ld a, b
+    swap a
+    and $0F
+    ld [wBuffer + wPFCellRow], a
+
+    ; Find unvisited neighbors
+    xor a
+    ld [wBuffer + wPFNeighborCnt], a
+    ld a, [wBuffer + wPFCellRow]
+    ld b, a
+    ld a, [wBuffer + wPFCellCol]
+    ld c, a
+
+    ld a, b
+    and a
+    jr z, .bkSkipN
+    dec b
+    call PFCheckUnvisited
+    inc b
+.bkSkipN
+    ld a, b
+    cp 8
+    jr nc, .bkSkipS
+    inc b
+    call PFCheckUnvisited
+    dec b
+.bkSkipS
+    ld a, c
+    and a
+    jr z, .bkSkipW
+    dec c
+    call PFCheckUnvisited
+    inc c
+.bkSkipW
+    ld a, c
+    cp 8
+    jr nc, .bkSkipE
+    inc c
+    call PFCheckUnvisited
+    dec c
+.bkSkipE
+
+    ld a, [wBuffer + wPFNeighborCnt]
+    and a
+    jr z, .bkPop
+
+    ; Carve to random neighbor (updates wPFCellCol/Row)
+    call PFCarveToNeighbor
+
+    ; Push new cell to stack
+    ld a, [wBuffer + wPFStackPtr]
+    ld e, a
+    ld d, 0
+    ld hl, wOverworldMap
+    add hl, de
+    ld a, [wBuffer + wPFCellRow]
+    swap a
+    ld b, a
+    ld a, [wBuffer + wPFCellCol]
+    or b
+    ld [hl], a
+    ld a, [wBuffer + wPFStackPtr]
+    inc a
+    ld [wBuffer + wPFStackPtr], a
+    jp .bkLoop
+
+.bkPop
+    ld a, [wBuffer + wPFStackPtr]
+    dec a
+    ld [wBuffer + wPFStackPtr], a
+    jp .bkLoop
+
+; ============================================================
+; PFHuntAndKill
+; Walk randomly from entrance, carving unvisited neighbors.
+; When stuck: scan all cells for a visited cell that has at least
+; one unvisited neighbor, connect to it, resume walk.
+; No stack needed. Visited = block != PF_TREE.
+; ============================================================
+PFHuntAndKill:
+    ld a, 4
+    ld [wBuffer + wPFCellCol], a
+    ld a, 8
+    ld [wBuffer + wPFCellRow], a
+    ld a, 9
+    ld [wBuffer + wPFCurX], a
+    ld a, 17
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+
+.hkWalk
+    xor a
+    ld [wBuffer + wPFNeighborCnt], a
+    ld a, [wBuffer + wPFCellRow]
+    ld b, a
+    ld a, [wBuffer + wPFCellCol]
+    ld c, a
+    ld a, b
+    and a
+    jr z, .hkSkipN
+    dec b
+    call PFCheckUnvisited
+    inc b
+.hkSkipN
+    ld a, b
+    cp 8
+    jr nc, .hkSkipS
+    inc b
+    call PFCheckUnvisited
+    dec b
+.hkSkipS
+    ld a, c
+    and a
+    jr z, .hkSkipW
+    dec c
+    call PFCheckUnvisited
+    inc c
+.hkSkipW
+    ld a, c
+    cp 8
+    jr nc, .hkSkipE
+    inc c
+    call PFCheckUnvisited
+    dec c
+.hkSkipE
+    ld a, [wBuffer + wPFNeighborCnt]
+    and a
+    jr z, .hkHunt
+    call PFCarveToNeighbor
+    jp .hkWalk
+
+.hkHunt
+    ; Scan row=0..8, col=0..8 for visited cell with unvisited neighbor
+    xor a
+    ld [wBuffer + wPFCellRow], a
+.hkHuntRow
+    xor a
+    ld [wBuffer + wPFCellCol], a
+.hkHuntCol
+    ; Check if visited
+    ld a, [wBuffer + wPFCellCol]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFCellRow]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock
+    cp PF_TREE
+    jr z, .hkHuntNext   ; unvisited: skip
+
+    ; Check its neighbors
+    xor a
+    ld [wBuffer + wPFNeighborCnt], a
+    ld a, [wBuffer + wPFCellRow]
+    ld b, a
+    ld a, [wBuffer + wPFCellCol]
+    ld c, a
+    ld a, b
+    and a
+    jr z, .hkHSkipN
+    dec b
+    call PFCheckUnvisited
+    inc b
+.hkHSkipN
+    ld a, b
+    cp 8
+    jr nc, .hkHSkipS
+    inc b
+    call PFCheckUnvisited
+    dec b
+.hkHSkipS
+    ld a, c
+    and a
+    jr z, .hkHSkipW
+    dec c
+    call PFCheckUnvisited
+    inc c
+.hkHSkipW
+    ld a, c
+    cp 8
+    jr nc, .hkHSkipE
+    inc c
+    call PFCheckUnvisited
+    dec c
+.hkHSkipE
+    ld a, [wBuffer + wPFNeighborCnt]
+    and a
+    jr nz, .hkHuntFound
+
+.hkHuntNext
+    ld a, [wBuffer + wPFCellCol]
+    inc a
+    ld [wBuffer + wPFCellCol], a
+    cp 9
+    jr c, .hkHuntCol
+    ld a, [wBuffer + wPFCellRow]
+    inc a
+    ld [wBuffer + wPFCellRow], a
+    cp 9
+    jr c, .hkHuntRow
+    ret                     ; all done
+
+.hkHuntFound
+    call PFCarveToNeighbor
+    jp .hkWalk
+
+; ============================================================
 ; PFPreloadForest
 ; Called at Pallet Town entry. Resets sProcForestBaked so the next
 ; forest visit generates a fresh maze instead of fast-blitting the
@@ -265,9 +763,13 @@ PFinalizeForest::
     xor a
     ld [rRAMB], a
 
+    ; Save algo-force byte to wBuffer while SRAM is open
+    ld a, [sProcForestAlgoForce]
+    ld [wBuffer + wPFAlgoForce], a
+
     ld a, [sProcForestBaked]
     and a
-    jr nz, .fastBlit
+    jp nz, .fastBlit
 
     ; === First visit: generate directly into wOverworldMap ===
     ; (LoadTileBlockMap already filled it with all trees)
@@ -284,8 +786,35 @@ PFinalizeForest::
     ld a, HIGH(wOverworldMap + PF_BASE)
     ld [wBuffer + wPFTargetBaseHi], a
 
-    ; Run Sidewinder to carve the maze into wOverworldMap
+    ; Algorithm selection. sProcForestAlgoForce (SRAM): 0=random, 1-4=force.
+    ; Debug: set sProcForestAlgoForce in debugger to lock an algorithm.
+    ld a, [wBuffer + wPFAlgoForce]
+    and a
+    jr nz, .algoForced
+    ld c, 4
+    call Rangerandom        ; a = 0..3
+    jr .algoDispatch
+.algoForced
+    dec a                   ; 1→0, 2→1, 3→2, 4→3
+.algoDispatch
+    and 3                   ; clamp
+    jr z, .useAlgoA
+    cp 1
+    jr z, .useAlgoB
+    cp 2
+    jr z, .useAlgoC
+.useAlgoD
+    call PFHuntAndKill
+    jr .algosDone
+.useAlgoA
     call PFSidewinder
+    jr .algosDone
+.useAlgoB
+    call PFBinaryTree
+    jr .algosDone
+.useAlgoC
+    call PFBacktracker
+.algosDone
 
     ; Roll exit column i (0-8), write block 88, save i in B for later.
     ; B is preserved by PFWriteBlock (push/pop bc). E is NOT preserved — it
