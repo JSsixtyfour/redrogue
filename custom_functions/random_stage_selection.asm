@@ -134,6 +134,10 @@ IsRogueStageMap::
 ; slot 7-10 usage (reward pokeballs / trade NPC) if checked together.
 WildAreaStageMapTable:
 	db PROCEDURAL_CAVE_1
+	db PROCEDURAL_FOREST   ; forest uses the same 4-pokeball-at-slots-2-5 mechanism;
+	                       ; without this, RandomPickUpItem falls to .normalPickup
+	                       ; and gives wRogueItem (slot 0) for EVERY ball → all items
+	                       ; identical. This is THE fix for "all items are the same".
 	db -1
 
 ; Returns: Z clear if current map uses the wild-area-pokeball mechanism,

@@ -286,11 +286,6 @@ INCLUDE "scripts/ProceduralCave1.asm"
 INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
-INCLUDE "data/maps/headers/ProceduralForest.asm"
-INCLUDE "scripts/ProceduralForest.asm"
-INCLUDE "data/maps/objects/ProceduralForest.asm"
-ProceduralForest_Blocks: INCBIN "maps/ProceduralForest.blk"
-
 INCLUDE "data/maps/headers/ProceduralCemetary1.asm"
 INCLUDE "scripts/ProceduralCemetary1.asm"
 INCLUDE "data/maps/objects/ProceduralCemetary1.asm"
@@ -470,6 +465,14 @@ Route16Gate2F_Blocks:
 Route15Gate2F_Blocks:
 Route12Gate2F_Blocks:
 Route11Gate2F_Blocks: INCBIN "maps/Route11Gate2F.blk"
+
+
+SECTION "Procedural Forest Maps", ROMX
+
+INCLUDE "data/maps/headers/ProceduralForest.asm"
+INCLUDE "scripts/ProceduralForest.asm"
+INCLUDE "data/maps/objects/ProceduralForest.asm"
+ProceduralForest_Blocks: INCBIN "maps/ProceduralForest.blk"
 
 
 SECTION "Maps 8", ROMX

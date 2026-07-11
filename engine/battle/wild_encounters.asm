@@ -67,7 +67,9 @@ TryDoWildEncounter:
 ; species + level from the rarity-class pool instead.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
-	;jr z, .isProcedural
+	jr z, .isProcedural
+	cp PROCEDURAL_FOREST
+	jr z, .isProcedural
 	;cp PROCEDURAL_CEMETARY_1
 	;jr z, .isProcedural
 	;cp PROCEDURAL_CEMETARY_2
@@ -120,6 +122,8 @@ TryDoWildEncounter:
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
 	jr z, .checkCaveBudget
+	cp PROCEDURAL_FOREST
+	jr z, .checkForestBudget
 	cp PROCEDURAL_CEMETARY_1
 	jr z, .checkCemBudget
 	cp PROCEDURAL_CEMETARY_2
@@ -150,6 +154,20 @@ TryDoWildEncounter:
 	SetEvent EVENT_PC_BUDGET_ENDED
 	ld hl, wCurrentMapScriptFlags   ; signal map script to show calmed message
 	set BIT_CUR_MAP_LOADED_1, [hl]  ; after this battle returns
+	jr .commitEncounter
+.checkForestBudget
+	; Reuses EVENT_PC_BUDGET_ENDED (cave's event) — safe, see PFPreloadForest's
+	; comment: cave/forest never run concurrently and this event is always
+	; reset at Pallet Town entry before either stage could read it.
+	ld a, [wProcForestWildBudget]
+	and a
+	jr z, .CantEncounter2
+	dec a
+	ld [wProcForestWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_LOADED_1, [hl]
 .commitEncounter
 	xor a
     ld [wIsTrainerBattle], a

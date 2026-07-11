@@ -29,6 +29,12 @@ DEF PF_CELL_H  EQU 9
 DEF PF_TREE    EQU 2   ; base tree block
 DEF PF_EXIT_N  EQU 88  ; north-edge exit block (FOREST tileset, recognized warp)
 
+; Item placement (PFScanForBall) — mirrors cave's PCPlaceWildAreaItems spacing
+; and dedup logic, adapted to the maze's sparse dead-end cells instead of
+; cave's dense floor-block scan.
+DEF PF_ITEM_MIN_DIST EQU 2   ; min Chebyshev distance (CELL units) between balls
+DEF PF_MAX_DEADENDS  EQU 32  ; candidate list cap — fits in sProcForestGenScratch
+
 ; wBuffer scratch offsets (18 bytes; safe — forest never runs concurrently with
 ; cave/cemetery gen which also uses wBuffer)
 DEF wPFTargetBaseLo EQU 0
@@ -46,6 +52,20 @@ DEF wPFNeighbors    EQU 11  ; 4 bytes: packed neighbor list (col | row<<4)
 DEF wPFNCol         EQU 15  ; chosen neighbor col
 DEF wPFNRow         EQU 16  ; chosen neighbor row
 DEF wPFAlgoForce    EQU 17  ; saved from sProcForestAlgoForce (read while SRAM open)
+DEF wPFPassCount    EQU 18  ; braid pass: passage count for current cell
+DEF wPFBraidCol     EQU 19  ; braid pass: column counter (0-8)
+DEF wPFBallIdx      EQU 20  ; PFScanForBall Phase 2: current ball index (0-3)
+; PFScanForBall Phase 2 scratch — all alias offsets confirmed UNTOUCHED by
+; PFScanWallPassOnly during Phase 1's per-cell scan (verified: that function
+; only reads/writes wPFCellCol/Row, wPFCurX/Y, wPFPassCount), so reusing them
+; here is safe with no risk of Phase-1/Phase-2 collision within a single call.
+DEF wPFCandCount    EQU 5   ; reuses wPFRunStart (Sidewinder-only, dead by now)
+DEF wPFSpaceRetry   EQU 6   ; reuses wPFCellI (BinaryTree-only)
+DEF wPFItemRetry    EQU 7   ; reuses wPFStackPtr (Backtracker-only)
+DEF wPFAcceptedXY   EQU 10  ; 8 contiguous bytes (10-17): 4x(blockX,blockY) for
+                            ; balls accepted so far, reuses wPFNeighborCnt/
+                            ; Neighbors/NCol/NRow/AlgoForce (all dead by Phase 2)
+DEF wPFItemTemp     EQU 21  ; 4 bytes (21-24): rolled item IDs before dedup-write
 
 ; ============================================================
 ; PFRowOffsetTable
@@ -473,8 +493,10 @@ PFCarveToNeighbor:
 
 ; ============================================================
 ; PFBacktracker
-; Iterative recursive backtracker. Stack at wOverworldMap[0..80]
-; (the border area before PF_BASE — not part of the logical map blit).
+; Iterative recursive backtracker. Stack at sProcForestGenScratch (SRAM —
+; NEVER wOverworldMap; that's the live map's border padding and corrupting it
+; caused trainer-! on pokeballs and hardware/emulator crashes). SRAM must
+; already be open (RAMG_SRAM_ENABLE, bank 0) when this is called.
 ; Each stack entry: packed (col | row<<4). Visited = block != PF_TREE.
 ; ============================================================
 PFBacktracker:
@@ -482,7 +504,7 @@ PFBacktracker:
     xor a
     ld [wBuffer + wPFStackPtr], a
     ld a, (4 | (8 << 4))
-    ld hl, wOverworldMap
+    ld hl, sProcForestGenScratch
     ld [hl], a
     ld a, 1
     ld [wBuffer + wPFStackPtr], a
@@ -500,11 +522,11 @@ PFBacktracker:
     and a
     ret z
 
-    ; Peek top: wOverworldMap[sp-1]
+    ; Peek top: sProcForestGenScratch[sp-1]
     dec a
     ld e, a
     ld d, 0
-    ld hl, wOverworldMap
+    ld hl, sProcForestGenScratch
     add hl, de
     ld a, [hl]
     ld b, a
@@ -563,7 +585,7 @@ PFBacktracker:
     ld a, [wBuffer + wPFStackPtr]
     ld e, a
     ld d, 0
-    ld hl, wOverworldMap
+    ld hl, sProcForestGenScratch
     add hl, de
     ld a, [wBuffer + wPFCellRow]
     swap a
@@ -720,6 +742,604 @@ PFHuntAndKill:
     jp .hkWalk
 
 ; ============================================================
+; PFScanWall
+; INPUT: B=neighbor row (0-8), C=neighbor col (0-8).
+;        wPFCellCol/Row = current cell.
+; If the wall between current cell and (C,B) is PF_TREE:
+;   appends packed (C | B<<4) to wPFNeighbors, increments wPFNeighborCnt.
+; If the wall is a passage (not PF_TREE):
+;   increments wPFPassCount.
+; Preserves B, C.
+; ============================================================
+PFScanWall:
+    push bc
+    ; wall coords = (curCol + nCol + 1, curRow + nRow + 1)
+    ld a, [wBuffer + wPFCellCol]
+    add a, c
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFCellRow]
+    add a, b
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock        ; A = wall block; BC restored via push/pop bc
+    pop bc                  ; B=nRow, C=nCol restored
+    cp PF_TREE
+    jr z, .treeWall
+    ; Passage exists — count it
+    ld a, [wBuffer + wPFPassCount]
+    inc a
+    ld [wBuffer + wPFPassCount], a
+    ret
+.treeWall
+    ; No passage — braidable neighbor, add to list
+    ld a, b
+    swap a                  ; row → high nibble
+    or c                    ; | col → packed = col | (row<<4)
+    ld e, a
+    ld a, [wBuffer + wPFNeighborCnt]
+    ld d, 0
+    ld hl, wBuffer + wPFNeighbors
+    add hl, de
+    ld a, e
+    ld [hl], a
+    ld a, [wBuffer + wPFNeighborCnt]
+    inc a
+    ld [wBuffer + wPFNeighborCnt], a
+    ret
+
+; ============================================================
+; PFScanWallPassOnly
+; Lightweight variant of PFScanWall: only counts passages (does NOT
+; populate the braidable-neighbor list). Used by PFScanForBall.
+; INPUT: B=neighbor row (0-8), C=neighbor col (0-8).
+;        wPFCellCol/Row = current cell.
+; Preserves B, C.
+; ============================================================
+PFScanWallPassOnly:
+    push bc
+    ld a, [wBuffer + wPFCellCol]
+    add a, c
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFCellRow]
+    add a, b
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock
+    pop bc
+    cp PF_TREE
+    ret z                   ; tree wall = no passage
+    ld a, [wBuffer + wPFPassCount]
+    inc a
+    ld [wBuffer + wPFPassCount], a
+    ret
+
+; ============================================================
+; PFScanCellWalls
+; Shared helper: scans all 4 walls of cell (wPFBraidCol, wPFRowJ),
+; sets wPFCellCol/Row, resets wPFPassCount and wPFNeighborCnt,
+; and calls PFScanWall for each direction.
+; After return: wPFPassCount = passage count, wPFNeighborCnt/wPFNeighbors
+; = braidable tree-wall neighbors.
+; ============================================================
+PFScanCellWalls:
+    ld a, [wBuffer + wPFBraidCol]
+    ld [wBuffer + wPFCellCol], a
+    ld a, [wBuffer + wPFRowJ]
+    ld [wBuffer + wPFCellRow], a
+    xor a
+    ld [wBuffer + wPFNeighborCnt], a
+    ld [wBuffer + wPFPassCount], a
+    ; North (j > 0): B=j-1, C=i
+    ld a, [wBuffer + wPFRowJ]
+    and a
+    jr z, .scwNoN
+    dec a
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    ld c, a
+    call PFScanWall
+.scwNoN
+    ; South (j < 8): B=j+1, C=i
+    ld a, [wBuffer + wPFRowJ]
+    cp 8
+    jr nc, .scwNoS
+    inc a
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    ld c, a
+    call PFScanWall
+.scwNoS
+    ; West (i > 0): B=j, C=i-1
+    ld a, [wBuffer + wPFBraidCol]
+    and a
+    jr z, .scwNoW
+    ld a, [wBuffer + wPFRowJ]
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    dec a
+    ld c, a
+    call PFScanWall
+.scwNoW
+    ; East (i < 8): B=j, C=i+1
+    ld a, [wBuffer + wPFBraidCol]
+    cp 8
+    jr nc, .scwNoE
+    ld a, [wBuffer + wPFRowJ]
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    inc a
+    ld c, a
+    call PFScanWall
+.scwNoE
+    ret
+
+; ============================================================
+; PFBraidPass
+; Post-maze pass: carve extra passages through dead-end cells to
+; create loops (hybrid braid). Dead end = exactly 1 passage.
+; Braid rate controlled by the cp value (38 = ~15%, 0 = 100%).
+; ============================================================
+PFBraidPass:
+    xor a
+    ld [wBuffer + wPFRowJ], a
+
+.bpRowLoop
+    xor a
+    ld [wBuffer + wPFBraidCol], a
+
+.bpColLoop
+    call PFScanCellWalls            ; sets pass/neighbor counts for this cell
+
+    ld a, [wBuffer + wPFPassCount]
+    cp 1
+    jr nz, .bpNext
+    ld a, [wBuffer + wPFNeighborCnt]
+    and a
+    jr z, .bpNext
+
+    ; 100% braid rate for testing — restore "call Random / cp 38 / jr nc, .bpNext" for live 15%
+    call PFCarveToNeighbor
+    ; Restore wPFCellCol/Row (PFCarveToNeighbor advances them)
+    ld a, [wBuffer + wPFBraidCol]
+    ld [wBuffer + wPFCellCol], a
+    ld a, [wBuffer + wPFRowJ]
+    ld [wBuffer + wPFCellRow], a
+
+.bpNext
+    ld a, [wBuffer + wPFBraidCol]
+    inc a
+    ld [wBuffer + wPFBraidCol], a
+    cp PF_CELL_W
+    jp nz, .bpColLoop
+
+    ld a, [wBuffer + wPFRowJ]
+    inc a
+    ld [wBuffer + wPFRowJ], a
+    cp PF_CELL_H
+    jp nz, .bpRowLoop
+    ret
+
+; ============================================================
+; PFAbs
+; Duplicate of cave's PCAbs (custom_functions/procedural_cave_gen.asm) —
+; too tiny to justify a farcall. INPUT/OUTPUT: a = |a| (signed byte).
+; ============================================================
+PFAbs:
+    bit 7, a
+    ret z
+    cpl
+    inc a
+    ret
+
+; ============================================================
+; PFScanForBall
+; Places 4 pokeballs in distinct, well-spaced dead-end cells, mirroring
+; cave's PCPlaceWildAreaItems (spacing + item-dedup with bounded retry).
+; Adapted to the maze's sparse dead-end cells instead of cave's dense
+; floor-block scan:
+;   Phase 1: scan all 81 cells, collect up to PF_MAX_DEADENDS dead-end
+;            (exactly 1 passage) cell coords into sProcForestGenScratch.
+;   Phase 2: pick 4 candidates from that list, retrying (bounded budget)
+;            on spacing failure (Chebyshev < PF_ITEM_MIN_DIST in CELL
+;            units) or exact item-ID duplicate, exactly as cave does.
+; Final ball block coords are copied to sProcForestGenScratch[0..7]
+; (Y,X... no — X,Y interleaved, matching the bake step's existing read)
+; so they SURVIVE the PFBraidPass call that follows (which never touches
+; sProcForestGenScratch), and rolled items are written to wRogueItem/2/3/4.
+; Must be called BEFORE PFBraidPass (braid removes dead ends, shrinking
+; the candidate pool available here).
+; ============================================================
+PFScanForBall:
+    ; --- Phase 1: collect dead-end candidates ---
+    xor a
+    ld [wBuffer + wPFCandCount], a
+    ld [wBuffer + wPFRowJ], a
+
+.sfbRow
+    xor a
+    ld [wBuffer + wPFBraidCol], a
+
+.sfbCol
+    ld a, [wBuffer + wPFBraidCol]
+    ld [wBuffer + wPFCellCol], a
+    ld a, [wBuffer + wPFRowJ]
+    ld [wBuffer + wPFCellRow], a
+    xor a
+    ld [wBuffer + wPFPassCount], a
+
+    ; Scan N/S/W/E passage counts (PFScanWallPassOnly only touches
+    ; wPFCellCol/Row, wPFCurX/Y, wPFPassCount — confirmed safe alongside
+    ; the wPFCandCount/SpaceRetry/ItemRetry/AcceptedXY aliases below)
+    ld a, [wBuffer + wPFRowJ]
+    and a
+    jr z, .sfbNoN
+    dec a
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    ld c, a
+    call PFScanWallPassOnly
+.sfbNoN
+    ld a, [wBuffer + wPFRowJ]
+    cp 8
+    jr nc, .sfbNoS
+    inc a
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    ld c, a
+    call PFScanWallPassOnly
+.sfbNoS
+    ld a, [wBuffer + wPFBraidCol]
+    and a
+    jr z, .sfbNoW
+    ld a, [wBuffer + wPFRowJ]
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    dec a
+    ld c, a
+    call PFScanWallPassOnly
+.sfbNoW
+    ld a, [wBuffer + wPFBraidCol]
+    cp 8
+    jr nc, .sfbNoE
+    ld a, [wBuffer + wPFRowJ]
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    inc a
+    ld c, a
+    call PFScanWallPassOnly
+.sfbNoE
+
+    ld a, [wBuffer + wPFPassCount]
+    cp 1
+    jr nz, .sfbCollectNext     ; not a dead end
+
+    ; Dead end — store if the candidate list still has room
+    ld a, [wBuffer + wPFCandCount]
+    cp PF_MAX_DEADENDS
+    jr nc, .sfbCollectNext    ; list full — skip (mild bias, list is generous)
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, [wBuffer + wPFRowJ]
+    swap a
+    ld b, a
+    ld a, [wBuffer + wPFBraidCol]
+    or b
+    ld [hl], a                 ; packed col | row<<4
+    ld a, [wBuffer + wPFCandCount]
+    inc a
+    ld [wBuffer + wPFCandCount], a
+
+.sfbCollectNext
+    ld a, [wBuffer + wPFBraidCol]
+    inc a
+    ld [wBuffer + wPFBraidCol], a
+    cp PF_CELL_W
+    jp nz, .sfbCol
+
+    ld a, [wBuffer + wPFRowJ]
+    inc a
+    ld [wBuffer + wPFRowJ], a
+    cp PF_CELL_H
+    jp nz, .sfbRow
+
+    ; --- Phase 2: pick 4 balls with spacing + item-dedup ---
+    ld a, [wBuffer + wPFCandCount]
+    and a
+    jp z, .sfbAllFallback      ; no dead ends at all (very unlikely on an
+                               ; 81-cell maze) — default every ball to entrance
+
+    xor a
+    ld [wBuffer + wPFBallIdx], a
+
+.sfbPickBall
+    ld a, 20
+    ld [wBuffer + wPFSpaceRetry], a
+
+.sfbSpaceRetry
+    ; Pick a random candidate, decode to block (X,Y), stash in wPFCurX/Y.
+    ld a, [wBuffer + wPFCandCount]
+    ld c, a
+    call Rangerandom           ; a = 0..candCount-1
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, [hl]                 ; packed col|row<<4
+    ld b, a
+    and $0F                    ; col
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a  ; candidate block X = 2*col+1
+    ld a, b
+    swap a
+    and $0F                    ; row
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a  ; candidate block Y = 2*row+1
+
+    ; Spacing check (Chebyshev, CELL units == /2 of block distance, but
+    ; comparing raw block deltas against PF_ITEM_MIN_DIST in cell-equivalent
+    ; block units is fine since dead-end cells are always odd block coords
+    ; 2 apart at minimum anyway — PF_ITEM_MIN_DIST is tuned in cell units).
+    ld a, [wBuffer + wPFBallIdx]
+    and a
+    jr z, .sfbSpaceOK          ; ball 0 — nothing to compare against yet
+    ld b, a                    ; b = number of earlier balls to check
+    ld hl, wBuffer + wPFAcceptedXY
+.sfbSpaceCheckLoop
+    ld a, [wBuffer + wPFCurX]
+    sub [hl]
+    call PFAbs
+    ld c, a                    ; c = |dx| (block units)
+    inc hl
+    ld a, [wBuffer + wPFCurY]
+    sub [hl]
+    call PFAbs                 ; a = |dy|
+    inc hl
+    cp c
+    jr nc, .sfbHaveMax
+    ld a, c
+.sfbHaveMax
+    ; convert block-unit Chebyshev to cell units (/2) for the PF_ITEM_MIN_DIST
+    ; comparison — cells are 2 blocks apart, so block-delta/2 == cell-delta
+    srl a
+    cp PF_ITEM_MIN_DIST
+    jr c, .sfbSpaceFail
+    dec b
+    jr nz, .sfbSpaceCheckLoop
+.sfbSpaceOK
+    jr .sfbAcceptPos
+.sfbSpaceFail
+    ld a, [wBuffer + wPFSpaceRetry]
+    dec a
+    ld [wBuffer + wPFSpaceRetry], a
+    jr nz, .sfbSpaceRetry
+    ; budget exhausted — accept the last candidate anyway (matches cave)
+.sfbAcceptPos
+    ld a, [wBuffer + wPFBallIdx]
+    add a, a
+    ld e, a
+    ld d, 0
+    ld hl, wBuffer + wPFAcceptedXY
+    add hl, de
+    ld a, [wBuffer + wPFCurX]
+    ld [hli], a
+    ld a, [wBuffer + wPFCurY]
+    ld [hl], a
+
+    ; --- Roll this ball's item, rejecting an exact duplicate of any
+    ; already-placed ball's item (same retry-then-accept shape as cave). ---
+    ld a, 8
+    ld [wBuffer + wPFItemRetry], a
+.sfbRollItem
+    ld c, 4
+    call Rangerandom
+    ld [wRogueDoorSelection], a
+    farcall Random_Item_Selection   ; result -> wRogueItem
+    ld a, [wBuffer + wPFBallIdx]
+    and a
+    jr z, .sfbItemOK           ; ball 0 — nothing to compare against
+    ld b, a
+    ld hl, wBuffer + wPFItemTemp
+    ld a, [wRogueItem]
+    ld c, a
+.sfbItemDupCheck
+    ld a, [hli]
+    cp c
+    jr z, .sfbItemDup
+    dec b
+    jr nz, .sfbItemDupCheck
+    jr .sfbItemOK
+.sfbItemDup
+    ld a, [wBuffer + wPFItemRetry]
+    dec a
+    ld [wBuffer + wPFItemRetry], a
+    jr nz, .sfbRollItem
+    ; budget exhausted — accept the duplicate rather than loop forever
+.sfbItemOK
+    ld a, [wBuffer + wPFBallIdx]
+    ld c, a
+    ld b, 0
+    ld hl, wBuffer + wPFItemTemp
+    add hl, bc
+    ld a, [wRogueItem]
+    ld [hl], a                 ; itemTemp[ball_idx] = candidate
+
+    ld a, [wBuffer + wPFBallIdx]
+    inc a
+    ld [wBuffer + wPFBallIdx], a
+    cp 4
+    jp nz, .sfbPickBall
+
+    ; All 4 picked — copy accepted (X,Y) pairs into sProcForestGenScratch[0..7]
+    ; (the candidate list there is no longer needed) so they survive the
+    ; upcoming PFBraidPass call untouched, and write items to wRogueItem/2/3/4.
+    ld hl, wBuffer + wPFAcceptedXY
+    ld de, sProcForestGenScratch
+    ld b, 8
+.sfbCopyXY
+    ld a, [hli]
+    ld [de], a
+    inc de
+    dec b
+    jr nz, .sfbCopyXY
+    jr .sfbWriteItems
+
+.sfbAllFallback
+    ; No dead ends found at all — default all 4 balls to the entrance block.
+    ld hl, sProcForestGenScratch
+    ld b, 4
+.sfbFallbackLoop
+    ld a, 9
+    ld [hli], a
+    ld a, 17
+    ld [hli], a
+    dec b
+    jr nz, .sfbFallbackLoop
+    ; Roll 4 items with the same dedup logic, no position spacing needed.
+    xor a
+    ld [wBuffer + wPFBallIdx], a
+.sfbFallbackItemLoop
+    ld a, 8
+    ld [wBuffer + wPFItemRetry], a
+.sfbFallbackRollItem
+    ld c, 4
+    call Rangerandom
+    ld [wRogueDoorSelection], a
+    farcall Random_Item_Selection
+    ld a, [wBuffer + wPFBallIdx]
+    and a
+    jr z, .sfbFallbackItemOK
+    ld b, a
+    ld hl, wBuffer + wPFItemTemp
+    ld a, [wRogueItem]
+    ld c, a
+.sfbFallbackDupCheck
+    ld a, [hli]
+    cp c
+    jr z, .sfbFallbackDup
+    dec b
+    jr nz, .sfbFallbackDupCheck
+    jr .sfbFallbackItemOK
+.sfbFallbackDup
+    ld a, [wBuffer + wPFItemRetry]
+    dec a
+    ld [wBuffer + wPFItemRetry], a
+    jr nz, .sfbFallbackRollItem
+.sfbFallbackItemOK
+    ld a, [wBuffer + wPFBallIdx]
+    ld c, a
+    ld b, 0
+    ld hl, wBuffer + wPFItemTemp
+    add hl, bc
+    ld a, [wRogueItem]
+    ld [hl], a
+    ld a, [wBuffer + wPFBallIdx]
+    inc a
+    ld [wBuffer + wPFBallIdx], a
+    cp 4
+    jr nz, .sfbFallbackItemLoop
+
+.sfbWriteItems
+    ld hl, wBuffer + wPFItemTemp
+    ld de, wRogueItem
+    ld b, 4
+.sfbWriteItemsLoop
+    ld a, [hli]
+    ld [de], a
+    inc de
+    inc de                     ; skip high byte of each dw slot
+    dec b
+    jr nz, .sfbWriteItemsLoop
+    ret
+
+; ============================================================
+; PFRollMonClass
+; Duplicate of PCRollMonClass (custom_functions/procedural_cave_gen.asm) —
+; NOT farcall'd because it takes its rarity bump via register B, and
+; farcall/Bankswitch clobbers B for the target bank number before the
+; farcall'd function ever runs. Per the project's cross-bank-call lesson:
+; duplicate tiny primitives into this bank rather than fight that.
+; INPUT:  b = extra rarity bump (0 = wild baseline, higher = rarer, e.g. boss)
+; OUTPUT: c = class 1-4. Clobbers a, d (b preserved).
+; ============================================================
+PFRollMonClass:
+    ld a, [wBattleCount]
+    cp 90
+    jr c, .noClamp
+    ld a, 89
+.noClamp
+    ld d, 0
+.divLoop
+    cp 10
+    jr c, .gotRound
+    sub 10
+    inc d
+    jr .divLoop
+.gotRound
+    ld a, d
+    add a, a
+    add a, a
+    add a, a            ; round * 8
+    add a, b            ; + bump
+    jr nc, .noShiftClamp
+    ld a, 255
+.noShiftClamp
+    ld d, a
+    call Random         ; a = 0-255
+    add a, d
+    jr nc, .noEffClamp
+    ld a, 255
+.noEffClamp
+    ld c, 1
+    cp 205
+    jr c, .done
+    inc c
+    cp 243
+    jr c, .done
+    inc c
+    cp 253
+    jr c, .done
+    inc c
+.done
+    ret
+
+; ============================================================
+; PFRollBoss
+; Mirrors PCRollBoss (cave). Rolls the forest boss species + overworld
+; sprite category, stores both to SRAM. Called from PFPreloadForest at
+; Pallet Town entry while SRAM is open.
+;
+; farcall return-value rules (all bank 7, learned the hard way):
+;   PCGetBossLevel    → returns via wCurEnemyLevel (memory). farcall-safe.
+;   Random_Pokemon_Selection → returns species in D. Bankswitch preserves
+;                       D/E/H/L, so D survives. farcall-safe.
+;   PCGetBossOWSprite → returns in A. farcall CLOBBERS A with the restored
+;                       bank number → NOT farcall-safe. Use the bank-7
+;                       wrapper PFStoreBossOWSpriteToSRAM (writes SRAM itself).
+;   PFRollMonClass    → takes rarity bump in B (input). farcall clobbers B
+;                       before the callee runs → duplicated into THIS bank.
+; ============================================================
+PFRollBoss:
+    farcall PCGetBossLevel           ; sets wCurEnemyLevel (mirrors cave's order)
+    ld b, 48                         ; boss rarity bump, matches cave's PCRollBoss
+    call PFRollMonClass              ; c = rarity class (same bank, plain call OK)
+    farcall Random_Pokemon_Selection ; -> d = species (d survives farcall)
+    ld a, d
+    ld [wRoguePokemon1], a
+    ld [sProcForestBossSpecies], a
+    ; Store the OW sprite category. Must NOT `farcall PCGetBossOWSprite` —
+    ; that returns the sprite in A, and farcall's Bankswitch clobbers A with
+    ; the restored bank number on return (was the "boss = gentleman" bug).
+    ; The bank-7 wrapper stores it straight to SRAM, avoiding any A-return.
+    farcall PFStoreBossOWSpriteToSRAM
+    ret
+
+; ============================================================
 ; PFPreloadForest
 ; Called at Pallet Town entry. Resets sProcForestBaked so the next
 ; forest visit generates a fresh maze instead of fast-blitting the
@@ -734,6 +1354,46 @@ PFPreloadForest::
     xor a
     ld [rRAMB], a
     ld [sProcForestBaked], a        ; 0 = needs fresh generation
+    ld [sProcForestItemGot], a      ; clear all ball-collected bits
+    ld [sProcForestAlgoForce], a    ; 0 = random; set in BGB after this runs to force an algo
+
+    ; Roll the forest's OWN boss (previously this read wRoguePokemon1 as if
+    ; PCRollBoss — the CAVE's roller — had already set it for the forest;
+    ; that was a bug: it grabbed the cave's leftover species/sprite instead
+    ; of an independent roll).
+    call PFRollBoss
+
+    ; Set the forest's wild-battle budget for this run: 10 + wBattleCount/5,
+    ; saturating at 255 (identical formula to cave's PCPreloadCave).
+    ld a, [wBattleCount]
+    ld b, 0
+.budgetDivLoop
+    cp 5
+    jr c, .budgetGotQuotient
+    sub 5
+    inc b
+    jr .budgetDivLoop
+.budgetGotQuotient
+    ld a, b
+    add a, 10
+    jr nc, .budgetNoClamp
+    ld a, 255
+.budgetNoClamp
+    ld [wProcForestWildBudget], a
+
+    ; Reset run events so sprites re-appear on next visit. Reuses the cave's
+    ; EVENT_PC_BUDGET_ENDED/EVENT_PC_CALMED_SHOWN/EVENT_BEAT_PC_BOSS for the
+    ; forest's own systems (calmed message, boss-defeated) — safe because
+    ; cave/cemetery/forest never run concurrently and this preload always
+    ; resets them fresh before any of the three stages could read them.
+    ; EVENT_BEAT_PC_BOSS in particular MUST be reused (not a new forest-only
+    ; event) since the trainer battle system requires it bit-aligned to
+    ; %8==1 for a slot-1 trainer, and that alignment was already spent here.
+    ResetEvent EVENT_PF_ITEM_GOT
+    ResetEvent EVENT_BEAT_PC_BOSS
+    ResetEvent EVENT_ENTER_ROOM
+    ResetEvent EVENT_PC_BUDGET_ENDED
+    ResetEvent EVENT_PC_CALMED_SHOWN
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -773,12 +1433,17 @@ PFinalizeForest::
 
     ; === First visit: generate directly into wOverworldMap ===
     ; (LoadTileBlockMap already filled it with all trees)
-
-    ; close SRAM — generation writes to WRAM (wOverworldMap), not SRAM
-    ld a, BMODE_SIMPLE
-    ld [rBMODE], a
-    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-    ld [rRAMG], a
+    ;
+    ; SRAM is left OPEN through the entire generation phase (algorithm, ball
+    ; scan, braid) on purpose: RAMG/BMODE/RAMB only gate $A000-$BFFF, they have
+    ; ZERO effect on WRAM ($C000-$DFFF) reads/writes, so wOverworldMap and
+    ; wBuffer work identically whether SRAM is open or not. Keeping it open
+    ; lets PFBacktracker and PFScanForBall use sProcForestGenScratch (SRAM)
+    ; directly instead of clobbering wOverworldMap's live border padding
+    ; (confirmed corruption hazard — see their header comments). farcall/
+    ; Bankswitch only touches rROMB, never rRAMG/rRAMB/rBMODE, so this is also
+    ; safe across the farcall Random_Item_Selection / farcall PCGetBossLevel
+    ; calls later in this function.
 
     ; Point PFWriteBlock at wOverworldMap
     ld a, LOW(wOverworldMap + PF_BASE)
@@ -816,6 +1481,14 @@ PFinalizeForest::
     call PFBacktracker
 .algosDone
 
+    ; Phase 4: scan for a dead-end cell to place the pokeball (BEFORE braid
+    ; removes dead ends). Stores block coords in wBuffer+wPFBallX/Y,
+    ; rolls item into wRogueItem.
+    call PFScanForBall
+
+    ; Phase 3: braid dead ends to add loops
+    call PFBraidPass
+
     ; Roll exit column i (0-8), write block 88, save i in B for later.
     ; B is preserved by PFWriteBlock (push/pop bc). E is NOT preserved — it
     ; gets clobbered by the row-offset load inside PFWriteBlock.
@@ -831,16 +1504,61 @@ PFinalizeForest::
     call PFWriteBlock       ; B = i preserved via push bc / pop bc ✓
 
     ; === Bake: copy wOverworldMap → sProcForestStagingBuffer, then mark baked ===
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ld a, BMODE_ADVANCED
-    ld [rBMODE], a
-    xor a
-    ld [rRAMB], a
+    ; SRAM is already open (kept open since the top of the first-visit path).
 
-    ; Save exit column to SRAM now (bake loop will clobber B)
+    ; Save exit column and boss exit I (B preserved from Rangerandom earlier)
     ld a, b
     ld [sProcForestExitI], a
+
+    ; Save 4 ball positions (from sProcForestGenScratch[0..7], block X,Y pairs)
+    ; as tile coords (block*2+4) in Y,X order to match sProcForestBallXY/
+    ; sProcCaveBallXY's Y0,X0,Y1,X1,... layout.
+    ld hl, sProcForestBallXY
+    ld de, sProcForestGenScratch  ; [0]=X0,[1]=Y0,[2]=X1,[3]=Y1...
+    ld b, 4
+.pfbBallSave
+    ld a, [de]                  ; block X
+    inc de
+    add a, a
+    add a, 4                    ; tile X = block*2+4
+    ld c, a                     ; save tile X for after Y is written
+    ld a, [de]                  ; block Y
+    inc de
+    add a, a
+    add a, 4                    ; tile Y = block*2+4
+    ld [hli], a                 ; store tile Y first
+    ld a, c
+    ld [hli], a                 ; then tile X
+    dec b
+    jr nz, .pfbBallSave
+
+    ; Roll 4 items into sProcForestBallItems
+    ; (mirrors PCPlaceWildAreaItems' temp-buffer approach: roll 4, write after)
+    ld hl, wBuffer + wPFBraidCol ; reuse wBuffer temp space [19..22]
+    ld b, 4
+.pfbItemRoll
+    ld c, 4
+    push hl
+    push bc
+    call Rangerandom
+    ld [wRogueDoorSelection], a
+    farcall Random_Item_Selection
+    pop bc
+    pop hl
+    ld a, [wRogueItem]
+    ld [hli], a                 ; wBuffer[19], [20], [21], [22]
+    dec b
+    jr nz, .pfbItemRoll
+    ; Copy from wBuffer[19..22] to sProcForestBallItems
+    ld de, sProcForestBallItems
+    ld hl, wBuffer + wPFBraidCol
+    ld b, 4
+.pfbItemCopy
+    ld a, [hli]
+    ld [de], a
+    inc de
+    dec b
+    jr nz, .pfbItemCopy
 
     ld hl, wOverworldMap + PF_BASE
     ld de, sProcForestStagingBuffer + PF_BASE
@@ -920,25 +1638,121 @@ PFinalizeForest::
     ld [rRAMG], a
 
 .patchWarp
-    ; Patch wWarpEntries entries 1 and 2 with the exit tile coords.
-    ; Exit block at logical (2i+1, 0): left tile=(4i+2,0), right tile=(4i+3,0).
-    ; wWarpEntries format per entry: [Y, X, map, warpID] = 4 bytes.
-    ; B = i (0-8) saved before SRAM was closed.
-    ld a, b                         ; i
-    add a, a                        ; 2i
-    add a, a                        ; 4i
-    add a, 2                        ; 4i+2 = left tile X
-    ld c, a                         ; c = left tile X
-    ld hl, wWarpEntries + 4         ; entry 1
+    ; Patch exit warp entries 1 and 2 (left/right tiles of exit block).
+    ld a, b                         ; exitI (saved before SRAM closed)
+    add a, a                        ; 2*exitI
+    add a, a                        ; 4*exitI
+    add a, 2                        ; 4*exitI+2 = left tile X
+    ld c, a
+    ld hl, wWarpEntries + 4
     xor a
     ld [hli], a                     ; entry1 Y = 0
     ld a, c
-    ld [hli], a                     ; entry1 X = 4i+2
-    inc hl                          ; skip map byte
-    inc hl                          ; skip warpID byte  — now at entry 2
+    ld [hli], a                     ; entry1 X = 4*exitI+2
+    inc hl
+    inc hl
     xor a
     ld [hli], a                     ; entry2 Y = 0
     ld a, c
-    inc a                           ; 4i+3 = right tile X
-    ld [hl], a                      ; entry2 X = 4i+3
+    inc a
+    ld [hl], a                      ; entry2 X = 4*exitI+3
+
+    ; Re-open SRAM to read ball positions, boss species, item-got mask
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a
+
+    ; Restore wRoguePokemon1 (may have been clobbered since Pallet Town)
+    ld a, [sProcForestBossSpecies]
+    ld [wRoguePokemon1], a
+
+    ; Boss sprite: slot 1 = wSprite01. Exit cell = block (2*exitI+1, 1).
+    ; tile = block*2+4 matching cave's PCPlaceBoss formula.
+    ld a, [sProcForestExitI]
+    ld b, a                         ; b = exitI (reload; B may have changed)
+    add a, a                        ; 2*exitI
+    add a, a                        ; 4*exitI
+    add a, 2                        ; 4*exitI+2
+    add a, 4                        ; +4 = tile X (block*2+4 formula)
+    ld [wSprite01StateData2MapX], a
+    ld a, 1*2+4                     ; exit cell block_y=1 → 1*2+4=6
+    ld [wSprite01StateData2MapY], a
+
+    ; Set boss species/level in wMapSpriteExtraData (slot 1 = offset 0)
+    farcall PCGetBossLevel          ; bank 7 — must farcall from bank 6
+    ld hl, wMapSpriteExtraData + 0
+    ld a, [wRoguePokemon1]
+    ld [hli], a
+    ld a, [wCurEnemyLevel]
+    set 7, a                        ; OW_POKEMON bit
+    ld [hl], a
+
+    ; Pokeballs: slots 2-5 = wSprite01StateData2MapY + 16*slot
+    ; Restore from sProcForestBallXY (Y0,X0,Y1,X1,...) and items
+    ld hl, sProcForestBallXY
+    ld de, wSprite01StateData2MapY + 16
+    ld b, 4
+.pfbRestoreXY
+    ld a, [hli]                     ; tile Y
+    ld [de], a
+    inc de
+    ld a, [hli]                     ; tile X
+    ld [de], a
+    ld a, e
+    add a, 15                       ; advance by 15 → next slot MapY (+16 total)
+    ld e, a
+    jr nc, .pfbNoCarryXY
+    inc d
+.pfbNoCarryXY
+    dec b
+    jr nz, .pfbRestoreXY
+
+    ; Restore ball items to wRogueItem..+6 (2 bytes/slot, low = ID)
+    ld hl, sProcForestBallItems
+    ld de, wRogueItem
+    ld b, 4
+.pfbRestoreItem
+    ld a, [hli]
+    ld [de], a
+    inc de
+    inc de
+    dec b
+    jr nz, .pfbRestoreItem
+
+    ; Read item-got bitmask, close SRAM
+    ld a, [sProcForestItemGot]
+    ld b, a
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+
+    ; Hide boss if already defeated (EVENT_BEAT_PC_BOSS, reused — see PFRollBoss)
+    CheckEvent EVENT_BEAT_PC_BOSS
+    jr z, .pfbBossShown
+    ld a, $FF
+    ld [wSprite01StateData2MapY], a
+.pfbBossShown
+
+    ; Hide each collected ball (bit N of b = ball N)
+    ld hl, wSprite01StateData2MapY + 16
+    ld c, 4
+.pfbHideLoop
+    bit 0, b
+    jr z, .pfbNotCollected
+    ld a, $FF
+    ld [hl], a
+.pfbNotCollected
+    srl b
+    ld a, l
+    add a, 16
+    ld l, a
+    jr nc, .pfbHideNoCarry
+    inc h
+.pfbHideNoCarry
+    dec c
+    jr nz, .pfbHideLoop
     ret

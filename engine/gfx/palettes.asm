@@ -145,6 +145,11 @@ SetPal_Overworld:
 	cp CAVERN
 	jr z, .caveOrBruno
 	ldh a, [hCurMap]
+	cp PROCEDURAL_FOREST
+	jr z, .procForest    ; force a green forest palette; without this the
+	                     ; procedural forest ($F2, dungeon-range map ID) falls
+	                     ; through to wLastMap = Pallet Town = PAL_PALLET (blue).
+	                     ; Mirrors how CAVERN is special-cased to PAL_CAVE.
 	cp FIRST_INDOOR_MAP
 	jr c, .townOrRoute
 	cp CERULEAN_CAVE_2F
@@ -174,6 +179,9 @@ SetPal_Overworld:
 	jr .town
 .caveOrBruno
 	ld a, PAL_CAVE - 1
+	jr .town
+.procForest
+	ld a, PAL_VIRIDIAN - 1  ; +1 in .town → PAL_VIRIDIAN (the green forest palette)
 	jr .town
 .Lorelei
 	xor a

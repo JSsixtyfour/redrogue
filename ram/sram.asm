@@ -44,9 +44,30 @@ sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED ti
 sProcForestStagingBuffer:: ds 600  ; same as cave: stride layout needs PF_BASE+(PF_SIZE-1)*PF_STRIDE+PF_SIZE = 595
 sProcForestExitI:: db              ; 0-8: which top-row cell column is the exit
 sProcForestBaked:: db              ; non-zero = buffer holds finished baked maze
+sProcForestBossSpecies:: db        ; wRoguePokemon1 saved at Pallet Town entry
+sProcForestBossSprite:: db         ; SPRITE_* overworld category (PCGetBossOWSprite),
+                                   ; patched into wSprite01's PICTUREID BEFORE
+                                   ; InitMapSprites loads tiles — same pattern as
+                                   ; cave's sProcCaveStagingBossSprite. Without this,
+                                   ; water species load land-sprite tiles/palette
+                                   ; (confirmed bug: Tentacool showed as land monster).
+sProcForestBallXY:: ds 8           ; Y0,X0,Y1,X1,Y2,X2,Y3,X3 in tile coords (block*2+4)
+sProcForestBallItems:: ds 4        ; item ID per pokeball
+sProcForestItemGot:: db            ; bit N = pokeball N collected this run
 ; Debug: set to 1-4 in debugger to force specific algo (0=random).
 ; 1=Sidewinder 2=BinaryTree 3=Backtracker 4=HuntAndKill. Persists in SRAM.
 sProcForestAlgoForce:: db
+; Generation-time scratch — NEVER use wOverworldMap's border padding for this
+; (confirmed hazard: corrupts the live map, causes trainer-! on pokeballs, crashes).
+; Dual-purpose, safe because these never run concurrently:
+;   - PFBacktracker: 81-byte packed (col|row<<4) cell coordinate stack
+;   - PFScanForBall: 8 bytes ball X/Y + 4 bytes per-ball reservoir counters (runs
+;     AFTER the algorithm phase, so reusing Backtracker's stack space is safe)
+; SRAM stays open (RAMG_SRAM_ENABLE) for the whole first-visit generation window
+; specifically so this buffer is reachable without an open/close dance — SRAM
+; enable only gates $A000-$BFFF, it has zero effect on WRAM (wOverworldMap,
+; wBuffer), so leaving it open during algorithm execution is safe.
+sProcForestGenScratch:: ds 81
                                    ; (autotile/decor/river/ladder already applied),
                                    ; so re-entry just blits instead of re-running
                                    ; the whole pipeline

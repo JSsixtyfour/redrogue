@@ -909,6 +909,14 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
     const EVENT_PC_CALMED_SHOWN   ; set after "calmed" message displayed
     const EVENT_PC_CEM_BUDGET_ENDED ; cemetery: budget hit 0
     const EVENT_PC_CEM_CALMED_SHOWN ; cemetery: calmed message shown
+    const EVENT_PF_ITEM_GOT         ; forest: pokeball collected this run
+    ; Forest boss-defeated reuses EVENT_BEAT_PC_BOSS (cave's event, already
+    ; %8==1 bit-aligned for a slot-1 trainer, and already reused by cemetery
+    ; 4 too) — never concurrent with cave/cemetery, and PFRollBoss resets it
+    ; independently at Pallet Town entry. Adding a forest-specific event here
+    ; would need its own %8==1 slot, forcing a new WRAM byte with zero slack
+    ; to spare (confirmed: WRAM0 overflowed by exactly 1 byte the first time
+    ; this was tried).
 
 ; End of events
 DEF NUM_EVENTS EQU const_value

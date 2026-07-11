@@ -943,6 +943,14 @@ _NoRunningText::
 	cont "trainer battle!"
 	prompt
 
+; Procedural areas (cave/forest) block running from WILD battles too, but
+; those aren't trainer battles — use a generic message.
+_ProcNoRunningText::
+	text "No! There's no"
+	line "running from"
+	cont "this battle!"
+	prompt
+
 _GotAwayText::
 	text "Got away safely!"
 	prompt

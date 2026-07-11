@@ -214,6 +214,8 @@ EndTrainerBattle::
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1     ; boss sprite is managed by the offer script, not here
 	jr z, .skipRemoveSprite
+	cp PROCEDURAL_FOREST     ; forest boss too — offer script controls its visibility
+	jr z, .skipRemoveSprite
 	cp POKEMON_TOWER_7F
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
 	ld hl, wToggleableObjectList

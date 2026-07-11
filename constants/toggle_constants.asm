@@ -390,6 +390,13 @@ ENDM
 	; block in data/maps/toggleable_objects.asm even though the hardcoded
 	; bypass never actually reads it - assert_table_length enforces every
 	; toggle const has a matching declared state.
+	toggle_consts_for PROCEDURAL_FOREST
+	;const TOGGLE_FOREST_BOSS         ; slot 1 = boss
+	;const TOGGLE_FOREST_POKEBALL_1   ; slot 2
+	;const TOGGLE_FOREST_POKEBALL_2   ; slot 3
+	;const TOGGLE_FOREST_POKEBALL_3   ; slot 4
+	;const TOGGLE_FOREST_POKEBALL_4   ; slot 5
+
 	toggle_consts_for PROCEDURAL_CAVE_1
     const TOGGLE_WILD_AREA_BOSS       ; slot 1 (first object_event)
 	const TOGGLE_WILD_AREA_POKEBALL_1 ; slot 2

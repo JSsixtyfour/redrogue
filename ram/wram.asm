@@ -2018,7 +2018,7 @@ wBillsHouseCurScript:: db
 wRoute5GateCurScript:: db
 wPowerPlantCurScript:: ; overload
 wRoute7GateCurScript:: db
-	ds 1
+	;ds 1
 wSSAnne2FCurScript:: db
 wSeafoamIslandsB3FCurScript:: db
 wRoute23CurScript:: db
@@ -2035,6 +2035,7 @@ wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
 wProceduralCave1CurScript:: db
 wProceduralCemetary4CurScript:: db
+wProceduralForestCurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2121,6 +2122,11 @@ wProcCaveWildBudget::
 NEXTU
 
 wProcCemWildBudget::  ; per-floor wild battle budget for cemetery (same mechanic as cave)
+
+NEXTU
+
+wProcForestWildBudget:: ; forest wild battle budget (same mechanic as cave); never
+                        ; concurrent with cave/cemetery, safe to share this byte
 
 ENDU
 

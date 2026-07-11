@@ -100,9 +100,16 @@ IsObjectHidden:
 	ldh a, [hCurrentSpriteOffset]
 	swap a
 	ld b, a                         ; b = sprite slot number
-	; Hardcoded check for roguelike pokeball/NPC slots (6-10) on stage maps.
-	; Wild-area slots (boss=1, pokeballs=2-5) use the standard .normalCheck
-	; toggle table (toggleable_objects_for PROCEDURAL_CAVE_1) with no bypass.
+	cp 1
+	jr z, .checkMaybeRoguePG
+	cp 2
+	jr z, .checkMaybeRoguePG
+	cp 3
+	jr z, .checkMaybeRoguePG
+	cp 4
+	jr z, .checkMaybeRoguePG
+	cp 5
+    jr z, .checkMaybeRoguePG
 	cp 6
 	jr z, .checkMaybeRoguePB
 	cp 7
@@ -114,6 +121,25 @@ IsObjectHidden:
 	cp 10
 	jr z, .checkMaybeRoguePB
 	jr .normalCheck
+.checkMaybeRoguePG
+	push bc
+	farcall IsWildAreaStageMap
+	pop bc
+	jr z, .normalCheck              ; Z set = not a stage map
+	ld c, TOGGLE_WILD_AREA_BOSS  ; slot 1 = boss
+	ld a, b
+	cp 1
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_1 ; slot 2
+	cp 2
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_2 ; slot 3
+	cp 3
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_3 ; slot 4
+	cp 4
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_POKEBALL_4 ; slot 5
 .checkMaybeRoguePB
 	push bc
 	farcall IsRogueStageMap

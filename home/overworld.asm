@@ -493,8 +493,10 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
-	; Leaving the procedural cave or the last cemetery floor: +5 battles fought.
+	; Leaving the procedural cave, forest, or the last cemetery floor: +5 battles.
 	cp PROCEDURAL_CAVE_1
+	jr z, .addFive
+	cp PROCEDURAL_FOREST
 	jr z, .addFive
 	cp PROCEDURAL_CEMETARY_4
 	jr nz, .notLeavingProcArea
@@ -2367,13 +2369,20 @@ LoadMapData::
 	ld [wSpriteSetID], a
 	call LoadTextBoxTilePatterns
 	call LoadMapHeader
-	; For PROCEDURAL_CAVE_1: patch the boss sprite's PICTUREID in StateData1
-	; BEFORE InitMapSprites reads it to load tile patterns. The correct
-	; SPRITE_* constant was determined from the rolled species during
-	; PCPreloadCave (PCRollBoss) and staged in SRAM.
+	; For PROCEDURAL_CAVE_1/PROCEDURAL_FOREST: patch the boss sprite's
+	; PICTUREID in StateData1 BEFORE InitMapSprites reads it to load tile
+	; patterns. The correct SPRITE_* constant was determined from the rolled
+	; species at Pallet Town entry (PCRollBoss / PFRollBoss) and staged in
+	; SRAM. Without this, the sprite keeps its object_event default category
+	; and a water/bird/etc. species loads land-monster tiles + palette
+	; (confirmed bug: Tentacool showed as a land monster in the forest).
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
-	jr nz, .noBossSpritePatch
+	jr z, .patchCaveBoss
+	cp PROCEDURAL_FOREST
+	jr z, .patchForestBoss
+	jr .noBossSpritePatch
+.patchCaveBoss
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -2383,6 +2392,18 @@ LoadMapData::
 	ld [rRAMB], a
 	ld a, [sProcCaveStagingBossSprite]
 	ld b, a                          ; save sprite constant before closing SRAM
+	jr .closeAndPatch
+.patchForestBoss
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcForestBossSprite]
+	ld b, a
+.closeAndPatch
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE

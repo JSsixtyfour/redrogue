@@ -502,7 +502,13 @@ PCRollBoss:
 ; OUTPUT: a = SPRITE_* constant for the boss's overworld sprite
 ; Uses the same nibble-packed table as the follower branch.
 ; ============================================================
-PCGetBossOWSprite:
+PCGetBossOWSprite::
+	; Returns the sprite in A. The CAVE calls this with a plain in-bank `call`
+	; (A survives). It is NOT safe to `farcall` from another bank: farcall's
+	; Bankswitch trampoline restores the ROM bank into A on return, DESTROYING
+	; this function's A return value (was the "boss appears as gentleman" bug —
+	; the forest stored bank number 7, a gentleman-type SPRITE constant, as the
+	; boss sprite). Cross-bank callers must use PFStoreBossOWSpriteToSRAM below.
 	ld a, [wRoguePokemon1]
 	dec a                        ; 0-based index
 	ld b, a                      ; save
@@ -530,6 +536,19 @@ PCGetBossOWSprite:
 	inc h
 .noCarry2
 	ld a, [hl]
+	ret
+
+; ============================================================
+; PFStoreBossOWSpriteToSRAM
+; Bank-7 wrapper for cross-bank (forest) callers. Computes the boss
+; overworld sprite via the in-bank call (A preserved) and stores it
+; straight to SRAM, so no A-return needs to survive the farcall.
+; SRAM must already be open (RAMG_SRAM_ENABLE, bank 0) — PFPreloadForest
+; has it open when it farcalls this.
+; ============================================================
+PFStoreBossOWSpriteToSRAM::
+	call PCGetBossOWSprite       ; in-bank call, A = sprite (survives)
+	ld [sProcForestBossSprite], a
 	ret
 
 PCBossSpriteCategoryTable:
