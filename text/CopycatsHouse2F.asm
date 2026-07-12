@@ -16,14 +16,9 @@ _CopycatsHouse2FCopycatDoYouLikePokemonText::
 	prompt
 
 _CopycatsHouse2FCopycatTM31PreReceiveText::
-	text "Oh wow!"
-	line "A # DOLL!"
-
-	para "For me?"
-	line "Thank you!"
-
-	para "You can have"
-	line "this, then!"
+	text "You're fun"
+	line "let me give you"
+    cont "a gift"
 	prompt
 
 _CopycatsHouse2FCopycatReceivedTM31Text::
@@ -45,7 +40,7 @@ _CopycatsHouse2FCopycatTM31Explanation1Text::
 
 _CopycatsHouse2FCopycatTM31Explanation2Text::
 	text "<PLAYER>: Hi!"
-	line "Thanks for TM31!"
+	line "Thanks!"
 
 	para "<PLAYER>: Pardon?"
 

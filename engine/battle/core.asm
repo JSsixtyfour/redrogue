@@ -130,6 +130,32 @@ SetScrollXForSlidingPlayerBodyLeft:
 	ret
 
 StartBattle:
+	; CHALLENGE_TURN_LIMIT: reset per-battle counter, compute limit = 6 + round
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noTurnLimitInit
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_TURN_LIMIT
+	jr nz, .noTurnLimitInit
+	xor a
+	ld [wBattleTurnCount], a
+	ld a, [wBattleCount]
+	ld b, 0
+.turnLimitGetRound
+	cp 10
+	jr c, .turnLimitGotRound
+	sub 10
+	inc b
+	jr .turnLimitGetRound
+.turnLimitGotRound
+	ld a, b
+	cp 9
+	jr c, .turnLimitRoundOk
+	ld a, 8          ; cap round at 8
+.turnLimitRoundOk
+	add 6            ; limit = 6 + round
+	ld [wBattleTurnLimit], a
+.noTurnLimitInit
 	xor a
 	ld [wPartyGainExpFlags], a
 	ld [wPartyFoughtCurrentEnemyFlags], a
@@ -392,14 +418,14 @@ MainInBattleLoop:
 .playerDidNotUseCounter
 	ld a, [wEnemySelectedMove]
 	cp COUNTER
-	jr z, .playerMovesFirst ; if enemy used Counter and player didn't
+	jp z, .playerMovesFirst ; if enemy used Counter and player didn't
 .compareSpeed
 	ld de, wBattleMonSpeed ; player speed value
 	ld hl, wEnemyMonSpeed ; enemy speed value
 	ld c, $2
 	call StringCmp ; compare speed values
 	jr z, .speedEqual
-	jr nc, .playerMovesFirst ; if player is faster
+	jp nc, .playerMovesFirst ; if player is faster
 	jr .enemyMovesFirst ; if enemy is faster
 .speedEqual ; 50/50 chance for both players
 	ldh a, [hSerialConnectionStatus]
@@ -440,6 +466,12 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
+	call HandleRecoilChallenge
+	jr nz, .enemyFirstRecoilAlive
+	call TryKODefiance
+	jr z, .enemyFirstRecoilAlive
+	jp HandlePlayerMonFainted
+.enemyFirstRecoilAlive
 	call HandlePoisonBurnLeechSeed
 	jr nz, .enemyFirstPoisonPlayerAlive
 	call TryKODefiance
@@ -448,6 +480,12 @@ MainInBattleLoop:
 .enemyFirstPoisonPlayerAlive
 	call DrawHUDsAndHPBars
 	call CheckNumAttacksLeft
+	call HandleTurnLimitDrain
+	jr nz, .enemyFirstNoTurnLimitFaint
+	call TryKODefiance
+	jr z, .enemyFirstNoTurnLimitFaint
+	jp HandlePlayerMonFainted
+.enemyFirstNoTurnLimitFaint
 	jp MainInBattleLoop
 .playerMovesFirst
 	call ExecutePlayerMove
@@ -457,6 +495,12 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
+	call HandleRecoilChallenge
+	jr nz, .playerFirstRecoilAlive
+	call TryKODefiance
+	jr z, .playerFirstRecoilAlive
+	jp HandlePlayerMonFainted
+.playerFirstRecoilAlive
 	call HandlePoisonBurnLeechSeed
 	jr nz, .playerFirstPoisonPlayerAlive
 	call TryKODefiance
@@ -483,6 +527,12 @@ MainInBattleLoop:
 	jp z, HandleEnemyMonFainted
 	call DrawHUDsAndHPBars
 	call CheckNumAttacksLeft
+	call HandleTurnLimitDrain
+	jr nz, .playerFirstNoTurnLimitFaint
+	call TryKODefiance
+	jr z, .playerFirstNoTurnLimitFaint
+	jp HandlePlayerMonFainted
+.playerFirstNoTurnLimitFaint
 	jp MainInBattleLoop
 
 HandlePoisonBurnLeechSeed:
@@ -838,7 +888,7 @@ FaintEnemyPokemon:
 	ld [wBattleResult], a
 	ld a, EXP_ALL
 	ld [wCurItem], a
-	farcall IsKeyItemOwned     ; checks sKeyItemsBitfield — no carry required
+	farcall IsKeyItemActive    ; active = in bag = usable
 	push af
 	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
 
@@ -1321,6 +1371,175 @@ TryKODefiance::
 
 KODefianceActivatedText:
 	text_far _KODefianceActivatedText
+	text_end
+
+; ============================================================
+; HandleTurnLimitDrain
+; Called at end of each full battle turn when CHALLENGE_TURN_LIMIT is active.
+; Increments wBattleTurnCount. When count >= wBattleTurnLimit, drains
+; maxHP/16 (min 1) from the player's active mon. KO Defiance applies normally.
+; OUTPUT: Z set if drain fired AND mon HP hit 0; Z clear otherwise.
+; ============================================================
+HandleTurnLimitDrain::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noEffect
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_TURN_LIMIT
+	jr nz, .noEffect
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .noEffect
+	; Increment turn count
+	ld hl, wBattleTurnCount
+	inc [hl]
+	ld a, [wBattleTurnLimit]
+	ld b, a
+	ld a, [wBattleTurnCount]
+	cp b
+	jr c, .noEffect       ; count < limit: no drain yet
+	; Drain: maxHP/16, minimum 1 — same pattern as HandlePoisonBurnLeechSeed
+	ld hl, TurnLimitDrainText
+	call PrintText
+	ld hl, wBattleMonHP
+	push hl
+	ld bc, wBattleMonMaxHP - wBattleMonHP
+	add hl, bc
+	ld a, [hli]
+	ld [wHPBarMaxHP + 1], a
+	ld b, a
+	ld a, [hl]
+	ld [wHPBarMaxHP], a
+	ld c, a
+	srl b
+	rr c
+	srl b
+	rr c
+	srl c
+	srl c                 ; c = maxHP/16
+	ld a, c
+	and a
+	jr nz, .nonZeroDamage
+	inc c                 ; minimum 1
+.nonZeroDamage
+	pop hl                ; hl = wBattleMonHP
+	inc hl                ; hl = wBattleMonHP low byte
+	ld a, [hl]
+	ld [wHPBarOldHP], a
+	sub c
+	ld [hld], a
+	ld [wHPBarNewHP], a
+	ld a, [hl]
+	ld [wHPBarOldHP + 1], a
+	sbc b
+	ld [hl], a
+	ld [wHPBarNewHP + 1], a
+	jr nc, .noOverkill
+	xor a
+	ld [hli], a
+	ld [hl], a
+	ld [wHPBarNewHP], a
+	ld [wHPBarNewHP + 1], a
+.noOverkill
+	call UpdateCurMonHPBar
+	; Check if fainted: Z set if HP = 0
+	ld a, [wBattleMonHP]
+	or [hl]               ; hl = wBattleMonHP + 1 (low byte after UpdateCurMonHPBar)
+	ret                   ; Z set if HP = 0
+
+.noEffect
+	or a                  ; ensure Z clear (a=0 from cp, but set NZ explicitly)
+	inc a                 ; a=1, Z clear
+	ret
+
+TurnLimitDrainText:
+	text_far _TurnLimitDrainText
+	text_end
+
+; ============================================================
+; HandleRecoilChallenge
+; Called after ExecutePlayerMove when CHALLENGE_RECOIL_ATTACKS is active.
+; Applies wDamage/4 recoil to the player's active mon (same as non-Struggle
+; recoil moves). Skips if no damage was dealt (miss, status move, etc.).
+; KO Defiance applies normally if recoil drops HP to 0.
+; OUTPUT: Z set if mon HP hit 0; Z clear otherwise.
+; ============================================================
+HandleRecoilChallenge::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noRecoil
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_RECOIL_ATTACKS
+	jr nz, .noRecoil
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .noRecoil
+	; Only apply if damage was dealt
+	ld a, [wDamage]
+	ld b, a
+	ld a, [wDamage + 1]
+	ld c, a
+	ld a, b
+	or c
+	jr z, .noRecoil
+	; Recoil = wDamage / 4 (same as non-Struggle RecoilEffect_)
+	srl b
+	rr c
+	srl b
+	rr c
+	ld a, b
+	or c
+	jr nz, .applyRecoil
+	inc c              ; minimum 1
+.applyRecoil
+	; Apply to player's active mon — same pattern as RecoilEffect_
+	ld hl, wBattleMonMaxHP
+	ld a, [hli]
+	ld [wHPBarMaxHP + 1], a
+	ld a, [hl]
+	ld [wHPBarMaxHP], a
+	push bc
+	ld bc, wBattleMonHP - wBattleMonMaxHP
+	add hl, bc
+	pop bc
+	ld a, [hl]
+	ld [wHPBarOldHP], a
+	sub c
+	ld [hld], a
+	ld [wHPBarNewHP], a
+	ld a, [hl]
+	ld [wHPBarOldHP + 1], a
+	sbc b
+	ld [hl], a
+	ld [wHPBarNewHP + 1], a
+	jr nc, .recoilUpdateBar
+	xor a
+	ld [hli], a
+	ld [hl], a
+	ld hl, wHPBarNewHP
+	ld [hli], a
+	ld [hl], a
+.recoilUpdateBar
+	hlcoord 10, 9
+	ld a, 1
+	ld [wHPBarType], a
+	predef UpdateHPBar2
+	ld hl, RecoilChallengeText
+	call PrintText
+	; Return Z set if HP = 0
+	ld a, [wBattleMonHP]
+	ld b, a
+	ld a, [wBattleMonHP + 1]
+	or b
+	ret
+
+.noRecoil
+	or a   ; ensure Z clear
+	inc a
+	ret
+
+RecoilChallengeText:
+	text_far _RecoilChallengeText
 	text_end
 
 ; called when player is out of usable mons.

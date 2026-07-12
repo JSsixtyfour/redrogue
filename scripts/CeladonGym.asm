@@ -1,4 +1,6 @@
 CeladonGym_Script:
+    CheckEvent EVENT_BEAT_ERIKA
+	jp nz, trade
     call ErikaShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
 	call z, .initial
@@ -12,6 +14,16 @@ CeladonGym_Script:
 
 .initial:
 	SetEvent EVENT_ENTER_ROOM
+    ld a, PIKACHU
+    ld [wroguenpctradegive], a
+    ld a, MEWTWO
+    ld [wroguenpctradeget], a ; load in pokemon that they will give player
+    ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
+    call GetMonName         ; get name of pokemon to receive
+    ld hl, wNameBuffer      ; name address
+    ld de, wroguenpctradename   ; load name into this location
+    ld bc, NAME_LENGTH      ; name length
+    call CopyData           ; copy name to location
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
@@ -46,6 +58,12 @@ CeladonGymResetScripts:
 	ld [wCeladonGymCurScript], a
 	ld [wCurMapScript], a
 	ret
+    
+ trade:   
+    ld a, TRADE_FOR_RANDOM
+	ld [wWhichTrade], a
+    predef RogueDoInGameTradeDialogue
+	jp TextScriptEnd
 
 CeladonGym_ScriptPointers:
 	def_script_pointers
@@ -53,6 +71,7 @@ CeladonGym_ScriptPointers:
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_CELADONGYM_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_CELADONGYM_END_BATTLE
 	dw_const CeladonGymErikaPostBattleScript,       SCRIPT_CELADONGYM_ERIKA_POST_BATTLE
+    ;dw_const CeladonGymErikaPostTradeScript,       SCRIPT_CELADONGYM_ERIKA_TRADE
 
 CeladonGymErikaPostBattleScript:
 	ldh a, [hIsInBattle]
@@ -78,6 +97,17 @@ CeladonGymReceiveTM21:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_GOT_TM21
+	; Offer the legendary trade as an immediate post-battle consequence.
+	; Dispatched through DisplayTextID (not a raw farcall) so the text display is
+	; open and the trade UI actually renders - see legendary_boss_helpers.asm.
+	; Pre-gated so DisplayTextID only fires when a trade will really happen.
+	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM5
+	jr nz, .gymVictory
+	farcall IsLegendaryTradeReady
+	jr nc, .gymVictory
+	ld a, TEXT_CELADONGYM_ERIKA_TRADE
+	ldh [hTextID], a
+	call DisplayTextID
 	jr .gymVictory
 .BagFull
 	ld a, TEXT_CELADONGYM_TM21_NO_ROOM
@@ -101,6 +131,18 @@ CeladonGym_TextPointers:
 	dw_const CeladonGymRainbowBadgeInfoText, TEXT_CELADONGYM_RAINBOWBADGE_INFO
 	dw_const CeladonGymReceivedTM21Text,     TEXT_CELADONGYM_RECEIVED_TM21
 	dw_const CeladonGymTM21NoRoomText,       TEXT_CELADONGYM_TM21_NO_ROOM
+	dw_const CeladonGymErikaTradeText,       TEXT_CELADONGYM_ERIKA_TRADE
+
+; Legendary trade offer (Challenge 11), run as a text_asm so DisplayTextID sets
+; up the open text display the trade UI needs. Invoked from CeladonGymReceiveTM21.
+CeladonGymErikaTradeText:
+	text_asm
+	farcall OfferLegendaryTradeErika
+	; The trade already ran its own text; skip DisplayTextID's redundant
+	; wait-for-A on the now-empty box so it closes and redraws immediately
+	; instead of leaving a blank screen until the player presses A.
+	call DisableWaitingAfterTextDisplay
+	jp TextScriptEnd
 
 CeladonGymTrainerHeaders:
 	def_trainers 2
@@ -124,6 +166,11 @@ CeladonGymErikaText:
 	call DisableWaitingAfterTextDisplay
 	jr .done
 .afterBeat
+	; Re-offer the legendary trade if it wasn't completed yet (player missed or
+	; declined the immediate post-battle offer). This runs inside the open
+	; text_asm display, so it renders directly - no DisplayTextID dispatch. The
+	; helper no-ops once the trade is done or if Challenge 11 isn't active.
+	farcall OfferLegendaryTradeErika
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	jr .done

@@ -384,6 +384,18 @@ StartMenu_Item::
 	cp BICYCLE
 	jp z, .useOrTossItem
 ; not Bicycle
+	; Key items: skip USE/TOSS menu, go straight to description.
+	; Must force hCurrentMenuItem=0 (USE) — it currently holds the list cursor
+	; position, which is non-zero for PP_TONIC (pos 1) or EXP_ALL (pos 2),
+	; causing the toss path to fire instead of the description.
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_KEY_ITEMS
+	jr nz, .notKeyItemPocket
+	xor a
+	ldh [hCurrentMenuItem], a  ; force USE (0) regardless of list cursor position
+	jr .useOrTossItem
+.notKeyItemPocket
 	ld a, USE_TOSS_MENU_TEMPLATE
 	ld [wTextBoxID], a
 	call DisplayTextBoxID

@@ -108,6 +108,7 @@ AIMoveChoiceModificationFunctionPointers:
 	dw AIMoveChoiceModification2
 	dw AIMoveChoiceModification3
 	dw AIMoveChoiceModification4 ; unused, does nothing
+	dw AIMoveChoiceModification5 ; Gambler's Paradise AI
 
 ; discourages moves that cause no damage but only a status ailment if player's mon already has one
 AIMoveChoiceModification1:
@@ -257,6 +258,185 @@ AIMoveChoiceModification3:
 	jr .nextMove
 AIMoveChoiceModification4:
 	ret
+
+; Gambler's Paradise AI (GAMBLER trainer class, via move_choices "1, 5").
+; Scores the enemy's moves toward the high-risk gambler fantasy. Lower score =
+; more preferred; ties are broken randomly by the caller, so unscored moves
+; act as the "pick something random" fallback for free.
+;
+; The signature play is a one-hit KO (Fissure/Horn Drill/Guillotine), but Gen 1
+; auto-misses OHKO moves when the user is slower - so this AI only reaches for
+; the OHKO when it can actually connect (fast enough, target not immune, target
+; not higher level), and otherwise sets up the speed check first (Agility, or a
+; paralysis move to quarter the target's speed) before firing next turn. Trap
+; moves, sleep, speed-drops and Metronome fill in as secondary gambles.
+;
+; Shared conditions are precomputed once into c as bit flags:
+;   bit 0 = enemy is fast enough for an OHKO to connect (speed >= player)
+;   bit 1 = enemy level >= player level (design gate on the OHKO)
+;   bit 2 = player has no status (room to inflict paralysis/sleep)
+;   bit 3 = enemy's moveset contains an OHKO move (worth setting up for)
+AIMoveChoiceModification5:
+	ld c, 0
+	; bit 0: enemy speed >= player speed (2-byte big-endian: +0 hi, +1 lo)
+	ld a, [wEnemyMonSpeed]
+	ld b, a
+	ld a, [wBattleMonSpeed]
+	cp b
+	jr z, .speedHiEqual
+	jr c, .enemyFastEnough    ; player_hi < enemy_hi
+	jr .speedChecked          ; player_hi > enemy_hi
+.speedHiEqual
+	ld a, [wEnemyMonSpeed + 1]
+	ld b, a
+	ld a, [wBattleMonSpeed + 1]
+	cp b
+	jr c, .enemyFastEnough    ; player_lo < enemy_lo
+	jr nz, .speedChecked      ; player_lo > enemy_lo
+.enemyFastEnough              ; equal speed also counts as "fast enough"
+	set 0, c
+.speedChecked
+	; bit 1: enemy level >= player level
+	ld a, [wBattleMonLevel]
+	ld b, a
+	ld a, [wEnemyMonLevel]
+	cp b
+	jr c, .levelChecked
+	set 1, c
+.levelChecked
+	; bit 2: player has no status
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .statusChecked
+	set 2, c
+.statusChecked
+	; bit 3: enemy knows an OHKO move
+	ld hl, wEnemyMonMoves
+	ld b, NUM_MOVES
+.ohkoScan
+	ld a, [hl]
+	and a
+	jr z, .flagsReady         ; empty slot: no more moves
+	call ReadMove             ; preserves hl/de/bc
+	ld a, [wEnemyMoveEffect]
+	cp OHKO_EFFECT
+	jr z, .setOhkoFlag
+	inc hl
+	dec b
+	jr nz, .ohkoScan
+	jr .flagsReady
+.setOhkoFlag
+	set 3, c
+.flagsReady
+	ld hl, wBuffer - 1        ; score array (-1 offset, matches other mods)
+	ld de, wEnemyMonMoves
+	ld b, NUM_MOVES + 1
+.nextMove
+	dec b
+	ret z
+	inc hl
+	ld a, [de]
+	and a
+	ret z                     ; no more moves
+	inc de
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	cp OHKO_EFFECT
+	jp z, .ohko
+	cp TRAPPING_EFFECT
+	jp z, .trap
+	cp SLEEP_EFFECT
+	jp z, .sleep
+	cp SPEED_UP2_EFFECT
+	jp z, .agility
+	cp PARALYZE_EFFECT
+	jp z, .paralyze
+	cp PARALYZE_SIDE_EFFECT1
+	jp z, .paralyze
+	cp PARALYZE_SIDE_EFFECT2
+	jp z, .paralyze
+	cp SPEED_DOWN1_EFFECT
+	jp z, .speedDown
+	cp SPEED_DOWN_SIDE_EFFECT
+	jp z, .speedDown
+	cp METRONOME_EFFECT
+	jp z, .metronome
+	jp .nextMove              ; neutral
+.ohko
+	bit 0, c                  ; fast enough?
+	jr z, .ohkoAvoid
+	bit 1, c                  ; level ok?
+	jr z, .ohkoAvoid
+	push hl                   ; not type-immune?
+	push bc
+	push de
+	callfar AIGetTypeEffectiveness
+	pop de
+	pop bc
+	pop hl
+	ld a, [wTypeEffectiveness]
+	and a
+	jr z, .ohkoAvoid
+	ld a, [hl]                ; viable OHKO - strongly prefer
+	sub 6
+	ld [hl], a
+	jp .nextMove
+.ohkoAvoid                    ; would auto-miss or is gated off - avoid
+	ld a, [hl]
+	add 5
+	ld [hl], a
+	jp .nextMove
+.trap
+	ld a, [hl]
+	sub 4
+	ld [hl], a
+	jp .nextMove
+.sleep
+	bit 2, c                  ; only if player has no status
+	jp z, .nextMove
+	ld a, [hl]
+	sub 3
+	ld [hl], a
+	jp .nextMove
+.agility
+	bit 0, c                  ; already fast enough?
+	jr nz, .agilityIdle
+	bit 3, c                  ; holding an OHKO to set up?
+	jr z, .agilityIdle
+	ld a, [hl]                ; slower + has OHKO - set up the speed flip
+	sub 5
+	ld [hl], a
+	jp .nextMove
+.agilityIdle                  ; otherwise a wasted turn
+	ld a, [hl]
+	add 2
+	ld [hl], a
+	jp .nextMove
+.paralyze
+	bit 0, c                  ; already fast enough - no setup needed
+	jp nz, .nextMove
+	bit 3, c                  ; no OHKO to set up
+	jp z, .nextMove
+	bit 2, c                  ; player already statused
+	jp z, .nextMove
+	ld a, [hl]                ; slower + has OHKO + statusable - quarter their speed
+	sub 5
+	ld [hl], a
+	jp .nextMove
+.speedDown
+	bit 0, c
+	jp nz, .nextMove
+	bit 3, c
+	jp z, .nextMove
+	ld a, [hl]                ; slower + has OHKO - drop their speed instead
+	sub 3
+	ld [hl], a
+	jp .nextMove
+.metronome
+	ld a, [hl]
+	sub 2
+	ld [hl], a
+	jp .nextMove
 
 ReadMove:
 	push hl

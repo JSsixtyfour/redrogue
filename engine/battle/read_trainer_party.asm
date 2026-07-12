@@ -77,10 +77,15 @@ ReadTrainer:
 	push hl
 	farcall PatchRivalStarterSpecies
 	pop hl
+	ld e, [hl]                ; peek terminator byte (0 => this mon is the team's ace/last)
+	push hl
+	farcall PatchLegendaryBossSpecies ; Challenge 11: substitute legendary for the ace
+	pop hl
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	push hl
 	call AddPartyMon
+	farcall ApplyLegendaryBossMoveset ; Challenge 11: themed moveset on the just-added legendary
 	pop hl
 	jr .SpecialTrainer
 .AddAdditionalMoveData

@@ -25,14 +25,14 @@ sFusionDiagBuf:: ds 112
 sTMBitfield:: ds 7
 
 ; Key items pocket.
-; sKeyItemsBitfield: everything ever found (owns). Persists through runs.
-; sKeyItemCarry:     active loadout (3 item IDs, $00=empty). Persists through death.
-;   Carry an item = it is usable in battle and field.
-;   Own but not carry = stored in PC, must swap at PC to use.
-; Bit assignments for sKeyItemsBitfield (must remain stable):
-;   0=LEFTOVERS, 1=PP_TONIC, 2=KO_DEFIANCE, 3=EXP_ALL, 4-31 reserved
-sKeyItemsBitfield:: ds 4
-sKeyItemCarry:: ds 3        ; item IDs of the 3 equipped key items ($00=empty)
+; sKeyItemsBitfield: paired own+active bits for each key item.
+;   Bit 0 = LEFTOVERS owned, bit 1 = LEFTOVERS active (in bag)
+;   Bit 2 = PP_TONIC owned,  bit 3 = PP_TONIC active
+;   Bit 4 = KO_DEFIANCE owned, bit 5 = KO_DEFIANCE active
+;   Bit 6 = EXP_ALL owned,  bit 7 = EXP_ALL active
+; Active = item is in the bag and usable. Max 3 active at once.
+; GiveItem auto-activates if slots available; PC WITHDRAW/DEPOSIT for manual swap.
+sKeyItemsBitfield:: ds 4    ; only byte 0 is used; extra bytes cost nothing
 
 sGameData::
 sPlayerName::  ds NAME_LENGTH

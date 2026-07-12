@@ -120,6 +120,7 @@ DEF NUM_BADGES EQU const_value
 	const BIT_DUNGEON_WARP        ; 4
 	const BIT_ALWAYS_ON_BIKE      ; 5
 	const BIT_ESCAPE_WARP         ; 6
+	const BIT_DEBUG2_MODE         ; 7 - Debug 2 new game (Indigo lobby spawn, Porygon rival, battle-count prompt)
 
 ; wStatusFlags7
 	const_def
@@ -169,6 +170,13 @@ DEF CHALLENGE_RECOIL_ATTACKS        EQU 12 ; tier: hard
 DEF CHALLENGE_GAMBLERS_PARADISE     EQU 13 ; tier: special
 DEF NUM_WITCH_CHALLENGES            EQU 13
 
+; Gambler's Paradise fields fully-evolved mons with high-level movesets
+; (Fissure/Horn Drill/etc.). PCWitchSetup rerolls it if wBattleCount is below
+; this, so it only appears once the run's levels/species make sense. round =
+; wBattleCount/10; 40 = round 5 start, whose trainers roll levels 28-34
+; (min 0x1C + range 6) - i.e. the ~level 30 bracket. Tune freely.
+DEF GAMBLERS_PARADISE_MIN_BATTLES   EQU 40
+
 ; wWitchPrize values
 DEF PRIZE_RARITY_POKEMON EQU 1 ; a: bonus added to reward mon class roll
 DEF PRIZE_RARITY_ITEM    EQU 2 ; b: bonus added to item tier roll
@@ -207,14 +215,19 @@ DEF NUM_WITCH_PRIZES     EQU 6
 	DEF NUM_STAT_ITEMS      EQU 12
 	DEF NUM_VALUABLE_ITEMS  EQU 4
 
-; sKeyItemsBitfield bit indices (must remain stable once save data exists)
-DEF KEY_ITEM_BIT_LEFTOVERS   EQU 0
-DEF KEY_ITEM_BIT_PP_TONIC    EQU 1
-DEF KEY_ITEM_BIT_KO_DEFIANCE EQU 2
-DEF KEY_ITEM_BIT_EXP_ALL     EQU 3
-; 4 = Mom's Allowance (planned)
-; 5 = First Aid Kit (planned)
-; 6-31 = per-type attack boosters (planned, ~18 types)
+; sKeyItemsBitfield paired own+active bits (must remain stable once save data exists)
+; Each item uses two consecutive bits: even = owned, odd = active (in bag).
+DEF KEY_ITEM_BIT_LEFTOVERS_OWNED    EQU 0
+DEF KEY_ITEM_BIT_LEFTOVERS_ACTIVE   EQU 1
+DEF KEY_ITEM_BIT_PP_TONIC_OWNED     EQU 2
+DEF KEY_ITEM_BIT_PP_TONIC_ACTIVE    EQU 3
+DEF KEY_ITEM_BIT_KO_DEFIANCE_OWNED  EQU 4
+DEF KEY_ITEM_BIT_KO_DEFIANCE_ACTIVE EQU 5
+DEF KEY_ITEM_BIT_EXP_ALL_OWNED      EQU 6
+DEF KEY_ITEM_BIT_EXP_ALL_ACTIVE     EQU 7
+; All 4 items × 2 bits = 8 bits = exactly byte 0 of sKeyItemsBitfield.
+; Active bit is always own_bit + 1 (by construction — callers may use inc c).
+DEF KEY_ITEM_MAX_ACTIVE EQU 3   ; max items in bag at once
 
 ; rLCDC
 DEF LCDC_DEFAULT EQU LCDC_ON | LCDC_WIN_9C00 | LCDC_WIN_ON | LCDC_BLOCK21 | LCDC_BG_9800 | LCDC_OBJ_8 | LCDC_OBJ_ON | LCDC_BG_ON

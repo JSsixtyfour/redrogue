@@ -189,8 +189,14 @@ INCLUDE "data/pokemon/base_stats.asm"
 ;INCLUDE "engine/battle/unused_stats_functions.asm"
 INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
-INCLUDE "engine/battle/draw_hud_pokeball_gfx.asm"
 INCLUDE "engine/pokemon/evos_moves.asm"
+
+; Moved out of "Battle Engine 7" to make room for the Gambler AI in trainer_ai.
+; All entry points (DrawAllPokeballs / DrawEnemyPokeballs /
+; SetupPlayerAndEnemyPokeballs) are callfar'd and PokeballTileGraphics is
+; referenced via BANK(), so this file is bank-independent.
+SECTION "HUD Pokeball GFX", ROMX
+INCLUDE "engine/battle/draw_hud_pokeball_gfx.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 
@@ -371,6 +377,8 @@ INCLUDE "engine/pokemon/rarity.asm"
 INCLUDE "engine/pokemon/random_pokemon_selection.asm"
 INCLUDE "engine/rogue_pointers.asm"
 INCLUDE "custom_functions/func_enc_gen.asm"
+INCLUDE "custom_functions/legendary_boss_helpers.asm"
+INCLUDE "data/trainers/gambler_movesets.asm"
 INCLUDE "custom_functions/func_monlists.asm"
 INCLUDE "custom_functions/func_ghost_variant.asm"
 INCLUDE "custom_functions/func_fusion.asm"

@@ -1676,6 +1676,11 @@ _RogueRewardText::
     line "one reward."
 	prompt
 
+_BridgeGiftText::
+	text "You may choose" 
+    line "one gift."
+	prompt
+
 _GetDexRatedText::
 	text "Want to get your"
 	line "#DEX rated?"

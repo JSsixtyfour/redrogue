@@ -167,13 +167,13 @@ GetPocketItemCount::
 ; ============================================================
 BuildRecoveryPocketList::
     ld a, NUM_RECOVERY_ITEMS
-    ldh [hSpriteOffset], a
+    ld [wPocketListCount], a
     ld hl, RecoveryItemTable
     ld de, wRecoveryItemCounts
     ld a, HIGH(wRecoveryPocketBuf + 1)
-    ldh [hSpriteHeight], a
+    ld [wPocketListWritePtr], a
     ld a, LOW(wRecoveryPocketBuf + 1)
-    ldh [hSpriteWidth], a
+    ld [wPocketListWritePtr + 1], a
     ld b, 0
     call _BuildPocketScan
     ld a, b
@@ -182,13 +182,13 @@ BuildRecoveryPocketList::
 
 BuildStatPocketList::
     ld a, NUM_STAT_ITEMS
-    ldh [hSpriteOffset], a
+    ld [wPocketListCount], a
     ld hl, StatItemTable
     ld de, wStatItemCounts
     ld a, HIGH(wStatPocketBuf + 1)
-    ldh [hSpriteHeight], a
+    ld [wPocketListWritePtr], a
     ld a, LOW(wStatPocketBuf + 1)
-    ldh [hSpriteWidth], a
+    ld [wPocketListWritePtr + 1], a
     ld b, 0
     call _BuildPocketScan
     ld a, b
@@ -197,13 +197,13 @@ BuildStatPocketList::
 
 BuildValuablePocketList::
     ld a, NUM_VALUABLE_ITEMS
-    ldh [hSpriteOffset], a
+    ld [wPocketListCount], a
     ld hl, ValuableItemTable
     ld de, wValuableItemCounts
     ld a, HIGH(wValuablePocketBuf + 1)
-    ldh [hSpriteHeight], a
+    ld [wPocketListWritePtr], a
     ld a, LOW(wValuablePocketBuf + 1)
-    ldh [hSpriteWidth], a
+    ld [wPocketListWritePtr + 1], a
     ld b, 0
     call _BuildPocketScan
     ld a, b
@@ -219,7 +219,7 @@ BuildValuablePocketList::
 ; ============================================================
 _BuildPocketScan:
 .loop
-    ldh a, [hSpriteOffset]
+    ld a, [wPocketListCount]
     and a
     jr z, .done
     ; read item_id and count
@@ -234,9 +234,9 @@ _BuildPocketScan:
     push de
     push bc             ; c = item_id, a = count
     push af             ; save count
-    ldh a, [hSpriteHeight]
+    ld a, [wPocketListWritePtr]
     ld h, a
-    ldh a, [hSpriteWidth]
+    ld a, [wPocketListWritePtr + 1]
     ld l, a             ; hl = output write ptr
     pop af              ; count
     ld d, a             ; d = count (temp)
@@ -245,23 +245,23 @@ _BuildPocketScan:
     ld a, d             ; count
     ld [hli], a
     ld a, h
-    ldh [hSpriteHeight], a
+    ld [wPocketListWritePtr], a
     ld a, l
-    ldh [hSpriteWidth], a
+    ld [wPocketListWritePtr + 1], a
     pop bc
     pop de
     pop hl
     inc b               ; output item count++
 .skip
-    ldh a, [hSpriteOffset]
+    ld a, [wPocketListCount]
     dec a
-    ldh [hSpriteOffset], a
+    ld [wPocketListCount], a
     jr .loop
 .done
     ; Write $FF sentinel at current output pointer
-    ldh a, [hSpriteHeight]
+    ld a, [wPocketListWritePtr]
     ld h, a
-    ldh a, [hSpriteWidth]
+    ld a, [wPocketListWritePtr + 1]
     ld l, a
     ld a, $FF
     ld [hl], a

@@ -122,6 +122,28 @@ HasTMHM::
 	ret
 
 ; ============================================================
+; RemoveTMHM
+; Clear TM/HM ownership bit in sTMBitfield (sell/remove).
+; Uses wCurItem (farcall-safe, same convention as AcquireTMHM).
+; INPUT: wCurItem = item_id (must be a TM or HM)
+; ============================================================
+RemoveTMHM::
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, [wCurItem]
+	call _TMHMIndex
+	call _TMBitInfo     ; hl = byte addr, b = 1<<bit_pos (mask)
+	ld a, b
+	cpl                 ; a = ~mask
+	ld b, a
+	ld a, [hl]
+	and b               ; clear the owned bit
+	ld [hl], a
+	xor a
+	ld [rRAMG], a
+	ret
+
+; ============================================================
 ; ClearTMBitfield
 ; Wipe all TM/HM ownership. Call at run reset.
 ; ============================================================
@@ -144,8 +166,9 @@ ClearTMBitfield::
 ; ============================================================
 ; BuildTMPocketList
 ; Scan sTMBitfield and build a display list in wTMPocketBuf.
-; Format: count + {item_id, 1} pairs + $FF sentinel.
-; Caps at 31 entries (max that fits in the 64-byte buffer).
+; Format: count + {item_id, qty=1} pairs + $FF sentinel. Uses ITEMLISTMENU.
+; Qty display suppressed by BIT_TM_POCKET check in PrintListMenuEntries.
+; Caps at 55 entries (all TMs/HMs).
 ; ============================================================
 BuildTMPocketList::
 	ld a, RAMG_SRAM_ENABLE
@@ -184,7 +207,7 @@ BuildTMPocketList::
 	ld [de], a                 ; write item ID
 	inc de
 	ld a, 1
-	ld [de], a                 ; write quantity = 1 (infinite in practice)
+	ld [de], a                 ; write qty = 1
 	inc de
 	inc b                      ; count++
 .notOwned

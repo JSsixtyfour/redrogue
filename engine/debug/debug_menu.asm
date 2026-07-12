@@ -35,7 +35,7 @@ IF DEF(_DEBUG)
 	ld [wMenuWatchedKeys], a
 	xor a
 	ld [wMenuJoypadPollCount], a
-	inc a
+	ld a, 2
 	ld [wMaxMenuItem], a
 	ld a, 7
 	ld [wTopMenuItemY], a
@@ -53,10 +53,24 @@ IF DEF(_DEBUG)
 	ldh a, [hCurrentMenuItem]
 	and a ; FIGHT?
 	jp z, TestBattle
+	cp 2 ; DEBUG 2?
+	jr z, .debug2
 
 	; DEBUG
 	ld hl, wStatusFlags6
 	set BIT_DEBUG_MODE, [hl]
+	jp StartNewGameDebug
+
+.debug2
+	; Debug 2: like DEBUG, but spawns at the Indigo Plateau lobby, gives the
+	; rival a Porygon starter, and prompts for a starting battle count. The extra
+	; behavior is gated on BIT_DEBUG2_MODE (checked in PrepareNewGameDebug and
+	; PCWitchSetup).
+	ld hl, wStatusFlags6
+	set BIT_DEBUG_MODE, [hl]
+	set BIT_DEBUG2_MODE, [hl]
+	ld a, INDIGO_PLATEAU_LOBBY
+	ld [wDefaultMap], a
 	jp StartNewGameDebug
 
 DebugBattlePlayerName:
@@ -67,7 +81,8 @@ DebugBattleRivalName:
 
 DebugMenuOptions:
 	db   "FIGHT"
-	next "DEBUG@"
+	next "DEBUG"
+	next "DEBUG 2@"
 ELSE
 	ret
 ENDC

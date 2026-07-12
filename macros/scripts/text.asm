@@ -240,3 +240,8 @@ ENDM
 MACRO script_rogue_reward
 	db TX_SCRIPT_ROGUE_VENDOR
 ENDM
+
+    const TX_SCRIPT_BRIDGE_GIFT ; $f7
+MACRO script_bridge_gift
+	db TX_SCRIPT_BRIDGE_GIFT
+ENDM

@@ -26,7 +26,7 @@ TrainerClassMoveChoiceModifications:
 	move_choices 1, 3    ; FISHER
 	move_choices 1, 3    ; SWIMMER
 	move_choices         ; CUE_BALL
-	move_choices 1       ; GAMBLER
+	move_choices 1, 5    ; GAMBLER (Gambler's Paradise themed AI)
 	move_choices 1, 3    ; BEAUTY
 	move_choices 1, 2    ; PSYCHIC_TR
 	move_choices 1, 3    ; ROCKER

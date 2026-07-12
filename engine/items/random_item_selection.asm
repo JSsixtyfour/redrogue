@@ -1,6 +1,7 @@
 ; This code is meant to handle any time an item is randomly generated
 ; The code outputs an item ID
 ; a = Specific type of item: HEALING, STAT, TM, MONEY
+DEF MAX_ITEM_SELECTION_RETRIES EQU 20
 Random_Item_Selection::
 call Random
 ld a, [wRogueDoorSelection]
@@ -116,10 +117,19 @@ add hl, bc                  ; add item offset to pointer
 .item_pokeball_load
 ld b, [hl]                  ; load item from address
 call AllTMCheck
-cp 0
-jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+and a
+jr z, .item_pokeball_accept  ; not owned - take it
+ld hl, wItemSelectionRetryCount
+inc [hl]
+ld a, [hl]
+cp MAX_ITEM_SELECTION_RETRIES
+jp c, Random_Item_Selection  ; still under the cap - retry
+; retry cap hit - give up and accept the (possibly-owned) item anyway
+.item_pokeball_accept
+xor a
+ld [wItemSelectionRetryCount], a
 ld a, b                     ; place item in a
-ld [wRogueItem], a          ; place item in 
+ld [wRogueItem], a          ; place item in
 
 RET
 
@@ -162,10 +172,19 @@ add hl, bc                  ; add item offset to pointer
 .item_greatball_load
 ld b, [hl]                  ; load item from address
 call AllTMCheck
-cp 0
-jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+and a
+jr z, .item_greatball_accept ; not owned - take it
+ld hl, wItemSelectionRetryCount
+inc [hl]
+ld a, [hl]
+cp MAX_ITEM_SELECTION_RETRIES
+jp c, Random_Item_Selection  ; still under the cap - retry
+; retry cap hit - give up and accept the (possibly-owned) item anyway
+.item_greatball_accept
+xor a
+ld [wItemSelectionRetryCount], a
 ld a, b                     ; place item in a
-ld [wRogueItem], a          ; place item in 
+ld [wRogueItem], a          ; place item in
 
 RET
 
@@ -208,10 +227,19 @@ add hl, bc                  ; add item offset to pointer
 .item_ultraball_load
 ld b, [hl]                  ; load item from address
 call AllTMCheck
-cp 0
-jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+and a
+jr z, .item_ultraball_accept ; not owned - take it
+ld hl, wItemSelectionRetryCount
+inc [hl]
+ld a, [hl]
+cp MAX_ITEM_SELECTION_RETRIES
+jp c, Random_Item_Selection  ; still under the cap - retry
+; retry cap hit - give up and accept the (possibly-owned) item anyway
+.item_ultraball_accept
+xor a
+ld [wItemSelectionRetryCount], a
 ld a, b                     ; place item in a
-ld [wRogueItem], a          ; place item in 
+ld [wRogueItem], a          ; place item in
 
 RET
 
@@ -253,10 +281,19 @@ add hl, bc                  ; add item offset to pointer
 .item_masterball_load
 ld b, [hl]                  ; load item from address
 call AllTMCheck
-cp 0
-jp nz, Random_Item_Selection    ; if repeat TM flag set, retry
+and a
+jr z, .item_masterball_accept ; not owned - take it
+ld hl, wItemSelectionRetryCount
+inc [hl]
+ld a, [hl]
+cp MAX_ITEM_SELECTION_RETRIES
+jp c, Random_Item_Selection  ; still under the cap - retry
+; retry cap hit - give up and accept the (possibly-owned) item anyway
+.item_masterball_accept
+xor a
+ld [wItemSelectionRetryCount], a
 ld a, b                     ; place item in a
-ld [wRogueItem], a          ; place item in 
+ld [wRogueItem], a          ; place item in
 
 RET
 

@@ -1,3 +1,18 @@
+_GameCornerGamblerBattleText::
+	text "All in! Let's see"
+	line "what you've got!"
+	done
+
+_GameCornerGamblerEndBattleText::
+	text "Beginner's luck..."
+	done
+
+_GameCornerGamblerAfterBattleText::
+	text "The house doesn't"
+	line "always win, I"
+	cont "suppose."
+	done
+
 _GameCornerBeauty1Text::
 	text "Welcome!"
 

@@ -141,6 +141,16 @@ CinnabarGymReceiveTM38:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_GOT_TM38
+	; Offer the legendary trade as an immediate post-battle consequence.
+	; Dispatched through DisplayTextID (not a raw farcall) so the text display is
+	; open and the trade UI renders - see legendary_boss_helpers.asm.
+	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM7
+	jr nz, .gymVictory
+	farcall IsLegendaryTradeReady
+	jr nc, .gymVictory
+	ld a, TEXT_CINNABARGYM_BLAINE_TRADE
+	ldh [hTextID], a
+	call DisplayTextID
 	jr .gymVictory
 .BagFull
 	ld a, TEXT_CINNABARGYM_BLAINE_TM38_NO_ROOM
@@ -171,6 +181,15 @@ CinnabarGym_TextPointers:
 	dw_const CinnabarGymBlaineVolcanoBadgeInfoText, TEXT_CINNABARGYM_BLAINE_VOLCANO_BADGE_INFO
 	dw_const CinnabarGymBlaineReceivedTM38Text,     TEXT_CINNABARGYM_BLAINE_RECEIVED_TM38
 	dw_const CinnabarGymBlaineTM38NoRoomText,       TEXT_CINNABARGYM_BLAINE_TM38_NO_ROOM
+	dw_const CinnabarGymBlaineTradeText,            TEXT_CINNABARGYM_BLAINE_TRADE
+
+; Legendary trade offer (Challenge 11), run as a text_asm so DisplayTextID sets
+; up the open text display the trade UI needs. Invoked from the receive-TM routine.
+CinnabarGymBlaineTradeText:
+	text_asm
+	farcall OfferLegendaryTradeBlaine
+	call DisableWaitingAfterTextDisplay   ; see CeladonGymErikaTradeText
+	jp TextScriptEnd
 
 CinnabarGymStartBattleScript:
 	ldh a, [hSpriteIndex]
@@ -202,6 +221,7 @@ CinnabarGymBlaineText:
 	call DisableWaitingAfterTextDisplay
 	jp TextScriptEnd
 .afterBeat
+	farcall OfferLegendaryTradeBlaine   ; re-offer if not completed (see CeladonGym)
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	jp TextScriptEnd

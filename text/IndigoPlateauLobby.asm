@@ -147,6 +147,18 @@ _WitchPrize6Text::
 	line "bargain?"
 	done
 
+; Fixed teaser for CHALLENGE_LEGENDARY_BOSS (wWitchPrize = 0 sentinel).
+; Shown instead of a random prize; the boss trades a LEGENDARY for one
+; of your masterball-class #MON.
+_WitchPrizeLegendaryText::
+	text "Win and the boss"
+	line "will trade you a"
+	cont "LEGENDARY!"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
 _WitchPartyLimitText::
 	text "The bargain won't"
 	line "allow it. Your"

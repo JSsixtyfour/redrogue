@@ -17,13 +17,13 @@ GetQuantityOfItemInBag:
 	ld b, 1
 	ret
 .notTMHM
-	; Key pocket items: owned = qty 1
+	; Key pocket items: active (in bag) = qty 1
 	push bc
 	farcall IsKeyPocketItem
 	pop bc
 	jr nc, .notKeyPocket
 	push bc
-	farcall HasKeyPocketItem   ; Z = not owned, NZ = owned
+	farcall IsKeyItemActive    ; Z = not active, NZ = active
 	pop bc
 	jr z, .zero
 	ld b, 1

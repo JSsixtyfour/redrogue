@@ -188,6 +188,47 @@ _AfterTrade3Text::
 	line "doing great!"
 	done
 
+; TRADE_DIALOGSET_LEGENDARY (set 4) - gym-leader legendary trade (Challenge 11).
+; give = the player's masterball-class mon; receive = the legendary (Mew/Mewtwo).
+; Placeholder wording - customize freely; keep names on their own line to avoid
+; overflow (player give-mon names can be up to 10 chars).
+_WannaTrade4Text::
+	text "I seek a"
+	line "@"
+	text_ram wInGameTradeGiveMonName
+	text "!"
+
+	para "Trade it for my"
+	line "@"
+	text_ram wInGameTradeReceiveMonName
+	text "?"
+	done
+
+_NoTrade4Text::
+	text "A pity. My offer"
+	line "still stands."
+	done
+
+_WrongMon4Text::
+	text "That is no"
+	line "@"
+	text_ram wInGameTradeGiveMonName
+	text "."
+
+	para "Bring one to me."
+	done
+
+_Thanks4Text::
+	text "A worthy trade!"
+	done
+
+_AfterTrade4Text::
+	text "Guard"
+	line "@"
+	text_ram wInGameTradeReceiveMonName
+	text " well."
+	done
+
 _NothingToCutText::
 	text "There isn't"
 	line "anything to CUT!"

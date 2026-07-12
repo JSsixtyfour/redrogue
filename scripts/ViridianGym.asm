@@ -184,6 +184,16 @@ ViridianGymReceiveTM27:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_GOT_TM27
+	; Offer the legendary trade as an immediate post-battle consequence.
+	; Dispatched through DisplayTextID (not a raw farcall) so the text display is
+	; open and the trade UI renders - see legendary_boss_helpers.asm.
+	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM8
+	jr nz, .gym_victory
+	farcall IsLegendaryTradeReady
+	jr nc, .gym_victory
+	ld a, TEXT_VIRIDIANGYM_GIOVANNI_TRADE
+	ldh [hTextID], a
+	call DisplayTextID
 	jr .gym_victory
 .bag_full
 	ld a, TEXT_VIRIDIANGYM_GIOVANNI_TM27_NO_ROOM
@@ -216,6 +226,15 @@ ViridianGym_TextPointers:
 	dw_const ViridianGymGiovanniEarthBadgeInfoText, TEXT_VIRIDIANGYM_GIOVANNI_EARTH_BADGE_INFO
 	dw_const ViridianGymGiovanniReceivedTM27Text,   TEXT_VIRIDIANGYM_GIOVANNI_RECEIVED_TM27
 	dw_const ViridianGymGiovanniTM27NoRoomText,     TEXT_VIRIDIANGYM_GIOVANNI_TM27_NO_ROOM
+	dw_const ViridianGymGiovanniTradeText,          TEXT_VIRIDIANGYM_GIOVANNI_TRADE
+
+; Legendary trade offer (Challenge 11), run as a text_asm so DisplayTextID sets
+; up the open text display the trade UI needs. Invoked from the receive-TM routine.
+ViridianGymGiovanniTradeText:
+	text_asm
+	farcall OfferLegendaryTradeGiovanni
+	call DisableWaitingAfterTextDisplay   ; see CeladonGymErikaTradeText
+	jp TextScriptEnd
 
 ViridianGymTrainerHeaders:
 	def_trainers 2
@@ -239,6 +258,10 @@ ViridianGymGiovanniText:
 	call DisableWaitingAfterTextDisplay
 	jr .text_script_end
 .afterBeat
+	; Re-offer the legendary trade if not completed (see CeladonGym). Giovanni
+	; hides himself at the end of this handler, so this is the ONLY re-offer
+	; chance after the immediate post-battle one - fine for a one-shot reward.
+	farcall OfferLegendaryTradeGiovanni
 	ld a, $1
 	ldh [hNoWaitAfterText], a
 	ld hl, .PostBattleAdviceText

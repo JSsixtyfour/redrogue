@@ -294,6 +294,34 @@ SelectRandomUnvisitedStage::
 ; OUTPUT: wRogueMap = picked stage's map ID
 ; ============================================================
 _PickNextStage:
+IF DEF(_DEBUG)
+	; Debug 2: if a specific stage was chosen at setup, force it instead of
+	; picking randomly. Index is interpreted as a gym (GymMapByBadge) or route
+	; (RogueStageMapTable) per the gym-next flag. Consumed after one use so
+	; later stages pick randomly again.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .noDebug2Force
+	ld a, [wDebug2ForcedStage]
+	and a
+	jr z, .noDebug2Force
+	dec a                           ; 1-based -> 0-based index
+	ld e, a
+	ld d, 0
+	xor a
+	ld [wDebug2ForcedStage], a      ; consume: only force the next stage
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	ld hl, RogueStageMapTable
+	jr z, .haveForceTable
+	ld hl, GymMapByBadge
+.haveForceTable
+	add hl, de
+	ld a, [hl]
+	ld [wRogueMap], a
+	ret
+.noDebug2Force
+ENDC
 	ld a, [wRogueFlagsBitfield]
 	bit 0, a
 	jp z, _PickRandomUnvisitedStage ; bit clear = route next
@@ -334,6 +362,23 @@ SelectAndPatchLobbyExit::
 	call PatchWarpEntry
 	; Patch door 2 (warp_event 8,11 → Y=11,X=8).
 	ld a, [wLobbyDoor2StageMap]
+	ld b, 11
+	ld c, 8
+	call PatchWarpEntry
+	ret
+
+; Patches both lobby exit doors to GAME_CORNER.
+; Called from PCWitchText after CHALLENGE_GAMBLERS_PARADISE is accepted,
+; because SelectAndPatchLobbyExit already ran on map entry before acceptance.
+PatchLobbyExitToGameCorner::
+	ld a, GAME_CORNER
+	ld [wRogueMap], a
+	ld [wLobbyDoor1StageMap], a
+	ld [wLobbyDoor2StageMap], a
+	ld b, 11
+	ld c, 7
+	call PatchWarpEntry
+	ld a, GAME_CORNER
 	ld b, 11
 	ld c, 8
 	call PatchWarpEntry

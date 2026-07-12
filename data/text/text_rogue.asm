@@ -57,11 +57,29 @@ _PPTonicText::
 	cont "restored!"
 	prompt
 
+_RecoilChallengeText::
+	text "The bargain burns!"
+	line "<TARGET> was hit"
+	cont "by recoil!"
+	done
+
+_TurnLimitDrainText::
+	text "Time's running"
+	line "out! <TARGET> lost"
+	cont "some HP!"
+	done
+
 _PPTonicDescriptionText::
 	text "Restores PP"
-	line "a bit after"
-	cont "each"
-	cont "battle!"
+	line "slightly after"
+	cont "each battle."
+	done
+
+_ExpAllDescriptionText::
+	text "Shares EXP"
+	line "with the whole"
+	cont "party after"
+	cont "each battle."
 	done
 
 _KODefianceDescriptionText::

@@ -10,6 +10,8 @@ CopycatsHouse2F_TextPointers:
 	dw_const CopycatsHouse2FRareDollText,     TEXT_COPYCATSHOUSE2F_FAIRY
 	dw_const CopycatsHouse2FSNESText,         TEXT_COPYCATSHOUSE2F_SNES
 	dw_const CopycatsHouse2FPCText,           TEXT_COPYCATSHOUSE2F_PC
+    dw_const CopycatsHouse2F_Gift_Text, TEXT_COPYCATSHOUSE2F_GIFT_1
+    EXPORT TEXT_COPYCATSHOUSE2F_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 CopycatsHouse2FCopycatText:
 	text_asm
@@ -19,19 +21,11 @@ CopycatsHouse2FCopycatText:
 	ldh [hNoWaitAfterText], a
 	ld hl, .DoYouLikePokemonText
 	call PrintText
-	ld b, POKE_DOLL
-	call IsItemInBag
-	jr z, .done
-	ld hl, .TM31PreReceiveText
-	call PrintText
-	lb bc, TM_MIMIC, 1
-	call GiveItem
-	jr nc, .bag_full
-	ld hl, .ReceivedTM31Text
-	call PrintText
-	ld a, POKE_DOLL
-	ldh [hItemToRemoveID], a
-	farcall RemoveItemByID
+	xor a
+    ld a, TEXT_COPYCATSHOUSE2F_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+    call DisableWaitingAfterTextDisplay
 	SetEvent EVENT_GOT_TM31
 	jr .done
 .bag_full
@@ -99,3 +93,6 @@ CopycatsHouse2FPCText:
 .CantSeeText:
 	text_far _CopycatsHouse2FPCCantSeeText
 	text_end
+
+CopycatsHouse2F_Gift_Text:
+script_bridge_gift

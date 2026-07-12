@@ -316,6 +316,7 @@ StartNewGame:
 	; Debug mode persists in saved games for both debug and non-debug builds, and is
 	; only reset here by the main menu.
 	res BIT_DEBUG_MODE, [hl]
+	res BIT_DEBUG2_MODE, [hl]
 	; fallthrough
 StartNewGameDebug:
 	call OakSpeech

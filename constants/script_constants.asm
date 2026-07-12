@@ -39,6 +39,7 @@ DEF NUM_NPC_TRADES EQU const_value
 	const TRADE_DIALOGSET_CASUAL
 	const TRADE_DIALOGSET_EVOLUTION
 	const TRADE_DIALOGSET_HAPPY
+	const TRADE_DIALOGSET_LEGENDARY   ; gym-leader legendary trade (Challenge 11)
 DEF NUM_TRADE_DIALOGSETS EQU const_value
 
 ; OaksAideScript results

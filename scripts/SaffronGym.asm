@@ -78,6 +78,16 @@ SaffronGymSabrinaReceiveTM46Script:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_GOT_TM46
+	; Offer the legendary trade as an immediate post-battle consequence.
+	; Dispatched through DisplayTextID (not a raw farcall) so the text display is
+	; open and the trade UI renders - see legendary_boss_helpers.asm.
+	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM6
+	jr nz, .gymVictory
+	farcall IsLegendaryTradeReady
+	jr nc, .gymVictory
+	ld a, TEXT_SAFFRONGYM_SABRINA_TRADE
+	ldh [hTextID], a
+	call DisplayTextID
 	jr .gymVictory
 .BagFull
 	ld a, TEXT_SAFFRONGYM_SABRINA_TM46_NO_ROOM
@@ -102,6 +112,15 @@ SaffronGym_TextPointers:
 	dw_const SaffronGymSabrinaMarshBadgeInfoText, TEXT_SAFFRONGYM_SABRINA_MARSH_BADGE_INFO
 	dw_const SaffronGymSabrinaReceivedTM46Text,   TEXT_SAFFRONGYM_SABRINA_RECEIVED_TM46
 	dw_const SaffronGymSabrinaTM46NoRoomText,     TEXT_SAFFRONGYM_SABRINA_TM46_NO_ROOM
+	dw_const SaffronGymSabrinaTradeText,          TEXT_SAFFRONGYM_SABRINA_TRADE
+
+; Legendary trade offer (Challenge 11), run as a text_asm so DisplayTextID sets
+; up the open text display the trade UI needs. Invoked from the receive-TM routine.
+SaffronGymSabrinaTradeText:
+	text_asm
+	farcall OfferLegendaryTradeSabrina
+	call DisableWaitingAfterTextDisplay   ; see CeladonGymErikaTradeText
+	jp TextScriptEnd
 
 SaffronGymTrainerHeaders:
 	def_trainers 2
@@ -125,6 +144,7 @@ SaffronGymSabrinaText:
 	call DisableWaitingAfterTextDisplay
 	jr .done
 .afterBeat
+	farcall OfferLegendaryTradeSabrina   ; re-offer if not completed (see CeladonGym)
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	jr .done

@@ -9,6 +9,14 @@ DEF NUM_TRADE_TEXTS EQU const_value
 
 RogueDoInGameTradeDialogue::
 ; skip over part of the code so we can use
+    ; Clear any stale bag-pocket info-box flag so the pocket banner
+    ; ("<> VALUABLES <>") doesn't leak into the trade's text boxes / party menu
+    ; through the shared window / list-menu draw path (PrintBagInfoText is
+    ; farcall'd from home/window.asm and home/list_menu.asm whenever this bit is
+    ; set). Left set by the bag pocket system; harmless to clear here since the
+    ; bag re-sets it on entry.
+    ld hl, wBagPocketsFlags
+    res BIT_PRINT_INFO_BOX, [hl]
     call SaveScreenTilesToBuffer2
     ld hl, wroguenpctradegive
     jp roguenpctrade_dialogue_continue
@@ -173,6 +181,13 @@ InGameTrade_DoTrade:
 InGameTrade_RestoreScreen:
 	call GBPalWhiteOutWithDelay3
 	call RestoreScreenTilesAndReloadTilePatterns
+	; RestoreScreenTilesAndReloadTilePatterns only reloads LoadTextBoxTilePatterns
+	; (the box-border graphics at vChars2 tile $60), not the font glyphs (vFont) -
+	; those are a separate tile region (home/load_font.asm). DisplayPartyMenu's
+	; icon/HP-bar drawing can displace them, and without this call any text
+	; printed after the party menu closes (e.g. the trade's "Thanks!" dialogue)
+	; renders as blank/garbage tiles instead of letters.
+	call LoadFontTilePatterns
 	call ReloadTilesetTilePatterns
 	call LoadScreenTilesFromBuffer2
 	call Delay3
@@ -258,6 +273,7 @@ InGameTradeTextPointers:
 	dw TradeTextPointers1
 	dw TradeTextPointers2
 	dw TradeTextPointers3
+	dw TradeTextPointers4
 	assert_table_length NUM_TRADE_DIALOGSETS
 
 TradeTextPointers1:
@@ -285,6 +301,15 @@ TradeTextPointers3:
 	dw WrongMon3Text
 	dw Thanks3Text
 	dw AfterTrade3Text
+	assert_table_length NUM_TRADE_TEXTS
+
+TradeTextPointers4:
+	table_width 2
+	dw WannaTrade4Text
+	dw NoTrade4Text
+	dw WrongMon4Text
+	dw Thanks4Text
+	dw AfterTrade4Text
 	assert_table_length NUM_TRADE_TEXTS
 
 ConnectCableText:
@@ -355,4 +380,24 @@ Thanks3Text:
 
 AfterTrade3Text:
 	text_far _AfterTrade3Text
+	text_end
+
+WannaTrade4Text:
+	text_far _WannaTrade4Text
+	text_end
+
+NoTrade4Text:
+	text_far _NoTrade4Text
+	text_end
+
+WrongMon4Text:
+	text_far _WrongMon4Text
+	text_end
+
+Thanks4Text:
+	text_far _Thanks4Text
+	text_end
+
+AfterTrade4Text:
+	text_far _AfterTrade4Text
 	text_end

@@ -532,7 +532,9 @@ PrintListMenuEntries::
 ; print item quantity
 	ld a, [wBagPocketsFlags]
 	bit BIT_TM_POCKET, a
-	jr nz, .skipPrintingItemQuantity ; TMs are binary owned/not-owned, no qty to show
+	jr nz, .skipPrintingItemQuantity ; TMs: binary owned/not-owned, no qty
+	bit BIT_KEY_ITEMS_POCKET, a
+	jr nz, .skipPrintingItemQuantity ; key items: binary active/not, no qty
 	ld a, [wNamedObjectIndex]
 	ld [wCurItem], a
 	call IsKeyItem ; check if item is unsellable

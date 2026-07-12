@@ -55,7 +55,9 @@ DisplayPokemartDialogue_::
 	jr z, .sellStat
 	cp POCKET_VALUABLE
 	jr z, .sellValuable
-	; Key items and TM Pack can't be sold — redirect to Recovery
+	cp POCKET_TM_PACK
+	jr z, .sellTM
+	; Key items can't be sold — redirect to Recovery
 	xor a
 	ld [wBagPocketsFlags], a   ; switch to Recovery pocket
 .sellRecovery
@@ -69,6 +71,10 @@ DisplayPokemartDialogue_::
 .sellValuable
 	farcall BuildValuablePocketList
 	ld hl, wValuablePocketBuf
+	jr .checkSellEmpty
+.sellTM
+	farcall BuildTMPocketList
+	ld hl, wTMPocketBuf
 .checkSellEmpty
 	ld a, [hl]                  ; a = count of items in this pocket
 	and a
@@ -88,6 +94,8 @@ DisplayPokemartDialogue_::
 	jr z, .sellDisplayStat
 	cp POCKET_VALUABLE
 	jr z, .sellDisplayValuable
+	cp POCKET_TM_PACK
+	jr z, .sellDisplayTM
 	farcall BuildRecoveryPocketList
 	ld hl, wRecoveryPocketBuf
 	jr .gotSellSource
@@ -98,6 +106,10 @@ DisplayPokemartDialogue_::
 .sellDisplayValuable
 	farcall BuildValuablePocketList
 	ld hl, wValuablePocketBuf
+	jr .gotSellSource
+.sellDisplayTM
+	farcall BuildTMPocketList
+	ld hl, wTMPocketBuf
 .gotSellSource
 	ld a, l
 	ld [wListPointer], a
@@ -115,15 +127,22 @@ DisplayPokemartDialogue_::
 	ld a, [wIsKeyItem]
 	and a
 	jr nz, .unsellableItem
-	;ld a, [wCurItem]
-	;call IsItemHM
-	;jr c, .unsellableItem
 	ld a, PRICEDITEMLISTMENU
 	ld [wListMenuID], a
 	ldh [hHalveItemPrices], a ; halve prices when selling
+	; TMs are always qty 1 — skip quantity menu
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_TM_PACK
+	jr z, .sellTMConfirm
 	call DisplayChooseQuantityMenu
 	inc a
-	jr z, .sellMenuLoop ; if the player closed the choose quantity menu with the B button
+	jp z, .sellMenuLoop ; if the player closed the choose quantity menu with the B button
+	jr .sellShowPrice
+.sellTMConfirm
+	ld a, 1
+	ld [wItemQuantity], a
+.sellShowPrice
 	ld hl, PokemartTellSellPriceText
 	lb bc, 14, 1 ; location that PrintText always prints to, this is useless
 	call PrintText
@@ -144,7 +163,7 @@ DisplayPokemartDialogue_::
 	dec a
 	jp z, .sellMenuLoop
 
-; sell item — decrement count in the appropriate count-array pocket
+; sell item
 	ld a, [wBoughtOrSoldItemInMart]
 	and a
 	jr nz, .skipSettingFlag1
@@ -152,8 +171,15 @@ DisplayPokemartDialogue_::
 	ld [wBoughtOrSoldItemInMart], a
 .skipSettingFlag1
 	call AddAmountSoldToMoney
-	; wCurItem set by item selection; wItemQuantity set by DisplayChooseQuantityMenu
+	; Route removal: TMs clear bitfield bit; everything else uses count array
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_TM_PACK
+	jr z, .removeTM
 	farcall RemovePocketItem
+	jp .sellMenuLoop
+.removeTM
+	farcall RemoveTMHM    ; clears sTMBitfield bit for wCurItem
 	jp .sellMenuLoop
 .unsellableItem
 	ld hl, PokemartUnsellableItemText

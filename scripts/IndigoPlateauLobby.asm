@@ -208,6 +208,10 @@ PCWitchText:
 	ld h, [hl]
 	ld l, a
 	call PrintText             ; just the challenge description, no question yet
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	jr z, .legendaryPrize      ; fixed reward: skip the random prize-table lookup
+	                           ; (wWitchPrize = 0 sentinel would underflow the index)
 	ld a, [wWitchPrize]
 	dec a                    ; 0-based index
 	ld hl, .PrizeTextTable
@@ -218,10 +222,19 @@ PCWitchText:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
+	jr .prizeAsk
+.legendaryPrize
+	ld hl, .PrizeLegendary
+.prizeAsk
 	call YesNoScript           ; prize teaser + "Do we have a bargain?"
 	jr nz, .refuse
 	ld hl, wRogueFlagsBitfield
 	set BIT_WITCH_ACCEPTED, [hl]
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_GAMBLERS_PARADISE
+	jr nz, .noGamblerPatch
+	farcall PatchLobbyExitToGameCorner
+.noGamblerPatch
 	ld hl, .Accept
 	call PrintText
     call GBFadeOutToBlack
@@ -340,6 +353,10 @@ PCWitchText:
 
 .Prize6:
 	text_far _WitchPrize6Text
+	text_end
+
+.PrizeLegendary:
+	text_far _WitchPrizeLegendaryText
 	text_end
 
 .Accept:
@@ -1322,10 +1339,74 @@ PCWitchSetup:
     ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef ShowObject
+    ; Debug 2: force the Legendary Boss challenge, skipping the roll and the
+    ; map/badge/masterball gates. Re-applied every lobby entry so the normal
+    ; reroll never clobbers it. wWitchPrize=0 is the underflow-safe sentinel
+    ; that PCWitchText special-cases for CHALLENGE_LEGENDARY_BOSS.
+    ld a, [wStatusFlags6]
+    bit BIT_DEBUG2_MODE, a
+    jr z, .rollChallenge
+    ld a, CHALLENGE_LEGENDARY_BOSS
+    ld [wWitchChallenge], a
+    xor a
+    ld [wWitchPrize], a
+    ret
 .rollChallenge
     ld c, NUM_WITCH_CHALLENGES
     call Rangerandom          ; a = 0..NUM_WITCH_CHALLENGES-1
     inc a
+    ; Gate Gambler's Paradise to later rounds: its themed teams are fully
+    ; evolved with high-level movesets, so reroll if the run is still early.
+    cp CHALLENGE_GAMBLERS_PARADISE
+    jr nz, .notEarlyGamblerGate
+    ld b, a                   ; stash challenge id (ld a,b below preserves carry)
+    ld a, [wBattleCount]
+    cp GAMBLERS_PARADISE_MIN_BATTLES
+    ld a, b
+    jr c, .rollChallenge      ; wBattleCount < threshold - reroll
+.notEarlyGamblerGate
+    ; Gate Challenge 11 (Legendary Boss): only offer if next gym is eligible,
+    ; badges >= 4, and party has masterball mon. Then set fixed reward.
+    cp CHALLENGE_LEGENDARY_BOSS
+    jr nz, .notLegendaryGate
+    ; Check 1: wRogueMap ∈ {CELADON_GYM, SAFFRON_GYM, CINNABAR_GYM, VIRIDIAN_GYM}
+    ld a, [wRogueMap]
+    cp CELADON_GYM
+    jr z, .legendaryMapOk
+    cp SAFFRON_GYM
+    jr z, .legendaryMapOk
+    cp CINNABAR_GYM
+    jr z, .legendaryMapOk
+    cp VIRIDIAN_GYM
+    jr z, .legendaryMapOk
+    jp .rollChallenge      ; Map not eligible - reroll
+.legendaryMapOk
+    ; Check 2: badge count >= 4 using popcount
+    ld a, [wObtainedBadges]
+    ld b, 0             ; b = badge count
+    ld d, a             ; d = badges copy for popcount
+    ld e, 8             ; e = loop counter (8 badges)
+.legendaryBadgeCnt
+    bit 0, d
+    jr z, .legendaryBadgeCntSkip
+    inc b
+.legendaryBadgeCntSkip
+    srl d
+    dec e
+    jr nz, .legendaryBadgeCnt
+    ld a, b
+    cp 4
+    jp c, .rollChallenge  ; < 4 badges - reroll
+    ; Check 3: party has masterball mon
+    farcall HasMasterballClassMon  ; lives in a different bank (rogue ROMX) - plain call would execute garbage
+    jp nc, .rollChallenge  ; no masterball mon - reroll
+    ; All checks passed! Set fixed reward marker (0 = no random roll).
+    ld a, CHALLENGE_LEGENDARY_BOSS
+    ld [wWitchChallenge], a
+    xor a
+    ld [wWitchPrize], a
+    ret
+.notLegendaryGate
     ; CHALLENGE_NO_REWARD_POKEMON and CHALLENGE_NO_RANDOM_ITEM both suppress
     ; the reward menu, which never runs before a gym (gyms are fixed vanilla
     ; maps, not a randomized stage) - reroll so a gym visit never offers a
@@ -1337,6 +1418,8 @@ PCWitchSetup:
     jr z, .rollChallenge
     cp CHALLENGE_NO_RANDOM_ITEM
     jr z, .rollChallenge
+    cp CHALLENGE_GAMBLERS_PARADISE
+    jr z, .rollChallenge   ; Game Corner replaces a route, not a gym
 .gotChallenge
     ld [wWitchChallenge], a   ; a = 1-based challenge id
     ld c, NUM_WITCH_PRIZES

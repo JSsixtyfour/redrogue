@@ -84,6 +84,7 @@ ENDM
 	dict  TX_SCRIPT_PRIZE_VENDOR,            TextScript_GameCornerPrizeMenu
 	dict2 TX_SCRIPT_CABLE_CLUB_RECEPTIONIST, callfar CableClubNPC
     dict  TX_SCRIPT_ROGUE_VENDOR,            TextScript_RogueRewardMenu
+    dict  TX_SCRIPT_BRIDGE_GIFT,             TextScript_BridgeGiftMenu
 
 	call PrintText_NoCreatingTextBox
 	ldh a, [hNoWaitAfterText]

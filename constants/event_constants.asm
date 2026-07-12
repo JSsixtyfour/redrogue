@@ -39,6 +39,7 @@
 	const EVENT_BEAT_VIRIDIAN_GYM_TRAINER_5
 	const EVENT_BEAT_VIRIDIAN_GYM_TRAINER_6
 	const EVENT_BEAT_VIRIDIAN_GYM_TRAINER_7
+	const EVENT_OFFERED_LEGENDARY_TRADE_GYM8 ; must stay after the trainer bits (fixed positions)
 
 ; Pewter City events
 	const_next $68
@@ -147,7 +148,8 @@
 	const EVENT_BEAT_CELADON_GYM_TRAINER_4
 	const EVENT_BEAT_CELADON_GYM_TRAINER_5
 	const EVENT_BEAT_CELADON_GYM_TRAINER_6
-	const_skip 7
+	const EVENT_OFFERED_LEGENDARY_TRADE_GYM5 ; placed in the skip gap so trainer bits keep fixed positions
+	const_skip 6
 	const EVENT_1B8 ; ???
 	const EVENT_FOUND_ROCKET_HIDEOUT
 	const EVENT_GOT_10_COINS
@@ -194,7 +196,8 @@
 	const EVENT_BEAT_CINNABAR_GYM_TRAINER_4
 	const EVENT_BEAT_CINNABAR_GYM_TRAINER_5
 	const EVENT_BEAT_CINNABAR_GYM_TRAINER_6
-	const_skip 6
+	const EVENT_OFFERED_LEGENDARY_TRADE_GYM7 ; placed in the skip gap so trainer bits keep fixed positions
+	const_skip 5
 	const EVENT_2A7 ; ???
 	const EVENT_CINNABAR_GYM_GATE0_UNLOCKED
 	const EVENT_CINNABAR_GYM_GATE1_UNLOCKED
@@ -230,7 +233,8 @@
 	const EVENT_BEAT_SAFFRON_GYM_TRAINER_4
 	const EVENT_BEAT_SAFFRON_GYM_TRAINER_5
 	const EVENT_BEAT_SAFFRON_GYM_TRAINER_6
-	const_skip 46
+	const EVENT_OFFERED_LEGENDARY_TRADE_GYM6 ; placed in the skip gap so trainer bits keep fixed positions
+	const_skip 45
 	const EVENT_SILPH_CO_RECEPTIONIST_AT_DESK
 	const_skip 24
 	const EVENT_GOT_TM29
@@ -898,7 +902,12 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 	const EVENT_AUTOWALKED_INTO_SEAFOAM_ISLANDS_1F
 	const EVENT_ROGUE_POKEMON_OFFERED
 	const EVENT_SSANNE_ALL_TRAINERS_DEFEATED
+	const EVENT_BEAT_GAME_CORNER_TRAINER_0
+	const EVENT_BEAT_GAME_CORNER_TRAINER_1
+	const EVENT_BEAT_GAME_CORNER_TRAINER_2
+	const EVENT_BEAT_GAME_CORNER_TRAINER_3
+	const EVENT_BEAT_GAME_CORNER_TRAINER_4
 
 ; End of events
-	const_next $A26
+	const_next $A30
 DEF NUM_EVENTS EQU const_value

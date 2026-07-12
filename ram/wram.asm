@@ -360,29 +360,6 @@ NEXTU
 wTrainerCardBlkPacket:: ds $40
 
 NEXTU
-; Temporary TM/HM list for the TM Pack pocket menu display.
-; Format: count byte + {item_id, qty} pairs + $FF sentinel.
-; $80 = 128 bytes, covers all 55 TMs/HMs (needs 1+55*2+1=113 bytes).
-; Overlaps wTrainerCardBlkPacket and shares this union with wNPCMovementDirections
-; (180 bytes) — the union is 180 bytes regardless, so this costs nothing.
-wTMPocketBuf:: ds $80
-
-NEXTU
-; Per-pocket display list buffers — all are union members (mutually exclusive,
-; union is 180 bytes so all fit comfortably).
-; Format: count byte + {item_id, qty} pairs + $FF sentinel.
-wKeyItemPocketBuf:: ds 10    ; up to 4 key items: 1+4*2+1 = 10 bytes
-
-NEXTU
-wRecoveryPocketBuf:: ds 44  ; up to 21 recovery items: 1+21*2+1 = 44 bytes
-
-NEXTU
-wStatPocketBuf:: ds 26      ; up to 12 stat items: 1+12*2+1 = 26 bytes
-
-NEXTU
-wValuablePocketBuf:: ds 10  ; up to 4 valuable items: 1+4*2+1 = 10 bytes
-
-NEXTU
 wHallOfFame:: ds HOF_TEAM
 
 NEXTU
@@ -2102,6 +2079,12 @@ wVisitedStagesBitfield:: ds 4
 ;        bonus and rarer class distribution from trainer_difficulty_settings
 wRogueFlagsBitfield:: db
 wRogueItem:: dw
+; Random_Item_Selection's TM-ownership retry (AllTMCheck) recurses via jp on a
+; hit; if every item in the forced class is already owned (e.g. Debug 2's
+; all-TMs default forcing a gym's TM-only roll), it would retry forever with
+; no way out. This caps the retries; past MAX_ITEM_SELECTION_RETRIES it just
+; accepts the (possibly-owned) item instead of looping.
+wItemSelectionRetryCount:: db
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
 wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — route stage map ID
 wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — gym stage map ID
@@ -2109,6 +2092,7 @@ wRogueDoor1:: db
 wRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
+wDebug2ForcedStage:: db  ; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force as the next stage; 0 = none
 ; LEFTOVERS fraction level: heals 1/(16-level) of each mon's max HP.
 ; Level 0 = 1/16 ... level 15 = 1/1 (full heal). Increment to "upgrade" the item.
 wHealAllItemLevel:: db
@@ -2327,6 +2311,31 @@ wEnemyMonNicks::
 FOR n, 1, PARTY_LENGTH + 1
 wEnemyMon{d:n}Nick:: ds NAME_LENGTH
 ENDR
+
+NEXTU
+; Bag pocket display buffers — mutually exclusive with enemy/wild/link data above.
+; Only used during overworld bag display; the union members above are only used
+; during battle, encounter setup, or link battles. Zero net WRAM cost.
+;
+; NOTE: wTMPocketBuf uses 1-byte-per-entry format (PRICEDITEMLISTMENU, no qty byte)
+; because TMs are binary own/not-own. Could be eliminated entirely with a custom
+; display function that reads sTMBitfield directly per-render frame if more space
+; is ever needed.
+;
+; Format: count + item_id bytes (TM: 1 byte each) or {item_id,qty} pairs (others) + $FF
+wPocketListWritePtr:: dw    ; scratch write-pointer for pocket list builders
+wPocketListCount::    db    ; scratch iteration counter for pocket list builders
+                            ; replaces hSpriteHeight/hSpriteWidth/hSpriteOffset which are real sprite registers
+wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
+; WRAM tightening options if space is ever needed:
+;   A) Switch to 1-byte-per-entry (no qty) + PRICEDITEMLISTMENU format → 57 bytes.
+;      Requires fixing PrintListMenuEntries advance (currently assumes 2 bytes/entry)
+;      and .switchBagPocket ITEMLISTMENU check. See custom_functions/tm_bag.asm.
+;   B) Custom display function reading sTMBitfield directly → 0 bytes (no buffer).
+wKeyItemPocketBuf:: ds 10   ; 1 + 4×2 + 1 = 10 bytes
+wRecoveryPocketBuf:: ds 44  ; 1 + 21×2 + 1 = 44 bytes
+wStatPocketBuf::    ds 26   ; 1 + 12×2 + 1 = 26 bytes
+wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
 
 ENDU
 

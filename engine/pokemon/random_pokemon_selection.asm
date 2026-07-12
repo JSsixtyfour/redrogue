@@ -154,10 +154,14 @@ RET
 RogueRewardTradeRoll::
     xor a
     ld [wroguenpctradegive], a      ; 0 = no trade (cleared first; set on success)
-    ; ~10.2% chance (26/255)
+    ; ~10.2% chance (26/255); bypassed entirely when BIT_DEBUG2_MODE is set
+    ld a, [wStatusFlags6]
+    bit BIT_DEBUG2_MODE, a
+    jr nz, .skipTradeRoll   ; debug: always attempt a trade
     call Random
     cp 26
     ret nc              ; no trade
+.skipTradeRoll
     ; require at least 3 party members (so trading one away never leaves
     ; the player down to a single mon)
     ld a, [wPartyCount]

@@ -36,8 +36,8 @@ PlayerPCMenu:
 	dec a
 	ld [hli], a ; wTopMenuItemX
 	inc hl ; wTileBehindCursor
-	ld a, 1
-	ld [hli], a ; wMaxMenuItem (0=KeyItems, 1=LogOff)
+	ld a, 2
+	ld [hli], a ; wMaxMenuItem (0=Withdraw, 1=Deposit, 2=LogOff)
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
 	xor a
@@ -55,9 +55,13 @@ PlayerPCMenu:
 	ldh a, [hCurrentMenuItem]
 	ld [wParentMenuItem], a
 	and a
-	jp z, PlayerPCKeyItems
+	jp z, PlayerPCWithdrawKeyItems
+	dec a
+	jp z, PlayerPCDepositKeyItems
 
 ExitPlayerPC:
+	ld hl, wBagPocketsFlags
+	res BIT_PC_WITHDRAWING, [hl]   ; restore pocket switching for the bag
 	ld a, [wMiscFlags]
 	bit BIT_USING_GENERIC_PC, a
 	jr nz, .next
@@ -259,7 +263,8 @@ PlayerPCToss:
 	jp .loop
 
 PlayersPCMenuEntries:
-	db   "KEY ITEMS"
+	db   "WITHDRAW"
+	next "DEPOSIT"
 	next "LOG OFF@"
 
 TurnedOnPC2Text:
@@ -323,27 +328,34 @@ TossHowManyText:
 	text_end
 
 ; ============================================================
-; PlayerPCKeyItems — swap key item loadout (carry ↔ PC storage).
-; Shows all OWNED key items. Select:
-;   qty=2 (carrying) → unequip (deposit to PC storage)
-;   qty=1 (stored)   → equip (if carry < 3) or show "carry is full"
+; PlayerPCWithdrawKeyItems — take a key item from PC into bag.
+; Shows owned-but-not-active items. Blocks if bag already has 3.
 ; ============================================================
-PlayerPCKeyItems:
+PlayerPCWithdrawKeyItems:
+	ld hl, wBagPocketsFlags
+	res BIT_PRINT_INFO_BOX, [hl]
+	set BIT_PC_WITHDRAWING, [hl]   ; block LEFT/RIGHT pocket switching in the list menu
 	call LoadScreenTilesFromBuffer2
 	call GBPalWhiteOut
 	call ClearScreen
-.keyItemsMenuLoop
+.withdrawLoop
 	call GBPalNormal
-	farcall BuildKeyItemPCList    ; build list: all owned, qty=2=carrying, qty=1=PC
+	; Blank wTextBoxBuffer's text-box rows directly so PrintBagInfoText's
+	; restoreDefaultText path always restores blank tiles, never stale text.
+	; SaveTextBoxTilesToBuffer would capture "Moved to bag." etc. from wTileMap
+	; if a previous action printed text, contaminating the buffer.
+	ld hl, wTextBoxBuffer
+	ld bc, 36              ; 2 rows × 18 tiles of text box area
+	ld a, $7F              ; blank space tile
+	call FillMemory
+	farcall BuildKeyItemPCWithdrawList
 	ld a, [wKeyItemPocketBuf]
 	and a
-	jr nz, .hasItems
-	; No owned key items
-	ld hl, .noKeyItemsText
+	jr nz, .withdrawHasItems
+	ld hl, .nothingToWithdrawText
 	call PrintText
 	jp PlayerPCMenu
-.hasItems
-	; Display the list — count and entries already written by BuildKeyItemPCList.
+.withdrawHasItems
 	ld hl, wKeyItemPocketBuf
 	ld a, l
 	ld [wListPointer], a
@@ -355,42 +367,72 @@ PlayerPCKeyItems:
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
-	jp c, PlayerPCMenu            ; B pressed — return to PC menu
-	; Player selected an item — wCurItem is set by DisplayListMenuID
-	; Check qty: qty=2 = carrying, qty=1 = stored
-	ld a, [wMaxItemQuantity]      ; DisplayListMenuID stores qty here
-	cp 2
-	jr z, .unequipSelected        ; carrying → unequip
-	; Stored item selected — try to equip
-	farcall EquipKeyItem          ; carry set = equipped
-	jr c, .equipped
-	; Carry full
-	ld hl, .carryFullText
+	jp c, PlayerPCMenu
+	farcall WithdrawKeyItem
+	jr c, .withdrawn
+	ld hl, .bagFullText
 	call PrintText
-	jr .keyItemsMenuLoop
-.equipped
-	ld hl, .equippedText
+	jr .withdrawLoop
+.withdrawn
+	ld hl, .withdrawnText
 	call PrintText
-	jr .keyItemsMenuLoop
-.unequipSelected
-	farcall UnequipKeyItem        ; carry set = unequipped
+	jr .withdrawLoop
+
+.nothingToWithdrawText
+	text "Nothing to"
+	line "withdraw.@"
+	text_end
+.bagFullText
+	text "Bag is full!"
+	line "Deposit one"
+	cont "first.@"
+	text_end
+.withdrawnText
+	text "Moved to bag.@"
+	text_end
+
+; ============================================================
+; PlayerPCDepositKeyItems — put a bag key item into PC storage.
+; Shows active items. Depositing clears the active bit.
+; ============================================================
+PlayerPCDepositKeyItems:
+	ld hl, wBagPocketsFlags
+	res BIT_PRINT_INFO_BOX, [hl]
+	set BIT_PC_WITHDRAWING, [hl]
+	call LoadScreenTilesFromBuffer2
+	call GBPalWhiteOut
+	call ClearScreen
+.depositLoop
+	call GBPalNormal
+	call SaveTextBoxTilesToBuffer   ; refresh each iteration
+	farcall BuildKeyItemBagList
+	ld a, [wKeyItemPocketBuf]
+	and a
+	jr nz, .depositHasItems
+	ld hl, .bagEmptyText
+	call PrintText
+	jp PlayerPCMenu
+.depositHasItems
+	ld hl, wKeyItemPocketBuf
+	ld a, l
+	ld [wListPointer], a
+	ld a, h
+	ld [wListPointer + 1], a
+	xor a
+	ld [wPrintItemPrices], a
+	ldh [hCurrentMenuItem], a
+	ld a, ITEMLISTMENU
+	ld [wListMenuID], a
+	call DisplayListMenuID
+	jp c, PlayerPCMenu
+	farcall DepositKeyItem
 	ld hl, .depositedText
 	call PrintText
-	jr .keyItemsMenuLoop
+	jr .depositLoop
 
-.noKeyItemsText
-	text "No KEY ITEMS"
-	line "found yet!@"
-	text_end
-.carryFullText
-	text "Can't carry"
-	line "more! Deposit"
-	cont "one first.@"
-	text_end
-.equippedText
-	text "Equipped!@"
+.bagEmptyText
+	text "Bag is empty.@"
 	text_end
 .depositedText
-	text "Deposited to"
-	line "PC.@"
+	text "Stored in PC.@"
 	text_end

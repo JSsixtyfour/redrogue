@@ -246,7 +246,16 @@ GetRandRosterLoop:
     ld  d, a
     
     .loop
+    ; Gambler's Paradise: draw species from the themed pool instead of the
+    ; normal rarity-class roll. Level logic below is unchanged.
+    ld a, [wTrainerClass]
+    cp GAMBLER
+    jr nz, .useRandMon
+    call GetGamblerMon
+    jr .gotMon
+.useRandMon
     call GetRandMon
+.gotMon
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
     call Rangerandom
@@ -281,21 +290,126 @@ GetRandRosterLoop:
 .noLvlBoost
 	;push hl                 ; preserve h1
 	call AddPartyMon    ; add the pokemon
+    ; Gambler's Paradise: replace the just-added mon's rolled moves with its
+    ; fixed themed moveset (and correct PP).
+    ld a, [wTrainerClass]
+    cp GAMBLER
+    call z, OverrideGamblerMoves
 	dec d           ; decrease loop/run through pokemon
     jr nz, .loop    ; pokeball class loop
-    
+
 .miniloop
     inc hl          ; next class
     dec b           ; decrease overarching loop
     jr nz, .overloop    ; overarching class loop
-    
+
 ;end of loop
 	pop de
 	pop bc
     pop hl
 	xor a	;set the zero flag before returning
-	ret	
-    
+	ret
+
+; ============================================================
+; GetGamblerMon
+; Picks a random species from GamblerMonMovesets into wCurPartySpecies.
+; Same bank as this file, so the table is read with a plain [hl].
+; Preserves hl/bc/de (GetRandRosterLoop state); clobbers a.
+; ============================================================
+GetGamblerMon:
+	push hl
+	push bc
+	push de
+	ld c, GAMBLER_POOL_SIZE
+	call Rangerandom        ; a = [0, GAMBLER_POOL_SIZE-1]
+	ld c, a
+	add a                   ; a = index*2
+	add a                   ; a = index*4
+	add c                   ; a = index*5 (stride 5); max 21*5=105, no overflow
+	ld c, a
+	ld b, 0
+	ld hl, GamblerMonMovesets
+	add hl, bc
+	ld a, [hl]              ; entry byte 0 = species
+	ld [wCurPartySpecies], a
+	pop de
+	pop bc
+	pop hl
+	ret
+
+; ============================================================
+; OverrideGamblerMoves
+; Overwrites the last-added enemy mon's 4 moves and their PP with the fixed
+; gambler moveset for its species (looked up in GamblerMonMovesets by the
+; species still held in wCurPartySpecies). Runs right after AddPartyMon.
+; PP must be rewritten because WriteMonMoves set PP for the rolled moves, and
+; empty slots (mon didn't know 4 moves yet) would otherwise have 0 PP.
+; Preserves hl/bc/de (GetRandRosterLoop state).
+; ============================================================
+OverrideGamblerMoves:
+	push hl
+	push bc
+	push de
+	; find this species' 5-byte entry
+	ld a, [wCurPartySpecies]
+	ld b, a
+	ld hl, GamblerMonMovesets
+.findLoop
+	ld a, [hl]
+	and a
+	jr z, .done             ; hit sentinel (species not in table) - bail safely
+	cp b
+	jr z, .found
+	ld a, l
+	add 5
+	ld l, a
+	jr nc, .findLoop
+	inc h
+	jr .findLoop
+.found
+	inc hl                  ; hl -> move1 of entry
+	; hl(dest) = last enemy mon's MON_MOVES = wEnemyMon1Moves + (count-1)*struct
+	push hl
+	ld a, [wEnemyPartyCount]
+	dec a
+	ld hl, wEnemyMon1Moves
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes          ; hl -> this mon's MON_MOVES
+	pop de                  ; de -> source moveset (move1)
+	ld b, NUM_MOVES
+.copyLoop
+	ld a, [de]
+	ld [hl], a              ; MON_MOVES[slot] = move id
+	push bc                 ; save move counter
+	push de                 ; save source ptr
+	push hl                 ; save dest MON_MOVES[slot]
+	; look up this move's base PP (byte 5 of its Moves struct)
+	dec a
+	ld hl, Moves
+	ld bc, MOVE_LENGTH
+	call AddNTimes          ; hl -> move struct (Moves bank)
+	ld de, wBuffer
+	ld a, BANK(Moves)
+	call FarCopyData        ; wBuffer = move struct
+	pop hl                  ; hl = MON_MOVES[slot]
+	push hl
+	ld bc, MON_PP - MON_MOVES
+	add hl, bc              ; hl -> MON_PP[slot]
+	ld a, [wBuffer + 5]     ; base PP
+	ld [hl], a
+	pop hl                  ; hl = MON_MOVES[slot]
+	pop de                  ; source ptr
+	pop bc                  ; move counter
+	inc hl                  ; next MON_MOVES slot
+	inc de                  ; next source move
+	dec b
+	jr nz, .copyLoop
+.done
+	pop de
+	pop bc
+	pop hl
+	ret
+
 ; one 7-byte block per round (round = wBattleCount / 10, capped at 8).
 ; each round's trainers ramp up to just under that round's gym leader tier:
 ; gym tiers are 8-10, 18-21, 21-24, 29, 37-43, 37-43, 40-47, 42-50

@@ -47,12 +47,14 @@ EndOfBattle:
 	ld a, [wBattleResult]
 	and a
 	jr nz, .noPPTonic ; don't restore HP/PP from a battle the player lost (or drew)
-	ld b, LEFTOVERS
-	call IsItemInBag
+	ld a, LEFTOVERS
+	ld [wCurItem], a
+	farcall IsKeyItemActive     ; NZ = active (in bag)
 	jr z, .checkPPTonic
 	farcall LeftoversRecovery
-	ld b, PP_TONIC
-	call IsItemInBag
+	ld a, PP_TONIC
+	ld [wCurItem], a
+	farcall IsKeyItemActive
 	jr z, .hpOnlyMsg
 	farcall PPTonicRecovery
 	ld hl, PartyHPAndPPRecoveredText
@@ -63,8 +65,9 @@ EndOfBattle:
 	call PrintText
 	jr .noPPTonic
 .checkPPTonic
-	ld b, PP_TONIC
-	call IsItemInBag
+	ld a, PP_TONIC
+	ld [wCurItem], a
+	farcall IsKeyItemActive
 	jr z, .noPPTonic
 	farcall PPTonicRecovery
 	ld hl, PartyPPRecoveredText

@@ -194,6 +194,30 @@ IF DEF(_DEBUG)
 	ld a, STARTER1
 	ld [hl], a
 
+	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .notDebug2
+
+	; Prompt for a starting battle count (mart-style counter, 1-99, min 1).
+	; The debug speech was skipped, so ensure font/text-box tiles are loaded
+	; before drawing the quantity box.
+	call LoadFontTilePatterns
+	call LoadTextBoxTilePatterns
+	xor a
+	ld [wListMenuID], a        ; NOLISTMENU - plain quantity box, not the priced variant
+	ld a, 99
+	ld [wMaxItemQuantity], a
+	call DisplayChooseQuantityMenu
+	ld a, [wItemQuantity]      ; 1-99
+	ld [wBattleCount], a
+
+	; Apply the Porygon rival starter, half-max money, and the battle-count-
+	; derived round state (badge count + gym/route flag). This lives in the
+	; rogue bank to keep bank1 within its size limit; it only touches WRAM, so
+	; farcall is safe.
+	farcall Debug2ApplyRoundState
+.notDebug2
 	ret
 
 DebugSetPokedexEntries:

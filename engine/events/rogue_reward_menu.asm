@@ -478,3 +478,193 @@ RogueRefresh::
 	add hl, de               ; advance to next mon's status byte
 	dec b
 	jr nz, .poisonLoop
+    
+
+BridgeGiftMenu::
+    ld hl, wStatusFlags5
+	set BIT_NO_TEXT_DELAY, [hl]
+	ld hl, BridgeGiftText
+	call PrintText
+; the following are the menu settings
+	xor a
+	ldh [hCurrentMenuItem], a
+	ld [wLastMenuItem], a
+	ld a, PAD_A | PAD_B | PAD_UP | PAD_DOWN
+	ld [wMenuWatchedKeys], a
+	ld a, $03
+	ld [wMaxMenuItem], a
+	ld a, $04
+	ld [wTopMenuItemY], a
+	ld a, $01
+	ld [wTopMenuItemX], a
+	hlcoord 0, 2
+	ld b, 8
+	ld c, 16
+	call TextBoxBorder
+	call GetBridgeGiftMenuId
+	call UpdateSprites
+	ld hl, RogueRewardTextChoice
+	call PrintText
+	; if trade is active, show hover box immediately (cursor starts at slot 0)
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .menuLoop
+	jr .showTradeHover
+.menuLoop
+	call HandleMenuInput
+	bit B_PAD_A, a
+	jr nz, .aPressed
+	bit B_PAD_B, a
+	jr nz, .noChoice
+	; cursor moved — update hover box if trade is active
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .menuLoop
+	ldh a, [hCurrentMenuItem]
+	and a
+	jr nz, .eraseTradeHover
+.showTradeHover
+    hlcoord 0, 0
+	lb bc, 18, 3
+	predef SaveScreenTileAreaToBuffer3
+	hlcoord 0, 0
+	ld b, 1
+	ld c, 16
+	call TextBoxBorder
+	hlcoord 1, 1
+	ld de, TradeHoverLabel
+	call PlaceString
+	ld a, [wroguenpctradegive]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	hlcoord 7, 1
+	ld de, wNameBuffer
+	call PlaceString
+	jr .menuLoop
+.eraseTradeHover
+	hlcoord 0, 0
+	lb bc, 18, 3
+	predef LoadScreenTileAreaFromBuffer3
+	jr .menuLoop
+.aPressed
+	ldh a, [hCurrentMenuItem]
+	cp 3
+	jr z, .noChoice
+	call HandleRewardChoice
+.noChoice
+	ld hl, wStatusFlags5
+	res BIT_NO_TEXT_DELAY, [hl]
+	ret
+    
+BridgeGiftText:
+    text_far _BridgeGiftText
+	text_end
+    
+GetBridgeGiftMenuId:
+; determine which one among the three prize texts has been selected using the text ID (stored in [hTextID])
+; prize texts' IDs are TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_1-TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_3
+; load the three prizes at wPrize1-wPrice3
+; load the three prices at wPrize1Price-wPrize3Price
+; display the three prizes' names, distinguishing between Pokemon names and item names (specifically TMs)
+	ldh a, [hTextID]
+	sub TEXT_REWARDROOM_REWARD_VENDOR_1
+	ld [wWhichPrizeWindow], a ; prize texts' relative ID (i.e. 0-2)
+	add a
+	add a
+	ld d, 0
+	ld e, a
+	ld hl, PrizeDifferentMenuPtrs
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	inc hl
+	push hl
+	ld hl, wRoguePokemon1
+	;call CopyString
+	pop hl
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld de, wPrize1Price
+	ld bc, 6
+	call CopyData
+
+.slot1
+    ld c, NUM_GIFTS
+    call Rangerandom         
+    xor a
+    ld d, a
+    ld hl, .GiftTextTable
+    add hl, de
+    ld d, h
+    ld e, l
+	hlcoord 2, 4
+	call PlaceString
+	; if slot 1 is a trade offer, show "TRADE" label (name shown in hover box)
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	jr z, .slot1NoTrade
+	hlcoord 12, 4
+	ld de, TradeSlotLabel
+	call PlaceString
+.slot1NoTrade
+	ld c, NUM_GIFTS
+    call Rangerandom          
+    ld e, a
+    xor a
+    ld d, a
+    ld hl, .GiftTextTable
+    add hl, de
+    ld d, h
+    ld e, l
+	hlcoord 2, 6
+	call PlaceString
+	ld c, NUM_GIFTS
+    call Rangerandom        
+    ld e, a
+    xor a
+    ld d, a
+    ld hl, .GiftTextTable
+    add hl, de
+    ld d, h
+    ld e, l
+	hlcoord 2, 8
+	call PlaceString
+.putNoThanksText
+	hlcoord 2, 10
+	ld de, NoThanksText
+	call PlaceString
+    ret
+
+def NUM_GIFTS EQU 7
+
+.GiftTextTable:
+	dw .Gift1
+	dw .Gift2
+	dw .Gift3
+	dw .Gift4
+	dw .Gift5
+    dw .Gift6
+    dw .Gift7
+    
+.Gift1:
+	db "GIFT SUPER DITTO@"
+
+.Gift2:
+	db "GIFT MIMIC TM@"
+
+.Gift3:
+	db "GIFT PSYCHIC TM@"
+
+.Gift4:
+	db "MIRROR MOVE TUTOR@"
+
+.Gift5:
+	db "TRANSFORM TUTOR@"
+    
+.Gift6:
+	db "GIFT NUGGET@"
+
+.Gift7:
+	db "GIFT SUBSTITUTE TM@"
