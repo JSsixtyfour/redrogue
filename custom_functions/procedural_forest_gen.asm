@@ -308,6 +308,13 @@ PFBinaryTree:
     inc c
     jr .btDiv
 .btDivDone
+    ; BUG FIX: the loop does `sub 9` THEN checks carry, so on the final
+    ; (carrying) iteration it over-subtracts by 9 — a holds remainder-9
+    ; (wrapped), NOT the remainder. Add 9 back to recover col = i%9.
+    ; Without this, cell 0 gave col=$F7 (247), scattering floor writes to
+    ; garbage map cells → BinaryTree crash / "items in odd spaces".
+    ; c (quotient/row) is correct as-is (inc c is skipped on the carrying pass).
+    add a, 9
     ; a = col (i%9), c = row (i/9)
     ld d, a     ; d = col
     ld e, c     ; e = row
@@ -333,6 +340,7 @@ PFBinaryTree:
     inc c
     jr .btDiv2
 .btDiv2Done
+    add a, 9    ; same over-subtraction fix as .btDivDone above (recover i%9)
     ld d, a     ; d = col
     ld e, c     ; e = row
 
@@ -776,12 +784,14 @@ PFScanWall:
     ld a, b
     swap a                  ; row → high nibble
     or c                    ; | col → packed = col | (row<<4)
-    ld e, a
+    push af                 ; stash packed value - d/e below need to hold the
+                             ; neighbor COUNT (the array index), not this value
     ld a, [wBuffer + wPFNeighborCnt]
+    ld e, a
     ld d, 0
     ld hl, wBuffer + wPFNeighbors
     add hl, de
-    ld a, e
+    pop af
     ld [hl], a
     ld a, [wBuffer + wPFNeighborCnt]
     inc a
@@ -1722,37 +1732,14 @@ PFinalizeForest::
     dec b
     jr nz, .pfbRestoreItem
 
-    ; Read item-got bitmask, close SRAM
-    ld a, [sProcForestItemGot]
-    ld b, a
+    ; Close SRAM. Ball/boss hide state is now owned entirely by the toggle
+    ; system (ShowObject/HideObject + wToggleableObjectFlags via the shared
+    ; TOGGLE_WILD_AREA_BOSS/POKEBALL_1-4 constants, matching cave — see
+    ; scripts/ProceduralForest.asm). sProcForestItemGot is dead: nothing sets
+    ; it anymore, so its old hide-check here always read 0 and never actually
+    ; hid anything — removed to avoid confusing future debugging.
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
-
-    ; Hide boss if already defeated (EVENT_BEAT_PC_BOSS, reused — see PFRollBoss)
-    CheckEvent EVENT_BEAT_PC_BOSS
-    jr z, .pfbBossShown
-    ld a, $FF
-    ld [wSprite01StateData2MapY], a
-.pfbBossShown
-
-    ; Hide each collected ball (bit N of b = ball N)
-    ld hl, wSprite01StateData2MapY + 16
-    ld c, 4
-.pfbHideLoop
-    bit 0, b
-    jr z, .pfbNotCollected
-    ld a, $FF
-    ld [hl], a
-.pfbNotCollected
-    srl b
-    ld a, l
-    add a, 16
-    ld l, a
-    jr nc, .pfbHideNoCarry
-    inc h
-.pfbHideNoCarry
-    dec c
-    jr nz, .pfbHideLoop
     ret

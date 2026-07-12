@@ -140,6 +140,8 @@ IsObjectHidden:
 	cp 4
 	jr z, .checkRewardBit
 	ld c, TOGGLE_WILD_AREA_POKEBALL_4 ; slot 5
+	cp 5
+	jr z, .checkRewardBit
 .checkMaybeRoguePB
 	push bc
 	farcall IsRogueStageMap
