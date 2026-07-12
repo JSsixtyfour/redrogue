@@ -182,8 +182,8 @@ DEF PRIZE_RARITY_POKEMON EQU 1 ; a: bonus added to reward mon class roll
 DEF PRIZE_RARITY_ITEM    EQU 2 ; b: bonus added to item tier roll
 DEF PRIZE_MONEY          EQU 3 ; c: multiplies wAmountMoneyWon
 DEF PRIZE_EXP_BOOST      EQU 4 ; d: extra BoostExp pass
-DEF PRIZE_CRIT_BOOST     EQU 5 ; e: halves speed threshold in crit check
-DEF PRIZE_ACC_BOOST      EQU 6 ; f: re-rolls once on a miss
+DEF PRIZE_CRIT_BOOST     EQU 5 ; e: +25% to the player's crit threshold
+DEF PRIZE_ACC_BOOST      EQU 6 ; f: +10 percentage points to the player's move accuracy, capped at 255
 DEF NUM_WITCH_PRIZES     EQU 6
 
 ; hFindPathFlags

@@ -195,6 +195,16 @@ GainExperience:
 	ld bc, (MON_HP_EXP - 1) - MON_MAXHP
 	add hl, bc
 	ld b, $1 ; consider stat exp when calculating stats
+	; Fusion (Phase 2, dynamic max-base stats): de = MON_STATS (= MON_MAXHP)
+	; here, exactly what PrepareFusionCalcStats expects. It sets the max-base
+	; sentinel (and reloads wMonHeader) if this leveling-up mon is the fusion;
+	; _CalcStats auto-clears the sentinel afterward. Preserve hl (exp ptr) and
+	; bc (stat-exp flag in b) across the farcall.
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats
+	pop hl
+	pop bc
 	call CalcStats
 	pop bc ; pop max HP (from before levelling up)
 	pop hl

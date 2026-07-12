@@ -596,21 +596,27 @@ Debug2ApplyRoundState::
 	res BIT_ROGUE_GYM_NEXT, [hl]
 .forcedStagePrompt
 	; Follow-up prompt: pick which specific gym (1-8) or route (1-21) the next
-	; lobby door leads to. The choice is contingent on the battle count: the
-	; gym-vs-route flag (just set from the remainder) selects the max, and
-	; _PickNextStage forces this index on lobby entry. Uses the same counter UI
-	; as the battle-count prompt (font/text-box tiles already loaded by caller).
+	; lobby door leads to, or leave it random. Entry 1 = random (no override);
+	; entry N (N>=2) forces gym/route (N-1). The choice is contingent on the
+	; battle count: the gym-vs-route flag (just set from the remainder)
+	; selects the max, and _PickNextStage forces this index on lobby entry.
+	; Uses the same counter UI as the battle-count prompt (font/text-box tiles
+	; already loaded by caller).
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
-	ld a, 21                   ; route next: NUM_STAGE_MAPS stages
+	ld a, 22                   ; route next: 1 (random) + NUM_STAGE_MAPS (21) routes
 	jr z, .haveMax
-	ld a, 8                    ; gym next: 8 gyms
+	ld a, 9                    ; gym next: 1 (random) + 8 gyms
 .haveMax
 	ld [wMaxItemQuantity], a
 	xor a
 	ld [wListMenuID], a
 	call DisplayChooseQuantityMenu
 	ld a, [wItemQuantity]
+	dec a                       ; 1 (random) -> 0 (wDebug2ForcedStage's existing
+	                             ; "no force" sentinel, see _PickNextStage);
+	                             ; 2..max -> 1..(max-1), the 1-based gym/route
+	                             ; index _PickNextStage already expects
 	ld [wDebug2ForcedStage], a
 	ret
 ENDC

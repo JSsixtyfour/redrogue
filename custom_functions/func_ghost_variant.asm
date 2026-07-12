@@ -70,12 +70,25 @@ ApplyGhostVariant::
 
 ; ---------------------------------------------------------------------------
 ; IsGhostVariant
-; INPUT: hl = pointer to the mon's struct (see ApplyGhostVariant)
+; INPUT: de = pointer to the mon's struct (see ApplyGhostVariant)
 ; OUTPUT: Z set if NOT a ghost variant, Z clear (NZ) if it IS
-; CLOBBERS: af, de, hl
+; CLOBBERS: af, hl
+;
+; Takes the struct pointer in DE, not HL. Found this the hard way while
+; wiring the fusion system's equivalent check: `farcall LABEL`
+; (macros/farcall.asm) expands to `ld hl, LABEL / ld b, BANK(LABEL) /
+; call Bankswitch` - it OVERWRITES hl with the callee's own address as the
+; jump vector, it does NOT preserve the caller's hl. So every integration
+; snippet below that was written as `ld hl, <ptr> / farcall IsGhostVariant`
+; was broken as originally documented - hl would arrive here holding this
+; routine's own address, not the intended struct pointer. de survives
+; Bankswitch untouched, so it's the only register safe to carry a pointer
+; input across a farcall boundary. Fixed here AND in the snippets below,
+; before anything actually calls this (grep confirmed no callers yet - see
+; project-cross-bank-call-bugs memory for the general bug class).
 ; ---------------------------------------------------------------------------
 IsGhostVariant::
-	ld de, MON_CATCH_RATE
+	ld hl, MON_CATCH_RATE
 	add hl, de
 	bit BIT_GHOST_VARIANT, [hl]
 	ret
@@ -91,24 +104,24 @@ IsGhostVariant::
 ; per-instance stored type directly and needs no extra hook. Insert right
 ; after `call GetMonHeader` returns, before the existing `pop hl`:
 ;
-;	ld hl, wLoadedMon            ; the mon currently on screen (set earlier in
+;	ld de, wLoadedMon            ; the mon currently on screen (set earlier in
 ;	farcall IsGhostVariant       ; this same routine by LoadMonData) - farcall
 ;	jr z, .notGhostVariant       ; if print_type.asm ends up in a different
-;	ld a, GHOST                  ; bank than this file
-;	ld [wMonHType2], a
+;	ld a, GHOST                  ; bank than this file (input is DE, not HL -
+;	ld [wMonHType2], a           ; farcall clobbers hl as its own jump vector)
 ;.notGhostVariant
 
 ; --- engine/gfx/palettes.asm, SetPal_Battle ---
 ; Insert right after wPalPacket+5 (player) and +7 (enemy) are both set, before
 ; the final `ld hl, wPalPacket` / `ld de, BlkPacket_Battle` tail:
 ;
-;	ld hl, wBattleMon
+;	ld de, wBattleMon
 ;	farcall IsGhostVariant
 ;	jr z, .playerNotGhostVariant
 ;	ld a, PAL_PURPLEMON
 ;	ld [wPalPacket + 5], a
 ;.playerNotGhostVariant
-;	ld hl, wEnemyMon
+;	ld de, wEnemyMon
 ;	farcall IsGhostVariant
 ;	jr z, .enemyNotGhostVariant
 ;	ld a, PAL_PURPLEMON
@@ -119,7 +132,7 @@ IsGhostVariant::
 ; Insert right after wPalPacket+3 is set, before the final
 ; `ld hl, wPalPacket` / `ld de, BlkPacket_StatusScreen` tail:
 ;
-;	ld hl, wLoadedMon
+;	ld de, wLoadedMon
 ;	farcall IsGhostVariant
 ;	jr z, .notGhostVariant
 ;	ld a, PAL_PURPLEMON

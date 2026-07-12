@@ -549,6 +549,14 @@ _MoveMon::
 	ld bc, (MON_HP_EXP - 1) - MON_STATS
 	add hl, bc ; hl = wPartyMon*HPExp - 1
 	ld b, $1
+	; Fusion (Phase 2): withdrawing a fused mon from the box recomputes and
+	; stores its stats - re-arm the max-base sentinel so the bonus survives the
+	; round-trip. de = MON_STATS (MON_LEVEL+1, just written above) here.
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats
+	pop hl
+	pop bc
 	call CalcStats
 .done
 	and a

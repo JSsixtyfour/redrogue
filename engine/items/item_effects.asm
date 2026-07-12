@@ -1337,6 +1337,15 @@ ItemUseMedicine:
 	ld bc, (MON_EXP + 2) - MON_STATS
 	add hl, bc ; hl now points to LSB of experience
 	ld b, 1
+	; Fusion (Phase 2): a rare candy / vitamin on a fusion would otherwise
+	; recompute its stats WITHOUT the max-base bonus and store the result,
+	; wiping it. de = MON_STATS here, so PrepareFusionCalcStats re-arms the
+	; sentinel (and reloads wMonHeader) first; _CalcStats auto-clears it after.
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats
+	pop hl
+	pop bc
 	jp CalcStats ; recalculate stats
 .useRareCandy
 	push hl

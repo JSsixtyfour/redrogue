@@ -2173,10 +2173,35 @@ wRewardClassBonus:: db    ; prize a: added to reward mon class arg
 wItemClassBonus:: db      ; prize b: added to item tier
 wMoneyMultiplier:: db     ; prize c: multiplier for wAmountMoneyWon
 wPrizeExpBoost:: db       ; prize d: extra BoostExp pass in GainExperience
-wPrizeCritBoost:: db      ; prize e: halve speed threshold in crit check
-wPrizeAccBoost:: db       ; prize f: re-roll once on miss in MoveHitTest
+; wPrizeCritBoost/wPrizeAccBoost (prizes e/f reserved magnitude bytes) were
+; declared but never read - both prizes use fixed magnitudes directly in code
+; (matching the same precedent already set by prizes c/d, see
+; project-witch-challenge-plan memory), so these 2 bytes were deleted and
+; reused below for Phase 2 fusion scratch (WRAM0 is nearly full).
 
 wFusionSecondarySpecies:: db  ; 0 = no fusion active this run; else = secondary mon's species ID
+; Dynamic max-base fusion stats (Phase 2). Transient scratch: PrepareFusionCalcStats
+; sets it immediately before CalcStats, and _CalcStats auto-clears byte 0 when
+; the recalc finishes. Read only by _CalcStat during that one call.
+; SAVED: yes - this sits inside the wGameProgressFlags / wMainData region, so it
+; IS written to SRAM (5 wasted save bytes). Intentional: staying in that block
+; guarantees it's ZEROED on new game, which the sentinel below depends on, and
+; WRAM0/HRAM had no spare unsaved-but-zeroed byte to relocate it to. At save time
+; byte 0 is always 0 (auto-cleared after every recalc), so the loaded value is a
+; harmless 0 = "not active" - no correctness cost, just the wasted save bytes.
+; SENTINEL: byte 0 (HP) doubles as the "is this CalcStats call for the fusion
+; mon" flag - 0 is impossible for any real species' base HP, so 0 safely means
+; "not active" (no spare byte existed for a dedicated flag). The zero-on-new-game
+; guarantee above is what makes byte 0 reliably 0 for any CalcStats caller that
+; ISN'T wrapped with PrepareFusionCalcStats (enemy mons, single-stat CalcStat,
+; etc.); wrapped callers set it, _CalcStats clears it right after.
+wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
+                               ; (index 0=HP..4=SPC - NOTE this is offset by
+                               ; one from wMonHeader's own 1=HP..5=SPC
+                               ; convention; _CalcStat's hook accounts for
+                               ; this, see calc_stats.asm), pre-cached via
+                               ; CacheFusionSecondaryBaseStats so _CalcStat
+                               ; never needs to call GetMonHeader mid-read
 
 wGameProgressFlagsEnd::
 

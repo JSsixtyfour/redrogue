@@ -12,6 +12,13 @@ _CalcStats::
 	ld a, c
 	cp NUM_STATS
 	jr nz, .statsLoop
+	; Fusion (Phase 2): auto-clear the max-base sentinel now that this full
+	; recalc is done, so it never leaks into the next unrelated CalcStats call
+	; (e.g. an enemy mon's, or an unwrapped caller's). PrepareFusionCalcStats
+	; is the only thing that turns it on, and only right before invoking us -
+	; so callers never have to clear it themselves.
+	xor a
+	ld [wFusionSecondaryBaseStats], a
 	ret
 
 _CalcStat::
@@ -26,6 +33,34 @@ _CalcStat::
 	add hl, bc
 	ld a, [hl]          ; read base value of stat
 	ld e, a
+	; Fusion (dynamic max-base stats): wFusionSecondaryBaseStats byte 0 (HP)
+	; doubles as the "this CalcStats call is for the fusion mon" flag - 0 is
+	; impossible for any real species' base HP, so it's a safe sentinel for
+	; "not active" (no spare WRAM0/HRAM byte existed for a dedicated flag -
+	; see ram/wram.asm). If active, compare the primary's base (e, just read)
+	; against the secondary's cached base for this SAME stat and keep
+	; whichever is larger. The buffer is 0-based (index 0=HP..4=SPC, unlike
+	; wMonHeader's 1-based 1=HP..5=SPC - it's a standalone 5-byte buffer, not
+	; a full base-data struct with a leading index byte), so it's indexed
+	; with bc-1. No GetMonHeader call here, which would clobber wMonHeader
+	; mid-read (see CacheFusionSecondaryBaseStats, called by the caller
+	; beforehand, not here). hl/bc both restored after, unaffected for the
+	; rest of this routine.
+	ld a, [wFusionSecondaryBaseStats]
+	and a
+	jr z, .noFusionBase
+	push hl
+	push bc
+	dec bc
+	ld hl, wFusionSecondaryBaseStats
+	add hl, bc
+	ld a, [hl]
+	pop bc
+	pop hl
+	cp e
+	jr c, .noFusionBase  ; secondary's base < primary's - keep primary's (e)
+	ld e, a               ; secondary's base >= primary's - use it
+.noFusionBase
 	pop hl
 	push hl
 	sla c

@@ -4999,6 +4999,28 @@ CriticalHitTest:
 	jr nc, .SkipHighCritical
 	ld b, $ff
 .SkipHighCritical
+	; Witch prize e (PRIZE_CRIT_BOOST): +25% to the player's own crit
+	; threshold b (b + b/4), capped at 255. Applied after the normal/high-crit
+	; adjustments above, so it scales whatever the move already rolled up to.
+	; Never applies on the enemy's turn.
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .noCritBoost
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noCritBoost
+	ld a, [wWitchPrize]
+	cp PRIZE_CRIT_BOOST
+	jr nz, .noCritBoost
+	ld a, b
+	srl a
+	srl a                        ; a = b/4
+	add b                        ; a = b + b/4 (~1.25x)
+	jr nc, .critBoostDone
+	ld a, $ff                    ; cap at 255
+.critBoostDone
+	ld b, a
+.noCritBoost
 	call BattleRandom            ; generates a random value, in "a"
 	rlc a
 	rlc a
@@ -5791,6 +5813,25 @@ MoveHitTest:
 .doAccuracyCheck
 ; if the random number generated is greater than or equal to the scaled accuracy, the move misses
 ; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
+	; Witch prize f (PRIZE_ACC_BOOST): +10 percentage points (26/256) to the
+	; player's own move accuracy, capped at 255 (as close to 100% as this
+	; engine's 0-255 accuracy scale allows). Never applies on the enemy's turn.
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .noAccBoost
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .noAccBoost
+	ld a, [wWitchPrize]
+	cp PRIZE_ACC_BOOST
+	jr nz, .noAccBoost
+	ld a, b
+	add 26
+	jr nc, .accBoostDone
+	ld a, $ff                    ; cap at 255
+.accBoostDone
+	ld b, a
+.noAccBoost
 	call BattleRandom
 	cp b
 	jr nc, .moveMissed

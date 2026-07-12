@@ -73,6 +73,18 @@ StatusScreen:
 	ld hl, wLoadedMonHPExp - 1
 	ld de, wLoadedMonStats
 	ld b, $1
+	; Fusion (Phase 2): a BOXED fusion recalculates here for display (party
+	; fusions skip this and show their stored, already-boosted stats). Without
+	; this the status screen would show a boxed fusion's un-boosted stats.
+	; wLoadedMon is a party_struct, so de = wLoadedMonStats works exactly like a
+	; real MON_STATS pointer, and LoadMonData copied the mon's MON_CATCH_RATE
+	; (incl. the fusion flag) into it. Display-only - it writes wLoadedMonStats,
+	; not the stored box mon.
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats
+	pop hl
+	pop bc
 	call CalcStats
 .DontRecalculate
 	ld hl, wStatusFlags2
