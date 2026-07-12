@@ -1,9 +1,7 @@
-; Boss battle uses the PROCEDURAL CEMETERY 4 mechanism (wCurOpponent-driven
-; proximity battle), NOT the cave's TalkToTrainer path — the user asked for
-; "like procedural cemetery 4". A proximity range check (built each frame from
-; the per-run exit column) sets wCurOpponent = the boss species; the overworld
-; loop then starts a wild battle. After the win the boss offers to join, then
-; its sprite is hidden, freeing the exit.
+; Boss battle uses the cave's real TalkToTrainer/def_trainers path (see
+; PROCEDURAL_STAGE_FUNDAMENTALS.md) - the boss is sprite slot 1, engaged
+; normally by pressing A on it, or forced via the flank-tile guard in
+; ProceduralForestDefaultScript below (see that function's comment).
 ;
 ; Reused events (never concurrent with cave/cemetery, all reset at Pallet Town
 ; entry by PFPreloadForest/PFRollBoss):
@@ -81,15 +79,55 @@ PFBossTrainerHeader:
 
 ProceduralForest_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,          SCRIPT_PROCEDURALFOREST_DEFAULT
+	dw_const ProceduralForestDefaultScript,     SCRIPT_PROCEDURALFOREST_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle,  SCRIPT_PROCEDURALFOREST_START_BATTLE
 	dw_const EndTrainerBattle,                       SCRIPT_PROCEDURALFOREST_END_BATTLE
 	;dw_const ProceduralForestPlayerMovingScript,     SCRIPT_PROCEDURALFOREST_PLAYER_MOVING
 	;dw_const ProceduralForestBossBattleScript,       SCRIPT_PROCEDURALFOREST_BOSS_BATTLE
 
-; Default state: if the boss is alive and the player is at the exit corridor,
-; start the boss battle (cemetery-4 style). Otherwise normal trainer checks.
-;ProceduralForestDefaultScript:
+; Default state: normal sight-range trainer check, PLUS a flank-tile guard.
+; The boss is STAY and faces DOWN, so CheckForEngagingTrainers/TrainerEngage's
+; sight-range scan only ever looks south of it - it can never catch a player
+; slipping past on the tile directly to its right, which is the uncovered
+; half of the 2-tile-wide exit gap (the boss and the exit share the exact
+; same left-anchored tile X - see PFinalizeForest's boss-placement math in
+; procedural_forest_gen.asm: both use the identical `block*2+4` formula, so
+; neither ever covers the exit's right-hand tile). Rather than inventing a
+; parallel wCurOpponent-driven battle (cemetery's mechanism - see
+; PROCEDURAL_STAGE_FUNDAMENTALS.md's warning against mixing the two for a
+; stage with a real boss sprite), force the EXACT SAME TalkToTrainer sequence
+; that pressing A on the boss would run.
+ProceduralForestDefaultScript:
+	CheckEvent EVENT_BEAT_PC_BOSS
+	jp nz, CheckFightingMapTrainers
+	ld a, [wSprite01StateData2MapY]
+	ld b, a
+	ld a, [wYCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	ld a, [wSprite01StateData2MapX]
+	inc a                            ; one tile right of the boss
+	ld b, a
+	ld a, [wXCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	; Trigger the EXACT interaction pressing A on the boss runs: dispatch its
+	; object text. TEXT_PROCEDURALFOREST_BOSS == 1 == the boss's sprite slot, so
+	; DisplayTextID sets hActiveSpriteIndex = 1 and the whole
+	; ProceduralForestBossText -> TalkToTrainer chain runs THROUGH the text
+	; engine, which is what actually starts the battle. (Calling TalkToTrainer
+	; directly from here does not - it just sets the end-battle flags without
+	; ever entering battle, so the offer code fires on the next frame instead.)
+	xor a
+	ldh [hJoyHeld], a
+	ld a, TEXT_PROCEDURALFOREST_BOSS
+	ldh [hTextID], a
+	call DisplayTextID
+	ret
+
+; Old cemetery-4-style proximity design, superseded by ProceduralForestDefaultScript
+; above (kept only as historical reference - do not reintroduce wCurOpponent here).
+;ProceduralForestDefaultScriptOLD:
 ;	CheckEvent EVENT_BEAT_PC_BOSS
 ;	jp nz, CheckFightingMapTrainers
 ;	; Read the per-run exit column from SRAM → boss tile X = 4*exitI+2 / +3.

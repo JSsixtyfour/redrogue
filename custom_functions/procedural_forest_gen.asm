@@ -150,23 +150,29 @@ PFReadBlock:
 
 ; ============================================================
 ; PFPickFloor
-; OUTPUT: a = random floor block: 41 (tall grass), 1 (path), or 27 (flowers)
+; OUTPUT: a = random floor block: 75% chance of tile 1 (path/grass base),
+; 25% chance of a random pick from PFFloorAltTable (visual variety tiles).
 ; ============================================================
 PFPickFloor:
-    ld c, 3
-    call Rangerandom    ; a = 0, 1, or 2
+    ld c, 4
+    call Rangerandom        ; a = 0..3
     and a
-    jr z, .zero
-    cp 2
-    jr z, .two
+    jr nz, .floor1          ; 3/4 (75%): plain floor
+    ld c, PFFloorAltCount
+    call Rangerandom        ; a = 0..PFFloorAltCount-1
+    ld hl, PFFloorAltTable
+    ld e, a
+    ld d, 0
+    add hl, de
+    ld a, [hl]
+    ret
+.floor1
     ld a, 1
     ret
-.zero
-    ld a, 41
-    ret
-.two
-    ld a, 27
-    ret
+
+PFFloorAltTable:
+    db 41, 27, $20, $22, $23, $24, $25
+DEF PFFloorAltCount EQU 7
 
 ; ============================================================
 ; PFSidewinder
