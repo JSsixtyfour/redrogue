@@ -43,6 +43,8 @@ sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED ti
 ; require cave regeneration. 400 bytes = 20*20 blocks.
 sProcForestStagingBuffer:: ds 600  ; same as cave: stride layout needs PF_BASE+(PF_SIZE-1)*PF_STRIDE+PF_SIZE = 595
 sProcForestExitI:: db              ; 0-8: which top-row cell column is the exit
+sProcForestRiverSide:: db          ; 0=left, 1=right, $FF=not a river run (exit
+                                   ; roll then uses the normal unconstrained pick)
 sProcForestBaked:: db              ; non-zero = buffer holds finished baked maze
 sProcForestBossSpecies:: db        ; wRoguePokemon1 saved at Pallet Town entry
 sProcForestBossSprite:: db         ; SPRITE_* overworld category (PCGetBossOWSprite),

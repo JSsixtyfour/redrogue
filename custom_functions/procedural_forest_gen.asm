@@ -28,6 +28,12 @@ DEF PF_CELL_H  EQU 9
 
 DEF PF_TREE    EQU 2   ; base tree block
 DEF PF_EXIT_N  EQU 88  ; north-edge exit block (FOREST tileset, recognized warp)
+; River (sProcForestAlgoForce=6). Provisional body value stamped during the
+; carve + maze phases; PFAutotileRiver (Stage 2) later rewrites each river
+; block to a directional edge variant (81 N, 90 W, 91 E, 82 NE, 92 NW, 45 body).
+; 45 is water = impassable, so it never appears in any non-river mode (floor
+; is 1/27/41/$20-$25, tree is 2) — the river-guard check for it is safe in all modes.
+DEF PF_RIVER_BODY EQU 45
 
 ; Item placement (PFScanForBall) — mirrors cave's PCPlaceWildAreaItems spacing
 ; and dedup logic, adapted to the maze's sparse dead-end cells instead of
@@ -66,6 +72,39 @@ DEF wPFAcceptedXY   EQU 10  ; 8 contiguous bytes (10-17): 4x(blockX,blockY) for
                             ; balls accepted so far, reuses wPFNeighborCnt/
                             ; Neighbors/NCol/NRow/AlgoForce (all dead by Phase 2)
 DEF wPFItemTemp     EQU 21  ; 4 bytes (21-24): rolled item IDs before dedup-write
+
+; --- Rooms/Dungeon scratch (sProcForestAlgoForce=5) ---
+; col/row/w/h alias the Sidewinder/BinaryTree/Backtracker-only offsets
+; (4,5,6,7): always dead during the Rooms path since PFHuntAndKill is the
+; only maze engine used here and it never touches offsets 4-7.
+DEF wPFRoomCol      EQU 4   ; candidate/current room top-left col (0-8)
+DEF wPFRoomRow      EQU 5   ; candidate/current room top-left row (0-8)
+DEF wPFRoomW        EQU 6   ; candidate/current room width in cells (2-3)
+DEF wPFRoomH        EQU 7   ; candidate/current room height in cells (2-3)
+; New offsets (25-29, previously unused).
+DEF wPFRoomCount    EQU 25  ; accepted room count. MUST survive the
+                            ; PFHuntAndKill call between PFPlaceRooms and
+                            ; PFConnectRooms — do not alias this one.
+DEF wPFRoomTries    EQU 26  ; PFPlaceRooms: candidate-attempt counter (0-7)
+DEF wPFRoomIdx      EQU 27  ; PFConnectRooms: room loop index (0..count-1)
+DEF wPFScanColLo    EQU 27  ; alias: PFPlaceRooms overlap-scan col lower
+                            ; bound (dead before PFConnectRooms starts)
+DEF wPFDoorCount    EQU 28  ; PFConnectRooms: doorways carved for the
+                            ; current room (capped at 2)
+DEF wPFScanColHi    EQU 28  ; alias: PFPlaceRooms overlap-scan col upper
+                            ; bound / carve-loop column count (dead before
+                            ; PFConnectRooms starts)
+DEF wPFSideBound    EQU 29  ; PFConnectRooms: current side's index upper
+                            ; bound
+DEF wPFScanRowHi    EQU 29  ; alias: PFPlaceRooms overlap-scan row upper
+                            ; bound / carve-loop row count (dead before
+                            ; PFConnectRooms starts)
+
+; --- River scratch (sProcForestAlgoForce=6) ---
+; 0 = vertical river (flows N-S, 2 wide in X), non-zero = horizontal (E-W, 2
+; wide in Y). Read every step of the carve; aliases wPFPassCount (braid/scan
+; only, dead during the carve which runs before any maze/braid pass).
+DEF wPFRivDir       EQU 18
 
 ; ============================================================
 ; PFRowOffsetTable
@@ -420,6 +459,22 @@ PFBinaryTree:
 ; Preserves B, C.
 ; ============================================================
 PFCheckUnvisited:
+    ; River guard: never offer a neighbor whose connecting wall is a river
+    ; block — that would carve a crossing through the (uncrossable) river.
+    ; Wall between current cell (wPFCellCol/Row) and neighbor (C,B) is block
+    ; (curCol+C+1, curRow+B+1). Harmless in non-river modes: no block is
+    ; PF_RIVER_BODY there, so this never rejects. PFReadBlock preserves BC.
+    ld a, [wBuffer + wPFCellCol]
+    add a, c
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFCellRow]
+    add a, b
+    inc a
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock
+    cp PF_RIVER_BODY
+    ret z                   ; wall is river — reject this neighbor
     ; Set block coords: (2*C+1, 2*B+1)
     ld a, c
     add a, a
@@ -754,6 +809,646 @@ PFHuntAndKill:
 .hkHuntFound
     call PFCarveToNeighbor
     jp .hkWalk
+
+; ============================================================
+; PFPlaceRooms
+; Places up to 8 candidate rectangular rooms (2-3 cells per side) into
+; the all-tree map BEFORE PFHuntAndKill runs. Accepted rooms are stored
+; as (col,row,w,h) — 4 bytes each — in sProcForestGenScratch (up to 8
+; rooms = 32 bytes), with the count in wBuffer+wPFRoomCount.
+; PFHuntAndKill later reads carved room cells as "visited" (block !=
+; PF_TREE) and fills every remaining cell with corridor around them.
+; ============================================================
+PFPlaceRooms:
+    xor a
+    ld [wBuffer + wPFRoomCount], a
+    ld [wBuffer + wPFRoomTries], a
+
+.prTryLoop
+    ld a, [wBuffer + wPFRoomTries]
+    cp 8
+    ret nc                          ; tried 8 candidates — done
+
+    ; --- Roll a candidate: col,row in 0-8; w,h in 2-3 ---
+    ld c, PF_CELL_W
+    call Rangerandom                ; a = 0..8
+    ld [wBuffer + wPFRoomCol], a
+    ld c, PF_CELL_H
+    call Rangerandom
+    ld [wBuffer + wPFRoomRow], a
+    ld c, 2
+    call Rangerandom                ; a = 0..1
+    add a, 2                        ; 2 or 3
+    ld [wBuffer + wPFRoomW], a
+    ld c, 2
+    call Rangerandom
+    add a, 2
+    ld [wBuffer + wPFRoomH], a
+
+    ; --- Clip: col+w > 9 or row+h > 9 -> reject ---
+    ld a, [wBuffer + wPFRoomCol]
+    ld b, a
+    ld a, [wBuffer + wPFRoomW]
+    add a, b                        ; col+w
+    cp PF_CELL_W + 1
+    jp nc, .prNextTry                ; col+w > 9
+    ld a, [wBuffer + wPFRoomRow]
+    ld b, a
+    ld a, [wBuffer + wPFRoomH]
+    add a, b                        ; row+h
+    cp PF_CELL_H + 1
+    jp nc, .prNextTry                ; row+h > 9
+
+    ; --- Overlap check: scan cell centres of the rect expanded by a
+    ; 1-cell margin (clamped to the grid); reject if any is already floor.
+    ld a, [wBuffer + wPFRoomCol]
+    and a
+    jr z, .prColLoZero
+    dec a
+    jr .prColLoDone
+.prColLoZero
+    xor a
+.prColLoDone
+    ld [wBuffer + wPFScanColLo], a
+
+    ld a, [wBuffer + wPFRoomCol]
+    ld b, a
+    ld a, [wBuffer + wPFRoomW]
+    add a, b                        ; col+w
+    cp PF_CELL_W
+    jr c, .prColHiDone
+    ld a, PF_CELL_W - 1
+.prColHiDone
+    ld [wBuffer + wPFScanColHi], a
+
+    ld a, [wBuffer + wPFRoomRow]
+    and a
+    jr z, .prRowLoZero
+    dec a
+    jr .prRowLoDone
+.prRowLoZero
+    xor a
+.prRowLoDone
+    ld b, a                          ; b = scan row iterator, init to rowLo
+
+    ld a, [wBuffer + wPFRoomRow]
+    ld c, a
+    ld a, [wBuffer + wPFRoomH]
+    add a, c                        ; row+h
+    cp PF_CELL_H
+    jr c, .prRowHiDone
+    ld a, PF_CELL_H - 1
+.prRowHiDone
+    push af                         ; stash rowHi across the scan (b is live)
+.prScanRowLoop
+    pop af
+    push af
+    ld c, a                          ; c = rowHi, reloaded each row pass
+    ld a, [wBuffer + wPFScanColLo]
+    ld d, a                          ; d = colLo (reloaded each row pass)
+    ld e, d                          ; e = current scan col iterator
+
+.prScanColLoop
+    ld a, e
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    push bc
+    push de
+    call PFReadBlock                 ; A = block; BC/DE clobbered internally
+                                      ; but we saved our own copies above
+    pop de
+    pop bc
+    cp PF_TREE
+    jp nz, .prRejectPopAF             ; already floor -> overlap, reject
+
+    ld a, [wBuffer + wPFScanColHi]
+    cp e
+    jr z, .prScanColDone
+    inc e
+    jr .prScanColLoop
+.prScanColDone
+    ld a, c                          ; rowHi
+    cp b
+    jr z, .prScanRowDone
+    inc b
+    jr .prScanRowLoop
+.prScanRowDone
+    pop af                          ; discard stashed rowHi
+
+    ; --- Accepted: carve the whole room block span to floor ---
+    ; Block X range: 2*col+1 .. 2*(col+w-1)+1 ; block Y range likewise.
+    ld a, [wBuffer + wPFRoomW]
+    add a, a
+    dec a
+    ld [wBuffer + wPFScanColHi], a   ; colCount = 2*w-1 (overlap scan is over)
+    ld a, [wBuffer + wPFRoomH]
+    add a, a
+    dec a
+    ld [wBuffer + wPFScanRowHi], a   ; rowCount = 2*h-1
+
+    ld a, [wBuffer + wPFRoomRow]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a        ; starting blockY = 2*row+1
+
+.prCarveRowLoop
+    ld a, [wBuffer + wPFRoomCol]
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a        ; starting blockX = 2*col+1
+
+    ld a, [wBuffer + wPFScanColHi]   ; colCount
+    ld b, a                          ; b = inner col counter (survives
+                                     ; PFPickFloor/PFWriteBlock — both
+                                     ; preserve B, matching existing usage
+                                     ; elsewhere in this file)
+.prCarveColLoop
+    call PFPickFloor
+    call PFWriteBlock
+    ld a, [wBuffer + wPFCurX]
+    inc a
+    ld [wBuffer + wPFCurX], a
+    dec b
+    jr nz, .prCarveColLoop
+
+    ld a, [wBuffer + wPFCurY]
+    inc a
+    ld [wBuffer + wPFCurY], a
+    ld a, [wBuffer + wPFScanRowHi]
+    dec a
+    ld [wBuffer + wPFScanRowHi], a
+    jr nz, .prCarveRowLoop
+
+    ; --- Append accepted room to sProcForestGenScratch[count*4..+3] ---
+    ld a, [wBuffer + wPFRoomCount]
+    add a, a
+    add a, a                        ; a = count*4
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, [wBuffer + wPFRoomCol]
+    ld [hli], a
+    ld a, [wBuffer + wPFRoomRow]
+    ld [hli], a
+    ld a, [wBuffer + wPFRoomW]
+    ld [hli], a
+    ld a, [wBuffer + wPFRoomH]
+    ld [hl], a
+
+    ld a, [wBuffer + wPFRoomCount]
+    inc a
+    ld [wBuffer + wPFRoomCount], a
+    jr .prNextTry
+
+.prRejectPopAF
+    pop af                          ; discard stashed rowHi from the scan
+
+.prNextTry
+    ld a, [wBuffer + wPFRoomTries]
+    inc a
+    ld [wBuffer + wPFRoomTries], a
+    jp .prTryLoop
+
+; ============================================================
+; PFConnectRooms
+; For each room stored by PFPlaceRooms, carves 1-2 doorways through the
+; wall between the room and a bordering corridor cell. Scans each of
+; the room's 4 sides independently (a side only exists if that edge
+; isn't on the grid boundary). Guaranteed to find >=1 candidate per
+; room because PFHuntAndKill fills every non-room cell with corridor,
+; and it never carves a wall bordering an already-visited (room) cell.
+; ============================================================
+PFConnectRooms:
+    xor a
+    ld [wBuffer + wPFRoomIdx], a
+
+.pcrRoomLoop
+    ld a, [wBuffer + wPFRoomIdx]
+    ld hl, wBuffer + wPFRoomCount
+    cp [hl]
+    ret nc                          ; idx >= count -> done
+
+    ; Load room i's col,row,w,h
+    ld a, [wBuffer + wPFRoomIdx]
+    add a, a
+    add a, a                        ; idx*4
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, [hli]
+    ld [wBuffer + wPFRoomCol], a
+    ld a, [hli]
+    ld [wBuffer + wPFRoomRow], a
+    ld a, [hli]
+    ld [wBuffer + wPFRoomW], a
+    ld a, [hl]
+    ld [wBuffer + wPFRoomH], a
+
+    xor a
+    ld [wBuffer + wPFDoorCount], a
+
+    ; --- North side (row > 0) ---
+    ld a, [wBuffer + wPFRoomRow]
+    and a
+    jr z, .pcrNoNorth
+    ld a, [wBuffer + wPFDoorCount]
+    cp 2
+    jr nc, .pcrNoNorth
+
+    ld a, [wBuffer + wPFRoomCol]
+    ld b, a
+    ld c, a
+    ld a, [wBuffer + wPFRoomW]
+    dec a
+    add a, c
+    ld [wBuffer + wPFSideBound], a   ; roomCol+w-1
+
+.pcrNorthLoop
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a        ; wall/outside X = 2*b+1
+    ld a, [wBuffer + wPFRoomRow]
+    add a, a
+    ld [wBuffer + wPFCurY], a        ; wall Y = 2*roomRow
+    call PFReadBlock
+    cp PF_TREE
+    jr nz, .pcrNorthNext
+
+    ld a, [wBuffer + wPFCurY]
+    dec a
+    ld [wBuffer + wPFCurY], a        ; outside Y = wallY-1
+    call PFReadBlock
+    cp PF_TREE
+    jr z, .pcrNorthNext
+
+    ld a, [wBuffer + wPFCurY]
+    inc a
+    ld [wBuffer + wPFCurY], a        ; back to wall Y
+    call PFPickFloor
+    call PFWriteBlock
+    ld a, [wBuffer + wPFDoorCount]
+    inc a
+    ld [wBuffer + wPFDoorCount], a
+    cp 2
+    jr nc, .pcrNoNorth
+
+.pcrNorthNext
+    ld a, [wBuffer + wPFSideBound]
+    cp b
+    jr z, .pcrNoNorth
+    inc b
+    jr .pcrNorthLoop
+.pcrNoNorth
+
+    ; --- South side (row+h < 9) ---
+    ld a, [wBuffer + wPFRoomRow]
+    ld c, a
+    ld a, [wBuffer + wPFRoomH]
+    add a, c                        ; roomRow+h
+    cp PF_CELL_H
+    jr nc, .pcrNoSouth
+    ld a, [wBuffer + wPFDoorCount]
+    cp 2
+    jr nc, .pcrNoSouth
+
+    ld a, [wBuffer + wPFRoomCol]
+    ld b, a
+    ld c, a
+    ld a, [wBuffer + wPFRoomW]
+    dec a
+    add a, c
+    ld [wBuffer + wPFSideBound], a   ; roomCol+w-1
+
+.pcrSouthLoop
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, [wBuffer + wPFRoomRow]
+    ld c, a
+    ld a, [wBuffer + wPFRoomH]
+    add a, c
+    add a, a
+    ld [wBuffer + wPFCurY], a        ; wall Y = 2*(roomRow+h)
+    call PFReadBlock
+    cp PF_TREE
+    jr nz, .pcrSouthNext
+
+    ld a, [wBuffer + wPFCurY]
+    inc a
+    ld [wBuffer + wPFCurY], a        ; outside Y = wallY+1
+    call PFReadBlock
+    cp PF_TREE
+    jr z, .pcrSouthNext
+
+    ld a, [wBuffer + wPFCurY]
+    dec a
+    ld [wBuffer + wPFCurY], a
+    call PFPickFloor
+    call PFWriteBlock
+    ld a, [wBuffer + wPFDoorCount]
+    inc a
+    ld [wBuffer + wPFDoorCount], a
+    cp 2
+    jr nc, .pcrNoSouth
+
+.pcrSouthNext
+    ld a, [wBuffer + wPFSideBound]
+    cp b
+    jr z, .pcrNoSouth
+    inc b
+    jr .pcrSouthLoop
+.pcrNoSouth
+
+    ; --- West side (col > 0) ---
+    ld a, [wBuffer + wPFRoomCol]
+    and a
+    jr z, .pcrNoWest
+    ld a, [wBuffer + wPFDoorCount]
+    cp 2
+    jr nc, .pcrNoWest
+
+    ld a, [wBuffer + wPFRoomRow]
+    ld b, a
+    ld c, a
+    ld a, [wBuffer + wPFRoomH]
+    dec a
+    add a, c
+    ld [wBuffer + wPFSideBound], a   ; roomRow+h-1
+
+.pcrWestLoop
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a        ; wall/outside Y = 2*b+1
+    ld a, [wBuffer + wPFRoomCol]
+    add a, a
+    ld [wBuffer + wPFCurX], a        ; wall X = 2*roomCol
+    call PFReadBlock
+    cp PF_TREE
+    jr nz, .pcrWestNext
+
+    ld a, [wBuffer + wPFCurX]
+    dec a
+    ld [wBuffer + wPFCurX], a        ; outside X = wallX-1
+    call PFReadBlock
+    cp PF_TREE
+    jr z, .pcrWestNext
+
+    ld a, [wBuffer + wPFCurX]
+    inc a
+    ld [wBuffer + wPFCurX], a
+    call PFPickFloor
+    call PFWriteBlock
+    ld a, [wBuffer + wPFDoorCount]
+    inc a
+    ld [wBuffer + wPFDoorCount], a
+    cp 2
+    jr nc, .pcrNoWest
+
+.pcrWestNext
+    ld a, [wBuffer + wPFSideBound]
+    cp b
+    jr z, .pcrNoWest
+    inc b
+    jr .pcrWestLoop
+.pcrNoWest
+
+    ; --- East side (col+w < 9) ---
+    ld a, [wBuffer + wPFRoomCol]
+    ld c, a
+    ld a, [wBuffer + wPFRoomW]
+    add a, c                        ; roomCol+w
+    cp PF_CELL_W
+    jr nc, .pcrNoEast
+    ld a, [wBuffer + wPFDoorCount]
+    cp 2
+    jr nc, .pcrNoEast
+
+    ld a, [wBuffer + wPFRoomRow]
+    ld b, a
+    ld c, a
+    ld a, [wBuffer + wPFRoomH]
+    dec a
+    add a, c
+    ld [wBuffer + wPFSideBound], a   ; roomRow+h-1
+
+.pcrEastLoop
+    ld a, b
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    ld a, [wBuffer + wPFRoomCol]
+    ld c, a
+    ld a, [wBuffer + wPFRoomW]
+    add a, c
+    add a, a
+    ld [wBuffer + wPFCurX], a        ; wall X = 2*(roomCol+w)
+    call PFReadBlock
+    cp PF_TREE
+    jr nz, .pcrEastNext
+
+    ld a, [wBuffer + wPFCurX]
+    inc a
+    ld [wBuffer + wPFCurX], a        ; outside X = wallX+1
+    call PFReadBlock
+    cp PF_TREE
+    jr z, .pcrEastNext
+
+    ld a, [wBuffer + wPFCurX]
+    dec a
+    ld [wBuffer + wPFCurX], a
+    call PFPickFloor
+    call PFWriteBlock
+    ld a, [wBuffer + wPFDoorCount]
+    inc a
+    ld [wBuffer + wPFDoorCount], a
+    cp 2
+    jr nc, .pcrNoEast
+
+.pcrEastNext
+    ld a, [wBuffer + wPFSideBound]
+    cp b
+    jr z, .pcrNoEast
+    inc b
+    jr .pcrEastLoop
+.pcrNoEast
+
+    ld a, [wBuffer + wPFRoomIdx]
+    inc a
+    ld [wBuffer + wPFRoomIdx], a
+    jp .pcrRoomLoop
+
+; ============================================================
+; PFGenerateRoomsDungeon
+; Orchestrator for the Rooms/Dungeon layout (sProcForestAlgoForce=5):
+; place rooms, run PFHuntAndKill to fill everything else with corridor,
+; then guarantee every room is reachable via PFConnectRooms. Caller
+; continues with the normal PFScanForBall/PFBraidPass/exit passes.
+; ============================================================
+PFGenerateRoomsDungeon:
+    call PFPlaceRooms
+    call PFHuntAndKill
+    call PFConnectRooms
+    ret
+
+; ============================================================
+; PFStampRiver
+; Stamps PF_RIVER_BODY 2 blocks wide at (wPFCurX, wPFCurY): the width axis is
+; perpendicular to flow (vertical river -> +1 in X; horizontal river -> +1 in
+; Y). Restores wPFCurX/Y. PFWriteBlock preserves BC.
+; ============================================================
+PFStampRiver:
+    ld a, PF_RIVER_BODY
+    call PFWriteBlock                ; stamp (CurX, CurY)
+    ld a, [wBuffer + wPFRivDir]
+    and a
+    jr nz, .horiz
+    ; vertical: also stamp (CurX+1, CurY)
+    ld a, [wBuffer + wPFCurX]
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, PF_RIVER_BODY
+    call PFWriteBlock
+    ld a, [wBuffer + wPFCurX]
+    dec a
+    ld [wBuffer + wPFCurX], a
+    ret
+.horiz
+    ; horizontal: also stamp (CurX, CurY+1)
+    ld a, [wBuffer + wPFCurY]
+    inc a
+    ld [wBuffer + wPFCurY], a
+    ld a, PF_RIVER_BODY
+    call PFWriteBlock
+    ld a, [wBuffer + wPFCurY]
+    dec a
+    ld [wBuffer + wPFCurY], a
+    ret
+
+; ============================================================
+; PFCarveRiver
+; Wandering 2-wide vertical river across the maze interior, stamped as
+; PF_RIVER_BODY. Starts at a random offset near the bottom (block Y=17) and
+; biased-walks north: ~70% advance along Y, ~30% wobble one step on X. The
+; entrance is at block X=9, so the river is clamped to stay entirely on ONE
+; side of that column (rolled here, 0=left/1=right, saved to
+; sProcForestRiverSide) and PFinalizeForest places the exit on the OPPOSITE
+; side, keeping entrance and exit connected while the river walls off the
+; far strip. Y is monotonic (only ever advances), so the walk always
+; terminates.
+; Runs FIRST, on the all-tree map, before the maze. No target-seeking
+; machinery (leaner than the cave's PCCarveRiver, which is why nothing is
+; ported here).
+; ============================================================
+PFCarveRiver:
+    xor a
+    ld [wBuffer + wPFRivDir], a      ; always vertical (PFStampRiver still
+                                      ; stamps the +1-in-X second block)
+
+    ld c, 2
+    call Rangerandom                 ; 0 = left, 1 = right
+    ld [sProcForestRiverSide], a
+    and a
+    jr nz, .rightStart
+
+.leftStart
+    ld a, 17
+    ld [wBuffer + wPFCurY], a        ; start at bottom of interior
+    ld c, 5
+    call Rangerandom
+    add a, 2                         ; start X = 2..6
+    ld [wBuffer + wPFCurX], a
+.leftLoop
+    call PFStampRiver
+    ld a, [wBuffer + wPFCurY]
+    cp 2
+    ret c                            ; reached top (Y<2) -> done
+    ld c, 10
+    call Rangerandom
+    cp 7
+    jr nc, .leftWobble
+    ld a, [wBuffer + wPFCurY]
+    dec a                            ; advance north
+    ld [wBuffer + wPFCurY], a
+    jr .leftLoop
+.leftWobble
+    ld c, 2
+    call Rangerandom
+    and a
+    jr z, .leftXdec
+    ld a, [wBuffer + wPFCurX]
+    cp 7
+    jr nc, .leftLoop                 ; clamp X<=7 (stays clear of entrance X=9)
+    inc a
+    ld [wBuffer + wPFCurX], a
+    jr .leftLoop
+.leftXdec
+    ld a, [wBuffer + wPFCurX]
+    cp 2
+    jr c, .leftLoop                  ; clamp X>=1
+    dec a
+    ld [wBuffer + wPFCurX], a
+    jr .leftLoop
+
+.rightStart
+    ld a, 17
+    ld [wBuffer + wPFCurY], a        ; start at bottom of interior
+    ld c, 6
+    call Rangerandom
+    add a, 10                        ; start X = 10..15
+    ld [wBuffer + wPFCurX], a
+.rightLoop
+    call PFStampRiver
+    ld a, [wBuffer + wPFCurY]
+    cp 2
+    ret c                            ; reached top (Y<2) -> done
+    ld c, 10
+    call Rangerandom
+    cp 7
+    jr nc, .rightWobble
+    ld a, [wBuffer + wPFCurY]
+    dec a                            ; advance north
+    ld [wBuffer + wPFCurY], a
+    jr .rightLoop
+.rightWobble
+    ld c, 2
+    call Rangerandom
+    and a
+    jr z, .rightXdec
+    ld a, [wBuffer + wPFCurX]
+    cp 16
+    jr nc, .rightLoop                ; clamp X<=16
+    inc a
+    ld [wBuffer + wPFCurX], a
+    jr .rightLoop
+.rightXdec
+    ld a, [wBuffer + wPFCurX]
+    cp 11
+    jr c, .rightLoop                 ; clamp X>=10 (stays clear of entrance X=9)
+    dec a
+    ld [wBuffer + wPFCurX], a
+    jr .rightLoop
+
+; ============================================================
+; PFGenerateRiverMaze (sProcForestAlgoForce=6)
+; Stage 1: carve the river, then run HuntAndKill. The river-guard in
+; PFCheckUnvisited keeps the maze from ever carving across the river, so the
+; two banks fill independently (uncrossable, per design). Stage 2 will add
+; PFAutotileRiver here to give the river its directional bank/corner blocks.
+; ============================================================
+PFGenerateRiverMaze:
+    call PFCarveRiver
+    call PFHuntAndKill
+    ret
 
 ; ============================================================
 ; PFScanWall
@@ -1372,6 +2067,8 @@ PFPreloadForest::
     ld [sProcForestBaked], a        ; 0 = needs fresh generation
     ld [sProcForestItemGot], a      ; clear all ball-collected bits
     ld [sProcForestAlgoForce], a    ; 0 = random; set in BGB after this runs to force an algo
+    ld a, $FF
+    ld [sProcForestRiverSide], a    ; sentinel: no river carved yet this run
 
     ; Roll the forest's OWN boss (previously this read wRoguePokemon1 as if
     ; PCRollBoss — the CAVE's roller — had already set it for the forest;
@@ -1477,6 +2174,10 @@ PFinalizeForest::
     jr .algoDispatch
 .algoForced
     dec a                   ; 1→0, 2→1, 3→2, 4→3
+    cp 4
+    jr z, .useRooms          ; algoForce 5 -> dec -> 4 = Rooms/Dungeon
+    cp 5
+    jr z, .useRiver          ; algoForce 6 -> dec -> 5 = River+Maze
 .algoDispatch
     and 3                   ; clamp
     jr z, .useAlgoA
@@ -1495,6 +2196,12 @@ PFinalizeForest::
     jr .algosDone
 .useAlgoC
     call PFBacktracker
+    jr .algosDone
+.useRiver
+    call PFGenerateRiverMaze
+    jr .algosDone
+.useRooms
+    call PFGenerateRoomsDungeon
 .algosDone
 
     ; Phase 4: scan for a dead-end cell to place the pokeball (BEFORE braid
@@ -1505,11 +2212,51 @@ PFinalizeForest::
     ; Phase 3: braid dead ends to add loops
     call PFBraidPass
 
+    ; Sign: the tile in front of the (north-facing) entrance spawn is block
+    ; (9,16), the entrance cell's north wall. Read it AFTER braid (which can
+    ; carve this wall): still tree -> sign-on-tree (21); opened into a path ->
+    ; sign-on-floor (22), so the sign matches the ground and (22 being
+    ; walkable) doesn't wall the entrance off. Baked with the rest of the map.
+    ld a, 9
+    ld [wBuffer + wPFCurX], a
+    ld a, 16
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock
+    cp PF_TREE
+    ld a, 21                ; front tile is tree -> sign-on-tree
+    jr z, .signWrite
+    ld a, 22                ; front tile is floor/path -> sign-on-floor
+.signWrite
+    call PFWriteBlock
+
     ; Roll exit column i (0-8), write block 88, save i in B for later.
     ; B is preserved by PFWriteBlock (push/pop bc). E is NOT preserved — it
     ; gets clobbered by the row-offset load inside PFWriteBlock.
+    ;
+    ; If a river ran this generation, the exit must land on the side
+    ; opposite the river (entrance's block X=9) so entrance and exit stay
+    ; connected while the river walls off the far strip. sProcForestRiverSide
+    ; is $FF when no river ran this generation (normal unconstrained pick).
+    ld a, [sProcForestRiverSide]
+    cp $FF
+    jr z, .exitUnconstrained
+    cp 1
+    jr z, .exitRiverRight
+.exitRiverLeft
+    ; river on the left -> exit on the right half: exitI = 4 + Rangerandom(5)
+    ld c, 5
+    call Rangerandom
+    add a, 4
+    jr .exitRolled
+.exitRiverRight
+    ; river on the right -> exit on the left half: exitI = Rangerandom(4)
+    ld c, 4
+    call Rangerandom
+    jr .exitRolled
+.exitUnconstrained
     ld c, PF_CELL_W
     call Rangerandom        ; a = 0..8
+.exitRolled
     ld b, a                 ; b = i (B preserved by PFWriteBlock)
     add a, a                ; 2i
     inc a                   ; 2i+1

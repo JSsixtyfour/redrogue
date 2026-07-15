@@ -8,6 +8,11 @@ _PCSignBossText::
 	line "blocks your way.@"
 	text_end
 
+_PFSignText::
+	text "The trees whisper"
+	line "of danger ahead...@"
+	text_end
+
 
 
 _PCBossEncounterText::

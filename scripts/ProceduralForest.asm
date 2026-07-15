@@ -100,12 +100,19 @@ ProceduralForest_ScriptPointers:
 ProceduralForestDefaultScript:
 	CheckEvent EVENT_BEAT_PC_BOSS
 	jp nz, CheckFightingMapTrainers
+	; Sprite StateData2 MapX/MapY are in SPRITE coordinate space = player
+	; space (wXCoord/wYCoord) + 4 (the centered-player offset: a sprite on the
+	; player's own tile reads MapY = wYCoord+4). Convert to player space with
+	; -4 before comparing, or the trigger fires 4 tiles off in both axes
+	; ("miles off but still functions" bug).
 	ld a, [wSprite01StateData2MapY]
+	sub 4
 	ld b, a
 	ld a, [wYCoord]
 	cp b
 	jp nz, CheckFightingMapTrainers
 	ld a, [wSprite01StateData2MapX]
+	sub 4                            ; sprite space -> player space
 	inc a                            ; one tile right of the boss
 	ld b, a
 	ld a, [wXCoord]
@@ -308,6 +315,20 @@ ProceduralForestCalmedText:
 	text_far _PCWildCalmedText
 	text_end
 
+; Cavern-style readable sign — simplified from the cave's PCSignText: single
+; text, no SRAM variant roll.
+PFSignText:
+	text_asm
+	; Use call PrintText — ld hl/ret causes TX_START to pop the text stream
+	; pointer as the tile cursor, so line 1 writes off-screen (invisible).
+	ld hl, PFSignActualText
+	call PrintText
+	jp TextScriptEnd
+
+PFSignActualText:
+	text_far _PFSignText
+	text_end
+
 ProceduralForest_TextPointers:
 	def_text_pointers
 	dw_const ProceduralForestBossText, TEXT_PROCEDURALFOREST_BOSS
@@ -318,4 +339,4 @@ ProceduralForest_TextPointers:
 	dw_const ProceduralForestBossOfferText, TEXT_PROCEDURALFOREST_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALFOREST_CALMED
 	EXPORT TEXT_PROCEDURALFOREST_CALMED ; used by engine/battle/wild_encounters.asm
-	;dw_const PCSignText, TEXT_PROCEDURALCAVE1_SIGN
+	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN

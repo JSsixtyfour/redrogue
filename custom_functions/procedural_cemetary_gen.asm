@@ -44,6 +44,8 @@ DEF wCemExY         EQU 7  ; exit inner row
 ; Explicit lookup needed because map IDs aren't consecutive
 ; ($6C = VICTORY_ROAD_1F sits between cemetery 3 and 4).
 ; ============================================================
+
+;; simplify by reordering stages?
 PCemMapToIndex:
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CEMETARY_4
@@ -214,6 +216,7 @@ PCemCopyPremadeTemplate:
 	ld bc, CEMAP_SIZE
 	jp FarCopyData2
 
+; whats going on here?
 PCemPremadeTable:
 	db BANK(PCemTower5F_Blocks), LOW(PCemTower5F_Blocks),  HIGH(PCemTower5F_Blocks)
 	db BANK(PCemTower4F_Blocks), LOW(PCemTower4F_Blocks),  HIGH(PCemTower4F_Blocks)
@@ -255,15 +258,15 @@ PCemBaseTemplate2: INCBIN "maps/ProceduralCemetary2.blk"
 ; Skips cells near warp staircase positions.
 ; ============================================================
 PCemScatterTombstones:
-	ld b, CEMAP_NUM_TOMBSTONES
+	ld b, CEMAP_NUM_TOMBSTONES  ; load number of tombstones
 .scatter
-	push bc
-	ld c, CEMAP_WIDTH
+	push bc ; preserve bc
+	ld c, CEMAP_WIDTH           ; load the width of map to get a random number with a maximum of the entire width
 	call Rangerandom
-	ld [wBuffer + wCemTryX], a
-	ld c, CEMAP_HEIGHT
+	ld [wBuffer + wCemTryX], a  ; write x coordinate to try location
+	ld c, CEMAP_HEIGHT          ; load the height of map to get a random number with a maximum of the entire height
 	call Rangerandom
-	ld [wBuffer + wCemTryY], a
+	ld [wBuffer + wCemTryY], a  ; write y coordinate to try location
 	call PCemInWarpZone
 	jr nz, .skip
 	call PCemGetCellHL
@@ -272,19 +275,19 @@ PCemScatterTombstones:
 	jr nz, .skip
 	; pick random tombstone block
 	push hl
-	ld c, NUM_CEMDECO_FLOOR
+	ld c, NUM_CEMDECO_FLOOR     ; number of potential tombstone tiles
 	call Rangerandom
 	ld hl, PCemFloorTombstoneTable
 	ld e, a
 	ld d, 0
-	add hl, de
-	ld a, [hl]
+	add hl, de                  ; add offset to find tile location
+	ld a, [hl]                  ; load tile
 	pop hl
-	ld [hl], a
+	ld [hl], a                  ; save tile to x,y location
 .skip
-	pop bc
-	dec b
-	jr nz, .scatter
+	pop bc                      ; restore bc
+	dec b                       ; decrease count to end loop
+	jr nz, .scatter ; falls through when hits CEMAP_NUM_TOMBSTONES
 	ret
 
 ; Wall tiles that carving must never replace with floor.
