@@ -230,27 +230,24 @@ PCemTower6F_Blocks: INCBIN "maps/PokemonTower6F.blk"
 
 ; ============================================================
 ; PCemCopyBaseTemplate
-; Maps 0-2 → ProceduralCemetary1.blk, map 3 → ProceduralCemetary2.blk
+; All 4 floors share one base template. Per-floor geometry (entry/exit
+; stair blocks, south-exit block) is patched in post-blit by
+; PCemPlaceStaircases from PCemFloorGeometry - see Section 5g of
+; CEMETERY_DESIGN_LAPTOP.md. The old floor-4 template
+; (ProceduralCemetary2.blk) differed from this one only at the two
+; blocks the patch overwrites anyway; everything else was cosmetic
+; wall-art variation.
 ; ============================================================
 PCemCopyBaseTemplate:
 	call PCemGetMapBase
 	ld d, h
 	ld e, l
-	ld a, [wBuffer + wCemMapIndex]
-	cp 3
-	jr z, .useMap2
 	ld a, BANK(PCemBaseTemplate1)
 	ld hl, PCemBaseTemplate1
-	jr .doCopy
-.useMap2
-	ld a, BANK(PCemBaseTemplate2)
-	ld hl, PCemBaseTemplate2
-.doCopy
 	ld bc, CEMAP_SIZE
 	jp FarCopyData2
 
 PCemBaseTemplate1: INCBIN "maps/ProceduralCemetary1.blk"
-PCemBaseTemplate2: INCBIN "maps/ProceduralCemetary2.blk"
 
 ; ============================================================
 ; PCemScatterTombstones
@@ -792,49 +789,52 @@ PCemWallDecoVariants:
 	db 96           ; offset  12   (for block 10)
 	db 90, 94, 87   ; offsets 13-15 (for block 57)
 
+; 7 bytes per floor: col1_block, col9_block, south(4,8)_block, entX, entY, exX, exY.
+; entX/Y/exX/Y are unused until PCemMarchPath replaces the carve algorithms
+; (CEMETERY_DESIGN_LAPTOP.md Section 5g) but are defined now so this table
+; only needs to be written once.
+PCemFloorGeometry:
+	db 17, 18, 28,  2, 4,  8, 4   ; floor 1: W entry, E exit
+	db 21, 22, 28,  8, 4,  2, 4   ; floor 2: E entry, W exit
+	db 17, 18, 28,  2, 4,  8, 4   ; floor 3: W entry, E exit
+	db 57, 22, 48,  8, 4,  4, 7   ; floor 4: E entry, S exit, W wall
+DEF CEMGEO_SIZE EQU 7
+
 ; ============================================================
 ; PCemPlaceStaircases
-; Writes entrance/exit stair tiles into wOverworldMap after blit.
-; Deterministic from map index — no SRAM needed.
-; Map 0,2: enter west col 1 (block 17), exit east col 8 (block 18)
-; Map 1:   enter east col 8 (block 22), exit west col 1 (block 21)
-; Map 3:   enter east col 8 (block 22), south exit unchanged (same tile always)
+; Writes entrance/exit/south-exit blocks into wOverworldMap after blit,
+; sourced from PCemFloorGeometry. Deterministic from map index — no
+; SRAM needed. Applies to all maps (procedural and premade) — wBuffer
+; is unreliable across map loads so we can't check wCemIsProcedural
+; here. All base/premade maps share the same floor geometry (row 4
+; cols 1/9, block (4,8)) so the patch is safe for all of them.
 ; ============================================================
 PCemPlaceStaircases:
-	; Apply to all maps — wBuffer is unreliable across map loads so we can't
-	; check wCemIsProcedural here. Tower premade floors share row 4 / cols 1,9
-	; so the stair patch is safe for them too.
-	ld hl, wOverworldMap + CEMAP_BASE + 4 * CEMAP_STRIDE
-	ld b, h
-	ld c, l                  ; bc = row 4 base
+	; hl -> PCemFloorGeometry[mapIndex * CEMGEO_SIZE]
+	ld hl, PCemFloorGeometry
 	ld a, [wBuffer + wCemMapIndex]
-	and 1                    ; 0 = left entry, 1 = right entry
-	jr nz, .rightEntry
-.leftEntry
-	; Maps 0,2: col 1 = west entrance (17), col 9 = east exit (18)
-	ld de, 1
+	and a
+	jr z, .gotRow
+	ld de, CEMGEO_SIZE
+.addRow
 	add hl, de
-	ld [hl], 17
-	ld h, b
-	ld l, c
-	ld de, 9
-	add hl, de
-	ld [hl], 18
-	ret
-.rightEntry
-	; Map 1: col 9 = east entrance (22), col 1 = west exit (21)
-	; Map 3: col 9 = east entrance (22), south exit unchanged
-	ld de, 9
-	add hl, de
-	ld [hl], 22
-	ld a, [wBuffer + wCemMapIndex]
-	cp 3
-	ret z
-	ld h, b
-	ld l, c
-	ld de, 1
-	add hl, de
-	ld [hl], 21
+	dec a
+	jr nz, .addRow
+.gotRow
+
+	ld a, [hli]                ; col1 block
+	ld b, a
+	ld a, [hli]                ; col9 block
+	ld c, a
+	ld a, [hl]                 ; south-exit (4,8) block
+	ld e, a
+
+	ld hl, wOverworldMap + CEMAP_BASE + 4 * CEMAP_STRIDE + 1
+	ld [hl], b
+	ld hl, wOverworldMap + CEMAP_BASE + 4 * CEMAP_STRIDE + 9
+	ld [hl], c
+	ld hl, wOverworldMap + CEMAP_BASE + 8 * CEMAP_STRIDE + 4
+	ld [hl], e
 	ret
 
 ; ============================================================
@@ -1424,22 +1424,6 @@ PCemFinalizeMap::
 	ld a, [hl]
 	ld [wRogueItem], a
 
-	; check if this floor's item was already collected; if so, will hide ball after blit
-	ld a, [sProcCemetaryItemGot]
-	ld b, a                    ; b = collected bitfield
-	ld a, [wBuffer + wCemMapIndex]
-	ld c, 1
-.shiftBit
-	and a
-	jr z, .bitReady
-	sla c
-	dec a
-	jr .shiftBit
-.bitReady
-	ld a, b
-	and c                      ; Z if this floor's bit not set (item not yet collected)
-	push af                    ; save Z flag for after SRAM close
-
 	; close SRAM before patching WRAM sprite state
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -1482,19 +1466,66 @@ PCemFinalizeMap::
 	add a, a
 	add a, 4
 	ld [hl], a           ; MapX
+	ret
 
-	; if item was already collected (Z was clear when saved), hide the pokeball now
-	pop af
-	ret z                ; Z = not collected, leave visible
-	; item was collected — hide the pokeball sprite via toggle
-	call PCemMapToIndex
+; ============================================================
+; PCemRefreshBall
+; Shows or hides the slot-1 pokeball for the current cemetery floor,
+; based on sProcCemetaryItemGot. Called from each of the 4 cemetery
+; scripts on fresh EVENT_ENTER_ROOM entry.
+;
+; PCemFinalizeMap places the ball's sprite position on every load and
+; already computes the correct show/hide state, but EVENT_ENTER_ROOM
+; is reset on every warp (home/overworld.asm's WarpFound2), so the map
+; scripts also run their own "fresh entry" setup after LoadMapData -
+; and were unconditionally calling ShowObject there, undoing
+; FinalizeMap's hide every time. This is the fix: the scripts farcall
+; here instead, which makes the same show/hide decision FinalizeMap
+; would have made. See CEMETERY_DESIGN_LAPTOP.md Section 4b.
+; ============================================================
+PCemRefreshBall::
+	; enable SRAM to read the collected bitfield
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+
+	call PCemMapToIndex        ; a = floor index 0-3
 	ld b, a
+	; compute bit mask = 1 << floorIndex
+	ld c, 1
+	and a
+	jr z, .gotMask
+.shiftMask
+	sla c
+	dec a
+	jr nz, .shiftMask
+.gotMask
+	ld a, [sProcCemetaryItemGot]
+	and c                      ; Z if this floor's item not yet collected
+
+	; close SRAM before the predef calls
+	push af
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	pop af
+
+	; look up toggle constant for this floor
+	push af
 	ld hl, PCemToggleTable
 	ld e, b
 	ld d, 0
 	add hl, de
 	ld a, [hl]
 	ld [wToggleableObjectIndex], a
+	pop af
+	jr nz, .collected
+	predef ShowObject
+	ret
+.collected
 	predef HideObject
 	ret
 
@@ -1512,13 +1543,16 @@ PCemToggleTable:
 IsCemetaryMap::
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CEMETARY_1
-	ret z
+	jr z, .isCemetary
 	cp PROCEDURAL_CEMETARY_2
-	ret z
+	jr z, .isCemetary
 	cp PROCEDURAL_CEMETARY_3
-	ret z
+	jr z, .isCemetary
 	cp PROCEDURAL_CEMETARY_4
-	ret z
-	; not cemetery - set Z=0 by comparing unequal values
-	; (a already = hCurMap which != PROCEDURAL_CEMETARY_4 from above, so Z is already clear)
+	jr z, .isCemetary
+	xor a              ; Z set = not a cemetery map
+	ret
+.isCemetary
+	xor a
+	inc a              ; Z clear = is a cemetery map
 	ret

@@ -2,9 +2,7 @@ ProceduralCemetary1_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
-	ld a, TOGGLE_CEMETARY_1_POKEBALL
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
+	farcall PCemRefreshBall
 .afterSetup
 	call PCemCalmedCheck
 	call EnableAutoTextBoxDrawing
