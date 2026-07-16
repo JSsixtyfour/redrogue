@@ -28,6 +28,8 @@ DEF PF_CELL_H  EQU 9
 
 DEF PF_TREE    EQU 2   ; base tree block
 DEF PF_EXIT_N  EQU 88  ; north-edge exit block (FOREST tileset, recognized warp)
+DEF PF_EXIT_W  EQU 86  ; west-edge exit block (opening graphic on the LEFT edge)
+DEF PF_EXIT_E  EQU 87  ; east-edge exit block (opening graphic on the RIGHT edge)
 ; River (sProcForestAlgoForce=6). Provisional body value stamped during the
 ; carve + maze phases; PFAutotileRiver (Stage 2) later rewrites each river
 ; block to a directional edge variant (81 N, 90 W, 91 E, 82 NE, 92 NW, 45 body).
@@ -2037,7 +2039,7 @@ PFRollMonClass:
 ; ============================================================
 PFRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel (mirrors cave's order)
-    ld b, 48                         ; boss rarity bump, matches cave's PCRollBoss
+    ld b, 60                         ; boss rarity bump, matches cave's PCRollBoss
     call PFRollMonClass              ; c = rarity class (same bank, plain call OK)
     farcall Random_Pokemon_Selection ; -> d = species (d survives farcall)
     ld a, d
@@ -2067,6 +2069,7 @@ PFPreloadForest::
     ld [sProcForestBaked], a        ; 0 = needs fresh generation
     ld [sProcForestItemGot], a      ; clear all ball-collected bits
     ld [sProcForestAlgoForce], a    ; 0 = random; set in BGB after this runs to force an algo
+    ld [sProcForestExitEdge], a     ; 0 = N (default); set in BGB to 1=W/2=E to test
     ld a, $FF
     ld [sProcForestRiverSide], a    ; sentinel: no river carved yet this run
 
@@ -2075,6 +2078,12 @@ PFPreloadForest::
     ; that was a bug: it grabbed the cave's leftover species/sprite instead
     ; of an independent roll).
     call PFRollBoss
+
+    ; roll sign variant (0=items text, 1=boss text) while SRAM is open —
+    ; same mechanism as cave's PCPreloadCave (sProcCaveSignVariant)
+    call Random
+    and 1
+    ld [sProcForestSignVariant], a
 
     ; Set the forest's wild-battle budget for this run: 10 + wBattleCount/5,
     ; saturating at 255 (identical formula to cave's PCPreloadCave).
@@ -2229,17 +2238,23 @@ PFinalizeForest::
 .signWrite
     call PFWriteBlock
 
-    ; Roll exit column i (0-8), write block 88, save i in B for later.
+    ; Roll exit position (0-8 along whichever edge sProcForestExitEdge
+    ; selects), write the exit block, save the index in B for later.
     ; B is preserved by PFWriteBlock (push/pop bc). E is NOT preserved — it
     ; gets clobbered by the row-offset load inside PFWriteBlock.
-    ;
+    ld a, [sProcForestExitEdge]
+    and a
+    jr nz, .exitNotNorth
+
+.exitNorth
     ; If a river ran this generation, the exit must land on the side
     ; opposite the river (entrance's block X=9) so entrance and exit stay
-    ; connected while the river walls off the far strip. sProcForestRiverSide
-    ; is $FF when no river ran this generation (normal unconstrained pick).
+    ; connected while the river walls off the far strip. River mode is
+    ; north-only (dormant/debug); sProcForestRiverSide is $FF when no river
+    ; ran this generation (normal unconstrained pick).
     ld a, [sProcForestRiverSide]
     cp $FF
-    jr z, .exitUnconstrained
+    jr z, .exitUnconstrainedN
     cp 1
     jr z, .exitRiverRight
 .exitRiverLeft
@@ -2247,24 +2262,84 @@ PFinalizeForest::
     ld c, 5
     call Rangerandom
     add a, 4
-    jr .exitRolled
+    jr .exitRolledN
 .exitRiverRight
     ; river on the right -> exit on the left half: exitI = Rangerandom(4)
     ld c, 4
     call Rangerandom
-    jr .exitRolled
-.exitUnconstrained
+    jr .exitRolledN
+.exitUnconstrainedN
     ld c, PF_CELL_W
     call Rangerandom        ; a = 0..8
-.exitRolled
+.exitRolledN
     ld b, a                 ; b = i (B preserved by PFWriteBlock)
     add a, a                ; 2i
     inc a                   ; 2i+1
     ld [wBuffer + wPFCurX], a
     xor a                   ; block Y = 0
     ld [wBuffer + wPFCurY], a
+    jr .exitWriteBlock
+
+.exitNotNorth
+    ; West/East: exit is on a vertical edge, so the roll picks a ROW (j,
+    ; 0-8) instead of a column. Block X is fixed at the actual map edge:
+    ; 0=west (block 0, the edge, adjacent to cell col 0 at block 1),
+    ; PF_SIZE-1=19=east (block 19, the edge; a floor connector is dropped at
+    ; block 18 since the outermost east cell is at block 17). block Y = 2*j+1
+    ; (same cell-center formula as every other cell position here). The
+    ; river-side constraint above doesn't apply — river mode is north-only
+    ; and dormant.
+    ld c, PF_CELL_H
+    call Rangerandom        ; a = 0..8
+    ld b, a                 ; b = j (B preserved by PFWriteBlock)
+    add a, a                ; 2j
+    inc a                   ; 2j+1
+    ld [wBuffer + wPFCurY], a
+    ld a, [sProcForestExitEdge]
+    cp 2
+    jr z, .exitEastX
+    xor a
+    ld [wBuffer + wPFCurX], a  ; west edge: block X = 0
+    jr .exitWriteBlock
+.exitEastX
+    ld a, PF_SIZE - 1           ; east edge: block X = 19 (the actual east map edge, where warps fire)
+    ld [wBuffer + wPFCurX], a
+
+.exitWriteBlock
+    ; Opening graphic depends on edge: 88 (top opening) N, 86 (left) W,
+    ; 87 (right) E. The warp itself is coordinate-based, not tied to this
+    ; block ID (confirmed: none of 86/87/88 contain a warp-recognized tile,
+    ; yet the north exit works) — this only makes the opening face the right
+    ; way. SRAM is still open here.
+    ld a, [sProcForestExitEdge]
+    and a
+    jr z, .exitBlockN
+    cp 1
+    jr z, .exitBlockW
+    ld a, PF_EXIT_E
+    jr .exitBlockGo
+.exitBlockW
+    ld a, PF_EXIT_W
+    jr .exitBlockGo
+.exitBlockN
     ld a, PF_EXIT_N
-    call PFWriteBlock       ; B = i preserved via push bc / pop bc ✓
+.exitBlockGo
+    call PFWriteBlock       ; B = i/j preserved via push bc / pop bc ✓
+    ; East only: the opening now sits at the map edge (block 19), one block
+    ; past the outermost cell (col 8 = block 17). Block 18 between them is
+    ; otherwise a tree wall, which made the edge exit unreachable AND look
+    ; detached. Drop a plain floor connector (27) there so the player can walk
+    ; cell -> connector -> edge opening -> off the east edge (where the warp
+    ; fires). West needs none (block 0 is both the edge AND adjacent to its
+    ; cell). wPFCurY still holds the exit row (2j+1) from just above.
+    ld a, [sProcForestExitEdge]
+    cp 2
+    jr nz, .exitConnDone
+    ld a, PF_SIZE - 2           ; connector block X = 18
+    ld [wBuffer + wPFCurX], a
+    ld a, 27                    ; standard walkable floor
+    call PFWriteBlock
+.exitConnDone
 
     ; === Bake: copy wOverworldMap → sProcForestStagingBuffer, then mark baked ===
     ; SRAM is already open (kept open since the top of the first-visit path).
@@ -2354,9 +2429,11 @@ PFinalizeForest::
     ld a, 1
     ld [sProcForestBaked], a
 
-    ; Read exit column and close SRAM before patching WRAM
+    ; Read exit column/row and edge, then close SRAM before patching WRAM
     ld a, [sProcForestExitI]
     ld b, a
+    ld a, [sProcForestExitEdge]
+    ld d, a                         ; d = edge, carried into .patchWarp (SRAM closes next)
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -2395,12 +2472,19 @@ PFinalizeForest::
 
     ld a, [sProcForestExitI]
     ld b, a
+    ld a, [sProcForestExitEdge]
+    ld d, a                         ; d = edge, carried into .patchWarp (SRAM closes next)
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
 
 .patchWarp
+    ld a, d                         ; exit edge (0=N/1=W/2=E), preserved from before SRAM closed
+    and a
+    jr nz, .patchWarpNotNorth
+
+.patchWarpNorth
     ; Patch exit warp entries 1 and 2 (left/right tiles of exit block).
     ld a, b                         ; exitI (saved before SRAM closed)
     add a, a                        ; 2*exitI
@@ -2419,7 +2503,42 @@ PFinalizeForest::
     ld a, c
     inc a
     ld [hl], a                      ; entry2 X = 4*exitI+3
+    jr .patchWarpDone
 
+.patchWarpNotNorth
+    ; West/East: exit is 2 tiles TALL instead of 2 wide (b = exitJ, the row).
+    ; Fixed tile X = the outermost half-block in the exit direction (where the
+    ; opening graphic is): west = left half of block 0 = 2*0 = 0; east = right
+    ; half of block 18 = 2*18+1 = 37. Mirrors how the north exit puts its warp
+    ; on the top half-block (2*block_Y) of its exit block.
+    ld a, b                         ; exitJ
+    add a, a                        ; 2*exitJ
+    add a, a                        ; 4*exitJ
+    add a, 2                        ; 4*exitJ+2 = top tile Y
+    ld c, a
+    ld a, d                         ; edge (1=W/2=E)
+    cp 2
+    jr z, .patchWarpEastX
+    xor a                           ; west: left half of block 0 -> X = 2*0 = 0
+    jr .patchWarpFixedX
+.patchWarpEastX
+    ld a, (PF_SIZE-1)*2+1            ; east: right half of edge block 19 = 2*19+1 = 39
+.patchWarpFixedX
+    ld e, a                         ; e = fixed tile X for both entries
+    ld hl, wWarpEntries + 4
+    ld a, c
+    ld [hli], a                     ; entry1 Y = 4*exitJ+2 (top)
+    ld a, e
+    ld [hli], a                     ; entry1 X = fixed
+    inc hl
+    inc hl
+    ld a, c
+    inc a
+    ld [hli], a                     ; entry2 Y = 4*exitJ+3 (bottom)
+    ld a, e
+    ld [hl], a                      ; entry2 X = fixed (same)
+
+.patchWarpDone
     ; Re-open SRAM to read ball positions, boss species, item-got mask
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
@@ -2432,10 +2551,21 @@ PFinalizeForest::
     ld a, [sProcForestBossSpecies]
     ld [wRoguePokemon1], a
 
-    ; Boss sprite: slot 1 = wSprite01. Exit cell = block (2*exitI+1, 1).
-    ; tile = block*2+4 matching cave's PCPlaceBoss formula.
+    ; Boss sprite: slot 1 = wSprite01. Positioned one cell inward from
+    ; whichever edge the exit is on, at the exit's own row/column, facing
+    ; into the map. tile = block*2+4 (cave's PCPlaceBoss formula) — the X
+    ; axis separately bakes in a +1 for boundary-relative positions (matches
+    ; the entrance's own calibrated block 9 -> tile 19); Y does not.
+    ld a, [sProcForestExitEdge]
+    ld c, a                         ; c = edge, preserved across the branch
     ld a, [sProcForestExitI]
-    ld b, a                         ; b = exitI (reload; B may have changed)
+    ld b, a                         ; b = exitI/J (reload; B may have changed)
+    ld a, c
+    and a
+    jr nz, .bossNotNorth
+
+.bossNorth
+    ld a, b
     add a, a                        ; 2*exitI
     add a, a                        ; 4*exitI
     add a, 2                        ; 4*exitI+2
@@ -2443,6 +2573,44 @@ PFinalizeForest::
     ld [wSprite01StateData2MapX], a
     ld a, 1*2+4                     ; exit cell block_y=1 → 1*2+4=6
     ld [wSprite01StateData2MapY], a
+    jr .bossPosDone
+
+.bossNotNorth
+    ; West/East: boss sits one cell inward (cell col 0 for west, col 8 for
+    ; east) at the exit's own row (b = exitJ). Y uses the same cell-row
+    ; formula north uses for X; X is fixed at one cell inward from the edge.
+    ld a, b
+    add a, a                        ; 2*exitJ
+    add a, a                        ; 4*exitJ
+    add a, 2                        ; 4*exitJ+2
+    add a, 4                        ; +4 = tile Y (block*2+4 formula)
+    ld [wSprite01StateData2MapY], a
+    ld a, c                         ; edge (1=W/2=E)
+    cp 2
+    ld a, 1*2+4                     ; west: boss block_X=1 (cell col 0) -> 6
+    jr nz, .bossFixedX
+    ld a, PF_SIZE*2                 ; east: measured +2 from the prior value (40)
+.bossFixedX
+    ld [wSprite01StateData2MapX], a
+
+.bossPosDone
+    ; Facing: DOWN (north exit), RIGHT (west exit, faces into the map), or
+    ; LEFT (east exit, faces into the map).
+    ld a, [sProcForestExitEdge]
+    and a
+    jr z, .bossFaceDown
+    cp 1
+    jr z, .bossFaceRight
+.bossFaceLeft
+    ld a, SPRITE_FACING_LEFT
+    jr .bossFacingSet
+.bossFaceRight
+    ld a, SPRITE_FACING_RIGHT
+    jr .bossFacingSet
+.bossFaceDown
+    ld a, SPRITE_FACING_DOWN
+.bossFacingSet
+    ld [wSprite01StateData1FacingDirection], a
 
     ; Set boss species/level in wMapSpriteExtraData (slot 1 = offset 0)
     farcall PCGetBossLevel          ; bank 7 — must farcall from bank 6
@@ -2491,6 +2659,23 @@ PFinalizeForest::
     ; scripts/ProceduralForest.asm). sProcForestItemGot is dead: nothing sets
     ; it anymore, so its old hide-check here always read 0 and never actually
     ; hid anything — removed to avoid confusing future debugging.
+
+    ; Sign: the block at (9,16) is 21 (sign-on-tree, graphic bottom-left) or
+    ; 22 (sign-on-floor, top-left). bg_events are compile-time static, so patch
+    ; the already-loaded wSignCoords to the tile matching the placed block. All
+    ; WRAM, so SRAM state is irrelevant. wOverworldMap holds the final map on
+    ; both paths here (generated then baked, or blitted from staging).
+    ; Address of block (9,16): wOverworldMap + PF_BASE + col + row*PF_STRIDE.
+    ld a, [wOverworldMap + PF_BASE + 9 + 16*PF_STRIDE]
+    cp 22
+    ld a, $20               ; block 22 (top-left sign) -> Y = $20
+    jr z, .signSetY
+    ld a, $21               ; block 21 (bottom-left sign) -> Y = $21
+.signSetY
+    ld [wSignCoords], a      ; sign 0 Y
+    ld a, $12
+    ld [wSignCoords + 1], a  ; sign 0 X (same for both blocks)
+
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE

@@ -472,7 +472,7 @@ PCRollExitLadder:
 ; ============================================================
 PCRollBoss:
 	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
-	ld b, 48                        ; boss rarity bump (notably rarer than wild)
+	ld b, 60                        ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	farcall Random_Pokemon_Selection ; → d = species
 	ld a, d

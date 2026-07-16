@@ -86,14 +86,13 @@ ProceduralForest_ScriptPointers:
 	;dw_const ProceduralForestBossBattleScript,       SCRIPT_PROCEDURALFOREST_BOSS_BATTLE
 
 ; Default state: normal sight-range trainer check, PLUS a flank-tile guard.
-; The boss is STAY and faces DOWN, so CheckForEngagingTrainers/TrainerEngage's
-; sight-range scan only ever looks south of it - it can never catch a player
-; slipping past on the tile directly to its right, which is the uncovered
-; half of the 2-tile-wide exit gap (the boss and the exit share the exact
-; same left-anchored tile X - see PFinalizeForest's boss-placement math in
-; procedural_forest_gen.asm: both use the identical `block*2+4` formula, so
-; neither ever covers the exit's right-hand tile). Rather than inventing a
-; parallel wCurOpponent-driven battle (cemetery's mechanism - see
+; The boss is STAY (never turns to look around), so CheckForEngagingTrainers/
+; TrainerEngage's sight-range scan only ever looks in its one facing
+; direction - it can never catch a player slipping past on the OTHER tile of
+; the 2-tile-wide (north exit) or 2-tile-tall (west/east exit) gap, since the
+; boss only ever guards the exit's own first warp tile (see PFinalizeForest's
+; edge-aware boss-placement math in procedural_forest_gen.asm). Rather than
+; inventing a parallel wCurOpponent-driven battle (cemetery's mechanism - see
 ; PROCEDURAL_STAGE_FUNDAMENTALS.md's warning against mixing the two for a
 ; stage with a real boss sprite), force the EXACT SAME TalkToTrainer sequence
 ; that pressing A on the boss would run.
@@ -105,6 +104,50 @@ ProceduralForestDefaultScript:
 	; player's own tile reads MapY = wYCoord+4). Convert to player space with
 	; -4 before comparing, or the trigger fires 4 tiles off in both axes
 	; ("miles off but still functions" bug).
+	;
+	; The unguarded flank tile depends on the exit edge: north exit -> boss
+	; guards the LEFT tile of the 2-wide gap, flank is one tile RIGHT of the
+	; boss; west/east exit -> boss guards the TOP tile of the 2-tall gap,
+	; flank is one tile BELOW the boss (PFinalizeForest's boss-placement math
+	; always puts the boss's own plain-space coordinate exactly on the exit's
+	; first warp tile, on whichever axis runs along the edge). sProcForestExitEdge
+	; is SRAM - must open it explicitly, scripts don't run with SRAM enabled
+	; by default (same dance the old, superseded proximity design below used).
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcForestExitEdge]
+	ld c, a                          ; c = edge, survives the close below
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	ld a, c
+	and a
+	jr z, .flankNorth
+
+.flankNotNorth
+	; West/East: same column as boss, one row below.
+	ld a, [wSprite01StateData2MapX]
+	sub 4
+	ld b, a
+	ld a, [wXCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	ld a, [wSprite01StateData2MapY]
+	sub 4
+	inc a                            ; one tile below the boss
+	ld b, a
+	ld a, [wYCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	jr .flankHit
+
+.flankNorth
 	ld a, [wSprite01StateData2MapY]
 	sub 4
 	ld b, a
@@ -118,6 +161,8 @@ ProceduralForestDefaultScript:
 	ld a, [wXCoord]
 	cp b
 	jp nz, CheckFightingMapTrainers
+
+.flankHit
 	; Trigger the EXACT interaction pressing A on the boss runs: dispatch its
 	; object text. TEXT_PROCEDURALFOREST_BOSS == 1 == the boss's sprite slot, so
 	; DisplayTextID sets hActiveSpriteIndex = 1 and the whole
@@ -315,18 +360,44 @@ ProceduralForestCalmedText:
 	text_far _PCWildCalmedText
 	text_end
 
-; Cavern-style readable sign — simplified from the cave's PCSignText: single
-; text, no SRAM variant roll.
+; Cavern-style readable sign — same variant system as the cave's PCSignText.
 PFSignText:
 	text_asm
+	; Read sign variant from SRAM (rolled at preload, stable for the whole run).
 	; Use call PrintText — ld hl/ret causes TX_START to pop the text stream
 	; pointer as the tile cursor, so line 1 writes off-screen (invisible).
-	ld hl, PFSignActualText
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcForestSignVariant]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	and a
+	jr nz, .showBoss
+	ld hl, PFSignItemsText
+	jr .show
+.showBoss
+	ld hl, PFSignBossText
+.show
 	call PrintText
+	ld hl, .signEnd    ; point NextTextCommand at TX_END for clean exit
 	jp TextScriptEnd
+.signEnd
+	text_end
 
-PFSignActualText:
-	text_far _PFSignText
+PFSignItemsText:
+	text_far _PFSignItemsText
+	text_end
+
+PFSignBossText:
+	text_far _PFSignBossText
 	text_end
 
 ProceduralForest_TextPointers:

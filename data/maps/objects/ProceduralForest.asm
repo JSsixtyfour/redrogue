@@ -10,7 +10,7 @@ ProceduralForest_Object:
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile — runtime-patched to (4i+3, 0)
 
 	def_bg_events
-	bg_event 19, 33, TEXT_PROCEDURALFOREST_SIGN
+	bg_event 18, 33, TEXT_PROCEDURALFOREST_SIGN ; x,y runtime-patched in PFinalizeForest per placed block (21 vs 22)
 
 	def_object_events
 	; Slot 1: boss — a plain blocking NPC. Its overworld sprite is patched at
