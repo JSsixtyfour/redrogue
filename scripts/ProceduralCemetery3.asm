@@ -1,4 +1,4 @@
-ProceduralCemetary2_Script:
+ProceduralCemetery3_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
@@ -8,7 +8,7 @@ ProceduralCemetary2_Script:
 	call EnableAutoTextBoxDrawing
 	ret
 
-ProceduralCemetary2_TextPointers:
+ProceduralCemetery3_TextPointers:
 	def_text_pointers
-	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETARY2_POKEBALL
-	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETARY2_CALMED
+	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETERY3_POKEBALL
+	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY3_CALMED

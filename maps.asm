@@ -286,25 +286,25 @@ INCLUDE "scripts/ProceduralCave1.asm"
 INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
-INCLUDE "data/maps/headers/ProceduralCemetary1.asm"
-INCLUDE "scripts/ProceduralCemetary1.asm"
-INCLUDE "data/maps/objects/ProceduralCemetary1.asm"
-ProceduralCemetary1_Blocks: INCBIN "maps/ProceduralCemetary1.blk"
+INCLUDE "data/maps/headers/ProceduralCemetery1.asm"
+INCLUDE "scripts/ProceduralCemetery1.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery1.asm"
+ProceduralCemetery1_Blocks: INCBIN "maps/ProceduralCemetery1.blk"
 
-INCLUDE "data/maps/headers/ProceduralCemetary2.asm"
-INCLUDE "scripts/ProceduralCemetary2.asm"
-INCLUDE "data/maps/objects/ProceduralCemetary2.asm"
-ProceduralCemetary2_Blocks: INCBIN "maps/ProceduralCemetary2.blk"
+INCLUDE "data/maps/headers/ProceduralCemetery2.asm"
+INCLUDE "scripts/ProceduralCemetery2.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery2.asm"
+ProceduralCemetery2_Blocks: INCBIN "maps/ProceduralCemetery2.blk"
 
-INCLUDE "data/maps/headers/ProceduralCemetary3.asm"
-INCLUDE "scripts/ProceduralCemetary3.asm"
-INCLUDE "data/maps/objects/ProceduralCemetary3.asm"
-ProceduralCemetary3_Blocks: INCBIN "maps/ProceduralCemetary3.blk"
+INCLUDE "data/maps/headers/ProceduralCemetery3.asm"
+INCLUDE "scripts/ProceduralCemetery3.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery3.asm"
+ProceduralCemetery3_Blocks: INCBIN "maps/ProceduralCemetery3.blk"
 
-INCLUDE "data/maps/headers/ProceduralCemetary4.asm"
-INCLUDE "scripts/ProceduralCemetary4.asm"
-INCLUDE "data/maps/objects/ProceduralCemetary4.asm"
-ProceduralCemetary4_Blocks: INCBIN "maps/ProceduralCemetary4.blk"
+INCLUDE "data/maps/headers/ProceduralCemetery4.asm"
+INCLUDE "scripts/ProceduralCemetery4.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery4.asm"
+ProceduralCemetery4_Blocks: INCBIN "maps/ProceduralCemetery4.blk"
 
 ; Shared cemetery calmed-message check called from all 4 cemetery scripts.
 PCemCalmedCheck::
@@ -317,18 +317,18 @@ PCemCalmedCheck::
 	ret z
 	SetEvent EVENT_PC_CEM_CALMED_SHOWN
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_1
-	ld a, TEXT_PROCEDURALCEMETARY1_CALMED
+	cp PROCEDURAL_CEMETERY_1
+	ld a, TEXT_PROCEDURALCEMETERY1_CALMED
 	jr z, .showCemCalmed
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_2
-	ld a, TEXT_PROCEDURALCEMETARY2_CALMED
+	cp PROCEDURAL_CEMETERY_2
+	ld a, TEXT_PROCEDURALCEMETERY2_CALMED
 	jr z, .showCemCalmed
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_3
-	ld a, TEXT_PROCEDURALCEMETARY3_CALMED
+	cp PROCEDURAL_CEMETERY_3
+	ld a, TEXT_PROCEDURALCEMETERY3_CALMED
 	jr z, .showCemCalmed
-	ld a, TEXT_PROCEDURALCEMETARY4_CALMED
+	ld a, TEXT_PROCEDURALCEMETERY4_CALMED
 .showCemCalmed
 	ldh [hTextID], a
 	call DisplayTextID

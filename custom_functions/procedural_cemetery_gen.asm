@@ -1,6 +1,6 @@
-; custom_functions/procedural_cemetary_gen.asm
+; custom_functions/procedural_CEMETERY_gen.asm
 ;
-; Procedural cemetery generator for PROCEDURAL_CEMETARY_1-4.
+; Procedural cemetery generator for PROCEDURAL_CEMETERY_1-4.
 ; Four maps, each 10x9 blocks = 90 bytes, stored in SRAM bank 0.
 ;
 ; Per-map: 75% procedural (scatter tombstones on floor cells),
@@ -14,7 +14,7 @@
 ;   Map  2  : entrance (18,9) right, exit (3,9) left
 ;   Map  4  : entrance (18,9) right, exit (9,16) south
 
-SECTION "ProceduralCemetaryGen", ROMX
+SECTION "ProceduralCemeteryGen", ROMX
 
 DEF CEMAP_WIDTH   EQU 10
 DEF CEMAP_HEIGHT  EQU 9
@@ -22,8 +22,8 @@ DEF CEMAP_SIZE    EQU CEMAP_WIDTH * CEMAP_HEIGHT ; 90 bytes
 DEF CEMAP_STRIDE  EQU CEMAP_WIDTH + 6           ; = 16 (width + MAP_BORDER*2)
 DEF CEMAP_BASE    EQU 3 + 3 * CEMAP_STRIDE      ; = 51 (wOverworldMap interior offset)
 
-DEF CEMAP_FLOOR_1 EQU 14  ; floor block in ProceduralCemetary1.blk
-DEF CEMAP_FLOOR_2 EQU 54  ; floor block in PokemonTower floors / ProceduralCemetary2.blk
+DEF CEMAP_FLOOR_1 EQU 14  ; floor block in ProceduralCemetery1.blk
+DEF CEMAP_FLOOR_2 EQU 54  ; floor block in PokemonTower floors / ProceduralCemetery2.blk
 
 DEF CEMAP_NUM_TOMBSTONES EQU 30  ; tombstones scattered per procedural map
 
@@ -36,11 +36,12 @@ DEF wCemEntX        EQU 4  ; entrance inner col for path carve
 DEF wCemEntY        EQU 5  ; entrance inner row
 DEF wCemExX         EQU 6  ; exit inner col
 DEF wCemExY         EQU 7  ; exit inner row
+DEF wCemPrefabIndex EQU 19 ; which of the NUM_PREFABS rows was picked, premade maps only
 
 ; ============================================================
 ; PCemMapToIndex
 ; INPUT: hCurMap
-; OUTPUT: a = 0-3 for PROCEDURAL_CEMETARY_1/2/3/4
+; OUTPUT: a = 0-3 for PROCEDURAL_CEMETERY_1/2/3/4
 ; Explicit lookup needed because map IDs aren't consecutive
 ; ($6C = VICTORY_ROAD_1F sits between cemetery 3 and 4).
 ; ============================================================
@@ -48,18 +49,11 @@ DEF wCemExY         EQU 7  ; exit inner row
 ;; simplify by reordering stages?
 PCemMapToIndex:
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_4
+	cp PROCEDURAL_CEMETERY_4
 	ld a, 3
 	ret z
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_3
-	ld a, 2
-	ret z
-	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_2
-	ld a, 1
-	ret z
-	xor a
+	sub PROCEDURAL_CEMETERY_1
 	ret
 
 ; ============================================================
@@ -68,7 +62,7 @@ PCemMapToIndex:
 ; wCemMapIndex must be set. SRAM must be enabled.
 ; ============================================================
 PCemGetMapBase:
-	ld hl, sProcCemetaryMaps
+	ld hl, sProcCemeteryMaps
 	ld a, [wBuffer + wCemMapIndex]
 	and a
 	ret z
@@ -130,10 +124,12 @@ PCemGenerateMaps::
 	ld [rRAMB], a
 
 	; clear ready bits (all 4 floors need fresh generation)
-	; and per-run item-collected flags
+	; and per-run item-collected flags and used-prefab tracking
 	xor a
-	ld [sProcCemetaryReady], a
-	ld [sProcCemetaryItemGot], a
+	ld [sProcCemeteryReady], a
+	ld [sProcCemeteryItemGot], a
+	ld [sProcCemeteryUsedPrefabs], a
+	ld [sProcCemeteryUsedPrefabs+1], a
 
 	; close SRAM
 	ld a, BMODE_SIMPLE
@@ -167,62 +163,154 @@ PCemGenerateMaps::
 ; Generates one 90-byte map. SRAM must be enabled.
 ; ============================================================
 PCemGenerateOneMap:
-	; 25% premade, 75% procedural
-	ld c, 4
+	; Debug selector (wProcCemDebugMode) can force a specific style; see
+	; CEMETERY_DESIGN_LAPTOP.md Section 5i. 1/2/4 force procedural, 3
+	; forces prefab, anything else uses the normal 25% prefab roll.
+	ld a, [wProcCemDebugMode]
+	cp 3
+	jr z, .premade
+	and a
+	jr nz, .procedural        ; any nonzero mode except 3 -> procedural
+	; mode 0 (normal): 50% premade, 50% procedural
+	ld c, 2
 	call Rangerandom
 	and a
 	jr nz, .procedural
+.premade
 	xor a
 	ld [wBuffer + wCemIsProcedural], a
 	call PCemCopyPremadeTemplate
 	call PCemDecorateWalls
-	call PCemPlaceBall
+	call PCemPlaceAuthoredBall
 	call PCemRollItem
 	ret
 .procedural
 	ld a, 1
 	ld [wBuffer + wCemIsProcedural], a
 	call PCemCopyBaseTemplate
-	call PCemFillFloorTombstones  ; fill ALL floor cells with tombstones
+	call PCemFillGraves           ; place grave plots (or rows in debug mode 2)
 	call PCemDecorateWalls        ; decorate wall/edge tiles
 	call PCemRollItem             ; roll item now (needs wCemMapIndex, no floor needed)
-	call PCemCarveMainPath        ; carve path, place item mid-path, save ball X/Y to SRAM
+	call PCemMarchPath            ; carve guaranteed path, save ball X/Y to SRAM
 	ret
+
+; PCemPrefabTable row layout: 5 bytes per entry (bank, lo, hi, ballX,
+; ballY). Ball positions are hand-picked per prefab (a floor cell near
+; the center, clear of the stair-patched cells) rather than found by a
+; runtime random scan.
+DEF PREFAB_ENTRY_SIZE EQU 5
+DEF NUM_PREFABS       EQU 11
 
 ; ============================================================
 ; PCemCopyPremadeTemplate
-; Maps: 0→Tower5F, 1→Tower4F, 2→Tower3F, 3→Tower6F
+; Picks a random prefab from an 11-entry pool (7 hand-authored "Drop"
+; layouts + 4 Pokemon Tower floors) and copies it in. No longer indexed
+; by floor: PCemPlaceStaircases patches col1/col9/(4,8) into whatever
+; got blitted, and all 11 prefabs are verified (cell-level, against the
+; actual cemetery.bst collision data) to connect entrance to exit under
+; that patch on every one of the 4 floors - see
+; CEMETERY_DESIGN_LAPTOP.md Section 5e.
 ; ============================================================
 PCemCopyPremadeTemplate:
-	; compute dest: PCemGetMapBase → de
-	call PCemGetMapBase
-	ld d, h
-	ld e, l
-	; compute source: table entry = mapIndex * 3 bytes (bank, lo, hi)
-	ld a, [wBuffer + wCemMapIndex]
-	ld b, a
-	add a       ; *2
-	add a, b    ; *3
-	ld hl, PCemPremadeTable
-	ld c, a
-	ld b, 0
-	add hl, bc
+	; pick a random prefab from the pool that hasn't been used yet this
+	; run (sProcCemeteryUsedPrefabs). At most 4 of the 11 are ever used
+	; (one per floor), so this always finds a free one quickly; capped
+	; defensively so a corrupted bitmask can't hang generation.
+	ld d, 32                    ; retry budget
+.rollPrefab
+	ld c, NUM_PREFABS
+	call Rangerandom
+	ld [wBuffer + wCemPrefabIndex], a
+	call PCemPrefabBitMaskHL    ; hl -> tracking byte, b = bitmask
+	ld a, [hl]
+	and b
+	jr z, .prefabFree           ; bit clear = not used yet
+	dec d
+	jr nz, .rollPrefab
+.prefabFree
+	; mark it used
+	ld a, [wBuffer + wCemPrefabIndex]
+	call PCemPrefabBitMaskHL
+	ld a, [hl]
+	or b
+	ld [hl], a
+
+	call PCemPrefabRowHL   ; hl -> this prefab's table row (clobbers de - see below)
 	ld a, [hli]  ; a = bank
 	ld c, [hl]
 	inc hl
 	ld b, [hl]   ; bc = source address (lo in c, hi in b)
-	ld h, b
-	ld l, c      ; hl = source address
+	; PCemGetMapBase also clobbers a/b/de, so stash bank+source on the
+	; stack before computing dest. (Bug fixed 2026-07-16: dest used to be
+	; computed into de FIRST, then PCemPrefabRowHL's own de-clobbering
+	; loop stomped it for every prefab index except 0 - only DropA ever
+	; copied to the right place, and everything else silently corrupted
+	; RAMG via a stray write into $0000-$1FFF, taking SRAM down with it.)
+	push af      ; save bank
+	push bc      ; save source address
+	call PCemGetMapBase   ; hl = dest base
+	ld d, h
+	ld e, l      ; de = dest
+	pop hl       ; hl = source address
+	pop af       ; a = bank
 	ld bc, CEMAP_SIZE
 	jp FarCopyData2
 
-; whats going on here?
-PCemPremadeTable:
-	db BANK(PCemTower5F_Blocks), LOW(PCemTower5F_Blocks),  HIGH(PCemTower5F_Blocks)
-	db BANK(PCemTower4F_Blocks), LOW(PCemTower4F_Blocks),  HIGH(PCemTower4F_Blocks)
-	db BANK(PCemTower3F_Blocks), LOW(PCemTower3F_Blocks),  HIGH(PCemTower3F_Blocks)
-	db BANK(PCemTower6F_Blocks), LOW(PCemTower6F_Blocks),  HIGH(PCemTower6F_Blocks)
+; INPUT: a = prefab index (0-10)
+; OUTPUT: hl -> byte in sProcCemeteryUsedPrefabs holding this index's bit,
+;         b = bitmask (1 << local bit within that byte). Clobbers a, c.
+PCemPrefabBitMaskHL:
+	ld hl, sProcCemeteryUsedPrefabs
+	cp 8
+	jr c, .lowByte
+	sub 8
+	inc hl
+.lowByte
+	ld c, a
+	ld b, 1
+	inc c
+.shiftLoop
+	dec c
+	jr z, .shifted
+	sla b
+	jr .shiftLoop
+.shifted
+	ret
 
+; hl -> PCemPrefabTable[wCemPrefabIndex * PREFAB_ENTRY_SIZE]
+PCemPrefabRowHL:
+	ld hl, PCemPrefabTable
+	ld a, [wBuffer + wCemPrefabIndex]
+	and a
+	ret z
+	ld b, a
+	ld de, PREFAB_ENTRY_SIZE
+.rowLoop
+	add hl, de
+	dec b
+	jr nz, .rowLoop
+	ret
+
+PCemPrefabTable:
+	db BANK(PCemDropA_Blocks),   LOW(PCemDropA_Blocks),   HIGH(PCemDropA_Blocks),   5, 4
+	db BANK(PCemDropB_Blocks),   LOW(PCemDropB_Blocks),   HIGH(PCemDropB_Blocks),   5, 2
+	db BANK(PCemDropC_Blocks),   LOW(PCemDropC_Blocks),   HIGH(PCemDropC_Blocks),   5, 4
+	db BANK(PCemDropD_Blocks),   LOW(PCemDropD_Blocks),   HIGH(PCemDropD_Blocks),   4, 3
+	db BANK(PCemDropE_Blocks),   LOW(PCemDropE_Blocks),   HIGH(PCemDropE_Blocks),   5, 4
+	db BANK(PCemDropF_Blocks),   LOW(PCemDropF_Blocks),   HIGH(PCemDropF_Blocks),   3, 5
+	db BANK(PCemDropG_Blocks),   LOW(PCemDropG_Blocks),   HIGH(PCemDropG_Blocks),   5, 3
+	db BANK(PCemTower3F_Blocks), LOW(PCemTower3F_Blocks), HIGH(PCemTower3F_Blocks), 5, 3
+	db BANK(PCemTower4F_Blocks), LOW(PCemTower4F_Blocks), HIGH(PCemTower4F_Blocks), 3, 4
+	db BANK(PCemTower5F_Blocks), LOW(PCemTower5F_Blocks), HIGH(PCemTower5F_Blocks), 5, 4
+	db BANK(PCemTower6F_Blocks), LOW(PCemTower6F_Blocks), HIGH(PCemTower6F_Blocks), 5, 3
+
+PCemDropA_Blocks:   INCBIN "maps/ProceduralCemeteryDropA.blk"
+PCemDropB_Blocks:   INCBIN "maps/ProceduralCemeteryDropB.blk"
+PCemDropC_Blocks:   INCBIN "maps/ProceduralCemeteryDropC.blk"
+PCemDropD_Blocks:   INCBIN "maps/ProceduralCemeteryDropD.blk"
+PCemDropE_Blocks:   INCBIN "maps/ProceduralCemeteryDropE.blk"
+PCemDropF_Blocks:   INCBIN "maps/ProceduralCemeteryDropF.blk"
+PCemDropG_Blocks:   INCBIN "maps/ProceduralCemeteryDropG.blk"
 PCemTower5F_Blocks: INCBIN "maps/PokemonTower5F.blk"
 PCemTower4F_Blocks: INCBIN "maps/PokemonTower4F.blk"
 PCemTower3F_Blocks: INCBIN "maps/PokemonTower3F.blk"
@@ -234,7 +322,7 @@ PCemTower6F_Blocks: INCBIN "maps/PokemonTower6F.blk"
 ; stair blocks, south-exit block) is patched in post-blit by
 ; PCemPlaceStaircases from PCemFloorGeometry - see Section 5g of
 ; CEMETERY_DESIGN_LAPTOP.md. The old floor-4 template
-; (ProceduralCemetary2.blk) differed from this one only at the two
+; (ProceduralCemetery2.blk) differed from this one only at the two
 ; blocks the patch overwrites anyway; everything else was cosmetic
 ; wall-art variation.
 ; ============================================================
@@ -247,7 +335,7 @@ PCemCopyBaseTemplate:
 	ld bc, CEMAP_SIZE
 	jp FarCopyData2
 
-PCemBaseTemplate1: INCBIN "maps/ProceduralCemetary1.blk"
+PCemBaseTemplate1: INCBIN "maps/ProceduralCemetery1.blk"
 
 ; ============================================================
 ; PCemScatterTombstones
@@ -362,336 +450,21 @@ PCemInWarpZone:
 	ret
 
 ; ============================================================
-; PCemPlaceBall: for premade maps — scan for a random floor cell.
+; PCemPlaceAuthoredBall
+; Reads this prefab's hand-picked ballX/ballY (PCemPrefabTable, offsets
+; 3-4 of the row) and saves it as the ball position. Replaces the old
+; 100-try random floor scan now that every prefab's ball spot is
+; authored - see CEMETERY_DESIGN_LAPTOP.md Section 5e.
 ; ============================================================
-PCemPlaceBall:
-	ld b, 100
-.pbLoop
-	push bc
-	ld c, CEMAP_WIDTH
-	call Rangerandom
+PCemPlaceAuthoredBall:
+	call PCemPrefabRowHL
+	ld de, 3
+	add hl, de
+	ld a, [hli]
 	ld [wBuffer + wCemTryX], a
-	ld c, CEMAP_HEIGHT
-	call Rangerandom
-	ld [wBuffer + wCemTryY], a
-	call PCemGetCellHL
 	ld a, [hl]
-	call PCemIsFloor
-	pop bc
-	jr nz, .pbMiss
-	call PCemSaveBallPos
-	ret
-.pbMiss
-	dec b
-	jr nz, .pbLoop
-	; fallback: center
-	ld a, 5
-	ld [wBuffer + wCemTryX], a
-	ld a, 4
 	ld [wBuffer + wCemTryY], a
 	call PCemSaveBallPos
-	ret
-
-; ============================================================
-; PCemCheckConnected
-; Multi-pass flood fill from entrance toward exit.
-; Uses wBuffer offsets 5-16 as a 12-byte / 96-bit "reachable" bitfield
-; (bits 0-89, one per cell, row-major). SRAM must be enabled.
-; OUTPUT: carry SET if entrance can reach exit, carry CLEAR otherwise.
-;
-; Entrance/exit positions (block coords, conservative center of staircase):
-;   Maps 0,2: entrance=(1,4), exit=(8,4)
-;   Map  1  : entrance=(8,4), exit=(1,4)
-;   Map  3  : entrance=(8,4), exit=(4,8)
-;
-; "Walkable" for connectivity = block 14 OR block 54 (floor only).
-; Tombstone blocks (76-82 etc.) are treated as obstacles; if they turn
-; out to be passable in-game, PCemClearBlockingTombstones is a no-op.
-; ============================================================
-PCemCheckConnected:
-	; clear bitfield (wBuffer offsets 5-16 = 12 bytes)
-	ld hl, wBuffer + 5
-	ld b, 12
-	xor a
-.clearLoop
-	ld [hli], a
-	dec b
-	jr nz, .clearLoop
-
-	; determine entrance and exit from mapIndex
-	ld a, [wBuffer + wCemMapIndex]
-	; maps 0,2 enter left (col 1, row 4), exit right (col 8, row 4)
-	; map 1 enters right (col 8, row 4), exits left (col 1, row 4)
-	; map 3 enters right (col 8, row 4), exits south (col 4, row 8)
-	; entrance col: maps 0,2 → col 1; maps 1,3 → col 8
-	and 1                    ; bit 0: 0=left-entry, 1=right-entry
-	jr nz, .rightEntry
-	; left entry: entrance=(1,4), exit=(8,4) — both floor, works directly
-	ld d, 1                  ; entrance col
-	ld e, 4                  ; entrance row
-	ld b, 8                  ; exit col
-	ld c, 4                  ; exit row
-	jr .gotEntranceExit
-.rightEntry
-	ld d, 8                  ; entrance col
-	ld e, 4                  ; entrance row
-	; map 3 exits south, others exit left.
-	; Exit cells (col 1 and row 8 boundaries) hold stair blocks (21/22), not floor.
-	; PCemFloodStep only marks floor cells reachable, so checking the boundary exit
-	; cell directly always fails for right-entry maps. Check one step inside instead.
-	ld a, [wBuffer + wCemMapIndex]
-	cp 3
-	jr z, .southExit
-	ld b, 2                  ; exit check col (col 1 = stair, col 2 = first floor inside)
-	ld c, 4                  ; exit row
-	jr .gotEntranceExit
-.southExit
-	ld b, 4                  ; exit col
-	ld c, 7                  ; exit check row (row 8 = boundary, row 7 = first floor inside)
-.gotEntranceExit
-	; mark entrance cell as reachable
-	; bitfield index = row * CEMAP_WIDTH + col
-	ld a, e                  ; entrance row
-	ld h, CEMAP_WIDTH
-	call PCemMul8            ; a = row * WIDTH
-	add a, d                 ; + col
-	call PCemSetBit          ; set bit in wBuffer+5..16
-
-	; flood fill: 9 passes (sufficient for 9-row map)
-	ld a, 9
-.floodPass
-	push af
-	push bc                  ; save exit coords
-	push de
-	call PCemFloodStep
-	pop de
-	pop bc
-	pop af
-	dec a
-	jr nz, .floodPass
-
-	; check if exit cell is reachable
-	ld a, c                  ; exit row
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	add a, b                 ; + exit col
-	call PCemTestBit         ; zero if not reachable
-	jr z, .notConnected
-	scf                      ; carry = connected
-	ret
-.notConnected
-	and a                    ; clear carry = not connected
-	ret
-
-; One flood-fill pass: mark any floor cell reachable if any orthogonal
-; neighbor is already reachable. Uses SRAM (must be enabled).
-PCemFloodStep:
-	xor a
-	ld [wBuffer + wCemTryY], a
-.rowLoop
-	xor a
-	ld [wBuffer + wCemTryX], a
-.colLoop
-	; skip if already reachable
-	ld a, [wBuffer + wCemTryY]
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	ld b, a
-	ld a, [wBuffer + wCemTryX]
-	add a, b                 ; bitfield index
-	call PCemTestBit
-	jr nz, .nextCell         ; already reachable, skip
-
-	; check if this cell is floor
-	call PCemGetCellHL
-	ld a, [hl]
-	call PCemIsFloor
-	jr nz, .nextCell         ; not floor, skip
-
-	; check if any orthogonal neighbor is reachable
-	call PCemAnyNeighborReachable
-	jr z, .nextCell          ; no reachable neighbor
-
-	; mark reachable
-	ld a, [wBuffer + wCemTryY]
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	ld b, a
-	ld a, [wBuffer + wCemTryX]
-	add a, b
-	call PCemSetBit
-.nextCell
-	ld a, [wBuffer + wCemTryX]
-	inc a
-	ld [wBuffer + wCemTryX], a
-	cp CEMAP_WIDTH
-	jr nz, .colLoop
-	ld a, [wBuffer + wCemTryY]
-	inc a
-	ld [wBuffer + wCemTryY], a
-	cp CEMAP_HEIGHT
-	jr nz, .rowLoop
-	ret
-
-; Check if any orthogonal neighbor of (TryX,TryY) is reachable.
-; Returns NZ if at least one neighbor is reachable, Z if none.
-PCemAnyNeighborReachable:
-	ld a, [wBuffer + wCemTryX]
-	ld b, a
-	ld a, [wBuffer + wCemTryY]
-	ld c, a
-	; check left (b-1, c)
-	ld a, b
-	and a
-	jr z, .notLeft
-	dec a                    ; col-1
-	ld e, a
-	ld a, c
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	add a, e
-	call PCemTestBit
-	jr nz, .reachable
-.notLeft
-	; check right (b+1, c)
-	ld a, b
-	inc a
-	cp CEMAP_WIDTH
-	jr nc, .notRight
-	ld e, a
-	ld a, c
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	add a, e
-	call PCemTestBit
-	jr nz, .reachable
-.notRight
-	; check up (b, c-1)
-	ld a, c
-	and a
-	jr z, .notUp
-	dec a
-	ld e, a
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	add a, b
-	call PCemTestBit
-	jr nz, .reachable
-.notUp
-	; check down (b, c+1)
-	ld a, c
-	inc a
-	cp CEMAP_HEIGHT
-	jr nc, .notDown
-	ld e, a
-	ld h, CEMAP_WIDTH
-	call PCemMul8
-	add a, b
-	call PCemTestBit
-	jr nz, .reachable
-.notDown
-	xor a   ; Z = no reachable neighbor
-	ret
-.reachable
-	or 1    ; NZ = has reachable neighbor
-	ret
-
-; a = a * h (8-bit, result in a, h must be CEMAP_WIDTH=10)
-; Only called with h=10. Computed as a*8 + a*2.
-PCemMul8:
-	ld b, a
-	sla a
-	sla a
-	sla a     ; a*8
-	ld c, a
-	ld a, b
-	sla a     ; b*2
-	add a, c  ; a*2 + a*8 = a*10
-	ret
-
-; Set bit 'a' (0-89) in the 12-byte bitfield at wBuffer+5
-PCemSetBit:
-	ld b, a
-	and 7              ; bit position within byte
-	ld c, a
-	ld a, b
-	srl a
-	srl a
-	srl a              ; byte offset
-	ld hl, wBuffer + 5
-	add a, l
-	ld l, a
-	ld a, 1
-	ld b, c
-	inc b
-.shiftLoop
-	dec b
-	jr z, .shifted
-	sla a
-	jr .shiftLoop
-.shifted
-	or [hl]
-	ld [hl], a
-	ret
-
-; Test bit 'a' (0-89) in the 12-byte bitfield at wBuffer+5
-; Returns NZ if bit is set, Z if clear.
-PCemTestBit:
-	ld b, a
-	and 7
-	ld c, a
-	ld a, b
-	srl a
-	srl a
-	srl a
-	ld hl, wBuffer + 5
-	add a, l
-	ld l, a
-	ld a, [hl]
-	ld b, c
-	inc b
-.testShift
-	dec b
-	jr z, .testDone
-	sra a
-	jr .testShift
-.testDone
-	and 1              ; NZ if bit was set
-	ret
-
-; ============================================================
-; PCemClearBlockingTombstones
-; After scatter: re-run flood fill. For any floor cell that is NOW
-; a tombstone but was reachable in the pre-scatter run, restore it
-; to floor (54). This clears only tombstones that break connectivity.
-; Simple version: clear any tombstone on row 4 (the staircase row)
-; between the two staircases (cols 1-8). Handles the common case
-; where scattered tombstones block the horizontal corridor.
-; ============================================================
-PCemClearBlockingTombstones:
-	; clear row 4 between cols 1 and 8 of any tombstone blocks
-	ld a, 4
-	ld [wBuffer + wCemTryY], a
-	ld a, 1
-.clearRow
-	ld [wBuffer + wCemTryX], a
-	push af
-	call PCemGetCellHL
-	ld a, [hl]
-	call PCemIsFloor
-	jr z, .isClearFloor   ; already floor, skip
-	; is this a tombstone on floor? check against known floor blocks
-	; anything that's not a wall (block 1) and not already floor is a tombstone
-	cp 1
-	jr z, .isClearFloor   ; solid wall, leave it
-	; restore to floor
-	ld a, CEMAP_FLOOR_2    ; use block 54 (Tower standard floor)
-	ld [hl], a
-.isClearFloor
-	pop af
-	inc a
-	cp 9               ; cols 1-8
-	jr nz, .clearRow
 	ret
 
 ; ============================================================
@@ -838,485 +611,393 @@ PCemPlaceStaircases:
 	ret
 
 ; ============================================================
-; PCemFillFloorTombstones
-; Replaces every floor cell (14 or 54) with a random tombstone.
-; After this, only carved cells will become floor.
+; Grave placement. Runs after the base template is copied and before
+; the path march, so the march carves floor back over any graves in
+; its way (guaranteeing connectivity). Everything here only ever
+; writes onto floor cells (PCemWriteGrave checks), so the octagon
+; frame is never touched. See CEMETERY_DESIGN_LAPTOP.md Section 6a.
 ; SRAM must be enabled.
 ; ============================================================
-PCemFillFloorTombstones:
-	call PCemGetMapBase
-	ld b, CEMAP_SIZE
-.fftLoop
-	push bc
-	push hl
+
+; Grave blocks: mostly solid (82) with a few half-graves for texture.
+PCemGraveBlockTable:
+	db 82, 82, 82, 82, 76, 79, 80, 81
+DEF NUM_GRAVE_BLOCKS EQU 8
+
+; Four grave plots: x0, x1, y0, y1. All cells lie inside the octagon.
+PCemPlotTable:
+	db 3, 4, 2, 3
+	db 6, 7, 2, 3
+	db 3, 4, 5, 6
+	db 6, 7, 5, 6
+DEF NUM_PLOTS EQU 4
+
+DEF wCemPX0 EQU 15
+DEF wCemPX1 EQU 16
+DEF wCemPY0 EQU 17
+DEF wCemPY1 EQU 18
+
+; PCemFillGraves: default is a DENSE fill (every octagon cell becomes a
+; grave; the march then carves the single winding trail through it, so the
+; room reads as a packed graveyard with one clear path rather than an open
+; field). Debug mode 2 instead uses the sparse 4-plot layout for
+; comparison. See CEMETERY_DESIGN_LAPTOP.md Section 6a.
+PCemFillGraves:
+	ld a, [wProcCemDebugMode]
+	cp 2
+	jp z, PCemPlaceGravePlots
+	; fall through to the dense fill
+
+; PCemFillAll: grave every interior row 1-7 across the octagon
+; (PCemWriteGrave clips to floor cells, so no per-row extent is needed).
+PCemFillAll:
+	ld a, 1
+	ld [wBuffer + wCemTryY], a
+.rowLoop
+	call PCemFillOneRow
+	ld a, [wBuffer + wCemTryY]
+	inc a
+	ld [wBuffer + wCemTryY], a
+	cp 8
+	jr nz, .rowLoop
+	ret
+
+; Write a random grave block at the cursor, but only onto a floor cell.
+PCemWriteGrave:
+	call PCemGetCellHL
 	ld a, [hl]
 	call PCemIsFloor
-	jr nz, .fftSkip
-	ld c, NUM_CEMDECO_FLOOR
+	ret nz
+	push hl
+	ld c, NUM_GRAVE_BLOCKS
 	call Rangerandom
-	ld hl, PCemFloorTombstoneTable
+	ld hl, PCemGraveBlockTable
 	ld e, a
 	ld d, 0
 	add hl, de
 	ld a, [hl]
 	pop hl
 	ld [hl], a
-	jr .fftNext
-.fftSkip
+	ret
+
+; PCemPlaceGravePlots: fill each of the 4 plots with ~6/7 probability.
+PCemPlaceGravePlots:
+	ld hl, PCemPlotTable
+	ld b, NUM_PLOTS
+.plotLoop
+	push bc
+	ld a, [hli]
+	ld [wBuffer + wCemPX0], a
+	ld a, [hli]
+	ld [wBuffer + wCemPX1], a
+	ld a, [hli]
+	ld [wBuffer + wCemPY0], a
+	ld a, [hli]
+	ld [wBuffer + wCemPY1], a
+	push hl
+	ld c, 7
+	call Rangerandom
+	and a
+	call nz, PCemFillOnePlot
 	pop hl
-.fftNext
-	inc hl
 	pop bc
 	dec b
-	jr nz, .fftLoop
+	jr nz, .plotLoop
 	ret
 
-; wBuffer slots for carving
-; wCemEntX/Y (4,5), wCemExX/Y (6,7) set in PCemCarveMainPath
-; wCemStepCount (8): steps taken so far during carve
-; wCemItemDone  (9): 0=item not yet placed, 1=placed
-DEF wCemStepCount EQU 8
-DEF wCemItemDone  EQU 9
-
-; ============================================================
-; PCemCarveMainPath
-; Sets inner entrance/exit, clears step state, rolls one of 4
-; carving algorithms, then saves ball position at the end.
-; Item is placed randomly mid-path by PCemCarveStep.
-; SRAM must be enabled.
-; ============================================================
-PCemCarveMainPath:
-	ld a, [wBuffer + wCemMapIndex]
-	and 1
-	jr nz, .rightEntry
-	ld a, 2
-	ld [wBuffer + wCemEntX], a
-	ld a, 4
-	ld [wBuffer + wCemEntY], a
-	ld a, 8
-	ld [wBuffer + wCemExX], a
-	ld a, 4
-	ld [wBuffer + wCemExY], a
-	jr .startCarve
-.rightEntry
-	ld a, 8
-	ld [wBuffer + wCemEntX], a
-	ld a, 4
-	ld [wBuffer + wCemEntY], a
-	ld a, [wBuffer + wCemMapIndex]
-	cp 3
-	jr z, .southEx
-	ld a, 2
-	ld [wBuffer + wCemExX], a
-	ld a, 4
-	ld [wBuffer + wCemExY], a
-	jr .startCarve
-.southEx
-	ld a, 4
-	ld [wBuffer + wCemExX], a
-	ld a, 7
-	ld [wBuffer + wCemExY], a
-.startCarve
-	; Place cursor at entrance inner
-	ld a, [wBuffer + wCemEntX]
-	ld [wBuffer + wCemTryX], a
-	ld a, [wBuffer + wCemEntY]
+; Fill the rectangle [PX0..PX1] x [PY0..PY1] with graves (floor cells only).
+PCemFillOnePlot:
+	ld a, [wBuffer + wCemPY0]
 	ld [wBuffer + wCemTryY], a
-	; Reset step state for mid-path item placement
-	xor a
-	ld [wBuffer + wCemStepCount], a
-	ld [wBuffer + wCemItemDone], a
-	; Roll algorithm 0-3. Extra Random call advances RNG past the
-	; deterministic state that PCemFillFloorTombstones leaves behind,
-	; ensuring each map gets genuine algorithm variety.
-	call Random
-	ld c, 4
-	call Rangerandom
-	and 3
-	jr z, .doA
-	cp 1
-	jr z, .doB
-	cp 2
-	jr z, .doC
-	call PCemAlgoD
-	jr .saveBall
-.doA
-	call PCemAlgoA
-	jr .saveBall
-.doB
-	call PCemAlgoB
-	jr .saveBall
-.doC
-	call PCemAlgoC
-.saveBall
-	; If item wasn't placed mid-path, use current (exit inner) position
-	ld a, [wBuffer + wCemItemDone]
-	and a
-	ret nz
-	; fallback: save current position as ball
-	call PCemSaveBallPos
-	ret
-
-; ============================================================
-; PCemCarveStep
-; Writes floor at (wCemTryX,wCemTryY), increments step counter,
-; and with 15% chance after 3+ steps places the item here.
-; SRAM must be enabled.
-; ============================================================
-PCemCarveStep:
-	call PCemGetCellHL
-	ld [hl], CEMAP_FLOOR_1     ; always write — path connectivity > wall aesthetics
-	; Increment step counter
-	ld a, [wBuffer + wCemStepCount]
+.row
+	ld a, [wBuffer + wCemPX0]
+	ld [wBuffer + wCemTryX], a
+.col
+	call PCemWriteGrave
+	ld a, [wBuffer + wCemTryX]
+	ld hl, wBuffer + wCemPX1
+	cp [hl]
+	jr nc, .rowEnd
 	inc a
-	ld [wBuffer + wCemStepCount], a
-	; Only try to place item after 3+ steps and if not placed yet
-	cp 3
-	ret c
-	ld a, [wBuffer + wCemItemDone]
-	and a
-	ret nz
-	; 15% chance to place item here
-	ld c, 20
-	call Rangerandom
-	cp 3
+	ld [wBuffer + wCemTryX], a
+	jr .col
+.rowEnd
+	ld a, [wBuffer + wCemTryY]
+	ld hl, wBuffer + wCemPY1
+	cp [hl]
 	ret nc
-	call PCemSaveBallPos
-	ld a, 1
-	ld [wBuffer + wCemItemDone], a
-	ret
-
-PCemSaveBallPos:
-	ld hl, sProcCemetaryBallX
-	ld a, [wBuffer + wCemMapIndex]
-	ld e, a
-	ld d, 0
-	add hl, de
-	ld a, [wBuffer + wCemTryX]
-	ld [hl], a
-	ld hl, sProcCemetaryBallY
-	add hl, de
-	ld a, [wBuffer + wCemTryY]
-	ld [hl], a
-	ret
-
-; ============================================================
-; PCemStepToward: move wCemTryX/Y one step toward wCemExX/Y.
-; Returns Z if already at exit.
-; ============================================================
-; PCemStepToward: move one step toward exit (wCemExX/Y).
-; Simplified now that PCemCarveStep writes floor everywhere —
-; no need to avoid any tiles. Returns Z if already at exit.
-PCemStepToward:
-	call .doNaturalStep
-.stepOK
-	or 1
-	ret
-
-.doNaturalStep:
-	; Move one step toward wCemExX/Y, clamped to bounds
-	ld a, [wBuffer + wCemTryX]
-	ld b, a
-	ld a, [wBuffer + wCemExX]
-	cp b
-	jr z, .natY
-	jr c, .natDecX
-	inc b
-	ld a, b
-	ld [wBuffer + wCemTryX], a
-	ret
-.natDecX
-	dec b
-	ld a, b
-	ld [wBuffer + wCemTryX], a
-	ret
-.natY
-	ld a, [wBuffer + wCemTryY]
-	ld b, a
-	ld a, [wBuffer + wCemExY]
-	cp b
-	ret z
-	jr c, .natDecY
-	inc b
-	ld a, b
-	ld [wBuffer + wCemTryY], a
-	ret
-.natDecY
-	dec b
-	ld a, b
-	ld [wBuffer + wCemTryY], a
-	or 1
-	ret
-
-; ============================================================
-; PCemAtExit: returns Z if (wCemTryX,wCemTryY)==(wCemExX,wCemExY)
-; ============================================================
-PCemAtExit:
-	ld a, [wBuffer + wCemTryX]
-	ld b, a
-	ld a, [wBuffer + wCemExX]
-	cp b
-	ret nz
-	ld a, [wBuffer + wCemTryY]
-	ld b, a
-	ld a, [wBuffer + wCemExY]
-	cp b
-	ret
-
-; ============================================================
-; Algorithm A: Direct L-shape (random H-then-V or V-then-H)
-; ============================================================
-PCemAlgoA:
-	; Always h-first: horizontal then vertical. vFirst hits block 32 (protected)
-	; at col 8 row 6 on map 3 (south exit), creating a gap in the path.
-.hFirst
-	; Move horizontally to exit X, then vertically to exit Y.
-	; push bc / pop bc around every PCemCarveStep because Rangerandom
-	; (called inside PCemCarveStep for item placement) sets B=0.
-	ld a, [wBuffer + wCemExX]
-	ld b, a
-.hLoopA
-	push bc
-	call PCemCarveStep
-	pop bc                     ; restore ExX into B
-	ld a, [wBuffer + wCemTryX]
-	cp b
-	jr z, .vA
-	jr c, .hIncA
-	dec a
-	ld [wBuffer + wCemTryX], a
-	jr .hLoopA
-.hIncA
-	inc a
-	ld [wBuffer + wCemTryX], a
-	jr .hLoopA
-.vA
-	ld a, [wBuffer + wCemExY]
-	ld b, a
-.vLoopA
-	push bc
-	call PCemCarveStep
-	pop bc                     ; restore ExY into B
-	call PCemAtExit
-	ret z
-	ld a, [wBuffer + wCemTryY]
-	cp b
-	jr z, .doneA
-	jr c, .vIncA
-	dec a
-	ld [wBuffer + wCemTryY], a
-	jr .vLoopA
-.vIncA
 	inc a
 	ld [wBuffer + wCemTryY], a
-	jr .vLoopA
-.doneA
-	ret
-.vFirst
-	ld a, [wBuffer + wCemExY]
-	ld b, a
-.vFirstLoop
-	push bc
-	call PCemCarveStep
-	pop bc
-	ld a, [wBuffer + wCemTryY]
-	cp b
-	jr z, .hSecA
-	jr c, .vFInc
-	dec a
-	ld [wBuffer + wCemTryY], a
-	jr .vFirstLoop
-.vFInc
-	inc a
-	ld [wBuffer + wCemTryY], a
-	jr .vFirstLoop
-.hSecA
-	ld a, [wBuffer + wCemExX]
-	ld b, a
-.hSecLoop
-	push bc
-	call PCemCarveStep
-	pop bc
-	call PCemAtExit
-	ret z
-	ld a, [wBuffer + wCemTryX]
-	cp b
-	ret z
-	jr c, .hSInc
-	dec a
-	ld [wBuffer + wCemTryX], a
-	jr .hSecLoop
-.hSInc
-	inc a
-	ld [wBuffer + wCemTryX], a
-	jr .hSecLoop
+	jr .row
 
-; ============================================================
-; Algorithm B: Wobble (70% toward exit, 30% random adjacent)
-; ============================================================
-PCemAlgoB:
-.stepB
-	call PCemCarveStep
-	call PCemAtExit
-	ret z
-	ld c, 10
-	call Rangerandom
-	cp 7
-	jr nc, .wobbleB
-	call PCemStepToward
-	jp .stepB
-.wobbleB
-	; Random step N/S/E/W — save old pos, check protection before committing
-	ld a, [wBuffer + wCemTryX]
-	ld d, a                  ; d = old X
-	ld a, [wBuffer + wCemTryY]
-	ld e, a                  ; e = old Y
-	ld c, 4
-	call Rangerandom
-	and 3
-	jr z, .wbNorth
-	cp 1
-	jr z, .wbSouth
-	cp 2
-	jr z, .wbEast
-.wbWest
-	ld a, d
-	cp 3
-	jp c, .stepB             ; out of bounds, abort wobble, retry next step
-	dec a
+PCemFillOneRow:
+	ld a, 2
 	ld [wBuffer + wCemTryX], a
-	jr .wbOK
-.wbNorth
-	ld a, e
-	cp 2
-	jp c, .stepB
-	dec a
-	ld [wBuffer + wCemTryY], a
-	jr .wbOK
-.wbSouth
-	ld a, e
-	cp 7
-	jp nc, .stepB
-	inc a
-	ld [wBuffer + wCemTryY], a
-	jr .wbOK
-.wbEast
-	ld a, d
+.col
+	call PCemWriteGrave
+	ld a, [wBuffer + wCemTryX]
 	cp 8
-	jp nc, .stepB
+	ret z
 	inc a
 	ld [wBuffer + wCemTryX], a
-.wbOK
-	jp .stepB
+	jr .col
 
-; ============================================================
-; Algorithm C: U-route via random midpoint then to exit
-; ============================================================
-PCemAlgoC:
-	; Save real exit, temporarily target a midpoint
-	ld a, [wBuffer + wCemExX]
-	push af
-	ld a, [wBuffer + wCemExY]
-	push af
-	; Pick midpoint: one of 4 interior corners
-	ld c, 4
-	call Rangerandom
-	and 3
-	add a, a            ; *2
-	ld e, a
-	ld d, 0
-	ld hl, PCemMidpointTable
+; wBuffer scratch used by the march (offsets 8-14). Slots 8/9 were
+; wCemStepCount/wCemItemDone under the old carve algorithms.
+DEF wCemBallCol    EQU 8   ; column at which to drop the item ball (4-7)
+DEF wCemBallSaved  EQU 9   ; 1 once the ball position has been captured
+DEF wCemStepDir    EQU 10  ; +1 or -1: X march direction toward exit
+DEF wCemExtLo      EQU 11  ; current column's min walkable row
+DEF wCemExtHi      EQU 12  ; current column's max walkable row
+DEF wCemWanderDir  EQU 13  ; +1 or -1: vertical wander direction this column
+DEF wCemWanderCnt  EQU 14  ; remaining vertical wander steps this column
+
+; Per-column floor extent (minY, maxY), indexed by (col - 2). Cols 2-8.
+; This is the octagon from CEMETERY_DESIGN_LAPTOP.md Section 2; it is the
+; single source of truth for where the path may go.
+PCemColExtent:
+	db 3, 5   ; col 2
+	db 2, 6   ; col 3
+	db 1, 7   ; col 4
+	db 1, 7   ; col 5
+	db 1, 7   ; col 6
+	db 2, 6   ; col 7
+	db 3, 5   ; col 8
+
+; hl -> PCemFloorGeometry row for the current floor (wCemMapIndex).
+PCemGeometryRowHL:
+	ld hl, PCemFloorGeometry
+	ld a, [wBuffer + wCemMapIndex]
+	and a
+	ret z
+	ld de, CEMGEO_SIZE
+.rowLoop
 	add hl, de
+	dec a
+	jr nz, .rowLoop
+	ret
+
+; Load entX/entY/exX/exY (geometry offsets 3-6) into wBuffer scratch.
+PCemLoadGeometry:
+	call PCemGeometryRowHL
+	inc hl
+	inc hl
+	inc hl                     ; skip col1/col9/south blocks
+	ld a, [hli]
+	ld [wBuffer + wCemEntX], a
+	ld a, [hli]
+	ld [wBuffer + wCemEntY], a
 	ld a, [hli]
 	ld [wBuffer + wCemExX], a
 	ld a, [hl]
 	ld [wBuffer + wCemExY], a
-	call PCemAlgoB      ; wobble to midpoint
-	; Restore real exit and continue
-	pop af
-	ld [wBuffer + wCemExY], a
-	pop af
-	ld [wBuffer + wCemExX], a
-	jp PCemAlgoB        ; wobble midpoint → real exit
+	ret
 
-PCemMidpointTable:
-	db 4, 2  ; upper middle
-	db 5, 6  ; lower middle
-	db 2, 2  ; upper left inner
-	db 7, 6  ; lower right inner
+; Carve the current cursor cell (wCemTryX/Y) to floor. Clobbers a,b,d,e,hl.
+PCemWriteFloor:
+	call PCemGetCellHL
+	ld [hl], CEMAP_FLOOR_1
+	ret
 
-; ============================================================
-; Algorithm D: Drunk walk — skips protected wall tiles.
-; Saves position before each step attempt; restores if wall hit.
-; Falls back to PCemStepToward after 8 failed attempts.
-; ============================================================
-PCemAlgoD:
-.stepD
-	call PCemCarveStep
-	call PCemAtExit
-	ret z
-	ld b, 8            ; attempt budget
-.tryDir
-	; Save current position in (d,e) before attempting move
+; Load the current cursor column's extent into wCemExtLo/Hi.
+PCemLoadColExtent:
 	ld a, [wBuffer + wCemTryX]
-	ld d, a
-	ld a, [wBuffer + wCemTryY]
+	sub 2
+	add a, a                   ; (col-2)*2
 	ld e, a
-	; Roll direction 0-3
-	push bc
+	ld d, 0
+	ld hl, PCemColExtent
+	add hl, de
+	ld a, [hli]
+	ld [wBuffer + wCemExtLo], a
+	ld a, [hl]
+	ld [wBuffer + wCemExtHi], a
+	ret
+
+; ============================================================
+; PCemMarchPath
+; Carves a guaranteed-connected path from the inner entrance to the
+; inner exit. Marches one column at a time toward the exit (monotonic
+; in X), wandering 0-2 cells vertically within each column's extent.
+; When a narrower column is entered, Y is first clamped into the new
+; extent, carving the cells passed through in the OLD column so the
+; path stays continuous and never leaves the octagon. No connectivity
+; check or cleanup is ever needed. See Section 5a.
+; SRAM must be enabled.
+; ============================================================
+PCemMarchPath:
+	call PCemLoadGeometry
+	; roll ball column 4-7 (subset of columns every floor's march visits)
 	ld c, 4
 	call Rangerandom
-	and 3              ; a = direction 0-3; pop bc does not touch a
-	pop bc             ; restore b=retry count
-	; Attempt move — a still holds the direction from Rangerandom
-	jr z, .dN
-	cp 1
-	jr z, .dS
-	cp 2
-	jr z, .dE
-	; West
-	ld a, d
-	cp 3
-	jr c, .dBadMove
-	dec a
+	add a, 4
+	ld [wBuffer + wCemBallCol], a
+	xor a
+	ld [wBuffer + wCemBallSaved], a
+	; step direction: +1 if exX > entX, else -1 (never equal)
+	ld a, [wBuffer + wCemEntX]
+	ld b, a
+	ld a, [wBuffer + wCemExX]
+	cp b
+	jr nc, .stepPos
+	ld a, -1
+	jr .storeStep
+.stepPos
+	ld a, 1
+.storeStep
+	ld [wBuffer + wCemStepDir], a
+	; cursor = entrance, carve it
+	ld a, [wBuffer + wCemEntX]
 	ld [wBuffer + wCemTryX], a
-	jp .stepD
-.dN
-	ld a, e
-	cp 2
-	jr c, .dBadMove
+	ld a, [wBuffer + wCemEntY]
+	ld [wBuffer + wCemTryY], a
+	call PCemWriteFloor
+.marchLoop
+	; done marching horizontally once cursor reaches the exit column
+	ld a, [wBuffer + wCemTryX]
+	ld hl, wBuffer + wCemExX
+	cp [hl]
+	jr z, .vertical
+	; advance one column toward the exit
+	ld a, [wBuffer + wCemStepDir]
+	ld b, a
+	ld a, [wBuffer + wCemTryX]
+	add a, b
+	ld [wBuffer + wCemTryX], a
+	call PCemLoadColExtent
+	call PCemClampYIntoExtent  ; carve old column while clamping Y
+	call PCemWriteFloor        ; carve the new column cell
+	call PCemWander            ; 0-2 vertical steps within the extent
+	; capture the ball position the first time we reach the ball column
+	ld a, [wBuffer + wCemTryX]
+	ld hl, wBuffer + wCemBallCol
+	cp [hl]
+	jr nz, .marchLoop
+	ld a, [wBuffer + wCemBallSaved]
+	and a
+	jr nz, .marchLoop
+	call PCemSaveBallPos
+	ld a, 1
+	ld [wBuffer + wCemBallSaved], a
+	jr .marchLoop
+.vertical
+	; run straight to the exit row, carving (exX, y)
+	ld a, [wBuffer + wCemTryY]
+	ld hl, wBuffer + wCemExY
+	cp [hl]
+	jr z, .afterVertical
+	jr c, .vIncY
+	ld a, [wBuffer + wCemTryY]
 	dec a
 	ld [wBuffer + wCemTryY], a
-	jp .stepD
-.dS
-	ld a, e
-	cp 7
-	jr nc, .dBadMove
+	call PCemWriteFloor
+	jr .vertical
+.vIncY
+	ld a, [wBuffer + wCemTryY]
 	inc a
 	ld [wBuffer + wCemTryY], a
-	jp .stepD
-.dE
-	ld a, d
-	cp 8
-	jr nc, .dBadMove
+	call PCemWriteFloor
+	jr .vertical
+.afterVertical
+	; fallback ball position if the ball column was somehow never hit
+	ld a, [wBuffer + wCemBallSaved]
+	and a
+	ret nz
+	call PCemSaveBallPos
+	ret
+
+; Clamp cursor Y into [wCemExtLo, wCemExtHi], carving each cell passed
+; through in the OLD column (curX - stepDir). Only one of the two loops
+; ever runs. Cursor X is restored to the new column on exit.
+PCemClampYIntoExtent:
+	ld a, [wBuffer + wCemTryX]  ; remember new column
+	push af
+	ld a, [wBuffer + wCemStepDir]
+	ld b, a
+	ld a, [wBuffer + wCemTryX]
+	sub b
+	ld [wBuffer + wCemTryX], a  ; cursor X = old column
+.clampDown
+	ld a, [wBuffer + wCemTryY]
+	ld hl, wBuffer + wCemExtLo
+	cp [hl]
+	jr nc, .clampUp            ; curY >= lo
 	inc a
-	ld [wBuffer + wCemTryX], a
-	jp .stepD          ; move committed — proceed
-.dBadMove
-	; Restore position and try again
-	ld a, d
-	ld [wBuffer + wCemTryX], a
-	ld a, e
 	ld [wBuffer + wCemTryY], a
-	dec b
-	jr nz, .tryDir
-	; Budget exhausted — force step toward exit
-	call PCemStepToward
-	jp .stepD
+	call PCemWriteFloor
+	jr .clampDown
+.clampUp
+	ld a, [wBuffer + wCemTryY]
+	ld hl, wBuffer + wCemExtHi
+	cp [hl]
+	jr z, .clampDone
+	jr c, .clampDone          ; curY <= hi
+	dec a
+	ld [wBuffer + wCemTryY], a
+	call PCemWriteFloor
+	jr .clampUp
+.clampDone
+	pop af
+	ld [wBuffer + wCemTryX], a  ; restore cursor X = new column
+	ret
+
+; Wander cursor Y 0-2 cells in one random direction, staying within
+; [wCemExtLo, wCemExtHi], carving each cell. Stops early at an extent edge.
+PCemWander:
+	ld c, 3
+	call Rangerandom           ; 0-2 steps
+	ld [wBuffer + wCemWanderCnt], a
+	and a
+	ret z
+	ld c, 2
+	call Rangerandom           ; 0 = up, 1 = down
+	and a
+	ld b, 1
+	jr nz, .haveDir
+	ld b, -1
+.haveDir
+	ld a, b
+	ld [wBuffer + wCemWanderDir], a
+.wLoop
+	ld a, [wBuffer + wCemWanderCnt]
+	and a
+	ret z
+	ld a, [wBuffer + wCemTryY]
+	ld b, a
+	ld a, [wBuffer + wCemWanderDir]
+	add a, b                   ; nextY = curY + dir
+	ld hl, wBuffer + wCemExtLo
+	cp [hl]
+	ret c                      ; nextY < lo, stop
+	ld hl, wBuffer + wCemExtHi
+	cp [hl]
+	jr z, .wOK
+	ret nc                     ; nextY > hi, stop
+.wOK
+	ld [wBuffer + wCemTryY], a  ; commit nextY (a still holds it)
+	call PCemWriteFloor
+	ld a, [wBuffer + wCemWanderCnt]
+	dec a
+	ld [wBuffer + wCemWanderCnt], a
+	jr .wLoop
+
+PCemSaveBallPos:
+	ld hl, sProcCemeteryBallX
+	ld a, [wBuffer + wCemMapIndex]
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [wBuffer + wCemTryX]
+	ld [hl], a
+	ld hl, sProcCemeteryBallY
+	add hl, de
+	ld a, [wBuffer + wCemTryY]
+	ld [hl], a
+	ret
 
 ; ============================================================
 ; PCemRollItem: rolls a random item for this map's pokeball.
-; Stores in sProcCemetaryItem[mapIndex].
+; Stores in sProcCemeteryItem[mapIndex].
 ; ============================================================
 PCemRollItem:
 	ld c, 4
@@ -1324,7 +1005,7 @@ PCemRollItem:
 	ld [wRogueDoorSelection], a
 	farcall Random_Item_Selection   ; result in wRogueItem
 	ld a, [wRogueItem]
-	ld hl, sProcCemetaryItem
+	ld hl, sProcCemeteryItem
 	ld b, a
 	ld a, [wBuffer + wCemMapIndex]
 	ld e, a
@@ -1334,9 +1015,43 @@ PCemRollItem:
 	ld [hl], a
 	ret
 
+DEF wCemGhostRetry EQU 20   ; scratch retry counter for PCemAvoidGhostBoss
+
+; ============================================================
+; PCemAvoidGhostBoss
+; Cemetery-only exclusion: the cemetery's boss must never be Gastly,
+; Haunter, or Gengar. Rerolls wRoguePokemon1 (using the same class-roll
+; PCRollBoss itself uses) if the shared cave/cemetery boss roll landed
+; on one of them. Called once, only for floor 4 (the boss floor), from
+; PCemFinalizeMap's lazy-generation branch.
+; ============================================================
+PCemAvoidGhostBoss:
+	ld a, 20
+	ld [wBuffer + wCemGhostRetry], a
+.checkLoop
+	ld a, [wRoguePokemon1]
+	cp GASTLY
+	jr z, .reroll
+	cp HAUNTER
+	jr z, .reroll
+	cp GENGAR
+	jr z, .reroll
+	ret                          ; not a banned species, done
+.reroll
+	ld a, [wBuffer + wCemGhostRetry]
+	dec a
+	ld [wBuffer + wCemGhostRetry], a
+	ret z                        ; retry budget exhausted, accept whatever we have
+	ld b, 60                     ; same boss rarity bump PCRollBoss uses
+	farcall PCRollMonClass       ; c = rarity class, biased by wBattleCount
+	farcall Random_Pokemon_Selection ; -> d = species
+	ld a, d
+	ld [wRoguePokemon1], a
+	jr .checkLoop
+
 ; ============================================================
 ; PCemFinalizeMap
-; Called when loading a PROCEDURAL_CEMETARY_N map.
+; Called when loading a PROCEDURAL_CEMETERY_N map.
 ; Blits 90-byte map from SRAM into wOverworldMap, patches pokeball
 ; sprite position, and loads item into wRogueItem.
 ; ============================================================
@@ -1354,7 +1069,7 @@ PCemFinalizeMap::
 	ld [wBuffer + wCemMapIndex], a
 
 	; Lazy generation: generate this floor now if its ready bit is not set.
-	; Bit N of sProcCemetaryReady = floor N has been generated.
+	; Bit N of sProcCemeteryReady = floor N has been generated.
 	; Spreads cost across floor entries instead of all at Pallet Town entry.
 	; Compute mask = 1 << mapIndex using B as shift count (not bitwise AND).
 	ld c, a                    ; c = mapIndex (0-3)
@@ -1367,11 +1082,22 @@ PCemFinalizeMap::
 	dec c
 	jr nz, .cemShiftMask
 .cemGotMask                    ; b = (1 << mapIndex)
-	ld a, [sProcCemetaryReady]
+	ld a, [sProcCemeteryReady]
 	and b
 	jr nz, .cemAlreadyReady    ; bit set = already generated
 	; generate this floor now
 	call PCemGenerateOneMap
+	; Floor 4 is the boss floor. wRoguePokemon1 (the boss species) is
+	; shared, staged-shared state: rolled once at Pallet Town entry by
+	; the CAVE's PCRollBoss (procedural_cave_gen.asm), since either the
+	; cave or the cemetery may end up using it. Reroll it here, once,
+	; only for the cemetery's own use, if it landed on a Ghost the
+	; cemetery boss should never be - this does not touch PCRollBoss or
+	; affect the cave's own boss (which reads wRoguePokemon1 on an
+	; entirely separate visit/branch).
+	ld a, [wBuffer + wCemMapIndex]
+	cp 3
+	call z, PCemAvoidGhostBoss
 	; set ready bit (recompute mask — PCemGenerateOneMap may clobber b/c)
 	ld a, [wBuffer + wCemMapIndex]
 	ld c, a
@@ -1383,9 +1109,9 @@ PCemFinalizeMap::
 	dec c
 	jr nz, .cemSetShift
 .cemSetBit
-	ld a, [sProcCemetaryReady]
+	ld a, [sProcCemeteryReady]
 	or b
-	ld [sProcCemetaryReady], a
+	ld [sProcCemeteryReady], a
 .cemAlreadyReady
 
 	; get SRAM source for this map
@@ -1416,7 +1142,7 @@ PCemFinalizeMap::
 	call PCemPlaceStaircases
 
 	; load item into wRogueItem for pickup
-	ld hl, sProcCemetaryItem
+	ld hl, sProcCemeteryItem
 	ld a, [wBuffer + wCemMapIndex]
 	ld e, a
 	ld d, 0
@@ -1438,14 +1164,14 @@ PCemFinalizeMap::
 	xor a
 	ld [rRAMB], a
 
-	ld hl, sProcCemetaryBallX
+	ld hl, sProcCemeteryBallX
 	ld a, [wBuffer + wCemMapIndex]
 	ld e, a
 	ld d, 0
 	add hl, de
 	ld a, [hl]
 	ld b, a             ; b = ball block X
-	ld hl, sProcCemetaryBallY
+	ld hl, sProcCemeteryBallY
 	add hl, de
 	ld a, [hl]
 	ld c, a             ; c = ball block Y
@@ -1471,7 +1197,7 @@ PCemFinalizeMap::
 ; ============================================================
 ; PCemRefreshBall
 ; Shows or hides the slot-1 pokeball for the current cemetery floor,
-; based on sProcCemetaryItemGot. Called from each of the 4 cemetery
+; based on sProcCemeteryItemGot. Called from each of the 4 cemetery
 ; scripts on fresh EVENT_ENTER_ROOM entry.
 ;
 ; PCemFinalizeMap places the ball's sprite position on every load and
@@ -1503,7 +1229,7 @@ PCemRefreshBall::
 	dec a
 	jr nz, .shiftMask
 .gotMask
-	ld a, [sProcCemetaryItemGot]
+	ld a, [sProcCemeteryItemGot]
 	and c                      ; Z if this floor's item not yet collected
 
 	; close SRAM before the predef calls
@@ -1530,29 +1256,29 @@ PCemRefreshBall::
 	ret
 
 PCemToggleTable:
-	db TOGGLE_CEMETARY_1_POKEBALL
-	db TOGGLE_CEMETARY_2_POKEBALL
-	db TOGGLE_CEMETARY_3_POKEBALL
-	db TOGGLE_CEMETARY_4_POKEBALL
+	db TOGGLE_CEMETERY_1_POKEBALL
+	db TOGGLE_CEMETERY_2_POKEBALL
+	db TOGGLE_CEMETERY_3_POKEBALL
+	db TOGGLE_CEMETERY_4_POKEBALL
 
 ; ============================================================
-; IsCemetaryMap
+; IsCemeteryMap
 ; Returns Z clear if current map is one of the 4 cemetery maps.
 ; Preserves all registers except flags/a.
 ; ============================================================
-IsCemetaryMap::
+IsCemeteryMap::
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_1
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_2
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_3
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_4
-	jr z, .isCemetary
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_4
+	jr z, .isCemetery
 	xor a              ; Z set = not a cemetery map
 	ret
-.isCemetary
+.isCemetery
 	xor a
 	inc a              ; Z clear = is a cemetery map
 	ret

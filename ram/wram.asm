@@ -2034,7 +2034,7 @@ wRoute1CurScript:: db
 wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
 wProceduralCave1CurScript:: db
-wProceduralCemetary4CurScript:: db
+wProceduralCemetery4CurScript:: db
 wProceduralForestCurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
@@ -2052,7 +2052,17 @@ wRogueFlagsBitfield:: db
 wRogueItem:: dw
 wRogueItem2:: dw  ; wild area pokeball 2-4 (custom_functions/procedural_cave_gen.asm) -
 wRogueItem3:: dw  ; same single-byte-in-practice convention as wRogueItem above,
-wRogueItem4:: dw  ; nothing reads/writes the high byte of any of these
+wRogueItem4:: db  ; nothing reads/writes the high byte of any of these, so item4's
+; high byte is reclaimed below. The wild-area code indexes these by a 2-byte stride
+; off wRogueItem (offsets 0,2,4,6) and only ever touches the low bytes, so keeping
+; item4 at the same address with a db + db preserves that stride.
+; Cemetery generator debug selector (poke via emulator, default 0):
+; 0 = normal (dense fill), 1/4 = force procedural (dense fill),
+; 2 = force procedural sparse plots, 3 = force prefab. Any other value
+; behaves as normal. See CEMETERY_DESIGN_LAPTOP.md Section 5i. Reclaimed
+; from item4's dead high byte, so WRAM0 does not grow; relies on the boot
+; WRAM clear for its default of 0.
+wProcCemDebugMode:: db
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
 wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — route stage map ID
 wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — gym stage map ID

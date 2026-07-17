@@ -60,11 +60,11 @@ RandomPickUpItem:
 	; Item stored in wRogueItem by PCemFinalizeMap.
 	; NOTE: farcall returns Z flag correctly but clobbers 'a' on bank restore,
 	; so we check Z flag immediately and look up toggle via ldh (not farcall).
-	farcall IsCemetaryMap   ; Z clear = is cemetery (Z flag survives farcall)
-	jr z, .notCemetary
+	farcall IsCemeteryMap   ; Z clear = is cemetery (Z flag survives farcall)
+	jr z, .notCemetery
 	ldh a, [hSpriteIndex]
 	cp 1
-	jr nz, .notCemetary
+	jr nz, .notCemetery
 	ld a, [wRogueItem]
 	ld b, a
 	ld c, 1
@@ -72,18 +72,18 @@ RandomPickUpItem:
 	jp nc, .BagFull
 	; Inline toggle lookup - can't use farcall here since it clobbers 'a'
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_1
-	ld a, TOGGLE_CEMETARY_1_POKEBALL
+	cp PROCEDURAL_CEMETERY_1
+	ld a, TOGGLE_CEMETERY_1_POKEBALL
 	jr z, .gotCemToggle
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_2
-	ld a, TOGGLE_CEMETARY_2_POKEBALL
+	cp PROCEDURAL_CEMETERY_2
+	ld a, TOGGLE_CEMETERY_2_POKEBALL
 	jr z, .gotCemToggle
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CEMETARY_3
-	ld a, TOGGLE_CEMETARY_3_POKEBALL
+	cp PROCEDURAL_CEMETERY_3
+	ld a, TOGGLE_CEMETERY_3_POKEBALL
 	jr z, .gotCemToggle
-	ld a, TOGGLE_CEMETARY_4_POKEBALL
+	ld a, TOGGLE_CEMETERY_4_POKEBALL
 .gotCemToggle
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -97,19 +97,19 @@ RandomPickUpItem:
 	; Compute bit mask for current cemetery floor (bit 0-3 = floor 0-3)
 	ldh a, [hCurMap]
 	ld b, 1                     ; bit 0 = CEMETERY_1
-	cp PROCEDURAL_CEMETARY_1
+	cp PROCEDURAL_CEMETERY_1
 	jr z, .cemGotMask
 	sla b                       ; bit 1 = CEMETERY_2
-	cp PROCEDURAL_CEMETARY_2
+	cp PROCEDURAL_CEMETERY_2
 	jr z, .cemGotMask
 	sla b                       ; bit 2 = CEMETERY_3
-	cp PROCEDURAL_CEMETARY_3
+	cp PROCEDURAL_CEMETERY_3
 	jr z, .cemGotMask
 	sla b                       ; bit 3 = CEMETERY_4
 .cemGotMask
-	ld a, [sProcCemetaryItemGot]
+	ld a, [sProcCemeteryItemGot]
 	or b
-	ld [sProcCemetaryItemGot], a
+	ld [sProcCemeteryItemGot], a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ld [rRAMG], a
@@ -117,7 +117,7 @@ RandomPickUpItem:
 	ldh [hNoWaitAfterText], a
 	ld hl, FoundItemText
 	jp .print
-.notCemetary
+.notCemetery
 
 	; Hardcoded path for wild-area stage maps (4 independent random items,
 	; sprite slots 2-5 - boss is slot 1 and not a pickup item).

@@ -498,7 +498,7 @@ WarpFound2::
 	jr z, .addFive
 	cp PROCEDURAL_FOREST
 	jr z, .addFive
-	cp PROCEDURAL_CEMETARY_4
+	cp PROCEDURAL_CEMETERY_4
 	jr nz, .notLeavingProcArea
 .addFive
 	ld a, [wBattleCount]
@@ -2435,17 +2435,17 @@ LoadMapData::
 	homecall PFinalizeForest    ; generate (if needed) and blit maze
 .notProcForest
 	; Cemetery: blit the pre-generated map for whichever of the 4 floors is loading
-	cp PROCEDURAL_CEMETARY_1
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_2
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_3
-	jr z, .isCemetary
-	cp PROCEDURAL_CEMETARY_4
-	jr nz, .notCemetary
-.isCemetary
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_4
+	jr nz, .notCemetery
+.isCemetery
 	homecall PCemFinalizeMap
-.notCemetary
+.notCemetery
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
 ; copy current map view to VRAM

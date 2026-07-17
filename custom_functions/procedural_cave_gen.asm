@@ -1096,8 +1096,10 @@ PCBossLevelTable:
 ; reward-pool class system instead of a bespoke species table.
 ; INPUT:  b = extra rarity bump (0 = wild baseline, higher = rarer, e.g. boss)
 ; OUTPUT: c = class 1-4.  Clobbers a, d (b preserved).
+; Exported (::) so procedural_CEMETERY_gen.asm can farcall it (cross-bank -
+; see PCemAvoidGhostBoss) rather than duplicating this formula.
 ; ============================================================
-PCRollMonClass:
+PCRollMonClass::
 	; round = clamp(wBattleCount, 0, 89) / 10  → 0-8
 	ld a, [wBattleCount]
 	cp 90

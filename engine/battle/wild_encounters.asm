@@ -70,13 +70,13 @@ TryDoWildEncounter:
 	jr z, .isProcedural
 	cp PROCEDURAL_FOREST
 	jr z, .isProcedural
-	;cp PROCEDURAL_CEMETARY_1
+	;cp PROCEDURAL_CEMETERY_1
 	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETARY_2
+	;cp PROCEDURAL_CEMETERY_2
 	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETARY_3
+	;cp PROCEDURAL_CEMETERY_3
 	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETARY_4
+	;cp PROCEDURAL_CEMETERY_4
 	jr nz, .normalEncounterData
 .isProcedural
 	farcall PCRollWildEncounter ; battlecount-scaled species/level, no ownership check
@@ -124,13 +124,13 @@ TryDoWildEncounter:
 	jr z, .checkCaveBudget
 	cp PROCEDURAL_FOREST
 	jr z, .checkForestBudget
-	cp PROCEDURAL_CEMETARY_1
+	cp PROCEDURAL_CEMETERY_1
 	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETARY_2
+	cp PROCEDURAL_CEMETERY_2
 	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETARY_3
+	cp PROCEDURAL_CEMETERY_3
 	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETARY_4
+	cp PROCEDURAL_CEMETERY_4
 	jr z, .checkCemBudget
 	jr .commitEncounter
 .checkCemBudget

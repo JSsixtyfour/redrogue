@@ -430,16 +430,16 @@ ToggleableObjectStates:
 	toggle_object_state 4, ON              ; slot 4 = pokeball 3
 	toggle_object_state 5, ON              ; slot 5 = pokeball 4
 
-	toggleable_objects_for PROCEDURAL_CEMETARY_1
+	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball
 
-	toggleable_objects_for PROCEDURAL_CEMETARY_2
+	toggleable_objects_for PROCEDURAL_CEMETERY_2
 	toggle_object_state 1, ON
 
-	toggleable_objects_for PROCEDURAL_CEMETARY_3
+	toggleable_objects_for PROCEDURAL_CEMETERY_3
 	toggle_object_state 1, ON
 
-	toggleable_objects_for PROCEDURAL_CEMETARY_4
+	toggleable_objects_for PROCEDURAL_CEMETERY_4
 	toggle_object_state 1, ON
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS

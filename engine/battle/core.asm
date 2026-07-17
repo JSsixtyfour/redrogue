@@ -1689,13 +1689,13 @@ TryRunningFromBattle:
 	jp z, .procNoRun
 	cp PROCEDURAL_FOREST
 	jp z, .procNoRun
-	;cp PROCEDURAL_CEMETARY_1
+	;cp PROCEDURAL_CEMETERY_1
 	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETARY_2
+	;cp PROCEDURAL_CEMETERY_2
 	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETARY_3
+	;cp PROCEDURAL_CEMETERY_3
 	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETARY_4
+	;cp PROCEDURAL_CEMETERY_4
 	;jr z, .trainerBattle
 	ld a, [wNumRunAttempts]
 	inc a

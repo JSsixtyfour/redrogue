@@ -18,12 +18,14 @@ sProcCaveStagingBuffer:: ds 600
 ; Procedural cemetery: four 10x9 maps concatenated (4x90=360 bytes) plus
 ; one pokeball position (X,Y) and one item per map. Lives in the same bank
 ; as the cave buffer since only one system runs at a time.
-sProcCemetaryMaps:: ds 4 * 90  ; indexed by (mapIndex*90 + row*10 + col)
-sProcCemetaryBallX:: ds 4      ; pokeball block X per map
-sProcCemetaryBallY:: ds 4      ; pokeball block Y per map
-sProcCemetaryItem:: ds 4       ; item ID per map (for pickup)
-sProcCemetaryReady:: db        ; bit N = floor N has been generated (lazy per-map)
-sProcCemetaryItemGot:: db      ; bit N = floor N item has been collected; cleared on new generation
+sProcCemeteryMaps:: ds 4 * 90  ; indexed by (mapIndex*90 + row*10 + col)
+sProcCemeteryBallX:: ds 4      ; pokeball block X per map
+sProcCemeteryBallY:: ds 4      ; pokeball block Y per map
+sProcCemeteryItem:: ds 4       ; item ID per map (for pickup)
+sProcCemeteryReady:: db        ; bit N = floor N has been generated (lazy per-map)
+sProcCemeteryItemGot:: db      ; bit N = floor N item has been collected; cleared on new generation
+sProcCemeteryUsedPrefabs:: dw  ; bit N = prefab N (PCemPrefabTable) already used this run;
+                                ; at most 4 bits ever set (one per floor), cleared per-run
 sProcCaveStagingEntranceY:: db
 sProcCaveStagingEntranceX:: db
 sProcCaveStagingExitY:: db
