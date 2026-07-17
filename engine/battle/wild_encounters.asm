@@ -20,7 +20,7 @@ TryDoWildEncounter:
 	and a
 	jr z, .next
 	dec a
-	jr z, .lastRepelStep
+	jp z, .lastRepelStep
 	ld [wRepelRemainingSteps], a
 .next
 ; determine if wild pokemon can appear in the half-block we're standing in
@@ -70,13 +70,13 @@ TryDoWildEncounter:
 	jr z, .isProcedural
 	cp PROCEDURAL_FOREST
 	jr z, .isProcedural
-	;cp PROCEDURAL_CEMETERY_1
-	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETERY_2
-	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETERY_3
-	;jr z, .isProcedural
-	;cp PROCEDURAL_CEMETERY_4
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_4
 	jr nz, .normalEncounterData
 .isProcedural
 	farcall PCRollWildEncounter ; battlecount-scaled species/level, no ownership check
