@@ -1080,7 +1080,7 @@ PCMoveTutorText::
 	jr c, .exit  ; exit if player chose cancel
 	push bc
 	; Save the selected move id.
-	ld a, [wCurPartySpecies]
+	ld a, [wCurListMenuItem]
 	ld [wMoveNum], a
 	ld [wNamedObjectIndex],a
 	call GetMoveName

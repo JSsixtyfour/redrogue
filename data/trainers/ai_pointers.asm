@@ -51,4 +51,6 @@ TrainerAIPointers:
 	dbw 3, GenericAI
 	dbw 2, AgathaAI ; agatha
 	dbw 1, LanceAI ; lance
+	dbw 3, GenericAI ; rival_miniboss
+	dbw 1, GiovanniAI ; giovanni_miniboss
 	assert_table_length NUM_TRAINERS

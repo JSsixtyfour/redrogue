@@ -1424,6 +1424,29 @@ ItemUseMedicine:
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
 	predef LearnMoveFromLevelUp
+	; Fusion (Phase 5b): rare-candy level-up also learns the SECONDARY species'
+	; moves for the level just reached (same as the battle level-up hook in
+	; engine/battle/experience.asm). Forward-only. de = struct base is
+	; IsFusionMon's input (de, NOT hl - farcall clobbers hl).
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	farcall IsFusionMon
+	jr z, .notFusionCandyMoves
+	ld a, [wCurPartySpecies]
+	push af                          ; save the primary's species
+	ld a, [wFusionSecondarySpecies]
+	ld [wPokedexNum], a
+	xor a
+	ld [wMonDataLocation], a
+	predef LearnMoveFromLevelUp      ; secondary's moves (dedup is automatic)
+	pop af
+	ld [wCurPartySpecies], a
+	ld [wPokedexNum], a              ; restore the primary into both
+.notFusionCandyMoves
 	xor a
 	ld [wForceEvolution], a
 	callfar TryEvolvingMon

@@ -4,6 +4,28 @@ PrintMonType:
 	call GetPredefRegisters
 	push hl
 	call GetMonHeader
+	; Fusion (Phase 3): if wLoadedMon (the mon on the status screen) is the
+	; fusion, override the just-loaded wMonHType2 with the secondary's type,
+	; which an earlier feature (CreateFusion, custom_functions/func_fusion.asm)
+	; baked into the primary's own MON_TYPE2 field at fusion-creation time -
+	; read it back here rather than re-deriving it. de = struct base is
+	; IsFusionMon's input (NOT hl - farcall clobbers hl as its own jump
+	; vector; see IsFusionMon's doc comment in custom_functions/func_fusion.asm).
+	; CAVEAT (documented, not a bug to fix): this function is ALSO called from
+	; Hall of Fame display (engine/movie/hall_of_fame.asm), which does NOT use
+	; wLoadedMon (it sets wCurSpecies from wHoFMonSpecies directly) - wLoadedMon
+	; there is just stale leftover from whatever status screen was last viewed.
+	; This check could theoretically misfire only if wLoadedMon happens to (a)
+	; be flagged as fusion AND (b) hold the exact same species currently shown
+	; in the Hall of Fame - a narrow, cosmetic-only edge case, accepted rather
+	; than spending a scarce WRAM/HRAM byte on a dedicated context flag (both
+	; regions were completely full as of the prior fusion stats work).
+	ld de, wLoadedMon
+	farcall IsFusionMon
+	jr z, .notFusionForType
+	ld a, [wLoadedMon + MON_TYPE2]
+	ld [wMonHType2], a
+.notFusionForType
 	pop hl
 	push hl
 	ld a, [wMonHType1]

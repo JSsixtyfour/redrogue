@@ -33,6 +33,20 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jp z, .done
 	ld [wEvoOldSpecies], a
 	push hl
+	; Fusion (Phase 3): fusions never evolve - skip immediately if this party
+	; mon is flagged as the fusion. de = struct base is IsFusionMon's input
+	; (NOT hl - farcall clobbers hl as its own jump vector; see
+	; IsFusionMon's doc comment in custom_functions/func_fusion.asm). hl is
+	; already saved on the stack above (this loop's own convention), so it's
+	; free to clobber here.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	farcall IsFusionMon
+	jp nz, Evolution_PartyMonLoop  ; is the fusion - skip to next mon
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld hl, wCanEvolveFlags
@@ -210,6 +224,11 @@ Evolution_PartyMonLoop: ; loop over party mons
 	xor a
 	ld [wMonDataLocation], a
 	call LearnMoveFromLevelUp
+	; NOTE: this LearnMoveFromLevelUp is the EVOLUTION path (learn the NEW
+	; species' moves after evolving) - NOT the normal level-up path. A fusion
+	; can never evolve (Phase 3 blocks it), so no fusion hook belongs here.
+	; The real level-up learn sites are experience.asm (battle level-up) and
+	; item_effects.asm (rare candy); the Phase 5b hook lives there.
 	pop hl
 	predef SetPartyMonTypes
 	ldh a, [hIsInBattle]

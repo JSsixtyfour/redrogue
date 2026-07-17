@@ -178,8 +178,24 @@ StatusScreen:
 	call PrintStatsBox
 	call Delay3
 	call GBPalNormal
+	; Fusion (Phase 4a): pre-load the secondary's front sprite into vBackPic
+	; BEFORE drawing the primary, so the diagonal overlay after it is instant
+	; (no visible "primary first, then secondary" flicker) and wMonHIndex is left
+	; on the PRIMARY for StatusScreen2's page-2 name. de = wLoadedMon is
+	; IsFusionMon's input (de, NOT hl - farcall clobbers hl as its jump vector).
+	ld de, wLoadedMon
+	farcall IsFusionMon
+	jr z, .notFusionPreload
+	farcall PreloadFusionSecondaryPic
+.notFusionPreload
 	hlcoord 1, 0
 	call LoadFlippedFrontSpriteByMonIndex ; draw Pokémon picture
+	; Fusion: overlay the secondary as the lower-right diagonal triangle.
+	ld de, wLoadedMon
+	farcall IsFusionMon
+	jr z, .notFusionOverlay
+	farcall OverlayFusionSecondaryPic
+.notFusionOverlay
 	ld a, [wCurPartySpecies]
 	call PlayCry
 	call WaitForTextScrollButtonPress

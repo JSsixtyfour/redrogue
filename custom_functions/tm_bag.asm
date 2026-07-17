@@ -239,17 +239,21 @@ TeachTMHM::
 ; Full pocket-switch handling, called via farcall from the HOME-bank list
 ; menu (DisplayListMenuIDLoop) to keep that side small - validates the
 ; switch is allowed, plays the SFX, advances/retreats the pocket index
-; (0=items, 1=key items, 2=TM pack; wraps mod 3), updates wBagPocketsFlags,
-; and points wListPointer at the new pocket's source (rebuilding
-; wTMPocketBuf from sTMBitfield when entering the TM pocket).
-; INPUT: a = direction (1 = forward/RIGHT, 0 = backward/LEFT)
+; (0=Recovery 1=Key Items 2=TM Pack 3=Stat 4=Valuable; wraps mod 5), updates
+; wBagPocketsFlags, and points wListPointer at the new pocket's source
+; (rebuilding the pocket's display buffer as needed).
+; INPUT: d = direction (1 = forward/RIGHT, 0 = backward/LEFT) - NOT a; farcall
+;        clobbers a via Bankswitch before this runs.
 ; OUTPUT: carry set = switch rejected (wrong menu, or PC withdrawing), state
 ;         untouched; carry clear = switch applied
 ; CLOBBERS: a, b, c, hl
 ; ============================================================
 PocketSwitchROMX::
 ; 5 pockets: 0=Recovery 1=Key Items 2=TM Pack 3=Stat 4=Valuable (mod-5 cycling).
-	push af                    ; save direction across the menu/PC checks
+; Direction (1=forward/RIGHT, 0=backward/LEFT) arrives in d, NOT a: farcall routes
+; through Bankswitch, whose first instruction (ldh a,[hLoadedROMBank]) clobbers a
+; before this runs. farcall preserves de, and call PlaySound below preserves de too,
+; so d is still the direction at the branch. (Same clobber as the PlaySound fix.)
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jr nz, .rejected
@@ -257,13 +261,17 @@ PocketSwitchROMX::
 	bit BIT_PC_WITHDRAWING, [hl]
 	jr nz, .rejected
 	ld a, SFX_TINK
-	farcall PlaySound
-	pop af                     ; a = direction
-	ld b, a
+	; PlaySound is a HOME routine that takes the sound ID in a and manages its own
+	; audio bank internally. It must be a plain `call` from any bank: `farcall` routes
+	; through Bankswitch, whose first instruction (ldh a,[hLoadedROMBank]) overwrites
+	; the sound ID in a, so PlaySound plays a garbage ID whose bogus header sends the
+	; channel-pointer write into sprite RAM (wSprite01StateData2), warping NPCs off-
+	; screen. Every other PlaySound call site in the game uses a plain `call`.
+	call PlaySound
 	ld a, [wBagPocketsFlags]
 	and POCKET_INDEX_MASK      ; a = current pocket index (0-4)
 	ld c, a
-	ld a, b
+	ld a, d                    ; a = direction (d survives farcall + PlaySound)
 	and a
 	jr z, .backward
 .forward                       ; 0->1->2->3->4->0
@@ -322,7 +330,6 @@ PocketSwitchROMX::
 	and a
 	ret
 .rejected
-	pop af
 	scf
 	ret
 

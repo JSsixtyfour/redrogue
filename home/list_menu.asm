@@ -237,15 +237,17 @@ DisplayListMenuIDLoop::
 	ret nz
 	farcall PrintBagInfoText
 	ret
-; marcelnote - new for bag pockets; 3 pockets (items/key items/TM pack) cycle
-; in ROMX (PocketSwitchROMX) to keep this HOME-bank stub small. a = direction
-; (1 = forward/RIGHT, 0 = backward/LEFT) going in; carry set coming back means
-; the switch was rejected (wrong menu, or withdrawing from PC).
+; marcelnote - new for bag pockets; 5 pockets cycle in ROMX (PocketSwitchROMX)
+; to keep this HOME-bank stub small. d = direction (1 = forward/RIGHT,
+; 0 = backward/LEFT) going in; carry set coming back means the switch was
+; rejected (wrong menu, or withdrawing from PC).
+; Direction MUST travel in d, not a: farcall routes through Bankswitch, whose
+; first instruction (ldh a,[hLoadedROMBank]) clobbers a. farcall preserves de.
 .switchPocketForward
-	ld a, 1
+	ld d, 1
 	jr .doPocketSwitch
 .switchPocketBackward
-	xor a
+	ld d, 0
 .doPocketSwitch
 	farcall PocketSwitchROMX
 	jp c, DisplayListMenuIDLoop

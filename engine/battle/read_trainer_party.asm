@@ -46,6 +46,14 @@ ReadTrainer:
 ; - if [wLoneAttackNo] != 0, one pokemon on the team has a special move
 ; else the first byte is the level of every pokemon on the team
 .IterateTrainer
+	; Mini-boss classes use their own team format + runtime level scaling
+	; (BuildMiniBossTeam, below). hl already points at the selected team's data.
+	; Same bank, so a plain call keeps hl valid (unlike the rogue-bank farcalls).
+	ld a, [wTrainerClass]
+	cp RIVAL_MINIBOSS
+	jr z, .miniBoss
+	cp GIOVANNI_MINIBOSS
+	jr z, .miniBoss
 	ld a, [hli]
 	cp $FF ; is the trainer special?
 	jr z, .SpecialTrainer ; if so, check for special moves
@@ -88,6 +96,9 @@ ReadTrainer:
 	farcall ApplyLegendaryBossMoveset ; Challenge 11: themed moveset on the just-added legendary
 	pop hl
 	jr .SpecialTrainer
+.miniBoss
+	call BuildMiniBossTeam ; hl -> mini-boss team data (same bank; builds the enemy party)
+	jp .AddAdditionalMoveData
 .AddAdditionalMoveData
 ; does the trainer have additional move data?
 	ld a, [wTrainerClass]
@@ -154,3 +165,69 @@ ReadTrainer:
 	dec b
 	jr nz, .LastLoop ; repeat wCurEnemyLevel times
 	ret
+
+; ============================================================
+; Mini-boss team builder (see MINIBOSS_FRAMEWORK.md)
+; Only the team-data walk lives here (same bank as the party data, so hl/de
+; reads are plain). The bulky level/fill/table logic lives in the rogue bank
+; (func_enc_gen.asm: MiniBossSetLevel / MiniBossRollFillMon) and is reached by
+; farcall - those helpers take no pointer input (they read wBattleCount and
+; write wCurEnemyLevel/wCurPartySpecies), so they're bank-safe.
+;
+; INPUT: hl -> the selected team's data (RivalMiniBossData / GiovanniMiniBossData
+;        format: a 0-terminated list of species/markers, no leading $FF, no
+;        per-mon level bytes). Every mon's level is supplied at runtime from
+;        trainer_difficulty_settings_miniboss[round].
+; ============================================================
+BuildMiniBossTeam::
+	ld d, h
+	ld e, l                    ; de = team data pointer (survives the farcalls below)
+.loop
+	ld a, [de]
+	inc de
+	and a
+	ret z                      ; 0 terminator = team complete
+	cp MINIBOSS_RANDOM_FILL
+	jr z, .fill
+	cp RIVAL_STARTER_PLACEHOLDER
+	jr z, .starter
+	; literal curated "signature" species
+	ld [wCurPartySpecies], a
+	push de
+	farcall MiniBossSetLevel   ; wCurEnemyLevel = this round's level
+	call MiniBossAddMon
+	pop de
+	jr .loop
+.starter
+	push de
+	farcall MiniBossSetLevel
+	ld a, RIVAL_STARTER_PLACEHOLDER
+	ld [wCurPartySpecies], a
+	farcall PatchRivalStarterSpecies ; swap in wRivalStarter, evolved to wCurEnemyLevel
+	call MiniBossAddMon
+	pop de
+	jr .loop
+.fill
+	ld a, [de]                 ; fill count (>= 1)
+	inc de
+	ld b, a
+.fillLoop
+	push de
+	push bc
+	farcall MiniBossRollFillMon ; sets wCurPartySpecies (rarer-random) AND wCurEnemyLevel
+	call MiniBossAddMon
+	pop bc
+	pop de
+	dec b
+	jr nz, .fillLoop
+	jr .loop
+
+; Appends the mon in wCurPartySpecies at wCurEnemyLevel to the enemy party,
+; unless the party is already full (PARTY_LENGTH). Tail-calls AddPartyMon.
+MiniBossAddMon:
+	ld a, [wEnemyPartyCount]
+	cp PARTY_LENGTH
+	ret nc                     ; party full -> silently skip
+	ld a, ENEMY_PARTY_DATA
+	ld [wMonDataLocation], a
+	jp AddPartyMon

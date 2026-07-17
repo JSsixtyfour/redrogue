@@ -62,4 +62,10 @@ ENDM
 	trainer_const CHANNELER      ; $2D
 	trainer_const AGATHA         ; $2E
 	trainer_const LANCE          ; $2F
+	; Mini-boss framework classes. Reuse the rival/Giovanni name/pic/AI/money/
+	; move-choice rows (they should look and battle like the real character),
+	; but have their OWN TrainerDataPointers entry so mini-boss teams stay
+	; isolated from the vanilla rival/Giovanni battles used elsewhere.
+	trainer_const RIVAL_MINIBOSS    ; $30 — OPP_RIVAL_MINIBOSS = 248
+	trainer_const GIOVANNI_MINIBOSS ; $31 — OPP_GIOVANNI_MINIBOSS = 249
 DEF NUM_TRAINERS EQU const_value - 1

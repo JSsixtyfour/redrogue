@@ -275,6 +275,34 @@ GainExperience:
 	ld a, [wCurSpecies]
 	ld [wPokedexNum], a
 	predef LearnMoveFromLevelUp
+	; Fusion (Phase 5b): after the PRIMARY's level-up moves, also learn the
+	; SECONDARY species' moves for this level. Forward-only by design: only what
+	; is learnable at the level just reached, no retroactive backfill.
+	; This is the REAL battle level-up site (the one in evos_moves.asm is the
+	; post-EVOLUTION learn, which a fusion never reaches - Phase 3 blocks
+	; fusions from evolving). de = party mon struct base is IsFusionMon's input
+	; (de, NOT hl - farcall clobbers hl as its own jump vector).
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	farcall IsFusionMon
+	jr z, .notFusionLevelUpMoves
+	ld a, [wCurPartySpecies]
+	push af                          ; save the primary's species
+	ld a, [wFusionSecondarySpecies]
+	ld [wPokedexNum], a              ; LearnMoveFromLevelUp reads the species here
+	xor a
+	ld [wMonDataLocation], a         ; PLAYER_PARTY_DATA
+	predef LearnMoveFromLevelUp      ; secondary's moves; its own "already knows
+	                                 ; this move?" check dedups for free
+	pop af                           ; primary species
+	ld [wCurPartySpecies], a
+	ld [wPokedexNum], a              ; LearnMoveFromLevelUp leaves BOTH holding
+	                                 ; the secondary - restore the primary
+.notFusionLevelUpMoves
 	ld hl, wCanEvolveFlags
 	ldh a, [hWhichPokemon]
 	ld c, a

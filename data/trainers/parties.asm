@@ -47,6 +47,8 @@ TrainerDataPointers:
 	dw ChannelerData
 	dw AgathaData
 	dw LanceData
+	dw RivalMiniBossData    ; RIVAL_MINIBOSS
+	dw GiovanniMiniBossData ; GIOVANNI_MINIBOSS
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then
@@ -444,6 +446,26 @@ Rival3Data:
 	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, ARCANINE, 63, EXEGGUTOR, 65, RIVAL_STARTER_PLACEHOLDER, 0
 	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, GYARADOS, 63, ARCANINE, 65, RIVAL_STARTER_PLACEHOLDER, 0
 	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, EXEGGUTOR, 63, GYARADOS, 65, RIVAL_STARTER_PLACEHOLDER, 0
+
+; Mini-boss team data (see MINIBOSS_FRAMEWORK.md). NOTE: this is a DIFFERENT
+; format from the vanilla trainer data above - it has NO leading $FF and NO
+; per-mon level bytes. BuildMiniBossTeam (read_trainer_party.asm) supplies every
+; mon's level at runtime from trainer_difficulty_settings_miniboss[round], so one
+; species-list scales across the whole run. A team is a list of species/markers
+; terminated by 0:
+;   RIVAL_STARTER_PLACEHOLDER ($1F) = the placed rival starter (evolved to level)
+;   MINIBOSS_RANDOM_FILL ($FE), <count> = add <count> rarer-random mons (count >= 1)
+;   any other byte = a literal curated "signature" species
+RivalMiniBossData:
+	; One team (wTrainerNo = 1). Placed starter as the ace + 4 rarer-random mons.
+	db RIVAL_STARTER_PLACEHOLDER, MINIBOSS_RANDOM_FILL, 4, 0
+
+GiovanniMiniBossData:
+	; 3 ground-themed teams (TEAM_RANDOM_3_SET picks one by wTrainerNo). Levels
+	; scale by round, so the same 3 compositions work early and late.
+	db RHYHORN, DUGTRIO, NIDOKING, MINIBOSS_RANDOM_FILL, 2, 0
+	db SANDSLASH, DUGTRIO, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
+	db NIDOQUEEN, MAROWAK, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
 
 LoreleiData:
 	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0

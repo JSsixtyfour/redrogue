@@ -652,6 +652,100 @@ db 0x0  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x5  ; final trainer: masterball class pokemon
 
+; ============================================================
+; Mini-boss level/fill helpers (see MINIBOSS_FRAMEWORK.md)
+; Live in this (rogue) bank so GetRandMon and the difficulty table are plain
+; reads. Called by BuildMiniBossTeam (trainer bank) via farcall; they take no
+; pointer input (read wBattleCount, write wCurEnemyLevel / wCurPartySpecies),
+; so crossing banks is safe.
+; ============================================================
+
+; wCurEnemyLevel = this round's min_level + random(range), capped at 100.
+MiniBossSetLevel::
+	call GetMiniBossTierPtr      ; hl -> {range, min, class, rare}
+	ld a, [hli]                  ; range
+	ld c, a                      ; Rangerandom count
+	ld a, [hl]                   ; min level
+	push af
+	push hl
+	call Rangerandom             ; a = [0, range-1]; preserves bc/de
+	pop hl
+	ld b, a
+	pop af                       ; a = min level
+	add b
+	cp 101
+	jr c, .ok
+	ld a, 100
+.ok
+	ld [wCurEnemyLevel], a
+	ret
+
+; wCurPartySpecies = one rarer-random mon (this round's base class, with a
+; rare-bump chance); wCurEnemyLevel = this round's level.
+; base class is GetRandMon's convention: 4=pokeball ... 1=masterball.
+MiniBossRollFillMon::
+	call MiniBossSetLevel
+	call GetMiniBossTierPtr
+	inc hl
+	inc hl                       ; hl -> base class byte
+	ld a, [hli]                  ; base class
+	ld b, a
+	ld a, [hl]                   ; rare chance (out of 256)
+	ld c, a
+	push bc
+	call Random                  ; a = 0..255
+	pop bc
+	cp c
+	jr nc, .noRare
+	ld a, b
+	cp 2
+	jr c, .noRare                ; already masterball (b == 1)
+	dec b                        ; one tier rarer
+.noRare
+	call GetRandMon              ; input b = class -> wCurPartySpecies (same bank)
+	ret
+
+; hl -> the 4-byte trainer_difficulty_settings_miniboss block for the current
+; round (wBattleCount / 10, clamped to 9).
+GetMiniBossTierPtr:
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89
+.noClamp
+	ld b, 0                      ; b = round
+.rndLoop
+	cp 10
+	jr c, .gotRound
+	sub 10
+	inc b
+	jr .rndLoop
+.gotRound
+	ld a, b
+	add a                        ; *2
+	add a                        ; *4
+	ld c, a
+	ld b, 0
+	ld hl, trainer_difficulty_settings_miniboss
+	add hl, bc
+	ret
+
+; One 4-byte block per round: db level_range, min_level, base_class, rare_chance.
+; min_level sits BETWEEN the round's final route trainer and its gym trainers
+; (see trainer_difficulty_settings / _gym above). base_class is GetRandMon's
+; convention (4=pokeball, 3=greatball, 2=ultraball, 1=masterball); rare_chance/256
+; = odds a fill mon is bumped one tier rarer. Fully tunable.
+trainer_difficulty_settings_miniboss:
+	db 3, 5,  3, 64   ; round 1 (between route-final ~4 and gym ~5)
+	db 4, 15, 3, 80   ; round 2
+	db 4, 20, 2, 64   ; round 3
+	db 5, 25, 2, 80   ; round 4
+	db 6, 33, 2, 96   ; round 5
+	db 6, 37, 2, 112  ; round 6
+	db 6, 41, 2, 128  ; round 7
+	db 7, 45, 1, 96   ; round 8
+	db 8, 52, 1, 112  ; round 9
+
 ; Rangerandom moved to home/random.asm (HOME bank) so every bank can reach it
 ; with a plain `call` - it used to live here (bank 07 / "rogue" section) and
 ; every cross-bank caller was using a plain `call` instead of `farcall`,

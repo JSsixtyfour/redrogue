@@ -11,6 +11,8 @@ GetTrainerName_::
 	jr z, .foundName
 	cp RIVAL3
 	jr z, .foundName
+	cp RIVAL_MINIBOSS
+	jr z, .foundName
 	ld [wNameListIndex], a
 	ld a, TRAINER_NAME
 	ld [wNameListType], a

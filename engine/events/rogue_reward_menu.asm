@@ -101,10 +101,10 @@ GetRogueRewardMenuId:
 	ld d, [hl]
 	ld e, a
 	inc hl
-	push hl
-	ld hl, wRoguePokemon1
+	;push hl
+	;ld hl, wRoguePokemon1
 	;call CopyString
-	pop hl
+	;pop hl
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
@@ -550,7 +550,7 @@ BridgeGiftMenu::
 	ldh a, [hCurrentMenuItem]
 	cp 3
 	jr z, .noChoice
-	call HandleRewardChoice
+	call HandleGiftChoice
 .noChoice
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
@@ -558,6 +558,10 @@ BridgeGiftMenu::
     
 BridgeGiftText:
     text_far _BridgeGiftText
+	text_end
+    
+BridgeGiftTextChoice:
+	text_far _WhichPrizeText
 	text_end
     
 GetBridgeGiftMenuId:
@@ -579,10 +583,10 @@ GetBridgeGiftMenuId:
 	ld d, [hl]
 	ld e, a
 	inc hl
-	push hl
-	ld hl, wRoguePokemon1
+	;push hl
+	;ld hl, wRoguePokemon1
 	;call CopyString
-	pop hl
+	;pop hl
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
@@ -592,43 +596,53 @@ GetBridgeGiftMenuId:
 
 .slot1
     ld c, NUM_GIFTS
-    call Rangerandom         
+    call Rangerandom
+    ld [wRoguePokemon1], a
+    sla a
+    ld e, a
     xor a
     ld d, a
     ld hl, .GiftTextTable
     add hl, de
-    ld d, h
-    ld e, l
+    ld a, [hli]
+    ld d, [hl]
+    ld e, a
 	hlcoord 2, 4
 	call PlaceString
 	; if slot 1 is a trade offer, show "TRADE" label (name shown in hover box)
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_ROGUE_TRADE_ACTIVE, a
-	jr z, .slot1NoTrade
-	hlcoord 12, 4
-	ld de, TradeSlotLabel
-	call PlaceString
+	;ld a, [wRogueFlagsBitfield]
+	;bit BIT_ROGUE_TRADE_ACTIVE, a
+	;jr z, .slot1NoTrade
+	;hlcoord 12, 4
+	;ld de, TradeSlotLabel
+	;call PlaceString
 .slot1NoTrade
 	ld c, NUM_GIFTS
-    call Rangerandom          
+    call Rangerandom   
+    ld [wRoguePokemon2], a      ; load gift number
+    sla a                       ; double for offset
     ld e, a
     xor a
     ld d, a
     ld hl, .GiftTextTable
     add hl, de
-    ld d, h
-    ld e, l
+    ld a, [hli]
+    ld d, [hl]
+    ld e, a
 	hlcoord 2, 6
 	call PlaceString
 	ld c, NUM_GIFTS
-    call Rangerandom        
+    call Rangerandom 
+    ld [wRoguePokemon3], a   
+    sla a
     ld e, a
     xor a
     ld d, a
     ld hl, .GiftTextTable
     add hl, de
-    ld d, h
-    ld e, l
+    ld a, [hli]
+    ld d, [hl]
+    ld e, a
 	hlcoord 2, 8
 	call PlaceString
 .putNoThanksText
@@ -668,3 +682,178 @@ def NUM_GIFTS EQU 7
 
 .Gift7:
 	db "GIFT SUBSTITUTE TM@"
+    
+; hl needs to be the given Bridge NPCs Gift Routines
+HandleGiftChoice:
+    ldh a, [hCurrentMenuItem]
+    ld hl, wRoguePokemon1
+    add a, l
+    ld l, a
+    ld a, [hl]
+    ld b, a
+    push bc
+	ld [wWhichPrize], a
+	ld d, 0
+    sla a
+	ld e, a
+    ld hl, CopyCatGiftTable
+	add hl, de
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    jp hl
+	xor a
+	ldh [hNoWaitAfterText], a
+	ld hl, Goodluck
+	jp PrintText
+.bagFull
+	ld hl, RewardRoomBagIsFullText
+	jp PrintText
+.printOhFineThen
+	ld hl, OhFineThenRewardText
+	jp PrintText
+    
+CopyCatGiftTable:
+	dw CopyCatGift1
+	dw CopyCatGift2
+	dw CopyCatGift3
+	dw CopyCatGift4
+	dw CopyCatGift5
+    dw CopyCatGift6
+    dw CopyCatGift7
+    
+CopyCatGift1::
+    text_asm
+    ;push af
+	call GetRewardMonLevel
+    pop bc
+	ld c, a
+	;pop af
+    ld b, DITTO
+	call GivePokemon
+	;jr nc, .party_full
+;.party_full
+	ret
+   
+CopyCatGift2::
+    text_asm
+    xor a ; prevent text_asm consumption, gotta be something better than this
+    ld c, 1
+	ld b, MIMIC
+	call GiveItem
+    pop bc
+	ret
+
+CopyCatGift3::
+    text_asm
+    xor a ; prevent text_asm consumption, gotta be something better than this
+	ld b, PSYCHIC_M
+    ld c, 1
+	call GiveItem
+    pop bc
+	ret
+
+CopyCatGift4::    
+	; Select pokemon from party.
+	call SaveScreenTilesToBuffer2
+	xor a
+	ld [wListScrollOffset], a
+	ld [wPartyMenuTypeOrMessageID], a
+	ldh [hUpdateSpritesEnabled], a
+	ld [wMenuItemToSwap], a
+	call DisplayPartyMenu
+	push af
+	call GBPalWhiteOutWithDelay3
+	call RestoreScreenTilesAndReloadTilePatterns
+	call LoadGBPal
+	pop af
+	jp c, .exit
+	ldh a, [hWhichPokemon]
+	ld b, a
+.chooseMove
+	; Save the selected move id.
+	ld a, MIRROR_MOVE
+	ld [wMoveNum], a
+	ld [wNamedObjectIndex],a
+	call GetMoveName
+	call CopyToStringBuffer ; copy name to wcf4b
+	pop bc
+	ld a, b
+	ldh [hWhichPokemon], a
+	ld a, [wLetterPrintingDelayFlags]
+	push af
+	xor a
+	ld [wLetterPrintingDelayFlags], a
+	predef LearnMove
+	pop af
+	ld [wLetterPrintingDelayFlags], a
+	jr z, .exit
+    
+    .exit
+	ld hl, BridgeByeText
+	call PrintText
+	ret
+    
+    CopyCatGift5::    
+	; Select pokemon from party.
+	call SaveScreenTilesToBuffer2
+	xor a
+	ld [wListScrollOffset], a
+	ld [wPartyMenuTypeOrMessageID], a
+	ldh [hUpdateSpritesEnabled], a
+	ld [wMenuItemToSwap], a
+	call DisplayPartyMenu
+	push af
+	call GBPalWhiteOutWithDelay3
+	call RestoreScreenTilesAndReloadTilePatterns
+	call LoadGBPal
+	pop af
+	jp c, .exit
+	ldh a, [hWhichPokemon]
+	ld b, a
+.chooseMove
+	; Save the selected move id.
+	ld a, TRANSFORM
+	ld [wMoveNum], a
+	ld [wNamedObjectIndex],a
+	call GetMoveName
+	call CopyToStringBuffer ; copy name to wcf4b
+	pop bc
+	ld a, b
+	ldh [hWhichPokemon], a
+	ld a, [wLetterPrintingDelayFlags]
+	push af
+	xor a
+	ld [wLetterPrintingDelayFlags], a
+	predef LearnMove
+	pop af
+	ld [wLetterPrintingDelayFlags], a
+	jr z, .exit
+    
+    .exit
+	ld hl, BridgeByeText
+	call PrintText
+	ret
+    
+CopyCatGift6::
+    text_asm
+    xor a ; prevent text_asm consumption, gotta be something better than this
+	ld b, NUGGET
+	ld c, 1
+	call GiveItem
+    pop bc
+	ret
+    
+CopyCatGift7::
+    text_asm
+    xor a ; prevent text_asm consumption, gotta be something better than this
+	ld b, SUBSTITUTE
+	ld c, 1
+	call GiveItem
+    pop bc
+    ret
+    
+    
+BridgeByeText:
+	text_far _PCMoveTutorByeText
+	text_end

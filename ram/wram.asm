@@ -71,7 +71,14 @@ wAudioSavedROMBank:: db
 wFrequencyModifier:: db
 wTempoModifier:: db
 
-	ds 13
+	; Pocket-list builder scratch, relocated OUT of the enemy/wild UNION (bottom of
+	; this file) so it can never overlap wGrassRate. Free WRAM0 tail padding
+	; (WRAM_BIBLE §D4). 3 named bytes + ds 10 = 13 bytes total, so all following
+	; addresses are unchanged.
+	wPocketListWritePtr:: dw   ; scratch write-pointer for pocket list builders
+	wPocketListCount::    db   ; scratch iteration counter for pocket list builders
+
+	ds 10
 
 
 SECTION "Sprite State Data", WRAM0
@@ -2092,6 +2099,14 @@ wRogueDoor1:: db
 wRogueDoor2:: db
 wRogueDoorSelection:: db
 wBattleCount:: db
+; Mini-boss framework run-state (see MINIBOSS_FRAMEWORK.md). Both live inside
+; wGameProgressFlags so they are zeroed on new game (fresh run starts at 0) and
+; saved. The 2 bytes are offset by shrinking the ds 40 padding below
+; wGameProgressFlagsEnd (ds 40 -> ds 38) so WRAM0 stays net-zero. Transient
+; per-selection state (offered type, which door, active-this-stage) lives in
+; wRogueFlagsBitfield bits 4-7 at zero byte cost.
+wRoutesSinceMiniBoss:: db ; non-mini-boss routes since the last one; drives the escalating chance
+wMiniBossCount:: db       ; mini-bosses encountered this run; drives the >=2 guarantee
 wDebug2ForcedStage:: db  ; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force as the next stage; 0 = none
 ; LEFTOVERS fraction level: heals 1/(16-level) of each mon's max HP.
 ; Level 0 = 1/16 ... level 15 = 1/1 (full heal). Increment to "upgrade" the item.
@@ -2205,7 +2220,7 @@ wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
 
 wGameProgressFlagsEnd::
 
-	ds 40
+	ds 38 ; was ds 40; 2 bytes reclaimed for wRoutesSinceMiniBoss/wMiniBossCount above (net-zero WRAM0)
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 
@@ -2343,14 +2358,28 @@ NEXTU
 ; during battle, encounter setup, or link battles. Zero net WRAM cost.
 ;
 ; NOTE: wTMPocketBuf uses 1-byte-per-entry format (PRICEDITEMLISTMENU, no qty byte)
+; NOTE: This placement causes issues if ITEMS are allowed to be used in battle, it would need to be removed from the union if we wanted to allow that
 ; because TMs are binary own/not-own. Could be eliminated entirely with a custom
 ; display function that reads sTMBitfield directly per-render frame if more space
 ; is ever needed.
 ;
 ; Format: count + item_id bytes (TM: 1 byte each) or {item_id,qty} pairs (others) + $FF
-wPocketListWritePtr:: dw    ; scratch write-pointer for pocket list builders
-wPocketListCount::    db    ; scratch iteration counter for pocket list builders
-                            ; replaces hSpriteHeight/hSpriteWidth/hSpriteOffset which are real sprite registers
+	; 73-byte pad so the pocket buffers start at wEnemyMon2's offset (union base+73).
+	; This clears BOTH overworld-live and wild-battle-live state of the other two
+	; union members:
+	;   - member A wild data: wGrassRate/wGrassMons/wWaterRate/wWaterMons = base+0..49
+	;     (read every overworld step). Building a pocket in the field must not touch it.
+	;   - member B wEnemyMon1 = base+29..72, the only enemy mon live in a WILD battle.
+	; Buffers therefore land in wEnemyMon2..6 / OT / nicks (base+73+), which are dead
+	; in the overworld and unused in wild battles, so the bag can never corrupt the
+	; field's wild data or the active wild mon. Zero WRAM cost: member C stays smaller
+	; than the 425-byte enemy member that sets the union size. (Trainer-battle bag still
+	; overlaps benched mons wEnemyMon2..6 — pre-existing, masked, out of scope.)
+	; The ASSERT after ENDU guards this invariant at build time.
+	; wPocketListWritePtr/wPocketListCount no longer live here — they were moved to
+	; free WRAM0 (the wTempoModifier tail near the top of this file) to fix a separate
+	; wGrassRate-aliasing bug.
+	ds 73
 wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
 ; WRAM tightening options if space is ever needed:
 ;   A) Switch to 1-byte-per-entry (no qty) + PRICEDITEMLISTMENU format → 57 bytes.
@@ -2363,6 +2392,13 @@ wStatPocketBuf::    ds 26   ; 1 + 12×2 + 1 = 26 bytes
 wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
 
 ENDU
+
+; The pocket buffers share this union with the wild-encounter data (member A) and
+; the enemy party (member B). Building a pocket in the field must not touch the
+; wild data, and building it in a wild battle must not touch the active enemy mon
+; (wEnemyMon1). Both hold iff the buffers start at or after wEnemyMon2. See the
+; ds 73 pad comment above.
+ASSERT wTMPocketBuf >= wEnemyMon2, "pocket buffers must start past wEnemyMon1 (overworld + wild-battle safety)"
 
 
 wTrainerHeaderPtr:: dw

@@ -351,16 +351,21 @@ SelectAndPatchLobbyExit::
 .door2Done
 	ld [wRogueDoor2], a
 
-	; Pick the next stage (alternates route/gym) and patch both doors to it.
+	; Pick the next stage (alternates route/gym). Both doors default to it.
 	call _PickNextStage
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
-	; Patch door 1 (warp_event 7,11 → Y=11,X=7).
+	; Mini-boss layer: on a route-next selection past the first route, this may
+	; turn ONE door into a mini-boss stage (leaving the other on the normal
+	; route) and record the type/door in wRogueFlagsBitfield bits 4-6. Self-gates
+	; on gym-next / first route.
+	call MiniBossRollAndAssign
+	; Patch each door to its (possibly now different) stage map.
+	ld a, [wLobbyDoor1StageMap]
 	ld b, 11
 	ld c, 7
 	call PatchWarpEntry
-	; Patch door 2 (warp_event 8,11 → Y=11,X=8).
 	ld a, [wLobbyDoor2StageMap]
 	ld b, 11
 	ld c, 8

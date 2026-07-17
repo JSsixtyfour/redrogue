@@ -57,5 +57,7 @@ TrainerClassMoveChoiceModifications:
 	move_choices 1       ; CHANNELER
 	move_choices 1       ; AGATHA
 	move_choices 1, 3    ; LANCE
+	move_choices 1       ; RIVAL_MINIBOSS
+	move_choices 1, 3    ; GIOVANNI_MINIBOSS
 	assert __move_choices__ == NUM_TRAINERS, \
 		"TrainerClassMoveChoiceModifications: expected {d:NUM_TRAINERS} entries, got {d:__move_choices__}"

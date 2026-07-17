@@ -152,6 +152,14 @@ DEF NUM_BADGES EQU const_value
 	const BIT_ROGUE_FINAL_TRAINER   ; 1 — final trainer of tier (level/class bonus)
 	const BIT_ROGUE_TRADE_ACTIVE    ; 2 — trade offer is live for this reward batch
 	const BIT_WITCH_ACCEPTED        ; 3 — player accepted the active witch challenge
+	const_skip 2                    ; 4-5 — mini-boss offered type (MINIBOSS_TYPE_MASK/SHIFT)
+	const BIT_MINIBOSS_DOOR         ; 6 — which lobby door holds the mini-boss (0 = door 1, 1 = door 2)
+	const BIT_MINIBOSS_ACTIVE       ; 7 — a mini-boss is active on the stage being entered
+
+; wRogueFlagsBitfield bits 4-5 encode the offered mini-boss type (see MINIBOSS_* below).
+; Read/written as a 2-bit field: (flags & MINIBOSS_TYPE_MASK) >> MINIBOSS_TYPE_SHIFT.
+DEF MINIBOSS_TYPE_SHIFT EQU 4
+DEF MINIBOSS_TYPE_MASK  EQU %00110000
 
 ; wWitchChallenge values (1-NUM_WITCH_CHALLENGES; challenge and prize are
 ; rolled independently in PCWitchSetup, no fixed pairing)
@@ -185,6 +193,35 @@ DEF PRIZE_EXP_BOOST      EQU 4 ; d: extra BoostExp pass
 DEF PRIZE_CRIT_BOOST     EQU 5 ; e: +25% to the player's crit threshold
 DEF PRIZE_ACC_BOOST      EQU 6 ; f: +10 percentage points to the player's move accuracy, capped at 255
 DEF NUM_WITCH_PRIZES     EQU 6
+
+; ============================================================
+; Mini-boss framework (see K:\...\Red Rogue Files\MINIBOSS_FRAMEWORK.md)
+; ============================================================
+; Offered mini-boss type, stored in wRogueFlagsBitfield bits 4-5 (0-3).
+DEF MINIBOSS_NONE     EQU 0
+DEF MINIBOSS_RIVAL    EQU 1
+DEF MINIBOSS_GIOVANNI EQU 2
+DEF MINIBOSS_KARATE   EQU 3   ; future: own FightingDojo stage (PLACE_OWN_STAGE)
+DEF NUM_MINIBOSS_TYPES EQU 3  ; number of *real* bosses (excludes NONE), = highest type id
+
+; Registry placement modes
+DEF PLACE_REPLACE_5TH EQU 0   ; swap the route's 5th trainer in place
+DEF PLACE_OWN_STAGE   EQU 1   ; boss IS a dedicated stage (routed to via its own map)
+
+; Registry team-selection modes
+DEF TEAM_STARTER_BASED EQU 0  ; wTrainerNo from the player's starter (Rival)
+DEF TEAM_RANDOM_3_SET  EQU 1  ; 1-of-3 teams per tier chosen at random (Giovanni, Karate)
+
+; Party-data marker: fills the remaining team slots with rarer-random mons.
+; Distinct from any real species id and from RIVAL_STARTER_PLACEHOLDER ($1F).
+DEF MINIBOSS_RANDOM_FILL EQU $FE
+
+; Chance tuning (out of 256). Base 25% ~= 64; +25% per non-mini-boss route.
+DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceMiniBoss = 0
+DEF MINIBOSS_STEP        EQU 64    ; +~25% per non-mini-boss route (guaranteed by the 4th)
+DEF MINIBOSS_MIN_PER_RUN EQU 2    ; forced-roll floor: at least this many per run
+DEF MINIBOSS_FIRST_BATTLECOUNT EQU 10 ; not eligible until wBattleCount >= this (skips route 1)
+DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
 
 ; hFindPathFlags
 	const_def

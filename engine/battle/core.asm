@@ -2157,6 +2157,23 @@ SendOutMon:
 .skipDrawingEnemyHUDAndHPBar
 	call DrawPlayerHUDAndHPBar
 	predef LoadMonBackPic
+	; Fusion (Phase 4c): overlay the secondary's back-pic tiles as a lower-right
+	; diagonal in vBackPic before AnimateSendingOutMon animates it in.
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, [wPlayerMonNumber]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes            ; hl = active party mon struct base
+	ld d, h
+	ld e, l                   ; de = struct base (IsFusionMon input)
+	farcall IsFusionMon
+	jr z, .notFusionBackPic
+	farcall MergeFusionBackPic
+.notFusionBackPic
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 	xor a
 	ldh [hStartTileID], a
 	ld hl, wBattleAndStartSavedMenuItem
