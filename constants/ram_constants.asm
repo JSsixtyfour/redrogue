@@ -223,6 +223,13 @@ DEF MINIBOSS_MIN_PER_RUN EQU 2    ; forced-roll floor: at least this many per ru
 DEF MINIBOSS_FIRST_BATTLECOUNT EQU 10 ; not eligible until wBattleCount >= this (skips route 1)
 DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
 
+; Reward-rarity bonuses while a mini-boss is active (wRogueFlagsBitfield bit 7).
+; Stack ADDITIVELY on top of any witch-prize rarity bonus (both can be active
+; at once) - same magnitude as the witch prize bump, so a mini-boss during a
+; rarity-boosting witch challenge gives very high rarity.
+DEF MINIBOSS_POKEMON_RARITY_BONUS EQU 51
+DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
+
 ; hFindPathFlags
 	const_def
 	const BIT_PATH_FOUND_Y ; 0

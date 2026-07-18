@@ -97,6 +97,17 @@ ReadTrainer:
 	pop hl
 	jr .SpecialTrainer
 .miniBoss
+	; Mini-boss classes support BOTH team formats, for flexibility:
+	;  - leading $FF -> the vanilla per-mon-level format (fixed levels, like a
+	;    gym team). Author an 8-tier x 3-team Giovanni here, identical to his
+	;    gym, and it just works - fall through to the normal special path.
+	;  - otherwise -> the runtime-level-scaled mini-boss format (BuildMiniBossTeam).
+	ld a, [hl]
+	cp $FF
+	jr nz, .miniBossCustom
+	inc hl                 ; consume the $FF marker (matches the normal path)
+	jp .SpecialTrainer
+.miniBossCustom
 	call BuildMiniBossTeam ; hl -> mini-boss team data (same bank; builds the enemy party)
 	jp .AddAdditionalMoveData
 .AddAdditionalMoveData
@@ -199,35 +210,37 @@ BuildMiniBossTeam::
 	pop de
 	jr .loop
 .starter
+	ld [wCurPartySpecies], a    ; a = RIVAL_STARTER_PLACEHOLDER (from .loop above)
 	push de
 	farcall MiniBossSetLevel
-	ld a, RIVAL_STARTER_PLACEHOLDER
-	ld [wCurPartySpecies], a
 	farcall PatchRivalStarterSpecies ; swap in wRivalStarter, evolved to wCurEnemyLevel
 	call MiniBossAddMon
 	pop de
 	jr .loop
 .fill
-	ld a, [de]                 ; fill count (>= 1)
-	inc de
+	; Fill the remaining slots up to THIS ROUND's team size (matches the normal
+	; 5th route trainer count), not a fixed count - so the boss scales. No count
+	; byte follows MINIBOSS_RANDOM_FILL in the data; the next byte is the 0
+	; terminator.
+	farcall MiniBossTeamSize   ; a = team size for this round
 	ld b, a
 .fillLoop
+	ld a, [wEnemyPartyCount]
+	cp b
+	jr nc, .loop               ; already at/over team size -> resume (next byte = terminator)
 	push de
 	push bc
 	farcall MiniBossRollFillMon ; sets wCurPartySpecies (rarer-random) AND wCurEnemyLevel
 	call MiniBossAddMon
 	pop bc
 	pop de
-	dec b
-	jr nz, .fillLoop
-	jr .loop
+	jr .fillLoop
 
-; Appends the mon in wCurPartySpecies at wCurEnemyLevel to the enemy party,
-; unless the party is already full (PARTY_LENGTH). Tail-calls AddPartyMon.
+; Appends the mon in wCurPartySpecies at wCurEnemyLevel to the enemy party.
+; No party-full guard here: the .fill loop caps at the round's team size (<= 6)
+; and curated/starter counts are bounded by the authored data, so the party
+; never exceeds PARTY_LENGTH (same trust model as ReadTrainer's normal loop).
 MiniBossAddMon:
-	ld a, [wEnemyPartyCount]
-	cp PARTY_LENGTH
-	ret nc                     ; party full -> silently skip
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	jp AddPartyMon

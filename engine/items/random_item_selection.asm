@@ -72,6 +72,19 @@ ld a, $FF
 .witchItemDone
 ld b, a
 
+; Mini-boss framework: stacks an ADDITIONAL bonus on top of wItemBonusRarity
+; and any witch prize bonus above (see MINIBOSS_FRAMEWORK.md "rarity stacks
+; additively").
+ld a, [wRogueFlagsBitfield]
+bit BIT_MINIBOSS_ACTIVE, a
+jr z, .no_overflow
+ld a, b
+add MINIBOSS_ITEM_RARITY_BONUS
+jr nc, .miniBossItemDone
+ld a, $FF
+.miniBossItemDone
+ld b, a
+
 .no_overflow
 ld a, item_pokeball_odds
 cp b

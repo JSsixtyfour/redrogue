@@ -454,18 +454,20 @@ Rival3Data:
 ; species-list scales across the whole run. A team is a list of species/markers
 ; terminated by 0:
 ;   RIVAL_STARTER_PLACEHOLDER ($1F) = the placed rival starter (evolved to level)
-;   MINIBOSS_RANDOM_FILL ($FE), <count> = add <count> rarer-random mons (count >= 1)
+;   MINIBOSS_RANDOM_FILL ($FE) = fill the remaining slots with rarer-random mons
+;       UP TO this round's team size (MiniBossTeamSize); no count byte follows.
 ;   any other byte = a literal curated "signature" species
 RivalMiniBossData:
-	; One team (wTrainerNo = 1). Placed starter as the ace + 4 rarer-random mons.
-	db RIVAL_STARTER_PLACEHOLDER, MINIBOSS_RANDOM_FILL, 4, 0
+	; One team (wTrainerNo = 1). Placed starter as the ace + rarer-random mons up
+	; to the round's team size (so early rounds are small, matching the player).
+	db RIVAL_STARTER_PLACEHOLDER, MINIBOSS_RANDOM_FILL, 0
 
 GiovanniMiniBossData:
-	; 3 ground-themed teams (TEAM_RANDOM_3_SET picks one by wTrainerNo). Levels
-	; scale by round, so the same 3 compositions work early and late.
-	db RHYHORN, DUGTRIO, NIDOKING, MINIBOSS_RANDOM_FILL, 2, 0
-	db SANDSLASH, DUGTRIO, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
-	db NIDOQUEEN, MAROWAK, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
+	; 3 ground-themed teams (TEAM_RANDOM_3_SET picks one by wTrainerNo). Levels +
+	; team size scale by round, so the same 3 compositions work early and late.
+	db RHYHORN, DUGTRIO, NIDOKING, MINIBOSS_RANDOM_FILL, 0
+	db SANDSLASH, DUGTRIO, RHYDON, MINIBOSS_RANDOM_FILL, 0
+	db NIDOQUEEN, MAROWAK, RHYDON, MINIBOSS_RANDOM_FILL, 0
 
 LoreleiData:
 	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0

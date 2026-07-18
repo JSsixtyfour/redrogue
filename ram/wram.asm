@@ -2093,8 +2093,8 @@ wRogueItem:: dw
 ; accepts the (possibly-owned) item instead of looping.
 wItemSelectionRetryCount:: db
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
-wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — route stage map ID
-wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — gym stage map ID
+wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — option 1 stage map ID
+wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — option 2 stage map ID
 wRogueDoor1:: db
 wRogueDoor2:: db
 wRogueDoorSelection:: db

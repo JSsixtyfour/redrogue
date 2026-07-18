@@ -93,3 +93,18 @@ _KODefianceActivatedText::
 	text "KO DEFIANCE"
 	line "activated!"
 	done
+
+; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): shared Rival mini-boss
+; dialogue, callable from any route's 5th-trainer encounter, not tied to a
+; specific map's text file.
+_RivalMiniBossBattleText::
+	text "Smell ya later!"
+	line "I'm gonna show"
+	cont "you how a real"
+	cont "trainer battles!"
+	done
+
+_RivalMiniBossEndBattleText::
+	text "Feh! You got"
+	line "lucky this time."
+	done

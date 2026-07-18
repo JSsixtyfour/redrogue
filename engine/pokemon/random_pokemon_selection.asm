@@ -54,6 +54,19 @@ ld a, $FF      ; clamp at 255
 .rarityBonusDone
 ld b, a
 .noRarityMod
+; Mini-boss framework: stacks an ADDITIONAL rarity bonus on top of whatever the
+; witch logic above contributed (both can be active at once - see
+; MINIBOSS_FRAMEWORK.md "rarity stacks additively").
+ld a, [wRogueFlagsBitfield]
+bit BIT_MINIBOSS_ACTIVE, a
+jr z, .noMiniBossMod
+ld a, b
+add MINIBOSS_POKEMON_RARITY_BONUS
+jr nc, .miniBossModDone
+ld a, $FF
+.miniBossModDone
+ld b, a
+.noMiniBossMod
 ld a, pokeball_odds
 cp b
 jr nc, pokeball_class_selection

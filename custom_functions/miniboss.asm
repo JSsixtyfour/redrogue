@@ -33,20 +33,19 @@ MiniBossTable:
 ; stage script calls MiniBossCheckActivate (the encounter hook), so keep these
 ; in sync with the hooked routes as Step 6 rolls out.
 RivalMaps:
-	; Every eligible stage minus Giovanni's maps, USS Anne, Route 24 (nugget
-	; gate), and the sprite-set-incompatible outdoor routes (6/12/13/15, 5).
-	db ROUTE_1          ; prototype (normally the first route, so debug-forced to test)
-	db ROUTE_3
-	db ROUTE_9
-	db ROUTE_25
-	db DIGLETTS_CAVE
-	db ROCK_TUNNEL_1F
-	db POKEMON_TOWER_2F
-	db POKEMON_TOWER_7F
-	db POWER_PLANT
-	db POKEMON_MANSION_1F
-	db SEAFOAM_ISLANDS_1F
+	; ONLY maps whose stage script calls MiniBossCheckActivate (the encounter
+	; hook) belong here, so a door never promises a boss that can't appear.
+	; Routes are randomized, so ROUTE_1 can be selected at any point after the
+	; first route selection - it's a normal eligible mini-boss map, not "always
+	; first". Add each route below as it gets the hook (Step 6 rollout).
+	db ROUTE_1          ; prototype (only hooked map so far)
 	db -1
+	; Full intended eligible set once all are hooked (every stage minus Giovanni's
+	; maps, USS Anne, Route 24's nugget gate, and the sprite-set-incompatible
+	; outdoor routes 6/12/13/15 and the split Route 5):
+	;   ROUTE_3, ROUTE_9, ROUTE_25, DIGLETTS_CAVE, ROCK_TUNNEL_1F,
+	;   POKEMON_TOWER_2F, POKEMON_TOWER_7F, POWER_PLANT, POKEMON_MANSION_1F,
+	;   SEAFOAM_ISLANDS_1F
 GiovanniMaps:
 	db MT_MOON_1F
 	db VIRIDIAN_FOREST

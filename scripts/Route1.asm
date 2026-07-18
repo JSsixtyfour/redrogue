@@ -16,7 +16,25 @@ Route1_Script:
 	farcall rogue_pokemon_randomized_batch
 	farcall Random_Item_Selection
 	farcall RogueRefresh
-    
+	; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this route was chosen
+	; as the mini-boss door's stage, swap the 5th trainer (object index
+	; ROUTE1_JR_TRAINER_M) in place from OPP_JR_TRAINER_M to the mini-boss
+	; class. wMapSpriteExtraData is read fresh by EngageMapTrainer at engage
+	; time (both the sight-detection and direct-talk paths call it), so
+	; patching it here - once, before the player can reach the trainer - is
+	; sufficient; no object/coordinate/graphics changes needed. Everything
+	; downstream (ReadTrainer's mini-boss hook, EndTrainerBattle's defeat-flag
+	; write) already keys off the existing trainer header/flag, so the reward
+	; unlock (ROUTE1_ALL_TRAINERS_MASK) needs no changes either.
+	farcall MiniBossCheckActivate ; a = 0 (none) or boss type; sets bit 7 if active
+	and a
+	jr z, .noMiniBoss
+	ld a, OPP_RIVAL_MINIBOSS
+	ld [wMapSpriteExtraData + (ROUTE1_JR_TRAINER_M - 1) * 2], a
+	ld a, 1 ; wTrainerNo: RivalMiniBossData currently has one team
+	ld [wMapSpriteExtraData + (ROUTE1_JR_TRAINER_M - 1) * 2 + 1], a
+	.noMiniBoss
+
     .afterSetup
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck
@@ -167,12 +185,41 @@ Route1JrTrainerMText:
 	call TalkToTrainer
 	jp TextScriptEnd
 
+; Conditional trainer text (Youngster vs Rival mini-boss). These run as text_asm
+; handlers inside TextCommandProcessor, so they must (1) NOT clobber bc (the live
+; text cursor) and (2) RETURN with hl -> the chosen text so the surrounding
+; display flow keeps its wait/prompt handling. Do NOT `call PrintText; jp
+; TextScriptEnd` here - that fought the end-battle display and cut the text off.
+; Each sub-label is a local text_far wrapper (the TX_FAR opcode + address does
+; the cross-bank jump into text/Route1.asm / data/text/text_rogue.asm).
 Route1JrTrainerMBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Youngster
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Youngster
 	text_far _Route1Youngster3BattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossBattleText
 	text_end
 
 Route1JrTrainerMEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Youngster
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Youngster
 	text_far _Route1Youngster3EndBattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossEndBattleText
 	text_end
 
 Route1JrTrainerMAfterBattleText:

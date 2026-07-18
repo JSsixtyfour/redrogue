@@ -217,6 +217,15 @@ IF DEF(_DEBUG)
 	; rogue bank to keep bank1 within its size limit; it only touches WRAM, so
 	; farcall is safe.
 	farcall Debug2ApplyRoundState
+
+	; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): force a mini-boss to
+	; occur on the very next lobby visit. Rides the existing "3+ non-mini-boss
+	; routes in a row" escalation guarantee in MiniBossShouldOccur - no new
+	; logic needed. Only takes effect once wBattleCount >= 10 (routes are
+	; randomized, so there's no map-specific force; pick a starting battle
+	; count of at least 10 above to see it on the first lobby visit).
+	ld a, 3
+	ld [wRoutesSinceMiniBoss], a
 .notDebug2
 	ret
 

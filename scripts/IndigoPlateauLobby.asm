@@ -81,6 +81,25 @@ IndigoPlateauLobby_TextPointers:
 
 LobbyDoor1SignText:
 	text_asm
+; Mini-boss framework: if a mini-boss is offered this route selection AND
+; door 1 is the mini-boss door (BIT_MINIBOSS_DOOR clear), the sign is replaced
+; entirely with a boss-specific message instead of the item category. Gym-next
+; selections never offer a mini-boss (MiniBossRollAndAssign clears the type
+; bits on that path), so this can never fire alongside the gym framing below.
+; NOTE: this runs as a text_asm handler - bc holds the LIVE text cursor
+; (TextCommand_START prints via ld h,b/ld l,c), so it must NOT be clobbered.
+; That means re-reading wRogueFlagsBitfield rather than caching it in a
+; register (an earlier `ld c, a` corrupted the cursor and drifted the text).
+	ld a, [wRogueFlagsBitfield]
+	and MINIBOSS_TYPE_MASK
+	jr z, .noMiniBoss
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_DOOR, a
+	jr nz, .noMiniBoss            ; door 2 is the boss door, not this one
+	ld a, [wRogueDoor1]           ; this door's item category (0-3)
+	call LobbyMiniBossSign        ; hl -> "boss + reward category" combined text
+	ret
+.noMiniBoss
 ; door 2 is hidden whenever a gym is next (see IndigoPlateauLobby_Script),
 ; so this is the only sign visible in that case - call out the gym here
 ; rather than the usual "DOOR 1" framing, since there's no longer a choice
@@ -96,6 +115,7 @@ LobbyDoor1SignText:
 	ld e, a
 	add hl, de
 	add hl, de          ; hl += 2 * class (each entry is a dw)
+.deref
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
@@ -145,12 +165,27 @@ LobbyDoor1SignText:
 
 LobbyDoor2SignText:
 	text_asm
+; Mini-boss framework: mirrors LobbyDoor1SignText, but door 2's sign is never
+; hidden by gym-next (only door 1 exists then), so there's no gym-framing
+; branch to guard against here. As in door 1, bc is the live text cursor here
+; (text_asm) - do NOT clobber it; re-read wRogueFlagsBitfield instead of caching.
+	ld a, [wRogueFlagsBitfield]
+	and MINIBOSS_TYPE_MASK
+	jr z, .noMiniBoss
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_DOOR, a
+	jr z, .noMiniBoss             ; door 1 is the boss door, not this one
+	ld a, [wRogueDoor2]           ; this door's item category (0-3)
+	call LobbyMiniBossSign        ; hl -> "boss + reward category" combined text
+	ret
+.noMiniBoss
 	ld a, [wRogueDoor2]
 	ld hl, .itemPtrs
 	ld d, 0
 	ld e, a
 	add hl, de
 	add hl, de
+.deref
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
@@ -174,6 +209,45 @@ LobbyDoor2SignText:
 	text_end
 .moneyText
 	text "DOOR 2:"
+	line "MONEY@"
+	text_end
+
+; Mini-boss door sign: line 1 = the boss, line 2 = the door's item reward
+; category - so both the boss indicator AND the reward stay visible (a full
+; replacement hid the reward). Shared by both door sign handlers.
+; INPUT: a = item category (0-3, from wRogueDoor1/2). Returns hl -> combined text.
+; TODO (multi-boss): dispatch on the offered type (wRogueFlagsBitfield bits 4-5)
+; to a per-boss category table. Only the Rival rolls today
+; (MINIBOSS_MAX_ROLLABLE_TYPE), so the Rival table is used unconditionally.
+LobbyMiniBossSign:
+	ld hl, .rivalPtrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+.rivalPtrs
+	dw .rivalHealing
+	dw .rivalStat
+	dw .rivalTM
+	dw .rivalMoney
+.rivalHealing
+	text "RIVAL TRAINER"
+	line "HEALING ITEMS@"
+	text_end
+.rivalStat
+	text "RIVAL TRAINER"
+	line "STAT BOOSTS@"
+	text_end
+.rivalTM
+	text "RIVAL TRAINER"
+	line "TM ITEMS@"
+	text_end
+.rivalMoney
+	text "RIVAL TRAINER"
 	line "MONEY@"
 	text_end
 

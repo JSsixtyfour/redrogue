@@ -433,6 +433,16 @@ PlayTrainerMusic::
 	ld [wAudioROMBank], a
 	ld [wAudioSavedROMBank], a
 	ld a, [wEngagedTrainerClass]
+    cp OPP_RIVAL_MINIBOSS
+	jr z, .miniBossRival ; the mini-boss rival has no overworld script to play its
+	                     ; entry music (unlike RIVAL1/2/3, which are always
+	                     ; scripted encounters - see Route22.asm), so play it
+	                     ; here on engage instead. Uses the real PlayMusic entry
+	                     ; point (bank in c, id in a - see home/audio.asm), the
+	                     ; same one Route22 itself calls for this same music; a
+	                     ; prior hand-rolled duplicate of PlayMusic's internals
+	                     ; here mishandled the audio bank/fade state and hung
+	                     ; the battle transition.
 	ld b, a
 	ld hl, EvilTrainerList
 .evilTrainerListLoop
@@ -458,5 +468,13 @@ PlayTrainerMusic::
 .PlaySound
 	ld [wNewSoundID], a
 	jp PlaySound
+.miniBossRival
+; Calls the actual PlayMusic entry point (not a hand-rolled duplicate) - the
+; exact same call Route22FirstRivalBattleScript makes for this same music.
+	ld a, BANK(Music_MeetRival)
+    ld [wAudioROMBank], a
+	ld [wAudioSavedROMBank], a
+	ld a, MUSIC_MEET_RIVAL
+	jp .PlaySound
 
 INCLUDE "data/trainers/encounter_types.asm"

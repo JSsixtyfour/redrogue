@@ -503,7 +503,14 @@ WarpFound2::
 	sub 2                          ; reward room doors are warp index 2/3 -> 0/1
 	jr .gotDoorIndex
 .checkDoorWarp
-	ld a, [wWarpedFromWhichWarp]   ; lobby doors are warp index 0/1
+	; The lobby's actual exit doors are the top ROGUE_MAP warps (indices 2/3),
+	; NOT the bottom arrival warps 0/1. Normalize by parity so the reward
+	; category matches the door the player took (warp 2 = door 1, warp 3 =
+	; door 2). (This also fixes a latent bug: the old code read the raw index
+	; and never matched 0/1, so wRogueDoorSelection stayed stale for lobby
+	; stages.)
+	ld a, [wWarpedFromWhichWarp]
+	and 1                          ; -> door parity (0 = door 1, 1 = door 2)
 .gotDoorIndex
 	and a                          ; door index 0 = door 1?
 	jr nz, .checkDoor2Sel
@@ -565,7 +572,19 @@ WarpFound2::
 .randomStage
 	ldh a, [hCurMap]
 	ld [wLastMap], a
-	ld a, [wRogueMap]
+	; Mini-boss door decoupling: the two lobby exit doors (the ROGUE_MAP warps)
+	; can now lead to DIFFERENT stages - one mini-boss, one normal. Resolve THIS
+	; door's stage map from wLobbyDoor1/2StageMap by warp parity (warp 2 = door
+	; 1, warp 3 = door 2) instead of the single wRogueMap. Must read
+	; wWarpedFromWhichWarp BEFORE it is overwritten to 1 just below. For a
+	; non-mini-boss selection both door maps equal wRogueMap, so this is a no-op
+	; there.
+	ld a, [wWarpedFromWhichWarp]
+	and 1
+	ld a, [wLobbyDoor1StageMap]
+	jr z, .gotRandomStageMap
+	ld a, [wLobbyDoor2StageMap]
+.gotRandomStageMap
 	ldh [hCurMap], a
 	ld a, INDIGO_PLATEAU_LOBBY
 	ld [wWarpedFromWhichMap], a
