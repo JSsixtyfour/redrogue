@@ -499,53 +499,52 @@ BridgeGiftMenu::
 	ld [wTopMenuItemX], a
 	hlcoord 0, 2
 	ld b, 8
-	ld c, 16
+	ld c, 18
 	call TextBoxBorder
 	call GetBridgeGiftMenuId
 	call UpdateSprites
-	ld hl, RogueRewardTextChoice
-	call PrintText
-	; if trade is active, show hover box immediately (cursor starts at slot 0)
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_ROGUE_TRADE_ACTIVE, a
-	jr z, .menuLoop
-	jr .showTradeHover
+	xor a
+    ld d, a
+	ld a, [wRoguePokemon1]
+    sla a       ; double for offset
+    ld e, a     ; place in DE
+    ld hl, CopyCatGiftDescriptionTable
+    add hl, de
+    ld a, [hli]           ; 
+    ld h, [hl]
+    ld l, a               ; pointer to specific text address 
+    call PrintText
+
 .menuLoop
 	call HandleMenuInput
 	bit B_PAD_A, a
 	jr nz, .aPressed
 	bit B_PAD_B, a
 	jr nz, .noChoice
-	; cursor moved — update hover box if trade is active
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_ROGUE_TRADE_ACTIVE, a
-	jr z, .menuLoop
+    xor a
+    ld d, a
 	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .eraseTradeHover
-.showTradeHover
-    hlcoord 0, 0
-	lb bc, 18, 3
-	predef SaveScreenTileAreaToBuffer3
-	hlcoord 0, 0
-	ld b, 1
-	ld c, 16
-	call TextBoxBorder
-	hlcoord 1, 1
-	ld de, TradeHoverLabel
-	call PlaceString
-	ld a, [wroguenpctradegive]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	hlcoord 7, 1
-	ld de, wNameBuffer
-	call PlaceString
-	jr .menuLoop
-.eraseTradeHover
-	hlcoord 0, 0
-	lb bc, 18, 3
-	predef LoadScreenTileAreaFromBuffer3
-	jr .menuLoop
+    cp a, 3
+    jp z, .empty
+	ld hl, wRoguePokemon1
+    ld e, a
+    add hl, de
+    ld a, [hl]          ; you have the ID of what you're hovering over
+    sla a               ; double for offset
+    ld e, a             ; place in de
+    ld hl, CopyCatGiftDescriptionTable
+    add hl, de             ; you now have the text instructions address
+    ld a, [hli]           ; 
+    ld h, [hl]
+    ld l, a               ; pointer to specific text address
+    
+    call PrintText
+    jr .menuLoop
+    
+.empty
+    ld hl, Empty
+    call PrintText
+    jr .menuLoop
 .aPressed
 	ldh a, [hCurrentMenuItem]
 	cp 3
@@ -583,10 +582,6 @@ GetBridgeGiftMenuId:
 	ld d, [hl]
 	ld e, a
 	inc hl
-	;push hl
-	;ld hl, wRoguePokemon1
-	;call CopyString
-	;pop hl
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
@@ -609,13 +604,6 @@ GetBridgeGiftMenuId:
     ld e, a
 	hlcoord 2, 4
 	call PlaceString
-	; if slot 1 is a trade offer, show "TRADE" label (name shown in hover box)
-	;ld a, [wRogueFlagsBitfield]
-	;bit BIT_ROGUE_TRADE_ACTIVE, a
-	;jr z, .slot1NoTrade
-	;hlcoord 12, 4
-	;ld de, TradeSlotLabel
-	;call PlaceString
 .slot1NoTrade
 	ld c, NUM_GIFTS
     call Rangerandom   
@@ -663,13 +651,13 @@ def NUM_GIFTS EQU 7
     dw .Gift7
     
 .Gift1:
-	db "GIFT SUPER DITTO@"
+	db "SUPER DITTO@"
 
 .Gift2:
-	db "GIFT MIMIC TM@"
+	db "MIMIC TM@"
 
 .Gift3:
-	db "GIFT PSYCHIC TM@"
+	db "PSYCHIC TM@"
 
 .Gift4:
 	db "MIRROR MOVE TUTOR@"
@@ -678,10 +666,10 @@ def NUM_GIFTS EQU 7
 	db "TRANSFORM TUTOR@"
     
 .Gift6:
-	db "GIFT NUGGET@"
+	db "NUGGET@"
 
 .Gift7:
-	db "GIFT SUBSTITUTE TM@"
+	db "SUBSTITUTE TM@"
     
 ; hl needs to be the given Bridge NPCs Gift Routines
 HandleGiftChoice:
@@ -856,4 +844,45 @@ CopyCatGift7::
     
 BridgeByeText:
 	text_far _PCMoveTutorByeText
+	text_end
+    
+CopyCatGiftDescriptionTable:
+	dw CopyCatGift1Desc
+	dw CopyCatGift2Desc
+	dw CopyCatGift3Desc
+	dw CopyCatGift4Desc
+	dw CopyCatGift5Desc
+    dw CopyCatGift6Desc
+    dw CopyCatGift7Desc
+    
+CopyCatGift1Desc:
+	text_far _CopyCatGift1Desc
+	text_end
+
+CopyCatGift2Desc:
+	text_far _CopyCatGift2Desc
+	text_end
+    
+CopyCatGift3Desc:
+	text_far _CopyCatGift3Desc
+	text_end
+    
+CopyCatGift4Desc:
+	text_far _CopyCatGift4Desc
+	text_end
+    
+CopyCatGift5Desc:
+	text_far _CopyCatGift5Desc
+	text_end
+
+CopyCatGift6Desc:
+	text_far _CopyCatGift6Desc
+	text_end
+    
+CopyCatGift7Desc:
+	text_far _CopyCatGift7Desc
+	text_end
+    
+Empty:
+	text_far _Empty
 	text_end

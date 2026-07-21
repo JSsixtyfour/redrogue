@@ -705,16 +705,7 @@ MiniBossRollFillMon::
 	call GetRandMon              ; input b = class -> wCurPartySpecies (same bank)
 	ret
 
-; a = this round's mini-boss team size (matches the normal 5th route trainer's
-; mon count, so the rival/Giovanni team scales instead of being a fixed 5).
-MiniBossTeamSize::
-	call GetMiniBossTierPtr
-	ld bc, 4                     ; team_size is byte 4 of the block
-	add hl, bc
-	ld a, [hl]
-	ret
-
-; hl -> the 5-byte trainer_difficulty_settings_miniboss block for the current
+; hl -> the 4-byte trainer_difficulty_settings_miniboss block for the current
 ; round (wBattleCount / 10, clamped to 9).
 GetMiniBossTierPtr:
 	ld a, [wBattleCount]
@@ -733,30 +724,27 @@ GetMiniBossTierPtr:
 	ld a, b
 	add a                        ; *2
 	add a                        ; *4
-	add b                        ; *5 (5-byte blocks)
 	ld c, a
 	ld b, 0
 	ld hl, trainer_difficulty_settings_miniboss
 	add hl, bc
 	ret
 
-; One 5-byte block per round: db level_range, min_level, base_class, rare_chance,
-; team_size. min_level sits BETWEEN the round's final route trainer and its gym
-; trainers (see trainer_difficulty_settings / _gym above). base_class is
-; GetRandMon's convention (4=pokeball ... 1=masterball); rare_chance/256 = odds a
-; fill mon is bumped one tier rarer. team_size matches the normal 5th route
-; trainer's count for the round so the boss doesn't dwarf the player's party
-; early on. Fully tunable.
+; One 4-byte block per round: db level_range, min_level, base_class, rare_chance.
+; min_level sits BETWEEN the round's final route trainer and its gym trainers
+; (see trainer_difficulty_settings / _gym above). base_class is GetRandMon's
+; convention (4=pokeball, 3=greatball, 2=ultraball, 1=masterball); rare_chance/256
+; = odds a fill mon is bumped one tier rarer. Fully tunable.
 trainer_difficulty_settings_miniboss:
-	db 3, 5,  3, 64,  2  ; round 1 (between route-final ~4 and gym ~5)
-	db 4, 15, 3, 80,  3  ; round 2
-	db 4, 20, 2, 64,  4  ; round 3
-	db 5, 25, 2, 80,  4  ; round 4
-	db 6, 33, 2, 96,  5  ; round 5
-	db 6, 37, 2, 112, 5  ; round 6
-	db 6, 41, 2, 128, 6  ; round 7
-	db 7, 45, 1, 96,  6  ; round 8
-	db 8, 52, 1, 112, 6  ; round 9
+	db 3, 5,  3, 64   ; round 1 (between route-final ~4 and gym ~5)
+	db 4, 15, 3, 80   ; round 2
+	db 4, 20, 2, 64   ; round 3
+	db 5, 25, 2, 80   ; round 4
+	db 6, 33, 2, 96   ; round 5
+	db 6, 37, 2, 112  ; round 6
+	db 6, 41, 2, 128  ; round 7
+	db 7, 45, 1, 96   ; round 8
+	db 8, 52, 1, 112  ; round 9
 
 ; Rangerandom moved to home/random.asm (HOME bank) so every bank can reach it
 ; with a plain `call` - it used to live here (bank 07 / "rogue" section) and

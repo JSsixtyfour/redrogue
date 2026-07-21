@@ -218,23 +218,19 @@ BuildMiniBossTeam::
 	pop de
 	jr .loop
 .fill
-	; Fill the remaining slots up to THIS ROUND's team size (matches the normal
-	; 5th route trainer count), not a fixed count - so the boss scales. No count
-	; byte follows MINIBOSS_RANDOM_FILL in the data; the next byte is the 0
-	; terminator.
-	farcall MiniBossTeamSize   ; a = team size for this round
+	ld a, [de]                 ; fill count (>= 1)
+	inc de
 	ld b, a
 .fillLoop
-	ld a, [wEnemyPartyCount]
-	cp b
-	jr nc, .loop               ; already at/over team size -> resume (next byte = terminator)
 	push de
 	push bc
 	farcall MiniBossRollFillMon ; sets wCurPartySpecies (rarer-random) AND wCurEnemyLevel
 	call MiniBossAddMon
 	pop bc
 	pop de
-	jr .fillLoop
+	dec b
+	jr nz, .fillLoop
+	jr .loop
 
 ; Appends the mon in wCurPartySpecies at wCurEnemyLevel to the enemy party.
 ; No party-full guard here: the .fill loop caps at the round's team size (<= 6)

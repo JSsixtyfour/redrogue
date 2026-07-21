@@ -93,3 +93,42 @@ _CopycatsHouse2FPCMySecretsText::
 _CopycatsHouse2FPCCantSeeText::
 	text "Huh? Can't see!"
 	done
+
+_CopyCatGift1Desc::
+    text "Has perfect stats"
+    line "and can copy HP"
+	done
+    
+_CopyCatGift2Desc::
+    text "Her favorite TM"
+    line "for free!"
+	done
+    
+_CopyCatGift3Desc::
+    text "A gift TM from a"
+    line "nearby friend"
+	done
+
+_CopyCatGift4Desc::
+    text "Teach any #MON"
+    line "Mirror Move"
+	done
+    
+_CopyCatGift5Desc::
+    text "Teach any #MON"
+    line "how to transform"
+	done
+    
+_CopyCatGift6Desc::
+    text "Sell at a high"
+    line "price"
+	done
+    
+_CopyCatGift7Desc::
+    text "One of Copycat's"
+    line "favorite TMs"
+	done
+    
+_Empty::
+    text ""
+	done
