@@ -551,6 +551,18 @@ PFStoreBossOWSpriteToSRAM::
 	ld [sProcForestBossSprite], a
 	ret
 
+; ============================================================
+; PFacStoreBossOWSpriteToSRAM
+; Same wrapper for the procedural FACILITY - computes the boss overworld
+; sprite via the in-bank call (A preserved) and stores it to
+; sProcFacilityBossSprite, so no A-return needs to survive the farcall.
+; SRAM must already be open. Called via farcall from PFacRollBoss (bank $10).
+; ============================================================
+PFacStoreBossOWSpriteToSRAM::
+	call PCGetBossOWSprite       ; in-bank call, A = sprite (survives)
+	ld [sProcFacilityBossSprite], a
+	ret
+
 PCBossSpriteCategoryTable:
 	db SPRITE_MONSTER   ; FSPRITE_MONSTER (0) - most species
 	db SPRITE_BIRD      ; FSPRITE_BIRD (1)

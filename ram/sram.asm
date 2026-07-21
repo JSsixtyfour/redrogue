@@ -88,6 +88,40 @@ sProcForestGenScratch:: ds 81
                                    ; the whole pipeline
 
 
+; Procedural facility: 20x20 block map staged here at warp-in time. Same layout
+; as cave/forest (600-byte stride buffer). Lives in its OWN SRAM section (not the
+; bank-0 "Sprite Buffers" one) because cave+cemetery+forest already fill bank 0 -
+; this floats into a bank with room (1-3). Regenerable, so ClearAllSRAMBanks
+; wiping it is harmless (PFacPreload refills it next Pallet Town entry). Only one
+; procedural system runs at a time. Unlike cave/forest, the base map is
+; floor-filled (block 14) and the generator autotiles every wall cell, so no
+; generic fill block survives inside the player area (border block 46 only ever
+; appears in the map's border ring).
+SECTION "Procedural Facility SRAM", SRAM, BANK[1]
+
+sProcFacilityStagingBuffer:: ds 600 ; PFAC_BASE+(PFAC_SIZE-1)*PFAC_STRIDE+PFAC_SIZE = 595 used
+sProcFacilityExitI:: db            ; 0-8: which cell along the exit edge is the exit
+sProcFacilityExitEdge:: db         ; 0=N (default), 1=W, 2=E; zeroed every Pallet Town
+                                   ; entry by PFacPreload, W/E debug-only
+sProcFacilityBaked:: db            ; non-zero = buffer holds finished baked map
+sProcFacilityBossSpecies:: db      ; wRoguePokemon1 saved at Pallet Town entry
+sProcFacilityBossSprite:: db       ; SPRITE_* overworld category (PCGetBossOWSprite),
+                                   ; patched into wSprite01 PICTUREID BEFORE InitMapSprites
+sProcFacilityBallXY:: ds 8         ; Y0,X0,Y1,X1,Y2,X2,Y3,X3 in tile coords (block*2+4)
+sProcFacilityBallItems:: ds 4      ; item ID per pokeball
+sProcFacilityItemGot:: db          ; bit N = pokeball N collected this run
+sProcFacilitySignVariant:: db      ; 0=items text, 1=boss text; rolled once at Pallet
+                                   ; Town entry (PFacPreload), stable for the run
+sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion
+                                   ; (PAL_CINNABAR/red); rolled at Pallet Town entry,
+                                   ; read by SetPal_Overworld's FACILITY case (step 9)
+sProcFacilityAlgoForce:: db        ; debug: facility ships Rooms/Dungeon only, but keep
+                                   ; a force byte for parity with forest's selector
+; Generation-time scratch — NEVER use wOverworldMap's border padding (same hazard
+; as forest). Reused across non-concurrent generation phases.
+sProcFacilityGenScratch:: ds 81
+
+
 SECTION "Save Data", SRAM
 
 	ds $598

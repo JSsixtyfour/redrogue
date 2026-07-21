@@ -138,6 +138,7 @@ WildAreaStageMapTable:
 	                       ; without this, RandomPickUpItem falls to .normalPickup
 	                       ; and gives wRogueItem (slot 0) for EVERY ball → all items
 	                       ; identical. This is THE fix for "all items are the same".
+	db PROCEDURAL_FACILITY ; facility uses the same 4-pokeball mechanism too
 	db -1
 
 ; Returns: Z clear if current map uses the wild-area-pokeball mechanism,

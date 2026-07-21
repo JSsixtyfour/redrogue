@@ -390,7 +390,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const COLOSSEUM,                      5,  4 ; $F0
 	map_const PROCEDURAL_CAVE_1,              20, 20 ; $F1 (was UNUSED_MAP_F1)
 	map_const PROCEDURAL_FOREST,              20, 20 ; $F2 (was UNUSED_MAP_F2)
-	map_const UNUSED_MAP_F3,                  0,  0 ; $F3
+	map_const PROCEDURAL_FACILITY,            20, 20 ; $F3 (was UNUSED_MAP_F3)
 	map_const UNUSED_MAP_F4,                  0,  0 ; $F4
 	map_const LORELEIS_ROOM,                  5,  6 ; $F5
 	map_const BRUNOS_ROOM,                    5,  6 ; $F6

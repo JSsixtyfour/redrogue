@@ -1689,6 +1689,8 @@ TryRunningFromBattle:
 	jp z, .procNoRun
 	cp PROCEDURAL_FOREST
 	jp z, .procNoRun
+	cp PROCEDURAL_FACILITY
+	jp z, .procNoRun
 	;cp PROCEDURAL_CEMETERY_1
 	;jr z, .trainerBattle
 	;cp PROCEDURAL_CEMETERY_2

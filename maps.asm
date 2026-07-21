@@ -475,6 +475,14 @@ INCLUDE "data/maps/objects/ProceduralForest.asm"
 ProceduralForest_Blocks: INCBIN "maps/ProceduralForest.blk"
 
 
+SECTION "Procedural Facility Maps", ROMX
+
+INCLUDE "data/maps/headers/ProceduralFacility.asm"
+INCLUDE "scripts/ProceduralFacility.asm"
+INCLUDE "data/maps/objects/ProceduralFacility.asm"
+ProceduralFacility_Blocks: INCBIN "maps/ProceduralFacility.blk"
+
+
 SECTION "Maps 8", ROMX
 
 INCLUDE "scripts/Route7.asm"

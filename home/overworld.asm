@@ -498,6 +498,8 @@ WarpFound2::
 	jr z, .addFive
 	cp PROCEDURAL_FOREST
 	jr z, .addFive
+	cp PROCEDURAL_FACILITY
+	jr z, .addFive
 	cp PROCEDURAL_CEMETERY_4
 	jr nz, .notLeavingProcArea
 .addFive
@@ -2381,6 +2383,8 @@ LoadMapData::
 	jr z, .patchCaveBoss
 	cp PROCEDURAL_FOREST
 	jr z, .patchForestBoss
+	cp PROCEDURAL_FACILITY
+	jr z, .patchFacilityBoss
 	jr .noBossSpritePatch
 .patchCaveBoss
 	ld a, RAMG_SRAM_ENABLE
@@ -2403,6 +2407,16 @@ LoadMapData::
 	ld [rRAMB], a
 	ld a, [sProcForestBossSprite]
 	ld b, a
+	jr .closeAndPatch
+.patchFacilityBoss
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityStagingBuffer)  ; facility SRAM is bank 1, not 0
+	ld [rRAMB], a
+	ld a, [sProcFacilityBossSprite]
+	ld b, a
 .closeAndPatch
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -2424,6 +2438,7 @@ LoadMapData::
 	homecall PCPreloadCave
 	homecall PCemGenerateMaps
 	homecall PFPreloadForest    ; reset forest baked flag so next visit gets fresh maze
+	homecall PFacPreload        ; reset facility baked flag + roll facility boss/palette
 .notPalletTown
 	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
 	jr nz, .notProcCave         ; proceed as normal if not procedural stage
@@ -2434,6 +2449,10 @@ LoadMapData::
 	jr nz, .notProcForest
 	homecall PFinalizeForest    ; generate (if needed) and blit maze
 .notProcForest
+	cp PROCEDURAL_FACILITY
+	jr nz, .notProcFacility
+	homecall PFacFinalize       ; generate (if needed) and blit facility
+.notProcFacility
 	; Cemetery: blit the pre-generated map for whichever of the 4 floors is loading
 	cp PROCEDURAL_CEMETERY_1
 	jr z, .isCemetery

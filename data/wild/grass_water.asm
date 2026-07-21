@@ -243,7 +243,7 @@ WildDataPointers:
 	dw NothingWildMons
 	dw ProceduralCave1WildMons ; PROCEDURAL_CAVE_1 = $F1
 	dw ProceduralForestWildMons ; PROCEDURAL_FOREST = $F2
-	dw NothingWildMons
+	dw ProceduralFacilityWildMons ; PROCEDURAL_FACILITY = $F3
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -253,6 +253,7 @@ WildDataPointers:
 
 INCLUDE "data/wild/maps/ProceduralCave1.asm"
 INCLUDE "data/wild/maps/ProceduralForest.asm"
+INCLUDE "data/wild/maps/ProceduralFacility.asm"
 INCLUDE "data/wild/maps/ProceduralCemetery.asm"
 
 ; wild pokemon data is divided into two parts.

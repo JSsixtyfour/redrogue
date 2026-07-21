@@ -2033,7 +2033,10 @@ wSSAnneB1FCurScript:: db
 wRoute1CurScript:: db
 wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
-wProceduralCave1CurScript:: db
+wProceduralCave1CurScript:: db ; also reused by the procedural facility script
+                               ; (scripts/ProceduralFacility.asm) - WRAM0 is full,
+                               ; and cave/facility are never loaded concurrently, so
+                               ; they share this map-script-index byte
 wProceduralCemetery4CurScript:: db
 wProceduralForestCurScript:: db
 wRoguePokemon1:: db
@@ -2137,6 +2140,11 @@ NEXTU
 
 wProcForestWildBudget:: ; forest wild battle budget (same mechanic as cave); never
                         ; concurrent with cave/cemetery, safe to share this byte
+
+NEXTU
+
+wProcFacilityWildBudget:: ; facility wild battle budget (same mechanic as cave); never
+                          ; concurrent with cave/cemetery/forest, safe to share this byte
 
 ENDU
 

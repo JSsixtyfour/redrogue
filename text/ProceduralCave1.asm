@@ -18,6 +18,16 @@ _PFSignBossText::
 	line "blocks your way.@"
 	text_end
 
+_PFacSignItemsText::
+	text "Four items lie"
+	line "hidden here.@"
+	text_end
+
+_PFacSignBossText::
+	text "A guardian"
+	line "blocks your way.@"
+	text_end
+
 
 
 _PCBossEncounterText::

@@ -430,6 +430,17 @@ ToggleableObjectStates:
 	toggle_object_state 4, ON              ; slot 4 = pokeball 3
 	toggle_object_state 5, ON              ; slot 5 = pokeball 4
 
+	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants (ShowObject calls
+	; in scripts/ProceduralFacility.asm reference them directly at
+	; EVENT_ENTER_ROOM) - same zero-real-entries pattern as PROCEDURAL_FOREST
+	; above, kept only for the assert_table_length macro bookkeeping.
+	toggleable_objects_for PROCEDURAL_FACILITY
+	;toggle_object_state FACILITY_BOSS, ON     ; slot 1 = boss
+	;toggle_object_state 2, ON                 ; slot 2 = pokeball 1
+	;toggle_object_state 3, ON                 ; slot 3 = pokeball 2
+	;toggle_object_state 4, ON                 ; slot 4 = pokeball 3
+	;toggle_object_state 5, ON                 ; slot 5 = pokeball 4
+
 	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball
 

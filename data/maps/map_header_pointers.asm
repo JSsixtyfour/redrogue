@@ -244,7 +244,7 @@ MapHeaderPointers::
 	dw Colosseum_h
 	dw ProceduralCave1_h ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1 -> SilphCo2F_h)
 	dw ProceduralForest_h ; PROCEDURAL_FOREST (was UNUSED_MAP_F2 -> SilphCo2F_h)
-	dw SilphCo2F_h ; UNUSED_MAP_F3
+	dw ProceduralFacility_h ; PROCEDURAL_FACILITY (was UNUSED_MAP_F3 -> SilphCo2F_h)
 	dw SilphCo2F_h ; UNUSED_MAP_F4
 	dw LoreleisRoom_h
 	dw BrunosRoom_h
