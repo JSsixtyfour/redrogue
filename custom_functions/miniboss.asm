@@ -13,9 +13,9 @@
 ; ============================================================
 
 DEF MINIBOSS_ENTRY_SIZE EQU 7
-; Only Rival is rolled until Giovanni's maps get the encounter hook (Step 6).
-; Raise to MINIBOSS_GIOVANNI once Giovanni's routes call MiniBossCheckActivate.
-DEF MINIBOSS_MAX_ROLLABLE_TYPE EQU MINIBOSS_RIVAL
+; Rival + Giovanni now both roll (Giovanni's Rocket Hideout B1F encounter hook is
+; live). Raise further as more boss types get their encounter hooks.
+DEF MINIBOSS_MAX_ROLLABLE_TYPE EQU MINIBOSS_GIOVANNI
 
 ; Registry: one entry per real boss type, indexed by (type - 1).
 ; db OPP class, sprite id, overworld approach music, placement mode, team-select
@@ -33,20 +33,25 @@ MiniBossTable:
 ; stage script calls MiniBossCheckActivate (the encounter hook), so keep these
 ; in sync with the hooked routes as Step 6 rolls out.
 RivalMaps:
-	; ONLY maps whose stage script calls MiniBossCheckActivate (the encounter
-	; hook) belong here, so a door never promises a boss that can't appear.
-	; Routes are randomized, so ROUTE_1 can be selected at any point after the
-	; first route selection - it's a normal eligible mini-boss map, not "always
-	; first". Add each route below as it gets the hook (Step 6 rollout).
-	db ROUTE_1          ; prototype (only hooked map so far)
+	; ONLY maps whose stage script calls MiniBossApplyStageTrainer (the
+	; encounter hook) belong here, so a door never promises a boss that can't
+	; appear. Excludes Giovanni's maps, USS Anne, Route 24's nugget gate, and
+	; the sprite-set-incompatible outdoor routes 6/12/13/15 and split Route 5.
+	db ROUTE_1
+	db ROUTE_3
+	db ROUTE_9
+	db ROUTE_25
+	db DIGLETTS_CAVE
+	db ROCK_TUNNEL_1F
+	db POKEMON_TOWER_2F
+	db POKEMON_TOWER_7F
+	db POWER_PLANT
+	db POKEMON_MANSION_1F
+	db SEAFOAM_ISLANDS_1F
 	db -1
-	; Full intended eligible set once all are hooked (every stage minus Giovanni's
-	; maps, USS Anne, Route 24's nugget gate, and the sprite-set-incompatible
-	; outdoor routes 6/12/13/15 and the split Route 5):
-	;   ROUTE_3, ROUTE_9, ROUTE_25, DIGLETTS_CAVE, ROCK_TUNNEL_1F,
-	;   POKEMON_TOWER_2F, POKEMON_TOWER_7F, POWER_PLANT, POKEMON_MANSION_1F,
-	;   SEAFOAM_ISLANDS_1F
 GiovanniMaps:
+	; Giovanni is indoor-only (SPRITE_GIOVANNI is in no outdoor sprite set) and
+	; stays exclusive to these dungeon maps (never in RivalMaps).
 	db MT_MOON_1F
 	db VIRIDIAN_FOREST
 	db ROCKET_HIDEOUT_B1F
@@ -424,3 +429,159 @@ MiniBossCheckActivate::
 .none
 	xor a
 	ret
+
+; a = boss type (1-based) -> hl = MiniBossTable entry pointer for that type.
+; Clobbers a/bc/d.
+MiniBossEntryForType:
+	dec a                        ; 1-based -> 0-based
+	ld hl, MiniBossTable
+	ld bc, MINIBOSS_ENTRY_SIZE
+	and a
+	ret z
+	ld d, a
+.mul
+	add hl, bc
+	dec d
+	jr nz, .mul
+	ret
+
+; -> a = the current map's 5th-trainer object slot (1-based) from
+; MiniBossStageSlots, or 0 if this map has no boss slot registered.
+; Clobbers a/b/hl (leaves c/d/e intact for callers holding state across it).
+MiniBossSlotForCurMap:
+	ldh a, [hCurMap]
+	ld b, a
+	ld hl, MiniBossStageSlots
+.scan
+	ld a, [hli]
+	cp -1
+	jr z, .none
+	cp b
+	jr z, .found
+	inc hl                       ; skip the slot byte
+	jr .scan
+.none
+	xor a
+	ret
+.found
+	ld a, [hl]
+	ret
+
+; ============================================================
+; MiniBossApplyStageTrainer  (farcalled from a stage's setup script)
+; Generic replacement for the per-map hardcoded trainer swap. If this map is the
+; active mini-boss stage, overwrites the 5th-trainer object's wMapSpriteExtraData
+; (2 bytes: OPP class + trainer number) with the rolled boss, read from the
+; registry:
+;   - class  = MiniBossTable[type-1] byte 0 (OPP_*_MINIBOSS)
+;   - number = 1 for TEAM_STARTER_BASED, random 1-3 for TEAM_RANDOM_3_SET
+; wMapSpriteExtraData is read fresh by EngageMapTrainer at engage time, so
+; patching it once here at setup is sufficient; the overworld sprite is swapped
+; separately by MiniBossPatchStageSprite. No-op on a non-mini-boss stage. The
+; object slot per map comes from MiniBossStageSlots (same table the sprite swap
+; uses), so a map is rolled out by adding one MiniBossStageSlots row + one map-
+; list entry + one `farcall MiniBossApplyStageTrainer` in its setup script.
+; Clobbers a/bc/de/hl (safe: farcalled from script setup).
+; ============================================================
+MiniBossApplyStageTrainer::
+	call MiniBossCheckActivate   ; a = boss type (0 = not the mini-boss stage); sets bit 7
+	and a
+	ret z
+	call MiniBossEntryForType    ; hl -> registry entry
+	ld a, [hl]                   ; byte 0 = OPP class
+	ld d, a                      ; d = OPP class (survives the slot lookup)
+	ld bc, 4
+	add hl, bc
+	ld a, [hl]                   ; byte 4 = team-select mode
+	ld e, a                      ; e = team-select mode (survives the slot lookup)
+	call MiniBossSlotForCurMap   ; a = object slot (0 = none); preserves d/e
+	and a
+	ret z
+	; hl = wMapSpriteExtraData + (slot-1)*2  (2 bytes per object: class, number)
+	dec a
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, wMapSpriteExtraData
+	add hl, bc
+	ld a, d                      ; OPP class
+	ld [hli], a                  ; write class; hl -> trainer-number byte
+	ld a, e                      ; team-select mode
+	cp TEAM_RANDOM_3_SET
+	jr z, .random3
+	ld a, 1                      ; TEAM_STARTER_BASED (or default): the single team
+	ld [hl], a
+	ret
+.random3
+	push hl
+	ld c, 3
+	call Rangerandom             ; a = 0..2 (bc/de preserved)
+	inc a                        ; -> 1..3
+	pop hl
+	ld [hl], a
+	ret
+
+; ============================================================
+; MiniBossPatchStageSprite  (called from LoadMapData in home/overworld.asm)
+; Runs on every map load, in the window between LoadMapHeader (which populates
+; the sprite slots from the map's object list) and InitMapSprites (which loads
+; VRAM tile patterns from each slot's PICTUREID). If the map being loaded is the
+; active mini-boss stage, this repoints the 5th-trainer object's overworld sprite
+; to the boss's sprite BEFORE its tiles are loaded - the same technique the
+; procedural cave/forest boss system uses (the ordering is load-bearing: writing
+; PICTUREID after InitMapSprites would leave the wrong tiles loaded; see
+; FOREST_STATUS_AND_FIX_PLAN.md). The boss sprite is already in the map's sprite
+; set (that's part of what makes the map mini-boss-eligible), so no VRAM reload is
+; needed - this only points the object at an already-loaded tile slot.
+;
+; wMapSpriteExtraData (the trainer CLASS) is patched separately, later, by the
+; route script - that's read at battle-engage time and is unaffected by this.
+; Clobbers a/bc/de/hl (fine: called via farcall, InitMapSprites needs no regs).
+; ============================================================
+MiniBossPatchStageSprite::
+	call MiniBossCheckActivate   ; a = boss type (0 = not the mini-boss stage); sets bit 7
+	and a
+	ret z
+	call MiniBossEntryForType    ; hl -> registry entry
+	inc hl                       ; byte 1 = overworld sprite id
+	ld a, [hl]
+	ld c, a                      ; c = boss sprite id (survives the slot lookup below)
+	call MiniBossSlotForCurMap   ; a = object slot (0 = none registered for this map)
+	and a
+	ret z
+	; wSprite<slot>StateData1PictureID = wSprite01StateData1PictureID + (slot-1)*len
+	dec a
+	ld hl, wSprite01StateData1PictureID
+	and a
+	jr z, .write
+	ld b, a
+	ld de, SPRITESTATEDATA1_LENGTH
+.addSlot
+	add hl, de
+	dec b
+	jr nz, .addSlot
+.write
+	ld a, c                      ; boss sprite id
+	ld [hl], a                   ; PICTUREID of the boss's object slot
+	ret
+
+; map id -> the 5th-trainer object slot (1-based, = the object's const index in
+; that map's objects file) whose sprite gets swapped to the boss. Keep in sync
+; with each route's MiniBossCheckActivate hook and RivalMaps (above). -1 = end.
+MiniBossStageSlots:
+	; Every hooked stage's 5th trainer is object slot 5 (verified per-map).
+	db ROUTE_1, 5
+	db ROUTE_3, 5
+	db ROUTE_9, 5
+	db ROUTE_25, 5
+	db DIGLETTS_CAVE, 5
+	db ROCK_TUNNEL_1F, 5
+	db POKEMON_TOWER_2F, 5
+	db POKEMON_TOWER_7F, 5
+	db POWER_PLANT, 5
+	db POKEMON_MANSION_1F, 5
+	db SEAFOAM_ISLANDS_1F, 5
+	db MT_MOON_1F, 5
+	db VIRIDIAN_FOREST, 5
+	db ROCKET_HIDEOUT_B1F, 5
+	db -1

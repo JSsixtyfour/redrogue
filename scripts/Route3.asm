@@ -20,6 +20,11 @@ Route3_Script:
     farcall Random_Item_Selection
     farcall RogueRefresh
 
+    ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this stage was chosen
+    ; as the mini-boss door's stage, swap its 5th trainer (slot from
+    ; MiniBossStageSlots) in place to the rolled boss + team. No-op otherwise.
+    farcall MiniBossApplyStageTrainer
+
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck

@@ -1214,6 +1214,42 @@ InitGymBattle::
 	res 0, [hl]                 ; route is next after this gym
 	ret
 
+; d = Current Elite Four member, ie. OPP_LORELEI
+; Tier is derived LINEARLY from wBattleCount (86/87/88/89 -> tier 0-3), unlike
+; InitGymBattle's round-based math - the Elite Four is fought at a fixed battle
+; count range, not on the /10 grid gym leaders use. Does NOT touch wGymLeaderNo
+; (leave it 0 - a nonzero value triggers gym-leader victory music and the
+; Challenge 11 legendary-ace substitution) and does NOT touch wRogueFlagsBitfield
+; bit 0 (route/gym alternation - irrelevant here, the final sequence has fixed
+; room routing instead).
+InitElite4Battle::
+	ld a, d
+	ld [wCurOpponent], a
+	ld a, [wBattleCount]
+	sub a, 86                   ; tier 0 at battle count 86
+	cp a, 4
+	jr c, .tierOk
+	ld a, 3                     ; clamp to the last tier if called out of range
+.tierOk
+	ld b, a
+	ld a, 3                     ; 3 teams per tier
+	ldh [hMultiplicand+2], a
+	ld a, b
+	ldh [hMultiplier], a
+	call Multiply                ; base = tier * 3
+	ldh a, [hProduct+3]
+	add a, 1                     ; +1 (party data is 1-based)
+	push af
+	ld c, 3                      ; amount of variants per tier
+	call Rangerandom
+	ld b, a                      ; random variant into b
+	pop af
+	add a, b                     ; base + random variant
+	ld [wTrainerNo], a
+	ld a, 1
+	ld [wIsTrainerBattle], a     ; start battle
+	ret
+
 
 ; If the species about to be loaded is the rival starter placeholder,
 ; replace it with the rival's actual rogue starter (wRivalStarter), evolved

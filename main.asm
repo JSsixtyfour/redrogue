@@ -189,7 +189,6 @@ INCLUDE "data/pokemon/base_stats.asm"
 ;INCLUDE "engine/battle/unused_stats_functions.asm"
 INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
-INCLUDE "engine/pokemon/evos_moves.asm"
 
 ; Moved out of "Battle Engine 7" to make room for the Gambler AI in trainer_ai.
 ; All entry points (DrawAllPokeballs / DrawEnemyPokeballs /
@@ -197,6 +196,15 @@ INCLUDE "engine/pokemon/evos_moves.asm"
 ; referenced via BANK(), so this file is bank-independent.
 SECTION "HUD Pokeball GFX", ROMX
 INCLUDE "engine/battle/draw_hud_pokeball_gfx.asm"
+
+; Moved out of "Battle Engine 7" to make room for the final-sequence Elite
+; Four/Champion team data growth (data/trainers/parties.asm). Both external
+; entry points (PrepareRelearnableMoveList / PrepareMoveTutorList) are
+; already reached via an explicit `ld b, Bank(...) / call Bankswitch`, and
+; EvolutionAfterBattle/TryEvolvingMon are only ever reached via `predef`, so
+; this file is bank-independent.
+SECTION "Evos Moves", ROMX
+INCLUDE "engine/pokemon/evos_moves.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 
@@ -255,6 +263,7 @@ INCLUDE "engine/events/rogue_reward_menu.asm"
 INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
 INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"
+INCLUDE "engine/events/bridge_gift_menu.asm"
 
 
 SECTION "Battle Engine 9", ROMX
@@ -370,6 +379,7 @@ SECTION "rogue", ROMX
 
 INCLUDE "custom_functions/random_stage_selection.asm"
 INCLUDE "custom_functions/miniboss.asm"
+INCLUDE "custom_functions/final_sequence.asm"
 INCLUDE "custom_functions/tm_bag.asm"
 INCLUDE "custom_functions/key_item_pocket.asm"
 INCLUDE "custom_functions/pocket_items.asm"

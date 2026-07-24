@@ -34,12 +34,16 @@ HallOfFameResetEventsAndSaveScript:
 	ASSERT wStatusFlags7 + 1 == wElite4Flags
 	inc hl
 	set BIT_UNUSED_BEAT_ELITE_4, [hl] ; unused
+	res BIT_STARTED_ELITE_4, [hl]
+	res BIT_VICTORY_ROAD_CLEARED, [hl] ; next run starts Victory Road again, Pokecenter lobby music
 	xor a ; SCRIPT_*_DEFAULT
+	ld [wElite4Order], a
 	ld hl, wLoreleisRoomCurScript
 	ld [hli], a ; wLoreleisRoomCurScript
 	ld [hli], a ; wBrunosRoomCurScript
 	ld [hl], a ; wAgathasRoomCurScript
 	ld [wLancesRoomCurScript], a
+	ld [wChampionsRoomCurScript], a
 	ld [wHallOfFameCurScript], a
 	; Elite 4 events
 	ResetEventRange INDIGO_PLATEAU_EVENTS_START, INDIGO_PLATEAU_EVENTS_END, 1

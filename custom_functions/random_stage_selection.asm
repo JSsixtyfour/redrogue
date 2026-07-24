@@ -108,6 +108,16 @@ _PickNextGym:
 ; Returns: Z clear if current map is a roguelike stage, Z set if not
 IsRogueStageMap::
 	ldh a, [hCurMap]
+	; Victory Road is a rogue route (slots 6-10 = random item / reward
+	; pokeballs / trade NPC) but is intentionally kept OUT of RogueStageMapTable
+	; so the random-stage roll can never pick it (it's the forced final-sequence
+	; stage). Recognize it here anyway so IsObjectHidden's reward-object
+	; show/hide and RandomPickUpItem's give-logic treat it like the route it
+	; is. MarkCurrentStageVisited/_PickRandomUnvisitedStage scan
+	; RogueStageMapTable directly (not this function), so the no-roll
+	; exclusion is unaffected.
+	cp VICTORY_ROAD_1F
+	jr z, .isStage
 	ld hl, RogueStageMapTable
 .stageLoop
 	ld c, [hl]
@@ -117,6 +127,7 @@ IsRogueStageMap::
 	dec c
 	cp c
 	jr nz, .stageLoop
+.isStage
 	xor a
 	inc a             ; Z clear = is a stage map
 	ret
@@ -294,22 +305,32 @@ SelectRandomUnvisitedStage::
 ; OUTPUT: wRogueMap = picked stage's map ID
 ; ============================================================
 _PickNextStage:
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	jp z, _PickRandomUnvisitedStage ; bit clear = route next
+	jp _PickNextGym                 ; bit set = gym next (sets wRogueMap)
+
 IF DEF(_DEBUG)
-	; Debug 2: if a specific stage was chosen at setup, force it instead of
-	; picking randomly. Index is interpreted as a gym (GymMapByBadge) or route
-	; (RogueStageMapTable) per the gym-next flag. Consumed after one use so
-	; later stages pick randomly again.
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr z, .noDebug2Force
-	ld a, [wDebug2ForcedStage]
+; ============================================================
+; ApplyDebug2DoorForce  (debug builds only)
+; If Debug 2's forced-door index (a) is non-zero, resolves it to a map (gym
+; via GymMapByBadge or route via RogueStageMapTable, per the gym-next flag -
+; same table _PickNextStage itself would use) and overwrites the door map at
+; hl. No-op if a == 0 (random / no override). Called from
+; SelectAndPatchLobbyExit AFTER _PickNextStage + MiniBossRollAndAssign have
+; already set wLobbyDoor1/2StageMap, so a debug force always has final say
+; per door, independent of the normal/mini-boss pick.
+; INPUT: a = 1-based forced index (already consumed to 0 by the caller);
+;        hl = the door's StageMap byte address.
+; Clobbers a/bc/de/hl.
+; ============================================================
+ApplyDebug2DoorForce::
 	and a
-	jr z, .noDebug2Force
-	dec a                           ; 1-based -> 0-based index
+	ret z
+	dec a                       ; 1-based -> 0-based index
 	ld e, a
 	ld d, 0
-	xor a
-	ld [wDebug2ForcedStage], a      ; consume: only force the next stage
+	push hl                     ; save door map address
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
 	ld hl, RogueStageMapTable
@@ -318,14 +339,10 @@ IF DEF(_DEBUG)
 .haveForceTable
 	add hl, de
 	ld a, [hl]
-	ld [wRogueMap], a
+	pop hl                      ; restore door map address
+	ld [hl], a
 	ret
-.noDebug2Force
 ENDC
-	ld a, [wRogueFlagsBitfield]
-	bit 0, a
-	jp z, _PickRandomUnvisitedStage ; bit clear = route next
-	jp _PickNextGym                 ; bit set = gym next (sets wRogueMap)
 
 ; ============================================================
 ; SelectAndPatchLobbyExit / SelectAndPatchRewardRoomExit
@@ -351,6 +368,21 @@ SelectAndPatchLobbyExit::
 .door2Done
 	ld [wRogueDoor2], a
 
+	; Final-sequence gate: once all 8 badges are obtained, both doors are
+	; forced (Victory Road, then the shuffled Elite Four order) instead of
+	; the normal route/gym alternation. See custom_functions/final_sequence.asm.
+	ld a, [wObtainedBadges]
+	cp $FF
+	jr nz, .normalSelection
+	ld hl, wElite4Flags
+	bit BIT_VICTORY_ROAD_CLEARED, [hl]
+	jr nz, .forceElite4
+	call ForceVictoryRoadDoors
+	jr .selectionDone
+.forceElite4
+	call ForceElite4Doors
+	jr .selectionDone
+.normalSelection
 	; Pick the next stage (alternates route/gym). Both doors default to it.
 	call _PickNextStage
 	ld a, [wRogueMap]
@@ -361,6 +393,36 @@ SelectAndPatchLobbyExit::
 	; route) and record the type/door in wRogueFlagsBitfield bits 4-6. Self-gates
 	; on gym-next / first route.
 	call MiniBossRollAndAssign
+.selectionDone
+IF DEF(_DEBUG)
+	; Debug 2: independently force either door's destination (gym/route index,
+	; 0 = random), overriding whatever the normal pick/mini-boss roll produced
+	; above. See ApplyDebug2DoorForce + Debug2ApplyRoundState (the two prompts
+	; that set these). Not meaningful during the final sequence (Victory Road/
+	; Elite Four aren't in RogueStageMapTable/GymMapByBadge), so skip entirely
+	; once all 8 badges are obtained.
+	ld a, [wObtainedBadges]
+	cp $FF
+	jr z, .noDebug2DoorForce
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .noDebug2DoorForce
+	ld a, [wDebug2ForcedDoor1]
+	push af
+	xor a
+	ld [wDebug2ForcedDoor1], a     ; consume: only force the next lobby visit
+	pop af
+	ld hl, wLobbyDoor1StageMap
+	call ApplyDebug2DoorForce
+	ld a, [wDebug2ForcedDoor2]
+	push af
+	xor a
+	ld [wDebug2ForcedDoor2], a
+	pop af
+	ld hl, wLobbyDoor2StageMap
+	call ApplyDebug2DoorForce
+.noDebug2DoorForce
+ENDC
 	; Patch each door to its (possibly now different) stage map.
 	ld a, [wLobbyDoor1StageMap]
 	ld b, 11
@@ -446,7 +508,13 @@ PatchWarpEntry::
 	ld a, [hli]                ; read X coord
 	cp c                       ; X match?
 	jr nz, .pwe_skip2
-	ld [hl], 1                 ; patch warpID = 1 (stage lobby-entrance position)
+	ld [hl], 0                 ; patch warpID = 0 (0-based storage of source-level
+	                           ; warp_event ID 1 - the warp_event macro compiles
+	                           ; `DEST_WARP_ID - 1`, and the warp-follow code in
+	                           ; home/overworld.asm reads this byte straight into
+	                           ; wDestinationWarpID with no adjustment, so this must
+	                           ; stay 0-based to land on the target's FIRST-listed
+	                           ; warp_event entry, its entrance)
 	inc hl
 	ld [hl], d                 ; patch map ID
 	inc hl                     ; advance past patched byte

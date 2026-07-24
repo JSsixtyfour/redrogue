@@ -2107,7 +2107,11 @@ wBattleCount:: db
 ; wRogueFlagsBitfield bits 4-7 at zero byte cost.
 wRoutesSinceMiniBoss:: db ; non-mini-boss routes since the last one; drives the escalating chance
 wMiniBossCount:: db       ; mini-bosses encountered this run; drives the >=2 guarantee
-wDebug2ForcedStage:: db  ; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force as the next stage; 0 = none
+; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force onto each
+; lobby door independently; 0 = random (no override). Consumed (reset to 0)
+; after one lobby visit. See SelectAndPatchLobbyExit / Debug2ApplyRoundState.
+wDebug2ForcedDoor1:: db
+wDebug2ForcedDoor2:: db
 ; LEFTOVERS fraction level: heals 1/(16-level) of each mon's max HP.
 ; Level 0 = 1/16 ... level 15 = 1/1 (full heal). Increment to "upgrade" the item.
 wHealAllItemLevel:: db
@@ -2220,7 +2224,15 @@ wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
 
 wGameProgressFlagsEnd::
 
-	ds 38 ; was ds 40; 2 bytes reclaimed for wRoutesSinceMiniBoss/wMiniBossCount above (net-zero WRAM0)
+; Elite Four room order for the final sequence: index (0-23) into
+; Elite4OrderTable (data/trainers/parties.asm), rolled once when the Victory
+; Road Rival is defeated (see BIT_VICTORY_ROAD_CLEARED). Below
+; wGameProgressFlagsEnd, so NOT auto-zeroed on new game - harmless here since
+; it is only ever read after being freshly rolled that same run, and is
+; explicitly reset in HallOfFame.asm on run completion.
+wElite4Order:: db
+
+	ds 36 ; was ds 37; 1 more byte reclaimed for wElite4Order above (net-zero WRAM0)
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

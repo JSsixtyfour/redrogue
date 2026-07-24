@@ -12,9 +12,21 @@ IndigoPlateauLobby_Script:
 	jr nz, .normal
 
 	SetEvent EVENT_ENTER_ROOM
-	; update exit door tile based on whether gym or route is next
-	ld a, [wRogueFlagsBitfield]
-	bit 0, a
+	; Lobby music: MapSongBanks (data/maps/songs.asm) defaults this map to
+	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
+	; MUSIC_INDIGO_PLATEAU for the rest of the run (re-applied every visit,
+	; since EVENT_ENTER_ROOM resets on every warp).
+	ld hl, wElite4Flags
+	bit BIT_VICTORY_ROAD_CLEARED, [hl]
+	jr z, .lobbyMusicDone
+	ld a, MUSIC_INDIGO_PLATEAU
+	ld [wMapMusicSoundID], a
+	ld a, BANK(Music_IndigoPlateau)
+	ld [wMapMusicROMBank], a
+.lobbyMusicDone
+	; update exit door tile based on whether gym or route is next (or, during
+	; the final sequence, the Elite Four - see Lobby_IsDoor2Blocked)
+	call Lobby_IsDoor2Blocked
 	jr nz, .blockExitToSecondDoor
 	ld a, $D
 	jr .setExitDoor
@@ -25,8 +37,7 @@ IndigoPlateauLobby_Script:
 	lb bc, 0, 5
 	predef ReplaceTileBlock
 	; show/hide door 2's sign in sync with whether door 2 itself is blocked
-	ld a, [wRogueFlagsBitfield]
-	bit 0, a
+	call Lobby_IsDoor2Blocked
 	ld a, TOGGLE_PC_DOOR2_SIGN
 	ld [wToggleableObjectIndex], a
 	jr nz, .hideDoor2Sign
@@ -81,6 +92,16 @@ IndigoPlateauLobby_TextPointers:
 
 LobbyDoor1SignText:
 	text_asm
+; Final sequence: once all 8 badges are obtained, both doors always lead to
+; the same place, so the usual item/mini-boss framing below never applies
+; (MiniBossRollAndAssign is skipped entirely during the finale) - handled
+; here instead. Victory Road still offers a real per-door item choice (the
+; category rolls happen unconditionally in SelectAndPatchLobbyExit, same as
+; a normal route), so its sign keeps the category line; the Elite Four has
+; no item rewards at all, so its sign drops it entirely.
+	ld a, [wRogueDoor1]
+	call LobbyFinaleSignCheck
+	ret nz
 ; Mini-boss framework: if a mini-boss is offered this route selection AND
 ; door 1 is the mini-boss door (BIT_MINIBOSS_DOOR clear), the sign is replaced
 ; entirely with a boss-specific message instead of the item category. Gym-next
@@ -165,6 +186,10 @@ LobbyDoor1SignText:
 
 LobbyDoor2SignText:
 	text_asm
+; Final sequence: see LobbyDoor1SignText - same shared finale check.
+	ld a, [wRogueDoor2]
+	call LobbyFinaleSignCheck
+	ret nz
 ; Mini-boss framework: mirrors LobbyDoor1SignText, but door 2's sign is never
 ; hidden by gym-next (only door 1 exists then), so there's no gym-framing
 ; branch to guard against here. As in door 1, bc is the live text cursor here
@@ -209,6 +234,105 @@ LobbyDoor2SignText:
 	text_end
 .moneyText
 	text "DOOR 2:"
+	line "MONEY@"
+	text_end
+
+; Final sequence sign check, shared by both door sign handlers. Once all 8
+; badges are obtained, both doors lead to the same place: Victory Road
+; (still a real per-door item choice - the category rolls happen
+; unconditionally in SelectAndPatchLobbyExit, same as a normal route, so the
+; sign keeps the "MINIBOSS" + category framing, mirroring LobbyMiniBossSign),
+; then the Elite Four (no item rewards at all, so no category line).
+; INPUT: a = this door's item category (0-3, from wRogueDoor1/wRogueDoor2) -
+;        only consulted for the Victory Road case.
+; OUTPUT: Z set - not in the final sequence; caller falls through to its
+;             normal item/mini-boss framing.
+;         Z clear, hl -> the finale sign text - caller should `ret` (the
+;             `ret nz` right after the call site does this).
+; Whether door 2 (tile + sign) should be blocked, shared by the two call
+; sites in IndigoPlateauLobby_Script. During the final sequence, Victory
+; Road still offers a real choice of two doors (both routes to the same
+; place, different item category), same as a normal route - but the Elite
+; Four has no second option, so it always blocks door 2, same as gym-next.
+; OUTPUT: NZ - door 2 blocked (Elite Four phase, or the existing gym-next
+;             case). Z - door 2 open (Victory Road phase, or a normal
+;             route-next case).
+; CLOBBERS: a
+Lobby_IsDoor2Blocked:
+	ld a, [wObtainedBadges]
+	cp $FF
+	jr nz, .normalCheck
+	ld a, [wElite4Flags]
+	bit BIT_VICTORY_ROAD_CLEARED, a
+	jr z, .door2Open        ; Victory Road phase - both doors stay open
+	or 1                    ; Elite Four phase - force NZ (blocked)
+	ret
+.door2Open
+	xor a                   ; force Z (open)
+	ret
+.normalCheck
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	ret
+
+; CLOBBERS: a, de, hl
+LobbyFinaleSignCheck:
+	ld e, a                       ; stash caller's item category
+	ld a, [wObtainedBadges]
+	cp $FF
+	jr nz, .notFinale
+	ld a, [wElite4Flags]
+	bit BIT_VICTORY_ROAD_CLEARED, a
+	jr nz, .eliteFour
+	ld a, e                       ; restore item category
+	call LobbyMiniBossVictoryRoadSign ; hl -> "MINIBOSS" + category combined text
+	jr .isFinale
+.eliteFour
+	ld hl, .EliteFourSign
+.isFinale
+	or 1                ; force Z clear regardless of what's in a
+	ret
+.notFinale
+	xor a               ; Z set
+	ret
+.EliteFourSign
+	text "ELITE FOUR"
+	line "AWAITS@"
+	text_end
+
+; Victory Road door sign: line 1 = "MINIBOSS", line 2 = the door's item
+; reward category (still shown - Victory Road offers a real choice per door,
+; unlike the Elite Four). Mirrors LobbyMiniBossSign's structure/table shape.
+; INPUT: a = item category (0-3). Returns hl -> combined text.
+LobbyMiniBossVictoryRoadSign:
+	ld hl, .ptrs
+	ld d, 0
+	ld e, a
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+.ptrs
+	dw .healing
+	dw .stat
+	dw .tm
+	dw .money
+.healing
+	text "MINIBOSS"
+	line "HEALING ITEMS@"
+	text_end
+.stat
+	text "MINIBOSS"
+	line "STAT BOOSTS@"
+	text_end
+.tm
+	text "MINIBOSS"
+	line "TM ITEMS@"
+	text_end
+.money
+	text "MINIBOSS"
 	line "MONEY@"
 	text_end
 

@@ -2372,6 +2372,10 @@ LoadMapData::
 	ld [wSpriteSetID], a
 	call LoadTextBoxTilePatterns
 	call LoadMapHeader
+	; Mini-boss framework: if this is the active mini-boss stage, repoint the
+	; 5th-trainer object to the boss's sprite BEFORE InitMapSprites loads tiles
+	; (ordering is load-bearing - same as the procedural cave/forest boss system).
+	farcall MiniBossPatchStageSprite
 	farcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
 	call LoadTilesetTilePatternData

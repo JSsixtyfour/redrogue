@@ -1,8 +1,21 @@
 ChampionsRoom_Script:
+	call ChampionsRoomPatchWarps
 	call EnableAutoTextBoxDrawing
 	ld hl, ChampionsRoom_ScriptPointers
 	ld a, [wChampionsRoomCurScript]
 	jp CallFunctionInTable
+
+ChampionsRoomPatchWarps:
+; Re-patches this room's south warps to match this run's shuffled Elite
+; Four order (see custom_functions/final_sequence.asm) - the order is
+; randomized, so the ROM-authored (vanilla, Lance-always-last) warps would
+; misroute backtracking otherwise. Idempotent, safe to run on every load.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	farcall Elite4PatchChampionRoomWarps
+	ret
 
 ResetRivalScript:
 	xor a ; SCRIPT_CHAMPIONSROOM_DEFAULT
@@ -14,6 +27,7 @@ ChampionsRoom_ScriptPointers:
 	def_script_pointers
 	dw_const ChampionsRoomDefaultScript,                  SCRIPT_CHAMPIONSROOM_DEFAULT
 	dw_const ChampionsRoomPlayerEntersScript,             SCRIPT_CHAMPIONSROOM_PLAYER_ENTERS
+	EXPORT SCRIPT_CHAMPIONSROOM_PLAYER_ENTERS ; used by custom_functions/final_sequence.asm (Elite4PatchRoomWarps arms the Champion room from the "rogue" bank)
 	dw_const ChampionsRoomRivalReadyToBattleScript,       SCRIPT_CHAMPIONSROOM_RIVAL_READY_TO_BATTLE
 	dw_const ChampionsRoomRivalDefeatedScript,            SCRIPT_CHAMPIONSROOM_RIVAL_DEFEATED
 	dw_const ChampionsRoomOakArrivesScript,               SCRIPT_CHAMPIONSROOM_OAK_ARRIVES
@@ -68,23 +82,12 @@ ChampionsRoomRivalReadyToBattleScript:
 	ld a, OPP_RIVAL3
 	ld [wCurOpponent], a
 
-	; select which team to use during the encounter
-	ld a, [wRivalStarter]
-	ld b, a
-	ld a, [wRoguePokemon2]
-	cp b
-	jr nz, .NotSlot2
-	ld a, $1
-	jr .saveTrainerId
-.NotSlot2
-	ld a, [wRoguePokemon3]
-	cp b
-	jr nz, .NotSlot3
-	ld a, $2
-	jr .saveTrainerId
-.NotSlot3
-	ld a, $3
-.saveTrainerId
+	; select which of the 5 Champion teams to use (each keeps the rival's
+	; starter as the ace via RIVAL_STARTER_PLACEHOLDER - PatchRivalStarterSpecies
+	; patches it in at battle setup, same as every other rival team)
+	ld c, 5
+	call Rangerandom
+	inc a
 	ld [wTrainerNo], a
     ld a, 1
 	ld [wIsTrainerBattle], a

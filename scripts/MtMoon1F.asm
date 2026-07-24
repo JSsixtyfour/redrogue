@@ -20,6 +20,11 @@ MtMoon1F_Script:
     farcall Random_Item_Selection
     farcall RogueRefresh
 
+    ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this stage was chosen
+    ; as the mini-boss door's stage, swap its 5th trainer (slot from
+    ; MiniBossStageSlots) in place to the rolled boss + team. No-op otherwise.
+    farcall MiniBossApplyStageTrainer
+
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck
@@ -180,12 +185,37 @@ MtMoon1FYoungsterAfterBattleText:
 	text_far _MtMoon1FYoungster1AfterBattleText
 	text_end
 
+; Conditional trainer text (vanilla Hiker vs Giovanni mini-boss). text_asm
+; handler: must not clobber bc (live print cursor), must return hl -> the
+; chosen text (see Route1JrTrainerMBattleText for the established pattern).
 MtMoon1FHikerBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _MtMoon1FHikerBattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossBattleText
 	text_end
 
 MtMoon1FHikerEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _MtMoon1FHikerEndBattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossEndBattleText
 	text_end
 
 MtMoon1FHikerAfterBattleText:

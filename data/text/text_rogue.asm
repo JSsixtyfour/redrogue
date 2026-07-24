@@ -108,3 +108,38 @@ _RivalMiniBossEndBattleText::
 	text "Feh! You got"
 	line "lucky this time."
 	done
+
+; Mini-boss framework: shared Giovanni mini-boss dialogue, callable from any
+; of his 3 dungeon maps' 5th-trainer encounter. Placeholder text - user will
+; author the real quotes.
+_GiovanniMiniBossBattleText::
+	text "INSERT GIOVANNI"
+	line "QUOTE HERE"
+	done
+
+; Final sequence: shared "go to the Champion" dialogue, shown as the
+; AFTER-battle text (re-talk) of whichever Elite Four member ends up last
+; (order[3]) in this run's shuffled order - mirrors vanilla Lance's role,
+; but any of the 4 members can be the one to say it.
+_Elite4GoToChampionText::
+	text "That's the last"
+	line "of us!"
+
+	para "Go now and face"
+	line "the CHAMPION!"
+	done
+
+; Final sequence: Lance's after-battle text when he is NOT the last (order[3])
+; member this run. Vanilla's _LancesRoomLanceAfterBattleText always assumed
+; Lance was last and directs the player to the Champion, so it can't be reused
+; here. Placeholder text - user will author the real quote.
+_LancesRoomLanceNormalAfterBattleText::
+	text "INSERT LANCE"
+	line "DIALOGUE HERE"
+	done
+
+_GiovanniMiniBossEndBattleText::
+	text "INSERT GIOVANNI"
+	line "DEFEAT QUOTE"
+	cont "HERE"
+	done

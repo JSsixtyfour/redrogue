@@ -595,13 +595,17 @@ Debug2ApplyRoundState::
 .routeNext
 	res BIT_ROGUE_GYM_NEXT, [hl]
 .forcedStagePrompt
-	; Follow-up prompt: pick which specific gym (1-8) or route (1-21) the next
-	; lobby door leads to, or leave it random. Entry 1 = random (no override);
-	; entry N (N>=2) forces gym/route (N-1). The choice is contingent on the
-	; battle count: the gym-vs-route flag (just set from the remainder)
-	; selects the max, and _PickNextStage forces this index on lobby entry.
-	; Uses the same counter UI as the battle-count prompt (font/text-box tiles
-	; already loaded by caller).
+	; Follow-up prompts: pick which specific gym (1-8) or route (1-21) each
+	; lobby door leads to independently, or leave either random. Entry 1 =
+	; random (no override); entry N (N>=2) forces gym/route (N-1). The choice
+	; is contingent on the battle count: the gym-vs-route flag (just set from
+	; the remainder) selects the max, and ApplyDebug2DoorForce
+	; (random_stage_selection.asm, called from SelectAndPatchLobbyExit) applies
+	; each index to its own door on the next lobby visit. Uses the same
+	; counter UI as the battle-count prompt (font/text-box tiles already
+	; loaded by caller). Max is the same for both doors (route-next always
+	; offers 2 doors; gym-next has only 1 usable door, but door 2's prompt is
+	; harmless - PatchWarpEntry never patches a blocked door).
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
 	ld a, 22                   ; route next: 1 (random) + NUM_STAGE_MAPS (21) routes
@@ -613,10 +617,39 @@ Debug2ApplyRoundState::
 	ld [wListMenuID], a
 	call DisplayChooseQuantityMenu
 	ld a, [wItemQuantity]
-	dec a                       ; 1 (random) -> 0 (wDebug2ForcedStage's existing
-	                             ; "no force" sentinel, see _PickNextStage);
-	                             ; 2..max -> 1..(max-1), the 1-based gym/route
-	                             ; index _PickNextStage already expects
-	ld [wDebug2ForcedStage], a
+	dec a                       ; 1 (random) -> 0 (wDebug2ForcedDoor1/2's "no
+	                             ; force" sentinel); 2..max -> 1..(max-1), the
+	                             ; 1-based gym/route index ApplyDebug2DoorForce
+	                             ; expects
+	ld [wDebug2ForcedDoor1], a
+
+	; Door 2: identical prompt, same max (wMaxItemQuantity/wListMenuID already set).
+	call DisplayChooseQuantityMenu
+	ld a, [wItemQuantity]
+	dec a
+	ld [wDebug2ForcedDoor2], a
+
+	; Final sequence: derive BIT_VICTORY_ROAD_CLEARED from the forced battle
+	; count too. Without this, forcing count >= 86 still left Victory Road
+	; "not yet cleared" (the flag is normally only set by actually beating
+	; the Victory Road Rival), so the Lobby gate kept sending the debug
+	; jump to Victory Road instead of the Elite Four. Rolling a fresh
+	; wElite4Order here (only the first time this flips the bit on) also
+	; means repeated debug jumps into the finale still get a shuffled order,
+	; not always the same Elite4OrderTable[0] default.
+	ld a, [wBattleCount]
+	cp 86
+	ld hl, wElite4Flags
+	jr c, .debugBeforeVictoryRoad
+	bit BIT_VICTORY_ROAD_CLEARED, [hl]
+	jr nz, .debugFinaleStateDone
+	set BIT_VICTORY_ROAD_CLEARED, [hl]
+	ld c, 24
+	call Rangerandom
+	ld [wElite4Order], a
+	jr .debugFinaleStateDone
+.debugBeforeVictoryRoad
+	res BIT_VICTORY_ROAD_CLEARED, [hl]
+.debugFinaleStateDone
 	ret
 ENDC

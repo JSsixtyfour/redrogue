@@ -6,6 +6,7 @@ VictoryRoad1F_Script:
     SetEvent EVENT_ENTER_ROOM
     ld hl, wRogueFlagsBitfield
     set 0, [hl]                 ; gym is next after this route
+    set BIT_MINIBOSS_ACTIVE, [hl] ; Victory Road's Rival always gets mini-boss rarity (pokemon + item rolls)
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
 
@@ -14,10 +15,10 @@ VictoryRoad1F_Script:
     farcall RogueRefresh
 
     .normal
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	res BIT_CUR_MAP_LOADED_1, [hl]
-	call nz, .next
+	; ld hl, wCurrentMapScriptFlags
+	; bit BIT_CUR_MAP_LOADED_1, [hl]
+	; res BIT_CUR_MAP_LOADED_1, [hl]
+	; call nz, .next
 	call EnableAutoTextBoxDrawing
 	ld hl, VictoryRoad1TrainerHeaders
 	ld de, VictoryRoad1F_ScriptPointers
@@ -25,34 +26,34 @@ VictoryRoad1F_Script:
 	call ExecuteCurMapScriptInTable
 	ld [wVictoryRoad1FCurScript], a
 	ret
-.next
-	CheckEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
-	ret z
-	ld a, $1d
-	ld [wNewTileBlockID], a
-	lb bc, 6, 4
-	predef_jump ReplaceTileBlock
+;.next
+;	CheckEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
+;	ret z
+;	ld a, $1d
+;	ld [wNewTileBlockID], a
+;	lb bc, 6, 4
+;	predef_jump ReplaceTileBlock
 
 VictoryRoad1F_ScriptPointers:
 	def_script_pointers
-	dw_const VictoryRoad1FDefaultScript,            SCRIPT_VICTORYROAD1F_DEFAULT
+	dw_const CheckFightingMapTrainers,               SCRIPT_VICTORYROAD1F_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_VICTORYROAD1F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_VICTORYROAD1F_END_BATTLE
 
-VictoryRoad1FDefaultScript:
-	CheckEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
-	jp nz, CheckFightingMapTrainers
-	ld hl, .SwitchCoords
-	call CheckBoulderCoords
-	jp nc, CheckFightingMapTrainers
-	ld hl, wCurrentMapScriptFlags
-	set BIT_CUR_MAP_LOADED_1, [hl]
-	SetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
-	ret
+;VictoryRoad1FDefaultScript:
+;	CheckEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
+;	jp nz, CheckFightingMapTrainers
+;	ld hl, .SwitchCoords
+;	call CheckBoulderCoords
+;	jp nc, CheckFightingMapTrainers
+;	ld hl, wCurrentMapScriptFlags
+;	set BIT_CUR_MAP_LOADED_1, [hl]
+;	SetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
+;	ret
 
-.SwitchCoords:
-	dbmapcoord 17, 13
-	db -1 ; end
+;.SwitchCoords:
+;	dbmapcoord 17, 13
+;	db -1 ; end
 
 VictoryRoad1F_TextPointers:
 	def_text_pointers
@@ -61,16 +62,16 @@ VictoryRoad1F_TextPointers:
 	dw_const VictoryRoad1FCooltrainerM2Text, TEXT_VICTORYROAD1F_COOLTRAINER_M2
 	dw_const VictoryRoad1FCooltrainerM3Text, TEXT_VICTORYROAD1F_COOLTRAINER_M3
 	dw_const VictoryRoad1FCooltrainerM4Text, TEXT_VICTORYROAD1F_COOLTRAINER_M4
-	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_TM_SKY_ATTACK
-	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_RARE_CANDY
-	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER1
-	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER2
-	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER3
     dw_const RandomPickUpItemText,           TEXT_VICTORYROAD1F_RANDOM
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_1, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_1
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_2, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_2
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_3, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_3
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_1, TEXT_VICTORYROAD1F_ROGUE_TRADE_NPC
+	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_TM_SKY_ATTACK
+	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_RARE_CANDY
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER1
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER2
+	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER3 
     dw_const Rogue_VictoryRoad1F_Reward_Text, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
     EXPORT TEXT_VICTORYROAD1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
@@ -79,11 +80,11 @@ VictoryRoad1TrainerHeaders:
 VictoryRoad1TrainerHeader0:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0, 2, VictoryRoad1FCooltrainerFBattleText, VictoryRoad1FCooltrainerFEndBattleText, VictoryRoad1FCooltrainerFAfterBattleText
 VictoryRoad1TrainerHeader1:
-	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1, 2, VictoryRoad1FCooltrainerMBattleText, VictoryRoad1FCooltrainerMEndBattleText, VictoryRoad1FCooltrainerMAfterBattleText
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1, 3, VictoryRoad1FCooltrainerMBattleText, VictoryRoad1FCooltrainerMEndBattleText, VictoryRoad1FCooltrainerMAfterBattleText
 VictoryRoad1TrainerHeader2:
-	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2, 2, VictoryRoad1FCooltrainerM2BattleText, VictoryRoad1FCooltrainerM2EndBattleText, VictoryRoad1FCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2, 1, VictoryRoad1FCooltrainerM2BattleText, VictoryRoad1FCooltrainerM2EndBattleText, VictoryRoad1FCooltrainerM2AfterBattleText
 VictoryRoad1TrainerHeader3:
-	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3, 2, VictoryRoad1FCooltrainerM3BattleText, VictoryRoad1FCooltrainerM3EndBattleText, VictoryRoad1FCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3, 1, VictoryRoad1FCooltrainerM3BattleText, VictoryRoad1FCooltrainerM3EndBattleText, VictoryRoad1FCooltrainerM3AfterBattleText
 VictoryRoad1TrainerHeader4:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_4, 2, VictoryRoad1FCooltrainerM4BattleText, VictoryRoad1FCooltrainerM4EndBattleText, VictoryRoad1FCooltrainerM4AfterBattleText
 	db -1 ; end
@@ -167,12 +168,18 @@ VictoryRoad1FCooltrainerM3AfterBattleText:
 	text_end
 
 VictoryRoad1FCooltrainerM4BattleText:
-	text_far _VictoryRoad1FCooltrainerMBattleText
+	text_far _RivalMiniBossBattleText
 	text_end
 
 VictoryRoad1FCooltrainerM4EndBattleText:
-	text_far _VictoryRoad1FCooltrainerMEndBattleText
-	text_end
+	text_far _RivalMiniBossEndBattleText
+	text_asm
+	ld hl, wElite4Flags
+	set BIT_VICTORY_ROAD_CLEARED, [hl]
+	ld c, 24
+	call Rangerandom
+	ld [wElite4Order], a
+	jp TextScriptEnd
 
 VictoryRoad1FCooltrainerM4AfterBattleText:
     text_asm

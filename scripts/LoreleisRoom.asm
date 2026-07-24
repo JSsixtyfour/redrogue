@@ -9,13 +9,17 @@ LoreleisRoom_Script:
 	ret
 
 LoreleiShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
+; Blocks or clears the exit to the next room. Also re-patches this room's
+; south/north warps to match this run's shuffled Elite Four order (see
+; custom_functions/final_sequence.asm) - the order is randomized, so the
+; ROM-authored (vanilla-order) warps would misroute otherwise. Idempotent,
+; safe to run on every map load, including backtracking.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
-	ld hl, wElite4Flags
-	set BIT_STARTED_ELITE_4, [hl]
+	ld d, OPP_LORELEI
+	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_BEAT_LORELEIS_ROOM_TRAINER_0
 	jr z, .blockExitToNextRoom
 	ld a, $5
@@ -35,13 +39,23 @@ ResetLoreleiScript:
 LoreleisRoom_ScriptPointers:
 	def_script_pointers
 	dw_const LoreleisRoomDefaultScript,             SCRIPT_LORELEISROOM_DEFAULT
-	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_LORELEISROOM_LORELEI_START_BATTLE
+	dw_const LoreleisRoomStartBattleScript,         SCRIPT_LORELEISROOM_LORELEI_START_BATTLE
 	dw_const LoreleisRoomLoreleiEndBattleScript,    SCRIPT_LORELEISROOM_LORELEI_END_BATTLE
 	dw_const LoreleisRoomPlayerIsMovingScript,      SCRIPT_LORELEISROOM_PLAYER_IS_MOVING
 	dw_const LoreleisRoomNoopScript,                SCRIPT_LORELEISROOM_NOOP
 
 LoreleisRoomNoopScript:
 	ret
+
+; Elite Four difficulty tier + team variant are derived from wBattleCount,
+; not the gym round math InitGymBattle uses (see func_enc_gen.asm). Does not
+; set wGymLeaderNo (would trigger gym-leader victory music / the Challenge 11
+; legendary-ace substitution) or touch wRogueFlagsBitfield bit 0 (irrelevant
+; here - the final sequence routes rooms directly, not via route/gym pick).
+LoreleisRoomStartBattleScript:
+	ld d, OPP_LORELEI
+	farcall InitElite4Battle
+	jp DisplayEnemyTrainerTextAndStartBattle
 
 LoreleiScriptWalkIntoRoom:
 ; Walk six steps upward.
@@ -142,7 +156,20 @@ LoreleisRoomLoreleiEndBattleText:
 	text_end
 
 LoreleisRoomLoreleiAfterBattleText:
+	text_asm
+	ld a, [wBattleCount]
+	cp 90
+	ld hl, .Normal
+	jr c, .print
+	ld hl, .GoToChampion
+.print
+	call PrintText
+	jp TextScriptEnd
+.Normal
 	text_far _LoreleisRoomLoreleiAfterBattleText
+	text_end
+.GoToChampion
+	text_far _Elite4GoToChampionText
 	text_end
 
 LoreleisRoomLoreleiDontRunAwayText:

@@ -9,11 +9,17 @@ AgathasRoom_Script:
 	ret
 
 AgathaShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
+; Blocks or clears the exit to the next room. Also re-patches this room's
+; south/north warps to match this run's shuffled Elite Four order (see
+; custom_functions/final_sequence.asm) - the order is randomized, so the
+; ROM-authored (vanilla-order) warps would misroute otherwise. Idempotent,
+; safe to run on every map load, including backtracking.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
+	ld d, OPP_AGATHA
+	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_BEAT_AGATHAS_ROOM_TRAINER_0
 	jr z, .blockExitToNextRoom
 	ld a, $e
@@ -33,13 +39,20 @@ ResetAgathaScript:
 AgathasRoom_ScriptPointers:
 	def_script_pointers
 	dw_const AgathasRoomDefaultScript,              SCRIPT_AGATHASROOM_DEFAULT
-	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_AGATHASROOM_AGATHA_START_BATTLE
+	dw_const AgathasRoomStartBattleScript,          SCRIPT_AGATHASROOM_AGATHA_START_BATTLE
 	dw_const AgathasRoomAgathaEndBattleScript,      SCRIPT_AGATHASROOM_AGATHA_END_BATTLE
 	dw_const AgathasRoomPlayerIsMovingScript,       SCRIPT_AGATHASROOM_PLAYER_IS_MOVING
 	dw_const AgathasRoomNoopScript,                 SCRIPT_AGATHASROOM_NOOP
 
 AgathasRoomNoopScript:
 	ret
+
+; See LoreleisRoom.asm's LoreleisRoomStartBattleScript for the full comment
+; on why this doesn't set wGymLeaderNo or wRogueFlagsBitfield bit 0.
+AgathasRoomStartBattleScript:
+	ld d, OPP_AGATHA
+	farcall InitElite4Battle
+	jp DisplayEnemyTrainerTextAndStartBattle
 
 AgathaScriptWalkIntoRoom:
 ; Walk six steps upward.
@@ -106,16 +119,17 @@ AgathasRoomPlayerIsMovingScript:
 	ret
 
 AgathasRoomAgathaEndBattleScript:
+; The Champion room is now armed generically by Elite4PatchRoomWarps (only
+; when Agatha actually IS the last/order[3] member this run - she is no
+; longer assumed to always be 3rd), so this no longer unconditionally arms
+; it the way vanilla/pre-shuffle Red Rogue did.
 	call EndTrainerBattle
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetAgathaScript
 	ld a, TEXT_AGATHASROOM_AGATHA
 	ldh [hTextID], a
-	call DisplayTextID
-	ld a, SCRIPT_CHAMPIONSROOM_PLAYER_ENTERS
-	ld [wChampionsRoomCurScript], a
-	ret
+	jp DisplayTextID
 
 AgathasRoom_TextPointers:
 	def_text_pointers
@@ -143,7 +157,20 @@ AgathaEndBattleText:
 	text_end
 
 AgathaAfterBattleText:
+	text_asm
+	ld a, [wBattleCount]
+	cp 90
+	ld hl, .Normal
+	jr c, .print
+	ld hl, .GoToChampion
+.print
+	call PrintText
+	jp TextScriptEnd
+.Normal
 	text_far _AgathaAfterBattleText
+	text_end
+.GoToChampion
+	text_far _Elite4GoToChampionText
 	text_end
 
 AgathasRoomAgathaDontRunAwayText:

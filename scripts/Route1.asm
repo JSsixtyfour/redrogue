@@ -16,24 +16,13 @@ Route1_Script:
 	farcall rogue_pokemon_randomized_batch
 	farcall Random_Item_Selection
 	farcall RogueRefresh
-	; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this route was chosen
-	; as the mini-boss door's stage, swap the 5th trainer (object index
-	; ROUTE1_JR_TRAINER_M) in place from OPP_JR_TRAINER_M to the mini-boss
-	; class. wMapSpriteExtraData is read fresh by EngageMapTrainer at engage
-	; time (both the sight-detection and direct-talk paths call it), so
-	; patching it here - once, before the player can reach the trainer - is
-	; sufficient; no object/coordinate/graphics changes needed. Everything
-	; downstream (ReadTrainer's mini-boss hook, EndTrainerBattle's defeat-flag
-	; write) already keys off the existing trainer header/flag, so the reward
-	; unlock (ROUTE1_ALL_TRAINERS_MASK) needs no changes either.
-	farcall MiniBossCheckActivate ; a = 0 (none) or boss type; sets bit 7 if active
-	and a
-	jr z, .noMiniBoss
-	ld a, OPP_RIVAL_MINIBOSS
-	ld [wMapSpriteExtraData + (ROUTE1_JR_TRAINER_M - 1) * 2], a
-	ld a, 1 ; wTrainerNo: RivalMiniBossData currently has one team
-	ld [wMapSpriteExtraData + (ROUTE1_JR_TRAINER_M - 1) * 2 + 1], a
-	.noMiniBoss
+	; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this stage was chosen
+	; as the mini-boss door's stage, swap its 5th trainer (slot from
+	; MiniBossStageSlots) in place to the rolled boss + team. No-op otherwise.
+	; wMapSpriteExtraData is read fresh by EngageMapTrainer at engage time, and
+	; the reward unlock keys off the same EVENT_BEAT..._TRAINER_4, so nothing
+	; else needs changing.
+	farcall MiniBossApplyStageTrainer
 
     .afterSetup
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
@@ -62,7 +51,6 @@ Route1_Script:
 	ld a, [wRoute1CurScript]
 	call ExecuteCurMapScriptInTable
 	ld [wRoute1CurScript], a
-	ret
 	ret
     
 Route1ScriptWalkIntoRoom:

@@ -213,19 +213,10 @@ IF DEF(_DEBUG)
 	ld [wBattleCount], a
 
 	; Apply the Porygon rival starter, half-max money, and the battle-count-
-	; derived round state (badge count + gym/route flag). This lives in the
-	; rogue bank to keep bank1 within its size limit; it only touches WRAM, so
-	; farcall is safe.
+	; derived round state (badge count + gym/route flag), then the two forced-
+	; door prompts (door 1, door 2). This lives in the rogue bank to keep
+	; bank1 within its size limit; it only touches WRAM, so farcall is safe.
 	farcall Debug2ApplyRoundState
-
-	; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): force a mini-boss to
-	; occur on the very next lobby visit. Rides the existing "3+ non-mini-boss
-	; routes in a row" escalation guarantee in MiniBossShouldOccur - no new
-	; logic needed. Only takes effect once wBattleCount >= 10 (routes are
-	; randomized, so there's no map-specific force; pick a starting battle
-	; count of at least 10 above to see it on the first lobby visit).
-	ld a, 3
-	ld [wRoutesSinceMiniBoss], a
 .notDebug2
 	ret
 

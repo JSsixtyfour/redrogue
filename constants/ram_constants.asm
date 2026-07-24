@@ -136,6 +136,7 @@ DEF NUM_BADGES EQU const_value
 	const_def
 	const BIT_UNUSED_BEAT_ELITE_4 ; 0
 	const BIT_STARTED_ELITE_4     ; 1
+	const BIT_VICTORY_ROAD_CLEARED ; 2 - set for the rest of the run once the Victory Road Rival is beaten; gates the final-sequence Lobby doors and the permanent Indigo Plateau lobby music switch
 
 ; wMovementFlags
 	const_def

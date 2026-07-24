@@ -20,7 +20,12 @@ ViridianForest_Script:
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
-    
+
+    ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this stage was chosen
+    ; as the mini-boss door's stage, swap its 5th trainer (slot from
+    ; MiniBossStageSlots) in place to the rolled boss + team. No-op otherwise.
+    farcall MiniBossApplyStageTrainer
+
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck
@@ -226,12 +231,37 @@ ViridianForestCooltrainer_FText:
 	call TalkToTrainer
 	jp TextScriptEnd
     
+; Conditional trainer text (vanilla Cooltrainer vs Giovanni mini-boss).
+; text_asm handler: must not clobber bc (live print cursor), must return hl ->
+; the chosen text (see Route1JrTrainerMBattleText for the established pattern).
 ViridianForestCooltrainer_FBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _ViridianForestYoungster4BattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossBattleText
 	text_end
 
 ViridianForestCooltrainer_FEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _ViridianForestYoungster4EndBattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossEndBattleText
 	text_end
 
 ViridianForestCooltrainer_FAfterBattleText:

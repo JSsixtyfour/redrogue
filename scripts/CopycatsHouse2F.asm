@@ -1,4 +1,9 @@
 CopycatsHouse2F_Script:
+    CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+    farcall rogue_gift_randomized_batch
+    .afterSetup
 	jp EnableAutoTextBoxDrawing
 
 CopycatsHouse2F_TextPointers:

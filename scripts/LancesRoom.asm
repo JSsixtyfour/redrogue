@@ -9,10 +9,17 @@ LancesRoom_Script:
 	ret
 
 LanceShowOrHideEntranceBlocks:
+; Also re-patches this room's south/north warps to match this run's
+; shuffled Elite Four order (see custom_functions/final_sequence.asm) - the
+; order is randomized, so the ROM-authored (vanilla-order) warps would
+; misroute otherwise. Idempotent, safe to run every time this fires
+; (map load, and again when the entrance locks behind the player).
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
+	ld d, OPP_LANCE
+	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_LANCES_ROOM_LOCK_DOOR
 	jr nz, .closeEntrance
 	; open entrance
@@ -43,13 +50,20 @@ ResetLanceScript:
 LancesRoom_ScriptPointers:
 	def_script_pointers
 	dw_const LancesRoomDefaultScript,               SCRIPT_LANCESROOM_DEFAULT
-	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_LANCESROOM_LANCE_START_BATTLE
+	dw_const LancesRoomStartBattleScript,           SCRIPT_LANCESROOM_LANCE_START_BATTLE
 	dw_const LancesRoomLanceEndBattleScript,        SCRIPT_LANCESROOM_LANCE_END_BATTLE
 	dw_const LancesRoomPlayerIsMovingScript,        SCRIPT_LANCESROOM_PLAYER_IS_MOVING
 	dw_const LancesRoomNoopScript,                  SCRIPT_LANCESROOM_NOOP
 
 LancesRoomNoopScript:
 	ret
+
+; See LoreleisRoom.asm's LoreleisRoomStartBattleScript for the full comment
+; on why this doesn't set wGymLeaderNo or wRogueFlagsBitfield bit 0.
+LancesRoomStartBattleScript:
+	ld d, OPP_LANCE
+	farcall InitElite4Battle
+	jp DisplayEnemyTrainerTextAndStartBattle
 
 LancesRoomDefaultScript:
 	CheckEvent EVENT_BEAT_LANCE
@@ -151,7 +165,19 @@ LancesRoomLanceEndBattleText:
 	text_end
 
 LancesRoomLanceAfterBattleText:
-	text_far _LancesRoomLanceAfterBattleText
 	text_asm
 	SetEvent EVENT_BEAT_LANCE
+	ld a, [wBattleCount]
+	cp 90
+	ld hl, .Normal
+	jr c, .print
+	ld hl, .GoToChampion
+.print
+	call PrintText
 	jp TextScriptEnd
+.Normal
+	text_far _LancesRoomLanceNormalAfterBattleText
+	text_end
+.GoToChampion
+	text_far _Elite4GoToChampionText
+	text_end

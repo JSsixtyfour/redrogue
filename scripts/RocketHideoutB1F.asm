@@ -20,6 +20,13 @@ RocketHideoutB1F_Script:
     farcall Random_Item_Selection
     farcall RogueRefresh
 
+    ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): if this stage was chosen
+    ; as the mini-boss door's stage, swap its 5th trainer (slot from
+    ; MiniBossStageSlots) in place to the rolled boss + team (Giovanni here, via
+    ; TEAM_RANDOM_3_SET -> random 1-of-3). No-op otherwise; sprite swapped
+    ; separately by MiniBossPatchStageSprite; reward unlock unchanged.
+    farcall MiniBossApplyStageTrainer
+
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck
@@ -150,14 +157,37 @@ RocketHideoutB1FRocket5Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
+; Conditional trainer text (vanilla grunt vs Giovanni mini-boss). Runs as a
+; text_asm handler inside TextCommandProcessor: must NOT clobber bc (the live
+; print cursor) and must RETURN hl -> the chosen text, per the established
+; pattern (see Route1JrTrainerMBattleText). text_far's "return" is a plain
+; sequential fallthrough to the next physical bytes (TextCommand_FAR just
+; `call`s TextCommandProcessor on the far pointer), so each branch needs its
+; own copy of the SetEvent+prompt tail rather than a shared label.
 RocketHideoutB1FRocket5EndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _RocketHideoutB1FRocket5EndBattleText
 	text_asm
 	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
-	ld hl, .prompt_end
+	ld hl, .prompt_end1
 	ret
-
-.prompt_end:
+.prompt_end1
+	text_promptbutton
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossEndBattleText
+	text_asm
+	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
+	ld hl, .prompt_end2
+	ret
+.prompt_end2
 	text_promptbutton
 	text_end
 
@@ -210,7 +240,18 @@ RocketHideoutB1FRocket4AfterBattleText:
 	text_end
 
 RocketHideoutB1FRocket5BattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Vanilla
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.Vanilla
 	text_far _RocketHideoutB1FRocket5BattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossBattleText
 	text_end
 
 RocketHideoutB1FRocket5AfterBattleText:

@@ -9,11 +9,17 @@ BrunosRoom_Script:
 	ret
 
 BrunoShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
+; Blocks or clears the exit to the next room. Also re-patches this room's
+; south/north warps to match this run's shuffled Elite Four order (see
+; custom_functions/final_sequence.asm) - the order is randomized, so the
+; ROM-authored (vanilla-order) warps would misroute otherwise. Idempotent,
+; safe to run on every map load, including backtracking.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
+	ld d, OPP_BRUNO
+	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_BEAT_BRUNOS_ROOM_TRAINER_0
 	jr z, .blockExitToNextRoom
 	ld a, $5
@@ -33,13 +39,20 @@ ResetBrunoScript:
 BrunosRoom_ScriptPointers:
 	def_script_pointers
 	dw_const BrunosRoomDefaultScript,               SCRIPT_BRUNOSROOM_DEFAULT
-	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_BRUNOSROOM_BRUNO_START_BATTLE
+	dw_const BrunosRoomStartBattleScript,           SCRIPT_BRUNOSROOM_BRUNO_START_BATTLE
 	dw_const BrunosRoomBrunoEndBattleScript,        SCRIPT_BRUNOSROOM_BRUNO_END_BATTLE
 	dw_const BrunosRoomPlayerIsMovingScript,        SCRIPT_BRUNOSROOM_PLAYER_IS_MOVING
 	dw_const BrunosRoomNoopScript,                  SCRIPT_BRUNOSROOM_NOOP
 
 BrunosRoomNoopScript:
 	ret
+
+; See LoreleisRoom.asm's LoreleisRoomStartBattleScript for the full comment
+; on why this doesn't set wGymLeaderNo or wRogueFlagsBitfield bit 0.
+BrunosRoomStartBattleScript:
+	ld d, OPP_BRUNO
+	farcall InitElite4Battle
+	jp DisplayEnemyTrainerTextAndStartBattle
 
 BrunoScriptWalkIntoRoom:
 ; Walk six steps upward.
@@ -140,7 +153,20 @@ BrunoEndBattleText:
 	text_end
 
 BrunoAfterBattleText:
+	text_asm
+	ld a, [wBattleCount]
+	cp 90
+	ld hl, .Normal
+	jr c, .print
+	ld hl, .GoToChampion
+.print
+	call PrintText
+	jp TextScriptEnd
+.Normal
 	text_far _BrunoAfterBattleText
+	text_end
+.GoToChampion
+	text_far _Elite4GoToChampionText
 	text_end
 
 BrunosRoomBrunoDontRunAwayText:
