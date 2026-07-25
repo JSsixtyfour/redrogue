@@ -2,23 +2,44 @@
 ;
 ; Procedural facility generator for PROCEDURAL_FACILITY ($F3).
 ;
-; Almost identical in structure to procedural_forest_gen.asm, but:
-;   - Rooms/Dungeon layout ONLY (no maze-algo rotation, no river).
-;   - FACILITY tileset uses DIRECTIONAL walls (top/left/right/bottom + corners),
-;     so after carving we run PFacAutotilePass (an 8-neighbour classifier) to
-;     turn every wall cell into the correct directional block.
-;   - The player area is FLOOR-based: PFacFillWalls seeds the working buffer with
-;     a wall SENTINEL (PFAC_WALL=46), the maze carves floor (14), and the
-;     autotiler replaces EVERY sentinel cell with either a directional wall or
-;     floor. No 46 survives inside the player area (46 = border/void only).
+; Room-tree generator (ground-up redesign, see Red Rogue Files/
+; 1-i-need-you-foamy-otter.md): 12 fixed-role rooms (0=entry, 1-4=item rooms,
+; 5-10=explore, 11=exit) placed as a parent tree (each room's parent has a
+; smaller id), stamped as floor, joined by direct-manhattan corridors toward
+; each room's parent, enclosed in the FACILITY tileset's directional 9-slice
+; wall (top/left/right/bottom + 4 corners), then converted down to real block
+; IDs. The green/red palette roll is purely cosmetic now - it no longer
+; branches generation.
+;
+; Buffer model: PFacFillUntouched seeds the whole 20x20 player area with the
+; PFAC_UNTOUCHED sentinel ($FF, "nothing has touched this cell yet"). Rooms
+; are stamped PFAC_ROOMFLOOR ($F0) and corridors PFAC_CORRIDOR ($FE) - both
+; pseudo values distinct from every real block ID - so later passes can tell
+; "claimed floor" apart from "never touched" without ambiguity. Two final
+; sweeps convert the pseudo values down to real IDs: pseudo-floors -> PFAC_FLOOR
+; (14), remaining untouched cells -> PFAC_WALL (46, the same block as the map
+; border/void).
 ;
 ; SRAM: uses its own sProcFacility* fields (see ram/sram.asm). sProcFacilityBaked
 ; controls fast re-entry. Reuses the cave's boss/wild/item engine + PC_* events
 ; (never concurrent), exactly like the forest.
 ;
-; Steps 5+6 scope: generation core + autotiler + bake/blit. Boss placement,
-; item placement, and exit-warp patching are added in step 7; the overworld
-; preload/finalize hooks in step 8.
+; Room data model: 12 records (see PFAC_ROOM_STRIDE/PFAC_ROOM_MAX below) live in
+; sProcFacilityGenScratch, one per room id, in id order - array index IS the
+; room id (0=entry, 1-4=items, 5-10=explore, 11=exit; role is derived from the
+; index, never stored). An explore room (5-10) that fails to place after retries
+; is NOT omitted from the array - its slot is written with W=0 as a "not placed"
+; sentinel, so every other id keeps its fixed slot. wPFacRoomCount therefore
+; always ends at PFAC_ROOM_MAX (12) once placement finishes; consumers (stamp,
+; enclose, corridors) must skip any record whose W is 0. Item rooms (ids 1-4)
+; are guaranteed placed (rule e) so PFacPlaceItems addresses them directly by id
+; with no scan needed.
+;
+; Pipeline order (PFacGenerateFacility): fill untouched -> place entry(0)/exit(11)
+; /middle(1-10) rooms -> assign exit parent -> stamp room floors -> carve
+; corridors (rooms 11..1 -> parent) + entry corridor -> enclose rooms in
+; directional walls -> punch the north exit opening -> convert pseudo floors ->
+; convert untouched -> place items. v1 ships a NORTH exit only.
 
 SECTION "ProceduralFacilityGen", ROMX
 
@@ -26,16 +47,22 @@ DEF PFAC_SIZE    EQU 20
 DEF PFAC_STRIDE  EQU 26
 DEF PFAC_BASE    EQU 81
 
-DEF PFAC_CELL_W  EQU 9
-DEF PFAC_CELL_H  EQU 9
-
 DEF PFAC_FLOOR   EQU 14   ; facility floor block (all-$01, passable)
-DEF PFAC_WALL    EQU 46   ; generation-time wall sentinel + map border/void block.
-                          ; Never survives inside the player area: the autotiler
-                          ; converts every one to a directional wall or floor.
-DEF PFAC_PENDING EQU 255  ; autotile "will become floor" sentinel (cascade-safe,
-                          ; same idea as cave's PC_BLOCK_PENDING_FLOOR). Converted
-                          ; to real floor in the autotiler's second pass.
+DEF PFAC_WALL    EQU 46   ; solid interior wall AND the map border/void block.
+
+; --- Generation-time pseudo values (never written to the final map) ---
+DEF PFAC_UNTOUCHED EQU $FF   ; PFacFillUntouched's seed value: "nothing has
+                             ; claimed this cell yet". Converted to PFAC_WALL
+                             ; by PFacConvertUntouched once generation is done.
+DEF PFAC_CORRIDOR  EQU $FE   ; a corridor cell (PFacCarveCorridors/
+                             ; PFacCarveEntryCorridor). Converted to PFAC_FLOOR
+                             ; by PFacConvertPseudoFloors.
+DEF PFAC_ROOMFLOOR EQU $F0   ; a room-interior floor cell (PFacStampRoomFloors).
+                             ; Single value this pass; a decor follow-up can
+                             ; widen this to $F0-$F3 keyed off the room's Type
+                             ; field without touching the structural pipeline.
+                             ; Converted to PFAC_FLOOR by
+                             ; PFacConvertPseudoFloors.
 
 ; --- Directional wall 9-slice (block IDs pinned from facility.bst / user) ---
 ; Straight walls, named by which side the open floor is on:
@@ -49,73 +76,77 @@ DEF PFAC_C_TR     EQU 66  ; solid top-right, floor SW  (floor to S and W)
 DEF PFAC_C_BL     EQU 72  ; solid bottom-left,  floor NE (floor to N and E)
 DEF PFAC_C_BR     EQU 74  ; solid bottom-right, floor NW (floor to N and W)
 
-; Item placement spacing (step 7) - kept here for parity with forest/cave.
-DEF PFAC_ITEM_MIN_DIST EQU 2
-DEF PFAC_MAX_DEADENDS  EQU 80  ; candidate cap = all 9x9 cells (fits the 81-byte scratch)
+; --- Room record model (sProcFacilityGenScratch, 81 bytes: 12*6 = 72 used) ---
+; Record layout (6 bytes, read/written positionally via PFacRoomRecordAddr):
+;   +0 X      floor-rect top-left block col
+;   +1 Y      floor-rect top-left block row
+;   +2 W      floor-rect width in blocks (0 = unplaced slot, see header note)
+;   +3 H      floor-rect height in blocks
+;   +4 Parent parent room id (PFAC_ROOM_NONE for room 0, which has no parent)
+;   +5 Type   decor category 0-3 (rolled now, used by a later decor pass)
+DEF PFAC_ROOM_STRIDE EQU 6
+DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
+DEF PFAC_ROOM_NONE   EQU $FF  ; Parent sentinel for room 0
 
 ; wBuffer scratch offsets. Facility never runs concurrently with cave/cemetery/
-; forest generation, so it reuses the same wBuffer window they use.
+; forest generation, so it reuses the same 30-byte wBuffer window they use
+; (ram/wram.asm: wBuffer:: ds 30 - offsets 0-29 are the entire budget).
 DEF wPFacTargetBaseLo EQU 0
 DEF wPFacTargetBaseHi EQU 1
 DEF wPFacCurX         EQU 2   ; block-space X for PFacWriteBlock/PFacReadBlock
 DEF wPFacCurY         EQU 3   ; block-space Y
-; Rooms/HuntAndKill scratch (mirror forest's offsets exactly).
-DEF wPFacRoomCol      EQU 4
-DEF wPFacRoomRow      EQU 5
-DEF wPFacRoomW        EQU 6
-DEF wPFacRoomH        EQU 7
-DEF wPFacCellCol      EQU 8
-DEF wPFacCellRow      EQU 9
-DEF wPFacNeighborCnt  EQU 10
-DEF wPFacNeighbors    EQU 11  ; 4 bytes: packed neighbor list (col | row<<4)
-DEF wPFacNCol         EQU 15
-DEF wPFacNRow         EQU 16
-DEF wPFacRoomCount    EQU 25  ; survives the PFacHuntAndKill call between
-                              ; PFacPlaceRooms and PFacConnectRooms
-DEF wPFacRoomTries    EQU 26
-DEF wPFacRoomIdx      EQU 27
-DEF wPFacScanColLo    EQU 27  ; alias (PFacPlaceRooms, dead before PFacConnectRooms)
-DEF wPFacDoorCount    EQU 28
-DEF wPFacScanColHi    EQU 28  ; alias
-DEF wPFacSideBound    EQU 29
-DEF wPFacScanRowHi    EQU 29  ; alias
-; Autotile scratch (runs after all generation, so offsets 4-7 are dead here).
-DEF wPFacLoopX        EQU 4
-DEF wPFacLoopY        EQU 5
-DEF wPFacDX           EQU 6   ; classify: saved cell X
-DEF wPFacDY           EQU 7   ; classify: saved cell Y
-DEF wPFacFlags        EQU 18  ; classify: orthogonal floor mask (N1 S2 E4 W8)
-DEF wPFacDiag         EQU 19  ; classify: diagonal floor mask (NE1 NW2 SE4 SW8)
 
-; Item-scan scratch (PFacScanForBall). Runs BEFORE the autotile pass, so it
-; freely reuses the same numeric offsets the forest's PFScanForBall uses.
-DEF wPFacRowJ         EQU 4   ; scan row
-DEF wPFacBraidCol     EQU 19  ; scan col (dead before autotile's wPFacDiag reuse)
-DEF wPFacPassCount    EQU 18  ; passage count for current cell
-DEF wPFacCandCount    EQU 5   ; dead-end candidate count
-DEF wPFacSpaceRetry   EQU 6
-DEF wPFacItemRetry    EQU 7
-DEF wPFacAcceptedXY   EQU 10  ; 8 bytes (10-17): 4x(blockX,blockY)
-DEF wPFacBallIdx      EQU 20
-DEF wPFacItemTemp     EQU 21  ; 4 bytes (21-24): rolled item IDs
-; Dead-end prune scratch (runs after connect, before the item scan/autotile).
-DEF wPFacPruneRow     EQU 4
-DEF wPFacPruneCol     EQU 5
-DEF wPFacPruneChanged EQU 6
-; Grid generator scratch (PowerPlant path; alternative to the dungeon path).
-DEF wPFacGridRows     EQU 4
-DEF wPFacGridCols     EQU 5
-DEF wPFacGridR        EQU 6
-DEF wPFacGridC        EQU 7
-DEF wPFacGridX0       EQU 8
-DEF wPFacGridX1       EQU 9
-DEF wPFacGridY0       EQU 10
-DEF wPFacGridY1       EQU 11
+; Room count persists across the WHOLE pipeline (placement through item
+; placement), so it gets a fixed offset outside the per-phase reuse window
+; below. Always ends at PFAC_ROOM_MAX once placement finishes (see header note
+; on the W=0 "unplaced slot" sentinel).
+DEF wPFacRoomCount    EQU 25
+
+; --- Per-phase scratch (offsets 4-24). Phases never run concurrently (mirrors
+; the cave/forest/cemetery convention), so each phase freely reuses this same
+; numeric range under its own names. Room-placement and corridor-carving
+; (pending, see header note) may reuse 4-24 too, as long as they don't touch
+; offset 25 (wPFacRoomCount) or write invalid room records. ---
+
+; PFacStampRoomFloors / PFacEncloseRooms / PFacPlaceItems:
+DEF wPFacRmIdx        EQU 4   ; room loop index (Stamp/Enclose)
+DEF wPFacRmX          EQU 5   ; loaded room record: X
+DEF wPFacRmY          EQU 6   ; loaded room record: Y
+DEF wPFacRmW          EQU 7   ; loaded room record: W
+DEF wPFacRmH          EQU 8   ; loaded room record: H
+DEF wPFacRmCounter    EQU 9   ; inner row/col loop counter (Stamp/Enclose)
+DEF wPFacBallIdx      EQU 10  ; PFacPlaceItems: item-room loop index (0-3)
+DEF wPFacItemRetry    EQU 11  ; PFacPlaceItems: item-dedup retry counter
+DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
+                              ; existing bake step copies this to
+                              ; sProcFacilityBallItems by name, unchanged.
+
+; Room-placement phase (PFacPlaceEntryRoom/PFacPlaceExitRoom/PFacPlaceMiddleRooms
+; and their helpers). Reuses 4-15; must not touch 25 (wPFacRoomCount).
+DEF wPFacPlaceId      EQU 4   ; id of the room being placed / init loop var
+DEF wPFacCandX        EQU 5   ; candidate room rect
+DEF wPFacCandY        EQU 6
+DEF wPFacCandW        EQU 7
+DEF wPFacCandH        EQU 8
+DEF wPFacParent       EQU 9   ; chosen parent id for the candidate
+DEF wPFacRetry        EQU 10  ; placement retry counter
+DEF wPFacScanId       EQU 11  ; overlap/parent/exit scan index
+DEF wPFacBX           EQU 12  ; scanned room B rect (overlap test) / exit-parent temps
+DEF wPFacBY           EQU 13
+DEF wPFacBW           EQU 14
+DEF wPFacBH           EQU 15
+; Corridor phase (PFacCarveCorridors/PFacCarveEntryCorridor). Same 4-8 window,
+; different names (placement is finished by the time corridors run).
+DEF wPFacCorId        EQU 4   ; source room whose corridor we're carving
+DEF wPFacCorTX        EQU 5   ; target center X
+DEF wPFacCorTY        EQU 6   ; target center Y
+DEF wPFacCorExited    EQU 7   ; 0 until the walk leaves the source room's floor
+DEF wPFacCorStop      EQU 8   ; set when contact with another room/corridor stops it
 
 ; ============================================================
-; PFacRowOffsetTable / PFacWriteBlock / PFacReadBlock / PFacPickFloor
-; Direct ports of the forest primitives (PFRowOffsetTable etc.). Duplicated
-; in-bank because a cross-bank call to the forest copies is a silent landmine.
+; PFacRowOffsetTable / PFacWriteBlock / PFacReadBlock / PFacPickFloor /
+; PFacRoomRecordAddr
+; Shared primitives used by every generation phase.
 ; ============================================================
 PFacRowOffsetTable:
     FOR pfac_row, PFAC_SIZE
@@ -185,27 +216,41 @@ PFacReadBlock:
     ret
 
 ; OUTPUT: a = floor block. Facility ships a single floor block (14). Kept as a
-; function so the ported carve code calls it identically to the forest's
+; function so ported/future carve code can call it identically to the forest's
 ; PFPickFloor (a floor-variety table can be added here later).
 PFacPickFloor:
     ld a, PFAC_FLOOR
     ret
 
+; INPUT: a = room id (0..PFAC_ROOM_MAX-1). OUTPUT: hl = address of that room's
+; 6-byte record in sProcFacilityGenScratch. Clobbers de.
+PFacRoomRecordAddr:
+    ld h, 0
+    ld l, a
+    add hl, hl      ; hl = id*2
+    ld d, h
+    ld e, l         ; de = id*2
+    add hl, hl      ; hl = id*4
+    add hl, de      ; hl = id*4 + id*2 = id*6
+    ld de, sProcFacilityGenScratch
+    add hl, de
+    ret
+
 ; ============================================================
-; PFacFillWalls
-; Seed the whole 20x20 player area with PFAC_WALL so the carve algorithm has
-; walls to open paths through. The .blk's floor fill is only a placeholder;
-; this always overwrites it. Border padding (already PFAC_WALL from the object
-; file's border block) is untouched.
+; PFacFillUntouched
+; Seed the whole 20x20 player area with PFAC_UNTOUCHED so every later pass can
+; tell "nothing has claimed this cell yet" from real content. The .blk's floor
+; fill is only a placeholder; this always overwrites it. Border padding
+; (already PFAC_WALL from the object file's border block) is untouched.
 ; ============================================================
-PFacFillWalls:
+PFacFillUntouched:
     ld hl, wOverworldMap + PFAC_BASE
     ld b, PFAC_SIZE
 .rowLoop
     push bc
     ld c, PFAC_SIZE
 .colLoop
-    ld a, PFAC_WALL
+    ld a, PFAC_UNTOUCHED
     ld [hli], a
     dec c
     jr nz, .colLoop
@@ -221,1746 +266,394 @@ PFacFillWalls:
     ret
 
 ; ============================================================
-; PFacCheckUnvisited
-; INPUT: B=neighbor row (0-8), C=neighbor col (0-8).
-; If cell (C,B) is unvisited (still PFAC_WALL), appends packed (C|B<<4) to
-; wPFacNeighbors and increments wPFacNeighborCnt. Preserves B, C.
-; (Forest's river guard is dropped - facility has no river.)
+; PFacStampRoomFloors
+; Fills every registered room's floor rect with PFAC_ROOMFLOOR ($F0). Rooms are
+; read from sProcFacilityGenScratch (populated by PFacPlaceEntryRoom/
+; PFacPlaceExitRoom/PFacPlaceMiddleRooms). A W=0 record (an explore room that
+; failed to place) is skipped. Runs after all placement, before corridors, so
+; PFacCarveCorridors can test "is this cell already room floor".
 ; ============================================================
-PFacCheckUnvisited:
-    ld a, c
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, b
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock        ; A = block; BC preserved
-    cp PFAC_WALL
-    ret nz                    ; already visited (floor)
-    ld a, [wBuffer + wPFacNeighborCnt]
-    ld e, a
-    inc a
-    ld [wBuffer + wPFacNeighborCnt], a
-    ld a, b
-    swap a
-    or c
-    ld d, 0
-    ld hl, wBuffer + wPFacNeighbors
-    add hl, de
-    ld [hl], a
-    ret
-
-; ============================================================
-; PFacCarveToNeighbor
-; Pick a random entry from wPFacNeighbors, carve the wall between the current
-; cell (wPFacCellCol/Row) and the neighbor, carve the neighbor cell, then make
-; the neighbor current. Requires wPFacNeighborCnt > 0.
-; ============================================================
-PFacCarveToNeighbor:
-    ld a, [wBuffer + wPFacNeighborCnt]
-    ld c, a
-    call Rangerandom
-    ld e, a
-    ld d, 0
-    ld hl, wBuffer + wPFacNeighbors
-    add hl, de
-    ld a, [hl]
-    ld b, a
-    and $0F
-    ld [wBuffer + wPFacNCol], a
-    ld a, b
-    swap a
-    and $0F
-    ld [wBuffer + wPFacNRow], a
-
-    ; Carve wall block: (curCol+nCol+1, curRow+nRow+1)
-    ld a, [wBuffer + wPFacCellCol]
-    ld b, a
-    ld a, [wBuffer + wPFacNCol]
-    add a, b
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacCellRow]
-    ld b, a
-    ld a, [wBuffer + wPFacNRow]
-    add a, b
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacPickFloor
-    call PFacWriteBlock
-
-    ; Carve neighbor cell: (2*nCol+1, 2*nRow+1)
-    ld a, [wBuffer + wPFacNCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacNRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacPickFloor
-    call PFacWriteBlock
-
-    ld a, [wBuffer + wPFacNCol]
-    ld [wBuffer + wPFacCellCol], a
-    ld a, [wBuffer + wPFacNRow]
-    ld [wBuffer + wPFacCellRow], a
-    ret
-
-; ============================================================
-; PFacHuntAndKill
-; Random walk from the entrance cell (4,8), carving unvisited neighbors; when
-; stuck, scan for a visited cell with an unvisited neighbor and resume. Treats
-; already-carved room cells as visited, so it fills corridor around rooms.
-; Visited = block != PFAC_WALL.
-; ============================================================
-PFacHuntAndKill:
-    ld a, 4
-    ld [wBuffer + wPFacCellCol], a
-    ld a, 8
-    ld [wBuffer + wPFacCellRow], a
-    ld a, 9
-    ld [wBuffer + wPFacCurX], a
-    ld a, 17
-    ld [wBuffer + wPFacCurY], a
-    call PFacPickFloor
-    call PFacWriteBlock
-
-.walk
+PFacStampRoomFloors:
     xor a
-    ld [wBuffer + wPFacNeighborCnt], a
-    ld a, [wBuffer + wPFacCellRow]
-    ld b, a
-    ld a, [wBuffer + wPFacCellCol]
-    ld c, a
-    ld a, b
-    and a
-    jr z, .skipN
-    dec b
-    call PFacCheckUnvisited
-    inc b
-.skipN
-    ld a, b
-    cp 8
-    jr nc, .skipS
-    inc b
-    call PFacCheckUnvisited
-    dec b
-.skipS
-    ld a, c
-    and a
-    jr z, .skipW
-    dec c
-    call PFacCheckUnvisited
-    inc c
-.skipW
-    ld a, c
-    cp 8
-    jr nc, .skipE
-    inc c
-    call PFacCheckUnvisited
-    dec c
-.skipE
-    ld a, [wBuffer + wPFacNeighborCnt]
-    and a
-    jr z, .hunt
-    call PFacCarveToNeighbor
-    jp .walk
-
-.hunt
-    xor a
-    ld [wBuffer + wPFacCellRow], a
-.huntRow
-    xor a
-    ld [wBuffer + wPFacCellCol], a
-.huntCol
-    ld a, [wBuffer + wPFacCellCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacCellRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .huntNext         ; unvisited: skip
-
-    xor a
-    ld [wBuffer + wPFacNeighborCnt], a
-    ld a, [wBuffer + wPFacCellRow]
-    ld b, a
-    ld a, [wBuffer + wPFacCellCol]
-    ld c, a
-    ld a, b
-    and a
-    jr z, .hSkipN
-    dec b
-    call PFacCheckUnvisited
-    inc b
-.hSkipN
-    ld a, b
-    cp 8
-    jr nc, .hSkipS
-    inc b
-    call PFacCheckUnvisited
-    dec b
-.hSkipS
-    ld a, c
-    and a
-    jr z, .hSkipW
-    dec c
-    call PFacCheckUnvisited
-    inc c
-.hSkipW
-    ld a, c
-    cp 8
-    jr nc, .hSkipE
-    inc c
-    call PFacCheckUnvisited
-    dec c
-.hSkipE
-    ld a, [wBuffer + wPFacNeighborCnt]
-    and a
-    jr nz, .huntFound
-
-.huntNext
-    ld a, [wBuffer + wPFacCellCol]
-    inc a
-    ld [wBuffer + wPFacCellCol], a
-    cp 9
-    jr c, .huntCol
-    ld a, [wBuffer + wPFacCellRow]
-    inc a
-    ld [wBuffer + wPFacCellRow], a
-    cp 9
-    jr c, .huntRow
-    ret
-
-.huntFound
-    call PFacCarveToNeighbor
-    jp .walk
-
-; ============================================================
-; PFacPlaceRooms
-; Places up to 8 candidate rectangular rooms (2-3 cells per side) into the
-; all-wall map BEFORE PFacHuntAndKill runs. Accepted rooms stored as
-; (col,row,w,h) - 4 bytes each - in sProcFacilityGenScratch, count in
-; wPFacRoomCount. (Direct port of PFPlaceRooms with PF_TREE -> PFAC_WALL.)
-; ============================================================
-PFacPlaceRooms:
-    xor a
-    ld [wBuffer + wPFacRoomCount], a
-    ld [wBuffer + wPFacRoomTries], a
-
-.tryLoop
-    ld a, [wBuffer + wPFacRoomTries]
-    cp 8
-    ret nc
-
-    ld c, PFAC_CELL_W
-    call Rangerandom
-    ld [wBuffer + wPFacRoomCol], a
-    ld c, PFAC_CELL_H
-    call Rangerandom
-    ld [wBuffer + wPFacRoomRow], a
-    ld c, 3
-    call Rangerandom
-    add a, 2                        ; width 2-4 cells (bigger vaults, fewer fit)
-    ld [wBuffer + wPFacRoomW], a
-    ld c, 3
-    call Rangerandom
-    add a, 2                        ; height 2-4 cells
-    ld [wBuffer + wPFacRoomH], a
-
-    ; Clip: col+w > 9 or row+h > 9 -> reject
-    ld a, [wBuffer + wPFacRoomCol]
-    ld b, a
-    ld a, [wBuffer + wPFacRoomW]
-    add a, b
-    cp PFAC_CELL_W + 1
-    jp nc, .nextTry
-    ld a, [wBuffer + wPFacRoomRow]
-    ld b, a
-    ld a, [wBuffer + wPFacRoomH]
-    add a, b
-    cp PFAC_CELL_H + 1
-    jp nc, .nextTry
-
-    ; Overlap check: scan the rect expanded by a 1-cell margin (clamped);
-    ; reject if any cell centre is already floor.
-    ld a, [wBuffer + wPFacRoomCol]
-    and a
-    jr z, .colLoZero
-    dec a
-    jr .colLoDone
-.colLoZero
-    xor a
-.colLoDone
-    ld [wBuffer + wPFacScanColLo], a
-
-    ld a, [wBuffer + wPFacRoomCol]
-    ld b, a
-    ld a, [wBuffer + wPFacRoomW]
-    add a, b
-    cp PFAC_CELL_W
-    jr c, .colHiDone
-    ld a, PFAC_CELL_W - 1
-.colHiDone
-    ld [wBuffer + wPFacScanColHi], a
-
-    ld a, [wBuffer + wPFacRoomRow]
-    and a
-    jr z, .rowLoZero
-    dec a
-    jr .rowLoDone
-.rowLoZero
-    xor a
-.rowLoDone
-    ld b, a
-
-    ld a, [wBuffer + wPFacRoomRow]
-    ld c, a
-    ld a, [wBuffer + wPFacRoomH]
-    add a, c
-    cp PFAC_CELL_H
-    jr c, .rowHiDone
-    ld a, PFAC_CELL_H - 1
-.rowHiDone
-    push af
-.scanRowLoop
-    pop af
-    push af
-    ld c, a
-    ld a, [wBuffer + wPFacScanColLo]
-    ld d, a
-    ld e, d
-
-.scanColLoop
-    ld a, e
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, b
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    push bc
-    push de
-    call PFacReadBlock
-    pop de
-    pop bc
-    cp PFAC_WALL
-    jp nz, .rejectPopAF       ; already floor -> overlap
-
-    ld a, [wBuffer + wPFacScanColHi]
-    cp e
-    jr z, .scanColDone
-    inc e
-    jr .scanColLoop
-.scanColDone
-    ld a, c
-    cp b
-    jr z, .scanRowDone
-    inc b
-    jr .scanRowLoop
-.scanRowDone
-    pop af
-
-    ; Accepted: carve the whole room block span to floor.
-    ld a, [wBuffer + wPFacRoomW]
-    add a, a
-    dec a
-    ld [wBuffer + wPFacScanColHi], a   ; colCount = 2*w-1
-    ld a, [wBuffer + wPFacRoomH]
-    add a, a
-    dec a
-    ld [wBuffer + wPFacScanRowHi], a   ; rowCount = 2*h-1
-
-    ld a, [wBuffer + wPFacRoomRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-
-.carveRowLoop
-    ld a, [wBuffer + wPFacRoomCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-
-    ld a, [wBuffer + wPFacScanColHi]
-    ld b, a
-.carveColLoop
-    call PFacPickFloor
-    call PFacWriteBlock
-    ld a, [wBuffer + wPFacCurX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    dec b
-    jr nz, .carveColLoop
-
-    ld a, [wBuffer + wPFacCurY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacScanRowHi]
-    dec a
-    ld [wBuffer + wPFacScanRowHi], a
-    jr nz, .carveRowLoop
-
-    ; Append accepted room to sProcFacilityGenScratch[count*4..+3]
-    ld a, [wBuffer + wPFacRoomCount]
-    add a, a
-    add a, a
-    ld e, a
-    ld d, 0
-    ld hl, sProcFacilityGenScratch
-    add hl, de
-    ld a, [wBuffer + wPFacRoomCol]
-    ld [hli], a
-    ld a, [wBuffer + wPFacRoomRow]
-    ld [hli], a
-    ld a, [wBuffer + wPFacRoomW]
-    ld [hli], a
-    ld a, [wBuffer + wPFacRoomH]
-    ld [hl], a
-
-    ld a, [wBuffer + wPFacRoomCount]
-    inc a
-    ld [wBuffer + wPFacRoomCount], a
-    jr .nextTry
-
-.rejectPopAF
-    pop af
-
-.nextTry
-    ld a, [wBuffer + wPFacRoomTries]
-    inc a
-    ld [wBuffer + wPFacRoomTries], a
-    jp .tryLoop
-
-; ============================================================
-; PFacConnectRooms
-; For each stored room, carve 1-2 doorways through the wall between the room
-; and a bordering corridor cell, one pass per side. (Direct port of
-; PFConnectRooms.)
-; ============================================================
-PFacConnectRooms:
-    xor a
-    ld [wBuffer + wPFacRoomIdx], a
-
+    ld [wBuffer + wPFacRmIdx], a
 .roomLoop
-    ld a, [wBuffer + wPFacRoomIdx]
+    ld a, [wBuffer + wPFacRmIdx]
     ld hl, wBuffer + wPFacRoomCount
     cp [hl]
     ret nc
 
-    ld a, [wBuffer + wPFacRoomIdx]
-    add a, a
-    add a, a
-    ld e, a
-    ld d, 0
-    ld hl, sProcFacilityGenScratch
-    add hl, de
+    ld a, [wBuffer + wPFacRmIdx]
+    call PFacRoomRecordAddr
     ld a, [hli]
-    ld [wBuffer + wPFacRoomCol], a
+    ld [wBuffer + wPFacRmX], a
     ld a, [hli]
-    ld [wBuffer + wPFacRoomRow], a
+    ld [wBuffer + wPFacRmY], a
     ld a, [hli]
-    ld [wBuffer + wPFacRoomW], a
+    ld [wBuffer + wPFacRmW], a
     ld a, [hl]
-    ld [wBuffer + wPFacRoomH], a
+    ld [wBuffer + wPFacRmH], a
 
-    xor a
-    ld [wBuffer + wPFacDoorCount], a
-
-    ; --- North side (row > 0) ---
-    ld a, [wBuffer + wPFacRoomRow]
+    ld a, [wBuffer + wPFacRmW]
     and a
-    jr z, .noNorth
-    ld a, [wBuffer + wPFacDoorCount]
-    cp 2
-    jr nc, .noNorth
+    jr z, .roomNext            ; unplaced slot, skip
 
-    ld a, [wBuffer + wPFacRoomCol]
-    ld b, a
-    ld c, a
-    ld a, [wBuffer + wPFacRoomW]
-    dec a
-    add a, c
-    ld [wBuffer + wPFacSideBound], a
-
-.northLoop
-    ld a, b
-    add a, a
-    inc a
+    ld a, [wBuffer + wPFacRmY]
+    ld [wBuffer + wPFacCurY], a
+.rowLoop
+    ld a, [wBuffer + wPFacRmX]
     ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacRoomRow]
-    add a, a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr nz, .northNext
-
-    ld a, [wBuffer + wPFacCurY]
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .northNext
-
-    ld a, [wBuffer + wPFacCurY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacPickFloor
+    ld a, [wBuffer + wPFacRmW]
+    ld [wBuffer + wPFacRmCounter], a
+.colLoop
+    ld a, PFAC_ROOMFLOOR
     call PFacWriteBlock
-    ld a, [wBuffer + wPFacDoorCount]
-    inc a
-    ld [wBuffer + wPFacDoorCount], a
-    cp 2
-    jr nc, .noNorth
-
-.northNext
-    ld a, [wBuffer + wPFacSideBound]
-    cp b
-    jr z, .noNorth
-    inc b
-    jr .northLoop
-.noNorth
-
-    ; --- South side (row+h < 9) ---
-    ld a, [wBuffer + wPFacRoomRow]
-    ld c, a
-    ld a, [wBuffer + wPFacRoomH]
-    add a, c
-    cp PFAC_CELL_H
-    jr nc, .noSouth
-    ld a, [wBuffer + wPFacDoorCount]
-    cp 2
-    jr nc, .noSouth
-
-    ld a, [wBuffer + wPFacRoomCol]
-    ld b, a
-    ld c, a
-    ld a, [wBuffer + wPFacRoomW]
-    dec a
-    add a, c
-    ld [wBuffer + wPFacSideBound], a
-
-.southLoop
-    ld a, b
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacRoomRow]
-    ld c, a
-    ld a, [wBuffer + wPFacRoomH]
-    add a, c
-    add a, a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr nz, .southNext
-
-    ld a, [wBuffer + wPFacCurY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .southNext
-
-    ld a, [wBuffer + wPFacCurY]
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    call PFacPickFloor
-    call PFacWriteBlock
-    ld a, [wBuffer + wPFacDoorCount]
-    inc a
-    ld [wBuffer + wPFacDoorCount], a
-    cp 2
-    jr nc, .noSouth
-
-.southNext
-    ld a, [wBuffer + wPFacSideBound]
-    cp b
-    jr z, .noSouth
-    inc b
-    jr .southLoop
-.noSouth
-
-    ; --- West side (col > 0) ---
-    ld a, [wBuffer + wPFacRoomCol]
-    and a
-    jr z, .noWest
-    ld a, [wBuffer + wPFacDoorCount]
-    cp 2
-    jr nc, .noWest
-
-    ld a, [wBuffer + wPFacRoomRow]
-    ld b, a
-    ld c, a
-    ld a, [wBuffer + wPFacRoomH]
-    dec a
-    add a, c
-    ld [wBuffer + wPFacSideBound], a
-
-.westLoop
-    ld a, b
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacRoomCol]
-    add a, a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr nz, .westNext
-
-    ld a, [wBuffer + wPFacCurX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .westNext
-
     ld a, [wBuffer + wPFacCurX]
     inc a
     ld [wBuffer + wPFacCurX], a
-    call PFacPickFloor
-    call PFacWriteBlock
-    ld a, [wBuffer + wPFacDoorCount]
-    inc a
-    ld [wBuffer + wPFacDoorCount], a
-    cp 2
-    jr nc, .noWest
-
-.westNext
-    ld a, [wBuffer + wPFacSideBound]
-    cp b
-    jr z, .noWest
-    inc b
-    jr .westLoop
-.noWest
-
-    ; --- East side (col+w < 9) ---
-    ld a, [wBuffer + wPFacRoomCol]
-    ld c, a
-    ld a, [wBuffer + wPFacRoomW]
-    add a, c
-    cp PFAC_CELL_W
-    jr nc, .noEast
-    ld a, [wBuffer + wPFacDoorCount]
-    cp 2
-    jr nc, .noEast
-
-    ld a, [wBuffer + wPFacRoomRow]
-    ld b, a
-    ld c, a
-    ld a, [wBuffer + wPFacRoomH]
+    ld a, [wBuffer + wPFacRmCounter]
     dec a
-    add a, c
-    ld [wBuffer + wPFacSideBound], a
+    ld [wBuffer + wPFacRmCounter], a
+    jr nz, .colLoop
 
-.eastLoop
-    ld a, b
-    add a, a
+    ld a, [wBuffer + wPFacRmY]
+    ld b, a
+    ld a, [wBuffer + wPFacRmH]
+    add a, b                    ; a = Y + H (exclusive row bound)
+    ld c, a
+    ld a, [wBuffer + wPFacCurY]
     inc a
     ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacRoomCol]
-    ld c, a
-    ld a, [wBuffer + wPFacRoomW]
-    add a, c
-    add a, a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr nz, .eastNext
+    cp c
+    jr c, .rowLoop
 
-    ld a, [wBuffer + wPFacCurX]
+.roomNext
+    ld a, [wBuffer + wPFacRmIdx]
     inc a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .eastNext
-
-    ld a, [wBuffer + wPFacCurX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    call PFacPickFloor
-    call PFacWriteBlock
-    ld a, [wBuffer + wPFacDoorCount]
-    inc a
-    ld [wBuffer + wPFacDoorCount], a
-    cp 2
-    jr nc, .noEast
-
-.eastNext
-    ld a, [wBuffer + wPFacSideBound]
-    cp b
-    jr z, .noEast
-    inc b
-    jr .eastLoop
-.noEast
-
-    ld a, [wBuffer + wPFacRoomIdx]
-    inc a
-    ld [wBuffer + wPFacRoomIdx], a
+    ld [wBuffer + wPFacRmIdx], a
     jp .roomLoop
 
 ; ============================================================
-; PFacGenerateRoomsDungeon
-; Rooms/Dungeon layout: place rooms, fill the rest with corridor, connect.
+; PFacEncloseRooms
+; For every registered room (W=0 slots skipped), draws the directional 9-slice
+; wall ring on the cells immediately outside its floor rect (X-1..X+W,
+; Y-1..Y+H). A ring cell already PFAC_CORRIDOR or PFAC_ROOMFLOOR (a doorway
+; carved by PFacCarveCorridors/PFacCarveEntryCorridor, or another room's floor)
+; is left untouched - that's how doorways survive. Everything else in the ring
+; becomes a straight wall (65/68/70/73) or corner post (64/66/72/74). Relies on
+; every placed room's floor rect staying within blocks 1..18 (guaranteed by
+; PFacPlaceEntryRoom/PFacPlaceExitRoom/PFacPlaceMiddleRooms), so the ring never
+; leaves the 20x20 player area.
 ; ============================================================
-PFacGenerateRoomsDungeon:
-    call PFacPlaceRooms
-    call PFacCarveEntranceRoom     ; guaranteed room at the spawn so prune can't
-                                   ; isolate the entrance (a multi-cell room is
-                                   ; never a dead end and stays connected)
-    call PFacHuntAndKill
-    call PFacConnectRooms
-    call PFacPruneDeadEnds
-    ret
-
-; ============================================================
-; PFacCarveEntranceRoom
-; Carve a small floor room (blocks 7..9 x 15..17 = cells col 3-4, row 7-8)
-; around the fixed entrance cell (4,8) = block (9,17), and register it in
-; sProcFacilityGenScratch's room list (col=3,row=7,w=2,h=2) exactly like a
-; PFacPlaceRooms room, so PFacConnectRooms treats it identically and
-; guarantees it a doorway. Without this registration the entrance was floor
-; but had NO guaranteed connection - HuntAndKill's initial walk step only
-; carves outward opportunistically, so the entrance could end up fully
-; walled off with no path out (confirmed bug: "trapped, no connection to
-; the room I spawned in").
-; ============================================================
-PFacCarveEntranceRoom:
-    ld a, 15
-    ld [wBuffer + wPFacCurY], a
-.rowLoop
-    ld a, 7
-    ld [wBuffer + wPFacCurX], a
-.colLoop
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-    ld a, [wBuffer + wPFacCurX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    cp 10
-    jr c, .colLoop
-    ld a, [wBuffer + wPFacCurY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    cp 18
-    jr c, .rowLoop
-
-    ; Register as room (col=3, row=7, w=2, h=2) so PFacConnectRooms guarantees
-    ; it a doorway, same append format as PFacPlaceRooms uses.
-    ld a, [wBuffer + wPFacRoomCount]
-    add a, a
-    add a, a
-    ld e, a
-    ld d, 0
-    ld hl, sProcFacilityGenScratch
-    add hl, de
-    ld a, 3
-    ld [hli], a                 ; col
-    ld a, 7
-    ld [hli], a                 ; row
-    ld a, 2
-    ld [hli], a                 ; w
-    ld a, 2
-    ld [hl], a                  ; h
-    ld a, [wBuffer + wPFacRoomCount]
-    inc a
-    ld [wBuffer + wPFacRoomCount], a
-    ret
-
-; ============================================================
-; PFacPruneDeadEnds  (hauberk's dead-end removal)
-; Iteratively refill dead-end corridor cells - floor cells with exactly ONE
-; open passage - back to solid wall, until a full sweep changes nothing. Rooms
-; and through-corridors have >=2 passages so they survive; only stub corridors
-; vanish, leaving rooms + minimal connecting corridors in a solid-wall field.
-; Runs on the 9x9 cell grid BEFORE autotiling (walls are still PFAC_WALL/floor).
-; The entrance/exit are re-carved afterward in PFacFinalize, so no cell needs
-; protection here.
-; ============================================================
-PFacPruneDeadEnds:
-.sweep
+PFacEncloseRooms:
     xor a
-    ld [wBuffer + wPFacPruneChanged], a
-    ld [wBuffer + wPFacPruneRow], a
-.rowLoop
-    xor a
-    ld [wBuffer + wPFacPruneCol], a
-.colLoop
-    ; Is this cell floor?
-    ld a, [wBuffer + wPFacPruneCol]
-    ld [wBuffer + wPFacCellCol], a
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    ld [wBuffer + wPFacCellRow], a
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .next
-
-    ; Count open passages around it (wPFacCellCol/Row already set).
-    xor a
-    ld [wBuffer + wPFacPassCount], a
-    ld a, [wBuffer + wPFacPruneRow]
-    and a
-    jr z, .pNoN
-    dec a
-    ld b, a
-    ld a, [wBuffer + wPFacPruneCol]
-    ld c, a
-    call PFacScanWallPassOnly
-.pNoN
-    ld a, [wBuffer + wPFacPruneRow]
-    cp 8
-    jr nc, .pNoS
-    inc a
-    ld b, a
-    ld a, [wBuffer + wPFacPruneCol]
-    ld c, a
-    call PFacScanWallPassOnly
-.pNoS
-    ld a, [wBuffer + wPFacPruneCol]
-    and a
-    jr z, .pNoW
-    ld a, [wBuffer + wPFacPruneRow]
-    ld b, a
-    ld a, [wBuffer + wPFacPruneCol]
-    dec a
-    ld c, a
-    call PFacScanWallPassOnly
-.pNoW
-    ld a, [wBuffer + wPFacPruneCol]
-    cp 8
-    jr nc, .pNoE
-    ld a, [wBuffer + wPFacPruneRow]
-    ld b, a
-    ld a, [wBuffer + wPFacPruneCol]
-    inc a
-    ld c, a
-    call PFacScanWallPassOnly
-.pNoE
-    ld a, [wBuffer + wPFacPassCount]
-    cp 1
-    jr nz, .next                ; not a dead end
-    call PFacUncarveDeadEnd
-    ld a, 1
-    ld [wBuffer + wPFacPruneChanged], a
-
-.next
-    ld a, [wBuffer + wPFacPruneCol]
-    inc a
-    ld [wBuffer + wPFacPruneCol], a
-    cp PFAC_CELL_W
-    jr c, .colLoop
-    ld a, [wBuffer + wPFacPruneRow]
-    inc a
-    ld [wBuffer + wPFacPruneRow], a
-    cp PFAC_CELL_H
-    jp c, .rowLoop
-    ld a, [wBuffer + wPFacPruneChanged]
-    and a
-    jp nz, .sweep
-    ret
-
-; ============================================================
-; PFacUncarveDeadEnd
-; Refill the current prune cell (wPFacPruneCol/Row) AND its single open passage
-; wall back to PFAC_WALL. Called only when the cell has exactly 1 passage, so
-; exactly one of the 4 walls is floor; the others are already wall.
-; ============================================================
-PFacUncarveDeadEnd:
-    ld a, [wBuffer + wPFacPruneCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_WALL
-    call PFacWriteBlock
-
-    ; North wall (2col+1, 2row)
-    ld a, [wBuffer + wPFacPruneRow]
-    and a
-    jr z, .noN
-    ld a, [wBuffer + wPFacPruneCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    add a, a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .noN
-    ld a, PFAC_WALL
-    call PFacWriteBlock
-.noN
-    ; South wall (2col+1, 2row+2)
-    ld a, [wBuffer + wPFacPruneRow]
-    cp 8
-    jr nc, .noS
-    ld a, [wBuffer + wPFacPruneCol]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    add a, a
-    add a, 2
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .noS
-    ld a, PFAC_WALL
-    call PFacWriteBlock
-.noS
-    ; West wall (2col, 2row+1)
-    ld a, [wBuffer + wPFacPruneCol]
-    and a
-    jr z, .noW
-    ld a, [wBuffer + wPFacPruneCol]
-    add a, a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .noW
-    ld a, PFAC_WALL
-    call PFacWriteBlock
-.noW
-    ; East wall (2col+2, 2row+1)
-    ld a, [wBuffer + wPFacPruneCol]
-    cp 8
-    jr nc, .noE
-    ld a, [wBuffer + wPFacPruneCol]
-    add a, a
-    add a, 2
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacPruneRow]
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr z, .noE
-    ld a, PFAC_WALL
-    call PFacWriteBlock
-.noE
-    ret
-
-; ============================================================
-; PFacGenerateGrid  (PowerPlant / green path)
-; Partition the 1..18 interior into a coarse rows x cols grid (each 2 or 3) of
-; big rectangular rooms separated by a 1-block solid-wall band, and punch one
-; 1-block doorway between each spanning-tree-adjacent room pair. No maze, no
-; prune - the space between rooms is left as solid wall (46). Connectivity is
-; guaranteed by construction (grid graph, spanning tree of doorways).
-; ============================================================
-PFacGenerateGrid:
-    ld c, 2
-    call Rangerandom
-    add a, 2                        ; 2 or 3 rows
-    ld [wBuffer + wPFacGridRows], a
-    ld c, 2
-    call Rangerandom
-    add a, 2                        ; 2 or 3 cols
-    ld [wBuffer + wPFacGridCols], a
-
-    ; Fill every grid room with floor.
-    xor a
-    ld [wBuffer + wPFacGridR], a
-.fillRowLoop
-    xor a
-    ld [wBuffer + wPFacGridC], a
-.fillColLoop
-    call PFacFillGridRoom
-    ld a, [wBuffer + wPFacGridC]
-    inc a
-    ld [wBuffer + wPFacGridC], a
-    ld hl, wBuffer + wPFacGridCols
-    cp [hl]
-    jr c, .fillColLoop
-    ld a, [wBuffer + wPFacGridR]
-    inc a
-    ld [wBuffer + wPFacGridR], a
-    ld hl, wBuffer + wPFacGridRows
-    cp [hl]
-    jr c, .fillRowLoop
-
-    ; Horizontal doorways: within each row, connect col c to col c-1.
-    xor a
-    ld [wBuffer + wPFacGridR], a
-.hRowLoop
-    ld a, 1
-    ld [wBuffer + wPFacGridC], a
-.hColLoop
-    ld a, [wBuffer + wPFacGridC]
-    ld hl, wBuffer + wPFacGridCols
-    cp [hl]
-    jr nc, .hRowNext
-    call PFacPunchHDoor
-    ld a, [wBuffer + wPFacGridC]
-    inc a
-    ld [wBuffer + wPFacGridC], a
-    jr .hColLoop
-.hRowNext
-    ld a, [wBuffer + wPFacGridR]
-    inc a
-    ld [wBuffer + wPFacGridR], a
-    ld hl, wBuffer + wPFacGridRows
-    cp [hl]
-    jr c, .hRowLoop
-
-    ; Vertical doorways: down column 0, connect row r to row r-1.
-    ld a, 1
-    ld [wBuffer + wPFacGridR], a
-.vRowLoop
-    ld a, [wBuffer + wPFacGridR]
-    ld hl, wBuffer + wPFacGridRows
+    ld [wBuffer + wPFacRmIdx], a
+.roomLoop
+    ld a, [wBuffer + wPFacRmIdx]
+    ld hl, wBuffer + wPFacRoomCount
     cp [hl]
     ret nc
-    call PFacPunchVDoor
-    ld a, [wBuffer + wPFacGridR]
-    inc a
-    ld [wBuffer + wPFacGridR], a
-    jr .vRowLoop
 
-; INPUT: b = nDim (2 or 3), c = index (0..nDim-1)
-; OUTPUT: d = room start block, e = room end block (inclusive)
-PFacGridBounds:
-    ld a, b
-    cp 2
-    jr z, .use2
-    ld hl, PFacGridBounds3
-    jr .index
-.use2
-    ld hl, PFacGridBounds2
-.index
-    ld a, c
-    add a, a                        ; index*2
-    add a, l
-    ld l, a
-    jr nc, .noCarry
-    inc h
-.noCarry
+    ld a, [wBuffer + wPFacRmIdx]
+    call PFacRoomRecordAddr
     ld a, [hli]
-    ld d, a
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
     ld a, [hl]
-    ld e, a
-    ret
+    ld [wBuffer + wPFacRmH], a
 
-; (start,end) block ranges per room; a 1-block wall sits in the gaps (9; 6,12).
-PFacGridBounds2: db 1, 8, 10, 18
-PFacGridBounds3: db 1, 5, 7, 11, 13, 18
+    ld a, [wBuffer + wPFacRmW]
+    and a
+    jp z, .roomNext            ; unplaced slot, skip
 
-; Fill room (wPFacGridR, wPFacGridC) with floor.
-PFacFillGridRoom:
-    ld a, [wBuffer + wPFacGridCols]
-    ld b, a
-    ld a, [wBuffer + wPFacGridC]
-    ld c, a
-    call PFacGridBounds             ; d=x0, e=x1
-    ld a, d
-    ld [wBuffer + wPFacGridX0], a
-    ld a, e
-    ld [wBuffer + wPFacGridX1], a
-    ld a, [wBuffer + wPFacGridRows]
-    ld b, a
-    ld a, [wBuffer + wPFacGridR]
-    ld c, a
-    call PFacGridBounds             ; d=y0, e=y1
-    ld a, d
-    ld [wBuffer + wPFacGridY0], a
-    ld a, e
-    ld [wBuffer + wPFacGridY1], a
-
-    ld a, [wBuffer + wPFacGridY0]
+    ; --- Top edge (row Y-1, cols X..X+W-1): PFAC_W_TOP ---
+    ld a, [wBuffer + wPFacRmY]
+    dec a
     ld [wBuffer + wPFacCurY], a
-.rowF
-    ld a, [wBuffer + wPFacGridX0]
+    ld a, [wBuffer + wPFacRmX]
     ld [wBuffer + wPFacCurX], a
-.colF
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
+    ld a, [wBuffer + wPFacRmW]
+    ld [wBuffer + wPFacRmCounter], a
+.topLoop
+    ld a, PFAC_W_TOP
+    call PFacRingWrite
     ld a, [wBuffer + wPFacCurX]
-    ld hl, wBuffer + wPFacGridX1
-    cp [hl]
-    jr z, .colDone
     inc a
     ld [wBuffer + wPFacCurX], a
-    jr .colF
-.colDone
-    ld a, [wBuffer + wPFacCurY]
-    ld hl, wBuffer + wPFacGridY1
-    cp [hl]
-    ret z
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    jr .rowF
+    ld a, [wBuffer + wPFacRmCounter]
+    dec a
+    ld [wBuffer + wPFacRmCounter], a
+    jr nz, .topLoop
 
-; Punch a doorway between room (gridR, gridC-1) and (gridR, gridC): a single
-; floor block in the wall column just left of room gridC, at a random row in
-; room gridR's Y range.
-PFacPunchHDoor:
-    ld a, [wBuffer + wPFacGridCols]
+    ; --- Bottom edge (row Y+H, cols X..X+W-1): PFAC_W_BOTTOM ---
+    ld a, [wBuffer + wPFacRmY]
     ld b, a
-    ld a, [wBuffer + wPFacGridC]
-    ld c, a
-    call PFacGridBounds             ; d = startX[gridC]
-    ld a, d
-    dec a
-    ld [wBuffer + wPFacCurX], a      ; wall column = startX - 1
-    ld a, [wBuffer + wPFacGridRows]
-    ld b, a
-    ld a, [wBuffer + wPFacGridR]
-    ld c, a
-    call PFacGridBounds             ; d=startY, e=endY
-    ld a, e
-    sub d
-    inc a
-    ld c, a                          ; count = endY-startY+1
-    push de
-    call Rangerandom                 ; a = 0..count-1
-    pop de
-    add a, d                         ; row = startY + offset
-    ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-    ret
-
-; Punch a doorway between room (gridR-1, 0) and (gridR, 0): a single floor block
-; in the wall row just above room gridR, at a random col in room col 0's X range.
-PFacPunchVDoor:
-    ld a, [wBuffer + wPFacGridRows]
-    ld b, a
-    ld a, [wBuffer + wPFacGridR]
-    ld c, a
-    call PFacGridBounds             ; d = startY[gridR]
-    ld a, d
-    dec a
-    ld [wBuffer + wPFacCurY], a      ; wall row = startY - 1
-    ld a, [wBuffer + wPFacGridCols]
-    ld b, a
-    ld c, 0
-    call PFacGridBounds             ; d=startX[0], e=endX[0]
-    ld a, e
-    sub d
-    inc a
-    ld c, a
-    push de
-    call Rangerandom
-    pop de
-    add a, d
-    ld [wBuffer + wPFacCurX], a
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-    ret
-
-; ============================================================
-; PFacCarveExit  (both generators)
-; Pick an exit block column whose row-1 block is ALREADY floor (a room/corridor
-; that reaches the top), then carve only the top-edge opening at (exitX, 0).
-; (exitX, 1) is already floor, so the exit joins the connected room network
-; without tunnelling through - and never destroys a wall column. Since all
-; surviving floor is one connected component, the exit always connects to the
-; entrance. Stores exitX in sProcFacilityExitI. Runs BEFORE autotile.
-; ============================================================
-PFacCarveExit:
-    ld a, 24
-    ld [wBuffer + wPFacGridR], a     ; rejection-sample retry budget
-.tryCol
-    ld c, 18
-    call Rangerandom                ; 0..17
-    inc a                           ; candidate exitX 1..18
-    ld [wBuffer + wPFacGridC], a
-    ld [wBuffer + wPFacCurX], a
-    ld a, 1
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr z, .found
-    ld a, [wBuffer + wPFacGridR]
-    dec a
-    ld [wBuffer + wPFacGridR], a
-    jr nz, .tryCol
-    ; Fallback: first floor column found scanning row 1 left to right.
-    ld a, 1
-    ld [wBuffer + wPFacGridC], a
-.scanFallback
-    ld a, [wBuffer + wPFacGridC]
-    ld [wBuffer + wPFacCurX], a
-    ld a, 1
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr z, .found
-    ld a, [wBuffer + wPFacGridC]
-    inc a
-    ld [wBuffer + wPFacGridC], a
-    cp 19
-    jr c, .scanFallback
-    ld a, 9                          ; ultimate fallback (shouldn't happen)
-    ld [wBuffer + wPFacGridC], a
-.found
-    ld a, [wBuffer + wPFacGridC]
-    ld [sProcFacilityExitI], a
-    ld [wBuffer + wPFacCurX], a
-    xor a
-    ld [wBuffer + wPFacCurY], a      ; opening at (exitX, 0)
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-    ret
-
-; ============================================================
-; PFacClassifyWall  (step 6)
-; INPUT: wPFacCurX/Y = a wall-sentinel cell to classify.
-; OUTPUT: a = the block to write there:
-;   - a directional wall/corner (straight edge or a corner) if the cell borders
-;     floor in a shape a half-height wall can represent;
-;   - PFAC_PENDING if the cell should dissolve into floor (3+ orthogonal floor
-;     sides, or floor on two opposite sides - no half-wall represents that, so
-;     merge, same reasoning as the cave's peninsula rule);
-;   - PFAC_WALL unchanged if no nearby floor gives it a meaning (handled by the
-;     second pass, which floors it).
-; Floor test is `== PFAC_FLOOR` so already-classified walls/pending sentinels
-; written earlier in the same pass are NOT mistaken for floor (cascade-safe).
-; wPFacCurX/Y restored before returning. Clobbers wPFacDX/DY/Flags/Diag, b, c.
-; ============================================================
-PFacClassifyWall:
-    ld a, [wBuffer + wPFacCurX]
-    ld [wBuffer + wPFacDX], a
-    ld a, [wBuffer + wPFacCurY]
-    ld [wBuffer + wPFacDY], a
-    xor a
-    ld [wBuffer + wPFacFlags], a
-
-    ; north (y-1)
-    ld a, [wBuffer + wPFacDY]
-    and a
-    jr z, .skN
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .skN
-    ld a, [wBuffer + wPFacFlags]
-    or 1
-    ld [wBuffer + wPFacFlags], a
-.skN
-    ; south (y+1)
-    ld a, [wBuffer + wPFacDY]
-    cp PFAC_SIZE - 1
-    jr z, .skS
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .skS
-    ld a, [wBuffer + wPFacFlags]
-    or 2
-    ld [wBuffer + wPFacFlags], a
-.skS
-    ; east (x+1)
-    ld a, [wBuffer + wPFacDX]
-    cp PFAC_SIZE - 1
-    jr z, .skE
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .skE
-    ld a, [wBuffer + wPFacFlags]
-    or 4
-    ld [wBuffer + wPFacFlags], a
-.skE
-    ; west (x-1)
-    ld a, [wBuffer + wPFacDX]
-    and a
-    jr z, .skW
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .skW
-    ld a, [wBuffer + wPFacFlags]
-    or 8
-    ld [wBuffer + wPFacFlags], a
-.skW
-    ; restore cell coords (used by the caller's write, and by diagonal reads)
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-
-    ld a, [wBuffer + wPFacFlags]
-    ld b, a                     ; b = ortho mask
-
-    ; count set bits -> c
-    ld c, 0
-    bit 0, b
-    jr z, .cN
-    inc c
-.cN
-    bit 1, b
-    jr z, .cS
-    inc c
-.cS
-    bit 2, b
-    jr z, .cE
-    inc c
-.cE
-    bit 3, b
-    jr z, .cW
-    inc c
-.cW
-    ld a, c
-    cp 3
-    jr nc, .dissolve            ; 3 or 4 floor sides -> merge to floor (peninsula)
-
-    ; Floor on two OPPOSITE sides = a solid 1-block wall between two rooms /
-    ; parallel corridors. A half-height directional block can only face ONE
-    ; side, so it can't represent this - keep it SOLID (block 46). This is the
-    ; hauberk/PowerPlant model: space between rooms/corridors stays solid wall.
-    ld a, b
-    cp %0011                    ; north+south
-    jr z, .keepSolid
-    cp %1100                    ; east+west
-    jr z, .keepSolid
-
-    ld a, c
-    cp 2
-    jr z, .twoAdj
-    and a
-    jr z, .zeroOrtho
-
-    ; exactly one orthogonal floor side -> straight wall
-    bit 0, b
-    jr z, .not1N
-    ld a, PFAC_W_BOTTOM         ; floor N
-    ret
-.not1N
-    bit 1, b
-    jr z, .not1S
-    ld a, PFAC_W_TOP            ; floor S
-    ret
-.not1S
-    bit 2, b
-    jr z, .not1E
-    ld a, PFAC_W_LEFT          ; floor E
-    ret
-.not1E
-    ld a, PFAC_W_RIGHT         ; floor W
-    ret
-
-.twoAdj
-    ld a, b
-    cp %0101                    ; N+E
-    jr nz, .notNE
-    ld a, PFAC_C_BL             ; floor NE
-    ret
-.notNE
-    cp %1001                    ; N+W
-    jr nz, .notNW
-    ld a, PFAC_C_BR             ; floor NW
-    ret
-.notNW
-    cp %0110                    ; S+E
-    jr nz, .notSE
-    ld a, PFAC_C_TL             ; floor SE
-    ret
-.notSE
-    ld a, PFAC_C_TR             ; S+W -> floor SW
-    ret
-
-.dissolve
-    ld a, PFAC_PENDING
-    ret
-
-.keepSolid
-    ld a, PFAC_WALL             ; stays solid interior wall (46)
-    ret
-
-.zeroOrtho
-    ; No orthogonal floor. A room's outer corner post has floor only diagonally;
-    ; give it the matching corner block. Any other diagonal pattern is left for
-    ; the second pass to floor.
-    xor a
-    ld [wBuffer + wPFacDiag], a
-    ; NE (x+1, y-1)
-    ld a, [wBuffer + wPFacDX]
-    cp PFAC_SIZE - 1
-    jr z, .dSkNE
-    ld a, [wBuffer + wPFacDY]
-    and a
-    jr z, .dSkNE
-    ld a, [wBuffer + wPFacDX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .dSkNE
-    ld a, [wBuffer + wPFacDiag]
-    or 1
-    ld [wBuffer + wPFacDiag], a
-.dSkNE
-    ; NW (x-1, y-1)
-    ld a, [wBuffer + wPFacDX]
-    and a
-    jr z, .dSkNW
-    ld a, [wBuffer + wPFacDY]
-    and a
-    jr z, .dSkNW
-    ld a, [wBuffer + wPFacDX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .dSkNW
-    ld a, [wBuffer + wPFacDiag]
-    or 2
-    ld [wBuffer + wPFacDiag], a
-.dSkNW
-    ; SE (x+1, y+1)
-    ld a, [wBuffer + wPFacDX]
-    cp PFAC_SIZE - 1
-    jr z, .dSkSE
-    ld a, [wBuffer + wPFacDY]
-    cp PFAC_SIZE - 1
-    jr z, .dSkSE
-    ld a, [wBuffer + wPFacDX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .dSkSE
-    ld a, [wBuffer + wPFacDiag]
-    or 4
-    ld [wBuffer + wPFacDiag], a
-.dSkSE
-    ; SW (x-1, y+1)
-    ld a, [wBuffer + wPFacDX]
-    and a
-    jr z, .dSkSW
-    ld a, [wBuffer + wPFacDY]
-    cp PFAC_SIZE - 1
-    jr z, .dSkSW
-    ld a, [wBuffer + wPFacDX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .dSkSW
-    ld a, [wBuffer + wPFacDiag]
-    or 8
-    ld [wBuffer + wPFacDiag], a
-.dSkSW
-    ; restore cell coords
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-
-    ld a, [wBuffer + wPFacDiag]
-    cp 4                        ; only SE
-    jr nz, .notDSE
-    ld a, PFAC_C_TL
-    ret
-.notDSE
-    cp 8                        ; only SW
-    jr nz, .notDSW
-    ld a, PFAC_C_TR
-    ret
-.notDSW
-    cp 1                        ; only NE
-    jr nz, .notDNE
-    ld a, PFAC_C_BL
-    ret
-.notDNE
-    cp 2                        ; only NW
-    jr nz, .notDNW
-    ld a, PFAC_C_BR
-    ret
-.notDNW
-    ld a, PFAC_WALL             ; nothing meaningful -> leave for pass 2
-    ret
-
-; ============================================================
-; PFacAutotilePass  (step 6)
-; Pass 1: classify every wall-sentinel cell into a directional wall (or a
-; PENDING/leave marker). Pass 2: convert only PENDING -> floor; leftover
-; PFAC_WALL (46) STAYS as the solid interior wall (hauberk/PowerPlant model -
-; the space between rooms/corridors is solid, same block as the map border).
-; ============================================================
-PFacAutotilePass:
-    ; --- Pass 1 ---
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.p1Y
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.p1X
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_WALL
-    jr nz, .p1Next
-    call PFacClassifyWall       ; a = result; wPFacCurX/Y still = this cell
-    call PFacWriteBlock
-.p1Next
-    ld a, [wBuffer + wPFacLoopX]
-    inc a
-    ld [wBuffer + wPFacLoopX], a
-    cp PFAC_SIZE
-    jr nz, .p1X
-    ld a, [wBuffer + wPFacLoopY]
-    inc a
-    ld [wBuffer + wPFacLoopY], a
-    cp PFAC_SIZE
-    jr nz, .p1Y
-
-    ; --- Pass 2 ---
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.p2Y
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.p2X
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_PENDING
-    jr nz, .p2Next             ; leftover PFAC_WALL (46) stays SOLID interior wall
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-.p2Next
-    ld a, [wBuffer + wPFacLoopX]
-    inc a
-    ld [wBuffer + wPFacLoopX], a
-    cp PFAC_SIZE
-    jr nz, .p2X
-    ld a, [wBuffer + wPFacLoopY]
-    inc a
-    ld [wBuffer + wPFacLoopY], a
-    cp PFAC_SIZE
-    jr nz, .p2Y
-    ret
-
-; ============================================================
-; PFacAbs - a = |a| (two's complement). Port of PFAbs.
-; ============================================================
-PFacAbs:
-    bit 7, a
-    ret z
-    cpl
-    inc a
-    ret
-
-; ============================================================
-; PFacScanWallPassOnly
-; Counts a passage if the wall between the current cell (wPFacCellCol/Row) and
-; neighbor (B=row, C=col) is carved (floor, i.e. != PFAC_WALL). Preserves B, C.
-; MUST run before the autotile pass, while walls are still the sentinel.
-; ============================================================
-PFacScanWallPassOnly:
-    push bc
-    ld a, [wBuffer + wPFacCellCol]
-    add a, c
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacCellRow]
+    ld a, [wBuffer + wPFacRmH]
     add a, b
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacRmX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmW]
+    ld [wBuffer + wPFacRmCounter], a
+.bottomLoop
+    ld a, PFAC_W_BOTTOM
+    call PFacRingWrite
+    ld a, [wBuffer + wPFacCurX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmCounter]
+    dec a
+    ld [wBuffer + wPFacRmCounter], a
+    jr nz, .bottomLoop
+
+    ; --- Left edge (col X-1, rows Y..Y+H-1): PFAC_W_LEFT ---
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacRmH]
+    ld [wBuffer + wPFacRmCounter], a
+.leftLoop
+    ld a, PFAC_W_LEFT
+    call PFacRingWrite
+    ld a, [wBuffer + wPFacCurY]
     inc a
     ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    pop bc
-    cp PFAC_WALL
-    ret z                   ; wall = no passage
-    ld a, [wBuffer + wPFacPassCount]
+    ld a, [wBuffer + wPFacRmCounter]
+    dec a
+    ld [wBuffer + wPFacRmCounter], a
+    jr nz, .leftLoop
+
+    ; --- Right edge (col X+W, rows Y..Y+H-1): PFAC_W_RIGHT ---
+    ld a, [wBuffer + wPFacRmX]
+    ld b, a
+    ld a, [wBuffer + wPFacRmW]
+    add a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacRmH]
+    ld [wBuffer + wPFacRmCounter], a
+.rightLoop
+    ld a, PFAC_W_RIGHT
+    call PFacRingWrite
+    ld a, [wBuffer + wPFacCurY]
     inc a
-    ld [wBuffer + wPFacPassCount], a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacRmCounter]
+    dec a
+    ld [wBuffer + wPFacRmCounter], a
+    jr nz, .rightLoop
+
+    ; --- 4 corners ---
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_C_TL
+    call PFacRingWrite
+
+    ld a, [wBuffer + wPFacRmX]
+    ld b, a
+    ld a, [wBuffer + wPFacRmW]
+    add a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_C_TR
+    call PFacRingWrite
+
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld b, a
+    ld a, [wBuffer + wPFacRmH]
+    add a, b
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_C_BL
+    call PFacRingWrite
+
+    ld a, [wBuffer + wPFacRmX]
+    ld b, a
+    ld a, [wBuffer + wPFacRmW]
+    add a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld b, a
+    ld a, [wBuffer + wPFacRmH]
+    add a, b
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_C_BR
+    call PFacRingWrite
+
+.roomNext
+    ld a, [wBuffer + wPFacRmIdx]
+    inc a
+    ld [wBuffer + wPFacRmIdx], a
+    jp .roomLoop
+
+; Writes A (a wall/corner block) to [wPFacCurX/Y] UNLESS that cell is already
+; PFAC_CORRIDOR or PFAC_ROOMFLOOR (a doorway or another room's floor), in which
+; case it's left untouched so the doorway survives.
+PFacRingWrite:
+    push af
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    jr z, .skip
+    cp PFAC_ROOMFLOOR
+    jr z, .skip
+    pop af
+    jp PFacWriteBlock
+.skip
+    pop af
     ret
 
 ; ============================================================
-; PFacScanForBall
-; Places 4 pokeballs in distinct, well-spaced floor cells with item dedup.
-; Phase 1 collects every floor cell into sProcFacilityGenScratch; Phase 2 picks
-; 4 with Chebyshev spacing + item-ID dedup. Leaves accepted block coords in
-; sProcFacilityGenScratch[0..7] (X,Y interleaved) and rolled items in
-; wPFacItemTemp[0..3]; the bake step copies both into SRAM. Run BEFORE autotile.
+; PFacConvertPseudoFloors
+; Sweeps the full 20x20 player area, converting PFAC_ROOMFLOOR ($F0) and
+; PFAC_CORRIDOR ($FE) to the real floor block (14). Runs after PFacEncloseRooms
+; so doorway detection during enclosure still sees the pseudo values.
 ; ============================================================
-PFacScanForBall:
-    ; --- Phase 1: collect FLOOR cells as ball candidates ---
-    ; (Post-prune / grid there are no dead ends, so every room/corridor floor
-    ; cell is a candidate; Phase 2's spacing spreads the 4 balls out.)
+PFacConvertPseudoFloors:
     xor a
-    ld [wBuffer + wPFacCandCount], a
-    ld [wBuffer + wPFacRowJ], a
-
-.row
+    ld [wBuffer + wPFacCurY], a
+.rowLoop
     xor a
-    ld [wBuffer + wPFacBraidCol], a
-
-.col
-    ; read cell block (2*col+1, 2*row+1)
-    ld a, [wBuffer + wPFacBraidCol]
-    add a, a
+    ld [wBuffer + wPFacCurX], a
+.colLoop
+    call PFacReadBlock
+    cp PFAC_ROOMFLOOR
+    jr z, .toFloor
+    cp PFAC_CORRIDOR
+    jr nz, .next
+.toFloor
+    ld a, PFAC_FLOOR
+    call PFacWriteBlock
+.next
+    ld a, [wBuffer + wPFacCurX]
     inc a
     ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacRowJ]
-    add a, a
+    cp PFAC_SIZE
+    jr nz, .colLoop
+    ld a, [wBuffer + wPFacCurY]
     inc a
     ld [wBuffer + wPFacCurY], a
+    cp PFAC_SIZE
+    jr nz, .rowLoop
+    ret
+
+; ============================================================
+; PFacConvertUntouched
+; Sweeps the full 20x20 player area, converting any remaining PFAC_UNTOUCHED
+; ($FF) cell to the solid wall block PFAC_WALL (46). Directional wall/corner
+; blocks written by PFacEncloseRooms are real block IDs, not sentinels, and are
+; left untouched. Runs after PFacConvertPseudoFloors.
+; ============================================================
+PFacConvertUntouched:
+    xor a
+    ld [wBuffer + wPFacCurY], a
+.rowLoop
+    xor a
+    ld [wBuffer + wPFacCurX], a
+.colLoop
     call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .collectNext        ; only floor cells are candidates
-
-    ld a, [wBuffer + wPFacCandCount]
-    cp PFAC_MAX_DEADENDS
-    jr nc, .collectNext        ; list full
-    ld e, a
-    ld d, 0
-    ld hl, sProcFacilityGenScratch
-    add hl, de
-    ld a, [wBuffer + wPFacRowJ]
-    swap a
-    ld b, a
-    ld a, [wBuffer + wPFacBraidCol]
-    or b
-    ld [hl], a                 ; packed col | row<<4
-    ld a, [wBuffer + wPFacCandCount]
+    cp PFAC_UNTOUCHED
+    jr nz, .next
+    ld a, 14 ; experimental
+    call PFacWriteBlock
+.next
+    ld a, [wBuffer + wPFacCurX]
     inc a
-    ld [wBuffer + wPFacCandCount], a
-
-.collectNext
-    ld a, [wBuffer + wPFacBraidCol]
+    ld [wBuffer + wPFacCurX], a
+    cp PFAC_SIZE
+    jr nz, .colLoop
+    ld a, [wBuffer + wPFacCurY]
     inc a
-    ld [wBuffer + wPFacBraidCol], a
-    cp PFAC_CELL_W
-    jp nz, .col
+    ld [wBuffer + wPFacCurY], a
+    cp PFAC_SIZE
+    jr nz, .rowLoop
+    ret
 
-    ld a, [wBuffer + wPFacRowJ]
-    inc a
-    ld [wBuffer + wPFacRowJ], a
-    cp PFAC_CELL_H
-    jp nz, .row
-
-    ; --- Phase 2: pick 4 balls with spacing + item dedup ---
-    ld a, [wBuffer + wPFacCandCount]
-    and a
-    jp z, .allFallback
-
+; ============================================================
+; PFacPlaceItems
+; One pokeball per item room (fixed room ids 1-4; rule e guarantees these are
+; always placed, so no scan is needed - just address them directly). Picks a
+; random floor tile within each room's interior, rolls a unique item (dedup
+; against earlier rolls, same rejection-sampling pattern the retired
+; PFacScanForBall used), and stores block coords + item IDs into
+; sProcFacilityGenScratch[0..7] / wPFacItemTemp[0..3] - the exact contract
+; PFacFinalize's existing bake step already reads (X,Y pairs per ball, then 4
+; item IDs), so that copy-to-SRAM code needs no changes.
+; Runs AFTER PFacConvertPseudoFloors/PFacConvertUntouched (room interiors are
+; real PFAC_FLOOR by then). Room record bytes (X/Y/W/H) are never touched by
+; the stamp/enclose/convert passes, only the map buffer is, so re-reading a
+; room's record here is safe.
+; ============================================================
+PFacPlaceItems:
     xor a
     ld [wBuffer + wPFacBallIdx], a
+.ballLoop
+    ld a, [wBuffer + wPFacBallIdx]
+    inc a                        ; item room ids are 1-4 (ball index 0-3 -> id 1-4)
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    ld a, [hl]
+    ld [wBuffer + wPFacRmH], a
 
-.pickBall
-    ld a, 20
-    ld [wBuffer + wPFacSpaceRetry], a
-
-.spaceRetry
-    ld a, [wBuffer + wPFacCandCount]
+    ld a, [wBuffer + wPFacRmW]
+    and a
+    jr nz, .havePosition
+    ; Defensive fallback (should not happen - rule e guarantees item rooms
+    ; always place): default to the fixed entrance block.
+    ld a, 9
+    ld [wBuffer + wPFacRmX], a
+    ld a, 1
+    ld [wBuffer + wPFacRmW], a
+    ld a, 17
+    ld [wBuffer + wPFacRmY], a
+    ld a, 1
+    ld [wBuffer + wPFacRmH], a
+.havePosition
+    ld a, [wBuffer + wPFacRmW]
     ld c, a
-    call Rangerandom
+    call Rangerandom              ; 0..W-1
+    ld b, a
+    ld a, [wBuffer + wPFacRmX]
+    add a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmH]
+    ld c, a
+    call Rangerandom              ; 0..H-1
+    ld b, a
+    ld a, [wBuffer + wPFacRmY]
+    add a, b
+    ld [wBuffer + wPFacCurY], a
+
+    ; Save block coords -> sProcFacilityGenScratch[ballIdx*2 .. +1] (X,Y)
+    ld a, [wBuffer + wPFacBallIdx]
+    add a, a
     ld e, a
     ld d, 0
     ld hl, sProcFacilityGenScratch
-    add hl, de
-    ld a, [hl]
-    ld b, a
-    and $0F
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurX], a   ; block X = 2*col+1
-    ld a, b
-    swap a
-    and $0F
-    add a, a
-    inc a
-    ld [wBuffer + wPFacCurY], a   ; block Y = 2*row+1
-
-    ld a, [wBuffer + wPFacBallIdx]
-    and a
-    jr z, .spaceOK
-    ld b, a
-    ld hl, wBuffer + wPFacAcceptedXY
-.spaceCheckLoop
-    ld a, [wBuffer + wPFacCurX]
-    sub [hl]
-    call PFacAbs
-    ld c, a
-    inc hl
-    ld a, [wBuffer + wPFacCurY]
-    sub [hl]
-    call PFacAbs
-    inc hl
-    cp c
-    jr nc, .haveMax
-    ld a, c
-.haveMax
-    srl a                       ; block Chebyshev -> cell units
-    cp PFAC_ITEM_MIN_DIST
-    jr c, .spaceFail
-    dec b
-    jr nz, .spaceCheckLoop
-.spaceOK
-    jr .acceptPos
-.spaceFail
-    ld a, [wBuffer + wPFacSpaceRetry]
-    dec a
-    ld [wBuffer + wPFacSpaceRetry], a
-    jr nz, .spaceRetry
-.acceptPos
-    ld a, [wBuffer + wPFacBallIdx]
-    add a, a
-    ld e, a
-    ld d, 0
-    ld hl, wBuffer + wPFacAcceptedXY
     add hl, de
     ld a, [wBuffer + wPFacCurX]
     ld [hli], a
     ld a, [wBuffer + wPFacCurY]
     ld [hl], a
 
-    ; roll this ball's item, rejecting an exact duplicate of an earlier one
+    ; Roll this ball's item, rejecting an exact duplicate of an earlier one.
     ld a, 8
     ld [wBuffer + wPFacItemRetry], a
 .rollItem
@@ -2000,73 +693,711 @@ PFacScanForBall:
     inc a
     ld [wBuffer + wPFacBallIdx], a
     cp 4
-    jp nz, .pickBall
-
-    ; copy accepted (X,Y) into sProcFacilityGenScratch[0..7]
-    ld hl, wBuffer + wPFacAcceptedXY
-    ld de, sProcFacilityGenScratch
-    ld b, 8
-.copyXY
-    ld a, [hli]
-    ld [de], a
-    inc de
-    dec b
-    jr nz, .copyXY
+    jp nz, .ballLoop
     ret
 
-.allFallback
-    ; No dead ends: default every ball to the entrance block (9,17).
-    ld hl, sProcFacilityGenScratch
-    ld b, 4
-.fallbackLoop
-    ld a, 9
-    ld [hli], a
-    ld a, 17
-    ld [hli], a
-    dec b
-    jr nz, .fallbackLoop
+; ============================================================
+; PFacGenerateFacility  (top-level driver)
+; Runs the whole room-tree pipeline into wOverworldMap (already seeded with
+; PFAC_UNTOUCHED by PFacFillUntouched). On return the map holds only real block
+; IDs (14 floor, 46 wall, 64-74 directional walls) and sProcFacilityGenScratch/
+; wPFacItemTemp hold the 4 ball block-coords + item IDs for PFacFinalize to bake.
+; ============================================================
+PFacGenerateFacility:
+    call PFacInitRoomRecords
+    call PFacPlaceEntryRoom       ; room 0
+    call PFacPlaceExitRoom        ; room 11 (+ sProcFacilityExitI)
+    call PFacPlaceMiddleRooms     ; rooms 1-10 (items guaranteed, explore best-effort)
+    call PFacAssignExitParent     ; room 11's parent = nearest placed room
+    call PFacStampRoomFloors
+    call PFacCarveCorridors        ; rooms 11..1 -> parent (spanning tree to entry)
+    call PFacEncloseRooms
+    call PFacCarveNorthExitOpening
+    call PFacConvertPseudoFloors
+    call PFacConvertUntouched
+    call PFacPlaceItems
+    ret
+
+; ============================================================
+; PFacRoomCenter
+; INPUT a = room id. OUTPUT b = center block col (X + W/2), c = center row
+; (Y + H/2). Clobbers a, d, e, hl. Only valid for placed rooms.
+; ============================================================
+PFacRoomCenter:
+    call PFacRoomRecordAddr
+    ld a, [hli]                 ; X
+    ld d, a
+    ld a, [hli]                 ; Y
+    ld e, a
+    ld a, [hli]                 ; W
+    srl a
+    add a, d
+    ld b, a                     ; cx = X + W/2
+    ld a, [hl]                  ; H
+    srl a
+    add a, e
+    ld c, a                     ; cy = Y + H/2
+    ret
+
+; ============================================================
+; PFacInitRoomRecords
+; Zero the W (unplaced) byte of all 12 room slots and set wPFacRoomCount = 12.
+; ============================================================
+PFacInitRoomRecords:
     xor a
-    ld [wBuffer + wPFacBallIdx], a
-.fallbackItemLoop
-    ld a, 8
-    ld [wBuffer + wPFacItemRetry], a
-.fallbackRollItem
-    ld c, 4
-    call Rangerandom
-    ld [wRogueDoorSelection], a
-    farcall Random_Item_Selection
-    ld a, [wBuffer + wPFacBallIdx]
-    and a
-    jr z, .fallbackItemOK
-    ld b, a
-    ld hl, wBuffer + wPFacItemTemp
-    ld a, [wRogueItem]
-    ld c, a
-.fallbackDupCheck
-    ld a, [hli]
-    cp c
-    jr z, .fallbackDup
-    dec b
-    jr nz, .fallbackDupCheck
-    jr .fallbackItemOK
-.fallbackDup
-    ld a, [wBuffer + wPFacItemRetry]
-    dec a
-    ld [wBuffer + wPFacItemRetry], a
-    jr nz, .fallbackRollItem
-.fallbackItemOK
-    ld a, [wBuffer + wPFacBallIdx]
-    ld c, a
-    ld b, 0
-    ld hl, wBuffer + wPFacItemTemp
-    add hl, bc
-    ld a, [wRogueItem]
-    ld [hl], a
-    ld a, [wBuffer + wPFacBallIdx]
+    ld [wBuffer + wPFacPlaceId], a
+.loop
+    ld a, [wBuffer + wPFacPlaceId]
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    xor a
+    ld [hl], a                  ; W = 0 = unplaced
+    ld a, [wBuffer + wPFacPlaceId]
     inc a
-    ld [wBuffer + wPFacBallIdx], a
-    cp 4
-    jr nz, .fallbackItemLoop
+    ld [wBuffer + wPFacPlaceId], a
+    cp PFAC_ROOM_MAX
+    jr c, .loop
+    ld a, PFAC_ROOM_MAX
+    ld [wBuffer + wPFacRoomCount], a
+    ret
+
+; ============================================================
+; PFacStoreRoom
+; Write wPFacCand{X,Y,W,H} + wPFacParent + a freshly rolled Type into the record
+; for room wPFacPlaceId. Clobbers a, de, hl.
+; ============================================================
+PFacStoreRoom:
+    ld a, [wBuffer + wPFacPlaceId]
+    call PFacRoomRecordAddr
+    ld a, [wBuffer + wPFacCandX]
+    ld [hli], a
+    ld a, [wBuffer + wPFacCandY]
+    ld [hli], a
+    ld a, [wBuffer + wPFacCandW]
+    ld [hli], a
+    ld a, [wBuffer + wPFacCandH]
+    ld [hli], a
+    ld a, [wBuffer + wPFacParent]
+    ld [hli], a
+    call Random
+    and 3
+    ld [hl], a                  ; Type 0-3 (decor category, used by a later pass)
+    ret
+
+; ============================================================
+; PFacRollRoomDim
+; OUTPUT a = a floor dimension in [1,7] (room footprint 3-9 per side once the
+; 1-cell wall ring is added), HEAVILY biased toward small. Full max is retained
+; (7 floor = 9 footprint) but big rooms are rare: taking the minimum of two
+; independent 0-6 rolls skews the result low. Resulting floor distribution ~=
+; 1:27% 2:22% 3:18% 4:14% 5:10% 6:6% 7:2%. Clobbers a, b, c.
+; ============================================================
+PFacRollRoomDim:
+    ld c, 7
+    call Rangerandom            ; r1 = 0..6
+    push af
+    ld c, 7
+    call Rangerandom            ; r2 = 0..6 (in a)
+    pop bc                      ; b = r1
+    cp b
+    jr c, .haveMin              ; a < b -> a is the min
+    ld a, b
+.haveMin
+    inc a                       ; 1..7
+    ret
+
+; ============================================================
+; PFacPlaceEntryRoom  (room 0)
+; Small floor rect, bottom-aligned (floor bottom = row 18, wall ring at row 19),
+; positioned so the fixed spawn block (9,17) is inside it. Always succeeds.
+; ============================================================
+PFacPlaceEntryRoom:
+    xor a
+    ld [wBuffer + wPFacPlaceId], a
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandW], a  ; floor W 1-7, biased small
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandH], a  ; floor H 1-7, biased small
+    ; Y = 19 - H
+    ld a, 19
+    ld hl, wBuffer + wPFacCandH
+    sub [hl]
+    ld [wBuffer + wPFacCandY], a
+    ; X = 9 - rand(W), clamped to [1, 19-W]
+    ld a, [wBuffer + wPFacCandW]
+    ld c, a
+    call Rangerandom
+    ld b, a
+    ld a, 9
+    sub b
+    cp 1
+    jr nc, .xLowOK
+    ld a, 1
+.xLowOK
+    ld b, a
+    ld a, 19
+    ld hl, wBuffer + wPFacCandW
+    sub [hl]                     ; a = maxX = 19 - W
+    cp b
+    jr nc, .xHiOK                ; maxX >= b, keep b
+    ld b, a
+.xHiOK
+    ld a, b
+    ld [wBuffer + wPFacCandX], a
+    ld a, PFAC_ROOM_NONE
+    ld [wBuffer + wPFacParent], a
+    jp PFacStoreRoom
+
+; ============================================================
+; PFacPlaceExitRoom  (room 11, north edge)
+; Floor top at row 2 (ring at row 1, warp opening at row 0). Rolls an exit block
+; column inside the room's width -> sProcFacilityExitI. Parent set later.
+; ============================================================
+PFacPlaceExitRoom:
+    ld a, 11
+    ld [wBuffer + wPFacPlaceId], a
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandW], a
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandH], a
+    ld a, 2
+    ld [wBuffer + wPFacCandY], a
+    ; X = 1 + rand(19 - W)
+    ld a, 19
+    ld hl, wBuffer + wPFacCandW
+    sub [hl]
+    ld c, a
+    call Rangerandom
+    inc a
+    ld [wBuffer + wPFacCandX], a
+    ; exit column = X + rand(W)
+    ld a, [wBuffer + wPFacCandW]
+    ld c, a
+    call Rangerandom
+    ld hl, wBuffer + wPFacCandX
+    add a, [hl]
+    ld [sProcFacilityExitI], a
+    ld a, PFAC_ROOM_NONE
+    ld [wBuffer + wPFacParent], a
+    jp PFacStoreRoom
+
+; ============================================================
+; PFacPlaceMiddleRooms  (rooms 1-10)
+; Item rooms (1-4) are guaranteed a spot (retry hard, then a linear-scan 3x3
+; fallback). Explore rooms (5-10) are best-effort and left W=0 if they can't fit.
+; ============================================================
+PFacPlaceMiddleRooms:
+    ld a, 1
+    ld [wBuffer + wPFacPlaceId], a
+.roomLoop
+    ld a, [wBuffer + wPFacPlaceId]
+    cp 11
+    ret nc                       ; done after id 10
+    cp 5
+    jr nc, .exploreRetries
+    ld a, 40                     ; item rooms get more tries
+    jr .setRetries
+.exploreRetries
+    ld a, 16
+.setRetries
+    ld [wBuffer + wPFacRetry], a
+.attempt
+    call PFacRollCandidate        ; a=0 accept, a=1 reject
+    and a
+    jr z, .accepted
+    ld a, [wBuffer + wPFacRetry]
+    dec a
+    ld [wBuffer + wPFacRetry], a
+    jr nz, .attempt
+    ; retries exhausted
+    ld a, [wBuffer + wPFacPlaceId]
+    cp 5
+    jr nc, .roomNext             ; explore: leave unplaced (W already 0)
+    call PFacForceItemRoom        ; item room: guaranteed 3x3
+    jr .roomNext
+.accepted
+    call PFacStoreRoom
+.roomNext
+    ld a, [wBuffer + wPFacPlaceId]
+    inc a
+    ld [wBuffer + wPFacPlaceId], a
+    jp .roomLoop
+
+; Roll one placement candidate near a chosen parent. OUT a=0 accept, a=1 reject.
+PFacRollCandidate:
+    call PFacPickParent           ; -> wPFacParent (a placed id < placeId)
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandW], a
+    call PFacRollRoomDim
+    ld [wBuffer + wPFacCandH], a
+    ld a, [wBuffer + wPFacParent]
+    call PFacRoomCenter           ; b=pcx c=pcy
+    ; candidate center X = pcx + rand(-5..5), then X = centerX - W/2
+    push bc
+    ld c, 11
+    call Rangerandom
+    sub 5
+    pop bc
+    add a, b
+    ld hl, wBuffer + wPFacCandW
+    ld d, [hl]
+    srl d
+    sub d
+    ld [wBuffer + wPFacCandX], a
+    ; center Y = pcy + rand(-5..5), Y = centerY - H/2
+    push bc
+    ld c, 11
+    call Rangerandom
+    sub 5
+    pop bc
+    add a, c
+    ld hl, wBuffer + wPFacCandH
+    ld d, [hl]
+    srl d
+    sub d
+    ld [wBuffer + wPFacCandY], a
+    call PFacCandInBounds
+    and a
+    jr z, .checkOverlap
+    ld a, 1
+    ret
+.checkOverlap
+    jp PFacCandOverlaps           ; a=0 clear (accept), a=1 overlap (reject)
+
+; Pick a placed room id < placeId into wPFacParent (room 0 is always placed).
+PFacPickParent:
+    ld a, [wBuffer + wPFacPlaceId]
+    ld c, a
+    call Rangerandom              ; 0..placeId-1
+    ld [wBuffer + wPFacParent], a
+.check
+    ld a, [wBuffer + wPFacParent]
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    ld a, [hl]
+    and a
+    ret nz                        ; placed
+    ld a, [wBuffer + wPFacParent]
+    and a
+    jr z, .useZero
+    dec a
+    ld [wBuffer + wPFacParent], a
+    jr .check
+.useZero
+    xor a
+    ld [wBuffer + wPFacParent], a
+    ret
+
+; a=0 if wPFacCand rect is within blocks [1,18] with X+W<=19, Y+H<=19; else a=1.
+PFacCandInBounds:
+    ld a, [wBuffer + wPFacCandX]
+    and a
+    jr z, .bad
+    cp 19
+    jr nc, .bad
+    ld a, [wBuffer + wPFacCandY]
+    and a
+    jr z, .bad
+    cp 19
+    jr nc, .bad
+    ld a, [wBuffer + wPFacCandX]
+    ld hl, wBuffer + wPFacCandW
+    add a, [hl]
+    cp 20
+    jr nc, .bad
+    ld a, [wBuffer + wPFacCandY]
+    ld hl, wBuffer + wPFacCandH
+    add a, [hl]
+    cp 20
+    jr nc, .bad
+    xor a
+    ret
+.bad
+    ld a, 1
+    ret
+
+; a=0 if wPFacCand rect keeps >=2 gap from every placed room; a=1 on overlap.
+PFacCandOverlaps:
+    xor a
+    ld [wBuffer + wPFacScanId], a
+.loop
+    ld a, [wBuffer + wPFacScanId]
+    cp PFAC_ROOM_MAX
+    jr nc, .clear
+    ld a, [wBuffer + wPFacScanId]
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacBX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacBY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacBW], a
+    ld a, [hl]
+    ld [wBuffer + wPFacBH], a
+    ld a, [wBuffer + wPFacBW]
+    and a
+    jr z, .next                  ; unplaced, ignore
+    ; separated (>=2 gap) if any of the 4 hold; else overlap. The +1 before
+    ; each cp is deliberate: a >=1 gap lets two rooms' wall rings (each 1 cell
+    ; wide) land on the same shared cell, so whichever room's PFacEncloseRooms
+    ; pass runs later silently overwrites the other's corner/edge there. >=2
+    ; gap gives every room's ring its own dedicated cell.
+    ld a, [wBuffer + wPFacCandX]
+    ld hl, wBuffer + wPFacCandW
+    add a, [hl]
+    inc a
+    ld hl, wBuffer + wPFacBX
+    cp [hl]
+    jr c, .next                  ; candX+candW+1 < Bx
+    ld a, [wBuffer + wPFacBX]
+    ld hl, wBuffer + wPFacBW
+    add a, [hl]
+    inc a
+    ld hl, wBuffer + wPFacCandX
+    cp [hl]
+    jr c, .next                  ; Bx+Bw+1 < candX
+    ld a, [wBuffer + wPFacCandY]
+    ld hl, wBuffer + wPFacCandH
+    add a, [hl]
+    inc a
+    ld hl, wBuffer + wPFacBY
+    cp [hl]
+    jr c, .next                  ; candY+candH+1 < By
+    ld a, [wBuffer + wPFacBY]
+    ld hl, wBuffer + wPFacBH
+    add a, [hl]
+    inc a
+    ld hl, wBuffer + wPFacCandY
+    cp [hl]
+    jr c, .next                  ; By+Bh+1 < candY
+    ld a, 1                      ; none separated -> overlap
+    ret
+.next
+    ld a, [wBuffer + wPFacScanId]
+    inc a
+    ld [wBuffer + wPFacScanId], a
+    jr .loop
+.clear
+    xor a
+    ret
+
+; Guaranteed 3x3 placement for an item room: linear-scan the first non-
+; overlapping spot, or (never expected) drop a 3x3 at (1,1) ignoring overlap.
+PFacForceItemRoom:
+    ld a, 3
+    ld [wBuffer + wPFacCandW], a
+    ld [wBuffer + wPFacCandH], a
+    call PFacPickParent
+    ld a, 1
+    ld [wBuffer + wPFacCandY], a
+.scanY
+    ld a, 1
+    ld [wBuffer + wPFacCandX], a
+.scanX
+    call PFacCandOverlaps
+    and a
+    jr z, .found
+    ld a, [wBuffer + wPFacCandX]
+    inc a
+    ld [wBuffer + wPFacCandX], a
+    cp 17
+    jr c, .scanX
+    ld a, [wBuffer + wPFacCandY]
+    inc a
+    ld [wBuffer + wPFacCandY], a
+    cp 17
+    jr c, .scanY
+    ld a, 1
+    ld [wBuffer + wPFacCandX], a
+    ld [wBuffer + wPFacCandY], a
+.found
+    jp PFacStoreRoom
+
+; ============================================================
+; PFacAssignExitParent
+; Set room 11's Parent to the placed room (0-10) whose center is nearest the
+; exit center (manhattan). Room 0 always qualifies, so a parent always exists.
+; ============================================================
+PFacAssignExitParent:
+    ld a, 11
+    call PFacRoomCenter
+    ld a, b
+    ld [wBuffer + wPFacBX], a    ; exit cx
+    ld a, c
+    ld [wBuffer + wPFacBY], a    ; exit cy
+    ld a, 255
+    ld [wBuffer + wPFacBW], a    ; best distance
+    xor a
+    ld [wBuffer + wPFacBH], a    ; best parent id
+    ld [wBuffer + wPFacScanId], a
+.loop
+    ld a, [wBuffer + wPFacScanId]
+    cp 11
+    jr nc, .done
+    ld a, [wBuffer + wPFacScanId]
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    ld a, [hl]
+    and a
+    jr z, .next                  ; unplaced
+    ld a, [wBuffer + wPFacScanId]
+    call PFacRoomCenter          ; b=cx c=cy
+    ld a, b
+    ld hl, wBuffer + wPFacBX
+    sub [hl]
+    call PFacAbs
+    ld d, a
+    ld a, c
+    ld hl, wBuffer + wPFacBY
+    sub [hl]
+    call PFacAbs
+    add a, d                     ; manhattan distance
+    ld hl, wBuffer + wPFacBW
+    cp [hl]
+    jr nc, .next                 ; not closer
+    ld [hl], a
+    ld a, [wBuffer + wPFacScanId]
+    ld [wBuffer + wPFacBH], a
+.next
+    ld a, [wBuffer + wPFacScanId]
+    inc a
+    ld [wBuffer + wPFacScanId], a
+    jr .loop
+.done
+    ld a, 11
+    call PFacRoomRecordAddr
+    ld de, 4
+    add hl, de
+    ld a, [wBuffer + wPFacBH]
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFacCarveCorridors
+; For room ids 11 down to 1 (skipping unplaced W=0 slots): carve a corridor to
+; the room's parent, plus a 20% chance of an extra corridor to a random other
+; placed room.
+; ============================================================
+PFacCarveCorridors:
+    ld a, 11
+    ld [wBuffer + wPFacCorId], a
+.loop
+    ld a, [wBuffer + wPFacCorId]
+    and a
+    ret z                        ; room 0 (entry) needs no corridor of its own -
+                                 ; it is the parent tree's root, reached by the
+                                 ; corridors its children (incl. item room 1) carve.
+    call PFacCorRoomPlaced
+    jr z, .next                  ; unplaced, skip
+    ; parent
+    ld a, [wBuffer + wPFacCorId]
+    call PFacRoomRecordAddr
+    ld de, 4
+    add hl, de
+    ld a, [hl]
+    call PFacCarveOneCorridor
+.next
+    ld a, [wBuffer + wPFacCorId]
+    dec a
+    ld [wBuffer + wPFacCorId], a
+    jp .loop
+
+; ============================================================
+; PFacCarveEntryCorridor
+; Room 0 -> a random placed room, +25% chance of a second one.
+; ============================================================
+PFacCarveEntryCorridor:
+    xor a
+    ld [wBuffer + wPFacCorId], a
+    call PFacRandOtherRoom
+    cp 255
+    ret z
+    call PFacCarveOneCorridor
+    call Random
+    cp 64
+    ret nc
+    call PFacRandOtherRoom
+    cp 255
+    ret z
+    jp PFacCarveOneCorridor
+
+; Z set (a=0) if room wPFacCorId is unplaced (W=0); else NZ.
+PFacCorRoomPlaced:
+    ld a, [wBuffer + wPFacCorId]
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    ld a, [hl]
+    and a
+    ret
+
+; OUT a = a random placed room id != wPFacCorId, or 255 if none exists.
+PFacRandOtherRoom:
+    ld c, PFAC_ROOM_MAX
+    call Rangerandom
+    ld e, a                      ; start id
+    ld b, PFAC_ROOM_MAX
+.loop
+    ld a, e
+    cp PFAC_ROOM_MAX
+    jr c, .noWrap
+    xor a
+    ld e, a
+.noWrap
+    ld a, [wBuffer + wPFacCorId]
+    cp e
+    jr z, .advance
+    ld a, e
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    ld a, [hl]
+    and a
+    jr z, .advance
+    ld a, e
+    ret
+.advance
+    inc e
+    dec b
+    jr nz, .loop
+    ld a, 255
+    ret
+
+; ============================================================
+; PFacCarveOneCorridor
+; INPUT a = target room id; wPFacCorId = source room id. Carves a 1-wide
+; direct-manhattan (L-shaped) corridor of PFAC_CORRIDOR from the source center
+; toward the target center, stopping on first contact with a room (ROOMFLOOR)
+; once it has left the source room's floor.
+; ============================================================
+PFacCarveOneCorridor:
+    push af
+    ld a, [wBuffer + wPFacCorId]
+    call PFacRoomCenter
+    ld a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, c
+    ld [wBuffer + wPFacCurY], a
+    pop af
+    call PFacRoomCenter
+    ld a, b
+    ld [wBuffer + wPFacCorTX], a
+    ld a, c
+    ld [wBuffer + wPFacCorTY], a
+    xor a
+    ld [wBuffer + wPFacCorExited], a
+    ld [wBuffer + wPFacCorStop], a
+.hLeg
+    call PFacCorStampWideH
+    ld a, [wBuffer + wPFacCorStop]
+    and a
+    ret nz
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacCorTX
+    cp [hl]
+    jr z, .vLeg
+    jr c, .hInc
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    jr .hLeg
+.hInc
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    jr .hLeg
+.vLeg
+    call PFacCorStampWideV
+    ld a, [wBuffer + wPFacCorStop]
+    and a
+    ret nz
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacCorTY
+    cp [hl]
+    ret z
+    jr c, .vInc
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    jr .vLeg
+.vInc
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    jr .vLeg
+
+; Corridors are 1 tile wide: a 2-wide corridor exactly fills the 2-cell gap
+; between adjacent rooms, leaving no wall so the rooms merge into one blob.
+; 1-wide leaves wall on either side -> a clean doorway, distinct rooms. Both leg
+; stamps are now just the primary cell with contact logic (PFacCorFillCell, the
+; old width-lane fill, is unused - kept in case 2-wide + corridor walls returns).
+PFacCorStampWideH:
+    jp PFacCorStampCell
+
+PFacCorStampWideV:
+    jp PFacCorStampCell
+
+; Primary cell: carve UNTOUCHED -> CORRIDOR (and mark exited); if it's already
+; ROOMFLOOR and we've exited the source room, set the stop flag (contact reached
+; a room). CORRIDOR is deliberately pass-through, NOT contact: the L-bend cell
+; the horizontal leg just carved would otherwise stop the vertical leg dead at
+; the corner (the "road to nowhere" bug), and letting corridors cross each other
+; guarantees every corridor runs all the way to a room.
+PFacCorStampCell:
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr z, .carve
+    cp PFAC_ROOMFLOOR
+    jr z, .contact
+    ret                          ; CORRIDOR or anything else: pass through
+.contact
+    ld a, [wBuffer + wPFacCorExited]
+    and a
+    ret z
+    ld a, 1
+    ld [wBuffer + wPFacCorStop], a
+    ret
+.carve
+    ld a, PFAC_CORRIDOR
+    call PFacWriteBlock
+    ld a, 1
+    ld [wBuffer + wPFacCorExited], a
+    ret
+
+; Width cell: carve UNTOUCHED -> CORRIDOR only; no contact/stop side effects.
+PFacCorFillCell:
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    ret nz
+    ld a, PFAC_CORRIDOR
+    jp PFacWriteBlock
+
+; ============================================================
+; PFacCarveNorthExitOpening
+; Open the 1-wide warp gap at (exitCol, 0) and punch the exit room's top wall
+; ring at (exitCol, 1), connecting the north-edge warp down into the exit room.
+; Runs AFTER PFacEncloseRooms (so it overwrites the ring wall) and writes real
+; PFAC_FLOOR (untouched by the later convert sweeps).
+; ============================================================
+PFacCarveNorthExitOpening:
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacCurX], a
+    xor a
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_FLOOR
+    call PFacWriteBlock
+    ld a, 1
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_FLOOR
+    jp PFacWriteBlock
+
+; ============================================================
+; PFacAbs - a = |a| (two's complement). Port of PFAbs.
+; ============================================================
+PFacAbs:
+    bit 7, a
+    ret z
+    cpl
+    inc a
     ret
 
 ; ============================================================
@@ -2133,10 +1464,9 @@ PFacRollBoss:
     ret
 
 ; ============================================================
-; PFacPreload::  (step 5; boss roll wired in step 7)
+; PFacPreload::
 ; Called at Pallet Town entry. Resets bake flag + per-run SRAM state, rolls the
-; palette variant and sign variant, and sets the wild budget. Mirrors
-; PFPreloadForest minus the forest-specific bits.
+; palette variant and sign variant, and sets the wild budget.
 ; ============================================================
 PFacPreload::
     ld a, RAMG_SRAM_ENABLE
@@ -2154,8 +1484,9 @@ PFacPreload::
     ; Roll the facility's own boss (species + OW sprite -> SRAM).
     call PFacRollBoss
 
-    ; Roll palette variant: 0 = PowerPlant (green), 1 = Mansion (red).
-    ; Read by SetPal_Overworld's FACILITY case (step 9).
+    ; Roll palette variant: 0 = PowerPlant (green), 1 = Mansion (red). Cosmetic
+    ; only now - read by SetPal_Overworld's FACILITY case, no longer branches
+    ; generation.
     call Random
     and 1
     ld [sProcFacilityPalette], a
@@ -2195,11 +1526,9 @@ PFacPreload::
     ret
 
 ; ============================================================
-; PFacFinalize::  (steps 5-7)
+; PFacFinalize::
 ; Called at PROCEDURAL_FACILITY warp-in.
-;   First visit (sProcFacilityBaked=0): fill walls, generate Rooms/Dungeon,
-;     scan for item dead-ends, autotile, carve the north exit, bake to SRAM,
-;     stash exit column + ball positions/items in SRAM.
+;   First visit (sProcFacilityBaked=0): generate, bake to SRAM.
 ;   Re-entry (sProcFacilityBaked=1): fast-blit the staging buffer back.
 ;   Both paths then patch the exit warp entries and (re)place the boss + 4 ball
 ;     sprites from SRAM.
@@ -2225,35 +1554,11 @@ PFacFinalize::
     ld a, HIGH(wOverworldMap + PFAC_BASE)
     ld [wBuffer + wPFacTargetBaseHi], a
 
-    call PFacFillWalls
-
-    ; Branch generation on the palette variant (rolled at Pallet Town entry):
-    ; 0 = PowerPlant/green -> grid of rooms; 1 = Mansion/red -> rooms + maze + prune.
-    ld a, [sProcFacilityPalette]
-    and a
-    jr nz, .genDungeon
-    call PFacGenerateGrid
-    jr .genDone
-.genDungeon
-    call PFacGenerateRoomsDungeon
-.genDone
-
-    ; Entrance: guarantee the fixed spawn block (9,17) is floor and connected.
-    ; The dungeon path already carves it; the grid path may leave it on a wall
-    ; column, where carving it bridges the two adjacent bottom rooms.
-    ld a, 9
-    ld [wBuffer + wPFacCurX], a
-    ld a, 17
-    ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_FLOOR
-    call PFacWriteBlock
-
-    ; North exit: roll a block column, carve the opening + a short connector down
-    ; to existing floor. Done BEFORE autotile so its corridor gets clean wall faces.
-    call PFacCarveExit
-
-    call PFacScanForBall            ; room-cell item scan (walls still sentinel 46)
-    call PFacAutotilePass
+    ; Seed the whole player area with the untouched sentinel, then run the
+    ; room-tree pipeline. On return the map holds only real block IDs and
+    ; sProcFacilityGenScratch[0..7] / wPFacItemTemp hold the ball coords + items.
+    call PFacFillUntouched
+    call PFacGenerateFacility
 
     ; Save 4 ball positions as tile coords (Y,X order) to sProcFacilityBallXY.
     ; sProcFacilityGenScratch holds X0,Y0,X1,Y1,... block coords from the scan.
