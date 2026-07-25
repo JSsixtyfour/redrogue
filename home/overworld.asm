@@ -2438,7 +2438,9 @@ LoadMapData::
 	homecall PCPreloadCave
 	homecall PCemGenerateMaps
 	homecall PFPreloadForest    ; reset forest baked flag so next visit gets fresh maze
-	homecall PFacPreload        ; reset facility baked flag + roll facility boss/palette
+	; SHELVED: facility unreachable (Pallet Town test warp reverted), see Red Rogue
+	; Files/ for re-enable steps. Uncomment to restore facility preload:
+	;homecall PFacPreload        ; reset facility baked flag + roll facility boss/palette
 .notPalletTown
 	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
 	jr nz, .notProcCave         ; proceed as normal if not procedural stage

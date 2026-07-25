@@ -121,6 +121,16 @@ sProcFacilityAlgoForce:: db        ; debug: facility ships Rooms/Dungeon only, b
 ; as forest). Reused across non-concurrent generation phases.
 sProcFacilityGenScratch:: ds 81
 
+; Packed wall-room tessellation (redesign v2, see Red Rogue Files/
+; 1-i-need-you-foamy-otter.md): every grown room is tracked here as it's placed
+; (X,Y,W,H,role), 5 bytes/room, so later growths can pick a parent wall and
+; overlap-check against everything placed so far. No Parent field - a room's
+; doorway to its parent is punched into the map at growth time, so the spanning
+; tree lives in the map itself, not in this table. Room count lives in WRAM
+; (wPFacRoomCount, same as the old 6-byte-record model). role: 0=entry, 1=item,
+; 2=exit, 3=plain.
+sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
+
 
 SECTION "Save Data", SRAM
 
