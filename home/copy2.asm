@@ -5,13 +5,10 @@ FarCopyData2::
 	ldh a, [hLoadedROMBank]
 	push af
 	ldh a, [hROMBankTemp]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 	call CopyData
 	pop af
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	ret
+	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
 FarCopyData3::
 ; Copy bc bytes from a:de to hl.
@@ -19,8 +16,7 @@ FarCopyData3::
 	ldh a, [hLoadedROMBank]
 	push af
 	ldh a, [hROMBankTemp]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; -2 bytes (HOME space)
 	push hl
 	push de
 	push de
@@ -31,9 +27,7 @@ FarCopyData3::
 	pop de
 	pop hl
 	pop af
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	ret
+	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
 FarCopyDataDouble::
 ; Expand bc bytes of 1bpp image data
@@ -42,8 +36,7 @@ FarCopyDataDouble::
 	ldh a, [hLoadedROMBank]
 	push af
 	ldh a, [hROMBankTemp]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; -2 bytes (HOME space)
 .loop
 	ld a, [hli]
 	ld [de], a
@@ -55,9 +48,7 @@ FarCopyDataDouble::
 	or b
 	jr nz, .loop
 	pop af
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	ret
+	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
 CopyVideoData::
 ; Wait for the next VBlank, then copy c 2bpp

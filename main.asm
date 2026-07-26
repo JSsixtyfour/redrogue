@@ -14,7 +14,6 @@ INCLUDE "engine/gfx/oam_dma.asm"
 INCLUDE "engine/link/print_waiting_text.asm"
 INCLUDE "engine/overworld/sprite_collisions.asm"
 INCLUDE "engine/debug/debug_menu.asm"
-INCLUDE "engine/events/pick_up_item.asm"
 INCLUDE "engine/overworld/movement.asm"
 INCLUDE "engine/link/cable_club.asm"
 INCLUDE "engine/menus/main_menu.asm"
@@ -38,6 +37,9 @@ INCLUDE "engine/menus/players_pc.asm"
 INCLUDE "engine/pokemon/remove_mon.asm"
 INCLUDE "engine/events/display_pokedex.asm"
 
+
+SECTION "Pick Up Item", ROMX
+INCLUDE "engine/events/pick_up_item.asm"
 
 SECTION "bank3", ROMX
 
@@ -397,6 +399,8 @@ INCLUDE "custom_functions/procedural_cave_gen.asm"
 INCLUDE "custom_functions/procedural_cemetery_gen.asm"
 INCLUDE "custom_functions/procedural_forest_gen.asm"
 INCLUDE "custom_functions/procedural_facility_gen.asm"
+INCLUDE "custom_functions/procedural_stage_hooks.asm"
+INCLUDE "custom_functions/relocated_home.asm"
 INCLUDE "engine/items/item_rarity.asm"
 INCLUDE "engine/items/random_item_selection.asm"
 INCLUDE "engine/items/random_item_selection_mart.asm"

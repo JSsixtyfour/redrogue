@@ -4,13 +4,10 @@ FarCopyData::
 	ldh a, [hLoadedROMBank]
 	push af
 	ld a, [wBuffer]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 	call CopyData
 	pop af
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	ret
+	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
 CopyData::
 ; Copy bc bytes from hl to de.
