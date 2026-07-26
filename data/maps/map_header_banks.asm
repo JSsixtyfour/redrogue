@@ -106,11 +106,11 @@ MapHeaderBanks::
 	db BANK(SSAnne1FRooms_h)
 	db BANK(SSAnne2FRooms_h)
 	db BANK(SSAnneB1FRooms_h)
-	db $1D ; UNUSED_MAP_69
-	db $1D ; UNUSED_MAP_6A
-	db $1D ; UNUSED_MAP_6B
+	db BANK(ProceduralCemetery1_h) ; PROCEDURAL_CEMETERY_1
+	db BANK(ProceduralCemetery2_h) ; PROCEDURAL_CEMETERY_2
+	db BANK(ProceduralCemetery3_h) ; PROCEDURAL_CEMETERY_3
 	db BANK(VictoryRoad1F_h)
-	db $1D ; UNUSED_MAP_6D
+	db BANK(ProceduralCemetery4_h) ; PROCEDURAL_CEMETERY_4
 	db $1D ; UNUSED_MAP_6E
 	db $1D ; UNUSED_MAP_6F
 	db $1D ; UNUSED_MAP_70
@@ -242,9 +242,9 @@ MapHeaderBanks::
 	db $11 ; UNUSED_MAP_EE
 	db BANK(TradeCenter_h)
 	db BANK(Colosseum_h)
-	db $11 ; UNUSED_MAP_F1
-	db $11 ; UNUSED_MAP_F2
-	db $11 ; UNUSED_MAP_F3
+	db BANK(ProceduralCave1_h) ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1, $11)
+	db BANK(ProceduralForest_h) ; PROCEDURAL_FOREST (was UNUSED_MAP_F2)
+	db BANK(ProceduralFacility_h) ; PROCEDURAL_FACILITY (was UNUSED_MAP_F3, $11)
 	db $11 ; UNUSED_MAP_F4
 	db BANK(LoreleisRoom_h)
 	db BANK(BrunosRoom_h)

@@ -380,5 +380,53 @@ ENDM
     const TOGGLE_PC_MOVETUTOR, ; DA
     const TOGGLE_PC_DOOR2_SIGN, ; DB
 
+	; Wild area pokeballs (procedurally generated stages, e.g. ProceduralCave1) -
+	; 4 independent random items, one per dead-end. Hardcoded slot check lives
+	; in engine/overworld/toggleable_objects.asm's IsObjectHidden and
+	; engine/events/pick_up_item.asm's RandomPickUpItem, same pattern as the
+	; existing single TOGGLE_STAGE_RANDOM_ITEM but gated on the map being a
+	; wild-area stage specifically, not the generic IsRogueStageMap check -
+	; avoids colliding with Route1-style maps' existing slot 7-10 usage
+	; (reward pokeballs / trade NPC). Still needs a toggleable_objects_for
+	; block in data/maps/toggleable_objects.asm even though the hardcoded
+	; bypass never actually reads it - assert_table_length enforces every
+	; toggle const has a matching declared state.
+	toggle_consts_for PROCEDURAL_FOREST
+	;const TOGGLE_FOREST_BOSS         ; slot 1 = boss
+	;const TOGGLE_FOREST_POKEBALL_1   ; slot 2
+	;const TOGGLE_FOREST_POKEBALL_2   ; slot 3
+	;const TOGGLE_FOREST_POKEBALL_3   ; slot 4
+	;const TOGGLE_FOREST_POKEBALL_4   ; slot 5
+
+	toggle_consts_for PROCEDURAL_CAVE_1
+    const TOGGLE_WILD_AREA_BOSS       ; slot 1 (first object_event)
+	const TOGGLE_WILD_AREA_POKEBALL_1 ; slot 2
+	const TOGGLE_WILD_AREA_POKEBALL_2 ; slot 3
+	const TOGGLE_WILD_AREA_POKEBALL_3 ; slot 4
+	const TOGGLE_WILD_AREA_POKEBALL_4 ; slot 5
+
+	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants above (same
+	; port-don't-reimplement pattern as PROCEDURAL_FOREST above) - still needs
+	; a toggle_consts_for block even though every const here stays commented,
+	; since data/maps/toggleable_objects.asm's toggleable_objects_for macro
+	; asserts a matching TOGGLEMAP{id}_ID exists.
+	toggle_consts_for PROCEDURAL_FACILITY
+	;const TOGGLE_FACILITY_BOSS         ; slot 1 = boss
+	;const TOGGLE_FACILITY_POKEBALL_1   ; slot 2
+	;const TOGGLE_FACILITY_POKEBALL_2   ; slot 3
+	;const TOGGLE_FACILITY_POKEBALL_3   ; slot 4
+	;const TOGGLE_FACILITY_POKEBALL_4   ; slot 5
+
+	toggle_consts_for PROCEDURAL_CEMETERY_1
+	const TOGGLE_CEMETERY_1_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETERY_2
+	const TOGGLE_CEMETERY_2_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETERY_3
+	const TOGGLE_CEMETERY_3_POKEBALL
+
+	toggle_consts_for PROCEDURAL_CEMETERY_4
+	const TOGGLE_CEMETERY_4_POKEBALL
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

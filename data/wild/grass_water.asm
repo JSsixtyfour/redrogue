@@ -105,11 +105,11 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw NothingWildMons
-	dw NothingWildMons
-	dw NothingWildMons
+	dw ProceduralCemeteryWildMons ; PROCEDURAL_CEMETERY_1 = $69
+	dw ProceduralCemeteryWildMons ; PROCEDURAL_CEMETERY_2 = $6A
+	dw ProceduralCemeteryWildMons ; PROCEDURAL_CEMETERY_3 = $6B
 	dw NothingWildMons        ; VictoryRoad1F
-	dw NothingWildMons
+	dw ProceduralCemeteryWildMons ; PROCEDURAL_CEMETERY_4 = $6D
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
@@ -241,15 +241,20 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
-	dw NothingWildMons
-	dw NothingWildMons
-	dw NothingWildMons
+	dw ProceduralCave1WildMons ; PROCEDURAL_CAVE_1 = $F1
+	dw ProceduralForestWildMons ; PROCEDURAL_FOREST = $F2
+	dw ProceduralFacilityWildMons ; PROCEDURAL_FACILITY = $F3
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
 	assert_table_length NUM_MAPS
 	dw -1 ; end
+
+INCLUDE "data/wild/maps/ProceduralCave1.asm"
+INCLUDE "data/wild/maps/ProceduralForest.asm"
+INCLUDE "data/wild/maps/ProceduralFacility.asm"
+INCLUDE "data/wild/maps/ProceduralCemetery.asm"
 
 ; wild pokemon data is divided into two parts.
 ; first part:  pokemon found in grass

@@ -1924,7 +1924,22 @@ TryRunningFromBattle:
 	jp z, .canEscape
 	ldh a, [hIsInBattle]
 	dec a
-	jr nz, .trainerBattle ; jump if it's a trainer battle
+	jp nz, .trainerBattle ; jump if it's a trainer battle
+	ldh a, [hCurMap]      ; procedural areas: wild battles can't run
+	cp PROCEDURAL_CAVE_1
+	jp z, .procNoRun
+	cp PROCEDURAL_FOREST
+	jp z, .procNoRun
+	cp PROCEDURAL_FACILITY
+	jp z, .procNoRun
+	;cp PROCEDURAL_CEMETERY_1
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETERY_2
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETERY_3
+	;jr z, .trainerBattle
+	;cp PROCEDURAL_CEMETERY_4
+	;jr z, .trainerBattle
 	ld a, [wNumRunAttempts]
 	inc a
 	ld [wNumRunAttempts], a
@@ -2001,6 +2016,13 @@ TryRunningFromBattle:
 	ret
 .normalTrainerBattle
 	ld hl, NoRunningText
+	jr .printCantEscapeOrNoRunningText
+.procNoRun
+	; procedural cave/forest wild battle — can't run, but it's not a trainer,
+	; so show the generic "no running from this battle" message.
+	ld a, $1
+	ld [wActionResultOrTookBattleTurn], a
+	ld hl, ProcNoRunningText
 .printCantEscapeOrNoRunningText
 	call PrintText
 	ld a, 1
@@ -2043,6 +2065,10 @@ CantEscapeText:
 
 NoRunningText:
 	text_far _NoRunningText
+	text_end
+
+ProcNoRunningText:
+	text_far _ProcNoRunningText
 	text_end
 
 GotAwayText:

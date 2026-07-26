@@ -908,6 +908,24 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
 	const EVENT_BEAT_GAME_CORNER_TRAINER_3
 	const EVENT_BEAT_GAME_CORNER_TRAINER_4
 
+; Procedural stage events. RELOCATED for the master merge: master's Game Corner
+; trainer events now occupy $A26-$A2A, so const_value is $A2B here (these were at
+; $A26/$A29 on the procedural-cave branch). All are plain per-run flags except
+; EVENT_BEAT_PC_BOSS.
+    const EVENT_PC_BOSS_OFFERED     ; $A2B - set after join-party offer shown, prevents repeat
+    const EVENT_PC_BUDGET_ENDED     ; $A2C - set when wild battle budget hits 0
+    const EVENT_PC_CALMED_SHOWN     ; $A2D - set after "calmed" message displayed
+    const EVENT_PC_CEM_BUDGET_ENDED ; $A2E - cemetery: budget hit 0
+    const EVENT_PC_CEM_CALMED_SHOWN ; $A2F - cemetery: calmed message shown
+    const EVENT_PF_ITEM_GOT         ; $A30 - forest: pokeball collected this run
+; EVENT_BEAT_PC_BOSS must sit at a slot where (value % 8) == 1 (def_trainers 1 in
+; the procedural scripts; also reused by cemetery 4 and the forest boss). $A29 was
+; used on the branch but is now a Game Corner trainer, so it moves to $A31
+; ($A31 % 8 == 1). This is the only procedural event that grows NUM_EVENTS past
+; master's old $A30 ceiling, to $A32 (+1 wEventFlags byte, offset by the ds shrink
+; in ram/wram.asm).
+    const_next $A31
+    const EVENT_BEAT_PC_BOSS        ; $A31
+
 ; End of events
-	const_next $A30
-DEF NUM_EVENTS EQU const_value
+DEF NUM_EVENTS EQU const_value      ; $A32 = 2610

@@ -106,11 +106,11 @@ MapHeaderPointers::
 	dw SSAnne1FRooms_h
 	dw SSAnne2FRooms_h
 	dw SSAnneB1FRooms_h
-	dw LancesRoom_h ; UNUSED_MAP_69
-	dw LancesRoom_h ; UNUSED_MAP_6A
-	dw LancesRoom_h ; UNUSED_MAP_6B
+	dw ProceduralCemetery1_h
+	dw ProceduralCemetery2_h
+	dw ProceduralCemetery3_h
 	dw VictoryRoad1F_h
-	dw LancesRoom_h ; UNUSED_MAP_6D
+	dw ProceduralCemetery4_h
 	dw LancesRoom_h ; UNUSED_MAP_6E
 	dw LancesRoom_h ; UNUSED_MAP_6F
 	dw LancesRoom_h ; UNUSED_MAP_70
@@ -242,9 +242,9 @@ MapHeaderPointers::
 	dw SilphCo2F_h ; UNUSED_MAP_EE
 	dw TradeCenter_h
 	dw Colosseum_h
-	dw SilphCo2F_h ; UNUSED_MAP_F1
-	dw SilphCo2F_h ; UNUSED_MAP_F2
-	dw SilphCo2F_h ; UNUSED_MAP_F3
+	dw ProceduralCave1_h ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1 -> SilphCo2F_h)
+	dw ProceduralForest_h ; PROCEDURAL_FOREST (was UNUSED_MAP_F2 -> SilphCo2F_h)
+	dw ProceduralFacility_h ; PROCEDURAL_FACILITY (was UNUSED_MAP_F3 -> SilphCo2F_h)
 	dw SilphCo2F_h ; UNUSED_MAP_F4
 	dw LoreleisRoom_h
 	dw BrunosRoom_h

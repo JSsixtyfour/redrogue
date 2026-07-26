@@ -182,6 +182,15 @@ StartTrainerBattle::
 	inc [hl] ; increment map script index (next script function is usually EndTrainerBattle)
 	ret
 
+; Script state 2 for PROCEDURAL_CAVE_1 boss. Sets wWasTrainerBattle=1 so
+; EndTrainerBattle skips HideObject - PCBossOffer controls boss visibility
+; after the player yes/no's the join offer. Must be bank 0 (CallFunctionInTable
+; uses jp hl with no bank switch).
+;PCEndBossNoHide::
+;	ld a, 1
+;	ld [wWasTrainerBattle], a
+;	jp EndTrainerBattle
+
 EndTrainerBattle::
 	ld hl, wCurrentMapScriptFlags
 	set BIT_CUR_MAP_LOADED_1, [hl]
@@ -203,6 +212,10 @@ EndTrainerBattle::
 	and a
 	jr nz, .skipRemoveSprite ; test if trainer was fought (in that case skip removing the corresponding sprite)
 	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1     ; boss sprite is managed by the offer script, not here
+	jr z, .skipRemoveSprite
+	cp PROCEDURAL_FOREST     ; forest boss too — offer script controls its visibility
+	jr z, .skipRemoveSprite
 	cp POKEMON_TOWER_7F
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
 	ld hl, wToggleableObjectList

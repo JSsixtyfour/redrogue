@@ -281,6 +281,59 @@ INCLUDE "scripts/RockTunnel1F.asm"
 INCLUDE "data/maps/objects/RockTunnel1F.asm"
 RockTunnel1F_Blocks: INCBIN "maps/RockTunnel1F.blk"
 
+INCLUDE "data/maps/headers/ProceduralCave1.asm"
+INCLUDE "scripts/ProceduralCave1.asm"
+INCLUDE "data/maps/objects/ProceduralCave1.asm"
+ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetery1.asm"
+INCLUDE "scripts/ProceduralCemetery1.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery1.asm"
+ProceduralCemetery1_Blocks: INCBIN "maps/ProceduralCemetery1.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetery2.asm"
+INCLUDE "scripts/ProceduralCemetery2.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery2.asm"
+ProceduralCemetery2_Blocks: INCBIN "maps/ProceduralCemetery2.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetery3.asm"
+INCLUDE "scripts/ProceduralCemetery3.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery3.asm"
+ProceduralCemetery3_Blocks: INCBIN "maps/ProceduralCemetery3.blk"
+
+INCLUDE "data/maps/headers/ProceduralCemetery4.asm"
+INCLUDE "scripts/ProceduralCemetery4.asm"
+INCLUDE "data/maps/objects/ProceduralCemetery4.asm"
+ProceduralCemetery4_Blocks: INCBIN "maps/ProceduralCemetery4.blk"
+
+; Shared cemetery calmed-message check called from all 4 cemetery scripts.
+PCemCalmedCheck::
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	CheckEvent EVENT_PC_CEM_CALMED_SHOWN
+	ret nz
+	CheckEvent EVENT_PC_CEM_BUDGET_ENDED
+	ret z
+	SetEvent EVENT_PC_CEM_CALMED_SHOWN
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETERY_1
+	ld a, TEXT_PROCEDURALCEMETERY1_CALMED
+	jr z, .showCemCalmed
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETERY_2
+	ld a, TEXT_PROCEDURALCEMETERY2_CALMED
+	jr z, .showCemCalmed
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETERY_3
+	ld a, TEXT_PROCEDURALCEMETERY3_CALMED
+	jr z, .showCemCalmed
+	ld a, TEXT_PROCEDURALCEMETERY4_CALMED
+.showCemCalmed
+	ldh [hTextID], a
+	call DisplayTextID
+	ret
+
 INCLUDE "data/maps/headers/SeafoamIslands1F.asm"
 INCLUDE "scripts/SeafoamIslands1F.asm"
 INCLUDE "data/maps/objects/SeafoamIslands1F.asm"
@@ -412,6 +465,22 @@ Route16Gate2F_Blocks:
 Route15Gate2F_Blocks:
 Route12Gate2F_Blocks:
 Route11Gate2F_Blocks: INCBIN "maps/Route11Gate2F.blk"
+
+
+SECTION "Procedural Forest Maps", ROMX
+
+INCLUDE "data/maps/headers/ProceduralForest.asm"
+INCLUDE "scripts/ProceduralForest.asm"
+INCLUDE "data/maps/objects/ProceduralForest.asm"
+ProceduralForest_Blocks: INCBIN "maps/ProceduralForest.blk"
+
+
+SECTION "Procedural Facility Maps", ROMX
+
+INCLUDE "data/maps/headers/ProceduralFacility.asm"
+INCLUDE "scripts/ProceduralFacility.asm"
+INCLUDE "data/maps/objects/ProceduralFacility.asm"
+ProceduralFacility_Blocks: INCBIN "maps/ProceduralFacility.blk"
 
 
 SECTION "Maps 8", ROMX

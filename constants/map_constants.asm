@@ -174,13 +174,13 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const SS_ANNE_B1F_ROOMS,             12,  8 ; $68
 	end_indoor_group SS_ANNE
 
-	map_const UNUSED_MAP_69,                  0,  0 ; $69
-	map_const UNUSED_MAP_6A,                  0,  0 ; $6A
-	map_const UNUSED_MAP_6B,                  0,  0 ; $6B
+	map_const PROCEDURAL_CEMETERY_1,          10,  9 ; $69
+	map_const PROCEDURAL_CEMETERY_2,          10,  9 ; $6A
+	map_const PROCEDURAL_CEMETERY_3,          10,  9 ; $6B
 	map_const VICTORY_ROAD_1F,               10,  9 ; $6C
 	end_indoor_group VICTORY_ROAD
 
-	map_const UNUSED_MAP_6D,                  0,  0 ; $6D
+	map_const PROCEDURAL_CEMETERY_4,          10,  9 ; $6D - boss room (shares base template; stair-patched south exit)
 	map_const UNUSED_MAP_6E,                  0,  0 ; $6E
 	map_const UNUSED_MAP_6F,                  0,  0 ; $6F
 	map_const UNUSED_MAP_70,                  0,  0 ; $70
@@ -388,9 +388,9 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const UNUSED_MAP_EE,                  0,  0 ; $EE
 	map_const TRADE_CENTER,                   5,  4 ; $EF
 	map_const COLOSSEUM,                      5,  4 ; $F0
-	map_const UNUSED_MAP_F1,                  0,  0 ; $F1
-	map_const UNUSED_MAP_F2,                  0,  0 ; $F2
-	map_const UNUSED_MAP_F3,                  0,  0 ; $F3
+	map_const PROCEDURAL_CAVE_1,              20, 20 ; $F1 (was UNUSED_MAP_F1)
+	map_const PROCEDURAL_FOREST,              20, 20 ; $F2 (was UNUSED_MAP_F2)
+	map_const PROCEDURAL_FACILITY,            20, 20 ; $F3 (was UNUSED_MAP_F3)
 	map_const UNUSED_MAP_F4,                  0,  0 ; $F4
 	map_const LORELEIS_ROOM,                  5,  6 ; $F5
 	map_const BRUNOS_ROOM,                    5,  6 ; $F6

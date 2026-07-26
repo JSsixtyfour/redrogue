@@ -20,7 +20,7 @@ TryDoWildEncounter:
 	and a
 	jr z, .next
 	dec a
-	jr z, .lastRepelStep
+	jp z, .lastRepelStep
 	ld [wRepelRemainingSteps], a
 .next
 ; determine if wild pokemon can appear in the half-block we're standing in
@@ -40,10 +40,10 @@ TryDoWildEncounter:
 ; ...as long as it's not Viridian Forest or Safari Zone.
 	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP ; is this an indoor map?
-	jr c, .CantEncounter2
+	jp c, .CantEncounter2 ; jp not jr: facility's cp/jr additions push .CantEncounter2 out of jr range
 	ld a, [wCurMapTileset]
 	cp FOREST ; Viridian Forest/Safari Zone
-	jr z, .CantEncounter2
+	jp z, .CantEncounter2
 	ld a, [wGrassRate]
 .CanEncounter
 ; compare encounter chance with a random number to determine if there will be an encounter
@@ -63,6 +63,27 @@ TryDoWildEncounter:
 .gotEncounterSlot
 ; determine which wild pokemon (grass or water) can appear in the half-block we're standing in
 	ld c, [hl]
+; Procedural cave: ignore the static wild table; roll a battlecount-scaled
+; species + level from the rarity-class pool instead.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .isProcedural
+	cp PROCEDURAL_FOREST
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .isProcedural
+	cp PROCEDURAL_CEMETERY_4
+	jr z, .isProcedural
+	cp PROCEDURAL_FACILITY
+	jr nz, .normalEncounterData
+.isProcedural
+	farcall PCRollWildEncounter ; battlecount-scaled species/level, no ownership check
+	jr .afterEncounterData
+.normalEncounterData
 	ld hl, wGrassMons
 	lda_coord 8, 9
 	cp $14 ; is the bottom left tile (8,9) of the half-block we're standing in a water tile?
@@ -78,6 +99,7 @@ TryDoWildEncounter:
 	ld a, [hl]
 	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a
+.afterEncounterData
 	ld a, [wRepelRemainingSteps]
 	and a
 	jr z, .willEncounter
@@ -98,6 +120,71 @@ TryDoWildEncounter:
 	and a
 	ret
 .willEncounter
+; Procedural areas: enforce per-visit wild-battle budget.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .checkCaveBudget
+	cp PROCEDURAL_FOREST
+	jr z, .checkForestBudget
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .checkCemBudget
+	cp PROCEDURAL_CEMETERY_4
+	jr z, .checkCemBudget
+	cp PROCEDURAL_FACILITY
+	jr z, .checkFacilityBudget
+	jr .commitEncounter
+.checkCemBudget
+	ld a, [wProcCemWildBudget]
+	and a
+	jr z, .CantEncounter2   ; already 0, silent
+	dec a
+	ld [wProcCemWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_CEM_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	jr .commitEncounter
+.checkCaveBudget
+	ld a, [wProcCaveWildBudget]
+	and a
+	jr z, .CantEncounter2 ; already 0 - silent, no repeat message
+	dec a
+	ld [wProcCaveWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags   ; signal map script to show calmed message
+	set BIT_CUR_MAP_LOADED_1, [hl]  ; after this battle returns
+	jr .commitEncounter
+.checkForestBudget
+	; Reuses EVENT_PC_BUDGET_ENDED (cave's event) — safe, see PFPreloadForest's
+	; comment: cave/forest never run concurrently and this event is always
+	; reset at Pallet Town entry before either stage could read it.
+	ld a, [wProcForestWildBudget]
+	and a
+	jr z, .CantEncounter2
+	dec a
+	ld [wProcForestWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	jr .commitEncounter
+.checkFacilityBudget
+	; Reuses EVENT_PC_BUDGET_ENDED like the forest (never concurrent).
+	ld a, [wProcFacilityWildBudget]
+	and a
+	jr z, .CantEncounter2
+	dec a
+	ld [wProcFacilityWildBudget], a
+	jr nz, .commitEncounter
+	SetEvent EVENT_PC_BUDGET_ENDED
+	ld hl, wCurrentMapScriptFlags
+	set BIT_CUR_MAP_LOADED_1, [hl]
+.commitEncounter
 	xor a
     ld [wIsTrainerBattle], a
 	ret

@@ -2046,7 +2046,7 @@ wBillsHouseCurScript:: db
 wRoute5GateCurScript:: db
 wPowerPlantCurScript:: ; overload
 wRoute7GateCurScript:: db
-	ds 1
+	;ds 1
 wSSAnne2FCurScript:: db
 wSeafoamIslandsB3FCurScript:: db
 wRoute23CurScript:: db
@@ -2061,6 +2061,12 @@ wSSAnneB1FCurScript:: db
 wRoute1CurScript:: db
 wRoute5CurScript:: db
 wUndergroundPathRoute5CurScript:: db
+wProceduralCave1CurScript:: db ; also reused by the procedural facility script
+                               ; (scripts/ProceduralFacility.asm) - WRAM0 is full,
+                               ; and cave/facility are never loaded concurrently, so
+                               ; they share this map-script-index byte
+wProceduralCemetery4CurScript:: db
+wProceduralForestCurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
@@ -2092,6 +2098,19 @@ wRogueItem:: dw
 ; no way out. This caps the retries; past MAX_ITEM_SELECTION_RETRIES it just
 ; accepts the (possibly-owned) item instead of looping.
 wItemSelectionRetryCount:: db
+wRogueItem2:: dw  ; wild area pokeball 2-4 (custom_functions/procedural_cave_gen.asm) -
+wRogueItem3:: dw  ; same single-byte-in-practice convention as wRogueItem above,
+wRogueItem4:: db  ; nothing reads/writes the high byte of any of these, so item4's
+; high byte is reclaimed below. The wild-area code indexes these by a 2-byte stride
+; off wRogueItem (offsets 0,2,4,6) and only ever touches the low bytes, so keeping
+; item4 at the same address with a db + db preserves that stride.
+; Cemetery generator debug selector (poke via emulator, default 0):
+; 0 = normal (dense fill), 1/4 = force procedural (dense fill),
+; 2 = force procedural sparse plots, 3 = force prefab. Any other value
+; behaves as normal. See CEMETERY_DESIGN_LAPTOP.md Section 5i. Reclaimed
+; from item4's dead high byte, so WRAM0 does not grow; relies on the boot
+; WRAM clear for its default of 0.
+wProcCemDebugMode:: db
 ; Lobby door sign data: map IDs of the two staged stages currently behind each door
 wLobbyDoor1StageMap:: db  ; door 1 (Y=7,X=11) — option 1 stage map ID
 wLobbyDoor2StageMap:: db  ; door 2 (Y=8,X=11) — option 2 stage map ID
@@ -2134,6 +2153,7 @@ wroguenpcclass:: db
 
 wItemBonusRarity:: db
 
+UNION
 PCClerkText1::
 	db ;TX_SCRIPT_MART
     db ;$9
@@ -2165,6 +2185,26 @@ PCClerkText2Items::
     db
     db
     db ;-1 ; end
+    
+NEXTU
+
+wProcCaveWildBudget::
+
+NEXTU
+
+wProcCemWildBudget::  ; per-floor wild battle budget for cemetery (same mechanic as cave)
+
+NEXTU
+
+wProcForestWildBudget:: ; forest wild battle budget (same mechanic as cave); never
+                        ; concurrent with cave/cemetery, safe to share this byte
+
+NEXTU
+
+wProcFacilityWildBudget:: ; facility wild battle budget (same mechanic as cave); never
+                          ; concurrent with cave/cemetery/forest, safe to share this byte
+
+ENDU
 
 ; Lobby witch challenge/prize state. wWitchChallenge/wWitchPrize are re-rolled
 ; (or zeroed) every lobby entry; wWitchAccepted lives in wRogueFlagsBitfield
@@ -2232,7 +2272,13 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 36 ; was ds 37; 1 more byte reclaimed for wElite4Order above (net-zero WRAM0)
+	ds 26 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
+	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
+	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
+	      ; wGameProgressFlagsEnd (unnamed, never read/written), so shrinking only
+	      ; shifts saved offsets (save-break, acceptable per WRAM_BIBLE.md) with zero
+	      ; runtime effect. Tune this number if the linker reports a WRAM0 overflow.
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 
@@ -2485,6 +2531,13 @@ ENDR
 wBoxMonNicksEnd::
 
 wBoxDataEnd::
+
+
+SECTION "ProcCaveReadyFlag", WRAM0
+
+; 1 = SRAM preload is ready in sProcCaveStagingBuffer; 0 = not ready.
+; WRAM (not SRAM) so PyBoy test scripts can poll it without SRAM enabled.
+wProcCavePreloadReady:: db
 
 
 SECTION "Stack", WRAM0

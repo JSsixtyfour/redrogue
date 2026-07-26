@@ -493,6 +493,24 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
+	; Leaving the procedural cave, forest, or the last cemetery floor: +5 battles.
+	cp PROCEDURAL_CAVE_1
+	jr z, .addFive
+	cp PROCEDURAL_FOREST
+	jr z, .addFive
+	cp PROCEDURAL_FACILITY
+	jr z, .addFive
+	cp PROCEDURAL_CEMETERY_4
+	jr nz, .notLeavingProcArea
+.addFive
+	ld a, [wBattleCount]
+	add a, 5
+	jr nc, .procBattleNoClamp
+	ld a, 255
+.procBattleNoClamp
+	ld [wBattleCount], a
+	ldh a, [hCurMap]               ; restore a for the map checks below
+.notLeavingProcArea
 	; If leaving the lobby or reward room through door 1 or door 2,
 	; capture that door's item type into wRogueDoorSelection now.
 	cp INDIGO_PLATEAU_LOBBY
@@ -2376,8 +2394,102 @@ LoadMapData::
 	; 5th-trainer object to the boss's sprite BEFORE InitMapSprites loads tiles
 	; (ordering is load-bearing - same as the procedural cave/forest boss system).
 	farcall MiniBossPatchStageSprite
+	; For PROCEDURAL_CAVE_1/PROCEDURAL_FOREST: patch the boss sprite's
+	; PICTUREID in StateData1 BEFORE InitMapSprites reads it to load tile
+	; patterns. The correct SPRITE_* constant was determined from the rolled
+	; species at Pallet Town entry (PCRollBoss / PFRollBoss) and staged in
+	; SRAM. Without this, the sprite keeps its object_event default category
+	; and a water/bird/etc. species loads land-monster tiles + palette
+	; (confirmed bug: Tentacool showed as a land monster in the forest).
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .patchCaveBoss
+	cp PROCEDURAL_FOREST
+	jr z, .patchForestBoss
+	cp PROCEDURAL_FACILITY
+	jr z, .patchFacilityBoss
+	jr .noBossSpritePatch
+.patchCaveBoss
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCaveStagingBossSprite]
+	ld b, a                          ; save sprite constant before closing SRAM
+	jr .closeAndPatch
+.patchForestBoss
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcForestBossSprite]
+	ld b, a
+	jr .closeAndPatch
+.patchFacilityBoss
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityStagingBuffer)  ; facility SRAM is bank 1, not 0
+	ld [rRAMB], a
+	ld a, [sProcFacilityBossSprite]
+	ld b, a
+.closeAndPatch
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+.noBossSpritePatch
 	farcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
+	ldh a, [hCurMap]            ; load current map
+	; PRELOAD PROTOTYPE 2026-06-27: PALLET_TOWN now kicks off generation
+	; into the WRAM staging buffer (see custom_functions/
+	; procedural_cave_gen.asm's PCPreloadCave) - testing whether hiding
+	; the cost behind however long the player spends walking around town
+	; works better than paying it all at once on the actual warp-in.
+	cp PALLET_TOWN
+	jr nz, .notPalletTown
+	homecall PCPreloadCave
+	homecall PCemGenerateMaps
+	homecall PFPreloadForest    ; reset forest baked flag so next visit gets fresh maze
+	; SHELVED: facility unreachable (Pallet Town test warp reverted), see Red Rogue
+	; Files/ for re-enable steps. Uncomment to restore facility preload:
+	;homecall PFacPreload        ; reset facility baked flag + roll facility boss/palette
+.notPalletTown
+	cp PROCEDURAL_CAVE_1        ; compare against procedural generated stage
+	jr nz, .notProcCave         ; proceed as normal if not procedural stage
+	homecall PCFinalizeCave     ; blit the staged cave + apply everything
+	                            ; PCPreloadCave deferred (warp/sprite state)
+.notProcCave
+	cp PROCEDURAL_FOREST
+	jr nz, .notProcForest
+	homecall PFinalizeForest    ; generate (if needed) and blit maze
+.notProcForest
+	cp PROCEDURAL_FACILITY
+	jr nz, .notProcFacility
+	homecall PFacFinalize       ; generate (if needed) and blit facility
+.notProcFacility
+	; Cemetery: blit the pre-generated map for whichever of the 4 floors is loading
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .isCemetery
+	cp PROCEDURAL_CEMETERY_4
+	jr nz, .notCemetery
+.isCemetery
+	homecall PCemFinalizeMap
+.notCemetery
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
 ; copy current map view to VRAM

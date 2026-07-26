@@ -409,6 +409,51 @@ ToggleableObjectStates:
     toggle_object_state PC_MOVETUTOR, ON
     toggle_object_state PC_DOOR2_SIGN, ON
 
+	; Wild area pokeballs - see constants/toggle_constants.asm. The hardcoded
+	; slot 1-4 bypass in IsObjectHidden/RandomPickUpItem never actually reads
+	; these (it never consults wToggleableObjectList for those slots), but
+	; assert_table_length still requires a matching entry per toggle const.
+	; Object-id values (1-4) are arbitrary/unused here - just need to be valid
+	; bytes, since data/maps/objects/ProceduralCave1.asm doesn't const_export
+	; per-ball names (not needed, positions/items are patched at runtime by
+	; sprite slot number, not by name).
+	toggleable_objects_for PROCEDURAL_FOREST
+	;toggle_object_state FOREST_BOSS, ON       ; slot 1 = boss
+	;toggle_object_state 2, ON                 ; slot 2 = pokeball 1
+	;toggle_object_state 3, ON                 ; slot 3 = pokeball 2
+	;toggle_object_state 4, ON                 ; slot 4 = pokeball 3
+	;toggle_object_state 5, ON                 ; slot 5 = pokeball 4
+
+	toggleable_objects_for PROCEDURAL_CAVE_1
+    toggle_object_state WILD_AREA_BOSS, ON ; slot 1 = boss
+	toggle_object_state 2, ON              ; slot 2 = pokeball 1
+	toggle_object_state 3, ON              ; slot 3 = pokeball 2
+	toggle_object_state 4, ON              ; slot 4 = pokeball 3
+	toggle_object_state 5, ON              ; slot 5 = pokeball 4
+
+	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants (ShowObject calls
+	; in scripts/ProceduralFacility.asm reference them directly at
+	; EVENT_ENTER_ROOM) - same zero-real-entries pattern as PROCEDURAL_FOREST
+	; above, kept only for the assert_table_length macro bookkeeping.
+	toggleable_objects_for PROCEDURAL_FACILITY
+	;toggle_object_state FACILITY_BOSS, ON     ; slot 1 = boss
+	;toggle_object_state 2, ON                 ; slot 2 = pokeball 1
+	;toggle_object_state 3, ON                 ; slot 3 = pokeball 2
+	;toggle_object_state 4, ON                 ; slot 4 = pokeball 3
+	;toggle_object_state 5, ON                 ; slot 5 = pokeball 4
+
+	toggleable_objects_for PROCEDURAL_CEMETERY_1
+	toggle_object_state 1, ON    ; slot 1 = pokeball
+
+	toggleable_objects_for PROCEDURAL_CEMETERY_2
+	toggle_object_state 1, ON
+
+	toggleable_objects_for PROCEDURAL_CEMETERY_3
+	toggle_object_state 1, ON
+
+	toggleable_objects_for PROCEDURAL_CEMETERY_4
+	toggle_object_state 1, ON
+
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 
 	db -1, 1, ON ; end

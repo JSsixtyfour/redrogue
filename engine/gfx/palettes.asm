@@ -144,7 +144,14 @@ SetPal_Overworld:
 	jr z, .PokemonTowerOrAgatha
 	cp CAVERN
 	jr z, .caveOrBruno
+	cp FACILITY
+	jr z, .facilityTileset
 	ldh a, [hCurMap]
+	cp PROCEDURAL_FOREST
+	jr z, .procForest    ; force a green forest palette; without this the
+	                     ; procedural forest ($F2, dungeon-range map ID) falls
+	                     ; through to wLastMap = Pallet Town = PAL_PALLET (blue).
+	                     ; Mirrors how CAVERN is special-cased to PAL_CAVE.
 	cp FIRST_INDOOR_MAP
 	jr c, .townOrRoute
 	cp CERULEAN_CAVE_2F
@@ -174,6 +181,39 @@ SetPal_Overworld:
 	jr .town
 .caveOrBruno
 	ld a, PAL_CAVE - 1
+	jr .town
+.procForest
+	ld a, PAL_VIRIDIAN - 1  ; +1 in .town → PAL_VIRIDIAN (the green forest palette)
+	jr .town
+.facilityTileset
+	; FACILITY tileset. The procedural facility ($F3) gets a randomized
+	; Mansion/PowerPlant palette (sProcFacilityPalette, rolled at Pallet Town
+	; entry). Other FACILITY maps (Power Plant, Pokemon Mansion) keep their
+	; normal location palette — add their map IDs here to opt them in.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_FACILITY
+	jr z, .facilityRandom
+	jr .normalDungeonOrBuilding
+.facilityRandom
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityStagingBuffer)  ; facility SRAM is bank 1
+	ld [rRAMB], a
+	ld a, [sProcFacilityPalette]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	and a
+	jr nz, .facilityMansion
+	ld a, PAL_ROUTE - 1     ; 0 = PowerPlant (greenish route palette)
+	jr .town
+.facilityMansion
+	ld a, PAL_CINNABAR - 1  ; 1 = Mansion (reddish Cinnabar palette)
 	jr .town
 .Lorelei
 	xor a
