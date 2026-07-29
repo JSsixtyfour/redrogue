@@ -86,3 +86,38 @@ _BillsHouseBillCheckOutMyRarePokemonText::
 	cont "some of my rare"
 	cont "#MON on my PC!"
 	done
+
+_BillGift1Desc::
+    text "Fuse two #MON"
+    line "into one"
+	done
+    
+_BillGift2Desc::
+    text "One of Bill's"
+    line "favorite #MON"
+	done
+    
+_BillGift3Desc::
+    text "One of Bill's"
+    line "favorite #MON"
+	done
+
+_BillGift4Desc::
+    text "One of Bill's"
+    line "favorite #MON"
+	done
+    
+_BillGift5Desc::
+    text "One of Bill's"
+    line "favorite #MON"
+	done
+    
+_BillGift6Desc::
+    text "A secret trick"
+    line "from his PC"
+	done
+    
+_BillGift7Desc::
+    text "One of his"
+    line "dad's favorites"
+    done

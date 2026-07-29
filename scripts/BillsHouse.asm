@@ -1,4 +1,13 @@
 BillsHouse_Script:
+    CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+    ld a, BILL_GIFT
+    ld [wCurrentGiftGiver], a   ; set to Bill
+    farcall rogue_gift_randomized_batch
+    ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+    ResetEvent EVENT_BRIDGE_INTRO
+    .afterSetup
 	call EnableAutoTextBoxDrawing
 	ld a, [wBillsHouseCurScript]
 	ld hl, BillsHouse_ScriptPointers
@@ -122,6 +131,8 @@ BillsHouse_TextPointers:
 	dw_const BillsHouseBillSSTicketText,              TEXT_BILLSHOUSE_BILL_SS_TICKET
 	dw_const BillsHouseBillCheckOutMyRarePokemonText, TEXT_BILLSHOUSE_BILL_CHECK_OUT_MY_RARE_POKEMON
 	dw_const BillsHouseActivatePCScript,              TEXT_BILLSHOUSE_ACTIVATE_PC
+    dw_const BillsHouse_Gift_Text, TEXT_BILLSHOUSE_GIFT_1
+    EXPORT TEXT_BILLSHOUSE_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 BillsHouseActivatePCScript:
 	script_bills_pc
@@ -161,29 +172,24 @@ BillsHouseBillPokemonText:
 
 BillsHouseBillSSTicketText:
 	text_asm
-	CheckEvent EVENT_GOT_SS_TICKET
-	jr nz, .got_ss_ticket
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr nz, .got_item
+    CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld hl, .ThankYouText
 	call PrintText
-	lb bc, S_S_TICKET, 1
-	call GiveItem
-	jr nc, .bag_full
-	ld hl, .SSTicketReceivedText
-	call PrintText
-	SetEvent EVENT_GOT_SS_TICKET
-	ld a, TOGGLE_CERULEAN_GUARD_1
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
-	ld a, TOGGLE_CERULEAN_GUARD_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-.got_ss_ticket
-	ld hl, .WhyDontYouGoInsteadOfMeText
-	call PrintText
+	SetEvent EVENT_BRIDGE_INTRO
+    .skip_intro
+	xor a
+    ld a, TEXT_BILLSHOUSE_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+    call DisableWaitingAfterTextDisplay
 	jr .text_script_end
-.bag_full
-	ld hl, .SSTicketNoRoomText
+.got_item
+	ld hl, CheckOutPokemon
 	call PrintText
+	jp TextScriptEnd
 .text_script_end
 	jp TextScriptEnd
 
@@ -207,10 +213,13 @@ BillsHouseBillSSTicketText:
 
 BillsHouseBillCheckOutMyRarePokemonText:
 	text_asm
-	ld hl, .Text
+	ld hl, CheckOutPokemon
 	call PrintText
 	jp TextScriptEnd
 
-.Text:
+CheckOutPokemon:
 	text_far _BillsHouseBillCheckOutMyRarePokemonText
 	text_end
+
+BillsHouse_Gift_Text:    
+    script_bridge_gift

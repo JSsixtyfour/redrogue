@@ -425,6 +425,3 @@ CopyCatGift7Desc:
 	text_far _CopyCatGift7Desc
 	text_end
     
-Empty:
-	text_far _Empty
-	text_end

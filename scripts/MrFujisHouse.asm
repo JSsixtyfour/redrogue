@@ -1,4 +1,13 @@
 MrFujisHouse_Script:
+    CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+    ld a, MRFUJI_GIFT
+    ld [wCurrentGiftGiver], a   ; set to Mr. Fuji
+    farcall rogue_gift_randomized_batch
+    ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+    ResetEvent EVENT_BRIDGE_INTRO
+    .afterSetup
 	call EnableAutoTextBoxDrawing
 	ret
 
@@ -10,14 +19,16 @@ MrFujisHouse_TextPointers:
 	dw_const MrFujisHouseNidorinoText,      TEXT_MRFUJISHOUSE_NIDORINO
 	dw_const MrFujisHouseMrFujiText,        TEXT_MRFUJISHOUSE_MR_FUJI
 	dw_const MrFujisHouseMrFujiPokedexText, TEXT_MRFUJISHOUSE_POKEDEX
+    dw_const MrFujisHouse_Gift_Text, TEXT_MRFUJISHOUSE_GIFT_1
+    EXPORT TEXT_MRFUJISHOUSE_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 MrFujisHouseSuperNerdText:
 	text_asm
-	CheckEvent EVENT_RESCUED_MR_FUJI
-	jr nz, .rescued_mr_fuji
-	ld hl, .MrFujiIsntHereText
-	call PrintText
-	jr .done
+	;CheckEvent EVENT_RESCUED_MR_FUJI
+	;jr nz, .rescued_mr_fuji
+	;ld hl, .MrFujiIsntHereText
+	;call PrintText
+	;jr .done
 .rescued_mr_fuji
 	ld hl, .MrFujiHadBeenPrayingText
 	call PrintText
@@ -34,11 +45,11 @@ MrFujisHouseSuperNerdText:
 
 MrFujisHouseLittleGirlText:
 	text_asm
-	CheckEvent EVENT_RESCUED_MR_FUJI
-	jr nz, .rescued_mr_fuji
-	ld hl, .ThisIsMrFujisHouseText
-	call PrintText
-	jr .done
+	;CheckEvent EVENT_RESCUED_MR_FUJI
+	;jr nz, .rescued_mr_fuji
+	;ld hl, .ThisIsMrFujisHouseText
+	;call PrintText
+	;jr .done
 .rescued_mr_fuji
 	ld hl, .PokemonAreNiceToHugText
 	call PrintText
@@ -69,16 +80,25 @@ MrFujisHouseNidorinoText:
 
 MrFujisHouseMrFujiText:
 	text_asm
-	CheckEvent EVENT_GOT_POKE_FLUTE
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
 	jr nz, .got_item
+    CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld hl, .IThinkThisMayHelpYourQuestText
 	call PrintText
-	lb bc, POKE_FLUTE, 1
-	call GiveItem
+	
+    SetEvent EVENT_BRIDGE_INTRO
+    .skip_intro
+	xor a
+    ld a, TEXT_MRFUJISHOUSE_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+	jr .done
+    
 	jr nc, .bag_full
-	ld hl, .ReceivedPokeFluteText
+	ld hl, .MrFujisHouseMrFujiKind
 	call PrintText
-	SetEvent EVENT_GOT_POKE_FLUTE
 	jr .done
 .bag_full
 	ld hl, .PokeFluteNoRoomText
@@ -107,7 +127,15 @@ MrFujisHouseMrFujiText:
 .HasMyFluteHelpedYouText:
 	text_far _MrFujisHouseMrFujiHasMyFluteHelpedYouText
 	text_end
+    
+.MrFujisHouseMrFujiKind
+    text_far _MrFujisHouseMrFujiKind
+	text_end
+    
 
 MrFujisHouseMrFujiPokedexText:
 	text_far _MrFujisHouseMrFujiPokedexText
 	text_end
+
+MrFujisHouse_Gift_Text:    
+    script_bridge_gift

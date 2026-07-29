@@ -38,7 +38,7 @@ _MrFujisHouseNidorinoText::
 _MrFujisHouseMrFujiIThinkThisMayHelpYourQuestText::
 	text "MR.FUJI: <PLAYER>."
 
-	para "Your #DEX quest"
+	para "Your quest"
 	line "may fail without"
 	cont "love for your"
 	cont "#MON."
@@ -87,3 +87,45 @@ _MrFujisHouseMrFujiPokedexText::
 	para "Gone! It's been"
 	line "clipped out!"
 	done
+
+_MrFujisHouseMrFujiKind::
+	text "MR.FUJI: Please"
+	line "be kind to the"
+    cont "#MON on your"
+    cont "journey"
+	done
+    
+_MrFujiGift1Desc::
+    text "Wake any sleeping"
+    line "#MON"
+	done
+    
+_MrFujiGift2Desc::          ; need to figure a way to get its name in here
+    text "One of Mr. Fuji's"
+    line "adoptable #MON"
+	done
+    
+_MrFujiGift3Desc::          ; need to figure a way to get its name in here
+    text "A cubone with"
+    line "doubled attack"
+	done
+
+_MrFujiGift4Desc::
+    text "Give one #MON"
+    line "perfect stats"
+	done
+    
+_MrFujiGift5Desc::
+    text "Teach any #MON"
+    line "Nightshade"
+	done
+    
+_MrFujiGift6Desc::
+    text "Teach any #MON"
+    line "Confuse Ray"
+	done
+    
+_MrFujiGift7Desc::
+    text "Teach any #MON"
+    line "Lick"
+    done

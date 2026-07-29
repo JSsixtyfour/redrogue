@@ -128,7 +128,3 @@ _CopyCatGift7Desc::
     text "One of Copycat's"
     line "favorite TMs"
 	done
-    
-_Empty::
-    text ""
-	done

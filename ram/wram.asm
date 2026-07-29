@@ -2124,8 +2124,17 @@ wBattleCount:: db
 ; wGameProgressFlagsEnd (ds 40 -> ds 38) so WRAM0 stays net-zero. Transient
 ; per-selection state (offered type, which door, active-this-stage) lives in
 ; wRogueFlagsBitfield bits 4-7 at zero byte cost.
-wRoutesSinceMiniBoss:: db ; non-mini-boss routes since the last one; drives the escalating chance
+wRoutesSinceSpecial:: db ; non-special routes since the last special (miniboss OR wild area); drives the escalating chance
 wMiniBossCount:: db       ; mini-bosses encountered this run; drives the >=2 guarantee
+wWildAreaState:: db ; bits 0-2 = cave/forest/cemetery offered-this-cycle mask;
+                    ; bits 3-4 = saturating wild-area offered-count (0-3) for the
+                    ; >=2-per-run guarantee. Run-scoped: zeroed by FillMemory on new
+                    ; game (inside wGameProgressFlags). See WILD_AREA_* in ram_constants.
+wProcCemBossBattle:: db ; 1 = the next enemy-mon load is the cemetery ghost boss.
+                    ; Set by ProceduralCemetery4's boss trigger, checked+cleared in
+                    ; LoadEnemyMonData (PCemMaybeApplyGhostBoss) so only the boss mon
+                    ; gets the ghost variant + move, not floor-4 wild encounters.
+                    ; Zeroed on new game (must default 0 - it gates every enemy load).
 ; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force onto each
 ; lobby door independently; 0 = random (no override). Consumed (reset to 0)
 ; after one lobby visit. See SelectAndPatchLobbyExit / Debug2ApplyRoundState.
@@ -2203,6 +2212,12 @@ NEXTU
 
 wProcFacilityWildBudget:: ; facility wild battle budget (same mechanic as cave); never
                           ; concurrent with cave/cemetery/forest, safe to share this byte
+                          
+NEXTU
+wCurrentGiftGiver:: db
+wGift1:: db
+wGift2:: db
+wGift3:: db
 
 ENDU
 
@@ -2272,13 +2287,15 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 26 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 24 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
 	      ; wGameProgressFlagsEnd (unnamed, never read/written), so shrinking only
 	      ; shifts saved offsets (save-break, acceptable per WRAM_BIBLE.md) with zero
 	      ; runtime effect. Tune this number if the linker reports a WRAM0 overflow.
+	      ; -1 more for wWildAreaState (wild-area door integration), still net-zero WRAM0
+	      ; -1 more for wProcCemBossBattle (cemetery ghost boss flag), still net-zero WRAM0
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

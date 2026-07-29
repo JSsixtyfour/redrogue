@@ -143,3 +143,19 @@ _GiovanniMiniBossEndBattleText::
 	line "DEFEAT QUOTE"
 	cont "HERE"
 	done
+    
+_BridgeByeText::
+	text "Until next time"
+	prompt
+    
+_ReceivedItemText::
+	text "<PLAYER> received"
+	line "@"
+	text_ram wNameBuffer
+	text "!@"
+    prompt
+	text_end
+    
+_Empty::
+    text ""
+	done

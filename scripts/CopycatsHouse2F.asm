@@ -2,7 +2,11 @@ CopycatsHouse2F_Script:
     CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
+    ld a, COPYCAT_GIFT
+    ld [wCurrentGiftGiver], a   ; set to CopyCat
     farcall rogue_gift_randomized_batch
+    ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+    ResetEvent EVENT_BRIDGE_INTRO
     .afterSetup
 	jp EnableAutoTextBoxDrawing
 
@@ -20,18 +24,23 @@ CopycatsHouse2F_TextPointers:
 
 CopycatsHouse2FCopycatText:
 	text_asm
-	CheckEvent EVENT_GOT_TM31
-	jr nz, .got_item
+    CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+    jr nz, .got_item
+	CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld a, TRUE
 	ldh [hNoWaitAfterText], a
 	ld hl, .DoYouLikePokemonText
 	call PrintText
+    ld hl, .PreReceiveText
+    call PrintText
+    SetEvent EVENT_BRIDGE_INTRO
+    .skip_intro
 	xor a
     ld a, TEXT_COPYCATSHOUSE2F_GIFT_1
 	ldh [hTextID], a
 	call DisplayTextID
     call DisableWaitingAfterTextDisplay
-	SetEvent EVENT_GOT_TM31
 	jr .done
 .bag_full
 	ld hl, .TM31NoRoomText
@@ -66,6 +75,10 @@ CopycatsHouse2FCopycatText:
 .TM31NoRoomText:
 	text_far _CopycatsHouse2FCopycatTM31NoRoomText
 	text_waitbutton
+	text_end
+    
+.PreReceiveText:
+	text_far _CopycatsHouse2FCopycatTM31PreReceiveText
 	text_end
 
 CopycatsHouse2FDoduoText:
