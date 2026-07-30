@@ -1932,14 +1932,14 @@ TryRunningFromBattle:
 	jp z, .procNoRun
 	cp PROCEDURAL_FACILITY
 	jp z, .procNoRun
-	;cp PROCEDURAL_CEMETERY_1
-	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETERY_2
-	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETERY_3
-	;jr z, .trainerBattle
-	;cp PROCEDURAL_CEMETERY_4
-	;jr z, .trainerBattle
+	cp PROCEDURAL_CEMETERY_1     ; cemetery floors are wild areas too - no running
+	jp z, .procNoRun
+	cp PROCEDURAL_CEMETERY_2
+	jp z, .procNoRun
+	cp PROCEDURAL_CEMETERY_3
+	jp z, .procNoRun
+	cp PROCEDURAL_CEMETERY_4
+	jp z, .procNoRun
 	ld a, [wNumRunAttempts]
 	inc a
 	ld [wNumRunAttempts], a
