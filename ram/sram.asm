@@ -26,6 +26,14 @@ sProcCemeteryReady:: db        ; bit N = floor N has been generated (lazy per-ma
 sProcCemeteryItemGot:: db      ; bit N = floor N item has been collected; cleared on new generation
 sProcCemeteryUsedPrefabs:: dw  ; bit N = prefab N (PCemPrefabTable) already used this run;
                                 ; at most 4 bits ever set (one per floor), cleared per-run
+sProcCemeteryBossSpecies:: db  ; cemetery boss species, rolled at preload (PCemGenerateMaps).
+                                ; Persisted here because wRoguePokemon1 is shared scratch that
+                                ; wild battles clobber (random_pokemon_selection.asm) between
+                                ; preload and the floor-4 boss engage; restored via
+                                ; PCemRestoreBossSpecies right before the battle + join offer.
+                                ; Mirrors the forest's sProcForestBossSpecies.
+sProcCemeteryBossMove:: db     ; the boss's ghost move (LICK/NIGHT_SHADE/CONFUSE_RAY), rolled
+                                ; once at preload so the battle enemy and the gifted mon match.
 sProcCaveStagingEntranceY:: db
 sProcCaveStagingEntranceX:: db
 sProcCaveStagingExitY:: db

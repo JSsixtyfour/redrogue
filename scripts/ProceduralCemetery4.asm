@@ -41,6 +41,10 @@ ProceduralCemetery4DefaultScript:
 	ld a, TEXT_PROCEDURALCEMETERY4_BEGONE
 	ldh [hTextID], a
 	call DisplayTextID
+	; wRoguePokemon1 (the boss species) was rolled + persisted to SRAM at preload
+	; (PCemRollBoss); wild battles on floors 1-4 clobber it in the meantime, so
+	; restore it from SRAM right before the battle uses it.
+	farcall PCemRestoreBossSpecies
 	ld a, [wRoguePokemon1]
 	ld [wCurOpponent], a
     farcall PCGetBossLevel        ; sets wCurEnemyLevel from wBattleCount
@@ -80,6 +84,10 @@ ProceduralCemetery4BossBattleScript:
 ; which is what produced glitched graphics and no visible text).
 ProceduralCemetery4BossOfferText:
 	text_asm
+	; Restore the SRAM-persisted boss species (the battle just clobbered
+	; wRoguePokemon1). Safe to clobber bc here: this handler prints via
+	; call PrintText, not the return-hl cursor pattern.
+	farcall PCemRestoreBossSpecies
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
 	call GetMonName

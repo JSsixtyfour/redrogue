@@ -156,6 +156,88 @@ PCemGenerateMaps::
 	; clear calmed events for fresh run
 	ResetEvent EVENT_PC_CEM_BUDGET_ENDED
 	ResetEvent EVENT_PC_CEM_CALMED_SHOWN
+	; Roll the cemetery's OWN boss species + ghost move now. Previously the
+	; cemetery boss read wRoguePokemon1 as if the CAVE's PCRollBoss (inside
+	; PCPreloadCave) had populated it - true only under the old all-preload-at-
+	; Pallet-Town flow. The per-type wild-area door preload runs only
+	; PCemGenerateMaps, so the cemetery must roll its own boss, exactly like the
+	; forest's PFRollBoss. Persisted to SRAM (see PCemRollBoss) because wild
+	; battles clobber wRoguePokemon1 before the floor-4 engage.
+	call PCemRollBoss
+	ret
+
+; ============================================================
+; PCemRollBoss
+; Rolls the cemetery boss species + its ghost move, persisting both to SRAM
+; (and wRoguePokemon1). Mirrors the cave's PCRollBoss / forest's PFRollBoss so
+; the cemetery is self-sufficient regardless of how it's reached. The species
+; excludes the Gastly line (it becomes a GHOST *variant* of a non-ghost species,
+; via func_ghost_variant.asm, applied to the battle enemy + gifted mon later).
+; SRAM is closed on entry (PCemGenerateMaps closed it before this call); opened
+; here only for the two stores. Clobbers a/bc/de/hl.
+; ============================================================
+PCemRollBoss:
+	farcall PCGetBossLevel            ; sets wCurEnemyLevel before the species pick
+	ld b, 60                          ; boss rarity bump (matches PCRollBoss)
+	farcall PCRollMonClass            ; c = rarity class, biased by wBattleCount
+	farcall Random_Pokemon_Selection  ; d = species
+	ld a, d
+	ld [wRoguePokemon1], a
+	call PCemAvoidGhostBoss           ; reroll if it landed on Gastly/Haunter/Gengar
+	; roll the ghost move -> b (0=LICK, 1=NIGHT_SHADE, 2=CONFUSE_RAY)
+	ld c, 3
+	call Rangerandom                  ; a = 0..2 (Rangerandom preserves bc)
+	ld c, a
+	ld b, 0
+	ld hl, PCemGhostMoves
+	add hl, bc
+	ld a, [hl]
+	ld b, a                           ; b = ghost move id (survives the SRAM writes)
+	; persist species (wRoguePokemon1) + move (b) to SRAM
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [wRoguePokemon1]
+	ld [sProcCemeteryBossSpecies], a
+	ld a, b
+	ld [sProcCemeteryBossMove], a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ret
+
+PCemGhostMoves:
+	db LICK        ; 0
+	db NIGHT_SHADE ; 1
+	db CONFUSE_RAY ; 2
+
+; ============================================================
+; PCemRestoreBossSpecies
+; Restores wRoguePokemon1 from the SRAM-persisted cemetery boss species. Wild
+; battles clobber wRoguePokemon1 (random_pokemon_selection.asm) between the
+; preload roll and the floor-4 engage, so the boss script calls this right
+; before it reads the species (both the battle trigger and the join offer).
+; farcall'd from ProceduralCemetery4.asm. Clobbers a/b.
+; ============================================================
+PCemRestoreBossSpecies::
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCemeteryBossSpecies]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	ld [wRoguePokemon1], a
 	ret
 
 ; ============================================================
@@ -1096,17 +1178,11 @@ PCemFinalizeMap::
 	jr nz, .cemAlreadyReady    ; bit set = already generated
 	; generate this floor now
 	call PCemGenerateOneMap
-	; Floor 4 is the boss floor. wRoguePokemon1 (the boss species) is
-	; shared, staged-shared state: rolled once at Pallet Town entry by
-	; the CAVE's PCRollBoss (procedural_cave_gen.asm), since either the
-	; cave or the cemetery may end up using it. Reroll it here, once,
-	; only for the cemetery's own use, if it landed on a Ghost the
-	; cemetery boss should never be - this does not touch PCRollBoss or
-	; affect the cave's own boss (which reads wRoguePokemon1 on an
-	; entirely separate visit/branch).
-	ld a, [wBuffer + wCemMapIndex]
-	cp 3
-	call z, PCemAvoidGhostBoss
+	; Floor 4 is the boss floor. The boss species is no longer adjusted here:
+	; it is rolled (Gastly line already excluded) and persisted to SRAM at
+	; preload by PCemRollBoss, and restored into wRoguePokemon1 by
+	; PCemRestoreBossSpecies right before the battle/offer (wild battles clobber
+	; wRoguePokemon1 in between). Nothing floor-4-specific to do at generation.
 	; set ready bit (recompute mask — PCemGenerateOneMap may clobber b/c)
 	ld a, [wBuffer + wCemMapIndex]
 	ld c, a
