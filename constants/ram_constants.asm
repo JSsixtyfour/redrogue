@@ -218,11 +218,28 @@ DEF TEAM_RANDOM_3_SET  EQU 1  ; 1-of-3 teams per tier chosen at random (Giovanni
 DEF MINIBOSS_RANDOM_FILL EQU $FE
 
 ; Chance tuning (out of 256). Base 25% ~= 64; +25% per non-mini-boss route.
-DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceMiniBoss = 0
+DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceSpecial = 0
 DEF MINIBOSS_STEP        EQU 64    ; +~25% per non-mini-boss route (guaranteed by the 4th)
 DEF MINIBOSS_MIN_PER_RUN EQU 2    ; forced-roll floor: at least this many per run
 DEF MINIBOSS_FIRST_BATTLECOUNT EQU 10 ; not eligible until wBattleCount >= this (skips route 1)
 DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
+
+; --- Wild Area door integration ---
+; Rollable wild-area types (Facility is shelved, never rolled).
+DEF WILD_AREA_CAVE      EQU 0
+DEF WILD_AREA_FOREST    EQU 1
+DEF WILD_AREA_CEMETERY  EQU 2
+DEF NUM_WILD_AREA_TYPES EQU 3
+DEF WILD_AREA_MIN_PER_RUN EQU 2          ; >=2 wild areas guaranteed per run
+; Not eligible until wBattleCount >= this (skips route 1), same as miniboss.
+DEF WILD_AREA_FIRST_BATTLECOUNT EQU 10
+
+; wWildAreaState bit layout:
+;   bits 0-2 = "offered this cycle" mask (bit WILD_AREA_CAVE/FOREST/CEMETERY)
+;   bits 3-4 = saturating count of wild areas offered this run (0-3)
+DEF WILD_AREA_MASK        EQU %00000111
+DEF WILD_AREA_COUNT_SHIFT EQU 3
+DEF WILD_AREA_COUNT_MASK  EQU %00011000
 
 ; Reward-rarity bonuses while a mini-boss is active (wRogueFlagsBitfield bit 7).
 ; Stack ADDITIVELY on top of any witch-prize rarity bonus (both can be active

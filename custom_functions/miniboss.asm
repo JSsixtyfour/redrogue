@@ -3,13 +3,18 @@
 ;
 ; Lives in the "rogue" section (same object as random_stage_selection.asm), so
 ; it reaches _PickNextStage / _PickRandomUnvisitedStage / _StageBitInfo /
-; RogueStageMapTable / PatchWarpEntry with plain calls, and MiniBossRollAndAssign
-; is plain-called from SelectAndPatchLobbyExit.
+; RogueStageMapTable / PatchWarpEntry with plain calls, and
+; SpecialEncounterRollAndAssign is plain-called from SelectAndPatchLobbyExit.
 ;
-; Transient per-selection state is packed in wRogueFlagsBitfield bits 4-7:
+; SpecialEncounterRollAndAssign is the unified mini-boss/wild-area roll: one
+; shared roll decides whether a special occurs this lobby visit, then which
+; kind (mini-boss vs. wild area, see custom_functions/wild_area_selection.asm),
+; drawing from a combined budget. Transient per-selection mini-boss state is
+; packed in wRogueFlagsBitfield bits 4-7:
 ;   bits 4-5 = offered type (MINIBOSS_TYPE_MASK/SHIFT), bit 6 = which door,
 ;   bit 7 = active on the stage being entered. Persistent counters:
-;   wRoutesSinceMiniBoss (escalation), wMiniBossCount (>=2 guarantee).
+;   wRoutesSinceSpecial (shared escalation), wMiniBossCount (>=2 guarantee),
+;   wWildAreaState (wild-area no-repeat mask + >=2 guarantee count).
 ; ============================================================
 
 DEF MINIBOSS_ENTRY_SIZE EQU 7
@@ -58,79 +63,166 @@ GiovanniMaps:
 	db -1
 
 ; ============================================================
-; MiniBossRollAndAssign
-; Called from SelectAndPatchLobbyExit AFTER _PickNextStage has set wRogueMap.
-; On a route-next selection past the first route, may turn ONE lobby door into a
-; mini-boss stage (the other keeps the normal route) and record the offered type
-; + which door in wRogueFlagsBitfield bits 4-6. No-ops (clearing the bits) on
-; gym-next or the first route.
+; SpecialEncounterRollAndAssign  (was MiniBossRollAndAssign)
+; Called from SelectAndPatchLobbyExit AFTER _PickNextStage set wRogueMap and copied it
+; into both lobby doors. On a route-next selection past the first route, may turn the
+; lobby into a special: a mini-boss (one door boss / one door route) OR a wild area
+; (one door wild / one door route, or a single mandatory door when the >=2 guarantee
+; forces it). No-ops (clearing the mini-boss transient bits) on gym-next / first route.
+; Mini-boss and wild-area occurrences are mutually exclusive per lobby visit and share
+; one escalation counter (wRoutesSinceSpecial) so the combined budget trends ~4/2/2.
 ; ============================================================
-MiniBossRollAndAssign::
-	; clear transient bits from any prior selection
+SpecialEncounterRollAndAssign::
+	; clear transient mini-boss bits from any prior selection
 	ld hl, wRogueFlagsBitfield
 	res BIT_MINIBOSS_DOOR, [hl]
 	res BIT_MINIBOSS_ACTIVE, [hl]
 	ld a, [hl]
-	and %11001111 ; clear the type field (bits 4-5), keep the rest
+	and %11001111           ; clear type field (bits 4-5), keep the rest
 	ld [hl], a
-	; gate: route-next only (gym-next has a single door, no mini-boss)
+	; gate: route-next only (gym-next has one door, no special)
 	bit BIT_ROGUE_GYM_NEXT, [hl]
 	ret nz
 	; gate: never on the first route
 	ld a, [wBattleCount]
 	cp MINIBOSS_FIRST_BATTLECOUNT
 	ret c
-	; decide occurrence (chance / forced guarantee)
-	call MiniBossShouldOccur
-	jr nc, .noMiniBoss
-	; pick boss type + its stage (availability-first, endless-safe)
-	call MiniBossPickTypeAndStage ; carry = success, a = type, b = mini-boss map
-	jr nc, .noMiniBoss
-	call MiniBossAssignDoors       ; a = type, b = map -> sets door maps + bits 4-6
+	; --- compute forcing for each kind into e: bit0 = mbForced, bit1 = waForced ---
+	ld e, 0
+	ld a, [wMiniBossCount]
+	ld b, a
+	ld c, MINIBOSS_MIN_PER_RUN
+	call SpecialKindForced   ; carry = must force this kind
+	jr nc, .mbDone
+	set 0, e
+.mbDone:
+	call GetWildAreaCount    ; a = wild count (bits 3-4 of wWildAreaState)
+	ld b, a
+	ld c, WILD_AREA_MIN_PER_RUN
+	call SpecialKindForced
+	jr nc, .waDone
+	set 1, e
+.waDone:
+IF DEF(_DEBUG)
+	; Debug 2 testing aid: deterministically force a wild area to occur on every
+	; eligible route-next lobby visit (bypassing the chance roll / count-balance
+	; kind choice below), so wild-area rotation/forced-door behavior can be tested
+	; without grinding RNG. Still honors the route-next/first-route gates above and
+	; the forced-vs-choosable bit (e bit 1) computed above, so the mandatory single-
+	; door case still only triggers once the real >=2-per-run guarantee kicks in.
+	; Debug-build only; off entirely in release ROMs.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jp nz, .doWildArea
+ENDC
+	; --- decide whether a special occurs, and which kind ---
+	ld a, e
+	and a
+	jr z, .rollChance        ; neither forced -> escalating chance
+	cp %00000001
+	jr z, .doMiniBoss        ; only mini-boss forced
+	cp %00000010
+	jr z, .doWildArea        ; only wild area forced
+	jr .chooseKind           ; both forced -> balance by count
+.rollChance:
+	call SpecialChanceOccur  ; carry = a special occurs this visit
+	jr nc, .noSpecial
+.chooseKind:
+	; pick the kind with the lower running count; tie -> 50/50 random.
+	call GetWildAreaCount
+	ld c, a                  ; c = wild count
+	ld a, [wMiniBossCount]
+	ld b, a                  ; b = mb count
+	ld a, c
+	cp b
+	jr c, .doWildArea        ; wild < mb -> wild
+	jr nz, .doMiniBoss       ; wild > mb -> mini-boss
+	ld c, 2
+	call Rangerandom         ; a = 0 or 1
+	and a
+	jr z, .doMiniBoss
+	jr .doWildArea
+.noSpecial:
+	ld hl, wRoutesSinceSpecial
+	inc [hl]
+	ret
+.doMiniBoss:
+	call MiniBossPickTypeAndStage ; carry = success, a = type, b = map (endless-safe)
+	jr nc, .noSpecial             ; defensive; rarely taken
+	call MiniBossAssignDoors      ; sets door maps + bits 4-6
 	xor a
-	ld [wRoutesSinceMiniBoss], a
+	ld [wRoutesSinceSpecial], a
 	ld hl, wMiniBossCount
 	inc [hl]
 	ret
-.noMiniBoss
-	ld hl, wRoutesSinceMiniBoss
-	inc [hl]
+.doWildArea:
+	; forced? (e bit1) -> mandatory single door; else choosable one-of-two
+	bit 1, e
+	jr z, .waChoosable
+	scf                           ; carry = forced
+	jr .waAssign
+.waChoosable:
+	and a                         ; carry clear = choosable
+.waAssign:
+	call WildAreaPickAndAssign    ; input carry = forced; picks type (no-repeat),
+	                              ; updates wWildAreaState (mask bit + count), sets doors
+	xor a
+	ld [wRoutesSinceSpecial], a
 	ret
 
-; Returns carry set if a mini-boss should occur this route selection.
-MiniBossShouldOccur:
-	; forced by the >=2-per-run guarantee?
-	ld a, [wMiniBossCount]
-	ld b, a
-	ld a, MINIBOSS_MIN_PER_RUN
-	sub b
-	jr z, .notForced        ; already met the minimum
-	jr c, .notForced
-	ld c, a                 ; c = still needed (>=1)
-	call MiniBossCountBadges
+; INPUT: b = current count for this kind, c = its min-per-run.
+; OUTPUT: carry set if this kind must be forced now (behind schedule vs routes left).
+; Mirrors the old MiniBossShouldOccur forced-guarantee arithmetic, parameterized.
+; Clobbers a/b/c; preserves d/e/hl.
+SpecialKindForced:
+	ld a, c
+	sub b                    ; needed = min - count
+	jr z, .no                ; count >= min
+	jr c, .no
+	ld d, a                  ; d = needed (survives MiniBossCountBadges)
+	call MiniBossCountBadges ; a = badges 0-8 (clobbers b/c, preserves d)
 	ld b, a
 	ld a, MINIBOSS_TOTAL_ROUTES
-	sub b                   ; a = approx routes remaining in the run
-	cp c
-	jr c, .forced           ; remaining < needed -> force now
-	jr z, .forced           ; remaining == needed -> force
-.notForced
-	; escalating chance = 64 * (routesSince + 1); >=3 -> guaranteed
-	ld a, [wRoutesSinceMiniBoss]
-	cp 3
-	jr nc, .forced
-	inc a
-	swap a                  ; * 16
-	sla a                   ; * 32
-	sla a                   ; * 64  (64, 128, or 192)
-	ld b, a
-	call Random             ; a = 0..255
-	cp b
-	ret c                   ; a < threshold -> occur (carry set)
-	and a                   ; clear carry
+	sub b                    ; a = approx routes remaining
+	cp d
+	jr c, .yes               ; remaining < needed
+	jr z, .yes               ; remaining == needed
+.no:
+	and a
 	ret
-.forced
+.yes:
 	scf
+	ret
+
+; Escalating chance that a special occurs, keyed on wRoutesSinceSpecial (64/128/192,
+; guaranteed at 3). Identical curve to the old MiniBossShouldOccur escalation.
+; OUTPUT: carry set = a special occurs. Clobbers a/b.
+SpecialChanceOccur:
+	ld a, [wRoutesSinceSpecial]
+	cp 3
+	jr nc, .yes
+	inc a
+	swap a                   ; * 16
+	sla a                    ; * 32
+	sla a                    ; * 64 (64, 128, or 192)
+	ld b, a
+	call Random              ; a = 0..255
+	cp b
+	ret c                    ; a < threshold -> occur (carry set)
+	and a
+	ret
+.yes:
+	scf
+	ret
+
+; OUTPUT: a = wild-area offered-count this run (bits 3-4 of wWildAreaState, 0-3).
+; Clobbers a only.
+GetWildAreaCount:
+	ld a, [wWildAreaState]
+	and WILD_AREA_COUNT_MASK
+	srl a
+	srl a
+	srl a
 	ret
 
 ; a = number of set bits in wObtainedBadges (0-8)

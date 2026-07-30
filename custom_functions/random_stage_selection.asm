@@ -354,9 +354,9 @@ IF DEF(_DEBUG)
 ; via GymMapByBadge or route via RogueStageMapTable, per the gym-next flag -
 ; same table _PickNextStage itself would use) and overwrites the door map at
 ; hl. No-op if a == 0 (random / no override). Called from
-; SelectAndPatchLobbyExit AFTER _PickNextStage + MiniBossRollAndAssign have
-; already set wLobbyDoor1/2StageMap, so a debug force always has final say
-; per door, independent of the normal/mini-boss pick.
+; SelectAndPatchLobbyExit AFTER _PickNextStage + SpecialEncounterRollAndAssign
+; have already set wLobbyDoor1/2StageMap, so a debug force always has final say
+; per door, independent of the normal/mini-boss/wild-area pick.
 ; INPUT: a = 1-based forced index (already consumed to 0 by the caller);
 ;        hl = the door's StageMap byte address.
 ; Clobbers a/bc/de/hl.
@@ -425,11 +425,12 @@ SelectAndPatchLobbyExit::
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
-	; Mini-boss layer: on a route-next selection past the first route, this may
-	; turn ONE door into a mini-boss stage (leaving the other on the normal
-	; route) and record the type/door in wRogueFlagsBitfield bits 4-6. Self-gates
-	; on gym-next / first route.
-	call MiniBossRollAndAssign
+	; Mini-boss / wild-area layer: on a route-next selection past the first route,
+	; this may turn ONE door into a mini-boss stage or a wild area (leaving the
+	; other on the normal route) and record the type/door in wRogueFlagsBitfield
+	; bits 4-6 (mini-boss) or wWildAreaState (wild area). Self-gates on gym-next /
+	; first route.
+	call SpecialEncounterRollAndAssign
 .selectionDone
 IF DEF(_DEBUG)
 	; Debug 2: independently force either door's destination (gym/route index,

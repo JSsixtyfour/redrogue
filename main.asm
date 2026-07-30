@@ -381,6 +381,7 @@ SECTION "rogue", ROMX
 
 INCLUDE "custom_functions/random_stage_selection.asm"
 INCLUDE "custom_functions/miniboss.asm"
+INCLUDE "custom_functions/wild_area_selection.asm"
 INCLUDE "custom_functions/final_sequence.asm"
 INCLUDE "custom_functions/tm_bag.asm"
 INCLUDE "custom_functions/key_item_pocket.asm"
