@@ -102,15 +102,15 @@ AcquireTMHM::
 
 ; ============================================================
 ; HasTMHM
-; Check whether TM/HM item b is owned.
-; INPUT:  b = item_id
+; Check whether the TM/HM item in wCurItem is owned.
+; INPUT:  wCurItem = item_id (farcall-safe, same convention as RemoveTMHM)
 ; OUTPUT: Z set = not owned, Z clear = owned
 ; CLOBBERS: a, d, e, hl
 ; ============================================================
 HasTMHM::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ld a, b
+	ld a, [wCurItem]
 	call _TMHMIndex
 	call _TMBitInfo     ; hl = byte addr, b = mask
 	ld a, [hl]

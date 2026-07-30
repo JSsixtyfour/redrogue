@@ -312,7 +312,7 @@ RET
 
 ; a check to see if TM or HM is already owned by player
 ; returns a 0 if no and a 1 if yes
-; b = item ID (plain same-bank call — b is preserved, not clobbered like farcall)
+; b = item ID on entry
 AllTMCheck::
     ld a, $c3       ; first TM item ID minus 1
     cp b
@@ -320,8 +320,16 @@ AllTMCheck::
     ld a, $FA       ; last TM/HM item ID
     cp b
     jr c, .notOwned           ; b > $FA: beyond TM/HM range
-    ; TM/HM: check sTMBitfield via HasTMHM (same bank, plain call, reads b)
-    call HasTMHM              ; Z = not owned, NZ = owned
+    ; TM/HM: check sTMBitfield via HasTMHM. HasTMHM lives in a different bank
+    ; (the rogue bank) than this routine, so it MUST be reached via farcall -
+    ; a plain `call` would jump to this bank's address and run garbage. farcall
+    ; clobbers b, so pass the item ID through wCurItem (HasTMHM's farcall-safe
+    ; input convention), not b.
+    ld a, b
+    ld [wCurItem], a
+    push bc                  ; farcall clobbers b; callers reuse it as the item ID
+    farcall HasTMHM          ; Z = not owned, NZ = owned (Bankswitch preserves flags)
+    pop bc
     jr z, .notOwned
     ld a, 1
     ret

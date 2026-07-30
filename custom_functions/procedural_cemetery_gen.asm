@@ -1004,6 +1004,15 @@ PCemRollItem:
 	call Rangerandom
 	ld [wRogueDoorSelection], a
 	farcall Random_Item_Selection   ; result in wRogueItem
+	; Random_Item_Selection can roll a TM, which routes through HasTMHM
+	; (custom_functions/tm_bag.asm). HasTMHM ends by DISABLING SRAM
+	; (xor a / ld [rRAMG],a) - so on a TM roll it leaves SRAM off, and every
+	; remaining SRAM write in generation (the item byte below, PCemMarchPath's
+	; carved path + ball pos, PCemFinalizeMap's blit source + ready bit) would
+	; hit open bus -> blocky map that "self-heals" on re-entry. Re-assert SRAM
+	; enable here. rBMODE/rRAMB are untouched by HasTMHM, only rRAMG needs it.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
 	ld a, [wRogueItem]
 	ld hl, sProcCemeteryItem
 	ld b, a
