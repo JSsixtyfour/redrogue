@@ -26,6 +26,16 @@ PrintMonType:
 	ld a, [wLoadedMon + MON_TYPE2]
 	ld [wMonHType2], a
 .notFusionForType
+	; Ghost variant (func_ghost_variant.asm): if wLoadedMon is a ghost variant,
+	; force its status-screen secondary type to GHOST (same wLoadedMon / de-input /
+	; Hall-of-Fame-stale caveat as the fusion check above). de survives the fusion
+	; farcall, but reload it for clarity.
+	ld de, wLoadedMon
+	farcall IsGhostVariant
+	jr z, .notGhostVariant
+	ld a, GHOST
+	ld [wMonHType2], a
+.notGhostVariant
 	pop hl
 	push hl
 	ld a, [wMonHType1]

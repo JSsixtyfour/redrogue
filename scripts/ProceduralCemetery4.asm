@@ -48,6 +48,10 @@ ProceduralCemetery4DefaultScript:
 	ld a, [wRoguePokemon1]
 	ld [wCurOpponent], a
     farcall PCGetBossLevel        ; sets wCurEnemyLevel from wBattleCount
+	; flag the upcoming enemy load as the cemetery ghost boss so LoadEnemyMonData
+	; (PCemMaybeApplyGhostBoss) makes it a ghost variant with the rolled ghost move
+	ld a, 1
+	ld [wProcCemBossBattle], a
 	ld a, SCRIPT_PROCEDURALCEMETERY4_BOSS_BATTLE
 	ld [wProceduralCemetery4CurScript], a
 	ld [wCurMapScript], a
@@ -104,6 +108,9 @@ ProceduralCemetery4BossOfferText:
 	ld a, [wCurEnemyLevel]
 	ld c, a
 	call GivePokemon
+	jr nc, .cemDone               ; party AND box full: nothing was added
+	; make the gifted mon identical to the boss just fought: ghost variant + move
+	farcall PCemApplyGhostToGivenMon
 .cemDone
 	; No physical boss sprite in cemetery — nothing to hide
 	ld hl, .textEnd

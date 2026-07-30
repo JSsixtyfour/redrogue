@@ -6718,6 +6718,9 @@ LoadEnemyMonData:
 	ld [hli], a
 	dec b
 	jr nz, .statModLoop
+	; Cemetery ghost boss: if this enemy load is the flagged cemetery boss battle,
+	; make the enemy a ghost variant with the rolled ghost move (no-op otherwise).
+	farcall PCemMaybeApplyGhostBoss
 	ret
 
 ; calls BattleTransition to show the battle transition animation and initializes some battle variables

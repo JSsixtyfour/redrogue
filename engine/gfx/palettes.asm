@@ -52,6 +52,21 @@ SetPal_Battle:
 	inc hl
 	ld a, c
 	ld [hl], a
+	; Ghost variant (func_ghost_variant.asm): recolor the player (+5) / enemy (+7)
+	; mon palette slot to purple if that mon is a ghost variant. de-input (farcall
+	; clobbers hl); must run after +5/+7 are written above.
+	ld de, wBattleMon
+	farcall IsGhostVariant
+	jr z, .playerNotGhostVariant
+	ld a, PAL_PURPLEMON
+	ld [wPalPacket + 5], a
+.playerNotGhostVariant
+	ld de, wEnemyMon
+	farcall IsGhostVariant
+	jr z, .enemyNotGhostVariant
+	ld a, PAL_PURPLEMON
+	ld [wPalPacket + 7], a
+.enemyNotGhostVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_Battle
 	ld a, SET_PAL_BATTLE
@@ -83,6 +98,13 @@ SetPal_StatusScreen:
 	inc hl
 	pop af
 	ld [hl], a
+	; Ghost variant: purple palette for the status-screen mon (+3) if it's a variant.
+	ld de, wLoadedMon
+	farcall IsGhostVariant
+	jr z, .notGhostVariant
+	ld a, PAL_PURPLEMON
+	ld [wPalPacket + 3], a
+.notGhostVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_StatusScreen
 	ret

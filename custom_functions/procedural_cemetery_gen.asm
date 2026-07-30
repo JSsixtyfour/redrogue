@@ -156,6 +156,11 @@ PCemGenerateMaps::
 	; clear calmed events for fresh run
 	ResetEvent EVENT_PC_CEM_BUDGET_ENDED
 	ResetEvent EVENT_PC_CEM_CALMED_SHOWN
+	; Clear the shared boss-beaten flag so a boss beaten in a PRIOR wild area
+	; (cave/forest set the same EVENT_BEAT_PC_BOSS) doesn't make the cemetery
+	; skip its own boss. Cave (PCPreloadCave) and forest (PFPreloadForest) both
+	; do this in their preload; the cemetery was missing it.
+	ResetEvent EVENT_BEAT_PC_BOSS
 	; Roll the cemetery's OWN boss species + ghost move now. Previously the
 	; cemetery boss read wRoguePokemon1 as if the CAVE's PCRollBoss (inside
 	; PCPreloadCave) had populated it - true only under the old all-preload-at-
@@ -239,6 +244,114 @@ PCemRestoreBossSpecies::
 	ld a, b
 	ld [wRoguePokemon1], a
 	ret
+
+; ============================================================
+; PCemApplyGhostBoss
+; Flags the mon at [de] as the cemetery ghost boss: sets the ghost-variant bit
+; (func_ghost_variant.asm), forces MON_TYPE2 = GHOST, and writes the rolled ghost
+; move (sProcCemeteryBossMove) into move slot 4 with its base PP. Takes the struct
+; base in DE (not HL) so callers can reach it across a farcall (Bankswitch clobbers
+; hl, preserves de - same reason IsGhostVariant takes de). Works for any mon struct
+; (wEnemyMon / wPartyMonN / wBoxMonN - MON_MOVES/PP/CATCH_RATE/TYPE2 share offsets).
+; Clobbers a/bc/hl (preserves de).
+; ============================================================
+PCemApplyGhostBoss::
+	; ghost-variant flag = bit 0 of MON_CATCH_RATE
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	set 0, [hl]                   ; BIT_GHOST_VARIANT (func_ghost_variant.asm)
+	; secondary type -> GHOST
+	ld hl, MON_TYPE2
+	add hl, de
+	ld [hl], GHOST
+	; read the rolled ghost move id from SRAM -> c
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCemeteryBossMove]
+	ld c, a                       ; c = ghost move id
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	; write the move into slot 4 (MON_MOVES + 3)
+	ld hl, MON_MOVES + 3
+	add hl, de
+	ld [hl], c
+	; look up the move's base PP (Moves struct byte 5) via FarCopyData, a HOME
+	; routine. It MUST be a HOME-based far read: this function runs in ROMX bank
+	; 06, so doing the bank switch inline here (call SetCurBank / read / restore)
+	; swaps the very bank the CPU is executing from out from under it - the next
+	; instruction runs from BANK(Moves), landing in unrelated facility code
+	; (PFacScanForBall) and crashing. FarCopyData does the switch from HOME where
+	; it's safe. Destination is wBuffer: the plan flagged that as a landmine
+	; because wBuffer is cemetery-GENERATION scratch, but PCemApplyGhostBoss only
+	; ever runs from the battle hook / gift hook, never during generation, so a
+	; transient write-then-immediate-read here is safe.
+	push de                       ; save struct base
+	ld a, c
+	dec a
+	ld hl, Moves
+	ld bc, MOVE_LENGTH
+	call AddNTimes                ; hl -> the move's 6-byte struct (Moves bank)
+	ld de, wBuffer
+	ld a, BANK(Moves)
+	call FarCopyData              ; wBuffer[0..5] = move struct (HOME-safe switch)
+	ld a, [wBuffer + 5]           ; base PP
+	pop de                        ; restore struct base
+	ld hl, MON_PP + 3
+	add hl, de
+	ld [hl], a
+	ret
+
+; ============================================================
+; PCemMaybeApplyGhostBoss
+; Enemy-side hook, farcall'd from the tail of LoadEnemyMonData (core.asm). If the
+; enemy load that just happened is the cemetery boss battle (wProcCemBossBattle set
+; by the boss trigger), turn the enemy into the ghost boss and clear the one-shot
+; flag so floor-4 wild encounters are unaffected. No-op otherwise. Clobbers a/bc/hl.
+; ============================================================
+PCemMaybeApplyGhostBoss::
+	ld a, [wProcCemBossBattle]
+	and a
+	ret z
+	xor a
+	ld [wProcCemBossBattle], a    ; one-shot: only the boss mon, not later wild loads
+	ld de, wEnemyMon
+	jp PCemApplyGhostBoss
+
+; ============================================================
+; PCemApplyGhostToGivenMon
+; Given-mon hook, farcall'd from the join offer after GivePokemon. Locates the mon
+; that was just added (last party slot, or last box slot if the party was full -
+; wAddedToParty distinguishes) and applies the same ghost variant + move, so the
+; gifted boss is identical to the one just fought and keeps it through box/trade/
+; save (the flag lives in the struct's catch-rate byte, the move in a real slot).
+; Clobbers a/bc/de/hl.
+; ============================================================
+PCemApplyGhostToGivenMon::
+	ld a, [wAddedToParty]
+	and a
+	jr z, .box
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes                ; hl -> the new party mon's struct
+	jr .haveStruct
+.box
+	ld a, [wBoxCount]
+	dec a
+	ld hl, wBoxMon1
+	ld bc, BOXMON_STRUCT_LENGTH
+	call AddNTimes                ; hl -> the new box mon's struct
+.haveStruct
+	ld d, h
+	ld e, l
+	jp PCemApplyGhostBoss
 
 ; ============================================================
 ; PCemGenerateOneMap
