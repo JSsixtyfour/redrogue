@@ -50,6 +50,7 @@ IndigoPlateauLobby_Script:
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
 	; would cause an immediate warp before the player could do anything).
 	farcall SelectAndPatchLobbyExit
+	farcall ProcPreloadAssignedWildArea
 	ld c, TRADE_FOR_RANDOM
 	ld b, FLAG_RESET
 	ld hl, wCompletedInGameTradeFlags
@@ -102,6 +103,9 @@ LobbyDoor1SignText:
 	ld a, [wRogueDoor1]
 	call LobbyFinaleSignCheck
 	ret nz
+	ld a, [wLobbyDoor1StageMap]
+	call LobbySignWildAreaCheck   ; hl -> "WILD AREA + subtype" text if this door is wild
+	ret nz                        ; NZ = handled (hl set); Z = not wild, fall through
 ; Mini-boss framework: if a mini-boss is offered this route selection AND
 ; door 1 is the mini-boss door (BIT_MINIBOSS_DOOR clear), the sign is replaced
 ; entirely with a boss-specific message instead of the item category. Gym-next
@@ -190,6 +194,9 @@ LobbyDoor2SignText:
 	ld a, [wRogueDoor2]
 	call LobbyFinaleSignCheck
 	ret nz
+	ld a, [wLobbyDoor2StageMap]
+	call LobbySignWildAreaCheck   ; hl -> "WILD AREA + subtype" text if this door is wild
+	ret nz                        ; NZ = handled (hl set); Z = not wild, fall through
 ; Mini-boss framework: mirrors LobbyDoor1SignText, but door 2's sign is never
 ; hidden by gym-next (only door 1 exists then), so there's no gym-framing
 ; branch to guard against here. As in door 1, bc is the live text cursor here
@@ -271,6 +278,18 @@ Lobby_IsDoor2Blocked:
 	xor a                   ; force Z (open)
 	ret
 .normalCheck
+	; forced wild-area collapse: door1 == door2 == a wild entry map -> block door 2
+	ld a, [wLobbyDoor1StageMap]
+	call LobbyIsWildEntryMap      ; NZ = wild entry map
+	jr z, .checkGymNext
+	ld a, [wLobbyDoor1StageMap]
+	ld b, a
+	ld a, [wLobbyDoor2StageMap]
+	cp b
+	jr nz, .checkGymNext
+	or 1                          ; NZ = blocked
+	ret
+.checkGymNext
 	ld a, [wRogueFlagsBitfield]
 	bit 0, a
 	ret
@@ -335,6 +354,57 @@ LobbyMiniBossVictoryRoadSign:
 	text "MINIBOSS"
 	line "MONEY@"
 	text_end
+
+; a = this door's stage map. If it's a wild-area entry map, returns hl -> the matching
+; "WILD AREA / <subtype>" text and NZ (caller rets). Otherwise Z (caller falls through
+; to the normal mini-boss/item sign). Clobbers a/hl only (bc = live text cursor kept).
+LobbySignWildAreaCheck:
+	cp PROCEDURAL_CAVE_1
+	jr z, .cave
+	cp PROCEDURAL_FOREST
+	jr z, .forest
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .cem
+	xor a                 ; Z = not wild
+	ret
+.cave:
+	ld hl, .caveText
+	jr .done
+.forest:
+	ld hl, .forestText
+	jr .done
+.cem:
+	ld hl, .cemText
+.done:
+	or 1                  ; NZ = handled
+	ret
+.caveText:
+	text "WILD AREA:"
+	line "CAVE@"
+	text_end
+.forestText:
+	text "WILD AREA:"
+	line "FOREST@"
+	text_end
+.cemText:
+	text "WILD AREA:"
+	line "CEMETERY@"
+	text_end
+
+; a = map -> NZ if it's a wild-area entry map (cave/forest/cemetery_1), else Z.
+; Clobbers a.
+LobbyIsWildEntryMap:
+	cp PROCEDURAL_CAVE_1
+	jr z, .yes
+	cp PROCEDURAL_FOREST
+	jr z, .yes
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .yes
+	xor a
+	ret
+.yes:
+	or 1
+	ret
 
 ; Mini-boss door sign: line 1 = the boss, line 2 = the door's item reward
 ; category - so both the boss indicator AND the reward stay visible (a full

@@ -108,3 +108,51 @@ ProcStageLoadDispatch::
 .cemetery
 	farcall PCemFinalizeMap
 	ret
+
+; Called from IndigoPlateauLobby_Script right after SelectAndPatchLobbyExit, so the
+; assigned wild-area map's generator runs while the player is still in the lobby (hides
+; the generation latency; without this a lobby->wild-area door warp would hit
+; PCFinalize* against an un-populated SRAM staging buffer). Preloads only the one
+; assigned type. No-op if neither door is a wild-area entry map.
+ProcPreloadAssignedWildArea::
+	ld a, [wLobbyDoor1StageMap]
+	call .classify           ; a mapped to 1=cave 2=forest 3=cem, 0=not wild
+	and a
+	jr nz, .preload
+	ld a, [wLobbyDoor2StageMap]
+	call .classify
+	and a
+	ret z
+.preload:
+	dec a
+	jr z, .cave
+	dec a
+	jr z, .forest
+	; cemetery
+	farcall PCemGenerateMaps
+	ret
+.cave:
+	farcall PCPreloadCave
+	ret
+.forest:
+	farcall PFPreloadForest
+	ret
+; a = map id -> a = 1 (cave) / 2 (forest) / 3 (cemetery_1) / 0 (not a wild entry map).
+.classify:
+	cp PROCEDURAL_CAVE_1
+	jr z, .isCave
+	cp PROCEDURAL_FOREST
+	jr z, .isForest
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .isCem
+	xor a
+	ret
+.isCave:
+	ld a, 1
+	ret
+.isForest:
+	ld a, 2
+	ret
+.isCem:
+	ld a, 3
+	ret
