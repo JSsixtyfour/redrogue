@@ -6621,6 +6621,17 @@ LoadEnemyMonData:
 	ld [de], a
 	inc de
 	ld a, [hli]            ; copy catch rate
+	; This is wEnemyMonCatchRate, the actual struct field that SendNewMonToBox
+	; copies verbatim into a boxed mon (give_pokemon.asm, party-full gift path).
+	; Bit 0 = Ghost Variant flag, bit 1 = Fusion flag (func_ghost_variant.asm /
+	; func_fusion.asm). Without clearing them here, any species whose catch rate
+	; has those bits set (e.g. Paras = 190 = %10111110, bit 1) gets boxed pre-
+	; flagged as a fusion -> bogus stats + a crash loading the fusion sprite on
+	; the summary screen. The AddPartyMon path already clears these (add_mon.asm);
+	; the existing clear further below writes the base-stats scratch copy, NOT
+	; this struct field, so it does not cover the box path.
+	res 0, a
+	res 1, a
 	ld [de], a
 	inc de
 	ldh a, [hIsInBattle]
