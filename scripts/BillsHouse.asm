@@ -2,9 +2,7 @@ BillsHouse_Script:
     CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
-    ld a, BILL_GIFT
-    ld [wCurrentGiftGiver], a   ; set to Bill
-    farcall rogue_gift_randomized_batch
+    farcall rogue_gift_randomized_batch   ; giver resolved from current map
     ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
     ResetEvent EVENT_BRIDGE_INTRO
     .afterSetup

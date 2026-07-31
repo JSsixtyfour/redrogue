@@ -152,8 +152,8 @@ _ReceivedItemText::
 	text "<PLAYER> received"
 	line "@"
 	text_ram wNameBuffer
-	text "!@"
-    prompt
+	text "!"        ; no '@' terminator: leave the string open so PlaceString
+    prompt          ; reads the <PROMPT> char and actually waits for a button
 	text_end
     
 _Empty::

@@ -111,9 +111,11 @@ IF DEF(_DEBUG)
 	; the forced-vs-choosable bit (e bit 1) computed above, so the mandatory single-
 	; door case still only triggers once the real >=2-per-run guarantee kicks in.
 	; Debug-build only; off entirely in release ROMs.
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jp nz, .doWildArea
+	; Disabled 2026-07-30 (increment testing complete) - normal weighted roll now
+	; applies even in Debug 2 mode. Uncomment the 3 lines below to re-enable.
+;	ld a, [wStatusFlags6]
+;	bit BIT_DEBUG2_MODE, a
+;	jp nz, .doWildArea
 ENDC
 	; --- decide whether a special occurs, and which kind ---
 	ld a, e

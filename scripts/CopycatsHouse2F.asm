@@ -2,9 +2,7 @@ CopycatsHouse2F_Script:
     CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
-    ld a, COPYCAT_GIFT
-    ld [wCurrentGiftGiver], a   ; set to CopyCat
-    farcall rogue_gift_randomized_batch
+    farcall rogue_gift_randomized_batch   ; giver resolved from current map
     ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
     ResetEvent EVENT_BRIDGE_INTRO
     .afterSetup
