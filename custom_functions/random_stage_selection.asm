@@ -425,6 +425,12 @@ SelectAndPatchLobbyExit::
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
+	; Bridge layer (twice-per-run interlude, on TOP of everything): may turn BOTH
+	; doors into two different bridge rooms and route onward to wRogueMap after the
+	; gift. If it fires, it suppresses the special roll this visit. Fires during
+	; both route and gym cycles; self-gates on first route / per-run cap.
+	call BridgeRollAndAssign
+	jr c, .selectionDone
 	; Mini-boss / wild-area layer: on a route-next selection past the first route,
 	; this may turn ONE door into a mini-boss stage or a wild area (leaving the
 	; other on the normal route) and record the type/door in wRogueFlagsBitfield

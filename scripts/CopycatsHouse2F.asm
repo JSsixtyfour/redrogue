@@ -6,6 +6,7 @@ CopycatsHouse2F_Script:
     ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
     ResetEvent EVENT_BRIDGE_INTRO
     .afterSetup
+	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	jp EnableAutoTextBoxDrawing
 
 CopycatsHouse2F_TextPointers:

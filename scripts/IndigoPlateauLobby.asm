@@ -106,6 +106,9 @@ LobbyDoor1SignText:
 	ld a, [wLobbyDoor1StageMap]
 	call LobbySignWildAreaCheck   ; hl -> "WILD AREA + subtype" text if this door is wild
 	ret nz                        ; NZ = handled (hl set); Z = not wild, fall through
+	ld a, [wLobbyDoor1StageMap]
+	call LobbySignBridgeCheck     ; hl -> room-name text if this door is a bridge room
+	ret nz
 ; Mini-boss framework: if a mini-boss is offered this route selection AND
 ; door 1 is the mini-boss door (BIT_MINIBOSS_DOOR clear), the sign is replaced
 ; entirely with a boss-specific message instead of the item category. Gym-next
@@ -197,6 +200,9 @@ LobbyDoor2SignText:
 	ld a, [wLobbyDoor2StageMap]
 	call LobbySignWildAreaCheck   ; hl -> "WILD AREA + subtype" text if this door is wild
 	ret nz                        ; NZ = handled (hl set); Z = not wild, fall through
+	ld a, [wLobbyDoor2StageMap]
+	call LobbySignBridgeCheck     ; hl -> room-name text if this door is a bridge room
+	ret nz
 ; Mini-boss framework: mirrors LobbyDoor1SignText, but door 2's sign is never
 ; hidden by gym-next (only door 1 exists then), so there's no gym-framing
 ; branch to guard against here. As in door 1, bc is the live text cursor here
@@ -278,6 +284,17 @@ Lobby_IsDoor2Blocked:
 	xor a                   ; force Z (open)
 	ret
 .normalCheck
+	; bridge visit: both doors are (different) bridge rooms -> door 2 stays OPEN
+	; even during a gym cycle (bridges fire during gyms too, unlike wild areas).
+	ld a, [wLobbyDoor1StageMap]
+	call LobbyIsBridgeMap         ; NZ = bridge room
+	jr z, .notBridge
+	ld a, [wLobbyDoor2StageMap]
+	call LobbyIsBridgeMap
+	jr z, .notBridge
+	xor a                         ; both bridge -> Z = door 2 open
+	ret
+.notBridge
 	; forced wild-area collapse: door1 == door2 == a wild entry map -> block door 2
 	ld a, [wLobbyDoor1StageMap]
 	call LobbyIsWildEntryMap      ; NZ = wild entry map
@@ -405,6 +422,86 @@ LobbyIsWildEntryMap:
 .yes:
 	or 1
 	ret
+
+; a = this door's stage map. If it's a bridge room, returns hl -> that room's
+; "location name" sign text and NZ (caller rets). Otherwise Z (fall through).
+; Runs as a text_asm handler, so bc (the live text cursor) is preserved.
+; Clobbers a/hl. KEEP LobbyBridgeSignTable in sync with BridgeRoomMaps
+; (custom_functions/bridge_selection.asm).
+LobbySignBridgeCheck:
+	push bc
+	ld c, a                       ; c = door map to find
+	ld hl, LobbyBridgeSignTable
+.scan:
+	ld a, [hl]
+	cp $ff
+	jr z, .notBridge
+	cp c
+	jr z, .found
+	inc hl                        ; skip map id
+	inc hl                        ; skip dw text ptr
+	inc hl
+	jr .scan
+.found:
+	inc hl
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a                       ; hl -> sign text
+	pop bc
+	or 1                          ; NZ = handled
+	ret
+.notBridge:
+	pop bc
+	xor a                         ; Z = not a bridge room
+	ret
+
+; a = map -> NZ if it's a bridge room map, else Z. Preserves bc/de/hl.
+LobbyIsBridgeMap:
+	push hl
+	push de
+	ld e, a
+	ld hl, LobbyBridgeSignTable
+.scan:
+	ld a, [hl]
+	cp $ff
+	jr z, .no
+	cp e
+	jr z, .yes
+	inc hl
+	inc hl
+	inc hl
+	jr .scan
+.yes:
+	pop de
+	pop hl
+	or 1
+	ret
+.no:
+	pop de
+	pop hl
+	xor a
+	ret
+
+LobbyBridgeSignTable:
+	db COPYCATS_HOUSE_2F
+	dw .copycatText
+	db BILLS_HOUSE
+	dw .billText
+	db MR_FUJIS_HOUSE
+	dw .fujiText
+	db $ff
+.copycatText:
+	text "COPY CAT's"
+	line "HOUSE@"
+	text_end
+.billText:
+	text "BILL's"
+	line "HOUSE@"
+	text_end
+.fujiText:
+	text "MR.FUJI's"
+	line "HOUSE@"
+	text_end
 
 ; Mini-boss door sign: line 1 = the boss, line 2 = the door's item reward
 ; category - so both the boss indicator AND the reward stay visible (a full

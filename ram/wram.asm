@@ -2134,6 +2134,14 @@ wProcCemBossBattle:: db ; 1 = the next enemy-mon load is the cemetery ghost boss
                     ; Set by ProceduralCemetery4's boss trigger, checked+cleared in
                     ; LoadEnemyMonData (PCemMaybeApplyGhostBoss) so only the boss mon
                     ; gets the ghost variant + move, not floor-4 wild encounters.
+; Bridge System run-state (twice-per-run gift-room interludes; see
+; custom_functions/bridge_selection.asm). Run-scoped (inside wGameProgressFlags:
+; zeroed on new game, saved), offset by the ds below to stay net-zero WRAM0.
+wBridgeOfferedLo:: db ; offered-this-run bitmask for bridge room indices 0-7
+wBridgeState:: db ; bits 0-5 = offered-this-run mask for bridge room indices 8-13;
+                  ; bits 6-7 = saturating bridge count (0-3) for the 2-per-run guarantee.
+                  ; Packs to exactly 14 rooms; if the roster grows past 14, split the
+                  ; count out to its own byte (shrink the ds below by 1 more).
                     ; Zeroed on new game (must default 0 - it gates every enemy load).
 ; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force onto each
 ; lobby door independently; 0 = random (no override). Consumed (reset to 0)
@@ -2287,7 +2295,7 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 24 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 22 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2296,6 +2304,7 @@ wElite4Order:: db
 	      ; runtime effect. Tune this number if the linker reports a WRAM0 overflow.
 	      ; -1 more for wWildAreaState (wild-area door integration), still net-zero WRAM0
 	      ; -1 more for wProcCemBossBattle (cemetery ghost boss flag), still net-zero WRAM0
+	      ; -2 more for wBridgeOfferedLo + wBridgeState (Bridge System), still net-zero WRAM0
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

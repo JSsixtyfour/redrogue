@@ -9,7 +9,8 @@ CopycatsHouse2F_Object:
 	db $a ; border block
 
 	def_warp_events
-	warp_event  7,  1, COPYCATS_HOUSE_1F, 3
+	warp_event  7,  1, LAST_MAP, 3 ; was COPYCATS_HOUSE_1F (vanilla stairs); LAST_MAP so
+	                               ; PatchBridgeExit reroutes it onward like the other rooms
 
 	def_bg_events
 	bg_event  3,  5, TEXT_COPYCATSHOUSE2F_SNES

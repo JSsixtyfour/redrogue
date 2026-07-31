@@ -241,6 +241,20 @@ DEF WILD_AREA_MASK        EQU %00000111
 DEF WILD_AREA_COUNT_SHIFT EQU 3
 DEF WILD_AREA_COUNT_MASK  EQU %00011000
 
+; --- Bridge System (twice-per-run gift-room interludes) ---
+; Bridges sit ON TOP of the door randomization: when one fires, BOTH lobby doors
+; become two different bridge rooms; entering either gives a gift, then the room's
+; exit routes straight to the pre-decided next route/gym (no lobby return / choice).
+; They do NOT consume a route/gym/special slot. See custom_functions/bridge_selection.asm.
+DEF BRIDGE_PER_RUN           EQU 2   ; target bridges per run (also the hard cap)
+DEF BRIDGE_FIRST_BATTLECOUNT EQU 10  ; not eligible until wBattleCount >= this (skips route 1)
+DEF BRIDGE_CHANCE_RANGE      EQU 6   ; ~1-in-N per eligible visit before the guarantee kicks in
+; wBridgeState bit layout: bits 0-5 = offered-this-run mask for room indices 8-13;
+; bits 6-7 = saturating bridge count (0-3). (Rooms 0-7 live in wBridgeOfferedLo.)
+DEF BRIDGE_HI_ROOM_MASK   EQU %00111111
+DEF BRIDGE_COUNT_SHIFT    EQU 6
+DEF BRIDGE_COUNT_MASK     EQU %11000000
+
 ; Reward-rarity bonuses while a mini-boss is active (wRogueFlagsBitfield bit 7).
 ; Stack ADDITIVELY on top of any witch-prize rarity bonus (both can be active
 ; at once) - same magnitude as the witch prize bump, so a mini-boss during a

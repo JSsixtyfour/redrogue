@@ -6,6 +6,13 @@ MrFujisHouse_Script:
     ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
     ResetEvent EVENT_BRIDGE_INTRO
     .afterSetup
+	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
+	; Force Mr. Fuji (the gift NPC) to appear - he is toggled OFF by default
+	; (vanilla: only shows after the Pokemon Tower rescue). The other NPCs already
+	; use their post-rescue text unconditionally.
+	ld a, TOGGLE_MR_FUJIS_HOUSE_MR_FUJI
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	call EnableAutoTextBoxDrawing
 	ret
 
