@@ -1,15 +1,16 @@
+; Repurposed as a bridge gift room - the Chairman's vanilla bike-voucher story
+; is replaced by the standard bridge-gift dispatch (BIKE VOUCHER is now one of
+; his possible rolled gifts, FanClubChairmanGiftList in bridge_gift_menu.asm).
 PokemonFanClub_Script:
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+	farcall rogue_gift_randomized_batch   ; giver resolved from current map
+	ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+	ResetEvent EVENT_BRIDGE_INTRO
+	.afterSetup
+	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	jp EnableAutoTextBoxDrawing
-
-PokemonFanClub_CheckBikeInBag:
-; check if any bike paraphernalia in bag
-	CheckEvent EVENT_GOT_BIKE_VOUCHER
-	ret nz
-	ld b, BICYCLE
-	call IsItemInBag
-	ret nz
-	ld b, BIKE_VOUCHER
-	jp IsItemInBag
 
 PokemonFanClub_TextPointers:
 	def_text_pointers
@@ -21,6 +22,8 @@ PokemonFanClub_TextPointers:
 	dw_const PokemonFanClubReceptionistText, TEXT_POKEMONFANCLUB_RECEPTIONIST
 	dw_const PokemonFanClubSign1Text,        TEXT_POKEMONFANCLUB_SIGN_1
 	dw_const PokemonFanClubSign2Text,        TEXT_POKEMONFANCLUB_SIGN_2
+	dw_const PokemonFanClub_Gift_Text, TEXT_POKEMONFANCLUB_GIFT_1
+	EXPORT TEXT_POKEMONFANCLUB_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 PokemonFanClubPikachuFanText:
 	text_asm
@@ -96,65 +99,35 @@ PokemonFanClubSeelText:
 
 PokemonFanClubChairmanText:
 	text_asm
-	call PokemonFanClub_CheckBikeInBag
-	jr nz, .nothingleft
-
-	ld hl, .IntroText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .nothanks
-
-	; tell the story
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr nz, .got_item
+	CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld hl, .StoryText
 	call PrintText
-	lb bc, BIKE_VOUCHER, 1
-	call GiveItem
-	jr nc, .bag_full
-	ld hl, .BikeVoucherText
-	call PrintText
-	SetEvent EVENT_GOT_BIKE_VOUCHER
+	SetEvent EVENT_BRIDGE_INTRO
+	.skip_intro
+	ld a, TEXT_POKEMONFANCLUB_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
 	jr .done
-.bag_full
-	ld hl, .BagFullText
-	call PrintText
-	jr .done
-.nothanks
-	ld hl, .NoStoryText
-	call PrintText
-	jr .done
-.nothingleft
+.got_item
 	ld hl, .FinalText
 	call PrintText
 .done
 	jp TextScriptEnd
 
-.IntroText:
-	text_far _PokemonFanClubChairmanIntroText
-	text_end
-
 .StoryText:
 	text_far _PokemonFanClubChairmanStoryText
-	text_end
-
-.BikeVoucherText:
-	text_far _PokemonFanClubReceivedBikeVoucherText
-	sound_get_key_item
-	text_far _PokemonFanClubExplainBikeVoucherText
-	text_end
-
-.NoStoryText:
-	text_far _PokemonFanClubNoStoryText
 	text_end
 
 .FinalText:
 	text_far _PokemonFanClubChairFinalText
 	text_end
 
-.BagFullText:
-	text_far _PokemonFanClubBagFullText
-	text_end
+PokemonFanClub_Gift_Text:
+	script_bridge_gift
 
 PokemonFanClubReceptionistText:
 	text_far _PokemonFanClubReceptionistText

@@ -1,109 +1,57 @@
+; Repurposed as a bridge gift room - Scientist 1's vanilla fossil-revival
+; state machine is replaced by the standard bridge-gift dispatch
+; (FossilScientistGiftList in bridge_gift_menu.asm). Scientist 2's in-game
+; trade is untouched.
 CinnabarLabFossilRoom_Script:
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+	farcall rogue_gift_randomized_batch   ; giver resolved from current map
+	ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+	ResetEvent EVENT_BRIDGE_INTRO
+	.afterSetup
+	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	jp EnableAutoTextBoxDrawing
 
 CinnabarLabFossilRoom_TextPointers:
 	def_text_pointers
 	dw_const CinnabarLabFossilRoomScientist1Text, TEXT_CINNABARLABFOSSILROOM_SCIENTIST1
 	dw_const CinnabarLabFossilRoomScientist2Text, TEXT_CINNABARLABFOSSILROOM_SCIENTIST2
-
-Lab4Script_GetFossilsInBag:
-; construct a list of all fossils in the player's bag
-	xor a
-	ld [wFilteredBagItemsCount], a
-	ld de, wFilteredBagItems
-	ld hl, FossilsList
-.loop
-	ld a, [hli]
-	and a
-	jr z, .done
-	push hl
-	push de
-	ld [wTempByteValue], a
-	ld b, a
-	predef GetQuantityOfItemInBag
-	pop de
-	pop hl
-	ld a, b
-	and a
-	jr z, .loop
-	; A fossil is in the bag
-	ld a, [wTempByteValue]
-	ld [de], a
-	inc de
-	push hl
-	ld hl, wFilteredBagItemsCount
-	inc [hl]
-	pop hl
-	jr .loop
-.done
-	ld a, $ff
-	ld [de], a
-	ret
-
-FossilsList:
-	db DOME_FOSSIL
-	db HELIX_FOSSIL
-	db OLD_AMBER
-	db 0 ; end
+	dw_const CinnabarLabFossilRoom_Gift_Text, TEXT_CINNABARLABFOSSILROOM_GIFT_1
+	EXPORT TEXT_CINNABARLABFOSSILROOM_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 CinnabarLabFossilRoomScientist1Text:
 	text_asm
-	CheckEvent EVENT_GAVE_FOSSIL_TO_LAB
-	jr nz, .check_done_reviving
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr nz, .got_item
+	CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld hl, .Text
 	call PrintText
-	call Lab4Script_GetFossilsInBag
-	ld a, [wFilteredBagItemsCount]
-	and a
-	jr z, .no_fossils
-	farcall GiveFossilToCinnabarLab
+	SetEvent EVENT_BRIDGE_INTRO
+	.skip_intro
+	ld a, TEXT_CINNABARLABFOSSILROOM_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
 	jr .done
-.no_fossils
-	ld hl, .NoFossilsText
+.got_item
+	ld hl, .ComeAgainText
 	call PrintText
 .done
 	jp TextScriptEnd
-.check_done_reviving
-	CheckEventAfterBranchReuseA EVENT_LAB_STILL_REVIVING_FOSSIL, EVENT_GAVE_FOSSIL_TO_LAB
-	jr z, .done_reviving
-	ld hl, .GoForAWalkText
-	call PrintText
-	jr .done
-.done_reviving
-	call LoadFossilItemAndMonNameBank1D
-	ld hl, .FossilIsBackToLifeText
-	call PrintText
-	SetEvent EVENT_LAB_HANDING_OVER_FOSSIL_MON
-	ld a, [wFossilMon]
-	ld b, a
-	ld c, 30
-	call GivePokemon
-	jr nc, .done
-	ResetEvents EVENT_GAVE_FOSSIL_TO_LAB, EVENT_LAB_STILL_REVIVING_FOSSIL, EVENT_LAB_HANDING_OVER_FOSSIL_MON
-	jr .done
 
 .Text:
 	text_far _CinnabarLabFossilRoomScientist1Text
 	text_end
 
-.NoFossilsText:
-	text_far _CinnabarLabFossilRoomScientist1NoFossilsText
+.ComeAgainText:
+	text_far _CinnabarLabFossilRoomScientist1ComeAgainText
 	text_end
 
-.GoForAWalkText:
-	text_far _CinnabarLabFossilRoomScientist1GoForAWalkText
-	text_end
-
-.FossilIsBackToLifeText:
-	text_far _CinnabarLabFossilRoomScientist1FossilIsBackToLifeText
-	text_end
+CinnabarLabFossilRoom_Gift_Text:
+	script_bridge_gift
 
 CinnabarLabFossilRoomScientist2Text:
-	text_asm
-	ld a, TRADE_FOR_SAILOR
-	ld [wWhichTrade], a
-	predef DoInGameTradeDialogue
-	jp TextScriptEnd
-
-LoadFossilItemAndMonNameBank1D:
-	farjp LoadFossilItemAndMonName
+	text_far _CinnabarLabFossilRoomScientist2Text
+	text_end

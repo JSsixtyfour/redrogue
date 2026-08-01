@@ -21,3 +21,23 @@ _ViridianNicknameHouseSpearySignText::
 	text "SPEAROW"
 	line "Name: SPEARY"
 	done
+
+_ViridianNicknameHouseBaldingGuyAlreadyGotText::
+	text "Good luck naming"
+	line "your #MON!"
+	done
+
+_NicknameGift1Desc::
+	text "Easy to nickname"
+	line "and raise!"
+	done
+
+_NicknameGift2Desc::
+	text "Raises a move's"
+	line "max PP!"
+	done
+
+_NicknameGift3Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

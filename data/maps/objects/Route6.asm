@@ -14,10 +14,10 @@ Route6_Object:
 	db $f ; border block
 
 	def_warp_events
-	warp_event 24, 14, LAST_MAP, 1
+	warp_event  8, 34, LAST_MAP, 1
 	warp_event  9, 34, LAST_MAP, 1
 	warp_event 17, 13, INDIGO_PLATEAU_LOBBY, 1
-	warp_event  8, 34, INDIGO_PLATEAU_LOBBY, 1
+	warp_event 17, 13, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 	bg_event 19, 15, TEXT_ROUTE6_UNDERGROUND_PATH_SIGN

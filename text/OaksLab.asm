@@ -60,3 +60,41 @@ _OaksLabRivalGrampsIsntAroundText::
 	line "<PLAYER>! Gramps"
 	cont "isn't around!"
 	done
+
+_OaksLabOakGiftIntroText::
+	text "OAK: Ah,"
+	line "<PLAYER>! Good"
+	cont "timing."
+
+	para "Take this before"
+	line "you go!"
+	prompt
+
+_OaksLabOakAlreadyGotText::
+	text "OAK: Study hard,"
+	line "and take care of"
+	cont "your #MON!"
+	done
+
+_OaksLabOakNormalText::
+	text "OAK: There's a"
+	line "time and place"
+	cont "for everything!"
+
+	para "But not now."
+	done
+
+_OaksLabGift1Desc::
+	text "A spirited"
+	line "#MON!"
+	done
+
+_OaksLabGift2Desc::
+	text "Raises Attack"
+	line "stat!"
+	done
+
+_OaksLabGift3Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

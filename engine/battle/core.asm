@@ -4619,6 +4619,33 @@ GetDamageVarsForPlayerAttack:
 	ld a, [hli]
 	ld l, [hl]
 	ld h, a ; hl = player's offensive stat
+	; Special form (func_special_form.asm): double the attacker's offensive
+	; stat before the >255 scaling step below, so the existing scale-by-4 path
+	; absorbs any overflow. SF_DOUBLE_ATK for physical moves (Thick Club),
+	; SF_DOUBLE_SPC for special moves (Light Ball). Attacker = wBattleMon.
+	push hl
+	push bc
+	ld de, wBattleMon
+	farcall GetSpecialFormCaps
+	ld e, a ; caps survive the pops (they only touch bc/hl)
+	pop bc
+	pop hl
+	ld a, e
+	and a
+	jr z, .noOffensiveBoost
+	ld a, [wPlayerMoveType]
+	cp SPECIAL
+	jr nc, .offensiveBoostSpecial
+	bit SF_DOUBLE_ATK, e
+	jr .offensiveBoostApply
+.offensiveBoostSpecial
+	bit SF_DOUBLE_SPC, e
+.offensiveBoostApply
+	jr z, .noOffensiveBoost
+	sla l
+	rl h
+.noOffensiveBoost
+	ld a, h
 	or b ; is either high byte nonzero?
 	jr z, .next ; if not, we don't need to scale
 ; bc /= 4 (scale enemy's defensive stat)
@@ -4732,6 +4759,32 @@ GetDamageVarsForEnemyAttack:
 	ld a, [hli]
 	ld l, [hl]
 	ld h, a ; hl = enemy's offensive stat
+	; Special form (func_special_form.asm): double the attacker's offensive
+	; stat before scaling (see the matching block in GetDamageVarsForPlayerAttack).
+	; Attacker = wEnemyMon.
+	push hl
+	push bc
+	ld de, wEnemyMon
+	farcall GetSpecialFormCaps
+	ld e, a ; caps survive the pops (they only touch bc/hl)
+	pop bc
+	pop hl
+	ld a, e
+	and a
+	jr z, .noOffensiveBoost
+	ld a, [wEnemyMoveType]
+	cp SPECIAL
+	jr nc, .offensiveBoostSpecial
+	bit SF_DOUBLE_ATK, e
+	jr .offensiveBoostApply
+.offensiveBoostSpecial
+	bit SF_DOUBLE_SPC, e
+.offensiveBoostApply
+	jr z, .noOffensiveBoost
+	sla l
+	rl h
+.noOffensiveBoost
+	ld a, h
 	or b ; is either high byte nonzero?
 	jr z, .next ; if not, we don't need to scale
 ; bc /= 4 (scale player's defensive stat)
@@ -5064,6 +5117,18 @@ CriticalHitTest:
 .critBoostDone
 	ld b, a
 .noCritBoost
+	; Special form (func_special_form.asm): SF_ALWAYS_CRIT (Farfetch'd) forces
+	; the crit for the attacker. Preserve b (the crit threshold) across the
+	; caps lookup, which farcalls through Bankswitch (clobbers b as the bank).
+	push bc
+	call GetAttackerSpecialFormCaps
+	bit SF_ALWAYS_CRIT, a
+	pop bc
+	jr z, .rollCrit
+	ld a, $1
+	ld [wCriticalHitOrOHKO], a
+	ret
+.rollCrit
 	call BattleRandom            ; generates a random value, in "a"
 	rlc a
 	rlc a
@@ -5760,7 +5825,40 @@ AIGetTypeEffectiveness:
 INCLUDE "data/types/type_matchups.asm"
 
 ; some tests that need to pass for a move to hit
+; Special form (func_special_form.asm) caps for the attacking / defending mon
+; this turn, chosen by hWhoseTurn. Returns a = capability bitfield (0 if none).
+; CLOBBERS: af, bc, de, hl (all callers below account for this).
+GetAttackerSpecialFormCaps:
+	ldh a, [hWhoseTurn]
+	and a
+	ld de, wBattleMon
+	jr z, .go
+	ld de, wEnemyMon
+.go
+	farcall GetSpecialFormCaps
+	ret
+
+GetTargetSpecialFormCaps:
+	ldh a, [hWhoseTurn]
+	and a
+	ld de, wEnemyMon
+	jr z, .go
+	ld de, wBattleMon
+.go
+	farcall GetSpecialFormCaps
+	ret
+
 MoveHitTest:
+	; Special form (func_special_form.asm): if the attacker has SF_NEVER_MISS
+	; or the target has SF_ALWAYS_HIT (No Guard emulation), the move auto-hits.
+	; Returning here without setting wMoveMissed reads as a hit, exactly like
+	; the X-Accuracy `ret nz` paths below.
+	call GetAttackerSpecialFormCaps
+	bit SF_NEVER_MISS, a
+	ret nz
+	call GetTargetSpecialFormCaps
+	bit SF_ALWAYS_HIT, a
+	ret nz
 ; player's turn
 	ld hl, wEnemyBattleStatus1
 	ld de, wPlayerMoveEffect
@@ -6632,6 +6730,8 @@ LoadEnemyMonData:
 	; this struct field, so it does not cover the box path.
 	res 0, a
 	res 1, a
+	res 2, a ; type-variant flag (func_special_form.asm)
+	res 3, a ; special-form flag (func_special_form.asm)
 	ld [de], a
 	inc de
 	ldh a, [hIsInBattle]
@@ -6687,6 +6787,8 @@ LoadEnemyMonData:
 ; func_ghost_variant.asm for the full writeup)
 	res 0, a
 	res 1, a
+	res 2, a ; type-variant flag (func_special_form.asm)
+	res 3, a ; special-form flag (func_special_form.asm)
 	ld [de], a
 	inc de
 	ld a, [hl]     ; base exp

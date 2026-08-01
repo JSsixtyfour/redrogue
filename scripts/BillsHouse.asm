@@ -5,9 +5,9 @@ BillsHouse_Script:
     farcall rogue_gift_randomized_batch   ; giver resolved from current map
     ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
     ResetEvent EVENT_BRIDGE_INTRO
-    ; Switch Bill's PC to its eeveelution viewer (vanilla feature gated behind this
-    ; event). Part 4g - forced here so the room is fully functional as a bridge.
-    SetEvent EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING
+    ; NOTE: EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING (switches Bill's PC to the
+    ; eeveelution viewer) is deliberately NOT set here - it's set post-gift,
+    ; in the Bill's PC gift (Part 4g, Phase B4).
     .afterSetup
 	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	call EnableAutoTextBoxDrawing

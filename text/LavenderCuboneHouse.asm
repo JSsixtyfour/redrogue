@@ -23,3 +23,18 @@ _LavenderCuboneHouseBrunetteGirlGhostIsGoneText::
 	line "soothed its"
 	cont "restless soul!"
 	done
+
+_CuboneHouseGift1Desc::
+	text "Wears its"
+	line "mother's skull!"
+	done
+
+_CuboneHouseGift2Desc::
+	text "A gaseous"
+	line "#MON!"
+	done
+
+_CuboneHouseGift3Desc::
+	text "Revives a"
+	line "fainted #MON!"
+	done

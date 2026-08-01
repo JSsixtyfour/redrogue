@@ -2,23 +2,59 @@
 ;INCLUDE "engine/rogue_pointers.asm"
 ;INCLUDE "engine/pokemon/random_pokemon_selection.asm"
 
-OaksLab_Script:  
+; Dual-purpose room: OaksLab is still the vanilla starter-choice location
+; (the .notBridge path below is the untouched starter/rival cutscene state
+; machine) AND a bridge gift room (Oak, OaksLabOakGiftList) when entered from
+; a lobby door. The whole bridge branch is gated on wWarpedFromWhichMap ==
+; INDIGO_PLATEAU_LOBBY so the real Pallet-Town intro is completely unaffected.
+OaksLab_Script:
+   ld a, [wWarpedFromWhichMap]
+   cp INDIGO_PLATEAU_LOBBY
+   jr nz, .notBridge
+; --- bridge context ---
+   CheckEvent EVENT_ENTER_ROOM
+   jr nz, .bridgeReady
+   SetEvent EVENT_ENTER_ROOM
+   farcall rogue_gift_randomized_batch
+   ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+   ResetEvent EVENT_BRIDGE_INTRO
+.bridgeReady
+   ; hide the intro-only rival + 3 starter balls (they don't belong in a
+   ; bridge visit and would crowd sprite VRAM); Oak shows by default.
+   ld a, TOGGLE_OAKS_LAB_RIVAL
+   ld [wToggleableObjectIndex], a
+   predef HideObject
+   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_1
+   ;ld [wToggleableObjectIndex], a
+   ;predef HideObject
+   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_2
+   ;ld [wToggleableObjectIndex], a
+   ;predef HideObject
+   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_3
+   ;ld [wToggleableObjectIndex], a
+   ;predef HideObject
+   farcall PatchBridgeExitAll   ; reroute EVERY exit onward (incl. the north REWARD_ROOM exit)
+   jp EnableAutoTextBoxDrawing
+
+.notBridge
+; --- vanilla starter/rival intro (unchanged) ---
    CheckEvent EVENT_ESTABLISHED_STARTER
    jr nz, .default
-   
+
    farcall rogue_pokemon_randomized_batch
    SetEvent EVENT_ESTABLISHED_STARTER
-   
+
    jp .end
-   
+
    .default
    CheckEvent EVENT_GOT_STARTER
    jr z, .end
-   
+
    ld hl, OaksLab_ScriptPointers
    ld a, [wOaksLabCurScript]
-   jp CallFunctionInTable
-   
+   call CallFunctionInTable
+   jp EnableAutoTextBoxDrawing
+
    .end
    call OaksLabPlayerDontGoAwayScript
    jp EnableAutoTextBoxDrawing
@@ -43,12 +79,15 @@ OaksLab_TextPointers:
     dw_const Rogue_Lab_Script_PokeballText_2, TEXT_ROGUE_STARTER_POKEBALL_2
     dw_const Rogue_Lab_Script_PokeballText_3, TEXT_ROGUE_STARTER_POKEBALL_3
     dw_const OaksLabRivalText,                    TEXT_OAKSLAB_RIVAL
+	dw_const OaksLabOakText,                      TEXT_OAKSLAB_OAK ; 5th object_event (matches NUM_OBJECT_EVENTS)
     dw_const OaksLabOakDontGoAwayYetText,         TEXT_OAKSLAB_OAK_DONT_GO_AWAY_YET
 	dw_const OaksLabRivalIllTakeThisOneText,      TEXT_OAKSLAB_RIVAL_ILL_TAKE_THIS_ONE
 	dw_const OaksLabRivalReceivedMonText,         TEXT_OAKSLAB_RIVAL_RECEIVED_MON
 	dw_const OaksLabRivalIllTakeYouOnText,        TEXT_OAKSLAB_RIVAL_ILL_TAKE_YOU_ON
 	dw_const OaksLabRivalSmellYouLaterText,       TEXT_OAKSLAB_RIVAL_SMELL_YOU_LATER
-    
+	dw_const OaksLab_Gift_Text, TEXT_OAKSLAB_GIFT_1
+	EXPORT TEXT_OAKSLAB_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
+
 
 Rogue_Lab_Script_PokeballText_1:
 	text_asm
@@ -539,13 +578,59 @@ OaksLabRivalText:
 
 .done
 	jp TextScriptEnd
-    
-    
+
+
     .GrampsIsntAroundText:
 	text_far _OaksLabRivalGrampsIsntAroundText
 	text_end
-    
+
     jp TextScriptEnd
+
+; Oak's own gift dispatch. In a bridge visit he hands out a gift; during
+; normal play (Oak is now present in the lab for the starter sequence and
+; afterward) he just prints placeholder flavor text.
+OaksLabOakText:
+	text_asm
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .bridge
+	ld hl, .NormalText
+	call PrintText
+	jp TextScriptEnd
+.bridge
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr nz, .got_item
+	CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
+	ld hl, .IntroText
+	call PrintText
+	SetEvent EVENT_BRIDGE_INTRO
+	.skip_intro
+	ld a, TEXT_OAKSLAB_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+	jr .done
+.got_item
+	ld hl, .AlreadyGotText
+	call PrintText
+.done
+	jp TextScriptEnd
+
+.IntroText:
+	text_far _OaksLabOakGiftIntroText
+	text_end
+
+.AlreadyGotText:
+	text_far _OaksLabOakAlreadyGotText
+	text_end
+
+.NormalText:
+	text_far _OaksLabOakNormalText
+	text_end
+
+OaksLab_Gift_Text:
+	script_bridge_gift
 
 NoTurningBack:
 	text_asm

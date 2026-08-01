@@ -36,6 +36,16 @@ PrintMonType:
 	ld a, GHOST
 	ld [wMonHType2], a
 .notGhostVariant
+	; Type variant (func_special_form.asm): if wLoadedMon is a type variant,
+	; force its status-screen secondary type to the type stored in its own
+	; MON_TYPE2 (same wLoadedMon / de-input / Hall-of-Fame-stale caveat as the
+	; two checks above). Battle reads the stored type directly and needs no hook.
+	ld de, wLoadedMon
+	farcall IsTypeVariant
+	jr z, .notTypeVariant
+	ld a, [wLoadedMon + MON_TYPE2]
+	ld [wMonHType2], a
+.notTypeVariant
 	pop hl
 	push hl
 	ld a, [wMonHType1]

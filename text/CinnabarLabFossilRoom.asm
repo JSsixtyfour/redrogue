@@ -76,3 +76,24 @@ _CinnabarLabFossilRoomScientist1ComeAgainText::
 	text "Aiyah! You come"
 	line "again!"
 	done
+
+_FossilGift1Desc::
+	text "Revived from an"
+	line "old fossil!"
+	done
+
+_FossilGift2Desc::
+	text "Revived from an"
+	line "old fossil!"
+	done
+
+_FossilGift3Desc::
+	text "Evolves certain"
+	line "#MON!"
+	done
+
+_CinnabarLabFossilRoomScientist2Text::
+	text "I am hard at work"
+	line "reviving ancient"
+	cont "#MON!"
+	done

@@ -425,11 +425,33 @@ BridgeGiverMapTable:
 	db COPYCATS_HOUSE_2F
 	db BILLS_HOUSE
 	db MR_FUJIS_HOUSE
+	db SS_ANNE_CAPTAINS_ROOM
+	db CINNABAR_LAB_FOSSIL_ROOM
+	db POKEMON_FAN_CLUB
+	db WARDENS_HOUSE
+	db VIRIDIAN_SCHOOL_HOUSE
+	db VIRIDIAN_NICKNAME_HOUSE
+	db CERULEAN_TRASHED_HOUSE
+	db REDS_HOUSE_1F
+	db LAVENDER_CUBONE_HOUSE
+	db CERULEAN_TRADE_HOUSE
+	db OAKS_LAB
 
 BridgeGiverLists:
 	dw CopyCatGiftList
 	dw BillGiftList
 	dw MrFujiGiftList
+	dw CaptainGiftList
+	dw FossilScientistGiftList
+	dw FanClubChairmanGiftList
+	dw WardenGiftList
+	dw SchoolCooltrainerGiftList
+	dw NicknameBaldingGuyGiftList
+	dw TrashedHouseFishingGuruGiftList
+	dw RedsHouseMomGiftList
+	dw CuboneHouseGirlGiftList
+	dw TradeHouseGrannyGiftList
+	dw OaksLabOakGiftList
 
 ; ---------------------------------------------------------------------------
 CopyCatGiftList:
@@ -462,6 +484,74 @@ MrFujiGiftList:
 	gift_entry GIFT_TEACH_MOVE, CONFUSE_RAY,        MrFujiGift6_Text, MrFujiGift6_Desc
 	gift_entry GIFT_TEACH_MOVE, LICK,               MrFujiGift7_Text, MrFujiGift7_Desc
 
+CaptainGiftList:
+	db 3
+	gift_entry GIFT_ITEM, HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
+	gift_entry GIFT_MON,  TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
+	gift_entry GIFT_MON,  KRABBY,    CaptainGift3_Text, CaptainGift3_Desc
+
+FossilScientistGiftList:
+	db 3
+	gift_entry GIFT_MON,  OMANYTE,   FossilGift1_Text, FossilGift1_Desc
+	gift_entry GIFT_MON,  KABUTO,    FossilGift2_Text, FossilGift2_Desc
+	gift_entry GIFT_ITEM, FIRE_STONE, FossilGift3_Text, FossilGift3_Desc
+
+FanClubChairmanGiftList:
+	db 3
+	gift_entry GIFT_ITEM, BIKE_VOUCHER, FanClubGift1_Text, FanClubGift1_Desc
+	gift_entry GIFT_MON,  CLEFAIRY,     FanClubGift2_Text, FanClubGift2_Desc
+	gift_entry GIFT_ITEM, RARE_CANDY,   FanClubGift3_Text, FanClubGift3_Desc
+
+WardenGiftList:
+	db 3
+	gift_entry GIFT_ITEM, HM_STRENGTH, WardenGift1_Text, WardenGift1_Desc
+	gift_entry GIFT_MON,  KANGASKHAN,  WardenGift2_Text, WardenGift2_Desc
+	gift_entry GIFT_ITEM, RARE_CANDY,  WardenGift3_Text, WardenGift3_Desc
+
+SchoolCooltrainerGiftList:
+	db 3
+	gift_entry GIFT_TEACH_MOVE, DOUBLE_TEAM, SchoolGift1_Text, SchoolGift1_Desc
+	gift_entry GIFT_ITEM,       CALCIUM,     SchoolGift2_Text, SchoolGift2_Desc
+	gift_entry GIFT_ITEM,       RARE_CANDY,  SchoolGift3_Text, SchoolGift3_Desc
+
+NicknameBaldingGuyGiftList:
+	db 3
+	gift_entry GIFT_MON,  SPEAROW,    NicknameGift1_Text, NicknameGift1_Desc
+	gift_entry GIFT_ITEM, PP_UP,      NicknameGift2_Text, NicknameGift2_Desc
+	gift_entry GIFT_ITEM, RARE_CANDY, NicknameGift3_Text, NicknameGift3_Desc
+
+TrashedHouseFishingGuruGiftList:
+	db 3
+	gift_entry GIFT_ITEM, GOOD_ROD, TrashedGift1_Text, TrashedGift1_Desc
+	gift_entry GIFT_MON,  MAGIKARP, TrashedGift2_Text, TrashedGift2_Desc
+	gift_entry GIFT_MON,  POLIWAG,  TrashedGift3_Text, TrashedGift3_Desc
+
+RedsHouseMomGiftList:
+	db 3
+	gift_entry GIFT_ITEM, FULL_RESTORE, MomGift1_Text, MomGift1_Desc
+	gift_entry GIFT_MON,  EEVEE,        MomGift2_Text, MomGift2_Desc
+	gift_entry GIFT_ITEM, RARE_CANDY,   MomGift3_Text, MomGift3_Desc
+
+CuboneHouseGirlGiftList:
+	db 3
+	gift_entry GIFT_MON,  CUBONE, CuboneHouseGift1_Text, CuboneHouseGift1_Desc
+	gift_entry GIFT_MON,  GASTLY, CuboneHouseGift2_Text, CuboneHouseGift2_Desc
+	gift_entry GIFT_ITEM, REVIVE, CuboneHouseGift3_Text, CuboneHouseGift3_Desc
+
+TradeHouseGrannyGiftList:
+	db 3
+	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
+	gift_entry GIFT_MON,  CLEFAIRY,   TradeHouseGift2_Text, TradeHouseGift2_Desc
+	gift_entry GIFT_ITEM, MOON_STONE, TradeHouseGift3_Text, TradeHouseGift3_Desc
+
+; Gift 1 (PIKACHU) is a plain mon gift for now; Phase B4 upgrades it to a
+; GIFT_SPECIAL routine that also applies the Light-Ball special form.
+OaksLabOakGiftList:
+	db 3
+	gift_entry GIFT_MON,  PIKACHU,    OaksLabGift1_Text, OaksLabGift1_Desc
+	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
+	gift_entry GIFT_ITEM, RARE_CANDY, OaksLabGift3_Text, OaksLabGift3_Desc
+
 ; ---------------------------------------------------------------------------
 ; Menu name strings.
 CopyCatGift1_Text: db "SUPER DITTO@"
@@ -487,6 +577,50 @@ MrFujiGift4_Text: db "GENE SPLICING@"
 MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
 MrFujiGift7_Text: db "LICK TUTOR@"
+
+CaptainGift1_Text: db "HM CUT@"
+CaptainGift2_Text: db "TENTACOOL@"
+CaptainGift3_Text: db "KRABBY@"
+
+FossilGift1_Text: db "OMANYTE@"
+FossilGift2_Text: db "KABUTO@"
+FossilGift3_Text: db "FIRE STONE@"
+
+FanClubGift1_Text: db "BIKE VOUCHER@"
+FanClubGift2_Text: db "CLEFAIRY@"
+FanClubGift3_Text: db "RARE CANDY@"
+
+WardenGift1_Text: db "HM STRENGTH@"
+WardenGift2_Text: db "KANGASKHAN@"
+WardenGift3_Text: db "RARE CANDY@"
+
+SchoolGift1_Text: db "DOUBLE TEAM TUTOR@"
+SchoolGift2_Text: db "CALCIUM@"
+SchoolGift3_Text: db "RARE CANDY@"
+
+NicknameGift1_Text: db "SPEAROW@"
+NicknameGift2_Text: db "PP UP@"
+NicknameGift3_Text: db "RARE CANDY@"
+
+TrashedGift1_Text: db "GOOD ROD@"
+TrashedGift2_Text: db "MAGIKARP@"
+TrashedGift3_Text: db "POLIWAG@"
+
+MomGift1_Text: db "FULL RESTORE@"
+MomGift2_Text: db "EEVEE@"
+MomGift3_Text: db "RARE CANDY@"
+
+CuboneHouseGift1_Text: db "CUBONE@"
+CuboneHouseGift2_Text: db "GASTLY@"
+CuboneHouseGift3_Text: db "REVIVE@"
+
+TradeHouseGift1_Text: db "NUGGET@"
+TradeHouseGift2_Text: db "CLEFAIRY@"
+TradeHouseGift3_Text: db "MOON STONE@"
+
+OaksLabGift1_Text: db "PIKACHU@"
+OaksLabGift2_Text: db "PROTEIN@"
+OaksLabGift3_Text: db "RARE CANDY@"
 
 ; ---------------------------------------------------------------------------
 ; Descriptions.
@@ -554,4 +688,114 @@ MrFujiGift6_Desc:
 	text_end
 MrFujiGift7_Desc:
 	text_far _MrFujiGift7Desc
+	text_end
+
+CaptainGift1_Desc:
+	text_far _CaptainGift1Desc
+	text_end
+CaptainGift2_Desc:
+	text_far _CaptainGift2Desc
+	text_end
+CaptainGift3_Desc:
+	text_far _CaptainGift3Desc
+	text_end
+
+FossilGift1_Desc:
+	text_far _FossilGift1Desc
+	text_end
+FossilGift2_Desc:
+	text_far _FossilGift2Desc
+	text_end
+FossilGift3_Desc:
+	text_far _FossilGift3Desc
+	text_end
+
+FanClubGift1_Desc:
+	text_far _FanClubGift1Desc
+	text_end
+FanClubGift2_Desc:
+	text_far _FanClubGift2Desc
+	text_end
+FanClubGift3_Desc:
+	text_far _FanClubGift3Desc
+	text_end
+
+WardenGift1_Desc:
+	text_far _WardenGift1Desc
+	text_end
+WardenGift2_Desc:
+	text_far _WardenGift2Desc
+	text_end
+WardenGift3_Desc:
+	text_far _WardenGift3Desc
+	text_end
+
+SchoolGift1_Desc:
+	text_far _SchoolGift1Desc
+	text_end
+SchoolGift2_Desc:
+	text_far _SchoolGift2Desc
+	text_end
+SchoolGift3_Desc:
+	text_far _SchoolGift3Desc
+	text_end
+
+NicknameGift1_Desc:
+	text_far _NicknameGift1Desc
+	text_end
+NicknameGift2_Desc:
+	text_far _NicknameGift2Desc
+	text_end
+NicknameGift3_Desc:
+	text_far _NicknameGift3Desc
+	text_end
+
+TrashedGift1_Desc:
+	text_far _TrashedGift1Desc
+	text_end
+TrashedGift2_Desc:
+	text_far _TrashedGift2Desc
+	text_end
+TrashedGift3_Desc:
+	text_far _TrashedGift3Desc
+	text_end
+
+MomGift1_Desc:
+	text_far _MomGift1Desc
+	text_end
+MomGift2_Desc:
+	text_far _MomGift2Desc
+	text_end
+MomGift3_Desc:
+	text_far _MomGift3Desc
+	text_end
+
+CuboneHouseGift1_Desc:
+	text_far _CuboneHouseGift1Desc
+	text_end
+CuboneHouseGift2_Desc:
+	text_far _CuboneHouseGift2Desc
+	text_end
+CuboneHouseGift3_Desc:
+	text_far _CuboneHouseGift3Desc
+	text_end
+
+TradeHouseGift1_Desc:
+	text_far _TradeHouseGift1Desc
+	text_end
+TradeHouseGift2_Desc:
+	text_far _TradeHouseGift2Desc
+	text_end
+TradeHouseGift3_Desc:
+	text_far _TradeHouseGift3Desc
+	text_end
+
+OaksLabGift1_Desc:
+	text_far _OaksLabGift1Desc
+	text_end
+OaksLabGift2_Desc:
+	text_far _OaksLabGift2Desc
+	text_end
+OaksLabGift3_Desc:
+	text_far _OaksLabGift3Desc
 	text_end

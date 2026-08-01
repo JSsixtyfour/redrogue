@@ -6,8 +6,8 @@ CinnabarLabFossilRoom_Object:
 	db $17 ; border block
 
 	def_warp_events
-	warp_event  2,  7, CINNABAR_LAB, 5
-	warp_event  3,  7, CINNABAR_LAB, 5
+	warp_event  2,  7, LAST_MAP, 3 ; was CINNABAR_LAB (vanilla, unreachable in the
+	warp_event  3,  7, LAST_MAP, 3 ; rogue pool); LAST_MAP so PatchBridgeExit routes onward
 
 	def_bg_events
 

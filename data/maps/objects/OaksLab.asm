@@ -3,6 +3,7 @@ object_const_def
     const_export ROGUE_STARTER_POKEBALL_2
     const_export ROGUE_STARTER_POKEBALL_3
     const_export OAKSLAB_RIVAL
+    const_export OAKSLAB_OAK
 
 OaksLab_Object:
 	db $3 ; border block
@@ -20,5 +21,6 @@ OaksLab_Object:
 	object_event  7,  3, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_2
 	object_event  8,  3, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_3
 	object_event  4,  3, SPRITE_BLUE, STAY, NONE, TEXT_OAKSLAB_RIVAL, OPP_RIVAL1, 1
-    
+	object_event  3,  2, SPRITE_OAK, STAY, DOWN, TEXT_OAKSLAB_OAK
+
 	def_warps_to OAKS_LAB

@@ -128,32 +128,34 @@ LobbyDoor1SignText:
 	call LobbyMiniBossSign        ; hl -> "boss + reward category" combined text
 	ret
 .noMiniBoss
-; door 2 is hidden whenever a gym is next (see IndigoPlateauLobby_Script),
-; so this is the only sign visible in that case - call out the gym here
-; rather than the usual "DOOR 1" framing, since there's no longer a choice
-; of doors to make.
+; door 2 is hidden whenever a gym is next (see IndigoPlateauLobby_Script), so
+; this is the only sign visible in that case. Gyms don't grant the door's item
+; reward, so just say "GYM" rather than a misleading reward category.
 	ld a, [wRogueFlagsBitfield]
 	bit 0, a
-	ld hl, .itemPtrsGym
-	jr nz, .gotTable
+	jr nz, .gymSign
 	ld hl, .itemPtrs
-.gotTable
 	ld a, [wRogueDoor1]
 	ld d, 0
 	ld e, a
 	add hl, de
 	add hl, de          ; hl += 2 * class (each entry is a dw)
-.deref
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
 	ret
+.gymSign
+	ld hl, .gymSignText
+	ret
+.gymSignText
+	text "GYM AHEAD@"
+	text_end
 .itemPtrs
 	dw .healingText
 	dw .statText
 	dw .tmText
 	dw .moneyText
-.itemPtrsGym
+.itemPtrsGym ; unused (gyms now use .gymSignText); kept to avoid touching the texts below
 	dw .healingTextGym
 	dw .statTextGym
 	dw .tmTextGym
@@ -489,6 +491,28 @@ LobbyBridgeSignTable:
 	dw .billText
 	db MR_FUJIS_HOUSE
 	dw .fujiText
+	db SS_ANNE_CAPTAINS_ROOM
+	dw .captainText
+	db CINNABAR_LAB_FOSSIL_ROOM
+	dw .fossilText
+	db POKEMON_FAN_CLUB
+	dw .fanClubText
+	db WARDENS_HOUSE
+	dw .wardenText
+	db VIRIDIAN_SCHOOL_HOUSE
+	dw .schoolText
+	db VIRIDIAN_NICKNAME_HOUSE
+	dw .nicknameText
+	db CERULEAN_TRASHED_HOUSE
+	dw .trashedText
+	db REDS_HOUSE_1F
+	dw .redsHouseText
+	db LAVENDER_CUBONE_HOUSE
+	dw .cuboneHouseText
+	db CERULEAN_TRADE_HOUSE
+	dw .tradeHouseText
+	db OAKS_LAB
+	dw .oaksLabText
 	db $ff
 .copycatText:
 	text "COPY CAT's"
@@ -501,6 +525,50 @@ LobbyBridgeSignTable:
 .fujiText:
 	text "MR.FUJI's"
 	line "HOUSE@"
+	text_end
+.captainText:
+	text "CAPTAIN's"
+	line "ROOM@"
+	text_end
+.fossilText:
+	text "FOSSIL"
+	line "ROOM@"
+	text_end
+.fanClubText:
+	text "#MON FAN"
+	line "CLUB@"
+	text_end
+.wardenText:
+	text "WARDEN's"
+	line "HOUSE@"
+	text_end
+.schoolText:
+	text "SCHOOL"
+	line "HOUSE@"
+	text_end
+.nicknameText:
+	text "NICKNAME"
+	line "HOUSE@"
+	text_end
+.trashedText:
+	text "TRASHED"
+	line "HOUSE@"
+	text_end
+.redsHouseText:
+	text "RED's"
+	line "HOUSE@"
+	text_end
+.cuboneHouseText:
+	text "CUBONE"
+	line "HOUSE@"
+	text_end
+.tradeHouseText:
+	text "TRADE"
+	line "HOUSE@"
+	text_end
+.oaksLabText:
+	text "OAK's"
+	line "LAB@"
 	text_end
 
 ; Mini-boss door sign: line 1 = the boss, line 2 = the door's item reward

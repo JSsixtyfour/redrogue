@@ -12,7 +12,8 @@
 	const_export PC_POKESALESMAN
     const_export PC_TRADENERD
     const_export PC_MOVETUTOR
-    const_export PC_DOOR2_SIGN
+    const_export PC_DOOR1_SIGN ; must precede PC_DOOR2_SIGN so the const values line
+    const_export PC_DOOR2_SIGN ; up with the object_event order (DOOR1_SIGN=obj12, DOOR2_SIGN=obj13)
 
 
 IndigoPlateauLobby_Object:

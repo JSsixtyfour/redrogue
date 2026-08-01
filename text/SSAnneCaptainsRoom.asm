@@ -62,3 +62,18 @@ _SSAnneCaptainsRoomSeasickBookText::
 	cont "The CAPTAIN's"
 	cont "reading this!"
 	done
+
+_CaptainGift1Desc::
+	text "The CAPTAIN's"
+	line "special technique"
+	done
+
+_CaptainGift2Desc::
+	text "A lucky catch"
+	line "off the deck!"
+	done
+
+_CaptainGift3Desc::
+	text "Snapped up"
+	line "fresh today!"
+	done

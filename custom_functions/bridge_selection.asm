@@ -9,15 +9,26 @@
 ; "offered" bitmask over the bridge rooms (no repeat until the pool is exhausted)
 ; plus a saturating bridge count for the 2-per-run guarantee.
 
-; Bridge room map ids. Index = "room index" used by the offered-mask bits.
+; Bridge room map ids. Index = "room index" used by the offered-mask bits
+; (0-7 -> wBridgeOfferedLo, 8-13 -> wBridgeState bits 0-5; 14 rooms max).
 ; KEEP IN SYNC with the giver tables in engine/events/bridge_gift_menu.asm and the
-; sign table in scripts/IndigoPlateauLobby.asm. (B1: the three existing gift rooms;
-; B2 extends this to the full ~14-room roster.)
+; sign table in scripts/IndigoPlateauLobby.asm.
 BridgeRoomMaps:
-	db COPYCATS_HOUSE_2F
-	db BILLS_HOUSE
-	db MR_FUJIS_HOUSE
-DEF NUM_BRIDGE_ROOMS EQU 3
+	db COPYCATS_HOUSE_2F        ; 0
+	db BILLS_HOUSE               ; 1
+	db MR_FUJIS_HOUSE            ; 2
+	db SS_ANNE_CAPTAINS_ROOM     ; 3
+	db CINNABAR_LAB_FOSSIL_ROOM  ; 4
+	db POKEMON_FAN_CLUB          ; 5
+	db WARDENS_HOUSE             ; 6
+	db VIRIDIAN_SCHOOL_HOUSE     ; 7
+	db VIRIDIAN_NICKNAME_HOUSE   ; 8
+	db CERULEAN_TRASHED_HOUSE    ; 9
+	db REDS_HOUSE_1F             ; 10
+	db LAVENDER_CUBONE_HOUSE     ; 11
+	db CERULEAN_TRADE_HOUSE      ; 12
+	db OAKS_LAB                  ; 13
+DEF NUM_BRIDGE_ROOMS EQU 14
 
 ; ============================================================
 ; BridgeRollAndAssign
@@ -268,6 +279,35 @@ PatchBridgeExit::
 	ld [hl], d                     ; mapID -> wRogueMap
 	dec hl                         ; back to warpID for a uniform advance
 .skip
+	add hl, bc                     ; -> next entry's warpID
+	dec e
+	jr nz, .loop
+	ret
+
+; ============================================================
+; PatchBridgeExitAll  (farcall'd from dual-exit bridge rooms, e.g. OaksLab)
+; Like PatchBridgeExit, but reroutes EVERY warp in the map to wRogueMap - for
+; rooms whose non-LAST_MAP exit would otherwise lead somewhere wrong during a
+; bridge (OaksLab's north exit normally goes to REWARD_ROOM). Same lobby-entry
+; gate, so the vanilla intro path is untouched. Clobbers a/bc/de/hl.
+; ============================================================
+PatchBridgeExitAll::
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	ret nz
+	ld a, [wNumberOfWarps]
+	and a
+	ret z
+	ld e, a
+	ld a, [wRogueMap]
+	ld d, a
+	ld bc, 4
+	ld hl, wWarpEntries + 2        ; -> first entry's warpID byte
+.loop
+	ld [hl], 0                     ; warpID -> 0
+	inc hl
+	ld [hl], d                     ; mapID -> wRogueMap
+	dec hl
 	add hl, bc                     ; -> next entry's warpID
 	dec e
 	jr nz, .loop

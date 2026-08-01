@@ -47,6 +47,13 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld e, l
 	farcall IsFusionMon
 	jp nz, Evolution_PartyMonLoop  ; is the fusion - skip to next mon
+	; Special form (func_special_form.asm): SF_NO_EVOLVE (Light Ball Pikachu)
+	; also never evolves. Every evolution path - after-battle level-up, stone
+	; item use, and Rare Candy - funnels through this loop, so this one check
+	; covers them all. de still = this mon's struct base (farcall preserves de).
+	farcall GetSpecialFormCaps
+	bit SF_NO_EVOLVE, a
+	jp nz, Evolution_PartyMonLoop
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld hl, wCanEvolveFlags
@@ -92,7 +99,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jr z, .checkItemEvo
 	ld a, [wForceEvolution]
 	and a
-	jr nz, Evolution_PartyMonLoop
+	jp nz, Evolution_PartyMonLoop
 	ld a, b
 	cp EVOLVE_LEVEL
 	jr z, .checkLevel

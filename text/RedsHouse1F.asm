@@ -35,3 +35,25 @@ _RedsHouse1FTVStandByMeMovieText::
 _RedsHouse1FTVWrongSideText::
 	text "Oops, wrong side."
 	done
+
+_RedsHouse1FMomGiftIntroText::
+	text "MOM: Oh, I almost"
+	line "forgot! I have"
+	cont "something for"
+	cont "you!"
+	prompt
+
+_MomGift1Desc::
+	text "Fully heals a"
+	line "#MON!"
+	done
+
+_MomGift2Desc::
+	text "A gift from"
+	line "home!"
+	done
+
+_MomGift3Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

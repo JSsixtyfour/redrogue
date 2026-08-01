@@ -84,3 +84,18 @@ _WardensHouseDisplayMerchandiseText::
 	text "Old #MON"
 	line "merchandise."
 	done
+
+_WardenGift1Desc::
+	text "Teaches STRENGTH"
+	line "to move rocks!"
+	done
+
+_WardenGift2Desc::
+	text "A Safari Zone"
+	line "rarity!"
+	done
+
+_WardenGift3Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

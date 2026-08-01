@@ -61,12 +61,25 @@ SetPal_Battle:
 	ld a, PAL_PURPLEMON
 	ld [wPalPacket + 5], a
 .playerNotGhostVariant
+	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
+	ld de, wBattleMon
+	farcall GetTypeVariantPalette
+	and a
+	jr z, .playerNotTypeVariant
+	ld [wPalPacket + 5], a
+.playerNotTypeVariant
 	ld de, wEnemyMon
 	farcall IsGhostVariant
 	jr z, .enemyNotGhostVariant
 	ld a, PAL_PURPLEMON
 	ld [wPalPacket + 7], a
 .enemyNotGhostVariant
+	ld de, wEnemyMon
+	farcall GetTypeVariantPalette
+	and a
+	jr z, .enemyNotTypeVariant
+	ld [wPalPacket + 7], a
+.enemyNotTypeVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_Battle
 	ld a, SET_PAL_BATTLE
@@ -105,6 +118,13 @@ SetPal_StatusScreen:
 	ld a, PAL_PURPLEMON
 	ld [wPalPacket + 3], a
 .notGhostVariant
+	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
+	ld de, wLoadedMon
+	farcall GetTypeVariantPalette
+	and a
+	jr z, .notTypeVariant
+	ld [wPalPacket + 3], a
+.notTypeVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_StatusScreen
 	ret

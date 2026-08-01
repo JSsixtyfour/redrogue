@@ -178,8 +178,11 @@ _AddPartyMon::
 ; ever fully removed from this mod, this whole byte goes back to being
 ; truly free and this clear becomes unnecessary (but harmless either way).
 ; Bit 1 is repurposed as the Fusion flag (func_fusion.asm), so also clear it.
+; Bits 2/3 are the type-variant / special-form flags (func_special_form.asm).
 	res 0, a
 	res 1, a
+	res 2, a
+	res 3, a
 	ld [de], a
 	ld hl, wMonHMoves
 	ld a, [hli]

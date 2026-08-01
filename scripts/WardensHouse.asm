@@ -1,4 +1,15 @@
+; Repurposed as a bridge gift room - the Warden's vanilla gold-teeth/HM04
+; state machine is replaced by the standard bridge-gift dispatch (HM STRENGTH
+; is now one of his possible rolled gifts, WardenGiftList in bridge_gift_menu.asm).
 WardensHouse_Script:
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+	farcall rogue_gift_randomized_batch   ; giver resolved from current map
+	ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
+	ResetEvent EVENT_BRIDGE_INTRO
+	.afterSetup
+	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	jp EnableAutoTextBoxDrawing
 
 WardensHouse_TextPointers:
@@ -8,50 +19,26 @@ WardensHouse_TextPointers:
 	dw_const BoulderText,             TEXT_WARDENSHOUSE_BOULDER
 	dw_const WardensHouseDisplayText, TEXT_WARDENSHOUSE_DISPLAY_LEFT
 	dw_const WardensHouseDisplayText, TEXT_WARDENSHOUSE_DISPLAY_RIGHT
+	dw_const WardensHouse_Gift_Text, TEXT_WARDENSHOUSE_GIFT_1
+	EXPORT TEXT_WARDENSHOUSE_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
 WardensHouseWardenText:
 	text_asm
-	CheckEvent EVENT_GOT_HM04
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
 	jr nz, .got_item
-	ld b, GOLD_TEETH
-	call IsItemInBag
-	jr nz, .have_gold_teeth
-	CheckEvent EVENT_GAVE_GOLD_TEETH
-	jr nz, .gave_gold_teeth
-	ld hl, .Gibberish1Text
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	ld hl, .Gibberish3Text
-	jr nz, .refused
-	ld hl, .Gibberish2Text
-.refused
-	call PrintText
-	jr .done
-.have_gold_teeth
-	ld hl, .GaveTheGoldTeethText
-	call PrintText
-	ld a, GOLD_TEETH
-	ldh [hItemToRemoveID], a
-	farcall RemoveItemByID
-	SetEvent EVENT_GAVE_GOLD_TEETH
-.gave_gold_teeth
+	CheckEvent EVENT_BRIDGE_INTRO
+	jr nz, .skip_intro
 	ld hl, .ThanksText
 	call PrintText
-	lb bc, HM_STRENGTH, 1
-	call GiveItem
-	jr nc, .bag_full
-	ld hl, .ReceivedHM04Text
-	call PrintText
-	SetEvent EVENT_GOT_HM04
+	SetEvent EVENT_BRIDGE_INTRO
+	.skip_intro
+	ld a, TEXT_WARDENSHOUSE_GIFT_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
 	jr .done
 .got_item
-	ld hl, .HM04ExplanationText
-	call PrintText
-	jr .done
-.bag_full
-	ld hl, .HM04NoRoomText
+	ld hl, .Gibberish1Text
 	call PrintText
 .done
 	jp TextScriptEnd
@@ -60,38 +47,12 @@ WardensHouseWardenText:
 	text_far _WardensHouseWardenGibberish1Text
 	text_end
 
-.Gibberish2Text:
-	text_far _WardensHouseWardenGibberish2Text
-	text_end
-
-.Gibberish3Text:
-	text_far _WardensHouseWardenGibberish3Text
-	text_end
-
-.GaveTheGoldTeethText:
-	text_far _WardensHouseWardenGaveTheGoldTeethText
-	sound_get_item_1
-
-.PoppedInHisTeethText: ; unreferenced
-	text_far _WardensHouseWardenTeethPoppedInHisTeethText
-	text_end
-
 .ThanksText:
 	text_far _WardensHouseWardenThanksText
 	text_end
 
-.ReceivedHM04Text:
-	text_far _WardensHouseWardenReceivedHM04Text
-	sound_get_item_1
-	text_end
-
-.HM04ExplanationText:
-	text_far _WardensHouseWardenHM04ExplanationText
-	text_end
-
-.HM04NoRoomText:
-	text_far _WardensHouseWardenHM04NoRoomText
-	text_end
+WardensHouse_Gift_Text:
+	script_bridge_gift
 
 WardensHouseDisplayText:
 	text_asm

@@ -143,3 +143,18 @@ _PokemonFanClubSign2Text::
 	text "If someone brags,"
 	line "brag right back!"
 	done
+
+_FanClubGift1Desc::
+	text "Trade it in for"
+	line "a BICYCLE!"
+	done
+
+_FanClubGift2Desc::
+	text "The club's"
+	line "favorite #MON!"
+	done
+
+_FanClubGift3Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
