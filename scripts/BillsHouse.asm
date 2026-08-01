@@ -10,6 +10,13 @@ BillsHouse_Script:
     ; in the Bill's PC gift (Part 4g, Phase B4).
     .afterSetup
 	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
+	; Part 4g: once the player has taken a gift from Bill this visit, flip his
+	; PC to the eeveelution viewer (engine/events/hidden_events/bills_house_pc.asm
+	; keys on EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING).
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr z, .noEeveePC
+	SetEvent EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING
+.noEeveePC
 	call EnableAutoTextBoxDrawing
 	ld a, [wBillsHouseCurScript]
 	ld hl, BillsHouse_ScriptPointers

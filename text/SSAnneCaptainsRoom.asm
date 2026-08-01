@@ -74,6 +74,11 @@ _CaptainGift2Desc::
 	done
 
 _CaptainGift3Desc::
-	text "Snapped up"
-	line "fresh today!"
+	text "Gives one #MON"
+	line "the WATER type!"
+	done
+
+_CaptainGift4Desc::
+	text "Every strike"
+	line "hits its mark!"
 	done

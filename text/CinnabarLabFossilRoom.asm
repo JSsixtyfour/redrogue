@@ -83,8 +83,8 @@ _FossilGift1Desc::
 	done
 
 _FossilGift2Desc::
-	text "Revived from an"
-	line "old fossil!"
+	text "Gives one #MON"
+	line "the ROCK type!"
 	done
 
 _FossilGift3Desc::

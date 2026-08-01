@@ -159,3 +159,9 @@ _ReceivedItemText::
 _Empty::
     text ""
 	done
+
+_BridgeTypeVariantFailText::
+	text "That #MON can't"
+	line "take on that"
+	cont "type!"
+	prompt

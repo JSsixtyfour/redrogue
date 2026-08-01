@@ -384,6 +384,8 @@ BridgeMrFujiRescue::
 	jp BridgeGiveMon
 
 ; Mr. Fuji "THICK CLUB": CUBONE early, MAROWAK once deep enough into the run.
+; Given as a BIT_SPECIAL_FORM mon so the SpecialFormCaps table's DOUBLE_ATK
+; (Thick Club emulation) applies (func_special_form.asm).
 BridgeMrFujiCubone::
 	ld a, [wBattleCount]
 	cp 30
@@ -391,7 +393,256 @@ BridgeMrFujiCubone::
 	jr nc, .give
 	ld a, MAROWAK
 .give
-	jp BridgeGiveMon
+	call BridgeGiveMon
+	jp BridgeApplySpecialFormToNewMon
+
+; Oak's Light-Ball PIKACHU: given as a BIT_SPECIAL_FORM mon (DOUBLE_ATK |
+; DOUBLE_SPC | NO_EVOLVE per SpecialFormCaps).
+BridgeOakPikachu::
+	ld a, PIKACHU
+	call BridgeGiveMon
+	jp BridgeApplySpecialFormToNewMon
+
+; Captain's always-crit FARFETCH'D (SpecialFormCaps -> ALWAYS_CRIT).
+BridgeCaptainFarfetchd::
+	ld a, FARFETCHD
+	call BridgeGiveMon
+	jp BridgeApplySpecialFormToNewMon
+
+; Copycat's SUPER DITTO: a DITTO with perfect DVs, maxed stat exp, and the
+; SUPER_TRANSFORM + TRANSFORM move pair. If the party is full the mon is boxed
+; as a plain DITTO (the special treatment only applies on the party path).
+BridgeCopyCatSuperDitto::
+	ld a, DITTO
+	call BridgeGiveMon
+	ld a, [wAddedToParty]
+	and a
+	ret z
+	call GetLastPartyMonStruct   ; hl = struct base
+	; perfect DVs
+	push hl
+	ld bc, MON_DVS
+	add hl, bc
+	ld a, $ff
+	ld [hli], a
+	ld [hl], a
+	pop hl
+	; max stat exp (MON_HP_EXP..MON_SPC_EXP = 5 words, contiguous)
+	push hl
+	ld bc, MON_HP_EXP
+	add hl, bc
+	ld c, 10
+	ld a, $ff
+.statExpLoop
+	ld [hli], a
+	dec c
+	jr nz, .statExpLoop
+	pop hl
+	; moves = SUPER_TRANSFORM, TRANSFORM, 0, 0
+	push hl
+	ld bc, MON_MOVES
+	add hl, bc
+	ld a, SUPER_TRANSFORM
+	ld [hli], a
+	ld a, TRANSFORM
+	ld [hli], a
+	xor a
+	ld [hli], a
+	ld [hl], a
+	pop hl
+	; PP for the new moveset (predef LoadMovePPs: hl = moves, de = PP - 1)
+	push hl
+	ld bc, MON_MOVES
+	add hl, bc                   ; hl = moves ptr
+	pop de                       ; de = struct base
+	push de                      ; keep struct base
+	push hl                      ; save moves ptr
+	ld h, d
+	ld l, e
+	ld bc, MON_PP - 1
+	add hl, bc
+	ld d, h
+	ld e, l                      ; de = PP - 1
+	pop hl                       ; hl = moves ptr
+	predef LoadMovePPs
+	pop hl                       ; hl = struct base
+	jp BridgeRecalcStats
+
+; Mr. Fuji's GENE SPLICING: max out a chosen party mon's DVs, then recalc.
+BridgeMrFujiGeneSplice::
+	call BridgeSelectPartyMon
+	ret c
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes               ; hl = selected struct base
+	push hl
+	ld bc, MON_DVS
+	add hl, bc
+	ld a, $ff
+	ld [hli], a
+	ld [hl], a
+	pop hl
+	jp BridgeRecalcStats
+
+; Bill's DUPLICATE TRICK: pick a party mon, give an exact clone through the
+; normal GivePokemon flow. Party-full clones fall back to a fresh same-species
+; mon in the box (an exact copy needs the party struct, which the box lacks).
+BridgeBillDuplicate::
+	call BridgeSelectPartyMon
+	ret c
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes               ; hl = source struct base
+	ld a, [hl]
+	ld b, a                      ; b = species
+	push hl                      ; save source base across GivePokemon
+	ld de, MON_LEVEL
+	add hl, de
+	ld a, [hl]
+	ld c, a                      ; c = level
+	call GivePokemon             ; fresh mon (party or box) + standard messaging
+	pop hl                       ; hl = source base (party structs don't move)
+	ld a, [wAddedToParty]
+	and a
+	ret z                        ; boxed -> fresh same-species mon, no exact clone
+	push hl                      ; source base
+	call GetLastPartyMonStruct   ; hl = dest (new last slot)
+	pop de                       ; de = source base
+	; CopyData copies [hl] -> [de]; we need source -> dest, so swap hl<->de.
+	ld a, h
+	ld h, d
+	ld d, a
+	ld a, l
+	ld l, e
+	ld e, a                      ; hl = source, de = dest
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call CopyData
+	ret
+
+; Bill's MAD SCIENCE: fuse two party mons (func_fusion.asm handles the whole
+; selection UI, guards, and messaging).
+BridgeBillFusion::
+	farcall CreateFusion
+	ret
+
+; Captain's WATER type variant: adds WATER as a chosen party mon's secondary
+; type (blue palette, water STAB/defense). Fossil's is the ROCK equivalent.
+BridgeCaptainWaterVariant::
+	ld e, WATER
+	jr BridgeApplyTypeVariantGift
+
+BridgeFossilRockVariant::
+	ld e, ROCK
+	; fall through
+
+; in: e = target type. Player picks a party mon; if it doesn't already have
+; that type (type1 or type2), applies the type variant (flag + MON_TYPE2).
+; Rejects with a message if it already has the type; silent on cancel.
+BridgeApplyTypeVariantGift:
+	ld a, e
+	push af                       ; save target type across the menu
+	call BridgeSelectPartyMon     ; carry = cancel, hWhichPokemon = slot
+	pop bc                        ; b = target type (pop preserves carry)
+	ret c
+	ldh a, [hWhichPokemon]
+	push bc                       ; save target type across AddNTimes
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes                ; hl = struct base
+	pop bc                        ; b = target type
+	push hl
+	push bc
+	ld de, MON_TYPE1
+	add hl, de
+	ld a, [hli]                   ; type1
+	cp b
+	jr z, .already
+	ld a, [hl]                    ; type2 (MON_TYPE2 follows MON_TYPE1)
+	cp b
+	jr z, .already
+	pop bc                        ; b = target type
+	pop hl                        ; hl = struct base
+	ld d, h
+	ld e, l                       ; de = struct base
+	ld a, b                       ; a = target type
+	farcall ApplyTypeVariant
+	ret
+.already
+	pop bc
+	pop hl
+	ld hl, BridgeTypeVariantFailText
+	jp PrintText
+
+; ---------------------------------------------------------------------------
+; Shared special-gift helpers.
+
+; If the most-recently-given mon landed in the party, flag it as a special
+; form (its per-species caps come from SpecialFormCaps, func_special_form.asm).
+BridgeApplySpecialFormToNewMon:
+	ld a, [wAddedToParty]
+	and a
+	ret z
+	call GetLastPartyMonStruct
+	ld d, h
+	ld e, l
+	farcall ApplySpecialForm
+	ret
+
+; out: hl = struct base of the last (most-recently-added) party mon.
+GetLastPartyMonStruct:
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	jp AddNTimes
+
+; Recalculate a party mon's stats in place from its stored DVs + stat exp, then
+; refill current HP to the new max. in: hl = struct base.
+BridgeRecalcStats:
+	push hl
+	ld a, [hl]
+	ld [wCurSpecies], a
+	call GetMonHeader            ; wMonHeader = species base stats
+	pop hl
+	push hl
+	ld bc, MON_LEVEL
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a       ; CalcStats reads level from here
+	pop hl
+	push hl
+	ld bc, MON_STATS
+	add hl, bc
+	ld d, h
+	ld e, l                      ; de = MON_STATS (dest)
+	pop hl
+	push hl
+	ld bc, MON_HP_EXP - 1
+	add hl, bc                   ; hl = MON_HP_EXP - 1
+	ld b, 1                      ; include stat exp
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats  ; de = MON_STATS (preserved)
+	pop hl
+	pop bc
+	call CalcStats
+	pop hl                       ; hl = struct base
+	; refill current HP = max HP (both stored hi,lo)
+	push hl
+	ld bc, MON_STATS             ; MON_MAXHP == MON_STATS
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	pop hl
+	ld de, MON_HP
+	add hl, de
+	ld [hl], b
+	inc hl
+	ld [hl], c
+	ret
 
 ; ---------------------------------------------------------------------------
 ReceivedItem::
@@ -412,6 +663,10 @@ BridgeByeText:
 
 ReceivedItemText:
 	text_far _ReceivedItemText
+	text_end
+
+BridgeTypeVariantFailText:
+	text_far _BridgeTypeVariantFailText
 	text_end
 
 Empty:
@@ -456,7 +711,7 @@ BridgeGiverLists:
 ; ---------------------------------------------------------------------------
 CopyCatGiftList:
 	db 7
-	gift_entry GIFT_MON,        DITTO,          CopyCatGift1_Text, CopyCatGift1_Desc
+	gift_entry GIFT_SPECIAL,    BridgeCopyCatSuperDitto, CopyCatGift1_Text, CopyCatGift1_Desc
 	gift_entry GIFT_ITEM,       TM_MIMIC,       CopyCatGift2_Text, CopyCatGift2_Desc
 	gift_entry GIFT_ITEM,       TM_PSYCHIC_M,   CopyCatGift3_Text, CopyCatGift3_Desc
 	gift_entry GIFT_TEACH_MOVE, MIRROR_MOVE,    CopyCatGift4_Text, CopyCatGift4_Desc
@@ -466,35 +721,36 @@ CopyCatGiftList:
 
 BillGiftList:
 	db 7
-	gift_entry GIFT_MON,  DITTO,       BillGift1_Text, BillGift1_Desc
+	gift_entry GIFT_SPECIAL, BridgeBillFusion,    BillGift1_Text, BillGift1_Desc
 	gift_entry GIFT_MON,  EEVEE,       BillGift2_Text, BillGift2_Desc
 	gift_entry GIFT_MON,  JOLTEON,     BillGift3_Text, BillGift3_Desc
 	gift_entry GIFT_MON,  FLAREON,     BillGift4_Text, BillGift4_Desc
 	gift_entry GIFT_MON,  VAPOREON,    BillGift5_Text, BillGift5_Desc
-	gift_entry GIFT_ITEM, NUGGET,         BillGift6_Text, BillGift6_Desc
+	gift_entry GIFT_SPECIAL, BridgeBillDuplicate, BillGift6_Text, BillGift6_Desc
 	gift_entry GIFT_ITEM, TM_THUNDERBOLT, BillGift7_Text, BillGift7_Desc
 
 MrFujiGiftList:
 	db 7
 	gift_entry GIFT_ITEM,       POKE_FLUTE,         MrFujiGift1_Text, MrFujiGift1_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiRescue, MrFujiGift2_Text, MrFujiGift2_Desc
-	gift_entry GIFT_SPECIAL,    BridgeMrFujiCubone, MrFujiGift3_Text, MrFujiGift3_Desc
-	gift_entry GIFT_MON,        FLAREON,            MrFujiGift4_Text, MrFujiGift4_Desc
+	gift_entry GIFT_SPECIAL,    BridgeMrFujiCubone,     MrFujiGift3_Text, MrFujiGift3_Desc
+	gift_entry GIFT_SPECIAL,    BridgeMrFujiGeneSplice, MrFujiGift4_Text, MrFujiGift4_Desc
 	gift_entry GIFT_TEACH_MOVE, NIGHT_SHADE,        MrFujiGift5_Text, MrFujiGift5_Desc
 	gift_entry GIFT_TEACH_MOVE, CONFUSE_RAY,        MrFujiGift6_Text, MrFujiGift6_Desc
 	gift_entry GIFT_TEACH_MOVE, LICK,               MrFujiGift7_Text, MrFujiGift7_Desc
 
 CaptainGiftList:
-	db 3
-	gift_entry GIFT_ITEM, HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
-	gift_entry GIFT_MON,  TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
-	gift_entry GIFT_MON,  KRABBY,    CaptainGift3_Text, CaptainGift3_Desc
+	db 4
+	gift_entry GIFT_ITEM,    HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
+	gift_entry GIFT_MON,     TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
+	gift_entry GIFT_SPECIAL, BridgeCaptainWaterVariant, CaptainGift3_Text, CaptainGift3_Desc
+	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc
 
 FossilScientistGiftList:
 	db 3
-	gift_entry GIFT_MON,  OMANYTE,   FossilGift1_Text, FossilGift1_Desc
-	gift_entry GIFT_MON,  KABUTO,    FossilGift2_Text, FossilGift2_Desc
-	gift_entry GIFT_ITEM, FIRE_STONE, FossilGift3_Text, FossilGift3_Desc
+	gift_entry GIFT_MON,     OMANYTE,   FossilGift1_Text, FossilGift1_Desc
+	gift_entry GIFT_SPECIAL, BridgeFossilRockVariant, FossilGift2_Text, FossilGift2_Desc
+	gift_entry GIFT_ITEM,    FIRE_STONE, FossilGift3_Text, FossilGift3_Desc
 
 FanClubChairmanGiftList:
 	db 3
@@ -544,11 +800,10 @@ TradeHouseGrannyGiftList:
 	gift_entry GIFT_MON,  CLEFAIRY,   TradeHouseGift2_Text, TradeHouseGift2_Desc
 	gift_entry GIFT_ITEM, MOON_STONE, TradeHouseGift3_Text, TradeHouseGift3_Desc
 
-; Gift 1 (PIKACHU) is a plain mon gift for now; Phase B4 upgrades it to a
-; GIFT_SPECIAL routine that also applies the Light-Ball special form.
+; Gift 1 is the Light-Ball PIKACHU special form (BridgeOakPikachu).
 OaksLabOakGiftList:
 	db 3
-	gift_entry GIFT_MON,  PIKACHU,    OaksLabGift1_Text, OaksLabGift1_Desc
+	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift1_Text, OaksLabGift1_Desc
 	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
 	gift_entry GIFT_ITEM, RARE_CANDY, OaksLabGift3_Text, OaksLabGift3_Desc
 
@@ -580,10 +835,11 @@ MrFujiGift7_Text: db "LICK TUTOR@"
 
 CaptainGift1_Text: db "HM CUT@"
 CaptainGift2_Text: db "TENTACOOL@"
-CaptainGift3_Text: db "KRABBY@"
+CaptainGift3_Text: db "SEA BLESSING@"
+CaptainGift4_Text: db "LUCKY DUCK@"
 
 FossilGift1_Text: db "OMANYTE@"
-FossilGift2_Text: db "KABUTO@"
+FossilGift2_Text: db "FOSSIL COAT@"
 FossilGift3_Text: db "FIRE STONE@"
 
 FanClubGift1_Text: db "BIKE VOUCHER@"
@@ -698,6 +954,9 @@ CaptainGift2_Desc:
 	text_end
 CaptainGift3_Desc:
 	text_far _CaptainGift3Desc
+	text_end
+CaptainGift4_Desc:
+	text_far _CaptainGift4Desc
 	text_end
 
 FossilGift1_Desc:

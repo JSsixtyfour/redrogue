@@ -783,6 +783,22 @@ ItemUseEvoStone:
 	jr c, .canceledItemUse
 	ld a, b
 	ld [wCurPartySpecies], a
+	; Special form (func_special_form.asm): a NO_EVOLVE mon (Light Ball
+	; Pikachu) refuses the stone, Pokemon Yellow style - show a protest and
+	; leave the stone unused. Keyed on the cap, not the species.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	farcall GetSpecialFormCaps
+	bit SF_NO_EVOLVE, a
+	jr z, .willEvolve
+	ld hl, EvoStoneRefusedText
+	call PrintText
+	jr .canceledItemUse
+.willEvolve
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, SFX_HEAL_AILMENT
@@ -805,6 +821,10 @@ ItemUseEvoStone:
 	ld [wActionResultOrTookBattleTurn], a ; item not used
 	pop af
 	ret
+
+EvoStoneRefusedText:
+	text_far _EvoStoneRefusedText
+	text_end
 
 ItemUseVitamin:
 	ldh a, [hIsInBattle]

@@ -203,6 +203,13 @@ _ItemUseNoEffectText::
 	line "effect."
 	prompt
 
+_EvoStoneRefusedText::
+	text "Whoa! It looks"
+	line "like this #MON"
+	cont "doesn't want to"
+	cont "evolve!"
+	prompt
+
 _ThrowBallAtTrainerMonText1::
 	text "The trainer"
 	line "blocked the BALL!"
