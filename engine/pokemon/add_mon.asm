@@ -171,18 +171,14 @@ _AddPartyMon::
 ; This byte is otherwise dead once a mon is owned (nothing reads a stored
 ; mon's own catch rate - only a live enemy's, via wEnemyMonActualCatchRate,
 ; which is loaded separately in battle core and never touches this copy).
-; Bit 0 is repurposed as the Ghost Variant flag (func_ghost_variant.asm).
-; Species catch rate values aren't designed with that bit in mind (e.g.
-; Bulbasaur's 45 has bit 0 set), so without this clear, some species would
-; spawn pre-flagged as ghost variants by sheer coincidence. If catching is
-; ever fully removed from this mod, this whole byte goes back to being
-; truly free and this clear becomes unnecessary (but harmless either way).
-; Bit 1 is repurposed as the Fusion flag (func_fusion.asm), so also clear it.
-; Bits 2/3 are the type-variant / special-form flags (func_special_form.asm).
-	res 0, a
-	res 1, a
-	res 2, a
-	res 3, a
+; Bits 0-3 are repurposed as flags: ghost variant (func_ghost_variant.asm),
+; fusion (func_fusion.asm), type variant, special form (func_special_form.asm).
+; Zero the WHOLE byte (not just the used bits) - species catch rates occupy
+; both nibbles (e.g. Bulbasaur=45=$2D has bit0 set; Pikachu=190=$BE has bits
+; 4-7 set), so anything less than a full clear risks a species spawning
+; pre-flagged by coincidence. This also future-proofs bits 4-7 for the next
+; flag added to this byte - see MON_CATCH_RATE_BITFIELD_PC.md.
+	xor a
 	ld [de], a
 	ld hl, wMonHMoves
 	ld a, [hli]

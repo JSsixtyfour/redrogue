@@ -326,10 +326,11 @@ PCemMaybeApplyGhostBoss::
 ; ============================================================
 ; PCemApplyGhostToGivenMon
 ; Given-mon hook, farcall'd from the join offer after GivePokemon. Locates the mon
-; that was just added (last party slot, or last box slot if the party was full -
-; wAddedToParty distinguishes) and applies the same ghost variant + move, so the
-; gifted boss is identical to the one just fought and keeps it through box/trade/
-; save (the flag lives in the struct's catch-rate byte, the move in a real slot).
+; that was just added (last party slot, or the FRONT box slot wBoxMon1 if the party
+; was full - SendNewMonToBox front-inserts, wAddedToParty distinguishes) and applies
+; the same ghost variant + move, so the gifted boss is identical to the one just
+; fought and keeps it through box/trade/save (the flag lives in the struct's
+; catch-rate byte, the move in a real slot).
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 PCemApplyGhostToGivenMon::
@@ -343,11 +344,8 @@ PCemApplyGhostToGivenMon::
 	call AddNTimes                ; hl -> the new party mon's struct
 	jr .haveStruct
 .box
-	ld a, [wBoxCount]
-	dec a
-	ld hl, wBoxMon1
-	ld bc, BOXMON_STRUCT_LENGTH
-	call AddNTimes                ; hl -> the new box mon's struct
+	ld hl, wBoxMon1              ; new mon is front-inserted at slot 0 by
+	                            ; SendNewMonToBox (NOT the last slot)
 .haveStruct
 	ld d, h
 	ld e, l

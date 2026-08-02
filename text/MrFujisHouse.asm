@@ -100,9 +100,11 @@ _MrFujiGift1Desc::
     line "#MON"
 	done
     
-_MrFujiGift2Desc::          ; need to figure a way to get its name in here
-    text "One of Mr. Fuji's"
-    line "adoptable #MON"
+_MrFujiGift2Desc::          ; name filled in by BridgePrintGiftDesc (wNameBuffer)
+    text "A rescued"
+    line "@"
+    text_ram wNameBuffer
+    text "!"
 	done
     
 _MrFujiGift3Desc::          ; need to figure a way to get its name in here

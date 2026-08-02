@@ -50,9 +50,10 @@ Evolution_PartyMonLoop: ; loop over party mons
 	; Special form (func_special_form.asm): SF_NO_EVOLVE (Light Ball Pikachu)
 	; also never evolves. Every evolution path - after-battle level-up, stone
 	; item use, and Rare Candy - funnels through this loop, so this one check
-	; covers them all. de still = this mon's struct base (farcall preserves de).
+	; covers them all. GetSpecialFormCaps returns caps in e (not a - farcall
+	; clobbers a); de = this mon's struct base on entry (d preserved, e = caps out).
 	farcall GetSpecialFormCaps
-	bit SF_NO_EVOLVE, a
+	bit SF_NO_EVOLVE, e
 	jp nz, Evolution_PartyMonLoop
 	ldh a, [hWhichPokemon]
 	ld c, a

@@ -48,12 +48,12 @@ BridgeRollAndAssign::
 	call GetBridgeCount
 	cp BRIDGE_PER_RUN
 	jr nc, .no
-IF DEF(_DEBUG)
-	; Debug 2 testing aid: force a bridge on every eligible visit.
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr nz, .fire
-ENDC
+;IF DEF(_DEBUG)
+;	; Debug 2 testing aid: force a bridge on every eligible visit.
+;	ld a, [wStatusFlags6]
+;	bit BIT_DEBUG2_MODE, a
+;	jr nz, .fire
+;ENDC
 	call BridgeShouldOccur
 	jr nc, .no
 .fire

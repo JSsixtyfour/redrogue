@@ -165,3 +165,13 @@ _BridgeTypeVariantFailText::
 	line "take on that"
 	cont "type!"
 	prompt
+
+_BridgeWaterVariantText::
+	text "It's now part"
+	line "WATER type!"
+	prompt
+
+_BridgeRockVariantText::
+	text "It's now part"
+	line "ROCK type!"
+	prompt

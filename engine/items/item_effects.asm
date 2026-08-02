@@ -792,8 +792,8 @@ ItemUseEvoStone:
 	call AddNTimes
 	ld d, h
 	ld e, l
-	farcall GetSpecialFormCaps
-	bit SF_NO_EVOLVE, a
+	farcall GetSpecialFormCaps    ; caps in e (a doesn't survive the farcall)
+	bit SF_NO_EVOLVE, e
 	jr z, .willEvolve
 	ld hl, EvoStoneRefusedText
 	call PrintText

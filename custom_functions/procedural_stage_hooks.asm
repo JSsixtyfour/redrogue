@@ -80,9 +80,9 @@ ProcStageLoadDispatch::
 	ldh a, [hCurMap]
 	cp PALLET_TOWN
 	jr nz, .notPalletTown
-	farcall PCPreloadCave
-	farcall PCemGenerateMaps
-	farcall PFPreloadForest
+	;farcall PCPreloadCave
+	;farcall PCemGenerateMaps
+	;farcall PFPreloadForest
 	; SHELVED facility preload: farcall PFacPreload
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown

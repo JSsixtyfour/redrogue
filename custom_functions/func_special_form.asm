@@ -32,24 +32,12 @@ DEF SF_ALWAYS_HIT  EQU 4 ; moves against this mon never miss   (No Guard)
 DEF SF_ALWAYS_CRIT EQU 5 ; attacker's moves always crit
 
 ; ---------------------------------------------------------------------------
-; ApplyTypeVariant
-; Flags the mon at de as a type variant and stores its new secondary type.
-; The status-screen type override and the battle/status palettes are all
-; derived from that stored MON_TYPE2 (see the hooks in print_type.asm /
-; palettes.asm), so this one call is all a gift routine needs.
-; INPUT:  de = struct base (MON_SPECIES field), a = secondary type (WATER/ROCK)
-; CLOBBERS: af, hl  (de preserved)
-; ---------------------------------------------------------------------------
-ApplyTypeVariant::
-	push af
-	ld hl, MON_CATCH_RATE
-	add hl, de
-	set BIT_TYPE_VARIANT, [hl]
-	ld hl, MON_TYPE2
-	add hl, de
-	pop af
-	ld [hl], a
-	ret
+; NOTE: applying a type variant (set BIT_TYPE_VARIANT + write MON_TYPE2) is done
+; INLINE by the caller (BridgeApplyTypeVariantGift in bridge_gift_menu.asm) - it's
+; pure WRAM work, and a farcall would clobber the type in `a` via Bankswitch
+; (project-farcall-home-clobbers-a). There is deliberately no ApplyTypeVariant
+; routine to avoid that landmine. IsTypeVariant / GetTypeVariantPalette below are
+; the read-side helpers used by the display hooks.
 
 ; ---------------------------------------------------------------------------
 ; IsTypeVariant
@@ -67,18 +55,19 @@ IsTypeVariant::
 ; ---------------------------------------------------------------------------
 ; GetTypeVariantPalette
 ; INPUT:  de = struct base
-; OUTPUT: a = 0 if NOT a type variant; otherwise the palette id to use,
+; OUTPUT: e = 0 if NOT a type variant; otherwise the palette id to use,
 ;         derived from the stored MON_TYPE2 (WATER->blue, ROCK->gray,
 ;         anything else defaults to blue but still counts as a variant).
-;         Callers test `and a / jr z` to skip.
-; CLOBBERS: af, hl  (de preserved)
+;         Returned in E, not a (farcall clobbers a on entry/exit - see
+;         GetSpecialFormCaps). Callers test `ld a, e / and a / jr z` to skip.
+; CLOBBERS: af, hl, e  (bc, d preserved)
 ; ---------------------------------------------------------------------------
 GetTypeVariantPalette::
 	ld hl, MON_CATCH_RATE
 	add hl, de
 	bit BIT_TYPE_VARIANT, [hl]
 	jr nz, .variant
-	xor a
+	ld e, 0
 	ret
 .variant
 	ld hl, MON_TYPE2
@@ -86,10 +75,10 @@ GetTypeVariantPalette::
 	ld a, [hl]
 	cp ROCK
 	jr z, .rock
-	ld a, PAL_BLUEMON ; WATER and any future secondary type -> blue
+	ld e, PAL_BLUEMON ; WATER and any future secondary type -> blue
 	ret
 .rock
-	ld a, PAL_GRAYMON
+	ld e, PAL_GRAYMON
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -109,9 +98,13 @@ ApplySpecialForm::
 ; ---------------------------------------------------------------------------
 ; GetSpecialFormCaps
 ; INPUT:  de = struct base
-; OUTPUT: a = capability bitfield (SF_* bits), or 0 if the mon is not a
+; OUTPUT: e = capability bitfield (SF_* bits), or 0 if the mon is not a
 ;         special form (or its species has no table entry).
-; CLOBBERS: af, hl  (bc, de preserved)
+;         Returned in E, NOT a: this is reached by farcall, and Bankswitch
+;         clobbers `a` on BOTH entry and exit (ld a,[hLoadedROMBank] on the way
+;         in, ld a,b on the way out) - see project-farcall-home-clobbers-a. Only
+;         flags/de/hl survive a farcall, so the result must ride back in e.
+; CLOBBERS: af, hl, e  (bc, d preserved)
 ; ---------------------------------------------------------------------------
 GetSpecialFormCaps::
 	ld hl, MON_CATCH_RATE
@@ -128,15 +121,16 @@ GetSpecialFormCaps::
 	jr z, .notFound   ; 0 terminator
 	cp c
 	ld a, [hli]       ; caps byte (advance past it either way)
-	jr z, .foundPop
+	jr z, .found
 	jr .loop
-.foundPop
+.found
+	ld e, a           ; return caps in e (a doesn't survive the farcall return)
 	pop bc
 	ret
 .notFound
 	pop bc
 .none
-	xor a
+	ld e, 0
 	ret
 
 ; species (internal id) -> capability bitfield. Terminated by a 0 species.

@@ -6,12 +6,20 @@
 ; that many GiftEntry records:
 ;
 ;   GiftEntry (GIFT_ENTRY_SIZE bytes):
-;     db  kind        ; GIFT_MON / GIFT_ITEM / GIFT_TEACH_MOVE / GIFT_SPECIAL
-;     dw  param       ; species / item / move id (low byte), OR routine addr
-;     dw  nameptr     ; short menu name string
+;     db  kind        ; GIFT_MON / GIFT_ITEM / GIFT_TEACH_MOVE / GIFT_SPECIAL /
+;                      ; GIFT_MON_EVOLVE
+;     dw  param       ; species / item / move id (low byte), OR routine addr,
+;                      ; OR (GIFT_MON_EVOLVE) base species lo + apply-special-
+;                      ; form-flag hi bit0
+;     dw  nameptr     ; short menu name string (ignored for GIFT_MON_EVOLVE -
+;                      ; its label is rendered dynamically from the resolved,
+;                      ; possibly-evolved species; see BridgeResolveEvolveSpecies)
 ;     dw  descptr     ; description text (text_far)
 ;
 ; GIFT_SPECIAL points param at an arbitrary routine so a gift can do anything.
+; GIFT_MON_EVOLVE gives the base species evolved to whatever it would be at
+; the reward level (via EvolveMonByLevel), and shows that resolved species'
+; real name in the menu, so the label always matches what's given.
 ; The giver is resolved from hCurMap (BridgeGiverMapTable) - no WRAM giver id.
 ; wGift1/2/3 hold the entry indices that were rolled for this visit.
 ; ============================================================================
@@ -20,6 +28,7 @@ DEF GIFT_MON        EQU 0
 DEF GIFT_ITEM       EQU 1
 DEF GIFT_TEACH_MOVE EQU 2
 DEF GIFT_SPECIAL    EQU 3
+DEF GIFT_MON_EVOLVE EQU 4  ; param lo = base species, param hi bit0 = apply special form
 
 DEF GIFT_ENTRY_SIZE EQU 7
 
@@ -39,6 +48,24 @@ DEF BRIDGE_MENU_MAX_OFFERED EQU 3
 ; marked with $ff. Called (farcall) from each bridge room's setup script.
 ; ---------------------------------------------------------------------------
 rogue_gift_randomized_batch::
+	; Roll this visit's #MON RESCUE species (Mr. Fuji gift 2) into wRoguePokemon1.
+	; Bridge rooms don't run rogue_pokemon_randomized_batch, so wRoguePokemon1
+	; would otherwise hold garbage from the last procedural stage -> a glitchmon.
+	; Safe to clobber: the stage this bridge exits to re-rolls wRoguePokemon1-3 on
+	; load. Rolled here (once per room entry) so the description and the give agree
+	; and it stays stable across menu open/close.
+	; Random_Pokemon_Selection (not _Any) enforces the uniqueness guarantee via
+	; AllSpeciesCheck - matches every other reward-mon roll in the game
+	; (rogue_pokemon_randomized_batch, RogueRewardTradeRoll). Returns species in
+	; d, which survives the farcall return (only a/b/c are clobbered by
+	; Bankswitch's exit, not d/e/h/l - see project-farcall-home-clobbers-a).
+	call GetRewardMonLevel
+	ld [wCurEnemyLevel], a
+	ld c, 0                     ; random class by odds
+	call Random                 ; primes hRandomAdd for the class-odds roll (HOME)
+	farcall Random_Pokemon_Selection  ; -> d = species
+	ld a, d
+	ld [wRoguePokemon1], a
 	call GetGiverCount          ; a = number of gifts this giver has
 	ld c, a                     ; c = range (preserved across Rangerandom)
 	cp BRIDGE_MENU_MAX_OFFERED
@@ -149,14 +176,28 @@ BridgePlaceGiftNames:
 	ld l, a
 	ld a, [hl]                   ; entry index
 	call GetGiftEntry            ; hl -> entry (bc preserved)
+	ld a, [hl]                   ; kind byte (offset 0)
+	cp GIFT_MON_EVOLVE
+	jr nz, .fixedName
+	inc hl                       ; -> param low (offset 1) = base species
+	ld a, [hl]
+	push bc                      ; preserve index (c) + offered count (b)
+	call BridgeResolveEvolveSpecies  ; a = resolved species
+	ld [wNamedObjectIndex], a
+	call GetMonName               ; name -> wNameBuffer (@-terminated)
+	pop bc
+	ld de, wNameBuffer
+	jr .haveName
+.fixedName
 	inc hl
 	inc hl
 	inc hl                       ; -> name ptr field
 	ld a, [hli]
 	ld h, [hl]
-	ld l, a                      ; hl = name string
+	ld l, a
 	ld d, h
-	ld e, l                      ; de = name string
+	ld e, l                      ; de = fixed name string
+.haveName
 	ld a, c
 	add a
 	add 4                        ; row = 4 + 2*index
@@ -205,6 +246,23 @@ BridgePrintGiftDesc:
 	ld l, a
 	ld a, [hl]                   ; entry index
 	call GetGiftEntry            ; hl -> entry
+	; #MON RESCUE (Mr. Fuji gift 2): its description text uses text_ram wNameBuffer,
+	; so populate that buffer with the rolled species' name (wRoguePokemon1) before
+	; rendering, so the bottom box shows the actual mon. Detect the gift by its
+	; GIFT_SPECIAL routine address in the param field.
+	push hl
+	inc hl                       ; -> param low byte
+	ld a, [hli]
+	cp LOW(BridgeMrFujiRescue)
+	jr nz, .notRescue
+	ld a, [hl]                   ; param high byte
+	cp HIGH(BridgeMrFujiRescue)
+	jr nz, .notRescue
+	ld a, [wRoguePokemon1]
+	ld [wNamedObjectIndex], a
+	call GetMonName              ; -> wNameBuffer (@-terminated)
+.notRescue
+	pop hl
 	ld bc, 5
 	add hl, bc                   ; -> desc ptr field
 	ld a, [hli]
@@ -234,6 +292,8 @@ BridgeDoGift:
 	jr z, .item
 	cp GIFT_TEACH_MOVE
 	jr z, .teach
+	cp GIFT_MON_EVOLVE
+	jr z, .monEvolve
 ; GIFT_SPECIAL: de = routine address; call it, then say bye
 	ld h, d
 	ld l, e
@@ -251,6 +311,17 @@ BridgeDoGift:
 .teach
 	ld a, e
 	call BridgeTeachMove
+	jr .bye
+.monEvolve
+	push de                      ; d = flag byte, e = base species
+	ld a, e
+	call BridgeResolveEvolveSpecies  ; a = resolved species
+	call BridgeGiveMon           ; gives resolved species at reward level
+	pop de                       ; d = flag byte (pop doesn't touch carry)
+	jr nc, .bye                  ; nothing added (party+box full)
+	bit 0, d
+	jr z, .bye
+	call BridgeApplySpecialFormToNewMon
 .bye
 	ld hl, BridgeByeText
 	jp PrintText
@@ -286,6 +357,11 @@ BridgeTeachMove:
 	pop bc                       ; b = move id (carry unaffected by pop)
 	ret c
 	ld a, b
+	; fall through
+
+; in: a = move id. Teaches it to the party mon at hWhichPokemon via the normal,
+; rejectable LearnMove flow (used by the tutor gifts and the type-variant move).
+BridgeTeachMoveToCurrent:
 	ld [wMoveNum], a
 	ld [wNamedObjectIndex], a
 	call GetMoveName
@@ -383,30 +459,19 @@ BridgeMrFujiRescue::
 	ld a, [wRoguePokemon1]
 	jp BridgeGiveMon
 
-; Mr. Fuji "THICK CLUB": CUBONE early, MAROWAK once deep enough into the run.
-; Given as a BIT_SPECIAL_FORM mon so the SpecialFormCaps table's DOUBLE_ATK
-; (Thick Club emulation) applies (func_special_form.asm).
-BridgeMrFujiCubone::
-	ld a, [wBattleCount]
-	cp 30
-	ld a, CUBONE
-	jr nc, .give
-	ld a, MAROWAK
-.give
-	call BridgeGiveMon
-	jp BridgeApplySpecialFormToNewMon
-
 ; Oak's Light-Ball PIKACHU: given as a BIT_SPECIAL_FORM mon (DOUBLE_ATK |
 ; DOUBLE_SPC | NO_EVOLVE per SpecialFormCaps).
 BridgeOakPikachu::
 	ld a, PIKACHU
 	call BridgeGiveMon
+	ret nc                       ; party AND box full -> nothing added
 	jp BridgeApplySpecialFormToNewMon
 
 ; Captain's always-crit FARFETCH'D (SpecialFormCaps -> ALWAYS_CRIT).
 BridgeCaptainFarfetchd::
 	ld a, FARFETCHD
 	call BridgeGiveMon
+	ret nc                       ; party AND box full -> nothing added
 	jp BridgeApplySpecialFormToNewMon
 
 ; Copycat's SUPER DITTO: a DITTO with perfect DVs, maxed stat exp, and the
@@ -415,10 +480,10 @@ BridgeCaptainFarfetchd::
 BridgeCopyCatSuperDitto::
 	ld a, DITTO
 	call BridgeGiveMon
-	ld a, [wAddedToParty]
-	and a
-	ret z
-	call GetLastPartyMonStruct   ; hl = struct base
+	ret nc                       ; party AND box full -> nothing added
+	call BridgeGetNewMonStruct   ; de = struct base (party last OR box last)
+	ld h, d
+	ld l, e                      ; hl = struct base
 	; perfect DVs
 	push hl
 	ld bc, MON_DVS
@@ -427,7 +492,7 @@ BridgeCopyCatSuperDitto::
 	ld [hli], a
 	ld [hl], a
 	pop hl
-	; max stat exp (MON_HP_EXP..MON_SPC_EXP = 5 words, contiguous)
+	; max stat exp (MON_HP_EXP..MON_SPC_EXP = 5 words = 10 bytes, contiguous)
 	push hl
 	ld bc, MON_HP_EXP
 	add hl, bc
@@ -451,12 +516,11 @@ BridgeCopyCatSuperDitto::
 	ld [hl], a
 	pop hl
 	; PP for the new moveset (predef LoadMovePPs: hl = moves, de = PP - 1)
-	push hl
+	push hl                      ; [struct base]
 	ld bc, MON_MOVES
 	add hl, bc                   ; hl = moves ptr
 	pop de                       ; de = struct base
-	push de                      ; keep struct base
-	push hl                      ; save moves ptr
+	push hl                      ; [moves ptr]
 	ld h, d
 	ld l, e
 	ld bc, MON_PP - 1
@@ -465,7 +529,14 @@ BridgeCopyCatSuperDitto::
 	ld e, l                      ; de = PP - 1
 	pop hl                       ; hl = moves ptr
 	predef LoadMovePPs
-	pop hl                       ; hl = struct base
+	; party: recalc stored stats now. box: skip - box mons store no stats;
+	; they recompute from box level + these maxed DVs/stat-exp on withdrawal.
+	ld a, [wAddedToParty]
+	and a
+	ret z
+	call BridgeGetNewMonStruct   ; de = party struct base
+	ld h, d
+	ld l, e
 	jp BridgeRecalcStats
 
 ; Mr. Fuji's GENE SPLICING: max out a chosen party mon's DVs, then recalc.
@@ -525,6 +596,15 @@ BridgeBillDuplicate::
 ; selection UI, guards, and messaging).
 BridgeBillFusion::
 	farcall CreateFusion
+	; CreateFusion's party menus ClearSprites and it never reloads sprite tile
+	; patterns (only map/tileset tiles), so the overworld sprites stay erased
+	; until the party menu is reopened. Restore them here the same way the other
+	; party-menu gifts do (RestoreScreenTilesAndReloadTilePatterns). All three
+	; calls are HOME, safe to plain-call from this ROMX bank.
+	ld a, $1
+	ldh [hUpdateSpritesEnabled], a
+	call ReloadMapSpriteTilePatterns
+	call UpdateSprites
 	ret
 
 ; Captain's WATER type variant: adds WATER as a chosen party mon's secondary
@@ -538,8 +618,10 @@ BridgeFossilRockVariant::
 	; fall through
 
 ; in: e = target type. Player picks a party mon; if it doesn't already have
-; that type (type1 or type2), applies the type variant (flag + MON_TYPE2).
-; Rejects with a message if it already has the type; silent on cancel.
+; that type (type1 or type2), flags it as a type variant, sets MON_TYPE2,
+; announces the new type, and offers a random move of that type (rejectable,
+; via the normal LearnMove flow). Rejects with a message if the mon already has
+; the type; silent on cancel.
 BridgeApplyTypeVariantGift:
 	ld a, e
 	push af                       ; save target type across the menu
@@ -564,30 +646,110 @@ BridgeApplyTypeVariantGift:
 	jr z, .already
 	pop bc                        ; b = target type
 	pop hl                        ; hl = struct base
-	ld d, h
-	ld e, l                       ; de = struct base
-	ld a, b                       ; a = target type
-	farcall ApplyTypeVariant
-	ret
+	; apply the type variant inline - pure WRAM writes. NOT a farcall: Bankswitch
+	; would clobber the type in `a` on the way in (project-farcall-home-clobbers-a),
+	; which is exactly the bug that made this write garbage before.
+	push hl                       ; save struct base
+	ld de, MON_CATCH_RATE
+	add hl, de
+	set BIT_TYPE_VARIANT, [hl]
+	pop hl                        ; struct base
+	ld de, MON_TYPE2
+	add hl, de
+	ld [hl], b                    ; MON_TYPE2 = target type
+	; announce the new type and offer a matching move (b = target type)
+	ld a, b
+	cp WATER
+	jr z, .water
+; ROCK
+	ld hl, BridgeRockVariantText
+	call PrintText
+	ld hl, BridgeRockMovePool
+	jp BridgeTeachRandomMoveFromPool
+.water
+	ld hl, BridgeWaterVariantText
+	call PrintText
+	ld hl, BridgeWaterMovePool
+	jp BridgeTeachRandomMoveFromPool
 .already
 	pop bc
 	pop hl
 	ld hl, BridgeTypeVariantFailText
 	jp PrintText
 
+; in: hl = move pool (count byte, then that many move ids). Picks one at random
+; and teaches it to the current party mon (hWhichPokemon) via the normal,
+; rejectable LearnMove flow.
+BridgeTeachRandomMoveFromPool:
+	ld a, [hli]                   ; count -> hl now at first move id
+	ld c, a
+	call Rangerandom              ; a = 0..count-1 (hl, bc preserved)
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]                    ; chosen move id
+	jp BridgeTeachMoveToCurrent
+
+BridgeRockMovePool:
+	db 2
+	db ROCK_SLIDE, ROCK_THROW
+BridgeWaterMovePool:
+	db 4
+	db SURF, BUBBLEBEAM, WATER_GUN, HYDRO_PUMP
+
 ; ---------------------------------------------------------------------------
 ; Shared special-gift helpers.
 
-; If the most-recently-given mon landed in the party, flag it as a special
-; form (its per-species caps come from SpecialFormCaps, func_special_form.asm).
+; Flag the just-given mon (party OR box) as a special form. Its per-species
+; caps come from SpecialFormCaps (func_special_form.asm). Only call after a
+; GivePokemon that returned CARRY (success) - see the `ret nc` guards below.
 BridgeApplySpecialFormToNewMon:
+	call BridgeGetNewMonStruct
+	farcall ApplySpecialForm
+	ret
+
+; out: de = struct base of the mon GivePokemon most recently added - the last
+; party slot if it went to the party, else the FRONT box slot (wBoxMon1), where
+; SendNewMonToBox front-inserts it. (An earlier version used the last box slot and
+; flagged the wrong mon on a non-empty box - confirmed in-emulator.) box_struct
+; shares MON_CATCH_RATE/MON_TYPE2/MON_MOVES/etc. offsets with party_struct, so
+; the Apply* routines work on either.
+BridgeGetNewMonStruct:
 	ld a, [wAddedToParty]
 	and a
-	ret z
-	call GetLastPartyMonStruct
+	jr z, .boxed
+	call GetLastPartyMonStruct   ; hl = last party slot
 	ld d, h
 	ld e, l
-	farcall ApplySpecialForm
+	ret
+.boxed
+	; SendNewMonToBox front-inserts the new mon at slot 0 (wBoxMon1); the old
+	; "last slot" math flagged the wrong mon (confirmed in-emulator: a boxed
+	; gift flagged the last box mon, not the one just added).
+	ld de, wBoxMon1
+	ret
+
+; in:  a = base species
+; out: a = species after level-based evolution at this giver's reward level
+;      (base species itself if it doesn't evolve at that level).
+; Preserves wCurPartySpecies (EvolveMonByLevel uses it as scratch/output).
+; Clobbers af, bc, de, hl (and wCurEnemyLevel/wMonHeader as EvolveMonByLevel does).
+BridgeResolveEvolveSpecies:
+	ld d, a                      ; d = base species (EvolveMonByLevel's input)
+	ld a, [wCurPartySpecies]
+	push af                      ; save caller's wCurPartySpecies
+	push de                      ; save base species across GetRewardMonLevel
+	call GetRewardMonLevel       ; a = reward level for this context
+	ld [wCurEnemyLevel], a       ; EvolveMonByLevel reads this
+	pop de                       ; d = base species
+	ld a, d
+	ld [wCurPartySpecies], a     ; seed result = base (kept if it doesn't evolve)
+	farcall EvolveMonByLevel     ; d in, writes evolved species to wCurPartySpecies
+	ld a, [wCurPartySpecies]
+	ld b, a                      ; b = resolved species
+	pop af
+	ld [wCurPartySpecies], a     ; restore caller's wCurPartySpecies
+	ld a, b
 	ret
 
 ; out: hl = struct base of the last (most-recently-added) party mon.
@@ -669,6 +831,14 @@ BridgeTypeVariantFailText:
 	text_far _BridgeTypeVariantFailText
 	text_end
 
+BridgeWaterVariantText:
+	text_far _BridgeWaterVariantText
+	text_end
+
+BridgeRockVariantText:
+	text_far _BridgeRockVariantText
+	text_end
+
 Empty:
 	text_far _Empty
 	text_end
@@ -733,7 +903,7 @@ MrFujiGiftList:
 	db 7
 	gift_entry GIFT_ITEM,       POKE_FLUTE,         MrFujiGift1_Text, MrFujiGift1_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiRescue, MrFujiGift2_Text, MrFujiGift2_Desc
-	gift_entry GIFT_SPECIAL,    BridgeMrFujiCubone,     MrFujiGift3_Text, MrFujiGift3_Desc
+	gift_entry GIFT_MON_EVOLVE, CUBONE | (1 << 8),      MrFujiGift3_Text, MrFujiGift3_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiGeneSplice, MrFujiGift4_Text, MrFujiGift4_Desc
 	gift_entry GIFT_TEACH_MOVE, NIGHT_SHADE,        MrFujiGift5_Text, MrFujiGift5_Desc
 	gift_entry GIFT_TEACH_MOVE, CONFUSE_RAY,        MrFujiGift6_Text, MrFujiGift6_Desc
@@ -748,7 +918,7 @@ CaptainGiftList:
 
 FossilScientistGiftList:
 	db 3
-	gift_entry GIFT_MON,     OMANYTE,   FossilGift1_Text, FossilGift1_Desc
+	gift_entry GIFT_MON_EVOLVE, OMANYTE, FossilGift1_Text, FossilGift1_Desc
 	gift_entry GIFT_SPECIAL, BridgeFossilRockVariant, FossilGift2_Text, FossilGift2_Desc
 	gift_entry GIFT_ITEM,    FIRE_STONE, FossilGift3_Text, FossilGift3_Desc
 
@@ -827,7 +997,7 @@ BillGift7_Text: db "THUNDERBOLT TM@"
 
 MrFujiGift1_Text: db "POKé FLUTE@"
 MrFujiGift2_Text: db "#MON RESCUE@"
-MrFujiGift3_Text: db "THICK CLUB@"
+MrFujiGift3_Text: db "THICK CLUB@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 MrFujiGift4_Text: db "GENE SPLICING@"
 MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
@@ -838,7 +1008,7 @@ CaptainGift2_Text: db "TENTACOOL@"
 CaptainGift3_Text: db "SEA BLESSING@"
 CaptainGift4_Text: db "LUCKY DUCK@"
 
-FossilGift1_Text: db "OMANYTE@"
+FossilGift1_Text: db "OMANYTE@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 FossilGift2_Text: db "FOSSIL COAT@"
 FossilGift3_Text: db "FIRE STONE@"
 

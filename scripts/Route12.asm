@@ -56,7 +56,7 @@ Route12ResetScripts:
 	ld [wCurMapScript], a
 	ret
 
-	RogueAutoWalkScripts Route12, PAD_RIGHT, Route12SnorlaxScript, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
+	RogueAutoWalkScripts Route12, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
 
 Route12EntranceCoords:
 	dbmapcoord 4, 62
@@ -75,7 +75,7 @@ Route12_ScriptPointers:
 	dw_const Route12SnorlaxPostBattleScript,        SCRIPT_ROUTE12_SNORLAX_POST_BATTLE
 	dw_const Route12PlayerIsMovingScript,           SCRIPT_ROUTE12_PLAYER_IS_MOVING
 
-Route12SnorlaxScript:
+;Route12SnorlaxScript:
 ;	CheckEventHL EVENT_BEAT_ROUTE12_SNORLAX
 ;	jp nz, CheckFightingMapTrainers
 ;	CheckEventReuseHL EVENT_FIGHT_ROUTE12_SNORLAX

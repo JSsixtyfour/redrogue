@@ -62,8 +62,10 @@ SetPal_Battle:
 	ld [wPalPacket + 5], a
 .playerNotGhostVariant
 	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
+	; Palette comes back in e (a can't survive the farcall).
 	ld de, wBattleMon
 	farcall GetTypeVariantPalette
+	ld a, e
 	and a
 	jr z, .playerNotTypeVariant
 	ld [wPalPacket + 5], a
@@ -76,6 +78,7 @@ SetPal_Battle:
 .enemyNotGhostVariant
 	ld de, wEnemyMon
 	farcall GetTypeVariantPalette
+	ld a, e
 	and a
 	jr z, .enemyNotTypeVariant
 	ld [wPalPacket + 7], a
@@ -119,8 +122,10 @@ SetPal_StatusScreen:
 	ld [wPalPacket + 3], a
 .notGhostVariant
 	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
+	; Palette comes back in e (a can't survive the farcall).
 	ld de, wLoadedMon
 	farcall GetTypeVariantPalette
+	ld a, e
 	and a
 	jr z, .notTypeVariant
 	ld [wPalPacket + 3], a

@@ -4626,8 +4626,7 @@ GetDamageVarsForPlayerAttack:
 	push hl
 	push bc
 	ld de, wBattleMon
-	farcall GetSpecialFormCaps
-	ld e, a ; caps survive the pops (they only touch bc/hl)
+	farcall GetSpecialFormCaps    ; e = caps (survives farcall + the pops below)
 	pop bc
 	pop hl
 	ld a, e
@@ -4765,8 +4764,7 @@ GetDamageVarsForEnemyAttack:
 	push hl
 	push bc
 	ld de, wEnemyMon
-	farcall GetSpecialFormCaps
-	ld e, a ; caps survive the pops (they only touch bc/hl)
+	farcall GetSpecialFormCaps    ; e = caps (survives farcall + the pops below)
 	pop bc
 	pop hl
 	ld a, e
@@ -5827,6 +5825,8 @@ INCLUDE "data/types/type_matchups.asm"
 ; some tests that need to pass for a move to hit
 ; Special form (func_special_form.asm) caps for the attacking / defending mon
 ; this turn, chosen by hWhoseTurn. Returns a = capability bitfield (0 if none).
+; GetSpecialFormCaps returns in e (a can't survive its farcall); these are
+; plain same-bank calls, so `ld a, e` converts back to a for their callers.
 ; CLOBBERS: af, bc, de, hl (all callers below account for this).
 GetAttackerSpecialFormCaps:
 	ldh a, [hWhoseTurn]
@@ -5836,6 +5836,7 @@ GetAttackerSpecialFormCaps:
 	ld de, wEnemyMon
 .go
 	farcall GetSpecialFormCaps
+	ld a, e
 	ret
 
 GetTargetSpecialFormCaps:
@@ -5846,6 +5847,7 @@ GetTargetSpecialFormCaps:
 	ld de, wBattleMon
 .go
 	farcall GetSpecialFormCaps
+	ld a, e
 	ret
 
 MoveHitTest:
@@ -6721,17 +6723,18 @@ LoadEnemyMonData:
 	ld a, [hli]            ; copy catch rate
 	; This is wEnemyMonCatchRate, the actual struct field that SendNewMonToBox
 	; copies verbatim into a boxed mon (give_pokemon.asm, party-full gift path).
-	; Bit 0 = Ghost Variant flag, bit 1 = Fusion flag (func_ghost_variant.asm /
-	; func_fusion.asm). Without clearing them here, any species whose catch rate
-	; has those bits set (e.g. Paras = 190 = %10111110, bit 1) gets boxed pre-
-	; flagged as a fusion -> bogus stats + a crash loading the fusion sprite on
-	; the summary screen. The AddPartyMon path already clears these (add_mon.asm);
-	; the existing clear further below writes the base-stats scratch copy, NOT
-	; this struct field, so it does not cover the box path.
-	res 0, a
-	res 1, a
-	res 2, a ; type-variant flag (func_special_form.asm)
-	res 3, a ; special-form flag (func_special_form.asm)
+	; Bits 0-3 are flags (ghost/fusion/type-variant/special-form - see
+	; func_ghost_variant.asm / func_fusion.asm / func_special_form.asm). Without
+	; clearing them here, any species whose catch rate has those bits set (e.g.
+	; Paras = 190 = %10111110, bit 1) gets boxed pre-flagged as a fusion -> bogus
+	; stats + a crash loading the fusion sprite on the summary screen. Zero the
+	; WHOLE byte, not just bits 0-3: catch rates occupy both nibbles, so a
+	; partial clear only protects the bits currently in use and silently breaks
+	; the next flag added to bits 4-7 (see MON_CATCH_RATE_BITFIELD_PC.md). The
+	; AddPartyMon path already clears these (add_mon.asm); the existing clear
+	; further below writes the base-stats scratch copy, NOT this struct field,
+	; so it does not cover the box path.
+	xor a
 	ld [de], a
 	inc de
 	ldh a, [hIsInBattle]
@@ -6780,15 +6783,13 @@ LoadEnemyMonData:
 	jr nz, .copyBaseStatsLoop
 	ld hl, wMonHCatchRate
 	ld a, [hli]
-; bit 0 is the Ghost Variant flag on the enemy mon's struct - clear it here
-; so a normal wild/trainer mon never spawns pre-flagged as ghost just
-; because its species' catch rate happens to be odd (see add_mon.asm for
-; the matching clear on the player-party-creation path, and
-; func_ghost_variant.asm for the full writeup)
-	res 0, a
-	res 1, a
-	res 2, a ; type-variant flag (func_special_form.asm)
-	res 3, a ; special-form flag (func_special_form.asm)
+; Zero the whole catch-rate byte on the enemy mon's struct so a normal
+; wild/trainer mon never spawns pre-flagged just because its species' catch
+; rate happens to have flag bits set (see add_mon.asm for the matching clear
+; on the player-party-creation path, and MON_CATCH_RATE_BITFIELD_PC.md for the
+; full bit registry - both nibbles are cleared, not just the bits currently
+; in use, so future flags in bits 4-7 are safe too).
+	xor a
 	ld [de], a
 	inc de
 	ld a, [hl]     ; base exp

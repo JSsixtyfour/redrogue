@@ -16,6 +16,10 @@ RedsHouse1F_Script:
 	.afterSetup
 	farcall PatchBridgeExit   ; route the exit to the next stage
 	; wall off the stairs up to 2F during a bridge (stairs block $07 -> wall $05)
+    ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .notBridge
 	ld a, $05
 	ld [wNewTileBlockID], a
 	lb bc, 0, 3               ; block col 3 / row 0 = the (7,1) stairs block
