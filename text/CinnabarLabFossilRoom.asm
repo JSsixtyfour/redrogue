@@ -7,8 +7,8 @@ _CinnabarLabFossilRoomScientist1Text::
 	para "I study here rare"
 	line "#MON fossils!"
 
-	para "You! Have you a"
-	line "fossil for me?"
+	para "Here, sample our"
+	line "research!"
 	prompt
 
 _CinnabarLabFossilRoomScientist1NoFossilsText::
@@ -78,8 +78,8 @@ _CinnabarLabFossilRoomScientist1ComeAgainText::
 	done
 
 _FossilGift1Desc::
-	text "Revived from an"
-	line "old fossil!"
+	text "Revived from a"
+	line "HELIX FOSSIL!"
 	done
 
 _FossilGift2Desc::
@@ -91,9 +91,28 @@ _FossilGift3Desc::
 	text "Evolves certain"
 	line "#MON!"
 	done
+    
+_FossilGift4Desc::
+    text "Revived from a"
+	line "DOME FOSSIL!"
+	done
+    
+_FossilGift5Desc::
+    text "Revived from an"
+	line "OLD AMBER!"
+	done
+
+_FossilGift6Desc::
+    text "Created in this"
+	line "laboratory!"
+	done
+
+_FossilGift7Desc::
+    text "Does a random"
+	line "attack!"
+	done
 
 _CinnabarLabFossilRoomScientist2Text::
-	text "I am hard at work"
-	line "reviving ancient"
-	cont "#MON!"
+	text "I rode my PONYTA"
+	line "to work today!"
 	done

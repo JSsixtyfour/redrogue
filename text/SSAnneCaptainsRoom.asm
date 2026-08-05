@@ -69,16 +69,30 @@ _CaptainGift1Desc::
 	done
 
 _CaptainGift2Desc::
-	text "A lucky catch"
-	line "off the deck!"
+	text "Caught by the"
+	line "crew"
 	done
 
 _CaptainGift3Desc::
 	text "Gives one #MON"
-	line "the WATER type!"
+	line "the WATER type"
 	done
 
 _CaptainGift4Desc::
-	text "Every strike"
-	line "hits its mark!"
+	text "Every attack is"
+	line "a critical hit"
+	done
+
+_CaptainGift5Desc::
+	text "The seafaring"
+	line "#MON"
+	done
+    
+_CaptainGift6Desc::
+	text "A sailing"
+	line "necessity"
+	done
+_CaptainGift7Desc::
+	text "A sailing"
+	line "necessity"
 	done

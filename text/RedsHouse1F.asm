@@ -57,3 +57,18 @@ _MomGift3Desc::
 	text "Raises a level"
 	line "instantly!"
 	done
+
+_MomGift4Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
+    
+_MomGift5Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
+
+_MomGift6Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

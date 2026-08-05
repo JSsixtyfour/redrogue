@@ -456,3 +456,169 @@ AllSpeciesCheck::
     
     .end
     RET
+
+; Choose Blue's starter from the two slots the player did NOT take.
+; in:  e = player's chosen slot (1..3)   [passed via 'e' because farcall/Bankswitch
+;         clobbers a/bc/hl but preserves d/e]
+; out: wRivalStarterTemp          = Blue's chosen species
+;      wRivalStarterBallSpriteIndex = ROGUE_STARTER_POKEBALL_1/2/3 (1-based object const) of that slot
+; Priority: higher rarity class > type advantage over the player's starter > random.
+RivalPickStarter::
+	; player ball index p = e - 1
+	ld a, e
+	dec a
+	push af                       ; save p
+	; defender types = the player's starter's types (into wBattleMonType/+1)
+	call .speciesFromIndex        ; a(=p) -> a = player's species
+	ld [wCurSpecies], a
+	call GetMonHeader
+	ld a, [wMonHType1]
+	ld [wBattleMonType], a
+	ld a, [wMonHType2]
+	ld [wBattleMonType + 1], a
+	pop af                        ; a = p
+	; candidate ball indices: candA in d, candB in e
+	ld d, 0
+	or a
+	jr nz, .candA
+	ld d, 1                       ; p==0 -> candA=1
+.candA
+	ld e, 2
+	cp 2
+	jr nz, .candB
+	ld e, 1                       ; p==2 -> candB=1
+.candB
+	; tierA (from candA)
+	ld a, d
+	call .speciesFromIndex        ; a = speciesA
+	ld b, a
+	call .classOfSpecies          ; b = tierA
+	push bc                       ; save tierA
+	; tierB (from candB)
+	ld a, e
+	call .speciesFromIndex        ; a = speciesB
+	ld b, a
+	call .classOfSpecies          ; b = tierB
+	pop af                        ; a = tierA (high byte of saved bc)
+	cp b
+	jr z, .tie
+	jr c, .chooseB                ; tierA < tierB
+.chooseA                          ; tierA > tierB
+	ld a, d
+	jr .commit
+.chooseB
+	ld a, e
+	jr .commit
+.tie
+	; equal rarity: prefer the candidate whose STAB is super-effective vs the player
+	push de                       ; save candA(d)/candB(e)
+	ld a, d
+	call .speciesFromIndex
+	ld b, a
+	call .candidateHasAdvantage   ; a = 1 if candA super-effective vs player
+	ld c, a                       ; c = advA
+	pop de
+	push de
+	ld a, e
+	call .speciesFromIndex
+	ld b, a
+	push bc                       ; save advA (in c)
+	call .candidateHasAdvantage   ; a = advB
+	pop bc                        ; c = advA
+	ld b, a                       ; b = advB
+	ld a, c
+	and a
+	jr z, .aNotAdv
+	; advA set
+	ld a, b
+	and a
+	jr nz, .tieRandom             ; both advantaged -> random
+	pop de
+	ld a, d                       ; only A advantaged
+	jr .commit
+.aNotAdv
+	ld a, b
+	and a
+	jr z, .tieRandom              ; neither advantaged -> random
+	pop de
+	ld a, e                       ; only B advantaged
+	jr .commit
+.tieRandom
+	pop de                        ; d=candA, e=candB
+	call Random
+	and 1
+	jr z, .commitD
+	ld a, e
+	jr .commit
+.commitD
+	ld a, d
+.commit
+	; a = chosen 0-based ball index (0..2)
+	push af
+	call .speciesFromIndex        ; a = chosen species
+	ld [wRivalStarterTemp], a
+	pop af
+	inc a                         ; -> ROGUE_STARTER_POKEBALL_1/2/3 (object const, 1-based)
+	ld [wRivalStarterBallSpriteIndex], a
+	ret
+
+; a = ball index (0..2) -> a = wRoguePokemon(index+1). Preserves bc/de.
+.speciesFromIndex
+	push de
+	ld hl, wRoguePokemon1
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	pop de
+	ret
+
+; b = species -> b = rarity class (1..4). Preserves de. (Every rollable starter
+; is present in pokemon_classes, so the scan always terminates.)
+.classOfSpecies
+	ld hl, pokemon_classes
+	ld c, 0
+.findClass
+	inc c
+	ld a, [hli]
+	cp b
+	jr nz, .findClass
+	ld a, pokeball_pokemon_number
+	ld b, 1
+	cp c
+	jr nc, .gotClass
+	ld a, greatball_pokemon_number
+	inc b
+	cp c
+	jr nc, .gotClass
+	inc b
+	ld a, ultraball_pokemon_number
+	cp c
+	jr nc, .gotClass
+	inc b
+.gotClass
+	ret
+
+; b = candidate species; defender (player) types already in wBattleMonType/+1.
+; -> a = 1 if a candidate STAB type is super-effective vs the player, else 0.
+.candidateHasAdvantage
+	ld a, b
+	ld [wCurSpecies], a
+	call GetMonHeader             ; wMonHType1/2 = candidate's types
+	ld a, [wMonHType1]
+	ld [wEnemyMoveType], a
+	callfar AIGetTypeEffectiveness
+	ld a, [wTypeEffectiveness]
+	cp SUPER_EFFECTIVE
+	jr z, .adv
+	ld a, [wMonHType2]
+	ld [wEnemyMoveType], a
+	callfar AIGetTypeEffectiveness
+	ld a, [wTypeEffectiveness]
+	cp SUPER_EFFECTIVE
+	jr z, .adv
+	xor a
+	ret
+.adv
+	ld a, 1
+	ret

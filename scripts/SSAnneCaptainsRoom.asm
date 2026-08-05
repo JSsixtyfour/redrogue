@@ -1,4 +1,4 @@
-; Repurposed as a bridge gift room - the vanilla back-rub minigame + HM01 grant
+; Repurposed as a bridge gift room
 ; is replaced by the standard bridge-gift dispatch (HM CUT is now one of the
 ; Captain's possible rolled gifts, CaptainGiftList in bridge_gift_menu.asm).
 SSAnneCaptainsRoom_Script:
@@ -26,6 +26,8 @@ SSAnneCaptainsRoomCaptainText:
 	jr nz, .got_item
 	CheckEvent EVENT_BRIDGE_INTRO
 	jr nz, .skip_intro
+    ld hl, SSAnneCaptainsRoomRubCaptainsBackText
+	call PrintText
 	ld hl, SSAnneCaptainsRoomCaptainIFeelMuchBetterText
 	call PrintText
 	SetEvent EVENT_BRIDGE_INTRO
@@ -39,6 +41,32 @@ SSAnneCaptainsRoomCaptainText:
 	ld hl, SSAnneCaptainsRoomCaptainNotSickAnymoreText
 	call PrintText
 .done
+	jp TextScriptEnd
+    
+SSAnneCaptainsRoomRubCaptainsBackText:
+	text_far _SSAnneCaptainsRoomRubCaptainsBackText
+	text_asm
+	ld a, [wAudioROMBank]
+	cp BANK("Audio Engine 3")
+	ld [wAudioSavedROMBank], a
+	jr nz, .not_audio_engine_3
+	ld a, SFX_STOP_ALL_MUSIC
+	ld [wNewSoundID], a
+	call PlaySound
+	ld a, BANK(Music_PkmnHealed)
+	ld [wAudioROMBank], a
+.not_audio_engine_3
+	ld a, MUSIC_PKMN_HEALED
+	ld [wNewSoundID], a
+	call PlaySound
+.loop
+	ld a, [wChannelSoundIDs]
+	cp MUSIC_PKMN_HEALED
+	jr z, .loop
+	call PlayDefaultMusic
+	SetEvent EVENT_RUBBED_CAPTAINS_BACK
+	ld hl, wStatusFlags3
+	res BIT_NO_NPC_FACE_PLAYER, [hl]
 	jp TextScriptEnd
 
 SSAnneCaptainsRoomCaptainIFeelMuchBetterText:

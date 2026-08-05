@@ -871,10 +871,10 @@ BridgeGiverLists:
 	dw FanClubChairmanGiftList
 	dw WardenGiftList
 	dw SchoolCooltrainerGiftList
-	dw NicknameBaldingGuyGiftList
-	dw TrashedHouseFishingGuruGiftList
+	dw OldManGiftList
+	dw OfficerJennyGiftList
 	dw RedsHouseMomGiftList
-	dw CuboneHouseGirlGiftList
+	dw IgaGiftList
 	dw TradeHouseGrannyGiftList
 	dw OaksLabOakGiftList
 
@@ -910,61 +910,109 @@ MrFujiGiftList:
 	gift_entry GIFT_TEACH_MOVE, LICK,               MrFujiGift7_Text, MrFujiGift7_Desc
 
 CaptainGiftList:
-	db 4
+	db 7
 	gift_entry GIFT_ITEM,    HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
-	gift_entry GIFT_MON,     TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
+	gift_entry GIFT_MON_EVOLVE, TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
 	gift_entry GIFT_SPECIAL, BridgeCaptainWaterVariant, CaptainGift3_Text, CaptainGift3_Desc
-	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc
+	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc ; needs perfect stats
+    gift_entry GIFT_MON,     LAPRAS, CaptainGift5_Text, CaptainGift5_Desc
+    gift_entry GIFT_ITEM,    HM_SURF,    CaptainGift6_Text, CaptainGift6_Desc
+    gift_entry GIFT_TEACH_MOVE, CRABHAMMER, CaptainGift7_Text, CaptainGift7_Desc
+    ; increase critical hit rate of one pokemon
+    ; increase ratio of critical hits by 20%
 
 FossilScientistGiftList:
-	db 3
+	db 7
 	gift_entry GIFT_MON_EVOLVE, OMANYTE, FossilGift1_Text, FossilGift1_Desc
 	gift_entry GIFT_SPECIAL, BridgeFossilRockVariant, FossilGift2_Text, FossilGift2_Desc
-	gift_entry GIFT_ITEM,    FIRE_STONE, FossilGift3_Text, FossilGift3_Desc
+	gift_entry GIFT_ITEM,    FIRE_STONE, FossilGift3_Text, FossilGift3_Desc ; remove
+    gift_entry GIFT_MON_EVOLVE, KABUTO, FossilGift4_Text, FossilGift4_Desc
+    gift_entry GIFT_MON,     AERODACTYL, FossilGift5_Text, FossilGift5_Desc
+    gift_entry GIFT_MON,     PORYGON, FossilGift6_Text, FossilGift6_Desc
+    gift_entry GIFT_ITEM,    TM_METRONOME, FossilGift7_Text, FossilGift7_Desc
+    ; Shrink Ray - increased evasiveness and speed, decreased ATK
+    ; Growth Ray - increased HP and ATK, decreased speed
 
 FanClubChairmanGiftList:
-	db 3
-	gift_entry GIFT_ITEM, BIKE_VOUCHER, FanClubGift1_Text, FanClubGift1_Desc
-	gift_entry GIFT_MON,  CLEFAIRY,     FanClubGift2_Text, FanClubGift2_Desc
+	db 5
+	gift_entry GIFT_ITEM, PP_UP, FanClubGift1_Text, FanClubGift1_Desc
+	gift_entry GIFT_MON_EVOLVE,  PONYTA, FanClubGift2_Text, FanClubGift2_Desc
 	gift_entry GIFT_ITEM, RARE_CANDY,   FanClubGift3_Text, FanClubGift3_Desc
+    gift_entry GIFT_MON_EVOLVE,  DROWZEE, FanClubGift4_Text, FanClubGift4_Desc
+    gift_entry GIFT_MON_EVOLVE,  SPEAROW, FanClubGift5_Text, FanClubGift5_Desc
+    ; Cute Boost - pokemon moves weaker than 60 base power have their damage increased by 50%
+    ; improved pokemon rarity
+    ; Mist Stone - evolves any NFE pokemon, no matter what
 
 WardenGiftList:
-	db 3
+	db 5
 	gift_entry GIFT_ITEM, HM_STRENGTH, WardenGift1_Text, WardenGift1_Desc
 	gift_entry GIFT_MON,  KANGASKHAN,  WardenGift2_Text, WardenGift2_Desc
-	gift_entry GIFT_ITEM, RARE_CANDY,  WardenGift3_Text, WardenGift3_Desc
+	gift_entry GIFT_ITEM, HM_SURF,  WardenGift3_Text, WardenGift3_Desc
+    gift_entry GIFT_MON,  TAUROS,  WardenGift4_Text, WardenGift4_Desc
+    gift_entry GIFT_ITEM, BIG_NUGGET,  WardenGift5_Text, WardenGift5_Desc
+    ; Gym leader style attack boost, remove boosts from gym leaders
+    ; Flinching boost to one pokemon
 
 SchoolCooltrainerGiftList:
 	db 3
-	gift_entry GIFT_TEACH_MOVE, DOUBLE_TEAM, SchoolGift1_Text, SchoolGift1_Desc
+	gift_entry GIFT_TEACH_MOVE, SHARPEN, SchoolGift1_Text, SchoolGift1_Desc
 	gift_entry GIFT_ITEM,       CALCIUM,     SchoolGift2_Text, SchoolGift2_Desc
-	gift_entry GIFT_ITEM,       RARE_CANDY,  SchoolGift3_Text, SchoolGift3_Desc
+	gift_entry GIFT_ITEM,       TM_DOUBLE_TEAM,  SchoolGift3_Text, SchoolGift3_Desc
+    ;gift_entry GIFT_MON_EVOLVE, NIDORAN_MALE, FanClubGift4_Text, FanClubGift4_Desc
+    ; improved STAB damage
+    ; Improved super effective damage
+    ; Special Nidoran Female that has a quick claw like effect
+    ; repeated moves bonus   
 
-NicknameBaldingGuyGiftList:
+OldManGiftList: ;this should be changed to the Old Man's sprite from viridian who teaches the player how to catch pokemon
 	db 3
-	gift_entry GIFT_MON,  SPEAROW,    NicknameGift1_Text, NicknameGift1_Desc
-	gift_entry GIFT_ITEM, PP_UP,      NicknameGift2_Text, NicknameGift2_Desc
-	gift_entry GIFT_ITEM, RARE_CANDY, NicknameGift3_Text, NicknameGift3_Desc
+	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    OldManGift1_Text, OldManGift1_Desc
+	gift_entry GIFT_MON_EVOLVE,  RATTATA,   OldManGift2_Text, OldManGift2_Desc
+	gift_entry GIFT_ITEM, TM_REST, OldManGift3_Text, OldManGift3_Desc
+    ;gift_entry GIFT_ITEM, TM_THUNDERWAVE, OldManGift4_Text, OldManGift4_Desc
+    ; spore oddish
+    ; DULLED SENSES - No recoil damage
+    ; COFFEE BOOST boost speed like gym leader
+    ; gift increased chance of status effects
+    ; dizzy punch tutor
 
-TrashedHouseFishingGuruGiftList:
+OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her here, could put cop temporarily
 	db 3
-	gift_entry GIFT_ITEM, GOOD_ROD, TrashedGift1_Text, TrashedGift1_Desc
-	gift_entry GIFT_MON,  MAGIKARP, TrashedGift2_Text, TrashedGift2_Desc
-	gift_entry GIFT_MON,  POLIWAG,  TrashedGift3_Text, TrashedGift3_Desc
+	gift_entry GIFT_ITEM, LEMONADE, TrashedGift1_Text, TrashedGift1_Desc
+	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, TrashedGift2_Text, TrashedGift2_Desc
+	gift_entry GIFT_ITEM, TM_BODY_SLAM, TrashedGift3_Text, TrashedGift3_Desc
+   ; gift_entry GIFT_ITEM, TM_TAKE_DOWN, TrashedGift4_Text, TrashedGift4_Desc
+    ; target practice, all moves have a 10% accuracy boost
+    ; growlithe that lowers attack when on the field, has perfect stats, and quick attack, INTIMIDATING GROWLITHE
+    ; boost defense like gym leader
+    ; body armor, one pokemon gets a 50% defense boost but can't use status moves
 
 RedsHouseMomGiftList:
-	db 3
+	db 6
 	gift_entry GIFT_ITEM, FULL_RESTORE, MomGift1_Text, MomGift1_Desc
-	gift_entry GIFT_MON,  EEVEE,        MomGift2_Text, MomGift2_Desc
-	gift_entry GIFT_ITEM, RARE_CANDY,   MomGift3_Text, MomGift3_Desc
+	gift_entry GIFT_MON,  CHANSEY,        MomGift2_Text, MomGift2_Desc
+	gift_entry GIFT_ITEM, FULL_HEAL,   MomGift3_Text, MomGift3_Desc
+    gift_entry GIFT_TEACH_MOVE, RECOVER, SchoolGift1_Text, SchoolGift1_Desc
+    gift_entry GIFT_ITEM, TM_SOFTBOILED,   MomGift3_Text, MomGift3_Desc
+    gift_entry GIFT_ITEM, TM_REST,   MomGift3_Text, MomGift3_Desc
+    ; healing moves and items now recover 10% more
+    ; restore KO defiance
+    ; mr. mime
 
-CuboneHouseGirlGiftList:
+IgaGiftList: ; Ninja named Iga, use Koga Sprite
 	db 3
-	gift_entry GIFT_MON,  CUBONE, CuboneHouseGift1_Text, CuboneHouseGift1_Desc
-	gift_entry GIFT_MON,  GASTLY, CuboneHouseGift2_Text, CuboneHouseGift2_Desc
-	gift_entry GIFT_ITEM, REVIVE, CuboneHouseGift3_Text, CuboneHouseGift3_Desc
+	gift_entry GIFT_MON_EVOLVE,  KOFFING, IgaGift1_Text, IgaGift1_Desc
+	gift_entry GIFT_MON_EVOLVE,  GRIMER, IgaGift2_Text, IgaGift2_Desc
+	gift_entry GIFT_ITEM, TM_TOXIC, IgaGift3_Text, IgaGift3_Desc
+    ; gift super fang arbok
+    ; gift all poisons are toxic
+    ; poison immunity for one pokemon
+    ; life orb effect for one pokemon
+    ; increased evasiveness
+    ; poison gas tutor
 
-TradeHouseGrannyGiftList:
+TradeHouseGrannyGiftList: ; probably just remove this one
 	db 3
 	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
 	gift_entry GIFT_MON,  CLEFAIRY,   TradeHouseGift2_Text, TradeHouseGift2_Desc
@@ -975,7 +1023,13 @@ OaksLabOakGiftList:
 	db 3
 	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift1_Text, OaksLabGift1_Desc
 	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
-	gift_entry GIFT_ITEM, RARE_CANDY, OaksLabGift3_Text, OaksLabGift3_Desc
+	gift_entry GIFT_ITEM, HM_FLASH, OaksLabGift3_Text, OaksLabGift3_Desc
+    ; expert training, STAT Experience maxed for all pokemon in party
+    ; gift bulbasaur with earthquake
+    ; gift eevee
+    ; gift squirtle with amnesia
+    ; gift charmander with dragon typing
+    ; Amulet Coin - increases monetary earnings by 25%
 
 ; ---------------------------------------------------------------------------
 ; Menu name strings.
@@ -1003,50 +1057,64 @@ MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
 MrFujiGift7_Text: db "LICK TUTOR@"
 
-CaptainGift1_Text: db "HM CUT@"
+CaptainGift1_Text: db "CUT HM@"
 CaptainGift2_Text: db "TENTACOOL@"
 CaptainGift3_Text: db "SEA BLESSING@"
 CaptainGift4_Text: db "LUCKY DUCK@"
+CaptainGift5_Text: db "LAPRAS@"
+CaptainGift6_Text: db "SURF HM@"
+CaptainGift7_Text: db "CRABHAMMER TUTOR@"
 
 FossilGift1_Text: db "OMANYTE@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
-FossilGift2_Text: db "FOSSIL COAT@"
+FossilGift2_Text: db "FOSSILIZATION@"
 FossilGift3_Text: db "FIRE STONE@"
+FossilGift4_Text: db "KABUTO@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
+FossilGift5_Text: db "AERODACTYL@"
+FossilGift6_Text: db "PORYGON@"
+FossilGift7_Text: db "METRONOME TM@"
 
 FanClubGift1_Text: db "BIKE VOUCHER@"
 FanClubGift2_Text: db "CLEFAIRY@"
 FanClubGift3_Text: db "RARE CANDY@"
+FanClubGift4_Text: db "DROWZEE@"
+FanClubGift5_Text: db "SPEAROW@"
 
-WardenGift1_Text: db "HM STRENGTH@"
+WardenGift1_Text: db "STRENGTH HM@"
 WardenGift2_Text: db "KANGASKHAN@"
-WardenGift3_Text: db "RARE CANDY@"
+WardenGift3_Text: db "SURF HM@"
+WardenGift4_Text: db "TAUROS@"
+WardenGift5_Text: db "BIG NUGGET@"
 
-SchoolGift1_Text: db "DOUBLE TEAM TUTOR@"
+SchoolGift1_Text: db "SHARPEN TUTOR@"
 SchoolGift2_Text: db "CALCIUM@"
-SchoolGift3_Text: db "RARE CANDY@"
+SchoolGift3_Text: db "DOUBLE TEAM TM@"
 
-NicknameGift1_Text: db "SPEAROW@"
-NicknameGift2_Text: db "PP UP@"
-NicknameGift3_Text: db "RARE CANDY@"
+OldManGift1_Text: db "WEEDLE@"
+OldManGift2_Text: db "RATTATA@"
+OldManGift3_Text: db "REST TM@"
 
-TrashedGift1_Text: db "GOOD ROD@"
-TrashedGift2_Text: db "MAGIKARP@"
-TrashedGift3_Text: db "POLIWAG@"
+TrashedGift1_Text: db "LEMONADE@"
+TrashedGift2_Text: db "SQUIRTLE@"
+TrashedGift3_Text: db "BODY SLAM TM@"
 
 MomGift1_Text: db "FULL RESTORE@"
-MomGift2_Text: db "EEVEE@"
-MomGift3_Text: db "RARE CANDY@"
+MomGift2_Text: db "CHANSEY@"
+MomGift3_Text: db "FULL HEAL@"
+MomGift4_Text: db "SOFTBOILED TUTOR@"
+MomGift5_Text: db "SOFTBOILED TM@"
+MomGift6_Text: db "REST TM@"
 
-CuboneHouseGift1_Text: db "CUBONE@"
-CuboneHouseGift2_Text: db "GASTLY@"
-CuboneHouseGift3_Text: db "REVIVE@"
+IgaGift1_Text: db "KOFFING@"
+IgaGift2_Text: db "GRIMER@"
+IgaGift3_Text: db "TOXIC TM@"
 
 TradeHouseGift1_Text: db "NUGGET@"
 TradeHouseGift2_Text: db "CLEFAIRY@"
 TradeHouseGift3_Text: db "MOON STONE@"
 
-OaksLabGift1_Text: db "PIKACHU@"
+OaksLabGift1_Text: db "LIGHT BALL PIKACHU@"
 OaksLabGift2_Text: db "PROTEIN@"
-OaksLabGift3_Text: db "RARE CANDY@"
+OaksLabGift3_Text: db "FLASH HM@"
 
 ; ---------------------------------------------------------------------------
 ; Descriptions.
@@ -1128,6 +1196,15 @@ CaptainGift3_Desc:
 CaptainGift4_Desc:
 	text_far _CaptainGift4Desc
 	text_end
+CaptainGift5_Desc:
+	text_far _CaptainGift5Desc
+	text_end
+CaptainGift6_Desc:
+	text_far _CaptainGift6Desc
+	text_end
+CaptainGift7_Desc:
+	text_far _CaptainGift7Desc
+	text_end
 
 FossilGift1_Desc:
 	text_far _FossilGift1Desc
@@ -1137,6 +1214,18 @@ FossilGift2_Desc:
 	text_end
 FossilGift3_Desc:
 	text_far _FossilGift3Desc
+	text_end
+FossilGift4_Desc:
+	text_far _FossilGift4Desc
+	text_end
+FossilGift5_Desc:
+	text_far _FossilGift5Desc
+	text_end
+FossilGift6_Desc:
+	text_far _FossilGift6Desc
+	text_end
+FossilGift7_Desc:
+	text_far _FossilGift7Desc
 	text_end
 
 FanClubGift1_Desc:
@@ -1148,7 +1237,13 @@ FanClubGift2_Desc:
 FanClubGift3_Desc:
 	text_far _FanClubGift3Desc
 	text_end
-
+FanClubGift4_Desc:
+	text_far _FanClubGift3Desc
+	text_end    
+FanClubGift5_Desc:
+	text_far _FanClubGift3Desc
+	text_end
+    
 WardenGift1_Desc:
 	text_far _WardenGift1Desc
 	text_end
@@ -1157,6 +1252,12 @@ WardenGift2_Desc:
 	text_end
 WardenGift3_Desc:
 	text_far _WardenGift3Desc
+	text_end
+WardenGift4_Desc:
+	text_far _WardenGift4Desc
+	text_end
+WardenGift5_Desc:
+	text_far _WardenGift5Desc
 	text_end
 
 SchoolGift1_Desc:
@@ -1169,14 +1270,14 @@ SchoolGift3_Desc:
 	text_far _SchoolGift3Desc
 	text_end
 
-NicknameGift1_Desc:
-	text_far _NicknameGift1Desc
+OldManGift1_Desc:
+	text_far _OldManGift1Desc
 	text_end
-NicknameGift2_Desc:
-	text_far _NicknameGift2Desc
+OldManGift2_Desc:
+	text_far _OldManGift2Desc
 	text_end
-NicknameGift3_Desc:
-	text_far _NicknameGift3Desc
+OldManGift3_Desc:
+	text_far _OldManGift3Desc
 	text_end
 
 TrashedGift1_Desc:
@@ -1198,15 +1299,24 @@ MomGift2_Desc:
 MomGift3_Desc:
 	text_far _MomGift3Desc
 	text_end
-
-CuboneHouseGift1_Desc:
-	text_far _CuboneHouseGift1Desc
+MomGift4_Desc:
+	text_far _MomGift4Desc
 	text_end
-CuboneHouseGift2_Desc:
-	text_far _CuboneHouseGift2Desc
+MomGift5_Desc:
+	text_far _MomGift3Desc
+	text_end  
+MomGift6_Desc:
+	text_far _MomGift6Desc
 	text_end
-CuboneHouseGift3_Desc:
-	text_far _CuboneHouseGift3Desc
+  
+IgaGift1_Desc:
+	text_far _IgaGift1Desc
+	text_end
+IgaGift2_Desc:
+	text_far _IgaGift2Desc
+	text_end
+IgaGift3_Desc:
+	text_far _IgaGift3Desc
 	text_end
 
 TradeHouseGift1_Desc:

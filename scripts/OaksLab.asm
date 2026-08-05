@@ -91,86 +91,51 @@ OaksLab_TextPointers:
 
 Rogue_Lab_Script_PokeballText_1:
 	text_asm
-    CheckEvent EVENT_GOT_STARTER
+	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
-    
-    .GetMon
-    ld a, [wRoguePokemon1]
+
+.GetMon
+	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickPokeballText
+	call GetMonName
+	ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
 	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .end_text
 
-    ld a, [wRoguePokemon1]
+	ld a, [wRoguePokemon1]
 	ld b, a
-    ld c, 5
+	ld c, 5
 	call GivePokemon
-	jr nc, .done
-    
+	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_1
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-    SetEvent EVENT_GOT_STARTER
-    
-    ld de, .MiddleBallMovement1
-	ld a, [wYCoord]
-	cp 4 ; is the player standing below the table?
-	jr z, .moveBlue
-	ld de, .MiddleBallMovement2
-	jr .moveBlue
-    
-    .moveBlue
-	ld a, OAKSLAB_RIVAL
-	ldh [hSpriteIndex], a
-	call MoveSprite
-    
-	.done
-    ld a, [wRoguePokemon2]
-    ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_2
-    ld [wRivalStarterBallSpriteIndex], a
-    SetEvent EVENT_GOT_STARTER
-	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
-	ld [wOaksLabCurScript], a
-    .end_text
+.pickRival
+	SetEvent EVENT_GOT_STARTER
+	ld e, 1 ; player took starter slot 1
+	call OaksLabRivalPicksAndWalks
+.end_text
 	jp TextScriptEnd
-    
-    .MiddleBallMovement1
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_UP
-	db -1 ; end
 
-    .MiddleBallMovement2
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db -1 ; end
-    
 Rogue_Lab_Script_PokeballText_2:
 	text_asm
-    CheckEvent EVENT_GOT_STARTER
+	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
-    
-    .GetMon
-    ld a, [wRoguePokemon2]
+
+.GetMon
+	ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickPokeballText
+	call GetMonName
+	ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
 	ldh a, [hCurrentMenuItem]
@@ -179,69 +144,32 @@ Rogue_Lab_Script_PokeballText_2:
 
 	ld a, [wRoguePokemon2]
 	ld b, a
-    ld c, 5
+	ld c, 5
 	call GivePokemon
-	jr nc, .done
+	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_2
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-    SetEvent EVENT_GOT_STARTER
-    
-    ld de, .RightBallMovement1
-	ld a, [wYCoord]
-	cp 4 ; is the player standing below the table?
-	jr z, .moveBlue
-	ld de, .RightBallMovement2
-	jr .moveBlue
-    
-    .moveBlue
-	ld a, OAKSLAB_RIVAL
-	ldh [hSpriteIndex], a
-	call MoveSprite
-
-
-	.done
-    ld a, [wRoguePokemon3]
-    ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_3
-    ld [wRivalStarterBallSpriteIndex], a
-	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
-	ld [wOaksLabCurScript], a
-    .end_text
+.pickRival
+	SetEvent EVENT_GOT_STARTER
+	ld e, 2 ; player took starter slot 2
+	call OaksLabRivalPicksAndWalks
+.end_text
 	jp TextScriptEnd
-    
-    .RightBallMovement1
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_UP
-	db -1 ; end
 
-    .RightBallMovement2
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db -1 ; end
-    
 Rogue_Lab_Script_PokeballText_3:
 	text_asm
-    CheckEvent EVENT_GOT_STARTER
+	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
-    
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
-    
-    .GetMon
-    ld a, [wRoguePokemon3]
+
+.GetMon
+	ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickPokeballText
+	call GetMonName
+	ld hl, PickPokeballText
 	call PrintText
 	call YesNoChoice
 	ldh a, [hCurrentMenuItem]
@@ -250,19 +178,65 @@ Rogue_Lab_Script_PokeballText_3:
 
 	ld a, [wRoguePokemon3]
 	ld b, a
-    ld c, 5
+	ld c, 5
 	call GivePokemon
-	jr nc, .done
+	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_3
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-    SetEvent EVENT_GOT_STARTER
-    
-    ld de, .LeftBallMovement1
+.pickRival
+	SetEvent EVENT_GOT_STARTER
+	ld e, 3 ; player took starter slot 3
+	call OaksLabRivalPicksAndWalks
+.end_text
+	jp TextScriptEnd
+
+; --- Rival starter pick + walk (Red Rogue) ---
+; Called from each pokeball handler with e = the slot the player took (1..3).
+; RivalPickStarter (in random_pokemon_selection.asm) chooses Blue's starter among
+; the two remaining slots by rarity, then type advantage over the player's
+; starter, then random; it sets wRivalStarterTemp + wRivalStarterBallSpriteIndex.
+; We then fall through to walk Blue to that ball.
+OaksLabRivalPicksAndWalks:
+	farcall RivalPickStarter
+	; fall through
+
+; Walk Blue to his chosen ball. wRivalStarterBallSpriteIndex = ROGUE_STARTER_POKEBALL_1/2/3
+; (1/2/3) = left(x=6)/middle(x=7)/right(x=8). Blue starts at (4,3). The "1" tables route
+; via row 5 (used when the player stands on row 4 and would block row 4); the
+; "2" tables route via row 4. Middle/Right tables match vanilla; Left adds a
+; row-5 variant and keeps the vanilla far-right (xCoord==9) reposition case.
+MoveRivalToChosenBall:
+	ld a, [wRivalStarterBallSpriteIndex]
+	cp ROGUE_STARTER_POKEBALL_1 ; 1 = left
+	jr z, .leftBall
+	cp ROGUE_STARTER_POKEBALL_2 ; 2 = middle
+	jr z, .middleBall
+; else ROGUE_STARTER_POKEBALL_3 = right ball
+	ld a, [wYCoord]
+	cp 4 ; player standing directly below the table?
+	ld de, RivalRightBallMovement1
+	jr z, .move
+	ld de, RivalRightBallMovement2
+	jr .move
+.middleBall
+	ld a, [wYCoord]
+	cp 4
+	ld de, RivalMiddleBallMovement1
+	jr z, .move
+	ld de, RivalMiddleBallMovement2
+	jr .move
+.leftBall
 	ld a, [wXCoord]
-	cp 9 ; is the player standing to the right of the table?
-	jr nz, .moveBlue
-	push hl
+	cp 9 ; player to the right of the table (rival offscreen)?
+	jr z, .leftBallReposition
+	ld a, [wYCoord]
+	cp 4
+	ld de, RivalLeftBallMovement1
+	jr z, .move
+	ld de, RivalLeftBallMovement2
+	jr .move
+.leftBallReposition
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	ld a, SPRITESTATEDATA1_YPIXELS
@@ -278,29 +252,60 @@ Rogue_Lab_Script_PokeballText_3:
 	ld [hl], 8 ; SPRITESTATEDATA2_MAPY
 	inc hl
 	ld [hl], 9 ; SPRITESTATEDATA2_MAPX
-	ld de, .LeftBallMovement2 ; the rival is not currently onscreen, so account for that
-	pop hl
-	jr .moveBlue
-    
-    .moveBlue
+	ld de, RivalLeftBallReposition
+.move
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	call MoveSprite
-    
-    .done
-    ld a, [wRoguePokemon1]
-	ld [wRivalStarterTemp], a
-    ld a, ROGUE_STARTER_POKEBALL_1
-    ld [wRivalStarterBallSpriteIndex], a
+	; advance the state machine so OaksLabRivalChoosesStarterScript runs once
+	; Blue finishes walking: it hides his ball and gives him his starter.
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER
 	ld [wOaksLabCurScript], a
-    .end_text
-	jp TextScriptEnd
-    
-    .LeftBallMovement1
+	ret
+
+RivalLeftBallMovement1:
+	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_RIGHT
-    .LeftBallMovement2
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_UP
+	db -1 ; end
+RivalLeftBallMovement2:
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db -1 ; end
+RivalLeftBallReposition:
+	db NPC_MOVEMENT_RIGHT
+	db -1 ; end
+RivalMiddleBallMovement1:
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_UP
+	db -1 ; end
+RivalMiddleBallMovement2:
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db -1 ; end
+RivalRightBallMovement1:
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_UP
+	db -1 ; end
+RivalRightBallMovement2:
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_RIGHT
 	db -1 ; end
     

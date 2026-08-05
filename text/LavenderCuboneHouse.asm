@@ -24,17 +24,17 @@ _LavenderCuboneHouseBrunetteGirlGhostIsGoneText::
 	cont "restless soul!"
 	done
 
-_CuboneHouseGift1Desc::
+_IgaGift1Desc::
 	text "Wears its"
 	line "mother's skull!"
 	done
 
-_CuboneHouseGift2Desc::
+_IgaGift2Desc::
 	text "A gaseous"
 	line "#MON!"
 	done
 
-_CuboneHouseGift3Desc::
+_IgaGift3Desc::
 	text "Revives a"
 	line "fainted #MON!"
 	done

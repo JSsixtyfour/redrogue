@@ -27,17 +27,17 @@ _ViridianNicknameHouseBaldingGuyAlreadyGotText::
 	line "your #MON!"
 	done
 
-_NicknameGift1Desc::
+_OldManGift1Desc::
 	text "Easy to nickname"
 	line "and raise!"
 	done
 
-_NicknameGift2Desc::
+_OldManGift2Desc::
 	text "Raises a move's"
 	line "max PP!"
 	done
 
-_NicknameGift3Desc::
+_OldManGift3Desc::
 	text "Raises a level"
 	line "instantly!"
 	done

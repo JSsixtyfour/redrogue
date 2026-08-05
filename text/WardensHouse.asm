@@ -99,3 +99,13 @@ _WardenGift3Desc::
 	text "Raises a level"
 	line "instantly!"
 	done
+
+_WardenGift4Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
+    
+_WardenGift5Desc::
+	text "Raises a level"
+	line "instantly!"
+	done

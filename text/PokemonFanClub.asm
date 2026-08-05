@@ -158,3 +158,13 @@ _FanClubGift3Desc::
 	text "Raises a level"
 	line "instantly!"
 	done
+
+_FanClubGift4Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
+    
+ _FanClubGift5Desc::
+	text "Raises a level"
+	line "instantly!"
+	done
