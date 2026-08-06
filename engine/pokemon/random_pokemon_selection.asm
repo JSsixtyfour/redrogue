@@ -460,7 +460,7 @@ AllSpeciesCheck::
 ; Choose Blue's starter from the two slots the player did NOT take.
 ; in:  e = player's chosen slot (1..3)   [passed via 'e' because farcall/Bankswitch
 ;         clobbers a/bc/hl but preserves d/e]
-; out: wRivalStarterTemp          = Blue's chosen species
+; out: wRivalStarter              = Blue's chosen species
 ;      wRivalStarterBallSpriteIndex = ROGUE_STARTER_POKEBALL_1/2/3 (1-based object const) of that slot
 ; Priority: higher rarity class > type advantage over the player's starter > random.
 RivalPickStarter::
@@ -556,7 +556,7 @@ RivalPickStarter::
 	; a = chosen 0-based ball index (0..2)
 	push af
 	call .speciesFromIndex        ; a = chosen species
-	ld [wRivalStarterTemp], a
+	ld [wRivalStarter], a         ; stable WRAM - see the union note in wram.asm
 	pop af
 	inc a                         ; -> ROGUE_STARTER_POKEBALL_1/2/3 (object const, 1-based)
 	ld [wRivalStarterBallSpriteIndex], a

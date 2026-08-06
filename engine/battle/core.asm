@@ -1585,7 +1585,9 @@ HandlePlayerBlackOut:
 	ret
 
 Rival1WinText:
-	text_far _Rival1WinText
+; Red Rogue: the OPP_RIVAL1 fight is the Oak's Lab starter battle, so use the
+; rival's own gloat line rather than the vanilla generic one.
+	text_far _OaksLabRivalAmIGreatOrWhatText
 	text_end
 
 PlayerBlackedOutText2:
@@ -4623,10 +4625,19 @@ GetDamageVarsForPlayerAttack:
 	; stat before the >255 scaling step below, so the existing scale-by-4 path
 	; absorbs any overflow. SF_DOUBLE_ATK for physical moves (Thick Club),
 	; SF_DOUBLE_SPC for special moves (Light Ball). Attacker = wBattleMon.
+	; NOTE: d holds the move's base power (set at the top of this routine) and
+	; CalculateDamage requires it intact on return, so de MUST be saved across
+	; the `ld de, wBattleMon` below. Without this, every move in the game is
+	; computed with base power HIGH(wBattleMon) = $D0 = 208.
 	push hl
 	push bc
+	push de                       ; preserve d = move base power
 	ld de, wBattleMon
-	farcall GetSpecialFormCaps    ; e = caps (survives farcall + the pops below)
+	farcall GetSpecialFormCaps    ; e = caps
+	ld a, e                       ; stash caps before restoring de
+	pop de                        ; d = move base power again
+	ld e, a                       ; caps back into e (e is dead here - it is
+	                              ; reloaded with the level further below)
 	pop bc
 	pop hl
 	ld a, e
@@ -4643,6 +4654,13 @@ GetDamageVarsForPlayerAttack:
 	jr z, .noOffensiveBoost
 	sla l
 	rl h
+	; The doubling happens before the /4 scaling below, which only handles
+	; values up to 1023 (`ld b, l` at .next takes the low byte only). Clamp so
+	; a boosted special-form attacker can never wrap to a tiny attack stat.
+	ld a, h
+	cp 4                          ; hl >= 1024?
+	jr c, .noOffensiveBoost
+	ld hl, 1023
 .noOffensiveBoost
 	ld a, h
 	or b ; is either high byte nonzero?
@@ -4761,10 +4779,26 @@ GetDamageVarsForEnemyAttack:
 	; Special form (func_special_form.asm): double the attacker's offensive
 	; stat before scaling (see the matching block in GetDamageVarsForPlayerAttack).
 	; Attacker = wEnemyMon.
+	; NOTE: this can never actually fire today. LoadEnemyMonData xor-clears
+	; wEnemyMonCatchRate in .copyTypes for BOTH wild and trainer loads, and
+	; nothing re-sets bit 3 afterwards, so no enemy mon ever has a special form
+	; (Light Ball / Thick Club etc. are player-only). Kept live so enemy forms
+	; work the moment a re-apply hook is added at the TAIL of LoadEnemyMonData -
+	; copy the PCemMaybeApplyGhostBoss pattern, which is exactly why the cemetery
+	; ghost boss (bit 0) does work. See MON_CATCH_RATE_BITFIELD_PC.md.
+	; NOTE: d holds the move's base power and CalculateDamage requires it intact
+	; on return, so de MUST be saved across the `ld de, wEnemyMon` below.
+	; Without this, every enemy move is computed with base power
+	; HIGH(wEnemyMon) = $CF = 207.
 	push hl
 	push bc
+	push de                       ; preserve d = move base power
 	ld de, wEnemyMon
-	farcall GetSpecialFormCaps    ; e = caps (survives farcall + the pops below)
+	farcall GetSpecialFormCaps    ; e = caps
+	ld a, e                       ; stash caps before restoring de
+	pop de                        ; d = move base power again
+	ld e, a                       ; caps back into e (e is dead here - it is
+	                              ; reloaded with the level further below)
 	pop bc
 	pop hl
 	ld a, e
@@ -4781,6 +4815,13 @@ GetDamageVarsForEnemyAttack:
 	jr z, .noOffensiveBoost
 	sla l
 	rl h
+	; The doubling happens before the /4 scaling below, which only handles
+	; values up to 1023 (`ld b, l` at .next takes the low byte only). Clamp so
+	; a boosted special-form attacker can never wrap to a tiny attack stat.
+	ld a, h
+	cp 4                          ; hl >= 1024?
+	jr c, .noOffensiveBoost
+	ld hl, 1023
 .noOffensiveBoost
 	ld a, h
 	or b ; is either high byte nonzero?
@@ -4811,7 +4852,6 @@ GetDamageVarsForEnemyAttack:
 	sla e ; double level if it was a critical hit
 .done
 	ld a, $1
-	and a
 	and a
 	ret
 
@@ -6783,12 +6823,15 @@ LoadEnemyMonData:
 	jr nz, .copyBaseStatsLoop
 	ld hl, wMonHCatchRate
 	ld a, [hli]
-; Zero the whole catch-rate byte on the enemy mon's struct so a normal
-; wild/trainer mon never spawns pre-flagged just because its species' catch
-; rate happens to have flag bits set (see add_mon.asm for the matching clear
-; on the player-party-creation path, and MON_CATCH_RATE_BITFIELD_PC.md for the
-; full bit registry - both nibbles are cleared, not just the bits currently
-; in use, so future flags in bits 4-7 are safe too).
+; NOTE: de does NOT point at the wEnemyMon struct here - it has walked past
+; wEnemyMonBaseStats + NUM_STATS, so this writes wEnemyMonActualCatchRate
+; (ram/wram.asm), the live gameplay catch rate read by ItemUseBall
+; (engine/items/item_effects.asm). This is NOT the flag clear; that is the
+; separate write to wEnemyMonCatchRate further above in .copyTypes.
+; Zeroing it means every non-Master ball fails outside the Safari Zone
+; (engine/battle/safari_zone.asm re-populates the value for Safari use).
+; That is intentional: catching is not a Red Rogue mechanic - see the
+; writeup in custom_functions/func_ghost_variant.asm.
 	xor a
 	ld [de], a
 	inc de

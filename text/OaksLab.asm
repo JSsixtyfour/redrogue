@@ -26,11 +26,18 @@ _OaksLabRivalSmellYouLaterText::
     
 _OaksLabOakDontGoAwayYetText::
 	text "OAK: Hey! Don't go"
-	line "away yet!"
+	line "that way!"
+	done
+
+_OaksLabOakSelectMonText::
+	text "OAK: Hey! Choose"
+	line "a #MON first!"
 	done
 
 _NoTurningBack::
-    text "No turning back"
+	text "OAK: Hey!"
+	line "There's no turning"
+	cont "back now!"
 	done
     
 _OaksLabRivalIllTakeThisOneText::
@@ -59,6 +66,45 @@ _OaksLabRivalGrampsIsntAroundText::
 	text "<RIVAL>: Yo"
 	line "<PLAYER>! Gramps"
 	cont "isn't around!"
+	done
+
+_OaksLabRivalThanksText::
+	text "<RIVAL>: Thanks"
+	line "for saving the"
+	cont "best one for me"
+	done
+
+_OaksLabRivalImpatientText::
+	text "<RIVAL>: Hey!"
+	line "Gramps! What"
+	cont "about me?"
+	done
+
+_OaksLabOakChooseMonText::
+	text "OAK: Now, <PLAYER>,"
+	line "which #MON do"
+	cont "you want?"
+	done
+
+_OaksLabOakGoodLuckText::
+	text "OAK: Good luck on"
+	line "your journey,"
+	cont "<PLAYER>!"
+	done
+
+_OaksLabGirlText::
+	text "PROF.OAK is the"
+	line "authority on"
+	cont "#MON!"
+
+	para "Many #MON"
+	line "trainers hold him"
+	cont "in high regard!"
+	done
+
+_OaksLabScientistText::
+	text "I study #MON as"
+	line "PROF.OAK's AIDE."
 	done
 
 _OaksLabOakGiftIntroText::

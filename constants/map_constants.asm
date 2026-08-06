@@ -405,4 +405,14 @@ DEF LAST_MAP EQU $ff
 ; This map ID takes the player to a random stage via random_stage_selection
 DEF ROGUE_MAP EQU $fe
 
+; Sentinel destination-map value for one-way warps (e.g. Oak's Lab south
+; doorway): WarpFound2 in home/overworld.asm aborts the warp entirely when it
+; sees this as the matched warp's destination map, leaving the player in
+; place. NOTE: $fe is already ROGUE_MAP, so this must NOT be $fe; NUM_MAPS
+; leaves $f8-$fd unused by any real map_const, so $fd (just below ROGUE_MAP)
+; is a safe unused slot.
+DEF WARP_NO_RETURN EQU $fd
+
 ASSERT NUM_MAPS <= LAST_MAP, "map IDs overlap LAST_MAP"
+ASSERT WARP_NO_RETURN > NUM_MAPS, "WARP_NO_RETURN collides with a real map ID"
+ASSERT WARP_NO_RETURN != ROGUE_MAP, "WARP_NO_RETURN collides with ROGUE_MAP"

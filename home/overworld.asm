@@ -457,6 +457,7 @@ CheckWarpsCollision::
 	inc hl
 	dec c
 	jr nz, .loop
+WarpAbortToOverworld::
 	jp OverworldLoop
 
 CheckWarpsNoCollisionRetry1::
@@ -473,6 +474,15 @@ WarpFound1::
 	ldh [hWarpDestinationMap], a
 
 WarpFound2::
+    ; One-way warp guard: if the matched warp's destination map is the
+    ; WARP_NO_RETURN sentinel (e.g. Oak's Lab south doorway), abort before
+    ; anything is committed and leave the player standing in place. This is
+    ; the sole insertion for the one-way-warp feature; every other path below
+    ; (lobby/reward-door capture, ROGUE_MAP random-stage routing, indoor/
+    ; outdoor split, etc.) is unmodified and unreached when this fires.
+    ldh a, [hWarpDestinationMap]
+    cp WARP_NO_RETURN
+    jr z, WarpAbortToOverworld
     push hl
     ResetEvent EVENT_ENTER_ROOM
     pop hl

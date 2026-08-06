@@ -4,13 +4,16 @@ object_const_def
     const_export ROGUE_STARTER_POKEBALL_3
     const_export OAKSLAB_RIVAL
     const_export OAKSLAB_OAK
+    const_export OAKSLAB_GIRL
+    const_export OAKSLAB_SCIENTIST_1
+    const_export OAKSLAB_SCIENTIST_2
 
 OaksLab_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event  4, 11, LAST_MAP, 3
-	warp_event  5, 11, LAST_MAP, 3
+	warp_event  4, 11, WARP_NO_RETURN, 3 ; one-way: south doorway can't be walked back out
+	warp_event  5, 11, WARP_NO_RETURN, 3 ; one-way: south doorway can't be walked back out
 	warp_event  4,  0, REWARD_ROOM, 1
     warp_event  5,  0, REWARD_ROOM, 2
 
@@ -22,5 +25,8 @@ OaksLab_Object:
 	object_event  8,  3, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_STARTER_POKEBALL_3
 	object_event  4,  3, SPRITE_BLUE, STAY, NONE, TEXT_OAKSLAB_RIVAL, OPP_RIVAL1, 1
 	object_event  3,  2, SPRITE_OAK, STAY, DOWN, TEXT_OAKSLAB_OAK
+	object_event  1,  9, SPRITE_GIRL, WALK, UP_DOWN, TEXT_OAKSLAB_GIRL
+	object_event  2, 10, SPRITE_SCIENTIST, STAY, NONE, TEXT_OAKSLAB_SCIENTIST_1
+	object_event  8, 10, SPRITE_SCIENTIST, STAY, NONE, TEXT_OAKSLAB_SCIENTIST_2
 
 	def_warps_to OAKS_LAB

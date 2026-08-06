@@ -678,9 +678,14 @@ wHoFMonOrPlayer:: db
 wHoFTeamIndex2:: db
 wHoFTeamNo:: db
 
-NEXTU
-wRivalStarterTemp:: db
-wRivalStarterBallSpriteIndex:: db
+; NOTE: wRivalStarterTemp / wRivalStarterBallSpriteIndex used to be a member of
+; this union. That was a live bug: the Oak's Lab starter sequence has to hold
+; the rival's pick across several FRAMES (RivalPickStarter writes it, then
+; OaksLabRivalChoosesStarterScript reads it once his walk finishes), but offsets
+; 0-1 of this union are constantly rewritten by other scratch users, so the
+; values decayed to garbage (rival "received" species $02 / walked to the wrong
+; ball). The ball index now lives in stable WRAM next to wRivalStarter, and the
+; species is written straight to wRivalStarter - no union, no temp.
 
 NEXTU
 wFlyAnimUsingCoordList:: db
@@ -2336,7 +2341,11 @@ wPlayerJumpingYScreenCoordsIndex:: db
 
 wRivalStarter:: db
 
-	ds 1
+; Which ball (ROGUE_STARTER_POKEBALL_1/2/3) the rival picked. Must live in
+; stable WRAM, NOT a union: it has to survive the frames between the pick and
+; the rival's walk finishing. Claimed from the anonymous ds 1 padding that used
+; to sit here, so WRAM0 usage is unchanged.
+wRivalStarterBallSpriteIndex:: db
 
 wPlayerStarter:: db
 

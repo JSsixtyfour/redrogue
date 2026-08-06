@@ -58,7 +58,7 @@ TransformEffect_:
 ; species
 	ld a, [hl]
 	ld [de], a
-; type 1, type 2, catch rate, and moves
+; type 1 and type 2
 	ld bc, $5
 	add hl, bc
 	inc de
@@ -66,8 +66,22 @@ TransformEffect_:
 	inc de
 	inc de
 	inc de
-	inc bc
-	inc bc
+	ld bc, 2
+	call CopyData
+; Skip the catch rate byte - do NOT copy it. Vanilla lumped it into a single
+; 7-byte "type 1, type 2, catch rate, moves" copy, but in this ROM
+; MON_CATCH_RATE is a flag field (ghost / fusion / type variant / special form -
+; see MON_CATCH_RATE_BITFIELD_PC.md), so copying it laundered flags between the
+; two mons: a transformed Light Ball Pikachu / Thick Club Marowak lost its form
+; for the rest of the battle, and an enemy Ditto that transformed into a flagged
+; player mon inherited that mon's boosts. The user keeps its own byte instead.
+; A preserved flag stays inert while transformed anyway, because the capability
+; lookup (GetSpecialFormCaps) is keyed on the struct's species, which Transform
+; has already overwritten with the target's.
+	inc hl
+	inc de
+; moves
+	ld bc, NUM_MOVES
 	call CopyData
 	ldh a, [hWhoseTurn]
 	and a
@@ -226,7 +240,7 @@ SuperTransformEffect_:
 ; species
 	ld a, [hl]
 	ld [de], a
-; type 1, type 2, catch rate, and moves
+; type 1 and type 2
 	ld bc, $5
 	add hl, bc
 	inc de
@@ -234,8 +248,22 @@ SuperTransformEffect_:
 	inc de
 	inc de
 	inc de
-	inc bc
-	inc bc
+	ld bc, 2
+	call CopyData
+; Skip the catch rate byte - do NOT copy it. Vanilla lumped it into a single
+; 7-byte "type 1, type 2, catch rate, moves" copy, but in this ROM
+; MON_CATCH_RATE is a flag field (ghost / fusion / type variant / special form -
+; see MON_CATCH_RATE_BITFIELD_PC.md), so copying it laundered flags between the
+; two mons: a transformed Light Ball Pikachu / Thick Club Marowak lost its form
+; for the rest of the battle, and an enemy Ditto that transformed into a flagged
+; player mon inherited that mon's boosts. The user keeps its own byte instead.
+; A preserved flag stays inert while transformed anyway, because the capability
+; lookup (GetSpecialFormCaps) is keyed on the struct's species, which Transform
+; has already overwritten with the target's.
+	inc hl
+	inc de
+; moves
+	ld bc, NUM_MOVES
 	call CopyData
 	ldh a, [hWhoseTurn]
 	and a
