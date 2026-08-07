@@ -12,6 +12,28 @@ UseItem_::
 	jp z, ItemUseKODefiance
 	cp EXP_ALL ; outside ItemUsePtrTable's range
 	jp z, ItemUseExpAll
+	cp SHINY_CHARM ; outside ItemUsePtrTable's range
+	jp z, ItemUseShinyCharm
+	cp AMULET_COIN ; outside ItemUsePtrTable's range
+	jp z, ItemUseAmuletCoin
+	cp TURN_REWIND ; outside ItemUsePtrTable's range
+	jp z, ItemUseTurnRewind
+	cp RARE_SCOPE ; outside ItemUsePtrTable's range
+	jp z, ItemUseRareScope
+	cp RARE_LENS ; outside ItemUsePtrTable's range
+	jp z, ItemUseRareLens
+	cp IV_BOOSTER ; outside ItemUsePtrTable's range
+	jp z, ItemUseIVBooster
+	cp STAT_BOOSTER ; outside ItemUsePtrTable's range
+	jp z, ItemUseStatBooster
+	cp DOOR_DICE ; outside ItemUsePtrTable's range
+	jp z, ItemUseDoorDice
+	cp MON_DICE ; outside ItemUsePtrTable's range
+	jp z, ItemUseMonDice
+	cp ITEM_DICE ; outside ItemUsePtrTable's range
+	jp z, ItemUseItemDice
+	cp ELEMENT_PRISM ; outside ItemUsePtrTable's range
+	jp z, ItemUseElementPrism
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable
@@ -2767,6 +2789,94 @@ ItemUsePPTonic:
 	ld hl, PPTonicDescriptionText
 	jp PrintText
 
+ItemUseShinyCharm::
+	ld hl, ShinyCharmDescriptionText
+	jp PrintText
+
+ShinyCharmDescriptionText:
+	text_far _ShinyCharmDescriptionText
+	text_end
+
+ItemUseAmuletCoin::
+	ld hl, AmuletCoinDescriptionText
+	jp PrintText
+
+AmuletCoinDescriptionText:
+	text_far _AmuletCoinDescriptionText
+	text_end
+
+ItemUseTurnRewind::
+	ld hl, TurnRewindDescriptionText
+	jp PrintText
+
+TurnRewindDescriptionText:
+	text_far _TurnRewindDescriptionText
+	text_end
+
+ItemUseRareScope::
+	ld hl, RareScopeDescriptionText
+	jp PrintText
+
+RareScopeDescriptionText:
+	text_far _RareScopeDescriptionText
+	text_end
+
+ItemUseRareLens::
+	ld hl, RareLensDescriptionText
+	jp PrintText
+
+RareLensDescriptionText:
+	text_far _RareLensDescriptionText
+	text_end
+
+ItemUseIVBooster::
+	ld hl, IVBoosterDescriptionText
+	jp PrintText
+
+IVBoosterDescriptionText:
+	text_far _IVBoosterDescriptionText
+	text_end
+
+ItemUseStatBooster::
+	ld hl, StatBoosterDescriptionText
+	jp PrintText
+
+StatBoosterDescriptionText:
+	text_far _StatBoosterDescriptionText
+	text_end
+
+ItemUseDoorDice::
+	ld hl, DoorDiceDescriptionText
+	jp PrintText
+
+DoorDiceDescriptionText:
+	text_far _DoorDiceDescriptionText
+	text_end
+
+ItemUseMonDice::
+	ld hl, MonDiceDescriptionText
+	jp PrintText
+
+MonDiceDescriptionText:
+	text_far _MonDiceDescriptionText
+	text_end
+
+ItemUseItemDice::
+	ld hl, ItemDiceDescriptionText
+	jp PrintText
+
+ItemDiceDescriptionText:
+	text_far _ItemDiceDescriptionText
+	text_end
+
+ItemUseElementPrism::
+	ld hl, ElementPrismDescriptionText
+	jp PrintText
+
+ElementPrismDescriptionText:
+	text_far _ElementPrismDescriptionText
+	text_end
+
 ; ============================================================
 ; PPTonicRecovery
 ; Restores maxPP / (16 - wRestorePPItemLevel) PP to every move of every party
@@ -2909,6 +3019,28 @@ IsKeyItem_::
 	ret z ; PP_TONIC is a key item: can't be tossed, restores PP after battles
 	cp KO_DEFIANCE ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; KO_DEFIANCE is a key item: can't be tossed, revives your last mon once
+	cp SHINY_CHARM ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; SHINY_CHARM is a key item: can't be tossed
+	cp AMULET_COIN ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; AMULET_COIN is a key item: can't be tossed
+	cp TURN_REWIND ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; TURN_REWIND is a key item: can't be tossed
+	cp RARE_SCOPE ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; RARE_SCOPE is a key item: can't be tossed
+	cp RARE_LENS ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; RARE_LENS is a key item: can't be tossed
+	cp IV_BOOSTER ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; IV_BOOSTER is a key item: can't be tossed
+	cp STAT_BOOSTER ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; STAT_BOOSTER is a key item: can't be tossed
+	cp DOOR_DICE ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; DOOR_DICE is a key item: can't be tossed
+	cp MON_DICE ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; MON_DICE is a key item: can't be tossed
+	cp ITEM_DICE ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; ITEM_DICE is a key item: can't be tossed
+	cp ELEMENT_PRISM ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; ELEMENT_PRISM is a key item: can't be tossed
 .notLeftovers
 	cp PEARL ; outside KeyItemFlags' range (added after the elevator floors)
 	jr nz, .notPearl

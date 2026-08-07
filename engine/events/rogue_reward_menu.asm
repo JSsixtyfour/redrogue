@@ -84,7 +84,8 @@ RogueRewardTextChoice:
 
 GetRogueRewardMenuId:
 ; determine which one among the three prize texts has been selected using the text ID (stored in [hTextID])
-; prize texts' IDs are TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_1-TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_3
+; prize texts' IDs are TEXT_CREDITEXCHANGE_VENDOR_1-TEXT_CREDITEXCHANGE_VENDOR_3 (stale reference,
+; kept for historical context - this file's actual dispatch key is TEXT_REWARDROOM_REWARD_VENDOR_1)
 ; load the three prizes at wPrize1-wPrice3
 ; load the three prices at wPrize1Price-wPrize3Price
 ; display the three prizes' names, distinguishing between Pokemon names and item names (specifically TMs)

@@ -123,6 +123,7 @@ BrunosRoomBrunoEndBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetBrunoScript
+	farcall RogueAwardCredits2
 	ld a, TEXT_BRUNOSROOM_BRUNO
 	ldh [hTextID], a
 	jp DisplayTextID

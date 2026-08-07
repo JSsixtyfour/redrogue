@@ -106,6 +106,7 @@ ChampionsRoomRivalDefeatedScript:
 	ld [wIsTrainerBattle], a
 	call UpdateSprites
 	SetEvent EVENT_BEAT_CHAMPION_RIVAL
+	farcall RogueAwardCredits3
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, TEXT_CHAMPIONSROOM_RIVAL

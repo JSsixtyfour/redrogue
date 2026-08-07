@@ -103,6 +103,7 @@ LancesRoomLanceEndBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetLanceScript
+	farcall RogueAwardCredits2
 	ld a, TEXT_LANCESROOM_LANCE
 	ldh [hTextID], a
 	jp DisplayTextID

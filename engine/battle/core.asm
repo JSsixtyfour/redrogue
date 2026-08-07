@@ -893,16 +893,36 @@ FaintEnemyPokemon:
 	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
 
 ; the player has exp all
-; first, we halve the values that determine exp gain
-; the enemy mon base stats are added to stat exp, so they are halved
-; the base exp (which determines normal exp) is also halved
+; reduce the values that determine exp gain by a wExpAllLevel-scaled amount:
+; tier 0 = halved (vanilla/unchanged), tier 1 = 75%, tier 2 = 87.5%,
+; tier 3 = full experience, no reduction at all. See ApplyKeyItemTierEffects
+; (engine/events/credit_mart.asm) for how wExpAllLevel is derived.
+; the enemy mon base stats are added to stat exp; the base exp (which
+; determines normal exp) is the same span, so both get scaled together
+	ld a, [wExpAllLevel]
+	cp 3
+	jr z, .giveExpToMonsThatFought ; tier 3: no reduction, full experience
+	inc a                      ; tier 0/1/2 -> shift 1/2/3 (/2, /4, /8)
+	ld e, a
 	ld hl, wEnemyMonBaseStats
 	ld b, NUM_STATS + 2
-.halveExpDataLoop
-	srl [hl]
+.expAllReducedLoop
+	ld a, [hl]
+	ld c, a                    ; c = original value
+	ld d, e
+.expAllShiftLoop
+	srl a
+	dec d
+	jr nz, .expAllShiftLoop
+	ld d, a                    ; d = value >> shift
+	ld a, c
+	sub d                      ; value -= value>>shift
+	; tier 0's shift-1 case differs from the old plain `srl [hl]` by at most 1
+	; on odd values (ceil vs floor of value/2) - immaterial for exp/stat scaling
+	ld [hl], a
 	inc hl
 	dec b
-	jr nz, .halveExpDataLoop
+	jr nz, .expAllReducedLoop
 
 ; give exp (divided evenly) to the mons that actually fought in battle against the enemy mon that has fainted
 ; if exp all is in the bag, this will be only be half of the stat exp and normal exp, due to the above loop
@@ -987,6 +1007,41 @@ ReplaceFaintedEnemyMon:
 TrainerBattleVictory:
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
+	; Credits award (see custom_functions/credit_award.asm): exactly one of the
+	; three branches below fires per victory - gym leader, wild-area boss (the
+	; only trainer-class battle on those 3 maps), or the route's 5th trainer
+	; (wBattleCount mod 10 == 5, matching func_enc_gen.asm's GetRandRoster
+	; remainder scheme, checked AFTER the inc [hl] above). Mutually exclusive
+	; by construction - gym trainers 6-9 and anything else get no award.
+	ld a, [wGymLeaderNo]
+	and a
+	jr z, .notGymLeaderCredits
+	farcall RogueAwardCredits2
+	jr .creditsDone
+.notGymLeaderCredits
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .wildAreaBossCredits
+	cp PROCEDURAL_FOREST
+	jr z, .wildAreaBossCredits
+	cp PROCEDURAL_FACILITY
+	jr z, .wildAreaBossCredits
+	jr .checkFifthTrainerCredits
+.wildAreaBossCredits
+	farcall RogueAwardCredits1
+	jr .creditsDone
+.checkFifthTrainerCredits
+	ld a, [wBattleCount]
+.modLoop
+	cp 10
+	jr c, .gotRemainder
+	sub 10
+	jr .modLoop
+.gotRemainder
+	cp 5
+	jr nz, .creditsDone
+	farcall RogueAwardCredits1
+.creditsDone
 	call EndLowHealthAlarm
 	ld b, MUSIC_DEFEATED_GYM_LEADER
 	ld a, [wGymLeaderNo]
@@ -4138,10 +4193,6 @@ HurtItselfText:
 
 ConfusedNoMoreText:
 	text_far _ConfusedNoMoreText
-	text_end
-
-SavingEnergyText: ; unreferenced
-	text_far _SavingEnergyText
 	text_end
 
 UnleashedEnergyText:
@@ -7512,13 +7563,6 @@ _LoadTrainerPic:
 	ld a, $77
 	ld c, a
 	jp LoadUncompressedSpriteData
-
-; unreferenced
-ResetCryModifiers:
-	xor a
-	ld [wFrequencyModifier], a
-	ld [wTempoModifier], a
-	jp PlaySound
 
 ; animates the mon "growing" out of the pokeball
 AnimateSendingOutMon:

@@ -1,10 +1,4 @@
 CeladonPrizeMenu::
-	ld b, COIN_CASE
-	call IsItemInBag
-	jr nz, .havingCoinCase
-	ld hl, RequireCoinCaseText
-	jp PrintText
-.havingCoinCase
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	ld hl, ExchangeCoinsForPrizesText
@@ -56,13 +50,19 @@ WhichPrizeText:
 	text_end
 
 GetPrizeMenuId:
+; NOTE: this whole file is now DEAD CODE. The Game Corner prize room became the
+; Credit Exchange, and its three counters dispatch script_credit_vendor
+; (engine/events/credit_mart.asm) instead of script_prize_vendor, so nothing
+; reaches CeladonPrizeMenu any more. Kept compiled only so the TX_SCRIPT_PRIZE_VENDOR
+; dispatch entry and the prize data tables still resolve; safe to delete wholesale
+; along with those once nothing else wants them.
 ; determine which one among the three prize texts has been selected using the text ID (stored in [hTextID])
-; prize texts' IDs are TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_1-TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_3
+; prize texts' IDs are TEXT_CREDITEXCHANGE_VENDOR_1-TEXT_CREDITEXCHANGE_VENDOR_3
 ; load the three prizes at wPrize1-wPrice3
 ; load the three prices at wPrize1Price-wPrize3Price
 ; display the three prizes' names, distinguishing between Pokemon names and item names (specifically TMs)
 	ldh a, [hTextID]
-	sub TEXT_GAMECORNERPRIZEROOM_PRIZE_VENDOR_1
+	sub TEXT_CREDITEXCHANGE_VENDOR_1
 	ld [wWhichPrizeWindow], a ; prize texts' relative ID (i.e. 0-2)
 	add a
 	add a
@@ -158,7 +158,7 @@ PrintPrizePrice:
 	ret
 
 .CoinString:
-	db "COIN@"
+	db "CREDIT@"
 
 .SixSpacesString:
 	db "      @"

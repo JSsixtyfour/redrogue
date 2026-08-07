@@ -25,18 +25,11 @@ _GameCornerBeauty1Text::
 _GameCornerClerk1DoYouNeedSomeGameCoinsText::
 	text "Welcome to ROCKET"
 	line "GAME CORNER!"
-
-	para "Do you need some"
-	line "game coins?"
-
-	para "It's ¥1000 for 50"
-	line "coins. Would you"
-	cont "like some?"
 	done
 
 _GameCornerClerk1ThanksHereAre50CoinsText::
 	text "Thanks! Here are"
-	line "your 50 coins!"
+	line "your 50 credits!"
 	done
 
 _GameCornerClerk1PleaseComePlaySometimeText::
@@ -46,7 +39,7 @@ _GameCornerClerk1PleaseComePlaySometimeText::
 
 _GameCornerClerk1CantAffordTheCoinsText::
 	text "You can't afford"
-	line "the coins!"
+	line "it!"
 	done
 
 _GameCornerClerk1CoinCaseIsFullText::
@@ -80,7 +73,7 @@ _GameCornerFishingGuruWantToPlayText::
 
 _GameCornerFishingGuruReceived10CoinsText::
 	text "<PLAYER> received"
-	line "10 coins!@"
+	line "0 coins!@"
 	text_end
 
 _GameCornerFishingGuruDontNeedMyCoinsText::
@@ -132,47 +125,14 @@ _GameCornerGamblerText::
 	done
 
 _GameCornerClerk2WantSomeCoinsText::
-	text "What's up? Want"
-	line "some coins?"
-	prompt
-
-_GameCornerClerk2Received20CoinsText::
-	text "<PLAYER> received"
-	line "20 coins!@"
-	text_end
-
-_GameCornerClerk2YouHaveLotsOfCoinsText::
-	text "You have lots of"
-	line "coins!"
-	done
-
-_GameCornerClerk2INeedMoreCoinsText::
-	text "Darn! I need more"
-	line "coins for the"
-	cont "#MON I want!"
+	text "What's up? Just"
+	line "here to watch"
+	cont "the reels."
 	done
 
 _GameCornerGentlemanThrowingMeOffText::
 	text "Hey, what? You're"
 	line "throwing me off!"
-	cont "Here are some"
-	cont "coins, shoo!"
-	prompt
-
-_GameCornerGentlemanReceived20CoinsText::
-	text "<PLAYER> received"
-	line "20 coins!@"
-	text_end
-
-_GameCornerGentlemanYouGotYourOwnCoinsText::
-	text "You've got your"
-	line "own coins!"
-	done
-
-_GameCornerGentlemanCloselyWatchTheReelsText::
-	text "The trick is to"
-	line "watch the reels"
-	cont "closely!"
 	done
 
 _GameCornerRocketImGuardingThisPosterText::

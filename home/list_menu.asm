@@ -13,6 +13,8 @@ DisplayListMenuID::
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jr z, .doPrintBagInfo
+	cp CREDITLISTMENU
+	jr z, .doPrintBagInfo
 	cp PRICEDITEMLISTMENU
 	jr nz, .skipBagInfo
 .doPrintBagInfo
@@ -39,9 +41,9 @@ DisplayListMenuID::
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; draw the menu text box
 	call UpdateSprites ; disable sprites behind the text box
-; the code up to .skipMovingSprites appears to be useless
-	hlcoord 4, 2 ; coordinates of upper left corner of menu text box
-	lb de, 9, 14 ; height and width of menu text box
+; The hlcoord/lb de that used to sit here (vanilla flagged them "appears to be
+; useless") really were dead - UpdateSprites takes no arguments and nothing
+; below reads hl or de before overwriting them. Reclaimed for ROM0 headroom.
 	ld a, [wListMenuID]
 	and a ; PCPOKEMONLISTMENU?
 	jr nz, .skipMovingSprites
@@ -107,11 +109,10 @@ DisplayListMenuIDLoop::
 	ldh a, [hCurrentMenuItem]
 	call PlaceUnfilledArrowMenuCursor
 
-; pointless because both values are overwritten before they are read
-	ld a, $01
-	ld [wMenuExitMethod], a
-	ld [wChosenMenuItem], a
-
+; The $01 seeding of wMenuExitMethod/wChosenMenuItem that used to sit here was
+; dead (vanilla said so): every exit from this point writes both - ExitListMenu
+; sets CANCELLED_MENU plus the cursor index, and the fall-through path sets
+; CHOSE_MENU_ITEM plus the index. Reclaimed for ROM0 headroom.
 	xor a
 	ld [wMenuWatchMovingOutOfBounds], a
 	ldh a, [hCurrentMenuItem]
@@ -233,8 +234,11 @@ DisplayListMenuIDLoop::
 	; after cursor moves so it reflects the item NOW under the cursor, not the
 	; previous one. hCurrentMenuItem and wListScrollOffset are already updated.
 	ld a, [wListMenuID]
+	cp CREDITLISTMENU
+	jr z, .doRefresh
 	cp PRICEDITEMLISTMENU
 	ret nz
+.doRefresh
 	farcall PrintBagInfoText
 	ret
 ; marcelnote - new for bag pockets; 5 pockets cycle in ROMX (PocketSwitchROMX)
@@ -475,15 +479,28 @@ PrintListMenuEntries::
 	and a ; should prices be printed?
 	jr z, .skipPrintingItemPrice
 ; print item price
+	push af ; 1 = money, 2 = credits (Credit Exchange, see engine/events/credit_mart.asm)
 	push hl
 	ld a, [de]
-	ld de, ItemPrices
+	; `ld de, ItemPrices` used to sit here and was dead: GetItemPrice takes its
+	; table from wItemPrices and its item from wCurItem, and overwrites de with
+	; hItemPrice on both exit paths (GetMachinePrice likewise reads only
+	; wCurItem). Reclaimed for ROM0 headroom.
 	ld [wCurItem], a
 	call GetItemPrice
 	pop hl
 	ld bc, SCREEN_WIDTH + 5 ; 1 row down and 5 columns right
 	add hl, bc
 	ld c, 3 | LEADING_ZEROES | MONEY_SIGN
+	pop af
+	dec a
+	jr z, .gotPriceFormat
+	inc de ; credits are 4 digits, so skip the always-zero top BCD byte
+	; LEADING_ZEROES is misleadingly named: SET suppresses them (see the
+	; PrintBCDNumber header comment), CLEAR prints them. This bit was clear
+	; here, which is why prices rendered as "0030" instead of "30".
+	ld c, 2 | LEADING_ZEROES ; suppress leading zeroes; no yen sign - not money
+.gotPriceFormat
 	call PrintBCDNumber
 .skipPrintingItemPrice
 	ld a, [wListMenuID]

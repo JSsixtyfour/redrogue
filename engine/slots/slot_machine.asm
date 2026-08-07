@@ -1,4 +1,10 @@
 PromptUserToPlaySlots:
+	; The "no pulls left" refusal for entering the machine lives in
+	; StartSlotMachine (engine/slots/game_corner_slots.asm), not here: this
+	; routine has not set up the text display yet, so bailing out with a bare
+	; PrintText drew no box and never ran the matching CloseTextDisplay,
+	; freezing the player in place. The per-spin metering below is safe because
+	; by then DisplayTextIDInit has run.
 	call SaveScreenTilesToBuffer2
 	ld a, BANK(DisplayTextIDInit)
 	ASSERT BANK(DisplayTextIDInit) == 1 << BIT_NO_AUTO_TEXT_BOX
@@ -57,7 +63,30 @@ PlaySlotMachineText:
 	text_far _PlaySlotMachineText
 	text_end
 
+NoSlotPullsLeftText:
+	text_far _NoSlotPullsLeftText
+	text_waitbutton
+	text_end
+
 MainSlotMachineLoop:
+	; Credit Exchange gate, part 2 of 2: this label is re-entered once per
+	; spin (the "one more go?" YES branch below jumps straight back here), so
+	; gating and incrementing at its top meters each individual pull rather
+	; than the whole multi-spin session. Same bit layout as part 1 above.
+	ld a, [wRogueFlagsBitfield2]
+	ld b, a
+	and %00000011
+	cp 3
+	jr c, .havePullsLeft
+	ld hl, NoSlotPullsLeftText
+	call PrintText
+	ret                        ; unwinds to PromptUserToPlaySlots' cleanup,
+	                           ; same as answering "No" to one more go below
+.havePullsLeft
+	inc b                      ; safe: the low 2 bits are 0/1/2, so +1 can't
+	ld a, b                    ; carry into bit 2 and disturb any other bits
+	ld [wRogueFlagsBitfield2], a
+
 	call SlotMachine_PrintCreditCoins
 	xor a
 	ld hl, wPayoutCoins

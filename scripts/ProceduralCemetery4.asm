@@ -75,6 +75,7 @@ ProceduralCemetery4BossBattleScript:
 	xor a
 	ldh [hJoyIgnore], a
 	SetEvent  EVENT_BEAT_PC_BOSS
+	farcall RogueAwardCredits1
 	ld a, TEXT_PROCEDURALCEMETERY4_BOSS_OFFER
 	ldh [hTextID], a
 	call DisplayTextID

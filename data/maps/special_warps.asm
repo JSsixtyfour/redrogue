@@ -87,7 +87,7 @@ FlyWarpDataPtr:
 .FuchsiaCity:    fly_warp FUCHSIA_CITY,    19, 28
 .CinnabarIsland: fly_warp CINNABAR_ISLAND, 11, 12
 .IndigoPlateau:  fly_warp INDIGO_PLATEAU,   9,  6
-.IndigoPlateauLobby: fly_warp INDIGO_PLATEAU_LOBBY,  7, 11
+.IndigoPlateauLobby: fly_warp REDS_HOUSE_2F, 4, 4 ; TEMP: blackout respawn point until the real player's room exists
 .SaffronCity:    fly_warp SAFFRON_CITY,     9, 30
 .Route4:         fly_warp ROUTE_4,         11,  6
 .Route10:        fly_warp ROUTE_10,        11, 20

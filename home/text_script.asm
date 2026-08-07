@@ -81,7 +81,7 @@ ENDM
 	dict  TX_SCRIPT_BILLS_PC,                TextScript_BillsPC
 	dict  TX_SCRIPT_POKECENTER_PC,           TextScript_PokemonCenterPC
 	dict2 TX_SCRIPT_VENDING_MACHINE,         farcall VendingMachineMenu
-	dict  TX_SCRIPT_PRIZE_VENDOR,            TextScript_GameCornerPrizeMenu
+	dict  TX_SCRIPT_CREDIT_VENDOR,           TextScript_CreditVendorMenu
 	dict2 TX_SCRIPT_CABLE_CLUB_RECEPTIONIST, callfar CableClubNPC
     dict  TX_SCRIPT_ROGUE_VENDOR,            TextScript_RogueRewardMenu
     dict  TX_SCRIPT_BRIDGE_GIFT,             TextScript_BridgeGiftMenu

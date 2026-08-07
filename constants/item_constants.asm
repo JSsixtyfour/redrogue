@@ -127,6 +127,18 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 ; battle, revives it at half HP instead (see wKODefianceUsages / TryKODefiance)
 	const KO_DEFIANCE   ; $65
 
+	const SHINY_CHARM       ; $66
+	const AMULET_COIN       ; $67
+	const TURN_REWIND       ; $68
+	const RARE_SCOPE        ; $69
+	const RARE_LENS         ; $6A
+	const IV_BOOSTER        ; $6B
+	const STAT_BOOSTER      ; $6C
+	const DOOR_DICE         ; $6D
+	const MON_DICE          ; $6E
+	const ITEM_DICE         ; $6F
+	const ELEMENT_PRISM     ; $70
+
 	const_next $C4
 
 ; HMs are defined before TMs, so the actual number of TM definitions

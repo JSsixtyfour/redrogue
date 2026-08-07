@@ -2090,11 +2090,19 @@ wRewardLevelDataBuffer:: ds 2
 
 ; 32-bit bitfield: bit N = stage N visited this run (by index in RogueStageMapTable)
 wVisitedStagesBitfield:: ds 4
-; bit 0: route is next after this gym / gym is next after this route
-; bit 1: set by GetRandRoster when the current trainer is the final (5th)
-; bit 2: trade offered for RogueRewardMenu
-;        trainer of a route, signalling GetRandRosterLoop to apply the level
-;        bonus and rarer class distribution from trainer_difficulty_settings
+; Bit constants: constants/ram_constants.asm BIT_ROGUE_* / BIT_WITCH_ACCEPTED / BIT_MINIBOSS_*.
+;   bit 0 (BIT_ROGUE_GYM_NEXT)      - set on route entry, cleared on badge receipt;
+;                                     route is next after this gym / gym is next after this route
+;   bit 1 (BIT_ROGUE_FINAL_TRAINER) - set by GetRandRoster when the current trainer is the
+;                                     final (5th route / 9th gym) trainer of the tier, signalling
+;                                     GetRandRosterLoop to apply the level bonus and rarer class
+;                                     distribution from trainer_difficulty_settings
+;   bit 2 (BIT_ROGUE_TRADE_ACTIVE)  - trade offer is live for this RogueRewardMenu batch
+;   bit 3 (BIT_WITCH_ACCEPTED)      - player accepted the active witch challenge
+;   bits 4-5 (MINIBOSS_TYPE_MASK)   - offered mini-boss type, 2-bit field (see MINIBOSS_TYPE_SHIFT)
+;   bit 6 (BIT_MINIBOSS_DOOR)       - which lobby door holds the mini-boss (0 = door 1, 1 = door 2)
+;   bit 7 (BIT_MINIBOSS_ACTIVE)     - a mini-boss is active on the stage being entered
+; All 8 bits are allocated - there is no free bit here for new state.
 wRogueFlagsBitfield:: db
 wRogueItem:: dw
 ; Random_Item_Selection's TM-ownership retry (AllTMCheck) recurses via jp on a
@@ -2290,6 +2298,25 @@ wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
                                ; CacheFusionSecondaryBaseStats so _CalcStat
                                ; never needs to call GetMonHeader mid-read
 
+; Credits currency (see CREDITS_SYSTEM_PLAN_PC.md). Credits themselves live in
+; wPlayerCoins; these are run-scoped state, above wGameProgressFlagsEnd so they
+; zero on new game.
+wCreditsEarnedThisRun:: db   ; tally for the respawn popup; nonzero IS "popup pending"
+wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level byte)
+
+; General-purpose second rogue-run bitfield: wRogueFlagsBitfield (above) has
+; zero free bits (see its own comment), so new run-scoped flags land here
+; instead of on that byte. 6 of its 8 bits are still free - see WRAM_BIBLE.md
+; §0/§K for current WRAM0 headroom. Document every bit here as it's claimed;
+; do not add a bit without a comment.
+;   bits 0-1: Credit Exchange slot pulls USED this run (0-3, see
+;             engine/slots/slot_machine.asm MainSlotMachineLoop and
+;             custom_functions/credit_popup.asm RogueOnBlackout, which
+;             clears them on the next blackout - i.e. bits, not "remaining",
+;             so an untouched/new-game byte already means "3 available")
+;   bits 2-7: unused
+wRogueFlagsBitfield2:: db
+
 wGameProgressFlagsEnd::
 
 ; Elite Four room order for the final sequence: index (0-23) into
@@ -2300,13 +2327,14 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 22 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 19 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
 	      ; wGameProgressFlagsEnd (unnamed, never read/written), so shrinking only
 	      ; shifts saved offsets (save-break, acceptable per WRAM_BIBLE.md) with zero
 	      ; runtime effect. Tune this number if the linker reports a WRAM0 overflow.
+	      ; -3 more for wCreditsEarnedThisRun + wRogueFlagsBitfield2 + wExpAllLevel (Credits system), still net-zero WRAM0
 	      ; -1 more for wWildAreaState (wild-area door integration), still net-zero WRAM0
 	      ; -1 more for wProcCemBossBattle (cemetery ghost boss flag), still net-zero WRAM0
 	      ; -2 more for wBridgeOfferedLo + wBridgeState (Bridge System), still net-zero WRAM0
@@ -2479,11 +2507,20 @@ wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
 ;      Requires fixing PrintListMenuEntries advance (currently assumes 2 bytes/entry)
 ;      and .switchBagPocket ITEMLISTMENU check. See custom_functions/tm_bag.asm.
 ;   B) Custom display function reading sTMBitfield directly → 0 bytes (no buffer).
-wKeyItemPocketBuf:: ds 10   ; 1 + 4×2 + 1 = 10 bytes
+; Sized for 15 key items (the Credits system adds 11 to the existing 4).
+; BuildKeyItemPCWithdrawList (custom_functions/key_item_pocket.asm:343) lists
+; every OWNED item, so the old ds 10 would overrun into wRecoveryPocketBuf.
+wKeyItemPocketBuf:: ds 34   ; 1 + 15×2 + 1 = 32 bytes, 34 for slack
 wRecoveryPocketBuf:: ds 44  ; 1 + 21×2 + 1 = 44 bytes
 wStatPocketBuf::    ds 26   ; 1 + 12×2 + 1 = 26 bytes
 wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
-
+; Credit Exchange vendor stock (engine/events/credit_mart.asm): count + up to
+; 15 one-byte item ids + $ff terminator. Cannot share wItemList (ds 16) - the
+; upgrade vendor lists every owned key item, which overflows it at 15 owned.
+; Lives here because this union is shadowed by the 425-byte enemy party, so it
+; costs zero real WRAM0; the vendor only ever runs in the overworld, where the
+; enemy party and wild-encounter data are both dead.
+wCreditItemList::   ds 18
 ENDU
 
 ; The pocket buffers share this union with the wild-encounter data (member A) and

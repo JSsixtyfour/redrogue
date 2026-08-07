@@ -102,4 +102,15 @@ ItemNames::
 	li "PEARL"
 	li "PP TONIC"
 	li "KO DEFIANCE"
-	assert_list_length NUM_ITEMS + NUM_FLOORS + 4
+	li "SHINY CHARM"
+	li "AMULET COIN"
+	li "TURN REWIND"
+	li "RARE SCOPE"
+	li "RARE LENS"
+	li "IV BOOSTER"
+	li "STAT BOOSTER"
+	li "DOOR DICE"
+	li "MON DICE"
+	li "ITEM DICE"
+	li "ELEM PRISM"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 15

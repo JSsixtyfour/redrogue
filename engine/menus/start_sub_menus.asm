@@ -603,6 +603,7 @@ DrawTrainerInfo:
 	ld [hli], a
 	ld [hl], 1
 	hlcoord 0, 0
+	ld b, 7 ; interior rows 1-7, one taller than vanilla to fit the CREDIT row
 	call TrainerInfo_DrawTextBox
 	ld hl, wTrainerInfoTextBoxWidthPlus1
 	ld a, 16 + 1
@@ -611,6 +612,7 @@ DrawTrainerInfo:
 	ld [hli], a
 	ld [hl], 3
 	hlcoord 1, 10
+	ld b, 6 ; badge box unchanged: interior rows 11-16, bottom edge on 17
 	call TrainerInfo_DrawTextBox
 	hlcoord 0, 10
 	ld a, $d7
@@ -620,17 +622,21 @@ DrawTrainerInfo:
 	hlcoord 6, 9
 	ld de, TrainerInfo_BadgesText
 	call PlaceString
-	hlcoord 2, 2
+	hlcoord 2, 1
 	ld de, TrainerInfo_NameMoneyTimeText
 	call PlaceString
-	hlcoord 7, 2
+	hlcoord 7, 1
 	ld de, wPlayerName
 	call PlaceString
-	hlcoord 8, 4
+	hlcoord 9, 3
+	ld de, wPlayerCoins
+	ld c, 2 | LEADING_ZEROES | LEFT_ALIGN
+	call PrintBCDNumber
+	hlcoord 8, 5
 	ld de, wPlayerMoney
 	ld c, 3 | LEADING_ZEROES | LEFT_ALIGN | MONEY_SIGN
 	call PrintBCDNumber
-	hlcoord 9, 6
+	hlcoord 9, 7
 	ld de, wPlayTimeHours
 	lb bc, LEFT_ALIGN | 1, 3
 	call PrintNumber
@@ -644,8 +650,12 @@ TrainerInfo_FarCopyData:
 	ld a, BANK(TrainerInfoTextBoxTileGraphics)
 	jp FarCopyData2
 
+; Placed at (2,1). <NEXT> advances 2 rows, so these land on rows 1/3/5/7 -
+; evenly spaced, which is why the box above is drawn 7 interior rows tall
+; instead of vanilla's 6.
 TrainerInfo_NameMoneyTimeText:
 	db   "NAME/"
+	next "CREDIT/"
 	next "MONEY/"
 	next "TIME/@"
 
@@ -657,18 +667,19 @@ TrainerInfo_BadgesText:
 ; height is always 6
 ; INPUT:
 ; hl = destination address
+; b = height (interior rows) - was hardcoded to 6; the two callers now differ
 ; [wTrainerInfoTextBoxWidthPlus1] = width
 ; [wTrainerInfoTextBoxWidth] = width - 1
 ; [wTrainerInfoTextBoxNextRowOffset] = distance from the end of a text box row to the start of the next
 TrainerInfo_DrawTextBox:
 	ld a, $79 ; upper left corner tile ID
 	lb de, $7a, $7b ; top edge and upper right corner tile ID's
-	call TrainerInfo_DrawHorizontalEdge ; draw top edge
+	call TrainerInfo_DrawHorizontalEdge ; draw top edge (uses a/c/hl, not b)
 	call TrainerInfo_NextTextBoxRow
 	ld a, [wTrainerInfoTextBoxWidthPlus1]
 	ld e, a
 	ld d, 0
-	ld c, 6 ; height of the text box
+	ld c, b ; height of the text box
 .loop
 	ld [hl], $7c ; left edge tile ID
 	add hl, de

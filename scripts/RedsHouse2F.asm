@@ -14,6 +14,7 @@ RedsHouse2FDefaultScript:
 	ldh [hJoyHeld], a
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
+	farcall RogueCreditPopupCheck
 	ld a, SCRIPT_REDSHOUSE2F_NOOP
 	ld [wRedsHouse2FCurScript], a
 	ret

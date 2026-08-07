@@ -127,6 +127,7 @@ AgathasRoomAgathaEndBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetAgathaScript
+	farcall RogueAwardCredits2
 	ld a, TEXT_AGATHASROOM_AGATHA
 	ldh [hTextID], a
 	jp DisplayTextID

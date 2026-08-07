@@ -43,4 +43,7 @@ ResetStatusAndHalveMoneyOnBlackout::
 	set BIT_ESCAPE_WARP, [hl]
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
+	; a blackout is the run boundary for credits: refill the Credit Exchange
+	; slot pulls and re-derive KO Defiance charges from their SRAM tier
+	farcall RogueOnBlackout
 	predef_jump HealParty

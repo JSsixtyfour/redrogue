@@ -138,7 +138,7 @@ MapHeaderBanks::
 	db BANK(CeladonGym_h)
 	db BANK(GameCorner_h)
 	db BANK(CeladonMart5F_h)
-	db BANK(GameCornerPrizeRoom_h)
+	db BANK(CreditExchange_h)
 	db BANK(CeladonDiner_h)
 	db BANK(CeladonChiefHouse_h)
 	db BANK(CeladonHotel_h)

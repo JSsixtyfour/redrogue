@@ -28,6 +28,7 @@ HiddenEventMaps:
 	hidden_event_map CELADON_POKECENTER
 	hidden_event_map CELADON_GYM
 	hidden_event_map GAME_CORNER
+	hidden_event_map CREDIT_EXCHANGE
 	hidden_event_map CELADON_HOTEL
 	hidden_event_map FUCHSIA_POKECENTER
 	hidden_event_map FUCHSIA_GYM
@@ -248,55 +249,13 @@ DEF ANY_FACING EQU $d0
 	db -1 ; end
 
 	hidden_events_for GAME_CORNER
-	hidden_event 18, 15, StartSlotMachine, ANY_FACING
-	hidden_event 18, 14, StartSlotMachine, ANY_FACING
-	hidden_event 18, 13, StartSlotMachine, ANY_FACING
-	hidden_event 18, 12, StartSlotMachine, ANY_FACING
-	hidden_event 18, 11, StartSlotMachine, ANY_FACING
-	hidden_event 18, 10, StartSlotMachine, SLOTS_SOMEONESKEYS
-	hidden_event 13, 10, StartSlotMachine, ANY_FACING
-	hidden_event 13, 11, StartSlotMachine, ANY_FACING
-	hidden_event 13, 12, StartSlotMachine, SLOTS_OUTTOLUNCH
-	hidden_event 13, 13, StartSlotMachine, ANY_FACING
-	hidden_event 13, 14, StartSlotMachine, ANY_FACING
-	hidden_event 13, 15, StartSlotMachine, ANY_FACING
-	hidden_event 12, 15, StartSlotMachine, ANY_FACING
-	hidden_event 12, 14, StartSlotMachine, ANY_FACING
-	hidden_event 12, 13, StartSlotMachine, ANY_FACING
-	hidden_event 12, 12, StartSlotMachine, ANY_FACING
-	hidden_event 12, 11, StartSlotMachine, ANY_FACING
-	hidden_event 12, 10, StartSlotMachine, ANY_FACING
-	hidden_event  7, 10, StartSlotMachine, ANY_FACING
-	hidden_event  7, 11, StartSlotMachine, ANY_FACING
-	hidden_event  7, 12, StartSlotMachine, ANY_FACING
-	hidden_event  7, 13, StartSlotMachine, ANY_FACING
-	hidden_event  7, 14, StartSlotMachine, ANY_FACING
-	hidden_event  7, 15, StartSlotMachine, ANY_FACING
-	hidden_event  6, 15, StartSlotMachine, ANY_FACING
-	hidden_event  6, 14, StartSlotMachine, ANY_FACING
-	hidden_event  6, 13, StartSlotMachine, ANY_FACING
-	hidden_event  6, 12, StartSlotMachine, SLOTS_OUTOFORDER
-	hidden_event  6, 11, StartSlotMachine, ANY_FACING
-	hidden_event  6, 10, StartSlotMachine, ANY_FACING
-	hidden_event  1, 10, StartSlotMachine, ANY_FACING
-	hidden_event  1, 11, StartSlotMachine, ANY_FACING
-	hidden_event  1, 12, StartSlotMachine, ANY_FACING
-	hidden_event  1, 13, StartSlotMachine, ANY_FACING
-	hidden_event  1, 14, StartSlotMachine, ANY_FACING
-	hidden_event  1, 15, StartSlotMachine, ANY_FACING
-	; HiddenCoins argument: COIN + <number of coins>
-	hidden_event  0,  8, HiddenCoins, COIN + 10
-	hidden_event  1, 16, HiddenCoins, COIN + 10
-	hidden_event  3, 11, HiddenCoins, COIN + 20
-	hidden_event  3, 14, HiddenCoins, COIN + 10
-	hidden_event  4, 12, HiddenCoins, COIN + 10
-	hidden_event  9, 12, HiddenCoins, COIN + 20
-	hidden_event  9, 15, HiddenCoins, COIN + 10
-	hidden_event 16, 14, HiddenCoins, COIN + 10
-	hidden_event 10, 16, HiddenCoins, COIN + 10
-	hidden_event 11,  7, HiddenCoins, COIN + 40
-	hidden_event 15,  8, HiddenCoins, COIN + 100
-	hidden_event 12, 15, HiddenCoins, COIN + 10
+	db -1 ; end
+
+	; the slot machine moved here from GAME_CORNER (see the credits currency
+	; plan) - one machine, gated to 3 pulls per run in
+	; engine/slots/slot_machine.asm, not by anything here.
+	hidden_events_for CREDIT_EXCHANGE
+	hidden_event 8, 4, StartSlotMachine, ANY_FACING
 	db -1 ; end
 
 	hidden_events_for CELADON_HOTEL

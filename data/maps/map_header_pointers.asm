@@ -138,7 +138,7 @@ MapHeaderPointers::
 	dw CeladonGym_h
 	dw GameCorner_h
 	dw CeladonMart5F_h
-	dw GameCornerPrizeRoom_h
+	dw CreditExchange_h
 	dw CeladonDiner_h
 	dw CeladonChiefHouse_h
 	dw CeladonHotel_h

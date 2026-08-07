@@ -50,11 +50,6 @@ HiddenItemBagFullText::
 	text_end
 
 HiddenCoins:
-	ld b, COIN_CASE
-	predef GetQuantityOfItemInBag
-	ld a, b
-	and a
-	ret z
 	ld hl, HiddenCoinCoords
 	call FindHiddenItemOrCoinsIndex
 	ld [wHiddenItemOrCoinsIndex], a

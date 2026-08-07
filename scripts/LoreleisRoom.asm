@@ -126,6 +126,7 @@ LoreleisRoomLoreleiEndBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetLoreleiScript
+	farcall RogueAwardCredits2
 	ld a, TEXT_LORELEISROOM_LORELEI
 	ldh [hTextID], a
 	jp DisplayTextID

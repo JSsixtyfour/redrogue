@@ -94,6 +94,145 @@ _KODefianceActivatedText::
 	line "activated!"
 	done
 
+_ShinyCharmDescriptionText::
+	text "Ups the odds"
+	line "of finding"
+	cont "shiny Pokémon."
+	done
+
+_AmuletCoinDescriptionText::
+	text "Increases"
+	line "money earned"
+	cont "from battles."
+	done
+
+_TurnRewindDescriptionText::
+	text "Rewinds to"
+	line "the prior turn"
+	cont "in battle."
+	done
+
+_RareScopeDescriptionText::
+	text "Increases the"
+	line "rarity of wild"
+	cont "Pokémon."
+	done
+
+_RareLensDescriptionText::
+	text "Increases the"
+	line "rarity of"
+	cont "items found."
+	done
+
+_IVBoosterDescriptionText::
+	text "Increases IVs"
+	line "of caught"
+	cont "Pokémon."
+	done
+
+_StatBoosterDescriptionText::
+	text "Increases stat"
+	line "experience"
+	cont "gained."
+	done
+
+_DoorDiceDescriptionText::
+	text "Lets you"
+	line "reroll lobby"
+	cont "doors."
+	done
+
+_MonDiceDescriptionText::
+	text "Lets you"
+	line "reroll a wild"
+	cont "Pokémon."
+	done
+
+_ItemDiceDescriptionText::
+	text "Lets you"
+	line "reroll a"
+	cont "found item."
+	done
+
+_ElementPrismDescriptionText::
+	text "Boosts one"
+	line "type's damage"
+	cont "and odds."
+	done
+
+; Credit Exchange vendors (engine/events/credit_mart.asm)
+_CreditVendorGreetingText::
+	text "What'll it be?"
+	done
+
+_CreditBuyConfirmText::
+	text "So, you want"
+	line "@"
+	text_ram wNameBuffer
+	text "?"
+	done
+
+_CreditBoughtText::
+	text "Thanks! Enjoy"
+	line "it out there."
+	done
+
+; Text-box lines fit 18 characters. Item names run to 12 (ITEM_NAME_LENGTH-1),
+; so the name has to start its own line - "Upgrade " + a 12-char name is
+; already 20 and wrapped mid-word on screen.
+_CreditUpgradeConfirmText::
+	text "@"
+	text_ram wNameBuffer
+	text ":"
+	line "@"
+	text_bcd hCoins, 2 | LEADING_ZEROES | LEFT_ALIGN
+	text " CREDITS. OK?"
+	done
+
+_CreditUpgradedText::
+	text "Done! Now at"
+	line "TIER @"
+	text_bcd wCreditItemList + 17, 1 | LEFT_ALIGN
+	text "!"
+	done
+; credit_mart.asm stores internal tier + 1 there, so this prints the same
+; 1-based number the bag and the vendor list show.
+
+_CreditNotEnoughText::
+	text "You don't have"
+	line "enough CREDITS."
+	done
+
+_CreditSentToPCText::
+	text "Your bag was"
+	line "full, so it was"
+	cont "sent to your PC!"
+	done
+
+_CreditNothingToSellText::
+	text "You've bought"
+	line "everything I"
+	cont "have. Nice."
+	done
+
+_CreditNothingToUpgradeText::
+	text "Nothing of yours"
+	line "can be upgraded"
+	cont "right now."
+	done
+
+_CreditRoomVendorClosedText::
+	text "Room upgrades?"
+	line "Not open yet."
+	cont "Check back."
+	done
+
+_NoSlotPullsLeftText::
+	text "No pulls left."
+	line "Try again next"
+	cont "run."
+	done
+
 ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): shared Rival mini-boss
 ; dialogue, callable from any route's 5th-trainer encounter, not tied to a
 ; specific map's text file.

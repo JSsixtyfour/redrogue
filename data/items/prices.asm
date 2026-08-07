@@ -102,4 +102,37 @@ ItemPrices::
 	bcd3 5000  ; PEARL
 	bcd3 0     ; PP_TONIC
 	bcd3 0     ; KO_DEFIANCE
-	assert_table_length NUM_ITEMS + NUM_FLOORS + 4
+	bcd3 0     ; SHINY_CHARM
+	bcd3 0     ; AMULET_COIN
+	bcd3 0     ; TURN_REWIND
+	bcd3 0     ; RARE_SCOPE
+	bcd3 0     ; RARE_LENS
+	bcd3 0     ; IV_BOOSTER
+	bcd3 0     ; STAT_BOOSTER
+	bcd3 0     ; DOOR_DICE
+	bcd3 0     ; MON_DICE
+	bcd3 0     ; ITEM_DICE
+	bcd3 0     ; ELEMENT_PRISM
+	assert_table_length NUM_ITEMS + NUM_FLOORS + 15
+
+; Credit (not money) prices for the Credit Exchange key-item seller.
+; See engine/events/credit_mart.asm.
+;
+; GetItemPrice (home/item_price.asm) resolves an entry as base + (itemID-1)*3
+; and hardcodes a bankswitch to BANK(ItemPrices), so this table MUST live in
+; this file's bank. The vendor points wItemPrices at CreditItemPrices biased
+; back by (SHINY_CHARM - 1) * 3, so item $66 lands on the first row; only the
+; ten ids below are ever looked up here, and they are contiguous by design.
+;
+; ELEMENT_PRISM is deliberately absent - it is an NPC gift, never for sale.
+CreditItemPrices::
+	bcd3 30    ; SHINY_CHARM
+	bcd3 20    ; AMULET_COIN
+	bcd3 25    ; TURN_REWIND
+	bcd3 25    ; RARE_SCOPE
+	bcd3 25    ; RARE_LENS
+	bcd3 35    ; IV_BOOSTER
+	bcd3 30    ; STAT_BOOSTER
+	bcd3 15    ; DOOR_DICE
+	bcd3 15    ; MON_DICE
+	bcd3 15    ; ITEM_DICE

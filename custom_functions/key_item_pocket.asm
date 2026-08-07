@@ -15,6 +15,17 @@ KeyItemPocketTable::
     db PP_TONIC,    KEY_ITEM_BIT_PP_TONIC_OWNED
     db KO_DEFIANCE, KEY_ITEM_BIT_KO_DEFIANCE_OWNED
     db EXP_ALL,     KEY_ITEM_BIT_EXP_ALL_OWNED
+    db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED
+    db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED
+    db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED
+    db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED
+    db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED
+    db IV_BOOSTER,    KEY_ITEM_BIT_IV_BOOSTER_OWNED
+    db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED
+    db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED
+    db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED
+    db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED
+    db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED
     db $FF
 
 ; ============================================================
@@ -39,6 +50,53 @@ IsKeyPocketItem::
     ret
 .no
     and a
+    ret
+
+; ============================================================
+; GetKeyItemTierForCurItem — upgrade tier (0-3) of wCurItem, 0 if it is not a
+; key item. Lives here rather than beside the Credit Exchange's own copy so the
+; bag/PC display (custom_functions/tm_bag.asm) can reach it with a plain call:
+; both are in the "rogue" bank, whereas engine/events/credit_mart.asm is not,
+; and farcall's Bankswitch destroys bc before the callee runs, so an index
+; cannot be passed across banks in c.
+;
+; sKeyItemTiers packs 2 bits per item: item N -> bits 2N/2N+1 of byte N>>2.
+; IsKeyPocketItem returns the OWN bit index (0,2,4,...), so index = c >> 1.
+; OUTPUT: a = tier (0-3). Clobbers bc/de/hl.
+; ============================================================
+GetKeyItemTierForCurItem::
+    call IsKeyPocketItem
+    jr nc, .notKeyItem
+    srl c                     ; c = key item index
+    ld a, c
+    and 3
+    add a
+    ld b, a                   ; b = shift = (index & 3) * 2
+    ld a, c
+    srl a
+    srl a
+    ld l, a                   ; byte offset = index >> 2
+    ld h, 0
+    ld de, sKeyItemTiers
+    add hl, de
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, [hl]
+    ld c, a
+    xor a
+    ld [rRAMG], a             ; never leave SRAM enabled across a return
+    ld a, c
+    inc b
+.shift
+    dec b
+    jr z, .gotTier
+    srl a
+    jr .shift
+.gotTier
+    and 3
+    ret
+.notKeyItem
+    xor a
     ret
 
 ; ============================================================
@@ -148,6 +206,14 @@ HasKeyPocketItem:: jp IsKeyItemActive
 ; OwnKeyItem — grant wCurItem. Sets own bit always.
 ; Also sets active bit if fewer than KEY_ITEM_MAX_ACTIVE items active.
 ; Replaces AcquireKeyPocketItem.
+;
+; Reports which happened via hSpriteOffset: 0 = equipped into the bag,
+; $ff = owned but parked in the PC because all active slots were full.
+; GiveItem (home/give.asm) reads exactly this to choose between its normal
+; "got item" return and its carry-clear "sent to PC" return. This routine used
+; to never write it, so GiveItem branched on whatever scratch value happened to
+; be there - _BuildPocketScan below uses the same byte - which made a perfectly
+; successful grant randomly report itself as a failure to the caller.
 ; ============================================================
 OwnKeyItem::
 AcquireKeyPocketItem::
@@ -171,7 +237,13 @@ AcquireKeyPocketItem::
     ld a, [hl]
     or b
     ld [hl], a
+    xor a
+    ldh [hSpriteOffset], a    ; 0 = equipped straight into the bag
+    jr .finish
 .ownOnly
+    ld a, $ff
+    ldh [hSpriteOffset], a    ; $ff = owned, but stored in the PC
+.finish
     xor a
     ld [rRAMG], a
     ret
@@ -251,16 +323,23 @@ UnequipKeyItem::
 
 ; ============================================================
 ; ClearKeyItemsBitfield — wipe all bits. Call on true new game only.
+;
+; Clears sKeyItemTiers as well as sKeyItemsBitfield: the two are adjacent in
+; ram/sram.asm and are wiped as one 8-byte block. Leaving the tier array
+; uninitialised meant it powered up holding whatever was in SRAM, and any item
+; whose garbage tier happened to read >= MAX_KEY_ITEM_TIER was silently treated
+; as fully upgraded and dropped from the Credit Exchange's upgrade list.
 ; ============================================================
 ClearKeyItemsBitfield::
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
     ld hl, sKeyItemsBitfield
+    ld b, 8       ; 4 bytes of ownership bits + 4 of upgrade tiers
     xor a
+.clearLoop
     ld [hli], a
-    ld [hli], a
-    ld [hli], a
-    ld [hl], a
+    dec b
+    jr nz, .clearLoop
     xor a
     ld [rRAMG], a
     ret

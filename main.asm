@@ -377,6 +377,11 @@ INCLUDE "engine/movie/evolution.asm"
 INCLUDE "engine/overworld/elevator.asm"
 INCLUDE "engine/items/tm_prices.asm"
 
+SECTION "Credit Exchange", ROMX
+
+INCLUDE "engine/events/credit_mart.asm"
+
+
 SECTION "rogue", ROMX
 
 INCLUDE "custom_functions/random_stage_selection.asm"
@@ -386,6 +391,8 @@ INCLUDE "custom_functions/bridge_selection.asm"
 INCLUDE "custom_functions/final_sequence.asm"
 INCLUDE "custom_functions/tm_bag.asm"
 INCLUDE "custom_functions/key_item_pocket.asm"
+INCLUDE "custom_functions/credit_award.asm"
+INCLUDE "custom_functions/credit_popup.asm"
 INCLUDE "custom_functions/pocket_items.asm"
 
 INCLUDE "engine/pokemon/rarity.asm"

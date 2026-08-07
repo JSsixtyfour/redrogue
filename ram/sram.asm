@@ -142,7 +142,7 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $479 ; was $591; 112 bytes carved for sFusionDiagBuf below
+	ds $475 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below
 
 ; Diagonal tile save buffer for sprite fusion.
 ; Holds the 7 diagonal tiles (col==row) from species_a's 2bpp interleaved
@@ -164,6 +164,15 @@ sTMBitfield:: ds 7
 ; Active = item is in the bag and usable. Max 3 active at once.
 ; GiveItem auto-activates if slots available; PC WITHDRAW/DEPOSIT for manual swap.
 sKeyItemsBitfield:: ds 4    ; only byte 0 is used; extra bytes cost nothing
+
+; Key item upgrade tiers: 2 bits per item, 16 items, tier 0-3.
+; Same bit ordering as sKeyItemsBitfield (item N -> bits 2N, 2N+1).
+; SRAM so upgrades persist across runs and blackouts.
+; MUST stay immediately after sKeyItemsBitfield: ClearKeyItemsBitfield
+; (custom_functions/key_item_pocket.asm) zeroes both as one 8-byte run on new
+; game. Separating them would leave tiers holding stale SRAM, which reads as
+; "already maxed" and hides items from the Credit Exchange upgrade vendor.
+sKeyItemTiers:: ds 4
 
 sGameData::
 sPlayerName::  ds NAME_LENGTH

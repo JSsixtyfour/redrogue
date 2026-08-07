@@ -38,22 +38,25 @@ TextScript_BillsPC::
 	ld hl, BillsPC_
 	jr BankswitchAndContinue
 
-TextScript_GameCornerPrizeMenu::
-	ld b, BANK(CeladonPrizeMenu)
-	ld hl, CeladonPrizeMenu
+; Took over the fall-through slot the Game Corner prize menu used to occupy -
+; that room is the Credit Exchange now and nothing dispatches the prize vendor
+; any more (see engine/events/prize_menu.asm, kept compiled but dead).
+TextScript_CreditVendorMenu::
+	ld b, BANK(CreditVendorMenu)
+	ld hl, CreditVendorMenu
 BankswitchAndContinue::
 	call Bankswitch
 	jp HoldTextDisplayOpen        ; continue to main text-engine function
-    
+
 TextScript_RogueRewardMenu::
 	ld b, BANK(RogueRewardMenu)
 	ld hl, RogueRewardMenu
-    jp BankswitchAndContinue
-    
+    jr BankswitchAndContinue
+
 TextScript_BridgeGiftMenu::
 	ld b, BANK(BridgeGiftMenu)
 	ld hl, BridgeGiftMenu
-    jp BankswitchAndContinue
+    jr BankswitchAndContinue
 
 TextScript_PokemonCenterPC::
 	ld b, BANK(ActivatePC)

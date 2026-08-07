@@ -6,6 +6,13 @@
 	const PRICEDITEMLISTMENU ; $03 ; Pokemart buy menu / Pokemart buy/sell choose quantity menu
 	const ITEMLISTMENU       ; $04 ; Start menu Item menu / Pokemart sell menu
 	const SPECIALLISTMENU    ; $05 ; list of special "items" e.g. floor list in elevators / list of badges
+	const CREDITLISTMENU     ; $06 ; Credit Exchange vendors (engine/events/credit_mart.asm)
+; CREDITLISTMENU behaves like PRICEDITEMLISTMENU everywhere that matters (1-byte
+; entries, item names, ItemPrices bank) purely by not being ITEMLISTMENU or
+; MOVESLISTMENU. It exists as its own id solely so the two PrintBagInfoText
+; calls in home/list_menu.asm - which are keyed to PRICEDITEMLISTMENU - do NOT
+; fire for it. Those draw the bag's pocket info box, which renders as garbage in
+; a vendor context where no bag pocket is open.
 
 ; NamePointers indexes (see home/names2.asm)
 	const_def 1

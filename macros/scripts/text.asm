@@ -245,3 +245,8 @@ ENDM
 MACRO script_bridge_gift
 	db TX_SCRIPT_BRIDGE_GIFT
 ENDM
+
+    const TX_SCRIPT_CREDIT_VENDOR
+MACRO script_credit_vendor
+	db TX_SCRIPT_CREDIT_VENDOR
+ENDM

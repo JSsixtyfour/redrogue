@@ -354,36 +354,7 @@ GameCornerMiddleAgedWomanText:
 
 GameCornerClerk2Text:
 	text_asm
-	CheckEvent EVENT_GOT_20_COINS_2
-	jr nz, .alreadyGotNpcCoins
 	ld hl, .WantSomeCoinsText
-	call PrintText
-	ld b, COIN_CASE
-	call IsItemInBag
-	jr z, .dontHaveCoinCase
-	call Has9990Coins
-	jr nc, .coinCaseFull
-	xor a
-	ldh [hUnusedCoinsByte], a
-	ldh [hCoins], a
-	ld a, $20
-	ldh [hCoins + 1], a
-	ld de, wPlayerCoins + 1
-	ld hl, hCoins + 1
-	ld c, $2
-	predef AddBCDPredef
-	SetEvent EVENT_GOT_20_COINS_2
-	ld hl, .Received20CoinsText
-	jr .print_ret
-.alreadyGotNpcCoins
-	ld hl, .INeedMoreCoinsText
-	jr .print_ret
-.coinCaseFull
-	ld hl, .YouHaveLotsOfCoinsText
-	jr .print_ret
-.dontHaveCoinCase
-	ld hl, GameCornerOopsForgotCoinCaseText
-.print_ret
 	call PrintText
 	jp TextScriptEnd
 
@@ -391,69 +362,14 @@ GameCornerClerk2Text:
 	text_far _GameCornerClerk2WantSomeCoinsText
 	text_end
 
-.Received20CoinsText:
-	text_far _GameCornerClerk2Received20CoinsText
-	sound_get_item_1
-	text_end
-
-.YouHaveLotsOfCoinsText:
-	text_far _GameCornerClerk2YouHaveLotsOfCoinsText
-	text_end
-
-.INeedMoreCoinsText:
-	text_far _GameCornerClerk2INeedMoreCoinsText
-	text_end
-
 GameCornerGentlemanText:
 	text_asm
-	CheckEvent EVENT_GOT_20_COINS
-	jr nz, .alreadyGotNpcCoins
 	ld hl, .ThrowingMeOffText
-	call PrintText
-	ld b, COIN_CASE
-	call IsItemInBag
-	jr z, .dontHaveCoinCase
-	call Has9990Coins
-	jr z, .coinCaseFull
-	xor a
-	ldh [hUnusedCoinsByte], a
-	ldh [hCoins], a
-	ld a, $20
-	ldh [hCoins + 1], a
-	ld de, wPlayerCoins + 1
-	ld hl, hCoins + 1
-	ld c, $2
-	predef AddBCDPredef
-	SetEvent EVENT_GOT_20_COINS
-	ld hl, .Received20CoinsText
-	jr .print_ret
-.alreadyGotNpcCoins
-	ld hl, .CloselyWatchTheReelsText
-	jr .print_ret
-.coinCaseFull
-	ld hl, .YouGotYourOwnCoinsText
-	jr .print_ret
-.dontHaveCoinCase
-	ld hl, GameCornerOopsForgotCoinCaseText
-.print_ret
 	call PrintText
 	jp TextScriptEnd
 
 .ThrowingMeOffText:
 	text_far _GameCornerGentlemanThrowingMeOffText
-	text_end
-
-.Received20CoinsText:
-	text_far _GameCornerGentlemanReceived20CoinsText
-	sound_get_item_1
-	text_end
-
-.YouGotYourOwnCoinsText:
-	text_far _GameCornerGentlemanYouGotYourOwnCoinsText
-	text_end
-
-.CloselyWatchTheReelsText:
-	text_far _GameCornerGentlemanCloselyWatchTheReelsText
 	text_end
 
 ;GameCornerRocketText:
@@ -542,7 +458,7 @@ GameCornerDrawCoinBox:
 	ld c, 3 | MONEY_SIGN | LEADING_ZEROES
 	call PrintBCDNumber
 	hlcoord 12, 4
-	ld de, GameCornerCoinText
+	ld de, GameCornerCreditText
 	call PlaceString
 	hlcoord 12, 5
 	ld de, GameCornerBlankText2
@@ -558,8 +474,8 @@ GameCornerDrawCoinBox:
 GameCornerMoneyText:
 	db "MONEY@"
 
-GameCornerCoinText:
-	db "COIN@"
+GameCornerCreditText:
+	db "CREDIT@"
 
 GameCornerBlankText1:
 	db "       @"
@@ -570,7 +486,7 @@ GameCornerBlankText2:
 Rogue_GameCorner_Reward_Text:
 	script_rogue_reward
 
-Has9990Coins:
+Has9990Coins::
 	ld a, $99
 	ldh [hCoins], a
 	ld a, $90

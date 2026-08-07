@@ -81,12 +81,12 @@ _PlaySlotMachineText::
 
 _OutOfCoinsSlotMachineText::
 	text "Darn!"
-	line "Ran out of coins!"
+	line "Ran out of credits!"
 	done
 
 _BetHowManySlotMachineText::
 	text "Bet how many"
-	line "coins?"
+	line "credits?"
 	done
 
 _StartSlotMachineText::
@@ -95,7 +95,7 @@ _StartSlotMachineText::
 
 _NotEnoughCoinsSlotMachineText::
 	text "Not enough"
-	line "coins!"
+	line "credits!"
 	prompt
 
 _OneMoreGoSlotMachineText::
@@ -107,7 +107,7 @@ _LinedUpText::
 	text " lined up!"
 	line "Scored @"
 	text_ram wStringBuffer
-	text " coins!"
+	text " credits!"
 	done
 
 _NotThisTimeText::
@@ -440,16 +440,6 @@ _OakLabEmailText::
 	cont "..."
 	done
 
-_GameCornerCoinCaseText::
-	text "A COIN CASE is"
-	line "required!"
-	done
-
-_GameCornerNoCoinsText::
-	text "You don't have"
-	line "any coins!"
-	done
-
 _GameCornerOutOfOrderText::
 	text "OUT OF ORDER"
 	line "This is broken."
@@ -765,20 +755,20 @@ _FoundHiddenCoinsText::
 	text "<PLAYER> found"
 	line "@"
 	text_bcd hCoins, 2 | LEADING_ZEROES | LEFT_ALIGN
-	text " coins!@"
+	text " credits!@"
 	text_end
 
 _FoundHiddenCoins2Text::
 	text "<PLAYER> found"
 	line "@"
 	text_bcd hCoins, 2 | LEADING_ZEROES | LEFT_ALIGN
-	text " coins!@"
+	text " credits!@"
 	text_end
 
 _DroppedHiddenCoinsText::
 	text_start
 	para "Oops! Dropped"
-	line "some coins!"
+	line "some credits!"
 	done
 
 _IndigoPlateauStatuesText1::
@@ -1642,7 +1632,7 @@ _RequireCoinCaseText::
 
 _ExchangeCoinsForPrizesText::
 	text "We exchange your"
-	line "coins for prizes."
+	line "credits for prizes."
 	prompt
 
 _WhichPrizeText::

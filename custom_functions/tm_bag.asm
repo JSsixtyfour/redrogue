@@ -368,7 +368,7 @@ BagValuableText:
 PrintBagInfoText::
 	ld hl, wBagPocketsFlags
 	bit BIT_PRINT_INFO_BOX, [hl]
-	jr z, .notBag
+	jp z, .notBag ; jp, not jr: the key-item tier block below pushed .notBag out of range
 	ld a, [wBagPocketsFlags]
 	and POCKET_INDEX_MASK      ; a = pocket index 0-4
 	; Pick the label string for this pocket
@@ -397,7 +397,7 @@ PrintBagInfoText::
 	cp $ff ; CANCEL?
 	jr z, .notTM
 	cp HM_CUT
-	jr c, .notTM
+	jr c, .maybeKeyItemTier
 	call GetTMHMContent
 	hlcoord 5, 14
 	ld a, ' '
@@ -411,8 +411,57 @@ PrintBagInfoText::
 .notTM
 	jp PlaceString
 
+; Key items reuse the box that shows a TM's move name, displaying the selected
+; item's upgrade tier in place of the pocket label. a = the selected item id.
+.maybeKeyItemTier
+	push af                    ; stash the item id
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_KEY_ITEMS
+	; branch BEFORE the pop: `pop af` restores the pushed flags and would wipe
+	; the comparison result, which is what silently sent every key item down
+	; the plain-label path
+	jr z, .keyItemTier
+	pop af
+	jr .notTM                  ; other pockets keep their plain label
+.keyItemTier
+	pop af                     ; a = the selected item id again
+	ld [wCurItem], a
+	call GetKeyItemTierForCurItem ; same bank, so a plain call is safe
+	ld hl, .TierStrings
+	ld de, 7                   ; each entry below is 6 chars + terminator
+	inc a
+.findTier
+	dec a
+	jr z, .gotTier
+	add hl, de
+	jr .findTier
+.gotTier
+	ld d, h
+	ld e, l
+	hlcoord 5, 14
+	ld a, ' '
+	ld b, 14 ; clear whole line, as the TM path does
+.clearTierLine
+	ld [hli], a
+	dec b
+	jr nz, .clearTierLine
+	hlcoord 6, 14
+	jp PlaceString
+
+; Displayed tier is the internal tier + 1: an item fresh out of the box is
+; TIER 1, not TIER 0. The 4th entry only guards a stale 2-bit value from an
+; old save - MAX_KEY_ITEM_TIER caps live play at internal 2 / displayed 3.
+.TierStrings:
+	db "TIER 1@"
+	db "TIER 2@"
+	db "TIER 3@"
+	db "TIER 4@"
+
 .notBag
 	ld a, [wListMenuID]
+	cp CREDITLISTMENU
+	jr z, .creditVendor
 	cp ITEMLISTMENU
 	jr z, .continue
 	cp PRICEDITEMLISTMENU
@@ -430,6 +479,44 @@ PrintBagInfoText::
 	ld hl, TMItContainsText
 	call PrintText_NoCreatingTextBox
     ret
+; Credit Exchange upgrade vendor: show which tier the highlighted item would be
+; bought up to. Must NOT fall through to .restoreDefaultText - that repaints
+; from wTextBoxBuffer, which only the mart populates (via
+; SaveTextBoxTilesToBuffer), so here it would repaint garbage.
+.creditVendor
+	ld a, [wWhichPrizeWindow]
+	dec a                      ; 1 = the upgrade vendor (see credit_mart.asm)
+	ret nz                     ; the item seller has no tier to advertise
+	call GetCurrentMenuItem
+	cp $ff
+	ret z                      ; CANCEL row
+	ld [wCurItem], a
+	call GetKeyItemTierForCurItem
+	cp MAX_KEY_ITEM_TIER
+	ret nc                     ; already maxed; it should not be listed anyway
+	ld hl, .UpgradeTierStrings
+	ld de, 18                  ; each entry below is 17 chars + terminator
+	inc a
+.findUpgradeTier
+	dec a
+	jr z, .gotUpgradeTier
+	add hl, de
+	jr .findUpgradeTier
+.gotUpgradeTier
+	push hl
+	hlcoord 1, 14
+	lb bc, 3, 18
+	call ClearScreenArea
+	pop de
+	hlcoord 1, 15
+	jp PlaceString
+
+; Indexed by CURRENT internal tier, naming the tier the purchase leads to:
+; internal 0 (TIER 1) buys TIER 2, internal 1 (TIER 2) buys TIER 3.
+.UpgradeTierStrings:
+	db "Upgrade to TIER 2@"
+	db "Upgrade to TIER 3@"
+
 .restoreDefaultText
 	ld de, wTextBoxBuffer
 	hlcoord 1, 14
@@ -464,6 +551,8 @@ GetCurrentMenuItem::
 	ld b, 0
 	ld a, [wListMenuID]
 	cp PRICEDITEMLISTMENU
+	jr z, .continue
+	cp CREDITLISTMENU ; also 1 byte per entry - without this only entry 0 read back correctly
 	jr z, .continue
 	sla c
 .continue

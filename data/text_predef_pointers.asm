@@ -53,8 +53,6 @@ TextPredefs::
 	add_tx_pre BillsHousePokemonList                ; 2F
 	add_tx_pre MagazinesText                        ; 30
 	add_tx_pre CinnabarGymQuiz                      ; 31
-	add_tx_pre GameCornerNoCoinsText                ; 32
-	add_tx_pre GameCornerCoinCaseText               ; 33
 	add_tx_pre LinkCableHelp                        ; 34
 	add_tx_pre TMNotebook                           ; 35
 	add_tx_pre FightingDojoText                     ; 36
@@ -70,3 +68,4 @@ TextPredefs::
 	add_tx_pre BookOrSculptureText                  ; 40
 	add_tx_pre ElevatorText                         ; 41
 	add_tx_pre PokemonStuffText                     ; 42
+	add_tx_pre SlotsNoPullsLeftText                 ; 43 Credit Exchange slot gate
