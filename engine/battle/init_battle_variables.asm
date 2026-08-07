@@ -1,4 +1,14 @@
 InitBattleVariables:
+; ELEMENT PRISM: resolve the two hot-path damage caches once per battle (see
+; custom_functions/element_prism.asm). Placed here rather than in core.asm's
+; InitBattleCommon because this routine is already callfar'd once per battle
+; start from there, and "Battle Core" is the tightest bank in the ROM.
+	farcall RoguePrismRefreshCache
+; TURN REWIND: mark "no snapshot yet" for this battle (see
+; custom_functions/turn_rewind.asm). Here for the same reason as the prism
+; refresh above - this routine is already callfar'd once per battle start
+; from core.asm's InitBattleCommon, and "Battle Core" is the tightest bank.
+	farcall TurnRewindInit
 	ldh a, [hTileAnimations]
 	ld [wSavedTileAnimations], a
 	xor a

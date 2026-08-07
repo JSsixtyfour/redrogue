@@ -163,6 +163,57 @@ ReadTrainer:
 	ld [de], a
 	ld a, [wCurEnemyLevel]
 	ld b, a
+
+; AMULET COIN: inflate the BCD-add loop count below by the key item's tier
+; percentage. Money is base x level (b iterations of the same BCD add), so
+; extra iterations are extra money with no BCD arithmetic of our own - see
+; KEY_ITEM_EFFECTS_PLAN_PC.md.
+;
+; Register care needed here: Multiply's wrapper (home/math.asm) does NOT
+; preserve de (only Divide's does), and de is live below as the accumulator
+; write cursor .LastLoop's AddBCDPredef uses - so de is pushed across the
+; whole block. c is loaded with a redundant copy of the level: Divide needs
+; b set to 2 (its byte-count input), and its wrapper preserves bc as a PAIR
+; at call time, so b comes back as 2, not the level, without a copy saved
+; somewhere else first. farcall also clobbers b, hence the copy is taken
+; before it, not after.
+	push de
+	ld c, b                        ; c = level, safe across the b=2 clobber below
+	push bc
+	ld a, AMULET_COIN
+	ld [wCurItem], a
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	pop bc
+	and a
+	jr z, .noAmuletCoin
+	dec a
+	ld hl, .AmuletCoinPctTable
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]                     ; a = percent bonus (10/15/20)
+	ldh [hMultiplier], a
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand + 1], a
+	ld a, b
+	ldh [hMultiplicand + 2], a
+	call Multiply                  ; level * pct always fits in 16 bits
+	                                ; (max 100*20=2000), so hProduct+2/+3 hold it
+	ldh a, [hProduct + 2]
+	ldh [hDividend], a
+	ldh a, [hProduct + 3]
+	ldh [hDividend + 1], a
+	ld a, 100
+	ldh [hDivisor], a
+	ld b, 2
+	call Divide
+	ldh a, [hQuotient + 3]         ; a = extra loop iterations
+	add c                          ; c = original level, saved above
+	ld b, a                        ; b = level + extra, still fits a byte (max 120)
+.noAmuletCoin
+	pop de
+
 .LastLoop
 ; update wAmountMoneyWon addresses (money to win) based on enemy's level
 	ld hl, wTrainerBaseMoney + 2
@@ -174,8 +225,11 @@ ReadTrainer:
 	inc de
     inc de ; increment de one more time to prevent the previous memory address (wEscapedFromBattle) from being affected
 	dec b
-	jr nz, .LastLoop ; repeat wCurEnemyLevel times
+	jr nz, .LastLoop ; repeat wCurEnemyLevel (+ AMULET COIN bonus) times
 	ret
+
+.AmuletCoinPctTable:
+	db 10, 15, 20
 
 ; ============================================================
 ; Mini-boss team builder (see MINIBOSS_FRAMEWORK.md)

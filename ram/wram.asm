@@ -2317,6 +2317,25 @@ wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level by
 ;   bits 2-7: unused
 wRogueFlagsBitfield2:: db
 
+; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above
+; wGameProgressFlagsEnd so it zeroes on new game. sElementPrismType/
+; sKeyItemTiers (SRAM) are the source of truth; the two prism bytes here are
+; caches resolved once at battle start (see ApplyKeyItemTierEffects /
+; RogueOnBlackout), not general-purpose mirrors - see the plan doc for why a
+; full WRAM mirror of the SRAM tier/active bits was rejected.
+wPrismType::        db   ; cached ELEMENT PRISM type, $FF = none/inactive
+wPrismDamageBonus:: db   ; cached percent bonus, 0 = no boost this battle
+; Dice charges remaining (not "used", unlike wRogueFlagsBitfield2's slot-pull
+; bits) - a fresh/new-game byte reading 0 correctly means "own no dice yet".
+; bits 0-1 = DOOR_DICE, bits 2-3 = MON_DICE, bits 4-5 = ITEM_DICE (0-3 each).
+; Refilled to 1+tier per die by RogueOnBlackout (custom_functions/credit_popup.asm).
+wDiceCharges::      db
+wStatExpPasses::    db   ; scratch: STAT_BOOSTER pass count, set once per GainExperience call
+; ELEMENT PRISM encounter-bias retry budget, set once per Random_Pokemon_Selection
+; call (1 normally, 16 during starter selection) and spent by
+; RoguePrismShouldRerollSpecies. Scratch, not persistent state.
+wPrismRerollsLeft:: db
+
 wGameProgressFlagsEnd::
 
 ; Elite Four room order for the final sequence: index (0-23) into
@@ -2327,7 +2346,7 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 19 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 13 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2338,6 +2357,11 @@ wElite4Order:: db
 	      ; -1 more for wWildAreaState (wild-area door integration), still net-zero WRAM0
 	      ; -1 more for wProcCemBossBattle (cemetery ghost boss flag), still net-zero WRAM0
 	      ; -2 more for wBridgeOfferedLo + wBridgeState (Bridge System), still net-zero WRAM0
+	      ; -4 more for wPrismType + wPrismDamageBonus + wDiceCharges + wStatExpPasses
+	      ;   (Key Item Effects), still net-zero WRAM0
+	      ; -1 more for wPrismRerollsLeft (ELEMENT PRISM encounter bias), still net-zero WRAM0
+	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT PRISM one-time
+	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

@@ -107,8 +107,6 @@ ChampionsRoomRivalDefeatedScript:
 	call UpdateSprites
 	SetEvent EVENT_BEAT_CHAMPION_RIVAL
 	farcall RogueAwardCredits3
-	farcall RogueChampionCartridges   ; NORMAL + FLYING + BUG - the three types no
-	                                  ; gym leader or Elite Four member owns
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, TEXT_CHAMPIONSROOM_RIVAL

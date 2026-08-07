@@ -366,6 +366,16 @@ MainInBattleLoop:
 	pop af
 	jr nz, MainInBattleLoop ; if the player didn't select a move, jump
 .selectEnemyMove
+; TURN REWIND: snapshot at move-commit time, before this turn's outcome is
+; resolved. Every path reaching this label (freely chosen, or forced by
+; sleep/freeze/trapping/recharge) means "the player's action for this turn is
+; locked in", which is exactly the seam the reduced-scope design needs - the
+; state here is still "start of turn N", so restoring it during turn N+1's
+; menu undoes turn N. Snapshotting at the TOP of MainInBattleLoop would not
+; work: that loop is re-entered mid-turn when move selection is cancelled.
+; No-ops internally if the item isn't active. See
+; KEY_ITEM_EFFECTS_PLAN_PC.md §5 and custom_functions/turn_rewind.asm.
+	farcall TurnRewindSnapshot
 	call SelectEnemyMove
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
@@ -466,7 +476,7 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
-	call HandleRecoilChallenge
+	farcall HandleRecoilChallenge
 	jr nz, .enemyFirstRecoilAlive
 	call TryKODefiance
 	jr z, .enemyFirstRecoilAlive
@@ -495,7 +505,7 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
-	call HandleRecoilChallenge
+	farcall HandleRecoilChallenge
 	jr nz, .playerFirstRecoilAlive
 	call TryKODefiance
 	jr z, .playerFirstRecoilAlive
@@ -1016,7 +1026,12 @@ TrainerBattleVictory:
 	ld a, [wGymLeaderNo]
 	and a
 	jr z, .notGymLeaderCredits
-	farcall RogueAwardCredits2
+	; RogueGymLeaderVictory = RogueAwardCredits2 + the first-defeat ELEMENT PRISM
+	; grant (custom_functions/element_prism.asm). Same 8-byte farcall as before,
+	; just a different target, so this hook costs this (very tight) bank nothing.
+	; Not folded into RogueAwardCredits2 itself - the Elite Four scripts call
+	; that too, and the prism is a gym-leader grant only.
+	farcall RogueGymLeaderVictory
 	jr .creditsDone
 .notGymLeaderCredits
 	ldh a, [hCurMap]
@@ -1511,91 +1526,13 @@ TurnLimitDrainText:
 	text_far _TurnLimitDrainText
 	text_end
 
-; ============================================================
-; HandleRecoilChallenge
-; Called after ExecutePlayerMove when CHALLENGE_RECOIL_ATTACKS is active.
-; Applies wDamage/4 recoil to the player's active mon (same as non-Struggle
-; recoil moves). Skips if no damage was dealt (miss, status move, etc.).
-; KO Defiance applies normally if recoil drops HP to 0.
-; OUTPUT: Z set if mon HP hit 0; Z clear otherwise.
-; ============================================================
-HandleRecoilChallenge::
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noRecoil
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_RECOIL_ATTACKS
-	jr nz, .noRecoil
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	jr z, .noRecoil
-	; Only apply if damage was dealt
-	ld a, [wDamage]
-	ld b, a
-	ld a, [wDamage + 1]
-	ld c, a
-	ld a, b
-	or c
-	jr z, .noRecoil
-	; Recoil = wDamage / 4 (same as non-Struggle RecoilEffect_)
-	srl b
-	rr c
-	srl b
-	rr c
-	ld a, b
-	or c
-	jr nz, .applyRecoil
-	inc c              ; minimum 1
-.applyRecoil
-	; Apply to player's active mon — same pattern as RecoilEffect_
-	ld hl, wBattleMonMaxHP
-	ld a, [hli]
-	ld [wHPBarMaxHP + 1], a
-	ld a, [hl]
-	ld [wHPBarMaxHP], a
-	push bc
-	ld bc, wBattleMonHP - wBattleMonMaxHP
-	add hl, bc
-	pop bc
-	ld a, [hl]
-	ld [wHPBarOldHP], a
-	sub c
-	ld [hld], a
-	ld [wHPBarNewHP], a
-	ld a, [hl]
-	ld [wHPBarOldHP + 1], a
-	sbc b
-	ld [hl], a
-	ld [wHPBarNewHP + 1], a
-	jr nc, .recoilUpdateBar
-	xor a
-	ld [hli], a
-	ld [hl], a
-	ld hl, wHPBarNewHP
-	ld [hli], a
-	ld [hl], a
-.recoilUpdateBar
-	hlcoord 10, 9
-	ld a, 1
-	ld [wHPBarType], a
-	predef UpdateHPBar2
-	ld hl, RecoilChallengeText
-	call PrintText
-	; Return Z set if HP = 0
-	ld a, [wBattleMonHP]
-	ld b, a
-	ld a, [wBattleMonHP + 1]
-	or b
-	ret
-
-.noRecoil
-	or a   ; ensure Z clear
-	inc a
-	ret
-
-RecoilChallengeText:
-	text_far _RecoilChallengeText
-	text_end
+; HandleRecoilChallenge lived here until 2026-08-07. It was relocated to
+; custom_functions/witch_battle_effects.asm (rogue bank) to reclaim ~117
+; bytes in this bank, which was 100% full (1 free byte) and blocking the
+; ELEMENT PRISM battle hooks. It had zero same-bank dependencies, which is
+; what made it the safe candidate; its two call sites above are now farcalls
+; and consume only the returned Z flag, which Bankswitch preserves. See that
+; file's header and KEY_ITEM_EFFECTS_PLAN_PC.md §3i.
 
 ; called when player is out of usable mons.
 ; prints appropriate lose message, sets carry flag if player blacked out (special case for initial rival fight)
@@ -2542,6 +2479,14 @@ DisplayBattleMenu::
 .menuselected
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
+; TURN REWIND: items are unusable in battle (see the dispatch hook below), so
+; the ITEM slot is repurposed to "UNDO". Full logic - including the "is this a
+; normal battle" gate, which is load-bearing because Safari's template puts
+; completely different text at this same screen position - lives in
+; custom_functions/turn_rewind.asm. Patched AFTER SaveScreenTilesToBuffer1
+; above, so the label survives every DisplayBattleMenu re-entry (including
+; every refusal path) without needing to be undone anywhere.
+	farcall RogueSetTurnRewindLabel
  ; handle menu input if it's not the old man tutorial
 	ld a, [wBattleType]
 	ASSERT BATTLE_TYPE_OLD_MAN == 1
@@ -2705,6 +2650,14 @@ DisplayBattleMenu::
 	jp DisplayBattleMenu
 
 .notLinkBattle
+; TURN REWIND takes over this slot for a normal (non-link, non-Safari,
+; non-old-man) battle only; everything else keeps the vanilla bag/bait path
+; below untouched. Link battles keep the "can't use items" refusal above
+; unconditionally: rewinding only this side's local state, with no way to tell
+; the other Game Boy, would desync the two sides' shared battle state.
+	ld a, [wBattleType]
+	and a
+	jp z, HandleTurnRewindMenuSelection
 	call SaveScreenTilesToBuffer2
 	ld a, [wBattleType]
 	cp BATTLE_TYPE_SAFARI
@@ -2865,6 +2818,22 @@ UseBagItem:
 ItemsCantBeUsedHereText:
 	text_far _ItemsCantBeUsedHereText
 	text_end
+
+; ============================================================
+; HandleTurnRewindMenuSelection — TURN REWIND (see
+; KEY_ITEM_EFFECTS_PLAN_PC.md §5). Kept to the bare minimum that MUST stay
+; same-bank as DisplayBattleMenu: the tail `jp`. DisplayBattleMenu can only be
+; safely re-entered by a same-bank jp, never a call/farcall - farcall is
+; call-based with no tail-call form, so repeated presses would grow the stack
+; by a frame each. Everything not needing that (the active check, the restore,
+; the refusal message) lives in RogueTurnRewindAttempt.
+; Always returns to DisplayBattleMenu - success or refusal, the player still
+; gets to act this turn, so wActionResultOrTookBattleTurn is never touched.
+; ============================================================
+HandleTurnRewindMenuSelection:
+	farcall RogueTurnRewindAttempt
+	call DrawHUDsAndHPBars          ; harmless no-op redraw on a refusal too
+	jp DisplayBattleMenu
 
 PartyMenuOrRockOrRun:
 	dec a ; was Run selected?
@@ -5871,6 +5840,15 @@ AdjustDamageForMoveType:
 	inc hl
 	jp .loop
 .done
+; ELEMENT PRISM: scale wDamage if this is the player's turn and the move
+; matches the prism's type (custom_functions/element_prism.asm). Hooked here,
+; at the routine's single exit, rather than at its two call sites - one hook
+; instead of two, and safe because both callers follow immediately with
+; `call RandomizeDamage`, which takes no register inputs, so nothing of
+; theirs is live across this return (farcall destroys b/h/l regardless of
+; what the callee preserves). Runs before RandomizeDamage, i.e. the same
+; stage of the pipeline as STAB and type effectiveness above.
+	farcall RoguePrismDamageBoost
 	ret
 
 ; function to tell how effective the type of an enemy attack is on the player's current pokemon

@@ -128,7 +128,6 @@ AgathasRoomAgathaEndBattleScript:
 	cp $ff
 	jp z, ResetAgathaScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeGhost   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_AGATHASROOM_AGATHA
 	ldh [hTextID], a
 	jp DisplayTextID

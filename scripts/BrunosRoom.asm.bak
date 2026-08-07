@@ -124,7 +124,6 @@ BrunosRoomBrunoEndBattleScript:
 	cp $ff
 	jp z, ResetBrunoScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeFighting   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_BRUNOSROOM_BRUNO
 	ldh [hTextID], a
 	jp DisplayTextID

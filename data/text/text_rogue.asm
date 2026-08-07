@@ -112,6 +112,13 @@ _TurnRewindDescriptionText::
 	cont "in battle."
 	done
 
+; Battle menu handler (engine/battle/core.asm HandleTurnRewindMenuSelection).
+; Covers both refusal cases (no snapshot yet, switched since the snapshot).
+_TurnRewindRefuseText::
+	text "Can't rewind"
+	line "right now!"
+	done
+
 _RareScopeDescriptionText::
 	text "Increases the"
 	line "rarity of wild"
@@ -124,8 +131,8 @@ _RareLensDescriptionText::
 	cont "items found."
 	done
 
-_IVBoosterDescriptionText::
-	text "Increases IVs"
+_DVBoosterDescriptionText::
+	text "Increases DVs"
 	line "of caught"
 	cont "Pokémon."
 	done
@@ -158,6 +165,92 @@ _ElementPrismDescriptionText::
 	text "Boosts one"
 	line "type's damage"
 	cont "and odds."
+	done
+
+; ELEMENT PRISM cartridge system (custom_functions/element_prism.asm).
+_ElementPrismSetText::
+	text "CARTRIDGE"
+	line "installed!"
+	done
+
+; text_ram reads the equipped type's name out of wStringBuffer.
+_ElementPrismStatusText::
+	text "PRISM holds"
+	line "the "
+	text_ram wStringBuffer
+	text " CARTRIDGE."
+	done
+
+_PrismNoCartridgesText::
+	text "No CARTRIDGE"
+	line "installed."
+	done
+
+; One-time grant messages (custom_functions/element_prism.asm), gated on
+; persistent per-grantor events - shown once ever, never again, even across
+; runs. text_ram reads the granted type's name out of wStringBuffer.
+_PrismFirstGrantText::
+	text "Take this"
+	line "PRISM and a "
+	text_ram wStringBuffer
+	text " CARTRIDGE!"
+	done
+
+_PrismCartridgeGrantText::
+	text "Received a "
+	text_ram wStringBuffer
+	text " CARTRIDGE!"
+	done
+
+_PrismChampionGrantText::
+	text "Received the"
+	line "NORMAL, FLYING"
+	cont "and BUG"
+	cont "CARTRIDGES!"
+	done
+
+_PrismCartridgeReceivedText::
+	text "Received a"
+	line "CARTRIDGE!"
+	done
+
+; Dice items (custom_functions §3f-3h, KEY_ITEM_EFFECTS_PLAN_PC.md). One
+; shared out-of-charges text; distinct refuse/success texts per item, since
+; each has its own location/state gate.
+_DiceOutOfChargesText::
+	text "No rerolls"
+	line "left!"
+	done
+
+_DoorDiceRefuseText::
+	text "Can only be"
+	line "used in the"
+	cont "lobby."
+	done
+
+_DoorDiceRerolledText::
+	text "Doors"
+	line "rerolled!"
+	done
+
+_MonDiceRefuseText::
+	text "Nothing to"
+	line "reroll here."
+	done
+
+_MonDiceRerolledText::
+	text "Pokémon"
+	line "rerolled!"
+	done
+
+_ItemDiceRefuseText::
+	text "Nothing to"
+	line "reroll here."
+	done
+
+_ItemDiceRerolledText::
+	text "Item"
+	line "rerolled!"
 	done
 
 ; Credit Exchange vendors (engine/events/credit_mart.asm)

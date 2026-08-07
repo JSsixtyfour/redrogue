@@ -32,7 +32,6 @@ INCLUDE "engine/menus/display_text_id_init.asm"
 INCLUDE "engine/menus/draw_start_menu.asm"
 INCLUDE "engine/link/cable_club_npc.asm"
 INCLUDE "engine/menus/text_box.asm"
-INCLUDE "engine/battle/move_effects/drain_hp.asm"
 INCLUDE "engine/menus/players_pc.asm"
 INCLUDE "engine/pokemon/remove_mon.asm"
 INCLUDE "engine/events/display_pokedex.asm"
@@ -40,6 +39,14 @@ INCLUDE "engine/events/display_pokedex.asm"
 
 SECTION "Pick Up Item", ROMX
 INCLUDE "engine/events/pick_up_item.asm"
+
+; Moved out of "bank1" (which overflowed when the Player PC gained its
+; CARTRIDGE option) into its own floating section. Safe to relocate: its only
+; entry point is `jpfar DrainHPEffect_` from effects.asm, and every symbol it
+; references is either HOME (PrintText), a WRAM address, or one of its own
+; text stubs that moves with it - no same-bank dependencies.
+SECTION "Drain HP Effect", ROMX
+INCLUDE "engine/battle/move_effects/drain_hp.asm"
 
 SECTION "bank3", ROMX
 
@@ -394,6 +401,10 @@ INCLUDE "custom_functions/key_item_pocket.asm"
 INCLUDE "custom_functions/credit_award.asm"
 INCLUDE "custom_functions/credit_popup.asm"
 INCLUDE "custom_functions/pocket_items.asm"
+INCLUDE "custom_functions/dice_items.asm"
+INCLUDE "custom_functions/witch_battle_effects.asm"
+INCLUDE "custom_functions/element_prism.asm"
+INCLUDE "custom_functions/turn_rewind.asm"
 
 INCLUDE "engine/pokemon/rarity.asm"
 INCLUDE "engine/pokemon/random_pokemon_selection.asm"
@@ -405,6 +416,7 @@ INCLUDE "custom_functions/func_monlists.asm"
 INCLUDE "custom_functions/func_ghost_variant.asm"
 INCLUDE "custom_functions/func_fusion.asm"
 INCLUDE "custom_functions/func_special_form.asm"
+INCLUDE "custom_functions/func_shiny.asm"
 INCLUDE "custom_functions/procedural_cave_gen.asm"
 INCLUDE "custom_functions/procedural_cemetery_gen.asm"
 INCLUDE "custom_functions/procedural_forest_gen.asm"

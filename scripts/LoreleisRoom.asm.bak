@@ -127,7 +127,6 @@ LoreleisRoomLoreleiEndBattleScript:
 	cp $ff
 	jp z, ResetLoreleiScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeIce   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_LORELEISROOM_LORELEI
 	ldh [hTextID], a
 	jp DisplayTextID

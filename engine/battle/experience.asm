@@ -2,6 +2,18 @@ GainExperience:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; return if link battle
+
+; STAT BOOSTER: resolve the pass count once per GainExperience call (not per
+; mon - every party mon that gains exp this battle is boosted the same way),
+; before wPartyMon1/hWhichPokemon below touch any of the registers this
+; needs. power (0-3) maps onto passes (1-4) uniformly: 0 = vanilla single
+; pass. See KEY_ITEM_EFFECTS_PLAN_PC.md §3e.
+	ld a, STAT_BOOSTER
+	ld [wCurItem], a
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	inc a
+	ld [wStatExpPasses], a
+
 	ld hl, wPartyMon1
 	xor a
 	ldh [hWhichPokemon], a
@@ -23,7 +35,23 @@ GainExperience:
 	ld de, (MON_HP_EXP + 1) - (MON_HP + 1)
 	add hl, de
 	ld d, h
-	ld e, l
+	ld e, l                        ; de = this mon's stat-exp block base
+
+; STAT BOOSTER: run the whole 5-stat add loop [wStatExpPasses] times.
+; Repeated addition keeps the 16-bit saturation logic below untouched rather
+; than inline-scaling the add. Each pass resets hl/de to the same starting
+; point (de is restored from the stack, discarding that pass's own advance)
+; so passes 2+ add the same base stats again rather than reading garbage
+; past the block. b (outer pass counter) is saved/restored around the inner
+; loop, which freely clobbers b/c as scratch (enemy base stat / stat index).
+; After the last pass, de is recomputed to the fully-advanced position a
+; single vanilla pass would have left it at - every caller below (starting
+; at .statExpDone) expects that, not the base address.
+	ld a, [wStatExpPasses]
+	ld b, a
+.statExpPassLoop
+	push bc
+	push de
 	ld hl, wEnemyMonBaseStats
 	ld c, NUM_STATS
 .gainStatExpLoop
@@ -48,10 +76,21 @@ GainExperience:
 	ld [de], a
 .nextBaseStat
 	dec c
-	jr z, .statExpDone
+	jr z, .statExpPassDone
 	inc de
 	inc de
 	jr .gainStatExpLoop
+.statExpPassDone
+	pop de                          ; discard this pass's advance; de = block base again
+	pop bc
+	dec b
+	jr nz, .statExpPassLoop
+
+	ld hl, NUM_STATS * 2
+	add hl, de
+	ld d, h
+	ld e, l                         ; de = fully advanced, as a single pass would leave it
+
 .statExpDone
 	xor a
 	ldh [hMultiplicand], a

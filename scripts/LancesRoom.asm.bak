@@ -104,7 +104,6 @@ LancesRoomLanceEndBattleScript:
 	cp $ff
 	jp z, ResetLanceScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeDragon   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_LANCESROOM_LANCE
 	ldh [hTextID], a
 	jp DisplayTextID

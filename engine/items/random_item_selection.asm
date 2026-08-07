@@ -85,6 +85,34 @@ ld a, $FF
 .miniBossItemDone
 ld b, a
 
+; RARE LENS: additional bonus stacked on top of wItemBonusRarity/witch/mini-boss
+; above (same additive-stacking shape). Deliberately NOT the same raw number as
+; RARE SCOPE's mon-side bonus: item_pokeball_odds is 51 here versus 127 on the
+; mon side, so a flat bonus calibrated for one threshold would make the other
+; threshold's pokeball tier unreachable (exactly what the witch-prize +51 a few
+; lines above does to THIS threshold). This table is scaled to item_pokeball_odds
+; instead - see KEY_ITEM_EFFECTS_PLAN_PC.md §3c. GetKeyItemPower clobbers bc, so
+; b (the roll accumulator) is saved across it. This file and key_item_pocket.asm
+; are both in SECTION "rogue", so a plain call reaches it, no farcall needed.
+push bc
+ld a, RARE_LENS
+ld [wCurItem], a
+call GetKeyItemPower           ; a = 0 (not active) or 1-3 (displayed tier)
+pop bc
+and a
+jr z, .no_overflow
+dec a
+ld hl, .RareLensBonusTable
+ld e, a
+ld d, 0
+add hl, de
+ld a, [hl]
+add b
+jr nc, .rareLensDone
+ld a, $FF
+.rareLensDone
+ld b, a
+
 .no_overflow
 ld a, item_pokeball_odds
 cp b
@@ -96,6 +124,9 @@ ld a, item_ultraball_odds
 cp b
 jr nc, item_ultraball_class_selection_jump
 jp item_masterball_class_selection
+
+.RareLensBonusTable:
+	db 12, 25, 38
 
 item_ultraball_class_selection_jump:
 jp item_ultraball_class_selection

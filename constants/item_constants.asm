@@ -132,7 +132,7 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 	const TURN_REWIND       ; $68
 	const RARE_SCOPE        ; $69
 	const RARE_LENS         ; $6A
-	const IV_BOOSTER        ; $6B
+	const DV_BOOSTER        ; $6B
 	const STAT_BOOSTER      ; $6C
 	const DOOR_DICE         ; $6D
 	const MON_DICE          ; $6E

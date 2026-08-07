@@ -22,8 +22,8 @@ UseItem_::
 	jp z, ItemUseRareScope
 	cp RARE_LENS ; outside ItemUsePtrTable's range
 	jp z, ItemUseRareLens
-	cp IV_BOOSTER ; outside ItemUsePtrTable's range
-	jp z, ItemUseIVBooster
+	cp DV_BOOSTER ; outside ItemUsePtrTable's range
+	jp z, ItemUseDVBooster
 	cp STAT_BOOSTER ; outside ItemUsePtrTable's range
 	jp z, ItemUseStatBooster
 	cp DOOR_DICE ; outside ItemUsePtrTable's range
@@ -2829,12 +2829,12 @@ RareLensDescriptionText:
 	text_far _RareLensDescriptionText
 	text_end
 
-ItemUseIVBooster::
-	ld hl, IVBoosterDescriptionText
+ItemUseDVBooster::
+	ld hl, DVBoosterDescriptionText
 	jp PrintText
 
-IVBoosterDescriptionText:
-	text_far _IVBoosterDescriptionText
+DVBoosterDescriptionText:
+	text_far _DVBoosterDescriptionText
 	text_end
 
 ItemUseStatBooster::
@@ -2845,37 +2845,33 @@ StatBoosterDescriptionText:
 	text_far _StatBoosterDescriptionText
 	text_end
 
-ItemUseDoorDice::
-	ld hl, DoorDiceDescriptionText
-	jp PrintText
+; ============================================================
+; DOOR_DICE / MON_DICE / ITEM_DICE (see KEY_ITEM_EFFECTS_PLAN_PC.md §3f-3h).
+; Full logic lives in custom_functions/dice_items.asm ("rogue" bank), not
+; here - every reroll action these items trigger already lives in that bank,
+; and this bank ("bank3") had no room left for the inline version (a
+; "Section bank3 grew too big" link error). These are thin farcall stubs.
+; ============================================================
 
-DoorDiceDescriptionText:
-	text_far _DoorDiceDescriptionText
-	text_end
+ItemUseDoorDice::
+	farcall RogueItemUseDoorDice
+	ret
 
 ItemUseMonDice::
-	ld hl, MonDiceDescriptionText
-	jp PrintText
-
-MonDiceDescriptionText:
-	text_far _MonDiceDescriptionText
-	text_end
+	farcall RogueItemUseMonDice
+	ret
 
 ItemUseItemDice::
-	ld hl, ItemDiceDescriptionText
-	jp PrintText
+	farcall RogueItemUseItemDice
+	ret
 
-ItemDiceDescriptionText:
-	text_far _ItemDiceDescriptionText
-	text_end
-
+; Read-only status check: reports which CARTRIDGE is installed. Swapping is
+; done at the PC (engine/menus/players_pc.asm), so the bag never changes it.
+; Logic lives in custom_functions/element_prism.asm ("rogue" bank), same as
+; the dice items above and for the same reason: this bank has no room.
 ItemUseElementPrism::
-	ld hl, ElementPrismDescriptionText
-	jp PrintText
-
-ElementPrismDescriptionText:
-	text_far _ElementPrismDescriptionText
-	text_end
+	farcall RoguePrismShowEquipped
+	ret
 
 ; ============================================================
 ; PPTonicRecovery
@@ -3029,8 +3025,8 @@ IsKeyItem_::
 	ret z ; RARE_SCOPE is a key item: can't be tossed
 	cp RARE_LENS ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; RARE_LENS is a key item: can't be tossed
-	cp IV_BOOSTER ; outside KeyItemFlags' range (added after the elevator floors)
-	ret z ; IV_BOOSTER is a key item: can't be tossed
+	cp DV_BOOSTER ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; DV_BOOSTER is a key item: can't be tossed
 	cp STAT_BOOSTER ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; STAT_BOOSTER is a key item: can't be tossed
 	cp DOOR_DICE ; outside KeyItemFlags' range (added after the elevator floors)

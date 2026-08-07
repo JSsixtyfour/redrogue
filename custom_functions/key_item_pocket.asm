@@ -20,7 +20,7 @@ KeyItemPocketTable::
     db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED
     db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED
     db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED
-    db IV_BOOSTER,    KEY_ITEM_BIT_IV_BOOSTER_OWNED
+    db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED
     db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED
     db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED
     db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED
@@ -203,6 +203,28 @@ IsKeyItemActive::
 HasKeyPocketItem:: jp IsKeyItemActive
 
 ; ============================================================
+; GetKeyItemPower — one-call combination of IsKeyItemActive +
+; GetKeyItemTierForCurItem for the Key Item Effects hooks (see
+; KEY_ITEM_EFFECTS_PLAN_PC.md). Both halves are same-bank here, so this is a
+; plain internal call pair; callers elsewhere reach it with a single farcall
+; instead of two, which matters because farcall's Bankswitch clobbers
+; a/b/c/h/l on every crossing (project_farcall_home_clobbers_a).
+; INPUT:  wCurItem = the key item to query
+; OUTPUT: a = 0 if the item is not ACTIVE (not in the bag), otherwise
+;         1 + tier (1, 2 or 3 = displayed TIER 1/2/3)
+; CLOBBERS: bc/de/hl
+; ============================================================
+GetKeyItemPower::
+    call IsKeyItemActive
+    jr z, .notActive
+    call GetKeyItemTierForCurItem
+    inc a
+    ret
+.notActive
+    xor a
+    ret
+
+; ============================================================
 ; OwnKeyItem — grant wCurItem. Sets own bit always.
 ; Also sets active bit if fewer than KEY_ITEM_MAX_ACTIVE items active.
 ; Replaces AcquireKeyPocketItem.
@@ -340,7 +362,18 @@ ClearKeyItemsBitfield::
     ld [hli], a
     dec b
     jr nz, .clearLoop
+    ; ELEMENT PRISM's chosen type must init to $ff, NOT 0. Every other byte
+    ; here means "none" at zero, but a type constant does not: 0 is NORMAL.
+    ; Zeroing this would hand every fresh file a Normal-type prism the player
+    ; never picked, silently biasing species rolls and buffing Normal moves.
+    ; Same bug class as sKeyItemTiers' original miss (see
+    ; project_credit_system_bug_classes) - uninitialized SRAM that happens to
+    ; be a legal value fails quietly instead of loudly.
+    ld a, $ff
+    ld [sElementPrismType], a
     xor a
+    ld [sPrismCartridges], a      ; no cartridges unlocked on a brand-new file
+    ld [sPrismCartridges + 1], a
     ld [rRAMG], a
     ret
 

@@ -142,7 +142,8 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $475 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below
+	ds $450 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
+	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects)
 
 ; Diagonal tile save buffer for sprite fusion.
 ; Holds the 7 diagonal tiles (col==row) from species_a's 2bpp interleaved
@@ -173,6 +174,28 @@ sKeyItemsBitfield:: ds 4    ; only byte 0 is used; extra bytes cost nothing
 ; game. Separating them would leave tiers holding stale SRAM, which reads as
 ; "already maxed" and hides items from the Credit Exchange upgrade vendor.
 sKeyItemTiers:: ds 4
+
+; ELEMENT PRISM's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
+; chosen. SRAM so the choice survives run reset and blackout, like key-item
+; ownership. The prism's tier needs no separate storage - it is key item
+; index 14 in sKeyItemTiers above.
+sElementPrismType:: db
+
+; ELEMENT PRISM cartridges the player has unlocked: 1 bit per selectable type,
+; indexed by position in PrismTypeList (custom_functions/element_prism.asm),
+; so 15 bits in 2 bytes. Gym leaders, the Elite Four and the Champion each
+; grant their signature type's cartridge on defeat; the player equips one at
+; the PC. SRAM because cartridges persist across runs and blackouts, exactly
+; like key-item ownership - accumulating them over several runs is the point.
+sPrismCartridges:: ds 2
+
+; TURN REWIND snapshot: the active player mon's HP/PP/status/stat-mods/battle
+; status only (not a full battle-state snapshot - see
+; KEY_ITEM_EFFECTS_PLAN_PC.md §5 for why the reduced scope is sound).
+; Written once per turn on move commit; a single buffer is sufficient because
+; restoring only ever undoes the most recent turn. Byte 0 doubles as the
+; "no snapshot yet this battle" sentinel ($ff).
+sTurnRewindBuf:: ds 34
 
 sGameData::
 sPlayerName::  ds NAME_LENGTH

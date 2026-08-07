@@ -3,6 +3,13 @@
 ; masterball class check will be here, will require separate events to occur before active
 ; auto class by putting a number in c
 Random_Pokemon_Selection::
+; ELEMENT PRISM encounter bias: set this selection's type-mismatch re-roll
+; budget (custom_functions/element_prism.asm). Preserves every register - c
+; holds the class argument the very next instructions test.
+; Random_Pokemon_Selection_Any deliberately does NOT get this: it backs
+; procedural-cave wild encounters, which are not the reward/starter rolls the
+; prism is meant to bias.
+call RoguePrismSetRerollBudget
 ; set class check
 ld a, 0x1
 cp c
@@ -48,7 +55,12 @@ jr .noRarityMod
 .rarityBonus
 ; Prize a: push roll toward ultraball/masterball (ADD to b → larger b = more likely ultraball)
 ld a, b
-add 51         ; +51 shifts distribution: pokeball only on roll=0 (~0.4%), mostly ultraball
+add 51         ; +51 shifts distribution toward ultraball/masterball. Against this file's
+               ; pokeball_odds=127 threshold that still leaves ~30% pokeball chance, NOT
+               ; the ~0.4% an earlier version of this comment claimed - that figure was for
+               ; item_pokeball_odds=51 (engine/items/random_item_selection.asm), a
+               ; different, much lower threshold. See KEY_ITEM_EFFECTS_PLAN_PC.md §3c,
+               ; found while calibrating RARE SCOPE/RARE LENS against these two odds tables.
 jr nc, .rarityBonusDone
 ld a, $FF      ; clamp at 255
 .rarityBonusDone
@@ -67,6 +79,31 @@ ld a, $FF
 .miniBossModDone
 ld b, a
 .noMiniBossMod
+; RARE SCOPE: additional bonus stacked on top of any witch/mini-boss bonus
+; above (same additive-stacking shape - see KEY_ITEM_EFFECTS_PLAN_PC.md for
+; why the bonus is a fraction of pokeball_odds rather than a flat number).
+; GetKeyItemPower clobbers bc, so b (the roll accumulator) is saved across
+; it. This file and key_item_pocket.asm are both in SECTION "rogue", so a
+; plain call reaches it, no farcall needed.
+push bc
+ld a, RARE_SCOPE
+ld [wCurItem], a
+call GetKeyItemPower           ; a = 0 (not active) or 1-3 (displayed tier)
+pop bc
+and a
+jr z, .noRareScope
+dec a
+ld hl, .RareScopeBonusTable
+ld e, a
+ld d, 0
+add hl, de
+ld a, [hl]
+add b
+jr nc, .rareScopeDone
+ld a, $FF
+.rareScopeDone
+ld b, a
+.noRareScope
 ld a, pokeball_odds
 cp b
 jr nc, pokeball_class_selection
@@ -74,6 +111,9 @@ ld a, greatball_odds
 cp b
 jr nc, greatball_class_selection
 jp ultraball_class_selection
+
+.RareScopeBonusTable:
+	db 31, 63, 95
 
 
 pokeball_class_selection:
@@ -146,6 +186,14 @@ xor a                       ; clear out a
 pop hl                      ; reload selection class
 cp c
 jr nz, .retry                ; if 1, you have selected an already existing team member and need to redo
+; ELEMENT PRISM encounter bias: discard an off-type species and re-roll,
+; reusing the existing .retry path below. Deliberately placed HERE, before
+; the evolve step, because hl still holds the class-selection retry address
+; that .retry jumps to - EvolveMonByLevel below makes no promise about hl.
+push hl
+call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains; preserves d
+pop hl
+jr nz, .retry
 ; evolve based on wCurEnemyLevel (caller must set it before calling Random_Pokemon_Selection)
 ld a, d
 ld [wCurPartySpecies], a    ; EvolveMonByLevel reads d for lookup, writes evolved species here if applicable

@@ -114,6 +114,43 @@ _AddPartyMon::
 	ld b, a
 	call Random
 
+; DV BOOSTER: floor each of the four DV nibbles (Atk/Def packed into this
+; second roll's byte, Spd/Spc into the first) at a per-tier minimum, before
+; they're written to MON_DVS below. hl/de are live mon-struct pointers used
+; further down and must survive the farcall; the two rolls travel the same
+; way, stashed in bc (b=first roll, c=second roll) - see
+; KEY_ITEM_EFFECTS_PLAN_PC.md §3d for why ATK's nibble is floored too (a
+; gender-display landmine, not live in this project today).
+	ld c, a                        ; c = second roll (-> MON_DVS byte0: Atk/Def)
+	push hl
+	push de
+	push bc
+	ld a, DV_BOOSTER
+	ld [wCurItem], a
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	pop bc
+	pop de
+	pop hl
+	and a
+	jr z, .noDVBoost
+	dec a
+	push hl
+	ld hl, .DVFloorTable
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]                     ; a = floor (6/10/13)
+	pop hl
+	ld e, a                        ; e = floor value, held here across both calls below
+	ld a, b                        ; a = first roll (-> MON_DVS byte1: Spd/Spc)
+	call .ApplyDVFloor
+	ld b, a
+	ld a, c
+	call .ApplyDVFloor
+	ld c, a
+.noDVBoost
+	ld a, c                        ; a = (possibly floored) second roll
+
 .next4
 	push bc
 	ld bc, MON_DVS
@@ -178,7 +215,30 @@ _AddPartyMon::
 ; 4-7 set), so anything less than a full clear risks a species spawning
 ; pre-flagged by coincidence. This also future-proofs bits 4-7 for the next
 ; flag added to this byte - see MON_CATCH_RATE_BITFIELD_PC.md.
+
+; SHINY CHARM: roll a shiny flag for this newly created mon (bit 4 of this
+; same repurposed byte - see func_shiny.asm). Base rate is 1/256 even with
+; no charm owned; owning one only widens the threshold via GetKeyItemPower.
+; de is the live struct write cursor used immediately below and must
+; survive the farcall - see KEY_ITEM_EFFECTS_PLAN_PC.md §3a.
+	push de
+	ld a, SHINY_CHARM
+	ld [wCurItem], a
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	ld hl, .ShinyThresholdTable
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld d, [hl]                     ; d = threshold (1/2/4/8); Random preserves de
+	call Random                    ; a = fresh roll
+	cp d
+	pop de                         ; de = struct write cursor, restored
+	jr c, .isShiny                 ; carry set = roll < threshold
 	xor a
+	jr .writeShinyFlag
+.isShiny
+	ld a, 1 << BIT_SHINY
+.writeShinyFlag
 	ld [de], a
 	ld hl, wMonHMoves
 	ld a, [hli]
@@ -254,6 +314,41 @@ _AddPartyMon::
 .done
 	scf
 	ret
+
+.ShinyThresholdTable:
+; SHINY CHARM (see KEY_ITEM_EFFECTS_PLAN_PC.md §3a). Index 0 is the base
+; rate with no charm owned; GetKeyItemPower's 1-3 (displayed tier) select
+; entries 1-3.
+	db 1, 2, 4, 8
+
+; ============================================================
+; ApplyDVFloor — DV BOOSTER helper (see KEY_ITEM_EFFECTS_PLAN_PC.md §3d).
+; INPUT:  a = byte holding two packed 4-bit DVs, e = floor value (0-15)
+; OUTPUT: a = same byte with both nibbles raised to at least e
+; CLOBBERS: d (b/c/e untouched, so this is safe to call twice in a row with
+; the same floor still sitting in e)
+; ============================================================
+.ApplyDVFloor:
+	push af
+	and $0f
+	cp e
+	jr nc, .lowOk
+	ld a, e
+.lowOk
+	ld d, a                        ; d = floored low nibble
+	pop af
+	swap a
+	and $0f
+	cp e
+	jr nc, .highOk
+	ld a, e
+.highOk
+	swap a
+	or d
+	ret
+
+.DVFloorTable:
+	db 6, 10, 13
 
 LoadMovePPs:
 	call GetPredefRegisters

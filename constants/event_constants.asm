@@ -930,5 +930,31 @@ DEF INDIGO_PLATEAU_EVENTS_END EQU const_value - 1
     const_next $A31
     const EVENT_BEAT_PC_BOSS        ; $A31
 
+; ELEMENT PRISM one-time grant messages (custom_functions/element_prism.asm,
+; KEY_ITEM_EFFECTS_PLAN_PC.md §3i). Deliberately never ResetEvent'd anywhere -
+; wEventFlags is part of the saved wMainData region and nothing currently
+; clears it on blackout/run-reset (unlike EVENT_BEAT_ROUTE_1_TRAINER_0-style
+; events, which stage-entry scripts reset explicitly), so these persist
+; across runs by simply not being touched. That is what makes "only the
+; first time, ever" work: re-beating the same leader in a later run finds the
+; bit already set and stays silent.
+; The 8 gym entries MUST stay contiguous and in wGymLeaderNo order (1=Brock..
+; 8=Giovanni) - RogueGymLeaderVictory computes the right one at runtime via
+; EVENT_PRISM_GYM1_SHOWN + (wGymLeaderNo - 1), not a per-leader compile-time
+; constant.
+    const EVENT_PRISM_GYM1_SHOWN    ; Brock
+    const EVENT_PRISM_GYM2_SHOWN    ; Misty
+    const EVENT_PRISM_GYM3_SHOWN    ; Lt. Surge
+    const EVENT_PRISM_GYM4_SHOWN    ; Erika
+    const EVENT_PRISM_GYM5_SHOWN    ; Koga
+    const EVENT_PRISM_GYM6_SHOWN    ; Sabrina
+    const EVENT_PRISM_GYM7_SHOWN    ; Blaine
+    const EVENT_PRISM_GYM8_SHOWN    ; Giovanni
+    const EVENT_PRISM_E4_ICE_SHOWN
+    const EVENT_PRISM_E4_FIGHTING_SHOWN
+    const EVENT_PRISM_E4_GHOST_SHOWN
+    const EVENT_PRISM_E4_DRAGON_SHOWN
+    const EVENT_PRISM_CHAMPION_SHOWN
+
 ; End of events
-DEF NUM_EVENTS EQU const_value      ; $A32 = 2610
+DEF NUM_EVENTS EQU const_value      ; $A3F = 2623

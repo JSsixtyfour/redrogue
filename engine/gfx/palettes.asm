@@ -52,6 +52,20 @@ SetPal_Battle:
 	inc hl
 	ld a, c
 	ld [hl], a
+	; Shiny (func_shiny.asm) runs FIRST so that a ghost or type variant below
+	; simply overwrites it. Ordering is what gives those two systems priority -
+	; NOT an override test. An earlier version compared wPalPacket+5 against the
+	; original palette still supposedly in b, which is wrong: `farcall` expands
+	; to `ld b, BANK(...)`, so b is destroyed before the callee even runs and
+	; the compare was reading a bank number. Player only - enemies can never be
+	; shiny (see func_shiny.asm).
+	ld de, wBattleMon
+	farcall IsShiny
+	jr z, .playerNotShiny
+	ld a, [wPalPacket + 5]
+	call ShinyPaletteConvert
+	ld [wPalPacket + 5], a
+.playerNotShiny
 	; Ghost variant (func_ghost_variant.asm): recolor the player (+5) / enemy (+7)
 	; mon palette slot to purple if that mon is a ghost variant. de-input (farcall
 	; clobbers hl); must run after +5/+7 are written above.
@@ -114,6 +128,15 @@ SetPal_StatusScreen:
 	inc hl
 	pop af
 	ld [hl], a
+	; Shiny (func_shiny.asm) runs FIRST so ghost/type variant below overwrites
+	; it - same ordering rule and same reason as SetPal_Battle above.
+	ld de, wLoadedMon
+	farcall IsShiny
+	jr z, .notShiny
+	ld a, [wPalPacket + 3]
+	call ShinyPaletteConvert
+	ld [wPalPacket + 3], a
+.notShiny
 	; Ghost variant: purple palette for the status-screen mon (+3) if it's a variant.
 	ld de, wLoadedMon
 	farcall IsGhostVariant
@@ -133,6 +156,51 @@ SetPal_StatusScreen:
 	ld hl, wPalPacket
 	ld de, BlkPacket_StatusScreen
 	ret
+
+; ============================================================
+; ShinyPaletteConvert — map a mon's normal palette to its shiny one.
+;
+; Ported from shinpokered's ShinyDVConvert (custom_functions/func_shiny.asm in
+; that repo). The key idea, and the reason no new SGB palette data is needed:
+; a shiny mon REUSES another existing mon palette rather than getting a
+; bespoke one. The ten mon palettes are permuted in a single cycle
+; (MEW->YELLOW->BROWN->RED->PINK->CYAN->GREEN->BLUE->PURPLE->GRAY->MEW).
+; Shin implements this as a cp/jr chain; a table is the same mapping in far
+; fewer bytes, since PAL_MEWMON..PAL_GRAYMON are contiguous here.
+;
+; INPUT:  a = normal palette id
+; OUTPUT: a = shiny palette id, or a unchanged if it is not a mon palette
+;         (DeterminePaletteIDOutOfBattle can return non-mon palettes for the
+;         "not a pokemon" case, so the range guard is load-bearing).
+; CLOBBERS: de, hl
+; ============================================================
+ShinyPaletteConvert:
+	sub PAL_MEWMON
+	cp PAL_GRAYMON - PAL_MEWMON + 1
+	jr c, .isMonPalette
+	add PAL_MEWMON                 ; out of range - hand back what we were given
+	ret
+.isMonPalette
+	ld e, a
+	ld d, 0
+	ld hl, ShinyPaletteMap
+	add hl, de
+	ld a, [hl]
+	ret
+
+; Indexed by (normal palette - PAL_MEWMON). Order must match the PAL_*MON
+; constant block in constants/palette_constants.asm.
+ShinyPaletteMap:
+	db PAL_YELLOWMON  ; PAL_MEWMON
+	db PAL_PURPLEMON  ; PAL_BLUEMON
+	db PAL_PINKMON    ; PAL_REDMON
+	db PAL_GREENMON   ; PAL_CYANMON
+	db PAL_GRAYMON    ; PAL_PURPLEMON
+	db PAL_REDMON     ; PAL_BROWNMON
+	db PAL_BLUEMON    ; PAL_GREENMON
+	db PAL_CYANMON    ; PAL_PINKMON
+	db PAL_BROWNMON   ; PAL_YELLOWMON
+	db PAL_MEWMON     ; PAL_GRAYMON
 
 SetPal_PartyMenu:
 	ld hl, PalPacket_PartyMenu

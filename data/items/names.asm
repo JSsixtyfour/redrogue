@@ -107,7 +107,7 @@ ItemNames::
 	li "TURN REWIND"
 	li "RARE SCOPE"
 	li "RARE LENS"
-	li "IV BOOSTER"
+	li "DV BOOSTER"
 	li "STAT BOOSTER"
 	li "DOOR DICE"
 	li "MON DICE"

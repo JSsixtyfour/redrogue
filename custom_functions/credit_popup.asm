@@ -61,9 +61,10 @@ RogueCreditPopupCheck::
 ; ============================================================
 ; RogueOnBlackout — farcalled from ResetStatusAndHalveMoneyOnBlackout.
 ; A blackout is the run boundary for credit purposes, so this refills the
-; Credit Exchange slot pulls and re-derives KO Defiance charges from its
-; SRAM upgrade tier (sKeyItemTiers is the source of truth; wKODefianceUsages
-; is a derived cache).
+; Credit Exchange slot pulls, re-derives KO Defiance charges from its SRAM
+; upgrade tier (sKeyItemTiers is the source of truth; wKODefianceUsages is a
+; derived cache), and refills the three dice items' charges the same way
+; (see KEY_ITEM_EFFECTS_PLAN_PC.md).
 ;
 ; wRogueFlagsBitfield2 bits 0-1 count pulls USED, not pulls remaining, so the
 ; all-zero state a new game leaves behind already means "3 available" and
@@ -80,10 +81,41 @@ RogueOnBlackout::
 	ld a, [sKeyItemTiers]
 	and %00110000                 ; KO_DEFIANCE is key item index 2 -> bits 4-5
 	swap a                        ; %00110000 -> %00000011, i.e. tier 0-3
-	push af
-	xor a
-	ld [rRAMG], a                 ; leave SRAM disabled, never on a farcall boundary
-	pop af
 	inc a                         ; charges = 1 + tier
 	ld [wKODefianceUsages], a
+
+	; Dice charges: DOOR_DICE/MON_DICE/ITEM_DICE each refill to 1+tier,
+	; packed 2 bits each into wDiceCharges (bits 0-1/2-3/4-5). Charges store
+	; REMAINING, unlike the slot-pull bits above which store USED - a fresh/
+	; new-game byte reading 0 correctly means "own no dice yet". Read tiers
+	; directly from sKeyItemTiers while SRAM is already enabled, same as
+	; KO_DEFIANCE above, rather than three farcalls to GetKeyItemPower.
+	ld a, [sKeyItemTiers + 2]
+	and %11000000                 ; DOOR_DICE is key item index 11 -> bits 6-7
+	swap a
+	srl a
+	srl a                         ; a = tier (0-3)
+	inc a                         ; a = charges (1-3), into bits 0-1
+	ld b, a
+
+	ld a, [sKeyItemTiers + 3]
+	ld c, a                       ; keep byte 3 around for ITEM_DICE below
+	and %00000011                 ; MON_DICE is key item index 12 -> bits 0-1
+	inc a                         ; charges (1-3)
+	sla a
+	sla a                         ; shift into bits 2-3
+	or b
+	ld b, a
+
+	ld a, c
+	and %00001100                 ; ITEM_DICE is key item index 13 -> bits 2-3
+	srl a
+	srl a                         ; a = tier (0-3)
+	inc a                         ; a = charges (1-3)
+	swap a                        ; shift into bits 4-5
+	or b
+	ld [wDiceCharges], a
+
+	xor a
+	ld [rRAMG], a                 ; leave SRAM disabled, never on a farcall boundary
 	ret

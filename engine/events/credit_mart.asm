@@ -179,6 +179,9 @@ CreditBuyItem:
 	ld b, a                       ; GiveItem reads b/c, and it is a HOME routine
 	ld c, 1
 	call GiveItem                 ; routes into the key items pocket
+	push af
+	call InitDiceChargeOnFirstPurchase ; a die bought mid-run needs a charge now,
+	pop af                             ; not at the next blackout - see the routine below
 	; Carry clear here does NOT mean failure for a key item - the grant always
 	; succeeds, and clear just means all 3 active slots were taken so it went to
 	; the PC. Either way the player owns it, so the sale completes and the
@@ -197,6 +200,49 @@ CreditBuyItem:
 .notEnough
 	ld hl, CreditNotEnoughText
 	jp PrintText
+
+; ============================================================
+; InitDiceChargeOnFirstPurchase — DOOR_DICE/MON_DICE/ITEM_DICE start with
+; exactly 1 charge. Their SRAM tier is always 0 the instant they are first
+; owned (upgrades require ownership first - see the upgrade vendor's
+; IsKeyItemOwnedLocal gate below), so "1 + tier" collapses to a plain 1 here,
+; no SRAM read needed. RogueOnBlackout (custom_functions/credit_popup.asm)
+; re-derives the real 1+tier value from sKeyItemTiers on every subsequent
+; run boundary; this only covers the gap between "just bought this run" and
+; the next blackout. No-op for every other item id.
+; INPUT: wCurItem = item id just successfully GiveItem'd.
+; CLOBBERS: af, hl
+; ============================================================
+InitDiceChargeOnFirstPurchase:
+	ld a, [wCurItem]
+	cp DOOR_DICE
+	jr z, .door
+	cp MON_DICE
+	jr z, .mon
+	cp ITEM_DICE
+	jr z, .item
+	ret
+.door
+	ld hl, wDiceCharges
+	ld a, [hl]
+	and %11111100
+	or 1                          ; bits 0-1 = DOOR_DICE charges
+	ld [hl], a
+	ret
+.mon
+	ld hl, wDiceCharges
+	ld a, [hl]
+	and %11110011
+	or %00000100                  ; bits 2-3 = MON_DICE charges
+	ld [hl], a
+	ret
+.item
+	ld hl, wDiceCharges
+	ld a, [hl]
+	and %11001111
+	or %00010000                  ; bits 4-5 = ITEM_DICE charges
+	ld [hl], a
+	ret
 
 ; ============================================================
 ; LoadCreditPriceOfCurItem — hCoins = credit cost of wCurItem, 2-byte BCD.
@@ -533,6 +579,13 @@ ApplyKeyItemTierEffects:
 	ld c, KEY_ITEM_BIT_EXP_ALL_OWNED / 2
 	call GetKeyItemTier
 	ld [wExpAllLevel], a
+
+	; ELEMENT PRISM's damage bonus is derived from its tier the same way, but
+	; its cache lives in custom_functions/element_prism.asm (the "rogue" bank,
+	; not this one), so it is refreshed by farcall rather than inline. Without
+	; this, a prism upgrade bought here would not take effect until the next
+	; battle start, unlike every other item on this list.
+	farcall RoguePrismRefreshCache
 	ret
 
 TierToHealLevel:
@@ -560,7 +613,7 @@ CreditSaleTable:
 	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2
 	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2
 	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2
-	db IV_BOOSTER,    KEY_ITEM_BIT_IV_BOOSTER_OWNED / 2
+	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2
 	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2
 	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2
 	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2
@@ -578,7 +631,7 @@ CreditUpgradeTable:
 	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $25, $50, $75
 	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2,    $20, $40, $80
 	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2,     $20, $40, $80
-	db IV_BOOSTER,    KEY_ITEM_BIT_IV_BOOSTER_OWNED / 2,    $25, $50, $75
+	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2,    $25, $50, $75
 	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2,  $20, $40, $80
 	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $15, $30, $60
 	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $15, $30, $60

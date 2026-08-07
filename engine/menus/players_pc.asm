@@ -23,7 +23,9 @@ PlayerPCMenu:
 	set BIT_NO_MENU_BUTTON_SOUND, [hl]
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	ld b, $6
+	ld b, $8            ; was $6; grown two rows for the CARTRIDGE entry, since
+	                     ; `next` in PlayersPCMenuEntries advances 2 rows per item
+	                     ; (BIT_DOUBLE_SPACED_MENU is clear here)
 	ld c, $e
 	call TextBoxBorder
 	call UpdateSprites
@@ -36,8 +38,8 @@ PlayerPCMenu:
 	dec a
 	ld [hli], a ; wTopMenuItemX
 	inc hl ; wTileBehindCursor
-	ld a, 2
-	ld [hli], a ; wMaxMenuItem (0=Withdraw, 1=Deposit, 2=LogOff)
+	ld a, 3
+	ld [hli], a ; wMaxMenuItem (0=Withdraw, 1=Deposit, 2=Cartridge, 3=LogOff)
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
 	xor a
@@ -58,6 +60,9 @@ PlayerPCMenu:
 	jp z, PlayerPCWithdrawKeyItems
 	dec a
 	jp z, PlayerPCDepositKeyItems
+	dec a
+	jp z, PlayerPCCartridgeSwap
+	; falls through to ExitPlayerPC for LOG OFF (item 3)
 
 ExitPlayerPC:
 	ld hl, wBagPocketsFlags
@@ -81,6 +86,13 @@ ExitPlayerPC:
 	xor a
 	ldh [hNoWaitAfterText], a
 	ret
+
+; ELEMENT PRISM cartridge swap (custom_functions/element_prism.asm). Returns
+; to the PC menu rather than logging off, so the player can swap again or
+; check the result.
+PlayerPCCartridgeSwap:
+	farcall RoguePrismCartridgeMenu
+	jp PlayerPCMenu
 
 PlayerPCDeposit:
 	xor a
@@ -265,6 +277,7 @@ PlayerPCToss:
 PlayersPCMenuEntries:
 	db   "WITHDRAW"
 	next "DEPOSIT"
+	next "CARTRIDGE"   ; ELEMENT PRISM cartridge swap (custom_functions/element_prism.asm)
 	next "LOG OFF@"
 
 TurnedOnPC2Text:

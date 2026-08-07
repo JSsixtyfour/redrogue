@@ -107,7 +107,7 @@ ItemPrices::
 	bcd3 0     ; TURN_REWIND
 	bcd3 0     ; RARE_SCOPE
 	bcd3 0     ; RARE_LENS
-	bcd3 0     ; IV_BOOSTER
+	bcd3 0     ; DV_BOOSTER
 	bcd3 0     ; STAT_BOOSTER
 	bcd3 0     ; DOOR_DICE
 	bcd3 0     ; MON_DICE
@@ -131,7 +131,7 @@ CreditItemPrices::
 	bcd3 25    ; TURN_REWIND
 	bcd3 25    ; RARE_SCOPE
 	bcd3 25    ; RARE_LENS
-	bcd3 35    ; IV_BOOSTER
+	bcd3 35    ; DV_BOOSTER
 	bcd3 30    ; STAT_BOOSTER
 	bcd3 15    ; DOOR_DICE
 	bcd3 15    ; MON_DICE
