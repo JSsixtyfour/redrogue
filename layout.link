@@ -178,6 +178,13 @@ ROMX $2B
 	"Pokédex Text"
 ROMX $2C
 	"Move Names"
+ROMX $2D
+	"Tilesets 4"
+	"Room"
+	"Room PC"
+	"Room Vendor"
+	"Room Sprites"
+	"Maps 22"
 WRAM0
 	"Audio RAM"
 	org $c100

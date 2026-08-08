@@ -78,9 +78,6 @@ RogueSetTurnRewindLabel::
 TurnRewindInit::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, $ff
 	ld [sTurnRewindBuf], a
 	xor a
@@ -101,9 +98,6 @@ TurnRewindSnapshot::
 
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 
 	ld a, [wPlayerMonNumber]
 	ld [sTurnRewindBuf + 0], a
@@ -167,9 +161,6 @@ TurnRewindSnapshot::
 TurnRewindRestore::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 
 	; jp, not jr: .refuse sits past the whole restore body, ~150 bytes away.
 	ld a, [sTurnRewindBuf + 0]

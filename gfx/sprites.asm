@@ -71,3 +71,51 @@ AgathaSprite::           INCBIN "gfx/sprites/agatha.2bpp"
 BrunoSprite::            INCBIN "gfx/sprites/bruno.2bpp"
 LoreleiSprite::          INCBIN "gfx/sprites/lorelei.2bpp"
 SeelSprite::             INCBIN "gfx/sprites/seel.2bpp"
+
+
+SECTION "Room Sprites", ROMX
+
+; Promoted still-sprite decorations — 12-"tile" walking sheets built from the
+; existing 4-tile image. A "12" entry in SpriteSheetPointerTable is consumed
+; as TWO 192-byte loads by engine/overworld/map_sprites.asm's
+; .loadStillTilePattern path (12 tiles * TILE_SIZE = 192 bytes per load, see
+; macros/gfx.asm's `tiles` EQUS), i.e. 384 bytes / 24 raw 8x8 tiles total —
+; confirmed against BirdSprite/FairySprite/MonsterSprite/SeelSprite, all real
+; 16x96px (384-byte) art despite being single-Pokemon "12" entries. The
+; source 4-tile (64-byte) image is repeated SIX times, not three, to supply
+; the full 384 bytes; they never animate (STAY), so every repeated frame
+; renders identically to the source art.
+VoltorbDecoSprite::
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+	INCBIN "gfx/sprites/poke_ball.2bpp"
+
+OmanyteDecoSprite::
+	INCBIN "gfx/sprites/fossil.2bpp"
+	INCBIN "gfx/sprites/fossil.2bpp"
+	INCBIN "gfx/sprites/fossil.2bpp"
+	INCBIN "gfx/sprites/fossil.2bpp"
+	INCBIN "gfx/sprites/fossil.2bpp"
+	INCBIN "gfx/sprites/fossil.2bpp"
+
+SnorlaxDecoSprite::
+	INCBIN "gfx/sprites/snorlax.2bpp"
+	INCBIN "gfx/sprites/snorlax.2bpp"
+	INCBIN "gfx/sprites/snorlax.2bpp"
+	INCBIN "gfx/sprites/snorlax.2bpp"
+	INCBIN "gfx/sprites/snorlax.2bpp"
+	INCBIN "gfx/sprites/snorlax.2bpp"
+
+; Imported from pret/pokeyellow (gfx/sprites/pikachu.png, gfx/sprites/chansey.png),
+; converted locally with this repo's rgbgfx pipeline (--colors dmg).
+PikachuSprite:: ; genuine 16x96px art, 384 bytes / 24 raw tiles — no padding needed
+	INCBIN "gfx/sprites/pikachu.2bpp"
+
+ChanseySprite:: ; pokeyellow's source art is only 16x48px (192 bytes / 12 raw
+                ; tiles) — half of what a "12" entry consumes here (see note
+                ; above). Repeated once to reach the required 384 bytes.
+	INCBIN "gfx/sprites/chansey.2bpp"
+	INCBIN "gfx/sprites/chansey.2bpp"

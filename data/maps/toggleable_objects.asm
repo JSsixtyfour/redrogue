@@ -325,8 +325,8 @@ ToggleableObjectStates:
 	toggle_object_state SILPHCO11F_ROCKET1,  ON
 	toggle_object_state SILPHCO11F_ROCKET2,  ON
 
-	toggleable_objects_for UNUSED_MAP_F4
-	toggle_object_state $02, ON ; unused
+	toggleable_objects_for SILPH_CO_VR
+	toggle_object_state $02, ON ; unused - SilphCoVR has no object_events
 
 	toggleable_objects_for POKEMON_MANSION_2F
 	toggle_object_state POKEMONMANSION2F_CALCIUM, ON

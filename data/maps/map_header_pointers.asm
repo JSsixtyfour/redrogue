@@ -238,14 +238,14 @@ MapHeaderPointers::
 	dw SilphCo10F_h
 	dw SilphCo11F_h
 	dw SilphCoElevator_h
-	dw SilphCo2F_h ; UNUSED_MAP_ED
-	dw SilphCo2F_h ; UNUSED_MAP_EE
+	dw SilphCoB1F_h
+	dw SilphCoDorm_h
 	dw TradeCenter_h
 	dw Colosseum_h
 	dw ProceduralCave1_h ; PROCEDURAL_CAVE_1 (was UNUSED_MAP_F1 -> SilphCo2F_h)
 	dw ProceduralForest_h ; PROCEDURAL_FOREST (was UNUSED_MAP_F2 -> SilphCo2F_h)
 	dw ProceduralFacility_h ; PROCEDURAL_FACILITY (was UNUSED_MAP_F3 -> SilphCo2F_h)
-	dw SilphCo2F_h ; UNUSED_MAP_F4
+	dw SilphCoVR_h
 	dw LoreleisRoom_h
 	dw BrunosRoom_h
 	dw AgathasRoom_h

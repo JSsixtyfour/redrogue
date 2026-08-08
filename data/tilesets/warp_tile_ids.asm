@@ -24,6 +24,7 @@ WarpTileIDPointers:
 	dw .ClubWarpTileIDs
 	dw .FacilityWarpTileIDs
 	dw .PlateauWarpTileIDs
+	dw .RedsHouse1WarpTileIDs ; DORM — alias, dorm.png is a byte-copy of reds_house.png
 	assert_table_length NUM_TILESETS
 
 MACRO warp_tiles

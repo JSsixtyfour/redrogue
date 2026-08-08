@@ -49,6 +49,9 @@ IF DEF(_DEBUG)
 	; sTMBitfield, so just fill it here).
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
+	ASSERT BANK("Save Data") == 1
+	ld a, 1
+	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld hl, sTMBitfield
 	ld a, $ff
 	ld [hli], a
@@ -193,6 +196,11 @@ IF DEF(_DEBUG)
 	inc hl
 	ld a, STARTER1
 	ld [hl], a
+
+	; Own every SilphCoDorm room piece. Deliberately NOT gated on
+	; BIT_DEBUG2_MODE: the dorm isn't reachable from the Debug 2 spawn, so
+	; granting only there is useless. Every debug new game gets them.
+	farcall RoomGrantAllPieces
 
 	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
 	ld a, [wStatusFlags6]

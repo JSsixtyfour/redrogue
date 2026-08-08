@@ -6,8 +6,8 @@ CreditExchange_Object:
 	db $f ; border block
 
 	def_warp_events
-	warp_event  4,  7, LAST_MAP, 10
-	warp_event  5,  7, LAST_MAP, 10
+	warp_event  4,  7, LAST_MAP, 1
+	warp_event  5,  7, LAST_MAP, 1
 
 	def_bg_events
 	bg_event  2,  2, TEXT_CREDITEXCHANGE_VENDOR_1

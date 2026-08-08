@@ -81,9 +81,6 @@ GetKeyItemTierForCurItem::
     add hl, de
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     ld a, [hl]
     ld c, a
     xor a
@@ -167,9 +164,6 @@ IsKeyItemOwned::
     jr nc, .no
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     call _KeyBitInfo      ; c = own_bit
     ld a, [hl]
     and b
@@ -193,9 +187,6 @@ IsKeyItemActive::
     inc c               ; c = active_bit = own_bit + 1
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     call _KeyBitInfo
     ld a, [hl]
     and b
@@ -253,9 +244,6 @@ AcquireKeyPocketItem::
     ; c = own_bit
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     push bc
     call _KeyBitInfo          ; hl = byte addr, b = 1<<own_bit
     ld a, [hl]
@@ -292,9 +280,6 @@ EquipKeyItem::
     jr nc, .fail
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     inc c                     ; c = active_bit
     push bc
     call _KeyBitInfo
@@ -333,9 +318,6 @@ UnequipKeyItem::
     inc c                     ; c = active_bit
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     push bc
     call _KeyBitInfo
     ld a, [hl]
@@ -373,9 +355,6 @@ UnequipKeyItem::
 ClearKeyItemsBitfield::
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     ld hl, sKeyItemsBitfield
     ld b, 8       ; 4 bytes of ownership bits + 4 of upgrade tiers
     xor a
@@ -406,9 +385,6 @@ BuildKeyItemBagList::
 BuildKeyItemPocketList::
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     ld a, HIGH(wKeyItemPocketBuf + 1)
     ld [wPocketListWritePtr], a
     ld a, LOW(wKeyItemPocketBuf + 1)
@@ -479,9 +455,6 @@ BuildKeyItemPocketList::
 BuildKeyItemPCWithdrawList::
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
     ld a, HIGH(wKeyItemPocketBuf + 1)
     ld [wPocketListWritePtr], a
     ld a, LOW(wKeyItemPocketBuf + 1)

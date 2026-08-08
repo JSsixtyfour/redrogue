@@ -4,6 +4,9 @@ InitPlayerData2:
 	farcall ClearTMBitfield
 	; clear key items ownership bitfield (true new game only — death/run-reset does NOT clear this)
 	farcall ClearKeyItemsBitfield
+	; clear room decoration state, same reason as the two above: SRAM's $FF
+	; default would index past several option tables (see RoomClearState)
+	farcall RoomClearState
 
 	call Random
 	ldh a, [hRandomSub]

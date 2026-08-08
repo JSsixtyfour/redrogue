@@ -64,9 +64,6 @@ RogueGymLeaderVictory::
 	ld c, a
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, c
 	ld [sElementPrismType], a     ; equip it immediately
 	xor a
@@ -307,9 +304,6 @@ RoguePrismGrantCartridge::
 	ld b, a                       ; b = mask
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [hl]
 	or b
 	ld [hl], a
@@ -374,9 +368,6 @@ PrismHasCartridge::
 	ld c, a                       ; c = mask
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [hl]
 	and c
 	ld b, a
@@ -401,9 +392,6 @@ RoguePrismGetTypeFresh::
 	jr z, .none
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [sElementPrismType]
 	ld c, a
 	xor a
@@ -666,9 +654,6 @@ RoguePrismCartridgeMenu::
 
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, b
 	ld [sElementPrismType], a
 	xor a
@@ -693,9 +678,6 @@ RoguePrismCartridgeMenu::
 RoguePrismShowEquipped::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [sElementPrismType]
 	ld b, a
 	xor a

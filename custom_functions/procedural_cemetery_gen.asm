@@ -1206,6 +1206,14 @@ PCemRollItem:
 	; enable here. rBMODE/rRAMB are untouched by HasTMHM, only rRAMG needs it.
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
+	; Re-select bank 0 as well as re-enabling SRAM. The farcall above reaches
+	; tm_bag's HasTMHM, which selects bank 1 for sTMBitfield and does not put
+	; it back - so without this, these sProcCemetery* writes land in bank 1
+	; (the save area) instead of bank 0. Same shape as the original
+	; SRAM-disabled-across-farcall bug this routine already guards against.
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
 	ld a, [wRogueItem]
 	ld hl, sProcCemeteryItem
 	ld b, a

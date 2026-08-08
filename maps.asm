@@ -1296,3 +1296,21 @@ INCLUDE "data/maps/headers/RewardRoom.asm"
 INCLUDE "scripts/RewardRoom.asm"
 INCLUDE "data/maps/objects/RewardRoom.asm"
 RewardRoom_Blocks: INCBIN "maps/RewardRoom.blk"
+
+
+SECTION "Maps 22", ROMX
+
+INCLUDE "data/maps/headers/SilphCoB1F.asm"
+INCLUDE "scripts/SilphCoB1F.asm"
+INCLUDE "data/maps/objects/SilphCoB1F.asm"
+SilphCoB1F_Blocks: INCBIN "maps/SilphCoB1F.blk"
+
+INCLUDE "data/maps/headers/SilphCoDorm.asm"
+INCLUDE "scripts/SilphCoDorm.asm"
+INCLUDE "data/maps/objects/SilphCoDorm.asm"
+SilphCoDorm_Blocks: INCBIN "maps/SilphCoDorm.blk"
+
+INCLUDE "data/maps/headers/SilphCoVR.asm"
+INCLUDE "scripts/SilphCoVR.asm"
+INCLUDE "data/maps/objects/SilphCoVR.asm"
+SilphCoVR_Blocks: INCBIN "maps/SilphCoVR.blk"

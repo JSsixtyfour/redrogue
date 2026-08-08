@@ -90,9 +90,6 @@ _TMBitInfo:
 AcquireTMHM::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [wCurItem]    ; farcall clobbers b; GiveItem sets wCurItem before calling
 	call _TMHMIndex     ; a = bit index
 	call _TMBitInfo     ; hl = byte addr, b = mask
@@ -113,9 +110,6 @@ AcquireTMHM::
 HasTMHM::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [wCurItem]
 	call _TMHMIndex
 	call _TMBitInfo     ; hl = byte addr, b = mask
@@ -136,9 +130,6 @@ HasTMHM::
 RemoveTMHM::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [wCurItem]
 	call _TMHMIndex
 	call _TMBitInfo     ; hl = byte addr, b = 1<<bit_pos (mask)
@@ -159,9 +150,6 @@ RemoveTMHM::
 ClearTMBitfield::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld hl, sTMBitfield
 	xor a
 	ld [hli], a
@@ -185,9 +173,6 @@ ClearTMBitfield::
 BuildTMPocketList::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld de, wTMPocketBuf + 1   ; de = write pointer (skip count byte at start)
 	ld b, 0                    ; b = owned count
 	ld c, 0                    ; c = bit index (0 to NUM_TM_HM-1)

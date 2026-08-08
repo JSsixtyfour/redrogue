@@ -13,6 +13,7 @@ Overworld_Coll::
 
 RedsHouse1_Coll::
 RedsHouse2_Coll::
+Dorm_Coll:: ; alias — dorm.png is a byte-copy of the working reds_house.png, same passable tiles
 	coll_tiles $01, $02, $03, $11, $12, $13, $14, $1c, $1a
 
 Mart_Coll::

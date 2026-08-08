@@ -407,3 +407,26 @@ _BridgeRockVariantText::
 	text "It's now part"
 	line "ROCK type!"
 	prompt
+
+; Room Decoration System - Credit Exchange room vendor
+; (custom_functions/room_vendor.asm)
+_RoomVendorConfirmText::
+	text "Buy for @"
+	text_bcd hCoins, 2 | LEADING_ZEROES | LEFT_ALIGN
+	text " CREDITS?"
+	done
+
+_RoomVendorBoughtText::
+	text "Got it! Check"
+	line "the room PC."
+	done
+
+_RoomVendorNotEnoughText::
+	text "You don't have"
+	line "enough CREDITS."
+	done
+
+_RoomVendorAlreadyOwnedText::
+	text "You already own"
+	line "this piece."
+	done

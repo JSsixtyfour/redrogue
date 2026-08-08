@@ -126,28 +126,40 @@ _AddPartyMon::
 	push de
 	push bc
 	ld a, DV_BOOSTER
-	ld [wCurItem], a
+	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte,
+	                               ; ram/wram.asm) - restored below before it escapes
 	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
 	pop bc
 	pop de
 	pop hl
+	push af                        ; hold the tier across the restore
+	ld a, [wCurSpecies]            ; set from wCurPartySpecies above, still valid
+	ld [wCurPartySpecies], a
+	pop af
 	and a
 	jr z, .noDVBoost
 	dec a
+; de is the LIVE mon-struct write cursor here (it still has to write HP, box
+; level, status, types, moves, OT ID, exp and level further down), and hl is
+; the live struct base used by .next4. Both d and e are needed as scratch for
+; the table index and the floor value, so save and restore the pair around the
+; whole block - clobbering de sent every later `ld [de], a` into ROM at $0d0d,
+; producing party mons with a species but level 0 / 0 HP / all stats 0.
 	push hl
+	push de
 	ld hl, .DVFloorTable
 	ld e, a
 	ld d, 0
 	add hl, de
-	ld a, [hl]                     ; a = floor (6/10/13)
-	pop hl
-	ld e, a                        ; e = floor value, held here across both calls below
+	ld e, [hl]                     ; e = floor (6/10/13), held across both calls below
 	ld a, b                        ; a = first roll (-> MON_DVS byte1: Spd/Spc)
 	call .ApplyDVFloor
 	ld b, a
 	ld a, c
 	call .ApplyDVFloor
 	ld c, a
+	pop de                         ; restore live struct write cursor
+	pop hl                         ; restore live struct base
 .noDVBoost
 	ld a, c                        ; a = (possibly floored) second roll
 
@@ -223,13 +235,15 @@ _AddPartyMon::
 ; survive the farcall - see KEY_ITEM_EFFECTS_PLAN_PC.md §3a.
 	push de
 	ld a, SHINY_CHARM
-	ld [wCurItem], a
+	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte)
 	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
 	ld hl, .ShinyThresholdTable
 	ld e, a
 	ld d, 0
 	add hl, de
 	ld d, [hl]                     ; d = threshold (1/2/4/8); Random preserves de
+	ld a, [wCurSpecies]            ; restore the aliased byte before it escapes to
+	ld [wCurPartySpecies], a       ; callers, which read it after AddPartyMon returns
 	call Random                    ; a = fresh roll
 	cp d
 	pop de                         ; de = struct write cursor, restored

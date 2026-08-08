@@ -571,7 +571,7 @@ PCBossSpriteCategoryTable:
 	db SPRITE_POKE_BALL ; FSPRITE_POKEBALL (4)
 	db SPRITE_SNORLAX   ; FSPRITE_SNORLAX (5)
 	db SPRITE_FOSSIL    ; FSPRITE_FOSSIL (6)
-	db SPRITE_MONSTER   ; FSPRITE_PIKACHU (7) - no Pikachu NPC sprite
+	db SPRITE_PIKACHU   ; FSPRITE_PIKACHU (7)
 
 ; 95-byte nibble-packed species→FSPRITE table, ported from follower branch.
 ; High nibble = even species index, low nibble = odd.

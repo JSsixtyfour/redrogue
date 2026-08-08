@@ -142,8 +142,9 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $450 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
-	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects)
+	ds $442 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
+	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
+	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System)
 
 ; Diagonal tile save buffer for sprite fusion.
 ; Holds the 7 diagonal tiles (col==row) from species_a's 2bpp interleaved
@@ -174,6 +175,16 @@ sKeyItemsBitfield:: ds 4    ; only byte 0 is used; extra bytes cost nothing
 ; game. Separating them would leave tiers holding stale SRAM, which reads as
 ; "already maxed" and hides items from the Credit Exchange upgrade vendor.
 sKeyItemTiers:: ds 4
+
+; Room Decoration System (SilphCoDorm) — persistent room-customization state.
+; Cross-run persistent like the key-item fields above, not part of the save
+; checksum (sGameData). All-zero is a valid default: default furniture,
+; nothing placed, nothing owned.
+sRoomFurniture:: ds 2 ; b0: bits0-3 TOP(0-8), bits4-6 MIDDLE(0-4), bit7 BOTTOM(0-1)
+                      ; b1: bit0 PC(0-1), bits1-7 free
+sRoomDecorSlots:: ds 8 ; slot 0-7: 0 = empty, 1-11 = decoration id
+sRoomOwned:: ds 4 ; bits 0-7 TOP options 1-8, bit 8 LONG DESK, bits 9-12 MIDDLE
+                  ; options 1-4, bit 13 POTTED PLANT, bits 14-24 decorations 1-11
 
 ; ELEMENT PRISM's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
 ; chosen. SRAM so the choice survives run reset and blackout, like key-item

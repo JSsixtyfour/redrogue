@@ -20,6 +20,11 @@ ProcBossPatchStageSprite::
 	jr z, .cave
 	cp PROCEDURAL_FOREST
 	jr z, .forest
+	cp SILPH_CO_DORM
+	jr z, .dorm
+	ret
+.dorm
+	farcall RoomPatchSprites
 	ret
 .cave
 	ld a, RAMG_SRAM_ENABLE
@@ -86,6 +91,11 @@ ProcStageLoadDispatch::
 	; SHELVED facility preload: farcall PFacPreload
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
+	cp SILPH_CO_DORM
+	jr nz, .notDorm
+	farcall RoomStampBlocks
+	ret
+.notDorm
 	cp PROCEDURAL_CAVE_1
 	jr nz, .notCave
 	farcall PCFinalizeCave

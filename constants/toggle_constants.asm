@@ -296,8 +296,8 @@ ENDM
 	const TOGGLE_SILPH_CO_11F_2 ; AA
 	const TOGGLE_SILPH_CO_11F_3 ; AB
 
-	toggle_consts_for UNUSED_MAP_F4
-	const TOGGLE_UNUSED_MAP_F4_1 ; AC X
+	toggle_consts_for SILPH_CO_VR
+	const TOGGLE_SILPH_CO_VR_1 ; AC X
 
 	toggle_consts_for POKEMON_MANSION_2F
 	const TOGGLE_POKEMON_MANSION_2F_ITEM ; AD X

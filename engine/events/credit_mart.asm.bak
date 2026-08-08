@@ -491,9 +491,6 @@ CreditReadKeyBits:
 	add hl, de
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [hl]
 	ld c, a
 	xor a
@@ -541,9 +538,6 @@ SetKeyItemTier:
 .apply
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, d
 	cpl
 	and [hl]                      ; clear the old 2-bit field

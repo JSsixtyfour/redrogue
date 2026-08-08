@@ -78,9 +78,6 @@ RogueOnBlackout::
 
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
-	ASSERT BANK("Save Data") == 1
-	ld a, 1
-	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, [sKeyItemTiers]
 	and %00110000                 ; KO_DEFIANCE is key item index 2 -> bits 4-5
 	swap a                        ; %00110000 -> %00000011, i.e. tier 0-3
