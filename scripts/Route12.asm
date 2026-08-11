@@ -124,7 +124,7 @@ Route12_TextPointers:
 	dw_const Route12Fisher2Text,           TEXT_ROUTE12_FISHER2
 	dw_const Route12RockerText,            TEXT_ROUTE12_ROCKER
 	dw_const Route12JrTrainerMText,        TEXT_ROUTE12_JR_TRAINER_M
-	dw_const Route12CooltrainerFText,      TEXT_ROUTE12_COOLTRAINER_F
+	dw_const Route12Fisher3Text,           TEXT_ROUTE12_FISHER3
 	dw_const PickUpItemText,               TEXT_ROUTE12_TM_PAY_DAY
 	dw_const PickUpItemText,               TEXT_ROUTE12_IRON
     dw_const RandomPickUpItemText,         TEXT_ROUTE12_RANDOM
@@ -151,7 +151,7 @@ Route12TrainerHeader2:
 Route12TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_12_TRAINER_3, 4, Route12JrTrainerMBattleText, Route12JrTrainerMEndBattleText, Route12JrTrainerMAfterBattleText
 Route12TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_12_TRAINER_4, 4, Route12CooltrainerFBattleText, Route12CooltrainerFEndBattleText, Route12CooltrainerFAfterBattleText
+	trainer EVENT_BEAT_ROUTE_12_TRAINER_4, 4, Route12Fisher3BattleText, Route12Fisher3EndBattleText, Route12Fisher3AfterBattleText
 	db -1 ; end
 
 Route12SnorlaxText:
@@ -238,21 +238,21 @@ Route12JrTrainerMAfterBattleText:
 	text_far _Route12CooltrainerMAfterBattleText
 	text_end
 
-Route12CooltrainerFText:
+Route12Fisher3Text:
 	text_asm
 	ld hl, Route12TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route12CooltrainerFBattleText:
+Route12Fisher3BattleText:
 	text_far _Route12Fisher3BattleText
 	text_end
 
-Route12CooltrainerFEndBattleText:
+Route12Fisher3EndBattleText:
 	text_far _Route12Fisher3EndBattleText
 	text_end
 
-Route12CooltrainerFAfterBattleText:
+Route12Fisher3AfterBattleText:
     text_asm
     farcall Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON

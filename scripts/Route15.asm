@@ -74,11 +74,11 @@ Route15_ScriptPointers:
 
 Route15_TextPointers:
 	def_text_pointers
-	dw_const Route15JrTrainerFText,    TEXT_ROUTE15_JR_TRAINER_F
+	dw_const Route15JrTrainerF1Text,   TEXT_ROUTE15_JR_TRAINER_F1
 	dw_const Route15BirdKeeperText,    TEXT_ROUTE15_BIRD_KEEPER
 	dw_const Route15BeautyText,        TEXT_ROUTE15_BEAUTY
 	dw_const Route15BikerText,         TEXT_ROUTE15_BIKER
-	dw_const Route15CooltrainerMText,  TEXT_ROUTE15_COOLTRAINER_M
+	dw_const Route15JrTrainerF2Text,   TEXT_ROUTE15_JR_TRAINER_F2
 	dw_const PickUpItemText,           TEXT_ROUTE15_TM_RAGE
     dw_const RandomPickUpItemText,     TEXT_ROUTE15_RANDOM
     dw_const Route15_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE15_ROGUE_REWARD_POKEBALL_1
@@ -93,7 +93,7 @@ Route15_TextPointers:
 Route15TrainerHeaders:
 	def_trainers 1
 Route15TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_15_TRAINER_0, 5, Route15JrTrainerFBattleText, Route15JrTrainerFEndBattleText, Route15JrTrainerFAfterBattleText
+	trainer EVENT_BEAT_ROUTE_15_TRAINER_0, 5, Route15JrTrainerF1BattleText, Route15JrTrainerF1EndBattleText, Route15JrTrainerF1AfterBattleText
 Route15TrainerHeader1:
 	trainer EVENT_BEAT_ROUTE_15_TRAINER_1, 5, Route15BirdKeeperBattleText, Route15BirdKeeperEndBattleText, Route15BirdKeeperAfterBattleText
 Route15TrainerHeader2:
@@ -101,10 +101,10 @@ Route15TrainerHeader2:
 Route15TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_15_TRAINER_3, 5, Route15BikerBattleText, Route15BikerEndBattleText, Route15BikerAfterBattleText
 Route15TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_15_TRAINER_4, 5, Route15CooltrainerMBattleText, Route15CooltrainerMEndBattleText, Route15CooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_15_TRAINER_4, 5, Route15JrTrainerF2BattleText, Route15JrTrainerF2EndBattleText, Route15JrTrainerF2AfterBattleText
 	db -1 ; end
 
-Route15JrTrainerFText:
+Route15JrTrainerF1Text:
 	text_asm
 	ld hl, Route15TrainerHeader0
 	jr Route15TalkToTrainer
@@ -124,23 +124,23 @@ Route15BikerText:
 	ld hl, Route15TrainerHeader3
 	jr Route15TalkToTrainer
 
-Route15CooltrainerMText:
+Route15JrTrainerF2Text:
 	text_asm
 	ld hl, Route15TrainerHeader4
 Route15TalkToTrainer:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route15JrTrainerFBattleText:
-	text_far _Route15CooltrainerF1BattleText
+Route15JrTrainerF1BattleText:
+	text_far _Route15JrTrainerF1BattleText
 	text_end
 
-Route15JrTrainerFEndBattleText:
-	text_far _Route15CooltrainerF1EndBattleText
+Route15JrTrainerF1EndBattleText:
+	text_far _Route15JrTrainerF1EndBattleText
 	text_end
 
-Route15JrTrainerFAfterBattleText:
-	text_far _Route15CooltrainerF1AfterBattleText
+Route15JrTrainerF1AfterBattleText:
+	text_far _Route15JrTrainerF1AfterBattleText
 	text_end
 
 Route15BirdKeeperBattleText:
@@ -179,15 +179,15 @@ Route15BikerAfterBattleText:
 	text_far _Route15Biker1AfterBattleText
 	text_end
 
-Route15CooltrainerMBattleText:
-	text_far _Route15CooltrainerF4BattleText
+Route15JrTrainerF2BattleText:
+	text_far _Route15JrTrainerF2BattleText
 	text_end
 
-Route15CooltrainerMEndBattleText:
-	text_far _Route15CooltrainerF4EndBattleText
+Route15JrTrainerF2EndBattleText:
+	text_far _Route15JrTrainerF2EndBattleText
 	text_end
 
-Route15CooltrainerMAfterBattleText:
+Route15JrTrainerF2AfterBattleText:
     text_asm
     farcall Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON

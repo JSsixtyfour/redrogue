@@ -46,7 +46,11 @@ ReplaceTileBlock:
 	call CompareHLWithBC
 	ret c ; return if the replaced tile block is above the map view in memory
 
-RedrawMapView:
+; Exported so custom_functions/room_pc.asm can farcall it: LoadCurrentMapView
+; alone only refills wTileMap (which feeds the WINDOW at vBGMap1), while the
+; overworld the player actually sees is vBGMap0, written here and by
+; RedrawRowOrColumn during walking.
+RedrawMapView::
 	ldh a, [hIsInBattle]
 	inc a
 	ret z

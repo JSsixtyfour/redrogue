@@ -77,11 +77,11 @@ Route9_ScriptPointers:
 
 Route9_TextPointers:
 	def_text_pointers
-	dw_const Route9JrTrainerMText,    TEXT_ROUTE9_JR_TRAINER_M
+	dw_const Route9JrTrainerM1Text,    TEXT_ROUTE9_JR_TRAINER_M1
 	dw_const Route9JrTrainerFText,    TEXT_ROUTE9_JR_TRAINER_F
 	dw_const Route9HikerText,         TEXT_ROUTE9_HIKER
 	dw_const Route9BugCatcherText,    TEXT_ROUTE9_BUG_CATCHER
-	dw_const Route9CooltrainerMText,  TEXT_ROUTE9_COOLTRAINER_M
+	dw_const Route9JrTrainerM2Text,  TEXT_ROUTE9_JR_TRAINER_M2
 	dw_const PickUpItemText,          TEXT_ROUTE9_TM_TELEPORT
     dw_const RandomPickUpItemText,    TEXT_ROUTE9_RANDOM
     dw_const Route9_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE9_ROGUE_REWARD_POKEBALL_1
@@ -96,7 +96,7 @@ Route9_TextPointers:
 Route9TrainerHeaders:
 	def_trainers 1
 Route9TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_9_TRAINER_0, 1, Route9JrTrainerMBattleText, Route9JrTrainerMEndBattleText, Route9JrTrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_9_TRAINER_0, 1, Route9JrTrainerM1BattleText, Route9JrTrainerM1EndBattleText, Route9JrTrainerM1AfterBattleText
 Route9TrainerHeader1:
 	trainer EVENT_BEAT_ROUTE_9_TRAINER_1, 2, Route9JrTrainerFBattleText, Route9JrTrainerFEndBattleText, Route9JrTrainerFAfterBattleText
 Route9TrainerHeader2:
@@ -104,10 +104,10 @@ Route9TrainerHeader2:
 Route9TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_9_TRAINER_3, 4, Route9BugCatcherBattleText, Route9BugCatcherEndBattleText, Route9BugCatcherAfterBattleText
 Route9TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_9_TRAINER_4, 3, Route9CooltrainerMBattleText, Route9CooltrainerMEndBattleText, Route9CooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_9_TRAINER_4, 3, Route9JrTrainerM2BattleText, Route9JrTrainerM2EndBattleText, Route9JrTrainerM2AfterBattleText
 	db -1 ; end
 
-Route9JrTrainerMText:
+Route9JrTrainerM1Text:
 	text_asm
 	ld hl, Route9TrainerHeader0
 	jr Route9TalkToTrainer
@@ -127,35 +127,35 @@ Route9BugCatcherText:
 	ld hl, Route9TrainerHeader3
 	jr Route9TalkToTrainer
 
-Route9CooltrainerMText:
+Route9JrTrainerM2Text:
 	text_asm
 	ld hl, Route9TrainerHeader4
 Route9TalkToTrainer:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route9JrTrainerMBattleText:
-	text_far _Route9CooltrainerM1BattleText
+Route9JrTrainerM1BattleText:
+	text_far _Route9JrTrainerM1BattleText
 	text_end
 
-Route9JrTrainerMEndBattleText:
-	text_far _Route9CooltrainerM1EndBattleText
+Route9JrTrainerM1EndBattleText:
+	text_far _Route9JrTrainerM1EndBattleText
 	text_end
 
-Route9JrTrainerMAfterBattleText:
-	text_far _Route9CooltrainerM1AfterBattleText
+Route9JrTrainerM1AfterBattleText:
+	text_far _Route9JrTrainerM1AfterBattleText
 	text_end
 
 Route9JrTrainerFBattleText:
-	text_far _Route9CooltrainerF1BattleText
+	text_far _Route9JrTrainerF1BattleText
 	text_end
 
 Route9JrTrainerFEndBattleText:
-	text_far _Route9CooltrainerF1EndBattleText
+	text_far _Route9JrTrainerF1EndBattleText
 	text_end
 
 Route9JrTrainerFAfterBattleText:
-	text_far _Route9CooltrainerF1AfterBattleText
+	text_far _Route9JrTrainerF1AfterBattleText
 	text_end
 
 Route9HikerBattleText:
@@ -182,15 +182,15 @@ Route9BugCatcherAfterBattleText:
 	text_far _Route9Youngster1AfterBattleText
 	text_end
 
-Route9CooltrainerMBattleText:
-	text_far _Route9Youngster2BattleText
+Route9JrTrainerM2BattleText:
+	text_far _Route9JrTrainerM2BattleText
 	text_end
 
-Route9CooltrainerMEndBattleText:
-	text_far _Route9Youngster2EndBattleText
+Route9JrTrainerM2EndBattleText:
+	text_far _Route9JrTrainerM2EndBattleText
 	text_end
 
-Route9CooltrainerMAfterBattleText:
+Route9JrTrainerM2AfterBattleText:
     text_asm
     farcall Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON

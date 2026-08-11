@@ -1,62 +1,62 @@
-_Route9CooltrainerF1BattleText::
+_Route9JrTrainerF1BattleText::
 	text "You have #MON"
 	line "with you!"
 	cont "You're mine!"
 	done
 
-_Route9CooltrainerF1EndBattleText::
+_Route9JrTrainerF1EndBattleText::
 	text "You"
 	line "deceived me!"
 	prompt
 
-_Route9CooltrainerF1AfterBattleText::
+_Route9JrTrainerF1AfterBattleText::
 	text "You need light to"
 	line "get through that"
 	cont "dark tunnel ahead."
 	done
 
-_Route9CooltrainerM1BattleText::
+_Route9JrTrainerM1BattleText::
 	text "Who's that walking"
 	line "with those good"
 	cont "looking #MON?"
 	done
 
-_Route9CooltrainerM1EndBattleText::
+_Route9JrTrainerM1EndBattleText::
 	text "Out"
 	line "like a light!"
 	prompt
 
-_Route9CooltrainerM1AfterBattleText::
+_Route9JrTrainerM1AfterBattleText::
 	text "Keep walking!"
 	done
 
-_Route9CooltrainerM2BattleText::
+_Route9JrTrainerM2BattleText::
 	text "I'm taking ROCK"
 	line "TUNNEL to go to"
 	cont "LAVENDER..."
 	done
 
-_Route9CooltrainerM2EndBattleText::
+_Route9JrTrainerM2EndBattleText::
 	text "Can't"
 	line "measure up!"
 	prompt
 
-_Route9CooltrainerM2AfterBattleText::
+_Route9JrTrainerM2AfterBattleText::
 	text "Are you off to"
 	line "ROCK TUNNEL too?"
 	done
 
-_Route9CooltrainerF2BattleText::
+_Route9JrTrainerF2BattleText::
 	text "Don't you dare"
 	line "condescend me!"
 	done
 
-_Route9CooltrainerF2EndBattleText::
+_Route9JrTrainerF2EndBattleText::
 	text "No!"
 	line "You're too much!"
 	prompt
 
-_Route9CooltrainerF2AfterBattleText::
+_Route9JrTrainerF2AfterBattleText::
 	text "You're obviously"
 	line "talented! Good"
 	cont "luck to you!"
@@ -135,13 +135,13 @@ _Route9Hiker3AfterBattleText::
 	done
 
 _Route9Youngster2BattleText::
-	text "Go, my super bug"
+	text "Go, my super"
 	line "#MON!"
 	done
 
 _Route9Youngster2EndBattleText::
 	text "My"
-	line "bugs..."
+	line "#MON..."
 	prompt
 
 _Route9Youngster2AfterBattleText::

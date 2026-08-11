@@ -57,7 +57,7 @@ PokemonTower7FSetDefaultScript:
 	ld [wCurMapScript], a ; SCRIPT_POKEMONTOWER7F_DEFAULT
 	ret
 
-	RogueAutoWalkScripts PokemonTower7F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_7F, TEXT_POKEMONTOWER7F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER7F_PLAYER_IS_MOVING, wPokemonTower7FCurScript
+	RogueAutoWalkScripts PokemonTower7F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_7F, TEXT_POKEMONTOWER7F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER7F_PLAYER_IS_MOVING, wPokemonTower7FCurScript
 
 PokemonTower7FEntranceCoords:
 	dbmapcoord 16, 9

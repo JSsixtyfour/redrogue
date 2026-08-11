@@ -8,17 +8,17 @@ _Route3Text1::
 	cont "lot out of you!"
 	done
 
-_Route3Youngster1BattleText::
-	text "Hey! I met you in"
+_Route3BugCatcherBattleText::
+	text "Did I meet you in"
 	line "VIRIDIAN FOREST!"
 	done
 
-_Route3Youngster1EndBattleText::
+_Route3BugCatcherEndBattleText::
 	text "You"
-	line "beat me again!"
+	line "beat me!"
 	prompt
 
-_Route3Youngster1AfterBattleText::
+_Route3BugCatcherAfterBattleText::
 	text "There are other"
 	line "kinds of #MON"
 	cont "than those found"
@@ -77,17 +77,17 @@ _Route3Youngster3AfterBattleText::
 	cont "to another BOX!"
 	done
 
-_Route3CooltrainerF2BattleText::
+_Route3JrTrainerFBattleText::
 	text "That look you"
 	line "gave me, it's so"
 	cont "intriguing!"
 	done
 
-_Route3CooltrainerF2EndBattleText::
+_Route3JrTrainerFEndBattleText::
 	text "Be nice!"
 	prompt
 
-_Route3CooltrainerF2AfterBattleText::
+_Route3JrTrainerFAfterBattleText::
 	text "Avoid fights by"
 	line "not letting"
 	cont "people see you!"
@@ -95,34 +95,38 @@ _Route3CooltrainerF2AfterBattleText::
 
 _Route3Youngster4BattleText::
 	text "Hey! You're not"
-	line "wearing shorts!"
+	line "ready for me!"
 	done
 
 _Route3Youngster4EndBattleText::
-	text "Lost!"
-	line "Lost! Lost!"
+	text "Well"
+	line "I guess you were"
+    cont "ready..."
 	prompt
 
 _Route3Youngster4AfterBattleText::
-	text "I always wear"
-	line "shorts, even in"
-	cont "winter!"
+	text "Don't forget"
+	line "to heal your"
+	cont "#MON between"
+    cont "routes."
 	done
 
 _Route3Youngster5BattleText::
-	text "You can fight my"
-	line "new #MON!"
+	text "I see you've"
+	line "faced my"
+    cont "rival."
 	done
 
 _Route3Youngster5EndBattleText::
-	text "Done"
-	line "like dinner!"
+	text "Same"
+	line "guess pants are"
+    cont "no better than"
+    cont "short"
 	prompt
 
 _Route3Youngster5AfterBattleText::
-	text "Trained #MON"
-	line "are stronger than"
-	cont "the wild ones!"
+	text "I still like"
+	line "pants the best."
 	done
 
 _Route3CooltrainerF3BattleText::

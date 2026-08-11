@@ -7,28 +7,28 @@ _Route1Youngster1MartSampleText::
 	cont "visit us in"
 	cont "VIRIDIAN CITY."
 
-	para "I know, I'll give"
-	line "you a sample!"
-	cont "Here you go!"
-	prompt
-
-_Route1Youngster1GotPotionText::
-	text "<PLAYER> got"
-	line "@"
-	text_ram wStringBuffer
-	text "!@"
-	text_end
-
-_Route1Youngster1AlsoGotPokeballsText::
-	text "We also carry"
-	line "# BALLs for"
-	cont "catching #MON!"
+	;para "I know, I'll give"
+	;line "you a sample!"
+	;cont "Here you go!"
 	done
 
-_Route1Youngster1NoRoomText::
-	text "You have too much"
-	line "stuff with you!"
-	done
+;_Route1Youngster1GotPotionText::
+;	text "<PLAYER> got"
+;	line "@"
+;	text_ram wStringBuffer
+;	text "!@"
+;	text_end
+;
+;_Route1Youngster1AlsoGotPokeballsText::
+;	text "We also carry"
+;	line "# BALLs for"
+;	cont "catching #MON!"
+;	done
+
+;_Route1Youngster1NoRoomText::
+;	text "You have too much"
+;	line "stuff with you!"
+;	done
 
 _Route1Youngster2Text::
 	text "See those ledges"
@@ -49,18 +49,83 @@ _Route1SignText::
 	cont "VIRIDIAN CITY"
 	done
 
-_Route1Youngster3BattleText::
-	text "Hey! You must be"
-	line "a new trainer!"
+_Route1Youngster4BattleText::
+	text "Hey! Wait up. I'm"
+	line "a trainer too!"
 	done
 
-_Route1Youngster3EndBattleText::
-	text "Wow!"
-	line "You're pretty"
-	cont "good already!"
+_Route1Youngster4EndBattleText::
+	text "Woah"
+	line "You're way"
+	cont "too good!"
 	done
 
-_Route1Youngster3AfterBattleText::
-	text "VIRIDIAN CITY"
-	line "is just ahead!"
+_Route1Youngster4AfterBattleText::
+	text "Do you have"
+	line "any pointer?"
+	done
+
+_Route1Youngster5BattleText::
+	text "I forgot the"
+	line "way home."
+	done
+
+_Route1Youngster5EndBattleText::
+	text "Darn"
+	line "This did not"
+	cont "help me remember"
+	done
+
+_Route1Youngster5AfterBattleText::
+	text "Do you know the"
+	line "way to PALLET"
+    cont "TOWN?"
+	done
+    
+_Route1Youngster6BattleText::
+	text "Try out my latest"
+	line "additions!"
+	done
+
+_Route1Youngster6EndBattleText::
+	text "Dang"
+	line "Guess we need"
+	cont "more training."
+	done
+
+_Route1Youngster6AfterBattleText::
+	text "Where did you get"
+	line "#MON?"
+	done
+    
+_Route1Youngster7BattleText::
+	text "There's no way"
+	line "you'll beat me!"
+	done
+
+_Route1Youngster7EndBattleText::
+	text "Waah"
+	line "That's not fair!"
+	done
+
+_Route1Youngster7AfterBattleText::
+	text "Go away!"
+	done
+    
+_Route1JrTrainerMBattleText::
+	text "I can't way to"
+	line "show everyone"
+    cont "what I learned at"
+    cont "school!"
+	done
+
+_Route1JrTrainerMEndBattleText::
+	text "Oh"
+	line "Guess I have more"
+    cont "to learn."
+	done
+
+_Route1JrTrainerMAfterBattleText::
+	text "Where do you go"
+    line "to school?"
 	done

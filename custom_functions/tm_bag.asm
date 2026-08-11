@@ -382,6 +382,14 @@ BagValuableText:
 
 PrintBagInfoText::
 	ld hl, wBagPocketsFlags
+	; The room PC's option lists borrow this cursor-move hook to describe the
+	; highlighted furniture piece / decoration. Its tables live in the "Room PC"
+	; bank, so the actual draw has to be a farcall from here.
+	bit BIT_ROOM_DESC_BOX, [hl]
+	jr z, .notRoomPC
+	farcall RoomPrintDescription
+	ret
+.notRoomPC
 	bit BIT_PRINT_INFO_BOX, [hl]
 	jp z, .notBag ; jp, not jr: the key-item tier block below pushed .notBag out of range
 	ld a, [wBagPocketsFlags]

@@ -1,15 +1,15 @@
-_Route15CooltrainerF1BattleText::
+_Route15JrTrainerF2BattleText::
 	text "Let me try out the"
 	line "#MON I just"
 	cont "got in a trade!"
 	done
 
-_Route15CooltrainerF1EndBattleText::
+_Route15JrTrainerF2EndBattleText::
 	text "Not"
 	line "good enough!"
 	prompt
 
-_Route15CooltrainerF1AfterBattleText::
+_Route15JrTrainerF2AfterBattleText::
 	text "You can't change"
 	line "the nickname of"
 	cont "any #MON you"
@@ -19,18 +19,18 @@ _Route15CooltrainerF1AfterBattleText::
 	line "Trainer can."
 	done
 
-_Route15CooltrainerF2BattleText::
+_Route15JrTrainerF1BattleText::
 	text "You look gentle,"
 	line "so I think I can"
 	cont "beat you!"
 	done
 
-_Route15CooltrainerF2EndBattleText::
+_Route15JrTrainerF1EndBattleText::
 	text "No,"
 	line "wrong!"
 	prompt
 
-_Route15CooltrainerF2AfterBattleText::
+_Route15JrTrainerF1AfterBattleText::
 	text "I'm afraid of"
 	line "BIKERs, they look"
 	cont "so ugly and mean!"

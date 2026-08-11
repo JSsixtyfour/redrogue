@@ -97,7 +97,23 @@ RoomPC::
 	ld hl, wListScrollOffset
 	ld [hli], a
 	ld [hl], a
+	; Descriptions in the text box, through the same PrintBagInfoText cursor
+	; hook the option lists use. Two tables, because HALL OF FAME existing
+	; shifts LOG OFF's menu index.
+	ld hl, RoomPCDescTable
+	ld a, [wNumHoFTeams]
+	and a
+	jr z, .descTableSet
+	ld hl, RoomPCDescTableHoF
+.descTableSet
+	ld a, 2
+	call RoomSetPickListOpts
+	ld hl, wBagPocketsFlags
+	set BIT_ROOM_DESC_BOX, [hl]
+	call RoomPrintDescription
 	call HandleMenuInput
+	ld hl, wBagPocketsFlags
+	res BIT_ROOM_DESC_BOX, [hl] ; leaves a alone - it still holds the keys pressed
 	call PlaceUnfilledArrowMenuCursor
 	bit B_PAD_B, a
 	jr nz, .logOff
@@ -126,22 +142,48 @@ RoomPC::
 	farcall PKMNLeaguePC
 	jp .menu
 .logOff
+	; Erase the menu box back to the plain text-box screen, and give the
+	; VBlank transfer its full three frames to land. AutoBgMapTransfer moves
+	; only one third of wTileMap per frame, so doing anything else here before
+	; Delay3 leaves the box half-erased on screen.
 	call LoadScreenTilesFromBuffer2
+	call Delay3
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
-	; Re-apply room state so the changes are visible on the way out. Only the
-	; STATE needs updating here, not the screen: RoomPC is farcalled from a
-	; text_asm, and CloseTextDisplay (home/text_script.asm) already runs
-	; InitMapSprites + LoadCurrentMapView + UpdateSprites once this text script
-	; ends - InitMapSprites reloads tile patterns from the PICTUREIDs
-	; RoomPatchSprites just wrote, and LoadCurrentMapView rebuilds the screen
-	; from the wOverworldMap bytes RoomStampBlocks just wrote. Calling
-	; ReloadMapData/ReloadMapSpriteTilePatterns on top of that would only add a
-	; second redundant LCD off/on cycle.
+	; Re-apply room state so the changes are visible on the way out.
 	; Unconditional rather than dirty-flag-gated: WRAM0 has 0 free bytes, and
 	; this runs once per PC visit, so the cost is irrelevant.
 	farcall RoomStampBlocks
 	farcall RoomPatchSprites
+	; Take the window off-screen before anything below rewrites wTileMap, for
+	; the same one-third-per-frame reason as above.
+	ld a, SCREEN_HEIGHT_PX
+	ldh [hWY], a
+	call DelayFrame
+	; CloseTextDisplay's own InitMapSprites is NOT sufficient here, which is
+	; what made freshly-placed decorations render black or as the previous
+	; occupant. It runs with BIT_FONT_LOADED still set, and in that mode
+	; LoadMapSpriteTilePatterns takes .skipFirstLoad and reloads only the
+	; UPPER half of each sprite's VRAM slot (the walking frames) - the text
+	; engine only clobbers that half, so restoring it is all vanilla needs.
+	; Decorations are STAY sprites drawn purely from the still frames in the
+	; LOWER half, which therefore kept whatever PICTUREID occupied the slot at
+	; map load. Worse for the 4-tile stills (POKEDEX / OLD AMBER): those take
+	; .skipSecondLoad as well, so nothing at all is loaded for them.
+	; ReloadMapSpriteTilePatterns clears BIT_FONT_LOADED and reloads both
+	; halves with the LCD off, i.e. exactly the load the map-entry path does -
+	; which is why re-entering the room always looked correct.
+	call ReloadMapSpriteTilePatterns
+	; The blocks need RedrawMapView, not LoadCurrentMapView. LoadCurrentMapView
+	; only refills wTileMap, which the VBlank transfer sends to vBGMap1 - the
+	; WINDOW. The overworld the player sees once the window is hidden is
+	; vBGMap0, and nothing writes that except RedrawRowOrColumn (while walking)
+	; and RedrawMapView. That is why stamped furniture used to block movement
+	; immediately (collision reads wTileMap) yet stay invisible until the
+	; player scrolled the map, and why opening any text box appeared to fix it
+	; (the window comes back up showing the correct wTileMap).
+	farcall RedrawMapView
+	call UpdateSprites
 	ret
 
 .KeyItemsString:
@@ -159,9 +201,12 @@ RoomPC::
 ; RoomFurnitureMenu — TOP / MIDDLE / PC / BOTTOM category select, then an
 ; option picker per category. Writes sRoomFurniture directly.
 ; ============================================================
-DEF ROOM_FURN_TOP    EQU 0
-DEF ROOM_FURN_MIDDLE EQU 1
-DEF ROOM_FURN_PC     EQU 2
+; Menu order is top-of-room downward: PC, TOP, MIDDLE, BOTTOM. The dispatch
+; chain below tests by constant, not by position, so only these values and the
+; PlaceString order need to agree.
+DEF ROOM_FURN_PC     EQU 0
+DEF ROOM_FURN_TOP    EQU 1
+DEF ROOM_FURN_MIDDLE EQU 2
 DEF ROOM_FURN_BOTTOM EQU 3
 
 RoomFurnitureMenu:
@@ -177,13 +222,13 @@ RoomFurnitureMenu:
 	call TextBoxBorder
 	call UpdateSprites
 	hlcoord 2, 2
-	ld de, .TopString
+	ld de, .PcString
 	call PlaceString
 	hlcoord 2, 4
-	ld de, .MiddleString
+	ld de, .TopString
 	call PlaceString
 	hlcoord 2, 6
-	ld de, .PcString
+	ld de, .MiddleString
 	call PlaceString
 	hlcoord 2, 8
 	ld de, .BottomString
@@ -218,6 +263,9 @@ RoomFurnitureMenu:
 	ld c, 14
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, RoomTopDescTable
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomTopNameTable
 	ld b, 9
 	call RoomDrawPickList
@@ -233,6 +281,9 @@ RoomFurnitureMenu:
 	ld c, 14
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, RoomMiddleDescTable
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomMiddleNameTable
 	ld b, 5
 	call RoomDrawPickList
@@ -248,6 +299,9 @@ RoomFurnitureMenu:
 	ld c, 14
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, RoomPcDescTable
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomPcNameTable
 	ld b, 2
 	call RoomDrawPickList
@@ -262,6 +316,9 @@ RoomFurnitureMenu:
 	ld c, 14
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, RoomBottomDescTable
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomBottomNameTable
 	ld b, 2
 	call RoomDrawPickList
@@ -307,6 +364,73 @@ RoomBottomNameTable:
 	dw .Nothing, .PottedPlant
 .Nothing:      db "NOTHING@"
 .PottedPlant:  db "POTTED PLANT@"
+
+; Description tables, one dw per entry, parallel to the name tables above.
+; Two lines of at most 18 characters, joined by <NEXT>; they are drawn at
+; (1,14) and (1,16) inside the standard text box by RoomPrintDescription.
+
+; RoomPC's own top menu. HALL OF FAME only appears once the player has a Hall
+; of Fame entry, and its presence pushes LOG OFF from index 3 to 4, so the two
+; layouts need separate index tables over the same strings.
+RoomPCDescTable:
+	dw .KeyItems, .Furniture, .Decorations, .LogOff
+.KeyItems:    db "Store or take back<NEXT>your KEY ITEMS.@"
+.Furniture:   db "Rearrange the room<NEXT>and its fixtures.@"
+.Decorations: db "Set out dolls and<NEXT>keepsakes on show.@"
+.HallOfFame:  db "Look back on your<NEXT>past CHAMPIONS.@"
+.LogOff:      db "Close the PC.@"
+
+RoomPCDescTableHoF:
+	dw RoomPCDescTable.KeyItems, RoomPCDescTable.Furniture, \
+	   RoomPCDescTable.Decorations, RoomPCDescTable.HallOfFame, \
+	   RoomPCDescTable.LogOff
+
+RoomTopDescTable:
+	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, \
+	   .Map, .Couch
+.Wall:        db "Bare wall. Nothing<NEXT>hung up here.@"
+.Bookshelf:   db "A shelf stuffed<NEXT>with old books.@"
+.AwardShelf:  db "Shows off badges<NEXT>and trophies.@"
+.Window:      db "A window with a<NEXT>view outside.@"
+.Chalkboard:  db "A wide board for<NEXT>notes and plans.@"
+.Tv:          db "A television set<NEXT>up on the wall.@"
+.TvGame:      db "A TV with a game<NEXT>console below it.@"
+.Map:         db "A KANTO map pinned<NEXT>to the wall.@"
+.Couch:       db "A long couch built<NEXT>into the wall.@"
+
+RoomMiddleDescTable:
+	dw .Nothing, .NoteTable, .FlowerTable, .PlainTable, .TvGame
+.Nothing:     db "Leave the middle<NEXT>of the room open.@"
+.NoteTable:   db "A table piled with<NEXT>notes and papers.@"
+.FlowerTable: db "A table set with a<NEXT>vase of flowers.@"
+.PlainTable:  db "A plain table with<NEXT>room for three.@"
+.TvGame:      db "A TV and console<NEXT>set on the floor.@"
+
+RoomPcDescTable:
+	dw .Desk, .LongDesk
+.Desk:     db "A small desk that<NEXT>holds just the PC.@"
+.LongDesk: db "A wide desk with<NEXT>space to display.@"
+
+RoomBottomDescTable:
+	dw .Nothing, .PottedPlant
+.Nothing:     db "Leave the corner<NEXT>of the room bare.@"
+.PottedPlant: db "A leafy plant in<NEXT>a heavy clay pot.@"
+
+RoomDecorationDescTable:
+	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
+	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel
+.None:       db "Clear this spot.@"
+.Charmeleon: db "A plush CHARMELEON<NEXT>with a sewn flame.@"
+.Pidgey:     db "A soft PIDGEY doll<NEXT>with a bent wing.@"
+.Omanyte:    db "A plush OMANYTE.<NEXT>The shell spirals.@"
+.Voltorb:    db "A round VOLTORB<NEXT>toy. It smells new.@"
+.Clefairy:   db "A CLEFAIRY plush<NEXT>with a star back.@"
+.Chansey:    db "A CHANSEY doll<NEXT>with a felt pouch.@"
+.Snorlax:    db "A huge SNORLAX<NEXT>pillow for naps.@"
+.Pikachu:    db "A PIKACHU plush<NEXT>with worn cheeks.@"
+.Pokedex:    db "A display POKEDEX,<NEXT>just for show.@"
+.OldAmber:   db "A replica OLD<NEXT>AMBER. A keepsake.@"
+.Seel:       db "A plush SEEL with<NEXT>stitched flippers.@"
 
 ; a = selected option (0-8); writes into sRoomFurniture byte0 bits0-3
 RoomWriteFurnitureTop:
@@ -410,11 +534,13 @@ RoomWriteFurniturePc:
 ; MIDDLE/PC may resolve to more than one live slot depending on furniture;
 ; when so, a small "SPOT 1/2/3" picker runs first. Writes sRoomDecorSlots.
 ; ============================================================
-DEF ROOM_DECOR_BEDSIDE EQU 0
-DEF ROOM_DECOR_BOTTOM  EQU 1
-DEF ROOM_DECOR_TOP     EQU 2
-DEF ROOM_DECOR_MIDDLE  EQU 3
-DEF ROOM_DECOR_PC      EQU 4
+; Same top-of-room-downward order as RoomFurnitureMenu; BEDSIDE has no
+; furniture counterpart so it trails the four shared areas.
+DEF ROOM_DECOR_PC      EQU 0
+DEF ROOM_DECOR_TOP     EQU 1
+DEF ROOM_DECOR_MIDDLE  EQU 2
+DEF ROOM_DECOR_BOTTOM  EQU 3
+DEF ROOM_DECOR_BEDSIDE EQU 4
 
 RoomDecorationsMenu:
 	call LoadScreenTilesFromBuffer2
@@ -429,19 +555,19 @@ RoomDecorationsMenu:
 	call TextBoxBorder
 	call UpdateSprites
 	hlcoord 2, 2
-	ld de, .BedsideString
+	ld de, .PcString
 	call PlaceString
 	hlcoord 2, 4
-	ld de, .BottomString
-	call PlaceString
-	hlcoord 2, 6
 	ld de, .TopString
 	call PlaceString
-	hlcoord 2, 8
+	hlcoord 2, 6
 	ld de, .MiddleString
 	call PlaceString
+	hlcoord 2, 8
+	ld de, .BottomString
+	call PlaceString
 	hlcoord 2, 10
-	ld de, .PcString
+	ld de, .BedsideString
 	call PlaceString
 	xor a
 	ldh [hCurrentMenuItem], a
@@ -527,6 +653,9 @@ RoomDecorMiddleSpotPicker:
 	ld c, 10
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, 0                     ; spot pickers get no description box
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomThreeSpotNameTable
 	ld b, 3
 	call RoomDrawPickList
@@ -565,6 +694,9 @@ RoomDecorPcSpotPicker:
 	ld c, 10
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, 0                     ; spot pickers get no description box
+	ld a, 2
+	call RoomSetPickListOpts
 	ld hl, RoomTwoSpotNameTable
 	ld b, 2
 	call RoomDrawPickList
@@ -588,11 +720,18 @@ RoomTwoSpotNameTable:
 RoomPickDecorationForSlot:
 	push af
 	call LoadScreenTilesFromBuffer2
+	; 12 entries is one row too many to sit above the text box at its usual
+	; start row, so this list alone starts on row 1 and its box is full width,
+	; ending at row 13 - flush against the text box's first text row (14) and
+	; covering the box's own top border so the two read as one frame.
 	hlcoord 0, 0
-	ld b, 14
-	ld c, 14
+	ld b, 12
+	ld c, 18
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, RoomDecorationDescTable
+	ld a, 1
+	call RoomSetPickListOpts
 	ld hl, RoomDecorationNameTable
 	ld b, 12
 	call RoomDrawPickList
@@ -658,10 +797,10 @@ RoomDrawPickList:
 	xor a
 	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
-	ld a, 2
-	ld [hli], a
-	dec a
-	ld [hli], a
+	ld a, [wBuffer + 6]
+	ld [hli], a                  ; wTopMenuItemY = the list's first entry row
+	ld a, 1
+	ld [hli], a                  ; wTopMenuItemX
 	inc hl
 	ld a, [wBuffer + 3]
 	ld [hli], a                  ; wMaxMenuItem
@@ -679,7 +818,22 @@ RoomDrawPickList:
 	ldh a, [hUILayoutFlags]
 	set BIT_DOUBLE_SPACED_MENU, a
 	ldh [hUILayoutFlags], a
+	; Descriptions, if this list has a table: BIT_ROOM_DESC_BOX routes
+	; PrintBagInfoText - which HandleMenuInput_ farcalls on every cursor move -
+	; to RoomPrintDescription. Draw the first entry's text by hand, since the
+	; hook only fires once the cursor actually moves.
+	ld a, [wBuffer + 4]
+	ld b, a
+	ld a, [wBuffer + 5]
+	or b
+	jr z, .noDescriptions
+	ld hl, wBagPocketsFlags
+	set BIT_ROOM_DESC_BOX, [hl]
+	call RoomPrintDescription
+.noDescriptions
 	call HandleMenuInput
+	ld hl, wBagPocketsFlags
+	res BIT_ROOM_DESC_BOX, [hl] ; leaves a alone - it still holds the keys pressed
 	call PlaceUnfilledArrowMenuCursor
 	bit B_PAD_B, a
 	jr nz, .cancelled
@@ -689,6 +843,52 @@ RoomDrawPickList:
 .cancelled
 	scf
 	ret
+
+; ============================================================
+; RoomSetPickListOpts — per-list options for the next RoomDrawPickList call.
+; INPUT: hl = description string-pointer table (0 = no description box),
+;        a  = screen row the first entry is drawn on.
+; Passed through wBuffer because RoomDrawPickList already needs hl and b for
+; the name table itself; wBuffer + 0..3 are RoomDrawEntries' own scratch.
+; ============================================================
+RoomSetPickListOpts:
+	ld [wBuffer + 6], a
+	ld a, l
+	ld [wBuffer + 4], a
+	ld a, h
+	ld [wBuffer + 5], a
+	ret
+
+; ============================================================
+; RoomPrintDescription — draw the highlighted entry's description into the
+; standard text box. Called through PrintBagInfoText (custom_functions/
+; tm_bag.asm) while BIT_ROOM_DESC_BOX is set, i.e. on every cursor move, and
+; once directly by RoomDrawPickList for the initial entry.
+;
+; The box itself is the one DisplayTextIDInit already drew for the PC's
+; bg_event and that every menu here restores via LoadScreenTilesFromBuffer2,
+; so only rows 14-16 need clearing. Strings are two 18-char lines joined by
+; <NEXT>, which steps down 2 rows while BIT_SINGLE_SPACED_LINES is clear.
+; ============================================================
+RoomPrintDescription::
+	hlcoord 1, 14
+	ld b, 3
+	ld c, SCREEN_WIDTH - 2
+	call ClearScreenArea
+	ld a, [wBuffer + 4]
+	ld l, a
+	ld a, [wBuffer + 5]
+	ld h, a
+	ldh a, [hCurrentMenuItem]
+	add a                        ; dw-sized table entries
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld e, a
+	ld d, [hl]
+	hlcoord 1, 14
+	jp PlaceString
 
 ; INPUT: hl = table pointer, b = entry count. Draws single-spaced, screen
 ; (2,2) downward. Uses wBuffer (transient, this call only) to track the
@@ -708,9 +908,11 @@ RoomDrawEntries:
 	ld a, [hli]
 	ld d, a                      ; de = string pointer for this entry
 	push hl                      ; save table pointer
-	ld a, [wBuffer + 1]
+	ld a, [wBuffer + 6]          ; first entry's row
+	ld hl, wBuffer + 1
+	add [hl]                     ; + this entry's index
 	ld [wBuffer + 2], a
-	hlcoord 2, 2
+	hlcoord 2, 0
 .addRowLoop
 	ld a, [wBuffer + 2]
 	and a

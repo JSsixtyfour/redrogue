@@ -184,12 +184,12 @@ Route1JrTrainerMBattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_MINIBOSS_ACTIVE, a
-	ld hl, .Youngster
+	ld hl, .JrTrainerM
 	ret z
 	ld hl, .RivalMiniBoss
 	ret
-.Youngster
-	text_far _Route1Youngster3BattleText
+.JrTrainerM
+	text_far _Route1JrTrainerMBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossBattleText
@@ -204,7 +204,7 @@ Route1JrTrainerMEndBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Youngster
-	text_far _Route1Youngster3EndBattleText
+	text_far _Route1JrTrainerMEndBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossEndBattleText
@@ -234,15 +234,15 @@ Route1Youngster4Text:
 	jp TextScriptEnd
 
 Route1Youngster4BattleText:
-	text_far _Route1Youngster3BattleText
+	text_far _Route1Youngster4BattleText
 	text_end
 
 Route1Youngster4EndBattleText:
-	text_far _Route1Youngster3EndBattleText
+	text_far _Route1Youngster4EndBattleText
 	text_end
 
 Route1Youngster4AfterBattleText:
-	text_far _Route1Youngster3AfterBattleText
+	text_far _Route1Youngster4AfterBattleText
 	text_end
 
 Route1Youngster5Text:
@@ -252,15 +252,15 @@ Route1Youngster5Text:
 	jp TextScriptEnd
 
 Route1Youngster5BattleText:
-	text_far _Route1Youngster3BattleText
+	text_far _Route1Youngster5BattleText
 	text_end
 
 Route1Youngster5EndBattleText:
-	text_far _Route1Youngster3EndBattleText
+	text_far _Route1Youngster5EndBattleText
 	text_end
 
 Route1Youngster5AfterBattleText:
-	text_far _Route1Youngster3AfterBattleText
+	text_far _Route1Youngster5AfterBattleText
 	text_end
 
 Route1Youngster6Text:
@@ -270,15 +270,15 @@ Route1Youngster6Text:
 	jp TextScriptEnd
 
 Route1Youngster6BattleText:
-	text_far _Route1Youngster3BattleText
+	text_far _Route1Youngster6BattleText
 	text_end
 
 Route1Youngster6EndBattleText:
-	text_far _Route1Youngster3EndBattleText
+	text_far _Route1Youngster6EndBattleText
 	text_end
 
 Route1Youngster6AfterBattleText:
-	text_far _Route1Youngster3AfterBattleText
+	text_far _Route1Youngster6AfterBattleText
 	text_end
 
 Route1Youngster7Text:
@@ -288,53 +288,37 @@ Route1Youngster7Text:
 	jp TextScriptEnd
 
 Route1Youngster7BattleText:
-	text_far _Route1Youngster3BattleText
+	text_far _Route1Youngster7BattleText
 	text_end
 
 Route1Youngster7EndBattleText:
-	text_far _Route1Youngster3EndBattleText
+	text_far _Route1Youngster7EndBattleText
 	text_end
 
 Route1Youngster7AfterBattleText:
-	text_far _Route1Youngster3AfterBattleText
+	text_far _Route1Youngster7AfterBattleText
 	text_end
 
 Route1Youngster1Text:
-	text_asm
-	CheckAndSetEvent EVENT_GOT_POTION_SAMPLE
-	jr nz, .got_item
-	ld hl, .MartSampleText
-	call PrintText
-	lb bc, POTION, 1
-	call GiveItem
-	jr nc, .bag_full
-	ld hl, .GotPotionText
-	jr .done
-.bag_full
-	ld hl, .NoRoomText
-	jr .done
-.got_item
-	ld hl, .AlsoGotPokeballsText
-.done
-	call PrintText
-	jp TextScriptEnd
-
-.MartSampleText:
 	text_far _Route1Youngster1MartSampleText
 	text_end
 
-.GotPotionText:
-	text_far _Route1Youngster1GotPotionText
-	sound_get_item_1
-	text_end
-
-.AlsoGotPokeballsText:
-	text_far _Route1Youngster1AlsoGotPokeballsText
-	text_end
-
-.NoRoomText:
-	text_far _Route1Youngster1NoRoomText
-	text_end
+;.MartSampleText:
+;	text_far _Route1Youngster1MartSampleText
+;	text_end
+;
+;.GotPotionText:
+;	text_far _Route1Youngster1GotPotionText
+;	sound_get_item_1
+;	text_end
+;
+;.AlsoGotPokeballsText:
+;	text_far _Route1Youngster1AlsoGotPokeballsText
+;	text_end
+;
+;.NoRoomText:
+;	text_far _Route1Youngster1NoRoomText
+;	text_end
 
 Route1Youngster2Text:
 	text_far _Route1Youngster2Text

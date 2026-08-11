@@ -126,15 +126,15 @@ Route5Youngster2Text:
 	jp TextScriptEnd
 
 Route5Youngster2BattleText:
-	text_far _Route5Youngster1BattleText
+	text_far _Route5Youngster2BattleText
 	text_end
 
 Route5Youngster2EndBattleText:
-	text_far _Route5Youngster1EndBattleText
+	text_far _Route5Youngster2EndBattleText
 	text_end
 
 Route5Youngster2AfterBattleText:
-	text_far _Route5Youngster1AfterBattleText
+	text_far _Route5Youngster2AfterBattleText
 	text_end
 
 Route5Lass1Text:
@@ -144,15 +144,15 @@ Route5Lass1Text:
 	jp TextScriptEnd
 
 Route5Lass1BattleText:
-	text_far _Route5Youngster1BattleText
+	text_far _Route5Lass1BattleText
 	text_end
 
 Route5Lass1EndBattleText:
-	text_far _Route5Youngster1EndBattleText
+	text_far _Route5Lass1EndBattleText
 	text_end
 
 Route5Lass1AfterBattleText:
-	text_far _Route5Youngster1AfterBattleText
+	text_far _Route5Lass1AfterBattleText
 	text_end
 
 Route5Lass2Text:
@@ -162,15 +162,15 @@ Route5Lass2Text:
 	jp TextScriptEnd
 
 Route5Lass2BattleText:
-	text_far _Route5Youngster1BattleText
+	text_far _Route5Lass2BattleText
 	text_end
 
 Route5Lass2EndBattleText:
-	text_far _Route5Youngster1EndBattleText
+	text_far _Route5Lass2EndBattleText
 	text_end
 
 Route5Lass2AfterBattleText:
-	text_far _Route5Youngster1AfterBattleText
+	text_far _Route5Lass2AfterBattleText
 	text_end
 
 Route5JrTrainerFText:
@@ -180,11 +180,11 @@ Route5JrTrainerFText:
 	jp TextScriptEnd
 
 Route5JrTrainerFBattleText:
-	text_far _Route5Youngster1BattleText
+	text_far _Route5JrTrainerFBattleText
 	text_end
 
 Route5JrTrainerFEndBattleText:
-	text_far _Route5Youngster1EndBattleText
+	text_far _Route5JrTrainerFEndBattleText
 	text_end
 
 Route5JrTrainerFAfterBattleText:

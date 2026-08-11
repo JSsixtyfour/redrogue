@@ -82,7 +82,7 @@ Route3_TextPointers:
 	dw_const Route3LassText,         TEXT_ROUTE3_LASS
 	dw_const Route3Youngster1Text,   TEXT_ROUTE3_YOUNGSTER1
 	dw_const Route3Youngster2Text,   TEXT_ROUTE3_YOUNGSTER2
-	dw_const Route3JrTrainerMText,   TEXT_ROUTE3_JR_TRAINER_M
+	dw_const Route3JrTrainerFText,   TEXT_ROUTE3_JR_TRAINER_M
     dw_const RandomPickUpItemText,    TEXT_ROUTE3_RANDOM
     dw_const Route3_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_1
     dw_const Route3_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_2
@@ -104,7 +104,7 @@ Route3TrainerHeader2:
 Route3TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_3_TRAINER_3, 1, Route3Youngster2BattleText, Route3Youngster2EndBattleText, Route3Youngster2AfterBattleText
 Route3TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_4, 4, Route3JrTrainerMBattleText, Route3JrTrainerMEndBattleText, Route3JrTrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_4, 4, Route3JrTrainerFBattleText, Route3JrTrainerFEndBattleText, Route3JrTrainerFAfterBattleText
 	db -1 ; end
 
 Route3SuperNerdText:
@@ -118,15 +118,15 @@ Route3BugCatcherText:
 	jp TextScriptEnd
 
 Route3BugCatcherBattleText:
-	text_far _Route3Youngster1BattleText
+	text_far _Route3BugCatcherBattleText
 	text_end
 
 Route3BugCatcherEndBattleText:
-	text_far _Route3Youngster1EndBattleText
+	text_far _Route3BugCatcherEndBattleText
 	text_end
 
 Route3BugCatcherAfterBattleText:
-	text_far _Route3Youngster1AfterBattleText
+	text_far _Route3BugCatcherAfterBattleText
 	text_end
 
 Route3LassText:
@@ -183,21 +183,21 @@ Route3Youngster2AfterBattleText:
 	text_far _Route3Youngster3AfterBattleText
 	text_end
 
-Route3JrTrainerMText:
+Route3JrTrainerFText:
 	text_asm
 	ld hl, Route3TrainerHeader4
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route3JrTrainerMBattleText:
+Route3JrTrainerFBattleText:
 	text_far _Route3CooltrainerF3BattleText
 	text_end
 
-Route3JrTrainerMEndBattleText:
+Route3JrTrainerFEndBattleText:
 	text_far _Route3Youngster4EndBattleText
 	text_end
 
-Route3JrTrainerMAfterBattleText:
+Route3JrTrainerFAfterBattleText:
     text_asm
     farcall Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON

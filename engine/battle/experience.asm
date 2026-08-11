@@ -86,7 +86,14 @@ GainExperience:
 	dec b
 	jr nz, .statExpPassLoop
 
-	ld hl, NUM_STATS * 2
+; A single vanilla pass advances de by (NUM_STATS - 1) * 2, NOT NUM_STATS * 2:
+; the loop exits through `dec c / jr z` BEFORE the trailing `inc de / inc de`,
+; so it steps forward 4 times for 5 stats. de must land on MON_DVS - 1, which
+; is what the `ld hl, MON_OTID - (MON_DVS - 1) / add hl, de` below assumes.
+; Using NUM_STATS * 2 overshot by 2 and pointed hl at MON_EXP instead of
+; MON_OTID, which made every mon read as traded (boosted exp) and then shifted
+; the level/max-HP writes 2 bytes down the struct.
+	ld hl, (NUM_STATS - 1) * 2
 	add hl, de
 	ld d, h
 	ld e, l                         ; de = fully advanced, as a single pass would leave it

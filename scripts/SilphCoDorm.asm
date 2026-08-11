@@ -110,4 +110,13 @@ RoomDecorationTextTable:
 SilphCoDormPCText:
 	text_asm
 	farcall RoomPC
+	; Without this, DisplayTextID falls through to WaitForTextScrollButtonPress
+	; (home/text_script.asm) once this handler returns, leaving the auto-drawn
+	; empty text box on screen and the player frozen until A is pressed - the
+	; PC menu already consumed the interaction, so there is nothing to read.
+	; Vanilla PCs avoid it by dispatching through BankswitchAndContinue's
+	; "jp HoldTextDisplayOpen"; this is the text_asm equivalent, matching
+	; CeladonMansion3F's DisplayDiploma handler.
+	ld a, TRUE
+	ldh [hNoWaitAfterText], a
 	jp TextScriptEnd

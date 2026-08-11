@@ -287,6 +287,9 @@ DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
 	; Higher flags (bits 3-4, moved up to make room for 3-bit pocket index)
 	DEF BIT_PRINT_INFO_BOX   EQU 3  ; was bit 2; print pocket name info box
 	DEF BIT_PC_WITHDRAWING   EQU 4  ; was bit 3; prevent pocket switching during PC withdraw
+	; Reuses the same PrintBagInfoText cursor-move hook the TM pack's move-name
+	; box uses, to draw the room PC's furniture/decoration descriptions.
+	DEF BIT_ROOM_DESC_BOX    EQU 5  ; room PC option list open; see room_pc.asm
 	DEF NUM_RECOVERY_ITEMS  EQU 21
 	DEF NUM_STAT_ITEMS      EQU 12
 	DEF NUM_VALUABLE_ITEMS  EQU 4

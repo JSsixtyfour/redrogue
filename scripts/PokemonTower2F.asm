@@ -57,7 +57,7 @@ PokemonTower2F_Script:
 ;	ld [wCurMapScript], a
 ;	ret
 
-	RogueAutoWalkScripts PokemonTower2F, PAD_RIGHT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
+	RogueAutoWalkScripts PokemonTower2F, PAD_LEFT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
 
 PokemonTower2FEntranceCoords:
 	dbmapcoord 18, 9
