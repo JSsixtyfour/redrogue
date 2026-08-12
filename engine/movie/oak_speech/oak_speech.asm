@@ -80,8 +80,10 @@ OakSpeech:
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG_MODE, a
 	jp nz, .skipSpeech
-	ld de, ProfOakPic
-	lb bc, BANK(ProfOakPic), $00
+; Prof Palm, not Oak — same generic scientist pic/sprite he uses as the
+; SILPH_CO_VR NPC.
+	ld de, ScientistPic
+	lb bc, BANK(ScientistPic), $00
 	call IntroDisplayPicCenteredOrUpperRight
 	call FadeInIntroPic
 	ld hl, OakSpeechText1
@@ -101,7 +103,12 @@ OakSpeech:
 	call PrintText
 	call GBFadeOutToWhite
 	call ClearScreen
-	ld de, RedPicFront
+; Pick the player's trainer class before naming them, so every pic shown from
+; here on (and the shrink animation below) is already the chosen character.
+	farcall ChoosePlayerCharacter
+	call GBFadeOutToWhite
+	call ClearScreen
+	farcall GetPlayerFrontPic ; -> de (farcall clobbers bc, so set it after)
 	lb bc, BANK(RedPicFront), $00
 	call IntroDisplayPicCenteredOrUpperRight
 	call MovePicLeft
@@ -120,7 +127,7 @@ OakSpeech:
 .skipSpeech
 	call GBFadeOutToWhite
 	call ClearScreen
-	ld de, RedPicFront
+	farcall GetPlayerFrontPic ; -> de (farcall clobbers bc, so set it after)
 	lb bc, BANK(RedPicFront), $00
 	call IntroDisplayPicCenteredOrUpperRight
 	call GBFadeInFromWhite
@@ -142,7 +149,7 @@ OakSpeech:
 	ld [rROMB], a
 	ld c, 4
 	call DelayFrames
-	ld de, RedSprite
+	farcall GetPlayerWalkSprite ; -> de (farcall clobbers bc, so set it after)
 	ld hl, vSprites
 	lb bc, BANK(RedSprite), $0C
 	call CopyVideoData

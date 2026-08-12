@@ -12,6 +12,12 @@ IndigoPlateauLobby_Script:
 	jr nz, .normal
 
 	SetEvent EVENT_ENTER_ROOM
+	; Blacking out mid-run should respawn the player in their dorm room, not
+	; wherever wLastMap happens to be (SetLastBlackoutMap is only ever called
+	; from the vanilla Pokemon Center heal flow, which this hub bypasses).
+	; Every lobby entry is a safe choke point to (re)assert this.
+	ld a, SILPH_CO_DORM
+	ld [wLastBlackoutMap], a
 	; Lobby music: MapSongBanks (data/maps/songs.asm) defaults this map to
 	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
 	; MUSIC_INDIGO_PLATEAU for the rest of the run (re-applied every visit,

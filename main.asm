@@ -117,6 +117,11 @@ INCLUDE "engine/battle/move_effects/substitute.asm"
 INCLUDE "engine/menus/pc.asm"
 
 
+SECTION "Player Appearance", ROMX
+
+INCLUDE "data/player/appearance.asm"
+
+
 SECTION "Play Time", ROMX
 
 INCLUDE "engine/play_time.asm"

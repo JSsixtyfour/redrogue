@@ -1714,58 +1714,74 @@ _LinkCanceledText::
 
 _OakSpeechText1::
 	text "Hello there!"
-	line "Welcome to the"
-	cont "world of #MON"
-    cont "Red Rogue!"
+	line "Welcome to"
+	cont "#MON Red Rogue!"
 
-	para "My name is OAK!"
+	para "My name is PALM!"
 	line "People call me"
-	cont "the #MON PROF!"
+	cont "PROF PALM!"
 	prompt
 
 _OakSpeechText2A::
-	text "We have"
-	line "developed a new"
-	cont "VR training"
-	cont "program for"
-    cont "new trainers"
+	text "We have created"
+	line "a virtual world"
+	cont "for trainers to"
+; The trailing "@" is REQUIRED and is not decoration. 2A and 2B are two halves
+; of one message with the cry command between them, so the far-text processor
+; needs TWO terminators here: the "@" ends the string-printing loop, and the
+; text_end ($50) that follows ends far-text processing so control returns to
+; OakSpeechText2 for the cry. With only one, printing runs straight on into
+; _OakSpeechText2B in ROM and then prints it AGAIN via the second text_far.
+	cont "explore and grow.@"
 	text_end
 
 _OakSpeechText2B::
 	text_start
 
-	para "And you and,"
-	line "my grandson"
-	cont "will be the first"
-	cont "pupils."
+	para "You have been"
+	line "selected as one"
+	cont "of our early"
+	cont "access players."
 
+	para "You'll be staying"
+	line "at our SILPH CO"
+	cont "research lab."
+	prompt
+
+_ChooseCharacterText::
+	text "First, who will"
+	line "you be?"
+
+	para "Press LEFT or"
+	line "RIGHT, then A."
 	prompt
 
 _IntroducePlayerText::
-	text "First, what is"
+	text "And what is"
 	line "your name?"
 	prompt
 
 _IntroduceRivalText::
-	text "This is my grand-"
-	line "son. He's been"
-	cont "your rival since"
-	cont "you were a baby."
+	text "This is your"
+	line "virtual rival."
+	cont "He will challenge"
+	cont "you throughout"
+	cont "your trial."
 
-	para "...Erm, what is"
-	line "his name again?"
+	para "What is their"
+	line "name?"
 	prompt
 
 _OakSpeechText3::
 	text "<PLAYER>!"
 
-	para "Your #MON"
-	line "training is"
-	cont "about to begin!"
+	para "Alright, now"
+	line "sign the"
+	cont "non-disclosure..."
 
-	para "Meet me at my"
-	line "lab and start"
-	cont "your journey"
+	para "A truck is on"
+	line "its way now."
+	cont "See you soon."
 	cont "Let's go!"
 	done
 
@@ -1783,9 +1799,9 @@ _YourNameIsText::
 	prompt
 
 _HisNameIsText::
-	text "That's right! I"
-	line "remember now! His"
-	cont "name is <RIVAL>!"
+	text "That sounds"
+	line "perfect, his name"
+	cont "will be <RIVAL>!"
 	prompt
 
 _WillBeTradedText::

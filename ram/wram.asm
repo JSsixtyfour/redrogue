@@ -2346,7 +2346,7 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 13 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 12 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2362,6 +2362,13 @@ wElite4Order:: db
 	      ; -1 more for wPrismRerollsLeft (ELEMENT PRISM encounter bias), still net-zero WRAM0
 	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT PRISM one-time
 	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
+	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0
+
+; Which trainer class the player looks like: index into PlayerAppearanceTable
+; (data/player/appearance.asm). 0 = PLAYER_APPEARANCE_RED, so the zero-fill in
+; PrepareOakSpeech (wPlayerName..wBoxDataEnd covers this address) already gives a
+; valid default on every new game, including the debug .skipSpeech path.
+wPlayerAppearance:: db
 
 wObtainedHiddenItemsFlags:: flag_array MAX_HIDDEN_ITEMS
 

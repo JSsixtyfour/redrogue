@@ -2039,7 +2039,13 @@ RunMapScript::
 	ret
 
 LoadWalkingPlayerSpriteGraphics::
-	ld de, RedSprite
+; The walking sheet depends on wPlayerAppearance, so it has to be looked up
+; rather than hardcoded. Its BANK is still BANK(RedSprite) for every appearance
+; — SECTION "Player Sprites" in gfx/sprites.asm holds them all — which is why
+; LoadPlayerSpriteGraphicsCommon below needs no change and this costs HOME only
+; the 5 bytes farcall adds over `ld de, RedSprite`.
+; farcall clobbers a and bc; neither is live across this point.
+	farcall GetPlayerWalkSprite ; -> de = sprite gfx
 	ld hl, vNPCSprites
 	jr LoadPlayerSpriteGraphicsCommon
 

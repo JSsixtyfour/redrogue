@@ -1,5 +1,45 @@
 DEF NUM_PLAYER_NAMES EQU 3
 
+; Selectable player appearances. Index stored in wPlayerAppearance; the table
+; itself is PlayerAppearanceTable in data/player/appearance.asm. Order here MUST
+; match the order of the rows in that table.
+; Entry 0 must stay RED: wPlayerAppearance is zero-filled on a new game.
+	const_def
+	const PLAYER_APPEARANCE_RED           ; $00
+	const PLAYER_APPEARANCE_BIKER         ; $01
+	const PLAYER_APPEARANCE_BIRD_KEEPER   ; $02
+	const PLAYER_APPEARANCE_BLACKBELT     ; $03
+	const PLAYER_APPEARANCE_BUG_CATCHER   ; $04
+	const PLAYER_APPEARANCE_BURGLAR       ; $05
+	const PLAYER_APPEARANCE_COOLTRAINER_M ; $06
+	const PLAYER_APPEARANCE_CUE_BALL      ; $07
+	const PLAYER_APPEARANCE_ENGINEER      ; $08
+	const PLAYER_APPEARANCE_FISHERMAN     ; $09
+	const PLAYER_APPEARANCE_GAMBLER       ; $0a
+	const PLAYER_APPEARANCE_GENTLEMAN     ; $0b
+	const PLAYER_APPEARANCE_HIKER         ; $0c
+	const PLAYER_APPEARANCE_JR_TRAINER_M  ; $0d
+	const PLAYER_APPEARANCE_JUGGLER       ; $0e
+	const PLAYER_APPEARANCE_POKEMANIAC    ; $0f
+	const PLAYER_APPEARANCE_PSYCHIC       ; $10
+	const PLAYER_APPEARANCE_ROCKER        ; $11
+	const PLAYER_APPEARANCE_ROCKET        ; $12
+	const PLAYER_APPEARANCE_SAILOR        ; $13
+	const PLAYER_APPEARANCE_SCIENTIST     ; $14
+	const PLAYER_APPEARANCE_SUPER_NERD    ; $15
+	const PLAYER_APPEARANCE_SWIMMER       ; $16
+	const PLAYER_APPEARANCE_TAMER         ; $17
+	const PLAYER_APPEARANCE_YOUNGSTER     ; $18
+; First female entry. Everything from here up uses the female back pic.
+DEF FIRST_FEMALE_APPEARANCE EQU const_value
+	const PLAYER_APPEARANCE_GREEN         ; $19
+	const PLAYER_APPEARANCE_BEAUTY        ; $1a
+	const PLAYER_APPEARANCE_CHANNELER     ; $1b
+	const PLAYER_APPEARANCE_JR_TRAINER_F  ; $1c
+	const PLAYER_APPEARANCE_COOLTRAINER_F ; $1d
+	const PLAYER_APPEARANCE_LASS          ; $1e
+DEF NUM_PLAYER_APPEARANCES EQU const_value
+
 IF DEF(_RED)
 DEF PLAYERNAME1 EQUS "RED"
 DEF PLAYERNAME2 EQUS "ASH"

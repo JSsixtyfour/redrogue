@@ -6952,12 +6952,19 @@ SwapPlayerAndEnemyLevels:
 LoadPlayerBackPic:
 	ld a, [wBattleType]
 	dec a ; is it the old man tutorial?
-	ld de, RedPicBack
-	jr nz, .next
+	jr nz, .playerBackPic
 	ld de, OldManPicBack
+	jr .next
+.playerBackPic
+; Which back pic the player has is part of their appearance. Most classes fall
+; back to Red's or Green's; the Gambler's row in PlayerAppearanceTable points at
+; OldManPicBack, which is why there is no special case for it here.
+; farcall clobbers a and bc — a is reloaded immediately below, bc is not live.
+	farcall GetPlayerBackPic ; -> de
 .next
 	ld a, BANK(RedPicBack)
 	ASSERT BANK(RedPicBack) == BANK(OldManPicBack)
+	ASSERT BANK(RedPicBack) == BANK(GreenPicBack)
 	call UncompressSpriteFromDE
 	predef ScaleSpriteByTwo
 	ld hl, wShadowOAM

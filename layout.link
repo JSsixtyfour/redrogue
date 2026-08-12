@@ -78,8 +78,10 @@ ROMX $B
 	"Pics 3"
 	"Battle Engine 5"
 ROMX $C
+	; "Pics 4" must keep RedPicBack, GreenPicBack and OldManPicBack together —
+	; LoadPlayerBackPic loads all three with one BANK(RedPicBack). Adding
+	; GreenPicBack pushed "Battle Engine 6" out to bank $2E.
 	"Pics 4"
-	"Battle Engine 6"
 ROMX $D
 	"Pics 5"
 	"Slot Machines"
@@ -100,9 +102,11 @@ ROMX $12
 	"Procedural Forest Maps"
 	"Maps 8"
 ROMX $13
+	; "Trainer Pics" also holds RedPicFront/GreenPicFront so that every pic
+	; PlayerAppearanceTable can select shares one bank. That pushed "Predefs"
+	; out to bank $2E.
 	"Trainer Pics"
 	"Maps 9"
-	"Predefs"
 ROMX $14
 	"Maps 10"
 	"Battle Engine 8"
@@ -185,6 +189,17 @@ ROMX $2D
 	"Room Vendor"
 	"Room Sprites"
 	"Maps 22"
+ROMX $2E
+	; Selectable player character. "Player Sprites" holds every overworld sheet
+	; the player can be assigned (plus bike/surf) so LoadPlayerSpriteGraphics can
+	; keep using a single BANK(RedSprite).
+	"Player Sprites"
+	"Player Appearance"
+	; Displaced from banks $13 and $C by the player pics. Both are reached
+	; through bank-resolving dispatch (BANK(GetPredefPointer) / jpfar), so
+	; neither cares which bank it lives in.
+	"Predefs"
+	"Battle Engine 6"
 WRAM0
 	"Audio RAM"
 	org $c100

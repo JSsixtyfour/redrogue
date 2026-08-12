@@ -20,8 +20,10 @@ ChoosePlayerName:
 	jr z, .customName
 	call ClearScreen
 	call Delay3
-	ld de, RedPicFront
-	ld b, BANK(RedPicFront)
+	farcall GetPlayerFrontPic ; -> de (farcall clobbers bc, so set it after)
+; Vanilla only set b here and relied on c already being 0 on return from
+; DisplayNamingScreen. farcall clobbers c, so the "centred" flag is now explicit.
+	lb bc, BANK(RedPicFront), $00
 	call IntroDisplayPicCenteredOrUpperRight
 .done
 	ld hl, YourNameIsText

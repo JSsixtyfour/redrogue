@@ -183,8 +183,9 @@ HoFMonInfoText:
 	next "TYPE2/@"
 
 HoFLoadPlayerPics:
-	ld de, RedPicFront
+	farcall GetPlayerFrontPic ; -> de
 	ld a, BANK(RedPicFront)
+	ASSERT BANK(RedPicFront) == BANK(GreenPicFront)
 	call UncompressSpriteFromDE
 	ld hl, sSpriteBuffer1
 	ld de, sSpriteBuffer0
@@ -192,8 +193,9 @@ HoFLoadPlayerPics:
 	call CopyData
 	ld de, vFrontPic
 	call InterlaceMergeSpriteBuffers
-	ld de, RedPicBack
+	farcall GetPlayerBackPic ; -> de
 	ld a, BANK(RedPicBack)
+	ASSERT BANK(RedPicBack) == BANK(GreenPicBack)
 	call UncompressSpriteFromDE
 	predef ScaleSpriteByTwo
 	ld de, vBackPic

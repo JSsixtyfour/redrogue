@@ -76,6 +76,7 @@ FlyWarpDataPtr:
 	fly_warp_spec SAFFRON_CITY,    .SaffronCity
 	fly_warp_spec ROUTE_4,         .Route4
 	fly_warp_spec ROUTE_10,        .Route10
+	fly_warp_spec SILPH_CO_DORM,   .SilphCoDorm
 
 .PalletTown:     fly_warp PALLET_TOWN,      5,  6
 .ViridianCity:   fly_warp VIRIDIAN_CITY,   23, 26
@@ -87,7 +88,18 @@ FlyWarpDataPtr:
 .FuchsiaCity:    fly_warp FUCHSIA_CITY,    19, 28
 .CinnabarIsland: fly_warp CINNABAR_ISLAND, 11, 12
 .IndigoPlateau:  fly_warp INDIGO_PLATEAU,   9,  6
-.IndigoPlateauLobby: fly_warp REDS_HOUSE_2F, 4, 4 ; TEMP: blackout respawn point until the real player's room exists
+; NOTE: the first fly_warp argument only supplies the map WIDTH used to compute
+; wCurrentTileBlockMapViewPointer -- it does NOT choose the destination map (that
+; comes from the lookup key in LoadSpecialWarpData, i.e. wDestinationMap /
+; wLastBlackoutMap). Pointing this row at REDS_HOUSE_2F therefore did not move the
+; blackout respawn; it just loaded the lobby with a camera computed for a 4-block-
+; wide map, which broke the Debug 2 lobby spawn (player + NPCs badly misaligned).
+; To actually respawn in the player's room, store REDS_HOUSE_2F in wLastBlackoutMap
+; and add a matching fly_warp_spec entry to FlyWarpDataPtr above.
+.IndigoPlateauLobby: fly_warp INDIGO_PLATEAU_LOBBY,  7, 11
 .SaffronCity:    fly_warp SAFFRON_CITY,     9, 30
 .Route4:         fly_warp ROUTE_4,         11,  6
 .Route10:        fly_warp ROUTE_10,        11, 20
+; Blackout respawn point during a run (set by IndigoPlateauLobby_Script on
+; entry) -- lands on one of the two SilphCoB1F<->SilphCoDorm warp tiles.
+.SilphCoDorm:    fly_warp SILPH_CO_DORM,    4,  7

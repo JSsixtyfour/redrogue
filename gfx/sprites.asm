@@ -1,7 +1,37 @@
+; Every overworld sprite the player can be assigned by PlayerAppearanceTable
+; (data/player/appearance.asm) lives here, together with RedBikeSprite and
+; SeelSprite. Reason: LoadPlayerSpriteGraphicsCommon (home/overworld.asm) copies
+; the walking, bike AND surf sheets with a single hardcoded `BANK(RedSprite)`.
+; Keeping all of them in one section makes that constant correct for every
+; player appearance, so only the *pointer* has to vary at runtime and the HOME
+; routine needs no bank plumbing.
+; These sheets are still ordinary NPC sprites too — SpriteSheetPointerTable emits
+; `db BANK(\1)` per entry, so NPC use of them re-resolves automatically.
+; ADDING A NEW PLAYER APPEARANCE: its sprite must be moved into this section.
+SECTION "Player Sprites", ROMX
+
+RedSprite::              INCBIN "gfx/sprites/red.2bpp"
+RedBikeSprite::          INCBIN "gfx/sprites/red_bike.2bpp"
+SeelSprite::             INCBIN "gfx/sprites/seel.2bpp"
+GreenSprite::            INCBIN "gfx/sprites/green.2bpp" ; ported from pret-based Pokemon Yume
+BeautySprite::           INCBIN "gfx/sprites/beauty.2bpp"
+ChannelerSprite::        INCBIN "gfx/sprites/channeler.2bpp"
+CooltrainerFSprite::     INCBIN "gfx/sprites/cooltrainer_f.2bpp"
+CooltrainerMSprite::     INCBIN "gfx/sprites/cooltrainer_m.2bpp"
+FisherSprite::           INCBIN "gfx/sprites/fisher.2bpp"
+GamblerSprite::          INCBIN "gfx/sprites/gambler.2bpp"
+GentlemanSprite::        INCBIN "gfx/sprites/gentleman.2bpp"
+HikerSprite::            INCBIN "gfx/sprites/hiker.2bpp"
+RockerSprite::           INCBIN "gfx/sprites/rocker.2bpp"
+RocketSprite::           INCBIN "gfx/sprites/rocket.2bpp"
+SailorSprite::           INCBIN "gfx/sprites/sailor.2bpp"
+ScientistSprite::        INCBIN "gfx/sprites/scientist.2bpp"
+SuperNerdSprite::        INCBIN "gfx/sprites/super_nerd.2bpp"
+YoungsterSprite::        INCBIN "gfx/sprites/youngster.2bpp"
+
+
 SECTION "NPC Sprites 1", ROMX
 
-ScientistSprite::        INCBIN "gfx/sprites/scientist.2bpp"
-RockerSprite::           INCBIN "gfx/sprites/rocker.2bpp"
 SwimmerSprite::          INCBIN "gfx/sprites/swimmer.2bpp"
 SafariZoneWorkerSprite:: INCBIN "gfx/sprites/safari_zone_worker.2bpp"
 GymGuideSprite::         INCBIN "gfx/sprites/gym_guide.2bpp"
@@ -15,7 +45,6 @@ SilphPresidentSprite::   INCBIN "gfx/sprites/silph_president.2bpp"
 SilphWorkerMSprite::     INCBIN "gfx/sprites/silph_worker_m.2bpp"
 WardenSprite::           INCBIN "gfx/sprites/warden.2bpp"
 CaptainSprite::          INCBIN "gfx/sprites/captain.2bpp"
-FisherSprite::           INCBIN "gfx/sprites/fisher.2bpp"
 KogaSprite::             INCBIN "gfx/sprites/koga.2bpp"
 GuardSprite::            INCBIN "gfx/sprites/guard.2bpp"
 PokeBallSprite::         INCBIN "gfx/sprites/poke_ball.2bpp"
@@ -31,32 +60,19 @@ GamblerAsleepSprite::    INCBIN "gfx/sprites/gambler_asleep.2bpp"
 
 SECTION "NPC Sprites 2", ROMX
 
-RedBikeSprite::          INCBIN "gfx/sprites/red_bike.2bpp"
-RedSprite::              INCBIN "gfx/sprites/red.2bpp"
 BlueSprite::             INCBIN "gfx/sprites/blue.2bpp"
 OakSprite::              INCBIN "gfx/sprites/oak.2bpp"
-YoungsterSprite::        INCBIN "gfx/sprites/youngster.2bpp"
 MonsterSprite::          INCBIN "gfx/sprites/monster.2bpp"
-CooltrainerFSprite::     INCBIN "gfx/sprites/cooltrainer_f.2bpp"
-CooltrainerMSprite::     INCBIN "gfx/sprites/cooltrainer_m.2bpp"
 LittleGirlSprite::       INCBIN "gfx/sprites/little_girl.2bpp"
 BirdSprite::             INCBIN "gfx/sprites/bird.2bpp"
 MiddleAgedManSprite::    INCBIN "gfx/sprites/middle_aged_man.2bpp"
-GamblerSprite::          INCBIN "gfx/sprites/gambler.2bpp"
-SuperNerdSprite::        INCBIN "gfx/sprites/super_nerd.2bpp"
 GirlSprite::             INCBIN "gfx/sprites/girl.2bpp"
-HikerSprite::            INCBIN "gfx/sprites/hiker.2bpp"
-BeautySprite::           INCBIN "gfx/sprites/beauty.2bpp"
-GentlemanSprite::        INCBIN "gfx/sprites/gentleman.2bpp"
 DaisySprite::            INCBIN "gfx/sprites/daisy.2bpp"
 BikerSprite::            INCBIN "gfx/sprites/biker.2bpp"
-SailorSprite::           INCBIN "gfx/sprites/sailor.2bpp"
 CookSprite::             INCBIN "gfx/sprites/cook.2bpp"
 BikeShopClerkSprite::    INCBIN "gfx/sprites/bike_shop_clerk.2bpp"
 MrFujiSprite::           INCBIN "gfx/sprites/mr_fuji.2bpp"
 GiovanniSprite::         INCBIN "gfx/sprites/giovanni.2bpp"
-RocketSprite::           INCBIN "gfx/sprites/rocket.2bpp"
-ChannelerSprite::        INCBIN "gfx/sprites/channeler.2bpp"
 WaiterSprite::           INCBIN "gfx/sprites/waiter.2bpp"
 SilphWorkerFSprite::     INCBIN "gfx/sprites/silph_worker_f.2bpp"
 MiddleAgedWomanSprite::  INCBIN "gfx/sprites/middle_aged_woman.2bpp"
@@ -70,7 +86,6 @@ FairySprite::            INCBIN "gfx/sprites/fairy.2bpp"
 AgathaSprite::           INCBIN "gfx/sprites/agatha.2bpp"
 BrunoSprite::            INCBIN "gfx/sprites/bruno.2bpp"
 LoreleiSprite::          INCBIN "gfx/sprites/lorelei.2bpp"
-SeelSprite::             INCBIN "gfx/sprites/seel.2bpp"
 
 
 SECTION "Room Sprites", ROMX

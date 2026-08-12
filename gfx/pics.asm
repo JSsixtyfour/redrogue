@@ -263,7 +263,12 @@ PidgeotPicBack::       INCBIN "gfx/pokemon/back/pidgeotb.pic"
 StarmiePicFront::      INCBIN "gfx/pokemon/front/starmie.pic"
 StarmiePicBack::       INCBIN "gfx/pokemon/back/starmieb.pic"
 
+; All three player back pics must stay in this one section: LoadPlayerBackPic
+; (engine/battle/core.asm) and HoFLoadPlayerPics (engine/movie/hall_of_fame.asm)
+; load whichever one applies using a single BANK(RedPicBack), guarded by the
+; ASSERTs below.
 RedPicBack::           INCBIN "gfx/player/redb.pic"
+GreenPicBack::         INCBIN "gfx/player/greenb.pic" ; ported from Pokemon Yume
 OldManPicBack::        INCBIN "gfx/battle/oldmanb.pic"
 
 
@@ -326,6 +331,15 @@ VictreebelPicBack::    INCBIN "gfx/pokemon/back/victreebelb.pic"
 
 
 SECTION "Trainer Pics", ROMX
+
+; The player's own front pics live here rather than next to ShrinkPic1/2 in
+; gfx/player.asm so that EVERY pic PlayerAppearanceTable can select shares one
+; bank. GetPlayerFrontPic is reached by farcall, and Bankswitch preserves only
+; de — it pops bc and clobbers a — so a per-entry bank byte could not be
+; returned. A single BANK("Trainer Pics") sidesteps that entirely.
+; ADDING A NEW PLAYER APPEARANCE: its front pic must be in this section.
+RedPicFront::      INCBIN "gfx/player/red.pic"
+GreenPicFront::    INCBIN "gfx/player/green.pic" ; ported from Pokemon Yume
 
 YoungsterPic::     INCBIN "gfx/trainers/youngster.pic"
 BugCatcherPic::    INCBIN "gfx/trainers/bugcatcher.pic"

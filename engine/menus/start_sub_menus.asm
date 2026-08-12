@@ -552,8 +552,9 @@ StartMenu_TrainerInfo::
 
 ; loads tile patterns and draws everything except for gym leader faces / badges
 DrawTrainerInfo:
-	ld de, RedPicFront
+	farcall GetPlayerFrontPic ; -> de (farcall clobbers bc, so set it after)
 	lb bc, BANK(RedPicFront), $01
+	ASSERT BANK(RedPicFront) == BANK(GreenPicFront)
 	predef DisplayPicCenteredOrUpperRight
 	call DisableLCD
 	hlcoord 0, 2
