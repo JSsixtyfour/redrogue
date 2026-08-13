@@ -111,7 +111,7 @@ MapHeaderBanks::
 	db BANK(ProceduralCemetery3_h) ; PROCEDURAL_CEMETERY_3
 	db BANK(VictoryRoad1F_h)
 	db BANK(ProceduralCemetery4_h) ; PROCEDURAL_CEMETERY_4
-	db $1D ; UNUSED_MAP_6E
+	db BANK(Truck_h) ; TRUCK
 	db $1D ; UNUSED_MAP_6F
 	db $1D ; UNUSED_MAP_70
 	db BANK(LancesRoom_h)

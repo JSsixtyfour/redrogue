@@ -1314,3 +1314,8 @@ INCLUDE "data/maps/headers/SilphCoVR.asm"
 INCLUDE "scripts/SilphCoVR.asm"
 INCLUDE "data/maps/objects/SilphCoVR.asm"
 SilphCoVR_Blocks: INCBIN "maps/SilphCoVR.blk"
+
+INCLUDE "data/maps/headers/Truck.asm"
+INCLUDE "scripts/Truck.asm"
+INCLUDE "data/maps/objects/Truck.asm"
+Truck_Blocks: INCBIN "maps/truck.blk"

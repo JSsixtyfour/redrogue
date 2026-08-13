@@ -2,8 +2,8 @@ SilphCoDorm_Object:
 	db $a ; border block
 
 	def_warp_events
-	warp_event  5,  7, LAST_MAP, 1
-	warp_event  4,  7, LAST_MAP, 1
+	warp_event  5,  7, SILPH_CO_B1F, 1
+	warp_event  4,  7, SILPH_CO_B1F, 1
 
 	def_bg_events
 	bg_event  0,  1, TEXT_SILPHCODORM_PC

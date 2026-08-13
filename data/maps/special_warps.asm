@@ -45,7 +45,8 @@ MACRO special_warp_spec
 ENDM
 
 NewGameWarp:
-	special_warp_spec REDS_HOUSE_2F, 3, 6, REDS_HOUSE_2
+; Where the player wakes up in the back of the truck.
+	special_warp_spec TRUCK, 3, 1, GYM
 TradeCenterPlayerWarp:
 	special_warp_spec TRADE_CENTER,  3, 4, CLUB
 TradeCenterFriendWarp:

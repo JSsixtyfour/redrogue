@@ -1,37 +1,23 @@
 	object_const_def
-	const_export SILPHCO1F_SCIENTIST1
-	const_export SILPHCO1F_SCIENTIST2
-	const_export SILPHCO1F_SCIENTIST3
-	const_export SILPHCO1F_SCIENTIST4
-	const_export SILPHCO1F_SCIENTIST5
-    const_export SILPHCO1F_POKE_BALL
-    const_export SILPHCO1F_ROGUE_REWARD_POKEBALL_1
-    const_export SILPHCO1F_ROGUE_REWARD_POKEBALL_2
-    const_export SILPHCO1F_ROGUE_REWARD_POKEBALL_3
-    const_export SILPHCO1F_ROGUE_TRADE_NPC
+	const_export SILPHCO1F_PROF_PALM
 	const_export SILPHCO1F_LINK_RECEPTIONIST
 
 SilphCo1F_Object:
 	db $2e ; border block
 
 	def_warp_events
+; Warps 1-3 keep their indices: SilphCoB1F enters via index 1 and SilphCo2F via
+; index 3, so these must not be reordered or removed.
 	warp_event 10, 17, LAST_MAP, 6
 	warp_event 11, 17, LAST_MAP, 6
 	warp_event 12, 17, INDIGO_PLATEAU_LOBBY, 1
+; Warp 4, appended: the stairs the escort ends on.
+	warp_event 24,  0, SILPH_CO_B1F, 1
 
 	def_bg_events
 
 	def_object_events
-	object_event  6,  5, SPRITE_SCIENTIST, STAY, RIGHT, TEXT_SILPHCO1F_SCIENTIST1, OPP_SCIENTIST, 1
-	object_event 12,  5, SPRITE_SCIENTIST, STAY, LEFT, TEXT_SILPHCO1F_SCIENTIST2, OPP_SCIENTIST, 1
-	object_event 18,  5, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCO1F_SCIENTIST3, OPP_SCIENTIST, 1
-	object_event  6, 12, SPRITE_SCIENTIST, STAY, UP, TEXT_SILPHCO1F_SCIENTIST4, OPP_SCIENTIST, 1
-	object_event 18, 12, SPRITE_SCIENTIST, STAY, RIGHT, TEXT_SILPHCO1F_SCIENTIST5, OPP_SCIENTIST, 1
-	object_event 22,  8, SPRITE_POKE_BALL, STAY, NONE, TEXT_SILPHCO1F_RANDOM, 0
-	object_event  2,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_SILPHCO1F_ROGUE_REWARD_POKEBALL_1
-	object_event  4,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_SILPHCO1F_ROGUE_REWARD_POKEBALL_2
-	object_event  6,  3, SPRITE_POKE_BALL, STAY, NONE, TEXT_SILPHCO1F_ROGUE_REWARD_POKEBALL_3
-	object_event  2,  5, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_SILPHCO1F_ROGUE_TRADE_NPC
+	object_event 10, 16, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCO1F_PROF_PALM
 	object_event  4,  2, SPRITE_LINK_RECEPTIONIST, STAY, DOWN, TEXT_SILPHCO1F_LINK_RECEPTIONIST
 
 	def_warps_to SILPH_CO_1F

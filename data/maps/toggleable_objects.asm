@@ -61,22 +61,8 @@ ToggleableObjectStates:
 	toggle_object_state CERULEANCITY_GUARD2,      ON
 
 	toggleable_objects_for SAFFRON_CITY
-	toggle_object_state SAFFRONCITY_ROCKET1,        ON
-	toggle_object_state SAFFRONCITY_ROCKET2,        ON
-	toggle_object_state SAFFRONCITY_ROCKET3,        ON
-	toggle_object_state SAFFRONCITY_ROCKET4,        ON
-	toggle_object_state SAFFRONCITY_ROCKET5,        ON
-	toggle_object_state SAFFRONCITY_ROCKET6,        ON
-	toggle_object_state SAFFRONCITY_ROCKET7,        ON
-	toggle_object_state SAFFRONCITY_SCIENTIST,      OFF
-	toggle_object_state SAFFRONCITY_SILPH_WORKER_M, OFF
-	toggle_object_state SAFFRONCITY_SILPH_WORKER_F, OFF
-	toggle_object_state SAFFRONCITY_GENTLEMAN,      OFF
-	toggle_object_state SAFFRONCITY_PIDGEOT,        OFF
-	toggle_object_state SAFFRONCITY_ROCKER,         OFF
-	toggle_object_state SAFFRONCITY_ROCKET8,        ON
-	toggle_object_state SAFFRONCITY_ROCKET9,        OFF
-    
+	toggle_object_state SAFFRONCITY_PROF_PALM, ON
+
     toggleable_objects_for REWARD_ROOM
     toggle_object_state ROGUE_REWARD_POKEBALL_1, ON
 	toggle_object_state ROGUE_REWARD_POKEBALL_2, ON
@@ -187,7 +173,8 @@ ToggleableObjectStates:
 	toggle_object_state FIGHTINGDOJO_HITMONCHAN_POKE_BALL, ON
 
 	toggleable_objects_for SILPH_CO_1F
-	toggle_object_state SILPHCO1F_LINK_RECEPTIONIST, OFF
+	toggle_object_state SILPHCO1F_PROF_PALM,         ON
+	toggle_object_state SILPHCO1F_LINK_RECEPTIONIST, ON
 
 	toggleable_objects_for POWER_PLANT
 

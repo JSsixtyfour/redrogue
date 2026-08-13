@@ -1,23 +1,50 @@
 SaffronCity_Script:
-	jp EnableAutoTextBoxDrawing
+	call EnableAutoTextBoxDrawing
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+
+; First tick after the truck drops the player off. Saffron is only ever entered
+; during the intro, so no extra state variable is needed - the NPC movement
+; system below holds the rest of the sequence's state itself.
+; hJoyIgnore MUST be the d-pad only: it masks hJoyPressed globally
+; (engine/joypad.asm), and the text below ends on a prompt whose wait reads A/B
+; out of that same masked byte. Including PAD_BUTTONS here would softlock.
+	ld a, PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+
+; Palm's screen position has never been computed at this point: this is the
+; very first script tick after the map loaded. UpdateNPCSprite bails out to
+; NotYetMoving whenever wFontLoaded is set (engine/overworld/movement.asm), so
+; InitializeSpriteScreenPosition would be skipped for the entire time the
+; textbox below is open and Palm would be drawn at a stale screen position,
+; snapping into place only once the escort movement starts. Forcing one sprite
+; pass here - while the font is still unloaded - places him correctly first.
+	call UpdateSprites
+
+	ld a, TEXT_SAFFRONCITY_PROF_PALM
+	ldh [hTextID], a
+	call DisplayTextID
+
+; Hand off to the escort movement script.
+	ld a, SAFFRONCITY_PROF_PALM
+	ldh [hActiveSpriteIndex], a
+	xor a
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1 ; SaffronPalmMovementScriptPointerTable (see home/npc_movement.asm)
+	ld [wNPCMovementScriptPointerTableNum], a
+; Pallet Town and Pewter City store hLoadedROMBank here, which only works
+; because their map scripts happen to share bank $06 with auto_movement.asm.
+; SaffronCity_Script is in bank $14, so it must name the bank explicitly or
+; RunNPCMovementScript would switch to $14 and jump to $06's table address.
+	ld a, BANK(SaffronPalmMovementScriptPointerTable)
+	ld [wNPCMovementScriptBank], a
+	ret
 
 SaffronCity_TextPointers:
 	def_text_pointers
-	dw_const SaffronCityRocket1Text,                  TEXT_SAFFRONCITY_ROCKET1
-	dw_const SaffronCityRocket2Text,                  TEXT_SAFFRONCITY_ROCKET2
-	dw_const SaffronCityRocket3Text,                  TEXT_SAFFRONCITY_ROCKET3
-	dw_const SaffronCityRocket4Text,                  TEXT_SAFFRONCITY_ROCKET4
-	dw_const SaffronCityRocket5Text,                  TEXT_SAFFRONCITY_ROCKET5
-	dw_const SaffronCityRocket6Text,                  TEXT_SAFFRONCITY_ROCKET6
-	dw_const SaffronCityRocket7Text,                  TEXT_SAFFRONCITY_ROCKET7
-	dw_const SaffronCityScientistText,                TEXT_SAFFRONCITY_SCIENTIST
-	dw_const SaffronCitySilphWorkerMText,             TEXT_SAFFRONCITY_SILPH_WORKER_M
-	dw_const SaffronCitySilphWorkerFText,             TEXT_SAFFRONCITY_SILPH_WORKER_F
-	dw_const SaffronCityGentlemanText,                TEXT_SAFFRONCITY_GENTLEMAN
-	dw_const SaffronCityPidgeotText,                  TEXT_SAFFRONCITY_PIDGEOT
-	dw_const SaffronCityRockerText,                   TEXT_SAFFRONCITY_ROCKER
-	dw_const SaffronCityRocket8Text,                  TEXT_SAFFRONCITY_ROCKET8
-	dw_const SaffronCityRocket9Text,                  TEXT_SAFFRONCITY_ROCKET9
+	dw_const SaffronCityProfPalmText,                 TEXT_SAFFRONCITY_PROF_PALM
 	dw_const SaffronCitySignText,                     TEXT_SAFFRONCITY_SIGN
 	dw_const SaffronCityFightingDojoSignText,         TEXT_SAFFRONCITY_FIGHTING_DOJO_SIGN
 	dw_const SaffronCityGymSignText,                  TEXT_SAFFRONCITY_GYM_SIGN
@@ -88,6 +115,10 @@ SaffronCityRocket8Text:
 
 SaffronCityRocket9Text:
 	text_far _SaffronCityRocket9Text
+	text_end
+
+SaffronCityProfPalmText:
+	text_far _SaffronCityProfPalmText
 	text_end
 
 SaffronCitySignText:

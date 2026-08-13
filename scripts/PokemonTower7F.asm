@@ -315,12 +315,6 @@ PokemonTower7FMrFujiText:
 	ld a, TOGGLE_MR_FUJIS_HOUSE_MR_FUJI
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
-	ld a, TOGGLE_SAFFRON_CITY_E
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ld a, TOGGLE_SAFFRON_CITY_F
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
 	ld a, SCRIPT_POKEMONTOWER7F_WARP_TO_MR_FUJI_HOUSE
 	ld [wPokemonTower7FCurScript], a
 	ld [wCurMapScript], a

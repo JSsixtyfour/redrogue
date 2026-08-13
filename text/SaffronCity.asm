@@ -150,3 +150,14 @@ _SaffronCitySilphCoLatestProductSignText::
 	para "Release to be"
 	line "determined..."
 	done
+
+_SaffronCityProfPalmText::
+	text "PROF PALM: Right"
+	line "on time!"
+
+	para "SILPH CO is just"
+	line "up these steps."
+
+	para "Follow me - and"
+	line "try to keep up!"
+	done

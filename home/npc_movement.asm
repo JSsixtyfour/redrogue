@@ -41,7 +41,17 @@ RunNPCMovementScript::
 	ret
 
 .NPCMovementScriptPointerTables
-	dw PalletMovementScriptPointerTable
+; Slot 1 was Pallet Town's "Oak walks you to the lab" escort. That whole
+; sequence is commented out in scripts/PalletTown.asm, and its `ld a, 1` write
+; to wNPCMovementScriptPointerTableNum (PalletTown.asm:114) went with it, so
+; nothing could ever select the slot - it was dead data.
+; It is reused rather than appended to because this table lives in HOME, which
+; has ZERO bytes of slack in the _DEBUG build: adding a 4th `dw` overflowed
+; ROM0 by exactly 2 bytes. If Pallet's escort is ever revived it needs a slot of
+; its own, and that means reclaiming HOME bytes first (see WRAM_BIBLE.md J).
+; PalletMovementScriptPointerTable itself is still assembled in
+; engine/overworld/auto_movement.asm, just unreferenced.
+	dw SaffronPalmMovementScriptPointerTable
 	dw PewterMuseumGuyMovementScriptPointerTable
 	dw PewterGymGuyMovementScriptPointerTable
 .playerStepOutFromDoor

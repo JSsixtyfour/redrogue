@@ -1,22 +1,16 @@
+_SilphCo1FProfPalmText::
+	text "This way. The lab"
+	line "is downstairs."
+	done
+
 _SilphCo1FLinkReceptionistText::
-	text "Welcome!"
+	text "PROF PALM: I have"
+	line "a new test sub-"
 
-	para "The PRESIDENT is"
-	line "in the boardroom"
-	cont "on 11F!"
-	done
+	para "I mean, a new"
+	line "volunteer for my"
+	cont "project."
 
-_SilphCo1FScientist1BattleText::
-	text "SILPH's research"
-	line "is classified!"
-	done
-
-_SilphCo1FScientist1EndBattleText::
-	text "How did you"
-	line "get this far?!"
-	prompt
-
-_SilphCo1FScientist1AfterBattleText::
-	text "Should I tell my"
-	line "boss about this?"
+	para "Hold all my calls,"
+	line "would you?"
 	done

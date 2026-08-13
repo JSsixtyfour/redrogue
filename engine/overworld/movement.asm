@@ -451,7 +451,13 @@ InitializeSpriteStatus:
 	ret
 
 ; calculates the sprite's screen position from its map position and the player position
-InitializeSpriteScreenPosition:
+; Exported so a cutscene can force a sprite's screen position to be derived from
+; its map position on demand. DoScriptedNPCMovement (the "walk in sync with the
+; player" escort path) moves sprites purely in SCREEN PIXEL space and never
+; calls this, so it silently inherits whatever screen coordinates the slot
+; already held - an NPC that has not been placed yet walks the correct route
+; from a wrong origin. Callers set hCurrentSpriteOffset first.
+InitializeSpriteScreenPosition::
 	ld h, HIGH(wSpriteStateData2)
 	ldh a, [hCurrentSpriteOffset]
 	add SPRITESTATEDATA2_MAPY

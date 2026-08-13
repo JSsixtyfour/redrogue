@@ -111,7 +111,7 @@ MapHeaderPointers::
 	dw ProceduralCemetery3_h
 	dw VictoryRoad1F_h
 	dw ProceduralCemetery4_h
-	dw LancesRoom_h ; UNUSED_MAP_6E
+	dw Truck_h ; TRUCK
 	dw LancesRoom_h ; UNUSED_MAP_6F
 	dw LancesRoom_h ; UNUSED_MAP_70
 	dw LancesRoom_h
