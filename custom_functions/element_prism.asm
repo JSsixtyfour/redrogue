@@ -394,6 +394,12 @@ PrismHasCartridge::
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
 RoguePrismGetTypeFresh::
+	; wCurItem IS wCurPartySpecies (one byte, three labels - see ram/wram.asm).
+	; Preserve it across the key-item lookup: callers may have a live species in
+	; it, and clobbering it corrupted the battle intro's enemy pic. See the
+	; comment on RoguePrismRefreshCache below for the full failure mode.
+	ld a, [wCurPartySpecies]
+	push af
 	ld a, ELEMENT_PRISM
 	ld [wCurItem], a
 	call GetKeyItemPower          ; same bank; 0 = not active
@@ -408,9 +414,15 @@ RoguePrismGetTypeFresh::
 	ld c, a
 	xor a
 	ld [rRAMG], a                 ; never leave SRAM enabled across a return
+	pop af
+	ld [wCurPartySpecies], a      ; restore the aliased byte
 	ld a, c
 	ret
 .none
+	; must also restore here - this path is taken whenever the prism is inactive,
+	; i.e. the common case, and leaving the push unbalanced would corrupt the stack
+	pop af
+	ld [wCurPartySpecies], a
 	ld a, $ff
 	ret
 
@@ -424,8 +436,26 @@ RoguePrismGetTypeFresh::
 ; wPrismDamageBonus = 0 is the "skip entirely" sentinel, so the damage hook's
 ; common case is one load and a conditional return.
 ; CLOBBERS: af, bc, de, hl
+;
+; MUST NOT clobber wCurPartySpecies. wCurItem aliases it (one byte, three labels
+; in ram/wram.asm), and this routine runs at EVERY battle start, at a point where
+; wCurPartySpecies still holds the species whose front pic is about to be drawn.
+; The pic load reads TWO different variables: GetMonHeader (home/pokemon.asm) uses
+; wCurSpecies for the pic POINTER, while UncompressMonSprite (home/pics.asm) uses
+; wCurPartySpecies to pick the pic BANK. Leaving ELEMENT_PRISM ($70) in it made
+; every wild battle draw the correct pic offset out of BANK("Pics 3"), which is
+; garbage for any species not genuinely in that bank - the intermittent scrambled
+; wild-mon sprite (a species that really does live in Pics 3 rendered fine, which
+; is what made it look random). Hence the save/restore wrapper below.
 ; ============================================================
 RoguePrismRefreshCache::
+	ld a, [wCurPartySpecies]
+	push af
+	call .body
+	pop af
+	ld [wCurPartySpecies], a
+	ret
+.body
 	xor a
 	ld [wPrismDamageBonus], a
 	ld a, $ff

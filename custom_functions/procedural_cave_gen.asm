@@ -475,6 +475,22 @@ PCRollBoss:
 	ld b, 60                        ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	farcall Random_Pokemon_Selection ; → d = species
+	; Random_Pokemon_Selection routes through GetKeyItemPower for the RARE SCOPE
+	; rarity bonus (custom_functions/key_item_pocket.asm). IsKeyItemActive /
+	; GetKeyItemTierForCurItem both select SRAM bank 1 for sKeyItem* and then
+	; unconditionally DISABLE SRAM on the way out ("never leave SRAM enabled
+	; across a return") without restoring bank 0. So on return every sProcCave*
+	; write below would hit open bus - most damagingly [sProcCaveBaked], which
+	; then keeps its stale non-zero value and sends the next PCFinalizeCave down
+	; the PCFinalizeCaveFast path: the carve-only staging buffer gets blitted with
+	; no autotiling, decoration, river, items or boss. Re-assert enable + bank 0.
+	; Identical bug and identical fix to PCemRollItem (procedural_cemetery_gen.asm).
+	; Preserves d (the rolled species), which the next instruction consumes.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
 	ld a, d
 	ld [wRoguePokemon1], a
 	; look up the matching SPRITE_* for this species

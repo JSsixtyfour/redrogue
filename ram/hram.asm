@@ -269,6 +269,7 @@ hRedrawRowOrColumnDest:: dw
 
 hRandomAdd:: db
 hRandomSub:: db
+ASSERT hRandomSub == hRandomAdd + 1
 
 hFrameCounter:: db ; decremented every V-blank (used for delays)
 
@@ -340,7 +341,9 @@ hUnlockedSilphCoDoors::
 ; the first tile ID in a sequence of tile IDs that increase by 1 each step
 hStartTileID:: db
 
-	ds 2
+; xor-shift RNG state, second pair. hRandomLast = x[n-1], hRandomLast+1 = x[n-3].
+; Must stay contiguous; see engine/math/random.asm.
+hRandomLast:: ds 2
 
 hNewPartyLength:: db
 

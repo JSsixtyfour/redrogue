@@ -44,6 +44,16 @@ RogueItemUseDoorDice::
 ; SelectAndPatchLobbyExit patches THIS map's warp entries at fixed
 ; coordinates (11,7)/(11,8) - calling it from any other map would corrupt
 ; that map's warp table, which is exactly why the map gate above runs first.
+;
+; KNOWN GAP: unlike the normal lobby-entry path (IndigoPlateauLobby_Script,
+; which farcalls ProcPreloadAssignedWildArea right after this same call), a
+; reroll here does NOT re-preload. If the reroll lands a door on a wild area,
+; PCFinalizeCave/PFinalizeForest/etc. run against whatever cave/forest was
+; already staged from the PREVIOUS assignment (or nothing, on a fresh save) -
+; not a crash (regenerates the last-rolled layout instead of the new door's
+; intended fresh one), but not a true fresh generation either. Not fixed:
+; a farcall ProcPreloadAssignedWildArea here would add a ~0.5s hitch right
+; after this reroll's text box. See Red Rogue Files/PROC_GEN_NOTES.md.
 	call SelectAndPatchLobbyExit
 	ld hl, DoorDiceRerolledText
 	call PrintText

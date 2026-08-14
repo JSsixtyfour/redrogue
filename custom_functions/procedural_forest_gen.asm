@@ -1853,6 +1853,19 @@ PFScanForBall:
     call Rangerandom
     ld [wRogueDoorSelection], a
     farcall Random_Item_Selection   ; result -> wRogueItem
+    ; RARE LENS routes through GetKeyItemPower (key_item_pocket.asm), which
+    ; selects SRAM bank 1 and disables SRAM on return without restoring bank 0.
+    ; PFinalizeForest's header comment claims SRAM survives every farcall in
+    ; this function ("only touches rROMB") - that assumption predates RARE
+    ; LENS/SCOPE and is now false. Everything downstream that touches SRAM
+    ; (sProcForestGenScratch in PFBraidPass, the ball-save/bake block) would
+    ; silently read/write open bus without this. Same bug as PCRollBoss/
+    ; PFRollBoss; re-assert here at the earliest exposure point.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
     ld a, [wBuffer + wPFBallIdx]
     and a
     jr z, .sfbItemOK           ; ball 0 — nothing to compare against
@@ -1924,6 +1937,13 @@ PFScanForBall:
     call Rangerandom
     ld [wRogueDoorSelection], a
     farcall Random_Item_Selection
+    ; Same RARE LENS / GetKeyItemPower SRAM-disable exposure as .sfbRollItem
+    ; above - re-assert before anything downstream touches SRAM.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
     ld a, [wBuffer + wPFBallIdx]
     and a
     jr z, .sfbFallbackItemOK
@@ -2042,6 +2062,17 @@ PFRollBoss:
     ld b, 60                         ; boss rarity bump, matches cave's PCRollBoss
     call PFRollMonClass              ; c = rarity class (same bank, plain call OK)
     farcall Random_Pokemon_Selection ; -> d = species (d survives farcall)
+    ; Random_Pokemon_Selection routes through GetKeyItemPower (RARE SCOPE), which
+    ; selects SRAM bank 1 and then DISABLES SRAM on return without restoring bank
+    ; 0 - see custom_functions/key_item_pocket.asm. Without re-asserting, the
+    ; sProcForest* writes below (and inside PFStoreBossOWSpriteToSRAM) hit open
+    ; bus. Same bug/fix as PCRollBoss (procedural_cave_gen.asm) and PCemRollItem.
+    ; Preserves d (the rolled species), consumed by the next instruction.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
     ld a, d
     ld [wRoguePokemon1], a
     ld [sProcForestBossSpecies], a
@@ -2162,10 +2193,20 @@ PFinalizeForest::
     ; wBuffer work identically whether SRAM is open or not. Keeping it open
     ; lets PFBacktracker and PFScanForBall use sProcForestGenScratch (SRAM)
     ; directly instead of clobbering wOverworldMap's live border padding
-    ; (confirmed corruption hazard — see their header comments). farcall/
-    ; Bankswitch only touches rROMB, never rRAMG/rRAMB/rBMODE, so this is also
-    ; safe across the farcall Random_Item_Selection / farcall PCGetBossLevel
-    ; calls later in this function.
+    ; (confirmed corruption hazard — see their header comments).
+    ;
+    ; CORRECTION (2026-08-13): the claim this used to make here - "farcall/
+    ; Bankswitch only touches rROMB, so this is safe across the farcall
+    ; Random_Item_Selection / farcall PCGetBossLevel calls later in this
+    ; function" - is FALSE as of RARE LENS/RARE SCOPE (key_item_pocket.asm's
+    ; GetKeyItemPower, reached from inside Random_Item_Selection/
+    ; Random_Pokemon_Selection). GetKeyItemPower selects SRAM bank 1 and
+    ; disables SRAM on return without restoring bank 0. Every item-roll farcall
+    ; in this function (PFScanForBall's two, and this function's own ball-item
+    ; roll near the bake) now re-asserts SRAM enable + bank 0 immediately after
+    ; the farcall - see the comments at those sites. Do not remove those
+    ; re-asserts on the assumption that this "SRAM stays open" note makes them
+    ; redundant; it does not.
 
     ; Point PFWriteBlock at wOverworldMap
     ld a, LOW(wOverworldMap + PF_BASE)
@@ -2387,6 +2428,16 @@ PFinalizeForest::
     ld [hli], a                 ; wBuffer[19], [20], [21], [22]
     dec b
     jr nz, .pfbItemRoll
+    ; RARE LENS (GetKeyItemPower, reached via the farcall above) disables SRAM
+    ; and leaves bank 1 selected without restoring bank 0 - same exposure as
+    ; PFScanForBall's item rolls. Re-assert before the sProcForestBallItems
+    ; write below and the wOverworldMap->sProcForestStagingBuffer bake that
+    ; immediately follows it.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
     ; Copy from wBuffer[19..22] to sProcForestBallItems
     ld de, sProcForestBallItems
     ld hl, wBuffer + wPFBraidCol

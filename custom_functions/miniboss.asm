@@ -104,18 +104,22 @@ SpecialEncounterRollAndAssign::
 	set 1, e
 .waDone:
 IF DEF(_DEBUG)
-	; Debug 2 testing aid: deterministically force a wild area to occur on every
-	; eligible route-next lobby visit (bypassing the chance roll / count-balance
-	; kind choice below), so wild-area rotation/forced-door behavior can be tested
-	; without grinding RNG. Still honors the route-next/first-route gates above and
-	; the forced-vs-choosable bit (e bit 1) computed above, so the mandatory single-
-	; door case still only triggers once the real >=2-per-run guarantee kicks in.
-	; Debug-build only; off entirely in release ROMs.
-	; Disabled 2026-07-30 (increment testing complete) - normal weighted roll now
-	; applies even in Debug 2 mode. Uncomment the 3 lines below to re-enable.
-;	ld a, [wStatusFlags6]
-;	bit BIT_DEBUG2_MODE, a
-;	jp nz, .doWildArea
+	; Debug 2 testing aid: directly force BOTH lobby doors to PROCEDURAL_CAVE_1 on
+	; every eligible route-next lobby visit. Bypasses WildAreaPickAndAssign (and its
+	; Rangerandom calls) entirely rather than routing through the normal roll/pick
+	; path, since the random function has changed and a deterministic force through
+	; that path is no longer reliable for testing. Debug-build only; off entirely
+	; in release ROMs.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .noDebugForce
+	ld a, PROCEDURAL_FOREST
+	ld [wLobbyDoor1StageMap], a
+	ld [wLobbyDoor2StageMap], a   ; door1==door2 => Lobby_IsDoor2Blocked blocks door 2
+	xor a
+	ld [wRoutesSinceSpecial], a
+	ret
+.noDebugForce
 ENDC
 	; --- decide whether a special occurs, and which kind ---
 	ld a, e

@@ -1109,6 +1109,30 @@ wListPointer:: dw
 
 wItemPrices:: dw
 
+; !! ALIAS HAZARD - READ BEFORE WRITING TO ANY OF THESE THREE !!
+; These are THREE NAMES FOR ONE BYTE, not three variables. Writing wCurItem
+; overwrites wCurPartySpecies and vice versa. This is vanilla pokered layout and
+; is safe in vanilla, because item code and species code never run interleaved
+; there. Red Rogue breaks that assumption constantly: the key-item system
+; (custom_functions/key_item_pocket.asm) is queried via `ld [wCurItem], a` +
+; GetKeyItemPower/IsKeyItemActive from inside battle start, damage calc,
+; experience, mon creation and the random species/item rollers - all places where
+; a caller may have a LIVE species sitting in this byte.
+;
+; Two real bugs this has already caused, both hard to find:
+;   1. _AddPartyMon (engine/pokemon/add_mon.asm) - DV_BOOSTER/SHINY_CHARM lookups
+;      corrupted the species before it escaped to callers.
+;   2. RoguePrismRefreshCache (custom_functions/element_prism.asm) - runs at EVERY
+;      battle start and left ELEMENT_PRISM ($70) here. The battle intro's pic load
+;      reads wCurSpecies for the pic POINTER (GetMonHeader, home/pokemon.asm) but
+;      wCurPartySpecies for the pic BANK (UncompressMonSprite, home/pics.asm), so
+;      the enemy sprite was drawn from the wrong bank -> scrambled tiles. It only
+;      glitched for species whose pic is NOT in BANK("Pics 3"), which made it look
+;      intermittent/random.
+;
+; RULE: if you set wCurItem in code that can run while a species is live (battle,
+; pic loading, party/box writes, species rolls), save this byte first and restore
+; it before returning. See RoguePrismRefreshCache for the wrapper pattern.
 wCurPartySpecies::
 wCurItem::
 wCurListMenuItem::

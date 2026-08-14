@@ -1,4 +1,5 @@
 MainMenu:
+	farcall RandomSeedStir
 ; Check save file
 	call InitOptions
 	xor a
