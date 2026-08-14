@@ -52,25 +52,22 @@ VBlank::
 .skipDec
 	call FadeOutAudio
 
-	ld a, [wAudioROMBank] ; music ROM bank
+; There is a single music engine now (AUDIO_1), so this no longer dispatches
+; on [wAudioROMBank] to pick which AudioN_UpdateMusic to call - it's always
+; Audio1_UpdateMusic (see engine_1.asm / home/audio.asm's UpdateMusic6Times).
+; Music_DoLowHealthAlarm used to run only on this branch's old ".audio2" path
+; (i.e. only while AUDIO_2 happened to be the active UpdateMusic bank), which
+; the single engine has no equivalent of; it must run unconditionally every
+; VBlank now, same as pokeyellow's VBlank, or the alarm tone would never play.
+	ld a, BANK(Music_DoLowHealthAlarm)
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
-
-	cp BANK(Audio1_UpdateMusic)
-	jr nz, .checkForAudio2
-.audio1
-	call Audio1_UpdateMusic
-	jr .afterMusic
-.checkForAudio2
-	cp BANK(Audio2_UpdateMusic)
-	jr nz, .audio3
-.audio2
 	call Music_DoLowHealthAlarm
-	call Audio2_UpdateMusic
-	jr .afterMusic
-.audio3
-	call Audio3_UpdateMusic
-.afterMusic
+
+	ld a, BANK(Audio1_UpdateMusic)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+	call Audio1_UpdateMusic
 
 	farcall TrackPlayTime ; keep track of time played
 

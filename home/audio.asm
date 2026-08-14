@@ -69,31 +69,14 @@ PlayDefaultMusicCommon::
 UpdateMusic6Times::
 ; This is called when entering a map, before fading out the current music and
 ; playing the default music (i.e. the map's music or biking/surfing music).
-	ld a, [wAudioROMBank]
-	ld b, a
-	cp BANK(Audio1_UpdateMusic)
-	jr nz, .checkForAudio2
-; audio 1
-	ld hl, Audio1_UpdateMusic
-	jr .next
-
-.checkForAudio2
-	cp BANK(Audio2_UpdateMusic)
-	jr nz, .audio3
-; audio 2
-	ld hl, Audio2_UpdateMusic
-	jr .next
-
-.audio3
-	ld hl, Audio3_UpdateMusic
-
-.next
+; There is a single music engine now (AUDIO_1); the old per-bank dispatch
+; (which bank is [wAudioROMBank] pointing at?) is gone. Audio1_UpdateMusic
+; reads note data out of whichever bank actually holds it via GetNextMusicByte
+; below, which bank-switches per byte.
 	ld c, 6
 .loop
-	push bc
-	push hl
-	call Bankswitch
-	pop hl
+	push bc ; Bankswitch (inside farcall) clobbers bc, so the loop counter must survive it
+	farcall Audio1_UpdateMusic
 	pop bc
 	dec c
 	jr nz, .loop
@@ -168,34 +151,12 @@ PlaySound::
 .noFadeOut
 	xor a
 	ld [wNewSoundID], a
-	ldh a, [hLoadedROMBank]
-	ldh [hSavedROMBank], a
-	ld a, [wAudioROMBank]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	cp BANK(Audio1_PlaySound)
-	jr nz, .checkForAudio2
-; audio 1
-	ld a, b
-	call Audio1_PlaySound
-	jr .next2
-
-.checkForAudio2
-	cp BANK(Audio2_PlaySound)
-	jr nz, .audio3
-; audio 2
-	ld a, b
-	call Audio2_PlaySound
-	jr .next2
-
-.audio3
-	ld a, b
-	call Audio3_PlaySound
-
-.next2
-	ldh a, [hSavedROMBank]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+; The 4-way bank dispatch (which of Audio1/2/3/4_PlaySound to call, based on
+; [wAudioROMBank]) moved into DetermineAudioFunction below, since it's now
+; needed in two places (here, and Audio1_note's drum_note / the
+; unknownmusic0xef command inside engine_1.asm's note-command interpreter -
+; both need to play an SFX in whichever bank is currently active).
+	call DetermineAudioFunction
 	jr .done
 
 .fadeOut
@@ -211,4 +172,84 @@ PlaySound::
 	pop bc
 	pop de
 	pop hl
+	ret
+
+GetNextMusicByte::
+; Reads the next music command byte for the currently-active bank
+; ([wAudioROMBank]), then restores the caller's bank. Mandatory in HOME (not
+; ROMX): it bank-switches to wAudioROMBank and keeps running, so the code
+; itself must stay mapped through the switch - this is the documented
+; HOME->ROMX bank-switch landmine (see WRAM_BIBLE.md and
+; project_bank_switch_from_romx). Called by Audio1_GetNextMusicByte, once per
+; command byte, from the single copy of the note-command interpreter in
+; engine_1.asm (AUDIO_1) - this is how that one copy reads note data that
+; physically lives in AUDIO_2/3/4.
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, [wAudioROMBank]
+	call SetCurBank
+	ld d, $0
+	ld a, c
+	add a
+	ld e, a
+	ld hl, wChannelCommandPointers
+	add hl, de
+	ld a, [hli]
+	ld e, a
+	ld a, [hld]
+	ld d, a
+	ld a, [de]
+	inc de
+	ld [hl], e
+	inc hl
+	ld [hl], d
+	ld e, a
+	pop af
+	call SetCurBank
+	ld a, e
+	ret
+
+DetermineAudioFunction::
+; Bank-switches to [wAudioROMBank] and calls that bank's PlaySound (b holds
+; the sound ID), then restores the caller's bank. Mandatory in HOME for the
+; same bank-switch-and-keep-running reason as GetNextMusicByte above; it also
+; centralizes the 4-way dispatch that used to be duplicated inline in both
+; UpdateMusic6Times and PlaySound.
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, [wAudioROMBank]
+	call SetCurBank
+	cp BANK(Audio1_PlaySound)
+	jr nz, .checkForAudio2
+; audio 1
+	ld a, b
+	call Audio1_PlaySound
+	jr .done
+
+.checkForAudio2
+	cp BANK(Audio2_PlaySound)
+	jr nz, .checkForAudio3
+; audio 2
+	ld a, b
+	call Audio2_PlaySound
+	jr .done
+
+.checkForAudio3
+	cp BANK(Audio3_PlaySound)
+	jr nz, .audio4
+; audio 3
+	ld a, b
+	call Audio3_PlaySound
+	jr .done
+
+.audio4
+; invalid banks default to audio 4; vanilla hits this with Missingno, whose
+; sprite dimensions overflow into wAudioROMBank (see pokeyellow's
+; DetermineAudioFunction, same comment)
+	ld a, b
+	call Audio4_PlaySound
+
+.done
+	pop af
+	call SetCurBank
 	ret

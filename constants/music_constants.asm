@@ -241,4 +241,10 @@ DEF MAX_SFX_ID_2 EQUS "SFX_SILPH_SCOPE"
 	music_const SFX_SHOOTING_STAR,      SFX_Shooting_Star
 DEF MAX_SFX_ID_3 EQUS "SFX_SHOOTING_STAR"
 
+	; AUDIO_4
+; AUDIO_4 (bank $33) is scaffolding - no SFX are assigned to it yet (see
+; audio/headers/sfxheaders4.asm), so this is a literal rather than a
+; music_const-derived offset like MAX_SFX_ID_1/2/3.
+DEF MAX_SFX_ID_4 EQU 0
+
 DEF SFX_STOP_ALL_MUSIC EQU $ff

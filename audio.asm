@@ -7,6 +7,9 @@ INCLUDE "audio/headers/sfxheaders2.asm"
 SECTION "Sound Effect Headers 3", ROMX
 INCLUDE "audio/headers/sfxheaders3.asm"
 
+SECTION "Sound Effect Headers 4", ROMX
+INCLUDE "audio/headers/sfxheaders4.asm"
+
 
 SECTION "Music Headers 1", ROMX
 INCLUDE "audio/headers/musicheaders1.asm"
@@ -16,6 +19,9 @@ INCLUDE "audio/headers/musicheaders2.asm"
 
 SECTION "Music Headers 3", ROMX
 INCLUDE "audio/headers/musicheaders3.asm"
+
+SECTION "Music Headers 4", ROMX
+INCLUDE "audio/headers/musicheaders4.asm"
 
 
 SECTION "Sound Effects 1", ROMX
@@ -352,6 +358,12 @@ INCLUDE "audio/sfx/cry21_3.asm"
 INCLUDE "audio/sfx/cry22_3.asm"
 
 
+SECTION "Sound Effects 4", ROMX
+; No sound effect channel data yet - AUDIO_4 is scaffolding for future
+; content (see engine_4.asm's header comment). This section exists so
+; layout.link has something to pin alongside the rest of AUDIO_4 in bank $33.
+
+
 SECTION "Audio Engine 1", ROMX
 
 INCLUDE "audio/play_battle_music.asm"
@@ -374,6 +386,11 @@ SECTION "Audio Engine 3", ROMX
 
 INCLUDE "audio/pokedex_rating_sfx.asm"
 INCLUDE "audio/engine_3.asm"
+
+
+SECTION "Audio Engine 4", ROMX
+
+INCLUDE "audio/engine_4.asm"
 
 
 SECTION "Music 1", ROMX
@@ -445,3 +462,8 @@ INCLUDE "audio/music/surfing.asm"
 INCLUDE "audio/music/jigglypuffsong.asm"
 INCLUDE "audio/music/halloffame.asm"
 INCLUDE "audio/music/credits.asm"
+
+
+SECTION "Music 4", ROMX
+; No music data yet - AUDIO_4 is scaffolding for future content (see
+; engine_4.asm's header comment).

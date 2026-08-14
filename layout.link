@@ -210,6 +210,18 @@ ROMX $2E
 	; they sit. Pin small floating sections; do not trust first-fit.
 	"Random"
 	"Extra Options Menu"
+ROMX $33
+	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
+	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in
+	; the same physical bank (its PlaySound/SFX headers/engine code address
+	; each other bank-relatively, same as AUDIO_1/2/3 do in their own banks),
+	; so - per this file's own $2E rule above - it is pinned explicitly rather
+	; than left floating. $2F-$3F was entirely unallocated before this.
+	"Sound Effect Headers 4"
+	"Music Headers 4"
+	"Sound Effects 4"
+	"Audio Engine 4"
+	"Music 4"
 WRAM0
 	"Audio RAM"
 	org $c100

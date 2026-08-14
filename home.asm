@@ -9,6 +9,15 @@ SECTION "High Home", ROM0
 INCLUDE "home/lcd.asm"
 INCLUDE "home/clear_sprites.asm"
 INCLUDE "home/copy.asm"
+; Moved from "Home" below: the Shin/Yellow-style audio-engine import
+; (SHIN_IMPORT_PLAN.md Phase 1.1) added GetNextMusicByte/DetermineAudioFunction
+; to home/audio.asm, overflowing "Home" ROM0 by 5 bytes in the _DEBUG build
+; ("Home" only had 3 bytes free - see WRAM_BIBLE.md SS J1). array.asm (~17B,
+; leaf, no callers outside its own two routines) is the documented cheap first
+; move: both "High Home" and "Home" are always-mapped bank 0, so this is a
+; free, zero-risk ROM0-to-ROM0 relocation (the HOME->ROMX bank-switch landmine
+; does not apply here).
+INCLUDE "home/array.asm"
 
 
 SECTION "Home", ROM0
@@ -69,7 +78,6 @@ INCLUDE "home/joypad2.asm"
 INCLUDE "home/math.asm"
 INCLUDE "home/print_text.asm"
 INCLUDE "home/move_mon.asm"
-INCLUDE "home/array.asm"
 INCLUDE "home/compare.asm"
 INCLUDE "home/oam.asm"
 INCLUDE "home/window.asm"
