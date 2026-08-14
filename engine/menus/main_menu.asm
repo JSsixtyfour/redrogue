@@ -130,6 +130,9 @@ InitOptions:
 	ld [wLetterPrintingDelayFlags], a
 	ld a, TEXT_DELAY_MEDIUM
 	ld [wOptions], a
+	xor a
+	ld [wOptions2], a ; lives below wGameProgressFlagsEnd, so it is saved but not
+	                  ; auto-zeroed on new game - seed it here instead
 	ret
 
 LinkMenu:
@@ -488,6 +491,8 @@ DisplayOptionMenu:
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]
 	ld b, a
+	bit B_PAD_SELECT, b ; SELECT opens the extra options menu (Shin Red import)
+	jr nz, .extraMenu
 	and ~PAD_SELECT ; any key besides select pressed?
 	jr z, .getJoypadStateLoop
 	bit B_PAD_B, b
@@ -504,6 +509,12 @@ DisplayOptionMenu:
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	ret
+.extraMenu
+	farcall DisplayExtraOptionMenu
+; Restart the whole routine rather than resuming .loop: it redraws the boxes and
+; re-derives every cursor position from wOptions, so the option state survives.
+; Its eventual `ret` returns to our original caller, so the stack does not grow.
+	jp DisplayOptionMenu
 .eraseOldMenuCursor
 	ld [wTopMenuItemX], a
 	call EraseMenuCursor

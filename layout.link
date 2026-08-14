@@ -200,6 +200,16 @@ ROMX $2E
 	; neither cares which bank it lives in.
 	"Predefs"
 	"Battle Engine 6"
+	; Both pinned here 2026-08-14, for the same reason: left floating, rgblink
+	; first-fit drops a small section into whichever tight bank happens to have
+	; room, and it can pick a DIFFERENT bank per build target. "Random" ($45
+	; bytes) had landed in bank $1, taking it from $52 free to $0d. "Extra
+	; Options Menu" ($67 bytes) then landed in bank $1 in the release build but
+	; bank $7 in _DEBUG - and bank $7 is already one of the two that shrink most
+	; under _DEBUG. Both are reached only by farcall, so BANK() resolves wherever
+	; they sit. Pin small floating sections; do not trust first-fit.
+	"Random"
+	"Extra Options Menu"
 WRAM0
 	"Audio RAM"
 	org $c100

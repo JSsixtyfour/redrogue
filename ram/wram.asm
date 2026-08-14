@@ -2370,7 +2370,19 @@ wGameProgressFlagsEnd::
 ; explicitly reset in HallOfFame.asm on run completion.
 wElite4Order:: db
 
-	ds 12 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+; Second options byte, for the extra options menu (SELECT on the OPTION screen).
+; Deliberately NOT extra bits on wOptions: bits 0-3 of that byte are consumed by
+; home/print_text.asm:17 (`and $f`, four bits, not the three TEXT_DELAY_MASK
+; suggests), and SetCursorPositionsFromOptions does `and $3f` then IsInArray over
+; TextSpeedOptionData, so any nonzero value in bits 3-5 runs past the table
+; terminator. A separate byte avoids both hazards entirely.
+; Inside wMainData so it is saved, but BELOW wGameProgressFlagsEnd so it is NOT
+; auto-zeroed on new game - InitOptions writes it explicitly instead, the same
+; way it already seeds wOptions.
+;   bits 0-7: unused (document every bit here as it is claimed)
+wOptions2:: db
+
+	ds 11 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2387,6 +2399,7 @@ wElite4Order:: db
 	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT PRISM one-time
 	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
 	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0
+	      ; -1 more for wOptions2 (extra options menu, Shin Red import Phase 0), still net-zero WRAM0
 
 ; Which trainer class the player looks like: index into PlayerAppearanceTable
 ; (data/player/appearance.asm). 0 = PLAYER_APPEARANCE_RED, so the zero-fill in

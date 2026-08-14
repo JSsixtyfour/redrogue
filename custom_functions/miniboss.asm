@@ -110,16 +110,16 @@ IF DEF(_DEBUG)
 	; path, since the random function has changed and a deterministic force through
 	; that path is no longer reliable for testing. Debug-build only; off entirely
 	; in release ROMs.
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr z, .noDebugForce
-	ld a, PROCEDURAL_FOREST
-	ld [wLobbyDoor1StageMap], a
-	ld [wLobbyDoor2StageMap], a   ; door1==door2 => Lobby_IsDoor2Blocked blocks door 2
-	xor a
-	ld [wRoutesSinceSpecial], a
-	ret
-.noDebugForce
+	;ld a, [wStatusFlags6]
+	;bit BIT_DEBUG2_MODE, a
+	;jr z, .noDebugForce
+	;ld a, PROCEDURAL_FOREST
+	;ld [wLobbyDoor1StageMap], a
+	;ld [wLobbyDoor2StageMap], a   ; door1==door2 => Lobby_IsDoor2Blocked blocks door 2
+	;xor a
+	;ld [wRoutesSinceSpecial], a
+	;ret
+;.noDebugForce
 ENDC
 	; --- decide whether a special occurs, and which kind ---
 	ld a, e

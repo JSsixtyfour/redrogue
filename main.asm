@@ -37,6 +37,12 @@ INCLUDE "engine/pokemon/remove_mon.asm"
 INCLUDE "engine/events/display_pokedex.asm"
 
 
+; Declares its own floating SECTION (see the file header). Kept out of "bank1",
+; which has almost no slack: the only thing in bank1 that references it is the
+; SELECT hook in DisplayOptionMenu, and that reaches it by farcall.
+INCLUDE "engine/menus/extra_options.asm"
+
+
 SECTION "Pick Up Item", ROMX
 INCLUDE "engine/events/pick_up_item.asm"
 
