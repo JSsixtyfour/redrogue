@@ -64,8 +64,7 @@ CopyVideoData::
 	ldh [hROMBankTemp], a
 
 	ld a, b
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 
 	ld a, e
 	ldh [hVBlankCopySource], a
@@ -86,8 +85,7 @@ CopyVideoData::
 	ldh [hVBlankCopySize], a
 	call DelayFrame
 	ldh a, [hROMBankTemp]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 	pop af
 	ldh [hAutoBGTransferEnabled], a
 	ret
@@ -113,8 +111,7 @@ CopyVideoDataDouble::
 	ldh [hROMBankTemp], a
 
 	ld a, b
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 
 	ld a, e
 	ldh [hVBlankCopyDoubleSource], a
@@ -135,8 +132,7 @@ CopyVideoDataDouble::
 	ldh [hVBlankCopyDoubleSize], a
 	call DelayFrame
 	ldh a, [hROMBankTemp]
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank      ; was inline ldh[hLoadedROMBank]/ld[rROMB]; -2 bytes (HOME space)
 	pop af
 	ldh [hAutoBGTransferEnabled], a
 	ret

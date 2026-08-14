@@ -11,18 +11,39 @@ Random::
 	pop hl
 	ret
 
-; get a random number in [0, c-1]
-; c is the range
+; Return a random number in [0, c-1] in a. c is the range.
+;
+; Rejection-samples against the smallest (2^k)-1 mask >= c-1, so every outcome is
+; exactly equally likely. The previous multiply-shift form, floor(rand * c / 256),
+; handed some outcomes one more of the 256 source values than others: at c=40 the
+; buckets were 6 or 7 wide (~17% relative bias), at c=24 they were 10 or 11 (~10%,
+; the Elite 4 order shuffle). Powers of two were always fair and still are.
+;
+; Expected draws is under 2 (acceptance is c/2^k >= 1/2), and dropping Multiply
+; roughly pays for the extra draws. It also no longer touches
+; hMultiplicand/hMultiplier/hProduct, which removes the old re-entrancy hazard
+; with any other Multiply user, and de now survives the call (it did not before).
 Rangerandom::
-push bc
-call Random                 ; get a random number to determine pokemon
-ldh [hMultiplicand+2], a    ; place number in for multiplication
-xor a
-ldh [hMultiplicand], a      ; put zero in highest byte
-ldh [hMultiplicand+1], a    ; put second byte for multiplication
-ld a, c                     ; multiply by amount of this class
-ldh [hMultiplier], a        ; place amount of class in multiplier
-call Multiply               ; multiply random number by amount in class
-ldh a, [hProduct+2]         ; high byte = floor(random*N/256), always in [0,N-1]
-pop bc
-ret
+	push bc
+	ld a, c
+	and a
+	jr z, .done          ; c = 0 -> 0, matching the old behaviour
+	ld b, a
+	dec b                ; b = c-1 = largest valid result
+	ld a, 1
+.mask
+	cp b
+	jr nc, .gotmask      ; mask >= c-1, so it covers every valid result
+	add a, a
+	inc a                ; 1, 3, 7, 15, 31, ...
+	jr .mask
+.gotmask
+	ld b, a              ; b = mask
+.draw
+	call Random          ; preserves bc
+	and b
+	cp c
+	jr nc, .draw         ; landed above the range - draw again
+.done
+	pop bc
+	ret
