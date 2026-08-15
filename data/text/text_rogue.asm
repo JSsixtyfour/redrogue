@@ -371,9 +371,8 @@ _LancesRoomLanceNormalAfterBattleText::
 	done
 
 _GiovanniMiniBossEndBattleText::
-	text "INSERT GIOVANNI"
-	line "DEFEAT QUOTE"
-	cont "HERE"
+	text "No..."
+	line "This cannot be!"
 	done
     
 _BridgeByeText::

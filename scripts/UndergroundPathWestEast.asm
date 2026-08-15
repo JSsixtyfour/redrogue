@@ -1,7 +1,223 @@
+DEF UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 % 8)) \
+	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1 % 8)) \
+	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2 % 8)) \
+	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3 % 8)) \
+	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4 % 8))
+
 UndergroundPathWestEast_Script:
-	jp EnableAutoTextBoxDrawing
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .afterSetup
+	SetEvent EVENT_ENTER_ROOM
+	ld hl, wRogueFlagsBitfield
+	set BIT_ROGUE_GYM_NEXT, [hl]
+	ResetEvent EVENT_GOT_ROGUE_POKEMON
+	ResetEvent EVENT_ROGUE_POKEMON_OFFERED
+	farcall rogue_pokemon_randomized_batch
+	farcall Random_Item_Selection
+	farcall RogueRefresh
+	farcall MiniBossApplyStageTrainer
+.afterSetup
+	CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+	jr nz, .afterRewardCheck
+	ld a, [wStatusFlags3]
+	bit BIT_PRINT_END_BATTLE_TEXT, a
+	jr nz, .afterRewardCheck
+	ld a, [wEventFlags + (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 / 8)]
+	and UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK
+	cp UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK
+	jr nz, .afterRewardCheck
+	SetEvent EVENT_ROGUE_POKEMON_OFFERED
+	farcall Delay3
+	ld a, TEXT_UNDERGROUNDPATHWESTEAST_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.afterRewardCheck
+	call EnableAutoTextBoxDrawing
+	ld hl, UndergroundPathWestEastTrainerHeaders
+	ld de, UndergroundPathWestEast_ScriptPointers
+	ld a, [wUndergroundPathRoute5CurScript]
+	call ExecuteCurMapScriptInTable
+	ld [wUndergroundPathRoute5CurScript], a
+	ret
+
+	RogueAutoWalkScripts UndergroundPathWestEast, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_UNDERGROUND_PATH_WEST_EAST, TEXT_UNDERGROUNDPATHWESTEAST_NO_TURNING_BACK, SCRIPT_UNDERGROUNDPATHWESTEAST_PLAYER_IS_MOVING, wUndergroundPathRoute5CurScript
+
+UndergroundPathWestEastEntranceCoords:
+	dbmapcoord 2, 5
+	db -1
+
+UndergroundPathWestEastNoCoords:
+	dbmapcoord 3, 5
+	dbmapcoord 4, 5
+	db -1
+
+UndergroundPathWestEast_ScriptPointers:
+	def_script_pointers
+	dw_const UndergroundPathWestEastDefaultScript, SCRIPT_UNDERGROUNDPATHWESTEAST_DEFAULT
+	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_UNDERGROUNDPATHWESTEAST_START_BATTLE
+	dw_const EndTrainerBattle, SCRIPT_UNDERGROUNDPATHWESTEAST_END_BATTLE
+	dw_const UndergroundPathWestEastPlayerIsMovingScript, SCRIPT_UNDERGROUNDPATHWESTEAST_PLAYER_IS_MOVING
 
 UndergroundPathWestEast_TextPointers:
 	def_text_pointers
+	dw_const UndergroundPathWestEastBiker1Text, TEXT_UNDERGROUNDPATHWESTEAST_BIKER_1
+	dw_const UndergroundPathWestEastJugglerText, TEXT_UNDERGROUNDPATHWESTEAST_JUGGLER
+	dw_const UndergroundPathWestEastBurglarText, TEXT_UNDERGROUNDPATHWESTEAST_BURGLAR
+	dw_const UndergroundPathWestEastBiker2Text, TEXT_UNDERGROUNDPATHWESTEAST_BIKER_2
+	dw_const UndergroundPathWestEastCueBallText, TEXT_UNDERGROUNDPATHWESTEAST_CUE_BALL
+	dw_const RandomPickUpItemText, TEXT_UNDERGROUNDPATHWESTEAST_RANDOM
+	dw_const UndergroundPathWestEast_RogueRewardPokeballText1, TEXT_UNDERGROUNDPATHWESTEAST_ROGUE_REWARD_POKEBALL_1
+	dw_const UndergroundPathWestEast_RogueRewardPokeballText2, TEXT_UNDERGROUNDPATHWESTEAST_ROGUE_REWARD_POKEBALL_2
+	dw_const UndergroundPathWestEast_RogueRewardPokeballText3, TEXT_UNDERGROUNDPATHWESTEAST_ROGUE_REWARD_POKEBALL_3
+	dw_const UndergroundPathWestEast_RogueRewardPokeballText1, TEXT_UNDERGROUNDPATHWESTEAST_ROGUE_TRADE_NPC
+	dw_const Rogue_UndergroundPathWestEast_RewardText, TEXT_UNDERGROUNDPATHWESTEAST_REWARD_VENDOR_1
+	EXPORT TEXT_UNDERGROUNDPATHWESTEAST_REWARD_VENDOR_1
+	dw_const UndergroundPathWestEastNoTurningBackText, TEXT_UNDERGROUNDPATHWESTEAST_NO_TURNING_BACK
 
-	text_end ; unused
+UndergroundPathWestEastTrainerHeaders:
+	def_trainers 1
+UndergroundPathWestEastTrainerHeader0:
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0, 4, UndergroundPathWestEastBiker1BattleText, UndergroundPathWestEastBiker1EndBattleText, UndergroundPathWestEastBiker1AfterBattleText
+UndergroundPathWestEastTrainerHeader1:
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1, 4, UndergroundPathWestEastJugglerBattleText, UndergroundPathWestEastJugglerEndBattleText, UndergroundPathWestEastJugglerAfterBattleText
+UndergroundPathWestEastTrainerHeader2:
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2, 4, UndergroundPathWestEastBurglarBattleText, UndergroundPathWestEastBurglarEndBattleText, UndergroundPathWestEastBurglarAfterBattleText
+UndergroundPathWestEastTrainerHeader3:
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3, 4, UndergroundPathWestEastBiker2BattleText, UndergroundPathWestEastBiker2EndBattleText, UndergroundPathWestEastBiker2AfterBattleText
+UndergroundPathWestEastTrainerHeader4:
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4, 4, UndergroundPathWestEastCueBallBattleText, UndergroundPathWestEastCueBallEndBattleText, UndergroundPathWestEastCueBallAfterBattleText
+	db -1
+
+UndergroundPathWestEastBiker1Text:
+	text_asm
+	ld hl, UndergroundPathWestEastTrainerHeader0
+	call TalkToTrainer
+	jp TextScriptEnd
+UndergroundPathWestEastBiker1BattleText:
+	text_far _UndergroundPathWestEastBiker1BattleText
+	text_end
+UndergroundPathWestEastBiker1EndBattleText:
+	text_far _UndergroundPathWestEastBiker1EndBattleText
+	text_end
+UndergroundPathWestEastBiker1AfterBattleText:
+	text_far _UndergroundPathWestEastBiker1AfterBattleText
+	text_end
+
+UndergroundPathWestEastJugglerText:
+	text_asm
+	ld hl, UndergroundPathWestEastTrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+UndergroundPathWestEastJugglerBattleText:
+	text_far _UndergroundPathWestEastJugglerBattleText
+	text_end
+UndergroundPathWestEastJugglerEndBattleText:
+	text_far _UndergroundPathWestEastJugglerEndBattleText
+	text_end
+UndergroundPathWestEastJugglerAfterBattleText:
+	text_far _UndergroundPathWestEastJugglerAfterBattleText
+	text_end
+
+UndergroundPathWestEastBurglarText:
+	text_asm
+	ld hl, UndergroundPathWestEastTrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+UndergroundPathWestEastBurglarBattleText:
+	text_far _UndergroundPathWestEastBurglarBattleText
+	text_end
+UndergroundPathWestEastBurglarEndBattleText:
+	text_far _UndergroundPathWestEastBurglarEndBattleText
+	text_end
+UndergroundPathWestEastBurglarAfterBattleText:
+	text_far _UndergroundPathWestEastBurglarAfterBattleText
+	text_end
+
+UndergroundPathWestEastBiker2Text:
+	text_asm
+	ld hl, UndergroundPathWestEastTrainerHeader3
+	call TalkToTrainer
+	jp TextScriptEnd
+UndergroundPathWestEastBiker2BattleText:
+	text_far _UndergroundPathWestEastBiker2BattleText
+	text_end
+UndergroundPathWestEastBiker2EndBattleText:
+	text_far _UndergroundPathWestEastBiker2EndBattleText
+	text_end
+UndergroundPathWestEastBiker2AfterBattleText:
+	text_far _UndergroundPathWestEastBiker2AfterBattleText
+	text_end
+
+UndergroundPathWestEastCueBallText:
+	text_asm
+	ld hl, UndergroundPathWestEastTrainerHeader4
+	call TalkToTrainer
+	jp TextScriptEnd
+UndergroundPathWestEastCueBallBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .CueBall
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.CueBall
+	text_far _UndergroundPathWestEastCueBallBattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossBattleText
+	text_end
+UndergroundPathWestEastCueBallEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .CueBall
+	ret z
+	ld hl, .GiovanniMiniBoss
+	ret
+.CueBall
+	text_far _UndergroundPathWestEastCueBallEndBattleText
+	text_end
+.GiovanniMiniBoss
+	text_far _GiovanniMiniBossEndBattleText
+	text_end
+UndergroundPathWestEastCueBallAfterBattleText:
+	text_asm
+	farcall Delay3
+	CheckEvent EVENT_GOT_ROGUE_POKEMON
+	jr z, .offerReward
+	ld hl, UndergroundPathWestEastGreedyText
+	call PrintText
+	jr .done
+.offerReward
+	ld a, TEXT_UNDERGROUNDPATHWESTEAST_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
+
+Rogue_UndergroundPathWestEast_RewardText:
+	script_rogue_reward
+UndergroundPathWestEast_RogueRewardPokeballText1:
+	text_asm
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	farcall Rogue_Reward_Script_PokeballText_1
+	jp TextScriptEnd
+UndergroundPathWestEast_RogueRewardPokeballText2:
+	text_asm
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	farcall Rogue_Reward_Script_PokeballText_2
+	jp TextScriptEnd
+UndergroundPathWestEast_RogueRewardPokeballText3:
+	text_asm
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	farcall Rogue_Reward_Script_PokeballText_3
+	jp TextScriptEnd
+UndergroundPathWestEastGreedyText:
+	text_far _GreedyText
+	text_end
+UndergroundPathWestEastNoTurningBackText:
+	text_far _NoTurningBackText
+	text_end

@@ -283,7 +283,16 @@
 	const_next $3F0
 	const_skip 2
 	const EVENT_BEAT_ROUTE_4_TRAINER_0
-	const_skip 12
+	; Underground Path West-East rogue route. These use the otherwise-unused
+	; $3F9-$3FE portion of Route 4's reserved event byte, so the route adds no
+	; wEventFlags storage and all five trainer bits remain in one byte.
+	const_skip 6
+	const EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0
+	const EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1
+	const EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2
+	const EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3
+	const EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4
+	const EVENT_AUTOWALKED_INTO_UNDERGROUND_PATH_WEST_EAST
 	const EVENT_BOUGHT_MAGIKARP
 
 ; Route 5 rogue trainers

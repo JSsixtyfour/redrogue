@@ -58,6 +58,7 @@ GiovanniMaps:
 	; Giovanni is indoor-only (SPRITE_GIOVANNI is in no outdoor sprite set) and
 	; stays exclusive to these dungeon maps (never in RivalMaps).
 	db MT_MOON_1F
+	db UNDERGROUND_PATH_WEST_EAST
 	db VIRIDIAN_FOREST
 	db ROCKET_HIDEOUT_B1F
 	db -1
@@ -670,6 +671,7 @@ MiniBossStageSlots:
 	; Every hooked stage's 5th trainer is object slot 5 (verified per-map).
 	db ROUTE_1, 5
 	db ROUTE_3, 5
+	db UNDERGROUND_PATH_WEST_EAST, 5
 	db ROUTE_9, 5
 	db ROUTE_25, 5
 	db DIGLETTS_CAVE, 5

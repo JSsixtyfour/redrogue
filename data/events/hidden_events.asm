@@ -87,7 +87,6 @@ HiddenEventMaps:
 	hidden_event_map SILPH_CO_11F
 	hidden_event_map ROUTE_17
 	hidden_event_map UNDERGROUND_PATH_NORTH_SOUTH
-	hidden_event_map UNDERGROUND_PATH_WEST_EAST
 	hidden_event_map CELADON_CITY
 	hidden_event_map SEAFOAM_ISLANDS_B3F
 	hidden_event_map VERMILION_CITY
@@ -531,11 +530,6 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for UNDERGROUND_PATH_NORTH_SOUTH
 	hidden_event  3,  4, HiddenItems, FULL_RESTORE
 	hidden_event  4, 34, HiddenItems, X_SPECIAL
-	db -1 ; end
-
-	hidden_events_for UNDERGROUND_PATH_WEST_EAST
-	hidden_event 12,  2, HiddenItems, NUGGET
-	hidden_event 21,  5, HiddenItems, ELIXER
 	db -1 ; end
 
 	hidden_events_for CELADON_CITY

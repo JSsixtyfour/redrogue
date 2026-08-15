@@ -83,6 +83,7 @@ SECTION "Text 4", ROMX
 
 INCLUDE "text/Daycare_2.asm"
 INCLUDE "text/UndergroundPathRoute5.asm"
+INCLUDE "text/UndergroundPathWestEast.asm"
 INCLUDE "text/UndergroundPathRoute6.asm"
 INCLUDE "text/UndergroundPathRoute7.asm"
 INCLUDE "text/UndergroundPathRoute7Copy.asm"
@@ -290,4 +291,3 @@ INCLUDE "data/moves/names.asm"
 SECTION "Rogue", ROMX
 
 INCLUDE "data/text/text_rogue.asm"
-
