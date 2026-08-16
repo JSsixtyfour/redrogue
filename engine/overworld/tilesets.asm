@@ -1,6 +1,9 @@
 LoadTilesetHeader:
 	call GetPredefRegisters
 	push hl
+	ldh a, [hCurMap]
+	cp MINI_SAFFRON
+	jr z, .miniSaffron
 	ld d, 0
 	ld a, [wCurMapTileset]
 	add a
@@ -14,6 +17,10 @@ LoadTilesetHeader:
 	ld e, a
 	ld hl, Tilesets
 	add hl, de
+	jr .copyTilesetHeader
+.miniSaffron
+	ld hl, MiniSaffronTilesetHeader
+.copyTilesetHeader
 	ld de, wTilesetBank
 	ld c, $b
 .copyTilesetHeaderLoop

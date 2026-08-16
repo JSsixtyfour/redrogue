@@ -33,8 +33,10 @@ ENDM
 	const TOGGLE_CERULEAN_CAVE_GUY ; 08
 	const TOGGLE_CERULEAN_GUARD_2 ; 09
 
-	toggle_consts_for SAFFRON_CITY
-	const TOGGLE_SAFFRON_CITY_PROF_PALM
+	; Reuse this ID for the intro-only Mini Saffron Palm.  Keeping the constant
+	; value preserves every later toggleable-object ID.
+	toggle_consts_for MINI_SAFFRON
+	const TOGGLE_MINI_SAFFRON_PROF_PALM
 
     toggle_consts_for REWARD_ROOM
     const TOGGLE_ROGUE_REWARD_POKEBALL_1 ; 19

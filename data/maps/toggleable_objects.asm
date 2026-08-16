@@ -60,8 +60,8 @@ ToggleableObjectStates:
 	toggle_object_state CERULEANCITY_SUPER_NERD3, ON
 	toggle_object_state CERULEANCITY_GUARD2,      ON
 
-	toggleable_objects_for SAFFRON_CITY
-	toggle_object_state SAFFRONCITY_PROF_PALM, ON
+	toggleable_objects_for MINI_SAFFRON
+	toggle_object_state MINISAFFRON_PROF_PALM, ON
 
     toggleable_objects_for REWARD_ROOM
     toggle_object_state ROGUE_REWARD_POKEBALL_1, ON

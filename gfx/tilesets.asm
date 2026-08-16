@@ -3,6 +3,15 @@ SECTION "Tilesets 1", ROMX
 Overworld_GFX::     INCBIN "gfx/tilesets/overworld.2bpp"
 Overworld_Block::   INCBIN "gfx/blocksets/overworld.bst"
 
+; LoadTilesetTilePatternData always copies $600 bytes. Mini Saffron's artwork
+; is $5e0 bytes, so preserve Overworld's stable following $20 bytes as its
+; final two tile slots rather than letting the compact private blockset become
+; graphics.
+MiniSaffron_GFX::
+	INCBIN "gfx/tilesets/minisaffron.2bpp"
+	INCBIN "gfx/blocksets/overworld.bst", 0, $20
+MiniSaffron_Block:: INCBIN "gfx/blocksets/minisaffron.bst"
+
 RedsHouse1_GFX::
 RedsHouse2_GFX::    INCBIN "gfx/tilesets/reds_house.2bpp"
 RedsHouse1_Block::

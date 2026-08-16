@@ -113,7 +113,7 @@ MapHeaderBanks::
 	db BANK(ProceduralCemetery4_h) ; PROCEDURAL_CEMETERY_4
 	db BANK(Truck_h) ; TRUCK
 	db $1D ; UNUSED_MAP_6F
-	db $1D ; UNUSED_MAP_70
+	db BANK(MiniSaffron_h) ; MINI_SAFFRON
 	db BANK(LancesRoom_h)
 	db $1D ; UNUSED_MAP_72
 	db $1D ; UNUSED_MAP_73

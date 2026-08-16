@@ -149,6 +149,22 @@ IsPlayerFacingEdgeOfMap::
 	scf
 	ret
 
+; VR keeps normal edge warps for its south exits, but pressing Up from the
+; machine warp at (3,3) must pass even though the machine tile at (3,2) is
+; intentionally impassable and not a generic Interior warp tile.
+IsSilphCoVRWarp::
+	; CheckWarpsCollision subsequently requires the registered (3,3) warp, so
+	; only y and facing need testing here; omitting the redundant x check keeps
+	; this tight ROM bank within capacity.
+	ld a, [wYCoord]
+	cp 3
+	jr nz, IsPlayerFacingEdgeOfMap
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	cp SPRITE_FACING_UP
+	jr nz, IsPlayerFacingEdgeOfMap
+	scf
+	ret
+
 IsWarpTileInFrontOfPlayer::
 	push hl
 	push de

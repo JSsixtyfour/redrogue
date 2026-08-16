@@ -789,25 +789,33 @@ ExtraWarpCheck::
 	ldh a, [hCurMap]
 	cp SS_ANNE_3F
 	jr z, .useFunction1
-	cp ROCKET_HIDEOUT_B1F
-	jr z, .useFunction2
-	cp ROCKET_HIDEOUT_B2F
-	jr z, .useFunction2
-	cp ROCKET_HIDEOUT_B4F
-	jr z, .useFunction2
+	cp SILPH_CO_VR
+	jr z, .useSilphCoVRFunction
 	cp ROCK_TUNNEL_1F
+	jr z, .useFunction2
+	; B1F, B2F, and B4F use function 2, while B3F deliberately does not.
+	; Test the adjacent B1F/B2F IDs as a range so adding SILPH_CO_VR does not
+	; grow ROM0, which has no free space in the Debug build.
+	sub ROCKET_HIDEOUT_B1F
+	cp ROCKET_HIDEOUT_B3F - ROCKET_HIDEOUT_B1F
+	jr c, .useFunction2
+	cp ROCKET_HIDEOUT_B4F - ROCKET_HIDEOUT_B1F
 	jr z, .useFunction2
 	ld a, [wCurMapTileset]
 	and a ; outside tileset (OVERWORLD)
 	jr z, .useFunction2
-	cp SHIP ; S.S. Anne tileset
-	jr z, .useFunction2
-	cp SHIP_PORT ; Vermilion Port tileset
-	jr z, .useFunction2
-	cp PLATEAU ; Indigo Plateau tileset
+	; SHIP and SHIP_PORT are adjacent. Folding them into a range saves the two
+	; bytes spent on SILPH_CO_VR above and keeps this HOME routine size-neutral.
+	sub SHIP
+	cp SHIP_PORT + 1 - SHIP
+	jr c, .useFunction2
+	cp PLATEAU - SHIP ; Indigo Plateau tileset
 	jr z, .useFunction2
 .useFunction1
 	ld hl, IsPlayerFacingEdgeOfMap
+	jr .doBankswitch
+.useSilphCoVRFunction
+	ld hl, IsSilphCoVRWarp
 	jr .doBankswitch
 .useFunction2
 	ld hl, IsWarpTileInFrontOfPlayer

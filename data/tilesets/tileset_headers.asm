@@ -35,3 +35,8 @@ Tilesets:
 	tileset Plateau,      -1, -1, -1, $45, TILEANIM_WATER
 	tileset Dorm,          -1, -1, -1,  -1, TILEANIM_NONE
 	assert_table_length NUM_TILESETS
+
+; Mini Saffron uses the Overworld semantics but private compact block data.
+; It is selected by LoadTilesetHeader from hCurMap, not wCurMapTileset.
+MiniSaffronTilesetHeader::
+	tileset MiniSaffron, -1, -1, -1, $52, TILEANIM_WATER_FLOWER

@@ -290,7 +290,7 @@ RivalIDs:
 	db -1 ; end
 
 SaffronPalmMovementScriptPointerTable::
-; Functions 0-2 are the Saffron leg, 3-6 the Silph Co 1F leg. They share one
+; Functions 0-2 are the Mini Saffron leg, 3-6 the Silph Co 1F leg. They share one
 ; table because both are one-shot intro escorts that can never run at the same
 ; time, and .NPCMovementScriptPointerTables in HOME has no room for another entry.
 	dw SaffronPalmMovementScript_WalkToSilphCo
@@ -344,7 +344,7 @@ SaffronPalmMovementScript_PalmEntersSilphCo:
 	ld hl, wStatusFlags5
 	bit BIT_SCRIPTED_NPC_MOVEMENT, [hl]
 	ret nz ; Palm is still walking
-	ld a, TOGGLE_SAFFRON_CITY_PROF_PALM
+	ld a, TOGGLE_MINI_SAFFRON_PROF_PALM
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, $2
@@ -365,12 +365,15 @@ RLEList_SaffronPalmWalkToSilphCo:
 	db NPC_MOVEMENT_UP, 1
 	db -1 ; end
 
-; The leading NO_INPUT lets Palm vacate (18,22) before the player steps into it.
-; The second PAD_UP lands the player on the Silph Co door at (18,21), which is
-; what fires the warp.
+; The leading NO_INPUT lets Palm vacate (12,10) before the player steps into it.
+; Three PAD_UP beats are required here: the simulated-joypad engine consumes
+; one while the first tile step is still settling, and the remaining two move
+; the player from (12,11) through (12,10) onto the Silph Co door at (12,9).
+; Simulated joypad entries execute from the end of the decoded buffer, so this
+; source list is written in reverse order.
 RLEList_SaffronPlayerFollowsPalm:
+	db PAD_UP, 3
 	db NO_INPUT, 1
-	db PAD_UP, 2
 	db -1 ; end
 
 ; --- Silph Co 1F leg of the intro escort ---
@@ -414,7 +417,7 @@ SilphCoPalmMovementScript_TalkToReceptionist:
 ; skips InitializeSpriteScreenPosition whenever wFontLoaded is set
 ; (engine/overworld/movement.asm), so a sprite whose position was not settled
 ; when the box opened stays drawn at stale coordinates for the whole
-; conversation. Same fix as the one in scripts/SaffronCity.asm.
+; conversation. Same fix as the one in scripts/MiniSaffron.asm.
 	call UpdateSprites
 	ld a, TEXT_SILPHCO1F_LINK_RECEPTIONIST
 	ldh [hTextID], a
@@ -487,14 +490,14 @@ RLEList_SilphCoPalmToStairs:
 	db NPC_MOVEMENT_UP, 1
 	db -1 ; end
 
-; (4,5) -> (24,0). The extra leading PAD_UP is because (10,5) is wall: the
-; player has to reach y=4 before heading right. The final PAD_UP lands them on
+; (4,5) -> (24,0).
+; The final PAD_UP lands them on
 ; the stairs, which is what fires the warp to SILPH_CO_B1F.
 RLEList_SilphCoPlayerToStairs:
-	db NO_INPUT, 1
-	db PAD_UP, 1
-	db PAD_RIGHT, 4
-	db PAD_UP, 3
-	db PAD_RIGHT, 16
-	db PAD_UP, 1
+	db PAD_UP, 2
+    db PAD_RIGHT, 16
+    db PAD_UP, 3
+    db PAD_RIGHT, 4
+    db PAD_UP, 1
+    db NO_INPUT, 1
 	db -1 ; end

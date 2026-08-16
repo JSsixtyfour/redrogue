@@ -687,6 +687,11 @@ INCLUDE "data/maps/objects/SaffronCity.asm"
 SaffronCity_Blocks: INCBIN "maps/SaffronCity.blk"
 INCLUDE "scripts/SaffronCity.asm"
 
+INCLUDE "data/maps/headers/MiniSaffron.asm"
+INCLUDE "data/maps/objects/MiniSaffron.asm"
+MiniSaffron_Blocks: INCBIN "maps/minsaffron.blk"
+INCLUDE "scripts/MiniSaffron.asm"
+
 INCLUDE "scripts/Route20.asm"
 INCLUDE "scripts/Route22.asm"
 INCLUDE "scripts/Route23.asm"
@@ -1302,6 +1307,7 @@ SECTION "Maps 22", ROMX
 
 INCLUDE "data/maps/headers/SilphCoB1F.asm"
 INCLUDE "scripts/SilphCoB1F.asm"
+INCLUDE "engine/overworld/silph_co_b1f_movement.asm"
 INCLUDE "data/maps/objects/SilphCoB1F.asm"
 SilphCoB1F_Blocks: INCBIN "maps/SilphCoB1F.blk"
 
