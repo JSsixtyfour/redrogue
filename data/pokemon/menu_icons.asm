@@ -24,7 +24,7 @@ MonPartyData:
 	nybble ICON_BIRD      ; Fearow
 	nybble ICON_SNAKE     ; Ekans
 	nybble ICON_SNAKE     ; Arbok
-	nybble ICON_FAIRY     ; Pikachu
+	nybble ICON_PIKACHU   ; Pikachu
 	nybble ICON_FAIRY     ; Raichu
 	nybble ICON_MON       ; Sandshrew
 	nybble ICON_MON       ; Sandslash
@@ -112,7 +112,7 @@ MonPartyData:
 	nybble ICON_MON       ; Weezing
 	nybble ICON_QUADRUPED ; Rhyhorn
 	nybble ICON_MON       ; Rhydon
-	nybble ICON_FAIRY     ; Chansey
+	nybble ICON_CHANSEY   ; Chansey
 	nybble ICON_GRASS     ; Tangela
 	nybble ICON_MON       ; Kangaskhan
 	nybble ICON_WATER     ; Horsea

@@ -588,10 +588,11 @@ PCBossSpriteCategoryTable:
 	db SPRITE_SNORLAX   ; FSPRITE_SNORLAX (5)
 	db SPRITE_FOSSIL    ; FSPRITE_FOSSIL (6)
 	db SPRITE_PIKACHU   ; FSPRITE_PIKACHU (7)
+	db SPRITE_CHANSEY   ; FSPRITE_CHANSEY (8)
 
 ; 95-byte nibble-packed species→FSPRITE table, ported from follower branch.
 ; High nibble = even species index, low nibble = odd.
-; M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6) K=PIKACHU(7)
+; M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6) K=PIKACHU(7) C=CHANSEY(8)
 PCBossFollowerSpriteTable:
 	db $00 ; $01,$02 RHYDON,KANGASKHAN
 	db $03 ; $03,$04 NIDORAN_M,CLEFAIRY
@@ -612,7 +613,7 @@ PCBossFollowerSpriteTable:
 	db $00 ; $21,$22 GROWLITHE,ONIX
 	db $11 ; $23,$24 FEAROW,PIDGEY
 	db $20 ; $25,$26 SLOWPOKE,KADABRA
-	db $03 ; $27,$28 GRAVELER,CHANSEY
+	db $08 ; $27,$28 GRAVELER,CHANSEY
 	db $00 ; $29,$2A MACHOKE,MR_MIME
 	db $00 ; $2B,$2C HITMONLEE,HITMONCHAN
 	db $00 ; $2D,$2E ARBOK,PARASECT
