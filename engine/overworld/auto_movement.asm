@@ -300,12 +300,14 @@ SaffronPalmMovementScriptPointerTable::
 	dw SilphCoPalmMovementScript_TalkToReceptionist
 	dw SilphCoPalmMovementScript_PalmTakesStairs
 	dw SilphCoPalmMovementScript_Done
-    dw SilphCoPalmMovementScript_PalmWalkstoDorm
-    dw SilphCoPalmMovementScriptPlayerWalkstoDorm
-    dw SilphCoPalmMovementScript_PalmWalkstoCreditExchange
-    dw SilphCoPalmMovementScript_PlayerWalkstoCreditExchange
-    dw SilphCoPalmMovementScript_PalmWalkstoVRRoom
-    dw SilphCoPalmMovementScript_PlayerWalkstoVRRoom
+	dw SilphCoB1FMovementScript_WalkToDorm
+	dw SilphCoB1FMovementScript_DoneAtDorm
+	dw SilphCoB1FMovementScript_WalkToCreditExchange
+	dw SilphCoB1FMovementScript_DoneAtCreditExchange
+	dw SilphCoB1FMovementScript_WalkToVR
+	dw SilphCoB1FMovementScript_DoneAtVR
+	dw SilphCoB1FMovementScript_EnterVR
+	dw SilphCoB1FMovementScript_DoneEnteringVR
 
 SaffronPalmMovementScript_WalkToSilphCo:
 	xor a
@@ -501,9 +503,178 @@ RLEList_SilphCoPalmToStairs:
 ; the stairs, which is what fires the warp to SILPH_CO_B1F.
 RLEList_SilphCoPlayerToStairs:
 	db PAD_UP, 2
-    db PAD_RIGHT, 16
-    db PAD_UP, 3
-    db PAD_RIGHT, 4
-    db PAD_UP, 1
-    db NO_INPUT, 1
+	db PAD_RIGHT, 16
+	db PAD_UP, 3
+	db PAD_RIGHT, 4
+	db PAD_UP, 1
+	db NO_INPUT, 1
 	db -1 ; end
+
+; --- Silph Co B1F tour ---
+; Each leg is started by the map script and ends completely before its textbox.
+; The Done functions commit Palm's map coordinates because this synchronized
+; movement engine updates only screen pixels.
+
+SilphCoB1FMovementScript_WalkToDorm:
+	ld de, RLEList_SilphCoB1FPalmToDorm
+	ld hl, RLEList_SilphCoB1FPlayerToDorm
+	ld a, 8
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FMovementScript_DoneAtDorm:
+	ld b, 2 + 4
+	ld c, 2 + 4
+	jp SilphCoB1FMovementScript_Done
+
+SilphCoB1FMovementScript_WalkToCreditExchange:
+	ld de, RLEList_SilphCoB1FPalmToCreditExchange
+	ld hl, RLEList_SilphCoB1FPlayerToCreditExchange
+	ld a, 10
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FMovementScript_DoneAtCreditExchange:
+	ld b, 1 + 4
+	ld c, 7 + 4
+	jp SilphCoB1FMovementScript_Done
+
+SilphCoB1FMovementScript_WalkToVR:
+	ld de, RLEList_SilphCoB1FPalmToVR
+	ld hl, RLEList_SilphCoB1FPlayerToVR
+	ld a, 12
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FMovementScript_DoneAtVR:
+	ld b, 1 + 4
+	ld c, 11 + 4
+	jp SilphCoB1FMovementScript_Done
+
+SilphCoB1FMovementScript_EnterVR:
+	ld de, RLEList_SilphCoB1FPalmEnterVR
+	ld hl, RLEList_SilphCoB1FPlayerEnterVR
+	ld a, 14
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FMovementScript_DoneEnteringVR:
+	ld b, 0 + 4
+	ld c, 11 + 4
+	; fallthrough
+
+; IN: b/c = Palm's internal map Y/X coordinates.
+SilphCoB1FMovementScript_Done:
+	; Palm's decoded movement list is authoritative. The simulated player queue
+	; can finish first, but JoypadOverworld would then clear the shared scripted
+	; movement bit and strand Palm mid-step. Keep feeding NO_INPUT until Palm's
+	; current direction reaches the list terminator.
+	ld hl, wNPCMovementDirections2
+	ld a, [wNPCMovementDirections2Index]
+	add l
+	ld l, a
+	jr nc, .checkPalm
+	inc h
+.checkPalm
+	ld a, [hl]
+	cp -1
+	jr z, .palmDone
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	ld a, 1
+	ldh [hSimulatedJoypadStatesIndex], a
+	xor a ; NO_INPUT at offset 0
+	ld [wSimulatedJoypadStatesEnd], a
+	ret
+.palmDone
+	; Palm is settled. Let the player finish any remaining step before the map
+	; script opens the textbox.
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	ld h, HIGH(wSpriteStateData2)
+	ld a, [wNPCMovementScriptSpriteOffset]
+	add SPRITESTATEDATA2_MAPY
+	ld l, a
+	ld [hl], b
+	inc l
+	ld [hl], c
+	ld hl, wStatusFlags5
+	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
+	ld hl, wStatusFlags4
+	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
+	jp EndNPCMovementScript
+
+; IN: de = Palm RLE, hl = player RLE, a = Done function index.
+SilphCoB1FMovementScript_Start:
+	push af
+	push de
+	ld d, h
+	ld e, l
+	ldh a, [hActiveSpriteIndex]
+	swap a
+	ld [wNPCMovementScriptSpriteOffset], a
+	xor a
+	ld [wSpritePlayerStateData2MovementByte1], a
+	ld hl, wSimulatedJoypadStatesEnd
+	call DecodeRLEList
+	dec a
+	ldh [hSimulatedJoypadStatesIndex], a
+	pop de
+	ld hl, wNPCMovementDirections2
+	call DecodeRLEList
+	xor a
+	ld [wOverrideSimulatedJoypadStatesMask], a
+	ld hl, wStatusFlags4
+	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
+	ld hl, wStatusFlags5
+	set BIT_SCRIPTED_MOVEMENT_STATE, [hl]
+	pop af
+	ld [wNPCMovementScriptFunctionNum], a
+	ret
+
+; Palm: (16,1) -> (16,2) -> (2,2).
+RLEList_SilphCoB1FPalmToDorm:
+	db NPC_MOVEMENT_DOWN, 1
+	db NPC_MOVEMENT_LEFT, 14
+	db -1
+
+; Player executes this source backward: (16,0) -> (16,2) -> (3,2).
+RLEList_SilphCoB1FPlayerToDorm:
+	db NO_INPUT, 1
+	db PAD_LEFT, 13
+	db PAD_DOWN, 2
+    db NO_INPUT, 2
+	db -1
+
+; Palm: (2,2) -> (2,1) -> (7,1).
+RLEList_SilphCoB1FPalmToCreditExchange:
+	db NPC_MOVEMENT_UP, 1
+	db NPC_MOVEMENT_RIGHT, 5
+	db -1
+
+; Executed backward: wait while Palm passes, then (3,2) -> (3,1) -> (6,1).
+RLEList_SilphCoB1FPlayerToCreditExchange:
+	db NO_INPUT, 1
+	db PAD_RIGHT, 3
+	db PAD_UP, 1
+	db NO_INPUT, 16
+	db -1
+
+; Palm/player: (7,1)/(6,1) -> (11,1)/(10,1).
+RLEList_SilphCoB1FPalmToVR:
+	db NPC_MOVEMENT_RIGHT, 4
+	db -1
+
+RLEList_SilphCoB1FPlayerToVR:
+	db NO_INPUT, 1
+	db PAD_RIGHT, 4
+	db -1
+
+; Enter the paired VR warps at (11,0)/(10,0).
+RLEList_SilphCoB1FPalmEnterVR:
+	db NPC_MOVEMENT_UP, 1
+	db -1
+
+RLEList_SilphCoB1FPlayerEnterVR:
+	; The first input reaches the north-edge warp coordinate. The second pushes
+	; into the edge so CheckWarpsCollision follows the authored B1F warp entry.
+	db PAD_UP, 2
+	db -1

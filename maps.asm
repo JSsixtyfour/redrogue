@@ -1307,7 +1307,6 @@ SECTION "Maps 22", ROMX
 
 INCLUDE "data/maps/headers/SilphCoB1F.asm"
 INCLUDE "scripts/SilphCoB1F.asm"
-INCLUDE "engine/overworld/silph_co_b1f_movement.asm"
 INCLUDE "data/maps/objects/SilphCoB1F.asm"
 SilphCoB1F_Blocks: INCBIN "maps/SilphCoB1F.blk"
 

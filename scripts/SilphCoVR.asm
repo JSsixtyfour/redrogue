@@ -1,5 +1,7 @@
+DEF SILPHCOVR_INTRO_WARMUP_TICKS EQU 8
 DEF SILPHCOVR_STATE_WALK_PALM_TO_PC EQU 8
 DEF SILPHCOVR_STATE_WAIT_FOR_PALM EQU 9
+DEF SILPHCOVR_STATE_DONE EQU $ff
 
 SilphCoVR_Script:
 	call EnableAutoTextBoxDrawing
@@ -8,7 +10,7 @@ SilphCoVR_Script:
 	ret nz
 
 	ld a, [wSilphCo1FCurScript]
-	cp SILPHCO_INTRO_WARMUP_TICKS
+	cp SILPHCOVR_INTRO_WARMUP_TICKS
 	jr nc, .runState
 	inc a
 	ld [wSilphCo1FCurScript], a
@@ -44,14 +46,17 @@ SilphCoVRHandleMapEntry:
 	ret
 
 .normalVisit
-	ld a, SILPHCO_INTRO_STATE_DONE
+	ld a, SILPHCOVR_STATE_DONE
 	ld [wSilphCo1FCurScript], a
 	ret
 
 SilphCoVRClearMovementState:
 	; Both maps share bank Maps22. Use the B1F cleanup so the final warp race also
 	; clears the standing/exiting-door flags and player walk byte in the VR room.
-	jp SilphCoB1FClearMovementState
+	call SilphCoB1FClearMovementState
+	xor a
+	ldh [hJoyIgnore], a
+	ret
 
 SilphCoVR_ScriptPointers:
 	dw SilphCoVRWalkPalmToPC
@@ -70,6 +75,13 @@ SilphCoVRWaitForPalm:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
+	ld a, SILPHCOVR_PROF_PALM
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], UP
+	ld a, SPRITE_FACING_UP
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
@@ -78,13 +90,13 @@ SilphCoVRWaitForPalm:
 	call DisplayTextID
 	SetEvent EVENT_INTRO_TOUR_COMPLETE
 	call SilphCoVRClearMovementState
-	ld a, SILPHCO_INTRO_STATE_DONE
+	ld a, SILPHCOVR_STATE_DONE
 	ld [wSilphCo1FCurScript], a
 	ret
 
 SilphCoVRPalmToPCMovement:
-    db NPC_MOVEMENT_UP
-    db NPC_MOVEMENT_UP
+	db NPC_MOVEMENT_UP
+	db NPC_MOVEMENT_UP
 	db NPC_MOVEMENT_LEFT
 	db NPC_MOVEMENT_LEFT
 	db -1

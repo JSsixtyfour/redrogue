@@ -1,332 +1,129 @@
-DEF SILPHCO_INTRO_WARMUP_TICKS EQU 8
-DEF SILPHCOB1F_STATE_WALK_TO_DORM EQU 8
-DEF SILPHCOB1F_STATE_WAIT_AT_DORM EQU 9
-DEF SILPHCOB1F_STATE_WAIT_AT_CREDIT_EXCHANGE EQU 10
-DEF SILPHCOB1F_STATE_WAIT_AT_VR EQU 11
-DEF SILPHCOB1F_STATE_ENTER_VR EQU 12
 DEF SILPHCOB1F_STATE_ELEVATOR_MOVING EQU $fe
-DEF SILPHCO_INTRO_STATE_DONE EQU $ff
 
 SilphCoB1F_Script:
 	call EnableAutoTextBoxDrawing
-	call SilphCoB1FHandleMapEntry
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
 	jp nz, SilphCoB1FElevatorBlockerScript
-
-	ld a, [wSilphCo1FCurScript]
-	cp SILPHCO_INTRO_WARMUP_TICKS
-	jr nc, .runState
-	inc a
-	ld [wSilphCoB1FCurScript], a
-	ret
-.runState
-	sub SILPHCOB1F_STATE_WALK_TO_DORM
 	ld hl, SilphCoB1F_ScriptPointers
+	ld a, [wSilphCoB1FCurScript]
 	jp CallFunctionInTable
-    
-   SilphCoB1F_ScriptPointers:
+
+SilphCoB1F_ScriptPointers:
 	def_script_pointers
-    dw SilphCoB1FDefaultScript,                    SCRIPT_SILPHCOB1F_DEFAULT
-	dw SilphCoB1FWalkToDormScript,                 SCRIPT_SILPHCOB1F_WALKTODORM
-	dw SilphCoB1FWaitAtDormScript,                 SCRIPT_SILPHCOB1F_WAITATDORM
-    dw SilphCoB1FWalktoCreditExchangeScript,       SCRIPT_SILPHCOB1F_WALKTOCREDIT
-	dw SilphCoB1FWaitAtCreditExchangeScript,       SCRIPT_SILPHCOB1F_WAITATCREDIT
-    dw SilphCoB1FWalktoVRScript                    SCRIPT_SILPHCOB1F_WAITATVR
-	dw SilphCoB1FEnterVRScript.                    SCRIPT_SILPHCOB1F_ENTERVR
-    dw SilphCoB1FNoopScriptScript,                 SCRIPT_SILPHCOB1F_NOOP
- 
- 
-    SilphCoB1FDefaultScript:
-	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	ret nz
-	ld a, [wYCoord]
-	cp 1 ; is player near north exit?
-	ret nz
-    
-    ld c, 8
-    call DelayFrames
+	dw_const SilphCoB1FDefaultScript,              SCRIPT_SILPHCOB1F_DEFAULT
+	dw_const SilphCoB1FWalkToDormScript,           SCRIPT_SILPHCOB1F_WALK_TO_DORM
+	dw_const SilphCoB1FWaitAtDormScript,           SCRIPT_SILPHCOB1F_WAIT_AT_DORM
+	dw_const SilphCoB1FWalkToCreditExchangeScript, SCRIPT_SILPHCOB1F_WALK_TO_CREDIT
+	dw_const SilphCoB1FWaitAtCreditExchangeScript, SCRIPT_SILPHCOB1F_WAIT_AT_CREDIT
+	dw_const SilphCoB1FWalkToVRScript,             SCRIPT_SILPHCOB1F_WALK_TO_VR
+	dw_const SilphCoB1FWaitAtVRScript,             SCRIPT_SILPHCOB1F_WAIT_AT_VR
+	dw_const SilphCoB1FEnterVRScript,              SCRIPT_SILPHCOB1F_ENTER_VR
+	dw_const SilphCoB1FNoopScript,                 SCRIPT_SILPHCOB1F_NOOP
+
+SilphCoB1FDefaultScript:
+	;ld hl, wCurrentMapScriptFlags
+	;bit BIT_CUR_MAP_LOADED_1, [hl]
+	;jr z, .checkPosition
+	;res BIT_CUR_MAP_LOADED_1, [hl]
+	; The 1F stairs warp can change maps before its dispatcher reaches Done.
+	; Clear that inherited dispatcher before B1F starts its own Pallet-style leg.
+
+.checkPosition
+	;ld a, [wYCoord]
+	;cp 1
+	;ret nz
+    call EndNPCMovementScript
+	ld c, 8
+	call DelayFrames
 	ld a, PLAYER_DIR_DOWN
 	ld [wPlayerMovingDirection], a
-	xor a ; SPRITE_FACING_DOWN
+	ld a, SPRITE_FACING_DOWN
 	ld [wSpritePlayerStateData1FacingDirection], a
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_WALKTODORM
+	ld a, SCRIPT_SILPHCOB1F_WALK_TO_DORM
 	ld [wSilphCoB1FCurScript], a
 	ret
- 
-    SilphCoB1FWalkToDormScript:
-    ld a, SILPHCOB1F_PROF_PALM
-	ld [wSpriteIndex], a
-	xor a
-	ld [wNPCMovementScriptFunctionNum], a
-	ld a, 1
-	ld [wNPCMovementScriptPointerTableNum], a
-	ldh a, [hLoadedROMBank]
-	ld [wNPCMovementScriptBank], a
 
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_PLAYER_FOLLOWS_PALM
+SilphCoB1FWalkToDormScript:
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hActiveSpriteIndex], a
+	ld a, 7
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_WAIT_AT_DORM
 	ld [wSilphCoB1FCurScript], a
 	ret
- 
-    SilphCoB1FPlayerWaitatDormScript:
+
+SilphCoB1FWaitAtDormScript:
 	ld a, [wNPCMovementScriptPointerTableNum]
-	and a ; is the movement script over?
-	ret nz
-
-    ld a, TEXT_SILPHCOB1F_DORM
-	ldh [hTextID], a
-	call DisplayTextID
-    
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_WALKTOCREDIT
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FWalktoCreditExchangeScript:
-    ld a, SILPHCOB1F_PROF_PALM
-	ld [wSpriteIndex], a
-	xor a
-	ld [wNPCMovementScriptFunctionNum], a
-	ld a, 1
-	ld [wNPCMovementScriptPointerTableNum], a
-	ldh a, [hLoadedROMBank]
-	ld [wNPCMovementScriptBank], a
-
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_WAITATCREDIT
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FPlayerWaitatCreditScript:
-	ld a, [wNPCMovementScriptPointerTableNum]
-	and a ; is the movement script over?
-	ret nz
-
-    ld a, TEXT_SILPHCOB1F_CREDIT_EXCHANGE
-	ldh [hTextID], a
-	call DisplayTextID
-    
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_WALKTOVR
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FWalktoVRScript:
-    ld a, SILPHCOB1F_PROF_PALM
-	ld [wSpriteIndex], a
-	xor a
-	ld [wNPCMovementScriptFunctionNum], a
-	ld a, 1
-	ld [wNPCMovementScriptPointerTableNum], a
-	ldh a, [hLoadedROMBank]
-	ld [wNPCMovementScriptBank], a
-
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_WAITATCREDIT
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FPlayerWaitatVRScript:
-	ld a, [wNPCMovementScriptPointerTableNum]
-	and a ; is the movement script over?
-	ret nz
-
-    ld a, TEXT_SILPHCOB1F_VR
-	ldh [hTextID], a
-	call DisplayTextID
-    
-	; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_ENTERVR
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FEnterVRScript:
-    ld a, SILPHCOB1F_PROF_PALM
-	ld [wSpriteIndex], a
-	xor a
-	ld [wNPCMovementScriptFunctionNum], a
-	ld a, 1
-	ld [wNPCMovementScriptPointerTableNum], a
-	ldh a, [hLoadedROMBank]
-	ld [wNPCMovementScriptBank], a
- 
-    ; trigger the next script
-	ld a, SCRIPT_SILPHCOB1F_NOOP
-	ld [wSilphCoB1FCurScript], a
-	ret
- 
-    SilphCoB1FNoopScript:
-	ret
- 
- 
- TEXT_SILPHCOB1F_DORM
- 
- 
- 
- 
- 
- 
-;SilphCoB1FHandleMapEntry:
-;	ld hl, wCurrentMapScriptFlags
-;	bit BIT_CUR_MAP_LOADED_1, [hl]
-;	ret z
-;	res BIT_CUR_MAP_LOADED_1, [hl]
-
-; The 1F escort's warp wins a race with its normal cleanup. Clear the inherited
-; movement state once on arrival, following the existing B1F handoff pattern.
-;	call SilphCoB1FClearMovementState
-;	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-;	jr nz, .showScientist
-;
-;; The player arrives on the stair at (16,0), directly behind Palm at (16,1).
-;; Establish the intended presentation before the follower movement begins.
-;	ld a, PLAYER_DIR_DOWN
-;	ld [wPlayerMovingDirection], a
-;	xor a ; SPRITE_FACING_DOWN
-;	ld [wSpritePlayerStateData1FacingDirection], a
-;	ld a, PAD_CTRL_PAD
-;	ldh [hJoyIgnore], a
-;	xor a
-;	ld [wSilphCo1FCurScript], a
-;	ret
-
-;.showScientist
-;	; Palm and the later scientist intentionally share this authored object.
-;	; Their sprite, position, facing, and interaction text are identical here,
-;	; so toggling duplicate objects would only consume scarce bank 3 data.
-;	ld a, SILPHCO_INTRO_STATE_DONE
-;	ld [wSilphCo1FCurScript], a
-;	ret
-
-;SilphCoB1FClearMovementState:
-;	xor a
-;	ld [wNPCMovementScriptPointerTableNum], a
-;	ld [wNPCMovementScriptFunctionNum], a
-;	ld [wNPCMovementScriptSpriteOffset], a
-;	ld [wNPCNumScriptedSteps], a
-;	ldh [hSimulatedJoypadStatesIndex], a
-;	ld [wSimulatedJoypadStatesEnd], a
-;	ld [wOverrideSimulatedJoypadStatesMask], a
-;	ldh [hJoyIgnore], a
-;	ld [wWalkCounter], a
-;	ld [wSpritePlayerStateData2MovementByte1], a
-;	ld hl, wMovementFlags
-;	res BIT_STANDING_ON_DOOR, [hl]
-;	res BIT_EXITING_DOOR, [hl]
-;	ld hl, wStatusFlags5
-;	res BIT_SCRIPTED_NPC_MOVEMENT, [hl]
-;	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
-;	ld hl, wStatusFlags4
-;	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
-;	ret
-
-
-
-SilphCoB1FWalkToDorm:
-	ld de, RLEList_SilphCoB1FPalmToDorm
-	ld hl, RLEList_SilphCoB1FPlayerToDorm
-	ld a, SILPHCOB1F_STATE_WAIT_AT_DORM
-	jp SilphCoB1FStartFirstFollowerMovement
-
-SilphCoB1FWaitAtDorm:
-	call SilphCoB1FWaitForFollowerMovement
+	and a
 	ret nz
 	call SilphCoB1FFaceTourUp
 	call UpdateSprites
 	ld a, TEXT_SILPHCOB1F_DORM
-	ldh [hTextID], a
 	call SilphCoB1FDisplayTourText
-	ld de, RLEList_SilphCoB1FPalmToCreditExchange
-	ld hl, RLEList_SilphCoB1FPlayerToCreditExchange
-	ld a, SILPHCOB1F_STATE_WAIT_AT_CREDIT_EXCHANGE
-	jp SilphCoB1FStartFollowerMovement
+	ld a, SCRIPT_SILPHCOB1F_WALK_TO_CREDIT
+	ld [wSilphCoB1FCurScript], a
+	ret
 
-SilphCoB1FWaitAtCreditExchange:
-	call SilphCoB1FWaitForFollowerMovement
+SilphCoB1FWalkToCreditExchangeScript:
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hActiveSpriteIndex], a
+	ld a, 9
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_WAIT_AT_CREDIT
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FWaitAtCreditExchangeScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a
 	ret nz
 	call SilphCoB1FFaceTourUp
 	call UpdateSprites
 	ld a, TEXT_SILPHCOB1F_CREDIT_EXCHANGE
-	ldh [hTextID], a
 	call SilphCoB1FDisplayTourText
-	ld de, RLEList_SilphCoB1FPalmToVR
-	ld hl, RLEList_SilphCoB1FPlayerToVR
-	ld a, SILPHCOB1F_STATE_WAIT_AT_VR
-	jp SilphCoB1FStartFollowerMovement
+	ld a, SCRIPT_SILPHCOB1F_WALK_TO_VR
+	ld [wSilphCoB1FCurScript], a
+	ret
 
-SilphCoB1FWaitAtVR:
-	call SilphCoB1FWaitForFollowerMovement
+SilphCoB1FWalkToVRScript:
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hActiveSpriteIndex], a
+	ld a, 11
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_WAIT_AT_VR
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FWaitAtVRScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a
 	ret nz
 	call SilphCoB1FFaceTourUp
 	call UpdateSprites
 	ld a, TEXT_SILPHCOB1F_VR
-	ldh [hTextID], a
 	call SilphCoB1FDisplayTourText
-	ld de, RLEList_SilphCoB1FPalmEnterVR
-	ld hl, RLEList_SilphCoB1FPlayerEnterVR
-	ld a, SILPHCOB1F_STATE_ENTER_VR
-	jp SilphCoB1FStartFollowerMovement
-
-SilphCoB1FEnterVR:
-; The player's final UP normally fires the warp before this state completes.
-	call SilphCoB1FWaitForFollowerMovement
-	ret nz
-	call SilphCoB1FClearMovementState
-	ld a, SILPHCOB1F_STATE_ENTER_VR
-	ld [wSilphCo1FCurScript], a
+	ld a, SCRIPT_SILPHCOB1F_ENTER_VR
+	ld [wSilphCoB1FCurScript], a
 	ret
 
-; The first leg matches Silph Co 1F's follower setup, including deriving Palm's
-; screen position from the authored object position before synchronized motion.
-SilphCoB1FStartFirstFollowerMovement:
-	push af
-	push de
-	push hl
+SilphCoB1FEnterVRScript:
 	ld a, SILPHCOB1F_PROF_PALM
-	swap a
-	ld [wNPCMovementScriptSpriteOffset], a
-	ldh [hCurrentSpriteOffset], a
-	farcall InitializeSpriteScreenPosition
-	pop hl
-	pop de
-	pop af
-	; fallthrough
-
-; IN: de = Palm RLE, hl = player RLE, a = next state. Later legs intentionally
-; do not reinitialize Palm, matching the established 1F multi-leg escort.
-SilphCoB1FStartFollowerMovement:
-	push af
-	push de
-	ld d, h
-	ld e, l
-	ld hl, wSimulatedJoypadStatesEnd
-	call DecodeRLEList
-	dec a
-	ldh [hSimulatedJoypadStatesIndex], a
-	pop de
-	ld hl, wNPCMovementDirections2
-	call DecodeRLEList
-	xor a
-	ld [wOverrideSimulatedJoypadStatesMask], a
-	ld [wSpritePlayerStateData2MovementByte1], a
-	ld hl, wStatusFlags4
-	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
-	ld hl, wStatusFlags5
-	set BIT_SCRIPTED_MOVEMENT_STATE, [hl]
-	pop af
-	ld [wSilphCo1FCurScript], a
+	ldh [hActiveSpriteIndex], a
+	ld a, 13
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
 	ret
 
-; As in the proven 1F and Pewter escorts, each player list has a final executed
-; NO_INPUT beat so the player queue remains the synchronization clock until
-; Palm has settled.
-SilphCoB1FWaitForFollowerMovement:
-	ldh a, [hSimulatedJoypadStatesIndex]
-	and a
+; IN: a = function index in SaffronPalmMovementScriptPointerTable.
+SilphCoB1FStartMovementDispatcher:
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ld a, BANK(SaffronPalmMovementScriptPointerTable)
+	ld [wNPCMovementScriptBank], a
 	ret
 
 SilphCoB1FFaceTourUp:
@@ -340,15 +137,28 @@ SilphCoB1FFaceTourUp:
 	ldh [hSpriteFacingDirection], a
 	jp SetSpriteFacingDirection
 
+; IN: a = text ID.
 SilphCoB1FDisplayTourText:
+	ldh [hTextID], a
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	jp DisplayTextID
+	call DisplayTextID
+	ld a, PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	ret
+
+SilphCoB1FNoopScript:
+	ret
+
+; The final B1F warp can interrupt the dispatcher before its Done function.
+; VR calls this standard cleanup on entry before starting its own script.
+SilphCoB1FClearMovementState:
+	jp EndNPCMovementScript
 
 ; Viridian City's closed Gym establishes the convention: detect entry onto a
 ; forbidden warp, explain why it is blocked, then simulate one step back out.
 SilphCoB1FElevatorBlockerScript:
-	ld a, [wSilphCo1FCurScript]
+	ld a, [wSilphCoB1FCurScript]
 	cp SILPHCOB1F_STATE_ELEVATOR_MOVING
 	jr z, .waitForMovement
 	ld a, [wYCoord]
@@ -367,17 +177,17 @@ SilphCoB1FElevatorBlockerScript:
 	ldh [hSimulatedJoypadStatesIndex], a
 	ld a, PAD_DOWN
 	ld [wSimulatedJoypadStatesEnd], a
-	xor a ; SPRITE_FACING_DOWN
+	ld a, SPRITE_FACING_DOWN
 	ld [wSpritePlayerStateData1FacingDirection], a
 	ld a, SILPHCOB1F_STATE_ELEVATOR_MOVING
-	ld [wSilphCo1FCurScript], a
+	ld [wSilphCoB1FCurScript], a
 	ret
 .waitForMovement
 	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
 	ret nz
-	ld a, SILPHCO_INTRO_STATE_DONE
-	ld [wSilphCo1FCurScript], a
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
 	ret
 
 SilphCoB1F_TextPointers:
