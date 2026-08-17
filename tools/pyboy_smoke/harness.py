@@ -218,6 +218,36 @@ class RedRogueHarness:
         address = self.address("wEventFlags") + event // 8
         return bool(self.pyboy.memory[address] & (1 << (event % 8)))
 
+    def call_routine(self, label: str, limit: int = 12000) -> None:
+        """Call a ROM routine through the engine's bank trampoline."""
+        bank, address = self.symbols.get(label)
+        return_bank = 0
+        return_address = 0x3FFF
+        idle_loop = 0xCFF0
+        completed = {"value": False}
+
+        def returned(_context) -> None:
+            completed["value"] = True
+            self.pyboy.register_file.PC = idle_loop
+
+        self.pyboy.hook_register(return_bank, return_address, returned, None)
+        try:
+            self.pyboy.memory[idle_loop] = 0x18  # jr -2
+            self.pyboy.memory[idle_loop + 1] = 0xFE
+            stack_pointer = (self.pyboy.register_file.SP - 2) & 0xFFFF
+            self.pyboy.memory[stack_pointer] = return_address & 0xFF
+            self.pyboy.memory[stack_pointer + 1] = return_address >> 8
+            self.pyboy.register_file.SP = stack_pointer
+            if address >= 0x4000:
+                self.pyboy.register_file.B = bank
+                self.pyboy.register_file.HL = address
+                self.pyboy.register_file.PC = self.address("Bankswitch")
+            else:
+                self.pyboy.register_file.PC = address
+            self.wait_until(lambda: completed["value"], label, limit)
+        finally:
+            self.pyboy.hook_deregister(return_bank, return_address)
+
     def warp_entries(self) -> list[list[int]]:
         count = self.read8("wNumberOfWarps")
         raw = self.read_bytes("wWarpEntries", count * 4)
@@ -225,6 +255,14 @@ class RedRogueHarness:
 
     def diagnostic_state(self) -> dict[str, object]:
         safe = lambda label, offset=0: self.read8(label, offset)
+        warp_count = safe("wNumberOfWarps")
+        diagnostic_warps: object
+        if 1 <= warp_count <= 32:
+            diagnostic_warps = self.warp_entries()
+        elif warp_count == 0:
+            diagnostic_warps = []
+        else:
+            diagnostic_warps = {"invalid_count": warp_count}
         return {
             "rom_sha256": self.rom_sha256,
             "frame": self.pyboy.frame_count,
@@ -234,7 +272,7 @@ class RedRogueHarness:
             "rogue_flags": safe("wRogueFlagsBitfield"),
             "route_script": safe("wUndergroundPathRoute5CurScript"),
             "sprite_count": safe("wNumSprites"),
-            "warps": self.warp_entries(),
+            "warps": diagnostic_warps,
             "sprite_extra": self.read_bytes("wMapSpriteExtraData", 20),
         }
 

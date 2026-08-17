@@ -17,6 +17,7 @@ Current coverage:
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
 - Explicit Route 24 Nugget Bridge and SS Anne B1F multi-room exceptions
 - Registry drift checks against `RogueStageMapTable` and `MiniBossStageSlots`
+- Real `SaveGameData` and `LoadMainData` preservation of core run state
 - Giovanni mini-boss replacement of route object slot 5
 - Underground route text width and trainer-class-prefixed `EndBattleText`
 

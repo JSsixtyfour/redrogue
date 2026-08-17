@@ -180,6 +180,51 @@ class RouteContractSmokeTest(HarnessTestCase):
         )
 
 
+class SaveLoadSmokeTest(HarnessTestCase):
+    def test_run_state_survives_real_save_and_load(self) -> None:
+        assert self.harness is not None
+        self.harness.boot_to_lobby()
+
+        sentinels = {
+            "wVisitedStagesBitfield": [0xA5, 0x5A, 0x3C, 0xC3],
+            "wRogueFlagsBitfield": [0x35],
+            "wBattleCount": [0x47],
+            "wRoutesSinceSpecial": [0x02],
+            "wMiniBossCount": [0x01],
+            "wWildAreaState": [0x19],
+            "wBridgeOfferedLo": [0x96],
+            "wBridgeState": [0x42],
+        }
+        for label, values in sentinels.items():
+            for offset, value in enumerate(values):
+                self.harness.write8(label, value, offset)
+
+        saved_map = self.harness.read8("hCurMap")
+        transient_address = self.harness.address("wOverworldMap")
+        self.harness.pyboy.memory[transient_address] = 0xA6
+
+        self.harness.call_routine("SaveGameData")
+        self.assertEqual(
+            self.harness.pyboy.memory[self.harness.address("sGameData")], 0xFF
+        )
+
+        for label, values in sentinels.items():
+            for offset in range(len(values)):
+                self.harness.write8(label, 0, offset)
+        self.harness.write8("hCurMap", 0)
+        self.harness.pyboy.memory[transient_address] = 0x6A
+
+        self.harness.call_routine("LoadMainData")
+        self.assertEqual(
+            self.harness.pyboy.memory[self.harness.address("sGameData")], 0xFF
+        )
+
+        for label, values in sentinels.items():
+            self.assertEqual(self.harness.read_bytes(label, len(values)), values)
+        self.assertEqual(self.harness.read8("hCurMap"), saved_map)
+        self.assertEqual(self.harness.pyboy.memory[transient_address], 0x6A)
+
+
 class TextContractSmokeTest(unittest.TestCase):
     def test_underground_route_text_fits(self) -> None:
         route_text = REPO_ROOT / "text" / "UndergroundPathWestEast.asm"
