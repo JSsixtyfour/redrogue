@@ -1996,7 +1996,7 @@ wSSAnne2FRoomsCurScript:: db
 wRoute22CurScript:: db
 	ds 1
 wRedsHouse2FCurScript:: db
-wViridianMartCurScript:: db
+wSilphCoB1FCurScript:: db
 wRoute22GateCurScript:: db
 wCeruleanCityCurScript:: db
 	; ds 7 will this cause an issue? Probably not

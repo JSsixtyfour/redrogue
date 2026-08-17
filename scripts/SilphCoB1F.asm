@@ -17,73 +17,214 @@ SilphCoB1F_Script:
 	cp SILPHCO_INTRO_WARMUP_TICKS
 	jr nc, .runState
 	inc a
-	ld [wSilphCo1FCurScript], a
+	ld [wSilphCoB1FCurScript], a
 	ret
 .runState
 	sub SILPHCOB1F_STATE_WALK_TO_DORM
 	ld hl, SilphCoB1F_ScriptPointers
 	jp CallFunctionInTable
-
-SilphCoB1FHandleMapEntry:
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	ret z
-	res BIT_CUR_MAP_LOADED_1, [hl]
-
-; The 1F escort's warp wins a race with its normal cleanup. Clear the inherited
-; movement state once on arrival, following the existing B1F handoff pattern.
-	call SilphCoB1FClearMovementState
+    
+   SilphCoB1F_ScriptPointers:
+	def_script_pointers
+    dw SilphCoB1FDefaultScript,                    SCRIPT_SILPHCOB1F_DEFAULT
+	dw SilphCoB1FWalkToDormScript,                 SCRIPT_SILPHCOB1F_WALKTODORM
+	dw SilphCoB1FWaitAtDormScript,                 SCRIPT_SILPHCOB1F_WAITATDORM
+    dw SilphCoB1FWalktoCreditExchangeScript,       SCRIPT_SILPHCOB1F_WALKTOCREDIT
+	dw SilphCoB1FWaitAtCreditExchangeScript,       SCRIPT_SILPHCOB1F_WAITATCREDIT
+    dw SilphCoB1FWalktoVRScript                    SCRIPT_SILPHCOB1F_WAITATVR
+	dw SilphCoB1FEnterVRScript.                    SCRIPT_SILPHCOB1F_ENTERVR
+    dw SilphCoB1FNoopScriptScript,                 SCRIPT_SILPHCOB1F_NOOP
+ 
+ 
+    SilphCoB1FDefaultScript:
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	jr nz, .showScientist
-
-; The player arrives on the stair at (16,0), directly behind Palm at (16,1).
-; Establish the intended presentation before the follower movement begins.
+	ret nz
+	ld a, [wYCoord]
+	cp 1 ; is player near north exit?
+	ret nz
+    
+    ld c, 8
+    call DelayFrames
 	ld a, PLAYER_DIR_DOWN
 	ld [wPlayerMovingDirection], a
 	xor a ; SPRITE_FACING_DOWN
 	ld [wSpritePlayerStateData1FacingDirection], a
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	xor a
-	ld [wSilphCo1FCurScript], a
-	ret
 
-.showScientist
-	; Palm and the later scientist intentionally share this authored object.
-	; Their sprite, position, facing, and interaction text are identical here,
-	; so toggling duplicate objects would only consume scarce bank 3 data.
-	ld a, SILPHCO_INTRO_STATE_DONE
-	ld [wSilphCo1FCurScript], a
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_WALKTODORM
+	ld [wSilphCoB1FCurScript], a
 	ret
-
-SilphCoB1FClearMovementState:
+ 
+    SilphCoB1FWalkToDormScript:
+    ld a, SILPHCOB1F_PROF_PALM
+	ld [wSpriteIndex], a
 	xor a
-	ld [wNPCMovementScriptPointerTableNum], a
 	ld [wNPCMovementScriptFunctionNum], a
-	ld [wNPCMovementScriptSpriteOffset], a
-	ld [wNPCNumScriptedSteps], a
-	ldh [hSimulatedJoypadStatesIndex], a
-	ld [wSimulatedJoypadStatesEnd], a
-	ld [wOverrideSimulatedJoypadStatesMask], a
-	ldh [hJoyIgnore], a
-	ld [wWalkCounter], a
-	ld [wSpritePlayerStateData2MovementByte1], a
-	ld hl, wMovementFlags
-	res BIT_STANDING_ON_DOOR, [hl]
-	res BIT_EXITING_DOOR, [hl]
-	ld hl, wStatusFlags5
-	res BIT_SCRIPTED_NPC_MOVEMENT, [hl]
-	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
-	ld hl, wStatusFlags4
-	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
-	ret
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ldh a, [hLoadedROMBank]
+	ld [wNPCMovementScriptBank], a
 
-SilphCoB1F_ScriptPointers:
-	dw SilphCoB1FWalkToDorm
-	dw SilphCoB1FWaitAtDorm
-	dw SilphCoB1FWaitAtCreditExchange
-	dw SilphCoB1FWaitAtVR
-	dw SilphCoB1FEnterVR
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_PLAYER_FOLLOWS_PALM
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FPlayerWaitatDormScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a ; is the movement script over?
+	ret nz
+
+    ld a, TEXT_SILPHCOB1F_DORM
+	ldh [hTextID], a
+	call DisplayTextID
+    
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_WALKTOCREDIT
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FWalktoCreditExchangeScript:
+    ld a, SILPHCOB1F_PROF_PALM
+	ld [wSpriteIndex], a
+	xor a
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ldh a, [hLoadedROMBank]
+	ld [wNPCMovementScriptBank], a
+
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_WAITATCREDIT
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FPlayerWaitatCreditScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a ; is the movement script over?
+	ret nz
+
+    ld a, TEXT_SILPHCOB1F_CREDIT_EXCHANGE
+	ldh [hTextID], a
+	call DisplayTextID
+    
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_WALKTOVR
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FWalktoVRScript:
+    ld a, SILPHCOB1F_PROF_PALM
+	ld [wSpriteIndex], a
+	xor a
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ldh a, [hLoadedROMBank]
+	ld [wNPCMovementScriptBank], a
+
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_WAITATCREDIT
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FPlayerWaitatVRScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a ; is the movement script over?
+	ret nz
+
+    ld a, TEXT_SILPHCOB1F_VR
+	ldh [hTextID], a
+	call DisplayTextID
+    
+	; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_ENTERVR
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FEnterVRScript:
+    ld a, SILPHCOB1F_PROF_PALM
+	ld [wSpriteIndex], a
+	xor a
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ldh a, [hLoadedROMBank]
+	ld [wNPCMovementScriptBank], a
+ 
+    ; trigger the next script
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
+	ret
+ 
+    SilphCoB1FNoopScript:
+	ret
+ 
+ 
+ TEXT_SILPHCOB1F_DORM
+ 
+ 
+ 
+ 
+ 
+ 
+;SilphCoB1FHandleMapEntry:
+;	ld hl, wCurrentMapScriptFlags
+;	bit BIT_CUR_MAP_LOADED_1, [hl]
+;	ret z
+;	res BIT_CUR_MAP_LOADED_1, [hl]
+
+; The 1F escort's warp wins a race with its normal cleanup. Clear the inherited
+; movement state once on arrival, following the existing B1F handoff pattern.
+;	call SilphCoB1FClearMovementState
+;	CheckEvent EVENT_INTRO_TOUR_COMPLETE
+;	jr nz, .showScientist
+;
+;; The player arrives on the stair at (16,0), directly behind Palm at (16,1).
+;; Establish the intended presentation before the follower movement begins.
+;	ld a, PLAYER_DIR_DOWN
+;	ld [wPlayerMovingDirection], a
+;	xor a ; SPRITE_FACING_DOWN
+;	ld [wSpritePlayerStateData1FacingDirection], a
+;	ld a, PAD_CTRL_PAD
+;	ldh [hJoyIgnore], a
+;	xor a
+;	ld [wSilphCo1FCurScript], a
+;	ret
+
+;.showScientist
+;	; Palm and the later scientist intentionally share this authored object.
+;	; Their sprite, position, facing, and interaction text are identical here,
+;	; so toggling duplicate objects would only consume scarce bank 3 data.
+;	ld a, SILPHCO_INTRO_STATE_DONE
+;	ld [wSilphCo1FCurScript], a
+;	ret
+
+;SilphCoB1FClearMovementState:
+;	xor a
+;	ld [wNPCMovementScriptPointerTableNum], a
+;	ld [wNPCMovementScriptFunctionNum], a
+;	ld [wNPCMovementScriptSpriteOffset], a
+;	ld [wNPCNumScriptedSteps], a
+;	ldh [hSimulatedJoypadStatesIndex], a
+;	ld [wSimulatedJoypadStatesEnd], a
+;	ld [wOverrideSimulatedJoypadStatesMask], a
+;	ldh [hJoyIgnore], a
+;	ld [wWalkCounter], a
+;	ld [wSpritePlayerStateData2MovementByte1], a
+;	ld hl, wMovementFlags
+;	res BIT_STANDING_ON_DOOR, [hl]
+;	res BIT_EXITING_DOOR, [hl]
+;	ld hl, wStatusFlags5
+;	res BIT_SCRIPTED_NPC_MOVEMENT, [hl]
+;	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
+;	ld hl, wStatusFlags4
+;	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
+;	ret
+
+
 
 SilphCoB1FWalkToDorm:
 	ld de, RLEList_SilphCoB1FPalmToDorm

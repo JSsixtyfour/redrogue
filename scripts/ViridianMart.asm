@@ -2,7 +2,7 @@ ViridianMart_Script:
 	call ViridianMartCheckParcelDeliveredScript
 	call EnableAutoTextBoxDrawing
 	ld hl, ViridianMart_ScriptPointers
-	ld a, [wViridianMartCurScript]
+	;ld a, [wViridianMartCurScript]
 	jp CallFunctionInTable
 
 ViridianMartCheckParcelDeliveredScript:
@@ -37,7 +37,7 @@ ViridianMartDefaultScript:
 	ldh [hSimulatedJoypadStatesIndex], a
 	call StartSimulatingJoypadStates
 	ld a, SCRIPT_VIRIDIANMART_OAKS_PARCEL
-	ld [wViridianMartCurScript], a
+	;ld [wViridianMartCurScript], a
 	ret
 
 .PlayerMovement:
@@ -57,7 +57,7 @@ ViridianMartOaksParcelScript:
 	call GiveItem
 	SetEvent EVENT_GOT_OAKS_PARCEL
 	ld a, SCRIPT_VIRIDIANMART_NOOP
-	ld [wViridianMartCurScript], a
+	;ld [wViridianMartCurScript], a
 	; fallthrough
 ViridianMartNoopScript:
 	ret
