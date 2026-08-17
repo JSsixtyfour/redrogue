@@ -50,7 +50,9 @@ class RedRogueHarness:
     WARP_NO_RETURN = 0xFD
     GIOVANNI_TYPE_BITS = 0x20
 
-    def __init__(self, repo_root: Path, artifacts_dir: Path):
+    def __init__(
+        self, repo_root: Path, artifacts_dir: Path, *, sound_emulated: bool = False
+    ):
         self.repo_root = repo_root.resolve()
         self.rom_path = self.repo_root / "pokeblue_debug.gbc"
         self.sym_path = self.repo_root / "pokeblue_debug.sym"
@@ -64,7 +66,7 @@ class RedRogueHarness:
         self.pyboy = PyBoy(
             str(self.rom_path),
             window="null",
-            sound_emulated=False,
+            sound_emulated=sound_emulated,
             log_level="CRITICAL",
         )
 
@@ -110,11 +112,13 @@ class RedRogueHarness:
             f"{json.dumps(self.diagnostic_state(), sort_keys=True)}"
         )
 
-    def hook_flag(self, label: str) -> dict[str, int]:
+    def hook_flag(self, label: str, action=None) -> dict[str, int]:
         state = {"count": 0}
 
         def callback(_context) -> None:
             state["count"] += 1
+            if action is not None:
+                action()
 
         bank, address = self.symbols.get(label)
         self.pyboy.hook_register(bank, address, callback, None)

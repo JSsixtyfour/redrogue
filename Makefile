@@ -103,6 +103,9 @@ tools:
 smoke: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_smoke.py
 
+integration: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_integration.py
+
 
 RGBASMFLAGS += -Q8 -P includes.asm
 # Create a sym/map for debug purposes if `make` run with `DEBUG=1`

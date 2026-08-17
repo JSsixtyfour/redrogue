@@ -28,3 +28,14 @@ ignored by Git.
 
 PyBoy is installed in WSL for this project. Run `wsl make smoke` from Windows
 PowerShell, or `make smoke` from a WSL shell.
+
+The slower integration tier drives complete gameplay interactions and is kept
+separate from the fast smoke suite:
+
+```sh
+make integration
+```
+
+Current integration coverage walks through Lobby Door 1 into Route 1, enters
+the first trainer's sight line, wins the battle through battle-menu inputs,
+and verifies the trainer event, battle count, and return to the route script.
