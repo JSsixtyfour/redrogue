@@ -59,6 +59,8 @@ IF DEF(_DEBUG)
 	; DEBUG
 	ld hl, wStatusFlags6
 	set BIT_DEBUG_MODE, [hl]
+	ld a, SILPH_CO_DORM
+	ld [wDefaultMap], a
 	jp StartNewGameDebug
 
 .debug2

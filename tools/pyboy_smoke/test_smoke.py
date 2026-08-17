@@ -42,6 +42,23 @@ class HarnessTestCase(unittest.TestCase):
 
 
 class BootSmokeTest(HarnessTestCase):
+    def test_debug1_boots_to_completed_dorm(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        events = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "event_constants.asm"
+        )
+        dorm_map = maps["SILPH_CO_DORM"]
+        self.harness.boot_debug1(dorm_map)
+        self.assertEqual(self.harness.read8("hCurMap"), dorm_map)
+        self.assertEqual(
+            [self.harness.read8("wXCoord"), self.harness.read8("wYCoord")],
+            [1, 7],
+        )
+        self.assertTrue(
+            self.harness.event_is_set(events["EVENT_INTRO_TOUR_COMPLETE"])
+        )
+
     def test_boot_to_lobby(self) -> None:
         assert self.harness is not None
         self.harness.boot_to_lobby()

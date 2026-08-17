@@ -102,6 +102,7 @@ OaksLab_TextPointers:
 
 Rogue_Lab_Script_PokeballText_1:
 	text_asm
+	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
 	ld hl, GreedyText
@@ -136,10 +137,12 @@ Rogue_Lab_Script_PokeballText_1:
 	ld e, 1 ; player took starter slot 1
 	call OaksLabRivalPicksAndWalks
 .end_text
+	pop bc
 	jp TextScriptEnd
 
 Rogue_Lab_Script_PokeballText_2:
 	text_asm
+	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
 	ld hl, GreedyText
@@ -174,10 +177,12 @@ Rogue_Lab_Script_PokeballText_2:
 	ld e, 2 ; player took starter slot 2
 	call OaksLabRivalPicksAndWalks
 .end_text
+	pop bc
 	jp TextScriptEnd
 
 Rogue_Lab_Script_PokeballText_3:
 	text_asm
+	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
 	ld hl, GreedyText
@@ -212,6 +217,7 @@ Rogue_Lab_Script_PokeballText_3:
 	ld e, 3 ; player took starter slot 3
 	call OaksLabRivalPicksAndWalks
 .end_text
+	pop bc
 	jp TextScriptEnd
 
 ; Show the full Pokedex page for an arbitrary (randomized) starter when the
@@ -319,6 +325,12 @@ MoveRivalToChosenBall:
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
 	call MoveSprite
+	; MoveSprite masks every button with hJoyIgnore = $ff. Keep Blue's movement
+	; protected, but allow A/B to dismiss the outer text wait. This matters when
+	; GivePokemon sent a full-party starter to the box: hNoWaitAfterText made its
+	; nested PrintText return, leaving the box message for the outer wait below.
+	ld a, PAD_SELECT | PAD_START | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
 	; advance the state machine so OaksLabRivalChoosesStarterScript runs once
 	; Blue finishes walking: it hides his ball and gives him his starter.
 	ld a, SCRIPT_OAKSLAB_RIVAL_CHOOSES_STARTER

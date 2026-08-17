@@ -12,6 +12,7 @@ The target builds `pokeblue_debug.gbc`, resolves current addresses from
 
 Current coverage:
 
+- Debug 1 boot to Silph Co Dorm with the intro tour complete
 - Debug 2 boot through Indigo Plateau Lobby initialization
 - Data-driven contracts for all 22 selectable rogue stages
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
@@ -38,4 +39,6 @@ make integration
 
 Current integration coverage walks through Lobby Door 1 into Route 1, enters
 the first trainer's sight line, wins the battle through battle-menu inputs,
-and verifies the trainer event, battle count, and return to the route script.
+handles replacement and natural level-up prompts, and verifies experience,
+move-learning checks, the trainer event, battle count, and return to the route
+script.

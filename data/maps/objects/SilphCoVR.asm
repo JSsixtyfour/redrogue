@@ -4,8 +4,8 @@ SilphCoVR_Object:
 	const_export SILPHCOVR_PROF_PALM
 
 	def_warp_events
-	warp_event  2,  7, SILPH_CO_B1F, 4
-	warp_event  3,  7, SILPH_CO_B1F, 5
+	warp_event  2,  7, SILPH_CO_B1F, 5
+	warp_event  3,  7, SILPH_CO_B1F, 4
 	warp_event  3,  3, OAKS_LAB, 1
 
 	def_bg_events

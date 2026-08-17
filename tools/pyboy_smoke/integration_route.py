@@ -54,11 +54,10 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         enemy_fainted = self.harness.hook_flag("HandleEnemyMonFainted")
         enemy_sent_out = self.harness.hook_flag("EnemySendOut")
         faint_text = self.harness.hook_flag("EnemyMonFaintedText")
-        experience = self.harness.hook_flag(
-            "GainExperience",
-            lambda: self.harness.write8("wPartyGainExpFlags", 0),
-        )
+        experience = self.harness.hook_flag("GainExperience")
         experience_done = self.harness.hook_flag("GainExperience.done")
+        level_up = self.harness.hook_flag("GainExperience.printGrewLevelText")
+        learn_move_check = self.harness.hook_flag("LearnMoveFromLevelUp")
         enemy_replaced = self.harness.hook_flag("ReplaceFaintedEnemyMon")
         trainer_victory = self.harness.hook_flag("TrainerBattleVictory")
         enemy_balls_drawn = self.harness.hook_flag("DrawEnemyPokeballs")
@@ -134,6 +133,8 @@ class RouteBattleIntegrationTest(unittest.TestCase):
                 f"enemy_sent_out={enemy_sent_out['count']} "
                 f"faint_text={faint_text['count']} experience={experience['count']} "
                 f"experience_done={experience_done['count']} "
+                f"level_up={level_up['count']} "
+                f"learn_move_check={learn_move_check['count']} "
                 f"enemy_replaced={enemy_replaced['count']} "
                 f"trainer_victory={trainer_victory['count']} "
                 f"enemy_balls_drawn={enemy_balls_drawn['count']} "
@@ -154,6 +155,10 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         self.assertEqual(battle_started["count"], 1)
         self.assertGreaterEqual(battle_ended["count"], 1)
         self.assertTrue(self.harness.event_is_set(trainer_event))
+        self.assertGreaterEqual(experience["count"], 1)
+        self.assertEqual(experience_done["count"], experience["count"])
+        self.assertGreaterEqual(level_up["count"], 1)
+        self.assertGreaterEqual(learn_move_check["count"], 1)
         self.assertEqual(
             self.harness.read8("wBattleCount"), (starting_battle_count + 1) & 0xFF
         )

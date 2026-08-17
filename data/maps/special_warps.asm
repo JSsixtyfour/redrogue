@@ -103,4 +103,4 @@ FlyWarpDataPtr:
 .Route10:        fly_warp ROUTE_10,        11, 20
 ; Blackout respawn point during a run (set by IndigoPlateauLobby_Script on
 ; entry) -- lands on one of the two SilphCoB1F<->SilphCoDorm warp tiles.
-.SilphCoDorm:    fly_warp SILPH_CO_DORM,    4,  7
+.SilphCoDorm:    fly_warp SILPH_CO_DORM,    1,  7

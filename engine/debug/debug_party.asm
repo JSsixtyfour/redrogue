@@ -202,11 +202,18 @@ IF DEF(_DEBUG)
 	; granting only there is useless. Every debug new game gets them.
 	farcall RoomGrantAllPieces
 
-	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
+	; Split Debug 1's sandbox state from Debug 2's rogue-run setup.
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
-	jr z, .notDebug2
+	jr nz, .debug2
 
+	; Debug 1 is the general sandbox. Start in the dorm with the intro tour
+	; complete so its connected facilities are immediately available.
+	SetEvent EVENT_INTRO_TOUR_COMPLETE
+	ret
+
+	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
+.debug2
 	; Prompt for a starting battle count (mart-style counter, 1-99, min 1).
 	; The debug speech was skipped, so ensure font/text-box tiles are loaded
 	; before drawing the quantity box.
@@ -225,7 +232,6 @@ IF DEF(_DEBUG)
 	; door prompts (door 1, door 2). This lives in the rogue bank to keep
 	; bank1 within its size limit; it only touches WRAM, so farcall is safe.
 	farcall Debug2ApplyRoundState
-.notDebug2
 	ret
 
 DebugSetPokedexEntries:

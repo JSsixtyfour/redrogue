@@ -51,7 +51,12 @@ class RedRogueHarness:
     GIOVANNI_TYPE_BITS = 0x20
 
     def __init__(
-        self, repo_root: Path, artifacts_dir: Path, *, sound_emulated: bool = False
+        self,
+        repo_root: Path,
+        artifacts_dir: Path,
+        *,
+        sound_emulated: bool = False,
+        ram_path: Path | None = None,
     ):
         self.repo_root = repo_root.resolve()
         self.rom_path = self.repo_root / "pokeblue_debug.gbc"
@@ -63,12 +68,16 @@ class RedRogueHarness:
         self.symbols = SymbolTable(self.sym_path)
         self.rom_sha256 = hashlib.sha256(self.rom_path.read_bytes()).hexdigest()
         self.artifacts_dir = artifacts_dir.resolve()
-        self.pyboy = PyBoy(
-            str(self.rom_path),
-            window="null",
-            sound_emulated=sound_emulated,
-            log_level="CRITICAL",
-        )
+        options = {
+            "window": "null",
+            "sound_emulated": sound_emulated,
+            "log_level": "CRITICAL",
+        }
+        if ram_path is None:
+            self.pyboy = PyBoy(str(self.rom_path), **options)
+        else:
+            with ram_path.resolve().open("rb") as ram_file:
+                self.pyboy = PyBoy(str(self.rom_path), ram_file=ram_file, **options)
 
     def close(self) -> None:
         self.pyboy.stop(save=False)
@@ -123,6 +132,29 @@ class RedRogueHarness:
         bank, address = self.symbols.get(label)
         self.pyboy.hook_register(bank, address, callback, None)
         return state
+
+    def boot_debug1(self, destination_map: int) -> None:
+        debug_menu = self.hook_flag("DebugMenu")
+
+        self.tick(240)
+        self.pyboy.button_press("select")
+        for _ in range(300):
+            self.tap("start", 1)
+            if debug_menu["count"]:
+                break
+        self.pyboy.button_release("select")
+        if not debug_menu["count"]:
+            raise AssertionError("DebugMenu was not reached")
+
+        self.tick(30)
+        self.tap("down")
+        self.tap("a")
+        self.wait_until(
+            lambda: self.read8("hCurMap") == destination_map,
+            "the Debug 1 destination",
+            2400,
+        )
+        self.tick(180)
 
     def boot_to_lobby(self, battle_count: int = 11) -> None:
         debug_menu = self.hook_flag("DebugMenu")
