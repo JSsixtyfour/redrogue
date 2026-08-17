@@ -86,3 +86,37 @@ def parse_object_events(path: Path) -> list[tuple[str, ...]]:
         arguments = line[len("object_event ") :]
         objects.append(tuple(part.strip() for part in arguments.split(",")))
     return objects
+
+
+def parse_warp_events(path: Path) -> list[tuple[str, ...]]:
+    warps: list[tuple[str, ...]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split(";", 1)[0].strip()
+        if line.startswith("warp_event "):
+            arguments = line[len("warp_event ") :]
+            warps.append(tuple(part.strip() for part in arguments.split(",")))
+    return warps
+
+
+def parse_rgbds_integer(expression: str) -> int:
+    return _integer_expression(expression)
+
+
+def parse_db_table(path: Path, label: str) -> list[tuple[str, ...]]:
+    """Parse a simple label followed by db rows through its db -1 sentinel."""
+    rows: list[tuple[str, ...]] = []
+    in_table = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split(";", 1)[0].strip()
+        if not in_table:
+            in_table = line == f"{label}:"
+            continue
+        if not line:
+            continue
+        if not line.startswith("db "):
+            continue
+        values = tuple(part.strip() for part in line[3:].split(","))
+        if values[0] in {"-1", "$ff"}:
+            break
+        rows.append(values)
+    return rows

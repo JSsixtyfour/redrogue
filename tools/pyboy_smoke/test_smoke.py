@@ -4,12 +4,15 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
-from route_contracts import ROUTE_CONTRACTS
+from route_contracts import ROUTE_CONTRACTS, RewardGate
 from source_constants import (
     parse_map_constants,
+    parse_db_table,
     parse_object_events,
+    parse_rgbds_integer,
     parse_rgbds_constants,
     parse_trainer_constants,
+    parse_warp_events,
 )
 from text_contract import EndBattleContract, overlong_segments, rendered_end_battle_width
 
@@ -68,7 +71,7 @@ class UndergroundRouteSmokeTest(HarnessTestCase):
 
 
 class RouteContractSmokeTest(HarnessTestCase):
-    def test_representative_route_contracts(self) -> None:
+    def test_all_selectable_route_contracts(self) -> None:
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
         events = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
         trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
@@ -78,13 +81,19 @@ class RouteContractSmokeTest(HarnessTestCase):
                 objects = parse_object_events(
                     REPO_ROOT / "data" / "maps" / "objects" / contract.object_file
                 )
-                self.assertEqual(len(objects), contract.sprite_count)
-                self.assertTrue(all(len(obj) == 8 for obj in objects[:5]))
-                self.assertIn("_RANDOM", objects[5][5])
-                for reward_index, obj in enumerate(objects[6:9], start=1):
-                    self.assertIn(f"_ROGUE_REWARD_POKEBALL_{reward_index}", obj[5])
-                self.assertIn("_ROGUE_TRADE_NPC", objects[9][5])
-                self.assertEqual(objects[6][:2], objects[9][:2])
+                if contract.standard_object_slots:
+                    self.assertTrue(all(len(obj) == 8 for obj in objects[:5]))
+                    self.assertIn("_RANDOM", objects[5][5])
+                    for reward_index, obj in enumerate(objects[6:9], start=1):
+                        self.assertIn(
+                            f"_ROGUE_REWARD_POKEBALL_{reward_index}", obj[5]
+                        )
+                    self.assertIn("_ROGUE_TRADE_NPC", objects[9][5])
+                    self.assertEqual(objects[6][:2], objects[9][:2])
+
+                source_warps = parse_warp_events(
+                    REPO_ROOT / "data" / "maps" / "objects" / contract.object_file
+                )
 
                 if index:
                     assert self.harness is not None
@@ -96,35 +105,79 @@ class RouteContractSmokeTest(HarnessTestCase):
                 self.harness.enter_stage_door1(map_id, description=contract.name)
 
                 self.assertEqual(self.harness.read8("hCurMap"), map_id)
-                expected_warps = [
-                    [
-                        y,
-                        x,
-                        warp_id,
+                expected_warps = []
+                for x, y, destination, warp_id in source_warps:
+                    destination_id = (
                         self.harness.WARP_NO_RETURN
                         if destination == "WARP_NO_RETURN"
-                        else maps[destination],
-                    ]
-                    for y, x, warp_id, destination in contract.expected_warps
-                ]
+                        else maps[destination]
+                    )
+                    expected_warps.append(
+                        [
+                            parse_rgbds_integer(y),
+                            parse_rgbds_integer(x),
+                            parse_rgbds_integer(warp_id) - 1,
+                            destination_id,
+                        ]
+                    )
                 self.assertEqual(self.harness.warp_entries(), expected_warps)
-                self.assertEqual(self.harness.read8("wNumSprites"), contract.sprite_count)
-                self.assertIn(self.harness.read8(contract.script_symbol), range(4))
+                self.assertEqual(self.harness.read8("wNumSprites"), len(objects))
+                self.harness.read8(contract.script_symbol)
 
-                trainer_classes = self.harness.read_bytes("wMapSpriteExtraData", 10)[::2]
-                self.assertEqual(
-                    trainer_classes,
-                    [trainers[name] for name in contract.trainer_classes],
-                )
+                if contract.standard_object_slots:
+                    source_classes = [
+                        obj[6].removeprefix("OPP_") for obj in objects[:5]
+                    ]
+                    trainer_classes = self.harness.read_bytes(
+                        "wMapSpriteExtraData", 10
+                    )[::2]
+                    self.assertEqual(
+                        trainer_classes,
+                        [trainers[name] for name in source_classes],
+                    )
 
-                for event_name in contract.trainer_events:
-                    self.harness.set_event(events[event_name])
-                offered_event = events["EVENT_ROGUE_POKEMON_OFFERED"]
-                self.harness.wait_until(
-                    lambda: self.harness.event_is_set(offered_event),
-                    f"{contract.name} reward offer",
-                    600,
-                )
+                if contract.reward_gate is RewardGate.STANDARD_FIVE_TRAINERS:
+                    for event_name in contract.trainer_events:
+                        self.harness.set_event(events[event_name])
+                    offered_event = events["EVENT_ROGUE_POKEMON_OFFERED"]
+                    self.harness.wait_until(
+                        lambda: self.harness.event_is_set(offered_event),
+                        f"{contract.name} reward offer",
+                        600,
+                    )
+
+    def test_contract_registry_matches_engine_tables(self) -> None:
+        stage_rows = parse_db_table(
+            REPO_ROOT / "custom_functions" / "random_stage_selection.asm",
+            "RogueStageMapTable",
+        )
+        miniboss_rows = parse_db_table(
+            REPO_ROOT / "custom_functions" / "miniboss.asm",
+            "MiniBossStageSlots",
+        )
+        self.assertEqual(
+            [contract.map_constant for contract in ROUTE_CONTRACTS],
+            [row[0] for row in stage_rows],
+        )
+        self.assertEqual(
+            {
+                contract.map_constant
+                for contract in ROUTE_CONTRACTS
+                if contract.miniboss_eligible
+            },
+            {row[0] for row in miniboss_rows},
+        )
+        self.assertEqual(
+            {
+                contract.map_constant: contract.reward_gate
+                for contract in ROUTE_CONTRACTS
+                if contract.reward_gate is not RewardGate.STANDARD_FIVE_TRAINERS
+            },
+            {
+                "ROUTE_24": RewardGate.NUGGET_BRIDGE,
+                "SS_ANNE_B1F": RewardGate.SS_ANNE_ROOMS,
+            },
+        )
 
 
 class TextContractSmokeTest(unittest.TestCase):

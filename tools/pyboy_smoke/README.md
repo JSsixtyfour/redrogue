@@ -13,8 +13,10 @@ The target builds `pokeblue_debug.gbc`, resolves current addresses from
 Current coverage:
 
 - Debug 2 boot through Indigo Plateau Lobby initialization
-- Data-driven route contracts for Underground Path West-East, Route 1, and Mt. Moon 1F
+- Data-driven contracts for all 22 selectable rogue stages
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
+- Explicit Route 24 Nugget Bridge and SS Anne B1F multi-room exceptions
+- Registry drift checks against `RogueStageMapTable` and `MiniBossStageSlots`
 - Giovanni mini-boss replacement of route object slot 5
 - Underground route text width and trainer-class-prefixed `EndBattleText`
 
