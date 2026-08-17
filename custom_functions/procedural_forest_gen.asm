@@ -2144,7 +2144,6 @@ PFPreloadForest::
     ; %8==1 for a slot-1 trainer, and that alignment was already spent here.
     ResetEvent EVENT_PF_ITEM_GOT
     ResetEvent EVENT_BEAT_PC_BOSS
-    ResetEvent EVENT_ENTER_ROOM
     ResetEvent EVENT_PC_BUDGET_ENDED
     ResetEvent EVENT_PC_CALMED_SHOWN
     ld a, BMODE_SIMPLE

@@ -221,19 +221,25 @@ class RedRogueHarness:
     def call_routine(self, label: str, limit: int = 12000) -> None:
         """Call a ROM routine through the engine's bank trampoline."""
         bank, address = self.symbols.get(label)
+        register_names = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
+        saved_registers = {
+            name: getattr(self.pyboy.register_file, name) for name in register_names
+        }
+        saved_bank = self.read8("hLoadedROMBank")
         return_bank = 0
         return_address = 0x3FFF
-        idle_loop = 0xCFF0
         completed = {"value": False}
 
         def returned(_context) -> None:
+            if saved_registers["PC"] >= 0x4000:
+                self.pyboy.memory[0x2000] = saved_bank
+                self.write8("hLoadedROMBank", saved_bank)
+            for name, value in saved_registers.items():
+                setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
-            self.pyboy.register_file.PC = idle_loop
 
         self.pyboy.hook_register(return_bank, return_address, returned, None)
         try:
-            self.pyboy.memory[idle_loop] = 0x18  # jr -2
-            self.pyboy.memory[idle_loop + 1] = 0xFE
             stack_pointer = (self.pyboy.register_file.SP - 2) & 0xFFFF
             self.pyboy.memory[stack_pointer] = return_address & 0xFF
             self.pyboy.memory[stack_pointer + 1] = return_address >> 8
@@ -247,6 +253,30 @@ class RedRogueHarness:
             self.wait_until(lambda: completed["value"], label, limit)
         finally:
             self.pyboy.hook_deregister(return_bank, return_address)
+
+    def preload_and_enter_wild_area(self, map_id: int, description: str) -> None:
+        self.write8("wLobbyDoor1StageMap", map_id)
+        self.write8("wWarpEntries", map_id, offset=3)
+        self.call_routine("ProcPreloadAssignedWildArea", limit=60000)
+        self.move_tile("up")
+        self.move_tile("down")
+        self.wait_until(
+            lambda: self.read8("hCurMap") == map_id,
+            f"{description} entry",
+            2400,
+        )
+        self.tick(180)
+
+    def sprite_positions(self, count: int) -> list[list[int]]:
+        y_start = self.address("wSprite01StateData2MapY")
+        x_start = self.address("wSprite01StateData2MapX")
+        return [
+            [
+                self.pyboy.memory[y_start + index * 16] - 4,
+                self.pyboy.memory[x_start + index * 16] - 4,
+            ]
+            for index in range(count)
+        ]
 
     def warp_entries(self) -> list[list[int]]:
         count = self.read8("wNumberOfWarps")

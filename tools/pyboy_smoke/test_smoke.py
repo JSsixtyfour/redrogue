@@ -225,6 +225,58 @@ class SaveLoadSmokeTest(HarnessTestCase):
         self.assertEqual(self.harness.pyboy.memory[transient_address], 0x6A)
 
 
+class ProceduralStageSmokeTest(HarnessTestCase):
+    def assert_generation_contract(
+        self,
+        name: str,
+        map_name: str,
+        width: int,
+        height: int,
+        sprites: int,
+        has_boss: bool,
+    ) -> None:
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        assert self.harness is not None
+        map_id = maps[map_name]
+        self.harness.boot_to_lobby()
+        self.harness.preload_and_enter_wild_area(map_id, name)
+
+        self.assertEqual(self.harness.read8("hCurMap"), map_id)
+        self.assertEqual(self.harness.read8("wNumSprites"), sprites)
+        warps = self.harness.warp_entries()
+        self.assertGreaterEqual(len(warps), 2)
+        for y, x, _warp_id, _destination in warps:
+            self.assertIn(y, range(height))
+            self.assertIn(x, range(width))
+
+        positions = self.harness.sprite_positions(sprites)
+        for y, x in positions:
+            self.assertIn(y, range(height))
+            self.assertIn(x, range(width))
+        self.assertEqual(len({tuple(position) for position in positions}), sprites)
+
+        if has_boss:
+            boss_species = self.harness.read8("wMapSpriteExtraData")
+            self.assertNotEqual(boss_species, 0)
+            item_ids = self.harness.read_bytes("wRogueItem", 7)[::2]
+            self.assertTrue(all(item_id != 0 for item_id in item_ids))
+
+    def test_procedural_cave_generation(self) -> None:
+        self.assert_generation_contract(
+            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 5, True
+        )
+
+    def test_procedural_forest_generation(self) -> None:
+        self.assert_generation_contract(
+            "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 5, True
+        )
+
+    def test_procedural_cemetery_generation(self) -> None:
+        self.assert_generation_contract(
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 1, False
+        )
+
+
 class TextContractSmokeTest(unittest.TestCase):
     def test_underground_route_text_fits(self) -> None:
         route_text = REPO_ROOT / "text" / "UndergroundPathWestEast.asm"
