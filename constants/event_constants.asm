@@ -215,7 +215,8 @@
 	const_next $340
 	const EVENT_BRIDGE_INTRO
     const EVENT_BRIDGE_RECEIVE_GIFT
-	const_skip 14
+	const EVENT_INTRO_TOUR_COMPLETE
+	const_skip 13
     
     ; Saffron City events
 	const EVENT_DEFEATED_FIGHTING_DOJO

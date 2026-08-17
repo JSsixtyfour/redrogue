@@ -60,6 +60,7 @@ RGBGFXFLAGS  ?= -Weverything
 	clean \
 	tidy \
 	compare \
+	smoke \
 	tools
 
 all: $(roms)
@@ -98,6 +99,9 @@ compare: $(roms) $(patches)
 
 tools:
 	$(MAKE) -C tools/
+
+smoke: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_smoke.py
 
 
 RGBASMFLAGS += -Q8 -P includes.asm
