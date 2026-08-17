@@ -4,7 +4,13 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
-from source_constants import parse_rgbds_constants
+from route_contracts import ROUTE_CONTRACTS
+from source_constants import (
+    parse_map_constants,
+    parse_object_events,
+    parse_rgbds_constants,
+    parse_trainer_constants,
+)
 from text_contract import EndBattleContract, overlong_segments, rendered_end_battle_width
 
 
@@ -22,7 +28,7 @@ class HarnessTestCase(unittest.TestCase):
         completed_result = super().run(result)
         if self.harness is not None:
             failed = any(
-                test is self
+                test is self or getattr(test, "test_case", None) is self
                 for test, _ in completed_result.failures + completed_result.errors
             )
             if failed:
@@ -47,40 +53,6 @@ class BootSmokeTest(HarnessTestCase):
 
 
 class UndergroundRouteSmokeTest(HarnessTestCase):
-    def test_standard_route_contract_and_reward_trigger(self) -> None:
-        assert self.harness is not None
-        self.harness.boot_to_lobby()
-        self.harness.enter_route_door1()
-
-        self.assertEqual(self.harness.read8("hCurMap"), self.harness.TARGET_ROUTE)
-        self.assertEqual(self.harness.read8("wYCoord"), 5)
-        self.assertGreaterEqual(self.harness.read8("wXCoord"), 5)
-        self.assertEqual(
-            self.harness.warp_entries(),
-            [
-                [5, 2, 0, self.harness.WARP_NO_RETURN],
-                [2, 47, 0, self.harness.LOBBY_MAP],
-            ],
-        )
-        self.assertEqual(self.harness.read8("wNumSprites"), 10)
-
-        trainer_classes = self.harness.read_bytes("wMapSpriteExtraData", 10)[::2]
-        self.assertEqual(trainer_classes, [0xD2, 0xDD, 0xD3, 0xD2, 0xD8])
-
-        # Trainer events $3F9-$3FD are bits 1-5 of event byte $7F.
-        event_address = self.harness.address("wEventFlags") + 0x7F
-        self.harness.pyboy.memory[event_address] |= 0x3E
-
-        events = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
-        offered_event = events["EVENT_ROGUE_POKEMON_OFFERED"]
-        offered_address = self.harness.address("wEventFlags") + offered_event // 8
-        offered_mask = 1 << (offered_event % 8)
-        self.harness.wait_until(
-            lambda: bool(self.harness.pyboy.memory[offered_address] & offered_mask),
-            "EVENT_ROGUE_POKEMON_OFFERED",
-            600,
-        )
-
     def test_giovanni_replaces_slot_five(self) -> None:
         assert self.harness is not None
         self.harness.boot_to_lobby()
@@ -93,6 +65,66 @@ class UndergroundRouteSmokeTest(HarnessTestCase):
         self.assertTrue(self.harness.read8("wRogueFlagsBitfield") & 0x80)
         self.assertEqual(slot_five_picture, 0x17)  # SPRITE_GIOVANNI
         self.assertEqual(slot_five_class, 0xF9)  # OPP_GIOVANNI_MINIBOSS
+
+
+class RouteContractSmokeTest(HarnessTestCase):
+    def test_representative_route_contracts(self) -> None:
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        events = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+
+        for index, contract in enumerate(ROUTE_CONTRACTS):
+            with self.subTest(route=contract.name):
+                objects = parse_object_events(
+                    REPO_ROOT / "data" / "maps" / "objects" / contract.object_file
+                )
+                self.assertEqual(len(objects), contract.sprite_count)
+                self.assertTrue(all(len(obj) == 8 for obj in objects[:5]))
+                self.assertIn("_RANDOM", objects[5][5])
+                for reward_index, obj in enumerate(objects[6:9], start=1):
+                    self.assertIn(f"_ROGUE_REWARD_POKEBALL_{reward_index}", obj[5])
+                self.assertIn("_ROGUE_TRADE_NPC", objects[9][5])
+                self.assertEqual(objects[6][:2], objects[9][:2])
+
+                if index:
+                    assert self.harness is not None
+                    self.harness.close()
+                    self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
+                assert self.harness is not None
+                map_id = maps[contract.map_constant]
+                self.harness.boot_to_lobby()
+                self.harness.enter_stage_door1(map_id, description=contract.name)
+
+                self.assertEqual(self.harness.read8("hCurMap"), map_id)
+                expected_warps = [
+                    [
+                        y,
+                        x,
+                        warp_id,
+                        self.harness.WARP_NO_RETURN
+                        if destination == "WARP_NO_RETURN"
+                        else maps[destination],
+                    ]
+                    for y, x, warp_id, destination in contract.expected_warps
+                ]
+                self.assertEqual(self.harness.warp_entries(), expected_warps)
+                self.assertEqual(self.harness.read8("wNumSprites"), contract.sprite_count)
+                self.assertIn(self.harness.read8(contract.script_symbol), range(4))
+
+                trainer_classes = self.harness.read_bytes("wMapSpriteExtraData", 10)[::2]
+                self.assertEqual(
+                    trainer_classes,
+                    [trainers[name] for name in contract.trainer_classes],
+                )
+
+                for event_name in contract.trainer_events:
+                    self.harness.set_event(events[event_name])
+                offered_event = events["EVENT_ROGUE_POKEMON_OFFERED"]
+                self.harness.wait_until(
+                    lambda: self.harness.event_is_set(offered_event),
+                    f"{contract.name} reward offer",
+                    600,
+                )
 
 
 class TextContractSmokeTest(unittest.TestCase):

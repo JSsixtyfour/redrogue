@@ -13,7 +13,8 @@ The target builds `pokeblue_debug.gbc`, resolves current addresses from
 Current coverage:
 
 - Debug 2 boot through Indigo Plateau Lobby initialization
-- Underground Path West-East route entry, object contract, warps, and reward trigger
+- Data-driven route contracts for Underground Path West-East, Route 1, and Mt. Moon 1F
+- Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
 - Giovanni mini-boss replacement of route object slot 5
 - Underground route text width and trainer-class-prefixed `EndBattleText`
 

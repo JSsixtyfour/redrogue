@@ -184,8 +184,17 @@ class RedRogueHarness:
             )
 
     def enter_route_door1(self, *, giovanni: bool = False) -> None:
-        self.write8("wLobbyDoor1StageMap", self.TARGET_ROUTE)
-        self.write8("wWarpEntries", self.TARGET_ROUTE, offset=3)
+        self.enter_stage_door1(
+            self.TARGET_ROUTE,
+            description="Underground Path West-East",
+            giovanni=giovanni,
+        )
+
+    def enter_stage_door1(
+        self, map_id: int, *, description: str, giovanni: bool = False
+    ) -> None:
+        self.write8("wLobbyDoor1StageMap", map_id)
+        self.write8("wWarpEntries", map_id, offset=3)
 
         flags = self.read8("wRogueFlagsBitfield") & 0x0F
         if giovanni:
@@ -195,11 +204,19 @@ class RedRogueHarness:
         self.move_tile("up")
         self.move_tile("down")
         self.wait_until(
-            lambda: self.read8("hCurMap") == self.TARGET_ROUTE,
-            "Underground Path West-East entry",
+            lambda: self.read8("hCurMap") == map_id,
+            f"{description} entry",
             1200,
         )
         self.tick(180)
+
+    def set_event(self, event: int) -> None:
+        address = self.address("wEventFlags") + event // 8
+        self.pyboy.memory[address] |= 1 << (event % 8)
+
+    def event_is_set(self, event: int) -> bool:
+        address = self.address("wEventFlags") + event // 8
+        return bool(self.pyboy.memory[address] & (1 << (event % 8)))
 
     def warp_entries(self) -> list[list[int]]:
         count = self.read8("wNumberOfWarps")
