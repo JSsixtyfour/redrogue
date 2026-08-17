@@ -16,8 +16,8 @@ RocketHideoutB1F_Object:
 	db $2e ; border block
 
 	def_warp_events
-	warp_event 24, 19, LAST_MAP, 1
-	warp_event 25, 19, LAST_MAP, 1
+	warp_event 24, 19, WARP_NO_RETURN, 1
+	warp_event 25, 19, WARP_NO_RETURN, 1
 	warp_event 26, 19, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

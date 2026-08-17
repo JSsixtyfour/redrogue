@@ -19,8 +19,8 @@ MtMoon1F_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event 14, 35, LAST_MAP, 2
-	warp_event 15, 35, LAST_MAP, 2
+	warp_event 14, 35, WARP_NO_RETURN, 2
+	warp_event 15, 35, WARP_NO_RETURN, 2
 	warp_event  5,  5, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 17, 11, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 25, 15, INDIGO_PLATEAU_LOBBY, 1

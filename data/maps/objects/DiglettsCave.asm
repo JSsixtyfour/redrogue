@@ -14,8 +14,8 @@ DiglettsCave_Object:
 	db $19 ; border block
 
 	def_warp_events
-	warp_event 37, 31, LAST_MAP, 1
-	warp_event 37, 31, LAST_MAP, 1
+	warp_event 37, 31, WARP_NO_RETURN, 1
+	warp_event 37, 31, WARP_NO_RETURN, 1
 	warp_event  5,  5, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

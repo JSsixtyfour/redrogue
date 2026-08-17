@@ -16,8 +16,8 @@ SeafoamIslands1F_Object:
 	db $7d ; border block
 
 	def_warp_events
-	warp_event  4, 17, LAST_MAP, 1
-	warp_event  5, 17, LAST_MAP, 1
+	warp_event  4, 17, WARP_NO_RETURN, 1
+	warp_event  5, 17, WARP_NO_RETURN, 1
 	warp_event 25,  3, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

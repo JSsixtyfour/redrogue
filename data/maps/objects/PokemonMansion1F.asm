@@ -16,10 +16,10 @@ PokemonMansion1F_Object:
 	db $2e ; border block
 
 	def_warp_events
-	warp_event  4, 27, LAST_MAP, 1
-	warp_event  5, 27, LAST_MAP, 1
-	warp_event  6, 27, LAST_MAP, 1
-	warp_event  7, 27, LAST_MAP, 1
+	warp_event  4, 27, WARP_NO_RETURN, 1
+	warp_event  5, 27, WARP_NO_RETURN, 1
+	warp_event  6, 27, WARP_NO_RETURN, 1
+	warp_event  7, 27, WARP_NO_RETURN, 1
 	warp_event  5, 10, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

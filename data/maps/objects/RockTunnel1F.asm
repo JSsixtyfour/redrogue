@@ -14,7 +14,7 @@ RockTunnel1F_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event 15, 33, LAST_MAP, 2
+	warp_event 15, 33, WARP_NO_RETURN, 2
 	warp_event 37, 17, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

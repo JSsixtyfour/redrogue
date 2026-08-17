@@ -15,8 +15,8 @@ Route15_Object:
 	db $43 ; border block
 
 	def_warp_events
-	warp_event 54, 11, LAST_MAP, 1
-	warp_event 54, 10, LAST_MAP, 1
+	warp_event 54, 11, WARP_NO_RETURN, 1
+	warp_event 54, 10, WARP_NO_RETURN, 1
 	warp_event 14,  8, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 14,  9, INDIGO_PLATEAU_LOBBY, 1
 

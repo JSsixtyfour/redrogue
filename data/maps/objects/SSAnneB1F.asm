@@ -14,7 +14,7 @@ SSAnneB1F_Object:
 	db $c ; border block
 
 	def_warp_events
-    warp_event 27,  5, LAST_MAP, 1
+    warp_event 27,  5, WARP_NO_RETURN, 1
 	warp_event 23,  3, SS_ANNE_B1F_ROOMS, 9
 	warp_event 19,  3, SS_ANNE_B1F_ROOMS, 7
 	warp_event 15,  3, SS_ANNE_B1F_ROOMS, 5

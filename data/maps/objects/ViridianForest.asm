@@ -17,10 +17,10 @@ ViridianForest_Object:
 	db $3 ; border block
 
 	def_warp_events
-    warp_event 11, 33, LAST_MAP, 1
-	warp_event 12, 33, LAST_MAP, 1
-	warp_event 13, 33, LAST_MAP, 1
-	warp_event 14, 33, LAST_MAP, 1
+    warp_event 11, 33, WARP_NO_RETURN, 1
+	warp_event 12, 33, WARP_NO_RETURN, 1
+	warp_event 13, 33, WARP_NO_RETURN, 1
+	warp_event 14, 33, WARP_NO_RETURN, 1
 	warp_event  2,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event  3,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event  4,  0, INDIGO_PLATEAU_LOBBY, 1

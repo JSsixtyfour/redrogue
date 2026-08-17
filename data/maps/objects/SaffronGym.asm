@@ -10,8 +10,8 @@ SaffronGym_Object:
 	db $2e ; border block
 
 	def_warp_events
-	warp_event  8, 17, LAST_MAP, 3      ; 1
-	warp_event  9, 17, LAST_MAP, 3      ; 2
+	warp_event  8, 17, WARP_NO_RETURN, 3      ; 1
+	warp_event  9, 17, WARP_NO_RETURN, 3      ; 2
 	warp_event  1,  3, SAFFRON_GYM, 18; 3
 	warp_event  5,  3, SAFFRON_GYM, 21; 4
 	warp_event  1,  5, SAFFRON_GYM, 18 ; 5

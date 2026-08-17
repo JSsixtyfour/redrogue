@@ -15,7 +15,7 @@ PokemonTower2F_Object:
 	db $1 ; border block
 
 	def_warp_events
-	warp_event 18,  9, LAST_MAP, 1
+	warp_event 18,  9, WARP_NO_RETURN, 1
 	warp_event  3,  9, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events

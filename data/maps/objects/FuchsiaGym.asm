@@ -10,8 +10,8 @@ FuchsiaGym_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event  4, 17, LAST_MAP, 6
-	warp_event  5, 17, LAST_MAP, 6
+	warp_event  4, 17, WARP_NO_RETURN, 6
+	warp_event  5, 17, WARP_NO_RETURN, 6
 	warp_event  4, 0,  INDIGO_PLATEAU_LOBBY, 1
 	warp_event  5, 0,  INDIGO_PLATEAU_LOBBY, 1
 

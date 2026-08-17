@@ -14,8 +14,8 @@ Route5_Object:
 	db $a ; border block
 
 	def_warp_events
-	warp_event  2,  2, LAST_MAP, 1
-	warp_event  3,  2, LAST_MAP, 1
+	warp_event  2,  2, WARP_NO_RETURN, 1
+	warp_event  3,  2, WARP_NO_RETURN, 1
 	warp_event  9, 29, INDIGO_PLATEAU_LOBBY, 1
 	warp_event 10, 29, INDIGO_PLATEAU_LOBBY, 1
 

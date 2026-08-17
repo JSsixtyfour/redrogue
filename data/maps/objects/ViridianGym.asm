@@ -11,8 +11,8 @@ ViridianGym_Object:
 	db $3 ; border block
 
 	def_warp_events
-	warp_event 16, 17, LAST_MAP, 5
-	warp_event 17, 17, LAST_MAP, 5
+	warp_event 16, 17, WARP_NO_RETURN, 5
+	warp_event 17, 17, WARP_NO_RETURN, 5
 	warp_event  3,  0, INDIGO_PLATEAU_LOBBY, 1
 	warp_event  2,  0, INDIGO_PLATEAU_LOBBY, 1
 

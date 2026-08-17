@@ -19,9 +19,9 @@ PowerPlant_Object:
 	db $2e ; border block
 
 	def_warp_events
-	warp_event  4, 35, LAST_MAP, 4
-	warp_event  5, 35, LAST_MAP, 4
-	warp_event 10, 28, LAST_MAP, 4
+	warp_event  4, 35, WARP_NO_RETURN, 4
+	warp_event  5, 35, WARP_NO_RETURN, 4
+	warp_event 10, 28, WARP_NO_RETURN, 4
 	warp_event  0, 11, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
