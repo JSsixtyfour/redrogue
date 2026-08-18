@@ -20,7 +20,7 @@ IF DEF(_DEBUG)
 	call RunDefaultPaletteCommand
 
 	hlcoord 5, 6
-	ld b, 3
+	ld b, 4
 	ld c, 9
 	call TextBoxBorder
 
@@ -35,7 +35,7 @@ IF DEF(_DEBUG)
 	ld [wMenuWatchedKeys], a
 	xor a
 	ld [wMenuJoypadPollCount], a
-	ld a, 2
+	ld a, 3
 	ld [wMaxMenuItem], a
 	ld a, 7
 	ld [wTopMenuItemY], a
@@ -53,7 +53,11 @@ IF DEF(_DEBUG)
 	ldh a, [hCurrentMenuItem]
 	and a ; FIGHT?
 	jp z, TestBattle
-	cp 2 ; DEBUG 2?
+	cp 1 ; FIGHT 2?
+	jr nz, .notFight2
+	farjp DebugFight2Entry
+.notFight2
+	cp 3 ; DEBUG 2?
 	jr z, .debug2
 
 	; DEBUG
@@ -83,6 +87,7 @@ DebugBattleRivalName:
 
 DebugMenuOptions:
 	db   "FIGHT"
+	next "FIGHT 2"
 	next "DEBUG"
 	next "DEBUG 2@"
 ELSE

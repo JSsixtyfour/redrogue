@@ -42,6 +42,10 @@ INCLUDE "engine/events/display_pokedex.asm"
 ; SELECT hook in DisplayOptionMenu, and that reaches it by farcall.
 INCLUDE "engine/menus/extra_options.asm"
 
+; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
+; Its only bank1 callers use farcall, so keep it in a floating section.
+INCLUDE "engine/debug/debug_fight2.asm"
+
 
 SECTION "Pick Up Item", ROMX
 INCLUDE "engine/events/pick_up_item.asm"

@@ -42,6 +42,25 @@ class HarnessTestCase(unittest.TestCase):
 
 
 class BootSmokeTest(HarnessTestCase):
+    def test_fight2_builds_deterministic_full_parties(self) -> None:
+        assert self.harness is not None
+        self.harness.boot_fight2(seed=17)
+        self.assertEqual(self.harness.read8("wPartyCount"), 6)
+        self.assertEqual(self.harness.read8("wEnemyPartyCount"), 6)
+        self.assertEqual(self.harness.read8("wIsTrainerBattle"), 1)
+        self.assertEqual(self.harness.read8("wCurOpponent"), 0xE7)  # COOLTRAINER_M
+        self.assertEqual(
+            self.harness.read_bytes("wPartySpecies", 7),
+            [126, 111, 138, 97, 114, 91, 0xFF],
+        )
+        self.assertEqual(
+            self.harness.read_bytes("wEnemyPartySpecies", 7),
+            [101, 97, 155, 25, 151, 51, 0xFF],
+        )
+        key_flags = self.harness.read_sram_bytes("sKeyItemsBitfield", 4)
+        active_count = sum((byte >> bit) & 1 for byte in key_flags for bit in (1, 3, 5, 7))
+        self.assertLessEqual(active_count, 3)
+
     def test_debug1_boots_to_completed_dorm(self) -> None:
         assert self.harness is not None
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")

@@ -1,5 +1,5 @@
 ; Song ids are calculated by address to save space.
-; SFX_Headers_(1|2|3) indexes (see audio/headers/*.asm)
+; SFX_Headers_(1|2|3|4) indexes (see audio/headers/*.asm)
 
 MACRO music_const
 	DEF \1 EQUS "((\2 - SFX_Headers_1) / 3)"
@@ -56,7 +56,7 @@ ENDM
 	music_const MUSIC_MEET_FEMALE_TRAINER, Music_MeetFemaleTrainer
 	music_const MUSIC_MEET_MALE_TRAINER,   Music_MeetMaleTrainer
 
-	; AUDIO_1 AUDIO_2 AUDIO_3
+	; AUDIO_1 AUDIO_2 AUDIO_3 AUDIO_4
 DEF NOISE_INSTRUMENTS_START EQUS "SFX_NOISE_INSTRUMENT01"
 	music_const SFX_NOISE_INSTRUMENT01, SFX_Noise_Instrument01_1
 	music_const SFX_NOISE_INSTRUMENT02, SFX_Noise_Instrument02_1
@@ -127,7 +127,9 @@ DEF CRY_SFX_END EQUS "SFX_CRY_25 + 3"
 	music_const SFX_START_MENU,         SFX_Start_Menu_1
 	music_const SFX_PRESS_AB,           SFX_Press_AB_1
 
-	; AUDIO_1 AUDIO_3
+	; AUDIO_1 AUDIO_3 AUDIO_4 - and the whole untagged block below (through
+	; SFX_SAVE) too: AUDIO_4 now carries the same GET_ITEM_1..SAVE span as
+	; AUDIO_1/AUDIO_3 (SHIN_IMPORT_PLAN.md Phase 1.3, sfxheaders4.asm).
 	music_const SFX_GET_ITEM_1,         SFX_Get_Item1_1
 
 	music_const SFX_POKEDEX_RATING,     SFX_Pokedex_Rating_1
@@ -241,10 +243,12 @@ DEF MAX_SFX_ID_2 EQUS "SFX_SILPH_SCOPE"
 	music_const SFX_SHOOTING_STAR,      SFX_Shooting_Star
 DEF MAX_SFX_ID_3 EQUS "SFX_SHOOTING_STAR"
 
+; AUDIO_4 has no SFX of its own - it carries the same GET_ITEM_1..SAVE span as
+; AUDIO_1/AUDIO_3 (tagged above at SFX_GET_ITEM_1), so its boundary is the same
+; last entry, SFX_SAVE (SHIN_IMPORT_PLAN.md Phase 1.3).
+DEF MAX_SFX_ID_4 EQUS "SFX_SAVE"
+
 	; AUDIO_4
-; AUDIO_4 (bank $33) is scaffolding - no SFX are assigned to it yet (see
-; audio/headers/sfxheaders4.asm), so this is a literal rather than a
-; music_const-derived offset like MAX_SFX_ID_1/2/3.
-DEF MAX_SFX_ID_4 EQU 0
+	music_const MUSIC_MEET_JESSIE_JAMES, Music_MeetJessieJames
 
 DEF SFX_STOP_ALL_MUSIC EQU $ff

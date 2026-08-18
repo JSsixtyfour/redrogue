@@ -7435,7 +7435,13 @@ InitBattleCommon:
 	sub OPP_ID_OFFSET
 	ld [wTrainerClass], a
 	call GetTrainerInformation
+	IF DEF(_DEBUG)
+	ld a, [wStatusFlags7]
+	bit BIT_TEST_BATTLE, a
+	jr nz, .trainerPartyReady
+	ENDC
 	callfar ReadTrainer
+.trainerPartyReady
 	call DoBattleTransitionAndInitBattleVariables
 	call _LoadTrainerPic
 	xor a

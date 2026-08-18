@@ -1,10 +1,12 @@
 ; The fourth of four audio banks. New this port (Shin/Yellow-style single-
-; engine import) - stands up AUDIO_4 as scaffolding for future content. No
-; song or SFX data lives here yet (MAX_SFX_ID_4 and SFX_Headers_4 are
-; placeholders; see audio/headers/sfxheaders4.asm and musicheaders4.asm), and
-; nothing in data/maps/songs.asm points at this bank. Structured identically
-; to engine_2.asm/engine_3.asm: only PlaySound, no UpdateMusic/note-command
-; interpreter (that's the single copy in engine_1.asm, AUDIO_1).
+; engine import). Carries one song, Music_MeetJessieJames (ported from
+; pret/pokeyellow), and the same 93-entry overworld-common SFX suite as
+; AUDIO_1/AUDIO_3 (see audio/headers/sfxheaders4.asm's header comment).
+; Nothing in data/maps/songs.asm or any script points at this bank yet -
+; MUSIC_MEET_JESSIE_JAMES has no gameplay hook by design (SHIN_IMPORT_PLAN.md
+; Phase 1.3). Structured identically to engine_2.asm/engine_3.asm: only
+; PlaySound, no UpdateMusic/note-command interpreter (that's the single copy
+; in engine_1.asm, AUDIO_1).
 
 Audio4_PlaySound::
 	ld [wSoundID], a

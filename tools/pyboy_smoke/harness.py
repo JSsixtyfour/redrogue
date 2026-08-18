@@ -95,6 +95,14 @@ class RedRogueHarness:
         start = self.address(label) + offset
         return list(self.pyboy.memory[start : start + length])
 
+    def read_sram_bytes(self, label: str, length: int, bank: int = 1) -> list[int]:
+        start = self.address(label)
+        self.pyboy.memory[0x0000] = 0x0A
+        self.pyboy.memory[0x4000] = bank
+        values = list(self.pyboy.memory[start : start + length])
+        self.pyboy.memory[0x0000] = 0
+        return values
+
     def tick(self, frames: int = 1, *, render: bool = False) -> None:
         for _ in range(frames):
             self.pyboy.tick(render=render)
@@ -148,6 +156,7 @@ class RedRogueHarness:
 
         self.tick(30)
         self.tap("down")
+        self.tap("down")
         self.tap("a")
         self.wait_until(
             lambda: self.read8("hCurMap") == destination_map,
@@ -155,6 +164,50 @@ class RedRogueHarness:
             2400,
         )
         self.tick(180)
+
+    def boot_fight2(self, seed: int = 1) -> None:
+        if not 1 <= seed <= 99:
+            raise ValueError("FIGHT 2 seed must be in the range 1-99")
+        debug_menu = self.hook_flag("DebugMenu")
+        quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
+        battle_ready = self.hook_flag("MainInBattleLoop")
+
+        self.tick(240)
+        self.pyboy.button_press("select")
+        for _ in range(300):
+            self.tap("start", 1)
+            if debug_menu["count"]:
+                break
+        self.pyboy.button_release("select")
+        if not debug_menu["count"]:
+            raise AssertionError("DebugMenu was not reached")
+
+        self.tick(30)
+        self.tap("down")
+        self.tap("a")
+        self.wait_until(
+            lambda: quantity_menu["count"] >= 1,
+            "the FIGHT 2 seed prompt",
+            600,
+        )
+        for _ in range(100):
+            current = self.read8("wItemQuantity")
+            if current == seed:
+                break
+            self.tap("up" if current < seed else "down")
+        else:
+            raise AssertionError(f"Could not select FIGHT 2 seed {seed}")
+        self.tap("a")
+        for _ in range(300):
+            self.tap("a", 1)
+            self.tick(15)
+            if battle_ready["count"]:
+                break
+        if not battle_ready["count"]:
+            raise AssertionError(
+                "FIGHT 2 did not reach the live battle loop: "
+                f"{json.dumps(self.diagnostic_state(), sort_keys=True)}"
+            )
 
     def boot_to_lobby(self, battle_count: int = 11) -> None:
         debug_menu = self.hook_flag("DebugMenu")
@@ -171,6 +224,7 @@ class RedRogueHarness:
             raise AssertionError("DebugMenu was not reached")
 
         self.tick(30)
+        self.tap("down")
         self.tap("down")
         self.tap("down")
         self.tap("a")
@@ -340,6 +394,17 @@ class RedRogueHarness:
             "sprite_count": safe("wNumSprites"),
             "warps": diagnostic_warps,
             "sprite_extra": self.read_bytes("wMapSpriteExtraData", 20),
+            "rng_state": [
+                safe("hRandomAdd"),
+                safe("hRandomSub"),
+                safe("hRandomLast"),
+                safe("hRandomLast", 1),
+            ],
+            "player_party": self.read_bytes("wPartySpecies", safe("wPartyCount") + 1),
+            "enemy_party": self.read_bytes(
+                "wEnemyPartySpecies", safe("wEnemyPartyCount") + 1
+            ),
+            "key_item_flags": self.read_sram_bytes("sKeyItemsBitfield", 4),
         }
 
     def write_failure_artifacts(self, test_name: str) -> tuple[Path, Path]:
