@@ -182,7 +182,12 @@ hDivideBCDQuotient::
 hDivideBCDBuffer::
 	ds 3 ; BCD number
 
-	ds 1
+; Set by PrintLetterDelay when a channel 4/5/6 SFX is still playing while
+; instant/zero-delay text is printing a letter (Shin Red import Phase 2.8).
+; PlaySound/StopAllMusic check and clear this before starting the next sound,
+; forcing a wait so the in-progress SFX isn't cut off. Claimed from
+; WRAM_BIBLE.md §F's 4 free HRAM bytes ($ffa8/$ffd9/$ffdf/$fff1).
+hSFXPlayingDuringText:: db
 
 hSerialReceivedNewData:: db
 ; $01 = using external clock

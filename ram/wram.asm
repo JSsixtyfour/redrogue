@@ -78,7 +78,15 @@ wTempoModifier:: db
 	wPocketListWritePtr:: dw   ; scratch write-pointer for pocket list builders
 	wPocketListCount::    db   ; scratch iteration counter for pocket list builders
 
-	ds 10
+	; Low-HP alarm tone-pair counter (Shin Red import Phase 2.10, WRAM_BIBLE.md
+	; §D4 lever). Bit 7 = alarm active, bits 0-6 = tone-pairs remaining before
+	; Music_DoLowHealthAlarm force-disables itself. Battle-transient scratch,
+	; not saved, so this unsaved/non-union pad is the correct (and cheapest)
+	; home for it - do NOT use the wMiscBattleData ds 13 pad a few hundred
+	; lines below, that span is reserved for AI_OVERHAUL_PLAN.md.
+	wLowHealthTonePairs:: db
+
+	ds 9
 
 
 SECTION "Sprite State Data", WRAM0
@@ -2379,7 +2387,11 @@ wElite4Order:: db
 ; Inside wMainData so it is saved, but BELOW wGameProgressFlagsEnd so it is NOT
 ; auto-zeroed on new game - InitOptions writes it explicitly instead, the same
 ; way it already seeds wOptions.
-;   bits 0-7: unused (document every bit here as it is claimed)
+;   bits 4-5: SOUND_MASK2 - sound mode (Shin Red import Phase 2.11).
+;             0=MONO, 1=EARPHONE1, 2=EARPHONE2, 3=EARPHONE3. Read by
+;             Audio1_ApplyMonoStereo (audio/engine_1.asm), set by the AUDIO
+;             row in the extra options menu (engine/menus/extra_options.asm).
+;   bits 0-3, 6-7: unused (document every bit here as it is claimed)
 wOptions2:: db
 
 	ds 11 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's

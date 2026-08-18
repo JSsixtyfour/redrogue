@@ -872,6 +872,10 @@ FaintEnemyPokemon:
 	jr .sfxplayed
 .wild_win
 	call EndLowHealthAlarm
+	call AnyPartyAlive
+	ld a, d
+	and a
+	jr z, .sfxplayed
 	ld a, MUSIC_DEFEATED_WILD_MON
 	call PlayBattleVictoryMusic
 .sfxplayed

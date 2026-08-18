@@ -17,6 +17,19 @@ PrintLetterDelay::
 	ld a, [wOptions]
 	and $f
 	ldh [hFrameCounter], a
+	and a
+	jr nz, .checkButtons
+; instant text (zero delay): if the SFX channel is currently playing (same
+; channel WaitForSoundToFinish/CollisionCheckOnLand already poll), flag it so
+; PlaySound (home/audio.asm) can let it finish before starting a new one
+; instead of it being cut off before the player even sees the letter that
+; triggered it.
+	ld a, [wChannelSoundIDs + CHAN5]
+	and a
+	jr z, .checkButtons
+	ldh a, [hSFXPlayingDuringText]
+	set 2, a
+	ldh [hSFXPlayingDuringText], a
 	jr .checkButtons
 .waitOneFrame
 	ld a, 1

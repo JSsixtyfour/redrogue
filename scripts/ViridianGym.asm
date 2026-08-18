@@ -285,12 +285,12 @@ ViridianGymGiovanniText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $8
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_GIOVANNI
     farcall InitGymBattle
-	ld a, $8
-	ld [wGymLeaderNo], a
 	ld a, SCRIPT_VIRIDIANGYM_GIOVANNI_POST_BATTLE
 	ld [wViridianGymCurScript], a
 .text_script_end
@@ -308,9 +308,9 @@ ViridianGymGiovanniText:
     jp TextScriptEnd
 	text_end
 
-.ViridianGymGiovanniReceivedEarthBadgeText:	
+.ViridianGymGiovanniReceivedEarthBadgeText:
     text_far _ViridianGymGiovanniReceivedEarthBadgeText
-	sound_level_up ; probably supposed to play SFX_GET_ITEM_1 but the wrong music bank is loaded
+	sound_get_key_item
 	text_end
 
 .PostBattleAdviceText:

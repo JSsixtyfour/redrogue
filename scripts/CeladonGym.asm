@@ -185,12 +185,12 @@ CeladonGymErikaText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $4
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_ERIKA
     farcall InitGymBattle
-	ld a, $4
-	ld [wGymLeaderNo], a
 	ld a, SCRIPT_CELADONGYM_ERIKA_POST_BATTLE
 	ld [wCeladonGymCurScript], a
 	ld [wCurMapScript], a
@@ -207,11 +207,11 @@ CeladonGymErikaText:
 	ld hl, .CeladonGymErikaReceivedRainbowBadgeText
     call PrintText
     jp TextScriptEnd
-    text_promptbutton
 	text_end
 
 .CeladonGymErikaReceivedRainbowBadgeText
     text_far _CeladonGymErikaReceivedRainbowBadgeText
+	sound_get_key_item
     text_end
 
 .PostBattleAdviceText:

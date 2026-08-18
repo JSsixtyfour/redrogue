@@ -526,9 +526,24 @@ TextCommand_SOUND::
 	jr z, .pokemonCry
 	cp TX_SOUND_CRY_PORYGON
 	jr z, .pokemonCry
+	cp TX_SOUND_GET_KEY_ITEM
+	jr nz, .notKeyItem
+; Badge / key-item fanfare. Sound IDs are bank-relative, and SFX_GET_KEY_ITEM
+; has no AUDIO_2 entry, so while the battle audio bank is loaded its ID lands on
+; unrelated data. Hand off to the bank-8 helper, which plays the real fanfare
+; in-bank without repointing wAudioROMBank. See audio/poke_flute.asm.
+	ld a, [wAudioROMBank]
+	cp BANK(Audio2_PlaySound)
+	jr nz, .notKeyItem
+	push de ; de = text destination; farcall and the helper both clobber it
+	farcall Music_GetKeyItemInBattle
+	pop de
+	jr .soundDone
+.notKeyItem
 	ld a, [hl]
 	call PlaySound
 	call WaitForSoundToFinish
+.soundDone
 	pop hl
 	pop bc
 	jp NextTextCommand

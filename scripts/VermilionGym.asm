@@ -147,12 +147,12 @@ VermilionGymLTSurgeText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $3
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_LT_SURGE
     farcall InitGymBattle
-	ld a, $3
-	ld [wGymLeaderNo], a
 	xor a
 	ldh [hJoyHeld], a
 	ld a, SCRIPT_VERMILIONGYM_LT_SURGE_AFTER_BATTLE
@@ -175,7 +175,7 @@ VermilionGymLTSurgeThunderBadgeInfoText:
 
 VermilionGymLTSurgeReceivedTM24Text:
 	text_far _VermilionGymLTSurgeReceivedTM24Text
-	sound_get_key_item
+	sound_get_item_1
 	text_far _TM24ExplanationText
 	text_end
 
@@ -193,6 +193,7 @@ VermilionGymLTSurgeReceivedThunderBadgeText:
 
 .VermilionGymLTSurgeReceivedThunderBadgeText    
     text_far _VermilionGymLTSurgeReceivedThunderBadgeText
+	sound_get_key_item
 	text_end
 
 VermilionGymGentlemanText:

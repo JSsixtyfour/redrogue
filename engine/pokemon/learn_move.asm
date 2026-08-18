@@ -209,8 +209,16 @@ OneTwoAndText:
 	text_far _OneTwoAndText
 	text_pause
 	text_asm
+	ld a, [wAudioROMBank]
+	push af
+	ld a, BANK(SFX_Swap_1)
+	ld [wAudioROMBank], a
+	ld [wAudioSavedROMBank], a
 	ld a, SFX_SWAP
 	call PlaySoundWaitForCurrent
+	pop af
+	ld [wAudioROMBank], a
+	ld [wAudioSavedROMBank], a
 	ld hl, PoofText
 	ret
 

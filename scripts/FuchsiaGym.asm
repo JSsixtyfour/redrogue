@@ -145,11 +145,11 @@ FuchsiaGymKogaText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $5
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
 	ld d, OPP_KOGA
     farcall InitGymBattle
-	ld a, $5
-	ld [wGymLeaderNo], a
 	xor a
 	ldh [hJoyHeld], a
 	ld a, SCRIPT_FUCHSIAGYM_KOGA_POST_BATTLE
@@ -167,11 +167,11 @@ FuchsiaGymKogaText:
     ld hl, .FuchsiaGymKogaReceivedSoulBadgeText
     call PrintText
     jp TextScriptEnd
-    text_promptbutton
 	text_end
-    
+
     .FuchsiaGymKogaReceivedSoulBadgeText
     text_far _FuchsiaGymKogaReceivedSoulBadgeText
+	sound_get_key_item
 	text_end
 
 .PostBattleAdviceText:
@@ -184,7 +184,7 @@ FuchsiaGymKogaSoulBadgeInfoText:
 
 FuchsiaGymKogaReceivedTM06Text:
 	text_far _FuchsiaGymKogaReceivedTM06Text
-	sound_get_key_item
+	sound_get_item_1
 	text_far _FuchsiaGymKogaTM06ExplanationText
 	text_end
 

@@ -149,12 +149,12 @@ PewterGymBrockText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $1
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
     ;call InitBattleEnemyParameters
     ld d, OPP_BROCK
 	farcall InitGymBattle
-	ld a, $1
-	ld [wGymLeaderNo], a
 	xor a
 	ldh [hJoyHeld], a
 	ld a, SCRIPT_PEWTERGYM_BROCK_POST_BATTLE
@@ -189,11 +189,11 @@ PewterGymBrockReceivedBoulderBadgeText:
     ld hl, ReceivedBoulderBadgeText
     call PrintText
 	jp TextScriptEnd
-	sound_level_up ; probably supposed to play SFX_GET_ITEM_1 but the wrong music bank is loaded
 	text_end
     
 ReceivedBoulderBadgeText:
 	text_far _PewterGymBrockReceivedBoulderBadgeText
+	sound_get_key_item
     text_end
 
 

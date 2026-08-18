@@ -139,12 +139,12 @@ CeruleanGymMistyText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $2
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
     ;call InitBattleEnemyParameters
     ld d, OPP_MISTY
 	farcall InitGymBattle
-	ld a, $2
-	ld [wGymLeaderNo], a
 	xor a
 	ldh [hJoyHeld], a
 	ld a, SCRIPT_CERULEANGYM_MISTY_POST_BATTLE
@@ -179,12 +179,11 @@ CeruleanGymMistyReceivedCascadeBadgeText:
     ld hl, .CeruleanGymMistyReceivedCascadeBadgeText
     call PrintText
     jp TextScriptEnd
-	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
-	text_promptbutton
 	text_end
     
 .CeruleanGymMistyReceivedCascadeBadgeText
     text_far _CeruleanGymMistyReceivedCascadeBadgeText
+	sound_get_key_item
 	text_end
 
 CeruleanGymCooltrainerFText:

@@ -18,6 +18,19 @@ INCLUDE "home/copy.asm"
 ; free, zero-risk ROM0-to-ROM0 relocation (the HOME->ROMX bank-switch landmine
 ; does not apply here).
 INCLUDE "home/array.asm"
+; Same reason and same free, zero-risk ROM0-to-ROM0 relocation as array.asm
+; above: the Shin Red import Phase 2 audio/SFX fixes (badge SFX bank force,
+; warp-tile thud relocation, zero-delay-text SFX flag) overflowed "Home" by
+; 11+ bytes. CountSetBits is a self-contained leaf (no calls out, only
+; touches wNumSetBits) with no dependency on which ROM0 sub-section it lives
+; in, so it moved here rather than trimming any of the new logic.
+INCLUDE "home/count_set_bits.asm"
+; Same free ROM0-to-ROM0 relocation as the two above (WRAM_BIBLE.md SS J1), to fund
+; the badge/key-item fanfare branch in TextCommand_SOUND. HasEnoughMoney/
+; HasEnoughCoins are 22 bytes of pure leaf - each is 4 instructions ending in
+; jp StringCmp, nothing falls through into or out of them, and StringCmp stays
+; in "Home" (both halves are the always-mapped bank 0, so the call is unaffected).
+INCLUDE "home/money.asm"
 
 
 SECTION "Home", ROM0
@@ -53,7 +66,6 @@ INCLUDE "home/reset_player_sprite.asm"
 INCLUDE "home/fade_audio.asm"
 INCLUDE "home/text_script.asm"
 INCLUDE "home/start_menu.asm"
-INCLUDE "home/count_set_bits.asm"
 INCLUDE "home/inventory.asm"
 INCLUDE "home/list_menu.asm"
 INCLUDE "home/names.asm"
@@ -64,7 +76,6 @@ INCLUDE "home/npc_movement.asm"
 INCLUDE "home/trainers.asm"
 INCLUDE "home/map_objects.asm"
 INCLUDE "home/trainers2.asm"
-INCLUDE "home/money.asm"
 INCLUDE "home/bankswitch.asm"
 INCLUDE "home/yes_no.asm"
 INCLUDE "home/pathfinding.asm"

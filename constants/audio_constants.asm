@@ -74,3 +74,9 @@ DEF BIT_MUTE_AUDIO EQU 7
 DEF BIT_LOW_HEALTH_ALARM EQU 7
 DEF LOW_HEALTH_TIMER_MASK EQU %01111111
 DEF DISABLE_LOW_HEALTH_ALARM EQU $ff
+
+; wOptions2 bits 4-5: sound mode (Shin Red import Phase 2.11). Same 2-bit
+; shape as pokeyellow's SOUND_MASK on wOptions, but Red Rogue puts it on
+; wOptions2 instead - see wOptions2's comment in ram/wram.asm for why.
+; 0 = MONO, 1 = EARPHONE1, 2 = EARPHONE2, 3 = EARPHONE3.
+DEF SOUND_MASK2 EQU %110000

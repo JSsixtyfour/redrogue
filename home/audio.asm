@@ -121,6 +121,16 @@ PlayMusic::
 
 ; plays music specified by a. If value is $ff, music is stopped
 PlaySound::
+; If a channel 4/5/6 SFX was flagged as playing under zero-delay text
+; (home/print_text.asm PrintLetterDelay), let it finish before starting a new
+; sound instead of cutting it off before the player ever saw its letter.
+	push af
+	ldh a, [hSFXPlayingDuringText]
+	bit 2, a
+	res 2, a
+	ldh [hSFXPlayingDuringText], a
+	call nz, WaitForSoundToFinish
+	pop af
 	push hl
 	push de
 	push bc

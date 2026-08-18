@@ -858,13 +858,13 @@ Audio1_note_pitch:
 
 Audio1_EnableChannelOutput:
 	ld b, 0
-; Yellow selects one of four HWChannelEnableMasks sub-tables here based on
-; [wOptions] & SOUND_MASK (mono / 3 earphone modes). Not brought over: Red
-; Rogue's wOptions bits 3-5 are documented as reserved/unsafe (SetCursorPositions-
-; FromOptions does `and $3f` and a nonzero value there runs past the table
-; terminator - see WRAM_BIBLE.md SS J). The stereo/mono toggle is Phase 2 work;
-; until then this always uses the single (mono) table, unchanged from before.
-	ld hl, Audio1_HWChannelEnableMasks
+; Selects one of four HWChannelEnableMasks sub-tables via Audio1_ApplyMonoStereo,
+; based on wOptions2 & SOUND_MASK2 (mono / 3 earphone modes) - see the AUDIO
+; row in engine/menus/extra_options.asm (Shin Red import Phase 2.11). Uses
+; wOptions2, not wOptions: wOptions bits 3-5 are documented as reserved/unsafe
+; (SetCursorPositionsFromOptions does `and $3f` and a nonzero value there runs
+; past the table terminator - see WRAM_BIBLE.md SS J).
+	call Audio1_ApplyMonoStereo
 	add hl, bc
 	ldh a, [rAUDTERM]
 	or [hl] ; set this channel's bits
@@ -884,7 +884,7 @@ Audio1_EnableChannelOutput:
 ; If this is the SFX noise channel or a music channel whose corresponding
 ; SFX channel is off, apply stereo panning.
 	ld a, [wStereoPanning]
-	ld hl, Audio1_HWChannelEnableMasks
+	call Audio1_ApplyMonoStereo
 	add hl, bc
 	and [hl]
 	ld d, a
@@ -1248,18 +1248,18 @@ Audio1_InitPitchSlideVars:
 	sub e
 	ld e, a
 
-; Bug. Instead of borrowing from the high byte of the target frequency as it
-; should, it borrows from the high byte of the current frequency instead.
-; This means that the result will be 0x200 greater than it should be if the
-; low byte of the current frequency is greater than the low byte of the
-; target frequency.
-	ld a, d
-	sbc b
-	ld d, a
-
+; Fixed (Shin Red import Phase 2.3): this used to borrow from the high byte
+; of the CURRENT frequency instead of the TARGET frequency, making the
+; result 0x200 too high whenever the current frequency's low byte was
+; greater than the target's. Fix: preserve the carry (the low-byte borrow)
+; across the address calc below and apply it directly to the target high
+; byte, instead of folding it into the current high byte first.
+	push af
 	ld hl, wChannelPitchSlideTargetFrequencyHighBytes
-	add hl, bc
+	add hl, bc ; clobbers carry, hence the push/pop above/below
+	pop af
 	ld a, [hl]
+	sbc b
 	sub d
 	ld d, a
 	ld b, 0
@@ -1589,12 +1589,66 @@ Audio1_HWChannelDisableMasks:
 	db HW_CH1_DISABLE_MASK, HW_CH2_DISABLE_MASK, HW_CH3_DISABLE_MASK, HW_CH4_DISABLE_MASK ; channels 0-3
 	db HW_CH1_DISABLE_MASK, HW_CH2_DISABLE_MASK, HW_CH3_DISABLE_MASK, HW_CH4_DISABLE_MASK ; channels 4-7
 
-; Yellow's build has a 4-table (mono + 3 earphone modes) version of this,
-; selected via Audio1_ApplyMonoStereo reading [wOptions] & SOUND_MASK. Not
-; brought over this phase - see the comment in Audio1_EnableChannelOutput.
+; Picks one of the four 8-byte sub-tables below from [wOptions2] & SOUND_MASK2
+; (Shin Red import Phase 2.11), ported from pokeyellow's own
+; Audio1_ApplyMonoStereo but reading wOptions2 instead of wOptions (see the
+; comment on wOptions2 in ram/wram.asm for why). Preserves bc/af for its
+; caller, which still does the channel-index `add hl, bc` itself afterward.
+Audio1_ApplyMonoStereo:
+	push af
+	push bc
+	ld a, [wOptions2]
+	and SOUND_MASK2
+	srl a
+	ld c, a
+	ld b, 0
+	ld hl, Audio1_HWChannelEnableMasks
+	add hl, bc
+	pop bc
+	pop af
+	ret
+
+; 4 modes x 8 channels. Content is pokeyellow's own table, unmodified -
+; MONO plays every channel to both ears; the 3 EARPHONE modes split channels
+; 1-4 (and their 4-7 SFX-channel duplicates) across left/right per pokeyellow's
+; layout.
 Audio1_HWChannelEnableMasks:
-	db HW_CH1_ENABLE_MASK, HW_CH2_ENABLE_MASK, HW_CH3_ENABLE_MASK, HW_CH4_ENABLE_MASK ; channels 0-3
-	db HW_CH1_ENABLE_MASK, HW_CH2_ENABLE_MASK, HW_CH3_ENABLE_MASK, HW_CH4_ENABLE_MASK ; channels 4-7
+	; mono
+	db AUDTERM_1_LEFT | AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT | AUDTERM_2_RIGHT
+	db AUDTERM_3_LEFT | AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT | AUDTERM_4_RIGHT
+	db AUDTERM_1_LEFT | AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT | AUDTERM_2_RIGHT
+	db AUDTERM_3_LEFT | AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT | AUDTERM_4_RIGHT
+	; earphone 1
+	db AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT
+	db AUDTERM_3_LEFT | AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT | AUDTERM_4_RIGHT
+	db AUDTERM_1_LEFT | AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT | AUDTERM_2_RIGHT
+	db AUDTERM_3_LEFT | AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT | AUDTERM_4_RIGHT
+	; earphone 2
+	db AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT
+	db AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT
+	db AUDTERM_1_RIGHT
+	db AUDTERM_2_LEFT
+	db AUDTERM_3_RIGHT
+	db AUDTERM_4_LEFT
+	; earphone 3
+	db AUDTERM_1_RIGHT
+	db AUDTERM_2_RIGHT
+	db AUDTERM_3_LEFT
+	db AUDTERM_4_LEFT
+	db AUDTERM_1_RIGHT
+	db AUDTERM_2_RIGHT
+	db AUDTERM_3_LEFT
+	db AUDTERM_4_LEFT
 
 Audio1_Pitches:
 INCLUDE "audio/notes.asm"

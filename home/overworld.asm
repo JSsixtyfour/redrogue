@@ -248,17 +248,36 @@ OverworldLoopLessDelay::
 	ld hl, wMovementFlags
 	bit BIT_STANDING_ON_WARP, [hl]
 	pop hl
-	jp z, OverworldLoop
+	jp z, .stuckLand
 ; collision occurred while standing on a warp
 	push hl
 	call ExtraWarpCheck ; sets carry if there is a potential to warp
 	pop hl
 	jp c, CheckWarpsCollision
+; genuinely stuck (ExtraWarpCheck says no warp will happen): play the thud
+; here, and at the other stuck exit above, instead of unconditionally inside
+; CollisionCheckOnLand/CollisionCheckOnWater - that played it even when a real
+; warp was about to fire.
+.stuckLand
+	ld a, [wChannelSoundIDs + CHAN5]
+	cp SFX_COLLISION ; check if collision sound is already playing
+	jr z, .stuckLandSkipSound
+	ld a, SFX_COLLISION
+	call PlaySound ; play collision sound (if it's not already playing)
+.stuckLandSkipSound
 	jp OverworldLoop
 
 .surfing
 	call CollisionCheckOnWater
-	jp c, OverworldLoop
+	jr nc, .noCollision
+; genuinely stuck on water
+	ld a, [wChannelSoundIDs + CHAN5]
+	cp SFX_COLLISION
+	jr z, .stuckSurfSkipSound
+	ld a, SFX_COLLISION
+	call PlaySound
+.stuckSurfSkipSound
+	jp OverworldLoop
 
 .noCollision
 	ld a, $08
@@ -1319,12 +1338,6 @@ CollisionCheckOnLand::
 	call CheckTilePassable
 	jr nc, .noCollision
 .collision
-	ld a, [wChannelSoundIDs + CHAN5]
-	cp SFX_COLLISION ; check if collision sound is already playing
-	jr z, .setCarry
-	ld a, SFX_COLLISION
-	call PlaySound ; play collision sound (if it's not already playing)
-.setCarry
 	scf
 	ret
 .noCollision
@@ -1995,12 +2008,6 @@ CollisionCheckOnWater::
 	jr z, .stopSurfing ; stop surfing if the tile is passable
 	jr .loop
 .collision
-	ld a, [wChannelSoundIDs + CHAN5]
-	cp SFX_COLLISION ; check if collision sound is already playing
-	jr z, .setCarry
-	ld a, SFX_COLLISION
-	call PlaySound ; play collision sound (if it's not already playing)
-.setCarry
 	scf
 	jr .done
 .noCollision

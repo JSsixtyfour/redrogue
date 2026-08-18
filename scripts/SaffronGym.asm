@@ -159,12 +159,12 @@ SaffronGymSabrinaText:
 	call SaveEndBattleTextPointers
 	ldh a, [hSpriteIndex]
 	ldh [hActiveSpriteIndex], a
+	ld a, $6
+	ld [wGymLeaderNo], a
 	call EngageMapTrainer
 	;call InitBattleEnemyParameters
     ld d, OPP_SABRINA
     farcall InitGymBattle
-	ld a, $6
-	ld [wGymLeaderNo], a
 	ld a, SCRIPT_SAFFRONGYM_SABRINA_POST_BATTLE
 	ld [wSaffronGymCurScript], a
 .done
@@ -180,12 +180,11 @@ SaffronGymSabrinaText:
 	ld hl, .SaffronGymSabrinaReceivedMarshBadgeText
     call PrintText
     jp TextScriptEnd
-	sound_get_key_item ; actually plays the second channel of SFX_BALL_POOF due to the wrong music bank being loaded
-	text_promptbutton
 	text_end
 
 .SaffronGymSabrinaReceivedMarshBadgeText
     text_far _SaffronGymSabrinaReceivedMarshBadgeText
+	sound_get_key_item
     text_end
 
 .PostBattleAdviceText:
