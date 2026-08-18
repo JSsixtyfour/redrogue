@@ -136,7 +136,7 @@ RogueItemUseItemDice::
 	and %11001111
 	or b
 	ld [wDiceCharges], a
-	call Random_Item_Selection     ; re-rolls wRogueItem using wRogueDoorSelection
+	farcall Random_Item_Selection     ; re-rolls wRogueItem using wRogueDoorSelection
 	ld hl, ItemDiceRerolledText
 	call PrintText
 	ret

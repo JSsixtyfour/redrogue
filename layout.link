@@ -182,6 +182,18 @@ ROMX $2B
 ROMX $2C
 	"Move Names"
 	"Battle Engine 11"
+	; Pinned here 2026-08-18 (ShinRed_Tracker.md Phase 1.4), same first-fit
+	; reason as the $2E block below. The Yellow audio import freed ~4.3 KB across
+	; the three audio banks, and rgblink immediately handed the two largest
+	; chunks of it straight back to these floating sections: "Relocated HOME
+	; Routines" ($089a) took bank $08 from an expected 2208 free down to 6, and
+	; "ProcStageHooks" ($00fd) took bank $02 from 328 down to 75 - byte-exact
+	; matches, so the attribution is certain. Both are reached only by farcall
+	; and both files' own headers document them as bank-independent leaves, so
+	; they run correctly from any bank. Pinned out of the audio banks to keep
+	; that reclaimed space available for the Phase 2 audio/SFX work.
+	"Relocated HOME Routines"
+	"ProcStageHooks"
 ROMX $2D
 	"Tilesets 4"
 	"Room"
