@@ -184,6 +184,12 @@ PlayerMon2Text:
 	ld b, [hl]
 	ld a, [de]
 	sbc b
+	; Shin Red import Phase 4 (4.8): the carry out of this sbc means the
+	; enemy has GAINED hp since the last switch-in, so the subtraction below
+	; underflows and the vanilla comment two lines down describes its own
+	; bug: the resulting percentage is garbage and the message printed is
+	; effectively random. Catch it here and print the neutral line instead.
+	jr c, .gainedHP
 	ldh [hMultiplicand + 1], a
 	ld a, 25
 	ldh [hMultiplier], a
@@ -217,6 +223,11 @@ PlayerMon2Text:
 	cp 70
 	ret c
 	ld hl, GoodText ; HP went down 70% or more
+	ret
+.gainedHP
+	pop bc
+	pop de
+	ld hl, EnoughText
 	ret
 
 EnoughText:

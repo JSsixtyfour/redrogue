@@ -33,28 +33,36 @@ SleepEffect:
 	ld bc, wPlayerBattleStatus2
 
 .sleepEffect
-	ld a, [bc]
-	bit NEEDS_TO_RECHARGE, a ; does the target need to recharge? (hyper beam)
-	res NEEDS_TO_RECHARGE, a ; target no longer needs to recharge
-	ld [bc], a
-	jr nz, .setSleepCounter ; if the target had to recharge, all hit tests will be skipped
-	                        ; including the event where the target already has another status
+	; Shin Red import Phase 4: Substitute blocks sleep, closing the one
+	; status hole Substitute didn't already stop (confirmed in scope).
+	call CheckTargetSubstitute
+	jr nz, .didntAffect
 	ld a, [de]
-	ld b, a
 	and SLP_MASK
 	jr z, .notAlreadySleeping ; can't affect a mon that is already asleep
 	ld hl, AlreadyAsleepText
 	jp PrintText
 .notAlreadySleeping
-	ld a, b
+	ld a, [de]
 	and a
 	jr nz, .didntAffect ; can't affect a mon that is already statused
 	push de
+	push bc ; preserve bc (points at the recharge-bit byte) across MoveHitTest
 	call MoveHitTest ; apply accuracy tests
+	pop bc
 	pop de
 	ld a, [wMoveMissed]
 	and a
 	jr nz, .didntAffect
+	; Shin Red import Phase 4 (4.6): the recharge-bit clear moves here, after
+	; every check above has passed. It used to run first and jump straight to
+	; .setSleepCounter whenever the target needed to recharge, skipping the
+	; already-asleep/already-statused checks and MoveHitTest entirely - so
+	; Hypnosis against a recharging target could never miss and could
+	; overwrite an existing status.
+	ld a, [bc]
+	res NEEDS_TO_RECHARGE, a ; target no longer needs to recharge
+	ld [bc], a
 .setSleepCounter
 ; set target's sleep counter to a random number between 1 and 7
 	call BattleRandom
@@ -296,6 +304,11 @@ FreezeBurnParalyzeEffect:
 	jp PrintText
 .freeze2
 ; hyper beam bits aren't reset for opponent's side
+	; Shin Red import Phase 4 (4.5): .freeze1 above clears the target's
+	; recharge bit via ClearHyperBeam; this side never did, so a player
+	; frozen while recharging got stuck unable to act - not just missing a
+	; move, but a real infinite loop.
+	call ClearHyperBeam
 	ld a, 1 << FRZ
 	ld [wBattleMonStatus], a
 	ld hl, FrozenText
@@ -501,9 +514,15 @@ UpdateStatDone:
 	ld hl, MonsStatsRoseText
 	call PrintText
 
-; these shouldn't be here
-	call QuarterSpeedDueToParalysis ; apply speed penalty to the player whose turn is not, if it's paralyzed
-	jp HalveAttackDueToBurn ; apply attack penalty to the player whose turn is not, if it's burned
+	; Shin Red import Phase 4 (4.7): stat-ups are always self-targeted in
+	; Gen 1, but QuarterSpeedDueToParalysis/HalveAttackDueToBurn both apply
+	; their penalty to the OPPONENT of whoever's turn it is - fixed in
+	; custom_functions/apply_self_stat_penalty.asm (farcalled, not inlined,
+	; because "Battle Core" - this file plus core.asm - had no room left).
+	push de
+	farcall ApplySelfTargetStatPenalty
+	pop de
+	ret
 
 RestoreOriginalStatModifier:
 	pop hl

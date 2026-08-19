@@ -42,6 +42,11 @@ INCLUDE "engine/events/display_pokedex.asm"
 ; SELECT hook in DisplayOptionMenu, and that reaches it by farcall.
 INCLUDE "engine/menus/extra_options.asm"
 
+; Declares its own floating SECTION (see the file header). Kept out of
+; "Battle Core", which had no room left; reached by farcall from
+; engine/battle/effects.asm.
+INCLUDE "custom_functions/apply_self_stat_penalty.asm"
+
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"

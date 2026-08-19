@@ -4705,6 +4705,17 @@ GetDamageVarsForPlayerAttack:
 	jr nz, .next
 	inc l ; if the player's offensive stat is 0, bump it up to 1
 .next
+	; Shin Red import Phase 4 (4.2): the offensive stat gets the zero-guard
+	; above, but the defensive stat (bc) never did. A defense stat below 4
+	; scales to 0 here, and CalculateDamage divides by it - a real hang, not
+	; a balance issue. Reachable more easily in this fork than in vanilla:
+	; the SF_DOUBLE_ATK/SF_DOUBLE_SPC special-form doubling above pushes the
+	; offensive stat past 256 (entering this /4 branch) far more often.
+	ld a, c
+	or b ; is the enemy's defensive stat 0?
+	jr nz, .defenseNonZero
+	inc c ; if the enemy's defensive stat is 0, bump it up to 1
+.defenseNonZero
 	ld b, l ; b = player's offensive stat (possibly scaled)
 	        ; (c already contains enemy's defensive stat (possibly scaled))
 	ld a, [wBattleMonLevel]
@@ -4866,6 +4877,13 @@ GetDamageVarsForEnemyAttack:
 	jr nz, .next
 	inc l ; if the enemy's offensive stat is 0, bump it up to 1
 .next
+	; Shin Red import Phase 4 (4.2): same defense-scaling hang fix as
+	; GetDamageVarsForPlayerAttack above - see the comment there.
+	ld a, c
+	or b ; is the player's defensive stat 0?
+	jr nz, .defenseNonZero
+	inc c ; if the player's defensive stat is 0, bump it up to 1
+.defenseNonZero
 	ld b, l ; b = enemy's offensive stat (possibly scaled)
 	        ; (c already contains player's defensive stat (possibly scaled))
 	ld a, [wEnemyMonLevel]
@@ -6050,7 +6068,12 @@ MoveHitTest:
 .noAccBoost
 	call BattleRandom
 	cp b
+	; Shin Red import Phase 4 (4.1): a scaled accuracy of 255 should always
+	; hit. Without this, `cp b` treats a roll equal to b as a miss, so even
+	; the highest accuracy is a 255/256 chance instead of a true 100%.
+	jr z, .move_hit
 	jr nc, .moveMissed
+.move_hit
 	ret
 .moveMissed
 	xor a
@@ -7041,7 +7064,7 @@ ApplyBurnAndParalysisPenalties:
 	call QuarterSpeedDueToParalysis
 	jp HalveAttackDueToBurn
 
-QuarterSpeedDueToParalysis:
+QuarterSpeedDueToParalysis:: ; exported for the Shin Red import Phase 4 (4.7) farcall in custom_functions/apply_self_stat_penalty.asm
 	ldh a, [hWhoseTurn]
 	and a
 	jr z, .playerTurn
@@ -7084,7 +7107,7 @@ QuarterSpeedDueToParalysis:
 	ld [hl], b
 	ret
 
-HalveAttackDueToBurn:
+HalveAttackDueToBurn:: ; exported for the Shin Red import Phase 4 (4.7) farcall in custom_functions/apply_self_stat_penalty.asm
 	ldh a, [hWhoseTurn]
 	and a
 	jr z, .playerTurn
