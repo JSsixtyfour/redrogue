@@ -37,7 +37,17 @@ SubstituteEffect_:
 	sbc 0
 	pop bc
 	jr c, .notEnoughHP ; underflow means user would be left with negative health
-                       ; bug: since it only branches on carry, it will possibly leave user with 0 HP
+	; Shin Red import Phase 4 (4.10): also fail if the result is exactly 0 HP,
+	; not just negative. shinpokered's own fix here (inc d / dec d / jr z) is wrong
+	; - it tests only d, the LOW byte, so it misfires whenever the result is
+	; exactly 256, 512 or 768 HP (any mon with maxHP >= 342). e is provably dead
+	; here - its last use was addressing wPlayerSubstituteHP/wEnemySubstituteHP
+	; above, which already completed - so it is free to hold the high byte while
+	; both bytes are ORed together.
+	ld e, a
+	or d
+	ld a, e
+	jr z, .notEnoughHP
 ; user has 0 or more HP
 	ld [hli], a ; save resulting HP after subtraction into current HP
 	ld [hl], d

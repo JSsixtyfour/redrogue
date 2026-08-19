@@ -826,120 +826,23 @@ ThrashPetalDanceEffect:
 	add SHRINKING_SQUARE_ANIM
 	jp PlayBattleAnimation2
 
+; SwitchAndTeleportEffect (Whirlwind / Teleport) DELETED 2026-08-18, ~192 bytes
+; reclaimed for the Shin Red import Phase 4 battle fixes. Neither move is
+; obtainable in Red Rogue: neither appears in any learnset, TM/HM list, starting
+; moveset or trainer moveset, and ROAR's slot is now SUPER_TRANSFORM. The only
+; remaining way to reach this effect was Metronome, which now excludes both
+; (see MetronomePickMove in engine/battle/core.asm).
+;
+; It never had anything to do with party switching - it only set
+; wEscapedFromBattle to flee a WILD battle, and printed a failure message in
+; trainer battles. Party switching is SwitchPlayerMon / SwitchEnemyMon.
+;
+; The stub is kept (rather than a NULL pointer table entry) so that a stray
+; dispatch can never jump into garbage. TO RESTORE: recover this routine and
+; its RanFromBattleText / RanAwayScaredText / WasBlownAwayText strings from
+; git history BEFORE making either move obtainable again.
 SwitchAndTeleportEffect:
-	ldh a, [hWhoseTurn]
-	and a
-	jr nz, .handleEnemy
-	ldh a, [hIsInBattle]
-	dec a
-	jr nz, .notWildBattle1
-	ld a, [wCurEnemyLevel]
-	ld b, a
-	ld a, [wBattleMonLevel]
-	cp b ; is the player's level greater than the enemy's level?
-	jr nc, .playerMoveWasSuccessful ; if so, teleport will always succeed
-	add b
-	ld c, a
-	inc c ; c = playerLevel + enemyLevel + 1
-.rejectionSampleLoop1
-	call BattleRandom
-	cp c ; get a random number between 0 and c
-	jr nc, .rejectionSampleLoop1
-	srl b
-	srl b  ; b = enemyLevel / 4
-	cp b ; is rand[0, playerLevel + enemyLevel] >= (enemyLevel / 4)?
-	jr nc, .playerMoveWasSuccessful ; if so, allow teleporting
-	ld c, 50
-	call DelayFrames
-	ld a, [wPlayerMoveNum]
-	cp TELEPORT
-	jp nz, PrintDidntAffectText
-	jp PrintButItFailedText_
-.playerMoveWasSuccessful
-	call ReadPlayerMonCurHPAndStatus
-	xor a
-	ld [wAnimationType], a
-	inc a
-	ld [wEscapedFromBattle], a
-	ld a, [wPlayerMoveNum]
-	jr .playAnimAndPrintText
-.notWildBattle1
-	ld c, 50
-	call DelayFrames
-	ld hl, IsUnaffectedText
-	ld a, [wPlayerMoveNum]
-	cp TELEPORT
-	jp nz, PrintText
-	jp PrintButItFailedText_
-.handleEnemy
-	ldh a, [hIsInBattle]
-	dec a
-	jr nz, .notWildBattle2
-	ld a, [wBattleMonLevel]
-	ld b, a
-	ld a, [wCurEnemyLevel]
-	cp b
-	jr nc, .enemyMoveWasSuccessful
-	add b
-	ld c, a
-	inc c
-.rejectionSampleLoop2
-	call BattleRandom
-	cp c
-	jr nc, .rejectionSampleLoop2
-	srl b
-	srl b
-	cp b
-	jr nc, .enemyMoveWasSuccessful
-	ld c, 50
-	call DelayFrames
-	ld a, [wEnemyMoveNum]
-	cp TELEPORT
-	jp nz, PrintDidntAffectText
-	jp PrintButItFailedText_
-.enemyMoveWasSuccessful
-	call ReadPlayerMonCurHPAndStatus
-	xor a
-	ld [wAnimationType], a
-	inc a
-	ld [wEscapedFromBattle], a
-	ld a, [wEnemyMoveNum]
-	jr .playAnimAndPrintText
-.notWildBattle2
-	ld c, 50
-	call DelayFrames
-	ld hl, IsUnaffectedText
-	ld a, [wEnemyMoveNum]
-	cp TELEPORT
-	jp nz, PrintText
-	jp ConditionalPrintButItFailed
-.playAnimAndPrintText
-	push af
-	call PlayBattleAnimation
-	ld c, 20
-	call DelayFrames
-	pop af
-	ld hl, RanFromBattleText
-	cp TELEPORT
-	jr z, .printText
-	; ROAR used to share this effect and printed RanAwayScaredText here; its
-	; move slot is now SUPER_TRANSFORM, which uses its own dedicated effect
-	; and never reaches this code, so only WHIRLWIND falls through below now
-	ld hl, WasBlownAwayText
-.printText
-	jp PrintText
-
-RanFromBattleText:
-	text_far _RanFromBattleText
-	text_end
-
-RanAwayScaredText:
-	text_far _RanAwayScaredText
-	text_end
-
-WasBlownAwayText:
-	text_far _WasBlownAwayText
-	text_end
+	ret
 
 TwoToFiveAttacksEffect:
 	ld hl, wPlayerBattleStatus1
@@ -1107,8 +1010,29 @@ TrappingEffect:
 .trappingEffect
 	bit USING_TRAPPING_MOVE, [hl]
 	ret nz
-	call ClearHyperBeam ; since this effect is called before testing whether the move will hit,
-                        ; the target won't need to recharge even if the trapping move missed
+	; Shin Red import Phase 4 (4.13): the ClearHyperBeam call that used to sit
+	; here ran BEFORE the hit test, so a trapping move that MISSED still cleared
+	; the target's recharge. It now runs on the hit path only, in
+	; ApplyAttackToEnemyPokemon / ApplyAttackToPlayerPokemon (engine/battle/core.asm).
+	;
+	; Deliberately NOT imported: shinred's TRAPPING_COUNT_BIT spam counter,
+	; which belongs to its AI anti-cheese work, not this phase.
+	;
+	; Shin Red import Phase 4 (4.13, approved 2026-08-18): a trapping move can
+	; no longer take hold against a type it has no effect on - Wrap on a GHOST
+	; now simply fails instead of locking the target in. AIGetTypeEffectiveness
+	; lives in this same bank, so a plain call is fine; it clobbers hl/bc/de,
+	; hence the saves around it.
+	push hl
+	push bc
+	push de
+	call AIGetTypeEffectiveness
+	pop de
+	pop bc
+	pop hl
+	ld a, [wTypeEffectiveness]
+	and a
+	ret z ; no effect - the trapping move does not take hold at all
 	set USING_TRAPPING_MOVE, [hl] ; mon is now using a trapping move
 	call BattleRandom ; 3/8 chance for 2 and 3 attacks, and 1/8 chance for 4 and 5 attacks
 	and $3
@@ -1131,6 +1055,12 @@ RecoilEffect:
 	jpfar RecoilEffect_
 
 ConfusionSideEffect:
+	; Shin Red import Phase 4 (4.12): ConfusionEffect below already blocks on a
+	; Substitute, but this secondary-chance path did not - so a Substitute
+	; stopped Confuse Ray yet not Psybeam's confusion. Same asymmetry as the
+	; sleep hole closed in 4.6.
+	call CheckTargetSubstitute
+	ret nz
 	call BattleRandom
 	cp 10 percent ; chance of confusion
 	ret nc

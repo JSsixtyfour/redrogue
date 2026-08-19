@@ -773,6 +773,22 @@ AISwitchIfEnoughMons:
 
 SwitchEnemyMon:
 
+	; Shin Red import Phase 4 (4.14): if the player is mid-trapping-move (Wrap
+	; etc.) when the AI switches out, end it here and mark the player as having
+	; already used their turn this round. Without this, wPlayerNumAttacksLeft
+	; stays nonzero against a mon that is no longer the trapping target, so the
+	; PP-decrement bookkeeping in MoveHitTest/CheckNumAttacksLeft can underflow.
+	ld a, [wPlayerBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr z, .prepareWithdraw
+	ld hl, wPlayerBattleStatus1
+	res USING_TRAPPING_MOVE, [hl]
+	xor a
+	ld [wPlayerNumAttacksLeft], a
+	ld a, $ff
+	ld [wPlayerSelectedMove], a
+.prepareWithdraw
+
 ; prepare to withdraw the active monster: copy HP, party pos, and status to roster
 
 	ld a, [wEnemyMonPartyPos]

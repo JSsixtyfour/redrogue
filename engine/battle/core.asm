@@ -3678,6 +3678,14 @@ PlayerCalcMoveDamage:
 	ld de, 1
 	call IsInArray
 	jp c, .moveHitTest ; SetDamageEffects moves (e.g. Seismic Toss and Super Fang) skip damage calculation
+	; Shin Red import Phase 4 (4.24): this jump also skips AdjustDamageForMoveType
+	; below, so fixed-damage moves ignore type immunities - Seismic Toss (NORMAL)
+	; damages GHOSTs and Night Shade (GHOST) damages NORMALs. shinpokered fixes
+	; this by removing the bypass entirely and routing these moves through the
+	; normal pipeline. DELIBERATELY NOT IMPORTED (user decision, 2026-08-18): it
+	; is a balance nerf rather than a bug, and shinred's shape is a large
+	; restructure of this routine. The other three fixed-damage items on that
+	; plan line were all measured N/A here - see ShinRed_Tracker.md item 4.24.
 	call CriticalHitTest
 	call HandleCounterMove
 	jr z, HandleIfPlayerMoveMissed
@@ -4642,6 +4650,15 @@ GetDamageVarsForPlayerAttack:
 ; this allows values with up to 10 bits (values up to 1023) to be handled
 ; anything larger will wrap around
 .scaleStats
+	; Shin Red import Phase 4 (4.16): cap the DEFENSIVE stat (bc) at 999 before
+	; the /4 scaling below. Reflect/Light Screen double it with no cap, so a
+	; ~999 stat becomes ~1998; the /4 then leaves a nonzero high byte in b that
+	; `ld b, l` overwrites further down, silently truncating the divisor to its
+	; low byte and collapsing the defender's effective defense. Capping here
+	; rather than at each of the four sla c/rl b sites covers the Reflect and
+	; Light Screen paths at once - they converge on this label. On a critical
+	; hit bc already holds the unmodified base stat (<= 999), so this is a no-op.
+	call CapDefensiveStatAt999
 	ld a, [hli]
 	ld l, [hl]
 	ld h, a ; hl = player's offensive stat
@@ -4808,6 +4825,9 @@ GetDamageVarsForEnemyAttack:
 ; this allows values with up to 10 bits (values up to 1023) to be handled
 ; anything larger will wrap around
 .scaleStats
+	; Shin Red import Phase 4 (4.16): same 999 cap as GetDamageVarsForPlayerAttack
+	; above - see the comment there.
+	call CapDefensiveStatAt999
 	ld a, [hli]
 	ld l, [hl]
 	ld h, a ; hl = enemy's offensive stat
@@ -4938,6 +4958,25 @@ GetEnemyMonStat:
 	ld hl, wLoadedMonSpeedExp - $b ; this base address makes CalcStat look in [wLoadedMonSpeedExp] for DVs
 	call CalcStat
 	pop de
+	ret
+
+; Shin Red import Phase 4 (4.16). Clamps bc to MAX_STAT_VALUE (999).
+; Called from .scaleStats in GetDamageVarsForPlayerAttack / ...ForEnemyAttack,
+; where bc holds the defender's (possibly Reflect/Light-Screen-doubled) stat.
+; Must be a plain in-bank `call`, NOT a farcall: Bankswitch clobbers bc (it does
+; `ld bc, .Return`) and the farcall macro sets b itself, which would destroy the
+; very value being capped.
+; Preserves hl and de; clobbers a.
+CapDefensiveStatAt999:
+	ld a, b
+	cp HIGH(MAX_STAT_VALUE)
+	ret c ; high byte below 3 -> bc < 768, definitely under the cap
+	jr nz, .clamp ; high byte above 3 -> definitely over
+	ld a, c
+	cp LOW(MAX_STAT_VALUE) + 1
+	ret c
+.clamp
+	ld bc, MAX_STAT_VALUE
 	ret
 
 CalculateDamage:
@@ -5251,14 +5290,20 @@ HandleCounterMove:
 	ld a, [de]
 	and a
 	ret z ; miss if the opponent's last selected move's Base Power is 0.
-; check if the move the target last selected was Normal or Fighting type
+; check if the move the target last selected was Normal, Fighting or TYPELESS
 	inc de
 	ld a, [de]
 	and a ; normal type
 	jr z, .counterableType
 	cp FIGHTING
 	jr z, .counterableType
-; if the move wasn't Normal or Fighting type, miss
+	; Shin Red import Phase 4 (4.23): BIRD is our TYPELESS type, and item 4.22
+	; retyped STRUGGLE from NORMAL to BIRD to stop it being NO_EFFECT against
+	; GHOSTs. Without this arm, that retype silently made Struggle damage
+	; un-counterable - so this is a required companion to 4.22, not optional.
+	cp BIRD
+	jr z, .counterableType
+; if the move wasn't a counterable type, miss
 	xor a
 	ret
 .counterableType
@@ -5295,6 +5340,8 @@ ApplyAttackToEnemyPokemon:
 	jr z, .superFangEffect
 	cp SPECIAL_DAMAGE_EFFECT
 	jr z, .specialDamage
+	cp TRAPPING_EFFECT ; Shin Red import Phase 4 (4.13): clear the target's hyper
+	call z, ClearHyperBeam ; beam recharge only when the trapping move actually hits
 	ld a, [wPlayerMovePower]
 	and a
 	jp z, ApplyAttackToEnemyPokemonDone ; no attack to apply if base power is 0
@@ -5414,6 +5461,8 @@ ApplyAttackToPlayerPokemon:
 	jr z, .superFangEffect
 	cp SPECIAL_DAMAGE_EFFECT
 	jr z, .specialDamage
+	cp TRAPPING_EFFECT ; Shin Red import Phase 4 (4.13): clear the target's hyper
+	call z, ClearHyperBeam ; beam recharge only when the trapping move actually hits
 	ld a, [wEnemyMovePower]
 	and a
 	jp z, ApplyAttackToPlayerPokemonDone
@@ -5714,6 +5763,17 @@ MetronomePickMove:
 	jr z, .pickMoveLoop
 	cp SUPER_TRANSFORM ; gift-mon-exclusive move; don't let Metronome grant it
 	jr z, .pickMoveLoop
+	; WHIRLWIND and TELEPORT are unobtainable in Red Rogue - neither appears in
+	; any learnset, TM/HM list, starting moveset or trainer moveset, and ROAR's
+	; slot was repurposed as SUPER_TRANSFORM. Metronome was the ONLY remaining
+	; way to execute SWITCH_AND_TELEPORT_EFFECT, so it is excluded here and the
+	; effect routine itself has been deleted (engine/battle/effects.asm).
+	; If either move is ever made obtainable, that routine must be restored
+	; FIRST - see ShinRed_Tracker.md.
+	cp WHIRLWIND
+	jr z, .pickMoveLoop
+	cp TELEPORT
+	jr z, .pickMoveLoop
 	ld [hl], a
 	jr ReloadMoveData
 
@@ -5721,6 +5781,22 @@ MetronomePickMove:
 ; it's used to prevent moves that run another move within the same turn
 ; (like Mirror Move and Metronome) from losing 2 PP
 IncrementMovePP:
+	; Shin Red import Phase 4 (4.20): a transformed mon must not have its PP
+	; incremented. This routine writes the REAL party-struct PP as well as the
+	; battle scratch copy, but DecrementPP already skips the party write while
+	; transformed (engine/battle/decrement_pp.asm) - so without this guard the
+	; party PP only ever climbs, eventually carrying into the PP-Up bits and
+	; corrupting the stored PP-Up count. NOTE: shinpokered claims this also
+	; prevents a Disable-related freeze; that claim was investigated and could
+	; NOT be substantiated, so this is taken purely as a data-integrity fix.
+	ldh a, [hWhoseTurn]
+	and a
+	ld a, [wPlayerBattleStatus3]
+	jr z, .gotTransformStatus
+	ld a, [wEnemyBattleStatus3]
+.gotTransformStatus
+	bit TRANSFORMED, a
+	ret nz
 	ldh a, [hWhoseTurn]
 	and a
 ; values for player turn
@@ -5978,9 +6054,18 @@ MoveHitTest:
 	jr z, .checkForDigOrFlyStatus
 ; The fix for Swift broke this code. It's supposed to prevent HP draining moves from working on Substitutes.
 ; Since CheckTargetSubstitute overwrites a with either $00 or $01, it never works.
+	; Shin Red import Phase 4 (4.11): reload the move effect that
+	; CheckTargetSubstitute just clobbered, which is all it takes to make the
+	; two checks below finally do what vanilla plainly intended.
+	ld a, [de]
 	cp DRAIN_HP_EFFECT
 	jp z, .moveMissed
 	cp DREAM_EATER_EFFECT
+	jp z, .moveMissed
+	; LEECH_SEED is NOT vanilla intent - it is shinpokered's own addition and a
+	; deliberate balance call (approved 2026-08-18). Note it interacts with the
+	; AI overhaul's Leech/Toxic stall plans.
+	cp LEECH_SEED_EFFECT
 	jp z, .moveMissed
 .checkForDigOrFlyStatus
 	bit INVULNERABLE, [hl]
