@@ -1,22 +1,8 @@
+; Referenced only as a dead NamePointers slot (home/names2.asm, index UNUSED_NAME)
+; that nothing in the codebase ever selects (no writer of wNameListType uses
+; UNUSED_NAME). The symbol must still exist for that table to link, so this is a
+; stub rather than a deletion. The original vanilla Japanese badge/ranking name
+; data it replaced (UnusedBadgeNames' 8 badge names, and UnusedRankingNames,
+; which had zero references at all) was removed 2026-08-19 to reclaim ROM space.
 UnusedBadgeNames::
-	db "かみなりバッヂ@" ; THUNDER BADGE
-	db "かいがらバッヂ@" ; SHELL BADGE
-	db "おじぞうバッヂ@" ; JIZOU BADGE
-	db "はやぶさバッヂ@" ; FALCON BADGE
-	db "ひんやりバッヂ@" ; CHILL BADGE
-	db "なかよしバッヂ@" ; FRIENDSHIP BADGE
-	db "バラバッヂ@" ; ROSE BADGE
-	db "ひのたまバッヂ@" ; FIREBALL BADGE
-	db "ゴールドバッヂ@" ; GOLD BADGE
-
-UnusedRankingNames:
-	db "たまご@" ; EGG
-	db "ひよこ@" ; CHICK
-	db "ブロンズ@" ; BRONZE
-	db "シルバー@" ; SILVER
-	db "ゴールド@" ; GOLD
-	db "プチキャプテン@" ; PETIT CAPTAIN
-	db "キャプテン@" ; CAPTAIN
-	db "プチマスター@" ; PETIT MASTER
-	db "マスター@" ; MASTER
-	db "エクセレント" ; EXCELLENT
+	db "@"
