@@ -694,7 +694,8 @@ CanWalkOntoTile:
 	bit 7, e           ; check if going left (e == -1)
 	jr nz, .left
 	add e
-	cp $5              ; compare, but no conditional jump like in the vertical check above (bug?)
+	cp $5
+	jr c, .impassable  ; if [x#SPRITESTATEDATA2_XDISPLACEMENT]+e < 5, don't go
 	jr .passable
 .left
 	sub $1

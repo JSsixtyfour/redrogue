@@ -29,6 +29,34 @@ CalcLevelFromExperience::
 
 ; calculates the amount of experience needed for level d
 CalcExperience::
+; Underflow protection. Three of the six growth rates carry a constant term big
+; enough that the polynomial evaluates NEGATIVE at level 1 (Slightly Fast -19,
+; Slightly Slow -49, Medium Slow -53), and the accumulator below is unsigned, so
+; it wraps to roughly 16.7 million instead of clamping at zero. That is reachable:
+; add_mon.asm calls this directly with d = the mon's level to seed a newly
+; created mon's exp, so a level-1 mon of one of those rates is stored with a
+; garbage exp that reads back as level 100.
+;
+; Level 1 is the ONLY input that can underflow, verified by evaluating all six
+; growth rates over levels 1-255; the maximum is 1,250,000, which also leaves no
+; overflow case. Guarding just that one level, instead of reordering the term
+; summation the way the upstream fix does, keeps every level >= 2 computing
+; bit-for-bit as before. That matters here: the reordered version was measured
+; to shift this fork's deterministic party-generation RNG stream (the pyboy
+; smoke suite's FIGHT 2 fixture caught it), for no gain at any level the game
+; actually generates.
+	ld a, d
+	dec a
+	jr nz, .calculate
+; every growth rate is worth 0 or 1 exp at level 1, so d (== 1) is both the
+; clamp and the correct value for the rates that do not underflow
+	xor a
+	ldh [hExperience], a
+	ldh [hExperience + 1], a
+	ld a, d
+	ldh [hExperience + 2], a
+	ret
+.calculate
 	ld a, [wMonHGrowthRate]
 	add a
 	add a

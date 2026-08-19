@@ -63,11 +63,11 @@ BikeShopClerkText:
 	call PlaceString
 	ld hl, BikeShopClerkDoYouLikeItText
 	call PrintText
+	ld hl, wStatusFlags5
+	res BIT_NO_TEXT_DELAY, [hl] ; must clear before HandleMenuInput, or the B-press path below skips it and leaves text instant
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jr nz, .cancel
-	ld hl, wStatusFlags5
-	res BIT_NO_TEXT_DELAY, [hl]
 	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .cancel

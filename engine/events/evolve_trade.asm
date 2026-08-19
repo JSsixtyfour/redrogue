@@ -1,20 +1,23 @@
+; pokeyellow's fix: the original name-prefix check (matching English "GRAVELER"
+; or "SPECTRE", Haunter's early English name) breaks for any trade-received
+; species whose name happens to start with the same letters - a live hazard
+; here since TRADE_FOR_RANDOM can hand out any species, not just the ones in
+; TradeMons. Check the actual received species instead.
 InGameTrade_CheckForTradeEvo:
-; In Japanese Blue, TradeMons include a Graveler and a Haunter,
-; both of which have Japanese names that start with "ゴ",
-; which is what this routine originally checked in that game.
-; For English Red and Blue, this routine was adjusted for
-; Graveler's English name and Haunter's early English name "Spectre".
-; The final release replaced Graveler and Haunter in TradeMons.
-	ld a, [wInGameTradeReceiveMonName]
-	cp 'G' ; GRAVELER
-	jr z, .nameMatched
-	; "SPECTRE" (HAUNTER)
-	cp 'S'
-	ret nz
-	ld a, [wInGameTradeReceiveMonName + 1]
-	cp 'P'
-	ret nz
-.nameMatched
+	ld a, [wInGameTradeReceiveMonSpecies]
+	cp KADABRA
+	jr z, .tradeEvo
+	cp GRAVELER
+	jr z, .tradeEvo
+	cp MACHOKE
+	jr z, .tradeEvo
+	cp HAUNTER
+	jr z, .tradeEvo
+	ret
+.tradeEvo
+	ld a, [wPartyCount]
+	dec a
+	ldh [hWhichPokemon], a ; the mon just received is always the last party slot
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, LINK_STATE_TRADING

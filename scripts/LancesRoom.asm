@@ -76,6 +76,25 @@ LancesRoomDefaultScript:
 	ld a, [wCoordIndex]
 	cp $3  ; Is player standing next to Lance's sprite?
 	jr nc, .notStandingNextToLance
+; Face Lance and the player toward each other. This is a coordinate trigger,
+; not the normal "player pressed A at a sprite" input path, so TalkToTrainer's
+; usual auto-facing never fires for either sprite. wCoordIndex 1 = west of
+; Lance (LanceTriggerMovementCoords entry (5,1)), 2 = south of him (6,2).
+	cp $1
+	ld a, SPRITE_FACING_LEFT
+	ld b, PLAYER_DIR_RIGHT
+	jr z, .faceLance
+	ld a, SPRITE_FACING_DOWN
+	ld b, PLAYER_DIR_UP
+.faceLance
+	push bc
+	ldh [hSpriteFacingDirection], a
+	ld a, LANCESROOM_LANCE
+	ldh [hSpriteIndex], a
+	call SetSpriteFacingDirectionAndDelay
+	pop bc
+	ld a, b
+	ld [wPlayerMovingDirection], a
 	ld a, TEXT_LANCESROOM_LANCE
 	ldh [hTextID], a
 	jp DisplayTextID

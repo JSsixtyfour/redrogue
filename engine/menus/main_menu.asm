@@ -321,6 +321,10 @@ StartNewGame:
 	; only reset here by the main menu.
 	res BIT_DEBUG_MODE, [hl]
 	res BIT_DEBUG2_MODE, [hl]
+	; Same carryover problem for BIT_ALWAYS_ON_BIKE: a leftover set bit from a
+	; previous save stops CheckForceBikeOrSurf from ever returning (see the BUG
+	; note in oak_speech.asm).
+	res BIT_ALWAYS_ON_BIKE, [hl]
 	; fallthrough
 StartNewGameDebug:
 	call OakSpeech

@@ -379,6 +379,11 @@ LearnMoveFromLevelUp:
 	cp b ; is the move learnt at the mon's current level?
 	ld a, [hli] ; move ID
 	jr nz, .learnSetLoop
+; A mon can be taught more than one move at the same level. hl is the learnset
+; cursor and is about to be repurposed to walk the mon's current move list, so
+; save it and resume the scan afterwards instead of falling into .done, which
+; silently dropped every move after the first one at this level.
+	push hl
 	ld d, a ; ID of move to learn
 	ld a, [wMonDataLocation]
 	and a
@@ -396,7 +401,7 @@ LearnMoveFromLevelUp:
 .checkCurrentMovesLoop ; check if the move to learn is already known
 	ld a, [hli]
 	cp d
-	jr z, .done ; if already known, jump
+	jr z, .nextLearnSetEntry ; if already known, jump
 	dec b
 	jr nz, .checkCurrentMovesLoop
 	ld a, d
@@ -405,6 +410,9 @@ LearnMoveFromLevelUp:
 	call GetMoveName
 	call CopyToStringBuffer
 	predef LearnMove
+.nextLearnSetEntry
+	pop hl ; learnset cursor saved above
+	jr .learnSetLoop
 .done
 	ld a, [wCurPartySpecies]
 	ld [wPokedexNum], a

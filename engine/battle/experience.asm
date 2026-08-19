@@ -439,6 +439,12 @@ BoostExp:
 	ldh a, [hQuotient + 2]
 	adc b
 	ldh [hQuotient + 2], a
+	jr c, .overflow
+	ret
+.overflow ; saturate at $ffff instead of wrapping
+	ld a, $ff
+	ldh [hQuotient + 2], a
+	ldh [hQuotient + 3], a
 	ret
 
 GainedText:

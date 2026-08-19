@@ -90,8 +90,8 @@ TrainerWalkUpToPlayer::
 .facingDown
 	ld a, [wTrainerScreenY]
 	ld b, a
-	ld a, $3c           ; (fixed) player screen Y pos
-	call CalcDifference
+	call CalcYDifference ; signed-safe: this is the one walk direction whose
+	                     ; trainer can sit on the topmost tile at Y = $fc
 	cp $10              ; trainer is right above player
 	ret z
 	swap a
@@ -146,6 +146,27 @@ TrainerWalkUpToPlayer::
 	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp MoveSprite_
+
+; CalcDifference for a sprite's screen Y against the player's fixed $3c.
+; A sprite standing on the topmost visible tile has Y = $fc, i.e. -4, four tiles
+; above the player. CalcDifference is unsigned: `$3c - $fc` already produces the
+; correct magnitude ($40 = 64px = 4 tiles), but it also sets the borrow, which
+; CalcDifference reads as "a < b" and so negates a correct answer into $c0 =
+; 192px. Every trainer directly above the player then measured as 12 tiles away
+; and never engaged.
+; Suppress the negation for negative Y rather than reusing the `$fc -> $c` clamp
+; in CheckPlayerIsInFrontOfSprite: that clamp is only sound for the front/behind
+; test it guards, and as a distance it understates by a full tile, which would
+; both over-extend sight range by one tile and make TrainerWalkUpToPlayer stop
+; one tile short of the player.
+; input: b = sprite screen Y. output: a = distance in pixels. Preserves b.
+CalcYDifference:
+	ld a, b
+	cp $80
+	ld a, $3c ; (fixed) player screen Y pos
+	jp c, CalcDifference ; ordinary on-screen Y, unsigned compare is fine
+	sub b ; negative Y: the borrow IS the sign extension, so keep the result
+	ret
 
 ; input: de = offset within sprite entry
 ; output: hl = pointer to sprite data
@@ -209,8 +230,7 @@ TrainerEngage:
 .linedUpX
 	ld a, [wTrainerScreenY]        ; sprite screen Y pos
 	ld b, a
-	ld a, $3c            ; (fixed) player Y position
-	call CalcDifference  ; calc distance
+	call CalcYDifference ; calc distance (signed-safe, see its comment)
 	jr z, .noEngage      ; exact same position as player
 	call CheckSpriteCanSeePlayer
 	jr c, .engage

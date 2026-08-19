@@ -1416,7 +1416,9 @@ CheckForTilePairCollisions::
 	jr .retry
 .currentTileMatchesFirstInPair
 	inc hl
-	ld a, [hl]
+	ld a, [hli] ; must be [hli], not [hl]: on a miss this path returns to the loop
+	            ; head, and leaving hl on the entry's 3rd byte reads every
+	            ; subsequent entry misaligned by one
 	cp c
 	jr z, .foundMatch
 	jr .tilePairCollisionLoop
@@ -1442,54 +1444,49 @@ LoadCurrentMapView::
 	ld a, [wTilesetBank]
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
-	ld a, [wCurrentTileBlockMapViewPointer] ; address of upper left corner of current map view
-	ld e, a
-	ld a, [wCurrentTileBlockMapViewPointer + 1]
-	ld d, a
-	ld hl, wSurroundingTiles
+; Optimized (ported from yumepokered). hl is the block-map read cursor and de
+; the wSurroundingTiles write cursor; DrawTileBlock now advances de itself and
+; returns it positioned for the next block, which retires the per-block
+; push/pop de/hl and the four inc hl's.
+	ld hl, wCurrentTileBlockMapViewPointer
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a ; hl = address of upper left corner of current map view
+	ld de, wSurroundingTiles
 	ld b, SCREEN_BLOCK_HEIGHT
 .rowLoop ; each loop iteration fills in one row of tile blocks
-	push hl
-	push de
 	ld c, SCREEN_BLOCK_WIDTH
 .rowInnerLoop ; loop to draw each tile block of the current row
 	push bc
-	push de
+	ld a, [hli]
 	push hl
-	ld a, [de]
 	ld c, a ; tile block number
 	call DrawTileBlock
 	pop hl
-	pop de
 	pop bc
-	inc hl
-	inc hl
-	inc hl
-	inc hl
-	inc de
 	dec c
 	jr nz, .rowInnerLoop
 ; update tile block map pointer to next row's address
-	pop de
+; the inner loop already advanced hl by SCREEN_BLOCK_WIDTH, which is exactly the
+; border the old code added separately
+	ASSERT SCREEN_BLOCK_WIDTH == MAP_BORDER * 2
 	ld a, [wCurMapWidth]
-	add MAP_BORDER * 2
-	add e
-	ld e, a
-	jr nc, .noCarry
-	inc d
-.noCarry
-; update tile map pointer to next row's address
-	pop hl
-	ld a, SURROUNDING_WIDTH * BLOCK_HEIGHT
 	add l
 	ld l, a
-	jr nc, .noCarry2
-	inc h
-.noCarry2
+	adc h
+	sub l
+	ld h, a ; hl += wCurMapWidth, carrying into h without a branch
+; update tile map pointer to next row's address
+; the inner loop already advanced de by SCREEN_BLOCK_WIDTH * BLOCK_WIDTH
+	ld a, SURROUNDING_WIDTH * BLOCK_HEIGHT - SCREEN_BLOCK_WIDTH * BLOCK_WIDTH
+	add e
+	ld e, a
+	adc d
+	sub e
+	ld d, a
 	dec b
 	jr nz, .rowLoop
 	ld hl, wSurroundingTiles
-	ld bc, 0
 .adjustForYCoordWithinTileBlock
 	ld a, [wYBlockCoord]
 	and a
@@ -1516,9 +1513,9 @@ LoadCurrentMapView::
 	ld a, SURROUNDING_WIDTH - SCREEN_WIDTH
 	add l
 	ld l, a
-	jr nc, .noCarry3
-	inc h
-.noCarry3
+	adc h
+	sub l
+	ld h, a ; hl += SURROUNDING_WIDTH - SCREEN_WIDTH, carrying without a branch
 	dec b
 	jr nz, .rowLoop2
 	pop af
@@ -1867,40 +1864,46 @@ ScheduleWestColumnRedraw::
 
 ; function to write the tiles that make up a tile block to memory
 ; Input: c = tile block ID, hl = destination address
+; Optimized (ported from yumepokered), and the register roles are swapped versus
+; vanilla: hl is now the tile-block SOURCE and de the destination, so the block
+; data can be walked with [hli] and no push/pop is needed per row. de is left
+; advanced by BLOCK_WIDTH, i.e. pointing at where the next block in the row goes,
+; which is what lets LoadCurrentMapView's inner loop stay so short.
+; input: c = tile block ID, de = destination. output: de = destination + BLOCK_WIDTH.
 DrawTileBlock::
-	push hl
-	ld a, [wTilesetBlocksPtr] ; pointer to tiles
-	ld l, a
-	ld a, [wTilesetBlocksPtr + 1]
-	ld h, a
+	ld hl, wTilesetBlocksPtr
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a ; hl = pointer to tiles
 	ld a, c
 	swap a
 	ld b, a
 	and $f0
 	ld c, a
-	ld a, b
-	and $0f
+	xor b
 	ld b, a ; bc = tile block ID * 0x10
 	add hl, bc
-	ld d, h
-	ld e, l ; de = address of the tile block's tiles
-	pop hl
-	ld c, BLOCK_HEIGHT ; 4 loop iterations
+	lb bc, BLOCK_HEIGHT, SURROUNDING_WIDTH - BLOCK_WIDTH
 .loop ; each loop iteration, write 4 tile numbers
-	push bc
-REPT BLOCK_WIDTH - 1
-	ld a, [de]
-	ld [hli], a
+REPT BLOCK_WIDTH
+	ld a, [hli]
+	ld [de], a
 	inc de
 ENDR
-	ld a, [de]
-	ld [hl], a
-	inc de
-	ld bc, SURROUNDING_WIDTH - (BLOCK_WIDTH - 1)
-	add hl, bc
-	pop bc
-	dec c
+	ld a, c ; step de to the same column one tile row down
+	add e
+	ld e, a
+	adc d
+	sub e
+	ld d, a
+	dec b
 	jr nz, .loop
+; de walked BLOCK_HEIGHT full rows; rewind it to just past this block instead
+	ld a, e
+	sub SURROUNDING_WIDTH * BLOCK_HEIGHT - BLOCK_WIDTH
+	ld e, a
+	ret nc
+	dec d
 	ret
 
 ; function to update joypad state and simulate button presses

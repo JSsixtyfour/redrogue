@@ -327,14 +327,12 @@ SlotMachine_StopWheel1Early:
 	cp HIGH(SLOTSCHERRY)
 	jr nz, .stopWheel
 	ret
-; Bug: This looks intended to make the wheel stop when a
-; 7 symbol was visible, but instead the wheel stops randomly.
 .sevenAndBarMode
 	ld c, $3
 .loop
 	ld a, [hli]
 	cp HIGH(SLOTS7)
-	jr c, .stopWheel ; condition never true
+	jr z, .stopWheel
 	dec c
 	jr nz, .loop
 	ret
@@ -880,7 +878,7 @@ LoadSlotMachineTiles:
 	call DisableLCD
 	ld hl, SlotMachineTiles2
 	ld de, vChars0
-	ld bc, $1c tiles ; should be SlotMachineTiles2End - SlotMachineTiles2, or $18 tiles
+	ld bc, SlotMachineTiles2End - SlotMachineTiles2
 	ld a, BANK(SlotMachineTiles2)
 	call FarCopyData2
 	ld hl, SlotMachineTiles1
@@ -890,7 +888,7 @@ LoadSlotMachineTiles:
 	call FarCopyData2
 	ld hl, SlotMachineTiles2
 	ld de, vChars2 tile $25
-	ld bc, $1c tiles ; should be SlotMachineTiles2End - SlotMachineTiles2, or $18 tiles
+	ld bc, SlotMachineTiles2End - SlotMachineTiles2
 	ld a, BANK(SlotMachineTiles2)
 	call FarCopyData2
 	ld hl, SlotMachineMap
