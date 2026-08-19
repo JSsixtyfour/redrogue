@@ -1595,7 +1595,9 @@ LinkBattleLostText:
 	text_end
 
 ; slides pic of fainted mon downwards until it disappears
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; Shin Red import Phase 6: hAutoBGTransferEnabled is non-zero when this is called, so
+; the BG transfer could fire partway through a row shuffle and tear. It is now disabled
+; around the row loop and re-enabled for the DelayFrames below.
 SlideDownFaintedMonPic:
 	ld a, [wStatusFlags5]
 	push af
@@ -1607,6 +1609,8 @@ SlideDownFaintedMonPic:
 	push de
 	push hl
 	ld b, PIC_HEIGHT - 1 ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; no BG transfer while the rows are being shuffled
 .rowLoop
 	push bc
 	push hl
@@ -1631,6 +1635,8 @@ SlideDownFaintedMonPic:
 	add hl, bc
 	ld de, SevenSpacesText
 	call PlaceString
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; rows are done, let DelayFrames push the frame
 	ld c, 2
 	call DelayFrames
 	pop hl
@@ -1649,7 +1655,8 @@ SevenSpacesText:
 ; slides the player or enemy trainer off screen
 ; a is the number of tiles to slide it horizontally (always 9 for the player trainer or 8 for the enemy trainer)
 ; if a is 8, the slide is to the right, else it is to the left
-; bug: when this is called, [hAutoBGTransferEnabled] is non-zero, so there is screen tearing
+; Shin Red import Phase 6: same hAutoBGTransferEnabled tearing fix as
+; SlideDownFaintedMonPic above.
 SlideTrainerPicOffScreen:
 	ldh [hSlideAmount], a
 	ld c, a
@@ -1657,6 +1664,8 @@ SlideTrainerPicOffScreen:
 	push bc
 	push hl
 	ld b, PIC_HEIGHT ; number of rows
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; no BG transfer while the rows are being shuffled
 .rowLoop
 	push hl
 	ldh a, [hSlideAmount]
@@ -1682,6 +1691,8 @@ SlideTrainerPicOffScreen:
 	add hl, de
 	dec b
 	jr nz, .rowLoop
+	ld a, 1
+	ldh [hAutoBGTransferEnabled], a ; rows are done, let DelayFrames push the frame
 	ld c, 2
 	call DelayFrames
 	pop hl
@@ -1886,6 +1897,22 @@ AnyPartyAlive::
 	ld d, a
 	ret
 
+; Shin Red import Phase 6: the party side menu is left on screen when one of the
+; battle party-menu messages below is printed, because those messages are drawn from
+; the saved screen buffers rather than a fresh redraw. Redrawing the party menu with
+; BLANK_PARTY_MENU (an empty message box, added to PartyMenuMessagePointers this same
+; phase) first erases it. wPartyMenuTypeOrMessageID is saved and restored so the
+; caller's menu type is untouched.
+RefreshPartyMenu:
+	ld a, [wPartyMenuTypeOrMessageID]
+	push af
+	ld a, BLANK_PARTY_MENU
+	ld [wPartyMenuTypeOrMessageID], a
+	call RedrawPartyMenu
+	pop af
+	ld [wPartyMenuTypeOrMessageID], a
+	ret
+
 ; tests if player mon has fainted
 ; stores whether mon has fainted in Z flag
 HasMonFainted:
@@ -1899,6 +1926,7 @@ HasMonFainted:
 	ld a, [wFirstMonsNotOutYet]
 	and a
 	jr nz, .done
+	call RefreshPartyMenu ; Shin Red import Phase 6: erase the leftover side menu
 	ld hl, NoWillText
 	call PrintText
 .done
@@ -2912,6 +2940,12 @@ PartyMenuOrRockOrRun:
 	predef StatusScreen
 	predef StatusScreen2
 ; now we need to reload the enemy mon pic
+; Shin Red import Phase 6 (kep-hack placement): the status screen leaves hWhoseTurn
+; on the player, so the substitute and minimize animations below redraw over the
+; PLAYER's pic instead of the enemy's. Forced here at the top of the reload block so
+; all three branches (substitute, minimize, plain front sprite) are covered.
+	ld a, 1
+	ldh [hWhoseTurn], a
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the enemy mon have a substitute?
 	ld hl, AnimationSubstitute
@@ -2941,6 +2975,7 @@ PartyMenuOrRockOrRun:
 	cp d ; check if the mon to switch to is already out
 	jr nz, .notAlreadyOut
 ; mon is already out
+	call RefreshPartyMenu ; Shin Red import Phase 6: erase the leftover side menu
 	ld hl, AlreadyOutText
 	call PrintText
 	jp .partyMonDeselected

@@ -459,6 +459,19 @@ CreateFusion::
 ; from wMonHIndex via GetMonName, so a stale secondary there shows the wrong name.
 ; CLOBBERS: af, bc, de, hl, wSpriteFlipped (restored to 0)
 PreloadFusionSecondaryPic::
+    ; Shin Red import Phase 6: vBackPic is only "free" scratch on the OVERWORLD
+    ; status screen. The battle party menu reaches StatusScreen too
+    ; (engine/battle/core.asm, the "Stats" option), and there vBackPic holds the
+    ; player's back pic - staging the secondary's front sprite into it would
+    ; destroy the player's sprite, and core.asm's return path only reloads the
+    ; ENEMY pic, so the corruption would persist until the next send-out. Skip
+    ; the whole overlay in battle: the fusion mon shows its primary sprite only.
+    ; OverlayFusionSecondaryPic below carries the same guard, and the two must
+    ; stay in lockstep (overlaying without preloading would point the tilemap at
+    ; whatever is in vBackPic).
+    ldh a, [hIsInBattle]
+    and a
+    ret nz
     ld a, [wCurPartySpecies]
     push af                          ; primary species
     ld a, 1
@@ -482,6 +495,12 @@ PreloadFusionSecondaryPic::
 ; triangle with the secondary's tile IDs (already staged in vBackPic by
 ; PreloadFusionSecondaryPic). CLOBBERS: af, b, hl
 OverlayFusionSecondaryPic::
+    ; Shin Red import Phase 6: paired with PreloadFusionSecondaryPic's guard
+    ; above. In battle nothing was staged into vBackPic, so these tile IDs would
+    ; point at the player's back pic.
+    ldh a, [hIsInBattle]
+    and a
+    ret nz
     ; sy=1: 1 tile
     ld hl, wTileMap + 27
     ld a, $32

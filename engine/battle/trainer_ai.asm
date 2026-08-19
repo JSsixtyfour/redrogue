@@ -834,6 +834,12 @@ AICureStatus:
 	ld hl, wEnemyMon1Status
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
+	; Shin Red import Phase 5: undo the burn/paralysis stat penalty before
+	; wEnemyMonStatus is cleared below, mirroring the item_effects.asm fixes.
+	; bc (just consumed by AddNTimes) is dead here.
+	push hl
+	farcall UndoBurnParStatsForEnemy
+	pop hl
 	xor a
 	ld [hl], a ; clear status in enemy team roster
 	ld [wEnemyMonStatus], a ; clear status of active enemy

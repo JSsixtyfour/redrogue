@@ -949,18 +949,22 @@ ItemUseMedicine:
 	cp d ; is pokemon the item was used on active in battle?
 	jp nz, .doneHealing
 ; if it is active in battle
+	; Shin Red import Phase 5: undo the burn/paralysis stat penalty (if any)
+	; BEFORE wBattleMonStatus is cleared below, since UndoBurnParStats reads
+	; it to decide what to undo. Replaces the old CopyData +
+	; DoubleOrHalveSelectedStats stat rebuild, which wiped every stat-stage
+	; modifier, not just the burn/paralysis penalty. bc and de are dead here
+	; (nothing before .doneHealing reads them again); only hl survives, since
+	; RemoveUsedItem's caller further down expects it intact.
+	push hl
+	farcall UndoBurnParStatsForPlayer
+	pop hl
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
 	push hl
 	ld hl, wPlayerBattleStatus3
 	res BADLY_POISONED, [hl] ; heal Toxic status
 	pop hl
-	ld bc, MON_STATS - MON_STATUS
-	add hl, bc ; hl now points to party stats
-	ld de, wBattleMonStats
-	ld bc, NUM_STATS * 2
-	call CopyData ; copy party stats to in-battle stat data
-	predef DoubleOrHalveSelectedStats
 	jp .doneHealing
 .healHP
 	inc hl ; hl = address of current HP
@@ -1223,6 +1227,14 @@ ItemUseMedicine:
 	ld a, [wCurItem]
 	cp FULL_RESTORE
 	jr nz, .calculateHPBarCoords
+	; Shin Red import Phase 5: same undo as the .cureStatusAilment site above,
+	; run before the status clear below removes the evidence it needs to read.
+	; d is live across this call (.calculateHPBarCoords uses it as a loop
+	; counter right after); hl is dead - hlcoord overwrites it unconditionally
+	; the instant we fall into .calculateHPBarCoords - and bc is dead too.
+	push de
+	farcall UndoBurnParStatsForPlayer
+	pop de
 	xor a
 	ld [wBattleMonStatus], a ; remove the status ailment in the in-battle pokemon data
 .calculateHPBarCoords
@@ -1698,148 +1710,12 @@ ItemUseXStat:
 	ret
 
 ItemUsePokeFlute:
-	ldh a, [hIsInBattle]
-	and a
-	jr nz, .inBattle
-; if not in battle
-	call ItemUseReloadOverworldData
-	ldh a, [hCurMap]
-	cp ROUTE_12
-	jr nz, .notRoute12
-	CheckEvent EVENT_BEAT_ROUTE12_SNORLAX
-	jr nz, .noSnorlaxToWakeUp
-; if the player hasn't beaten Route 12 Snorlax
-	ld hl, Route12SnorlaxFluteCoords
-	call ArePlayerCoordsInArray
-	jr nc, .noSnorlaxToWakeUp
-	ld hl, PlayedFluteHadEffectText
-	call PrintText
-	SetEvent EVENT_FIGHT_ROUTE12_SNORLAX
-	ret
-.notRoute12
-	cp ROUTE_16
-	jr nz, .noSnorlaxToWakeUp
-	CheckEvent EVENT_BEAT_ROUTE16_SNORLAX
-	jr nz, .noSnorlaxToWakeUp
-; if the player hasn't beaten Route 16 Snorlax
-	ld hl, Route16SnorlaxFluteCoords
-	call ArePlayerCoordsInArray
-	jr nc, .noSnorlaxToWakeUp
-	ld hl, PlayedFluteHadEffectText
-	call PrintText
-	SetEvent EVENT_FIGHT_ROUTE16_SNORLAX
-	ret
-.noSnorlaxToWakeUp
-	ld hl, PlayedFluteNoEffectText
-	jp PrintText
-.inBattle
-	xor a
-	ld [wWereAnyMonsAsleep], a
-	ld b, ~SLP_MASK
-	ld hl, wPartyMon1Status
-	call WakeUpEntireParty
-	ldh a, [hIsInBattle]
-	dec a ; is it a trainer battle?
-	jr z, .skipWakingUpEnemyParty
-; if it's a trainer battle
-	ld hl, wEnemyMon1Status
-	call WakeUpEntireParty
-.skipWakingUpEnemyParty
-	ld hl, wBattleMonStatus
-	ld a, [hl]
-	and b ; remove Sleep status
-	ld [hl], a
-	ld hl, wEnemyMonStatus
-	ld a, [hl]
-	and b ; remove Sleep status
-	ld [hl], a
-	call LoadScreenTilesFromBuffer2 ; restore saved screen
-	ld a, [wWereAnyMonsAsleep]
-	and a ; were any pokemon asleep before playing the flute?
-	ld hl, PlayedFluteNoEffectText
-	jp z, PrintText ; if no pokemon were asleep
-; if some pokemon were asleep
-	ld hl, PlayedFluteHadEffectText
-	call PrintText
-	ld a, [wLowHealthAlarm]
-	and $80
-	jr nz, .skipMusic
-	call WaitForSoundToFinish ; wait for sound to end
-	farcall Music_PokeFluteInBattle ; play in-battle pokeflute music
-.musicWaitLoop ; wait for music to finish playing
-	ld a, [wChannelSoundIDs + CHAN7]
-	and a ; music off?
-	jr nz, .musicWaitLoop
-.skipMusic
-	ld hl, FluteWokeUpText
-	jp PrintText
-
-; wakes up all party pokemon
-; INPUT:
-; hl must point to status of first pokemon in party (player's or enemy's)
-; b must equal ~SLP
-; [wWereAnyMonsAsleep] should be initialized to 0
-; OUTPUT:
-; [wWereAnyMonsAsleep]: set to 1 if any pokemon were asleep
-WakeUpEntireParty:
-	ld de, PARTYMON_STRUCT_LENGTH
-	ld c, PARTY_LENGTH
-.loop
-	ld a, [hl]
-	push af
-	and SLP_MASK
-	jr z, .notAsleep
-	ld a, 1
-	ld [wWereAnyMonsAsleep], a ; indicate that a pokemon had to be woken up
-.notAsleep
-	pop af
-	and b ; remove Sleep status
-	ld [hl], a
-	add hl, de
-	dec c
-	jr nz, .loop
-	ret
-
-Route12SnorlaxFluteCoords:
-	dbmapcoord  9, 62 ; one space West of Snorlax
-	dbmapcoord 10, 61 ; one space North of Snorlax
-	dbmapcoord 10, 63 ; one space South of Snorlax
-	dbmapcoord 11, 62 ; one space East of Snorlax
-	db -1 ; end
-
-Route16SnorlaxFluteCoords:
-	dbmapcoord 27, 10 ; one space East of Snorlax
-	dbmapcoord 25, 10 ; one space West of Snorlax
-	db -1 ; end
-
-PlayedFluteNoEffectText:
-	text_far _PlayedFluteNoEffectText
-	text_end
-
-FluteWokeUpText:
-	text_far _FluteWokeUpText
-	text_end
-
-PlayedFluteHadEffectText:
-	text_far _PlayedFluteHadEffectText
-	text_promptbutton
-	text_asm
-	ldh a, [hIsInBattle]
-	and a
-	jr nz, .done
-; play out-of-battle pokeflute music
-	ld a, SFX_STOP_ALL_MUSIC
-	call PlaySound
-	ld a, SFX_POKEFLUTE
-	ld c, BANK(SFX_Pokeflute)
-	call PlayMusic
-.musicWaitLoop ; wait for music to finish playing
-	ld a, [wChannelSoundIDs + CHAN3]
-	cp SFX_POKEFLUTE
-	jr z, .musicWaitLoop
-	call PlayDefaultMusic ; start playing normal music again
-.done
-	jp TextScriptEnd ; end text
+	; Shin Red import Phase 5: relocated to its own floating section - "bank3"
+	; measured at exactly 0 free bytes before this phase's item fixes, and
+	; this routine's only entry point is the dispatch table above. The wild-
+	; battle wake-flag fix lives with the relocated body now; see
+	; engine/items/item_effects_pokeflute.asm.
+	farjp ItemUsePokeFlute_Real
 
 ItemUseCoinCase:
 	ldh a, [hIsInBattle]
@@ -2054,6 +1930,13 @@ ItemUsePPRestore:
 	ld a, [wPlayerMonNumber]
 	cp b ; is the pokemon whose PP was restored active in battle?
 	jr nz, .skipUpdatingInBattleData
+	; Shin Red import Phase 5: while Transformed, wBattleMonPP belongs to the
+	; copied target's moveset, not the party's own moves .restorePP just
+	; healed above. Copying party PP over it here would stomp the transformed
+	; mon's real current PP with values for entirely different moves.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .skipUpdatingInBattleData
 	ld hl, wPartyMon1PP
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -2106,10 +1989,11 @@ ItemUsePPRestore:
 	ret
 .fullyRestorePP
 	ld a, [hl] ; move PP
-; Bug: This code doesn't mask out the upper two bits, which are used to count
-; how many PP Ups have been used on the move.
-; So, Max Ethers and Max Elixirs will not be detected as having no effect on
-; a move with full PP if the move has had any PP Ups used on it.
+; Shin Red import Phase 5: was missing "and PP_MASK" here, so the PP-Up count
+; bits (the top two bits) leaked into the comparison below. A move with any
+; PP Ups used could never read as already-full to a Max Ether/Max Elixir,
+; since max PP (b, from GetMaxPP) never carries those bits.
+	and PP_MASK
 	cp b ; does current PP equal max PP?
 	ret z
 	jr .storeNewAmount

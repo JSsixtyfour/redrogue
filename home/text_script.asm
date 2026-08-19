@@ -36,12 +36,14 @@ DisplayTextID::
 	jr nc, .skipSpriteHandling
 .spriteHandling
 ; get the text ID of the sprite
+; Shin Red import Phase 6: the UpdateSpriteFacingOffsetAndDelayMovement call that used
+; to be here has been removed, matching Pokemon Yellow and shinpokered. It ran on
+; whatever slot hCurrentSpriteOffset was left on by the per-frame sprite loop rather
+; than the sprite being talked to, which only ever produced the 15th-sprite graphical
+; glitch (and the Victory Road boulder ghost this fork previously patched around).
+; NPCs still turn to face the player: that is handled by MakeNPCFacePlayer, dispatched
+; from UpdateNPCSprite's face-player flag.
 	push hl
-	push de
-	push bc
-	farcall UpdateSpriteFacingOffsetAndDelayMovement ; update the graphics of the sprite the player is talking to (to face the right direction)
-	pop bc
-	pop de
 	ld hl, wMapSpriteData ; NPC text entries
 	ldh a, [hSpriteIndex]
 	dec a

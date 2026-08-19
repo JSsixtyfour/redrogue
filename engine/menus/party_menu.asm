@@ -233,6 +233,14 @@ PartyMenuMessagePointers:
 	dw PartyMenuUseTMText
 	dw PartyMenuSwapMonText
 	dw PartyMenuItemUseText
+	dw PartyMenuBlankText ; BLANK_PARTY_MENU
+
+; Shin Red import Phase 6: a text box with nothing in it. PrintText still draws
+; the box, which is the point: RefreshPartyMenu redraws the battle party menu
+; with this message to wipe the leftover side menu without changing what the
+; screen otherwise says.
+PartyMenuBlankText:
+	db "@"
 
 PartyMenuNormalText:
 	text_far _PartyMenuNormalText

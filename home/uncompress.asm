@@ -38,15 +38,26 @@ _UncompressSpriteData::
 	ld [wSpriteCurPosY], a
 	ld [wSpriteLoadFlags], a
 	call ReadNextInputByte    ; first byte of input determines sprite width (high nybble) and height (low nybble) in tiles (8x8 pixels)
+; Shin Red import Phase 6: the sprite buffers only hold 7x7 tiles, so a width or
+; height nybble of 0 (which means $100 rows) or of 8-15 overruns them into SRAM, and
+; the first SRAM data past the buffers is the hall of fame record. A glitched sprite
+; with junk dimension data (the classic Missingno case) could therefore corrupt the
+; hall of fame. Clamp both nybbles to the legal 1-7 range.
 	ld b, a
-	and $f
+	and $07
+	jr nz, .heightNonZero
+	inc a
+.heightNonZero
 	add a
 	add a
 	add a
 	ld [wSpriteHeight], a
 	ld a, b
 	swap a
-	and $f
+	and $07
+	jr nz, .widthNonZero
+	inc a
+.widthNonZero
 	add a
 	add a
 	add a

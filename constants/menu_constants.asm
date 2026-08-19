@@ -75,6 +75,9 @@ DEF CHOSE_SECOND_ITEM EQU 2
 	const TMHM_PARTY_MENU      ; $03
 	const SWAP_MONS_PARTY_MENU ; $04
 	const EVO_STONE_PARTY_MENU ; $05
+	const BLANK_PARTY_MENU     ; $06 ; Shin Red import Phase 6: empty message box,
+	                                 ; used by RefreshPartyMenu to erase the battle
+	                                 ; party menu's side menu before a message
 ; party menu message IDs
 ; PartyMenuItemUseMessagePointers indexes (see engine/menus/party_menu.asm)
 	const_next $F0

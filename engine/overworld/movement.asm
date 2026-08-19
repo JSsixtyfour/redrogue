@@ -118,6 +118,12 @@ UpdateNPCSprite:
 	add a
 	ld hl, wMapSpriteData
 	add l
+; Shin Red import Phase 6: the carry out of "add l" was dropped, so the 15th
+; map object read its movement byte 2 from the wrong page ($D4xx instead of
+; $D5xx). Same carry handling the DisplayTextID copy of this lookup already has.
+	jr nc, .mapSpriteDataNoCarry
+	inc h
+.mapSpriteDataNoCarry
 	ld l, a
 	ld a, [hl]        ; read movement byte 2
 	ld [wCurSpriteMovement2], a
@@ -355,9 +361,11 @@ UpdateSpriteInWalkingAnimation:
 	ld l, a
 	ldh a, [hRandomAdd]
 	and $7f
+	inc a                            ; Shin Red import Phase 6: a delay of 0 decrements
+	                                 ; to $ff and stalls the NPC for 255 ticks, so the
+	                                 ; range becomes [1,$80] instead of [0,$7f]
 	ld [hl], a                       ; x#SPRITESTATEDATA2_MOVEMENTDELAY:
-	                                 ; set next movement delay to a random value in [0,$7f]
-	                                 ; note that value 0 actually makes the delay $100 (bug?)
+	                                 ; set next movement delay to a random value in [1,$80]
 	dec h ; HIGH(wSpriteStateData1)
 	ldh a, [hCurrentSpriteOffset]
 	inc a
@@ -516,23 +524,16 @@ CheckSpriteAvailability:
 	jr c, .spriteInvisible  ; right of screen region
 .skipXVisibilityTest
 ; make the sprite invisible if a text box is in front of it
-; $5F is the maximum number for map tiles
+; Shin Red import Phase 6: test BOTH the rounded-down and the rounded-up tile
+; position. Rounding down alone treats a sprite that is mid-step as still
+; standing on the tile it is leaving, which lets a downward-moving NPC draw over
+; a text box for half of a 16-pixel step.
 	call GetTileSpriteStandsOn
-	ld d, MAP_TILESET_SIZE
-	ld a, [hli]
-	cp d
-	jr nc, .spriteInvisible ; standing on tile with ID >=MAP_TILESET_SIZE (bottom left tile)
-	ld a, [hld]
-	cp d
-	jr nc, .spriteInvisible ; standing on tile with ID >=MAP_TILESET_SIZE (bottom right tile)
-	ld bc, -SCREEN_WIDTH
-	add hl, bc              ; go back one row of tiles
-	ld a, [hli]
-	cp d
-	jr nc, .spriteInvisible ; standing on tile with ID >=MAP_TILESET_SIZE (top left tile)
-	ld a, [hl]
-	cp d
-	jr c, .spriteVisible    ; standing on tile with ID >=MAP_TILESET_SIZE (top right tile)
+	call .VisibilityTest
+	jr nc, .spriteInvisible
+	call GetTileSpriteStandsOn_roundUP
+	call .VisibilityTest
+	jr c, .spriteVisible
 .spriteInvisible
 	ld h, HIGH(wSpriteStateData1)
 	ldh a, [hCurrentSpriteOffset]
@@ -543,10 +544,14 @@ CheckSpriteAvailability:
 	jr .done
 .spriteVisible
 	ld c, a
+	call UpdateSpriteImage
+; Shin Red import Phase 6: this wWalkCounter check used to sit ABOVE
+; UpdateSpriteImage, so NPCs slid along without cycling their walk frames for
+; the whole time the player was mid-step. Only the grass-priority update below
+; needs to be skipped while the player is walking.
 	ld a, [wWalkCounter]
 	and a
 	jr nz, .done           ; if player is currently walking, we're done
-	call UpdateSpriteImage
 	inc h
 	ldh a, [hCurrentSpriteOffset]
 	add $7
@@ -561,6 +566,28 @@ CheckSpriteAvailability:
 	and a
 .done
 	ret
+
+; Shin Red import Phase 6: extracted from .skipXVisibilityTest so it can run
+; against two different tile positions. hl = tile pointer from
+; GetTileSpriteStandsOn or GetTileSpriteStandsOn_roundUP. Returns carry CLEAR if
+; the sprite is hidden (standing on a tile with ID >= MAP_TILESET_SIZE, i.e. a
+; text box tile) and carry SET if it is visible. Clobbers a, bc, d, hl.
+.VisibilityTest
+	ld d, MAP_TILESET_SIZE
+	ld a, [hli]
+	cp d
+	ret nc ; standing on tile with ID >=MAP_TILESET_SIZE (bottom left tile)
+	ld a, [hld]
+	cp d
+	ret nc ; standing on tile with ID >=MAP_TILESET_SIZE (bottom right tile)
+	ld bc, -SCREEN_WIDTH
+	add hl, bc              ; go back one row of tiles
+	ld a, [hli]
+	cp d
+	ret nc ; standing on tile with ID >=MAP_TILESET_SIZE (top left tile)
+	ld a, [hl]
+	cp d
+	ret    ; carry set only if this tile is a map tile (visible)
 
 UpdateSpriteImage:
 	ld h, HIGH(wSpriteStateData1)
@@ -696,13 +723,25 @@ CanWalkOntoTile:
 	call Random
 	ldh a, [hRandomAdd]
 	and $7f
-	ld [hl], a         ; x#SPRITESTATEDATA2_MOVEMENTDELAY: set to a random value in [0,$7f] (again with delay $100 if value is 0)
+	inc a              ; Shin Red import Phase 6: same 0-underflow fix as .initNextMovementCounter
+	ld [hl], a         ; x#SPRITESTATEDATA2_MOVEMENTDELAY: set to a random value in [1,$80]
 	scf                ; set carry (marking failure to walk)
 	ret
 
 ; calculates the tile pointer pointing to the tile the current sprite stands on
 ; this is always the lower left tile of the 2x2 tile blocks all sprites are snapped to
 ; hl: output pointer
+; Shin Red import Phase 6: rounded-UP variant of GetTileSpriteStandsOn below.
+; See the comment on .round_up.
+GetTileSpriteStandsOn_roundUP:
+	ld h, HIGH(wSpriteStateData1)
+	ldh a, [hCurrentSpriteOffset]
+	add SPRITESTATEDATA1_YPIXELS
+	ld l, a
+	ld a, [hli]     ; x#SPRITESTATEDATA1_YPIXELS
+	add $4          ; align to 2*2 tile blocks (Y position is always off 4 pixels to the top)
+	jr GetTileSpriteStandsOn.round_up
+
 GetTileSpriteStandsOn:
 	ld h, HIGH(wSpriteStateData1)
 	ldh a, [hCurrentSpriteOffset]
@@ -711,6 +750,24 @@ GetTileSpriteStandsOn:
 	ld a, [hli]     ; x#SPRITESTATEDATA1_YPIXELS
 	add $4          ; align to 2*2 tile blocks (Y position is always off 4 pixels to the top)
 	and $f0         ; in case object is currently moving
+	jr .doneRounding
+
+; Shin Red import Phase 6: ANDing with $f0 rounds the pixel position DOWN to the
+; tile the sprite started its step from, which treats the sprite as standing
+; higher up the screen than it actually is and lets downward-moving sprites draw
+; over text boxes. Rounding up instead gives the tile it is moving into.
+.round_up
+	ld c, a
+	and $f0
+	ld b, a
+	ld a, c
+	and $0f
+	jr z, .noPartialTile
+	ld a, $10
+.noPartialTile
+	add b
+
+.doneRounding
 	srl a           ; screen Y tile * 4
 	ld c, a
 	ld b, $0

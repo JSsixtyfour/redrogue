@@ -345,6 +345,11 @@ Evolution_ReloadTilesetTilePatterns:
 	ld a, [wLinkState]
 	cp LINK_STATE_TRADING
 	ret z
+; Shin Red import Phase 6: if the mon learned a move after evolving there is still a
+; text box on screen at this point, and ReloadTilesetTilePatterns turns the LCD off and
+; back on, which makes that box visibly flicker. White out first so the reload is not
+; seen.
+	call GBPalWhiteOutWithDelay3
 	jp ReloadTilesetTilePatterns
 
 LearnMoveFromLevelUp:

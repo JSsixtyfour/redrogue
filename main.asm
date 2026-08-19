@@ -8,7 +8,9 @@ INCLUDE "engine/movie/title.asm"
 INCLUDE "engine/pokemon/load_mon_data.asm"
 INCLUDE "data/items/prices.asm"
 INCLUDE "data/items/names.asm"
-INCLUDE "data/text/unused_names.asm"
+; Shin Red import Phase 6: data/text/unused_names.asm moved to its own floating
+; section below. "bank1" overflowed in the debug build when
+; CheckSpriteAvailability gained its rounded-up tile test.
 INCLUDE "engine/gfx/sprite_oam.asm"
 INCLUDE "engine/gfx/oam_dma.asm"
 INCLUDE "engine/link/print_waiting_text.asm"
@@ -52,8 +54,22 @@ INCLUDE "custom_functions/apply_self_stat_penalty.asm"
 INCLUDE "engine/debug/debug_fight2.asm"
 
 
+; Shin Red import Phase 6: moved out of the fixed "bank1" section, which
+; overflowed by $27 bytes in the debug build once CheckSpriteAvailability gained
+; its rounded-up tile test. This is leftover Japanese badge/ranking name data
+; from vanilla with ZERO references anywhere in the tree, so it is entirely
+; bank-independent. Relocated rather than deleted so nothing is lost.
+SECTION "Unused Names", ROMX
+INCLUDE "data/text/unused_names.asm"
+
 SECTION "Pick Up Item", ROMX
 INCLUDE "engine/events/pick_up_item.asm"
+
+; Shin Red import Phase 5: same relocation reasoning as "Drain HP Effect"
+; below - "bank3" (item_effects.asm) had zero free bytes, and this routine's
+; only entry point is the ItemUsePokeFlute stub left in item_effects.asm.
+SECTION "Poke Flute Item Use", ROMX
+INCLUDE "engine/items/item_effects_pokeflute.asm"
 
 ; Moved out of "bank1" (which overflowed when the Player PC gained its
 ; CARTRIDGE option) into its own floating section. Safe to relocate: its only
@@ -110,7 +126,11 @@ INCLUDE "engine/overworld/is_player_just_outside_map.asm"
 INCLUDE "engine/pokemon/status_screen.asm"
 INCLUDE "engine/menus/party_menu.asm"
 INCLUDE "gfx/player.asm"
-INCLUDE "engine/overworld/turn_sprite.asm"
+; Shin Red import Phase 6: engine/overworld/turn_sprite.asm
+; (UpdateSpriteFacingOffsetAndDelayMovement) is no longer assembled. Its only caller
+; was DisplayTextID in home/text_script.asm, removed this phase per Pokemon Yellow and
+; shinpokered. The file is left in the tree for reference.
+;INCLUDE "engine/overworld/turn_sprite.asm"
 INCLUDE "engine/menus/start_sub_menus.asm"
 INCLUDE "engine/items/tms.asm"
 INCLUDE "engine/battle/end_of_battle.asm"
@@ -215,9 +235,14 @@ SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"
 INCLUDE "data/pokemon/base_stats.asm"
-;INCLUDE "engine/battle/unused_stats_functions.asm"
 INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
+
+; Shin Red import Phase 5: UndoBurnParStats needs to be farcall-reachable from
+; both "bank3" (item_effects.asm) and here (trainer_ai.asm's AICureStatus), so
+; it gets its own floating section rather than living in either.
+SECTION "Stat Penalty Functions", ROMX
+INCLUDE "engine/battle/stat_penalty_functions.asm"
 
 ; Moved out of "Battle Engine 7" to make room for the Gambler AI in trainer_ai.
 ; All entry points (DrawAllPokeballs / DrawEnemyPokeballs /
