@@ -87,6 +87,12 @@ TransformEffect_:
 	and a
 	jr z, .next
 ; save enemy mon DVs at wTransformedEnemyMonOriginalDVs
+; Shin Red import Phase 4 (4.18-T3): skip the save if the enemy is already
+; Transformed, so re-transforming can't overwrite the true original DVs with
+; already-borrowed ones
+	ld a, [wEnemyBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .next
 	ld a, [de]
 	ld [wTransformedEnemyMonOriginalDVs], a
 	inc de
@@ -94,6 +100,22 @@ TransformEffect_:
 	ld [wTransformedEnemyMonOriginalDVs + 1], a
 	dec de
 .next
+; Shin Red import Phase 4 (4.18-T4): clear the transforming side's own
+; Disable state now that the transform is committed - otherwise a stale
+; disabled *slot index* carries onto a different, borrowed move and locks
+; out an unrelated move for the rest of the battle
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .clearEnemyDisable
+	xor a
+	ld [wPlayerDisabledMove], a
+	ld [wPlayerDisabledMoveNumber], a
+	jr .disableCleared
+.clearEnemyDisable
+	xor a
+	ld [wEnemyDisabledMove], a
+	ld [wEnemyDisabledMoveNumber], a
+.disableCleared
 ; DVs
 	ld a, [hli]
 	ld [de], a
@@ -269,6 +291,12 @@ SuperTransformEffect_:
 	and a
 	jr z, .next
 ; save enemy mon DVs at wTransformedEnemyMonOriginalDVs
+; Shin Red import Phase 4 (4.18-T3): skip the save if the enemy is already
+; Transformed, so re-transforming can't overwrite the true original DVs with
+; already-borrowed ones
+	ld a, [wEnemyBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .next
 	ld a, [de]
 	ld [wTransformedEnemyMonOriginalDVs], a
 	inc de

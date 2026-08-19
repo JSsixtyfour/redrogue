@@ -61,6 +61,16 @@ DontAbandonLearning:
 	ld a, [wPlayerMonNumber]
 	cp b
 	jp nz, PrintLearnedMove
+; Shin Red import Phase 4 (4.17): a Transformed mon that levels up mid-battle
+; must not have its borrowed moveset overwritten by the party mon's real
+; moves/PP below - bail out early if the active mon is currently Transformed
+	push bc
+	ld b, a
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	ld a, b
+	pop bc
+	jp nz, PrintLearnedMove
 	ld h, d
 	ld l, e
 	ld de, wBattleMonMoves

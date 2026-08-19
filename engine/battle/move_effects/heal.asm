@@ -11,13 +11,20 @@ HealEffect_:
 .healEffect
 	ld b, a
 	ld a, [de]
-	cp [hl] ; most significant bytes comparison is ignored
-	        ; causes the move to miss if max HP is 255 or 511 points higher than the current HP
+	cp [hl] ; compares the MOST significant HP bytes (current vs max)
+	; Shin Red import Phase 4 (4.15): vanilla threw this comparison away and kept
+	; only its carry, so the full-HP test reduced to "low bytes differ by exactly
+	; the borrow" - true whenever the HP gap was 255 or 511, which wrongly
+	; reported "already at max HP". e.g. current 1 / max 256: carry is set, then
+	; the low-byte sbc gives 1 - 0 - 1 = 0. Branching out on a high-byte mismatch
+	; is sufficient: if those differ, HP provably is not full.
 	inc de
 	inc hl
+	jr nz, .passed ; high bytes differed, so HP is not full - skip the test below
 	ld a, [de]
 	sbc [hl]
 	jp z, .failed ; no effect if user's HP is already at its maximum
+.passed
 	ld a, b
 	cp REST
 	jr nz, .healHP

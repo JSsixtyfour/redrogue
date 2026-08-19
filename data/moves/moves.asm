@@ -175,5 +175,9 @@ Moves:
 	move SUPER_FANG,   SUPER_FANG_EFFECT,            1, NORMAL,        90, 10
 	move SLASH,        NO_ADDITIONAL_EFFECT,        70, NORMAL,       100, 20
 	move SUBSTITUTE,   SUBSTITUTE_EFFECT,            0, NORMAL,       100, 10
-	move STRUGGLE,     RECOIL_EFFECT,               50, NORMAL,       100, 10
+	; Shin Red import Phase 4 (4.22): BIRD instead of NORMAL - Struggle is NORMAL-
+	; type NO_EFFECT vs GHOST (type_matchups.asm), so a mon out of PP could never
+	; damage a Ghost-type. BIRD has no matchup table rows, so it's universally
+	; neutral, and it's below SPECIAL so Struggle stays a physical move.
+	move STRUGGLE,     RECOIL_EFFECT,               50, BIRD,         100, 10
 	assert_table_length NUM_ATTACKS
