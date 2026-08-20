@@ -113,3 +113,11 @@ PredefPointers::
     add_predef RogueDoInGameTradeDialogue
     add_predef SaveScreenTileAreaToBuffer3
 	add_predef LoadScreenTileAreaFromBuffer3
+
+; GetPredefPointer (engine/predefs.asm) computes offset = 3 * wPredefID using an 8-bit multiply
+; that discards the carry out of the doubling step, so it silently wraps for IDs >= 128 instead of
+; failing loudly. The 255-predef indexing fix (Shin Red) was deliberately NOT taken - see
+; ShinRed_Import.md follow-up 1 - because nothing in this codebase is within 25 slots of the cap.
+; This assert exists only to convert a future silent-wrap bug into a build failure.
+DEF NUM_PREDEFS EQU (@ - PredefPointers) / 3
+ASSERT NUM_PREDEFS <= 128, "Predef table has grown past 128 entries: GetPredefPointer's 8-bit index math wraps silently above this. Import Shin Red's 16-bit indexing fix (see ShinRed_Import.md follow-up 1) before adding more."
