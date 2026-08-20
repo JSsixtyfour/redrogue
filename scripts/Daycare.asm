@@ -68,7 +68,13 @@ DaycareGentlemanText:
 	ld a, DAYCARE_DATA
 	ld [wMonDataLocation], a
 	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
-	farcall GetRewardMonLevel   ; a = current salesman-tier level (also sets wCurEnemyLevel)
+	; GetRewardMonLevel's "return in a" does NOT survive a farcall: Bankswitch's
+	; return path ends `pop bc / ld a, b`, which leaves a holding the CALLER's
+	; bank number. This read used to be `ld d, a` and so grew every deposited mon
+	; to level 6 (this script's bank) instead of the tier level. Read the value
+	; the routine actually publishes instead.
+	farcall GetRewardMonLevel   ; sets wCurEnemyLevel = current tier level
+	ld a, [wCurEnemyLevel]
 	ld d, a
 	ld hl, wDayCareMonBoxLevel
 	ld a, [hl]
@@ -183,22 +189,20 @@ DaycareGentlemanText:
 	call MoveMon
 	ld a, [wDayCareMonSpecies]
 	ld [wCurPartySpecies], a
-	ld a, [wPartyCount]
-	dec a
-	push af
-	ld bc, PARTYMON_STRUCT_LENGTH
-	push bc
-	ld hl, wPartyMon1Moves
-	call AddNTimes
-	ld d, h
-	ld e, l
-	ld a, 1
-	ld [wLearningMovesFromDayCare], a
-	predef WriteMonMoves
-	pop bc
-	pop af
+; Shin Red import Phase 10. The cry moves ahead of everything else so it is the
+; mon you handed over that greets you, not whatever it turns into; the upgrade
+; pass has to run before the HP-to-max write below, because evolving changes
+; MaxHP. The old `predef WriteMonMoves` (which silently shifted the oldest move
+; out with no prompt) is gone, and with it the wLearningMovesFromDayCare flag
+; this was the only place still setting - it was never cleared here either.
+	ld a, [wCurPartySpecies]
+	call PlayCry
+	farcall DaycareRetrieveUpgrade
 
 ; set mon's HP to max
+	ld a, [wPartyCount]
+	dec a
+	ld bc, PARTYMON_STRUCT_LENGTH
 	ld hl, wPartyMon1HP
 	call AddNTimes
 	ld d, h
@@ -211,8 +215,6 @@ DaycareGentlemanText:
 	ld a, [hl]
 	ld [de], a
 
-	ld a, [wCurPartySpecies]
-	call PlayCry
 	ld hl, .GotMonBackText
 	jr .done
 

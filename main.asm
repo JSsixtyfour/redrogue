@@ -49,6 +49,11 @@ INCLUDE "engine/menus/extra_options.asm"
 ; it doesn't need to live in any particular bank.
 INCLUDE "engine/battle/exp_bar.asm"
 
+; Declares its own floating SECTION (see the file header). Reached only by
+; farcall (from scripts/Daycare.asm and scripts/IndigoPlateauLobby.asm), so it
+; doesn't need to live in any particular bank.
+INCLUDE "engine/events/daycare_upgrade.asm"
+
 ; Declares its own floating SECTION (see the file header). Kept out of
 ; "Battle Core", which had no room left; reached by farcall from
 ; engine/battle/effects.asm.
@@ -93,7 +98,6 @@ INCLUDE "engine/overworld/clear_variables.asm"
 INCLUDE "engine/overworld/player_state.asm"
 INCLUDE "engine/events/poison.asm"
 INCLUDE "engine/overworld/tilesets.asm"
-INCLUDE "engine/overworld/daycare_exp.asm"
 INCLUDE "data/maps/toggleable_objects.asm"
 INCLUDE "engine/overworld/field_move_messages.asm"
 INCLUDE "engine/items/inventory.asm"

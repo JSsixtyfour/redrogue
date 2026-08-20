@@ -641,8 +641,22 @@ _MoveMon::
 	jr z, .done
 	; returning mon to party, compute level and stats
 	push hl
+	; The `srl a / add 2` below turns a wMoveMonType into the matching
+	; wMonDataLocation, and it works for the vanilla three: BOX_TO_PARTY 0 -> 2
+	; BOX_DATA, DAYCARE_TO_PARTY 2 -> 3 DAYCARE_DATA. It does NOT work for this
+	; fork's second daycare slot: DAYCARE_TO_PARTY2 is 4, so it produces 4 =
+	; BATTLE_MON_DATA, while DAYCARE_DATA2 is 5. LoadMonData then read slot 1's
+	; wDayCareMon instead of wDayCareMon2, so every mon retrieved from the Indigo
+	; lobby's Daycare LADY had its level recomputed from the wrong (usually
+	; empty) daycare slot and came back at level 1. Special-case it.
+	cp DAYCARE_TO_PARTY2
+	jr nz, .deriveDataLocation
+	ld a, DAYCARE_DATA2
+	jr .gotDataLocation
+.deriveDataLocation
 	srl a
 	add $2
+.gotDataLocation
 	ld [wMonDataLocation], a
 	call LoadMonData
 	farcall CalcLevelFromExperience

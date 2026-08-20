@@ -6,7 +6,6 @@ ApplyOutOfBattlePoisonDamage:
 	ld a, [wPartyCount]
 	and a
 	jp z, .noBlackOut
-	call IncrementDayCareMonExp
 	ld a, [wStepCounter]
 	and $3 ; is the counter a multiple of 4?
 	jp nz, .noBlackOut ; only apply poison damage every fourth step
