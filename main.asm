@@ -406,6 +406,15 @@ INCLUDE "engine/gfx/palettes.asm"
 INCLUDE "engine/menus/save.asm"
 
 
+SECTION "Overworld CGB Tile Palettes", ROMX
+; Shin Red import Phase 3 (CGB color). Currently unreferenced - see the file's
+; own header. Floating rather than pinned per layout.link convention; pin only
+; if rgblink first-fit picks a different bank per build target
+; (project_romx_firstfit_bank_pressure).
+
+INCLUDE "data/gfx/overworld_tile_palettes.asm"
+
+
 SECTION "Itemfinder 1", ROMX
 
 INCLUDE "engine/movie/credits.asm"
