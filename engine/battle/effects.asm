@@ -507,10 +507,12 @@ UpdateStatDone:
 	pop af
 	call nz, Bankswitch
 .applyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call z, ApplyBadgeStatBoosts ; whenever the player uses a stat-up move, badge boosts get reapplied again to every stat,
-	                             ; even to those not affected by the stat-up move (will be boosted further)
+	; AI Overhaul Phase 0: was "call z, ApplyBadgeStatBoosts", which re-boosted
+	; ALL FOUR badge stats every time any one stat changed, compounding the
+	; three that never lost their boost. Now re-boosts only the stat that was
+	; actually recalculated. The whose-turn gate moved inside the routine, so
+	; this stays the same size in the nearly-full "Battle Core" bank.
+	farcall ApplySingleBadgeStatBoost
 	ld hl, MonsStatsRoseText
 	call PrintText
 
@@ -565,12 +567,13 @@ StatModifierDownEffect:
 	ld hl, wPlayerMonStatMods
 	ld de, wEnemyMoveEffect
 	ld bc, wPlayerBattleStatus1
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	jr z, .statModifierDownEffect
-	call BattleRandom
-	cp 25 percent + 1 ; chance to miss by in regular battle
-	jp c, MoveMissed
+    ; remove 25% chance for enemy stat down moves to miss, thanks Xillicis
+	;ld a, [wLinkState]
+	;cp LINK_STATE_BATTLING
+	;jr z, .statModifierDownEffect
+	;call BattleRandom
+	;cp 25 percent + 1 ; chance to miss by in regular battle
+	;jp c, MoveMissed
 .statModifierDownEffect
 	call CheckTargetSubstitute ; can't hit through substitute
 	jp nz, MoveMissed
@@ -703,10 +706,9 @@ UpdateLoweredStatDone:
 	jr nc, .ApplyBadgeBoostsAndStatusPenalties
 	call PlayCurrentMoveAnimation2
 .ApplyBadgeBoostsAndStatusPenalties
-	ldh a, [hWhoseTurn]
-	and a
-	call nz, ApplyBadgeStatBoosts ; whenever the opponent uses a stat-down move, badge boosts get reapplied again to every stat,
-	                              ; even to those not affected by the stat-down move (will be boosted further)
+	; AI Overhaul Phase 0: see the matching comment in StatModifierUpEffect.
+	; Only the stat this move actually lowered gets its badge boost restored.
+	farcall ApplySingleBadgeStatBoost
 	ld hl, MonsStatsFellText
 	call PrintText
 

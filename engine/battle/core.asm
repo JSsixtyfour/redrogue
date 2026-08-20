@@ -5233,14 +5233,25 @@ CriticalHitTest:
 	ld c, [hl]                   ; read move id
 	ld a, [de]
 	bit GETTING_PUMPED, a        ; test for focus energy
-	jr nz, .focusEnergyUsed      ; bug: using focus energy causes a shift to the right instead of left,
-	                             ; resulting in 1/4 the usual crit chance
+	jr nz, .focusEnergyUsed
 	sla b                        ; (effective (base speed/2)*2)
 	jr nc, .noFocusEnergyUsed
 	ld b, $ff                    ; cap at 255/256
 	jr .noFocusEnergyUsed
 .focusEnergyUsed
-	srl b
+; AI Overhaul Phase 0: Focus Energy is meant to QUADRUPLE the crit rate.
+; Vanilla shifted right ("srl b") where it should have shifted left, giving
+; 1/4 the normal rate instead of 4x - a 16x error that made Focus Energy the
+; single worst move in the game. Shift left three times so the result is 4x
+; the non-Focus-Energy value computed above.
+	sla b
+	jr c, .focusEnergyCap
+	sla b
+	jr c, .focusEnergyCap
+	sla b
+	jr nc, .noFocusEnergyUsed
+.focusEnergyCap
+	ld b, $ff                    ; cap at 255/256
 .noFocusEnergyUsed
 	ld hl, HighCriticalMoves     ; table of high critical hit moves
 .Loop
