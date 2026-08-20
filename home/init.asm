@@ -3,6 +3,10 @@ SoftReset::
 	call GBPalWhiteOut
 	ld c, 32
 	call DelayFrames
+	; Carry the CGB flag through Init's WRAM0 wipe in E, exactly as _Start does.
+	; Must be the last thing before the fallthrough: the calls above clobber de.
+	ld a, [wOnCGB]
+	ld e, a
 	; fallthrough
 
 Init::
@@ -39,6 +43,12 @@ Init::
 	ld a, b
 	or c
 	jr nz, .loop
+
+	; Restore the CGB flag the wipe just destroyed, from E (see _Start).
+	; MUST be before ClearVram, which reads wOnCGB to decide whether to also
+	; clear VRAM bank 1's attribute map.
+	ld a, e
+	ld [wOnCGB], a
 
 	call ClearVram
 
@@ -108,6 +118,38 @@ Init::
 	jp PrepareTitleScreen
 
 ClearVram::
+; Shin Red import Phase 3: on CGB, VRAM bank 1 holds the BG attribute map (one
+; byte per tile: palette in bits 0-2, tile bank 3, flips 5-6, priority 7).
+; Boot-ROM state there is not something to rely on, and leftover garbage gives
+; every tile a random palette and random flips - that was the observed symptom
+; of the first GBC build (colours differing on every single boot). Clear it too,
+; then put rVBK back on bank 0: every other VRAM writer in the tree assumes
+; bank 0 and never touches rVBK.
+;
+; KNOWN HARNESS DISCREPANCY, 2026-08-20 - do NOT delete this clear to make the
+; smoke suite green. With this clear present `make smoke` fails 23 assertions
+; (stage-door warps appear never to fire under PyBoy), and removing it returns
+; 12/12. It was removed once on that basis and that was WRONG: the user then
+; verified the real build on an actual emulator - walked through a lobby stage
+; door, reached Rocket B1F, fought a trainer, no issues, correct rendering.
+; The game is fine; the failure is specific to the PyBoy harness.
+;
+; Mechanism still UNKNOWN. Ruled out so far: RunPaletteCommand's CGB arm
+; (disabling it did not help), rVBK's constant ($FF4F, hardware.inc:588),
+; aliasing on wOnCGB (alone at $cf12), a VBlank ISR writing while rVBK=1 (both
+; callers have interrupts unable to fire - :43 is inside Init's `di`, :112 runs
+; DisableLCD first), and PyBoy's VRAM bank emulation itself (probed directly:
+; bank 0 and bank 1 hold separate values as they should). Investigate the
+; harness next; fix it there, not by deleting this clear.
+	ld a, [wOnCGB]
+	and a
+	jr z, .bank0
+	ld a, 1
+	ldh [rVBK], a
+	call .bank0
+	xor a
+	ldh [rVBK], a
+.bank0
 	ld hl, STARTOF(VRAM)
 	ld bc, SIZEOF(VRAM)
 	xor a

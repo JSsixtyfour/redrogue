@@ -733,25 +733,44 @@ SendSGBPackets:
 	jp SendSGBPacket
 
 InitCGBPalettes:
-	ld a, $80 ; index 0 with auto-increment
+; Load the four palettes named by an SGB PAL_SET packet into CGB BG palette RAM.
+; hl = the packet. Only reached when wOnCGB is set (see SendSGBPackets).
+;
+; Shin Red import Phase 3. REWRITTEN 2026-08-20: the vanilla routine here was an
+; unfinished stub (matching wRAM's own "always 0 since full CGB support was not
+; implemented" note on wOnCGB) and was wrong twice over. It looped `ld c, $20`
+; consuming two bytes per pass, i.e. 64 bytes out of a packet that is only 16
+; (PAL_SET = command byte + 4 little-endian IDs + `ds 7`), so 28 of its 32 reads
+; ran off the end of the packet; and it emitted a single byte per palette
+; instead of the 8 a CGB palette needs. Correct shape is 4 palettes x 8 bytes,
+; which happens to be the same 32 rBGPD writes it was making by accident.
+;
+; SuperPalettes is real CGB-ready colour data (4 colours x 2 bytes per PAL_*
+; entry), not SGB-only, and lives in this same bank - so it is read directly.
+	ld a, $80 ; index 0, auto-increment
 	ldh [rBGPI], a
-	inc hl
-	ld c, $20
-.loop
-	ld a, [hli]
-	inc hl
-	add a
-	add a
-	add a
+	inc hl ; skip the packet's command byte
+	ld c, 4 ; a PAL_SET packet names 4 palettes
+.palLoop
+	ld a, [hli] ; palette ID, low byte
+	inc hl ; IDs are 16-bit in the packet; the high byte is always 0
+	push hl ; the packet cursor has to survive the table walk
+	ld h, 0
+	ld l, a
+	add hl, hl
+	add hl, hl
+	add hl, hl ; hl = ID * 8, the entry's byte offset
 	ld de, SuperPalettes
-	add e
-	jr nc, .noCarry
-	inc d
-.noCarry
-	ld a, [de]
+	add hl, de
+	ld b, 8 ; 4 colours x 2 bytes
+.byteLoop
+	ld a, [hli]
 	ldh [rBGPD], a
+	dec b
+	jr nz, .byteLoop
+	pop hl
 	dec c
-	jr nz, .loop
+	jr nz, .palLoop
 	ret
 
 EmptyFunc3:

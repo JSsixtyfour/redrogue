@@ -36,9 +36,19 @@ GBPalWhiteOut::
 RunDefaultPaletteCommand::
 	ld b, SET_PAL_DEFAULT
 RunPaletteCommand::
+; Shin Red import Phase 3: this early-return used to test wOnSGB alone, which
+; made EVERY palette command a no-op on a plain GBC (SGB=0, CGB=1) - the single
+; blocking edit for the CGB path. Now runs for either.
+; NOTE: do not "optimize" this by ORing the two adjacent flags through hl. hl is
+; part of predef_jump's contract (GetPredefPointer stashes it into wPredefHL)
+; and b already holds the palette command, so neither register is free here.
 	ld a, [wOnSGB]
 	and a
+	jr nz, .run
+	ld a, [wOnCGB]
+	and a
 	ret z
+.run
 	predef_jump _RunPaletteCommand
 
 GetHealthBarColor::
