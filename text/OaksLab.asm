@@ -144,3 +144,8 @@ _OaksLabGift3Desc::
 	text "Raises a level"
 	line "instantly!"
 	done
+
+_OaksLabGift4Desc::
+	text "Maxes STAT EXP,"
+	line "or DVs if maxed"
+	done

@@ -34,6 +34,10 @@ UseItem_::
 	jp z, ItemUseItemDice
 	cp ELEMENT_PRISM ; outside ItemUsePtrTable's range
 	jp z, ItemUseElementPrism
+	cp M_GENE ; outside ItemUsePtrTable's range
+	jp z, ItemUseMGene
+	cp M_TOME ; outside ItemUsePtrTable's range
+	jp z, ItemUseMTome
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable
@@ -848,6 +852,22 @@ EvoStoneRefusedText:
 	text_far _EvoStoneRefusedText
 	text_end
 
+; M.GENE / M.TOME (Phase 11): one-shot consumables that fix a mon you already
+; have, as opposed to DV_BOOSTER/STAT_BOOSTER's passive effect on newly added
+; mons. Both share ItemUseMedicine's party-mon-picker front end, exactly like
+; ItemUseVitamin below, and branch off in .checkItemType.
+ItemUseMGene:
+	ldh a, [hIsInBattle]
+	and a
+	jp nz, ItemUseNotTime
+	jr ItemUseMedicine
+
+ItemUseMTome:
+	ldh a, [hIsInBattle]
+	and a
+	jp nz, ItemUseNotTime
+	jr ItemUseMedicine
+
 ItemUseVitamin:
 	ldh a, [hIsInBattle]
 	and a
@@ -907,6 +927,10 @@ ItemUseMedicine:
 	jr z, ItemUseMedicine ; if so, force another choice
 .checkItemType
 	ld a, [wCurItem]
+	cp M_GENE
+	jp z, .useMGene
+	cp M_TOME
+	jp z, .useMTome
 	cp REVIVE
 	jr nc, .healHP ; if it's a Revive or Max Revive
 	cp FULL_HEAL
@@ -1401,13 +1425,140 @@ ItemUseMedicine:
 	pop hl
 	pop bc
 	jp CalcStats ; recalculate stats
+
+; M.GENE: reroll a party mon's DVs to above-average values. Reuses
+; ApplyDVFloor/DVFloorTable (engine/pokemon/add_mon.asm) rather than
+; reimplementing the floor logic - see the note on those labels for why de is
+; dangerous as scratch around a live struct pointer, avoided here by using
+; the same push-hl/pop-hl idiom as .useVitamin above instead.
+.useMGene
+	push hl
+	ld a, [hl]
+	ld [wCurSpecies], a
+	ld [wPokedexNum], a
+	ld bc, MON_LEVEL
+	add hl, bc ; hl now points to level
+	ld a, [hl] ; a = level
+	ld [wCurEnemyLevel], a ; store level
+	call GetMonHeader
+	push de
+	ld a, d
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	pop de
+	pop hl ; hl = struct base
+	push hl
+	call Random
+	ld b, a ; b = first roll (-> MON_DVS byte1: Spd/Spc)
+	call Random
+	ld c, a ; c = second roll (-> MON_DVS byte0: Atk/Def)
+	ld hl, DVFloorTable + 2 ; highest DV_BOOSTER tier (13) = "above average"
+	ld e, [hl]
+	ld a, b
+	call ApplyDVFloor
+	ld b, a
+	ld a, c
+	call ApplyDVFloor
+	ld c, a
+	pop hl ; hl = struct base
+	push hl
+	ld de, MON_DVS
+	add hl, de
+	ld [hl], c ; MON_DVS byte0 = Atk/Def
+	inc hl
+	ld [hl], b ; MON_DVS byte1 = Spd/Spc
+	pop hl ; hl = struct base
+	call .recalculateStats
+	ld a, SFX_HEAL_AILMENT
+	call PlaySound
+	ld hl, MGeneUsedText
+	call PrintText
+	jp RemoveUsedItem
+
+; M.TOME: max out all five stat exp fields to the TRUE ceiling ($ffff), not the
+; 25600 that .useVitamin refuses to add past. Those are different numbers and
+; the difference is real: _CalcStat (engine/pokemon/calc_stats.asm) adds
+; ceil(sqrt(stat exp))/4, clamped at 63, so 25600 is worth +40 and $ffff is
+; worth the full +63. A vitamin-maxed mon therefore still gains from this.
+; If every stat is already at the true max, max the DVs instead so the item is
+; never wasted.
+.useMTome
+	push hl
+	ld a, [hl]
+	ld [wCurSpecies], a
+	ld [wPokedexNum], a
+	ld bc, MON_LEVEL
+	add hl, bc ; hl now points to level
+	ld a, [hl] ; a = level
+	ld [wCurEnemyLevel], a ; store level
+	call GetMonHeader
+	push de
+	ld a, d
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	pop de
+	pop hl ; hl = struct base
+	push hl ; kept for the maxed-out check below
+	ld bc, MON_HP_EXP
+	add hl, bc ; hl -> first stat exp word (MSB)
+	ld b, NUM_STATS
+	xor a
+	ld c, a ; c = 0: assume every stat is already maxed
+.checkStatExpMaxedLoop
+	ld a, [hl]
+	cp $ff ; MSB $ff means stat exp >= 65280, whose ceil(sqrt) already clamps
+	jr nc, .thisStatMaxed ; to 255 in _CalcStat - i.e. the bonus is truly maxed
+	ld c, 1 ; found one that isn't
+.thisStatMaxed
+	inc hl
+	inc hl
+	dec b
+	jr nz, .checkStatExpMaxedLoop
+	pop hl ; hl = struct base
+	ld a, c
+	and a
+	jr nz, .maxStatExp
+	jr .maxDVsInstead
+.maxStatExp
+	push hl
+	ld bc, MON_HP_EXP
+	add hl, bc ; hl -> first stat exp word
+	ld b, NUM_STATS
+.maxStatExpLoop
+	ld a, $ff
+	ld [hli], a
+	ld [hli], a
+	dec b
+	jr nz, .maxStatExpLoop
+	pop hl ; hl = struct base
+	call .recalculateStats
+	ld a, SFX_HEAL_AILMENT
+	call PlaySound
+	ld hl, MTomeStatMaxedText
+	call PrintText
+	jp RemoveUsedItem
+.maxDVsInstead
+	push hl
+	ld bc, MON_DVS
+	add hl, bc ; hl -> MON_DVS byte0
+	ld a, $ff
+	ld [hli], a
+	ld [hl], a ; both DV bytes = $ff -> every nibble maxed
+	pop hl ; hl = struct base
+	call .recalculateStats
+	ld a, SFX_HEAL_AILMENT
+	call PlaySound
+	ld hl, MTomeDVMaxedText
+	call PrintText
+	jp RemoveUsedItem
+
 .useRareCandy
 	push hl
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
 	cp MAX_LEVEL
-	jr z, .vitaminNoEffect ; can't raise level above 100
+	jp z, .vitaminNoEffect ; can't raise level above 100
 	inc a
 	ld [hl], a ; store incremented level
 	ld [wCurEnemyLevel], a
@@ -1518,6 +1669,18 @@ VitaminStatRoseText:
 
 VitaminNoEffectText:
 	text_far _VitaminNoEffectText
+	text_end
+
+MGeneUsedText:
+	text_far _MGeneUsedText
+	text_end
+
+MTomeStatMaxedText:
+	text_far _MTomeStatMaxedText
+	text_end
+
+MTomeDVMaxedText:
+	text_far _MTomeDVMaxedText
 	text_end
 
 INCLUDE "data/battle/stat_names.asm"

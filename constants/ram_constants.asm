@@ -292,7 +292,7 @@ DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
 	; box uses, to draw the room PC's furniture/decoration descriptions.
 	DEF BIT_ROOM_DESC_BOX    EQU 5  ; room PC option list open; see room_pc.asm
 	DEF NUM_RECOVERY_ITEMS  EQU 21
-	DEF NUM_STAT_ITEMS      EQU 12
+	DEF NUM_STAT_ITEMS      EQU 14
 	DEF NUM_VALUABLE_ITEMS  EQU 4
 
 ; sKeyItemsBitfield paired own+active bits (must remain stable once save data exists)

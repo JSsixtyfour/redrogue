@@ -380,18 +380,114 @@ PrintStatsBox:
 	ld a, e
 	dec a ; STATS_BOX_STAT_EXP?
 	jr nz, .PrintDVs
+; Shows what the stat exp is WORTH, not the raw 0-65535 counter, which is an
+; opaque number to read on a status screen. _CalcStat adds ceil(sqrt(stat exp))
+; / 4 to (Base + DV) * 2 before the level multiply, so at level 100 the value
+; printed here is very nearly the literal number of stat points training has
+; bought - and it has a legible ceiling of +63 rather than 65535.
+; The four Exp fields are contiguous (see MON_*_EXP in
+; constants/pokemon_data_constants.asm), so .StatExpBonus walks de forward
+; through them and only the first needs loading. HP's stat exp is skipped here
+; exactly as it was before - this box has no HP row.
 	hlcoord 1, 9
-	ld bc, SCREEN_WIDTH + 3 ; 5 digits from column 4 end on the last interior column
+	ld bc, SCREEN_WIDTH + 3 ; "NN/63" from column 4 ends on the last interior column
 	add hl, bc
 	ld de, wLoadedMonAttackExp
-	lb bc, 2, 5
-	call .PrintStat
-	ld de, wLoadedMonDefenseExp
-	call .PrintStat
-	ld de, wLoadedMonSpeedExp
-	call .PrintStat
-	ld de, wLoadedMonSpecialExp
-	jp PrintNumber
+	call .StatExpBonus
+	call .PrintStatExpBonus
+	call .StatExpBonus
+	call .PrintStatExpBonus
+	call .StatExpBonus
+	call .PrintStatExpBonus
+	call .StatExpBonus
+	jp .PrintStatExpBonus
+
+; INPUT:  de = a 2-byte big-endian stat exp field, hl = the screen cursor
+; OUTPUT: a = the stat bonus that stat exp is worth (0-63), de advanced past
+;         the field, hl untouched
+; CLOBBERS: b
+; Mirrors _CalcStat's ceil(sqrt(stat exp)) / 4, including its 255 clamp, but
+; computes the root by subtracting successive odd numbers (n^2 = 1+3+..+(2n-1))
+; instead of calling Multiply. That keeps it off HRAM entirely, which matters on
+; this screen: staging a value in HRAM for PrintNumber does not work here, see
+; the .PrintDV comment below.
+.StatExpBonus:
+	push hl ; screen cursor - the root is computed in hl
+	ld a, [de]
+	ld h, a
+	inc de
+	ld a, [de]
+	ld l, a
+	inc de ; hl = stat exp, de = past the field
+	push de
+	ld b, 0 ; b = the root so far
+	ld de, 1 ; de = the next odd number to subtract, i.e. 2b + 1
+.sqrtLoop
+	ld a, h
+	or l
+	jr z, .sqrtDone ; landed exactly on a perfect square
+	ld a, l
+	sub e
+	ld l, a
+	ld a, h
+	sbc d
+	ld h, a
+	inc b
+	jr c, .sqrtDone ; went past 0, so b is already the ceiling
+	ld a, b
+	cp $ff
+	jr z, .sqrtDone ; the same clamp _CalcStat's own loop applies
+	inc de
+	inc de
+	jr .sqrtLoop
+.sqrtDone
+	pop de
+	pop hl
+	ld a, b
+	srl a
+	srl a ; / 4, matching _CalcStat
+	ret
+
+; a = a stat bonus (0-63). Writes "NN/63" across 5 tiles at hl, then steps hl
+; down two rows exactly like .PrintStat, preserving de. Spelling out the "/63"
+; denominator is the whole point of this view: on its own a bare "40" is just
+; another opaque number, but against its own ceiling it reads as a progress
+; figure. The five tiles are exactly the width freed by dropping the old raw
+; 5-digit stat exp counter.
+; Hand-written for the same reason as .PrintDV below: PrintNumber reads its
+; operand from memory and zeroes hPastLeadingZeros on the way in.
+.PrintStatExpBonus:
+	push de
+	push hl
+	ld b, '0'
+.bonusTensLoop
+	cp 10
+	jr c, .bonusGotTens
+	sub 10
+	inc b
+	jr .bonusTensLoop
+.bonusGotTens
+	ld c, a
+	ld a, b
+	cp '0'
+	jr nz, .bonusWriteTens
+	ld a, ' ' ; blank a leading zero rather than printing "05/63"
+.bonusWriteTens
+	ld [hli], a
+	ld a, c
+	add '0'
+	ld [hli], a
+	ld a, '/'
+	ld [hli], a
+	ld a, '6'
+	ld [hli], a
+	ld a, '3'
+	ld [hl], a
+	pop hl
+	ld de, SCREEN_WIDTH * 2
+	add hl, de
+	pop de
+	ret
 
 ; DVs are packed nibbles at wLoadedMonDVs, the same layout _CalcStat unpacks in
 ; calc_stats.asm: byte 0 = Atk<<4|Def, byte 1 = Spd<<4|Spc.

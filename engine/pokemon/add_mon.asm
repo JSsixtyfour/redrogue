@@ -147,16 +147,16 @@ _AddPartyMon::
 ; producing party mons with a species but level 0 / 0 HP / all stats 0.
 	push hl
 	push de
-	ld hl, .DVFloorTable
+	ld hl, DVFloorTable
 	ld e, a
 	ld d, 0
 	add hl, de
 	ld e, [hl]                     ; e = floor (6/10/13), held across both calls below
 	ld a, b                        ; a = first roll (-> MON_DVS byte1: Spd/Spc)
-	call .ApplyDVFloor
+	call ApplyDVFloor
 	ld b, a
 	ld a, c
-	call .ApplyDVFloor
+	call ApplyDVFloor
 	ld c, a
 	pop de                         ; restore live struct write cursor
 	pop hl                         ; restore live struct base
@@ -337,12 +337,15 @@ _AddPartyMon::
 
 ; ============================================================
 ; ApplyDVFloor — DV BOOSTER helper (see KEY_ITEM_EFFECTS_PLAN_PC.md §3d).
+; Global (not a local under _AddPartyMon) because Phase 11's M.GENE item
+; reuses it from engine/items/item_effects.asm - both files assemble into
+; bank 3 (see main.asm's "bank3" SECTION), so a plain call is enough.
 ; INPUT:  a = byte holding two packed 4-bit DVs, e = floor value (0-15)
 ; OUTPUT: a = same byte with both nibbles raised to at least e
 ; CLOBBERS: d (b/c/e untouched, so this is safe to call twice in a row with
 ; the same floor still sitting in e)
 ; ============================================================
-.ApplyDVFloor:
+ApplyDVFloor::
 	push af
 	and $0f
 	cp e
@@ -361,7 +364,9 @@ _AddPartyMon::
 	or d
 	ret
 
-.DVFloorTable:
+; Also promoted to global alongside ApplyDVFloor - see above. Index 2 (value
+; 13, the highest DV_BOOSTER tier) is M.GENE's fixed "above average" floor.
+DVFloorTable::
 	db 6, 10, 13
 
 LoadMovePPs:

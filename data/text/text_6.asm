@@ -81,6 +81,24 @@ _VitaminNoEffectText::
 	line "effect."
 	prompt
 
+_MGeneUsedText::
+	text_ram wNameBuffer
+	text "'s DVs"
+	line "improved!"
+	prompt
+
+_MTomeStatMaxedText::
+	text_ram wNameBuffer
+	text "'s stats"
+	line "maxed out!"
+	prompt
+
+_MTomeDVMaxedText::
+	text_ram wNameBuffer
+	text "'s DVs are"
+	line "perfect now!"
+	prompt
+
 _ThrewBaitText::
 	text "<PLAYER> threw"
 	line "some BAIT."

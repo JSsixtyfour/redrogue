@@ -900,7 +900,7 @@ BillGiftList:
 	gift_entry GIFT_ITEM, TM_THUNDERBOLT, BillGift7_Text, BillGift7_Desc
 
 MrFujiGiftList:
-	db 7
+	db 8
 	gift_entry GIFT_ITEM,       POKE_FLUTE,         MrFujiGift1_Text, MrFujiGift1_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiRescue, MrFujiGift2_Text, MrFujiGift2_Desc
 	gift_entry GIFT_MON_EVOLVE, CUBONE | (1 << 8),      MrFujiGift3_Text, MrFujiGift3_Desc
@@ -908,6 +908,7 @@ MrFujiGiftList:
 	gift_entry GIFT_TEACH_MOVE, NIGHT_SHADE,        MrFujiGift5_Text, MrFujiGift5_Desc
 	gift_entry GIFT_TEACH_MOVE, CONFUSE_RAY,        MrFujiGift6_Text, MrFujiGift6_Desc
 	gift_entry GIFT_TEACH_MOVE, LICK,               MrFujiGift7_Text, MrFujiGift7_Desc
+	gift_entry GIFT_ITEM,       M_GENE,             MrFujiGift8_Text, MrFujiGift8_Desc
 
 CaptainGiftList:
 	db 7
@@ -1020,10 +1021,11 @@ TradeHouseGrannyGiftList: ; probably just remove this one
 
 ; Gift 1 is the Light-Ball PIKACHU special form (BridgeOakPikachu).
 OaksLabOakGiftList:
-	db 3
+	db 4
 	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift1_Text, OaksLabGift1_Desc
 	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
 	gift_entry GIFT_ITEM, HM_FLASH, OaksLabGift3_Text, OaksLabGift3_Desc
+	gift_entry GIFT_ITEM, M_TOME,   OaksLabGift4_Text, OaksLabGift4_Desc
     ; expert training, STAT Experience maxed for all pokemon in party
     ; gift bulbasaur with earthquake
     ; gift eevee
@@ -1056,6 +1058,7 @@ MrFujiGift4_Text: db "GENE SPLICING@"
 MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
 MrFujiGift7_Text: db "LICK TUTOR@"
+MrFujiGift8_Text: db "M.GENE@"
 
 CaptainGift1_Text: db "CUT HM@"
 CaptainGift2_Text: db "TENTACOOL@"
@@ -1115,6 +1118,7 @@ TradeHouseGift3_Text: db "MOON STONE@"
 OaksLabGift1_Text: db "LIGHT BALL PIKACHU@"
 OaksLabGift2_Text: db "PROTEIN@"
 OaksLabGift3_Text: db "FLASH HM@"
+OaksLabGift4_Text: db "M.TOME@"
 
 ; ---------------------------------------------------------------------------
 ; Descriptions.
@@ -1182,6 +1186,10 @@ MrFujiGift6_Desc:
 	text_end
 MrFujiGift7_Desc:
 	text_far _MrFujiGift7Desc
+	text_end
+
+MrFujiGift8_Desc:
+	text_far _MrFujiGift8Desc
 	text_end
 
 CaptainGift1_Desc:
@@ -1337,4 +1345,8 @@ OaksLabGift2_Desc:
 	text_end
 OaksLabGift3_Desc:
 	text_far _OaksLabGift3Desc
+	text_end
+
+OaksLabGift4_Desc:
+	text_far _OaksLabGift4Desc
 	text_end

@@ -113,7 +113,9 @@ ItemPrices::
 	bcd3 0     ; MON_DICE
 	bcd3 0     ; ITEM_DICE
 	bcd3 0     ; ELEMENT_PRISM
-	assert_table_length NUM_ITEMS + NUM_FLOORS + 15
+	bcd3 0     ; M_GENE
+	bcd3 0     ; M_TOME
+	assert_table_length NUM_ITEMS + NUM_FLOORS + 17
 
 ; Credit (not money) prices for the Credit Exchange key-item seller.
 ; See engine/events/credit_mart.asm.

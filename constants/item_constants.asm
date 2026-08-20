@@ -139,6 +139,11 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 	const ITEM_DICE         ; $6F
 	const ELEMENT_PRISM     ; $70
 
+; one-shot consumables (Phase 11): fix a mon you already have, rather than
+; DV_BOOSTER/STAT_BOOSTER's passive floor/multiplier on newly added mons
+	const M_GENE            ; $71 - reroll DVs to above-average
+	const M_TOME            ; $72 - max stat exp, or max DVs if already maxed
+
 	const_next $C4
 
 ; HMs are defined before TMs, so the actual number of TM definitions

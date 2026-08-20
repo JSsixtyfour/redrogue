@@ -16,6 +16,7 @@ StatItemTable::
     db MOON_STONE, FIRE_STONE, THUNDER_STONE, WATER_STONE, LEAF_STONE
     db HP_UP, PROTEIN, IRON, CARBOS, CALCIUM
     db RARE_CANDY, PP_UP
+    db M_GENE, M_TOME
     db $FF
 
 ValuableItemTable::

@@ -1099,7 +1099,9 @@ wPartyMenuHPBarColors:: ds PARTY_LENGTH
 
 wStatusScreenHPBarColor:: db
 
-	ds 7
+; Phase 11 (M.GENE/M.TOME): 2 B taken from this pad to fund wStatItemCounts
+; growing 12->14 (WRAM_BIBLE.md D2 gap, unsaved, below wMainDataStart).
+	ds 5
 
 wCopyingSGBTileData::
 wWhichPartyMenuHPBar::
@@ -1812,7 +1814,7 @@ wPokedexSeenEnd::
 wRecoveryItemCounts:: ds NUM_RECOVERY_ITEMS  ; 21 bytes
 
 ; Stat pocket — evolution stones, vitamins, Rare Candy, PP Up.
-wStatItemCounts:: ds NUM_STAT_ITEMS          ; 12 bytes
+wStatItemCounts:: ds NUM_STAT_ITEMS          ; 14 bytes (Phase 11: +M_GENE, +M_TOME)
 
 ; Valuable pocket — sell-only items (Nugget, Pearl, etc.).
 wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
@@ -2607,7 +2609,7 @@ wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
 ; every OWNED item, so the old ds 10 would overrun into wRecoveryPocketBuf.
 wKeyItemPocketBuf:: ds 34   ; 1 + 15×2 + 1 = 32 bytes, 34 for slack
 wRecoveryPocketBuf:: ds 44  ; 1 + 21×2 + 1 = 44 bytes
-wStatPocketBuf::    ds 26   ; 1 + 12×2 + 1 = 26 bytes
+wStatPocketBuf::    ds 30   ; 1 + 14×2 + 1 = 30 bytes (Phase 11: +M_GENE, +M_TOME)
 wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
 ; Credit Exchange vendor stock (engine/events/credit_mart.asm): count + up to
 ; 15 one-byte item ids + $ff terminator. Cannot share wItemList (ds 16) - the

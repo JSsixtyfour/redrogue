@@ -131,3 +131,8 @@ _MrFujiGift7Desc::
     text "Teach any #MON"
     line "Lick"
     done
+
+_MrFujiGift8Desc::
+    text "Rerolls a #MON's"
+    line "DVs higher"
+    done

@@ -113,4 +113,6 @@ ItemNames::
 	li "MON DICE"
 	li "ITEM DICE"
 	li "ELEM PRISM"
-	assert_list_length NUM_ITEMS + NUM_FLOORS + 15
+	li "M.GENE"
+	li "M.TOME"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 17

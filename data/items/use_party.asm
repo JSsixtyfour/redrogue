@@ -36,4 +36,14 @@ UsableItems_PartyMenu:
 	db MAX_ETHER
 	db ELIXER
 	db MAX_ELIXER
+; Shin Red import Phase 11. Both open the party menu (they share
+; ItemUseMedicine's picker), so they MUST be listed here: an item in neither
+; this array nor UsableItems_CloseMenu falls through to StartMenu_Item's bare
+; `call UseItem / jp ItemMenuLoop`, which never runs
+; GBPalWhiteOutWithDelay3 + RestoreScreenTilesAndReloadTilePatterns. The party
+; menu's tile patterns then stay in VRAM and hUpdateSpritesEnabled stays $ff,
+; so the map/bag render with garbage mon tiles and the player sprite stops
+; updating until the party menu is opened and closed again.
+	db M_GENE
+	db M_TOME
 	db -1 ; end
