@@ -1295,6 +1295,7 @@ ChooseNextMon:
 	call LoadBattleMonFromParty
 	call GBPalWhiteOut
 	call LoadHudTilePatterns
+	callfar CalcAndLoadExpBarDynamicTile ; Shin Red import Phase 9.1
 	call LoadScreenTilesFromBuffer1
 	call RunDefaultPaletteCommand
 	call GBPalNormal
@@ -1838,6 +1839,7 @@ EnemySendOutFirstMon:
 .next7
 	call GBPalWhiteOut
 	call LoadHudTilePatterns
+	callfar CalcAndLoadExpBarDynamicTile ; Shin Red import Phase 9.1
 	call LoadScreenTilesFromBuffer1
 .next4
 	call ClearSprites
@@ -2259,6 +2261,7 @@ SendOutMon:
 	ld a, [wCurPartySpecies]
 	call PlayCry
 	call PrintEmptyString
+	farcall PlayVariantEntranceAnim ; shiny send-out sparkle (Phase 9.2)
 	jp SaveScreenTilesToBuffer1
 
 ; show 2 stages of the player mon getting smaller before disappearing
@@ -2321,6 +2324,7 @@ DrawPlayerHUDAndHPBar:
 	hlcoord 10, 7
 	call CenterMonName
 	call PlaceString
+	callfar PrintEXPBar ; Shin Red import Phase 9.1
 	ld hl, wBattleMonSpecies
 	ld de, wLoadedMon
 	ld bc, wBattleMonDVs - wBattleMonSpecies
@@ -2800,6 +2804,7 @@ UseBagItem:
 	ld [wPseudoItemID], a
 	call UseItem
 	call LoadHudTilePatterns
+	callfar CalcAndLoadExpBarDynamicTile ; Shin Red import Phase 9.1
 	call ClearSprites
 	xor a
 	ldh [hCurrentMenuItem], a
@@ -2891,6 +2896,11 @@ PartyMenuOrRockOrRun:
 	call ClearSprites
 	call GBPalWhiteOut
 	call LoadHudTilePatterns
+	; Deviation from Yume (which only hooks two of these five sites): this path
+	; restores the battle screen from Buffer2 with no HUD redraw afterward, so
+	; skipping the reload here would leave the "<to>"/"<BOLD_P>" glyphs sitting
+	; in the EXP bar row instead of bar tiles. Idempotent and cheap either way.
+	callfar CalcAndLoadExpBarDynamicTile ; Shin Red import Phase 9.1
 	call LoadScreenTilesFromBuffer2
 	call RunDefaultPaletteCommand
 	call GBPalNormal
@@ -2987,6 +2997,7 @@ PartyMenuOrRockOrRun:
 	call GBPalWhiteOut
 	call ClearSprites
 	call LoadHudTilePatterns
+	callfar CalcAndLoadExpBarDynamicTile ; Shin Red import Phase 9.1
 	call LoadScreenTilesFromBuffer1
 	call RunDefaultPaletteCommand
 	call GBPalNormal
@@ -7542,6 +7553,27 @@ PlayMoveAnimation:
 	call Delay3
 	vc_hook_red Reduce_move_anim_flashing_Psychic
 	predef_jump MoveAnimation
+
+; PlaySelectedAnimation (Shin Red import Phase 9.2 prerequisite)
+; Ported from shinpokered's core.asm - this fork had PlayMoveAnimation (above)
+; but not the small wrapper shinpokered's shiny animation calls to play an
+; animation on an arbitrary side without disturbing whichever side's turn is
+; really in progress. Needed by custom_functions/func_shiny.asm's
+; PlayVariantEntranceAnim (called with farcall, hence the "::").
+; INPUT: d = side to animate (0 = player, 1 = enemy), e = animation ID
+; CLOBBERS: af (uses the same registers PlayMoveAnimation does)
+PlaySelectedAnimation::
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, d
+	ldh [hWhoseTurn], a
+	xor a
+	ld [wAnimationType], a
+	ld a, e
+	call PlayMoveAnimation
+	pop af
+	ldh [hWhoseTurn], a
+	ret
 
 InitBattle::
 	ld a, [wCurOpponent]

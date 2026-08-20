@@ -44,6 +44,11 @@ INCLUDE "engine/events/display_pokedex.asm"
 ; SELECT hook in DisplayOptionMenu, and that reaches it by farcall.
 INCLUDE "engine/menus/extra_options.asm"
 
+; Declares its own floating SECTION (see the file header). Reached only by
+; callfar (from engine/battle/core.asm and engine/battle/experience.asm), so
+; it doesn't need to live in any particular bank.
+INCLUDE "engine/battle/exp_bar.asm"
+
 ; Declares its own floating SECTION (see the file header). Kept out of
 ; "Battle Core", which had no room left; reached by farcall from
 ; engine/battle/effects.asm.

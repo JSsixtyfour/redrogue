@@ -72,6 +72,14 @@
 	charmap "<ID>",      $73
 	charmap "№",         $74
 
+	; Battle-only aliases for two tiles the battle screen never prints (the EXP
+	; bar, Shin Red import Phase 9.1 - see engine/battle/exp_bar.asm). "<to>" and
+	; "<BOLD_P>" below share these IDs; their only consumer is the status screen,
+	; which loads its own tile set.
+	charmap "<EXP_BAR_PARTIAL>", $70
+	charmap "<EXP_BAR_FULL>",    $72
+	charmap "<HUD_HORIZ_BAR>",   $76 ; also the empty EXP bar tile
+
 ; Actual characters (from other graphics files)
 
 	; needed for ShowPokedexDataInternal (see engine/menus/pokedex.asm)

@@ -207,6 +207,7 @@ GainExperience:
 .skipExpText
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
+	callfar AnimateEXPBar ; Shin Red import Phase 9.1
 	call LoadMonData
 	pop hl
 	ld bc, MON_LEVEL - MON_EXP
@@ -217,6 +218,9 @@ GainExperience:
 	ld a, [hl] ; current level
 	cp d
 	jp z, .nextMon ; if level didn't change, go to next mon
+	push hl
+	callfar KeepEXPBarFull ; Shin Red import Phase 9.1; hl is live (party mon level ptr)
+	pop hl
 	ld a, [wCurEnemyLevel]
 	push af
 	push hl
@@ -311,6 +315,7 @@ GainExperience:
 	call PrintText
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
+	callfar AnimateEXPBarAgain ; Shin Red import Phase 9.1
 	call LoadMonData
 	ld d, LEVEL_UP_STATS_BOX
 	callfar PrintStatsBox

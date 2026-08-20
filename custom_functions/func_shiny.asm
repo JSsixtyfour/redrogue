@@ -36,6 +36,14 @@
 
 DEF BIT_SHINY EQU 4 ; bit within the repurposed CatchRate byte
 
+; Entrance sparkle animation ID (Shin Red import Phase 9.2), shared with
+; PlayVariantEntranceAnim below. This is UnusedAnim in data/moves/animations.asm
+; (entry #182, counted directly in that table) - shinpokered's $B6, a
+; light-screen-palette / balls-upward / reset-palette sparkle that reads as a
+; "power up" effect. No re-derivation needed, this fork's animation table has
+; the same unused slot at the same index.
+DEF SHINY_ENTRANCE_ANIM EQU 182
+
 ; ---------------------------------------------------------------------------
 ; IsShiny
 ; INPUT: de = pointer to the mon's struct (box_struct/party_struct/
@@ -53,3 +61,27 @@ IsShiny::
 	add hl, de
 	bit BIT_SHINY, [hl]
 	ret
+
+; ---------------------------------------------------------------------------
+; PlayVariantEntranceAnim
+; Plays a one-off "power-up" sparkle over a mon that has just been sent out, if
+; that mon is a display variant. Shared entry point rather than a shiny-specific
+; one so a future ghost/type-variant caller can reuse it with a different
+; animation ID - see ShinRed_Import.md Phase 9.2.
+; INPUT: none (player side only - enemies can never be shiny here, see the file
+;        header). Call with farcall.
+;
+; Deviation from shinpokered: it also tracks wUnusedD366 suppression bits so
+; the sparkle doesn't replay on every one of several redraw paths it hooks.
+; This fork hooks a single call site, SendOutMon, which runs exactly once per
+; switch-in, so there's nothing to suppress and those bits are not ported.
+; ---------------------------------------------------------------------------
+PlayVariantEntranceAnim::
+	ld de, wBattleMon
+	farcall IsShiny
+	ret z
+	ld d, $00 ; player side ($01 would be the enemy side)
+	ld e, SHINY_ENTRANCE_ANIM
+	farcall PlaySelectedAnimation
+	ld b, SET_PAL_BATTLE
+	jp RunPaletteCommand

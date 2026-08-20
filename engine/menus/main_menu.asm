@@ -514,7 +514,11 @@ DisplayOptionMenu:
 	call PlaySound
 	ret
 .extraMenu
+	call ClearScreen ; matching shinpokered: the extra menu draws onto a blank
+	                 ; screen rather than saving/restoring one
 	farcall DisplayExtraOptionMenu
+	call ClearScreen ; DisplayOptionMenu below only draws its own boxes, so the
+	                 ; extra menu's rows would otherwise show through beside them
 ; Restart the whole routine rather than resuming .loop: it redraws the boxes and
 ; re-derives every cursor position from wOptions, so the option state survives.
 ; Its eventual `ret` returns to our original caller, so the stack does not grow.
@@ -637,7 +641,19 @@ SetOptionsFromCursorPositions:
 	inc hl
 	jr .loop
 .textSpeedMatchFound
+	; Shin Red import Phase 8 (joenote's "lagless text" guard, ported from
+	; shinpokered's SetOptionsFromCursorPositions). This runs on every pass
+	; through DisplayOptionMenu's .loop and would otherwise overwrite wOptions
+	; with whatever speed the TEXT SPEED cursor sits on - including immediately
+	; after returning from the extra options menu, which is what silently undid
+	; INST. TXT the moment it was set. If the delay bits are already 0 then
+	; instant text is on, so keep 0 instead of the cursor's value.
+	ld a, [wOptions]
+	and TEXT_DELAY_MASK
 	ld a, [hl]
+	jr nz, .setTextSpeed
+	xor a ; TEXT_DELAY_INSTANT
+.setTextSpeed
 	ld d, a
 	ld a, [wOptionsBattleAnimCursorX] ; battle animation cursor X coordinate
 	dec a
@@ -672,7 +688,16 @@ SetCursorPositionsFromOptions:
 	call IsInArray
 	pop bc
 	dec hl
+	; Matching half of the guard above. With instant text on, the delay value is
+	; 0, which is not in TextSpeedOptionData, so IsInArray fails and hl is left
+	; on the terminator entry's fallback column (MEDIUM). Show FAST's column
+	; instead, so the row reads sensibly while INST. TXT overrides it.
+	ld a, [wOptions]
+	and TEXT_DELAY_MASK
 	ld a, [hl]
+	jr nz, .setTextSpeedCursor
+	ld a, 1 ; FAST's cursor X, per TextSpeedOptionData
+.setTextSpeedCursor
 	ld [wOptionsTextSpeedCursorX], a ; text speed cursor X coordinate
 	hlcoord 0, 3
 	call .placeUnfilledRightArrow

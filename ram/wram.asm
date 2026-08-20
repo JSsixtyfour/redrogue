@@ -86,7 +86,14 @@ wTempoModifier:: db
 	; lines below, that span is reserved for AI_OVERHAUL_PLAN.md.
 	wLowHealthTonePairs:: db
 
-	ds 9
+	; EXP bar persistent state (Shin Red import Phase 9.1). Battle-transient and
+	; unsaved, which is exactly what this pad is for (WRAM_BIBLE.md §D4). The 9
+	; bytes of arithmetic scratch that go with these two live in the separate
+	; unsaved gap after wMiscFlags - see there.
+	wEXPBarPixelLength::  db ; 0-64, pixels of bar currently drawn
+	wEXPBarKeepFullFlag:: db ; bit 0: force the next CalcEXPBarPixelLength to 64
+
+	ds 7
 
 
 SECTION "Sprite State Data", WRAM0
@@ -900,7 +907,15 @@ wRightGBMonSpecies:: db
 
 wMiscFlags:: db
 
-	ds 9
+	; CalcEXPBarPixelLength scratch (Shin Red import Phase 9.1). Pure
+	; intra-routine scratch: written and consumed inside one call, before any
+	; DelayFrame, so nothing can land between the write and the read. Unsaved
+	; padding, so this costs zero real WRAM0 and does not move the save format
+	; (WRAM_BIBLE.md §D2). wMiscFlags above is only ever accessed by name as a
+	; single byte - no hl-walk runs into this gap.
+	wEXPBarBaseEXP::   ds 3 ; exp needed for the mon's CURRENT level
+	wEXPBarCurEXP::    ds 3 ; current exp, minus base
+	wEXPBarNeededEXP:: ds 3 ; exp needed for the NEXT level, minus base
 
 ; This has overlapping related uses.
 ; When the player tries to use an item or use certain field moves, 0 is stored

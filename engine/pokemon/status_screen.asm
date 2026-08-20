@@ -87,6 +87,32 @@ StatusScreen:
 	pop bc
 	call CalcStats
 .DontRecalculate
+; Shin Red import Phase 8: if this is the active battler being viewed mid-
+; battle (not a benched party mon), show its LIVE stage-modified stats instead
+; of the unmodified party ones LoadMonData just copied in. wBattleMon's own
+; Attack/Defense/Speed/Special fields already ARE the current modified values
+; - CalculateModifiedStat (engine/battle/core.asm) writes stage-adjusted
+; results there directly, matching vanilla. No interaction with the boxed-mon
+; fusion CalcStats block just above: that branch only runs for BOX_DATA/
+; DAYCARE_DATA, never PLAYER_PARTY_DATA, so a mon can't be both a live battler
+; and reach it at the same time - this is a pure display overwrite, no
+; CalcStats call involved.
+	ldh a, [hIsInBattle]
+	and a
+	jr z, .notActiveBattler
+	ld a, [wMonDataLocation]
+	and a ; PLAYER_PARTY_DATA
+	jr nz, .notActiveBattler
+	ldh a, [hWhichPokemon]
+	ld b, a
+	ld a, [wPlayerMonNumber]
+	cp b
+	jr nz, .notActiveBattler
+	ld hl, wBattleMonAttack
+	ld de, wLoadedMonAttack
+	ld bc, 8 ; 4 words: Attack, Defense, Speed, Special
+	call CopyData
+.notActiveBattler
 	ld hl, wStatusFlags2
 	set BIT_NO_AUDIO_FADE_OUT, [hl]
 	ld a, $33
@@ -174,6 +200,7 @@ StatusScreen:
 	ld de, wLoadedMonOTID
 	lb bc, LEADING_ZEROES | 2, 5
 	call PrintNumber ; ID Number
+	call .StatsBoxModeFromJoypad ; hold SELECT/START as the screen opens
 	ld d, STATUS_SCREEN_STATS_BOX
 	call PrintStatsBox
 	call Delay3
@@ -198,9 +225,38 @@ StatusScreen:
 .notFusionOverlay
 	ld a, [wCurPartySpecies]
 	call PlayCry
+; Shin Red import Phase 8: View Stat EXP (hold SELECT) / View DVs (hold START).
+; The box was already drawn for whatever was held on entry, above. This also
+; lets the view be switched without leaving: WaitForTextScrollButtonPress only
+; exits on A/B, so SELECT/START can be held right through it, and if one of them
+; is still down when it returns, redraw the box and keep waiting instead of
+; leaving. Only the box is redrawn - picture, name and HP bar are untouched.
+.waitOrPeek
 	call WaitForTextScrollButtonPress
+	ldh a, [hJoyHeld]
+	and PAD_SELECT | PAD_START
+	jr z, .done ; plain A/B: leave, as before
+	call .StatsBoxModeFromJoypad
+	ld d, STATUS_SCREEN_STATS_BOX
+	call PrintStatsBox
+	jr .waitOrPeek
+.done
 	pop af
 	ldh [hTileAnimations], a
+	ret
+
+; Turns the currently held SELECT/START into a PrintStatsBox content mode in e.
+; SELECT wins over START if somehow both are down.
+.StatsBoxModeFromJoypad
+	call Joypad
+	ldh a, [hJoyHeld]
+	ld e, STATS_BOX_STAT_EXP
+	bit B_PAD_SELECT, a
+	ret nz
+	ld e, STATS_BOX_DVS
+	bit B_PAD_START, a
+	ret nz
+	ld e, STATS_BOX_NORMAL
 	ret
 
 .GetStringPointer
@@ -267,15 +323,23 @@ DrawLineBox:
 
 PTile: INCBIN "gfx/font/P.1bpp"
 
+; d = STATUS_SCREEN_STATS_BOX or LEVEL_UP_STATS_BOX (box position/size).
+; e = STATS_BOX_* content, ONLY consulted when d == STATUS_SCREEN_STATS_BOX; the
+; battle/level-up box always shows the normal stats and never sets it.
 PrintStatsBox:
 	ld a, d
 	ASSERT STATUS_SCREEN_STATS_BOX == 0
 	and a
 	jr nz, .LevelUpStatsBox ; battle or Rare Candy
+	push de ; e is the content mode and TextBoxBorder clobbers de (ld de, SCREEN_WIDTH)
 	hlcoord 0, 8
 	ld b, 8
 	ld c, 8
-	call TextBoxBorder
+	call TextBoxBorder ; also blanks the interior, so a previous mode's text is gone
+	pop de
+	ld a, e
+	and a ; STATS_BOX_NORMAL
+	jr nz, .AlternateView
 	hlcoord 1, 9
 	ld bc, SCREEN_WIDTH + 5 ; one row down and 5 columns right
 	jr .PrintStats
@@ -304,6 +368,73 @@ PrintStatsBox:
 	ld de, wLoadedMonSpecial
 	jp PrintNumber
 
+; Stat exp needs a 5-digit field, which does not fit to the right of
+; ATTACK/DEFENSE/SPEED/SPECIAL inside this 8-wide box, so both alternate views
+; relabel with 3-letter names and start their numbers further left.
+.AlternateView
+	push de
+	hlcoord 1, 9
+	ld de, .ShortStatsText
+	call PlaceString
+	pop de
+	ld a, e
+	dec a ; STATS_BOX_STAT_EXP?
+	jr nz, .PrintDVs
+	hlcoord 1, 9
+	ld bc, SCREEN_WIDTH + 3 ; 5 digits from column 4 end on the last interior column
+	add hl, bc
+	ld de, wLoadedMonAttackExp
+	lb bc, 2, 5
+	call .PrintStat
+	ld de, wLoadedMonDefenseExp
+	call .PrintStat
+	ld de, wLoadedMonSpeedExp
+	call .PrintStat
+	ld de, wLoadedMonSpecialExp
+	jp PrintNumber
+
+; DVs are packed nibbles at wLoadedMonDVs, the same layout _CalcStat unpacks in
+; calc_stats.asm: byte 0 = Atk<<4|Def, byte 1 = Spd<<4|Spc.
+.PrintDVs
+	hlcoord 1, 9
+	ld bc, SCREEN_WIDTH + 6 ; 2 digits from column 7 end on the last interior column
+	add hl, bc
+	ld a, [wLoadedMonDVs]
+	swap a
+	call .PrintDV
+	ld a, [wLoadedMonDVs]
+	call .PrintDV
+	ld a, [wLoadedMonDVs + 1]
+	swap a
+	call .PrintDV
+	ld a, [wLoadedMonDVs + 1]
+	; fallthrough
+
+; a = a DV in its low nibble (0-15). Writes it right-aligned across 2 tiles at
+; hl, then steps hl down two rows exactly like .PrintStat.
+; Deliberately NOT routed through PrintNumber: that takes its operand from
+; memory, and its first act is to zero hPastLeadingZeros - which is the SAME
+; HRAM byte as hSwapTemp ($ff95), so staging a nibble there for it silently
+; prints 0 every time.
+.PrintDV:
+	and $f
+	push hl
+	ld b, ' '
+	cp 10
+	jr c, .dvNoTensDigit
+	sub 10
+	ld b, '1'
+.dvNoTensDigit
+	add '0'
+	ld c, a
+	ld a, b
+	ld [hli], a
+	ld [hl], c
+	pop hl
+	ld de, SCREEN_WIDTH * 2
+	add hl, de
+	ret
+
 .PrintStat:
 	push hl
 	call PrintNumber
@@ -317,6 +448,12 @@ PrintStatsBox:
 	next "DEFENSE"
 	next "SPEED"
 	next "SPECIAL@"
+
+.ShortStatsText:
+	db   "ATK"
+	next "DEF"
+	next "SPD"
+	next "SPC@"
 
 StatusScreen2:
 	ldh a, [hTileAnimations]

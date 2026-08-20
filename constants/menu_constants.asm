@@ -102,3 +102,10 @@ DEF FIRST_PARTY_MENU_TEXT_ID EQU const_value
 	const_def
 	const STATUS_SCREEN_STATS_BOX ; 0
 	const LEVEL_UP_STATS_BOX      ; 1
+
+; What PrintStatsBox shows inside STATUS_SCREEN_STATS_BOX (Shin Red import
+; Phase 8). Ignored for LEVEL_UP_STATS_BOX, which is always the normal stats.
+	const_def
+	const STATS_BOX_NORMAL   ; 0
+	const STATS_BOX_STAT_EXP ; 1
+	const STATS_BOX_DVS      ; 2
