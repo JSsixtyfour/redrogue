@@ -114,6 +114,9 @@ class RedRogueHarness:
         self.tick(frames)
 
     def move_tile(self, direction: str) -> None:
+        # Deliberately a single short press: holding longer walks TWO tiles and
+        # breaks the procedural-stage tests. Door entry needs a longer hold than
+        # this, but that belongs in enter_stage_door1, not here.
         self.pyboy.button_press(direction)
         self.tick(20)
         self.pyboy.button_release(direction)
@@ -292,7 +295,22 @@ class RedRogueHarness:
         self.write8("wRogueFlagsBitfield", flags)
         self.tick(4)
         self.move_tile("up")
-        self.move_tile("down")
+        # Step back down onto the warp tile. A warp fires *while the direction is
+        # still held*, as the step lands, and how long that takes depends on the
+        # boot phase - so a fixed press length is not safe here. This was a
+        # hardcoded move_tile("down") until 2026-08-20, when adding the CGB VRAM
+        # bank 1 clear to ClearVram shifted init timing and silently broke all 23
+        # navigation assertions, while the real build was verified fine on BGB
+        # (lobby door -> Rocket B1F -> trainer battle). Measured then: a 20, 24 or
+        # 30 frame press never warped; 40 always did. Retry rather than trust any
+        # single number, so the next timing shift does not resurrect this.
+        for _ in range(6):
+            self.pyboy.button_press("down")
+            self.tick(40)
+            self.pyboy.button_release("down")
+            self.tick(6)
+            if self.read8("hCurMap") == map_id:
+                break
         self.wait_until(
             lambda: self.read8("hCurMap") == map_id,
             f"{description} entry",

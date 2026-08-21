@@ -723,8 +723,8 @@ SendSGBPackets:
 	jr z, .notCGB
 	push de
 	call InitCGBPalettes
-	pop hl
-	call EmptyFunc3
+	pop de ; the ATTR_BLK packet; must be DE, farcall clobbers HL
+	farcall LoadCGBScreenAttributesForBlkPacket
 	ret
 .notCGB
 	push de
@@ -745,8 +745,12 @@ InitCGBPalettes:
 ; instead of the 8 a CGB palette needs. Correct shape is 4 palettes x 8 bytes,
 ; which happens to be the same 32 rBGPD writes it was making by accident.
 ;
-; SuperPalettes is real CGB-ready colour data (4 colours x 2 bytes per PAL_*
-; entry), not SGB-only, and lives in this same bank - so it is read directly.
+; Colours come from CGBPalettes, NOT SuperPalettes. Both are indexed the same
+; way (PAL_* id * 8) and both live in this bank, but SuperPalettes' values are
+; tuned for Super Game Boy display hardware and read badly when fed straight to
+; CGB palette registers - which is what this routine did at first, and why the
+; first colour build looked garish. SuperPalettes is still correct for the SGB
+; path and is left alone there.
 	ld a, $80 ; index 0, auto-increment
 	ldh [rBGPI], a
 	inc hl ; skip the packet's command byte
@@ -760,7 +764,7 @@ InitCGBPalettes:
 	add hl, hl
 	add hl, hl
 	add hl, hl ; hl = ID * 8, the entry's byte offset
-	ld de, SuperPalettes
+	ld de, CGBPalettes
 	add hl, de
 	ld b, 8 ; 4 colours x 2 bytes
 .byteLoop
@@ -771,6 +775,40 @@ InitCGBPalettes:
 	pop hl
 	dec c
 	jr nz, .palLoop
+	; fallthrough
+
+InitCGBObjectPalettes:
+; Fill all eight CGB OBJ palettes with one sane sprite palette.
+;
+; Nothing in this fork assigns per-sprite CGB palettes yet, and OBJ palette RAM
+; is NOT initialised by anything else - it powers up holding garbage. Because a
+; single OBJ palette supplies four colours, that garbage rendered each sprite as
+; a multi-coloured rainbow, and since the power-up contents differ per boot the
+; title screen appeared to change colour every time. The background looked fine
+; throughout, because BG palettes are loaded above and the attribute map picks
+; between them correctly.
+;
+; PAL_MEWMON is reused rather than inventing new colour data: it is already a
+; light-skin / grey-blue / near-black ramp, which reads acceptably on Gen 1
+; person sprites. Colour 0 of an OBJ palette is transparent, so only entries 1-3
+; actually show.
+;
+; This is deliberately a flat default. Per-sprite OBJ palettes (Yellow assigns
+; them by sprite ID) are the proper fix and are a separate piece of work; the
+; point here is that sprites render consistently instead of as noise.
+	ld a, $80 ; index 0, auto-increment
+	ldh [rOBPI], a
+	ld c, 8 ; eight OBJ palettes
+.objPalLoop
+	ld hl, CGBPalettes + PAL_MEWMON * 8
+	ld b, 8 ; 4 colours x 2 bytes
+.objByteLoop
+	ld a, [hli]
+	ldh [rOBPD], a
+	dec b
+	jr nz, .objByteLoop
+	dec c
+	jr nz, .objPalLoop
 	ret
 
 EmptyFunc3:
@@ -811,5 +849,6 @@ INCLUDE "data/sgb/sgb_packets.asm"
 INCLUDE "data/pokemon/palettes.asm"
 
 INCLUDE "data/sgb/sgb_palettes.asm"
+INCLUDE "data/gfx/cgb_palettes.asm"
 
 INCLUDE "data/sgb/sgb_border.asm"

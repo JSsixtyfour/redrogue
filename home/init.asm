@@ -126,21 +126,16 @@ ClearVram::
 ; then put rVBK back on bank 0: every other VRAM writer in the tree assumes
 ; bank 0 and never touches rVBK.
 ;
-; KNOWN HARNESS DISCREPANCY, 2026-08-20 - do NOT delete this clear to make the
-; smoke suite green. With this clear present `make smoke` fails 23 assertions
-; (stage-door warps appear never to fire under PyBoy), and removing it returns
-; 12/12. It was removed once on that basis and that was WRONG: the user then
-; verified the real build on an actual emulator - walked through a lobby stage
-; door, reached Rocket B1F, fought a trainer, no issues, correct rendering.
-; The game is fine; the failure is specific to the PyBoy harness.
-;
-; Mechanism still UNKNOWN. Ruled out so far: RunPaletteCommand's CGB arm
-; (disabling it did not help), rVBK's constant ($FF4F, hardware.inc:588),
-; aliasing on wOnCGB (alone at $cf12), a VBlank ISR writing while rVBK=1 (both
-; callers have interrupts unable to fire - :43 is inside Init's `di`, :112 runs
-; DisableLCD first), and PyBoy's VRAM bank emulation itself (probed directly:
-; bank 0 and bank 1 hold separate values as they should). Investigate the
-; harness next; fix it there, not by deleting this clear.
+; HISTORY, 2026-08-20 - RESOLVED, recorded so it is not re-litigated. Adding
+; this clear made `make smoke` fail 23 assertions (stage-door warps appearing
+; never to fire), and it was deleted once on that basis. That was WRONG: the
+; real build was fine all along, verified on BGB (lobby door -> Rocket B1F ->
+; trainer battle, correct rendering). The clear only shifted init timing, and
+; the harness's enter_stage_door1 was walking onto the warp with a hardcoded
+; 20-frame press - too short at the new phase, since a warp fires only while the
+; direction is still held as the step lands. Measured: 20/24/30-frame presses
+; never warped, 40 always did. Fixed in tools/pyboy_smoke/harness.py by making
+; door entry retry instead of trusting a fixed press. Nothing was wrong here.
 	ld a, [wOnCGB]
 	and a
 	jr z, .bank0

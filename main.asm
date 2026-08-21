@@ -58,6 +58,7 @@ INCLUDE "engine/events/daycare_upgrade.asm"
 ; "Battle Core", which had no room left; reached by farcall from
 ; engine/battle/effects.asm.
 INCLUDE "custom_functions/apply_self_stat_penalty.asm"
+INCLUDE "custom_functions/apply_single_badge_boost.asm"
 
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
@@ -404,6 +405,15 @@ INCLUDE "engine/gfx/mon_icons.asm"
 INCLUDE "engine/events/in_game_trades.asm"
 INCLUDE "engine/gfx/palettes.asm"
 INCLUDE "engine/menus/save.asm"
+
+
+SECTION "CGB Screen Attributes", ROMX
+; Shin Red import Phase 3. Loader plus its ~3600 bytes of generated attribute
+; tables, kept together in one bank: the loader reads the tables directly, and
+; bank $1C (palettes.asm / SendSGBPackets) has nowhere near room for them. Called
+; by farcall, so it does not care which bank the linker picks.
+
+INCLUDE "engine/gfx/cgb_attributes.asm"
 
 
 SECTION "Overworld CGB Tile Palettes", ROMX
