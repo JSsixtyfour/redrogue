@@ -146,6 +146,19 @@ ReadTrainer:
 	ld a, [de]
 	inc de
 	ld [hl], a
+	; new: give the substituted move its own max PP
+	push de
+	push hl
+	dec a
+	ld hl, Moves + 5      ; +5 = the PP field within a move entry
+	ld bc, MOVE_LENGTH
+	call AddNTimes        ; hl -> PP byte for this move
+	ld a, [hl]
+	pop hl                ; hl -> the move byte just written
+	ld bc, MON_PP - MON_MOVES
+	add hl, bc            ; hl -> matching PP byte in the enemy mon struct
+	ld [hl], a
+	pop de
 	jr .writeAdditionalMoveDataLoop
 .loopSkipTrainer
 	ld a, [hli]
