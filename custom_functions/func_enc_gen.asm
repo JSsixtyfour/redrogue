@@ -680,6 +680,63 @@ MiniBossSetLevel::
 	ld [wCurEnemyLevel], a
 	ret
 
+; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2).
+; No register arguments.  Clobbers a and the Divide HRAM scratch.
+RogueApplyDifficulty::
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	ret z                        ; DIFFICULTY_NORMAL: leave the level untouched
+	push bc
+	push de
+	push hl
+	ld e, a                      ; e = difficulty setting, 1..4
+
+; divisor: 10 for EASY/HARD (10%), 5 for VERY EASY/VERY HARD (20%)
+	cp DIFFICULTY_VERY_EASY
+	jr z, .fifth
+	cp DIFFICULTY_VERY_HARD
+	jr z, .fifth
+	ld a, 10
+	jr .gotDivisor
+.fifth
+	ld a, 5
+.gotDivisor
+	ldh [hDivisor], a
+	ld a, [wCurEnemyLevel]
+	ld d, a                      ; d = base level
+	ldh [hDividend], a
+	ld b, $1                     ; 1-byte dividend, do not remove
+	call Divide
+	ldh a, [hQuotient + 3]
+	ld c, a                      ; c = delta
+
+	ld a, e
+	cp DIFFICULTY_HARD
+	jr nc, .harder               ; HARD (3) or VERY HARD (4) -> add
+; EASY / VERY EASY -> subtract, floor at 1
+	ld a, d
+	sub c
+	jr c, .floor
+	and a
+	jr nz, .store
+.floor
+	ld a, 1
+	jr .store
+.harder
+	ld a, d
+	add c
+	jr c, .ceiling
+	cp 101
+	jr c, .store
+.ceiling
+	ld a, 100
+.store
+	ld [wCurEnemyLevel], a
+	pop hl
+	pop de
+	pop bc
+	ret
+
 ; wCurPartySpecies = one rarer-random mon (this round's base class, with a
 ; rare-bump chance); wCurEnemyLevel = this round's level.
 ; base class is GetRandMon's convention: 4=pokeball ... 1=masterball.
