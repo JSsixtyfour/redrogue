@@ -40,6 +40,15 @@ DEF TEXT_DELAY_FAST    EQU %001 ; 1
 DEF TEXT_DELAY_MEDIUM  EQU %011 ; 3
 DEF TEXT_DELAY_SLOW    EQU %101 ; 5
 
+; wOptions2 bits 0-2: enemy level difficulty (LEVELS row, extra options menu)
+DEF DIFFICULTY_MASK EQU %00000111
+	const_def
+	const DIFFICULTY_NORMAL     ; 0 - must stay 0; InitOptions' xor a defaults here
+	const DIFFICULTY_EASY       ; 1
+	const DIFFICULTY_VERY_EASY  ; 2
+	const DIFFICULTY_HARD       ; 3
+	const DIFFICULTY_VERY_HARD  ; 4
+
 ; wLetterPrintingDelayFlags
 	const_def
 	const BIT_FAST_TEXT_DELAY ; 0

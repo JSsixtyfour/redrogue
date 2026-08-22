@@ -2452,11 +2452,13 @@ wElite4Order:: db
 ; Inside wMainData so it is saved, but BELOW wGameProgressFlagsEnd so it is NOT
 ; auto-zeroed on new game - InitOptions writes it explicitly instead, the same
 ; way it already seeds wOptions.
+;   bits 0-2: DIFFICULTY_MASK - enemy level difficulty (LEVELS row, extra options menu).
+;   bit 3: unused.
 ;   bits 4-5: SOUND_MASK2 - sound mode (Shin Red import Phase 2.11).
 ;             0=MONO, 1=EARPHONE1, 2=EARPHONE2, 3=EARPHONE3. Read by
 ;             Audio1_ApplyMonoStereo (audio/engine_1.asm), set by the AUDIO
 ;             row in the extra options menu (engine/menus/extra_options.asm).
-;   bits 0-3, 6-7: unused (document every bit here as it is claimed)
+;   bits 6-7: unused (document every bit here as it is claimed)
 wOptions2:: db
 
 wRGB:: ds 3
