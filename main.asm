@@ -59,6 +59,7 @@ INCLUDE "engine/events/daycare_upgrade.asm"
 ; engine/battle/effects.asm.
 INCLUDE "custom_functions/apply_self_stat_penalty.asm"
 INCLUDE "custom_functions/apply_single_badge_boost.asm"
+INCLUDE "engine/battle/ai/ai_core.asm"
 
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
@@ -414,6 +415,7 @@ SECTION "CGB Screen Attributes", ROMX
 ; by farcall, so it does not care which bank the linker picks.
 
 INCLUDE "engine/gfx/cgb_attributes.asm"
+INCLUDE "custom_functions/func_gamma.asm"
 
 
 SECTION "Overworld CGB Tile Palettes", ROMX
@@ -505,3 +507,4 @@ INCLUDE "engine/items/random_item_selection_mart.asm"
 INCLUDE "engine/events/reward_poke_balls.asm"
 INCLUDE "gfx/trade.asm"  ; marcelnote - moved from Battle Engine 7, LoadTradingGFXAndMonNames uses BANK()
 INCLUDE "engine/gfx/save_screen_area_to_buffer3.asm"
+INCLUDE "custom_functions/func_enhancedcolor.asm"

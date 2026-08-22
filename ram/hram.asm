@@ -337,7 +337,10 @@ hInteractedWithBookshelf::
 	db
 ENDU
 
-	ds 1
+    ; seemed to just be sittin' there like a big yoshi
+	; ds 1
+    ; if nonzero, skip waiting for button press after text display (was wDoNotWaitForButtonPressAfterDisplayingText)
+hNoWaitAfterText:: db
 
 hBackupGymGateIndex::
 hUnlockedSilphCoDoors::
@@ -390,7 +393,15 @@ hWhoseTurn:: db ; 0 on player's turn, 1 on enemy's turn
 
 hClearLetterPrintingDelayFlags:: db
 
-	ds 1
+	;ds 1
+hVblankBackup:: db	; added for more various uses involving enhanced GBC colors
+;bits 0 and 1 - backup of hRedrawRowOrColumnMode
+; bit 3: LoadCurrentMapView is being called during player movement - GBCnote--> added this
+; bit 4: Menus in the cable club are being displayed - GBCnote--> added this
+;bit 3 - When set, the CopyData function will only copy when safe to do so for VRAM
+;bit 4 - When set, the enhanced GBC overworld BG Map Attributes are being used
+;bit 5 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
+
 
 ; bit 0: draw HP fraction to the right of bar instead of below (for party menu)
 ; bit 1: menu is double spaced
@@ -432,7 +443,8 @@ hUpdateSpritesEnabled:: db
 ; sprite index of the NPC the player is currently interacting with (was wSpriteIndex)
 hActiveSpriteIndex:: db
 
-; if nonzero, skip waiting for button press after text display (was wDoNotWaitForButtonPressAfterDisplayingText)
-hNoWaitAfterText:: db
+
+
+hGBC:: db
 
 ENDSECTION

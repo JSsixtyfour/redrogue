@@ -113,6 +113,9 @@ PredefPointers::
     add_predef RogueDoInGameTradeDialogue
     add_predef SaveScreenTileAreaToBuffer3
 	add_predef LoadScreenTileAreaFromBuffer3
+    add_predef GBCGamma
+    add_predef SingleCPUSpeed
+    add_predef SetCPUSpeed
 
 ; GetPredefPointer (engine/predefs.asm) computes offset = 3 * wPredefID using an 8-bit multiply
 ; that discards the carry out of the doubling step, so it silently wraps for IDs >= 128 instead of

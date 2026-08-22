@@ -49,3 +49,9 @@ MACRO homecall_sf ; homecall but save flags by popping into bc instead of af
 	ld a, b
 	call SetCurBank
 ENDM
+
+MACRO callbs	;joenote - added from pokeyellow
+	ld a, BANK(\1)
+	call BankswitchCommon
+	call \1
+	ENDM

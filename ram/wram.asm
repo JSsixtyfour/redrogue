@@ -93,7 +93,16 @@ wTempoModifier:: db
 	wEXPBarPixelLength::  db ; 0-64, pixels of bar currently drawn
 	wEXPBarKeepFullFlag:: db ; bit 0: force the next CalcEXPBarPixelLength to 64
 
-	ds 7
+	; Debug/test AI skill-tier override (AI_OVERHAUL_PLAN.md Phase 1).
+	; 0 = resolve the tier normally from wBattleCount; otherwise tier+1, so 1
+	; forces T0 and 4 forces T3. Deliberately lives HERE and not in the
+	; wMiscBattleData AI block, because that span is zeroed at battle start and
+	; this has to be set beforehand. Allocated in every build (not _DEBUG-gated)
+	; so the release and debug WRAM layouts stay identical and the .sym files
+	; agree - the PyBoy harness writes this by symbol name.
+	wAIDebugTierOverride:: db
+
+	ds 6
 
 
 SECTION "Sprite State Data", WRAM0
@@ -489,7 +498,9 @@ wLinkBattleRandomNumberListIndex:: db
 ; number of times remaining that AI action can occur
 wAICount:: db
 
-	ds 2
+; Output of the AI damage/KO simulator (Phase 3). Carved from this block's
+; in-branch ds 2 so it lands inside the span InitBattleVariables zeroes.
+wAIDamageEstimate:: dw
 
 wEnemyMoveListIndex:: db
 
@@ -533,7 +544,32 @@ wLowHealthAlarmDisabled:: db
 
 wPlayerMonMinimized:: db
 
-	ds 13
+; --- Trainer AI battle state (AI_OVERHAUL_PLAN.md) ---
+; Carved out of this block's reserved ds 13 pad. Everything here is
+; battle-scoped: wMiscBattleData..wMiscBattleDataEnd is bulk-zeroed at battle
+; start by InitBattleVariables and is NOT saved, so these cost zero WRAM0 and
+; are initialised for free every battle.
+;
+; wAITier holds tier+1, so the zeroing above naturally reads as "unresolved"
+; and AIGetTier resolves lazily on first use. That removes any dependency on
+; call ordering during battle init.
+wAITier:: db            ; 0 = unresolved, else resolved tier + 1
+wAILastMovePower:: db   ; power of the enemy's previous move (anti-spam)
+wAILastMoveNum:: db     ; the enemy's previous move id (repeated-move fatigue)
+wAISameMoveCount:: db   ; consecutive uses of that same move
+wAISentOutFlags:: db    ; bit per party slot: has this mon been sent out yet
+wAISwitchedFlags:: db   ; bit per party slot: switch-loop guard
+wAIPlan:: db            ; active strategy plan id (0 = none)
+wAIPlanStep:: db        ; progress within that plan
+
+; Revealed-move memory (Gen 2's wPlayerUsedMoves). Allocated now so the
+; player-state accessor seam has a home; populated in Phase 7, when clearing
+; AI_OMNISCIENT on the low tiers makes the AI reason only from what it has
+; actually seen. Zero means "no move revealed in this slot", which is exactly
+; what the battle-start zeroing gives us - hence it MUST live in this branch.
+wAISeenPlayerMoves:: ds NUM_MOVES
+
+	ds 1
     
 NEXTU
 
@@ -548,6 +584,9 @@ NEXTU
 wEnemyNumHits:: db
 ENDU
 
+	; NOTE: this pad is in the wAllSpecies union branch, which is NOT the branch
+	; InitBattleVariables zeroes, and it aliases wNPCMovementDirections2. It is
+	; therefore NOT usable for battle-scoped AI state - see AI_OVERHAUL_PLAN.md.
 	ds 8
 wMiscBattleDataEnd::
 ENDU
@@ -1248,13 +1287,16 @@ wEnemyMonNick:: ds NAME_LENGTH
 
 wEnemyMon:: battle_struct wEnemyMon
 
+
+
 wEnemyMonBaseStats:: ds NUM_STATS
 wEnemyMonActualCatchRate:: db
 wEnemyMonBaseExp:: db
 
+
+
 wBattleMonNick:: ds NAME_LENGTH
 wBattleMon:: battle_struct wBattleMon
-
 
 wTrainerClass:: db
 
@@ -2363,7 +2405,13 @@ wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level by
 ;             custom_functions/credit_popup.asm RogueOnBlackout, which
 ;             clears them on the next blackout - i.e. bits, not "remaining",
 ;             so an untouched/new-game byte already means "3 available")
-;   bits 2-7: unused
+; the below is from hFlagsFFFA from Shinred
+;bit 2 - When set, the CopyData function will only copy when safe to do so for VRAM
+;bit 3 - When set, the enhanced GBC overworld BG Map Attributes are being used, was bit 4 in Shinred hFlagsFFFA
+;bit 4 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
+;bit 5 - DMARoutine will not run in Vblank while this bit is set, was bit 0 in Shinred hFlagsFFFA
+;bit 6 - BGmap update functions will not run in Vblank while this bit is set
+; bit 7: enhanced GBC colors toggle - bit 7 of wUnusedD721
 wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above
@@ -2411,7 +2459,10 @@ wElite4Order:: db
 ;   bits 0-3, 6-7: unused (document every bit here as it is claimed)
 wOptions2:: db
 
-	ds 11 ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+wRGB:: ds 3
+; former hRGB in shinred
+
+	ds 8  ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2429,6 +2480,7 @@ wOptions2:: db
 	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
 	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0
 	      ; -1 more for wOptions2 (extra options menu, Shin Red import Phase 0), still net-zero WRAM0
+          ; -3 for wRGB
 
 ; Which trainer class the player looks like: index into PlayerAppearanceTable
 ; (data/player/appearance.asm). 0 = PLAYER_APPEARANCE_RED, so the zero-fill in

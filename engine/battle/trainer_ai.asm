@@ -18,40 +18,43 @@ AIEnemyTrainerChooseMoves:
 	add hl, bc    ; advance pointer to forbidden move
 	ld [hl], $50  ; forbid (highly discourage) disabled move
 .noMoveDisabled
-	ld hl, TrainerClassMoveChoiceModifications
-	ld a, [wTrainerClass]
-	ld b, a
-.loopTrainerClasses
-	dec b
-	jr z, .readTrainerClassData
-.loopTrainerClassData
-	ld a, [hli]
-	and a
-	jr nz, .loopTrainerClassData
-	jr .loopTrainerClasses
-.readTrainerClassData
-	ld a, [hl]
-	and a
-	jp z, .useOriginalMoveSet
-	push hl
-.nextMoveChoiceModification
-	pop hl
-	ld a, [hli]
-	and a
-	jr z, .loopFindMinimumEntries
-	push hl
-	ld hl, AIMoveChoiceModificationFunctionPointers
-	dec a
-	add a
-	ld c, a
+; AI Overhaul Phase 1: which scoring layers run is now driven by the
+; battle-count-derived SKILL TIER, not by the trainer class. AIGetLayerWord
+; returns the tier's 16-bit layer bitmask; layers execute in bit order.
+; It returns in de because Bankswitch destroys a and bc but preserves de/hl.
+	farcall AIGetLayerWord ; de = layer bitmask for this battle's tier
+	ld b, 0                ; b = layer index
+.nextLayer
+	ld a, b
+	cp NUM_AI_LAYERS
+	jr nc, .layersDone     ; stop before the flag bits: they are data, not routines
+	srl d
+	rr e                   ; carry = "is layer b enabled"
+	jr nc, .skipLayer
+	push de
+	push bc
+	ld hl, AIScoringPointers
+	ld c, b
 	ld b, 0
-	add hl, bc    ; skip to pointer
-	ld a, [hli]   ; read pointer into hl
+	add hl, bc
+	add hl, bc             ; two bytes per pointer
+	ld a, [hli]
 	ld h, [hl]
 	ld l, a
-	ld de, .nextMoveChoiceModification  ; set return address
+	ld de, .layerReturn
 	push de
-	jp hl         ; execute modification function
+	jp hl                  ; execute the layer
+.layerReturn
+	pop bc
+	pop de
+.skipLayer
+	inc b
+	jr .nextLayer
+.layersDone
+; The personality layer runs at EVERY tier, outside the bitmask, so that
+; class-specific AI (Gambler's Paradise) survives at every skill level rather
+; than only appearing once its tier happens to include AI_PLAN.
+	call AIRunPersonality
 .loopFindMinimumEntries ; all entries will be decremented sequentially until one of them is zero
 	ld hl, wBuffer  ; temp move selection array
 	ld de, wEnemyMonMoves  ; enemy moves
@@ -103,12 +106,39 @@ AIEnemyTrainerChooseMoves:
 	ld hl, wEnemyMonMoves    ; use original move set
 	ret
 
-AIMoveChoiceModificationFunctionPointers:
-	dw AIMoveChoiceModification1
-	dw AIMoveChoiceModification2
-	dw AIMoveChoiceModification3
-	dw AIMoveChoiceModification4 ; unused, does nothing
-	dw AIMoveChoiceModification5 ; Gambler's Paradise AI
+; Scoring layers, indexed by bit position in the tier's layer word. The order
+; here IS the execution order (see constants/ai_constants.asm). Entries marked
+; "stub" are placeholders for later phases and currently just return.
+AIScoringPointers:
+	dw AILayerRedundant            ; bit 0  AI_REDUNDANT - stub until Phase 2a
+	dw AIMoveChoiceModification1   ; bit 1  AI_BASIC
+	dw AIMoveChoiceModification3   ; bit 2  AI_TYPES
+	dw AIMoveChoiceModification2   ; bit 3  AI_SETUP
+	dw AILayerSmart                ; bit 4  AI_SMART   - stub until Phase 2b
+	dw AILayerDamage               ; bit 5  AI_DAMAGE  - stub until Phase 3
+	dw AILayerThreat               ; bit 6  AI_THREAT  - stub until Phase 3
+	dw AILayerPlan                 ; bit 7  AI_PLAN    - stub until Phase 5
+	dw AILayerRisky                ; bit 8  AI_RISKY   - stub until Phase 3
+	assert (@ - AIScoringPointers) / 2 == NUM_AI_LAYERS, 		"AIScoringPointers must have exactly NUM_AI_LAYERS entries"
+
+; Placeholders. Each is replaced wholesale by its phase; they exist now so the
+; dispatch table is complete and the tier words can already name every layer.
+AILayerRedundant:
+AILayerSmart:
+AILayerDamage:
+AILayerThreat:
+AILayerPlan:
+AILayerRisky:
+	ret
+
+; Trainer-class personality. Runs at every tier, outside the layer bitmask.
+; Phase 5 replaces this with the adaptive plan system, at which point the
+; Gambler becomes AI_PLAN_GAMBLER and this dispatches on wAIPlan instead.
+AIRunPersonality:
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	jp z, AIMoveChoiceModification5 ; Gambler's Paradise themed AI
+	ret
 
 ; discourages moves that cause no damage but only a status ailment if player's mon already has one
 AIMoveChoiceModification1:
@@ -453,7 +483,11 @@ ReadMove:
 	pop hl
 	ret
 
-INCLUDE "data/trainers/move_choices.asm"
+; data/trainers/move_choices.asm is SUPERSEDED by the per-tier layer words in
+; engine/battle/ai/ai_core.asm (AITierLayers). It is no longer assembled - the
+; table it defined is unreferenced, and dropping it reclaims its bytes in this
+; nearly-full bank. The file is kept on disk because Phase 5 may reuse its
+; class-by-class breakdown when authoring trainer personalities.
 
 INCLUDE "data/trainers/pic_pointers_money.asm"
 

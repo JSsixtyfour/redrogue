@@ -843,6 +843,154 @@ CopySGBBorderTiles:
 	dec b
 	jr nz, .tileLoop
 	ret
+    
+;joenote - This is a function specifically for translating the default pokeyellow pals into the GBC color buffer
+;DE is passed-in containing the address of a pal pattern...like FadePal4 or something
+BufferAllPokeyellowColorsGBC:
+	call .BGP0to3Loop
+	call .OBP0to3Loop
+	call .OBP4to7Loop
+	ret	
+	
+.BGP0to3Loop
+	ld hl, w2GBCFullPalBuffer
+	xor a
+.BGP0to3Loop_back
+	call .readwriteinc
+	cp 16
+	jr c, .BGP0to3Loop_back
+	ret
+
+.OBP0to3Loop
+	ld hl, w2GBCFullPalBuffer+64
+	ld a, 32
+	inc de	;increment to the rOBP0 portion of the pattern
+.OBP0to3Loop_back
+	call .readwriteinc
+	cp 48
+	jr c, .OBP0to3Loop_back
+	ret
+
+.OBP4to7Loop
+	ld hl, w2GBCFullPalBuffer+96
+	ld a, 48
+	inc de	;already incremented to the rOBP0 portion, so now increment to the rOBP1 portion of the pattern
+.OBP4to7Loop_back
+	call .readwriteinc
+	cp 64
+	jr c, .OBP4to7Loop_back
+	ret
+
+.readwriteinc
+	ld [w2GBCColorControl], a
+	push de
+	push hl
+	call .ReadMasterPals	;get the color into DE
+	push bc
+	predef GBCGamma
+	pop bc
+	pop hl
+	ld a, d
+	ld [hli], a		;buffer high byte
+	ld a, e
+	ld [hli], a		;buffer low byte	
+	pop de
+	ld a, [w2GBCColorControl]
+	inc a
+	ret
+
+.ReadMasterPals
+;first grab the correct base palette from GBCEnhancedOverworldPalettes
+;the offset of the correct pointer corresponds to double the value of bits 2, 3, and 4 of the wGBCColorControl value
+	push de ;need the value in DE for later because it holds the pal pattern like FadePal4 or something
+
+	and %00011100
+	rrca
+	rrca
+	ld de, $0000
+	add a
+	add a
+	add a
+	ld e, a
+
+	ld hl, GBCEnhancedOverworldPalettes
+	ld a, [hCurMap]
+	cp SEAFOAM_ISLANDS_1F
+	jr z, .isColdCavern
+	cp SEAFOAM_ISLANDS_B1F
+	jr c, .notColdCavern
+	cp SEAFOAM_ISLANDS_B4F + 1
+	jr nc, .notColdCavern
+.isColdCavern	
+	ld hl, GBCEnhancedOverworldPalettes_ColdCavern
+.notColdCavern
+
+	ld a, [wMapPalOffset]
+	cp 6
+	jr nz, .notdark
+	ld hl, GBCEnhancedOverworldPalettes_DarkCavern
+.notdark
+
+	add hl, de
+	pop de ;get the pal pattern back
+	ld a, [de]
+	;now put the pattern in E and make D zero
+	ld d, 0
+	ld e, a
+
+;need to look at the last two bits of wGBCColorControl to determine which hardware pal color is desired
+	ld a, [w2GBCColorControl]
+	and %00000011
+	jr z, .zero
+	cp 1
+	jr z, .one
+	cp 2
+	jr z, .two
+	cp 3
+	jr z, .three
+	
+;roll the bits to get the correct base pal color number for the hardware pal color number
+.zero
+	sla e
+	rl d
+	sla e
+	rl d
+.one
+	sla e
+	rl d
+	sla e
+	rl d
+.two
+	sla e
+	rl d
+	sla e
+	rl d
+.three
+	sla e
+	rl d
+	sla e
+	rl d
+
+;mask out all but the last two bits of D to get the base pal color number in A
+	ld a, d
+	and %00000011
+	
+;colors are 2 bytes, so double A to make it an offset and store back into DE
+	add a
+	ld d, 0
+	ld e, a
+
+;add DE to HL to make HL point to the desired base pal color number
+	add hl, de
+
+;load the low byte of the color
+	ld a, [hli]
+	ld e, a
+;load the high byte of the color
+	ld a, [hli]
+	ld d, a
+	
+	ret
 
 INCLUDE "data/sgb/sgb_packets.asm"
 
