@@ -678,6 +678,7 @@ MiniBossSetLevel::
 	ld a, 100
 .ok
 	ld [wCurEnemyLevel], a
+	call RogueApplyDifficulty
 	ret
 
 ; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2).

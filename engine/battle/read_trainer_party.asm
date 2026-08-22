@@ -60,6 +60,7 @@ ReadTrainer:
     farcall GetRandRoster
     jp z, .AddAdditionalMoveData
 	ld [wCurEnemyLevel], a
+	farcall RogueApplyDifficulty
 .LoopTrainerData
 	ld a, [hli]
 	and a ; have we reached the end of the trainer data?
@@ -80,6 +81,7 @@ ReadTrainer:
 	and a ; have we reached the end of the trainer data?
 	jr z, .AddAdditionalMoveData
 	ld [wCurEnemyLevel], a
+	farcall RogueApplyDifficulty
 	ld a, [hli]
 	ld [wCurPartySpecies], a
 	push hl
