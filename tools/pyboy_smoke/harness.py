@@ -49,6 +49,7 @@ class RedRogueHarness:
     LOBBY_MAP = 0xAE  # INDIGO_PLATEAU_LOBBY
     WARP_NO_RETURN = 0xFD
     GIOVANNI_TYPE_BITS = 0x20
+    FIGHT2_SPEC_MAGIC = 0xD2
 
     def __init__(
         self,
@@ -72,6 +73,9 @@ class RedRogueHarness:
             "window": "null",
             "sound_emulated": sound_emulated,
             "log_level": "CRITICAL",
+            # Red Rogue's CGB support is still incomplete. Never let PyBoy
+            # infer CGB mode from a changing cartridge header.
+            "cgb": False,
         }
         if ram_path is None:
             self.pyboy = PyBoy(str(self.rom_path), **options)
@@ -102,6 +106,23 @@ class RedRogueHarness:
         values = list(self.pyboy.memory[start : start + length])
         self.pyboy.memory[0x0000] = 0
         return values
+
+    def write_sram_bytes(self, label: str, values, bank: int = 1) -> None:
+        start = self.address(label)
+        self.pyboy.memory[0x0000] = 0x0A
+        self.pyboy.memory[0x4000] = bank
+        for offset, value in enumerate(values):
+            self.pyboy.memory[start + offset] = value & 0xFF
+        self.pyboy.memory[0x0000] = 0
+
+    def save_state(self, file_object) -> None:
+        """Save a deterministic trial baseline to an open binary file."""
+        self.pyboy.save_state(file_object)
+
+    def load_state(self, file_object) -> None:
+        """Restore a trial baseline from an open binary file."""
+        file_object.seek(0)
+        self.pyboy.load_state(file_object)
 
     def tick(self, frames: int = 1, *, render: bool = False) -> None:
         for _ in range(frames):
@@ -143,6 +164,73 @@ class RedRogueHarness:
         bank, address = self.symbols.get(label)
         self.pyboy.hook_register(bank, address, callback, None)
         return state
+
+    def hook_ai_scores(self) -> list[dict[str, object]]:
+        """Capture the untouched four-slot score array once per AI decision."""
+        records: list[dict[str, object]] = []
+        pending = {"value": False}
+
+        def begin(_context) -> None:
+            pending["value"] = True
+
+        def capture(_context) -> None:
+            if not pending["value"]:
+                return
+            pending["value"] = False
+            records.append(
+                {
+                    "scores": self.read_bytes("wBuffer", 4),
+                    "moves": self.read_bytes("wEnemyMonMoves", 4),
+                    "tier": max(0, self.read8("wAITier") - 1),
+                    "frame": self.pyboy.frame_count,
+                }
+            )
+
+        for label, callback in (
+            ("AIEnemyTrainerChooseMoves", begin),
+            ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
+        ):
+            bank, address = self.symbols.get(label)
+            self.pyboy.hook_register(bank, address, callback, None)
+        return records
+
+    def inject_fight2_spec(
+        self,
+        player: list[dict[str, object]],
+        enemy: list[dict[str, object]],
+        *,
+        trainer_class: int,
+        ai_tier: int,
+    ) -> None:
+        """Write a declarative FIGHT 2 team fixture into debug SRAM."""
+        if not 1 <= len(player) <= 6 or not 1 <= len(enemy) <= 6:
+            raise ValueError("FIGHT 2 scenarios require 1-6 mons on each side")
+        if not 0 <= ai_tier <= 3:
+            raise ValueError("AI tier must be 0-3")
+
+        def encode_mon(mon: dict[str, object]) -> list[int]:
+            moves = list(mon["moves"])
+            if len(moves) > 4:
+                raise ValueError("A scenario mon may have at most four moves")
+            moves.extend([0] * (4 - len(moves)))
+            species = int(mon["species"])
+            level = int(mon["level"])
+            if not 1 <= species <= 255 or not 1 <= level <= 100:
+                raise ValueError("Scenario species and level are out of range")
+            return [species, level, *(int(move) for move in moves)]
+
+        entries = player + ([{"species": 1, "level": 1, "moves": []}] * (6 - len(player)))
+        entries += enemy + ([{"species": 1, "level": 1, "moves": []}] * (6 - len(enemy)))
+        payload = [
+            self.FIGHT2_SPEC_MAGIC,
+            len(player),
+            len(enemy),
+            trainer_class,
+            ai_tier + 1,
+        ]
+        for mon in entries:
+            payload.extend(encode_mon(mon))
+        self.write_sram_bytes("sDebugFight2Spec", payload)
 
     def boot_debug1(self, destination_map: int) -> None:
         debug_menu = self.hook_flag("DebugMenu")

@@ -1,0 +1,16 @@
+{
+  "scenarios": [
+    {
+      "name": "fixture_smoke",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {"species": "SNORLAX", "level": 50, "moves": ["BODY_SLAM", "REST"]}
+      ],
+      "enemy": [
+        {"species": "GENGAR", "level": 50, "moves": ["HYPNOSIS", "NIGHT_SHADE"]}
+      ],
+      "expect": {"enemy_move_slots": [0, 1]}
+    }
+  ]
+}

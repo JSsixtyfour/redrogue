@@ -142,9 +142,25 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $442 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
+	ds $3f5 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
 	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
-	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System)
+	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System),
+	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below
+
+; FIGHT 2 deterministic scenario fixture. The harness writes this only for a
+; debug ROM; release code never reads it. Keeping it outside sGameData means it
+; does not alter the save checksum or shift any existing saved field.
+; Header: magic, player count, enemy count, OPP_* trainer id, AI tier+1.
+; Then 12 fixed entries: species, level, move1, move2, move3, move4.
+sDebugFight2Spec::
+sDebugFight2SpecMagic:: db
+sDebugFight2PlayerCount:: db
+sDebugFight2EnemyCount:: db
+sDebugFight2TrainerClass:: db
+sDebugFight2AITier:: db
+sDebugFight2Mons:: ds 12 * 6
+sDebugFight2SpecEnd::
+ASSERT sDebugFight2SpecEnd - sDebugFight2Spec == 77
 
 ; Diagonal tile save buffer for sprite fusion.
 ; Holds the 7 diagonal tiles (col==row) from species_a's 2bpp interleaved

@@ -3253,6 +3253,9 @@ SelectMenuItem:
 	add hl, bc
 	ld a, [hl]
 	ld [wPlayerSelectedMove], a
+	; Test battles normally source their move from the host-controlled byte.
+	; Mirror a real menu choice so FIGHT 2 remains playable by a human too.
+	ld [wTestBattlePlayerSelectedMove], a
 	xor a
 	ret
 .disabled

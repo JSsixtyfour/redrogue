@@ -57,9 +57,41 @@ class BootSmokeTest(HarnessTestCase):
             self.harness.read_bytes("wEnemyPartySpecies", 7),
             [101, 97, 155, 25, 151, 51, 0xFF],
         )
+        for label in ("wPartyMonNicks", "wEnemyMonNicks"):
+            for slot in range(6):
+                nickname = self.harness.read_bytes(label, 11, offset=slot * 11)
+                self.assertNotEqual(nickname[0], 0)
+                self.assertIn(0x50, nickname)  # string terminator
         key_flags = self.harness.read_sram_bytes("sKeyItemsBitfield", 4)
         active_count = sum((byte >> bit) & 1 for byte in key_flags for bit in (1, 3, 5, 7))
         self.assertLessEqual(active_count, 3)
+
+    def test_fight2_injects_exact_ai_scenario_and_honors_menu_move(self) -> None:
+        assert self.harness is not None
+        species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+        self.harness.inject_fight2_spec(
+            [{"species": species["SNORLAX"], "level": 50,
+              "moves": [moves["BODY_SLAM"], moves["REST"]]}],
+            [{"species": species["GENGAR"], "level": 50,
+              "moves": [moves["HYPNOSIS"], moves["NIGHT_SHADE"]]}],
+            trainer_class=trainers["COOLTRAINER_M"],
+            ai_tier=3,
+        )
+        scores = self.harness.hook_ai_scores()
+        self.harness.boot_fight2(seed=1)
+        self.assertEqual(self.harness.read_bytes("wPartySpecies", 2), [species["SNORLAX"], 0xFF])
+        self.assertEqual(self.harness.read_bytes("wEnemyPartySpecies", 2), [species["GENGAR"], 0xFF])
+        self.assertEqual(self.harness.read_bytes("wBattleMonMoves", 2), [moves["BODY_SLAM"], moves["REST"]])
+        for _ in range(300):
+            self.harness.tap("a", 1)
+            self.harness.tick(8)
+            if scores:
+                break
+        self.assertTrue(scores)
+        self.assertEqual(self.harness.read8("wTestBattlePlayerSelectedMove"), moves["BODY_SLAM"])
+        self.assertEqual(scores[0]["tier"], 3)
 
     def test_debug1_boots_to_completed_dorm(self) -> None:
         assert self.harness is not None

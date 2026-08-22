@@ -61,6 +61,7 @@ RGBGFXFLAGS  ?= -Weverything
 	tidy \
 	compare \
 	smoke \
+	ai_scenarios \
 	tools
 
 all: $(roms)
@@ -105,6 +106,9 @@ smoke: pokeblue_debug.gbc
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py
+
+ai_scenarios: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_ai_scenarios.py
 
 
 RGBASMFLAGS += -Q8 -P includes.asm

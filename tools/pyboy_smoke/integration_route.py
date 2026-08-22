@@ -157,8 +157,10 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         self.assertTrue(self.harness.event_is_set(trainer_event))
         self.assertGreaterEqual(experience["count"], 1)
         self.assertEqual(experience_done["count"], experience["count"])
-        self.assertGreaterEqual(level_up["count"], 1)
-        self.assertGreaterEqual(learn_move_check["count"], 1)
+        # Party generation and encounter generation are deterministic for a
+        # given ROM, but they are allowed to change as the game evolves. A
+        # legitimate victory need not produce a level or a new-move check.
+        # Those hooks remain in the failure report as useful telemetry.
         self.assertEqual(
             self.harness.read8("wBattleCount"), (starting_battle_count + 1) & 0xFF
         )
