@@ -757,6 +757,105 @@ RogueApplyDifficulty::
 	pop bc
 	ret
 
+; ============================================================================
+; Mid-battle evolution (Extreme Yellow import).
+; A mon that levels up mid-battle evolves at once if the trainer still has
+; Pokemon left, instead of waiting for EndOfBattle.
+; ============================================================================
+
+RogueTryMidBattleEvolution::
+	farcall AnyEnemyPokemonAliveCheck
+	ret z                       ; last opponent: let EndOfBattle evolve normally
+	ldh a, [hIsInBattle]
+	dec a
+	ret z                       ; wild battle: no mid-battle evolution
+	predef EvolutionAfterBattle
+	ld a, [wEvolutionOccurred]
+	and a
+	ret z
+
+; Only the active Pokemon needs its battle data refreshed.  Other party members
+; may have evolved through Exp. All, but are refreshed when they are sent out.
+	ld de, wBattleMonSpecies
+	ld hl, wPartyMon1Species
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ld a, [wPlayerMonNumber]
+	call AddNTimes
+	ld a, [de]
+	cp [hl]
+	jr z, .done                 ; a benched mon evolved, not the active one
+	call RogueRefreshBattleMonAfterEvolution
+.done
+	xor a
+	ld [wCanEvolveFlags], a     ; prevent a second evolution this battle
+	ret
+
+; LoadBattleMonFromParty (engine/battle/core.asm) WITHOUT its trailing stat-mod
+; reset, so boosts, drops, Substitute and status all survive the evolution.
+RogueRefreshBattleMonAfterEvolution:
+	ld a, [wPlayerMonNumber]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ld hl, wPartyMon1Species
+	call AddNTimes
+	ld de, wBattleMonSpecies
+	ld bc, wBattleMonDVs - wBattleMonSpecies
+	call CopyData
+	ld bc, MON_DVS - MON_OTID
+	add hl, bc
+	ld de, wBattleMonDVs
+	ld bc, MON_PP - MON_DVS
+	call CopyData
+	ld de, wBattleMonPP
+	ld bc, NUM_MOVES
+	call CopyData
+	ld de, wBattleMonLevel
+	ld bc, wBattleMonPP - wBattleMonLevel
+	call CopyData
+
+	ld a, [wBattleMonSpecies]
+	ld [wBattleMonSpecies2], a
+	ld [wCurSpecies], a
+	call GetMonHeader
+	ld hl, wPartyMonNicks
+	ld a, [wPlayerMonNumber]
+	call SkipFixedLengthTextEntries
+	ld de, wBattleMonNick
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld hl, wBattleMonLevel
+	ld de, wPlayerMonUnmodifiedLevel
+	ld bc, 1 + NUM_STATS * 2
+	call CopyData
+	xor a
+	ld [wCalculateWhoseStats], a
+	farcall CalculateModifiedStats
+	farcall ApplyBurnAndParalysisPenaltiesToPlayer
+	farcall ApplyBadgeStatBoosts
+
+; AnimateSendingOutMon draws the small "in battle" sprite while hIsInBattle is
+; set.  Clear it across that one predef only, to get the full-size back pic.
+	predef LoadMonBackPic
+	xor a
+	ldh [hStartTileID], a
+	hlcoord 4, 11
+	ldh a, [hIsInBattle]
+	push af
+	xor a
+	ldh [hIsInBattle], a
+	predef AnimateSendingOutMon
+	pop af
+	ldh [hIsInBattle], a
+
+; EvolveMon started MUSIC_SAFARI_ZONE then hit SFX_STOP_ALL_MUSIC, and
+; EvolutionAfterBattle deliberately skips PlayDefaultMusic while in battle
+; (engine/pokemon/evos_moves.asm:281-287), so nothing is playing here.  It also
+; skips the tileset reload (:242-244), so the HUD tile patterns need restoring.
+	farcall PlayBattleMusic
+	farcall LoadHudTilePatterns
+	farcall DrawPlayerHUDAndHPBar
+	call SaveScreenTilesToBuffer1
+	ret
+
 ; wCurPartySpecies = one rarer-random mon (this round's base class, with a
 ; rare-bump chance); wCurEnemyLevel = this round's level.
 ; base class is GetRandMon's convention: 4=pokeball ... 1=masterball.
