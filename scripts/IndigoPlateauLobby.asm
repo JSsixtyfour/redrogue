@@ -4,6 +4,10 @@ IndigoPlateauLobby_Script:
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	jr z, .skipFaceUp
+	; ShinRed normally applies its 60 fps option from the overworld loop. Red
+	; Rogue does not run that global path, so enable the configured CGB CPU speed
+	; for this sprite-heavy hub only. WarpFound2 restores normal speed on exit.
+	predef SetCPUSpeed
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
 .skipFaceUp

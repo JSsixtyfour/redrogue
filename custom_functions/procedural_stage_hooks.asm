@@ -98,12 +98,20 @@ ProcStageLoadDispatch::
 .notDorm
 	cp PROCEDURAL_CAVE_1
 	jr nz, .notCave
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PCFinalizeCave
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 .notCave
 	cp PROCEDURAL_FOREST
 	jr nz, .notForest
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PFinalizeForest
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 .notForest
 	; SHELVED facility finalize: cp PROCEDURAL_FACILITY / farcall PFacFinalize
@@ -116,7 +124,11 @@ ProcStageLoadDispatch::
 	cp PROCEDURAL_CEMETERY_4
 	ret nz
 .cemetery
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PCemFinalizeMap
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 
 ; Called from IndigoPlateauLobby_Script right after SelectAndPatchLobbyExit, so the
@@ -139,13 +151,25 @@ ProcPreloadAssignedWildArea::
 	dec a
 	jr z, .forest
 	; cemetery
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PCemGenerateMaps
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 .cave:
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PCPreloadCave
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 .forest:
+	call ProcGenerationBeginDoubleSpeed
+	push af
 	farcall PFPreloadForest
+	pop af
+	call ProcGenerationEndDoubleSpeed
 	ret
 ; a = map id -> a = 1 (cave) / 2 (forest) / 3 (cemetery_1) / 0 (not a wild entry map).
 .classify:
@@ -165,4 +189,27 @@ ProcPreloadAssignedWildArea::
 	ret
 .isCem:
 	ld a, 3
+	ret
+
+; Run active procedural generation at the speed selected by ShinRed's CGB
+; 60 fps option while preserving the caller's original CPU speed. Return $ff
+; when no restoration is needed (DMG or already double), or 0 when this call
+; switched a CGB from normal to double speed.
+ProcGenerationBeginDoubleSpeed:
+	ldh a, [hGBC]
+	and a
+	ld a, $ff
+	ret z
+	ldh a, [rKEY1]
+	bit 7, a
+	ld a, $ff
+	ret nz
+	predef SetCPUSpeed
+	xor a
+	ret
+
+ProcGenerationEndDoubleSpeed:
+	inc a
+	ret z
+	predef SingleCPUSpeed
 	ret

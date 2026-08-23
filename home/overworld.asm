@@ -513,6 +513,14 @@ WarpFound2::
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
+	; The lobby enables ShinRed's configured CGB CPU speed on entry. Restore
+	; normal speed before leaving; procedural finalizers independently enable
+	; and restore double speed around their own work.
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .speedRestored
+	predef SingleCPUSpeed
+.speedRestored
+	ldh a, [hCurMap]
 	; (Wild-area exit "+5 battles" is applied on the destination map's load in
 	; ProcStageLoadDispatch via wWarpedFromWhichMap, to keep this warp path out of
 	; HOME/ROM0. `a` is still hCurMap here for the lobby/door checks below.)
