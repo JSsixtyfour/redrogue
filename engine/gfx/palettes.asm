@@ -725,6 +725,14 @@ SendSGBPackets:
 	call InitCGBPalettes
 	pop de ; the ATTR_BLK packet; must be DE, farcall clobbers HL
 	farcall LoadCGBScreenAttributesForBlkPacket
+	; ShinRed waits for the newly installed palette and attribute state to be
+	; presented before returning to the caller. Without this, BGB can remain on
+	; the cleared frame using the previous screen's colors until the next menu
+	; input supplies another frame boundary.
+	ldh a, [rLCDC]
+	and LCDC_ENABLE
+	ret z
+	call Delay3
 	ret
 .notCGB
 	push de
@@ -733,50 +741,12 @@ SendSGBPackets:
 	jp SendSGBPacket
 
 InitCGBPalettes:
-; Load the four palettes named by an SGB PAL_SET packet into CGB BG palette RAM.
-; hl = the packet. Only reached when wOnCGB is set (see SendSGBPackets).
-;
-; Shin Red import Phase 3. REWRITTEN 2026-08-20: the vanilla routine here was an
-; unfinished stub (matching wRAM's own "always 0 since full CGB support was not
-; implemented" note on wOnCGB) and was wrong twice over. It looped `ld c, $20`
-; consuming two bytes per pass, i.e. 64 bytes out of a packet that is only 16
-; (PAL_SET = command byte + 4 little-endian IDs + `ds 7`), so 28 of its 32 reads
-; ran off the end of the packet; and it emitted a single byte per palette
-; instead of the 8 a CGB palette needs. Correct shape is 4 palettes x 8 bytes,
-; which happens to be the same 32 rBGPD writes it was making by accident.
-;
-; Colours come from CGBPalettes, NOT SuperPalettes. Both are indexed the same
-; way (PAL_* id * 8) and both live in this bank, but SuperPalettes' values are
-; tuned for Super Game Boy display hardware and read badly when fed straight to
-; CGB palette registers - which is what this routine did at first, and why the
-; first colour build looked garish. SuperPalettes is still correct for the SGB
-; path and is left alone there.
-	ld a, $80 ; index 0, auto-increment
-	ldh [rBGPI], a
-	inc hl ; skip the packet's command byte
-	ld c, 4 ; a PAL_SET packet names 4 palettes
-.palLoop
-	ld a, [hli] ; palette ID, low byte
-	inc hl ; IDs are 16-bit in the packet; the high byte is always 0
-	push hl ; the packet cursor has to survive the table walk
-	ld h, 0
-	ld l, a
-	add hl, hl
-	add hl, hl
-	add hl, hl ; hl = ID * 8, the entry's byte offset
-	ld de, CGBPalettes
-	add hl, de
-	; Keep the four selected base-palette pointers in their bank-2 workspace.
-	; The source itself remains in this ROM bank, so the pointers stay valid for
-	; the dynamic BGP/OBP update routines below.
-	push bc
-	ld a, 4
-	sub c
-	add a
-	ld e, a
-	ld d, 0
-	ld b, h
-	ld c, l
+; ShinRed's palette initialization contract, compacted into one four-entry loop.
+; Each selected base palette is transformed through the current DMG BGP, OBP0,
+; and OBP1 patterns before reaching hardware. DMGPalToGBCPal also maintains the
+; wLast* caches, so repeated menu transitions cannot skip a required update.
+; Red Rogue keeps the palette workspace in manually managed WRAM bank 2, hence
+; the interrupt and rSVBK save/restore around the complete operation.
 	ldh a, [rIE]
 	push af
 	xor a
@@ -785,67 +755,51 @@ InitCGBPalettes:
 	push af
 	ld a, 2
 	ldh [rSVBK], a
+
+	inc hl ; skip PAL_SET command byte
+	ld c, 0 ; active palette index
+.palLoop
+	ld a, [hli] ; palette ID, low byte
+	inc hl ; high byte is always zero
+	push hl ; packet cursor
+	call GetGBCBasePalAddress ; de = selected CGB base palette
+
+	push de
 	ld hl, w2GBCBasePalPointers
-	add hl, de
-	ld [hl], c
+	ld b, 0
+	add hl, bc
+	add hl, bc
+	ld [hl], e
 	inc hl
-	ld [hl], b
+	ld [hl], d
+	pop de
+
+	xor a ; CONVERT_BGP
+	call DMGPalToGBCPal
+	ld a, c
+	call TransferCurBGPData
+	ld a, CONVERT_OBP0
+	call DMGPalToGBCPal
+	ld a, c
+	call TransferCurOBPData
+	ld a, CONVERT_OBP1
+	call DMGPalToGBCPal
+	ld a, c
+	add 4
+	call TransferCurOBPData
+
+	pop hl
+	inc c
+	ld a, c
+	cp 4
+	jr c, .palLoop
+
 	ld a, 1
 	ldh [rSVBK], a
 	pop af
 	ldh [rSVBK], a
 	pop af
 	ldh [rIE], a
-	ld h, b
-	ld l, c
-	pop bc
-	ld de, rBGPD
-	call TransferFourPalColors
-	pop hl
-	dec c
-	jr nz, .palLoop
-	; fallthrough
-
-InitCGBObjectPalettes:
-; Fill all eight CGB OBJ palettes with one sane sprite palette.
-;
-; Nothing in this fork assigns per-sprite CGB palettes yet, and OBJ palette RAM
-; is NOT initialised by anything else - it powers up holding garbage. Because a
-; single OBJ palette supplies four colours, that garbage rendered each sprite as
-; a multi-coloured rainbow, and since the power-up contents differ per boot the
-; title screen appeared to change colour every time. The background looked fine
-; throughout, because BG palettes are loaded above and the attribute map picks
-; between them correctly.
-;
-; PAL_MEWMON is reused rather than inventing new colour data: it is already a
-; light-skin / grey-blue / near-black ramp, which reads acceptably on Gen 1
-; person sprites. Colour 0 of an OBJ palette is transparent, so only entries 1-3
-; actually show.
-;
-; This is deliberately a flat default. Per-sprite OBJ palettes (Yellow assigns
-; them by sprite ID) are the proper fix and are a separate piece of work; the
-; point here is that sprites render consistently instead of as noise.
-	ld a, $80 ; index 0, auto-increment
-	ldh [rOBPI], a
-	ld c, 8 ; eight OBJ palettes
-.objPalLoop
-	ld hl, CGBPalettes + PAL_MEWMON * 8
-	ld de, rOBPD
-	call TransferFourPalColors
-	dec c
-	jr nz, .objPalLoop
-	ret
-
-TransferFourPalColors:
-; CGB palette data is inaccessible during LCD mode 3. Transfer one complete
-; four-colour palette using ShinRed's per-colour synchronization instead of
-; relying on emulator-specific acceptance of blocked rBGPD/rOBPD writes.
-; hl = eight palette bytes, de = rBGPD or rOBPD. Preserves c.
-	ld b, 4
-.loop
-	call TransferPalColorLCDSafe
-	dec b
-	jr nz, .loop
 	ret
     
     DMGPalToGBCPal::	;gbcnote - new function
@@ -1023,11 +977,6 @@ TransferCurOBPData:
 	pop de
 	ret	
 
-TransferPalColorLCDSafe:
-; Select the reference transfer path without hanging when the LCD is disabled.
-	ldh a, [rLCDC]
-	rlca
-	jr nc, TransferPalColorLCDDisabled
 TransferPalColorLCDEnabled:
 ; Transfer a palette color while the LCD is enabled.
 ; In case we're already in H-blank or V-blank, wait for it to end. This is a

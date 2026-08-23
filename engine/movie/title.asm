@@ -256,6 +256,7 @@ ENDC
 	call ClearSprites
 	xor a
 	ldh [hWY], a
+	ld [wMapPalOffset], a ; reset any saved/random dark-map fade offset before LoadGBPal
 	inc a
 	ldh [hAutoBGTransferEnabled], a
 	call ClearScreen
