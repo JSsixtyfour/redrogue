@@ -799,12 +799,8 @@ InitCGBPalettes:
 	ld h, b
 	ld l, c
 	pop bc
-	ld b, 8 ; 4 colours x 2 bytes
-.byteLoop
-	ld a, [hli]
-	ldh [rBGPD], a
-	dec b
-	jr nz, .byteLoop
+	ld de, rBGPD
+	call TransferFourPalColors
 	pop hl
 	dec c
 	jr nz, .palLoop
@@ -834,17 +830,22 @@ InitCGBObjectPalettes:
 	ld c, 8 ; eight OBJ palettes
 .objPalLoop
 	ld hl, CGBPalettes + PAL_MEWMON * 8
-	ld b, 8 ; 4 colours x 2 bytes
-.objByteLoop
-	ld a, [hli]
-	ldh [rOBPD], a
-	dec b
-	jr nz, .objByteLoop
+	ld de, rOBPD
+	call TransferFourPalColors
 	dec c
 	jr nz, .objPalLoop
 	ret
 
-EmptyFunc3:
+TransferFourPalColors:
+; CGB palette data is inaccessible during LCD mode 3. Transfer one complete
+; four-colour palette using ShinRed's per-colour synchronization instead of
+; relying on emulator-specific acceptance of blocked rBGPD/rOBPD writes.
+; hl = eight palette bytes, de = rBGPD or rOBPD. Preserves c.
+	ld b, 4
+.loop
+	call TransferPalColorLCDSafe
+	dec b
+	jr nz, .loop
 	ret
     
     DMGPalToGBCPal::	;gbcnote - new function
@@ -1022,6 +1023,11 @@ TransferCurOBPData:
 	pop de
 	ret	
 
+TransferPalColorLCDSafe:
+; Select the reference transfer path without hanging when the LCD is disabled.
+	ldh a, [rLCDC]
+	rlca
+	jr nc, TransferPalColorLCDDisabled
 TransferPalColorLCDEnabled:
 ; Transfer a palette color while the LCD is enabled.
 ; In case we're already in H-blank or V-blank, wait for it to end. This is a
