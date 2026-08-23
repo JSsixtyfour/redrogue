@@ -656,8 +656,8 @@ GBCFadeInFromBlack::
 	
 	
 BufferAllPokeyellowColorsGBC_helper::
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	jr z, .doNormal
 	ld a, [wRogueFlagsBitfield2]
 	bit 3, a

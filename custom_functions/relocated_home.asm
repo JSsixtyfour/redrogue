@@ -213,7 +213,7 @@ InitOptions_::
 	ld [wLetterPrintingDelayFlags], a
 	ld a, TEXT_DELAY_FAST
 	ld [wOptions], a
-	xor a
+	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a
 	ldh a, [hGBC]
 	and a
@@ -227,7 +227,7 @@ InitOptions_::
 	ld a, 2
 	ldh [rSVBK], a
 	ld a, [w2GBCFlags]
-	set 5, a
+	set 5, a ; legacy bank-2 mirror; SetCPUSpeed reads saved wOptions2 directly
 	ld [w2GBCFlags], a
 	ld a, 1
 	ldh [rSVBK], a

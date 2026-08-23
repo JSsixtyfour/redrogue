@@ -42,8 +42,10 @@ EnterMap::
 	ldh [hJoyIgnore], a
 
 OverworldLoop::
-	call DelayFrame
+	call Check60FPS
+	call z, DelayFrame
 OverworldLoopLessDelay::
+	predef SetCPUSpeed
 	call DelayFrame
 	call LoadGBPal
 	ld a, [wMovementFlags]
@@ -283,7 +285,11 @@ OverworldLoopLessDelay::
 	jp OverworldLoop
 
 .noCollision
+	call Check60FPS
 	ld a, $08
+	jr z, .setWalkCounter
+	ld a, $10
+.setWalkCounter
 	ld [wWalkCounter], a
 	jr .moveAhead2
 
@@ -1588,8 +1594,8 @@ LoadCurrentMapView::
 	ldh a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 	callfar MakeOverworldBGMapAttributes	
 	ret
@@ -1611,7 +1617,16 @@ AdvancePlayerSprite::
 	ld [wXCoord], a
 .afterUpdateMapCoords
 	ld a, [wWalkCounter]
-	cp $07
+	push bc
+	ld b, a
+	call Check60FPS
+	ld a, b
+	ld b, $07
+	jr z, .compareFirstWalkFrame
+	ld b, $0f
+.compareFirstWalkFrame
+	cp b
+	pop bc
 	jp nz, .scrollBackgroundAndSprites
 ; if this is the first iteration of the animation
 	ld a, c
@@ -1763,8 +1778,11 @@ AdvancePlayerSprite::
 	ld b, a
 	ld a, [wSpritePlayerStateData1XStepVector]
 	ld c, a
+	call Check60FPS
+	jr nz, .gotScrollDeltas
 	sla b
 	sla c
+.gotScrollDeltas
 	ldh a, [hSCY]
 	add b
 	ldh [hSCY], a ; update background scroll Y

@@ -1,4 +1,5 @@
 InitBattleVariables:
+	predef SingleCPUSpeed ; battle transitions have known double-speed visual faults
 ; ELEMENT PRISM: resolve the two hot-path damage caches once per battle (see
 ; custom_functions/element_prism.asm). Placed here rather than in core.asm's
 ; InitBattleCommon because this routine is already callfar'd once per battle

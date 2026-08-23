@@ -35,7 +35,6 @@ INCLUDE "engine/menus/draw_start_menu.asm"
 INCLUDE "engine/link/cable_club_npc.asm"
 INCLUDE "engine/menus/text_box.asm"
 INCLUDE "engine/menus/players_pc.asm"
-INCLUDE "engine/pokemon/remove_mon.asm"
 INCLUDE "engine/events/display_pokedex.asm"
 
 
@@ -64,6 +63,12 @@ INCLUDE "engine/battle/ai/ai_core.asm"
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"
+
+; RemovePokemon's HOME stub already uses jpfar, and the implementation only
+; accesses RAM and its own local labels. Keep this infrequent routine out of
+; bank $01 so per-frame 60 FPS sprite timing can remain in its native bank.
+SECTION "Remove Pokemon", ROMX, BANK[$12]
+INCLUDE "engine/pokemon/remove_mon.asm"
 
 
 ; Shin Red import Phase 6: moved out of the fixed "bank1" section, which

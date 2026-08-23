@@ -1086,8 +1086,8 @@ UpdateGBCPal_OBP1_::
 	
 _UpdateGBCPal_BGP::
 ;use a different function if doing enhanced GBC overworld palettes
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	jr z, .notEnhancedGBC
 	ld hl, wRogueFlagsBitfield2
 	bit 3, [hl]
@@ -1189,8 +1189,8 @@ _UpdateGBCPal_BGP::
     
  _UpdateGBCPal_OBP::
 ;use a different function if doing enhanced GBC overworld palettes
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	jr z, .notEnhancedGBC
 	ld hl, wRogueFlagsBitfield2
 	bit 3, [hl]

@@ -59,7 +59,9 @@ SECTION "Extra Options Menu", ROMX
 DEF ROW_AUDIO EQU 0
 DEF ROW_INSTANT_TEXT EQU 1
 DEF ROW_LEVELS EQU 2
-DEF NUM_EXTRA_OPTION_ROWS EQU 3
+DEF ROW_ENHANCED_COLORS EQU 3
+DEF ROW_60_FPS EQU 4
+DEF NUM_EXTRA_OPTION_ROWS EQU 5
 
 DisplayExtraOptionMenu::
 ; The caller clears the screen on both sides of this call and fully redraws the
@@ -76,7 +78,7 @@ DisplayExtraOptionMenu::
 	ld c, 18
 	call TextBoxBorder
 	hlcoord 0, 4 ; encloses the three setting rows (5, 7, and 9), like the OPTION screen
-	ld b, 6
+	ld b, 10
 	ld c, 18
 	call TextBoxBorder
 	hlcoord 1, 2
@@ -94,6 +96,14 @@ DisplayExtraOptionMenu::
 	ld de, ExtraOptionsLevelsLabelText
 	call PlaceString
 	call .drawLevelsValue
+	hlcoord 1, 11
+	ld de, ExtraOptionsColorsLabelText
+	call PlaceString
+	call .drawColorsValue
+	hlcoord 1, 13
+	ld de, ExtraOptions60FPSLabelText
+	call PlaceString
+	call .draw60FPSValue
 	hlcoord 2, 16
 	ld de, ExtraOptionsCancelText
 	call PlaceString
@@ -108,7 +118,7 @@ DisplayExtraOptionMenu::
 	ldh a, [hJoy5]
 	ld b, a
 	and PAD_A | PAD_B | PAD_START | PAD_SELECT
-	jr nz, .exit
+	jp nz, .exit
 	ld a, b
 	and PAD_UP | PAD_DOWN
 	jr z, .checkLeftRight
@@ -131,8 +141,12 @@ DisplayExtraOptionMenu::
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	ldh a, [hCurrentMenuItem]
+	cp ROW_60_FPS
+	jr z, .toggle60FPS
+	cp ROW_ENHANCED_COLORS
+	jr z, .toggleEnhancedColors
 	cp ROW_LEVELS
-	jr z, .cycleLevels
+	jp z, .cycleLevels
 	cp ROW_INSTANT_TEXT
 	jr z, .toggleInstantText
 .cycleAudio
@@ -177,7 +191,22 @@ DisplayExtraOptionMenu::
 	ld [wOptions], a
 .drawInstantText
 	call .drawInstantTextValue
-	jr .loop
+	jp .loop
+.toggleEnhancedColors
+	ld hl, wOptions2
+	ld a, 1 << BIT_ENHANCED_COLORS
+	xor [hl]
+	ld [hl], a
+	call .drawColorsValue
+	jp .loop
+.toggle60FPS
+	ld hl, wOptions2
+	ld a, 1 << BIT_60_FPS
+	xor [hl]
+	ld [hl], a
+	predef SetCPUSpeed
+	call .draw60FPSValue
+	jp .loop
 .exit
 	ld a, SFX_PRESS_AB
 	call PlaySound
@@ -214,6 +243,8 @@ DisplayExtraOptionMenu::
 	db 5 ; ROW_AUDIO
 	db 7 ; ROW_INSTANT_TEXT
 	db 9 ; ROW_LEVELS
+	db 11 ; ROW_ENHANCED_COLORS
+	db 13 ; ROW_60_FPS
 
 ; Cycle the stored difficulty through the display order, preserving the other
 ; bits in wOptions2.
@@ -342,6 +373,25 @@ DEF NUM_LEVELS_SETTINGS EQU 5
 .placeInstantTextValue
 	jp PlaceString
 
+.drawColorsValue
+	hlcoord 10, 11
+	ld de, ExtraOptionsOnText
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
+	jr nz, .placeBinaryValue
+	ld de, ExtraOptionsOffText
+	jr .placeBinaryValue
+
+.draw60FPSValue
+	hlcoord 10, 13
+	ld de, ExtraOptionsOnText
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	jr nz, .placeBinaryValue
+	ld de, ExtraOptionsOffText
+.placeBinaryValue
+	jp PlaceString
+
 ExtraOptionsTitleText:
 	db "EXTRA OPTIONS@"
 
@@ -383,6 +433,18 @@ ExtraOptionsInstantTextOnText:
 	db "ON       @"
 
 ExtraOptionsInstantTextOffText:
+	db "OFF      @"
+
+ExtraOptionsColorsLabelText:
+	db "COLORS@"
+
+ExtraOptions60FPSLabelText:
+	db "60 FPS@"
+
+ExtraOptionsOnText:
+	db "ON       @"
+
+ExtraOptionsOffText:
 	db "OFF      @"
 
 ExtraOptionsCancelText:

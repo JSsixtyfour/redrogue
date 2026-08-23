@@ -63,6 +63,7 @@ class RedRogueHarness:
         *,
         sound_emulated: bool = False,
         ram_path: Path | None = None,
+        cgb_mode: bool = False,
     ):
         self.repo_root = repo_root.resolve()
         self.rom_path = self.repo_root / "pokeblue_debug.gbc"
@@ -76,35 +77,34 @@ class RedRogueHarness:
         self.rom_sha256 = hashlib.sha256(rom_data).hexdigest()
 
         # PyBoy's cgb=False only declines to force CGB mode. It does not force
-        # DMG mode when byte $0143 advertises a CGB-compatible cartridge. Keep
-        # the test ROM itself authoritative, but give the DMG-only regression
-        # harness an in-memory header mirror with valid checksums.
-        rom_data[0x143] = 0
-        header_checksum = 0
-        for value in rom_data[0x134:0x14D]:
-            header_checksum = (header_checksum - value - 1) & 0xFF
-        rom_data[0x14D] = header_checksum
-        global_checksum = (
-            sum(rom_data) - rom_data[0x14E] - rom_data[0x14F]
-        ) & 0xFFFF
-        rom_data[0x14E] = global_checksum >> 8
-        rom_data[0x14F] = global_checksum & 0xFF
-        self._dmg_rom_file = io.BytesIO(rom_data)
+        # DMG mode when byte $0143 advertises a CGB-compatible cartridge. The
+        # default regression harness therefore uses an in-memory DMG header
+        # mirror; opt-in CGB tests retain the authoritative ROM header.
+        if not cgb_mode:
+            rom_data[0x143] = 0
+            header_checksum = 0
+            for value in rom_data[0x134:0x14D]:
+                header_checksum = (header_checksum - value - 1) & 0xFF
+            rom_data[0x14D] = header_checksum
+            global_checksum = (
+                sum(rom_data) - rom_data[0x14E] - rom_data[0x14F]
+            ) & 0xFFFF
+            rom_data[0x14E] = global_checksum >> 8
+            rom_data[0x14F] = global_checksum & 0xFF
+        self._rom_file = io.BytesIO(rom_data)
         self.artifacts_dir = artifacts_dir.resolve()
         options = {
             "window": "null",
             "sound_emulated": sound_emulated,
             "log_level": "CRITICAL",
-            # The in-memory header mirror above selects DMG mode. False here
-            # additionally ensures that the harness never forces CGB mode.
-            "cgb": False,
+            "cgb": cgb_mode,
         }
         if ram_path is None:
-            self.pyboy = PyBoy(self._dmg_rom_file, **options)
+            self.pyboy = PyBoy(self._rom_file, **options)
         else:
             with ram_path.resolve().open("rb") as ram_file:
                 self.pyboy = PyBoy(
-                    self._dmg_rom_file, ram_file=ram_file, **options
+                    self._rom_file, ram_file=ram_file, **options
                 )
 
     def close(self) -> None:

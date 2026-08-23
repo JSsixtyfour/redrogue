@@ -527,8 +527,8 @@ MakeOverworldBGMapAttributes::
 	ld a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 	
 
@@ -1008,8 +1008,8 @@ MakeAndTransferOverworldBGMapAttributes_OpenText::
 	ld a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 ;only on the overworld bgmap
 	ld a, [wRogueFlagsBitfield2]
@@ -1060,8 +1060,8 @@ GBCEnhancedRedrawRowOrColumn::
 	ld a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 	
 	;only on the overworld bgmap
@@ -1228,8 +1228,8 @@ TransferGBCEnhancedBGMapAttributes:
 	ld a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 
 	ld a, %11
@@ -1259,8 +1259,8 @@ TransferGBCEnhancedOverworldPalettes:
 	ld a, [hGBC]
 	and a
 	ret z
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	ret z
 	
 	call UpdateEnhancedGBCPal_BGP.skipHardwareUpdate
@@ -2145,26 +2145,9 @@ SetCPUSpeed::
 	and a
 	jr z, .return	;double speed is only a GBC feature
 	
-	ldh a, [rIE]
-	push af
-	xor a
-	ldh [rIE], a
-	ldh a, [rSVBK]
-	push af
-	ld a, 2
-	ldh [rSVBK], a
-	ld a, [w2GBCFlags]
-	and %00100000
-	rlca
-	rlca
-	rlca
+	ld a, [wOptions2]
+	and 1 << BIT_60_FPS
 	ld b, a
-	ld a, 1
-	ldh [rSVBK], a
-	pop af
-	ldh [rSVBK], a
-	pop af
-	ldh [rIE], a
 	ld a, [rKEY1]
 	and %10000000
 	cp b
@@ -2185,6 +2168,15 @@ ToggleCPUSpeed:
 	ld a, $01
 	ld [rKEY1], a
 	stop
+	; OAM DMA duration is fixed in real time, so its HRAM delay must double
+	; with the CPU. Patch the immediate byte without growing the HRAM routine.
+	ld a, [rKEY1]
+	bit 7, a
+	ld a, $28
+	jr z, .dmaWaitReady
+	add a
+.dmaWaitReady
+	ldh [hDMARoutine.waitCount + 1], a
 	pop af
 	ld [rIE], a
 	ei

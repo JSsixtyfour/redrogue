@@ -35,6 +35,8 @@ INCLUDE "home/money.asm"
 
 SECTION "Home", ROM0
 
+INCLUDE "home/cgb_speed.asm"
+
 INCLUDE "home/start.asm"
 INCLUDE "home/joypad.asm"
 

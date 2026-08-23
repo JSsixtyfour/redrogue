@@ -21,6 +21,7 @@ HallOfFameNoopScript:
 	ret
 
 HallOfFameResetEventsAndSaveScript:
+	predef SingleCPUSpeed ; Hall of Fame and credits retain single-speed timing
 	call Delay3
 	ld a, [wLetterPrintingDelayFlags]
 	push af

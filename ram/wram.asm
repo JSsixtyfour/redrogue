@@ -2411,7 +2411,7 @@ wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level by
 ;bit 4 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
 ;bit 5 - DMARoutine will not run in Vblank while this bit is set, was bit 0 in Shinred hFlagsFFFA
 ;bit 6 - BGmap update functions will not run in Vblank while this bit is set
-; bit 7: enhanced GBC colors toggle - bit 7 of wUnusedD721
+; bit 7: unused; the saved enhanced-color option now lives in wOptions2 bit 6
 wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above
@@ -2458,7 +2458,8 @@ wElite4Order:: db
 ;             0=MONO, 1=EARPHONE1, 2=EARPHONE2, 3=EARPHONE3. Read by
 ;             Audio1_ApplyMonoStereo (audio/engine_1.asm), set by the AUDIO
 ;             row in the extra options menu (engine/menus/extra_options.asm).
-;   bits 6-7: unused (document every bit here as it is claimed)
+;   bit 6: enhanced CGB overworld colors (default on)
+;   bit 7: ShinRed 60 FPS/double-speed mode (default on)
 wOptions2:: db
 
 wRGB:: ds 3

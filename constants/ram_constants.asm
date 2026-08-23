@@ -49,6 +49,10 @@ DEF DIFFICULTY_MASK EQU %00000111
 	const DIFFICULTY_HARD       ; 3
 	const DIFFICULTY_VERY_HARD  ; 4
 
+; wOptions2 persistent CGB options. Both default on in InitOptions_.
+DEF BIT_ENHANCED_COLORS EQU 6
+DEF BIT_60_FPS         EQU 7
+
 ; wLetterPrintingDelayFlags
 	const_def
 	const BIT_FAST_TEXT_DELAY ; 0

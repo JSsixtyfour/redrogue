@@ -12,8 +12,8 @@ RedisplayStartMenu::
 	farcall PrintSafariZoneSteps ; print Safari Zone info, if in Safari Zone
     
     ;GBCNote - if using enhanced GBC color, add some extra delay
-	ld a, [wRogueFlagsBitfield2]
-	bit 7, a
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
 	call nz, Delay3
 
 	call LoadGBPal	;joenote - moved this here for smoother whiteout transition

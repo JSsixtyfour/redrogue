@@ -122,6 +122,7 @@ VermilionDockSSAnneLeavesScript:
 	dec hl
 	ld [hl], c
 	call LoadPlayerSpriteGraphics
+	predef SetCPUSpeed
 	ld hl, wNumberOfWarps
 	dec [hl]
 	ret

@@ -19,6 +19,7 @@ hDMARoutine::
 	ld a, HIGH(wShadowOAM)
 	ldh [rDMA], a
 	; wait for DMA to finish
+.waitCount
 	ld a, $28
 .wait
 	dec a

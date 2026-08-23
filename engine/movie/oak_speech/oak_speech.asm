@@ -40,6 +40,7 @@ PrepareOakSpeech:
 	jp CopyData
 
 OakSpeech:
+	predef SingleCPUSpeed ; preserve ShinRed's timing-sensitive intro boundary
 	ld a, SFX_STOP_ALL_MUSIC
 	call PlaySound
 	ld a, BANK(Music_Routes2)

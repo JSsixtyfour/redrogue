@@ -1,4 +1,5 @@
 CableClubNPC::
+	predef SingleCPUSpeed ; link transfer is unsafe in CGB double-speed mode
 	ld hl, CableClubNPCWelcomeText
 	call PrintText
 	CheckEvent EVENT_GOT_POKEDEX

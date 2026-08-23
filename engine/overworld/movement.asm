@@ -68,6 +68,8 @@ UpdatePlayerSprite:
 	ld l, a
 	ld a, [hl]
 	inc a
+	call Sprite60FPS
+	sub b
 	ld [hl], a
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;joenote - If B is being held to go faster and full joypad is enabled (i.e. not in a cutscene),
@@ -330,6 +332,9 @@ UpdateSpriteInWalkingAnimation:
 	ld l, a
 	ld a, [hl]                       ; x#SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
 	inc a
+	call Sprite60FPS
+	push bc
+	sub b
 	ld [hl], a                       ; [x#SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER]++
 	cp $4
 	jr nz, .noNextAnimationFrame
@@ -341,6 +346,11 @@ UpdateSpriteInWalkingAnimation:
 	and $3
 	ld [hl], a                       ; advance to next animation frame every 4 ticks (16 ticks total for one step)
 .noNextAnimationFrame
+	pop bc
+	push bc
+	ld a, b
+	and a
+	jr nz, .skipPixelUpdate
 	ldh a, [hCurrentSpriteOffset]
 	add $3
 	ld l, a
@@ -354,10 +364,13 @@ UpdateSpriteInWalkingAnimation:
 	ld a, [hl]                       ; x#SPRITESTATEDATA1_XPIXELS
 	add b
 	ld [hl], a                       ; update [x#SPRITESTATEDATA1_XPIXELS]
+.skipPixelUpdate
 	ldh a, [hCurrentSpriteOffset]
 	ld l, a
 	inc h
 	ld a, [hl]                       ; x#SPRITESTATEDATA2_WALKANIMATIONCOUNTER
+	pop bc
+	add b
 	dec a
 	ld [hl], a                       ; update walk animation counter
 	ret nz
@@ -414,6 +427,10 @@ UpdateSpriteMovementDelay:
 	ld [hl], $0
 	jr .moving
 .tickMoveCounter
+	ld a, [hl]
+	call Sprite60FPS
+	add b
+	ld [hl], a
 	dec [hl]                ; x#SPRITESTATEDATA2_MOVEMENTDELAY
 	jr nz, NotYetMoving
 .moving
@@ -430,6 +447,31 @@ NotYetMoving:
 	ld l, a
 	ld [hl], $0             ; [x#SPRITESTATEDATA1_ANIMFRAMECOUNTER] = 0 (walk animation frame)
 	jp UpdateSpriteImage
+
+; ShinRed uses the otherwise-unused byte $a in each sprite's state-data-2
+; struct as a per-sprite phase bit. In 60 FPS mode b alternates 0/1; when the
+; option is off the phase is cleared and b is always 0.
+Sprite60FPS:
+	push hl
+	push af
+	ld h, HIGH(wSpriteStateData2)
+	ldh a, [hCurrentSpriteOffset]
+	add SPRITESTATEDATA2_0A
+	ld l, a
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	ld a, [hl]
+	jr nz, .toggle
+	xor a
+	jr .store
+.toggle
+	xor $01
+.store
+	ld [hl], a
+	ld b, a
+	pop af
+	pop hl
+	ret
 
 MakeNPCFacePlayer:
 ; Make an NPC face the player if the player has spoken to him or her.
@@ -826,6 +868,14 @@ DoScriptedNPCMovement:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_MOVEMENT_STATE, a
 	ret z
+	ld de, 0
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	jr z, .got60FPSPhase
+	call Sprite60FPS
+	ld e, b
+	ld d, 1
+.got60FPSPhase
 	ld hl, wStatusFlags4
 	bit BIT_INIT_SCRIPTED_MOVEMENT, [hl]
 	set BIT_INIT_SCRIPTED_MOVEMENT, [hl]
@@ -844,6 +894,7 @@ DoScriptedNPCMovement:
 	call GetSpriteScreenYPointer
 	ld c, SPRITE_FACING_UP
 	ld a, -2
+	add d
 	jr .move
 .checkIfMovingDown
 	cp NPC_MOVEMENT_DOWN
@@ -851,6 +902,7 @@ DoScriptedNPCMovement:
 	call GetSpriteScreenYPointer
 	ld c, SPRITE_FACING_DOWN
 	ld a, 2
+	sub d
 	jr .move
 .checkIfMovingLeft
 	cp NPC_MOVEMENT_LEFT
@@ -858,6 +910,7 @@ DoScriptedNPCMovement:
 	call GetSpriteScreenXPointer
 	ld c, SPRITE_FACING_LEFT
 	ld a, -2
+	add d
 	jr .move
 .checkIfMovingRight
 	cp NPC_MOVEMENT_RIGHT
@@ -865,6 +918,7 @@ DoScriptedNPCMovement:
 	call GetSpriteScreenXPointer
 	ld c, SPRITE_FACING_RIGHT
 	ld a, 2
+	sub d
 	jr .move
 .noMatch
 	cp $ff
@@ -881,6 +935,9 @@ DoScriptedNPCMovement:
 	ld [hl], a ; facing direction
 	call AnimScriptedNPCMovement
 	ld hl, wScriptedNPCWalkCounter
+	ld a, [hl]
+	add e
+	ld [hl], a
 	dec [hl]
 	ret nz
 	ld a, 8
@@ -958,6 +1015,7 @@ AdvanceScriptedNPCAnimFrameCounter:
 	ld l, a
 	ld a, [hl] ; intra-animation frame counter
 	inc a
+	sub e
 	ld [hl], a
 	cp 4
 	ret nz

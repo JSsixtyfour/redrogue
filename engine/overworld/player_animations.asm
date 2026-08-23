@@ -492,6 +492,7 @@ _HandleMidJump::
 	ld a, [wPlayerJumpingYScreenCoordsIndex]
 	ld c, a
 	inc a
+	call .apply60FPSLedgePhase
 	cp $10
 	jr nc, .finishedJump
 	ld [wPlayerJumpingYScreenCoordsIndex], a
@@ -518,6 +519,22 @@ _HandleMidJump::
 	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
 	xor a
 	ldh [hJoyIgnore], a
+	ret
+
+.apply60FPSLedgePhase
+	push hl
+	push af
+	ld hl, wSpritePlayerStateData2 + SPRITESTATEDATA2_0A
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	ld a, [hl]
+	jr nz, .phaseReady
+	xor a
+.phaseReady
+	ld b, a
+	pop af
+	sub b
+	pop hl
 	ret
 
 PlayerJumpingYScreenCoords:
