@@ -3377,6 +3377,12 @@ INCLUDE "data/wild/super_rod.asm"
 ; for items that cause the overworld to be displayed
 ItemUseReloadOverworldData:
 	call LoadCurrentMapView
+    
+    ;GBCNote - for enhanced GBC color
+;makes it so that the vBGMap1 space gets updated for the side menu going away
+	call DelayFrame
+	callfar MakeAndTransferOverworldBGMapAttributes_OpenText
+    
 	jp UpdateSprites
 
 ; creates a list at wBuffer of maps where the mon in [wPokedexNum] can be found.

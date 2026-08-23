@@ -296,8 +296,8 @@ ErasePartyMenuCursors::
 	ret
 
 ItemMenuLoop:
-	call LoadScreenTilesFromBuffer2DisableBGTransfer
-	call RunDefaultPaletteCommand
+    call RunDefaultPaletteCommand	;GBCNote - make sure this comes first for GBC enhanced colors
+	call LoadScreenTilesFromBuffer2DisableBGTransfer ; restore saved screen
 
 StartMenu_Item::
 	ld a, [wLinkState]

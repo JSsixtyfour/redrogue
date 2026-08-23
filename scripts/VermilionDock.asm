@@ -37,6 +37,7 @@ VermilionDock_Script:
 	ret
 
 VermilionDockSSAnneLeavesScript:
+    predef SingleCPUSpeed	;joenote - needed for 60fps mode on GBC
 	SetEventForceReuseHL EVENT_SS_ANNE_LEFT
 	ld a, SFX_STOP_ALL_MUSIC
 	ldh [hJoyIgnore], a
@@ -59,6 +60,10 @@ VermilionDockSSAnneLeavesScript:
 	ld a, 1
 	ldh [hAutoBGTransferEnabled], a
 	call Delay3
+    
+    ;gbcnote: for enhanced GBC colors, you have to update the palettes for the water tiles just written to vBGMap1
+	callfar MakeAndTransferOverworldBGMapAttributes_OpenText
+    
 	xor a
 	ldh [hAutoBGTransferEnabled], a
 	ld [wSSAnneSmokeDriftAmount], a

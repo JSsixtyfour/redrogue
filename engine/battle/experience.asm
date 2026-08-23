@@ -2,6 +2,10 @@ GainExperience:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; return if link battle
+    
+    ;shinpokered feature having to do with the GBC double speed CPU mode
+;Running in double speed CPU mode shaves off about 1 second of computation delay
+	predef SetCPUSpeed
 
 ; STAT BOOSTER: resolve the pass count once per GainExperience call (not per
 ; mon - every party mon that gains exp this battle is boosted the same way),
@@ -376,6 +380,10 @@ GainExperience:
 	call AddNTimes
 	jp .partyMonLoop
 .done
+    ;all done with the main run, so do some finishing-up
+
+	;shinpokered feature having to do with the GBC double speed CPU mode
+	predef SingleCPUSpeed
 	; show "Party gained X EXP. Points!" once, now that wExpAmountGained is set
 	ld a, [wBoostExpByExpAll]
 	and a

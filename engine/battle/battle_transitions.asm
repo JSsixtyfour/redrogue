@@ -1,6 +1,11 @@
 BattleTransition:
 	ld a, 1
 	ldh [hAutoBGTransferEnabled], a
+    
+    ;GBCnote - for enhanced gbc colors, need to update the window as if opening a menu or text box
+;Else colors will be wrong upon writing sliding the window onto the screen
+	callfar MakeAndTransferOverworldBGMapAttributes_OpenText
+    
 	call Delay3
 	xor a
 	ldh [hWY], a
@@ -171,6 +176,9 @@ BattleTransition_BlackScreen:
 	ldh [rBGP], a
 	ldh [rOBP0], a
 	ldh [rOBP1], a
+    call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 	ret
 
 ; for non-dungeon trainer battles
@@ -334,6 +342,7 @@ BattleTransition_FlashScreen_:
 	cp 1
 	jr z, .done
 	ldh [rBGP], a
+    call UpdateGBCPal_BGP
 	ld c, 2
 	call DelayFrames
 	jr .loop

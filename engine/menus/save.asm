@@ -165,6 +165,18 @@ SaveMenu:
 	and a
 	ret nz
 .save
+    ;now save the status of the gamma shader
+	ld a, [hGBC]
+	and a
+	jr z, .doneGamma
+	cp 2
+	jr z, .onGamma
+.offGamma
+	ResetEvent EVENT_GAMMA_SHADER
+	jr .doneGamma
+.onGamma
+	SetEvent EVENT_GAMMA_SHADER
+.doneGamma
 	call SaveGameData
 	hlcoord 1, 13
 	lb bc, 4, 18

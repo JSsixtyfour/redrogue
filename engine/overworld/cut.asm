@@ -1,3 +1,5 @@
+
+; gbcnote, shinred does a lot in here, but cut is cut from Red Rogue so I skipped it.
 UsedCut:
 	xor a
 	ld [wActionResultOrTookBattleTurn], a ; initialise to failure value

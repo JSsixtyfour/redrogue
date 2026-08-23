@@ -48,6 +48,19 @@ ReplaceTileBlock:
 
 ; Exported so custom_functions/room_pc.asm can farcall it: LoadCurrentMapView
 ; alone only refills wTileMap (which feeds the WINDOW at vBGMap1), while the
+;gbcnote - it is useful to have a version of RedrawMapView that does not mess with hAutoBGTransferEnabled
+;used particularly for clean enhanced GBC colors during in-game trades
+RedrawMapView_NoChangeAutoBGTransfer:
+	ld a, [wIsInBattle]
+	inc a
+	ret z
+	ld a, [hAutoBGTransferEnabled]
+	push af
+	ld a, [hTilesetType]
+	push af
+	xor a
+	jp RedrawMapView.done_AutoBGTransfer
+
 ; overworld the player actually sees is vBGMap0, written here and by
 ; RedrawRowOrColumn during walking.
 RedrawMapView::
@@ -63,6 +76,7 @@ RedrawMapView::
 	ldh [hTileAnimations], a
 	call LoadCurrentMapView
 	call RunDefaultPaletteCommand
+    ;GBCnote - 	for enhanced GBC colors, TransferGBCEnhancedBGMapAttributes already ran during RunDefaultPaletteCommand
 	ld hl, wMapViewVRAMPointer
 	ld a, [hli]
 	ld h, [hl]

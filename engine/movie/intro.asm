@@ -27,6 +27,9 @@ PlayIntroScene:
 	ldh [rBGP], a
 	ldh [rOBP0], a
 	ldh [rOBP1], a
+    call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 	xor a
 	ldh [hSCX], a
 	ld b, TILEMAP_GENGAR_INTRO_1
@@ -308,8 +311,80 @@ PlayShootingStar:
 	farcall LoadCopyrightAndTextBoxTiles
 	ldpal a, SHADE_BLACK, SHADE_DARK, SHADE_LIGHT, SHADE_WHITE
 	ldh [rBGP], a
+    call UpdateGBCPal_BGP
 	ld c, 180
+	;call DelayFrames
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+;joenote - activate/deactivate gamma shader if select is pressed at copyright screen
+;		- Behavior is determined by the destination code in the rom header
+	ld a, [hGBC]
+	and a
+	jr z, .endgammaloop	;do not bother if not in GBC mode
+	
+	;set the default based on the header destination code
+	ld b, a	;B is now 01
+	ld a, [$014A] ;read destination code from rom header (00 for JP or 01 for !JP)
+	xor $01	;invert the code (01 for JP or 00 for !JP)
+	add b ;(A = 02 for JP or 01 for !JP)
+	ld [hGBC], a	;set default shader state (02 for ON or 01 for OFF)
+	
+;check if there is a save on file, and instead load the last known gamma setting if a save is found
+	ld a, SRAM_ENABLE
+	ld [MBC1SRamEnable], a
+	ld a, $1
+	ld [MBC1SRamBankingMode], a
+	ld [MBC1SRamBank], a
+	ld hl, sMainData + ($D886 - wMainDataStart)
+	bit 7, [hl]
+	jr z, .sramOff
+	ld a, 2
+	bit 6, [hl]
+	jr nz, .load2
+.load1
+	dec a
+.load2
+	ld [hGBC], a
+.sramOff
+	xor a
+	ld [MBC1SRamEnable], a
+	ld [MBC1SRamBankingMode], a
+	
+.gammaloop
+	call DelayFrame
+	push bc
+	call ReadJoypad
+	pop bc
+	ld a, [hJoyInput]
+	and SELECT
+	jr z, .skipgamma
+	
+	;toggle the shader from its default due to pressing SELECT
+	ld a, [$014A] ;read destination code from rom header (00 for JP or 01 for !JP)
+	xor $01	;invert the code (01 for JP or 00 for !JP)
+	ld b, a
+	ld a, $02
+	sub b 	;A is now 01 for JP or 02 for !JP
+	ld [hGBC], a	;Toggle the shader state from the default
+	
+;	Play a SFX and print some tiles to confirm that it worked
+	coord hl, $12, $11
+	ld a, $7D
+	ld [hl], a
+	coord hl, $13, $11
+	ld a, $7E
+	ld [hl], a
+	ld a, SFX_SNARE_1
+	call PlaySound
+	
+	jr .endgammaloop
+
+.skipgamma	
+	dec c
+	jr nz, .gammaloop
+.endgammaloop
+	inc c
 	call DelayFrames
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	call ClearScreen
 	call DisableLCD
 	xor a

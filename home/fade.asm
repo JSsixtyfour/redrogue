@@ -16,14 +16,19 @@ LoadGBPal::
 	ldh [rOBP0], a
 	ld a, [hli]
 	ldh [rOBP1], a
+    call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 	ret
 
 GBFadeInFromBlack::
+    callfar GBCFadeInFromBlack
 	ld hl, FadePal1
 	ld b, 4
 	jr GBFadeIncCommon
 
 GBFadeOutToWhite::
+    callfar GBCFadeOutToWhite
 	ld hl, FadePal6
 	ld b, 3
 
@@ -34,6 +39,9 @@ GBFadeIncCommon:
 	ldh [rOBP0], a
 	ld a, [hli]
 	ldh [rOBP1], a
+    call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 	ld c, 8
 	call DelayFrames
 	dec b
@@ -41,11 +49,13 @@ GBFadeIncCommon:
 	ret
 
 GBFadeOutToBlack::
+    callfar GBCFadeOutToBlack
 	ld hl, FadePal4 + 2
 	ld b, 4
 	jr GBFadeDecCommon
 
 GBFadeInFromWhite::
+    callfar GBCFadeInFromWhite
 	ld hl, FadePal7 + 2
 	ld b, 3
 
@@ -56,6 +66,9 @@ GBFadeDecCommon:
 	ldh [rOBP0], a
 	ld a, [hld]
 	ldh [rBGP], a
+    call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 	ld c, 8
 	call DelayFrames
 	dec b

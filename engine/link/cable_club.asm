@@ -897,6 +897,12 @@ CableClub_Run:
 	predef EmptyFunc
 	jp Init
 .doBattleOrTrade
+    ;60fps / GBCnote - There is an issue with data corruption when trading with the Gen 2 time capsule.
+;This data corruption only happens when the GBC cpu is in double-speed mode.
+;To prevent this, enforce normal CPU speed while doing cable club functions.
+;The OverworldLoop will call the predef that sets it back
+; there are other things place here for GBC, but I skipped them as we do not go to cable club
+    predef SingleCPUSpeed
 	call CableClub_DoBattleOrTrade
 	ld hl, Club_GFX
 	ld a, h

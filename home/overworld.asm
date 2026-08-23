@@ -7,8 +7,11 @@ EnterMap::
 ; Load a new map.
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
+	;call LoadMapData
+	;farcall ClearVariablesOnEnterMap
+    ;GBCNote - flipping these so the enhanced gbc colors load from main menu
+	callfar ClearVariablesOnEnterMap
 	call LoadMapData
-	farcall ClearVariablesOnEnterMap
 	ld hl, wStatusFlags2
 	bit BIT_WILD_ENCOUNTER_COOLDOWN, [hl]
 	jr z, .skipGivingThreeStepsOfNoRandomBattles
@@ -843,15 +846,25 @@ ExtraWarpCheck::
 	jp Bankswitch
 
 MapEntryAfterBattle::
+    call DelayFrame	;joenote - delay 1 frame to clear out the garbage tiles when playing on the DMG
 	farcall IsPlayerStandingOnWarp ; for enabling warp testing after collisions
 	ld a, [wMapPalOffset]
 	and a
 	jp z, GBFadeInFromWhite
-	jp LoadGBPal
+	;jp LoadGBPal
+	
+;GBCnote - gives a cleaner palette transition from the white screen
+	call DisableLCD
+	call LoadGBPal
+	jp EnableLCD
 
 HandleBlackOut::
 ; For when all the player's pokemon faint.
 ; Does not print the "blacked out" message.
+;pre-emptively reset to the overworld palette to prefent jank with enhanced GBC colors
+	ld b, SET_PAL_OVERWORLD
+	call RunPaletteCommand
+    
 	call GBFadeOutToBlack
 	ld a, $08
 	call StopMusic
@@ -1499,28 +1512,73 @@ LoadCurrentMapView::
 	jr z, .copyToVisibleAreaBuffer
 	ld bc, BLOCK_WIDTH / 2
 	add hl, bc
+    
+;joenote - doing optimization for speed
+;saves 6 scanlines of time in GBC double speed mode
 .copyToVisibleAreaBuffer
-	decoord 0, 0 ; base address for the tiles that are directly transferred to VRAM during V-blank
+	ld d, h
+	ld e, l
+	di
+	ld hl, sp + 0
+	ld a, h
+	ld [H_SPTEMP], a
+	ld a, l
+	ld [H_SPTEMP + 1], a ; save stack pinter
+	ld h, d
+	ld l, e
+	ld sp, hl	
+	coord hl, 0, 0 ; base address for the tiles that are directly transferred to VRAM during V-blank
 	ld b, SCREEN_HEIGHT
 .rowLoop2
-	ld c, SCREEN_WIDTH
+	ld c, SCREEN_WIDTH / 2
 .rowInnerLoop2
-	ld a, [hli]
-	ld [de], a
-	inc de
+	pop de
+	ld a, e
+	ld [hli], a
+	ld a, d
+	ld [hli], a
 	dec c
 	jr nz, .rowInnerLoop2
-	ld a, SURROUNDING_WIDTH - SCREEN_WIDTH
-	add l
-	ld l, a
-	adc h
-	sub l
-	ld h, a ; hl += SURROUNDING_WIDTH - SCREEN_WIDTH, carrying without a branch
+	pop de
+	pop de
 	dec b
 	jr nz, .rowLoop2
-	pop af
+;restore the stack pointer
+	ld a, [H_SPTEMP]
+	ld h, a
+	ld a, [H_SPTEMP + 1]
+	ld l, a
+	ld sp, hl
+	ei
+	
+;.copyToVisibleAreaBuffer
+;	coord de, 0, 0 ; base address for the tiles that are directly transferred to VRAM during V-blank
+;	ld b, SCREEN_HEIGHT
+;.rowLoop2
+;	ld c, SCREEN_WIDTH
+;.rowInnerLoop2
+;	ld a, [hli]
+;	ld [de], a
+;	inc de
+;	dec c
+;	jr nz, .rowInnerLoop2
+;	ld a, $04
+;	add l
+;	ld l, a
+;	jr nc, .noCarry3
+;	inc h
+;.noCarry3
+;	dec b
+;	jr nz, .rowLoop2
+	
+    pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
+	ret
+    
+    ;GBCnote - use the new Tile Map to make BGMap Attributes for enhanced GBC color
+;	--> build the whole thing if the player is not advancing movement
+	callfar MakeOverworldBGMapAttributes	
 	ret
 
 AdvancePlayerSprite::
@@ -1657,6 +1715,9 @@ AdvancePlayerSprite::
 	ld a, [wCurMapWidth]
 	call MoveTileBlockMapPointerNorth
 .updateMapView
+    ;GBCnote - use a flag to indicate that LoadCurrentMapView is being called during player movement
+	ld hl, hUILayoutFlags
+	set 3, [hl]
 	call LoadCurrentMapView
 	ld a, [wSpritePlayerStateData1YStepVector]
 	cp $01
@@ -1870,6 +1931,8 @@ ScheduleWestColumnRedraw::
 ; advanced by BLOCK_WIDTH, i.e. pointing at where the next block in the row goes,
 ; which is what lets LoadCurrentMapView's inner loop stay so short.
 ; input: c = tile block ID, de = destination. output: de = destination + BLOCK_WIDTH.
+
+; shinred? gbc doublespeed here
 DrawTileBlock::
 	ld hl, wTilesetBlocksPtr
 	ld a, [hli]

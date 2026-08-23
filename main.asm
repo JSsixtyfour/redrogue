@@ -115,7 +115,6 @@ INCLUDE "engine/flag_action.asm"
 INCLUDE "engine/events/heal_party.asm"
 INCLUDE "engine/math/bcd.asm"
 INCLUDE "engine/movie/oak_speech/init_player_data.asm"
-INCLUDE "engine/items/get_bag_item_quantity.asm"
 INCLUDE "engine/overworld/pathfinding.asm"
 INCLUDE "engine/gfx/hp_bar.asm"
 INCLUDE "engine/events/hidden_events/bookshelves.asm"
@@ -124,6 +123,14 @@ INCLUDE "engine/events/hidden_events/book_or_sculpture.asm"
 INCLUDE "engine/events/hidden_events/elevator.asm"
 INCLUDE "engine/events/hidden_events/town_map.asm"
 INCLUDE "engine/events/hidden_events/pokemon_stuff.asm"
+
+
+; Relocated from bank $03. GetQuantityOfItemInBag is dispatched through the
+; bank-aware predef table; this file's remaining cross-bank dependencies use
+; HOME helpers or farcall.
+SECTION "Bag Item Quantity", ROMX
+
+INCLUDE "engine/items/get_bag_item_quantity.asm"
 
 
 SECTION "Font Graphics", ROMX
@@ -403,9 +410,16 @@ INCLUDE "engine/battle/ghost_marowak_anim.asm"
 INCLUDE "engine/battle/battle_transitions.asm"
 INCLUDE "engine/items/town_map.asm"
 INCLUDE "engine/gfx/mon_icons.asm"
-INCLUDE "engine/events/in_game_trades.asm"
 INCLUDE "engine/gfx/palettes.asm"
 INCLUDE "engine/menus/save.asm"
+
+
+; Relocated from bank $1C. Both public entry points are dispatched through the
+; bank-aware predef table; all internal code, data, and local pointer tables
+; remain together in this section.
+SECTION "In-Game Trades", ROMX
+
+INCLUDE "engine/events/in_game_trades.asm"
 
 
 SECTION "CGB Screen Attributes", ROMX

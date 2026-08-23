@@ -212,6 +212,11 @@ ROMX $2E
 	; neither cares which bank it lives in.
 	"Predefs"
 	"Battle Engine 6"
+	; Relocated from banks $03 and $1C on 2026-08-23. Both entry modules are
+	; reached through bank-aware predefs and retain their internal code/data
+	; clusters intact. Pin them so all three build targets agree on placement.
+	"Bag Item Quantity"
+	"In-Game Trades"
 	; Both pinned here 2026-08-14, for the same reason: left floating, rgblink
 	; first-fit drops a small section into whichever tight bank happens to have
 	; room, and it can pick a DIFFERENT bank per build target. "Random" ($45

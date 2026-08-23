@@ -27,8 +27,9 @@ DisplayMonFrontSpriteInBox:
 	ld a, 1
 	ldh [hAutoBGTransferEnabled], a
 	call Delay3
-	xor a
-	ldh [hWY], a
+	;gbcnote - moving this down more
+;	xor a
+;	ld [hWY], a
 	call SaveScreenTilesToBuffer1
 	ld a, MON_SPRITE_POPUP
 	ld [wTextBoxID], a
@@ -39,10 +40,25 @@ DisplayMonFrontSpriteInBox:
 	call GetMonHeader
 	ld de, vChars1 tile $31
 	call LoadMonFrontSprite
+    
+    ld a, 1
+	ld [hAutoBGTransferEnabled], a	;joenote - turn this back on to make the window show
+    
 	ld a, $80
 	ldh [hStartTileID], a
 	hlcoord 10, 11
 	predef AnimateSendingOutMon
+    
+    ;GBCNote - for enhanced GBC color
+	;The Map View tiles for the text display are now in vBGMap1
+	;This function will make new map attributes based on the current map view
+	;And then also transfer those attributes to the vBGMap1 space
+	;That way the window is ready when it gets slid onto the screen by writing to hWY
+	callfar MakeAndTransferOverworldBGMapAttributes_OpenText
+	xor a
+	ld [hWY], a
+    
+    
 	call WaitForTextScrollButtonPress
 	call LoadScreenTilesFromBuffer1
 	call Delay3

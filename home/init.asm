@@ -53,7 +53,7 @@ Init::
 	call ClearVram
 
 	ld hl, STARTOF(HRAM)
-	ld bc, SIZEOF(HRAM)
+	ld bc, $fffe - $ff80	;gbcnote - don't clear hGBC
 	call FillMemory
 
 	call ClearSprites

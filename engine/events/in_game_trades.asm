@@ -167,7 +167,10 @@ InGameTrade_DoTrade:
 	callfar InGameTrade_CheckForTradeEvo
 	call ClearScreen
 	call InGameTrade_RestoreScreen
-	farcall RedrawMapView
+	;	callfar RedrawMapView
+;gbcnote - it is useful to have a version of RedrawMapView that does not mess with H_AUTOBGTRANSFERENABLED
+;used particularly for clean enhanced GBC colors during in-game trades
+	callfar RedrawMapView_NoChangeAutoBGTransfer
 	and a
 	ld a, TRADETEXT_THANKS
 	jr .tradeSucceeded

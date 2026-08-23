@@ -1,5 +1,6 @@
 ; Draws a "frame block". Frame blocks are blocks of tiles that are put
 ; together to form frames in battle animations.
+;gbcnote - oam updates from yellow version, I cannot ascertain what these were
 DrawFrameBlock:
 	ld l, c
 	ld h, b

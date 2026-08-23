@@ -67,6 +67,8 @@ SlidePlayerAndEnemySilhouettesOnScreen:
 	ldh [rBGP], a
 	ldh [rOBP0], a
 	ldh [rOBP1], a
+    call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
 .slideSilhouettesLoop ; slide silhouettes of the player's pic and the enemy's pic onto the screen
 	ld h, b
 	ld l, $40
@@ -76,6 +78,14 @@ SlidePlayerAndEnemySilhouettesOnScreen:
 	ld h, $0
 	ld l, $60
 	call SetScrollXForSlidingPlayerBodyLeft ; end background scrolling on line $60
+    
+    ;gbcnote - update BGP here so screen isn't revealed when scrolling is out of place
+	push af
+	ld a, b
+	cp $72
+	call z, UpdateGBCPal_BGP
+	pop af
+    
 	call SlidePlayerHeadLeft
 	ld a, c
 	ldh [hSCX], a
@@ -1002,6 +1012,13 @@ ReplaceFaintedEnemyMon:
 	ld hl, wEnemyHPBarColor
 	ld e, $30
 	call GetBattleHealthBarColor
+    
+    ldpal a, BLACK, DARK_GRAY, LIGHT_GRAY, WHITE
+	ld [rOBP0], a
+	ld [rOBP1], a
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
+    
 	callfar DrawEnemyPokeballs
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
@@ -7162,6 +7179,8 @@ LoadPlayerBackPic:
 	ld [hli], a ; OAM tile number
 	inc a ; increment tile number
 	ldh [hOAMTile], a
+    ;gbcnote - load correct palette for hat object
+	ld a, $2
 	inc hl
 	dec c
 	jr nz, .innerLoop

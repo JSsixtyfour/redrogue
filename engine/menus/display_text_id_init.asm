@@ -72,7 +72,15 @@ DisplayTextIDInit::
 	jr nz, .spriteStandStillLoop
 	ld b, HIGH(vBGMap1)
 	call CopyScreenTileBufferToVRAM ; transfer background in WRAM to VRAM
-	xor a
+	
+    ;GBCNote - for enhanced GBC color
+	;The Map View tiles for the text display are now in vBGMap1
+	;This function will make new map attributes based on the current map view
+	;And then also transfer those attributes to the vBGMap1 space
+	;That way the window is ready when it gets slid onto the screen by writing to hWY
+	callfar MakeAndTransferOverworldBGMapAttributes_OpenText
+    
+    xor a
 	ldh [hWY], a ; put the window on the screen
 	call LoadFontTilePatterns
 	ld a, $01
