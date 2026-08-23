@@ -92,6 +92,13 @@ class BootSmokeTest(HarnessTestCase):
         self.assertTrue(scores)
         self.assertEqual(self.harness.read8("wTestBattlePlayerSelectedMove"), moves["BODY_SLAM"])
         self.assertEqual(scores[0]["tier"], 3)
+        self.assertEqual(
+            [entry["layer"] for entry in scores[0]["layer_trace"]],
+            ["REDUNDANT", "BASIC", "TYPES", "SETUP", "SMART",
+             "DAMAGE", "THREAT", "PLAN", "RISKY"],
+        )
+        self.assertTrue(all(entry["enabled"] for entry in scores[0]["layer_trace"]))
+        self.assertEqual(scores[0]["layer_trace"][-1]["after"], scores[0]["scores"])
 
     def test_debug1_boots_to_completed_dorm(self) -> None:
         assert self.harness is not None

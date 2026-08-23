@@ -6,7 +6,7 @@ import io
 import json
 from pathlib import Path
 
-from ai_scenarios import load_scenarios
+from ai_scenarios import load_scenarios, validate_scenario_coverage
 from harness import RedRogueHarness
 
 
@@ -73,8 +73,10 @@ def main() -> int:
     args = parser.parse_args()
     repo_root = Path(__file__).resolve().parents[2]
     reports = []
+    scenarios = load_scenarios(args.scenarios, repo_root)
+    coverage = validate_scenario_coverage(scenarios)
 
-    for scenario in load_scenarios(args.scenarios, repo_root):
+    for scenario in scenarios:
         harness = RedRogueHarness(repo_root, args.output.parent)
         try:
             harness.inject_fight2_spec(
@@ -114,6 +116,10 @@ def main() -> int:
                     {
                         "name": scenario.name,
                         "trial": trial,
+                        "phase": scenario.phase,
+                        "heuristic": scenario.heuristic,
+                        "case": scenario.case,
+                        "tags": scenario.tags,
                         "expected": scenario.expect,
                         "telemetry": telemetry,
                         "state": harness.diagnostic_state(),
@@ -124,6 +130,10 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(reports, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    coverage_path = args.output.with_name(f"{args.output.stem}.coverage.json")
+    coverage_path.write_text(
+        json.dumps(coverage, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     csv_path = args.output.with_suffix(".csv")
     with csv_path.open("w", newline="", encoding="utf-8") as output_file:
         writer = csv.DictWriter(
@@ -145,6 +155,7 @@ def main() -> int:
             )
     print(args.output)
     print(csv_path)
+    print(coverage_path)
     return 0
 
 

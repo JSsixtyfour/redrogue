@@ -50,6 +50,10 @@ class RedRogueHarness:
     WARP_NO_RETURN = 0xFD
     GIOVANNI_TYPE_BITS = 0x20
     FIGHT2_SPEC_MAGIC = 0xD2
+    AI_LAYER_NAMES = (
+        "REDUNDANT", "BASIC", "TYPES", "SETUP", "SMART",
+        "DAMAGE", "THREAT", "PLAN", "RISKY",
+    )
 
     def __init__(
         self,
@@ -168,11 +172,38 @@ class RedRogueHarness:
     def hook_ai_scores(self) -> list[dict[str, object]]:
         """Capture scores plus the move ultimately selected for each AI decision."""
         records: list[dict[str, object]] = []
-        pending: dict[str, object] = {"active": False, "record": None}
+        pending: dict[str, object] = {
+            "active": False,
+            "record": None,
+            "layer_snapshots": [],
+            "enabled_layers": set(),
+        }
 
         def begin(_context) -> None:
             pending["active"] = True
             pending["record"] = None
+            pending["layer_snapshots"] = []
+            pending["enabled_layers"] = set()
+
+        def layer_start(_context) -> None:
+            if not pending["active"]:
+                return
+            layer = self.pyboy.register_file.B
+            if layer >= len(self.AI_LAYER_NAMES):
+                return
+            pending["layer_snapshots"].append(
+                {"layer": layer, "scores": self.read_bytes("wBuffer", 4)}
+            )
+
+        def layer_return(_context) -> None:
+            if not pending["active"]:
+                return
+            # The dispatcher pushed BC before jumping to the layer. At the
+            # shared return seam, saved C/B are the next two stack bytes.
+            stack_pointer = self.pyboy.register_file.SP
+            layer = self.pyboy.memory[(stack_pointer + 1) & 0xFFFF]
+            if layer < len(self.AI_LAYER_NAMES):
+                pending["enabled_layers"].add(layer)
 
         def capture(_context) -> None:
             if not pending["active"]:
@@ -186,12 +217,29 @@ class RedRogueHarness:
                 for slot, (score, move) in enumerate(zip(scores, moves))
                 if move and score == best_score
             ]
+            tier = max(0, self.read8("wAITier") - 1)
+            snapshots = list(pending["layer_snapshots"])
+            layer_trace = []
+            for index, snapshot in enumerate(snapshots):
+                before = snapshot["scores"]
+                after = snapshots[index + 1]["scores"] if index + 1 < len(snapshots) else scores
+                layer = snapshot["layer"]
+                layer_trace.append(
+                    {
+                        "layer": self.AI_LAYER_NAMES[layer],
+                        "enabled": layer in pending["enabled_layers"],
+                        "before": before,
+                        "after": after,
+                        "delta": [new - old for old, new in zip(before, after)],
+                    }
+                )
             records.append(
                 {
                     "scores": scores,
                     "moves": moves,
                     "eligible_slots": eligible_slots,
-                    "tier": max(0, self.read8("wAITier") - 1),
+                    "tier": tier,
+                    "layer_trace": layer_trace,
                     "frame": self.pyboy.frame_count,
                 }
             )
@@ -214,6 +262,8 @@ class RedRogueHarness:
 
         for label, callback in (
             ("AIEnemyTrainerChooseMoves", begin),
+            ("AIEnemyTrainerChooseMoves.nextLayer", layer_start),
+            ("AIEnemyTrainerChooseMoves.layerReturn", layer_return),
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
             ("MainInBattleLoop.noLinkBattle", selected),
         ):

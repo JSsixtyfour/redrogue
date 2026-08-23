@@ -2,6 +2,11 @@
   "scenarios": [
     {
       "name": "fixture_smoke",
+      "phase": "foundation",
+      "heuristic": "fixture_pipeline",
+      "case": "positive",
+      "tags": ["framework", "telemetry"],
+      "required_cases": ["positive"],
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [

@@ -63,5 +63,15 @@ pairs), `switch`, and `no_switch`. Results are written to
 Use `--trials N` for repeated save-state-reset trials; the runner emits both
 JSON details and a flat CSV beside it.
 
+Every scenario also declares `phase`, `heuristic`, `case`, `tags`, and
+`required_cases`. Cases are `positive`, `negative`, `boundary`, or `regression`.
+The runner groups scenarios by `phase:heuristic`, fails before emulation if any
+declared required case is missing, and writes `ai_scenarios.coverage.json`.
+
+Telemetry includes a `layer_trace` entry for every scoring layer. Each entry
+records whether the layer is enabled at the resolved tier, its before/after
+score arrays, and the four signed deltas. This identifies which layer caused a
+decision without adding ROM instrumentation or consuming Game Boy RAM.
+
 FIGHT 2 still falls back to its seeded random 6v6 generator when the SRAM magic
 byte is absent, so its existing deterministic smoke test remains valid.
