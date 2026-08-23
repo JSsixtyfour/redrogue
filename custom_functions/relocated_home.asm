@@ -135,16 +135,26 @@ LoadGBPal_::
 
 GBFadeInFromBlack_::
 	farcall GBCFadeInFromBlack
+	ld hl, FadePal4
+	ld b, 1
+	ld c, 1
+	jr z, GBFadeIncCommon_.delayset
 	ld hl, FadePal1
 	ld b, 4
 	jr GBFadeIncCommon_
 
 GBFadeOutToWhite_::
 	farcall GBCFadeOutToWhite
+	ld hl, FadePal8
+	ld b, 1
+	ld c, 1
+	jr z, GBFadeIncCommon_.delayset
 	ld hl, FadePal6
 	ld b, 3
 
 GBFadeIncCommon_:
+	ld c, 8
+.delayset
 	ld a, [hli]
 	ldh [rBGP], a
 	ld a, [hli]
@@ -154,7 +164,6 @@ GBFadeIncCommon_:
 	call UpdateGBCPal_BGP
 	call UpdateGBCPal_OBP0
 	call UpdateGBCPal_OBP1
-	ld c, 8
 	call DelayFrames
 	dec b
 	jr nz, GBFadeIncCommon_
@@ -162,16 +171,26 @@ GBFadeIncCommon_:
 
 GBFadeOutToBlack_::
 	farcall GBCFadeOutToBlack
+	ld hl, FadePal1 + 2
+	ld b, 1
+	ld c, 1
+	jr z, GBFadeDecCommon_.delayset
 	ld hl, FadePal4 + 2
 	ld b, 4
 	jr GBFadeDecCommon_
 
 GBFadeInFromWhite_::
 	farcall GBCFadeInFromWhite
+	ld hl, FadePal5 + 2
+	ld b, 1
+	ld c, 1
+	jr z, GBFadeDecCommon_.delayset
 	ld hl, FadePal7 + 2
 	ld b, 3
 
 GBFadeDecCommon_:
+	ld c, 8
+.delayset
 	ld a, [hld]
 	ldh [rOBP1], a
 	ld a, [hld]
@@ -181,7 +200,6 @@ GBFadeDecCommon_:
 	call UpdateGBCPal_BGP
 	call UpdateGBCPal_OBP0
 	call UpdateGBCPal_OBP1
-	ld c, 8
 	call DelayFrames
 	dec b
 	jr nz, GBFadeDecCommon_
