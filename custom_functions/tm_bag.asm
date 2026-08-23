@@ -387,6 +387,12 @@ PrintBagInfoText::
 	; bank, so the actual draw has to be a farcall from here.
 	bit BIT_ROOM_DESC_BOX, [hl]
 	jr z, .notRoomPC
+	; The flag lives in saved WRAM and can survive a reset while a Room PC menu
+	; is open. Room description lists watch only A/B; title and Debug menus also
+	; watch Start, so reject a stale flag outside the Room PC input context.
+	ld a, [wMenuWatchedKeys]
+	cp PAD_A | PAD_B
+	jr nz, .notRoomPC
 	farcall RoomPrintDescription
 	ret
 .notRoomPC
@@ -482,6 +488,12 @@ PrintBagInfoText::
 	db "TIER 4@"
 
 .notBag
+	; Generic menus also use HandleMenuInput, and wListMenuID is not cleared
+	; when a list menu closes. Only interpret it while the list-menu input mode
+	; is active, or stale mart state can draw into unrelated screens.
+	ld a, [wMenuWatchMovingOutOfBounds]
+	and a
+	ret z
 	ld a, [wListMenuID]
 	cp CREDITLISTMENU
 	jr z, .creditVendor

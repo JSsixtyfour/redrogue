@@ -64,9 +64,6 @@ HandleMenuInput_::
 	pop bc
 	jr .checkOtherKeys
 .alreadyAtTop
-    push bc
-	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
-	pop bc
 	ld a, [wMenuWrappingEnabled]
 	and a ; is wrapping around enabled?
 	jr z, .noWrappingAround
@@ -84,9 +81,6 @@ HandleMenuInput_::
 	cp c
 	jr nc, .notAtBottom
 ; already at bottom
-    push bc
-	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
-	pop bc
 	ld a, [wMenuWrappingEnabled]
 	and a ; is wrapping around enabled?
 	jr z, .noWrappingAround
