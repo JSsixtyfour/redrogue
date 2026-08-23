@@ -261,33 +261,7 @@ GetRandRosterLoop:
     call Rangerandom
 	add a, e   ; minimum level added to random number
 	ld [wCurEnemyLevel], a  ; place level of pokemon in
-	; Challenge 5 (INCREASED_LEVELS): add ~10% of level, minimum +1
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noLvlBoost
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_INCREASED_LEVELS
-	jr nz, .noLvlBoost
-	ld a, [wCurEnemyLevel]
-	ld b, a
-	ldh [hMultiplicand+2], a
-	xor a
-	ldh [hMultiplicand], a
-	ldh [hMultiplicand+1], a
-	ld a, 26
-	ldh [hMultiplier], a
-	call Multiply              ; level * 26; hProduct+2 = high byte ≈ level/10
-	ldh a, [hProduct+2]
-	and a
-	jr nz, .hasLvlBonus
-	ld a, 1                    ; minimum +1
-.hasLvlBonus
-	add b
-	jr nc, .lvlBonusOk
-	ld a, 255
-.lvlBonusOk
-	ld [wCurEnemyLevel], a
-.noLvlBoost
+	call RogueApplyTrainerLevelModifiers
 	;push hl                 ; preserve h1
 	call AddPartyMon    ; add the pokemon
     ; Gambler's Paradise: replace the just-added mon's rolled moves with its
@@ -678,7 +652,52 @@ MiniBossSetLevel::
 	ld a, 100
 .ok
 	ld [wCurEnemyLevel], a
+	call RogueApplyTrainerLevelModifiers
+	ret
+
+; Applies all active trainer-level modifiers after a base level is written.
+; No register arguments. Clobbers a and the Divide/Multiply HRAM scratch;
+; preserves bc, de, and hl for callers that are walking trainer data.
+RogueApplyTrainerLevelModifiers::
+	call RogueApplyWitchLevelBonus
 	call RogueApplyDifficulty
+	ret
+
+; Challenge 5 (INCREASED_LEVELS): add ~10% of level, minimum +1.
+; This retains the existing multiplier and overflow behavior, but preserves
+; the roster-loop registers so the helper is safe for every trainer path.
+RogueApplyWitchLevelBonus::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_INCREASED_LEVELS
+	ret nz
+	push bc
+	push de
+	push hl
+	ld a, [wCurEnemyLevel]
+	ld b, a
+	ldh [hMultiplicand+2], a
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand+1], a
+	ld a, 26
+	ldh [hMultiplier], a
+	call Multiply              ; level * 26; hProduct+2 = high byte ≈ level/10
+	ldh a, [hProduct+2]
+	and a
+	jr nz, .hasLvlBonus
+	ld a, 1                    ; minimum +1
+.hasLvlBonus
+	add b
+	jr nc, .lvlBonusOk
+	ld a, 255
+.lvlBonusOk
+	ld [wCurEnemyLevel], a
+	pop hl
+	pop de
+	pop bc
 	ret
 
 ; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2).

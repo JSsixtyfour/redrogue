@@ -59,8 +59,6 @@ ReadTrainer:
 	jr z, .SpecialTrainer ; if so, check for special moves
     farcall GetRandRoster
     jp z, .AddAdditionalMoveData
-	ld [wCurEnemyLevel], a
-	farcall RogueApplyDifficulty
 .LoopTrainerData
 	ld a, [hli]
 	and a ; have we reached the end of the trainer data?
@@ -81,7 +79,9 @@ ReadTrainer:
 	and a ; have we reached the end of the trainer data?
 	jr z, .AddAdditionalMoveData
 	ld [wCurEnemyLevel], a
-	farcall RogueApplyDifficulty
+	push hl
+	farcall RogueApplyTrainerLevelModifiers
+	pop hl
 	ld a, [hli]
 	ld [wCurPartySpecies], a
 	push hl

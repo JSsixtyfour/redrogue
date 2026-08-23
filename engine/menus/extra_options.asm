@@ -58,7 +58,8 @@ SECTION "Extra Options Menu", ROMX
 
 DEF ROW_AUDIO EQU 0
 DEF ROW_INSTANT_TEXT EQU 1
-DEF NUM_EXTRA_OPTION_ROWS EQU 2
+DEF ROW_LEVELS EQU 2
+DEF NUM_EXTRA_OPTION_ROWS EQU 3
 
 DisplayExtraOptionMenu::
 ; The caller clears the screen on both sides of this call and fully redraws the
@@ -74,8 +75,8 @@ DisplayExtraOptionMenu::
 	ld b, 2
 	ld c, 18
 	call TextBoxBorder
-	hlcoord 0, 4 ; encloses the two setting rows (5 and 7), like the OPTION screen
-	ld b, 4
+	hlcoord 0, 4 ; encloses the three setting rows (5, 7, and 9), like the OPTION screen
+	ld b, 6
 	ld c, 18
 	call TextBoxBorder
 	hlcoord 1, 2
@@ -89,6 +90,10 @@ DisplayExtraOptionMenu::
 	ld de, ExtraOptionsInstantTextLabelText
 	call PlaceString
 	call .drawInstantTextValue
+	hlcoord 1, 9
+	ld de, ExtraOptionsLevelsLabelText
+	call PlaceString
+	call .drawLevelsValue
 	hlcoord 2, 16
 	ld de, ExtraOptionsCancelText
 	call PlaceString
@@ -110,7 +115,11 @@ DisplayExtraOptionMenu::
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	ldh a, [hCurrentMenuItem]
-	xor 1 ; only NUM_EXTRA_OPTION_ROWS == 2 rows exist, so toggle
+	inc a
+	cp NUM_EXTRA_OPTION_ROWS
+	jr c, .rowCursorDone
+	xor a
+.rowCursorDone
 	ldh [hCurrentMenuItem], a
 	call .drawCursor
 	jr .loop
@@ -122,6 +131,8 @@ DisplayExtraOptionMenu::
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	ldh a, [hCurrentMenuItem]
+	cp ROW_LEVELS
+	jr z, .cycleLevels
 	cp ROW_INSTANT_TEXT
 	jr z, .toggleInstantText
 .cycleAudio
@@ -173,26 +184,93 @@ DisplayExtraOptionMenu::
 	ret
 
 ; Places '▷' at the currently selected row's column 0 and blanks the other
-; row. Redraws both rows rather than tracking the previous position, which is
-; simpler and cheap at NUM_EXTRA_OPTION_ROWS == 2.
+; rows. Redraws every row rather than tracking the previous position.
 .drawCursor
+	ld hl, .rowYTable
+	ld c, 0
+	ld b, NUM_EXTRA_OPTION_ROWS
+.drawCursorLoop
+	ld a, [hli]
+	push hl
+	push bc
+	hlcoord 0, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	pop bc
 	ldh a, [hCurrentMenuItem]
-	cp ROW_AUDIO
+	cp c
 	ld a, ' '
-	jr nz, .blankAudio
+	jr nz, .drawCursorChar
 	ld a, '▷'
-.blankAudio
-	hlcoord 0, 5
+.drawCursorChar
 	ld [hl], a
-	ldh a, [hCurrentMenuItem]
-	cp ROW_INSTANT_TEXT
-	ld a, ' '
-	jr nz, .blankInstantText
-	ld a, '▷'
-.blankInstantText
-	hlcoord 0, 7
-	ld [hl], a
+	pop hl
+	inc c
+	dec b
+	jr nz, .drawCursorLoop
 	ret
+
+.rowYTable
+	db 5 ; ROW_AUDIO
+	db 7 ; ROW_INSTANT_TEXT
+	db 9 ; ROW_LEVELS
+
+; Cycle the stored difficulty through the display order, preserving the other
+; bits in wOptions2.
+.cycleLevels
+	ld a, [wOptions2]
+	ld d, a
+	and DIFFICULTY_MASK
+	ld e, a
+	ld hl, .levelsDisplayOrder
+	xor a
+	ld c, a
+.findLevelsPosition
+	ld a, [hli]
+	cp e
+	jr z, .foundLevelsPosition
+	inc c
+	jr .findLevelsPosition
+.foundLevelsPosition
+	bit B_PAD_RIGHT, b
+	jr nz, .stepLevelsRight
+	ld a, c
+	and a
+	jr z, .wrapLevelsLeft
+	dec c
+	jr .levelsPositionReady
+.wrapLevelsLeft
+	ld c, NUM_LEVELS_SETTINGS - 1
+	jr .levelsPositionReady
+.stepLevelsRight
+	inc c
+	ld a, c
+	cp NUM_LEVELS_SETTINGS
+	jr c, .levelsPositionReady
+	xor a
+	ld c, a
+.levelsPositionReady
+	ld a, d
+	and ~DIFFICULTY_MASK & $ff
+	ld b, a
+	ld hl, .levelsDisplayOrder
+	ld a, c
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	or b
+	ld [wOptions2], a
+	call .drawLevelsValue
+	jp .loop
+
+.levelsDisplayOrder
+	db DIFFICULTY_VERY_EASY
+	db DIFFICULTY_EASY
+	db DIFFICULTY_NORMAL
+	db DIFFICULTY_HARD
+	db DIFFICULTY_VERY_HARD
+DEF NUM_LEVELS_SETTINGS EQU 5
 
 ; Prints the current AUDIO mode at a fixed 9-char-wide column so a shorter
 ; name (MONO) fully overwrites a longer one (EARPHONEn) left behind by the
@@ -225,6 +303,33 @@ DisplayExtraOptionMenu::
 	dw ExtraOptionsAudioEarphone2Text
 	dw ExtraOptionsAudioEarphone3Text
 
+; Prints the current LEVELS value at the same fixed column as the other values.
+.drawLevelsValue
+	hlcoord 10, 9
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	ld e, a
+	ld d, 0
+	push hl
+	ld hl, .levelsValueTextTable
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld d, h
+	ld e, l
+	pop hl
+	call PlaceString
+	ret
+
+.levelsValueTextTable
+	dw ExtraOptionsLevelsNormalText
+	dw ExtraOptionsLevelsEasyText
+	dw ExtraOptionsLevelsVeryEasyText
+	dw ExtraOptionsLevelsHardText
+	dw ExtraOptionsLevelsVeryHardText
+
 ; Prints ON/OFF at the same fixed column as .drawAudioValue. "On" is wOptions'
 ; low 3 bits reading TEXT_DELAY_INSTANT (0).
 .drawInstantTextValue
@@ -254,6 +359,20 @@ ExtraOptionsAudioEarphone2Text:
 
 ExtraOptionsAudioEarphone3Text:
 	db "EARPHONE3@"
+
+ExtraOptionsLevelsLabelText:
+	db "LEVELS@"
+
+ExtraOptionsLevelsVeryEasyText:
+	db "VERY EASY@"
+ExtraOptionsLevelsEasyText:
+	db "EASY     @"
+ExtraOptionsLevelsNormalText:
+	db "NORMAL   @"
+ExtraOptionsLevelsHardText:
+	db "HARD     @"
+ExtraOptionsLevelsVeryHardText:
+	db "VERY HARD@"
 
 ExtraOptionsInstantTextLabelText:
 ; 7 characters, so it stops clear of the value column at 10. "INST. TXT" was 9
