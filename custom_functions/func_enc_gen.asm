@@ -262,6 +262,26 @@ GetRandRosterLoop:
 	add a, e   ; minimum level added to random number
 	ld [wCurEnemyLevel], a  ; place level of pokemon in
 	call RogueApplyTrainerLevelModifiers
+	; Resolve the selected species against its final trainer level before it is
+	; copied into the enemy party. GetRandMon returns the species through
+	; wCurPartySpecies, while EvolveMonByLevel expects it in d. Preserve every
+	; live roster-loop register: b/d are loop counters, e is the minimum level,
+	; and hl points into the difficulty settings.
+	; Gambler species must remain unchanged so OverrideGamblerMoves can find the
+	; selected species in its fixed themed moveset table below.
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	jr z, .skipEvolution
+	push hl
+	push bc
+	push de
+	ld a, [wCurPartySpecies]
+	ld d, a
+	call ScaleTrainer_evolution
+	pop de
+	pop bc
+	pop hl
+.skipEvolution
 	;push hl                 ; preserve h1
 	call AddPartyMon    ; add the pokemon
     ; Gambler's Paradise: replace the just-added mon's rolled moves with its
@@ -1149,9 +1169,6 @@ ScaleTrainer_level:
 	ret
 
 ScaleTrainer_evolution:
-	;CheckEvent EVENT_90C
-	ret z
-	
 	push bc
 	ld a, [wCurEnemyLevel]
 	ld b, a
@@ -1510,18 +1527,3 @@ EvolveStep:
 	pop hl
 	and a
 	ret
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	

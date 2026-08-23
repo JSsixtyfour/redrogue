@@ -10,7 +10,7 @@
       "enemy": [
         {"species": "GENGAR", "level": 50, "moves": ["HYPNOSIS", "NIGHT_SHADE"]}
       ],
-      "expect": {"enemy_move_slots": [0, 1]}
+      "expect": {"enemy_move_slots": [0, 1], "pick_slot": 0}
     }
   ]
 }

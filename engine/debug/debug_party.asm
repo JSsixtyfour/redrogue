@@ -227,6 +227,9 @@ IF DEF(_DEBUG)
 	ld a, [wItemQuantity]      ; 1-99
 	ld [wBattleCount], a
 
+	; This helper is kept in the floating debug bank because bank 1 is full.
+	farcall Debug2ChooseAITier
+
 	; Apply the Porygon rival starter, half-max money, and the battle-count-
 	; derived round state (badge count + gym/route flag), then the two forced-
 	; door prompts (door 1, door 2). This lives in the rogue bank to keep

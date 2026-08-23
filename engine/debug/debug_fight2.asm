@@ -1,6 +1,17 @@
 IF DEF(_DEBUG)
 SECTION "Debug Fight 2", ROMX
 
+Debug2ChooseAITier::
+	; Quantity 1 means automatic; 2-5 map to T0-T3 after subtracting one.
+	; wAIDebugTierOverride uses 0=automatic and tier+1 for an override.
+	ld a, 5
+	ld [wMaxItemQuantity], a
+	call DisplayChooseQuantityMenu
+	ld a, [wItemQuantity]
+	dec a
+	ld [wAIDebugTierOverride], a
+	ret
+
 DebugFight2Entry::
 	; A small in-ROM seed entry keeps failures reproducible without consuming
 	; persistent RAM. The host harness records the chosen seed in its report.

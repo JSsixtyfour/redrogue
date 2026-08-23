@@ -13,7 +13,8 @@ The target builds `pokeblue_debug.gbc`, resolves current addresses from
 Current coverage:
 
 - Debug 1 boot to Silph Co Dorm with the intro tour complete
-- Debug 2 boot through Indigo Plateau Lobby initialization
+- Debug 2 boot through Indigo Plateau Lobby initialization, including automatic and forced AI tiers
+- Phase 0 Focus Energy and selective badge-reboost battle mechanics
 - Data-driven contracts for all 22 selectable rogue stages
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
 - Explicit Route 24 Nugget Bridge and SS Anne B1F multi-room exceptions
@@ -53,7 +54,12 @@ script.
 fixture names exact species, levels, moves, trainer class, and AI tier. The
 harness writes the compact team block to debug-only SRAM, starts FIGHT 2, and
 records the untouched four-move AI score array before the selection loop
-destroys it. Results are written to `artifacts/ai_scenarios.json`.
+destroys it, plus the best-score eligible slots and enemy-switch decision. The
+scenario's `expect` object is executable: a failed expectation fails the target.
+Supported keys are `enemy_move_slots`, exact `scores`, `tier`, `pick_slot`
+(one allowed slot or a list), `never_pick`, `score_lt` and `score_lte` (lists of slot
+pairs), `switch`, and `no_switch`. Results are written to
+`artifacts/ai_scenarios.json`.
 Use `--trials N` for repeated save-state-reset trials; the runner emits both
 JSON details and a flat CSV beside it.
 

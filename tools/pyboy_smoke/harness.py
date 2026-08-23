@@ -166,29 +166,56 @@ class RedRogueHarness:
         return state
 
     def hook_ai_scores(self) -> list[dict[str, object]]:
-        """Capture the untouched four-slot score array once per AI decision."""
+        """Capture scores plus the move ultimately selected for each AI decision."""
         records: list[dict[str, object]] = []
-        pending = {"value": False}
+        pending: dict[str, object] = {"active": False, "record": None}
 
         def begin(_context) -> None:
-            pending["value"] = True
+            pending["active"] = True
+            pending["record"] = None
 
         def capture(_context) -> None:
-            if not pending["value"]:
+            if not pending["active"]:
                 return
-            pending["value"] = False
+            scores = self.read_bytes("wBuffer", 4)
+            moves = self.read_bytes("wEnemyMonMoves", 4)
+            legal_scores = [score for score, move in zip(scores, moves) if move]
+            best_score = min(legal_scores)
+            eligible_slots = [
+                slot
+                for slot, (score, move) in enumerate(zip(scores, moves))
+                if move and score == best_score
+            ]
             records.append(
                 {
-                    "scores": self.read_bytes("wBuffer", 4),
-                    "moves": self.read_bytes("wEnemyMonMoves", 4),
+                    "scores": scores,
+                    "moves": moves,
+                    "eligible_slots": eligible_slots,
                     "tier": max(0, self.read8("wAITier") - 1),
                     "frame": self.pyboy.frame_count,
                 }
             )
+            if len(eligible_slots) == 1:
+                records[-1]["selected_slot"] = eligible_slots[0]
+            pending["record"] = len(records) - 1
+
+        def selected(_context) -> None:
+            record_index = pending["record"]
+            if record_index is None:
+                return
+            records[int(record_index)].update(
+                {
+                    "selected_slot": self.read8("wEnemyMoveListIndex"),
+                    "selected_move": self.pyboy.register_file.A,
+                }
+            )
+            pending["active"] = False
+            pending["record"] = None
 
         for label, callback in (
             ("AIEnemyTrainerChooseMoves", begin),
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
+            ("MainInBattleLoop.noLinkBattle", selected),
         ):
             bank, address = self.symbols.get(label)
             self.pyboy.hook_register(bank, address, callback, None)
@@ -300,7 +327,9 @@ class RedRogueHarness:
                 f"{json.dumps(self.diagnostic_state(), sort_keys=True)}"
             )
 
-    def boot_to_lobby(self, battle_count: int = 11) -> None:
+    def boot_to_lobby(self, battle_count: int = 11, ai_tier: int | None = None) -> None:
+        if ai_tier is not None and not 0 <= ai_tier <= 3:
+            raise ValueError("AI tier must be 0-3 or None for automatic")
         debug_menu = self.hook_flag("DebugMenu")
         quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
 
@@ -336,12 +365,26 @@ class RedRogueHarness:
         self.tap("a")
         self.wait_until(
             lambda: quantity_menu["count"] >= 2,
+            "the Debug 2 AI-tier prompt",
+            600,
+        )
+        tier_quantity = 1 if ai_tier is None else ai_tier + 2
+        for _ in range(6):
+            current = self.read8("wItemQuantity")
+            if current == tier_quantity:
+                break
+            self.tap("up" if current < tier_quantity else "down")
+        else:
+            raise AssertionError(f"Could not select AI tier {ai_tier}")
+        self.tap("a")
+        self.wait_until(
+            lambda: quantity_menu["count"] >= 3,
             "the Debug 2 Door 1 prompt",
             600,
         )
         self.tap("a")
         self.wait_until(
-            lambda: quantity_menu["count"] >= 3,
+            lambda: quantity_menu["count"] >= 4,
             "the Debug 2 Door 2 prompt",
             600,
         )

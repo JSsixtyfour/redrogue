@@ -121,6 +121,81 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(self.harness.read8("wNumberOfWarps"), 4)
         self.assertNotEqual(self.harness.read8("wLobbyDoor1StageMap"), 0)
         self.assertNotEqual(self.harness.read8("wLobbyDoor2StageMap"), 0)
+        self.assertEqual(self.harness.read8("wAIDebugTierOverride"), 0)
+
+    def test_debug2_can_force_expert_ai_tier(self) -> None:
+        assert self.harness is not None
+        self.harness.boot_to_lobby(ai_tier=3)
+        self.assertEqual(self.harness.read8("wAIDebugTierOverride"), 4)
+
+
+class AIPhaseZeroSmokeTest(HarnessTestCase):
+    def boot_single_mon_fight(self) -> tuple[dict[str, int], dict[str, int]]:
+        assert self.harness is not None
+        species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+        fixture = [{"species": species["SNORLAX"], "level": 50, "moves": [moves["TACKLE"]]}]
+        self.harness.inject_fight2_spec(
+            fixture,
+            fixture,
+            trainer_class=trainers["COOLTRAINER_M"],
+            ai_tier=0,
+        )
+        self.harness.boot_fight2(seed=1)
+        return species, moves
+
+    def test_focus_energy_increases_critical_hit_threshold(self) -> None:
+        assert self.harness is not None
+        _species, moves = self.boot_single_mon_fight()
+        self.harness.write8("hWhoseTurn", 0)
+        self.harness.write8("wPlayerMoveNum", moves["TACKLE"])
+        self.harness.write8("wPlayerMovePower", 50)
+
+        bank, random_return = self.harness.symbols.get("CriticalHitTest.rollCrit")
+
+        def force_middle_roll(_context) -> None:
+            # The routine rotates BattleRandom's result three times. A raw 5
+            # therefore becomes 40: above Snorlax's normal threshold (15),
+            # but below its Focus Energy threshold (60).
+            self.harness.pyboy.register_file.A = 5
+
+        self.harness.pyboy.hook_register(bank, random_return + 3, force_middle_roll, None)
+        try:
+            self.harness.write8("wPlayerBattleStatus2", 0)
+            self.harness.call_routine("CriticalHitTest")
+            self.assertEqual(self.harness.read8("wCriticalHitOrOHKO"), 0)
+
+            self.harness.write8("wPlayerBattleStatus2", 1 << 2)  # GETTING_PUMPED
+            self.harness.call_routine("CriticalHitTest")
+            self.assertEqual(self.harness.read8("wCriticalHitOrOHKO"), 1)
+        finally:
+            self.harness.pyboy.hook_deregister(bank, random_return + 3)
+
+    def test_badge_reboost_only_changes_the_recalculated_stat(self) -> None:
+        assert self.harness is not None
+        self.boot_single_mon_fight()
+        effects = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "move_effect_constants.asm"
+        )
+        stats = [80, 96, 112, 128]
+        start = self.harness.address("wBattleMonAttack")
+        for index, value in enumerate(stats):
+            self.harness.pyboy.memory[start + index * 2] = value >> 8
+            self.harness.pyboy.memory[start + index * 2 + 1] = value & 0xFF
+        self.harness.write8("wObtainedBadges", 0x55)
+        self.harness.write8("wLinkState", 0)
+        self.harness.write8("hWhoseTurn", 0)
+        self.harness.write8("wPlayerMoveEffect", effects["ATTACK_UP1_EFFECT"])
+
+        self.harness.call_routine("ApplySingleBadgeStatBoost")
+
+        actual = []
+        for index in range(4):
+            high = self.harness.pyboy.memory[start + index * 2]
+            low = self.harness.pyboy.memory[start + index * 2 + 1]
+            actual.append((high << 8) | low)
+        self.assertEqual(actual, [90, 96, 112, 128])
 
 
 class UndergroundRouteSmokeTest(HarnessTestCase):

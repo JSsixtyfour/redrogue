@@ -945,7 +945,7 @@ FaintEnemyPokemon:
 	ld [wBoostExpByExpAll], a
 	callfar GainExperience
 	pop af
-	ret z ; return if no exp all
+	jr z, .tryMidBattleEvo ; return if no exp all
 
 ; the player has exp all
 ; now, set the gain exp flag for every party member
@@ -961,7 +961,10 @@ FaintEnemyPokemon:
 	jr nz, .gainExpFlagsLoop
 	ld a, b
 	ld [wPartyGainExpFlags], a
-	jpfar GainExperience
+	callfar GainExperience
+.tryMidBattleEvo
+	farcall RogueTryMidBattleEvolution
+	ret
 
 EnemyMonFaintedText:
 	text_far _EnemyMonFaintedText
