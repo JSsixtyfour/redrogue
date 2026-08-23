@@ -196,8 +196,12 @@ CinnabarGymStartBattleScript:
 	ldh [hActiveSpriteIndex], a
 	call EngageMapTrainer
 	call InitBattleEnemyParameters
+	ldh a, [hActiveSpriteIndex]
+	cp CINNABARGYM_BLAINE
+	jr nz, .not_blaine_init
 	ld d, OPP_BLAINE
 	farcall InitGymBattle
+.not_blaine_init
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]

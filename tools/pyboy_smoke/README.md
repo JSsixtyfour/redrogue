@@ -21,6 +21,7 @@ Current coverage:
 - Registry drift checks against `RogueStageMapTable` and `MiniBossStageSlots`
 - Real `SaveGameData` and `LoadMainData` preservation of core run state
 - Cave, forest, and cemetery preload/entry generation invariants
+- CGB boot-to-lobby defaults, double-speed state, and live HRAM OAM-DMA wait timing
 - Giovanni mini-boss replacement of route object slot 5
 - Underground route text width and trainer-class-prefixed `EndBattleText`
 
@@ -31,9 +32,21 @@ ignored by Git.
 PyBoy is installed in WSL for this project. Run `wsl make smoke` from Windows
 PowerShell, or `make smoke` from a WSL shell.
 
-The harness always starts PyBoy with `cgb=False`. Tests therefore exercise the
-supported monochrome Game Boy path even if unfinished CGB work changes the ROM
-header.
+The harness defaults to DMG mode. In that mode it patches only its in-memory ROM
+header mirror and starts PyBoy with `cgb=False`, keeping the established battle,
+AI, and procedural tests independent of CGB-only work.
+
+Focused CGB tests instantiate `RedRogueHarness(..., cgb_mode=True)`. This retains
+the built ROM's CGB header and starts PyBoy with `cgb=True`. The included CGB
+speed test boots through Debug 2 to the lobby and verifies:
+
+- saved `wOptions2` bits 6-7 are both on for a new game;
+- `rKEY1` bit 7 reports double-speed mode;
+- `hDMARoutine.waitCount + 1` contains `$50`, twice the single-speed `$28` wait.
+
+PyBoy proves those machine states but is not final visual acceptance. Use BGB
+for palette appearance, fades, title/credits raster effects, walking and NPC
+cadence, ledges, and the S.S. Anne departure sequence.
 
 The slower integration tier drives complete gameplay interactions and is kept
 separate from the fast smoke suite:
