@@ -1013,7 +1013,7 @@ ReplaceFaintedEnemyMon:
 	ld e, $30
 	call GetBattleHealthBarColor
     
-    ldpal a, BLACK, DARK_GRAY, LIGHT_GRAY, WHITE
+    ldpal a, SHADE_BLACK, SHADE_DARK, SHADE_LIGHT, SHADE_WHITE
 	ld [rOBP0], a
 	ld [rOBP1], a
 	call UpdateGBCPal_OBP0

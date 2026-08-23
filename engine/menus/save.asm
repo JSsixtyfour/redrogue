@@ -8,6 +8,16 @@ TryLoadSaveFile:
 	jr c, .badsum
 	call LoadPartyAndDexData
 	jr c, .badsum
+	ldh a, [hGBC]
+	and a
+	jr z, .gammaDone
+	CheckEvent EVENT_GAMMA_SHADER
+	ld a, 1
+	jr z, .restoreGammaSetting
+	inc a
+.restoreGammaSetting
+	ldh [hGBC], a
+.gammaDone
 	ld a, $2 ; good checksum
 	jr .done
 .badsum

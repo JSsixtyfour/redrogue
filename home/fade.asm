@@ -1,79 +1,19 @@
 ; These routines manage gradual fading
 ; (e.g., entering a doorway)
 LoadGBPal::
-	ld a, [wMapPalOffset] ; tells if hCurMap is dark (requires HM5_FLASH?)
-	ld b, a
-	ld hl, FadePal4
-	ld a, l
-	sub b
-	ld l, a
-	jr nc, .ok
-	dec h
-.ok
-	ld a, [hli]
-	ldh [rBGP], a
-	ld a, [hli]
-	ldh [rOBP0], a
-	ld a, [hli]
-	ldh [rOBP1], a
-    call UpdateGBCPal_BGP
-	call UpdateGBCPal_OBP0
-	call UpdateGBCPal_OBP1
-	ret
+	farjp LoadGBPal_
 
 GBFadeInFromBlack::
-    callfar GBCFadeInFromBlack
-	ld hl, FadePal1
-	ld b, 4
-	jr GBFadeIncCommon
+	farjp GBFadeInFromBlack_
 
 GBFadeOutToWhite::
-    callfar GBCFadeOutToWhite
-	ld hl, FadePal6
-	ld b, 3
-
-GBFadeIncCommon:
-	ld a, [hli]
-	ldh [rBGP], a
-	ld a, [hli]
-	ldh [rOBP0], a
-	ld a, [hli]
-	ldh [rOBP1], a
-    call UpdateGBCPal_BGP
-	call UpdateGBCPal_OBP0
-	call UpdateGBCPal_OBP1
-	ld c, 8
-	call DelayFrames
-	dec b
-	jr nz, GBFadeIncCommon
-	ret
+	farjp GBFadeOutToWhite_
 
 GBFadeOutToBlack::
-    callfar GBCFadeOutToBlack
-	ld hl, FadePal4 + 2
-	ld b, 4
-	jr GBFadeDecCommon
+	farjp GBFadeOutToBlack_
 
 GBFadeInFromWhite::
-    callfar GBCFadeInFromWhite
-	ld hl, FadePal7 + 2
-	ld b, 3
-
-GBFadeDecCommon:
-	ld a, [hld]
-	ldh [rOBP1], a
-	ld a, [hld]
-	ldh [rOBP0], a
-	ld a, [hld]
-	ldh [rBGP], a
-    call UpdateGBCPal_BGP
-	call UpdateGBCPal_OBP0
-	call UpdateGBCPal_OBP1
-	ld c, 8
-	call DelayFrames
-	dec b
-	jr nz, GBFadeDecCommon
-	ret
+	farjp GBFadeInFromWhite_
 
 FadePal1:: dc 3,3,3,3, 3,3,3,3, 3,3,3,3
 FadePal2:: dc 3,3,3,2, 3,3,3,2, 3,3,2,0

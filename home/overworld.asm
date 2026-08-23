@@ -1521,9 +1521,9 @@ LoadCurrentMapView::
 	di
 	ld hl, sp + 0
 	ld a, h
-	ld [H_SPTEMP], a
+	ldh [hSPTemp], a
 	ld a, l
-	ld [H_SPTEMP + 1], a ; save stack pinter
+	ldh [hSPTemp + 1], a ; save stack pointer
 	ld h, d
 	ld l, e
 	ld sp, hl	
@@ -1544,9 +1544,9 @@ LoadCurrentMapView::
 	dec b
 	jr nz, .rowLoop2
 ;restore the stack pointer
-	ld a, [H_SPTEMP]
+	ldh a, [hSPTemp]
 	ld h, a
-	ld a, [H_SPTEMP + 1]
+	ldh a, [hSPTemp + 1]
 	ld l, a
 	ld sp, hl
 	ei
@@ -1571,13 +1571,18 @@ LoadCurrentMapView::
 ;	dec b
 ;	jr nz, .rowLoop2
 	
-    pop af
+	pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
-	ret
-    
-    ;GBCnote - use the new Tile Map to make BGMap Attributes for enhanced GBC color
-;	--> build the whole thing if the player is not advancing movement
+	; Build the corresponding CGB attributes after restoring the caller's ROM
+	; bank. Avoid even the farcall dispatch unless enhanced CGB overworld
+	; palettes are active. The movement path is selected with hUILayoutFlags bit 3.
+	ldh a, [hGBC]
+	and a
+	ret z
+	ld a, [wRogueFlagsBitfield2]
+	bit 7, a
+	ret z
 	callfar MakeOverworldBGMapAttributes	
 	ret
 
@@ -1719,6 +1724,8 @@ AdvancePlayerSprite::
 	ld hl, hUILayoutFlags
 	set 3, [hl]
 	call LoadCurrentMapView
+	ld hl, hUILayoutFlags
+	res 3, [hl]
 	ld a, [wSpritePlayerStateData1YStepVector]
 	cp $01
 	jr nz, .checkIfMovingNorth2

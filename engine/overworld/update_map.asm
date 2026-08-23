@@ -51,12 +51,12 @@ ReplaceTileBlock:
 ;gbcnote - it is useful to have a version of RedrawMapView that does not mess with hAutoBGTransferEnabled
 ;used particularly for clean enhanced GBC colors during in-game trades
 RedrawMapView_NoChangeAutoBGTransfer:
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	inc a
 	ret z
-	ld a, [hAutoBGTransferEnabled]
+	ldh a, [hAutoBGTransferEnabled]
 	push af
-	ld a, [hTilesetType]
+	ldh a, [hTileAnimations]
 	push af
 	xor a
 	jp RedrawMapView.done_AutoBGTransfer
@@ -73,6 +73,7 @@ RedrawMapView::
 	push af
 	xor a
 	ldh [hAutoBGTransferEnabled], a
+.done_AutoBGTransfer
 	ldh [hTileAnimations], a
 	call LoadCurrentMapView
 	call RunDefaultPaletteCommand

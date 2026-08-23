@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import logging
 from pathlib import Path
@@ -71,21 +72,40 @@ class RedRogueHarness:
                 "pokeblue_debug.gbc and pokeblue_debug.sym are required; run `make blue_debug`"
             )
         self.symbols = SymbolTable(self.sym_path)
-        self.rom_sha256 = hashlib.sha256(self.rom_path.read_bytes()).hexdigest()
+        rom_data = bytearray(self.rom_path.read_bytes())
+        self.rom_sha256 = hashlib.sha256(rom_data).hexdigest()
+
+        # PyBoy's cgb=False only declines to force CGB mode. It does not force
+        # DMG mode when byte $0143 advertises a CGB-compatible cartridge. Keep
+        # the test ROM itself authoritative, but give the DMG-only regression
+        # harness an in-memory header mirror with valid checksums.
+        rom_data[0x143] = 0
+        header_checksum = 0
+        for value in rom_data[0x134:0x14D]:
+            header_checksum = (header_checksum - value - 1) & 0xFF
+        rom_data[0x14D] = header_checksum
+        global_checksum = (
+            sum(rom_data) - rom_data[0x14E] - rom_data[0x14F]
+        ) & 0xFFFF
+        rom_data[0x14E] = global_checksum >> 8
+        rom_data[0x14F] = global_checksum & 0xFF
+        self._dmg_rom_file = io.BytesIO(rom_data)
         self.artifacts_dir = artifacts_dir.resolve()
         options = {
             "window": "null",
             "sound_emulated": sound_emulated,
             "log_level": "CRITICAL",
-            # Red Rogue's CGB support is still incomplete. Never let PyBoy
-            # infer CGB mode from a changing cartridge header.
+            # The in-memory header mirror above selects DMG mode. False here
+            # additionally ensures that the harness never forces CGB mode.
             "cgb": False,
         }
         if ram_path is None:
-            self.pyboy = PyBoy(str(self.rom_path), **options)
+            self.pyboy = PyBoy(self._dmg_rom_file, **options)
         else:
             with ram_path.resolve().open("rb") as ram_file:
-                self.pyboy = PyBoy(str(self.rom_path), ram_file=ram_file, **options)
+                self.pyboy = PyBoy(
+                    self._dmg_rom_file, ram_file=ram_file, **options
+                )
 
     def close(self) -> None:
         self.pyboy.stop(save=False)

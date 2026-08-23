@@ -11,4 +11,6 @@ _Start::
 	jr nz, .ok
 	ld e, TRUE
 .ok
+	ld a, e
+	ldh [hGBC], a
 	jp Init

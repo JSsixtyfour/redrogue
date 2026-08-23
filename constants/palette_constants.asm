@@ -64,6 +64,8 @@ DEF SET_PAL_DEFAULT EQU $ff
 	const PAL_26        ; $26
 	const PAL_27        ; $27
 DEF NUM_SGB_PALS EQU const_value
+	const PAL_BW        ; $28, CGB only
+	const PAL_UBALL     ; $29, CGB only
 ; SHINY CHARM adds NO palettes here. Shin Red's system (which this is ported
 ; from) remaps a shiny mon onto another EXISTING mon palette rather than
 ; defining new ones - see ShinyPaletteConvert in engine/gfx/palettes.asm.

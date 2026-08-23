@@ -126,21 +126,7 @@ MainMenu:
 	jp SpecialEnterMap
 
 InitOptions:
-	ld a, 1 << BIT_FAST_TEXT_DELAY
-	ld [wLetterPrintingDelayFlags], a
-	ld a, TEXT_DELAY_FAST
-	ld [wOptions], a
-	xor a
-	ld [wOptions2], a ; lives below wGameProgressFlagsEnd, so it is saved but not
-	                  ; auto-zeroed on new game - seed it here instead
-	ld a, [hGBC]
-	and a
-	ret z
-	;intialize 60 fps if on playing in GBC-mode
-	ld a, [w2GBCFlag]
-	set 4, a
-	ld [w2GBCFlag], a
-	ret
+	farjp InitOptions_
 
 LinkMenu:
 	xor a
@@ -745,32 +731,4 @@ TextSpeedOptionData:
 	db  7, -1 ; end (default X coordinate)
 
 CheckForPlayerNameInSRAM:
-; Check if the player name data in SRAM has a string terminator character
-; (indicating that a name may have been saved there) and return whether it does
-; in carry.
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK(sPlayerName) == BMODE_ADVANCED
-	ld [rRAMB], a
-	ld b, NAME_LENGTH
-	ld hl, sPlayerName
-.loop
-	ld a, [hli]
-	cp '@'
-	jr z, .found
-	dec b
-	jr nz, .loop
-; not found
-	xor a
-	ld [rRAMG], a
-	ld [rBMODE], a
-	and a
-	ret
-.found
-	xor a
-	ld [rRAMG], a
-	ld [rBMODE], a
-	scf
-	ret
+	farjp CheckForPlayerNameInSRAM_

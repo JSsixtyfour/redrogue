@@ -232,4 +232,10 @@ LoadCGBScreenAttributesForBlkPacket::
 	db BGMAP_ATTR_PARTY_MENU
 	dw 0 ; terminator
 
+; CGB DMA ignores the low four bits of its source address. ShinRed places these
+; packets at the start of bank $2e, so their 16-byte headers are naturally
+; aligned. This port puts the loader first, so align the packet data explicitly;
+; otherwise the transfer begins inside the header (observed as attribute $0d at
+; tile-map entry 0, which selects the blank tile-data bank 1).
+	align 4
 INCLUDE "data/gfx/bg_map_attributes.asm"

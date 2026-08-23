@@ -15,6 +15,17 @@ DEF w2CurMap					EQU $d0fc
 DEF w2CurMapTileset				EQU $d0fd
 DEF w2MapViewVRAMPointer		EQU $d0fe	;wram bank 2 backup. 2 bytes
 DEF w2BGMapAttributes 			EQU $d100 	;In wram bank 2 (GBC only). This is 1024 bytes (32 by 32).
+
+; The small dynamic-palette workspace was moved to WRAM bank 2 for Red Rogue.
+; Keep Shin Red's original names as aliases so the imported palette engine can
+; be audited independently of that placement change.
+DEF wGBCBasePalPointers EQU w2GBCBasePalPointers
+DEF wGBCPal             EQU w2GBCPal
+DEF wLastBGP            EQU w2LastBGP
+DEF wLastOBP0           EQU w2LastOBP0
+DEF wLastOBP1           EQU w2LastOBP1
+DEF wBGPPalsBuffer      EQU w2BGPPalsBuffer
+DEF NUM_ACTIVE_PALS     EQU 4
 DEF w2GBCFullPalBuffer			EQU $d500	;secondary buffer that is 128 bytes
 
 DEF END_OF_OVERWORLD_TILES 		EQU $60		;This is 1 plus the value of the last overworld tile.
@@ -506,7 +517,7 @@ PalSettings_TownSpecialPal:
 ;It also converts all the tile values to BG Map Attribute palettes
 ;Clobbers BC, HL, and DE
 ;This function is in the same spirit as LoadCurrentMapView, but for GBC color pals instead of tiles
-MakeOverworldBGMapAttributes:	
+MakeOverworldBGMapAttributes::
 ;only do the attributes when walking around, not during a menu or text since that will mess up the settings
 	ld a, [hAutoBGTransferEnabled]
 	and a
@@ -545,7 +556,7 @@ MakeOverworldBGMapAttributes:
 	ld a, e
 	ld [w2CurMapTileset], a
 	
-	ld hl, w2GBCFlags
+	ld hl, hUILayoutFlags
 	bit 3, [hl]
 	jp nz, MakeOverworldBGMapAttributes_RolColUpdate	
 
@@ -1265,10 +1276,24 @@ TransferGBCEnhancedOverworldPalettes:
 ;joenote - This is a function specifically for translating the default enhanced GBC pals into the GBC color buffer
 ;DE is passed-in containing the address of a pal pattern...like FadePal4 or something
 BufferAllEnhancedColorsGBC:
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 	call .BGP0to3Loop
 	call .BGP4to7Loop
 	call .OBP0to3Loop
 	call .OBP4to7Loop
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ret	
 	
 .BGP0to3Loop
@@ -1313,9 +1338,13 @@ BufferAllEnhancedColorsGBC:
 	ld [w2GBCColorControl], a
 	push de
 	push hl
+	ld a, 1
+	ldh [rSVBK], a
 	call .ReadMasterPals	;get the color into DE
 	push bc
 	predef GBCGamma
+	ld a, 2
+	ldh [rSVBK], a
 	pop bc
 	pop hl
 	ld a, d
@@ -2112,16 +2141,30 @@ SingleCPUSpeed:
 	ret
 ;Set the cpu speed in GBC mode based on if 60fps mode is active
 SetCPUSpeed::
-	ld a, [hGBC]
+	ldh a, [hGBC]
 	and a
 	jr z, .return	;double speed is only a GBC feature
 	
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 	ld a, [w2GBCFlags]
 	and %00100000
 	rlca
 	rlca
 	rlca
 	ld b, a
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ld a, [rKEY1]
 	and %10000000
 	cp b
@@ -2147,7 +2190,8 @@ ToggleCPUSpeed:
 	ei
 	ret	
     
-    SetAttackAnimPal::
+SetAttackANimPal::
+SetAttackAnimPal::
 	call GetPredefRegisters
 
 	;set wAnimPalette based on if in grayscale or color
@@ -2155,16 +2199,17 @@ ToggleCPUSpeed:
 	ld [wAnimPalette], a
 	ld a, [wOnSGB]
 	and a
-	ret z
+	jr z, .notSGB
 	ld a, $f0
 	ld [wAnimPalette], a
+.notSGB
 	
 	;return if not on a GBC
-	ld a, [hGBC]
+	ldh a, [hGBC]
 	and a
 	ret z 
 	
-	ld a, [wIsInBattle]
+	ldh a, [hIsInBattle]
 	and a
 	ret z
 
@@ -2189,7 +2234,7 @@ ToggleCPUSpeed:
 	jr nz, .do_ball_color
 	
 ;doing a move animation, so find its type and apply color
-	ld a, [H_WHOSETURN]
+	ldh a, [hWhoseTurn]
 	and a
 	ld hl, wPlayerMoveType
 	jr z, .playermove
@@ -2203,24 +2248,6 @@ ToggleCPUSpeed:
 	ld a, [hl]
 	ld b, a
 
-	;check if this animation is being played when hurting self from confusion
-	ld a, [wUnusedD119]
-	inc a
-	ld a, [wUnusedC000]
-	jr nz, .noselfdamage
-	;if hurting self, load default palette
-	ld b, PAL_BW
-	jr .starttransfer
-.noselfdamage
-
-	bit 6, a	;check the bit that is set when absorbing HP due to leech seed
-	jr z, .noleechseed
-	;if absorbing, load default palette
-	ld b, PAL_GREENMON
-	jr .starttransfer
-.noleechseed
-
-	nop		;debugging placeholder
 .starttransfer
 	;make sure to reset palette/shade data into OBP0
 	;have to do this so colors transfer to the proper positions
@@ -2236,7 +2263,7 @@ ToggleCPUSpeed:
 	dec e
 	ld a, b	
 	add VICTREEBEL+1
-	ld [wcf91], a
+	ld [wCurItem], a
 	push bc
 	callfar TransferMonPal
 	pop bc
@@ -2244,13 +2271,13 @@ ToggleCPUSpeed:
 	jr nz, .transfer
 	
 	pop af
-	ld [wcf91], a
+	ld [wCurItem], a
 	pop de
 	pop bc
 	pop hl
 	ret	
 .do_ball_color
-	ld a, [wcf91]
+	ld a, [wCurItem]
 	ld hl, ItemPalList
 	ld b, 0
 	ld c, a
@@ -2296,7 +2323,7 @@ SetAttackAnimPal_otheranim:
 	ld b, 4
 .loop2
 	ld a, [rLCDC]
-	and rLCDC_ENABLE_MASK
+	and LCDC_ENABLE
 	jr z, .lcd_dis
 	;lcd in enabled otherwise
 .wait1
@@ -2334,11 +2361,11 @@ SetAttackAnimPal_otheranim:
 	ret
 TypePalColorList:
 	db PAL_YELLOWMON;normal
-	db PAL_GREYMON;fighting
+	db PAL_GRAYMON;fighting
 	db PAL_MEWMON;flying
 	db PAL_PURPLEMON;poison
 	db PAL_BROWNMON;ground
-	db PAL_GREYMON;rock
+	db PAL_GRAYMON;rock
 	db PAL_BW;untyped/bird
 	db PAL_GREENMON;bug
 	db PAL_PURPLEMON;ghost

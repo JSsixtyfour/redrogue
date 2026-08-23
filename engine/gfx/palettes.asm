@@ -766,6 +766,39 @@ InitCGBPalettes:
 	add hl, hl ; hl = ID * 8, the entry's byte offset
 	ld de, CGBPalettes
 	add hl, de
+	; Keep the four selected base-palette pointers in their bank-2 workspace.
+	; The source itself remains in this ROM bank, so the pointers stay valid for
+	; the dynamic BGP/OBP update routines below.
+	push bc
+	ld a, 4
+	sub c
+	add a
+	ld e, a
+	ld d, 0
+	ld b, h
+	ld c, l
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
+	ld hl, w2GBCBasePalPointers
+	add hl, de
+	ld [hl], c
+	inc hl
+	ld [hl], b
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ld h, b
+	ld l, c
+	pop bc
 	ld b, 8 ; 4 colours x 2 bytes
 .byteLoop
 	ld a, [hli]
@@ -886,7 +919,7 @@ TransferCurBGPData::
 	ld de, rBGPD
 	ld hl, wGBCPal
 	ld a, [rLCDC]
-	and rLCDC_ENABLE_MASK
+	and LCDC_ENABLE
 	jr nz, .lcdEnabled
 	rept NUM_COLORS
 	call TransferPalColorLCDDisabled
@@ -927,7 +960,7 @@ TransferCurBGPData::
 TransferBGPPals::
 ; Transfer the buffered BG palettes.
 	ld a, [rLCDC]
-	and rLCDC_ENABLE_MASK
+	and LCDC_ENABLE
 	jr z, .lcdDisabled
 	; have to wait until LCDC is disabled
 	; LCD should only ever be disabled during the V-blank period to prevent hardware damage
@@ -975,7 +1008,7 @@ TransferCurOBPData:
 	ld de, rOBPD
 	ld hl, wGBCPal
 	ld a, [rLCDC]
-	and rLCDC_ENABLE_MASK
+	and LCDC_ENABLE
 	jr nz, .lcdEnabled
 	rept NUM_COLORS
 	call TransferPalColorLCDDisabled
@@ -1009,16 +1042,116 @@ TransferPalColorLCDDisabled:
 	ld a, [hli]
 	ld [de], a
 	ret
+
+; Banked bodies for the HOME UpdateGBCPal_* entry stubs. Keep the hardware and
+; no-change gates from Shin Red, then tail-call the conversion routines in this
+; same section.
+UpdateGBCPal_BGP_::
+	ldh a, [hGBC]
+	and a
+	ret z
+	ldh a, [rBGP]
+	ld b, a
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
+	ld a, [wLastBGP]
+	ld c, a
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ld a, c
+	cp b
+	ret z
+	jp _UpdateGBCPal_BGP
+
+UpdateGBCPal_OBP0_::
+	ldh a, [hGBC]
+	and a
+	ret z
+	ldh a, [rOBP0]
+	ld b, a
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
+	ld a, [wLastOBP0]
+	ld c, a
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ld a, c
+	cp b
+	ret z
+	ld d, CONVERT_OBP0
+	jp _UpdateGBCPal_OBP
+
+UpdateGBCPal_OBP1_::
+	ldh a, [hGBC]
+	and a
+	ret z
+	ldh a, [rOBP1]
+	ld b, a
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
+	ld a, [wLastOBP1]
+	ld c, a
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ld a, c
+	cp b
+	ret z
+	ld d, CONVERT_OBP1
+	jp _UpdateGBCPal_OBP
 	
 _UpdateGBCPal_BGP::
 ;use a different function if doing enhanced GBC overworld palettes
-	ld a, [wUnusedD721]
+	ld a, [wRogueFlagsBitfield2]
 	bit 7, a
 	jr z, .notEnhancedGBC
-	ld hl, hFlagsFFFA
-	bit 4, [hl]
+	ld hl, wRogueFlagsBitfield2
+	bit 3, [hl]
 	jr z, .notEnhancedGBC
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 	callfar UpdateEnhancedGBCPal_BGP
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ret
 .notEnhancedGBC
 	
@@ -1035,8 +1168,16 @@ _UpdateGBCPal_BGP::
 	;prevent the BGmap from updating during vblank 
 	;because this is going to take a frame or two in order to fully run
 	;otherwise a partial update (like during a screen whiteout) can be distracting
-	ld hl, hFlagsFFFA
-	set 1, [hl]
+	ld hl, wRogueFlagsBitfield2
+	set 6, [hl]
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 
 	ld bc, $0000	;BC is going to track the index
 .loop	
@@ -1075,8 +1216,14 @@ _UpdateGBCPal_BGP::
 ;	ENDR
 
 	call TransferBGPPals	;Transfer wBGPPalsBuffer contents to rBGPD
-	ld hl, hFlagsFFFA	;re-allow BGmap updates
-	res 1, [hl]
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ld hl, wRogueFlagsBitfield2	;re-allow BGmap updates
+	res 6, [hl]
 	
 ;	pop af
 ;	inc a
@@ -1087,13 +1234,27 @@ _UpdateGBCPal_BGP::
     
  _UpdateGBCPal_OBP::
 ;use a different function if doing enhanced GBC overworld palettes
-	ld a, [wUnusedD721]
+	ld a, [wRogueFlagsBitfield2]
 	bit 7, a
 	jr z, .notEnhancedGBC
-	ld hl, hFlagsFFFA
-	bit 4, [hl]
+	ld hl, wRogueFlagsBitfield2
+	bit 3, [hl]
 	jr z, .notEnhancedGBC
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 	callfar UpdateEnhancedGBCPal_OBP
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ret
 .notEnhancedGBC
 
@@ -1110,6 +1271,14 @@ _UpdateGBCPal_BGP::
 ; d then c = CONVERT_OBP0 or CONVERT_OBP1
 	ld a, d
 	ld c, a
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 
 	ld de, $0000	;DE is going to track the index
 .loop
@@ -1139,6 +1308,12 @@ _UpdateGBCPal_BGP::
 	ld a, e
 	cp NUM_ACTIVE_PALS
 	jr c, .loop
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	
 ; commenting this out and doing a proper loop to save space
 ;index = 0
@@ -1267,7 +1442,7 @@ CopySGBBorderTiles:
 	add hl, hl
 	add hl, hl
 	add hl, hl
-	ld de, GBCBasePalettes
+	ld de, CGBPalettes
 	add hl, de
 	ld a, l
 	ld e, a
@@ -1279,31 +1454,46 @@ CopySGBBorderTiles:
 ;d = CONVERT_OBP0, CONVERT_OBP1, or CONVERT_BGP
 ;e = palette register # (0 to 7)
 TransferMonPal:
-	ld a, [hGBC]
+	ldh a, [hGBC]
 	and a
 	ret z 
-	ld a, e
-	push af
-	ld a, d
-	push af
-	ld a, [wcf91]
+	push bc
+	ld c, e
+	ld b, d
+	ld a, [wCurItem]
 	cp VICTREEBEL+1
 	jr c, .isMon
 	sub VICTREEBEL+1
 .back	
 	call GetGBCBasePalAddress
-	pop af
-	cp CONVERT_BGP
+	ldh a, [rIE]
 	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
+	ld a, b
 	call DMGPalToGBCPal
-	pop af
+	ld a, b
+	and a
 	jr z, .do_bgp
-	pop af
+	ld a, c
 	call TransferCurOBPData
-	ret
+	jr .done
 .do_bgp
-	pop af
+	ld a, c
 	call TransferCurBGPData
+
+.done
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	pop bc
 	ret
 .isMon	
 	call DeterminePaletteIDOutOfBattle
@@ -1312,9 +1502,23 @@ TransferMonPal:
 ;joenote - This is a function specifically for translating the default pokeyellow pals into the GBC color buffer
 ;DE is passed-in containing the address of a pal pattern...like FadePal4 or something
 BufferAllPokeyellowColorsGBC:
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ldh a, [rSVBK]
+	push af
+	ld a, 2
+	ldh [rSVBK], a
 	call .BGP0to3Loop
 	call .OBP0to3Loop
 	call .OBP4to7Loop
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ret	
 	
 .BGP0to3Loop
@@ -1350,9 +1554,13 @@ BufferAllPokeyellowColorsGBC:
 	ld [w2GBCColorControl], a
 	push de
 	push hl
+	ld a, 1
+	ldh [rSVBK], a
 	call .ReadMasterPals	;get the color into DE
 	push bc
 	predef GBCGamma
+	ld a, 2
+	ldh [rSVBK], a
 	pop bc
 	pop hl
 	ld a, d

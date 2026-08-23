@@ -65,3 +65,36 @@ GetHealthBarColor::
 .gotColor
 	ld [hl], d
 	ret
+
+; Preserve Shin Red's all-register contract while keeping the CGB checks and
+; conversion work out of the full HOME section. The three targets live
+; together in engine/gfx/palettes.asm.
+UpdateGBCPal_BGP::
+	push af
+	push hl
+	ld hl, UpdateGBCPal_BGP_
+	jr UpdateGBCPal_Dispatch
+
+UpdateGBCPal_OBP0::
+	push af
+	push hl
+	ld hl, UpdateGBCPal_OBP0_
+	jr UpdateGBCPal_Dispatch
+
+UpdateGBCPal_OBP1::
+	push af
+	push hl
+	ld hl, UpdateGBCPal_OBP1_
+
+UpdateGBCPal_Dispatch:
+	push bc
+	push de
+	ld b, BANK(UpdateGBCPal_BGP_)
+	ASSERT BANK(UpdateGBCPal_BGP_) == BANK(UpdateGBCPal_OBP0_)
+	ASSERT BANK(UpdateGBCPal_BGP_) == BANK(UpdateGBCPal_OBP1_)
+	call Bankswitch
+	pop de
+	pop bc
+	pop hl
+	pop af
+	ret

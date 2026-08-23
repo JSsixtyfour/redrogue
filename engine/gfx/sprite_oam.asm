@@ -148,7 +148,9 @@ PrepareOAMData::
 	inc hl
 	ld [de], a
 	inc e
-	bit BIT_END_OF_OAM_DATA, a
+	; Restore the end-of-entry flags saved before the CGB attribute rewrite.
+	; Without this pop, every rendered tile leaks two stack bytes per VBlank.
+	pop af
 	jr z, .tileLoop
 
 	ld a, e
