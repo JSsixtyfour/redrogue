@@ -78,3 +78,17 @@ DEF FIRST_STILL_SPRITE EQU const_value
 	const SPRITE_UNUSED_GAMBLER_ASLEEP_2 ; $49
 	const SPRITE_GAMBLER_ASLEEP          ; $4a
 DEF NUM_SPRITES EQU const_value - 1
+
+; Neutral Pokemon-to-overworld-sprite categories.
+; Static boss and walking follower consumers translate these separately.
+	const_def
+	const MON_SPRITE_CATEGORY_MONSTER
+	const MON_SPRITE_CATEGORY_BIRD
+	const MON_SPRITE_CATEGORY_SEEL
+	const MON_SPRITE_CATEGORY_FAIRY
+	const MON_SPRITE_CATEGORY_POKE_BALL
+	const MON_SPRITE_CATEGORY_SNORLAX
+	const MON_SPRITE_CATEGORY_FOSSIL
+	const MON_SPRITE_CATEGORY_PIKACHU
+	const MON_SPRITE_CATEGORY_CHANSEY
+DEF NUM_MON_SPRITE_CATEGORIES EQU const_value

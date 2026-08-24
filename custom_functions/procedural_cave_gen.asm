@@ -526,10 +526,33 @@ PCGetBossOWSprite::
 	; the forest stored bank number 7, a gentleman-type SPRITE constant, as the
 	; boss sprite). Cross-bank callers must use PFStoreBossOWSpriteToSRAM below.
 	ld a, [wRoguePokemon1]
+	ld e, a
+	call PCGetPokemonSpriteCategory
+	ld a, e
+	; a = neutral Pokemon sprite category -> boss SPRITE_* constant
+	ld hl, PCBossSpriteCategoryTable
+	add a, l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld a, [hl]
+	ret
+
+; ============================================================
+; PCGetPokemonSpriteCategory
+; INPUT:  e = valid species (1-based internal ID, $01-$BE)
+; OUTPUT: e = MON_SPRITE_CATEGORY_* value
+; CLOBBERS: a, b, hl
+; DE is used so callers can retain the result across the project's farcall
+; bank trampoline. Callers must reject empty or invalid species first.
+; ============================================================
+PCGetPokemonSpriteCategory::
+	ld a, e
 	dec a                        ; 0-based index
 	ld b, a                      ; save
 	srl a                        ; byte offset into table
-	ld hl, PCBossFollowerSpriteTable
+	ld hl, PokemonSpriteCategoryTable
 	add a, l
 	ld l, a
 	jr nc, .noCarry
@@ -544,14 +567,7 @@ PCGetBossOWSprite::
 	swap a
 	and $0F                      ; even: high nibble
 .gotCategory
-	; a = FSPRITE category (0-7) → SPRITE_* constant
-	ld hl, PCBossSpriteCategoryTable
-	add a, l
-	ld l, a
-	jr nc, .noCarry2
-	inc h
-.noCarry2
-	ld a, [hl]
+	ld e, a
 	ret
 
 ; ============================================================
@@ -580,20 +596,21 @@ PFacStoreBossOWSpriteToSRAM::
 	ret
 
 PCBossSpriteCategoryTable:
-	db SPRITE_MONSTER   ; FSPRITE_MONSTER (0) - most species
-	db SPRITE_BIRD      ; FSPRITE_BIRD (1)
-	db SPRITE_SEEL      ; FSPRITE_SEEL (2)
-	db SPRITE_FAIRY     ; FSPRITE_FAIRY (3)
-	db SPRITE_POKE_BALL ; FSPRITE_POKEBALL (4)
-	db SPRITE_SNORLAX   ; FSPRITE_SNORLAX (5)
-	db SPRITE_FOSSIL    ; FSPRITE_FOSSIL (6)
-	db SPRITE_PIKACHU   ; FSPRITE_PIKACHU (7)
-	db SPRITE_CHANSEY   ; FSPRITE_CHANSEY (8)
+	db SPRITE_MONSTER   ; MON_SPRITE_CATEGORY_MONSTER
+	db SPRITE_BIRD      ; MON_SPRITE_CATEGORY_BIRD
+	db SPRITE_SEEL      ; MON_SPRITE_CATEGORY_SEEL
+	db SPRITE_FAIRY     ; MON_SPRITE_CATEGORY_FAIRY
+	db SPRITE_POKE_BALL ; MON_SPRITE_CATEGORY_POKE_BALL
+	db SPRITE_SNORLAX   ; MON_SPRITE_CATEGORY_SNORLAX
+	db SPRITE_FOSSIL    ; MON_SPRITE_CATEGORY_FOSSIL
+	db SPRITE_PIKACHU   ; MON_SPRITE_CATEGORY_PIKACHU
+	db SPRITE_CHANSEY   ; MON_SPRITE_CATEGORY_CHANSEY
+	assert @ - PCBossSpriteCategoryTable == NUM_MON_SPRITE_CATEGORIES
 
-; 95-byte nibble-packed species→FSPRITE table, ported from follower branch.
+; 95-byte nibble-packed species -> neutral overworld sprite category table.
 ; High nibble = even species index, low nibble = odd.
 ; M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6) K=PIKACHU(7) C=CHANSEY(8)
-PCBossFollowerSpriteTable:
+PokemonSpriteCategoryTable:
 	db $00 ; $01,$02 RHYDON,KANGASKHAN
 	db $03 ; $03,$04 NIDORAN_M,CLEFAIRY
 	db $14 ; $05,$06 SPEAROW,VOLTORB
@@ -689,6 +706,8 @@ PCBossFollowerSpriteTable:
 	db $00 ; $B9,$BA ODDISH,GLOOM
 	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
 	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
+PokemonSpriteCategoryTableEnd:
+	assert PokemonSpriteCategoryTableEnd - PokemonSpriteCategoryTable == (NUM_POKEMON_INDEXES + 1) / 2
 
 ; ============================================================
 ; PCFinalizeCave (PRELOAD PROTOTYPE 2026-06-27)
