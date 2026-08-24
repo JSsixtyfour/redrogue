@@ -65,7 +65,6 @@ ROMX $8
 	"Music Headers 2"
 	"Sound Effects 2"
 	"Low Health Alarm (Audio Engine 2)"
-	"Bill's PC"
 	"Audio Engine 2"
 	"Music 2"
 ROMX $9
@@ -232,6 +231,10 @@ ROMX $2E
 	"Pokedex Stats Bar Graphics"
 	"Battle Move Info"
 	"Battle Pic Helpers"
+	; Yume Task 4 expands Bill's PC into a 5x4 BG-icon grid. Every exported
+	; edge is bank-aware (farcall, explicit BANK(), dba, or text predef), and
+	; the complete internal code/data/Cable Club cluster moves together.
+	"Bill's PC"
 ROMX $33
 	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
 	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in

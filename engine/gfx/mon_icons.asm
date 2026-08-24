@@ -238,6 +238,7 @@ GetPartyMonSpriteID:
 	and $f0
 	srl a ; value == ICON constant << 2
 	srl a
+	ld e, a ; bank-safe return for the Bill's PC BG-icon renderer
 	ret
 
 INCLUDE "data/pokemon/menu_icons.asm"

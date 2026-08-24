@@ -1,6 +1,4 @@
-; This file is INCLUDEd twice:
-; - for HMMoves in home/names.asm
-; - for HMMoveArray in engine/pokemon/bills_pc.asm
+; Used by HMMoves in home/names.asm.
 
 	db CUT
 	db FLY

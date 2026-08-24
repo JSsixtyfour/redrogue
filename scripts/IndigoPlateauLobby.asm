@@ -844,9 +844,6 @@ PCDaycareLadyText:
 	pop af
 	ld hl, AllRightThenText
 	jp c, .done
-	;callfar KnowsHMMove
-	;ld hl, .CantAcceptMonWithHMText
-	;jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ldh a, [hWhichPokemon]
@@ -1069,9 +1066,6 @@ PCDaycareGentlemanText:
 	pop af
 	ld hl, AllRightThenText
 	jp c, .done
-	;callfar KnowsHMMove
-	;ld hl, .CantAcceptMonWithHMText
-	;jp c, .done
 	xor a
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ldh a, [hWhichPokemon]
@@ -1303,10 +1297,6 @@ NoRoomForMonText:
 
 OnlyHaveOneMonText:
 	text_far _DaycareGentlemanOnlyHaveOneMonText
-	text_end
-
-CantAcceptMonWithHMText:
-	text_far _DaycareGentlemanCantAcceptMonWithHMText
 	text_end
 
 HeresYourMonText:
