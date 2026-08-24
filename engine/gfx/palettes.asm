@@ -1,4 +1,10 @@
 _RunPaletteCommand:
+	; Enhanced overworld palettes are valid only when SetPal_Overworld installs
+	; them below. Clear the transient state before dispatching any palette
+	; command so menus and other non-overworld screens use their normal path.
+	ld hl, wRogueFlagsBitfield2
+	res 3, [hl]
+
 	call GetPredefRegisters
 	ld a, b
 	cp SET_PAL_DEFAULT
@@ -250,6 +256,20 @@ SetPal_GameFreakIntro:
 
 ; uses PalPacket_Empty to build a packet based on the current map
 SetPal_Overworld:
+	; ShinRed handles the enhanced overworld as a complete alternate palette
+	; command: build and transfer attributes, install the enhanced palettes, and
+	; skip SendSGBPackets. Keep that work in its existing far bank so this tight
+	; palette bank only owns the mode dispatch.
+	ldh a, [hGBC]
+	and a
+	jr z, .normalColors
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
+	jr z, .normalColors
+	farcall LoadEnhancedOverworldPaletteCommand
+	pop de ; discard the SendSGBPackets return address pushed by _RunPaletteCommand
+	ret
+.normalColors
 	ld hl, PalPacket_Empty
 	ld de, wPalPacket
 	ld bc, $10
@@ -1507,22 +1527,25 @@ BufferAllPokeyellowColorsGBC:
 
 .readwriteinc
 	ld [w2GBCColorControl], a
+	; All saved registers belong to the bank-2 stack. Switch to bank 1 only for
+	; the ROM/gamma calls, then return to bank 2 before restoring them.
+	push bc
 	push de
 	push hl
+	ld c, a ; carry the color index into bank 1 without reading bank-2 WRAM there
 	ld a, 1
 	ldh [rSVBK], a
 	call .ReadMasterPals	;get the color into DE
-	push bc
 	predef GBCGamma
 	ld a, 2
 	ldh [rSVBK], a
-	pop bc
 	pop hl
 	ld a, d
 	ld [hli], a		;buffer high byte
 	ld a, e
 	ld [hli], a		;buffer low byte	
 	pop de
+	pop bc
 	ld a, [w2GBCColorControl]
 	inc a
 	ret
@@ -1566,8 +1589,8 @@ BufferAllPokeyellowColorsGBC:
 	ld d, 0
 	ld e, a
 
-;need to look at the last two bits of wGBCColorControl to determine which hardware pal color is desired
-	ld a, [w2GBCColorControl]
+; c carried the bank-2 color index into this bank-1 phase
+	ld a, c
 	and %00000011
 	jr z, .zero
 	cp 1

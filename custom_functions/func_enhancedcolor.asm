@@ -27,6 +27,7 @@ DEF wLastOBP1           EQU w2LastOBP1
 DEF wBGPPalsBuffer      EQU w2BGPPalsBuffer
 DEF NUM_ACTIVE_PALS     EQU 4
 DEF w2GBCFullPalBuffer			EQU $d500	;secondary buffer that is 128 bytes
+DEF w3GBCFullPalBuffer			EQU $d500	;fade working copy in WRAM bank 3
 
 DEF END_OF_OVERWORLD_TILES 		EQU $60		;This is 1 plus the value of the last overworld tile.
 DEF BG_MAP_WIDTH  EQU 32
@@ -517,6 +518,32 @@ PalSettings_TownSpecialPal:
 ;It also converts all the tile values to BG Map Attribute palettes
 ;Clobbers BC, HL, and DE
 ;This function is in the same spirit as LoadCurrentMapView, but for GBC color pals instead of tiles
+LoadEnhancedOverworldPaletteCommand::
+	ld a, SET_PAL_OVERWORLD
+	ld [wDefaultPaletteCommand], a
+	; Transient counterpart to the saved Enhanced Colors option. Palette update
+	; hooks and smooth fades use this bit to select the enhanced CGB buffers.
+	ld hl, wRogueFlagsBitfield2
+	set 3, [hl]
+	; Red Rogue relocated ShinRed's full palette buffer to WRAM bank 2. The
+	; existing map-loading path already builds and transfers attributes. Select
+	; bank 2 only for the palette build and prevent VBlank from observing the
+	; temporary bank. Do not invoke ShinRed's full attribute HDMA path here: its
+	; stack/audio assumptions do not survive Red Rogue's banked-WRAM adaptation.
+	; Palette conversion treats the DMG palette registers as shade maps. Oak's
+	; final fade leaves them at white, so normalize them before building the
+	; first overworld palette or every enhanced color becomes white as well.
+	ld hl, FadePal4
+	ld a, [hli]
+	ldh [rBGP], a
+	ld a, [hli]
+	ldh [rOBP0], a
+	ld a, [hl]
+	ldh [rOBP1], a
+	call TransferGBCEnhancedOverworldPalettes
+	call TransferGBCEnhancedBGMapAttributes
+	ret
+
 MakeOverworldBGMapAttributes::
 ;only do the attributes when walking around, not during a menu or text since that will mess up the settings
 	ld a, [hAutoBGTransferEnabled]
@@ -1013,7 +1040,7 @@ MakeAndTransferOverworldBGMapAttributes_OpenText::
 	ret z
 ;only on the overworld bgmap
 	ld a, [wRogueFlagsBitfield2]
-	bit 4, a
+	bit 3, a
 	ret z
 ;opening a text box
 	ld bc, $0098	;set the MapView offset to zero
@@ -1025,7 +1052,7 @@ MakeAndTransferOverworldBGMapAttributes_OpenText::
 MakeAndTransferOverworldBGMapAttributes_CloseText:	
 ;only on the overworld bgmap
 	ld a, [wRogueFlagsBitfield2]
-	bit 4, a
+	bit 3, a
 	ret z
 ;closing a text box
 	ld a, [wMapViewVRAMPointer]
@@ -1066,7 +1093,7 @@ GBCEnhancedRedrawRowOrColumn::
 	
 	;only on the overworld bgmap
 	ld a, [wRogueFlagsBitfield2]
-	bit 4, a
+	bit 3, a
 	ret z
 
 	dec b
@@ -1236,19 +1263,57 @@ TransferGBCEnhancedBGMapAttributes:
 	ld [hDivideBCDBuffer+2], a
 
 .vBGMap_selected
-	ld de, $3F00
-	ld hl, w2BGMapAttributes
-	ld a, h
-	ld [hDivideBCDBuffer], a
-	ld a, l
-	ld [hDivideBCDBuffer+1], a
-	di
-	ld hl, rSVBK
-	set 1, [hl]
-	callfar LoadBGMapAttributes_Lite
-	ld hl, rSVBK
-	res 1, [hl]
-	ei	
+	; The original path farcalled a ROMX loader while bank 2 replaced the stack
+	; window. Perform the two aligned 1 KiB general-DMA transfers locally
+	; instead. Entry and exit are WRAM bank 1; no stack access occurs until bank
+	; 1 is restored.
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ld a, [hDivideBCDBuffer+2]
+	ld b, a
+	ld a, 2
+	ldh [rSVBK], a
+	ld a, 1
+	ldh [rVBK], a
+	bit 0, b
+	jr z, .skipBGMap0
+	ld de, vBGMap0
+	call .transfer
+.skipBGMap0
+	bit 1, b
+	jr z, .done
+	ld de, vBGMap1
+	call .transfer
+.done
+	xor a
+	ldh [rVBK], a
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
+	ret
+
+.transfer
+	ld a, HIGH(w2BGMapAttributes)
+	ldh [rHDMA1], a
+	ld a, LOW(w2BGMapAttributes)
+	ldh [rHDMA2], a
+	ld a, d
+	ldh [rHDMA3], a
+	ld a, e
+	ldh [rHDMA4], a
+	ldh a, [rLCDC]
+	bit B_LCDC_ENABLE, a
+	jr z, .start
+.waitVBlank
+	ldh a, [rLY]
+	cp $90
+	jr c, .waitVBlank
+.start
+	ld a, $3f ; 64 blocks * 16 bytes = 1 KiB
+	ldh [rHDMA5], a
 	ret
 
 	
@@ -1262,13 +1327,25 @@ TransferGBCEnhancedOverworldPalettes:
 	ld a, [wOptions2]
 	bit BIT_ENHANCED_COLORS, a
 	ret z
+	; Public entry contract: callers are in ordinary WRAM bank 1. Keep the
+	; caller's return address and saved state in bank 1, perform all palette
+	; work in bank 2, then return to bank 1 before touching that saved stack.
+	ldh a, [rIE]
+	push af
+	xor a
+	ldh [rIE], a
+	ld a, 2
+	ldh [rSVBK], a
 	
 	call UpdateEnhancedGBCPal_BGP.skipHardwareUpdate
 	ld d, CONVERT_OBP0
 	call UpdateEnhancedGBCPal_OBP.skipHardwareUpdate
 	ld d, CONVERT_OBP1
 	call UpdateEnhancedGBCPal_OBP.skipHardwareUpdate
-
+	ld a, 1
+	ldh [rSVBK], a
+	pop af
+	ldh [rIE], a
 	ret 
 
 
@@ -1336,22 +1413,26 @@ BufferAllEnhancedColorsGBC:
 
 .readwriteinc
 	ld [w2GBCColorControl], a
+	; Preserve these on the bank-2 stack before temporarily returning to bank 1
+	; for ROM palette reads and the gamma predef. Pops occur only after bank 2
+	; is selected again.
+	push bc
 	push de
 	push hl
+	ld c, a ; carry the color index into bank 1 without reading bank-2 WRAM there
 	ld a, 1
 	ldh [rSVBK], a
 	call .ReadMasterPals	;get the color into DE
-	push bc
 	predef GBCGamma
 	ld a, 2
 	ldh [rSVBK], a
-	pop bc
 	pop hl
 	ld a, d
 	ld [hli], a		;buffer high byte
 	ld a, e
 	ld [hli], a		;buffer low byte	
 	pop de
+	pop bc
 	ld a, [w2GBCColorControl]
 	inc a
 	ret
@@ -1395,8 +1476,8 @@ BufferAllEnhancedColorsGBC:
 	ld d, 0
 	ld e, a
 
-;need to look at the last two bits of w2GBCColorControl to determine which hardware pal color is desired
-	ld a, [w2GBCColorControl]
+; c carried the bank-2 color index into this bank-1 phase
+	ld a, c
 	and %00000011
 	jr z, .zero
 	cp 1
@@ -1779,46 +1860,34 @@ GBCBufferFastTransfer_OBP1:
 
 	
 
-;clobbers bc, hl and de
-CopyGBCFullPalBuffer1to2:
-	ld a, [rIE]		
+; Copy the bank-2 primary palette snapshot to the bank-3 fade workspace.
+; Entry and exit are WRAM bank 1. No call, push, or pop occurs while a foreign
+; bank is selected, so the stack at $DFxx never changes identity.
+; Clobbers bc, hl and de.
+CopyGBCFullPalBuffer2to3:
+	ldh a, [rIE]
 	push af
-	ld a, [rSVBK]
-	push af
-	
-	ld de, w2GBCFullPalBuffer
+	xor a
+	ldh [rIE], a
 	ld hl, w2GBCFullPalBuffer
+	ld de, w3GBCFullPalBuffer
 	ld c, 128
 .loop
+	ld a, 2
+	ldh [rSVBK], a
 	ld a, [hli]
 	ld b, a
-
-	;interrupts off
-	di
-	;svbk1
-	ld a, [rSVBK]
-	set 1, a
-	ld [rSVBK], a
-
-
+	ld a, 3
+	ldh [rSVBK], a
 	ld a, b
 	ld [de], a
-
-	;svbk0
-	ld a, [rSVBK]
-	res 1, a
-	ld [rSVBK], a
-	;interrupts on
-	ei
-
 	inc de
 	dec c
 	jr nz, .loop
-	
+	ld a, 1
+	ldh [rSVBK], a
 	pop af
-	ld [rSVBK], a
-	pop af
-	ld [rIE], a
+	ldh [rIE], a
 	ret
 	
 
@@ -1832,7 +1901,7 @@ DecrementAllColorsGBC_improved:
 	ld c, d
 	
 	push bc
-	call CopyGBCFullPalBuffer1to2
+	call CopyGBCFullPalBuffer2to3
 	pop bc
 	
 	;manually disable interrupts
@@ -1841,11 +1910,10 @@ DecrementAllColorsGBC_improved:
 	xor a
 	ld [rIE], a
 	
-	ld a, [rSVBK]
-	set 1, a
+	ld a, 3
 	ld [rSVBK], a
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	ld hl, w2GBCFullPalBuffer
+	ld hl, w3GBCFullPalBuffer
 	ld b, 128
 .mainLoop
 	push bc	;save the value in C, which is the amount to darken this function call
@@ -1954,12 +2022,11 @@ DecrementAllColorsGBC_improved:
 	pop bc	;get the number of times to iterate
 	dec b
 	jr nz, .mainLoop
-	ld de, w2GBCFullPalBuffer
+	ld de, w3GBCFullPalBuffer
 	call GBCBufferFastTransfer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	
-	ld a, [rSVBK]
-	res 1, a
+	ld a, 1
 	ld [rSVBK], a
 
 	;re-enable interrupts
@@ -1991,7 +2058,7 @@ IncrementAllColorsGBC_improved:
 	ld c, d
 	
 	push bc
-	call CopyGBCFullPalBuffer1to2
+	call CopyGBCFullPalBuffer2to3
 	pop bc
 	
 	;manually disable interrupts
@@ -2000,11 +2067,10 @@ IncrementAllColorsGBC_improved:
 	xor a
 	ld [rIE], a
 	
-	ld a, [rSVBK]
-	set 1, a
+	ld a, 3
 	ld [rSVBK], a
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	ld hl, w2GBCFullPalBuffer
+	ld hl, w3GBCFullPalBuffer
 	ld b, 128
 .mainLoop
 	push bc	;save the value in C, which is the amount to lighten this function call
@@ -2102,12 +2168,11 @@ IncrementAllColorsGBC_improved:
 	pop bc	;get the number of times to iterate
 	dec b
 	jr nz, .mainLoop
-	ld de, w2GBCFullPalBuffer
+	ld de, w3GBCFullPalBuffer
 	call GBCBufferFastTransfer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	
-	ld a, [rSVBK]
-	res 1, a
+	ld a, 1
 	ld [rSVBK], a
 
 	;re-enable interrupts

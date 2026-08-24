@@ -628,11 +628,11 @@ LoadBGMapAttributes_Lite::
 	ret
     
 Func_3082:: ;added from pokeyellow - update audio so it doesn't "lag"
-	ld a, [hLoadedROMBank]
-	push af
 	call FadeOutAudio
-	callbs Music_DoLowHealthAlarm
-	callbs Audio1_UpdateMusic
-	pop af
-	call BankswitchCommon
+	; This helper executes in ROMX with the CGB attribute loader. ShinRed's
+	; callbs switches the mapped ROM bank inline and then continues the caller,
+	; which is only safe when the caller lives in HOME. Preserve this ROMX
+	; routine with the project's bank-restoring farcall convention instead.
+	farcall Music_DoLowHealthAlarm
+	farcall Audio1_UpdateMusic
 	ret

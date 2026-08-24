@@ -16,9 +16,13 @@ class CGBSpeedSmokeTest(unittest.TestCase):
         try:
             harness.boot_to_lobby()
             self.assertEqual(harness.read8("wOptions2") & 0xC0, 0xC0)
+            self.assertNotEqual(
+                harness.read8("wRogueFlagsBitfield2") & 0x08,
+                0,
+                "Enhanced Colors is enabled but the overworld palette path is inactive",
+            )
             self.assertEqual(harness.pyboy.memory[0xFF4D] & 0x80, 0x80)
             wait_immediate = harness.address("hDMARoutine.waitCount") + 1
             self.assertEqual(harness.pyboy.memory[wait_immediate], 0x50)
         finally:
             harness.close()
-
