@@ -549,13 +549,12 @@ AnimationShakeScreenHorizontallySlow:
 	ret
 
 SetAnimationPalette:
+	ld b, $e4
 	ld a, [wOnSGB]
 	and a
-	ld a, $e4
 	jr z, .notSGB
 	ld a, $f0
 	ld [wAnimPalette], a
-	ld b, $e4
 	ld a, [wAnimationID]
 	cp TRADE_BALL_DROP_ANIM
 	jr c, .next
@@ -564,17 +563,18 @@ SetAnimationPalette:
 	ld b, $f0
 .next
 	ld a, b
-	ldh [rOBP0], a
-	ld a, $6c
-	ldh [rOBP1], a
-	ret
+	jr .apply
 .notSGB
 	ld a, $e4
 	ld [wAnimPalette], a
 	vc_hook Reduce_move_anim_flashing_Dream_Eater
+.apply
 	ldh [rOBP0], a
 	ld a, $6c
 	ldh [rOBP1], a
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
+	predef SetAttackANimPal
 	ret
 
 PlaySubanimation:
