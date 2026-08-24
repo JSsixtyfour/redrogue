@@ -437,11 +437,11 @@ INCLUDE "engine/gfx/cgb_attributes.asm"
 INCLUDE "custom_functions/func_gamma.asm"
 
 
-SECTION "Overworld CGB Tile Palettes", ROMX
-; Shin Red import Phase 3 (CGB color). Currently unreferenced - see the file's
-; own header. Floating rather than pinned per layout.link convention; pin only
-; if rgblink first-fit picks a different bank per build target
-; (project_romx_firstfit_bank_pressure).
+; The enhanced attribute generator directly indexes these tables while running
+; in the CGB helper bank. Keep its ROM reads local to that bank.
+SECTION "Overworld CGB Tile Palettes", ROMX, BANK[$2C]
+; Shin Red import Phase 3 (CGB color). The bank-$2C enhanced attribute engine
+; directly reads these pointers and tables.
 
 INCLUDE "data/gfx/overworld_tile_palettes.asm"
 

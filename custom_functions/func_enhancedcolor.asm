@@ -571,8 +571,8 @@ MakeOverworldBGMapAttributes::
 	
 	di	;disable the interrupts while messing around in the other wram bank since a bunch of stuff runs during vblank
 
-	ld hl, rSVBK
-	set 1, [hl]		;switch over to wram bank 2 (covers everything from address D700 to DFFF)
+	ld a, 2
+	ldh [rSVBK], a		;explicitly select WRAM bank 2
 	
 	ld a, b
 	ld [w2MapViewVRAMPointer], a
@@ -753,8 +753,8 @@ MakeOverworldBGMapAttributes::
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 .return
 ;restore the original wram bank and return
-	ld hl, rSVBK
-	res 1, [hl]
+	ld a, 1
+	ldh [rSVBK], a
 	ei	;re-enable interrupts
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
@@ -1103,8 +1103,8 @@ GBCEnhancedRedrawRowOrColumn::
 	ld a, $1
 	ld [rVBK], a	;change to vram bank 1
 
-	ld hl, rSVBK
-	set 1, [hl]		;switch over to wram bank 2
+	ld a, 2
+	ldh [rSVBK], a
 
 	ld a, [hRedrawRowOrColumnDest]
 	ld e, a
@@ -1158,16 +1158,16 @@ GBCEnhancedRedrawRowOrColumn::
 	xor a
 	ld [rVBK], a
 
-	ld hl, rSVBK
-	res 1, [hl]
+	ld a, 1
+	ldh [rSVBK], a
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .colorRow
 	ld a, $1
 	ld [rVBK], a	;change to vram bank 1
 
-	ld hl, rSVBK
-	set 1, [hl]		;switch over to wram bank 2
+	ld a, 2
+	ldh [rSVBK], a
 
 	ld a, [hRedrawRowOrColumnDest]
 	ld e, a
@@ -1202,8 +1202,8 @@ GBCEnhancedRedrawRowOrColumn::
 .finishRow
 	xor a
 	ld [rVBK], a
-	ld hl, rSVBK
-	res 1, [hl]
+	ld a, 1
+	ldh [rSVBK], a
 .skip_GBCEnhancedRedrawRowOrColumn
 	ret
 
@@ -1422,6 +1422,7 @@ BufferAllEnhancedColorsGBC:
 	ld c, a ; carry the color index into bank 1 without reading bank-2 WRAM there
 	ld a, 1
 	ldh [rSVBK], a
+	ld a, c ; restore the color index after selecting ordinary WRAM bank 1
 	call .ReadMasterPals	;get the color into DE
 	predef GBCGamma
 	ld a, 2

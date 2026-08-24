@@ -5,12 +5,9 @@
 ; shinpokered's for OVERWORLD($00) through PLATEAU($17), which is what makes
 ; this a 1:1 port rather than a redesign - see ShinRed_Import.md Phase 3.0b.
 ;
-; CURRENTLY UNREFERENCED. Nothing calls into this table yet: the engine that
-; consumes it (MakeOverworldBGMapAttributes, building on LoadBGMapAttributes)
-; has not been ported, and the CGB flag is still off (RGBFIXFLAGS -jsv, not
-; -cjsv). This file is pure inert data until Phase 3.1b's final step flips
-; that flag. Per that step's sequencing, porting the data first means it is
-; independently buildable and reviewable before any behavior changes.
+; MakeOverworldBGMapAttributes consumes this table directly from the CGB helper
+; bank. Keep this section in that same ROM bank unless the reads are converted
+; to a bank-aware copy.
 ;
 ; Each PalSettings_* table has one byte per tile ID ($00-$5F, i.e. every block
 ; in a tileset) naming which of the 8 CGB background palette registers colors
@@ -61,7 +58,7 @@ ASSERT (@ - OverworldTilePalPointers) / 2 == NUM_TILESETS, "OverworldTilePalPoin
 
 ; Assign a color register to be used for each tile in every tileset.
 ; A value of 8 is a "wild card" to set the color register based on the current
-; town (NOT YET IMPLEMENTED here - see file header).
+; town through MakeOverworldBGMapAttributes.townColor.
 PalSettings_OVERWORLD:
 ;	00	01	02	03	04	05	06	07	08	09	0A	0B	0C	0D	0E	0F
 	db	3,	6,	6,	1,	6,	8,	8,	8,	8,	8,	3,	6,	6,	3,	6,	3

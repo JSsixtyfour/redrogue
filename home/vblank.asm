@@ -75,6 +75,14 @@ VBlank::
 	and a
 	call z, ReadJoypad
 
+	; Keep CGB palette attributes synchronized with tile rows and columns drawn
+	; earlier in this VBlank. RedrawRowOrColumn saved its mode in bits 0-1.
+	ldh a, [hVblankBackup]
+	and %11
+	jr z, .skipGBCEnhancedRedraw
+	farcall GBCEnhancedRedrawRowOrColumn
+.skipGBCEnhancedRedraw
+
 	ld a, [wVBlankSavedROMBank]
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
