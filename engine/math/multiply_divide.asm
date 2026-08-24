@@ -1,63 +1,63 @@
-_Multiply::
-	ld a, $8
-	ld b, a
-	xor a
-	ldh [hProduct], a
-	ldh [hMultiplyBuffer], a
-	ldh [hMultiplyBuffer+1], a
-	ldh [hMultiplyBuffer+2], a
-	ldh [hMultiplyBuffer+3], a
-.loop
-	ldh a, [hMultiplier]
-	srl a
-	ldh [hMultiplier], a ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	jr nc, .smallMultiplier
-	ldh a, [hMultiplyBuffer+3]
-	ld c, a
-	ldh a, [hMultiplicand+2]
-	add c
-	ldh [hMultiplyBuffer+3], a
-	ldh a, [hMultiplyBuffer+2]
-	ld c, a
-	ldh a, [hMultiplicand+1]
-	adc c
-	ldh [hMultiplyBuffer+2], a
-	ldh a, [hMultiplyBuffer+1]
-	ld c, a
-	ldh a, [hMultiplicand] ; (aliases: hMultiplicand)
-	adc c
-	ldh [hMultiplyBuffer+1], a
-	ldh a, [hMultiplyBuffer]
-	ld c, a
-	ldh a, [hProduct] ; (aliases: hProduct, hPastLeadingZeros, hQuotient)
-	adc c
-	ldh [hMultiplyBuffer], a
-.smallMultiplier
-	dec b
-	jr z, .done
-	ldh a, [hMultiplicand+2]
-	sla a
-	ldh [hMultiplicand+2], a
-	ldh a, [hMultiplicand+1]
-	rl a
-	ldh [hMultiplicand+1], a
+_Multiply:: ; marcelnote - adapted from polishedcrystal
+; Multiply hMultiplicand (3 bytes) by hMultiplier (1 byte). Result in hProduct (4 bytes).
+; All values are big endian.
+
 	ldh a, [hMultiplicand]
-	rl a
-	ldh [hMultiplicand], a
-	ldh a, [hProduct]
-	rl a
+	ld e, a
+	ldh a, [hMultiplicand + 1]
+	ld h, a
+	ldh a, [hMultiplicand + 2]
+	ld l, a
+
+	xor a
+	ld d, a
 	ldh [hProduct], a
+	ldh [hProduct + 1], a
+	ldh [hProduct + 2], a
+	ldh [hProduct + 3], a
+
+	ldh a, [hMultiplier]
+
+.loop ; performs dehl * a
+	and a                 ; a = 0?
+	ret z                 ; if yes, we're done
+
+	; here a ≠ 0, carry not set
+	rra                   ; divide a by 2, is the last bit 1?
+	jr nc, .next          ; if not, just multiply dehl by 2
+
+	; else, add dehl to result before multiplying it by 2
+	ld b, a               ; store multiplier in b
+
+	ld c, LOW(hProduct + 3)
+	ldh a, [c]
+	add l
+	ldh [c], a
+
+	dec c ; c = LOW(hProduct + 2)
+	ldh a, [c]
+	adc h
+	ldh [c], a
+
+	dec c ; c = LOW(hProduct + 1)
+	ldh a, [c]
+	adc e
+	ldh [c], a
+
+	dec c ; c = LOW(hProduct)
+	ldh a, [c]
+	adc d
+	ldh [c], a
+
+	ld a, b               ; retrieve multiplier
+
+.next
+	add hl, hl            ; multiply hl by 2
+	rl e                  ; multiply e by 2 (plus carry)
+	rl d                  ; multiply d by 2 (plus carry)
 	jr .loop
-.done
-	ldh a, [hMultiplyBuffer+3]
-	ldh [hProduct+3], a
-	ldh a, [hMultiplyBuffer+2]
-	ldh [hProduct+2], a
-	ldh a, [hMultiplyBuffer+1]
-	ldh [hProduct+1], a
-	ldh a, [hMultiplyBuffer]
-	ldh [hProduct], a
-	ret
+
+
 
 _Divide::
 	xor a

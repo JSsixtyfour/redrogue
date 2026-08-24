@@ -3203,7 +3203,7 @@ SelectMenuItem:
 	; MoveSelectionMenu still draws part of its window, an issue
 	; which did not seem to exist in the Japanese versions.
 	jr nz, .select
-	call PrintMenuItem
+	farcall PrintMenuItem
 	ld a, [wMenuItemToSwap]
 	and a
 	jr z, .select
@@ -3444,83 +3444,6 @@ SwapMovesInMenu:
 	ldh a, [hCurrentMenuItem]
 	ld [wMenuItemToSwap], a ; select the current menu item for swapping
 	jp MoveSelectionMenu
-
-PrintMenuItem:
-	xor a
-	ldh [hAutoBGTransferEnabled], a
-	hlcoord 0, 8
-	ld b, 3
-	ld c, 9
-	call TextBoxBorder
-	ld a, [wPlayerDisabledMove]
-	and a
-	jr z, .notDisabled
-	swap a
-	and $f
-	ld b, a
-	ldh a, [hCurrentMenuItem]
-	cp b
-	jr nz, .notDisabled
-	hlcoord 1, 10
-	ld de, DisabledText
-	call PlaceString
-	jr .moveDisabled
-.notDisabled
-	ld hl, hCurrentMenuItem
-	dec [hl]
-	xor a
-	ldh [hWhoseTurn], a
-	ld hl, wBattleMonMoves
-	ldh a, [hCurrentMenuItem]
-	ld c, a
-	ld b, $0 ; which item in the menu is the cursor pointing to? (0-3)
-	add hl, bc ; point to the item (move) in memory
-	ld a, [hl]
-	ld [wPlayerSelectedMove], a ; update wPlayerSelectedMove even if the move
-	                            ; isn't actually selected (just pointed to by the cursor)
-	ld a, [wPlayerMonNumber]
-	ldh [hWhichPokemon], a
-	ld a, BATTLE_MON_DATA
-	ld [wMonDataLocation], a
-	callfar GetMaxPP
-	ld hl, hCurrentMenuItem
-	ld c, [hl]
-	inc [hl]
-	ld b, $0
-	ld hl, wBattleMonPP
-	add hl, bc
-	ld a, [hl]
-	and PP_MASK
-	ld [wBattleMenuCurrentPP], a
-; print TYPE/<type> and <curPP>/<maxPP>
-	hlcoord 1, 9
-	ld de, TypeText
-	call PlaceString
-	hlcoord 7, 11
-	ld [hl], '/'
-	hlcoord 5, 9
-	ld [hl], '/'
-	hlcoord 5, 11
-	ld de, wBattleMenuCurrentPP
-	lb bc, 1, 2
-	call PrintNumber
-	hlcoord 8, 11
-	ld de, wMaxPP
-	lb bc, 1, 2
-	call PrintNumber
-	call GetCurrentMove
-	hlcoord 2, 10
-	predef PrintMoveType
-.moveDisabled
-	ld a, $1
-	ldh [hAutoBGTransferEnabled], a
-	jp Delay3
-
-DisabledText:
-	db "disabled!@"
-
-TypeText:
-	db "TYPE@"
 
 SelectEnemyMove:
 	ld a, [wLinkState]
@@ -5227,15 +5150,17 @@ INCLUDE "data/battle/unused_critical_hit_moves.asm"
 ; determines if attack is a critical hit
 ; Azure Heights claims "the fastest pokémon (who are, not coincidentally,
 ; among the most popular) tend to CH about 20 to 25% of the time."
-CriticalHitTest:
-	xor a
-	ld [wCriticalHitOrOHKO], a
+;
+; Returns the final crit threshold in e.  Z is set when the selected move has
+; no power, and C is set when the attacker's special form guarantees a crit.
+; The latter is distinct from b=$ff, which is also a valid capped threshold.
+CalcCritRate:
 	ldh a, [hWhoseTurn]
 	and a
 	ld a, [wEnemyMonSpecies]
-	jr nz, .handleEnemy
+	jr nz, .handleAttacker
 	ld a, [wBattleMonSpecies]
-.handleEnemy
+.handleAttacker
 	ld [wCurSpecies], a
 	call GetMonHeader
 	ld a, [wMonHBaseSpeed]
@@ -5251,7 +5176,7 @@ CriticalHitTest:
 .calcCriticalHitProbability
 	ld a, [hld]                  ; read base power from RAM
 	and a
-	ret z                        ; do nothing if zero
+	ret z                        ; status moves cannot crit
 	dec hl
 	ld c, [hl]                   ; read move id
 	ld a, [de]
@@ -5264,9 +5189,7 @@ CriticalHitTest:
 .focusEnergyUsed
 ; AI Overhaul Phase 0: Focus Energy is meant to QUADRUPLE the crit rate.
 ; Vanilla shifted right ("srl b") where it should have shifted left, giving
-; 1/4 the normal rate instead of 4x - a 16x error that made Focus Energy the
-; single worst move in the game. Shift left three times so the result is 4x
-; the non-Focus-Energy value computed above.
+; 1/4 the normal rate instead of 4x - a 16x error.
 	sla b
 	jr c, .focusEnergyCap
 	sla b
@@ -5280,7 +5203,7 @@ CriticalHitTest:
 .Loop
 	ld a, [hli]                  ; read move from move table
 	cp c                         ; does it match the move about to be used?
-	jr z, .HighCritical          ; if so, the move about to be used is a high critical hit ratio move
+	jr z, .HighCritical          ; if so, the move about to be used is a high critical hit move
 	inc a                        ; move on to the next move, FF terminates loop
 	jr nz, .Loop                 ; check the next move in HighCriticalMoves
 	srl b                        ; /2 for regular move (effective (base speed / 2))
@@ -5290,14 +5213,13 @@ CriticalHitTest:
 	jr nc, .noCarry
 	ld b, $ff                    ; cap at 255/256
 .noCarry
-	sla b                        ; *4 for high critical move (effective (base speed/2)*8))
+	sla b                        ; *4 for high critical move (effective (base speed/2)*8)
 	jr nc, .SkipHighCritical
 	ld b, $ff
 .SkipHighCritical
 	; Witch prize e (PRIZE_CRIT_BOOST): +25% to the player's own crit
-	; threshold b (b + b/4), capped at 255. Applied after the normal/high-crit
-	; adjustments above, so it scales whatever the move already rolled up to.
-	; Never applies on the enemy's turn.
+	; threshold b (b + b/4), capped at 255.  This is deliberately part of
+	; the shared calculation so the menu and battle roll cannot drift.
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .noCritBoost
@@ -5317,16 +5239,33 @@ CriticalHitTest:
 	ld b, a
 .noCritBoost
 	; Special form (func_special_form.asm): SF_ALWAYS_CRIT (Farfetch'd) forces
-	; the crit for the attacker. Preserve b (the crit threshold) across the
-	; caps lookup, which farcalls through Bankswitch (clobbers b as the bank).
+	; the crit for the attacker. Preserve b across the caps lookup, which
+	; farcalls through Bankswitch and clobbers b.
 	push bc
 	call GetAttackerSpecialFormCaps
 	bit SF_ALWAYS_CRIT, a
 	pop bc
-	jr z, .rollCrit
-	ld a, $1
-	ld [wCriticalHitOrOHKO], a
+	jr z, .notAlwaysCrit
+	ld b, $ff
+	ld e, b
+	ld a, 1
+	and a                        ; nonzero result, with carry clear
+	scf                           ; carry distinguishes guaranteed crit
 	ret
+.notAlwaysCrit
+	ld e, b
+	ld a, 1
+	and a                        ; nonzero result, with carry clear
+	ret
+
+; determines if attack is a critical hit
+CriticalHitTest:
+	xor a
+	ld [wCriticalHitOrOHKO], a
+	call CalcCritRate
+	ret z
+	jr c, .alwaysCrit
+	ld b, e                         ; copy the farcall-safe threshold for RNG
 .rollCrit
 	call BattleRandom            ; generates a random value, in "a"
 	rlc a
@@ -5336,6 +5275,10 @@ CriticalHitTest:
 	ret nc                       ; no critical hit if no borrow
 	ld a, $1
 	ld [wCriticalHitOrOHKO], a   ; set critical hit flag
+	ret
+.alwaysCrit
+	ld a, $1
+	ld [wCriticalHitOrOHKO], a
 	ret
 
 INCLUDE "data/battle/critical_hit_moves.asm"
@@ -6027,6 +5970,68 @@ AdjustDamageForMoveType:
 ; what the callee preserves). Runs before RandomizeDamage, i.e. the same
 ; stage of the pipeline as STAB and type effectiveness above.
 	farcall RoguePrismDamageBoost
+	ret
+
+; Read-only player move matchup preview.  This deliberately does not reuse
+; AIGetTypeEffectiveness below: that routine is enemy-attacks-player only,
+; ignores dual-type stacking, and its neutral initialization is the vanilla
+; $10 bug.  It also does not include RoguePrismDamageBoost.  That hook scales
+; damage, not type effectiveness, so leaving it out of this readout is correct.
+; Keep the accumulator in twentieths so two half-resistances remain x1/4
+; instead of truncating 5 * 5 / 10 to an incorrect x0.2.
+; Returns the accumulated type multiplier in e (0, 5, 10, 20, 40, or 80).
+PreviewTypeMatchup:
+	ld a, EFFECTIVE * 2
+	ld c, a                    ; accumulated multiplier in twentieths, x1
+	ld a, [wEnemyMonType]
+	ld d, a                    ; defender type 1
+	ld a, [wEnemyMonType + 1]
+	ld e, a                    ; defender type 2
+	ld a, [wPlayerMoveType]
+	ld b, a                    ; attacking move type
+	ld hl, TypeEffects
+.loop
+	ld a, [hli]                 ; attacking type in the current pair
+	cp $ff
+	jr z, .done
+	cp b
+	jr nz, .skipPair
+	ld a, [hli]                 ; defending type in the current pair
+	cp d
+	jr z, .matchingPair
+	cp e
+	jr z, .matchingPair
+	inc hl                      ; skip the multiplier
+	jr .loop
+.matchingPair
+	ld a, [hl]                  ; multiplier for this type pair
+	cp NO_EFFECT
+	jr z, .zero
+	cp NOT_VERY_EFFECTIVE
+	jr z, .half
+	cp SUPER_EFFECTIVE
+	jr z, .double
+	; EFFECTIVE leaves the accumulated value unchanged.
+	inc hl
+	jr .loop
+.skipPair
+	inc hl                      ; skip defender type
+	inc hl                      ; skip multiplier
+	jr .loop
+.zero
+	xor a
+	ld c, a
+	jr .done
+.half
+	srl c
+	inc hl
+	jr .loop
+.double
+	sla c
+	inc hl
+	jr .loop
+.done
+	ld e, c
 	ret
 
 ; function to tell how effective the type of an enemy attack is on the player's current pokemon
@@ -7769,118 +7774,3 @@ _LoadTrainerPic:
 	ld a, $77
 	ld c, a
 	jp LoadUncompressedSpriteData
-
-; animates the mon "growing" out of the pokeball
-AnimateSendingOutMon:
-	ld a, [wPredefHL]
-	ld h, a
-	ld a, [wPredefHL + 1]
-	ld l, a
-	ldh a, [hStartTileID]
-	ldh [hBaseTileID], a
-	ld b, $4c
-	ldh a, [hIsInBattle]
-	and a
-	jr z, .notInBattle
-	add b
-	ld [hl], a
-	call Delay3
-	ld bc, -(SCREEN_WIDTH * 2 + 1)
-	add hl, bc
-	ld a, 1
-	ld [wDownscaledMonSize], a
-	lb bc, 3, 3
-	predef CopyDownscaledMonTiles
-	ld c, 4
-	call DelayFrames
-	ld bc, -(SCREEN_WIDTH * 2 + 1)
-	add hl, bc
-	xor a
-	ld [wDownscaledMonSize], a
-	lb bc, 5, 5
-	predef CopyDownscaledMonTiles
-	ld c, 5
-	call DelayFrames
-	ld bc, -(SCREEN_WIDTH * 2 + 1)
-	jr .next
-.notInBattle
-	ld bc, -(SCREEN_WIDTH * 6 + 3)
-.next
-	add hl, bc
-	ldh a, [hBaseTileID]
-	add $31
-	jr CopyUncompressedPicToHL
-
-CopyUncompressedPicToTilemap:
-	ld a, [wPredefHL]
-	ld h, a
-	ld a, [wPredefHL + 1]
-	ld l, a
-	ldh a, [hStartTileID]
-CopyUncompressedPicToHL::
-	lb bc, 7, 7
-	ld de, SCREEN_WIDTH
-	push af
-	ld a, [wSpriteFlipped]
-	and a
-	jr nz, .flipped
-	pop af
-.loop
-	push bc
-	push hl
-.innerLoop
-	ld [hl], a
-	add hl, de
-	inc a
-	dec c
-	jr nz, .innerLoop
-	pop hl
-	inc hl
-	pop bc
-	dec b
-	jr nz, .loop
-	ret
-
-.flipped
-	push bc
-	ld b, 0
-	dec c
-	add hl, bc
-	pop bc
-	pop af
-.flippedLoop
-	push bc
-	push hl
-.flippedInnerLoop
-	ld [hl], a
-	add hl, de
-	inc a
-	dec c
-	jr nz, .flippedInnerLoop
-	pop hl
-	dec hl
-	pop bc
-	dec b
-	jr nz, .flippedLoop
-	ret
-
-LoadMonBackPic:
-; Assumes the monster's attributes have
-; been loaded with GetMonHeader.
-	ld a, [wBattleMonSpecies2]
-	ld [wCurPartySpecies], a
-	hlcoord 1, 5
-	ld b, 7
-	ld c, 8
-	call ClearScreenArea
-	ld hl, wMonHBackSprite - wMonHeader
-	call UncompressMonSprite
-	predef ScaleSpriteByTwo
-	ld de, vBackPic
-	call InterlaceMergeSpriteBuffers ; combine the two buffers to a single 2bpp sprite
-	ld hl, vSprites
-	ld de, vBackPic
-	ld c, (2 * SPRITEBUFFERSIZE) / TILE_SIZE ; count of 16-byte chunks to be copied
-	ldh a, [hLoadedROMBank]
-	ld b, a
-	jp CopyVideoData

@@ -143,6 +143,14 @@ SECTION "Font Graphics", ROMX
 INCLUDE "gfx/font.asm"
 
 
+; Yume's Pokedex stat bars are loaded into a temporary BG tile range through
+; BANK(), so keep their 17-tile payload out of the nearly full font bank.
+SECTION "Pokedex Stats Bar Graphics", ROMX
+
+StatsBarGraphics: INCBIN "gfx/pokedex/stats_bar.2bpp"
+StatsBarGraphicsEnd:
+
+
 SECTION "Battle Engine 1", ROMX
 
 INCLUDE "engine/overworld/is_player_just_outside_map.asm"
@@ -292,6 +300,14 @@ SECTION "Battle Core", ROMX
 
 INCLUDE "engine/battle/core.asm"
 INCLUDE "engine/battle/effects.asm"
+
+SECTION "Battle Move Info", ROMX
+
+INCLUDE "engine/battle/move_info.asm"
+
+SECTION "Battle Pic Helpers", ROMX
+
+INCLUDE "engine/battle/battle_pic_helpers.asm"
 
 
 SECTION "bank10", ROMX

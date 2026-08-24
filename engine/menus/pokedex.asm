@@ -569,6 +569,38 @@ ShowPokedexDataInternal:
 	call TextCommandProcessor ; print pokedex description text
 	xor a
 	ldh [hClearLetterPrintingDelayFlags], a
+	CheckEvent EVENT_GOT_POKEDEX
+	jr z, .waitForButtonPress ; don't show page 2 while displaying Oak's starters
+.waitForButtonPress2
+	call JoypadLowSensitivity
+	ldh a, [hJoy5]
+	and PAD_A | PAD_B
+	jr z, .waitForButtonPress2
+	ld a, SFX_PRESS_AB
+	call PlaySound
+	hlcoord 1, 11
+	lb bc, 5, 18
+	call ClearScreenArea ; clear below the sprite
+	hlcoord 9, 6
+	lb bc, 3, 10
+	call ClearScreenArea ; clear height and weight
+	ld c, 20
+	call DelayFrames
+	hlcoord 9, 6
+	ld de, PokedexTypeText
+	call PlaceString
+	; A Pokedex entry identifies a species, not an owned mon instance. Clear
+	; the stale per-instance variant flags while PrintMonType reads base types,
+	; then restore the byte for the caller.
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	push af
+	xor a
+	ld [wLoadedMon + MON_CATCH_RATE], a
+	hlcoord 10, 7
+	predef PrintMonType
+	pop af
+	ld [wLoadedMon + MON_CATCH_RATE], a
+	call PrintBaseStats
 .waitForButtonPress
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]
@@ -587,9 +619,83 @@ ShowPokedexDataInternal:
 	ldh [rAUDVOL], a
 	ret
 
+PrintBaseStats:
+	ldh a, [hUILayoutFlags]
+	push af
+	set BIT_SINGLE_SPACED_LINES, a
+	ldh [hUILayoutFlags], a
+	hlcoord 2, 11
+	ld de, PokedexStatsText
+	call PlaceString
+	pop af
+	ldh [hUILayoutFlags], a
+
+	ld c, NUM_STATS
+	hlcoord 10, 11
+.loopStats
+	push bc
+	push hl
+	ld a, NUM_STATS
+	sub c
+	ld c, a
+	ld b, 0
+	ld hl, wMonHBaseStats
+	add hl, bc
+	ld a, [hl]
+	srl a
+	cp $3f
+	ld e, 0
+	jr c, .lessThan128
+	sub $3f
+	ld e, 8
+.lessThan128
+	ld c, a
+	pop hl
+	ld b, 8
+.loopFullTile
+	ld a, c
+	sub 8
+	jr c, .partialTile
+	ld c, a
+	ld a, $48
+	add e
+	ld [hli], a
+	dec b
+	jr nz, .loopFullTile
+	jr .done
+.partialTile
+	add 8 + $40
+	add e
+	ld [hli], a
+	dec b
+	jr z, .done
+	ld a, $40
+	add e
+.loopEmptyTile
+	ld [hli], a
+	dec b
+	jr nz, .loopEmptyTile
+.done
+	ld de, SCREEN_WIDTH - 8
+	add hl, de
+	pop bc
+	dec c
+	jr nz, .loopStats
+	ret
+
 HeightWeightText:
 	db   "HT  ?′??″"
 	next "WT   ???lb@"
+
+PokedexTypeText:
+	db "TYPE/@"
+
+PokedexStatsText:
+	db   "HEALTH"
+	next "ATTACK"
+	next "DEFENSE"
+	next "SPEED"
+	next "SPECIAL@"
 
 ; leftover from JPN Pokedex, where species have the suffix "Pokemon"
 PokeText: ; unreferenced

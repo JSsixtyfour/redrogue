@@ -227,6 +227,11 @@ ROMX $2E
 	; they sit. Pin small floating sections; do not trust first-fit.
 	"Random"
 	"Extra Options Menu"
+	; Temporary Pokedex-only BG tiles. LoadPokedexTilePatterns uses BANK(), so
+	; the asset is bank-independent and is pinned away from tight bank $04.
+	"Pokedex Stats Bar Graphics"
+	"Battle Move Info"
+	"Battle Pic Helpers"
 ROMX $33
 	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
 	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in
