@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 
@@ -30,6 +30,25 @@ class AIScenario:
     case: str
     tags: tuple[str, ...]
     required_cases: tuple[str, ...]
+    # Optional {wram_label: value} pokes applied once per AI decision, right
+    # before the first scoring layer runs (see run_ai_scenarios.main). Lets a
+    # scenario fake "last turn" state (wAILastMoveNum/wAILastMovePower/
+    # wAISameMoveCount) deterministically, without needing a real multi-turn
+    # battle to build that history - anti-spam and repeated-move fatigue are
+    # both about a PREVIOUS decision, which a single-decision scenario has no
+    # other way to construct.
+    prime: dict[str, int] = field(default_factory=dict)
+    # Optional list of {current_label, max_label, numerator, denominator}.
+    # Applied at the same point as `prime`, before AI_REDUNDANT (the first
+    # layer) runs: reads the mon's real max HP (so this needs no species/DV/
+    # stat-exp arithmetic of its own) and overwrites current HP with
+    # maxHP * numerator // denominator, clamped to [1, maxHP]. Lets an
+    # HP-tier-predicate scenario (e.g. AISmart_Heal, AISmart_Substitute) hit
+    # an exact HP fraction deterministically instead of depending on a
+    # damage-roll to land in a narrow band - and lets it do so BEFORE
+    # AI_REDUNDANT's own full-HP/quarter-HP checks run, so they see the same
+    # primed HP as AI_SMART does rather than the fixture's real, undamaged HP.
+    prime_hp: tuple[dict[str, object], ...] = ()
 
 
 VALID_CASES = {"positive", "negative", "boundary", "regression"}
@@ -123,6 +142,8 @@ def load_scenarios(path: Path, repo_root: Path) -> list[AIScenario]:
                 case=str(raw["case"]),
                 tags=tuple(str(value) for value in raw.get("tags", [])),
                 required_cases=tuple(str(value) for value in raw.get("required_cases", [])),
+                prime=dict(raw.get("prime", {})),
+                prime_hp=tuple(dict(entry) for entry in raw.get("prime_hp", [])),
             )
         )
     validate_scenario_coverage(scenarios)

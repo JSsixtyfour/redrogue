@@ -49,10 +49,37 @@ DEF AI_MAX_ROUND EQU 8
 ; Scores live in wBuffer+0..3. Lower is better. Saturating helpers clamp to this
 ; range so no stack of adjustments can wrap a byte into (or past) the
 ; disabled-move sentinel.
-DEF AI_SCORE_BASE     EQU 10  ; widened to 20 in Phase 2b, alongside rescaled deltas
+DEF AI_SCORE_BASE     EQU 20  ; widened from 10 in Phase 2b (was ExtremeYellow's idea,
+                              ; matches pokecrystal's baseline exactly)
 DEF AI_SCORE_MIN      EQU 1
 DEF AI_SCORE_MAX      EQU 79
 DEF AI_SCORE_DISABLED EQU $50 ; 80: reserved sentinel for a disabled move
+
+; --- Scoring vocabulary (Phase 2b) ---
+; Why the baseline widened from 10 to 20: with base 10 there are only 9 points
+; of headroom between the baseline and AI_SCORE_MIN, so a move attracting
+; several encouragements at once (super-effective, STAB, predicted KO, and a
+; plan bonus) floors out at 1 and becomes indistinguishable from every other
+; floored move. Base 20 doubles that headroom without touching the disabled
+; sentinel at 80, so graded scoring stays meaningful once AI_SMART (and later
+; the damage layer) start stacking adjustments on the same move.
+;
+; Use these names rather than bare numbers, so a future rescale is one edit.
+; Magnitudes match pokecrystal's, which is where the base-20 scale comes from.
+DEF AI_NUDGE       EQU 1  ; a mild preference
+DEF AI_STRONG      EQU 2  ; a clear preference
+DEF AI_VERY_STRONG EQU 3  ; a decisive preference
+DEF AI_HEAVY       EQU 10 ; pokecrystal's AIDiscourageMove: a big penalty, but
+                          ; deliberately NOT a ban - a move at base+10 still
+                          ; beats one at base+20, and can still be chosen if
+                          ; every alternative is worse.
+
+; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
+; for the "this move does literally nothing" case. Deliberately expressed as a
+; computation, not a literal, so it stays correct if the baseline moves again.
+; (Phase 2a used a hardcoded 69, which happened to remain correct across the
+; 10 -> 20 widening only by luck.)
+DEF AI_SATURATE    EQU AI_SCORE_MAX - AI_SCORE_BASE + 1
 
 ; --- wBuffer layout during one AI cycle (30 bytes, EXACT fit) ---
 ; Documented here because overrunning it silently corrupts the move scores.

@@ -87,6 +87,28 @@ def main() -> int:
             )
             scores = harness.hook_ai_scores()
             switches = harness.hook_flag("SwitchEnemyMon")
+            if scenario.prime or scenario.prime_hp:
+                # Fires once per AI decision, after AITrackLastMove has
+                # already run this cycle (so wAILastMove* pokes land after
+                # the routine that would otherwise immediately overwrite
+                # them) but before ANY scoring layer - including
+                # AI_REDUNDANT, which runs first - reads WRAM. Priming later
+                # (e.g. at AILayerSmart's own entry) left AI_REDUNDANT
+                # scoring off the mon's real, undamaged fixture HP instead
+                # of the primed value. See AIScenario.prime / .prime_hp.
+                def apply_prime(_scenario=scenario) -> None:
+                    for label, value in _scenario.prime.items():
+                        harness.write8(label, value)
+                    for entry in _scenario.prime_hp:
+                        max_hi, max_lo = harness.read_bytes(str(entry["max_label"]), 2)
+                        max_hp = (max_hi << 8) | max_lo
+                        value = max_hp * int(entry["numerator"]) // int(entry["denominator"])
+                        value = max(1, min(max_hp, value))
+                        current_label = str(entry["current_label"])
+                        harness.write8(current_label, value >> 8, offset=0)
+                        harness.write8(current_label, value & 0xFF, offset=1)
+
+                harness.hook_flag("AIEnemyTrainerChooseMoves.beforeLayers", action=apply_prime)
             harness.boot_fight2(seed=1)
             baseline = io.BytesIO()
             harness.save_state(baseline)

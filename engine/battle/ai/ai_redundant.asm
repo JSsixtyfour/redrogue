@@ -37,8 +37,11 @@
 ;     small nudge, not an elimination, since eliminating a perfectly good
 ;     attack over a lost status chance would be a worse mistake than the one
 ;     being fixed.
-DEF AI_REDUNDANT_HEAVY EQU 69 ; from base 10, saturates to AI_SCORE_MAX (79)
-DEF AI_REDUNDANT_LIGHT EQU 3
+; Phase 2b: was a hardcoded 69 ("from base 10, saturates to 79"), which stayed
+; correct across the 10 -> 20 baseline widening only by luck. Now derived, so a
+; future rescale cannot silently turn "always saturate" into "sometimes doesn't".
+DEF AI_REDUNDANT_HEAVY EQU AI_SATURATE
+DEF AI_REDUNDANT_LIGHT EQU AI_VERY_STRONG
 
 ; DISPATCH DISCIPLINE (learned the hard way during Phase 2a bring-up - see
 ; ai_score_helpers.asm for why AIEncourage/AIDiscourage live in this bank and
@@ -417,8 +420,17 @@ AIRedundant_Substitute:
 	inc hl
 	ld a, [hl]
 	cp e
-	jr c, .heavy ; maxHP low <= hp*4 low (already nz-high-equal) -> redundant
-	jr z, .heavy
+	; Phase 2b bugfix: this was `jr c, .heavy`, exactly backwards. High bytes
+	; are already confirmed equal at this point (the two branches above ruled
+	; out < and >), so the 16-bit comparison reduces entirely to the low
+	; bytes: maxHP < hp*4 (i.e. legal) iff maxHP_lo < hp4_lo, i.e. iff THIS
+	; `cp e` sets carry - so carry means legal, not redundant. The old code
+	; blocked Substitute as illegal across a real band of legal HP values
+	; (any HP where hp*4's high byte happened to equal maxHP's high byte),
+	; caught by a Phase 2b scenario that landed in that exact band.
+	jr c, .ok ; maxHP low < hp*4 low -> maxHP < hp*4 -> legal
+	jr .heavy ; else maxHP low >= hp*4 low -> maxHP >= hp*4 -> at or past the
+	          ; 25% boundary -> redundant
 .ok
 	xor a
 	ret

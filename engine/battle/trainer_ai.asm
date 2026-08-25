@@ -1,7 +1,13 @@
 ; creates a set of moves that may be used and returns its address in hl
 ; unused slots are filled with 0, all used slots may be chosen with equal probability
 AIEnemyTrainerChooseMoves:
-	ld a, $a
+; Phase 2b: snapshot last turn's move/power for the anti-spam and
+; repeated-move-fatigue heuristics. MUST run before the scoring layers, whose
+; ReadMove calls overwrite the wEnemyMove* block this reads from. See
+; AITrackLastMove in ai_predicates.asm for why this needs no core.asm hook.
+	call AITrackLastMove
+	ld a, AI_SCORE_BASE ; Phase 2b: was a hardcoded $a; the baseline is now a
+	                    ; constant so widening it is a single edit
 	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
 	ld [hli], a   ; move 1
 	ld [hli], a   ; move 2
@@ -23,6 +29,14 @@ AIEnemyTrainerChooseMoves:
 ; returns the tier's 16-bit layer bitmask; layers execute in bit order.
 ; It returns in de because Bankswitch destroys a and bc but preserves de/hl.
 	farcall AIGetLayerWord ; de = layer bitmask for this battle's tier
+.beforeLayers ; harness hook point only (tools/pyboy_smoke): the last instant
+              ; before any scoring layer runs, so a test scenario can prime
+              ; WRAM (e.g. HP, to hit an exact predicate band deterministically)
+              ; and have every layer - including AI_REDUNDANT - see it, not
+              ; just layers that happen to run later in the bit order. Must
+              ; stay a distinct address from .nextLayer (needs a real
+              ; instruction between them): hook_ai_scores() already hooks
+              ; .nextLayer, and PyBoy allows only one hook per address.
 	ld b, 0                ; b = layer index
 .nextLayer
 	ld a, b
@@ -124,7 +138,7 @@ AIScoringPointers:
 ; Placeholders. Each is replaced wholesale by its phase; they exist now so the
 ; dispatch table is complete and the tier words can already name every layer.
 ; AILayerRedundant is real as of Phase 2a - see engine/battle/ai/ai_redundant.asm.
-AILayerSmart:
+; AILayerSmart is real as of Phase 2b - see engine/battle/ai/ai_smart.asm.
 AILayerDamage:
 AILayerThreat:
 AILayerPlan:
@@ -171,9 +185,11 @@ AIMoveChoiceModification1:
 	pop de
 	pop hl
 	jr nc, .nextMove
-	ld a, [hl]
-	add $5 ; heavily discourage move
-	ld [hl], a
+	; Phase 2b: was `ld a,[hl] / add $5 / ld[hl],a`. AIDiscourage preserves
+	; bc/de/hl (only clobbers a), so this drops straight in - hl still points
+	; at this move's score byte from the pop above.
+	ld a, AI_HEAVY
+	call AIDiscourage
 	jr .nextMove
 
 StatusAilmentMoveEffects:
@@ -187,8 +203,13 @@ StatusAilmentMoveEffects:
 ; in particular, stat-modifying moves and other move effects
 ; that fall in-between
 AIMoveChoiceModification2:
+	; Phase 2b: was `cp $1 / ret nz`, which only fires on the SECOND time this
+	; enemy mon acts (wAILayer2Encouragement starts at 0 on send-out - see
+	; core.asm:1037/6394 - and is incremented after the move executes, so a
+	; check for ==1 matches the second action, never the first). Yume and
+	; PureRGB both fix this the same way: fire on turn 1 of the send-out.
 	ld a, [wAILayer2Encouragement]
-	cp $1
+	and a
 	ret nz
 	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
 	ld de, wEnemyMonMoves ; enemy moves
@@ -213,7 +234,9 @@ AIMoveChoiceModification2:
 	jr c, .preferMove
 	jr .nextMove
 .preferMove
-	dec [hl] ; slightly encourage this move
+	; Phase 2b: was `dec [hl]`.
+	ld a, AI_STRONG
+	call AIEncourage
 	jr .nextMove
 
 ; encourages moves that are effective against the player's mon (even if non-damaging).
@@ -243,7 +266,9 @@ AIMoveChoiceModification3:
 	cp $10
 	jr z, .nextMove
 	jr c, .notEffectiveMove
-	dec [hl] ; slightly encourage this move
+	; Phase 2b: was `dec [hl]`.
+	ld a, AI_NUDGE
+	call AIEncourage
 	jr .nextMove
 .notEffectiveMove ; discourages non-effective moves if better moves are available
 	push hl
@@ -284,7 +309,9 @@ AIMoveChoiceModification3:
 	pop hl
 	and a
 	jr z, .nextMove
-	inc [hl] ; slightly discourage this move
+	; Phase 2b: was `inc [hl]`.
+	ld a, AI_NUDGE
+	call AIDiscourage
 	jr .nextMove
 AIMoveChoiceModification4:
 	ret
@@ -537,7 +564,11 @@ INCLUDE "data/trainers/ai_pointers.asm"
 
 INCLUDE "engine/battle/ai/ai_score_helpers.asm"
 
+INCLUDE "engine/battle/ai/ai_predicates.asm"
+
 INCLUDE "engine/battle/ai/ai_redundant.asm"
+
+INCLUDE "engine/battle/ai/ai_smart.asm"
 
 JugglerAI:
 	cp 25 percent + 1
