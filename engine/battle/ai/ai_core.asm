@@ -166,43 +166,6 @@ AIHasFlag::
 .set
 	ret
 
-; --- Saturating score adjustment -------------------------------------------
-; Scores are unsigned bytes with no natural floor or ceiling. With several
-; layers stacking, an unclamped adjustment can wrap a byte around, or walk a
-; score into AI_SCORE_DISABLED and silently forbid a legal move. Every layer
-; from Phase 2b on adjusts scores through these.
-;
-; INPUT: hl = pointer to the score byte, a = magnitude
-; Clobbers a. Preserves bc, de, hl.
-
-; Make a move more attractive (scores are "lower is better").
-AIEncourage::
-	ld b, a
-	ld a, [hl]
-	sub b
-	jr c, .floor      ; underflowed past zero
-	cp AI_SCORE_MIN
-	jr nc, .store
-.floor
-	ld a, AI_SCORE_MIN
-.store
-	ld [hl], a
-	ret
-
-; Make a move less attractive.
-AIDiscourage::
-	ld b, a
-	ld a, [hl]
-	add b
-	jr c, .ceiling    ; overflowed past 255
-	cp AI_SCORE_MAX + 1
-	jr c, .store
-.ceiling
-	ld a, AI_SCORE_MAX
-.store
-	ld [hl], a
-	ret
-
 ; --- Player-state accessor seam --------------------------------------------
 ; Every heuristic reads the player's state through these rather than touching
 ; wBattleMon* directly. Today they return live data, which is the

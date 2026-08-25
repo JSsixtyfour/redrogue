@@ -123,7 +123,7 @@ AIScoringPointers:
 
 ; Placeholders. Each is replaced wholesale by its phase; they exist now so the
 ; dispatch table is complete and the tier words can already name every layer.
-AILayerRedundant:
+; AILayerRedundant is real as of Phase 2a - see engine/battle/ai/ai_redundant.asm.
 AILayerSmart:
 AILayerDamage:
 AILayerThreat:
@@ -534,6 +534,10 @@ TrainerAI:
 	jp hl
 
 INCLUDE "data/trainers/ai_pointers.asm"
+
+INCLUDE "engine/battle/ai/ai_score_helpers.asm"
+
+INCLUDE "engine/battle/ai/ai_redundant.asm"
 
 JugglerAI:
 	cp 25 percent + 1

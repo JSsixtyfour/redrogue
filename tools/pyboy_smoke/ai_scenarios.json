@@ -16,6 +16,57 @@
         {"species": "GENGAR", "level": 50, "moves": ["HYPNOSIS", "NIGHT_SHADE"]}
       ],
       "expect": {"enemy_move_slots": [0, 1], "pick_slot": 0}
+    },
+    {
+      "name": "redundant_paralyze_vs_ground_blocked",
+      "phase": "2a",
+      "heuristic": "paralyze_vs_ground",
+      "case": "positive",
+      "tags": ["ai_redundant", "substitute_unrelated", "type_immunity"],
+      "required_cases": ["positive", "negative"],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {"species": "RHYDON", "level": 50, "moves": ["TACKLE"]}
+      ],
+      "enemy": [
+        {"species": "PIKACHU", "level": 50, "moves": ["THUNDER_WAVE", "THUNDERBOLT"]}
+      ],
+      "expect": {"never_pick": [0], "score_lt": [[1, 0]]}
+    },
+    {
+      "name": "redundant_paralyze_vs_nonground_legal",
+      "phase": "2a",
+      "heuristic": "paralyze_vs_ground",
+      "case": "negative",
+      "tags": ["ai_redundant", "type_immunity"],
+      "required_cases": ["positive", "negative"],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {"species": "CHARMANDER", "level": 50, "moves": ["TACKLE"]}
+      ],
+      "enemy": [
+        {"species": "PIKACHU", "level": 50, "moves": ["THUNDER_WAVE", "THUNDERBOLT"]}
+      ],
+      "expect": {"scores": [10, 10, 10, 10]}
+    },
+    {
+      "name": "redundant_heal_at_full_hp_blocked",
+      "phase": "2a",
+      "heuristic": "heal_at_full_hp",
+      "case": "positive",
+      "tags": ["ai_redundant"],
+      "required_cases": ["positive"],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {"species": "GEODUDE", "level": 50, "moves": ["TACKLE"]}
+      ],
+      "enemy": [
+        {"species": "CHANSEY", "level": 50, "moves": ["RECOVER", "TACKLE"]}
+      ],
+      "expect": {"never_pick": [0], "score_lt": [[1, 0]]}
     }
   ]
 }
