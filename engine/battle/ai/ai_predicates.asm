@@ -109,6 +109,60 @@ AIPlayerHPBelowQuarter::
 	ld b, 2
 	jp AIHPShiftCompare
 
+; --- Damage / KO predicates (Phase 3) --------------------------------------
+; These read wAIDamageEstimate, which is populated by AIEstimateDamage
+; (engine/battle/core.asm, bank $0F - see that routine's header for why it
+; cannot live in this bank). A caller must `farcall AIEstimateDamage` for the
+; move it wants to ask about BEFORE calling anything here; these routines do
+; not run the simulator themselves, so that one farcall per move is not paid
+; again per predicate.
+
+; Carry SET if (wAIDamageEstimate << b) >= the player's current HP. The shift
+; turns one comparison into the whole damage-tier vocabulary, the same trick
+; AIHPShiftCompare above uses for HP bands, and for the same reason: no
+; division, no rounding, no hDivisor/hQuotient dependency.
+;   b = 0 -> this move kills outright
+;   b = 1 -> it takes at least half the remaining HP
+;   b = 2 -> at least a quarter
+;
+; Note the estimate is a MAXIMUM roll (AIEstimateDamage skips RandomizeDamage),
+; so b=0 answers "can this move kill", not "does it on average". That is the
+; intended reading for the priority cascade's rank 1: taking a kill that is
+; merely possible is correct play, even when a low roll would fall short.
+; INPUT: b = shift count. Clobbers af, b, de, hl.
+AIDamageReachesFraction::
+	ld a, [wAIDamageEstimate]
+	ld h, a
+	ld a, [wAIDamageEstimate + 1]
+	ld l, a ; hl = estimated damage
+	inc b   ; so a shift count of 0 falls straight through to .compare
+.shiftLoop
+	dec b
+	jr z, .compare
+	add hl, hl
+	jr nc, .shiftLoop
+; Overflowed 16 bits. Max HP is capped at 999 by the stat system, so a value
+; this large unambiguously reaches it - report "reaches" without reading further.
+	scf
+	ret
+.compare
+	ld a, [wBattleMonHP]
+	ld d, a
+	ld a, [wBattleMonHP + 1]
+	ld e, a ; de = player's current HP
+	ld a, l
+	sub e
+	ld a, h
+	sbc d   ; carry set iff hl < de, i.e. the hit falls short
+	ccf     ; flip, so carry set means "reaches or exceeds"
+	ret
+
+; Carry SET if the currently-estimated move would KO the player outright.
+; Clobbers af, b, de, hl.
+AIMoveWouldKO::
+	ld b, 0
+	jp AIDamageReachesFraction
+
 ; --- Repeated-move / anti-spam tracking -----------------------------------
 ; Maintains wAILastMovePower, wAILastMoveNum and wAISameMoveCount, which Phase 1
 ; allocated but nothing wrote. Called once per AI decision, from the top of

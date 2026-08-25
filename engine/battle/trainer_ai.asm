@@ -128,8 +128,8 @@ AIScoringPointers:
 	dw AIMoveChoiceModification1   ; bit 1  AI_BASIC
 	dw AIMoveChoiceModification3   ; bit 2  AI_TYPES
 	dw AIMoveChoiceModification2   ; bit 3  AI_SETUP
-	dw AILayerSmart                ; bit 4  AI_SMART   - stub until Phase 2b
-	dw AILayerDamage               ; bit 5  AI_DAMAGE  - stub until Phase 3
+	dw AILayerSmart                ; bit 4  AI_SMART
+	dw AILayerDamage               ; bit 5  AI_DAMAGE
 	dw AILayerThreat               ; bit 6  AI_THREAT  - stub until Phase 3
 	dw AILayerPlan                 ; bit 7  AI_PLAN    - stub until Phase 5
 	dw AILayerRisky                ; bit 8  AI_RISKY   - stub until Phase 3
@@ -139,7 +139,7 @@ AIScoringPointers:
 ; dispatch table is complete and the tier words can already name every layer.
 ; AILayerRedundant is real as of Phase 2a - see engine/battle/ai/ai_redundant.asm.
 ; AILayerSmart is real as of Phase 2b - see engine/battle/ai/ai_smart.asm.
-AILayerDamage:
+; AILayerDamage is real as of Phase 3 - see engine/battle/ai/ai_damage.asm.
 AILayerThreat:
 AILayerPlan:
 AILayerRisky:
@@ -569,6 +569,8 @@ INCLUDE "engine/battle/ai/ai_predicates.asm"
 INCLUDE "engine/battle/ai/ai_redundant.asm"
 
 INCLUDE "engine/battle/ai/ai_smart.asm"
+
+INCLUDE "engine/battle/ai/ai_damage.asm"
 
 JugglerAI:
 	cp 25 percent + 1

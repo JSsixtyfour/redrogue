@@ -6072,6 +6072,117 @@ AIGetTypeEffectiveness:
 	ld [wTypeEffectiveness], a ; store damage multiplier
 	ret
 
+; ============================================================
+; AI damage simulator (AI_OVERHAUL_PLAN.md Phase 3).
+;
+; Estimates what the enemy's currently-loaded move (the wEnemyMove* block, as
+; left by the caller's ReadMove) would do to the player this turn, and stores
+; the result in wAIDamageEstimate (16-bit, high byte first, same convention as
+; wDamage). Deliberately reports the MAXIMUM roll - RandomizeDamage is never
+; called - so the AI reasons about a deterministic upper bound rather than a
+; distribution. This is pokecrystal's AIDamageCalc trick, and it is why the KO
+; predicates built on top of this can be exact instead of probabilistic.
+;
+; WHY THIS LIVES HERE AND NOT WITH THE AI LAYERS IN BANK $0E:
+; GetDamageVarsForEnemyAttack returns the damage inputs in b/c/d/e, and
+; CalculateDamage consumes b/c/d/e. Those two calls must therefore be
+; back-to-back PLAIN SAME-BANK calls. A farcall between them would destroy bc,
+; because Bankswitch's own return bookkeeping does `ld bc, .Return` - the same
+; class of constraint documented in ai_score_helpers.asm, reached from the
+; opposite direction. Splitting this routine across banks is impossible without
+; reimplementing the damage formula, so it stays beside the formula and the AI
+; layers reach it with a single farcall per move.
+;
+; WHY IT CALLS AdjustDamageForMoveType RATHER THAN ITS OWN TYPE MATH:
+; that routine already applies STAB and FULL dual-type stacking (it multiplies
+; through every matching row of the chart, so 4x and 0.25x both come out right),
+; which is exactly what the plan originally specced a new AIDualTypeEffectiveness
+; to do. Using the real one is engine-exact by construction and cannot drift
+; from what the move will actually do. It also makes BIRD resolve to neutral for
+; free, since BIRD has no rows in the chart at all.
+;
+; SAFETY - the reason this routine is mostly save/restore:
+; it runs during MOVE SELECTION, before the real turn executes, and every
+; routine it calls writes real battle state. hWhoseTurn in particular is
+; inherited: SelectEnemyMove never sets it, and both CalculateDamage and
+; AdjustDamageForMoveType branch on it. Forging it to "enemy's turn" is
+; load-bearing rather than cosmetic - it is also what makes
+; AdjustDamageForMoveType's RoguePrismDamageBoost farcall self-cancel, since
+; that boost returns immediately on any turn but the player's.
+;
+; CLOBBERS: af, bc, de, hl. All output is in WRAM.
+; ============================================================
+AIEstimateDamage::
+; Save every byte the damage path below writes. Restored at .done in exactly
+; reverse order; the two guard branches jump there with the stack already
+; balanced.
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, [wCriticalHitOrOHKO]
+	push af
+	ld a, [wMoveMissed]
+	push af
+	ld a, [wDamageMultipliers]
+	push af
+	ld a, [wMoveType]
+	push af
+	ld hl, wDamage
+	ld a, [hli]
+	push af
+	ld a, [hl]
+	push af
+
+	ld a, $1
+	ldh [hWhoseTurn], a ; enemy is the attacker for this estimate
+	xor a
+	ld [wCriticalHitOrOHKO], a ; estimate the ordinary, non-crit case. This also
+	                           ; keeps GetDamageVarsForEnemyAttack off its crit
+	                           ; branch, which would otherwise run GetEnemyMonStat
+	                           ; -> GetMonHeader and clobber wCurSpecies /
+	                           ; wCurEnemyLevel / wLoadedMon* as a side effect -
+	                           ; state this routine has no business touching.
+	ld [wAIDamageEstimate], a
+	ld [wAIDamageEstimate + 1], a
+
+; Two move classes must never reach CalculateDamage from here.
+	ld a, [wEnemyMoveEffect]
+	cp OHKO_EFFECT
+	jr z, .done ; CalculateDamage dispatches OHKO_EFFECT straight into
+	            ; JumpToOHKOMoveEffect, which CALLS JumpMoveEffect - i.e. it
+	            ; executes the real move effect. Running that here would fire a
+	            ; move in the middle of scoring. OHKO legality is already owned
+	            ; by AIRedundant_OHKO (speed) and AISmart_OHKO (level), so report
+	            ; zero and leave the scoring to them.
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .done ; status move: nothing to estimate
+
+	call GetDamageVarsForEnemyAttack ; b = attack, c = defense, d = power, e = level
+	call CalculateDamage             ; -> wDamage, before STAB and type
+	call AdjustDamageForMoveType     ; STAB + dual-type, engine-exact
+	ld hl, wDamage
+	ld a, [hli]
+	ld [wAIDamageEstimate], a
+	ld a, [hl]
+	ld [wAIDamageEstimate + 1], a
+.done
+	ld hl, wDamage + 1
+	pop af
+	ld [hld], a
+	pop af
+	ld [hl], a
+	pop af
+	ld [wMoveType], a
+	pop af
+	ld [wDamageMultipliers], a
+	pop af
+	ld [wMoveMissed], a
+	pop af
+	ld [wCriticalHitOrOHKO], a
+	pop af
+	ldh [hWhoseTurn], a
+	ret
+
 INCLUDE "data/types/type_matchups.asm"
 
 ; some tests that need to pass for a move to hit

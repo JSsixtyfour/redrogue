@@ -74,6 +74,14 @@ DEF AI_HEAVY       EQU 10 ; pokecrystal's AIDiscourageMove: a big penalty, but
                           ; beats one at base+20, and can still be chosen if
                           ; every alternative is worse.
 
+; Phase 3: a move the damage simulator says KILLS this turn. Larger than
+; AI_VERY_STRONG on purpose - "take the guaranteed kill" is rank 1 of the plan's
+; priority cascade and must outrank every ordinary preference stacked against
+; it, including AI_TYPES' nudges and AI_SMART's per-effect opinions. It is still
+; below AI_HEAVY, so a move AI_REDUNDANT proved cannot work never wins on the
+; strength of a KO it would not actually land.
+DEF AI_KILL        EQU 5
+
 ; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
 ; for the "this move does literally nothing" case. Deliberately expressed as a
 ; computation, not a literal, so it stays correct if the baseline moves again.

@@ -5,254 +5,753 @@
       "phase": "foundation",
       "heuristic": "fixture_pipeline",
       "case": "positive",
-      "tags": ["framework", "telemetry"],
-      "required_cases": ["positive"],
+      "tags": [
+        "framework",
+        "telemetry"
+      ],
+      "required_cases": [
+        "positive"
+      ],
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "SNORLAX", "level": 50, "moves": ["BODY_SLAM", "REST"]}
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "REST"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "GENGAR", "level": 50, "moves": ["HYPNOSIS", "NIGHT_SHADE"]}
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "HYPNOSIS",
+            "NIGHT_SHADE"
+          ]
+        }
       ],
-      "expect": {"enemy_move_slots": [0, 1], "pick_slot": [0, 1]}
+      "expect": {
+        "enemy_move_slots": [
+          0,
+          1
+        ],
+        "pick_slot": [
+          0,
+          1
+        ]
+      }
     },
     {
       "name": "redundant_paralyze_vs_ground_blocked",
       "phase": "2a",
       "heuristic": "paralyze_vs_ground",
       "case": "positive",
-      "tags": ["ai_redundant", "substitute_unrelated", "type_immunity"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_redundant",
+        "substitute_unrelated",
+        "type_immunity"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 0,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "RHYDON", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "RHYDON",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "PIKACHU", "level": 50, "moves": ["THUNDER_WAVE", "THUNDERBOLT"]}
+        {
+          "species": "PIKACHU",
+          "level": 50,
+          "moves": [
+            "THUNDER_WAVE",
+            "THUNDERBOLT"
+          ]
+        }
       ],
-      "expect": {"never_pick": [0], "score_lt": [[1, 0]]}
+      "expect": {
+        "never_pick": [
+          0
+        ],
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
     },
     {
       "name": "redundant_paralyze_vs_nonground_legal",
       "phase": "2a",
       "heuristic": "paralyze_vs_ground",
       "case": "negative",
-      "tags": ["ai_redundant", "type_immunity"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_redundant",
+        "type_immunity"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 0,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHARMANDER", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHARMANDER",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "PIKACHU", "level": 50, "moves": ["THUNDER_WAVE", "THUNDERBOLT"]}
+        {
+          "species": "PIKACHU",
+          "level": 50,
+          "moves": [
+            "THUNDER_WAVE",
+            "THUNDERBOLT"
+          ]
+        }
       ],
-      "expect": {"scores": [20, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "redundant_heal_at_full_hp_blocked",
       "phase": "2a",
       "heuristic": "heal_at_full_hp",
       "case": "positive",
-      "tags": ["ai_redundant"],
-      "required_cases": ["positive"],
+      "tags": [
+        "ai_redundant"
+      ],
+      "required_cases": [
+        "positive"
+      ],
       "ai_tier": 0,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "GEODUDE", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "GEODUDE",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["RECOVER", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "RECOVER",
+            "TACKLE"
+          ]
+        }
       ],
-      "expect": {"never_pick": [0], "score_lt": [[1, 0]]}
+      "expect": {
+        "never_pick": [
+          0
+        ],
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
     },
     {
       "name": "smart_antispam_fires_on_back_to_back_zero_power",
       "phase": "2b",
       "heuristic": "antispam",
       "case": "positive",
-      "tags": ["ai_smart", "cross_cutting"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "cross_cutting"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["MIST", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "MIST",
+            "TACKLE"
+          ]
+        }
       ],
-      "prime": {"wAILastMoveNum": 33, "wAILastMovePower": 0},
-      "expect": {"scores": [22, 20, 20, 20]}
+      "prime": {
+        "wAILastMoveNum": 33,
+        "wAILastMovePower": 0
+      },
+      "expect": {
+        "scores": [
+          22,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_antispam_exempt_when_last_move_had_power",
       "phase": "2b",
       "heuristic": "antispam",
       "case": "negative",
-      "tags": ["ai_smart", "cross_cutting"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "cross_cutting"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["MIST", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "MIST",
+            "TACKLE"
+          ]
+        }
       ],
-      "prime": {"wAILastMoveNum": 33, "wAILastMovePower": 40},
-      "expect": {"scores": [20, 20, 20, 20]}
+      "prime": {
+        "wAILastMoveNum": 33,
+        "wAILastMovePower": 40
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_fatigue_fires_on_long_streak",
       "phase": "2b",
       "heuristic": "repeated_move_fatigue",
       "case": "positive",
-      "tags": ["ai_smart", "cross_cutting"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "cross_cutting"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE", "MIST"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "MIST"
+          ]
+        }
       ],
-      "prime": {"wAILastMoveNum": 33, "wAILastMovePower": 40, "wAISameMoveCount": 6},
-      "expect": {"scores": [23, 20, 20, 20]}
+      "prime": {
+        "wAILastMoveNum": 33,
+        "wAILastMovePower": 40,
+        "wAISameMoveCount": 6
+      },
+      "expect": {
+        "scores": [
+          23,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_fatigue_exempt_below_streak_threshold",
       "phase": "2b",
       "heuristic": "repeated_move_fatigue",
       "case": "negative",
-      "tags": ["ai_smart", "cross_cutting"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "cross_cutting"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE", "MIST"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "MIST"
+          ]
+        }
       ],
-      "prime": {"wAILastMoveNum": 33, "wAILastMovePower": 40, "wAISameMoveCount": 3},
-      "expect": {"scores": [20, 20, 20, 20]}
+      "prime": {
+        "wAILastMoveNum": 33,
+        "wAILastMovePower": 40,
+        "wAISameMoveCount": 3
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_heal_encourages_below_quarter_hp",
       "phase": "2b",
       "heuristic": "heal_hp_band",
       "case": "positive",
-      "tags": ["ai_smart", "hp_predicate"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "hp_predicate"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["RECOVER", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "RECOVER",
+            "TACKLE"
+          ]
+        }
       ],
       "prime_hp": [
-        {"current_label": "wEnemyMonHP", "max_label": "wEnemyMonMaxHP", "numerator": 1, "denominator": 5}
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 5
+        }
       ],
-      "expect": {"scores": [16, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          16,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_heal_neutral_between_quarter_and_half_hp",
       "phase": "2b",
       "heuristic": "heal_hp_band",
       "case": "negative",
-      "tags": ["ai_smart", "hp_predicate"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "hp_predicate"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["RECOVER", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "RECOVER",
+            "TACKLE"
+          ]
+        }
       ],
       "prime_hp": [
-        {"current_label": "wEnemyMonHP", "max_label": "wEnemyMonMaxHP", "numerator": 2, "denominator": 5}
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 2,
+          "denominator": 5
+        }
       ],
-      "expect": {"scores": [18, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_substitute_discouraged_below_half_hp",
       "phase": "2b",
       "heuristic": "substitute_hp_band",
       "case": "positive",
-      "tags": ["ai_smart", "hp_predicate"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "hp_predicate"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["SUBSTITUTE", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "SUBSTITUTE",
+            "TACKLE"
+          ]
+        }
       ],
       "prime_hp": [
-        {"current_label": "wEnemyMonHP", "max_label": "wEnemyMonMaxHP", "numerator": 1, "denominator": 3}
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 3
+        }
       ],
-      "expect": {"scores": [30, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          30,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_substitute_neutral_above_half_hp",
       "phase": "2b",
       "heuristic": "substitute_hp_band",
       "case": "negative",
-      "tags": ["ai_smart", "hp_predicate"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart",
+        "hp_predicate"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "CHANSEY", "level": 50, "moves": ["TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "CHANSEY", "level": 50, "moves": ["SUBSTITUTE", "TACKLE"]}
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "SUBSTITUTE",
+            "TACKLE"
+          ]
+        }
       ],
       "prime_hp": [
-        {"current_label": "wEnemyMonHP", "max_label": "wEnemyMonMaxHP", "numerator": 7, "denominator": 10}
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 7,
+          "denominator": 10
+        }
       ],
-      "expect": {"scores": [20, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_ohko_discouraged_when_player_level_higher",
       "phase": "2b",
       "heuristic": "ohko_level_check",
       "case": "positive",
-      "tags": ["ai_smart"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "SNORLAX", "level": 60, "moves": ["TACKLE"]}
+        {
+          "species": "SNORLAX",
+          "level": 60,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "ELECTRODE", "level": 40, "moves": ["HORN_DRILL", "TACKLE"]}
+        {
+          "species": "ELECTRODE",
+          "level": 40,
+          "moves": [
+            "HORN_DRILL",
+            "TACKLE"
+          ]
+        }
       ],
-      "expect": {"scores": [30, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          30,
+          20,
+          20,
+          20
+        ]
+      }
     },
     {
       "name": "smart_ohko_neutral_when_enemy_level_at_least_player",
       "phase": "2b",
       "heuristic": "ohko_level_check",
       "case": "negative",
-      "tags": ["ai_smart"],
-      "required_cases": ["positive", "negative"],
+      "tags": [
+        "ai_smart"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
-        {"species": "SNORLAX", "level": 40, "moves": ["TACKLE"]}
+        {
+          "species": "SNORLAX",
+          "level": 40,
+          "moves": [
+            "TACKLE"
+          ]
+        }
       ],
       "enemy": [
-        {"species": "ELECTRODE", "level": 60, "moves": ["HORN_DRILL", "TACKLE"]}
+        {
+          "species": "ELECTRODE",
+          "level": 60,
+          "moves": [
+            "HORN_DRILL",
+            "TACKLE"
+          ]
+        }
       ],
-      "expect": {"scores": [20, 20, 20, 20]}
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "damage_takes_the_available_kill",
+      "phase": "3",
+      "heuristic": "kill_first",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "simulator",
+        "priority_cascade"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "GYARADOS",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "THUNDERBOLT",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 2
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "damage_silent_when_no_move_threatens",
+      "phase": "3",
+      "heuristic": "kill_first",
+      "case": "negative",
+      "tags": [
+        "ai_damage",
+        "simulator"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "THUNDER_WAVE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
     }
   ]
 }
