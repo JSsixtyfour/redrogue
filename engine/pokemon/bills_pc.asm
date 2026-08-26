@@ -91,13 +91,14 @@ DEF BILLS_PC_BOX_ROWS    EQU 4
 
 ; Yume's 5x4 BG-icon storage screen, reconciled with Red Rogue's compact box
 ; representation. Party slots are 0..5 and box slots are 6..25. Box mutations
-; continue through MoveMon/RemovePokemon so fusion and variant data follow the
-; established project paths and wBoxSpecies remains compact and $ff-terminated.
+; that cross into an empty domain continue through MoveMon/RemovePokemon. Same-
+; domain swaps exchange species, structs, OTs, and nicknames as complete units.
 BillsPC_::
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
+	ld a, $ff
+	ld [wParentMenuItem], a ; no SWAP source selected
 	xor a
-	ld [wParentMenuItem], a
 	inc a ; MONSTER_NAME
 	ld [wNameListType], a
 	call LoadHpBarAndStatusTilePatterns
@@ -139,7 +140,14 @@ BillsPC_::
 	jr z, .inputLoop
 	ld b, a
 	bit B_PAD_B, b
-	jp nz, ExitBillsPC
+	jr z, .notB
+	ld a, [wParentMenuItem]
+	inc a
+	jp z, ExitBillsPC
+	ld a, $ff
+	ld [wParentMenuItem], a
+	jp .redrawAfterChoice
+.notB
 	bit B_PAD_START, b
 	jr nz, .changeBox
 	bit B_PAD_A, b
@@ -168,6 +176,9 @@ BillsPC_::
 	jr .inputLoop
 
 .changeBox
+	ld a, [wParentMenuItem]
+	inc a
+	jr nz, .inputLoop ; changing boxes would invalidate a pending box source
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	ldh a, [hCurrentMenuItem]
@@ -186,6 +197,12 @@ BillsPC_::
 	jr .inputLoop
 
 .chooseMon
+	ld a, [wParentMenuItem]
+	inc a
+	jr z, .noPendingSwap
+	call ExecuteBillsPCSwap
+	jp .redrawAfterChoice
+.noPendingSwap
 	ldh a, [hCurrentMenuItem]
 	cp PARTY_LENGTH
 	jp c, .partyActionMenu
@@ -193,13 +210,16 @@ BillsPC_::
 	call BillsPCBoxSlotHasMon
 	jp z, .emptyBoxSlot
 
-	; Box submenu: WITHDRAW / STATS / RELEASE / CANCEL.
+	; Box submenu: SWAP / WITHDRAW / STATS / RELEASE / CANCEL.
 	ldh a, [hCurrentMenuItem]
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	call DrawBillsPCSelectedCursor
-	hlcoord 9, 9
-	lb bc, 7, 9
+	hlcoord 9, 7
+	lb bc, 9, 9
 	call TextBoxBorder
+	hlcoord 11, 8
+	ld de, SwapPCText
+	call PlaceString
 	hlcoord 11, 10
 	ld de, WithdrawPCText
 	call PlaceString
@@ -213,14 +233,14 @@ BillsPC_::
 	ld de, CancelPCText
 	call PlaceString
 	ld hl, wTopMenuItemY
-	ld a, 10
+	ld a, 8
 	ld [hli], a
 	ld a, 10
 	ld [hli], a
 	xor a
 	ldh [hCurrentMenuItem], a
 	inc hl ; wTileBehindCursor
-	ld a, 3
+	ld a, 4
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
@@ -237,6 +257,12 @@ BillsPC_::
 	jp nz, .redrawAfterChoice
 	ld a, c
 	and a
+	jr nz, .boxWithdrawOption
+	call BeginBillsPCSwap
+	jp .redrawAfterChoice
+
+.boxWithdrawOption
+	dec a
 	jr nz, .boxStatsOption
 	call WithdrawBillsPCSelectedBoxMon
 	jp .redrawAfterChoice
@@ -274,13 +300,16 @@ BillsPC_::
 	jp .inputLoop
 
 .partyActionMenu
-	; Party submenu: DEPOSIT / STATS / CANCEL.
+	; Party submenu: SWAP / DEPOSIT / STATS / CANCEL.
 	ldh a, [hCurrentMenuItem]
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	call DrawBillsPCSelectedCursor
-	hlcoord 9, 11
-	lb bc, 5, 9
+	hlcoord 9, 9
+	lb bc, 7, 9
 	call TextBoxBorder
+	hlcoord 11, 10
+	ld de, SwapPCText
+	call PlaceString
 	hlcoord 11, 12
 	ld de, DepositPCText
 	call PlaceString
@@ -291,14 +320,14 @@ BillsPC_::
 	ld de, CancelPCText
 	call PlaceString
 	ld hl, wTopMenuItemY
-	ld a, 12
+	ld a, 10
 	ld [hli], a
 	ld a, 10
 	ld [hli], a
 	xor a
 	ldh [hCurrentMenuItem], a
 	inc hl ; wTileBehindCursor
-	ld a, 2
+	ld a, 3
 	ld [hli], a ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
 	ld [hli], a ; wMenuWatchedKeys
@@ -315,6 +344,12 @@ BillsPC_::
 	jr nz, .redrawAfterChoice
 	ld a, c
 	and a
+	jr nz, .partyDepositOption
+	call BeginBillsPCSwap
+	jr .redrawAfterChoice
+
+.partyDepositOption
+	dec a
 	jr nz, .partyStatsOption
 	call DepositBillsPCSelectedPartyMon
 	jr .redrawAfterChoice
@@ -366,6 +401,9 @@ ExitBillsPC:
 	ld [wLastMenuItem], a
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ldh [hWhichPokemon], a
+	ld a, $ff
+	ld [wParentMenuItem], a
+	xor a
 	ld [wPlayerMonNumber], a
 	ld [wMonDataLocation], a
 
@@ -375,6 +413,153 @@ ExitBillsPC:
 	ld [wListScrollOffset], a
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
+	ret
+
+BeginBillsPCSwap:
+	ld a, [wPartyAndBillsPCSavedMenuItem]
+	ld [wParentMenuItem], a
+	ret
+
+ExecuteBillsPCSwap:
+	ld a, [wParentMenuItem]
+	cp PARTY_LENGTH
+	jr nc, .sourceBox
+
+	; A party source can swap with another party mon or move through the
+	; established compact deposit path when an empty box cell is chosen.
+	ldh a, [hCurrentMenuItem]
+	cp PARTY_LENGTH
+	jr c, .swapPartyMons
+	sub PARTY_LENGTH
+	call BillsPCBoxSlotHasMon
+	jr nz, .rejectOccupiedCrossDomain
+	ld a, [wParentMenuItem]
+	ld [wPartyAndBillsPCSavedMenuItem], a
+	ldh [hCurrentMenuItem], a
+	ld a, $ff
+	ld [wParentMenuItem], a
+	jp DepositBillsPCSelectedPartyMon
+
+.swapPartyMons
+	call SwapBillsPCSelectedPartyMons
+	jr .swapped
+
+.sourceBox
+	ldh a, [hCurrentMenuItem]
+	cp PARTY_LENGTH
+	jr c, .rejectOccupiedCrossDomain
+	sub PARTY_LENGTH
+	call BillsPCBoxSlotHasMon
+	jr z, .moveBoxMonToTail
+	call SwapBillsPCSelectedBoxMons
+
+.swapped
+	ld a, $ff
+	ld [wParentMenuItem], a
+	ld a, SFX_SWAP
+	jp PlaySound
+
+.moveBoxMonToTail
+	; Compact boxes cannot retain a visual hole. Move the selected record to
+	; the tail by rotating it through each following occupied slot.
+	ld a, [wParentMenuItem]
+	ld b, a
+	ld a, [wBoxCount]
+	add PARTY_LENGTH - 1
+	cp b
+	jr z, .swapped
+	ld a, b
+	inc a
+	ldh [hCurrentMenuItem], a
+	call SwapBillsPCSelectedBoxMons
+	ldh a, [hCurrentMenuItem]
+	ld [wParentMenuItem], a
+	jr .moveBoxMonToTail
+
+.rejectOccupiedCrossDomain
+	ld a, $ff
+	ld [wParentMenuItem], a
+	ld a, SFX_DENIED
+	call PlaySound
+	ld hl, CantSwapPCText
+	jp PrintBillsPCSelectedMessageNoName
+
+SwapBillsPCSelectedPartyMons:
+	ld hl, wPartySpecies
+	ld bc, 1
+	call GetBillsPCPartySwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call GetBillsPCPartySwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wPartyMonOT
+	ld bc, NAME_LENGTH
+	call GetBillsPCPartySwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wPartyMonNicks
+	ld bc, NAME_LENGTH
+	call GetBillsPCPartySwapPointers
+	jp SwapBillsPCByteRanges
+
+SwapBillsPCSelectedBoxMons:
+	ld hl, wBoxSpecies
+	ld bc, 1
+	call GetBillsPCBoxSwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wBoxMons
+	ld bc, BOXMON_STRUCT_LENGTH
+	call GetBillsPCBoxSwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wBoxMonOT
+	ld bc, NAME_LENGTH
+	call GetBillsPCBoxSwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wBoxMonNicks
+	ld bc, NAME_LENGTH
+	call GetBillsPCBoxSwapPointers
+	jp SwapBillsPCByteRanges
+
+; Input: hl = party array base, bc = entry size.
+; Output: de = pending source entry, hl = current destination entry.
+GetBillsPCPartySwapPointers:
+	push hl
+	ld a, [wParentMenuItem]
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop hl
+	ldh a, [hCurrentMenuItem]
+	jp AddNTimes
+
+; Input: hl = box array base, bc = entry size.
+; Output: de = pending source entry, hl = current destination entry.
+GetBillsPCBoxSwapPointers:
+	push hl
+	ld a, [wParentMenuItem]
+	sub PARTY_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop hl
+	ldh a, [hCurrentMenuItem]
+	sub PARTY_LENGTH
+	jp AddNTimes
+
+; Swap bc bytes in-place between de and hl without allocating RAM scratch.
+SwapBillsPCByteRanges:
+.loop
+	ld a, [de]
+	push af
+	ld a, [hl]
+	ld [de], a
+	pop af
+	ld [hli], a
+	inc de
+	dec bc
+	ld a, b
+	or c
+	jr nz, .loop
 	ret
 
 RedrawBillsPCBoxScreen:
@@ -564,7 +749,22 @@ GetBillsPCBoxRowAndColumn:
 
 DrawBillsPCCursor:
 	call DrawBillsPCCursorOnly
+	call DrawBillsPCPendingSourceCursor
 	jr DrawBillsPCInfoText
+
+DrawBillsPCPendingSourceCursor:
+	ld a, [wParentMenuItem]
+	inc a
+	ret z
+	dec a
+	ld b, a
+	ldh a, [hCurrentMenuItem]
+	cp b
+	ret z
+	ld a, b
+	call GetBillsPCCursorCoord
+	ld [hl], '▷'
+	ret
 
 DrawBillsPCCursorOnly:
 	ld a, [wLastMenuItem]
@@ -1017,17 +1217,17 @@ ENDM
 ; Load all 12 species icon categories as BG tiles. Chansey extends Yume's 44
 ; tiles to 48, occupying tile IDs $00-$2f and preserving Red Rogue's icon set.
 LoadBillsPCBoxIconTilePatterns:
-	load_bills_pc_box_icon MonsterSprite, 12, ICON_MON
+	load_bills_pc_box_icon MonsterSprite, 0, ICON_MON
 	load_bills_pc_box_icon PokeBallSprite, 0, ICON_BALL
 	load_bills_pc_box_icon FossilSprite, 0, ICON_HELIX
-	load_bills_pc_box_icon FairySprite, 12, ICON_FAIRY
-	load_bills_pc_box_icon BirdSprite, 12, ICON_BIRD
+	load_bills_pc_box_icon FairySprite, 0, ICON_FAIRY
+	load_bills_pc_box_icon BirdSprite, 0, ICON_BIRD
 	load_bills_pc_box_icon SeelSprite, 0, ICON_WATER
 	load_bills_pc_box_symmetric_icon BugIconFrame2, 0, ICON_BUG
 	load_bills_pc_box_symmetric_icon PlantIconFrame2, 0, ICON_GRASS
-	load_bills_pc_box_symmetric_icon SnakeIconFrame1, 0, ICON_SNAKE
-	load_bills_pc_box_symmetric_icon QuadrupedIconFrame1, 0, ICON_QUADRUPED
-	load_bills_pc_box_icon PikachuSprite, 12, ICON_PIKACHU
+	load_bills_pc_box_symmetric_icon SnakeIconFrame2, 0, ICON_SNAKE
+	load_bills_pc_box_symmetric_icon QuadrupedIconFrame2, 0, ICON_QUADRUPED
+	load_bills_pc_box_icon PikachuSprite, 0, ICON_PIKACHU
 	load_bills_pc_box_icon ChanseySprite, 0, ICON_CHANSEY
 	ret
 
@@ -1084,6 +1284,7 @@ BillsPCBoxReversedNibbles:
 
 BillsPCChangeBoxText: db "START:BOX@"
 BillsPCWhatToDoText: db "Choose a <PKMN>.@"
+SwapPCText:          db "SWAP@"
 DepositPCText:       db "DEPOSIT@"
 WithdrawPCText:      db "WITHDRAW@"
 StatsPCText:         db "STATS@"
@@ -1112,6 +1313,10 @@ MonIsTakenOutText:
 
 NoMonText:
 	text_far _NoMonText
+	text_end
+
+CantSwapPCText:
+	text "Those can't swap!@"
 	text_end
 
 CantTakeMonText:
