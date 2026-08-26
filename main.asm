@@ -60,6 +60,11 @@ INCLUDE "custom_functions/apply_self_stat_penalty.asm"
 INCLUDE "custom_functions/apply_single_badge_boost.asm"
 INCLUDE "engine/battle/ai/ai_core.asm"
 
+; Pinned to bank $2C (see the file header). Switching is decided once per
+; TURN, not once per move, so unlike every AILayer* routine it is not forced
+; into bank $0E by the scoring-loop dispatch.
+INCLUDE "engine/battle/ai/ai_switching.asm"
+
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"

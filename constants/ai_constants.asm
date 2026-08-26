@@ -99,7 +99,7 @@ DEF AI_SATURATE    EQU AI_SCORE_MAX - AI_SCORE_BASE + 1
 ;   +14 .. +15  best expected damage this AI_DAMAGE pass
 ;   +16         slot that damage belongs to
 ;   +17         slot currently being scored
-;   +18 .. +19  free
+;   +18 .. +19  AISelectSendOut best-candidate record (Phase 4)
 ;   +20 .. +25  party scores (6 slots), switching engine
 ;   +26 .. +29  pre-min-find score backup
 DEF AI_BUF_SCORES     EQU 0
@@ -134,6 +134,13 @@ DEF AI_BUF_BESTSLOT   EQU 16 ; 1 byte: which move slot that was ($ff = none yet)
 DEF AI_BUF_CURSLOT    EQU 17 ; 1 byte: the slot being scored right now, stashed
                              ; because the AIEstimateDamage farcall destroys
                              ; every register that could otherwise carry it
+; Phase 4: AISelectSendOut's running best-candidate record. Lives in the +14..19
+; span rather than the +20..25 party-score array, because the two are used at
+; DIFFERENT moments - the array is AIScoreParty's output during a switch
+; decision, this is the send-out scan's own scratch - and overlapping them would
+; make one silently depend on the other's timing.
+DEF AI_BUF_BESTPARTYSCORE EQU 18 ; 1 byte: best type multiplier seen ($ff = none)
+DEF AI_BUF_BESTPARTYSLOT  EQU 19 ; 1 byte: slot it belongs to ($ff = none yet)
 DEF AI_BUF_PARTY      EQU 20
 DEF AI_BUF_SCOREBACKUP EQU 26
 

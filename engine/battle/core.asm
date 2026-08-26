@@ -1770,25 +1770,17 @@ EnemySendOutFirstMon:
 	ldh [hWhichPokemon], a
 	jr .next3
 .next
-	ld b, $ff
-.next2
-	inc b
-	ld a, [wEnemyMonPartyPos]
-	cp b
-	jr z, .next2
-	ld hl, wEnemyMon1
-	ld a, b
-	ldh [hWhichPokemon], a
-	push bc
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	pop bc
-	inc hl
-	ld a, [hli]
-	ld c, a
-	ld a, [hl]
-	or c
-	jr z, .next2
+; AI Overhaul Phase 4: this was an inline scan that simply took the FIRST living
+; party mon that was not the one already out. AISelectSendOut replaces it with a
+; scored choice (see engine/battle/ai/ai_switching.asm) and writes the same
+; hWhichPokemon the code below reads, so control falls straight through to
+; .next3 exactly as before.
+;
+; This is a NET SAVING in Battle Core, not a cost: the ~30-byte scan became an
+; 8-byte farcall, which is the only reason a phase that adds an entire switching
+; engine could touch this bank at all (it had 31 bytes free across all three
+; targets - see ROM_BIBLE.md's 2026-08-25 entries).
+	farcall AISelectSendOut
 .next3
 	ldh a, [hWhichPokemon]
 	ld hl, wEnemyMon1Level
