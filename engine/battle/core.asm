@@ -7180,10 +7180,20 @@ LoadEnemyMonData:
 	jr nz, .storeDVs
 	ldh a, [hIsInBattle]
 	cp $2 ; is it a trainer battle?
-; fixed DVs for trainer mon
-	ld a, ATKDEFDV_TRAINER
-	ld b, SPDSPCDV_TRAINER
-	jr z, .storeDVs
+	jr nz, .wildDVs
+; AI Overhaul Phase 6: a trainer mon's DVs are no longer forced to the fixed
+; ATKDEFDV_TRAINER/SPDSPCDV_TRAINER pair here. _AddPartyMon owns them now (it
+; rolls them once at roster-build time), so this reads back what it stored.
+; Index by hWhichPokemon, NOT wEnemyMonPartyPos: the latter is not written
+; until .copyHPAndStatusFromPartyData, further down this same routine.
+	ld hl, wEnemyMon1DVs
+	ldh a, [hWhichPokemon]
+	ld bc, wEnemyMon2 - wEnemyMon1
+	call AddNTimes
+	ld a, [hli]
+	ld b, [hl]
+	jr .storeDVs
+.wildDVs
 ; random DVs for wild mon
 	call BattleRandom
 	ld b, a
@@ -7198,6 +7208,27 @@ LoadEnemyMonData:
 	inc de
 	ld b, $0
 	ld hl, wEnemyMonHP
+	ldh a, [hIsInBattle]
+	cp $2 ; is it a trainer battle?
+	jr nz, .calcEnemyStats
+; AI Overhaul Phase 6: a trainer mon carries stat exp from its roster entry, so
+; point CalcStats at that mon's stat-exp block instead of at wEnemyMonHP.
+; hl must land on wEnemyMon<x>HPExp - 1: CalcStat reads stat c from
+; [hl + 2*c - 1] and [hl + 2*c], so the block is addressed one byte early
+; (contract documented at home/move_mon.asm CalcStat). b = 1 opts in.
+;
+; This edit is deliberately TIER-NEUTRAL on its own: _AddPartyMon's .writeEVsLoop
+; zeroes every stat-exp field, so until the roster roll writes nonzero values
+; this computes byte-identical stats to the b = 0 path it replaces.
+;
+; de (CalcStats' write destination) survives AddNTimes, and _CalcStats sets its
+; own c, so clobbering c here is harmless.
+	ld hl, wEnemyMon1HPExp - 1
+	ldh a, [hWhichPokemon]
+	ld bc, wEnemyMon2 - wEnemyMon1
+	call AddNTimes
+	ld b, $1
+.calcEnemyStats
 	push hl
 	call CalcStats
 	pop hl
