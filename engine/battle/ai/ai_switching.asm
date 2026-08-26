@@ -28,6 +28,21 @@
 
 SECTION "Trainer AI Switching", ROMX, BANK[$2C]
 
+; OUTPUT: a = 1 << (input a). INPUT: a = a party slot index (0-5).
+; Shared by the anti-ping-pong marking in AISelectSendOut and the grace-period
+; check in AIShouldSwitch, so the bit<->slot mapping can only be defined once.
+; Clobbers b.
+AIPartySlotBit:
+	ld b, a
+	ld a, 1
+	inc b ; so a slot of 0 correctly does zero shifts (same idiom as
+	      ; AIHPShiftCompare's shift-count loop in ai_predicates.asm)
+.loop
+	dec b
+	ret z
+	sla a
+	jr .loop
+
 ; Chooses which party mon the enemy sends out, replacing the first-healthy-mon
 ; scan that EnemySendOut used to run inline (engine/battle/core.asm). Writes the
 ; chosen slot to hWhichPokemon and returns; the caller falls straight through to
@@ -42,12 +57,15 @@ SECTION "Trainer AI Switching", ROMX, BANK[$2C]
 ; if it were ever reached, EnemySendOut would load a fainted mon and the battle
 ; would break.
 ;
-; SELECTION RULE (Phase 4 Opus portion): pick the candidate the player's PRIMARY
-; type hurts least. That is the single highest-value half of "who to switch to" -
-; not walking a fresh mon into a type it dies to - and it is deliberately the
-; whole rule for now. AIScoreParty's fuller weight table (offensive matchup,
-; HP, revealed player moves) is the Sonnet half of this phase and slots in at
-; the marked call site below without changing this routine's shape.
+; SELECTION RULE: pick the candidate with the lowest COMBINED score of (a) how
+; hard the player's primary type hits it (PreviewTypeMatchup, in twentieths) and
+; (b) an HP penalty (+15 below a quarter HP, +5 below half) so a nearly-dead
+; candidate is not chosen purely on typing - sending a mon in at 10% HP into
+; ANY hit is a bad trade regardless of matchup. Revealed-player-move weighting
+; is deliberately NOT included: Phase 7 (fair play) has not landed, so every
+; tier is still omniscient about the player's moveset, and there is no
+; meaningfully different "revealed" subset to weight against yet - see the
+; plan's Phase 7 entry, which is what will give this a real reason to change.
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::
@@ -70,7 +88,7 @@ AISelectSendOut::
 	ld [wPlayerMoveType], a
 
 	ld a, $ff
-	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; worse than any real multiplier (max 80)
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; worse than any real combined score
 	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a  ; $ff = nothing chosen yet
 	xor a
 	ld [wBuffer + AI_BUF_SCANSLOT], a
@@ -80,11 +98,11 @@ AISelectSendOut::
 	ld b, a
 	ld a, [wEnemyPartyCount]
 	cp b
-	jr z, .done ; scanned every slot
+	jp z, .done ; scanned every slot
 
 	ld a, [wEnemyMonPartyPos]
 	cp b
-	jr z, .skip ; never pick the mon that is already out
+	jp z, .skip ; never pick the mon that is already out
 
 ; hl = &wEnemyMon1 + slot * PARTYMON_STRUCT_LENGTH
 	ld hl, wEnemyMon1
@@ -100,7 +118,7 @@ AISelectSendOut::
 	ld a, [hl]
 	or c
 	pop hl
-	jr z, .skip
+	jp z, .skip
 
 ; Forge this candidate as the "defender" PreviewTypeMatchup will read. Type1 and
 ; Type2 sit at struct offsets +5 and +6 (box_struct: Species, HP.w, BoxLevel,
@@ -117,10 +135,68 @@ AISelectSendOut::
 	                           ; it is how hard the PLAYER hits this candidate.
 	                           ; e survives the farcall return - see the header.
 
+; Blend in the HP penalty. Recomputes the candidate's struct base fresh rather
+; than reusing hl (which the type-forge above already walked past the HP
+; field): one extra AddNTimes call, on a decision made at most once per turn,
+; is free next to the clarity of not threading a saved pointer through code
+; written at a different time. `push de` protects e (the type score) across it.
+	push de
+	ld hl, wEnemyMon1
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	push hl
+	inc hl
+	ld a, [hli]
+	ld d, a
+	ld e, [hl] ; de = current HP
+	pop hl
+	ld bc, 34 ; struct offset of MaxHP (party_struct extends box_struct with
+	         ; OTID/Exp/HPExp/AttackExp/DefenseExp/SpeedExp/SpecialExp/Level
+	         ; before Stats.MaxHP - verified against wEnemyMon1MaxHP's actual
+	         ; symbol address rather than hand-counted from the macro).
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = max HP
+; Same shift-and-compare shape as AIHPShiftCompare (ai_predicates.asm, bank
+; $0E), reimplemented locally rather than farcalled: that routine takes its HP
+; pointers as INPUT in hl/de, and farcall's own macro expansion overwrites hl
+; with the jump target before Bankswitch even runs, so a pointer argument
+; cannot survive the trip - see this file's header, and
+; project_farcall_home_clobbers_a in memory.
+	sla e
+	rl d
+	sla e
+	rl d ; de = current HP * 4
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry set iff current*4 < maxHP, i.e. below a quarter HP
+	jp c, .quarterPenalty
+	srl d
+	rr e ; de = current HP * 2 (undo one of the two shifts above)
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry set iff current*2 < maxHP, i.e. below half HP
+	jp c, .halfPenalty
+	xor a
+	jp .gotPenalty
+.quarterPenalty
+	ld a, 15
+	jp .gotPenalty
+.halfPenalty
+	ld a, 5
+.gotPenalty
+	pop de ; de restored (e = type score); a = HP penalty, untouched by the pop
+	add e  ; a = combined score. Max 80 + 15 = 95, well inside a byte.
+	ld e, a
+
 	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
 	cp e
-	jr c, .skip ; current best is already lower (better) - keep it
-	jr z, .skip ; a tie keeps the EARLIER slot, so selection stays deterministic
+	jp c, .skip ; current best is already lower (better) - keep it
+	jp z, .skip ; a tie keeps the EARLIER slot, so selection stays deterministic
 	            ; and the scenarios built on it cannot go flaky
 	ld a, e
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
@@ -130,7 +206,7 @@ AISelectSendOut::
 .skip
 	ld hl, wBuffer + AI_BUF_SCANSLOT
 	inc [hl]
-	jr .nextSlot
+	jp .nextSlot
 
 .done
 ; Restore in exactly reverse push order.
@@ -143,7 +219,20 @@ AISelectSendOut::
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
-	jr z, .noCandidate
+	jp z, .noCandidate
+
+; Anti-ping-pong: mark the slot we are about to send in so AIShouldSwitch can
+; give it one full decision cycle before considering switching it away again -
+; see that routine's grace-period comment for why this matters specifically
+; when the whole party has a bad type matchup against the player.
+	push af
+	call AIPartySlotBit
+	ld b, a
+	ld a, [wAISwitchedFlags]
+	or b
+	ld [wAISwitchedFlags], a
+	pop af
+
 	ldh [hWhichPokemon], a
 	ret
 
@@ -187,41 +276,73 @@ AIShouldSwitch::
 	farcall AIGetTier ; resolve wAITier - its `a` return cannot survive the trip
 	ld a, [wAITier]
 	and a
-	jr z, .vanilla ; still unresolved: behave exactly as before
+	jp z, .vanilla ; still unresolved: behave exactly as before
 	dec a ; a = resolved tier
 	cp AI_TIER_SKILLED
-	jr c, .vanilla ; T0/T1 are not supposed to switch intelligently
+	jp c, .vanilla ; T0/T1 are not supposed to switch intelligently
 
-; --- Emergency triggers, highest priority, short-circuiting ---
+; --- Emergency triggers, highest priority, short-circuiting, DETERMINISTIC ---
+; No probability roll on any of these (contrast the generic case at the bottom,
+; which does roll): "sometimes forgets to flee certain death" reads as broken
+; AI to a player, not as personality. Texture belongs on the SOFT preference,
+; not the hard ones.
+;
 ; 1. The damage simulator says the player kills us next turn.
 	farcall AIPlayerWouldKO
-	jr c, .switch
+	jp c, .switch
 
 ; 2. Badly statused: frozen is a total lockout, and a long sleep is close to
 ;    one. A short sleep is left alone - waking up next turn is better than
 ;    spending the switch and giving the player a free hit anyway.
 	ld a, [wEnemyMonStatus]
 	bit FRZ, a
-	jr nz, .switch
+	jp nz, .switch
 	ld a, [wEnemyMonStatus]
 	and SLP_MASK
 	cp 2
-	jr nc, .switch
+	jp nc, .switch
 
 ; 3. Caught in the player's trapping move AND slower, so we cannot break out by
 ;    KOing first. A faster trapped mon is left in: it still gets to act.
 	ld a, [wPlayerBattleStatus1]
 	bit USING_TRAPPING_MOVE, a
-	jr z, .noTrap
+	jp z, .noTrap
 	farcall AIEnemyIsFaster
-	jr nc, .switch
+	jp nc, .switch
 .noTrap
+
+; --- Anti-ping-pong grace period ---
+; wAISwitchedFlags is set by AISelectSendOut when it commits to a slot. If the
+; CURRENTLY ACTIVE mon's bit is set, it was switched in on the immediately
+; preceding decision and has not had a turn to act yet - clear its bit (so the
+; NEXT decision evaluates it normally) and stay. This does not weaken the
+; emergency triggers above, which can still force a further switch if the
+; freshly-switched mon is ALSO in real danger; it only suppresses the vetoes
+; and the T3 generic case below from reversing a switch AISelectSendOut just
+; made for exactly that reason - the scenario that actually causes oscillation
+; when the whole party has a type disadvantage against the player, since
+; AISelectSendOut's own best-of-a-bad-set pick can otherwise still fail the
+; generic case's fresh re-evaluation immediately after being sent in.
+	ld a, [wEnemyMonPartyPos]
+	call AIPartySlotBit
+	ld c, a
+	ld a, [wAISwitchedFlags]
+	and c
+	jp z, .noGrace
+	ld a, c
+	cpl
+	ld c, a
+	ld a, [wAISwitchedFlags]
+	and c
+	ld [wAISwitchedFlags], a
+	jp .stay
+.noGrace
 
 ; --- Vetoes: reasons to stay put even though nothing above forced a switch ---
 ; A super-effective move is worth more than a better matchup we would have to
 ; spend a turn (and a free hit) to reach.
 	farcall AIHasSuperEffectiveMove
-	jr c, .stay
+	jp c, .stay
 
 ; Never abandon our own setup. Any raised stat means a previous turn was already
 ; invested here.
@@ -232,15 +353,24 @@ AIShouldSwitch::
 .statLoop
 	ld a, [hli]
 	cp BASE_STAT_LEVEL + 1
-	jr nc, .stay ; strictly above neutral: we have a boost worth keeping
+	jp nc, .stay ; strictly above neutral: we have a boost worth keeping
 	dec b
-	jr nz, .statLoop
+	jp nz, .statLoop
 
-; --- Generic case: T3 only ---
+; --- Generic case: T3 only, and the ONE place this layer rolls a probability ---
+; "Urgency x personality", scaled down to what this codebase actually has: Red
+; Rogue does not carry Gen 2's per-trainer-class switch-probability profiles
+; (AIRunPersonality is effectively just "is this the Gambler"), so the second
+; axis here is the AI's own skill TIER rather than a trainer personality table.
+; The generic bad-matchup case is the lowest-urgency trigger in this routine -
+; nothing forces it, it is a soft preference - so it is the one place adding
+; texture is safe: sometimes a T3 trainer sticks around anyway, which keeps
+; switch outcomes from being fully solved by the player without ever looking
+; like the AI failed to notice a threat it should have.
 	ld a, [wAITier]
 	dec a
 	cp AI_TIER_EXPERT
-	jr c, .stay
+	jp c, .stay
 
 ; Bad matchup = the player's primary type hits us for more than neutral. Same
 ; forge-and-restore of PreviewTypeMatchup's inputs as AISelectSendOut above;
@@ -262,7 +392,14 @@ AIShouldSwitch::
 	                        ; is already clean
 	ld a, e
 	cp EFFECTIVE * 2 + 1
-	jr nc, .switch ; strictly worse than neutral for us
+	jp c, .stay ; not strictly worse than neutral for us
+
+; The roll. 75% is a design choice, not an engine fact - flagged for the user
+; to retune if a full run feels too random or too predictable here.
+	call Random
+	cp 75 percent + 1
+	jp nc, .stay
+	jp .switch
 
 .stay
 	and a ; clear carry
