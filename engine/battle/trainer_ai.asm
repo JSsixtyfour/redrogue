@@ -558,6 +558,23 @@ TrainerAI:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; if in a link battle, we're done as well
+; AI Overhaul Phase 6: T2+ trainers only consider items when their active
+; mon is the ace (Gen 2's rule - no other living party member). T0/T1 fall
+; straight through to .dispatch, unchanged from vanilla item AI. The farcall
+; to AIGetTier runs UNCONDITIONALLY (even for T0/T1) purely to resolve and
+; cache wAITier - AIIncreaseStat (below) reads it back for its own gate
+; without a second farcall. Resolving it has no observable effect on its
+; own, so T0/T1 stay byte-identical.
+	farcall AIGetTier ; resolve wAITier - its `a` return cannot survive the trip
+	ld a, [wAITier]
+	and a
+	jr z, .dispatch ; unresolved: behave exactly as before
+	dec a ; a = resolved tier (0-3)
+	cp AI_TIER_SKILLED
+	jr c, .dispatch ; T0/T1: vanilla, no ace restriction
+	farcall AIActiveMonIsAce ; bank $2C - loops the enemy party
+	jr nc, .noItem ; not the ace: no item this turn
+.dispatch
 	ld a, [wTrainerClass] ; what trainer class is this?
 	dec a
 	ld c, a
@@ -581,6 +598,10 @@ TrainerAI:
 	ld l, a
 	call Random
 	jp hl
+.noItem
+	and a ; carry clear: no item used, TrainerAI's caller falls through to a
+	      ; normal move-based turn
+	ret
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
@@ -623,10 +644,13 @@ CooltrainerMAI:
 	jp AIUseXAttack
 
 CooltrainerFAI:
-	; The intended 25% chance to consider switching will not apply.
-	; Uncomment the line below to fix this.
+	; AI Overhaul Phase 6: fixed - the intended 25% gate was dead code (the
+	; `ret nc` right after the roll was commented out), so Cooltrainer F's
+	; Hyper Potion and switch-consideration checks ran on EVERY call
+	; regardless of the roll. This is a real balance change: Cooltrainer F is
+	; now noticeably less item-happy than she has been up to this point.
 	cp 25 percent + 1
-	; ret nc
+	ret nc
 	ld a, 10
 	call AICheckIfHPBelowFraction
 	jp c, AIUseHyperPotion
@@ -1025,6 +1049,56 @@ AIUseXSpecial:
 	; fallthrough
 
 AIIncreaseStat:
+; AI Overhaul Phase 6, two additions layered onto the vanilla body below:
+;
+; 1. IDEMPOTENCE (every tier - a bugfix, not a strategic upgrade): don't
+;    waste the item-use message and wAICount on a stat already at the Gen 1
+;    cap ($D/13). StatModifierUpEffect (effects.asm) already refuses the
+;    boost at cap and prints "Nothing happened", but only AFTER
+;    AIPrintItemUse_ has announced the item and DecrementAICount has spent a
+;    use - this check runs first and skips both. b (the +1 effect id -
+;    ATTACK_UP1_EFFECT etc, the only kind the four X-items ever pass) maps
+;    directly onto wEnemyMonStatMods' byte order (Attack/Defense/Speed/
+;    Special), the same mapping StatModifierUpEffect itself uses.
+;
+; 2. KO-SIMULATOR GATE (T2+ only, via wAITier - already resolved by
+;    TrainerAI's own farcall to AIGetTier before dispatch, so no second
+;    farcall here): don't set up a stat when the player can KO this turn
+;    anyway. AIPlayerWouldKO (ai_threat.asm, same bank $0E, plain call) is
+;    exactly the Phase 3 predicate for this. T0/T1 skip straight to the
+;    vanilla body once the idempotence check passes.
+;
+; Layered ON TOP of each class handler's own flat percentage roll rather
+; than replacing it: touching six independently hand-tuned handlers
+; (BlackbeltAI/CooltrainerMAI/KogaAI/BrunoAI/MistyAI/LtSurgeAI), several with
+; their own documented history, is a materially larger and riskier change
+; than one shared gate both paths funnel through, for the same practical
+; effect - a losing T2+ trainer stops wasting a turn setting up when it is
+; about to be OHKO'd anyway.
+	push af ; item id, needed at .proceed
+	push bc ; effect id (b) + scratch (c), needed throughout
+	ld a, b
+	sub ATTACK_UP1_EFFECT
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMonStatMods
+	add hl, bc
+	ld a, [hl]
+	cp $d
+	jr z, .maxedOut ; af and bc both still pushed here
+	pop bc
+	ld a, [wAITier]
+	and a
+	jr z, .proceed ; unresolved: behave as before
+	dec a
+	cp AI_TIER_SKILLED
+	jr c, .proceed ; T0/T1: vanilla, no KO check
+	push bc
+	call AIPlayerWouldKO
+	pop bc
+	jr c, .wouldDie ; af still pushed here, bc already popped
+.proceed
+	pop af
 	ld [wAIItem], a
 	push bc
 	call AIPrintItemUse_
@@ -1045,6 +1119,12 @@ AIIncreaseStat:
 	pop af
 	ld [hl], a
 	jp DecrementAICount
+.maxedOut
+	pop bc
+.wouldDie
+	pop af
+	and a ; carry clear: no item used
+	ret
 
 AIPrintItemUse:
 	ld [wAIItem], a

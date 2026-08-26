@@ -70,6 +70,12 @@ INCLUDE "engine/battle/ai/ai_switching.asm"
 ; $0E half is INCLUDEd into trainer_ai.asm as engine/battle/ai/ai_plan.asm.
 INCLUDE "engine/battle/ai/ai_plans.asm"
 
+; Also pinned to bank $2C. Enemy trainer DV/stat-exp rolling (AI Overhaul
+; Phase 6) - moved out of engine/pokemon/add_mon.asm (bank $03, only 38
+; bytes free) into its own section here; add_mon.asm keeps only the minimal
+; call sites.
+INCLUDE "engine/battle/ai/ai_roster.asm"
+
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"

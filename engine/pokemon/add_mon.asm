@@ -168,6 +168,44 @@ _AddPartyMon::
 	ld bc, MON_DVS
 	add hl, bc
 	pop bc
+; AI Overhaul Phase 6: enemy trainer mons get tier-scaled DVs instead of the
+; flat ATKDEFDV_TRAINER/SPDSPCDV_TRAINER pair loaded above (still correct
+; for T0/unresolved - see AIRollEnemyDVs). Farcalled: bank $2C has room,
+; this bank did not (38 bytes free at the start of this phase). `de` IS the
+; live struct write cursor at this point (species is already written,
+; everything else - HP, level, stats, moves - still needs it) and must be
+; shielded via push/pop: AIRollEnemyDVs nested-farcalls AIGetTier, which can
+; fall through to AIResolveTier, which clobbers d/e as its own scratch.
+; Without this push/pop every field written after this point lands at a
+; garbage offset (confirmed: produced level=0/HP=0 mons on every FIGHT2
+; boot). The result comes back in hl, not de, for the same reason.
+;
+; `a` (the DV byte so far, needed by .writeDVs whichever branch is taken)
+; travels through `c` rather than a push/pop-af round trip: `c` is dead here
+; (nothing after .next4 reads its old value - the player path already
+; consumed it via .noDVBoost's `ld a,c` before .next4 even starts), and
+; `pop af` restores FLAGS along with the register, which would have
+; clobbered the very Z flag `and $f` just set - `ld a,c` afterward is a
+; plain register move and does not touch flags on this CPU, so the `jr z`
+; below correctly reads `and $f`'s result. CORRECTION: the first draft used
+; push af/pop af here and the pop silently discarded the `and $f` test,
+; making every mon - player included - take the farcall branch (confirmed:
+; 12 AIRollEnemyDVs calls for a 6-enemy FIGHT2 team, half of them with
+; wMonDataLocation=$10, i.e. player). This is what shifted FIGHT2's RNG
+; stream and the golden party-generation fixture.
+	ld c, a
+	ld a, [wMonDataLocation]
+	and $f
+	ld a, c
+	jr z, .writeDVs
+	push hl
+	push de
+	farcall AIRollEnemyDVs ; h = Spd/Spc, l = Atk/Def
+	pop de
+	ld a, l
+	ld b, h
+	pop hl
+.writeDVs
 	ld [hli], a
 	ld [hl], b         ; write IVs
 	ld bc, (MON_HP_EXP - 1) - (MON_DVS + 1)
@@ -320,11 +358,26 @@ _AddPartyMon::
 	pop hl
 	jr .done
 .calcFreshStats
-	pop hl
-	ld bc, MON_HP_EXP - 1
-	add hl, bc
-	ld b, $0
-	call CalcStats         ; calculate fresh set of stats
+	pop hl                    ; balances the struct-base push from way back -
+	                          ; value unused now, see the comment below
+; AI Overhaul Phase 6: enemy trainer mons get tier+level-scaled stat exp,
+; then CalcStats is told to consider it (b=1), then current HP is fixed up
+; to match the freshly-raised MaxHP - see PHASE_6_SPEC.md section 4, "the
+; ordering trap". All three steps are farcalled as one call (bank $2C has
+; room; this bank does not) to avoid three separate call sites here.
+; AIFinishEnemyMonStats reads wMonDataLocation itself and no-ops (plain
+; CalcStats, b=0) for player mons, so their result stays byte-identical to
+; before this phase. It needs de = &MaxHP (still live, unchanged since
+; earlier in this routine) and derives &HPExp-1 from that via a constant
+; struct offset rather than needing hl passed in - hl cannot travel through
+; a farcall's inbound trip (used as the jump target) and MUST NOT be passed
+; via a bare stack push either: Bankswitch pushes its own bookkeeping
+; between the caller's push and the callee's first instruction, so a `pop`
+; at the top of the callee would retrieve Bankswitch's own saved state
+; rather than the caller's argument (see ai_roster.asm's header comment on
+; AIFinishEnemyMonStats - this is exactly the bug that shipped there first
+; and was caught immediately by every boot smoke test crashing).
+	farcall AIFinishEnemyMonStats
 .done
 	scf
 	ret
