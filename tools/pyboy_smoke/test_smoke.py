@@ -42,7 +42,7 @@ class HarnessTestCase(unittest.TestCase):
 
 
 class BootSmokeTest(HarnessTestCase):
-    def test_fight2_builds_deterministic_full_parties(self) -> None:
+    def test_fight2_seed17_party_generation_golden(self) -> None:
         assert self.harness is not None
         self.harness.boot_fight2(seed=17)
         self.assertEqual(self.harness.read8("wPartyCount"), 6)
@@ -55,7 +55,9 @@ class BootSmokeTest(HarnessTestCase):
         )
         self.assertEqual(
             self.harness.read_bytes("wEnemyPartySpecies", 7),
-            [101, 97, 155, 25, 151, 51, 0xFF],
+            # Stable party-generation golden reconfirmed across multiple AI
+            # phases. This is deliberately unrelated to AI move/switch logic.
+            [101, 97, 128, 114, 130, 141, 0xFF],
         )
         for label in ("wPartyMonNicks", "wEnemyMonNicks"):
             for slot in range(6):

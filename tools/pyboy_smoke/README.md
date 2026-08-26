@@ -6,6 +6,13 @@ Run from WSL through the project Makefile:
 make smoke
 ```
 
+Run one test, class, or module with a shell-style test-ID pattern:
+
+```sh
+make smoke TEST='*fight2*'
+python3 tools/pyboy_smoke/run_smoke.py --list
+```
+
 The target builds `pokeblue_debug.gbc`, resolves current addresses from
 `pokeblue_debug.sym`, and runs the focused smoke suite with Python's standard
 `unittest` runner.
@@ -30,7 +37,10 @@ Current coverage:
 
 Failed emulator tests write a rendered screenshot and JSON state dump under
 `tools/pyboy_smoke/artifacts/`. Artifacts include the debug ROM SHA-256 and are
-ignored by Git.
+ignored by Git. Dumps also include the symbol-file SHA-256, CPU registers,
+current bank and nearest symbol, stack bytes, RNG state, and recent named hook
+hits. Harness startup rejects structurally incompatible ROM/symbol pairs and a
+symbol file newer than its ROM, which usually indicates mixed build artifacts.
 
 PyBoy is installed in WSL for this project. Run `wsl make smoke` from Windows
 PowerShell, or `make smoke` from a WSL shell.
@@ -95,4 +105,7 @@ switching engine lands. The current direct-routine tests intentionally cover
 only the committed Part 1 structural contracts.
 
 FIGHT 2 still falls back to its seeded random 6v6 generator when the SRAM magic
-byte is absent, so its existing deterministic smoke test remains valid.
+byte is absent. Seed 17 is a versioned party-generation golden: it detects RNG
+call-order drift before party construction and is intentionally independent of
+AI behavior. The first enemy sent out is not guaranteed to be generated party
+slot 0, so battle-state tests must read the active slot instead of assuming it.

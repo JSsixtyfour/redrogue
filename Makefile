@@ -102,7 +102,7 @@ tools:
 	$(MAKE) -C tools/
 
 smoke: pokeblue_debug.gbc
-	python3 tools/pyboy_smoke/run_smoke.py
+	python3 tools/pyboy_smoke/run_smoke.py $(if $(TEST),--test '$(TEST)')
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py

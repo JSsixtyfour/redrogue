@@ -24,13 +24,17 @@ class SymbolTable:
     def __init__(self, path: Path):
         self.path = path
         self._symbols: dict[str, tuple[int, int]] = {}
+        self._by_bank: dict[int, list[tuple[int, str]]] = {}
         for line in path.read_text(encoding="utf-8").splitlines():
             match = self.ADDRESS_RE.match(line.strip())
             if match:
-                self._symbols[match.group("label")] = (
-                    int(match.group("bank"), 16),
-                    int(match.group("address"), 16),
-                )
+                label = match.group("label")
+                bank = int(match.group("bank"), 16)
+                address = int(match.group("address"), 16)
+                self._symbols[label] = (bank, address)
+                self._by_bank.setdefault(bank, []).append((address, label))
+        for entries in self._by_bank.values():
+            entries.sort()
 
     def get(self, label: str) -> tuple[int, int]:
         try:
@@ -43,6 +47,19 @@ class SymbolTable:
 
     def address(self, label: str) -> int:
         return self.get(label)[1]
+
+    def nearest(self, bank: int, address: int) -> str | None:
+        candidates = self._by_bank.get(bank, ())
+        nearest = None
+        for symbol_address, label in candidates:
+            if symbol_address > address:
+                break
+            nearest = (symbol_address, label)
+        if nearest is None:
+            return None
+        symbol_address, label = nearest
+        offset = address - symbol_address
+        return label if offset == 0 else f"{label}+${offset:x}"
 
 
 class RedRogueHarness:
@@ -75,6 +92,9 @@ class RedRogueHarness:
         self.symbols = SymbolTable(self.sym_path)
         rom_data = bytearray(self.rom_path.read_bytes())
         self.rom_sha256 = hashlib.sha256(rom_data).hexdigest()
+        self.sym_sha256 = hashlib.sha256(self.sym_path.read_bytes()).hexdigest()
+        self._validate_rom_and_symbols(rom_data)
+        self._recent_hooks: list[dict[str, object]] = []
 
         # PyBoy's cgb=False only declines to force CGB mode. It does not force
         # DMG mode when byte $0143 advertises a CGB-compatible cartridge. The
@@ -106,6 +126,32 @@ class RedRogueHarness:
                 self.pyboy = PyBoy(
                     self._rom_file, ram_file=ram_file, **options
                 )
+
+    def _validate_rom_and_symbols(self, rom_data: bytearray) -> None:
+        """Reject obviously stale or structurally incompatible build artifacts."""
+        if len(rom_data) == 0 or len(rom_data) % 0x4000:
+            raise ValueError(f"invalid ROM size: {len(rom_data)} bytes")
+        rom_banks = len(rom_data) // 0x4000
+        required = ("Bankswitch", "DebugMenu", "MainInBattleLoop")
+        for label in required:
+            bank, address = self.symbols.get(label)
+            if bank >= rom_banks:
+                raise ValueError(
+                    f"{self.sym_path.name} places {label} in bank ${bank:02x}, "
+                    f"outside the {rom_banks}-bank ROM"
+                )
+            if bank == 0 and address >= 0x4000:
+                raise ValueError(f"invalid ROM0 symbol address for {label}: ${address:04x}")
+            if bank and not 0x4000 <= address < 0x8000:
+                raise ValueError(f"invalid ROMX symbol address for {label}: ${address:04x}")
+        self.symbols.get("wPartySpecies")
+        # make writes the ROM after the symbol file. A newer symbol file is a
+        # strong indication that these artifacts came from different builds.
+        if self.sym_path.stat().st_mtime > self.rom_path.stat().st_mtime + 2:
+            raise ValueError(
+                f"{self.sym_path.name} is newer than {self.rom_path.name}; "
+                "rebuild pokeblue_debug.gbc before running PyBoy"
+            )
 
     def close(self) -> None:
         self.pyboy.stop(save=False)
@@ -182,12 +228,19 @@ class RedRogueHarness:
 
         def callback(_context) -> None:
             state["count"] += 1
+            self._record_hook(label)
             if action is not None:
                 action()
 
         bank, address = self.symbols.get(label)
         self.pyboy.hook_register(bank, address, callback, None)
         return state
+
+    def _record_hook(self, label: str) -> None:
+        self._recent_hooks.append(
+            {"label": label, "frame": self.pyboy.frame_count, "pc": self.pyboy.register_file.PC}
+        )
+        del self._recent_hooks[:-16]
 
     def hook_ai_scores(self) -> list[dict[str, object]]:
         """Capture scores plus the move ultimately selected for each AI decision."""
@@ -602,9 +655,30 @@ class RedRogueHarness:
             diagnostic_warps = []
         else:
             diagnostic_warps = {"invalid_count": warp_count}
+        registers = self.pyboy.register_file
+        pc = registers.PC
+        loaded_bank = safe("hLoadedROMBank")
+        pc_bank = 0 if pc < 0x4000 else loaded_bank
+        stack = [self.pyboy.memory[(registers.SP + offset) & 0xFFFF] for offset in range(16)]
         return {
             "rom_sha256": self.rom_sha256,
+            "sym_sha256": self.sym_sha256,
             "frame": self.pyboy.frame_count,
+            "cpu": {
+                "pc": pc,
+                "sp": registers.SP,
+                "a": registers.A,
+                "b": registers.B,
+                "c": registers.C,
+                "d": registers.D,
+                "e": registers.E,
+                "f": registers.F,
+                "hl": registers.HL,
+                "rom_bank": loaded_bank,
+                "location": self.symbols.nearest(pc_bank, pc),
+                "stack": stack,
+            },
+            "recent_hooks": list(self._recent_hooks),
             "map": safe("hCurMap"),
             "position": [safe("wXCoord"), safe("wYCoord")],
             "battle_count": safe("wBattleCount"),
