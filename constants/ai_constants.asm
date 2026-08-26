@@ -229,10 +229,31 @@ DEF AICLASS_STATUS_ANY EQU AICLASS_SLEEP | AICLASS_PARALYZE | AICLASS_POISON | A
 ; battle-start zeroing of wMiscBattleData gives us for free, and what
 ; AISelectSendOut writes back on every send-out so a fresh mon re-selects.
 ; A plan's index into AIPlanTable is its ID minus one.
-DEF AI_PLAN_NONE         EQU 0
-DEF AI_PLAN_BRUISER      EQU 1 ; the guaranteed fallback: qualifies for every mon
-DEF AI_PLAN_AGILITY_WRAP EQU 2 ; outspeed first, then soft-lock with a trap move
-DEF NUM_AI_PLANS         EQU 2
+DEF AI_PLAN_NONE          EQU 0
+DEF AI_PLAN_BRUISER       EQU 1  ; the guaranteed fallback: qualifies for every mon
+DEF AI_PLAN_AGILITY_WRAP  EQU 2  ; outspeed first, then soft-lock with a trap move
+DEF AI_PLAN_WRAP_LOCK     EQU 3  ; already faster: trap without spending a turn on Agility
+DEF AI_PLAN_SLEEP_LEAD    EQU 4  ; land the highest-value status in the game
+DEF AI_PLAN_AMNESIA_REST  EQU 5  ; boost Special, sustained by healing
+DEF AI_PLAN_AMNESIA       EQU 6  ; boost Special alone
+DEF AI_PLAN_TOXIC_STALL   EQU 7  ; poison, then outlast on Recover
+DEF AI_PLAN_CHANSEY_STALL EQU 8  ; paralyze, then outlast on Recover
+DEF AI_PLAN_PARA_SWEEP    EQU 9  ; paralyze a faster player, then attack
+DEF AI_PLAN_SUB_STALL_REC EQU 10 ; sub, then chip with a rider, healing behind it
+DEF AI_PLAN_SUB_STALL_PSN EQU 11 ; sub, then chip with poison
+DEF AI_PLAN_SUB_SETUP     EQU 12 ; sub, then boost safely behind it
+DEF AI_PLAN_BOMB_TRADE    EQU 13 ; preserve the Explosion user for a worthwhile trade
+DEF AI_PLAN_OHKO_FISH     EQU 14 ; a losing-position gamble on a one-hit KO move
+DEF AI_PLAN_SWORDS_DANCE  EQU 15 ; boost Attack alone
+DEF NUM_AI_PLANS          EQU 15
+
+; Table-order tiebreak: AIPlanSelect keeps the EARLIER entry on an exact
+; fitness tie, so a plan whose required mask is a SUPERSET of a relative's is
+; always listed first - a mon that qualifies for both takes the richer plan.
+; AGILITY_WRAP (TRAP|BOOST_SPD) before WRAP_LOCK (TRAP) follows this already;
+; AMNESIA_REST (BOOST_SPC|RECOVERY) before AMNESIA (BOOST_SPC), and both
+; SUB_STALL variants (SUB|RECOVERY, SUB|POISON) before bare SUB_SETUP (SUB),
+; follow the same rule below.
 
 ; Plan directive magnitudes MUST stay below AI_KILL. This is an invariant, not a
 ; style preference: rank 1 of the plan's priority cascade is "take a guaranteed

@@ -42,6 +42,40 @@ DEF AI_FITNESS_AGILITY_SLOW EQU 20 ; added when the enemy is currently SLOWER,
 ; paralysed, in which case Agility never wins and the plan would loop forever.
 DEF AI_AGILITY_MAX_ATTEMPTS EQU 2
 
+DEF AI_FITNESS_WRAP_LOCK EQU 35
+
+DEF AI_FITNESS_SLEEP_LEAD    EQU 55
+DEF AI_FITNESS_SLEEP_FASTER  EQU 15 ; a status "out" only exists if it lands
+                                    ; before the fatal hit, so being faster is
+                                    ; worth real weight here, not just a nudge
+
+DEF AI_FITNESS_AMNESIA      EQU 45
+DEF AI_FITNESS_AMNESIA_REST EQU 60 ; higher than plain Amnesia: the heal makes
+                                   ; the setup sustainable rather than a
+                                   ; one-shot gamble on getting to keep it
+DEF AI_STAT_MOD_CAP EQU 13 ; core.asm:5671, "maximum stat modifier value";
+                           ; neutral is 7, so +4 stages = 11 is this plan's
+                           ; own stopping point (see the execute routines)
+DEF AI_STAT_MOD_STOP EQU 11 ; +4 stages: boosts have diminishing returns past
+                            ; here (poke-engine's Gen 1 evaluator: +1->1.0x,
+                            ; +2->2.0x, then 2.5/3.0/3.15/3.3), so continuing
+                            ; to +5/+6 is a near-wasted turn
+
+DEF AI_FITNESS_TOXIC_STALL   EQU 50
+DEF AI_FITNESS_CHANSEY_STALL EQU 45
+
+DEF AI_FITNESS_PARA_SWEEP  EQU 40
+DEF AI_FITNESS_PARA_FASTER EQU 15 ; the player is CURRENTLY faster - paralysis
+                                  ; flipping the speed tier is the whole point
+
+DEF AI_FITNESS_SUB_STALL EQU 50
+DEF AI_FITNESS_SUB_SETUP EQU 55
+DEF AI_FITNESS_SUB_FASTER EQU 10
+
+DEF AI_FITNESS_BOMB_TRADE EQU 50
+DEF AI_FITNESS_OHKO_FISH  EQU 30
+DEF AI_FITNESS_SWORDS_DANCE EQU 35
+
 ; --- Plan table -----------------------------------------------------------
 ; Layout: required class mask, fitness routine, execute routine.
 ;
@@ -66,6 +100,19 @@ DEF AI_PLAN_ENTRY_SIZE EQU 6
 AIPlanTable:
 	ai_plan 0, AIFit_Bruiser, AIRun_Bruiser
 	ai_plan AICLASS_TRAP | AICLASS_BOOST_SPD, AIFit_AgilityWrap, AIRun_AgilityWrap
+	ai_plan AICLASS_TRAP, AIFit_WrapLock, AIRun_WrapLock
+	ai_plan AICLASS_SLEEP, AIFit_SleepLead, AIRun_SleepLead
+	ai_plan AICLASS_BOOST_SPC | AICLASS_RECOVERY, AIFit_AmnesiaRest, AIRun_AmnesiaRest
+	ai_plan AICLASS_BOOST_SPC, AIFit_Amnesia, AIRun_Amnesia
+	ai_plan AICLASS_RECOVERY | AICLASS_POISON, AIFit_ToxicStall, AIRun_ToxicStall
+	ai_plan AICLASS_RECOVERY | AICLASS_PARALYZE, AIFit_ChanseyStall, AIRun_ChanseyStall
+	ai_plan AICLASS_PARALYZE | AICLASS_DAMAGE, AIFit_ParaSweep, AIRun_ParaSweep
+	ai_plan AICLASS_SUB | AICLASS_RECOVERY, AIFit_SubStall, AIRun_SubStall
+	ai_plan AICLASS_SUB | AICLASS_POISON, AIFit_SubStall, AIRun_SubStall
+	ai_plan AICLASS_SUB, AIFit_SubSetup, AIRun_SubSetup
+	ai_plan AICLASS_EXPLODE, AIFit_BombTrade, AIRun_BombTrade
+	ai_plan AICLASS_OHKO, AIFit_OhkoFish, AIRun_OhkoFish
+	ai_plan AICLASS_BOOST_ATK, AIFit_SwordsDance, AIRun_SwordsDance
 	assert (@ - AIPlanTable) / AI_PLAN_ENTRY_SIZE == NUM_AI_PLANS, \
 		"AIPlanTable must have exactly NUM_AI_PLANS entries, indexed by plan id - 1"
 
@@ -419,6 +466,485 @@ AIRun_AgilityWrap:
 ; the trap move would fight the engine's own multi-turn lock handling.
 	ld hl, 0
 	ret
+
+; ===========================================================================
+; PLAN: WrapLock - trap without spending a turn on a speed race
+; ===========================================================================
+; AgilityWrap minus the speed step, for a mon that has a trapping move and no
+; speed boost. Listed AFTER AgilityWrap in AIPlanTable (required mask TRAP is
+; a subset of AgilityWrap's TRAP|BOOST_SPD) precisely so a mon that qualifies
+; for both takes the richer plan on a tie - see ai_constants.asm's ordering
+; note. In practice AgilityWrap's fitness (40-60) beats this one (35) outright
+; whenever both qualify, so the ordering is redundancy, not the deciding factor.
+
+AIFit_WrapLock:
+	ld de, AICLASS_TRAP
+	call AIPlanClassMoveLands
+	ret nc ; carry already clear = "never run this"
+
+; The whole value of a trapping move is the re-lock on expiry, which only
+; happens if the enemy outspeeds. A mon that is slower and has no speed boost
+; gets nothing from trapping that AI_DAMAGE was not already going to give it,
+; so this plan simply does not apply - AgilityWrap is what that mon wants.
+	farcall AIEnemyIsFaster
+	jr nc, .no
+	farcall AIEnemyHPBelowQuarter
+	jr c, .no
+
+	ld a, AI_FITNESS_WRAP_LOCK
+	ret
+.no
+	xor a
+	ret
+
+AIRun_WrapLock:
+	ld a, [wEnemyBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr nz, .locked
+	ld de, AICLASS_TRAP
+	ld hl, AI_VERY_STRONG
+	ret
+.locked
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: SleepLead - land the highest-value status in the game
+; ===========================================================================
+; The plan document rates a landed sleep at roughly a KO and ranks it 3rd in
+; the priority cascade, ahead of ordinary damage. This is the plan that makes
+; that ranking real rather than aspirational.
+
+AIFit_SleepLead:
+	ld de, AICLASS_SLEEP
+	call AIPlanClassMoveLands
+	ret nc
+
+; A status move fails outright on an already-statused target, and worse, using
+; a LESSER status here would destroy this mon's own sleep target - the plan
+; document's "never overwrite your own win condition". Also a status move
+; forfeits: if the player already has a Substitute up, SleepEffect now checks
+; CheckTargetSubstitute (engine/battle/effects.asm, Shin Red import Phase 4 -
+; verified at the call site, not assumed) and fails outright.
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .no
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+
+	farcall AIEnemyIsFaster
+	ld a, AI_FITNESS_SLEEP_LEAD
+	ret nc ; slower is still worth attempting, just without the speed bonus
+	add AI_FITNESS_SLEEP_FASTER
+	ret
+.no
+	xor a
+	ret
+
+; Encourage sleep while the player is unstatused; once it has landed, issue NO
+; directive and let AI_DAMAGE rank the follow-up. Re-encouraging sleep against
+; an already-sleeping target would be arguing with AI_REDUNDANT, which already
+; saturates that move to AI_SCORE_MAX for exactly this reason.
+AIRun_SleepLead:
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .noDirective
+	ld de, AICLASS_SLEEP
+	ld hl, AI_VERY_STRONG
+	ret
+.noDirective
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: AmnesiaRest / Amnesia - boost Special, optionally sustained by healing
+; ===========================================================================
+; Amnesia raises Special for BOTH offence and defence in this engine (one
+; stat covers both in Gen 1), so poke-engine's Gen 1 evaluator weights it at
+; roughly double a one-sided boost (Special 30 vs Defense 15) - that ratio is
+; what sets AmnesiaRest/Amnesia's fitness relative to SwordsDance below.
+;
+; Two table entries, not one with a runtime branch, because their REQUIRED
+; MASKS differ (one needs a recovery move, one does not) and the qualification
+; filter has to see that difference before either fitness routine runs.
+
+AIFit_AmnesiaRest:
+	ld a, AI_FITNESS_AMNESIA_REST
+	jr AIPlanBoostSpcCommon
+
+AIFit_Amnesia:
+	ld a, AI_FITNESS_AMNESIA
+	; fallthrough
+
+; Shared gate for both entries. INPUT: a = this entry's base fitness.
+AIPlanBoostSpcCommon:
+	push af
+	ld hl, wEnemyMonAttackMod + 3 ; Special mod: struct order is
+	                              ; Attack/Defense/Speed/Special/Accuracy/Evasion
+	ld a, [hl]
+	cp AI_STAT_MOD_CAP
+	jr nc, .no
+	farcall AIPlayerWouldKO
+	jr c, .no
+	pop af
+	ret
+.no
+	pop af
+	xor a
+	ret
+
+; AmnesiaRest heals below half HP (the recovery half of the plan earning its
+; place); both entries stop boosting past AI_STAT_MOD_STOP (+4 stages), where
+; poke-engine's Gen 1 evaluator shows diminishing returns setting in.
+AIRun_AmnesiaRest:
+	farcall AIEnemyHPBelowHalf
+	jr nc, .boost
+	ld de, AICLASS_RECOVERY
+	ld hl, AI_VERY_STRONG
+	ret
+.boost
+	jr AIPlanBoostSpcExecute
+
+AIRun_Amnesia:
+	; fallthrough
+
+AIPlanBoostSpcExecute:
+	ld a, [wEnemyMonAttackMod + 3]
+	cp AI_STAT_MOD_STOP
+	jr nc, .capped
+	ld de, AICLASS_BOOST_SPC
+	ld hl, AI_VERY_STRONG
+	ret
+.capped
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: ToxicStall / ChanseyStall - status, then outlast on Recover
+; ===========================================================================
+; Toxic and Leech Seed stack in this engine (the fix was excluded per the plan
+; document's follow-up F3), so a Toxic stall line may lean on that; nothing
+; here needs to check for it explicitly since AICLASS_POISON already covers
+; Toxic (POISON_EFFECT, see the effect->class table above) and the ramping
+; damage is a property of the move the AI does not need to reason about.
+
+AIFit_ToxicStall:
+	ld de, AICLASS_POISON
+	call AIPlanClassMoveLands
+	ret nc
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .no
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+	farcall AIPlayerWouldKO
+	jr c, .no
+	ld a, AI_FITNESS_TOXIC_STALL
+	ret
+.no
+	xor a
+	ret
+
+AIRun_ToxicStall:
+	ld a, [wBattleMonStatus]
+	and a
+	jr z, .poison
+	farcall AIEnemyHPBelowHalf
+	jr nc, .none
+	ld de, AICLASS_RECOVERY
+	ld hl, AI_VERY_STRONG
+	ret
+.poison
+	ld de, AICLASS_POISON
+	ld hl, AI_VERY_STRONG
+	ret
+.none
+	ld hl, 0
+	ret
+
+; Same shape with paralysis. AICLASS_PARALYZE is only PARALYZE_EFFECT
+; (Thunder Wave-style primary paralysis) - riders like Body Slam's 30% chance
+; are deliberately not classed (see ai_constants.asm, "a class is a move's
+; PRIMARY purpose") - so the immunity this needs to worry about is Ground vs
+; Electric, which AIPlanClassMoveLands' type-effectiveness check already
+; covers with no special case required here.
+AIFit_ChanseyStall:
+	ld de, AICLASS_PARALYZE
+	call AIPlanClassMoveLands
+	ret nc
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .no
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+	farcall AIPlayerWouldKO
+	jr c, .no
+	ld a, AI_FITNESS_CHANSEY_STALL
+	ret
+.no
+	xor a
+	ret
+
+AIRun_ChanseyStall:
+	ld a, [wBattleMonStatus]
+	and a
+	jr z, .paralyze
+	farcall AIEnemyHPBelowHalf
+	jr nc, .none
+	ld de, AICLASS_RECOVERY
+	ld hl, AI_VERY_STRONG
+	ret
+.paralyze
+	ld de, AICLASS_PARALYZE
+	ld hl, AI_VERY_STRONG
+	ret
+.none
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: ParaSweep - flip the speed tier, then attack
+; ===========================================================================
+; Paralysis cuts Speed to 25% and does not wear off in this engine, so landing
+; it on a currently-faster player permanently reverses who acts first for the
+; rest of the battle - the fitness bonus below is for THAT case specifically,
+; not for paralysis in general (ChanseyStall already covers the stalling use).
+
+AIFit_ParaSweep:
+	ld de, AICLASS_PARALYZE
+	call AIPlanClassMoveLands
+	ret nc
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .no
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+
+	farcall AIEnemyIsFaster
+	ld a, AI_FITNESS_PARA_SWEEP
+	ret c ; already faster - paralysing does not flip anything, but is still a
+	      ; fine ordinary status play at the base fitness
+	add AI_FITNESS_PARA_FASTER
+	ret
+.no
+	xor a
+	ret
+
+; While the player is unparalysed, encourage the paralysis move; once it has
+; landed, issue NO directive - AI_DAMAGE sweeps a paralysed target better than
+; a class directive can, and re-encouraging PARALYZE would only fight
+; AI_REDUNDANT's saturation of a move that can no longer do anything.
+AIRun_ParaSweep:
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .none
+	ld de, AICLASS_PARALYZE
+	ld hl, AI_VERY_STRONG
+	ret
+.none
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: SubStall (two required masks, one body) / SubSetup
+; ===========================================================================
+; AISubWouldSurvive (ai_plan.asm, bank $0E) is the predicate the plan document
+; singles out as the one no reference AI implements: not "is a Substitute
+; legal" (HP > 1/4) but "would a Substitute survive the player's best hit",
+; which is what separates competent Substitute use from a sub that dies to the
+; first hit for a quarter of the user's HP. Every plan below gates on it.
+
+; Shared by both SubStall table entries (SUB|RECOVERY and SUB|POISON) - one
+; body handles either rider, decided at execute time by which class the mon's
+; moveset actually carries.
+AIFit_SubStall:
+	farcall AISubWouldSurvive ; bank $0E - must farcall, not call
+	ret nc
+	farcall AIEnemyHPBelowHalf
+	jr c, .no
+	farcall AIEnemyIsFaster ; farcall FIRST, then set a - a farcall clobbers a,
+	ld a, AI_FITNESS_SUB_STALL ; so the base fitness must load AFTER it, the
+	ret c                       ; same ordering AIFit_AgilityWrap uses
+	add AI_FITNESS_SUB_FASTER
+	ret
+.no
+	xor a
+	ret
+
+; Sub first; once it is up, chip with whichever rider the mon actually has -
+; poison is checked first only because a stacking Toxic clock is the stronger
+; of the two lines when a mon happens to carry both, not because recovery is
+; unwanted.
+AIRun_SubStall:
+	ld a, [wEnemyBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .subUp
+	ld de, AICLASS_SUB
+	ld hl, AI_VERY_STRONG
+	ret
+.subUp
+	call AIPlanUnionMask
+	ld a, e
+	and AICLASS_POISON
+	jr nz, .poison
+	ld de, AICLASS_RECOVERY
+	ld hl, AI_VERY_STRONG
+	ret
+.poison
+	ld de, AICLASS_POISON
+	ld hl, AI_VERY_STRONG
+	ret
+
+; The "any of the three boost classes" case AIPlanTable's coarse required mask
+; cannot express directly - checked here in the fitness routine instead, per
+; ai_plans.asm's own note on why the table stays a flat AND of one mask.
+AIFit_SubSetup:
+	call AIPlanUnionMask
+	ld a, e
+	and AICLASS_BOOST_SPD | AICLASS_BOOST_ATK
+	ld b, a
+	ld a, d
+	and HIGH(AICLASS_BOOST_SPC) | HIGH(AICLASS_BOOST_DEF)
+	or b
+	ret z ; nothing to boost behind the sub - this plan has no second act
+
+	farcall AISubWouldSurvive ; bank $0E - must farcall, not call
+	ret nc
+	farcall AIEnemyHPBelowHalf
+	jr c, .no
+	farcall AIEnemyIsFaster ; farcall FIRST, then set a - see AIFit_SubStall
+	ld a, AI_FITNESS_SUB_SETUP
+	ret c
+	add AI_FITNESS_SUB_FASTER
+	ret
+.no
+	xor a
+	ret
+
+AIRun_SubSetup:
+	ld a, [wEnemyBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .subUp
+	ld de, AICLASS_SUB
+	ld hl, AI_VERY_STRONG
+	ret
+.subUp
+	call AIPlanUnionMask
+	ld a, e
+	and AICLASS_BOOST_SPD | AICLASS_BOOST_ATK
+	ld c, a
+	ld a, d
+	and HIGH(AICLASS_BOOST_SPC) | HIGH(AICLASS_BOOST_DEF)
+	or c
+	jr z, .none ; the boost move ran out or got disabled since fitness ran
+	ld de, AICLASS_BOOST_ANY
+	ld hl, AI_VERY_STRONG
+	ret
+.none
+	ld hl, 0
+	ret
+
+; ===========================================================================
+; PLAN: BombTrade - preserve the Explosion user for a worthwhile trade
+; ===========================================================================
+; RED-ROGUE-SPECIFIC AND A REVERSAL OF THE STRATEGY LITERATURE, cited at the
+; call sites rather than assumed: ExplodeEffect (engine/battle/effects.asm)
+; zeroes the user's HP UNCONDITIONALLY with no Substitute check at all, and
+; core.asm runs the effect even on a miss. So exploding into a Substitute
+; kills the user and costs the player only their sub - a strictly bad trade,
+; not the free sub-break the literature describes. Verified at the call site
+; for this phase, not carried over from the plan document unread.
+
+AIFit_BombTrade:
+	ld de, AICLASS_EXPLODE
+	call AIPlanClassMoveLands
+	ret nc ; covers the Ghost-immunity case for free
+
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+
+	farcall AIEnemyHPBelowQuarter
+	jr c, .worthIt
+	farcall AIPlayerWouldKO
+	jr nc, .no
+.worthIt
+	ld a, AI_FITNESS_BOMB_TRADE
+	ret
+.no
+	xor a
+	ret
+
+AIRun_BombTrade:
+	ld de, AICLASS_EXPLODE
+	ld hl, AI_VERY_STRONG
+	ret
+
+; ===========================================================================
+; PLAN: OhkoFish - a losing-position gamble on a one-hit KO move
+; ===========================================================================
+; AIRedundant_OHKO already saturates an OHKO move to AI_SCORE_MAX when the
+; enemy is slower (it auto-misses in this engine per the Engine-truth table),
+; so this plan does not need to re-check speed as a legality gate - only as a
+; genuine precondition for it to be worth qualifying at all, which
+; AIPlanClassMoveLands plus the explicit AIEnemyIsFaster check below both
+; enforce before fitness is ever nonzero.
+
+AIFit_OhkoFish:
+	ld de, AICLASS_OHKO
+	call AIPlanClassMoveLands
+	ret nc
+	farcall AIPlayerWouldKO
+	ret nc ; only a losing-position gamble, per the plan document's rank 11
+	farcall AIEnemyIsFaster
+	ret nc ; slower means the move auto-misses; nothing to gamble on
+	ld a, AI_FITNESS_OHKO_FISH
+	ret
+
+; Deliberately modest (AI_STRONG, not AI_VERY_STRONG): AI_RISKY (bit 8) may
+; already be nudging the same move for the same reason, and the two should not
+; stack into an oversized bias toward one already-risky move.
+AIRun_OhkoFish:
+	ld de, AICLASS_OHKO
+	ld hl, AI_STRONG
+	ret
+
+; ===========================================================================
+; PLAN: SwordsDance - boost Attack alone
+; ===========================================================================
+; Lower base fitness than Amnesia's: Attack is one-sided in this engine where
+; Special covers both offence and defence, so a pure Attack boost is worth
+; less by the same ratio poke-engine's Gen 1 evaluator assigns (30 vs 15,
+; i.e. Attack here is worth what a single side of Special is worth).
+
+AIFit_SwordsDance:
+	ld hl, wEnemyMonAttackMod ; struct order: Attack is the first byte
+	ld a, [hl]
+	cp AI_STAT_MOD_CAP
+	jr nc, .no
+	farcall AIPlayerWouldKO
+	jr c, .no
+	ld a, AI_FITNESS_SWORDS_DANCE
+	ret
+.no
+	xor a
+	ret
+
+AIRun_SwordsDance:
+	ld a, [wEnemyMonAttackMod]
+	cp AI_STAT_MOD_STOP
+	jr nc, .capped
+	ld de, AICLASS_BOOST_ATK
+	ld hl, AI_VERY_STRONG
+	ret
+.capped
+	ld hl, 0
+	ret
+
 
 ; ===========================================================================
 ; Effect -> class lookup
