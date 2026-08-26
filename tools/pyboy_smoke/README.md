@@ -111,6 +111,23 @@ records whether the layer is enabled at the resolved tier, its before/after
 score arrays, and the four signed deltas. This identifies which layer caused a
 decision without adding ROM instrumentation or consuming Game Boy RAM.
 
+## AI benchmark
+
+`make ai_benchmark` runs complete deterministic FIGHT 2 battles and writes
+per-trial JSON and CSV reports. Override the seed, trial count, or safety limit
+through `BENCHMARK_ARGS`:
+
+```sh
+make ai_benchmark BENCHMARK_ARGS='--seed 17 --trials 10 --max-steps 5000'
+```
+
+The report includes win rate, average turns and CPU cycles, switch and item
+rates, missed-KO rate, and wasted-turn rate. A missed KO means the `DAMAGE`
+layer marked at least one move lethal with `AI_KILL`, but the AI selected a
+different slot. A wasted turn means the selected move was discouraged by the
+`REDUNDANT` layer. These are heuristic-level classifications, not guesses based
+only on the final battle result.
+
 Phase 4 send-out selection now has both direct structural tests and an
 `EnemySendOut` caller-handoff trace. The latter records the previous slot,
 winning combined score, ranked slot, and slot actually handed to the battle

@@ -232,6 +232,13 @@ class RedRogueHarness:
         for _ in range(frames):
             self.pyboy.tick(render=render)
 
+    def cycle_count(self) -> int:
+        """Return PyBoy's current CPU-cycle counter for performance telemetry."""
+        counter = getattr(self.pyboy, "_cycles", None)
+        if not callable(counter):
+            raise RuntimeError("this PyBoy build does not expose the _cycles() counter")
+        return int(counter())
+
     def tap(self, button: str, frames: int = 2) -> None:
         self.pyboy.button_press(button)
         self.tick(frames)
@@ -405,6 +412,60 @@ class RedRogueHarness:
         self.register_hook("EnemySendOutFirstMon.next", begin)
         self.register_hook("AISelectSendOut.done", ranked)
         self.register_hook("EnemySendOutFirstMon.next3", selected)
+        return records
+
+    def hook_turn_telemetry(self) -> list[dict[str, object]]:
+        """Record battle state and CPU cycles at each turn and action seam."""
+        records: list[dict[str, object]] = []
+
+        def current() -> dict[str, object] | None:
+            return records[-1] if records else None
+
+        def begin(_context) -> None:
+            if records and "end_cycle" not in records[-1]:
+                records[-1]["end_cycle"] = self.cycle_count()
+            records.append(
+                {
+                    "turn": len(records) + 1,
+                    "frame": self.pyboy.frame_count,
+                    "start_cycle": self.cycle_count(),
+                    "player_hp": self.read_bytes("wBattleMonHP", 2),
+                    "enemy_hp": self.read_bytes("wEnemyMonHP", 2),
+                    "player_slot": self.read8("wPlayerMonNumber"),
+                    "enemy_slot": self.read8("wEnemyMonPartyPos"),
+                }
+            )
+
+        def choices(_context) -> None:
+            record = current()
+            if record is not None:
+                record["player_move"] = self.read8("wTestBattlePlayerSelectedMove")
+                record["enemy_move"] = self.read8("wEnemySelectedMove")
+
+        def player_action(_context) -> None:
+            record = current()
+            if record is not None:
+                record["player_acted"] = True
+
+        def enemy_action(_context) -> None:
+            record = current()
+            if record is not None:
+                record["enemy_acted"] = True
+
+        def finish(_context) -> None:
+            record = current()
+            if record is not None and "end_cycle" not in record:
+                record["end_cycle"] = self.cycle_count()
+
+        for label, callback in (
+            ("MainInBattleLoop", begin),
+            ("MainInBattleLoop.noLinkBattle", choices),
+            ("ExecutePlayerMove", player_action),
+            ("ExecuteEnemyMove", enemy_action),
+            ("TrainerBattleVictory", finish),
+            ("HandlePlayerBlackOut", finish),
+        ):
+            self.register_hook(label, callback)
         return records
 
     def inject_fight2_spec(

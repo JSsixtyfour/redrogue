@@ -110,6 +110,9 @@ integration: pokeblue_debug.gbc
 ai_scenarios: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_scenarios.py
 
+ai_benchmark: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_ai_benchmark.py $(BENCHMARK_ARGS)
+
 
 RGBASMFLAGS += -Q8 -P includes.asm
 # Create a sym/map for debug purposes if `make` run with `DEBUG=1`
