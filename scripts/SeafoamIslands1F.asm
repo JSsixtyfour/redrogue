@@ -50,18 +50,18 @@ SeafoamIslands1F_Script:
 	ld [wSeafoamIslands1FCurScript], a
 	ret
 
-	RogueAutoWalkScripts SeafoamIslands1F, PAD_UP, SeafoamIslands1FNormalScript, EVENT_AUTOWALKED_INTO_SEAFOAM_ISLANDS_1F, TEXT_SEAFOAMISLANDS1F_NO_TURNING_BACK, SCRIPT_SEAFOAMISLANDS1F_PLAYER_IS_MOVING, wSeafoamIslands1FCurScript
+	RogueAutoWalkScripts SeafoamIslands1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SEAFOAM_ISLANDS_1F, TEXT_SEAFOAMISLANDS1F_NO_TURNING_BACK, SCRIPT_SEAFOAMISLANDS1F_PLAYER_IS_MOVING, wSeafoamIslands1FCurScript
 
 SeafoamIslands1FEntranceCoords:
-	dbmapcoord 17, 4
-	dbmapcoord 17, 5
+	dbmapcoord 4, 17
+	dbmapcoord 5, 17
 	db -1
 
 SeafoamIslands1FNoCoords:
-	dbmapcoord 16, 4
-	dbmapcoord 16, 5
-	dbmapcoord 15, 4
-	dbmapcoord 15, 5
+	dbmapcoord 4, 16
+	dbmapcoord 5, 16
+	dbmapcoord 4, 15
+	dbmapcoord 5, 16
 	db -1
 
 SeafoamIslands1F_ScriptPointers:
@@ -71,12 +71,12 @@ SeafoamIslands1F_ScriptPointers:
 	dw_const EndTrainerBattle,                      SCRIPT_SEAFOAMISLANDS1F_END_BATTLE
 	dw_const SeafoamIslands1FPlayerIsMovingScript,  SCRIPT_SEAFOAMISLANDS1F_PLAYER_IS_MOVING
 
-SeafoamIslands1FNormalScript:
-	call CheckFightingMapTrainers
-	ld a, SEAFOAM_ISLANDS_B1F
-	ld [wDungeonWarpDestinationMap], a
-	ld hl, Seafoam1HolesCoords
-	jp IsPlayerOnDungeonWarp
+;SeafoamIslands1FNormalScript:
+;	call CheckFightingMapTrainers
+;	ld a, SEAFOAM_ISLANDS_B1F
+;	ld [wDungeonWarpDestinationMap], a
+;	ld hl, Seafoam1HolesCoords
+;	jp IsPlayerOnDungeonWarp
 
 Seafoam1HolesCoords:
 	dbmapcoord 17,  6
@@ -104,13 +104,13 @@ SeafoamIslands1F_TextPointers:
 SeafoamIslands1FTrainerHeaders:
 	def_trainers 1
 SeafoamIslands1FTrainerHeader0:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0, 1, SeafoamIslands1FSwimmerBattleText, SeafoamIslands1FSwimmerEndBattleText, SeafoamIslands1FSwimmerAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0, 3, SeafoamIslands1FSwimmerBattleText, SeafoamIslands1FSwimmerEndBattleText, SeafoamIslands1FSwimmerAfterBattleText
 SeafoamIslands1FTrainerHeader1:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1, 1, SeafoamIslands1FCueBallBattleText, SeafoamIslands1FCueBallEndBattleText, SeafoamIslands1FCueBallAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1, 5, SeafoamIslands1FCueBallBattleText, SeafoamIslands1FCueBallEndBattleText, SeafoamIslands1FCueBallAfterBattleText
 SeafoamIslands1FTrainerHeader2:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2, 1, SeafoamIslands1FCooltrainerFBattleText, SeafoamIslands1FCooltrainerFEndBattleText, SeafoamIslands1FCooltrainerFAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2, 2, SeafoamIslands1FCooltrainerFBattleText, SeafoamIslands1FCooltrainerFEndBattleText, SeafoamIslands1FCooltrainerFAfterBattleText
 SeafoamIslands1FTrainerHeader3:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3, 1, SeafoamIslands1FHikerBattleText, SeafoamIslands1FHikerEndBattleText, SeafoamIslands1FHikerAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3, 2, SeafoamIslands1FHikerBattleText, SeafoamIslands1FHikerEndBattleText, SeafoamIslands1FHikerAfterBattleText
 SeafoamIslands1FTrainerHeader4:
 	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4, 1, SeafoamIslands1FPokemaniacBattleText, SeafoamIslands1FPokemaniacEndBattleText, SeafoamIslands1FPokemaniacAfterBattleText
 	db -1 ; end

@@ -15,6 +15,9 @@ Current coverage:
 - Debug 1 boot to Silph Co Dorm with the intro tour complete
 - Debug 2 boot through Indigo Plateau Lobby initialization, including automatic and forced AI tiers
 - Phase 0 Focus Energy and selective badge-reboost battle mechanics
+- Phase 4 Part 1 `AISelectSendOut` structural contracts: current and fainted
+  candidates are excluded, neutral ties choose the earliest living slot, and
+  temporarily borrowed battle bytes are restored
 - Data-driven contracts for all 22 selectable rogue stages
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
 - Explicit Route 24 Nugget Bridge and SS Anne B1F multi-room exceptions
@@ -85,6 +88,11 @@ Telemetry includes a `layer_trace` entry for every scoring layer. Each entry
 records whether the layer is enabled at the resolved tier, its before/after
 score arrays, and the four signed deltas. This identifies which layer caused a
 decision without adding ROM instrumentation or consuming Game Boy RAM.
+
+Phase 4 is still in progress. Effectiveness-ranked replacement and the complete
+whether-to-switch flow need focused full-flow scenarios after the remaining
+switching engine lands. The current direct-routine tests intentionally cover
+only the committed Part 1 structural contracts.
 
 FIGHT 2 still falls back to its seeded random 6v6 generator when the SRAM magic
 byte is absent, so its existing deterministic smoke test remains valid.

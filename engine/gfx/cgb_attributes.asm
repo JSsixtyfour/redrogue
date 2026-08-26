@@ -162,6 +162,7 @@ BGMapAttributesPointers:
 	dw BGMapAttributes_Battle
 	dw BGMapAttributes_WholeScreen
 	dw BGMapAttributes_Unknown13
+	dw BGMapAttributes_BillsPC
 
 ; Packet numbers for BGMapAttributesPointers above, 1-indexed.
 DEF BGMAP_ATTR_GAMEFREAK_INTRO  EQU 3
@@ -174,6 +175,7 @@ DEF BGMAP_ATTR_POKEDEX          EQU 9
 DEF BGMAP_ATTR_STATUS_SCREEN    EQU 10
 DEF BGMAP_ATTR_BATTLE           EQU 11
 DEF BGMAP_ATTR_WHOLE_SCREEN     EQU 12
+DEF BGMAP_ATTR_BILLS_PC         EQU 14
 
 ; ============================================================================
 ; Red Rogue glue. Not part of the port.
@@ -230,6 +232,10 @@ LoadCGBScreenAttributesForBlkPacket::
 	db BGMAP_ATTR_TRAINER_CARD
 	dw wPartyMenuBlkPacket
 	db BGMAP_ATTR_PARTY_MENU
+	; Bill's PC copies its local ATTR_BLK packet immediately after its 16-byte
+	; PAL_SET packet in wTextBoxBuffer before entering SendSGBPackets.
+	dw wTextBoxBuffer + (BillsPCPalPacketEnd - BillsPCPalPacket)
+	db BGMAP_ATTR_BILLS_PC
 	dw 0 ; terminator
 
 ; CGB DMA ignores the low four bits of its source address. ShinRed places these

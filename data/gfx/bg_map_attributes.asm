@@ -1,3 +1,27 @@
+; Bill's PC colors the party column and boxed-mon grid with palette 1 while
+; retaining palette 0 for borders and text. The 18 visible rows are padded to
+; the hardware BG map's 32-byte stride.
+BGMapAttributes_BillsPC:
+	db $23
+	dw $000d
+	ds 13, $00
+	; row 0: party icon
+	db $00, $01, $01
+	ds 29, $00
+	; rows 1-8: party icon plus boxed-mon grid
+	REPT 8
+		db $00, $01, $01, $00, $00
+		ds 14, $01
+		ds 13, $00
+	ENDR
+	; rows 9-11: party icon
+	REPT 3
+		db $00, $01, $01
+		ds 29, $00
+	ENDR
+	; rows 12-17: information box
+	ds 6 * 32, $00
+
 BGMapAttributes_Unknown1:
 	db $23
 	dw $000d

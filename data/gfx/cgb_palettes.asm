@@ -357,10 +357,10 @@ ENDC
 	RGB 11, 23, 31
 	RGB  3,  3,  3
 
-	; PAL_26
+	; PAL_BILLS_PC
 	RGB 31, 31, 31
-	RGB 31, 18,  0
-	RGB 19,  7,  1
+	RGB 31, 31, 31
+	RGB 30, 22, 17
 	RGB  3,  3,  3
 
 	; PAL_27

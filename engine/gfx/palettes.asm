@@ -760,6 +760,13 @@ SendSGBPackets:
 	pop hl
 	jp SendSGBPacket
 
+; Bill's PC keeps its screen-specific packets in its own bank. The caller
+; copies both to this fixed WRAM buffer because Bankswitch uses hl for the
+; destination routine address and therefore cannot pass a ROM/WRAM pointer.
+SendBillsPCPackets::
+	ld hl, wTextBoxBuffer
+	jp SendSGBPackets
+
 InitCGBPalettes:
 ; ShinRed's palette initialization contract, compacted into one four-entry loop.
 ; Each selected base palette is transformed through the current DMG BGP, OBP0,

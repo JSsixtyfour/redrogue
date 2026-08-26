@@ -219,6 +219,11 @@ WriteMonPartySpriteOAM:
 	ld bc, OBJ_SIZE * 4 * PARTY_LENGTH
 	jp CopyData
 
+; Bank-safe Bill's PC entry. A cannot carry the species through farcall because
+; Bankswitch replaces it with the destination bank before entering the callee.
+GetCurPartyMonSpriteID::
+	ld a, [wCurPartySpecies]
+	; fallthrough
 GetPartyMonSpriteID:
 	ld [wPokedexNum], a
 	predef IndexToPokedex

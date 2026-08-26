@@ -425,11 +425,37 @@ FinishRedrawingBillsPCBoxScreen:
 	jp Delay3
 
 ApplyBillsPCBoxPalette:
-	; The generic whole-screen packet explicitly installs palette 0 and VRAM
-	; bank 0 for every CGB BG cell, including all 48 icon tiles.
-	ld b, SET_PAL_GENERIC
-	call RunPaletteCommand
+	; InitCGBPalettes transforms base colors through the live DMG registers.
+	; Initial entry follows a whiteout (rBGP = $00), while message redraws follow
+	; text rendering (rBGP = $e4). Normalize the register without transferring
+	; the previous CGB palette, which would create a visible one-frame flash.
+	ld a, %11100100
+	ldh [rBGP], a
+	; The palette bank is effectively full, so keep these screen-specific
+	; packets with Bill's PC and copy them to WRAM before crossing banks.
+	ld hl, BillsPCPalPacket
+	ld de, wTextBoxBuffer
+	ld bc, BillsPCBlkPacketEnd - BillsPCPalPacket
+	call CopyData
+	; Bankswitch destroys hl but preserves de. The palette-bank wrapper restores
+	; the fixed palette pointer while this carries the following ATTR_BLK packet.
+	ld de, wTextBoxBuffer + (BillsPCPalPacketEnd - BillsPCPalPacket)
+	farcall SendBillsPCPackets
 	jp GBPalNormal
+
+BillsPCPalPacket:
+	db $51 ; PAL_SET, one 16-byte packet
+	dw PAL_GRAYMON, PAL_BILLS_PC, PAL_GRAYMON, PAL_GRAYMON
+	ds 7, 0
+BillsPCPalPacketEnd:
+
+BillsPCBlkPacket:
+	db $22, 3 ; ATTR_BLK, three data sets
+	db %011, 0, 00,00, 19,17
+	db %011, 5, 01,00, 02,11
+	db %011, 5, 05,01, 18,08
+	ds 12, 0
+BillsPCBlkPacketEnd:
 
 WaitBillsPCButtonsReleased:
 	call Joypad
@@ -840,8 +866,7 @@ DrawBillsPCPartyMons:
 	ld [wCurPartySpecies], a
 	push hl
 	push bc
-	ld a, [wCurPartySpecies]
-	farcall GetPartyMonSpriteID
+	farcall GetCurPartyMonSpriteID
 	pop bc
 	ld c, e
 	ld a, b
@@ -863,8 +888,7 @@ DrawBillsPCBoxMons:
 	ld [wCurPartySpecies], a
 	push hl
 	push bc
-	ld a, [wCurPartySpecies]
-	farcall GetPartyMonSpriteID
+	farcall GetCurPartyMonSpriteID
 	pop bc
 	ld c, e
 	ld a, b

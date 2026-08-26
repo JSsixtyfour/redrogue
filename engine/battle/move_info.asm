@@ -35,6 +35,11 @@ PrintMenuItem:
 	ldh [hWhichPokemon], a
 	ld a, BATTLE_MON_DATA
 	ld [wMonDataLocation], a
+	; GetCurrentMove is in Battle Core, which is a different ROM bank.
+	; Besides using wNameBuffer, it writes the move ID through
+	; wNamedObjectIndex, which aliases wMaxPP. Calculate both PP values only
+	; after this farcall has finished clobbering shared scratch.
+	farcall GetCurrentMove
 	callfar GetMaxPP
 	ld hl, hCurrentMenuItem
 	ld c, [hl]
@@ -45,8 +50,6 @@ PrintMenuItem:
 	ld a, [hl]
 	and PP_MASK
 	ld [wBattleMenuCurrentPP], a
-	; GetCurrentMove is in Battle Core, which is a different ROM bank.
-	farcall GetCurrentMove
 ; print the move information box
 	hlcoord 1, 6
 	ld de, TypeText

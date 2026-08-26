@@ -61,7 +61,8 @@ DEF SET_PAL_DEFAULT EQU $ff
 	const PAL_GAMEFREAK ; $24
     ;gbcnote - added from yellow
 	const PAL_25        ; $25
-	const PAL_26        ; $26
+	; PAL_26 had no callers; Yume uses this slot for the Bill's PC icon palette.
+	const PAL_BILLS_PC  ; $26
 	const PAL_27        ; $27
 DEF NUM_SGB_PALS EQU const_value
 	const PAL_BW        ; $28, CGB only
