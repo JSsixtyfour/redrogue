@@ -423,6 +423,10 @@ wTextBoxBuffer::
 wMoveBuffer::
 wRelearnableMoves::
 	ds 164
+; Current static data needs at most 14 bytes: count, 12 relearnable moves, and
+; the $ff terminator. Keep a compile-time floor so future layout edits cannot
+; silently shrink the shared list buffer below the proven requirement.
+ASSERT wLuckySlotHiddenEventIndex - wMoveBuffer >= 14
 ; Try not to use this stack. 
 ; A good amount of space is needed to store data for the move relearner.
 ; If it's like, 2, it'll lag like crazy and show garbage from elsewhere

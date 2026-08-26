@@ -3,8 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import fnmatch
+import os
 import sys
 import unittest
+
+
+class HardwareModeResult(unittest.TextTestResult):
+    """Classify test modules before setUp constructs their PyBoy harness."""
+
+    def startTest(self, test):
+        module_name = test.id().split(".", 1)[0]
+        os.environ["REDROGUE_PYBOY_EXPECTED_MODE"] = (
+            "CGB" if module_name.startswith("test_cgb_") else "DMG"
+        )
+        super().startTest(test)
 
 
 def main() -> int:
@@ -33,7 +45,9 @@ def main() -> int:
             print(test.id())
         return 0
     suite = unittest.TestSuite(tests)
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    result = unittest.TextTestRunner(
+        verbosity=2, resultclass=HardwareModeResult
+    ).run(suite)
     return 0 if result.wasSuccessful() else 1
 
 

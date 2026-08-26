@@ -4,8 +4,10 @@ import hashlib
 import io
 import json
 import logging
+import os
 from pathlib import Path
 import re
+from datetime import datetime, timezone
 import warnings
 
 logging.disable(logging.WARNING)
@@ -95,6 +97,13 @@ class RedRogueHarness:
         self.sym_sha256 = hashlib.sha256(self.sym_path.read_bytes()).hexdigest()
         self._validate_rom_and_symbols(rom_data)
         self._recent_hooks: list[dict[str, object]] = []
+        self._registered_hooks: list[tuple[int, int]] = []
+        self.hardware_mode = "CGB" if cgb_mode else "DMG"
+        expected_mode = os.environ.get("REDROGUE_PYBOY_EXPECTED_MODE")
+        if expected_mode is not None and expected_mode != self.hardware_mode:
+            raise ValueError(
+                f"test is classified {expected_mode} but requested {self.hardware_mode} mode"
+            )
 
         # PyBoy's cgb=False only declines to force CGB mode. It does not force
         # DMG mode when byte $0143 advertises a CGB-compatible cartridge. The
@@ -154,7 +163,15 @@ class RedRogueHarness:
             )
 
     def close(self) -> None:
+        for bank, address in reversed(self._registered_hooks):
+            self.pyboy.hook_deregister(bank, address)
+        self._registered_hooks.clear()
         self.pyboy.stop(save=False)
+
+    def register_hook(self, label: str, callback) -> None:
+        bank, address = self.symbols.get(label)
+        self.pyboy.hook_register(bank, address, callback, None)
+        self._registered_hooks.append((bank, address))
 
     def address(self, label: str) -> int:
         return self.symbols.address(label)
@@ -164,6 +181,23 @@ class RedRogueHarness:
 
     def write8(self, label: str, value: int, offset: int = 0) -> None:
         self.pyboy.memory[self.address(label) + offset] = value & 0xFF
+
+    def plant_sentinels(self, values: dict[str, int]) -> dict[str, int]:
+        """Write named borrowed-state sentinels and return the expected snapshot."""
+        expected = {label: value & 0xFF for label, value in values.items()}
+        for label, value in expected.items():
+            self.write8(label, value)
+        return expected
+
+    def assert_sentinels(self, expected: dict[str, int]) -> None:
+        """Fail with every borrowed byte that was not restored by a routine."""
+        changed = {
+            label: {"expected": value, "actual": self.read8(label)}
+            for label, value in expected.items()
+            if self.read8(label) != value
+        }
+        if changed:
+            raise AssertionError(f"borrowed state was not restored: {changed}")
 
     def read_bytes(self, label: str, length: int, offset: int = 0) -> list[int]:
         start = self.address(label) + offset
@@ -232,8 +266,7 @@ class RedRogueHarness:
             if action is not None:
                 action()
 
-        bank, address = self.symbols.get(label)
-        self.pyboy.hook_register(bank, address, callback, None)
+        self.register_hook(label, callback)
         return state
 
     def _record_hook(self, label: str) -> None:
@@ -340,8 +373,38 @@ class RedRogueHarness:
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
             ("MainInBattleLoop.noLinkBattle", selected),
         ):
-            bank, address = self.symbols.get(label)
-            self.pyboy.hook_register(bank, address, callback, None)
+            self.register_hook(label, callback)
+        return records
+
+    def hook_enemy_send_out(self) -> list[dict[str, object]]:
+        """Trace replacement selection through EnemySendOut's real farcall path."""
+        records: list[dict[str, object]] = []
+        pending: dict[str, object] = {}
+
+        def begin(_context) -> None:
+            pending.clear()
+            pending.update(
+                {
+                    "frame": self.pyboy.frame_count,
+                    "previous_slot": self.read8("wEnemyMonPartyPos"),
+                }
+            )
+
+        def ranked(_context) -> None:
+            pending.update(
+                {
+                    "best_score": self.read8("wBuffer", 18),
+                    "ranked_slot": self.read8("wBuffer", 19),
+                }
+            )
+
+        def selected(_context) -> None:
+            pending["selected_slot"] = self.read8("hWhichPokemon")
+            records.append(dict(pending))
+
+        self.register_hook("EnemySendOutFirstMon.next", begin)
+        self.register_hook("AISelectSendOut.done", ranked)
+        self.register_hook("EnemySendOutFirstMon.next3", selected)
         return records
 
     def inject_fight2_spec(
@@ -616,6 +679,27 @@ class RedRogueHarness:
         finally:
             self.pyboy.hook_deregister(return_bank, return_address)
 
+    def probe_routine_until(self, label: str, predicate, limit: int = 12000) -> None:
+        """Enter a real routine path, capture a seam, then restore emulator state."""
+        baseline = io.BytesIO()
+        self.save_state(baseline)
+        bank, address = self.symbols.get(label)
+        return_address = 0x3FFF
+        try:
+            stack_pointer = (self.pyboy.register_file.SP - 2) & 0xFFFF
+            self.pyboy.memory[stack_pointer] = return_address & 0xFF
+            self.pyboy.memory[stack_pointer + 1] = return_address >> 8
+            self.pyboy.register_file.SP = stack_pointer
+            if address >= 0x4000:
+                self.pyboy.register_file.B = bank
+                self.pyboy.register_file.HL = address
+                self.pyboy.register_file.PC = self.address("Bankswitch")
+            else:
+                self.pyboy.register_file.PC = address
+            self.wait_until(predicate, f"{label} probe seam", limit)
+        finally:
+            self.load_state(baseline)
+
     def preload_and_enter_wild_area(self, map_id: int, description: str) -> None:
         self.write8("wLobbyDoor1StageMap", map_id)
         self.write8("wWarpEntries", map_id, offset=3)
@@ -663,6 +747,7 @@ class RedRogueHarness:
         return {
             "rom_sha256": self.rom_sha256,
             "sym_sha256": self.sym_sha256,
+            "hardware_mode": self.hardware_mode,
             "frame": self.pyboy.frame_count,
             "cpu": {
                 "pc": pc,
@@ -711,4 +796,28 @@ class RedRogueHarness:
             json.dumps(self.diagnostic_state(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        self._update_artifact_index(test_name, image_path, state_path)
         return image_path, state_path
+
+    def _update_artifact_index(
+        self, test_name: str, image_path: Path, state_path: Path
+    ) -> None:
+        index_path = self.artifacts_dir / "index.json"
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            index = {"schema_version": 1, "failures": {}}
+        index["failures"][test_name] = {
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "hardware_mode": self.hardware_mode,
+            "frame": self.pyboy.frame_count,
+            "rom_sha256": self.rom_sha256,
+            "sym_sha256": self.sym_sha256,
+            "screenshot": image_path.name,
+            "state": state_path.name,
+        }
+        temporary = index_path.with_suffix(".tmp")
+        temporary.write_text(
+            json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        temporary.replace(index_path)

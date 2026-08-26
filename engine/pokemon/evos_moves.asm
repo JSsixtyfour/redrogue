@@ -603,6 +603,8 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	; hl = pointer to moves data for our mon
 	;  b = mon's level
 	ld c, 0 ; c = count of relearnable moves
+	xor a
+	ld [wMoveBuffer], a ; initialize the output count before the first append
 .loop
 	ld a, [hli]
 	and a
@@ -611,42 +613,14 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	jr c, .addMove
 	jr nz, .done
 .addMove
-	push bc
 	ld a, [hli] ; move id
-	ld b, a
-	; Check if move is already known by our mon.
-	push de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove
-.relearnableMove
-	pop de
+	; Save the level and learnset cursor; the helper returns the new count in c.
+	push bc
 	push hl
-	; Add move to the list, and update the running count.
-	ld a, b
-	ld b, 0
-	ld hl, wMoveBuffer + 1
-	add hl, bc
-	ld [hl], a
+	call .AppendRelearnableMove
 	pop hl
-	pop bc
-	inc c
-	jr .loop
-.knowsMove
-	pop de
-	pop bc
+	pop af
+	ld b, a ; restore the mon level saved in b, keeping helper's count in c
 	jr .loop
 .done	
 
@@ -663,75 +637,14 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	ld a, [hl]	;load move
 	and a
 	jr z, .done2	;if move has id 0, list has reached the end early. move to done2.
-	
-	;check if the move is already in the learnable move list
+	; Preserve the base-move index and source cursor; the helper handles both
+	; known-move filtering and deduplication against the existing output list.
 	push bc
 	push hl
-	;c = buffer length
-.buffer_loop
-	ld hl, wMoveBuffer
-	ld b, 0
-	add hl, bc	;move to buffer at current c value
-	ld b, a	;b = move id
-	ld a, [hl] ; move id at buffer point
-	cp b
-	ld a, b	;a = move id
-	jr z, .move_in_buffer
-	inc c
-	dec c
-	jr z, .end_buffer_loop	;jump out if start of buffer is reached
-	dec c	;else decrement c and loop again
-	jr .buffer_loop
-.move_in_buffer
+	call .AppendRelearnableMove
 	pop hl
-	pop bc
-	inc hl	;increment to the next level-0 move
-	inc b	;increment the loop counter
-	jr .loop2
-.end_buffer_loop
-	pop hl
-	pop bc
-	
-	;Check if move is already known by our mon.
-	push bc
-	ld a, [hl] ; move id
-	ld b, a
-	push de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove2
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove2
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove2
-	inc de
-	ld a, [de]
-	cp b
-	jr z, .knowsMove2
-
-	;if the move is not already known, add it to the learnable move list
-	pop de
-	push hl
-	; Add move to the list, and update the running count.
-	ld a, b
-	ld b, 0
-	ld hl, wMoveBuffer + 1
-	add hl, bc
-	ld [hl], a
-	pop hl
-	pop bc
-	inc c
-	inc hl	;increment to the next level-0 move
-	inc b	;increment the loop counter
-	jr .loop2
-	
-.knowsMove2
-	pop de
-	pop bc
+	pop af
+	ld b, a ; restore the base-move index saved in b
 	inc hl	;increment to the next level-0 move
 	inc b	;increment the loop counter
 	jr .loop2
@@ -744,6 +657,60 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	ld [hl], a
 	ld hl, wMoveBuffer
 	ld [hl], c
+	ret
+
+.AppendRelearnableMove
+; Input: a = move id, de = pointer to mon's currently-known moves, c = output count
+; Output: c = updated output count. Preserves de.
+	ld b, a
+	push de
+	; Check if move is already known by our mon.
+	ld a, [de]
+	cp b
+	jr z, .alreadyKnown
+	inc de
+	ld a, [de]
+	cp b
+	jr z, .alreadyKnown
+	inc de
+	ld a, [de]
+	cp b
+	jr z, .alreadyKnown
+	inc de
+	ld a, [de]
+	cp b
+	jr z, .alreadyKnown
+	pop de
+	; Check if move is already in the output list. Keep the input count in c
+	; across this scan so duplicate candidates return the unchanged count.
+	ld a, [wMoveBuffer]
+	and a
+	jr z, .appendMove
+	push bc
+	ld c, a
+	ld hl, wMoveBuffer + 1
+	ld a, b
+.bufferLoop
+	cp [hl]
+	jr z, .alreadyInBuffer
+	inc hl
+	dec c
+	jr nz, .bufferLoop
+	pop bc
+.appendMove
+	ld a, b
+	ld hl, wMoveBuffer
+	inc [hl]
+	ld c, [hl]
+	ld b, 0
+	add hl, bc
+	ld [hl], a
+	ret
+.alreadyInBuffer
+	pop bc
+	ret
+.alreadyKnown
+	pop de
 	ret
 
 ; Modified version of Move Relearner code used for Move Tutors

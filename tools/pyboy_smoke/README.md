@@ -22,9 +22,10 @@ Current coverage:
 - Debug 1 boot to Silph Co Dorm with the intro tour complete
 - Debug 2 boot through Indigo Plateau Lobby initialization, including automatic and forced AI tiers
 - Phase 0 Focus Energy and selective badge-reboost battle mechanics
-- Phase 4 Part 1 `AISelectSendOut` structural contracts: current and fainted
-  candidates are excluded, neutral ties choose the earliest living slot, and
-  temporarily borrowed battle bytes are restored
+- Phase 4 `AISelectSendOut` contracts: current and fainted candidates are
+  excluded, neutral ties choose the earliest living slot, temporarily borrowed
+  battle bytes are restored, and the real `EnemySendOut` selector handoff
+  honors effectiveness ranking
 - Data-driven contracts for all 22 selectable rogue stages
 - Route entry, warp tables, object counts, script state, five trainer classes, and reward trigger
 - Explicit Route 24 Nugget Bridge and SS Anne B1F multi-room exceptions
@@ -39,7 +40,8 @@ Failed emulator tests write a rendered screenshot and JSON state dump under
 `tools/pyboy_smoke/artifacts/`. Artifacts include the debug ROM SHA-256 and are
 ignored by Git. Dumps also include the symbol-file SHA-256, CPU registers,
 current bank and nearest symbol, stack bytes, RNG state, and recent named hook
-hits. Harness startup rejects structurally incompatible ROM/symbol pairs and a
+hits. `artifacts/index.json` points to the latest screenshot and state for each
+failed test. Harness startup rejects structurally incompatible ROM/symbol pairs and a
 symbol file newer than its ROM, which usually indicates mixed build artifacts.
 
 PyBoy is installed in WSL for this project. Run `wsl make smoke` from Windows
@@ -56,6 +58,16 @@ speed test boots through Debug 2 to the lobby and verifies:
 - saved `wOptions2` bits 6-7 are both on for a new game;
 - `rKEY1` bit 7 reports double-speed mode;
 - `hDMARoutine.waitCount + 1` contains `$50`, twice the single-speed `$28` wait.
+
+Hardware classification is enforced by the smoke runner. Modules named
+`test_cgb_*.py` must construct a CGB harness; every other smoke module must use
+the default DMG harness. The selected mode is included in failure state and the
+artifact index.
+
+Known but not yet authoritative behavior contracts live in
+`pending_contracts.json`. Each entry must state the observation, unresolved
+decision, and current test boundary. The smoke suite validates the registry and
+resolved entries should be removed when their executable contract lands.
 
 PyBoy proves those machine states but is not final visual acceptance. Use BGB
 for palette appearance, fades, title/credits raster effects, walking and NPC
@@ -99,10 +111,10 @@ records whether the layer is enabled at the resolved tier, its before/after
 score arrays, and the four signed deltas. This identifies which layer caused a
 decision without adding ROM instrumentation or consuming Game Boy RAM.
 
-Phase 4 is still in progress. Effectiveness-ranked replacement and the complete
-whether-to-switch flow need focused full-flow scenarios after the remaining
-switching engine lands. The current direct-routine tests intentionally cover
-only the committed Part 1 structural contracts.
+Phase 4 send-out selection now has both direct structural tests and an
+`EnemySendOut` caller-handoff trace. The latter records the previous slot,
+winning combined score, ranked slot, and slot actually handed to the battle
+core. Whether-to-switch policy remains covered through declarative AI scenarios.
 
 FIGHT 2 still falls back to its seeded random 6v6 generator when the SRAM magic
 byte is absent. Seed 17 is a versioned party-generation golden: it detects RNG

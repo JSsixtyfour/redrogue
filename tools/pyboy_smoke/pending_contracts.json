@@ -1,0 +1,10 @@
+[
+  {
+    "id": "phase4-opening-sendout-player-type-context",
+    "status": "design_review",
+    "scope": "AI Phase 4 opening send-out",
+    "observation": "EnemySendOutFirstMon selects the trainer lead before LoadBattleMonFromParty loads the player's battle-mon type block.",
+    "decision_needed": "Decide whether the opening trainer selection should be party-order based or should receive an explicit player-lead context before matchup ranking.",
+    "test_boundary": "The effectiveness-ranking smoke contract begins with later replacements, where wBattleMonType1 is authoritative."
+  }
+]
