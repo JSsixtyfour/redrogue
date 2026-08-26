@@ -156,3 +156,118 @@ AISelectSendOut::
 	xor a
 	ldh [hWhichPokemon], a
 	ret
+
+; ---------------------------------------------------------------------------
+; Carry SET if the enemy should switch its active mon out this turn.
+;
+; Called from AISwitchIfEnoughMons (bank $0E) AFTER that routine has confirmed
+; at least two living mons exist, so this does not re-check that.
+;
+; WHY BOOLEAN PREDICATES IN PRIORITY ORDER RATHER THAN A WEIGHTED SUM (the plan
+; revised Phase 4 to this shape after the pokeemerald-expansion review): each
+; check is independently tier-gateable and independently testable, most turns
+; exit on the first or second one, and - the real reason - switching is a rare,
+; highly visible action that should be EXPLICABLE. "It switched because it was
+; about to be KO'd" is a debuggable claim; "the weighted sum came out to 61" is
+; not. WHO to switch to stays scalar (AISelectSendOut above), because ranking
+; candidates is exactly what a score is for. The two halves of the question get
+; the shape that suits each.
+;
+; TIER GATE: T0/T1 keep vanilla behaviour outright (switch whenever the trainer
+; class's own random roll asked to), T2 gets the emergency triggers and vetoes,
+; T3 additionally gets the generic bad-matchup case.
+;
+; Reads the tier through wAITier rather than AIGetTier's return value: that
+; routine returns the tier in `a`, which cannot survive a farcall return
+; (Bankswitch's return path does `ld a, b`). Farcalling it is still required,
+; because that call is what RESOLVES wAITier on first use; the value is then
+; read back from WRAM, where it is stored as tier+1.
+; Clobbers af, bc, de, hl.
+AIShouldSwitch::
+	farcall AIGetTier ; resolve wAITier - its `a` return cannot survive the trip
+	ld a, [wAITier]
+	and a
+	jr z, .vanilla ; still unresolved: behave exactly as before
+	dec a ; a = resolved tier
+	cp AI_TIER_SKILLED
+	jr c, .vanilla ; T0/T1 are not supposed to switch intelligently
+
+; --- Emergency triggers, highest priority, short-circuiting ---
+; 1. The damage simulator says the player kills us next turn.
+	farcall AIPlayerWouldKO
+	jr c, .switch
+
+; 2. Badly statused: frozen is a total lockout, and a long sleep is close to
+;    one. A short sleep is left alone - waking up next turn is better than
+;    spending the switch and giving the player a free hit anyway.
+	ld a, [wEnemyMonStatus]
+	bit FRZ, a
+	jr nz, .switch
+	ld a, [wEnemyMonStatus]
+	and SLP_MASK
+	cp 2
+	jr nc, .switch
+
+; 3. Caught in the player's trapping move AND slower, so we cannot break out by
+;    KOing first. A faster trapped mon is left in: it still gets to act.
+	ld a, [wPlayerBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr z, .noTrap
+	farcall AIEnemyIsFaster
+	jr nc, .switch
+.noTrap
+
+; --- Vetoes: reasons to stay put even though nothing above forced a switch ---
+; A super-effective move is worth more than a better matchup we would have to
+; spend a turn (and a free hit) to reach.
+	farcall AIHasSuperEffectiveMove
+	jr c, .stay
+
+; Never abandon our own setup. Any raised stat means a previous turn was already
+; invested here.
+	ld hl, wEnemyMonAttackMod
+	ld b, 6 ; the six real stat mods; NUM_STAT_MODS is 8 but the last two are
+	        ; const_skip padding that carries no game state (same subset
+	        ; AISmart_Haze walks - see ai_smart.asm)
+.statLoop
+	ld a, [hli]
+	cp BASE_STAT_LEVEL + 1
+	jr nc, .stay ; strictly above neutral: we have a boost worth keeping
+	dec b
+	jr nz, .statLoop
+
+; --- Generic case: T3 only ---
+	ld a, [wAITier]
+	dec a
+	cp AI_TIER_EXPERT
+	jr c, .stay
+
+; Bad matchup = the player's primary type hits us for more than neutral. Same
+; forge-and-restore of PreviewTypeMatchup's inputs as AISelectSendOut above;
+; see that routine's header for why the engine's own dual-type walk is reused
+; rather than reimplemented.
+	ld a, [wPlayerMoveType]
+	push af
+	ld a, [wBattleMonType1]
+	ld [wPlayerMoveType], a
+	farcall PreviewTypeMatchup ; -> e = multiplier in twentieths, so NEUTRAL IS
+	                           ; 20, not 10 (it starts at EFFECTIVE * 2). Reads
+	                           ; the LIVE wEnemyMonType, which is already the
+	                           ; active mon here - only the attacking type needs
+	                           ; forging, unlike the send-out scan.
+	ld a, e
+	pop bc
+	ld a, b
+	ld [wPlayerMoveType], a ; restore before branching, so every exit path below
+	                        ; is already clean
+	ld a, e
+	cp EFFECTIVE * 2 + 1
+	jr nc, .switch ; strictly worse than neutral for us
+
+.stay
+	and a ; clear carry
+	ret
+.vanilla
+.switch
+	scf
+	ret

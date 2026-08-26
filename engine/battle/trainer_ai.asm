@@ -856,7 +856,16 @@ AISwitchIfEnoughMons:
 
 	ld a, d ; how many available monsters are there?
 	cp 2    ; don't bother if only 1
-	jp nc, SwitchEnemyMon
+	jr c, .noSwitch
+; AI Overhaul Phase 4: having a spare mon is now only the PRECONDITION, not the
+; decision. The three callers (JugglerAI / BlackbeltAI / AgathaAI) still make
+; their own class-specific random roll before reaching here, so hooking the
+; decision at this single point upgrades all of them without touching any of
+; them. AIShouldSwitch returns carry SET for "switch" and deliberately returns
+; carry SET at T0/T1 too, so the low tiers keep exactly today's behaviour.
+	farcall AIShouldSwitch
+	jp c, SwitchEnemyMon
+.noSwitch
 	and a
 	ret
 

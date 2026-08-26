@@ -377,3 +377,50 @@ AIScaleDamageByAccuracy::
 	ldh a, [hProduct + 2]
 	ld [wAIDamageEstimate + 1], a
 	ret
+
+; --- Switching support (Phase 4) -------------------------------------------
+
+; Carry SET if the enemy's active mon has at least one move that is
+; super-effective against the player.
+;
+; Deliberately uses AIGetTypeEffectiveness - the same single-type check AI_TYPES
+; already scores with - rather than the dual-type PreviewTypeMatchup. The point
+; is to answer "does the scoring layer think I have a good move here", and using
+; a DIFFERENT notion of effectiveness than the layer that actually picks the
+; move would let the switch decision and the move decision disagree about the
+; same board. See AI_OVERHAUL_PLAN.md follow-up F7 for why $10, not 10, is this
+; engine's neutral sentinel; every caller compares against it, so this does too.
+;
+; Lives in bank $0E because it calls ReadMove, whose Moves table is in this
+; bank. Farcalled from the switching engine in bank $2C, returning its answer in
+; CARRY - which survives a farcall return (see ai_switching.asm's header).
+;
+; CLOBBERS the wEnemyMove* block via ReadMove. Safe at the point this is called
+; from (TrainerAI, before move execution reloads it through GetCurrentMove), and
+; no worse than what every scoring layer already does to that block.
+; Clobbers af, bc, de, hl.
+AIHasSuperEffectiveMove::
+	ld hl, wEnemyMonMoves
+	ld b, NUM_MOVES
+.loop
+	ld a, [hli]
+	and a
+	jr z, .no ; move list is packed, so an empty slot ends it
+	push hl
+	push bc
+	call ReadMove
+	callfar AIGetTypeEffectiveness
+	ld a, [wTypeEffectiveness]
+	pop bc
+	pop hl
+	cp $10
+	jr z, .next ; exactly neutral
+	jr c, .next ; below neutral - resisted or immune
+	scf
+	ret
+.next
+	dec b
+	jr nz, .loop
+.no
+	and a
+	ret
