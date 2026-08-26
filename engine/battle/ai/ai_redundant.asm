@@ -228,57 +228,42 @@ AIRedundant_Paralyze:
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 
-; A damaging move whose poison SIDE effect (Twineedle etc.) cannot fire
-; because the target is Poison-type. The move still deals damage, so this is
-; a light nudge, not an elimination - mirrors PoisonEffect's own inline
-; type check (effects.asm), which silently drops the status but not the hit.
-; Substitute already blocks the whole move (effects.asm PoisonEffect), so a
-; Substitute target gets the heavy discourage here instead.
+; A damaging move whose poison SIDE effect (Twineedle etc.) is blocked
+; entirely when the target has a Substitute up (Substitute blocks the WHOLE
+; move here, not just the poison chance - PoisonEffect in effects.asm), so
+; that case stays a heavy discourage.
+;
+; Phase 3 Step 3: when only the RIDER is blocked (target already statused, or
+; is Poison-type so poison cannot apply) this handler no longer discourages at
+; all - the move's damage still lands normally, and AI_SMART's side-effect
+; BONUS handlers (ai_smart.asm) already skip the bonus in exactly this case.
+; Keeping a LIGHT penalty here on top of that was double-counting in the wrong
+; direction: a move that deals full damage but loses only its status rider was
+; being penalized MORE than its damage ranking alone justified. See
+; PHASE_3_STEP3_SPEC.md's "magnitude imbalance" finding for the case that
+; surfaced this (Seismic Toss beating a higher-damage Body Slam solely because
+; Body Slam's paralysis could not land on a same-typed target).
 AIRedundant_PoisonSide:
 	call AIRedundantTargetHasSubstitute
 	jr nz, .heavy
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .light ; status blocked, but the hit still lands - light only
-	ld a, [wBattleMonType1]
-	cp POISON
-	jr z, .light
-	ld a, [wBattleMonType2]
-	cp POISON
-	jr z, .light
 	xor a
-	ret
-.light
-	ld a, AI_REDUNDANT_LIGHT
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 
-; Body Slam / Ice Beam / Thunder-family side effects: the status cannot fire
-; if the move's own type matches one of the target's types (the engine's own
-; same-type-immunity rule, FreezeBurnParalyzeEffect in effects.asm) or the
-; target already has a status - but the move still damages, so light only.
-; A Substitute blocks the whole move (same handler checks it), so that case
-; is heavy.
+; Body Slam / Ice Beam / Thunder-family side effects: a Substitute blocks the
+; WHOLE move, so that stays a heavy discourage.
+;
+; Phase 3 Step 3: when only the RIDER is blocked (move's type matches one of
+; the target's types - the engine's own same-type-immunity rule in
+; FreezeBurnParalyzeEffect - or the target is already statused) this handler no
+; longer discourages at all. See AIRedundant_PoisonSide just above for the full
+; reasoning; it is identical here.
 AIRedundant_BurnFreezeParaSide:
 	call AIRedundantTargetHasSubstitute
 	jr nz, .heavy
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .light
-	ld a, [wEnemyMoveType]
-	ld b, a
-	ld a, [wBattleMonType1]
-	cp b
-	jr z, .light
-	ld a, [wBattleMonType2]
-	cp b
-	jr z, .light
 	xor a
-	ret
-.light
-	ld a, AI_REDUNDANT_LIGHT
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY

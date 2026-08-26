@@ -220,7 +220,7 @@
       "expect": {
         "scores": [
           22,
-          20,
+          19,
           20,
           20
         ]
@@ -267,7 +267,7 @@
       "expect": {
         "scores": [
           20,
-          20,
+          19,
           20,
           20
         ]
@@ -314,7 +314,7 @@
       },
       "expect": {
         "scores": [
-          23,
+          22,
           20,
           20,
           20
@@ -362,7 +362,7 @@
       },
       "expect": {
         "scores": [
-          20,
+          19,
           20,
           20,
           20
@@ -414,7 +414,7 @@
       "expect": {
         "scores": [
           16,
-          20,
+          19,
           20,
           20
         ]
@@ -465,7 +465,7 @@
       "expect": {
         "scores": [
           18,
-          20,
+          19,
           20,
           20
         ]
@@ -516,7 +516,7 @@
       "expect": {
         "scores": [
           30,
-          20,
+          19,
           20,
           20
         ]
@@ -567,7 +567,7 @@
       "expect": {
         "scores": [
           20,
-          20,
+          19,
           20,
           20
         ]
@@ -609,7 +609,7 @@
       "expect": {
         "scores": [
           30,
-          20,
+          19,
           20,
           20
         ]
@@ -651,7 +651,7 @@
       "expect": {
         "scores": [
           20,
-          20,
+          19,
           20,
           20
         ]
@@ -711,12 +711,13 @@
       }
     },
     {
-      "name": "damage_silent_when_no_move_threatens",
+      "name": "damage_nudges_best_move_when_nothing_threatens",
       "phase": "3",
       "heuristic": "kill_first",
       "case": "negative",
       "tags": [
         "ai_damage",
+        "best_move_nudge",
         "simulator"
       ],
       "required_cases": [
@@ -746,8 +747,1106 @@
       ],
       "expect": {
         "scores": [
+          19,
           20,
           20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "smart_dream_eater_encouraged_vs_sleeping_target",
+      "phase": "2b",
+      "heuristic": "dream_eater",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "accessor_seam",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "DREAM_EATER",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 3
+      },
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "smart_dream_eater_blocked_vs_awake_target",
+      "phase": "2b",
+      "heuristic": "dream_eater",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "ai_redundant",
+        "accessor_seam",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "DREAM_EATER",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 0
+      },
+      "expect": {
+        "never_pick": [
+          0
+        ],
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "threat_takes_status_out_when_faster_and_dying",
+      "phase": "3",
+      "heuristic": "threat_when_dying",
+      "case": "positive",
+      "tags": [
+        "ai_threat",
+        "simulator",
+        "player_side"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "SWORDS_DANCE",
+            "HYPNOSIS",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "pick_slot": [
+          1,
+          2
+        ],
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "threat_silent_when_not_about_to_die",
+      "phase": "3",
+      "heuristic": "threat_when_dying",
+      "case": "negative",
+      "tags": [
+        "ai_threat",
+        "simulator"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "SWORDS_DANCE",
+            "HYPNOSIS",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "threat_suppresses_setup_but_not_status_when_slower",
+      "phase": "3",
+      "heuristic": "threat_speed_gate",
+      "case": "positive",
+      "tags": [
+        "ai_threat",
+        "speed"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SLOWPOKE",
+          "level": 50,
+          "moves": [
+            "SWORDS_DANCE",
+            "HYPNOSIS",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "never_pick": [
+          0
+        ],
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "damage_prefers_accuracy_over_raw_power",
+      "phase": "3",
+      "heuristic": "expected_damage",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "accuracy",
+        "expected_value"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "THUNDER",
+            "THUNDERBOLT"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "damage_prefers_power_when_accuracy_cost_is_small",
+      "phase": "3",
+      "heuristic": "expected_damage",
+      "case": "negative",
+      "tags": [
+        "ai_damage",
+        "accuracy",
+        "expected_value"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "CHARIZARD",
+          "level": 50,
+          "moves": [
+            "FLAMETHROWER",
+            "FIRE_BLAST"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "damage_prefers_the_reliable_kill",
+      "phase": "3",
+      "heuristic": "reliable_finisher",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "accuracy",
+        "priority_cascade"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "CHARIZARD",
+          "level": 50,
+          "moves": [
+            "FIRE_BLAST",
+            "FLAMETHROWER"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 8
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "damage_prefers_priority_move_at_equal_power",
+      "phase": "3",
+      "heuristic": "expected_damage",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "accuracy",
+        "priority"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "QUICK_ATTACK"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "fixed_damage_beats_weak_physical_on_low_attack_mon",
+      "phase": "3",
+      "heuristic": "fixed_damage",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "fixed_damage",
+        "simulator"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "SEISMIC_TOSS",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "fixed_damage_loses_to_real_attack_on_strong_mon",
+      "phase": "3",
+      "heuristic": "fixed_damage",
+      "case": "negative",
+      "tags": [
+        "ai_damage",
+        "fixed_damage",
+        "simulator"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SEISMIC_TOSS",
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "fixed_damage_night_shade_not_treated_as_status",
+      "phase": "3",
+      "heuristic": "zero_power_fixed_damage",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "fixed_damage",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "NIGHT_SHADE",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "side_effect_bonus_fires_when_rider_can_land",
+      "phase": "3",
+      "heuristic": "side_effect_bonus",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "side_effect"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "side_effect_bonus_absent_when_target_already_statused",
+      "phase": "3",
+      "heuristic": "side_effect_bonus",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "side_effect"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 64
+      },
+      "expect": {
+        "scores": [
+          18,
+          19,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "side_effect_bonus_absent_on_same_type_immunity",
+      "phase": "3",
+      "heuristic": "side_effect_type_immunity",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "side_effect",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          19,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "recoil_discouraged_when_self_ko_and_no_target_kill",
+      "phase": "3",
+      "heuristic": "recoil_cost",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "recoil"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "DOUBLE_EDGE",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "recoil_not_discouraged_at_full_hp",
+      "phase": "3",
+      "heuristic": "recoil_cost",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "recoil"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "DOUBLE_EDGE",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "recoil_not_discouraged_on_mutual_ko",
+      "phase": "3",
+      "heuristic": "recoil_mutual_ko",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "recoil",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHAMP",
+          "level": 50,
+          "moves": [
+            "DOUBLE_EDGE",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        },
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "pick_slot": 0,
+        "score_lt": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "status_accuracy_prefers_more_reliable_sleep",
+      "phase": "3",
+      "heuristic": "status_accuracy",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "accuracy",
+        "status_move"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "JIGGLYPUFF",
+          "level": 50,
+          "moves": [
+            "SING",
+            "LOVELY_KISS"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "status_accuracy_no_penalty_above_threshold",
+      "phase": "3",
+      "heuristic": "status_accuracy",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "accuracy",
+        "status_move"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "JIGGLYPUFF",
+          "level": 50,
+          "moves": [
+            "LOVELY_KISS",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          19,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "risky_prefers_high_crit_move_when_losing",
+      "phase": "3",
+      "heuristic": "risky_when_losing",
+      "case": "positive",
+      "tags": [
+        "ai_risky",
+        "high_crit"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SLOWPOKE",
+          "level": 50,
+          "moves": [
+            "SLASH",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "pick_slot": [
+          0,
+          1
+        ],
+        "score_lte": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "risky_silent_when_healthy",
+      "phase": "3",
+      "heuristic": "risky_when_losing",
+      "case": "negative",
+      "tags": [
+        "ai_risky",
+        "high_crit"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SLOWPOKE",
+          "level": 50,
+          "moves": [
+            "SLASH",
+            "STRENGTH"
+          ]
+        }
+      ],
+      "expect": {
+        "pick_slot": 1,
+        "score_lt": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "risky_silent_when_guaranteed_win_exists",
+      "phase": "3",
+      "heuristic": "risky_guaranteed_win",
+      "case": "positive",
+      "tags": [
+        "ai_risky",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "QUICK_ATTACK",
+            "SLASH"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          15,
+          14,
           20,
           20
         ]

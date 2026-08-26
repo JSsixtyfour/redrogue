@@ -92,12 +92,48 @@ DEF AI_SATURATE    EQU AI_SCORE_MAX - AI_SCORE_BASE + 1
 ; --- wBuffer layout during one AI cycle (30 bytes, EXACT fit) ---
 ; Documented here because overrunning it silently corrupts the move scores.
 ;   +0  .. +3   move scores
-;   +4  .. +19  enemy move cache, 4 moves x {effect, power, type, accuracy}
+;   +4  .. +9   saved wPlayerMove* block (Phase 3 Step 2, see below)
+;   +10         scratch slot index for the player-move scan
+;   +11         nonzero if the enemy outspeeds the player (AI_THREAT, cached)
+;   +12 .. +13  enemy HP total the player's moves are tested against
+;   +14 .. +15  best expected damage this AI_DAMAGE pass
+;   +16         slot that damage belongs to
+;   +17         slot currently being scored
+;   +18 .. +19  free
 ;   +20 .. +25  party scores (6 slots), switching engine
 ;   +26 .. +29  pre-min-find score backup
 DEF AI_BUF_SCORES     EQU 0
-DEF AI_BUF_MOVECACHE  EQU 4
-DEF AI_MOVECACHE_SIZE EQU 4 ; bytes cached per move: effect, power, type, accuracy
+
+; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
+; That cache was CANCELLED in Phase 2b: its entire justification was avoiding
+; cross-bank ReadMove farcalls, which evaporated once every scoring layer was
+; pinned to bank $0E alongside the Moves table. The region is reused by
+; AIPlayerWouldKO (Phase 3 Step 2), which has to borrow the live wPlayerMove*
+; block to ask the damage simulator "what would this player move do to me",
+; and stashes the real contents here for the duration of the scan.
+DEF AI_BUF_MOVESAVE   EQU 4  ; 6 bytes: a whole MOVE_LENGTH move record
+DEF AI_BUF_SCANSLOT   EQU 10 ; 1 byte: which of the player's 4 slots we are on
+DEF AI_BUF_THREATFAST EQU 11 ; 1 byte: nonzero if the enemy outspeeds the player
+                             ; on RAW SPEED, cached once per AI_THREAT pass. Note
+                             ; this is not the same question as "do I act first" -
+                             ; Quick Attack and Counter override it per move; see
+                             ; AIEnemyActsFirstWith in ai_predicates.asm.
+DEF AI_BUF_EFFHP      EQU 12 ; 2 bytes: the enemy HP total the player's moves are
+                             ; tested against. Normally the live current HP, but
+                             ; AIHealWouldStillDie substitutes the POST-heal total,
+                             ; so "would healing actually save me" reuses the same
+                             ; scan instead of needing a max-damage value.
+; Phase 3 Step 3: AI_DAMAGE's best-expected-damage tracking. Coarse damage
+; tiers (kills / half / quarter) cannot separate two moves that land in the same
+; band - Thunderbolt and Thunder both "take at least a quarter" - so the layer
+; also tracks which move has the highest EXPECTED damage and gives it an extra
+; nudge. That comparative pass is what actually implements "prefer the better
+; move"; the tiers only say how threatening a move is in absolute terms.
+DEF AI_BUF_BESTDMG    EQU 14 ; 2 bytes: best expected damage seen this pass
+DEF AI_BUF_BESTSLOT   EQU 16 ; 1 byte: which move slot that was ($ff = none yet)
+DEF AI_BUF_CURSLOT    EQU 17 ; 1 byte: the slot being scored right now, stashed
+                             ; because the AIEstimateDamage farcall destroys
+                             ; every register that could otherwise carry it
 DEF AI_BUF_PARTY      EQU 20
 DEF AI_BUF_SCOREBACKUP EQU 26
 

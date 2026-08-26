@@ -130,9 +130,9 @@ AIScoringPointers:
 	dw AIMoveChoiceModification2   ; bit 3  AI_SETUP
 	dw AILayerSmart                ; bit 4  AI_SMART
 	dw AILayerDamage               ; bit 5  AI_DAMAGE
-	dw AILayerThreat               ; bit 6  AI_THREAT  - stub until Phase 3
+	dw AILayerThreat               ; bit 6  AI_THREAT
 	dw AILayerPlan                 ; bit 7  AI_PLAN    - stub until Phase 5
-	dw AILayerRisky                ; bit 8  AI_RISKY   - stub until Phase 3
+	dw AILayerRisky                ; bit 8  AI_RISKY
 	assert (@ - AIScoringPointers) / 2 == NUM_AI_LAYERS, 		"AIScoringPointers must have exactly NUM_AI_LAYERS entries"
 
 ; Placeholders. Each is replaced wholesale by its phase; they exist now so the
@@ -140,9 +140,9 @@ AIScoringPointers:
 ; AILayerRedundant is real as of Phase 2a - see engine/battle/ai/ai_redundant.asm.
 ; AILayerSmart is real as of Phase 2b - see engine/battle/ai/ai_smart.asm.
 ; AILayerDamage is real as of Phase 3 - see engine/battle/ai/ai_damage.asm.
-AILayerThreat:
+; AILayerThreat is real as of Phase 3 - see engine/battle/ai/ai_threat.asm.
+; AILayerRisky is real as of Phase 3 - see engine/battle/ai/ai_risky.asm.
 AILayerPlan:
-AILayerRisky:
 	ret
 
 ; Trainer-class personality. Runs at every tier, outside the layer bitmask.
@@ -255,6 +255,18 @@ AIMoveChoiceModification3:
 	ret z ; no more moves in move set
 	inc de
 	call ReadMove
+; Phase 3 Step 3: fixed-damage moves ignore type effectiveness completely in
+; this engine - Seismic Toss deals the user's level whatever it hits, and it
+; ignores immunity too (AI_OVERHAUL_PLAN.md follow-up F1). Scoring them off the
+; type chart is therefore not merely redundant but wrong: it was encouraging
+; Seismic Toss as "super effective" against a Normal type, where its damage is
+; identical to what it does to anything else. AI_DAMAGE ranks these on their
+; real simulated damage instead.
+	ld a, [wEnemyMoveEffect]
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .nextMove
+	cp SUPER_FANG_EFFECT
+	jr z, .nextMove
 	push hl
 	push bc
 	push de
@@ -562,6 +574,8 @@ TrainerAI:
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
+INCLUDE "engine/battle/ai/ai_accessors.asm"
+
 INCLUDE "engine/battle/ai/ai_score_helpers.asm"
 
 INCLUDE "engine/battle/ai/ai_predicates.asm"
@@ -571,6 +585,10 @@ INCLUDE "engine/battle/ai/ai_redundant.asm"
 INCLUDE "engine/battle/ai/ai_smart.asm"
 
 INCLUDE "engine/battle/ai/ai_damage.asm"
+
+INCLUDE "engine/battle/ai/ai_threat.asm"
+
+INCLUDE "engine/battle/ai/ai_risky.asm"
 
 JugglerAI:
 	cp 25 percent + 1

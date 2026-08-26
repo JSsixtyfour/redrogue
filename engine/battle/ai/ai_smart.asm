@@ -82,17 +82,20 @@ AILayerSmart:
 ; --- Cross-cutting rules, applied to every move regardless of whether it had
 ; a per-effect table entry. INPUT: hl = this move's score-array pointer.
 ; Every read here uses direct addressing (never `ld hl, wSomething`), so hl is
-; never clobbered and needs no save/restore - it is exactly what the caller
-; needs back afterward. Clobbers af, bc.
+; never clobbered by THIS routine's own logic and needs no save/restore for
+; most of it - it is exactly what the caller needs back afterward. The one
+; exception is the status-accuracy block below, which calls AIGetMoveHitChance
+; (a routine that DOES clobber hl) and explicitly saves/restores around it.
+; Clobbers af, bc, de.
 AISmartCrossCutting::
 ; Anti-spam: two consecutive zero-power turns is how a Gen 1 AI stalls out.
 ; Exempt HEAL_EFFECT and SUBSTITUTE_EFFECT - repeating those is often correct.
 	ld a, [wEnemyMovePower]
 	and a
-	jr nz, .fatigueCheck ; this move has power; anti-spam does not apply
+	jr nz, .statusAccuracy ; this move has power; anti-spam does not apply
 	ld a, [wAILastMoveNum]
 	and a
-	jr z, .fatigueCheck ; no move tracked yet (turn 1, or the first decision
+	jr z, .statusAccuracy ; no move tracked yet (turn 1, or the first decision
 	                     ; after a send-out) - NO_MOVE is 0 and no real move is
 	                     ; ever numbered 0, so this is not a genuine back-to-back
 	                     ; zero-power turn, just an unset tracker. Testing
@@ -104,13 +107,49 @@ AISmartCrossCutting::
 	                     ; cascade ranks above ordinary damage) for no reason.
 	ld a, [wAILastMovePower]
 	and a
-	jr nz, .fatigueCheck ; last move had power; no back-to-back zero yet
+	jr nz, .statusAccuracy ; last move had power; no back-to-back zero yet
 	ld a, [wEnemyMoveEffect]
 	cp HEAL_EFFECT
-	jr z, .fatigueCheck
+	jr z, .statusAccuracy
 	cp SUBSTITUTE_EFFECT
-	jr z, .fatigueCheck
+	jr z, .statusAccuracy
 	ld a, AI_STRONG
+	call AIDiscourage
+.statusAccuracy
+; Status-move accuracy: AI_DAMAGE only scales DAMAGING moves by hit chance (via
+; AIScaleDamageByAccuracy), so without this, Sing/Hypnosis/Lovely Kiss
+; (55/60/75% respectively) all scored identically - accuracy did nothing for
+; the whole class of pure-status moves. Only fires on 0-power moves; a
+; damaging move's accuracy is already handled in AI_DAMAGE, and applying it
+; again here would double-count.
+	ld a, [wEnemyMovePower]
+	and a
+	jr nz, .fatigueCheck
+; AIGetMoveHitChance clobbers bc/de/hl. bc is fine to lose - the dispatcher's
+; own loop termination relies on the movelist pointer in DE hitting a zero
+; byte, not on the loop counter surviving in B (see AILayerSmart's header:
+; every handler is already allowed to clobber bc). DE and HL are NOT safe to
+; lose: DE is that same movelist pointer, and HL is the caller's score
+; pointer. Losing DE here was a real, shipped bug - it let the dispatcher walk
+; past the real move list into unrelated WRAM, calling ReadMove and this
+; routine repeatedly on garbage "moves" until the loop counter happened to hit
+; zero by chance, corrupting scores for slots that were never real moves.
+; Found by a scenario whose result touched wBuffer+3 despite only two moves
+; existing in the set.
+	push de
+	push hl
+	call AIGetMoveHitChance
+	pop hl
+	pop de
+	cp 75 percent
+	jr nc, .fatigueCheck ; reliable enough - no penalty
+	cp 60 percent
+	jr nc, .accuracyNudge
+	ld a, AI_STRONG
+	call AIDiscourage
+	jr .fatigueCheck
+.accuracyNudge
+	ld a, AI_NUDGE
 	call AIDiscourage
 .fatigueCheck
 ; Repeated-move fatigue: only a genuinely long streak is discouraged, since
@@ -156,7 +195,33 @@ AISmartEffectTable:
 	dbw REFLECT_EFFECT, AISmart_Screen
 	dbw HAZE_EFFECT, AISmart_Haze
 	dbw CONFUSION_EFFECT, AISmart_Confusion
-	dbw SPECIAL_DAMAGE_EFFECT, AISmart_SpecialDamage
+; Phase 3 Step 3: secondary-effect bonuses. AI_REDUNDANT used to discourage
+; these moves when the rider specifically could not land (already statused,
+; type immunity); that logic moved here as the mirror bonus - see
+; AIRedundant_PoisonSide / AIRedundant_BurnFreezeParaSide in ai_redundant.asm
+; for the removed half of this and why keeping both double-counted.
+	dbw PARALYZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	dbw PARALYZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	dbw BURN_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	dbw BURN_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	dbw FREEZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	dbw FREEZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	dbw POISON_SIDE_EFFECT1, AISmart_PoisonSide
+	dbw POISON_SIDE_EFFECT2, AISmart_PoisonSide
+	dbw CONFUSION_SIDE_EFFECT, AISmart_ConfusionSide
+	dbw FLINCH_SIDE_EFFECT1, AISmart_FlinchSide
+	dbw FLINCH_SIDE_EFFECT2, AISmart_FlinchSide
+	dbw RECOIL_EFFECT, AISmart_RecoilEffect
+	dbw ATTACK_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	dbw DEFENSE_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	dbw SPEED_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	dbw SPECIAL_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+; SPECIAL_DAMAGE_EFFECT deliberately has NO handler as of Phase 3 Step 3. It
+; used to be encouraged whenever the target was above half HP, which was
+; backwards reasoning - fixed damage is a constant, so a healthier target makes
+; it relatively WORSE, not better. Now that AIEstimateDamage returns these moves'
+; real values, AI_DAMAGE ranks them correctly on damage alone and any extra
+; nudge here would just double-count.
 	db -1
 
 ; --- Handlers ---------------------------------------------------------
@@ -313,13 +378,21 @@ AISmart_OHKO:
 	xor a
 	ret
 
-; Super Fang is much better when the target is already low, since halving a
-; small HP pool can finish it. Source: pokecrystal AI_Smart_SuperFang.
+; Super Fang sets damage to half the target's CURRENT HP (.superFangEffect in
+; core.asm), so its absolute damage is LARGEST against a healthy target and it
+; can never finish one off.
+;
+; Phase 3 Step 3 inverted this handler. It previously encouraged Super Fang when
+; the target was below a quarter HP, which is exactly backwards - that is where
+; the move is weakest. AI_DAMAGE now ranks it on its real simulated damage, so
+; all this handler still contributes is the one thing a damage figure cannot
+; express: it cannot KO, so once the target is low an ordinary attack both
+; out-damages it and can actually end the fight.
 AISmart_SuperFang:
-	call AIPlayerHPBelowQuarter
+	call AIPlayerHPBelowHalf
 	jr nc, .noChange
 	ld a, AI_STRONG
-	scf
+	and a ; carry CLEAR = discourage (was scf, i.e. encourage)
 	ret
 .noChange
 	xor a
@@ -425,15 +498,211 @@ AISmart_Confusion:
 	xor a
 	ret
 
-; Fixed-damage moves (Seismic Toss etc.) are a reliable answer to a healthy
-; target regardless of type walls (see AI_OVERHAUL_PLAN.md follow-up F1: this
-; engine's fixed-damage moves ignore type immunity, unlike upstream). Source:
-; Yume, adapted for the immunity divergence.
-AISmart_SpecialDamage:
-	call AIPlayerHPBelowHalf
+
+; --- Secondary-effect bonuses (Phase 3 Step 3) -----------------------------
+; Give credit for a move's chance to apply a status/stat-drop/flinch on top of
+; its damage, which nothing did before this. Verified proc rates (source:
+; engine/battle/effects.asm) and the weight table are recorded in
+; PHASE_3_STEP3_SPEC.md; magnitudes follow the plan's status thesis (freeze >
+; KO, paralysis ~ half a KO), scaled down for these lower, move-specific rates.
+;
+; Every handler below is gated on "could the rider actually land" and returns
+; a plain xor a/ret when it cannot - this is the mirror image of the discourage
+; that AIRedundant_PoisonSide / AIRedundant_BurnFreezeParaSide used to apply in
+; that situation, moved here so the two are not double-counting the same fact
+; from opposite directions (see PHASE_3_STEP3_SPEC.md's magnitude-imbalance
+; finding, and this file's header for the "why carry, why xor a" discipline
+; every one of these follows).
+
+; Carry SET if a paralyze/burn/freeze rider CANNOT land on the current target:
+; a Substitute is up, the target already has a status, or the move's own type
+; matches one of the target's types (Gen 1's same-type-cannot-be-statused rule,
+; FreezeBurnParalyzeEffect in effects.asm).
+; Clobbers af, b.
+AISmartParaSideBlocked:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .blocked
+	call AIGetTargetStatus
+	and a
+	jr nz, .blocked
+	ld a, [wEnemyMoveType]
+	ld b, a
+	call AIGetTargetType1
+	cp b
+	jr z, .blocked
+	call AIGetTargetType2
+	cp b
+	jr z, .blocked
+	and a ; clear carry
+	ret
+.blocked
+	scf
+	ret
+
+; Body Slam / Lick (PARALYZE_SIDE_EFFECT2, 30%), Thunderbolt / Thunder
+; (PARALYZE_SIDE_EFFECT1, 10%), Ice Beam / Blizzard / Ice Punch
+; (FREEZE_SIDE_EFFECT1, 10%), Fire Blast (BURN_SIDE_EFFECT2, 30%), Fire Punch
+; (BURN_SIDE_EFFECT1, 10%). FREEZE_SIDE_EFFECT2 is unused by any move in this
+; game (English Blizzard uses the _1 rate) but is included for completeness -
+; the table entry costs two bytes and nothing currently reaches it.
+AISmart_BurnFreezeParaSide:
+	call AISmartParaSideBlocked
 	jr c, .noChange
+	ld a, [wEnemyMoveEffect]
+	cp FREEZE_SIDE_EFFECT2
+	jr z, .veryStrong
+	cp FREEZE_SIDE_EFFECT1
+	jr z, .strong
+	cp PARALYZE_SIDE_EFFECT2
+	jr z, .strong
 	ld a, AI_NUDGE
 	scf
+	ret
+.strong
+	ld a, AI_STRONG
+	scf
+	ret
+.veryStrong
+	ld a, AI_VERY_STRONG
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
+; Carry SET if a poison rider CANNOT land: a Substitute is up, the target
+; already has a status, or the target is Poison-type (PoisonEffect's own
+; inline immunity check in effects.asm).
+; Clobbers af.
+AISmartPoisonSideBlocked:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .blocked
+	call AIGetTargetStatus
+	and a
+	jr nz, .blocked
+	call AIGetTargetType1
+	cp POISON
+	jr z, .blocked
+	call AIGetTargetType2
+	cp POISON
+	jr z, .blocked
+	and a
+	ret
+.blocked
+	scf
+	ret
+
+; Smog / Sludge (POISON_SIDE_EFFECT2, 40%), Poison Sting (POISON_SIDE_EFFECT1,
+; 20%).
+AISmart_PoisonSide:
+	call AISmartPoisonSideBlocked
+	jr c, .noChange
+	ld a, [wEnemyMoveEffect]
+	cp POISON_SIDE_EFFECT2
+	jr z, .strong
+	ld a, AI_NUDGE
+	scf
+	ret
+.strong
+	ld a, AI_NUDGE ; 20/40% both land at the same low tier here - see the value
+	scf            ; table in PHASE_3_STEP3_SPEC.md, which puts both POISON_SIDE
+	ret            ; rates at AI_NUDGE, unlike the paralyze/burn/freeze family
+.noChange
+	xor a
+	ret
+
+; Psybeam / Confusion (CONFUSION_SIDE_EFFECT, 10%). Gated on the CONFUSED bit
+; in wPlayerBattleStatus1, NOT wBattleMonStatus - confusion is not one of the
+; mutually-exclusive non-volatile statuses, so it needs its own flag and can
+; stack with poison/burn/etc, but not with itself.
+AISmart_ConfusionSide:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .noChange
+	ld a, [wPlayerBattleStatus1]
+	bit CONFUSED, a
+	jr nz, .noChange
+	ld a, AI_NUDGE
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
+; Flinch only matters if the enemy acts BEFORE the target's move resolves -
+; landing it after the target has already moved does nothing. Rated on top of
+; AIEnemyActsFirstWith rather than AIEnemyIsFaster for the same reason
+; ai_threat.asm uses it: Quick Attack and Counter override raw Speed.
+AISmart_FlinchSide:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .noChange
+	call AIEnemyActsFirstWith
+	jr nc, .noChange
+	ld a, AI_NUDGE
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
+; Growl / Tail Whip / Leer / etc.-style DAMAGING moves with a stat-down rider
+; (Rock Slide's Speed drop and similar). Only Substitute-gated - unlike the
+; status riders above, a stat drop is not blocked by the target already having
+; a non-volatile status, and this engine has no type-immunity rule for it.
+AISmart_StatDownSide:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .noChange
+	ld a, AI_NUDGE
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
+; Double Edge / Take Down / Submission / Struggle cost the user
+; damageDealt/4 (Struggle: /2 - RecoilEffect_ in move_effects/recoil.asm skips
+; the second shift for it). Invisible to a pure damage ranking, so this needs
+; its own handler.
+;
+; Must recompute the estimate itself: AI_SMART (bit 4) runs BEFORE AI_DAMAGE
+; (bit 5) in the tier's layer order, so wAIDamageEstimate has not been filled in
+; for the move currently being scored yet - same pattern as AILayerThreat's
+; Quick Attack check in ai_threat.asm. Uses the RAW (pre-accuracy) estimate on
+; purpose: recoil only happens when the hit actually connects, so scaling it by
+; hit chance first would be answering a different question.
+AISmart_RecoilEffect:
+	farcall AIEstimateDamage ; -> wAIDamageEstimate. Clobbers af/bc/de/hl.
+	ld a, [wAIDamageEstimate]
+	ld d, a
+	ld a, [wAIDamageEstimate + 1]
+	ld e, a ; de = raw estimated damage
+	srl d
+	rr e ; de = damage / 2
+	ld a, [wEnemyMoveNum]
+	cp STRUGGLE
+	jr z, .gotRecoil ; Struggle stops at /2
+	srl d
+	rr e ; de = damage / 4
+.gotRecoil
+	ld a, [wEnemyMonHP]
+	ld b, a
+	ld a, [wEnemyMonHP + 1]
+	ld c, a ; bc = the user's own current HP
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry set iff recoil(de) < ownHP(bc), i.e. the user survives
+	jr c, .recoilSurvivable
+; The recoil would KO its own user. That is only a bad trade if the target
+; survives too - AI_DAMAGE has already scored the kill on this move if it has
+; one, so a mutual KO is left alone rather than fought with a discourage.
+	call AIMoveWouldKO
+	jr c, .noChange
+	ld a, AI_HEAVY
+	and a ; carry CLEAR = discourage
+	ret
+.recoilSurvivable
+	ld a, AI_NUDGE
+	and a
 	ret
 .noChange
 	xor a

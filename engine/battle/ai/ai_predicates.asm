@@ -117,7 +117,7 @@ AIPlayerHPBelowQuarter::
 ; not run the simulator themselves, so that one farcall per move is not paid
 ; again per predicate.
 
-; Carry SET if (wAIDamageEstimate << b) >= the player's current HP. The shift
+; Carry SET if (wAIDamageEstimate << b) >= the defender's current HP. The shift
 ; turns one comparison into the whole damage-tier vocabulary, the same trick
 ; AIHPShiftCompare above uses for HP bands, and for the same reason: no
 ; division, no rounding, no hDivisor/hQuotient dependency.
@@ -129,39 +129,65 @@ AIPlayerHPBelowQuarter::
 ; so b=0 answers "can this move kill", not "does it on average". That is the
 ; intended reading for the priority cascade's rank 1: taking a kill that is
 ; merely possible is correct play, even when a low roll would fall short.
-; INPUT: b = shift count. Clobbers af, b, de, hl.
-AIDamageReachesFraction::
+;
+; INPUT: b = shift count, hl = pointer to the defender's current HP (2 bytes,
+;        high byte first). Whichever side is DEFENDING is the caller's choice,
+;        which is what lets the enemy-attacks-player and player-attacks-enemy
+;        directions share one comparison.
+; Clobbers af, bc, de, hl.
+AIDamageReachesHP::
 	ld a, [wAIDamageEstimate]
-	ld h, a
+	ld d, a
 	ld a, [wAIDamageEstimate + 1]
-	ld l, a ; hl = estimated damage
+	ld e, a ; de = estimated damage
 	inc b   ; so a shift count of 0 falls straight through to .compare
 .shiftLoop
 	dec b
 	jr z, .compare
-	add hl, hl
+	sla e
+	rl d
 	jr nc, .shiftLoop
 ; Overflowed 16 bits. Max HP is capped at 999 by the stat system, so a value
 ; this large unambiguously reaches it - report "reaches" without reading further.
 	scf
 	ret
 .compare
-	ld a, [wBattleMonHP]
-	ld d, a
-	ld a, [wBattleMonHP + 1]
-	ld e, a ; de = player's current HP
-	ld a, l
-	sub e
-	ld a, h
-	sbc d   ; carry set iff hl < de, i.e. the hit falls short
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = defender's current HP
+	ld a, e
+	sub c
+	ld a, d
+	sbc b   ; carry set iff de < bc, i.e. the hit falls short
 	ccf     ; flip, so carry set means "reaches or exceeds"
 	ret
 
-; Carry SET if the currently-estimated move would KO the player outright.
-; Clobbers af, b, de, hl.
+; Carry SET if (estimate << b) >= the PLAYER's current HP. Used by AI_DAMAGE to
+; score the enemy's own moves. INPUT: b = shift count.
+AIDamageReachesFraction::
+	ld hl, wBattleMonHP
+	jp AIDamageReachesHP
+
+; Carry SET if the currently-estimated enemy move would KO the player outright.
 AIMoveWouldKO::
 	ld b, 0
-	jp AIDamageReachesFraction
+	jr AIDamageReachesFraction
+
+; Carry SET if the currently-estimated PLAYER move reaches the enemy HP total
+; currently staged in wBuffer + AI_BUF_EFFHP. The mirror of AIMoveWouldKO, used
+; by AI_THREAT to answer "am I about to die".
+;
+; Deliberately reads the STAGED total rather than wEnemyMonHP directly. Callers
+; set it: AIPlayerWouldKO stages the live current HP, and AIHealWouldStillDie
+; stages the POST-heal total, which is what lets "would healing actually save
+; me" reuse this whole scan instead of needing a separate max-damage value.
+; Reading wEnemyMonHP here instead was a real bug - it made AIHealWouldStillDie
+; silently answer the question AIPlayerWouldKO had already answered, so a heal
+; that fully restored HP was still reported as futile.
+AIDamageWouldKOEnemy::
+	ld b, 0
+	ld hl, wBuffer + AI_BUF_EFFHP
+	jp AIDamageReachesHP
 
 ; --- Repeated-move / anti-spam tracking -----------------------------------
 ; Maintains wAILastMovePower, wAILastMoveNum and wAISameMoveCount, which Phase 1
@@ -205,4 +231,149 @@ AITrackLastMove::
 	xor a
 	ld [wAISameMoveCount], a
 .done
+	ret
+
+; --- Speed comparison (Phase 3 Step 2) -------------------------------------
+; Carry SET if the enemy's Speed is strictly greater than the player's, i.e.
+; the enemy acts first this turn.
+;
+; This is the hinge of the whole "I am about to die" decision. If the enemy is
+; FASTER, a disabling status can still land and prevent the KO outright, so
+; spending the turn on it is correct. If the enemy is SLOWER, the player's
+; lethal move resolves first and nothing the enemy picks can stop it - at which
+; point variance is the only line that wins, because the estimate is a MAXIMUM
+; roll and a low roll may leave the enemy alive.
+;
+; Deliberately ignores paralysis' quarter-speed penalty and Speed stat stages:
+; wEnemyMonSpeed / wBattleMonSpeed are the live in-battle values, which already
+; have both folded in.
+; Clobbers af, bc, de.
+AIEnemyIsFaster::
+	ld a, [wEnemyMonSpeed]
+	ld b, a
+	ld a, [wEnemyMonSpeed + 1]
+	ld c, a ; bc = enemy speed
+	ld a, [wBattleMonSpeed]
+	ld d, a
+	ld a, [wBattleMonSpeed + 1]
+	ld e, a ; de = player speed
+	ld a, e
+	sub c
+	ld a, d
+	sbc b   ; carry set iff de < bc, i.e. player is slower
+	ret
+
+; Carry SET if the enemy acts FIRST this turn using the move currently loaded in
+; the wEnemyMove* block.
+;
+; Gen 1 has no priority field. The engine hardcodes two move ids in
+; MainInBattleLoop (engine/battle/core.asm, the block around .noLinkBattle):
+; QUICK_ATTACK moves its user first, COUNTER moves its user LAST, and everything
+; else falls through to a Speed comparison. So AIEnemyIsFaster on its own is an
+; incomplete answer to "who acts first" - which is a correctness bug, not just a
+; missing refinement: a slower mon holding Quick Attack really does act first,
+; and AI_THREAT reasoned as though it did not.
+;
+; DELIBERATELY does not read wPlayerSelectedMove, even though the player has
+; already locked their move in by the time the AI runs. Knowing THIS turn's
+; choice is a far stronger form of cheating than the roster-level omniscience
+; the plan permits, and it would make mirror-priority situations unbeatable.
+; The AI assumes the player is not also using Quick Attack - the same assumption
+; a human opponent makes.
+; Clobbers af, bc, de, hl.
+AIEnemyActsFirstWith::
+	ld a, [wEnemyMoveNum]
+	cp QUICK_ATTACK
+	jr z, .actsFirst
+	cp COUNTER
+	jr z, .actsLast
+	jp AIEnemyIsFaster
+.actsFirst
+	scf
+	ret
+.actsLast
+	and a ; a holds COUNTER here, so this only clears carry
+	ret
+
+; --- Accuracy (Phase 3 Step 3) ---------------------------------------------
+
+; OUTPUT: a = the enemy's currently-loaded move's true hit chance, 0-255.
+;
+; Wraps the engine's own CalcHitChance rather than reading wEnemyMoveAccuracy
+; raw, and that distinction is the whole point: CalcHitChance already scales a
+; move's base accuracy by the ATTACKER's accuracy stages and the TARGET's
+; evasion stages. So a target who has been boosting evasion correctly devalues
+; ordinary moves here - and correctly makes Swift, which bypasses the accuracy
+; check entirely, look better against exactly that target.
+;
+; CalcHitChance writes its scaled result BACK into wEnemyMoveAccuracy in place,
+; so the original byte is saved and restored around the call.
+;
+; Reached by farcall despite living in another bank, which is safe here for the
+; precise reason AIEstimateDamage could NOT be split: CalcHitChance takes no
+; register arguments at all. It selects its inputs from hWhoseTurn and returns
+; through WRAM, so there is no register contract for Bankswitch to destroy.
+;
+; KNOWN GAP: SF_NEVER_MISS / SF_ALWAYS_HIT are not consulted, so a special-form
+; attacker's accuracy is under-reported. They cannot be read across a farcall
+; (GetAttackerSpecialFormCaps returns in a, which Bankswitch destroys), so they
+; are tracked together with the SF_ALWAYS_CRIT gap in the plan.
+; Clobbers bc, de, hl.
+AIGetMoveHitChance::
+	ld a, [wEnemyMoveEffect]
+	cp SWIFT_EFFECT
+	jr z, .neverMisses ; Swift returns before MoveHitTest's accuracy roll
+	ld a, [wEnemyMoveAccuracy]
+	push af
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, $1
+	ldh [hWhoseTurn], a ; CalcHitChance picks its move block and stat mods off this
+	farcall CalcHitChance
+	ld a, [wEnemyMoveAccuracy]
+	ld b, a ; the scaled chance, captured before the byte is put back
+	pop af
+	ldh [hWhoseTurn], a
+	pop af
+	ld [wEnemyMoveAccuracy], a
+	ld a, b
+	ret
+.neverMisses
+	ld a, $ff
+	ret
+
+; Scales wAIDamageEstimate down by the loaded move's hit chance, turning the
+; max-roll figure into an EXPECTED damage figure.
+;
+; This one routine is what makes accuracy pervade every damage decision:
+; Thunderbolt (95 power, 100%) beats Thunder (120 power, 70%) on expected
+; damage with neither special-cased, and the same arithmetic settles
+; Flamethrower vs Fire Blast. It is strictly stronger than the classic
+; "power x accuracy" heuristic, because the number being scaled already has
+; STAB, dual-type effectiveness, live stats and screens folded into it.
+;
+; Callers that need to ask "CAN this move kill" must do so BEFORE calling this:
+; that is a question about possibility, not expectation, and scaling first would
+; hide a real but unreliable kill.
+; Clobbers af, bc, de, hl.
+AIScaleDamageByAccuracy::
+	call AIGetMoveHitChance
+	ld b, a
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [wAIDamageEstimate]
+	ldh [hMultiplicand + 1], a
+	ld a, [wAIDamageEstimate + 1]
+	ldh [hMultiplicand + 2], a
+	ld a, b
+	ldh [hMultiplier], a
+	call Multiply
+; hProduct is big-endian and OVERLAPS hMultiplicand through the union in
+; ram/hram.asm, so dividing the 32-bit product by 256 is simply dropping its
+; last byte: the 16-bit answer is hProduct+1 (high) and hProduct+2 (low).
+; Damage caps at 999 and the chance at 255, so hProduct+0 is always zero here.
+	ldh a, [hProduct + 1]
+	ld [wAIDamageEstimate], a
+	ldh a, [hProduct + 2]
+	ld [wAIDamageEstimate + 1], a
 	ret

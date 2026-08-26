@@ -6110,12 +6110,40 @@ AIGetTypeEffectiveness:
 ; AdjustDamageForMoveType's RoguePrismDamageBoost farcall self-cancel, since
 ; that boost returns immediately on any turn but the player's.
 ;
+; ALIAS WARNING: wMoveType is the SAME BYTE as wTypeEffectiveness (and
+; wPokedexNum, wMaxPP, wNumSetBits and several more - see the shared union in
+; ram/wram.asm). It is saved and restored below, but do not read anything into
+; that: AI_TYPES calls AIGetTypeEffectiveness on its own pass, which writes its
+; $10 sentinel into the same byte, so the value visibly changes across a full
+; AI cycle no matter what this routine does. Verified by tier: it drifts at T1
+; with the Phase 3 layers switched off, and does not drift at T0. Any future
+; code that wants a wMoveType or wTypeEffectiveness value to survive an AI call
+; must keep its own copy.
+;
 ; CLOBBERS: af, bc, de, hl. All output is in WRAM.
 ; ============================================================
 AIEstimateDamage::
+; Entry point A: what the ENEMY's currently-loaded move would do to the player.
+	ld b, $1
+	jr _AIEstimateForTurn
+
+AIEstimatePlayerDamage::
+; Entry point B: what the PLAYER's currently-loaded move would do to the enemy.
+; The caller must have populated the wPlayerMove* block first (and is
+; responsible for restoring it). This is the "am I about to die" half of Phase 3
+; Step 2, consumed via AIDamageWouldKOEnemy.
+	ld b, $0
+
+_AIEstimateForTurn:
+; b = the hWhoseTurn value to run under, and the ONLY thing that differs between
+; the two directions - which is why they share one body rather than existing as
+; two near-identical routines. That sharing is not just tidiness: Battle Core
+; had ~171 bytes free when this was written, and a second copy would not fit.
+; b survives the save block below (which touches only af) and is dead by the
+; time GetDamageVars* overwrites it with the attack stat.
+;
 ; Save every byte the damage path below writes. Restored at .done in exactly
-; reverse order; the two guard branches jump there with the stack already
-; balanced.
+; reverse order; the guard branches jump there with the stack already balanced.
 	ldh a, [hWhoseTurn]
 	push af
 	ld a, [wCriticalHitOrOHKO]
@@ -6132,8 +6160,8 @@ AIEstimateDamage::
 	ld a, [hl]
 	push af
 
-	ld a, $1
-	ldh [hWhoseTurn], a ; enemy is the attacker for this estimate
+	ld a, b
+	ldh [hWhoseTurn], a ; whichever side this entry point selected
 	xor a
 	ld [wCriticalHitOrOHKO], a ; estimate the ordinary, non-crit case. This also
 	                           ; keeps GetDamageVarsForEnemyAttack off its crit
@@ -6144,8 +6172,19 @@ AIEstimateDamage::
 	ld [wAIDamageEstimate], a
 	ld [wAIDamageEstimate + 1], a
 
-; Two move classes must never reach CalculateDamage from here.
-	ld a, [wEnemyMoveEffect]
+; Two move classes must never reach CalculateDamage from here. Read them from
+; whichever move block this direction is attacking with.
+	ld hl, wEnemyMoveEffect
+	ld a, b
+	and a
+	jr nz, .gotMoveBlock
+	ld hl, wPlayerMoveEffect
+.gotMoveBlock
+	ld a, [hli] ; effect; hl now points at that same block's power byte
+	cp SUPER_FANG_EFFECT
+	jr z, .superFang
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .specialDamage
 	cp OHKO_EFFECT
 	jr z, .done ; CalculateDamage dispatches OHKO_EFFECT straight into
 	            ; JumpToOHKOMoveEffect, which CALLS JumpMoveEffect - i.e. it
@@ -6153,17 +6192,102 @@ AIEstimateDamage::
 	            ; move in the middle of scoring. OHKO legality is already owned
 	            ; by AIRedundant_OHKO (speed) and AISmart_OHKO (level), so report
 	            ; zero and leave the scoring to them.
-	ld a, [wEnemyMovePower]
+	ld a, [hl]
 	and a
 	jr z, .done ; status move: nothing to estimate
 
+	ld a, b
+	and a
+	jr z, .playerAttacks
 	call GetDamageVarsForEnemyAttack ; b = attack, c = defense, d = power, e = level
+	jr .calculate
+.playerAttacks
+	call GetDamageVarsForPlayerAttack
+.calculate
 	call CalculateDamage             ; -> wDamage, before STAB and type
 	call AdjustDamageForMoveType     ; STAB + dual-type, engine-exact
 	ld hl, wDamage
 	ld a, [hli]
 	ld [wAIDamageEstimate], a
 	ld a, [hl]
+	ld [wAIDamageEstimate + 1], a
+	jr .done
+
+; --- Fixed-damage moves -----------------------------------------------------
+; These bypass the damage formula completely, so the ordinary path above would
+; value them off their base power - which the move table stores as 1, or 0 for
+; Night Shade. That is why they are dispatched BEFORE the zero-power guard:
+; without this, Night Shade is discarded as a status move and Seismic Toss is
+; estimated at about 2 instead of the attacker's level.
+;
+; AdjustDamageForMoveType is deliberately NOT applied to any of them. In this
+; engine fixed-damage moves ignore type immunity and effectiveness entirely
+; (AI_OVERHAUL_PLAN.md follow-up F1), so scaling by the type chart would be
+; wrong, not merely redundant - a Seismic Toss into a Ghost really does connect.
+;
+; Values verified against ApplyAttackToPlayerPokemon's .specialDamage and
+; .superFangEffect, not recalled.
+.superFang
+; Super Fang sets damage to half the DEFENDER's current HP, so its value scales
+; with how healthy the target is and it can never finish one off.
+	ld hl, wBattleMonHP ; b = 1: enemy attacks, so the player defends
+	ld a, b
+	and a
+	jr nz, .gotDefenderHP
+	ld hl, wEnemyMonHP
+.gotDefenderHP
+	ld a, [hli]
+	ld d, a
+	ld e, [hl] ; de = defender's current HP
+	srl d
+	rr e       ; de = half of it
+	jr .storeFixed
+
+.specialDamage
+	ld hl, wEnemyMonLevel ; the ATTACKER's level, so this follows b as well
+	ld a, b
+	and a
+	jr nz, .gotLevel
+	ld hl, wBattleMonLevel
+.gotLevel
+	ld a, [hl]
+	ld e, a
+	ld d, 0 ; de = attacker level, which is already the answer for two of these
+	ld a, [wEnemyMoveNum]
+	bit 0, b
+	jr nz, .gotMoveNum
+	ld a, [wPlayerMoveNum]
+.gotMoveNum
+	cp SEISMIC_TOSS
+	jr z, .storeFixed
+	cp NIGHT_SHADE
+	jr z, .storeFixed
+	cp SONICBOOM
+	jr z, .sonicBoom
+	cp DRAGON_RAGE
+	jr z, .dragonRage
+; Psywave rolls uniformly in [1, level * 1.5), so its EXPECTED value is three
+; quarters of the level. The expectation is used rather than a roll on purpose:
+; the simulator has to stay deterministic or every scenario built on it turns
+; flaky. Computed as level - level/4 to avoid a multiply.
+	ld a, e
+	srl a
+	srl a
+	ld d, a
+	ld a, e
+	sub d
+	ld e, a
+	ld d, 0
+	jr .storeFixed
+.sonicBoom
+	ld de, SONICBOOM_DAMAGE
+	jr .storeFixed
+.dragonRage
+	ld de, DRAGON_RAGE_DAMAGE
+.storeFixed
+	ld a, d
+	ld [wAIDamageEstimate], a
+	ld a, e
 	ld [wAIDamageEstimate + 1], a
 .done
 	ld hl, wDamage + 1
@@ -6181,6 +6305,34 @@ AIEstimateDamage::
 	ld [wCriticalHitOrOHKO], a
 	pop af
 	ldh [hWhoseTurn], a
+	ret
+
+; Carry SET if the move id in e appears in HighCriticalMoves (Karate Chop,
+; Razor Leaf, Crabhammer, Slash - the vanilla high-crit-rate moves). Farcalled
+; from ai_risky.asm: bank $0E cannot read this bank's DATA directly any more
+; than it can call this bank's CODE - same rule as AIEstimateDamage's
+; placement, just for a table lookup instead of a routine.
+;
+; INPUT IN e, NOT a: Bankswitch's first instruction (`ldh a, [hLoadedROMBank]`)
+; clobbers a before this routine ever runs, so an argument cannot travel in a
+; across a farcall - only de survives the trip in both directions. Same rule
+; documented on AIGetPlayerMoveN's move to bank $0E, from the opposite angle:
+; that routine had to move IN-bank because its `a` argument made a farcall
+; impossible; this one instead changes its OWN contract to use de, since (unlike
+; the accessor seam) nothing else needs this table read from bank $0E's hot path.
+; Clobbers af, hl.
+AIIsHighCritMove::
+	ld hl, HighCriticalMoves
+.loop
+	ld a, [hli]
+	cp $ff
+	jr z, .no
+	cp e
+	jr nz, .loop
+	scf
+	ret
+.no
+	and a
 	ret
 
 INCLUDE "data/types/type_matchups.asm"

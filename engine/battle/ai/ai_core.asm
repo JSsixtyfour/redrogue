@@ -166,37 +166,13 @@ AIHasFlag::
 .set
 	ret
 
-; --- Player-state accessor seam --------------------------------------------
-; Every heuristic reads the player's state through these rather than touching
-; wBattleMon* directly. Today they return live data, which is the
-; omniscient-first decision. Phase 7 changes ONLY these routines to prefer
-; wAISeenPlayerMoves and fall back to raw types when nothing has been revealed
-; yet - at which point no heuristic needs editing.
+; --- Player-state accessor seam: MOVED (Phase 3 Step 2) --------------------
+; AIGetTargetType1 / AIGetTargetType2 / AIGetTargetStatus / AIGetPlayerMoveN now
+; live in engine/battle/ai/ai_accessors.asm, INCLUDEd into bank $0E beside the
+; scoring layers. They had to move: they are called from the per-move scoring
+; loop with plain same-bank calls, and AIGetPlayerMoveN's argument arrives in
+; `a`, which cannot survive a farcall. Leaving them here produced a real
+; cross-bank `call` bug - see that file's header for the full account.
 ;
-; Keeping the seam from day one costs about twenty bytes and saves rewriting
-; every heuristic later.
-
-; OUTPUT: a = the player mon's first type.
-AIGetTargetType1::
-	ld a, [wBattleMonType1]
-	ret
-
-; OUTPUT: a = the player mon's second type.
-AIGetTargetType2::
-	ld a, [wBattleMonType2]
-	ret
-
-; OUTPUT: a = the player mon's status byte.
-AIGetTargetStatus::
-	ld a, [wBattleMonStatus]
-	ret
-
-; INPUT:  a = move slot 0-3
-; OUTPUT: a = the move id the AI believes is in that slot, 0 if none/unknown.
-AIGetPlayerMoveN::
-	ld hl, wBattleMonMoves
-	ld d, 0
-	ld e, a
-	add hl, de
-	ld a, [hl]
-	ret
+; Phase 7 still edits only those four routines to change the information model;
+; only their address changed, not their contract.
