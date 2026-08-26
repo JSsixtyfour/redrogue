@@ -69,6 +69,17 @@ AIPartySlotBit:
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::
+; Phase 5: a mon coming in gets a fresh strategy plan. Cleared here rather than
+; in EnemySendOut because this routine already runs on EVERY enemy send-out -
+; the first one as well as every later switch - so it is the one place that
+; cannot be reached without a new mon arriving, and it costs Battle Core (53
+; bytes free) nothing. AILayerPlan re-selects on the next decision because
+; AI_PLAN_NONE is what "not selected yet" means, which is also what the
+; battle-start zeroing of wMiscBattleData produces.
+	xor a
+	ld [wAIPlan], a
+	ld [wAIPlanStep], a
+
 ; Save the three bytes forged below. PreviewTypeMatchup reads its defender types
 ; from wEnemyMonType and its attacking type from wPlayerMoveType, so those are
 ; borrowed rather than passed - the same forge-and-restore shape AIEstimateDamage

@@ -135,19 +135,29 @@ AIScoringPointers:
 	dw AILayerRisky                ; bit 8  AI_RISKY
 	assert (@ - AIScoringPointers) / 2 == NUM_AI_LAYERS, 		"AIScoringPointers must have exactly NUM_AI_LAYERS entries"
 
-; Placeholders. Each is replaced wholesale by its phase; they exist now so the
-; dispatch table is complete and the tier words can already name every layer.
-; AILayerRedundant is real as of Phase 2a - see engine/battle/ai/ai_redundant.asm.
-; AILayerSmart is real as of Phase 2b - see engine/battle/ai/ai_smart.asm.
-; AILayerDamage is real as of Phase 3 - see engine/battle/ai/ai_damage.asm.
-; AILayerThreat is real as of Phase 3 - see engine/battle/ai/ai_threat.asm.
-; AILayerRisky is real as of Phase 3 - see engine/battle/ai/ai_risky.asm.
-AILayerPlan:
-	ret
+; Every scoring layer named in AIScoringPointers above is now real. Each lives
+; in its own file, INCLUDEd into this section at the bottom of the file so they
+; all land in bank $0E, which the dispatcher's same-bank `jp hl` requires:
+;   AILayerRedundant  Phase 2a   engine/battle/ai/ai_redundant.asm
+;   AILayerSmart      Phase 2b   engine/battle/ai/ai_smart.asm
+;   AILayerDamage     Phase 3    engine/battle/ai/ai_damage.asm
+;   AILayerThreat     Phase 3    engine/battle/ai/ai_threat.asm
+;   AILayerRisky      Phase 3    engine/battle/ai/ai_risky.asm
+;   AILayerPlan       Phase 5    engine/battle/ai/ai_plan.asm
+; (AILayerPlan is the one layer split across two banks - the bulk of the plan
+; system is in bank $2C, engine/battle/ai/ai_plans.asm. See either file's
+; header for why that split is possible and where the boundary falls.)
 
-; Trainer-class personality. Runs at every tier, outside the layer bitmask.
-; Phase 5 replaces this with the adaptive plan system, at which point the
-; Gambler becomes AI_PLAN_GAMBLER and this dispatches on wAIPlan instead.
+; Trainer-class personality. Runs at every tier, outside the layer bitmask, so
+; that class-specific AI survives at every skill level.
+;
+; Phase 5 did NOT fold this into the plan system, contrary to what this comment
+; used to anticipate. AIRunPersonality runs AFTER the whole layer loop and so
+; wins any disagreement with a plan by construction, which makes "the Gambler
+; also has a plan" a silent conflict rather than a feature. AILayerPlan instead
+; returns immediately for a trainer class with a forced personality: the plan
+; document's "trainer-class personality forces a plan and skips selection",
+; expressed as a skip rather than as a plan-table entry.
 AIRunPersonality:
 	ld a, [wTrainerClass]
 	cp GAMBLER
@@ -589,6 +599,8 @@ INCLUDE "engine/battle/ai/ai_damage.asm"
 INCLUDE "engine/battle/ai/ai_threat.asm"
 
 INCLUDE "engine/battle/ai/ai_risky.asm"
+
+INCLUDE "engine/battle/ai/ai_plan.asm"
 
 JugglerAI:
 	cp 25 percent + 1

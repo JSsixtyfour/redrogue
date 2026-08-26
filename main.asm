@@ -65,6 +65,11 @@ INCLUDE "engine/battle/ai/ai_core.asm"
 ; into bank $0E by the scoring-loop dispatch.
 INCLUDE "engine/battle/ai/ai_switching.asm"
 
+; Also pinned to bank $2C, and a separate section from the switching engine so
+; either can be relocated without dragging the other. The plan system's bank
+; $0E half is INCLUDEd into trainer_ai.asm as engine/battle/ai/ai_plan.asm.
+INCLUDE "engine/battle/ai/ai_plans.asm"
+
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"

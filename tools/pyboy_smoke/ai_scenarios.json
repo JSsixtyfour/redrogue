@@ -1851,6 +1851,183 @@
           20
         ]
       }
+    },
+    {
+      "name": "plan_steers_toward_setup_when_nothing_is_dying",
+      "phase": "5",
+      "heuristic": "plan_directive",
+      "case": "positive",
+      "tags": [
+        "ai_plan",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Slower enemy, nothing in KO range: AgilityWrap qualifies and its directive encourages the AICLASS_BOOST_SPD slot by AI_VERY_STRONG, so Agility (15) beats Tackle (18). The -3 on slot 0 IS the plan layer.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "AGILITY",
+            "WRAP",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          15,
+          20,
+          18,
+          20
+        ]
+      }
+    },
+    {
+      "name": "plan_yields_to_a_guaranteed_kill",
+      "phase": "5",
+      "heuristic": "plan_vs_kill",
+      "case": "positive",
+      "tags": [
+        "ai_plan",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "Same board with the player in one-shot range. The enemy now outspeeds, so the plan directs at the TRAP slot (-3 on slot 1) - but AI_DAMAGE has applied AI_KILL + its best-move nudge to Tackle (-6), which wins by one point. This is AI_PLAN_MAX_MAGNITUDE < AI_KILL being load-bearing: if a future retune lets a plan directive reach 5, a setup mon will walk past a won game and this fixture is what catches it.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "ELECTRODE",
+          "level": 5,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "AGILITY",
+            "WRAP",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          15,
+          14,
+          20
+        ]
+      }
+    },
+    {
+      "name": "plan_required_mask_rejects_a_moveset_without_the_class",
+      "phase": "5",
+      "heuristic": "plan_directive",
+      "case": "negative",
+      "tags": [
+        "ai_plan",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Identical board to the positive case minus the trapping move. AgilityWrap's required mask no longer matches, selection falls through to the Bruiser fallback, and Bruiser deliberately issues NO directive - so Agility stays at 18 rather than 15 and ties with Tackle.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "AGILITY",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          18,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "plan_fitness_zero_when_its_key_move_is_type_immune",
+      "phase": "5",
+      "heuristic": "plan_viability",
+      "case": "positive",
+      "tags": [
+        "ai_plan",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "Wrap is NORMAL and Gastly is a Ghost. Trapping respects type immunity in this engine (the check runs before set USING_TRAPPING_MOVE), so AIFit_AgilityWrap must return 0 rather than spend a turn on Agility setting up a move that cannot land. Confirmed by slot 0 showing only AI_TYPES' -1 and AI_SETUP's -2, with no -3 from the plan layer.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "GASTLY",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "AGILITY",
+            "WRAP",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          17,
+          20,
+          20,
+          20
+        ]
+      }
     }
   ]
 }

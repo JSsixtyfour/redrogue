@@ -100,8 +100,8 @@ DEF AI_SATURATE    EQU AI_SCORE_MAX - AI_SCORE_BASE + 1
 ;   +16         slot that damage belongs to
 ;   +17         slot currently being scored
 ;   +18 .. +19  AISelectSendOut best-candidate record (Phase 4)
-;   +20 .. +25  party scores (6 slots), switching engine
-;   +26 .. +29  pre-min-find score backup
+;   +20 .. +27  per-slot move class masks (Phase 5), two bytes each
+;   +28         magnitude AILayerPlan is applying this turn (+29 free)
 DEF AI_BUF_SCORES     EQU 0
 
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
@@ -141,10 +141,112 @@ DEF AI_BUF_CURSLOT    EQU 17 ; 1 byte: the slot being scored right now, stashed
 ; make one silently depend on the other's timing.
 DEF AI_BUF_BESTPARTYSCORE EQU 18 ; 1 byte: best type multiplier seen ($ff = none)
 DEF AI_BUF_BESTPARTYSLOT  EQU 19 ; 1 byte: slot it belongs to ($ff = none yet)
-DEF AI_BUF_PARTY      EQU 20
-DEF AI_BUF_SCOREBACKUP EQU 26
+; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.
+; This region was reserved through Phase 4 as AI_BUF_PARTY (six party scores)
+; plus AI_BUF_SCOREBACKUP (a four-byte pre-min-find score backup) and NEITHER
+; was ever written: Phase 4 folded party scoring into AISelectSendOut, which
+; needs only the two-byte running best record at +18..19, and nothing has yet
+; needed to ask "were all four moves discouraged". Both DEFs are removed rather
+; than left as dead reservations, so the free space is visible to whoever needs
+; it next. If a score backup is wanted later, +28..29 is what is left - two
+; bytes, not four - and it is currently the plan layer's directive scratch, so
+; that is a real conflict to resolve rather than a spare corner.
+DEF AI_BUF_PLANCLASS  EQU 20 ; 8 bytes: slot N's class mask at +20 + N*2
+DEF AI_BUF_PLANMAG    EQU 28 ; 1 byte: the magnitude AILayerPlan is currently
+                             ; applying, held here rather than in a register
+                             ; because the apply loop already needs hl (score
+                             ; pointer), de (mask cursor) and bc (the 16-bit
+                             ; directive mask itself), leaving only a as
+                             ; scratch. +29 is the last free wBuffer byte.
 
-; wAIMoveClassMask (the classified moveset of the active enemy mon) is NOT
-; allocated yet. It is per-send-out state needed only by the Phase 5 plan
-; system, and the battle-scoped WRAM branch has just one spare byte left, so
-; its home is decided in Phase 5 rather than guessed now.
+; wAIMoveClassMask was never allocated, and Phase 5 deliberately did NOT
+; allocate it. Classification is recomputed at the top of every AILayerPlan
+; pass from wEnemyMonMoves rather than cached across turns, which costs four
+; ReadMove calls once per turn - the same order as one AI_DAMAGE pass - and in
+; exchange the masks cannot go stale against a Transform, a Mimic, a Disable,
+; or a mid-battle switch. Nothing about the plan system needs WRAM that
+; survives a turn except wAIPlan/wAIPlanStep, which Phase 1 already allocated.
+
+; --- Move classes (Phase 5) ---
+; A 16-bit mask describing what a move is FOR, so plans can say "the speed-boost
+; move" without naming Agility, and so a mon with a different moveset still
+; qualifies for the same plan.
+;
+; Classes are keyed on the move's EFFECT byte, not on its move id. That is a
+; deliberate departure from the plan document's `dbw move, classbit` shape and
+; it is strictly better here: the effect byte is what the engine itself
+; dispatches on, so a class can never disagree with what the move actually does,
+; and the table is ~30 entries instead of ~100. The one class that is not
+; effect-derived is AICLASS_DAMAGE, which is simply "power != 0" and is applied
+; by the classifier directly.
+;
+; A CLASS IS A MOVE'S PRIMARY PURPOSE, NOT ITS SIDE EFFECTS. Body Slam is
+; AICLASS_DAMAGE, not AICLASS_PARALYZE, even though it paralyses 30% of the
+; time. That distinction is what keeps a plan directive sharp: a paralysis plan
+; that says "use the paralyse move" must mean Thunder Wave, not a physical
+; attack that sometimes happens to paralyse. Secondary-effect value is already
+; scored, per rider and by real proc rate, by AI_SMART (Phase 3 Step 3).
+;
+; Sixteen bits is the budget, so three classes from the plan document's list
+; were cut rather than widening every mask to three bytes:
+;   HIGH_CRIT   - AI_RISKY already nudges HighCriticalMoves when the AI is
+;                 losing, which is the only board state a crit-fishing PLAN
+;                 would ever fire on.
+;   STRONG_STAB - not a static property of a move at all: it depends on the
+;                 USER's types. What plans actually want from it is
+;                 AICLASS_DAMAGE.
+;   FINISHER    - would have held HYPER_BEAM_EFFECT alone, and both things a
+;                 finisher plan would do are already done: AI_DAMAGE applies
+;                 AI_KILL when Hyper Beam kills, and AISmart_HyperBeam owns the
+;                 recharge trade-off. The bit went to AICLASS_BOOST_DEF instead,
+;                 which nothing else covers and which Substitute-behind-Barrier
+;                 lines genuinely need.
+DEF AICLASS_SLEEP     EQU 1 << 0
+DEF AICLASS_PARALYZE  EQU 1 << 1
+DEF AICLASS_POISON    EQU 1 << 2
+DEF AICLASS_CONFUSE   EQU 1 << 3
+DEF AICLASS_TRAP      EQU 1 << 4
+DEF AICLASS_RECOVERY  EQU 1 << 5
+DEF AICLASS_BOOST_SPD EQU 1 << 6
+DEF AICLASS_BOOST_ATK EQU 1 << 7
+DEF AICLASS_BOOST_SPC EQU 1 << 8
+DEF AICLASS_BOOST_DEF EQU 1 << 9
+DEF AICLASS_SCREEN    EQU 1 << 10
+DEF AICLASS_SUB       EQU 1 << 11
+DEF AICLASS_EXPLODE   EQU 1 << 12
+DEF AICLASS_OHKO      EQU 1 << 13
+DEF AICLASS_DRAIN     EQU 1 << 14
+DEF AICLASS_DAMAGE    EQU 1 << 15 ; the one dynamic class: any move that deals
+                                  ; damage at all. Nonzero base power, plus the
+                                  ; fixed-damage effects, which carry 0 power.
+
+; Composites, for plan masks and directives.
+DEF AICLASS_BOOST_ANY  EQU AICLASS_BOOST_SPD | AICLASS_BOOST_ATK | AICLASS_BOOST_SPC | AICLASS_BOOST_DEF
+DEF AICLASS_STATUS_ANY EQU AICLASS_SLEEP | AICLASS_PARALYZE | AICLASS_POISON | AICLASS_CONFUSE
+
+; --- Strategy plans (Phase 5) ---
+; wAIPlan holds a plan ID; 0 means "not selected yet", which is what the
+; battle-start zeroing of wMiscBattleData gives us for free, and what
+; AISelectSendOut writes back on every send-out so a fresh mon re-selects.
+; A plan's index into AIPlanTable is its ID minus one.
+DEF AI_PLAN_NONE         EQU 0
+DEF AI_PLAN_BRUISER      EQU 1 ; the guaranteed fallback: qualifies for every mon
+DEF AI_PLAN_AGILITY_WRAP EQU 2 ; outspeed first, then soft-lock with a trap move
+DEF NUM_AI_PLANS         EQU 2
+
+; Plan directive magnitudes MUST stay below AI_KILL. This is an invariant, not a
+; style preference: rank 1 of the plan's priority cascade is "take a guaranteed
+; KO", and AI_DAMAGE has already applied AI_KILL to any lethal move by the time
+; AI_PLAN (bit 7) runs. A plan that could out-encourage a kill would make a
+; setup mon walk past a won game to keep boosting.
+DEF AI_PLAN_MAX_MAGNITUDE EQU AI_KILL - 1
+
+; Incumbency bonus. Added to the fitness of the plan that is ALREADY active, so
+; a challenger has to be meaningfully better - not merely better by one point on
+; a board that jitters turn to turn - before the AI abandons a half-executed
+; plan. This is the same lesson Phase 4's anti-ping-pong guard encodes for
+; switching, applied to plans, and it is why this design needs no explicit
+; abort-condition list or aborted-plan exclusion set: a plan that has become
+; impossible returns a fitness of 0 from its own fitness routine and loses to
+; the fallback regardless of incumbency.
+DEF AI_PLAN_INCUMBENCY EQU 8
