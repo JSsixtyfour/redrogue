@@ -98,6 +98,7 @@ class RedRogueHarness:
         self._validate_rom_and_symbols(rom_data)
         self._recent_hooks: list[dict[str, object]] = []
         self._registered_hooks: list[tuple[int, int]] = []
+        self._hook_callbacks: dict[tuple[int, int], list[object]] = {}
         self.hardware_mode = "CGB" if cgb_mode else "DMG"
         expected_mode = os.environ.get("REDROGUE_PYBOY_EXPECTED_MODE")
         if expected_mode is not None and expected_mode != self.hardware_mode:
@@ -166,12 +167,23 @@ class RedRogueHarness:
         for bank, address in reversed(self._registered_hooks):
             self.pyboy.hook_deregister(bank, address)
         self._registered_hooks.clear()
+        self._hook_callbacks.clear()
         self.pyboy.stop(save=False)
 
     def register_hook(self, label: str, callback) -> None:
         bank, address = self.symbols.get(label)
-        self.pyboy.hook_register(bank, address, callback, None)
-        self._registered_hooks.append((bank, address))
+        key = (bank, address)
+        if key in self._hook_callbacks:
+            self._hook_callbacks[key].append(callback)
+            return
+        self._hook_callbacks[key] = [callback]
+
+        def dispatch(context, hook_key=key) -> None:
+            for registered_callback in tuple(self._hook_callbacks[hook_key]):
+                registered_callback(context)
+
+        self.pyboy.hook_register(bank, address, dispatch, None)
+        self._registered_hooks.append(key)
 
     def address(self, label: str) -> int:
         return self.symbols.address(label)
