@@ -27,9 +27,11 @@ DEF NUM_AI_LAYERS EQU 9
 
 ; --- Behaviour flags (queried, NEVER dispatched) ---
 ; AI_OMNISCIENT is the information-model axis: it controls what the AI is
-; allowed to KNOW, independently of how well it reasons. Every tier sets it for
-; now; Phase 7 clears it on T0/T1 so early trainers reason only from moves the
-; player has actually revealed.
+; allowed to KNOW, independently of how well it reasons. Phase 7 (2026-08-26)
+; cleared it on T0/T1 - see AITierLayers - so early trainers reason about the
+; player's MOVESET only from what has actually been revealed this battle.
+; Type/status/HP/stat stages are unaffected: they stay readable at every tier,
+; always (see ai_accessors.asm and ai_fairplay.asm).
 DEF AI_OMNISCIENT EQU 1 << 12
 ; bits 13-15 reserved for future flags
 

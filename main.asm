@@ -76,6 +76,12 @@ INCLUDE "engine/battle/ai/ai_plans.asm"
 ; call sites.
 INCLUDE "engine/battle/ai/ai_roster.asm"
 
+; Also pinned to bank $2C. AI Overhaul Phase 7 (fair play): records which
+; player moves have been revealed. Its hook site, engine/battle/core.asm's
+; PlayerCanExecuteMove, is in Battle Core (bank $0F, CLOSED per ROM_BIBLE.md),
+; so only an 8-byte farcall lives there; the real logic lives here instead.
+INCLUDE "engine/battle/ai/ai_fairplay.asm"
+
 ; FIGHT 2 is debug-only and too large for the nearly-full fixed bank1 section.
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"

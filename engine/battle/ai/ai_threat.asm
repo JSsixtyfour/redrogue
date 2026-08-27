@@ -239,11 +239,18 @@ _AIScanPlayerMovesForKO:
 	call AIGetPlayerMoveN ; plain same-bank call: this accessor takes its
 	                      ; argument in a, which could not survive a farcall
 	and a
-	jr z, .noKO ; empty slot - the move list is packed, so nothing follows
+	jr z, .emptySlot ; unrevealed (Phase 7 fair play) or a real gap - either
+	                 ; way, KEEP SCANNING. Before Phase 7 the real moveset was
+	                 ; always packed (first zero = end of list, safe to stop),
+	                 ; but AIGetPlayerMoveN can now return wAISeenPlayerMoves,
+	                 ; which is sparse: the player can reveal slot 2 before
+	                 ; slot 0. Stopping at the first zero would silently skip
+	                 ; every already-revealed move behind an unrevealed one.
 	call AIReadMoveIntoPlayerBlock
 	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
 	call AIDamageWouldKOEnemy
 	jr c, .yesKO
+.emptySlot
 	ld hl, wBuffer + AI_BUF_SCANSLOT
 	inc [hl]
 	jr .nextSlot

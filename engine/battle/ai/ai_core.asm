@@ -39,9 +39,17 @@ AITierByRound:
 ; is what gives T0 its "does not do useless things" floor. Vanilla already
 ; shipped classes with no AI layers (YOUNGSTER, CUE_BALL), so this is not a new
 ; category of behaviour.
+;
+; PHASE 7 (2026-08-26): AI_OMNISCIENT is now CLEARED on T0/T1. Those tiers
+; reason about the player's MOVESET only from what AITrackSeenPlayerMove has
+; actually recorded this battle (ai_fairplay.asm) - see AIGetPlayerMoveN in
+; ai_accessors.asm, the one routine this flip changes. Type/status/HP/stat
+; stages stay live at every tier (the user's 2026-08-25 decision: a human
+; opponent can see all of those on screen too). T2/T3 keep the bit set and
+; stay fully omniscient, including about the moveset, forever.
 AITierLayers:
-	dw AI_REDUNDANT | AI_OMNISCIENT                                        ; T0 Novice
-	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_OMNISCIENT       ; T1 Competent
+	dw AI_REDUNDANT                                                        ; T0 Novice
+	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP                       ; T1 Competent
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_SMART \
 	   | AI_DAMAGE | AI_OMNISCIENT                                         ; T2 Skilled
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_SMART \
@@ -174,5 +182,5 @@ AIHasFlag::
 ; `a`, which cannot survive a farcall. Leaving them here produced a real
 ; cross-bank `call` bug - see that file's header for the full account.
 ;
-; Phase 7 still edits only those four routines to change the information model;
-; only their address changed, not their contract.
+; Phase 7 (2026-08-26) edited only AIGetPlayerMoveN of those four, to change
+; the information model - see that file's header for the full account.

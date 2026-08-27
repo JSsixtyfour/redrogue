@@ -3641,6 +3641,9 @@ PlayerCanExecuteChargingMove:
 	res INVULNERABLE, [hl]
 PlayerCanExecuteMove:
 	call DisplayUsedMoveText
+	farcall AITrackSeenPlayerMove ; AI Overhaul Phase 7: record this move as
+	                              ; revealed for fair-play tiers. No args in
+	                              ; or out - see ai_fairplay.asm.
 	ld hl, DecrementPP
 	ld de, wPlayerSelectedMove ; pointer to the move just used
 	ld b, BANK(DecrementPP)

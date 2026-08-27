@@ -1,8 +1,18 @@
 ; Player-state accessor seam (AI_OVERHAUL_PLAN.md). Every heuristic reads the
-; player's state through these rather than touching wBattleMon* directly. Today
-; they return live data, which is the omniscient-first decision. Phase 7 changes
-; ONLY these routines to prefer wAISeenPlayerMoves and fall back to raw types
-; when nothing has been revealed yet - at which point no heuristic needs editing.
+; player's state through these rather than touching wBattleMon* directly.
+;
+; Phase 7 (2026-08-26) landed the fair-play decision the user locked in
+; 2026-08-25: hide the MOVESET only. Type, status and HP stay live at every
+; tier forever - a human opponent can see all of those on screen, so hiding
+; them would read as artificial rather than fair. AIGetTargetType1/2 and
+; AIGetTargetStatus are therefore UNCHANGED and always return live data.
+; AIGetPlayerMoveN is the one routine that branches on AI_OMNISCIENT: an
+; omniscient tier (T2/T3) still reads the real wBattleMonMoves; a fair-play
+; tier (T0/T1, AI_OMNISCIENT cleared in ai_core.asm's AITierLayers) reads
+; wAISeenPlayerMoves instead, which only holds moves the player has actually
+; used this battle (populated by AITrackSeenPlayerMove, ai_fairplay.asm, bank
+; $2C, hooked at engine/battle/core.asm's PlayerCanExecuteMove). No heuristic
+; needed editing: every consumer already goes through this seam.
 ;
 ; INCLUDEd into "Battle Engine 7" (bank $0E), same bank as trainer_ai.asm and
 ; every AILayer* routine. These MUST be in this bank, for two independent
@@ -46,11 +56,29 @@ AIGetTargetStatus::
 
 ; INPUT:  a = move slot 0-3
 ; OUTPUT: a = the move id the AI believes is in that slot, 0 if none/unknown.
-; Clobbers de, hl.
+; Clobbers bc, de, hl.
+;
+; The slot number has to survive a farcall to AIHasFlag (which itself clobbers
+; a/bc, and uses de/hl as its own scratch - see ai_core.asm - so neither
+; register is safe to stash it in across the call). Pushed onto the stack
+; instead, per project_cross_bank_call_bug_recurrence's fifth instance: trust
+; the stack across a farcall, never a "this register survives" claim about a
+; specific callee. POP BC (unlike POP AF) never touches flags, so the z flag
+; AIHasFlag returned in is still live for the branch below.
 AIGetPlayerMoveN::
+	ld c, a
+	push bc
+	ld de, AI_OMNISCIENT
+	farcall AIHasFlag ; z clear = this tier is omniscient; z set = fair play
+	pop bc
 	ld hl, wBattleMonMoves
+	jr nz, .known ; omniscient: read the real moveset
+	ld hl, wAISeenPlayerMoves ; fair play: only what has actually been shown
+.known
+	ld a, c
 	ld d, 0
 	ld e, a
 	add hl, de
 	ld a, [hl]
+.exit ; named for hookability (project convention); a holds the result here
 	ret
