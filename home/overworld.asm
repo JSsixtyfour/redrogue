@@ -1949,15 +1949,20 @@ ScheduleWestColumnRedraw::
 	ret
 
 ; function to write the tiles that make up a tile block to memory
-; Input: c = tile block ID, hl = destination address
 ; Optimized (ported from yumepokered), and the register roles are swapped versus
 ; vanilla: hl is now the tile-block SOURCE and de the destination, so the block
 ; data can be walked with [hli] and no push/pop is needed per row. de is left
 ; advanced by BLOCK_WIDTH, i.e. pointing at where the next block in the row goes,
 ; which is what lets LoadCurrentMapView's inner loop stay so short.
 ; input: c = tile block ID, de = destination. output: de = destination + BLOCK_WIDTH.
-
-; shinred? gbc doublespeed here
+;
+; (The vanilla "Input: c = tile block ID, hl = destination address" line that used
+; to sit above this was left behind by that port and contradicted the contract
+; directly below it. Removed 2026-08-27.)
+;
+; TODO, unresolved: a note left here read "shinred? gbc doublespeed here", asking
+; whether shinpokered has a GBC double-speed variant of this routine worth
+; importing. Never investigated; recorded properly rather than left as a fragment.
 DrawTileBlock::
 	ld hl, wTilesetBlocksPtr
 	ld a, [hli]

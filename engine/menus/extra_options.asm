@@ -13,8 +13,10 @@
 ; below is different: it's not a spare bit, it deliberately reuses wOptions'
 ; EXISTING TEXT_DELAY_MASK bits (see its own comment for why).
 ;
-; STATUS: two rows - AUDIO (Phase 2.11) and INST. TXT (Phase 8, text-speed
-; work). INST. TXT does NOT add a check to PrintLetterDelay (home/print_text.asm)
+; STATUS: five rows - AUDIO (Phase 2.11), INST. TXT (Phase 8, text-speed work),
+; LEVELS, COLORS and 60 FPS. See the ROW_* / NUM_EXTRA_OPTION_ROWS constants
+; below, which are the authority; this paragraph has already gone stale once.
+; INST. TXT does NOT add a check to PrintLetterDelay (home/print_text.asm)
 ; - that routine runs once per printed letter, easily hundreds of times a
 ; screen, and this fork's RNG is cycle-timing-sensitive (see
 ; project_smoke_suite_catches_rng_drift): even a dead, never-taken branch added
@@ -36,15 +38,18 @@
 ;
 ; AUDIO row: LEFT/RIGHT cycles wOptions2 bits 4-5 (SOUND_MASK2, see
 ; constants/audio_constants.asm) through MONO/EARPHONE1/EARPHONE2/EARPHONE3,
-; consumed by Audio1_ApplyMonoStereo (audio/engine_1.asm). With only one row
-; on this menu so far, LEFT/RIGHT cycles it directly rather than needing a
-; moving cursor between rows - there is nothing else to navigate to yet.
+; consumed by Audio1_ApplyMonoStereo (audio/engine_1.asm). LEFT/RIGHT edits
+; whichever row the cursor is on; UP/DOWN moves between rows.
 ;
-; ADDING A THIRD TOGGLE ROW: the up/down cursor already exists
-; (hCurrentMenuItem holds the row index, 0-based) but its xor-1 toggle and
-; .drawCursor's two hardcoded blank/draw checks are both written for exactly
-; 2 rows - extending past 3 rows needs an actual increment-and-wrap plus a
-; row-to-Y lookup instead.
+; ADDING A ROW: this is now generic and no longer the hazard this comment used
+; to describe. hCurrentMenuItem holds the row index (0-based), the cursor uses a
+; real increment-and-wrap against NUM_EXTRA_OPTION_ROWS, and .drawCursor walks a
+; row-to-Y table. Add a ROW_* constant, bump NUM_EXTRA_OPTION_ROWS, add the label
+; and value strings, and add a `cp ROW_x / jr z` arm to the LEFT/RIGHT dispatch.
+;
+; Known quirk, pre-existing and left alone: UP and DOWN both advance the cursor
+; forward, because the handler tests PAD_UP | PAD_DOWN together and unconditionally
+; increments. On a 5-row menu that makes UP a 4-step detour rather than a step back.
 ; The caller re-runs DisplayOptionMenu on return, so there is no need to redraw
 ; the normal option screen from here.
 ;

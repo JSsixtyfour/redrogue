@@ -39,8 +39,6 @@ ReplaceTileBlock:
 	call IsBCInHLTileBlockMapView
 	ret c ; return if the replaced tile block is off-screen
 
-; Exported so custom_functions/room_pc.asm can farcall it: LoadCurrentMapView
-; alone only refills wTileMap (which feeds the WINDOW at vBGMap1), while the
 ;gbcnote - it is useful to have a version of RedrawMapView that does not mess with hAutoBGTransferEnabled
 ;used particularly for clean enhanced GBC colors during in-game trades
 RedrawMapView_NoChangeAutoBGTransfer:
@@ -54,6 +52,8 @@ RedrawMapView_NoChangeAutoBGTransfer:
 	xor a
 	jp RedrawMapView.done_AutoBGTransfer
 
+; Exported so custom_functions/room_pc.asm can farcall it: LoadCurrentMapView
+; alone only refills wTileMap (which feeds the WINDOW at vBGMap1), while the
 ; overworld the player actually sees is vBGMap0, written here and by
 ; RedrawRowOrColumn during walking.
 RedrawMapView::
