@@ -12,8 +12,18 @@ FontGraphicsEnd::
 
 ABTiles: INCBIN "gfx/font/AB.2bpp"
 
-HpBarAndStatusGraphics:: INCBIN "gfx/font/font_battle_extra.2bpp"
+HpBarAndStatusGraphics::
+	; Yume 35d3bf9 HP artwork, reordered for our unchanged DrawHPBar IDs.
+	; $62: label's right half; $63-$6b: empty through full; $6c: plain tip.
+	INCBIN "gfx/font/hp_bar.2bpp", TILE_SIZE, 11 * TILE_SIZE
+	; Preserve $6d's connected battle tip and $6e-$70's status glyphs.
+	INCBIN "gfx/font/font_battle_extra.2bpp", 11 * TILE_SIZE, 4 * TILE_SIZE
+	; $71 is our HP label's left half (Yume loads this at $62).
+	INCBIN "gfx/font/hp_bar.2bpp", 0, TILE_SIZE
+	; Preserve $72-$7f, including status, HUD borders and EXP-bar aliases.
+	INCBIN "gfx/font/font_battle_extra.2bpp", 16 * TILE_SIZE
 HpBarAndStatusGraphicsEnd::
+	ASSERT HpBarAndStatusGraphicsEnd - HpBarAndStatusGraphics == 30 * TILE_SIZE
 
 BattleHudTiles1: INCBIN "gfx/battle/battle_hud_1.1bpp"
 BattleHudTiles1End:
