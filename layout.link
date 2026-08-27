@@ -193,6 +193,7 @@ ROMX $2C
 	; that reclaimed space available for the Phase 2 audio/SFX work.
 	"Relocated HOME Routines"
 	"ProcStageHooks"
+	"Status View Navigation"
 ROMX $2D
 	"Tilesets 4"
 	"Room"
@@ -235,7 +236,6 @@ ROMX $2E
 	; edge is bank-aware (farcall, explicit BANK(), dba, or text predef), and
 	; the complete internal code/data/Cable Club cluster moves together.
 	"Bill's PC"
-	"Status View Navigation"
 ROMX $33
 	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
 	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in
