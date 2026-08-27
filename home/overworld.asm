@@ -46,7 +46,12 @@ OverworldLoop::
 	call z, DelayFrame
 OverworldLoopLessDelay::
 	predef SetCPUSpeed
-	call DelayFrame
+	; Shin Red import: spinner speedup, 2026-08-26. Was an unconditional
+	; DelayFrame here - CheckForSpinAndDelay skips it specifically on a frame
+	; where LoadSpinnerArrowTiles is about to run its own transfer, since that
+	; transfer already spends the frame. Every other frame (including all
+	; non-spinning movement) this is identical to a plain DelayFrame.
+	call CheckForSpinAndDelay
 	call LoadGBPal
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a

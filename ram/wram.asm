@@ -1143,8 +1143,10 @@ wPartyMenuHPBarColors:: ds PARTY_LENGTH
 wStatusScreenHPBarColor:: db
 
 ; Phase 11 (M.GENE/M.TOME): 2 B taken from this pad to fund wStatItemCounts
-; growing 12->14 (WRAM_BIBLE.md D2 gap, unsaved, below wMainDataStart).
-	ds 5
+; growing 12->14. Phase - spinner speedup fix: 1 more B taken for
+; wSpinnerTileFrameCount (WRAM_BIBLE.md D2 gap, unsaved, below wMainDataStart).
+wSpinnerTileFrameCount:: db
+	ds 4
 
 wCopyingSGBTileData::
 wWhichPartyMenuHPBar::
