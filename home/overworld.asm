@@ -137,6 +137,7 @@ OverworldLoopLessDelay::
 .noDirectionButtonsPressed
 	ld hl, wMiscFlags
 	res BIT_TURNING, [hl]
+	farcall SwitchRunningToWalkingSprites
 	call UpdateSprites
 	ld a, 1
 	ld [wCheckFor180DegreeTurn], a
@@ -304,19 +305,7 @@ OverworldLoopLessDelay::
 .moveAhead2
 	ld hl, wMiscFlags
 	res BIT_TURNING, [hl]
-	ld a, [wWalkBikeSurfState]
-	dec a ; riding a bike?
-	jr nz, .checkRunning
-	ld a, [wMovementFlags]
-	bit BIT_LEDGE_OR_FISHING, a
-	jr nz, .normalPlayerSpriteAdvancement
-	farcall DoBikeSpeedup ; moved to ROMX (relocated_home.asm) to reclaim HOME space
-	jr .normalPlayerSpriteAdvancement
-.checkRunning
-	ldh a, [hJoyHeld]
-	and PAD_B
-	jr z, .normalPlayerSpriteAdvancement ; was `call nz, DoBikeSpeedup`; farcall has no
-	farcall DoBikeSpeedup                 ; conditional form, so branch past it instead
+	farcall HandlePlayerRunning
 .normalPlayerSpriteAdvancement
 	call AdvancePlayerSprite
 	ld a, [wWalkCounter]

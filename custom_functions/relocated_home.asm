@@ -24,6 +24,51 @@ DoBikeSpeedup::
 .goFaster
 	jp AdvancePlayerSprite
 
+; Called once per movement tick from HOME. The B-button decision is sampled only
+; at the start of a step ($08 normally, $10 with 60 FPS enabled), so releasing B
+; halfway through a step cannot change its speed or graphics. BIT_RUNNING tracks
+; that decision for every appearance; only Red and Green have distinct sheets.
+; Keeping this beside DoBikeSpeedup avoids another bank switch on every fast tick.
+HandlePlayerRunning::
+	ld a, [wWalkBikeSurfState]
+	cp 1 ; biking is always fast
+	jr z, .bike
+
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	ld a, $08
+	jr z, .gotInitialCounter
+	ld a, $10
+.gotInitialCounter
+	ld hl, wWalkCounter
+	cp [hl]
+	jr nz, .applySpeed
+
+	ldh a, [hJoyHeld]
+	and PAD_B
+	jr z, .stopRunning
+	ld hl, wMovementFlags
+	bit BIT_RUNNING, [hl]
+	jr nz, .applySpeed
+	farcall LoadRunningPlayerSpriteGraphics
+	jr .applySpeed
+
+.stopRunning
+	farcall SwitchRunningToWalkingSprites
+.applySpeed
+	ld a, [wMovementFlags]
+	bit BIT_RUNNING, a
+	ret z
+	call DoBikeSpeedup
+	ret
+
+.bike
+	ld a, [wMovementFlags]
+	bit BIT_LEDGE_OR_FISHING, a
+	ret nz
+	call DoBikeSpeedup
+	ret
+
 ; Argument-free graphics setup routines moved from HOME. Their original labels
 ; remain as far-jump stubs, so callers keep the same interface. These bodies
 ; either use bank-aware helpers or tail-jump back into always-mapped HOME code.

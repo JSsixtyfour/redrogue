@@ -125,6 +125,8 @@ GetPlayerAppearanceEntry:
 ; Clobbers a, bc, hl.
 
 GetPlayerWalkSprite:: ; bank is always BANK(RedSprite)
+	ld hl, wMovementFlags
+	res BIT_RUNNING, [hl]
 	ld a, 0
 	jr GetPlayerAppearanceField
 GetPlayerFrontPic:: ; bank is always BANK(RedPicFront)
@@ -147,6 +149,43 @@ GetPlayerAppearanceField:
 	ld e, a
 	ld d, [hl]
 	ret
+
+; Clear the running state whenever directional input stops. Generic player
+; appearances need only the state change; Red and Green restore their walk art.
+SwitchRunningToWalkingSprites::
+	ld hl, wMovementFlags
+	bit BIT_RUNNING, [hl]
+	ret z
+	res BIT_RUNNING, [hl]
+	ld a, [wWalkBikeSurfState]
+	and a
+	ret nz
+	ld a, [wPlayerAppearance]
+	cp PLAYER_APPEARANCE_RED
+	jr z, .loadWalk
+	cp PLAYER_APPEARANCE_GREEN
+	ret nz
+.loadWalk
+	call GetPlayerWalkSprite
+	ld hl, vNPCSprites
+	jp LoadPlayerSpriteGraphicsCommon
+
+LoadRunningPlayerSpriteGraphics:
+	ld hl, wMovementFlags
+	set BIT_RUNNING, [hl]
+	ld a, [wWalkBikeSurfState]
+	and a
+	ret nz ; surfing keeps its existing sheet
+	ld a, [wPlayerAppearance]
+	ld de, RedRunSprite
+	cp PLAYER_APPEARANCE_RED
+	jr z, .load
+	ld de, GreenRunSprite
+	cp PLAYER_APPEARANCE_GREEN
+	ret nz ; every other appearance keeps its walking sheet
+.load
+	ld hl, vNPCSprites
+	jp LoadPlayerSpriteGraphicsCommon
 
 
 ; Character-select screen, reached by farcall from OakSpeech.

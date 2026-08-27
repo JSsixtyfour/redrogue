@@ -11,9 +11,13 @@
 SECTION "Player Sprites", ROMX
 
 RedSprite::              INCBIN "gfx/sprites/red.2bpp"
+RedRunSprite::           INCBIN "gfx/sprites/red_run.2bpp" ; ported from Pokemon Yume
 RedBikeSprite::          INCBIN "gfx/sprites/red_bike.2bpp"
 SeelSprite::             INCBIN "gfx/sprites/seel.2bpp"
 GreenSprite::            INCBIN "gfx/sprites/green.2bpp" ; ported from pret-based Pokemon Yume
+GreenRunSprite::         INCBIN "gfx/sprites/green_run.2bpp" ; ported from Pokemon Yume
+	ASSERT BANK(RedRunSprite) == BANK(RedSprite)
+	ASSERT BANK(GreenRunSprite) == BANK(RedSprite)
 BeautySprite::           INCBIN "gfx/sprites/beauty.2bpp"
 ChannelerSprite::        INCBIN "gfx/sprites/channeler.2bpp"
 CooltrainerFSprite::     INCBIN "gfx/sprites/cooltrainer_f.2bpp"
