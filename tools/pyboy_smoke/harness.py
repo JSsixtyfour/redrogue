@@ -297,18 +297,24 @@ class RedRogueHarness:
     def hook_ai_scores(self) -> list[dict[str, object]]:
         """Capture scores plus the move ultimately selected for each AI decision."""
         records: list[dict[str, object]] = []
+        decision_counter = {"value": 0}
         pending: dict[str, object] = {
             "active": False,
             "record": None,
+            "records": [],
             "layer_snapshots": [],
             "enabled_layers": set(),
+            "start_cycle": 0,
         }
 
         def begin(_context) -> None:
+            decision_counter["value"] += 1
             pending["active"] = True
             pending["record"] = None
+            pending["records"] = []
             pending["layer_snapshots"] = []
             pending["enabled_layers"] = set()
+            pending["start_cycle"] = self.cycle_count()
 
         def layer_start(_context) -> None:
             if not pending["active"]:
@@ -364,6 +370,8 @@ class RedRogueHarness:
                     "moves": moves,
                     "eligible_slots": eligible_slots,
                     "tier": tier,
+                    "decision": decision_counter["value"],
+                    "decision_cycles": self.cycle_count() - int(pending["start_cycle"]),
                     "layer_trace": layer_trace,
                     "frame": self.pyboy.frame_count,
                 }
@@ -371,17 +379,18 @@ class RedRogueHarness:
             if len(eligible_slots) == 1:
                 records[-1]["selected_slot"] = eligible_slots[0]
             pending["record"] = len(records) - 1
+            pending["records"].append(len(records) - 1)
 
         def selected(_context) -> None:
             record_index = pending["record"]
             if record_index is None:
                 return
-            records[int(record_index)].update(
-                {
-                    "selected_slot": self.read8("wEnemyMoveListIndex"),
-                    "selected_move": self.pyboy.register_file.A,
-                }
-            )
+            selection = {
+                "selected_slot": self.read8("wEnemyMoveListIndex"),
+                "selected_move": self.pyboy.register_file.A,
+            }
+            for index in pending["records"]:
+                records[int(index)].update(selection)
             pending["active"] = False
             pending["record"] = None
 

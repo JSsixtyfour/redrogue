@@ -114,19 +114,28 @@ decision without adding ROM instrumentation or consuming Game Boy RAM.
 ## AI benchmark
 
 `make ai_benchmark` runs complete deterministic FIGHT 2 battles and writes
-per-trial JSON and CSV reports. Override the seed, trial count, or safety limit
-through `BENCHMARK_ARGS`:
+per-trial JSON and CSV reports. It defaults to T3 and a deterministic
+highest-base-power player policy so the default command exercises the complete
+AI. Override the tier, policy, seed, trial count, or safety limit through
+`BENCHMARK_ARGS`:
 
 ```sh
-make ai_benchmark BENCHMARK_ARGS='--seed 17 --trials 10 --max-steps 5000'
+make ai_benchmark BENCHMARK_ARGS='--tier all --seed 17 --trials 5 --player-policy best_power'
 ```
 
-The report includes win rate, average turns and CPU cycles, switch and item
-rates, missed-KO rate, and wasted-turn rate. A missed KO means the `DAMAGE`
+Use `--tier auto` to measure the normal round-based tier and `--player-policy
+first_slot` for the old weak baseline. `--tier all` emits one directly
+comparable summary row for T0 through T3.
+
+The report includes resolved tier, raw counts, win rate, average turns, switch
+and item rates, missed-KO rate, wasted-turn rate, and mean/maximum AI decision
+cycles. A missed KO means the `DAMAGE`
 layer marked at least one move lethal with `AI_KILL`, but the AI selected a
 different slot. A wasted turn means the selected move was discouraged by the
 `REDUNDANT` layer. These are heuristic-level classifications, not guesses based
-only on the final battle result.
+only on the final battle result. Rates with no observations are `null` in JSON
+and empty in CSV, never `0.0`; T2/T3 runs hard-fail if `AI_DAMAGE` produces no
+KO opportunities. Decisions over the 70,224-cycle frame budget are counted.
 
 Phase 4 send-out selection now has both direct structural tests and an
 `EnemySendOut` caller-handoff trace. The latter records the previous slot,
