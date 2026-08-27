@@ -6,5 +6,13 @@
     "observation": "EnemySendOutFirstMon selects the trainer lead before LoadBattleMonFromParty loads the player's battle-mon type block.",
     "decision_needed": "Decide whether the opening trainer selection should be party-order based or should receive an explicit player-lead context before matchup ranking.",
     "test_boundary": "The effectiveness-ranking smoke contract begins with later replacements, where wBattleMonType1 is authoritative."
+  },
+  {
+    "id": "call-routine-rom0-target-returns-into-padding",
+    "status": "pending",
+    "scope": "harness.py call_routine",
+    "observation": "call_routine's ROM0/HOME-target path (address < 0x4000) sets PC directly and relies on returning to the injected 0x3FFF sentinel with no Bankswitch indirection. In this build 0x3FFF is ROM padding ($FF = RST 38), so the callee's own final ret unwinds into RST 38 -> $0038 and runs whatever unrelated real game code happens to be mapped there, instead of returning to the caller. The ROMX-target path is unaffected: Bankswitch's own .Return label is a real, always-mapped ROM0 address reached before the final ret pops 0x3FFF. Every existing call_routine usage in this suite targets a ROMX label, so this path was apparently never exercised - found 2026-08-27 porting _Divide (engine/math/multiply_divide.asm), where it silently returned a plausible-looking wrong result (no crash, no timeout, a repeating garbage pattern from an unrelated background call).",
+    "decision_needed": "Either fix call_routine to route ROM0/HOME targets through Bankswitch too (bank=0 is safe: the fixed $0000-$3FFF region is unaffected by the bank-select write, so this gives both paths the same safe .Return hop) or explicitly document that call_routine must not be trusted for a ROM0/HOME target and callers should hook a label inside the routine instead of relying on its return.",
+    "test_boundary": "Any call_routine(label) where label resolves to an address below $4000 is affected. All current test-suite usages (CriticalHitTest, ApplySingleBadgeStatBoost, AISelectSendOut, ProcPreloadAssignedWildArea, SaveGameData, LoadMainData) target ROMX and are unaffected."
   }
 ]

@@ -51,36 +51,34 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(self.harness.read8("wCurOpponent"), 0xE7)  # COOLTRAINER_M
         self.assertEqual(
             self.harness.read_bytes("wPartySpecies", 7),
-            # Rebaselined 2026-08-26, AI Overhaul Phase 6 (Sonnet portion):
-            # _AddPartyMon now farcalls out to bank $2C for every ENEMY
-            # trainer mon (AIRollEnemyDVs + AIFinishEnemyMonStats), which
-            # this project's own RNG is deterministic-by-call-count for, so
-            # any code that changes how many Random() calls or CPU cycles
-            # elapse during roster-build legitimately shifts the seeded
-            # FIGHT2 species stream - PHASE_6_SPEC.md explicitly anticipated
-            # this exact fixture needing a rebaseline. Bisected against HEAD
-            # via `git stash push` of the tracked Phase 6 files (the
-            # established no-drift-proof technique from Phase 5/6): this
-            # test passes with the OLD values at HEAD and only differs with
-            # Phase 6 applied, confirming the shift is real and attributable
-            # to this phase, not an unrelated regression. Verified the new
-            # party is not corrupted (not just "different"): all 6 slots
-            # have real species/levels/HP==MaxHP for both sides, and the
-            # values are stable across repeated boots of the same seed.
-            # (wPartySpecies is the PLAYER side; despite being built through
-            # the untouched b=0 code path, it still shifts here because it
-            # is generated from the SAME RNG stream, later in sequence, than
-            # the enemy mons whose roll count actually changed.)
-            [126, 111, 138, 45, 49, 6, 0xFF],
+            # Rebaselined 2026-08-27, _Divide optimisation
+            # (DIVIDE_OPTIMIZATION_SPEC.md): replaced the repeated-subtraction
+            # _Divide (engine/math/multiply_divide.asm) with shift-subtract
+            # long division - same inputs/outputs, drastically fewer CPU
+            # cycles per call. This project's RNG-adjacent timing is
+            # cycle-sensitive (see project_smoke_suite_catches_rng_drift), and
+            # Divide is called from damage calc, stat calc, and EXP all over
+            # roster-build, so a cycle-count change here was expected to shift
+            # this seeded stream - anticipated in the spec's own section 4.
+            # Bisected via `git stash push -- engine/math/multiply_divide.asm`
+            # (the established no-drift-proof technique): this test passes
+            # with the OLD routine at HEAD and only differs with the port
+            # applied, confirming the shift is real and attributable to this
+            # change, not an unrelated regression. Verified the new party is
+            # not corrupted, not just different: all 12 slots (both sides)
+            # have real species, sane levels (1-100), and HP == MaxHP.
+            # Also verified: a full differential sweep of ~5,472 real
+            # (b, divisor, dividend) cases against the OLD routine found ZERO
+            # quotient mismatches and zero hRemainder mismatches at b=4 (the
+            # only case any caller - PayDayEffect_ - reads it for); see
+            # DIVIDE_OPTIMIZATION_SPEC.md section 3 and 6.
+            [126, 111, 141, 45, 35, 147, 0xFF],
         )
         self.assertEqual(
             self.harness.read_bytes("wEnemyPartySpecies", 7),
             # Rebaselined alongside wPartySpecies above - same cause, same
-            # verification. Positions 2-5 ([128, 114, 130, 141]) happen to
-            # still match the pre-Phase-6 golden value; only the first two
-            # enemy mons actually moved, consistent with a small, constant
-            # shift early in the stream rather than a growing divergence.
-            [42, 8, 128, 114, 130, 141, 0xFF],
+            # verification.
+            [44, 144, 59, 128, 114, 151, 0xFF],
         )
         for label in ("wPartyMonNicks", "wEnemyMonNicks"):
             for slot in range(6):

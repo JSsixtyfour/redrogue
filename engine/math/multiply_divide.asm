@@ -59,85 +59,86 @@ _Multiply:: ; marcelnote - adapted from polishedcrystal
 
 
 
-_Divide::
-	xor a
-	ldh [hDivideBuffer], a
-	ldh [hDivideBuffer+1], a
-	ldh [hDivideBuffer+2], a
-	ldh [hDivideBuffer+3], a
-	ldh [hDivideBuffer+4], a
-	ld a, $9
-	ld e, a
-.loop
-	ldh a, [hDivideBuffer]
-	ld c, a
-	ldh a, [hDividend+1] ; (aliases: hMultiplicand)
-	sub c
-	ld d, a
-	ldh a, [hDivisor] ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	ld c, a
-	ldh a, [hDividend] ; (aliases: hProduct, hPastLeadingZeros, hQuotient)
-	sbc c
-	jr c, .next
-	ldh [hDividend], a ; (aliases: hProduct, hPastLeadingZeros, hQuotient)
-	ld a, d
-	ldh [hDividend+1], a ; (aliases: hMultiplicand)
-	ldh a, [hDivideBuffer+4]
-	inc a
-	ldh [hDivideBuffer+4], a
-	jr .loop
-.next
-	ld a, b
-	cp $1
-	jr z, .done
-	ldh a, [hDivideBuffer+4]
-	sla a
-	ldh [hDivideBuffer+4], a
-	ldh a, [hDivideBuffer+3]
-	rl a
-	ldh [hDivideBuffer+3], a
-	ldh a, [hDivideBuffer+2]
-	rl a
-	ldh [hDivideBuffer+2], a
-	ldh a, [hDivideBuffer+1]
-	rl a
-	ldh [hDivideBuffer+1], a
-	dec e
-	jr nz, .next2
-	ld a, $8
-	ld e, a
-	ldh a, [hDivideBuffer]
-	ldh [hDivisor], a ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	xor a
-	ldh [hDivideBuffer], a
-	ldh a, [hDividend+1] ; (aliases: hMultiplicand)
-	ldh [hDividend], a ; (aliases: hProduct, hPastLeadingZeros, hQuotient)
-	ldh a, [hDividend+2]
-	ldh [hDividend+1], a ; (aliases: hMultiplicand)
-	ldh a, [hDividend+3]
-	ldh [hDividend+2], a
-.next2
+_Divide:: ; adapted from polishedcrystal via yumepokered
+; Divide hDividend, length b (max 4 bytes), by hDivisor (1 byte).
+; Result in hQuotient, remainder in hRemainder. All values big endian.
+;
+; Shift-subtract long division: 8 iterations per dividend byte, so cost is
+; bounded and O(b). The repeated-subtraction routine this replaces cost
+; ~9,760 cycles because its inner loop scaled with the QUOTIENT.
+	ldh a, [hDivisor]
+	and a ; is divisor 0?
+	ret z ; polishedcrystal crashed here; returning leaves hQuotient untouched
+
+	ld d, a              ; d = divisor
+	ld c, LOW(hDividend) ; to use ldh a, [c]
+	ld e, 0              ; e = running remainder
+.loopBytes
+	push bc              ; save b = byte counter, c = LOW(hDividend) + nByte
+	ld b, 8              ; b = bit counter
+	ldh a, [c]           ; next dividend byte
+	ld h, a              ; h = dividend byte being shifted out
+	ld l, 0              ; l = quotient byte being shifted in
+.loopBits
+	sla h
+	rl e                 ; bring next bit of h into the remainder
 	ld a, e
-	cp $1
-	jr nz, .okay
+	jr c, .carry         ; carry out of rl e means the 9-bit value >= d
+	cp d
+	jr c, .skip
+.carry
+	sub d
+	ld e, a              ; update remainder
+	inc l                ; set this quotient bit
+.skip
 	dec b
-.okay
-	ldh a, [hDivisor] ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	srl a
-	ldh [hDivisor], a ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	ldh a, [hDivideBuffer]
-	rr a
-	ldh [hDivideBuffer], a
-	jr .loop
-.done
-	ldh a, [hDividend+1] ; (aliases: hMultiplicand)
-	ldh [hRemainder], a ; (aliases: hDivisor, hMultiplier, hPowerOf10)
-	ldh a, [hDivideBuffer+4]
-	ldh [hQuotient+3], a
-	ldh a, [hDivideBuffer+3]
-	ldh [hQuotient+2], a
-	ldh a, [hDivideBuffer+2]
-	ldh [hQuotient+1], a ; (aliases: hMultiplicand)
-	ldh a, [hDivideBuffer+1]
-	ldh [hDividend], a ; (aliases: hProduct, hPastLeadingZeros, hQuotient)
+	jr z, .doneByte
+	sla l
+	jr .loopBits
+.doneByte
+	ld a, c
+	add hDivideBuffer - hDividend
+	ld c, a              ; c = LOW(hDivideBuffer) + nByte
+	ld a, l
+	ldh [c], a           ; stash this byte's quotient
+	pop bc               ; restore byte counter and dividend cursor
+	inc c
+	dec b
+	jr nz, .loopBytes
+
+	xor a
+	ldh [hDividend], a
+	ldh [hDividend + 1], a
+	ldh [hDividend + 2], a
+	ldh [hDividend + 3], a
+	ld a, e
+	ldh [hRemainder], a  ; NOTE: hRemainder ALIASES hDivisor (both union offset
+	                     ; 4), so the divisor is destroyed. The routine being
+	                     ; replaced destroyed it too - this is not a regression.
+	ld a, c              ; c = LOW(hDividend) + initial b
+	sub LOW(hQuotient)   ; hQuotient aliases hDividend, so this recovers b
+	ld b, a
+	add LOW(hDivideBuffer) - 1
+	ld c, a              ; c = LOW(hDivideBuffer) + last byte written
+	ldh a, [c]
+	ldh [hQuotient + 3], a
+	dec b
+.exit1 ; named for hookability (project convention): b=1 exit, quotient set
+	ret z
+	dec c
+	ldh a, [c]
+	ldh [hQuotient + 2], a
+	dec b
+.exit2 ; b=2 exit
+	ret z
+	dec c
+	ldh a, [c]
+	ldh [hQuotient + 1], a
+	dec b
+.exit3 ; b=3 exit
+	ret z
+	dec c
+	ldh a, [c]
+	ldh [hQuotient], a
+.exit4 ; b=4 exit
 	ret
