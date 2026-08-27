@@ -88,6 +88,46 @@ LogOffPCText:     db "LOG OFF@"
 
 DEF BILLS_PC_BOX_COLUMNS EQU 5
 DEF BILLS_PC_BOX_ROWS    EQU 4
+DEF BILLS_PC_ICON_ANIM_DELAY EQU 6
+DEF BILLS_PC_ICON_SCRATCH_TILE EQU $30
+
+MACRO load_bills_pc_box_icon_to_scratch
+	ld de, \1 tile \2
+	ld hl, vChars2 tile BILLS_PC_ICON_SCRATCH_TILE
+	lb bc, BANK(\1), 1
+	call CopyVideoData
+	ld de, \1 tile \2
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 1)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
+	ld de, \1 tile (\2 + 2)
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 2)
+	lb bc, BANK(\1), 1
+	call CopyVideoData
+	ld de, \1 tile (\2 + 2)
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 3)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
+ENDM
+
+MACRO load_bills_pc_box_symmetric_icon_to_scratch
+	ld de, \1 tile \2
+	ld hl, vChars2 tile BILLS_PC_ICON_SCRATCH_TILE
+	lb bc, BANK(\1), 1
+	call CopyVideoData
+	ld de, \1 tile \2
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 1)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
+	ld de, \1 tile (\2 + 1)
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 2)
+	lb bc, BANK(\1), 1
+	call CopyVideoData
+	ld de, \1 tile (\2 + 1)
+	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 3)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
+ENDM
 
 ; Yume's 5x4 BG-icon storage screen, reconciled with Red Rogue's compact box
 ; representation. Party slots are 0..5 and box slots are 6..25. Box mutations
@@ -122,6 +162,8 @@ BillsPC_::
 .loadGrid
 	call GBPalWhiteOutWithDelay3
 	call ClearScreen
+	xor a
+	ld [wAnimCounter], a
 	; DisplayChangeBoxMenu marks non-empty boxes with tile $78.
 	ld hl, vChars2 tile $78
 	ld de, PokeballTileGraphics
@@ -135,6 +177,7 @@ BillsPC_::
 	call WaitBillsPCButtonsReleased
 
 .inputLoop
+	call AnimateBillsPCSelectedIcon
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]
 	and a
@@ -398,6 +441,7 @@ ExitBillsPC:
 
 .restoreState
 	xor a
+	ld [wAnimCounter], a
 	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
 	ld [wPartyAndBillsPCSavedMenuItem], a
@@ -736,6 +780,7 @@ PrepareBillsPCSelectedRedraw:
 RedrawBillsPCBoxScreenCommon:
 	xor a
 	ldh [hAutoBGTransferEnabled], a
+	ld [wAnimCounter], a
 	call LoadBillsPCBoxIconTilePatterns
 	call ClearScreen
 	call ClearSprites
@@ -747,7 +792,7 @@ RedrawBillsPCBoxScreenCommon:
 	hlcoord 0, 12
 	lb bc, 4, 18
 	call TextBoxBorder
-	hlcoord 10, 0
+	hlcoord 4, 0
 	ld de, BillsPCChangeBoxText
 	call PlaceString
 	call DrawBillsPCPartyMons
@@ -818,7 +863,7 @@ MoveBillsPCCursorUp:
 	sub BILLS_PC_BOX_COLUMNS
 	add PARTY_LENGTH
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 
 MoveBillsPCCursorDown:
 	ldh a, [hCurrentMenuItem]
@@ -832,14 +877,14 @@ MoveBillsPCCursorDown:
 	ret c
 	ld a, b
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 .notParty
 	sub PARTY_LENGTH
 	cp MONS_PER_BOX - BILLS_PC_BOX_COLUMNS
 	ret nc
 	add PARTY_LENGTH + BILLS_PC_BOX_COLUMNS
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 
 MoveBillsPCCursorLeft:
 	ldh a, [hCurrentMenuItem]
@@ -852,7 +897,7 @@ MoveBillsPCCursorLeft:
 	ldh a, [hCurrentMenuItem]
 	dec a
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 .firstColumn
 	ld a, [wPartyCount]
 	dec a
@@ -862,7 +907,7 @@ MoveBillsPCCursorLeft:
 .gotPartyRow
 	ld a, b
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 
 MoveBillsPCCursorRight:
 	ldh a, [hCurrentMenuItem]
@@ -875,7 +920,7 @@ MoveBillsPCCursorRight:
 	ldh a, [hCurrentMenuItem]
 	inc a
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 .party
 	cp BILLS_PC_BOX_ROWS
 	ret nc
@@ -885,7 +930,7 @@ MoveBillsPCCursorRight:
 	add hl, bc
 	ld a, [hl]
 	ldh [hCurrentMenuItem], a
-	jr DrawBillsPCCursor
+	jp DrawBillsPCCursor
 
 BillsPCBoxRowStartMenuItems:
 	db PARTY_LENGTH
@@ -903,7 +948,174 @@ GetBillsPCBoxRowAndColumn:
 	inc b
 	jr .loop
 
+; The party menu's icons animate only while the cursor is over a Pokemon. The
+; PC uses BG tiles instead of OAM, so the selected icon's alternate four tiles
+; are copied into a temporary tile range and its tilemap entries point there.
+; wAnimCounter is already a generic one-byte animation counter and is not live
+; for any other system while Bill's PC is open. Bit 7 records the displayed
+; frame; the lower seven bits pace the change.
+AnimateBillsPCSelectedIcon:
+	call DelayFrame
+	ld a, [wAnimCounter]
+	bit 7, a
+	jr nz, .alternateFrame
+	inc a
+	cp BILLS_PC_ICON_ANIM_DELAY
+	jr c, .storeBaseTimer
+	ld a, $80
+	ld [wAnimCounter], a
+	call GetBillsPCSelectedIconCategory
+	ret c
+	call LoadBillsPCSelectedAlternateFrame
+	ret c
+	jp PlaceBillsPCSelectedScratchIcon
+
+.storeBaseTimer
+	ld [wAnimCounter], a
+	ret
+
+.alternateFrame
+	and $7f
+	inc a
+	cp BILLS_PC_ICON_ANIM_DELAY
+	jr c, .storeAlternateTimer
+	xor a
+	ld [wAnimCounter], a
+	call GetBillsPCSelectedIconCategory
+	ret c
+	jp PlaceBillsPCSelectedBaseIcon
+
+.storeAlternateTimer
+	or $80
+	ld [wAnimCounter], a
+	ret
+
+; Return the selected mon's category in e. Carry means that the selected
+; position is empty. The helper accepts the full PC menu index in a.
+GetBillsPCIconCategoryForMenuItem:
+	cp PARTY_LENGTH
+	jr c, .party
+	sub PARTY_LENGTH
+	call BillsPCBoxSlotHasMon
+	jr z, .empty
+	jr .gotSpecies
+.party
+	ld c, a
+	ld b, 0
+	ld hl, wPartySpecies
+	add hl, bc
+	ld a, [hl]
+	cp $ff
+	jr z, .empty
+.gotSpecies
+	ld [wCurPartySpecies], a
+	farcall GetCurPartyMonSpriteID
+	and a
+	ret
+.empty
+	scf
+	ret
+
+GetBillsPCSelectedIconCategory:
+	ldh a, [hCurrentMenuItem]
+	jr GetBillsPCIconCategoryForMenuItem
+
+; Restore the old cursor's icon after a cursor move. Full redraws already write
+; the normal tile IDs, but this is also needed for movement-only redraws.
+RestoreBillsPCPreviousIcon:
+	ld a, [wLastMenuItem]
+	call GetBillsPCIconCategoryForMenuItem
+	ret c
+	ld a, e
+	push af
+	ld a, [wLastMenuItem]
+	call GetBillsPCIconCoordForMenuItem
+	pop af
+	jp PlaceBillsPCBoxIcon
+
+GetBillsPCIconCoordForMenuItem:
+	cp PARTY_LENGTH
+	jr c, .party
+	sub PARTY_LENGTH
+	ld hl, BillsPCBoxIconCoords
+	jp GetBillsPCIconCoord
+.party
+	ld hl, BillsPCPartyIconCoords
+	jp GetBillsPCIconCoord
+
+PlaceBillsPCSelectedScratchIcon:
+	ldh a, [hCurrentMenuItem]
+	call GetBillsPCIconCoordForMenuItem
+	ld a, BILLS_PC_ICON_SCRATCH_TILE
+	jp PlaceBillsPCBoxIcon
+
+PlaceBillsPCSelectedBaseIcon:
+	push de
+	ldh a, [hCurrentMenuItem]
+	call GetBillsPCIconCoordForMenuItem
+	pop de
+	ld a, e
+	jp PlaceBillsPCBoxIcon
+
+; Load the PartyMenu-equivalent alternate frame into the four-tile scratch
+; range. Carry means this category has no safe BG equivalent. Poké Ball and
+; Helix move by one pixel in PartyMenu OAM and therefore remain static here;
+; BG tilemaps cannot express that sub-tile movement without an OAM overlay.
+LoadBillsPCSelectedAlternateFrame:
+	ld a, e
+	cp ICON_MON << 2
+	jr z, .monster
+	cp ICON_FAIRY << 2
+	jr z, .fairy
+	cp ICON_BIRD << 2
+	jr z, .bird
+	cp ICON_WATER << 2
+	jp z, .water
+	cp ICON_BUG << 2
+	jp z, .bug
+	cp ICON_GRASS << 2
+	jp z, .grass
+	cp ICON_SNAKE << 2
+	jp z, .snake
+	cp ICON_QUADRUPED << 2
+	jp z, .quadruped
+	cp ICON_PIKACHU << 2
+	jp z, .pikachu
+	; ICON_BALL, ICON_HELIX, and ICON_CHANSEY have no alternate tile frame.
+	scf
+	ret
+.monster
+	load_bills_pc_box_icon_to_scratch MonsterSprite, 0
+	ret
+.fairy
+	load_bills_pc_box_icon_to_scratch FairySprite, 0
+	ret
+.bird
+	load_bills_pc_box_icon_to_scratch BirdSprite, 0
+	ret
+.water
+	load_bills_pc_box_icon_to_scratch SeelSprite, 12
+	ret
+.bug
+	load_bills_pc_box_symmetric_icon_to_scratch BugIconFrame1, 0
+	ret
+.grass
+	load_bills_pc_box_symmetric_icon_to_scratch PlantIconFrame1, 0
+	ret
+.snake
+	load_bills_pc_box_symmetric_icon_to_scratch SnakeIconFrame2, 0
+	ret
+.quadruped
+	load_bills_pc_box_symmetric_icon_to_scratch QuadrupedIconFrame2, 0
+	ret
+.pikachu
+	load_bills_pc_box_icon_to_scratch PikachuSprite, 0
+	ret
+
 DrawBillsPCCursor:
+	call RestoreBillsPCPreviousIcon
+	xor a
+	ld [wAnimCounter], a
 	call DrawBillsPCCursorOnly
 	call DrawBillsPCPendingSourceCursor
 	jr DrawBillsPCInfoText
@@ -1347,8 +1559,20 @@ BillsPCBoxIconCoords:
 MACRO load_bills_pc_box_icon
 	ld de, \1 tile \2
 	ld hl, vChars2 tile (\3 << 2)
-	lb bc, BANK(\1), 4
+	lb bc, BANK(\1), 1
 	call CopyVideoData
+	ld de, \1 tile \2
+	ld hl, vChars2 tile ((\3 << 2) + 1)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
+	ld de, \1 tile (\2 + 2)
+	ld hl, vChars2 tile ((\3 << 2) + 2)
+	lb bc, BANK(\1), 1
+	call CopyVideoData
+	ld de, \1 tile (\2 + 2)
+	ld hl, vChars2 tile ((\3 << 2) + 3)
+	ld a, BANK(\1)
+	call CopyFlippedBillsPCBoxIconTile
 ENDM
 
 MACRO load_bills_pc_box_symmetric_icon
@@ -1373,17 +1597,17 @@ ENDM
 ; Load all 12 species icon categories as BG tiles. Chansey extends Yume's 44
 ; tiles to 48, occupying tile IDs $00-$2f and preserving Red Rogue's icon set.
 LoadBillsPCBoxIconTilePatterns:
-	load_bills_pc_box_icon MonsterSprite, 0, ICON_MON
+	load_bills_pc_box_icon MonsterSprite, 12, ICON_MON
 	load_bills_pc_box_icon PokeBallSprite, 0, ICON_BALL
 	load_bills_pc_box_icon FossilSprite, 0, ICON_HELIX
-	load_bills_pc_box_icon FairySprite, 0, ICON_FAIRY
-	load_bills_pc_box_icon BirdSprite, 0, ICON_BIRD
+	load_bills_pc_box_icon FairySprite, 12, ICON_FAIRY
+	load_bills_pc_box_icon BirdSprite, 12, ICON_BIRD
 	load_bills_pc_box_icon SeelSprite, 0, ICON_WATER
 	load_bills_pc_box_symmetric_icon BugIconFrame2, 0, ICON_BUG
 	load_bills_pc_box_symmetric_icon PlantIconFrame2, 0, ICON_GRASS
-	load_bills_pc_box_symmetric_icon SnakeIconFrame2, 0, ICON_SNAKE
-	load_bills_pc_box_symmetric_icon QuadrupedIconFrame2, 0, ICON_QUADRUPED
-	load_bills_pc_box_icon PikachuSprite, 0, ICON_PIKACHU
+	load_bills_pc_box_symmetric_icon SnakeIconFrame1, 0, ICON_SNAKE
+	load_bills_pc_box_symmetric_icon QuadrupedIconFrame1, 0, ICON_QUADRUPED
+	load_bills_pc_box_icon PikachuSprite, 12, ICON_PIKACHU
 	load_bills_pc_box_icon ChanseySprite, 0, ICON_CHANSEY
 	ret
 
@@ -1438,7 +1662,7 @@ BillsPCBoxReversedNibbles:
 	db $0, $8, $4, $c, $2, $a, $6, $e
 	db $1, $9, $5, $d, $3, $b, $7, $f
 
-BillsPCChangeBoxText: db "START:BOX@"
+BillsPCChangeBoxText: db "START CHANGE BOX@"
 BillsPCWhatToDoText: db "Choose a <PKMN>.@"
 SwapPCText:          db "SWAP@"
 DepositPCText:       db "DEPOSIT@"
