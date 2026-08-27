@@ -109,12 +109,28 @@ HoldTextDisplayOpen::
 CloseTextDisplay::
 	ldh a, [hCurMap]
 	call SwitchToMapRomBank
+	; Enhanced GBC colour: this block is deliberately hoisted above the hWY write
+	; below, matching shinpokered's reordering of the same routine.
+	;
+	; LoadCurrentMapView repopulates wTileMap, and the attribute rebuild derives
+	; each tile's palette FROM wTileMap - so it has to run while the window is
+	; still covering the screen. Writing hWY first (as vanilla does, and as this
+	; routine used to) slides the window away and reveals a background whose
+	; attributes still belong to whatever screen just closed. That was the cause
+	; of colours changing after backing out of the slot machine, the PC, and
+	; other screen-refresh menus: _CloseText existed but was never called, and
+	; the ordering would have been wrong even if it had been.
+	;
+	; LoadCurrentMapView still ran in this routine before, but near the very end,
+	; long after the reveal. It is moved here rather than duplicated.
+	xor a
+	ldh [hAutoBGTransferEnabled], a ; disable continuous WRAM to VRAM transfer each V-blank
+	call LoadCurrentMapView
+	farcall MakeAndTransferOverworldBGMapAttributes_CloseText
 	ld a, $90
 	ldh [hWY], a ; move the window off the screen
 	call DelayFrame
 	call LoadGBPal
-	xor a
-	ldh [hAutoBGTransferEnabled], a ; disable continuous WRAM to VRAM transfer each V-blank
 ; loop to make sprites face the directions they originally faced before the dialogue
 	ld hl, wSprite01StateData2OrigFacingDirection
 	ld c, NUM_SPRITESTATEDATA_STRUCTS - 1
@@ -128,18 +144,19 @@ CloseTextDisplay::
 	dec c
 	jr nz, .restoreSpriteFacingDirectionLoop
 	ld a, BANK(InitMapSprites)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank ; -2 B of HOME vs the inline ldh+ld pair
 	call InitMapSprites ; reload sprite tile pattern data (since it was partially overwritten by text tile patterns)
 	ld hl, wFontLoaded
 	res BIT_FONT_LOADED, [hl]
 	ld a, [wStatusFlags6]
 	bit BIT_FLY_WARP, a
 	call z, LoadPlayerSpriteGraphics
-	call LoadCurrentMapView
+	; LoadCurrentMapView was here; it is hoisted to the top of this routine so
+	; the attribute rebuild has a populated wTileMap to work from before the
+	; window is slid off. shinpokered comments the trailing call out in exactly
+	; the same way rather than running it twice.
 	pop af
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank ; -2 B of HOME vs the inline ldh+ld pair
 	jp UpdateSprites
 
 DisplayPokemartDialogue::

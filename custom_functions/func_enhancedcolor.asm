@@ -1049,7 +1049,7 @@ MakeAndTransferOverworldBGMapAttributes_OpenText::
 	ld [hDivideBCDBuffer+2], a
 	jp TransferGBCEnhancedBGMapAttributes.vBGMap_selected
 
-MakeAndTransferOverworldBGMapAttributes_CloseText:	
+MakeAndTransferOverworldBGMapAttributes_CloseText::
 ;only on the overworld bgmap
 	ld a, [wRogueFlagsBitfield2]
 	bit 3, a

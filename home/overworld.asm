@@ -885,8 +885,7 @@ HandleBlackOut::
 	ld hl, wStatusFlags4
 	res BIT_BATTLE_OVER_OR_BLACKOUT, [hl]
 	ld a, BANK(ResetStatusAndHalveMoneyOnBlackout) ; also BANK(PrepareForSpecialWarp) and BANK(SpecialEnterMap)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank ; -2 B of HOME vs the inline ldh+ld pair
 	call ResetStatusAndHalveMoneyOnBlackout
 	call PrepareForSpecialWarp
 	call PlayDefaultMusicFadeOutCurrent
@@ -916,8 +915,7 @@ HandleFlyWarpOrDungeonWarp::
 	res BIT_ALWAYS_ON_BIKE, [hl]
 	call LeaveMapAnim
 	ld a, BANK(PrepareForSpecialWarp)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+	call SetCurBank ; -2 B of HOME vs the inline ldh+ld pair
 	call PrepareForSpecialWarp
 	jp SpecialEnterMap
 
