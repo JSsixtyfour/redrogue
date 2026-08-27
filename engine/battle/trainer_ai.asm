@@ -1,6 +1,26 @@
 ; creates a set of moves that may be used and returns its address in hl
 ; unused slots are filled with 0, all used slots may be chosen with equal probability
 AIEnemyTrainerChooseMoves:
+; PERF (2026-08-27): run the whole decision in CGB double speed, then drop back
+; to single before returning. Measured at 480,086 cycles / ~6.8 frames / ~114ms
+; at T3 even after the _Divide optimisation (AI_PERF_INVESTIGATION.md), which is
+; a visible hitch before every enemy move.
+;
+; Battle deliberately runs at SINGLE speed - init_battle_variables.asm does
+; `predef SingleCPUSpeed ; battle transitions have known double-speed visual
+; faults` - so this is a NARROW, self-restoring exception, not a change to that
+; policy. It is safe precisely because the hazard is TRANSITIONS (rendering),
+; and move selection renders nothing: it is pure computation between frames.
+; Exact precedent: engine/battle/experience.asm wraps the EXP calculation the
+; same way inside the same single-speed battle ("shaves off about 1 second").
+;
+; SetCPUSpeed honours the player's 60 FPS option (wOptions2 BIT_60_FPS) rather
+; than forcing double, so with the option off BOTH calls are no-ops and no
+; `stop` is executed. predef preserves bc/de/hl (GetPredefPointer saves them,
+; GetPredefRegisters restores them), so the `hl` this routine returns survives
+; the exit call - which is why the paired call sits AFTER each `ld hl`.
+	predef SetCPUSpeed
+
 ; Phase 2b: snapshot last turn's move/power for the anti-spam and
 ; repeated-move-fatigue heuristics. MUST run before the scoring layers, whose
 ; ReadMove calls overwrite the wEnemyMove* block this reads from. See
@@ -115,9 +135,11 @@ AIEnemyTrainerChooseMoves:
 	dec c
 	jr nz, .filterMinimalEntries
 	ld hl, wBuffer    ; use created temporary array as move set
+	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
 	ret
 .useOriginalMoveSet
 	ld hl, wEnemyMonMoves    ; use original move set
+	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
 	ret
 
 ; Scoring layers, indexed by bit position in the tier's layer word. The order
