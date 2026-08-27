@@ -1,0 +1,776 @@
+"""Actual-assembly tests for the non-included overworld follower core.
+
+The fixture deliberately does not include the game's RAM declarations or link
+the game ROM.  It includes the current source file directly, gives its named
+RAM symbols fixed synthetic addresses, and drives the public entries through a
+small ROM mailbox under PyBoy.
+"""
+
+from __future__ import annotations
+
+import io
+import re
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+
+try:
+    from pyboy import PyBoy
+except ImportError:  # pragma: no cover - the smoke environment supplies PyBoy
+    PyBoy = None  # type: ignore[assignment,misc]
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class _FollowerRom:
+    """Build and run the actual follower source in a tiny two-bank ROM."""
+
+    # Mailbox and synthetic WRAM addresses used by the generated fixture.
+    COMMAND = 0xC000
+    COMPLETE = 0xC001
+    RESULT_A = 0xC002
+    RESULT_CARRY = 0xC003
+    ARG0 = 0xC004
+    ARG1 = 0xC005
+    READY = 0xC006
+    STATE1 = 0xC100
+    STATE2 = 0xC200
+    COMMAND_SIZE = 0xC300
+    COMMAND_BUFFER = 0xC301
+    LEDGE_LATCH = 0xC311
+    PLAYER_DIRECTION = 0xC312
+    MOVEMENT_FLAGS = 0xC313
+    OPTIONS2 = 0xC314
+    PLAYER_Y = 0xC315
+    PLAYER_X = 0xC316
+    GRASS_TILE = 0xC317
+    PLAYER_FACING = 0xC318
+    TILE_MAP = 0xC400
+
+    # Mailbox commands.
+    CLEAR = 1
+    APPEND = 2
+    DEQUEUE = 3
+    QUEUE_PLAYER = 4
+    QUEUE_ENCODED = 5
+    UPDATE = 6
+    PLACE = 7
+    VISIBILITY = 8
+    UPDATE_IMAGE = 9
+
+    # State-data offsets imported from constants/map_object_constants.asm.
+    S1_PICTURE = 0
+    S1_STATUS = 1
+    S1_IMAGE = 2
+    S1_YVECTOR = 3
+    S1_YPIXELS = 4
+    S1_XVECTOR = 5
+    S1_XPIXELS = 6
+    S1_INTRA = 7
+    S1_ANIM = 8
+    S1_FACING = 9
+    S2_COUNTER = 0
+    S2_MAP_Y = 4
+    S2_MAP_X = 5
+    S2_MOVEMENT_BYTE = 6
+    S2_GRASS_PRIORITY = 7
+    S2_PHASE = 10
+    S2_IMAGE_BASE = 14
+
+    # Source constants from follower.asm and constants/sprite_constants.asm.
+    COMMAND_EMPTY = 0xFF
+    STATUS_READY = 1
+    STATUS_WALKING = 3
+    STATUS_TWO_STEP = 4
+    STATUS_FAST = 5
+    PLACE_OVERLAP = 0
+    PLACE_RIGHT = 1
+    PLACE_BEHIND = 2
+    PLACE_OVERLAP_DOWN = 3
+    PLACE_BELOW = 4
+    PLACE_ABOVE = 5
+    PLACE_LEFT = 6
+    PLACE_AHEAD = 7
+    FACING_DOWN = 0
+    FACING_UP = 4
+    FACING_LEFT = 8
+    FACING_RIGHT = 12
+    LEDGE_BIT = 6
+    FPS_BIT = 7
+    MAP_TILESET_SIZE = 0x60
+    OAM_PRIO = 0x80
+
+    _FIXTURE = r'''
+INCLUDE "includes.asm"
+
+; The follower source is intentionally not linked into the game yet. These
+; fixed addresses are test-only stand-ins for the symbols it references.
+DEF MAP_TILESET_SIZE EQU $60
+DEF wSprite15StateData1 EQU $C100
+DEF wSprite15StateData2 EQU $C200
+DEF wFollowerCommandBufferSize EQU $C300
+DEF wFollowerCommandBuffer EQU $C301
+DEF wFollowerLedgeLatch EQU $C311
+DEF wPlayerDirection EQU $C312
+DEF wMovementFlags EQU $C313
+DEF wOptions2 EQU $C314
+DEF wYCoord EQU $C315
+DEF wXCoord EQU $C316
+DEF wGrassTile EQU $C317
+DEF wSpritePlayerStateData1FacingDirection EQU $C318
+DEF wTileMap EQU $C400
+
+DEF MAIL_COMMAND EQU $C000
+DEF MAIL_COMPLETE EQU $C001
+DEF MAIL_RESULT_A EQU $C002
+DEF MAIL_RESULT_CARRY EQU $C003
+DEF MAIL_ARG0 EQU $C004
+DEF MAIL_ARG1 EQU $C005
+DEF MAIL_READY EQU $C006
+
+SECTION "Follower test entry", ROM0[$100]
+    nop
+    jp FollowerTestMain
+
+SECTION "Follower test home helper", ROM0[$150]
+; The only external call in follower.asm is this small HOME routine.
+FillMemory::
+    push de
+    ld d, a
+.loop
+    ld a, d
+    ld [hli], a
+    dec bc
+    ld a, b
+    or c
+    jr nz, .loop
+    pop de
+    ret
+
+; Put the follower core and its dispatcher in the same ROMX bank. The test
+; entry above jumps directly to this bank, so no banked helper is hidden by a
+; test stub or an accidental far call.
+INCLUDE "engine/overworld/follower.asm"
+
+SECTION "Follower test dispatcher", ROMX
+FollowerTestMain::
+    di
+    ld sp, $DFFF
+    xor a
+    ld [MAIL_COMMAND], a
+    ld [MAIL_COMPLETE], a
+    ld a, $5A
+    ld [MAIL_READY], a
+.wait
+    ld a, [MAIL_COMMAND]
+    and a
+    jr z, .wait
+    ld b, a
+    xor a
+    ld [MAIL_COMMAND], a
+    ld a, b
+    cp 1
+    jr z, .clear
+    cp 2
+    jr z, .append
+    cp 3
+    jr z, .dequeue
+    cp 4
+    jr z, .queue_player
+    cp 5
+    jr z, .queue_encoded
+    cp 6
+    jr z, .update
+    cp 7
+    jr z, .place
+    cp 8
+    jr z, .visibility
+    cp 9
+    jr z, .update_image
+    ld a, $EE
+    and a
+    jr .report
+.clear
+    call FollowerClearState
+    jr .report
+.append
+    ld a, [MAIL_ARG0]
+    call FollowerAppendCommand
+    jr .report
+.dequeue
+    call FollowerDequeueCommand
+    jr .report
+.queue_player
+    call FollowerQueuePlayerStep
+    jr .report
+.queue_encoded
+    ld a, [MAIL_ARG0]
+    ld e, a
+    ld a, $A5             ; prove the banked entry consumes E, not A
+    call FollowerQueueEncodedStep
+    jr .report
+.update
+    call FollowerUpdate
+    jr .report
+.place
+    ld a, [MAIL_ARG0]
+    ld d, a
+    ld a, [MAIL_ARG1]
+    ld e, a
+    call FollowerPlaceAtPlayer
+    jr .report
+.visibility
+    call FollowerCheckVisibility
+    jr .report
+.update_image
+    call FollowerUpdateImage
+.report
+    ld [MAIL_RESULT_A], a
+    ld a, 0
+    jr nc, .store_carry
+    inc a
+.store_carry
+    ld [MAIL_RESULT_CARRY], a
+    ld a, 1
+    ld [MAIL_COMPLETE], a
+    jp .wait
+'''
+
+    def __init__(self, temp_dir: Path):
+        if PyBoy is None:
+            raise unittest.SkipTest("PyBoy is unavailable")
+        for tool in ("rgbasm", "rgblink", "rgbfix"):
+            if shutil.which(tool) is None:
+                raise unittest.SkipTest(f"{tool} is unavailable")
+
+        self.source = temp_dir / "follower_fixture.asm"
+        self.object = temp_dir / "follower_fixture.o"
+        self.rom_path = temp_dir / "follower_fixture.gb"
+        # This constant lives in movement.asm, not includes.asm. Take the
+        # actual definition so this isolated fixture cannot silently drift.
+        movement_source = (REPO_ROOT / "engine/overworld/movement.asm").read_text()
+        tile_limit = re.search(r"(?m)^DEF MAP_TILESET_SIZE EQU .+$", movement_source)
+        assert tile_limit is not None, "movement tile-limit definition moved"
+        fixture_source = self._FIXTURE.replace("DEF MAP_TILESET_SIZE EQU $60", tile_limit[0])
+        self.source.write_text(fixture_source, encoding="utf-8")
+        self._run(("rgbasm", "-Weverything", "-I", str(REPO_ROOT), "-o", str(self.object), str(self.source)))
+        self._run(("rgblink", "-o", str(self.rom_path), str(self.object)))
+        self._run(("rgbfix", "-v", "-p", "0", str(self.rom_path)))
+        self.pyboy = PyBoy(
+            io.BytesIO(self.rom_path.read_bytes()),
+            window="null",
+            sound_emulated=False,
+            log_level="CRITICAL",
+        )
+        self.pyboy.set_emulation_speed(0)
+        self._wait_for_boot()
+
+    @staticmethod
+    def _run(command: tuple[str, ...]) -> None:
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode:
+            raise RuntimeError(
+                f"command failed ({result.returncode}): {' '.join(command)}\n"
+                f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            )
+
+    def close(self) -> None:
+        self.pyboy.stop(save=False)
+
+    def _wait_for_boot(self) -> None:
+        for _ in range(120):
+            self.pyboy.tick(render=False)
+            if self.pyboy.memory[self.READY] == 0x5A:
+                return
+        raise AssertionError("follower fixture did not reach its mailbox loop")
+
+    def read8(self, address: int) -> int:
+        return self.pyboy.memory[address]
+
+    def write8(self, address: int, value: int) -> None:
+        self.pyboy.memory[address] = value & 0xFF
+
+    def read_state1(self, offset: int) -> int:
+        return self.read8(self.STATE1 + offset)
+
+    def write_state1(self, offset: int, value: int) -> None:
+        self.write8(self.STATE1 + offset, value)
+
+    def read_state2(self, offset: int) -> int:
+        return self.read8(self.STATE2 + offset)
+
+    def write_state2(self, offset: int, value: int) -> None:
+        self.write8(self.STATE2 + offset, value)
+
+    def command(self, command: int, arg0: int = 0, arg1: int = 0) -> tuple[int, bool]:
+        self.write8(self.COMPLETE, 0)
+        self.write8(self.ARG0, arg0)
+        self.write8(self.ARG1, arg1)
+        self.write8(self.COMMAND, command)
+        for _ in range(120):
+            self.pyboy.tick(render=False)
+            if self.read8(self.COMPLETE):
+                return self.read8(self.RESULT_A), bool(self.read8(self.RESULT_CARRY))
+        raise AssertionError(f"follower fixture timed out on command {command}")
+
+    def clear(self) -> None:
+        self.command(self.CLEAR)
+
+    def append(self, value: int) -> tuple[int, bool]:
+        return self.command(self.APPEND, value)
+
+    def dequeue(self) -> tuple[int, bool]:
+        return self.command(self.DEQUEUE)
+
+    def queue_player(self) -> tuple[int, bool]:
+        return self.command(self.QUEUE_PLAYER)
+
+    def queue_encoded(self, value: int) -> tuple[int, bool]:
+        return self.command(self.QUEUE_ENCODED, value)
+
+    def update(self) -> tuple[int, bool]:
+        return self.command(self.UPDATE)
+
+    def place(self, picture: int, mode: int) -> tuple[int, bool]:
+        return self.command(self.PLACE, picture, mode)
+
+    def visibility(self) -> tuple[int, bool]:
+        return self.command(self.VISIBILITY)
+
+    def update_image(self) -> tuple[int, bool]:
+        return self.command(self.UPDATE_IMAGE)
+
+
+class FollowerCoreAssemblyTest(unittest.TestCase):
+    """Exercise core behavior through an assembled fixture, not Python copies."""
+
+    fixture: _FollowerRom | None = None
+    temp_dir: tempfile.TemporaryDirectory[str] | None = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temp_dir = tempfile.TemporaryDirectory(prefix="redrogue-follower-")
+        try:
+            cls.fixture = _FollowerRom(Path(cls.temp_dir.name))
+        except Exception:
+            cls.temp_dir.cleanup()
+            cls.temp_dir = None
+            raise
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls.fixture is not None:
+            cls.fixture.close()
+        if cls.temp_dir is not None:
+            cls.temp_dir.cleanup()
+
+    def setUp(self) -> None:
+        assert self.fixture is not None
+        self.fixture.clear()
+        self.fixture.write8(self.fixture.PLAYER_Y, 20)
+        self.fixture.write8(self.fixture.PLAYER_X, 30)
+        self.fixture.write8(self.fixture.PLAYER_FACING, self.fixture.FACING_DOWN)
+        self.fixture.write8(self.fixture.OPTIONS2, 0)
+        self.fixture.write8(self.fixture.MOVEMENT_FLAGS, 0)
+        self.fixture.write8(self.fixture.PLAYER_DIRECTION, 0)
+        self.fixture.write8(self.fixture.GRASS_TILE, 0x33)
+        for offset in range(18 * 20):
+            self.fixture.write8(self.fixture.TILE_MAP + offset, 0)
+
+    def test_clear_resets_state_queue_and_ledge_latch(self) -> None:
+        assert self.fixture is not None
+        for offset in range(16):
+            self.fixture.write_state1(offset, 0xA1)
+            self.fixture.write_state2(offset, 0xA2)
+        self.fixture.write8(self.fixture.COMMAND_SIZE, 0x0F)
+        for offset in range(16):
+            self.fixture.write8(self.fixture.COMMAND_BUFFER + offset, 0xB0 + offset)
+        self.fixture.write8(self.fixture.LEDGE_LATCH, 1)
+
+        self.fixture.clear()
+
+        self.assertEqual(
+            [self.fixture.read_state1(i) for i in range(16)],
+            [0, 0, self.fixture.COMMAND_EMPTY] + [0] * 13,
+        )
+        self.assertEqual([self.fixture.read_state2(i) for i in range(16)], [0] * 16)
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), self.fixture.COMMAND_EMPTY)
+        self.assertEqual(
+            [self.fixture.read8(self.fixture.COMMAND_BUFFER + i) for i in range(16)],
+            [0] * 16,
+        )
+        self.assertEqual(self.fixture.read8(self.fixture.LEDGE_LATCH), 0)
+
+    def test_queue_lag_full_and_invalid_commands(self) -> None:
+        assert self.fixture is not None
+        self.assertFalse(self.fixture.append(4)[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 0)
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_BUFFER), 4)
+        for invalid in (0, 9, 0xFF):
+            self.assertEqual(self.fixture.append(invalid)[1], True)
+            self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 0)
+
+        self.fixture.clear()
+        self.assertFalse(self.fixture.append(1)[1])
+        self.assertEqual(self.fixture.dequeue()[1], True, "one queued command is the lag sentinel")
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 0)
+        self.assertFalse(self.fixture.append(2)[1])
+        self.assertEqual(self.fixture.dequeue(), (1, False))
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 0)
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_BUFFER), 2)
+
+        self.fixture.clear()
+        for index in range(16):
+            self.assertFalse(self.fixture.append((index % 8) + 1)[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 15)
+        self.assertTrue(self.fixture.append(1)[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 15)
+
+    def test_encoded_entry_uses_e_and_player_ledge_latch(self) -> None:
+        assert self.fixture is not None
+        self.assertFalse(self.fixture.queue_encoded(7)[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_BUFFER), 7)
+
+        self.fixture.clear()
+        self.fixture.write8(self.fixture.PLAYER_DIRECTION, 1 << 2)  # down
+        self.fixture.write8(self.fixture.MOVEMENT_FLAGS, 1 << self.fixture.LEDGE_BIT)
+        self.assertFalse(self.fixture.queue_player()[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_BUFFER), 5)
+        self.assertEqual(self.fixture.read8(self.fixture.LEDGE_LATCH), 1)
+        self.assertTrue(self.fixture.queue_player()[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 0)
+        self.assertEqual(self.fixture.read8(self.fixture.LEDGE_LATCH), 0)
+        self.assertFalse(self.fixture.queue_player()[1])
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 1)
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_BUFFER + 1), 5)
+
+    def _prepare_movement(self, *, options2: int = 0) -> None:
+        assert self.fixture is not None
+        self.fixture.write8(self.fixture.OPTIONS2, options2)
+        self.fixture.write_state1(self.fixture.S1_STATUS, self.fixture.STATUS_READY)
+        self.fixture.write_state1(self.fixture.S1_YPIXELS, 0)
+        self.fixture.write_state1(self.fixture.S1_XPIXELS, 64)
+        self.fixture.write_state2(self.fixture.S2_MAP_Y, 4)
+        self.fixture.write_state2(self.fixture.S2_MAP_X, 8)
+        self.fixture.write_state2(self.fixture.S2_IMAGE_BASE, 0)
+
+    def _run_direction(self, command: int, *, options2: int = 0, ledge: bool = False) -> tuple[int, int]:
+        assert self.fixture is not None
+        self._prepare_movement(options2=options2)
+        self.fixture.queue_encoded(command)
+        self.fixture.queue_encoded(command)
+        calls = 16 if options2 & (1 << self.fixture.FPS_BIT) else 8
+        if ledge and not options2 & (1 << self.fixture.FPS_BIT):
+            calls = 8
+        if ledge and options2 & (1 << self.fixture.FPS_BIT):
+            calls = 16
+        for _ in range(calls):
+            self.fixture.update()
+        return (
+            self.fixture.read_state1(self.fixture.S1_YPIXELS),
+            self.fixture.read_state1(self.fixture.S1_XPIXELS),
+        )
+
+    def test_all_directions_normal_and_ledge_timing(self) -> None:
+        assert self.fixture is not None
+        expected = {
+            1: (16, 64, 1, self.fixture.FACING_DOWN),
+            2: (0xF0, 64, 0xFF, self.fixture.FACING_UP),
+            3: (0, 48, 0xFF, self.fixture.FACING_LEFT),
+            4: (0, 80, 1, self.fixture.FACING_RIGHT),
+        }
+        for command, (expected_y, expected_x, expected_map_delta, facing) in expected.items():
+            with self.subTest(command=command):
+                self.fixture.clear()
+                self.setUp()
+                ypixels, xpixels = self._run_direction(command)
+                self.assertEqual((ypixels, xpixels), (expected_y, expected_x))
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_READY)
+                if command in (1, 2):
+                    expected_map = (4 + expected_map_delta) & 0xFF
+                    self.assertEqual(self.fixture.read_state2(self.fixture.S2_MAP_Y), expected_map)
+                else:
+                    expected_map = (8 + expected_map_delta) & 0xFF
+                    self.assertEqual(self.fixture.read_state2(self.fixture.S2_MAP_X), expected_map)
+
+        self.fixture.clear()
+        self.setUp()
+        self._prepare_movement()
+        self.fixture.queue_encoded(5)
+        self.fixture.queue_encoded(5)
+        for _ in range(8):
+            self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_YPIXELS), 32)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_MAP_Y), 6)
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_READY)
+
+    def test_fast_path_uses_four_pixels_for_four_updates(self) -> None:
+        assert self.fixture is not None
+        self._prepare_movement()
+        for _ in range(4):
+            self.fixture.queue_encoded(4)
+        self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_FAST)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_COUNTER), 3)
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_XPIXELS), 68)
+        for _ in range(3):
+            self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_XPIXELS), 80)
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_READY)
+
+    def test_60fps_halves_delta_and_decrements_on_phase_zero(self) -> None:
+        assert self.fixture is not None
+        self._prepare_movement(options2=1 << self.fixture.FPS_BIT)
+        self.fixture.queue_encoded(1)
+        self.fixture.queue_encoded(1)
+        self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_YPIXELS), 1)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_COUNTER), 8)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_PHASE), 1)
+        self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_YPIXELS), 2)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_COUNTER), 7)
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_PHASE), 0)
+        for _ in range(14):
+            self.fixture.update()
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_YPIXELS), 16)
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_READY)
+
+    def test_each_tick_for_all_directions_paths_and_speed_options(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        vectors = {1: (1, 0), 2: (-1, 0), 3: (0, -1), 4: (0, 1)}
+        for fps in (False, True):
+            for path, logical_ticks, distance, status in (
+                ("normal", 8, 16, f.STATUS_WALKING),
+                ("fast", 4, 16, f.STATUS_FAST),
+                ("ledge", 8, 32, f.STATUS_TWO_STEP),
+            ):
+                for direction, (dy, dx) in vectors.items():
+                    with self.subTest(fps=fps, path=path, direction=direction):
+                        self.setUp()
+                        self._prepare_movement(options2=(1 << f.FPS_BIT) if fps else 0)
+                        command = direction + (4 if path == "ledge" else 0)
+                        for _ in range(4 if path == "fast" else 2):
+                            f.queue_encoded(command)
+                        calls = logical_ticks * (2 if fps else 1)
+                        delta = distance // calls
+                        for tick in range(1, calls + 1):
+                            f.update()
+                            self.assertEqual(f.read_state1(f.S1_YPIXELS), (dy * tick * delta) & 0xFF)
+                            self.assertEqual(f.read_state1(f.S1_XPIXELS), (64 + dx * tick * delta) & 0xFF)
+                            logical_elapsed = tick // 2 if fps else tick
+                            self.assertEqual(f.read_state2(f.S2_COUNTER), logical_ticks - logical_elapsed)
+                            self.assertEqual(f.read_state2(f.S2_PHASE), tick % 2 if fps else 0)
+                            self.assertEqual(f.read_state1(f.S1_INTRA), logical_elapsed % 4)
+                            self.assertEqual(f.read_state1(f.S1_ANIM), (logical_elapsed // 4) % 4)
+                            self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY if tick == calls else status)
+                        tiles = 2 if path == "ledge" else 1
+                        self.assertEqual(f.read_state2(f.S2_MAP_Y), (4 + dy * tiles) & 0xFF)
+                        self.assertEqual(f.read_state2(f.S2_MAP_X), (8 + dx * tiles) & 0xFF)
+
+    def test_ledge_directions_rejection_and_normal_step_latch_reset(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for flag, command in ((4, 5), (8, 6), (2, 7), (1, 8)):
+            with self.subTest(direction=flag):
+                self.setUp()
+                f.write8(f.PLAYER_DIRECTION, flag)
+                f.write8(f.MOVEMENT_FLAGS, 1 << f.LEDGE_BIT)
+                self.assertFalse(f.queue_player()[1])
+                self.assertEqual(f.read8(f.COMMAND_BUFFER), command)
+                self.assertEqual(f.read8(f.LEDGE_LATCH), 1)
+                self.assertTrue(f.queue_player()[1])
+                self.assertEqual(f.read8(f.COMMAND_SIZE), 0)
+                self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
+        self.setUp()
+        f.write8(f.PLAYER_DIRECTION, 4)
+        f.write8(f.MOVEMENT_FLAGS, 1 << f.LEDGE_BIT)
+        for _ in range(16):
+            f.append(1)
+        self.assertTrue(f.queue_player()[1])
+        self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
+        self.setUp()
+        f.write8(f.MOVEMENT_FLAGS, 1 << f.LEDGE_BIT)
+        self.assertTrue(f.queue_player()[1])  # no direction
+        self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
+        f.write8(f.LEDGE_LATCH, 1)
+        f.write8(f.MOVEMENT_FLAGS, 0)
+        f.write8(f.PLAYER_DIRECTION, 1)
+        self.assertFalse(f.queue_player()[1])
+        self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
+        self.assertEqual(f.read8(f.COMMAND_BUFFER), 4)
+
+    def test_four_tile_textbox_checks_and_rounded_up_y(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        # Y=62 is two pixels into the next block. Its rounded-up bottom
+        # row is not part of the rounded-down 2x2 sample.
+        for rounded_up in (False, True):
+            for cell in (0, 1, -20, -19):
+                with self.subTest(rounded_up=rounded_up, cell=cell):
+                    self.setUp()
+                    f.place(0x42, f.PLACE_OVERLAP)
+                    f.write_state1(f.S1_YPIXELS, 62)
+                    self.assertFalse(f.visibility()[1])
+                    pointer = self._tile_pointer_offset(62, 64, round_up=rounded_up)
+                    f.write8(f.TILE_MAP + pointer + cell, f.MAP_TILESET_SIZE)
+                    self.assertTrue(f.visibility()[1])
+                    self.assertEqual(f.read_state1(f.S1_IMAGE), 0xFF)
+        self.setUp()
+        f.place(0x42, f.PLACE_OVERLAP)
+        f.write_state2(f.S2_GRASS_PRIORITY, f.OAM_PRIO)
+        self.assertFalse(f.visibility()[1])
+        self.assertEqual(f.read_state2(f.S2_GRASS_PRIORITY), 0)
+
+    def _expected_placement(self, facing: int, mode: int) -> tuple[int, int, int]:
+        y, x = 24, 34
+        if mode == self.fixture.PLACE_RIGHT:  # type: ignore[union-attr]
+            x += 1
+            follower_facing = facing
+        elif mode == self.fixture.PLACE_LEFT:  # type: ignore[union-attr]
+            x -= 1
+            follower_facing = facing
+        elif mode == self.fixture.PLACE_BELOW:  # type: ignore[union-attr]
+            y += 1
+            follower_facing = facing
+        elif mode == self.fixture.PLACE_ABOVE:  # type: ignore[union-attr]
+            y -= 1
+            follower_facing = self._face_player(y, x)
+        elif mode == self.fixture.PLACE_OVERLAP_DOWN:  # type: ignore[union-attr]
+            follower_facing = self.fixture.FACING_DOWN  # type: ignore[union-attr]
+        elif mode == self.fixture.PLACE_BEHIND:  # type: ignore[union-attr]
+            if facing == self.fixture.FACING_DOWN:  # type: ignore[union-attr]
+                y -= 1
+            elif facing == self.fixture.FACING_UP:  # type: ignore[union-attr]
+                y += 1
+            elif facing == self.fixture.FACING_LEFT:  # type: ignore[union-attr]
+                x += 1
+            else:
+                x -= 1
+            follower_facing = self._face_player(y, x)
+        elif mode == self.fixture.PLACE_AHEAD:  # type: ignore[union-attr]
+            if facing == self.fixture.FACING_DOWN:  # type: ignore[union-attr]
+                y += 1
+                follower_facing = self.fixture.FACING_UP  # type: ignore[union-attr]
+            elif facing == self.fixture.FACING_UP:  # type: ignore[union-attr]
+                y -= 1
+                follower_facing = self.fixture.FACING_DOWN  # type: ignore[union-attr]
+            elif facing == self.fixture.FACING_LEFT:  # type: ignore[union-attr]
+                x -= 1
+                follower_facing = self.fixture.FACING_RIGHT  # type: ignore[union-attr]
+            else:
+                x += 1
+                follower_facing = self.fixture.FACING_LEFT  # type: ignore[union-attr]
+        else:
+            follower_facing = facing
+        return y, x, follower_facing
+
+    def _face_player(self, y: int, x: int) -> int:
+        assert self.fixture is not None
+        player_y, player_x = 24, 34
+        if y != player_y:
+            return self.fixture.FACING_DOWN if y < player_y else self.fixture.FACING_UP
+        if x != player_x:
+            return self.fixture.FACING_RIGHT if x < player_x else self.fixture.FACING_LEFT
+        return self.fixture.FACING_DOWN
+
+    def test_placement_modes_reset_state_and_set_screen_position(self) -> None:
+        assert self.fixture is not None
+        for facing in (
+            self.fixture.FACING_DOWN,
+            self.fixture.FACING_UP,
+            self.fixture.FACING_LEFT,
+            self.fixture.FACING_RIGHT,
+        ):
+            self.fixture.write8(self.fixture.PLAYER_FACING, facing)
+            for mode in range(8):
+                self.fixture.write8(self.fixture.COMMAND_SIZE, 4)
+                self.fixture.write_state1(self.fixture.S1_IMAGE, 0x55)
+                self.assertEqual(self.fixture.place(0x42, mode)[1], False)
+                expected_y, expected_x, expected_facing = self._expected_placement(facing, mode)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_PICTURE), 0x42)
+                self.assertEqual(self.fixture.read_state2(self.fixture.S2_IMAGE_BASE), 2)
+                self.assertEqual(self.fixture.read_state2(self.fixture.S2_MOVEMENT_BYTE), 0xFE)
+                self.assertEqual(self.fixture.read_state2(self.fixture.S2_MAP_Y), expected_y)
+                self.assertEqual(self.fixture.read_state2(self.fixture.S2_MAP_X), expected_x)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_YPIXELS), (expected_y - 20) * 16 - 4)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_XPIXELS), (expected_x - 30) * 16)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_FACING), expected_facing)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_STATUS), self.fixture.STATUS_READY)
+                self.assertEqual(self.fixture.read_state1(self.fixture.S1_IMAGE), self.fixture.COMMAND_EMPTY)
+                self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), self.fixture.COMMAND_EMPTY)
+
+                # Placement leaves the image hidden until a visibility refresh.
+                self.assertFalse(self.fixture.update_image()[1])
+                self.assertNotEqual(self.fixture.read_state1(self.fixture.S1_IMAGE), self.fixture.COMMAND_EMPTY)
+
+    def test_invalid_placement_mode_is_carrying_and_atomic(self) -> None:
+        assert self.fixture is not None
+        for offset in range(16):
+            self.fixture.write_state1(offset, 0x81 + offset)
+            self.fixture.write_state2(offset, 0x91 + offset)
+        self.fixture.write8(self.fixture.COMMAND_SIZE, 5)
+        for offset in range(16):
+            self.fixture.write8(self.fixture.COMMAND_BUFFER + offset, 0x30 + offset)
+        before1 = [self.fixture.read_state1(i) for i in range(16)]
+        before2 = [self.fixture.read_state2(i) for i in range(16)]
+        before_queue = [self.fixture.read8(self.fixture.COMMAND_BUFFER + i) for i in range(16)]
+        self.assertTrue(self.fixture.place(0x42, 8)[1])
+        self.assertEqual([self.fixture.read_state1(i) for i in range(16)], before1)
+        self.assertEqual([self.fixture.read_state2(i) for i in range(16)], before2)
+        self.assertEqual(self.fixture.read8(self.fixture.COMMAND_SIZE), 5)
+        self.assertEqual([self.fixture.read8(self.fixture.COMMAND_BUFFER + i) for i in range(16)], before_queue)
+
+    def _tile_pointer_offset(self, ypixels: int, xpixels: int, *, round_up: bool = False) -> int:
+        assert self.fixture is not None
+        y = (ypixels + 4) & 0xFF
+        if round_up and y & 0x0F:
+            y = (y & 0xF0) + 0x10
+        y = (y & 0xF0) >> 1
+        x = ((xpixels + 2) & 0xFF) >> 3
+        return y * 5 + 20 + x
+
+    def test_visibility_bounds_textbox_and_grass_priority(self) -> None:
+        assert self.fixture is not None
+        self.fixture.write_state2(self.fixture.S2_MAP_Y, 24)
+        self.fixture.write_state2(self.fixture.S2_MAP_X, 34)
+        self.fixture.write_state1(self.fixture.S1_YPIXELS, 0)
+        self.fixture.write_state1(self.fixture.S1_XPIXELS, 0)
+        self.fixture.write_state1(self.fixture.S1_IMAGE, 0x44)
+        pointer = self._tile_pointer_offset(0, 0)
+        self.fixture.write8(self.fixture.TILE_MAP + pointer, self.fixture.read8(self.fixture.GRASS_TILE))
+        self.assertFalse(self.fixture.visibility()[1])
+        self.assertEqual(self.fixture.read_state2(self.fixture.S2_GRASS_PRIORITY), self.fixture.OAM_PRIO)
+
+        self.fixture.write8(self.fixture.TILE_MAP + pointer, self.fixture.MAP_TILESET_SIZE)
+        self.assertTrue(self.fixture.visibility()[1])
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_IMAGE), self.fixture.COMMAND_EMPTY)
+
+        self.fixture.clear()
+        self.fixture.write8(self.fixture.PLAYER_Y, 0)
+        self.fixture.write8(self.fixture.PLAYER_X, 0)
+        self.fixture.write_state2(self.fixture.S2_MAP_Y, 9)
+        self.fixture.write_state2(self.fixture.S2_MAP_X, 4)
+        self.fixture.write_state1(self.fixture.S1_IMAGE, 0x44)
+        self.assertTrue(self.fixture.visibility()[1])
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_IMAGE), self.fixture.COMMAND_EMPTY)
+
+        self.fixture.clear()
+        self.fixture.write8(self.fixture.PLAYER_Y, 0)
+        self.fixture.write8(self.fixture.PLAYER_X, 0)
+        self.fixture.write_state2(self.fixture.S2_MAP_Y, 4)
+        self.fixture.write_state2(self.fixture.S2_MAP_X, 4)
+        self.fixture.write_state1(self.fixture.S1_YPIXELS, 0x8C)
+        self.fixture.write_state1(self.fixture.S1_XPIXELS, 0)
+        self.fixture.write_state1(self.fixture.S1_IMAGE, 0x44)
+        self.assertTrue(self.fixture.visibility()[1])
+        self.assertEqual(self.fixture.read_state1(self.fixture.S1_IMAGE), self.fixture.COMMAND_EMPTY)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
