@@ -91,8 +91,9 @@ DEF BILLS_PC_BOX_ROWS    EQU 4
 
 ; Yume's 5x4 BG-icon storage screen, reconciled with Red Rogue's compact box
 ; representation. Party slots are 0..5 and box slots are 6..25. Box mutations
-; that cross into an empty domain continue through MoveMon/RemovePokemon. Same-
-; domain swaps exchange species, structs, OTs, and nicknames as complete units.
+; that cross into an empty domain continue through MoveMon/RemovePokemon. SWAP
+; exchanges species, structs, OTs, and nicknames as complete units; cross-domain
+; swaps additionally rebuild the party-only level and stats for the incoming mon.
 BillsPC_::
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
@@ -432,7 +433,7 @@ ExecuteBillsPCSwap:
 	jr c, .swapPartyMons
 	sub PARTY_LENGTH
 	call BillsPCBoxSlotHasMon
-	jr nz, .rejectOccupiedCrossDomain
+	jr nz, .swapPartyAndBoxMons
 	ld a, [wParentMenuItem]
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ldh [hCurrentMenuItem], a
@@ -447,11 +448,22 @@ ExecuteBillsPCSwap:
 .sourceBox
 	ldh a, [hCurrentMenuItem]
 	cp PARTY_LENGTH
-	jr c, .rejectOccupiedCrossDomain
+	jr nc, .sourceAndDestinationBox
+	ld b, a
+	ld a, [wPartyCount]
+	cp b
+	jr z, .rejectUnavailableCrossDomain
+	jr c, .rejectUnavailableCrossDomain
+	jr .swapPartyAndBoxMons
+.sourceAndDestinationBox
 	sub PARTY_LENGTH
 	call BillsPCBoxSlotHasMon
 	jr z, .moveBoxMonToTail
 	call SwapBillsPCSelectedBoxMons
+	jr .swapped
+
+.swapPartyAndBoxMons
+	call SwapBillsPCSelectedPartyAndBoxMons
 
 .swapped
 	ld a, $ff
@@ -476,7 +488,7 @@ ExecuteBillsPCSwap:
 	ld [wParentMenuItem], a
 	jr .moveBoxMonToTail
 
-.rejectOccupiedCrossDomain
+.rejectUnavailableCrossDomain
 	ld a, $ff
 	ld [wParentMenuItem], a
 	ld a, SFX_DENIED
@@ -519,6 +531,150 @@ SwapBillsPCSelectedBoxMons:
 	ld bc, NAME_LENGTH
 	call GetBillsPCBoxSwapPointers
 	jp SwapBillsPCByteRanges
+
+; Exchanges one occupied party slot with one occupied box slot without changing
+; either compact list's count or ordering. The first BOXMON_STRUCT_LENGTH bytes
+; are the shared persistent mon record. The party-only level and stats are then
+; rebuilt exactly as MoveMon does for BOX_TO_PARTY, including fusion handling.
+SwapBillsPCSelectedPartyAndBoxMons:
+	; Preserve the complete outgoing party struct before replacing its shared
+	; boxed fields. This existing union scratch is also used by PartyMenu swaps.
+	call GetBillsPCCrossDomainStructPointers
+	ld h, d
+	ld l, e
+	ld de, wSwitchPartyMonTempBuffer
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call CopyData
+
+	; Copy the incoming box record into the party slot.
+	call GetBillsPCCrossDomainStructPointers
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+
+	; Copy the outgoing party's persistent fields into the box slot.
+	call GetBillsPCCrossDomainStructPointers
+	ld d, h
+	ld e, l
+	ld hl, wSwitchPartyMonTempBuffer
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+
+	; A boxed mon's level mirror comes from the party-only level field, not the
+	; stale MON_BOX_LEVEL byte retained in a party struct's shared prefix.
+	call GetBillsPCCrossDomainStructPointers
+	ld bc, MON_BOX_LEVEL
+	add hl, bc
+	ld a, [wSwitchPartyMonTempBuffer + MON_LEVEL]
+	ld [hl], a
+
+	; Species, OT, and nickname arrays are parallel to the structs and must move
+	; with them. These ranges are equal-sized, so the existing in-place helper is
+	; safe across the party and box domains.
+	ld hl, wPartySpecies
+	ld de, wBoxSpecies
+	ld bc, 1
+	call GetBillsPCCrossDomainSwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wPartyMonOT
+	ld de, wBoxMonOT
+	ld bc, NAME_LENGTH
+	call GetBillsPCCrossDomainSwapPointers
+	call SwapBillsPCByteRanges
+	ld hl, wPartyMonNicks
+	ld de, wBoxMonNicks
+	ld bc, NAME_LENGTH
+	call GetBillsPCCrossDomainSwapPointers
+	call SwapBillsPCByteRanges
+
+	; Recalculate the incoming party mon's derived fields from its preserved EXP,
+	; DVs, and stat experience. Save the two grid-selection bytes across the far
+	; calls because they remain the source/destination contract until we return.
+	ldh a, [hCurrentMenuItem]
+	push af
+	ld a, [wParentMenuItem]
+	push af
+	call GetBillsPCCrossDomainIndices
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ldh a, [hWhichPokemon]
+	call AddNTimes
+	push hl
+	xor a ; PLAYER_PARTY_DATA
+	ld [wMonDataLocation], a
+	call LoadMonData
+	farcall CalcLevelFromExperience
+	ld a, d
+	ld [wCurEnemyLevel], a
+	pop hl
+	ld bc, MON_LEVEL
+	add hl, bc
+	ld a, [wCurEnemyLevel]
+	ld [hli], a
+	ld d, h
+	ld e, l ; de = MON_STATS
+	ld bc, (MON_HP_EXP - 1) - MON_STATS
+	add hl, bc ; hl = MON_HP_EXP - 1
+	ld b, 1
+	push bc
+	push hl
+	farcall PrepareFusionCalcStats
+	pop hl
+	pop bc
+	call CalcStats
+	pop af
+	ld [wParentMenuItem], a
+	pop af
+	ldh [hCurrentMenuItem], a
+	ret
+
+; Resolves a cross-domain SWAP without allocating persistent state.
+; Output: hWhichPokemon = party index, a = box index.
+GetBillsPCCrossDomainIndices:
+	ld a, [wParentMenuItem]
+	cp PARTY_LENGTH
+	jr nc, .boxSource
+	ldh [hWhichPokemon], a
+	ldh a, [hCurrentMenuItem]
+	sub PARTY_LENGTH
+	ret
+.boxSource
+	sub PARTY_LENGTH
+	push af
+	ldh a, [hCurrentMenuItem]
+	ldh [hWhichPokemon], a
+	pop af
+	ret
+
+; Party and box structs have different strides. Compute each pointer with its
+; own struct length rather than sharing bc as the equal-range helper below does.
+; Output: de = selected party struct, hl = selected box struct.
+GetBillsPCCrossDomainStructPointers:
+	call GetBillsPCCrossDomainIndices
+	push af
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ldh a, [hWhichPokemon]
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop af
+	ld hl, wBoxMons
+	ld bc, BOXMON_STRUCT_LENGTH
+	jp AddNTimes
+
+; Input: hl = party array base, de = box array base, bc = entry size.
+; Output: de = selected party entry, hl = selected box entry. bc is preserved.
+GetBillsPCCrossDomainSwapPointers:
+	push de
+	call GetBillsPCCrossDomainIndices
+	push af
+	ldh a, [hWhichPokemon]
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop af
+	pop hl
+	jp AddNTimes
 
 ; Input: hl = party array base, bc = entry size.
 ; Output: de = pending source entry, hl = current destination entry.
