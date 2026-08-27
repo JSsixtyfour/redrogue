@@ -26,25 +26,18 @@ ReplaceTileBlock:
 .addX
 	add hl, bc ; add X
 	ld a, [wNewTileBlockID]
+
+; shinpokered/pureRGB import: nothing to redraw if the block is already what we
+; are about to write. RedrawMapView costs a 9-frame wall-clock floor no matter
+; how little changed, and the lobby's exit-door replacement
+; (scripts/IndigoPlateauLobby.asm) runs on every map entry and is frequently a
+; no-op, because wOverworldMap is refilled from the .blk each load.
+	cp [hl]
+	ret z
+
 	ld [hl], a
-	ld a, [wCurrentTileBlockMapViewPointer]
-	ld c, a
-	ld a, [wCurrentTileBlockMapViewPointer + 1]
-	ld b, a
-	call CompareHLWithBC
-	ret c ; return if the replaced tile block is below the map view in memory
-	push hl
-	ld l, e
-	ld h, $0
-	ld e, $6
-	ld d, h
-	add hl, hl
-	add hl, hl
-	add hl, de
-	add hl, bc
-	pop bc
-	call CompareHLWithBC
-	ret c ; return if the replaced tile block is above the map view in memory
+	call IsBCInHLTileBlockMapView
+	ret c ; return if the replaced tile block is off-screen
 
 ; Exported so custom_functions/room_pc.asm can farcall it: LoadCurrentMapView
 ; alone only refills wTileMap (which feeds the WINDOW at vBGMap1), while the
@@ -136,10 +129,60 @@ RedrawMapView::
 	ldh [hAutoBGTransferEnabled], a
 	ret
 
-CompareHLWithBC:
+; pureRGB/shinpokered import, replacing vanilla's linear address-range test.
+; Vanilla compared the replaced block's address against the single span running
+; from the view's top-left to its bottom-right. wOverworldMap is row-major with
+; stride (wCurMapWidth + 6), so a block far to the left or right of the visible
+; window still lands inside that span whenever it sits on an intermediate row,
+; and the redraw fired for blocks the player cannot see. This walks the view's
+; rows individually instead. (Vanilla's `ld e, $6` was also wrong: the view's
+; lower-right corner is 4 columns over, not 6, which widened the span further.)
+;
+; Input:  hl = address of the replaced block within wOverworldMap
+;         e  = row stride, wCurMapWidth + 6, still live from ReplaceTileBlock
+; Output: carry set = block is off-screen, so the caller should skip the redraw
+; Clobbers a, b, c, d, h, l. Preserves e.
+;
+; Deliberately biased conservative: .CheckRow's first comparison reports
+; "on-screen" when the block's high byte is above the row's, which can cost an
+; unnecessary redraw but can never skip a needed one. A false "off-screen" would
+; be a silent rendering bug; a false "on-screen" is merely today's behavior.
+IsBCInHLTileBlockMapView:
+	push hl
+	pop bc ; bc = the replaced tile block
+	ld a, [wCurrentTileBlockMapViewPointer]
+	ld l, a
+	ld a, [wCurrentTileBlockMapViewPointer + 1]
+	ld h, a ; hl = upper-left tile block of the map view
+	ld d, 5 ; rows of tile blocks in the view
+.loop
+	call .CheckRow
+	ret nc ; found it in this row
+	dec d
+	ret z ; out of rows, so it is off-screen (carry still set)
+	push de
+	ld d, 0
+	add hl, de ; advance hl to the next row of the view
+	pop de
+	jr .loop
+
+.CheckRow
+	ld a, b
+	sub h
+	ret nz
+	ld a, c
+	sub l
+	ret c ; before this row's left edge
+	push hl
+	push bc
+	ld bc, 4
+	add hl, bc ; hl = this row's right edge
+	pop bc
 	ld a, h
 	sub b
-	ret nz
+	jr nz, .next
 	ld a, l
 	sub c
+.next
+	pop hl
 	ret
