@@ -198,6 +198,13 @@ GainExperience:
 	ld [hld], a
 	dec hl
 .next2
+	; wExpAmountGained aliases wStringBuffer, which move learning overwrites.
+	; Keep this recipient's amount on the stack until all its UI is finished.
+	ld a, [wExpAmountGained]
+	ld b, a
+	ld a, [wExpAmountGained + 1]
+	ld c, a
+	push bc
 	push hl
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMonNicks
@@ -221,7 +228,7 @@ GainExperience:
 	pop hl
 	ld a, [hl] ; current level
 	cp d
-	jp z, .nextMon ; if level didn't change, go to next mon
+	jp z, .restoreExpAmount ; if level didn't change, finish this recipient
 	push hl
 	callfar KeepEXPBarFull ; Shin Red import Phase 9.1; hl is live (party mon level ptr)
 	pop hl
@@ -367,6 +374,13 @@ GainExperience:
 	pop af
 	ld [wCurEnemyLevel], a
 
+.restoreExpAmount
+	pop bc
+	ld a, b
+	ld [wExpAmountGained], a
+	ld a, c
+	ld [wExpAmountGained + 1], a
+; Fainted/ineligible slots jump straight to .nextMon without a saved amount.
 .nextMon
 	ld a, [wPartyCount]
 	ld b, a

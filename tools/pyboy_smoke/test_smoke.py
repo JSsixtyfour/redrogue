@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import io
 import unittest
 
 from harness import RedRogueHarness
@@ -201,6 +202,100 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
             self.assertEqual(self.harness.read8("wCriticalHitOrOHKO"), 1)
         finally:
             self.harness.pyboy.hook_deregister(bank, random_return + 3)
+
+    def test_exp_share_display_survives_move_learning(self) -> None:
+        assert self.harness is not None
+        h = self.harness
+        h.boot_fight2(seed=17)
+        observed = {}
+
+        def capture_entry():
+            observed["stack_before"] = h.pyboy.register_file.SP
+
+        def capture_exit():
+            if h.read8("hWhichPokemon") == 4:
+                observed["stack_after"] = h.pyboy.register_file.SP
+
+        def capture_message():
+            if h.pyboy.register_file.HL != h.address("WithExpAllText"):
+                return
+            observed["display"] = int.from_bytes(h.read_bytes("wExpAmountGained", 2), "big")
+            observed["exp"] = int.from_bytes(h.read_bytes("wPartyMon5Exp", 3), "big")
+            observed["level"] = h.read8("wPartyMon5Level")
+            observed["moves"] = h.read_bytes("wPartyMon5Moves", 4)
+
+        h.hook_flag("GainExperience.next2", capture_entry)
+        h.hook_flag("GainExperience.nextMon", capture_exit)
+        h.hook_flag("GainExperience.notFusionLevelUpMoves", lambda: observed.update(
+            string_prefix=h.read_bytes("wStringBuffer", 2)))
+        h.hook_flag("PrintText", capture_message)
+        entry = {"armed": False}
+
+        def enter_from_joypad():
+            if entry["armed"]:
+                entry["armed"] = False
+                bank, address = h.symbols.get("GainExperience")
+                h.pyboy.register_file.B = bank
+                h.pyboy.register_file.HL = address
+                h.pyboy.register_file.PC = h.address("Bankswitch")
+
+        # Frame boundaries can fall inside VBlank with interrupts disabled.
+        # Borrow one normal Joypad call so text waits run with normal IRQ state.
+        h.hook_flag("Joypad", enter_from_joypad)
+
+        def dismiss_until_message():
+            if h.pyboy.frame_count % 16 == 0:
+                h.pyboy.button_press("a")
+            elif h.pyboy.frame_count % 16 == 8:
+                h.pyboy.button_release("a")
+            return "display" in observed
+
+        # Real award/level-up/learn-move paths. Only slot 5 earns EXP;
+        # earlier ineligible and fainted slots and a trailing fainted slot
+        # also exercise the paths that must not pop the saved amount.
+        for level, experience, final_level, learns_move in (
+            (19, 19 ** 3, 19, False),
+            (18, 19 ** 3 - 1, 19, False),
+            (19, 20 ** 3 - 1, 20, True),
+        ):
+            with self.subTest(level=level, experience=experience):
+                observed.clear()
+                h.write8("wPartyGainExpFlags", 0b110010)
+                for slot in (2, 6):
+                    h.write8(f"wPartyMon{slot}HP", 0)
+                    h.write8(f"wPartyMon{slot}HP", 0, offset=1)
+                h.write8("wPartySpecies", 0x54, offset=4)  # PIKACHU
+                h.write8("wPartyMon5Species", 0x54)
+                h.write8("wPartyMon5Level", level)
+                h.write8("wPartyMon5HP", 0)
+                h.write8("wPartyMon5HP", 20, offset=1)
+                for offset, value in enumerate(experience.to_bytes(3, "big")):
+                    h.write8("wPartyMon5Exp", value, offset=offset)
+                for offset, value in enumerate(h.read_bytes("wPlayerID", 2)):
+                    h.write8("wPartyMon5OTID", value, offset=offset)
+                for offset, value in enumerate((0x21, 0, 0, 0)):  # TACKLE + empty slots
+                    h.write8("wPartyMon5Moves", value, offset=offset)
+                h.write8("wBoostExpByExpAll", 1)
+                h.write8("wEnemyMonBaseExp", 70)
+                h.write8("wEnemyMonLevel", 7)
+                h.write8("hIsInBattle", 1)  # Wild: no trainer EXP multiplier.
+                h.write8("wRogueFlagsBitfield", 0)  # No witch EXP boost.
+                baseline = io.BytesIO()
+                h.save_state(baseline)
+                entry["armed"] = True
+                try:
+                    h.wait_until(dismiss_until_message, "EXP Share message", limit=2400)
+                finally:
+                    entry["armed"] = False
+                    h.load_state(baseline)
+                    h.pyboy.button_release("a")
+                self.assertEqual(observed["display"], 70)
+                self.assertEqual(observed["exp"], experience + 70)
+                self.assertEqual(observed["level"], final_level)
+                self.assertEqual(observed["stack_before"], observed["stack_after"])
+                if learns_move:
+                    self.assertIn(0x09, observed["moves"])  # THUNDERPUNCH
+                    self.assertEqual(observed["string_prefix"], [0x93, 0x87])  # TH
 
     def test_badge_reboost_only_changes_the_recalculated_stat(self) -> None:
         assert self.harness is not None
