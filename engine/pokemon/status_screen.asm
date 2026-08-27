@@ -200,9 +200,7 @@ StatusScreen:
 	ld de, wLoadedMonOTID
 	lb bc, LEADING_ZEROES | 2, 5
 	call PrintNumber ; ID Number
-	call .StatsBoxModeFromJoypad ; hold SELECT/START as the screen opens
-	ld d, STATUS_SCREEN_STATS_BOX
-	call PrintStatsBox
+	farcall StatusScreenInitView
 	call Delay3
 	call GBPalNormal
 	; Fusion (Phase 4a): pre-load the secondary's front sprite into vBackPic
@@ -225,38 +223,9 @@ StatusScreen:
 .notFusionOverlay
 	ld a, [wCurPartySpecies]
 	call PlayCry
-; Shin Red import Phase 8: View Stat EXP (hold SELECT) / View DVs (hold START).
-; The box was already drawn for whatever was held on entry, above. This also
-; lets the view be switched without leaving: WaitForTextScrollButtonPress only
-; exits on A/B, so SELECT/START can be held right through it, and if one of them
-; is still down when it returns, redraw the box and keep waiting instead of
-; leaving. Only the box is redrawn - picture, name and HP bar are untouched.
-.waitOrPeek
-	call WaitForTextScrollButtonPress
-	ldh a, [hJoyHeld]
-	and PAD_SELECT | PAD_START
-	jr z, .done ; plain A/B: leave, as before
-	call .StatsBoxModeFromJoypad
-	ld d, STATUS_SCREEN_STATS_BOX
-	call PrintStatsBox
-	jr .waitOrPeek
-.done
+	farcall StatusScreenWaitView
 	pop af
 	ldh [hTileAnimations], a
-	ret
-
-; Turns the currently held SELECT/START into a PrintStatsBox content mode in e.
-; SELECT wins over START if somehow both are down.
-.StatsBoxModeFromJoypad
-	call Joypad
-	ldh a, [hJoyHeld]
-	ld e, STATS_BOX_STAT_EXP
-	bit B_PAD_SELECT, a
-	ret nz
-	ld e, STATS_BOX_DVS
-	bit B_PAD_START, a
-	ret nz
-	ld e, STATS_BOX_NORMAL
 	ret
 
 .GetStringPointer

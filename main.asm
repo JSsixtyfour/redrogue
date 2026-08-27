@@ -331,6 +331,10 @@ SECTION "Battle Pic Helpers", ROMX
 
 INCLUDE "engine/battle/battle_pic_helpers.asm"
 
+SECTION "Status View Navigation", ROMX
+
+INCLUDE "engine/pokemon/status_view.asm"
+
 
 SECTION "bank10", ROMX
 
