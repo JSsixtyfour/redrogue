@@ -142,6 +142,7 @@ PrintMenuItem:
 	ld de, wStringBuffer
 	lb bc, 1, 3
 	call PrintNumber
+	ld [hl], '%'
 
 .crit
 	hlcoord 1, 11
@@ -163,6 +164,7 @@ PrintMenuItem:
 	ld de, wStringBuffer
 	lb bc, 1, 3
 	call PrintNumber
+	ld [hl], '%'
 	jr .moveDisabled
 
 .guaranteedCrit
@@ -172,6 +174,7 @@ PrintMenuItem:
 	ld de, wStringBuffer
 	lb bc, 1, 3
 	call PrintNumber
+	ld [hl], '%'
 	jr .moveDisabled
 
 .noPower
@@ -203,6 +206,7 @@ PrintMenuItem:
 	ld de, wStringBuffer
 	lb bc, 1, 3
 	call PrintNumber
+	ld [hl], '%'
 	hlcoord 1, 11
 	ld de, CritText
 	call PlaceString

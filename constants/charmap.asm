@@ -168,7 +168,6 @@
 ; $c0-$df: safe vChars1 area (offset $40-$5F from $8000), not touched by Town Map.
 ; Town Map writes vChars1 at $6d ($ed) and up, so $c0-$ec are all persistent.
 ; Draw the tile at font.png offset $c0 to get the actual glyph on screen.
-	charmap "◀",         $c0 ; left-pointing arrow; tile graphic not yet drawn in font.png
 
 	charmap "'",         $e0
 	charmap "<PK>",      $e1
@@ -182,8 +181,8 @@
 	charmap "!",         $e7
 	charmap ".",         $e8
 
-	charmap "ァ",         $e9 ; katakana small a, unused
-	charmap "ゥ",         $ea ; katakana small u, unused
+	charmap "%",         $e9 ; supplied glyph, overlaid in gfx/font.asm
+	charmap "◀",         $ea ; Yume left arrow, overlaid in gfx/font.asm
 	charmap "ェ",         $eb ; katakana small e, unused
 
 	charmap "▷",         $ec

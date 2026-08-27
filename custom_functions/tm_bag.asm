@@ -362,9 +362,8 @@ TMItContainsText:: ; moved from engine/menus/players_pc.asm (bank1) so the
 	text_far _TMItContainsText   ; bank is active when PrintText reads [hl]
     text_end
 
-; ◀ moved from $62 (vChars2/$60 region, overwritten by Town Map) to $c0
-; (vChars1/$40 region, safe). The actual glyph still needs to be drawn at
-; position $c0 in font.png — until then it shows whatever tile is there.
+; The left arrow uses global font tile $ea, supplied in gfx/font.asm.
+; Keep it outside the screen-specific $60-$78 graphics range.
 BagRecoveryText:
 	db "◀ RECOVERY   ▶@"
 
