@@ -56,4 +56,5 @@ TrainerPicAndMoneyPointers::
 	pic_money LancePic,        500
 	pic_money Rival1Pic,       300
 	pic_money GiovanniPic,     300
+	pic_money JessieJamesPic, 150
 	assert_table_length NUM_TRAINERS

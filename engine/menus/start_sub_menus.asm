@@ -33,20 +33,7 @@ StartMenu_Pokemon::
 	ld a, FIELD_MOVE_MON_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; display pokemon menu options
-	ld hl, wFieldMoves
-	lb bc, 2, 12 ; max menu item ID, top menu item Y
-	ld e, 5
-.adjustMenuVariablesLoop
-	dec e
-	jr z, .storeMenuVariables
-	ld a, [hli]
-	and a ; end of field moves?
-	jr z, .storeMenuVariables
-	inc b
-	dec c
-	dec c
-	jr .adjustMenuVariablesLoop
-.storeMenuVariables
+	lb bc, 2, 12 ; STATS, SWITCH, CANCEL only
 	ld hl, wTopMenuItemY
 	ld a, c
 	ld [hli], a ; top menu item Y
@@ -76,14 +63,7 @@ StartMenu_Pokemon::
 	dec b
 	cp b
 	jr z, .choseSwitch
-	dec b
-	cp b
-	jp z, .choseStats
-	ld c, a
-	ld b, 0
-	ld hl, wFieldMoves
-	add hl, bc
-	jp .choseOutOfBattleMove
+	jp .choseStats
 .choseSwitch
 	ld a, [wPartyCount]
 	cp 2 ; is there more than one pokemon in the party?
@@ -101,188 +81,6 @@ StartMenu_Pokemon::
 	predef StatusScreen2
 	call ReloadMapData
 	jp StartMenu_Pokemon
-.choseOutOfBattleMove
-	push hl
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	pop hl
-	ld a, [hl]
-	dec a
-	add a
-	ld b, 0
-	ld c, a
-	ld hl, .outOfBattleMovePointers
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	ld a, [wObtainedBadges]
-	jp hl
-.outOfBattleMovePointers
-	dw .cut
-	dw .fly
-	dw .surf
-	dw .surf
-	dw .strength
-	dw .flash
-	dw .dig
-	dw .teleport
-	dw .softboiled
-.fly
-	bit BIT_THUNDERBADGE, a
-	jp z, .newBadgeRequired
-	call CheckIfInOutsideMap
-	jr z, .canFly
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	ld hl, .cannotFlyHereText
-	call PrintText
-	jp .loop
-.canFly
-	call ChooseFlyDestination
-	ld a, [wStatusFlags6]
-	bit BIT_FLY_WARP, a
-	jp nz, .goBackToMap
-	call LoadFontTilePatterns
-	ld hl, wStatusFlags4
-	set BIT_UNKNOWN_4_1, [hl]
-	jp StartMenu_Pokemon
-.cut
-	bit BIT_CASCADEBADGE, a
-	jp z, .newBadgeRequired
-	predef UsedCut
-	ld a, [wActionResultOrTookBattleTurn]
-	and a
-	jp z, .loop
-	jp CloseTextDisplay
-.surf
-	bit BIT_SOULBADGE, a
-	jp z, .newBadgeRequired
-	farcall IsSurfingAllowed
-	ld hl, wStatusFlags1
-	bit BIT_SURF_ALLOWED, [hl]
-	res BIT_SURF_ALLOWED, [hl]
-	jp z, .loop
-	ld a, SURFBOARD
-	ld [wCurItem], a
-	ld [wPseudoItemID], a
-	call UseItem
-	ld a, [wActionResultOrTookBattleTurn]
-	and a
-	jp z, .loop
-	call GBPalWhiteOutWithDelay3
-	jp .goBackToMap
-.strength
-	bit BIT_RAINBOWBADGE, a
-	jp z, .newBadgeRequired
-	predef PrintStrengthText
-	call GBPalWhiteOutWithDelay3
-	jp .goBackToMap
-.flash
-	bit BIT_BOULDERBADGE, a
-	jp z, .newBadgeRequired
-	xor a
-	ld [wMapPalOffset], a
-	ld hl, .flashLightsAreaText
-	call PrintText
-	call GBPalWhiteOutWithDelay3
-	jp .goBackToMap
-.flashLightsAreaText
-	text_far _FlashLightsAreaText
-	text_end
-.dig
-	ld a, ESCAPE_ROPE
-	ld [wCurItem], a
-	ld [wPseudoItemID], a
-	call UseItem
-	ld a, [wActionResultOrTookBattleTurn]
-	and a
-	jp z, .loop
-	call GBPalWhiteOutWithDelay3
-	jp .goBackToMap
-.teleport
-	call CheckIfInOutsideMap
-	jr z, .canTeleport
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	ld hl, .cannotUseTeleportNowText
-	call PrintText
-	jp .loop
-.canTeleport
-	ld hl, .warpToLastPokemonCenterText
-	call PrintText
-	ld hl, wStatusFlags6
-	set BIT_FLY_WARP, [hl]
-	set BIT_ESCAPE_WARP, [hl]
-	ld hl, wStatusFlags4
-	set BIT_UNKNOWN_4_1, [hl]
-	res BIT_NO_BATTLES, [hl]
-	ld c, 60
-	call DelayFrames
-	call GBPalWhiteOutWithDelay3
-	jp .goBackToMap
-.warpToLastPokemonCenterText
-	text_far _WarpToLastPokemonCenterText
-	text_end
-.cannotUseTeleportNowText
-	text_far _CannotUseTeleportNowText
-	text_end
-.cannotFlyHereText
-	text_far _CannotFlyHereText
-	text_end
-.softboiled
-	ld hl, wPartyMon1MaxHP
-	ldh a, [hWhichPokemon]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	ld a, [hli]
-	ldh [hDividend], a
-	ld a, [hl]
-	ldh [hDividend + 1], a
-	ld a, 5
-	ldh [hDivisor], a
-	ld b, 2 ; number of bytes
-	call Divide
-	ld bc, MON_HP - MON_MAXHP
-	add hl, bc
-	ld a, [hld]
-	ld b, a
-	ldh a, [hQuotient + 3]
-	sub b
-	ld b, [hl]
-	ldh a, [hQuotient + 2]
-	sbc b
-	jp nc, .notHealthyEnough
-	ld a, [wPartyAndBillsPCSavedMenuItem]
-	push af
-	ld a, POTION
-	ld [wCurItem], a
-	ld [wPseudoItemID], a
-	call UseItem
-	pop af
-	ld [wPartyAndBillsPCSavedMenuItem], a
-	jp .loop
-.notHealthyEnough ; if current HP is less than 1/5 of max HP
-	ld hl, .notHealthyEnoughText
-	call PrintText
-	jp .loop
-.notHealthyEnoughText
-	text_far _NotHealthyEnoughText
-	text_end
-.goBackToMap
-	call RestoreScreenTilesAndReloadTilePatterns
-	jp CloseTextDisplay
-.newBadgeRequired
-	ld hl, .newBadgeRequiredText
-	call PrintText
-	jp .loop
-.newBadgeRequiredText
-	text_far _NewBadgeRequiredText
-	text_end
-
 ; writes a blank tile to all possible menu cursor positions on the party menu
 ErasePartyMenuCursors::
 	hlcoord 0, 1
@@ -481,9 +279,6 @@ StartMenu_Item::
 	ld a, [wIsKeyItem]
 	and a
 	jr nz, .skipAskingQuantity
-	ld a, [wCurItem]
-	call IsItemHM
-	jr c, .skipAskingQuantity
 	call DisplayChooseQuantityMenu
 	inc a
 	jr z, .tossZeroItems

@@ -77,6 +77,9 @@ DEF FIRST_STILL_SPRITE EQU const_value
 	const SPRITE_UNUSED_GAMBLER_ASLEEP_1 ; $48
 	const SPRITE_UNUSED_GAMBLER_ASLEEP_2 ; $49
 	const SPRITE_GAMBLER_ASLEEP          ; $4a
+DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
+	const SPRITE_JESSIE                 ; $4b
+	const SPRITE_JAMES                  ; $4c
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

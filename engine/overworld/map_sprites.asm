@@ -98,6 +98,9 @@ LoadMapSpriteTilePatterns:
 	push af
 	ld a, [hl] ; [x#SPRITESTATEDATA2_IMAGEBASEOFFSET]
 	ld b, a ; b = current sprite picture ID
+	; Appended walking sprites preserve all existing sprite IDs.
+	cp FIRST_EXTRA_WALKING_SPRITE
+	jr nc, .notFourTileSprite
 	cp FIRST_STILL_SPRITE ; is it a 4-tile sprite?
 	jr c, .notFourTileSprite
 	pop af

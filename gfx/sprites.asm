@@ -138,3 +138,9 @@ ChanseySprite:: ; pokeyellow's source art is only 16x48px (192 bytes / 12 raw
                 ; above). Repeated once to reach the required 384 bytes.
 	INCBIN "gfx/sprites/chansey.2bpp"
 	INCBIN "gfx/sprites/chansey.2bpp"
+
+; Official pret/pokeyellow walking sheets. No map or player appearance uses them.
+; NPC SpriteSheetPointerTable carries the source bank for each sheet.
+SECTION "Jessie James Sprites", ROMX, BANK[$2C]
+JessieSprite:: INCBIN "gfx/sprites/jessie.2bpp"
+JamesSprite::  INCBIN "gfx/sprites/james.2bpp"

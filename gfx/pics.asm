@@ -387,3 +387,7 @@ LoreleiPic::       INCBIN "gfx/trainers/lorelei.pic"
 ChannelerPic::     INCBIN "gfx/trainers/channeler.pic"
 AgathaPic::        INCBIN "gfx/trainers/agatha.pic"
 LancePic::         INCBIN "gfx/trainers/lance.pic"
+
+; Yellow paired portrait uses its own bank; _LoadTrainerPic selects it by class.
+SECTION "Jessie James Portrait", ROMX, BANK[$2C]
+JessieJamesPic:: INCBIN "gfx/trainers/jessiejames.pic"

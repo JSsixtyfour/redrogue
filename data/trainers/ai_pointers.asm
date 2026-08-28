@@ -53,4 +53,5 @@ TrainerAIPointers:
 	dbw 1, LanceAI ; lance
 	dbw 3, GenericAI ; rival_miniboss
 	dbw 1, GiovanniAI ; giovanni_miniboss
+	dbw 3, GenericAI ; jessie_james, same as Rocket
 	assert_table_length NUM_TRAINERS

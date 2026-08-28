@@ -565,12 +565,9 @@ WarpFound2::
 	ld [wLastMap], a
 	ldh a, [hWarpDestinationMap]
 	ldh [hCurMap], a
-	cp ROCK_TUNNEL_1F
-	jr nz, .notRockTunnel
-	ld a, $06
+	; No Flash requirement: enter every map at normal brightness.
+	xor a
 	ld [wMapPalOffset], a
-	call GBFadeOutToBlack
-.notRockTunnel
 	call PlayMapChangeSound
 	jr .done
 
@@ -917,19 +914,17 @@ LeaveMapAnim::
 	farjp _LeaveMapAnim
 
 LoadPlayerSpriteGraphics::
-; Load sprite graphics based on whether the player is standing, biking, or surfing.
+; Load walking or bicycle graphics; retire legacy surfing state.
 
 	; 0: standing
 	; 1: biking
-	; 2: surfing
+	; 2: legacy surfing, normalized to walking
 
 	ld a, [wWalkBikeSurfState]
 	dec a
 	jr z, .ridingBike
 
-	ldh a, [hTileAnimations]
-	and a
-	jr nz, .determineGraphics
+	; Retired surfing states from older saves resume on foot.
 	jr .startWalking
 
 .ridingBike
@@ -950,8 +945,6 @@ LoadPlayerSpriteGraphics::
 	jp z, LoadWalkingPlayerSpriteGraphics
 	dec a
 	jp z, LoadBikePlayerSpriteGraphics
-	dec a
-	jp z, LoadSurfingPlayerSpriteGraphics
 	jp LoadWalkingPlayerSpriteGraphics
 
 IsBikeRidingAllowed::

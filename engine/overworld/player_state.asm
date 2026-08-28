@@ -54,16 +54,6 @@ CheckForceBikeOrSurf::
 	ld a, [hli]
 	cp c ; compare x-coord
 	jr nz, .loop ; incorrect x-coord, check next item
-	ldh a, [hCurMap]
-	cp SEAFOAM_ISLANDS_B3F
-	ld a, SCRIPT_SEAFOAMISLANDSB3F_MOVE_OBJECT
-	ld [wSeafoamIslandsB3FCurScript], a
-	jr z, .forceSurfing
-	ldh a, [hCurMap]
-	cp SEAFOAM_ISLANDS_B4F
-	ld a, SCRIPT_SEAFOAMISLANDSB4F_MOVE_OBJECT
-	ld [wSeafoamIslandsB4FCurScript], a
-	jr z, .forceSurfing
 	ld hl, wStatusFlags6
 	set BIT_ALWAYS_ON_BIKE, [hl]
 	ld a, $1
@@ -75,12 +65,6 @@ CheckForceBikeOrSurf::
 .incorrectY
 	inc hl
 	jr .loop
-.forceSurfing
-	ld a, $2
-	ld [wWalkBikeSurfState], a
-	ld [wWalkBikeSurfStateCopy], a
-	jp ForceBikeOrSurf
-
 INCLUDE "data/maps/force_bike_surf.asm"
 
 IsPlayerFacingEdgeOfMap::

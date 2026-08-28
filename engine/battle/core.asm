@@ -8056,8 +8056,14 @@ _LoadTrainerPic:
 	ld d, a ; de contains pointer to trainer pic
 	ld a, [wLinkState]
 	and a
-	ld a, BANK("Trainer Pics")
+	jr nz, .linkPic
+	ld a, [wTrainerClass]
+	cp JESSIE_JAMES
+	ld a, BANK(JessieJamesPic)
 	jr z, .loadSprite
+	ld a, BANK("Trainer Pics")
+	jr .loadSprite
+.linkPic
 	ld a, BANK(RedPicFront)
 .loadSprite
 	call UncompressSpriteFromDE

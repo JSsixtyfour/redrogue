@@ -697,92 +697,9 @@ ItemUseBicycle:
 .printText
 	jp PrintText
 
-; indirectly used by SURF in StartMenu_Pokemon.surf
+; Retain the legacy item slot, but no item can start field surfing.
 ItemUseSurfboard:
-	ld a, [wWalkBikeSurfState]
-	ld [wWalkBikeSurfStateCopy], a
-	cp 2 ; is the player already surfing?
-	jr z, .tryToStopSurfing
-; try to Surf
-	call IsNextTileShoreOrWater
-	jp c, SurfingAttemptFailed
-	ld hl, TilePairCollisionsWater
-	call CheckForTilePairCollisions
-	jp c, SurfingAttemptFailed
-; surfing
-	call .makePlayerMoveForward
-	ld hl, wStatusFlags5
-	set BIT_SCRIPTED_MOVEMENT_STATE, [hl]
-	ld a, 2
-	ld [wWalkBikeSurfState], a ; change player state to surfing
-	call PlayDefaultMusic ; play surfing music
-	ld hl, SurfingGotOnText
-	jp PrintText
-.tryToStopSurfing
-	xor a
-	ldh [hSpriteIndex], a
-	ld d, 16 ; talking range in pixels (normal range)
-	call IsSpriteInFrontOfPlayer2
-	res BIT_FACE_PLAYER, [hl]
-	ldh a, [hSpriteIndex]
-	and a ; is there a sprite in the way?
-	jr nz, .cannotStopSurfing
-	ld hl, TilePairCollisionsWater
-	call CheckForTilePairCollisions
-	jr c, .cannotStopSurfing
-	ld hl, wTilesetCollisionPtr ; pointer to list of passable tiles
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a ; hl now points to passable tiles
-	ld a, [wTileInFrontOfPlayer] ; tile in front of the player
-	ld b, a
-.passableTileLoop
-	ld a, [hli]
-	cp b
-	jr z, .stopSurfing
-	cp $ff
-	jr nz, .passableTileLoop
-.cannotStopSurfing
-	ld hl, SurfingNoPlaceToGetOffText
-	jp PrintText
-.stopSurfing
-	call .makePlayerMoveForward
-	ld hl, wStatusFlags5
-	set BIT_SCRIPTED_MOVEMENT_STATE, [hl]
-	xor a
-	ld [wWalkBikeSurfState], a ; change player state to walking
-	dec a
-	ldh [hJoyIgnore], a
-	call PlayDefaultMusic ; play walking music
-	jp LoadWalkingPlayerSpriteGraphics
-; uses a simulated button press to make the player move forward
-.makePlayerMoveForward
-	ld a, [wPlayerDirection] ; direction the player is going
-	bit PLAYER_DIR_BIT_UP, a
-	ld b, PAD_UP
-	jr nz, .storeSimulatedButtonPress
-	bit PLAYER_DIR_BIT_DOWN, a
-	ld b, PAD_DOWN
-	jr nz, .storeSimulatedButtonPress
-	bit PLAYER_DIR_BIT_LEFT, a
-	ld b, PAD_LEFT
-	jr nz, .storeSimulatedButtonPress
-	ld b, PAD_RIGHT
-.storeSimulatedButtonPress
-	ld a, b
-	ld [wSimulatedJoypadStatesEnd], a
-	xor a
-	inc a
-	ldh [hSimulatedJoypadStatesIndex], a
-	ret
-
-SurfingGotOnText:
-	text_far _SurfingGotOnText
-	text_end
-
-SurfingNoPlaceToGetOffText:
-	text_far _SurfingNoPlaceToGetOffText
-	text_end
+	jp ItemUseNotTime
 
 ItemUsePokedex:
 	predef_jump ShowPokedexMenu
@@ -2615,11 +2532,6 @@ GetSelectedMoveOffset2:
 ; clears carry flag if the item is tossed, sets carry flag if not
 TossItem_::
 	push hl
-	ld a, [wCurItem]
-	call IsItemHM
-	pop hl
-	jr c, .tooImportantToToss
-	push hl
 	call IsKeyItem_
 	ld a, [wIsKeyItem]
 	pop hl
@@ -3106,9 +3018,7 @@ IsKeyItem_::
 	and a
 	ret nz
 .checkIfItemIsHM
-	ld a, [wCurItem]
-	call IsItemHM
-	ret c
+	; TMs and HMs share ordinary machine-item classification.
 	xor a
 	ld [wIsKeyItem], a
 	ret

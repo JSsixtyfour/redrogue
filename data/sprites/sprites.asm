@@ -81,4 +81,6 @@ SpriteSheetPointerTable:
 	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_UNUSED_GAMBLER_ASLEEP_1
 	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_UNUSED_GAMBLER_ASLEEP_2
 	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_GAMBLER_ASLEEP
+	overworld_sprite JessieSprite, 12          ; SPRITE_JESSIE
+	overworld_sprite JamesSprite, 12           ; SPRITE_JAMES
 	assert_table_length NUM_SPRITES

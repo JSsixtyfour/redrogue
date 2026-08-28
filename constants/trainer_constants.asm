@@ -68,4 +68,6 @@ ENDM
 	; isolated from the vanilla rival/Giovanni battles used elsewhere.
 	trainer_const RIVAL_MINIBOSS    ; $30 — OPP_RIVAL_MINIBOSS = 248
 	trainer_const GIOVANNI_MINIBOSS ; $31 — OPP_GIOVANNI_MINIBOSS = 249
+	; Paired Yellow trainer, defined for future encounters only.
+	trainer_const JESSIE_JAMES     ; $32 - OPP_JESSIE_JAMES = 250
 DEF NUM_TRAINERS EQU const_value - 1

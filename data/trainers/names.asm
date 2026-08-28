@@ -49,4 +49,5 @@ TrainerNames::
 	li "LANCE"
 	li "RIVAL1"
 	li "GIOVANNI"
+	li "JESSIE/JAMES"
 	assert_list_length NUM_TRAINERS

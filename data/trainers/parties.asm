@@ -49,6 +49,7 @@ TrainerDataPointers:
 	dw LanceData
 	dw RivalMiniBossData    ; RIVAL_MINIBOSS
 	dw GiovanniMiniBossData ; GIOVANNI_MINIBOSS
+	dw JessieJamesData    ; JESSIE_JAMES
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then
@@ -544,3 +545,12 @@ LanceData:
 ; bank) so it is same-bank with the code that reads it - this file compiles into
 ; "Battle Engine 7" (a different bank), and a plain ld a,[hl] from the rogue
 ; bank was reading garbage, making every Elite Four room resolve to Lance.
+
+; Official pret/pokeyellow Jessie & James parties, in donor order.
+; Explicit per-mon levels select the existing fixed-party path, avoiding the
+; ordinary Rocket class's procedural roster. No map or encounter uses these yet.
+JessieJamesData:
+	db $FF, 14, EKANS,   14, MEOWTH, 14, KOFFING, 0
+	db $FF, 25, KOFFING, 25, MEOWTH, 25, EKANS,   0
+	db $FF, 27, MEOWTH,  27, ARBOK,  27, WEEZING, 0
+	db $FF, 31, WEEZING, 31, ARBOK,  31, MEOWTH,  0

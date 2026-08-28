@@ -1,77 +1,8 @@
-
-; gbcnote, shinred does a lot in here, but cut is cut from Red Rogue so I skipped it.
+; Preserve the predef ID without exposing a field move.
 UsedCut:
 	xor a
-	ld [wActionResultOrTookBattleTurn], a ; initialise to failure value
-	ld a, [wCurMapTileset]
-	and a ; OVERWORLD
-	jr z, .overworld
-	cp GYM
-	jr nz, .nothingToCut
-	ld a, [wTileInFrontOfPlayer]
-	cp $50 ; gym cut tree
-	jr nz, .nothingToCut
-	jr .canCut
-.overworld
-	dec a
-	ld a, [wTileInFrontOfPlayer]
-	cp $3d ; cut tree
-	jr z, .canCut
-	cp $52 ; grass
-	jr z, .canCut
-.nothingToCut
-	ld hl, .NothingToCutText
-	jp PrintText
-
-.NothingToCutText
-	text_far _NothingToCutText
-	text_end
-
-.canCut
-	ld [wCutTile], a
-	ld a, 1
-	ld [wActionResultOrTookBattleTurn], a ; used cut
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	ld hl, wStatusFlags5
-	set BIT_NO_TEXT_DELAY, [hl]
-	call GBPalWhiteOutWithDelay3
-	call ClearSprites
-	call RestoreScreenTilesAndReloadTilePatterns
-	ld a, SCREEN_HEIGHT_PX
-	ldh [hWY], a
-	call Delay3
-	call LoadGBPal
-	call LoadCurrentMapView
-	call SaveScreenTilesToBuffer2
-	call Delay3
-	xor a
-	ldh [hWY], a
-	ld hl, UsedCutText
-	call PrintText
-	call LoadScreenTilesFromBuffer2
-	ld hl, wStatusFlags5
-	res BIT_NO_TEXT_DELAY, [hl]
-	ld a, $ff
-	ldh [hUpdateSpritesEnabled], a
-	call InitCutAnimOAM
-	ld de, CutTreeBlockSwaps
-	call ReplaceTreeTileBlock
-	call RedrawMapView
-	farcall AnimCut
-	ld a, $1
-	ldh [hUpdateSpritesEnabled], a
-	ld a, SFX_CUT
-	call PlaySound
-	ld a, $90
-	ldh [hWY], a
-	call UpdateSprites
-	jp RedrawMapView
-
-UsedCutText:
-	text_far _UsedCutText
-	text_end
+	ld [wActionResultOrTookBattleTurn], a
+	ret
 
 InitCutAnimOAM:
 	xor a
