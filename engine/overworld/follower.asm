@@ -320,9 +320,35 @@ FollowerAtLeastTwoQueued::
 	scf
 	ret
 
-; Called once per overworld update for the reconstructed slot-15 state. The
-; integration caller owns the active/hidden policy and must not call this
-; while a script has temporarily suppressed follower control.
+; Explicit counterpart of AdvancePlayerSprite's authored-sprite shift loop.
+; INPUT D = actual signed camera Y delta, E = actual signed camera X delta.
+; These are the already-scaled scroll deltas, not map-step vectors: do not
+; apply the 60 FPS factor twice. Called once per player scroll, including
+; maps with zero authored NPCs. Hidden initialized followers still shift;
+; pending placement is rebased by initialization instead.
+; Preserves BC/DE/HL, clobbers AF (carry unspecified). No redraw or tick;
+; changes only screen pixels, never map coordinates, queue, or idle offsets.
+FollowerApplyCameraScroll::
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	ret z
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	and $7f
+	ret z
+	cp FOLLOWER_STATUS_IDLE_TURN + 1
+	ret nc
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
+	sub d
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
+	sub e
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
+	ret
+
+; Called at a normal overworld sprite-update opportunity, after player/NPC
+; updates and before player advancement. Never tick from every generic
+; UpdateSprites call (menus/cleanup also redraw). The integration caller
+; owns active/hidden policy and must not tick while control is suppressed.
 FollowerUpdate::
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a

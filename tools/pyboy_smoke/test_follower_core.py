@@ -37,6 +37,11 @@ class _FollowerRom:
     ARG0 = 0xC004
     ARG1 = 0xC005
     READY = 0xC006
+    RESULT_B = 0xC008
+    RESULT_C = 0xC009
+    RESULT_E = 0xC00A
+    RESULT_H = 0xC00B
+    RESULT_L = 0xC00C
     STATE1 = 0xC100
     STATE2 = 0xC200
     COMMAND_SIZE = 0xC300
@@ -72,6 +77,7 @@ class _FollowerRom:
     FACE_PLAYER = 12
     SHOULD_SPAWN = 13
     RECONCILE_LEAD = 14
+    CAMERA = 15
 
     # State-data offsets imported from constants/map_object_constants.asm.
     S1_PICTURE = 0
@@ -154,6 +160,11 @@ DEF MAIL_ARG0 EQU $C004
 DEF MAIL_ARG1 EQU $C005
 DEF MAIL_READY EQU $C006
 DEF MAIL_RESULT_D EQU $C007
+DEF MAIL_RESULT_B EQU $C008
+DEF MAIL_RESULT_C EQU $C009
+DEF MAIL_RESULT_E EQU $C00A
+DEF MAIL_RESULT_H EQU $C00B
+DEF MAIL_RESULT_L EQU $C00C
 
 SECTION "Follower test entry", ROM0[$100]
     nop
@@ -231,6 +242,8 @@ FollowerTestMain::
     jp z, .should_spawn
     cp 14
     jp z, .reconcile_lead
+    cp 15
+    jp z, .camera
     ld a, $EE
     and a
     jp .report
@@ -296,6 +309,26 @@ FollowerTestMain::
     ld a, $A5             ; prove the entry consumes D/E, not A
     call FollowerReconcileLead
     jp .report_e
+.camera
+    ld a, [MAIL_ARG0]
+    ld d, a
+    ld a, [MAIL_ARG1]
+    ld e, a
+    ld bc, $1234
+    ld hl, $5678
+    ld a, $A5             ; prove the entry consumes D/E, not A
+    call FollowerApplyCameraScroll
+    ld a, b
+    ld [MAIL_RESULT_B], a
+    ld a, c
+    ld [MAIL_RESULT_C], a
+    ld a, e
+    ld [MAIL_RESULT_E], a
+    ld a, h
+    ld [MAIL_RESULT_H], a
+    ld a, l
+    ld [MAIL_RESULT_L], a
+    jp .report
 .report
     ld [MAIL_RESULT_A], a
     ld a, d
@@ -433,6 +466,9 @@ FollowerTestMain::
     def reconcile_lead(self, suppression: int, previous: int) -> tuple[int, bool, int]:
         result_a, carry = self.command(self.RECONCILE_LEAD, suppression, previous)
         return result_a, carry, self.read8(self.RESULT_D)
+
+    def camera(self, y_delta: int, x_delta: int) -> tuple[int, bool]:
+        return self.command(self.CAMERA, y_delta, x_delta)
 
 
 class FollowerCoreAssemblyTest(unittest.TestCase):
@@ -844,6 +880,173 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
             self.fixture.read_state1(self.fixture.S1_YPIXELS),
             self.fixture.read_state1(self.fixture.S1_XPIXELS),
         )
+
+    def _camera_non_pixel_snapshot(self, f) -> tuple:
+        return (
+            tuple(
+                f.read_state1(offset)
+                for offset in range(16)
+                if offset not in (f.S1_YPIXELS, f.S1_XPIXELS)
+            ),
+            tuple(f.read_state2(offset) for offset in range(16)),
+            tuple(f.read8(f.COMMAND_SIZE + offset) for offset in range(17)),
+            f.read8(f.LEDGE_LATCH),
+        )
+
+    def test_camera_scroll_applies_signed_deltas_in_all_directions_and_wraps(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for dy, dx in (
+            (-1, 0), (1, 0), (0, -1), (0, 1),
+            (-2, 0), (2, 0), (0, -2), (0, 2),
+        ):
+            with self.subTest(dy=dy, dx=dx):
+                self.setUp()
+                f.write_state1(f.S1_PICTURE, 0x42)
+                f.write_state1(f.S1_STATUS, f.STATUS_READY)
+                f.write_state1(f.S1_IMAGE, f.COMMAND_EMPTY)
+                f.write_state1(f.S1_YPIXELS, 37)
+                f.write_state1(f.S1_XPIXELS, 191)
+                before = self._camera_non_pixel_snapshot(f)
+                f.camera(dy, dx)
+                self.assertEqual(
+                    f.read_state1(f.S1_YPIXELS), (37 - dy) & 0xFF
+                )
+                self.assertEqual(
+                    f.read_state1(f.S1_XPIXELS), (191 - dx) & 0xFF
+                )
+                self.assertEqual(f.read8(f.RESULT_D), dy & 0xFF)
+                self.assertEqual(
+                    (
+                        f.read8(f.RESULT_B),
+                        f.read8(f.RESULT_C),
+                        f.read8(f.RESULT_E),
+                        f.read8(f.RESULT_H),
+                        f.read8(f.RESULT_L),
+                    ),
+                    (0x12, 0x34, dx & 0xFF, 0x56, 0x78),
+                )
+                self.assertEqual(self._camera_non_pixel_snapshot(f), before)
+
+        self.setUp()
+        f.write_state1(f.S1_PICTURE, 0x42)
+        f.write_state1(f.S1_STATUS, f.STATUS_READY)
+        f.write_state1(f.S1_IMAGE, f.COMMAND_EMPTY)
+        f.write_state1(f.S1_YPIXELS, 0)
+        f.write_state1(f.S1_XPIXELS, 0)
+        f.camera(1, 1)
+        self.assertEqual(f.read_state1(f.S1_YPIXELS), 0xFF)
+        self.assertEqual(f.read_state1(f.S1_XPIXELS), 0xFF)
+
+    def test_camera_scroll_guards_state_and_accepts_highbit_ready(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for picture, status in (
+            (0, f.STATUS_READY),       # disabled/cleared
+            (0x42, 0),                 # pending initialization
+            (0x42, 10),                # invalid status
+            (0x42, 0x7F),              # invalid masked status
+            (0x42, 0x80),              # masked pending status
+        ):
+            with self.subTest(picture=picture, status=status):
+                self.setUp()
+                f.write_state1(f.S1_PICTURE, picture)
+                f.write_state1(f.S1_STATUS, status)
+                f.write_state1(f.S1_IMAGE, 0x44)
+                f.write_state1(f.S1_YPIXELS, 24)
+                f.write_state1(f.S1_XPIXELS, 88)
+                before_pixels = (
+                    f.read_state1(f.S1_YPIXELS),
+                    f.read_state1(f.S1_XPIXELS),
+                )
+                before = self._camera_non_pixel_snapshot(f)
+                f.camera(2, -2)
+                self.assertEqual(
+                    (
+                        f.read_state1(f.S1_YPIXELS),
+                        f.read_state1(f.S1_XPIXELS),
+                    ),
+                    before_pixels,
+                )
+                self.assertEqual(self._camera_non_pixel_snapshot(f), before)
+
+        self.setUp()
+        f.write_state1(f.S1_PICTURE, 0x42)
+        f.write_state1(f.S1_STATUS, f.STATUS_READY | 0x80)
+        f.write_state1(f.S1_IMAGE, f.COMMAND_EMPTY)
+        f.write_state1(f.S1_YPIXELS, 24)
+        f.write_state1(f.S1_XPIXELS, 88)
+        before = self._camera_non_pixel_snapshot(f)
+        f.camera(2, -2)
+        self.assertEqual(f.read_state1(f.S1_YPIXELS), 22)
+        self.assertEqual(f.read_state1(f.S1_XPIXELS), 90)
+        self.assertEqual(self._camera_non_pixel_snapshot(f), before)
+
+    def test_camera_scroll_is_repeated_and_redraw_only_does_not_progress(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        self._prepare_movement()
+        f.write_state1(f.S1_STATUS, f.STATUS_WALKING)
+        f.write_state1(f.S1_YVECTOR, 1)
+        f.write_state1(f.S1_XVECTOR, 0)
+        f.write_state2(f.S2_COUNTER, 5)
+        f.write_state2(f.S2_PHASE, 1)
+        f.append(4)
+        f.append(4)
+        f.write_state1(f.S1_IMAGE, f.COMMAND_EMPTY)
+        before = self._camera_non_pixel_snapshot(f)
+        f.update_image()
+        self.assertEqual(self._camera_non_pixel_snapshot(f), before)
+        f.camera(1, 0)
+        f.camera(1, 0)
+        self.assertEqual(f.read_state1(f.S1_YPIXELS), 0xFE)
+        self.assertEqual(f.read_state1(f.S1_XPIXELS), 64)
+        self.assertEqual(self._camera_non_pixel_snapshot(f), before)
+
+    def test_camera_scroll_composes_with_accepted_normal_and_ledge_steps(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for fps in (False, True):
+            for ledge in (False, True):
+                with self.subTest(fps=fps, ledge=ledge):
+                    self.setUp()
+                    options2 = 1 << f.FPS_BIT if fps else 0
+                    self._prepare_movement(options2=options2)
+                    f.write8(f.PLAYER_DIRECTION, 1 << 2)  # accepted down step
+                    if ledge:
+                        f.write8(f.MOVEMENT_FLAGS, 1 << f.LEDGE_BIT)
+                        self.assertFalse(f.queue_player()[1])
+                        self.assertTrue(f.queue_player()[1])
+                        # A ledge command is also held as the one-step lag
+                        # sentinel. The following accepted ordinary step
+                        # makes it dequeueable without using raw input.
+                        f.write8(f.MOVEMENT_FLAGS, 0)
+                        self.assertFalse(f.queue_player()[1])
+                        logical_ticks = 8
+                        camera_calls = 2
+                    else:
+                        self.assertFalse(f.queue_player()[1])
+                        self.assertFalse(f.queue_player()[1])
+                        logical_ticks = 8
+                        camera_calls = 1
+                    self.assertEqual(f.read8(f.COMMAND_SIZE), 1)
+                    calls = logical_ticks * (2 if fps else 1)
+                    camera_delta = 1 if fps else 2
+                    for _ in range(calls):
+                        f.update()
+                        before = self._camera_non_pixel_snapshot(f)
+                        for _ in range(camera_calls):
+                            f.camera(camera_delta, 0)
+                            self.assertEqual(
+                                self._camera_non_pixel_snapshot(f), before
+                            )
+                    self.assertEqual(f.read_state1(f.S1_YPIXELS), 0)
+                    self.assertEqual(f.read_state1(f.S1_XPIXELS), 64)
+                    self.assertEqual(
+                        f.read_state2(f.S2_MAP_Y), 6 if ledge else 5
+                    )
+                    self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+                    self.assertEqual(f.read8(f.COMMAND_SIZE), 0)
 
     def test_all_directions_normal_and_ledge_timing(self) -> None:
         assert self.fixture is not None
