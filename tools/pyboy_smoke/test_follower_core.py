@@ -52,7 +52,10 @@ class _FollowerRom:
     FONT_LOADED = 0xC319
     WALK_COUNTER = 0xC31A
     RANDOM_VALUE = 0xC31B
+    PARTY_COUNT = 0xC31C
+    PARTY_SPECIES = 0xC320
     TILE_MAP = 0xC400
+    RESULT_D = 0xC007
 
     # Mailbox commands.
     CLEAR = 1
@@ -67,6 +70,8 @@ class _FollowerRom:
     REFRESH_QUEUE = 10
     SCHEDULE = 11
     FACE_PLAYER = 12
+    SHOULD_SPAWN = 13
+    RECONCILE_LEAD = 14
 
     # State-data offsets imported from constants/map_object_constants.asm.
     S1_PICTURE = 0
@@ -136,6 +141,8 @@ DEF wGrassTile EQU $C317
 DEF wSpritePlayerStateData1FacingDirection EQU $C318
 DEF wFontLoaded EQU $C319
 DEF wWalkCounter EQU $C31A
+DEF wPartyCount EQU $C31C
+DEF wPartySpecies EQU $C320
 DEF hRandomAdd EQU $FF80
 DEF wTileMap EQU $C400
 
@@ -146,6 +153,7 @@ DEF MAIL_RESULT_CARRY EQU $C003
 DEF MAIL_ARG0 EQU $C004
 DEF MAIL_ARG1 EQU $C005
 DEF MAIL_READY EQU $C006
+DEF MAIL_RESULT_D EQU $C007
 
 SECTION "Follower test entry", ROM0[$100]
     nop
@@ -196,81 +204,111 @@ FollowerTestMain::
     ld [MAIL_COMMAND], a
     ld a, b
     cp 1
-    jr z, .clear
+    jp z, .clear
     cp 2
-    jr z, .append
+    jp z, .append
     cp 3
-    jr z, .dequeue
+    jp z, .dequeue
     cp 4
-    jr z, .queue_player
+    jp z, .queue_player
     cp 5
-    jr z, .queue_encoded
+    jp z, .queue_encoded
     cp 6
-    jr z, .update
+    jp z, .update
     cp 7
-    jr z, .place
+    jp z, .place
     cp 8
-    jr z, .visibility
+    jp z, .visibility
     cp 9
-    jr z, .update_image
+    jp z, .update_image
     cp 10
-    jr z, .refresh_queue
+    jp z, .refresh_queue
     cp 11
-    jr z, .schedule
+    jp z, .schedule
     cp 12
-    jr z, .face_player
+    jp z, .face_player
+    cp 13
+    jp z, .should_spawn
+    cp 14
+    jp z, .reconcile_lead
     ld a, $EE
     and a
-    jr .report
+    jp .report
 .clear
     call FollowerClearState
-    jr .report
+    jp .report
 .append
     ld a, [MAIL_ARG0]
     call FollowerAppendCommand
-    jr .report
+    jp .report
 .dequeue
     call FollowerDequeueCommand
-    jr .report
+    jp .report
 .queue_player
     call FollowerQueuePlayerStep
-    jr .report
+    jp .report
 .queue_encoded
     ld a, [MAIL_ARG0]
     ld e, a
     ld a, $A5             ; prove the banked entry consumes E, not A
     call FollowerQueueEncodedStep
-    jr .report
+    jp .report
 .update
     call FollowerUpdate
-    jr .report
+    jp .report
 .place
     ld a, [MAIL_ARG0]
     ld d, a
     ld a, [MAIL_ARG1]
     ld e, a
     call FollowerPlaceAtPlayer
-    jr .report
+    jp .report
 .visibility
     call FollowerCheckVisibility
-    jr .report
+    jp .report
 .update_image
     call FollowerUpdateImage
-    jr .report
+    jp .report
 .refresh_queue
     call FollowerRefreshQueue
-    jr .report
+    jp .report
 .schedule
     ld a, [MAIL_ARG0]
     ld d, a
     ld a, [MAIL_ARG1]
     ld e, a
     call FollowerScheduleSpawn
-    jr .report
+    jp .report
 .face_player
     call FollowerFacePlayer
+    jp .report
+.should_spawn
+    ld a, [MAIL_ARG0]
+    ld d, a
+    ld a, $A5             ; prove the entry consumes D, not A
+    call FollowerShouldSpawn
+    jp .report_e
+.reconcile_lead
+    ld a, [MAIL_ARG0]
+    ld d, a
+    ld a, [MAIL_ARG1]
+    ld e, a
+    ld a, $A5             ; prove the entry consumes D/E, not A
+    call FollowerReconcileLead
+    jp .report_e
 .report
     ld [MAIL_RESULT_A], a
+    ld a, d
+    ld [MAIL_RESULT_D], a
+    ld a, 0
+    jr nc, .store_carry
+    inc a
+    jr .store_carry
+.report_e
+    ld a, e
+    ld [MAIL_RESULT_A], a
+    ld a, d
+    ld [MAIL_RESULT_D], a
     ld a, 0
     jr nc, .store_carry
     inc a
@@ -388,6 +426,14 @@ FollowerTestMain::
     def face_player(self) -> tuple[int, bool]:
         return self.command(self.FACE_PLAYER)
 
+    def should_spawn(self, suppression: int) -> tuple[int, bool, int]:
+        result_a, carry = self.command(self.SHOULD_SPAWN, suppression)
+        return result_a, carry, self.read8(self.RESULT_D)
+
+    def reconcile_lead(self, suppression: int, previous: int) -> tuple[int, bool, int]:
+        result_a, carry = self.command(self.RECONCILE_LEAD, suppression, previous)
+        return result_a, carry, self.read8(self.RESULT_D)
+
 
 class FollowerCoreAssemblyTest(unittest.TestCase):
     """Exercise core behavior through an assembled fixture, not Python copies."""
@@ -424,6 +470,9 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         self.fixture.write8(self.fixture.FONT_LOADED, 0)
         self.fixture.write8(self.fixture.WALK_COUNTER, 0)
         self.fixture.write8(self.fixture.RANDOM_VALUE, 0)
+        self.fixture.write8(self.fixture.PARTY_COUNT, 0)
+        for offset in range(7):
+            self.fixture.write8(self.fixture.PARTY_SPECIES + offset, 0)
         self.fixture.write8(self.fixture.GRASS_TILE, 0x33)
         for offset in range(18 * 20):
             self.fixture.write8(self.fixture.TILE_MAP + offset, 0)
@@ -445,6 +494,172 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
             [f.read_state2(i) for i in range(16)],
             [f.read8(f.COMMAND_SIZE + i) for i in range(18)],
         )
+
+    def _party_snapshot(self, f):
+        # Include bytes on both sides of the synthetic fields and the complete
+        # species array, so an accidental pointer walk or write is visible.
+        return [
+            f.read8(address)
+            for address in range(f.RANDOM_VALUE, f.PARTY_SPECIES + 8)
+        ]
+
+    def _core_snapshot(self, f):
+        return (
+            f.read8(f.OPTIONS2),
+            [f.read_state1(i) for i in range(16)],
+            [f.read_state2(i) for i in range(16)],
+            [f.read8(f.COMMAND_SIZE + i) for i in range(17)],
+            f.read8(f.LEDGE_LATCH),
+        )
+
+    def _seed_core_state(self, f, picture: int) -> None:
+        for offset in range(16):
+            f.write_state1(offset, 0x41 + offset)
+            f.write_state2(offset, 0x81 + offset)
+        f.write_state1(f.S1_PICTURE, picture)
+        f.write8(f.COMMAND_SIZE, 4)
+        for offset in range(16):
+            f.write8(f.COMMAND_BUFFER + offset, 0xA0 + offset)
+        f.write8(f.LEDGE_LATCH, 1)
+
+    def _set_party(self, f, count: int, lead: int) -> None:
+        f.write8(f.PARTY_COUNT, count)
+        f.write8(f.PARTY_SPECIES, lead)
+
+    def _assert_core_cleared(self, f) -> None:
+        self.assertEqual(
+            [f.read_state1(i) for i in range(16)],
+            [0, 0, f.COMMAND_EMPTY] + [0] * 13,
+        )
+        self.assertEqual([f.read_state2(i) for i in range(16)], [0] * 16)
+        self.assertEqual(f.read8(f.COMMAND_SIZE), f.COMMAND_EMPTY)
+        self.assertEqual(
+            [f.read8(f.COMMAND_BUFFER + i) for i in range(16)],
+            [0] * 16,
+        )
+        self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
+
+    def test_should_spawn_accepts_all_valid_internal_species_and_rejects_invalid(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        f.write8(f.OPTIONS2, 0xA5)  # other options must not affect bit 3
+        self._set_party(f, 1, 1)
+        for offset in range(1, 7):
+            f.write8(f.PARTY_SPECIES + offset, 0xB0 + offset)
+        # Guards include RANDOM_VALUE, the bytes between fields, and the byte
+        # immediately after the seven-byte party species array.
+        for address in (f.RANDOM_VALUE, f.PARTY_COUNT - 1, f.PARTY_COUNT + 1,
+                        f.PARTY_SPECIES - 1, f.PARTY_SPECIES + 7):
+            f.write8(address, 0xD0 + address - f.RANDOM_VALUE)
+
+        for species in range(1, 191):
+            with self.subTest(species=species):
+                f.write8(f.PARTY_SPECIES, species)
+                before = self._party_snapshot(f), self._core_snapshot(f)
+                self.assertEqual(f.should_spawn(0), (species, True, 0))
+                self.assertEqual((self._party_snapshot(f), self._core_snapshot(f)), before)
+
+        for species in (0, 191, 255):
+            with self.subTest(invalid_species=species):
+                f.write8(f.PARTY_SPECIES, species)
+                before = self._party_snapshot(f), self._core_snapshot(f)
+                self.assertEqual(f.should_spawn(0), (0, False, 0))
+                self.assertEqual((self._party_snapshot(f), self._core_snapshot(f)), before)
+
+    def test_should_spawn_honors_suppression_option_and_party_count_boundaries(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        self._set_party(f, 1, 42)
+        for offset in range(1, 7):
+            f.write8(f.PARTY_SPECIES + offset, 0xC0 + offset)
+        for address in (f.RANDOM_VALUE, f.PARTY_COUNT - 1, f.PARTY_COUNT + 1,
+                        f.PARTY_SPECIES - 1, f.PARTY_SPECIES + 7):
+            f.write8(address, 0xE0 + address - f.RANDOM_VALUE)
+
+        for count in (*range(8), 255):
+            for suppression in (0, 1, 128, 255):
+                with self.subTest(count=count, suppression=suppression):
+                    f.write8(f.PARTY_COUNT, count)
+                    f.write8(f.OPTIONS2, 0xA5)
+                    before = self._party_snapshot(f), self._core_snapshot(f)
+                    eligible = 1 <= count <= 6 and suppression == 0
+                    expected = (42 if eligible else 0, eligible, suppression)
+                    self.assertEqual(f.should_spawn(suppression), expected)
+                    self.assertEqual((self._party_snapshot(f), self._core_snapshot(f)), before)
+
+        f.write8(f.PARTY_COUNT, 1)
+        f.write8(f.PARTY_SPECIES, 42)
+        for options in (0x08, 0x09, 0x0F, 0xF8, 0xFF):
+            with self.subTest(options_off=options):
+                f.write8(f.OPTIONS2, options)
+                self.assertEqual(f.should_spawn(0), (0, False, 0))
+        for options in (0x00, 0x01, 0x07, 0x70, 0x80, 0xF7):
+            with self.subTest(options_on=options):
+                f.write8(f.OPTIONS2, options)
+                self.assertEqual(f.should_spawn(0), (42, True, 0))
+
+    def test_reconcile_rebuilds_changed_identity_and_preserves_stable_pending_state(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+
+        for status in (0, f.STATUS_READY):
+            with self.subTest(stable_status=status):
+                self.setUp()
+                self._set_party(f, 1, 42)
+                f.write8(f.PARTY_COUNT - 1, 0xD1)
+                f.write8(f.PARTY_COUNT + 1, 0xD2)
+                f.write8(f.PARTY_SPECIES - 1, 0xD3)
+                f.write8(f.PARTY_SPECIES + 7, 0xD4)
+                self._seed_core_state(f, 0x55)
+                f.write_state1(f.S1_STATUS, status)
+                before = self._core_snapshot(f), self._party_snapshot(f)
+                self.assertEqual(f.reconcile_lead(0, 42), (42, True, 0))
+                self.assertEqual((self._core_snapshot(f), self._party_snapshot(f)), before)
+
+        self.setUp()
+        self._set_party(f, 1, 43)
+        self._seed_core_state(f, 0x55)
+        party_before = self._party_snapshot(f)
+        self.assertEqual(f.reconcile_lead(0, 42), (43, True, 1))
+        self._assert_core_cleared(f)
+        self.assertEqual(self._party_snapshot(f), party_before)
+
+        self.setUp()
+        self._set_party(f, 1, 43)
+        self._seed_core_state(f, 0)
+        party_before = self._party_snapshot(f)
+        self.assertEqual(f.reconcile_lead(0, 43), (43, True, 1))
+        self._assert_core_cleared(f)
+        self.assertEqual(self._party_snapshot(f), party_before)
+
+    def test_reconcile_disabled_reset_option_override_and_load_clear(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+
+        # Removing temporary suppression cannot override the persistent OFF
+        # bit. Each call starts with active state to prove the disabled path
+        # clears slot state, queue, and latch.
+        for suppression in (1, 0, 128, 255):
+            with self.subTest(option_off_suppression=suppression):
+                self.setUp()
+                self._set_party(f, 1, 42)
+                f.write8(f.OPTIONS2, 0xF8)
+                self._seed_core_state(f, 0x42)
+                party_before = self._party_snapshot(f)
+                self.assertEqual(f.reconcile_lead(suppression, 42), (0, False, 2))
+                self._assert_core_cleared(f)
+                self.assertEqual(f.read8(f.OPTIONS2), 0xF8)
+                self.assertEqual(self._party_snapshot(f), party_before)
+
+        # A new-game/load reset supplies cached species zero, which must force
+        # a rebuild even if the restored slot picture happens to match.
+        self.setUp()
+        self._set_party(f, 1, 42)
+        self._seed_core_state(f, 0x42)
+        party_before = self._party_snapshot(f)
+        self.assertEqual(f.reconcile_lead(0, 0), (42, True, 1))
+        self._assert_core_cleared(f)
+        self.assertEqual(self._party_snapshot(f), party_before)
 
     def test_face_player_directions_idle_cleanup_and_queue_preservation(self) -> None:
         for fps in (0, 1 << 7):

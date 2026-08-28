@@ -15,6 +15,7 @@
 ;     RefreshPikachuFollow / ComputePikachuFollowCommand / Func_fcae2
 ;     Func_fc793 / Func_fc76a / SchedulePikachuSpawnForAfterText
 ;     Func_fc745 (face-player request, with explicit stationary guards)
+;     ShouldPikachuSpawn (lead-party/option/suppression adaptation)
 ;
 ; This file is intentionally not included in the game build yet. Isolated
 ; assembly tests exercise it without allocating game RAM or reserving slot 15.
@@ -22,8 +23,9 @@
 ; CalculatePikachuFacingDirection, ComputePikachuFacingDirection and
 ; WillPikachuSpawnOnTheScreen. The transition caller, not a Yellow map-ID
 ; table, will choose a placement mode. Geometry-only deferred scheduling is
-; present; policy, loader, interaction and lifecycle hooks remain integration
-; work. The outer lifecycle must gate active/visible state before ticking.
+; present; policy helpers below are isolated too. Loader, interaction text and
+; lifecycle hooks remain integration work. The outer lifecycle must gate
+; active/visible state before ticking.
 ;
 ; The core owns slot 15's standard 16-byte state structs. It does not call
 ; TryWalking: its command stream is already the validated player path.
@@ -69,8 +71,85 @@ DEF FOLLOWER_PLACE_ABOVE         EQU 5
 DEF FOLLOWER_PLACE_LEFT          EQU 6
 DEF FOLLOWER_PLACE_AHEAD         EQU 7
 
-; Reset slot 15 and the Yellow size-sentinel command queue. This is the core
-; half of the future FollowerClearState lifecycle entry point.
+; Proposed saved option contract, not allocated/written by this draft:
+; wOptions2 bit 3 is unused in the current game; 0 = ON, 1 = OFF.
+DEF FOLLOWER_DISABLED_BIT        EQU 3
+DEF FOLLOWER_IDENTITY_UNCHANGED  EQU 0
+DEF FOLLOWER_IDENTITY_REBUILD    EQU 1
+DEF FOLLOWER_IDENTITY_DISABLED   EQU 2
+
+; Yellow ShouldPikachuSpawn adapted to the approved Red Rogue policy.
+; INPUT D = caller-owned temporary suppression mask (0 permits following).
+; OUTPUT carry SET + E = valid lead species, or carry clear + E = 0.
+; Preserves D/BC/HL; clobbers AF/E. No RAM writes. Inputs/results therefore
+; survive the bank trampoline without a new scratch byte.
+; Fainted leads stay eligible. No starter ownership, HP, bike/Surf, font,
+; or menu-scratch check: those are not substitutes for lifecycle context.
+FollowerShouldSpawn::
+	ld a, d
+	and a
+	jr nz, .deny
+	ld a, [wOptions2]
+	bit FOLLOWER_DISABLED_BIT, a
+	jr nz, .deny
+	ld a, [wPartyCount]
+	and a
+	jr z, .deny
+	cp PARTY_LENGTH + 1
+	jr nc, .deny
+	ld a, [wPartySpecies]
+	and a
+	jr z, .deny
+	cp NUM_POKEMON_INDEXES + 1
+	jr nc, .deny
+	ld e, a
+	scf
+	ret
+.deny
+	xor a
+	ld e, a
+	ret
+
+; Reconcile identity without allocating a cache or choosing a placement.
+; INPUT D = suppression mask, E = previous cached species (0 forces rebuild).
+; OUTPUT E = new cache value, D = FOLLOWER_IDENTITY_* action, carry SET iff
+; eligible. Clobbers AF/BC/DE/HL. Caller saves E as identity and consumes or
+; saves D before reusing DE for category lookup/placement. REBUILD must load
+; graphics and schedule safe placement before ticking.
+; Same species with a nonzero picture preserves pending/active state and
+; queue. Different species must rebuild even when both share one picture.
+; New game/load/map reset callers pass E=0 after restored data is copied.
+; Suppression ownership and cache storage remain future integration work.
+FollowerReconcileLead::
+	push de
+	call FollowerShouldSpawn
+	pop bc ; C = previous identity; does not alter eligibility carry
+	jr nc, .disabled
+	ld a, c
+	cp e
+	jr nz, .rebuild
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	jr z, .rebuild
+	ld d, FOLLOWER_IDENTITY_UNCHANGED
+	scf
+	ret
+.rebuild
+	push de
+	call FollowerClearState
+	pop de
+	ld d, FOLLOWER_IDENTITY_REBUILD
+	scf
+	ret
+.disabled
+	call FollowerClearState
+	ld d, FOLLOWER_IDENTITY_DISABLED
+	ld e, 0
+	and a
+	ret
+
+; Reset only slot 15 and the Yellow size-sentinel command queue/latch.
+; Does not change party, saved options, or caller-owned identity/suppression.
 FollowerClearState::
 	ld hl, wSprite15StateData1
 	ld bc, SPRITESTATEDATA1_LENGTH
