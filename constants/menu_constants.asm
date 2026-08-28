@@ -109,3 +109,13 @@ DEF FIRST_PARTY_MENU_TEXT_ID EQU const_value
 	const STATS_BOX_NORMAL   ; 0
 	const STATS_BOX_STAT_EXP ; 1
 	const STATS_BOX_DVS      ; 2
+
+; What StatusScreen2DrawView shows in the moves box (Learndex,
+; engine/pokemon/status_view.asm). MOVES_BOX_CURRENT must stay 0: it is the
+; default view on entering page 2, and must match today's behaviour exactly.
+	const_def
+	const MOVES_BOX_CURRENT  ; 0 - the mon's four known moves + PP (existing behaviour)
+	const MOVES_BOX_LEVELUP  ; 1
+	const MOVES_BOX_TMHM     ; 2
+	const MOVES_BOX_TUTOR    ; 3 - PC Move Tutor moves (Indigo Plateau Lobby)
+DEF NUM_MOVES_BOX_VIEWS EQU 4

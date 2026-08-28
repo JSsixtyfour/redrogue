@@ -230,3 +230,159 @@ StatusViewGraphics:
 	INCBIN "gfx/status_screen/status_screen.2bpp", 8 * TILE_SIZE, 3 * TILE_SIZE
 StatusViewGraphicsEnd:
 	ASSERT StatusViewGraphicsEnd - StatusViewGraphics == 14 * TILE_SIZE
+
+; ============================================================================
+; Status Screen page 2 sub-views (Learndex, LEARNDEX_DESIGN.md D-1).
+;
+; Same START-cycling idiom as StatusScreenWaitView/StatusScreenDrawView
+; above, reused rather than a second navigation concept. Two differences from
+; page 1's version, both deliberate:
+;   - A and B are NOT tested together. B always exits; A exits only on
+;     MOVES_BOX_CURRENT and otherwise calls StatusScreen2SelectHook, a bare
+;     ret stub until D-5 (a possible per-move detail page) is approved. This
+;     keeps a future D-5 a pure addition - replace the one stub - instead of
+;     a rewrite of this loop.
+;   - UP/DOWN is wired to StatusScreen2MoveCursor, also a bare ret stub until
+;     D-2 gives the list views something to scroll.
+; View index and cursor position live in de across the wait, not in WRAM -
+; same rule status_view.asm's own header comment states for page 1.
+; ============================================================================
+
+; Input: a = PAD_UP|PAD_DOWN (which direction was pressed), de = (d=cursor,
+; e=view). Output: d = updated cursor. Stub until D-2; no view has a cursor
+; yet, so this does nothing.
+StatusScreen2MoveCursor:
+	ret
+
+; Input: de = (d=cursor, e=view). Stub until D-5; A currently does nothing on
+; any non-CURRENT view.
+StatusScreen2SelectHook:
+	ret
+
+StatusScreen2WaitView:
+	ld d, 0
+	ld e, MOVES_BOX_CURRENT
+.wait
+	push de
+	call DelayFrame
+	call Joypad
+	pop de
+	ldh a, [hJoyPressed]
+	bit B_PAD_B, a
+	ret nz ; B always exits, from every view
+	bit B_PAD_A, a
+	jr z, .checkStart
+	ld a, e
+	cp MOVES_BOX_CURRENT
+	ret z ; A exits only on the default view, until D-5 changes this
+	push de
+	call StatusScreen2SelectHook
+	pop de
+	jr .wait
+.checkStart
+	ldh a, [hJoyPressed]
+	bit B_PAD_START, a
+	jr z, .checkUpDown
+	ld a, e
+	inc a
+	cp NUM_MOVES_BOX_VIEWS
+	jr nz, .gotNextView
+	xor a
+.gotNextView
+	ld e, a
+	push de
+	call StatusScreen2DrawView
+	pop de
+	jr .wait
+.checkUpDown
+	ldh a, [hJoyPressed]
+	and PAD_UP | PAD_DOWN
+	jr z, .wait
+	call StatusScreen2MoveCursor ; a = direction, de = (cursor,view); updates d
+	push de
+	call StatusScreen2DrawView
+	pop de
+	jr .wait
+
+; Draws Status Screen page 2's moves box for the given sub-view: the border
+; (which also blanks the interior, discarding the previous view's content -
+; same pattern as PrintStatsBox uses for page 1), the view's content, and the
+; view label + START badge on row 8 (drawn over the border's own top-row
+; characters, same as StatusScreenDrawView above).
+; Input: e = MOVES_BOX_*. Clobbers everything - callers that need their own
+; de preserved must push/pop it themselves, exactly as StatusScreen2WaitView
+; does above.
+StatusScreen2DrawView:
+	push de
+	hlcoord 0, 8
+	ld b, 8
+	ld c, 18
+	call TextBoxBorder
+	pop de
+
+	push de
+	ld a, e
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, .ContentPointers
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld bc, .contentDone
+	push bc
+	jp hl
+.contentDone
+	pop de
+
+	ld a, e
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, .LabelPointers
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld d, h
+	ld e, l
+	hlcoord 2, 8
+	call PlaceString
+	hlcoord 15, 8
+	ld a, STATUS_START_TILE
+	ld [hli], a
+	inc a
+	ld [hli], a
+	inc a
+	ld [hl], a
+	ret
+
+.ContentPointers
+	dw .DrawCurrent
+	dw .DrawLevelUp
+	dw .DrawTMHM
+	dw .DrawTutor
+.DrawCurrent
+	farcall StatusScreen2DrawMovesBoxCurrent
+	ret
+.DrawLevelUp
+	ret ; MOVES_BOX_LEVELUP content - D-2
+.DrawTMHM
+	ret ; MOVES_BOX_TMHM content - D-3
+.DrawTutor
+	ret ; MOVES_BOX_TUTOR content - D-4
+
+.LabelPointers
+	dw .CurrentLabel
+	dw .LevelUpLabel
+	dw .TMHMLabel
+	dw .TutorLabel
+.CurrentLabel
+	db "MOVES@"
+.LevelUpLabel
+	db "LEVEL UP@"
+.TMHMLabel
+	db "TM/HM@"
+.TutorLabel
+	db "TUTOR@"

@@ -539,10 +539,67 @@ StatusScreen2:
 	call ClearScreenArea ; Clear under name
 	hlcoord 19, 3
 	ld [hl], $78
-	hlcoord 0, 8
-	ld b, 8
-	ld c, 18
-	call TextBoxBorder ; Draw move container
+	; Draw the moves box (border, content, view label + START badge) through
+	; the shared sub-view framework - see engine/pokemon/status_view.asm.
+	; Starts on MOVES_BOX_CURRENT; START cycles the other Learndex views.
+	ld e, MOVES_BOX_CURRENT
+	farcall StatusScreen2DrawView
+	hlcoord 9, 3
+	ld de, StatusScreenExpText
+	call PlaceString
+	ld a, [wLoadedMonLevel]
+	push af
+	cp MAX_LEVEL
+	jr z, .Level100
+	inc a
+	ld [wLoadedMonLevel], a ; Increase temporarily if not 100
+.Level100
+	hlcoord 14, 6
+	ld [hl], '<to>'
+	inc hl
+	inc hl
+	call PrintLevel
+	pop af
+	ld [wLoadedMonLevel], a
+	ld de, wLoadedMonExp
+	hlcoord 12, 4
+	lb bc, 3, 7
+	call PrintNumber ; exp
+	call CalcExpToLevelUp
+	ld de, wLoadedMonExp
+	hlcoord 7, 6
+	lb bc, 3, 7
+	call PrintNumber ; exp needed to level up
+
+	; unneeded, this clears the diacritic characters in JPN versions
+	hlcoord 9, 0
+	call StatusScreen_ClearName
+
+	hlcoord 9, 1
+	call StatusScreen_ClearName
+	ld a, [wMonHIndex]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	hlcoord 9, 1
+	call PlaceString
+	ld a, $1
+	ldh [hAutoBGTransferEnabled], a
+	call Delay3
+	farcall StatusScreen2WaitView
+	pop af
+	ldh [hTileAnimations], a
+	ld hl, wStatusFlags2
+	res BIT_NO_AUDIO_FADE_OUT, [hl]
+	ld a, $77
+	ldh [rAUDVOL], a
+	call GBPalWhiteOut
+	jp ClearScreen
+
+; Draws the mon's currently-known moves + PP into the moves box interior.
+; MOVES_BOX_CURRENT content renderer, farcalled from
+; engine/pokemon/status_view.asm's StatusScreen2DrawView jump table - the box
+; border and the view label/START badge are already drawn by the caller.
+StatusScreen2DrawMovesBoxCurrent:
 	hlcoord 2, 9
 	ld de, wMovesString
 	call PlaceString ; Print moves
@@ -614,56 +671,7 @@ StatusScreen2:
 	cp NUM_MOVES
 	jr nz, .PrintPP
 .PPDone
-	hlcoord 9, 3
-	ld de, StatusScreenExpText
-	call PlaceString
-	ld a, [wLoadedMonLevel]
-	push af
-	cp MAX_LEVEL
-	jr z, .Level100
-	inc a
-	ld [wLoadedMonLevel], a ; Increase temporarily if not 100
-.Level100
-	hlcoord 14, 6
-	ld [hl], '<to>'
-	inc hl
-	inc hl
-	call PrintLevel
-	pop af
-	ld [wLoadedMonLevel], a
-	ld de, wLoadedMonExp
-	hlcoord 12, 4
-	lb bc, 3, 7
-	call PrintNumber ; exp
-	call CalcExpToLevelUp
-	ld de, wLoadedMonExp
-	hlcoord 7, 6
-	lb bc, 3, 7
-	call PrintNumber ; exp needed to level up
-
-	; unneeded, this clears the diacritic characters in JPN versions
-	hlcoord 9, 0
-	call StatusScreen_ClearName
-
-	hlcoord 9, 1
-	call StatusScreen_ClearName
-	ld a, [wMonHIndex]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	hlcoord 9, 1
-	call PlaceString
-	ld a, $1
-	ldh [hAutoBGTransferEnabled], a
-	call Delay3
-	call WaitForTextScrollButtonPress
-	pop af
-	ldh [hTileAnimations], a
-	ld hl, wStatusFlags2
-	res BIT_NO_AUDIO_FADE_OUT, [hl]
-	ld a, $77
-	ldh [rAUDVOL], a
-	call GBPalWhiteOut
-	jp ClearScreen
+	ret
 
 CalcExpToLevelUp:
 	ld a, [wLoadedMonLevel]
