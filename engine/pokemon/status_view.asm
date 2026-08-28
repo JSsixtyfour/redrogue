@@ -272,19 +272,19 @@ StatusViewGraphicsEnd:
 StatusScreen2MoveCursor:
 	ld a, e
 	cp MOVES_BOX_LEVELUP
-	ret nz ; only LEVELUP has a cursor so far
-
-	; LearndexPrepareLevelUpWalk calls LearndexLoadRecord, which sets
-	; de = wMoveBuffer as part of its own FarCopyData plumbing - de MUST be
-	; saved/restored around this, or d (the cursor) is garbage. This was the
-	; original crash: MoveCursor read a garbage d, wrote a garbage cursor
-	; back, and StatusScreen2DrawView used the garbage e (view) riding along
-	; with it to index its own 4-entry jump table out of bounds.
+	jr z, .hasCursor
+	cp MOVES_BOX_TMHM
+	ret nz ; CURRENT and TUTOR (until D-4) have no cursor yet
+.hasCursor
+	; LearndexCountEntriesForView's LEVELUP path calls LearndexLoadRecord,
+	; which sets de = wMoveBuffer as part of its own FarCopyData plumbing -
+	; de MUST be saved/restored around this, or d (the cursor) is garbage.
+	; This was the original crash: MoveCursor read a garbage d, wrote a
+	; garbage cursor back, and StatusScreen2DrawView used the garbage e
+	; (view) riding along with it to index its own 4-entry jump table out
+	; of bounds.
 	push de
-	call LearndexPrepareLevelUpWalk  ; hl = learnset block start (unused
-	                                  ; below, but this leaves wMonHeader
-	                                  ; correct for the species count next)
-	call LearndexCountLevelUpEntries ; b = N
+	call LearndexCountEntriesForView ; b = N (dispatches on e itself)
 	pop de
 
 	ld a, d
@@ -503,13 +503,11 @@ StatusScreen2DrawContent:
 .ContentPointers
 	dw .DrawCurrent
 	dw StatusScreen2DrawLevelUp ; D-2 - ends in ret, needs no wrapper stub
-	dw .DrawTMHM
+	dw StatusScreen2DrawTMHM    ; D-3 - ditto
 	dw .DrawTutor
 .DrawCurrent
 	farcall StatusScreen2DrawMovesBoxCurrent
 	ret
-.DrawTMHM
-	ret ; MOVES_BOX_TMHM content - D-3
 .DrawTutor
 	ret ; MOVES_BOX_TUTOR content - D-4
 
@@ -678,6 +676,250 @@ LearndexCountLevelUpEntries:
 	inc c
 	jr .hMovesLoop
 .done
+	ret
+
+; ============================================================================
+; MOVES_BOX_TMHM (LEARNDEX_DESIGN.md D-3): TM/HM compatibility, fusion-aware.
+; ============================================================================
+
+; Input: a = 0-based TM/HM index (0..NUM_TM_HM-1).
+; Output: Z set = the displayed mon cannot learn it, NZ = it can. Checks
+; wMonHIndex (the primary species - see LearndexPrepareLevelUpWalk's own
+; comment on why wMonHIndex over wCurSpecies), OR'd with
+; wFusionSecondarySpecies too if wLoadedMon is a fusion. Mirrors CanLearnTM's
+; own fusion path (engine/items/tms.asm:53-120), which cannot be called
+; directly: it derives its fusion check from hWhichPokemon/wPartyMons, which
+; assumes a PARTY mon specifically (its own header comment says so), while
+; the status screen is also reachable for box mons.
+; Leaves wMonHeader populated for wMonHIndex on return either way, matching
+; CanLearnTM's own post-condition. Preserves b, c, d, e. Clobbers af, hl.
+LearndexTMHMBitSet:
+	push bc
+	push de
+	; mask/offset math, mirrors CanLearnTM's fusion path exactly: byte =
+	; index >> 3, mask = 1 << (index & 7), LSB-first.
+	ld c, a
+	and $07
+	inc a
+	ld b, $01
+.maskLoop
+	dec a
+	jr z, .maskDone
+	sla b
+	jr .maskLoop
+.maskDone
+	ld e, b ; e = bit mask
+	ld a, c
+	srl a
+	srl a
+	srl a
+	ld d, a ; d = byte offset into the learnset
+
+	ld a, [wMonHIndex]
+	ld [wCurSpecies], a
+	call GetMonHeader
+	ld hl, wMonHLearnset
+	ld c, d
+	ld b, $00
+	add hl, bc
+	ld a, [hl]
+	and e
+	jr nz, .canLearn ; primary already can - no need to check fusion
+
+	push de ; preserve (mask, offset) across the farcall below
+	ld de, wLoadedMon
+	farcall IsFusionMon
+	pop de
+	jr z, .cannotLearn ; not a fusion - primary's failed test stands
+
+	ld a, [wFusionSecondarySpecies]
+	ld [wCurSpecies], a
+	call GetMonHeader
+	ld hl, wMonHLearnset
+	ld c, d
+	ld b, $00
+	add hl, bc
+	ld a, [hl]
+	and e
+	push af ; preserve the secondary's test result across the header restore
+	ld a, [wMonHIndex]
+	ld [wCurSpecies], a
+	call GetMonHeader
+	pop af
+	jr z, .cannotLearn
+.canLearn
+	pop de
+	pop bc
+	ret
+.cannotLearn
+	pop de
+	pop bc
+	xor a ; force Z - a nonzero AND result must not leak through as "can learn"
+	ret
+
+; Input: e = MOVES_BOX_*. Output: b = N (entry count for that view).
+; Shared by StatusScreen2MoveCursor (to clamp/scroll the cursor) and each
+; view's own draw routine (to compute its window_top the same way).
+; Clobbers af, bc, de, hl.
+LearndexCountEntriesForView:
+	ld a, e
+	cp MOVES_BOX_LEVELUP
+	jr nz, .tmhm
+	call LearndexPrepareLevelUpWalk ; hl = learnset block start
+	jp LearndexCountLevelUpEntries  ; tail call - b = N, ret
+.tmhm
+	; MOVES_BOX_TMHM is the only other caller so far (D-4 adds TUTOR here)
+	ld b, 0
+	ld c, 0
+.countLoop
+	ld a, c
+	call LearndexTMHMBitSet ; preserves b, c
+	jr z, .notLearnable
+	inc b
+.notLearnable
+	inc c
+	ld a, c
+	cp NUM_TM_HM
+	jr nz, .countLoop
+	ret
+
+; MOVES_BOX_TMHM content renderer, called from StatusScreen2DrawView's
+; jump table with e = MOVES_BOX_TMHM and d = the cursor position (same
+; contract as StatusScreen2DrawLevelUp - see its own comment above).
+StatusScreen2DrawTMHM:
+	call LearndexCountEntriesForView ; b = N (e is already MOVES_BOX_TMHM)
+
+	ld a, d
+	call LearndexComputeWindowTop ; a = window_top; b (N) preserved
+	ld e, a ; e = window_top. d is untouched and still holds the cursor.
+
+	ld b, 0 ; b = absolute learnable index (N is no longer needed)
+	ld c, 0 ; c = raw TM/HM slot index 0..NUM_TM_HM-1
+.renderLoop
+	ld a, c
+	call LearndexTMHMBitSet ; preserves b, c, d, e
+	jr z, .notLearnableHere
+	ld a, c
+	call .RenderEntryIfVisible ; preserves b, c, d, e too
+	inc b
+.notLearnableHere
+	inc c
+	ld a, c
+	cp NUM_TM_HM
+	jr nz, .renderLoop
+	ret
+
+; Input: a = 0-based TM/HM slot index (0..NUM_TM_HM-1), b = absolute
+; learnable index, c = the same slot index (re-stashed on entry - the outer
+; loop needs c live as ITS OWN slot counter, so this does not trust c to
+; survive past its own entry), d = cursor, e = window_top. Prints the row
+; (cursor glyph, "TM"/"HM" + 2-digit per-category number, move name) if b
+; falls in [e, e+7]; no-op otherwise. Preserves b, c, d, e. Clobbers af, hl.
+.RenderEntryIfVisible:
+	push bc
+	push de
+	ld c, a ; c = slot index, safe to hold here - this function's own copy,
+	        ; independent of the outer loop's c which is restored via pop
+
+	ld a, b
+	sub e
+	jr c, .done ; b < window_top
+	cp LEARNDEX_VISIBLE_ROWS
+	jr nc, .done ; b >= window_top + 8
+	; a = row offset 0-7
+
+	; Decide the cursor glyph now, while d still holds the real cursor - the
+	; row-address lookup below overwrites de, so this must happen first.
+	push af
+	ld a, b
+	cp d
+	ld b, ' '
+	jr nz, .noCursorHere
+	ld b, '▷' ; same cursor glyph as extra_options.asm ($ec)
+.noCursorHere
+	pop af
+
+	call LearndexRowAddress ; hl = this row's tilemap address, column 1
+
+	; Blank this one row before writing it - see StatusScreen2DrawLevelUp's
+	; own RenderEntryIfVisible for why (StatusScreen2DrawContent skips the
+	; border's blanket blank on a same-view cursor move).
+	push bc ; b = the cursor glyph decided above, must survive this call
+	push hl
+	lb bc, 1, 18
+	call ClearScreenArea
+	pop hl
+	pop bc
+
+	ld a, b ; the glyph decided above
+	ld [hli], a ; column 1
+
+	; Stash the unified 1-based TM/HM index into wTempTMHM NOW, while c still
+	; holds the slot index. The PrintNumber call below clobbers bc entirely
+	; (lb bc, ..., 2 loads its own parameters into it, and PrintNumber's own
+	; digit-printing internals churn bc further), and c held the ONLY
+	; surviving copy of the slot index at this point in an earlier version -
+	; the actual crash: by the time TMToMove ran, [wTempTMHM] held whatever
+	; PrintNumber left behind, computed a wildly out-of-range
+	; TechnicalMachines/MoveNames offset, and the resulting move-name lookup
+	; went off into unrelated memory.
+	ld a, c
+	inc a ; unified 1-based TM/HM index, TMToMove's own input contract
+	ld [wTempTMHM], a
+
+	; "TM"/"HM" + the PER-CATEGORY display number (TM01-TM50, HM01-HM05) -
+	; NOT the same as the unified index just stashed above.
+	ld a, c
+	cp NUM_TMS
+	jr nc, .isHM
+	ld a, 'T'
+	ld [hli], a
+	ld a, 'M'
+	ld [hli], a
+	ld a, c
+	inc a
+	jr .gotDisplayNumber
+.isHM
+	ld a, 'H'
+	ld [hli], a
+	ld a, 'M'
+	ld [hli], a
+	ld a, c
+	sub NUM_TMS
+	inc a
+.gotDisplayNumber
+	ld [wTempByteValue], a
+	ld de, wTempByteValue
+	lb bc, LEADING_ZEROES | 1, 2
+	call PrintNumber ; columns 4-5
+	ld a, ' '
+	ld [hli], a ; column 6
+
+	; TMToMove lives in bank 04 (engine/items/tms.asm), not this file's bank
+	; $2C - a plain call here executes whatever happens to be mapped at that
+	; address in the CURRENTLY active bank instead, which is exactly the
+	; cross-bank call bug class this project has hit repeatedly elsewhere.
+	; farcall's own macro expansion is `ld hl, TMToMove / ld b, BANK(...) /
+	; call Bankswitch` - it uses hl as the jump vector, and TMToMove's own
+	; body also uses hl for its TechnicalMachines lookup, so hl is
+	; unconditionally garbage on return. hl is this row's write cursor
+	; (column 7, about to receive the move name), so it MUST be saved here -
+	; without this, GetMoveName below faithfully preserves whatever garbage
+	; hl it's handed (its own contract only promises to preserve hl, not to
+	; correct it), and PlaceString silently writes the move name somewhere
+	; off in unrelated memory instead of onto the visible row. This was the
+	; "TM04 shows no move name" bug.
+	push hl
+	farcall TMToMove ; [wTempTMHM] (already staged above) becomes the move id
+	ld a, [wTempTMHM]
+	ld [wNamedObjectIndex], a
+	pop hl
+	call GetMoveName ; de = wNameBuffer, preserves hl
+	call PlaceString ; columns 7.. up to 12 chars, '@'-terminated
+
+.done
+	pop de
+	pop bc
 	ret
 
 ; MOVES_BOX_LEVELUP content renderer, called from StatusScreen2DrawView's
