@@ -4595,12 +4595,7 @@ GetDamageVarsForPlayerAttack:
 	ld b, a
 	ldh a, [hProduct + 3]
 	ld c, a
-	push bc
-	ld hl, wPartyMon1Attack
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	pop bc
+	ld hl, wPlayerMonUnmodifiedAttack
 	jr .scaleStats
 .specialAttack
 	ld hl, wEnemyMonSpecial
@@ -4627,12 +4622,7 @@ GetDamageVarsForPlayerAttack:
 	ld b, a
 	ldh a, [hProduct + 3]
 	ld c, a
-	push bc
-	ld hl, wPartyMon1Special
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	pop bc
+	ld hl, wPlayerMonUnmodifiedSpecial
 ; if either the offensive or defensive stat is too large to store in a byte, scale both stats by dividing them by 4
 ; this allows values with up to 10 bits (values up to 1023) to be handled
 ; anything larger will wrap around
@@ -4764,10 +4754,7 @@ GetDamageVarsForEnemyAttack:
 	and a ; check for critical hit
 	jr z, .scaleStats
 ; in the case of a critical hit, reset the player's defense and the enemy's attack to their base values
-	ld hl, wPartyMon1Defense
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
+	ld hl, wPlayerMonUnmodifiedDefense
 	ld a, [hli]
 	ld b, a
 	ld c, [hl]
@@ -4796,10 +4783,7 @@ GetDamageVarsForEnemyAttack:
 	and a ; check for critical hit
 	jr z, .scaleStats
 ; in the case of a critical hit, reset the player's and enemy's specials to their base values
-	ld hl, wPartyMon1Special
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
+	ld hl, wPlayerMonUnmodifiedSpecial
 	ld a, [hli]
 	ld b, a
 	ld c, [hl]
@@ -4907,6 +4891,24 @@ GetDamageVarsForEnemyAttack:
 ; get stat c of enemy mon
 ; c: stat to get (STAT_* constant)
 GetEnemyMonStat:
+	; Transform copies the target's unmodified stats as well as its stages.
+	; Recalculating at the user's level/DVs would lose those copied stats.
+	ld a, [wEnemyBattleStatus3]
+	bit TRANSFORMED, a
+	jr z, .originalStats
+	push bc
+	ld hl, wEnemyMonUnmodifiedMaxHP
+	dec c
+	sla c
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ldh [hProduct + 2], a
+	ld a, [hl]
+	ldh [hProduct + 3], a
+	pop bc
+	ret
+.originalStats
 	push de
 	push bc
 	ld a, [wLinkState]

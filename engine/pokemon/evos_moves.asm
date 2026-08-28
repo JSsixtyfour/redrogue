@@ -8,9 +8,15 @@ TryEvolvingMon:
 	ld b, FLAG_SET
 	call Evolution_FlagAction
 
-; this is only called after battle
-; it is supposed to do level up evolutions, though there is a bug that allows item evolutions to occur
+; Shared by level-up, stone and trade evolution, including mid-battle level-ups.
 EvolutionAfterBattle:
+	; Mid-battle level-ups cannot inherit a previous stone/trade context.
+	ldh a, [hIsInBattle]
+	and a
+	jr z, .contextReady
+	xor a
+	ld [wForceEvolution], a
+.contextReady
 	ldh a, [hTileAnimations]
 	push af
 	xor a
@@ -116,10 +122,13 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jr .doEvolution
 .checkItemEvo
 	ld a, [hli]
-	; Bug: Wild encounters can cause stone evolutions without
-	; having any stones available. This was fixed in Yellow.
 	ld b, a ; evolution item
-	ld a, [wCurItem] ; same as [wCurPartySpecies]
+	; Trade context was rejected above; require explicit stone use.
+	ld a, [wForceEvolution]
+	and a
+	jp z, .nextEvoEntry1
+	; wCurItem aliases the species; use the stable stone-menu item ID.
+	ld a, [wEvoStoneItemID]
 	cp b ; was the evolution item in this entry used?
 	jp nz, .nextEvoEntry1 ; if not, go to the next evolution entry
 .checkLevel
@@ -188,7 +197,8 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld bc, BASE_DATA_SIZE
 	call AddNTimes
 	ld de, wMonHeader
-	call CopyData
+	ld a, BANK(BaseStats)
+	call FarCopyData
 	ld a, [wCurSpecies]
 	ld [wMonHIndex], a
 	pop af
@@ -270,6 +280,9 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jp .evoEntryLoop
 
 .done
+	xor a
+	ld [wForceEvolution], a
+	ld [wEvoStoneItemID], a
 	pop de
 	pop bc
 	pop hl

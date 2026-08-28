@@ -160,6 +160,63 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(self.harness.read8("wAIDebugTierOverride"), 4)
 
 
+
+class EvolutionContextSmokeTest(HarnessTestCase):
+    def boot_eevee(self):
+        assert self.harness is not None
+        species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
+        items = parse_rgbds_constants(REPO_ROOT / "constants" / "item_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+        fixture = [{"species": species["EEVEE"], "level": 50, "moves": [moves["TACKLE"]]}]
+        self.harness.inject_fight2_spec(
+            fixture, fixture, trainer_class=trainers["COOLTRAINER_M"], ai_tier=0,
+        )
+        self.harness.boot_fight2(seed=1)
+        return species, items
+
+    def test_item_evolution_rejects_stale_and_wrong_stones(self):
+        species, items = self.boot_eevee()
+        h = self.harness
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        cases = (
+            ("ordinary level-up", 0, 0, items["FIRE_STONE"]),
+            ("midbattle stale force", 2, 1, items["FIRE_STONE"]),
+            ("wrong stone", 0, 1, items["MOON_STONE"]),
+        )
+        for name, in_battle, forced, stone in cases:
+            with self.subTest(name=name):
+                baseline.seek(0)
+                h.load_state(baseline)
+                h.write8("hIsInBattle", in_battle)
+                h.write8("wForceEvolution", forced)
+                h.write8("wEvoStoneItemID", stone)
+                h.write8("wCurItem", items["FIRE_STONE"])
+                h.write8("wCanEvolveFlags", 1)
+                h.call_routine("EvolutionAfterBattle", limit=600)
+                self.assertEqual(h.read8("wPartyMon1Species"), species["EEVEE"])
+                self.assertEqual(h.read8("wEvolutionOccurred"), 0)
+                self.assertEqual(h.read8("wForceEvolution"), 0)
+                self.assertEqual(h.read8("wEvoStoneItemID"), 0)
+
+    def test_item_evolution_uses_stable_selected_stone(self):
+        species, items = self.boot_eevee()
+        h = self.harness
+        h.write8("hIsInBattle", 0)
+        h.write8("wForceEvolution", 1)
+        h.write8("wEvoStoneItemID", items["WATER_STONE"])
+        h.write8("wCurItem", items["FIRE_STONE"])
+        h.write8("wCanEvolveFlags", 1)
+        observed = {}
+
+        def capture_target():
+            observed["species"] = h.pyboy.memory[h.pyboy.register_file.HL]
+
+        hit = h.hook_flag("Evolution_PartyMonLoop.doEvolution", capture_target)
+        h.probe_routine_until("EvolutionAfterBattle", lambda: hit["count"] > 0, limit=600)
+        self.assertEqual(observed["species"], species["VAPOREON"])
+
 class AIPhaseZeroSmokeTest(HarnessTestCase):
     def boot_single_mon_fight(self) -> tuple[dict[str, int], dict[str, int]]:
         assert self.harness is not None
@@ -175,6 +232,58 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
         )
         self.harness.boot_fight2(seed=1)
         return species, moves
+
+    def test_transformed_crit_uses_copied_unmodified_stats(self) -> None:
+        assert self.harness is not None
+        self.boot_single_mon_fight()
+        h = self.harness
+        flags = parse_rgbds_constants(REPO_ROOT / "constants" / "battle_constants.asm")
+        types = parse_rgbds_constants(REPO_ROOT / "constants" / "type_constants.asm")
+        h.write8("wPlayerBattleStatus3", 1 << flags["TRANSFORMED"])
+        h.write8("wEnemyBattleStatus3", 1 << flags["TRANSFORMED"])
+        h.write8("wBattleMonCatchRate", 0)
+        h.write8("wEnemyMonCatchRate", 0)
+        h.write8("wBattleMonLevel", 50)
+        h.write8("wEnemyMonLevel", 50)
+        for label, value in (
+            ("wPlayerMonUnmodifiedAttack", 180),
+            ("wPlayerMonUnmodifiedDefense", 80),
+            ("wPlayerMonUnmodifiedSpecial", 160),
+            ("wEnemyMonUnmodifiedAttack", 140),
+            ("wEnemyMonUnmodifiedDefense", 90),
+            ("wEnemyMonUnmodifiedSpecial", 120),
+            ("wBattleMonAttack", 100), ("wBattleMonDefense", 100),
+            ("wBattleMonSpecial", 100), ("wEnemyMonAttack", 100),
+            ("wEnemyMonDefense", 100), ("wEnemyMonSpecial", 100),
+        ):
+            h.write8(label, 0)
+            h.write8(label, value, offset=1)
+        observed = {}
+
+        def capture():
+            r = h.pyboy.register_file
+            observed["stats"] = (r.B, r.C, r.D, r.E)
+
+        h.hook_flag("GetDamageVarsForPlayerAttack.done", capture)
+        h.hook_flag("GetDamageVarsForEnemyAttack.done", capture)
+        for side, move_type, attack, defense in (
+            (0, types["NORMAL"], 180, 90), (0, types["FIRE"], 160, 120),
+            (1, types["NORMAL"], 140, 80), (1, types["FIRE"], 120, 160),
+        ):
+            for critical in (0, 1):
+                with self.subTest(side=side, move_type=move_type, critical=critical):
+                    h.write8("hWhoseTurn", side)
+                    prefix = "wEnemy" if side else "wPlayer"
+                    h.write8(prefix + "MovePower", 40)
+                    h.write8(prefix + "MoveType", move_type)
+                    h.write8("wCriticalHitOrOHKO", critical)
+                    routine = "GetDamageVarsForEnemyAttack" if side else "GetDamageVarsForPlayerAttack"
+                    h.call_routine(routine)
+                    self.assertEqual(
+                        observed["stats"],
+                        (attack if critical else 100, defense if critical else 100,
+                         40, 100 if critical else 50),
+                    )
 
     def test_focus_energy_increases_critical_hit_threshold(self) -> None:
         assert self.harness is not None

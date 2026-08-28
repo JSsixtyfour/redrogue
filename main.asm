@@ -48,6 +48,8 @@ INCLUDE "engine/menus/extra_options.asm"
 ; it doesn't need to live in any particular bank.
 INCLUDE "engine/battle/exp_bar.asm"
 
+INCLUDE "audio/move_swap.asm"
+
 ; Declares its own floating SECTION (see the file header). Reached only by
 ; farcall (from scripts/Daycare.asm and scripts/IndigoPlateauLobby.asm), so it
 ; doesn't need to live in any particular bank.

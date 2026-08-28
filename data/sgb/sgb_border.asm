@@ -1,12 +1,10 @@
 BorderPalettes:
 IF DEF(_RED)
-	INCBIN "gfx/sgb/red_border.tilemap"
+	INCBIN "gfx/sgb/red_border.sgb.tilemap"
 ENDC
 IF DEF(_BLUE)
-	INCBIN "gfx/sgb/blue_border.tilemap"
+	INCBIN "gfx/sgb/blue_border.sgb.tilemap"
 ENDC
-
-	ds $100
 
 IF DEF(_RED)
 	RGB 30,29,29 ; PAL_SGB1

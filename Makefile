@@ -75,7 +75,8 @@ clean: tidy
 	find gfx \
 	     \( -iname '*.1bpp' \
 	        -o -iname '*.2bpp' \
-	        -o -iname '*.pic' \) \
+	        -o -iname '*.pic' \
+	        -o -iname '*.sgb.tilemap' \) \
 	     -delete
 
 tidy:
@@ -216,6 +217,9 @@ gfx/trade/game_boy.2bpp: tools/gfx += --remove-duplicates
 
 %.pic: %.2bpp
 	tools/pkmncompress $< $@
+
+%.sgb.tilemap: %.tilemap
+	tools/trim_sgb_tilemap $< $@
 
 
 ### File extensions that are never generated and should be manually created

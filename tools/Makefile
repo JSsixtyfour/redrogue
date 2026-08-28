@@ -7,6 +7,7 @@ tools := \
 	gfx \
 	make_patch \
 	pkmncompress \
+	trim_sgb_tilemap \
 	scan_includes
 
 all: $(tools)

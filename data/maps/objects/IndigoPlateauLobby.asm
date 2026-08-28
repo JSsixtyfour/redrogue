@@ -1,7 +1,6 @@
 	object_const_def
 	const_export PC_NURSE
 	; PC_CLERK1 through PC_MOVE_TUTOR follow (must not reorder)
-	; DOOR1_SIGN and DOOR2_SIGN added at end
     const_export PC_CLERK1
     const_export PC_CLERK2
     const_export PC_DAYCAREMAN
@@ -12,8 +11,6 @@
 	const_export PC_POKESALESMAN
     const_export PC_TRADENERD
     const_export PC_MOVETUTOR
-    const_export PC_DOOR1_SIGN ; must precede PC_DOOR2_SIGN so the const values line
-    const_export PC_DOOR2_SIGN ; up with the object_event order (DOOR1_SIGN=obj12, DOOR2_SIGN=obj13)
 
 
 IndigoPlateauLobby_Object:
@@ -26,6 +23,10 @@ IndigoPlateauLobby_Object:
 	warp_event  10,  0, ROGUE_MAP, 1
 
 	def_bg_events
+	; Text IDs 12/13 follow the eleven service NPCs. Keep door 2 last:
+	; the lobby script reduces wNumSigns to one while that exit is a wall.
+	bg_event  9,  0, TEXT_PC_DOOR1_SIGN
+	bg_event 11,  0, TEXT_PC_DOOR2_SIGN
 
 	def_object_events
 	object_event  7,  5, SPRITE_NURSE, STAY, DOWN, TEXT_PC_NURSE
@@ -39,7 +40,5 @@ IndigoPlateauLobby_Object:
 	object_event  2, 10, SPRITE_MIDDLE_AGED_MAN, WALK, LEFT_RIGHT, TEXT_PC_POKEMON_SALESMAN     ; sells a random pokemon to trainer
 	object_event  5, 11, SPRITE_SUPER_NERD, STAY, UP, TEXT_PC_TRADER_SUPER_NERD                 ; trades a random pokemon of the same rarity as a pokemon you currently have
 	object_event  0,  2, SPRITE_GAMEBOY_KID, STAY, RIGHT, TEXT_PC_MOVE_TUTOR                     ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
-	object_event  7,  0, SPRITE_CLIPBOARD, STAY, NONE, TEXT_PC_DOOR1_SIGN                       ; sign for door 1 (route stage)
-	object_event  9,  0, SPRITE_CLIPBOARD, STAY, NONE, TEXT_PC_DOOR2_SIGN                       ; sign for door 2 (gym stage)
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

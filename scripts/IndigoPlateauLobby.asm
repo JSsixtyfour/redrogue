@@ -12,6 +12,14 @@ IndigoPlateauLobby_Script:
 	ld [wSpritePlayerStateData1FacingDirection], a
 .skipFaceUp
 	call EnableAutoTextBoxDrawing
+	; Door 2's baked-in notepad is absent when its block is a wall.
+	; Refresh even after battle/header reloads, not only on EVENT_ENTER_ROOM.
+	call Lobby_IsDoor2Blocked
+	ld a, 1
+	jr nz, .setSignCount
+	inc a
+.setSignCount
+	ld [wNumSigns], a
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .normal
 
@@ -38,7 +46,7 @@ IndigoPlateauLobby_Script:
 	; the final sequence, the Elite Four - see Lobby_IsDoor2Blocked)
 	call Lobby_IsDoor2Blocked
 	jr nz, .blockExitToSecondDoor
-	ld a, $D
+	ld a, $08 ; authored open door plus tile-based notepad
 	jr .setExitDoor
 .blockExitToSecondDoor
 	ld a, $C
@@ -46,16 +54,6 @@ IndigoPlateauLobby_Script:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 5
 	predef ReplaceTileBlock
-	; show/hide door 2's sign in sync with whether door 2 itself is blocked
-	call Lobby_IsDoor2Blocked
-	ld a, TOGGLE_PC_DOOR2_SIGN
-	ld [wToggleableObjectIndex], a
-	jr nz, .hideDoor2Sign
-	predef ShowObject
-	jr .doorSignDone
-.hideDoor2Sign
-	predef HideObject
-.doorSignDone
 	; Pick the next random stage on map entry and patch the exit warp.
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
 	; would cause an immediate warp before the player could do anything).
@@ -215,9 +213,9 @@ LobbyDoor2SignText:
 	ld a, [wLobbyDoor2StageMap]
 	call LobbySignBridgeCheck     ; hl -> room-name text if this door is a bridge room
 	ret nz
-; Mini-boss framework: mirrors LobbyDoor1SignText, but door 2's sign is never
-; hidden by gym-next (only door 1 exists then), so there's no gym-framing
-; branch to guard against here. As in door 1, bc is the live text cursor here
+; Mini-boss framework: mirrors LobbyDoor1SignText. The script disables this
+; background event when door 2 is blocked, so it needs no gym-framing
+; branch here. As in door 1, bc is the live text cursor here
 ; (text_asm) - do NOT clobber it; re-read wRogueFlagsBitfield instead of caching.
 	ld a, [wRogueFlagsBitfield]
 	and MINIBOSS_TYPE_MASK
