@@ -711,12 +711,12 @@ CanWalkOntoTile:
 	ld a, [hli]        ; x#SPRITESTATEDATA1_YPIXELS
 	add $4             ; align to blocks (Y pos is always 4 pixels off)
 	add d              ; add Y delta
-	cp $80             ; if value is >$80, the destination is off screen (either $81 or $FF underflow)
+	cp $81             ; allow the bottom edge at $80; reject $81 and above
 	jr nc, .impassable ; don't walk off screen
 	inc l
 	ld a, [hl]         ; x#SPRITESTATEDATA1_XPIXELS
 	add e              ; add X delta
-	cp $90             ; if value is >$90, the destination is off screen (either $91 or $FF underflow)
+	cp $91             ; allow the right edge at $90; reject $91 and above
 	jr nc, .impassable ; don't walk off screen
 	push de
 	push bc
@@ -738,29 +738,26 @@ CanWalkOntoTile:
 	bit 7, d           ; check if going upwards (d == -1)
 	jr nz, .upwards
 	add d
-	; bug: these tests against $5 probably were supposed to prevent
-	; sprites from walking out too far, but this line makes sprites get
-	; stuck whenever they walked upwards 5 steps
-	; on the other hand, the amount a sprite can walk out to the
-	; right of bottom is not limited (until the counter overflows)
-	cp $5
-	jr c, .impassable  ; if [x#SPRITESTATEDATA2_YDISPLACEMENT]+d < 5, don't go
+	cp $e
+	jr nc, .impassable ; keep displacement below 14
 	jr .checkHorizontal
 .upwards
 	sub $1
-	jr c, .impassable  ; if [x#SPRITESTATEDATA2_YDISPLACEMENT] == 0, don't go
+	cp $3
+	jr c, .impassable ; keep displacement at least 3
 .checkHorizontal
 	ld d, a
 	ld a, [hl]         ; x#SPRITESTATEDATA2_XDISPLACEMENT (initialized at $8, keep track of where a sprite did go)
 	bit 7, e           ; check if going left (e == -1)
 	jr nz, .left
 	add e
-	cp $5
-	jr c, .impassable  ; if [x#SPRITESTATEDATA2_XDISPLACEMENT]+e < 5, don't go
+	cp $e
+	jr nc, .impassable ; keep displacement below 14
 	jr .passable
 .left
 	sub $1
-	jr c, .impassable  ; if [x#SPRITESTATEDATA2_XDISPLACEMENT] == 0, don't go
+	cp $3
+	jr c, .impassable ; keep displacement at least 3
 .passable
 	ld [hld], a        ; update x#SPRITESTATEDATA2_XDISPLACEMENT
 	ld [hl], d         ; update x#SPRITESTATEDATA2_YDISPLACEMENT

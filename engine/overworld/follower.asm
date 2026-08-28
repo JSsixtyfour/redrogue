@@ -14,6 +14,7 @@
 ;     Func_fc803 / Func_fc842 / Func_fc862 / Func_fc8f8 / Func_fc92b / Func_fc95d
 ;     RefreshPikachuFollow / ComputePikachuFollowCommand / Func_fcae2
 ;     Func_fc793 / Func_fc76a / SchedulePikachuSpawnForAfterText
+;     Func_fc745 (face-player request, with explicit stationary guards)
 ;
 ; This file is intentionally not included in the game build yet. Isolated
 ; assembly tests exercise it without allocating game RAM or reserving slot 15.
@@ -247,6 +248,14 @@ FollowerUpdate::
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
 	ret z ; clear state is disabled, not a pending spawn
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS
+	bit BIT_FACE_PLAYER, [hl]
+	jr z, .no_interaction
+; Yellow handles this request before font handling and numeric dispatch.
+; Consume even a stale request, but never reinterpret $80 as initialization.
+	res BIT_FACE_PLAYER, [hl]
+	jp FollowerFacePlayer
+.no_interaction
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	and a
 	jp z, FollowerInitializePendingSpawn
@@ -269,6 +278,64 @@ FollowerUpdate::
 	call FollowerDequeueCommand
 	jp nc, FollowerStartCommand
 	jp FollowerWait
+
+; Core interaction eligibility, not party/option/script spawn policy or a
+; front-tile hit test. The caller must establish those before opening text.
+; Carry clear = stationary initialized visible state; carry set = rejected.
+; No input registers; clobbers AF/BC/DE/HL. Visibility checks may hide the
+; image or refresh grass priority, but never change position or the queue.
+FollowerCanInteract::
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	jr z, .reject
+	ld a, [wWalkCounter]
+	and a
+	jr nz, .reject
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	and $7f
+	jr z, .reject
+	cp FOLLOWER_STATUS_IDLE_TURN + 1
+	jr nc, .reject
+	cp FOLLOWER_STATUS_WALKING
+	jr c, .stationary
+	cp FOLLOWER_STATUS_HOP
+	jr c, .reject
+.stationary
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX]
+	cp $ff
+	jr z, .reject
+	call FollowerHideIfOverlappingPlayer
+	ret c
+	jp FollowerCheckVisibility
+.reject
+	scf
+	ret
+
+; Yellow Func_fc745: face opposite the player, reset animation, redraw.
+; Deliberate adaptation: reject an in-flight step instead of changing its
+; facing or counter. Finish idle actions and remove our reused hop offsets
+; before releasing their state. Queue, ledge latch and map coords survive.
+; Carry clear = accepted; carry set = rejected. No argument registers;
+; clobbers AF/BC/DE/HL. Does not print text, save facing, or tick movement.
+FollowerFacePlayer::
+	call FollowerCanInteract
+	ret c
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	and $7f
+	cp FOLLOWER_STATUS_HOP
+	call z, FollowerRemoveIdleOffset
+	ld a, FOLLOWER_STATUS_READY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	xor a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_0A], a
+	call FollowerResetAnimation
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	xor 4
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	call FollowerUpdateImage
+	and a
+	ret
 
 ; Start one queued command. Normal/fast selection mirrors Yellow's queue
 ; backlog rule. Commands 5-8 always use the eight-frame two-step path.
@@ -786,8 +853,8 @@ FollowerInitializePendingSpawn:
 ; Yellow Func_fc76a: font/text pause resets animation and re-seeds following.
 ; Rebase screen coordinates only if the player is stationary. Remove our
 ; reused hop offset before releasing HOP ownership, including mid-step text.
-; Lifecycle suppression/interaction-facing bit 7 remains a separate caller
-; contract; it is not simulated by this geometry-only core.
+; Lifecycle suppression remains a separate caller contract. Interaction bit
+; 7 is consumed before this path by FollowerUpdate.
 FollowerRefreshAfterText:
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_HOP
