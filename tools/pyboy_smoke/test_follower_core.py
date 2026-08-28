@@ -66,6 +66,7 @@ class _FollowerRom:
     UPDATE_IMAGE = 9
     REFRESH_QUEUE = 10
     SCHEDULE = 11
+    FACE_PLAYER = 12
 
     # State-data offsets imported from constants/map_object_constants.asm.
     S1_PICTURE = 0
@@ -89,9 +90,15 @@ class _FollowerRom:
     # Source constants from follower.asm and constants/sprite_constants.asm.
     COMMAND_EMPTY = 0xFF
     STATUS_READY = 1
+    STATUS_WAITING = 2
     STATUS_WALKING = 3
     STATUS_TWO_STEP = 4
     STATUS_FAST = 5
+    STATUS_HOP = 6
+    STATUS_IDLE_WALK = 7
+    STATUS_IDLE_TOGGLE = 8
+    STATUS_IDLE_TURN = 9
+    FACE_BIT = 7
     PLACE_OVERLAP = 0
     PLACE_RIGHT = 1
     PLACE_BEHIND = 2
@@ -210,6 +217,8 @@ FollowerTestMain::
     jr z, .refresh_queue
     cp 11
     jr z, .schedule
+    cp 12
+    jr z, .face_player
     ld a, $EE
     and a
     jr .report
@@ -257,6 +266,9 @@ FollowerTestMain::
     ld a, [MAIL_ARG1]
     ld e, a
     call FollowerScheduleSpawn
+    jr .report
+.face_player
+    call FollowerFacePlayer
 .report
     ld [MAIL_RESULT_A], a
     ld a, 0
@@ -373,6 +385,9 @@ FollowerTestMain::
     def update_image(self) -> tuple[int, bool]:
         return self.command(self.UPDATE_IMAGE)
 
+    def face_player(self) -> tuple[int, bool]:
+        return self.command(self.FACE_PLAYER)
+
 
 class FollowerCoreAssemblyTest(unittest.TestCase):
     """Exercise core behavior through an assembled fixture, not Python copies."""
@@ -412,6 +427,113 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         self.fixture.write8(self.fixture.GRASS_TILE, 0x33)
         for offset in range(18 * 20):
             self.fixture.write8(self.fixture.TILE_MAP + offset, 0)
+
+    def _interaction_fixture(self):
+        self.setUp()
+        f = self.fixture
+        assert f is not None
+        f.place(1, f.PLACE_ABOVE)
+        f.update_image()
+        f.append(4)
+        f.append(1)
+        f.write8(f.LEDGE_LATCH, 1)
+        return f
+
+    def _interaction_snapshot(self, f):
+        return (
+            [f.read_state1(i) for i in range(16)],
+            [f.read_state2(i) for i in range(16)],
+            [f.read8(f.COMMAND_SIZE + i) for i in range(18)],
+        )
+
+    def test_face_player_directions_idle_cleanup_and_queue_preservation(self) -> None:
+        for fps in (0, 1 << 7):
+            for facing in (0, 4, 8, 12):
+                for status in (1, 2, 6, 7, 8, 9):
+                    with self.subTest(fps=fps, facing=facing, status=status):
+                        f = self._interaction_fixture()
+                        f.write8(f.OPTIONS2, fps)
+                        f.write8(f.PLAYER_FACING, facing)
+                        y, x = f.read_state1(f.S1_YPIXELS), f.read_state1(f.S1_XPIXELS)
+                        f.write_state1(f.S1_STATUS, status)
+                        f.write_state1(f.S1_INTRA, 3)
+                        f.write_state1(f.S1_ANIM, 2)
+                        f.write_state2(f.S2_COUNTER, 9)
+                        f.write_state2(f.S2_PHASE, 1)
+                        if status == 6:
+                            f.write_state1(f.S1_YVECTOR, 0xFC)
+                            f.write_state1(f.S1_XVECTOR, 2)
+                            f.write_state1(f.S1_YPIXELS, y - 4)
+                            f.write_state1(f.S1_XPIXELS, x + 2)
+                        before = self._interaction_snapshot(f)
+                        self.assertFalse(f.face_player()[1])
+                        self.assertEqual(f.read_state1(f.S1_FACING), facing ^ 4)
+                        self.assertEqual(f.read_state1(f.S1_STATUS), 1)
+                        self.assertEqual((f.read_state1(f.S1_YPIXELS), f.read_state1(f.S1_XPIXELS)), (y, x))
+                        for offset in (f.S1_YVECTOR, f.S1_XVECTOR, f.S1_INTRA, f.S1_ANIM):
+                            self.assertEqual(f.read_state1(offset), 0)
+                        self.assertEqual(f.read_state2(f.S2_COUNTER), 0)
+                        self.assertEqual(f.read_state2(f.S2_PHASE), 0)
+                        after = self._interaction_snapshot(f)
+                        self.assertEqual(after[2], before[2])
+                        self.assertEqual(after[1][4:6], before[1][4:6])
+
+    def test_face_player_rejects_unready_or_hidden_without_state_reset(self) -> None:
+        cases = [("status", value) for value in (0, 3, 4, 5, 10, 127)]
+        cases += [("picture", 0), ("base", 0), ("image", 255), ("walk", 8)]
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                f = self._interaction_fixture()
+                if field == "status":
+                    f.write_state1(f.S1_STATUS, value)
+                elif field == "picture":
+                    f.write_state1(f.S1_PICTURE, value)
+                elif field == "base":
+                    f.write_state2(f.S2_IMAGE_BASE, value)
+                elif field == "image":
+                    f.write_state1(f.S1_IMAGE, value)
+                else:
+                    f.write8(f.WALK_COUNTER, value)
+                before = self._interaction_snapshot(f)
+                self.assertTrue(f.face_player()[1])
+                self.assertEqual(self._interaction_snapshot(f), before)
+
+    def test_face_player_spatial_rejection_preserves_queue(self) -> None:
+        for overlap in (False, True):
+            with self.subTest(overlap=overlap):
+                f = self._interaction_fixture()
+                f.write_state2(f.S2_MAP_Y, 24 if overlap else 0)
+                f.write_state2(f.S2_MAP_X, 34)
+                before = self._interaction_snapshot(f)
+                self.assertTrue(f.face_player()[1])
+                after = self._interaction_snapshot(f)
+                self.assertEqual(after[2], before[2])
+                self.assertEqual(after[1], before[1])
+                self.assertEqual(after[0][:2] + after[0][3:], before[0][:2] + before[0][3:])
+                self.assertEqual(f.read_state1(f.S1_IMAGE), 255)
+
+    def test_face_request_precedes_font_dispatch_and_preserves_pending_steps(self) -> None:
+        for font in (0, 1):
+            for status in (0, 1, 3, 4, 5):
+                with self.subTest(font=font, status=status):
+                    f = self._interaction_fixture()
+                    f.write8(f.FONT_LOADED, font)
+                    f.write8(f.PLAYER_FACING, 8)
+                    f.write_state1(f.S1_STATUS, status | 0x80)
+                    before = self._interaction_snapshot(f)
+                    self.assertEqual(f.update()[1], status != 1)
+                    after = self._interaction_snapshot(f)
+                    self.assertEqual(f.read_state1(f.S1_STATUS), status)
+                    self.assertEqual(after[2], before[2])
+                    if status == 1:
+                        self.assertEqual(f.read_state1(f.S1_FACING), 12)
+                    else:
+                        self.assertEqual(after[0][:1] + after[0][2:], before[0][:1] + before[0][2:])
+                        self.assertEqual(after[1], before[1])
+        f.clear()
+        self.assertEqual(f.read_state1(f.S1_PICTURE), 0)
+        self.assertEqual(f.read8(f.COMMAND_SIZE), 255)
+        self.assertEqual(f.read8(f.LEDGE_LATCH), 0)
 
     def test_clear_resets_state_queue_and_ledge_latch(self) -> None:
         assert self.fixture is not None

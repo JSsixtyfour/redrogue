@@ -301,6 +301,9 @@ FollowerCanInteract::
 	cp FOLLOWER_STATUS_HOP
 	jr c, .reject
 .stationary
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET]
+	and a
+	jr z, .reject
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX]
 	cp $ff
 	jr z, .reject
