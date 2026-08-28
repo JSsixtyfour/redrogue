@@ -44,3 +44,53 @@ class LaundryScopeSmokeTest(HarnessTestCase):
                 self.assertEqual(h.read8("wEnemyPartyCount"), 3)
                 self.assertEqual(h.read_bytes("wEnemyPartySpecies", 4),
                                  [species[name] for name in team] + [0xFF])
+    def test_move_swap_restores_audio_state_before_resuming_music(self):
+        import io
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        bank, wait_address = h.symbols.get("PlayMoveSwapSound.waitSfx")
+        # The helper's final EI/RET precedes its local wait routine. Capture
+        # before EI, so ordinary subsequent VBlanks cannot alter the evidence.
+        seam = wait_address - 2
+        rom = h.rom_path.read_bytes()
+        offset = bank * 0x4000 + seam - 0x4000
+        self.assertEqual(rom[offset:offset + 2], bytes((0xFB, 0xC9)))
+        fields = ("wAudioROMBank", "wAudioSavedROMBank",
+                  "wMuteAudioAndPauseMusic", "wAudioFadeOutControl")
+        # boot_fight2 may stop inside VBlank with IME cleared. Enter through
+        # a test-only EI trampoline, matching the normal text caller context.
+        # This overrides emulator ROM only; no on-disk ROM bytes are changed.
+        target_bank, target = h.symbols.get("PlayMoveSwapSound")
+        switch = h.address("Bankswitch")
+        entry = 0x3FF0
+        trampoline = (0xFB, 0x06, target_bank, 0x21, target & 255,
+                      target >> 8, 0xC3, switch & 255, switch >> 8)
+        for index, byte in enumerate(trampoline):
+            h.pyboy.memory[0, entry + index] = byte
+        h.symbols._symbols["AudioTestEntry"] = (0, entry)
+        for alarm in (0, 0x80):
+            with self.subTest(alarm=alarm):
+                h.load_state(baseline)
+                h.write8("wLowHealthAlarm", alarm)
+                h.write8("wMuteAudioAndPauseMusic", 0)
+                h.write8("wAudioFadeOutControl", 0)
+                for channel in range(4, 8):
+                    h.write8("wChannelSoundIDs", 0, offset=channel)
+                expected = {name: h.read8(name) for name in fields}
+                captured = {}
+                def at_return(_):
+                    captured.update({name: h.read8(name) for name in fields})
+                    captured["alarm"] = h.read8("wLowHealthAlarm")
+                    captured["channels"] = h.read_bytes("wChannelSoundIDs", 4, offset=4)
+                h.pyboy.hook_register(bank, seam, at_return, None)
+                try:
+                    h.call_routine("AudioTestEntry", limit=600)
+                finally:
+                    h.pyboy.hook_deregister(bank, seam)
+                for name, value in expected.items():
+                    self.assertEqual(captured[name], value, name)
+                self.assertEqual(captured["alarm"], alarm)
+                self.assertEqual(captured["channels"], [0] * 4)
