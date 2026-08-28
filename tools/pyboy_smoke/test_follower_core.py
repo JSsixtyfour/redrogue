@@ -49,6 +49,9 @@ class _FollowerRom:
     PLAYER_X = 0xC316
     GRASS_TILE = 0xC317
     PLAYER_FACING = 0xC318
+    FONT_LOADED = 0xC319
+    WALK_COUNTER = 0xC31A
+    RANDOM_VALUE = 0xC31B
     TILE_MAP = 0xC400
 
     # Mailbox commands.
@@ -61,6 +64,8 @@ class _FollowerRom:
     PLACE = 7
     VISIBILITY = 8
     UPDATE_IMAGE = 9
+    REFRESH_QUEUE = 10
+    SCHEDULE = 11
 
     # State-data offsets imported from constants/map_object_constants.asm.
     S1_PICTURE = 0
@@ -122,6 +127,9 @@ DEF wYCoord EQU $C315
 DEF wXCoord EQU $C316
 DEF wGrassTile EQU $C317
 DEF wSpritePlayerStateData1FacingDirection EQU $C318
+DEF wFontLoaded EQU $C319
+DEF wWalkCounter EQU $C31A
+DEF hRandomAdd EQU $FF80
 DEF wTileMap EQU $C400
 
 DEF MAIL_COMMAND EQU $C000
@@ -137,7 +145,7 @@ SECTION "Follower test entry", ROM0[$100]
     jp FollowerTestMain
 
 SECTION "Follower test home helper", ROM0[$150]
-; The only external call in follower.asm is this small HOME routine.
+; HOME fill helper, matching home/tilemap.asm. Random is controlled below.
 FillMemory::
     push de
     ld d, a
@@ -149,6 +157,13 @@ FillMemory::
     or c
     jr nz, .loop
     pop de
+    ret
+
+; Deterministic RNG input for branch/animation traces. This tests the core's
+; use of Random and hRandomAdd, not the game's RNG distribution or timing.
+Random::
+    ld a, [$C31B]
+    ldh [hRandomAdd], a
     ret
 
 ; Put the follower core and its dispatcher in the same ROMX bank. The test
@@ -191,6 +206,10 @@ FollowerTestMain::
     jr z, .visibility
     cp 9
     jr z, .update_image
+    cp 10
+    jr z, .refresh_queue
+    cp 11
+    jr z, .schedule
     ld a, $EE
     and a
     jr .report
@@ -228,6 +247,16 @@ FollowerTestMain::
     jr .report
 .update_image
     call FollowerUpdateImage
+    jr .report
+.refresh_queue
+    call FollowerRefreshQueue
+    jr .report
+.schedule
+    ld a, [MAIL_ARG0]
+    ld d, a
+    ld a, [MAIL_ARG1]
+    ld e, a
+    call FollowerScheduleSpawn
 .report
     ld [MAIL_RESULT_A], a
     ld a, 0
@@ -377,6 +406,9 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         self.fixture.write8(self.fixture.OPTIONS2, 0)
         self.fixture.write8(self.fixture.MOVEMENT_FLAGS, 0)
         self.fixture.write8(self.fixture.PLAYER_DIRECTION, 0)
+        self.fixture.write8(self.fixture.FONT_LOADED, 0)
+        self.fixture.write8(self.fixture.WALK_COUNTER, 0)
+        self.fixture.write8(self.fixture.RANDOM_VALUE, 0)
         self.fixture.write8(self.fixture.GRASS_TILE, 0x33)
         for offset in range(18 * 20):
             self.fixture.write8(self.fixture.TILE_MAP + offset, 0)
@@ -451,6 +483,7 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
     def _prepare_movement(self, *, options2: int = 0) -> None:
         assert self.fixture is not None
         self.fixture.write8(self.fixture.OPTIONS2, options2)
+        self.fixture.write_state1(self.fixture.S1_PICTURE, 0x42)
         self.fixture.write_state1(self.fixture.S1_STATUS, self.fixture.STATUS_READY)
         self.fixture.write_state1(self.fixture.S1_YPIXELS, 0)
         self.fixture.write_state1(self.fixture.S1_XPIXELS, 64)
@@ -626,6 +659,186 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         f.write_state2(f.S2_GRASS_PRIORITY, f.OAM_PRIO)
         self.assertFalse(f.visibility()[1])
         self.assertEqual(f.read_state2(f.S2_GRASS_PRIORITY), 0)
+
+    def test_geometry_seed_command_and_y_priority(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for dy, dx, command in (
+            (0, 0, None), (-1, 0, 1), (1, 0, 2), (0, 1, 3), (0, -1, 4),
+            (-2, 0, 5), (2, 0, 6), (0, 2, 7), (0, -2, 8),
+            (-3, 3, 5), (1, -2, 2),
+        ):
+            with self.subTest(dy=dy, dx=dx):
+                self.setUp()
+                f.place(0x42, f.PLACE_OVERLAP)
+                f.write_state2(f.S2_MAP_Y, 24 + dy)
+                f.write_state2(f.S2_MAP_X, 34 + dx)
+                for _ in range(4):
+                    f.append(8)
+                _, carry = f.command(f.REFRESH_QUEUE)
+                self.assertEqual(carry, command is None)
+                self.assertEqual(f.read8(f.COMMAND_SIZE), 0xFF if command is None else 0)
+                self.assertEqual(f.read8(f.COMMAND_BUFFER), command or 0)
+                self.assertEqual([f.read8(f.COMMAND_BUFFER + i) for i in range(1, 16)], [0] * 15)
+
+    def test_scheduled_spawn_waits_for_font_then_seeds_first_step(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        f.write8(f.FONT_LOADED, 1)
+        self.assertFalse(f.command(f.SCHEDULE, 0x42, f.PLACE_BEHIND)[1])
+        self.assertEqual(f.read_state1(f.S1_STATUS), 0)
+        for _ in range(3):
+            f.update()
+            self.assertEqual(f.read_state1(f.S1_STATUS), 0)
+            self.assertEqual(f.read_state1(f.S1_IMAGE), 0xFF)
+            self.assertEqual(f.read8(f.COMMAND_SIZE), 0xFF)
+        f.write8(f.FONT_LOADED, 0)
+        f.update()
+        self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+        self.assertEqual(f.read_state1(f.S1_IMAGE), 0xFF)
+        self.assertEqual(f.read8(f.COMMAND_SIZE), 0)
+        self.assertEqual(f.read8(f.COMMAND_BUFFER), 1)
+        self.assertEqual(f.read_state1(f.S1_YPIXELS), 44)
+        f.queue_encoded(4)  # accepted subsequent player step
+        f.update()
+        self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_WALKING)
+        self.assertEqual(f.read_state1(f.S1_YPIXELS), 46)
+        self.assertEqual(f.read_state2(f.S2_MAP_Y), 24)
+        f.clear()
+        f.update()
+        self.assertEqual(f.read_state1(f.S1_PICTURE), 0)
+        self.assertEqual(f.read_state1(f.S1_STATUS), 0)
+        self.assertEqual(f.read8(f.COMMAND_SIZE), 0xFF)
+
+    def test_wait_overlap_and_zero_timer_wrap_match_yellow(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        f.place(0x42, f.PLACE_OVERLAP)
+        f.write_state2(f.S2_COUNTER, 5)
+        f.update()
+        self.assertEqual(f.read_state1(f.S1_IMAGE), 0xFF)
+        self.assertEqual(f.read_state2(f.S2_COUNTER), 5)
+        f.place(0x42, f.PLACE_BEHIND)
+        f.write8(f.RANDOM_VALUE, 0x0C)
+        f.update()
+        self.assertEqual(f.read_state2(f.S2_COUNTER), 0xFF)
+        self.assertEqual(f.read_state1(f.S1_FACING), f.FACING_DOWN)
+        for _ in range(255):
+            f.update()
+        self.assertEqual(f.read_state2(f.S2_COUNTER), 0x20)
+        self.assertEqual(f.read_state1(f.S1_FACING), f.FACING_RIGHT)
+        self.assertEqual(f.read_state1(f.S1_ANIM), 0)
+
+    def _start_idle_action(self, selection: int, fps: bool = False) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        self.setUp()
+        f.place(0x42, f.PLACE_BEHIND)
+        f.queue_encoded(5)
+        f.write_state2(f.S2_COUNTER, 1)
+        f.write8(f.RANDOM_VALUE, selection)
+        f.write8(f.OPTIONS2, 0x80 if fps else 0)
+        for _ in range(2 if fps else 1):
+            f.update()
+        self.assertEqual(f.read_state1(f.S1_STATUS), 6 + selection)
+
+    def test_idle_actions_exact_traces_and_both_timing_modes(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        # Exact Yellow Pointer_fc8d6 data, read backwards by the routine.
+        hop = list(reversed([
+            (0, 0), (-2, 1), (-4, 2), (-2, 3), (0, 4), (-2, 3),
+            (-4, 2), (-2, 1), (0, 0), (-2, -1), (-4, -2), (-2, -3),
+            (0, -4), (-2, -3), (-4, -2), (-2, -1), (0, 0),
+        ]))
+        turns = [f.FACING_DOWN, f.FACING_LEFT, f.FACING_UP, f.FACING_RIGHT, f.FACING_DOWN]
+        for fps in (False, True):
+            for selection, duration in enumerate((17, 48, 32, 32)):
+                with self.subTest(fps=fps, selection=selection):
+                    self._start_idle_action(selection, fps)
+                    for tick in range(1, duration + 1):
+                        if tick > 1:
+                            for _ in range(2 if fps else 1):
+                                f.update()
+                        if selection == 0:
+                            dy, dx = hop[tick - 1]
+                            self.assertEqual(f.read_state1(f.S1_YPIXELS), 44 + dy)
+                            self.assertEqual(f.read_state1(f.S1_XPIXELS), 64 + dx)
+                        elif selection in (1, 2):
+                            frame = (tick // 8) % (4 if selection == 1 else 2)
+                            self.assertEqual(f.read_state1(f.S1_ANIM), frame)
+                        else:
+                            self.assertEqual(f.read_state1(f.S1_FACING), turns[tick // 8])
+                        self.assertEqual(f.read_state2(f.S2_MAP_Y), 23)
+                        self.assertEqual(f.read_state2(f.S2_MAP_X), 34)
+                        if tick < duration:
+                            self.assertEqual(f.read_state2(f.S2_COUNTER), duration - tick)
+                            self.assertEqual(f.read_state1(f.S1_STATUS), 6 + selection)
+                    self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+                    self.assertEqual(f.read_state2(f.S2_COUNTER), 0x10)
+                    self.assertEqual(f.read8(f.COMMAND_SIZE), 0)
+                    self.assertEqual(f.read_state1(f.S1_YVECTOR), 0)
+                    self.assertEqual(f.read_state1(f.S1_XVECTOR), 0)
+
+    def test_idle_hop_interrupt_restores_offsets_and_preserves_scroll(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for fps in (False, True):
+            with self.subTest(fps=fps):
+                self._start_idle_action(0, fps)
+                for _ in range(2 if fps else 1):
+                    f.update()
+                self.assertNotEqual(f.read_state1(f.S1_YVECTOR), 0)
+                f.write_state1(f.S1_XPIXELS, f.read_state1(f.S1_XPIXELS) - 1)
+                f.write8(f.WALK_COUNTER, 8)
+                f.update()
+                self.assertEqual(f.read_state1(f.S1_YPIXELS), 44)
+                self.assertEqual(f.read_state1(f.S1_XPIXELS), 63)
+                self.assertEqual(f.read_state1(f.S1_YVECTOR), 0)
+                self.assertEqual(f.read_state1(f.S1_XVECTOR), 0)
+                self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+
+    def test_new_command_restarts_half_step_phase_after_odd_idle_tick(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for command, queued, calls, distance in ((4, 2, 16, 16), (4, 4, 8, 16), (8, 2, 16, 32)):
+            with self.subTest(command=command, queued=queued):
+                self.setUp()
+                f.place(0x42, f.PLACE_BEHIND)
+                f.write8(f.OPTIONS2, 0x80)
+                f.update()  # waiting advances to the first half of an idle tick
+                self.assertEqual(f.read_state2(f.S2_PHASE), 1)
+                for _ in range(queued):
+                    f.queue_encoded(command)
+                for tick in range(calls):
+                    f.update()
+                    self.assertEqual(f.read_state1(f.S1_XPIXELS), 64 + (tick + 1) * distance // calls)
+                    if tick < calls - 1:
+                        self.assertNotEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+                self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+                self.assertEqual(f.read_state1(f.S1_XPIXELS), 64 + distance)
+                self.assertEqual(f.read_state2(f.S2_PHASE), 0)
+
+    def test_font_pause_resets_animation_reseeds_and_respects_player_motion(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for walking in (0, 8):
+            with self.subTest(walking=walking):
+                self._start_idle_action(0)
+                f.update()  # nonzero visual hop offset
+                f.write8(f.WALK_COUNTER, walking)
+                f.write8(f.FONT_LOADED, 1)
+                f.update()
+                self.assertEqual(f.read_state1(f.S1_YPIXELS), 44)
+                self.assertEqual(f.read_state1(f.S1_XPIXELS), 64)
+                self.assertEqual(f.read_state1(f.S1_ANIM), 0)
+                self.assertEqual(f.read_state1(f.S1_STATUS), f.STATUS_READY)
+                self.assertEqual(f.read_state2(f.S2_COUNTER), 0)
+                self.assertEqual(f.read8(f.COMMAND_SIZE), 0)
+                self.assertEqual(f.read8(f.COMMAND_BUFFER), 1)
+                f.write_state1(f.S1_XPIXELS, 70)
+                f.update()
+                self.assertEqual(f.read_state1(f.S1_XPIXELS), 70 if walking else 64)
 
     def _expected_placement(self, facing: int, mode: int) -> tuple[int, int, int]:
         y, x = 24, 34

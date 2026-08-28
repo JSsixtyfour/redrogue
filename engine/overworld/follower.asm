@@ -3,7 +3,7 @@
 ; Provenance: selective port of pret/pokeyellow
 ;   commit e6ba56989b0f2694f393e6924820be11dcc1fbb8
 ;   engine/pikachu/pikachu_follow.asm
-;   Yellow labels retained by this draft:
+;   Yellow source routines adapted by this draft:
 ;     ClearPikachuFollowCommandBuffer
 ;     AppendPikachuFollowCommandToBuffer
 ;     Func_fcc92 (dequeue/shift)
@@ -11,14 +11,18 @@
 ;     Func_fc7e3 / NormalPikachuFollow / FastPikachuFollow / Func_fca0a
 ;     AddPikachuStepVector / DoubleAddPikachuStepVectorToScreenPixelCoords
 ;     UpdatePikachuWalkingSprite
+;     Func_fc803 / Func_fc842 / Func_fc862 / Func_fc8f8 / Func_fc92b / Func_fc95d
+;     RefreshPikachuFollow / ComputePikachuFollowCommand / Func_fcae2
+;     Func_fc793 / Func_fc76a / SchedulePikachuSpawnForAfterText
 ;
 ; This file is intentionally not included in the game build yet. Isolated
 ; assembly tests exercise it without allocating game RAM or reserving slot 15.
 ; Placement/culling below also port CalculatePikachuPlacementCoords,
 ; CalculatePikachuFacingDirection, ComputePikachuFacingDirection and
 ; WillPikachuSpawnOnTheScreen. The transition caller, not a Yellow map-ID
-; table, will choose a placement mode. Policy, loader, interaction, spawn
-; scheduling and lifecycle hooks remain integration work.
+; table, will choose a placement mode. Geometry-only deferred scheduling is
+; present; policy, loader, interaction and lifecycle hooks remain integration
+; work. The outer lifecycle must gate active/visible state before ticking.
 ;
 ; The core owns slot 15's standard 16-byte state structs. It does not call
 ; TryWalking: its command stream is already the validated player path.
@@ -41,9 +45,14 @@ DEF FOLLOWER_COMMAND_LEDGE_LEFT  EQU 7
 DEF FOLLOWER_COMMAND_LEDGE_RIGHT EQU 8
 
 DEF FOLLOWER_STATUS_READY        EQU 1
+DEF FOLLOWER_STATUS_WAITING      EQU 2
 DEF FOLLOWER_STATUS_WALKING      EQU 3
 DEF FOLLOWER_STATUS_TWO_STEP     EQU 4
 DEF FOLLOWER_STATUS_FAST         EQU 5
+DEF FOLLOWER_STATUS_HOP          EQU 6
+DEF FOLLOWER_STATUS_IDLE_WALK    EQU 7
+DEF FOLLOWER_STATUS_IDLE_TOGGLE  EQU 8
+DEF FOLLOWER_STATUS_IDLE_TURN    EQU 9
 DEF FOLLOWER_NORMAL_FRAMES       EQU $08
 DEF FOLLOWER_FAST_FRAMES         EQU $04
 DEF FOLLOWER_ANIM_TICKS          EQU $04
@@ -235,7 +244,20 @@ FollowerAtLeastTwoQueued::
 ; integration caller owns the active/hidden policy and must not call this
 ; while a script has temporarily suppressed follower control.
 FollowerUpdate::
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	ret z ; clear state is disabled, not a pending spawn
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	and a
+	jp z, FollowerInitializePendingSpawn
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jp nz, FollowerRefreshAfterText
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_IDLE_TURN + 1
+	jp nc, FollowerInitializePendingSpawn
+	cp FOLLOWER_STATUS_HOP
+	jp nc, FollowerUpdateIdleAction
 	cp FOLLOWER_STATUS_WALKING
 	jp z, FollowerAdvanceStep
 	cp FOLLOWER_STATUS_TWO_STEP
@@ -243,11 +265,10 @@ FollowerUpdate::
 	cp FOLLOWER_STATUS_FAST
 	jp z, FollowerAdvanceStep
 	cp FOLLOWER_STATUS_READY
-	ret nz
+	jp nz, FollowerWait
 	call FollowerDequeueCommand
 	jp nc, FollowerStartCommand
-	call FollowerComputeFacing
-	jp FollowerUpdateImage
+	jp FollowerWait
 
 ; Start one queued command. Normal/fast selection mirrors Yellow's queue
 ; backlog rule. Commands 5-8 always use the eight-frame two-step path.
@@ -285,6 +306,10 @@ FollowerStartCommand::
 	pop bc
 	ld a, c
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+; A command starts a complete pair of 60 FPS half-steps. Waiting/idle may
+; have left phase 1; inheriting it would finish one pixel update too early.
+	xor a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_0A], a
 	ld a, b
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
 	call FollowerAddStepVector
@@ -334,17 +359,7 @@ FollowerAdvanceStep::
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER]
 	and a
 	jp z, .finish
-	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_0A
-	ld a, [wOptions2]
-	bit BIT_60_FPS, a
-	ld a, [hl]
-	jr nz, .toggle_phase
-	xor a
-	jr .store_phase
-.toggle_phase
-	xor 1
-.store_phase
-	ld [hl], a
+	call FollowerTickPhase
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR]
 	add a
 	ld b, a
@@ -424,6 +439,12 @@ FollowerAdvanceStep::
 ; Yellow UpdatePikachuWalkingSprite. IMAGEBASEOFFSET is converted to the
 ; high nibble used by PrepareOAMData; slot 2 therefore selects $10-$1f.
 FollowerUpdateImage::
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jr z, .visibility
+	call FollowerHideIfOverlappingPlayer
+	ret c
+.visibility
 	call FollowerCheckVisibility
 	ret c
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET]
@@ -444,6 +465,343 @@ FollowerUpdateImage::
 	ld a, FOLLOWER_COMMAND_EMPTY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
 	ret
+
+; Yellow Func_fc803. No dequeueable command: hide under the player, otherwise
+; count down before looking around. The zero -> $ff wrap is intentional in
+; Yellow; movement completion leaves zero, while an idle action leaves $10.
+FollowerWait:
+	call FollowerHideIfOverlappingPlayer
+	ret c
+	call FollowerTickPhase
+	and a
+	jr nz, .image
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
+	dec [hl]
+	jr nz, .image
+	call FollowerGetLastCommand
+	cp FOLLOWER_COMMAND_LEDGE_DOWN
+	jp nc, FollowerStartIdleAction
+	ld a, $20
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	call Random
+	and $0c
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+.image
+	call FollowerResetAnimation
+	jp FollowerUpdateImage
+
+; Yellow Func_fc842 / PointerTable_fc85a: only a last queued two-tile command
+; enables the four idle actions. They do not depend on happiness or emotions.
+; LOCAL INPUT A = last command 5-8. Yellow selects with hRandomAdd, not A.
+FollowerStartIdleAction:
+	push af
+	call Random
+	ldh a, [hRandomAdd]
+	and 3
+	ld e, a
+	ld d, 0
+	ld hl, .actions
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	pop af
+	jp hl
+.actions
+	dw .hop, .walk, .toggle, .turn
+.hop
+	dec a
+	add a
+	add a
+	and $0c
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+; Yellow wd431/wd432 are previous visual offsets, not new path vectors.
+; Reuse our vectors only while in HOP state; restore them before READY.
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
+	ld a, FOLLOWER_STATUS_HOP
+	ld e, $11
+	jr .start
+.walk
+	ld a, FOLLOWER_STATUS_IDLE_WALK
+	ld e, $30
+	jr .start
+.toggle
+	ld a, FOLLOWER_STATUS_IDLE_TOGGLE
+	ld e, $20
+	jr .start
+.turn
+	ld a, FOLLOWER_STATUS_IDLE_TURN
+	ld e, $20
+.start
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ld a, e
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+; As in Yellow, initialization immediately performs the first action tick.
+	jp FollowerAdvanceIdleAction
+
+FollowerUpdateIdleAction:
+	ld a, [wWalkCounter]
+	and a
+	jp nz, FollowerFinishIdleAction
+	call FollowerTickPhase
+	and a
+	jp nz, FollowerUpdateImage
+FollowerAdvanceIdleAction:
+	ld a, [wWalkCounter]
+	and a
+	jp nz, FollowerFinishIdleAction
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_HOP
+	jr z, .hop
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
+	inc [hl]
+	ld a, [hl]
+	cp 8
+	jr nz, .decrement
+	xor a
+	ld [hl], a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_IDLE_TURN
+	jr z, .turn
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER
+	cp FOLLOWER_STATUS_IDLE_TOGGLE
+	ld a, [hl]
+	jr z, .toggle
+	inc a
+	and 3
+	jr .store_frame
+.toggle
+	xor 1
+.store_frame
+	ld [hl], a
+	jr .decrement
+.turn
+; Exact Yellow clockwise sequence, indexed by the current facing / 4.
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
+	srl a
+	srl a
+	ld e, a
+	ld d, 0
+	ld hl, .clockwise
+	add hl, de
+	ld a, [hl]
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	jr .decrement
+.hop
+	call FollowerRemoveIdleOffset
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER]
+	dec a
+	add a
+	ld e, a
+	ld d, 0
+	ld hl, .hop_offsets
+	add hl, de
+	ld a, [hli]
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
+	ld b, a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
+	add b
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld a, [hl]
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
+	ld b, a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
+	add b
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
+.decrement
+	call FollowerUpdateImage
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
+	dec [hl]
+	ret nz
+	jp FollowerFinishIdleAction
+.clockwise
+	db SPRITE_FACING_LEFT, SPRITE_FACING_RIGHT, SPRITE_FACING_UP, SPRITE_FACING_DOWN
+; Yellow Pointer_fc8d6, consumed from last pair to first.
+.hop_offsets
+	db  0,  0, -2,  1, -4,  2, -2,  3,  0,  4, -2,  3
+	db -4,  2, -2,  1,  0,  0, -2, -1, -4, -2, -2, -3
+	db  0, -4, -2, -3, -4, -2, -2, -1,  0,  0
+
+FollowerRemoveIdleOffset:
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR]
+	ld b, a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
+	sub b
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR]
+	ld b, a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
+	sub b
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
+	ret
+
+; Yellow Func_fc835 / Func_fc8c7. Player movement interrupts idle actions;
+; remove a hop's previous displacement before returning control to the queue.
+FollowerFinishIdleAction:
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_HOP
+	call z, FollowerRemoveIdleOffset
+	ld a, $10
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	ld a, FOLLOWER_STATUS_READY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ret
+
+FollowerResetAnimation:
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER], a
+	ret
+
+; Slot-specific equivalent of Sprite60FPS. A = phase (0: logical tick).
+; Walking splits pixels over both phases; idle animation advances on phase 0.
+FollowerTickPhase:
+	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_0A
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	ld a, [hl]
+	jr nz, .toggle
+	xor a
+	jr .store
+.toggle
+	xor 1
+.store
+	ld [hl], a
+	ret
+
+; Yellow Func_fcae2. Overlap is hidden only in waiting/text paths; moving
+; through the player's tile must still execute the replayed command.
+FollowerHideIfOverlappingPlayer:
+	ld a, [wYCoord]
+	add 4
+	ld b, a
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
+	cp b
+	jr nz, .visible
+	ld a, [wXCoord]
+	add 4
+	ld b, a
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
+	cp b
+	jr nz, .visible
+	ld a, $ff
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	scf
+	ret
+.visible
+	and a
+	ret
+
+; Yellow GetPikachuFollowCommand: last appended value, or zero when empty.
+FollowerGetLastCommand:
+	ld a, [wFollowerCommandBufferSize]
+	cp FOLLOWER_COMMAND_EMPTY
+	jr z, .empty
+	ld e, a
+	ld d, 0
+	ld hl, wFollowerCommandBuffer
+	add hl, de
+	ld a, [hl]
+	ret
+.empty
+	xor a
+	ret
+
+; Yellow RefreshPikachuFollow / ComputePikachuFollowCommand. Reconstruct one
+; lag command from geometry, Y before X. Exactly one tile uses commands 1-4;
+; two or more uses 5-8. No command on overlap. This seeds a chosen placement,
+; not an arbitrary pathfinder; transition callers must supply safe geometry.
+FollowerRefreshQueue::
+	call FollowerClearCommandBuffer
+	call FollowerComputeSeedCommand
+	ret c
+	jp FollowerAppendCommand
+
+FollowerComputeSeedCommand:
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
+	ld b, a
+	ld a, [wYCoord]
+	add 4
+	sub b
+	jr z, .x
+	ld e, FOLLOWER_COMMAND_DOWN
+	jr nc, .magnitude
+	ld e, FOLLOWER_COMMAND_UP
+	jr .negative
+.x
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
+	ld b, a
+	ld a, [wXCoord]
+	add 4
+	sub b
+	jr z, .overlap
+	ld e, FOLLOWER_COMMAND_RIGHT
+	jr nc, .magnitude
+	ld e, FOLLOWER_COMMAND_LEFT
+.negative
+	cpl
+	inc a
+.magnitude
+	cp 2
+	ld a, e
+	jr c, .one_tile
+	add 4
+.one_tile
+	and a
+	ret
+.overlap
+	scf
+	ret
+
+; Deferred geometry-only scheduling, adapting SchedulePikachuSpawnForAfterText
+; and Func_fc793. INPUT D = validated picture, E = placement mode. Unlike
+; Yellow's global bit-4 policy this API gets an explicit placement from the
+; lifecycle caller. A nonzero picture plus status 0 means pending; cleared
+; picture 0 remains disabled. No additional saved or temporary RAM is needed.
+FollowerScheduleSpawn::
+	call FollowerPlaceAtPlayer
+	ret c
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ret
+
+FollowerInitializePendingSpawn:
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	ret nz
+	call FollowerRefreshQueue
+	call FollowerInitializeScreenPosition
+	ld a, $ff
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	ld a, FOLLOWER_STATUS_READY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ret
+
+; Yellow Func_fc76a: font/text pause resets animation and re-seeds following.
+; Rebase screen coordinates only if the player is stationary. Remove our
+; reused hop offset before releasing HOP ownership, including mid-step text.
+; Lifecycle suppression/interaction-facing bit 7 remains a separate caller
+; contract; it is not simulated by this geometry-only core.
+FollowerRefreshAfterText:
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_HOP
+	call z, FollowerRemoveIdleOffset
+	call FollowerResetAnimation
+	call FollowerUpdateImage
+	ld a, [wWalkCounter]
+	and a
+	call z, FollowerInitializeScreenPosition
+	ld a, FOLLOWER_STATUS_READY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	xor a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	jp FollowerRefreshQueue
 
 ; Geometry half of Yellow CalculatePikachuPlacementCoords and
 ; CalculatePikachuFacingDirection. INPUT D = validated walking picture ID,
@@ -539,6 +897,15 @@ FollowerPlaceAtPlayer::
 .store_facing
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 .screen_position
+; The raw geometry helper deliberately does not seed the queue. Use the
+; scheduled entry below for normal activation, like Yellow's state 0 path.
+	call FollowerInitializeScreenPosition
+	ld a, FOLLOWER_STATUS_READY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	and a
+	ret ; image stays hidden until the first visibility refresh
+
+FollowerInitializeScreenPosition:
 ; Exact InitializeSpriteScreenPosition coordinate math, explicit slot 15.
 ; The generic helper is bank1 and needs hCurrentSpriteOffset; this leaf must
 ; not assume either that bank or a caller-owned sprite offset.
@@ -555,10 +922,7 @@ FollowerPlaceAtPlayer::
 	sub b
 	swap a
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
-	ld a, FOLLOWER_STATUS_READY
-	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
-	and a
-	ret ; image stays hidden until the first visibility refresh
+	ret
 
 ; Yellow ComputePikachuFacingDirection: when >1 queued commands remain,
 ; use the most recently appended command; otherwise face the player, Y first.
@@ -731,7 +1095,7 @@ ENDR
 	pop hl
 	ret
 
-; TODO integration: ShouldPikachuSpawn / SchedulePikachuSpawnForAfterText,
-; queue seeding and transition placement policy, camera scroll deltas, turning
-; states, slot ownership, and a single update call per overworld tick. No game
+; TODO integration: ShouldPikachuSpawn, interaction/suppression bit-7 policy,
+; transition placement policy, camera scroll deltas, slot ownership, and a
+; single update call per overworld tick. No game
 ; RAM is allocated: size byte + 16 commands + latch byte remain symbolic.
