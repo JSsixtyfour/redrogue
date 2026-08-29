@@ -42,6 +42,7 @@ class _FollowerRom:
     RESULT_E = 0xC00A
     RESULT_H = 0xC00B
     RESULT_L = 0xC00C
+    RELOAD_COUNT = 0xC00D
     STATE1 = 0xC100
     STATE2 = 0xC200
     COMMAND_SIZE = 0xC300
@@ -188,6 +189,7 @@ DEF MAIL_RESULT_C EQU $C009
 DEF MAIL_RESULT_E EQU $C00A
 DEF MAIL_RESULT_H EQU $C00B
 DEF MAIL_RESULT_L EQU $C00C
+DEF MAIL_RELOAD_COUNT EQU $C00D
 
 SECTION "Follower test entry", ROM0[$100]
     nop
@@ -225,6 +227,11 @@ Bankswitch::
 FarCopyData2::
 FarCopyData3::
 CopyVideoData::
+    ret
+
+ReloadMapSpriteTilePatterns::
+    ld hl, MAIL_RELOAD_COUNT
+    inc [hl]
     ret
 
 LobbyPoseCacheReset::
@@ -561,6 +568,10 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         self.fixture.write8(self.fixture.PARTY_COUNT, 0)
         for offset in range(7):
             self.fixture.write8(self.fixture.PARTY_SPECIES + offset, 0)
+        self.fixture.write8(self.fixture.PARTY_COUNT, 1)
+        self.fixture.write8(self.fixture.PARTY_SPECIES, 1)
+        self.fixture.write8(self.fixture.FOLLOWER_SPECIES, 1)
+        self.fixture.write8(self.fixture.RELOAD_COUNT, 0)
         self.fixture.write8(self.fixture.GRASS_TILE, 0x33)
         for offset in range(18 * 20):
             self.fixture.write8(self.fixture.TILE_MAP + offset, 0)
@@ -748,6 +759,40 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
         self.assertEqual(f.reconcile_lead(0, 0), (42, True, 1))
         self._assert_core_cleared(f)
         self.assertEqual(self._party_snapshot(f), party_before)
+
+    def test_update_refreshes_changed_lead_and_clears_disabled_state(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+
+        self._set_party(f, 1, 1)
+        f.write8(f.FOLLOWER_SPECIES, 1)
+        self._seed_core_state(f, 0x42)
+        f.write_state1(f.S1_STATUS, f.STATUS_READY)
+        f.update()
+        self.assertEqual(f.read8(f.RELOAD_COUNT), 0)
+
+        f.write8(f.PARTY_SPECIES, 2)
+        f.update()
+        self.assertEqual(f.read8(f.RELOAD_COUNT), 1)
+
+        self.setUp()
+        self._set_party(f, 1, 1)
+        f.write8(f.FOLLOWER_SPECIES, 1)
+        self._seed_core_state(f, 0x42)
+        f.write8(f.FOLLOWER_LOAD_ACTION, 1)
+        f.write8(f.OPTIONS2, 1 << 3)
+        f.update()
+        self.assertEqual(f.read8(f.RELOAD_COUNT), 0)
+        self.assertEqual(f.read8(f.FOLLOWER_SPECIES), 0)
+        self.assertEqual(f.read8(f.FOLLOWER_LOAD_ACTION), 0)
+        self._assert_core_cleared(f)
+
+        self.setUp()
+        self._set_party(f, 1, 3)
+        f.write8(f.FOLLOWER_SPECIES, 0)
+        self._assert_core_cleared(f)
+        f.update()
+        self.assertEqual(f.read8(f.RELOAD_COUNT), 1)
 
     def test_face_player_directions_idle_cleanup_and_queue_preservation(self) -> None:
         for fps in (0, 1 << 7):

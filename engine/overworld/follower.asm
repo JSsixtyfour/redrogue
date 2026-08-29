@@ -485,6 +485,8 @@ FollowerApplyCameraScroll::
 ; owns active/hidden policy and must not tick while control is suppressed.
 FollowerUpdate::
 	call LobbyPoseUpdate
+	call FollowerRefreshLeadIdentity
+	ret c
 	ld a, [wFollowerLoadAction]
 	and a
 	jr z, .no_pending_step
@@ -527,6 +529,39 @@ FollowerUpdate::
 	call FollowerDequeueCommand
 	jp nc, FollowerStartCommand
 	jp FollowerWait
+
+; Poll the authoritative party/option state at the one normal overworld tick.
+; This central boundary covers every party writer without scattering follower
+; hooks through menus, PC code, evolutions, trades, gifts, and custom systems.
+; A changed eligible lead needs the full map-sprite reload so slot 2 receives
+; the new sheet before the rebuilt follower is published. Disabling can clear
+; immediately. Carry set tells this frame's caller not to tick stale state.
+FollowerRefreshLeadIdentity:
+	ld a, [wFollowerSuppression]
+	ld d, a
+	call FollowerShouldSpawn
+	jr nc, .disabled
+	ld a, [wFollowerSpecies]
+	cp e
+	jr nz, .reload
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	ret nz
+.reload
+	call ReloadMapSpriteTilePatterns
+	scf
+	ret
+.disabled
+	ld a, [wFollowerSpecies]
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID
+	or [hl]
+	ret z
+	xor a
+	ld [wFollowerSpecies], a
+	ld [wFollowerLoadAction], a
+	call FollowerClearState
+	scf
+	ret
 
 ; Core interaction eligibility, not party/option/script spawn policy or a
 ; front-tile hit test. The caller must establish those before opening text.
