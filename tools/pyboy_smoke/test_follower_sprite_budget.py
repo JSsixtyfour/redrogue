@@ -137,6 +137,12 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
             loader,
             r"cp INDIGO_PLATEAU_LOBBY\s+jr nz, \.ordinaryMap",
         )
+        lobby_branch = loader[loader.index("cp INDIGO_PLATEAU_LOBBY"):
+                              loader.index("\n.ordinaryMap")]
+        self.assertRegex(
+            lobby_branch,
+            r"ld hl, wLobbyPoseCacheState\s+call LobbyPoseCacheReset",
+        )
 
     def test_follower_category_map_uses_only_twelve_tile_sheets(self):
         sizes = sprite_sizes()

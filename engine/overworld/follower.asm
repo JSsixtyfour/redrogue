@@ -122,7 +122,12 @@ FollowerLoadMapGraphics::
 	cp INDIGO_PLATEAU_LOBBY
 	jr nz, .ordinaryMap
 	; The lobby needs its stationary pose-cache publisher before slot 2 can be
-	; reserved safely. Suppress only this intermediate integration build.
+	; reserved safely. Invalidate every cache transaction at the same full
+	; sprite-reload boundary that will eventually rebuild the lobby packing;
+	; save data and text reloads must never publish stale staged descriptors.
+	ld hl, wLobbyPoseCacheState
+	call LobbyPoseCacheReset
+	; Suppress only this intermediate integration build.
 	xor a
 	ld [wFollowerSpecies], a
 	call FollowerClearState

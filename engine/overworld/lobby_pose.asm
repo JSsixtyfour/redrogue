@@ -1,4 +1,6 @@
-; Isolated lobby pose draft. NOT included by the game.
+; Lobby stationary-pose cache worker. Included in bank $2d; cache reset is
+; connected to the lobby sprite-reload lifecycle, while request/publication
+; remains gated until the loader and VBlank transaction are connected.
 ; Red Rogue adaptation of data/sprites/facings.asm and the existing split
 ; standing/walking sheets. No replacement art, game RAM or bank allocation.
 SECTION "Lobby Pose Draft", ROMX
@@ -171,9 +173,7 @@ ENDR
 	scf
 	ret
 
-; Isolated request/cache manager. NOT connected to gameplay.
-; The caller supplies a 27-byte state block at hl. The future game allocation,
-; lifetime and clearing boundary are deliberately not selected here.
+; Request/cache manager. The caller supplies the integrated state block at hl.
 ;
 ; Layout: requested descriptors (3 * picture/poseflags/OAM offset), committed
 ; descriptors (same), dirty bits, valid bits, healing-ownership flag.
