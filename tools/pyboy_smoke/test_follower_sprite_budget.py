@@ -163,6 +163,21 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                     self.assertIn(symbol, source)
             self.assertNotRegex(source, r"\(\$[0-9a-fA-F]+ << 4\)")
 
+    def test_ordinary_overworld_hooks_target_dedicated_slot(self):
+        overworld = (ROOT / "home/overworld.asm").read_text()
+        updater = (ROOT / "engine/overworld/sprite_collisions.asm").read_text()
+        self.assertIn("farcall FollowerUpdate", overworld)
+        self.assertIn("ld [wFollowerLoadAction], a ; consumed by the next FollowerUpdate", overworld)
+        self.assertIn("farcall FollowerApplyCameraScroll", overworld)
+        self.assertRegex(
+            updater,
+            r"ld a, c\s+cp \$f0\s+jr z, \.skipSprite",
+        )
+        self.assertRegex(
+            updater,
+            r"ldh \[hCollidingSpriteOffset\], a\s+cp 15\s+jp z, \.next",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

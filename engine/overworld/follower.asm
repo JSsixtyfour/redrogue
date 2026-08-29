@@ -188,15 +188,20 @@ FollowerLoadMapGraphics::
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
 	ld a, [wFollowerLoadAction]
 	cp FOLLOWER_IDENTITY_REBUILD
-	ret nz
+	jr nz, .clearAction
 	ld a, [wFollowerLoadPicture]
 	ld d, a
 	ld e, FOLLOWER_PLACE_BEHIND
-	jp FollowerScheduleSpawn
+	call FollowerScheduleSpawn
+.clearAction
+	xor a
+	ld [wFollowerLoadAction], a
+	ret
 
 .disabled
 	xor a
 	ld [wFollowerSpecies], a
+	ld [wFollowerLoadAction], a
 	call FollowerClearState
 	ret
 
@@ -472,6 +477,15 @@ FollowerApplyCameraScroll::
 ; UpdateSprites call (menus/cleanup also redraw). The integration caller
 ; owns active/hidden policy and must not tick while control is suppressed.
 FollowerUpdate::
+	ld a, [wFollowerLoadAction]
+	and a
+	jr z, .no_pending_step
+	xor a
+	ld [wFollowerLoadAction], a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	call nz, FollowerQueuePlayerStep
+.no_pending_step
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
 	ret z ; clear state is disabled, not a pending spawn
