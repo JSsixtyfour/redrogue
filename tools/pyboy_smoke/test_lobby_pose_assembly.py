@@ -53,6 +53,9 @@ class _LobbyPoseRom:
     RESOLVE = 1
     COMMIT = 2
     COMMIT_AT_LINE = 3
+    STAGE = 4
+    PREPARE_OAM = 5
+    OAM_SNAPSHOT = 0xC360
 
     _FIXTURE = r'''
 INCLUDE "includes.asm"
@@ -79,6 +82,36 @@ DEF POSE_STAGING EQU $C200
 DEF POSE_OAM_SOURCE EQU $C300
 DEF wLobbyPoseStagingTiles EQU POSE_STAGING
 DEF wLobbyPoseStagingOAM EQU POSE_OAM_SOURCE
+DEF wLobbyPoseStageSourceBank EQU $C350
+DEF wLobbyPoseStageSourceAddress EQU $C351
+DEF wLobbyPoseStageTileCount EQU $C353
+DEF wLobbyPoseStagePoseFlags EQU $C354
+
+DEF hLoadedROMBank EQU $FFB0
+DEF hROMBankTemp EQU $FFB1
+
+; Exact relevant FarCopyData3 contract: execute in ROM0, map the explicit source
+; bank, copy a:de to hl, and restore the caller's bank.
+SECTION "Test staging copier", ROM0[$180]
+FarCopyData3::
+    ldh [hROMBankTemp], a
+    ldh a, [hLoadedROMBank]
+    push af
+    ldh a, [hROMBankTemp]
+    ldh [hLoadedROMBank], a
+    ld [rROMB], a
+.copy
+    ld a, [de]
+    inc de
+    ld [hli], a
+    dec bc
+    ld a, b
+    or c
+    jr nz, .copy
+    pop af
+    ldh [hLoadedROMBank], a
+    ld [rROMB], a
+    ret
 
 SECTION "Lobby pose test entry", ROM0[$100]
     nop
@@ -88,10 +121,20 @@ SECTION "Lobby pose test entry", ROM0[$100]
 ; no bank-switch helpers or game callers hidden behind the fixture.
 INCLUDE "engine/overworld/lobby_pose.asm"
 
+SECTION "Channeler staging asset", ROMX, BANK[2]
+ChannelerStagingAsset:: INCBIN "gfx/sprites/channeler.2bpp"
+SECTION "Super Nerd staging asset", ROMX, BANK[3]
+SuperNerdStagingAsset:: INCBIN "gfx/sprites/super_nerd.2bpp"
+SECTION "Game Boy Kid staging asset", ROMX, BANK[4]
+GameBoyKidStagingAsset:: INCBIN "gfx/sprites/gameboy_kid.2bpp"
+
 SECTION "Lobby pose test dispatcher", ROMX
 LobbyPoseTestMain::
     di
     ld sp, $DFFF
+    ld a, BANK(LobbyPoseTestMain)
+    ldh [hLoadedROMBank], a
+    ld [rROMB], a
     xor a
     ld [MAIL_COMMAND], a
     ld [MAIL_COMPLETE], a
@@ -111,6 +154,10 @@ LobbyPoseTestMain::
     jp z, .commit
     cp 3
     jp z, .commit_at_line
+    cp 4
+    jp z, .stage
+    cp 5
+    jp z, .prepare_oam
     ld a, $EE
     scf
     jp .report
@@ -146,6 +193,47 @@ LobbyPoseTestMain::
     ld a, [MAIL_ARG1]
     ld c, a
     call LobbyPoseCommit
+    jp .report
+.stage
+    ld a, [MAIL_ARG0]
+    and a
+    jr z, .channeler
+    dec a
+    jr z, .superNerd
+    ld a, BANK(GameBoyKidStagingAsset)
+    ld de, GameBoyKidStagingAsset
+    jr .stageDescriptor
+.channeler
+    ld a, BANK(ChannelerStagingAsset)
+    ld de, ChannelerStagingAsset
+    jr .stageDescriptor
+.superNerd
+    ld a, BANK(SuperNerdStagingAsset)
+    ld de, SuperNerdStagingAsset
+.stageDescriptor
+    ld [wLobbyPoseStageSourceBank], a
+    ld a, e
+    ld [wLobbyPoseStageSourceAddress], a
+    ld a, d
+    ld [wLobbyPoseStageSourceAddress + 1], a
+    ld a, [MAIL_TARGET]
+    and a
+    jr nz, .haveTileCount
+    ld a, 12
+.haveTileCount
+    ld [wLobbyPoseStageTileCount], a
+    ld a, [MAIL_ARG1]
+    ld [wLobbyPoseStagePoseFlags], a
+    call LobbyPoseStageTilesFromDescriptor
+    jp .report
+.prepare_oam
+    ld a, [MAIL_ARG0]
+    ld [wLobbyPoseStageSourceBank], a
+    ld a, LOW($C360)
+    ld [wLobbyPoseStageSourceAddress], a
+    ld a, HIGH($C360)
+    ld [wLobbyPoseStageSourceAddress + 1], a
+    call LobbyPosePrepareOAMFromDescriptor
     jp .report
 .report
     jr nc, .carry_clear
@@ -190,7 +278,8 @@ LobbyPoseTestMain::
         self._run(("rgbasm", "-Weverything", "-I", str(REPO_ROOT),
                    "-o", str(self.object), str(self.source)))
         self._run(("rgblink", "-o", str(self.rom_path), str(self.object)))
-        self._run(("rgbfix", "-v", "-p", "0", str(self.rom_path)))
+        self._run(("rgbfix", "-v", "-p", "0", "-m", "MBC3+RAM+BATTERY",
+                   str(self.rom_path)))
         self.pyboy = PyBoy(
             io.BytesIO(self.rom_path.read_bytes()),
             window="null",
@@ -565,6 +654,66 @@ class LobbyPoseAssemblyTest(unittest.TestCase):
                          bytes((0x90 + i) & 0xFF for i in range(16)))
         self.assertEqual(f.read_block(0xFE90, 16),
                          bytes((0x90 + i) & 0xFF for i in range(16)))
+
+    def test_bank_aware_descriptor_stages_all_actual_cached_poses(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        assets = ("channeler.2bpp", "super_nerd.2bpp", "gameboy_kid.2bpp")
+        for selector, name in enumerate(assets):
+            sheet = (REPO_ROOT / "gfx/sprites" / name).read_bytes()
+            for pose, source in ((0, 0), (4, 4), (8, 8), (0x28, 8)):
+                with self.subTest(asset=name, pose=pose):
+                    f.write_block(f.STAGING, bytes([0xD1] * 64))
+                    result = f.command(f.STAGE, selector, pose)
+                    self.assertFalse(result["carry"])
+                    self.assertEqual(
+                        f.read_block(f.STAGING, 64),
+                        sheet[source * 16:source * 16 + 64],
+                    )
+                    # The explicit asset bank must be restored to the fixture's
+                    # executing ROMX bank, or the mailbox cannot report success.
+                    self.assertEqual(f.read8(0xFFB0), 1)
+
+    def test_stage_rejects_short_sheet_and_invalid_pose_without_writes(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        for pose, tile_count in ((0, 11), (0x24, 12), (0x0C, 12), (0x80, 12)):
+            with self.subTest(pose=pose, tile_count=tile_count):
+                before = bytes((0x60 + i) & 0xFF for i in range(64))
+                f.write_block(f.STAGING, before)
+                result = f.command(f.STAGE, 0, pose, target=tile_count)
+                self.assertTrue(result["carry"])
+                self.assertEqual(f.read_block(f.STAGING, 64), before)
+
+    def test_prepare_oam_preserves_renderer_snapshot_except_tile_ids(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        snapshot = bytes((
+            32, 40, 0xEE, 0x00,
+            32, 48, 0xDD, 0x21,
+            40, 40, 0xCC, 0x90,
+            40, 48, 0xBB, 0xB1,
+        ))
+        f.write_block(f.OAM_SNAPSHOT, snapshot)
+        for base in (0x6C, 0x70, 0x74):
+            with self.subTest(base=base):
+                f.write_block(f.OAM_SOURCE, bytes([0xD3] * 16))
+                result = f.command(f.PREPARE_OAM, base)
+                self.assertFalse(result["carry"])
+                expected = bytearray(snapshot)
+                expected[2::4] = bytes(range(base, base + 4))
+                self.assertEqual(f.read_block(f.OAM_SOURCE, 16), bytes(expected))
+
+    def test_prepare_oam_invalid_base_is_atomic(self) -> None:
+        assert self.fixture is not None
+        f = self.fixture
+        f.write_block(f.OAM_SNAPSHOT, bytes(range(16)))
+        for base in (0, 0x6D, 0x78, 0xFF):
+            before = bytes([0xA5] * 16)
+            f.write_block(f.OAM_SOURCE, before)
+            result = f.command(f.PREPARE_OAM, base)
+            self.assertTrue(result["carry"])
+            self.assertEqual(f.read_block(f.OAM_SOURCE, 16), before)
 
 
 if __name__ == "__main__":

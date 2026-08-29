@@ -610,3 +610,133 @@ LobbyPoseCachePublish::
 .reject
 	scf
 	ret
+
+; Stage one four-tile standing pose through the established bank-aware copy.
+; DIRECT-CALL ABI: a = source ROM bank, de = start of a 12-tile standing sheet,
+; b = available tile count, c = poseflags (source 0/4/8 plus optional X flip).
+; The source pointer is advanced to the selected four tiles and copied into the
+; shared 64-byte wLobbyPoseStagingTiles buffer. X flip changes OAM only and does
+; not alter source bytes. Carry set rejects invalid size/pose before any write.
+;
+; This ABI is deliberately not advertised as farcall-safe: farcall destroys a,
+; bc and hl on entry. A future bank-$05 table resolver must either direct-call
+; this with the resolved bank/address, or publish those values through audited
+; scratch before calling across banks. Do not direct-read SpriteSheetPointerTable
+; from a differently placed integration section.
+;
+; Farcall-safe entry: the future bank-$05 resolver writes bank/address/count and
+; selected pose into the five synthetic descriptor bytes named below, then
+; farcalls with no register arguments. These symbols remain test-only pending
+; WRAM ownership. The ordinary entry immediately following retains the direct
+; ABI for same-bank composition and focused testing.
+LobbyPoseStageTilesFromDescriptor::
+	ld a, [wLobbyPoseStageSourceBank]
+	ld de, wLobbyPoseStageSourceAddress
+	push af
+	ld a, [de]
+	ld l, a
+	inc de
+	ld a, [de]
+	ld d, a
+	ld e, l
+	ld a, [wLobbyPoseStageTileCount]
+	ld b, a
+	ld a, [wLobbyPoseStagePoseFlags]
+	ld c, a
+	pop af
+	; fall through with the direct-call ABI reconstructed from scratch
+LobbyPoseStageTiles::
+	ld h, a
+	ld a, b
+	cp 12
+	jr c, .reject
+	ld a, c
+	and $df
+	cp 0
+	jr z, .poseOK
+	cp 4
+	jr z, .poseOK
+	cp 8
+	jr nz, .reject
+.poseOK
+	bit 5, c
+	jr z, .flipOK
+	ld a, c
+	and $df
+	cp 8
+	jr nz, .reject
+.flipOK
+	ld a, c
+	and $0c
+	swap a ; source tile offset * 16 bytes
+	add e
+	ld e, a
+	jr nc, .sourceReady
+	inc d
+.sourceReady
+	ld a, h
+	ld hl, wLobbyPoseStagingTiles
+	ld bc, 4 tiles
+	call FarCopyData3
+	and a
+	ret
+.reject
+	scf
+	ret
+
+; Prepare one current four-entry renderer snapshot for atomic publication.
+; hl = 16 stable WRAM bytes produced by the ordinary renderer, b = physical
+; cache base ($6c/$70/$74). Copies the quad to wLobbyPoseStagingOAM, preserving
+; Y/X coordinates and every attribute bit (including X flip, palette and grass),
+; while replacing only tile IDs with base+0..3. Preserves bc/de/hl. Carry set
+; rejects an invalid base without writes. Source/destination must not overlap.
+; Farcall-safe entry reuses the transient source descriptor after tile staging:
+; SourceBank holds the physical cache base and SourceAddress holds the current
+; 16-byte renderer snapshot pointer. No additional scratch is required.
+LobbyPosePrepareOAMFromDescriptor::
+	ld a, [wLobbyPoseStageSourceBank]
+	ld b, a
+	ld hl, wLobbyPoseStageSourceAddress
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	; fall through with the direct-call ABI reconstructed from scratch
+LobbyPosePrepareOAM::
+	ld a, b
+	cp $6c
+	jr z, .valid
+	cp $70
+	jr z, .valid
+	cp $74
+	jr nz, .reject
+.valid
+	push bc
+	push de
+	push hl
+	ld de, wLobbyPoseStagingOAM
+	ld c, 4
+.entry
+	ld a, [hli] ; Y
+	ld [de], a
+	inc de
+	ld a, [hli] ; X
+	ld [de], a
+	inc de
+	inc hl ; discard the renderer's previous physical tile
+	ld a, b
+	ld [de], a
+	inc b
+	inc de
+	ld a, [hli] ; attributes
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .entry
+	pop hl
+	pop de
+	pop bc
+	and a
+	ret
+.reject
+	scf
+	ret

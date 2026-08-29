@@ -68,6 +68,16 @@ INCLUDE "includes.asm"
 DEF wShadowOAM EQU $C100
 DEF wLobbyPoseStagingTiles EQU $C200
 DEF wLobbyPoseStagingOAM EQU $C300
+DEF wLobbyPoseStageSourceBank EQU $C350
+DEF wLobbyPoseStageSourceAddress EQU $C351
+DEF wLobbyPoseStageTileCount EQU $C353
+DEF wLobbyPoseStagePoseFlags EQU $C354
+
+; This cache fixture does not exercise LobbyPoseStageTiles. The dedicated
+; staging fixture supplies the real bank-aware copier.
+SECTION "Unused staging copier", ROM0[$180]
+FarCopyData3::
+    ret
 DEF LOBBY_POSE_TEST_STATE EQU $C400
 
 DEF MAIL_COMMAND EQU $C000
