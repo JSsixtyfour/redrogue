@@ -170,3 +170,443 @@ ENDR
 .reject
 	scf
 	ret
+
+; Isolated request/cache manager. NOT connected to gameplay.
+; The caller supplies a 27-byte state block at hl. The future game allocation,
+; lifetime and clearing boundary are deliberately not selected here.
+;
+; Layout: requested descriptors (3 * picture/poseflags/OAM offset), committed
+; descriptors (same), dirty bits, valid bits, healing-ownership flag.
+DEF LOBBY_POSE_REQUESTS EQU 0
+DEF LOBBY_POSE_COMMITTED EQU 9
+DEF LOBBY_POSE_DIRTY EQU 18
+DEF LOBBY_POSE_VALID EQU 19
+DEF LOBBY_POSE_HEALING EQU 20
+DEF LOBBY_POSE_CACHE_STATE_SIZE EQU 21
+
+; hl = state. Clears requests/committed descriptors to $ff and all flags.
+; Preserves bc/de/hl. No external call or game RAM assumption.
+LobbyPoseCacheReset::
+	push bc
+	push de
+	push hl
+	ld b, 18
+	ld a, $ff
+.clearDescriptors
+	ld [hli], a
+	dec b
+	jr nz, .clearDescriptors
+	xor a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	pop hl
+	pop de
+	pop bc
+	ret
+
+; Request the latest complete descriptor for cache a (0..2).
+; d = picture ID (nonzero/non-$ff), e = source pose plus optional OAM_XFLIP,
+; c = aligned OAM byte offset $00..$90, hl = state. Only standing sources
+; 0/4/8 are accepted. Success coalesces an identical committed request or marks
+; it dirty. Replacements overwrite only the request, never committed state.
+; Preserves hl. Carry set rejects without writes; af/bc/de may be clobbered.
+LobbyPoseCacheRequest::
+	cp 3
+	jp nc, .reject
+	ld b, a
+	ld a, d
+	and a
+	jp z, .reject
+	cp $ff
+	jp z, .reject
+	ld a, e
+	and $df
+	cp 0
+	jr z, .poseOK
+	cp 4
+	jr z, .poseOK
+	cp 8
+	jp nz, .reject
+.poseOK
+	bit 5, e
+	jr z, .flipOK
+	ld a, e
+	and $df
+	cp 8
+	jp nz, .reject
+.flipOK
+	ld a, c
+	and $0f
+	jp nz, .reject
+	ld a, c
+	cp $a0
+	jp nc, .reject
+	push hl
+	ld a, b
+	call .DescriptorAddress
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	inc hl
+	ld [hl], c
+	pop hl
+	push hl
+	ld a, b
+	call .DescriptorAddress
+	ld a, l
+	add LOBBY_POSE_COMMITTED
+	ld l, a
+	jr nc, .committedAddress
+	inc h
+.committedAddress
+	ld a, [hli]
+	cp d
+	jr nz, .dirty
+	ld a, [hli]
+	cp e
+	jr nz, .dirty
+	ld a, [hl]
+	cp c
+	jr nz, .dirty
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_VALID
+	ld l, a
+	jr nc, .validAddress
+	inc h
+.validAddress
+	ld a, [hl]
+	call .IndexMask
+	and d
+	jr z, .dirtyFromState
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .clearDirty
+	inc h
+.clearDirty
+	ld a, [hl]
+	call .IndexMask
+	ld e, a
+	ld a, d
+	cpl
+	and e
+	ld [hl], a
+	pop hl
+	and a
+	ret
+.dirty
+	pop hl
+.dirtyFromState
+	push hl
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .setDirty
+	inc h
+.setDirty
+	ld a, [hl]
+	call .IndexMask
+	or d
+	ld [hl], a
+	pop hl
+	and a
+	ret
+.reject
+	scf
+	ret
+
+; a = cache index, hl = state. Returns hl at its three-byte descriptor.
+.DescriptorAddress
+	push bc
+	ld c, a
+	add a
+	add c
+	add l
+	ld l, a
+	jr nc, .done
+	inc h
+.done
+	pop bc
+	ret
+
+; b = cache index, a = flags. Returns d = mask and a restored flags.
+.IndexMask
+	ld d, 1
+	push af
+	ld a, b
+	and a
+	jr z, .maskDone
+.maskLoop
+	sla d
+	dec a
+	jr nz, .maskLoop
+.maskDone
+	pop af
+	ret
+
+; a = 0 releases healing ownership, nonzero claims it. hl = state.
+; Preserves bc/de/hl. Pending overlapping requests remain dirty.
+LobbyPoseCacheSetHealing::
+	push bc
+	push hl
+	ld b, a
+	ld a, l
+	add LOBBY_POSE_HEALING
+	ld l, a
+	jr nc, .address
+	inc h
+.address
+	ld a, b
+	and a
+	jr z, .store
+	ld a, 1
+.store
+	ld [hl], a
+	pop hl
+	pop bc
+	ret
+
+; Invalidate cache a, or all three for $ff. The latest valid request becomes
+; dirty, so a full graphics overwrite can be recovered without inventing a new
+; request. hl = state. Preserves hl; carry set rejects other indices.
+LobbyPoseCacheInvalidate::
+	cp $ff
+	jr z, .all
+	cp 3
+	jr nc, .reject
+	ld b, a
+	call .invalidateOne
+	and a
+	ret
+.all
+	ld b, 0
+	call .invalidateOne
+	inc b
+	call .invalidateOne
+	inc b
+	call .invalidateOne
+	and a
+	ret
+.reject
+	scf
+	ret
+.invalidateOne
+	push hl
+	ld a, l
+	add LOBBY_POSE_VALID
+	ld l, a
+	jr nc, .validAddress
+	inc h
+.validAddress
+	ld a, [hl]
+	call LobbyPoseCacheRequest.IndexMask
+	ld e, a
+	ld a, d
+	cpl
+	and e
+	ld [hl], a
+	pop hl
+	push hl
+	ld a, b
+	call LobbyPoseCacheRequest.DescriptorAddress
+	ld a, [hl]
+	cp $ff
+	pop hl
+	ret z
+	push hl
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .dirtyAddress
+	inc h
+.dirtyAddress
+	ld a, [hl]
+	call LobbyPoseCacheRequest.IndexMask
+	or d
+	ld [hl], a
+.done
+	pop hl
+	ret
+
+; Return the first publishable dirty request. Healing ownership skips OAM
+; quads beginning at $80/$90 because they overlap healing entries 33..39.
+; hl = state. Success: a=index, b=physical cache base, c=OAM byte offset,
+; d=picture, e=poseflags. Carry set means no publishable request. Preserves hl.
+LobbyPoseCacheSelect::
+	push hl
+	ld b, 0
+.loop
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .dirtyAddress
+	inc h
+.dirtyAddress
+	ld a, [hl]
+	call LobbyPoseCacheRequest.IndexMask
+	and d
+	jr z, .next
+	pop hl
+	push hl
+	ld a, b
+	call LobbyPoseCacheRequest.DescriptorAddress
+	ld d, [hl]
+	inc hl
+	ld e, [hl]
+	inc hl
+	ld c, [hl]
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_HEALING
+	ld l, a
+	jr nc, .healingAddress
+	inc h
+.healingAddress
+	ld a, [hl]
+	and a
+	jr z, .selected
+	ld a, c
+	cp $80
+	jr nc, .next
+.selected
+	ld a, b
+	add a
+	add a
+	add $6c
+	ld b, a
+	pop hl
+	ld a, b
+	sub $6c
+	srl a
+	srl a
+	and a
+	ret
+.next
+	pop hl
+	push hl
+	inc b
+	ld a, b
+	cp 3
+	jr c, .loop
+	pop hl
+	scf
+	ret
+
+; Publish a descriptor previously selected and staged by the caller.
+; a=index, d=picture, e=poseflags, c=OAM byte offset, hl=state. The caller
+; prepares wLobbyPoseStagingTiles (64 bytes) and wLobbyPoseStagingOAM (16).
+; The descriptor is rechecked, so a replacement request cannot publish stale
+; staging. A deferred/invalid commit remains dirty. Success copies the exact
+; descriptor into committed state, sets valid and clears dirty. Preserves hl.
+LobbyPoseCachePublish::
+	cp 3
+	jr nc, .reject
+	ld b, a
+	push hl
+	ld a, b
+	call LobbyPoseCacheRequest.DescriptorAddress
+	ld a, [hli]
+	cp d
+	jr nz, .mismatch
+	ld a, [hli]
+	cp e
+	jr nz, .mismatch
+	ld a, [hl]
+	cp c
+	jr nz, .mismatch
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .dirtyAddress
+	inc h
+.dirtyAddress
+	ld a, [hl]
+	push de
+	call LobbyPoseCacheRequest.IndexMask
+	and d
+	jr z, .notDirty
+	pop de
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_HEALING
+	ld l, a
+	jr nc, .healingAddress
+	inc h
+.healingAddress
+	ld a, [hl]
+	and a
+	jr z, .commit
+	ld a, c
+	cp $80
+	jr nc, .mismatch
+.commit
+	pop hl
+	push hl
+	push bc
+	push de
+	ld a, b
+	add a
+	add a
+	add $6c
+	ld b, a
+	ld hl, wLobbyPoseStagingTiles
+	ld de, wLobbyPoseStagingOAM
+	call LobbyPoseCommit
+	pop de
+	pop bc
+	pop hl
+	ret c
+	push hl
+	ld a, b
+	call LobbyPoseCacheRequest.DescriptorAddress
+	push hl
+	ld a, l
+	add LOBBY_POSE_COMMITTED
+	ld l, a
+	jr nc, .committedAddress
+	inc h
+.committedAddress
+	ld a, d
+	ld [hli], a
+	ld a, e
+	ld [hli], a
+	ld [hl], c
+	pop hl
+	pop hl
+	push hl
+	ld a, l
+	add LOBBY_POSE_DIRTY
+	ld l, a
+	jr nc, .flagsAddress
+	inc h
+.flagsAddress
+	ld a, [hl]
+	call LobbyPoseCacheRequest.IndexMask
+	ld e, a
+	ld a, d
+	cpl
+	and e
+	ld [hli], a ; dirty
+	ld a, [hl] ; valid immediately follows dirty
+	or d
+	ld [hl], a
+	pop hl
+	and a
+	ret
+.notDirty
+	pop de
+	jr .mismatch
+.mismatch
+	pop hl
+.reject
+	scf
+	ret
