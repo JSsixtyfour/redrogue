@@ -78,6 +78,39 @@ DEF FOLLOWER_IDENTITY_UNCHANGED  EQU 0
 DEF FOLLOWER_IDENTITY_REBUILD    EQU 1
 DEF FOLLOWER_IDENTITY_DISABLED   EQU 2
 
+; Translate the neutral species category returned by
+; PCGetPokemonSpriteCategory into an existing 12-tile walking sheet.
+; INPUT/OUTPUT: e. Clobbers af/hl. The three decoration sheets deliberately
+; replace the four-tile Poké Ball/Fossil/Snorlax boss sheets.
+FollowerCategoryToSprite::
+	ld a, e
+	cp NUM_MON_SPRITE_CATEGORIES
+	jr nc, .reject
+	ld hl, .table
+	add a, l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld e, [hl]
+	scf
+	ret
+.reject
+	xor a
+	ld e, a
+	ret
+.table
+	db SPRITE_MONSTER
+	db SPRITE_BIRD
+	db SPRITE_SEEL
+	db SPRITE_FAIRY
+	db SPRITE_VOLTORB_DECO
+	db SPRITE_SNORLAX_DECO
+	db SPRITE_OMANYTE_DECO
+	db SPRITE_PIKACHU
+	db SPRITE_CHANSEY
+	assert @ - .table == NUM_MON_SPRITE_CATEGORIES
+
 ; Yellow ShouldPikachuSpawn adapted to the approved Red Rogue policy.
 ; INPUT D = caller-owned temporary suppression mask (0 permits following).
 ; OUTPUT carry SET + E = valid lead species, or carry clear + E = 0.

@@ -1949,7 +1949,31 @@ wWarpEntries:: ds MAX_WARP_EVENTS * 4 ; Y, X, warp ID, map ID
 ; if $ff, the player's coordinates are not updated when entering the map
 wDestinationWarpID:: db
 
-	ds 128
+; Follower integration state. This exactly replaces the former 128-byte
+; anonymous warp-overflow shadow; MAX_WARP_EVENTS caps wWarpEntries at the
+; preceding 128 bytes. Keeping the replacement the same size preserves every
+; downstream WRAM and save offset. PrepareOakSpeech zeroes this whole Main Data
+; span on a new game. Load/map lifecycle code must still reset the transient
+; queue, cache and staging state rather than trusting values restored from SRAM.
+wFollowerCommandBufferSize:: db
+wFollowerCommandBuffer:: ds 16
+wFollowerLedgeLatch:: db
+wFollowerSpecies:: db
+wFollowerSuppression:: db
+
+wLobbyPoseCacheState:: ds 21
+wLobbyPoseStagingTiles:: ds 4 tiles
+wLobbyPoseStagingOAM:: ds 4 * 4
+
+; Reused farcall descriptor: bank/address/count/pose for tile staging, then
+; physical cache base/address for OAM preparation.
+wLobbyPoseStageSourceBank:: db
+wLobbyPoseStageSourceAddress:: dw
+wLobbyPoseStageTileCount:: db
+wLobbyPoseStagePoseFlags:: db
+
+	ds 2
+ASSERT @ - wFollowerCommandBufferSize == 128
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)
 wNumSigns:: db
