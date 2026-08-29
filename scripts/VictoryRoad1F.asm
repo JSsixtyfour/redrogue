@@ -68,6 +68,7 @@ VictoryRoad1F_TextPointers:
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_3, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_3
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_1, TEXT_VICTORYROAD1F_ROGUE_TRADE_NPC
 	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_TM_SKY_ATTACK
+	dw_const PickUpItemText,                 TEXT_VICTORYROAD1F_RARE_CANDY
 	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER1
 	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER2
 	dw_const BoulderText,                    TEXT_VICTORYROAD1F_BOULDER3 

@@ -56,7 +56,6 @@ OverworldLoopLessDelay::
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a
 	call nz, HandleMidJump
-	farcall FollowerUpdate
 	ld a, [wWalkCounter]
 	and a
 	jp nz, .moveAhead ; if the player sprite has not yet completed the walking animation
@@ -298,8 +297,6 @@ OverworldLoopLessDelay::
 	ld a, $10
 .setWalkCounter
 	ld [wWalkCounter], a
-	ld a, 1
-	ld [wFollowerLoadAction], a ; consumed by the next FollowerUpdate
 	jr .moveAhead2
 
 .moveAhead
@@ -1777,11 +1774,6 @@ AdvancePlayerSprite::
 	ldh a, [hSCX]
 	add c
 	ldh [hSCX], a ; update background scroll X
-	push bc
-	ld d, b
-	ld e, c
-	farcall FollowerApplyCameraScroll
-	pop bc
 ; shift all the sprites in the direction opposite of the player's motion
 ; so that the player appears to move relative to them
 	ld hl, wSprite01StateData1YPixels

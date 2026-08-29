@@ -119,7 +119,6 @@ SECTION "Lobby pose test entry", ROM0[$100]
 
 ; The source itself is kept in the test ROM's only banked section.  There are
 ; no bank-switch helpers or game callers hidden behind the fixture.
-DEF LOBBY_POSE_CORE_ONLY EQU 1
 INCLUDE "engine/overworld/lobby_pose.asm"
 
 SECTION "Channeler staging asset", ROMX, BANK[2]

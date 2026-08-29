@@ -18,10 +18,7 @@ DisplayPokemonCenterDialogue_::
 	call LoadScreenTilesFromBuffer1 ; restore screen
 	ld hl, NeedYourPokemonText
 	call PrintText
-	ld a, [wSprite01StateData2ImageBaseOffset]
-	dec a
-	swap a
-	or SPRITE_FACING_UP
+	ld a, $18
 	ld [wSprite01StateData1ImageIndex], a ; make the nurse turn to face the machine
 	call Delay3
 	predef HealParty
@@ -36,10 +33,7 @@ DisplayPokemonCenterDialogue_::
 	call PlaySound
 	ld hl, PokemonFightingFitText
 	call PrintText
-	ld a, [wSprite01StateData2ImageBaseOffset]
-	dec a
-	swap a
-	or SPRITE_FACING_LEFT
+	ld a, $14
 	ld [wSprite01StateData1ImageIndex], a ; make the nurse bow
 	ld c, a
 	call DelayFrames

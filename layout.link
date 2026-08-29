@@ -201,10 +201,6 @@ ROMX $2D
 	"Room Vendor"
 	"Room Sprites"
 	"Maps 22"
-	; Follower integration workers are bank-independent ROMX code reached through
-	; farcall. Pin both away from tight legacy banks and keep all variants stable.
-	"Follower Core Draft"
-	"Lobby Pose Draft"
 ROMX $2E
 	; Selectable player character. "Player Sprites" holds every overworld sheet
 	; the player can be assigned (plus bike/surf) so LoadPlayerSpriteGraphics can

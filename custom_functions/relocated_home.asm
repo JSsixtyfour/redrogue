@@ -258,7 +258,6 @@ InitOptions_::
 	ld [wLetterPrintingDelayFlags], a
 	ld a, TEXT_DELAY_FAST
 	ld [wOptions], a
-	; BIT_FOLLOWER_DISABLED stays clear, so new games default to a follower.
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a
 	ldh a, [hGBC]

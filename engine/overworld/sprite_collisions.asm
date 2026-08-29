@@ -10,9 +10,6 @@ _UpdateSprites::
 	ld a, [hl]
 	and a
 	jr z, .skipSprite   ; tests SPRITESTATEDATA2_IMAGEBASEOFFSET
-	ld a, c
-	cp $f0
-	jr z, .skipSprite   ; slot 15 is updated only by FollowerUpdate
 	push hl
 	push de
 	push bc
@@ -115,8 +112,6 @@ DetectCollisionBetweenSprites:
 
 .loop
 	ldh [hCollidingSpriteOffset], a
-	cp 15
-	jp z, .next ; the follower is visual and never blocks an authored actor
 	swap a
 	ld e, a
 	ldh a, [hCurrentSpriteOffset]

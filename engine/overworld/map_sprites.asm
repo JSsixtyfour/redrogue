@@ -9,10 +9,9 @@
 ; If there is an inner loop, Y is the inner loop index, i.e. y#SPRITESTATEDATA1_* and
 ; y#SPRITESTATEDATA2_* denote fields of the sprite slots iterated over in the inner loop.
 InitMapSprites::
-; Compact current-map loading is used indoors and outdoors. The old fixed
-; outdoor sets preloaded nine walking sheets whether or not their actors were
-; present, which left no slot for the follower. Current authored maps need at
-; most eight distinct walking sheets after the three approved object cuts.
+	call InitOutsideMapSprites
+	ret c ; return if the map is an outside map (already handled by above call)
+; if the map is an inside map (i.e. mapID >= FIRST_INDOOR_MAP)
 	ld hl, wSpritePlayerStateData1PictureID
 	ld de, wSpritePlayerStateData2PictureID
 ; Loop to copy picture IDs from [x#SPRITESTATEDATA1_PICTUREID]
@@ -35,7 +34,7 @@ LoadMapSpriteTilePatterns:
 	ld a, [wNumSprites]
 	and a ; are there any sprites?
 	jr nz, .spritesExist
-	jp .loadFollower
+	ret
 .spritesExist
 	ld c, a ; c = [wNumSprites]
 	ld b, NUM_SPRITESTATEDATA_STRUCTS
@@ -75,11 +74,7 @@ LoadMapSpriteTilePatterns:
 	jr .checkIfAlreadyLoadedLoop
 .notAlreadyLoaded
 	ld de, wSpritePlayerStateData2ImageBaseOffset
-	ld b, 2 ; slot 1 player, slot 2 reserved for the follower
-	ldh a, [hCurMap]
-	cp INDIGO_PLATEAU_LOBBY
-	jr nz, .findNextVRAMSlotLoop
-	dec b ; temporary: lobby retains all ten authored walking sheets
+	ld b, 1
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
 .findNextVRAMSlotLoop
@@ -238,9 +233,6 @@ LoadMapSpriteTilePatterns:
 	ld l, a
 	dec b
 	jr nz, .zeroStoredPictureIDLoop
-
-.loadFollower
-	farcall FollowerLoadMapGraphics
 	ret
 
 ; reads data from SpriteSheetPointerTable
@@ -262,9 +254,6 @@ ReadSpriteSheetData:
 	ld a, [hli]
 	ret
 
-; Historical fixed outdoor loader retained as source reference only. The
-; current-map compact loader above is now the sole caller path.
-IF 0
 ; Loads sprite set for outside maps (cities and routes) and sets VRAM slots.
 ; sets carry if the map is a city or route, unsets carry if not
 InitOutsideMapSprites:
@@ -459,6 +448,5 @@ GetSplitMapSpriteSetID:
 	ret
 
 INCLUDE "data/maps/sprite_sets.asm"
-ENDC
 
 INCLUDE "data/sprites/sprites.asm"

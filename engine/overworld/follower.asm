@@ -78,140 +78,6 @@ DEF FOLLOWER_IDENTITY_UNCHANGED  EQU 0
 DEF FOLLOWER_IDENTITY_REBUILD    EQU 1
 DEF FOLLOWER_IDENTITY_DISABLED   EQU 2
 
-; Translate the neutral species category returned by
-; PCGetPokemonSpriteCategory into an existing 12-tile walking sheet.
-; INPUT/OUTPUT: e. Clobbers af/hl. The three decoration sheets deliberately
-; replace the four-tile Poké Ball/Fossil/Snorlax boss sheets.
-FollowerCategoryToSprite::
-	ld a, e
-	cp NUM_MON_SPRITE_CATEGORIES
-	jr nc, .reject
-	ld hl, .table
-	add a, l
-	ld l, a
-	jr nc, .noCarry
-	inc h
-.noCarry
-	ld e, [hl]
-	scf
-	ret
-.reject
-	xor a
-	ld e, a
-	ret
-.table
-	db SPRITE_MONSTER
-	db SPRITE_BIRD
-	db SPRITE_SEEL
-	db SPRITE_FAIRY
-	db SPRITE_VOLTORB_DECO
-	db SPRITE_SNORLAX_DECO
-	db SPRITE_OMANYTE_DECO
-	db SPRITE_PIKACHU
-	db SPRITE_CHANSEY
-	assert @ - .table == NUM_MON_SPRITE_CATEGORIES
-
-; Compact-loader follower half. Called after the authored current-map sheets
-; have been assigned around reserved physical slot 2. Reconciles the saved
-; option/party identity, resolves an existing 12-tile walking sheet, reloads
-; its standing/walking halves into slot 2, and schedules a behind-player spawn
-; only when identity/state was rebuilt. Text reloads preserve movement state.
-; No lobby-specific stationary cache is published here.
-FollowerLoadMapGraphics::
-	ldh a, [hCurMap]
-	cp INDIGO_PLATEAU_LOBBY
-	jr nz, .ordinaryMap
-	; The lobby needs its stationary pose-cache publisher before slot 2 can be
-	; reserved safely. Invalidate every cache transaction at the same full
-	; sprite-reload boundary that will eventually rebuild the lobby packing;
-	; save data and text reloads must never publish stale staged descriptors.
-	ld hl, wLobbyPoseCacheState
-	call LobbyPoseCacheReset
-	call LobbyPoseLoadMapGraphics
-	jr nc, .ordinaryMap
-	; Keep the old safety behavior if the specialized lobby packing rejects.
-	xor a
-	ld [wFollowerSpecies], a
-	call FollowerClearState
-	ret
-.ordinaryMap
-	ld a, [wFollowerSuppression]
-	ld d, a
-	ld a, [wFollowerSpecies]
-	ld e, a
-	call FollowerReconcileLead
-	jp nc, .disabled
-	ld a, e
-	ld [wFollowerSpecies], a
-	ld a, d
-	ld [wFollowerLoadAction], a
-
-	farcall PCGetPokemonSpriteCategory
-	call FollowerCategoryToSprite
-	jp nc, .disabled
-	ld a, e
-	ld [wFollowerLoadPicture], a
-	farcall FollowerResolveSpriteSheetToDescriptor
-	jp c, .disabled
-	ld a, [wLobbyPoseStageTileCount]
-	cp 12
-	jp c, .disabled
-
-	ld a, [wFontLoaded]
-	bit BIT_FONT_LOADED, a
-	jr nz, .walking
-	ld a, [wLobbyPoseStageSourceAddress]
-	ld e, a
-	ld a, [wLobbyPoseStageSourceAddress + 1]
-	ld d, a
-	ld a, [wLobbyPoseStageSourceBank]
-	ld hl, vNPCSprites tile $0c
-	ld bc, 12 tiles
-	call FarCopyData3
-
-.walking
-	ld a, [wLobbyPoseStageSourceAddress]
-	add $c0
-	ld e, a
-	ld a, [wLobbyPoseStageSourceAddress + 1]
-	adc 0
-	ld d, a
-	ld hl, vNPCSprites2 tile $0c
-	ld a, [wFontLoaded]
-	bit BIT_FONT_LOADED, a
-	jr nz, .walkingLCDOn
-	ld a, [wLobbyPoseStageSourceBank]
-	ld bc, 12 tiles
-	call FarCopyData3
-	jr .loaded
-.walkingLCDOn
-	ld a, [wLobbyPoseStageSourceBank]
-	ld b, a
-	ld c, 12
-	call CopyVideoData
-
-.loaded
-	ld a, 2
-	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
-	ld a, [wFollowerLoadAction]
-	cp FOLLOWER_IDENTITY_REBUILD
-	jr nz, .clearAction
-	ld a, [wFollowerLoadPicture]
-	ld d, a
-	ld e, FOLLOWER_PLACE_BEHIND
-	call FollowerScheduleSpawn
-.clearAction
-	xor a
-	ld [wFollowerLoadAction], a
-	ret
-
-.disabled
-	xor a
-	ld [wFollowerSpecies], a
-	ld [wFollowerLoadAction], a
-	call FollowerClearState
-	ret
-
 ; Yellow ShouldPikachuSpawn adapted to the approved Red Rogue policy.
 ; INPUT D = caller-owned temporary suppression mask (0 permits following).
 ; OUTPUT carry SET + E = valid lead species, or carry clear + E = 0.
@@ -484,18 +350,6 @@ FollowerApplyCameraScroll::
 ; UpdateSprites call (menus/cleanup also redraw). The integration caller
 ; owns active/hidden policy and must not tick while control is suppressed.
 FollowerUpdate::
-	call LobbyPoseUpdate
-	call FollowerRefreshLeadIdentity
-	ret c
-	ld a, [wFollowerLoadAction]
-	and a
-	jr z, .no_pending_step
-	xor a
-	ld [wFollowerLoadAction], a
-	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	and a
-	call nz, FollowerQueuePlayerStep
-.no_pending_step
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
 	ret z ; clear state is disabled, not a pending spawn
@@ -529,39 +383,6 @@ FollowerUpdate::
 	call FollowerDequeueCommand
 	jp nc, FollowerStartCommand
 	jp FollowerWait
-
-; Poll the authoritative party/option state at the one normal overworld tick.
-; This central boundary covers every party writer without scattering follower
-; hooks through menus, PC code, evolutions, trades, gifts, and custom systems.
-; A changed eligible lead needs the full map-sprite reload so slot 2 receives
-; the new sheet before the rebuilt follower is published. Disabling can clear
-; immediately. Carry set tells this frame's caller not to tick stale state.
-FollowerRefreshLeadIdentity:
-	ld a, [wFollowerSuppression]
-	ld d, a
-	call FollowerShouldSpawn
-	jr nc, .disabled
-	ld a, [wFollowerSpecies]
-	cp e
-	jr nz, .reload
-	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	and a
-	ret nz
-.reload
-	call ReloadMapSpriteTilePatterns
-	scf
-	ret
-.disabled
-	ld a, [wFollowerSpecies]
-	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID
-	or [hl]
-	ret z
-	xor a
-	ld [wFollowerSpecies], a
-	ld [wFollowerLoadAction], a
-	call FollowerClearState
-	scf
-	ret
 
 ; Core interaction eligibility, not party/option/script spawn policy or a
 ; front-tile hit test. The caller must establish those before opening text.

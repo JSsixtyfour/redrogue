@@ -53,10 +53,7 @@ PewterCitySuperNerd1ShowsPlayerMuseumScript:
 	ld a, SPRITE_FACING_UP
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
-	ld a, [wSprite03StateData2ImageBaseOffset]
-	dec a
-	swap a
-	or SPRITE_FACING_UP
+	ld a, ($3 << 4) | SPRITE_FACING_UP
 	ldh [hSpriteImageIndex], a
 	call SetSpriteImageIndexAfterSettingFacingDirection
 	call PlayDefaultMusic
@@ -124,10 +121,7 @@ PewterCityYoungsterShowsPlayerGymScript:
 	ld a, SPRITE_FACING_LEFT
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
-	ld a, [wSprite05StateData2ImageBaseOffset]
-	dec a
-	swap a
-	or SPRITE_FACING_LEFT
+	ld a, ($1 << 4) | SPRITE_FACING_LEFT
 	ldh [hSpriteImageIndex], a
 	call SetSpriteImageIndexAfterSettingFacingDirection
 	call PlayDefaultMusic

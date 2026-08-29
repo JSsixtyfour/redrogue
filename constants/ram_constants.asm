@@ -49,9 +49,7 @@ DEF DIFFICULTY_MASK EQU %00000111
 	const DIFFICULTY_HARD       ; 3
 	const DIFFICULTY_VERY_HARD  ; 4
 
-; wOptions2 persistent follower/CGB options. The follower bit is inverted so
-; zero-filled/default options leave the follower enabled.
-DEF BIT_FOLLOWER_DISABLED EQU 3
+; wOptions2 persistent CGB options. Both default on in InitOptions_.
 DEF BIT_ENHANCED_COLORS EQU 6
 DEF BIT_60_FPS         EQU 7
 

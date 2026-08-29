@@ -28,22 +28,10 @@ PewterPokecenterJigglypuffText:
 	ld c, 32
 	call DelayFrames
 
-	ld a, [wSprite03StateData2ImageBaseOffset]
-	dec a
-	swap a
-	ld b, a
-	ld hl, wJigglypuffFacingDirections
-	or SPRITE_FACING_DOWN
-	ld [hli], a
-	ld a, b
-	or SPRITE_FACING_LEFT
-	ld [hli], a
-	ld a, b
-	or SPRITE_FACING_UP
-	ld [hli], a
-	ld a, b
-	or SPRITE_FACING_RIGHT
-	ld [hl], a
+	ld hl, .FacingDirections
+	ld de, wJigglypuffFacingDirections
+	ld bc, .FacingDirectionsEnd - .FacingDirections
+	call CopyData
 
 	ld a, [wSprite03StateData1ImageIndex]
 	ld hl, wJigglypuffFacingDirections
@@ -66,7 +54,7 @@ PewterPokecenterJigglypuffText:
 	push hl
 	ld hl, wJigglypuffFacingDirections
 	ld de, wJigglypuffFacingDirections - 1
-	ld bc, 4
+	ld bc, .FacingDirectionsEnd - .FacingDirections
 	call CopyData
 	ld a, [wJigglypuffFacingDirections - 1]
 	ld [wJigglypuffFacingDirections + 3], a
@@ -87,6 +75,13 @@ PewterPokecenterJigglypuffText:
 .Text:
 	text_far _PewterPokecenterJigglypuffText
 	text_end
+
+.FacingDirections:
+	db $30 | SPRITE_FACING_DOWN
+	db $30 | SPRITE_FACING_LEFT
+	db $30 | SPRITE_FACING_UP
+	db $30 | SPRITE_FACING_RIGHT
+.FacingDirectionsEnd:
 
 PewterPokecenterLinkReceptionistText:
 	script_cable_club_receptionist

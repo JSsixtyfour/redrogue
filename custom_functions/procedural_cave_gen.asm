@@ -570,30 +570,6 @@ PCGetPokemonSpriteCategory::
 	ld e, a
 	ret
 
-; Follower bank-$05 sprite-sheet seam. The roomy follower bank first converts
-; the neutral category to a compile-time-controlled 12-tile SPRITE_* ID in e,
-; then farcalls this wrapper. Publish every result through WRAM because the
-; bank trampoline destroys a/bc/hl. Carry clear reports success.
-FollowerResolveSpriteSheetToDescriptor::
-	ld a, e
-	dec a
-	add a
-	add a
-	ld e, a
-	ld d, 0
-	ld hl, SpriteSheetPointerTable
-	add hl, de
-	ld a, [hli]
-	ld [wLobbyPoseStageSourceAddress], a
-	ld a, [hli]
-	ld [wLobbyPoseStageSourceAddress + 1], a
-	ld a, [hli]
-	ld [wLobbyPoseStageTileCount], a
-	ld a, [hl]
-	ld [wLobbyPoseStageSourceBank], a
-	and a
-	ret
-
 ; ============================================================
 ; PFStoreBossOWSpriteToSRAM
 ; Bank-7 wrapper for cross-bank (forest) callers. Computes the boss
