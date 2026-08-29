@@ -262,6 +262,9 @@ ReadSpriteSheetData:
 	ld a, [hli]
 	ret
 
+; Historical fixed outdoor loader retained as source reference only. The
+; current-map compact loader above is now the sole caller path.
+IF 0
 ; Loads sprite set for outside maps (cities and routes) and sets VRAM slots.
 ; sets carry if the map is a city or route, unsets carry if not
 InitOutsideMapSprites:
@@ -456,5 +459,6 @@ GetSplitMapSpriteSetID:
 	ret
 
 INCLUDE "data/maps/sprite_sets.asm"
+ENDC
 
 INCLUDE "data/sprites/sprites.asm"

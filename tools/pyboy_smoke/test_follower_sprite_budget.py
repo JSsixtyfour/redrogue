@@ -128,6 +128,41 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
             with self.subTest(sprite=name):
                 self.assertEqual(sizes[name], 12)
 
+    def test_four_tile_items_keep_their_fixed_vram_region(self):
+        source = (ROOT / "engine/overworld/map_sprites.asm").read_text()
+        # Reward balls, fossils, boulders, and other still objects do not use
+        # the player/follower/authored walking-sheet sequence. They retain the
+        # two fixed four-tile bases selected by image offsets 11 and 12.
+        self.assertIn("add 11", source)
+        self.assertIn("cp 11 ; is it a 4-tile sprite?", source)
+        self.assertIn("ld hl, vSprites tile $78", source)
+        self.assertIn("ld hl, vSprites tile $7c", source)
+
+        sizes = sprite_sizes()
+        self.assertEqual(sizes["SPRITE_POKE_BALL"], 4)
+        self.assertEqual(sizes["SPRITE_FOSSIL"], 4)
+        self.assertEqual(sizes["SPRITE_BOULDER"], 4)
+
+    def test_scripted_actor_images_use_live_compact_loader_bases(self):
+        checks = {
+            "scripts/PewterCity.asm": (
+                "wSprite03StateData2ImageBaseOffset",
+                "wSprite05StateData2ImageBaseOffset",
+            ),
+            "scripts/PewterPokecenter.asm": (
+                "wSprite03StateData2ImageBaseOffset",
+            ),
+            "engine/events/pokecenter.asm": (
+                "wSprite01StateData2ImageBaseOffset",
+            ),
+        }
+        for relative, symbols in checks.items():
+            source = (ROOT / relative).read_text()
+            for symbol in symbols:
+                with self.subTest(file=relative, symbol=symbol):
+                    self.assertIn(symbol, source)
+            self.assertNotRegex(source, r"\(\$[0-9a-fA-F]+ << 4\)")
+
 
 if __name__ == "__main__":
     unittest.main()
