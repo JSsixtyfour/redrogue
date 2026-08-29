@@ -127,7 +127,9 @@ FollowerLoadMapGraphics::
 	; save data and text reloads must never publish stale staged descriptors.
 	ld hl, wLobbyPoseCacheState
 	call LobbyPoseCacheReset
-	; Suppress only this intermediate integration build.
+	call LobbyPoseLoadMapGraphics
+	jr nc, .ordinaryMap
+	; Keep the old safety behavior if the specialized lobby packing rejects.
 	xor a
 	ld [wFollowerSpecies], a
 	call FollowerClearState
@@ -165,7 +167,7 @@ FollowerLoadMapGraphics::
 	ld a, [wLobbyPoseStageSourceBank]
 	ld hl, vNPCSprites tile $0c
 	ld bc, 12 tiles
-	call FarCopyData2
+	call FarCopyData3
 
 .walking
 	ld a, [wLobbyPoseStageSourceAddress]
@@ -180,7 +182,7 @@ FollowerLoadMapGraphics::
 	jr nz, .walkingLCDOn
 	ld a, [wLobbyPoseStageSourceBank]
 	ld bc, 12 tiles
-	call FarCopyData2
+	call FarCopyData3
 	jr .loaded
 .walkingLCDOn
 	ld a, [wLobbyPoseStageSourceBank]
@@ -482,6 +484,7 @@ FollowerApplyCameraScroll::
 ; UpdateSprites call (menus/cleanup also redraw). The integration caller
 ; owns active/hidden policy and must not tick while control is suppressed.
 FollowerUpdate::
+	call LobbyPoseUpdate
 	ld a, [wFollowerLoadAction]
 	and a
 	jr z, .no_pending_step

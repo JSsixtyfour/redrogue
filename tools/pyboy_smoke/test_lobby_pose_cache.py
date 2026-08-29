@@ -103,6 +103,7 @@ SECTION "Lobby pose cache test entry", ROM0[$100]
     jp LobbyPoseCacheTestMain
 
 SECTION "Lobby pose cache source", ROMX
+DEF LOBBY_POSE_CORE_ONLY EQU 1
 INCLUDE "engine/overworld/lobby_pose.asm"
 
 SECTION "Lobby pose cache test dispatcher", ROMX

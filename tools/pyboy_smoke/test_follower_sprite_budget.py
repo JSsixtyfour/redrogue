@@ -92,16 +92,43 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                     self.assertLessEqual(len(walking), 8, sorted(walking))
                 self.assertLessEqual(len(still), 2, sorted(still))
 
-    @unittest.expectedFailure
-    def test_lobby_full_sheet_layout_requires_compact_pose_loader(self):
-        # The old full-sheet model still cannot fit this roster. User chose
-        # to preserve all services/art and investigate stationary-pose packing.
-        # Replace this expected failure with actual compact-loader coverage
-        # when implemented; do not cut actors merely to satisfy this model.
+    def test_lobby_compact_pose_loader_replaces_full_sheet_failure(self):
         sizes = sprite_sizes()
         pictures = set(map_pictures()["IndigoPlateauLobby"])
         walking = {p for p in pictures if sizes[p] == 12}
-        self.assertLessEqual(len(walking), 8, sorted(walking))
+        self.assertGreater(len(walking), 8, sorted(walking))
+
+        pose = (ROOT / "engine/overworld/lobby_pose.asm").read_text()
+        follower = (ROOT / "engine/overworld/follower.asm").read_text()
+        self.assertIn("LobbyPoseLoadMapGraphics::", pose)
+        self.assertIn("LobbyPoseUpdate::", pose)
+        self.assertRegex(
+            pose,
+            r"(?s)\.imageBases\s+db 4.*?db 5.*?db 5.*?db 6.*?db 7.*?"
+            r"db 8.*?db 9.*?db 10.*?db 3.*?db 10.*?db 10",
+        )
+        self.assertIn("db $6c, 1 ; channeler", pose)
+        self.assertIn("db $70, 1 ; super nerd", pose)
+        self.assertIn("db $74, 1 ; Game Boy kid", pose)
+        self.assertRegex(
+            follower,
+            r"call LobbyPoseLoadMapGraphics\s+jr nc, \.ordinaryMap",
+        )
+
+    def test_lobby_async_publish_uses_vblank_mailbox_before_dma(self):
+        pose = (ROOT / "engine/overworld/lobby_pose.asm").read_text()
+        update = pose[pose.index("LobbyPoseUpdate::"):
+                      pose.index("LobbyPoseCacheActor:")]
+        self.assertIn("ldh a, [hVBlankCopySize]", update)
+        self.assertIn("di", update)
+        self.assertRegex(
+            update,
+            r"(?s)ldh \[hVBlankCopyDest \+ 1\], a.*?"
+            r"ld \[hl\], a.*?ld a, 4\s+ldh \[hVBlankCopySize\], a",
+        )
+        vblank = (ROOT / "home/vblank.asm").read_text()
+        self.assertLess(vblank.index("call VBlankCopy"),
+                        vblank.index("call hDMARoutine"))
 
     def test_object_slot_budget_after_exact_approved_cuts(self):
         for name, pictures in map_pictures().items():
@@ -143,6 +170,9 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
             lobby_branch,
             r"ld hl, wLobbyPoseCacheState\s+call LobbyPoseCacheReset",
         )
+        ordinary_loader = loader[loader.index("\n.ordinaryMap"):]
+        self.assertEqual(ordinary_loader.count("call FarCopyData3"), 2)
+        self.assertNotIn("call FarCopyData2", ordinary_loader)
 
     def test_follower_category_map_uses_only_twelve_tile_sheets(self):
         sizes = sprite_sizes()

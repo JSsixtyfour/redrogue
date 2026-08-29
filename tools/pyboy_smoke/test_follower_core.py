@@ -168,6 +168,7 @@ DEF wLobbyPoseStageTileCount EQU $C345
 DEF wLobbyPoseStagePoseFlags EQU $C346
 DEF wFollowerLoadAction EQU $C347
 DEF wFollowerLoadPicture EQU $C348
+DEF wLobbyPoseCacheState EQU $C349
 DEF hCurMap EQU $FF90
 DEF hRandomAdd EQU $FF80
 DEF wTileMap EQU $C400
@@ -222,7 +223,15 @@ Bankswitch::
     jp hl
 
 FarCopyData2::
+FarCopyData3::
 CopyVideoData::
+    ret
+
+LobbyPoseCacheReset::
+LobbyPoseLoadMapGraphics::
+    and a
+    ret
+LobbyPoseUpdate::
     ret
 
 ; Put the follower core and its dispatcher in the same ROMX bank. The test
