@@ -49,6 +49,27 @@ def map_pictures():
 
 
 class FollowerSpriteBudgetTests(unittest.TestCase):
+    def test_extra_options_toggle_uses_inverted_disabled_bit(self):
+        constants = (ROOT / "constants/ram_constants.asm").read_text()
+        menu = (ROOT / "engine/menus/extra_options.asm").read_text()
+        init = (ROOT / "custom_functions/relocated_home.asm").read_text()
+
+        self.assertIn("DEF BIT_FOLLOWER_DISABLED EQU 3", constants)
+        self.assertIn("DEF ROW_FOLLOWER EQU 3", menu)
+        self.assertIn("DEF NUM_EXTRA_OPTION_ROWS EQU 6", menu)
+        toggle = menu[menu.index("\n.toggleFollower\n"):
+                      menu.index("\n.toggle60FPS\n")]
+        self.assertIn("1 << BIT_FOLLOWER_DISABLED", toggle)
+        draw = menu[menu.index("\n.drawFollowerValue\n"):
+                    menu.index("\n.draw60FPSValue\n")]
+        self.assertRegex(
+            draw,
+            r"bit BIT_FOLLOWER_DISABLED, a\s+jr z, \.placeBinaryValue",
+        )
+        defaults = init[init.index("InitOptions_::"):
+                        init.index("ldh a, [hGBC]")]
+        self.assertNotIn("1 << BIT_FOLLOWER_DISABLED", defaults)
+
     def test_all_authored_pictures_have_supported_sheet_sizes(self):
         sizes = sprite_sizes()
         for name, pictures in map_pictures().items():

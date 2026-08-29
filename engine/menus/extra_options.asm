@@ -13,8 +13,8 @@
 ; below is different: it's not a spare bit, it deliberately reuses wOptions'
 ; EXISTING TEXT_DELAY_MASK bits (see its own comment for why).
 ;
-; STATUS: five rows - AUDIO (Phase 2.11), INST. TXT (Phase 8, text-speed work),
-; LEVELS, COLORS and 60 FPS. See the ROW_* / NUM_EXTRA_OPTION_ROWS constants
+; STATUS: six rows - AUDIO (Phase 2.11), INST. TXT (Phase 8, text-speed work),
+; LEVELS, FOLLOWER, COLORS and 60 FPS. See the ROW_* / NUM_EXTRA_OPTION_ROWS constants
 ; below, which are the authority; this paragraph has already gone stale once.
 ; INST. TXT does NOT add a check to PrintLetterDelay (home/print_text.asm)
 ; - that routine runs once per printed letter, easily hundreds of times a
@@ -64,9 +64,10 @@ SECTION "Extra Options Menu", ROMX
 DEF ROW_AUDIO EQU 0
 DEF ROW_INSTANT_TEXT EQU 1
 DEF ROW_LEVELS EQU 2
-DEF ROW_ENHANCED_COLORS EQU 3
-DEF ROW_60_FPS EQU 4
-DEF NUM_EXTRA_OPTION_ROWS EQU 5
+DEF ROW_FOLLOWER EQU 3
+DEF ROW_ENHANCED_COLORS EQU 4
+DEF ROW_60_FPS EQU 5
+DEF NUM_EXTRA_OPTION_ROWS EQU 6
 
 DisplayExtraOptionMenu::
 ; The caller clears the screen on both sides of this call and fully redraws the
@@ -82,8 +83,8 @@ DisplayExtraOptionMenu::
 	ld b, 2
 	ld c, 18
 	call TextBoxBorder
-	hlcoord 0, 4 ; encloses the three setting rows (5, 7, and 9), like the OPTION screen
-	ld b, 10
+	hlcoord 0, 4
+	ld b, 12
 	ld c, 18
 	call TextBoxBorder
 	hlcoord 1, 2
@@ -102,10 +103,14 @@ DisplayExtraOptionMenu::
 	call PlaceString
 	call .drawLevelsValue
 	hlcoord 1, 11
+	ld de, ExtraOptionsFollowerLabelText
+	call PlaceString
+	call .drawFollowerValue
+	hlcoord 1, 13
 	ld de, ExtraOptionsColorsLabelText
 	call PlaceString
 	call .drawColorsValue
-	hlcoord 1, 13
+	hlcoord 1, 15
 	ld de, ExtraOptions60FPSLabelText
 	call PlaceString
 	call .draw60FPSValue
@@ -152,6 +157,8 @@ DisplayExtraOptionMenu::
 	jr z, .toggleEnhancedColors
 	cp ROW_LEVELS
 	jp z, .cycleLevels
+	cp ROW_FOLLOWER
+	jr z, .toggleFollower
 	cp ROW_INSTANT_TEXT
 	jr z, .toggleInstantText
 .cycleAudio
@@ -204,6 +211,13 @@ DisplayExtraOptionMenu::
 	ld [hl], a
 	call .drawColorsValue
 	jp .loop
+.toggleFollower
+	ld hl, wOptions2
+	ld a, 1 << BIT_FOLLOWER_DISABLED
+	xor [hl]
+	ld [hl], a
+	call .drawFollowerValue
+	jp .loop
 .toggle60FPS
 	ld hl, wOptions2
 	ld a, 1 << BIT_60_FPS
@@ -248,8 +262,9 @@ DisplayExtraOptionMenu::
 	db 5 ; ROW_AUDIO
 	db 7 ; ROW_INSTANT_TEXT
 	db 9 ; ROW_LEVELS
-	db 11 ; ROW_ENHANCED_COLORS
-	db 13 ; ROW_60_FPS
+	db 11 ; ROW_FOLLOWER
+	db 13 ; ROW_ENHANCED_COLORS
+	db 15 ; ROW_60_FPS
 
 ; Cycle the stored difficulty through the display order, preserving the other
 ; bits in wOptions2.
@@ -379,7 +394,7 @@ DEF NUM_LEVELS_SETTINGS EQU 5
 	jp PlaceString
 
 .drawColorsValue
-	hlcoord 10, 11
+	hlcoord 10, 13
 	ld de, ExtraOptionsOnText
 	ld a, [wOptions2]
 	bit BIT_ENHANCED_COLORS, a
@@ -387,8 +402,17 @@ DEF NUM_LEVELS_SETTINGS EQU 5
 	ld de, ExtraOptionsOffText
 	jr .placeBinaryValue
 
+.drawFollowerValue
+	hlcoord 10, 11
+	ld de, ExtraOptionsOnText
+	ld a, [wOptions2]
+	bit BIT_FOLLOWER_DISABLED, a
+	jr z, .placeBinaryValue
+	ld de, ExtraOptionsOffText
+	jr .placeBinaryValue
+
 .draw60FPSValue
-	hlcoord 10, 13
+	hlcoord 10, 15
 	ld de, ExtraOptionsOnText
 	ld a, [wOptions2]
 	bit BIT_60_FPS, a
@@ -442,6 +466,9 @@ ExtraOptionsInstantTextOffText:
 
 ExtraOptionsColorsLabelText:
 	db "COLORS@"
+
+ExtraOptionsFollowerLabelText:
+	db "FOLLOWER@"
 
 ExtraOptions60FPSLabelText:
 	db "60 FPS@"
