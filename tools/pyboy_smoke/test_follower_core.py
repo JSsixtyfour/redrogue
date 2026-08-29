@@ -59,6 +59,17 @@ class _FollowerRom:
     RANDOM_VALUE = 0xC31B
     PARTY_COUNT = 0xC31C
     PARTY_SPECIES = 0xC320
+    # Loader-only synthetic state. Keep it outside the existing core/mailbox
+    # ranges so the original 31 tests retain their exact memory guards.
+    FOLLOWER_SPECIES = 0xC340
+    FOLLOWER_SUPPRESSION = 0xC341
+    POSE_SOURCE_BANK = 0xC342
+    POSE_SOURCE_ADDRESS = 0xC343
+    POSE_TILE_COUNT = 0xC345
+    POSE_FLAGS = 0xC346
+    FOLLOWER_LOAD_ACTION = 0xC347
+    FOLLOWER_LOAD_PICTURE = 0xC348
+    CURRENT_MAP = 0xFF90
     TILE_MAP = 0xC400
     RESULT_D = 0xC007
 
@@ -149,8 +160,19 @@ DEF wFontLoaded EQU $C319
 DEF wWalkCounter EQU $C31A
 DEF wPartyCount EQU $C31C
 DEF wPartySpecies EQU $C320
+DEF wFollowerSpecies EQU $C340
+DEF wFollowerSuppression EQU $C341
+DEF wLobbyPoseStageSourceBank EQU $C342
+DEF wLobbyPoseStageSourceAddress EQU $C343
+DEF wLobbyPoseStageTileCount EQU $C345
+DEF wLobbyPoseStagePoseFlags EQU $C346
+DEF wFollowerLoadAction EQU $C347
+DEF wFollowerLoadPicture EQU $C348
+DEF hCurMap EQU $FF90
 DEF hRandomAdd EQU $FF80
 DEF wTileMap EQU $C400
+DEF vNPCSprites EQU $8000
+DEF vNPCSprites2 EQU $8800
 
 DEF MAIL_COMMAND EQU $C000
 DEF MAIL_COMPLETE EQU $C001
@@ -192,10 +214,31 @@ Random::
     ldh [hRandomAdd], a
     ret
 
+; Loader-only HOME dependencies. The core tests never dispatch the loader,
+; but these labels keep its direct calls linkable without importing unrelated
+; game code. Bankswitch jumps through HL, which is sufficient for the tiny
+; fixture's same-ROMX-bank helper stubs below.
+Bankswitch::
+    jp hl
+
+FarCopyData2::
+CopyVideoData::
+    ret
+
 ; Put the follower core and its dispatcher in the same ROMX bank. The test
 ; entry above jumps directly to this bank, so no banked helper is hidden by a
 ; test stub or an accidental far call.
 INCLUDE "engine/overworld/follower.asm"
+
+SECTION "Follower test loader bank stubs", ROMX
+; Minimal banked stand-ins for the loader's resolver calls. They are kept
+; separate from the movement core so BANK() remains a real ROMX relocation.
+PCGetPokemonSpriteCategory::
+    ret
+
+FollowerResolveSpriteSheetToDescriptor::
+    scf
+    ret
 
 SECTION "Follower test dispatcher", ROMX
 FollowerTestMain::

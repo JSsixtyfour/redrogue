@@ -1972,7 +1972,8 @@ wLobbyPoseStageSourceAddress:: dw
 wLobbyPoseStageTileCount:: db
 wLobbyPoseStagePoseFlags:: db
 
-	ds 2
+wFollowerLoadAction:: db
+wFollowerLoadPicture:: db
 ASSERT @ - wFollowerCommandBufferSize == 128
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)

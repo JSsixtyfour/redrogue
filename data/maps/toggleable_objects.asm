@@ -200,7 +200,8 @@ ToggleableObjectStates:
 	toggle_object_state MTMOON1F_POTION1,      ON
 	toggle_object_state MTMOON1F_MOON_STONE,   ON
 	toggle_object_state MTMOON1F_RARE_CANDY,   ON
-	toggle_object_state MTMOON1F_ESCAPE_ROPE,  ON
+	; Retired TOGGLE_MT_MOON_1F_ITEM_4. Keep the serialized toggle index stable.
+	toggle_object_state 0,                     OFF
 	toggle_object_state MTMOON1F_POTION2,      ON
 	toggle_object_state MTMOON1F_ROGUE_TRADE_NPC, OFF
 
@@ -360,7 +361,8 @@ ToggleableObjectStates:
 
 	toggleable_objects_for VICTORY_ROAD_1F
 	toggle_object_state VICTORYROAD1F_TM_SKY_ATTACK, ON
-	toggle_object_state VICTORYROAD1F_RARE_CANDY,    ON
+	; Retired TOGGLE_VICTORY_ROAD_1F_ITEM_2. Keep later toggle indices stable.
+	toggle_object_state 0,                            OFF
 
 	toggleable_objects_for CHAMPIONS_ROOM
 	toggle_object_state CHAMPIONSROOM_OAK, OFF

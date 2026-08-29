@@ -111,6 +111,95 @@ FollowerCategoryToSprite::
 	db SPRITE_CHANSEY
 	assert @ - .table == NUM_MON_SPRITE_CATEGORIES
 
+; Compact-loader follower half. Called after the authored current-map sheets
+; have been assigned around reserved physical slot 2. Reconciles the saved
+; option/party identity, resolves an existing 12-tile walking sheet, reloads
+; its standing/walking halves into slot 2, and schedules a behind-player spawn
+; only when identity/state was rebuilt. Text reloads preserve movement state.
+; No lobby-specific stationary cache is published here.
+FollowerLoadMapGraphics::
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .ordinaryMap
+	; The lobby needs its stationary pose-cache publisher before slot 2 can be
+	; reserved safely. Suppress only this intermediate integration build.
+	xor a
+	ld [wFollowerSpecies], a
+	call FollowerClearState
+	ret
+.ordinaryMap
+	ld a, [wFollowerSuppression]
+	ld d, a
+	ld a, [wFollowerSpecies]
+	ld e, a
+	call FollowerReconcileLead
+	jp nc, .disabled
+	ld a, e
+	ld [wFollowerSpecies], a
+	ld a, d
+	ld [wFollowerLoadAction], a
+
+	farcall PCGetPokemonSpriteCategory
+	call FollowerCategoryToSprite
+	jp nc, .disabled
+	ld a, e
+	ld [wFollowerLoadPicture], a
+	farcall FollowerResolveSpriteSheetToDescriptor
+	jp c, .disabled
+	ld a, [wLobbyPoseStageTileCount]
+	cp 12
+	jp c, .disabled
+
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jr nz, .walking
+	ld a, [wLobbyPoseStageSourceAddress]
+	ld e, a
+	ld a, [wLobbyPoseStageSourceAddress + 1]
+	ld d, a
+	ld a, [wLobbyPoseStageSourceBank]
+	ld hl, vNPCSprites tile $0c
+	ld bc, 12 tiles
+	call FarCopyData2
+
+.walking
+	ld a, [wLobbyPoseStageSourceAddress]
+	add $c0
+	ld e, a
+	ld a, [wLobbyPoseStageSourceAddress + 1]
+	adc 0
+	ld d, a
+	ld hl, vNPCSprites2 tile $0c
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jr nz, .walkingLCDOn
+	ld a, [wLobbyPoseStageSourceBank]
+	ld bc, 12 tiles
+	call FarCopyData2
+	jr .loaded
+.walkingLCDOn
+	ld a, [wLobbyPoseStageSourceBank]
+	ld b, a
+	ld c, 12
+	call CopyVideoData
+
+.loaded
+	ld a, 2
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
+	ld a, [wFollowerLoadAction]
+	cp FOLLOWER_IDENTITY_REBUILD
+	ret nz
+	ld a, [wFollowerLoadPicture]
+	ld d, a
+	ld e, FOLLOWER_PLACE_BEHIND
+	jp FollowerScheduleSpawn
+
+.disabled
+	xor a
+	ld [wFollowerSpecies], a
+	call FollowerClearState
+	ret
+
 ; Yellow ShouldPikachuSpawn adapted to the approved Red Rogue policy.
 ; INPUT D = caller-owned temporary suppression mask (0 permits following).
 ; OUTPUT carry SET + E = valid lead species, or carry clear + E = 0.

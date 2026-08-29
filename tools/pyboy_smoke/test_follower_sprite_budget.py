@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PENDING_CUTS = {
+COMPLETED_CUTS = {
     "PowerPlant": "POWERPLANT_VOLTORB4",
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
@@ -82,17 +82,51 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
         walking = {p for p in pictures if sizes[p] == 12}
         self.assertLessEqual(len(walking), 8, sorted(walking))
 
-    def test_object_slot_budget_with_only_explicit_pending_cuts(self):
+    def test_object_slot_budget_after_exact_approved_cuts(self):
         for name, pictures in map_pictures().items():
             with self.subTest(map=name):
-                if len(pictures) > 14:
-                    self.assertIn(name, PENDING_CUTS)
-                    self.assertEqual(len(pictures), 15)
-                    source = (ROOT / f"data/maps/objects/{name}.asm").read_text()
-                    self.assertRegex(
-                        source,
-                        rf"(?m)^\s*const_export\s+{PENDING_CUTS[name]}\s*$",
-                    )
+                self.assertLessEqual(len(pictures), 14)
+        for name, removed in COMPLETED_CUTS.items():
+            with self.subTest(map=name, removed=removed):
+                self.assertEqual(len(map_pictures()[name]), 14)
+                source = (ROOT / f"data/maps/objects/{name}.asm").read_text()
+                self.assertNotRegex(
+                    source,
+                    rf"(?m)^\s*const_export\s+{removed}\s*$",
+                )
+
+    def test_compact_loader_reserves_slot_two_and_uses_current_map(self):
+        source = (ROOT / "engine/overworld/map_sprites.asm").read_text()
+        follower = (ROOT / "engine/overworld/follower.asm").read_text()
+        init = source[source.index("InitMapSprites::"):
+                      source.index("LoadMapSpriteTilePatterns:")]
+        self.assertNotIn("call InitOutsideMapSprites", init)
+        self.assertIn("ld b, 2 ; slot 1 player, slot 2 reserved", source)
+        self.assertIn("farcall FollowerLoadMapGraphics", source)
+        # Until the dedicated lobby cache publisher replaces the full-sheet
+        # allocator, the lobby must keep slot 2 available to its authored set
+        # and suppress follower publication there.
+        self.assertRegex(
+            source,
+            r"cp INDIGO_PLATEAU_LOBBY\s+jr nz, \.findNextVRAMSlotLoop\s+dec b",
+        )
+        loader = follower[follower.index("FollowerLoadMapGraphics::"):
+                          follower.index("FollowerShouldSpawn::")]
+        self.assertRegex(
+            loader,
+            r"cp INDIGO_PLATEAU_LOBBY\s+jr nz, \.ordinaryMap",
+        )
+
+    def test_follower_category_map_uses_only_twelve_tile_sheets(self):
+        sizes = sprite_sizes()
+        source = (ROOT / "engine/overworld/follower.asm").read_text()
+        block = source[source.index(".table\n", source.index("FollowerCategoryToSprite::")):
+                       source.index("assert @ - .table", source.index("FollowerCategoryToSprite::"))]
+        names = re.findall(r"\bSPRITE_[A-Z0-9_]+\b", block)
+        self.assertEqual(len(names), 9)
+        for name in names:
+            with self.subTest(sprite=name):
+                self.assertEqual(sizes[name], 12)
 
 
 if __name__ == "__main__":
