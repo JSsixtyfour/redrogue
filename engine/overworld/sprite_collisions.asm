@@ -58,8 +58,6 @@ UpdateNonPlayerSprite:
 ; The reason that 4 is added below to the coordinate is to make it align with a
 ; multiple of $10 to make comparisons easier.
 DetectCollisionBetweenSprites:
-	nop
-
 	ld h, HIGH(wSpriteStateData1)
 	ldh a, [hCurrentSpriteOffset]
 	add LOW(wSpriteStateData1)
@@ -118,6 +116,8 @@ DetectCollisionBetweenSprites:
 
 .loop
 	ldh [hCollidingSpriteOffset], a
+	cp NUM_SPRITESTATEDATA_STRUCTS - 1
+	jp z, .next ; slot 15 is the non-solid follower, not an authored object
 	swap a
 	ld e, a
 	ldh a, [hCurrentSpriteOffset]
@@ -296,7 +296,6 @@ DetectCollisionBetweenSprites:
 	and b ; we select either the bit in bits 0-1 or bits 2-3 based on the calculation immediately above
 	or [hl] ; or with existing collision direction bits in [i#SPRITESTATEDATA1_COLLISIONDATA]
 	ld [hl], a ; store new value
-	ld a, c ; useless code because a is overwritten before being used again
 
 ; set bit in [i#SPRITESTATEDATA1_0E] or [i#SPRITESTATEDATA1_0F]
 ; to indicate which sprite the collision occurred with

@@ -76,6 +76,66 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         self.assertNotEqual(follower, player)
         self.assertNotEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
 
+        dy = follower[0] - player[0]
+        dx = follower[1] - player[1]
+        self.assertEqual(abs(dy) + abs(dx), 1)
+        reverse = {
+            (-1, 0): "up",
+            (1, 0): "down",
+            (0, -1): "left",
+            (0, 1): "right",
+        }[(dy, dx)]
+        walking_images = []
+        self.harness.pyboy.button_press(reverse)
+        for _ in range(20):
+            self.harness.tick(1)
+            image = self.harness.read8("wSprite15StateData1ImageIndex")
+            if image != 0xFF:
+                walking_images.append(image)
+        self.harness.pyboy.button_release(reverse)
+        self.harness.tick(4)
+        self.assertEqual(
+            (
+                self.harness.read8("wYCoord"),
+                self.harness.read8("wXCoord"),
+            ),
+            follower,
+            "slot 15 still blocked the player's reverse step",
+        )
+        self.assertGreaterEqual(
+            len({image & 0x3 for image in walking_images}),
+            2,
+            "follower walking frames did not visibly advance",
+        )
+
+        menu_init = self.harness.hook_flag("DisplayTextIDInit")
+        follower_updates = self.harness.hook_flag("FollowerUpdate")
+        updates_before_menu = follower_updates["count"]
+        self.harness.wait_until(
+            lambda: self.harness.read8("wWalkCounter") == 0,
+            "player movement completion before menu",
+            240,
+        )
+        self.harness.tap("start", 2)
+        self.harness.wait_until(
+            lambda: menu_init["count"] > 0,
+            "start-menu DisplayTextIDInit",
+            240,
+        )
+        self.harness.tick(6)
+        self.assertGreater(
+            follower_updates["count"],
+            updates_before_menu,
+            "menu initialization never dispatched slot 15",
+        )
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1ImageIndex"),
+            0xFF,
+            f'wFontLoaded=${self.harness.read8("wFontLoaded"):02x}',
+        )
+        self.harness.tap("b", 1)
+        self.harness.tick(12)
+
 
 if __name__ == "__main__":
     unittest.main()

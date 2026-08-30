@@ -36,7 +36,7 @@ DEF FOLLOWER_STATUS_FAST    EQU 5
 
 DEF FOLLOWER_NORMAL_FRAMES EQU 8
 DEF FOLLOWER_FAST_FRAMES   EQU 4
-DEF FOLLOWER_ANIM_TICKS    EQU 4
+DEF FOLLOWER_ANIM_TICKS    EQU 2 ; Yellow's happy walking cadence
 
 ; Carry set only on the two explicitly-scoped maps.
 FollowerIsTestMap:
@@ -174,7 +174,11 @@ FollowerUpdate::
 	ret nz
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a
-	jp nz, FollowerRefreshAfterText
+	jr z, .notFontLoaded
+	ld a, FOLLOWER_COMMAND_EMPTY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	ret
+.notFontLoaded
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	and a
 	jr z, FollowerInitializeSpawn
@@ -195,7 +199,7 @@ FollowerInitializeSpawn:
 	call FollowerRefreshQueue
 	ld a, FOLLOWER_STATUS_READY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
-	jp FollowerUpdateImage
+	jp FollowerWait
 
 ; Yellow Func_fcc92. A size of zero deliberately does not dequeue, preserving
 ; one full player step between the player and follower.
@@ -234,6 +238,12 @@ FollowerStartCommand:
 	ld b, FOLLOWER_FAST_FRAMES
 	ld c, FOLLOWER_STATUS_FAST
 .speedReady
+	; Red Rogue's 60 FPS overworld uses twice as many one-pixel updates for the
+	; same tile. Preserve Yellow's logical 8/4-update normal/fast cadence.
+	call Check60FPS
+	jr z, .cadenceReady
+	sla b
+.cadenceReady
 	pop af
 	dec a
 	ld e, a
@@ -297,35 +307,42 @@ FollowerAddStepVector:
 ; this slice has no starter-Pikachu happiness lifecycle.
 FollowerAdvanceStep:
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR]
-	add a
 	ld b, a
+	call Check60FPS
+	jr nz, .haveYBase
+	sla b
+.haveYBase
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_FAST
-	ld a, b
 	jr nz, .haveYDelta
-	add a
+	sla b
 .haveYDelta
-	ld b, a
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
 	add b
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR]
-	add a
 	ld b, a
+	call Check60FPS
+	jr nz, .haveXBase
+	sla b
+.haveXBase
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_FAST
-	ld a, b
 	jr nz, .haveXDelta
-	add a
+	sla b
 .haveXDelta
-	ld b, a
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
 	add b
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
 	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
 	inc [hl]
+	ld b, FOLLOWER_ANIM_TICKS
+	call Check60FPS
+	jr z, .haveAnimThreshold
+	sla b
+.haveAnimThreshold
 	ld a, [hl]
-	cp FOLLOWER_ANIM_TICKS
+	cp b
 	jr nz, .decrement
 	xor a
 	ld [hli], a
@@ -334,17 +351,18 @@ FollowerAdvanceStep:
 	and 3
 	ld [hl], a
 .decrement
+	; Yellow draws the movement-facing frame before completing the command.
+	call FollowerUpdateImage
 	ld hl, wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER
 	dec [hl]
-	jr nz, .draw
+	ret nz
 	xor a
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_YSTEPVECTOR], a
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_XSTEPVECTOR], a
+	call FollowerComputeFacing
 	ld a, FOLLOWER_STATUS_READY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
-	call FollowerComputeFacing
-.draw
-	jp FollowerUpdateImage
+	ret
 
 FollowerWait:
 	call FollowerHideIfOverlappingPlayer
@@ -353,8 +371,6 @@ FollowerWait:
 
 ; Yellow UpdatePikachuWalkingSprite for dedicated image base 2.
 FollowerUpdateImage:
-	call FollowerHideIfOverlappingPlayer
-	ret c
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET]
 	and a
 	jr z, .hide
@@ -410,7 +426,7 @@ FollowerRefreshAfterText:
 	ld a, FOLLOWER_STATUS_READY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
 	call FollowerRefreshQueue
-	jp FollowerUpdateImage
+	jp FollowerWait
 
 FollowerRefreshQueue:
 	call FollowerClearQueue
@@ -488,18 +504,18 @@ FollowerComputeFacing:
 	ld b, a
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
 	cp b
-	ld a, SPRITE_FACING_UP
-	jr c, .store
 	ld a, SPRITE_FACING_DOWN
+	jr c, .store
+	ld a, SPRITE_FACING_UP
 	jr nz, .store
 	ld a, [wXCoord]
 	add 4
 	ld b, a
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
 	cp b
-	ld a, SPRITE_FACING_LEFT
-	jr c, .store
 	ld a, SPRITE_FACING_RIGHT
+	jr c, .store
+	ld a, SPRITE_FACING_LEFT
 	jr nz, .store
 	ld a, [wSpritePlayerStateData1FacingDirection]
 .store

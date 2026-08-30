@@ -63,6 +63,32 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"(?ms)\.updateCurrentSprite.*?cp \$f0.*?farjp FollowerUpdate.*?\.ordinarySprite.*?jp UpdateNonPlayerSprite",
         )
 
+    def test_slot15_is_not_a_collision_target(self):
+        self.assertNotIn("\tnop\n\n\tld h, HIGH(wSpriteStateData1)", self.update)
+        self.assertRegex(
+            self.update,
+            r"(?ms)\.loop\s+ldh \[hCollidingSpriteOffset\], a\s+cp NUM_SPRITESTATEDATA_STRUCTS - 1\s+jp z, \.next",
+        )
+
+    def test_font_path_hides_and_close_text_recovers(self):
+        self.assertRegex(
+            self.core,
+            r"(?ms)ld a, \[wFontLoaded\]\s+bit BIT_FONT_LOADED, a\s+jr z, \.notFontLoaded\s+ld a, FOLLOWER_COMMAND_EMPTY\s+ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_IMAGEINDEX\], a\s+ret",
+        )
+        image_update = self.core.split("FollowerUpdateImage:", 1)[1].split(
+            "FollowerHideIfOverlappingPlayer:", 1
+        )[0]
+        self.assertNotIn("FollowerHideIfOverlappingPlayer", image_update)
+
+    def test_donor_movement_draws_before_ready_facing(self):
+        advance = self.core.split("FollowerAdvanceStep:", 1)[1].split(
+            "FollowerWait:", 1
+        )[0]
+        self.assertLess(advance.index("call FollowerUpdateImage"), advance.index("dec [hl]"))
+        self.assertLess(advance.index("call FollowerComputeFacing"), advance.index("FOLLOWER_STATUS_READY"))
+        self.assertIn("DEF FOLLOWER_ANIM_TICKS    EQU 2", self.core)
+        self.assertIn("call Check60FPS", advance)
+
     def test_camera_hook_is_only_in_actual_scroll_branch(self):
         advancement = self.overworld.split("AdvancePlayerSprite::", 1)[1]
         before_scroll, scroll = advancement.split(".scrollBackgroundAndSprites", 1)
