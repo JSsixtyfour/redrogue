@@ -1,31 +1,32 @@
-# Pokémon Red and Blue [![Build Status][ci-badge]][ci]
+# Follower Checkpoint C: contained graphics reservation
 
-This is a disassembly of Pokémon Red and Blue.
+Apply to Red Rogue `master` at accepted baseline `4ef06335`.
 
-It builds the following ROMs:
+This slice reserves walking image base 2 only on `SILPH_CO_B1F` and `SILPH_CO_DORM`. Authored walking sprites on those maps begin at base 3. It also ports Yellow's unused-picture guard so disabled Dorm decoration slots are skipped safely.
 
-- Pokemon Red (UE) [S][!].gb `sha1: ea9bcae617fdf159b045185467ae58b2e4a48b9a`
-- Pokemon Blue (UE) [S][!].gb `sha1: d7037c83e1ae5b39bde3c30787637ba1d4c48ce2`
-- BLUEMONS.GB (debug build) `sha1: 5b1456177671b79b263c614ea0e7cc9ac542e9c4`
-- dmgapae0.e69.patch `sha1: 0fb5f743696adfe1dbb2e062111f08f9bc5a293a`
-- dmgapee0.e68.patch `sha1: ed4be94dc29c64271942c87f2157bca9ca1019c7`
+The follower remains unpublished and unticked. No follower graphics are loaded and no follower should appear. All other maps retain the baseline allocation path.
 
-To set up the repository, see [**INSTALL.md**](INSTALL.md).
+## Files
 
+- `engine/overworld/map_sprites.asm`
+- `tools/pyboy_smoke/test_follower_sprite_budget.py`
+- `checkpoint_c.patch`
 
-## See also
+## Verification
 
-- [**Wiki**][wiki] (includes [tutorials][tutorials])
-- [**Symbols**][symbols]
-- [**Tools**][tools]
+- Focused suite: 4 passing tests and the existing intentional lobby expected failure.
+- Forced Red, Blue, and Debug builds pass.
+- MD5 Red: `B0E6BE7D79AFFFFF5BEF5007F57E5FBB`
+- MD5 Blue: `DFCFBB196DF57D338A42027A6B79F5F8`
+- MD5 Debug: `5F45F8464933A18D13E5721B243CB246`
 
-You can find us on [Discord (pret, #pokered)](https://discord.gg/d5dubZ3).
+## Runtime checklist
 
-For other pret projects, see [pret.github.io](https://pret.github.io/).
+- Enter Silph Co B1F and confirm Red and the scientist animate normally.
+- Exercise the B1F scripted Palm movement.
+- Warp between B1F and the Dorm in both directions.
+- In the Dorm, check an empty/default room and several decoration combinations.
+- Open and close NPC text, the Dorm PC, and decoration text to exercise sprite graphics reload.
+- Confirm no follower appears.
+- Visit one unrelated indoor control map and confirm its NPC graphics remain unchanged.
 
-[wiki]: https://github.com/pret/pokered/wiki
-[tutorials]: https://github.com/pret/pokered/wiki/Tutorials
-[symbols]: https://github.com/pret/pokered/tree/symbols
-[tools]: https://github.com/pret/gb-asm-tools
-[ci]: https://github.com/pret/pokered/actions
-[ci-badge]: https://github.com/pret/pokered/actions/workflows/main.yml/badge.svg

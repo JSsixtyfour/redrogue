@@ -16,6 +16,7 @@ PENDING_CUTS = {
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
 }
+RESERVATION_TEST_MAPS = {"SilphCoB1F", "SilphCoDorm"}
 
 
 def sprite_sizes():
@@ -49,6 +50,34 @@ def map_pictures():
 
 
 class FollowerSpriteBudgetTests(unittest.TestCase):
+    def test_checkpoint_c_reservation_is_contained_to_safe_maps(self):
+        loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
+        for map_name in ("SILPH_CO_B1F", "SILPH_CO_DORM"):
+            with self.subTest(map=map_name):
+                self.assertRegex(
+                    loader,
+                    rf"(?m)^\s*cp {map_name}\s*$",
+                )
+        self.assertIn(
+            "inc b ; reserve image base 2 for the follower on Checkpoint C test maps",
+            loader,
+        )
+        self.assertRegex(
+            loader,
+            r"(?ms)^\.loadTilePatternLoop\s*$.*?^\s*and a ; unused sprite slot\?\s*$.*?^\s*jp z, \.nextSpriteSlot\s*$",
+        )
+
+        sizes = sprite_sizes()
+        pictures_by_map = map_pictures()
+        for map_name in RESERVATION_TEST_MAPS:
+            with self.subTest(map=map_name):
+                walking = {
+                    picture
+                    for picture in pictures_by_map[map_name]
+                    if sizes[picture] == 12
+                }
+                self.assertLessEqual(len(walking), 8, sorted(walking))
+
     def test_all_authored_pictures_have_supported_sheet_sizes(self):
         sizes = sprite_sizes()
         for name, pictures in map_pictures().items():

@@ -53,6 +53,9 @@ LoadMapSpriteTilePatterns:
 	jr nz, .copyPictureIDLoop
 	ld hl, wSprite01StateData2ImageBaseOffset
 .loadTilePatternLoop
+	ld a, [hl]
+	and a ; unused sprite slot?
+	jp z, .nextSpriteSlot
 	ld de, wSprite01StateData2PictureID
 ; Check if the current picture ID has already had its tile patterns loaded.
 ; This done by looping through the previous sprite slots and seeing if any of
@@ -75,6 +78,13 @@ LoadMapSpriteTilePatterns:
 .notAlreadyLoaded
 	ld de, wSpritePlayerStateData2ImageBaseOffset
 	ld b, 1
+	ldh a, [hCurMap]
+	cp SILPH_CO_B1F
+	jr z, .reserveFollowerVRAMSlot
+	cp SILPH_CO_DORM
+	jr nz, .findNextVRAMSlotLoop
+.reserveFollowerVRAMSlot
+	inc b ; reserve image base 2 for the follower on Checkpoint C test maps
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
 .findNextVRAMSlotLoop
