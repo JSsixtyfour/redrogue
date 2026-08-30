@@ -13,11 +13,12 @@
 ; - FollowerRefreshAfterText = Func_fc76a / RefreshPikachuFollow
 ;
 ; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
-; SILPH_CO_B1F and SILPH_CO_DORM, overlap placement at map load, no Pikachu
+; SILPH_CO_B1F and SILPH_CO_DORM, Yellow spawn states 0/1/2, no Pikachu
 ; happiness-dependent animation rate, and no ledge/idle/emotion/interaction/
 ; bike/surf state. Slot 15 and image base 2 match Yellow. The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
-; its already-scaled delta for slot 15.
+; its already-scaled delta for slot 15. Only state 0 is currently scheduled;
+; the complete branch-local Yellow transition setter lifecycle remains deferred.
 
 SECTION "Follower Core", ROMX, BANK[$2F]
 
@@ -58,6 +59,11 @@ FollowerIsTestMap:
 FollowerPrepareMap::
 	call FollowerIsTestMap
 	ret nc
+	; Yellow LoadMapHeader skips both sprite initialization and follower spawn
+	; scheduling while returning from battle. Preserve slot 15 exactly.
+	ld a, [wStatusFlags4]
+	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+	ret nz
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	cp SPRITE_PIKACHU
 	jr nz, .newSpawn
@@ -73,10 +79,44 @@ FollowerPrepareMap::
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
 	ld a, [wYCoord]
 	add 4
-	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPY], a
+	ld b, a
 	ld a, [wXCoord]
 	add 4
+	ld c, a
+	ld a, [wFollowerSpawnState]
+	cp 1
+	jr z, .spawnRight
+	cp 2
+	jr nz, .storeSpawnCoords
+	; Yellow CalculatePikachuPlacementCoords state 2: put Pikachu one tile
+	; behind the player according to the player's arrival facing.
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	and a ; SPRITE_FACING_DOWN
+	jr nz, .spawnBehindUp
+	dec b
+	jr .storeSpawnCoords
+.spawnBehindUp
+	cp SPRITE_FACING_UP
+	jr nz, .spawnBehindLeft
+	inc b
+	jr .storeSpawnCoords
+.spawnBehindLeft
+	cp SPRITE_FACING_LEFT
+	jr nz, .spawnBehindRight
+	inc c
+	jr .storeSpawnCoords
+.spawnBehindRight
+	dec c
+	jr .storeSpawnCoords
+.spawnRight
+	inc c
+.storeSpawnCoords
+	ld a, b
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPY], a
+	ld a, c
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPX], a
+	xor a
+	ld [wFollowerSpawnState], a
 	ld a, $fe ; Yellow following marker; movement never goes through TryWalking
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MOVEMENTBYTE1], a
 	ld a, [wSpritePlayerStateData1FacingDirection]

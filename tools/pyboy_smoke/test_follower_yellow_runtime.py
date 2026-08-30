@@ -40,6 +40,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
     def test_dorm_spawns_and_follows_after_two_accepted_steps(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        ram_constants = parse_rgbds_constants(ROOT / "constants" / "ram_constants.asm")
         enter_map = self.harness.hook_flag("EnterMap")
         load_map = self.harness.hook_flag("LoadMapData")
         init_sprites = self.harness.hook_flag("InitMapSprites")
@@ -161,6 +162,8 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
 
         saved_map_y = self.harness.read8("wSprite15StateData2MapY")
         saved_map_x = self.harness.read8("wSprite15StateData2MapX")
+        saved_pixel_y = self.harness.read8("wSprite15StateData1YPixels")
+        saved_pixel_x = self.harness.read8("wSprite15StateData1XPixels")
         uncovered_position = None
         for map_delta_y in range(1, 9):
             for map_delta_x in range(1, 10):
@@ -204,6 +207,87 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         self.harness.write8("wSprite15StateData2MapY", saved_map_y)
         self.harness.write8("wSprite15StateData2MapX", saved_map_x)
+        self.harness.write8("wSprite15StateData1YPixels", saved_pixel_y)
+        self.harness.write8("wSprite15StateData1XPixels", saved_pixel_x)
+        self.harness.call_routine("FollowerUpdate")
+
+        prepare_before_close = prepare["count"]
+        init_before_close = init_sprites["count"]
+        for _ in range(30):
+            if self.harness.read8("wFontLoaded") == 0:
+                break
+            self.harness.tap("start", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: (
+                self.harness.read8("wFontLoaded") == 0
+                and prepare["count"] > prepare_before_close
+                and init_sprites["count"] > init_before_close
+            ),
+            "Start-menu close and follower refresh",
+            480,
+        )
+        self.harness.tick(6)
+        self.assertEqual(
+            (
+                self.harness.read8("wSprite15StateData1PictureID"),
+                self.harness.read8("wSprite15StateData2ImageBaseOffset"),
+                self.harness.read8("wSprite15StateData2MapY"),
+                self.harness.read8("wSprite15StateData2MapX"),
+                self.harness.read8("wSprite15StateData1YPixels"),
+                self.harness.read8("wSprite15StateData1XPixels"),
+            ),
+            (
+                sprites["SPRITE_PIKACHU"],
+                2,
+                saved_map_y,
+                saved_map_x,
+                saved_pixel_y,
+                saved_pixel_x,
+            ),
+            "closing the Start menu changed the follower's identity or position",
+        )
+
+        battle_fields = (
+            "wSprite15StateData1PictureID",
+            "wSprite15StateData1ImageIndex",
+            "wSprite15StateData1YPixels",
+            "wSprite15StateData1XPixels",
+            "wSprite15StateData1MovementStatus",
+            "wSprite15StateData1AnimFrameCounter",
+            "wSprite15StateData2MapY",
+            "wSprite15StateData2MapX",
+            "wSprite15StateData2ImageBaseOffset",
+            "wFollowerCommandBufferSize",
+        )
+        battle_snapshot = tuple(self.harness.read8(field) for field in battle_fields)
+        queue_snapshot = self.harness.read_bytes("wFollowerCommandBuffer", 16)
+        battle_bit = ram_constants["BIT_BATTLE_OVER_OR_BLACKOUT"]
+        self.harness.write8(
+            "wStatusFlags4",
+            self.harness.read8("wStatusFlags4") | (1 << battle_bit),
+        )
+        prepare_before_battle_return = prepare["count"]
+        self.harness.call_routine("LoadMapData")
+        self.assertGreater(
+            prepare["count"],
+            prepare_before_battle_return,
+            "battle-return map load did not reach follower scheduling",
+        )
+        self.assertEqual(
+            tuple(self.harness.read8(field) for field in battle_fields),
+            battle_snapshot,
+            "battle-return map loading changed slot-15 follower state",
+        )
+        self.assertEqual(
+            self.harness.read_bytes("wFollowerCommandBuffer", 16),
+            queue_snapshot,
+            "battle-return map loading changed the follower queue",
+        )
+        self.harness.write8(
+            "wStatusFlags4",
+            self.harness.read8("wStatusFlags4") & ~(1 << battle_bit),
+        )
         self.harness.call_routine("FollowerUpdate")
 
         trainer_card_entry = io.BytesIO()
@@ -245,7 +329,6 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             f"follower=({self.harness.read8('wSprite15StateData2MapY')},"
             f"{self.harness.read8('wSprite15StateData2MapX')})",
         )
-
 
 if __name__ == "__main__":
     unittest.main()

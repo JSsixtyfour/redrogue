@@ -51,6 +51,43 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"(?ms)FollowerDequeueCommand:.*?cp FOLLOWER_COMMAND_EMPTY.*?and a.*?jr z, \.empty",
         )
 
+    def test_yellow_transition_spawn_states_are_explicit(self):
+        self.assertRegex(
+            self.wram,
+            r"(?s)wFollowerCommandBuffer:: ds 16\s+.*?wFollowerSpawnState:: db\s+ds 128 - 18",
+        )
+        warp = self.overworld.split("WarpFound2::", 1)[1].split(
+            "ContinueCheckWarpsNoCollisionLoop::", 1
+        )[0]
+        self.assertRegex(
+            warp,
+            r"(?s)xor a\s+ld \[wFollowerSpawnState\], a\s+"
+            r"ldh a, \[hCurMap\]\s+ld \[wWarpedFromWhichMap\], a.*?"
+            r"cp INDIGO_PLATEAU_LOBBY",
+        )
+        connection = self.overworld.split(
+            ".loadNewMap ; load the connected map that was entered", 1
+        )[1].split(".didNotEnterConnectedMap", 1)[0]
+        self.assertNotIn("wFollowerSpawnState", connection)
+        prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
+            "FollowerClearState:", 1
+        )[0]
+        self.assertIn("ld a, [wFollowerSpawnState]", prepare)
+        self.assertIn("cp 1", prepare)
+        self.assertIn("cp 2", prepare)
+        self.assertRegex(prepare, r"(?s)\.spawnRight\s+inc c\s+\.storeSpawnCoords")
+        self.assertRegex(prepare, r"xor a\s+ld \[wFollowerSpawnState\], a")
+
+    def test_battle_return_preserves_slot_15_before_spawn_scheduling(self):
+        prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
+            "FollowerClearState:", 1
+        )[0]
+        battle_guard = prepare.index("bit BIT_BATTLE_OVER_OR_BLACKOUT, a")
+        picture_check = prepare.index("SPRITESTATEDATA1_PICTUREID")
+        clear_state = prepare.index("call FollowerClearState")
+        self.assertLess(battle_guard, picture_check)
+        self.assertLess(battle_guard, clear_state)
+
     def test_enqueue_is_at_accepted_step_seam(self):
         self.assertRegex(
             self.overworld,

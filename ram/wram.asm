@@ -1954,7 +1954,10 @@ wFollowerDataStart::
 ; last occupied index: $ff means empty, 0 means the one lag command remains.
 wFollowerCommandBufferSize:: db
 wFollowerCommandBuffer:: ds 16
-	ds 128 - 17
+; Yellow wPikachuSpawnState. Ordinary indoor warps use 0 (overlap), while
+; connected-map transitions use 2 (one tile behind the player).
+wFollowerSpawnState:: db
+	ds 128 - 18
 wFollowerDataEnd::
 ASSERT wFollowerDataEnd - wFollowerDataStart == 128
 

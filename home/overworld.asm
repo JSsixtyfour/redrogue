@@ -514,6 +514,11 @@ WarpFound2::
 	ld a, [wNumberOfWarps]
 	sub c
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
+	; Yellow's ordinary indoor warp default is spawn state 0 (overlap).
+	; Map-specific placement exceptions remain deferred until their maps enter
+	; the enabled follower scope.
+	xor a
+	ld [wFollowerSpawnState], a
 	ldh a, [hCurMap]
 	ld [wWarpedFromWhichMap], a
 	; The lobby enables ShinRed's configured CGB CPU speed on entry. Restore
