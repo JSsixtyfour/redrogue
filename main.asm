@@ -24,7 +24,6 @@ INCLUDE "engine/overworld/special_warps.asm"
 INCLUDE "engine/debug/debug_party.asm"
 INCLUDE "engine/menus/naming_screen.asm"
 INCLUDE "engine/movie/oak_speech/oak_speech2.asm"
-INCLUDE "engine/items/subtract_paid_money.asm"
 INCLUDE "engine/menus/swap_items.asm"
 INCLUDE "engine/events/pokemart.asm"
 INCLUDE "engine/pokemon/learn_move.asm"
@@ -36,6 +35,18 @@ INCLUDE "engine/link/cable_club_npc.asm"
 INCLUDE "engine/menus/text_box.asm"
 INCLUDE "engine/menus/players_pc.asm"
 INCLUDE "engine/events/display_pokedex.asm"
+
+
+; Relocated intact from the nearly-full fixed bank1 section. Its only entry is
+; the existing HOME far-jump wrapper, and its calls target HOME or a predef.
+SECTION "Subtract Paid Money", ROMX, BANK[$2F]
+INCLUDE "engine/items/subtract_paid_money.asm"
+
+
+; Fixed-Pikachu, two-map donor-faithful follower test slice. All public entry
+; points are banked; keep the movement lifecycle together in the roomy rogue
+; bank while the native Yellow dispatch seam stays in bank1.
+INCLUDE "engine/overworld/follower_yellow_test.asm"
 
 
 ; Declares its own floating SECTION (see the file header). Kept out of "bank1",

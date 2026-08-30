@@ -9,6 +9,9 @@
 ; If there is an inner loop, Y is the inner loop index, i.e. y#SPRITESTATEDATA1_* and
 ; y#SPRITESTATEDATA2_* denote fields of the sprite slots iterated over in the inner loop.
 InitMapSprites::
+	; Yellow lifecycle correspondence: prepare/preserve slot 15 before sprite
+	; sheets are assigned. Text reloads recover movement instead of respawning.
+	farcall FollowerPrepareMap
 	call InitOutsideMapSprites
 	ret c ; return if the map is an outside map (already handled by above call)
 ; if the map is an inside map (i.e. mapID >= FIRST_INDOOR_MAP)
@@ -32,11 +35,17 @@ InitMapSprites::
 ; Loads tile pattern data for sprites into VRAM.
 LoadMapSpriteTilePatterns:
 	ld a, [wNumSprites]
+	ld c, a
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	cp SPRITE_PIKACHU
+	jr nz, .checkForSprites
+	ld c, NUM_SPRITESTATEDATA_STRUCTS - 1 ; include slots 1 through 15
+	jr .spritesExist
+.checkForSprites
+	ld a, c
 	and a ; are there any sprites?
-	jr nz, .spritesExist
-	ret
+	ret z
 .spritesExist
-	ld c, a ; c = [wNumSprites]
 	ld b, NUM_SPRITESTATEDATA_STRUCTS
 	ld hl, wSpritePlayerStateData2PictureID
 	xor a
@@ -56,6 +65,9 @@ LoadMapSpriteTilePatterns:
 	ld a, [hl]
 	and a ; unused sprite slot?
 	jp z, .nextSpriteSlot
+	ld a, l
+	cp LOW(wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET)
+	jr z, .followerVRAMSlot
 	ld de, wSprite01StateData2PictureID
 ; Check if the current picture ID has already had its tile patterns loaded.
 ; This done by looping through the previous sprite slots and seeing if any of
@@ -105,6 +117,10 @@ LoadMapSpriteTilePatterns:
 .foundNextVRAMSlot
 	inc b ; increment previous max value to get next VRAM tile pattern slot
 	ld a, b ; a = next VRAM tile pattern slot
+	jr .selectedVRAMSlot
+.followerVRAMSlot
+	ld a, 2 ; Yellow's dedicated follower walking-sheet base
+.selectedVRAMSlot
 	push af
 	ld a, [hl] ; [x#SPRITESTATEDATA2_IMAGEBASEOFFSET]
 	ld b, a ; b = current sprite picture ID

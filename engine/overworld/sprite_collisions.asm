@@ -24,9 +24,15 @@ _UpdateSprites::
 	jr nz, .spriteLoop
 	ret
 .updateCurrentSprite
-	cp $1
-	jp nz, UpdateNonPlayerSprite
-	jp UpdatePlayerSprite
+	ldh a, [hCurrentSpriteOffset]
+	and a
+	jp z, UpdatePlayerSprite
+	cp $f0 ; Yellow reserves sprite-state slot 15 for the follower
+	jr nz, .ordinarySprite
+	farjp FollowerUpdate
+.ordinarySprite
+	ld a, [hl]
+	jp UpdateNonPlayerSprite
 
 UpdateNonPlayerSprite:
 	dec a

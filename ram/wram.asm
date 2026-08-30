@@ -1949,7 +1949,14 @@ wWarpEntries:: ds MAX_WARP_EVENTS * 4 ; Y, X, warp ID, map ID
 ; if $ff, the player's coordinates are not updated when entering the map
 wDestinationWarpID:: db
 
-	ds 128
+wFollowerDataStart::
+; Fixed-Pikachu Yellow follower test slice. The command-buffer size is the
+; last occupied index: $ff means empty, 0 means the one lag command remains.
+wFollowerCommandBufferSize:: db
+wFollowerCommandBuffer:: ds 16
+	ds 128 - 17
+wFollowerDataEnd::
+ASSERT wFollowerDataEnd - wFollowerDataStart == 128
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)
 wNumSigns:: db

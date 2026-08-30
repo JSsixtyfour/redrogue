@@ -1,0 +1,84 @@
+"""Source gates for the contained Yellow-derived follower slice.
+
+These checks prevent the rejected generalized draft and stationary publisher
+from returning. Emulator acceptance is still required for choreography.
+"""
+
+from pathlib import Path
+import re
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+class YellowFollowerSliceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.core = (ROOT / "engine/overworld/follower_yellow_test.asm").read_text()
+        cls.main = (ROOT / "main.asm").read_text()
+        cls.loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
+        cls.update = (ROOT / "engine/overworld/sprite_collisions.asm").read_text()
+        cls.overworld = (ROOT / "home/overworld.asm").read_text()
+        cls.wram = (ROOT / "ram/wram.asm").read_text()
+
+    def test_only_scoped_core_is_included(self):
+        self.assertIn('INCLUDE "engine/overworld/follower_yellow_test.asm"', self.main)
+        self.assertNotIn('INCLUDE "engine/overworld/follower.asm"', self.main)
+        self.assertNotIn("follower_baseline.asm", self.main)
+
+    def test_scope_is_fixed_pikachu_on_two_maps(self):
+        self.assertIn("cp SILPH_CO_B1F", self.core)
+        self.assertIn("cp SILPH_CO_DORM", self.core)
+        self.assertIn("cp SPRITE_PIKACHU", self.core)
+        for forbidden in (
+            "INDIGO_PLATEAU_LOBBY",
+            "wPartySpecies",
+            "BIT_FOLLOWER_DISABLED",
+            "PCGetPokemonSpriteCategory",
+            "FollowerStartIdleAction",
+        ):
+            self.assertNotIn(forbidden, self.core)
+
+    def test_yellow_queue_sentinel_contract(self):
+        self.assertIn("DEF FOLLOWER_COMMAND_EMPTY      EQU $ff", self.core)
+        self.assertRegex(
+            self.wram,
+            r"wFollowerCommandBufferSize:: db\s+wFollowerCommandBuffer:: ds 16",
+        )
+        self.assertRegex(
+            self.core,
+            r"(?ms)FollowerDequeueCommand:.*?cp FOLLOWER_COMMAND_EMPTY.*?and a.*?jr z, \.empty",
+        )
+
+    def test_enqueue_is_at_accepted_step_seam(self):
+        self.assertRegex(
+            self.overworld,
+            r"(?ms)\.setWalkCounter\s+ld \[wWalkCounter\], a\s+.*?farcall FollowerQueuePlayerStep\s+jr \.moveAhead2",
+        )
+
+    def test_slot15_owns_update_dispatch(self):
+        self.assertRegex(
+            self.update,
+            r"(?ms)\.updateCurrentSprite.*?cp \$f0.*?farjp FollowerUpdate.*?\.ordinarySprite.*?jp UpdateNonPlayerSprite",
+        )
+
+    def test_camera_hook_is_only_in_actual_scroll_branch(self):
+        advancement = self.overworld.split("AdvancePlayerSprite::", 1)[1]
+        before_scroll, scroll = advancement.split(".scrollBackgroundAndSprites", 1)
+        self.assertNotIn("FollowerApplyCameraScroll", before_scroll)
+        self.assertRegex(
+            scroll,
+            r"(?ms)\.done\s+.*?ld d, b\s+ld e, c\s+farcall FollowerApplyCameraScroll",
+        )
+
+    def test_loader_forces_reserved_base_two_for_slot15(self):
+        self.assertIn("farcall FollowerPrepareMap", self.loader)
+        self.assertRegex(
+            self.loader,
+            r"(?ms)cp LOW\(wSprite15StateData2 \+ SPRITESTATEDATA2_IMAGEBASEOFFSET\).*?\.followerVRAMSlot\s+ld a, 2",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

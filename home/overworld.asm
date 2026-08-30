@@ -297,6 +297,9 @@ OverworldLoopLessDelay::
 	ld a, $10
 .setWalkCounter
 	ld [wWalkCounter], a
+	; Yellow Func_fcc08 seam: enqueue only after land/water collision accepted
+	; this tile step. The follower routine itself limits this to the two maps.
+	farcall FollowerQueuePlayerStep
 	jr .moveAhead2
 
 .moveAhead
@@ -1795,6 +1798,16 @@ AdvancePlayerSprite::
 	dec e
 	jr nz, .spriteShiftLoop
 .done
+	; Red Rogue shifts only authored slots 1..wNumSprites above. Slot 15 is
+	; outside that range, so pass the authoritative camera deltas at the exact
+	; Yellow-equivalent scroll seam. Preserve the routine's prior return ABI.
+	push bc
+	push de
+	ld d, b
+	ld e, c
+	farcall FollowerApplyCameraScroll
+	pop de
+	pop bc
 	ret
 
 ; the following four functions are used to move the pointer to the upper left
