@@ -70,15 +70,40 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"(?ms)\.loop\s+ldh \[hCollidingSpriteOffset\], a\s+cp NUM_SPRITESTATEDATA_STRUCTS - 1\s+jp z, \.next",
         )
 
-    def test_font_path_hides_and_close_text_recovers(self):
+    def test_font_path_uses_yellow_overlap_only_hide_and_recovers(self):
         self.assertRegex(
             self.core,
-            r"(?ms)ld a, \[wFontLoaded\]\s+bit BIT_FONT_LOADED, a\s+jr z, \.notFontLoaded\s+ld a, FOLLOWER_COMMAND_EMPTY\s+ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_IMAGEINDEX\], a\s+ret",
+            r"(?ms)cp SPRITE_PIKACHU\s+ret nz\s+call FollowerCheckVisibility\s+ret c\s+ld a, \[wFontLoaded\]",
+        )
+        self.assertRegex(
+            self.core,
+            r"(?ms)FollowerUpdate::.*?ld a, \[wFontLoaded\]\s+bit BIT_FONT_LOADED, a\s+jr z, \.notFontLoaded\s+jp FollowerRefreshAfterText",
         )
         image_update = self.core.split("FollowerUpdateImage:", 1)[1].split(
             "FollowerHideIfOverlappingPlayer:", 1
         )[0]
-        self.assertNotIn("FollowerHideIfOverlappingPlayer", image_update)
+        self.assertRegex(
+            image_update,
+            r"(?ms)ld a, \[wFontLoaded\]\s+bit BIT_FONT_LOADED, a\s+jr z, \.normalImage\s+push bc\s+call FollowerHideIfOverlappingPlayer\s+pop bc\s+ret c\s+ld a, b\s+jr \.store",
+        )
+        refresh = self.core.split("FollowerRefreshAfterText:", 1)[1].split(
+            "FollowerRefreshQueue:", 1
+        )[0]
+        self.assertIn("jp FollowerUpdateImage", refresh)
+
+    def test_yellow_visibility_precedes_font_and_checks_four_tiles(self):
+        visibility = self.core.split("FollowerCheckVisibility:", 1)[1].split(
+            "; Yellow UpdatePikachuWalkingSprite", 1
+        )[0]
+        self.assertIn("call .getCurrentTile", visibility)
+        self.assertIn("ld d, MAP_TILESET_SIZE", visibility)
+        self.assertGreaterEqual(visibility.count("cp d"), 4)
+        self.assertIn("ld [wSprite15StateData2 + SPRITESTATEDATA2_GRASSPRIORITY], a", visibility)
+        trainer_info = (ROOT / "engine" / "menus" / "start_sub_menus.asm").read_text()
+        self.assertRegex(
+            trainer_info,
+            r"(?ms)StartMenu_TrainerInfo::\s+call GBPalWhiteOut\s+call ClearScreen\s+call UpdateSprites",
+        )
 
     def test_donor_movement_draws_before_ready_facing(self):
         advance = self.core.split("FollowerAdvanceStep:", 1)[1].split(

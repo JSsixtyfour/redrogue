@@ -172,12 +172,12 @@ FollowerUpdate::
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	cp SPRITE_PIKACHU
 	ret nz
+	call FollowerCheckVisibility
+	ret c
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a
 	jr z, .notFontLoaded
-	ld a, FOLLOWER_COMMAND_EMPTY
-	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
-	ret
+	jp FollowerRefreshAfterText
 .notFontLoaded
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	and a
@@ -369,6 +369,86 @@ FollowerWait:
 	ret c
 	jp FollowerUpdateImage
 
+; Yellow WillPikachuSpawnOnTheScreen. The outer update calls this before the
+; font-loaded recovery path. Besides map bounds and grass priority, its four
+; tile checks make Pikachu disappear only where menu/text tiles cover the
+; sprite, including full-screen interfaces such as the Trainer Card.
+FollowerCheckVisibility:
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
+	ld b, a
+	ld a, [wYCoord]
+	cp b
+	jr z, .sameY
+	jr nc, .hidden
+	add (SCREEN_HEIGHT / 2) - 1
+	cp b
+	jr c, .hidden
+.sameY
+	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
+	ld b, a
+	ld a, [wXCoord]
+	cp b
+	jr z, .sameX
+	jr nc, .hidden
+	add (SCREEN_WIDTH / 2) - 1
+	cp b
+	jr c, .hidden
+.sameX
+	call .getCurrentTile
+	ld d, MAP_TILESET_SIZE
+	ld a, [hli]
+	ld e, a
+	cp d
+	jr nc, .hidden
+	ld a, [hld]
+	cp d
+	jr nc, .hidden
+	ld bc, -SCREEN_WIDTH
+	add hl, bc
+	ld a, [hli]
+	cp d
+	jr nc, .hidden
+	ld a, [hl]
+	cp d
+	jr c, .visible
+.hidden
+	ld a, FOLLOWER_COMMAND_EMPTY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	scf
+	ret
+.visible
+	ld a, [wGrassTile]
+	cp e
+	ld a, 0
+	jr nz, .storePriority
+	ld a, OAM_PRIO
+.storePriority
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_GRASSPRIORITY], a
+	and a
+	ret
+
+.getCurrentTile
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
+	add 4
+	and $f0
+	srl a
+	ld c, a
+	ld b, 0
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
+	add 2
+	srl a
+	srl a
+	srl a
+	add SCREEN_WIDTH
+	ld e, a
+	ld d, 0
+	ld hl, wTileMap
+REPT 5
+	add hl, bc
+ENDR
+	add hl, de
+	ret
+
 ; Yellow UpdatePikachuWalkingSprite for dedicated image base 2.
 FollowerUpdateImage:
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET]
@@ -380,9 +460,20 @@ FollowerUpdateImage:
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
 	or b
 	ld b, a
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jr z, .normalImage
+	push bc
+	call FollowerHideIfOverlappingPlayer
+	pop bc
+	ret c
+	ld a, b
+	jr .store
+.normalImage
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
 	and 3
 	or b
+.store
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
 	ret
 .hide
@@ -426,7 +517,7 @@ FollowerRefreshAfterText:
 	ld a, FOLLOWER_STATUS_READY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
 	call FollowerRefreshQueue
-	jp FollowerWait
+	jp FollowerUpdateImage
 
 FollowerRefreshQueue:
 	call FollowerClearQueue
