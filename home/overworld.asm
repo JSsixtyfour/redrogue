@@ -589,7 +589,9 @@ WarpFound2::
 	jr z, .randomStage
 ; if not going back to the previous map
 	ldh [hCurMap], a
-	farcall IsPlayerStandingOnWarpPadOrHole
+	; Size-neutral Yellow indoor-warp seam. The banked wrapper selects the
+	; destination's spawn state, then reaches the same warp-pad detector.
+	farcall FollowerSetSpawnWarpPadAndCheck
 	ld a, [wStandingOnWarpPadOrHole]
 	dec a ; is the player on a warp pad?
 	jr nz, .notWarpPad

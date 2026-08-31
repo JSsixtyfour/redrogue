@@ -70,6 +70,55 @@ FollowerInitConnectedMapSprites::
 	ld [wFollowerSpawnState], a
 	farjp InitMapSprites
 
+; Yellow SetPikachuSpawnWarpPad, adapted only from wCurMap to Red Rogue's
+; hCurMap. This wrapper replaces the existing banked warp-pad check without
+; growing HOME, then tail-dispatches to that original routine.
+FollowerSetSpawnWarpPadAndCheck::
+	ldh a, [hCurMap]
+	cp VIRIDIAN_FOREST_NORTH_GATE
+	jr z, .viridianForestExit
+	cp VIRIDIAN_FOREST_SOUTH_GATE
+	jr z, .viridianForestEntrance
+	ld hl, .state1Maps
+.findMap
+	cp [hl]
+	jr z, .state1
+	inc hl
+	ld b, [hl]
+	inc b
+	jr nz, .findMap
+.state0
+	xor a
+	jr .storeState
+.viridianForestExit
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	cp SPRITE_FACING_UP
+	jr z, .state1
+	jr .state0
+.viridianForestEntrance
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	and a ; SPRITE_FACING_DOWN
+	jr z, .state0
+.state1
+	ld a, 1
+.storeState
+	ld [wFollowerSpawnState], a
+	farjp IsPlayerStandingOnWarpPadOrHole
+
+.state1Maps
+	db VIRIDIAN_FOREST
+	db SAFARI_ZONE_CENTER_REST_HOUSE
+	db SAFARI_ZONE_WEST_REST_HOUSE
+	db SAFARI_ZONE_EAST_REST_HOUSE
+	db SAFARI_ZONE_NORTH_REST_HOUSE
+	db SAFARI_ZONE_SECRET_HOUSE
+	db SILPH_CO_ELEVATOR
+	db CELADON_MART_ELEVATOR
+	db CINNABAR_LAB_TRADE_ROOM
+	db CINNABAR_LAB_METRONOME_ROOM
+	db CINNABAR_LAB_FOSSIL_ROOM
+	db $ff
+
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
 ; overlap spawn. InitMapSprites also runs after text; an existing Pikachu is

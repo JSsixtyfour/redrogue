@@ -37,6 +37,21 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             self.harness.read8("wSprite15StateData1XPixels"),
         )
 
+    def load_debug_follower_map(self, map_id: int) -> dict[str, int]:
+        prepare = self.harness.hook_flag("FollowerPrepareMap")
+        self.harness.boot_debug1(map_id)
+        for _ in range(300):
+            if prepare["count"]:
+                break
+            self.harness.tap("a", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: prepare["count"] > 0,
+            "follower map preparation",
+            2400,
+        )
+        return prepare
+
     def test_dorm_spawns_and_follows_after_two_accepted_steps(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
@@ -329,6 +344,57 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             f"follower=({self.harness.read8('wSprite15StateData2MapY')},"
             f"{self.harness.read8('wSprite15StateData2MapX')})",
         )
+
+    def test_dorm_b1f_warp_uses_yellow_default_state_zero(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        prepare = self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+
+        for _ in range(3):
+            self.harness.move_tile("right")
+        prepare_before = prepare["count"]
+        self.harness.move_tile("down")
+        self.harness.wait_until(
+            lambda: (
+                self.harness.read8("hCurMap") == maps["SILPH_CO_B1F"]
+                and prepare["count"] > prepare_before
+            ),
+            "Dorm to B1F follower warp",
+            1200,
+        )
+        self.harness.tick(60)
+        self.assertEqual(
+            (
+                self.harness.read8("wSprite15StateData1PictureID"),
+                self.harness.read8("wSprite15StateData2ImageBaseOffset"),
+                self.harness.read8("wSprite15StateData2MapY"),
+                self.harness.read8("wSprite15StateData2MapX"),
+                self.harness.read8("wFollowerSpawnState"),
+            ),
+            (
+                sprites["SPRITE_PIKACHU"],
+                2,
+                self.harness.read8("wYCoord") + 4,
+                self.harness.read8("wXCoord") + 4,
+                0,
+            ),
+            "Dorm to B1F did not consume Yellow's default overlap state",
+        )
+
+        prepare_before = prepare["count"]
+        self.harness.move_tile("up")
+        self.harness.wait_until(
+            lambda: (
+                self.harness.read8("hCurMap") == maps["SILPH_CO_DORM"]
+                and prepare["count"] > prepare_before
+            ),
+            "B1F to Dorm follower warp",
+            1200,
+        )
+        self.harness.tick(60)
+        self.assertEqual(self.harness.read8("wSprite15StateData1PictureID"), sprites["SPRITE_PIKACHU"])
+        self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+        self.assertEqual(self.harness.read8("wFollowerSpawnState"), 0)
 
     def test_active_yellow_ledge_latch_and_two_tile_motion(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")

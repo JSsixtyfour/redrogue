@@ -82,6 +82,34 @@ class YellowFollowerSliceTests(unittest.TestCase):
             connected_wrapper,
             r"(?s)ld a, 2\s+ld \[wFollowerSpawnState\], a\s+farjp InitMapSprites",
         )
+        warp_pad_wrapper = self.core.split(
+            "FollowerSetSpawnWarpPadAndCheck::", 1
+        )[1].split("FollowerPrepareMap::", 1)[0]
+        self.assertRegex(
+            warp,
+            r"(?s)ldh \[hCurMap\], a\s+.*?farcall FollowerSetSpawnWarpPadAndCheck",
+        )
+        self.assertIn("cp VIRIDIAN_FOREST_NORTH_GATE", warp_pad_wrapper)
+        self.assertIn("cp VIRIDIAN_FOREST_SOUTH_GATE", warp_pad_wrapper)
+        for map_name in (
+            "VIRIDIAN_FOREST",
+            "SAFARI_ZONE_CENTER_REST_HOUSE",
+            "SAFARI_ZONE_WEST_REST_HOUSE",
+            "SAFARI_ZONE_EAST_REST_HOUSE",
+            "SAFARI_ZONE_NORTH_REST_HOUSE",
+            "SAFARI_ZONE_SECRET_HOUSE",
+            "SILPH_CO_ELEVATOR",
+            "CELADON_MART_ELEVATOR",
+            "CINNABAR_LAB_TRADE_ROOM",
+            "CINNABAR_LAB_METRONOME_ROOM",
+            "CINNABAR_LAB_FOSSIL_ROOM",
+        ):
+            self.assertIn(f"db {map_name}", warp_pad_wrapper)
+        self.assertRegex(
+            warp_pad_wrapper,
+            r"(?s)\.state0\s+xor a.*?\.state1\s+ld a, 1.*?"
+            r"ld \[wFollowerSpawnState\], a\s+farjp IsPlayerStandingOnWarpPadOrHole",
+        )
         prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
             "FollowerClearState:", 1
         )[0]
