@@ -12,8 +12,8 @@
 ; - FollowerAdvanceStep      = NormalPikachuFollow / FastPikachuFollow
 ; - FollowerRefreshAfterText = Func_fc76a / RefreshPikachuFollow
 ;
-; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
-; SILPH_CO_B1F, SILPH_CO_DORM, OAKS_LAB, and ROUTE_1, Yellow spawn states
+; Intentional Red Rogue deviations are narrow: resolved lead graphics, only
+; the explicitly accepted follower maps, Yellow spawn states
 ; 0-7, no Pikachu
 ; happiness-dependent animation rate, and no idle/emotion/bike/surf state.
 ; Interaction currently uses fixed Pikachu text through Red's standard predef
@@ -46,7 +46,7 @@ DEF FOLLOWER_NORMAL_FRAMES EQU 8
 DEF FOLLOWER_FAST_FRAMES   EQU 4
 DEF FOLLOWER_ANIM_TICKS    EQU 2 ; Yellow's happy walking cadence
 
-; Carry set only on the two explicitly-scoped maps.
+; Carry set only on explicitly-scoped follower maps.
 FollowerIsTestMap:
 	ldh a, [hCurMap]
 	cp SILPH_CO_B1F
@@ -56,6 +56,12 @@ FollowerIsTestMap:
 	cp OAKS_LAB
 	jr z, .yes
 	cp ROUTE_1
+	jr z, .yes
+	cp POWER_PLANT
+	jr z, .yes
+	cp MT_MOON_1F
+	jr z, .yes
+	cp VICTORY_ROAD_1F
 	jr z, .yes
 	and a
 	ret

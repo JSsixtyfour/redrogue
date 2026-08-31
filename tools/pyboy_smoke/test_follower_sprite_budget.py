@@ -16,7 +16,14 @@ APPROVED_CUTS = {
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
 }
-RESERVATION_TEST_MAPS = {"SilphCoB1F", "SilphCoDorm"}
+RESERVATION_TEST_MAPS = {
+    "SilphCoB1F",
+    "SilphCoDorm",
+    "OaksLab",
+    "PowerPlant",
+    "MtMoon1F",
+    "VictoryRoad1F",
+}
 
 
 def sprite_sizes():

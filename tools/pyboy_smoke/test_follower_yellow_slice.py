@@ -36,6 +36,9 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("cp SILPH_CO_DORM", self.core)
         self.assertIn("cp OAKS_LAB", self.core)
         self.assertIn("cp ROUTE_1", self.core)
+        self.assertIn("cp POWER_PLANT", self.core)
+        self.assertIn("cp MT_MOON_1F", self.core)
+        self.assertIn("cp VICTORY_ROAD_1F", self.core)
         self.assertIn("FollowerResolveLeadPicture:", self.core)
         self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
         self.assertIn("ld a, [wPartySpecies]", self.core)
@@ -44,6 +47,14 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "FollowerStartIdleAction",
         ):
             self.assertNotIn(forbidden, self.core)
+
+    def test_first_crowded_indoor_group_reserves_follower_base_two(self):
+        for map_name in ("POWER_PLANT", "MT_MOON_1F", "VICTORY_ROAD_1F"):
+            with self.subTest(map=map_name):
+                self.assertRegex(
+                    self.loader,
+                    rf"(?m)^\s*cp {map_name}\s*$",
+                )
 
     def test_yellow_queue_sentinel_contract(self):
         self.assertIn("DEF FOLLOWER_COMMAND_EMPTY      EQU $ff", self.core)

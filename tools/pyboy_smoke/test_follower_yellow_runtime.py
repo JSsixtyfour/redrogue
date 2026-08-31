@@ -52,6 +52,27 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         return prepare
 
+    def test_debug2_first_crowded_indoor_group_spawns_reserved_follower(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        for map_name in ("POWER_PLANT", "MT_MOON_1F", "VICTORY_ROAD_1F"):
+            with self.subTest(map=map_name):
+                self.harness.boot_to_lobby(battle_count=1)
+                self.harness.enter_stage_door1(
+                    maps[map_name],
+                    description=map_name,
+                )
+                self.assertLessEqual(self.harness.read8("wNumSprites"), 14)
+                self.assertNotEqual(
+                    self.harness.read8("wSprite15StateData1PictureID"),
+                    0,
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite15StateData2ImageBaseOffset"),
+                    2,
+                )
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+
     def test_dorm_spawns_and_follows_after_two_accepted_steps(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")

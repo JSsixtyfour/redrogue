@@ -96,6 +96,12 @@ LoadMapSpriteTilePatterns:
 	cp SILPH_CO_DORM
 	jr z, .reserveFollowerVRAMSlot
 	cp OAKS_LAB
+	jr z, .reserveFollowerVRAMSlot
+	cp POWER_PLANT
+	jr z, .reserveFollowerVRAMSlot
+	cp MT_MOON_1F
+	jr z, .reserveFollowerVRAMSlot
+	cp VICTORY_ROAD_1F
 	jr nz, .findNextVRAMSlotLoop
 .reserveFollowerVRAMSlot
 	inc b ; reserve image base 2 for enabled follower maps
