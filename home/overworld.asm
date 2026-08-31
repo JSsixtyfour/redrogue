@@ -514,9 +514,8 @@ WarpFound2::
 	ld a, [wNumberOfWarps]
 	sub c
 	ld [wWarpedFromWhichWarp], a ; save ID of used warp
-	; Yellow's ordinary indoor warp default is spawn state 0 (overlap).
-	; Map-specific placement exceptions remain deferred until their maps enter
-	; the enabled follower scope.
+	; Give every warp a deterministic default before the Yellow transition
+	; selector replaces it at the common completion seam below.
 	xor a
 	ld [wFollowerSpawnState], a
 	ldh a, [hCurMap]
@@ -566,6 +565,10 @@ WarpFound2::
 	ldh a, [hWarpDestinationMap]
 	cp ROGUE_MAP
 	jr z, .randomStage
+	; Size-neutral Yellow transition seam. This moved the existing indoor
+	; warp-pad farcall before the source-map split; the banked wrapper selects
+	; the matching Yellow spawn policy and then runs the original detector.
+	farcall FollowerSetWarpSpawnStateAndCheck
 	call CheckIfInOutsideMap
 	jr nz, .indoorMaps
 ; this is for handling "outside" maps that can't have the 0xFF destination map
@@ -589,9 +592,6 @@ WarpFound2::
 	jr z, .randomStage
 ; if not going back to the previous map
 	ldh [hCurMap], a
-	; Size-neutral Yellow indoor-warp seam. The banked wrapper selects the
-	; destination's spawn state, then reaches the same warp-pad detector.
-	farcall FollowerSetSpawnWarpPadAndCheck
 	ld a, [wStandingOnWarpPadOrHole]
 	dec a ; is the player on a warp pad?
 	jr nz, .notWarpPad

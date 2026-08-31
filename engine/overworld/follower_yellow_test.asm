@@ -14,12 +14,12 @@
 ;
 ; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
 ; SILPH_CO_B1F, SILPH_CO_DORM, OAKS_LAB, and ROUTE_1, Yellow spawn states
-; 0/1/2, no Pikachu
+; 0-7, no Pikachu
 ; happiness-dependent animation rate, and no idle/emotion/interaction/
 ; bike/surf state. Slot 15 and image base 2 match Yellow. The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
-; its already-scaled delta for slot 15. Only state 0 is currently scheduled;
-; the complete branch-local Yellow transition setter lifecycle remains deferred.
+; its already-scaled delta for slot 15. Red Rogue's tight HOME bank invokes the
+; three Yellow transition selectors through one common banked dispatch seam.
 
 SECTION "Follower Core", ROMX, BANK[$2F]
 
@@ -70,11 +70,87 @@ FollowerInitConnectedMapSprites::
 	ld [wFollowerSpawnState], a
 	farjp InitMapSprites
 
-; Yellow SetPikachuSpawnWarpPad, adapted only from wCurMap to Red Rogue's
-; hCurMap. This wrapper replaces the existing banked warp-pad check without
-; growing HOME, then tail-dispatches to that original routine.
-FollowerSetSpawnWarpPadAndCheck::
-	ldh a, [hCurMap]
+; Yellow makes these decisions in three separate WarpFound2 branches. Red
+; Rogue moves the existing indoor warp-pad farcall before the source-map split
+; and resolves the same branch choice there, spending no additional HOME.
+; The wrapper then reaches the original warp-pad detector for its indoor user.
+FollowerSetWarpSpawnStateAndCheck::
+	ldh a, [hWarpDestinationMap]
+	cp LAST_MAP
+	jr z, .backOutside
+	call CheckIfInOutsideMap
+	jr nz, .warpPad
+	jp FollowerSetSpawnOutside
+.warpPad
+	call FollowerSetSpawnWarpPad
+	farjp IsPlayerStandingOnWarpPadOrHole
+.backOutside
+	jp FollowerSetSpawnBackOutside
+
+; Yellow SetPikachuSpawnOutside.
+FollowerSetSpawnOutside::
+	ldh a, [hWarpDestinationMap]
+	cp OAKS_LAB
+	jr z, .state6
+	cp ROUTE_22_GATE
+	jr z, .route22Gate
+	cp MT_MOON_B1F
+	jr z, .state3
+	cp ROCK_TUNNEL_1F
+	jr z, .state3
+	ld hl, .state4Maps
+	call FollowerMapInArray
+	jr c, .state4
+	ldh a, [hWarpDestinationMap]
+	ld hl, .facingDownState3Maps
+	call FollowerMapInArray
+	jr nc, .state1
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	and a ; SPRITE_FACING_DOWN
+	jr z, .state3
+.state1
+	ld a, 1
+	jr .store
+.route22Gate
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	and a ; SPRITE_FACING_DOWN
+	jr z, .state3
+	jr .state1
+.state3
+	ld a, 3
+	jr .store
+.state4
+	ld a, 4
+	jr .store
+.state6
+	ld a, 6
+.store
+	ld [wFollowerSpawnState], a
+	ret
+
+.state4Maps
+	db VICTORY_ROAD_2F
+	db ROUTE_7_GATE
+	db ROUTE_8_GATE
+	db ROUTE_16_GATE_1F
+	db ROUTE_18_GATE_1F
+	db ROUTE_15_GATE_1F
+	db ROUTE_11_GATE_1F
+	db $ff
+
+.facingDownState3Maps
+	db VIRIDIAN_FOREST_NORTH_GATE
+	db CERULEAN_BADGE_HOUSE
+	db CERULEAN_TRASHED_HOUSE
+	db VERMILION_DOCK
+	db CELADON_MANSION_1F
+	db ROUTE_2_GATE
+	db FUCHSIA_GOOD_ROD_HOUSE
+	db $ff
+
+; Yellow SetPikachuSpawnWarpPad.
+FollowerSetSpawnWarpPad::
+	ldh a, [hWarpDestinationMap]
 	cp VIRIDIAN_FOREST_NORTH_GATE
 	jr z, .viridianForestExit
 	cp VIRIDIAN_FOREST_SOUTH_GATE
@@ -103,7 +179,7 @@ FollowerSetSpawnWarpPadAndCheck::
 	ld a, 1
 .storeState
 	ld [wFollowerSpawnState], a
-	farjp IsPlayerStandingOnWarpPadOrHole
+	ret
 
 .state1Maps
 	db VIRIDIAN_FOREST
@@ -118,6 +194,39 @@ FollowerSetSpawnWarpPadAndCheck::
 	db CINNABAR_LAB_METRONOME_ROOM
 	db CINNABAR_LAB_FOSSIL_ROOM
 	db $ff
+
+; Yellow SetPikachuSpawnBackOutside. This runs before hCurMap changes, matching
+; the donor call order.
+FollowerSetSpawnBackOutside::
+	ldh a, [hCurMap]
+	cp ROUTE_22_GATE
+	jr z, .gate
+	cp ROUTE_2_GATE
+	jr nz, .state3
+.gate
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	cp SPRITE_FACING_UP
+	jr z, .state1
+.state3
+	ld a, 3
+	jr .store
+.state1
+	ld a, 1
+.store
+	ld [wFollowerSpawnState], a
+	ret
+
+; Yellow's Pikachu_IsInArray carry contract.
+FollowerMapInArray:
+	cp [hl]
+	scf
+	ret z
+	inc hl
+	ld b, [hl]
+	inc b
+	jr nz, FollowerMapInArray
+	and a
+	ret
 
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
@@ -158,10 +267,25 @@ FollowerPrepareMap::
 	add 4
 	ld c, a
 	ld a, [wFollowerSpawnState]
+	ld e, a
+	and a
+	jr z, .storeSpawnCoords
 	cp 1
 	jr z, .spawnRight
 	cp 2
-	jr nz, .storeSpawnCoords
+	jr z, .spawnBehind
+	cp 3
+	jr z, .storeSpawnCoords
+	cp 4
+	jr z, .spawnBelow
+	cp 5
+	jr z, .spawnAbove
+	cp 6
+	jr z, .spawnLeft
+	cp 7
+	jr z, .spawnAhead
+	jr .spawnRight ; Yellow's invalid-state fallback
+.spawnBehind
 	; Yellow CalculatePikachuPlacementCoords state 2: put Pikachu one tile
 	; behind the player according to the player's arrival facing.
 	ld a, [wSpritePlayerStateData1FacingDirection]
@@ -184,17 +308,58 @@ FollowerPrepareMap::
 	jr .storeSpawnCoords
 .spawnRight
 	inc c
+	jr .storeSpawnCoords
+.spawnBelow
+	inc b
+	jr .storeSpawnCoords
+.spawnAbove
+	dec b
+	jr .storeSpawnCoords
+.spawnLeft
+	dec c
+	jr .storeSpawnCoords
+.spawnAhead
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	and a ; SPRITE_FACING_DOWN
+	jr z, .spawnBelow
+	cp SPRITE_FACING_UP
+	jr z, .spawnAbove
+	cp SPRITE_FACING_LEFT
+	jr z, .spawnLeft
+	jr .spawnRight
 .storeSpawnCoords
 	ld a, b
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPY], a
 	ld a, c
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPX], a
-	xor a
-	ld [wFollowerSpawnState], a
 	ld a, $fe ; Yellow following marker; movement never goes through TryWalking
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MOVEMENTBYTE1], a
+	ld a, e
+	cp 3
+	jr z, .faceDown
+	cp 7
+	jr z, .faceOpposite
+	cp 2
+	jr z, .computeFacing
+	cp 5
+	jr z, .computeFacing
 	ld a, [wSpritePlayerStateData1FacingDirection]
+	jr .storeFacing
+.faceDown
+	ld a, SPRITE_FACING_DOWN
+	jr .storeFacing
+.faceOpposite
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	xor 4
+	jr .storeFacing
+.computeFacing
+	call FollowerComputeFacing
+	jr .clearSpawnState
+.storeFacing
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+.clearSpawnState
+	xor a
+	ld [wFollowerSpawnState], a
 	; Movement status remains zero. The normal slot-15 UpdateSprites pass owns
 	; first spawn initialization, as it does in Yellow.
 	ret

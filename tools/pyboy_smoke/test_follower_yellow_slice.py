@@ -82,16 +82,44 @@ class YellowFollowerSliceTests(unittest.TestCase):
             connected_wrapper,
             r"(?s)ld a, 2\s+ld \[wFollowerSpawnState\], a\s+farjp InitMapSprites",
         )
-        warp_pad_wrapper = self.core.split(
-            "FollowerSetSpawnWarpPadAndCheck::", 1
+        transition_setters = self.core.split(
+            "FollowerSetWarpSpawnStateAndCheck::", 1
         )[1].split("FollowerPrepareMap::", 1)[0]
         self.assertRegex(
             warp,
-            r"(?s)ldh \[hCurMap\], a\s+.*?farcall FollowerSetSpawnWarpPadAndCheck",
+            r"(?s)cp ROGUE_MAP\s+jr z, \.randomStage\s+"
+            r".*?farcall FollowerSetWarpSpawnStateAndCheck\s+"
+            r"call CheckIfInOutsideMap",
         )
-        self.assertIn("cp VIRIDIAN_FOREST_NORTH_GATE", warp_pad_wrapper)
-        self.assertIn("cp VIRIDIAN_FOREST_SOUTH_GATE", warp_pad_wrapper)
+        self.assertIn("cp LAST_MAP", transition_setters)
+        self.assertIn("call CheckIfInOutsideMap", transition_setters)
+        self.assertIn("farjp IsPlayerStandingOnWarpPadOrHole", transition_setters)
+        self.assertIn("FollowerSetSpawnOutside::", transition_setters)
+        self.assertIn("FollowerSetSpawnWarpPad::", transition_setters)
+        self.assertIn("FollowerSetSpawnBackOutside::", transition_setters)
         for map_name in (
+            "OAKS_LAB",
+            "ROUTE_22_GATE",
+            "MT_MOON_B1F",
+            "ROCK_TUNNEL_1F",
+        ):
+            self.assertIn(f"cp {map_name}", transition_setters)
+        self.assertIn("cp VIRIDIAN_FOREST_NORTH_GATE", transition_setters)
+        self.assertIn("cp VIRIDIAN_FOREST_SOUTH_GATE", transition_setters)
+        for map_name in (
+            "VICTORY_ROAD_2F",
+            "ROUTE_7_GATE",
+            "ROUTE_8_GATE",
+            "ROUTE_16_GATE_1F",
+            "ROUTE_18_GATE_1F",
+            "ROUTE_15_GATE_1F",
+            "ROUTE_11_GATE_1F",
+            "CERULEAN_BADGE_HOUSE",
+            "CERULEAN_TRASHED_HOUSE",
+            "VERMILION_DOCK",
+            "CELADON_MANSION_1F",
+            "ROUTE_2_GATE",
+            "FUCHSIA_GOOD_ROD_HOUSE",
             "VIRIDIAN_FOREST",
             "SAFARI_ZONE_CENTER_REST_HOUSE",
             "SAFARI_ZONE_WEST_REST_HOUSE",
@@ -104,11 +132,12 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "CINNABAR_LAB_METRONOME_ROOM",
             "CINNABAR_LAB_FOSSIL_ROOM",
         ):
-            self.assertIn(f"db {map_name}", warp_pad_wrapper)
+            self.assertIn(f"db {map_name}", transition_setters)
         self.assertRegex(
-            warp_pad_wrapper,
-            r"(?s)\.state0\s+xor a.*?\.state1\s+ld a, 1.*?"
-            r"ld \[wFollowerSpawnState\], a\s+farjp IsPlayerStandingOnWarpPadOrHole",
+            transition_setters,
+            r"(?s)FollowerSetSpawnBackOutside::.*?cp ROUTE_22_GATE.*?"
+            r"cp ROUTE_2_GATE.*?cp SPRITE_FACING_UP.*?ld a, 3.*?ld a, 1.*?"
+            r"ld \[wFollowerSpawnState\], a\s+ret",
         )
         prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
             "FollowerClearState:", 1
@@ -116,12 +145,37 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("ld a, [wFollowerSpawnState]", prepare)
         self.assertIn("cp 1", prepare)
         self.assertIn("cp 2", prepare)
+        for state in range(3, 8):
+            self.assertIn(f"cp {state}", prepare)
         self.assertRegex(
             prepare,
             r"(?s)call FollowerIsTestMap\s+jr c, \.enabledMap\s+"
             r".*?xor a\s+ld \[wFollowerSpawnState\], a\s+ret",
         )
-        self.assertRegex(prepare, r"(?s)\.spawnRight\s+inc c\s+\.storeSpawnCoords")
+        self.assertRegex(
+            prepare,
+            r"(?s)\.spawnRight\s+inc c\s+jr \.storeSpawnCoords",
+        )
+        self.assertRegex(
+            prepare,
+            r"(?s)\.spawnBelow\s+inc b\s+jr \.storeSpawnCoords",
+        )
+        self.assertRegex(
+            prepare,
+            r"(?s)\.spawnAbove\s+dec b\s+jr \.storeSpawnCoords",
+        )
+        self.assertRegex(
+            prepare,
+            r"(?s)\.spawnLeft\s+dec c\s+jr \.storeSpawnCoords",
+        )
+        self.assertRegex(
+            prepare,
+            r"(?s)\.spawnAhead.*?SPRITE_FACING_UP.*?SPRITE_FACING_LEFT.*?"
+            r"jr \.spawnRight",
+        )
+        self.assertRegex(prepare, r"(?s)\.faceDown\s+ld a, SPRITE_FACING_DOWN")
+        self.assertRegex(prepare, r"(?s)\.faceOpposite.*?xor 4")
+        self.assertRegex(prepare, r"(?s)\.computeFacing\s+call FollowerComputeFacing")
         self.assertRegex(prepare, r"xor a\s+ld \[wFollowerSpawnState\], a")
 
     def test_battle_return_preserves_slot_15_before_spawn_scheduling(self):
