@@ -229,6 +229,51 @@ FollowerMapInArray:
 	and a
 	ret
 
+; Resolve the current lead once at the LCD-safe map sprite preparation seam.
+; PCGetPokemonSpriteCategory returns its farcall-safe result in E. Translate
+; the three neutral still-object categories to their existing 12-tile walking
+; decoration sheets, matching the preserved all-species resolver work.
+; OUTPUT: E = SPRITE_* picture ID and carry set, or E = 0 and carry clear.
+FollowerResolveLeadPicture:
+	ld a, [wPartyCount]
+	and a
+	jr z, .reject
+	ld a, [wPartySpecies]
+	and a
+	jr z, .reject
+	cp NUM_POKEMON_INDEXES + 1
+	jr nc, .reject
+	ld e, a
+	farcall PCGetPokemonSpriteCategory
+	ld a, e
+	cp NUM_MON_SPRITE_CATEGORIES
+	jr nc, .reject
+	ld hl, .categoryToWalkingSprite
+	add a, l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld e, [hl]
+	scf
+	ret
+.reject
+	xor a
+	ld e, a
+	ret
+
+.categoryToWalkingSprite
+	db SPRITE_MONSTER
+	db SPRITE_BIRD
+	db SPRITE_SEEL
+	db SPRITE_FAIRY
+	db SPRITE_VOLTORB_DECO
+	db SPRITE_SNORLAX_DECO
+	db SPRITE_OMANYTE_DECO
+	db SPRITE_PIKACHU
+	db SPRITE_CHANSEY
+	assert @ - .categoryToWalkingSprite == NUM_MON_SPRITE_CATEGORIES
+
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
 ; overlap spawn. InitMapSprites also runs after text; an existing Pikachu is
@@ -248,16 +293,34 @@ FollowerPrepareMap::
 	ld a, [wStatusFlags4]
 	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
 	ret nz
+	call FollowerResolveLeadPicture
+	jp nc, .noLead
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_PIKACHU
-	jr nz, .newSpawn
+	cp e
+	jr z, .samePicture
+	and a
+	jr z, .newSpawn
+	; A party-menu reorder closes through the normal font-loaded sprite reload.
+	; Preserve the accepted Yellow movement state and replace only the sheet so
+	; the new lead is drawn immediately with the existing position and facing.
+	ld a, [wFontLoaded]
+	bit BIT_FONT_LOADED, a
+	jr z, .newSpawn
+	ld a, e
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, 2
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
+	jp FollowerRefreshAfterText
+.samePicture
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a
 	ret z
 	jp FollowerRefreshAfterText
 .newSpawn
+	push de
 	call FollowerClearState
-	ld a, SPRITE_PIKACHU
+	pop de
+	ld a, e
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld a, 2
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
@@ -364,6 +427,11 @@ FollowerPrepareMap::
 	; Movement status remains zero. The normal slot-15 UpdateSprites pass owns
 	; first spawn initialization, as it does in Yellow.
 	ret
+.noLead
+	call FollowerClearState
+	xor a
+	ld [wFollowerSpawnState], a
+	ret
 
 FollowerClearState:
 	ld hl, wSprite15StateData1
@@ -401,8 +469,8 @@ FollowerQueuePlayerStep::
 	call FollowerIsTestMap
 	ret nc
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_PIKACHU
-	ret nz
+	and a
+	ret z
 	ld a, [wWalkBikeSurfState]
 	and a
 	ret nz
@@ -494,8 +562,8 @@ FollowerUpdate::
 	call FollowerIsTestMap
 	ret nc
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_PIKACHU
-	ret nz
+	and a
+	ret z
 	call FollowerCheckVisibility
 	ret c
 	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS
@@ -508,7 +576,7 @@ FollowerUpdate::
 .notFontLoaded
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	and a
-	jr z, FollowerInitializeSpawn
+	jp z, FollowerInitializeSpawn
 	cp FOLLOWER_STATUS_WALKING
 	jp z, FollowerAdvanceStep
 	cp FOLLOWER_STATUS_TWO_STEP
@@ -545,15 +613,27 @@ FollowerFindInteraction::
 	call UpdateSprites
 	ld a, 1
 	ldh [hNoWaitAfterText], a
-	tx_pre FollowerPikachuText
+	tx_pre FollowerPokemonText
 	; The outer overworld input path treats zero as "already handled."
 	xor a
 	ldh [hNoWaitAfterText], a
 	ldh [hTextID], a
 	ret
 
-FollowerPikachuText::
-	text "PIKACHU!"
+FollowerPokemonText::
+	text_asm
+	push bc
+	ld a, [wPartySpecies]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	ld a, [wPartySpecies]
+	call PlayCry
+	pop bc
+	ld hl, .name
+	ret
+.name
+	text_ram wNameBuffer
+	text "!"
 	prompt
 
 ; Yellow Func_fc745. Consume the face-player request before font/status
@@ -732,7 +812,7 @@ FollowerAdvanceStep:
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS], a
 	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
 	inc [hl]
-	ld b, FOLLOWER_ANIM_TICKS
+	call FollowerGetAnimationTicks
 	call Check60FPS
 	jr z, .haveAnimThreshold
 	sla b
@@ -758,6 +838,17 @@ FollowerAdvanceStep:
 	call FollowerComputeFacing
 	ld a, FOLLOWER_STATUS_READY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	ret
+
+; Yellow uses two logical ticks when Pikachu happiness is at least 80 and five
+; otherwise. Keep Pikachu's exact happy cadence; use Yellow's slower cadence
+; for other walking sheets until species/category-specific tuning is approved.
+FollowerGetAnimationTicks:
+	ld b, FOLLOWER_ANIM_TICKS
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	cp SPRITE_PIKACHU
+	ret z
+	ld b, 5
 	ret
 
 FollowerWait:
@@ -1035,8 +1126,8 @@ FollowerApplyCameraScroll::
 	call FollowerIsTestMap
 	ret nc
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_PIKACHU
-	ret nz
+	and a
+	ret z
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
 	sub d
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS], a

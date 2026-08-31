@@ -59,7 +59,7 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                     rf"(?m)^\s*cp {map_name}\s*$",
                 )
         self.assertIn(
-            "inc b ; reserve image base 2 for the follower on Checkpoint C test maps",
+            "inc b ; reserve image base 2 for enabled follower maps",
             loader,
         )
         self.assertRegex(

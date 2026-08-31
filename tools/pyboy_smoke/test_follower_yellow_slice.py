@@ -29,17 +29,17 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn('INCLUDE "engine/overworld/follower.asm"', self.main)
         self.assertNotIn("follower_baseline.asm", self.main)
 
-    def test_scope_is_fixed_pikachu_on_explicit_test_maps(self):
+    def test_scope_resolves_lead_only_on_explicit_test_maps(self):
         self.assertIn("cp SILPH_CO_B1F", self.core)
         self.assertIn("cp SILPH_CO_DORM", self.core)
         self.assertIn("cp OAKS_LAB", self.core)
         self.assertIn("cp ROUTE_1", self.core)
-        self.assertIn("cp SPRITE_PIKACHU", self.core)
+        self.assertIn("FollowerResolveLeadPicture:", self.core)
+        self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
+        self.assertIn("ld a, [wPartySpecies]", self.core)
         for forbidden in (
             "INDIGO_PLATEAU_LOBBY",
-            "wPartySpecies",
             "BIT_FOLLOWER_DISABLED",
-            "PCGetPokemonSpriteCategory",
             "FollowerStartIdleAction",
         ):
             self.assertNotIn(forbidden, self.core)
@@ -236,7 +236,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_font_path_uses_yellow_overlap_only_hide_and_recovers(self):
         self.assertRegex(
             self.core,
-            r"(?ms)cp SPRITE_PIKACHU\s+ret nz\s+call FollowerCheckVisibility\s+ret c\s+"
+            r"(?ms)and a\s+ret z\s+call FollowerCheckVisibility\s+ret c\s+"
             r"ld hl, wSprite15StateData1 \+ SPRITESTATEDATA1_MOVEMENTSTATUS\s+"
             r"bit BIT_FACE_PLAYER, \[hl\]\s+jr nz, FollowerFacePlayer\s+ld a, \[wFontLoaded\]",
         )
@@ -277,7 +277,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             interaction,
             r"(?ms)cp NUM_SPRITESTATEDATA_STRUCTS - 1.*?"
             r"call UpdateSprites.*?ldh \[hNoWaitAfterText\], a\s+"
-            r"tx_pre FollowerPikachuText.*?xor a\s+"
+            r"tx_pre FollowerPokemonText.*?xor a\s+"
             r"ldh \[hNoWaitAfterText\], a\s+ldh \[hTextID\], a\s+ret",
         )
         collision = self.overworld.split("CollisionCheckOnLand::", 1)[1].split(
@@ -287,10 +287,30 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn("FollowerInteraction", collision)
         self.assertRegex(
             self.core,
-            r'(?ms)FollowerPikachuText::?\s+text "PIKACHU!"\s+prompt',
+            r"(?ms)FollowerPokemonText::?.*?ld \[wNamedObjectIndex\], a.*?"
+            r"call GetMonName.*?call PlayCry.*?text_ram wNameBuffer\s+"
+            r"text \"!\"\s+prompt",
         )
-        self.assertIn("add_tx_pre FollowerPikachuText", self.predef_text)
+        self.assertIn("add_tx_pre FollowerPokemonText", self.predef_text)
         self.assertNotIn("add_tx_pre UnusedPredefText", self.predef_text)
+
+    def test_lead_sheet_refresh_preserves_pose_and_uses_yellow_speed_values(self):
+        prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
+            "FollowerClearState:", 1
+        )[0]
+        self.assertRegex(
+            prepare,
+            r"(?ms)cp e\s+jr z, \.samePicture\s+and a\s+jr z, \.newSpawn.*?"
+            r"bit BIT_FONT_LOADED, a\s+jr z, \.newSpawn.*?"
+            r"ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\], a.*?"
+            r"jp FollowerRefreshAfterText",
+        )
+        speed = self.core.split("FollowerGetAnimationTicks:", 1)[1].split(
+            "FollowerWait:", 1
+        )[0]
+        self.assertIn("ld b, FOLLOWER_ANIM_TICKS", speed)
+        self.assertIn("cp SPRITE_PIKACHU", speed)
+        self.assertIn("ld b, 5", speed)
 
     def test_yellow_visibility_precedes_font_and_checks_four_tiles(self):
         visibility = self.core.split("FollowerCheckVisibility:", 1)[1].split(
@@ -342,14 +362,33 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             outside,
             r"(?s)cp ROUTE_1\s+jr z, \.loadSpriteSet.*?"
-            r"ld a, \[wSpriteSet\]\s+cp SPRITE_PIKACHU\s+jr z, \.loadSpriteSet",
+            r"cp SPRITESET_PALLET_VIRIDIAN.*?ld a, \[wSpriteSet\]\s+"
+            r"cp SPRITE_BLUE\s+jr nz, \.loadSpriteSet",
         )
         self.assertRegex(
             outside,
             r"(?s)cp ROUTE_1\s+call z, \.insertFollowerIntoSpriteSet.*?"
             r"\.insertFollowerIntoSpriteSet.*?ld hl, wSpriteSet \+ 7.*?"
             r"ld de, wSpriteSet \+ 8.*?ld b, 8.*?"
-            r"ld a, SPRITE_PIKACHU\s+ld \[wSpriteSet\], a",
+            r"ld a, \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]\s+"
+            r"ld \[wSpriteSet\], a",
+        )
+
+    def test_species_categories_translate_to_walking_sheets(self):
+        outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(
+            "; Chooses the correct sprite set ID", 1
+        )[0]
+        resolver = self.core.split("FollowerResolveLeadPicture:", 1)[1].split(
+            "; Called by InitMapSprites", 1
+        )[0]
+        self.assertIn("cp NUM_POKEMON_INDEXES + 1", resolver)
+        self.assertRegex(
+            resolver,
+            r"(?s)\.categoryToWalkingSprite\s+"
+            r"db SPRITE_MONSTER\s+db SPRITE_BIRD\s+db SPRITE_SEEL\s+"
+            r"db SPRITE_FAIRY\s+db SPRITE_VOLTORB_DECO\s+"
+            r"db SPRITE_SNORLAX_DECO\s+db SPRITE_OMANYTE_DECO\s+"
+            r"db SPRITE_PIKACHU\s+db SPRITE_CHANSEY",
         )
         self.assertRegex(
             outside,

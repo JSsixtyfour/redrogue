@@ -37,8 +37,8 @@ LoadMapSpriteTilePatterns:
 	ld a, [wNumSprites]
 	ld c, a
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_PIKACHU
-	jr nz, .checkForSprites
+	and a
+	jr z, .checkForSprites
 	ld c, NUM_SPRITESTATEDATA_STRUCTS - 1 ; include slots 1 through 15
 	jr .spritesExist
 .checkForSprites
@@ -307,9 +307,13 @@ InitOutsideMapSprites:
 	ldh a, [hCurMap]
 	cp ROUTE_1
 	jr z, .loadSpriteSet
+	ld a, b
+	cp SPRITESET_PALLET_VIRIDIAN
+	jr nz, .checkSpriteSetID
 	ld a, [wSpriteSet]
-	cp SPRITE_PIKACHU
-	jr z, .loadSpriteSet
+	cp SPRITE_BLUE
+	jr nz, .loadSpriteSet
+.checkSpriteSetID
 	ld a, [wSpriteSetID]
 	cp b ; has the sprite set ID changed?
 	jr z, .skipLoadingSpriteSet ; if not, don't load it again
@@ -440,7 +444,7 @@ InitOutsideMapSprites:
 	dec de
 	dec b
 	jr nz, .shiftWalkingEntries
-	ld a, SPRITE_PIKACHU
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	ld [wSpriteSet], a
 
 	; The tile loader consumes the synthetic picture IDs in slots 1..11.

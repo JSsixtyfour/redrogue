@@ -78,7 +78,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         self.assertGreater(prepare["count"], 0, "FollowerPrepareMap was never reached")
         self.assertEqual(
             self.harness.read8("wSprite15StateData1PictureID"),
-            sprites["SPRITE_PIKACHU"],
+            sprites["SPRITE_MONSTER"],
         )
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
 
@@ -253,7 +253,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.read8("wSprite15StateData1XPixels"),
             ),
             (
-                sprites["SPRITE_PIKACHU"],
+                sprites["SPRITE_MONSTER"],
                 2,
                 saved_map_y,
                 saved_map_x,
@@ -386,6 +386,8 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         interaction = self.harness.hook_flag("FollowerFindInteraction")
         face_player = self.harness.hook_flag("FollowerFacePlayer")
         display_text = self.harness.hook_flag("DisplayTextID")
+        get_mon_name = self.harness.hook_flag("GetMonName")
+        play_cry = self.harness.hook_flag("PlayCry")
         wait_text = self.harness.hook_flag("WaitForTextScrollButtonPress")
         close_text = self.harness.hook_flag("CloseTextDisplay")
         authored_count = self.harness.read8("wNumSprites")
@@ -409,6 +411,8 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         self.assertGreater(interaction["count"], 0)
         self.assertGreater(face_player["count"], 0)
         self.assertGreater(wait_text["count"], 0)
+        self.assertGreater(get_mon_name["count"], 0)
+        self.assertGreater(play_cry["count"], 0)
         self.assertEqual(self.harness.read8("wNumSprites"), authored_count)
         self.assertEqual(
             self.harness.read8("wSprite15StateData1FacingDirection"),
@@ -416,10 +420,60 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         self.assertEqual(
             self.harness.read8("wSprite15StateData1PictureID"),
-            sprites["SPRITE_PIKACHU"],
+            sprites["SPRITE_MONSTER"],
         )
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
         self.assertEqual(self.harness.read8("wFontLoaded") & 1, 0)
+
+    def test_lead_sheet_change_during_text_reload_preserves_visible_pose(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        pokemon = parse_rgbds_constants(ROOT / "constants" / "pokemon_constants.asm")
+        self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+
+        accepted = 0
+        for direction in ("up", "right", "down", "left") * 3:
+            before = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            self.harness.move_tile(direction)
+            after = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            accepted += after != before
+            if accepted == 2:
+                break
+        self.assertEqual(accepted, 2)
+        self.harness.tick(40)
+
+        saved_pose = (
+            self.harness.read8("wSprite15StateData2MapY"),
+            self.harness.read8("wSprite15StateData2MapX"),
+            self.harness.read8("wSprite15StateData1YPixels"),
+            self.harness.read8("wSprite15StateData1XPixels"),
+            self.harness.read8("wSprite15StateData1FacingDirection"),
+        )
+        self.assertNotEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
+        self.harness.write8("wPartySpecies", pokemon["PIKACHU"])
+        self.harness.write8("wFontLoaded", 1)
+        self.harness.call_routine("FollowerPrepareMap")
+
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1PictureID"),
+            sprites["SPRITE_PIKACHU"],
+        )
+        self.assertEqual(
+            (
+                self.harness.read8("wSprite15StateData2MapY"),
+                self.harness.read8("wSprite15StateData2MapX"),
+                self.harness.read8("wSprite15StateData1YPixels"),
+                self.harness.read8("wSprite15StateData1XPixels"),
+                self.harness.read8("wSprite15StateData1FacingDirection"),
+            ),
+            saved_pose,
+        )
+        self.assertNotEqual(
+            self.harness.read8("wSprite15StateData1ImageIndex"),
+            0xFF,
+            "new lead remained hidden until the next accepted player step",
+        )
+        self.harness.write8("wFontLoaded", 0)
 
     def test_dorm_b1f_warp_uses_yellow_default_state_zero(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
@@ -448,7 +502,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.read8("wFollowerSpawnState"),
             ),
             (
-                sprites["SPRITE_PIKACHU"],
+                sprites["SPRITE_MONSTER"],
                 2,
                 self.harness.read8("wYCoord") + 4,
                 self.harness.read8("wXCoord") + 4,
@@ -468,12 +522,13 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             1200,
         )
         self.harness.tick(60)
-        self.assertEqual(self.harness.read8("wSprite15StateData1PictureID"), sprites["SPRITE_PIKACHU"])
+        self.assertEqual(self.harness.read8("wSprite15StateData1PictureID"), sprites["SPRITE_MONSTER"])
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
         self.assertEqual(self.harness.read8("wFollowerSpawnState"), 0)
 
     def test_active_yellow_ledge_latch_and_two_tile_motion(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
         ram_constants = parse_rgbds_constants(ROOT / "constants" / "ram_constants.asm")
         prepare = self.harness.hook_flag("FollowerPrepareMap")
         self.harness.boot_debug1(maps["SILPH_CO_DORM"])
@@ -546,7 +601,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.read8("wSprite15StateData1PictureID"),
                 self.harness.read8("hCurMap"),
             ),
-            (0, 0, 1 << 2, 0, 0, 50, maps["SILPH_CO_DORM"]),
+            (0, 0, 1 << 2, 0, 0, sprites["SPRITE_MONSTER"], maps["SILPH_CO_DORM"]),
         )
         append_commands = []
         append_bank, append_address = self.harness.symbols.get("FollowerAppendCommand")
@@ -608,7 +663,7 @@ class YellowFollowerRoute1CGBTest(unittest.TestCase):
         self.assertEqual(
             self.harness.read_bytes("wSpriteSet", 11),
             [
-                sprites["SPRITE_PIKACHU"],
+                sprites["SPRITE_MONSTER"],
                 sprites["SPRITE_BLUE"],
                 sprites["SPRITE_YOUNGSTER"],
                 sprites["SPRITE_GIRL"],
@@ -630,7 +685,7 @@ class YellowFollowerRoute1CGBTest(unittest.TestCase):
             )
         self.assertEqual(
             self.harness.read8("wSprite15StateData1PictureID"),
-            sprites["SPRITE_PIKACHU"],
+            sprites["SPRITE_MONSTER"],
         )
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
 
