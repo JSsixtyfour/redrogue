@@ -1957,7 +1957,11 @@ wFollowerCommandBuffer:: ds 16
 ; Yellow wPikachuSpawnState. Ordinary indoor warps use 0 (overlap), while
 ; connected-map transitions use 2 (one tile behind the player).
 wFollowerSpawnState:: db
-	ds 128 - 18
+; Yellow wPikachuOverworldStateFlags bit 6. HandleLedges reaches the accepted
+; step seam twice; the first call queues a two-tile command and the second
+; clears this latch without queuing another command.
+wFollowerLedgeLatch:: db
+	ds 128 - 19
 wFollowerDataEnd::
 ASSERT wFollowerDataEnd - wFollowerDataStart == 128
 

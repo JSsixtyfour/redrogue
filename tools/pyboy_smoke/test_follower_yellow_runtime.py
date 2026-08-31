@@ -330,5 +330,257 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             f"{self.harness.read8('wSprite15StateData2MapX')})",
         )
 
+    def test_active_yellow_ledge_latch_and_two_tile_motion(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        ram_constants = parse_rgbds_constants(ROOT / "constants" / "ram_constants.asm")
+        prepare = self.harness.hook_flag("FollowerPrepareMap")
+        self.harness.boot_debug1(maps["SILPH_CO_DORM"])
+        for _ in range(300):
+            if prepare["count"]:
+                break
+            self.harness.tap("a", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: prepare["count"] > 0,
+            "Dorm follower map preparation for ledge probe",
+            2400,
+        )
+        self.harness.tick(8)
+
+        ledge_flag = 1 << ram_constants["BIT_LEDGE_OR_FISHING"]
+        command_by_direction = (
+            (1 << 2, 5),  # PLAYER_DIR_DOWN -> FOLLOWER_COMMAND_LEDGE_DOWN
+            (1 << 3, 6),  # PLAYER_DIR_UP -> FOLLOWER_COMMAND_LEDGE_UP
+            (1 << 1, 7),  # PLAYER_DIR_LEFT -> FOLLOWER_COMMAND_LEDGE_LEFT
+            (1 << 0, 8),  # PLAYER_DIR_RIGHT -> FOLLOWER_COMMAND_LEDGE_RIGHT
+        )
+        for direction, expected_command in command_by_direction:
+            self.harness.call_routine("FollowerClearQueue")
+            self.harness.write8("wFollowerLedgeLatch", 0)
+            self.harness.write8("wWalkBikeSurfState", 0)
+            self.harness.write8("wMovementFlags", ledge_flag)
+            self.harness.write8("wPlayerDirection", direction)
+            self.harness.call_routine("FollowerQueuePlayerStep")
+            self.assertEqual(self.harness.read8("wFollowerLedgeLatch"), 1)
+            self.assertEqual(self.harness.read8("wFollowerCommandBufferSize"), 0)
+            self.assertEqual(
+                self.harness.read8("wFollowerCommandBuffer"), expected_command
+            )
+            self.harness.call_routine("FollowerQueuePlayerStep")
+            self.assertEqual(self.harness.read8("wFollowerLedgeLatch"), 0)
+            self.assertEqual(self.harness.read8("wFollowerCommandBufferSize"), 0)
+
+        self.harness.call_routine("FollowerClearQueue")
+        self.harness.write8("wFollowerLedgeLatch", 0)
+        self.harness.write8("wMovementFlags", ledge_flag)
+        self.harness.write8("wPlayerDirection", 1 << 2)
+        self.harness.call_routine("FollowerQueuePlayerStep")
+        self.harness.call_routine("FollowerQueuePlayerStep")
+        self.harness.write8("wMovementFlags", 0)
+
+        start_map_y = self.harness.read8("wYCoord") + 3
+        start_map_x = self.harness.read8("wXCoord") + 4
+        start_pixel_y = 44
+        start_pixel_x = 64
+        self.harness.write8("wSprite15StateData2MapY", start_map_y)
+        self.harness.write8("wSprite15StateData2MapX", start_map_x)
+        self.harness.write8("wSprite15StateData1YPixels", start_pixel_y)
+        self.harness.write8("wSprite15StateData1XPixels", start_pixel_x)
+        self.harness.write8("wSprite15StateData1MovementStatus", 1)
+        self.harness.write8("wFontLoaded", 0)
+        tile_y = (start_pixel_y + 4) & 0xF0
+        tile_x = (start_pixel_x + 2) >> 3
+        bottom_left = 5 * (tile_y >> 1) + tile_x + 20
+        tilemap = self.harness.address("wTileMap")
+        for offset in (bottom_left, bottom_left - 1, bottom_left - 20, bottom_left - 19):
+            self.harness.pyboy.memory[tilemap + offset] = 0
+        self.assertEqual(
+            (
+                self.harness.read8("wWalkBikeSurfState"),
+                self.harness.read8("wMovementFlags"),
+                self.harness.read8("wPlayerDirection"),
+                self.harness.read8("wFollowerLedgeLatch"),
+                self.harness.read8("wFollowerCommandBufferSize"),
+                self.harness.read8("wSprite15StateData1PictureID"),
+                self.harness.read8("hCurMap"),
+            ),
+            (0, 0, 1 << 2, 0, 0, 50, maps["SILPH_CO_DORM"]),
+        )
+        append_commands = []
+        append_bank, append_address = self.harness.symbols.get("FollowerAppendCommand")
+        reject_hook = self.harness.hook_flag("FollowerAppendCommand.reject")
+        command_start = self.harness.hook_flag("FollowerStartCommand")
+        visibility_hidden = self.harness.hook_flag("FollowerCheckVisibility.hidden")
+
+        def capture_append(_context) -> None:
+            append_commands.append(self.harness.pyboy.register_file.A)
+
+        self.harness.pyboy.hook_register(
+            append_bank, append_address, capture_append, None
+        )
+        try:
+            self.harness.call_routine("FollowerQueuePlayerStep")
+        finally:
+            self.harness.pyboy.hook_deregister(append_bank, append_address)
+        self.assertEqual(append_commands, [1], "ordinary post-ledge command was not encoded")
+        self.assertEqual(reject_hook["count"], 0, "ordinary post-ledge command was rejected")
+        self.assertEqual(self.harness.read8("wFollowerCommandBufferSize"), 0)
+        self.assertEqual(self.harness.read_bytes("wFollowerCommandBuffer", 2), [1, 0xFF])
+        self.assertEqual(
+            visibility_hidden["count"],
+            0,
+            "synthetic ledge fixture was rejected by follower visibility",
+        )
+        self.assertGreater(command_start["count"], 0, "queued ledge command was not dispatched")
+        self.assertEqual(self.harness.read8("wSprite15StateData1MovementStatus"), 4)
+        for _ in range(20):
+            if self.harness.read8("wSprite15StateData1MovementStatus") == 1:
+                break
+            self.harness.call_routine("FollowerUpdate")
+        self.assertEqual(self.harness.read8("wSprite15StateData1MovementStatus"), 1)
+        self.assertEqual(self.harness.read8("wSprite15StateData2MapY"), start_map_y + 2)
+        self.assertEqual(self.harness.read8("wSprite15StateData2MapX"), start_map_x)
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1YPixels"),
+            (start_pixel_y + 32) & 0xFF,
+        )
+        self.assertEqual(self.harness.read8("wSprite15StateData1XPixels"), start_pixel_x)
+
+
+class YellowFollowerRoute1CGBTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.harness = RedRogueHarness(ROOT, ARTIFACTS, cgb_mode=True)
+
+    def tearDown(self) -> None:
+        self.harness.close()
+
+    def test_route1_fixed_set_and_player_movement_at_60fps(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        self.harness.boot_to_lobby(battle_count=1)
+        self.harness.enter_stage_door1(maps["ROUTE_1"], description="Route 1")
+
+        self.assertEqual(self.harness.read8("hCurMap"), maps["ROUTE_1"])
+        self.assertEqual(self.harness.read8("wOptions2") & 0x40, 0x40)
+        self.assertEqual(self.harness.pyboy.memory[0xFF4D] & 0x80, 0x80)
+        self.assertEqual(
+            self.harness.read_bytes("wSpriteSet", 11),
+            [
+                sprites["SPRITE_PIKACHU"],
+                sprites["SPRITE_BLUE"],
+                sprites["SPRITE_YOUNGSTER"],
+                sprites["SPRITE_GIRL"],
+                sprites["SPRITE_FISHER"],
+                sprites["SPRITE_COOLTRAINER_M"],
+                sprites["SPRITE_GAMBLER"],
+                sprites["SPRITE_SEEL"],
+                sprites["SPRITE_OAK"],
+                sprites["SPRITE_POKE_BALL"],
+                sprites["SPRITE_GAMBLER_ASLEEP"],
+            ],
+        )
+        expected_bases = [4, 4, 4, 4, 7, 11, 11, 11, 11, 7, 4, 4]
+        for slot, expected in enumerate(expected_bases, start=1):
+            self.assertEqual(
+                self.harness.read8(f"wSprite{slot:02d}StateData2ImageBaseOffset"),
+                expected,
+                f"Route 1 slot {slot} used the wrong fixed-set image base",
+            )
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1PictureID"),
+            sprites["SPRITE_PIKACHU"],
+        )
+        self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+
+        movement_flags = self.harness.read8("wMovementFlags")
+        player_walk_anim = self.harness.read8(
+            "wSpritePlayerStateData2WalkAnimationCounter"
+        )
+        update_enabled = self.harness.read8("hUpdateSpritesEnabled")
+        player_image_base = self.harness.read8(
+            "wSpritePlayerStateData2ImageBaseOffset"
+        )
+        self.assertEqual(
+            player_image_base,
+            1,
+            "Route 1 fixed-set loading cleared the player's image base",
+        )
+        update_calls = self.harness.hook_flag("UpdateSprites")
+        update_loop_calls = self.harness.hook_flag("_UpdateSprites")
+        player_updates = self.harness.hook_flag("UpdatePlayerSprite")
+
+        start = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+        player_images = []
+        walk_counters = []
+        intra_frames = []
+        anim_frames = []
+        self.harness.pyboy.button_press("left")
+        for _ in range(36):
+            self.harness.tick(1)
+            player_images.append(
+                self.harness.read8("wSpritePlayerStateData1ImageIndex")
+            )
+            walk_counters.append(self.harness.read8("wWalkCounter"))
+            intra_frames.append(
+                self.harness.read8("wSpritePlayerStateData1IntraAnimFrameCounter")
+            )
+            anim_frames.append(
+                self.harness.read8("wSpritePlayerStateData1AnimFrameCounter")
+            )
+        self.harness.pyboy.button_release("left")
+        self.harness.wait_until(
+            lambda: self.harness.read8("wWalkCounter") == 0,
+            "Route 1 player movement completion",
+            120,
+        )
+        self.harness.tick(4)
+        end = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+        self.assertNotEqual(end, start, "Route 1 player step did not complete")
+        self.assertEqual(self.harness.read8("wWalkCounter"), 0)
+        self.assertGreaterEqual(
+            len({image & 3 for image in player_images}),
+            2,
+            "Route 1 player walking frames did not animate at 60 FPS: "
+            f"images={player_images} walk={walk_counters} "
+            f"intra={intra_frames} anim={anim_frames} "
+            f"movement_flags={movement_flags:#04x} "
+            f"player_walk_anim={player_walk_anim:#04x} "
+            f"update_enabled={update_enabled:#04x} "
+            f"player_image_base={player_image_base:#04x} "
+            f"update_calls={update_calls['count']} "
+            f"update_loop_calls={update_loop_calls['count']} "
+            f"player_updates={player_updates['count']}",
+        )
+
+        collision_position = None
+        for _ in range(16):
+            before = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            self.harness.move_tile("left")
+            self.harness.wait_until(
+                lambda: self.harness.read8("wWalkCounter") == 0,
+                "Route 1 westward movement completion",
+                120,
+            )
+            after = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            if after == before:
+                collision_position = after
+                break
+        self.assertIsNotNone(
+            collision_position,
+            "could not reach a Route 1 west-wall collision fixture",
+        )
+        self.harness.move_tile("right")
+        self.harness.wait_until(
+            lambda: self.harness.read8("wWalkCounter") == 0,
+            "Route 1 post-collision recovery step",
+            120,
+        )
+        self.assertNotEqual(
+            (self.harness.read8("wYCoord"), self.harness.read8("wXCoord")),
+            collision_position,
+            "player remained stuck after a Route 1 wall collision",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -94,9 +94,11 @@ LoadMapSpriteTilePatterns:
 	cp SILPH_CO_B1F
 	jr z, .reserveFollowerVRAMSlot
 	cp SILPH_CO_DORM
+	jr z, .reserveFollowerVRAMSlot
+	cp OAKS_LAB
 	jr nz, .findNextVRAMSlotLoop
 .reserveFollowerVRAMSlot
-	inc b ; reserve image base 2 for the follower on Checkpoint C test maps
+	inc b ; reserve image base 2 for enabled follower maps
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
 .findNextVRAMSlotLoop
@@ -299,6 +301,15 @@ InitOutsideMapSprites:
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a ; reloading upper half of tile patterns after displaying text?
 	jr nz, .loadSpriteSet ; if so, forcibly reload the sprite set
+	; Yellow inserts Pikachu into the fixed outside sprite set. Force a rebuild
+	; both on Route 1 and when leaving it so wSpriteSet cannot retain the
+	; follower-specific layout across a same-set transition.
+	ldh a, [hCurMap]
+	cp ROUTE_1
+	jr z, .loadSpriteSet
+	ld a, [wSpriteSet]
+	cp SPRITE_PIKACHU
+	jr z, .loadSpriteSet
 	ld a, [wSpriteSetID]
 	cp b ; has the sprite set ID changed?
 	jr z, .skipLoadingSpriteSet ; if not, don't load it again
@@ -340,6 +351,13 @@ InitOutsideMapSprites:
 	ld a, l
 	cp 11 * SPRITESTATEDATA2_LENGTH + SPRITESTATEDATA2_PICTUREID ; reached 11th sprite slot?
 	jr nz, .loadSpriteSetLoop
+	; Yellow reserves fixed-set entry 0/image base 2 for Pikachu. Route 1
+	; uses only the first eight walking entries from SPRITESET_PALLET_VIRIDIAN,
+	; so discard its unused ninth walking entry while retaining both still
+	; entries at indexes 9 and 10.
+	ldh a, [hCurMap]
+	cp ROUTE_1
+	call z, .insertFollowerIntoSpriteSet
 	ld b, 4 ; 4 remaining sprite slots
 .zeroRemainingSlotsLoop ; loop to zero the picture ID's of the remaining sprite slots
 	ld a, SPRITESTATEDATA2_LENGTH
@@ -409,6 +427,38 @@ InitOutsideMapSprites:
 	jr nz, .storeVRAMSlotsLoop
 	scf
 	ret
+
+.insertFollowerIntoSpriteSet
+	; Shift authored walking entries 0..7 to 1..8. Entries 9 and 10 are the
+	; two four-tile sheets and deliberately remain in place.
+	ld hl, wSpriteSet + 7
+	ld de, wSpriteSet + 8
+	ld b, 8
+.shiftWalkingEntries
+	ld a, [hld]
+	ld [de], a
+	dec de
+	dec b
+	jr nz, .shiftWalkingEntries
+	ld a, SPRITE_PIKACHU
+	ld [wSpriteSet], a
+
+	; The tile loader consumes the synthetic picture IDs in slots 1..11.
+	; Rebuild them from the adjusted fixed set so Pikachu is physically loaded
+	; into base 2 and every authored sheet retains its lookup/base agreement.
+	ld hl, wSprite01StateData2PictureID
+	ld de, wSpriteSet
+	ld b, SPRITE_SET_LENGTH
+.copyAdjustedSet
+	ld a, [de]
+	inc de
+	ld [hl], a
+	dec b
+	ret z
+	ld a, SPRITESTATEDATA2_LENGTH
+	add l
+	ld l, a
+	jr .copyAdjustedSet
 
 ; Chooses the correct sprite set ID depending on the player's position within
 ; the map for maps with two sprite sets.

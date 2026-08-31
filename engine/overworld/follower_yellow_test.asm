@@ -14,7 +14,7 @@
 ;
 ; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
 ; SILPH_CO_B1F and SILPH_CO_DORM, Yellow spawn states 0/1/2, no Pikachu
-; happiness-dependent animation rate, and no ledge/idle/emotion/interaction/
+; happiness-dependent animation rate, and no idle/emotion/interaction/
 ; bike/surf state. Slot 15 and image base 2 match Yellow. The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
 ; its already-scaled delta for slot 15. Only state 0 is currently scheduled;
@@ -30,9 +30,14 @@ DEF FOLLOWER_COMMAND_DOWN  EQU 1
 DEF FOLLOWER_COMMAND_UP    EQU 2
 DEF FOLLOWER_COMMAND_LEFT  EQU 3
 DEF FOLLOWER_COMMAND_RIGHT EQU 4
+DEF FOLLOWER_COMMAND_LEDGE_DOWN  EQU 5
+DEF FOLLOWER_COMMAND_LEDGE_UP    EQU 6
+DEF FOLLOWER_COMMAND_LEDGE_LEFT  EQU 7
+DEF FOLLOWER_COMMAND_LEDGE_RIGHT EQU 8
 
 DEF FOLLOWER_STATUS_READY   EQU 1
 DEF FOLLOWER_STATUS_WALKING EQU 3
+DEF FOLLOWER_STATUS_TWO_STEP EQU 4
 DEF FOLLOWER_STATUS_FAST    EQU 5
 
 DEF FOLLOWER_NORMAL_FRAMES EQU 8
@@ -45,6 +50,10 @@ FollowerIsTestMap:
 	cp SILPH_CO_B1F
 	jr z, .yes
 	cp SILPH_CO_DORM
+	jr z, .yes
+	cp OAKS_LAB
+	jr z, .yes
+	cp ROUTE_1
 	jr z, .yes
 	and a
 	ret
@@ -136,6 +145,8 @@ FollowerClearState:
 	call FillMemory
 	ld a, FOLLOWER_COMMAND_EMPTY
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	xor a
+	ld [wFollowerLedgeLatch], a
 	jp FollowerClearQueue
 
 ; Yellow ClearPikachuFollowCommandBuffer. The size byte is the last occupied
@@ -152,8 +163,9 @@ FollowerClearQueue:
 	ret
 
 ; Yellow Func_fcc08 seam. The HOME caller reaches this only after collision
-; acceptance; this routine rejects excluded movement modes and encodes the
-; already-validated ordinary direction in Yellow's 1..4 format.
+; acceptance. Yellow's ledge simulation reaches this seam twice: the first
+; call queues command 5..8 and sets a latch, while the second clears the latch
+; and queues nothing.
 FollowerQueuePlayerStep::
 	call FollowerIsTestMap
 	ret nc
@@ -165,7 +177,31 @@ FollowerQueuePlayerStep::
 	ret nz
 	ld a, [wMovementFlags]
 	bit BIT_LEDGE_OR_FISHING, a
-	ret nz
+	jr nz, .ledge
+	xor a
+	ld [wFollowerLedgeLatch], a
+	call .encodeDirection
+	ret c
+	jp FollowerAppendCommand
+.ledge
+	ld a, [wFollowerLedgeLatch]
+	and a
+	jr z, .firstLedgeHalf
+	xor a
+	ld [wFollowerLedgeLatch], a
+	scf
+	ret
+.firstLedgeHalf
+	call .encodeDirection
+	ret c
+	add 4
+	call FollowerAppendCommand
+	ret c
+	ld a, 1
+	ld [wFollowerLedgeLatch], a
+	and a
+	ret
+.encodeDirection
 	ld a, [wPlayerDirection]
 	bit PLAYER_DIR_BIT_UP, a
 	jr nz, .up
@@ -174,26 +210,39 @@ FollowerQueuePlayerStep::
 	bit PLAYER_DIR_BIT_LEFT, a
 	jr nz, .left
 	bit PLAYER_DIR_BIT_RIGHT, a
-	ret z
+	jr z, .noDirection
 	ld a, FOLLOWER_COMMAND_RIGHT
-	jr FollowerAppendCommand
+	and a
+	ret
 .up
 	ld a, FOLLOWER_COMMAND_UP
-	jr FollowerAppendCommand
+	and a
+	ret
 .down
 	ld a, FOLLOWER_COMMAND_DOWN
-	jr FollowerAppendCommand
+	and a
+	ret
 .left
 	ld a, FOLLOWER_COMMAND_LEFT
+	and a
+	ret
+.noDirection
+	scf
+	ret
 
 ; Yellow AppendPikachuFollowCommandToBuffer plus a required 16-byte bound.
+; Carry is clear on success and set for an invalid command or full queue.
 FollowerAppendCommand:
 	ld b, a
+	and a
+	jr z, .reject
+	cp FOLLOWER_COMMAND_LEDGE_RIGHT + 1
+	jr nc, .reject
 	ld a, [wFollowerCommandBufferSize]
 	cp FOLLOWER_COMMAND_EMPTY
 	jr z, .store
 	cp FOLLOWER_COMMAND_LAST
-	ret nc
+	jr nc, .reject
 .store
 	ld hl, wFollowerCommandBufferSize
 	inc [hl]
@@ -202,6 +251,10 @@ FollowerAppendCommand:
 	ld hl, wFollowerCommandBuffer
 	add hl, de
 	ld [hl], b
+	and a
+	ret
+.reject
+	scf
 	ret
 
 ; Native Yellow update ownership: this entry is reached only from slot 15's
@@ -223,6 +276,8 @@ FollowerUpdate::
 	and a
 	jr z, FollowerInitializeSpawn
 	cp FOLLOWER_STATUS_WALKING
+	jp z, FollowerAdvanceStep
+	cp FOLLOWER_STATUS_TWO_STEP
 	jp z, FollowerAdvanceStep
 	cp FOLLOWER_STATUS_FAST
 	jp z, FollowerAdvanceStep
@@ -271,12 +326,18 @@ FollowerDequeueCommand:
 
 FollowerStartCommand:
 	push af
+	cp FOLLOWER_COMMAND_LEDGE_DOWN
+	jr nc, .twoStep
 	call FollowerAtLeastTwoQueued
 	ld b, FOLLOWER_NORMAL_FRAMES
 	ld c, FOLLOWER_STATUS_WALKING
 	jr nc, .speedReady
 	ld b, FOLLOWER_FAST_FRAMES
 	ld c, FOLLOWER_STATUS_FAST
+	jr .speedReady
+.twoStep
+	ld b, FOLLOWER_NORMAL_FRAMES
+	ld c, FOLLOWER_STATUS_TWO_STEP
 .speedReady
 	; Red Rogue's 60 FPS overworld uses twice as many one-pixel updates for the
 	; same tile. Preserve Yellow's logical 8/4-update normal/fast cadence.
@@ -285,6 +346,10 @@ FollowerStartCommand:
 	sla b
 .cadenceReady
 	pop af
+	cp FOLLOWER_COMMAND_LEDGE_DOWN
+	jr c, .normalizedCommand
+	sub 4
+.normalizedCommand
 	dec a
 	ld e, a
 	add a
@@ -304,6 +369,9 @@ FollowerStartCommand:
 	ld a, b
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
 	call FollowerAddStepVector
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
+	cp FOLLOWER_STATUS_TWO_STEP
+	call z, FollowerAddStepVector
 	; Yellow performs the first pixel update in the dispatch call.
 	jr FollowerAdvanceStep
 
@@ -354,7 +422,10 @@ FollowerAdvanceStep:
 .haveYBase
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_FAST
+	jr z, .doubleYDelta
+	cp FOLLOWER_STATUS_TWO_STEP
 	jr nz, .haveYDelta
+.doubleYDelta
 	sla b
 .haveYDelta
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_YPIXELS]
@@ -368,7 +439,10 @@ FollowerAdvanceStep:
 .haveXBase
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS]
 	cp FOLLOWER_STATUS_FAST
+	jr z, .doubleXDelta
+	cp FOLLOWER_STATUS_TWO_STEP
 	jr nz, .haveXDelta
+.doubleXDelta
 	sla b
 .haveXDelta
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_XPIXELS]
@@ -548,6 +622,7 @@ FollowerHideIfOverlappingPlayer:
 ; exactly one lag command from geometry rather than creating a fresh spawn.
 FollowerRefreshAfterText:
 	xor a
+	ld [wFollowerLedgeLatch], a
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER], a
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER], a
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
@@ -565,30 +640,48 @@ FollowerRefreshQueue:
 	ret c
 	jp FollowerAppendCommand
 
-; Yellow ComputePikachuFollowCommand, Y before X. This slice can only be one
-; ordinary tile behind at accepted checkpoints; larger deltas still seed the
-; correct axis without importing Yellow's ledge/two-tile command states.
+; Yellow ComputePikachuFollowCommand, Y before X. A separation of two or more
+; tiles rebuilds commands 5..8 so text recovery preserves ledge/catch-up state.
 FollowerComputeSeedCommand:
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPY]
 	ld b, a
 	ld a, [wYCoord]
 	add 4
-	cp b
+	sub b
 	jr z, .x
-	ld a, FOLLOWER_COMMAND_DOWN
-	jr nc, .command
+	jr nc, .down
+	cpl
+	inc a
+	ld b, a
 	ld a, FOLLOWER_COMMAND_UP
-	jr .command
+	jr .magnitude
+.down
+	ld b, a
+	ld a, FOLLOWER_COMMAND_DOWN
+	jr .magnitude
 .x
 	ld a, [wSprite15StateData2 + SPRITESTATEDATA2_MAPX]
 	ld b, a
 	ld a, [wXCoord]
 	add 4
-	cp b
+	sub b
 	jr z, .overlap
-	ld a, FOLLOWER_COMMAND_RIGHT
-	jr nc, .command
+	jr nc, .right
+	cpl
+	inc a
+	ld b, a
 	ld a, FOLLOWER_COMMAND_LEFT
+	jr .magnitude
+.right
+	ld b, a
+	ld a, FOLLOWER_COMMAND_RIGHT
+.magnitude
+	ld c, a
+	ld a, b
+	cp 2
+	ld a, c
+	jr c, .command
+	add 4
 .command
 	and a
 	ret

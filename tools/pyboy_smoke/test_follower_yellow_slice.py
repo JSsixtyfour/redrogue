@@ -27,9 +27,11 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn('INCLUDE "engine/overworld/follower.asm"', self.main)
         self.assertNotIn("follower_baseline.asm", self.main)
 
-    def test_scope_is_fixed_pikachu_on_two_maps(self):
+    def test_scope_is_fixed_pikachu_on_explicit_test_maps(self):
         self.assertIn("cp SILPH_CO_B1F", self.core)
         self.assertIn("cp SILPH_CO_DORM", self.core)
+        self.assertIn("cp OAKS_LAB", self.core)
+        self.assertIn("cp ROUTE_1", self.core)
         self.assertIn("cp SPRITE_PIKACHU", self.core)
         for forbidden in (
             "INDIGO_PLATEAU_LOBBY",
@@ -54,7 +56,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_yellow_transition_spawn_states_are_explicit(self):
         self.assertRegex(
             self.wram,
-            r"(?s)wFollowerCommandBuffer:: ds 16\s+.*?wFollowerSpawnState:: db\s+ds 128 - 18",
+            r"(?s)wFollowerCommandBuffer:: ds 16\s+.*?wFollowerSpawnState:: db\s+"
+            r".*?wFollowerLedgeLatch:: db\s+ds 128 - 19",
         )
         warp = self.overworld.split("WarpFound2::", 1)[1].split(
             "ContinueCheckWarpsNoCollisionLoop::", 1
@@ -93,6 +96,30 @@ class YellowFollowerSliceTests(unittest.TestCase):
             self.overworld,
             r"(?ms)\.setWalkCounter\s+ld \[wWalkCounter\], a\s+.*?farcall FollowerQueuePlayerStep\s+jr \.moveAhead2",
         )
+
+    def test_yellow_ledge_latch_and_two_tile_command_contract(self):
+        queue = self.core.split("FollowerQueuePlayerStep::", 1)[1].split(
+            "; Yellow AppendPikachuFollowCommandToBuffer", 1
+        )[0]
+        self.assertIn("bit BIT_LEDGE_OR_FISHING, a", queue)
+        self.assertIn("ld [wFollowerLedgeLatch], a", queue)
+        self.assertRegex(queue, r"(?s)\.firstLedgeHalf.*?add 4.*?call FollowerAppendCommand")
+        self.assertIn("DEF FOLLOWER_STATUS_TWO_STEP EQU 4", self.core)
+        self.assertIn("DEF FOLLOWER_COMMAND_LEDGE_DOWN  EQU 5", self.core)
+        self.assertIn("DEF FOLLOWER_COMMAND_LEDGE_RIGHT EQU 8", self.core)
+        start = self.core.split("FollowerStartCommand:", 1)[1].split(
+            "FollowerCommandData:", 1
+        )[0]
+        self.assertRegex(start, r"(?s)\.twoStep.*?FOLLOWER_NORMAL_FRAMES.*?FOLLOWER_STATUS_TWO_STEP")
+        self.assertIn("call z, FollowerAddStepVector", start)
+        advance = self.core.split("FollowerAdvanceStep:", 1)[1].split(
+            "FollowerWait:", 1
+        )[0]
+        self.assertEqual(advance.count("cp FOLLOWER_STATUS_TWO_STEP"), 2)
+        seed = self.core.split("FollowerComputeSeedCommand:", 1)[1].split(
+            "FollowerInitializeScreenPosition:", 1
+        )[0]
+        self.assertRegex(seed, r"(?s)\.magnitude.*?cp 2.*?jr c, \.command.*?add 4")
 
     def test_slot15_owns_update_dispatch(self):
         self.assertRegex(
@@ -164,8 +191,40 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("farcall FollowerPrepareMap", self.loader)
         self.assertRegex(
             self.loader,
+            r"(?s)cp SILPH_CO_B1F.*?cp SILPH_CO_DORM.*?cp OAKS_LAB.*?\.reserveFollowerVRAMSlot",
+        )
+        self.assertRegex(
+            self.loader,
             r"(?ms)cp LOW\(wSprite15StateData2 \+ SPRITESTATEDATA2_IMAGEBASEOFFSET\).*?\.followerVRAMSlot\s+ld a, 2",
         )
+
+    def test_route1_uses_yellow_fixed_set_reservation(self):
+        outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(
+            "; Chooses the correct sprite set ID", 1
+        )[0]
+        self.assertRegex(
+            outside,
+            r"(?s)cp ROUTE_1\s+jr z, \.loadSpriteSet.*?"
+            r"ld a, \[wSpriteSet\]\s+cp SPRITE_PIKACHU\s+jr z, \.loadSpriteSet",
+        )
+        self.assertRegex(
+            outside,
+            r"(?s)cp ROUTE_1\s+call z, \.insertFollowerIntoSpriteSet.*?"
+            r"\.insertFollowerIntoSpriteSet.*?ld hl, wSpriteSet \+ 7.*?"
+            r"ld de, wSpriteSet \+ 8.*?ld b, 8.*?"
+            r"ld a, SPRITE_PIKACHU\s+ld \[wSpriteSet\], a",
+        )
+        self.assertRegex(
+            outside,
+            r"(?s)ld hl, wSprite01StateData2PictureID\s+"
+            r"ld de, wSpriteSet\s+ld b, SPRITE_SET_LENGTH.*?"
+            r"\.copyAdjustedSet.*?ld \[hl\], a\s+dec b\s+ret z\s+"
+            r"ld a, SPRITESTATEDATA2_LENGTH",
+        )
+        generic_loader = self.loader.split("LoadMapSpriteTilePatterns:", 1)[1].split(
+            "InitOutsideMapSprites:", 1
+        )[0]
+        self.assertNotIn("cp ROUTE_1", generic_loader)
 
 
 if __name__ == "__main__":
