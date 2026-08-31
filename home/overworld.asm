@@ -783,7 +783,9 @@ CheckMapConnections::
 	call RunPaletteCommand
 ; Since the sprite set shouldn't change, this will just update VRAM slots at
 ; x#SPRITESTATEDATA2_IMAGEBASEOFFSET without loading any tile patterns.
-	farcall InitMapSprites
+	; Size-neutral Yellow connected-map seam. The banked tail wrapper sets
+	; spawn state 2, then reaches the same InitMapSprites routine.
+	farcall FollowerInitConnectedMapSprites
 	call LoadTileBlockMap
 	jp OverworldLoopLessDelay
 

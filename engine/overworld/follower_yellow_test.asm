@@ -13,7 +13,8 @@
 ; - FollowerRefreshAfterText = Func_fc76a / RefreshPikachuFollow
 ;
 ; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
-; SILPH_CO_B1F and SILPH_CO_DORM, Yellow spawn states 0/1/2, no Pikachu
+; SILPH_CO_B1F, SILPH_CO_DORM, OAKS_LAB, and ROUTE_1, Yellow spawn states
+; 0/1/2, no Pikachu
 ; happiness-dependent animation rate, and no idle/emotion/interaction/
 ; bike/surf state. Slot 15 and image base 2 match Yellow. The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
@@ -61,13 +62,28 @@ FollowerIsTestMap:
 	scf
 	ret
 
+; Yellow CheckMapConnections sets spawn state 2 before scheduling Pikachu on
+; the connected map. Red Rogue's HOME bank is full, so its existing banked
+; InitMapSprites call targets this size-neutral tail wrapper instead.
+FollowerInitConnectedMapSprites::
+	ld a, 2
+	ld [wFollowerSpawnState], a
+	farjp InitMapSprites
+
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
 ; overlap spawn. InitMapSprites also runs after text; an existing Pikachu is
 ; preserved and follows Yellow's text-recovery path instead of being respawned.
 FollowerPrepareMap::
 	call FollowerIsTestMap
-	ret nc
+	jr c, .enabledMap
+	; Yellow consumes connected state immediately because Pikachu is global.
+	; This contained port clears it when the destination is excluded so a
+	; dormant edge transition cannot leak into a later unrelated map load.
+	xor a
+	ld [wFollowerSpawnState], a
+	ret
+.enabledMap
 	; Yellow LoadMapHeader skips both sprite initialization and follower spawn
 	; scheduling while returning from battle. Preserve slot 15 exactly.
 	ld a, [wStatusFlags4]

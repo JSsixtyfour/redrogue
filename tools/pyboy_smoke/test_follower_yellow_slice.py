@@ -71,13 +71,28 @@ class YellowFollowerSliceTests(unittest.TestCase):
         connection = self.overworld.split(
             ".loadNewMap ; load the connected map that was entered", 1
         )[1].split(".didNotEnterConnectedMap", 1)[0]
-        self.assertNotIn("wFollowerSpawnState", connection)
+        self.assertRegex(
+            connection,
+            r"(?s)call LoadMapHeader.*?farcall FollowerInitConnectedMapSprites",
+        )
+        connected_wrapper = self.core.split(
+            "FollowerInitConnectedMapSprites::", 1
+        )[1].split("FollowerPrepareMap::", 1)[0]
+        self.assertRegex(
+            connected_wrapper,
+            r"(?s)ld a, 2\s+ld \[wFollowerSpawnState\], a\s+farjp InitMapSprites",
+        )
         prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(
             "FollowerClearState:", 1
         )[0]
         self.assertIn("ld a, [wFollowerSpawnState]", prepare)
         self.assertIn("cp 1", prepare)
         self.assertIn("cp 2", prepare)
+        self.assertRegex(
+            prepare,
+            r"(?s)call FollowerIsTestMap\s+jr c, \.enabledMap\s+"
+            r".*?xor a\s+ld \[wFollowerSpawnState\], a\s+ret",
+        )
         self.assertRegex(prepare, r"(?s)\.spawnRight\s+inc c\s+\.storeSpawnCoords")
         self.assertRegex(prepare, r"xor a\s+ld \[wFollowerSpawnState\], a")
 
