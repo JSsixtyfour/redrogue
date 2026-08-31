@@ -289,9 +289,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             self.core,
             r"(?ms)FollowerPokemonText::?.*?ld \[wNamedObjectIndex\], a.*?"
-            r"call GetMonName.*?ld de, wNameBuffer\s+call PlaceString.*?"
-            r"ld de, \.exclamation\s+call PlaceString.*?call PlayCry.*?"
-            r'\.wait\s+text ""\s+prompt',
+            r"call GetMonName.*?call PlayCry.*?text_ram wNameBuffer\s+"
+            r"text \"!\"\s+prompt",
         )
         self.assertIn("add_tx_pre FollowerPokemonText", self.predef_text)
         self.assertNotIn("add_tx_pre UnusedPredefText", self.predef_text)

@@ -81,7 +81,6 @@ MtMoon1F_TextPointers:
 	dw_const PickUpItemText,         TEXT_MTMOON1F_POTION1
 	dw_const PickUpItemText,            TEXT_MTMOON1F_MOON_STONE
 	dw_const PickUpItemText,            TEXT_MTMOON1F_RARE_CANDY
-	dw_const PickUpItemText,            TEXT_MTMOON1F_ESCAPE_ROPE
 	dw_const PickUpItemText,            TEXT_MTMOON1F_POTION2
     dw_const RandomPickUpItemText,      TEXT_MTMOON1F_RANDOM
     dw_const MtMoon1F_Rogue_Reward_Script_PokeballText_1, TEXT_MTMOON1F_ROGUE_REWARD_POKEBALL_1

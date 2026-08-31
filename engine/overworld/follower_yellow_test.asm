@@ -634,25 +634,14 @@ FollowerPokemonText::
 	ld a, [wPartySpecies]
 	ld [wNamedObjectIndex], a
 	call GetMonName
-	; The text box is already open and BC is its live cursor. Draw the name and
-	; exclamation before starting the cry, then restore BC for the text engine.
-	ld h, b
-	ld l, c
-	ld de, wNameBuffer
-	call PlaceString
-	ld h, b
-	ld l, c
-	ld de, .exclamation
-	call PlaceString
 	ld a, [wPartySpecies]
 	call PlayCry
 	pop bc
-	ld hl, .wait
+	ld hl, .name
 	ret
-.exclamation
-	db "!@"
-.wait
-	text ""
+.name
+	text_ram wNameBuffer
+	text "!"
 	prompt
 
 ; Yellow Func_fc745. Consume the face-player request before font/status

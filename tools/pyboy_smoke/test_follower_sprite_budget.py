@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PENDING_CUTS = {
+APPROVED_CUTS = {
     "PowerPlant": "POWERPLANT_VOLTORB4",
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
@@ -111,17 +111,26 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
         walking = {p for p in pictures if sizes[p] == 12}
         self.assertLessEqual(len(walking), 8, sorted(walking))
 
-    def test_object_slot_budget_with_only_explicit_pending_cuts(self):
+    def test_object_slot_budget_after_explicit_approved_cuts(self):
         for name, pictures in map_pictures().items():
             with self.subTest(map=name):
-                if len(pictures) > 14:
-                    self.assertIn(name, PENDING_CUTS)
-                    self.assertEqual(len(pictures), 15)
-                    source = (ROOT / f"data/maps/objects/{name}.asm").read_text()
-                    self.assertRegex(
-                        source,
-                        rf"(?m)^\s*const_export\s+{PENDING_CUTS[name]}\s*$",
-                    )
+                self.assertLessEqual(len(pictures), 14)
+
+        source = "\n".join(
+            path.read_text()
+            for path in (
+                ROOT / "data/maps/objects/PowerPlant.asm",
+                ROOT / "data/maps/objects/MtMoon1F.asm",
+                ROOT / "data/maps/objects/VictoryRoad1F.asm",
+            )
+        )
+        for symbol in APPROVED_CUTS.values():
+            with self.subTest(removed=symbol):
+                self.assertNotIn(symbol, source)
+
+        toggles = (ROOT / "data/maps/toggleable_objects.asm").read_text()
+        self.assertIn("Retired TOGGLE_MT_MOON_1F_ITEM_4", toggles)
+        self.assertIn("Retired TOGGLE_VICTORY_ROAD_1F_ITEM_2", toggles)
 
 
 if __name__ == "__main__":
