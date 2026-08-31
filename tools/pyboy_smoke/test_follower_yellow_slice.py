@@ -31,30 +31,40 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn('INCLUDE "engine/overworld/follower.asm"', self.main)
         self.assertNotIn("follower_baseline.asm", self.main)
 
-    def test_scope_resolves_lead_only_on_explicit_test_maps(self):
-        self.assertIn("cp SILPH_CO_B1F", self.core)
-        self.assertIn("cp SILPH_CO_DORM", self.core)
-        self.assertIn("cp OAKS_LAB", self.core)
-        self.assertIn("cp ROUTE_1", self.core)
-        self.assertIn("cp POWER_PLANT", self.core)
-        self.assertIn("cp MT_MOON_1F", self.core)
-        self.assertIn("cp VICTORY_ROAD_1F", self.core)
+    def test_scope_enables_ordinary_indoors_and_selected_outdoors(self):
+        self.assertIn("cp FIRST_INDOOR_MAP", self.core)
+        for map_name in ("ROUTE_1", "ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+            self.assertIn(f"cp {map_name}", self.core)
+        for excluded in (
+            "INDIGO_PLATEAU_LOBBY",
+            "TRADE_CENTER",
+            "COLOSSEUM",
+            "PROCEDURAL_CAVE_1",
+            "PROCEDURAL_FOREST",
+            "PROCEDURAL_FACILITY",
+            "MINI_SAFFRON",
+            "SILPH_CO_VR",
+            "HALL_OF_FAME",
+            "CHAMPIONS_ROOM",
+            "LORELEIS_ROOM",
+            "BRUNOS_ROOM",
+            "AGATHAS_ROOM",
+        ):
+            self.assertIn(f"db {excluded}", self.core)
         self.assertIn("FollowerResolveLeadPicture:", self.core)
         self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
         self.assertIn("ld a, [wPartySpecies]", self.core)
-        for forbidden in (
-            "INDIGO_PLATEAU_LOBBY",
-            "FollowerStartIdleAction",
-        ):
+        for forbidden in ("FollowerStartIdleAction",):
             self.assertNotIn(forbidden, self.core)
 
-    def test_first_crowded_indoor_group_reserves_follower_base_two(self):
-        for map_name in ("POWER_PLANT", "MT_MOON_1F", "VICTORY_ROAD_1F"):
-            with self.subTest(map=map_name):
-                self.assertRegex(
-                    self.loader,
-                    rf"(?m)^\s*cp {map_name}\s*$",
-                )
+    def test_active_slot15_reserves_follower_base_two(self):
+        self.assertRegex(
+            self.loader,
+            r"(?ms)ld b, 1.*?cp FIRST_INDOOR_MAP\s+"
+            r"jr c, \.findNextVRAMSlotLoop\s+ld a, \[wSprite15StateData1 \+ "
+            r"SPRITESTATEDATA1_PICTUREID\]\s+and a\s+jr z, "
+            r"\.findNextVRAMSlotLoop\s+inc b",
+        )
 
     def test_yellow_queue_sentinel_contract(self):
         self.assertIn("DEF FOLLOWER_COMMAND_EMPTY      EQU $ff", self.core)
@@ -371,33 +381,45 @@ class YellowFollowerSliceTests(unittest.TestCase):
 
     def test_loader_forces_reserved_base_two_for_slot15(self):
         self.assertIn("farcall FollowerPrepareMap", self.loader)
-        self.assertRegex(
-            self.loader,
-            r"(?s)cp SILPH_CO_B1F.*?cp SILPH_CO_DORM.*?cp OAKS_LAB.*?\.reserveFollowerVRAMSlot",
-        )
+        self.assertIn("ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]", self.loader)
         self.assertRegex(
             self.loader,
             r"(?ms)cp LOW\(wSprite15StateData2 \+ SPRITESTATEDATA2_IMAGEBASEOFFSET\).*?\.followerVRAMSlot\s+ld a, 2",
         )
 
-    def test_route1_uses_yellow_fixed_set_reservation(self):
+    def test_selected_outdoors_use_fixed_set_reservation(self):
         outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(
             "; Chooses the correct sprite set ID", 1
         )[0]
         self.assertRegex(
             outside,
-            r"(?s)cp ROUTE_1\s+jr z, \.loadSpriteSet.*?"
-            r"cp SPRITESET_PALLET_VIRIDIAN.*?ld a, \[wSpriteSet\]\s+"
+            r"(?s)call \.isFollowerOutsideMap\s+jr c, \.loadSpriteSet.*?"
+            r"cp SPRITESET_PALLET_VIRIDIAN.*?cp SPRITESET_PEWTER_CERULEAN.*?"
+            r"ld a, \[wSpriteSet\]\s+cp SPRITE_YOUNGSTER.*?"
+            r"ld a, \[wSpriteSet\]\s+"
             r"cp SPRITE_BLUE\s+jr nz, \.loadSpriteSet",
         )
         self.assertRegex(
             outside,
-            r"(?s)cp ROUTE_1\s+call z, \.insertFollowerIntoSpriteSet.*?"
-            r"\.insertFollowerIntoSpriteSet.*?ld hl, wSpriteSet \+ 7.*?"
+            r"(?s)call \.isFollowerOutsideMap\s+call c, "
+            r"\.insertFollowerIntoSpriteSet.*?\.insertFollowerIntoSpriteSet.*?"
+            r"cp ROUTE_1.*?ld c, 1.*?ld hl, wSpriteSet \+ 7.*?"
             r"ld de, wSpriteSet \+ 8.*?ld b, 8.*?"
             r"ld a, \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]\s+"
             r"ld \[wSpriteSet\], a",
         )
+        generic_loader = self.loader.split("LoadMapSpriteTilePatterns:", 1)[1].split(
+            "InitOutsideMapSprites:", 1
+        )[0]
+        self.assertRegex(
+            generic_loader,
+            r"(?s)ld b, 1.*?ldh a, \[hCurMap\]\s+cp FIRST_INDOOR_MAP\s+"
+            r"jr c, \.findNextVRAMSlotLoop\s+ld a, "
+            r"\[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]",
+        )
+        predicate = outside.split(".isFollowerOutsideMap", 1)[1]
+        for map_name in ("ROUTE_1", "ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+            self.assertIn(f"cp {map_name}", predicate)
 
     def test_species_categories_translate_to_walking_sheets(self):
         outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(

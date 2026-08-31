@@ -46,28 +46,67 @@ DEF FOLLOWER_NORMAL_FRAMES EQU 8
 DEF FOLLOWER_FAST_FRAMES   EQU 4
 DEF FOLLOWER_ANIM_TICKS    EQU 2 ; Yellow's happy walking cadence
 
-; Carry set only on explicitly-scoped follower maps.
+; Carry set on ordinary indoor maps and the explicitly-scoped outside maps.
+; Exceptional indoor systems retain explicit suppression until their own
+; lifecycle checkpoints are accepted.
 FollowerIsTestMap:
 	ldh a, [hCurMap]
-	cp SILPH_CO_B1F
-	jr z, .yes
-	cp SILPH_CO_DORM
-	jr z, .yes
-	cp OAKS_LAB
-	jr z, .yes
+	cp FIRST_INDOOR_MAP
+	jr c, .outsideMap
+	ld hl, .excludedIndoorMaps
+	push bc
+	call FollowerMapInArray
+	pop bc
+	jr c, .no
+	jr .yes
+.outsideMap
 	cp ROUTE_1
 	jr z, .yes
-	cp POWER_PLANT
+	cp ROUTE_3
 	jr z, .yes
-	cp MT_MOON_1F
+	cp ROUTE_9
 	jr z, .yes
-	cp VICTORY_ROAD_1F
+	cp ROUTE_24
 	jr z, .yes
+	cp ROUTE_25
+	jr z, .yes
+.no
 	and a
 	ret
 .yes
 	scf
 	ret
+
+.excludedIndoorMaps
+	db PROCEDURAL_CEMETERY_1
+	db PROCEDURAL_CEMETERY_2
+	db PROCEDURAL_CEMETERY_3
+	db PROCEDURAL_CEMETERY_4
+	db TRUCK
+	db UNUSED_MAP_6F
+	db MINI_SAFFRON
+	db LANCES_ROOM
+	db UNUSED_MAP_72
+	db UNUSED_MAP_73
+	db UNUSED_MAP_74
+	db UNUSED_MAP_75
+	db HALL_OF_FAME
+	db CHAMPIONS_ROOM
+	db INDIGO_PLATEAU_LOBBY
+	db UNUSED_MAP_CC
+	db UNUSED_MAP_CD
+	db UNUSED_MAP_CE
+	db UNUSED_MAP_E7
+	db TRADE_CENTER
+	db COLOSSEUM
+	db PROCEDURAL_CAVE_1
+	db PROCEDURAL_FOREST
+	db PROCEDURAL_FACILITY
+	db SILPH_CO_VR
+	db LORELEIS_ROOM
+	db BRUNOS_ROOM
+	db AGATHAS_ROOM
+	db $ff
 
 ; Yellow CheckMapConnections sets spawn state 2 before scheduling Pikachu on
 ; the connected map. Red Rogue's HOME bank is full, so its existing banked

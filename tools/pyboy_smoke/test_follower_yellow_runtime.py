@@ -73,6 +73,54 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.close()
                 self.harness = RedRogueHarness(ROOT, ARTIFACTS)
 
+    def test_debug2_selected_outdoor_group_spawns_reserved_follower(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        for map_name in ("ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+            with self.subTest(map=map_name):
+                self.harness.boot_to_lobby(battle_count=1)
+                self.harness.enter_stage_door1(maps[map_name], description=map_name)
+                self.assertLessEqual(self.harness.read8("wNumSprites"), 14)
+                self.assertNotEqual(
+                    self.harness.read8("wSprite15StateData1PictureID"), 0
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
+                )
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+
+    def test_debug2_representative_indoor_groups_spawn_reserved_follower(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        map_names = (
+            "PEWTER_GYM",
+            "CERULEAN_GYM",
+            "VERMILION_GYM",
+            "CELADON_GYM",
+            "FUCHSIA_GYM",
+            "SAFFRON_GYM",
+            "CINNABAR_GYM",
+            "VIRIDIAN_GYM",
+            "VIRIDIAN_FOREST",
+            "DIGLETTS_CAVE",
+            "ROCK_TUNNEL_1F",
+            "ROCKET_HIDEOUT_B1F",
+            "POKEMON_TOWER_2F",
+            "POKEMON_MANSION_1F",
+            "SEAFOAM_ISLANDS_1F",
+        )
+        for map_name in map_names:
+            with self.subTest(map=map_name):
+                self.harness.boot_to_lobby(battle_count=1)
+                self.harness.enter_stage_door1(maps[map_name], description=map_name)
+                self.assertNotEqual(
+                    self.harness.read8("wSprite15StateData1PictureID"), 0
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
+                )
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+
     def test_dorm_spawns_and_follows_after_two_accepted_steps(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")

@@ -16,14 +16,7 @@ APPROVED_CUTS = {
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
 }
-RESERVATION_TEST_MAPS = {
-    "SilphCoB1F",
-    "SilphCoDorm",
-    "OaksLab",
-    "PowerPlant",
-    "MtMoon1F",
-    "VictoryRoad1F",
-}
+SELECTED_PEWTER_CERULEAN_ROUTES = {"Route3", "Route9", "Route24", "Route25"}
 
 
 def sprite_sizes():
@@ -59,12 +52,6 @@ def map_pictures():
 class FollowerSpriteBudgetTests(unittest.TestCase):
     def test_checkpoint_c_reservation_is_contained_to_safe_maps(self):
         loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
-        for map_name in ("SILPH_CO_B1F", "SILPH_CO_DORM"):
-            with self.subTest(map=map_name):
-                self.assertRegex(
-                    loader,
-                    rf"(?m)^\s*cp {map_name}\s*$",
-                )
         self.assertIn(
             "inc b ; reserve image base 2 for enabled follower maps",
             loader,
@@ -76,14 +63,22 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
 
         sizes = sprite_sizes()
         pictures_by_map = map_pictures()
-        for map_name in RESERVATION_TEST_MAPS:
+        for map_name, pictures in pictures_by_map.items():
+            if map_name == "IndigoPlateauLobby":
+                continue
             with self.subTest(map=map_name):
                 walking = {
                     picture
-                    for picture in pictures_by_map[map_name]
+                    for picture in pictures
                     if sizes[picture] == 12
                 }
                 self.assertLessEqual(len(walking), 8, sorted(walking))
+
+    def test_selected_pewter_cerulean_routes_do_not_use_displaced_rocket(self):
+        pictures_by_map = map_pictures()
+        for map_name in SELECTED_PEWTER_CERULEAN_ROUTES:
+            with self.subTest(map=map_name):
+                self.assertNotIn("SPRITE_ROCKET", pictures_by_map[map_name])
 
     def test_all_authored_pictures_have_supported_sheet_sizes(self):
         sizes = sprite_sizes()

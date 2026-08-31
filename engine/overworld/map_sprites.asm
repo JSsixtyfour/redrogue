@@ -90,20 +90,14 @@ LoadMapSpriteTilePatterns:
 .notAlreadyLoaded
 	ld de, wSpritePlayerStateData2ImageBaseOffset
 	ld b, 1
+	; Yellow's outside set already places the follower in entry 0/base 2.
+	; Only indoor object-list allocation needs to skip over that reserved base.
 	ldh a, [hCurMap]
-	cp SILPH_CO_B1F
-	jr z, .reserveFollowerVRAMSlot
-	cp SILPH_CO_DORM
-	jr z, .reserveFollowerVRAMSlot
-	cp OAKS_LAB
-	jr z, .reserveFollowerVRAMSlot
-	cp POWER_PLANT
-	jr z, .reserveFollowerVRAMSlot
-	cp MT_MOON_1F
-	jr z, .reserveFollowerVRAMSlot
-	cp VICTORY_ROAD_1F
-	jr nz, .findNextVRAMSlotLoop
-.reserveFollowerVRAMSlot
+	cp FIRST_INDOOR_MAP
+	jr c, .findNextVRAMSlotLoop
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	jr z, .findNextVRAMSlotLoop
 	inc b ; reserve image base 2 for enabled follower maps
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
@@ -307,15 +301,20 @@ InitOutsideMapSprites:
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a ; reloading upper half of tile patterns after displaying text?
 	jr nz, .loadSpriteSet ; if so, forcibly reload the sprite set
-	; Yellow inserts Pikachu into the fixed outside sprite set. Force a rebuild
-	; both on Route 1 and when leaving it so wSpriteSet cannot retain the
-	; follower-specific layout across a same-set transition.
-	ldh a, [hCurMap]
-	cp ROUTE_1
-	jr z, .loadSpriteSet
+	; Force a rebuild on enabled outside maps and when leaving a modified
+	; Pallet/Viridian or Pewter/Cerulean set.
+	call .isFollowerOutsideMap
+	jr c, .loadSpriteSet
 	ld a, b
 	cp SPRITESET_PALLET_VIRIDIAN
+	jr z, .checkPalletViridianSet
+	cp SPRITESET_PEWTER_CERULEAN
 	jr nz, .checkSpriteSetID
+	ld a, [wSpriteSet]
+	cp SPRITE_YOUNGSTER
+	jr nz, .loadSpriteSet
+	jr .checkSpriteSetID
+.checkPalletViridianSet
 	ld a, [wSpriteSet]
 	cp SPRITE_BLUE
 	jr nz, .loadSpriteSet
@@ -361,13 +360,9 @@ InitOutsideMapSprites:
 	ld a, l
 	cp 11 * SPRITESTATEDATA2_LENGTH + SPRITESTATEDATA2_PICTUREID ; reached 11th sprite slot?
 	jr nz, .loadSpriteSetLoop
-	; Yellow reserves fixed-set entry 0/image base 2 for Pikachu. Route 1
-	; uses only the first eight walking entries from SPRITESET_PALLET_VIRIDIAN,
-	; so discard its unused ninth walking entry while retaining both still
-	; entries at indexes 9 and 10.
-	ldh a, [hCurMap]
-	cp ROUTE_1
-	call z, .insertFollowerIntoSpriteSet
+	; Yellow reserves fixed-set entry 0/image base 2 for the follower.
+	call .isFollowerOutsideMap
+	call c, .insertFollowerIntoSpriteSet
 	ld b, 4 ; 4 remaining sprite slots
 .zeroRemainingSlotsLoop ; loop to zero the picture ID's of the remaining sprite slots
 	ld a, SPRITESTATEDATA2_LENGTH
@@ -439,8 +434,35 @@ InitOutsideMapSprites:
 	ret
 
 .insertFollowerIntoSpriteSet
-	; Shift authored walking entries 0..7 to 1..8. Entries 9 and 10 are the
-	; two four-tile sheets and deliberately remain in place.
+	; Route 1 does not use Pallet/Viridian entry 8 (Swimmer). The selected
+	; Pewter/Cerulean routes do not use entry 1 (Rocket). Remove that map-safe
+	; walking entry, then shift the retained eight sheets to entries 1..8.
+	ld c, 8
+	ldh a, [hCurMap]
+	cp ROUTE_1
+	jr z, .haveDropIndex
+	ld c, 1
+.haveDropIndex
+	ld hl, wSpriteSet
+	ld a, c
+	add l
+	ld l, a
+	ld d, h
+	ld e, l
+	inc de
+	ld a, 8
+	sub c
+	ld b, a
+.removeWalkingEntry
+	ld a, b
+	and a
+	jr z, .shiftForFollower
+	ld a, [de]
+	inc de
+	ld [hli], a
+	dec b
+	jr .removeWalkingEntry
+.shiftForFollower
 	ld hl, wSpriteSet + 7
 	ld de, wSpriteSet + 8
 	ld b, 8
@@ -469,6 +491,24 @@ InitOutsideMapSprites:
 	add l
 	ld l, a
 	jr .copyAdjustedSet
+
+.isFollowerOutsideMap
+	ldh a, [hCurMap]
+	cp ROUTE_1
+	jr z, .yes
+	cp ROUTE_3
+	jr z, .yes
+	cp ROUTE_9
+	jr z, .yes
+	cp ROUTE_24
+	jr z, .yes
+	cp ROUTE_25
+	jr z, .yes
+	and a
+	ret
+.yes
+	scf
+	ret
 
 ; Chooses the correct sprite set ID depending on the player's position within
 ; the map for maps with two sprite sets.
