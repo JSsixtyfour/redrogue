@@ -42,6 +42,8 @@ DEF TEXT_DELAY_SLOW    EQU %101 ; 5
 
 ; wOptions2 bits 0-2: enemy level difficulty (LEVELS row, extra options menu)
 DEF DIFFICULTY_MASK EQU %00000111
+; bit 3: follower option. Clear = ON so existing/new saves keep the feature on.
+DEF BIT_FOLLOWER_DISABLED EQU 3
 	const_def
 	const DIFFICULTY_NORMAL     ; 0 - must stay 0; InitOptions' xor a defaults here
 	const DIFFICULTY_EASY       ; 1
@@ -49,7 +51,7 @@ DEF DIFFICULTY_MASK EQU %00000111
 	const DIFFICULTY_HARD       ; 3
 	const DIFFICULTY_VERY_HARD  ; 4
 
-; wOptions2 persistent CGB options. Both default on in InitOptions_.
+; wOptions2 persistent CGB options. Colors and 60 FPS default on in InitOptions_.
 DEF BIT_ENHANCED_COLORS EQU 6
 DEF BIT_60_FPS         EQU 7
 

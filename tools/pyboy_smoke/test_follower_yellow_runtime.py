@@ -152,7 +152,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             240,
         )
         overworld_tiles = self.harness.read_bytes("wTileMap", 20 * 18)
-        self.harness.tap("start", 2)
+        self.harness.tap("start", 6)
         self.harness.wait_until(
             lambda: menu_init["count"] > 0,
             "start-menu DisplayTextIDInit",
@@ -474,6 +474,166 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             "new lead remained hidden until the next accepted player step",
         )
         self.harness.write8("wFontLoaded", 0)
+
+    @unittest.expectedFailure
+    def test_actual_party_swap_refreshes_lead_before_first_step(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+
+        accepted = 0
+        for direction in ("up", "right", "down", "left") * 3:
+            before = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            self.harness.move_tile(direction)
+            after = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            accepted += after != before
+            if accepted == 2:
+                break
+        self.assertEqual(accepted, 2)
+        self.harness.tick(40)
+        old_species = self.harness.read8("wPartySpecies")
+        old_picture = self.harness.read8("wSprite15StateData1PictureID")
+        self.assertNotEqual(
+            (
+                self.harness.read8("wSprite15StateData2MapY"),
+                self.harness.read8("wSprite15StateData2MapX"),
+            ),
+            (
+                self.harness.read8("wYCoord") + 4,
+                self.harness.read8("wXCoord") + 4,
+            ),
+            "party-swap fixture started with the follower overlapping the player",
+        )
+
+        party_menu = self.harness.hook_flag("PartyMenuInit")
+        redisplay_start = self.harness.hook_flag("RedisplayStartMenu")
+        close_text = self.harness.hook_flag("CloseTextDisplay")
+
+        self.harness.tap("start", 6)
+        self.harness.wait_until(
+            lambda: (self.harness.read8("wFontLoaded") & 1)
+            and redisplay_start["count"] > 0,
+            "start menu before party swap",
+            240,
+        )
+        self.harness.tick(12)
+        self.harness.write8("hCurrentMenuItem", 1)
+        self.harness.tap("a", 3)
+        self.harness.wait_until(
+            lambda: party_menu["count"] > 0,
+            "party menu opening",
+            600,
+        )
+
+        # Change the authoritative lead-species list while the real party
+        # screen is active. The production party swap changes the full parallel
+        # structures, but the follower contract intentionally reads only this
+        # list at the subsequent map-sprite reload.
+        new_lead = self.harness.read_bytes("wPartySpecies", 6)[5]  # PIKACHU in Debug1
+        self.harness.write8("wPartySpecies", new_lead)
+        self.harness.pyboy.memory[self.harness.address("wPartySpecies") + 5] = old_species
+        self.assertNotEqual(self.harness.read8("wPartySpecies"), old_species)
+        for _ in range(30):
+            if redisplay_start["count"] > 1:
+                break
+            self.harness.tap("b", 1)
+            self.harness.tick(2)
+        self.harness.wait_until(
+            lambda: redisplay_start["count"] > 1,
+            "return to start menu after party swap",
+            600,
+        )
+        for _ in range(30):
+            if not (self.harness.read8("wFontLoaded") & 1):
+                break
+            self.harness.tap("start", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: close_text["count"] > 0
+            and not (self.harness.read8("wFontLoaded") & 1),
+            "party-swap menu close",
+            600,
+        )
+        self.harness.tick(8)
+
+        self.assertNotEqual(self.harness.read8("wPartySpecies"), old_species)
+        self.assertNotEqual(
+            self.harness.read8("wSprite15StateData1PictureID"),
+            old_picture,
+            "party swap did not refresh the lead follower sheet",
+        )
+        self.assertNotEqual(
+            self.harness.read8("wSprite15StateData1ImageIndex"),
+            0xFF,
+            "party-swapped follower stayed hidden until the first player step: "
+            f"status={self.harness.read8('wSprite15StateData1MovementStatus')} "
+            f"base={self.harness.read8('wSprite15StateData2ImageBaseOffset')} "
+            f"map=({self.harness.read8('wSprite15StateData2MapY')},"
+            f"{self.harness.read8('wSprite15StateData2MapX')}) "
+            f"player=({self.harness.read8('wYCoord') + 4},"
+            f"{self.harness.read8('wXCoord') + 4}) "
+            f"pixels=({self.harness.read8('wSprite15StateData1YPixels')},"
+            f"{self.harness.read8('wSprite15StateData1XPixels')})",
+        )
+
+    def test_follower_option_clears_and_restores_only_at_prepare_boundary(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        prepare = self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+        # BIT_FOLLOWER_DISABLED is a DEF constant; the lightweight runtime
+        # constant parser intentionally handles only the older EQU form.
+        disabled_mask = 1 << 3
+        self.harness.wait_until(
+            lambda: not (self.harness.read8("wFontLoaded") & 1),
+            "initial debug-map text close before follower toggle",
+            600,
+        )
+
+        self.harness.write8("wOptions2", self.harness.read8("wOptions2") | disabled_mask)
+        before = prepare["count"]
+        self.harness.tap("start", 6)
+        self.harness.wait_until(
+            lambda: self.harness.read8("wFontLoaded") & 1,
+            "start menu opening for follower disable",
+            240,
+        )
+        for _ in range(30):
+            if not (self.harness.read8("wFontLoaded") & 1):
+                break
+            self.harness.tap("start", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: prepare["count"] > before
+            and not (self.harness.read8("wFontLoaded") & 1),
+            "map sprite reload after follower disable",
+            600,
+        )
+        self.assertEqual(self.harness.read8("wSprite15StateData1PictureID"), 0)
+        self.assertEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
+
+        self.harness.write8("wOptions2", self.harness.read8("wOptions2") & ~disabled_mask)
+        before = prepare["count"]
+        self.harness.tap("start", 6)
+        self.harness.wait_until(
+            lambda: self.harness.read8("wFontLoaded") & 1,
+            "start menu opening for follower enable",
+            240,
+        )
+        for _ in range(30):
+            if not (self.harness.read8("wFontLoaded") & 1):
+                break
+            self.harness.tap("start", 1)
+            self.harness.tick(4)
+        self.harness.wait_until(
+            lambda: prepare["count"] > before
+            and not (self.harness.read8("wFontLoaded") & 1),
+            "map sprite reload after follower enable",
+            600,
+        )
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1PictureID"),
+            sprites["SPRITE_MONSTER"],
+        )
+        self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
 
     def test_dorm_b1f_warp_uses_yellow_default_state_zero(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")

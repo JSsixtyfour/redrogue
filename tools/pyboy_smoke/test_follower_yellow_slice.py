@@ -23,6 +23,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.home = (ROOT / "home.asm").read_text()
         cls.predef_text = (ROOT / "data/text_predef_pointers.asm").read_text()
         cls.wram = (ROOT / "ram/wram.asm").read_text()
+        cls.ram_constants = (ROOT / "constants/ram_constants.asm").read_text()
+        cls.extra_options = (ROOT / "engine/menus/extra_options.asm").read_text()
 
     def test_only_scoped_core_is_included(self):
         self.assertIn('INCLUDE "engine/overworld/follower_yellow_test.asm"', self.main)
@@ -39,7 +41,6 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("ld a, [wPartySpecies]", self.core)
         for forbidden in (
             "INDIGO_PLATEAU_LOBBY",
-            "BIT_FOLLOWER_DISABLED",
             "FollowerStartIdleAction",
         ):
             self.assertNotIn(forbidden, self.core)
@@ -186,7 +187,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         )[0]
         battle_guard = prepare.index("bit BIT_BATTLE_OVER_OR_BLACKOUT, a")
         picture_check = prepare.index("SPRITESTATEDATA1_PICTUREID")
-        clear_state = prepare.index("call FollowerClearState")
+        clear_state = prepare.index("call FollowerClearState", battle_guard)
         self.assertLess(battle_guard, picture_check)
         self.assertLess(battle_guard, clear_state)
 
@@ -238,7 +239,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             self.core,
             r"(?ms)and a\s+ret z\s+call FollowerCheckVisibility\s+ret c\s+"
             r"ld hl, wSprite15StateData1 \+ SPRITESTATEDATA1_MOVEMENTSTATUS\s+"
-            r"bit BIT_FACE_PLAYER, \[hl\]\s+jr nz, FollowerFacePlayer\s+ld a, \[wFontLoaded\]",
+            r"bit BIT_FACE_PLAYER, \[hl\]\s+jp nz, FollowerFacePlayer\s+ld a, \[wFontLoaded\]",
         )
         self.assertRegex(
             self.core,
@@ -288,8 +289,9 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             self.core,
             r"(?ms)FollowerPokemonText::?.*?ld \[wNamedObjectIndex\], a.*?"
-            r"call GetMonName.*?call PlayCry.*?text_ram wNameBuffer\s+"
-            r"text \"!\"\s+prompt",
+            r"call GetMonName.*?ld de, wNameBuffer\s+call PlaceString.*?"
+            r"ld de, \.exclamation\s+call PlaceString.*?call PlayCry.*?"
+            r'\.wait\s+text ""\s+prompt',
         )
         self.assertIn("add_tx_pre FollowerPokemonText", self.predef_text)
         self.assertNotIn("add_tx_pre UnusedPredefText", self.predef_text)
@@ -311,6 +313,19 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("ld b, FOLLOWER_ANIM_TICKS", speed)
         self.assertIn("cp SPRITE_PIKACHU", speed)
         self.assertIn("ld b, 5", speed)
+
+    def test_persistent_follower_toggle_uses_unused_options2_bit(self):
+        self.assertIn("DEF BIT_FOLLOWER_DISABLED EQU 3", self.ram_constants)
+        self.assertRegex(
+            self.core,
+            r"(?ms)\.enabledMap\s+ld a, \[wOptions2\]\s+"
+            r"bit BIT_FOLLOWER_DISABLED, a\s+jr z, \.enabledOption\s+"
+            r"call FollowerClearState",
+        )
+        self.assertIn("DEF ROW_FOLLOWER EQU 4", self.extra_options)
+        self.assertIn("DEF NUM_EXTRA_OPTION_ROWS EQU 6", self.extra_options)
+        self.assertIn("xor [hl]", self.extra_options)
+        self.assertIn("ExtraOptionsFollowerLabelText:", self.extra_options)
 
     def test_yellow_visibility_precedes_font_and_checks_four_tiles(self):
         visibility = self.core.split("FollowerCheckVisibility:", 1)[1].split(

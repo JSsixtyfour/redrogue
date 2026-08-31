@@ -288,6 +288,14 @@ FollowerPrepareMap::
 	ld [wFollowerSpawnState], a
 	ret
 .enabledMap
+	ld a, [wOptions2]
+	bit BIT_FOLLOWER_DISABLED, a
+	jr z, .enabledOption
+	call FollowerClearState
+	xor a
+	ld [wFollowerSpawnState], a
+	ret
+.enabledOption
 	; Yellow LoadMapHeader skips both sprite initialization and follower spawn
 	; scheduling while returning from battle. Preserve slot 15 exactly.
 	ld a, [wStatusFlags4]
@@ -568,7 +576,7 @@ FollowerUpdate::
 	ret c
 	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS
 	bit BIT_FACE_PLAYER, [hl]
-	jr nz, FollowerFacePlayer
+	jp nz, FollowerFacePlayer
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a
 	jr z, .notFontLoaded
@@ -626,14 +634,25 @@ FollowerPokemonText::
 	ld a, [wPartySpecies]
 	ld [wNamedObjectIndex], a
 	call GetMonName
+	; The text box is already open and BC is its live cursor. Draw the name and
+	; exclamation before starting the cry, then restore BC for the text engine.
+	ld h, b
+	ld l, c
+	ld de, wNameBuffer
+	call PlaceString
+	ld h, b
+	ld l, c
+	ld de, .exclamation
+	call PlaceString
 	ld a, [wPartySpecies]
 	call PlayCry
 	pop bc
-	ld hl, .name
+	ld hl, .wait
 	ret
-.name
-	text_ram wNameBuffer
-	text "!"
+.exclamation
+	db "!@"
+.wait
+	text ""
 	prompt
 
 ; Yellow Func_fc745. Consume the face-player request before font/status
