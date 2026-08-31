@@ -20,6 +20,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
         cls.update = (ROOT / "engine/overworld/sprite_collisions.asm").read_text()
         cls.overworld = (ROOT / "home/overworld.asm").read_text()
+        cls.home = (ROOT / "home.asm").read_text()
+        cls.predef_text = (ROOT / "data/text_predef_pointers.asm").read_text()
         cls.wram = (ROOT / "ram/wram.asm").read_text()
 
     def test_only_scoped_core_is_included(self):
@@ -234,7 +236,9 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_font_path_uses_yellow_overlap_only_hide_and_recovers(self):
         self.assertRegex(
             self.core,
-            r"(?ms)cp SPRITE_PIKACHU\s+ret nz\s+call FollowerCheckVisibility\s+ret c\s+ld a, \[wFontLoaded\]",
+            r"(?ms)cp SPRITE_PIKACHU\s+ret nz\s+call FollowerCheckVisibility\s+ret c\s+"
+            r"ld hl, wSprite15StateData1 \+ SPRITESTATEDATA1_MOVEMENTSTATUS\s+"
+            r"bit BIT_FACE_PLAYER, \[hl\]\s+jr nz, FollowerFacePlayer\s+ld a, \[wFontLoaded\]",
         )
         self.assertRegex(
             self.core,
@@ -251,6 +255,42 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "FollowerRefreshQueue:", 1
         )[0]
         self.assertIn("jp FollowerUpdateImage", refresh)
+
+    def test_yellow_interaction_scans_slot15_without_changing_collision_count(self):
+        self.assertRegex(
+            self.home,
+            r"(?ms)FollowerInteraction::\s+farjp FollowerFindInteraction",
+        )
+        self.assertIn("call FollowerInteraction", self.overworld)
+        interaction = self.core.split("FollowerFindInteraction::", 1)[1].split(
+            "FollowerPikachuText:", 1
+        )[0]
+        self.assertRegex(
+            interaction,
+            r"(?ms)call IsSpriteOrSignInFrontOfPlayer.*?"
+            r"ld a, \[wNumSprites\]\s+push af\s+"
+            r"ld a, NUM_SPRITESTATEDATA_STRUCTS - 1\s+"
+            r"ld \[wNumSprites\], a\s+call IsSpriteInFrontOfPlayer\s+"
+            r"pop af\s+ld \[wNumSprites\], a",
+        )
+        self.assertRegex(
+            interaction,
+            r"(?ms)cp NUM_SPRITESTATEDATA_STRUCTS - 1.*?"
+            r"call UpdateSprites.*?ldh \[hNoWaitAfterText\], a\s+"
+            r"tx_pre FollowerPikachuText.*?xor a\s+"
+            r"ldh \[hNoWaitAfterText\], a\s+ldh \[hTextID\], a\s+ret",
+        )
+        collision = self.overworld.split("CollisionCheckOnLand::", 1)[1].split(
+            "CheckTilePassable::", 1
+        )[0]
+        self.assertIn("call IsSpriteInFrontOfPlayer", collision)
+        self.assertNotIn("FollowerInteraction", collision)
+        self.assertRegex(
+            self.core,
+            r'(?ms)FollowerPikachuText::?\s+text "PIKACHU!"\s+prompt',
+        )
+        self.assertIn("add_tx_pre FollowerPikachuText", self.predef_text)
+        self.assertNotIn("add_tx_pre UnusedPredefText", self.predef_text)
 
     def test_yellow_visibility_precedes_font_and_checks_four_tiles(self):
         visibility = self.core.split("FollowerCheckVisibility:", 1)[1].split(

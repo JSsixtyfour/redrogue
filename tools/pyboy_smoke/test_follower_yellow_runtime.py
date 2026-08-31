@@ -345,6 +345,82 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             f"{self.harness.read8('wSprite15StateData2MapX')})",
         )
 
+    def test_talking_to_follower_uses_slot15_text_and_face_lifecycle(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        facing = {
+            "SPRITE_FACING_DOWN": 0x00,
+            "SPRITE_FACING_UP": 0x04,
+            "SPRITE_FACING_LEFT": 0x08,
+            "SPRITE_FACING_RIGHT": 0x0C,
+        }
+        self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+
+        accepted = 0
+        for direction in ("up", "right", "down", "left") * 3:
+            before = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            self.harness.move_tile(direction)
+            after = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+            accepted += after != before
+            if accepted == 2:
+                break
+        self.assertEqual(accepted, 2)
+        self.harness.tick(40)
+
+        player = (self.harness.read8("wYCoord"), self.harness.read8("wXCoord"))
+        follower = (
+            self.harness.read8("wSprite15StateData2MapY") - 4,
+            self.harness.read8("wSprite15StateData2MapX") - 4,
+        )
+        delta = (follower[0] - player[0], follower[1] - player[1])
+        direction_for_delta = {
+            (1, 0): facing["SPRITE_FACING_DOWN"],
+            (-1, 0): facing["SPRITE_FACING_UP"],
+            (0, -1): facing["SPRITE_FACING_LEFT"],
+            (0, 1): facing["SPRITE_FACING_RIGHT"],
+        }
+        self.assertIn(delta, direction_for_delta)
+        player_facing = direction_for_delta[delta]
+        self.harness.write8("wSpritePlayerStateData1FacingDirection", player_facing)
+
+        interaction = self.harness.hook_flag("FollowerFindInteraction")
+        face_player = self.harness.hook_flag("FollowerFacePlayer")
+        display_text = self.harness.hook_flag("DisplayTextID")
+        wait_text = self.harness.hook_flag("WaitForTextScrollButtonPress")
+        close_text = self.harness.hook_flag("CloseTextDisplay")
+        authored_count = self.harness.read8("wNumSprites")
+        self.harness.tap("a", 3)
+        self.harness.wait_until(
+            lambda: wait_text["count"] > 0,
+            "follower interaction prompt",
+            600,
+        )
+        self.assertEqual(close_text["count"], 0)
+        self.assertNotEqual(self.harness.read8("wFontLoaded") & 1, 0)
+        self.assertGreater(display_text["count"], 0)
+        self.assertNotEqual(self.harness.read8("hTextID"), 0)
+        self.harness.tap("a", 3)
+        self.harness.wait_until(
+            lambda: close_text["count"] > 0,
+            "follower interaction text close",
+            600,
+        )
+
+        self.assertGreater(interaction["count"], 0)
+        self.assertGreater(face_player["count"], 0)
+        self.assertGreater(wait_text["count"], 0)
+        self.assertEqual(self.harness.read8("wNumSprites"), authored_count)
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1FacingDirection"),
+            player_facing ^ 4,
+        )
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1PictureID"),
+            sprites["SPRITE_PIKACHU"],
+        )
+        self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+        self.assertEqual(self.harness.read8("wFontLoaded") & 1, 0)
+
     def test_dorm_b1f_warp_uses_yellow_default_state_zero(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")

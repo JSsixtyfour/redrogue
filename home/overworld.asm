@@ -101,7 +101,7 @@ OverworldLoopLessDelay::
 	ldh a, [hItemAlreadyFound]
 	and a
 	jp z, OverworldLoop ; jump if a hidden event or bookshelf was found, but not if a card key door was found
-	call IsSpriteOrSignInFrontOfPlayer
+	call FollowerInteraction
 	ldh a, [hTextID]
 	and a
 	jp z, OverworldLoop

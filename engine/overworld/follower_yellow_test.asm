@@ -15,8 +15,9 @@
 ; Intentional Red Rogue deviations are narrow: fixed Pikachu, only
 ; SILPH_CO_B1F, SILPH_CO_DORM, OAKS_LAB, and ROUTE_1, Yellow spawn states
 ; 0-7, no Pikachu
-; happiness-dependent animation rate, and no idle/emotion/interaction/
-; bike/surf state. Slot 15 and image base 2 match Yellow. The existing player
+; happiness-dependent animation rate, and no idle/emotion/bike/surf state.
+; Interaction currently uses fixed Pikachu text through Red's standard predef
+; text path. Slot 15 and image base 2 match Yellow. The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
 ; its already-scaled delta for slot 15. Red Rogue's tight HOME bank invokes the
 ; three Yellow transition selectors through one common banked dispatch seam.
@@ -497,6 +498,9 @@ FollowerUpdate::
 	ret nz
 	call FollowerCheckVisibility
 	ret c
+	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS
+	bit BIT_FACE_PLAYER, [hl]
+	jr nz, FollowerFacePlayer
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a
 	jr z, .notFontLoaded
@@ -514,8 +518,56 @@ FollowerUpdate::
 	cp FOLLOWER_STATUS_READY
 	jr nz, FollowerInitializeSpawn
 	call FollowerDequeueCommand
-	jr nc, FollowerStartCommand
+	jp nc, FollowerStartCommand
 	jp FollowerWait
+
+; Yellow's A-button path scans all 15 object slots, while Red's collision
+; caller must retain its authored-object limit so the follower never blocks
+; the player. Reuse the original scanner with a temporary count of 15 only
+; after the normal sign/NPC scan finds nothing.
+FollowerFindInteraction::
+	call IsSpriteOrSignInFrontOfPlayer
+	ldh a, [hTextID]
+	and a
+	ret nz
+	ld a, [wNumSprites]
+	push af
+	ld a, NUM_SPRITESTATEDATA_STRUCTS - 1
+	ld [wNumSprites], a
+	call IsSpriteInFrontOfPlayer
+	pop af
+	ld [wNumSprites], a
+	ldh a, [hTextID]
+	cp NUM_SPRITESTATEDATA_STRUCTS - 1
+	ret nz
+	; Use the standard predef-text path so DisplayTextID owns the normal bottom
+	; dialogue box, prompt, font lifecycle, and sprite reload.
+	call UpdateSprites
+	ld a, 1
+	ldh [hNoWaitAfterText], a
+	tx_pre FollowerPikachuText
+	; The outer overworld input path treats zero as "already handled."
+	xor a
+	ldh [hNoWaitAfterText], a
+	ldh [hTextID], a
+	ret
+
+FollowerPikachuText::
+	text "PIKACHU!"
+	prompt
+
+; Yellow Func_fc745. Consume the face-player request before font/status
+; dispatch, face opposite the player, reset animation, and redraw.
+FollowerFacePlayer:
+	res BIT_FACE_PLAYER, [hl]
+	xor a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_WALKANIMATIONCOUNTER], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER], a
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	xor 4
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
+	jp FollowerUpdateImage
 
 ; Yellow Func_fc793: initialize screen geometry in the normal update pass,
 ; reconstruct the lag queue, and leave overlap hidden.

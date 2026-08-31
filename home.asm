@@ -32,6 +32,11 @@ INCLUDE "home/count_set_bits.asm"
 ; in "Home" (both halves are the always-mapped bank 0, so the call is unaffected).
 INCLUDE "home/money.asm"
 
+; Keep the A-button follower interaction banked without growing the packed
+; main Home section. Bankswitch returns directly to the call site below.
+FollowerInteraction::
+	farjp FollowerFindInteraction
+
 
 SECTION "Home", ROM0
 
