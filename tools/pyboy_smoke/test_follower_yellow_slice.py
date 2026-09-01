@@ -381,6 +381,16 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\], a.*?"
             r"jp FollowerRefreshAfterText",
         )
+        start_sub_menus = (ROOT / "engine" / "menus" / "start_sub_menus.asm").read_text()
+        party_exit = start_sub_menus.split(".exitMenu", 1)[1].split(
+            ".chosePokemon", 1
+        )[0]
+        self.assertRegex(
+            party_exit,
+            r"(?ms)call GBPalWhiteOutWithDelay3.*?"
+            r"farcall FollowerPrepareMap\s+"
+            r"call RestoreScreenTilesAndReloadTilePatterns",
+        )
         speed = self.core.split("FollowerGetAnimationTicks:", 1)[1].split(
             "FollowerWait:", 1
         )[0]

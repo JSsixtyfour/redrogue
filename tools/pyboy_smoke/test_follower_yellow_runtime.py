@@ -670,7 +670,6 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         self.harness.write8("wFontLoaded", 0)
 
-    @unittest.expectedFailure
     def test_actual_party_swap_refreshes_lead_before_first_step(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         self.load_debug_follower_map(maps["SILPH_CO_DORM"])

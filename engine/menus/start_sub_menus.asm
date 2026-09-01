@@ -25,6 +25,12 @@ StartMenu_Pokemon::
 	jr nc, .chosePokemon
 .exitMenu
 	call GBPalWhiteOutWithDelay3
+	; Resolve a changed lead while the party menu's font context is still live.
+	; FollowerPrepareMap can then preserve the existing follower pose before
+	; ReloadMapSpriteTilePatterns temporarily clears wFontLoaded for its LCD-off
+	; graphics reload. Waiting until that reload would classify the new sheet as
+	; a fresh overlap spawn and hide it until the player's next accepted step.
+	farcall FollowerPrepareMap
 	call RestoreScreenTilesAndReloadTilePatterns
 	call LoadGBPal
 	jp RedisplayStartMenu
