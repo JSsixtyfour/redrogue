@@ -982,6 +982,11 @@ FollowerUpdateImage:
 	dec a
 	swap a
 	ld b, a
+	; Yellow copies the player's standing-image nibble while arrow tiles spin
+	; the player, keeping the follower's own reserved image base.
+	ld a, [wMovementFlags]
+	bit BIT_SPINNING, a
+	jr nz, .copyPlayerImage
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION]
 	or b
 	ld b, a
@@ -997,6 +1002,11 @@ FollowerUpdateImage:
 .normalImage
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER]
 	and 3
+	or b
+	jr .store
+.copyPlayerImage
+	ld a, [wSpritePlayerStateData1ImageIndex]
+	and $f
 	or b
 .store
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a

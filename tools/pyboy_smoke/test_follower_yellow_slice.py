@@ -303,6 +303,19 @@ class YellowFollowerSliceTests(unittest.TestCase):
         )[0]
         self.assertIn("jp FollowerUpdateImage", refresh)
 
+    def test_yellow_spinner_path_copies_player_image_nibble(self):
+        image_update = self.core.split("FollowerUpdateImage:", 1)[1].split(
+            "FollowerHideIfOverlappingPlayer:", 1
+        )[0]
+        self.assertRegex(
+            image_update,
+            r"(?s)ld a, \[wMovementFlags\]\s+bit BIT_SPINNING, a\s+"
+            r"jr nz, \.copyPlayerImage.*?\.copyPlayerImage\s+"
+            r"ld a, \[wSpritePlayerStateData1ImageIndex\]\s+"
+            r"and \$f\s+or b\s+\.store\s+"
+            r"ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_IMAGEINDEX\], a",
+        )
+
     def test_yellow_interaction_scans_slot15_without_changing_collision_count(self):
         self.assertRegex(
             self.home,
