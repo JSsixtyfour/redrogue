@@ -243,6 +243,10 @@ AIMoveChoiceModification2:
 	ld a, [wAILayer2Encouragement]
 	and a
 	ret nz
+; 2026-09-01: resolve "does this mon own a physical damaging move" ONCE, before
+; the loop, for the gate at .preferMove. Must be before the loop because it uses
+; ReadMove itself; doing it per move would fight the loop's own ReadMove.
+	call AIOwnsPhysicalMove
 	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
 	ld de, wEnemyMonMoves ; enemy moves
 	ld b, NUM_MOVES + 1
@@ -266,10 +270,99 @@ AIMoveChoiceModification2:
 	jr c, .preferMove
 	jr .nextMove
 .preferMove
+; ===========================================================================
+; USEFULNESS GATE (2026-09-01). Diagnosed from a real round-2 battle: a Krabby
+; opened with Leer on every send-out and then split its turns roughly evenly
+; between Leer and Bubble. Leer lowers DEFENSE, which in Gen 1 only ever helps
+; a PHYSICAL move; Bubble is Water, and Water is special. So the encouragement
+; below was steering the mon toward a move that could not improve any attack it
+; owned.
+;
+; Worth stating plainly, because it is a regression this overhaul introduced
+; rather than vanilla behaviour: vanilla gave this layer to 8 trainer classes
+; out of ~47 (data/trainers/move_choices.asm, still on disk) and fired it on the
+; SECOND action of a send-out. Phase 1 gave it to every trainer at T1 and up,
+; and Phase 2b moved it to the FIRST action. Both changes were individually
+; defensible; together they turned a rare quirk into "every trainer opens with
+; its stat move, every send-out". A vanilla trainer would have picked uniformly
+; at random and led with Leer far LESS often than we did.
+;
+; Only the two effect families whose entire value depends on our own damage
+; CATEGORY are gated:
+;   ATTACK_UP*    - raises our Attack, which only physical moves read
+;   DEFENSE_DOWN* - lowers their Defense, which only physical moves read
+; Deliberately NOT gated:
+;   SPECIAL_UP*   - Gen 1 Special is offence AND defence in one stat, so
+;                   Amnesia is worth using even on a mon with no special attack
+;   SPECIAL_DOWN* - same reason in mirror: it weakens their special attacks as
+;                   well as helping ours, so it is never purely wasted
+;   SPEED/ACCURACY/EVASION - category-independent
+	ld a, [wEnemyMoveEffect] ; still this move's effect: ReadMove above is the
+	                         ; last thing that wrote the block
+	cp ATTACK_UP1_EFFECT
+	jr z, .needsPhysical
+	cp ATTACK_UP2_EFFECT
+	jr z, .needsPhysical
+	cp DEFENSE_DOWN1_EFFECT
+	jr z, .needsPhysical
+	cp DEFENSE_DOWN2_EFFECT
+	jr nz, .doPrefer
+.needsPhysical
+	ld a, [wBuffer + AI_BUF_PHYSICAL]
+	and a
+	jr z, .nextMove ; no physical move in this set: the boost buys nothing
+.doPrefer
 	; Phase 2b: was `dec [hl]`.
 	ld a, AI_STRONG
 	call AIEncourage
 	jr .nextMove
+
+; Sets wBuffer + AI_BUF_PHYSICAL to 1 if the active enemy mon owns at least one
+; damaging move that reads the Attack/Defense stats, else 0.
+;
+; Gen 1 decides physical vs special from the move's TYPE, not per move, and the
+; type constants are laid out so the whole test is one comparison: everything
+; below SPECIAL ($14) is physical (constants/type_constants.asm names PHYSICAL
+; and SPECIAL as the two range markers for exactly this purpose).
+;
+; Fixed-damage moves (Seismic Toss, Night Shade, Dragon Rage, Sonic Boom,
+; Psywave) and Super Fang carry 0 or 1 base power and ignore Attack entirely, so
+; the power test correctly excludes them: a Chansey whose only "physical" move
+; is Seismic Toss gains nothing from Screech, which is right.
+;
+; MUST be called before AI_SETUP's move loop begins. It uses ReadMove, so it
+; destroys the wEnemyMove* block; the loop re-reads every move anyway.
+; Clobbers af, bc, de, hl.
+AIOwnsPhysicalMove:
+	ld hl, wEnemyMonMoves
+	ld b, NUM_MOVES
+.scan
+	ld a, [hli]
+	and a
+	jr z, .no ; move list is packed, so a zero ends it
+	push hl
+	push bc
+	call ReadMove
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .notThisOne ; status move
+	ld a, [wEnemyMoveType]
+	cp SPECIAL
+	jr nc, .notThisOne ; special type: does not read Attack or Defense
+	pop bc
+	pop hl
+	ld a, 1
+	jr .store
+.notThisOne
+	pop bc
+	pop hl
+	dec b
+	jr nz, .scan
+.no
+	xor a
+.store
+	ld [wBuffer + AI_BUF_PHYSICAL], a
+	ret
 
 ; encourages moves that are effective against the player's mon (even if non-damaging).
 ; discourage damaging moves that are ineffective or not very effective against the player's mon,

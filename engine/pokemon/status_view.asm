@@ -252,8 +252,8 @@ StatusViewGraphicsEnd:
 ; current view's entry count; de otherwise valid for the caller's next loop
 ; iteration exactly as on entry. Also REDRAWS whatever needs it, so the
 ; caller (StatusScreen2WaitView) does not call StatusScreen2DrawContent
-; itself afterward - see below for why. No-op for views without a cursor yet
-; (CURRENT, TMHM, TUTOR - D-3/D-4 add theirs the same way).
+; itself afterward - see below for why. No-op for MOVES_BOX_CURRENT, the only
+; view without a cursor (it is not a scrollable list).
 ;
 ; If the move does not cross a scroll boundary (the common case - most
 ; single presses stay within the current 8-row window), only the two
@@ -274,7 +274,9 @@ StatusScreen2MoveCursor:
 	cp MOVES_BOX_LEVELUP
 	jr z, .hasCursor
 	cp MOVES_BOX_TMHM
-	ret nz ; CURRENT and TUTOR (until D-4) have no cursor yet
+	jr z, .hasCursor
+	cp MOVES_BOX_TUTOR
+	ret nz ; CURRENT has no cursor
 .hasCursor
 	; LearndexCountEntriesForView's LEVELUP path calls LearndexLoadRecord,
 	; which sets de = wMoveBuffer as part of its own FarCopyData plumbing -
@@ -504,12 +506,10 @@ StatusScreen2DrawContent:
 	dw .DrawCurrent
 	dw StatusScreen2DrawLevelUp ; D-2 - ends in ret, needs no wrapper stub
 	dw StatusScreen2DrawTMHM    ; D-3 - ditto
-	dw .DrawTutor
+	dw StatusScreen2DrawTutor   ; D-4 - ditto
 .DrawCurrent
 	farcall StatusScreen2DrawMovesBoxCurrent
 	ret
-.DrawTutor
-	ret ; MOVES_BOX_TUTOR content - D-4
 
 ; ============================================================================
 ; MOVES_BOX_LEVELUP (LEARNDEX_DESIGN.md D-2): the mon's level-up learnset,
@@ -678,6 +678,154 @@ LearndexCountLevelUpEntries:
 .done
 	ret
 
+; Sets up wCurSpecies/wMonHeader (same source as LearndexPrepareLevelUpWalk:
+; wMonHIndex, not wCurSpecies) and loads the record, then walks past BOTH
+; the evolutions block and the learnset block to reach the tutor block.
+;
+; 48 of 190 species have NO tutor block at all, and the record format has
+; no explicit marker for this - a tutor entry's own sentinel level (2)
+; collides exactly with EVOLVE_ITEM (constants/pokemon_data_constants.asm:
+; 80), so a species without a tutor block whose neighbour in the table
+; happens to evolve by item would pass a naive "does the next byte look
+; like a tutor entry" check. The only reliable signal is structural:
+; compare the walked-to position against where the NEXT species' record
+; actually starts in EvosMovesPointerTable (confirmed by inspection that
+; the table's dw order exactly matches the records' physical declaration
+; order in the source file - e.g. RhydonEvosMoves / KangaskhanEvosMoves /
+; NidoranMEvosMoves / ClefairyEvosMoves at data/pokemon/evos_moves.asm:221,
+; 246, 269, 293, strictly increasing and matching the table's first four
+; entries exactly, so there is no gap or reordering to account for).
+;
+; Output: carry SET = a tutor block exists, hl = its start in wMoveBuffer.
+;         carry CLEAR = no tutor block; hl is not meaningful, the caller
+;         must render an empty view rather than read it.
+; For the very last species in the table (wCurSpecies == NUM_POKEMON_
+; INDEXES), there is no "next" pointer to compare against; this falls back
+; to always reporting "has a tutor block" and relying on the walk's own
+; terminator + LEARNDEX_MAX_ENTRIES cap, the same safety net every species
+; had before this routine existed - a narrow, documented residual gap for
+; that one species versus the other 189, not a missed check.
+; Clobbers af, bc, de, hl.
+LearndexPrepareTutorWalk:
+	ld a, [wMonHIndex]
+	ld [wCurSpecies], a
+	call GetMonHeader
+	call LearndexLoadRecord
+
+	ld hl, wMoveBuffer
+.skipEvo
+	ld a, [hli]
+	and a
+	jr nz, .skipEvo
+.skipLearnset
+	ld a, [hli]
+	and a
+	jr nz, .skipLearnset
+	; hl = wMoveBuffer + walked (candidate tutor block start)
+
+	ld d, h
+	ld e, l ; de = the candidate pointer, saved before hl is reused below
+	ld hl, wMoveBuffer
+	ld a, e
+	sub l
+	ld c, a
+	ld a, d
+	sbc h
+	ld b, a ; bc = walked (de - wMoveBuffer)
+	push de ; save the candidate WRAM pointer - the real output if a tutor
+	        ; block turns out to exist
+
+	; this species' record pointer (ROM address), via a 2-byte cross-bank
+	; read. wMoveBuffer's own tail is used as scratch here - safe, since
+	; LearndexLoadRecord already finished with the whole buffer before this
+	; routine started walking it.
+	ld a, [wCurSpecies]
+	dec a
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld de, EvosMovesPointerTable
+	add hl, de
+	push bc ; save "walked" across FarCopyData, which clobbers bc for its
+	        ; own byte-count parameter
+	ld de, wMoveBuffer + 62
+	ld bc, 2
+	ld a, BANK(EvosMovesPointerTable)
+	call FarCopyData
+	pop bc ; bc = walked again
+	ld a, [wMoveBuffer + 62]
+	ld e, a
+	ld a, [wMoveBuffer + 63]
+	ld d, a ; de = this species' record pointer (ROM address)
+
+	ld h, d
+	ld l, e
+	add hl, bc ; hl = record_addr_now (this species' record pointer + walked)
+
+	ld a, [wCurSpecies]
+	cp NUM_POKEMON_INDEXES
+	jr z, .lastSpecies
+
+	push hl ; save record_addr_now across the next FarCopyData
+	ld l, a ; a is still wCurSpecies (1-based); species*2 is the byte
+	ld h, 0 ; offset to EvosMovesPointerTable[species] - the (species+1)th
+	add hl, hl ; entry, 0-based - no -1 needed here, unlike the read above
+	ld de, EvosMovesPointerTable
+	add hl, de
+	ld de, wMoveBuffer + 62
+	ld bc, 2
+	ld a, BANK(EvosMovesPointerTable)
+	call FarCopyData
+	ld a, [wMoveBuffer + 62]
+	ld e, a
+	ld a, [wMoveBuffer + 63]
+	ld d, a ; de = next species' record pointer
+	pop hl ; hl = record_addr_now again
+
+	; carry set (hl - de borrows) means hl < de: record_addr_now is still
+	; strictly before the next species' record, so a tutor block exists.
+	; carry clear covers both "no gap" and "walked past de" - either way,
+	; no tutor block.
+	ld a, l
+	sub e
+	ld a, h
+	sbc d
+	jr c, .hasTutorBlock
+	jr .noTutorBlock
+
+.lastSpecies
+	; no "next" pointer to compare against - see this routine's own header
+	; comment for why this falls back to always reporting a tutor block.
+	jr .hasTutorBlock
+
+.hasTutorBlock
+	pop hl ; hl = the candidate WRAM pointer, pushed above
+	scf
+	ret
+.noTutorBlock
+	pop hl ; rebalance the stack; hl is not meaningful to the caller
+	or a
+	ret
+
+; Input: hl = tutor block start (from LearndexPrepareTutorWalk, ONLY valid
+; when it reported carry SET - callers must check that first).
+; Output: b = entry count, capped at LEARNDEX_MAX_ENTRIES.
+; Clobbers af, hl.
+LearndexCountTutorEntries:
+	ld b, 0
+.loop
+	ld a, [hl]
+	and a
+	jr z, .done
+	inc hl
+	inc hl
+	inc b
+	ld a, b
+	cp LEARNDEX_MAX_ENTRIES
+	jr c, .loop
+.done
+	ret
+
 ; ============================================================================
 ; MOVES_BOX_TMHM (LEARNDEX_DESIGN.md D-3): TM/HM compatibility, fusion-aware.
 ; ============================================================================
@@ -764,11 +912,19 @@ LearndexTMHMBitSet:
 LearndexCountEntriesForView:
 	ld a, e
 	cp MOVES_BOX_LEVELUP
-	jr nz, .tmhm
+	jr nz, .notLevelUp
 	call LearndexPrepareLevelUpWalk ; hl = learnset block start
 	jp LearndexCountLevelUpEntries  ; tail call - b = N, ret
+.notLevelUp
+	cp MOVES_BOX_TUTOR
+	jr nz, .tmhm
+	call LearndexPrepareTutorWalk ; carry = has tutor block, hl = start
+	jr nc, .noTutorEntries
+	jp LearndexCountTutorEntries  ; tail call - b = N, ret
+.noTutorEntries
+	ld b, 0
+	ret
 .tmhm
-	; MOVES_BOX_TMHM is the only other caller so far (D-4 adds TUTOR here)
 	ld b, 0
 	ld c, 0
 .countLoop
@@ -1063,6 +1219,121 @@ StatusScreen2DrawLevelUp:
 	ld [wNamedObjectIndex], a ; write, wTempByteValue's job is done
 	call GetMoveName ; de = wNameBuffer, preserves hl
 	call PlaceString ; columns 6.. up to 12 chars, '@'-terminated
+
+.done
+	pop de
+	pop bc
+	ret
+
+; ============================================================================
+; MOVES_BOX_TUTOR (LEARNDEX_DESIGN.md D-4): the PC Move Tutor's stock for
+; this species (Indigo Plateau Lobby, 5000 per use) - Gen 1 tradeback /
+; Stadium event moves. 142 of 190 species have one; see
+; LearndexPrepareTutorWalk's header comment for how the other 48 are
+; detected and rendered as an empty view rather than garbage.
+;
+; Deliberately reads only the PRIMARY species (wMonHIndex), no fusion merge
+; - same reasoning as D-2's own header comment: PrepareMoveTutorList (the
+; real in-game tutor list) is equally primary-only, so a fusion mon's
+; ACTUAL tutor stock is the primary species' alone.
+; ============================================================================
+
+; MOVES_BOX_TUTOR content renderer, called from StatusScreen2DrawView's
+; jump table with e = MOVES_BOX_TUTOR and d = the cursor position (same
+; contract as StatusScreen2DrawLevelUp/StatusScreen2DrawTMHM above).
+StatusScreen2DrawTutor:
+	; LearndexPrepareTutorWalk clobbers de the same way
+	; LearndexPrepareLevelUpWalk does (FarCopyData plumbing) - see the
+	; matching note on StatusScreen2DrawLevelUp above, same bug class.
+	push de
+	call LearndexPrepareTutorWalk ; carry = has tutor block, hl = start
+	pop de
+	jr nc, .noTutorBlock ; nothing to draw - the border, or the per-row
+	                     ; clear on a same-view cursor move, already
+	                     ; blanked the interior
+
+	push hl
+	call LearndexCountTutorEntries ; b = N
+	pop hl
+
+	ld a, d
+	call LearndexComputeWindowTop ; a = window_top; b (N) preserved
+	ld e, a ; e = window_top. d is untouched and still holds the cursor.
+
+	ld c, 0 ; c = running absolute index
+.renderLoop
+	ld a, [hl]
+	and a
+	jr z, .renderDone
+	ld a, c
+	cp LEARNDEX_MAX_ENTRIES
+	jr nc, .renderDone
+	inc hl ; skip the sentinel level byte (always 2 - not meaningful to the
+	       ; player, see LearndexPrepareTutorWalk's header comment)
+	ld a, [hl] ; a = move id
+	inc hl
+	push hl
+	call .RenderEntryIfVisible
+	pop hl
+	inc c
+	jr .renderLoop
+.renderDone
+	ret
+.noTutorBlock
+	ret
+
+; Input: a = move id, c = absolute index, e = window_top, d = cursor.
+; Prints the row (cursor glyph + move name - no level or number prefix; the
+; sentinel level is not meaningful to the player, unlike D-2/D-3's rows) if
+; c falls in [e, e+7]; no-op otherwise. Preserves b, c, d, e. Clobbers af, hl.
+.RenderEntryIfVisible:
+	push bc
+	push de
+	; Safe to write wNamedObjectIndex directly here, unlike D-2/D-3: a
+	; tutor row has no PrintNumber call (no level or TM/HM number shown),
+	; so nothing overwrites the wNamedObjectIndex/wTempByteValue/wTempTMHM
+	; shared scratch byte (ram/wram.asm:1687-1696) between this write and
+	; GetMoveName reading it below.
+	ld [wNamedObjectIndex], a
+
+	ld a, c
+	sub e
+	jr c, .done ; c < window_top
+	cp LEARNDEX_VISIBLE_ROWS
+	jr nc, .done ; c >= window_top + 8
+	; a = row offset 0-7
+
+	; Decide the cursor glyph now, while d still holds the real cursor -
+	; the row-address lookup below overwrites de, so this must happen first
+	; (same ordering bug class as every other view's RenderEntryIfVisible).
+	push af
+	ld a, c
+	cp d
+	ld b, ' '
+	jr nz, .noCursorHere
+	ld b, '▷' ; same cursor glyph as extra_options.asm ($ec)
+.noCursorHere
+	pop af
+
+	call LearndexRowAddress ; hl = this row's tilemap address, column 1
+
+	; Blank this one row before writing it - see StatusScreen2DrawLevelUp's
+	; own RenderEntryIfVisible for why (StatusScreen2DrawContent skips the
+	; border's blanket blank on a same-view cursor move).
+	push bc ; b = the cursor glyph decided above, must survive this call
+	push hl
+	lb bc, 1, 18
+	call ClearScreenArea
+	pop hl
+	pop bc
+
+	ld a, b ; the glyph decided above
+	ld [hli], a ; column 1
+	ld a, ' '
+	ld [hli], a ; column 2
+
+	call GetMoveName ; de = wNameBuffer, preserves hl
+	call PlaceString ; columns 3.. up to 12 chars, '@'-terminated
 
 .done
 	pop de

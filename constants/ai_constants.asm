@@ -154,12 +154,21 @@ DEF AI_BUF_BESTPARTYSLOT  EQU 19 ; 1 byte: slot it belongs to ($ff = none yet)
 ; bytes, not four - and it is currently the plan layer's directive scratch, so
 ; that is a real conflict to resolve rather than a spare corner.
 DEF AI_BUF_PLANCLASS  EQU 20 ; 8 bytes: slot N's class mask at +20 + N*2
+; AI_SETUP's usefulness gate (2026-09-01). Set once per AI_SETUP pass, BEFORE
+; its move loop starts, to 1 if this mon owns a physical damaging move and 0 if
+; it does not. It has to live here rather than in a register because the loop
+; already needs hl (score pointer), de (movelist cursor) and b (counter), and
+; every iteration calls ReadMove, which would destroy anything left in a or c.
+; +29 was the last free wBuffer byte; wBuffer is now an exact 30-byte fit with
+; nothing spare. Anything wanting scratch after this needs a real allocation.
+DEF AI_BUF_PHYSICAL   EQU 29
+
 DEF AI_BUF_PLANMAG    EQU 28 ; 1 byte: the magnitude AILayerPlan is currently
                              ; applying, held here rather than in a register
                              ; because the apply loop already needs hl (score
                              ; pointer), de (mask cursor) and bc (the 16-bit
                              ; directive mask itself), leaving only a as
-                             ; scratch. +29 is the last free wBuffer byte.
+                             ; scratch. +29 is AI_BUF_PHYSICAL, above.
 
 ; wAIMoveClassMask was never allocated, and Phase 5 deliberately did NOT
 ; allocate it. Classification is recomputed at the top of every AILayerPlan
