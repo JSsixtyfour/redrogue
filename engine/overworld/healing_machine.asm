@@ -67,7 +67,7 @@ AnimateHealingMachine:
 	pop hl
 	pop af
 	ld [hl], a
-	jp UpdateSprites
+	farjp FollowerRefreshAfterHeal
 
 PokeCenterFlashingMonitorAndHealBall:
 	INCBIN "gfx/overworld/heal_machine.2bpp"

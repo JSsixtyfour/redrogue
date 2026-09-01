@@ -52,8 +52,10 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         return prepare
 
-    def test_fainted_lead_hides_and_revived_lead_respawns(self) -> None:
+    def test_first_conscious_party_member_replaces_fainted_lead_after_battle(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        pokemon = parse_rgbds_constants(ROOT / "constants" / "pokemon_constants.asm")
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
         self.load_debug_follower_map(maps["SILPH_CO_DORM"])
         self.harness.tick(60)
 
@@ -76,23 +78,32 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             0,
         )
 
+        self.harness.write8("wPartyCount", 2)
+        self.harness.write8("wPartySpecies", pokemon["PIKACHU"], 1)
         self.harness.write8("wPartyMon1HP", 0)
         self.harness.write8("wPartyMon1HP", 0, 1)
-        self.harness.call_routine("FollowerUpdate")
+        self.harness.write8("wPartyMon2HP", 0)
+        self.harness.write8("wPartyMon2HP", 1, 1)
+        observed = {}
+        active = self.harness.hook_flag(
+            "FollowerPrepareAfterBattle.active",
+            lambda: observed.update(picture=self.harness.pyboy.register_file.E),
+        )
+
+        self.harness.probe_routine_until(
+            "FollowerPrepareAfterBattle",
+            lambda: active["count"] > 0,
+        )
+        self.assertEqual(observed["picture"], sprites["SPRITE_PIKACHU"])
+
+        self.harness.write8("wPartyMon2HP", 0, 1)
+        self.harness.call_routine("FollowerPrepareAfterBattle")
         self.assertEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
         self.assertEqual(
             self.harness.read8("wSprite15StateData1MovementStatus"),
             0,
         )
         self.assertEqual(self.harness.read8("wFollowerCommandBufferSize"), 0xFF)
-
-        self.harness.write8("wPartyMon1HP", hp_hi)
-        self.harness.write8("wPartyMon1HP", hp_lo, 1)
-        self.harness.call_routine("FollowerUpdate")
-        self.assertNotEqual(
-            self.harness.read8("wSprite15StateData1MovementStatus"),
-            0,
-        )
 
     def test_lobby_preserves_roster_and_assigns_reserved_follower_layout(self) -> None:
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")

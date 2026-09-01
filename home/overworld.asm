@@ -863,8 +863,10 @@ ExtraWarpCheck::
 	jp Bankswitch
 
 MapEntryAfterBattle::
-    call DelayFrame	;joenote - delay 1 frame to clear out the garbage tiles when playing on the DMG
-	farcall IsPlayerStandingOnWarp ; for enabling warp testing after collisions
+	; The banked wrapper prepares the active follower, then preserves the
+	; original DelayFrame and IsPlayerStandingOnWarp call order without growing
+	; this now-full HOME section.
+	farcall FollowerPrepareAfterBattleAndCheckWarp
 	ld a, [wMapPalOffset]
 	and a
 	jp z, GBFadeInFromWhite

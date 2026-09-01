@@ -19,6 +19,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.main = (ROOT / "main.asm").read_text()
         cls.loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
         cls.update = (ROOT / "engine/overworld/sprite_collisions.asm").read_text()
+        cls.healing = (ROOT / "engine/overworld/healing_machine.asm").read_text()
         cls.overworld = (ROOT / "home/overworld.asm").read_text()
         cls.special_warps = (ROOT / "engine/overworld/special_warps.asm").read_text()
         cls.home = (ROOT / "home.asm").read_text()
@@ -64,9 +65,10 @@ class YellowFollowerSliceTests(unittest.TestCase):
         ):
             self.assertNotIn(f"db {enabled_finale_map}", self.core)
         self.assertNotIn("db INDIGO_PLATEAU_LOBBY", self.core)
+        self.assertIn("FollowerResolveActiveSpecies:", self.core)
         self.assertIn("FollowerResolveLeadPicture:", self.core)
         self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
-        self.assertIn("ld a, [wPartySpecies]", self.core)
+        self.assertIn("ld hl, wPartySpecies", self.core)
         for forbidden in ("FollowerStartIdleAction",):
             self.assertNotIn(forbidden, self.core)
 
@@ -493,7 +495,13 @@ class YellowFollowerSliceTests(unittest.TestCase):
         resolver = self.core.split("FollowerResolveLeadPicture:", 1)[1].split(
             "; Called by InitMapSprites", 1
         )[0]
-        self.assertIn("cp NUM_POKEMON_INDEXES + 1", resolver)
+        active = self.core.split("FollowerResolveActiveSpecies:", 1)[1].split(
+            "FollowerResolveLeadPicture:", 1
+        )[0]
+        self.assertIn("ld hl, wPartyMon1HP", active)
+        self.assertIn("ld de, PARTYMON_STRUCT_LENGTH - 1", active)
+        self.assertIn("cp NUM_POKEMON_INDEXES + 1", active)
+        self.assertIn("call FollowerResolveActiveSpecies", resolver)
         self.assertRegex(
             resolver,
             r"(?s)\.categoryToWalkingSprite\s+"
@@ -513,6 +521,43 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "InitOutsideMapSprites:", 1
         )[0]
         self.assertNotIn("cp ROUTE_1", generic_loader)
+
+    def test_after_battle_reloads_changed_active_follower_before_first_delay(self):
+        self.assertRegex(
+            self.overworld,
+            r"(?s)MapEntryAfterBattle::.*?farcall FollowerPrepareAfterBattleAndCheckWarp",
+        )
+        after_battle = self.core.split("FollowerPrepareAfterBattle::", 1)[1].split(
+            "; Called by InitMapSprites", 1
+        )[0]
+        self.assertRegex(
+            after_battle,
+            r"call FollowerIsTestMap\s+ret nc\s+ld a, \[wOptions2\]\s+"
+            r"bit BIT_FOLLOWER_DISABLED, a\s+ret nz",
+        )
+        self.assertIn("call FollowerResolveLeadPicture", after_battle)
+        self.assertIn("jr FollowerReloadMapSpritesAfterBattle", after_battle)
+        reload_after_battle = self.core.split(
+            "FollowerReloadMapSpritesAfterBattle:", 1
+        )[1].split("FollowerPrepareAfterBattleAndCheckWarp::", 1)[0]
+        self.assertRegex(
+            reload_after_battle,
+            r"call DisableLCD\s+farcall InitMapSprites\s+call EnableLCD\s+"
+            r"call LoadPlayerSpriteGraphics\s+jp UpdateSprites",
+        )
+        self.assertNotIn("LoadFont", reload_after_battle)
+        bridge = self.core.split("FollowerPrepareAfterBattleAndCheckWarp::", 1)[1].split(
+            "; Called by InitMapSprites", 1
+        )[0]
+        self.assertLess(bridge.index("farcall DelayFrame"), bridge.index("farjp IsPlayerStandingOnWarp"))
+        self.assertIn("farjp FollowerRefreshAfterHeal", self.healing)
+        heal_refresh = self.core.split("FollowerRefreshAfterHeal::", 1)[1].split(
+            "; Called by InitMapSprites", 1
+        )[0]
+        self.assertRegex(
+            heal_refresh,
+            r"call FollowerPrepareMap\s+jp UpdateSprites",
+        )
 
 
 if __name__ == "__main__":

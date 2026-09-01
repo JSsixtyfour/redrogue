@@ -251,21 +251,55 @@ FollowerMapInArray:
 	and a
 	ret
 
-; Resolve the current lead once at the LCD-safe map sprite preparation seam.
-; PCGetPokemonSpriteCategory returns its farcall-safe result in E. Translate
-; the three neutral still-object categories to their existing 12-tile walking
-; decoration sheets, matching the preserved all-species resolver work.
-; OUTPUT: E = SPRITE_* picture ID and carry set, or E = 0 and carry clear.
-FollowerResolveLeadPicture:
+; Resolve the first conscious party member, matching the Pokemon battle would
+; select when earlier party slots have fainted.
+; OUTPUT: E = species and carry set, or E = 0 and carry clear.
+FollowerResolveActiveSpecies:
 	ld a, [wPartyCount]
 	and a
 	jr z, .reject
-	ld a, [wPartySpecies]
+	ld b, a
+	ld c, 0
+	ld hl, wPartyMon1HP
+.scan
+	ld a, [hli]
+	or [hl]
+	jr nz, .found
+	ld de, PARTYMON_STRUCT_LENGTH - 1
+	add hl, de
+	inc c
+	dec b
+	jr nz, .scan
+	jr .reject
+.found
+	ld a, c
+	ld hl, wPartySpecies
+	add l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld a, [hl]
 	and a
 	jr z, .reject
 	cp NUM_POKEMON_INDEXES + 1
 	jr nc, .reject
 	ld e, a
+	scf
+	ret
+.reject
+	xor a
+	ld e, a
+	ret
+
+; Resolve the active follower once at an LCD-safe sprite preparation seam.
+; PCGetPokemonSpriteCategory returns its farcall-safe result in E. Translate
+; the three neutral still-object categories to their existing 12-tile walking
+; decoration sheets, matching the preserved all-species resolver work.
+; OUTPUT: E = SPRITE_* picture ID and carry set, or E = 0 and carry clear.
+FollowerResolveLeadPicture:
+	call FollowerResolveActiveSpecies
+	jr nc, .reject
 	farcall PCGetPokemonSpriteCategory
 	ld a, e
 	cp NUM_MON_SPRITE_CATEGORIES
@@ -296,20 +330,6 @@ FollowerResolveLeadPicture:
 	db SPRITE_CHANSEY
 	assert @ - .categoryToWalkingSprite == NUM_MON_SPRITE_CATEGORIES
 
-; Yellow's ShouldPikachuSpawn rejects a fainted starter. Red Rogue follows the
-; ordered lead, so apply the same two-byte HP test to party slot 1.
-; OUTPUT: carry set when the lead has nonzero HP; carry clear otherwise.
-FollowerIsLeadAlive:
-	ld a, [wPartyMon1HP]
-	ld hl, wPartyMon1HP + 1
-	or [hl]
-	jr z, .fainted
-	scf
-	ret
-.fainted
-	and a
-	ret
-
 ; Yellow also suppresses Pikachu during battle/transition lifecycle states.
 ; Red publishes BIT_BATTLE_OVER_OR_BLACKOUT for the post-battle delay and map
 ; handoff, so keep the follower continuously hidden until EnterMap consumes it.
@@ -317,10 +337,61 @@ FollowerCanFollow:
 	ld a, [wStatusFlags4]
 	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
 	jr nz, .suppressed
-	jp FollowerIsLeadAlive
+	jp FollowerResolveActiveSpecies
 .suppressed
 	and a
 	ret
+
+; Red Rogue adaptation: battle can change the first conscious party member.
+; MapEntryAfterBattle calls this before its first visible delay. Keep the
+; accepted pose when the replacement uses a different walking sheet, then use
+; the established LCD-off map-sprite reload to install it before display.
+FollowerPrepareAfterBattle::
+	call FollowerIsTestMap
+	ret nc
+	ld a, [wOptions2]
+	bit BIT_FOLLOWER_DISABLED, a
+	ret nz
+	call FollowerResolveLeadPicture
+	jr c, .active
+	call FollowerClearState
+	ret
+.active
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	cp e
+	ret z
+	ld a, e
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, 2
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_IMAGEBASEOFFSET], a
+	jr FollowerReloadMapSpritesAfterBattle
+
+; The menu-oriented ReloadMapSpriteTilePatterns_ ends by loading vFont, which
+; aliases vNPCSprites2 and corrupts overworld animation tiles when no menu is
+; actually open. Match LoadMapData's map-sprite/player order without a font
+; load for the post-battle changed-sheet branch.
+FollowerReloadMapSpritesAfterBattle:
+	call DisableLCD
+	farcall InitMapSprites
+	call EnableLCD
+	call LoadPlayerSpriteGraphics
+	jp UpdateSprites
+
+; Size-neutral HOME bridge: preserve MapEntryAfterBattle's original delay then
+; warp-check order after preparing the active follower in this bank.
+FollowerPrepareAfterBattleAndCheckWarp::
+	call FollowerPrepareAfterBattle
+	farcall DelayFrame
+	farjp IsPlayerStandingOnWarp
+
+; Healing can make slot 1 the first conscious member again. Refresh its sheet
+; while the follower is already hidden by AnimateHealingMachine, then preserve
+; that routine's original final sprite update.
+FollowerRefreshAfterHeal::
+	; Healing dialogue still owns the font. Publish the revived slot-1 identity
+	; now; the existing textbox close performs the final graphics reload.
+	call FollowerPrepareMap
+	jp UpdateSprites
 
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
@@ -682,7 +753,9 @@ FollowerFindInteraction::
 	; Match the procedural boss encounter path: resolve dynamic text before the
 	; ordinary text stream starts, then leave text_asm only the cry work.
 	push bc
-	ld a, [wPartySpecies]
+	call FollowerResolveActiveSpecies
+	jr nc, .noInteraction
+	ld a, e
 	ld [wNamedObjectIndex], a
 	call GetMonName
 	pop bc
@@ -694,14 +767,20 @@ FollowerFindInteraction::
 	ldh [hNoWaitAfterText], a
 	ldh [hTextID], a
 	ret
+.noInteraction
+	pop bc
+	ret
 
 FollowerPokemonText::
 	text_far _FollowerPokemonInteractionText
 	text_asm
 	push bc
-	ld a, [wPartySpecies]
+	call FollowerResolveActiveSpecies
+	jr nc, .noCry
+	ld a, e
 	call PlayCry
 	call WaitForSoundToFinish
+.noCry
 	pop bc
 	jp TextScriptEnd
 
