@@ -89,6 +89,49 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.close()
                 self.harness = RedRogueHarness(ROOT, ARTIFACTS)
 
+    def test_debug2_procedural_group_preserves_dynamic_objects_and_follower(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        for map_name in (
+            "PROCEDURAL_CAVE_1",
+            "PROCEDURAL_FOREST",
+            "PROCEDURAL_CEMETERY_1",
+            "PROCEDURAL_CEMETERY_2",
+            "PROCEDURAL_CEMETERY_3",
+            "PROCEDURAL_CEMETERY_4",
+        ):
+            with self.subTest(map=map_name):
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+                self.harness.boot_to_lobby(battle_count=1)
+                # The procedural boss sheet is normally staged after the lobby
+                # selects its doors. This test replaces that selection, so run
+                # the same production preload after installing the test map.
+                self.harness.write8("wLobbyDoor1StageMap", maps[map_name])
+                self.harness.write8("wLobbyDoor2StageMap", maps[map_name])
+                self.harness.call_routine("ProcPreloadAssignedWildArea")
+                self.harness.enter_stage_door1(maps[map_name], description=map_name)
+                self.assertLessEqual(self.harness.read8("wNumSprites"), 14)
+                if map_name in ("PROCEDURAL_CAVE_1", "PROCEDURAL_FOREST"):
+                    self.assertNotEqual(
+                        self.harness.read8("wSprite01StateData1PictureID"), 0
+                    )
+                self.assertNotEqual(
+                    self.harness.read8("wSprite01StateData2ImageBaseOffset"), 0
+                )
+                self.assertNotEqual(
+                    self.harness.read8("wSprite15StateData1PictureID"), 0
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
+                )
+
+    def test_debug2_force_selects_procedural_cave_for_both_doors(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        cave = maps["PROCEDURAL_CAVE_1"]
+        self.harness.boot_to_lobby(battle_count=11)
+        self.assertEqual(self.harness.read8("wLobbyDoor1StageMap"), cave)
+        self.assertEqual(self.harness.read8("wLobbyDoor2StageMap"), cave)
+
     def test_debug2_representative_indoor_groups_spawn_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         map_names = (

@@ -35,12 +35,19 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("cp FIRST_INDOOR_MAP", self.core)
         for map_name in ("ROUTE_1", "ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
             self.assertIn(f"cp {map_name}", self.core)
+        for enabled_procedural in (
+            "PROCEDURAL_CAVE_1",
+            "PROCEDURAL_FOREST",
+            "PROCEDURAL_CEMETERY_1",
+            "PROCEDURAL_CEMETERY_2",
+            "PROCEDURAL_CEMETERY_3",
+            "PROCEDURAL_CEMETERY_4",
+        ):
+            self.assertNotIn(f"db {enabled_procedural}", self.core)
         for excluded in (
             "INDIGO_PLATEAU_LOBBY",
             "TRADE_CENTER",
             "COLOSSEUM",
-            "PROCEDURAL_CAVE_1",
-            "PROCEDURAL_FOREST",
             "PROCEDURAL_FACILITY",
             "MINI_SAFFRON",
             "SILPH_CO_VR",

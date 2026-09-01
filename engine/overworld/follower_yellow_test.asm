@@ -46,9 +46,9 @@ DEF FOLLOWER_NORMAL_FRAMES EQU 8
 DEF FOLLOWER_FAST_FRAMES   EQU 4
 DEF FOLLOWER_ANIM_TICKS    EQU 2 ; Yellow's happy walking cadence
 
-; Carry set on ordinary indoor maps and the explicitly-scoped outside maps.
-; Exceptional indoor systems retain explicit suppression until their own
-; lifecycle checkpoints are accepted.
+; Carry set on ordinary indoor maps, the accepted procedural maps, and the
+; explicitly-scoped outside maps. Exceptional systems retain explicit
+; suppression until their own lifecycle checkpoints are accepted.
 FollowerIsTestMap:
 	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP
@@ -78,10 +78,6 @@ FollowerIsTestMap:
 	ret
 
 .excludedIndoorMaps
-	db PROCEDURAL_CEMETERY_1
-	db PROCEDURAL_CEMETERY_2
-	db PROCEDURAL_CEMETERY_3
-	db PROCEDURAL_CEMETERY_4
 	db TRUCK
 	db UNUSED_MAP_6F
 	db MINI_SAFFRON
@@ -99,8 +95,6 @@ FollowerIsTestMap:
 	db UNUSED_MAP_E7
 	db TRADE_CENTER
 	db COLOSSEUM
-	db PROCEDURAL_CAVE_1
-	db PROCEDURAL_FOREST
 	db PROCEDURAL_FACILITY
 	db SILPH_CO_VR
 	db LORELEIS_ROOM
