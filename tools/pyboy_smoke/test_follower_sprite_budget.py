@@ -20,12 +20,28 @@ def sprite_sizes():
     constants = (ROOT / "constants/sprite_constants.asm").read_text()
     names = re.findall(r"^\s*const (SPRITE_\w+)\s*(?:;.*)?$", constants, re.M)
     assert names[0] == "SPRITE_NONE"
-    entries = re.findall(
-        r"^\s*overworld_sprite\s+\w+,\s*(\d+)\s*(?:;.*)?$",
-        (ROOT / "data/sprites/sprites.asm").read_text(), re.M,
-    )
+    table = (ROOT / "data/sprites/sprites.asm").read_text()
+    entries = []
+    for line in table.splitlines():
+        match = re.match(
+            r"^\s*overworld_sprite\s+\w+,\s*(\d+)\s*(?:;.*)?$", line
+        )
+        if match:
+            entries.append(match.group(1))
+            continue
+        match = re.match(
+            r"^\s*overworld_sprite_slice\s+\w+,\s*\d+,\s*(\d+)\s*(?:;.*)?$",
+            line,
+        )
+        if match:
+            entries.append(match.group(1))
     assert len(entries) == len(names) - 1, "Unparsed sprite table entry"
-    return dict(zip(names[1:], map(int, entries)))
+    sizes = dict(zip(names[1:], map(int, entries)))
+    for alias, target in re.findall(
+        r"^\s*DEF (SPRITE_\w+)\s+EQU\s+(SPRITE_\w+)\s*$", constants, re.M
+    ):
+        sizes[alias] = sizes[target]
+    return sizes
 
 
 def map_pictures():
@@ -135,8 +151,6 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
         sizes = sprite_sizes()
         pictures_by_map = map_pictures()
         for map_name, pictures in pictures_by_map.items():
-            if map_name == "IndigoPlateauLobby":
-                continue
             with self.subTest(map=map_name):
                 walking = {
                     picture
@@ -162,21 +176,19 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                 still = {p for p in unique if sizes[p] == 4}
                 # Slot 1 belongs to the player, 2 is reserved even when OFF.
                 # Slots 3..10 hold eight walking sheets; 11..12 two stills.
-                if name != "IndigoPlateauLobby":
-                    # Lobby walking capacity has its own expected failure.
-                    self.assertLessEqual(len(walking), 8, sorted(walking))
+                self.assertLessEqual(len(walking), 8, sorted(walking))
                 self.assertLessEqual(len(still), 2, sorted(still))
 
-    @unittest.expectedFailure
-    def test_lobby_full_sheet_layout_requires_compact_pose_loader(self):
-        # The old full-sheet model still cannot fit this roster. User chose
-        # to preserve all services/art and investigate stationary-pose packing.
-        # Replace this expected failure with actual compact-loader coverage
-        # when implemented; do not cut actors merely to satisfy this model.
+    def test_lobby_fixed_pose_layout_fits_follower_budget(self):
         sizes = sprite_sizes()
         pictures = set(map_pictures()["IndigoPlateauLobby"])
         walking = {p for p in pictures if sizes[p] == 12}
-        self.assertLessEqual(len(walking), 8, sorted(walking))
+        still = {p for p in pictures if sizes[p] == 4}
+        self.assertEqual(len(walking), 8, sorted(walking))
+        self.assertEqual(
+            still,
+            {"SPRITE_LOBBY_MOVE_RELEARNER", "SPRITE_GAMEBOY_KID_STILL"},
+        )
 
     def test_object_slot_budget_after_explicit_approved_cuts(self):
         for name, pictures in map_pictures().items():

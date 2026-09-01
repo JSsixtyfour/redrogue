@@ -47,7 +47,6 @@ class YellowFollowerSliceTests(unittest.TestCase):
         ):
             self.assertNotIn(f"db {enabled_procedural}", self.core)
         for excluded in (
-            "INDIGO_PLATEAU_LOBBY",
             "TRADE_CENTER",
             "COLOSSEUM",
             "PROCEDURAL_FACILITY",
@@ -60,6 +59,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "AGATHAS_ROOM",
         ):
             self.assertIn(f"db {excluded}", self.core)
+        self.assertNotIn("db INDIGO_PLATEAU_LOBBY", self.core)
         self.assertIn("FollowerResolveLeadPicture:", self.core)
         self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
         self.assertIn("ld a, [wPartySpecies]", self.core)

@@ -4,6 +4,12 @@ MACRO overworld_sprite
 	db BANK(\1)
 ENDM
 
+MACRO overworld_sprite_slice
+	dw \1 + \2 tiles
+	db \3 tiles
+	db BANK(\1)
+ENDM
+
 SpriteSheetPointerTable:
 	table_width 4
 	; graphics, tile count
@@ -78,8 +84,9 @@ SpriteSheetPointerTable:
 	overworld_sprite SnorlaxSprite, 4           ; SPRITE_SNORLAX
 	overworld_sprite OldAmberSprite, 4          ; SPRITE_UNUSED_OLD_AMBER
 	overworld_sprite OldAmberSprite, 4          ; SPRITE_OLD_AMBER
-	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_UNUSED_GAMBLER_ASLEEP_1
-	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_UNUSED_GAMBLER_ASLEEP_2
+	; Lobby-only fixed poses reuse the corresponding tiles from full sheets.
+	overworld_sprite_slice SilphPresidentSprite, 0, 4 ; SPRITE_LOBBY_MOVE_RELEARNER
+	overworld_sprite_slice GameboyKidSprite, 8, 4 ; SPRITE_GAMEBOY_KID_STILL
 	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_GAMBLER_ASLEEP
 	overworld_sprite JessieSprite, 12          ; SPRITE_JESSIE
 	overworld_sprite JamesSprite, 12           ; SPRITE_JAMES

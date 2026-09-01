@@ -40,8 +40,23 @@ PrepareOAMData::
 	jr c, .usefacing
 
 ; unchanging
+	; The lobby's Move Tutor uses four left-facing source tiles. Walking sprites
+	; normally mirror them for a right-facing pose, so select the equivalent
+	; fixed-pose OAM entry here.
+	push de
+	dec e
+	dec e
+	ld a, [de] ; [x#SPRITESTATEDATA1_PICTUREID]
+	pop de
+	cp SPRITE_GAMEBOY_KID_STILL
+	jr z, .fixedRight
+	ld a, [wSavedSpriteImageIndex]
 	and $f
 	add $10 ; skip to the second half of the table which doesn't account for facing direction
+	jr .next
+
+.fixedRight
+	ld a, (SpriteFacingAndAnimationTableFixedRight - SpriteFacingAndAnimationTable) / 4
 	jr .next
 
 .usefacing

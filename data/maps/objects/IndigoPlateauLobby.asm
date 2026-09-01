@@ -29,16 +29,19 @@ IndigoPlateauLobby_Object:
 	bg_event 11,  0, TEXT_PC_DOOR2_SIGN
 
 	def_object_events
+	; FOLLOWER SPRITE LIMIT: this map uses exactly eight authored 12-tile
+	; sheets and both 4-tile slots when the follower is present. New distinct
+	; sprite art requires another VRAM-budget review.
 	object_event  7,  5, SPRITE_NURSE, STAY, DOWN, TEXT_PC_NURSE
 	object_event  0,  5, SPRITE_CLERK, STAY, RIGHT, TEXT_PC_CLERK1                              ; Sells Recovery Items
 	object_event  0,  7, SPRITE_CLERK, STAY, RIGHT, TEXT_PC_CLERK2                              ; Sells evolutionary items, TMs, stat boosters
 	object_event 10,  5, SPRITE_GENTLEMAN, STAY, DOWN, TEXT_PC_DAYCARE_GENTLEMAN                ; takes one pokemon that will be raised to the level of most recent reward pokemon
 	object_event 12,  5, SPRITE_GRANNY, STAY, DOWN, TEXT_PC_DAYCARE_LADY                        ; takes one pokemon that will be raised to the level of most recent reward pokemon
-	object_event 14,  5, SPRITE_SILPH_PRESIDENT, STAY, DOWN, TEXT_PC_MOVE_RELEARNER             ; Move Relearner
+	object_event 14,  5, SPRITE_LOBBY_MOVE_RELEARNER, STAY, DOWN, TEXT_PC_MOVE_RELEARNER         ; Move Relearner
 	object_event  5,  1, SPRITE_YOUNGSTER, STAY, DOWN, TEXT_PC_PSYCHIC                          ; psychic "predicts" typing of next gym
 	object_event 11, 10, SPRITE_CHANNELER, STAY, LEFT, TEXT_PC_WITCH                            ; issues mystical challenges that provide rewards
 	object_event  2, 10, SPRITE_MIDDLE_AGED_MAN, WALK, LEFT_RIGHT, TEXT_PC_POKEMON_SALESMAN     ; sells a random pokemon to trainer
 	object_event  5, 11, SPRITE_SUPER_NERD, STAY, UP, TEXT_PC_TRADER_SUPER_NERD                 ; trades a random pokemon of the same rarity as a pokemon you currently have
-	object_event  0,  2, SPRITE_GAMEBOY_KID, STAY, RIGHT, TEXT_PC_MOVE_TUTOR                     ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
+	object_event  0,  2, SPRITE_GAMEBOY_KID_STILL, STAY, RIGHT, TEXT_PC_MOVE_TUTOR               ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

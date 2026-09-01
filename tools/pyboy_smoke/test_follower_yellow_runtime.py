@@ -52,6 +52,40 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         return prepare
 
+    def test_lobby_preserves_roster_and_assigns_reserved_follower_layout(self) -> None:
+        sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
+        self.harness.boot_to_lobby(battle_count=1)
+
+        self.assertEqual(self.harness.read8("hCurMap"), self.harness.LOBBY_MAP)
+        self.assertEqual(self.harness.read8("wNumSprites"), 11)
+        expected = [
+            (sprites["SPRITE_NURSE"], 3),
+            (sprites["SPRITE_CLERK"], 4),
+            (sprites["SPRITE_CLERK"], 4),
+            (sprites["SPRITE_GENTLEMAN"], 5),
+            (sprites["SPRITE_GRANNY"], 6),
+            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_1"], 11),
+            (sprites["SPRITE_YOUNGSTER"], 7),
+            (sprites["SPRITE_CHANNELER"], 8),
+            (sprites["SPRITE_MIDDLE_AGED_MAN"], 9),
+            (sprites["SPRITE_SUPER_NERD"], 10),
+            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_2"], 12),
+        ]
+        for slot, (picture, image_base) in enumerate(expected, start=1):
+            with self.subTest(slot=slot):
+                self.assertEqual(
+                    self.harness.read8(f"wSprite{slot:02d}StateData1PictureID"),
+                    picture,
+                )
+                self.assertEqual(
+                    self.harness.read8(
+                        f"wSprite{slot:02d}StateData2ImageBaseOffset"
+                    ),
+                    image_base,
+                )
+        self.assertNotEqual(self.harness.read8("wSprite15StateData1PictureID"), 0)
+        self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+
     def test_debug2_first_crowded_indoor_group_spawns_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         for map_name in ("POWER_PLANT", "MT_MOON_1F", "VICTORY_ROAD_1F"):
