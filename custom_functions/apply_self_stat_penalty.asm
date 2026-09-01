@@ -3,6 +3,11 @@
 ; had no room left for this logic inline. Reached by farcall from
 ; StatModifierUpEffect's .applyBadgeBoostsAndStatusPenalties
 ; (engine/battle/effects.asm).
+;
+; 2026-09-01: now holds BOTH directions. The section name predates
+; ApplyTargetStatPenalty at the bottom of this file, which serves the stat-DOWN
+; path (AI Overhaul follow-up F4) and is not self-targeted. Kept as-is because
+; ROM_BIBLE.md's 2026-08-26 floater-churn entry names this section by name.
 
 SECTION "Self-Target Stat Penalty", ROMX
 
@@ -47,4 +52,49 @@ ApplySelfTargetStatPenalty::
 	ldh a, [hWhoseTurn]
 	xor 1
 	ldh [hWhoseTurn], a
+	ret
+
+; AI Overhaul follow-up F4, 2026-09-01. The stat-DOWN counterpart of
+; ApplySelfTargetStatPenalty above, reached by jpfar from StatModifierDownEffect's
+; .ApplyBadgeBoostsAndStatusPenalties (engine/battle/effects.asm) - see the long
+; comment at that call site for the bug this fixes.
+;
+; Two deliberate differences from the routine above, both consequences of
+; direction rather than style:
+;   1. hWhoseTurn is NOT inverted. Gen 1 stat-down moves target the opponent,
+;      and QuarterSpeedDueToParalysis/HalveAttackDueToBurn already act on "the
+;      opponent of whoever's turn it is", so the default is already correct.
+;   2. The _SIDE_EFFECT variants are included. There is no stat-up side effect
+;      in Gen 1, but Aurora Beam, Acid, Bubble/Constrict and Psychic all lower a
+;      stat as a rider and reach the same UpdateLoweredStat path.
+;
+; Everything not listed leaves both penalties alone, which is the whole point:
+; re-dividing a stat that was never recalculated is what the bug was.
+; Clobbers af, de.
+ApplyTargetStatPenalty::
+	ld de, wPlayerMoveEffect
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .gotEffect
+	ld de, wEnemyMoveEffect
+.gotEffect
+	ld a, [de]
+	cp ATTACK_DOWN1_EFFECT
+	jr z, .burnPenalty
+	cp ATTACK_DOWN2_EFFECT
+	jr z, .burnPenalty
+	cp ATTACK_DOWN_SIDE_EFFECT
+	jr z, .burnPenalty
+	cp SPEED_DOWN1_EFFECT
+	jr z, .parPenalty
+	cp SPEED_DOWN2_EFFECT
+	jr z, .parPenalty
+	cp SPEED_DOWN_SIDE_EFFECT
+	jr z, .parPenalty
+	ret
+.burnPenalty
+	farcall HalveAttackDueToBurn
+	ret
+.parPenalty
+	farcall QuarterSpeedDueToParalysis
 	ret

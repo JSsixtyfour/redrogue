@@ -854,18 +854,24 @@ StatusScreen2DrawTMHM:
 	ld a, b ; the glyph decided above
 	ld [hli], a ; column 1
 
-	; Stash the unified 1-based TM/HM index into wTempTMHM NOW, while c still
-	; holds the slot index. The PrintNumber call below clobbers bc entirely
-	; (lb bc, ..., 2 loads its own parameters into it, and PrintNumber's own
-	; digit-printing internals churn bc further), and c held the ONLY
-	; surviving copy of the slot index at this point in an earlier version -
-	; the actual crash: by the time TMToMove ran, [wTempTMHM] held whatever
-	; PrintNumber left behind, computed a wildly out-of-range
-	; TechnicalMachines/MoveNames offset, and the resulting move-name lookup
-	; went off into unrelated memory.
+	; Compute the unified 1-based TM/HM index (TMToMove's own input) and
+	; stash it on the STACK, not in WRAM. wTempTMHM, wTempByteValue,
+	; wNamedObjectIndex, wNumSetBits, wTypeEffectiveness, wMoveType, and
+	; wPokedexNum are ALL the exact same physical byte (ram/wram.asm:1687-
+	; 1696 - a single scratch cell reused by many unrelated routines, not
+	; just the wNamedObjectIndex/wTempByteValue pair D-2 already hit). The
+	; display-number staging a few lines below writes wTempByteValue for
+	; PrintNumber's own input, which silently clobbers wTempTMHM too if the
+	; unified index were staged there first - this was invisible for every
+	; TM entry (a TM's unified index and display number are numerically
+	; identical, both slot+1) and only surfaced on an HM row, where they
+	; diverge: HM04's real unified index is 54 but its display number is 4,
+	; and the display-number write overwrote the stashed 54 with a 4 before
+	; TMToMove ever ran - which is exactly why every HM was silently showing
+	; the matching-numbered TM's move instead of its own.
 	ld a, c
 	inc a ; unified 1-based TM/HM index, TMToMove's own input contract
-	ld [wTempTMHM], a
+	push af
 
 	; "TM"/"HM" + the PER-CATEGORY display number (TM01-TM50, HM01-HM05) -
 	; NOT the same as the unified index just stashed above.
@@ -894,6 +900,12 @@ StatusScreen2DrawTMHM:
 	call PrintNumber ; columns 4-5
 	ld a, ' '
 	ld [hli], a ; column 6
+
+	; wTempByteValue's job (and thus the shared byte's) is done now that
+	; PrintNumber has returned, so it is finally safe to write wTempTMHM.
+	pop af ; a = unified index, carried past PrintNumber's own use of the
+	       ; shared scratch byte via the stack instead
+	ld [wTempTMHM], a
 
 	; TMToMove lives in bank 04 (engine/items/tms.asm), not this file's bank
 	; $2C - a plain call here executes whatever happens to be mapped at that

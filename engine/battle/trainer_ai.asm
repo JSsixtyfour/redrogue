@@ -299,6 +299,26 @@ AIMoveChoiceModification3:
 	jr z, .nextMove
 	cp SUPER_FANG_EFFECT
 	jr z, .nextMove
+; AI_OVERHAUL_PLAN.md follow-up F2, 2026-09-01. Metronome and Mirror Move carry
+; a type in the move table (NORMAL and FLYING) that is never the type of the
+; attack they actually produce: both replace the whole wEnemyMove* block with
+; the move they pick (MetronomePickMove / MirrorMoveCopyMove in core.asm) before
+; anything reads a type for damage. Scoring them off their OWN listed type is
+; therefore the same class of mistake the fixed-damage skip above corrects - the
+; AI was discouraging Metronome against a Ghost (NORMAL does nothing to GHOST)
+; and against a Rock type, when Metronome into a Ghost is exactly as good as
+; Metronome into anything else, and it was discouraging Mirror Move against Rock
+; and Electric for the same non-reason.
+;
+; F2's own text proposed retyping Metronome to BIRD instead. That does fix the
+; AI - BIRD has zero rows in the matchup chart, so it resolves neutral - but it
+; is the worse fix here: it corrects one move instead of two, and BIRD has a
+; real name string (data/types/names.asm), so Metronome would read "BIRD" on the
+; move-info preview screen. Skipping the layer keeps the displayed type honest.
+	cp METRONOME_EFFECT
+	jr z, .nextMove
+	cp MIRROR_MOVE_EFFECT
+	jr z, .nextMove
 	push hl
 	push bc
 	push de

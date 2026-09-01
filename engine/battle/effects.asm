@@ -712,11 +712,24 @@ UpdateLoweredStatDone:
 	ld hl, MonsStatsFellText
 	call PrintText
 
-; These where probably added given that a stat-down move affecting speed or attack will override
-; the stat penalties from paralysis and burn respectively.
-; But they are always called regardless of the stat affected by the stat-down move.
-	call QuarterSpeedDueToParalysis
-	jp HalveAttackDueToBurn
+; AI Overhaul follow-up F4, 2026-09-01. UpdateLoweredStat recalculates ONLY the
+; stat this move lowered, from wPlayerMonUnmodified*/wEnemyMonUnmodified*, which
+; throws away the burn/paralysis division that was applied destructively to the
+; live stat. So that one stat's penalty genuinely must be re-applied here.
+;
+; Calling BOTH penalties unconditionally - the old behaviour, and what the
+; comment that used to sit here described without treating as a bug - re-divides
+; a stat that was NOT recalculated and is therefore already carrying its
+; penalty. Concretely: Leer on a burned target halved its Attack a second time,
+; and again on every subsequent Leer, compounding without limit; String Shot on
+; a burned target did the same; any non-Speed stat-down on a paralyzed target
+; re-quartered its Speed. This is the stat-DOWN half of the fix
+; ApplySelfTargetStatPenalty already made for the stat-UP path.
+;
+; hWhoseTurn is deliberately NOT inverted here, unlike the stat-up path: Gen 1
+; stat-down moves target the OPPONENT, which is already the side both penalty
+; routines act on.
+	jpfar ApplyTargetStatPenalty
 
 CantLowerAnymore_Pop:
 	pop de
