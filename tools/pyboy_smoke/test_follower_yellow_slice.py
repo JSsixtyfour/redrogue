@@ -20,6 +20,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
         cls.update = (ROOT / "engine/overworld/sprite_collisions.asm").read_text()
         cls.overworld = (ROOT / "home/overworld.asm").read_text()
+        cls.special_warps = (ROOT / "engine/overworld/special_warps.asm").read_text()
         cls.home = (ROOT / "home.asm").read_text()
         cls.predef_text = (ROOT / "data/text_predef_pointers.asm").read_text()
         cls.wram = (ROOT / "ram/wram.asm").read_text()
@@ -219,6 +220,22 @@ class YellowFollowerSliceTests(unittest.TestCase):
         clear_state = prepare.index("call FollowerClearState", battle_guard)
         self.assertLess(battle_guard, picture_check)
         self.assertLess(battle_guard, clear_state)
+
+    def test_special_warps_publish_yellow_state_before_red_map_preparation(self):
+        prepare = self.special_warps.split("PrepareForSpecialWarp::", 1)[1].split(
+            "LoadSpecialWarpData:", 1
+        )[0]
+        self.assertRegex(
+            prepare,
+            r"(?s)xor a\s+ld \[wFollowerSpawnState\], a\s+"
+            r"ld a, \[wStatusFlags6\]\s+"
+            r"bit BIT_FLY_OR_DUNGEON_WARP, a\s+"
+            r"jr z, \.followerSpawnStateReady\s+"
+            r"bit BIT_DUNGEON_WARP, a\s+"
+            r"jr nz, \.followerSpawnStateReady\s+"
+            r"ld a, 1\s+ld \[wFollowerSpawnState\], a\s+"
+            r"\.followerSpawnStateReady\s+call LoadSpecialWarpData",
+        )
 
     def test_enqueue_is_at_accepted_step_seam(self):
         self.assertRegex(

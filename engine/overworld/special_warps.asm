@@ -1,4 +1,20 @@
 PrepareForSpecialWarp::
+	; Yellow writes these states during EnterMapAnim, before its later Pikachu
+	; spawn consumes them. Red Rogue prepares the follower earlier, while the
+	; destination map is loading, so preserve Yellow's result at this boundary.
+	; Fly and the shared Dig/Escape Rope path use state 1; dungeon warps and
+	; blackout use state 0. Clearing first prevents a stale ordinary-warp state
+	; from leaking through a blackout or other non-animated special entry.
+	xor a
+	ld [wFollowerSpawnState], a
+	ld a, [wStatusFlags6]
+	bit BIT_FLY_OR_DUNGEON_WARP, a
+	jr z, .followerSpawnStateReady
+	bit BIT_DUNGEON_WARP, a
+	jr nz, .followerSpawnStateReady
+	ld a, 1
+	ld [wFollowerSpawnState], a
+.followerSpawnStateReady
 	call LoadSpecialWarpData
 	predef LoadTilesetHeader
 	ld hl, wStatusFlags6
