@@ -31,18 +31,11 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn('INCLUDE "engine/overworld/follower.asm"', self.main)
         self.assertNotIn("follower_baseline.asm", self.main)
 
-    def test_scope_enables_ordinary_indoors_and_selected_outdoors(self):
-        self.assertIn("cp FIRST_INDOOR_MAP", self.core)
-        for map_name in (
-            "PEWTER_CITY",
-            "ROUTE_1",
-            "ROUTE_3",
-            "ROUTE_4",
-            "ROUTE_9",
-            "ROUTE_24",
-            "ROUTE_25",
-        ):
-            self.assertIn(f"cp {map_name}", self.core)
+    def test_scope_enables_all_outdoors_and_ordinary_indoors(self):
+        self.assertRegex(
+            self.core,
+            r"ldh a, \[hCurMap\]\s+cp FIRST_INDOOR_MAP\s+jr c, \.yes",
+        )
         for enabled_procedural in (
             "PROCEDURAL_CAVE_1",
             "PROCEDURAL_FOREST",
@@ -402,23 +395,21 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"(?ms)cp LOW\(wSprite15StateData2 \+ SPRITESTATEDATA2_IMAGEBASEOFFSET\).*?\.followerVRAMSlot\s+ld a, 2",
         )
 
-    def test_selected_outdoors_use_fixed_set_reservation(self):
+    def test_all_outdoors_use_dynamic_unused_fixed_set_reservation(self):
         outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(
             "; Chooses the correct sprite set ID", 1
         )[0]
         self.assertRegex(
             outside,
-            r"(?s)call \.isFollowerOutsideMap\s+jr c, \.loadSpriteSet.*?"
-            r"cp SPRITESET_PALLET_VIRIDIAN.*?cp SPRITESET_PEWTER_CERULEAN.*?"
-            r"ld a, \[wSpriteSet\]\s+cp SPRITE_YOUNGSTER.*?"
-            r"ld a, \[wSpriteSet\]\s+"
-            r"cp SPRITE_BLUE\s+jr nz, \.loadSpriteSet",
+            r"(?s)call \.isFollowerOutsideMap\s+jr c, \.loadSpriteSet",
         )
         self.assertRegex(
             outside,
             r"(?s)call \.isFollowerOutsideMap\s+call c, "
             r"\.insertFollowerIntoSpriteSet.*?\.insertFollowerIntoSpriteSet.*?"
-            r"cp ROUTE_1.*?ld c, 1.*?ld hl, wSpriteSet \+ 7.*?"
+            r"\.findUnusedWalkingEntry.*?ld a, \[wNumSprites\].*?"
+            r"\.checkAuthoredPictures.*?cp d.*?\.entryUsed.*?cp 9.*?"
+            r"ld hl, wSpriteSet \+ 7.*?"
             r"ld de, wSpriteSet \+ 8.*?ld b, 8.*?"
             r"ld a, \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]\s+"
             r"ld \[wSpriteSet\], a",
@@ -433,16 +424,10 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"\[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]",
         )
         predicate = outside.split(".isFollowerOutsideMap", 1)[1]
-        for map_name in (
-            "PEWTER_CITY",
-            "ROUTE_1",
-            "ROUTE_3",
-            "ROUTE_4",
-            "ROUTE_9",
-            "ROUTE_24",
-            "ROUTE_25",
-        ):
-            self.assertIn(f"cp {map_name}", predicate)
+        self.assertIn(
+            "ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]",
+            predicate,
+        )
 
     def test_species_categories_translate_to_walking_sheets(self):
         outside = self.loader.split("InitOutsideMapSprites:", 1)[1].split(

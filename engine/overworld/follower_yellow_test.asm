@@ -52,28 +52,13 @@ DEF FOLLOWER_ANIM_TICKS    EQU 2 ; Yellow's happy walking cadence
 FollowerIsTestMap:
 	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP
-	jr c, .outsideMap
+	jr c, .yes
 	ld hl, .excludedIndoorMaps
 	push bc
 	call FollowerMapInArray
 	pop bc
 	jr c, .no
 	jr .yes
-.outsideMap
-	cp PEWTER_CITY
-	jr z, .yes
-	cp ROUTE_1
-	jr z, .yes
-	cp ROUTE_3
-	jr z, .yes
-	cp ROUTE_4
-	jr z, .yes
-	cp ROUTE_9
-	jr z, .yes
-	cp ROUTE_24
-	jr z, .yes
-	cp ROUTE_25
-	jr z, .yes
 .no
 	and a
 	ret
@@ -337,6 +322,7 @@ FollowerPrepareMap::
 	call FollowerClearState
 	xor a
 	ld [wFollowerSpawnState], a
+	ld [wSpriteSetID], a ; restore an unmodified outside set while disabled
 	ret
 .enabledOption
 	; Yellow LoadMapHeader skips both sprite initialization and follower spawn
@@ -482,6 +468,7 @@ FollowerPrepareMap::
 	call FollowerClearState
 	xor a
 	ld [wFollowerSpawnState], a
+	ld [wSpriteSetID], a ; restore an unmodified outside set with no follower
 	ret
 
 FollowerClearState:

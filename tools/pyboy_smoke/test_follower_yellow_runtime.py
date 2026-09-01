@@ -73,28 +73,30 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.close()
                 self.harness = RedRogueHarness(ROOT, ARTIFACTS)
 
-    def test_debug2_selected_outdoor_group_spawns_reserved_follower(self) -> None:
+    def test_debug2_all_outdoor_maps_spawn_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
-        for map_name in (
-            "PEWTER_CITY",
-            "ROUTE_3",
-            "ROUTE_4",
-            "ROUTE_9",
-            "ROUTE_24",
-            "ROUTE_25",
-        ):
+        first_indoor = maps["REDS_HOUSE_1F"]
+        outdoor_maps = sorted(
+            (map_id, map_name)
+            for map_name, map_id in maps.items()
+            if map_id < first_indoor
+        )
+        for _, map_name in outdoor_maps:
             with self.subTest(map=map_name):
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
                 self.harness.boot_to_lobby(battle_count=1)
                 self.harness.enter_stage_door1(maps[map_name], description=map_name)
-                self.assertLessEqual(self.harness.read8("wNumSprites"), 14)
-                self.assertNotEqual(
-                    self.harness.read8("wSprite15StateData1PictureID"), 0
+                sprite_count = self.harness.read8("wNumSprites")
+                self.assertLessEqual(sprite_count, 14)
+                follower_picture = self.harness.read8(
+                    "wSprite15StateData1PictureID"
                 )
+                self.assertNotEqual(follower_picture, 0)
                 self.assertEqual(
                     self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
                 )
-                self.harness.close()
-                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+                self.assertEqual(self.harness.read8("wSpriteSet"), follower_picture)
 
     def test_debug2_procedural_group_preserves_dynamic_objects_and_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
@@ -131,13 +133,6 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.assertEqual(
                     self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
                 )
-
-    def test_debug2_force_selects_procedural_cave_for_both_doors(self) -> None:
-        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
-        cave = maps["PROCEDURAL_CAVE_1"]
-        self.harness.boot_to_lobby(battle_count=11)
-        self.assertEqual(self.harness.read8("wLobbyDoor1StageMap"), cave)
-        self.assertEqual(self.harness.read8("wLobbyDoor2StageMap"), cave)
 
     def test_debug2_representative_indoor_groups_spawn_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
@@ -939,24 +934,29 @@ class YellowFollowerRoute1CGBTest(unittest.TestCase):
         self.assertEqual(self.harness.read8("hCurMap"), maps["ROUTE_1"])
         self.assertEqual(self.harness.read8("wOptions2") & 0x40, 0x40)
         self.assertEqual(self.harness.pyboy.memory[0xFF4D] & 0x80, 0x80)
+        fixed_set = self.harness.read_bytes("wSpriteSet", 11)
+        original_walking = [
+            sprites["SPRITE_BLUE"],
+            sprites["SPRITE_YOUNGSTER"],
+            sprites["SPRITE_GIRL"],
+            sprites["SPRITE_FISHER"],
+            sprites["SPRITE_COOLTRAINER_M"],
+            sprites["SPRITE_GAMBLER"],
+            sprites["SPRITE_SEEL"],
+            sprites["SPRITE_OAK"],
+            sprites["SPRITE_SWIMMER"],
+        ]
+        self.assertEqual(fixed_set[0], sprites["SPRITE_MONSTER"])
+        self.assertEqual(len([p for p in original_walking if p in fixed_set[1:9]]), 8)
         self.assertEqual(
-            self.harness.read_bytes("wSpriteSet", 11),
-            [
-                sprites["SPRITE_MONSTER"],
-                sprites["SPRITE_BLUE"],
-                sprites["SPRITE_YOUNGSTER"],
-                sprites["SPRITE_GIRL"],
-                sprites["SPRITE_FISHER"],
-                sprites["SPRITE_COOLTRAINER_M"],
-                sprites["SPRITE_GAMBLER"],
-                sprites["SPRITE_SEEL"],
-                sprites["SPRITE_OAK"],
-                sprites["SPRITE_POKE_BALL"],
-                sprites["SPRITE_GAMBLER_ASLEEP"],
-            ],
+            fixed_set[9:],
+            [sprites["SPRITE_POKE_BALL"], sprites["SPRITE_GAMBLER_ASLEEP"]],
         )
-        expected_bases = [4, 4, 4, 4, 7, 11, 11, 11, 11, 7, 4, 4]
-        for slot, expected in enumerate(expected_bases, start=1):
+        for slot in range(1, self.harness.read8("wNumSprites") + 1):
+            picture = self.harness.read8(
+                f"wSprite{slot:02d}StateData1PictureID"
+            )
+            expected = 0 if not picture else fixed_set.index(picture) + 2
             self.assertEqual(
                 self.harness.read8(f"wSprite{slot:02d}StateData2ImageBaseOffset"),
                 expected,

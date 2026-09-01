@@ -301,23 +301,11 @@ InitOutsideMapSprites:
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a ; reloading upper half of tile patterns after displaying text?
 	jr nz, .loadSpriteSet ; if so, forcibly reload the sprite set
-	; Force a rebuild on enabled outside maps and when leaving a modified
-	; Pallet/Viridian or Pewter/Cerulean set.
+	; An active follower makes entry 0 species-dependent, so always rebuild the
+	; selected fixed set at this lifecycle boundary. FollowerPrepareMap resets
+	; wSpriteSetID when disabling the follower so the original set is restored.
 	call .isFollowerOutsideMap
 	jr c, .loadSpriteSet
-	ld a, b
-	cp SPRITESET_PALLET_VIRIDIAN
-	jr z, .checkPalletViridianSet
-	cp SPRITESET_PEWTER_CERULEAN
-	jr nz, .checkSpriteSetID
-	ld a, [wSpriteSet]
-	cp SPRITE_YOUNGSTER
-	jr nz, .loadSpriteSet
-	jr .checkSpriteSetID
-.checkPalletViridianSet
-	ld a, [wSpriteSet]
-	cp SPRITE_BLUE
-	jr nz, .loadSpriteSet
 .checkSpriteSetID
 	ld a, [wSpriteSetID]
 	cp b ; has the sprite set ID changed?
@@ -434,14 +422,42 @@ InitOutsideMapSprites:
 	ret
 
 .insertFollowerIntoSpriteSet
-	; Route 1 does not use Pallet/Viridian entry 8 (Swimmer). The selected
-	; Pewter/Cerulean routes do not use entry 1 (Rocket). Remove that map-safe
-	; walking entry, then shift the retained eight sheets to entries 1..8.
-	ld c, 8
-	ldh a, [hCurMap]
-	cp ROUTE_1
+	; Yellow gives fixed-set entry 0/base 2 to the follower and retains eight
+	; authored walking sheets. Red's sets have nine walking entries, so find one
+	; the current map does not author, including either live half of split maps.
+	ld c, 0
+.findUnusedWalkingEntry
+	ld hl, wSpriteSet
+	ld a, c
+	add l
+	ld l, a
+	ld d, [hl]
+	ld a, [wNumSprites]
+	ld b, a
+	ld hl, wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID
+.checkAuthoredPictures
+	ld a, b
+	and a
 	jr z, .haveDropIndex
-	ld c, 1
+	ld a, [hl]
+	cp d
+	jr z, .entryUsed
+	ld a, SPRITESTATEDATA1_LENGTH
+	add l
+	ld l, a
+	dec b
+	jr .checkAuthoredPictures
+.entryUsed
+	inc c
+	ld a, c
+	cp 9
+	jr c, .findUnusedWalkingEntry
+	; Static coverage requires every ordinary outside map to have a spare sheet.
+	; Suppress safely if future object data violates that contract.
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld [wSprite15StateData2 + SPRITESTATEDATA2_PICTUREID], a
+	jr .rebuildLoaderPictures
 .haveDropIndex
 	ld hl, wSpriteSet
 	ld a, c
@@ -478,6 +494,7 @@ InitOutsideMapSprites:
 	; The tile loader consumes the synthetic picture IDs in slots 1..11.
 	; Rebuild them from the adjusted fixed set so Pikachu is physically loaded
 	; into base 2 and every authored sheet retains its lookup/base agreement.
+.rebuildLoaderPictures
 	ld hl, wSprite01StateData2PictureID
 	ld de, wSpriteSet
 	ld b, SPRITE_SET_LENGTH
@@ -493,24 +510,9 @@ InitOutsideMapSprites:
 	jr .copyAdjustedSet
 
 .isFollowerOutsideMap
-	ldh a, [hCurMap]
-	cp PEWTER_CITY
-	jr z, .yes
-	cp ROUTE_1
-	jr z, .yes
-	cp ROUTE_3
-	jr z, .yes
-	cp ROUTE_4
-	jr z, .yes
-	cp ROUTE_9
-	jr z, .yes
-	cp ROUTE_24
-	jr z, .yes
-	cp ROUTE_25
-	jr z, .yes
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
-	ret
-.yes
+	ret z
 	scf
 	ret
 

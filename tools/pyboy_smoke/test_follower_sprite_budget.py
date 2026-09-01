@@ -16,16 +16,6 @@ APPROVED_CUTS = {
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
 }
-SELECTED_PEWTER_CERULEAN_MAPS = {
-    "PewterCity",
-    "Route3",
-    "Route4",
-    "Route9",
-    "Route24",
-    "Route25",
-}
-
-
 def sprite_sizes():
     constants = (ROOT / "constants/sprite_constants.asm").read_text()
     names = re.findall(r"^\s*const (SPRITE_\w+)\s*(?:;.*)?$", constants, re.M)
@@ -56,7 +46,81 @@ def map_pictures():
     return result
 
 
+def outdoor_sprite_contracts():
+    source = (ROOT / "data/maps/sprite_sets.asm").read_text()
+    sprite_sets = {}
+    for match in re.finditer(
+        r"; (SPRITESET_\w+)\n((?:\s*db SPRITE_\w+\n){11})", source
+    ):
+        sprite_sets[match.group(1)] = re.findall(
+            r"db (SPRITE_\w+)", match.group(2)
+        )
+
+    split_sets = {}
+    split_source = source.split("SplitMapSpriteSets:", 1)[1].split(
+        "assert_table_length", 1
+    )[0]
+    for line in split_source.splitlines():
+        match = re.search(
+            r"db \w+,\s*\d+,\s*(SPRITESET_\w+),\s*(SPRITESET_\w+)\s*; (SPLITSET_\w+)",
+            line,
+        )
+        if match:
+            split_sets[match.group(3)] = (match.group(1), match.group(2))
+
+    map_sets = {}
+    map_source = source.split("MapSpriteSets:", 1)[1].split(
+        "assert_table_length", 1
+    )[0]
+    for line in map_source.splitlines():
+        match = re.search(r"db (\w+)\s*; (\w+)", line)
+        if match:
+            map_sets[match.group(2)] = split_sets.get(
+                match.group(1), (match.group(1),)
+            )
+
+    pictures_by_constant = {}
+    paths_by_constant = {}
+    for path in sorted((ROOT / "data/maps/objects").glob("*.asm")):
+        text = path.read_text()
+        match = re.search(r"def_warps_to (\w+)", text)
+        if match:
+            pictures_by_constant[match.group(1)] = set(
+                re.findall(
+                    r"^\s*object_event\s+[^,]+,\s*[^,]+,\s*(SPRITE_\w+)",
+                    text,
+                    re.M,
+                )
+            )
+            paths_by_constant[match.group(1)] = path
+    return sprite_sets, map_sets, pictures_by_constant, paths_by_constant
+
+
 class FollowerSpriteBudgetTests(unittest.TestCase):
+    def test_every_outdoor_set_has_an_unused_walking_entry_for_follower(self):
+        sizes = sprite_sizes()
+        sprite_sets, map_sets, pictures_by_map, paths_by_map = (
+            outdoor_sprite_contracts()
+        )
+        for map_name, set_names in map_sets.items():
+            pictures = pictures_by_map[map_name]
+            walking = {picture for picture in pictures if sizes[picture] == 12}
+            still = {picture for picture in pictures if sizes[picture] == 4}
+            for set_name in set_names:
+                with self.subTest(map=map_name, sprite_set=set_name):
+                    entries = sprite_sets[set_name]
+                    # Split sets intentionally omit actors belonging to the
+                    # other half. The live loader scans only active state1
+                    # picture IDs, so the authored union is a safe upper bound
+                    # for capacity but not a required subset of either half.
+                    unused = set(entries[:9]) - (walking & set(entries[:9]))
+                    self.assertTrue(
+                        unused,
+                        f"{map_name} reaches the follower walking-sheet limit; "
+                        f"add a FOLLOWER SPRITE LIMIT warning to "
+                        f"{paths_by_map[map_name]}",
+                    )
+
     def test_checkpoint_c_reservation_is_contained_to_safe_maps(self):
         loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
         self.assertIn(
@@ -80,12 +144,6 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                     if sizes[picture] == 12
                 }
                 self.assertLessEqual(len(walking), 8, sorted(walking))
-
-    def test_selected_pewter_cerulean_maps_do_not_use_displaced_rocket(self):
-        pictures_by_map = map_pictures()
-        for map_name in SELECTED_PEWTER_CERULEAN_MAPS:
-            with self.subTest(map=map_name):
-                self.assertNotIn("SPRITE_ROCKET", pictures_by_map[map_name])
 
     def test_all_authored_pictures_have_supported_sheet_sizes(self):
         sizes = sprite_sizes()
