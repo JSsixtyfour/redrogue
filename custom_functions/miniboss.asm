@@ -81,6 +81,21 @@ SpecialEncounterRollAndAssign::
 	ld a, [hl]
 	and %11001111           ; clear type field (bits 4-5), keep the rest
 	ld [hl], a
+IF DEF(_DEBUG)
+	; Debug 2 choices 3/4 bypass normal eligibility and chance gates.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .normalGates
+	ld a, [wDebug2ForcedDoor1]
+	and %11000000
+	cp %10000000
+	jr z, .doMiniBoss
+	cp %11000000
+	jr nz, .normalGates
+	ld e, %00000010         ; forced wild area: one mandatory destination
+	jr .doWildArea
+.normalGates
+ENDC
 	; gate: route-next only (gym-next has one door, no special)
 	bit BIT_ROGUE_GYM_NEXT, [hl]
 	ret nz
@@ -104,24 +119,6 @@ SpecialEncounterRollAndAssign::
 	jr nc, .waDone
 	set 1, e
 .waDone:
-IF DEF(_DEBUG)
-	; Debug 2 testing aid: directly force BOTH lobby doors to PROCEDURAL_CAVE_1 on
-	; every eligible route-next lobby visit. Bypasses WildAreaPickAndAssign (and its
-	; Rangerandom calls) entirely rather than routing through the normal roll/pick
-	; path, since the random function has changed and a deterministic force through
-	; that path is no longer reliable for testing. Debug-build only; off entirely
-	; in release ROMs.
-	;ld a, [wStatusFlags6]
-	;bit BIT_DEBUG2_MODE, a
-	;jr z, .noDebugForce
-	;ld a, PROCEDURAL_FOREST
-	;ld [wLobbyDoor1StageMap], a
-	;ld [wLobbyDoor2StageMap], a   ; door1==door2 => Lobby_IsDoor2Blocked blocks door 2
-	;xor a
-	;ld [wRoutesSinceSpecial], a
-	;ret
-;.noDebugForce
-ENDC
 	; --- decide whether a special occurs, and which kind ---
 	ld a, e
 	and a

@@ -2267,9 +2267,11 @@ wBridgeState:: db ; bits 0-5 = offered-this-run mask for bridge room indices 8-1
                   ; Packs to exactly 14 rooms; if the roster grows past 14, split the
                   ; count out to its own byte (shrink the ds below by 1 more).
                     ; Zeroed on new game (must default 0 - it gates every enemy load).
-; Debug 2 only: 1-based gym (1-8) or route (1-21) index to force onto each
-; lobby door independently; 0 = random (no override). Consumed (reset to 0)
-; after one lobby visit. See SelectAndPatchLobbyExit / Debug2ApplyRoundState.
+; Debug 2 only: low 5 bits hold a 1-based gym (1-8) or route (1-22) index
+; to force onto each lobby door independently; 0 = random. Door 1 bits 6-7
+; hold the one-shot encounter selector (0 normal, 1 bridge, 2 mini-boss,
+; 3 wild area). Consumed after one lobby visit. See SelectAndPatchLobbyExit /
+; Debug2ApplyRoundState.
 wDebug2ForcedDoor1:: db
 wDebug2ForcedDoor2:: db
 ; LEFTOVERS fraction level: heals 1/(16-level) of each mon's max HP.

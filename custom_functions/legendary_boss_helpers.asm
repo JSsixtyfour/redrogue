@@ -595,7 +595,22 @@ Debug2ApplyRoundState::
 .routeNext
 	res BIT_ROGUE_GYM_NEXT, [hl]
 .forcedStagePrompt
-	; Follow-up prompts: pick which specific gym (1-8) or route (1-21) each
+	; One-shot encounter selector for the next lobby visit:
+	;   1 = normal, 2 = bridge, 3 = mini-boss, 4 = wild area.
+	; Store the zero-based choice in wDebug2ForcedDoor1 bits 6-7. The low five
+	; bits remain available for its existing 1-based route/gym door override.
+	ld a, 4
+	ld [wMaxItemQuantity], a
+	xor a
+	ld [wListMenuID], a
+	call DisplayChooseQuantityMenu
+	ld a, [wItemQuantity]
+	dec a
+	rrca
+	rrca
+	ld [wDebug2ForcedDoor1], a
+
+	; Follow-up prompts: pick which specific gym (1-8) or route (1-22) each
 	; lobby door leads to independently, or leave either random. Entry 1 =
 	; random (no override); entry N (N>=2) forces gym/route (N-1). The choice
 	; is contingent on the battle count: the gym-vs-route flag (just set from
@@ -608,7 +623,7 @@ Debug2ApplyRoundState::
 	; harmless - PatchWarpEntry never patches a blocked door).
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
-	ld a, 22                   ; route next: 1 (random) + NUM_STAGE_MAPS (21) routes
+	ld a, 23                   ; route next: 1 (random) + NUM_STAGE_MAPS (22) routes
 	jr z, .haveMax
 	ld a, 9                    ; gym next: 1 (random) + 8 gyms
 .haveMax
@@ -621,6 +636,9 @@ Debug2ApplyRoundState::
 	                             ; force" sentinel); 2..max -> 1..(max-1), the
 	                             ; 1-based gym/route index ApplyDebug2DoorForce
 	                             ; expects
+	ld b, a
+	ld a, [wDebug2ForcedDoor1]
+	or b                         ; retain encounter choice in bits 6-7
 	ld [wDebug2ForcedDoor1], a
 
 	; Door 2: identical prompt, same max (wMaxItemQuantity/wListMenuID already set).

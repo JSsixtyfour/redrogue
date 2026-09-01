@@ -428,7 +428,6 @@ BridgePrintGiftDesc:
 ; ---------------------------------------------------------------------------
 ; in: a = selected menu index ; performs the chosen gift.
 BridgeDoGift:
-	SetEvent EVENT_BRIDGE_RECEIVE_GIFT
 	ld hl, wGift1
 	add l
 	ld l, a
@@ -446,37 +445,44 @@ BridgeDoGift:
 	jr z, .teach
 	cp GIFT_MON_EVOLVE
 	jr z, .monEvolve
-; GIFT_SPECIAL: de = routine address; call it, then say bye
+; GIFT_SPECIAL: de = routine address. Every special routine returns carry set
+; only when its primary effect was applied.
 	ld h, d
 	ld l, e
-	ld de, .bye
+	ld de, .checkSuccess
 	push de
 	jp hl
 .mon
 	ld a, e
 	call BridgeGiveMon
-	jr .bye
+	jr .checkSuccess
 .item
 	ld a, e
 	call BridgeGiveItem
-	jr .bye
+	jr .checkSuccess
 .teach
 	ld a, e
 	call BridgeTeachMove
-	jr .bye
+	jr .checkSuccess
 .monEvolve
 	push de                      ; d = flag byte, e = base species
 	ld a, e
 	call BridgeResolveEvolveSpecies  ; a = resolved species
 	call BridgeGiveMon           ; gives resolved species at reward level
 	pop de                       ; d = flag byte (pop doesn't touch carry)
-	jr nc, .bye                  ; nothing added (party+box full)
+	jr nc, .failed               ; nothing added (party+box full)
 	bit 0, d
-	jr z, .bye
+	jr z, .success
 	call BridgeApplySpecialFormToNewMon
-.bye
+	jr .success
+.checkSuccess
+	jr nc, .failed
+.success
+	SetEvent EVENT_BRIDGE_RECEIVE_GIFT
 	ld hl, BridgeByeText
 	jp PrintText
+.failed
+	ret
 
 ; ---------------------------------------------------------------------------
 ; Generic gift helpers.
@@ -493,13 +499,26 @@ BridgeGiveMon:
 
 ; in: a = item id. Gives one and announces it.
 BridgeGiveItem:
+	push af                      ; preserve item id while seeding delivery sentinel
+	ld a, $fe
+	ldh [hSpriteOffset], a       ; distinguish key-item PC delivery from failure
+	pop af
 	push af
 	ld b, a
 	ld c, 1
 	call GiveItem
+	jr c, .received
+	ldh a, [hSpriteOffset]
+	cp $ff                       ; key item was successfully sent to PC storage
+	jr z, .received
+	pop af
+	and a
+	ret
+.received
 	pop af
 	ld [wNamedObjectIndex], a   ; GiveItem clobbers it internally; restore for the name
 	call ReceivedItem
+	scf
 	ret
 
 ; in: a = move id. Player picks a party mon; teaches it the move.
@@ -507,7 +526,10 @@ BridgeTeachMove:
 	push af                      ; save move id
 	call BridgeSelectPartyMon    ; carry = cancelled; hWhichPokemon = slot
 	pop bc                       ; b = move id (carry unaffected by pop)
-	ret c
+	jr nc, .selected
+	and a
+	ret
+.selected
 	ld a, b
 	; fall through
 
@@ -525,6 +547,10 @@ BridgeTeachMoveToCurrent:
 	predef LearnMove
 	pop af
 	ld [wLetterPrintingDelayFlags], a
+	ld a, b                      ; LearnMove: b = 1 learned, b = 0 rejected
+	and a
+	ret z
+	scf
 	ret
 
 ; Opens the party menu for a selection. out: carry set = cancelled,
@@ -618,14 +644,18 @@ BridgeOakPikachu::
 	ld a, PIKACHU
 	call BridgeGiveMon
 	ret nc                       ; party AND box full -> nothing added
-	jp BridgeApplySpecialFormToNewMon
+	call BridgeApplySpecialFormToNewMon
+	scf
+	ret
 
 ; Captain's always-crit FARFETCH'D (SpecialFormCaps -> ALWAYS_CRIT).
 BridgeCaptainFarfetchd::
 	ld a, FARFETCHD
 	call BridgeGiveMon
 	ret nc                       ; party AND box full -> nothing added
-	jp BridgeApplySpecialFormToNewMon
+	call BridgeApplySpecialFormToNewMon
+	scf
+	ret
 
 ; Copycat's SUPER DITTO: a DITTO with perfect DVs, maxed stat exp, and the
 ; SUPER_TRANSFORM + TRANSFORM move pair. If the party is full the mon is boxed
@@ -686,16 +716,21 @@ BridgeCopyCatSuperDitto::
 	; they recompute from box level + these maxed DVs/stat-exp on withdrawal.
 	ld a, [wAddedToParty]
 	and a
-	ret z
+	jr nz, .partyStats
+	scf
+	ret
+.partyStats
 	call BridgeGetNewMonStruct   ; de = party struct base
 	ld h, d
 	ld l, e
-	jp BridgeRecalcStats
+	call BridgeRecalcStats
+	scf
+	ret
 
 ; Mr. Fuji's GENE SPLICING: max out a chosen party mon's DVs, then recalc.
 BridgeMrFujiGeneSplice::
 	call BridgeSelectPartyMon
-	ret c
+	jr c, .cancel
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -707,14 +742,19 @@ BridgeMrFujiGeneSplice::
 	ld [hli], a
 	ld [hl], a
 	pop hl
-	jp BridgeRecalcStats
+	call BridgeRecalcStats
+	scf
+	ret
+.cancel
+	and a
+	ret
 
 ; Bill's DUPLICATE TRICK: pick a party mon, give an exact clone through the
 ; normal GivePokemon flow. Party-full clones fall back to a fresh same-species
 ; mon in the box (an exact copy needs the party struct, which the box lacks).
 BridgeBillDuplicate::
 	call BridgeSelectPartyMon
-	ret c
+	jr c, .failed
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMons
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -728,9 +768,13 @@ BridgeBillDuplicate::
 	ld c, a                      ; c = level
 	call GivePokemon             ; fresh mon (party or box) + standard messaging
 	pop hl                       ; hl = source base (party structs don't move)
+	jr nc, .failed
 	ld a, [wAddedToParty]
 	and a
-	ret z                        ; boxed -> fresh same-species mon, no exact clone
+	jr nz, .copyPartyStruct
+	scf                          ; boxed -> fresh same-species mon, still delivered
+	ret
+.copyPartyStruct
 	push hl                      ; source base
 	call GetLastPartyMonStruct   ; hl = dest (new last slot)
 	pop de                       ; de = source base
@@ -743,12 +787,20 @@ BridgeBillDuplicate::
 	ld e, a                      ; hl = source, de = dest
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call CopyData
+	scf
+	ret
+.failed
+	and a
 	ret
 
 ; Bill's MAD SCIENCE: fuse two party mons (func_fusion.asm handles the whole
 ; selection UI, guards, and messaging).
 BridgeBillFusion::
+	ld a, [wPartyCount]
+	push af                      ; successful fusion removes exactly one party mon
 	farcall CreateFusion
+	pop bc                       ; b = party count before CreateFusion
+	push bc                      ; preserve it across sprite restoration
 	; CreateFusion's party menus ClearSprites and it never reloads sprite tile
 	; patterns (only map/tileset tiles), so the overworld sprites stay erased
 	; until the party menu is reopened. Restore them here the same way the other
@@ -758,6 +810,14 @@ BridgeBillFusion::
 	ldh [hUpdateSpritesEnabled], a
 	call ReloadMapSpriteTilePatterns
 	call UpdateSprites
+	pop bc
+	ld a, [wPartyCount]
+	cp b
+	jr z, .failed
+	scf
+	ret
+.failed
+	and a
 	ret
 
 ; Captain's WATER type variant: adds WATER as a chosen party mon's secondary
@@ -780,7 +840,7 @@ BridgeApplyTypeVariantGift:
 	push af                       ; save target type across the menu
 	call BridgeSelectPartyMon     ; carry = cancel, hWhichPokemon = slot
 	pop bc                        ; b = target type (pop preserves carry)
-	ret c
+	jr c, .failed
 	ldh a, [hWhichPokemon]
 	push bc                       ; save target type across AddNTimes
 	ld hl, wPartyMons
@@ -818,17 +878,24 @@ BridgeApplyTypeVariantGift:
 	ld hl, BridgeRockVariantText
 	call PrintText
 	ld hl, BridgeRockMovePool
-	jp BridgeTeachRandomMoveFromPool
+	call BridgeTeachRandomMoveFromPool
+	scf                          ; type change succeeds even if bonus move is refused
+	ret
 .water
 	ld hl, BridgeWaterVariantText
 	call PrintText
 	ld hl, BridgeWaterMovePool
-	jp BridgeTeachRandomMoveFromPool
+	call BridgeTeachRandomMoveFromPool
+	scf                          ; type change succeeds even if bonus move is refused
+	ret
 .already
 	pop bc
 	pop hl
 	ld hl, BridgeTypeVariantFailText
-	jp PrintText
+	call PrintText
+.failed
+	and a
+	ret
 
 ; in: hl = move pool (count byte, then that many move ids). Picks one at random
 ; and teaches it to the current party mon (hWhichPokemon) via the normal,
@@ -859,6 +926,7 @@ BridgeWaterMovePool:
 BridgeApplySpecialFormToNewMon:
 	call BridgeGetNewMonStruct
 	farcall ApplySpecialForm
+	scf
 	ret
 
 ; out: de = struct base of the mon GivePokemon most recently added - the last

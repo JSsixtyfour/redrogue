@@ -52,6 +52,48 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         )
         return prepare
 
+    def test_fainted_lead_hides_and_revived_lead_respawns(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+        self.harness.tick(60)
+
+        hp_hi = self.harness.read8("wPartyMon1HP")
+        hp_lo = self.harness.read8("wPartyMon1HP", 1)
+        self.assertNotEqual(hp_hi | hp_lo, 0)
+
+        status4 = self.harness.read8("wStatusFlags4")
+        self.harness.write8("wStatusFlags4", status4 | (1 << 5))
+        self.harness.call_routine("FollowerUpdate")
+        self.assertEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1MovementStatus"),
+            0,
+        )
+        self.harness.write8("wStatusFlags4", status4)
+        self.harness.call_routine("FollowerUpdate")
+        self.assertNotEqual(
+            self.harness.read8("wSprite15StateData1MovementStatus"),
+            0,
+        )
+
+        self.harness.write8("wPartyMon1HP", 0)
+        self.harness.write8("wPartyMon1HP", 0, 1)
+        self.harness.call_routine("FollowerUpdate")
+        self.assertEqual(self.harness.read8("wSprite15StateData1ImageIndex"), 0xFF)
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1MovementStatus"),
+            0,
+        )
+        self.assertEqual(self.harness.read8("wFollowerCommandBufferSize"), 0xFF)
+
+        self.harness.write8("wPartyMon1HP", hp_hi)
+        self.harness.write8("wPartyMon1HP", hp_lo, 1)
+        self.harness.call_routine("FollowerUpdate")
+        self.assertNotEqual(
+            self.harness.read8("wSprite15StateData1MovementStatus"),
+            0,
+        )
+
     def test_lobby_preserves_roster_and_assigns_reserved_follower_layout(self) -> None:
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
         self.harness.boot_to_lobby(battle_count=1)

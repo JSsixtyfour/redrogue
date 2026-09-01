@@ -52,7 +52,7 @@ OverworldTilePalPointers::
 	; entries) ahead of the engine landing. A real PalSettings_DORM needs
 	; hand-authoring against DORM's actual tile IDs - ShinRed_Import.md Phase
 	; 3.0b assigns that to Opus, not this mechanical pass.
-	dw PalSettings_OVERWORLD    ; 24 DORM - PLACEHOLDER, not authored
+	dw PalSettings_DORM    ; 24 DORM - PLACEHOLDER, not authored
 
 ASSERT (@ - OverworldTilePalPointers) / 2 == NUM_TILESETS, "OverworldTilePalPointers entry count must track NUM_TILESETS (constants/tileset_constants.asm) - add a new dw row (and its PalSettings_* table) whenever a tileset is added"
 
@@ -104,17 +104,17 @@ PalSettings_FOREST:
 
 PalSettings_MART:
 PalSettings_POKECENTER:
-;	00	01	02	03	04	05	06	07	08	09	0A	0B	0C	0D	0E	0F
+    ;	00	01	02	03	04	05	06	07	08	09	0A	0B	0C	0D	0E	0F
 	db	3,	4,	1,	1,	6,	6,	3,	3,	6,	3,	6,	4,	2,	3,	6,	6
-;	10	11	12	13	14	15	16	17	18	19	1A	1B	1C	1D	1E	1F
+    ;	10	11	12	13	14	15	16	17	18	19	1A	1B	1C	1D	1E	1F
 	db	6,	4,	1,	1,	6,	6,	3,	6,	5,	5,	3,	4,	2,	6,	6,	6
-;	20	21	22	23	24	25	26	27	28	29	2A	2B	2C	2D	2E	2F
-	db	4,	4,	6,	6,	0,	0,	0,	0,	6,	6,	0,	0,	7,	7,	7,	7
-;	30	31	32	33	34	35	36	37	38	39	3A	3B	3C	3D	3E	3F
-	db	4,	4,	6,	6,	0,	0,	3,	0,	6,	3,	6,	6,	3,	0,	7,	7
-;	40	41	42	43	44	45	46	47	48	49	4A	4B	4C	4D	4E	4F
+    ;	20	21	22	23	24	25	26	27	28	29	2A	2B	2C	2D	2E	2F
+	db	4,	4,	6,	6,	6,	6,	0,	0,	6,	6,	0,	0,	7,	7,	7,	7
+    ;	30	31	32	33	34	35	36	37	38	39	3A	3B	3C	3D	3E	3F
+	db	4,	4,	6,	6,	6,	6,	3,	0,	6,	3,	6,	6,	3,	0,	7,	7
+    ;	40	41	42	43	44	45	46	47	48	49	4A	4B	4C	4D	4E	4F
 	db	3,	3,	3,	3,	3,	3,	3,	3,	3,	3,	6,	6,	6,	6,	5,	5
-;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
+    ;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
 	db	3,	3,	3,	3,	3,	3,	3,	3,	3,	6,	0,	0,	3,	3,	3,	3
 
 PalSettings_DOJO:
@@ -329,3 +329,17 @@ PalSettings_PLATEAU:
 	db	8,	8,	8,	8,	8,	4,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0
 ;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
 	db	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0
+
+PalSettings_DORM:
+;	00	01	02	03	04	05	06	07	08	09	0A	0B	0C	0D	0E	0F
+	db	6,	3,	3,	3,	2,	3,	7,	7,	4,	4,	6,	6,	6,	6,	3,	3
+;	10	11	12	13	14	15	16	17	18	19	1A	1B	1C	1D	1E	1F
+	db	3,	3,	3,	3,	2,	3,	7,	7,	6,	6,	6,	6,	6,	6,	3,	3
+;	20	21	22	23	24	25	26	27	28	29	2A	2B	2C	2D	2E	2F
+	db	3,	3,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6
+;	30	31	32	33	34	35	36	37	38	39	3A	3B	3C	3D	3E	3F
+	db	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	3,	3,	6
+;	40	41	42	43	44	45	46	47	48	49	4A	4B	4C	4D	4E	4F
+	db	6,	6,	3,	3,	4,	4,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6
+;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
+	db	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	3,	3,	3

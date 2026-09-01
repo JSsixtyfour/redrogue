@@ -296,6 +296,32 @@ FollowerResolveLeadPicture:
 	db SPRITE_CHANSEY
 	assert @ - .categoryToWalkingSprite == NUM_MON_SPRITE_CATEGORIES
 
+; Yellow's ShouldPikachuSpawn rejects a fainted starter. Red Rogue follows the
+; ordered lead, so apply the same two-byte HP test to party slot 1.
+; OUTPUT: carry set when the lead has nonzero HP; carry clear otherwise.
+FollowerIsLeadAlive:
+	ld a, [wPartyMon1HP]
+	ld hl, wPartyMon1HP + 1
+	or [hl]
+	jr z, .fainted
+	scf
+	ret
+.fainted
+	and a
+	ret
+
+; Yellow also suppresses Pikachu during battle/transition lifecycle states.
+; Red publishes BIT_BATTLE_OVER_OR_BLACKOUT for the post-battle delay and map
+; handoff, so keep the follower continuously hidden until EnterMap consumes it.
+FollowerCanFollow:
+	ld a, [wStatusFlags4]
+	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+	jr nz, .suppressed
+	jp FollowerIsLeadAlive
+.suppressed
+	and a
+	ret
+
 ; Called by InitMapSprites before picture IDs are copied into the loader.
 ; A normal map load has already cleared slot 15, so it creates a pending
 ; overlap spawn. InitMapSprites also runs after text; an existing Pikachu is
@@ -503,6 +529,8 @@ FollowerQueuePlayerStep::
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
 	ret z
+	call FollowerCanFollow
+	ret nc
 	ld a, [wWalkBikeSurfState]
 	and a
 	ret nz
@@ -596,6 +624,14 @@ FollowerUpdate::
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
 	ret z
+	call FollowerCanFollow
+	jr c, .leadAlive
+	ld a, FOLLOWER_COMMAND_EMPTY
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS], a
+	jp FollowerClearQueue
+.leadAlive
 	call FollowerCheckVisibility
 	ret c
 	ld hl, wSprite15StateData1 + SPRITESTATEDATA1_MOVEMENTSTATUS

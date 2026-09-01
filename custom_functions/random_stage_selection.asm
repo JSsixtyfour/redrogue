@@ -421,6 +421,20 @@ SelectAndPatchLobbyExit::
 	call ForceElite4Doors
 	jr .selectionDone
 .normalSelection
+IF DEF(_DEBUG)
+	; Forced mini-boss/wild choices need a route-style two-door lobby, even if
+	; the entered battle count would ordinarily put Debug 2 on a gym cycle.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .debug2EncounterReady
+	ld a, [wDebug2ForcedDoor1]
+	and %11000000
+	cp %10000000
+	jr c, .debug2EncounterReady
+	ld hl, wRogueFlagsBitfield
+	res BIT_ROGUE_GYM_NEXT, [hl]
+.debug2EncounterReady
+ENDC
 	; Pick the next stage (alternates route/gym). Both doors default to it.
 	call _PickNextStage
 	ld a, [wRogueMap]
@@ -448,15 +462,19 @@ IF DEF(_DEBUG)
 	; once all 8 badges are obtained.
 	ld a, [wObtainedBadges]
 	cp $FF
-	jr z, .noDebug2DoorForce
+	jr z, .consumeDebug2Forces     ; finale ignores overrides but still consumes them
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
 	jr z, .noDebug2DoorForce
+	ld a, [wDebug2ForcedDoor1]
+	and %11000000
+	jr nz, .consumeDebug2Forces  ; forced encounter has final authority over doors
 	ld a, [wDebug2ForcedDoor1]
 	push af
 	xor a
 	ld [wDebug2ForcedDoor1], a     ; consume: only force the next lobby visit
 	pop af
+	and %00011111                 ; encounter selector occupies bits 6-7
 	ld hl, wLobbyDoor1StageMap
 	call ApplyDebug2DoorForce
 	ld a, [wDebug2ForcedDoor2]
@@ -466,6 +484,11 @@ IF DEF(_DEBUG)
 	pop af
 	ld hl, wLobbyDoor2StageMap
 	call ApplyDebug2DoorForce
+	jr .noDebug2DoorForce
+.consumeDebug2Forces
+	xor a
+	ld [wDebug2ForcedDoor1], a
+	ld [wDebug2ForcedDoor2], a
 .noDebug2DoorForce
 ENDC
 	; Patch each door to its (possibly now different) stage map.

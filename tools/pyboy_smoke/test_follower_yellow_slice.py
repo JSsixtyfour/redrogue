@@ -287,7 +287,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_font_path_uses_yellow_overlap_only_hide_and_recovers(self):
         self.assertRegex(
             self.core,
-            r"(?ms)and a\s+ret z\s+call FollowerCheckVisibility\s+ret c\s+"
+            r"(?ms)and a\s+ret z\s+call FollowerCanFollow.*?\.leadAlive\s+"
+            r"call FollowerCheckVisibility\s+ret c\s+"
             r"ld hl, wSprite15StateData1 \+ SPRITESTATEDATA1_MOVEMENTSTATUS\s+"
             r"bit BIT_FACE_PLAYER, \[hl\]\s+jp nz, FollowerFacePlayer\s+ld a, \[wFontLoaded\]",
         )
