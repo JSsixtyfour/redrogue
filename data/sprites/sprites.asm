@@ -86,7 +86,7 @@ SpriteSheetPointerTable:
 	overworld_sprite OldAmberSprite, 4          ; SPRITE_OLD_AMBER
 	; Lobby-only fixed poses reuse the corresponding tiles from full sheets.
 	overworld_sprite_slice SilphPresidentSprite, 0, 4 ; SPRITE_LOBBY_MOVE_RELEARNER
-	overworld_sprite_slice GameboyKidSprite, 8, 4 ; SPRITE_GAMEBOY_KID_STILL
+	overworld_sprite_slice GrannySprite, 0, 4 ; SPRITE_LOBBY_DAYCARE_LADY
 	overworld_sprite GamblerAsleepSprite, 4     ; SPRITE_GAMBLER_ASLEEP
 	overworld_sprite JessieSprite, 12          ; SPRITE_JESSIE
 	overworld_sprite JamesSprite, 12           ; SPRITE_JAMES

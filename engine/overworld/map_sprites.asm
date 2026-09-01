@@ -97,8 +97,15 @@ LoadMapSpriteTilePatterns:
 	jr c, .findNextVRAMSlotLoop
 	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
 	and a
-	jr z, .findNextVRAMSlotLoop
-	inc b ; reserve image base 2 for enabled follower maps
+	jr nz, .reserveFollowerVRAMSlot
+	; Nurse Joy's healing poses historically hardcode image base 2. Keep the
+	; follower-era base 2 gap even when the follower option is disabled so the
+	; size-neutral base-3 pose constants remain correct in every Center.
+	ld a, [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID]
+	cp SPRITE_NURSE
+	jr nz, .findNextVRAMSlotLoop
+.reserveFollowerVRAMSlot
+	inc b ; reserve follower-era image base 2
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
 .findNextVRAMSlotLoop

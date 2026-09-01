@@ -1,4 +1,10 @@
 AnimateHealingMachine:
+	; Freeze the healing OAM only after slot 15 has disappeared from the live
+	; shadow OAM. The final UpdateSprites republishes the follower normally.
+	ld a, $ff
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a
+	farcall PrepareOAMData
+.followerHidden
 	ld de, PokeCenterFlashingMonitorAndHealBall
 	ld hl, vChars0 tile $7c
 	lb bc, BANK(PokeCenterFlashingMonitorAndHealBall), 3 ; should be 2

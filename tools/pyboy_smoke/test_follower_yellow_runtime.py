@@ -63,13 +63,13 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             (sprites["SPRITE_CLERK"], 4),
             (sprites["SPRITE_CLERK"], 4),
             (sprites["SPRITE_GENTLEMAN"], 5),
-            (sprites["SPRITE_GRANNY"], 6),
-            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_1"], 11),
-            (sprites["SPRITE_YOUNGSTER"], 7),
-            (sprites["SPRITE_CHANNELER"], 8),
-            (sprites["SPRITE_MIDDLE_AGED_MAN"], 9),
-            (sprites["SPRITE_SUPER_NERD"], 10),
-            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_2"], 12),
+            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_2"], 11),
+            (sprites["SPRITE_UNUSED_GAMBLER_ASLEEP_1"], 12),
+            (sprites["SPRITE_YOUNGSTER"], 6),
+            (sprites["SPRITE_CHANNELER"], 7),
+            (sprites["SPRITE_MIDDLE_AGED_MAN"], 8),
+            (sprites["SPRITE_SUPER_NERD"], 9),
+            (sprites["SPRITE_GAMEBOY_KID"], 10),
         ]
         for slot, (picture, image_base) in enumerate(expected, start=1):
             with self.subTest(slot=slot):
@@ -85,6 +85,29 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 )
         self.assertNotEqual(self.harness.read8("wSprite15StateData1PictureID"), 0)
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+
+    def test_healing_machine_hides_follower_before_oam_freeze(self) -> None:
+        self.harness.boot_to_lobby(battle_count=1)
+        self.harness.move_tile("up")
+        self.harness.tick(24)
+        before = self.harness.read8("wSprite15StateData1ImageIndex")
+        self.assertNotEqual(before, 0xFF)
+        hidden = []
+        hidden_seam = self.harness.hook_flag(
+            "AnimateHealingMachine.followerHidden",
+            lambda: hidden.append(
+                self.harness.read8("wSprite15StateData1ImageIndex")
+            ),
+        )
+
+        self.harness.probe_routine_until(
+            "AnimateHealingMachine",
+            lambda: hidden_seam["count"] > 0,
+            limit=600,
+        )
+
+        self.assertTrue(hidden)
+        self.assertEqual(set(hidden), {0xFF})
 
     def test_debug2_first_crowded_indoor_group_spawns_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")

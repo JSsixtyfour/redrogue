@@ -71,8 +71,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
             self.loader,
             r"(?ms)ld b, 1.*?cp FIRST_INDOOR_MAP\s+"
             r"jr c, \.findNextVRAMSlotLoop\s+ld a, \[wSprite15StateData1 \+ "
-            r"SPRITESTATEDATA1_PICTUREID\]\s+and a\s+jr z, "
-            r"\.findNextVRAMSlotLoop\s+inc b",
+            r"SPRITESTATEDATA1_PICTUREID\]\s+and a\s+jr nz, "
+            r"\.reserveFollowerVRAMSlot.*?\.reserveFollowerVRAMSlot\s+inc b",
         )
 
     def test_yellow_queue_sentinel_contract(self):

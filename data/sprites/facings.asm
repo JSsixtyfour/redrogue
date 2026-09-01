@@ -57,6 +57,3 @@ SpriteFacingAndAnimationTable:
 	db 0, 0, OAM_XFLIP ; top right
 	db 8, 8, OAM_XFLIP | UNDER_GRASS ; bottom left
 	db 8, 0, OAM_XFLIP | UNDER_GRASS | FACING_END ; bottom right
-
-SpriteFacingAndAnimationTableFixedRight:
-	dw SpriteFacingAndAnimationTable.StandingDown, SpriteFacingAndAnimationTable.FlippedOAM

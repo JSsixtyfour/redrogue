@@ -140,7 +140,7 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
     def test_checkpoint_c_reservation_is_contained_to_safe_maps(self):
         loader = (ROOT / "engine/overworld/map_sprites.asm").read_text()
         self.assertIn(
-            "inc b ; reserve image base 2 for enabled follower maps",
+            "inc b ; reserve follower-era image base 2",
             loader,
         )
         self.assertRegex(
@@ -187,7 +187,7 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
         self.assertEqual(len(walking), 8, sorted(walking))
         self.assertEqual(
             still,
-            {"SPRITE_LOBBY_MOVE_RELEARNER", "SPRITE_GAMEBOY_KID_STILL"},
+            {"SPRITE_LOBBY_MOVE_RELEARNER", "SPRITE_LOBBY_DAYCARE_LADY"},
         )
 
     def test_object_slot_budget_after_explicit_approved_cuts(self):
