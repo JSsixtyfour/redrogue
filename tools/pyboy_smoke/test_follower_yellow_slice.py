@@ -52,13 +52,17 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "PROCEDURAL_FACILITY",
             "MINI_SAFFRON",
             "SILPH_CO_VR",
-            "HALL_OF_FAME",
-            "CHAMPIONS_ROOM",
+        ):
+            self.assertIn(f"db {excluded}", self.core)
+        for enabled_finale_map in (
             "LORELEIS_ROOM",
             "BRUNOS_ROOM",
             "AGATHAS_ROOM",
+            "LANCES_ROOM",
+            "CHAMPIONS_ROOM",
+            "HALL_OF_FAME",
         ):
-            self.assertIn(f"db {excluded}", self.core)
+            self.assertNotIn(f"db {enabled_finale_map}", self.core)
         self.assertNotIn("db INDIGO_PLATEAU_LOBBY", self.core)
         self.assertIn("FollowerResolveLeadPicture:", self.core)
         self.assertIn("farcall PCGetPokemonSpriteCategory", self.core)
@@ -346,10 +350,22 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("call IsSpriteInFrontOfPlayer", collision)
         self.assertNotIn("FollowerInteraction", collision)
         self.assertRegex(
+            interaction,
+            r"(?ms)call UpdateSprites.*?ld \[wNamedObjectIndex\], a\s+"
+            r"call GetMonName.*?tx_pre FollowerPokemonText",
+        )
+        self.assertRegex(
             self.core,
-            r"(?ms)FollowerPokemonText::?.*?ld \[wNamedObjectIndex\], a.*?"
-            r"call GetMonName.*?call PlayCry.*?text_ram wNameBuffer\s+"
-            r"text \"!\"\s+prompt",
+            r"(?ms)FollowerPokemonText::\s+"
+            r"text_far _FollowerPokemonInteractionText\s+text_asm.*?"
+            r"call PlayCry\s+call WaitForSoundToFinish.*?jp TextScriptEnd",
+        )
+        follower_text = (ROOT / "text" / "ProceduralCave1.asm").read_text()
+        self.assertRegex(
+            follower_text,
+            r"(?ms)_FollowerPokemonInteractionText::\s+"
+            r"text_ram wNameBuffer\s+text \"!@\"\s+"
+            r"text_promptbutton\s+text_end",
         )
         self.assertIn("add_tx_pre FollowerPokemonText", self.predef_text)
         self.assertNotIn("add_tx_pre UnusedPredefText", self.predef_text)

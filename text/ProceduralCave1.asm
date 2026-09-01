@@ -35,6 +35,14 @@ _PCBossEncounterText::
 	text "!@"
 	text_end
 
+; Follower interaction mirrors the procedural boss encounter's dynamic-name
+; stream, with an explicit prompt before the assembly-only cry step.
+_FollowerPokemonInteractionText::
+	text_ram wNameBuffer
+	text "!@"
+	text_promptbutton
+	text_end
+
 ; Post-battle join offer. Structure mirrors the working BluesHouse pattern:
 ; a normal string that ends with "@" (returns to command mode), then
 ; text_ram to drop in the boss's name, then more string, then text_end.

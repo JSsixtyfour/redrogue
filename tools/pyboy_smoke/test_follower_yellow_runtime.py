@@ -223,6 +223,28 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.close()
                 self.harness = RedRogueHarness(ROOT, ARTIFACTS)
 
+    def test_league_and_finale_rooms_spawn_reserved_follower(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        for map_name in (
+            "LORELEIS_ROOM",
+            "BRUNOS_ROOM",
+            "AGATHAS_ROOM",
+            "LANCES_ROOM",
+            "CHAMPIONS_ROOM",
+            "HALL_OF_FAME",
+        ):
+            with self.subTest(map=map_name):
+                self.harness.boot_to_lobby(battle_count=1)
+                self.harness.enter_stage_door1(maps[map_name], description=map_name)
+                self.assertNotEqual(
+                    self.harness.read8("wSprite15StateData1PictureID"), 0
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
+                )
+                self.harness.close()
+                self.harness = RedRogueHarness(ROOT, ARTIFACTS)
+
     def test_dorm_spawns_and_follows_after_two_accepted_steps(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
@@ -568,13 +590,15 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             "follower interaction prompt",
             600,
         )
+        self.assertEqual(play_cry["count"], 0)
         self.assertEqual(close_text["count"], 0)
         self.assertNotEqual(self.harness.read8("wFontLoaded") & 1, 0)
         self.assertGreater(display_text["count"], 0)
         self.assertNotEqual(self.harness.read8("hTextID"), 0)
         self.harness.tap("a", 3)
         self.harness.wait_until(
-            lambda: close_text["count"] > 0,
+            lambda: close_text["count"] > 0
+            and self.harness.read8("wFontLoaded") & 1 == 0,
             "follower interaction text close",
             600,
         )

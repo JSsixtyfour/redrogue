@@ -16,8 +16,9 @@
 ; the explicitly accepted follower maps, Yellow spawn states
 ; 0-7, no Pikachu
 ; happiness-dependent animation rate, and no idle/emotion/bike/surf state.
-; Interaction currently uses fixed Pikachu text through Red's standard predef
-; text path. Slot 15 and image base 2 match Yellow. The existing player
+; Interaction resolves the lead name before Red's standard predef text path,
+; then plays its cry after the prompt. Slot 15 and image base 2 match Yellow.
+; The existing player
 ; camera loop only shifts authored slots, so FollowerApplyCameraScroll mirrors
 ; its already-scaled delta for slot 15. Red Rogue's tight HOME bank invokes the
 ; three Yellow transition selectors through one common banked dispatch seam.
@@ -70,13 +71,10 @@ FollowerIsTestMap:
 	db TRUCK
 	db UNUSED_MAP_6F
 	db MINI_SAFFRON
-	db LANCES_ROOM
 	db UNUSED_MAP_72
 	db UNUSED_MAP_73
 	db UNUSED_MAP_74
 	db UNUSED_MAP_75
-	db HALL_OF_FAME
-	db CHAMPIONS_ROOM
 	db UNUSED_MAP_CC
 	db UNUSED_MAP_CD
 	db UNUSED_MAP_CE
@@ -85,9 +83,6 @@ FollowerIsTestMap:
 	db COLOSSEUM
 	db PROCEDURAL_FACILITY
 	db SILPH_CO_VR
-	db LORELEIS_ROOM
-	db BRUNOS_ROOM
-	db AGATHAS_ROOM
 	db $ff
 
 ; Yellow CheckMapConnections sets spawn state 2 before scheduling Pikachu on
@@ -648,6 +643,13 @@ FollowerFindInteraction::
 	; Use the standard predef-text path so DisplayTextID owns the normal bottom
 	; dialogue box, prompt, font lifecycle, and sprite reload.
 	call UpdateSprites
+	; Match the procedural boss encounter path: resolve dynamic text before the
+	; ordinary text stream starts, then leave text_asm only the cry work.
+	push bc
+	ld a, [wPartySpecies]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	pop bc
 	ld a, 1
 	ldh [hNoWaitAfterText], a
 	tx_pre FollowerPokemonText
@@ -658,20 +660,14 @@ FollowerFindInteraction::
 	ret
 
 FollowerPokemonText::
+	text_far _FollowerPokemonInteractionText
 	text_asm
 	push bc
 	ld a, [wPartySpecies]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	ld a, [wPartySpecies]
 	call PlayCry
+	call WaitForSoundToFinish
 	pop bc
-	ld hl, .name
-	ret
-.name
-	text_ram wNameBuffer
-	text "!"
-	prompt
+	jp TextScriptEnd
 
 ; Yellow Func_fc745. Consume the face-player request before font/status
 ; dispatch, face opposite the player, reset animation, and redraw.
