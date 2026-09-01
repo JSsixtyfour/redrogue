@@ -60,9 +60,13 @@ FollowerIsTestMap:
 	jr c, .no
 	jr .yes
 .outsideMap
+	cp PEWTER_CITY
+	jr z, .yes
 	cp ROUTE_1
 	jr z, .yes
 	cp ROUTE_3
+	jr z, .yes
+	cp ROUTE_4
 	jr z, .yes
 	cp ROUTE_9
 	jr z, .yes

@@ -16,7 +16,14 @@ APPROVED_CUTS = {
     "MtMoon1F": "MTMOON1F_ESCAPE_ROPE",
     "VictoryRoad1F": "VICTORYROAD1F_RARE_CANDY",
 }
-SELECTED_PEWTER_CERULEAN_ROUTES = {"Route3", "Route9", "Route24", "Route25"}
+SELECTED_PEWTER_CERULEAN_MAPS = {
+    "PewterCity",
+    "Route3",
+    "Route4",
+    "Route9",
+    "Route24",
+    "Route25",
+}
 
 
 def sprite_sizes():
@@ -74,9 +81,9 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                 }
                 self.assertLessEqual(len(walking), 8, sorted(walking))
 
-    def test_selected_pewter_cerulean_routes_do_not_use_displaced_rocket(self):
+    def test_selected_pewter_cerulean_maps_do_not_use_displaced_rocket(self):
         pictures_by_map = map_pictures()
-        for map_name in SELECTED_PEWTER_CERULEAN_ROUTES:
+        for map_name in SELECTED_PEWTER_CERULEAN_MAPS:
             with self.subTest(map=map_name):
                 self.assertNotIn("SPRITE_ROCKET", pictures_by_map[map_name])
 

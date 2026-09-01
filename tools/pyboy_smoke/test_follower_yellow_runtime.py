@@ -75,7 +75,14 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
 
     def test_debug2_selected_outdoor_group_spawns_reserved_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
-        for map_name in ("ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+        for map_name in (
+            "PEWTER_CITY",
+            "ROUTE_3",
+            "ROUTE_4",
+            "ROUTE_9",
+            "ROUTE_24",
+            "ROUTE_25",
+        ):
             with self.subTest(map=map_name):
                 self.harness.boot_to_lobby(battle_count=1)
                 self.harness.enter_stage_door1(maps[map_name], description=map_name)

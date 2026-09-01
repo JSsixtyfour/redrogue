@@ -33,7 +33,15 @@ class YellowFollowerSliceTests(unittest.TestCase):
 
     def test_scope_enables_ordinary_indoors_and_selected_outdoors(self):
         self.assertIn("cp FIRST_INDOOR_MAP", self.core)
-        for map_name in ("ROUTE_1", "ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+        for map_name in (
+            "PEWTER_CITY",
+            "ROUTE_1",
+            "ROUTE_3",
+            "ROUTE_4",
+            "ROUTE_9",
+            "ROUTE_24",
+            "ROUTE_25",
+        ):
             self.assertIn(f"cp {map_name}", self.core)
         for enabled_procedural in (
             "PROCEDURAL_CAVE_1",
@@ -425,7 +433,15 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"\[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]",
         )
         predicate = outside.split(".isFollowerOutsideMap", 1)[1]
-        for map_name in ("ROUTE_1", "ROUTE_3", "ROUTE_9", "ROUTE_24", "ROUTE_25"):
+        for map_name in (
+            "PEWTER_CITY",
+            "ROUTE_1",
+            "ROUTE_3",
+            "ROUTE_4",
+            "ROUTE_9",
+            "ROUTE_24",
+            "ROUTE_25",
+        ):
             self.assertIn(f"cp {map_name}", predicate)
 
     def test_species_categories_translate_to_walking_sheets(self):
