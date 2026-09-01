@@ -41,11 +41,15 @@ MACRO gift_entry
 ENDM
 
 DEF BRIDGE_MENU_MAX_OFFERED EQU 3
+DEF BRIDGE_GIFT_ROLL_RETRIES EQU 32
 
 ; ---------------------------------------------------------------------------
-; Roll up to 3 distinct gift entry indices for the current giver into
-; wGift1/wGift2/wGift3. Unused slots (when a giver has fewer than 3 gifts) are
-; marked with $ff. Called (farcall) from each bridge room's setup script.
+; Roll 3 gift entry indices for the current giver into wGift1/wGift2/wGift3.
+; Prefer eligible, distinct gifts. If fewer than 3 eligible gifts exist, a
+; bounded retry limit repeats an already-selected eligible gift. Only a giver
+; with zero eligible gifts falls back to the full list, because there is no
+; eligible entry to repeat. The menu therefore cannot hang on an exhausted pool.
+; Called (farcall) from each bridge room's setup script.
 ; ---------------------------------------------------------------------------
 rogue_gift_randomized_batch::
 	; Roll this visit's #MON RESCUE species (Mr. Fuji gift 2) into wRoguePokemon1.
@@ -67,47 +71,195 @@ rogue_gift_randomized_batch::
 	ld a, d
 	ld [wRoguePokemon1], a
 	call GetGiverCount          ; a = number of gifts this giver has
-	ld c, a                     ; c = range (preserved across Rangerandom)
-	cp BRIDGE_MENU_MAX_OFFERED
-	jr c, .fewerThan3
-	call Rangerandom
-	ld [wGift1], a
-.roll2
-	call Rangerandom
-	ld d, a
-	ld a, [wGift1]
-	cp d
-	jr z, .roll2
-	ld a, d
-	ld [wGift2], a
-.roll3
-	call Rangerandom
-	ld d, a
-	ld a, [wGift1]
-	cp d
-	jr z, .roll3
-	ld a, [wGift2]
-	cp d
-	jr z, .roll3
-	ld a, d
-	ld [wGift3], a
+	ld [wBuffer], a             ; gift count / Rangerandom range
+	and a
+	jr nz, .initSlots
+	; Defensive guard for malformed/empty giver lists. Do not dereference entry 0.
+	ld hl, wGift1
+	ld b, BRIDGE_MENU_MAX_OFFERED
+	ld a, $ff
+.emptyLoop
+	ld [hli], a
+	dec b
+	jr nz, .emptyLoop
 	ret
-.fewerThan3
-	; c = count (1 or 2): offer them in order, sentinel the rest
+.initSlots
 	xor a
-	ld [wGift1], a
-	ld a, c
-	cp 2
-	jr c, .only1
-	ld a, 1
-	ld [wGift2], a
-	ld a, $ff
-	ld [wGift3], a
+	ld [wBuffer + 1], a         ; output slot (0..2)
+.nextSlot
+	ld a, BRIDGE_GIFT_ROLL_RETRIES
+	ld [wBuffer + 2], a
+.tryEligible
+	ld a, [wBuffer]
+	ld c, a
+	call Rangerandom
+	ld [wBuffer + 3], a         ; candidate entry index
+	call BridgeGiftIsEligible
+	jr nc, .retry
+	call BridgeGiftCandidateIsNew
+	jr c, .accept
+.retry
+	ld hl, wBuffer + 2
+	dec [hl]
+	jr nz, .tryEligible
+	; Random retries are only an optimization. Scan the full list before
+	; declaring the eligible/distinct pool exhausted, so unlucky RNG can never
+	; leak an owned gift into the menu.
+	xor a
+	ld [wBuffer + 4], a
+.scanEligible
+	ld a, [wBuffer + 4]
+	ld b, a
+	ld a, [wBuffer]
+	cp b
+	jr z, .eligibleExhausted
+	ld a, b
+	ld [wBuffer + 3], a
+	call BridgeGiftIsEligible
+	jr nc, .nextScan
+	call BridgeGiftCandidateIsNew
+	jr c, .accept
+.nextScan
+	ld hl, wBuffer + 4
+	inc [hl]
+	jr .scanEligible
+.eligibleExhausted
+	; If an eligible gift was already accepted, repeat one of those. This keeps
+	; owned gifts filtered when the eligible pool contains only one or two entries.
+	ld a, [wBuffer + 1]
+	and a
+	jr z, .noEligible
+	ld c, a
+	call Rangerandom
+	ld e, a
+	ld d, 0
+	ld hl, wGift1
+	add hl, de
+	ld a, [hl]
+	ld [wBuffer + 3], a
+	jr .accept
+.noEligible
+	; Nothing eligible exists, so there is no valid entry to repeat. Preserve a
+	; usable three-choice menu by drawing from the giver's complete list.
+	ld a, [wBuffer]
+	ld c, a
+	call Rangerandom
+	ld [wBuffer + 3], a
+.accept
+	ld a, [wBuffer + 1]
+	ld e, a
+	ld d, 0
+	ld hl, wGift1
+	add hl, de
+	ld a, [wBuffer + 3]
+	ld [hl], a
+	ld hl, wBuffer + 1
+	inc [hl]
+	ld a, [hl]
+	cp BRIDGE_MENU_MAX_OFFERED
+	jr c, .nextSlot
 	ret
-.only1
-	ld a, $ff
-	ld [wGift2], a
-	ld [wGift3], a
+
+; Return carry set when the candidate in wBuffer+3 is not already present in
+; an earlier output slot. wBuffer+1 is the number of populated output slots.
+BridgeGiftCandidateIsNew:
+	ld a, [wBuffer + 1]
+	and a
+	jr z, .new
+	ld b, a
+	ld hl, wGift1
+	ld a, [wBuffer + 3]
+.loop
+	cp [hl]
+	jr z, .duplicate
+	inc hl
+	dec b
+	jr nz, .loop
+.new
+	scf
+	ret
+.duplicate
+	and a
+	ret
+
+; Return carry set when the candidate gift in wBuffer+3 is eligible.
+; C1 filters owned TM/HM items and exact Pokemon species already present in
+; the party/current box. Other item kinds, tutors and special routines remain
+; eligible; special-gift predicates are added alongside their final rosters.
+BridgeGiftIsEligible:
+	ld a, [wBuffer + 3]
+	call GetGiftEntry
+	ld a, [hli]                 ; kind
+	cp GIFT_ITEM
+	jr z, .item
+	cp GIFT_MON
+	jr z, .mon
+	cp GIFT_MON_EVOLVE
+	jr z, .monEvolve
+.eligible
+	scf
+	ret
+.item
+	ld a, [hli]                 ; item id (param low)
+	ld e, a
+	ld a, [wCurItem]            ; aliases wCurPartySpecies: preserve it
+	push af
+	ld a, e
+	ld [wCurItem], a
+	farcall IsTMHMItem
+	jr nc, .itemEligible
+	farcall HasTMHM             ; Z = not owned, NZ = owned
+	jr z, .itemEligible
+	pop af
+	ld [wCurItem], a
+	and a                       ; owned: carry clear
+	ret
+.itemEligible
+	pop af
+	ld [wCurItem], a
+	scf
+	ret
+.mon
+	ld a, [hl]                  ; species (param low)
+	jr BridgeSpeciesGiftEligible
+.monEvolve
+	ld a, [hl]                  ; base species (param low)
+	call BridgeResolveEvolveSpecies
+	; fall through
+
+; In: a = exact species that would be awarded.
+; Out: carry set if absent; carry clear if already in party/current box.
+BridgeSpeciesGiftEligible:
+	ld d, a
+	ld a, [wPartyCount]
+	and a
+	jr z, .box
+	ld b, a
+	ld hl, wPartySpecies
+.partyLoop
+	ld a, [hli]
+	cp d
+	jr z, .owned
+	dec b
+	jr nz, .partyLoop
+
+.box
+	ld a, [wBoxCount]
+	and a
+	jr z, .absent
+	ld b, a
+	ld hl, wBoxSpecies
+.boxLoop
+	ld a, [hli]
+	cp d
+	jr z, .owned
+	dec b
+	jr nz, .boxLoop
+.absent
+	scf
+	ret
+.owned
+	and a
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -431,11 +583,12 @@ GetGiverCount:
 	ld a, [hl]
 	ret
 
-; out: a = min(BRIDGE_MENU_MAX_OFFERED, giver count)
+; out: a = 3 for any non-empty giver list, 0 for an invalid empty list.
+; Short and eligibility-exhausted lists are padded with repeated entries.
 GetOfferedCount:
 	call GetGiverCount
-	cp BRIDGE_MENU_MAX_OFFERED
-	ret c
+	and a
+	ret z
 	ld a, BRIDGE_MENU_MAX_OFFERED
 	ret
 
