@@ -158,6 +158,49 @@ AIPlayerIsStalled::
 	and a
 	ret
 
+; F22, 2026-09-02: carry SET if the move currently loaded in the wEnemyMove*
+; block would KO the player, which makes any SECONDARY-EFFECT RIDER it carries
+; worth exactly nothing. A paralysis, burn, freeze, poison, confusion, flinch or
+; stat-drop chance against a target that is about to faint buys the AI precisely
+; zero, and AI_SMART was paying full price for all of them.
+;
+; ONLY the rider handlers call this. Several other AI_SMART handlers encourage a
+; move that is ALSO lethal for reasons that remain perfectly valid on a kill, and
+; they must not be gated on this: AISmart_HyperBeam (Hyper Beam does not recharge
+; when it KOs - the plan's own "always fire Hyper Beam when it kills" rule) and
+; AISmart_DrainHP (the drain still heals you). The distinction is not "is the
+; move lethal" but "is the thing being paid for still worth anything once the
+; target is gone".
+;
+; Uses the SAME determination AI_DAMAGE's own kill test uses, deliberately -
+; AIEstimateDamage's max roll, then AIScaleDamageForCrit, then the b=0 fraction
+; test. Matching it exactly is the point: if AI_DAMAGE is about to hand this move
+; AI_KILL for this board, then AI_SMART paying a rider bonus on top of it is
+; precisely the double-count F22 exists to remove, and the two layers must never
+; disagree about whether a move is lethal.
+;
+; Status moves (0 power) return "not lethal" without paying for an estimate. In
+; practice unreachable - every *_SIDE_EFFECT is attached to a damaging move - but
+; it is four bytes and it keeps the routine honest if one ever is not.
+;
+; COST: one AIEstimateDamage farcall per riding move per decision, on top of the
+; one AI_DAMAGE already pays for the same move. Accepted rather than cached:
+; AI_SMART runs BEFORE AI_DAMAGE in bit order, so there is no populated estimate
+; to reuse here, and threading one through would need either new wBuffer state
+; (there is none spare - wBuffer is an exact 30-byte fit, see AI_BUF_PHYSICAL)
+; or a layer reordering, both far larger changes than this is worth.
+; Clobbers af, bc, de, hl.
+AISmartRiderIsWasted::
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .notLethal
+	farcall AIEstimateDamage
+	call AIScaleDamageForCrit
+	jp AIMoveWouldKO
+.notLethal
+	and a ; clear carry
+	ret
+
 ; --- Damage / KO predicates (Phase 3) --------------------------------------
 ; These read wAIDamageEstimate, which is populated by AIEstimateDamage
 ; (engine/battle/core.asm, bank $0F - see that routine's header for why it

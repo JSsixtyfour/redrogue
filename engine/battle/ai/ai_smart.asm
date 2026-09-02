@@ -710,6 +710,8 @@ AISmartParaSideBlocked:
 AISmart_BurnFreezeParaSide:
 	call AISmartParaSideBlocked
 	jr c, .noChange
+	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
+	jr c, .noChange
 	ld a, [wEnemyMoveEffect]
 	cp FREEZE_SIDE_EFFECT2
 	jr z, .veryStrong
@@ -759,6 +761,8 @@ AISmartPoisonSideBlocked:
 AISmart_PoisonSide:
 	call AISmartPoisonSideBlocked
 	jr c, .noChange
+	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
+	jr c, .noChange
 	ld a, [wEnemyMoveEffect]
 	cp POISON_SIDE_EFFECT2
 	jr z, .strong
@@ -783,6 +787,8 @@ AISmart_ConfusionSide:
 	ld a, [wPlayerBattleStatus1]
 	bit CONFUSED, a
 	jr nz, .noChange
+	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
+	jr c, .noChange
 	ld a, AI_NUDGE
 	scf
 	ret
@@ -824,6 +830,8 @@ AISmart_FlinchSide:
 	jr nz, .noChange
 	call AIEnemyActsFirstWith
 	jr nc, .noChange
+	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
+	jr c, .noChange
 	ld a, [wEnemyMoveEffect]
 	cp FLINCH_SIDE_EFFECT1
 	ld a, AI_NUDGE ; 10% flinchers. `ld a, n` sets no flags, so the cp above is
@@ -851,6 +859,8 @@ AISmart_FlinchSide:
 AISmart_StatDownSide:
 	call AIRedundantTargetHasSubstitute
 	jr nz, .noChange
+	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
+	jr c, .noChange
 	ld a, AI_NUDGE
 	scf
 	ret

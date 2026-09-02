@@ -3736,7 +3736,7 @@
         "positive",
         "negative"
       ],
-      "note": "AI_OVERHAUL_PLAN.md follow-up F16, change 2 - the bug this was written for. A SLOWER Slowpoke holding Quick Attack and Body Slam against an Electrode primed into one-shot range: BOTH moves kill, so raw damage is the wrong tiebreak and turn order is the right one. Before F16 the AI scored Body Slam 8 (AI_KILL 5 + best-damage nudge 1 + its own paralysis rider 2) against Quick Attack's 5, picked Body Slam, moved second and lost a won game. AI_KILL_FIRST (9) now clears that whole stack. Confirmed via layer_trace: DAMAGE delta [-9,-6,0,0]. Note the first attempt at this used AI_KILL + AI_STRONG (7) and STILL lost to Body Slam's 8 - the rider bonus is why the constant is derived rather than guessed.",
+      "note": "AI_OVERHAUL_PLAN.md follow-up F16, change 2 - the bug this was written for. A SLOWER Slowpoke holding Quick Attack and Body Slam against an Electrode primed into one-shot range: BOTH moves kill, so raw damage is the wrong tiebreak and turn order is the right one. Before F16 the AI scored Body Slam 8 (AI_KILL 5 + best-damage nudge 1 + its own paralysis rider 2) against Quick Attack's 5, picked Body Slam, moved second and lost a won game. AI_KILL_FIRST (9) now clears that whole stack. Confirmed via layer_trace: DAMAGE delta [-9,-6,0,0]. Note the first attempt at this used AI_KILL + AI_STRONG (7) and STILL lost to Body Slam's 8 - the rider bonus is why the constant is derived rather than guessed. Rebaselined 2026-09-02 for follow-up F22: Body Slam lost its paralysis rider bonus (SMART -2) because the move KOs, so its score moved 12 -> 14. Quick Attack is unchanged at 11 and still wins - the margin actually WIDENED from 1 point to 3, because F22 removed exactly the phantom bonus that forced AI_KILL_FIRST up to 9 in the first place. layer_trace now shows DAMAGE as the only contributing layer on this board.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3769,7 +3769,7 @@
       "expect": {
         "scores": [
           11,
-          12,
+          14,
           20,
           20
         ],
@@ -3789,7 +3789,7 @@
         "positive",
         "negative"
       ],
-      "note": "The mirror of the positive case, and the reason AI_KILL_FIRST is safe to apply unconditionally rather than only when slower: the enemy is now the FAST one (Electrode vs Slowpoke), so AIEnemyActsFirstWith is true for BOTH moves, both earn AI_KILL_FIRST, and the bigger move correctly wins on the best-expected-damage nudge plus its own rider. Priority is only worth something when it actually changes who moves first. Confirmed via layer_trace: DAMAGE delta [-9,-10,0,0].",
+      "note": "The mirror of the positive case, and the reason AI_KILL_FIRST is safe to apply unconditionally rather than only when slower: the enemy is now the FAST one (Electrode vs Slowpoke), so AIEnemyActsFirstWith is true for BOTH moves, both earn AI_KILL_FIRST, and the bigger move correctly wins on the best-expected-damage nudge plus its own rider. Priority is only worth something when it actually changes who moves first. Confirmed via layer_trace: DAMAGE delta [-9,-10,0,0]. Rebaselined 2026-09-02 for follow-up F22: same cause as its paired positive case - Body Slam lost its rider bonus on a lethal board, 8 -> 10. It still correctly wins (10 < 11), so the point this fixture exists to make - that priority buys nothing when you already outspeed - is unchanged.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3822,11 +3822,219 @@
       "expect": {
         "scores": [
           11,
-          8,
+          10,
           20,
           20
         ],
         "pick_slot": 1
+      }
+    },
+    {
+      "name": "rider_bonus_paid_when_target_survives",
+      "phase": "6",
+      "heuristic": "rider_wasted_on_kill",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "rider",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F22, the control case. Body Slam's 30% paralysis rider against a Lapras at FULL HP. Lapras is Water/Ice, so the NORMAL-vs-same-type immunity rule in AISmartParaSideBlocked does not fire and the rider is genuinely payable, and Lapras is bulky enough that one Body Slam does not KO it. Confirmed via layer_trace: SMART delta [-2,0,0,0], the full AI_STRONG rider bonus. Board choice matters here - two earlier drafts used a Snorlax target, where Body Slam's NORMAL type collides with the target's own type and the rider was already blocked for an unrelated reason, so they would have 'passed' while testing nothing.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "LAPRAS",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          16,
+          21,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "rider_bonus_suppressed_when_move_kills",
+      "phase": "6",
+      "heuristic": "rider_wasted_on_kill",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "rider",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F22. Identical board to the control, with the Lapras primed into one-shot range so Body Slam now KOs. A paralysis rider on a target that is about to faint is worth exactly nothing, and AI_SMART no longer pays for it. Confirmed via layer_trace: SMART delta [0,0,0,0], where the control shows [-2,0,0,0]. This phantom bonus is what forced AI_KILL_FIRST up to 9 in F16 - see that constant's header in ai_constants.asm for the before/after budget.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "LAPRAS",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "BODY_SLAM",
+            "MIST"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          14,
+          21,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "hyperbeam_bonus_survives_a_kill",
+      "phase": "6",
+      "heuristic": "non_rider_bonus_survives_kill",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "rider",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "The scope guard for F22: its gate applies to SECONDARY-EFFECT RIDERS only, never to a bonus that remains valid once the target is gone. Hyper Beam does not recharge when it KOs - the plan's own 'always fire Hyper Beam when it kills' rule - so AISmart_HyperBeam's encouragement must survive lethality. Player primed into one-shot range; confirmed via layer_trace that SMART still contributes [-1,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "HYPER_BEAM",
+            "MIST"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          13,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "drain_bonus_survives_a_kill",
+      "phase": "6",
+      "heuristic": "non_rider_bonus_survives_kill_drain",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "rider",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "The second scope guard for F22: a draining move still heals the user even on the turn it KOs, so AISmart_DrainHP's bonus must survive too. Enemy primed BELOW max HP (otherwise AISmart_DrainHP correctly declines - there is nothing to heal) and player primed into one-shot range. Confirmed via layer_trace: SMART still contributes [-1,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "LAPRAS",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "MEGA_DRAIN",
+            "MIST"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        },
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 2
+        }
+      ],
+      "expect": {
+        "scores": [
+          8,
+          21,
+          20,
+          20
+        ]
       }
     }
   ]

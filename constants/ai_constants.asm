@@ -95,22 +95,29 @@ DEF AI_KILL        EQU 5
 ; is worthless if the player moves first and wins the exchange.
 ;
 ; The size is derived, not picked. It has to beat everything a competing
-; NON-priority kill can accumulate on the same board:
-;     AI_KILL (5) + AI_DAMAGE's own best-expected-damage nudge (1)
-;                 + AI_SMART's largest secondary-effect rider bonus (3)  = 9
-; so 9 ties the theoretical worst case and beats every case observed in
-; practice. The one that motivated it, measured before this constant existed:
-; Quick Attack scored 7 against Body Slam's 8 (kill 5 + best-damage 1 + that
-; move's own paralysis rider 2), so the AI took Body Slam, moved second, and
-; lost a won game.
+; NON-priority kill can accumulate on the same board. That budget CHANGED when
+; F22 shipped, and the history is worth keeping because it is why this constant
+; is 9 rather than 7:
 ;
-; KNOWN LIMIT, deliberately accepted rather than inflated away: against a
-; competing kill carrying the very largest rider bonus AND the best-damage
-; nudge, this TIES rather than wins. Raising it further would push past
-; AI_HEAVY (10) and start competing with the "this move does literally nothing"
-; saturation tier, which is a worse trade. The real fix for that last case is
-; that a status rider on a move which KOs is worth nothing at all and
-; AI_SMART should not be paying for it - see follow-up F22.
+;   Originally (pre-F22):  AI_KILL (5) + best-expected-damage nudge (1)
+;                                      + AI_SMART's largest rider bonus (3) = 9
+;   Now (post-F22):        AI_KILL (5) + best-expected-damage nudge (1)
+;                                      + largest NON-rider AI_SMART bonus (1) = 7
+;
+; F22 removed the rider term entirely (a status rider on a move that KOs is
+; worth nothing, so AI_SMART no longer pays for one), which means 8 would now
+; be sufficient. 9 is RETAINED as one point of margin rather than re-churning
+; the fixtures that encode it, and because the two survivors of F22's gate -
+; AISmart_HyperBeam (no recharge on a KO) and AISmart_DrainHP (the drain still
+; heals) - are legitimate AI_NUDGE bonuses that a lethal move genuinely can
+; still carry.
+;
+; The case that motivated the whole constant, measured before it existed: a
+; slower mon's Quick Attack scored 7 against Body Slam's 8 (kill 5 +
+; best-damage 1 + that move's own paralysis rider 2), so the AI took Body Slam,
+; moved second, and lost a won game. Note the FIRST attempt at this constant was
+; AI_KILL + AI_STRONG (7) and still lost that board - the rider term is exactly
+; what it failed to account for.
 ;
 ; Still below AI_HEAVY, and AI_PLAN_MAX_MAGNITUDE is defined against AI_KILL
 ; rather than against this, so the "a plan can never out-encourage a kill"
