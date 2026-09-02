@@ -189,6 +189,25 @@ OakSpeech:
 	ld c, 50
 	call DelayFrames
 	call GBFadeOutToWhite
+	; Leave the DMG palette registers at the identity map before handing off to
+	; the overworld. The enhanced CGB palette build reads rBGP/rOBP0/rOBP1 as
+	; shade maps, so an intro that ends whited out would make every enhanced
+	; overworld colour resolve to white. LoadEnhancedOverworldPaletteCommand used
+	; to force these same three values on every palette build to compensate,
+	; which destroyed every legitimate white-out in the game; doing it once here
+	; fixes the intro without breaking fades everywhere else.
+	;
+	; Safe to do while the screen is white: on CGB, writing these registers does
+	; not touch palette RAM by itself. Nothing becomes visible until the next
+	; palette build reads them, which is exactly when we want the colour back.
+	; FadePal4 is in HOME, so this reads correctly from any bank.
+	ld hl, FadePal4
+	ld a, [hli]
+	ldh [rBGP], a
+	ld a, [hli]
+	ldh [rOBP0], a
+	ld a, [hl]
+	ldh [rOBP1], a
 	jp ClearScreen
 
 OakSpeechText1:

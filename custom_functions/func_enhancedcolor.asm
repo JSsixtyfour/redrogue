@@ -247,16 +247,26 @@ LoadEnhancedOverworldPaletteCommand::
 	; bank 2 only for the palette build and prevent VBlank from observing the
 	; temporary bank. Do not invoke ShinRed's full attribute HDMA path here: its
 	; stack/audio assumptions do not survive Red Rogue's banked-WRAM adaptation.
-	; Palette conversion treats the DMG palette registers as shade maps. Oak's
-	; final fade leaves them at white, so normalize them before building the
-	; first overworld palette or every enhanced color becomes white as well.
-	ld hl, FadePal4
-	ld a, [hli]
-	ldh [rBGP], a
-	ld a, [hli]
-	ldh [rOBP0], a
-	ld a, [hl]
-	ldh [rOBP1], a
+	; Palette conversion treats the DMG palette registers as shade maps:
+	; UpdateEnhancedGBCPal_BGP passes `ld de, rBGP` into .ReadMasterPals, so the
+	; live register selects which entry of each base palette a colour resolves to.
+	;
+	; This used to force rBGP/rOBP0/rOBP1 from FadePal4 right here, to compensate
+	; for Oak's final fade leaving them whited out. That normalization is gone,
+	; and the same three writes now happen once at the end of the intro instead
+	; (see the end of OakSpeech in engine/movie/oak_speech/oak_speech.asm).
+	;
+	; Forcing them here was actively harmful: honouring rBGP is what makes a
+	; white-out survive a palette command. With rBGP = $00 every colour resolves
+	; to shade 0, which is GBCEnh_White in all three base tables, so the screen
+	; correctly stays white until whoever whited it out fades back in. Stomping
+	; the register instead wrote real colours straight into CGB palette RAM,
+	; which is what the hardware draws from, so the screen was revealed early.
+	; That caused two separate confirmed bugs: the transition garbage on menu
+	; exit (the redraw became visible mid-transfer), and the post-battle white
+	; flash (MapEntryAfterBattle's GBFadeInFromWhite ran on an already-revealed
+	; screen, yanking it back to white and ramping in). ShinRed's own
+	; .enhancedGBCOverworld has no rBGP write at all; this matches it.
 	call TransferGBCEnhancedOverworldPalettes
 	call TransferGBCEnhancedBGMapAttributes
 	ret

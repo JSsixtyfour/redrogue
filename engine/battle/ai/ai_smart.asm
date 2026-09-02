@@ -185,6 +185,7 @@ AISmartEffectTable:
 	dbw EXPLODE_EFFECT, AISmart_Explode
 	dbw HEAL_EFFECT, AISmart_Heal
 	dbw SUBSTITUTE_EFFECT, AISmart_Substitute
+	dbw POISON_EFFECT, AISmart_Poison
 	dbw HYPER_BEAM_EFFECT, AISmart_HyperBeam
 	dbw OHKO_EFFECT, AISmart_OHKO
 	dbw SUPER_FANG_EFFECT, AISmart_SuperFang
@@ -195,6 +196,11 @@ AISmartEffectTable:
 	dbw REFLECT_EFFECT, AISmart_Screen
 	dbw HAZE_EFFECT, AISmart_Haze
 	dbw CONFUSION_EFFECT, AISmart_Confusion
+; F14, 2026-09-02: two-turn moves and evasion, scored blind before this.
+	dbw CHARGE_EFFECT, AISmart_Charge
+	dbw FLY_EFFECT, AISmart_InvulnerableCharge
+	dbw EVASION_UP1_EFFECT, AISmart_Evasion
+	dbw EVASION_UP2_EFFECT, AISmart_Evasion
 ; Phase 3 Step 3: secondary-effect bonuses. AI_REDUNDANT used to discourage
 ; these moves when the rider specifically could not land (already statused,
 ; type immunity); that logic moved here as the mirror bonus - see
@@ -423,6 +429,42 @@ AISmart_Paralyze:
 	xor a
 	ret
 
+; F14, 2026-09-02: Toxic and Poison Powder share POISON_EFFECT and were
+; scored identically before this - nothing distinguished Toxic's ramping
+; counter (wPlayerToxicCounter, core.asm) from a flat poison. Toxic is worth
+; materially more against a target that will be around for many turns (the
+; ramp has room to matter) and worth little against one about to die anyway
+; (the ramp barely gets started before the fight ends some other way).
+;
+; Skips outright if the target already has a status: AIRedundant_Poison has
+; already saturated this move to AI_REDUNDANT_HEAVY in that case (same-turn
+; scoring order: AI_REDUNDANT runs before AI_SMART), and encouraging here
+; would fight that saturation instead of agreeing with it.
+AISmart_Poison:
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .noChange
+	call AIPlayerHPBelowQuarter
+	jr c, .noChange ; dying anyway - let the damage layers finish it instead
+	ld a, [wEnemyMoveNum]
+	cp TOXIC
+	jr nz, .plainPoison
+	call AIPlayerHPBelowHalf
+	jr c, .weakerToxic
+	ld a, AI_STRONG ; healthy target: the ramp has room to run
+	jr .encourage
+.weakerToxic
+	ld a, AI_NUDGE ; already hurting: still worth it, less ramp left to use
+	jr .encourage
+.plainPoison
+	ld a, AI_NUDGE
+.encourage
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
 ; Re-using a trapping move on a target that is already trapped cannot extend
 ; the lock in this engine - it just wastes the turn. Source: pokecrystal
 ; AI_Smart_TrapTarget (simplified: no HP/status branch, just the redundancy
@@ -430,13 +472,97 @@ AISmart_Paralyze:
 AISmart_Trapping:
 	ld a, [wPlayerBattleStatus1]
 	bit USING_TRAPPING_MOVE, a
-	jr z, .noChange ; bit tests a bit WITHOUT clearing a's value - a still
-	                ; holds the raw status byte here, not 0
+	jr z, .checkChipDamage ; bit tests a bit WITHOUT clearing a's value, but
+	                       ; that value is dead here either way - the branch
+	                       ; below reloads what it needs
 	ld a, AI_NUDGE
+	and a ; discourage: already trapped, re-using cannot extend the lock
+	ret
+.checkChipDamage
+; F14, 2026-09-02: user's own correction mid-design - encourage TRAPPING a
+; target once it already has damage-over-time running (poisoned/badly
+; poisoned/burned/Leech Seeded), never the reverse. Poisoning a target we are
+; ALREADY trapping cannot happen anyway: core.asm's move-selection gate
+; (~:3473-3475) returns the enemy out of the whole decision while
+; USING_TRAPPING_MOVE is set, so no heuristic ever runs mid-lock. What CAN
+; happen, and previously had no positive signal at all, is choosing to trap a
+; target that is already bleeding HP each turn: locking them in place turns
+; that chip into a guaranteed, uninterruptible drain instead of a race the
+; player could outrun by switching. Mirrored into AIFit_WrapLock's and
+; AIFit_AgilityWrap's own fitness via the same AIPlayerHasChipDamage
+; predicate, so the plan layer agrees with this layer about the same board.
+	call AIPlayerHasChipDamage
+	jr nc, .noChange
+	ld a, AI_STRONG
+	scf
+	ret
+.noChange
+	xor a
+	ret
+
+; F14, 2026-09-02: two-turn moves are not one family. ChargeEffect
+; (effects.asm) grants INVULNERABLE only to Dig (disambiguated here by move
+; id, since it shares CHARGE_EFFECT with the exposed family below) - it dodges
+; the free turn it hands the player. Razor Wind/Solarbeam/Skull Bash/Sky
+; Attack charge fully exposed: a turn AND a hit given away.
+; AIEstimateDamage currently credits full damage for all of these as if they
+; land THIS turn (Phase 3's simulator has no charge-move awareness), which
+; over-rates a move that gives the player a free turn to switch or set up.
+; This handler is the scoring-side correction; the simulator itself is
+; unchanged. User's own framing: small penalty normally (bigger for the
+; exposed family - losing a turn AND eating a hit is worse than losing a turn
+; while invulnerable), no benefit from stalling for the exposed family (it
+; still eats a hit regardless of what the player's status costs them).
+AISmart_Charge:
+	ld a, [wEnemyMoveNum]
+	cp DIG
+	jr z, AISmart_InvulnerableCharge ; shared tail with Fly, below
+	call AIPlayerIsStalled
+	jr c, .noChange ; stalling doesn't help an exposed charge - still eats a hit
+	ld a, AI_STRONG
 	and a
 	ret
 .noChange
 	xor a
+	ret
+
+; Shared by Dig (via AISmart_Charge above) and Fly (its own effect id,
+; FLY_EFFECT, not CHARGE_EFFECT - own table entry below): both grant
+; INVULNERABLE, so losing the turn is offset by dodging a hit - a smaller
+; penalty than the exposed charge family, and worth boosting back when
+; stalling (AIPlayerIsStalled) costs nothing extra.
+AISmart_InvulnerableCharge:
+	call AIPlayerIsStalled
+	jr c, .stallBoost
+	ld a, AI_NUDGE
+	and a
+	ret
+.stallBoost
+	ld a, AI_NUDGE
+	scf
+	ret
+
+; Double Team / Minimize (EVASION_UP1/2_EFFECT): AI_SETUP already gives these
+; a blanket AI_STRONG encouragement on turn 1 of any send-out, with no
+; evaluation of whether the boost is worth the turn it costs
+; (AIMoveChoiceModification2, trainer_ai.asm - the same layer F9 already had
+; to gate for ATTACK_UP*/DEFENSE_DOWN*, though evasion was left alone there
+; since it has no physical/special-usefulness question to ask). F14,
+; 2026-09-02: evasion only pays off if the fight lasts long enough to
+; matter, which is exactly what AIPlayerIsStalled answers. Mildly discourage
+; outside a stall context - PARTIALLY offsetting AI_SETUP's blanket
+; encouragement rather than fighting it outright, since a mon with nothing
+; better to do on turn 1 may still want some setup - and strongly encourage
+; when stalling, where the lost turn costs nothing.
+AISmart_Evasion:
+	call AIPlayerIsStalled
+	jr c, .stallBoost
+	ld a, AI_NUDGE
+	and a
+	ret
+.stallBoost
+	ld a, AI_STRONG
+	scf
 	ret
 
 ; Light Screen / Reflect are a turn-1 investment; using one while already

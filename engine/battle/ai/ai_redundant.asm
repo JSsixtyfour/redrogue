@@ -125,22 +125,43 @@ AIRedundantEffectTable:
 	dbw DRAIN_HP_EFFECT, AIRedundant_SubOnly
 	dbw DREAM_EATER_EFFECT, AIRedundant_DreamEater
 	dbw LEECH_SEED_EFFECT, AIRedundant_LeechSeed
-	dbw ATTACK_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw DEFENSE_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw SPEED_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw SPECIAL_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw ACCURACY_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw EVASION_DOWN1_EFFECT, AIRedundant_SubOnly
-	dbw ATTACK_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw DEFENSE_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw SPEED_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw SPECIAL_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw ACCURACY_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw EVASION_DOWN2_EFFECT, AIRedundant_SubOnly
-	dbw ATTACK_DOWN_SIDE_EFFECT, AIRedundant_SubOnly
-	dbw DEFENSE_DOWN_SIDE_EFFECT, AIRedundant_SubOnly
-	dbw SPEED_DOWN_SIDE_EFFECT, AIRedundant_SubOnly
-	dbw SPECIAL_DOWN_SIDE_EFFECT, AIRedundant_SubOnly
+; AI_OVERHAUL_PLAN.md follow-up F17, 2026-09-02: stat-down effects get their
+; OWN handler now (floor check added - see AIRedundant_StatDown below), split
+; out of AIRedundant_SubOnly, which remains for the four effects that truly
+; have no other redundancy condition.
+	dbw ATTACK_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw DEFENSE_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw SPEED_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw SPECIAL_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw ACCURACY_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw EVASION_DOWN1_EFFECT, AIRedundant_StatDown
+	dbw ATTACK_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw DEFENSE_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw SPEED_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw SPECIAL_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw ACCURACY_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw EVASION_DOWN2_EFFECT, AIRedundant_StatDown
+	dbw ATTACK_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	dbw DEFENSE_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	dbw SPEED_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	dbw SPECIAL_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+; F17: stat-UP effects had NO entry at all before this - the AI never checked
+; whether its own stat was already at the Gen 1 cap ($D/13) before spending a
+; turn on Swords Dance/Amnesia/etc past the point it does anything. No
+; Substitute check: a stat-up move affects the USER, not the target, so the
+; player's Substitute is irrelevant here.
+	dbw ATTACK_UP1_EFFECT, AIRedundant_StatUp
+	dbw DEFENSE_UP1_EFFECT, AIRedundant_StatUp
+	dbw SPEED_UP1_EFFECT, AIRedundant_StatUp
+	dbw SPECIAL_UP1_EFFECT, AIRedundant_StatUp
+	dbw ACCURACY_UP1_EFFECT, AIRedundant_StatUp
+	dbw EVASION_UP1_EFFECT, AIRedundant_StatUp
+	dbw ATTACK_UP2_EFFECT, AIRedundant_StatUp
+	dbw DEFENSE_UP2_EFFECT, AIRedundant_StatUp
+	dbw SPEED_UP2_EFFECT, AIRedundant_StatUp
+	dbw SPECIAL_UP2_EFFECT, AIRedundant_StatUp
+	dbw ACCURACY_UP2_EFFECT, AIRedundant_StatUp
+	dbw EVASION_UP2_EFFECT, AIRedundant_StatUp
 	dbw LIGHT_SCREEN_EFFECT, AIRedundant_LightScreen
 	dbw REFLECT_EFFECT, AIRedundant_Reflect
 	dbw MIST_EFFECT, AIRedundant_Mist
@@ -283,14 +304,93 @@ AIRedundant_ConfusionEffect:
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 
+; F17, 2026-09-02: stat-up effects (Swords Dance, Amnesia, Agility, Barrier,
+; Double Team/Minimize, etc). Redundant once the ENEMY'S OWN stat is already at
+; Gen 1's cap ($D/13) - the same gate and cap value Phase 6's AIIncreaseStat
+; (item AI) already applies for the four X-items, StatModifierUpEffect's own
+; `[hl] cp $d` gate (effects.asm). No Substitute check: the target's Substitute
+; has no bearing on a move that only affects the user.
+;
+; Index derivation: UP1 effects (ATTACK_UP1_EFFECT..EVASION_UP1_EFFECT) map to
+; 0-5 directly; UP2 effects map to 0-5 the same way relative to
+; ATTACK_UP2_EFFECT. wEnemyMonStatMods is laid out
+; Attack/Defense/Speed/Special/Accuracy/Evasion, matching this order.
+AIRedundant_StatUp:
+	ld a, [wEnemyMoveEffect]
+	cp ATTACK_UP2_EFFECT
+	jr c, .up1
+	sub ATTACK_UP2_EFFECT
+	jr .gotIndex
+.up1
+	sub ATTACK_UP1_EFFECT
+.gotIndex
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMonStatMods
+	add hl, bc
+	ld a, [hl]
+	cp $d
+	jr z, .heavy
+	xor a
+	ret
+.heavy
+	ld a, AI_REDUNDANT_HEAVY
+	ret
+
+; F17, 2026-09-02: stat-down effects (own move or side-effect), now with a
+; floor check ADDED alongside the existing Substitute check this handler used
+; to share with AIRedundant_SubOnly below. This corrects that routine's own
+; prior reasoning, which judged the "already at -6" case "not worth
+; duplicating... a case that merely prints a different message rather than
+; truly wasting the turn" - true for ENGINE correctness (CantLowerAnymore is a
+; safe no-op) but wrong for the AI: a move that accomplishes literally nothing
+; IS a wasted turn, the exact category AI_REDUNDANT exists to eliminate, and
+; the same shape as "sleep on an already-asleep target" a few handlers above.
+; Diagnosed from a real battle where a Krabby kept leering a Pikachu long past
+; the point Leer could do anything further.
+;
+; Index derivation is a LOCAL COPY of StatModifierDownEffect's own mapping
+; (effects.asm), not a call to it: it needs composing with the Substitute test
+; without a bank-crossing farcall inside this per-move loop - the same
+; reasoning AIRedundantTargetHasSubstitute's header gives for copying
+; CheckTargetSubstitute instead of calling it. Side effects
+; (>= ATTACK_DOWN_SIDE_EFFECT) map straight to 0-3 (no accuracy/evasion side
+; effect exists); DOWN1 maps to 0-5; DOWN2 first subtracts down to the DOWN1
+; range, lands past 5 (checked against 8, the same bound the vanilla routine
+; tests), then re-subtracts to reach 0-5. wPlayerMonStatMods shares
+; wEnemyMonStatMods' Attack/Defense/Speed/Special/Accuracy/Evasion order.
+AIRedundant_StatDown:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .heavy
+	ld a, [wEnemyMoveEffect]
+	cp ATTACK_DOWN_SIDE_EFFECT
+	jr nc, .side
+	sub ATTACK_DOWN1_EFFECT
+	cp 8
+	jr c, .gotIndex
+	sub ATTACK_DOWN2_EFFECT - ATTACK_DOWN1_EFFECT
+	jr .gotIndex
+.side
+	sub ATTACK_DOWN_SIDE_EFFECT
+.gotIndex
+	ld c, a
+	ld b, 0
+	ld hl, wPlayerMonStatMods
+	add hl, bc
+	ld a, [hl]
+	cp $1
+	jr z, .heavy
+	xor a
+	ret
+.heavy
+	ld a, AI_REDUNDANT_HEAVY
+	ret
+
 ; Effects whose ENTIRE mechanism is "does nothing at all if the target has a
 ; Substitute up" and has no other redundancy condition worth checking here:
-; flinch/confusion side effects, drain HP, and every stat-down move (own or
-; side-effect). Stat-down moves already-at-minimum are left alone - the
-; engine's own CantLowerAnymore path (effects.asm) handles that gracefully
-; and it is not worth duplicating the six-stat "already at -6" scan here for
-; a case that merely prints a different message rather than truly wasting
-; the turn on top of a Substitute block.
+; flinch/confusion side effects and drain HP. Stat-down moves used to share
+; this handler too; they now have their own (AIRedundant_StatDown, above),
+; which adds the floor check F17 introduced.
 AIRedundant_SubOnly:
 	call AIRedundantTargetHasSubstitute
 	jr nz, .heavy

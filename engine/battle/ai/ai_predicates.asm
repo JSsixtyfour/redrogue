@@ -109,6 +109,55 @@ AIPlayerHPBelowQuarter::
 	ld b, 2
 	jp AIHPShiftCompare
 
+; F14, 2026-09-02: carry set if the player already has damage-over-time
+; running (poisoned or badly poisoned via Toxic - both set PSN on
+; wBattleMonStatus; burned; or Leech Seeded). Shared by AISmart_Trapping
+; (ai_smart.asm, plain call - same bank) and AIFit_WrapLock/AIFit_AgilityWrap
+; (ai_plans.asm, bank $2C, reached by farcall - same shape as
+; AIEnemyHPBelowHalf/AIPlayerWouldKO already used from those two routines).
+; Sleep/freeze/paralysis are deliberately excluded: they stop the target
+; acting, which is already the point of a trap, but they are not damage
+; sources on their own, so they do not raise a trap's value the way an
+; uninterruptible drain does.
+; Clobbers af.
+AIPlayerHasChipDamage::
+	ld a, [wBattleMonStatus]
+	and (1 << PSN) | (1 << BRN)
+	jr nz, .yes
+	ld a, [wPlayerBattleStatus1]
+	bit SEEDED, a
+	jr z, .no
+.yes
+	scf
+	ret
+.no
+	and a
+	ret
+
+; F14, 2026-09-02: carry set if the player is currently losing turns or HP
+; regardless of what we do this turn - poisoned/badly poisoned, burned,
+; asleep, frozen, or wrap-locked by OUR OWN trapping move. Broader than
+; AIPlayerHasChipDamage above (which only covers the three damage-per-turn
+; statuses, for the trap-value question): this one also covers the two
+; turn-denial statuses (sleep, freeze) and our own trap, since those make a
+; slow move "free" in the same way a damage-per-turn status does - the player
+; is not getting anywhere regardless. Used to decide whether a two-turn move's
+; lost tempo, or an evasion boost's lost turn, is actually costing anything.
+; Clobbers af.
+AIPlayerIsStalled::
+	ld a, [wBattleMonStatus]
+	and (1 << PSN) | (1 << BRN) | (1 << FRZ) | SLP_MASK
+	jr nz, .yes
+	ld a, [wPlayerBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr z, .no
+.yes
+	scf
+	ret
+.no
+	and a
+	ret
+
 ; --- Damage / KO predicates (Phase 3) --------------------------------------
 ; These read wAIDamageEstimate, which is populated by AIEstimateDamage
 ; (engine/battle/core.asm, bank $0F - see that routine's header for why it

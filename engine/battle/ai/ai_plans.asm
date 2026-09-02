@@ -44,6 +44,14 @@ DEF AI_AGILITY_MAX_ATTEMPTS EQU 2
 
 DEF AI_FITNESS_WRAP_LOCK EQU 35
 
+; F14, 2026-09-02: added to both trap plans' fitness when the target already
+; has chip damage running (AIPlayerHasChipDamage, ai_predicates.asm) - a trap
+; is worth more against a target already bleeding HP each turn than against a
+; healthy one, since it turns that chip into a guaranteed drain. Small enough
+; that it tips a close call without making a trap plan out-compete a plan with
+; a stronger reason to exist (Sleep Lead, Toxic Stall).
+DEF AI_FITNESS_TRAP_CHIP_BONUS EQU 15
+
 DEF AI_FITNESS_SLEEP_LEAD    EQU 55
 DEF AI_FITNESS_SLEEP_FASTER  EQU 15 ; a status "out" only exists if it lands
                                     ; before the fatal hit, so being faster is
@@ -417,9 +425,24 @@ AIFit_AgilityWrap:
 
 	farcall AIEnemyIsFaster
 	ld a, AI_FITNESS_AGILITY_WRAP
-	ret c ; already outspeeding - still a fine plan, it just skips its first step
+	jr c, .gotBase ; already outspeeding - still a fine plan, it just skips its first step
 	add AI_FITNESS_AGILITY_SLOW ; `ld a, n` sets no flags, so the carry tested
 	                            ; above is still the speed answer here
+.gotBase
+; F14, 2026-09-02: add AI_FITNESS_TRAP_CHIP_BONUS if the target already has
+; damage-over-time running - mirrors AISmart_Trapping's own encouragement
+; (ai_smart.asm) so the plan layer agrees with the move layer about the same
+; board. Stashed in `d`, NOT `b`/`c`: a farcall's own Bankswitch mechanics
+; overwrite bc with the ORIGINAL bank number on return (traced through
+; home/bankswitch.asm, not assumed - `pop bc` at Bankswitch's `.Return` label
+; restores the af pushed at entry, landing the saved bank in b), so bc cannot
+; carry a value THROUGH a farcall despite surviving the macro's own inbound
+; step. de and hl are the only registers Bankswitch never touches at all.
+	ld d, a
+	farcall AIPlayerHasChipDamage
+	ld a, d
+	ret nc
+	add AI_FITNESS_TRAP_CHIP_BONUS
 	ret
 .no
 	xor a
@@ -492,6 +515,13 @@ AIFit_WrapLock:
 	jr c, .no
 
 	ld a, AI_FITNESS_WRAP_LOCK
+; F14, 2026-09-02: same chip-damage bonus as AIFit_AgilityWrap above - see
+; that routine's comment for why the stash uses `d`, not `b`/`c`.
+	ld d, a
+	farcall AIPlayerHasChipDamage
+	ld a, d
+	ret nc
+	add AI_FITNESS_TRAP_CHIP_BONUS
 	ret
 .no
 	xor a

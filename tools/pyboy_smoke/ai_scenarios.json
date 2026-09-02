@@ -2219,7 +2219,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Player unstatused, unsubbed, and not about to KO - ToxicStall qualifies and poisons first.",
+      "note": "Player unstatused, unsubbed, and not about to KO - ToxicStall qualifies and poisons first. Rebaselined 2026-09-02 for AI_OVERHAUL_PLAN.md follow-up F14 (AISmart_Poison, ai_smart.asm): TOXIC's slot moved 17 -> 15. Confirmed correct, not a regression - before F14, POISON_EFFECT had NO AI_SMART handler at all, so this move's whole encouragement came from the ToxicStall plan directive alone. AISmart_Poison now ALSO independently encourages Toxic against a healthy, unstatused target (AI_STRONG, since AIPlayerHPBelowHalf is false for Electrode at full HP here) - it stacks with the plan's own directive rather than replacing it, which is exactly the intended behaviour: the plan layer and the move layer agreeing that Toxic is a good idea right now, from two different reasons. The other three unaffected fields (slots 1-3) are untouched.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2243,7 +2243,7 @@
       ],
       "expect": {
         "scores": [
-          17,
+          15,
           79,
           20,
           20
@@ -2391,7 +2391,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Same shape as the recovery variant with the SUB|POISON required mask instead.",
+      "note": "Same shape as the recovery variant with the SUB|POISON required mask instead. Rebaselined 2026-09-02 for F14 (AISmart_Poison): slot 1 (TOXIC) moved 20 -> 18. Same mechanism as plan_toxicstall_poisons_then_would_heal's rebaseline in this file - AISmart_Poison now independently encourages Toxic against a healthy, unstatused target (Electrode, full HP, AI_STRONG). The plan is still at step 0 here (Substitute has not gone up yet), so the plan layer has not yet touched TOXIC's slot at all - this -2 is entirely AI_SMART's own contribution, not a stack with the plan.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2416,7 +2416,7 @@
       "expect": {
         "scores": [
           17,
-          20,
+          18,
           20,
           20
         ]
@@ -2528,7 +2528,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Equal levels so Fissure can legally hit (OHKO auto-fails when the attacker's level is below the target's - a real, separate veto AISmart_OHKO already owns and this fixture is not testing); enemy primed near death so AIPlayerWouldKO holds on its own merits. AI_STRONG (not VERY_STRONG) is deliberately modest since AI_RISKY may already be nudging the same move for the same reason.",
+      "note": "Equal levels so Fissure can legally hit (OHKO auto-fails when the attacker's level is below the target's - a real, separate veto AISmart_OHKO already owns and this fixture is not testing); enemy primed near death so AIPlayerWouldKO holds on its own merits. AI_STRONG (not VERY_STRONG) is deliberately modest since AI_RISKY may already be nudging the same move for the same reason. Rebaselined 2026-09-02 for AI_OVERHAUL_PLAN.md follow-up F15 (the graded AI_RISKY ladder, ai_risky.asm): slot 0 moved 17 -> 16. OHKO moves are now detected EXPLICITLY by effect id and scored AI_STRONG within AI_RISKY, a tier above the generic unreliable-power/high-crit case (AI_NUDGE) - previously OHKO only reached AI_RISKY's single flat tier by an ACCIDENT of AIEstimateDamage always reporting 0/0 for OHKO_EFFECT, which happened to satisfy the 'well above reliable' comparison trivially. This fixture's own note already anticipated the interaction ('AI_RISKY may already be nudging the same move for the same reason') - the one extra point is that interaction becoming exact instead of coincidental.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2560,7 +2560,7 @@
       ],
       "expect": {
         "scores": [
-          17,
+          16,
           19,
           20,
           20
@@ -2605,6 +2605,712 @@
         "scores": [
           15,
           19,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "setup_gate_blocks_statdown_with_no_physical_move",
+      "phase": "6",
+      "heuristic": "ai_setup_physical_gate",
+      "case": "positive",
+      "tags": [
+        "ai_setup",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F9 (the Krabby-Leer regression fix). Krabby's only other move is Bubble (WATER, special), so AIOwnsPhysicalMove correctly finds no physical move and AI_SETUP's usual AI_STRONG encouragement of Leer (DEFENSE_DOWN1_EFFECT) is suppressed - confirmed via layer_trace: SETUP's own delta is [0,0,0,0], where it would have been [-2,0,0,0] without the gate.",
+      "ai_tier": 1,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "KRABBY",
+          "level": 50,
+          "moves": [
+            "LEER",
+            "BUBBLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "setup_gate_allows_statdown_with_physical_move",
+      "phase": "6",
+      "heuristic": "ai_setup_physical_gate",
+      "case": "negative",
+      "tags": [
+        "ai_setup",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, Bubble replaced with Tackle (NORMAL, physical). AIOwnsPhysicalMove now finds a physical move and AI_SETUP's usual encouragement of Leer proceeds - confirmed via layer_trace: SETUP's delta is [-2,0,0,0], same as before F9 existed.",
+      "ai_tier": 1,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "KRABBY",
+          "level": 50,
+          "moves": [
+            "LEER",
+            "TACKLE"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "redundant_statup_capped_saturates",
+      "phase": "2a",
+      "heuristic": "statup_cap",
+      "case": "positive",
+      "tags": [
+        "ai_redundant",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F17. Swords Dance (ATTACK_UP2_EFFECT) with the enemy's own Attack mod primed to the Gen 1 cap ($D/13). ai_tier 0 isolates AI_REDUNDANT alone. AIRedundant_StatUp saturates the move to AI_REDUNDANT_HEAVY (79) - before F17 this effect had NO entry in AIRedundantEffectTable at all, so a maxed-out stat-up move was never eliminated.",
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHOP",
+          "level": 50,
+          "moves": [
+            "SWORDS_DANCE",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wEnemyMonAttackMod": 13
+      },
+      "expect": {
+        "scores": [
+          79,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "redundant_statup_legal_below_cap",
+      "phase": "2a",
+      "heuristic": "statup_cap",
+      "case": "negative",
+      "tags": [
+        "ai_redundant",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, Attack mod at the default 7 (no boost applied yet). AIRedundant_StatUp correctly finds the stat not yet capped and leaves the score alone.",
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHOP",
+          "level": 50,
+          "moves": [
+            "SWORDS_DANCE",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wEnemyMonAttackMod": 7
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "redundant_statdown_floored_saturates",
+      "phase": "2a",
+      "heuristic": "statdown_floor",
+      "case": "positive",
+      "tags": [
+        "ai_redundant",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F17. Growl (ATTACK_DOWN1_EFFECT) with the PLAYER's Attack mod primed to the Gen 1 floor ($1/-6). ai_tier 0 isolates AI_REDUNDANT alone. AIRedundant_StatDown saturates the move to AI_REDUNDANT_HEAVY (79) - the exact case this handler's own header describes correcting: engine correctness (CantLowerAnymore) already made this a safe no-op, but nothing previously told the AI a totally wasted turn was on offer. Diagnosed from a real battle where a Krabby kept using Leer long past the point it could do anything further.",
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHOP",
+          "level": 50,
+          "moves": [
+            "GROWL",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wPlayerMonAttackMod": 1
+      },
+      "expect": {
+        "scores": [
+          79,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "redundant_statdown_legal_above_floor",
+      "phase": "2a",
+      "heuristic": "statdown_floor",
+      "case": "negative",
+      "tags": [
+        "ai_redundant",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, the player's Attack mod at the default 7 (not yet lowered). AIRedundant_StatDown correctly finds the stat not yet floored and leaves the score alone.",
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "MACHOP",
+          "level": 50,
+          "moves": [
+            "GROWL",
+            "TACKLE"
+          ]
+        }
+      ],
+      "prime": {
+        "wPlayerMonAttackMod": 7
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "charge_exposed_family_discouraged_normally",
+      "phase": "6",
+      "heuristic": "charge_move_family",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F14. Razor Wind (CHARGE_EFFECT, fully exposed - no INVULNERABLE bit) against a healthy, unstatused player. AISmart_Charge applies AI_STRONG discourage - confirmed via layer_trace: SMART's delta is [2,0,0,0]. AI_DAMAGE's own -1 (a real, separate contribution from the simulator crediting some damage) is present in both this and the paired stalling fixture, so the DIFFERENCE between the two fixtures' final scores isolates AISmart_Charge's own effect.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "RAZOR_WIND",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          21,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "charge_exposed_family_gets_no_stall_boost",
+      "phase": "6",
+      "heuristic": "charge_move_family",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, player primed poisoned (a stalling condition). The exposed charge family (Razor Wind/Solarbeam/Skull Bash/Sky Attack) still eats a hit while charging even when stalling, so it gets NO boost, unlike the invulnerable family (Dig/Fly) below - confirmed via layer_trace: SMART's delta is [0,0,0,0] here, not encourage. Only AI_DAMAGE's -1 (unrelated to stalling) differs the final score from baseline.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "RAZOR_WIND",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 8
+      },
+      "expect": {
+        "scores": [
+          19,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "charge_invulnerable_family_mild_penalty_normally",
+      "phase": "6",
+      "heuristic": "invulnerable_charge",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F14. Dig (CHARGE_EFFECT, disambiguated by move id - grants INVULNERABLE) against a healthy, unstatused player. AISmart_InvulnerableCharge applies only AI_NUDGE discourage (smaller than the exposed family's AI_STRONG, since dodging a hit partially offsets the lost turn) - confirmed via layer_trace: SMART's delta is [1,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "DIG",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "charge_invulnerable_family_boosted_when_stalling",
+      "phase": "6",
+      "heuristic": "invulnerable_charge",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, player primed poisoned. Unlike the exposed family, Dig dodges the hit it would otherwise eat while charging, so stalling flips the penalty into a small encouragement - confirmed via layer_trace: SMART's delta flips from [1,0,0,0] to [-1,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "DIG",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 8
+      },
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "evasion_tempered_outside_stall_context",
+      "phase": "6",
+      "heuristic": "evasion_stall_gate",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "ai_setup",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F14. Double Team (EVASION_UP1_EFFECT) against a healthy, unstatused player. AI_SETUP's existing blanket AI_STRONG encouragement fires unconditionally (delta [-2,0,0,0], unchanged by F14 - see the fixture's paired case for the same SETUP contribution), and the NEW AISmart_Evasion handler partially tempers it with a mild AI_NUDGE discourage since evasion has not yet been shown to matter - confirmed via layer_trace: SMART's delta is [1,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "DOUBLE_TEAM",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          19,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "evasion_strongly_encouraged_when_stalling",
+      "phase": "6",
+      "heuristic": "evasion_stall_gate",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "ai_setup",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board as the positive case, player primed poisoned. AISmart_Evasion flips from a mild temper to a strong encouragement, since a lost turn costs nothing extra while the player is already losing HP/turns regardless - confirmed via layer_trace: SMART's delta flips from [1,0,0,0] to [-2,0,0,0], stacking with AI_SETUP's unchanged [-2,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "DOUBLE_TEAM",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 8
+      },
+      "expect": {
+        "scores": [
+          16,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "risky_metronome_fires_as_last_resort",
+      "phase": "3",
+      "heuristic": "risky_metronome",
+      "case": "positive",
+      "tags": [
+        "ai_risky",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F15. Enemy primed near death (AIPlayerWouldKO holds, so AI_RISKY's own top-level gate does not bail out) with Metronome and a 0-power move (Mist) that no earlier layer touches, so nothing scores below baseline before RISKY runs. AIAnyScoreBelowBaseline correctly finds nothing better and nudges Metronome - confirmed via layer_trace: RISKY's delta is [-1,0,0,0], the only nonzero layer in the whole trace.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "METRONOME",
+            "MIST"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          19,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "risky_metronome_silent_when_something_already_better",
+      "phase": "3",
+      "heuristic": "risky_metronome",
+      "case": "negative",
+      "tags": [
+        "ai_risky",
+        "regression"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same losing board, Metronome paired with Body Slam instead of Mist. Body Slam's real damage against a healthy Pikachu earns its own AI_SMART and AI_DAMAGE encouragement (slot 1 drops to 15, well below baseline) BEFORE AI_RISKY runs, so AIAnyScoreBelowBaseline correctly finds something already better and Metronome stays untouched - confirmed via layer_trace: RISKY's delta is [0,0,0,0] across every slot, where the positive fixture shows [-1,0,0,0] on Metronome's own slot.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "PIKACHU",
+          "level": 50,
+          "moves": [
+            "THUNDERBOLT"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "METRONOME",
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          15,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "risky_ohko_tier_above_generic_risky_tier",
+      "phase": "3",
+      "heuristic": "risky_ohko_tier",
+      "case": "positive",
+      "tags": [
+        "ai_risky",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F15. Equal levels so Fissure legally hits (the slower-auto-misses veto is AIRedundant_OHKO's job, not tested here); enemy primed near death so AIPlayerWouldKO holds on its own merits, and this same board also happens to qualify for the OhkoFish plan (AIFit_OhkoFish - see plan_ohkofish_gambles_when_losing_and_faster elsewhere in this file), which contributes its own -2 (AI_STRONG) via the PLAN layer. Fissure is now ALSO detected EXPLICITLY by effect id inside AI_RISKY and scored AI_STRONG there too, a tier above the generic unreliable-power/high-crit case (AI_NUDGE) - confirmed via layer_trace: RISKY's OWN delta is [-2,0,0,0], not the [-1,0,0,0] the old single-tier code would have produced via its accidental raw=reliable=0 collision for OHKO_EFFECT. The two -2 contributions (PLAN then RISKY) stack to the final score.",
+      "ai_tier": 3,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "TACKLE"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "FISSURE",
+            "MIST"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 20
+        }
+      ],
+      "expect": {
+        "scores": [
+          16,
+          20,
           20,
           20
         ]

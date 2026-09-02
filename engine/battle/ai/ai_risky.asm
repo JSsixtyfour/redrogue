@@ -22,6 +22,22 @@
 ; farcall), nudge it. This is the literal inverse of AI_DAMAGE's reasoning:
 ; reliability stopped being the priority the moment a reliable line stopped
 ; being able to win.
+;
+; GRADED LADDER, AI_OVERHAUL_PLAN.md follow-up F15, 2026-09-02: previously a
+; single flat AI_NUDGE covered both an OHKO attempt and an ordinary powerful-
+; but-unreliable move, with no distinction - and OHKO moves reached it only by
+; accident (AIEstimateDamage deliberately reports ZERO for OHKO_EFFECT, so
+; raw=0 trivially satisfies "raw >= reliable*2" against a reliable estimate
+; that is also 0). User's own ranking, weakest to strongest desperation play:
+; Metronome < unreliable-power/high-crit < OHKO < sleep (sleep is AI_THREAT's
+; rank 3, not this layer's concern). OHKO_EFFECT is now detected explicitly by
+; effect id, not by the accidental 0/0 collision, and scored a tier above the
+; generic case. Metronome (METRONOME_EFFECT, 0 base power - untouched by
+; AI_DAMAGE, and F2 already made AI_TYPES skip it rather than value it) is
+; handled separately below the main loop: it only ever gets nudged when
+; AIAnyScoreBelowBaseline says every move is STILL sitting at or above
+; baseline, i.e. genuinely nothing better was found this turn - a true last
+; resort, not a competitor to a real preference some earlier layer applied.
 
 AILayerRisky:
 	call AIPlayerWouldKO
@@ -75,6 +91,11 @@ AILayerRisky:
 	push de
 	push bc
 	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	cp OHKO_EFFECT
+	jr z, .ohko
+	cp METRONOME_EFFECT
+	jr z, .metronome
 	ld a, [wEnemyMovePower]
 	and a
 	jr z, .noChange ; status move: nothing to gamble with here
@@ -113,6 +134,25 @@ AILayerRisky:
 .risky
 	ld a, AI_NUDGE
 	jr .apply
+.ohko
+; OHKO moves reach here explicitly now, not via the accidental raw=reliable=0
+; collision the old single-tier code relied on (AIEstimateDamage deliberately
+; zeroes OHKO_EFFECT - see that routine's header, core.asm). Legality (the
+; slower-auto-misses rule) is already AIRedundant_OHKO's job; this is purely
+; "a bigger nudge than the generic risky case", per the user's ranking.
+	ld a, AI_STRONG
+	jr .apply
+.metronome
+; A true last resort: only nudge Metronome when NOTHING else has already
+; scored better than baseline this turn, so it never competes with a real
+; preference (a status move, a damage tier, an OHKO attempt) some earlier
+; layer already found. Fires below AI_NUDGE-equivalent strength deliberately -
+; see AIAnyScoreBelowBaseline's own header for why "fires rarely" substitutes
+; for "fires weakly" here.
+	call AIAnyScoreBelowBaseline
+	jr c, .noChange
+	ld a, AI_NUDGE
+	jr .apply
 .noChange
 	xor a
 .apply
@@ -126,3 +166,28 @@ AILayerRisky:
 	jr z, .nextMove
 	call AIEncourage
 	jr .nextMove
+
+; Carry set if ANY of the four current move scores is already below baseline
+; (AI_SCORE_BASE) - i.e. some earlier layer already found a real reason to
+; prefer a DIFFERENT move this turn. F15, 2026-09-02: gates Metronome above,
+; so it is nudged only as a genuine last resort rather than a competitor to
+; whatever a real preference already picked. wBuffer+0..3 is exactly the
+; live score array at this point in the layer dispatch (AI_BUF_SCORES,
+; ai_constants.asm) - AI_RISKY runs last (bit 8), so every earlier layer's
+; adjustment is already reflected here, including this same pass's own
+; encouragements on slots already visited this loop.
+; Clobbers af, b, hl.
+AIAnyScoreBelowBaseline:
+	ld hl, wBuffer
+	ld b, NUM_MOVES
+.loop
+	ld a, [hli]
+	cp AI_SCORE_BASE
+	jr c, .yes
+	dec b
+	jr nz, .loop
+	and a
+	ret
+.yes
+	scf
+	ret
