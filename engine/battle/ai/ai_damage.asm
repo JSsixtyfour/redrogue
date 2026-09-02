@@ -40,7 +40,8 @@ AILayerDamage:
 	ld b, NUM_MOVES + 1
 .nextMove
 	dec b
-	jr z, .applyBest ; processed all 4 moves
+	jp z, .applyBest ; processed all 4 moves. jp, not jr: F16's added scoring
+	                 ; paths pushed .applyBest past the 128-byte relative range
 	inc hl
 ; Stash which slot this is, because the AIEstimateDamage farcall below destroys
 ; every register that could otherwise carry it.
@@ -55,7 +56,7 @@ AILayerDamage:
 	ld [wBuffer + AI_BUF_CURSLOT], a
 	ld a, [de]
 	and a
-	jr z, .applyBest ; no more moves in move set
+	jp z, .applyBest ; no more moves in move set (jp for the same range reason)
 	inc de
 	push hl ; STACK: [hl=scorePtr]
 	push de ; STACK: [de=movelistPtr, hl=scorePtr]
@@ -105,22 +106,74 @@ AILayerDamage:
 	jr c, .quarter
 .noChange
 	xor a
-	jr .apply
+	jr .priorityBonus
 .kill
 ; A kill that might miss is worth less than a kill that cannot - this is the
 ; "why use Fire Blast when Flamethrower already kills" rule, and it is the whole
 ; reason the KO test above deliberately ran on the unscaled estimate.
 	call AIGetMoveHitChance
 	cp 90 percent
-	ld a, AI_KILL
+	jr c, .unreliableKill
+; F16 (2026-09-02): a RELIABLE kill that also ACTS FIRST outranks a bigger
+; reliable kill that does not. When two moves both kill, raw damage is the wrong
+; tiebreak - turn order is, because the bigger one is worthless if the player
+; moves first and wins the exchange.
+;
+; The magnitude (AI_KILL_FIRST) is DERIVED in ai_constants.asm, not picked -
+; see that constant's header for the arithmetic. It has to clear everything a
+; competing NON-priority kill can stack up on the same board, which is more than
+; just .applyBest's extra nudge: the first attempt at this used AI_KILL +
+; AI_STRONG and still LOST the measured case, because the rival Body Slam also
+; carried a paralysis rider bonus from AI_SMART.
+;
+; Concrete case this fixes, measured before and after: a slower mon holding
+; Quick Attack and Body Slam against a player in one-shot range scored Body Slam
+; 8 (AI_KILL 5 + best-damage nudge 1 + its own rider 2) against Quick Attack's
+; 5 - so the AI took Body Slam, moved second, and lost a won game. AI_THREAT has
+; a narrower version of this rescue, but it fires only at T3 AND only when
+; AIPlayerWouldKO says the player kills us THIS turn, so a slower T2 trainer, or
+; a T3 trainer in a close-but-not-lethal race, got nothing at all.
+	call AIEnemyActsFirstWith
+	ld a, AI_KILL ; `ld a, n` sets no flags, so the carry above still decides
 	jr nc, .apply
+	ld a, AI_KILL_FIRST ; see the constant's own header for why this size
+	jr .apply
+.unreliableKill
 	ld a, AI_STRONG
 	jr .apply
 .half
 	ld a, AI_STRONG
-	jr .apply
+	jr .priorityBonus
 .quarter
 	ld a, AI_NUDGE
+.priorityBonus
+; F16 (2026-09-02): a small, UNCONDITIONAL preference for a priority move at
+; otherwise equal value - Quick Attack should beat Pound every time, since at
+; identical power and type the guaranteed first strike is free upside. One point
+; only: it breaks an exact tie without ever overriding a real damage-tier gap
+; (2-5 points), so it can never make a 40-power priority move beat an 85-power
+; one that actually hits harder.
+;
+; Deliberately NOT gated on being slower, unlike AI_THREAT's larger rescue
+; bonus. Priority still guarantees the first strike when we are already faster,
+; against a Speed drop or the player's own priority move, and at one point the
+; cost of being wrong is nil.
+;
+; Swift deliberately gets NO equivalent nudge: its advantage is bypassing the
+; accuracy roll, and AIGetMoveHitChance already reports it at 100% while scaling
+; every rival move down by its real hit chance - including against an
+; evasion-boosted target, which is precisely when Swift shines. Adding a nudge
+; on top would double-count that, and against an equally accurate move of equal
+; damage Swift genuinely has no edge to reward.
+;
+; The kill path above does NOT come through here: its acts-first bump is the
+; priority bonus for that case, at the larger magnitude that case needs.
+	ld b, a
+	ld a, [wEnemyMoveNum]
+	cp QUICK_ATTACK
+	ld a, b ; LD does not touch flags, so the cp above still decides
+	jr nz, .apply
+	inc a
 .apply
 ; a holds the magnitude to encourage by, 0 for "leave this move alone".
 ; The three pops below never touch a (POP rr for BC/DE/HL preserves it and every
@@ -130,9 +183,10 @@ AILayerDamage:
 	pop de
 	pop hl
 	and a
-	jr z, .nextMove
+	jp z, .nextMove
 	call AIEncourage
-	jr .nextMove
+	jp .nextMove ; jp, not jr: F16's added scoring paths pushed .nextMove past
+	             ; the 128-byte relative range
 
 ; Give the single highest-expected-damage move one extra nudge. This is the
 ; comparative half of the layer: the tiers above say how threatening each move

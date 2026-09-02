@@ -1843,12 +1843,13 @@
       ],
       "expect": {
         "scores": [
-          15,
-          14,
+          11,
+          10,
           20,
           20
         ]
-      }
+      },
+      "note": "Rebaselined 2026-09-02 for AI_OVERHAUL_PLAN.md follow-up F16: both slots shifted by exactly -4, which is AI_KILL_FIRST (9) minus AI_KILL (5). The player is primed into one-shot range and the enemy (Electrode) outspeeds Snorlax, so BOTH Quick Attack and Slash are lethal AND act first, and both now earn the priority-kill magnitude. This fixture's own subject is UNCHANGED and re-verified: layer_trace shows RISKY's delta is [0,0,0,0], so AI_RISKY is still correctly silent because a guaranteed win exists. The uniform -4 across both slots is itself the tell that nothing but AI_DAMAGE moved."
     },
     {
       "name": "plan_steers_toward_setup_when_nothing_is_dying",
@@ -1907,7 +1908,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Same board with the player in one-shot range. The enemy now outspeeds, so the plan directs at the TRAP slot (-3 on slot 1) - but AI_DAMAGE has applied AI_KILL + its best-move nudge to Tackle (-6), which wins by one point. This is AI_PLAN_MAX_MAGNITUDE < AI_KILL being load-bearing: if a future retune lets a plan directive reach 5, a setup mon will walk past a won game and this fixture is what catches it.",
+      "note": "Same board with the player in one-shot range. The enemy now outspeeds, so the plan directs at the TRAP slot (-3 on slot 1) - but AI_DAMAGE has applied AI_KILL + its best-move nudge to Tackle (now -10, via AI_KILL_FIRST), which wins outright. This is AI_PLAN_MAX_MAGNITUDE < AI_KILL being load-bearing: if a future retune lets a plan directive reach 5, a setup mon will walk past a won game and this fixture is what catches it. Rebaselined 2026-09-02 for AI_OVERHAUL_PLAN.md follow-up F16: slot 2 (Tackle) moved 14 -> 10. The player is a level 5 Electrode, so Tackle both KILLS and ACTS FIRST, and now earns AI_KILL_FIRST (9) rather than AI_KILL (5) - a uniform -4 on that slot alone. Re-verified via layer_trace that the fixture subject is untouched: SETUP is still [-2,0,0,0] and PLAN is still [0,-3,0,0]. The invariant this fixture guards is now satisfied by a WIDER margin (10 vs 3), not a narrower one.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -1934,7 +1935,7 @@
         "scores": [
           18,
           15,
-          14,
+          10,
           20
         ]
       }
@@ -3630,6 +3631,202 @@
           20,
           20
         ]
+      }
+    },
+    {
+      "name": "priority_quickattack_beats_equal_power_move",
+      "phase": "6",
+      "heuristic": "priority_tiebreak",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "priority"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F16, change 1. Quick Attack and Pound are both 40 BP NORMAL, so AIEstimateDamage returns identical figures and they used to tie at 20 - a literal coin flip. The unconditional AI_NUDGE priority bonus now breaks it toward the move that strikes first. Confirmed via layer_trace: DAMAGE delta [-2,0,0,0] (the best-expected-damage nudge plus the priority nudge) against Pound's 0.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "QUICK_ATTACK",
+            "POUND"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ],
+        "pick_slot": 0
+      }
+    },
+    {
+      "name": "priority_never_overrides_a_stronger_move",
+      "phase": "6",
+      "heuristic": "priority_tiebreak",
+      "case": "negative",
+      "tags": [
+        "ai_damage",
+        "priority"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "The guard case for F16 change 1: the priority bonus is ONE point, so it breaks an exact tie without ever beating a real damage-tier gap. Body Slam (85 BP) against Quick Attack (40 BP), neither lethal against a full-HP Snorlax - Body Slam still wins. Confirmed via layer_trace: DAMAGE delta [-1,-2,0,0], i.e. Quick Attack gets only its priority point while Body Slam earns more on genuine damage.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "QUICK_ATTACK",
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          19,
+          18,
+          20,
+          20
+        ],
+        "pick_slot": 1
+      }
+    },
+    {
+      "name": "priority_kill_beats_bigger_kill_when_slower",
+      "phase": "6",
+      "heuristic": "priority_finisher",
+      "case": "positive",
+      "tags": [
+        "ai_damage",
+        "priority"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F16, change 2 - the bug this was written for. A SLOWER Slowpoke holding Quick Attack and Body Slam against an Electrode primed into one-shot range: BOTH moves kill, so raw damage is the wrong tiebreak and turn order is the right one. Before F16 the AI scored Body Slam 8 (AI_KILL 5 + best-damage nudge 1 + its own paralysis rider 2) against Quick Attack's 5, picked Body Slam, moved second and lost a won game. AI_KILL_FIRST (9) now clears that whole stack. Confirmed via layer_trace: DAMAGE delta [-9,-6,0,0]. Note the first attempt at this used AI_KILL + AI_STRONG (7) and STILL lost to Body Slam's 8 - the rider bonus is why the constant is derived rather than guessed.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "SLOWPOKE",
+          "level": 50,
+          "moves": [
+            "QUICK_ATTACK",
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 12
+        }
+      ],
+      "expect": {
+        "scores": [
+          11,
+          12,
+          20,
+          20
+        ],
+        "pick_slot": 0
+      }
+    },
+    {
+      "name": "priority_kill_yields_to_bigger_kill_when_already_faster",
+      "phase": "6",
+      "heuristic": "priority_finisher",
+      "case": "negative",
+      "tags": [
+        "ai_damage",
+        "priority"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "The mirror of the positive case, and the reason AI_KILL_FIRST is safe to apply unconditionally rather than only when slower: the enemy is now the FAST one (Electrode vs Slowpoke), so AIEnemyActsFirstWith is true for BOTH moves, both earn AI_KILL_FIRST, and the bigger move correctly wins on the best-expected-damage nudge plus its own rider. Priority is only worth something when it actually changes who moves first. Confirmed via layer_trace: DAMAGE delta [-9,-10,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SLOWPOKE",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "QUICK_ATTACK",
+            "BODY_SLAM"
+          ]
+        }
+      ],
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 12
+        }
+      ],
+      "expect": {
+        "scores": [
+          11,
+          8,
+          20,
+          20
+        ],
+        "pick_slot": 1
       }
     }
   ]

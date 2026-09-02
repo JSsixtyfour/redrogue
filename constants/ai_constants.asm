@@ -90,6 +90,33 @@ DEF AI_HEAVY       EQU 10 ; pokecrystal's AIDiscourageMove: a big penalty, but
 ; strength of a KO it would not actually land.
 DEF AI_KILL        EQU 5
 
+; F16 (2026-09-02): a lethal move that ALSO ACTS FIRST. When two moves both
+; kill, raw damage is the wrong tiebreak - turn order is, because the bigger one
+; is worthless if the player moves first and wins the exchange.
+;
+; The size is derived, not picked. It has to beat everything a competing
+; NON-priority kill can accumulate on the same board:
+;     AI_KILL (5) + AI_DAMAGE's own best-expected-damage nudge (1)
+;                 + AI_SMART's largest secondary-effect rider bonus (3)  = 9
+; so 9 ties the theoretical worst case and beats every case observed in
+; practice. The one that motivated it, measured before this constant existed:
+; Quick Attack scored 7 against Body Slam's 8 (kill 5 + best-damage 1 + that
+; move's own paralysis rider 2), so the AI took Body Slam, moved second, and
+; lost a won game.
+;
+; KNOWN LIMIT, deliberately accepted rather than inflated away: against a
+; competing kill carrying the very largest rider bonus AND the best-damage
+; nudge, this TIES rather than wins. Raising it further would push past
+; AI_HEAVY (10) and start competing with the "this move does literally nothing"
+; saturation tier, which is a worse trade. The real fix for that last case is
+; that a status rider on a move which KOs is worth nothing at all and
+; AI_SMART should not be paying for it - see follow-up F22.
+;
+; Still below AI_HEAVY, and AI_PLAN_MAX_MAGNITUDE is defined against AI_KILL
+; rather than against this, so the "a plan can never out-encourage a kill"
+; invariant is unaffected.
+DEF AI_KILL_FIRST  EQU AI_KILL + 4
+
 ; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
 ; for the "this move does literally nothing" case. Deliberately expressed as a
 ; computation, not a literal, so it stays correct if the baseline moves again.
