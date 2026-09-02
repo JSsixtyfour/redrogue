@@ -594,6 +594,15 @@ class RedRogueHarness:
                 "FIGHT 2 did not reach the live battle loop: "
                 f"{json.dumps(self.diagnostic_state(), sort_keys=True)}"
             )
+        # Leave the CPU somewhere safe to interrupt. The loop above stops on a
+        # hook firing, so without this the resume point is whatever instruction
+        # the frame boundary happened to land on - see park_before_hijack for the
+        # measured case where that difference alone turned three passing tests
+        # into a runaway RST 38. Parking HERE rather than only inside
+        # call_routine matters for tests that save_state right after booting and
+        # replay it: their baseline then already holds a safe PC, so restoring it
+        # needs no extra ticking that would advance past what they measure.
+        self.park_before_hijack()
 
     def boot_to_lobby(self, battle_count: int = 11, ai_tier: int | None = None) -> None:
         if ai_tier is not None and not 0 <= ai_tier <= 3:
@@ -725,8 +734,55 @@ class RedRogueHarness:
         address = self.address("wEventFlags") + event // 8
         return bool(self.pyboy.memory[address] & (1 << (event % 8)))
 
+    def park_before_hijack(self, limit: int = 240) -> None:
+        """Advance until the CPU is somewhere safe to overwrite PC.
+
+        call_routine and probe_routine_until both hijack PC from wherever the
+        previous helper happened to stop ticking. That is only safe if the CPU
+        is parked at a quiescent boundary. PyBoy's tick() returns at a frame
+        boundary, which USUALLY lands inside the VBlank handler - and every
+        existing usage silently depended on that coincidence.
+
+        It is only a coincidence. Measured 2026-09-01: an AISelectSendOut change
+        that reached the battle loop 17 frames earlier moved boot_fight2's resume
+        point from VBlank.ok+$22 to LoadFrontSpriteByMonIndex+$2 - ordinary main
+        loop code, mid-routine, with a live stack frame and a ROM bank it had
+        switched to itself. Hijacking PC there and running an unrelated routine
+        destroyed the state it resumed into: the three test_laundry_scope tests
+        died in a runaway RST 38 with SP walking down into VRAM. The ROM was
+        provably innocent - identical party, identical lead, identical
+        species/level/HP, and zero symbols changed bank.
+
+        Interrupting the VBlank handler is safe because the code it interrupted
+        is itself at a clean instruction boundary waiting for the frame, and the
+        handler saves and restores everything it touches. So park there.
+        """
+        start = self.address("VBlank")
+        end = self.address("DelayFrame")
+        if not start < end:
+            raise AssertionError(
+                "VBlank/DelayFrame are no longer adjacent in HOME; "
+                "park_before_hijack needs a new way to bound the handler"
+            )
+        for _ in range(limit):
+            if start <= self.pyboy.register_file.PC < end:
+                return
+            self.tick(1)
+        raise AssertionError(
+            f"CPU never parked inside the VBlank handler "
+            f"(${start:04x}-${end - 1:04x}) within {limit} frames; "
+            f"last PC=${self.pyboy.register_file.PC:04x}"
+        )
+
     def call_routine(self, label: str, limit: int = 12000) -> None:
-        """Call a ROM routine through the engine's bank trampoline."""
+        """Call a ROM routine through the engine's bank trampoline.
+
+        PRECONDITION: the CPU must already be parked somewhere safe to
+        interrupt - see park_before_hijack. The boot helpers do this for you.
+        Deliberately NOT called here: park_before_hijack ticks, and a test that
+        has set up an exact machine state immediately before calling a routine
+        must not have time advanced underneath it.
+        """
         bank, address = self.symbols.get(label)
         register_names = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
         saved_registers = {

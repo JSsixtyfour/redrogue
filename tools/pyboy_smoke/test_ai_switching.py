@@ -117,9 +117,26 @@ class AISelectSendOutTest(unittest.TestCase):
         # The trainer's opening mon is chosen before the player's battle-mon
         # block is loaded, so it cannot prove matchup-aware replacement. Start
         # a real later EnemySendOut with the player type now authoritative.
+        #
+        # 2026-09-01: that same fact is now handled in the engine rather than
+        # only worked around here. AISelectSendOut takes the FIRST LIVING mon on
+        # the opening send-out (wEnemyMonPartyPos is $ff only at that moment) and
+        # scores candidates only for later replacements, because ranking the lead
+        # against the player's team is information a trainer does not have - and
+        # it was reading a stale wBattleMonType1 from the PREVIOUS battle anyway.
+        # See pending_contracts.json:phase4-opening-sendout-player-type-context.
+        # So previous_slot below is now 0 (party order) rather than 2 (the old
+        # scored pick). The assertions this test actually exists for -
+        # ranked_slot and selected_slot on a real replacement - are unchanged.
+        #
+        # Faint ONLY the active mon. This used to also faint party slot 2,
+        # which worked when the scored opening pick happened to make slot 2
+        # active - with party-order leads that instead leaves a single eligible
+        # candidate and proves nothing about ranking. Against BLASTOISE (Water)
+        # the remaining two candidates are genuinely different: GEODUDE
+        # (Rock/Ground, 4x = 80) and GENGAR (Ghost/Poison, 1x = 20), and lower
+        # is better, so a correct ranking must choose GENGAR.
         send_outs.clear()
-        self.harness.write8("wEnemyMon3HP", 0)
-        self.harness.write8("wEnemyMon3HP", 0, offset=1)
         self.harness.write8("wEnemyMonHP", 0)
         self.harness.write8("wEnemyMonHP", 0, offset=1)
         self.harness.probe_routine_until(
@@ -130,10 +147,10 @@ class AISelectSendOutTest(unittest.TestCase):
 
         self.assertTrue(send_outs)
         first = send_outs[0]
-        self.assertEqual(first["previous_slot"], 2)
-        self.assertEqual(first["best_score"], 40, first)
-        self.assertEqual(first["ranked_slot"], 0)
-        self.assertEqual(first["selected_slot"], 0)
+        self.assertEqual(first["previous_slot"], 0)
+        self.assertEqual(first["best_score"], 20, first)
+        self.assertEqual(first["ranked_slot"], 2)
+        self.assertEqual(first["selected_slot"], 2)
 
 
 if __name__ == "__main__":
