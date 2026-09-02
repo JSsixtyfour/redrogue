@@ -568,14 +568,23 @@ LoadSGB:
 	xor a
 	ld [wOnSGB], a
 	call CheckSGB
-	ret nc
+	jr c, .setFlag
+; Not an SGB. shinpokered's LoadSGB still raises wOnSGB when running on colour
+; hardware ("if on gbc, set SGB flag but skip all the SGB vram stuff"), because
+; wOnSGB is what gates the colour path in RunPaletteCommand and in eight other
+; consumers - mon_icons (party menu sprites), slot_machine, trade, hall of fame,
+; player_animations and three battle animation sites. This used to `ret nc`
+; here, so a real CGB left the flag at 0 and every one of those took the DMG
+; branch. Falling through keeps us byte-faithful to the reference.
+	ld a, [wOnCGB]
+	and a
+	ret z
+.setFlag
 	ld a, 1
 	ld [wOnSGB], a
 	ld a, [wOnCGB]
 	and a
-	jr z, .notCGB
-	ret
-.notCGB
+	ret nz ; on CGB, skip all the SGB VRAM work below
 	di
 	call PrepareSuperNintendoVRAMTransfer
 	ei

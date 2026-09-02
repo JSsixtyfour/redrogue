@@ -5,8 +5,30 @@ RestoreScreenTilesAndReloadTilePatterns::
 	call ReloadMapSpriteTilePatterns
 	call LoadScreenTilesFromBuffer2
 	call LoadTextBoxTilePatterns
-	call RunDefaultPaletteCommand
-	jr Delay3
+	; Reveal AFTER the bg map has finished transferring, not before it.
+	;
+	; LoadScreenTilesFromBuffer2 above only refills wTileMap; that reaches VRAM
+	; in thirds over the next three frames, which is exactly what Delay3 waits
+	; for. Meanwhile ReloadMapSpriteTilePatterns and LoadTextBoxTilePatterns have
+	; already swapped the VRAM tile patterns, so during those three frames the
+	; visible bg map still holds the OUTGOING screen's tile IDs drawn with the
+	; INCOMING screen's patterns. Party-menu HP bars render as "CLLLLLLL".
+	;
+	; Vanilla got away with running the palette command first because on DMG the
+	; white-out left rBGP at $00 and the command translated through it, so the
+	; screen stayed white either way. That no longer holds here: on CGB this
+	; command reaches LoadEnhancedOverworldPaletteCommand, which deliberately
+	; rewrites rBGP from FadePal4 and writes real colours straight into palette
+	; RAM (see func_enhancedcolor.asm, the "Oak's final fade" comment). Palette
+	; RAM is what the hardware draws from, so that defeats the white-out and the
+	; three-frame window becomes visible.
+	;
+	; Verified in BGB: at this call BGP0-3 read 7FFF/7FFF/7FFF/7FFF, and by the
+	; time LoadGBPal is reached they read 7FFF/015F/0015/0C63 etc. Deferring the
+	; reveal past Delay3 keeps the window hidden. Same shape as the reorder in
+	; CloseTextDisplay: finish the redraw, then show it.
+	call Delay3
+	jp RunDefaultPaletteCommand
 
 GBPalWhiteOutWithDelay3::
 	call GBPalWhiteOut

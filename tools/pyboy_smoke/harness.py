@@ -753,9 +753,11 @@ class RedRogueHarness:
         provably innocent - identical party, identical lead, identical
         species/level/HP, and zero symbols changed bank.
 
-        Interrupting the VBlank handler is safe because the code it interrupted
-        is itself at a clean instruction boundary waiting for the frame, and the
-        handler saves and restores everything it touches. So park there.
+        Interrupting the VBlank handler is safe for the interrupted stack and
+        bank context because it saves/restores its registers and ROM bank.
+        It is NOT a general gameplay context: IME is disabled during interrupt
+        service. A hijacked routine must not wait for a frame/VBlank or require
+        interrupts to run. Use a real integration path for such routines.
         """
         start = self.address("VBlank")
         end = self.address("DelayFrame")
@@ -782,6 +784,10 @@ class RedRogueHarness:
         Deliberately NOT called here: park_before_hijack ticks, and a test that
         has set up an exact machine state immediately before calling a routine
         must not have time advanced underneath it.
+
+        The injected routine must not wait for VBlank/a frame or otherwise
+        require interrupts: the defined parking boundary is inside VBlank and
+        therefore runs with interrupt servicing unavailable.
         """
         bank, address = self.symbols.get(label)
         register_names = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
@@ -818,7 +824,12 @@ class RedRogueHarness:
             self.pyboy.hook_deregister(return_bank, return_address)
 
     def probe_routine_until(self, label: str, predicate, limit: int = 12000) -> None:
-        """Enter a real routine path, capture a seam, then restore emulator state."""
+        """Enter a non-waiting routine path, capture a seam, and restore state.
+
+        PRECONDITION: call park_before_hijack(), then apply exact machine-state
+        writes without ticking. Like call_routine, the probed path must not wait
+        for VBlank/a frame or otherwise require interrupts.
+        """
         baseline = io.BytesIO()
         self.save_state(baseline)
         bank, address = self.symbols.get(label)

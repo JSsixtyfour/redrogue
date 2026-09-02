@@ -9,7 +9,7 @@ CONTRACTS_PATH = Path(__file__).with_name("pending_contracts.json")
 REQUIRED_FIELDS = {
     "id", "status", "scope", "observation", "decision_needed", "test_boundary"
 }
-ALLOWED_STATUSES = {"pending", "design_review", "blocked"}
+ALLOWED_STATUSES = {"pending", "design_review", "blocked", "resolved"}
 
 
 class PendingContractRegistryTest(unittest.TestCase):
