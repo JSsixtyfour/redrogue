@@ -3315,6 +3315,322 @@
           20
         ]
       }
+    },
+    {
+      "name": "parafusion_confuse_encouraged_vs_paralysed",
+      "phase": "6",
+      "heuristic": "parafusion",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F19. Confuse Ray against an already-PARALYSED target. Paralysis is a 25% full-stop and confusion a 50% self-hit on the turns that get through, so together the target does nothing 62.5% of the time - the strongest non-sleep lockdown in Gen 1, previously unrepresented. Verified legal before writing: paralysis is a major status (wBattleMonStatus) and confusion is volatile (wPlayerBattleStatus1), so they are independent, and AIRedundant_ConfusionEffect only blocks on the CONFUSED bit. Confirmed via layer_trace: SMART delta [-2,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "CONFUSE_RAY",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 64
+      },
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "parafusion_confuse_neutral_vs_unparalysed",
+      "phase": "6",
+      "heuristic": "parafusion",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board with the target unstatused and at full HP. No parafusion bonus, and the pre-existing low-HP discourage does not fire either (target is above half), so the handler correctly contributes nothing - confirmed via layer_trace: every layer's delta is [0,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "CONFUSE_RAY",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "parafusion_paralyse_encouraged_vs_confused",
+      "phase": "6",
+      "heuristic": "parafusion_mirror",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "The mirror ordering of F19: Thunder Wave against an already-CONFUSED target, worth the same 62.5% lockdown. This handler only ever sees a legal Thunder Wave - AIRedundant_Paralyze has already saturated the move if the target carries any major status or is Ground-type, and confusion is not a major status. Confirmed via layer_trace: SMART delta [-2,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "THUNDER_WAVE",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wPlayerBattleStatus1": 128
+      },
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "parafusion_paralyse_neutral_vs_unconfused",
+      "phase": "6",
+      "heuristic": "parafusion_mirror",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same board with the target unconfused and above quarter HP, so neither the parafusion bonus nor the pre-existing low-HP discourage fires - confirmed via layer_trace: every layer's delta is [0,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "GENGAR",
+          "level": 50,
+          "moves": [
+            "THUNDER_WAVE",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "flinch_bonus_vs_paralysed_target",
+      "phase": "6",
+      "heuristic": "flinch_para_bonus",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F20, the Snorlax line (Body Slam to fish for paralysis, then Headbutt). Headbutt (FLINCH_SIDE_EFFECT2, 30%) against a PARALYSED target: the two lockouts compound to 0.25 + 0.75 * 0.30 = 47.5% of turns where the target does nothing. Confirmed via layer_trace: SMART delta [-3,0,0,0] (AI_STRONG base for the 30% rate, +1 for paralysis), with AI_DAMAGE's own -1 present in both cases of this pair. Note the SEQUENCE needs no extra code - Body Slam earns its own rider bonus from AISmart_BurnFreezeParaSide, and once paralysis lands this handler starts preferring the flincher.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "HEADBUTT",
+            "MIST"
+          ]
+        }
+      ],
+      "prime": {
+        "wBattleMonStatus": 64
+      },
+      "expect": {
+        "scores": [
+          16,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "flinch_no_bonus_vs_unparalysed_target",
+      "phase": "6",
+      "heuristic": "flinch_para_bonus",
+      "case": "negative",
+      "tags": [
+        "ai_smart",
+        "status_stacking"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "note": "Same Headbutt board with the target unstatused: the 30% proc-rate base still applies but the paralysis bonus does not - confirmed via layer_trace: SMART delta [-2,0,0,0] rather than the paired positive case's [-3,0,0,0].",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "HEADBUTT",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          17,
+          20,
+          20,
+          20
+        ]
+      }
+    },
+    {
+      "name": "flinch_proc_rate_splits_10pct_from_30pct",
+      "phase": "6",
+      "heuristic": "flinch_proc_rate",
+      "case": "positive",
+      "tags": [
+        "ai_smart",
+        "regression"
+      ],
+      "required_cases": [
+        "positive"
+      ],
+      "note": "AI_OVERHAUL_PLAN.md follow-up F20's other half. Bite is FLINCH_SIDE_EFFECT1 (10%, per FlinchSideEffect in effects.asm) where Headbutt is FLINCH_SIDE_EFFECT2 (30%), and AISmart_FlinchSide used to give both a flat AI_NUDGE - so Bite scored identically to a move with three times its rate. It now scales by real proc rate, matching what AISmart_BurnFreezeParaSide directly above it already did. Confirmed via layer_trace: SMART delta [-1,0,0,0] here (AI_NUDGE) against flinch_no_bonus_vs_unparalysed_target's [-2,0,0,0] (AI_STRONG) on the otherwise identical board.",
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "ELECTRODE",
+          "level": 50,
+          "moves": [
+            "BITE",
+            "MIST"
+          ]
+        }
+      ],
+      "expect": {
+        "scores": [
+          18,
+          20,
+          20,
+          20
+        ]
+      }
     }
   ]
 }

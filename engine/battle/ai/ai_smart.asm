@@ -419,11 +419,25 @@ AISmart_DrainHP:
 ; Thunder Wave on a target that is about to faint anyway wastes a turn that
 ; could have been a hit - only relevant once AI_Redundant's Ground/already-
 ; statused eliminations have passed. Source: pokecrystal AI_Smart_Paralyze.
+; PARAFUSION, the mirror direction (follow-up F19, 2026-09-02): paralysing an
+; already CONFUSED target is worth the same 62.5% lockdown as the reverse
+; ordering - see AISmart_Confusion's header for the arithmetic and the
+; engine-truth check. This handler only ever sees a legal Thunder Wave:
+; AIRedundant_Paralyze has already saturated the move if the target carries ANY
+; major status (including paralysis itself) or is Ground-type, and confusion is
+; not a major status, so a confused-but-unstatused target arrives here intact.
 AISmart_Paralyze:
+	ld a, [wPlayerBattleStatus1]
+	bit CONFUSED, a
+	jr nz, .parafusion
 	call AIPlayerHPBelowQuarter
 	jr nc, .noChange
 	ld a, AI_NUDGE
 	and a
+	ret
+.parafusion
+	ld a, AI_STRONG
+	scf
 	ret
 .noChange
 	xor a
@@ -614,11 +628,33 @@ AISmart_Haze:
 ; low, since a confused-but-alive target might get to act (self-hit chance is
 ; not a guaranteed lockout) where a KO ends the exchange outright. Source:
 ; pokecrystal AI_Smart_Confuse.
+; PARAFUSION, follow-up F19 (2026-09-02): confusing an ALREADY PARALYSED target
+; is one of the strongest lockdowns in Gen 1 and had no representation here.
+; Paralysis is a 25% full-stop, confusion a 50% self-hit on the turns that get
+; through, so together the target does nothing 0.25 + 0.75 * 0.50 = 62.5% of
+; the time. Verified legal in this engine before writing: paralysis lives in
+; wBattleMonStatus (major status) and confusion in wPlayerBattleStatus1
+; (volatile), so they are independent, and AIRedundant_ConfusionEffect only
+; blocks on the CONFUSED bit - never on a major status - so Confuse Ray into a
+; paralysed target reaches this handler normally.
+;
+; Checked BEFORE the low-HP discourage below on purpose: a paralysed target is
+; worth locking down even at moderate HP, and the case where it should NOT be
+; (target nearly dead, just kill it) is already handled better elsewhere -
+; AI_DAMAGE applies AI_KILL (5) to a lethal move, which outweighs the AI_STRONG
+; (2) applied here.
 AISmart_Confusion:
+	ld a, [wBattleMonStatus]
+	and 1 << PAR
+	jr nz, .parafusion
 	call AIPlayerHPBelowHalf
 	jr nc, .noChange
 	ld a, AI_NUDGE
 	and a
+	ret
+.parafusion
+	ld a, AI_STRONG
+	scf
 	ret
 .noChange
 	xor a
@@ -758,12 +794,50 @@ AISmart_ConfusionSide:
 ; landing it after the target has already moved does nothing. Rated on top of
 ; AIEnemyActsFirstWith rather than AIEnemyIsFaster for the same reason
 ; ai_threat.asm uses it: Quick Attack and Counter override raw Speed.
+; PARA-FLINCH, follow-up F20 (2026-09-02). Two changes, both additive to the
+; existing acts-first gate:
+;
+; 1. PROC RATE now sets the base magnitude. FlinchSideEffect (effects.asm:920)
+;    rolls 10% for FLINCH_SIDE_EFFECT1 (Bite, Bone Club, Hyper Fang) and 30%
+;    otherwise (Stomp, Rolling Kick, Headbutt, Low Kick), and this handler used
+;    to give both a flat AI_NUDGE - so Bite scored identically to Headbutt at
+;    three times the rate. AISmart_BurnFreezeParaSide directly above already
+;    scales by real proc rate; this brings flinch in line with it.
+;
+; 2. PARALYSED TARGETS earn one extra point, because the two effects compound
+;    into a near-lockout: 0.25 (full para) + 0.75 * 0.30 (flinch) = 47.5% of
+;    turns the target does nothing at all. This is the Snorlax line - Body Slam
+;    to fish for paralysis, then Headbutt - and note the SEQUENCE needs no extra
+;    code: Body Slam earns its own rider bonus from AISmart_BurnFreezeParaSide,
+;    and once paralysis lands this handler starts preferring the flincher.
+;
+; The acts-first gate is unchanged and load-bearing: a flinch does nothing at
+; all if the target has already moved. It is deliberately a WITHHELD BONUS
+; rather than a penalty - the move still deals its damage, and discouraging a
+; perfectly good 70-power attack over a dead rider is exactly the mistake Phase
+; 3 Step 3 removed from AIRedundant_PoisonSide/AIRedundant_BurnFreezeParaSide.
+; Worth knowing: the gate also picks up the speed half of para-flinch for free,
+; because AIEnemyIsFaster reads the LIVE wBattleMonSpeed, which
+; QuarterSpeedDueToParalysis has already destructively quartered.
 AISmart_FlinchSide:
 	call AIRedundantTargetHasSubstitute
 	jr nz, .noChange
 	call AIEnemyActsFirstWith
 	jr nc, .noChange
-	ld a, AI_NUDGE
+	ld a, [wEnemyMoveEffect]
+	cp FLINCH_SIDE_EFFECT1
+	ld a, AI_NUDGE ; 10% flinchers. `ld a, n` sets no flags, so the cp above is
+	               ; still what the jr below tests
+	jr z, .gotBase
+	ld a, AI_STRONG ; 30% flinchers
+.gotBase
+	ld b, a
+	ld a, [wBattleMonStatus]
+	and 1 << PAR
+	ld a, b ; LD does not touch flags, so the and's z result survives this
+	jr z, .apply
+	inc a ; paralysed target: the two lockouts compound
+.apply
 	scf
 	ret
 .noChange
