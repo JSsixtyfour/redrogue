@@ -348,8 +348,27 @@ StatusScreen2MoveCursor:
 	pop bc ; b = new row offset again
 
 	ld a, b
+	push af ; stash the new row offset before b is overwritten below
 	ld b, '▷' ; same cursor glyph as extra_options.asm ($ec)
 	call StatusScreen2SetCursorGlyph ; set the new row's glyph
+
+	; D-5 live info strip: the window did not scroll, so the per-row move
+	; id cache from the last full render (StatusScreen2DrawLevelUp/TMHM/
+	; Tutor's own tail - see their shared comment) is still accurate for
+	; every visible row, including this one - no need to re-walk the record
+	; just to find "what's under the new cursor."
+	pop af ; a = new row offset
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [hl]
+	call LearndexDrawInfoStrip
+
 	pop de ; restore (new cursor, view) for the caller
 	ret
 .scrolled
@@ -537,7 +556,9 @@ DEF LEARNDEX_MAX_ENTRIES  EQU 30 ; defensive walk cap, NOT a real limit -
                                   ; entries (VaporeonEvosMoves); this only
                                   ; guards a corrupted/malformed record from
                                   ; ever running the walk off into the weeds
-DEF LEARNDEX_VISIBLE_ROWS EQU 8
+DEF LEARNDEX_VISIBLE_ROWS EQU 7 ; row 16 (the 8th interior row) is the D-5
+                                  ; live info strip, not a list row - see
+                                  ; LearndexDrawInfoStrip below
 
 ; Input: a = cursor, b = N (total entry count).
 ; Output: a = window_top = clamp(cursor - 7, 0, max(0, N - 8)).
@@ -583,7 +604,6 @@ LearndexRowAddress:
 	dwcoord 1, 13
 	dwcoord 1, 14
 	dwcoord 1, 15
-	dwcoord 1, 16
 
 ; Input: a = row offset (0-7), b = glyph char (' ' or the cursor glyph).
 ; Writes just that one tile - used by StatusScreen2MoveCursor to flip the
@@ -594,6 +614,121 @@ StatusScreen2SetCursorGlyph:
 	call LearndexRowAddress
 	ld a, b
 	ld [hl], a
+	ret
+
+; D-5 option B: a live info strip on row 16 (the row LEARNDEX_VISIBLE_ROWS'
+; shrink to 7 reclaimed from the list), answering "is this move any good"
+; for whatever the cursor is on - TYPE, POWER, and ACCURACY, the same fields
+; engine/battle/move_info.asm shows in battle, but for a move the mon does
+; not know yet (which move_info.asm never has to handle).
+; Input: a = move id (0 = no move selected - e.g. an empty list; blanks the
+; strip and returns).
+; Clobbers af, bc, de, hl.
+LearndexDrawInfoStrip:
+	push af
+	hlcoord 1, 16
+	lb bc, 1, 18
+	call ClearScreenArea
+	pop af
+	and a
+	ret z
+
+	; Gather power/type/accuracy into wMoveBuffer + 80.. (past both the
+	; 64-byte record-copy region and the per-row move id cache at +64..+70 -
+	; see each view's own RenderEntryIfVisible) before any PlaceString/
+	; PrintNumber call, which would clobber hl/bc mid-walk otherwise.
+	;
+	; Moves lives in bank $0E (data/moves/moves.asm), not this file's bank
+	; $2C - AddNTimes itself is pure arithmetic (safe regardless of the
+	; current bank), but the actual byte read MUST go through FarCopyData
+	; with BANK(Moves), not a plain [hl] read: this file's own bank is
+	; mapped at $4000-$7FFF while it runs, so a raw [hl] here would silently
+	; read bank $2C's bytes at that address instead of the real move data -
+	; exactly the cross-bank read bug class this project hits repeatedly
+	; elsewhere (e.g. LearndexLoadRecord's own EvosMovesPointerTable read,
+	; which already goes through FarCopyData for the same reason).
+	dec a
+	ld hl, Moves
+	ld bc, MOVE_LENGTH
+	call AddNTimes ; hl -> this move's Moves entry (anim,effect,power,type,acc,pp)
+	inc hl
+	inc hl ; skip animation, effect - hl -> power
+	ld de, wMoveBuffer + 80
+	ld bc, 3 ; power, type, accuracy - contiguous in the Moves entry
+	ld a, BANK(Moves)
+	call FarCopyData
+
+	; type name, columns 1-8. TypeNames (both its pointer table and the
+	; string data itself) lives in bank $09, not this file's bank $2C, and
+	; PrintType/PrintType_ live there too - reaching them is harder than the
+	; usual farcall covers: PrintType's own contract takes its destination
+	; in hl via `push hl / jr PrintType_` -> `pop hl`, which only works for
+	; a same-bank `call PrintType` (nothing else on the stack in between).
+	; farcall's macro clobbers hl for its own jump vector and Bankswitch
+	; inserts its own return frame before the target runs, so a farcall
+	; would make PrintType_'s pop hl retrieve Bankswitch's bookkeeping
+	; instead of the destination. And switching rROMB by hand from inside
+	; this ROMX bank doesn't work either - the CPU is still fetching this
+	; same code from the region that write just remapped, so the very next
+	; instruction fetch reads bank $09's bytes instead of this routine's own
+	; (this was tried and confirmed to crash exactly this way; see project
+	; memory: never inline a rROMB write in code executing from ROMX).
+	;
+	; So: skip PrintType entirely and read the string directly via
+	; FarCopyData (a HOME routine, safe to call from ROMX), the same
+	; "cross-bank pointer, then dereference it" pattern
+	; LearndexPrepareTutorWalk already uses for EvosMovesPointerTable. A
+	; fixed 9-byte copy (8 chars + '@') covers the longest real type name
+	; (FIGHTING/ELECTRIC); PlaceString stops at the first '@' regardless of
+	; what follows, so a shorter name just leaves harmless trailing bytes.
+	ld a, [wMoveBuffer + 81] ; a = type
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, TypeNames
+	add hl, bc ; hl -> TypeNames[type], a 2-byte pointer entry (bank $09)
+	ld de, wMoveBuffer + 84
+	ld bc, 2
+	ld a, BANK(TypeNames)
+	call FarCopyData ; wMoveBuffer+84/85 = the type name string's ROM address
+	ld a, [wMoveBuffer + 84]
+	ld l, a
+	ld a, [wMoveBuffer + 85]
+	ld h, a ; hl = the string's ROM address (bank $09)
+	ld de, wMoveBuffer + 86
+	ld bc, 9
+	ld a, BANK(TypeNames)
+	call FarCopyData
+	hlcoord 1, 16
+	ld de, wMoveBuffer + 86
+	call PlaceString
+
+	; power, "Pxxx" at columns 10-13 (right-aligned, space-padded - same
+	; PrintNumber convention as move_info.asm's own power field)
+	hlcoord 10, 16
+	ld a, 'P'
+	ld [hli], a
+	ld de, wMoveBuffer + 80
+	lb bc, 1, 3
+	call PrintNumber
+
+	; accuracy, "Axxx" at columns 15-18, converted from the 0-255 scale to a
+	; percentage - the exact formula move_info.asm uses for its own accuracy
+	; field (100% = 255; add 255 before dividing to round acc*100/256)
+	ld a, [wMoveBuffer + 82]
+	ld c, a
+	ld b, 0
+	ld hl, 255
+	ld a, 100
+	call AddNTimes
+	ld a, h
+	ld [wMoveBuffer + 83], a
+	hlcoord 15, 16
+	ld a, 'A'
+	ld [hli], a
+	ld de, wMoveBuffer + 83
+	lb bc, 1, 3
+	call PrintNumber
 	ret
 
 ; Copies the current species' evos_moves record into wMoveBuffer.
@@ -948,6 +1083,9 @@ StatusScreen2DrawTMHM:
 	ld a, d
 	call LearndexComputeWindowTop ; a = window_top; b (N) preserved
 	ld e, a ; e = window_top. d is untouched and still holds the cursor.
+	push bc ; stash N (b) - the render loop below reuses b as the running
+	        ; absolute learnable index, so N would not survive to the
+	        ; info-strip draw at the end otherwise. Popped back there.
 
 	ld b, 0 ; b = absolute learnable index (N is no longer needed)
 	ld c, 0 ; c = raw TM/HM slot index 0..NUM_TM_HM-1
@@ -963,7 +1101,27 @@ StatusScreen2DrawTMHM:
 	ld a, c
 	cp NUM_TM_HM
 	jr nz, .renderLoop
-	ret
+
+	pop bc ; b = N again
+	; D-5 live info strip for whatever's under the cursor.
+	ld a, b
+	and a
+	jr z, .infoStripEmpty
+	ld a, d
+	sub e ; a = cursor's row offset within the (already-rendered) window
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [hl]
+	jp LearndexDrawInfoStrip ; tail call
+.infoStripEmpty
+	xor a
+	jp LearndexDrawInfoStrip ; tail call
 
 ; Input: a = 0-based TM/HM slot index (0..NUM_TM_HM-1), b = absolute
 ; learnable index, c = the same slot index (re-stashed on entry - the outer
@@ -981,8 +1139,17 @@ StatusScreen2DrawTMHM:
 	sub e
 	jr c, .done ; b < window_top
 	cp LEARNDEX_VISIBLE_ROWS
-	jr nc, .done ; b >= window_top + 8
-	; a = row offset 0-7
+	jr nc, .done ; b >= window_top + 7
+	; a = row offset 0-6
+
+	; Stash the row offset for the D-5 cache write near the end of this
+	; function (once TMToMove has resolved the actual move id) - unlike
+	; LevelUp/Tutor's RenderEntryIfVisible, the move id here is not known
+	; yet, and b/c/d/e are all still live between here and there (glyph
+	; index, slot index, cursor, window_top), leaving no spare register to
+	; carry it in. wMoveNum is free here: this function's own use of it
+	; (if any) is scoped entirely within this one call, same as LevelUp's.
+	ld [wMoveNum], a
 
 	; Decide the cursor glyph now, while d still holds the real cursor - the
 	; row-address lookup below overwrites de, so this must happen first.
@@ -1081,7 +1248,26 @@ StatusScreen2DrawTMHM:
 	farcall TMToMove ; [wTempTMHM] (already staged above) becomes the move id
 	ld a, [wTempTMHM]
 	ld [wNamedObjectIndex], a
+	pop hl ; hl = this row's write cursor, restored
+
+	; D-5 cache write, now that the move id is finally known - see this
+	; row's earlier "stash the row offset" comment for why it waited until
+	; here. hl (the row write cursor) is saved/restored around this so the
+	; GetMoveName/PlaceString call below still gets the right destination.
+	push hl
+	ld a, [wMoveNum] ; a = row offset, stashed earlier in this call
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [wNamedObjectIndex] ; the move id, just staged above
+	ld [hl], a
 	pop hl
+
 	call GetMoveName ; de = wNameBuffer, preserves hl
 	call PlaceString ; columns 7.. up to 12 chars, '@'-terminated
 
@@ -1109,6 +1295,11 @@ StatusScreen2DrawLevelUp:
 	ld a, d
 	call LearndexComputeWindowTop ; a = window_top; b (N) preserved
 	ld e, a ; e = window_top. d is untouched and still holds the cursor.
+	push bc ; stash N (b) - the render loop below reuses b for each entry's
+	        ; level, so N would not survive to the info-strip draw at the end
+	        ; otherwise. Popped back there; a plain, locally-balanced nested
+	        ; push/pop, safe regardless of what StatusScreen2DrawContent's
+	        ; own dispatch put on the stack for this function's return.
 
 	ld c, 0 ; c = running absolute index
 .learnsetRenderLoop
@@ -1149,7 +1340,27 @@ StatusScreen2DrawLevelUp:
 	inc c
 	jr .hMovesRenderLoop
 .hMovesRenderDone
-	ret
+	pop bc ; b = N again
+
+	; D-5 live info strip for whatever's under the cursor.
+	ld a, b
+	and a
+	jr z, .infoStripEmpty
+	ld a, d
+	sub e ; a = cursor's row offset within the (already-rendered) window
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [hl]
+	jp LearndexDrawInfoStrip ; tail call - its own ret returns to our caller
+.infoStripEmpty
+	xor a
+	jp LearndexDrawInfoStrip ; tail call
 
 ; Input: b = level, a = move id, c = absolute index, e = window_top,
 ; d = cursor. Prints the row (cursor glyph, <LV> tile, 2-digit level, move
@@ -1176,12 +1387,29 @@ StatusScreen2DrawLevelUp:
 	sub e
 	jr c, .done ; c < window_top
 	cp LEARNDEX_VISIBLE_ROWS
-	jr nc, .done ; c >= window_top + 8
-	; a = row offset 0-7
+	jr nc, .done ; c >= window_top + 7
+	; a = row offset 0-6
+
+	push af
+	; Cache this row's move id at wMoveBuffer + LEARNDEX_RECORD_SIZE + offset
+	; (D-5's live info strip): StatusScreen2MoveCursor's cheap glyph-flip
+	; path moves the cursor without a full re-render, so it reads this cache
+	; instead of re-walking the record to find "what's under the new
+	; cursor." hl is not yet live in this function (LearndexRowAddress,
+	; the first thing that sets it, runs after this), so it is free to use.
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [wMoveNum] ; the move id, already stashed above
+	ld [hl], a
 
 	; Decide the cursor glyph now, while d still holds the real cursor - the
 	; row-address lookup below overwrites de, so this must happen first.
-	push af
 	ld a, c
 	cp d
 	ld b, ' '
@@ -1259,6 +1487,9 @@ StatusScreen2DrawTutor:
 	ld a, d
 	call LearndexComputeWindowTop ; a = window_top; b (N) preserved
 	ld e, a ; e = window_top. d is untouched and still holds the cursor.
+	push bc ; stash N (b) for the info-strip draw at .renderDone - nothing
+	        ; in this render loop reuses b, but keep the same pattern as
+	        ; LevelUp/TMHM for consistency and to not depend on that
 
 	ld c, 0 ; c = running absolute index
 .renderLoop
@@ -1278,9 +1509,32 @@ StatusScreen2DrawTutor:
 	inc c
 	jr .renderLoop
 .renderDone
-	ret
+	pop bc ; b = N again
+	; D-5 live info strip for whatever's under the cursor.
+	ld a, b
+	and a
+	jr z, .infoStripEmpty
+	ld a, d
+	sub e ; a = cursor's row offset within the (already-rendered) window
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [hl]
+	jp LearndexDrawInfoStrip ; tail call
+.infoStripEmpty
+	xor a
+	jp LearndexDrawInfoStrip ; tail call
 .noTutorBlock
-	ret
+	; No tutor block at all (48 of 190 species) - nothing was rendered, so
+	; there is nothing under the cursor either; blank the strip rather than
+	; leave a previous species'/view's stale cache showing.
+	xor a
+	jp LearndexDrawInfoStrip ; tail call
 
 ; Input: a = move id, c = absolute index, e = window_top, d = cursor.
 ; Prints the row (cursor glyph + move name - no level or number prefix; the
@@ -1300,8 +1554,27 @@ StatusScreen2DrawTutor:
 	sub e
 	jr c, .done ; c < window_top
 	cp LEARNDEX_VISIBLE_ROWS
-	jr nc, .done ; c >= window_top + 8
-	; a = row offset 0-7
+	jr nc, .done ; c >= window_top + 7
+	; a = row offset 0-6
+
+	; D-5 cache write, mirroring LevelUp's RenderEntryIfVisible - the move
+	; id is already in wNamedObjectIndex (stashed at function entry above),
+	; so unlike TMHM this can happen immediately, no wMoveNum stash needed.
+	; b/c/d/e are all still live (glyph decision, absolute index, cursor,
+	; window_top), so hl is the only free scratch, same reasoning as
+	; LevelUp's own comment.
+	ld l, a
+	ld h, 0
+	ld a, l
+	add LOW(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld l, a
+	ld a, h
+	adc HIGH(wMoveBuffer + LEARNDEX_RECORD_SIZE)
+	ld h, a
+	ld a, [wNamedObjectIndex]
+	ld [hl], a
+	ld a, c
+	sub e ; a = row offset again, for the block below
 
 	; Decide the cursor glyph now, while d still holds the real cursor -
 	; the row-address lookup below overwrites de, so this must happen first

@@ -1576,15 +1576,17 @@ BufferAllPokeyellowColorsGBC:
 
 .readwriteinc
 	ld [w2GBCColorControl], a
-	; All saved registers belong to the bank-2 stack. Switch to bank 1 only for
-	; the ROM/gamma calls, then return to bank 2 before restoring them.
+	; All saved registers belong to the bank-2 stack. .ReadMasterPals reads the
+	; base palette pointers out of w2GBCBasePalPointers, so it has to run with
+	; bank 2 still selected. Switch to bank 1 only for the gamma predef, then
+	; return to bank 2 before restoring them.
 	push bc
 	push de
 	push hl
-	ld c, a ; carry the color index into bank 1 without reading bank-2 WRAM there
+	ld c, a ; .ReadMasterPals reads the color index back out of c
+	call .ReadMasterPals	;get the color into DE
 	ld a, 1
 	ldh [rSVBK], a
-	call .ReadMasterPals	;get the color into DE
 	predef GBCGamma
 	ld a, 2
 	ldh [rSVBK], a
@@ -1600,45 +1602,48 @@ BufferAllPokeyellowColorsGBC:
 	ret
 
 .ReadMasterPals
-;first grab the correct base palette from GBCEnhancedOverworldPalettes
-;the offset of the correct pointer corresponds to double the value of bits 2, 3, and 4 of the wGBCColorControl value
+;first grab the correct base palette from wGBCBasePalPointers
+;the offset of the correct pointer corresponds to double the value of bits 2 and 3 of the wGBCColorControl value
+;
+; Red Rogue: verbatim port of shinpokered's
+; BufferAllPokeyellowColorsGBC.ReadMasterPals. What was here before was an
+; accidental copy of the ENHANCED routine's body, carrying two defects:
+;   1. it named GBCEnhancedOverworldPalettes, which lives in bank $2C, from
+;      this bank-$1C section. The label assembles fine but the [hl] reads ran
+;      with bank $1C mapped, so every colour was really unrelated bank-$1C
+;      bytes reinterpreted as RGB. That is why the fade tint changed between
+;      commits with no edits to the fade system.
+;   2. the caller clobbered a with its rSVBK write before calling in, so the
+;      palette index was always 0 and all four BG palettes came out identical.
 	push de ;need the value in DE for later because it holds the pal pattern like FadePal4 or something
 
-	and %00011100
+	and %00001100
 	rrca
 	rrca
 	ld de, $0000
-	add a
-	add a
-	add a
 	ld e, a
-
-	ld hl, GBCEnhancedOverworldPalettes
-	ld a, [hCurMap]
-	cp SEAFOAM_ISLANDS_1F
-	jr z, .isColdCavern
-	cp SEAFOAM_ISLANDS_B1F
-	jr c, .notColdCavern
-	cp SEAFOAM_ISLANDS_B4F + 1
-	jr nc, .notColdCavern
-.isColdCavern	
-	ld hl, GBCEnhancedOverworldPalettes_ColdCavern
-.notColdCavern
-
-	ld a, [wMapPalOffset]
-	cp 6
-	jr nz, .notdark
-	ld hl, GBCEnhancedOverworldPalettes_DarkCavern
-.notdark
-
+	ld hl, wGBCBasePalPointers
 	add hl, de
+	add hl, de
+
+;load the low byte of the pointer address
+	ld a, [hli]
+	ld e, a
+;load the high byte of the pointer address
+	ld a, [hli]
+	ld d, a
+;point HL to the base pal address
+	ld h, d
+	ld l, e
+
 	pop de ;get the pal pattern back
 	ld a, [de]
 	;now put the pattern in E and make D zero
 	ld d, 0
 	ld e, a
 
-; c carried the bank-2 color index into this bank-1 phase
+;need to look at the last two bits of wGBCColorControl to determine which hardware pal color is desired
+; c holds that index; reading w2GBCColorControl directly would work here too
 	ld a, c
 	and %00000011
 	jr z, .zero
