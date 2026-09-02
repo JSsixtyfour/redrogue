@@ -378,6 +378,113 @@ AIScaleDamageByAccuracy::
 	ld [wAIDamageEstimate + 1], a
 	ret
 
+; Scales wAIDamageEstimate by the move's EXPECTED critical-hit contribution:
+;
+;     expected = estimate + estimate * critThreshold / 256
+;
+; User request, 2026-09-01, and it answers the Slash-vs-Strength question
+; directly rather than special-casing guaranteed crits. Worked example, Persian
+; (base speed 115), verified against the real CalcCritRate arithmetic:
+;
+;   Slash    high-crit, threshold = baseSpeed * 4 -> capped 255 -> x1.996
+;            70 base power behaves like ~140
+;   Strength normal,    threshold = baseSpeed / 2 ->        57 -> x1.22
+;            80 base power behaves like ~98
+;
+; So Slash correctly outranks the nominally stronger move, with no move-specific
+; rule. The engine's crit math sanity-checks against Smogon too: Tauros (base
+; speed 110) gives 55/256 = 21.5%, the published figure.
+;
+; WHY THE TIER TESTS ARE ALLOWED TO SEE THIS, even though a 21% crit chance is
+; not a 21% larger hit: AIEstimateDamage already reports the MAXIMUM damage roll
+; on purpose, so every consumer in this AI is written against an optimistic
+; bound, not an average. Crit expectation is the same kind of optimism applied
+; consistently, and at the extreme - a guaranteed crit - it is exact rather than
+; optimistic. Introducing a second, separate "raw" value for the kill test would
+; buy accuracy the rest of the simulator does not have.
+;
+; KNOWN LIMITATION, deliberately not fixed here: Gen 1 crits ignore stat stages
+; and screens, so a real crit into a Reflect or Amnesia wall is worth MORE than
+; 2x this estimate, and a crit from a mon that has boosted its own Attack is
+; worth LESS. Getting that exact needs a second estimate pass with stages
+; neutralised, which is its own piece of work (AI_OVERHAUL_PLAN.md follow-ups).
+;
+; SIDE EFFECT MANAGED, NOT IGNORED: CalcCritRate writes wCurSpecies and calls
+; GetMonHeader. wCurSpecies is the byte that is also wCurPartySpecies and
+; wCurItem (see project_wcuritem_species_alias), so it is saved and restored
+; here. wMonHeader itself is left clobbered, which is safe because
+; CriticalHitTest does exactly the same thing to it moments later during the
+; move that follows.
+;
+; Reached by farcall despite CalcCritRate living in bank $0F: it takes no
+; register arguments (it selects everything from hWhoseTurn and the move block),
+; and it returns in e plus the Z and C flags, all of which survive a farcall
+; return - the same reasoning AIGetMoveHitChance's header sets out.
+; Clobbers af, bc, de, hl.
+AIScaleDamageForCrit::
+	ld a, [wCurSpecies]
+	push af
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, $1
+	ldh [hWhoseTurn], a ; CalcCritRate picks the attacker off this
+	farcall CalcCritRate ; -> e = threshold, Z = move has no power,
+	                     ;    C = special form guarantees the crit
+; Capture the answer BEFORE the pops below: `pop af` restores flags and would
+; destroy both results. `ld b, e` is safe here because LD r,r touches no flags.
+	ld b, e
+	jr z, .noPower ; CalcCritRate returned before computing a threshold
+	jr nc, .gotRate
+	ld b, $ff ; SF_ALWAYS_CRIT. Distinct from a threshold that merely happens to
+	          ; cap at $ff, per CalcCritRate's own header, but worth the same
+	          ; here: both mean "this crits".
+	jr .gotRate
+.noPower
+	ld b, 0
+.gotRate
+	pop af
+	ldh [hWhoseTurn], a
+	pop af
+	ld [wCurSpecies], a
+
+	ld a, b
+	and a
+	ret z ; no crit chance at all: leave the estimate exactly as it was
+
+; bonus = estimate * threshold / 256, the same shape AIScaleDamageByAccuracy
+; uses above - hProduct overlaps hMultiplicand through the union in ram/hram.asm,
+; so dividing by 256 is just dropping the last byte.
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [wAIDamageEstimate]
+	ldh [hMultiplicand + 1], a
+	ld a, [wAIDamageEstimate + 1]
+	ldh [hMultiplicand + 2], a
+	ld a, b
+	ldh [hMultiplier], a
+	call Multiply
+	ldh a, [hProduct + 1]
+	ld b, a
+	ldh a, [hProduct + 2]
+	ld c, a ; bc = the crit bonus
+
+	ld a, [wAIDamageEstimate + 1]
+	add c
+	ld e, a
+	ld a, [wAIDamageEstimate]
+	adc b
+	ld d, a
+	jr nc, .noOverflow
+	ld de, $ffff ; saturate rather than wrap. Unreachable with the 999 damage
+	             ; cap, but a wrapped estimate would read as "this move does
+	             ; almost nothing", which is the worst possible failure here.
+.noOverflow
+	ld a, d
+	ld [wAIDamageEstimate], a
+	ld a, e
+	ld [wAIDamageEstimate + 1], a
+	ret
+
 ; --- Switching support (Phase 4) -------------------------------------------
 
 ; Carry SET if the enemy's active mon has at least one move that is

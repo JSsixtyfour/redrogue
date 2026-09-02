@@ -77,6 +77,11 @@ AILayerDamage:
 .estimate
 	farcall AIEstimateDamage ; -> wAIDamageEstimate (max roll, STAB and dual-type
 	                         ; already applied). Clobbers a/bc/hl, all pushed.
+; Fold in the move's expected critical-hit contribution before ANY test below
+; reads the estimate, so a high-crit move is ranked on what it is really worth.
+; This is what makes Slash beat Strength on a fast user; see the routine's
+; header for the worked numbers and for why the tier tests are allowed to see it.
+	call AIScaleDamageForCrit
 ; "Can this kill" is asked FIRST and against the RAW max roll, because it is a
 ; question about possibility rather than expectation: a 70%-accurate move that
 ; can kill still can kill, and scaling it down first would hide that outright.

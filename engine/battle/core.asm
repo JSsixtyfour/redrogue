@@ -5151,7 +5151,7 @@ INCLUDE "data/battle/unused_critical_hit_moves.asm"
 ; Returns the final crit threshold in e.  Z is set when the selected move has
 ; no power, and C is set when the attacker's special form guarantees a crit.
 ; The latter is distinct from b=$ff, which is also a valid capped threshold.
-CalcCritRate:
+CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm, bank $0E)
 	ldh a, [hWhoseTurn]
 	and a
 	ld a, [wEnemyMonSpecies]

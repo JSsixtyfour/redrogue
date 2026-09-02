@@ -1791,14 +1791,14 @@
         }
       ],
       "expect": {
-        "pick_slot": 1,
-        "score_lt": [
-          [
-            1,
-            0
-          ]
+        "scores": [
+          19,
+          20,
+          20,
+          20
         ]
-      }
+      },
+      "note": "Rebaselined 2026-09-01 for the expected-crit change (AIScaleDamageForCrit). The fixture's own subject is UNCHANGED and still verified: layer_trace shows RISKY's delta is [0,0,0,0], so AI_RISKY is still correctly silent while healthy. What moved is AI_DAMAGE, which now ranks Slash above Strength on this board and gives Slash the best-expected-damage nudge. That is arithmetically right and is the change's whole point: Slowpoke base speed 15 makes Slash's crit threshold 60/256 (23%) against Strength's 7/256 (2.7%), so 70 BP x 1.23 = 86 beats 80 BP x 1.03 = 82. Switched from pick_slot/score_lt to an EXACT scores array deliberately, so the fixture does not lose discriminating power: if AI_RISKY ever started firing here it would nudge Slash a second time and the array would read [18, 20, 20, 20], failing this test."
     },
     {
       "name": "risky_silent_when_guaranteed_win_exists",

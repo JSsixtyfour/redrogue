@@ -80,6 +80,62 @@ AISelectSendOut::
 	ld [wAIPlan], a
 	ld [wAIPlanStep], a
 
+; ===========================================================================
+; OPENING LEAD: no scoring. User decision, 2026-09-01.
+;
+; Scoring the opening lead is CHEATING and it did not even work. It reads
+; wBattleMonType1 (below), but on the battle's first send-out the player's mon
+; has not been loaded yet: EnemySendOutFirstMon runs at core.asm:190 and
+; LoadBattleMonFromParty not until core.asm:284, and InitBattleVariables zeroes
+; wBattleMonSpecies without touching the wBattleMon struct. So the lead was
+; being chosen against the PREVIOUS battle's player mon type - real information
+; the AI has no right to, and stale on top of that.
+;
+; A trainer picks their lead before seeing your team, exactly like the player.
+; So the opening send-out now takes the first living mon, which is what the
+; vanilla inline scan this routine replaced always did.
+;
+; wEnemyMonPartyPos is $ff at this point and only at this point:
+; InitBattleCommon writes it (core.asm:7966) before the first send-out, and
+; every later send-out leaves a real slot index behind. No new WRAM needed.
+;
+; >>> FUTURE BOSS HOOK <<<
+; A boss designed around "studies your team before choosing a lead" would branch
+; to .scoredLead from here instead of falling through, gated on whatever
+; identifies it (a trainer class, or a wRogueFlagsBitfield bit). That boss does
+; not exist yet, so there is deliberately no test here to go stale. Everything
+; needed is already below: .scoredLead is the full scored path, unchanged.
+	ld a, [wEnemyMonPartyPos]
+	inc a ; $ff -> 0, and no real slot index can wrap to 0
+	jr nz, .scoredLead
+
+	ld hl, wEnemyMon1
+	ld c, 0
+.findFirstLiving
+	ld a, [wEnemyPartyCount]
+	cp c
+	jr z, .scoredLead ; no living mon found: fall through to the scored path
+	                  ; rather than returning a garbage slot. Unreachable in
+	                  ; practice (the caller only sends out when one exists),
+	                  ; but the contract this routine inherited is "hWhichPokemon
+	                  ; must name a LIVING slot", so it must not be broken here.
+	push hl
+	inc hl
+	ld a, [hli]
+	ld b, a
+	or [hl]
+	pop hl
+	jr nz, .gotFirstLiving
+	ld de, PARTYMON_STRUCT_LENGTH
+	add hl, de
+	inc c
+	jr .findFirstLiving
+.gotFirstLiving
+	ld a, c
+	ldh [hWhichPokemon], a
+	ret
+
+.scoredLead
 ; Save the three bytes forged below. PreviewTypeMatchup reads its defender types
 ; from wEnemyMonType and its attacking type from wPlayerMoveType, so those are
 ; borrowed rather than passed - the same forge-and-restore shape AIEstimateDamage

@@ -15,20 +15,52 @@
 SECTION "Trainer AI Core", ROMX
 
 ; Base skill tier by Rogue round. round = wBattleCount / 10.
-; This table IS the difficulty ladder - retuning the ramp means editing these
-; nine numbers and nothing else.
+; These tables ARE the difficulty ladder - retuning the ramp means editing the
+; numbers below and nothing else.
+; One row per LEVELS difficulty setting (wOptions2 bits 0-2), one byte per
+; round. ROW ORDER FOLLOWS THE CONSTANT VALUES, not difficulty order: the enum
+; in constants/ram_constants.asm is NORMAL=0, EASY=1, VERY_EASY=2, HARD=3,
+; VERY_HARD=4, because NORMAL must stay 0 for InitOptions' `xor a`. Reordering
+; these rows to read "easiest first" would silently mis-index.
+;
+; User's design, 2026-09-01: difficulty changes WHERE the ladder starts and
+; where it stops, not merely how fast it climbs.
+;   VERY EASY  half T0, half T1
+;   EASY       thirds of T0 / T1 / T2
+;   NORMAL     unchanged from the original ladder
+;   HARD       thirds of T1 / T2 / T3
+;   VERY HARD  half T2, half T3
+; Verified monotone: read down any round column and the tier never decreases as
+; difficulty rises.
+;
+; Consequence worth knowing before retuning: VERY EASY never reaches T2 and
+; EASY never reaches T3, so neither ever meets the plan system, the switching
+; engine or threat awareness. That is what "stop" means here, not an oversight.
 AITierByRound:
-	db AI_TIER_NOVICE    ; round 0
-	db AI_TIER_NOVICE    ; round 1
-	db AI_TIER_COMPETENT ; round 2
-	db AI_TIER_COMPETENT ; round 3
-	db AI_TIER_SKILLED   ; round 4
-	db AI_TIER_SKILLED   ; round 5
-	db AI_TIER_SKILLED   ; round 6
-	db AI_TIER_EXPERT    ; round 7
-	db AI_TIER_EXPERT    ; round 8
-	assert @ - AITierByRound == AI_MAX_ROUND + 1, \
-		"AITierByRound must have one entry per round 0..AI_MAX_ROUND"
+;	round: 0  1  2  3  4  5  6  7  8
+	db 0, 0, 1, 1, 2, 2, 2, 3, 3 ; DIFFICULTY_NORMAL
+	db 0, 0, 0, 1, 1, 1, 2, 2, 2 ; DIFFICULTY_EASY
+	db 0, 0, 0, 0, 0, 1, 1, 1, 1 ; DIFFICULTY_VERY_EASY
+	db 1, 1, 1, 2, 2, 2, 3, 3, 3 ; DIFFICULTY_HARD
+	db 2, 2, 2, 2, 2, 3, 3, 3, 3 ; DIFFICULTY_VERY_HARD
+	assert @ - AITierByRound == (AI_MAX_ROUND + 1) * NUM_AI_DIFFICULTY_ROWS, \
+		"AITierByRound must have one row per difficulty and one entry per round"
+
+; Highest tier each difficulty may reach, applied AFTER the boss bumps. Without
+; this a gym leader's +1 would walk VERY EASY into T2 and EASY into T3, undoing
+; the "stop" the rows above exist to express. It also subsumes the AI_MAX_TIER
+; clamp, since no entry exceeds it.
+;
+; TUNING KNOB: raise a row here if bosses should stay a real spike even on the
+; easy settings. One byte per difficulty.
+AITierCeiling:
+	db AI_TIER_EXPERT    ; DIFFICULTY_NORMAL
+	db AI_TIER_SKILLED   ; DIFFICULTY_EASY
+	db AI_TIER_COMPETENT ; DIFFICULTY_VERY_EASY
+	db AI_TIER_EXPERT    ; DIFFICULTY_HARD
+	db AI_TIER_EXPERT    ; DIFFICULTY_VERY_HARD
+	assert @ - AITierCeiling == NUM_AI_DIFFICULTY_ROWS, \
+		"AITierCeiling must have one entry per difficulty"
 
 ; Which layers and flags each tier runs. One 16-bit word per tier; adding a
 ; layer to a tier is a one-word edit. Layers execute in bit order.
@@ -88,11 +120,31 @@ AIResolveTier::
 	jr c, .roundInRange
 	ld a, AI_MAX_ROUND
 .roundInRange
-	ld hl, AITierByRound
 	ld d, 0
 	ld e, a
+	ld hl, AITierByRound
+	add hl, de ; hl = NORMAL's row, offset by the round
+
+; Advance to this playthrough's difficulty row. c keeps the difficulty index
+; alive for the ceiling lookup after the boss bumps; the bumps below touch only
+; a and b, so it survives them.
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp NUM_AI_DIFFICULTY_ROWS
+	jr c, .difficultyInRange
+	xor a ; a value outside the enum can only come from a corrupt option byte;
+	      ; fall back to NORMAL rather than indexing off the end of the table
+.difficultyInRange
+	ld c, a
+	ld de, AI_MAX_ROUND + 1
+.rowLoop
+	and a
+	jr z, .gotRow
 	add hl, de
-	ld b, [hl] ; b = base tier for this round
+	dec a
+	jr .rowLoop
+.gotRow
+	ld b, [hl] ; b = base tier for this round at this difficulty
 
 ; Boss bumps. Each is worth one tier, and the clamp below catches the overlap.
 ; The Elite Four and Champion deliberately need no test here: they only occur
@@ -117,10 +169,17 @@ AIResolveTier::
 	jr z, .notFinalTrainer
 	inc b
 .notFinalTrainer
+; Clamp to this difficulty's ceiling. Deliberately AFTER the bumps - see
+; AITierCeiling. No separate AI_MAX_TIER clamp is needed: no ceiling entry
+; exceeds it.
+	ld hl, AITierCeiling
+	ld d, 0
+	ld e, c
+	add hl, de
+	ld a, [hl]
+	cp b
+	jr c, .store ; ceiling < computed tier: keep the ceiling
 	ld a, b
-	cp AI_MAX_TIER + 1
-	jr c, .store
-	ld a, AI_MAX_TIER
 .store
 	push af
 	inc a

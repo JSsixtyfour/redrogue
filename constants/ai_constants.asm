@@ -47,6 +47,12 @@ DEF NUM_AI_TIERS      EQU AI_MAX_TIER + 1
 ; clamped here (the Rogue scheme runs rounds 0-8; see func_enc_gen.asm).
 DEF AI_MAX_ROUND EQU 8
 
+; Rows in AITierByRound and entries in AITierCeiling: one per LEVELS difficulty
+; setting (constants/ram_constants.asm). Derived from the enum rather than
+; written as 5, so adding a difficulty becomes a compile error here instead of a
+; silent off-the-end table read.
+DEF NUM_AI_DIFFICULTY_ROWS EQU DIFFICULTY_VERY_HARD + 1
+
 ; --- Score array bounds ---
 ; Scores live in wBuffer+0..3. Lower is better. Saturating helpers clamp to this
 ; range so no stack of adjustments can wrap a byte into (or past) the
