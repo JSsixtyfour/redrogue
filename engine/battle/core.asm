@@ -4259,6 +4259,17 @@ PrintMoveFailureText:
 	and EFFECTIVENESS_MASK
 	jr z, .gotTextToPrint
 	ld hl, AttackMissedText
+; WIP: NoScratchText miss-text feature, paused - overflows the _DEBUG build's
+; Battle Core bank by 1 byte with no further room to trim (see ROM_BIBLE.md,
+; 2026-09-02 entry). Cheapest thing to cut if this bank ever needs a byte back.
+IF 0
+	ld a, [wMoveMissed]
+	cp MOVE_MISSED_NO_DAMAGE
+	jr nz, .checkFailedOHKO
+	ld hl, NoScratchText
+	jr .gotTextToPrint
+.checkFailedOHKO
+ENDC
 	ld a, [wCriticalHitOrOHKO]
 	cp $ff
 	jr nz, .gotTextToPrint
@@ -4307,6 +4318,12 @@ PrintMoveFailureText:
 AttackMissedText:
 	text_far _AttackMissedText
 	text_end
+
+IF 0 ; WIP: NoScratchText miss-text feature, paused - see ROM_BIBLE.md 2026-09-02 entry.
+NoScratchText:
+	text_far _NoScratchText
+	text_end
+ENDC
 
 KeptGoingAndCrashedText:
 	text_far _KeptGoingAndCrashedText
@@ -5948,6 +5965,8 @@ AdjustDamageForMoveType:
 	jr nz, .skipTypeImmunity
 ; if damage is 0, make the move miss
 ; this only occurs if a move that would do 2 or 3 damage is 0.25x effective against the target
+; WIP: NoScratchText miss-text feature, paused - see ROM_BIBLE.md 2026-09-02 entry.
+; Resume by swapping this back to `ld a, MOVE_MISSED_NO_DAMAGE` once a byte is free.
 	inc a
 	ld [wMoveMissed], a
 .skipTypeImmunity

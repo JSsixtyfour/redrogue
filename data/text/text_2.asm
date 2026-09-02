@@ -1121,6 +1121,12 @@ _AttackMissedText::
 	line "attack missed!"
 	prompt
 
+_NoScratchText::
+	text "<USER>'s"
+	line "attack didn't"
+	cont "leave a scratch!"
+	prompt
+
 _KeptGoingAndCrashedText::
 	text "<USER>"
 	line "kept going and"

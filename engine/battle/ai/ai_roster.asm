@@ -279,6 +279,12 @@ AIActiveMonIsAce::
 	ld a, e
 	cp b
 	jr c, .loop
+.isAce ; F18, 2026-09-02: zero-byte label, testability only - call_routine
+       ; cannot report a carry result (it restores every saved register,
+       ; flags included, on return - see PYBOY_HARNESS_REFERENCE.md), so a
+       ; pure-predicate routine with no other observable side effect needs a
+       ; hookable address at each exit. Same precedent as
+       ; AIGetPlayerMoveN.exit (ai_accessors.asm, Phase 7).
 	scf
 	ret
 .notAce

@@ -76,6 +76,10 @@ DEF SPDSPCDV_TRAINER EQU $88
 DEF BIT_STAB_DAMAGE EQU 7
 DEF EFFECTIVENESS_MASK EQU %01111111
 
+; wMoveMissed
+DEF MOVE_MISSED_ACCURACY  EQU 1 ; a normal miss: accuracy roll failed
+DEF MOVE_MISSED_NO_DAMAGE EQU 2 ; the move connected but damage rounded to 0
+
 ; wPlayerBattleStatus1 or wEnemyBattleStatus1 bit flags
 	const_def
 	const STORING_ENERGY           ; 0 ; Bide
