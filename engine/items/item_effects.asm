@@ -182,12 +182,8 @@ ItemUseBall:
 	ld hl, ItemUseText00
 	call PrintText
 
-; If the player is fighting an unidentified ghost, set the value that indicates
-; the Pokémon can't be caught and skip the capture calculations.
-	callfar IsGhostBattle
-	ld b, $10 ; can't be caught value
-	jp z, .setAnimData
-
+; The unidentified-ghost uncatchable check was removed 2026-09-03 with the rest
+; of that gimmick (IsGhostBattle now always reports a normal battle).
 	ld a, [wBattleType]
 	dec a
 	jr nz, .notOldManBattle
@@ -200,15 +196,8 @@ ItemUseBall:
 	jp .captured
 
 .notOldManBattle
-; If the player is fighting the ghost Marowak, set the value that indicates the
-; Pokémon can't be caught and skip the capture calculations.
-	ldh a, [hCurMap]
-	cp POKEMON_TOWER_6F
-	jr nz, .loop
-	ld a, [wEnemyMonSpecies2]
-	cp RESTLESS_SOUL
-	ld b, $10 ; can't be caught value
-	jp z, .setAnimData
+; The ghost-Marowak uncatchable check was removed 2026-09-03 with the rest of
+; the ghost gimmick; the Tower Marowak is now an ordinary catchable encounter.
 
 ; Get the first random number. Let it be called Rand1.
 ; Rand1 must be within a certain range according the kind of ball being thrown.

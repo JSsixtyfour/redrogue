@@ -1,22 +1,14 @@
-AerodactylFossil:
-	ld a, FOSSIL_AERODACTYL
-	ld [wCurPartySpecies], a
-	call DisplayMonFrontSpriteInBox
-	call EnableAutoTextBoxDrawing
-	tx_pre AerodactylFossilText
-	ret
+; The Pewter Museum fossil displays were removed 2026-09-03 along with the
+; FOSSIL_KABUTOPS / FOSSIL_AERODACTYL pseudo-species they existed to render.
+; MUSEUM_1F is not in Red Rogue's stage pool
+; (custom_functions/random_stage_selection.asm), so the feature was
+; unreachable. Their two text labels are kept below because
+; data/text_predef_pointers.asm is a POSITIONAL table - removing entries would
+; renumber every tx_pre id after them.
 
 AerodactylFossilText::
 	text_far _AerodactylFossilText
 	text_end
-
-KabutopsFossil:
-	ld a, FOSSIL_KABUTOPS
-	ld [wCurPartySpecies], a
-	call DisplayMonFrontSpriteInBox
-	call EnableAutoTextBoxDrawing
-	tx_pre KabutopsFossilText
-	ret
 
 KabutopsFossilText::
 	text_far _KabutopsFossilText

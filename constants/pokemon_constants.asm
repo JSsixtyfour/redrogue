@@ -188,9 +188,9 @@
 	const WARTORTLE          ; $B3
 	const CHARIZARD          ; $B4
 	const_skip               ; $B5
-	const FOSSIL_KABUTOPS    ; $B6
-	const FOSSIL_AERODACTYL  ; $B7
-	const MON_GHOST          ; $B8
+	const_skip               ; $B6 was FOSSIL_KABUTOPS - retired, see below
+	const_skip               ; $B7 was FOSSIL_AERODACTYL - retired, see below
+	const_skip               ; $B8 was MON_GHOST - retired, see below
 	const ODDISH             ; $B9
 	const GLOOM              ; $BA
 	const VILEPLUME          ; $BB
@@ -206,13 +206,31 @@ DEF STARTER2 EQU SQUIRTLE
 DEF STARTER3 EQU BULBASAUR
 
 ; placeholder species ($1F is unused) used in the rival's trainer party data
-; to mark the slot that should be dynamically replaced with wRivalStarter
+; to mark the slot that should be dynamically replaced with wRivalStarter.
+;
+; This is the ONLY surviving placeholder. PLACEHOLDER_POKEBALL ($20),
+; PLACHOLDER_GREATBALL ($32), PLACEHOLDER_ULTRABALL ($34),
+; PLACEHOLDER_MASTERBALL ($38) and PLACEHOLDER_LEGENDARY ($3D) were deleted
+; 2026-09-03: each had exactly one reference tree-wide (its own DEF), the
+; trainer system having long since diverged past them. Their five index holes
+; are now free for real species.
+;
+; $1F stays. The party format is `db $FF, level, species, ..., 0`, so $00 is
+; the terminator and every other byte value becomes a real species once the
+; index space fills - there is no spare sentinel to move it to. Reclaiming it
+; would mean marking the rival's ace positionally in the party reader, which is
+; not worth one slot.
 DEF RIVAL_STARTER_PLACEHOLDER EQU $1F
-DEF PLACEHOLDER_POKEBALL EQU $20
-DEF PLACHOLDER_GREATBALL EQU $32
-DEF PLACEHOLDER_ULTRABALL EQU $34
-DEF PLACEHOLDER_MASTERBALL EQU $38
-DEF PLACEHOLDER_LEGENDARY EQU $3D
+
+; $B6/$B7 (FOSSIL_KABUTOPS, FOSSIL_AERODACTYL) were retired 2026-09-03. They
+; existed only for the Pewter Museum fossil display, and MUSEUM_1F is not in
+; Red Rogue's stage pool (custom_functions/random_stage_selection.asm), so the
+; feature was unreachable.
+;
+; MON_GHOST ($B8) is DELIBERATELY KEPT and must not be retired with them:
+; POKEMON_TOWER_2F and POKEMON_TOWER_7F ARE live stages in that same pool, and
+; IsGhostBattle (engine/battle/core.asm) fires on any POKEMON_TOWER map when the
+; player has no SILPH_SCOPE, rendering the enemy through MON_GHOST.
 
 ; ghost Marowak in Pokémon Tower
 DEF RESTLESS_SOUL EQU MAROWAK

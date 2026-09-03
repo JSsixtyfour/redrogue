@@ -2,11 +2,9 @@ PrintBeginningBattleText:
 	ldh a, [hIsInBattle]
 	dec a
 	jr nz, .trainerBattle
-	ldh a, [hCurMap]
-	cp POKEMON_TOWER_3F
-	jr c, .notPokemonTower
-	cp POKEMON_TOWER_7F + 1
-	jr c, .pokemonTower
+; The Pokemon Tower ghost branch was removed 2026-09-03 with the rest of the
+; unidentified-ghost gimmick - tower encounters now announce themselves like any
+; other wild battle.
 .notPokemonTower
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
@@ -28,37 +26,6 @@ PrintBeginningBattleText:
 	pop hl
 	call PrintText
 	jr .done
-.pokemonTower
-	ld b, SILPH_SCOPE
-	call IsItemInBag
-	ld a, [wEnemyMonSpecies2]
-	ld [wCurPartySpecies], a
-	cp RESTLESS_SOUL
-	jr z, .isMarowak
-	ld a, b
-	and a
-	jr z, .noSilphScope
-	callfar LoadEnemyMonData
-	jr .notPokemonTower
-.noSilphScope
-	ld hl, EnemyAppearedText
-	call PrintText
-	ld hl, GhostCantBeIDdText
-	call PrintText
-	jr .done
-.isMarowak
-	ld a, b
-	and a
-	jr z, .noSilphScope
-	ld hl, EnemyAppearedText
-	call PrintText
-	ld hl, UnveiledGhostText
-	call PrintText
-	callfar LoadEnemyMonData
-	callfar MarowakAnim
-	ld hl, WildMonAppearedText
-	call PrintText
-
 .playSFX
 	xor a
 	ld [wFrequencyModifier], a
@@ -78,21 +45,13 @@ HookedMonAttackedText:
 	text_far _HookedMonAttackedText
 	text_end
 
-EnemyAppearedText:
-	text_far _EnemyAppearedText
-	text_end
-
 TrainerWantsToFightText:
 	text_far _TrainerWantsToFightText
 	text_end
 
-UnveiledGhostText:
-	text_far _UnveiledGhostText
-	text_end
-
-GhostCantBeIDdText:
-	text_far _GhostCantBeIDdText
-	text_end
+; EnemyAppearedText, UnveiledGhostText and GhostCantBeIDdText were all removed
+; 2026-09-03 with the unidentified-ghost gimmick - that branch was their only
+; caller. Their _-prefixed strings remain in data/text/text_2.asm.
 
 PrintSendOutMonMessage:
 	ld hl, wEnemyMonHP

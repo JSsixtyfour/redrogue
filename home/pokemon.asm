@@ -385,17 +385,12 @@ GetMonHeader::
 	push af
 	ld a, [wCurSpecies]
 	ld [wPokedexNum], a
-	ld de, FossilKabutopsPic
-	ld b, $66 ; size of Kabutops fossil and Ghost sprites
-	cp FOSSIL_KABUTOPS ; Kabutops fossil
-	jr z, .specialID
-	ld de, GhostPic
-	cp MON_GHOST ; Ghost
-	jr z, .specialID
-	ld de, FossilAerodactylPic
-	ld b, $77 ; size of Aerodactyl fossil sprite
-	cp FOSSIL_AERODACTYL ; Aerodactyl fossil
-	jr z, .specialID
+	; All three pseudo-mons (FOSSIL_KABUTOPS, FOSSIL_AERODACTYL, MON_GHOST) were
+	; retired 2026-09-03 and their index slots reclaimed as real species, so the
+	; `.specialID` branch that used to sit here is gone with them. Phase 2R's
+	; regional-form override reintroduces the same idea - patch wMonHeader after
+	; the base-stat copy with an overriding sprite pointer, dimension and typing -
+	; but keyed on the form bits in MON_CATCH_RATE rather than on a species id.
 	cp MEW
 	jr z, .mew
 	predef IndexToPokedex
@@ -407,14 +402,6 @@ GetMonHeader::
 	ld de, wMonHeader
 	ld bc, BASE_DATA_SIZE
 	call CopyData
-	jr .done
-.specialID
-	ld hl, wMonHSpriteDim
-	ld [hl], b ; write sprite dimensions
-	inc hl
-	ld [hl], e ; write front sprite pointer
-	inc hl
-	ld [hl], d
 	jr .done
 .mew
 	ld hl, MewBaseStats

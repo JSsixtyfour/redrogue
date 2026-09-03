@@ -3731,18 +3731,19 @@ GetOutText:
 	text_end
 
 IsGhostBattle:
-	ldh a, [hIsInBattle]
-	dec a
-	ret nz
-	ldh a, [hCurMap]
-	cp POKEMON_TOWER_1F
-	jr c, .next
-	cp POKEMON_TOWER_7F + 1
-	jr nc, .next
-	ld b, SILPH_SCOPE
-	call IsItemInBag
-	ret z
-.next
+; Always reports "not a ghost battle". The vanilla unidentified-ghost gimmick
+; was removed 2026-09-03: it is of no use to Red Rogue, and its MON_GHOST
+; pseudo-species was reclaimed as a real species index.
+;
+; The routine is kept rather than deleted because three callers test its Z flag
+; (TryRunningFromBattle and PrintGhostText here, plus the Poke Ball capture path
+; in engine/items/item_effects.asm); returning NZ makes every one of them take
+; its ordinary non-ghost branch with no further edits.
+;
+; Worth knowing if this is ever revisited: the gimmick was effectively always-on
+; in Red Rogue anyway. It gated on the player lacking a SILPH_SCOPE, and the
+; only Silph Scope in the game is the Rocket Hideout B4F ball, which
+; data/maps/toggleable_objects.asm ships toggled OFF.
 	ld a, 1
 	and a
 	ret
@@ -7972,31 +7973,9 @@ InitWildBattle:
 	ldh [hIsInBattle], a
 	call LoadEnemyMonData
 	call DoBattleTransitionAndInitBattleVariables
-	ld a, [wCurOpponent]
-	cp RESTLESS_SOUL
-	jr z, .isGhost
-	call IsGhostBattle
-	jr nz, .isNoGhost
-.isGhost
-	ld hl, wMonHSpriteDim
-	ld a, $66
-	ld [hli], a   ; write sprite dimensions
-	ld bc, GhostPic
-	ld a, c
-	ld [hli], a   ; write front sprite pointer
-	ld [hl], b
-	ld hl, wEnemyMonNick  ; set name to "GHOST"
-	ld_hli_a_string "GHOST@"
-	ld a, [wCurPartySpecies]
-	push af
-	ld a, MON_GHOST
-	ld [wCurPartySpecies], a
-	ld de, vFrontPic
-	call LoadMonFrontSprite ; load ghost sprite
-	pop af
-	ld [wCurPartySpecies], a
-	jr .spriteLoaded
-.isNoGhost
+	; The vanilla unidentified-ghost rendering was removed 2026-09-03 - it is of
+	; no use to Red Rogue, and its MON_GHOST pseudo-species was reclaimed as a
+	; real species index. Tower encounters now show the actual mon.
 	ld de, vFrontPic
 	call LoadMonFrontSprite ; load mon sprite
 .spriteLoaded

@@ -702,8 +702,8 @@ PokemonSpriteCategoryTable:
 	db $00 ; $AF,$B0 skip,CHARMANDER
 	db $20 ; $B1,$B2 SQUIRTLE,CHARMELEON
 	db $20 ; $B3,$B4 WARTORTLE,CHARIZARD
-	db $00 ; $B5,$B6 skip,FOSSIL_KABUTOPS
-	db $00 ; $B7,$B8 FOSSIL_AERODACTYL,MON_GHOST
+	db $00 ; $B5,$B6 both free holes
+	db $00 ; $B7 free hole, $B8 MON_GHOST
 	db $00 ; $B9,$BA ODDISH,GLOOM
 	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
 	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
