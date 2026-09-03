@@ -552,6 +552,7 @@ INCLUDE "custom_functions/credit_popup.asm"
 INCLUDE "custom_functions/pocket_items.asm"
 INCLUDE "custom_functions/dice_items.asm"
 INCLUDE "custom_functions/witch_battle_effects.asm"
+INCLUDE "custom_functions/witch_setup.asm"
 INCLUDE "custom_functions/element_prism.asm"
 INCLUDE "custom_functions/turn_rewind.asm"
 

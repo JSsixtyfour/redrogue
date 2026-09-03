@@ -140,32 +140,8 @@ SetScrollXForSlidingPlayerBodyLeft:
 	ret
 
 StartBattle:
-	; CHALLENGE_TURN_LIMIT: reset per-battle counter, compute limit = 6 + round
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noTurnLimitInit
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_TURN_LIMIT
-	jr nz, .noTurnLimitInit
-	xor a
-	ld [wBattleTurnCount], a
-	ld a, [wBattleCount]
-	ld b, 0
-.turnLimitGetRound
-	cp 10
-	jr c, .turnLimitGotRound
-	sub 10
-	inc b
-	jr .turnLimitGetRound
-.turnLimitGotRound
-	ld a, b
-	cp 9
-	jr c, .turnLimitRoundOk
-	ld a, 8          ; cap round at 8
-.turnLimitRoundOk
-	add 6            ; limit = 6 + round
-	ld [wBattleTurnLimit], a
-.noTurnLimitInit
+	; CHALLENGE_TURN_LIMIT init lives in custom_functions/witch_battle_effects.asm
+	farcall WitchInitTurnLimit
 	xor a
 	ld [wPartyGainExpFlags], a
 	ld [wPartyFoughtCurrentEnemyFlags], a
@@ -500,7 +476,7 @@ MainInBattleLoop:
 .enemyFirstPoisonPlayerAlive
 	call DrawHUDsAndHPBars
 	call CheckNumAttacksLeft
-	call HandleTurnLimitDrain
+	farcall HandleTurnLimitDrain
 	jr nz, .enemyFirstNoTurnLimitFaint
 	call TryKODefiance
 	jr z, .enemyFirstNoTurnLimitFaint
@@ -547,7 +523,7 @@ MainInBattleLoop:
 	jp z, HandleEnemyMonFainted
 	call DrawHUDsAndHPBars
 	call CheckNumAttacksLeft
-	call HandleTurnLimitDrain
+	farcall HandleTurnLimitDrain
 	jr nz, .playerFirstNoTurnLimitFaint
 	call TryKODefiance
 	jr z, .playerFirstNoTurnLimitFaint
@@ -1109,29 +1085,7 @@ TrainerBattleVictory:
 	call DelayFrames
 	call PrintEndBattleText
 ; win money
-	; witch's "no money" challenge zeroes the win before it's shown or added;
-	; her "increased money" prize doubles it instead (independent rolls, so
-	; both could be active at once - zero doubled is still zero, which is fine)
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noWitchMoneyEffect
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_MONEY
-	jr nz, .checkMoneyPrize
-	xor a
-	ld hl, wAmountMoneyWon
-	ld [hli], a
-	ld [hli], a
-	ld [hl], a
-.checkMoneyPrize
-	ld a, [wWitchPrize]
-	cp PRIZE_MONEY
-	jr nz, .noWitchMoneyEffect
-	ld de, wAmountMoneyWon + 2
-	ld hl, wAmountMoneyWon + 2
-	ld c, $3
-	predef AddBCDPredef ; double it: wAmountMoneyWon += wAmountMoneyWon
-.noWitchMoneyEffect
+	farcall WitchApplyMoneyEffects ; witch no-money challenge / double-money prize
 	ld hl, MoneyForWinningText
 	call PrintText
 
@@ -1468,96 +1422,15 @@ KODefianceActivatedText:
 	text_far _KODefianceActivatedText
 	text_end
 
-; ============================================================
-; HandleTurnLimitDrain
-; Called at end of each full battle turn when CHALLENGE_TURN_LIMIT is active.
-; Increments wBattleTurnCount. When count >= wBattleTurnLimit, drains
-; maxHP/16 (min 1) from the player's active mon. KO Defiance applies normally.
-; OUTPUT: Z set if drain fired AND mon HP hit 0; Z clear otherwise.
-; ============================================================
-HandleTurnLimitDrain::
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noEffect
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_TURN_LIMIT
-	jr nz, .noEffect
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	jr z, .noEffect
-	; Increment turn count
-	ld hl, wBattleTurnCount
-	inc [hl]
-	ld a, [wBattleTurnLimit]
-	ld b, a
-	ld a, [wBattleTurnCount]
-	cp b
-	jr c, .noEffect       ; count < limit: no drain yet
-	; Drain: maxHP/16, minimum 1 — same pattern as HandlePoisonBurnLeechSeed
-	ld hl, TurnLimitDrainText
-	call PrintText
-	ld hl, wBattleMonHP
-	push hl
-	ld bc, wBattleMonMaxHP - wBattleMonHP
-	add hl, bc
-	ld a, [hli]
-	ld [wHPBarMaxHP + 1], a
-	ld b, a
-	ld a, [hl]
-	ld [wHPBarMaxHP], a
-	ld c, a
-	srl b
-	rr c
-	srl b
-	rr c
-	srl c
-	srl c                 ; c = maxHP/16
-	ld a, c
-	and a
-	jr nz, .nonZeroDamage
-	inc c                 ; minimum 1
-.nonZeroDamage
-	pop hl                ; hl = wBattleMonHP
-	inc hl                ; hl = wBattleMonHP low byte
-	ld a, [hl]
-	ld [wHPBarOldHP], a
-	sub c
-	ld [hld], a
-	ld [wHPBarNewHP], a
-	ld a, [hl]
-	ld [wHPBarOldHP + 1], a
-	sbc b
-	ld [hl], a
-	ld [wHPBarNewHP + 1], a
-	jr nc, .noOverkill
-	xor a
-	ld [hli], a
-	ld [hl], a
-	ld [wHPBarNewHP], a
-	ld [wHPBarNewHP + 1], a
-.noOverkill
-	call UpdateCurMonHPBar
-	; Check if fainted: Z set if HP = 0
-	ld a, [wBattleMonHP]
-	or [hl]               ; hl = wBattleMonHP + 1 (low byte after UpdateCurMonHPBar)
-	ret                   ; Z set if HP = 0
-
-.noEffect
-	or a                  ; ensure Z clear (a=0 from cp, but set NZ explicitly)
-	inc a                 ; a=1, Z clear
-	ret
-
-TurnLimitDrainText:
-	text_far _TurnLimitDrainText
-	text_end
-
-; HandleRecoilChallenge lived here until 2026-08-07. It was relocated to
-; custom_functions/witch_battle_effects.asm (rogue bank) to reclaim ~117
-; bytes in this bank, which was 100% full (1 free byte) and blocking the
-; ELEMENT PRISM battle hooks. It had zero same-bank dependencies, which is
-; what made it the safe candidate; its two call sites above are now farcalls
-; and consume only the returned Z flag, which Bankswitch preserves. See that
-; file's header and KEY_ITEM_EFFECTS_PLAN_PC.md §3i.
+; HandleRecoilChallenge lived here until 2026-08-07, and HandleTurnLimitDrain
+; until 2026-09-02. Both were relocated to custom_functions/witch_battle_effects.asm
+; (rogue bank) to reclaim space in this bank, which keeps running out and
+; blocking new battle hooks - ~117 bytes for the first move, ~105 for the
+; second. Their four call sites above are now farcalls and consume only the
+; returned Z flag, which Bankswitch preserves. HandleTurnLimitDrain's one
+; same-bank dependency, the non-exported local UpdateCurMonHPBar, is inlined
+; at its new home rather than exported. See that file's header and
+; KEY_ITEM_EFFECTS_PLAN_PC.md §3i.
 
 ; called when player is out of usable mons.
 ; prints appropriate lose message, sets carry flag if player blacked out (special case for initial rival fight)

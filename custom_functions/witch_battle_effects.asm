@@ -12,10 +12,10 @@
 ; flag - and Bankswitch preserves flags across a farcall. Net reclaim after
 ; converting those two `call`s to `farcall`: ~117 bytes.
 ;
-; Its sibling HandleTurnLimitDrain deliberately stayed in core.asm: it calls
-; UpdateCurMonHPBar, a non-exported core.asm local, so moving it would have
-; required exporting that and adding a farcall back - more churn for no
-; additional need once this one routine covered the shortfall.
+; Its sibling HandleTurnLimitDrain stayed behind in that round, because it
+; calls UpdateCurMonHPBar, a non-exported core.asm local. It followed on
+; 2026-09-02 when the bank ran short again; rather than export that local, the
+; ~14 bytes of it that matter are inlined at the bottom of this file.
 
 ; ============================================================
 ; HandleRecoilChallenge
@@ -102,3 +102,198 @@ HandleRecoilChallenge::
 RecoilChallengeText:
 	text_far _RecoilChallengeText
 	text_end
+
+; ============================================================
+; HandleTurnLimitDrain
+; Called at end of each full battle turn when CHALLENGE_TURN_LIMIT is active.
+; Increments wBattleTurnCount. When count >= wBattleTurnLimit, drains
+; maxHP/16 (min 1) from the player's active mon. KO Defiance applies normally.
+; OUTPUT: Z set if drain fired AND mon HP hit 0; Z clear otherwise.
+;
+; Relocated out of engine/battle/core.asm 2026-09-02, for the same reason its
+; sibling above was moved in 2026-08-07: "Battle Core" (bank $0F) was down to
+; 17 free bytes in the debug build and was blocking new witch hooks. This
+; file's header note above lists this routine as the one that deliberately
+; STAYED, because it calls UpdateCurMonHPBar, a non-exported core.asm local.
+; That call is inlined below rather than exporting it, which is what made the
+; move possible. Net reclaim after converting its two call sites to farcall:
+; ~105 bytes.
+; ============================================================
+HandleTurnLimitDrain::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jp z, .noEffect
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_TURN_LIMIT
+	jp nz, .noEffect
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jp z, .noEffect
+	; Increment turn count
+	ld hl, wBattleTurnCount
+	inc [hl]
+	ld a, [wBattleTurnLimit]
+	ld b, a
+	ld a, [wBattleTurnCount]
+	cp b
+	jp c, .noEffect       ; count < limit: no drain yet
+	; Drain: maxHP/16, minimum 1 — same pattern as HandlePoisonBurnLeechSeed
+	ld hl, TurnLimitDrainText
+	call PrintText
+	ld hl, wBattleMonHP
+	push hl
+	ld bc, wBattleMonMaxHP - wBattleMonHP
+	add hl, bc
+	ld a, [hli]
+	ld [wHPBarMaxHP + 1], a
+	ld b, a
+	ld a, [hl]
+	ld [wHPBarMaxHP], a
+	ld c, a
+	srl b
+	rr c
+	srl b
+	rr c
+	srl c
+	srl c                 ; c = maxHP/16
+	ld a, c
+	and a
+	jr nz, .nonZeroDamage
+	inc c                 ; minimum 1
+.nonZeroDamage
+	pop hl                ; hl = wBattleMonHP
+	inc hl                ; hl = wBattleMonHP low byte
+	ld a, [hl]
+	ld [wHPBarOldHP], a
+	sub c
+	ld [hld], a
+	ld [wHPBarNewHP], a
+	ld a, [hl]
+	ld [wHPBarOldHP + 1], a
+	sbc b
+	ld [hl], a
+	ld [wHPBarNewHP + 1], a
+	jr nc, .noOverkill
+	xor a
+	ld [hli], a
+	ld [hl], a
+	ld [wHPBarNewHP], a
+	ld [wHPBarNewHP + 1], a
+.noOverkill
+; Inlined copy of engine/battle/core.asm's UpdateCurMonHPBar. That routine is a
+; core.asm local, so reaching it from this bank would mean exporting it and
+; adding a farcall back - more churn than the 14 bytes it costs to inline it.
+; The hWhoseTurn branch is kept VERBATIM rather than hardcoding the player bar
+; (which is what HandleRecoilChallenge above does), so this relocation changes
+; nothing about which bar is drawn. Whether that branch is CORRECT here is a
+; separate, pre-existing question: on the player-moves-first path hWhoseTurn is
+; still 1 when this runs, so the enemy's bar gets drawn from the player's HP
+; values. Deliberately left exactly as it was - not this change's business.
+; The original's push bc / pop bc around the predef is dropped: bc held the
+; drain amount, which is dead from here on.
+	hlcoord 10, 9         ; tile pointer to player HP bar
+	ldh a, [hWhoseTurn]
+	and a
+	ld a, $1
+	jr z, .gotHPBarCoords
+	hlcoord 2, 2          ; tile pointer to enemy HP bar
+	xor a
+.gotHPBarCoords
+	ld [wHPBarType], a
+	predef UpdateHPBar2
+; Faint check. The original read `ld a, [wBattleMonHP]` / `or [hl]`, with a
+; comment asserting hl was wBattleMonHP + 1 "after UpdateCurMonHPBar". It was
+; not: UpdateCurMonHPBar overwrites hl with an hlcoord before its predef and
+; never restores it, so that `or` folded in a TILEMAP byte instead of the HP
+; low byte. Tile IDs are almost never 0, so the routine almost always returned
+; NZ and its callers almost never saw the faint. Read both HP bytes explicitly,
+; exactly as HandleRecoilChallenge above already does.
+	ld a, [wBattleMonHP]
+	ld b, a
+	ld a, [wBattleMonHP + 1]
+	or b
+	ret                   ; Z set if HP = 0
+
+.noEffect
+	or a                  ; ensure Z clear (a=0 from cp, but set NZ explicitly)
+	inc a                 ; a=1, Z clear
+	ret
+
+TurnLimitDrainText:
+	text_far _TurnLimitDrainText
+	text_end
+
+; ============================================================
+; WitchInitTurnLimit
+; Called from StartBattle (engine/battle/core.asm). If CHALLENGE_TURN_LIMIT is
+; active, resets the per-battle turn counter and computes this battle's limit
+; as 6 + round, where round = min(wBattleCount / 10, 8).
+;
+; Relocated out of core.asm 2026-09-02 for bank $0F pressure. No inputs and no
+; outputs, and StartBattle has nothing live in a/bc/hl across this point - it
+; reloads hl, bc and d immediately afterwards - so the farcall's clobbers cost
+; nothing. The three in-line gates that used to jump to .noTurnLimitInit
+; become plain `ret`s here, which is where a few of the reclaimed bytes come
+; from.
+; ============================================================
+WitchInitTurnLimit::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_TURN_LIMIT
+	ret nz
+	xor a
+	ld [wBattleTurnCount], a
+	ld a, [wBattleCount]
+	ld b, 0
+.getRound
+	cp 10
+	jr c, .gotRound
+	sub 10
+	inc b
+	jr .getRound
+.gotRound
+	ld a, b
+	cp 9
+	jr c, .roundOk
+	ld a, 8          ; cap round at 8
+.roundOk
+	add 6            ; limit = 6 + round
+	ld [wBattleTurnLimit], a
+	ret
+
+; ============================================================
+; WitchApplyMoneyEffects
+; Called from TrainerBattleVictory (engine/battle/core.asm) just before the
+; "money for winning" text. The "no money" challenge zeroes the win before it
+; is shown or added; the "increased money" prize doubles it instead. Challenge
+; and prize roll independently, so both can be live at once - zero doubled is
+; still zero, which is fine.
+;
+; Relocated out of core.asm 2026-09-02 for bank $0F pressure. Nothing is live
+; in a/bc/hl at the call site (c died with the DelayFrames above it, and hl is
+; reloaded with MoneyForWinningText immediately after), so the farcall's
+; clobbers are free.
+; ============================================================
+WitchApplyMoneyEffects::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_MONEY
+	jr nz, .checkMoneyPrize
+	xor a
+	ld hl, wAmountMoneyWon
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+.checkMoneyPrize
+	ld a, [wWitchPrize]
+	cp PRIZE_MONEY
+	ret nz
+	ld de, wAmountMoneyWon + 2
+	ld hl, wAmountMoneyWon + 2
+	ld c, $3
+	predef AddBCDPredef ; double it: wAmountMoneyWon += wAmountMoneyWon
+	ret
