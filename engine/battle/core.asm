@@ -2022,7 +2022,7 @@ LoadBattleMonFromParty:
 	ld bc, 1 + NUM_STATS * 2
 	call CopyData
 	call ApplyBurnAndParalysisPenaltiesToPlayer
-	call ApplyBadgeStatBoosts
+	call ApplyEarnedStatBoosts
 	ld a, $7 ; default stat modifier
 	ld b, NUM_STAT_MODS
 	ld hl, wPlayerMonAttackMod
@@ -5107,15 +5107,13 @@ CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm
 	; Witch prize e (PRIZE_CRIT_BOOST): +25% to the player's own crit
 	; threshold b (b + b/4), capped at 255.  This is deliberately part of
 	; the shared calculation so the menu and battle roll cannot drift.
+	; PERMANENT (2026-09-02) - does NOT gate on BIT_WITCH_ACCEPTED.
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .noCritBoost
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_CRIT_BOOST - 1)
 	jr z, .noCritBoost
-	ld a, [wWitchPrize]
-	cp PRIZE_CRIT_BOOST
-	jr nz, .noCritBoost
 	ld a, b
 	srl a
 	srl a                        ; a = b/4
@@ -5850,14 +5848,23 @@ AdjustDamageForMoveType:
 	inc hl
 	jp .loop
 .done
-; ELEMENT PRISM: scale wDamage if this is the player's turn and the move
-; matches the prism's type (custom_functions/element_prism.asm). Hooked here,
-; at the routine's single exit, rather than at its two call sites - one hook
-; instead of two, and safe because both callers follow immediately with
-; `call RandomizeDamage`, which takes no register inputs, so nothing of
-; theirs is live across this return (farcall destroys b/h/l regardless of
-; what the callee preserves). Runs before RandomizeDamage, i.e. the same
-; stage of the pipeline as STAB and type effectiveness above.
+; Two damage scalers share this single exit, split by whose turn it is. Hooked
+; here rather than at the two call sites - one hook instead of two, and safe
+; because both callers follow immediately with `call RandomizeDamage`, which
+; takes no register inputs, so nothing of theirs is live across this return
+; (farcall destroys b/h/l regardless of what the callee preserves). Both run
+; before RandomizeDamage, i.e. the same stage of the pipeline as STAB and type
+; effectiveness above.
+;   PLAYER's turn -> ELEMENT PRISM boost (custom_functions/element_prism.asm),
+;                    if the move matches the equipped prism's type.
+;   ENEMY's turn  -> witch PRIZE_RESIST_SUPER, which softens super-effective
+;                    hits. It stays in this bank because it scans TypeEffects,
+;                    which is bank $0F data - see its header.
+; The whose-turn test used to live at the top of RoguePrismDamageBoost as a
+; `ret nz`; it moved here so the enemy-turn path has somewhere to go.
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, RogueWitchResistSuperEffective
 	farcall RoguePrismDamageBoost
 	ret
 
@@ -5878,6 +5885,24 @@ PreviewTypeMatchup:
 	ld e, a                    ; defender type 2
 	ld a, [wPlayerMoveType]
 	ld b, a                    ; attacking move type
+	call TypeMatchupScan
+	ld e, c
+	ret
+
+; ------------------------------------------------------------
+; TypeMatchupScan
+; The dual-type-aware TypeEffects walk, factored out of PreviewTypeMatchup so
+; RogueWitchResistSuperEffective below can share it instead of carrying a second
+; copy (~42 bytes saved in this bank, which is chronically tight).
+; Stays in bank $0F because TypeEffects is bank $0F data - a caller in another
+; bank must farcall in, never copy this loop.
+; INPUT:  b = attacking move type, d/e = defender's two types,
+;         c = accumulator seed (EFFECTIVE * 2 for a neutral start)
+; OUTPUT: c = accumulated multiplier in twentieths (0, 5, 10, 20, 40, 80)
+; Kept in twentieths so two half-resistances land on x1/4 rather than
+; truncating 5 * 5 / 10 to an incorrect x0.2.
+; ------------------------------------------------------------
+TypeMatchupScan:
 	ld hl, TypeEffects
 .loop
 	ld a, [hli]                 ; attacking type in the current pair
@@ -5920,7 +5945,73 @@ PreviewTypeMatchup:
 	inc hl
 	jr .loop
 .done
-	ld e, c
+	ret
+
+; ============================================================
+; RogueWitchResistSuperEffective
+; Witch PRIZE_RESIST_SUPER (permanent, earned once per run): incoming
+; SUPER-EFFECTIVE damage is scaled to 3/4. Reached from AdjustDamageForMoveType's
+; single exit on the ENEMY's turn, where RoguePrismDamageBoost (a player-only
+; boost) used to simply `ret nz`.
+;
+; WHY THIS LIVES IN BANK $0F AND NOT IN THE ROGUE BANK WITH THE OTHER WITCH CODE:
+; it has to scan TypeEffects, which is bank $0F data. A `ld hl, TypeEffects` /
+; `[hli]` loop running from bank $2F would read whatever happens to be mapped at
+; that address instead - the cross-bank read bug this project keeps hitting. The
+; plan for this prize assumed a $2F home and "zero Battle Core cost"; the bank
+; layout forbids it, so it costs ~65 bytes of the 199 the Phase 1 relocation
+; freed.
+;
+; The effectiveness test deliberately does NOT read wDamageMultipliers, even
+; though AdjustDamageForMoveType just computed it: that variable is overwritten
+; per matching type pair, so for a dual type it holds only the LAST pair's
+; multiplier and reads 0.5x for a 2x/0.5x mon. It also does not reuse
+; AIGetTypeEffectiveness below, which `ret z`s on the FIRST match and has the
+; same blind spot. This accumulates across both defender types in twentieths,
+; exactly like PreviewTypeMatchup above, so 2x/0.5x correctly cancels to neutral
+; and 2x/2x correctly reads as 4x.
+; ============================================================
+RogueWitchResistSuperEffective:
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_RESIST_SUPER - 1)
+	ret z                       ; prize not earned this run
+	ld a, EFFECTIVE * 2
+	ld c, a                     ; accumulated multiplier in twentieths, x1
+	ld a, [wBattleMonType]
+	ld d, a                     ; defender (the player) type 1
+	ld a, [wBattleMonType + 1]
+	ld e, a                     ; defender type 2
+	ld a, [wEnemyMoveType]
+	ld b, a                     ; attacking move type
+	call TypeMatchupScan        ; shared with PreviewTypeMatchup above
+	ld a, c
+	cp EFFECTIVE * 2 + 1
+	ret c                       ; neutral, resisted, or immune (c = 0) - this
+	                            ; prize only softens genuinely super-effective hits
+; wDamage -= wDamage / 4, i.e. x3/4 via shifts rather than Multiply + Divide.
+; Two fewer HOME calls, ~12 fewer bytes, and it keeps hMultiplicand/hProduct
+; untouched. Truncation differs from (damage * 3) / 4 by at most 1 and always in
+; the player's favour (10 -> 8 here, 7 there), which is the right direction for a
+; damage-reduction prize.
+	ld hl, wDamage
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]                  ; de = damage (big-endian); hl = wDamage + 1
+	ld b, d
+	ld c, e
+	srl b
+	rr c
+	srl b
+	rr c                        ; bc = damage / 4
+	ld a, e
+	sub c
+	ld e, a
+	ld a, d
+	sbc b
+	ld d, a                     ; de = damage - damage/4
+	ld [hl], e                  ; low byte
+	dec hl
+	ld [hl], d                  ; high byte
 	ret
 
 ; function to tell how effective the type of an enemy attack is on the player's current pokemon
@@ -6372,15 +6463,13 @@ MoveHitTest:
 	; Witch prize f (PRIZE_ACC_BOOST): +10 percentage points (26/256) to the
 	; player's own move accuracy, capped at 255 (as close to 100% as this
 	; engine's 0-255 accuracy scale allows). Never applies on the enemy's turn.
+	; PERMANENT (2026-09-02) - does NOT gate on BIT_WITCH_ACCEPTED.
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .noAccBoost
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_ACC_BOOST - 1)
 	jr z, .noAccBoost
-	ld a, [wWitchPrize]
-	cp PRIZE_ACC_BOOST
-	jr nz, .noAccBoost
 	ld a, b
 	add 26
 	jr nc, .accBoostDone
@@ -7590,26 +7679,29 @@ CalculateModifiedStat:
 	pop bc
 	ret
 
-ApplyBadgeStatBoosts:
+ApplyEarnedStatBoosts:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; return if link battle
-	ld a, [wObtainedBadges]
+; BADGES NO LONGER GRANT THIS BOOST. The source used to be wObtainedBadges with
+; the boost applied for EVEN bit positions (Boulder 0 = attack, Thunder 2 =
+; defense, Soul 4 = speed, Volcano 6 = special). It is now the earned-boost
+; bitfield in ROGUE_RUN_EVENTS (constants/event_constants.asm), where the four
+; stats are CONTIGUOUS bits 0-3 in the order they are laid out in RAM:
+;   bit 0 attack, bit 1 defense, bit 2 speed, bit 3 special
+; The witch's PRIZE_SPECIAL_BOOST grants bit 3; the planned bridge work grants
+; 0-2. Contiguous bits also let the loop drop its second `srl b`.
+; Bits 4-7 of that byte are the permanent witch prize flags - never reached
+; here, because the loop runs exactly 4 times.
+	ld a, [wEarnedStatBoosts]
 	ld b, a
 	ld hl, wBattleMonAttack
 	ld c, $4
-; the boost is applied for badges whose bit position is even
-; the order of boosts matches the order they are laid out in RAM
-; Boulder (bit 0) - attack
-; Thunder (bit 2) - defense
-; Soul (bit 4) - speed
-; Volcano (bit 6) - special
 .loop
 	srl b
 	call c, .applyBoostToStat
 	inc hl
 	inc hl
-	srl b
 	dec c
 	jr nz, .loop
 	ret

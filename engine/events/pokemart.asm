@@ -231,6 +231,14 @@ DisplayPokemartDialogue_::
 	call DisplayChooseQuantityMenu
 	inc a
 	jr z, .buyMenuLoop ; if the player closed the choose quantity menu with the B button
+	; Witch prize j (PRIZE_CHEAP_ITEMS): hMoney holds the final computed total
+	; here (DisplayChooseQuantityMenu has already summed quantity * unit price),
+	; and the quoted price text below, .isThereEnoughMoney, and
+	; SubtractAmountPaidFromMoney all read hMoney from this point on - so one
+	; discount here covers display, affordability, and payment, and composes
+	; on top of whatever produced this total. a is dead here (reloaded from
+	; wCurItem next), so the farcall's clobbers are free.
+	farcall RogueWitchDiscountBuyPrice
 	ld a, [wCurItem]
 	ld [wNamedObjectIndex], a
 	call GetItemName

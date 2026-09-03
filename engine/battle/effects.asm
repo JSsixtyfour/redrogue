@@ -507,12 +507,12 @@ UpdateStatDone:
 	pop af
 	call nz, Bankswitch
 .applyBadgeBoostsAndStatusPenalties
-	; AI Overhaul Phase 0: was "call z, ApplyBadgeStatBoosts", which re-boosted
+	; AI Overhaul Phase 0: was "call z, ApplyEarnedStatBoosts", which re-boosted
 	; ALL FOUR badge stats every time any one stat changed, compounding the
 	; three that never lost their boost. Now re-boosts only the stat that was
 	; actually recalculated. The whose-turn gate moved inside the routine, so
 	; this stays the same size in the nearly-full "Battle Core" bank.
-	farcall ApplySingleBadgeStatBoost
+	farcall ApplySingleEarnedStatBoost
 	ld hl, MonsStatsRoseText
 	call PrintText
 
@@ -708,7 +708,7 @@ UpdateLoweredStatDone:
 .ApplyBadgeBoostsAndStatusPenalties
 	; AI Overhaul Phase 0: see the matching comment in StatModifierUpEffect.
 	; Only the stat this move actually lowered gets its badge boost restored.
-	farcall ApplySingleBadgeStatBoost
+	farcall ApplySingleEarnedStatBoost
 	ld hl, MonsStatsFellText
 	call PrintText
 
@@ -894,6 +894,31 @@ TwoToFiveAttacksEffect:
 	call BattleRandom
 	and $3
 .gotNumHits
+	; Witch prize i (PRIZE_MULTISTRIKE): force 2-3 here so the inc/inc below
+	; yields 4-5, on the player's turn only. Deliberately inlined rather than
+	; farcalled: de/bc are LIVE at this point (the destination pointers
+	; consumed two lines down at .saveNumberOfHits), and a farcall clobbers
+	; a/b/c/h/l - preserving both pairs across one would cost more bytes than
+	; inlining. hl itself IS free (its last read, wPlayerMoveEffect /
+	; wEnemyMoveEffect, is already done), so the roll is stashed in h alone
+	; while the checks run; BattleRandom preserves hl/de/bc, so h survives
+	; the reroll call. Fixed-hit moves (Double Kick/Bonemerang/Twineedle,
+	; ATTACK_TWICE_EFFECT) never reach this label at all - see
+	; .saveNumberOfHits above.
+	ld h, a                      ; stash the original 0-3 roll
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .noMultistrikeBoost   ; enemy's turn - never buff the AI
+	ld a, [wWitchPrizesEarned + 1]  ; prize 9 is bit 0 of the HIGH byte
+	and 1 << (PRIZE_MULTISTRIKE - 9)
+	jr z, .noMultistrikeBoost
+	call BattleRandom
+	and $1
+	add 2                        ; 2 or 3, so inc/inc below makes 4 or 5
+	jr .haveHitCount
+.noMultistrikeBoost
+	ld a, h                      ; not boosted - restore the original roll
+.haveHitCount
 	inc a
 	inc a
 .saveNumberOfHits

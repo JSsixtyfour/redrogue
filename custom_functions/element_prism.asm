@@ -502,9 +502,10 @@ RoguePrismRefreshCache::
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
 RoguePrismDamageBoost::
-	ldh a, [hWhoseTurn]
-	and a
-	ret nz                        ; enemy turn - this is a player-only boost
+	; The player-turn check that used to open this routine now lives at the hook
+	; site in AdjustDamageForMoveType (engine/battle/core.asm), which branches the
+	; enemy's turn to RogueWitchResistSuperEffective instead. This routine is
+	; therefore only ever entered on the PLAYER's turn.
 	ld a, [wPrismDamageBonus]
 	and a
 	ret z                         ; prism inactive / no type chosen

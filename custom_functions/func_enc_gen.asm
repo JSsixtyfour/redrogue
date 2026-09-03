@@ -850,7 +850,7 @@ RogueRefreshBattleMonAfterEvolution:
 	ld [wCalculateWhoseStats], a
 	farcall CalculateModifiedStats
 	farcall ApplyBurnAndParalysisPenaltiesToPlayer
-	farcall ApplyBadgeStatBoosts
+	farcall ApplyEarnedStatBoosts
 
 ; AnimateSendingOutMon draws the small "in battle" sprite while hIsInBattle is
 ; set.  Clear it across that one predef only, to get the full-size back pic.

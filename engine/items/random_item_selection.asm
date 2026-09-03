@@ -58,13 +58,12 @@ ld b, a
 jr nc, .no_overflow1
 ld b, $FF
 .no_overflow1
-; Witch prize b (PRIZE_RARITY_ITEM): extra item class bonus — larger b = better tier
-ld a, [wRogueFlagsBitfield]
-bit BIT_WITCH_ACCEPTED, a
+; Witch prize b (PRIZE_RARITY_ITEM): extra item class bonus — larger b = better
+; tier. PERMANENT (2026-09-02): does NOT gate on BIT_WITCH_ACCEPTED - once
+; earned it applies to every item roll for the rest of the run.
+ld a, [wWitchPrizesEarned]
+and 1 << (PRIZE_RARITY_ITEM - 1)
 jr z, .no_overflow
-ld a, [wWitchPrize]
-cp PRIZE_RARITY_ITEM
-jr nz, .no_overflow
 ld a, b
 add 51             ; same bump as the gym leader bonus
 jr nc, .witchItemDone

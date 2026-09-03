@@ -135,12 +135,13 @@ GainExperience:
 	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	call nz, BoostExp ; if so, boost exp
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noWitchExpBoost
-	ld a, [wWitchPrize]
-	cp PRIZE_EXP_BOOST
-	call z, BoostExp ; witch's "extra EXP" prize: one more 1.5x pass
+	; PRIZE_EXP_BOOST (d): PERMANENT (2026-09-02) - does NOT gate on
+	; BIT_WITCH_ACCEPTED. Once earned, applies to every kill for the rest of
+	; the run. Rebalanced from a flat 1.5x pass (BoostExp) to +10%, to match
+	; its new permanence.
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_EXP_BOOST - 1)
+	call nz, WitchBoostExp10Percent
 .noWitchExpBoost
 	inc hl
 	inc hl
@@ -317,7 +318,7 @@ GainExperience:
 	ld [wCalculateWhoseStats], a
 	callfar CalculateModifiedStats
 	callfar ApplyBurnAndParalysisPenaltiesToPlayer
-	callfar ApplyBadgeStatBoosts
+	callfar ApplyEarnedStatBoosts
 	callfar DrawPlayerHUDAndHPBar
 	callfar PrintEmptyString
 	call SaveScreenTilesToBuffer1
@@ -469,6 +470,50 @@ BoostExp:
 	jr c, .overflow
 	ret
 .overflow ; saturate at $ffff instead of wrapping
+	ld a, $ff
+	ldh [hQuotient + 2], a
+	ldh [hQuotient + 3], a
+	ret
+
+; ============================================================
+; WitchBoostExp10Percent
+; Witch prize d (PRIZE_EXP_BOOST), rebalanced 2026-09-02 from a flat 1.5x
+; (BoostExp) to +10%, to match its new permanence (see the call site below).
+;
+; Unlike BoostExp's pure shift (value + value/2, a power-of-two divide), 10%
+; needs a real divide. hQuotient aliases hDividend (same UNION, ram/hram.asm),
+; so the current EXP total is already sitting in the right place to read as
+; the dividend - just clear the two high bytes Divide expects for a 4-byte
+; dividend and set the divisor.
+; This is a PLAIN BINARY divide (home/math.asm's Divide, not the BCD one the
+; witch's money prize uses) - EXP math throughout this routine is binary
+; (Multiply/Divide, no `daa`), so the divisor is decimal 10, not BCD $10.
+; Divide preserves bc/de/hl (home/math.asm), so nothing needs saving here.
+; It shares hDividend/hQuotient's UNION with hMultiplicand/hProduct, which is
+; safe: nothing downstream of this call reads those before hQuotient+2/+3 is
+; consumed at .noWitchExpBoost's tail.
+; ============================================================
+WitchBoostExp10Percent:
+	ldh a, [hQuotient + 2]
+	ld d, a
+	ldh a, [hQuotient + 3]
+	ld e, a                  ; de = current exp total
+	xor a
+	ldh [hDividend], a
+	ldh [hDividend + 1], a   ; Divide's dividend is 4 bytes; clear the high half
+	ld a, 10
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide               ; hQuotient = exp / 10
+	ldh a, [hQuotient + 3]
+	add e
+	ldh [hQuotient + 3], a
+	ldh a, [hQuotient + 2]
+	adc d
+	ldh [hQuotient + 2], a
+	jr c, .overflow
+	ret
+.overflow ; saturate at $ffff instead of wrapping, same as BoostExp
 	ld a, $ff
 	ldh [hQuotient + 2], a
 	ldh [hQuotient + 3], a

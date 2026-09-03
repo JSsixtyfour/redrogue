@@ -44,6 +44,22 @@ RollLobbyNPCAppearance:
 ; tier). Effects of the challenge/prize are applied elsewhere (Phase 2 hooks),
 ; not here - this is just the roll and bookkeeping.
 PCWitchSetup::
+    ; --- Permanent prize grant (prizes 7-10) ---
+    ; Arriving in the lobby with BIT_WITCH_ACCEPTED STILL SET is the success
+    ; test, and it needs no separate detection: the player accepted a challenge
+    ; on the previous visit and has walked back in alive. Blacking out warps to
+    ; SILPH_CO_DORM (never here) and RogueOnBlackout clears the flag along with
+    ; the whole ROGUE_RUN_EVENTS block, so a failed zone can never reach this.
+    ; MUST run before the res below, which is what ends the previous offer.
+    ld a, [wRogueFlagsBitfield]
+    bit BIT_WITCH_ACCEPTED, a
+    jr z, .noPrizeToGrant
+    ld a, [wWitchPrize]
+    call WitchPrizeEarnedMask ; -> a = mask, hl = the byte, carry set if valid
+    jr nc, .noPrizeToGrant    ; 0 / out of range: nothing on offer to grant
+    or [hl]
+    ld [hl], a
+.noPrizeToGrant
     ld hl, wRogueFlagsBitfield
     res BIT_WITCH_ACCEPTED, [hl]
 
@@ -70,28 +86,11 @@ PCWitchSetup::
     ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef ShowObject
-    ; Debug 2: force the Legendary Boss challenge, skipping the roll and the
-    ; map/badge/masterball gates. Re-applied every lobby entry so the normal
-    ; reroll never clobbers it. wWitchPrize=0 is the underflow-safe sentinel
-    ; that PCWitchText special-cases for CHALLENGE_LEGENDARY_BOSS.
-    ld a, [wStatusFlags6]
-    bit BIT_DEBUG2_MODE, a
-    jr z, .rollChallenge
-    ; ...but NEVER during the finale. Challenge 11 pays out through four gym
-    ; leaders' receive-TM routines, and no gym is fought from Victory Road on,
-    ; so a forced Challenge 11 in the pre-Victory-Road lobby can never be
-    ; completed. This early return skipped every gate, including the eligible-
-    ; map check, which is exactly why the witch offered Challenge 11 by name in
-    ; that lobby. Note this block is NOT wrapped in IF DEF(_DEBUG) - it fires on
-    ; any build once BIT_DEBUG2_MODE is set.
-    ld a, [wObtainedBadges]
-    cp $FF
-    jr z, .rollChallenge
-    ld a, CHALLENGE_LEGENDARY_BOSS
-    ld [wWitchChallenge], a
-    xor a
-    ld [wWitchPrize], a
-    ret
+    ; Debug 2 used to force CHALLENGE_LEGENDARY_BOSS here unconditionally,
+    ; skipping the roll and the map/badge/masterball gates below. Removed
+    ; 2026-09-02 at user request: the witch now rolls normally in every build,
+    ; Debug 2 included. Challenge 11 is reachable through the ordinary roll
+    ; (.notLegendaryGate below), gated exactly as it always was.
 .rollChallenge
     ld c, NUM_WITCH_CHALLENGES
     call Rangerandom          ; a = 0..NUM_WITCH_CHALLENGES-1
@@ -179,10 +178,28 @@ PCWitchSetup::
     jr z, .rollChallenge   ; Game Corner replaces a route, not a gym
 .gotChallenge
     ld [wWitchChallenge], a   ; a = 1-based challenge id
+    ; No dupes: a prize already earned this run must never be offered again.
+    ; EVERY prize is permanent now, so unlike the old 1-6/7-10 split there is no
+    ; always-available fallback and an unbounded loop COULD spin forever once the
+    ; player has earned all ten. Hence the bounded retry: after 16 draws, accept
+    ; whatever came up. Re-granting an already-set bit is a harmless no-op, so
+    ; the degenerate case just means the witch offers something already owned.
+    ; d and e both survive Rangerandom (it pushes bc; Random preserves hl/de/bc).
+    ld e, 16                  ; retry budget
+.rollPrize
     ld c, NUM_WITCH_PRIZES
     call Rangerandom          ; a = 0..NUM_WITCH_PRIZES-1
     inc a
-    ld [wWitchPrize], a       ; a = 1-based prize id - independent of the challenge roll
+    ld d, a                   ; stash the rolled prize id across the helper
+    dec e
+    jr z, .prizeOk            ; budget spent - every prize is probably earned
+    call WitchPrizeEarnedMask
+    jr nc, .prizeOk           ; unreachable for a valid roll, but fail safe
+    and [hl]
+    jr nz, .rollPrize         ; already earned this run - roll again
+.prizeOk
+    ld a, d
+    ld [wWitchPrize], a       ; 1-based prize id - independent of the challenge roll
     ret
 ; Elite Four next: take the witch off the board for the rest of the run. The
 ; object must be explicitly hidden - the toggle state resets on every warp, and
@@ -197,4 +214,45 @@ PCWitchSetup::
     xor a
     ld [wWitchChallenge], a
     ld [wWitchPrize], a
+    ret
+
+; ============================================================
+; WitchPrizeEarnedMask
+; Maps a prize id to its bit in wWitchPrizesEarned, for the two places that
+; care: the grant at the top of PCWitchSetup and the no-dupe reroll below.
+;
+; ALL prizes are permanent now (earned once per run, wiped on blackout), so
+; every id 1..NUM_WITCH_PRIZES has a bit: bit (id - 1) of the 16-bit
+; wWitchPrizesEarned, i.e. prizes 1-8 in the low byte and 9-10 in the high byte.
+;
+; INPUT:  a = prize id (any value; 0 and out-of-range are rejected)
+; OUTPUT: carry SET   -> a = bit mask, hl = the wWitchPrizesEarned byte holding it
+;         carry CLEAR -> not a valid prize id; a and hl are meaningless
+; CLOBBERS: a, b, hl
+; ============================================================
+WitchPrizeEarnedMask:
+    and a
+    jr z, .invalid              ; 0 = "no prize this visit"
+    cp NUM_WITCH_PRIZES + 1
+    jr nc, .invalid
+    dec a                       ; 0-based bit index, 0..NUM_WITCH_PRIZES-1
+    ld hl, wWitchPrizesEarned
+    cp 8
+    jr c, .gotByte
+    sub 8
+    inc hl                      ; high byte holds bits 8+ (prizes 9 and 10)
+.gotByte
+    ld b, a                     ; b = bit position within that byte
+    ld a, 1
+    inc b
+.shift
+    dec b
+    jr z, .done
+    add a
+    jr .shift
+.done
+    scf
+    ret
+.invalid
+    and a                       ; clear carry
     ret

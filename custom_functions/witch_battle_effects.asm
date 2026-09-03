@@ -367,9 +367,13 @@ WitchInitTurnLimit::
 ; WitchApplyMoneyEffects
 ; Called from TrainerBattleVictory (engine/battle/core.asm) just before the
 ; "money for winning" text. The "no money" challenge zeroes the win before it
-; is shown or added; the "increased money" prize doubles it instead. Challenge
-; and prize roll independently, so both can be live at once - zero doubled is
-; still zero, which is fine.
+; is shown or added.
+;
+; PRIZE_MONEY is PERMANENT (2026-09-02): unlike the challenge, it does NOT
+; gate on BIT_WITCH_ACCEPTED - once earned it applies to every win for the
+; rest of the run, whether or not a challenge is currently active. Also
+; rebalanced from a flat 2x (AddBCDPredef with source == dest) to +10%, to
+; match its new permanence.
 ;
 ; Relocated out of core.asm 2026-09-02 for bank $0F pressure. Nothing is live
 ; in a/bc/hl at the call site (c died with the DelayFrames above it, and hl is
@@ -379,7 +383,7 @@ WitchInitTurnLimit::
 WitchApplyMoneyEffects::
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
-	ret z
+	jr z, .checkMoneyPrize
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_NO_MONEY
 	jr nz, .checkMoneyPrize
@@ -389,13 +393,27 @@ WitchApplyMoneyEffects::
 	ld [hli], a
 	ld [hl], a
 .checkMoneyPrize
-	ld a, [wWitchPrize]
-	cp PRIZE_MONEY
-	ret nz
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_MONEY - 1)
+	ret z
+	; wAmountMoneyWon += wAmountMoneyWon / 10. DivideBCD only ever divides
+	; hMoney (engine/math/bcd.asm), so copy the 3-byte BCD value in first.
+	ld a, [wAmountMoneyWon]
+	ldh [hMoney], a
+	ld a, [wAmountMoneyWon + 1]
+	ldh [hMoney + 1], a
+	ld a, [wAmountMoneyWon + 2]
+	ldh [hMoney + 2], a
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
+	ld a, $10             ; BCD ten - NOT decimal 16
+	ldh [hDivideBCDDivisor + 2], a
+	predef DivideBCDPredef3
 	ld de, wAmountMoneyWon + 2
-	ld hl, wAmountMoneyWon + 2
+	ld hl, hDivideBCDQuotient + 2
 	ld c, $3
-	predef AddBCDPredef ; double it: wAmountMoneyWon += wAmountMoneyWon
+	predef AddBCDPredef ; wAmountMoneyWon += wAmountMoneyWon / 10
 	ret
 
 ; ============================================================
@@ -422,4 +440,40 @@ RogueWitchBlockHealing::
 	ret
 .allow
 	and a                  ; clear carry
+	ret
+
+; ============================================================
+; RogueWitchDiscountBuyPrice
+; Witch prize j (PRIZE_CHEAP_ITEMS): 10% off at the money marts. Called from
+; engine/events/pokemart.asm's buy path right after DisplayChooseQuantityMenu,
+; which by then has left the final computed total in hMoney - so this scales
+; the SAME total the quoted price, the affordability check, and the payment
+; all read next, and it composes multiplicatively on top of whatever produced
+; that total.
+; PERMANENT (earned once, applies for the rest of the run) - tests
+; wWitchPrizesEarned directly, not wWitchPrize/BIT_WITCH_ACCEPTED.
+; Scope: gated on the prize, not the shop, so it applies at any money mart
+; open while the prize is owned - in practice the two lobby clerks. The
+; Credit Exchange (own currency/cost logic) and the dorm vendor are untouched.
+; CLOBBERS: a, bc, de, hl
+; ============================================================
+RogueWitchDiscountBuyPrice::
+	ld a, [wWitchPrizesEarned + 1]  ; prize 10 is bit 1 of the HIGH byte
+	and 1 << (PRIZE_CHEAP_ITEMS - 9)
+	ret z
+	; hMoney / 10 -> hDivideBCDQuotient (DivideBCD divides hMoney by the
+	; divisor and aliases the quotient over hDivideBCDDivisor - see
+	; engine/math/bcd.asm). This is BCD math (unlike the plain-binary EXP
+	; divide above), so the divisor is BCD ten: $10, not decimal 10/$0A.
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
+	ld a, $10               ; BCD ten - NOT decimal 16
+	ldh [hDivideBCDDivisor + 2], a
+	predef DivideBCDPredef3
+	; hMoney -= hMoney / 10
+	ld de, hMoney + 2
+	ld hl, hDivideBCDQuotient + 2
+	ld c, 3
+	predef SubBCDPredef
 	ret

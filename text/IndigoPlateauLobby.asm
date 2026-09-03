@@ -177,6 +177,42 @@ _WitchPrize6Text::
 	line "bargain?"
 	done
 
+_WitchPrize7Text::
+	text "Win and your"
+	line "SPECIAL rises"
+	cont "for the whole run"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize8Text::
+	text "Win and foes hit"
+	line "your weak spots"
+	cont "softer, for good"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize9Text::
+	text "Win and your"
+	line "multi-hit moves"
+	cont "hit more often"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
+_WitchPrize10Text::
+	text "Win and every"
+	line "shop cuts you a"
+	cont "permanent deal"
+
+	para "Do we have a"
+	line "bargain?"
+	done
+
 ; Fixed teaser for CHALLENGE_LEGENDARY_BOSS (wWitchPrize = 0 sentinel).
 ; Shown instead of a random prize; the boss trades a LEGENDARY for one
 ; of your masterball-class #MON.

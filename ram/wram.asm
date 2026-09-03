@@ -2379,6 +2379,28 @@ ENDU
 wWitchChallenge:: db      ; 0 = no witch/challenge this lobby visit, 1-NUM_WITCH_CHALLENGES = challenge id
 wWitchPrize:: db          ; 0 = none, 1-NUM_WITCH_PRIZES = prize id, rolled independently of the challenge
 
+; --- Run-scoped earned state. NOT events: these are ordinary run state, so they
+; --- live here rather than being aliased onto dead event bits.
+; Both sit inside wGameProgressFlags, so they are saved AND zeroed on new game.
+; The 3 bytes come out of the dead `ds` pad below wGameProgressFlagsEnd, so
+; WRAM0 stays net-zero (it has exactly 1 free byte - see WRAM_BIBLE.md).
+; Both are wiped on blackout by RogueOnBlackout (custom_functions/credit_popup.asm).
+
+; Which of the four 1.125x stat boosts the player has earned this run. Replaces
+; wObtainedBadges as the source for ApplyEarnedStatBoosts / ApplySingleEarnedStatBoost -
+; BADGES NO LONGER GRANT THESE. The witch's PRIZE_SPECIAL_BOOST grants SPECIAL;
+; the planned bridge work grants ATTACK/DEFENSE/SPEED.
+; Bits MUST stay contiguous and in wBattleMonAttack..Special order: the boost
+; loop reads this byte once and shifts through bits 0-3.
+;   bit 0 attack, bit 1 defense, bit 2 speed, bit 3 special (bits 4-7 spare)
+wEarnedStatBoosts:: db
+
+; Which permanent witch prizes have been earned this run, one bit per prize id:
+; bit (PRIZE_x - 1), so prizes 1-10 occupy bits 0-9 across these two bytes and
+; bits 10-15 are spare. Every permanent prize's effect hook tests THIS, never
+; wWitchPrize - that byte only says which prize is on OFFER this lobby visit.
+wWitchPrizesEarned:: dw
+
 UNION
 wWitchLevelBonus:: db     ; CHALLENGE_INCREASED_LEVELS: added to enemy levels
 NEXTU
@@ -2498,7 +2520,7 @@ wOptions2:: db
 wRGB:: ds 3
 ; former hRGB in shinred
 
-	ds 8  ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+	ds 5  ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below
@@ -2517,6 +2539,8 @@ wRGB:: ds 3
 	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0
 	      ; -1 more for wOptions2 (extra options menu, Shin Red import Phase 0), still net-zero WRAM0
           ; -3 for wRGB
+          ; -3 more for wEarnedStatBoosts + wWitchPrizesEarned (witch permanent
+          ;   prizes / earned stat boosts), still net-zero WRAM0
 
 ; Which trainer class the player looks like: index into PlayerAppearanceTable
 ; (data/player/appearance.asm). 0 = PLAYER_APPEARANCE_RED, so the zero-fill in

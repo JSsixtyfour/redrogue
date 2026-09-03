@@ -653,6 +653,17 @@ PCWitchText:
 	jr z, .legendaryPrize      ; fixed reward: skip the random prize-table lookup
 	                           ; (wWitchPrize = 0 sentinel would underflow the index)
 	ld a, [wWitchPrize]
+	and a
+	jr nz, .havePrizeIndex
+	inc a                    ; Defensive: 0 is the "no prize" sentinel, and only
+	                         ; CHALLENGE_LEGENDARY_BOSS (handled above) is supposed
+	                         ; to reach here with it. `dec a` on 0 underflows to
+	                         ; $FF and indexes 510 bytes past .PrizeTextTable, so a
+	                         ; stray 0 - a poked value while debugging, or any
+	                         ; future challenge that forgets to roll a prize -
+	                         ; crashed on a garbage pointer. Fall back to prize 1's
+	                         ; teaser instead: wrong text, but harmless.
+.havePrizeIndex
 	dec a                    ; 0-based index
 	ld hl, .PrizeTextTable
 	ld d, 0
@@ -795,6 +806,10 @@ PCWitchText:
 	dw .Prize4
 	dw .Prize5
 	dw .Prize6
+	dw .Prize7
+	dw .Prize8
+	dw .Prize9
+	dw .Prize10
 
 .Prize1:
 	text_far _WitchPrize1Text
@@ -818,6 +833,22 @@ PCWitchText:
 
 .Prize6:
 	text_far _WitchPrize6Text
+	text_end
+
+.Prize7:
+	text_far _WitchPrize7Text
+	text_end
+
+.Prize8:
+	text_far _WitchPrize8Text
+	text_end
+
+.Prize9:
+	text_far _WitchPrize9Text
+	text_end
+
+.Prize10:
+	text_far _WitchPrize10Text
 	text_end
 
 .PrizeLegendary:

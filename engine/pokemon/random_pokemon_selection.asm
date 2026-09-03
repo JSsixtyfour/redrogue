@@ -31,29 +31,36 @@ ldh a, [hRandomAdd]
 ld b, a
 
 .determineClassSlot
-; Apply witch prize/challenge rarity modifier to the class roll.
-; PRIZE_RARITY_POKEMON (a): wRewardClassBonus > 0 → subtract from b (lower b = better class).
-; CHALLENGE_REDUCED_RARITY (4): wRewardClassBonus < 0 (stored as two's complement) → adds, pushing toward pokeball.
-; Using addition only: if wRewardClassBonus is set as a signed byte, ld a,b / add [wRewardClassBonus] handles both.
+; Apply witch challenge/prize rarity modifiers to the class roll. Two
+; INDEPENDENT effects, both able to apply on the same roll (2026-09-02: they
+; used to be mutually exclusive by code structure - if prize a was active,
+; challenge 4 was skipped even when both were live at once. Fixed to match the
+; additive-stacking shape every other rarity source here already uses - see
+; the mini-boss/RARE SCOPE stack below).
+;
+; CHALLENGE_REDUCED_RARITY (4): zone-scoped, only while BIT_WITCH_ACCEPTED.
 ld a, [wRogueFlagsBitfield]
 bit BIT_WITCH_ACCEPTED, a
-jr z, .noRarityMod
-ld a, [wWitchPrize]
-cp PRIZE_RARITY_POKEMON
-jr z, .rarityBonus
+jr z, .noChallengeMod
 ld a, [wWitchChallenge]
 cp CHALLENGE_REDUCED_RARITY
-jr nz, .noRarityMod
-; Challenge 4: push roll toward pokeball (SUBTRACT from b → smaller b = more likely pokeball)
+jr nz, .noChallengeMod
+; Push roll toward pokeball (SUBTRACT from b → smaller b = more likely pokeball)
 ld a, b
 sub 64         ; smaller b = more likely pokeball class (worse)
-jr nc, .rarityMod
+jr nc, .challengeModDone
 xor a          ; clamp at 0
-.rarityMod
+.challengeModDone
 ld b, a
-jr .noRarityMod
-.rarityBonus
-; Prize a: push roll toward ultraball/masterball (ADD to b → larger b = more likely ultraball)
+.noChallengeMod
+; PRIZE_RARITY_POKEMON (a): PERMANENT (2026-09-02) - does NOT gate on
+; BIT_WITCH_ACCEPTED. Once earned, applies to every roll for the rest of the
+; run, stacking with mini-boss/RARE SCOPE exactly like they stack with each
+; other below.
+ld a, [wWitchPrizesEarned]
+and 1 << (PRIZE_RARITY_POKEMON - 1)
+jr z, .noRarityMod
+; Push roll toward ultraball/masterball (ADD to b → larger b = more likely ultraball)
 ld a, b
 add 51         ; +51 shifts distribution toward ultraball/masterball. Against this file's
                ; pokeball_odds=127 threshold that still leaves ~30% pokeball chance, NOT

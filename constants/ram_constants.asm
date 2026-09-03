@@ -153,13 +153,11 @@ DEF NUM_BADGES EQU const_value
 	const BIT_UNUSED_BEAT_ELITE_4 ; 0
 	const BIT_STARTED_ELITE_4     ; 1
 	const_skip                     ; 2 - RETIRED. Was BIT_VICTORY_ROAD_CLEARED;
-	                               ; moved to EVENT_VICTORY_ROAD_CLEARED (see the
-	                               ; ROGUE_RUN_EVENTS block in event_constants.asm)
-	                               ; so that a blackout revokes it along with the
-	                               ; earned stat boosts and permanent witch prizes.
-	                               ; Kept as a skip rather than reclaimed: bits 0/1
-	                               ; keep their positions and nothing silently
-	                               ; inherits bit 2's old meaning.
+	                               ; moved to EVENT_VICTORY_ROAD_CLEARED in
+	                               ; event_constants.asm so a blackout revokes the
+	                               ; Victory Road clear. Kept as a skip rather than
+	                               ; reclaimed: bits 0/1 keep their positions and
+	                               ; nothing silently inherits bit 2's old meaning.
 
 ; wMovementFlags
 	const_def
@@ -218,14 +216,39 @@ DEF NUM_WITCH_CHALLENGES            EQU 18
 ; (min 0x1C + range 6) - i.e. the ~level 30 bracket. Tune freely.
 DEF GAMBLERS_PARADISE_MIN_BATTLES   EQU 40
 
-; wWitchPrize values
-DEF PRIZE_RARITY_POKEMON EQU 1 ; a: bonus added to reward mon class roll
-DEF PRIZE_RARITY_ITEM    EQU 2 ; b: bonus added to item tier roll
-DEF PRIZE_MONEY          EQU 3 ; c: multiplies wAmountMoneyWon
-DEF PRIZE_EXP_BOOST      EQU 4 ; d: extra BoostExp pass
-DEF PRIZE_CRIT_BOOST     EQU 5 ; e: +25% to the player's crit threshold
-DEF PRIZE_ACC_BOOST      EQU 6 ; f: +10 percentage points to the player's move accuracy, capped at 255
-DEF NUM_WITCH_PRIZES     EQU 6
+; wWitchPrize values.
+;
+; EVERY prize is PERMANENT: earned once per run by surviving the challenge,
+; persists for the rest of the run, wiped on blackout, and stacks with the
+; others and with anything outside the witch system.
+;
+; The earned set lives in wWitchPrizesEarned (ram/wram.asm) as bit (id - 1).
+; Effect hooks MUST test that bitfield, never wWitchPrize - that byte only says
+; which prize is on OFFER this lobby visit, and it is re-rolled every visit.
+; PCWitchSetup grants the bit on the next lobby entry if BIT_WITCH_ACCEPTED
+; survived the zone, and re-rolls any prize already earned so none is offered
+; twice in a run.
+DEF PRIZE_RARITY_POKEMON EQU 1  ; a: +51 (20% of the 0-255 roll) to reward mon class
+DEF PRIZE_RARITY_ITEM    EQU 2  ; b: +51 (20%) to the item tier roll
+DEF PRIZE_MONEY          EQU 3  ; c: +10% to wAmountMoneyWon
+DEF PRIZE_EXP_BOOST      EQU 4  ; d: +10% EXP
+DEF PRIZE_CRIT_BOOST     EQU 5  ; e: +25% to the player's crit threshold
+DEF PRIZE_ACC_BOOST      EQU 6  ; f: +10 percentage points to move accuracy, capped at 255
+DEF PRIZE_SPECIAL_BOOST  EQU 7  ; g: x1.125 Special (sets the SPECIAL bit in wEarnedStatBoosts)
+DEF PRIZE_RESIST_SUPER   EQU 8  ; h: incoming super-effective damage x3/4
+DEF PRIZE_MULTISTRIKE    EQU 9  ; i: your 2-5 hit moves always roll 4 or 5
+DEF PRIZE_CHEAP_ITEMS    EQU 10 ; j: 10% off at the money marts
+DEF NUM_WITCH_PRIZES     EQU 10
+
+; wEarnedStatBoosts bits - which 1.125x stat boosts have been earned this run.
+; BADGES NO LONGER GRANT THESE. Order must match wBattleMonAttack..Special:
+; ApplyEarnedStatBoosts reads the byte once and shifts through bits 0-3.
+	const_def
+	const BIT_STAT_BOOST_ATTACK  ; 0
+	const BIT_STAT_BOOST_DEFENSE ; 1
+	const BIT_STAT_BOOST_SPEED   ; 2
+	const BIT_STAT_BOOST_SPECIAL ; 3
+
 
 ; ============================================================
 ; Mini-boss framework (see K:\...\Red Rogue Files\MINIBOSS_FRAMEWORK.md)

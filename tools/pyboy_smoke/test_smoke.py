@@ -417,12 +417,20 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
         for index, value in enumerate(stats):
             self.harness.pyboy.memory[start + index * 2] = value >> 8
             self.harness.pyboy.memory[start + index * 2 + 1] = value & 0xFF
-        self.harness.write8("wObtainedBadges", 0x55)
+        # BADGES NO LONGER GRANT THIS BOOST (2026-09-02). The source is now
+        # wEarnedStatBoosts, ordinary run state in wGameProgressFlags - bits 0-3
+        # are attack/defense/speed/special, so 0x0F = all four earned, matching
+        # what the old wObtainedBadges = 0x55 set up.
+        self.harness.write8("wEarnedStatBoosts", 0x0F)
+        # Badges set but deliberately irrelevant: if the routine ever regresses to
+        # reading wObtainedBadges, the even-bit layout would boost every stat here
+        # and the assertion below would catch it.
+        self.harness.write8("wObtainedBadges", 0xFF)
         self.harness.write8("wLinkState", 0)
         self.harness.write8("hWhoseTurn", 0)
         self.harness.write8("wPlayerMoveEffect", effects["ATTACK_UP1_EFFECT"])
 
-        self.harness.call_routine("ApplySingleBadgeStatBoost")
+        self.harness.call_routine("ApplySingleEarnedStatBoost")
 
         actual = []
         for index in range(4):

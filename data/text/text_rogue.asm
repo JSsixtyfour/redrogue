@@ -69,10 +69,12 @@ _RecoilChallengeText::
 	cont "by recoil!"
 	done
 
+; <USER> expands to the player's mon nick, up to 10 characters, so it needs a
+; line largely to itself - "repetition! <USER>" reached 21 with a long nick.
 _SameMovePenaltyText::
 	text "The bargain hates"
-	line "repetition! <USER>"
-	cont "was hurt!"
+	line "repetition!"
+	cont "<USER> hurts!"
 	done
 
 _NoHealingChallengeText::

@@ -1,4 +1,11 @@
-; AI Overhaul Phase 0: badge-boost re-application fix.
+; AI Overhaul Phase 0: stat-boost re-application fix.
+;
+; NOTE (2026-09-02): this boost is no longer granted by BADGES. The source moved
+; to the earned-boost bitfield in ROGUE_RUN_EVENTS - the witch's
+; PRIZE_SPECIAL_BOOST grants Special, the planned bridge work grants the other
+; three. The routine was renamed ApplySingleBadgeStatBoost ->
+; ApplySingleEarnedStatBoost to match. The history below still describes vanilla,
+; where the source was wObtainedBadges.
 ;
 ; THE BUG (vanilla, still present before this change):
 ; Stat-modifying moves recalculate ONE stat from its unmodified base plus the
@@ -22,7 +29,7 @@
 ; used to gate those calls now lives here, which keeps the change byte-neutral
 ; in the tight Battle Core bank.
 ;
-; Badges only ever boost the PLAYER's stats, so this returns without doing
+; These boosts only ever apply to the PLAYER's stats, so this returns without doing
 ; anything unless the mon whose stat just changed is the player's:
 ;   stat UP   -> affects the USER   (self-targeted in Gen 1)
 ;   stat DOWN -> affects the TARGET (the opponent of whoever's turn it is)
@@ -31,10 +38,10 @@
 
 SECTION "Single Badge Stat Boost", ROMX
 
-ApplySingleBadgeStatBoost::
+ApplySingleEarnedStatBoost::
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
-	ret z ; no badge boosts in link battles, matching ApplyBadgeStatBoosts
+	ret z ; no badge boosts in link battles, matching ApplyEarnedStatBoosts
 
 	ld hl, wPlayerMoveEffect
 	ldh a, [hWhoseTurn]
@@ -85,22 +92,26 @@ ApplySingleBadgeStatBoost::
 	ldh a, [hWhoseTurn]
 	xor d
 	and a
-	ret nz ; the enemy's stat changed - badges never apply to it
+	ret nz ; the enemy's stat changed - these boosts never apply to it
 
-; Badge bit for this stat is index * 2:
-; Boulder (0) Attack, Thunder (2) Defense, Soul (4) Speed, Volcano (6) Special.
-	ld a, [wObtainedBadges]
+; BADGES NO LONGER GRANT THIS BOOST - see ApplyEarnedStatBoosts in
+; engine/battle/core.asm for the full note. The source is now the earned-boost
+; bitfield in ROGUE_RUN_EVENTS, where the stat bit is the stat index itself
+; (0 attack, 1 defense, 2 speed, 3 special) rather than index * 2, so this
+; rotates once per index instead of twice.
+; c is guaranteed < 4 by the `cp 4 / ret nc` above, so the permanent witch
+; prize flags in bits 4-7 of that byte can never rotate into bit 0.
+	ld a, [wEarnedStatBoosts]
 	ld b, c
 	inc b
-.shiftToBadgeBit
+.shiftToStatBit
 	dec b
-	jr z, .testBadgeBit
+	jr z, .testStatBit
 	rrca
-	rrca
-	jr .shiftToBadgeBit
-.testBadgeBit
+	jr .shiftToStatBit
+.testStatBit
 	bit 0, a
-	ret z ; badge not obtained, so this stat never had a boost to lose
+	ret z ; boost not earned, so this stat never had one to lose
 
 	ld hl, wBattleMonAttack
 	sla c ; each stat is 2 bytes
@@ -108,7 +119,7 @@ ApplySingleBadgeStatBoost::
 	add hl, bc
 
 ; Multiply the stat at hl by 1.125, capped at MAX_STAT_VALUE.
-; Mirrors ApplyBadgeStatBoosts.applyBoostToStat in engine/battle/core.asm.
+; Mirrors ApplyEarnedStatBoosts.applyBoostToStat in engine/battle/core.asm.
 ; Duplicated rather than shared because farcall overwrites hl, so the original
 ; cannot be handed a pointer across a bank boundary. If the boost formula there
 ; ever changes, change it here too.

@@ -77,20 +77,18 @@ RogueOnBlackout::
 	res 1, [hl]
 
 	; A blackout also ends the witch's run-scoped rewards: the earned stat
-	; boosts, the permanent witch prizes, and the Victory Road clear all go.
-	; These live as aliases on Route 17's dead trainer bits - see the
-	; ROGUE_RUN_EVENTS block in constants/event_constants.asm. Both bytes are
-	; zeroed wholesale rather than bit-by-bit because byte ($4D0/8) is entirely
-	; Route 17 trainer bits and byte ($4D8/8) is Route 17 bits plus the
-	; unallocated padding before Route 18, so nothing else lives in them.
-	; When the broader "blackout wipes many events" system lands, widen this
-	; to a ResetEventRange over ROGUE_RUN_EVENTS_START..END rather than adding
-	; a second wipe site. NOTE: the ELEMENT PRISM block at the end of
-	; event_constants.asm must stay OUT of any such range - its "only the
-	; first time, ever" messages depend on never being cleared.
+	; boosts, every permanent witch prize, and the Victory Road clear.
+	; The first two are ordinary run state in wGameProgressFlags (ram/wram.asm),
+	; NOT events - only the Victory Road clear is a genuine milestone, and it
+	; lives on one of Route 17's dead event bits (see event_constants.asm).
+	; NOTE for the planned "blackout wipes many events" system: the ELEMENT PRISM
+	; block at the end of event_constants.asm must stay OUT of any such range -
+	; its "only the first time, ever" messages depend on never being cleared.
 	xor a
-	ld [wEventFlags + (EVENT_STAT_BOOST_ATTACK / 8)], a
-	ld [wEventFlags + (EVENT_VICTORY_ROAD_CLEARED / 8)], a
+	ld [wEarnedStatBoosts], a
+	ld [wWitchPrizesEarned], a
+	ld [wWitchPrizesEarned + 1], a
+	ResetEvent EVENT_VICTORY_ROAD_CLEARED
 	ld hl, wRogueFlagsBitfield
 	res BIT_WITCH_ACCEPTED, [hl]   ; an accepted challenge does not survive a blackout
 
