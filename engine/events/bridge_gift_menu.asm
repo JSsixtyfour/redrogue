@@ -65,9 +65,9 @@ rogue_gift_randomized_batch::
 	; Bankswitch's exit, not d/e/h/l - see project-farcall-home-clobbers-a).
 	call GetRewardMonLevel
 	ld [wCurEnemyLevel], a
-	ld c, 0                     ; random class by odds
+	ld e, 0                     ; random class by odds; only d/e cross a farcall
 	call Random                 ; primes hRandomAdd for the class-odds roll (HOME)
-	farcall Random_Pokemon_Selection  ; -> d = species
+	farcall Random_Pokemon_Selection_Far  ; -> d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	call GetGiverCount          ; a = number of gifts this giver has

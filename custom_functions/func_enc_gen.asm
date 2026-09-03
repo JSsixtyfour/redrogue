@@ -77,64 +77,30 @@ GetRandMon:
 	jr c, .noRarityBump    ; already masterball (b=1), can't go rarer
 	dec b
 .noRarityBump
+    ; b is INVERTED here relative to every other caller (4=pokeball .. 1=
+    ; masterball), so map it onto the shared tier ids: tier = 4 - b.
+    push de                       ; the roller uses de; callers expect it preserved
+    ld a, RARITY_TIER_MASTERBALL + 1
+    sub b
+    ld b, a
+    call RogueRollGroupForTier    ; a = group; b (tier) preserved
+    jr c, .fallback
+    call RogueGetTierEntry        ; hl = list, b = base count, c = total
+    jr z, .fallback
     ld a, b
-    cp a, $4
-    jr z, trainer_pokeball_class_selection
-    cp a, $3
-    jr z, trainer_greatball_class_selection
-    cp a, $2
-    jr z, trainer_ultraball_class_selection
-    cp a, $1
-    jr z, trainer_masterball_class_selection
-    
-; common
-
-trainer_pokeball_class_selection:
-ld hl, pokeball_class
-push hl
-ld a, pokeball_pokemon_line_amount
-push af
-jp pokemon_class_selection_trainer
-
-trainer_greatball_class_selection:
-ld hl, greatball_class
-push hl
-ld a, greatball_pokemon_line_amount
-push af
-jp pokemon_class_selection_trainer
-
-trainer_ultraball_class_selection:
-ld hl, ultraball_class
-push hl
-ld a, ultraball_pokemon_line_amount
-push af
-jp pokemon_class_selection_trainer
-
-trainer_masterball_class_selection:
-ld hl, masterball_class
-push hl
-ld a, masterball_pokemon_line_amount
-push af
-
-pokemon_class_selection_trainer:
-call Random                 ; get a random number to determine pokemon
-ldh [hMultiplicand+2], a    ; place number in for multiplication
-xor a
-ldh [hMultiplicand], a      ; put zero in highest byte
-ldh [hMultiplicand+1], a    ; put second byte for multiplication
-pop af                      ; restore line amount to multiply by amount in class
-ldh [hMultiplier], a        ; place amount of class in multiplier
-call Multiply               ; multiply random number by amount in class
-ldh a, [hProduct+2]         ; high byte = floor(random*N/256), always in [0,N-1]
-ld c, a
-ld b, $0
-
-pop hl                      ; restore base pointer
-add hl, bc                  ; add product to get address of pokemon
-           
-ld a, [hl]                  ; load pokemon from address
-ld [wCurPartySpecies], a    ; place pokemon in Current Party Speciies
-
+    call RogueRollSpeciesInList   ; d = species
+    jr .gotSpecies
+.fallback
+    ; No active group offers this tier - fall back to the Kanto pokeball list.
+    ld a, SPECIES_GROUP_KANTO
+    ld b, RARITY_TIER_POKEBALL
+    call RogueGetTierEntry
+    ld a, b
+    call RogueRollSpeciesInList
+.gotSpecies
+    ld a, d
+    pop de
+    ld [wCurPartySpecies], a
 .done
 pop bc
 pop hl

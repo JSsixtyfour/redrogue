@@ -5,34 +5,28 @@
 ; ReverseLookupPokemonClass
 ; Input: b = species
 ; Output: c = class (1=pokeball, 2=greatball, 3=ultraball, 4=masterball/uber)
-; Clobbers: a, e, hl
-; Same scan pattern as PCTraderSuperNerdSetup (scripts/IndigoPlateauLobby.asm).
+; Clobbers: a, hl  (b and de preserved)
+;
+; Thin adapter over RogueClassifySpeciesLegacy (engine/pokemon/rarity.asm, same
+; bank, so a plain call reaches it). It used to hand-scan the flat rarity table
+; with no bounds check, which ran off the end of the table for any species not
+; in a pool.
 ReverseLookupPokemonClass::
-	ld hl, pokemon_classes
-	ld e, 0
-.loopclass
-	inc e
-	ld a, [hli]
-	cp b
-	jr nz, .loopclass
-	ld a, pokeball_pokemon_number
-	ld c, 1
-	cp e
-	jr nc, .done
-	ld a, greatball_pokemon_number
-	inc c
-	cp e
-	jr nc, .done
-	ld a, ultraball_pokemon_number
-	inc c
-	cp e
-	jr nc, .done
-	inc c                       ; masterball (also catches uber_class - no ceiling check, matches existing convention)
-.done
+	push bc
+	push de                      ; RogueClassifySpecies uses de as its scan cursors
+	ld a, b
+	call RogueClassifySpeciesLegacy
+	jr nc, .ok
+	ld c, 1                      ; unknown species - treat as pokeball class
+.ok
+	ld a, c
+	pop de
+	pop bc
+	ld c, a
 	ret
 
 ; HasMasterballClassMon: Scan wPartySpecies (FF-terminated) for any
-; masterball-class mon via the pokemon_classes reverse lookup.
+; masterball-class mon via the ReverseLookupPokemonClass adapter.
 ; Output: carry set (true) if found, carry clear (false) if not.
 ; Clobbers: a, b, c, e, hl
 HasMasterballClassMon::
@@ -107,7 +101,7 @@ LegendaryLeaderTradeSetup::
 	jr z, .scanDone
 	ld b, a                      ; species to classify
 	push hl
-	push de                      ; ReverseLookupPokemonClass clobbers e - must preserve our write pointer
+	push de                      ; belt-and-braces: ReverseLookupPokemonClass preserves de now, but this write pointer is load-bearing
 	call ReverseLookupPokemonClass  ; c = class
 	pop de
 	pop hl

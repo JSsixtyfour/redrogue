@@ -1640,14 +1640,6 @@ PCMoveTutorNoMovesText:
 	text_far _PCMoveTutorNoMovesText
 	text_end
     
-DEF pokeball_pokemon_line_number EQU 28
-DEF pokeball_pokemon_number EQU 28 + 26 + 6
-DEF greatball_pokemon_line_number EQU pokeball_pokemon_line_number + 28
-DEF greatball_pokemon_number EQU pokeball_pokemon_number + 28 + 25 + 8
-DEF ultraball_pokemon_line_number EQU greatball_pokemon_line_number+ 16
-DEF ultraball_pokemon_number EQU greatball_pokemon_number + 16 + 3 + 2
-DEF masterball_pokemon_line_number EQU ultraball_pokemon_line_number + 5
-DEF masterball_pokemon_number EQU ultraball_pokemon_number + 5 + 2
     
 PCTraderSuperNerdSetup:
     ld b, 0
@@ -1695,39 +1687,24 @@ PCTraderSuperNerdSetup:
     ld a, [hl]    ; get the pokemon the trader wants
     ld [wroguenpctradegive], a
     
-    ; begin finding pokemon that you get
-    ld d, a ; place giving pokemon in d
-    ld hl, pokemon_classes ; list of all pokemon
-    ld e, 0
-    
-    .loopclass
-    inc e    ; keep adding to get how far down the list we
-    ld a, [hli] ; load pokemon
-    cp d     ; see if we found the pokemon the trader wants from player
-    jr nz, .loopclass   ; loop back until we find the pokemon
-    
-    ld a, pokeball_pokemon_number
-    ld c, 1 ; auto pokeball class
-    cp e ; see if pokeball class
-    jr nc, .get_pokemon
-    
-    ld a, greatball_pokemon_number
-    inc c
-    cp e ; see if pokeball class
-    jr nc, .get_pokemon
-    
-    inc c
-    ld a, ultraball_pokemon_number
-    cp e ; see if pokeball class
-    jr nc, .get_pokemon
-    inc c
-    ; if we're here, it's masterball class
-    ; will need to make some exception for mew and mewtwo UPDATE
+    ; begin finding pokemon that you get.
+    ;
+    ; This used to be a hand-rolled scan starting `ld hl, pokemon_classes`, but
+    ; that table lives in bank $2F while this file is bank $06 - the plain
+    ; `ld a, [hli]` read whatever bytes happened to sit at $616d in bank $06 and
+    ; classified the trade against garbage. It must be a farcall.
+    ;
+    ; The species goes in e and the class comes back in e because Bankswitch
+    ; destroys a/bc/hl on both sides of a farcall (see RogueClassifySpeciesFar).
+    ld e, a                     ; e = species the trader wants
+    farcall RogueClassifySpeciesFar
+    ld c, e                     ; c = class 1-4
     .get_pokemon
     push bc
     farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
     pop bc
-    farcall Random_Pokemon_Selection  ; lives in a different bank (07) than this file (06) - plain call would execute garbage
+    ld e, c                     ; only d/e survive a farcall - c would arrive as garbage
+    farcall Random_Pokemon_Selection_Far ; bank $2F; plain call would execute garbage
     ld a, d
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
@@ -1767,7 +1744,8 @@ PCPokemonSalesmanSetup:
     push bc
     farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
     pop bc
-    farcall Random_Pokemon_Selection  ; lives in a different bank (07) than this file (06) - plain call would execute garbage
+    ld e, c                     ; only d/e survive a farcall - c would arrive as garbage
+    farcall Random_Pokemon_Selection_Far ; bank $2F; plain call would execute garbage
     ld a, d
     ld [wroguenpcsell], a ; load in pokemon that they will give player
     

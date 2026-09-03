@@ -294,8 +294,8 @@ DebugFight2Setup::
 	add 5 ; level 5-100
 	ld [wCurEnemyLevel], a
 	call Random
-	ld c, 0
-	farcall Random_Pokemon_Selection_Any
+	ld e, 0                     ; class 0 = roll from the odds ladder; must ride in e
+	farcall Random_Pokemon_Selection_Any_Far
 	ld a, d
 	ld [wCurPartySpecies], a
 	pop af

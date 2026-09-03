@@ -2,6 +2,31 @@
 ; The code outputs a pokemon ID into a
 ; masterball class check will be here, will require separate events to occur before active
 ; auto class by putting a number in c
+; ---------------------------------------------------------------------------
+; Random_Pokemon_Selection_Far / Random_Pokemon_Selection_Any_Far
+;
+; The farcall-safe faces of the two rollers. Use these from ANY other bank.
+;
+; INPUT:  e = rarity class (0 = roll from the odds ladder, 1=pokeball ..
+;             4=masterball); wCurEnemyLevel set by the caller
+; OUTPUT: d = species
+;
+; Bankswitch (home/bankswitch.asm) does `ld bc, .Return` before `jp hl` on the
+; way in and `pop bc` on the way out, so a/b/c/h/l are all destroyed on BOTH
+; sides of a farcall - only d, e and flags cross intact. Every cross-bank caller
+; used to pass the class in c and farcall the plain entry point, which meant the
+; class never arrived and every one of those rolls silently fell through to the
+; odds ladder: procedural boss rarity bumps and the lobby salesman odds had no
+; effect at all. Same-bank callers may still use c and the plain entry points.
+; ---------------------------------------------------------------------------
+Random_Pokemon_Selection_Far::
+	ld c, e
+	jp Random_Pokemon_Selection
+
+Random_Pokemon_Selection_Any_Far::
+	ld c, e
+	jp Random_Pokemon_Selection_Any
+
 Random_Pokemon_Selection::
 ; ELEMENT PRISM encounter bias: set this selection's type-mismatch re-roll
 ; budget (custom_functions/element_prism.asm). Preserves every register - c
@@ -10,23 +35,18 @@ Random_Pokemon_Selection::
 ; procedural-cave wild encounters, which are not the reward/starter rolls the
 ; prism is meant to bias.
 call RoguePrismSetRerollBudget
-; set class check
-ld a, 0x1
-cp c
-jp z, pokeball_class_selection
+; A non-zero c names a rarity class directly (1=pokeball .. 4=masterball).
+; Class ids are 1-based and tier ids 0-based, hence the dec.
+ld a, c
+and a
+jr z, .rollClass
+cp NUM_SELECTABLE_CLASSES + 1
+jr nc, .rollClass             ; out of range - roll the class instead
+dec a
+ld b, a
+jp RogueSelectFromTier
 
-ld a, 0x2
-cp c
-jp z, greatball_class_selection
-
-ld a, 0x3
-cp c
-jp z, ultraball_class_selection
-
-ld a, 0x4
-cp c
-jp z, masterball_class_selection
-
+.rollClass
 ldh a, [hRandomAdd]
 ld b, a
 
@@ -113,106 +133,76 @@ ld b, a
 .noRareScope
 ld a, pokeball_odds
 cp b
-jr nc, pokeball_class_selection
+jr nc, .tierPokeball
 ld a, greatball_odds
 cp b
-jr nc, greatball_class_selection
-jp ultraball_class_selection
+jr nc, .tierGreatball
+ld b, RARITY_TIER_ULTRABALL     ; ultraball is the fall-through, by design
+jp RogueSelectFromTier
+.tierPokeball
+ld b, RARITY_TIER_POKEBALL
+jp RogueSelectFromTier
+.tierGreatball
+ld b, RARITY_TIER_GREATBALL
+jp RogueSelectFromTier
 
 .RareScopeBonusTable:
 	db 31, 63, 95
 
-
-pokeball_class_selection:
-ld hl, pokeball_class_selection
-push hl
-ld hl, pokeball_class
-push hl
-ld a, pokeball_pokemon_line_amount
-push af
-jp pokemon_selection
-
-greatball_class_selection:
-ld hl, greatball_class_selection
-push hl
-ld hl, greatball_class
-push hl
-ld a, greatball_pokemon_line_amount
-push af
-jp pokemon_selection
-
-ultraball_class_selection:
-ld hl, ultraball_class_selection
-push hl
-ld hl, ultraball_class
-push hl
-ld a, ultraball_pokemon_line_amount
-push af
-jp pokemon_selection
-
-masterball_class_selection:
-ld hl, masterball_class_selection
-push hl
-ld hl, masterball_class
-push hl
-ld a, masterball_pokemon_line_amount
-push af
-jp pokemon_selection
-
-pokemon_selection:
-call Random                 ; get a random number to determine pokemon
-ldh [hMultiplicand+2], a    ; place number in for multiplication
-xor a
-ldh [hMultiplicand], a      ; put zero in highest byte
-ldh [hMultiplicand+1], a    ; put second byte for multiplication
-pop af                      ; restore line amount to multiply by amount in class
-;dec a                       ; max index is line_amount-1; prevents out-of-bounds on random=255
-ldh [hMultiplier], a        ; place amount of class in multiplier
-call Multiply               ; multiply random number by amount in class
-ldh   a, [hProduct+2]       ; load product into a
-ldh [hDividend], a          ; place product in divident
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ld b, $2                    ; b determines how many bytes the number is, do not remove!
-ldh [hDivisor], a           ; place 255 as divisor
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient, which will be the offset
-ld c, a                     ; place in c
-ld b, $0
-
-
-pop hl                      ; restore base pointer
-add hl, bc                  ; add product to get address of pokemon
-
-                      
-ld d, [hl]                  ; load selected pokemon
-call AllSpeciesCheck        ; check if pokemon already in box or party
-xor a                       ; clear out a
-pop hl                      ; reload selection class
-cp c
-jr nz, .retry                ; if 1, you have selected an already existing team member and need to redo
-; ELEMENT PRISM encounter bias: discard an off-type species and re-roll,
-; reusing the existing .retry path below. Deliberately placed HERE, before
-; the evolve step, because hl still holds the class-selection retry address
-; that .retry jumps to - EvolveMonByLevel below makes no promise about hl.
-push hl
-call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains; preserves d
-pop hl
-jr nz, .retry
-; evolve based on wCurEnemyLevel (caller must set it before calling Random_Pokemon_Selection)
-ld a, d
-ld [wCurPartySpecies], a    ; EvolveMonByLevel reads d for lookup, writes evolved species here if applicable
-call EvolveMonByLevel
-ld a, [wCurPartySpecies]
-ld d, a                     ; d = possibly-evolved species, matches existing caller convention
-jr .done
-.retry
-jp hl
-
-.done
-RET
+; ---------------------------------------------------------------------------
+; RogueSelectFromTier
+; INPUT:  b = tier id; wCurEnemyLevel already set by the caller
+; OUTPUT: d = species, post-evolution; also left in wCurPartySpecies
+;
+; Rolls which active species group supplies this tier, rolls a base form from
+; that group, then applies the two rejection tests before evolving.
+;
+; The retry loop is BOUNDED. The code this replaces pushed its own address as a
+; fake return target and jumped back to it forever, so a player who already
+; owned every base form in a tier would hang the game rather than get a
+; duplicate. Falling back to the last roll is strictly better than not returning.
+; ---------------------------------------------------------------------------
+RogueSelectFromTier::
+	ld c, 32                      ; retry budget
+.attempt
+	push bc                       ; b = tier, c = budget
+	call RogueRollGroupForTier    ; a = group; b preserved
+	jr c, .noPool
+	call RogueGetTierEntry        ; hl = list, b = base count, c = total
+	jr z, .noPool
+	ld a, b
+	call RogueRollSpeciesInList   ; d = species
+	call AllSpeciesCheck          ; c = 1 if already in the party or a box
+	ld a, c
+	and a
+	jr nz, .reject
+	; ELEMENT PRISM encounter bias: discard an off-type species and re-roll.
+	; Deliberately before the evolve step, exactly as the old code ordered it.
+	call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains; preserves d
+	jr nz, .reject
+	pop bc
+	jr .evolve
+.reject
+	pop bc                        ; b = tier, c = budget
+	dec c
+	jr nz, .attempt
+	jr .evolve                    ; budget spent - accept the last roll
+.noPool
+	pop bc
+	; No active group offers anything at this tier. Fall back to the Kanto
+	; pokeball list so a caller always gets a real species rather than a stale d.
+	ld a, SPECIES_GROUP_KANTO
+	ld b, RARITY_TIER_POKEBALL
+	call RogueGetTierEntry
+	ld a, b
+	call RogueRollSpeciesInList
+.evolve
+	ld a, d
+	ld [wCurPartySpecies], a      ; EvolveMonByLevel reads d, writes back here
+	call EvolveMonByLevel
+	ld a, [wCurPartySpecies]
+	ld d, a                       ; d = possibly-evolved species
+	ret
 
 ; Like Random_Pokemon_Selection but skips AllSpeciesCheck entirely - the
 ; rolled species may already be in the player's party or box.  Used for
@@ -222,68 +212,47 @@ RET
 ; wCurEnemyLevel must be set by the caller (EvolveMonByLevel reads it).
 ; → d = species
 Random_Pokemon_Selection_Any::
-	ld a, 1
-	cp c
-	jp z, .any_pokeball
-	ld a, 2
-	cp c
-	jp z, .any_greatball
-	ld a, 3
-	cp c
-	jp z, .any_ultraball
-	ld a, 4
-	cp c
-	jp z, .any_masterball
-	; c == 0: random class from odds table
+	ld a, c
+	and a
+	jr z, .rollClass
+	cp NUM_SELECTABLE_CLASSES + 1
+	jr nc, .rollClass             ; out of range - roll the class instead
+	dec a                         ; class 1-4 -> tier 0-3
+	ld b, a
+	jr .pick
+.rollClass
 	ldh a, [hRandomAdd]
 	ld b, a
 	ld a, pokeball_odds
 	cp b
-	jr nc, .any_pokeball
+	jr nc, .tierPokeball
 	ld a, greatball_odds
 	cp b
-	jr nc, .any_greatball
-	jp .any_ultraball
-.any_pokeball
-	ld hl, pokeball_class
-	ld a, pokeball_pokemon_line_amount
-	jr .any_pick
-.any_greatball
-	ld hl, greatball_class
-	ld a, greatball_pokemon_line_amount
-	jr .any_pick
-.any_ultraball
-	ld hl, ultraball_class
-	ld a, ultraball_pokemon_line_amount
-	jr .any_pick
-.any_masterball
-	ld hl, masterball_class
-	ld a, masterball_pokemon_line_amount
-.any_pick
-	push hl       ; save class list base
-	push af       ; save line_amount (Random overwrites a)
-	call Random
-	ldh [hMultiplicand+2], a
-	xor a
-	ldh [hMultiplicand], a
-	ldh [hMultiplicand+1], a
-	pop af        ; restore line_amount
-	ldh [hMultiplier], a
-	call Multiply
-	ldh a, [hProduct+2]
-	ldh [hDividend], a
-	ldh a, [hProduct+3]
-	ldh [hDividend+1], a
-	ld a, $FF
-	ld b, $2
-	ldh [hDivisor], a
-	call Divide
-	ldh a, [hQuotient+3]
-	ld c, a
-	ld b, 0
-	pop hl        ; restore class list base
-	add hl, bc
-	ld d, [hl]    ; d = selected species (no ownership check)
+	jr nc, .tierGreatball
+	ld b, RARITY_TIER_ULTRABALL   ; ultraball is the fall-through, by design
+	jr .pick
+.tierPokeball
+	ld b, RARITY_TIER_POKEBALL
+	jr .pick
+.tierGreatball
+	ld b, RARITY_TIER_GREATBALL
+.pick
+	call RogueRollGroupForTier    ; a = group; b (tier) preserved
+	jr c, .fallback
+	call RogueGetTierEntry        ; hl = list, b = base count, c = total
+	jr z, .fallback
+	ld a, b
+	call RogueRollSpeciesInList   ; d = species
+	jr .evolve
+.fallback
+	; No active group offers anything at this tier. Fall back to the Kanto
+	; pokeball list so a caller always gets a real species rather than a stale d.
+	ld a, SPECIES_GROUP_KANTO
+	ld b, RARITY_TIER_POKEBALL
+	call RogueGetTierEntry
+	ld a, b
+	call RogueRollSpeciesInList
+.evolve
 	ld a, d
 	ld [wCurPartySpecies], a
 	call EvolveMonByLevel
@@ -324,30 +293,15 @@ RogueRewardTradeRoll::
     add hl, bc
     ld a, [hl]
     ld [wroguenpctradegive], a      ; species player gives up (non-zero = trade active)
-    ; find this species in pokemon_classes to get its tier
-    ; b = species, c = 1-based scan position
-    ld b, a
-    ld hl, pokemon_classes
-    ld c, 0
-.findClass
-    inc c
-    ld a, [hli]
-    cp b
-    jr nz, .findClass
-    ; determine class (1-4) into b
-    ld a, pokeball_pokemon_number
-    ld b, 1
-    cp c
+    ; classify the species (still in a) into a rarity class 1-4.
+    ; d = retry counter and e = partyCount are both live here, and
+    ; RogueClassifySpecies uses de as its scan cursors, so save them.
+    push de
+    call RogueClassifySpeciesLegacy ; c = class 1-4, carry set if not in any pool
+    pop de                          ; pop does not touch flags, so carry survives
+    ld b, c
     jr nc, .gotClass
-    ld a, greatball_pokemon_number
-    inc b
-    cp c
-    jr nc, .gotClass
-    inc b
-    ld a, ultraball_pokemon_number
-    cp c
-    jr nc, .gotClass
-    inc b               ; masterball
+    ld b, 1                         ; unknown species - treat as pokeball class
 .gotClass
     ; masterball always excluded (no higher tier to offer)
     ld a, b
@@ -628,30 +582,15 @@ RivalPickStarter::
 	pop de
 	ret
 
-; b = species -> b = rarity class (1..4). Preserves de. (Every rollable starter
-; is present in pokemon_classes, so the scan always terminates.)
+; b = species -> b = rarity class (1..4). Preserves de.
 .classOfSpecies
-	ld hl, pokemon_classes
-	ld c, 0
-.findClass
-	inc c
-	ld a, [hli]
-	cp b
-	jr nz, .findClass
-	ld a, pokeball_pokemon_number
-	ld b, 1
-	cp c
-	jr nc, .gotClass
-	ld a, greatball_pokemon_number
-	inc b
-	cp c
-	jr nc, .gotClass
-	inc b
-	ld a, ultraball_pokemon_number
-	cp c
-	jr nc, .gotClass
-	inc b
-.gotClass
+	push de                       ; RogueClassifySpecies uses de as its scan cursors
+	ld a, b
+	call RogueClassifySpeciesLegacy ; c = class 1-4, carry set if not in any pool
+	pop de                        ; pop does not touch flags, so carry survives
+	ld b, c
+	ret nc
+	ld b, 1                       ; unknown species - treat as pokeball class
 	ret
 
 ; b = candidate species; defender (player) types already in wBattleMonType/+1.

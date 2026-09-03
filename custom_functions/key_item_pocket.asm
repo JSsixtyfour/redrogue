@@ -395,6 +395,7 @@ ClearKeyItemsBitfield::
     xor a
     ld [sPrismCartridges], a      ; no cartridges unlocked on a brand-new file
     ld [sPrismCartridges + 1], a
+    ld [sRogueSpeciesGroupsEnabled], a ; no species groups enabled on a new file
     ld [rRAMG], a
     ret
 

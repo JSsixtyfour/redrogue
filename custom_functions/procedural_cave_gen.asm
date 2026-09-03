@@ -474,7 +474,8 @@ PCRollBoss:
 	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
 	ld b, 60                        ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
-	farcall Random_Pokemon_Selection ; → d = species
+	ld e, c                         ; the class can only cross a farcall in e
+	farcall Random_Pokemon_Selection_Far ; → d = species
 	; Random_Pokemon_Selection routes through GetKeyItemPower for the RARE SCOPE
 	; rarity bonus (custom_functions/key_item_pocket.asm). IsKeyItemActive /
 	; GetKeyItemTierForCurItem both select SRAM bank 1 for sKeyItem* and then
@@ -1191,6 +1192,24 @@ PCRollMonClass::
 	ret
 
 ; ============================================================
+; PCRollMonClassFar
+; Farcall-safe face of PCRollMonClass, for callers in another bank.
+; INPUT:  e = extra rarity bump (0 = wild baseline, higher = rarer)
+; OUTPUT: e = class 1-4.  Clobbers a, bc, d.
+;
+; Bankswitch takes the target bank in b and then overwrites bc with its own
+; return address before jumping, so NEITHER the bump (b) nor the class (c) can
+; cross a farcall. procedural_cemetery_gen.asm used to `ld b, 60` and farcall
+; PCRollMonClass directly, which handed the callee b = BANK(PCRollMonClass) = 5
+; as its rarity bump instead of 60.
+; ============================================================
+PCRollMonClassFar::
+	ld b, e
+	call PCRollMonClass
+	ld e, c
+	ret
+
+; ============================================================
 ; PCGetWildLevel / PCRollWildEncounter
 ; Wild encounter substitution for the procedural cave. Level scales with
 ; wBattleCount (lower than the boss table); species come from the rarity-
@@ -1231,7 +1250,8 @@ PCRollWildEncounter::
 	call PCGetWildLevel                  ; wCurEnemyLevel (set before species pick)
 	ld b, 0                              ; no extra bump - wild is the baseline
 	call PCRollMonClass                  ; c = rarity class biased by wBattleCount
-	farcall Random_Pokemon_Selection_Any ; → d = species, NO ownership check
+	ld e, c                              ; the class can only cross a farcall in e
+	farcall Random_Pokemon_Selection_Any_Far ; → d = species, NO ownership check
 	ld a, d
 	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a

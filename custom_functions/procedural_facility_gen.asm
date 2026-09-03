@@ -1559,7 +1559,8 @@ PFacRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel
     ld b, 60                         ; boss rarity bump (matches cave/forest)
     call PFacRollMonClass            ; c = rarity class (same-bank call)
-    farcall Random_Pokemon_Selection ; -> d = species (survives farcall)
+    ld e, c                          ; the class can only cross a farcall in e
+    farcall Random_Pokemon_Selection_Far ; -> d = species (survives farcall)
     ld a, d
     ld [wRoguePokemon1], a
     ld [sProcFacilityBossSpecies], a

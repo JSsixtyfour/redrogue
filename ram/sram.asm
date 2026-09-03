@@ -142,10 +142,11 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $3f5 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
+	ds $3f4 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
 	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
 	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System),
-	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below
+	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below,
+	        ; 1 byte sRogueSpeciesGroupsEnabled (species groups)
 
 ; FIGHT 2 deterministic scenario fixture. The harness writes this only for a
 ; debug ROM; release code never reads it. Keeping it outside sGameData means it
@@ -215,6 +216,21 @@ sElementPrismType:: db
 ; the PC. SRAM because cartridges persist across runs and blackouts, exactly
 ; like key-item ownership - accumulating them over several runs is the point.
 sPrismCartridges:: ds 2
+
+; Species-group toggles (Johto / Kanto Time Warp). One bit per group, using the
+; BIT_GROUP_* positions from constants/rogue_species_groups.asm. Bit 0 (Kanto)
+; is unused - Kanto is always in the pool and cannot be toggled off.
+;
+; This is the ENABLED state only. Whether a group is UNLOCKED is derived from
+; wNumHoFTeams at read time (see RogueGetActiveGroupMask), so a toggle set here
+; for a group the player has not earned yet is simply ignored.
+;
+; SRAM, outside sGameData, because the toggles are meant to persist across runs
+; and blackouts exactly like sPrismCartridges above. MUST stay adjacent to
+; sPrismCartridges: ClearKeyItemsBitfield (custom_functions/key_item_pocket.asm)
+; zeroes it there on a new game. SRAM powers up as $ff and ClearAllSRAMBanks
+; FILLS $ff, so an explicit clear is mandatory, not defensive.
+sRogueSpeciesGroupsEnabled:: db
 
 ; TURN REWIND snapshot: the active player mon's HP/PP/status/stat-mods/battle
 ; status only (not a full battle-state snapshot - see

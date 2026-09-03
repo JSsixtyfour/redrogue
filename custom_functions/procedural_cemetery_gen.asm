@@ -183,9 +183,9 @@ PCemGenerateMaps::
 ; ============================================================
 PCemRollBoss:
 	farcall PCGetBossLevel            ; sets wCurEnemyLevel before the species pick
-	ld b, 60                          ; boss rarity bump (matches PCRollBoss)
-	farcall PCRollMonClass            ; c = rarity class, biased by wBattleCount
-	farcall Random_Pokemon_Selection  ; d = species
+	ld e, 60                          ; boss rarity bump (matches PCRollBoss)
+	farcall PCRollMonClassFar         ; e = class 1-4 (b and c cannot cross a farcall)
+	farcall Random_Pokemon_Selection_Far ; d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	call PCemAvoidGhostBoss           ; reroll if it landed on Gastly/Haunter/Gengar
@@ -1252,9 +1252,9 @@ PCemAvoidGhostBoss:
 	dec a
 	ld [wBuffer + wCemGhostRetry], a
 	ret z                        ; retry budget exhausted, accept whatever we have
-	ld b, 60                     ; same boss rarity bump PCRollBoss uses
-	farcall PCRollMonClass       ; c = rarity class, biased by wBattleCount
-	farcall Random_Pokemon_Selection ; -> d = species
+	ld e, 60                     ; same boss rarity bump PCRollBoss uses
+	farcall PCRollMonClassFar    ; e = class 1-4 (b and c cannot cross a farcall)
+	farcall Random_Pokemon_Selection_Far ; -> d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	jr .checkLoop

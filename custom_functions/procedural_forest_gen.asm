@@ -2061,7 +2061,8 @@ PFRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel (mirrors cave's order)
     ld b, 60                         ; boss rarity bump, matches cave's PCRollBoss
     call PFRollMonClass              ; c = rarity class (same bank, plain call OK)
-    farcall Random_Pokemon_Selection ; -> d = species (d survives farcall)
+    ld e, c                          ; the class can only cross a farcall in e
+    farcall Random_Pokemon_Selection_Far ; -> d = species (d survives farcall)
     ; Random_Pokemon_Selection routes through GetKeyItemPower (RARE SCOPE), which
     ; selects SRAM bank 1 and then DISABLES SRAM on return without restoring bank
     ; 0 - see custom_functions/key_item_pocket.asm. Without re-asserting, the
