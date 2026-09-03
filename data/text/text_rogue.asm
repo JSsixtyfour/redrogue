@@ -75,6 +75,12 @@ _SameMovePenaltyText::
 	cont "was hurt!"
 	done
 
+_NoHealingChallengeText::
+	text "The bargain has"
+	line "no mercy outside"
+	cont "battle!"
+	done
+
 _TurnLimitDrainText::
 	text "Time's running"
 	line "out! <TARGET> lost"

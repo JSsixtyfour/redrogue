@@ -40,4 +40,20 @@ DecrementPP:
 	add hl, bc           ; calculate the address in memory of the PP we need to decrement
 	                     ; based on the move chosen.
 	dec [hl]             ; Decrement PP
+
+	; CHALLENGE_DOUBLE_PP: burn a second PP point per move use. This tail runs
+	; TWICE per move - once for the battle struct via the explicit "call
+	; .DecrementPP" above, once for the party struct via fallthrough - so this
+	; check naturally applies to both, which is correct and intended. Player-only
+	; (wBattleMonPP/wPlayerMoveListIndex), so enemy PP is never touched.
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_DOUBLE_PP
+	ret nz
+	ld a, [hl]
+	and PP_MASK          ; PP only - ignore the PP Up count packed in bits 6-7
+	ret z                ; already at 0 - never wrap into the PP Up bits
+	dec [hl]
 	ret

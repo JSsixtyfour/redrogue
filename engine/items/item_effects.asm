@@ -787,6 +787,11 @@ ItemUseVitamin:
 	jp nz, ItemUseNotTime
 
 ItemUseMedicine:
+	; CHALLENGE_NO_HEALING: medicine (potions, revives, status healers - anything
+	; dispatching here) is refused outside battle only. In-battle items, healing
+	; moves, and the lobby nurse are untouched.
+	farcall RogueWitchBlockHealing
+	jr c, .witchBlockedHealing
 	ld a, [wPartyCount]
 	and a
 	jp z, .emptyParty
@@ -804,6 +809,14 @@ ItemUseMedicine:
 ; if using softboiled
 	call GoBackToPartyMenu
 	jr .getPartyMonDataAddress
+.witchBlockedHealing
+	ld hl, .noHealingText
+	xor a
+	ld [wActionResultOrTookBattleTurn], a ; item use failed
+	jp PrintText
+.noHealingText
+	text_far _NoHealingChallengeText
+	text_end
 .emptyParty
 	ld hl, .emptyPartyText
 	xor a
@@ -837,7 +850,7 @@ ItemUseMedicine:
 ; if using softboiled
 	ldh a, [hWhichPokemon]
 	cp d ; is the pokemon trying to use softboiled on itself?
-	jr z, ItemUseMedicine ; if so, force another choice
+	jp z, ItemUseMedicine ; if so, force another choice
 .checkItemType
 	ld a, [wCurItem]
 	cp M_GENE

@@ -397,3 +397,29 @@ WitchApplyMoneyEffects::
 	ld c, $3
 	predef AddBCDPredef ; double it: wAmountMoneyWon += wAmountMoneyWon
 	ret
+
+; ============================================================
+; RogueWitchBlockHealing
+; CHALLENGE_NO_HEALING: refuses medicine items (potions, revives, status
+; healers - anything that dispatches through ItemUseMedicine) OUTSIDE battle
+; only. In-battle items, healing moves, and the lobby nurse are deliberately
+; untouched - this challenge targets overworld self-sufficiency, not healing
+; itself.
+; OUTPUT: carry set = refuse this item use; carry clear = allow it.
+; CLOBBERS: a
+; ============================================================
+RogueWitchBlockHealing::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .allow
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_HEALING
+	jr nz, .allow
+	ldh a, [hIsInBattle]
+	and a
+	jr nz, .allow          ; in battle - allowed
+	scf
+	ret
+.allow
+	and a                  ; clear carry
+	ret
