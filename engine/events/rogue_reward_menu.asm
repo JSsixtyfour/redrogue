@@ -1,3 +1,5 @@
+DEF ROGUE_REWARD_NUM_SLOTS EQU 3
+
 RogueRewardMenu::
     ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
@@ -9,7 +11,7 @@ RogueRewardMenu::
 	ld [wLastMenuItem], a
 	ld a, PAD_A | PAD_B | PAD_UP | PAD_DOWN
 	ld [wMenuWatchedKeys], a
-	ld a, $03
+	ld a, ROGUE_REWARD_NUM_SLOTS
 	ld [wMaxMenuItem], a
 	ld a, $04
 	ld [wTopMenuItemY], a
@@ -19,7 +21,7 @@ RogueRewardMenu::
 	ld b, 8
 	ld c, 16
 	call TextBoxBorder
-	call GetRogueRewardMenuId
+	call RogueDrawRewardSlots
 	call UpdateSprites
 	ld hl, RogueRewardTextChoice
 	call PrintText
@@ -66,7 +68,7 @@ RogueRewardMenu::
 	jr .menuLoop
 .aPressed
 	ldh a, [hCurrentMenuItem]
-	cp 3
+	cp ROGUE_REWARD_NUM_SLOTS
 	jr z, .noChoice
 	call HandleRewardChoice
 .noChoice
@@ -77,77 +79,63 @@ RogueRewardMenu::
 RogueRewardText:
     text_far _RogueRewardText
 	text_end
-    
+
 RogueRewardTextChoice:
 	text_far _WhichPrizeText
 	text_end
 
-GetRogueRewardMenuId:
-; determine which one among the three prize texts has been selected using the text ID (stored in [hTextID])
-; prize texts' IDs are TEXT_CREDITEXCHANGE_VENDOR_1-TEXT_CREDITEXCHANGE_VENDOR_3 (stale reference,
-; kept for historical context - this file's actual dispatch key is TEXT_REWARDROOM_REWARD_VENDOR_1)
-; load the three prizes at wPrize1-wPrice3
-; load the three prices at wPrize1Price-wPrize3Price
-; display the three prizes' names, distinguishing between Pokemon names and item names (specifically TMs)
-	ldh a, [hTextID]
-	sub TEXT_REWARDROOM_REWARD_VENDOR_1
-	ld [wWhichPrizeWindow], a ; prize texts' relative ID (i.e. 0-2)
+; ---------------------------------------------------------------------------
+; RogueDrawRewardSlots
+; Draws each of wRoguePokemon1..ROGUE_REWARD_NUM_SLOTS's name, then NO THANKS
+; beneath them, and the TRADE label over slot 0 if a trade offer is active
+; there. One count-driven loop instead of three unrolled copies of the same
+; draw, following the same shape BridgeGiftMenu uses for its own gift rows
+; (BridgeCoordRow2, same bank, so a plain call reaches it).
+; ---------------------------------------------------------------------------
+RogueDrawRewardSlots:
+	ld c, 0                      ; c = slot index (0-based), also wRoguePokemon offset
+.slotLoop
+	ld a, c
 	add a
-	add a
+	add 4                        ; row = 4 + 2*index
+	call BridgeCoordRow2         ; hl = coord(2, row)
+	push hl
+	ld hl, wRoguePokemon1
 	ld d, 0
-	ld e, a
-	ld hl, PrizeDifferentMenuPtrs
+	ld e, c
 	add hl, de
-	ld a, [hli]
-	ld d, [hl]
-	ld e, a
-	inc hl
-	;push hl
-	;ld hl, wRoguePokemon1
-	;call CopyString
-	;pop hl
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	ld de, wPrize1Price
-	ld bc, 6
-	call CopyData
-
-.putMonName
-	ld a, [wRoguePokemon1]
+	ld a, [hl]
 	ld [wNamedObjectIndex], a
 	call GetMonName
-	hlcoord 2, 4
-	call PlaceString
-	; if slot 1 is a trade offer, show "TRADE" label (name shown in hover box)
+	pop hl
+	call PlaceString             ; preserves hl
+	; slot 0 only: TRADE label if a trade offer occupies it
+	ld a, c
+	and a
+	jr nz, .noTradeLabel
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_TRADE_ACTIVE, a
-	jr z, .slot1NoTrade
+	jr z, .noTradeLabel
 	hlcoord 12, 4
 	ld de, TradeSlotLabel
 	call PlaceString
-.slot1NoTrade
-	ld a, [wRoguePokemon2]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	hlcoord 2, 6
-	call PlaceString
-	ld a, [wRoguePokemon3]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	hlcoord 2, 8
-	call PlaceString
-.putNoThanksText
-	hlcoord 2, 10
+.noTradeLabel
+	inc c
+	ld a, c
+	cp ROGUE_REWARD_NUM_SLOTS
+	jr c, .slotLoop
+
+	ld a, ROGUE_REWARD_NUM_SLOTS
+	add a
+	add 4                        ; row = 4 + 2*ROGUE_REWARD_NUM_SLOTS
+	call BridgeCoordRow2
 	ld de, NoThanksText
-	call PlaceString
-    ret
+	jp PlaceString
 
 HandleRewardChoice:
     ldh a, [hCurrentMenuItem]
     ld b, a
     push bc
-	ld [wWhichPrize], a
 	ld d, 0
 	ld e, a
 	ld hl, wRoguePokemon1
@@ -250,7 +238,6 @@ HandleRewardChoice:
 ; If the mon couldn't be given to the player (because both the party and box
 ; were full), return without subtracting coins.
 	ret nc
-.normal
 	; _GivePokemon's add-to-party success path sets hNoWaitAfterText=1 for its
 	; own purposes and never clears it - without this, Goodluck below would
 	; flash by without waiting for a button press.
@@ -258,16 +245,9 @@ HandleRewardChoice:
 	ldh [hNoWaitAfterText], a
 	ld hl, Goodluck
 	jp PrintText
-.bagFull
-	ld hl, RewardRoomBagIsFullText
-	jp PrintText
 .printOhFineThen
 	ld hl, OhFineThenRewardText
 	jp PrintText
-
-;UnknownPrizeData:
-; XXX what's this?
-	db $00,$01,$00,$01,$00,$01,$00,$00,$01
 
 WitchPartyLimitText:
 	text_far _WitchPartyLimitText
@@ -277,30 +257,24 @@ SoYouWantRewardText:
 	text_far _SoYouWantPrizeText
 	text_end
 
-RogueTradeOfferText:
-	text_far _RogueTradeOfferText
-	text_end
-
 TradeSlotLabel:
 	db "TRADE@"
 
 TradeHoverLabel:
 	db "GIVE:@"
 
-RewardRoomBagIsFullText:
-	text_far _OopsYouDontHaveEnoughRoomText
-	;text_waitbutton
-	text_end
-
 OhFineThenRewardText:
 	text_far _OhFineThenText
 	;text_waitbutton
 	text_end
-    
+
 Goodluck:
 	text_far _Goodluck
 	;text_waitbutton
 	text_end
+
+NoThanksText:
+	db "NO THANKS@"
 
 GetRewardMonLevel::
 	; Reward Room and Oak's Lab (starter selection) always use a flat level 5
@@ -479,4 +453,3 @@ RogueRefresh::
 	add hl, de               ; advance to next mon's status byte
 	dec b
 	jr nz, .poisonLoop
-   

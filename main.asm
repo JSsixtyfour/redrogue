@@ -390,7 +390,6 @@ INCLUDE "engine/battle/move_effects/reflect_light_screen.asm" ; marcelnote - mov
 SECTION "Hidden Events 2", ROMX
 
 INCLUDE "engine/events/card_key.asm"
-INCLUDE "engine/events/prize_menu.asm"
 INCLUDE "engine/events/rogue_reward_menu.asm"
 INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 INCLUDE "engine/events/hidden_events/fighting_dojo.asm"

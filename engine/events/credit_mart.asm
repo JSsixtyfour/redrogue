@@ -1,8 +1,9 @@
 ; engine/events/credit_mart.asm
 ;
 ; The three Credit Exchange vendors, reached from the CreditExchange map via
-; script_credit_vendor. The vendor index comes from hTextID, exactly the way
-; GetPrizeMenuId derives its window in engine/events/prize_menu.asm:
+; script_credit_vendor. The vendor index comes from hTextID, the same
+; hTextID-offset trick the reward menu's slot dispatch used to use before its
+; own dead vendor-index math was deleted (engine/events/rogue_reward_menu.asm):
 ;
 ;   0 = key item seller  - the ten purchasable key items, prices shown inline
 ;   1 = upgrade seller   - owned key items below max tier
