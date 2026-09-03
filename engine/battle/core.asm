@@ -429,7 +429,7 @@ MainInBattleLoop:
 	jr z, .invertOutcome
 	call BattleRandom
 	cp 50 percent + 1
-	jr c, .playerMovesFirst
+	jp c, .playerMovesFirst
 	jr .enemyMovesFirst
 .invertOutcome
 	call BattleRandom
@@ -459,15 +459,25 @@ MainInBattleLoop:
 	ld a, [wEscapedFromBattle]
 	and a ; was Teleport, Roar, or Whirlwind used to escape from battle?
 	ret nz ; if so, return
+; The witch's post-move penalties (recoil 12/16/17, same-move 14) run BEFORE the
+; enemy-faint check, so a killing blow still costs you - which is how vanilla
+; recoil already behaves, since RecoilEffect_ fires inside move execution. The
+; enemy faint keeps priority afterwards, also matching vanilla: if both sides go
+; down, HandleEnemyMonFainted is the one that copes with a dead player mon
+; (it calls ChooseNextMon, or blacks out via AnyPartyAlive/TryKODefiance).
 	ld a, b
 	and a
-	jp z, HandleEnemyMonFainted
-	farcall HandlePostPlayerMoveWitchEffects
+	push af ; Z = the enemy fainted to this move
+	farcall HandlePostPlayerMoveWitchEffects ; Z = the penalty took our mon to 0
 	jr nz, .enemyFirstRecoilAlive
 	call TryKODefiance
 	jr z, .enemyFirstRecoilAlive
+	pop af
+	jp z, HandleEnemyMonFainted
 	jp HandlePlayerMonFainted
 .enemyFirstRecoilAlive
+	pop af
+	jp z, HandleEnemyMonFainted
 	call HandlePoisonBurnLeechSeed
 	jr nz, .enemyFirstPoisonPlayerAlive
 	call TryKODefiance
@@ -488,15 +498,20 @@ MainInBattleLoop:
 	ld a, [wEscapedFromBattle]
 	and a ; was Teleport, Roar, or Whirlwind used to escape from battle?
 	ret nz ; if so, return
+; Same restructure as the enemy-first path above - see the note there.
 	ld a, b
 	and a
-	jp z, HandleEnemyMonFainted
-	farcall HandlePostPlayerMoveWitchEffects
+	push af ; Z = the enemy fainted to this move
+	farcall HandlePostPlayerMoveWitchEffects ; Z = the penalty took our mon to 0
 	jr nz, .playerFirstRecoilAlive
 	call TryKODefiance
 	jr z, .playerFirstRecoilAlive
+	pop af
+	jp z, HandleEnemyMonFainted
 	jp HandlePlayerMonFainted
 .playerFirstRecoilAlive
+	pop af
+	jp z, HandleEnemyMonFainted
 	call HandlePoisonBurnLeechSeed
 	jr nz, .playerFirstPoisonPlayerAlive
 	call TryKODefiance
