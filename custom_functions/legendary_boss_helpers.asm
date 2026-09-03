@@ -657,17 +657,19 @@ Debug2ApplyRoundState::
 	; not always the same Elite4OrderTable[0] default.
 	ld a, [wBattleCount]
 	cp 86
-	ld hl, wElite4Flags
 	jr c, .debugBeforeVictoryRoad
-	bit BIT_VICTORY_ROAD_CLEARED, [hl]
+	; The shared `ld hl, wElite4Flags` that used to sit above the branch is
+	; gone: VICTORY_ROAD_CLEARED is an event flag now, and CheckEvent would
+	; clobber the carry from `cp 86` before the jr could use it.
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr nz, .debugFinaleStateDone
-	set BIT_VICTORY_ROAD_CLEARED, [hl]
+	SetEvent EVENT_VICTORY_ROAD_CLEARED
 	ld c, 24
 	call Rangerandom
 	ld [wElite4Order], a
 	jr .debugFinaleStateDone
 .debugBeforeVictoryRoad
-	res BIT_VICTORY_ROAD_CLEARED, [hl]
+	ResetEvent EVENT_VICTORY_ROAD_CLEARED
 .debugFinaleStateDone
 	ret
 ENDC

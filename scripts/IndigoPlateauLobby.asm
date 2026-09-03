@@ -34,8 +34,7 @@ IndigoPlateauLobby_Script:
 	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
 	; MUSIC_INDIGO_PLATEAU for the rest of the run (re-applied every visit,
 	; since EVENT_ENTER_ROOM resets on every warp).
-	ld hl, wElite4Flags
-	bit BIT_VICTORY_ROAD_CLEARED, [hl]
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr z, .lobbyMusicDone
 	ld a, MUSIC_INDIGO_PLATEAU
 	ld [wMapMusicSoundID], a
@@ -285,10 +284,11 @@ Lobby_IsDoor2Blocked:
 	ld a, [wObtainedBadges]
 	cp $FF
 	jr nz, .normalCheck
-	ld a, [wElite4Flags]
-	bit BIT_VICTORY_ROAD_CLEARED, a
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr z, .door2Open        ; Victory Road phase - both doors stay open
-	or 1                    ; Elite Four phase - force NZ (blocked)
+	or 1                    ; Elite Four phase - force NZ (blocked). a now holds
+	                        ; the event byte rather than wElite4Flags; the `or 1`
+	                        ; guarantees NZ either way.
 	ret
 .door2Open
 	xor a                   ; force Z (open)
@@ -327,8 +327,7 @@ LobbyFinaleSignCheck:
 	ld a, [wObtainedBadges]
 	cp $FF
 	jr nz, .notFinale
-	ld a, [wElite4Flags]
-	bit BIT_VICTORY_ROAD_CLEARED, a
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr nz, .eliteFour
 	ld a, e                       ; restore item category
 	call LobbyMiniBossVictoryRoadSign ; hl -> "MINIBOSS" + category combined text

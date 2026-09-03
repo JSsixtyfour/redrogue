@@ -36,7 +36,10 @@ HallOfFameResetEventsAndSaveScript:
 	inc hl
 	set BIT_UNUSED_BEAT_ELITE_4, [hl] ; unused
 	res BIT_STARTED_ELITE_4, [hl]
-	res BIT_VICTORY_ROAD_CLEARED, [hl] ; next run starts Victory Road again, Pokecenter lobby music
+	; next run starts Victory Road again, Pokecenter lobby music. Now an event
+	; flag (ROGUE_RUN_EVENTS), so it no longer rides the wElite4Flags pointer
+	; above; hl is dead after this point anyway.
+	ResetEvent EVENT_VICTORY_ROAD_CLEARED
 	xor a ; SCRIPT_*_DEFAULT
 	ld [wElite4Order], a
 	ld hl, wLoreleisRoomCurScript

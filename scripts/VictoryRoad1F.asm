@@ -173,8 +173,8 @@ VictoryRoad1FCooltrainerM4BattleText:
 VictoryRoad1FCooltrainerM4EndBattleText:
 	text_far _RivalMiniBossEndBattleText
 	text_asm
-	ld hl, wElite4Flags
-	set BIT_VICTORY_ROAD_CLEARED, [hl]
+	SetEvent EVENT_VICTORY_ROAD_CLEARED   ; clobbers hl only, like the ld hl/set it replaces
+	                                       ; - safe in a text_asm, where bc is the live cursor
 	ld c, 24
 	call Rangerandom
 	ld [wElite4Order], a

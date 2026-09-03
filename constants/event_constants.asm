@@ -472,6 +472,60 @@
 	const EVENT_BEAT_ROUTE_17_TRAINER_8
 	const EVENT_BEAT_ROUTE_17_TRAINER_9
 
+; ============================================================================
+; Red Rogue run-scoped flags, ALIASED onto Route 17's dead trainer bits.
+;
+; Route 17 is unreachable in Red Rogue: it is commented out of RogueStageMapTable
+; (custom_functions/random_stage_selection.asm) and its only entrances are the
+; overworld connections from Route 16 and Route 18, neither of which is a rogue
+; stage either. Nothing ever sets these bits.
+;
+; They are ALIASED rather than renamed/deleted because scripts/Route17.asm is
+; still assembled (maps.asm) and uses the consts above in five `trainer` macros
+; under `def_trainers 1`, which hard-asserts each one's exact bit position.
+; Deleting them breaks the build; renumbering shifts every downstream event.
+; `DEF x EQU y` costs nothing: NUM_EVENTS and wEventFlags are both unchanged.
+;
+; !!! IF ROUTE 17 IS EVER RE-ENABLED AS A STAGE, THESE BITS COLLIDE. !!!
+; Beating its trainers would silently grant witch prizes and stat boosts, with
+; no compile-time warning. Give Route 17 fresh event constants first. The same
+; warning is on the commented-out `db ROUTE_17` line in RogueStageMapTable.
+;
+; Byte alignment is deliberate and load-bearing: $4D0 % 8 == 0, so the first
+; eight aliases are exactly wEventFlags byte ($4D0 / 8). ApplyEarnedStatBoosts
+; reads that whole byte in one go, the same idiom as
+; scripts/UndergroundPathWestEast.asm's `ld a, [wEventFlags + (EVENT_.../8)]`.
+;
+; Wiped as a unit on blackout by RogueOnBlackout (custom_functions/credit_popup.asm),
+; which zeroes both bytes wholesale. That is safe because byte ($4D0/8) is
+; entirely Route 17 trainer bits and byte ($4D8/8) is Route 17 bits plus the
+; unallocated padding before Route 18's `const_next $4E0`.
+; ============================================================================
+DEF ROGUE_RUN_EVENTS_START        EQU EVENT_BEAT_ROUTE_17_TRAINER_0 - 1  ; $4D0, byte 154 bit 0
+
+; Earned stat boosts. Replaces wObtainedBadges as the source for the 1.125x
+; boost - badges no longer grant it. Bridges will set ATTACK/DEFENSE/SPEED;
+; the witch grants SPECIAL. Read as one byte, so these four MUST stay
+; contiguous and in wBattleMonAttack..Special order.
+DEF EVENT_STAT_BOOST_ATTACK       EQU ROGUE_RUN_EVENTS_START + 0  ; bit 0
+DEF EVENT_STAT_BOOST_DEFENSE      EQU ROGUE_RUN_EVENTS_START + 1  ; bit 1
+DEF EVENT_STAT_BOOST_SPEED        EQU ROGUE_RUN_EVENTS_START + 2  ; bit 2
+DEF EVENT_STAT_BOOST_SPECIAL      EQU ROGUE_RUN_EVENTS_START + 3  ; bit 3
+
+; Permanent witch prizes, earned once per run by surviving the challenge.
+; Set in PCWitchSetup on the next lobby entry; also gate the prize re-roll so
+; an already-owned prize is never offered twice in a run.
+DEF EVENT_WITCH_PRIZE_STAT_BOOST  EQU ROGUE_RUN_EVENTS_START + 4  ; bit 4
+DEF EVENT_WITCH_PRIZE_RESIST      EQU ROGUE_RUN_EVENTS_START + 5  ; bit 5
+DEF EVENT_WITCH_PRIZE_MULTISTRIKE EQU ROGUE_RUN_EVENTS_START + 6  ; bit 6
+DEF EVENT_WITCH_PRIZE_CHEAP_ITEMS EQU ROGUE_RUN_EVENTS_START + 7  ; bit 7
+
+; Moved out of wElite4Flags (BIT_VICTORY_ROAD_CLEARED) so a blackout revokes it
+; with the rest of this block. BIT_STARTED_ELITE_4 stays in wElite4Flags.
+DEF EVENT_VICTORY_ROAD_CLEARED    EQU ROGUE_RUN_EVENTS_START + 8  ; byte 155 bit 0
+; +9, +10 (Route 17 trainers 8-9) are spare for future run-scoped flags.
+DEF ROGUE_RUN_EVENTS_END          EQU ROGUE_RUN_EVENTS_START + 10
+
 ; Route 18 events
 	const_next $4E0
 	const_skip

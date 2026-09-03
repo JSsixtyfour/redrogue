@@ -152,7 +152,14 @@ DEF NUM_BADGES EQU const_value
 	const_def
 	const BIT_UNUSED_BEAT_ELITE_4 ; 0
 	const BIT_STARTED_ELITE_4     ; 1
-	const BIT_VICTORY_ROAD_CLEARED ; 2 - set for the rest of the run once the Victory Road Rival is beaten; gates the final-sequence Lobby doors and the permanent Indigo Plateau lobby music switch
+	const_skip                     ; 2 - RETIRED. Was BIT_VICTORY_ROAD_CLEARED;
+	                               ; moved to EVENT_VICTORY_ROAD_CLEARED (see the
+	                               ; ROGUE_RUN_EVENTS block in event_constants.asm)
+	                               ; so that a blackout revokes it along with the
+	                               ; earned stat boosts and permanent witch prizes.
+	                               ; Kept as a skip rather than reclaimed: bits 0/1
+	                               ; keep their positions and nothing silently
+	                               ; inherits bit 2's old meaning.
 
 ; wMovementFlags
 	const_def

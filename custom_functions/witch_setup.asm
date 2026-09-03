@@ -46,10 +46,27 @@ RollLobbyNPCAppearance:
 PCWitchSetup::
     ld hl, wRogueFlagsBitfield
     res BIT_WITCH_ACCEPTED, [hl]
+
+    ; --- Finale gating ---
+    ; Once all 8 badges are in, the run is on rails and the witch needs two
+    ; special cases:
+    ;   Victory Road next (not yet cleared) -> she still appears, but the roll
+    ;                                          must behave like a ROUTE, not a gym
+    ;   Elite Four next   (already cleared) -> no witch at all for the rest of
+    ;                                          the run
+    ; A "finale route mode" register would have to survive Rangerandom, so the
+    ; gates further down just re-derive `wObtainedBadges == $FF` instead. It is
+    ; four bytes each time and needs no state.
+    ld a, [wObtainedBadges]
+    cp $FF
+    jr nz, .showWitch
+    CheckEvent EVENT_VICTORY_ROAD_CLEARED
+    jp nz, .hideWitch         ; jp, not jr: .hideWitch is at the far end of the routine
+.showWitch
     ; TESTING: appearance roll disabled, witch is always active
 ;   ld a, TOGGLE_PC_WITCH
 ;   call RollLobbyNPCAppearance
-;   jr nz, .noWitch
+;   jr nz, .hideWitch
     ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef ShowObject
@@ -59,6 +76,16 @@ PCWitchSetup::
     ; that PCWitchText special-cases for CHALLENGE_LEGENDARY_BOSS.
     ld a, [wStatusFlags6]
     bit BIT_DEBUG2_MODE, a
+    jr z, .rollChallenge
+    ; ...but NEVER during the finale. Challenge 11 pays out through four gym
+    ; leaders' receive-TM routines, and no gym is fought from Victory Road on,
+    ; so a forced Challenge 11 in the pre-Victory-Road lobby can never be
+    ; completed. This early return skipped every gate, including the eligible-
+    ; map check, which is exactly why the witch offered Challenge 11 by name in
+    ; that lobby. Note this block is NOT wrapped in IF DEF(_DEBUG) - it fires on
+    ; any build once BIT_DEBUG2_MODE is set.
+    ld a, [wObtainedBadges]
+    cp $FF
     jr z, .rollChallenge
     ld a, CHALLENGE_LEGENDARY_BOSS
     ld [wWitchChallenge], a
@@ -73,11 +100,17 @@ PCWitchSetup::
     ; evolved with high-level movesets, so reroll if the run is still early.
     cp CHALLENGE_GAMBLERS_PARADISE
     jr nz, .notEarlyGamblerGate
-    ld b, a                   ; stash challenge id (ld a,b below preserves carry)
+    ld b, a                   ; stash challenge id across both checks below
     ld a, [wBattleCount]
     cp GAMBLERS_PARADISE_MIN_BATTLES
-    ld a, b
     jr c, .rollChallenge      ; wBattleCount < threshold - reroll
+    ; Never during the finale: accepting it calls PatchLobbyExitToGameCorner,
+    ; which overwrites wRogueMap AND both lobby door warps with GAME_CORNER.
+    ; In the pre-Victory-Road lobby that strands the run short of Victory Road.
+    ld a, [wObtainedBadges]
+    cp $FF
+    jr z, .rollChallenge
+    ld a, b                   ; restore the rolled challenge id
 .notEarlyGamblerGate
     ; Gate Challenge 11 (Legendary Boss): only offer if next gym is eligible,
     ; badges >= 4, and party has masterball mon. Then set fixed reward.
@@ -125,6 +158,16 @@ PCWitchSetup::
     ; the reward menu, which never runs before a gym (gyms are fixed vanilla
     ; maps, not a randomized stage) - reroll so a gym visit never offers a
     ; challenge with no real downside
+    ;
+    ; The finale is route-mode regardless of BIT_ROGUE_GYM_NEXT: Victory Road is
+    ; a real stage WITH a reward menu, so those challenges are meaningful there,
+    ; and the flag can be left set from an earlier cycle (VictoryRoad1F_Script
+    ; sets it on entry). Skip the gym rerolls entirely once badges are full.
+    ld b, a                   ; stash challenge id; ld a,b below preserves flags
+    ld a, [wObtainedBadges]
+    cp $FF
+    ld a, b                   ; restore it (does not disturb Z from the cp)
+    jr z, .gotChallenge
     ld hl, wRogueFlagsBitfield
     bit BIT_ROGUE_GYM_NEXT, [hl]
     jr z, .gotChallenge
@@ -141,6 +184,15 @@ PCWitchSetup::
     inc a
     ld [wWitchPrize], a       ; a = 1-based prize id - independent of the challenge roll
     ret
+; Elite Four next: take the witch off the board for the rest of the run. The
+; object must be explicitly hidden - the toggle state resets on every warp, and
+; the .showWitch path above would otherwise leave her standing there with a
+; zeroed challenge.
+.hideWitch
+    ld a, TOGGLE_PC_WITCH
+    ld [wToggleableObjectIndex], a
+    predef HideObject
+    ; fall through
 .noWitch
     xor a
     ld [wWitchChallenge], a
