@@ -57,10 +57,22 @@ _PPTonicText::
 	cont "restored!"
 	prompt
 
+; Shared by CHALLENGE_RECOIL_ATTACKS, _RECOIL_PHYSICAL and _RECOIL_SPECIAL.
+; <USER>, not <TARGET>: this damage lands on the PLAYER'S OWN mon, and
+; PlaceMoveTargetsName (home/text.asm) is hWhoseTurn XOR 1 - at this seam
+; hWhoseTurn is always 0 (ExecutePlayerMove sets it and nothing after restores
+; it before the hook), so <TARGET> printed "Enemy <foe> was hit by recoil!"
+; while the player's own mon lost the HP. Pre-existing bug, fixed 2026-09-02.
 _RecoilChallengeText::
 	text "The bargain burns!"
-	line "<TARGET> was hit"
+	line "<USER> was hit"
 	cont "by recoil!"
+	done
+
+_SameMovePenaltyText::
+	text "The bargain hates"
+	line "repetition! <USER>"
+	cont "was hurt!"
 	done
 
 _TurnLimitDrainText::

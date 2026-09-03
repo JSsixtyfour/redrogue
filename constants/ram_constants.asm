@@ -201,7 +201,15 @@ DEF CHALLENGE_TURN_LIMIT            EQU 10 ; tier: hard
 DEF CHALLENGE_LEGENDARY_BOSS        EQU 11 ; tier: hard
 DEF CHALLENGE_RECOIL_ATTACKS        EQU 12 ; tier: hard
 DEF CHALLENGE_GAMBLERS_PARADISE     EQU 13 ; tier: special
-DEF NUM_WITCH_CHALLENGES            EQU 13
+; 14/16/17 all ride the shared post-player-move seam in
+; custom_functions/witch_battle_effects.asm (HandlePostPlayerMoveWitchEffects),
+; alongside CHALLENGE_RECOIL_ATTACKS - they cost nothing in the Battle Core bank.
+DEF CHALLENGE_SAME_MOVE_PENALTY     EQU 14 ; tier: medium - maxHP/8 for repeating a move
+DEF CHALLENGE_NO_HEALING            EQU 15 ; tier: hard   - medicine refused OUTSIDE battle
+DEF CHALLENGE_RECOIL_PHYSICAL       EQU 16 ; tier: medium - recoil on physical moves only
+DEF CHALLENGE_RECOIL_SPECIAL        EQU 17 ; tier: medium - recoil on special moves only
+DEF CHALLENGE_DOUBLE_PP             EQU 18 ; tier: medium - your moves burn 2 PP per use
+DEF NUM_WITCH_CHALLENGES            EQU 18
 
 ; Gambler's Paradise fields fully-evolved mons with high-level movesets
 ; (Fissure/Horn Drill/etc.). PCWitchSetup rerolls it if wBattleCount is below

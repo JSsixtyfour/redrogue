@@ -18,42 +18,141 @@
 ; ~14 bytes of it that matter are inlined at the bottom of this file.
 
 ; ============================================================
-; HandleRecoilChallenge
-; Called after ExecutePlayerMove when CHALLENGE_RECOIL_ATTACKS is active.
-; Applies wDamage/4 recoil to the player's active mon (same as non-Struggle
-; recoil moves). Skips if no damage was dealt (miss, status move, etc.).
-; KO Defiance applies normally if recoil drops HP to 0.
-; OUTPUT: Z set if mon HP hit 0; Z clear otherwise.
+; HandlePostPlayerMoveWitchEffects   (was HandleRecoilChallenge)
+;
+; farcalled from BOTH full-turn paths in MainInBattleLoop, immediately after
+; ExecutePlayerMove. This is the shared seam for every witch challenge whose
+; effect is "do something to the player's own mon right after its move
+; resolves":
+;
+;   CHALLENGE_RECOIL_ATTACKS    (12) - wDamage/4 recoil on any damaging move
+;   CHALLENGE_SAME_MOVE_PENALTY (14) - maxHP/8 for repeating last turn's move
+;   CHALLENGE_RECOIL_PHYSICAL   (16) - wDamage/4 recoil, physical moves only
+;   CHALLENGE_RECOIL_SPECIAL    (17) - wDamage/4 recoil, special moves only
+;
+; Dispatching from here means new challenges of this shape cost ZERO bytes in
+; the Battle Core bank: the two call sites stay unchanged farcalls that consume
+; only the returned Z flag, and Bankswitch preserves flags.
+;
+; hWhoseTurn is reliably 0 here - ExecutePlayerMove sets it on entry and nothing
+; between there and this hook restores it - which is what makes <USER> the
+; correct name in the messages below.
+;
+; OUTPUT: Z set if the player's mon hit 0 HP; Z clear otherwise (including the
+; "no challenge active / nothing happened" paths), matching what both call
+; sites already expect so KO Defiance still runs.
 ; ============================================================
-HandleRecoilChallenge::
+HandlePostPlayerMoveWitchEffects::
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noRecoil
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_RECOIL_ATTACKS
-	jr nz, .noRecoil
+	jr z, .noEffect
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
-	jr z, .noRecoil
-	; Only apply if damage was dealt
+	jr z, .noEffect
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_SAME_MOVE_PENALTY
+	jr z, .sameMovePenalty
+	cp CHALLENGE_RECOIL_ATTACKS
+	jr z, .recoilAnyMove
+	cp CHALLENGE_RECOIL_PHYSICAL
+	jr z, .recoilPhysicalOnly
+	cp CHALLENGE_RECOIL_SPECIAL
+	jr z, .recoilSpecialOnly
+
+.noEffect
+	or a               ; ensure Z clear - "nothing happened, mon is alive"
+	inc a
+	ret
+
+; --- Challenges 16/17: same recoil as 12, gated on the move's damage class.
+; Gen 1 has no per-move category: types below SPECIAL ($14) are physical,
+; types from SPECIAL up are special. The UNUSED_TYPES gap ($09-$13) never
+; appears on a real move, so the single compare is sufficient.
+.recoilPhysicalOnly
+	ld a, [wPlayerMoveType]
+	cp SPECIAL
+	jr nc, .noEffect       ; special move under the physical-only challenge
+	jr .recoilAnyMove
+.recoilSpecialOnly
+	ld a, [wPlayerMoveType]
+	cp SPECIAL
+	jr c, .noEffect        ; physical move under the special-only challenge
+
+; --- Challenge 12 (and the tail of 16/17): wDamage/4, minimum 1.
+.recoilAnyMove
 	ld a, [wDamage]
 	ld b, a
 	ld a, [wDamage + 1]
 	ld c, a
+	or b
+	jr z, .noEffect        ; no damage dealt (miss, status move, immunity)
+	srl b
+	rr c
+	srl b
+	rr c                   ; bc = wDamage / 4, same as non-Struggle RecoilEffect_
 	ld a, b
 	or c
-	jr z, .noRecoil
-	; Recoil = wDamage / 4 (same as non-Struggle RecoilEffect_)
+	jr nz, .recoilApply
+	inc c                  ; minimum 1
+.recoilApply
+	ld de, RecoilChallengeText
+	jr ApplyWitchSelfDamage
+
+; --- Challenge 14: punish using the same move twice in a row.
+; Both trackers are recorded UNCONDITIONALLY before the comparison, so the
+; streak state is correct on every path out of here. A repeat requires all
+; three of: a real move was used, it matches last turn's, and the same party
+; slot used it. wPlayerUsedMove is 0 whenever the mon could not act (asleep,
+; frozen, fully paralysed), so a lost turn breaks the streak for free; the slot
+; check stops a freshly switched-in mon from inheriting the outgoing mon's move.
+.sameMovePenalty
+	ld a, [wWitchPrevPlayerMove]
+	ld d, a                ; d = previous move
+	ld a, [wWitchPrevPlayerSlot]
+	ld e, a                ; e = previous slot
+	ld a, [wPlayerUsedMove]
+	ld b, a
+	ld [wWitchPrevPlayerMove], a
+	ld a, [wPlayerMonNumber]
+	ld c, a
+	ld [wWitchPrevPlayerSlot], a
+	ld a, b
+	and a
+	jr z, .noEffect        ; could not act this turn
+	cp d
+	jr nz, .noEffect       ; different move
+	ld a, c
+	cp e
+	jr nz, .noEffect       ; different mon
+	; Repeat confirmed: maxHP/8, minimum 1. wBattleMonMaxHP is big-endian.
+	ld a, [wBattleMonMaxHP]
+	ld b, a
+	ld a, [wBattleMonMaxHP + 1]
+	ld c, a
 	srl b
 	rr c
 	srl b
 	rr c
+	srl b
+	rr c                   ; bc = maxHP / 8
 	ld a, b
 	or c
-	jr nz, .applyRecoil
-	inc c              ; minimum 1
-.applyRecoil
-	; Apply to player's active mon — same pattern as RecoilEffect_
+	jr nz, .sameMoveApply
+	inc c                  ; minimum 1
+.sameMoveApply
+	ld de, SameMovePenaltyText
+	; fall through
+
+; ------------------------------------------------------------
+; ApplyWitchSelfDamage   (local; every challenge above funnels through here)
+; Subtracts bc HP from the player's active mon, redraws its HP bar, prints the
+; message at de, and returns Z set if the mon hit 0 HP so KO Defiance can run.
+; Caller guarantees bc >= 1. The HP write order and the overkill clamp are
+; lifted verbatim from the original HandleRecoilChallenge, which took them from
+; RecoilEffect_.
+; ------------------------------------------------------------
+ApplyWitchSelfDamage:
+	push de                ; text pointer; PrintText wants it in hl, later
 	ld hl, wBattleMonMaxHP
 	ld a, [hli]
 	ld [wHPBarMaxHP + 1], a
@@ -62,7 +161,7 @@ HandleRecoilChallenge::
 	push bc
 	ld bc, wBattleMonHP - wBattleMonMaxHP
 	add hl, bc
-	pop bc
+	pop bc                 ; hl = wBattleMonHP + 1 (the LOW byte)
 	ld a, [hl]
 	ld [wHPBarOldHP], a
 	sub c
@@ -73,19 +172,21 @@ HandleRecoilChallenge::
 	sbc b
 	ld [hl], a
 	ld [wHPBarNewHP + 1], a
-	jr nc, .recoilUpdateBar
-	xor a
+	jr nc, .updateBar
+	xor a                  ; underflowed - clamp to 0 rather than wrap
 	ld [hli], a
 	ld [hl], a
 	ld hl, wHPBarNewHP
 	ld [hli], a
 	ld [hl], a
-.recoilUpdateBar
+.updateBar
 	hlcoord 10, 9
 	ld a, 1
 	ld [wHPBarType], a
 	predef UpdateHPBar2
-	ld hl, RecoilChallengeText
+	pop de
+	ld h, d
+	ld l, e
 	call PrintText
 	; Return Z set if HP = 0
 	ld a, [wBattleMonHP]
@@ -94,13 +195,12 @@ HandleRecoilChallenge::
 	or b
 	ret
 
-.noRecoil
-	or a   ; ensure Z clear
-	inc a
-	ret
-
 RecoilChallengeText:
 	text_far _RecoilChallengeText
+	text_end
+
+SameMovePenaltyText:
+	text_far _SameMovePenaltyText
 	text_end
 
 ; ============================================================

@@ -480,7 +480,16 @@ wForceEvolution:: db
 ; if [wAILayer2Encouragement] != 1, the second AI layer is not applied
 wAILayer2Encouragement:: db
 
-	ds 1
+; CHALLENGE_SAME_MOVE_PENALTY: the move the player's mon used on its previous
+; turn, and which party slot used it. Carved from this block's spare ds 1, so
+; it costs ZERO WRAM0 (which has exactly 1 free byte - see WRAM_BIBLE.md).
+; Battle-scoped: inside wMiscBattleData..wMiscBattleDataEnd, which
+; InitBattleVariables bulk-zeroes at battle start, so both correctly read
+; "nothing used yet" every battle without any explicit init.
+; The slot is stored alongside the move so that switching mons breaks the
+; streak: wPlayerUsedMove alone would let a fresh mon inherit the outgoing
+; mon's last move and take the penalty on its first turn.
+wWitchPrevPlayerMove:: db
 
 ; current HP of player and enemy substitutes
 wPlayerSubstituteHP:: db
@@ -573,8 +582,10 @@ wAIPlanStep:: db        ; progress within that plan
 ; what the battle-start zeroing gives us - hence it MUST live in this branch.
 wAISeenPlayerMoves:: ds NUM_MOVES
 
-	ds 1
-    
+; Party slot that used wWitchPrevPlayerMove (see its comment above). Same deal:
+; carved from this branch's spare ds 1, zero WRAM0 cost, auto-zeroed per battle.
+wWitchPrevPlayerSlot:: db
+
 NEXTU
 
 wAllSpecies::

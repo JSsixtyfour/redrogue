@@ -462,7 +462,7 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
-	farcall HandleRecoilChallenge
+	farcall HandlePostPlayerMoveWitchEffects
 	jr nz, .enemyFirstRecoilAlive
 	call TryKODefiance
 	jr z, .enemyFirstRecoilAlive
@@ -491,7 +491,7 @@ MainInBattleLoop:
 	ld a, b
 	and a
 	jp z, HandleEnemyMonFainted
-	farcall HandleRecoilChallenge
+	farcall HandlePostPlayerMoveWitchEffects
 	jr nz, .playerFirstRecoilAlive
 	call TryKODefiance
 	jr z, .playerFirstRecoilAlive

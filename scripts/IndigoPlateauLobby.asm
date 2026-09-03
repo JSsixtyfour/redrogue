@@ -708,6 +708,11 @@ PCWitchText:
 	dw .Challenge11
 	dw .Challenge12
 	dw .Challenge13
+	dw .Challenge14
+	dw .Challenge15
+	dw .Challenge16
+	dw .Challenge17
+	dw .Challenge18
 
 .Challenge1:
 	text_far _WitchChallenge1Text
@@ -759,6 +764,26 @@ PCWitchText:
 
 .Challenge13:
 	text_far _WitchChallenge13Text
+	text_end
+
+.Challenge14:
+	text_far _WitchChallenge14Text
+	text_end
+
+.Challenge15:
+	text_far _WitchChallenge15Text
+	text_end
+
+.Challenge16:
+	text_far _WitchChallenge16Text
+	text_end
+
+.Challenge17:
+	text_far _WitchChallenge17Text
+	text_end
+
+.Challenge18:
+	text_far _WitchChallenge18Text
 	text_end
 
 ; index = wWitchPrize - 1; see constants/ram_constants.asm for the PRIZE_* ids.

@@ -93,6 +93,36 @@ _WitchChallenge13Text::
 	cont "PARADISE"
 	prompt
 
+_WitchChallenge14Text::
+	text "Repeat a move and"
+	line "my bargain bites"
+	cont "back."
+	prompt
+
+_WitchChallenge15Text::
+	text "No medicine for"
+	line "you outside of"
+	cont "battle."
+	prompt
+
+_WitchChallenge16Text::
+	text "Blows of muscle"
+	line "will cost you"
+	cont "blood."
+	prompt
+
+_WitchChallenge17Text::
+	text "Blows of the mind"
+	line "will cost you"
+	cont "blood."
+	prompt
+
+_WitchChallenge18Text::
+	text "Your moves will"
+	line "tire twice as"
+	cont "quickly."
+	prompt
+
 _WitchPrize1Text::
 	text "Win and your"
 	line "reward #MON"
