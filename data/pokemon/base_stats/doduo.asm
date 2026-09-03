@@ -19,4 +19,4 @@
 	     SKULL_BASH,   SKY_ATTACK,   REST,         TRI_ATTACK,   FLY,          \
 	; end
 
-	db 0 ; padding
+	db BANK(DoduoPicFront) ; pic bank

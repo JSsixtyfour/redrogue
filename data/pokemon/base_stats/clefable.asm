@@ -23,4 +23,4 @@
 	     TRI_ATTACK,   SUBSTITUTE,   STRENGTH,     FLASH,        FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(ClefablePicFront) ; pic bank

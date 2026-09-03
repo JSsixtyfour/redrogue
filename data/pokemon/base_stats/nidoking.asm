@@ -23,4 +23,4 @@
 	     SURF,         STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(NidokingPicFront) ; pic bank

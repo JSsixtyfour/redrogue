@@ -19,4 +19,4 @@
 	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY,          \
 	; end
 
-	db 0 ; padding
+	db BANK(PidgeotPicFront) ; pic bank

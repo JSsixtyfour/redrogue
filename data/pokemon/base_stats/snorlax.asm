@@ -24,4 +24,4 @@
 	     STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(SnorlaxPicFront) ; pic bank

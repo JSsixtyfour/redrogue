@@ -22,4 +22,4 @@
 	     SURF,         STRENGTH,     LIGHT_SCREEN, FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(DragonitePicFront) ; pic bank

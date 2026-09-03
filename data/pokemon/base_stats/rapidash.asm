@@ -20,4 +20,4 @@
 	     SUBSTITUTE,   FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(RapidashPicFront) ; pic bank

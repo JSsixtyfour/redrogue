@@ -22,4 +22,4 @@
 	     STRENGTH,     LIGHT_SCREEN
 	; end
 
-	db 0 ; padding
+	db BANK(GolduckPicFront) ; pic bank

@@ -20,4 +20,4 @@
 	     CUT,          FLY
 	; end
 
-	db 0 ; padding
+	db BANK(FarfetchdPicFront) ; pic bank

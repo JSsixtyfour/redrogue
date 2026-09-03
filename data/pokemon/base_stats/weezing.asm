@@ -19,4 +19,4 @@
 	     REST,         EXPLOSION,    SUBSTITUTE,   FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(WeezingPicFront) ; pic bank

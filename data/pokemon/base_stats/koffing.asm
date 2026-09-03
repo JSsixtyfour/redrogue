@@ -19,4 +19,4 @@
 	     EXPLOSION,    SUBSTITUTE,   FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(KoffingPicFront) ; pic bank

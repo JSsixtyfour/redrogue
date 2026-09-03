@@ -21,4 +21,4 @@
 	     REST,         SUBSTITUTE,   CUT,          STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(CharmeleonPicFront) ; pic bank

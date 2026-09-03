@@ -22,4 +22,4 @@
          FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(DragonairPicFront) ; pic bank

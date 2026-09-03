@@ -21,4 +21,4 @@
 	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(GravelerPicFront) ; pic bank

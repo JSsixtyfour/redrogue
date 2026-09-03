@@ -19,4 +19,4 @@
 	     BIDE,         SWIFT,        REST      
 	; end
 
-	db 0 ; padding
+	db BANK(GolbatPicFront) ; pic bank

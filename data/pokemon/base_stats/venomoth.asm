@@ -20,4 +20,4 @@
 	     SWIFT,        REST,         
 	; end
 
-	db 0 ; padding
+	db BANK(VenomothPicFront) ; pic bank

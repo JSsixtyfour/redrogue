@@ -21,4 +21,4 @@
 	     THUNDER_WAVE, SUBSTITUTE,   FLASH,        LIGHT_SCREEN, SURF
 	; end
 
-	db 0 ; padding
+	db BANK(RaichuPicFront) ; pic bank

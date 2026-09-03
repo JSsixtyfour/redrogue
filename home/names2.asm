@@ -18,16 +18,27 @@ GetName::
 	ld a, [wNameListIndex]
 	ld [wNamedObjectIndex], a
 
-	; TM names are separate from item names.
-	; BUG: This applies to all names instead of just items.
-	ASSERT NUM_POKEMON_INDEXES < HM01, \
-		"A bug in GetName will get TM/HM names for Pokémon above ${x:HM01}."
-	ASSERT NUM_ATTACKS < HM01, \
-		"A bug in GetName will get TM/HM names for moves above ${x:HM01}."
-	ASSERT NUM_TRAINERS < HM01, \
-		"A bug in GetName will get TM/HM names for trainers above ${x:HM01}."
+	; TM/HM names are not stored in ItemNames, so an ITEM index at or above HM01
+	; has to be resolved by GetMachineName instead.
+	;
+	; Vanilla ran this test HERE, before dispatching on wNameListType, and its
+	; own comment flagged it as a bug: it hijacked EVERY list, so any Pokemon,
+	; move or trainer index >= $C4 came back as "TM07". Three ASSERTs existed
+	; solely to keep those lists below the threshold, and the Pokemon one capped
+	; NUM_POKEMON_INDEXES at 195 - a hard wall for the species expansion.
+	;
+	; Gating on ITEM_NAME fixes the bug at its root and frees species indexes to
+	; run to $FE. The move and trainer asserts are dropped with it; both counts
+	; are nowhere near $C4, and they are no longer load-bearing now that only the
+	; item list consults HM01. Tail-call semantics are unchanged - GetMachineName
+	; still returns straight to GetName's caller.
+	ld a, [wNameListType]
+	cp ITEM_NAME
+	jr nz, .notMachineName
+	ld a, [wNameListIndex]
 	cp HM01
 	jp nc, GetMachineName
+.notMachineName
 
 	ldh a, [hLoadedROMBank]
 	push af

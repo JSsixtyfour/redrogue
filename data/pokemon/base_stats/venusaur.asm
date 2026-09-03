@@ -20,4 +20,4 @@
 	     CUT,          LIGHT_SCREEN
 	; end
 
-	db 0 ; padding
+	db BANK(VenusaurPicFront) ; pic bank

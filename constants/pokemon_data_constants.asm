@@ -20,7 +20,14 @@ DEF BASE_BACKPIC     rw
 DEF BASE_MOVES       rb NUM_MOVES
 DEF BASE_GROWTH_RATE rb
 DEF BASE_TMHM        rb (NUM_TM_HM + 7) / 8
-                     rb_skip
+; Was an unnamed `rb_skip` whose byte every base_stats file emitted as
+; `db 0 ; padding`. Claimed 2026-09-03 for the pic bank, per pret's "Improve the
+; Pokemon picture system": UncompressMonSprite used to pick the ROM bank from a
+; hardcoded compare chain on the species index, which silently sent anything
+; >= $BF to "Pics 5". Storing the bank per species removes that ceiling and lets
+; pics live in any bank. BASE_DATA_SIZE is UNCHANGED - this costs no ROM and no
+; WRAM, it just names a byte that was already there.
+DEF BASE_PIC_BANK    rb
 DEF BASE_DATA_SIZE EQU _RS
 
 ; party_struct members (see macros/ram.asm)

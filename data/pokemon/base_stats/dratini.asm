@@ -21,4 +21,4 @@
 	     THUNDER_WAVE, SUBSTITUTE,   SURF,         LIGHT_SCREEN, FLAMETHROWER  \
 	; end
 
-	db 0 ; padding
+	db BANK(DratiniPicFront) ; pic bank

@@ -21,4 +21,4 @@
 	     STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(TaurosPicFront) ; pic bank

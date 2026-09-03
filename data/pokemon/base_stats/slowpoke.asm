@@ -23,4 +23,4 @@
          FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(SlowpokePicFront) ; pic bank

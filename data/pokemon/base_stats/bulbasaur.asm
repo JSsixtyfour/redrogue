@@ -20,4 +20,4 @@
          LIGHT_SCREEN
 	; end
 
-	db 0 ; padding
+	db BANK(BulbasaurPicFront) ; pic bank

@@ -21,4 +21,4 @@
 	     SUBSTITUTE,   SURF,         STRENGTH,     FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(GyaradosPicFront) ; pic bank

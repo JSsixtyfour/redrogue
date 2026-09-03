@@ -19,4 +19,4 @@
 	     SKY_ATTACK,   REST,         FLY
 	; end
 
-	db 0 ; padding
+	db BANK(SpearowPicFront) ; pic bank

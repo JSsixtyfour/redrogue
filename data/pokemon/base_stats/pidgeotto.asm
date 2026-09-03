@@ -19,4 +19,4 @@
 	     SWIFT,        SKY_ATTACK,   REST,         FLY
 	; end
 
-	db 0 ; padding
+	db BANK(PidgeottoPicFront) ; pic bank

@@ -8,36 +8,20 @@ UncompressMonSprite::
 	ld [wSpriteInputPtr], a    ; fetch sprite input pointer
 	ld a, [hl]
 	ld [wSpriteInputPtr+1], a
-; define (by index number) the bank that a pokemon's image is in
-; index = MEW:             bank $1
-;       index < $1F:       bank $9 ("Pics 1")
-; $1F ≤ index < $4A:       bank $A ("Pics 2")
-; $4A ≤ index < $74:       bank $B ("Pics 3")
-; $74 ≤ index < $99:       bank $C ("Pics 4")
-; $99 ≤ index:             bank $D ("Pics 5")
-	ld a, [wCurPartySpecies]
-	ld b, a
-	cp MEW
-	ld a, BANK(MewPicFront)
-	jr z, .GotBank
-	ld a, b
-	cp TANGELA + 1
-	ld a, BANK("Pics 1")
-	jr c, .GotBank
-	ld a, b
-	cp MOLTRES + 1
-	ld a, BANK("Pics 2")
-	jr c, .GotBank
-	ld a, b
-	cp BEEDRILL + 2
-	ld a, BANK("Pics 3")
-	jr c, .GotBank
-	ld a, b
-	cp STARMIE + 1
-	ld a, BANK("Pics 4")
-	jr c, .GotBank
-	ld a, BANK("Pics 5")
-.GotBank
+; The pic's ROM bank comes from the mon header, which GetMonHeader already
+; loaded (see the routine's own precondition above).
+;
+; This replaced a hardcoded compare chain on the species index - MEW, then four
+; `cp <species> + 1` range tests selecting "Pics 1".."Pics 5". That chain had no
+; upper bound: any index at or above $BF fell through to "Pics 5" regardless of
+; where its pic actually lived, which capped the species expansion. Per pret's
+; "Improve the Pokemon picture system", the bank is now stored per species in
+; BASE_PIC_BANK, a byte every base_stats file was already emitting as padding -
+; so pics may live in any bank and this costs neither ROM nor WRAM.
+;
+; A regional-form override (Phase 2R) patches wMonHPicBank along with the pic
+; pointers, so form sprites need no special case here either.
+	ld a, [wMonHPicBank]
 	jp UncompressSpriteData
 
 ; de: destination location

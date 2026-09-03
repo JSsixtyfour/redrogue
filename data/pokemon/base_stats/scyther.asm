@@ -19,4 +19,4 @@
 	     SKULL_BASH,   REST,         SUBSTITUTE,   CUT,          LIGHT_SCREEN
 	; end
 
-	db 0 ; padding
+	db BANK(ScytherPicFront) ; pic bank

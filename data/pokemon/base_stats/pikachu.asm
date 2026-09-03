@@ -21,4 +21,4 @@
 	     SUBSTITUTE,   FLASH,        LIGHT_SCREEN, SURF
 	; end
 
-	db 0 ; padding
+	db BANK(PikachuPicFront) ; pic bank

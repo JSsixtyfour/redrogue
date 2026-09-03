@@ -23,4 +23,4 @@
 	     SUBSTITUTE,   STRENGTH,     FLASH,        FLAMETHROWER
 	; end
 
-	db 0 ; padding
+	db BANK(WigglytuffPicFront) ; pic bank

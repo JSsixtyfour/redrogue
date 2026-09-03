@@ -1656,7 +1656,11 @@ wMonHBackSprite:: dw
 wMonHMoves:: ds NUM_MOVES
 wMonHGrowthRate:: db
 wMonHLearnset:: flag_array NUM_TMS + NUM_HMS
-	ds 1
+; ROM bank holding this species' front/back pics (BASE_PIC_BANK). Was an unnamed
+; `ds 1` mirroring the struct's trailing pad byte, so naming it costs nothing.
+; UncompressMonSprite reads it instead of deriving the bank from a hardcoded
+; species-index compare chain - see constants/pokemon_data_constants.asm.
+wMonHPicBank:: db
 wMonHeaderEnd::
 
 ; saved at the start of a battle and then written back at the end of the battle
