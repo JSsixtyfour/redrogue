@@ -59,6 +59,47 @@ RogueCreditPopupCheck::
 	db "TOTAL: @"
 
 ; ============================================================
+; RogueResetRunState - the single end-of-run wipe.
+;
+; Called from RogueOnBlackout (below) and, by farcall, from
+; HallOfFameResetEventsAndSaveScript (scripts/HallOfFame.asm). Those are the
+; only two places a run ends, and this is the only thing that ends one.
+;
+; The event half is one ResetEventRange over ZONE 1 of
+; constants/event_constants.asm - every stage/gym/Elite 4 trainer bit, every
+; auto-walk "no turning back" flag, the reward/offer flags, the procedural
+; stage flags and EVENT_VICTORY_ROAD_CLEARED. That file byte-aligns both ends
+; of the range (asserted there), so the macro emits plain `ld [hli], a` stores
+; and cannot clip a neighbouring zone.
+;
+; ZONE 0 is deliberately NOT touched: the ELEMENT PRISM one-time-ever grant
+; messages live there, and never being cleared IS their mechanism. ZONE 2 is
+; the unreachable-map graveyard and has nothing to reset.
+;
+; Badges and the visited-stage bitfield go with them. Before this existed
+; neither was ever cleared, so a blackout kept your gym progress and its
+; already-beaten trainer bits while the run notionally restarted.
+; ============================================================
+RogueResetRunState::
+	ResetEventRange RUN_EVENTS_START, RUN_EVENTS_END
+	xor a
+	ld [wObtainedBadges], a        ; gym progress restarts with the run
+	ld hl, wVisitedStagesBitfield  ; ds 4: stage N visited this run
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	; Witch run state. wEarnedStatBoosts and wWitchPrizesEarned are packed
+	; multi-bit byte fields, not event flags, so they are cleared by hand here
+	; rather than folded into the range above.
+	ld [wEarnedStatBoosts], a
+	ld [wWitchPrizesEarned], a
+	ld [wWitchPrizesEarned + 1], a
+	ld hl, wRogueFlagsBitfield
+	res BIT_WITCH_ACCEPTED, [hl]   ; an accepted challenge does not survive
+	ret
+
+; ============================================================
 ; RogueOnBlackout — farcalled from ResetStatusAndHalveMoneyOnBlackout.
 ; A blackout is the run boundary for credit purposes, so this refills the
 ; Credit Exchange slot pulls, re-derives KO Defiance charges from its SRAM
@@ -76,21 +117,8 @@ RogueOnBlackout::
 	res 0, [hl]
 	res 1, [hl]
 
-	; A blackout also ends the witch's run-scoped rewards: the earned stat
-	; boosts, every permanent witch prize, and the Victory Road clear.
-	; The first two are ordinary run state in wGameProgressFlags (ram/wram.asm),
-	; NOT events - only the Victory Road clear is a genuine milestone, and it
-	; lives on one of Route 17's dead event bits (see event_constants.asm).
-	; NOTE for the planned "blackout wipes many events" system: the ELEMENT PRISM
-	; block at the end of event_constants.asm must stay OUT of any such range -
-	; its "only the first time, ever" messages depend on never being cleared.
-	xor a
-	ld [wEarnedStatBoosts], a
-	ld [wWitchPrizesEarned], a
-	ld [wWitchPrizesEarned + 1], a
-	ResetEvent EVENT_VICTORY_ROAD_CLEARED
-	ld hl, wRogueFlagsBitfield
-	res BIT_WITCH_ACCEPTED, [hl]   ; an accepted challenge does not survive a blackout
+	; A blackout ends the run. Everything run-scoped is cleared in one place.
+	call RogueResetRunState
 
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a

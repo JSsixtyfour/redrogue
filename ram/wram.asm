@@ -2545,6 +2545,13 @@ wRGB:: ds 3
           ; -3 for wRGB
           ; -3 more for wEarnedStatBoosts + wWitchPrizesEarned (witch permanent
           ;   prizes / earned stat boosts), still net-zero WRAM0
+          ; +264 RECLAIMED: wEventFlags compaction (WRAM_BIBLE.md B2). NUM_EVENTS
+          ;   went 2623 -> a pinned 512, so the flag_array went 328 -> 64 bytes.
+          ;   That ended the net-zero bookkeeping this ds existed for: WRAM0 went
+          ;   from 1 free byte to 265 ($0109 TOTAL EMPTY). New variables can now
+          ;   just be declared; there is no longer any need to shrink this pad to
+          ;   pay for them. constants/event_constants.asm is generated - see
+          ;   tools/gen_event_constants.py.
 
 ; Which trainer class the player looks like: index into PlayerAppearanceTable
 ; (data/player/appearance.asm). 0 = PLAYER_APPEARANCE_RED, so the zero-fill in

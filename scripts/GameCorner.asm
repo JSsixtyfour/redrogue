@@ -293,6 +293,12 @@ GameCornerGreedyText:
 ; Gambler's Paradise trainer scripts (5 trainers, Route1 style)
 ; ============================================================
 GameCornerTrainerHeaders:
+	; This map had no def_trainers of its own, so CURRENT_TRAINER_BIT leaked in
+	; from whichever map assembled before it in maps.asm (it happened to be 6,
+	; which the old hand-numbered event constants happened to match). Pinned to
+	; the same 1 every other rogue stage uses, so the block no longer depends on
+	; include order.
+	def_trainers 1
 GameCornerTrainerHeader0:
 	trainer EVENT_BEAT_GAME_CORNER_TRAINER_0, 1, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader1:

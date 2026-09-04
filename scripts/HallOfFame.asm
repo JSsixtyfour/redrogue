@@ -36,10 +36,6 @@ HallOfFameResetEventsAndSaveScript:
 	inc hl
 	set BIT_UNUSED_BEAT_ELITE_4, [hl] ; unused
 	res BIT_STARTED_ELITE_4, [hl]
-	; next run starts Victory Road again, Pokecenter lobby music. Now an event
-	; flag (ROGUE_RUN_EVENTS), so it no longer rides the wElite4Flags pointer
-	; above; hl is dead after this point anyway.
-	ResetEvent EVENT_VICTORY_ROAD_CLEARED
 	xor a ; SCRIPT_*_DEFAULT
 	ld [wElite4Order], a
 	ld hl, wLoreleisRoomCurScript
@@ -49,8 +45,11 @@ HallOfFameResetEventsAndSaveScript:
 	ld [wLancesRoomCurScript], a
 	ld [wChampionsRoomCurScript], a
 	ld [wHallOfFameCurScript], a
-	; Elite 4 events
-	ResetEventRange INDIGO_PLATEAU_EVENTS_START, INDIGO_PLATEAU_EVENTS_END, 1
+	; Finishing the game ends the run exactly like a blackout does: one wipe
+	; over ZONE 1 of constants/event_constants.asm plus badges and the
+	; visited-stage bitfield. That range subsumes the Elite 4 events and
+	; EVENT_VICTORY_ROAD_CLEARED, which used to be reset separately here.
+	farcall RogueResetRunState
 	xor a
 	ld [wHallOfFameCurScript], a
 	ld a, PALLET_TOWN

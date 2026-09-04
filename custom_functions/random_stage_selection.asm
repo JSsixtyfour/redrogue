@@ -20,14 +20,11 @@ RogueStageMapTable:
 	db ROUTE_15
 	db UNDERGROUND_PATH_WEST_EAST
 	; db ROUTE_17
-	; !!! DO NOT simply uncomment the line above. !!! Route 17's ten trainer
-	; event bits are CLAIMED: constants/event_constants.asm aliases them as
-	; ROGUE_RUN_EVENTS (earned stat boosts, permanent witch prizes,
-	; EVENT_VICTORY_ROAD_CLEARED), on the strength of Route 17 being
-	; unreachable. Re-enabling it as a stage would make beating its trainers
-	; silently grant those, and RogueOnBlackout would clear its trainer flags.
-	; Give Route 17 fresh event constants first - there is no compile-time
-	; warning for this.
+	; Route 17's trainer bits are no longer aliased to anything: the old
+	; ROGUE_RUN_EVENTS hack is gone, EVENT_VICTORY_ROAD_CLEARED is a real
+	; run-scoped event, and Route 17 is listed as a live map in
+	; tools/gen_event_constants.py (TABLE 5) so it keeps its own bits.
+	; Re-enabling it as a stage is now just an uncomment.
 	db ROUTE_24          ; unique: reward gated by Nugget Bridge NPC (vanilla nugget flow), not ALL_TRAINERS_MASK
 	db ROUTE_25
 	db VIRIDIAN_FOREST
