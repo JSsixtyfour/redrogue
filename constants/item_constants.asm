@@ -144,6 +144,15 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 	const M_GENE            ; $71 - reroll DVs to above-average
 	const M_TOME            ; $72 - max stat exp, or max DVs if already maxed
 
+; Evolution stones added for the Eeveelution form clones (species-groups Phase
+; 2R). Vanilla ships only MOON/FIRE/THUNDER/WATER/LEAF, and Eevee already spends
+; Water/Thunder/Fire on Vaporeon/Jolteon/Flareon; Leaf and Moon cover Leafeon and
+; Sylveon, leaving Espeon, Umbreon and Glaceon needing three more triggers.
+; They behave exactly like the vanilla stones - ItemUseEvoStone, party-menu use.
+	const SUN_STONE         ; $73 - Espeon
+	const DUSK_STONE        ; $74 - Umbreon
+	const ICE_STONE         ; $75 - Glaceon
+
 	const_next $C4
 
 ; HMs are defined before TMs, so the actual number of TM definitions

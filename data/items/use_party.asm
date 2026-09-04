@@ -46,4 +46,12 @@ UsableItems_PartyMenu:
 ; updating until the party menu is opened and closed again.
 	db M_GENE
 	db M_TOME
+; The three added evolution stones MUST be listed here. Every stone opens the
+; party menu, and an item that does so while missing from this list skips the
+; graphics restore on exit - the party menu's tile patterns stay in VRAM and
+; hUpdateSpritesEnabled stays $ff, so the map and bag render with garbage mon
+; tiles and the player sprite stops updating until the party menu is reopened.
+	db SUN_STONE
+	db DUSK_STONE
+	db ICE_STONE
 	db -1 ; end

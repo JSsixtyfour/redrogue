@@ -46,6 +46,39 @@ NUM_EVENTS = 512
 # secretly load-bearing.
 # ---------------------------------------------------------------------------
 DELETE = [
+# ----------------------------------------------------------------------------
+# POTENTIAL REMOVALS (not applied - flagged 2026-09-03, needs real feature
+# deletion, not just a constant delete). Each is still referenced by live game
+# code; cutting the event means cutting the code path it drives:
+#   EVENT_GOT_POKEDEX, EVENT_DAISY_WALKING, EVENT_GOT_TOWN_MAP,
+#   EVENT_ENTERED_BLUES_HOUSE, EVENT_PALLET_AFTER_FIRST_RUN,
+#   EVENT_HALL_OF_FAME_DEX_RATING        - Pallet/Oak's Lab intro chain
+#   EVENT_FIGHT_ROUTE12_SNORLAX, EVENT_FIGHT_ROUTE16_SNORLAX,
+#   EVENT_BEAT_ROUTE12_SNORLAX, EVENT_BEAT_ROUTE16_SNORLAX
+#                                         - largely vestigial already: the
+#                                           Route12/16 scripts that would ever
+#                                           SET the BEAT_ flag are commented
+#                                           out, so the "already beaten" gate
+#                                           can never trigger; only the Poke
+#                                           Flute's write side survives
+#                                           (engine/items/item_effects_pokeflute.asm)
+#   EVENT_IN_SAFARI_ZONE, EVENT_SAFARI_GAME_OVER  - Safari Zone
+#   EVENT_GAVE_FOSSIL_TO_LAB, EVENT_LAB_STILL_REVIVING_FOSSIL - Cinnabar Lab fossil revival
+#   EVENT_GOT_SS_TICKET                  - Route 25 / Bill's house SS Ticket
+#   EVENT_ROUTE22_RIVAL_WANTS_BATTLE     - Route 22 rival gate (checked from ViridianGym)
+#   EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1/2,
+#   EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1
+#                                         - CAUTION: boulder puzzles on the
+#                                           mandatory path to Elite 4. A wrong
+#                                           cut here risks a softlock.
+#   EVENT_BEAT_SILPH_CO_GIOVANNI         - referenced only by dead Silph Co
+#                                           floors' scripts + bench_guys.asm;
+#                                           check bench_guys.asm's own liveness
+#                                           before cutting
+#   EVENT_FOUND_ROCKET_HIDEOUT           - GameCorner.asm (live map)
+# Revisit only if there is a reason to (WRAM pressure isn't one - each cut is
+# worth 1 bit now, the array is pinned at 64 B either way).
+# ----------------------------------------------------------------------------
     "EVENT_BEAT_CELADON_GYM_TRAINER_4",
     "EVENT_BEAT_CELADON_GYM_TRAINER_5",
     "EVENT_BEAT_CELADON_GYM_TRAINER_6",
@@ -116,6 +149,14 @@ DELETE = [
     "EVENT_SEAFOAM1_BOULDER1_DOWN_HOLE",
     "EVENT_SEAFOAM1_BOULDER2_DOWN_HOLE",
     "EVENT_SILPH_CO_RECEPTIONIST_AT_DESK",
+    # SILPH_CO_1F trainer block - confirmed 2026-09-03 pure UNREF (no
+    # scripts/SilphCo1F.asm trainer block exists; SILPH_CO_1F was also removed
+    # from EXTRA_SEEDS the same pass, but these were unreferenced regardless).
+    "EVENT_BEAT_SILPH_CO_1F_TRAINER_0",
+    "EVENT_BEAT_SILPH_CO_1F_TRAINER_1",
+    "EVENT_BEAT_SILPH_CO_1F_TRAINER_2",
+    "EVENT_BEAT_SILPH_CO_1F_TRAINER_3",
+    "EVENT_BEAT_SILPH_CO_1F_TRAINER_4",
 ]
 
 # ---------------------------------------------------------------------------
@@ -131,9 +172,9 @@ PERSISTENT = [
     "EVENT_ENTERED_BLUES_HOUSE",
     "EVENT_GOT_TOWN_MAP",
     "EVENT_GOT_POKEDEX",
-    "EVENT_ESTABLISHED_STARTER",
-    "EVENT_GOT_STARTER",
-    "EVENT_BATTLED_RIVAL_IN_OAKS_LAB",
+    # EVENT_ESTABLISHED_STARTER / EVENT_GOT_STARTER / EVENT_BATTLED_RIVAL_IN_OAKS_LAB
+    # moved to run-scoped 2026-09-03 per user audit - OaksLab is never re-entered
+    # after the intro, so persisting these bought nothing.
     "EVENT_INTRO_TOUR_COMPLETE",
     "EVENT_GAMMA_SHADER",
     "EVENT_HALL_OF_FAME_DEX_RATING",
@@ -235,9 +276,18 @@ EXTRA_SEEDS = {
     "PROCEDURAL_CAVE_1", "PROCEDURAL_FACILITY", "PROCEDURAL_FOREST",
     "PROCEDURAL_CEMETERY_1", "PROCEDURAL_CEMETERY_2",
     "PROCEDURAL_CEMETERY_3", "PROCEDURAL_CEMETERY_4",
-    # stages commented out of RogueStageMapTable whose events are reserved
-    "SILPH_CO_1F", "SS_ANNE_BOW", "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
-    "GAME_CORNER", "UNDERGROUND_PATH_ROUTE_5", "ROUTE_17", "ROUTE_24",
+    # stages commented out of RogueStageMapTable whose events are reserved.
+    # SILPH_CO_1F, SS_ANNE_BOW and UNDERGROUND_PATH_ROUTE_5 were REMOVED from this
+    # list 2026-09-03 per user audit: SILPH_CO_1F's trainer events turned out to be
+    # pure UNREF (no scripts/SilphCo1F.asm trainer block exists, so reserving it
+    # bought nothing); SS_ANNE_BOW is commented out of RogueStageMapTable and the
+    # user wants it graveyarded like every other unreachable map rather than kept
+    # reserved; UNDERGROUND_PATH_ROUTE_5 was never in that table at all - it was a
+    # fabricated justification, the map is reachable only through
+    # UndergroundPathRoute6 -> UndergroundPathNorthSouth, both themselves
+    # unreachable dead ends. Verified: dropping these three strands no other map.
+    "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
+    "GAME_CORNER", "ROUTE_17", "ROUTE_24",
 }
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

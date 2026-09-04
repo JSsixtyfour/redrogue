@@ -38,6 +38,15 @@ UseItem_::
 	jp z, ItemUseMGene
 	cp M_TOME ; outside ItemUsePtrTable's range
 	jp z, ItemUseMTome
+	; The three added evolution stones. They sit above ItemUsePtrTable's range
+	; like the custom items above, so they dispatch here rather than from the
+	; table - but they route to the same vanilla ItemUseEvoStone handler.
+	cp SUN_STONE ; outside ItemUsePtrTable's range
+	jp z, ItemUseEvoStone
+	cp DUSK_STONE ; outside ItemUsePtrTable's range
+	jp z, ItemUseEvoStone
+	cp ICE_STONE ; outside ItemUsePtrTable's range
+	jp z, ItemUseEvoStone
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable

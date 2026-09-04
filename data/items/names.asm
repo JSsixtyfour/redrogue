@@ -115,4 +115,7 @@ ItemNames::
 	li "ELEM PRISM"
 	li "M.GENE"
 	li "M.TOME"
-	assert_list_length NUM_ITEMS + NUM_FLOORS + 17
+	li "SUN STONE"
+	li "DUSK STONE"
+	li "ICE STONE"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 20

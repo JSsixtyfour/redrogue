@@ -115,7 +115,10 @@ ItemPrices::
 	bcd3 0     ; ELEMENT_PRISM
 	bcd3 0     ; M_GENE
 	bcd3 0     ; M_TOME
-	assert_table_length NUM_ITEMS + NUM_FLOORS + 17
+	bcd3 2100  ; SUN_STONE
+	bcd3 2100  ; DUSK_STONE
+	bcd3 2100  ; ICE_STONE
+	assert_table_length NUM_ITEMS + NUM_FLOORS + 20
 
 ; Credit (not money) prices for the Credit Exchange key-item seller.
 ; See engine/events/credit_mart.asm.
