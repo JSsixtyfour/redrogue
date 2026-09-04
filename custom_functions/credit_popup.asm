@@ -65,78 +65,94 @@ RogueCreditPopupCheck::
 ; HallOfFameResetEventsAndSaveScript (scripts/HallOfFame.asm). Those are the
 ; only two places a run ends, and this is the only thing that ends one.
 ;
-; The event half is one ResetEventRange over ZONE 1 of
-; constants/event_constants.asm - every stage/gym/Elite 4 trainer bit, every
-; auto-walk "no turning back" flag, the reward/offer flags, the procedural
-; stage flags and EVENT_VICTORY_ROAD_CLEARED. That file byte-aligns both ends
-; of the range (asserted there), so the macro emits plain `ld [hli], a` stores
-; and cannot clip a neighbouring zone.
+; Five parts, in order (order matters - later steps re-derive values the
+; earlier blanket clears zeroed):
 ;
-; ZONE 0 is deliberately NOT touched: the ELEMENT PRISM one-time-ever grant
-; messages live there, and never being cleared IS their mechanism. ZONE 2 is
-; the unreachable-map graveyard and has nothing to reset.
+; 1. Events - one ResetEventRange over ZONE 1 of constants/event_constants.asm
+;    (every stage/gym/Elite 4 trainer bit, auto-walk "no turning back" flags,
+;    reward/offer flags, procedural stage flags, EVENT_VICTORY_ROAD_CLEARED).
+;    ZONE 0 (ELEMENT PRISM one-time-ever flags) is untouched by design.
 ;
-; Badges and the visited-stage bitfield go with them. Before this existed
-; neither was ever cleared, so a blackout kept your gym progress and its
-; already-beaten trainer bits while the run notionally restarted.
+; 2. wGameProgressFlags - the SAME region init_player_data.asm blanket-clears
+;    at true new game (FillMemory over wGameProgressFlags..wGameProgressFlagsEnd).
+;    This one FillMemory covers: wVisitedStagesBitfield, wRogueFlagsBitfield
+;    (gym-next/final-trainer/trade-active/witch-accepted), wRogueItem*,
+;    wBattleCount, wRoutesSinceSpecial, wMiniBossCount, wWildAreaState,
+;    wBridgeOfferedLo/State, wWitchChallenge/Prize, wEarnedStatBoosts,
+;    wWitchPrizesEarned, wWitchLevelBonus/wPartyLimit/wBattleTurnLimit/
+;    wBattleTurnCount (witch challenge params), wRewardClassBonus/
+;    wItemClassBonus/wMoneyMultiplier/wPrizeExpBoost (witch prize bonuses),
+;    wFusionSecondarySpecies/BaseStats, wCreditsEarnedThisRun,
+;    wRogueFlagsBitfield2, and every map's CurScript byte (every map resets to
+;    its default entry state) - plus wHealAllItemLevel/wRestorePPItemLevel/
+;    wKODefianceUsages/wExpAllLevel/wDiceCharges/wPrismType/wPrismDamageBonus/
+;    wPrismRerollsLeft, which step 3 immediately re-derives.
+;
+; 3. Re-derive the SRAM-tier caches step 2 just zeroed. wKODefianceUsages,
+;    wDiceCharges and wExpAllLevel are not run flags - they are cached copies
+;    of a persistent SRAM upgrade tier (sKeyItemTiers), refreshed here so the
+;    upgrade a player already bought keeps working instead of silently
+;    downgrading to tier 0 until their next Credit Exchange visit.
+;    ApplyKeyItemTierEffects (engine/events/credit_mart.asm) already existed
+;    for exactly this, its own doc comment saying it should run "at the next
+;    run boundary" - it just was never wired to one before now. It also
+;    farcalls RoguePrismRefreshCache, covering wPrismType/wPrismDamageBonus.
+;    wPrismRerollsLeft needs no re-derive - it is set fresh every time it is
+;    used (custom_functions/element_prism.asm), scratch not persistent state.
+;    Dice charges use a different per-item bit-packing than
+;    ApplyKeyItemTierEffects handles, so that logic (unchanged from what used
+;    to live in RogueOnBlackout) is inlined below it.
+;
+; 4. Badges, item pocket counts, TM/HM ownership, money and coins - reset to
+;    the exact values a true new game starts with
+;    (engine/movie/oak_speech/init_player_data.asm). All outside
+;    wGameProgressFlags, so step 2 does not touch them. TM/HM ownership lives
+;    in sTMBitfield (SRAM) - wTMPocketBuf is just a scratch UI display list
+;    rebuilt from it every time the bag opens (BuildTMPocketList,
+;    custom_functions/tm_bag.asm), not real state, so it is ClearTMBitfield
+;    (same file) that is called here, same as at true new game.
+;
+; 5. Party, boxes (WRAM + all 12 SRAM banks), daycare and starter species -
+;    also outside wGameProgressFlags. Party/box use the same "count=0,
+;    terminator=-1" empty convention the engine already uses everywhere (the
+;    old mon bytes are not wiped, just marked empty, exactly like depositing
+;    the last Pokemon from a box already does). The other 11 SRAM boxes are
+;    wiped by EmptyAllSRAMBoxes (engine/menus/save.asm), the exact routine
+;    already used the first time a player opens Bill's PC - reused rather
+;    than re-deriving its box-bank checksum math.
+;
+; NOT touched: Key Items ownership (sKeyItemsBitfield, SRAM) - explicitly
+; documented in init_player_data.asm as surviving a run-reset, since it is
+; meta-progression, not run state. Also not touched: the Pokedex.
+;
+; Clearing wPlayerStarter/wRivalStarter alongside the party means Oak's Lab
+; starter selection replays after every blackout/champion-clear (matching the
+; 2026-09-03 audit that moved EVENT_ESTABLISHED_STARTER/EVENT_GOT_STARTER/
+; EVENT_BATTLED_RIVAL_IN_OAKS_LAB to run-scoped for exactly this reason).
 ; ============================================================
 RogueResetRunState::
+	; --- 1. events ---
 	ResetEventRange RUN_EVENTS_START, RUN_EVENTS_END
-	xor a
-	ld [wObtainedBadges], a        ; gym progress restarts with the run
-	ld hl, wVisitedStagesBitfield  ; ds 4: stage N visited this run
-	ld [hli], a
-	ld [hli], a
-	ld [hli], a
-	ld [hl], a
-	; Witch run state. wEarnedStatBoosts and wWitchPrizesEarned are packed
-	; multi-bit byte fields, not event flags, so they are cleared by hand here
-	; rather than folded into the range above.
-	ld [wEarnedStatBoosts], a
-	ld [wWitchPrizesEarned], a
-	ld [wWitchPrizesEarned + 1], a
-	ld hl, wRogueFlagsBitfield
-	res BIT_WITCH_ACCEPTED, [hl]   ; an accepted challenge does not survive
-	ret
 
-; ============================================================
-; RogueOnBlackout — farcalled from ResetStatusAndHalveMoneyOnBlackout.
-; A blackout is the run boundary for credit purposes, so this refills the
-; Credit Exchange slot pulls, re-derives KO Defiance charges from its SRAM
-; upgrade tier (sKeyItemTiers is the source of truth; wKODefianceUsages is a
-; derived cache), and refills the three dice items' charges the same way
-; (see KEY_ITEM_EFFECTS_PLAN_PC.md).
-;
-; wRogueFlagsBitfield2 bits 0-1 count pulls USED, not pulls remaining, so the
-; all-zero state a new game leaves behind already means "3 available" and
-; the refill is just a clear. Storing "remaining" would have given a fresh
-; save zero pulls until its first blackout.
-; ============================================================
-RogueOnBlackout::
-	ld hl, wRogueFlagsBitfield2
-	res 0, [hl]
-	res 1, [hl]
+	; --- 2. blanket-clear the run-progress region (same range/routine as
+	; true new game) ---
+	ld hl, wGameProgressFlags
+	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
+	call FillMemory
 
-	; A blackout ends the run. Everything run-scoped is cleared in one place.
-	call RogueResetRunState
-
+	; --- 3. re-derive the SRAM-tier caches step 2 just zeroed ---
+	farcall ApplyKeyItemTierEffects
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
-	ld a, [sKeyItemTiers]
-	and %00110000                 ; KO_DEFIANCE is key item index 2 -> bits 4-5
-	swap a                        ; %00110000 -> %00000011, i.e. tier 0-3
-	inc a                         ; charges = 1 + tier
-	ld [wKODefianceUsages], a
-
 	; Dice charges: DOOR_DICE/MON_DICE/ITEM_DICE each refill to 1+tier,
 	; packed 2 bits each into wDiceCharges (bits 0-1/2-3/4-5). Charges store
-	; REMAINING, unlike the slot-pull bits above which store USED - a fresh/
-	; new-game byte reading 0 correctly means "own no dice yet". Read tiers
-	; directly from sKeyItemTiers while SRAM is already enabled, same as
-	; KO_DEFIANCE above, rather than three farcalls to GetKeyItemPower.
+	; REMAINING, unlike wRogueFlagsBitfield2's slot-pull bits below (those
+	; store USED) - a fresh/new-game byte reading 0 correctly means "own no
+	; dice yet". Read tiers directly from sKeyItemTiers while SRAM is already
+	; enabled, rather than three farcalls to GetKeyItemPower.
 	ld a, [sKeyItemTiers + 2]
 	and %11000000                 ; DOOR_DICE is key item index 11 -> bits 6-7
 	swap a
@@ -162,7 +178,67 @@ RogueOnBlackout::
 	swap a                        ; shift into bits 4-5
 	or b
 	ld [wDiceCharges], a
-
 	xor a
 	ld [rRAMG], a                 ; leave SRAM disabled, never on a farcall boundary
+
+	; --- 4. badges, item pockets, money, coins (matches InitPlayerData) ---
+	; wObtainedBadges is flag_array NUM_BADGES (8 badges -> exactly 1 byte);
+	; a stray +1 write would corrupt wLetterPrintingDelayFlags right after it.
+	xor a
+	ld [wObtainedBadges], a
+	ld hl, wRecoveryItemCounts
+	ld bc, NUM_RECOVERY_ITEMS + NUM_STAT_ITEMS + NUM_VALUABLE_ITEMS
+.clearItemCounts
+	ld [hli], a
+	dec bc
+	ld a, b
+	or c
+	ld a, 0
+	jr nz, .clearItemCounts
+	; TM Pack pocket: wTMPocketBuf is just a scratch UI display list rebuilt
+	; from sTMBitfield every time the bag opens (BuildTMPocketList), not the
+	; real ownership data - clearing it would do nothing. sTMBitfield (SRAM)
+	; is the actual TM/HM ownership bitfield; ClearTMBitfield already exists
+	; and is used for exactly this at true new game (init_player_data.asm),
+	; same bank as this routine so no farcall needed.
+	call ClearTMBitfield
+	DEF ROGUE_RESET_START_MONEY EQU $3000  ; matches init_player_data.asm's START_MONEY
+	ld hl, wPlayerMoney + 1
+	ld a, HIGH(ROGUE_RESET_START_MONEY)
+	ld [hld], a
+	xor a ; LOW(ROGUE_RESET_START_MONEY)
+	ld [hli], a
+	inc hl
+	ld [hl], a
+	xor a
+	ld hl, wPlayerCoins
+	ld [hli], a
+	ld [hl], a
+
+	; --- 5. party, boxes, daycare, starters ---
+	xor a
+	ld [wPartyCount], a
+	ld a, -1
+	ld [wPartySpecies], a
+	xor a
+	ld [wBoxCount], a
+	ld a, -1
+	ld [wBoxSpecies], a
+	farcall EmptyAllSRAMBoxes       ; the other 11 SRAM boxes + their checksums
+	xor a
+	ld [wDayCareInUse], a
+	ld [wDayCareInUse2], a
+	ld [wPlayerStarter], a
+	ld [wRivalStarter], a
+	ld [wRivalStarterBallSpriteIndex], a
 	ret
+
+; ============================================================
+; RogueOnBlackout — farcalled from ResetStatusAndHalveMoneyOnBlackout.
+; A blackout ends the run; everything run-scoped is cleared in one place.
+; wRogueFlagsBitfield2 (Credit Exchange slot pulls used) is inside
+; wGameProgressFlags, so RogueResetRunState's blanket clear already resets it
+; - no separate handling needed here any more.
+; ============================================================
+RogueOnBlackout::
+	jp RogueResetRunState

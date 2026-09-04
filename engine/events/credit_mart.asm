@@ -565,8 +565,15 @@ SetKeyItemTier:
 ;
 ; LEFTOVERS and PP_TONIC heal maxHP/(16 - level), so the tier maps onto the
 ; level curve 0/2/4/8 -> 1/16, 1/14, 1/12, 1/8.
+;
+; Exported (2026-09-03) so RogueResetRunState (custom_functions/credit_popup.asm,
+; the rogue bank) can farcall it after a run-boundary blanket-clear of
+; wGameProgressFlags - that clear zeroes wHealAllItemLevel/wRestorePPItemLevel/
+; wKODefianceUsages/wExpAllLevel along with everything else in that region, and
+; this is what re-derives them from the SRAM tiers that are the actual source
+; of truth, exactly as the comment above already said it should.
 ; ============================================================
-ApplyKeyItemTierEffects:
+ApplyKeyItemTierEffects::
 	ld c, KEY_ITEM_BIT_LEFTOVERS_OWNED / 2
 	call GetKeyItemTier
 	call TierToHealLevel
