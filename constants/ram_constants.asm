@@ -249,6 +249,32 @@ DEF NUM_WITCH_PRIZES     EQU 10
 	const BIT_STAT_BOOST_SPEED   ; 2
 	const BIT_STAT_BOOST_SPECIAL ; 3
 
+; wBridgeGlobalEffects bits. These bonuses persist only for the current run.
+; Keep the stat-reward entries synchronized with BridgeGrantGlobalEffect,
+; which mirrors them into wEarnedStatBoosts for the established 1.125x path.
+	const_def
+	const BRIDGE_EFFECT_CRITICAL_DAMAGE  ; 0
+	const BRIDGE_EFFECT_CUTE_BOOST       ; 1
+	const BRIDGE_EFFECT_REWARD_RARITY    ; 2
+	const BRIDGE_EFFECT_ATTACK_BOOST     ; 3
+	const BRIDGE_EFFECT_STAB_DAMAGE      ; 4
+	const BRIDGE_EFFECT_SUPER_EFFECTIVE  ; 5
+	const BRIDGE_EFFECT_REPEAT           ; 6
+	const BRIDGE_EFFECT_NO_RECOIL        ; 7
+	const BRIDGE_EFFECT_SPEED_BOOST      ; 8
+	const BRIDGE_EFFECT_STATUS_CHANCE    ; 9
+	const BRIDGE_EFFECT_ACCURACY         ; 10
+	const BRIDGE_EFFECT_DEFENSE_BOOST    ; 11
+	const BRIDGE_EFFECT_HEALING          ; 12
+	const BRIDGE_EFFECT_TOXIC_POISON     ; 13
+	const BRIDGE_EFFECT_EVASION          ; 14
+	const BRIDGE_EFFECT_DRAINING         ; 15
+	const BRIDGE_EFFECT_MONEY            ; 16
+DEF NUM_BRIDGE_GLOBAL_EFFECTS EQU const_value
+DEF BRIDGE_GLOBAL_EFFECT_BYTES EQU (NUM_BRIDGE_GLOBAL_EFFECTS + 7) / 8
+ASSERT NUM_BRIDGE_GLOBAL_EFFECTS == 17
+ASSERT BRIDGE_GLOBAL_EFFECT_BYTES == 3
+
 
 ; ============================================================
 ; Mini-boss framework (see K:\...\Red Rogue Files\MINIBOSS_FRAMEWORK.md)

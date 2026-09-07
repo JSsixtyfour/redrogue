@@ -2399,6 +2399,14 @@ wWitchPrize:: db          ; 0 = none, 1-NUM_WITCH_PRIZES = prize id, rolled inde
 ;   bit 0 attack, bit 1 defense, bit 2 speed, bit 3 special (bits 4-7 spare)
 wEarnedStatBoosts:: db
 
+; Bridge bonuses owned for the current run. Saved with Main Data, cleared by
+; both new-game initialization and RogueResetRunState's blanket clear.
+; Individual mechanics test these through BridgeHasGlobalEffect. The three
+; badge-style rewards are also mirrored into wEarnedStatBoosts when granted.
+wBridgeGlobalEffects:: flag_array NUM_BRIDGE_GLOBAL_EFFECTS
+wBridgeGlobalEffectsEnd::
+ASSERT wBridgeGlobalEffectsEnd - wBridgeGlobalEffects == BRIDGE_GLOBAL_EFFECT_BYTES
+
 ; Which permanent witch prizes have been earned this run, one bit per prize id:
 ; bit (PRIZE_x - 1), so prizes 1-10 occupy bits 0-9 across these two bytes and
 ; bits 10-15 are spare. Every permanent prize's effect hook tests THIS, never

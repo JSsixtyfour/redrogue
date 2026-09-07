@@ -59,6 +59,11 @@ PCWitchSetup::
     jr nc, .noPrizeToGrant    ; 0 / out of range: nothing on offer to grant
     or [hl]
     ld [hl], a
+    ld a, [wWitchPrize]
+    cp PRIZE_SPECIAL_BOOST
+    jr nz, .noPrizeToGrant
+    ld hl, wEarnedStatBoosts
+    set BIT_STAT_BOOST_SPECIAL, [hl]
 .noPrizeToGrant
     ld hl, wRogueFlagsBitfield
     res BIT_WITCH_ACCEPTED, [hl]

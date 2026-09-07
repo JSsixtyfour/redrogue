@@ -628,6 +628,8 @@ class SaveLoadSmokeTest(HarnessTestCase):
             "wWildAreaState": [0x19],
             "wBridgeOfferedLo": [0x96],
             "wBridgeState": [0x42],
+            "wEarnedStatBoosts": [0x0D],
+            "wBridgeGlobalEffects": [0xA5, 0x5A, 0x01],
         }
         for label, values in sentinels.items():
             for offset, value in enumerate(values):
