@@ -202,9 +202,9 @@ BridgeFinalizeGiftMonFar::
 
 .intimidate
 	call .perfectDVs
-	call .maxStatExp
+	call BridgeGiftMaxStatExp
 	ld a, QUICK_ATTACK
-	call .replaceFirstMove
+	call BridgeGiftReplaceFirstMove
 	jr .recalcIfParty
 .perfect
 	call .perfectDVs
@@ -214,7 +214,7 @@ BridgeFinalizeGiftMonFar::
 	ret z
 	jp BridgeRecalcStatsFar
 .move
-	jp .replaceFirstMove
+	jp BridgeGiftReplaceFirstMove
 
 .perfectDVs
 	push de
@@ -228,7 +228,144 @@ BridgeFinalizeGiftMonFar::
 	pop de
 	ret
 
-.maxStatExp
+; Oak's Expert Training. Max every party mon's five stat-experience words and
+; recalculate its stored stats. HP is restored to approximately the same
+; proportion using the engine's established 48-pixel HP-bar ratio; a fainted
+; mon remains at zero HP.
+BridgeOakExpertTrainingFar::
+	ld a, [wPartyCount]
+	and a
+	ret z
+	ld b, a
+	ld de, wPartyMon1
+.loop
+	push bc
+	push de
+	call .trainOne
+	pop de
+	ld hl, PARTYMON_STRUCT_LENGTH
+	add hl, de
+	ld d, h
+	ld e, l
+	pop bc
+	dec b
+	jr nz, .loop
+	ret
+
+.trainOne
+	push de                      ; preserve struct base
+	ld h, d
+	ld l, e
+	ld bc, MON_HP
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]                   ; bc = old current HP
+	ld a, b
+	or c
+	jr z, .fainted
+	ld h, d
+	ld l, e
+	ld de, MON_MAXHP
+	add hl, de
+	ld d, [hl]
+	inc hl
+	ld e, [hl]                   ; de = old maximum HP
+	call .hpRatio                ; e = old HP proportion, 1..48
+	ld a, e
+	jr .haveRatio
+.fainted
+	xor a
+.haveRatio
+	pop de                       ; struct base
+	push af                      ; saved HP ratio
+	push de
+	call BridgeGiftMaxStatExp
+	call BridgeRecalcStatsFar
+	pop de
+	pop af
+	and a
+	jr z, .storeZero
+	ldh [hMultiplier], a
+	ld h, d
+	ld l, e
+	ld bc, MON_MAXHP
+	add hl, bc
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [hli]
+	ldh [hMultiplicand + 1], a
+	ld a, [hl]
+	ldh [hMultiplicand + 2], a
+	call Multiply
+	ld a, 48
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ld h, d
+	ld l, e
+	ld bc, MON_HP
+	add hl, bc
+	ldh a, [hQuotient + 2]
+	ld [hli], a
+	ldh a, [hQuotient + 3]
+	ld [hl], a
+	ret
+.storeZero
+	ld h, d
+	ld l, e
+	ld bc, MON_HP
+	add hl, bc
+	xor a
+	ld [hli], a
+	ld [hl], a
+	ret
+
+; Established GetHPBarLength arithmetic, kept local because that routine is
+; ROMX bank $03 and bc/de cannot cross a farcall. In: bc=current, de=maximum.
+; Out: e=ratio in forty-eighths, with nonzero HP clamped to at least one.
+.hpRatio
+	push hl
+	xor a
+	ld hl, hMultiplicand
+	ld [hli], a
+	ld a, b
+	ld [hli], a
+	ld a, c
+	ld [hli], a
+	ld [hl], 48
+	call Multiply
+	ld a, d
+	and a
+	jr z, .ratioMaxFitsByte
+	srl d
+	rr e
+	srl d
+	rr e
+	ldh a, [hMultiplicand + 1]
+	ld b, a
+	ldh a, [hMultiplicand + 2]
+	srl b
+	rr a
+	srl b
+	rr a
+	ldh [hMultiplicand + 2], a
+	ld a, b
+	ldh [hMultiplicand + 1], a
+.ratioMaxFitsByte
+	ld a, e
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ldh a, [hMultiplicand + 2]
+	ld e, a
+	pop hl
+	and a
+	ret nz
+	ld e, 1
+	ret
+
+BridgeGiftMaxStatExp:
 	push de
 	ld h, d
 	ld l, e
@@ -245,7 +382,7 @@ BridgeFinalizeGiftMonFar::
 
 ; In: a = move, de = shared party/box struct base. Replace slot 1 and reload
 ; PP for the complete resulting moveset while preserving the struct pointer.
-.replaceFirstMove
+BridgeGiftReplaceFirstMove:
 	push de
 	ld h, d
 	ld l, e

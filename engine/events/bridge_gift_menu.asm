@@ -799,6 +799,12 @@ BridgeCaptainFarfetchd::
 	scf
 	ret
 
+; Oak's EXPERT TRAINING maxes stat experience for the whole current party.
+BridgeOakExpertTraining::
+	farcall BridgeOakExpertTrainingFar
+	scf
+	ret
+
 ; Copycat's SUPER DITTO: a BIT_SPECIAL_FORM DITTO with perfect DVs, maxed stat
 ; exp, and the SUPER_TRANSFORM + TRANSFORM move pair. Party and boxed delivery
 ; both receive the complete persistent form data.
@@ -1233,7 +1239,7 @@ MrFujiGiftList:
 CaptainGiftList:
 	db 9
 	gift_entry GIFT_ITEM,    HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
-	gift_entry GIFT_MON_EVOLVE, TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
+	gift_entry GIFT_MON_EVOLVE, TENTACOOL, NoThanksText, CaptainGift2_Desc
 	gift_entry GIFT_SPECIAL, BridgeCaptainWaterVariant, CaptainGift3_Text, CaptainGift3_Desc
 	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc ; needs perfect stats
     gift_entry GIFT_MON,     LAPRAS, CaptainGift5_Text, CaptainGift5_Desc
@@ -1244,9 +1250,9 @@ CaptainGiftList:
 
 FossilScientistGiftList:
 	db 8
-	gift_entry GIFT_MON_EVOLVE, OMANYTE, FossilGift1_Text, FossilGift1_Desc
+	gift_entry GIFT_MON_EVOLVE, OMANYTE, NoThanksText, FossilGift1_Desc
 	gift_entry GIFT_SPECIAL, BridgeFossilRockVariant, FossilGift2_Text, FossilGift2_Desc
-    gift_entry GIFT_MON_EVOLVE, KABUTO, FossilGift4_Text, FossilGift4_Desc
+    gift_entry GIFT_MON_EVOLVE, KABUTO, NoThanksText, FossilGift4_Desc
     gift_entry GIFT_MON,     AERODACTYL, FossilGift5_Text, FossilGift5_Desc
     gift_entry GIFT_MON,     PORYGON, FossilGift6_Text, FossilGift6_Desc
     gift_entry GIFT_ITEM,    TM_METRONOME, FossilGift7_Text, FossilGift7_Desc
@@ -1278,7 +1284,7 @@ SchoolCooltrainerGiftList:
 	gift_entry GIFT_TEACH_MOVE, SHARPEN, SchoolGift1_Text, SchoolGift1_Desc
 	gift_entry GIFT_ITEM,       CALCIUM,     SchoolGift2_Text, SchoolGift2_Desc
 	gift_entry GIFT_ITEM,       TM_DOUBLE_TEAM,  SchoolGift3_Text, SchoolGift3_Desc
-	gift_entry GIFT_MON_EVOLVE, NIDORAN_M, SchoolGift4_Text, SchoolGift4_Desc
+	gift_entry GIFT_MON_EVOLVE, NIDORAN_M, NoThanksText, SchoolGift4_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STAB_DAMAGE, SchoolGift5_Text, SchoolGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_SUPER_EFFECTIVE, SchoolGift6_Text, SchoolGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REPEAT, SchoolGift7_Text, SchoolGift7_Desc
@@ -1341,7 +1347,8 @@ TradeHouseGrannyGiftList: ; Flora identity/map replacement is Phase C9.
 	gift_entry GIFT_ITEM, LEAF_STONE, TradeHouseGift9_Text, TradeHouseGift9_Desc
 
 OaksLabOakGiftList:
-	db 6
+	db 7
+	gift_entry GIFT_SPECIAL, BridgeOakExpertTraining, OaksLabGift7_Text, OaksLabGift7_Desc
 	gift_entry GIFT_MON_EVOLVE, BULBASAUR | (BRIDGE_MON_FINALIZE_EARTHQUAKE << 8), NoThanksText, OaksLabGift1_Desc
 	gift_entry GIFT_MON_EVOLVE, SQUIRTLE | (BRIDGE_MON_FINALIZE_AMNESIA << 8), NoThanksText, OaksLabGift2_Desc
 	gift_entry GIFT_MON_EVOLVE, CHARMANDER | (BRIDGE_MON_FINALIZE_DRAGON << 8), NoThanksText, OaksLabGift3_Desc
@@ -1377,7 +1384,6 @@ MrFujiGift7_Text: db "LICK TUTOR@"
 MrFujiGift8_Text: db "M.GENE@"
 
 CaptainGift1_Text: db "CUT HM@"
-CaptainGift2_Text: db "TENTACOOL@"
 CaptainGift3_Text: db "SEA BLESSING@"
 CaptainGift4_Text: db "LUCKY DUCK@"
 CaptainGift5_Text: db "LAPRAS@"
@@ -1386,10 +1392,8 @@ CaptainGift7_Text: db "CRABHAMMER TUTOR@"
 CaptainGift8_Text: db "CRIT TRAINING@"
 CaptainGift9_Text: db "CRIT MASTERY@"
 
-FossilGift1_Text: db "OMANYTE@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 FossilGift2_Text: db "FOSSILIZATION@"
 FossilGift3_Text: db "FIRE STONE@"
-FossilGift4_Text: db "KABUTO@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 FossilGift5_Text: db "AERODACTYL@"
 FossilGift6_Text: db "PORYGON@"
 FossilGift7_Text: db "METRONOME TM@"
@@ -1415,7 +1419,6 @@ WardenGift7_Text: db "STAGGERING BLOWS@"
 SchoolGift1_Text: db "SHARPEN TUTOR@"
 SchoolGift2_Text: db "CALCIUM@"
 SchoolGift3_Text: db "DOUBLE TEAM TM@"
-SchoolGift4_Text: db "NIDORAN♂@"
 SchoolGift5_Text: db "STAB MASTERY@"
 SchoolGift6_Text: db "TYPE EXPERT@"
 SchoolGift7_Text: db "REPEAT!@"
@@ -1466,6 +1469,7 @@ TradeHouseGift9_Text: db "LEAF STONE@"
 OaksLabGift4_Text: db "LIGHT BALL PIKA@"
 OaksLabGift5_Text: db "EEVEE@"
 OaksLabGift6_Text: db "RESEARCH GRANT@"
+OaksLabGift7_Text: db "EXPERT TRAINING@"
 
 ; ---------------------------------------------------------------------------
 ; Descriptions.
@@ -1742,3 +1746,4 @@ ENDM
 	bridge_new_desc TradeHouseGift9
 	bridge_new_desc OaksLabGift5
 	bridge_new_desc OaksLabGift6
+	bridge_new_desc OaksLabGift7

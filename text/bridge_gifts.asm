@@ -189,3 +189,8 @@ _OaksLabGift6Desc::
 	text "Get 20% more cash"
 	line "from battles"
 	done
+
+_OaksLabGift7Desc::
+	text "Maxes STAT EXP"
+	line "for the party"
+	done
