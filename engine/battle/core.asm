@@ -415,6 +415,10 @@ MainInBattleLoop:
 	ld a, [wEnemySelectedMove]
 	cp COUNTER
 	jp z, .playerMovesFirst ; if enemy used Counter and player didn't
+	; Bridge special Nidoran female line: 25% Quick-Claw-style priority.
+	; Ordinary Quick Attack and Counter priority above always takes precedence.
+	farcall BridgeTryQuickClaw
+	jp c, .playerMovesFirst
 .compareSpeed
 	ld de, wBattleMonSpeed ; player speed value
 	ld hl, wEnemyMonSpeed ; enemy speed value
@@ -2162,7 +2166,35 @@ SendOutMon:
 	call PlayCry
 	call PrintEmptyString
 	farcall PlayVariantEntranceAnim ; shiny send-out sparkle (Phase 9.2)
+	farcall BridgeTryIntimidate
 	jp SaveScreenTilesToBuffer1
+
+; Farcall-safe recalculation for Intimidating Presence. In: e = stat index.
+; The helper currently passes Attack (0). Enemy burn is restored after the
+; stat-stage calculation without reapplying paralysis to Speed.
+BridgeRecalculateEnemyStat::
+	ld a, 1
+	ld [wCalculateWhoseStats], a
+	ld c, e
+	call CalculateModifiedStat
+	ld a, [wEnemyMonStatus]
+	and 1 << BRN
+	ret z
+	ld hl, wEnemyMonAttack
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	srl d
+	rr e
+	ld a, e
+	or d
+	jr nz, .store
+	inc e
+.store
+	ld [hl], e
+	dec hl
+	ld [hl], d
+	ret
 
 ; show 2 stages of the player mon getting smaller before disappearing
 AnimateRetreatingPlayerMon:

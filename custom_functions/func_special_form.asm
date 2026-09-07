@@ -153,3 +153,41 @@ SpecialFormCaps:
 	db GROWLITHE,  1 << SF_INTIMIDATE
 	db ARCANINE,   1 << SF_INTIMIDATE
 	db 0 ; terminator
+
+; Return carry when the active player's special Nidoran female family form
+; wins a 25% Quick-Claw-style priority roll. Link battles are excluded until
+; both peers have an explicit synchronized bridge-form protocol.
+BridgeTryQuickClaw::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .failed
+	ld de, wBattleMon
+	call GetSpecialFormCaps
+	bit SF_QUICK_CLAW, e
+	jr z, .failed
+	call BattleRandom
+	cp 25 percent + 1
+	ret
+.failed
+	and a
+	ret
+
+; On each player send-out, lower the opposing active mon's Attack one stage
+; when the player form is the special Growlithe family. Stage changes saturate
+; at -6 through the standard 1..13 modifier representation.
+BridgeTryIntimidate::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z
+	ld de, wBattleMon
+	call GetSpecialFormCaps
+	bit SF_INTIMIDATE, e
+	ret z
+	ld hl, wEnemyMonAttackMod
+	ld a, [hl]
+	cp 1
+	ret z
+	dec [hl]
+	ld e, 0                     ; Attack stat index
+	farcall BridgeRecalculateEnemyStat
+	ret
