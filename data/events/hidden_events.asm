@@ -93,6 +93,15 @@ HiddenEventMaps:
 	hidden_event_map VERMILION_CITY
 	hidden_event_map CERULEAN_CITY
 	hidden_event_map ROUTE_4
+	; Functional bridge-room PC spots without dedicated hidden-event entries.
+	hidden_event_map SS_ANNE_CAPTAINS_ROOM
+	hidden_event_map POKEMON_FAN_CLUB
+	hidden_event_map WARDENS_HOUSE
+	hidden_event_map VIRIDIAN_NICKNAME_HOUSE
+	hidden_event_map CERULEAN_TRASHED_HOUSE
+	hidden_event_map REDS_HOUSE_1F
+	hidden_event_map LAVENDER_CUBONE_HOUSE
+	hidden_event_map CERULEAN_TRADE_HOUSE
 	db -1 ; end
 
 HiddenEventPointers:
@@ -150,6 +159,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  5,  0, DisplayOakLabRightPoster, SPRITE_FACING_UP
 	hidden_event  0,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  1,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
+	hidden_event  8,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
     ;hidden_event  6,  3, Rogue_Pokemon_Display_1, SPRITE_FACING_UP
 	db -1 ; end
 
@@ -164,6 +174,7 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for VIRIDIAN_SCHOOL_HOUSE
 	hidden_text_predef  3,  4, PrintNotebookText, ViridianSchoolNotebook
 	hidden_text_predef  3,  0, PrintBlackboardLinkCableText, ViridianSchoolBlackboard
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_GYM
@@ -384,6 +395,7 @@ DEF ANY_FACING EQU $d0
 
 	hidden_events_for COPYCATS_HOUSE_2F
 	hidden_event  1,  1, HiddenItems, NUGGET
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for CERULEAN_CAVE_1F
@@ -444,6 +456,7 @@ DEF ANY_FACING EQU $d0
 
 	hidden_events_for BILLS_HOUSE
 	hidden_event  1,  4, BillsHousePC, SPRITE_FACING_UP
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_CITY
@@ -473,6 +486,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  0,  1, PrintMagazinesText, SPRITE_FACING_DOWN
 	hidden_event  1,  1, PrintMagazinesText, SPRITE_FACING_DOWN
 	hidden_event  7,  1, PrintMagazinesText, SPRITE_FACING_DOWN
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for CELADON_MANSION_ROOF_HOUSE
@@ -550,3 +564,37 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for ROUTE_4
 	hidden_event 40,  3, HiddenItems, GREAT_BALL
 	db -1 ; end
+
+	; Graphics are deferred. These top-wall interaction spots open Bill's PC
+	; only during bridge visits and leave each map's normal behavior untouched.
+	hidden_events_for SS_ANNE_CAPTAINS_ROOM
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for POKEMON_FAN_CLUB
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for WARDENS_HOUSE
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for VIRIDIAN_NICKNAME_HOUSE
+	hidden_event  6,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for CERULEAN_TRASHED_HOUSE
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for REDS_HOUSE_1F
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for LAVENDER_CUBONE_HOUSE
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
+
+	hidden_events_for CERULEAN_TRADE_HOUSE
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	db -1
