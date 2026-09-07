@@ -135,3 +135,131 @@ BridgeRecalcStatsFar::
 	inc hl
 	ld [hl], c
 	ret
+
+; Apply the persistent attributes for a just-delivered level-resolved bridge
+; Pokemon. In: e = BRIDGE_MON_FINALIZE_* id. GivePokemon front-inserts boxed
+; gifts at wBoxMon1, while party gifts occupy the final party slot.
+BridgeFinalizeGiftMonFar::
+	ld b, e
+	ld a, [wAddedToParty]
+	and a
+	jr z, .boxed
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMons
+	ld de, PARTYMON_STRUCT_LENGTH
+.partyLoop
+	and a
+	jr z, .haveStruct
+	add hl, de
+	dec a
+	jr .partyLoop
+.boxed
+	ld hl, wBoxMon1
+.haveStruct
+	ld d, h
+	ld e, l
+	ld a, b
+	and a
+	ret z
+	call ApplySpecialForm
+	ld a, b
+	cp BRIDGE_MON_FINALIZE_SPECIAL
+	ret z
+	cp BRIDGE_MON_FINALIZE_FARFETCHD
+	jr z, .perfect
+	cp BRIDGE_MON_FINALIZE_QUICK_CLAW
+	ret z                         ; marker + species family supplies C6 behavior
+	cp BRIDGE_MON_FINALIZE_INTIMIDATE
+	jr z, .intimidate
+	cp BRIDGE_MON_FINALIZE_SUPER_FANG
+	ld a, SUPER_FANG
+	jr z, .move
+	ld a, b
+	cp BRIDGE_MON_FINALIZE_SPORE
+	ld a, SPORE
+	jr z, .move
+	ld a, b
+	cp BRIDGE_MON_FINALIZE_EARTHQUAKE
+	ld a, EARTHQUAKE
+	jr z, .move
+	ld a, b
+	cp BRIDGE_MON_FINALIZE_AMNESIA
+	ld a, AMNESIA
+	jr z, .move
+	; Dragon Charmander family: preserve Fire as type 1 and store Dragon as
+	; type 2. BIT_TYPE_VARIANT gives the existing display/battle read paths a
+	; persistent indication that the stored secondary type is intentional.
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	set BIT_TYPE_VARIANT, [hl]
+	ld hl, MON_TYPE1
+	add hl, de
+	ld [hl], FIRE
+	inc hl
+	ld [hl], DRAGON
+	ret
+
+.intimidate
+	call .perfectDVs
+	call .maxStatExp
+	ld a, QUICK_ATTACK
+	call .replaceFirstMove
+	jr .recalcIfParty
+.perfect
+	call .perfectDVs
+.recalcIfParty
+	ld a, [wAddedToParty]
+	and a
+	ret z
+	jp BridgeRecalcStatsFar
+.move
+	jp .replaceFirstMove
+
+.perfectDVs
+	push de
+	ld h, d
+	ld l, e
+	ld bc, MON_DVS
+	add hl, bc
+	ld a, $ff
+	ld [hli], a
+	ld [hl], a
+	pop de
+	ret
+
+.maxStatExp
+	push de
+	ld h, d
+	ld l, e
+	ld bc, MON_HP_EXP
+	add hl, bc
+	ld b, 10
+	ld a, $ff
+.statLoop
+	ld [hli], a
+	dec b
+	jr nz, .statLoop
+	pop de
+	ret
+
+; In: a = move, de = shared party/box struct base. Replace slot 1 and reload
+; PP for the complete resulting moveset while preserving the struct pointer.
+.replaceFirstMove
+	push de
+	ld h, d
+	ld l, e
+	ld bc, MON_MOVES
+	add hl, bc
+	ld [hl], a
+	push hl
+	ld h, d
+	ld l, e
+	ld bc, MON_PP - 1
+	add hl, bc
+	ld d, h
+	ld e, l
+	pop hl
+	predef LoadMovePPs
+	pop de
+	ret

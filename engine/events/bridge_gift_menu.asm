@@ -9,8 +9,8 @@
 ;     db  kind        ; GIFT_MON / GIFT_ITEM / GIFT_TEACH_MOVE / GIFT_SPECIAL /
 ;                      ; GIFT_MON_EVOLVE
 ;     dw  param       ; species / item / move id (low byte), OR routine addr,
-;                      ; OR (GIFT_MON_EVOLVE) base species lo + apply-special-
-;                      ; form-flag hi bit0
+;                      ; OR (GIFT_MON_EVOLVE) base species lo + custom gift
+;                      ; finalizer id in the high byte
 ;     dw  nameptr     ; short menu name string (ignored for GIFT_MON_EVOLVE -
 ;                      ; its label is rendered dynamically from the resolved,
 ;                      ; possibly-evolved species; see BridgeResolveEvolveSpecies)
@@ -28,11 +28,22 @@ DEF GIFT_MON        EQU 0
 DEF GIFT_ITEM       EQU 1
 DEF GIFT_TEACH_MOVE EQU 2
 DEF GIFT_SPECIAL    EQU 3
-DEF GIFT_MON_EVOLVE EQU 4  ; param lo = base species, param hi bit0 = apply special form
+DEF GIFT_MON_EVOLVE EQU 4  ; param lo = base species, param hi = BRIDGE_MON_FINALIZE_*
 DEF GIFT_GLOBAL_EFFECT   EQU 5 ; param low = BRIDGE_EFFECT_*
 DEF GIFT_SELECTED_EFFECT EQU 6 ; param low = BRIDGE_SELECTED_EFFECT_*
 
 DEF GIFT_ENTRY_SIZE EQU 7
+
+DEF BRIDGE_MON_FINALIZE_NONE       EQU 0
+DEF BRIDGE_MON_FINALIZE_SPECIAL    EQU 1
+DEF BRIDGE_MON_FINALIZE_FARFETCHD  EQU 2
+DEF BRIDGE_MON_FINALIZE_QUICK_CLAW EQU 3
+DEF BRIDGE_MON_FINALIZE_INTIMIDATE EQU 4
+DEF BRIDGE_MON_FINALIZE_SUPER_FANG EQU 5
+DEF BRIDGE_MON_FINALIZE_SPORE      EQU 6
+DEF BRIDGE_MON_FINALIZE_EARTHQUAKE EQU 7
+DEF BRIDGE_MON_FINALIZE_AMNESIA    EQU 8
+DEF BRIDGE_MON_FINALIZE_DRAGON     EQU 9
 
 MACRO gift_entry
 ; \1 = kind, \2 = param (id or routine), \3 = name ptr, \4 = desc ptr
@@ -230,8 +241,14 @@ BridgeGiftIsEligible:
 	ld a, [hl]                  ; species (param low)
 	jr BridgeSpeciesGiftEligible
 .monEvolve
-	ld a, [hl]                  ; base species (param low)
+	ld a, [hli]                 ; base species (param low)
 	call BridgeResolveEvolveSpecies
+	ld e, [hl]                  ; finalizer id (param high)
+	ld d, a                     ; resolved species survives the farcall in d
+	ld a, e
+	and a
+	ld a, d
+	jr nz, BridgeSpecialFormGiftEligible
 	jr BridgeSpeciesGiftEligible
 .globalEffect
 	ld e, [hl]
@@ -594,11 +611,10 @@ BridgeDoGift:
 	ld a, e
 	call BridgeResolveEvolveSpecies  ; a = resolved species
 	call BridgeGiveMon           ; gives resolved species at reward level
-	pop de                       ; d = flag byte (pop doesn't touch carry)
+	pop de                       ; d = finalizer id (pop doesn't touch carry)
 	jr nc, .failed               ; nothing added (party+box full)
-	bit 0, d
-	jr z, .success
-	call BridgeApplySpecialFormToNewMon
+	ld e, d
+	farcall BridgeFinalizeGiftMonFar
 	jr .success
 .checkSuccess
 	jr nc, .failed
@@ -778,7 +794,8 @@ BridgeCaptainFarfetchd::
 	ld a, FARFETCHD
 	call BridgeGiveMon
 	ret nc                       ; party AND box full -> nothing added
-	call BridgeApplySpecialFormToNewMon
+	ld e, BRIDGE_MON_FINALIZE_FARFETCHD
+	farcall BridgeFinalizeGiftMonFar
 	scf
 	ret
 
@@ -1257,7 +1274,7 @@ WardenGiftList:
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_FLINCH, WardenGift7_Text, WardenGift7_Desc
 
 SchoolCooltrainerGiftList:
-	db 7
+	db 8
 	gift_entry GIFT_TEACH_MOVE, SHARPEN, SchoolGift1_Text, SchoolGift1_Desc
 	gift_entry GIFT_ITEM,       CALCIUM,     SchoolGift2_Text, SchoolGift2_Desc
 	gift_entry GIFT_ITEM,       TM_DOUBLE_TEAM,  SchoolGift3_Text, SchoolGift3_Desc
@@ -1265,6 +1282,7 @@ SchoolCooltrainerGiftList:
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STAB_DAMAGE, SchoolGift5_Text, SchoolGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_SUPER_EFFECTIVE, SchoolGift6_Text, SchoolGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REPEAT, SchoolGift7_Text, SchoolGift7_Desc
+	gift_entry GIFT_MON_EVOLVE, NIDORAN_F | (BRIDGE_MON_FINALIZE_QUICK_CLAW << 8), NoThanksText, SchoolGift8_Desc
 
 OldManGiftList: ;this should be changed to the Old Man's sprite from viridian who teaches the player how to catch pokemon
 	db 8
@@ -1278,7 +1296,7 @@ OldManGiftList: ;this should be changed to the Old Man's sprite from viridian wh
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STATUS_CHANCE, OldManGift8_Text, OldManGift8_Desc
 
 OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her here, could put cop temporarily
-	db 7
+	db 8
 	gift_entry GIFT_ITEM, LEMONADE, TrashedGift1_Text, TrashedGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, TrashedGift2_Text, TrashedGift2_Desc
 	gift_entry GIFT_ITEM, TM_BODY_SLAM, TrashedGift3_Text, TrashedGift3_Desc
@@ -1286,6 +1304,7 @@ OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her h
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_ACCURACY, TrashedGift5_Text, TrashedGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DEFENSE_BOOST, TrashedGift6_Text, TrashedGift6_Desc
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_BODY_ARMOR, TrashedGift7_Text, TrashedGift7_Desc
+	gift_entry GIFT_MON_EVOLVE, GROWLITHE | (BRIDGE_MON_FINALIZE_INTIMIDATE << 8), NoThanksText, TrashedGift8_Desc
 
 RedsHouseMomGiftList:
 	db 8
@@ -1300,7 +1319,7 @@ RedsHouseMomGiftList:
 
 IgaGiftList: ; Ninja named Iga, use Koga Sprite
 	db 8
-	gift_entry GIFT_MON_EVOLVE,  KOFFING, IgaGift1_Text, IgaGift1_Desc
+	gift_entry GIFT_MON_EVOLVE, EKANS | (BRIDGE_MON_FINALIZE_SUPER_FANG << 8), NoThanksText, IgaGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  GRIMER, IgaGift2_Text, IgaGift2_Desc
 	gift_entry GIFT_ITEM, TM_TOXIC, IgaGift3_Text, IgaGift3_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_TOXIC_POISON, IgaGift4_Text, IgaGift4_Desc
@@ -1312,7 +1331,7 @@ IgaGiftList: ; Ninja named Iga, use Koga Sprite
 TradeHouseGrannyGiftList: ; Flora identity/map replacement is Phase C9.
 	db 9
 	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
-	gift_entry GIFT_MON,  CLEFAIRY,   TradeHouseGift2_Text, TradeHouseGift2_Desc
+	gift_entry GIFT_MON_EVOLVE, ODDISH | (BRIDGE_MON_FINALIZE_SPORE << 8), NoThanksText, TradeHouseGift2_Desc
 	gift_entry GIFT_ITEM, MOON_STONE, TradeHouseGift3_Text, TradeHouseGift3_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DRAINING, TradeHouseGift4_Text, TradeHouseGift4_Desc
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY, TradeHouseGift5_Text, TradeHouseGift5_Desc
@@ -1321,13 +1340,12 @@ TradeHouseGrannyGiftList: ; Flora identity/map replacement is Phase C9.
 	gift_entry GIFT_TEACH_MOVE, PETAL_DANCE, TradeHouseGift8_Text, TradeHouseGift8_Desc
 	gift_entry GIFT_ITEM, LEAF_STONE, TradeHouseGift9_Text, TradeHouseGift9_Desc
 
-; Gift 1 is the Light-Ball PIKACHU special form (BridgeOakPikachu).
 OaksLabOakGiftList:
 	db 6
-	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift1_Text, OaksLabGift1_Desc
-	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
-	gift_entry GIFT_ITEM, HM_FLASH, OaksLabGift3_Text, OaksLabGift3_Desc
-	gift_entry GIFT_ITEM, M_TOME,   OaksLabGift4_Text, OaksLabGift4_Desc
+	gift_entry GIFT_MON_EVOLVE, BULBASAUR | (BRIDGE_MON_FINALIZE_EARTHQUAKE << 8), NoThanksText, OaksLabGift1_Desc
+	gift_entry GIFT_MON_EVOLVE, SQUIRTLE | (BRIDGE_MON_FINALIZE_AMNESIA << 8), NoThanksText, OaksLabGift2_Desc
+	gift_entry GIFT_MON_EVOLVE, CHARMANDER | (BRIDGE_MON_FINALIZE_DRAGON << 8), NoThanksText, OaksLabGift3_Desc
+	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift4_Text, OaksLabGift4_Desc
 	gift_entry GIFT_MON, EEVEE, OaksLabGift5_Text, OaksLabGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_MONEY, OaksLabGift6_Text, OaksLabGift6_Desc
 
@@ -1428,7 +1446,6 @@ MomGift6_Text: db "REST TM@"
 MomGift7_Text: db "NURTURING CARE@"
 MomGift8_Text: db "MR.MIME@"
 
-IgaGift1_Text: db "KOFFING@"
 IgaGift2_Text: db "GRIMER@"
 IgaGift3_Text: db "TOXIC TM@"
 IgaGift4_Text: db "DEADLY VENOM@"
@@ -1438,7 +1455,6 @@ IgaGift7_Text: db "SHADOW STEP@"
 IgaGift8_Text: db "POISON GAS@"
 
 TradeHouseGift1_Text: db "NUGGET@"
-TradeHouseGift2_Text: db "CLEFAIRY@"
 TradeHouseGift3_Text: db "MOON STONE@"
 TradeHouseGift4_Text: db "VERDANT DRAIN@"
 TradeHouseGift5_Text: db "IMMUNITY@"
@@ -1447,10 +1463,7 @@ TradeHouseGift7_Text: db "MEGA DRAIN TM@"
 TradeHouseGift8_Text: db "PETAL DANCE@"
 TradeHouseGift9_Text: db "LEAF STONE@"
 
-OaksLabGift1_Text: db "LIGHT BALL PIKA@"
-OaksLabGift2_Text: db "PROTEIN@"
-OaksLabGift3_Text: db "FLASH HM@"
-OaksLabGift4_Text: db "M.TOME@"
+OaksLabGift4_Text: db "LIGHT BALL PIKA@"
 OaksLabGift5_Text: db "EEVEE@"
 OaksLabGift6_Text: db "RESEARCH GRANT@"
 
@@ -1703,6 +1716,7 @@ ENDM
 	bridge_new_desc SchoolGift5
 	bridge_new_desc SchoolGift6
 	bridge_new_desc SchoolGift7
+	bridge_new_desc SchoolGift8
 	bridge_new_desc OldManGift4
 	bridge_new_desc OldManGift5
 	bridge_new_desc OldManGift6
@@ -1712,6 +1726,7 @@ ENDM
 	bridge_new_desc TrashedGift5
 	bridge_new_desc TrashedGift6
 	bridge_new_desc TrashedGift7
+	bridge_new_desc TrashedGift8
 	bridge_new_desc MomGift7
 	bridge_new_desc MomGift8
 	bridge_new_desc IgaGift4

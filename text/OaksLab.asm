@@ -131,21 +131,21 @@ _OaksLabOakNormalText::
 	done
 
 _OaksLabGift1Desc::
-	text "A spirited"
-	line "#MON!"
+	text "BULBASAUR family"
+	line "with EARTHQUAKE"
 	done
 
 _OaksLabGift2Desc::
-	text "Raises Attack"
-	line "stat!"
+	text "SQUIRTLE family"
+	line "with AMNESIA"
 	done
 
 _OaksLabGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "CHARMANDER line"
+	line "with DRAGON type"
 	done
 
 _OaksLabGift4Desc::
-	text "Maxes STAT EXP,"
-	line "or DVs if maxed"
+	text "A special PIKACHU"
+	line "with LIGHT BALL"
 	done

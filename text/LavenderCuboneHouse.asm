@@ -25,8 +25,8 @@ _LavenderCuboneHouseBrunetteGirlGhostIsGoneText::
 	done
 
 _IgaGift1Desc::
-	text "Wears its"
-	line "mother's skull!"
+	text "An ARBOK family"
+	line "with SUPER FANG"
 	done
 
 _IgaGift2Desc::

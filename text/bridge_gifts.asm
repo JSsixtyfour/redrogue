@@ -60,6 +60,11 @@ _SchoolGift7Desc::
 	line "15% more damage"
 	done
 
+_SchoolGift8Desc::
+	text "A special NIDORAN"
+	line "with QUICK CLAW"
+	done
+
 _OldManGift4Desc::
 	text "The THUNDER WAVE"
 	line "Technical Machine"
@@ -104,6 +109,11 @@ _TrashedGift7Desc::
 	text "One #MON gains"
 	line "50% DEFENSE but"
 	cont "no status moves"
+	done
+
+_TrashedGift8Desc::
+	text "An intimidating"
+	line "GROWLITHE family"
 	done
 
 _MomGift7Desc::

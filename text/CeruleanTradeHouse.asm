@@ -19,8 +19,8 @@ _TradeHouseGift1Desc::
 	done
 
 _TradeHouseGift2Desc::
-	text "A collector's"
-	line "favorite!"
+	text "A VILEPLUME line"
+	line "with SPORE"
 	done
 
 _TradeHouseGift3Desc::

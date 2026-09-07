@@ -30,6 +30,8 @@ DEF SF_NO_EVOLVE   EQU 2 ; refuse every evolution path (Light Ball)
 DEF SF_NEVER_MISS  EQU 3 ; attacker's moves never miss        (No Guard)
 DEF SF_ALWAYS_HIT  EQU 4 ; moves against this mon never miss   (No Guard)
 DEF SF_ALWAYS_CRIT EQU 5 ; attacker's moves always crit
+DEF SF_QUICK_CLAW  EQU 6 ; 25 percent priority proc (C6 battle hook)
+DEF SF_INTIMIDATE  EQU 7 ; lower enemy Attack on entry (C6 battle hook)
 
 ; ---------------------------------------------------------------------------
 ; NOTE: applying a type variant (set BIT_TYPE_VARIANT + write MON_TYPE2) is done
@@ -140,4 +142,9 @@ SpecialFormCaps:
 	db PIKACHU,   (1 << SF_DOUBLE_ATK) | (1 << SF_DOUBLE_SPC) | (1 << SF_NO_EVOLVE)
 	db MACHOP,    (1 << SF_NEVER_MISS) | (1 << SF_ALWAYS_HIT)
 	db FARFETCHD, 1 << SF_ALWAYS_CRIT
+	db NIDORAN_F, 1 << SF_QUICK_CLAW
+	db NIDORINA,   1 << SF_QUICK_CLAW
+	db NIDOQUEEN,  1 << SF_QUICK_CLAW
+	db GROWLITHE,  1 << SF_INTIMIDATE
+	db ARCANINE,   1 << SF_INTIMIDATE
 	db 0 ; terminator
