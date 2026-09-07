@@ -9,8 +9,8 @@ RewardRoom_Object:
 	db $F ; border block
 
 	def_warp_events
-	warp_event $8, $7, LAST_MAP, 2
-	warp_event $8, $7, LAST_MAP, 3
+	warp_event $8, $7, WARP_NO_RETURN, 2
+	warp_event $8, $7, WARP_NO_RETURN, 3
 	warp_event $6, $1, ROGUE_MAP, 1
 	warp_event $A, $1, ROGUE_MAP, 2
 

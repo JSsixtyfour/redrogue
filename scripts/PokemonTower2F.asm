@@ -57,7 +57,7 @@ PokemonTower2F_Script:
 ;	ld [wCurMapScript], a
 ;	ret
 
-	RogueAutoWalkScripts PokemonTower2F, PAD_LEFT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
+	;RogueAutoWalkScripts PokemonTower2F, PAD_LEFT, PokemonTower2FNormalScript, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_2F, TEXT_POKEMONTOWER2F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING, wPokemonTower2FCurScript
 
 PokemonTower2FEntranceCoords:
 	dbmapcoord 18, 9
@@ -75,9 +75,9 @@ PokemonTower2F_ScriptPointers:
 	;dw_const PokemonTower2FRivalExitsScript,    SCRIPT_POKEMONTOWER2F_RIVAL_EXITS
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_POKEMONTOWER2F_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_POKEMONTOWER2F_END_BATTLE
-	dw_const PokemonTower2FPlayerIsMovingScript,    SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING
+	;dw_const PokemonTower2FPlayerIsMovingScript,    SCRIPT_POKEMONTOWER2F_PLAYER_IS_MOVING
 
-PokemonTower2FNormalScript:
+PokemonTower2FDefaultScript:
 IF DEF(_DEBUG)
 	call DebugPressedOrHeldB
 	ret nz
@@ -215,15 +215,15 @@ PokemonTower2F_TextPointers:
 PokemonTower2FTrainerHeaders:
 	def_trainers 1
 PokemonTower2FTrainerHeader0:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0, 1, PokemonTower2FChanneler1BattleText, PokemonTower2FChanneler1EndBattleText, PokemonTower2FChanneler1AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0, 4, PokemonTower2FChanneler1BattleText, PokemonTower2FChanneler1EndBattleText, PokemonTower2FChanneler1AfterBattleText
 PokemonTower2FTrainerHeader1:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_1, 1, PokemonTower2FChanneler2BattleText, PokemonTower2FChanneler2EndBattleText, PokemonTower2FChanneler2AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_1, 3, PokemonTower2FChanneler2BattleText, PokemonTower2FChanneler2EndBattleText, PokemonTower2FChanneler2AfterBattleText
 PokemonTower2FTrainerHeader2:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2, 1, PokemonTower2FChanneler3BattleText, PokemonTower2FChanneler3EndBattleText, PokemonTower2FChanneler3AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2, 3, PokemonTower2FChanneler3BattleText, PokemonTower2FChanneler3EndBattleText, PokemonTower2FChanneler3AfterBattleText
 PokemonTower2FTrainerHeader3:
 	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 1, PokemonTower2FChanneler4BattleText, PokemonTower2FChanneler4EndBattleText, PokemonTower2FChanneler4AfterBattleText
 PokemonTower2FTrainerHeader4:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_4, 1, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_4, 2, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
 	db -1 ; end
 
 PokemonTower2FChanneler1Text:
