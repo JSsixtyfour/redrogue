@@ -9,11 +9,19 @@
   },
   {
     "id": "call-routine-rom0-target-returns-into-padding",
-    "status": "pending",
+    "status": "resolved",
     "scope": "harness.py call_routine",
     "observation": "call_routine's ROM0/HOME-target path (address < 0x4000) sets PC directly and relies on returning to the injected 0x3FFF sentinel with no Bankswitch indirection. In this build 0x3FFF is ROM padding ($FF = RST 38), so the callee's own final ret unwinds into RST 38 -> $0038 and runs whatever unrelated real game code happens to be mapped there, instead of returning to the caller. The ROMX-target path is unaffected: Bankswitch's own .Return label is a real, always-mapped ROM0 address reached before the final ret pops 0x3FFF. Every existing call_routine usage in this suite targets a ROMX label, so this path was apparently never exercised - found 2026-08-27 porting _Divide (engine/math/multiply_divide.asm), where it silently returned a plausible-looking wrong result (no crash, no timeout, a repeating garbage pattern from an unrelated background call).",
-    "decision_needed": "Either fix call_routine to route ROM0/HOME targets through Bankswitch too (bank=0 is safe: the fixed $0000-$3FFF region is unaffected by the bank-select write, so this gives both paths the same safe .Return hop) or explicitly document that call_routine must not be trusted for a ROM0/HOME target and callers should hook a label inside the routine instead of relying on its return.",
-    "test_boundary": "Any call_routine(label) where label resolves to an address below $4000 is affected. All current test-suite usages (CriticalHitTest, ApplySingleBadgeStatBoost, AISelectSendOut, ProcPreloadAssignedWildArea, SaveGameData, LoadMainData) target ROMX and are unaffected."
+    "decision_needed": "RESOLVED 2026-09-06: call_routine now routes ROM0 and ROMX targets through Bankswitch and completes on the real Bankswitch.Return label, filtered by the outer call's expected stack depth so nested farcalls are ignored. It no longer executes or hooks $3FFF padding.",
+    "test_boundary": "Covered by the existing ROMX call_routine users, the real SaveGameData/LoadMainData round trip, and a focused ROM0 routine call regression."
+  },
+  {
+    "id": "call-routine-padding-hook-misses-after-bank-shift",
+    "status": "resolved",
+    "scope": "harness.py call_routine + SaveLoadSmokeTest",
+    "observation": "LoadMainData completed its valid return chain through Bankswitch.Return, but PyBoy could miss the synthetic hook at ROM0 $3FFF after unrelated layout and bank-state shifts, then execute padding as RST 38. Real BGB save/load was unaffected.",
+    "decision_needed": "RESOLVED 2026-09-06: complete the injected call at the executable Bankswitch.Return label, filtered by the outer call's expected stack depth. The harness no longer pushes, executes, or hooks the $3FFF padding address.",
+    "test_boundary": "The real SaveGameData/LoadMainData round trip passes, as do focused HOME and ROMX call_routine regressions. The callback preserves the prior contract: restore the interrupted bank for a ROMX resume, retain the callee's final bank for a HOME resume."
   },
   {
     "id": "call-routine-resume-point-timing-dependence",
@@ -25,10 +33,26 @@
   },
   {
     "id": "debugfight2-tier-override-written-after-dv-roll",
-    "status": "pending",
+    "status": "resolved",
     "scope": "engine/debug/debug_fight2.asm DebugFight2Setup.buildInjected",
     "observation": "The injected-spec build path builds BOTH full parties (.injectedPlayerLoop then .injectedEnemyLoop, each calling AddPartyMon per mon) BEFORE reading spec byte index 4 and writing wAIDebugTierOverride at the very end of .buildInjected. AIRollEnemyDVs and AIFinishEnemyMonStats (engine/battle/ai/ai_roster.asm, AI Overhaul Phase 6) are called from INSIDE AddPartyMon during roster build, so for every enemy mon they resolve wAITier while wAIDebugTierOverride is still 0 (unset) - meaning inject_fight2_spec(ai_tier=N) can never actually exercise tier-scaled DV/stat-exp rolling for any N; every injected enemy mon silently gets the T0 fixed pair (ATKDEFDV_TRAINER/SPDSPCDV_TRAINER, zero stat exp) regardless of the requested ai_tier. Confirmed by hooking AIRollEnemyDVs.fixed and reading wAIDebugTierOverride at that exact point: it read 0 even when inject_fight2_spec was called with ai_tier=3. Separately confirmed the AI-side code itself is completely correct - calling _AddPartyMon directly with wAIDebugTierOverride pre-set (bypassing DebugFight2Setup entirely) produces exactly the expected floored DVs and level<<(6/7/8) stat exp for T1/T2/T3 and the exact fixed pair for T0, with zero deviation from the formula. This is a harness ordering bug only, not an AI bug.",
-    "decision_needed": "Move the spec-byte-4 read/wAIDebugTierOverride write to the TOP of .buildInjected, before either roster loop runs - matching DebugFight2Entry's own top-of-function placement for the same write in the non-injected (.playerLoop/.enemyLoop) path, which does not have this bug. Low risk: the override write has no dependency on party data, and every other spec byte read in .buildInjected already tolerates being read in any order (they are independent SRAM offsets). Worked around for AI-side testing by calling _AddPartyMon directly with the tier pre-resolved (see tools/pyboy_smoke/test_ai_roster.py, AI_OVERHAUL_PLAN.md follow-up F18) - that test file is unaffected by this bug and needs no changes once it is fixed.",
-    "test_boundary": "Affects ANY test or benchmark relying on inject_fight2_spec(ai_tier=N) to produce tier-scaled DVs/stat exp for injected enemy mons. Does NOT affect AI move-decision tier resolution (wAITier is re-resolved lazily on the first AI decision, well after this ordering bug, from the same now-correctly-written wAIDebugTierOverride) - every other ai_scenarios.json fixture and the Phase 8 benchmark's decision-quality metrics are unaffected. Only the DV/stat-exp ROLL, which happens once per mon during roster build, sees the stale value."
+    "decision_needed": "RESOLVED 2026-09-06: .buildInjected now reads spec byte 4 and writes wAIDebugTierOverride before either party loop calls AddPartyMon.",
+    "test_boundary": "The direct _AddPartyMon formula tests remain, and an injected-spec lifecycle regression verifies T0-T3 DV floors and stat-exp values on the enemy mon built by DebugFight2Setup."
+  },
+  {
+    "id": "wild-area-entry-rng-coupled-door-approach",
+    "status": "resolved",
+    "scope": "harness.py preload_and_enter_wild_area",
+    "observation": "The helper hardcoded up/down through lobby door 1. Unrelated RNG drift changes the open exit-door layout, so the same movement can face a wall while the real procedural stage remains valid.",
+    "decision_needed": "RESOLVED 2026-09-06: discover and patch the lobby stage destinations from wWarpEntries, then probe bounded lobby-row approaches from isolated post-preload save states. The warp entries can remain identical while SelectAndPatchLobbyExit moves the passable exit block, so physical passability is authoritative. Failure output records each attempted coordinate transition.",
+    "test_boundary": "Procedural cave, forest, and cemetery smoke tests exercise the shared helper across their deterministic ROM RNG states."
+  },
+  {
+    "id": "procedural-cemetery-upper-floor-preload-classification",
+    "status": "resolved",
+    "scope": "test_follower_yellow_runtime.py procedural-map follower coverage",
+    "observation": "The test created a fresh lobby for every cemetery floor and passed floors 2-4 to ProcPreloadAssignedWildArea. Production intentionally classifies only PROCEDURAL_CEMETERY_1, whose generator prepares all four floors, so upper-floor cases entered uninitialized procedural data and eventually reached RST 38.",
+    "decision_needed": "RESOLVED 2026-09-06: preload every cemetery case through PROCEDURAL_CEMETERY_1, then patch the test door to the specific generated floor whose follower/object contract is under test.",
+    "test_boundary": "The single focused follower test covers cave, forest, and all four cemetery maps from fresh harness instances."
   }
 ]

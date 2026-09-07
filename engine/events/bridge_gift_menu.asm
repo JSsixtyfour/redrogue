@@ -184,8 +184,9 @@ BridgeGiftCandidateIsNew:
 
 ; Return carry set when the candidate gift in wBuffer+3 is eligible.
 ; C1 filters owned TM/HM items and exact Pokemon species already present in
-; the party/current box. Other item kinds, tutors and special routines remain
-; eligible; special-gift predicates are added alongside their final rosters.
+; the party/current box. Special-form Pokemon delivered through GIFT_SPECIAL
+; require the same species plus BIT_SPECIAL_FORM; Mr. Fuji's generic rescue
+; remains species-only. Other specials stay eligible.
 BridgeGiftIsEligible:
 	ld a, [wBuffer + 3]
 	call GetGiftEntry
@@ -196,6 +197,8 @@ BridgeGiftIsEligible:
 	jr z, .mon
 	cp GIFT_MON_EVOLVE
 	jr z, .monEvolve
+	cp GIFT_SPECIAL
+	jr z, .special
 .eligible
 	scf
 	ret
@@ -225,6 +228,46 @@ BridgeGiftIsEligible:
 .monEvolve
 	ld a, [hl]                  ; base species (param low)
 	call BridgeResolveEvolveSpecies
+	jr BridgeSpeciesGiftEligible
+
+.special
+	; hl -> special routine pointer. Only specials whose primary reward is a
+	; Pokemon participate in duplicate-species filtering.
+	ld a, [hli]
+	ld e, a
+	ld a, [hl]
+	ld d, a
+	ld a, e
+	cp LOW(BridgeCopyCatSuperDitto)
+	jr nz, .notSuperDitto
+	ld a, d
+	cp HIGH(BridgeCopyCatSuperDitto)
+	ld a, DITTO
+	jr z, BridgeSpecialFormGiftEligible
+.notSuperDitto
+	ld a, e
+	cp LOW(BridgeCaptainFarfetchd)
+	jr nz, .notCaptainFarfetchd
+	ld a, d
+	cp HIGH(BridgeCaptainFarfetchd)
+	ld a, FARFETCHD
+	jr z, BridgeSpecialFormGiftEligible
+.notCaptainFarfetchd
+	ld a, e
+	cp LOW(BridgeOakPikachu)
+	jr nz, .notOakPikachu
+	ld a, d
+	cp HIGH(BridgeOakPikachu)
+	ld a, PIKACHU
+	jr z, BridgeSpecialFormGiftEligible
+.notOakPikachu
+	ld a, e
+	cp LOW(BridgeMrFujiRescue)
+	jr nz, .eligible
+	ld a, d
+	cp HIGH(BridgeMrFujiRescue)
+	jr nz, .eligible
+	ld a, [wRoguePokemon1]
 	; fall through
 
 ; In: a = exact species that would be awarded.
@@ -255,6 +298,62 @@ BridgeSpeciesGiftEligible:
 	jr z, .owned
 	dec b
 	jr nz, .boxLoop
+.absent
+	scf
+	ret
+.owned
+	and a
+	ret
+
+; In: a = species whose special form would be awarded.
+; Out: carry set unless that species with BIT_SPECIAL_FORM is already present.
+; A generic mon of the same species does not suppress the special gift.
+BridgeSpecialFormGiftEligible:
+	ld d, a
+	ld a, [wPartyCount]
+	ld e, a
+	ld hl, wPartyMons
+.partyLoop
+	ld a, e
+	and a
+	jr z, .box
+	ld a, [hl]
+	cp d
+	jr nz, .nextParty
+	push hl
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	bit BIT_SPECIAL_FORM, [hl]
+	pop hl
+	jr nz, .owned
+.nextParty
+	ld bc, PARTYMON_STRUCT_LENGTH
+	add hl, bc
+	dec e
+	jr .partyLoop
+
+.box
+	ld a, [wBoxCount]
+	ld e, a
+	ld hl, wBoxMons
+.boxLoop
+	ld a, e
+	and a
+	jr z, .absent
+	ld a, [hl]
+	cp d
+	jr nz, .nextBox
+	push hl
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	bit BIT_SPECIAL_FORM, [hl]
+	pop hl
+	jr nz, .owned
+.nextBox
+	ld bc, BOXMON_STRUCT_LENGTH
+	add hl, bc
+	dec e
+	jr .boxLoop
 .absent
 	scf
 	ret
@@ -657,9 +756,9 @@ BridgeCaptainFarfetchd::
 	scf
 	ret
 
-; Copycat's SUPER DITTO: a DITTO with perfect DVs, maxed stat exp, and the
-; SUPER_TRANSFORM + TRANSFORM move pair. If the party is full the mon is boxed
-; as a plain DITTO (the special treatment only applies on the party path).
+; Copycat's SUPER DITTO: a BIT_SPECIAL_FORM DITTO with perfect DVs, maxed stat
+; exp, and the SUPER_TRANSFORM + TRANSFORM move pair. Party and boxed delivery
+; both receive the complete persistent form data.
 BridgeCopyCatSuperDitto::
 	ld a, DITTO
 	call BridgeGiveMon
@@ -712,6 +811,7 @@ BridgeCopyCatSuperDitto::
 	ld e, l                      ; de = PP - 1
 	pop hl                       ; hl = moves ptr
 	predef LoadMovePPs
+	call BridgeApplySpecialFormToNewMon
 	; party: recalc stored stats now. box: skip - box mons store no stats;
 	; they recompute from box level + these maxed DVs/stat-exp on withdrawal.
 	ld a, [wAddedToParty]

@@ -224,9 +224,16 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.harness.boot_to_lobby(battle_count=1)
                 # The procedural boss sheet is normally staged after the lobby
                 # selects its doors. This test replaces that selection, so run
-                # the same production preload after installing the test map.
-                self.harness.write8("wLobbyDoor1StageMap", maps[map_name])
-                self.harness.write8("wLobbyDoor2StageMap", maps[map_name])
+                # the same production preload after installing the entry map.
+                # Cemetery floor 1 generates all four floors; floors 2-4 are
+                # not themselves valid ProcPreloadAssignedWildArea classifiers.
+                preload_map = (
+                    maps["PROCEDURAL_CEMETERY_1"]
+                    if map_name.startswith("PROCEDURAL_CEMETERY_")
+                    else maps[map_name]
+                )
+                self.harness.write8("wLobbyDoor1StageMap", preload_map)
+                self.harness.write8("wLobbyDoor2StageMap", preload_map)
                 self.harness.call_routine("ProcPreloadAssignedWildArea")
                 self.harness.enter_stage_door1(maps[map_name], description=map_name)
                 self.assertLessEqual(self.harness.read8("wNumSprites"), 14)

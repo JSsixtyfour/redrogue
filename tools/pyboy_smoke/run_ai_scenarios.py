@@ -133,7 +133,10 @@ def main() -> int:
                     else {"switched": True, "frame": harness.pyboy.frame_count}
                 )
                 telemetry["switched"] = switched
-                assert_expectations(scenario.expect, telemetry)
+                try:
+                    assert_expectations(scenario.expect, telemetry)
+                except AssertionError as error:
+                    raise AssertionError(f"{scenario.name}: {error}") from error
                 reports.append(
                     {
                         "name": scenario.name,

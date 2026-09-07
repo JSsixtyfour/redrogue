@@ -604,9 +604,16 @@ class RedRogueHarness:
         # needs no extra ticking that would advance past what they measure.
         self.park_before_hijack()
 
-    def boot_to_lobby(self, battle_count: int = 11, ai_tier: int | None = None) -> None:
+    def boot_to_lobby(
+        self,
+        battle_count: int = 11,
+        ai_tier: int | None = None,
+        encounter_kind: int = 1,
+    ) -> None:
         if ai_tier is not None and not 0 <= ai_tier <= 3:
             raise ValueError("AI tier must be 0-3 or None for automatic")
+        if not 1 <= encounter_kind <= 4:
+            raise ValueError("Encounter kind must be 1 (normal), 2 (bridge), 3 (miniboss), or 4 (wild area)")
         debug_menu = self.hook_flag("DebugMenu")
         quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
 
@@ -656,12 +663,25 @@ class RedRogueHarness:
         self.tap("a")
         self.wait_until(
             lambda: quantity_menu["count"] >= 3,
+            "the Debug 2 encounter-kind prompt",
+            600,
+        )
+        for _ in range(5):
+            current = self.read8("wItemQuantity")
+            if current == encounter_kind:
+                break
+            self.tap("up" if current < encounter_kind else "down")
+        else:
+            raise AssertionError(f"Could not select encounter kind {encounter_kind}")
+        self.tap("a")
+        self.wait_until(
+            lambda: quantity_menu["count"] >= 4,
             "the Debug 2 Door 1 prompt",
             600,
         )
         self.tap("a")
         self.wait_until(
-            lambda: quantity_menu["count"] >= 4,
+            lambda: quantity_menu["count"] >= 5,
             "the Debug 2 Door 2 prompt",
             600,
         )
@@ -795,11 +815,20 @@ class RedRogueHarness:
             name: getattr(self.pyboy.register_file, name) for name in register_names
         }
         saved_bank = self.read8("hLoadedROMBank")
-        return_bank = 0
-        return_address = 0x3FFF
+        return_bank, return_address = self.symbols.get("Bankswitch.Return")
+        expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
         completed = {"value": False}
 
         def returned(_context) -> None:
+            # Nested farcalls also pass through Bankswitch.Return. Only the
+            # outer trampoline has exactly its saved-bank word on our original
+            # stack, so ignore deeper returns.
+            if self.pyboy.register_file.SP != expected_return_sp:
+                return
+            # Preserve call_routine's established bank-effect contract. A
+            # ROMX resume needs its interrupted bank restored; a HOME resume
+            # deliberately retains the callee's final bank. Procedural wild-
+            # area preload relies on that final bank during lobby entry.
             if saved_registers["PC"] >= 0x4000:
                 self.pyboy.memory[0x2000] = saved_bank
                 self.write8("hLoadedROMBank", saved_bank)
@@ -809,16 +838,12 @@ class RedRogueHarness:
 
         self.pyboy.hook_register(return_bank, return_address, returned, None)
         try:
-            stack_pointer = (self.pyboy.register_file.SP - 2) & 0xFFFF
-            self.pyboy.memory[stack_pointer] = return_address & 0xFF
-            self.pyboy.memory[stack_pointer + 1] = return_address >> 8
-            self.pyboy.register_file.SP = stack_pointer
-            if address >= 0x4000:
-                self.pyboy.register_file.B = bank
-                self.pyboy.register_file.HL = address
-                self.pyboy.register_file.PC = self.address("Bankswitch")
-            else:
-                self.pyboy.register_file.PC = address
+            # Route ROM0 and ROMX alike through the real bank trampoline. Its
+            # own return label is executable HOME code and is a reliable PyBoy
+            # hook point; $3fff padding was not.
+            self.pyboy.register_file.B = bank
+            self.pyboy.register_file.HL = address
+            self.pyboy.register_file.PC = self.address("Bankswitch")
             self.wait_until(lambda: completed["value"], label, limit)
         finally:
             self.pyboy.hook_deregister(return_bank, return_address)
@@ -850,16 +875,66 @@ class RedRogueHarness:
             self.load_state(baseline)
 
     def preload_and_enter_wild_area(self, map_id: int, description: str) -> None:
+        door_maps = {
+            self.read8("wLobbyDoor1StageMap"),
+            self.read8("wLobbyDoor2StageMap"),
+        }
+        candidate_warps = [
+            (index, entry[0], entry[1])
+            for index, entry in enumerate(self.warp_entries())
+            if entry[3] in door_maps
+        ]
+        if not candidate_warps:
+            raise AssertionError(
+                f"No lobby stage warp found for {description}: "
+                f"doors={sorted(door_maps)} warps={self.warp_entries()}"
+            )
+
         self.write8("wLobbyDoor1StageMap", map_id)
-        self.write8("wWarpEntries", map_id, offset=3)
+        self.write8("wLobbyDoor2StageMap", map_id)
+        for index, _y, _x in candidate_warps:
+            self.write8("wWarpEntries", map_id, offset=index * 4 + 3)
         self.call_routine("ProcPreloadAssignedWildArea", limit=60000)
-        self.move_tile("up")
-        self.move_tile("down")
-        self.wait_until(
-            lambda: self.read8("hCurMap") == map_id,
-            f"{description} entry",
-            2400,
-        )
+
+        baseline = io.BytesIO()
+        self.save_state(baseline)
+        attempts = []
+        # SelectAndPatchLobbyExit can move the passable exit block without
+        # changing this two-entry destination table. Search the lobby row from
+        # the same post-preload state, nearest positions first, so RNG decides
+        # neither which stage is exercised nor whether the smoke can reach it.
+        horizontal_offsets = [0]
+        for distance in range(1, 7):
+            horizontal_offsets.extend((distance, -distance))
+        for horizontal_offset in horizontal_offsets:
+            self.load_state(baseline)
+            direction = "right" if horizontal_offset > 0 else "left"
+            for _ in range(abs(horizontal_offset)):
+                self.move_tile(direction)
+            self.move_tile("up")
+            before = (self.read8("wYCoord"), self.read8("wXCoord"))
+            for _ in range(6):
+                if self.read8("hCurMap") == map_id:
+                    break
+                self.pyboy.button_press("down")
+                self.tick(40)
+                self.pyboy.button_release("down")
+                self.tick(6)
+            attempts.append(
+                {
+                    "horizontal_offset": horizontal_offset,
+                    "before": list(before),
+                    "after": [self.read8("wYCoord"), self.read8("wXCoord")],
+                    "map": self.read8("hCurMap"),
+                }
+            )
+            if self.read8("hCurMap") == map_id:
+                break
+        if self.read8("hCurMap") != map_id:
+            raise AssertionError(
+                f"Could not enter {description} through discovered lobby warps: "
+                f"attempts={attempts} {json.dumps(self.diagnostic_state(), sort_keys=True)}"
+            )
         self.tick(180)
 
     def sprite_positions(self, count: int) -> list[list[int]]:

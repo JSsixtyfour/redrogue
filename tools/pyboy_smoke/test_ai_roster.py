@@ -14,17 +14,10 @@ reasons specific to this phase:
    gate, since it restores state as soon as its predicate holds rather than
    waiting for the routine to return.
 
-2. Tier-scaled DVs/stat exp (AIRollEnemyDVs/AIFinishEnemyMonStats) cannot
-   currently be exercised through inject_fight2_spec(ai_tier=N) at all - a
-   real, separate bug in DebugFight2Setup's injected-spec build path writes
-   wAIDebugTierOverride AFTER both parties are already built, so every DV
-   roll sees the override still at 0 regardless of the requested tier. See
-   pending_contracts.json:debugfight2-tier-override-written-after-dv-roll
-   (Codex-owned file, not fixed here). Worked around by calling _AddPartyMon
-   directly with the tier pre-resolved, bypassing the buggy ordering
-   entirely - this is not a lesser test than going through FIGHT2 injection,
-   since it exercises the exact same AI-side code (AddPartyMon's farcall to
-   _AddPartyMon is the identical HOME wrapper the real ReadTrainer path uses).
+2. Tier-scaled DVs/stat exp (AIRollEnemyDVs/AIFinishEnemyMonStats) retain
+   direct _AddPartyMon formula tests, plus an injected-spec lifecycle test.
+   The latter guards the 2026-09-06 ordering fix that writes the requested
+   tier before DebugFight2Setup builds either party.
 """
 
 from __future__ import annotations
@@ -218,11 +211,7 @@ class AIIncreaseStatGateTest(RosterHarnessTestCase):
 
 
 class TierScaledDVsAndStatExpTest(RosterHarnessTestCase):
-    """AIRollEnemyDVs / AIFinishEnemyMonStats, exercised via a direct
-    _AddPartyMon call with wAITier pre-resolved - see this module's own
-    header for why inject_fight2_spec(ai_tier=N) cannot currently reach this
-    code with the requested tier at all.
-    """
+    """Tier-scaled roster stats through direct and injected lifecycles."""
 
     def add_enemy_mon_at_tier(self, ai_tier: int) -> tuple[int, int]:
         """Boots a minimal 1v1 battle, force-resolves ai_tier, then appends
@@ -286,6 +275,36 @@ class TierScaledDVsAndStatExpTest(RosterHarnessTestCase):
             self.assertGreaterEqual(byte & 0xF, 14, "low nibble below T3 floor")
         assert self.harness is not None
         self.assertEqual(self.stat_exp_word(1), 50 << 8)
+
+    def test_injected_spec_applies_tier_before_enemy_roster_build(self) -> None:
+        expectations = {
+            0: (None, 0),
+            1: (10, 50 << 6),
+            2: (12, 50 << 7),
+            3: (14, 50 << 8),
+        }
+        for ai_tier, (floor, stat_exp) in expectations.items():
+            with self.subTest(ai_tier=ai_tier):
+                harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
+                try:
+                    harness.inject_fight2_spec(
+                        [self.mon("SNORLAX", ["SPLASH"])],
+                        [self.mon("MACHOP", ["SPLASH"])],
+                        trainer_class=self.trainers["COOLTRAINER_M"],
+                        ai_tier=ai_tier,
+                    )
+                    harness.boot_fight2(seed=1)
+                    dvs = harness.read_bytes("wEnemyMon1DVs", 2)
+                    if floor is None:
+                        self.assertEqual(tuple(dvs), (0x98, 0x88))
+                    else:
+                        for byte in dvs:
+                            self.assertGreaterEqual(byte >> 4, floor)
+                            self.assertGreaterEqual(byte & 0xF, floor)
+                    hi, lo = harness.read_bytes("wEnemyMon1AttackExp", 2)
+                    self.assertEqual((hi << 8) | lo, stat_exp)
+                finally:
+                    harness.close()
 
 
 if __name__ == "__main__":

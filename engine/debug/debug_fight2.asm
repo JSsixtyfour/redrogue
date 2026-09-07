@@ -148,6 +148,14 @@ DebugFight2Setup::
 	ret
 
 .buildInjected
+	; Resolve the requested AI tier before AddPartyMon builds either roster.
+	; Enemy DV and stat-exp generation happens inside AddPartyMon, so writing
+	; this after the loops silently forced injected enemies through the
+	; automatic/T0 roster path regardless of the fixture's requested tier.
+	ld c, 4
+	call .readSpecByte
+	ld [wAIDebugTierOverride], a
+
 	ld c, 1
 	call .readSpecByte
 	cp PARTY_LENGTH + 1
@@ -197,9 +205,6 @@ DebugFight2Setup::
 	ld a, 1
 	ld [wIsTrainerBattle], a
 	ld [wTrainerNo], a
-	ld c, 4
-	call .readSpecByte
-	ld [wAIDebugTierOverride], a
 	xor a
 	ld [wMonDataLocation], a
 	ret

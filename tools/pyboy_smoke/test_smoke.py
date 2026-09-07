@@ -43,6 +43,12 @@ class HarnessTestCase(unittest.TestCase):
 
 
 class BootSmokeTest(HarnessTestCase):
+    def test_call_routine_home_target_returns(self) -> None:
+        assert self.harness is not None
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wNumberOfWarps", 0)
+        self.harness.call_routine("IsPlayerStandingOnWarp")
+
     def test_fight2_seed17_party_generation_golden(self) -> None:
         assert self.harness is not None
         self.harness.boot_fight2(seed=17)
@@ -158,6 +164,49 @@ class BootSmokeTest(HarnessTestCase):
         assert self.harness is not None
         self.harness.boot_to_lobby(ai_tier=3)
         self.assertEqual(self.harness.read8("wAIDebugTierOverride"), 4)
+
+    def test_debug2_can_force_bridge_next(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        bridge_maps = {
+            maps[name]
+            for name in (
+                "COPYCATS_HOUSE_2F", "BILLS_HOUSE", "MR_FUJIS_HOUSE",
+                "SS_ANNE_CAPTAINS_ROOM", "CINNABAR_LAB_FOSSIL_ROOM",
+                "POKEMON_FAN_CLUB", "WARDENS_HOUSE", "VIRIDIAN_SCHOOL_HOUSE",
+                "VIRIDIAN_NICKNAME_HOUSE", "CERULEAN_TRASHED_HOUSE",
+                "REDS_HOUSE_1F", "LAVENDER_CUBONE_HOUSE",
+                "CERULEAN_TRADE_HOUSE", "OAKS_LAB",
+            )
+        }
+        self.harness.boot_to_lobby(encounter_kind=2)
+        door1 = self.harness.read8("wLobbyDoor1StageMap")
+        door2 = self.harness.read8("wLobbyDoor2StageMap")
+        self.assertIn(door1, bridge_maps)
+        self.assertIn(door2, bridge_maps)
+        self.assertNotEqual(door1, door2)
+
+    def test_debug2_can_force_miniboss_next(self) -> None:
+        assert self.harness is not None
+        self.harness.boot_to_lobby(encounter_kind=3)
+        self.assertNotEqual(self.harness.read8("wRogueFlagsBitfield") & 0x30, 0)
+        self.assertNotEqual(
+            self.harness.read8("wLobbyDoor1StageMap"),
+            self.harness.read8("wLobbyDoor2StageMap"),
+        )
+
+    def test_debug2_can_force_wild_area_next(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        wild_maps = {
+            maps["PROCEDURAL_CAVE_1"],
+            maps["PROCEDURAL_FOREST"],
+            maps["PROCEDURAL_CEMETERY_1"],
+        }
+        self.harness.boot_to_lobby(encounter_kind=4)
+        door1 = self.harness.read8("wLobbyDoor1StageMap")
+        self.assertIn(door1, wild_maps)
+        self.assertEqual(door1, self.harness.read8("wLobbyDoor2StageMap"))
 
 
 
