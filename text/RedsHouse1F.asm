@@ -54,21 +54,21 @@ _MomGift2Desc::
 	done
 
 _MomGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "Cures all major"
+	line "status conditions"
 	done
 
 _MomGift4Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "Teaches one #MON"
+	line "RECOVER"
 	done
     
 _MomGift5Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The SOFTBOILED"
+	line "Technical Machine"
 	done
 
 _MomGift6Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The REST"
+	line "Technical Machine"
 	done

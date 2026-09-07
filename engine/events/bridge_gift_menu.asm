@@ -29,6 +29,8 @@ DEF GIFT_ITEM       EQU 1
 DEF GIFT_TEACH_MOVE EQU 2
 DEF GIFT_SPECIAL    EQU 3
 DEF GIFT_MON_EVOLVE EQU 4  ; param lo = base species, param hi bit0 = apply special form
+DEF GIFT_GLOBAL_EFFECT   EQU 5 ; param low = BRIDGE_EFFECT_*
+DEF GIFT_SELECTED_EFFECT EQU 6 ; param low = BRIDGE_SELECTED_EFFECT_*
 
 DEF GIFT_ENTRY_SIZE EQU 7
 
@@ -197,6 +199,8 @@ BridgeGiftIsEligible:
 	jr z, .mon
 	cp GIFT_MON_EVOLVE
 	jr z, .monEvolve
+	cp GIFT_GLOBAL_EFFECT
+	jr z, .globalEffect
 	cp GIFT_SPECIAL
 	jr z, .special
 .eligible
@@ -229,6 +233,11 @@ BridgeGiftIsEligible:
 	ld a, [hl]                  ; base species (param low)
 	call BridgeResolveEvolveSpecies
 	jr BridgeSpeciesGiftEligible
+.globalEffect
+	ld e, [hl]
+	farcall BridgeHasGlobalEffect
+	ccf                            ; eligible only while not already owned
+	ret
 
 .special
 	; hl -> special routine pointer. Only specials whose primary reward is a
@@ -544,6 +553,10 @@ BridgeDoGift:
 	jr z, .teach
 	cp GIFT_MON_EVOLVE
 	jr z, .monEvolve
+	cp GIFT_GLOBAL_EFFECT
+	jr z, .globalEffect
+	cp GIFT_SELECTED_EFFECT
+	jr z, .selectedEffect
 ; GIFT_SPECIAL: de = routine address. Every special routine returns carry set
 ; only when its primary effect was applied.
 	ld h, d
@@ -562,6 +575,19 @@ BridgeDoGift:
 .teach
 	ld a, e
 	call BridgeTeachMove
+	jr .checkSuccess
+.globalEffect
+	farcall BridgeHasGlobalEffect
+	jr c, .failed
+	farcall BridgeGrantGlobalEffect
+	scf
+	jr .checkSuccess
+.selectedEffect
+	push de
+	call BridgeSelectPartyMon
+	pop de
+	jr c, .failed
+	farcall BridgeGrantSelectedEffect
 	jr .checkSuccess
 .monEvolve
 	push de                      ; d = flag byte, e = base species
@@ -1056,21 +1082,15 @@ BridgeGetNewMonStruct:
 ; Preserves wCurPartySpecies (EvolveMonByLevel uses it as scratch/output).
 ; Clobbers af, bc, de, hl (and wCurEnemyLevel/wMonHeader as EvolveMonByLevel does).
 BridgeResolveEvolveSpecies:
-	ld d, a                      ; d = base species (EvolveMonByLevel's input)
-	ld a, [wCurPartySpecies]
-	push af                      ; save caller's wCurPartySpecies
-	push de                      ; save base species across GetRewardMonLevel
-	call GetRewardMonLevel       ; a = reward level for this context
-	ld [wCurEnemyLevel], a       ; EvolveMonByLevel reads this
-	pop de                       ; d = base species
-	ld a, d
-	ld [wCurPartySpecies], a     ; seed result = base (kept if it doesn't evolve)
-	farcall EvolveMonByLevel     ; d in, writes evolved species to wCurPartySpecies
-	ld a, [wCurPartySpecies]
-	ld b, a                      ; b = resolved species
-	pop af
-	ld [wCurPartySpecies], a     ; restore caller's wCurPartySpecies
-	ld a, b
+	ld e, a
+	farcall BridgeResolveEvolveSpeciesFar
+	ld a, e
+	ret
+
+; Farcall-safe reward-level adapter. Bankswitch destroys a on return.
+GetBridgeRewardMonLevelFar::
+	call GetRewardMonLevel
+	ld e, a
 	ret
 
 ; out: hl = struct base of the last (most-recently-added) party mon.
@@ -1084,47 +1104,9 @@ GetLastPartyMonStruct:
 ; Recalculate a party mon's stats in place from its stored DVs + stat exp, then
 ; refill current HP to the new max. in: hl = struct base.
 BridgeRecalcStats:
-	push hl
-	ld a, [hl]
-	ld [wCurSpecies], a
-	call GetMonHeader            ; wMonHeader = species base stats
-	pop hl
-	push hl
-	ld bc, MON_LEVEL
-	add hl, bc
-	ld a, [hl]
-	ld [wCurEnemyLevel], a       ; CalcStats reads level from here
-	pop hl
-	push hl
-	ld bc, MON_STATS
-	add hl, bc
 	ld d, h
-	ld e, l                      ; de = MON_STATS (dest)
-	pop hl
-	push hl
-	ld bc, MON_HP_EXP - 1
-	add hl, bc                   ; hl = MON_HP_EXP - 1
-	ld b, 1                      ; include stat exp
-	push bc
-	push hl
-	farcall PrepareFusionCalcStats  ; de = MON_STATS (preserved)
-	pop hl
-	pop bc
-	call CalcStats
-	pop hl                       ; hl = struct base
-	; refill current HP = max HP (both stored hi,lo)
-	push hl
-	ld bc, MON_STATS             ; MON_MAXHP == MON_STATS
-	add hl, bc
-	ld a, [hli]
-	ld b, a
-	ld c, [hl]
-	pop hl
-	ld de, MON_HP
-	add hl, de
-	ld [hl], b
-	inc hl
-	ld [hl], c
+	ld e, l
+	farcall BridgeRecalcStatsFar
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -1232,7 +1214,7 @@ MrFujiGiftList:
 	gift_entry GIFT_ITEM,       M_GENE,             MrFujiGift8_Text, MrFujiGift8_Desc
 
 CaptainGiftList:
-	db 7
+	db 9
 	gift_entry GIFT_ITEM,    HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
 	gift_entry GIFT_MON_EVOLVE, TENTACOOL, CaptainGift2_Text, CaptainGift2_Desc
 	gift_entry GIFT_SPECIAL, BridgeCaptainWaterVariant, CaptainGift3_Text, CaptainGift3_Desc
@@ -1240,119 +1222,114 @@ CaptainGiftList:
     gift_entry GIFT_MON,     LAPRAS, CaptainGift5_Text, CaptainGift5_Desc
     gift_entry GIFT_ITEM,    HM_SURF,    CaptainGift6_Text, CaptainGift6_Desc
     gift_entry GIFT_TEACH_MOVE, CRABHAMMER, CaptainGift7_Text, CaptainGift7_Desc
-    ; increase critical hit rate of one pokemon
-    ; increase ratio of critical hits by 20%
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_CRITICAL_RATE, CaptainGift8_Text, CaptainGift8_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_CRITICAL_DAMAGE, CaptainGift9_Text, CaptainGift9_Desc
 
 FossilScientistGiftList:
-	db 7
+	db 8
 	gift_entry GIFT_MON_EVOLVE, OMANYTE, FossilGift1_Text, FossilGift1_Desc
 	gift_entry GIFT_SPECIAL, BridgeFossilRockVariant, FossilGift2_Text, FossilGift2_Desc
-	gift_entry GIFT_ITEM,    FIRE_STONE, FossilGift3_Text, FossilGift3_Desc ; remove
     gift_entry GIFT_MON_EVOLVE, KABUTO, FossilGift4_Text, FossilGift4_Desc
     gift_entry GIFT_MON,     AERODACTYL, FossilGift5_Text, FossilGift5_Desc
     gift_entry GIFT_MON,     PORYGON, FossilGift6_Text, FossilGift6_Desc
     gift_entry GIFT_ITEM,    TM_METRONOME, FossilGift7_Text, FossilGift7_Desc
-    ; Shrink Ray - increased evasiveness and speed, decreased ATK
-    ; Growth Ray - increased HP and ATK, decreased speed
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_SHRINK_RAY, FossilGift8_Text, FossilGift8_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_GROWTH_RAY, FossilGift9_Text, FossilGift9_Desc
 
 FanClubChairmanGiftList:
-	db 5
+	db 7
 	gift_entry GIFT_ITEM, PP_UP, FanClubGift1_Text, FanClubGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  PONYTA, FanClubGift2_Text, FanClubGift2_Desc
 	gift_entry GIFT_ITEM, RARE_CANDY,   FanClubGift3_Text, FanClubGift3_Desc
     gift_entry GIFT_MON_EVOLVE,  DROWZEE, FanClubGift4_Text, FanClubGift4_Desc
     gift_entry GIFT_MON_EVOLVE,  SPEAROW, FanClubGift5_Text, FanClubGift5_Desc
-    ; Cute Boost - pokemon moves weaker than 60 base power have their damage increased by 50%
-    ; improved pokemon rarity
-    ; Mist Stone - evolves any NFE pokemon, no matter what
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_CUTE_BOOST, FanClubGift6_Text, FanClubGift6_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REWARD_RARITY, FanClubGift7_Text, FanClubGift7_Desc
 
 WardenGiftList:
-	db 5
+	db 7
 	gift_entry GIFT_ITEM, HM_STRENGTH, WardenGift1_Text, WardenGift1_Desc
 	gift_entry GIFT_MON,  KANGASKHAN,  WardenGift2_Text, WardenGift2_Desc
 	gift_entry GIFT_ITEM, HM_SURF,  WardenGift3_Text, WardenGift3_Desc
     gift_entry GIFT_MON,  TAUROS,  WardenGift4_Text, WardenGift4_Desc
     gift_entry GIFT_ITEM, BIG_NUGGET,  WardenGift5_Text, WardenGift5_Desc
-    ; Gym leader style attack boost, remove boosts from gym leaders
-    ; Flinching boost to one pokemon
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_ATTACK_BOOST, WardenGift6_Text, WardenGift6_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_FLINCH, WardenGift7_Text, WardenGift7_Desc
 
 SchoolCooltrainerGiftList:
-	db 3
+	db 7
 	gift_entry GIFT_TEACH_MOVE, SHARPEN, SchoolGift1_Text, SchoolGift1_Desc
 	gift_entry GIFT_ITEM,       CALCIUM,     SchoolGift2_Text, SchoolGift2_Desc
 	gift_entry GIFT_ITEM,       TM_DOUBLE_TEAM,  SchoolGift3_Text, SchoolGift3_Desc
-    ;gift_entry GIFT_MON_EVOLVE, NIDORAN_MALE, FanClubGift4_Text, FanClubGift4_Desc
-    ; improved STAB damage
-    ; Improved super effective damage
-    ; Special Nidoran Female that has a quick claw like effect
-    ; repeated moves bonus   
+	gift_entry GIFT_MON_EVOLVE, NIDORAN_M, SchoolGift4_Text, SchoolGift4_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STAB_DAMAGE, SchoolGift5_Text, SchoolGift5_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_SUPER_EFFECTIVE, SchoolGift6_Text, SchoolGift6_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REPEAT, SchoolGift7_Text, SchoolGift7_Desc
 
 OldManGiftList: ;this should be changed to the Old Man's sprite from viridian who teaches the player how to catch pokemon
-	db 3
+	db 8
 	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    OldManGift1_Text, OldManGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  RATTATA,   OldManGift2_Text, OldManGift2_Desc
 	gift_entry GIFT_ITEM, TM_REST, OldManGift3_Text, OldManGift3_Desc
-    ;gift_entry GIFT_ITEM, TM_THUNDERWAVE, OldManGift4_Text, OldManGift4_Desc
-    ; spore oddish
-    ; DULLED SENSES - No recoil damage
-    ; COFFEE BOOST boost speed like gym leader
-    ; gift increased chance of status effects
-    ; dizzy punch tutor
+	gift_entry GIFT_ITEM, TM_THUNDER_WAVE, OldManGift4_Text, OldManGift4_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_NO_RECOIL, OldManGift5_Text, OldManGift5_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_SPEED_BOOST, OldManGift6_Text, OldManGift6_Desc
+	gift_entry GIFT_TEACH_MOVE, DIZZY_PUNCH, OldManGift7_Text, OldManGift7_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STATUS_CHANCE, OldManGift8_Text, OldManGift8_Desc
 
 OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her here, could put cop temporarily
-	db 3
+	db 7
 	gift_entry GIFT_ITEM, LEMONADE, TrashedGift1_Text, TrashedGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, TrashedGift2_Text, TrashedGift2_Desc
 	gift_entry GIFT_ITEM, TM_BODY_SLAM, TrashedGift3_Text, TrashedGift3_Desc
-   ; gift_entry GIFT_ITEM, TM_TAKE_DOWN, TrashedGift4_Text, TrashedGift4_Desc
-    ; target practice, all moves have a 10% accuracy boost
-    ; growlithe that lowers attack when on the field, has perfect stats, and quick attack, INTIMIDATING GROWLITHE
-    ; boost defense like gym leader
-    ; body armor, one pokemon gets a 50% defense boost but can't use status moves
+	gift_entry GIFT_ITEM, TM_TAKE_DOWN, TrashedGift4_Text, TrashedGift4_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_ACCURACY, TrashedGift5_Text, TrashedGift5_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DEFENSE_BOOST, TrashedGift6_Text, TrashedGift6_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_BODY_ARMOR, TrashedGift7_Text, TrashedGift7_Desc
 
 RedsHouseMomGiftList:
-	db 6
+	db 8
 	gift_entry GIFT_ITEM, FULL_RESTORE, MomGift1_Text, MomGift1_Desc
 	gift_entry GIFT_MON,  CHANSEY,        MomGift2_Text, MomGift2_Desc
 	gift_entry GIFT_ITEM, FULL_HEAL,   MomGift3_Text, MomGift3_Desc
-    gift_entry GIFT_TEACH_MOVE, RECOVER, SchoolGift1_Text, SchoolGift1_Desc
-    gift_entry GIFT_ITEM, TM_SOFTBOILED,   MomGift3_Text, MomGift3_Desc
-    gift_entry GIFT_ITEM, TM_REST,   MomGift3_Text, MomGift3_Desc
-    ; healing moves and items now recover 10% more
-    ; restore KO defiance
-    ; mr. mime
+	gift_entry GIFT_TEACH_MOVE, RECOVER, MomGift4_Text, MomGift4_Desc
+	gift_entry GIFT_ITEM, TM_SOFTBOILED, MomGift5_Text, MomGift5_Desc
+	gift_entry GIFT_ITEM, TM_REST, MomGift6_Text, MomGift6_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_HEALING, MomGift7_Text, MomGift7_Desc
+	gift_entry GIFT_MON_EVOLVE, MR_MIME, MomGift8_Text, MomGift8_Desc
 
 IgaGiftList: ; Ninja named Iga, use Koga Sprite
-	db 3
+	db 8
 	gift_entry GIFT_MON_EVOLVE,  KOFFING, IgaGift1_Text, IgaGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  GRIMER, IgaGift2_Text, IgaGift2_Desc
 	gift_entry GIFT_ITEM, TM_TOXIC, IgaGift3_Text, IgaGift3_Desc
-    ; gift super fang arbok
-    ; gift all poisons are toxic
-    ; poison immunity for one pokemon
-    ; life orb effect for one pokemon
-    ; increased evasiveness
-    ; poison gas tutor
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_TOXIC_POISON, IgaGift4_Text, IgaGift4_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY, IgaGift5_Text, IgaGift5_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_LIFE_ORB, IgaGift6_Text, IgaGift6_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_EVASION, IgaGift7_Text, IgaGift7_Desc
+	gift_entry GIFT_TEACH_MOVE, POISON_GAS, IgaGift8_Text, IgaGift8_Desc
 
-TradeHouseGrannyGiftList: ; probably just remove this one
-	db 3
+TradeHouseGrannyGiftList: ; Flora identity/map replacement is Phase C9.
+	db 9
 	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
 	gift_entry GIFT_MON,  CLEFAIRY,   TradeHouseGift2_Text, TradeHouseGift2_Desc
 	gift_entry GIFT_ITEM, MOON_STONE, TradeHouseGift3_Text, TradeHouseGift3_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DRAINING, TradeHouseGift4_Text, TradeHouseGift4_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY, TradeHouseGift5_Text, TradeHouseGift5_Desc
+	gift_entry GIFT_TEACH_MOVE, LEECH_SEED, TradeHouseGift6_Text, TradeHouseGift6_Desc
+	gift_entry GIFT_ITEM, TM_MEGA_DRAIN, TradeHouseGift7_Text, TradeHouseGift7_Desc
+	gift_entry GIFT_TEACH_MOVE, PETAL_DANCE, TradeHouseGift8_Text, TradeHouseGift8_Desc
+	gift_entry GIFT_ITEM, LEAF_STONE, TradeHouseGift9_Text, TradeHouseGift9_Desc
 
 ; Gift 1 is the Light-Ball PIKACHU special form (BridgeOakPikachu).
 OaksLabOakGiftList:
-	db 4
+	db 6
 	gift_entry GIFT_SPECIAL, BridgeOakPikachu, OaksLabGift1_Text, OaksLabGift1_Desc
 	gift_entry GIFT_ITEM, PROTEIN,    OaksLabGift2_Text, OaksLabGift2_Desc
 	gift_entry GIFT_ITEM, HM_FLASH, OaksLabGift3_Text, OaksLabGift3_Desc
 	gift_entry GIFT_ITEM, M_TOME,   OaksLabGift4_Text, OaksLabGift4_Desc
-    ; expert training, STAT Experience maxed for all pokemon in party
-    ; gift bulbasaur with earthquake
-    ; gift eevee
-    ; gift squirtle with amnesia
-    ; gift charmander with dragon typing
-    ; Amulet Coin - increases monetary earnings by 25%
+	gift_entry GIFT_MON, EEVEE, OaksLabGift5_Text, OaksLabGift5_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_MONEY, OaksLabGift6_Text, OaksLabGift6_Desc
 
 ; ---------------------------------------------------------------------------
 ; Menu name strings.
@@ -1388,6 +1365,8 @@ CaptainGift4_Text: db "LUCKY DUCK@"
 CaptainGift5_Text: db "LAPRAS@"
 CaptainGift6_Text: db "SURF HM@"
 CaptainGift7_Text: db "CRABHAMMER TUTOR@"
+CaptainGift8_Text: db "CRIT TRAINING@"
+CaptainGift9_Text: db "CRIT MASTERY@"
 
 FossilGift1_Text: db "OMANYTE@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 FossilGift2_Text: db "FOSSILIZATION@"
@@ -1396,50 +1375,84 @@ FossilGift4_Text: db "KABUTO@" ; unused - GIFT_MON_EVOLVE renders the label dyna
 FossilGift5_Text: db "AERODACTYL@"
 FossilGift6_Text: db "PORYGON@"
 FossilGift7_Text: db "METRONOME TM@"
+FossilGift8_Text: db "SHRINK RAY@"
+FossilGift9_Text: db "GROWTH RAY@"
 
-FanClubGift1_Text: db "BIKE VOUCHER@"
+FanClubGift1_Text: db "PP UP@"
 FanClubGift2_Text: db "CLEFAIRY@"
 FanClubGift3_Text: db "RARE CANDY@"
 FanClubGift4_Text: db "DROWZEE@"
 FanClubGift5_Text: db "SPEAROW@"
+FanClubGift6_Text: db "CUTE BOOST@"
+FanClubGift7_Text: db "BETTER RARITY@"
 
 WardenGift1_Text: db "STRENGTH HM@"
 WardenGift2_Text: db "KANGASKHAN@"
 WardenGift3_Text: db "SURF HM@"
 WardenGift4_Text: db "TAUROS@"
 WardenGift5_Text: db "BIG NUGGET@"
+WardenGift6_Text: db "ATTACK BADGE@"
+WardenGift7_Text: db "STAGGERING BLOWS@"
 
 SchoolGift1_Text: db "SHARPEN TUTOR@"
 SchoolGift2_Text: db "CALCIUM@"
 SchoolGift3_Text: db "DOUBLE TEAM TM@"
+SchoolGift4_Text: db "NIDORAN♂@"
+SchoolGift5_Text: db "STAB MASTERY@"
+SchoolGift6_Text: db "TYPE EXPERT@"
+SchoolGift7_Text: db "REPEAT!@"
 
 OldManGift1_Text: db "WEEDLE@"
 OldManGift2_Text: db "RATTATA@"
 OldManGift3_Text: db "REST TM@"
+OldManGift4_Text: db "THUNDER WAVE TM@"
+OldManGift5_Text: db "DULLED SENSES@"
+OldManGift6_Text: db "COFFEE BOOST@"
+OldManGift7_Text: db "DIZZY PUNCH@"
+OldManGift8_Text: db "SPIKED DRINK@"
 
 TrashedGift1_Text: db "LEMONADE@"
 TrashedGift2_Text: db "SQUIRTLE@"
 TrashedGift3_Text: db "BODY SLAM TM@"
+TrashedGift4_Text: db "TAKE DOWN TM@"
+TrashedGift5_Text: db "TARGET PRACTICE@"
+TrashedGift6_Text: db "DEFENSE BADGE@"
+TrashedGift7_Text: db "BODY ARMOR@"
 
 MomGift1_Text: db "FULL RESTORE@"
 MomGift2_Text: db "CHANSEY@"
 MomGift3_Text: db "FULL HEAL@"
-MomGift4_Text: db "SOFTBOILED TUTOR@"
+MomGift4_Text: db "RECOVER TUTOR@"
 MomGift5_Text: db "SOFTBOILED TM@"
 MomGift6_Text: db "REST TM@"
+MomGift7_Text: db "NURTURING CARE@"
+MomGift8_Text: db "MR.MIME@"
 
 IgaGift1_Text: db "KOFFING@"
 IgaGift2_Text: db "GRIMER@"
 IgaGift3_Text: db "TOXIC TM@"
+IgaGift4_Text: db "DEADLY VENOM@"
+IgaGift5_Text: db "POISON WARD@"
+IgaGift6_Text: db "LIFE ORB@"
+IgaGift7_Text: db "SHADOW STEP@"
+IgaGift8_Text: db "POISON GAS@"
 
 TradeHouseGift1_Text: db "NUGGET@"
 TradeHouseGift2_Text: db "CLEFAIRY@"
 TradeHouseGift3_Text: db "MOON STONE@"
+TradeHouseGift4_Text: db "VERDANT DRAIN@"
+TradeHouseGift5_Text: db "IMMUNITY@"
+TradeHouseGift6_Text: db "LEECH SEED@"
+TradeHouseGift7_Text: db "MEGA DRAIN TM@"
+TradeHouseGift8_Text: db "PETAL DANCE@"
+TradeHouseGift9_Text: db "LEAF STONE@"
 
-OaksLabGift1_Text: db "LIGHT BALL PIKACHU@"
+OaksLabGift1_Text: db "LIGHT BALL PIKA@"
 OaksLabGift2_Text: db "PROTEIN@"
 OaksLabGift3_Text: db "FLASH HM@"
 OaksLabGift4_Text: db "M.TOME@"
+OaksLabGift5_Text: db "EEVEE@"
+OaksLabGift6_Text: db "RESEARCH GRANT@"
 
 ; ---------------------------------------------------------------------------
 ; Descriptions.
@@ -1567,10 +1580,10 @@ FanClubGift3_Desc:
 	text_far _FanClubGift3Desc
 	text_end
 FanClubGift4_Desc:
-	text_far _FanClubGift3Desc
+	text_far _FanClubGift4Desc
 	text_end    
 FanClubGift5_Desc:
-	text_far _FanClubGift3Desc
+	text_far _FanClubGift5Desc
 	text_end
     
 WardenGift1_Desc:
@@ -1671,3 +1684,46 @@ OaksLabGift3_Desc:
 OaksLabGift4_Desc:
 	text_far _OaksLabGift4Desc
 	text_end
+
+MACRO bridge_new_desc
+\1_Desc:
+	text_far _\1Desc
+	text_end
+ENDM
+
+	bridge_new_desc CaptainGift8
+	bridge_new_desc CaptainGift9
+	bridge_new_desc FossilGift8
+	bridge_new_desc FossilGift9
+	bridge_new_desc FanClubGift6
+	bridge_new_desc FanClubGift7
+	bridge_new_desc WardenGift6
+	bridge_new_desc WardenGift7
+	bridge_new_desc SchoolGift4
+	bridge_new_desc SchoolGift5
+	bridge_new_desc SchoolGift6
+	bridge_new_desc SchoolGift7
+	bridge_new_desc OldManGift4
+	bridge_new_desc OldManGift5
+	bridge_new_desc OldManGift6
+	bridge_new_desc OldManGift7
+	bridge_new_desc OldManGift8
+	bridge_new_desc TrashedGift4
+	bridge_new_desc TrashedGift5
+	bridge_new_desc TrashedGift6
+	bridge_new_desc TrashedGift7
+	bridge_new_desc MomGift7
+	bridge_new_desc MomGift8
+	bridge_new_desc IgaGift4
+	bridge_new_desc IgaGift5
+	bridge_new_desc IgaGift6
+	bridge_new_desc IgaGift7
+	bridge_new_desc IgaGift8
+	bridge_new_desc TradeHouseGift4
+	bridge_new_desc TradeHouseGift5
+	bridge_new_desc TradeHouseGift6
+	bridge_new_desc TradeHouseGift7
+	bridge_new_desc TradeHouseGift8
+	bridge_new_desc TradeHouseGift9
+	bridge_new_desc OaksLabGift5
+	bridge_new_desc OaksLabGift6

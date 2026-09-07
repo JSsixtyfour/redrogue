@@ -290,6 +290,10 @@ SECTION "Move Names", ROMX
 
 INCLUDE "data/moves/names.asm"
 
+SECTION "Bridge Gift Text", ROMX
+
+INCLUDE "text/bridge_gifts.asm"
+
 SECTION "Rogue", ROMX
 
 INCLUDE "data/text/text_rogue.asm"

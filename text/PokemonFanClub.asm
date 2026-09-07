@@ -145,8 +145,8 @@ _PokemonFanClubSign2Text::
 	done
 
 _FanClubGift1Desc::
-	text "Trade it in for"
-	line "a BICYCLE!"
+	text "Raises one move's"
+	line "maximum PP"
 	done
 
 _FanClubGift2Desc::
@@ -160,11 +160,11 @@ _FanClubGift3Desc::
 	done
 
 _FanClubGift4Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The club's sleepy"
+	line "favorite #MON"
 	done
     
  _FanClubGift5Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The club's proud"
+	line "favorite #MON"
 	done

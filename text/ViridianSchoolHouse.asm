@@ -19,8 +19,8 @@ _ViridianSchoolHouseCooltrainerFAlreadyGotText::
 	done
 
 _SchoolGift1Desc::
-	text "Teaches evasive"
-	line "DOUBLE TEAM!"
+	text "Teaches one #MON"
+	line "SHARPEN"
 	done
 
 _SchoolGift2Desc::
@@ -29,6 +29,6 @@ _SchoolGift2Desc::
 	done
 
 _SchoolGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The DOUBLE TEAM"
+	line "Technical Machine"
 	done

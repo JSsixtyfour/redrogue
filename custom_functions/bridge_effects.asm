@@ -68,3 +68,70 @@ BridgeGlobalEffectAddressAndMask:
 	ld hl, wBridgeGlobalEffects
 	add hl, bc
 	ret
+
+; Far worker for the bridge menu's level-resolved Pokemon gifts.
+; In: e = base species. Out: e = resolved species.
+BridgeResolveEvolveSpeciesFar::
+	ld d, e
+	ld a, [wCurPartySpecies]
+	push af
+	push de
+	farcall GetBridgeRewardMonLevelFar
+	ld a, e
+	ld [wCurEnemyLevel], a
+	pop de
+	ld a, d
+	ld [wCurPartySpecies], a
+	call EvolveMonByLevel
+	ld a, [wCurPartySpecies]
+	ld e, a
+	pop af
+	ld [wCurPartySpecies], a
+	ret
+
+; Far worker for party gift stat recalculation.
+; In: de = party struct base. Recomputes stats and refills HP.
+BridgeRecalcStatsFar::
+	ld h, d
+	ld l, e
+	push hl
+	ld a, [hl]
+	ld [wCurSpecies], a
+	call GetMonHeader
+	pop hl
+	push hl
+	ld bc, MON_LEVEL
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	pop hl
+	push hl
+	ld bc, MON_STATS
+	add hl, bc
+	ld d, h
+	ld e, l
+	pop hl
+	push hl
+	ld bc, MON_HP_EXP - 1
+	add hl, bc
+	ld b, 1
+	push bc
+	push hl
+	call PrepareFusionCalcStats
+	pop hl
+	pop bc
+	call CalcStats
+	pop hl
+	push hl
+	ld bc, MON_STATS
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	pop hl
+	ld de, MON_HP
+	add hl, de
+	ld [hl], b
+	inc hl
+	ld [hl], c
+	ret
