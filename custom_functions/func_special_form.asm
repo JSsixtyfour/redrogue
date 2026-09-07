@@ -59,7 +59,7 @@ IsTypeVariant::
 ; INPUT:  de = struct base
 ; OUTPUT: e = 0 if NOT a type variant; otherwise the palette id to use,
 ;         derived from the stored MON_TYPE2 (WATER->blue, ROCK->gray,
-;         anything else defaults to blue but still counts as a variant).
+;         DRAGON->black, anything else defaults to blue).
 ;         Returned in E, not a (farcall clobbers a on entry/exit - see
 ;         GetSpecialFormCaps). Callers test `ld a, e / and a / jr z` to skip.
 ; CLOBBERS: af, hl, e  (bc, d preserved)
@@ -77,10 +77,15 @@ GetTypeVariantPalette::
 	ld a, [hl]
 	cp ROCK
 	jr z, .rock
+	cp DRAGON
+	jr z, .dragon
 	ld e, PAL_BLUEMON ; WATER and any future secondary type -> blue
 	ret
 .rock
 	ld e, PAL_GRAYMON
+	ret
+.dragon
+	ld e, PAL_BLACK
 	ret
 
 ; ---------------------------------------------------------------------------
