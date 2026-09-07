@@ -689,6 +689,9 @@ SwitchPartyMon_InitVarOrSwapData:
 	call CopyData
 	ld a, [wMenuItemToSwap]
 	ld [wSwappedMenuItem], a
+	; Keep any sparse selected bridge effect with the mon whose party slot was
+	; exchanged. This hook is reached only after the complete party record swap.
+	farcall BridgeTrackPartySwap
 	xor a
 	ld [wMenuItemToSwap], a
 	ld [wPartyMenuTypeOrMessageID], a

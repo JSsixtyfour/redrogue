@@ -2386,8 +2386,9 @@ wWitchPrize:: db          ; 0 = none, 1-NUM_WITCH_PRIZES = prize id, rolled inde
 ; --- Run-scoped earned state. NOT events: these are ordinary run state, so they
 ; --- live here rather than being aliased onto dead event bits.
 ; Both sit inside wGameProgressFlags, so they are saved AND zeroed on new game.
-; The 3 bytes come out of the dead `ds` pad below wGameProgressFlagsEnd, so
-; WRAM0 stays net-zero (it has exactly 1 free byte - see WRAM_BIBLE.md).
+; Current WRAM headroom covers these fields without changing any Pokémon
+; structure. The selected-Pokémon registry below is intentionally sparse:
+; BRIDGE_PER_RUN is two, so it costs only two owner/effect pairs (4 bytes).
 ; Both are wiped on blackout by RogueOnBlackout (custom_functions/credit_popup.asm).
 
 ; Which of the four 1.125x stat boosts the player has earned this run. Replaces
@@ -2406,6 +2407,19 @@ wEarnedStatBoosts:: db
 wBridgeGlobalEffects:: flag_array NUM_BRIDGE_GLOBAL_EFFECTS
 wBridgeGlobalEffectsEnd::
 ASSERT wBridgeGlobalEffectsEnd - wBridgeGlobalEffects == BRIDGE_GLOBAL_EFFECT_BYTES
+
+; Sparse selected-Pokémon bridge effects. Each pair is [owner, effect]. Owner 0
+; means the slot is empty. Party and box owners are stable across box changes;
+; transfer/swap/removal hooks maintain the owner when a mon moves or compacts.
+; No party_struct or box_struct bytes are added. See
+; custom_functions/bridge_selected_effects.asm.
+wBridgeSelectedEffects::
+wBridgeSelectedEffectOwner1:: db
+wBridgeSelectedEffect1::      db
+wBridgeSelectedEffectOwner2:: db
+wBridgeSelectedEffect2::      db
+wBridgeSelectedEffectsEnd::
+ASSERT wBridgeSelectedEffectsEnd - wBridgeSelectedEffects == BRIDGE_SELECTED_RECORD_SIZE * BRIDGE_SELECTED_RECORD_COUNT
 
 ; Which permanent witch prizes have been earned this run, one bit per prize id:
 ; bit (PRIZE_x - 1), so prizes 1-10 occupy bits 0-9 across these two bytes and

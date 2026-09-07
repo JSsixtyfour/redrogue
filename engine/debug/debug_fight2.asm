@@ -60,6 +60,9 @@ DebugFight2Setup::
 	dec a
 	ld [wPartySpecies], a
 	ld [wEnemyPartySpecies], a
+	; FIGHT 2 reconstructs the party on every iteration. Selected bridge
+	; effects belong to the old records and must not leak into this fixture.
+	farcall BridgeClearSelectedEffects
 
 	call .hasInjectedSpec
 	jp z, .buildInjected

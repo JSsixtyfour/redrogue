@@ -739,5 +739,10 @@ _MoveMon::
 	pop bc
 	call CalcStats
 .done
+	; Preserve a selected bridge effect when a mon is transferred between the
+	; party, the current box, or either daycare slot. This runs only after the
+	; destination has been appended successfully; RemovePokemon's following
+	; compaction hook handles the source list separately.
+	farcall BridgeTrackMoveMon
 	and a
 	ret

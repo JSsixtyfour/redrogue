@@ -556,7 +556,11 @@ SwapBillsPCSelectedPartyMons:
 	ld hl, wPartyMonNicks
 	ld bc, NAME_LENGTH
 	call GetBillsPCPartySwapPointers
-	jp SwapBillsPCByteRanges
+	call SwapBillsPCByteRanges
+	; The four arrays above now contain the swapped party records. Mirror that
+	; location exchange in the sparse selected-effect registry.
+	farcall BridgeTrackBillsPCPartySwap
+	ret
 
 SwapBillsPCSelectedBoxMons:
 	ld hl, wBoxSpecies
@@ -574,7 +578,9 @@ SwapBillsPCSelectedBoxMons:
 	ld hl, wBoxMonNicks
 	ld bc, NAME_LENGTH
 	call GetBillsPCBoxSwapPointers
-	jp SwapBillsPCByteRanges
+	call SwapBillsPCByteRanges
+	farcall BridgeTrackBillsPCBoxSwap
+	ret
 
 ; Exchanges one occupied party slot with one occupied box slot without changing
 ; either compact list's count or ordering. The first BOXMON_STRUCT_LENGTH bytes
@@ -669,6 +675,9 @@ SwapBillsPCSelectedPartyAndBoxMons:
 	ld [wParentMenuItem], a
 	pop af
 	ldh [hCurrentMenuItem], a
+	; Rebuilds are complete and the original grid selections are restored.
+	; Exchange the sparse owners across the party/box boundary as well.
+	farcall BridgeTrackBillsPCCrossDomainSwap
 	ret
 
 ; Resolves a cross-domain SWAP without allocating persistent state.

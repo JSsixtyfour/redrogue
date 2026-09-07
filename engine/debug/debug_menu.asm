@@ -117,6 +117,9 @@ TestBattle: ; unreferenced except in _DEBUG
 	ld [hli], a
 	dec a
 	ld [hl], a
+	; TestBattle rebuilds the party in-place, so discard any selected bridge
+	; effect owners from the previous debug iteration.
+	farcall BridgeClearSelectedEffects
 
 	; Give the player a level 20 Rhydon.
 	ld a, RHYDON

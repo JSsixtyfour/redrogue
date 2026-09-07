@@ -3212,6 +3212,10 @@ SendNewMonToBox:
 	ld [de], a
 	dec b
 	jr nz, .movePPLoop
+	; This routine front-inserts the new mon at current-box slot 0. Keep
+	; location-owned bridge effects attached to the existing records as they
+	; shift one slot toward the tail.
+	farcall BridgeTrackSendNewMonToBox
 	ret
 
 ; checks if the tile in front of the player is a shore or water tile

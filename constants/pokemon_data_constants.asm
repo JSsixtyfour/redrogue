@@ -67,6 +67,40 @@ DEF PARTY_LENGTH EQU 6
 DEF MONS_PER_BOX EQU 20
 DEF NUM_BOXES    EQU 12
 
+; Bridge selected-Pokémon effects use a sparse run-scoped registry instead of
+; adding fields to party_struct/box_struct. A record stores one owner byte and
+; one effect byte. Owner 0 is empty; party owners are 1..6, box owners are
+; absolute across all 12 boxes, and the final two values identify the two
+; daycare slots. Keep the owner range below $ff so malformed/legacy save data
+; can never be mistaken for a valid owner.
+DEF BRIDGE_SELECTED_OWNER_NONE       EQU 0
+DEF BRIDGE_SELECTED_OWNER_PARTY_BASE EQU 1
+DEF BRIDGE_SELECTED_OWNER_BOX_BASE   EQU BRIDGE_SELECTED_OWNER_PARTY_BASE + PARTY_LENGTH
+DEF BRIDGE_SELECTED_OWNER_DAYCARE1   EQU BRIDGE_SELECTED_OWNER_BOX_BASE + NUM_BOXES * MONS_PER_BOX
+DEF BRIDGE_SELECTED_OWNER_DAYCARE2   EQU BRIDGE_SELECTED_OWNER_DAYCARE1 + 1
+DEF BRIDGE_SELECTED_OWNER_MAX        EQU BRIDGE_SELECTED_OWNER_DAYCARE2
+ASSERT BRIDGE_SELECTED_OWNER_MAX < $ff
+
+; Effect 0 is the empty-record marker. The selected effects are deliberately
+; one-per-owner: a new selected effect blocks an existing selected effect on
+; that Pokémon. Intrinsic special-form traits such as Quick Claw and
+; Intimidating Presence are resolved from species/form data and do not use a
+; record here.
+const_def 1
+const BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
+const BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+const BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+const BRIDGE_SELECTED_EFFECT_FLINCH
+const BRIDGE_SELECTED_EFFECT_BODY_ARMOR
+const BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY
+const BRIDGE_SELECTED_EFFECT_LIFE_ORB
+const BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY
+DEF NUM_BRIDGE_SELECTED_EFFECTS EQU const_value - 1
+DEF BRIDGE_SELECTED_RECORD_SIZE  EQU 2 ; owner byte + effect byte
+DEF BRIDGE_SELECTED_RECORD_COUNT EQU BRIDGE_PER_RUN
+ASSERT NUM_BRIDGE_SELECTED_EFFECTS == 8
+ASSERT BRIDGE_SELECTED_RECORD_COUNT == 2
+
 DEF HOF_MON           EQU $10
 DEF HOF_TEAM          EQU PARTY_LENGTH * HOF_MON
 DEF HOF_TEAM_CAPACITY EQU 50

@@ -41,6 +41,9 @@ _RemovePokemon::
 	; This is not needed, as wBoxSpecies/wPartySpecies determine if a slot is used.
 	; Besides, existing mon nick is left untouched
 	ld [hl], $ff
+	; _RemovePokemon has finished the compact-list update. Clear the removed
+	; mon's sparse bridge owner and shift surviving owners down in this domain.
+	farcall BridgeTrackRemovePokemon
 	ret
 
 .notRemovingLastMon
@@ -104,4 +107,7 @@ _RemovePokemon::
 	jr z, .shiftMonNicks
 	ld bc, wBoxMonNicksEnd
 .shiftMonNicks
-	jp CopyDataUntil ; shift all pokemon nicknames up one slot
+	call CopyDataUntil ; shift all pokemon nicknames up one slot
+	; Complete the sparse owner update only after every compacted array is done.
+	farcall BridgeTrackRemovePokemon
+	ret
