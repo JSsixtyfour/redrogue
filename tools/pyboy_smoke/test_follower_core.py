@@ -588,14 +588,20 @@ class FollowerCoreAssemblyTest(unittest.TestCase):
                         f.PARTY_SPECIES - 1, f.PARTY_SPECIES + 7):
             f.write8(address, 0xD0 + address - f.RANDOM_VALUE)
 
-        for species in range(1, 191):
+        # NUM_POKEMON_INDEXES was 190 when this test was written; Species
+        # Groups Phase 2 has raised it to 193 (Chikorita/Bayleef/Meganium/
+        # Weavile/Mamoswine/Mismagius, ids $20/$32/$34/$BF/$C0/$C1). Update this
+        # boundary again as Sonnet's remaining ~95-species batch lands - the
+        # real check in follower.asm (`cp NUM_POKEMON_INDEXES + 1`) is already
+        # data-driven, only this hardcoded mirror needs to track it by hand.
+        for species in range(1, 194):
             with self.subTest(species=species):
                 f.write8(f.PARTY_SPECIES, species)
                 before = self._party_snapshot(f), self._core_snapshot(f)
                 self.assertEqual(f.should_spawn(0), (species, True, 0))
                 self.assertEqual((self._party_snapshot(f), self._core_snapshot(f)), before)
 
-        for species in (0, 191, 255):
+        for species in (0, 194, 255):
             with self.subTest(invalid_species=species):
                 f.write8(f.PARTY_SPECIES, species)
                 before = self._party_snapshot(f), self._core_snapshot(f)

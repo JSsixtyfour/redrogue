@@ -707,6 +707,13 @@ PokemonSpriteCategoryTable:
 	db $00 ; $B9,$BA ODDISH,GLOOM
 	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
 	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
+	db $00 ; $BF,$C0 WEAVILE,MAMOSWINE
+	; $C1 MISMAGIUS (odd, no even partner yet) shares this byte with whatever
+	; Sonnet's batch assigns internal id $C2 (its first species, an even index).
+	; EDIT this line's high nybble in place when that species is added - do NOT
+	; append a new db line, or every following pair shifts by one nybble and the
+	; table desyncs from PokemonSpriteCategoryTableEnd's own assert.
+	db $00 ; $C1,$C2 MISMAGIUS,(Sonnet's first new species)
 PokemonSpriteCategoryTableEnd:
 	assert PokemonSpriteCategoryTableEnd - PokemonSpriteCategoryTable == (NUM_POKEMON_INDEXES + 1) / 2
 

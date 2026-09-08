@@ -190,4 +190,7 @@ MonsterNames::
 	dname "BELLSPROUT"
 	dname "WEEPINBELL"
 	dname "VICTREEBEL"
+	dname "WEAVILE"
+	dname "MAMOSWINE"
+	dname "MISMAGIUS"
 	assert_table_length NUM_POKEMON_INDEXES

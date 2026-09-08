@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/bayleef.pic", 0, 1 ; sprite dimensions
 	dw BayleefPicFront, BayleefPicBack
 
-	db TACKLE, GROWL, RAZOR_LEAF, NO_MOVE ; level 1 learnset
+	db TACKLE, GROWL, RAZOR_LEAF, REFLECT ; level 1 learnset
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset

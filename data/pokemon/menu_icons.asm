@@ -155,4 +155,7 @@ MonPartyData:
 	nybble ICON_GRASS     ; Chikorita
 	nybble ICON_QUADRUPED ; Bayleef
 	nybble ICON_QUADRUPED ; Meganium
+	nybble ICON_MON       ; Weavile
+	nybble ICON_QUADRUPED ; Mamoswine
+	nybble ICON_MON       ; Mismagius
 	end_nybble_array NUM_POKEMON

@@ -159,5 +159,12 @@
 	const DEX_CHIKORITA  ; 152
 	const DEX_BAYLEEF    ; 153
 	const DEX_MEGANIUM   ; 154
+; Weavile/Mamoswine/Mismagius added ahead of the rest of the Johto batch -
+; see SPECIES_IMPORT_SPEC.md. Their internal ids ($F0-$F2) sit near the END
+; of the free-id pool, decoupled from dex order, same as vanilla's own
+; scrambled internal-id/dex-number split (e.g. PIKACHU is dex 25, internal $54).
+	const DEX_WEAVILE    ; 155
+	const DEX_MAMOSWINE  ; 156
+	const DEX_MISMAGIUS  ; 157
 
 DEF NUM_POKEMON EQU const_value - 1

@@ -198,6 +198,16 @@
 	const WEEPINBELL         ; $BD
 	const VICTREEBEL         ; $BE
 
+; --- Species Groups Phase 2: Weavile/Mamoswine/Mismagius (Gen 4 evolutions of
+; Johto lines, kept per the plan roster). Added ahead of the rest of the
+; batch, so they take the literal next three sequential ids - `const` is a
+; plain incrementing counter (see rgbds' charmap/const stdlib macros); the
+; trailing comment is documentation only and does NOT set the value. Sonnet's
+; remaining 95 species (SPECIES_IMPORT_SPEC.md) continue from $C2.
+	const WEAVILE             ; $BF
+	const MAMOSWINE           ; $C0
+	const MISMAGIUS           ; $C1
+
 DEF NUM_POKEMON_INDEXES EQU const_value - 1
 
 ; starters

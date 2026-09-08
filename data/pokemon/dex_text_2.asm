@@ -39,3 +39,33 @@ _MeganiumDexEntry::
 	next "people locked in"
 	next "battle"
 	dex
+
+_WeavileDexEntry::
+	text "It works with"
+	next "others to corner"
+	next "prey, then shreds"
+
+	page "it with its sharp,"
+	next "claw-like feathers"
+	next "in an instant"
+	dex
+
+_MamoswineDexEntry::
+	text "Thick fur and"
+	next "a coat of fat"
+	next "keep it warm in"
+
+	page "any climate. It"
+	next "roams in herds"
+	next "across the snow"
+	dex
+
+_MismagiusDexEntry::
+	text "Said to cast"
+	next "spells that make"
+	next "the afflicted"
+
+	page "hear only"
+	next "unpleasant,"
+	next "eerie sounds"
+	dex

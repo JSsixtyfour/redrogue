@@ -190,6 +190,9 @@ PokedexEntryPointers:
 	dw BellsproutDexEntry
 	dw WeepinbellDexEntry
 	dw VictreebelDexEntry
+	dw WeavileDexEntry
+	dw MamoswineDexEntry
+	dw MismagiusDexEntry
 	assert_table_length NUM_POKEMON_INDEXES
 
 ; string: species name
@@ -1281,4 +1284,25 @@ MeganiumDexEntry:
 	db 5,11
 	dw 2216
 	text_far _MeganiumDexEntry
+	text_end
+
+WeavileDexEntry:
+	db "CLAW@"
+	db 3,7
+	dw 756
+	text_far _WeavileDexEntry
+	text_end
+
+MamoswineDexEntry:
+	db "TUSK@"
+	db 8,2
+	dw 6415
+	text_far _MamoswineDexEntry
+	text_end
+
+MismagiusDexEntry:
+	db "MAGIC@"
+	db 2,11
+	dw 97
+	text_far _MismagiusDexEntry
 	text_end

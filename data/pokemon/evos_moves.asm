@@ -216,6 +216,9 @@ EvosMovesPointerTable:
 	dw BellsproutEvosMoves
 	dw WeepinbellEvosMoves
 	dw VictreebelEvosMoves
+	dw WeavileEvosMoves
+	dw MamoswineEvosMoves
+	dw MismagiusEvosMoves
 	assert_table_length NUM_POKEMON_INDEXES
 
 RhydonEvosMoves:
@@ -887,13 +890,16 @@ ChikoritaEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, BAYLEEF
 	db 0
-; Learnset
-	db 12, RAZOR_LEAF
-	db 15, REFLECT
-	db 22, POISONPOWDER
-	db 36, BODY_SLAM
-	db 43, LIGHT_SCREEN
-	db 57, SOLARBEAM
+; Learnset - canon Gen 2 levels (tmp/pokegold/data/pokemon/evos_attacks.asm);
+; SYNTHESIS and SAFEGUARD do not exist in Gen 1 and are filled with METRONOME.
+	db 8, RAZOR_LEAF
+	db 12, REFLECT
+	db 15, POISONPOWDER
+	db 22, METRONOME ; was SYNTHESIS
+	db 29, BODY_SLAM
+	db 36, LIGHT_SCREEN
+	db 43, METRONOME ; was SAFEGUARD
+	db 50, SOLARBEAM
 	db 0
 ; Tutoring Learnset
     db 2, DEFENSE_CURL
@@ -1259,12 +1265,16 @@ BayleefEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 32, MEGANIUM
 	db 0
-; Learnset
-	db 15, REFLECT
-	db 23, POISONPOWDER
-	db 39, BODY_SLAM
-	db 47, LIGHT_SCREEN
-	db 63, SOLARBEAM
+; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
+; (see ChikoritaEvosMoves). RAZOR_LEAF is already granted at level 1 - see
+; base_stats/bayleef.asm.
+	db 12, REFLECT
+	db 15, POISONPOWDER
+	db 23, METRONOME ; was SYNTHESIS
+	db 31, BODY_SLAM
+	db 39, LIGHT_SCREEN
+	db 47, METRONOME ; was SAFEGUARD
+	db 55, SOLARBEAM
 	db 0
 ; Tutoring Learnset
     db 2, DEFENSE_CURL
@@ -1299,11 +1309,15 @@ MagmarEvosMoves:
 MeganiumEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
-	db 23, POISONPOWDER
-	db 41, BODY_SLAM
-	db 51, LIGHT_SCREEN
-	db 71, SOLARBEAM
+; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
+; (see ChikoritaEvosMoves). RAZOR_LEAF/REFLECT are already granted at level 1
+; - see base_stats/meganium.asm.
+	db 15, POISONPOWDER
+	db 23, METRONOME ; was SYNTHESIS
+	db 31, BODY_SLAM
+	db 41, LIGHT_SCREEN
+	db 51, METRONOME ; was SAFEGUARD
+	db 61, SOLARBEAM
 	db 0
 ; Tutoring Learnset
     db 2, DEFENSE_CURL
@@ -3519,3 +3533,37 @@ VictreebelEvosMoves:
     db 2, LEECH_LIFE
     db 2, LOVELY_KISS
     db 0
+
+WeavileEvosMoves:
+; Evolutions
+	db 0
+; Learnset - Weavile evolves from Sneasel (Sonnet's batch); when Sneasel's own
+; entry is added, point it at this species via an evolution item (ICE_STONE is
+; the closest fit already in the project - there is no day/night system here
+; for the canon "level up holding Razor Claw at night" method).
+	db 20, METRONOME ; FILLER - real moveset TBD
+	db 40, METRONOME ; FILLER - real moveset TBD
+	db 0
+
+MamoswineEvosMoves:
+; Evolutions
+	db 0
+; Learnset - Mamoswine evolves from Piloswine (Sonnet's batch); when Piloswine's
+; own entry is added, give it `db EVOLVE_LEVEL, 44, MAMOSWINE` (mirrors KEP's own
+; precedent for Tangela->Tangrowth, the same "level up knowing Ancient Power"
+; condition this engine cannot express directly).
+	db 32, METRONOME ; FILLER - real moveset TBD
+	db 40, METRONOME ; FILLER - real moveset TBD
+	db 48, METRONOME ; FILLER - real moveset TBD
+	db 56, METRONOME ; FILLER - real moveset TBD
+	db 0
+
+MismagiusEvosMoves:
+; Evolutions
+	db 0
+; Learnset - Mismagius evolves from Misdreavus (Sonnet's batch); when
+; Misdreavus's own entry is added, give it
+; `db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS` (DUSK_STONE already exists).
+	db 24, METRONOME ; FILLER - real moveset TBD
+	db 48, METRONOME ; FILLER - real moveset TBD
+	db 0

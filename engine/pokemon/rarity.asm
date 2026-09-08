@@ -266,6 +266,14 @@ JohtoGreatball_Evos:
 	db BAYLEEF
 ; stage 2
 	db MEGANIUM
+; Weavile/Mamoswine/Mismagius are evolved-only (Sneasel/Piloswine/Misdreavus
+; are Sonnet's batch, not yet classified into a tier). Parked here as
+; classification-only placeholders - PLEASE MOVE to whichever tier their
+; own pre-evolution lands in once that batch assigns it, matching how every
+; other _Evos entry sits under its OWN tier's rollable base form.
+	db WEAVILE
+	db MAMOSWINE
+	db MISMAGIUS
 JohtoGreatball_End:
 
 

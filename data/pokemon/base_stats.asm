@@ -162,6 +162,13 @@ INCLUDE "data/pokemon/base_stats/chikorita.asm"
 INCLUDE "data/pokemon/base_stats/bayleef.asm"
 INCLUDE "data/pokemon/base_stats/meganium.asm"
 
+; Weavile/Mamoswine/Mismagius added ahead of the rest of the batch (dex
+; 155-157) - see SPECIES_IMPORT_SPEC.md. Sonnet's 95 remaining species pick
+; up at dex 158.
+INCLUDE "data/pokemon/base_stats/weavile.asm"
+INCLUDE "data/pokemon/base_stats/mamoswine.asm"
+INCLUDE "data/pokemon/base_stats/mismagius.asm"
+
 	assert_table_length NUM_POKEMON
 
 ; Alignment guards. assert_table_length only checks the COUNT, so it passes
@@ -176,4 +183,4 @@ MACRO assert_dex_row_at
 ENDM
 
 	; anchored at the end of the table, so every preceding row must be in place
-	assert_dex_row_at DEX_MEGANIUM
+	assert_dex_row_at DEX_MISMAGIUS
