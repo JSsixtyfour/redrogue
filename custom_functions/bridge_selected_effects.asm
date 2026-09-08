@@ -27,7 +27,7 @@ BridgeGrantSelectedEffect::
 	jr c, .reject
 	cp NUM_BRIDGE_SELECTED_EFFECTS + 1
 	jr nc, .reject
-	ld d, a                      ; d = effect, survives the owner lookup
+	ld e, a                      ; e = effect
 
 	ldh a, [hWhichPokemon]
 	cp PARTY_LENGTH
@@ -38,23 +38,23 @@ BridgeGrantSelectedEffect::
 	jr c, .reject
 	jr z, .reject
 	inc b                         ; party owner = slot + 1
+	ld d, b                      ; d = owner, e = effect
 
-	; Only one selected effect may occupy a given owner. This also makes a
-	; repeated gift selection a safe no-op rather than a stackable bonus.
-	ld a, b
+	; The sparse registry has only two records for the whole run. Keep the
+	; user-approved one-selected-effect-per-owner rule so one Pokémon cannot
+	; consume both records.
+	ld a, d
 	call BridgeFindSelectedRecordByOwner
 	jr c, .reject
 
-	; The scan is intentionally bounded by BRIDGE_SELECTED_RECORD_COUNT, not by
-	; a sentinel. Reload the owner from hWhichPokemon after the scan; d keeps the
-	; effect throughout, so no stack scratch is needed on either refusal path.
+.findEmpty
+	; The scan is intentionally bounded by BRIDGE_SELECTED_RECORD_COUNT.
 	call BridgeFindEmptySelectedRecord
 	jr nc, .reject
-	ldh a, [hWhichPokemon]
-	inc a
-	ld [hli], a
 	ld [hl], d
-	ld a, d
+	inc hl
+	ld [hl], e
+	ld a, e
 	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
 	jr z, .recalculateDerivedStats
 	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
@@ -80,7 +80,6 @@ BridgeHasSelectedEffect::
 	jr c, .notFound
 	cp NUM_BRIDGE_SELECTED_EFFECTS + 1
 	jr nc, .notFound
-	ld d, a                      ; requested effect
 	ldh a, [hWhichPokemon]
 	cp PARTY_LENGTH
 	jr nc, .notFound
@@ -90,33 +89,20 @@ BridgeHasSelectedEffect::
 	jr c, .notFound
 	jr z, .notFound
 	inc b
-	ld a, b
-	call BridgeSelectedEffectForOwner
-	jr nc, .notFound
-	cp d
-	jr z, .found
+	ld d, b
+	call BridgeOwnerHasSelectedEffect
+	ret c
 .notFound
 	and a
-	ret
-.found
-	scf
 	ret
 
 ; In: e = BRIDGE_SELECTED_EFFECT_*. Query the active player's party owner.
 ; Out: carry set only when that active mon owns the requested effect.
 BridgeActiveMonHasSelectedEffect::
-	ld d, e
 	ld a, [wPlayerMonNumber]
 	inc a
-	call BridgeSelectedEffectForOwner
-	ret nc
-	cp d
-	jr z, .found
-	and a
-	ret
-.found
-	scf
-	ret
+	ld d, a
+	jp BridgeOwnerHasSelectedEffect
 
 ; Called after GetCurrentMove has loaded wPlayerMovePower. Carry is set after
 ; printing the rejection only when Body Armor blocks a zero-power move.
@@ -130,6 +116,13 @@ BridgeBodyArmorBlocksSelectedMove::
 	ld a, [wPlayerMovePower]
 	and a
 	ret nz
+	ld a, [wPlayerMoveEffect]
+	cp SPECIAL_DAMAGE_EFFECT
+	ret z
+	cp SUPER_FANG_EFFECT
+	ret z
+	cp BIDE_EFFECT
+	ret z
 	ld hl, .blockedText
 	call PrintText
 	call LoadScreenTilesFromBuffer1
@@ -140,52 +133,36 @@ BridgeBodyArmorBlocksSelectedMove::
 	line "BLOCKS STATUS!"
 	prompt
 
-; In:  a = owner identifier
-; Out: carry set and a = selected effect when found; clear otherwise.
-; This is the location-oriented query for battle hooks that already know the
-; active party/box/daycare owner. Malformed effect bytes are ignored.
-BridgeSelectedEffectForOwner::
-	and a
-	jr z, .notFound
-	cp BRIDGE_SELECTED_OWNER_MAX + 1
-	jr nc, .notFound
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .notFound
-	inc hl
+; In: d = owner, e = effect.
+; Out: carry set only when that exact owner/effect pair exists. Preserves de.
+BridgeOwnerHasSelectedEffect:
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.loop
+	ld a, [hli]
+	cp d
+	jr nz, .next
 	ld a, [hl]
-	cp BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
-	jr c, .notFound
-	cp NUM_BRIDGE_SELECTED_EFFECTS + 1
-	jr nc, .notFound
+	cp e
+	jr z, .found
+.next
+	inc hl
+	dec b
+	jr nz, .loop
+	and a
+	ret
+.found
 	scf
 	ret
-.notFound
-	and a
-	ret
-
-; In:  hWhichPokemon = party slot (0..5)
-; Out: carry set and a = selected effect when found; clear otherwise.
-BridgeSelectedEffectForPartyMon::
-	ldh a, [hWhichPokemon]
-	cp PARTY_LENGTH
-	ret nc
-	ld b, a
-	ld a, [wPartyCount]
-	cp b
-	ret c
-	ret z
-	inc b
-	ld a, b
-	jp BridgeSelectedEffectForOwner
 
 ; Prepare both dynamic-stat systems immediately before CalcStats. de must point
 ; at MON_STATS. Fusion is identified in the mon struct; rays are identified by
-; the sparse owner registry and use one transient WRAM selector.
+; the sparse owner registry and use one transient WRAM flag byte.
 PrepareFusionAndBridgeRayCalcStats::
 	call PrepareFusionCalcStats
 	push de
 	xor a
-	ld [wBridgeRayCalcEffect], a
+	ld [wBridgeCalcEffectFlags], a
 
 	; Real party structs can be identified directly from their MON_STATS pointer.
 	ld hl, wPartyMon1Stats
@@ -243,17 +220,24 @@ PrepareFusionAndBridgeRayCalcStats::
 .daycare2
 	ld b, BRIDGE_SELECTED_OWNER_DAYCARE2
 .queryOwner
-	ld a, b
-	call BridgeSelectedEffectForOwner
+	ld d, b
+	ld e, BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	call BridgeOwnerHasSelectedEffect
+	jr nc, .growth
+	ld hl, wBridgeCalcEffectFlags
+	set BRIDGE_SELECTED_EFFECT_SHRINK_RAY, [hl]
+.growth
+	ld e, BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	call BridgeOwnerHasSelectedEffect
+	jr nc, .bodyArmor
+	ld hl, wBridgeCalcEffectFlags
+	set BRIDGE_SELECTED_EFFECT_GROWTH_RAY, [hl]
+.bodyArmor
+	ld e, BRIDGE_SELECTED_EFFECT_BODY_ARMOR
+	call BridgeOwnerHasSelectedEffect
 	jr nc, .done
-	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
-	jr z, .store
-	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
-	jr z, .store
-	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
-	jr nz, .done
-.store
-	ld [wBridgeRayCalcEffect], a
+	ld hl, wBridgeCalcEffectFlags
+	set BRIDGE_SELECTED_EFFECT_BODY_ARMOR, [hl]
 .done
 	pop de
 	ret
@@ -266,10 +250,10 @@ BridgeApplyShrinkRayEvasion::
 	ret z
 	ld a, [wPlayerMonNumber]
 	inc a
-	call BridgeSelectedEffectForOwner
+	ld d, a
+	ld e, BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	call BridgeOwnerHasSelectedEffect
 	ret nc
-	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
-	ret nz
 	ld hl, wPlayerMonEvasionMod
 	ld a, [hl]
 	cp $d
@@ -358,9 +342,9 @@ BridgeFindEmptySelectedRecord:
 	ret
 
 ; In:  b = source owner, c = destination owner
-; Out: carry set when the record was moved; clear on invalid/missing/conflict.
-; The destination must be empty. Refusing a conflict avoids silently replacing
-; a different effect if a future mutation path is missed.
+; Out: carry set when at least one record was moved; clear on
+; invalid/missing/conflict. Every effect owned by the source moves together.
+; The destination must be empty because these hooks move one complete Pokémon.
 BridgeMoveSelectedOwner::
 	ld a, b
 	and a
@@ -374,34 +358,57 @@ BridgeMoveSelectedOwner::
 	jr nc, .failed
 	ld d, b
 	ld e, c
-	ld a, d
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .failed
-	push hl                     ; source record
 	ld a, e
 	call BridgeFindSelectedRecordByOwner
-	jr c, .conflict
-	pop hl
-	ld a, e
-	ld [hl], a                 ; move the owner, leave the effect byte intact
+	jr c, .failed
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+	ld c, 0                     ; number of records moved
+.loop
+	ld a, [hl]
+	cp d
+	jr nz, .next
+	ld [hl], e
+	inc c
+.next
+	inc hl
+	inc hl
+	dec b
+	jr nz, .loop
+	ld a, c
+	and a
+	jr z, .failed
 	scf
 	ret
-.conflict
-	pop hl
 .failed
 	and a
 	ret
 
 ; In:  a = owner
-; Out: carry set when an existing record was cleared; clear when absent.
+; Out: carry set when one or more records were cleared; clear when absent.
 BridgeClearSelectedOwner::
 	and a
 	ret z
-	call BridgeFindSelectedRecordByOwner
-	ret nc
+	ld c, a
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+	ld d, 0                     ; number of records cleared
+.loop
+	ld a, [hl]
+	cp c
+	jr nz, .next
 	xor a
 	ld [hli], a
-	ld [hl], a
+	ld [hld], a
+	inc d
+.next
+	inc hl
+	inc hl
+	dec b
+	jr nz, .loop
+	ld a, d
+	and a
+	ret z
 	scf
 	ret
 
@@ -636,9 +643,9 @@ BridgeTrackBillsPCCrossDomainSwap::
 	ld c, a                      ; party destination owner
 	; fall through
 
-; In: b/c = owner identifiers. Exchange the two sparse records without
-; allocating another byte of persistent state. Missing records are copied as
-; empty, so this also handles a swap between an owned and unowned mon.
+; In: b/c = owner identifiers. Exchange every sparse record belonging to the
+; two Pokémon. Updating owner bytes directly handles zero, one, or two effects
+; on either side without allocating scratch state.
 BridgeSwapSelectedOwners:
 	ld a, b
 	and a
@@ -650,54 +657,27 @@ BridgeSwapSelectedOwners:
 	jr z, .done
 	cp BRIDGE_SELECTED_OWNER_MAX + 1
 	jr nc, .done
-	ld d, b                      ; preserve owners across the first scan
+	ld a, b
+	cp c
+	ret z
+	ld d, b
 	ld e, c
-	ld a, d
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .sourceEmpty
-
-	; Source exists. Keep both owners and the source effect while probing the
-	; destination. Stack words are used only as scratch, so no WRAM grows.
-	push bc
-	inc hl
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.loop
 	ld a, [hl]
-	push af                      ; source effect
-	ld a, e
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .destinationEmpty
-	inc hl
-	ld a, [hl]
-	push af                      ; destination effect
-	pop af
-	ld d, a                      ; destination effect
-	pop af
-	ld e, a                      ; source effect
-	pop bc                       ; original source/destination owners
-	ld [hl], e                   ; destination gets source effect
-	ld a, b
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .done                 ; defensive: source vanished unexpectedly
-	inc hl
-	ld a, d
-	ld [hl], a                   ; source gets destination effect
-	ret
-
-.destinationEmpty
-	; Source exists, destination does not. Discard the saved source effect and
-	; move the source record's owner to the destination location.
-	pop af
-	pop bc
-	ld a, b
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .done
-	ld [hl], c
-	ret
-
-.sourceEmpty
-	; Source does not exist. If the destination does, move its record to source.
-	ld a, e
-	call BridgeFindSelectedRecordByOwner
-	jr nc, .done
+	cp d
+	jr z, .source
+	cp e
+	jr nz, .next
 	ld [hl], d
+	jr .next
+.source
+	ld [hl], e
+.next
+	inc hl
+	inc hl
+	dec b
+	jr nz, .loop
 .done
 	ret

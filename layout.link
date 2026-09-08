@@ -248,6 +248,11 @@ ROMX $33
 	"Sound Effects 4"
 	"Audio Engine 4"
 	"Music 4"
+ROMX $34
+	; Remaining Bridge battle effects are isolated from the nearly full rogue
+	; bank. Every exported entry is reached by farcall and reads no local data
+	; from another bank.
+	"Bridge Extended Effects"
 WRAM0
 	"Audio RAM"
 	org $c100

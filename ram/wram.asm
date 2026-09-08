@@ -102,10 +102,11 @@ wTempoModifier:: db
 	; agree - the PyBoy harness writes this by symbol name.
 	wAIDebugTierOverride:: db
 
-	; Transient CalcStats selector for bridge ray effects. This claims one byte
+	; Transient CalcStats flags for bridge derived-stat effects. Effect IDs are
+	; used as bit positions so compatible effects can be applied together. This claims one byte
 	; from the existing unsaved WRAM0 tail padding, so no later address or save
 	; layout moves. Cleared automatically by _CalcStats after every calculation.
-	wBridgeRayCalcEffect:: db
+	wBridgeCalcEffectFlags:: db
 
 	ds 5
 
@@ -503,7 +504,8 @@ wEnemySubstituteHP:: db
 ; used for TestBattle (unused in non-debug builds)
 wTestBattlePlayerSelectedMove:: db
 
-	ds 1
+; Temporary current-action state: 0=no move, 1=new move, 2=repeat.
+wBridgeRepeatState:: db
 
 ; 0=regular, 1=mimic, 2=above message box (relearn, heal pp..)
 wMoveMenuType:: db

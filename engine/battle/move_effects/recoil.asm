@@ -1,4 +1,17 @@
 RecoilEffect_:
+	; Old Man's Dulled Senses suppresses only ordinary move recoil. Struggle,
+	; Jump Kick crash damage, confusion, Witch recoil, and future Life Orb
+	; recoil use separate paths and therefore remain unaffected.
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .applyRecoil
+	ld a, [wPlayerMoveNum]
+	cp STRUGGLE
+	jr z, .applyRecoil
+	ld e, BRIDGE_EFFECT_NO_RECOIL
+	farcall BridgeHasGlobalEffect
+	ret c
+.applyRecoil
 	ldh a, [hWhoseTurn]
 	and a
 	ld a, [wPlayerMoveNum]

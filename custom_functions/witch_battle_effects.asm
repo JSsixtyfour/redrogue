@@ -43,6 +43,11 @@
 ; sites already expect so KO Defiance still runs.
 ; ============================================================
 HandlePostPlayerMoveWitchEffects::
+	ld a, [wBridgeRepeatState]
+	and a
+	jr nz, .usedMove
+	call BridgeClearRepeatTracking
+.usedMove
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .noEffect
@@ -99,31 +104,13 @@ HandlePostPlayerMoveWitchEffects::
 	jr ApplyWitchSelfDamage
 
 ; --- Challenge 14: punish using the same move twice in a row.
-; Both trackers are recorded UNCONDITIONALLY before the comparison, so the
-; streak state is correct on every path out of here. A repeat requires all
-; three of: a real move was used, it matches last turn's, and the same party
-; slot used it. wPlayerUsedMove is 0 whenever the mon could not act (asleep,
-; frozen, fully paralysed), so a lost turn breaks the streak for free; the slot
-; check stops a freshly switched-in mon from inheriting the outgoing mon's move.
+; BridgePrepareRepeatAction owns the shared move-and-slot tracker and publishes
+; wBridgeRepeatState. A lost action cannot trigger this penalty and clears the
+; shared streak at the top of this routine.
 .sameMovePenalty
-	ld a, [wWitchPrevPlayerMove]
-	ld d, a                ; d = previous move
-	ld a, [wWitchPrevPlayerSlot]
-	ld e, a                ; e = previous slot
-	ld a, [wPlayerUsedMove]
-	ld b, a
-	ld [wWitchPrevPlayerMove], a
-	ld a, [wPlayerMonNumber]
-	ld c, a
-	ld [wWitchPrevPlayerSlot], a
-	ld a, b
-	and a
-	jr z, .noEffect        ; could not act this turn
-	cp d
-	jr nz, .noEffect       ; different move
-	ld a, c
-	cp e
-	jr nz, .noEffect       ; different mon
+	ld a, [wBridgeRepeatState]
+	cp 2
+	jr nz, .noEffect
 	; Repeat confirmed: maxHP/8, minimum 1. wBattleMonMaxHP is big-endian.
 	ld a, [wBattleMonMaxHP]
 	ld b, a

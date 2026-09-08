@@ -14,13 +14,24 @@ _CalcStats::
 	cp NUM_STATS
 	jr nz, .statsLoop
 	pop hl
-	ld a, [wBridgeRayCalcEffect]
-	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
-	jr z, .applyShrinkRay
-	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
-	jr z, .applyGrowthRay
-	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
-	jr z, .applyBodyArmor
+	ld a, [wBridgeCalcEffectFlags]
+	bit BRIDGE_SELECTED_EFFECT_SHRINK_RAY, a
+	jr z, .checkGrowthRay
+	push hl
+	call .applyShrinkRay
+	pop hl
+.checkGrowthRay
+	ld a, [wBridgeCalcEffectFlags]
+	bit BRIDGE_SELECTED_EFFECT_GROWTH_RAY, a
+	jr z, .checkBodyArmor
+	push hl
+	call .applyGrowthRay
+	pop hl
+.checkBodyArmor
+	ld a, [wBridgeCalcEffectFlags]
+	bit BRIDGE_SELECTED_EFFECT_BODY_ARMOR, a
+	jr z, .clearCalcState
+	call .applyBodyArmor
 	jr .clearCalcState
 .applyShrinkRay
 	inc hl
@@ -31,14 +42,14 @@ _CalcStats::
 	inc hl
 	inc hl ; Speed
 	call .addEighth
-	jr .clearCalcState
+	ret
 .applyBodyArmor
 	inc hl
 	inc hl
 	inc hl
 	inc hl ; Defense
 	call .addHalf
-	jr .clearCalcState
+	ret
 .applyGrowthRay
 	call .addEighth ; Max HP
 	inc hl
@@ -48,7 +59,7 @@ _CalcStats::
 	inc hl
 	inc hl
 	inc hl ; Speed
-	call .subtractEighth
+	jp .subtractEighth
 .clearCalcState
 	; Fusion (Phase 2): auto-clear the max-base sentinel now that this full
 	; recalc is done, so it never leaks into the next unrelated CalcStats call
@@ -56,7 +67,7 @@ _CalcStats::
 	; is the only thing that turns it on, and only right before invoking us -
 	; so callers never have to clear it themselves.
 	xor a
-	ld [wBridgeRayCalcEffect], a
+	ld [wBridgeCalcEffectFlags], a
 	ld [wFusionSecondaryBaseStats], a
 	ret
 

@@ -81,11 +81,9 @@ DEF BRIDGE_SELECTED_OWNER_DAYCARE2   EQU BRIDGE_SELECTED_OWNER_DAYCARE1 + 1
 DEF BRIDGE_SELECTED_OWNER_MAX        EQU BRIDGE_SELECTED_OWNER_DAYCARE2
 ASSERT BRIDGE_SELECTED_OWNER_MAX < $ff
 
-; Effect 0 is the empty-record marker. The selected effects are deliberately
-; one-per-owner: a new selected effect blocks an existing selected effect on
-; that Pokémon. Intrinsic special-form traits such as Quick Claw and
-; Intimidating Presence are resolved from species/form data and do not use a
-; record here.
+; Effect 0 is the empty-record marker. Each owner may occupy at most one record;
+; intrinsic special-form traits such as Quick Claw and Intimidating Presence
+; are resolved from species/form data and do not use a record here.
 const_def 1
 const BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
 const BRIDGE_SELECTED_EFFECT_SHRINK_RAY

@@ -583,3 +583,8 @@ INCLUDE "engine/events/reward_poke_balls.asm"
 INCLUDE "gfx/trade.asm"  ; marcelnote - moved from Battle Engine 7, LoadTradingGFXAndMonNames uses BANK()
 INCLUDE "engine/gfx/save_screen_area_to_buffer3.asm"
 INCLUDE "custom_functions/func_enhancedcolor.asm"
+
+
+SECTION "Bridge Extended Effects", ROMX
+
+INCLUDE "custom_functions/bridge_effects_extended.asm"

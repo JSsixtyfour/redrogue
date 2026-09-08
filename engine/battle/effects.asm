@@ -121,34 +121,30 @@ PoisonEffect:
 	jr nz, .didntAffect
 	jr .inflictPoison
 .sideEffectTest
+	push hl
+	push de
+	ld e, b
+	farcall BridgeAdjustStatusChanceThreshold
+	ld b, e
+	pop de
+	pop hl
 	call BattleRandom
 	cp b ; was side effect successful?
 	ret nc
 .inflictPoison
-	dec hl
-	set PSN, [hl]
 	push de
-	dec de
+	farcall BridgeInflictPoisonStatus
+	ld a, e
+	and a
+	ld hl, PoisonedText
+	jr z, .poisonTextReady
+	ld hl, BadlyPoisonedText
+.poisonTextReady
+	ld b, ENEMY_HUD_SHAKE_ANIM
 	ldh a, [hWhoseTurn]
 	and a
+	jr z, .continue
 	ld b, SHAKE_SCREEN_ANIM
-	ld hl, wPlayerBattleStatus3
-	ld a, [de]
-	ld de, wPlayerToxicCounter
-	jr nz, .ok
-	ld b, ENEMY_HUD_SHAKE_ANIM
-	ld hl, wEnemyBattleStatus3
-	ld de, wEnemyToxicCounter
-.ok
-	cp TOXIC
-	jr nz, .normalPoison ; done if move is not Toxic
-	set BADLY_POISONED, [hl] ; else set Toxic battstatus
-	xor a
-	ld [de], a
-	ld hl, BadlyPoisonedText
-	jr .continue
-.normalPoison
-	ld hl, PoisonedText
 .continue
 	pop de
 	ld a, [de]
@@ -229,6 +225,9 @@ FreezeBurnParalyzeEffect:
 	sub PARALYZE_SIDE_EFFECT2 - PARALYZE_SIDE_EFFECT1 ; treat extra effective as regular from now on
 .regular_effectiveness
 	push af
+	ld e, b
+	farcall BridgeAdjustStatusChanceThreshold
+	ld b, e
 	call BattleRandom ; get random 8bit value for probability test
 	cp b
 	pop bc

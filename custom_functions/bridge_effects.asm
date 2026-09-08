@@ -171,7 +171,7 @@ BridgeApplyCuteDamageBoost::
 	call BridgeHasGlobalEffect
 	ret nc
 	ld a, 150
-	jr BridgeScaleDamage
+	jp BridgeScaleDamage
 
 ; In: e = complete dual-type effectiveness multiplier from TypeEffectiveness.
 BridgeApplySuperEffectiveDamageBoost::
@@ -182,12 +182,80 @@ BridgeApplySuperEffectiveDamageBoost::
 	cp COUNTER
 	ret z
 	ld a, e
-	cp EFFECTIVE * 2
+	cp SUPER_EFFECTIVE * 2
 	ret c
 	ld e, BRIDGE_EFFECT_SUPER_EFFECTIVE
 	call BridgeHasGlobalEffect
 	ret nc
 	jr BridgeScaleDamage120
+
+; Reset the current-action Repeat result. The previous successful move remains
+; live until execution either publishes the actual move or the post-move hook
+; confirms that no move occurred.
+BridgeBeginRepeatAction::
+	xor a
+	ld [wBridgeRepeatState], a
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret nz
+	jr BridgeClearRepeatTracking
+
+; Publish the actual move after disobedience has resolved it. Metronome and
+; Mirror Move reach this seam first as wrapper moves and then again with their
+; generated/copied move, so defer tracking on the wrapper pass.
+BridgePrepareRepeatAction::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, BridgeClearRepeatTracking
+	ld a, [wPlayerMoveEffect]
+	cp METRONOME_EFFECT
+	ret z
+	cp MIRROR_MOVE_EFFECT
+	ret z
+	ld a, [wPlayerSelectedMove]
+	and a
+	jr z, BridgeClearRepeatTracking
+	ld b, a                      ; actual move
+	ld c, 1                      ; valid non-repeating move
+	ld a, [wWitchPrevPlayerMove]
+	cp b
+	jr nz, .record
+	ld a, [wWitchPrevPlayerSlot]
+	ld d, a
+	ld a, [wPlayerMonNumber]
+	cp d
+	jr nz, .record
+	inc c                         ; same move and same party member
+.record
+	ld a, b
+	ld [wWitchPrevPlayerMove], a
+	ld a, [wPlayerMonNumber]
+	ld [wWitchPrevPlayerSlot], a
+	ld a, c
+	ld [wBridgeRepeatState], a
+	ret
+
+BridgeClearRepeatTracking::
+	xor a
+	ld [wWitchPrevPlayerMove], a
+	ld [wBridgeRepeatState], a
+	ret
+
+BridgeApplyRepeatDamageBoost::
+	ld a, [wBridgeRepeatState]
+	cp 2
+	ret nz
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMovePower]
+	and a
+	ret z
+	ld e, BRIDGE_EFFECT_REPEAT
+	call BridgeHasGlobalEffect
+	ret nc
+	ld a, 115
+	jr BridgeScaleDamage
 
 BridgeScaleDamage120::
 	ld a, 120
