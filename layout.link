@@ -298,6 +298,11 @@ ROMX $33
 	"Sound Effects 4"
 	"Audio Engine 4"
 	"Music 4"
+	; Species Groups Phase 2 batch 3 onward. "Pics 6" (in $32) overflowed its
+	; bank once 33 species' worth of pics landed there; this bank had ~11 KB
+	; free after AUDIO_4, plenty of room. Pin further "Pics N" here until this
+	; bank fills too.
+	"Pics 7"
 ROMX $34
 	; DrainHPEffect_ is entered through the existing jpfar wrapper, keeps its
 	; text local, and reaches external code only through HOME/predef/far seams.

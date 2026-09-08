@@ -168,4 +168,24 @@ MonPartyData:
 	nybble ICON_QUADRUPED ; Furret
 	nybble ICON_BIRD      ; Hoothoot
 	nybble ICON_BIRD      ; Noctowl
+	nybble ICON_BUG       ; Ledyba
+	nybble ICON_BUG       ; Ledian
+	nybble ICON_BUG       ; Spinarak
+	nybble ICON_BUG       ; Ariados
+	nybble ICON_MON       ; Crobat
+	nybble ICON_WATER     ; Chinchou
+	nybble ICON_WATER     ; Lanturn
+	nybble ICON_MON       ; Togepi
+	nybble ICON_BIRD      ; Togetic
+	nybble ICON_BIRD      ; Natu
+	nybble ICON_BIRD      ; Xatu
+	nybble ICON_QUADRUPED ; Mareep
+	nybble ICON_QUADRUPED ; Flaaffy
+	nybble ICON_QUADRUPED ; Ampharos
+	nybble ICON_GRASS     ; Bellossom
+	nybble ICON_WATER     ; Marill
+	nybble ICON_WATER     ; Azumarill
+	nybble ICON_MON       ; Sudowoodo
+	nybble ICON_WATER     ; Politoed
+	nybble ICON_GRASS     ; Hoppip
 	end_nybble_array NUM_POKEMON

@@ -111,16 +111,16 @@ EvosMovesPointerTable:
 	dw NinetalesEvosMoves
 	dw PikachuEvosMoves
 	dw RaichuEvosMoves
-	dw MissingNo56EvosMoves
-	dw MissingNo57EvosMoves
+	dw LedybaEvosMoves
+	dw LedianEvosMoves
 	dw DratiniEvosMoves
 	dw DragonairEvosMoves
 	dw KabutoEvosMoves
 	dw KabutopsEvosMoves
 	dw HorseaEvosMoves
 	dw SeadraEvosMoves
-	dw MissingNo5EEvosMoves
-	dw MissingNo5FEvosMoves
+	dw SpinarakEvosMoves
+	dw AriadosEvosMoves
 	dw SandshrewEvosMoves
 	dw SandslashEvosMoves
 	dw OmanyteEvosMoves
@@ -140,38 +140,38 @@ EvosMovesPointerTable:
 	dw WeedleEvosMoves
 	dw KakunaEvosMoves
 	dw BeedrillEvosMoves
-	dw MissingNo73EvosMoves
+	dw CrobatEvosMoves
 	dw DodrioEvosMoves
 	dw PrimeapeEvosMoves
 	dw DugtrioEvosMoves
 	dw VenomothEvosMoves
 	dw DewgongEvosMoves
-	dw MissingNo79EvosMoves
-	dw MissingNo7AEvosMoves
+	dw ChinchouEvosMoves
+	dw LanturnEvosMoves
 	dw CaterpieEvosMoves
 	dw MetapodEvosMoves
 	dw ButterfreeEvosMoves
 	dw MachampEvosMoves
-	dw MissingNo7FEvosMoves
+	dw TogepiEvosMoves
 	dw GolduckEvosMoves
 	dw HypnoEvosMoves
 	dw GolbatEvosMoves
 	dw MewtwoEvosMoves
 	dw SnorlaxEvosMoves
 	dw MagikarpEvosMoves
-	dw MissingNo86EvosMoves
-	dw MissingNo87EvosMoves
+	dw TogeticEvosMoves
+	dw NatuEvosMoves
 	dw MukEvosMoves
-	dw MissingNo8AEvosMoves
+	dw XatuEvosMoves
 	dw KinglerEvosMoves
 	dw CloysterEvosMoves
-	dw MissingNo8CEvosMoves
+	dw MareepEvosMoves
 	dw ElectrodeEvosMoves
 	dw ClefableEvosMoves
 	dw WeezingEvosMoves
 	dw PersianEvosMoves
 	dw MarowakEvosMoves
-	dw MissingNo92EvosMoves
+	dw FlaaffyEvosMoves
 	dw HaunterEvosMoves
 	dw AbraEvosMoves
 	dw AlakazamEvosMoves
@@ -181,13 +181,13 @@ EvosMovesPointerTable:
 	dw BulbasaurEvosMoves
 	dw VenusaurEvosMoves
 	dw TentacruelEvosMoves
-	dw MissingNo9CEvosMoves
+	dw AmpharosEvosMoves
 	dw GoldeenEvosMoves
 	dw SeakingEvosMoves
-	dw MissingNo9FEvosMoves
-	dw MissingNoA0EvosMoves
-	dw MissingNoA1EvosMoves
-	dw MissingNoA2EvosMoves
+	dw BellossomEvosMoves
+	dw MarillEvosMoves
+	dw AzumarillEvosMoves
+	dw SudowoodoEvosMoves
 	dw PonytaEvosMoves
 	dw RapidashEvosMoves
 	dw RattataEvosMoves
@@ -197,9 +197,9 @@ EvosMovesPointerTable:
 	dw GeodudeEvosMoves
 	dw PorygonEvosMoves
 	dw AerodactylEvosMoves
-	dw MissingNoACEvosMoves
+	dw PolitoedEvosMoves
 	dw MagnemiteEvosMoves
-	dw MissingNoAEEvosMoves
+	dw HoppipEvosMoves
 	dw MissingNoAFEvosMoves
 	dw CharmanderEvosMoves
 	dw SquirtleEvosMoves
@@ -1902,16 +1902,36 @@ RaichuEvosMoves:
     db 2, FLY
     db 2, SURF
     db 0 
-MissingNo56EvosMoves:
+LedybaEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 18, LEDIAN
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; SAFEGUARD/BATON_PASS do not exist in Gen 1,
+; filled with METRONOME.
+	db 8, SUPERSONIC
+	db 15, COMET_PUNCH
+	db 22, LIGHT_SCREEN
+	db 22, REFLECT
+	db 22, METRONOME ; was SAFEGUARD
+	db 29, METRONOME ; was BATON_PASS
+	db 36, SWIFT
+	db 43, AGILITY
+	db 50, DOUBLE_EDGE
 	db 0
 
-MissingNo57EvosMoves:
+LedianEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - TACKLE/SUPERSONIC already granted at level 1
+	db 8, SUPERSONIC
+	db 15, COMET_PUNCH
+	db 24, LIGHT_SCREEN
+	db 24, REFLECT
+	db 24, METRONOME ; was SAFEGUARD
+	db 33, METRONOME ; was BATON_PASS
+	db 42, SWIFT
+	db 51, AGILITY
+	db 60, DOUBLE_EDGE
 	db 0
 
 DratiniEvosMoves:
@@ -2044,16 +2064,35 @@ SeadraEvosMoves:
     db 2, SPLASH
     db 2, HAZE
     db 0 
-MissingNo5EEvosMoves:
+SpinarakEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 22, ARIADOS
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; SCARY_FACE/SPIDER_WEB do not exist in Gen 1,
+; filled with METRONOME.
+	db 6, METRONOME ; was SCARY_FACE
+	db 11, CONSTRICT
+	db 17, NIGHT_SHADE
+	db 23, LEECH_LIFE
+	db 30, FURY_SWIPES
+	db 37, METRONOME ; was SPIDER_WEB
+	db 45, SCREECH
+	db 53, PSYCHIC_M
 	db 0
 
-MissingNo5FEvosMoves:
+AriadosEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - POISON_STING/STRING_SHOT/CONSTRICT already granted at level 1
+; (SCARY_FACE's level-1 slot is METRONOME, see base_stats/ariados.asm)
+	db 6, METRONOME ; was SCARY_FACE
+	db 11, CONSTRICT
+	db 17, NIGHT_SHADE
+	db 25, LEECH_LIFE
+	db 34, FURY_SWIPES
+	db 43, METRONOME ; was SPIDER_WEB
+	db 53, SCREECH
+	db 63, PSYCHIC_M
 	db 0
 
 SandshrewEvosMoves:
@@ -2345,6 +2384,9 @@ ParasEvosMoves:
 PoliwhirlEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, WATER_STONE, 1, POLIWRATH
+; Species Groups Phase 2: canon Poliwhirl->Politoed is a trade evolution
+; (holding King's Rock); EVOLVE_TRADE is the closest fit this engine has.
+	db EVOLVE_TRADE, 1, POLITOED
 	db 0
 ; Learnset
 	db 6,  MIST
@@ -2425,10 +2467,21 @@ BeedrillEvosMoves:
 	db 40, AGILITY
 	db 0
 
-MissingNo73EvosMoves:
+CrobatEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
+; LEECH_LIFE/TACKLE/BITE/SCREECH already granted at level 1.
+	db 7, WING_ATTACK
+	db 12, GUST
+	db 14, SUPERSONIC
+	db 20, BITE
+	db 26, CONFUSE_RAY
+	db 32, DISABLE
+	db 38, SCREECH
+	db 42, SLUDGE
+	db 46, HAZE
+	db 50, AGILITY
 	db 0
 
 DodrioEvosMoves:
@@ -2526,16 +2579,31 @@ DewgongEvosMoves:
     db 2, PECK
     db 2, SLAM
     db 0
-MissingNo79EvosMoves:
+ChinchouEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 27, LANTURN
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; FLAIL/SPARK do not exist in Gen 1, filled
+; with METRONOME.
+	db 5, SUPERSONIC
+	db 13, METRONOME ; was FLAIL
+	db 17, WATER_GUN
+	db 25, METRONOME ; was SPARK
+	db 29, CONFUSE_RAY
+	db 37, TAKE_DOWN
+	db 41, HYDRO_PUMP
 	db 0
 
-MissingNo7AEvosMoves:
+LanturnEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - BUBBLE/THUNDER_WAVE/SUPERSONIC already granted at level 1
+	db 13, METRONOME ; was FLAIL
+	db 17, WATER_GUN
+	db 25, METRONOME ; was SPARK
+	db 33, CONFUSE_RAY
+	db 45, TAKE_DOWN
+	db 53, HYDRO_PUMP
 	db 0
 
 CaterpieEvosMoves:
@@ -2590,10 +2658,18 @@ MachampEvosMoves:
     db 2, LIGHT_SCREEN
     db 2, THRASH
     db 0
-MissingNo7FEvosMoves:
+TogepiEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 20, TOGETIC ; substitute for canon happiness evolution -
+	                              ; no friendship system in this engine
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; SWEET_KISS/ENCORE/SAFEGUARD do not exist in
+; Gen 1, filled with METRONOME. Level 7's METRONOME is the real canon move.
+	db 7, METRONOME
+	db 18, METRONOME ; was SWEET_KISS
+	db 25, METRONOME ; was ENCORE
+	db 31, METRONOME ; was SAFEGUARD
+	db 38, DOUBLE_EDGE
 	db 0
 
 GolduckEvosMoves:
@@ -2646,6 +2722,11 @@ HypnoEvosMoves:
     db 0
 GolbatEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Golbat->Crobat is a friendship evolution; this
+; engine only supports EVOLVE_LEVEL/EVOLVE_ITEM/EVOLVE_TRADE, so it is
+; substituted with a level threshold, matching KEP's own precedent for the
+; same species.
+	db EVOLVE_LEVEL, 40, CROBAT
 	db 0
 ; Learnset
 	db 5, SUPERSONIC
@@ -2709,16 +2790,29 @@ MagikarpEvosMoves:
     db 2, BUBBLE
     db 2, DRAGON_RAGE
     db 0
-MissingNo86EvosMoves:
+TogeticEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - GROWL/CHARM already granted at level 1 (CHARM's slot is
+; METRONOME, see base_stats/togetic.asm)
+	db 7, METRONOME
+	db 18, METRONOME ; was SWEET_KISS
+	db 25, METRONOME ; was ENCORE
+	db 31, METRONOME ; was SAFEGUARD
+	db 38, DOUBLE_EDGE
 	db 0
 
-MissingNo87EvosMoves:
+NatuEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 25, XATU
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; FUTURE_SIGHT does not exist in Gen 1, filled
+; with METRONOME.
+	db 10, NIGHT_SHADE
+	db 20, TELEPORT
+	db 30, METRONOME ; was FUTURE_SIGHT
+	db 40, CONFUSE_RAY
+	db 50, PSYCHIC_M
 	db 0
 
 MukEvosMoves:
@@ -2743,10 +2837,15 @@ MukEvosMoves:
     db 2, HAZE
     db 2, LICK
     db 0
-MissingNo8AEvosMoves:
+XatuEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - PECK/LEER/NIGHT_SHADE already granted at level 1; FUTURE_SIGHT
+; does not exist in Gen 1, filled with METRONOME.
+	db 20, TELEPORT
+	db 35, METRONOME ; was FUTURE_SIGHT
+	db 50, CONFUSE_RAY
+	db 65, PSYCHIC_M
 	db 0
 
 KinglerEvosMoves:
@@ -2785,10 +2884,17 @@ CloysterEvosMoves:
     db 2, BARRIER
     db 2, SCREECH
     db 0 
-MissingNo8CEvosMoves:
+MareepEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 15, FLAAFFY
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; COTTON_SPORE does not exist in Gen 1,
+; filled with METRONOME.
+	db 9, THUNDERSHOCK
+	db 16, THUNDER_WAVE
+	db 23, METRONOME ; was COTTON_SPORE
+	db 30, LIGHT_SCREEN
+	db 37, THUNDER
 	db 0
 
 ElectrodeEvosMoves:
@@ -2879,10 +2985,16 @@ MarowakEvosMoves:
     db 2, FIRE_PUNCH
     db 2, THUNDERPUNCH
     db 0
-MissingNo92EvosMoves:
+FlaaffyEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 30, AMPHAROS
 	db 0
-; Learnset
+; Learnset - TACKLE/GROWL/THUNDERSHOCK already granted at level 1
+	db 9, THUNDERSHOCK
+	db 18, THUNDER_WAVE
+	db 27, METRONOME ; was COTTON_SPORE
+	db 36, LIGHT_SCREEN
+	db 45, THUNDER
 	db 0
 
 HaunterEvosMoves:
@@ -3048,10 +3160,17 @@ TentacruelEvosMoves:
     db 2, HAZE
     db 2, CONFUSE_RAY
     db 0
-MissingNo9CEvosMoves:
+AmpharosEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - TACKLE/GROWL/THUNDERSHOCK/THUNDER_WAVE already granted at
+; level 1
+	db 9, THUNDERSHOCK
+	db 18, THUNDER_WAVE
+	db 27, METRONOME ; was COTTON_SPORE
+	db 30, THUNDERPUNCH
+	db 42, LIGHT_SCREEN
+	db 57, THUNDER
 	db 0
 
 GoldeenEvosMoves:
@@ -3095,28 +3214,55 @@ SeakingEvosMoves:
     db 2, PSYBEAM
     db 2, SWORDS_DANCE
     db 0
-MissingNo9FEvosMoves:
+BellossomEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
+; STUN_SPORE/SLEEP_POWDER already granted at level 1.
+	db 15, POISONPOWDER
+	db 17, STUN_SPORE
+	db 19, SLEEP_POWDER
 	db 0
 
-MissingNoA0EvosMoves:
+MarillEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 18, AZUMARILL
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; ROLLOUT/RAIN_DANCE do not exist in Gen 1,
+; filled with METRONOME.
+	db 3, DEFENSE_CURL
+	db 6, TAIL_WHIP
+	db 10, WATER_GUN
+	db 15, METRONOME ; was ROLLOUT
+	db 21, BUBBLEBEAM
+	db 28, DOUBLE_EDGE
+	db 36, METRONOME ; was RAIN_DANCE
 	db 0
 
-MissingNoA1EvosMoves:
+AzumarillEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - TACKLE/DEFENSE_CURL/TAIL_WHIP/WATER_GUN already granted at
+; level 1
+	db 3, DEFENSE_CURL
+	db 6, TAIL_WHIP
+	db 10, WATER_GUN
+	db 15, METRONOME ; was ROLLOUT
+	db 25, BUBBLEBEAM
+	db 36, DOUBLE_EDGE
+	db 48, METRONOME ; was RAIN_DANCE
 	db 0
 
-MissingNoA2EvosMoves:
+SudowoodoEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; FLAIL/FAINT_ATTACK do not exist in Gen 1,
+; filled with METRONOME. ROCK_THROW/MIMIC already granted at level 1.
+	db 10, METRONOME ; was FLAIL
+	db 19, LOW_KICK
+	db 28, ROCK_SLIDE
+	db 37, METRONOME ; was FAINT_ATTACK
+	db 46, SLAM
 	db 0
 
 PonytaEvosMoves:
@@ -3307,10 +3453,11 @@ AerodactylEvosMoves:
     db 2, EARTHQUAKE
     db 2, HEADBUTT
     db 0
-MissingNoACEvosMoves:
+PolitoedEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
+; HYPNOSIS/WATER_GUN/DOUBLESLAP/BODY_SLAM already granted at level 1.
 	db 0
 
 MagnemiteEvosMoves:
@@ -3331,10 +3478,21 @@ MagnemiteEvosMoves:
 ; Tutoring Learnset   
     db 2, AGILITY
     db 0
-MissingNoAEEvosMoves:
+HoppipEvosMoves:
 ; Evolutions
+; SKIPLOOM is a later batch. When it is added, restore:
+;	db EVOLVE_LEVEL, 18, SKIPLOOM
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; SYNTHESIS (level 1, filled with METRONOME)
+; and COTTON_SPORE do not exist in Gen 1.
+	db 5, TAIL_WHIP
+	db 10, TACKLE
+	db 13, POISONPOWDER
+	db 15, STUN_SPORE
+	db 17, SLEEP_POWDER
+	db 20, LEECH_SEED
+	db 25, METRONOME ; was COTTON_SPORE
+	db 30, MEGA_DRAIN
 	db 0
 
 MissingNoAFEvosMoves:
@@ -3506,6 +3664,9 @@ OddishEvosMoves:
 GloomEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, LEAF_STONE, 1, VILEPLUME
+; Species Groups Phase 2: canon Gloom->Bellossom uses a Sun Stone, already in
+; the project (added for Espeon).
+	db EVOLVE_ITEM, SUN_STONE, 1, BELLOSSOM
 	db 0
 ; Learnset
 	db 5, POISONPOWDER

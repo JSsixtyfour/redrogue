@@ -85,16 +85,16 @@ PokedexEntryPointers:
 	dw NinetalesDexEntry
 	dw PikachuDexEntry
 	dw RaichuDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw LedybaDexEntry
+	dw LedianDexEntry
 	dw DratiniDexEntry
 	dw DragonairDexEntry
 	dw KabutoDexEntry
 	dw KabutopsDexEntry
 	dw HorseaDexEntry
 	dw SeadraDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw SpinarakDexEntry
+	dw AriadosDexEntry
 	dw SandshrewDexEntry
 	dw SandslashDexEntry
 	dw OmanyteDexEntry
@@ -114,38 +114,38 @@ PokedexEntryPointers:
 	dw WeedleDexEntry
 	dw KakunaDexEntry
 	dw BeedrillDexEntry
-	dw MissingNoDexEntry
+	dw CrobatDexEntry
 	dw DodrioDexEntry
 	dw PrimeapeDexEntry
 	dw DugtrioDexEntry
 	dw VenomothDexEntry
 	dw DewgongDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw ChinchouDexEntry
+	dw LanturnDexEntry
 	dw CaterpieDexEntry
 	dw MetapodDexEntry
 	dw ButterfreeDexEntry
 	dw MachampDexEntry
-	dw MissingNoDexEntry
+	dw TogepiDexEntry
 	dw GolduckDexEntry
 	dw HypnoDexEntry
 	dw GolbatDexEntry
 	dw MewtwoDexEntry
 	dw SnorlaxDexEntry
 	dw MagikarpDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw TogeticDexEntry
+	dw NatuDexEntry
 	dw MukDexEntry
-	dw MissingNoDexEntry
+	dw XatuDexEntry
 	dw KinglerDexEntry
 	dw CloysterDexEntry
-	dw MissingNoDexEntry
+	dw MareepDexEntry
 	dw ElectrodeDexEntry
 	dw ClefableDexEntry
 	dw WeezingDexEntry
 	dw PersianDexEntry
 	dw MarowakDexEntry
-	dw MissingNoDexEntry
+	dw FlaaffyDexEntry
 	dw HaunterDexEntry
 	dw AbraDexEntry
 	dw AlakazamDexEntry
@@ -155,13 +155,13 @@ PokedexEntryPointers:
 	dw BulbasaurDexEntry
 	dw VenusaurDexEntry
 	dw TentacruelDexEntry
-	dw MissingNoDexEntry
+	dw AmpharosDexEntry
 	dw GoldeenDexEntry
 	dw SeakingDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw BellossomDexEntry
+	dw MarillDexEntry
+	dw AzumarillDexEntry
+	dw SudowoodoDexEntry
 	dw PonytaDexEntry
 	dw RapidashDexEntry
 	dw RattataDexEntry
@@ -171,9 +171,9 @@ PokedexEntryPointers:
 	dw GeodudeDexEntry
 	dw PorygonDexEntry
 	dw AerodactylDexEntry
-	dw MissingNoDexEntry
+	dw PolitoedDexEntry
 	dw MagnemiteDexEntry
-	dw MissingNoDexEntry
+	dw HoppipDexEntry
 	dw MissingNoDexEntry
 	dw CharmanderDexEntry
 	dw SquirtleDexEntry
@@ -1375,4 +1375,144 @@ NoctowlDexEntry:
 	db 5,3
 	dw 899
 	text_far _NoctowlDexEntry
+	text_end
+
+LedybaDexEntry:
+	db "FIVE STAR@"
+	db 3,3
+	dw 243
+	text_far _LedybaDexEntry
+	text_end
+
+LedianDexEntry:
+	db "FIVE STAR@"
+	db 4,7
+	dw 785
+	text_far _LedianDexEntry
+	text_end
+
+SpinarakDexEntry:
+	db "SPIDER@"
+	db 1,8
+	dw 187
+	text_far _SpinarakDexEntry
+	text_end
+
+AriadosDexEntry:
+	db "LONG LEG@"
+	db 3,7
+	dw 739
+	text_far _AriadosDexEntry
+	text_end
+
+CrobatDexEntry:
+	db "BAT@"
+	db 5,7
+	dw 1653
+	text_far _CrobatDexEntry
+	text_end
+
+ChinchouDexEntry:
+	db "ANGLER@"
+	db 1,8
+	dw 265
+	text_far _ChinchouDexEntry
+	text_end
+
+LanturnDexEntry:
+	db "LIGHT@"
+	db 3,11
+	dw 496
+	text_far _LanturnDexEntry
+	text_end
+
+TogepiDexEntry:
+	db "SPIKE BALL@"
+	db 1,0
+	dw 33
+	text_far _TogepiDexEntry
+	text_end
+
+TogeticDexEntry:
+	db "HAPPINESS@"
+	db 2,0
+	dw 71
+	text_far _TogeticDexEntry
+	text_end
+
+NatuDexEntry:
+	db "TINY BIRD@"
+	db 0,8
+	dw 44
+	text_far _NatuDexEntry
+	text_end
+
+XatuDexEntry:
+	db "MYSTIC@"
+	db 4,11
+	dw 335
+	text_far _XatuDexEntry
+	text_end
+
+MareepDexEntry:
+	db "WOOL@"
+	db 2,0
+	dw 176
+	text_far _MareepDexEntry
+	text_end
+
+FlaaffyDexEntry:
+	db "WOOL@"
+	db 2,7
+	dw 293
+	text_far _FlaaffyDexEntry
+	text_end
+
+AmpharosDexEntry:
+	db "LIGHT@"
+	db 4,7
+	dw 1356
+	text_far _AmpharosDexEntry
+	text_end
+
+BellossomDexEntry:
+	db "FLOWER@"
+	db 1,4
+	dw 128
+	text_far _BellossomDexEntry
+	text_end
+
+MarillDexEntry:
+	db "AQUA MOUSE@"
+	db 1,4
+	dw 187
+	text_far _MarillDexEntry
+	text_end
+
+AzumarillDexEntry:
+	db "AQUA BUNNY@"
+	db 2,7
+	dw 617
+	text_far _AzumarillDexEntry
+	text_end
+
+SudowoodoDexEntry:
+	db "IMITATION@"
+	db 3,11
+	dw 838
+	text_far _SudowoodoDexEntry
+	text_end
+
+PolitoedDexEntry:
+	db "FROG@"
+	db 3,7
+	dw 747
+	text_far _PolitoedDexEntry
+	text_end
+
+HoppipDexEntry:
+	db "COTTONWEED@"
+	db 1,4
+	dw 11
+	text_far _HoppipDexEntry
 	text_end

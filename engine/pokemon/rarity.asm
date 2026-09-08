@@ -58,8 +58,8 @@ RarityKanto:
 RarityJohto:
 	rarity_tier JohtoPokeball
 	rarity_tier JohtoGreatball
-	rarity_tier_empty ; ultraball
-	rarity_tier_empty ; masterball
+	rarity_tier JohtoUltraball
+	rarity_tier JohtoMasterball
 	rarity_tier_empty ; uber
 
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
@@ -263,10 +263,29 @@ KantoUber_End:
 JohtoPokeball:
 	db SENTRET
 	db HOOTHOOT
+	db LEDYBA
+	db SPINARAK
+	db MAREEP
+	db MARILL
+	db HOPPIP
 JohtoPokeball_Evos:
 ; stage 1
 	db FURRET
 	db NOCTOWL
+	db LEDIAN
+	db ARIADOS
+	db FLAAFFY
+	db AZUMARILL
+; stage 2
+	db AMPHAROS
+; Crobat/Bellossom/Politoed are evolved-only (from Golbat/Gloom/Poliwhirl, all
+; Kanto base species - see the EVOLVE_LEVEL/EVOLVE_ITEM/EVOLVE_TRADE additions
+; to their EvosMoves). Parked here as classification-only placeholders, same
+; pattern as Weavile/Mamoswine/Mismagius in JohtoGreatball - the Kanto base
+; species stay in the Kanto pool, since they predate this project.
+	db CROBAT
+	db BELLOSSOM
+	db POLITOED
 JohtoPokeball_End:
 
 JohtoGreatball:
@@ -291,6 +310,23 @@ JohtoGreatball_Evos:
 	db MAMOSWINE
 	db MISMAGIUS
 JohtoGreatball_End:
+
+JohtoUltraball:
+	db CHINCHOU
+	db NATU
+	db SUDOWOODO
+JohtoUltraball_Evos:
+; stage 1
+	db LANTURN
+	db XATU
+JohtoUltraball_End:
+
+JohtoMasterball:
+	db TOGEPI
+JohtoMasterball_Evos:
+; stage 1
+	db TOGETIC
+JohtoMasterball_End:
 
 
 ; The Kanto pool must still describe exactly the 151 Kanto species.

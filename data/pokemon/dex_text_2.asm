@@ -169,3 +169,206 @@ _NoctowlDexEntry::
 	next "a great hunter"
 	next "in the dark"
 	dex
+
+_LedybaDexEntry::
+	text "It is timid."
+	next "In the cold, it"
+	next "huddles together"
+
+	page "with others of"
+	next "its kind to keep"
+	next "from freezing"
+	dex
+
+_LedianDexEntry::
+	text "It flies through"
+	next "the dark using"
+	next "the spots on its"
+
+	page "back as a beacon,"
+	next "flapping about"
+	next "as it does so"
+	dex
+
+_SpinarakDexEntry::
+	text "It spins a"
+	next "web that is"
+	next "nearly invisible"
+
+	page "in the dark of"
+	next "night. Prey get"
+	next "stuck fast in it"
+	dex
+
+_AriadosDexEntry::
+	text "It marks its"
+	next "web-building"
+	next "territory with"
+
+	page "thread that"
+	next "carries its"
+	next "unique scent"
+	dex
+
+_CrobatDexEntry::
+	text "Once it targets"
+	next "prey, it chases"
+	next "it persistently"
+
+	page "using its four"
+	next "wings to fly at"
+	next "high speed"
+	dex
+
+_ChinchouDexEntry::
+	text "It flashes the"
+	next "lights on its"
+	next "head to check"
+
+	page "its surroundings."
+	next "It never loses"
+	next "sight of prey"
+	dex
+
+_LanturnDexEntry::
+	text "Its light"
+	next "organ shines so"
+	next "brightly, it can"
+
+	page "illuminate the"
+	next "sea's surface"
+	next "even from deep"
+	dex
+
+_TogepiDexEntry::
+	text "It is said to"
+	next "share good luck"
+	next "when it is kindly"
+
+	page "treated. Its"
+	next "shell is full of"
+	next "joy for the future"
+	dex
+
+_TogeticDexEntry::
+	text "It is said to"
+	next "appear before"
+	next "kindhearted,"
+
+	page "caring people"
+	next "and share happy"
+	next "memories with them"
+	dex
+
+_NatuDexEntry::
+	text "It stares at"
+	next "the sun all day"
+	next "long, standing"
+
+	page "still on one leg."
+	next "It is said to see"
+	next "into the future"
+	dex
+
+_XatuDexEntry::
+	text "It stands rooted"
+	next "in one spot all"
+	next "day, watching"
+
+	page "the sky. It is"
+	next "said to see the"
+	next "past and future"
+	dex
+
+_MareepDexEntry::
+	text "Its fluffy wool"
+	next "rubs together"
+	next "and generates"
+
+	page "static electricity."
+	next "The fluffier the"
+	next "coat, the more"
+
+	page "electricity it"
+	next "can store"
+	dex
+
+_FlaaffyDexEntry::
+	text "Its wool has"
+	next "started to thin"
+	next "out. It stores"
+
+	page "electricity in"
+	next "its rubbery,"
+	next "bare hide"
+	dex
+
+_AmpharosDexEntry::
+	text "Its long tail"
+	next "shines brightly."
+	next "In the past,"
+
+	page "people used the"
+	next "light to send"
+	next "signals to others"
+	dex
+
+_BellossomDexEntry::
+	text "Basking in a"
+	next "warm, nurturing"
+	next "sun makes its"
+
+	page "petals grow more"
+	next "vivid. It dances"
+	next "in a slow rhythm"
+	dex
+
+_MarillDexEntry::
+	text "Its tail is"
+	next "wrapped in a"
+	next "waterproof film"
+
+	page "and floats on the"
+	next "surface as it"
+	next "swims about"
+	dex
+
+_AzumarillDexEntry::
+	text "It uses its"
+	next "long, sensitive"
+	next "ears to detect"
+
+	page "the movements of"
+	next "prey in even the"
+	next "murkiest waters"
+	dex
+
+_SudowoodoDexEntry::
+	text "It disguises"
+	next "itself as a tree"
+	next "to avoid being"
+
+	page "attacked. It"
+	next "hates water and"
+	next "hides on rainy days"
+	dex
+
+_PolitoedDexEntry::
+	text "The curl on its"
+	next "forehead is a"
+	next "sign of status"
+
+	page "among its kind."
+	next "The longer, the"
+	next "more respected"
+	dex
+
+_HoppipDexEntry::
+	text "If it senses"
+	next "danger, it"
+	next "immediately"
+
+	page "links arms with"
+	next "others nearby to"
+	next "avoid being blown"
+	dex

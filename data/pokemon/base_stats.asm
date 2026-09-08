@@ -181,6 +181,30 @@ INCLUDE "data/pokemon/base_stats/furret.asm"
 INCLUDE "data/pokemon/base_stats/hoothoot.asm"
 INCLUDE "data/pokemon/base_stats/noctowl.asm"
 
+; --- Species Groups Phase 2: Johto batch 2, dex 168-177 ---
+INCLUDE "data/pokemon/base_stats/ledyba.asm"
+INCLUDE "data/pokemon/base_stats/ledian.asm"
+INCLUDE "data/pokemon/base_stats/spinarak.asm"
+INCLUDE "data/pokemon/base_stats/ariados.asm"
+INCLUDE "data/pokemon/base_stats/crobat.asm"
+INCLUDE "data/pokemon/base_stats/chinchou.asm"
+INCLUDE "data/pokemon/base_stats/lanturn.asm"
+INCLUDE "data/pokemon/base_stats/togepi.asm"
+INCLUDE "data/pokemon/base_stats/togetic.asm"
+INCLUDE "data/pokemon/base_stats/natu.asm"
+
+; --- Species Groups Phase 2: Johto batch 3, dex 178-187 ---
+INCLUDE "data/pokemon/base_stats/xatu.asm"
+INCLUDE "data/pokemon/base_stats/mareep.asm"
+INCLUDE "data/pokemon/base_stats/flaaffy.asm"
+INCLUDE "data/pokemon/base_stats/ampharos.asm"
+INCLUDE "data/pokemon/base_stats/bellossom.asm"
+INCLUDE "data/pokemon/base_stats/marill.asm"
+INCLUDE "data/pokemon/base_stats/azumarill.asm"
+INCLUDE "data/pokemon/base_stats/sudowoodo.asm"
+INCLUDE "data/pokemon/base_stats/politoed.asm"
+INCLUDE "data/pokemon/base_stats/hoppip.asm"
+
 	assert_table_length NUM_POKEMON
 
 ; Alignment guards. assert_table_length only checks the COUNT, so it passes
@@ -195,4 +219,4 @@ MACRO assert_dex_row_at
 ENDM
 
 	; anchored at the end of the table, so every preceding row must be in place
-	assert_dex_row_at DEX_NOCTOWL
+	assert_dex_row_at DEX_HOPPIP

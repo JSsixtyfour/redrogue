@@ -178,5 +178,27 @@
 	const DEX_FURRET      ; 165
 	const DEX_HOOTHOOT    ; 166
 	const DEX_NOCTOWL     ; 167
+; --- Species Groups Phase 2: Johto batch 2 ---
+	const DEX_LEDYBA      ; 168
+	const DEX_LEDIAN      ; 169
+	const DEX_SPINARAK    ; 170
+	const DEX_ARIADOS     ; 171
+	const DEX_CROBAT      ; 172
+	const DEX_CHINCHOU    ; 173
+	const DEX_LANTURN     ; 174
+	const DEX_TOGEPI      ; 175
+	const DEX_TOGETIC     ; 176
+	const DEX_NATU        ; 177
+; --- Species Groups Phase 2: Johto batch 3 ---
+	const DEX_XATU        ; 178
+	const DEX_MAREEP      ; 179
+	const DEX_FLAAFFY     ; 180
+	const DEX_AMPHAROS    ; 181
+	const DEX_BELLOSSOM   ; 182
+	const DEX_MARILL      ; 183
+	const DEX_AZUMARILL   ; 184
+	const DEX_SUDOWOODO   ; 185
+	const DEX_POLITOED    ; 186
+	const DEX_HOPPIP      ; 187
 
 DEF NUM_POKEMON EQU const_value - 1

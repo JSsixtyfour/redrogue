@@ -654,12 +654,12 @@ PokemonSpriteCategoryTable:
 	db $10 ; $4F,$50 FURRET,HOOTHOOT (bird sprite for Hoothoot, matches Pidgey/Fearow)
 	db $01 ; $51,$52 NOCTOWL,VULPIX (bird sprite for Noctowl)
 	db $07 ; $53,$54 NINETALES,PIKACHU
-	db $30 ; $55,$56 RAICHU,skip
-	db $02 ; $57,$58 skip,DRATINI
+	db $00 ; $55,$56 RAICHU,LEDYBA
+	db $00 ; $57,$58 LEDIAN,DRATINI
 	db $26 ; $59,$5A DRAGONAIR,KABUTO
 	db $02 ; $5B,$5C KABUTOPS,HORSEA
-	db $20 ; $5D,$5E SEADRA,skip
-	db $00 ; $5F,$60 skip,SANDSHREW
+	db $00 ; $5D,$5E SEADRA,SPINARAK
+	db $00 ; $5F,$60 ARIADOS,SANDSHREW
 	db $06 ; $61,$62 SANDSLASH,OMANYTE
 	db $63 ; $63,$64 OMASTAR,JIGGLYPUFF
 	db $30 ; $65,$66 WIGGLYTUFF,EEVEE
@@ -669,36 +669,36 @@ PokemonSpriteCategoryTable:
 	db $02 ; $6D,$6E PARAS,POLIWHIRL
 	db $20 ; $6F,$70 POLIWRATH,WEEDLE
 	db $00 ; $71,$72 KAKUNA,BEEDRILL
-	db $01 ; $73,$74 skip,DODRIO
+	db $00 ; $73,$74 CROBAT,DODRIO
 	db $00 ; $75,$76 PRIMEAPE,DUGTRIO
 	db $02 ; $77,$78 VENOMOTH,DEWGONG
-	db $00 ; $79,$7A skip,skip
+	db $00 ; $79,$7A CHINCHOU,LANTURN
 	db $00 ; $7B,$7C CATERPIE,METAPOD
 	db $00 ; $7D,$7E BUTTERFREE,MACHAMP
-	db $02 ; $7F,$80 skip,GOLDUCK
+	db $00 ; $7F,$80 TOGEPI,GOLDUCK
 	db $00 ; $81,$82 HYPNO,GOLBAT
 	db $05 ; $83,$84 MEWTWO,SNORLAX
-	db $20 ; $85,$86 MAGIKARP,skip
-	db $00 ; $87,$88 skip,MUK
-	db $02 ; $89,$8A skip,KINGLER
-	db $60 ; $8B,$8C CLOYSTER,skip
+	db $00 ; $85,$86 MAGIKARP,TOGETIC
+	db $00 ; $87,$88 NATU,MUK
+	db $01 ; $89,$8A XATU,KINGLER (bird sprite for Xatu)
+	db $00 ; $8B,$8C CLOYSTER,MAREEP
 	db $43 ; $8D,$8E ELECTRODE,CLEFABLE
 	db $00 ; $8F,$90 WEEZING,PERSIAN
-	db $00 ; $91,$92 MAROWAK,skip
+	db $00 ; $91,$92 MAROWAK,FLAAFFY
 	db $00 ; $93,$94 HAUNTER,ABRA
 	db $01 ; $95,$96 ALAKAZAM,PIDGEOTTO
 	db $16 ; $97,$98 PIDGEOT,STARMIE
 	db $00 ; $99,$9A BULBASAUR,VENUSAUR
-	db $20 ; $9B,$9C TENTACRUEL,skip
+	db $00 ; $9B,$9C TENTACRUEL,AMPHAROS
 	db $22 ; $9D,$9E GOLDEEN,SEAKING
-	db $00 ; $9F,$A0 skip,skip
-	db $00 ; $A1,$A2 skip,skip
+	db $00 ; $9F,$A0 BELLOSSOM,MARILL
+	db $00 ; $A1,$A2 AZUMARILL,SUDOWOODO
 	db $00 ; $A3,$A4 PONYTA,RAPIDASH
 	db $00 ; $A5,$A6 RATTATA,RATICATE
 	db $00 ; $A7,$A8 NIDORINO,NIDORINA
 	db $00 ; $A9,$AA GEODUDE,PORYGON
-	db $10 ; $AB,$AC AERODACTYL,skip
-	db $40 ; $AD,$AE MAGNEMITE,skip
+	db $00 ; $AB,$AC AERODACTYL,POLITOED
+	db $00 ; $AD,$AE MAGNEMITE,HOPPIP
 	db $00 ; $AF,$B0 skip,CHARMANDER
 	db $20 ; $B1,$B2 SQUIRTLE,CHARMELEON
 	db $20 ; $B3,$B4 WARTORTLE,CHARIZARD
