@@ -17,6 +17,10 @@ The target builds `pokeblue_debug.gbc`, resolves current addresses from
 `pokeblue_debug.sym`, and runs the focused smoke suite with Python's standard
 `unittest` runner.
 
+Deterministic seeds make failures reproducible; they do not make an incidental
+RNG sequence an API. Random-generation tests should assert structural and
+gameplay invariants unless an exact sequence is itself an intentional contract.
+
 Current coverage:
 
 - Debug 1 boot to Silph Co Dorm with the intro tour complete

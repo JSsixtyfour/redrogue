@@ -63,7 +63,7 @@ class LobbyPoseLayoutTests(unittest.TestCase):
             "ld [wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX], a"
         )
         freeze = self.healing.index("ld [hl], $ff")
-        restore = self.healing.index("jp UpdateSprites")
+        restore = self.healing.index("farjp FollowerRefreshAfterHeal")
         self.assertLess(hide, freeze)
         self.assertLess(freeze, restore)
 

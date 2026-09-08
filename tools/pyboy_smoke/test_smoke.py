@@ -49,44 +49,28 @@ class BootSmokeTest(HarnessTestCase):
         self.harness.write8("wNumberOfWarps", 0)
         self.harness.call_routine("IsPlayerStandingOnWarp")
 
-    def test_fight2_seed17_party_generation_golden(self) -> None:
+    def test_fight2_seed17_party_generation_is_well_formed(self) -> None:
         assert self.harness is not None
         self.harness.boot_fight2(seed=17)
         self.assertEqual(self.harness.read8("wPartyCount"), 6)
         self.assertEqual(self.harness.read8("wEnemyPartyCount"), 6)
         self.assertEqual(self.harness.read8("wIsTrainerBattle"), 1)
         self.assertEqual(self.harness.read8("wCurOpponent"), 0xE7)  # COOLTRAINER_M
-        self.assertEqual(
-            self.harness.read_bytes("wPartySpecies", 7),
-            # Rebaselined 2026-08-27, _Divide optimisation
-            # (DIVIDE_OPTIMIZATION_SPEC.md): replaced the repeated-subtraction
-            # _Divide (engine/math/multiply_divide.asm) with shift-subtract
-            # long division - same inputs/outputs, drastically fewer CPU
-            # cycles per call. This project's RNG-adjacent timing is
-            # cycle-sensitive (see project_smoke_suite_catches_rng_drift), and
-            # Divide is called from damage calc, stat calc, and EXP all over
-            # roster-build, so a cycle-count change here was expected to shift
-            # this seeded stream - anticipated in the spec's own section 4.
-            # Bisected via `git stash push -- engine/math/multiply_divide.asm`
-            # (the established no-drift-proof technique): this test passes
-            # with the OLD routine at HEAD and only differs with the port
-            # applied, confirming the shift is real and attributable to this
-            # change, not an unrelated regression. Verified the new party is
-            # not corrupted, not just different: all 12 slots (both sides)
-            # have real species, sane levels (1-100), and HP == MaxHP.
-            # Also verified: a full differential sweep of ~5,472 real
-            # (b, divisor, dividend) cases against the OLD routine found ZERO
-            # quotient mismatches and zero hRemainder mismatches at b=4 (the
-            # only case any caller - PayDayEffect_ - reads it for); see
-            # DIVIDE_OPTIMIZATION_SPEC.md section 3 and 6.
-            [126, 111, 141, 45, 35, 147, 0xFF],
-        )
-        self.assertEqual(
-            self.harness.read_bytes("wEnemyPartySpecies", 7),
-            # Rebaselined alongside wPartySpecies above - same cause, same
-            # verification.
-            [44, 144, 59, 128, 114, 151, 0xFF],
-        )
+        for species_label, mon_label in (
+            ("wPartySpecies", "wPartyMon1"),
+            ("wEnemyPartySpecies", "wEnemyMon1"),
+        ):
+            party = self.harness.read_bytes(species_label, 7)
+            self.assertEqual(party[6], 0xFF)
+            self.assertTrue(all(species not in (0, 0xFF) for species in party[:6]))
+            for slot in range(6):
+                offset = slot * 44  # PARTYMON_STRUCT_LENGTH
+                level = self.harness.read8(f"{mon_label}Level", offset=offset)
+                hp = self.harness.read_bytes(f"{mon_label}HP", 2, offset=offset)
+                max_hp = self.harness.read_bytes(f"{mon_label}MaxHP", 2, offset=offset)
+                self.assertIn(level, range(1, 101))
+                self.assertNotEqual(max_hp, [0, 0])
+                self.assertEqual(hp, max_hp)
         for label in ("wPartyMonNicks", "wEnemyMonNicks"):
             for slot in range(6):
                 nickname = self.harness.read_bytes(label, 11, offset=slot * 11)

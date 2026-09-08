@@ -1058,7 +1058,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         self.assertEqual(self.harness.read8("wSprite15StateData1XPixels"), start_pixel_x)
 
 
-class YellowFollowerRoute1CGBTest(unittest.TestCase):
+class YellowFollowerRoute1CGBContract:
     def setUp(self) -> None:
         self.harness = RedRogueHarness(ROOT, ARTIFACTS, cgb_mode=True)
 

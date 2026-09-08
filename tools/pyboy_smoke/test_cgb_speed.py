@@ -4,6 +4,7 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
+from test_follower_yellow_runtime import YellowFollowerRoute1CGBContract
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -26,3 +27,10 @@ class CGBSpeedSmokeTest(unittest.TestCase):
             self.assertEqual(harness.pyboy.memory[wait_immediate], 0x50)
         finally:
             harness.close()
+
+
+class YellowFollowerRoute1CGBTest(
+    YellowFollowerRoute1CGBContract,
+    unittest.TestCase,
+):
+    """Run the Route 1 60 FPS contract in the CGB-classified module."""

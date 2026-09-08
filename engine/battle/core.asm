@@ -5827,7 +5827,11 @@ AdjustDamageForMoveType:
 	ld [wDamage + 1], a
 	ld hl, wDamageMultipliers
 	set BIT_STAB_DAMAGE, [hl]
+	; d/e still hold the defender's two types for the TypeEffects scan below.
+	; The bridge helper uses both as scratch even when no STAB gift is active.
+	push de
 	farcall BridgeApplyStabDamageBoost
+	pop de
 .skipSameTypeAttackBonus
 	ld a, [wMoveType]
 	ld b, a
