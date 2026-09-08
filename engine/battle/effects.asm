@@ -24,6 +24,9 @@ _JumpMoveEffect:
 INCLUDE "data/moves/effects_pointers.asm"
 
 SleepEffect:
+	ld e, BRIDGE_STATUS_CHECK_OTHER
+	farcall BridgePlayerTargetBlocksStatus
+	jp c, .didntAffect
 	ld de, wEnemyMonStatus
 	ld bc, wEnemyBattleStatus2
 	ldh a, [hWhoseTurn]
@@ -92,6 +95,13 @@ PoisonEffect:
 	ld hl, wBattleMonStatus
 	ld de, wEnemyMoveEffect
 .poisonEffect
+	push hl
+	push de
+	ld e, BRIDGE_STATUS_CHECK_POISON
+	farcall BridgePlayerTargetBlocksStatus
+	pop de
+	pop hl
+	jr c, .noEffect
 	call CheckTargetSubstitute
 	jr nz, .noEffect ; can't poison a substitute target
 	ld a, [hli]
@@ -196,6 +206,9 @@ ExplodeEffect:
 	ret
 
 FreezeBurnParalyzeEffect:
+	ld e, BRIDGE_STATUS_CHECK_OTHER
+	farcall BridgePlayerTargetBlocksStatus
+	ret c
 	xor a
 	ld [wAnimationType], a
 	call CheckTargetSubstitute

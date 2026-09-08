@@ -242,18 +242,25 @@ PrepareFusionAndBridgeRayCalcStats::
 	pop de
 	ret
 
-; Shrink Ray's Speed and Attack are ordinary stored derived stats. Evasion has
-; no party-struct stat, so initialize that one component on battle entry.
+; Apply battle-entry evasion stages. Iga's Shadow Step grants the whole party
+; +1; Shrink Ray grants its owner another +1. Both cap at the normal +6 stage.
 BridgeApplyShrinkRayEvasion::
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z
+	ld a, [wBridgeGlobalEffects + (BRIDGE_EFFECT_EVASION / 8)]
+	bit BRIDGE_EFFECT_EVASION % 8, a
+	jr z, .shrinkRay
+	call .increment
+.shrinkRay
 	ld a, [wPlayerMonNumber]
 	inc a
 	ld d, a
 	ld e, BRIDGE_SELECTED_EFFECT_SHRINK_RAY
 	call BridgeOwnerHasSelectedEffect
 	ret nc
+	; fall through
+.increment
 	ld hl, wPlayerMonEvasionMod
 	ld a, [hl]
 	cp $d
@@ -646,6 +653,14 @@ BridgeTrackBillsPCCrossDomainSwap::
 ; In: b/c = owner identifiers. Exchange every sparse record belonging to the
 ; two Pokémon. Updating owner bytes directly handles zero, one, or two effects
 ; on either side without allocating scratch state.
+;
+; CLOBBERS: af, bc, de, hl - de in particular, via `ld d, b / ld e, c` below.
+; Every BridgeTrack*Swap entry point falls into or jumps to this routine, so
+; they ALL destroy de. Three of the four call sites return immediately and do
+; not care; the fourth, SwapBillsPCSelectedPartyAndBoxMons in
+; engine/pokemon/bills_pc.asm, holds the CalcStats destination in de across the
+; farcall and must push it (it does - see the comment there). If you add a new
+; caller with a live de, guard it.
 BridgeSwapSelectedOwners:
 	ld a, b
 	and a

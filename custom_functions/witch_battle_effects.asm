@@ -65,9 +65,7 @@ HandlePostPlayerMoveWitchEffects::
 	jr z, .recoilSpecialOnly
 
 .noEffect
-	or a               ; ensure Z clear - "nothing happened, mon is alive"
-	inc a
-	ret
+	jr .lifeOrb
 
 ; --- Challenges 16/17: same recoil as 12, gated on the move's damage class.
 ; Gen 1 has no per-move category: types below SPECIAL ($14) are physical,
@@ -101,7 +99,9 @@ HandlePostPlayerMoveWitchEffects::
 	inc c                  ; minimum 1
 .recoilApply
 	ld de, RecoilChallengeText
-	jr ApplyWitchSelfDamage
+	call ApplyWitchSelfDamage
+	ret z
+	jr .lifeOrb
 
 ; --- Challenge 14: punish using the same move twice in a row.
 ; BridgePrepareRepeatAction owns the shared move-and-slot tracker and publishes
@@ -128,7 +128,56 @@ HandlePostPlayerMoveWitchEffects::
 	inc c                  ; minimum 1
 .sameMoveApply
 	ld de, SameMovePenaltyText
-	; fall through
+	call ApplyWitchSelfDamage
+	ret z
+	; fall through to the independent selected-Pokémon recoil
+
+.lifeOrb
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .noPostEffect
+	ld a, [wBridgeRepeatState]
+	and a
+	jr z, .noPostEffect
+	ld a, [wMoveMissed]
+	and a
+	jr nz, .noPostEffect
+	ld a, [wDamage]
+	ld b, a
+	ld a, [wDamage + 1]
+	or b
+	jr z, .noPostEffect
+	ld a, [wBattleMonHP]
+	ld b, a
+	ld a, [wBattleMonHP + 1]
+	or b
+	jr z, .noPostEffect
+	ld e, BRIDGE_SELECTED_EFFECT_LIFE_ORB
+	call BridgeActiveMonHasSelectedEffect
+	jr nc, .noPostEffect
+	ld a, [wBattleMonMaxHP]
+	ldh [hDividend], a
+	ld a, [wBattleMonMaxHP + 1]
+	ldh [hDividend + 1], a
+	ld a, 10
+	ldh [hDivisor], a
+	ld b, 2
+	call Divide
+	ldh a, [hQuotient + 2]
+	ld b, a
+	ldh a, [hQuotient + 3]
+	ld c, a
+	or b
+	jr nz, .lifeOrbApply
+	inc c
+.lifeOrbApply
+	ld de, LifeOrbRecoilText
+	jp ApplyWitchSelfDamage
+
+.noPostEffect
+	or a
+	inc a
+	ret
 
 ; ------------------------------------------------------------
 ; ApplyWitchSelfDamage   (local; every challenge above funnels through here)
@@ -188,6 +237,10 @@ RecoilChallengeText:
 
 SameMovePenaltyText:
 	text_far _SameMovePenaltyText
+	text_end
+
+LifeOrbRecoilText:
+	text_far _HitWithRecoilText
 	text_end
 
 ; ============================================================

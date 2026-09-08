@@ -667,11 +667,24 @@ SwapBillsPCSelectedPartyAndBoxMons:
 	ld b, 1
 	; The data swap is already complete. Move sparse bridge ownership before
 	; recalculating the incoming party mon so its ray follows it across domains.
+	;
+	; de MUST be preserved here: it is the MON_STATS destination CalcStats writes
+	; to, and BridgeTrackBillsPCCrossDomainSwap falls through into
+	; BridgeSwapSelectedOwners, which does `ld d, b / ld e, c` to hold its two
+	; owner ids. Without this push, de came back as a pair of small owner numbers,
+	; CalcStats wrote the rebuilt stats into low ROM where the writes were
+	; discarded, and the party slot kept the OUTGOING mon's stats - a level 5 mon
+	; showing the level 57 Articuno it was swapped with. The level write above
+	; goes through hl, which is why the level looked right and only the stats did
+	; not. PrepareFusionAndBridgeRayCalcStats preserves de itself (push/pop around
+	; a single .done exit), so only this first farcall needs the guard.
+	push de
 	push bc
 	push hl
 	farcall BridgeTrackBillsPCCrossDomainSwap
 	pop hl
 	pop bc
+	pop de
 	push bc
 	push hl
 	farcall PrepareFusionAndBridgeRayCalcStats

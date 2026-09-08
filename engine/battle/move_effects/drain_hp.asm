@@ -12,6 +12,19 @@ DrainHPEffect_:
 	inc hl
 	inc [hl]
 .getAttackerHP
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .healAmountReady
+	ld a, [wDamage]
+	ld d, a
+	ld a, [wDamage + 1]
+	ld e, a
+	farcall BridgeScaleDrainHealingAmount
+	ld a, d
+	ld [wDamage], a
+	ld a, e
+	ld [wDamage + 1], a
+.healAmountReady
 	ld hl, wBattleMonHP
 	ld de, wBattleMonMaxHP
 	ldh a, [hWhoseTurn]

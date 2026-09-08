@@ -115,13 +115,22 @@ BridgeAdjustAccuracyThreshold::
 	ret nz
 	ld a, [wWitchPrizesEarned]
 	and 1 << (PRIZE_ACC_BOOST - 1)
-	ret z
+	jr z, .bridge
+	call .addTenPoints
+.bridge
+	push de
+	ld e, BRIDGE_EFFECT_ACCURACY
+	call BridgeHasGlobalEffect
+	pop de
+	ret nc
+.addTenPoints
 	ld a, e
 	add 26
 	jr nc, .store
 	ld a, $ff
 .store
 	ld e, a
+.done
 	ret
 
 ; In/out: e = the move's ordinary flinch threshold.
@@ -187,7 +196,7 @@ BridgeApplySuperEffectiveDamageBoost::
 	ld e, BRIDGE_EFFECT_SUPER_EFFECTIVE
 	call BridgeHasGlobalEffect
 	ret nc
-	jr BridgeScaleDamage120
+	jp BridgeScaleDamage120
 
 ; Reset the current-action Repeat result. The previous successful move remains
 ; live until execution either publishes the actual move or the post-move hook
@@ -255,6 +264,25 @@ BridgeApplyRepeatDamageBoost::
 	call BridgeHasGlobalEffect
 	ret nc
 	ld a, 115
+	jr BridgeScaleDamage
+
+BridgeApplyLifeOrbDamageBoost::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMovePower]
+	and a
+	ret z
+	ld e, BRIDGE_SELECTED_EFFECT_LIFE_ORB
+	call BridgeActiveMonHasSelectedEffect
+	ret nc
+	ld a, 130
 	jr BridgeScaleDamage
 
 BridgeScaleDamage120::

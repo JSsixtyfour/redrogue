@@ -406,10 +406,14 @@ INCLUDE "engine/events/give_pokemon.asm"
 INCLUDE "engine/predefs.asm"
 
 
+SECTION "Paralyze Effect", ROMX
+
+INCLUDE "engine/battle/move_effects/paralyze.asm"
+
+
 SECTION "Battle Engine 8", ROMX
 
 INCLUDE "engine/battle/init_battle_variables.asm"
-INCLUDE "engine/battle/move_effects/paralyze.asm"
 INCLUDE "engine/battle/move_effects/heal.asm"                 ; marcelnote - moved from Battle Engine 7
 INCLUDE "engine/battle/move_effects/transform.asm"            ; marcelnote - moved from Battle Engine 7
 INCLUDE "engine/battle/move_effects/reflect_light_screen.asm" ; marcelnote - moved from Battle Engine 7
@@ -616,4 +620,3 @@ INCLUDE "custom_functions/func_enhancedcolor.asm"
 SECTION "Bridge Extended Effects", ROMX
 
 INCLUDE "custom_functions/bridge_effects_extended.asm"
-

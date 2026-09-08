@@ -29,6 +29,11 @@ HealEffect_:
 	cp REST
 	jr nz, .healHP
 	push hl
+	farcall BridgePlayerRestIsBlocked
+	pop hl
+	jp c, .failed
+	ld a, REST
+	push hl
 	push de
 	push af
 	ld c, 50
@@ -62,6 +67,15 @@ HealEffect_:
 	srl b
 	rr c
 .gotHPAmountToHeal
+	push hl
+	push de
+	ld d, b
+	ld e, c
+	farcall BridgeScalePlayerHealingMoveAmount
+	ld b, d
+	ld c, e
+	pop de
+	pop hl
 ; update HP
 	ld a, [de]
 	ld [wHPBarOldHP], a

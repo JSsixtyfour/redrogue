@@ -1092,6 +1092,10 @@ ItemUseMedicine:
 	jr z, .addHealAmount
 	ld b, 20 ; Potion heal amount
 .addHealAmount
+	ld d, 0
+	ld e, b
+	farcall BridgeScaleGeneralHealingAmount
+	ld b, e
 	pop de
 	pop hl
 	ld a, [hl]

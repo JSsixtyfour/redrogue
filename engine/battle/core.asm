@@ -600,7 +600,11 @@ HandlePoisonBurnLeechSeed:
 	ldh [hWhoseTurn], a
 	pop hl
 	call HandlePoisonBurnLeechSeed_DecreaseOwnHP
-	call HandlePoisonBurnLeechSeed_IncreaseEnemyHP
+	push hl
+	ld d, b
+	ld e, c
+	farcall HandlePoisonBurnLeechSeed_IncreaseEnemyHP
+	pop hl
 	push hl
 	ld hl, HurtByLeechSeedText
 	call PrintText
@@ -694,58 +698,6 @@ HandlePoisonBurnLeechSeed_DecreaseOwnHP:
 	ld [wHPBarNewHP+1], a
 .noOverkill
 	call UpdateCurMonHPBar
-	pop hl
-	ret
-
-; adds bc to enemy HP
-; bc isn't updated if HP subtracted was capped to prevent overkill
-HandlePoisonBurnLeechSeed_IncreaseEnemyHP:
-	push hl
-	ld hl, wEnemyMonMaxHP
-	ldh a, [hWhoseTurn]
-	and a
-	jr z, .playersTurn
-	ld hl, wBattleMonMaxHP
-.playersTurn
-	ld a, [hli]
-	ld [wHPBarMaxHP+1], a
-	ld a, [hl]
-	ld [wHPBarMaxHP], a
-	ld de, wBattleMonHP - wBattleMonMaxHP
-	add hl, de           ; skip back from max hp to current hp
-	ld a, [hl]
-	ld [wHPBarOldHP], a ; add bc to current HP
-	add c
-	ld [hld], a
-	ld [wHPBarNewHP], a
-	ld a, [hl]
-	ld [wHPBarOldHP+1], a
-	adc b
-	ld [hli], a
-	ld [wHPBarNewHP+1], a
-	ld a, [wHPBarMaxHP]
-	ld c, a
-	ld a, [hld]
-	sub c
-	ld a, [wHPBarMaxHP+1]
-	ld b, a
-	ld a, [hl]
-	sbc b
-	jr c, .noOverfullHeal
-	ld a, b                ; overfull heal, set HP to max HP
-	ld [hli], a
-	ld [wHPBarNewHP+1], a
-	ld a, c
-	ld [hl], a
-	ld [wHPBarNewHP], a
-.noOverfullHeal
-	ldh a, [hWhoseTurn]
-	xor $1
-	ldh [hWhoseTurn], a
-	call UpdateCurMonHPBar
-	ldh a, [hWhoseTurn]
-	xor $1
-	ldh [hWhoseTurn], a
 	pop hl
 	ret
 
@@ -3607,7 +3559,6 @@ PlayerCalcMoveDamage:
 	call CalculateDamage
 	jp z, PlayerCheckIfFlyOrChargeEffect ; for moves with 0 BP, skip any further damage calculation and, for now, skip MoveHitTest
 	               ; for these moves, accuracy tests will only occur if they are called as part of the effect itself
-	farcall BridgeApplyCriticalDamageBoost
 	call AdjustDamageForMoveType
 	call RandomizeDamage
 .moveHitTest
@@ -5913,6 +5864,8 @@ AdjustDamageForMoveType:
 	call BridgeTrySuperEffectiveDamageBoost
 	farcall BridgeApplyCuteDamageBoost
 	farcall BridgeApplyRepeatDamageBoost
+	farcall BridgeApplyLifeOrbDamageBoost
+	farcall BridgeApplyCriticalDamageBoost
 	farcall RoguePrismDamageBoost
 	ret
 

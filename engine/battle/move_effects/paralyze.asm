@@ -1,4 +1,7 @@
 ParalyzeEffect_:
+	ld e, BRIDGE_STATUS_CHECK_OTHER
+	farcall BridgePlayerTargetBlocksStatus
+	jp c, .didntAffect
 	ld hl, wEnemyMonStatus
 	ld de, wPlayerMoveType
 	ldh a, [hWhoseTurn]

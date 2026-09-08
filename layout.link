@@ -299,6 +299,12 @@ ROMX $33
 	"Audio Engine 4"
 	"Music 4"
 ROMX $34
+	; DrainHPEffect_ is entered through the existing jpfar wrapper, keeps its
+	; text local, and reaches external code only through HOME/predef/far seams.
+	; Pinning the intact section here creates hook room in Battle Engine 2.
+	"Drain HP Effect"
+	; ParalyzeEffect_ is reached by jpfar and uses only HOME/far external calls.
+	"Paralyze Effect"
 	; Remaining Bridge battle effects are isolated from the nearly full rogue
 	; bank. Every exported entry is reached by farcall and reads no local data
 	; from another bank.
