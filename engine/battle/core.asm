@@ -3601,6 +3601,7 @@ PlayerCalcMoveDamage:
 	call CalculateDamage
 	jp z, PlayerCheckIfFlyOrChargeEffect ; for moves with 0 BP, skip any further damage calculation and, for now, skip MoveHitTest
 	               ; for these moves, accuracy tests will only occur if they are called as part of the effect itself
+	farcall BridgeApplyCriticalDamageBoost
 	call AdjustDamageForMoveType
 	call RandomizeDamage
 .moveHitTest
@@ -5172,6 +5173,24 @@ CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm
 .critBoostDone
 	ld b, a
 .noCritBoost
+	; Captain selected gift: add 25 percentage points to this mon's critical
+	; threshold. Apply after relative Witch scaling and saturate before the
+	; intrinsic always-critical form.
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .noBridgeCritBoost
+	push bc
+	ld e, BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
+	farcall BridgeActiveMonHasSelectedEffect
+	pop bc
+	jr nc, .noBridgeCritBoost
+	ld a, b
+	add 25 percent + 1
+	jr nc, .storeBridgeCritBoost
+	ld a, $ff
+.storeBridgeCritBoost
+	ld b, a
+.noBridgeCritBoost
 	; Special form (func_special_form.asm): SF_ALWAYS_CRIT (Farfetch'd) forces
 	; the crit for the attacker. Preserve b across the caps lookup, which
 	; farcalls through Bankswitch and clobbers b.

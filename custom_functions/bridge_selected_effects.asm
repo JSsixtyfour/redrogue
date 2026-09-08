@@ -100,6 +100,22 @@ BridgeHasSelectedEffect::
 	scf
 	ret
 
+; In: e = BRIDGE_SELECTED_EFFECT_*. Query the active player's party owner.
+; Out: carry set only when that active mon owns the requested effect.
+BridgeActiveMonHasSelectedEffect::
+	ld d, e
+	ld a, [wPlayerMonNumber]
+	inc a
+	call BridgeSelectedEffectForOwner
+	ret nc
+	cp d
+	jr z, .found
+	and a
+	ret
+.found
+	scf
+	ret
+
 ; In:  a = owner identifier
 ; Out: carry set and a = selected effect when found; clear otherwise.
 ; This is the location-oriented query for battle hooks that already know the

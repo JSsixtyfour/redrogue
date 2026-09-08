@@ -46,6 +46,36 @@ BridgeHasGlobalEffect::
 	scf
 	ret
 
+; Increase the player's calculated critical-hit damage by 20 percent. Called
+; after CalculateDamage and before type, STAB, and random damage modifiers, so
+; fixed-damage and zero-power moves remain excluded by their existing bypass.
+BridgeApplyCriticalDamageBoost::
+	ld a, [wCriticalHitOrOHKO]
+	cp 1
+	ret nz
+	ld e, BRIDGE_EFFECT_CRITICAL_DAMAGE
+	call BridgeHasGlobalEffect
+	ret nc
+	ld a, 120
+	ldh [hMultiplier], a
+	xor a
+	ldh [hMultiplicand], a
+	ld hl, wDamage
+	ld a, [hli]
+	ldh [hMultiplicand + 1], a
+	ld a, [hld]
+	ldh [hMultiplicand + 2], a
+	call Multiply
+	ld a, 100
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ldh a, [hQuotient + 2]
+	ld [hli], a
+	ldh a, [hQuotient + 3]
+	ld [hl], a
+	ret
+
 ; e = BRIDGE_EFFECT_* index
 ; Returns hl = owning byte, d = bit mask. Preserves e.
 BridgeGlobalEffectAddressAndMask:
