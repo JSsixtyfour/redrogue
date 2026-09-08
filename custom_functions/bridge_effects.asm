@@ -56,7 +56,55 @@ BridgeApplyCriticalDamageBoost::
 	ld e, BRIDGE_EFFECT_CRITICAL_DAMAGE
 	call BridgeHasGlobalEffect
 	ret nc
+	jr BridgeScaleDamage120
+
+BridgeApplyStabDamageBoost::
+	; AdjustDamageForMoveType normally bypasses fixed-damage moves, but OHKO
+	; effects return through its type-adjustment path with the OHKO flag set.
+	; Do not scale that sentinel damage as ordinary STAB damage.
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMoveNum]
+	cp COUNTER
+	ret z
+	ld e, BRIDGE_EFFECT_STAB_DAMAGE
+	call BridgeHasGlobalEffect
+	ret nc
+	ld a, 110
+	jr BridgeScaleDamage
+
+BridgeApplyCuteDamageBoost::
+	; The ordinary path already excludes status, Super Fang, and special fixed
+	; damage before reaching AdjustDamageForMoveType. Keep the explicit guards
+	; here as well for OHKO and AI/direct callers, whose base power is 1.
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMoveEffect]
+	cp OHKO_EFFECT
+	ret z
+	cp SUPER_FANG_EFFECT
+	ret z
+	cp SPECIAL_DAMAGE_EFFECT
+	ret z
+	ld a, [wPlayerMoveNum]
+	cp COUNTER
+	ret z
+	ld a, [wPlayerMovePower]
+	and a
+	ret z
+	cp 60
+	ret nc
+	ld e, BRIDGE_EFFECT_CUTE_BOOST
+	call BridgeHasGlobalEffect
+	ret nc
+	ld a, 150
+	jr BridgeScaleDamage
+
+BridgeScaleDamage120::
 	ld a, 120
+BridgeScaleDamage:
 	ldh [hMultiplier], a
 	xor a
 	ldh [hMultiplicand], a

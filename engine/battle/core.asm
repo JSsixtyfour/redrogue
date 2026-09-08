@@ -5855,6 +5855,11 @@ AdjustDamageForMoveType:
 	ld [wDamage + 1], a
 	ld hl, wDamageMultipliers
 	set BIT_STAB_DAMAGE, [hl]
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .skipBridgeStabBoost
+	farcall BridgeApplyStabDamageBoost
+.skipBridgeStabBoost
 .skipSameTypeAttackBonus
 	ld a, [wMoveType]
 	ld b, a
@@ -5932,8 +5937,40 @@ AdjustDamageForMoveType:
 ; `ret nz`; it moved here so the enemy-turn path has somewhere to go.
 	ldh a, [hWhoseTurn]
 	and a
-	jr nz, RogueWitchResistSuperEffective
+	jp nz, RogueWitchResistSuperEffective
+	call BridgeTrySuperEffectiveDamageBoost
+	farcall BridgeApplyCuteDamageBoost
 	farcall RoguePrismDamageBoost
+	ret
+
+; Apply School Type Expert only when the complete dual-type matchup remains
+; genuinely super-effective after resistances and immunities are combined.
+BridgeTrySuperEffectiveDamageBoost:
+	; OHKO damage is represented by the normal type-adjustment path even
+	; though it is not ordinary damage. Keep this bridge bonus out of that
+	; fixed-damage path, matching the other fixed-damage bypasses.
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMoveNum]
+	cp COUNTER
+	ret z
+	ld e, BRIDGE_EFFECT_SUPER_EFFECTIVE
+	farcall BridgeHasGlobalEffect
+	ret nc
+	ld a, EFFECTIVE * 2
+	ld c, a
+	ld a, [wEnemyMonType]
+	ld d, a
+	ld a, [wEnemyMonType + 1]
+	ld e, a
+	ld a, [wPlayerMoveType]
+	ld b, a
+	call TypeMatchupScan
+	ld a, c
+	cp EFFECTIVE * 2
+	ret c
+	farcall BridgeScaleDamage120
 	ret
 
 ; Read-only player move matchup preview.  This deliberately does not reuse
