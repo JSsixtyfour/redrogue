@@ -50,6 +50,16 @@ ROMX $4
 ROMX $5
 	"NPC Sprites 2"
 	"Battle Engine 2"
+	; Pinned 2026-09-08 (Species Groups Phase 2 step 4). This section holds
+	; PokemonSpriteCategoryTable, a nybble array asserted against
+	; NUM_POKEMON_INDEXES, so it grows ~32 bytes over the full species roster.
+	; It was already sitting in $05 by first-fit and the bank had 2 bytes free:
+	; moving "Pokemon Data 1"/CryData out of here freed 570 bytes and two small
+	; floaters ("HUD Pokeball GFX", "Pick Up Item") immediately took them.
+	; Pinning it means rgblink reserves its space BEFORE placing floaters, so the
+	; growth is guaranteed and the floaters get pushed elsewhere on their own.
+	; No code moved for this; the section stays exactly where it already was.
+	"ProceduralCaveGen"
 ROMX $6
 	"Maps 1"
 	"Play Time"
@@ -57,7 +67,11 @@ ROMX $6
 	"Doors and Ledges"
 ROMX $7
 	"Maps 3"
-	"Pokémon Names"
+	; "Pokémon Names" split and relocated 2026-09-08 (Species Groups Phase 2
+	; step 4): the MonsterNames table itself went to bank $30 as "Monster Names",
+	; and the two engine files it used to share a section with stay HERE, under
+	; their own name, so their bank does not change.
+	"Clear Save and Elevator"
 	"Maps 4"
 	"Hidden Events 1"
 ROMX $8
@@ -236,6 +250,42 @@ ROMX $2E
 	; edge is bank-aware (farcall, explicit BANK(), dba, or text predef), and
 	; the complete internal code/data/Cable Club cluster moves together.
 	"Bill's PC"
+ROMX $30
+	; Species Groups Phase 2 step 4, 2026-09-08. Three species tables that each
+	; MUST be one contiguous run in a single bank, because every reader indexes
+	; them with a flat multiply and no bank arithmetic:
+	;   BaseStats      GetMonHeader does (dex - 1) * BASE_DATA_SIZE
+	;   MonsterNames   GetMonName walks NAME_LENGTH at a time
+	;   CryData        GetCryData does species * 3
+	; All three reach their bank via BANK(label), so they are bank-independent -
+	; they just cannot be SPLIT. Their old homes ($0E, $07, $05) had 211, 6 and 9
+	; bytes free respectively, i.e. all three were already out of room.
+	;
+	; Sizes at the full 101-species roster: BaseStats 7,056 + Monster Names 2,670
+	; + Cry Data 759 = 10,485, leaving ~5,900 spare. KEEP THAT HEADROOM FREE.
+	; Do NOT let a Pics section float in here - pin new Pics sections explicitly
+	; (see $32 below), or a link that fits today will fail once BaseStats grows.
+	"Base Stats"
+	"Monster Names"
+	"Pokemon Data 1"
+ROMX $31
+	; "Evos Moves" holds EvosMovesPointerTable AND the blocks it points at. Those
+	; pointers are bare 16-bit `dw`, so table and data must share one bank - this
+	; section can never be split the way "Pokédex Text" can. It reaches ~9,300
+	; bytes at the full roster; bank $12 had FOUR bytes free.
+	"Evos Moves"
+ROMX $32
+	; "Pokédex Text 2" is the overflow half of the dex flavour text, which passes
+	; 16 KiB at the full roster. Legal to split because entries are reached by
+	; bank-aware `text_far`.
+	"Pokédex Text 2"
+	; New species pics. With BASE_PIC_BANK (step 6) a pic may live in ANY bank, so
+	; these are free to go anywhere - but they are PINNED rather than floated, per
+	; this file's own $2E rule, so a large pic blob cannot land in $30/$31 and eat
+	; the growth headroom reserved there. The full 153-species set is ~78 KB, so
+	; expect "Pics 7".."Pics N" to spill onto $33, $34 and then the mid-banks that
+	; carry 4-7 KB of slack each ($15-$2D). Add each one here explicitly.
+	"Pics 6"
 ROMX $33
 	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
 	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in

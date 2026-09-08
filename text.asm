@@ -286,6 +286,14 @@ SECTION "Pokédex Text", ROMX
 INCLUDE "data/pokemon/dex_text.asm"
 
 
+; Species Groups Phase 2 step 4. The full roster takes dex text past 16 KiB, so
+; it is split. Entries are reached by bank-aware `text_far`, which is what makes
+; a split legal here - do NOT split the `dw` pointer tables the same way.
+SECTION "Pokédex Text 2", ROMX
+
+INCLUDE "data/pokemon/dex_text_2.asm"
+
+
 SECTION "Move Names", ROMX
 
 INCLUDE "data/moves/names.asm"

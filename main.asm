@@ -235,9 +235,26 @@ INCLUDE "engine/overworld/doors.asm"
 INCLUDE "engine/overworld/ledges.asm"
 
 
-SECTION "Pokémon Names", ROMX
+; Species Groups Phase 2 step 4: MonsterNames moved out of bank $07 to bank $30.
+; At 101 new species the table reaches ~2,670 bytes and bank $07 had SIX bytes
+; free. It is one contiguous fixed-stride table (GetMonName does
+; `ld a, BANK(MonsterNames)` then a flat SkipFixedLengthTextEntries walk), so it
+; cannot be split; it has to move whole. The two engine files that used to share
+; this section stay in $07, unmoved, under their own name.
+;
+; The only two raw (non-BANK()) references to MonsterNames were both audited and
+; are both dead: NamePointers[0] in home/names2.asm is never dereferenced
+; (MONSTER_NAME branches to GetMonName before the table lookup), and the
+; `ld de, MonsterNames` in InitList (engine/battle/misc.asm) is never stored -
+; that routine only writes hl to wListPointer. Vanilla already flags InitList as
+; doing nothing useful.
+SECTION "Monster Names", ROMX
 
 INCLUDE "data/pokemon/names.asm"
+
+
+SECTION "Clear Save and Elevator", ROMX
+
 INCLUDE "engine/movie/oak_speech/clear_save.asm"
 INCLUDE "engine/events/elevator.asm"
 
@@ -297,10 +314,21 @@ INCLUDE "engine/math/multiply_divide.asm"
 INCLUDE "engine/slots/game_corner_slots.asm"
 
 
+; Species Groups Phase 2 step 4: BaseStats moved out of "Battle Engine 7" to
+; bank $30. At 252 species the table alone is 7,056 bytes, which would take this
+; section to ~17,156 - over a 16 KiB bank on its own. GetMonHeader and
+; evos_moves.asm both reach it via `ld a, BANK(BaseStats)`, so it is
+; bank-independent; and BASE_PIC_BANK (step 6) means each row can name pics in
+; any other bank, which is what lets Mew's row sit here while its pics stay in
+; bank $01.
+SECTION "Base Stats", ROMX
+
+INCLUDE "data/pokemon/base_stats.asm"
+
+
 SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"
-INCLUDE "data/pokemon/base_stats.asm"
 INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
 
@@ -588,3 +616,4 @@ INCLUDE "custom_functions/func_enhancedcolor.asm"
 SECTION "Bridge Extended Effects", ROMX
 
 INCLUDE "custom_functions/bridge_effects_extended.asm"
+

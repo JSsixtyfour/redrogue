@@ -1507,35 +1507,3 @@ _VictreebelDexEntry::
 	next "has ever returned"
 	next "from there"
 	dex
-
-; --- Species Groups Phase 2: Johto ---
-
-_ChikoritaDexEntry::
-	text "A sweet aroma"
-	next "gently wafts from"
-	next "the leaf on its"
-
-	page "head. It loves to"
-	next "soak up the sun's"
-	next "warm rays"
-	dex
-
-_BayleefDexEntry::
-	text "The scent that"
-	next "wafts from the"
-	next "leaves round its"
-
-	page "neck has a spicy,"
-	next "stimulating"
-	next "effect"
-	dex
-
-_MeganiumDexEntry::
-	text "The aroma that"
-	next "rises from its"
-	next "petals soothes"
-
-	page "the feelings of"
-	next "people locked in"
-	next "battle"
-	dex
