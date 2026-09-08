@@ -117,7 +117,7 @@ BridgeRecalcStatsFar::
 	ld b, 1
 	push bc
 	push hl
-	call PrepareFusionCalcStats
+	call PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	call CalcStats
@@ -134,6 +134,85 @@ BridgeRecalcStatsFar::
 	ld [hl], b
 	inc hl
 	ld [hl], c
+	ret
+
+; Recalculate a just-selected ray target without refilling it. hWhichPokemon
+; identifies the party slot and a is the selected ray effect. Growth scales
+; current HP by the same 1.125 multiplier as maximum HP, preserving its health
+; percentage without granting a full heal.
+BridgeRecalculateGrantedRayMon::
+	push af
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop af
+	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr nz, .currentHPReady
+	push de
+	call .boostCurrentHP
+	pop de
+.currentHPReady
+	ld a, [de]
+	ld [wCurSpecies], a
+	push de
+	call GetMonHeader
+	pop de
+	ld h, d
+	ld l, e
+	ld bc, MON_LEVEL
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	ld h, d
+	ld l, e
+	ld bc, MON_STATS
+	add hl, bc
+	ld d, h
+	ld e, l
+	ld bc, (MON_HP_EXP - 1) - MON_STATS
+	add hl, bc
+	ld b, 1
+	push bc
+	push hl
+	call PrepareFusionAndBridgeRayCalcStats
+	pop hl
+	pop bc
+	jp CalcStats
+.boostCurrentHP
+	ld h, d
+	ld l, e
+	ld bc, MON_HP
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	ld d, b
+	ld e, c
+	srl d
+	rr e
+	srl d
+	rr e
+	srl d
+	rr e
+	ld a, c
+	add e
+	ld c, a
+	ld a, b
+	adc d
+	ld b, a
+	ld a, c
+	sub LOW(MAX_STAT_VALUE + 1)
+	ld a, b
+	sbc HIGH(MAX_STAT_VALUE + 1)
+	jr c, .storeHP
+	ld bc, MAX_STAT_VALUE
+.storeHP
+	ld [hl], c
+	dec hl
+	ld [hl], b
 	ret
 
 ; Apply the persistent attributes for a just-delivered level-resolved bridge

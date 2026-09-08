@@ -264,7 +264,7 @@ GainExperience:
 	; bc (stat-exp flag in b) across the farcall.
 	push bc
 	push hl
-	farcall PrepareFusionCalcStats
+	farcall PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	call CalcStats

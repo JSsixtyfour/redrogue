@@ -1345,7 +1345,7 @@ ItemUseMedicine:
 	; sentinel (and reloads wMonHeader) first; _CalcStats auto-clears it after.
 	push bc
 	push hl
-	farcall PrepareFusionCalcStats
+	farcall PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	jp CalcStats ; recalculate stats

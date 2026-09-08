@@ -102,7 +102,12 @@ wTempoModifier:: db
 	; agree - the PyBoy harness writes this by symbol name.
 	wAIDebugTierOverride:: db
 
-	ds 6
+	; Transient CalcStats selector for bridge ray effects. This claims one byte
+	; from the existing unsaved WRAM0 tail padding, so no later address or save
+	; layout moves. Cleared automatically by _CalcStats after every calculation.
+	wBridgeRayCalcEffect:: db
+
+	ds 5
 
 
 SECTION "Sprite State Data", WRAM0

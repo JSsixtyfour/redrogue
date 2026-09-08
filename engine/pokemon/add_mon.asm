@@ -732,17 +732,28 @@ _MoveMon::
 	; Fusion (Phase 2): withdrawing a fused mon from the box recomputes and
 	; stores its stats - re-arm the max-base sentinel so the bonus survives the
 	; round-trip. de = MON_STATS (MON_LEVEL+1, just written above) here.
+	; Move sparse bridge ownership first so the ray preparer can resolve this
+	; newly appended party slot rather than its old box/daycare location.
+	push de
 	push bc
 	push hl
-	farcall PrepareFusionCalcStats
+	farcall BridgeTrackMoveMon
+	pop hl
+	pop bc
+	pop de
+	push bc
+	push hl
+	farcall PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	call CalcStats
+	jr .trackedDone
 .done
 	; Preserve a selected bridge effect when a mon is transferred between the
 	; party, the current box, or either daycare slot. This runs only after the
 	; destination has been appended successfully; RemovePokemon's following
 	; compaction hook handles the source list separately.
 	farcall BridgeTrackMoveMon
+.trackedDone
 	and a
 	ret

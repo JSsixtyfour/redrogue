@@ -1,4 +1,5 @@
 _CalcStats::
+	push de ; preserve MON_STATS destination for post-calculation ray modifiers
 	ld c, $0
 .statsLoop
 	inc c
@@ -12,13 +13,95 @@ _CalcStats::
 	ld a, c
 	cp NUM_STATS
 	jr nz, .statsLoop
+	pop hl
+	ld a, [wBridgeRayCalcEffect]
+	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	jr z, .applyShrinkRay
+	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr z, .applyGrowthRay
+	jr .clearCalcState
+.applyShrinkRay
+	inc hl
+	inc hl ; Attack
+	call .subtractEighth
+	inc hl
+	inc hl
+	inc hl
+	inc hl ; Speed
+	call .addEighth
+	jr .clearCalcState
+.applyGrowthRay
+	call .addEighth ; Max HP
+	inc hl
+	inc hl ; Attack
+	call .addEighth
+	inc hl
+	inc hl
+	inc hl
+	inc hl ; Speed
+	call .subtractEighth
+.clearCalcState
 	; Fusion (Phase 2): auto-clear the max-base sentinel now that this full
 	; recalc is done, so it never leaks into the next unrelated CalcStats call
 	; (e.g. an enemy mon's, or an unwrapped caller's). PrepareFusionCalcStats
 	; is the only thing that turns it on, and only right before invoking us -
 	; so callers never have to clear it themselves.
 	xor a
+	ld [wBridgeRayCalcEffect], a
 	ld [wFusionSecondaryBaseStats], a
+	ret
+
+; Multiply the big-endian stat at hl by 1.125, capped at MAX_STAT_VALUE.
+.addEighth
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	ld d, b
+	ld e, c
+	srl d
+	rr e
+	srl d
+	rr e
+	srl d
+	rr e
+	ld a, c
+	add e
+	ld c, a
+	ld a, b
+	adc d
+	ld b, a
+	ld a, c
+	sub LOW(MAX_STAT_VALUE + 1)
+	ld a, b
+	sbc HIGH(MAX_STAT_VALUE + 1)
+	jr c, .storeStat
+	ld bc, MAX_STAT_VALUE
+	jr .storeStat
+
+; Multiply the big-endian stat at hl by 0.875. Stats calculated from a legal
+; Pokemon cannot reach zero through this operation.
+.subtractEighth
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	ld d, b
+	ld e, c
+	srl d
+	rr e
+	srl d
+	rr e
+	srl d
+	rr e
+	ld a, c
+	sub e
+	ld c, a
+	ld a, b
+	sbc d
+	ld b, a
+.storeStat
+	ld [hl], c
+	dec hl
+	ld [hl], b
 	ret
 
 _CalcStat::

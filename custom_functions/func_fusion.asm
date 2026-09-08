@@ -311,7 +311,7 @@ CreateFusion::
     add hl, de
     ld d, h
     ld e, l                              ; de = primary MON_STATS (stats dest)
-    call PrepareFusionCalcStats          ; same bank; sets sentinel + wMonHeader,
+    call PrepareFusionAndBridgeRayCalcStats ; same bank; sets both stat sentinels,
                                          ; preserves de
     ld hl, (MON_HP_EXP - 1) - MON_STATS
     add hl, de                           ; hl = primary HP_EXP - 1 (de unchanged)

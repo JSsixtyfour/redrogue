@@ -82,7 +82,7 @@ StatusScreen:
 	; not the stored box mon.
 	push bc
 	push hl
-	farcall PrepareFusionCalcStats
+	farcall PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	call CalcStats

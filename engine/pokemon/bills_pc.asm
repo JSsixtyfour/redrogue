@@ -665,9 +665,16 @@ SwapBillsPCSelectedPartyAndBoxMons:
 	ld bc, (MON_HP_EXP - 1) - MON_STATS
 	add hl, bc ; hl = MON_HP_EXP - 1
 	ld b, 1
+	; The data swap is already complete. Move sparse bridge ownership before
+	; recalculating the incoming party mon so its ray follows it across domains.
 	push bc
 	push hl
-	farcall PrepareFusionCalcStats
+	farcall BridgeTrackBillsPCCrossDomainSwap
+	pop hl
+	pop bc
+	push bc
+	push hl
+	farcall PrepareFusionAndBridgeRayCalcStats
 	pop hl
 	pop bc
 	call CalcStats
@@ -676,8 +683,6 @@ SwapBillsPCSelectedPartyAndBoxMons:
 	pop af
 	ldh [hCurrentMenuItem], a
 	; Rebuilds are complete and the original grid selections are restored.
-	; Exchange the sparse owners across the party/box boundary as well.
-	farcall BridgeTrackBillsPCCrossDomainSwap
 	ret
 
 ; Resolves a cross-domain SWAP without allocating persistent state.

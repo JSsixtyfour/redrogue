@@ -54,6 +54,16 @@ BridgeGrantSelectedEffect::
 	inc a
 	ld [hli], a
 	ld [hl], d
+	ld a, d
+	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	jr z, .recalculateRay
+	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr nz, .granted
+.recalculateRay
+	push de
+	call BridgeRecalculateGrantedRayMon
+	pop de
+.granted
 	scf
 	ret
 .reject
@@ -127,6 +137,103 @@ BridgeSelectedEffectForPartyMon::
 	inc b
 	ld a, b
 	jp BridgeSelectedEffectForOwner
+
+; Prepare both dynamic-stat systems immediately before CalcStats. de must point
+; at MON_STATS. Fusion is identified in the mon struct; rays are identified by
+; the sparse owner registry and use one transient WRAM selector.
+PrepareFusionAndBridgeRayCalcStats::
+	call PrepareFusionCalcStats
+	push de
+	xor a
+	ld [wBridgeRayCalcEffect], a
+
+	; Real party structs can be identified directly from their MON_STATS pointer.
+	ld hl, wPartyMon1Stats
+	ld b, 1
+.partyLoop
+	ld a, d
+	cp h
+	jr nz, .nextParty
+	ld a, e
+	cp l
+	jr z, .queryOwner
+.nextParty
+	ld a, l
+	add PARTYMON_STRUCT_LENGTH
+	ld l, a
+	jr nc, .noPartyCarry
+	inc h
+.noPartyCarry
+	inc b
+	ld a, b
+	cp PARTY_LENGTH + 1
+	jr nz, .partyLoop
+
+	; Box/daycare status pages calculate display-only stats in wLoadedMon.
+	ld hl, wLoadedMonStats
+	ld a, d
+	cp h
+	jr nz, .done
+	ld a, e
+	cp l
+	jr nz, .done
+	ld a, [wMonDataLocation]
+	cp PLAYER_PARTY_DATA
+	jr z, .loadedParty
+	cp BOX_DATA
+	jr z, .loadedBox
+	cp DAYCARE_DATA
+	jr z, .daycare1
+	cp DAYCARE_DATA2
+	jr z, .daycare2
+	jr .done
+.loadedParty
+	ldh a, [hWhichPokemon]
+	inc a
+	ld b, a
+	jr .queryOwner
+.loadedBox
+	ldh a, [hWhichPokemon]
+	call BridgeSelectedOwnerFromCurrentBoxSlot
+	ld b, a
+	jr .queryOwner
+.daycare1
+	ld b, BRIDGE_SELECTED_OWNER_DAYCARE1
+	jr .queryOwner
+.daycare2
+	ld b, BRIDGE_SELECTED_OWNER_DAYCARE2
+.queryOwner
+	ld a, b
+	call BridgeSelectedEffectForOwner
+	jr nc, .done
+	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	jr z, .store
+	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr nz, .done
+.store
+	ld [wBridgeRayCalcEffect], a
+.done
+	pop de
+	ret
+
+; Shrink Ray's Speed and Attack are ordinary stored derived stats. Evasion has
+; no party-struct stat, so initialize that one component on battle entry.
+BridgeApplyShrinkRayEvasion::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z
+	ld a, [wPlayerMonNumber]
+	inc a
+	call BridgeSelectedEffectForOwner
+	ret nc
+	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	ret nz
+	ld hl, wPlayerMonEvasionMod
+	ld a, [hl]
+	cp $d
+	ret z
+	inc [hl]
+	ret
 
 ; Clear the complete sparse registry. New-game initialization already clears
 ; wGameProgressFlags, but debug battle builders reconstruct party data in-place

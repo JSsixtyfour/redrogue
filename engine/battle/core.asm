@@ -2049,6 +2049,7 @@ LoadBattleMonFromParty:
 	ld [hli], a
 	dec b
 	jr nz, .statModLoop
+	farcall BridgeApplyShrinkRayEvasion
 	ret
 
 ; copies from enemy party data to current enemy mon data when sending out a new enemy mon

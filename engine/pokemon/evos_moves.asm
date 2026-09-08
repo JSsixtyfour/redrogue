@@ -206,6 +206,11 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld hl, wLoadedMonHPExp - 1
 	ld de, wLoadedMonStats
 	ld b, $1
+	push bc
+	push hl
+	farcall PrepareFusionAndBridgeRayCalcStats
+	pop hl
+	pop bc
 	call CalcStats
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1
