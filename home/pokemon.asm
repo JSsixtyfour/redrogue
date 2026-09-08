@@ -391,8 +391,16 @@ GetMonHeader::
 	; regional-form override reintroduces the same idea - patch wMonHeader after
 	; the base-stat copy with an overriding sprite pointer, dimension and typing -
 	; but keyed on the form bits in MON_CATCH_RATE rather than on a species id.
-	cp MEW
-	jr z, .mew
+	;
+	; Mew's `cp MEW / jr z, .mew` special case is GONE (Species Groups Phase 2).
+	; Vanilla kept Mew's 28-byte row outside BaseStats, in bank $01 next to its
+	; pics, which left a HOLE at dex 151 in a table indexed flatly as
+	; (dex - 1) * BASE_DATA_SIZE. That was invisible while Mew was the LAST dex
+	; number, but it silently shifted every species added after it by one row -
+	; dex 152 read dex 153's stats, and the final species read off the end of the
+	; table entirely. Mew now sits in BaseStats at its own dex position, so the
+	; table is dense from 1 to NUM_POKEMON and this lookup needs no exceptions.
+	; See the alignment asserts in data/pokemon/base_stats.asm.
 	predef IndexToPokedex
 	ld a, [wPokedexNum]
 	dec a
@@ -402,14 +410,6 @@ GetMonHeader::
 	ld de, wMonHeader
 	ld bc, BASE_DATA_SIZE
 	call CopyData
-	jr .done
-.mew
-	ld hl, MewBaseStats
-	ld de, wMonHeader
-	ld bc, BASE_DATA_SIZE
-	ld a, BANK(MewBaseStats)
-	call FarCopyData
-.done
 	ld a, [wCurSpecies]
 	ld [wMonHIndex], a
 	pop af

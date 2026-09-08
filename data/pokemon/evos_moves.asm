@@ -57,7 +57,7 @@ EvosMovesPointerTable:
 	dw PinsirEvosMoves
 	dw TangelaEvosMoves
 	dw MissingNo1FEvosMoves
-	dw MissingNo20EvosMoves
+	dw ChikoritaEvosMoves
 	dw GrowlitheEvosMoves
 	dw OnixEvosMoves
 	dw FearowEvosMoves
@@ -75,9 +75,9 @@ EvosMovesPointerTable:
 	dw PsyduckEvosMoves
 	dw DrowzeeEvosMoves
 	dw GolemEvosMoves
-	dw MissingNo32EvosMoves
+	dw BayleefEvosMoves
 	dw MagmarEvosMoves
-	dw MissingNo34EvosMoves
+	dw MeganiumEvosMoves
 	dw ElectabuzzEvosMoves
 	dw MagnetonEvosMoves
 	dw KoffingEvosMoves
@@ -883,11 +883,27 @@ MissingNo1FEvosMoves:
 ; Learnset
 	db 0
 
-MissingNo20EvosMoves:
+ChikoritaEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 16, BAYLEEF
 	db 0
 ; Learnset
+	db 12, RAZOR_LEAF
+	db 15, REFLECT
+	db 22, POISONPOWDER
+	db 36, BODY_SLAM
+	db 43, LIGHT_SCREEN
+	db 57, SOLARBEAM
 	db 0
+; Tutoring Learnset
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0
 
 GrowlitheEvosMoves:
 ; Evolutions
@@ -1239,11 +1255,26 @@ GolemEvosMoves:
     db 2, HEADBUTT
     db 0
 
-MissingNo32EvosMoves:
+BayleefEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 32, MEGANIUM
 	db 0
 ; Learnset
+	db 15, REFLECT
+	db 23, POISONPOWDER
+	db 39, BODY_SLAM
+	db 47, LIGHT_SCREEN
+	db 63, SOLARBEAM
 	db 0
+; Tutoring Learnset
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0
 
 MagmarEvosMoves:
 ; Evolutions
@@ -1265,11 +1296,24 @@ MagmarEvosMoves:
     db 2, SCREECH
     db 0
 
-MissingNo34EvosMoves:
+MeganiumEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+	db 23, POISONPOWDER
+	db 41, BODY_SLAM
+	db 51, LIGHT_SCREEN
+	db 71, SOLARBEAM
 	db 0
+; Tutoring Learnset
+    db 2, DEFENSE_CURL
+    db 2, FLASH
+    db 2, HEADBUTT
+    db 2, LIGHT_SCREEN
+    db 2, PETAL_DANCE
+    db 2, RAZOR_WIND
+    db 2, SKULL_BASH
+    db 0
 
 ElectabuzzEvosMoves:
 ; Evolutions

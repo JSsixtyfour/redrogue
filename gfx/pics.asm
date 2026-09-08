@@ -388,3 +388,15 @@ LancePic::         INCBIN "gfx/trainers/lance.pic"
 ; Yellow paired portrait uses its own bank; _LoadTrainerPic selects it by class.
 SECTION "Jessie James Portrait", ROMX, BANK[$2C]
 JessieJamesPic:: INCBIN "gfx/trainers/jessiejames.pic"
+
+; Species Groups Phase 2 pics. With BASE_PIC_BANK (see home/pics.asm) a mon's
+; pic may live in ANY bank, so this section floats - there is no index-range
+; constraint any more. Split into further "Pics N" sections as it grows.
+SECTION "Pics 6", ROMX
+
+ChikoritaPicFront::   INCBIN "gfx/pokemon/front/chikorita.pic"
+ChikoritaPicBack::    INCBIN "gfx/pokemon/back/chikoritab.pic"
+BayleefPicFront::     INCBIN "gfx/pokemon/front/bayleef.pic"
+BayleefPicBack::      INCBIN "gfx/pokemon/back/bayleefb.pic"
+MeganiumPicFront::    INCBIN "gfx/pokemon/front/meganium.pic"
+MeganiumPicBack::     INCBIN "gfx/pokemon/back/meganiumb.pic"

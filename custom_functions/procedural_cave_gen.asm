@@ -627,7 +627,7 @@ PokemonSpriteCategoryTable:
 	db $00 ; $19,$1A GASTLY,SCYTHER
 	db $62 ; $1B,$1C STARYU,BLASTOISE
 	db $00 ; $1D,$1E PINSIR,TANGELA
-	db $00 ; $1F,$20 skip,skip
+	db $00 ; $1F,$20 skip,CHIKORITA(M)
 	db $00 ; $21,$22 GROWLITHE,ONIX
 	db $11 ; $23,$24 FEAROW,PIDGEY
 	db $20 ; $25,$26 SLOWPOKE,KADABRA
@@ -636,8 +636,8 @@ PokemonSpriteCategoryTable:
 	db $00 ; $2B,$2C HITMONLEE,HITMONCHAN
 	db $00 ; $2D,$2E ARBOK,PARASECT
 	db $20 ; $2F,$30 PSYDUCK,DROWZEE
-	db $00 ; $31,$32 GOLEM,skip
-	db $00 ; $33,$34 MAGMAR,skip
+	db $00 ; $31,$32 GOLEM,BAYLEEF(M)
+	db $00 ; $33,$34 MAGMAR,MEGANIUM(M)
 	db $04 ; $35,$36 ELECTABUZZ,MAGNETON
 	db $00 ; $37,$38 KOFFING,skip
 	db $02 ; $39,$3A MANKEY,SEEL

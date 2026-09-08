@@ -152,4 +152,8 @@ MonsterPalettes:
 	db PAL_BROWNMON  ; DRAGONITE
 	db PAL_MEWMON    ; MEWTWO
 	db PAL_MEWMON    ; MEW
+	; --- Species Groups Phase 2: Johto ---
+	db PAL_GREENMON  ; CHIKORITA
+	db PAL_GREENMON  ; BAYLEEF
+	db PAL_GREENMON  ; MEGANIUM
 	assert_table_length NUM_POKEMON + 1

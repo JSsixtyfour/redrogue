@@ -151,4 +151,8 @@ MonPartyData:
 	nybble ICON_SNAKE     ; Dragonite
 	nybble ICON_MON       ; Mewtwo
 	nybble ICON_MON       ; Mew
+	; --- Species Groups Phase 2: Johto ---
+	nybble ICON_GRASS     ; Chikorita
+	nybble ICON_QUADRUPED ; Bayleef
+	nybble ICON_QUADRUPED ; Meganium
 	end_nybble_array NUM_POKEMON

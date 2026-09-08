@@ -8,8 +8,10 @@
 ; slot Mew in there. What we did would be unthinkable nowadays!"
 ; https://iwataasks.nintendo.com/interviews/ds/pokemon/0/0/
 
+; Mew's PICS still live here, but its base-stats row does NOT any more: it moved
+; into BaseStats at its own dex position (Species Groups Phase 2), because the
+; hole it left at dex 151 shifted every species added after it by one row. With
+; BASE_PIC_BANK the row can name these pics from any bank, so nothing about this
+; section had to move with it.
 MewPicFront:: INCBIN "gfx/pokemon/front/mew.pic"
 MewPicBack::  INCBIN "gfx/pokemon/back/mewb.pic"
-
-MewBaseStats::
-INCLUDE "data/pokemon/base_stats/mew.asm"

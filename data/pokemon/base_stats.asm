@@ -150,4 +150,30 @@ INCLUDE "data/pokemon/base_stats/dratini.asm"
 INCLUDE "data/pokemon/base_stats/dragonair.asm"
 INCLUDE "data/pokemon/base_stats/dragonite.asm"
 INCLUDE "data/pokemon/base_stats/mewtwo.asm"
-	assert_table_length NUM_POKEMON - 1 ; discount Mew
+
+; Mew used to live in bank $01 beside its pics, leaving a HOLE here at dex 151.
+; GetMonHeader indexes this table flatly as (dex - 1) * BASE_DATA_SIZE, so that
+; hole shifted every dex number above 151 down by one row. It was harmless only
+; while Mew was the last species. It is in the table now; do not move it out.
+INCLUDE "data/pokemon/base_stats/mew.asm"
+
+; --- Species Groups Phase 2: Johto ---
+INCLUDE "data/pokemon/base_stats/chikorita.asm"
+INCLUDE "data/pokemon/base_stats/bayleef.asm"
+INCLUDE "data/pokemon/base_stats/meganium.asm"
+
+	assert_table_length NUM_POKEMON
+
+; Alignment guards. assert_table_length only checks the COUNT, so it passes
+; happily on a table with a hole AND a compensating extra row - which is exactly
+; the shape the Mew hole produced. These check the OFFSET of a given dex number's
+; row instead, and so catch a missing, duplicated or out-of-order INCLUDE at
+; assembly time. They cost nothing in ROM. Add one per new species.
+MACRO assert_dex_row_at
+; \1 = dex constant. The row for dex N ends at N * BASE_DATA_SIZE from the top.
+	assert (@ - BaseStats) == \1 * BASE_DATA_SIZE, \
+	       "BaseStats row for \1 is not at its dex offset - a row is missing, duplicated or out of dex order"
+ENDM
+
+	; anchored at the end of the table, so every preceding row must be in place
+	assert_dex_row_at DEX_MEGANIUM

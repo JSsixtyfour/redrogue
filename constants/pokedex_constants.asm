@@ -155,5 +155,9 @@
 	const DEX_DRAGONITE  ; 149
 	const DEX_MEWTWO     ; 150
 	const DEX_MEW        ; 151
+; --- Species Groups Phase 2: Johto ---
+	const DEX_CHIKORITA  ; 152
+	const DEX_BAYLEEF    ; 153
+	const DEX_MEGANIUM   ; 154
 
 DEF NUM_POKEMON EQU const_value - 1

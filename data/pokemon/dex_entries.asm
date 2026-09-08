@@ -31,7 +31,7 @@ PokedexEntryPointers:
 	dw PinsirDexEntry
 	dw TangelaDexEntry
 	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw ChikoritaDexEntry
 	dw GrowlitheDexEntry
 	dw OnixDexEntry
 	dw FearowDexEntry
@@ -49,9 +49,9 @@ PokedexEntryPointers:
 	dw PsyduckDexEntry
 	dw DrowzeeDexEntry
 	dw GolemDexEntry
-	dw MissingNoDexEntry
+	dw BayleefDexEntry
 	dw MagmarDexEntry
-	dw MissingNoDexEntry
+	dw MeganiumDexEntry
 	dw ElectabuzzDexEntry
 	dw MagnetonDexEntry
 	dw KoffingDexEntry
@@ -1259,3 +1259,26 @@ MissingNoDexEntry:
 	db 10 ; 1.0 m
 	dw 100 ; 10.0 kg
 	db "コメント　さくせいちゅう@" ; コメント作成中 (Comment to be written)
+
+; --- Species Groups Phase 2: Johto ---
+
+ChikoritaDexEntry:
+	db "LEAF@"
+	db 2,11
+	dw 141
+	text_far _ChikoritaDexEntry
+	text_end
+
+BayleefDexEntry:
+	db "LEAF@"
+	db 3,11
+	dw 348
+	text_far _BayleefDexEntry
+	text_end
+
+MeganiumDexEntry:
+	db "HERB@"
+	db 5,11
+	dw 2216
+	text_far _MeganiumDexEntry
+	text_end

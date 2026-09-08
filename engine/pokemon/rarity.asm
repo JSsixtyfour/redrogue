@@ -52,10 +52,12 @@ RarityKanto:
 	rarity_tier KantoMasterball
 	rarity_tier KantoUber
 
-; Johto - unlocked after the first champion win. Populated in Phase 2.
+; Johto - unlocked after the first champion win. Being populated in Phase 2;
+; every tier still empty here is skipped by the roller, so a partially filled
+; group behaves exactly like a fully filled smaller one.
 RarityJohto:
 	rarity_tier_empty ; pokeball
-	rarity_tier_empty ; greatball
+	rarity_tier JohtoGreatball
 	rarity_tier_empty ; ultraball
 	rarity_tier_empty ; masterball
 	rarity_tier_empty ; uber
@@ -249,6 +251,23 @@ KantoUber_Evos:
 	db MEW
 	db MEWTWO
 KantoUber_End:
+
+; ===========================================================================
+; Johto lists. Same layout as Kanto: [base forms][evolved forms], split by the
+; _Evos label. Only the base prefix is rolled; the tail exists so an owned
+; evolved mon still classifies back into its tier.
+; ===========================================================================
+
+; Starters sit in greatball, matching where the Kanto starters live.
+JohtoGreatball:
+	db CHIKORITA
+JohtoGreatball_Evos:
+; stage 1
+	db BAYLEEF
+; stage 2
+	db MEGANIUM
+JohtoGreatball_End:
+
 
 ; The Kanto pool must still describe exactly the 151 Kanto species.
 ASSERT (KantoPokeball_End - KantoPokeball) + (KantoGreatball_End - KantoGreatball) + \
