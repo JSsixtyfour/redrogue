@@ -56,7 +56,7 @@ RarityKanto:
 ; every tier still empty here is skipped by the roller, so a partially filled
 ; group behaves exactly like a fully filled smaller one.
 RarityJohto:
-	rarity_tier_empty ; pokeball
+	rarity_tier JohtoPokeball
 	rarity_tier JohtoGreatball
 	rarity_tier_empty ; ultraball
 	rarity_tier_empty ; masterball
@@ -259,18 +259,34 @@ KantoUber_End:
 ; ===========================================================================
 
 ; Starters sit in greatball, matching where the Kanto starters live.
+; Base form of the Johto pokeball tier - common early-route mons.
+JohtoPokeball:
+	db SENTRET
+	db HOOTHOOT
+JohtoPokeball_Evos:
+; stage 1
+	db FURRET
+	db NOCTOWL
+JohtoPokeball_End:
+
 JohtoGreatball:
 	db CHIKORITA
+	db CYNDAQUIL
+	db TOTODILE
 JohtoGreatball_Evos:
 ; stage 1
 	db BAYLEEF
+	db QUILAVA
+	db CROCONAW
 ; stage 2
 	db MEGANIUM
+	db TYPHLOSION
+	db FERALIGATR
 ; Weavile/Mamoswine/Mismagius are evolved-only (Sneasel/Piloswine/Misdreavus
-; are Sonnet's batch, not yet classified into a tier). Parked here as
-; classification-only placeholders - PLEASE MOVE to whichever tier their
-; own pre-evolution lands in once that batch assigns it, matching how every
-; other _Evos entry sits under its OWN tier's rollable base form.
+; are not classified into a tier yet). Parked here as classification-only
+; placeholders - PLEASE MOVE to whichever tier their own pre-evolution lands
+; in once that species is added, matching how every other _Evos entry sits
+; under its OWN tier's rollable base form.
 	db WEAVILE
 	db MAMOSWINE
 	db MISMAGIUS

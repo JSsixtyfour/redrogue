@@ -62,20 +62,20 @@
 	const ELECTABUZZ         ; $35
 	const MAGNETON           ; $36
 	const KOFFING            ; $37
-	const_skip               ; $38
+	const CYNDAQUIL           ; $38
 	const MANKEY             ; $39
 	const SEEL               ; $3A
 	const DIGLETT            ; $3B
 	const TAUROS             ; $3C
-	const_skip               ; $3D
-	const_skip               ; $3E
-	const_skip               ; $3F
+	const QUILAVA             ; $3D
+	const TYPHLOSION          ; $3E
+	const TOTODILE            ; $3F
 	const FARFETCHD          ; $40
 	const VENONAT            ; $41
 	const DRAGONITE          ; $42
-	const_skip               ; $43
-	const_skip               ; $44
-	const_skip               ; $45
+	const CROCONAW            ; $43
+	const FERALIGATR          ; $44
+	const SENTRET             ; $45
 	const DODUO              ; $46
 	const POLIWAG            ; $47
 	const JYNX               ; $48
@@ -85,9 +85,9 @@
 	const DITTO              ; $4C
 	const MEOWTH             ; $4D
 	const KRABBY             ; $4E
-	const_skip               ; $4F
-	const_skip               ; $50
-	const_skip               ; $51
+	const FURRET              ; $4F
+	const HOOTHOOT            ; $50
+	const NOCTOWL             ; $51
 	const VULPIX             ; $52
 	const NINETALES          ; $53
 	const PIKACHU            ; $54
@@ -202,7 +202,7 @@
 ; Johto lines, kept per the plan roster). Added ahead of the rest of the
 ; batch, so they take the literal next three sequential ids - `const` is a
 ; plain incrementing counter (see rgbds' charmap/const stdlib macros); the
-; trailing comment is documentation only and does NOT set the value. Sonnet's
+; trailing comment is documentation only and does NOT set the value. The
 ; remaining 95 species (SPECIES_IMPORT_SPEC.md) continue from $C2.
 	const WEAVILE             ; $BF
 	const MAMOSWINE           ; $C0

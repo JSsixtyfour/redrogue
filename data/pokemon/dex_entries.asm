@@ -55,20 +55,20 @@ PokedexEntryPointers:
 	dw ElectabuzzDexEntry
 	dw MagnetonDexEntry
 	dw KoffingDexEntry
-	dw MissingNoDexEntry
+	dw CyndaquilDexEntry
 	dw MankeyDexEntry
 	dw SeelDexEntry
 	dw DiglettDexEntry
 	dw TaurosDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw QuilavaDexEntry
+	dw TyphlosionDexEntry
+	dw TotodileDexEntry
 	dw FarfetchdDexEntry
 	dw VenonatDexEntry
 	dw DragoniteDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw CroconawDexEntry
+	dw FeraligatrDexEntry
+	dw SentretDexEntry
 	dw DoduoDexEntry
 	dw PoliwagDexEntry
 	dw JynxDexEntry
@@ -78,9 +78,9 @@ PokedexEntryPointers:
 	dw DittoDexEntry
 	dw MeowthDexEntry
 	dw KrabbyDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
-	dw MissingNoDexEntry
+	dw FurretDexEntry
+	dw HoothootDexEntry
+	dw NoctowlDexEntry
 	dw VulpixDexEntry
 	dw NinetalesDexEntry
 	dw PikachuDexEntry
@@ -1305,4 +1305,74 @@ MismagiusDexEntry:
 	db 2,11
 	dw 97
 	text_far _MismagiusDexEntry
+	text_end
+
+CyndaquilDexEntry:
+	db "FIRE MOUSE@"
+	db 1,8
+	dw 174
+	text_far _CyndaquilDexEntry
+	text_end
+
+QuilavaDexEntry:
+	db "VOLCANO@"
+	db 2,11
+	dw 419
+	text_far _QuilavaDexEntry
+	text_end
+
+TyphlosionDexEntry:
+	db "VOLCANO@"
+	db 5,7
+	dw 1753
+	text_far _TyphlosionDexEntry
+	text_end
+
+TotodileDexEntry:
+	db "BIG JAW@"
+	db 2,0
+	dw 209
+	text_far _TotodileDexEntry
+	text_end
+
+CroconawDexEntry:
+	db "BIG JAW@"
+	db 3,7
+	dw 551
+	text_far _CroconawDexEntry
+	text_end
+
+FeraligatrDexEntry:
+	db "BIG JAW@"
+	db 7,7
+	dw 1958
+	text_far _FeraligatrDexEntry
+	text_end
+
+SentretDexEntry:
+	db "SCOUT@"
+	db 2,7
+	dw 132
+	text_far _SentretDexEntry
+	text_end
+
+FurretDexEntry:
+	db "LONG BODY@"
+	db 5,11
+	dw 716
+	text_far _FurretDexEntry
+	text_end
+
+HoothootDexEntry:
+	db "OWL@"
+	db 2,4
+	dw 467
+	text_far _HoothootDexEntry
+	text_end
+
+NoctowlDexEntry:
+	db "OWL@"
+	db 5,3
+	dw 899
+	text_far _NoctowlDexEntry
 	text_end

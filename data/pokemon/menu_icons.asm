@@ -158,4 +158,14 @@ MonPartyData:
 	nybble ICON_MON       ; Weavile
 	nybble ICON_QUADRUPED ; Mamoswine
 	nybble ICON_MON       ; Mismagius
+	nybble ICON_MON       ; Cyndaquil
+	nybble ICON_MON       ; Quilava
+	nybble ICON_MON       ; Typhlosion
+	nybble ICON_WATER     ; Totodile
+	nybble ICON_WATER     ; Croconaw
+	nybble ICON_WATER     ; Feraligatr
+	nybble ICON_QUADRUPED ; Sentret
+	nybble ICON_QUADRUPED ; Furret
+	nybble ICON_BIRD      ; Hoothoot
+	nybble ICON_BIRD      ; Noctowl
 	end_nybble_array NUM_POKEMON

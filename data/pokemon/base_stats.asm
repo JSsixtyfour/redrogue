@@ -163,11 +163,23 @@ INCLUDE "data/pokemon/base_stats/bayleef.asm"
 INCLUDE "data/pokemon/base_stats/meganium.asm"
 
 ; Weavile/Mamoswine/Mismagius added ahead of the rest of the batch (dex
-; 155-157) - see SPECIES_IMPORT_SPEC.md. Sonnet's 95 remaining species pick
+; 155-157) - see SPECIES_IMPORT_SPEC.md. the remaining 95 species pick
 ; up at dex 158.
 INCLUDE "data/pokemon/base_stats/weavile.asm"
 INCLUDE "data/pokemon/base_stats/mamoswine.asm"
 INCLUDE "data/pokemon/base_stats/mismagius.asm"
+
+; --- Species Groups Phase 2: Johto batch 1, dex 158-167 ---
+INCLUDE "data/pokemon/base_stats/cyndaquil.asm"
+INCLUDE "data/pokemon/base_stats/quilava.asm"
+INCLUDE "data/pokemon/base_stats/typhlosion.asm"
+INCLUDE "data/pokemon/base_stats/totodile.asm"
+INCLUDE "data/pokemon/base_stats/croconaw.asm"
+INCLUDE "data/pokemon/base_stats/feraligatr.asm"
+INCLUDE "data/pokemon/base_stats/sentret.asm"
+INCLUDE "data/pokemon/base_stats/furret.asm"
+INCLUDE "data/pokemon/base_stats/hoothoot.asm"
+INCLUDE "data/pokemon/base_stats/noctowl.asm"
 
 	assert_table_length NUM_POKEMON
 
@@ -183,4 +195,4 @@ MACRO assert_dex_row_at
 ENDM
 
 	; anchored at the end of the table, so every preceding row must be in place
-	assert_dex_row_at DEX_MISMAGIUS
+	assert_dex_row_at DEX_NOCTOWL

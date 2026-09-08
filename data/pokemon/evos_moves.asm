@@ -81,20 +81,20 @@ EvosMovesPointerTable:
 	dw ElectabuzzEvosMoves
 	dw MagnetonEvosMoves
 	dw KoffingEvosMoves
-	dw MissingNo38EvosMoves
+	dw CyndaquilEvosMoves
 	dw MankeyEvosMoves
 	dw SeelEvosMoves
 	dw DiglettEvosMoves
 	dw TaurosEvosMoves
-	dw MissingNo3DEvosMoves
-	dw MissingNo3EEvosMoves
-	dw MissingNo3FEvosMoves
+	dw QuilavaEvosMoves
+	dw TyphlosionEvosMoves
+	dw TotodileEvosMoves
 	dw FarfetchdEvosMoves
 	dw VenonatEvosMoves
 	dw DragoniteEvosMoves
-	dw MissingNo43EvosMoves
-	dw MissingNo44EvosMoves
-	dw MissingNo45EvosMoves
+	dw CroconawEvosMoves
+	dw FeraligatrEvosMoves
+	dw SentretEvosMoves
 	dw DoduoEvosMoves
 	dw PoliwagEvosMoves
 	dw JynxEvosMoves
@@ -104,9 +104,9 @@ EvosMovesPointerTable:
 	dw DittoEvosMoves
 	dw MeowthEvosMoves
 	dw KrabbyEvosMoves
-	dw MissingNo4FEvosMoves
-	dw MissingNo50EvosMoves
-	dw MissingNo51EvosMoves
+	dw FurretEvosMoves
+	dw HoothootEvosMoves
+	dw NoctowlEvosMoves
 	dw VulpixEvosMoves
 	dw NinetalesEvosMoves
 	dw PikachuEvosMoves
@@ -1394,10 +1394,18 @@ KoffingEvosMoves:
     db 2, SCREECH
     db 0
 
-MissingNo38EvosMoves:
+CyndaquilEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 14, QUILAVA
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; FLAME_WHEEL does not exist in Gen 1, filled
+; with METRONOME.
+	db 6, SMOKESCREEN
+	db 12, EMBER
+	db 19, QUICK_ATTACK
+	db 27, METRONOME ; was FLAME_WHEEL
+	db 36, SWIFT
+	db 46, FLAMETHROWER
 	db 0
 
 MankeyEvosMoves:
@@ -1477,22 +1485,41 @@ TaurosEvosMoves:
     db 2, QUICK_ATTACK
     db 0
 
-MissingNo3DEvosMoves:
+QuilavaEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 36, TYPHLOSION
 	db 0
-; Learnset
+; Learnset - SMOKESCREEN already granted at level 1, see base_stats/quilava.asm
+	db 12, EMBER
+	db 21, QUICK_ATTACK
+	db 31, METRONOME ; was FLAME_WHEEL
+	db 42, SWIFT
+	db 54, FLAMETHROWER
 	db 0
 
-MissingNo3EEvosMoves:
+TyphlosionEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - SMOKESCREEN/EMBER already granted at level 1
+	db 21, QUICK_ATTACK
+	db 31, METRONOME ; was FLAME_WHEEL
+	db 45, SWIFT
+	db 60, FLAMETHROWER
 	db 0
 
-MissingNo3FEvosMoves:
+TotodileEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 18, CROCONAW
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; SCARY_FACE does not exist in Gen 1, filled
+; with METRONOME.
+	db 7, RAGE
+	db 13, WATER_GUN
+	db 20, BITE
+	db 27, METRONOME ; was SCARY_FACE
+	db 35, SLASH
+	db 43, SCREECH
+	db 52, HYDRO_PUMP
 	db 0
 
 FarfetchdEvosMoves:
@@ -1557,22 +1584,41 @@ DragoniteEvosMoves:
     db 2, MIST
     db 2, SUPERSONIC
     db 0 
-MissingNo43EvosMoves:
+CroconawEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 30, FERALIGATR
 	db 0
-; Learnset
+; Learnset - RAGE already granted at level 1
+	db 13, WATER_GUN
+	db 21, BITE
+	db 28, METRONOME ; was SCARY_FACE
+	db 37, SLASH
+	db 45, SCREECH
+	db 55, HYDRO_PUMP
 	db 0
 
-MissingNo44EvosMoves:
+FeraligatrEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - RAGE/WATER_GUN already granted at level 1
+	db 21, BITE
+	db 28, METRONOME ; was SCARY_FACE
+	db 38, SLASH
+	db 47, SCREECH
+	db 58, HYDRO_PUMP
 	db 0
 
-MissingNo45EvosMoves:
+SentretEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 15, FURRET
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels
+	db 5, DEFENSE_CURL
+	db 11, QUICK_ATTACK
+	db 17, FURY_SWIPES
+	db 25, SLAM
+	db 33, REST
+	db 41, AMNESIA
 	db 0
 
 DoduoEvosMoves:
@@ -1729,22 +1775,41 @@ KrabbyEvosMoves:
     db 2, HAZE
     db 2, SLAM
     db 0 
-MissingNo4FEvosMoves:
+FurretEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - DEFENSE_CURL/QUICK_ATTACK already granted at level 1
+	db 18, FURY_SWIPES
+	db 28, SLAM
+	db 38, REST
+	db 48, AMNESIA
 	db 0
 
-MissingNo50EvosMoves:
+HoothootEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 20, NOCTOWL
 	db 0
-; Learnset
+; Learnset - canon Gen 2 levels; FORESIGHT does not exist in Gen 1, filled
+; with METRONOME.
+	db 6, METRONOME ; was FORESIGHT
+	db 11, PECK
+	db 16, HYPNOSIS
+	db 22, REFLECT
+	db 28, TAKE_DOWN
+	db 34, CONFUSION
+	db 48, DREAM_EATER
 	db 0
 
-MissingNo51EvosMoves:
+NoctowlEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - FORESIGHT/PECK already granted at level 1 (see
+; base_stats/noctowl.asm)
+	db 16, HYPNOSIS
+	db 25, REFLECT
+	db 33, TAKE_DOWN
+	db 41, CONFUSION
+	db 57, DREAM_EATER
 	db 0
 
 VulpixEvosMoves:
@@ -3537,7 +3602,7 @@ VictreebelEvosMoves:
 WeavileEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Weavile evolves from Sneasel (Sonnet's batch); when Sneasel's own
+; Learnset - Weavile evolves from Sneasel (part of a later batch); when Sneasel's own
 ; entry is added, point it at this species via an evolution item (ICE_STONE is
 ; the closest fit already in the project - there is no day/night system here
 ; for the canon "level up holding Razor Claw at night" method).
@@ -3548,7 +3613,7 @@ WeavileEvosMoves:
 MamoswineEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Mamoswine evolves from Piloswine (Sonnet's batch); when Piloswine's
+; Learnset - Mamoswine evolves from Piloswine (part of a later batch); when Piloswine's
 ; own entry is added, give it `db EVOLVE_LEVEL, 44, MAMOSWINE` (mirrors KEP's own
 ; precedent for Tangela->Tangrowth, the same "level up knowing Ancient Power"
 ; condition this engine cannot express directly).
@@ -3561,7 +3626,7 @@ MamoswineEvosMoves:
 MismagiusEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Mismagius evolves from Misdreavus (Sonnet's batch); when
+; Learnset - Mismagius evolves from Misdreavus (part of a later batch); when
 ; Misdreavus's own entry is added, give it
 ; `db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS` (DUSK_STONE already exists).
 	db 24, METRONOME ; FILLER - real moveset TBD

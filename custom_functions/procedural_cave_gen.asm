@@ -639,20 +639,20 @@ PokemonSpriteCategoryTable:
 	db $00 ; $31,$32 GOLEM,BAYLEEF(M)
 	db $00 ; $33,$34 MAGMAR,MEGANIUM(M)
 	db $04 ; $35,$36 ELECTABUZZ,MAGNETON
-	db $00 ; $37,$38 KOFFING,skip
+	db $00 ; $37,$38 KOFFING,CYNDAQUIL
 	db $02 ; $39,$3A MANKEY,SEEL
 	db $00 ; $3B,$3C DIGLETT,TAUROS
-	db $00 ; $3D,$3E skip,skip
-	db $01 ; $3F,$40 skip,FARFETCHD
+	db $00 ; $3D,$3E QUILAVA,TYPHLOSION
+	db $00 ; $3F,$40 TOTODILE,FARFETCHD
 	db $00 ; $41,$42 VENONAT,DRAGONITE
-	db $00 ; $43,$44 skip,skip
-	db $01 ; $45,$46 skip,DODUO
+	db $00 ; $43,$44 CROCONAW,FERALIGATR
+	db $00 ; $45,$46 SENTRET,DODUO
 	db $20 ; $47,$48 POLIWAG,JYNX
 	db $11 ; $49,$4A MOLTRES,ARTICUNO
 	db $10 ; $4B,$4C ZAPDOS,DITTO
 	db $02 ; $4D,$4E MEOWTH,KRABBY
-	db $00 ; $4F,$50 skip,skip
-	db $00 ; $51,$52 skip,VULPIX
+	db $10 ; $4F,$50 FURRET,HOOTHOOT (bird sprite for Hoothoot, matches Pidgey/Fearow)
+	db $01 ; $51,$52 NOCTOWL,VULPIX (bird sprite for Noctowl)
 	db $07 ; $53,$54 NINETALES,PIKACHU
 	db $30 ; $55,$56 RAICHU,skip
 	db $02 ; $57,$58 skip,DRATINI
@@ -709,11 +709,11 @@ PokemonSpriteCategoryTable:
 	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
 	db $00 ; $BF,$C0 WEAVILE,MAMOSWINE
 	; $C1 MISMAGIUS (odd, no even partner yet) shares this byte with whatever
-	; Sonnet's batch assigns internal id $C2 (its first species, an even index).
+	; species is next assigned internal id $C2 (an even index).
 	; EDIT this line's high nybble in place when that species is added - do NOT
 	; append a new db line, or every following pair shifts by one nybble and the
 	; table desyncs from PokemonSpriteCategoryTableEnd's own assert.
-	db $00 ; $C1,$C2 MISMAGIUS,(Sonnet's first new species)
+	db $00 ; $C1,$C2 MISMAGIUS,(next new species)
 PokemonSpriteCategoryTableEnd:
 	assert PokemonSpriteCategoryTableEnd - PokemonSpriteCategoryTable == (NUM_POKEMON_INDEXES + 1) / 2
 

@@ -160,11 +160,23 @@
 	const DEX_BAYLEEF    ; 153
 	const DEX_MEGANIUM   ; 154
 ; Weavile/Mamoswine/Mismagius added ahead of the rest of the Johto batch -
-; see SPECIES_IMPORT_SPEC.md. Their internal ids ($F0-$F2) sit near the END
+; see SPECIES_IMPORT_SPEC.md. Their internal ids ($BF-$C1, the actual assigned
+; values - see the note on `const` in pokemon_constants.asm) sit near the END
 ; of the free-id pool, decoupled from dex order, same as vanilla's own
 ; scrambled internal-id/dex-number split (e.g. PIKACHU is dex 25, internal $54).
 	const DEX_WEAVILE    ; 155
 	const DEX_MAMOSWINE  ; 156
 	const DEX_MISMAGIUS  ; 157
+; --- Species Groups Phase 2: Johto batch 1 ---
+	const DEX_CYNDAQUIL   ; 158
+	const DEX_QUILAVA     ; 159
+	const DEX_TYPHLOSION  ; 160
+	const DEX_TOTODILE    ; 161
+	const DEX_CROCONAW    ; 162
+	const DEX_FERALIGATR  ; 163
+	const DEX_SENTRET     ; 164
+	const DEX_FURRET      ; 165
+	const DEX_HOOTHOOT    ; 166
+	const DEX_NOCTOWL     ; 167
 
 DEF NUM_POKEMON EQU const_value - 1
