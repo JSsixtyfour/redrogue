@@ -56,10 +56,12 @@ BridgeGrantSelectedEffect::
 	ld [hl], d
 	ld a, d
 	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
-	jr z, .recalculateRay
+	jr z, .recalculateDerivedStats
 	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr z, .recalculateDerivedStats
+	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
 	jr nz, .granted
-.recalculateRay
+.recalculateDerivedStats
 	push de
 	call BridgeRecalculateGrantedRayMon
 	pop de
@@ -115,6 +117,28 @@ BridgeActiveMonHasSelectedEffect::
 .found
 	scf
 	ret
+
+; Called after GetCurrentMove has loaded wPlayerMovePower. Carry is set after
+; printing the rejection only when Body Armor blocks a zero-power move.
+BridgeBodyArmorBlocksSelectedMove::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z
+	ld e, BRIDGE_SELECTED_EFFECT_BODY_ARMOR
+	call BridgeActiveMonHasSelectedEffect
+	ret nc
+	ld a, [wPlayerMovePower]
+	and a
+	ret nz
+	ld hl, .blockedText
+	call PrintText
+	call LoadScreenTilesFromBuffer1
+	scf
+	ret
+.blockedText
+	text "BODY ARMOR"
+	line "BLOCKS STATUS!"
+	prompt
 
 ; In:  a = owner identifier
 ; Out: carry set and a = selected effect when found; clear otherwise.
@@ -225,6 +249,8 @@ PrepareFusionAndBridgeRayCalcStats::
 	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
 	jr z, .store
 	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr z, .store
+	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
 	jr nz, .done
 .store
 	ld [wBridgeRayCalcEffect], a

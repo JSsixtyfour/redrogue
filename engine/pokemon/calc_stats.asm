@@ -19,6 +19,8 @@ _CalcStats::
 	jr z, .applyShrinkRay
 	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
 	jr z, .applyGrowthRay
+	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
+	jr z, .applyBodyArmor
 	jr .clearCalcState
 .applyShrinkRay
 	inc hl
@@ -29,6 +31,13 @@ _CalcStats::
 	inc hl
 	inc hl ; Speed
 	call .addEighth
+	jr .clearCalcState
+.applyBodyArmor
+	inc hl
+	inc hl
+	inc hl
+	inc hl ; Defense
+	call .addHalf
 	jr .clearCalcState
 .applyGrowthRay
 	call .addEighth ; Max HP
@@ -103,6 +112,29 @@ _CalcStats::
 	dec hl
 	ld [hl], b
 	ret
+
+; Multiply the big-endian stat at hl by 1.5, capped at MAX_STAT_VALUE.
+.addHalf
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	ld d, b
+	ld e, c
+	srl d
+	rr e
+	ld a, c
+	add e
+	ld c, a
+	ld a, b
+	adc d
+	ld b, a
+	ld a, c
+	sub LOW(MAX_STAT_VALUE + 1)
+	ld a, b
+	sbc HIGH(MAX_STAT_VALUE + 1)
+	jr c, .storeStat
+	ld bc, MAX_STAT_VALUE
+	jr .storeStat
 
 _CalcStat::
 	push hl

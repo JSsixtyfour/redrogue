@@ -3189,6 +3189,10 @@ SelectMenuItem:
 	; Test battles normally source their move from the host-controlled byte.
 	; Mirror a real menu choice so FIGHT 2 remains playable by a human too.
 	ld [wTestBattlePlayerSelectedMove], a
+	call GetCurrentMove
+	farcall BridgeBodyArmorBlocksSelectedMove
+	jp c, MoveSelectionMenu
+.moveAccepted
 	xor a
 	ret
 .disabled
@@ -5154,43 +5158,9 @@ CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm
 	jr nc, .SkipHighCritical
 	ld b, $ff
 .SkipHighCritical
-	; Witch prize e (PRIZE_CRIT_BOOST): +25% to the player's own crit
-	; threshold b (b + b/4), capped at 255.  This is deliberately part of
-	; the shared calculation so the menu and battle roll cannot drift.
-	; PERMANENT (2026-09-02) - does NOT gate on BIT_WITCH_ACCEPTED.
-	ldh a, [hWhoseTurn]
-	and a
-	jr nz, .noCritBoost
-	ld a, [wWitchPrizesEarned]
-	and 1 << (PRIZE_CRIT_BOOST - 1)
-	jr z, .noCritBoost
-	ld a, b
-	srl a
-	srl a                        ; a = b/4
-	add b                        ; a = b + b/4 (~1.25x)
-	jr nc, .critBoostDone
-	ld a, $ff                    ; cap at 255
-.critBoostDone
-	ld b, a
-.noCritBoost
-	; Captain selected gift: add 25 percentage points to this mon's critical
-	; threshold. Apply after relative Witch scaling and saturate before the
-	; intrinsic always-critical form.
-	ldh a, [hWhoseTurn]
-	and a
-	jr nz, .noBridgeCritBoost
-	push bc
-	ld e, BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
-	farcall BridgeActiveMonHasSelectedEffect
-	pop bc
-	jr nc, .noBridgeCritBoost
-	ld a, b
-	add 25 percent + 1
-	jr nc, .storeBridgeCritBoost
-	ld a, $ff
-.storeBridgeCritBoost
-	ld b, a
-.noBridgeCritBoost
+	ld e, b
+	farcall BridgeAdjustCriticalThreshold
+	ld b, e
 	; Special form (func_special_form.asm): SF_ALWAYS_CRIT (Farfetch'd) forces
 	; the crit for the attacker. Preserve b across the caps lookup, which
 	; farcalls through Bankswitch and clobbers b.
@@ -5855,11 +5825,7 @@ AdjustDamageForMoveType:
 	ld [wDamage + 1], a
 	ld hl, wDamageMultipliers
 	set BIT_STAB_DAMAGE, [hl]
-	ldh a, [hWhoseTurn]
-	and a
-	jr nz, .skipBridgeStabBoost
 	farcall BridgeApplyStabDamageBoost
-.skipBridgeStabBoost
 .skipSameTypeAttackBonus
 	ld a, [wMoveType]
 	ld b, a
@@ -5946,18 +5912,6 @@ AdjustDamageForMoveType:
 ; Apply School Type Expert only when the complete dual-type matchup remains
 ; genuinely super-effective after resistances and immunities are combined.
 BridgeTrySuperEffectiveDamageBoost:
-	; OHKO damage is represented by the normal type-adjustment path even
-	; though it is not ordinary damage. Keep this bridge bonus out of that
-	; fixed-damage path, matching the other fixed-damage bypasses.
-	ld a, [wCriticalHitOrOHKO]
-	cp 2
-	ret z
-	ld a, [wPlayerMoveNum]
-	cp COUNTER
-	ret z
-	ld e, BRIDGE_EFFECT_SUPER_EFFECTIVE
-	farcall BridgeHasGlobalEffect
-	ret nc
 	ld a, EFFECTIVE * 2
 	ld c, a
 	ld a, [wEnemyMonType]
@@ -5967,10 +5921,8 @@ BridgeTrySuperEffectiveDamageBoost:
 	ld a, [wPlayerMoveType]
 	ld b, a
 	call TypeMatchupScan
-	ld a, c
-	cp EFFECTIVE * 2
-	ret c
-	farcall BridgeScaleDamage120
+	ld e, c
+	farcall BridgeApplySuperEffectiveDamageBoost
 	ret
 
 ; Read-only player move matchup preview.  This deliberately does not reuse
@@ -6565,23 +6517,9 @@ MoveHitTest:
 .doAccuracyCheck
 ; if the random number generated is greater than or equal to the scaled accuracy, the move misses
 ; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
-	; Witch prize f (PRIZE_ACC_BOOST): +10 percentage points (26/256) to the
-	; player's own move accuracy, capped at 255 (as close to 100% as this
-	; engine's 0-255 accuracy scale allows). Never applies on the enemy's turn.
-	; PERMANENT (2026-09-02) - does NOT gate on BIT_WITCH_ACCEPTED.
-	ldh a, [hWhoseTurn]
-	and a
-	jr nz, .noAccBoost
-	ld a, [wWitchPrizesEarned]
-	and 1 << (PRIZE_ACC_BOOST - 1)
-	jr z, .noAccBoost
-	ld a, b
-	add 26
-	jr nc, .accBoostDone
-	ld a, $ff                    ; cap at 255
-.accBoostDone
-	ld b, a
-.noAccBoost
+	ld e, b
+	farcall BridgeAdjustAccuracyThreshold
+	ld b, e
 	call BattleRandom
 	cp b
 	; Shin Red import Phase 4 (4.1): a scaled accuracy of 255 should always

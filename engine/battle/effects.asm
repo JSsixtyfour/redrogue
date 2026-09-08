@@ -947,6 +947,9 @@ FlinchSideEffect:
 	jr z, .gotEffectChance
 	ld b, 30 percent + 1 ; chance of flinch otherwise
 .gotEffectChance
+	ld e, b
+	farcall BridgeAdjustFlinchThreshold
+	ld b, e
 	call BattleRandom
 	cp b
 	ret nc

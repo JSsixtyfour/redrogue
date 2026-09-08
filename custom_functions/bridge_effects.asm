@@ -56,9 +56,12 @@ BridgeApplyCriticalDamageBoost::
 	ld e, BRIDGE_EFFECT_CRITICAL_DAMAGE
 	call BridgeHasGlobalEffect
 	ret nc
-	jr BridgeScaleDamage120
+	jp BridgeScaleDamage120
 
 BridgeApplyStabDamageBoost::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
 	; AdjustDamageForMoveType normally bypasses fixed-damage moves, but OHKO
 	; effects return through its type-adjustment path with the OHKO flag set.
 	; Do not scale that sentinel damage as ordinary STAB damage.
@@ -72,7 +75,75 @@ BridgeApplyStabDamageBoost::
 	call BridgeHasGlobalEffect
 	ret nc
 	ld a, 110
-	jr BridgeScaleDamage
+	jp BridgeScaleDamage
+
+; In/out: e = critical-hit threshold. Apply the two player-only run bonuses in
+; their established order: Witch relative scaling, then Captain flat points.
+BridgeAdjustCriticalThreshold::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_CRIT_BOOST - 1)
+	jr z, .captain
+	ld a, e
+	srl a
+	srl a
+	add e
+	jr nc, .storeWitch
+	ld a, $ff
+.storeWitch
+	ld e, a
+.captain
+	push de
+	ld e, BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
+	call BridgeActiveMonHasSelectedEffect
+	pop de
+	ret nc
+	ld a, e
+	add 25 percent + 1
+	jr nc, .storeCaptain
+	ld a, $ff
+.storeCaptain
+	ld e, a
+	ret
+
+; In/out: e = the already-scaled move accuracy threshold.
+BridgeAdjustAccuracyThreshold::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_ACC_BOOST - 1)
+	ret z
+	ld a, e
+	add 26
+	jr nc, .store
+	ld a, $ff
+.store
+	ld e, a
+	ret
+
+; In/out: e = the move's ordinary flinch threshold.
+BridgeAdjustFlinchThreshold::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z
+	push de
+	ld e, BRIDGE_SELECTED_EFFECT_FLINCH
+	call BridgeActiveMonHasSelectedEffect
+	pop de
+	ret nc
+	ld a, e
+	add 20 percent + 1
+	jr nc, .store
+	ld a, $ff
+.store
+	ld e, a
+	ret
 
 BridgeApplyCuteDamageBoost::
 	; The ordinary path already excludes status, Super Fang, and special fixed
@@ -101,6 +172,22 @@ BridgeApplyCuteDamageBoost::
 	ret nc
 	ld a, 150
 	jr BridgeScaleDamage
+
+; In: e = complete dual-type effectiveness multiplier from TypeEffectiveness.
+BridgeApplySuperEffectiveDamageBoost::
+	ld a, [wCriticalHitOrOHKO]
+	cp 2
+	ret z
+	ld a, [wPlayerMoveNum]
+	cp COUNTER
+	ret z
+	ld a, e
+	cp EFFECTIVE * 2
+	ret c
+	ld e, BRIDGE_EFFECT_SUPER_EFFECTIVE
+	call BridgeHasGlobalEffect
+	ret nc
+	jr BridgeScaleDamage120
 
 BridgeScaleDamage120::
 	ld a, 120
