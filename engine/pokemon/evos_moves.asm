@@ -309,7 +309,33 @@ Evolution_PartyMonLoop: ; loop over party mons
 	; The real level-up learn sites are experience.asm (battle level-up) and
 	; item_effects.asm (rare candy); the Phase 5b hook lives there.
 	pop hl
+	; SetPartyMonTypes normally replaces both stored types with the evolved
+	; species' base types. Preserve MON_TYPE2 for a type variant so evolution
+	; cannot silently change the variant while leaving its flag set.
+	push hl
+	push hl
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	bit BIT_TYPE_VARIANT, [hl]
+	pop hl
+	jr z, .setBaseEvolutionTypes
+	push hl
+	ld bc, MON_TYPE2
+	add hl, bc
+	ld a, [hl]
+	pop hl
+	push af
 	predef SetPartyMonTypes
+	pop af
+	pop hl
+	ld bc, MON_TYPE2
+	add hl, bc
+	ld [hl], a
+	jr .evolutionTypesSet
+.setBaseEvolutionTypes
+	predef SetPartyMonTypes
+	pop hl
+.evolutionTypesSet
 	ldh a, [hIsInBattle]
 	and a
 	call z, Evolution_ReloadTilesetTilePatterns

@@ -36,6 +36,60 @@
 
 DEF BIT_SHINY EQU 4 ; bit within the repurposed CatchRate byte
 
+; Draw the single per-instance marker cell on the battle HUD. Type variants
+; have priority over Ghost, and Ghost has priority over shiny. This matches
+; the project's one-visible-variant rule while retaining a generic fallback
+; for future type variants.
+; INPUT: e = 1 for enemy HUD, -1 for player HUD (from PlaceHUDTiles)
+; CLOBBERS: af, bc, de, hl
+DrawBattleVariantMarker::
+	ld a, e
+	cp 1
+	jr z, .enemy
+	ld de, wBattleMon
+	hlcoord 13, 8
+	jr .classify
+.enemy
+	ld de, wEnemyMon
+	hlcoord 9, 1
+.classify
+	push hl
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	ld a, [hl]
+	bit BIT_TYPE_VARIANT, a
+	jr nz, .typeVariant
+	bit BIT_GHOST_VARIANT, a
+	jr nz, .ghost
+	bit BIT_SHINY, a
+	jr nz, .shiny
+	pop hl
+	ret
+.typeVariant
+	ld hl, MON_TYPE2
+	add hl, de
+	ld a, [hl]
+	ld c, '<HUD_WATER>'
+	cp WATER
+	jr z, .draw
+	ld c, '<HUD_ROCK>'
+	cp ROCK
+	jr z, .draw
+	ld c, '<HUD_DRAGON>'
+	cp DRAGON
+	jr z, .draw
+	ld c, '<HUD_VARIANT>'
+	jr .draw
+.ghost
+	ld c, '<HUD_GHOST>'
+	jr .draw
+.shiny
+	ld c, '<HUD_SHINY>'
+.draw
+	pop hl
+	ld [hl], c
+	ret
+
 ; Entrance sparkle animation ID (Shin Red import Phase 9.2), shared with
 ; PlayVariantEntranceAnim below. This is UnusedAnim in data/moves/animations.asm
 ; (entry #182, counted directly in that table) - shinpokered's $B6, a

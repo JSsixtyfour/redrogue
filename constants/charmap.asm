@@ -165,6 +165,12 @@
 ; $c0-$df: safe vChars1 area (offset $40-$5F from $8000), not touched by Town Map.
 ; Town Map writes vChars1 at $6d ($ed) and up, so $c0-$ec are all persistent.
 ; Draw the tile at font.png offset $c0 to get the actual glyph on screen.
+	charmap "<HUD_GHOST>",   $d0
+	charmap "<HUD_WATER>",   $d1
+	charmap "<HUD_ROCK>",    $d2
+	charmap "<HUD_DRAGON>",  $d3
+	charmap "<HUD_SHINY>",   $d4
+	charmap "<HUD_VARIANT>", $d5
 
 	charmap "'",         $e0
 	charmap "<PK>",      $e1
