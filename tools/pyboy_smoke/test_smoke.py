@@ -755,5 +755,40 @@ class TextContractSmokeTest(unittest.TestCase):
         self.assertEqual(failures, [])
 
 
+class CaptureReminderRuntimeTest(HarnessTestCase):
+    def test_capture_box_reminder_only_prints_on_final_slot(self) -> None:
+        assert self.harness is not None
+        h = self.harness
+        h.boot_fight2(seed=1)
+        observed_hls: list[int] = []
+
+        def capture_print_text() -> None:
+            observed_hls.append(h.pyboy.register_file.HL)
+
+        print_hits = h.hook_flag("PrintText", capture_print_text)
+
+        # A count of 19 represents a successful insertion into a non-final
+        # slot; the helper must return without entering the blocking text path.
+        h.write8("wBoxCount", 19)
+        h.park_before_hijack()
+        h.call_routine("BridgeMaybePrintBoxFullReminder")
+        self.assertEqual(print_hits["count"], 0)
+        self.assertEqual(observed_hls, [])
+
+        # Probe the final-slot path at PrintText entry, before the text engine
+        # can wait for input. The probe restores its machine-state baseline.
+        h.write8("wBoxCount", 20)
+        h.park_before_hijack()
+        h.probe_routine_until(
+            "BridgeMaybePrintBoxFullReminder",
+            lambda: print_hits["count"] == 1,
+        )
+        self.assertEqual(print_hits["count"], 1)
+        self.assertEqual(
+            observed_hls,
+            [h.address("BridgeMaybePrintBoxFullReminder.boxFullReminderText")],
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

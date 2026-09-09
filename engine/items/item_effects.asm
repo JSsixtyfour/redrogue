@@ -596,6 +596,8 @@ ItemUseBall:
 	ld hl, ItemUseBallText08
 .printTransferredToPCText
 	call PrintText
+	; A full-box reminder is capture-only. Keep the larger helper out of bank3.
+	farcall BridgeMaybePrintBoxFullReminder
 	jr .done
 
 .oldManCaughtMon

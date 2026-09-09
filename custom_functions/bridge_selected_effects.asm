@@ -593,6 +593,21 @@ BridgeTrackSendNewMonToBox::
 	ld c, a                      ; owner for last old slot
 	jp BridgeShiftSelectedOwnersUp
 
+; Called only after ItemUseBall has successfully front-inserted a caught
+; Pokemon into the current box and printed the transfer message. The helper
+; intentionally checks the resulting count, so captures into a non-final box
+; slot do not print the donor reminder.
+BridgeMaybePrintBoxFullReminder::
+	ld a, [wBoxCount]
+	cp MONS_PER_BOX
+	ret nz
+	ld hl, .boxFullReminderText
+	call PrintText
+	ret
+.boxFullReminderText
+	text_far _BoxIsFullReminderText
+	text_end
+
 ; Party-menu swap. wSwappedMenuItem is the first selected party index at the
 ; end of SwitchPartyMon_InitVarOrSwapData, and hCurrentMenuItem is the second.
 BridgeTrackPartySwap::
