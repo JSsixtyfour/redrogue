@@ -64,9 +64,9 @@ RarityJohto:
 
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
 RarityWarp:
-	rarity_tier_empty ; pokeball
-	rarity_tier_empty ; greatball
-	rarity_tier_empty ; ultraball
+	rarity_tier WarpPokeball
+	rarity_tier WarpGreatball
+	rarity_tier WarpUltraball
 	rarity_tier_empty ; masterball
 	rarity_tier_empty ; uber
 
@@ -306,15 +306,8 @@ JohtoPokeball_Evos:
 ; see the EVOLVE_TRADE added to SeadraEvosMoves). Same classification-only-
 ; placeholder pattern as above, matched to Seadra's own tier.
 	db KINGDRA
-; Annihilape/Magnezone are evolved-only (from Primeape/Magneton, both Kanto
-; POKEBALL-tier evolved forms - see the EVOLVE_LEVEL/EVOLVE_ITEM added to
-; PrimeapeEvosMoves/MagnetonEvosMoves). Sirfetch'd is evolved-only (from
-; Farfetch'd, a Kanto POKEBALL-tier base form - see the EVOLVE_LEVEL added
-; to FarfetchdEvosMoves). All three matched to their own Kanto pre-
-; evolution's POKEBALL tier, same pattern as above.
-	db ANNIHILAPE
-	db MAGNEZONE
-	db SIRFETCHD
+; Annihilape/Magnezone/Sirfetch'd are post-Gen-2 evolutions of Kanto species,
+; so they live in the WARP group, not here - see WarpPokeball below.
 JohtoPokeball_End:
 
 JohtoGreatball:
@@ -342,14 +335,8 @@ JohtoGreatball_Evos:
 	db MEGANIUM
 	db TYPHLOSION
 	db FERALIGATR
-; Weavile/Mamoswine are evolved-only, from Sneasel/Piloswine (both added in
-; batch 6 - see SneaselEvosMoves's EVOLVE_ITEM, ICE_STONE and
-; PiloswineEvosMoves's EVOLVE_LEVEL, 44 wiring). Parked here as
-; classification-only placeholders, matched to their own pre-evolution's
-; GREATBALL tier, same pattern as every other _Evos entry below.
-	db WEAVILE
-	db MAMOSWINE
-	db MISMAGIUS
+; Weavile/Mamoswine/Mismagius are post-Gen-2 evolutions (of Sneasel/Piloswine/
+; Misdreavus), so they live in the WARP group, not here - see WarpGreatball.
 ; Slowking is evolved-only (from Slowpoke, a Kanto GREATBALL-tier base
 ; species - see the EVOLVE_TRADE added to SlowpokeEvosMoves). Same
 ; classification-only-placeholder pattern as above, matched to Slowpoke's
@@ -364,15 +351,8 @@ JohtoGreatball_Evos:
 ; classification-only-placeholder pattern as above, matched to Porygon's
 ; own tier.
 	db PORYGON2
-; Lickilicky/Tangrowth are evolved-only (from Lickitung/Tangela, both Kanto
-; GREATBALL-tier base species - see the EVOLVE_LEVEL added to
-; LickitungEvosMoves/TangelaEvosMoves). Same pattern as above.
-	db LICKILICKY
-	db TANGROWTH
-; Porygon-Z is evolved-only (from Porygon2, itself already classified in
-; this tier above - see the EVOLVE_TRADE added to Porygon2EvosMoves).
-; Matched to Porygon2's own tier, same pattern as every other _Evos entry.
-	db PORYGON_Z
+; Lickilicky/Tangrowth/Porygon-Z are post-Gen-2 evolutions (of Lickitung/
+; Tangela/Porygon2), so they live in the WARP group - see WarpGreatball.
 JohtoGreatball_End:
 
 JohtoUltraball:
@@ -391,31 +371,23 @@ JohtoUltraball:
 	db STANTLER
 	db HITMONTOP
 	db LARVITAR
-	db MR_RIME
 JohtoUltraball_Evos:
 ; stage 1
 	db LANTURN
 	db XATU
 	db PUPITAR
-; Scizor/Kleavor are evolved-only (both from Scyther, a Kanto ULTRABALL-
-; tier base species - see the EVOLVE_LEVEL/EVOLVE_TRADE added to
-; ScytherEvosMoves). Same classification-only-placeholder pattern as
-; Slowking/Steelix in JohtoGreatball, matched to Scyther's own tier.
+; Scizor is evolved-only (from Scyther, a Kanto ULTRABALL-tier base species -
+; see the EVOLVE_LEVEL added to ScytherEvosMoves). Same classification-only-
+; placeholder pattern as Slowking/Steelix in JohtoGreatball, matched to
+; Scyther's own tier. Scyther's OTHER branch, Kleavor, is post-Gen-2 and
+; lives in the WARP group instead - see WarpUltraball.
 	db SCIZOR
-	db KLEAVOR
 ; Blissey is evolved-only (from Chansey, a Kanto ULTRABALL-tier base
 ; species - see the EVOLVE_LEVEL added to ChanseyEvosMoves). Same pattern
 ; as Scizor above, matched to Chansey's own tier.
 	db BLISSEY
-; Rhyperior is evolved-only (from Rhydon, a Kanto ULTRABALL-tier evolved
-; form - see the EVOLVE_TRADE added to RhydonEvosMoves). Same pattern as
-; above, matched to Rhydon's own tier.
-	db RHYPERIOR
-; Electivire/Magmortar are evolved-only (from Electabuzz/Magmar, both
-; Kanto ULTRABALL-tier base species - see the EVOLVE_ITEM added to
-; ElectabuzzEvosMoves/MagmarEvosMoves). Same pattern as above.
-	db ELECTIVIRE
-	db MAGMORTAR
+; Rhyperior/Electivire/Magmortar are post-Gen-2 evolutions (of Rhydon/
+; Electabuzz/Magmar), so they live in the WARP group - see WarpUltraball.
 ; stage 3 - Tyranitar continues the Larvitar/Pupitar line already placed in
 ; this tier's base/stage-1 sections above.
 	db TYRANITAR
@@ -443,6 +415,55 @@ JohtoUber_Evos:
 	db HO_OH
 	db CELEBI
 JohtoUber_End:
+
+; ===========================================================================
+; Kanto Time Warp lists. Every post-Gen-2 evolution of a Kanto or Johto line:
+; Kanto (and a few Johto) species "warped forward" into evolutions they only
+; gained in later generations.
+;
+; Almost the whole group is classification-only. Each of these is reached by
+; EVOLVING something in the Kanto or Johto pool, not by being rolled, so all
+; but one tier has a base count of 0 and the roller simply never picks this
+; group for that tier - exactly the shape the JohtoUber tier already uses.
+; Mr. Rime is the sole exception: nothing evolves into it (canon's own
+; pre-evolution is Galarian Mr. Mime, a form this project has no equivalent
+; for), so it is the group's only rollable base form.
+;
+; Each species sits in the tier its OWN pre-evolution occupies, the same rule
+; every Johto _Evos entry follows.
+; ===========================================================================
+WarpPokeball:
+WarpPokeball_Evos:
+; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
+; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
+; FarfetchdEvosMoves.
+	db ANNIHILAPE
+	db MAGNEZONE
+	db SIRFETCHD
+WarpPokeball_End:
+
+WarpGreatball:
+WarpGreatball_Evos:
+; from Sneasel/Piloswine/Misdreavus (Johto GREATBALL) and Lickitung/Tangela/
+; Porygon2 (Kanto and Johto GREATBALL).
+	db WEAVILE
+	db MAMOSWINE
+	db MISMAGIUS
+	db LICKILICKY
+	db TANGROWTH
+	db PORYGON_Z
+WarpGreatball_End:
+
+WarpUltraball:
+; The group's only rollable base form - see the header note above.
+	db MR_RIME
+WarpUltraball_Evos:
+; from Scyther/Rhydon/Electabuzz/Magmar, all Kanto ULTRABALL tier.
+	db KLEAVOR
+	db RHYPERIOR
+	db ELECTIVIRE
+	db MAGMORTAR
+WarpUltraball_End:
 
 
 ; The Kanto pool must still describe exactly the 151 Kanto species.
@@ -748,4 +769,43 @@ RogueClassifySpeciesFar::
 	ld c, 1                      ; unknown species - treat as pokeball class
 .ok
 	ld e, c
+	ret
+
+; ---------------------------------------------------------------------------
+; RogueIsSpeciesEvolutionAllowed
+; INPUT:  a = the species an evolution is about to produce
+; OUTPUT: carry SET   = that species' group is unlocked AND enabled - evolve
+;         carry CLEAR = group locked or toggled off - caller skips the branch
+; CLOBBERS: af, bc, de, hl
+;
+; Species Groups Phase 2. The group toggles gate what the ROLLER may hand out,
+; but evolution walks EvosMoves directly and reaches the _Evos tail of a tier
+; list without ever consulting them. Without this check a Kanto Poliwhirl would
+; still become a Johto Politoed with Johto locked, and a Piloswine would still
+; become a Warp-group Mamoswine with Kanto Time Warp locked.
+;
+; Callers live in another bank and arrive by farcall, which already destroys
+; a/b/c/h/l, so nothing here needs preserving - only the flag crosses back.
+; Flags DO survive the Bankswitch return path (it is all `pop`/`ld`/`ret`).
+;
+; A species in no pool at all is ALLOWED. That covers every ordinary vanilla
+; evolution, whose targets are Kanto species that classify normally, plus
+; anything the tables do not know about; blocking those would break base play.
+; ---------------------------------------------------------------------------
+RogueIsSpeciesEvolutionAllowed::
+	call RogueClassifySpecies    ; b = tier, c = group, carry set = in no pool
+	jr c, .allow
+	call RogueGetActiveGroupMask ; a = unlocked AND player-enabled group bits
+	                             ; (documented + verified to preserve bc)
+	inc c                        ; shift the wanted group's bit down to bit 0
+.shiftToBit0
+	dec c
+	jr z, .testBit
+	srl a
+	jr .shiftToBit0
+.testBit
+	rra                          ; bit 0 -> carry: set = group active
+	ret
+.allow
+	scf
 	ret

@@ -160,6 +160,28 @@ Evolution_PartyMonLoop: ; loop over party mons
 	cp b ; is the mon's level greater than the evolution requirement?
 	jp c, .nextEvoEntry2 ; if so, go the next evolution entry
 .doEvolution
+; Species Groups Phase 2: every evolution method converges here, with hl on the
+; target species byte and a holding the mon's level. An evolution whose TARGET
+; belongs to a locked or toggled-off species group must not fire - otherwise a
+; Kanto Poliwhirl becomes a Johto Politoed with Johto locked, and a Piloswine
+; becomes a Warp-group Mamoswine with Kanto Time Warp locked. Gating per ENTRY
+; rather than per species keeps split evolutions independent: with Johto off
+; and Warp on, Scyther still reaches Kleavor even though Scizor is blocked.
+;
+; The check is a farcall (RogueIsSpeciesEvolutionAllowed is in the rarity bank),
+; which destroys a/b/c/h/l - so the level goes on the stack and hl is saved
+; around it. `pop hl` does not touch flags, so the callee's carry survives to
+; the branch below; the later `pop af` is only reached after that branch.
+	push af                      ; mon level, consumed just below
+	push hl                      ; evo-table cursor
+	ld a, [hl]                   ; target species
+	farcall RogueIsSpeciesEvolutionAllowed
+	pop hl
+	jr c, .evoGroupActive
+	pop af                       ; discard the saved level, keep the stack even
+	jp .nextEvoEntry2            ; hl is still on the species byte - skip past it
+.evoGroupActive
+	pop af
 	ld [wCurEnemyLevel], a
 	ld a, 1
 	ld [wEvolutionOccurred], a
