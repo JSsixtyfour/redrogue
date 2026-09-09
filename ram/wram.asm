@@ -1695,6 +1695,18 @@ wFormContextForm::    db ; form index 1..NUM_FORM_SLOTS; 0 = base species
 ; silently drop the form on the second load. Restoring the context from here is
 ; one instruction pair instead of five threading edits.
 wMonHForm::           db
+; The SPECIES wMonHForm belongs to.
+;
+; This exists because wMonHIndex CANNOT serve the purpose, which is not obvious:
+; wMonHIndex is wMonHeader + 0, the same byte, and GetMonHeader's base-stats
+; CopyData overwrites it with the ROM row's BASE_DEX_NO *before* the form hook
+; runs. GetMonHeader only writes the species index back over it AFTER the hook
+; returns. So inside ApplyFormOverride, wMonHIndex holds a DEX NUMBER, and an
+; earlier version of the refresh guard compared it against a species index -
+; $33 against $76 for Dugtrio - so the guard could essentially never fire.
+; Found on hardware 2026-09-09 by breaking on the second GetMonHeader of a
+; status-screen open.
+wMonHFormSpecies::    db
 
 ; saved at the start of a battle and then written back at the end of the battle
 wSavedTileAnimations:: db

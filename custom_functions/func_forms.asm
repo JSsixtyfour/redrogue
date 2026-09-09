@@ -67,8 +67,14 @@ ApplyFormOverride::
 ; slot 4 and a vanilla one in slot 5): every real per-mon load goes through
 ; LoadMonData_, which ALWAYS publishes a context - form 0 included - so those
 ; take the .haveContext path and never reach this code.
+; ⚠ Compare against wMonHFormSpecies, NEVER wMonHIndex. wMonHIndex is
+; wMonHeader + 0 - literally the same byte - and GetMonHeader's base-stats
+; CopyData has already overwritten it with the ROM row's BASE_DEX_NO by the time
+; this routine runs; the species index is written back only AFTER we return. An
+; earlier version of this guard used wMonHIndex and compared $33 (Dugtrio's dex)
+; against $76 (its species index), so it never once fired. See wram.asm.
 	ld a, [wCurSpecies]
-	ld hl, wMonHIndex
+	ld hl, wMonHFormSpecies
 	cp [hl]
 	jr nz, .noForm               ; different species: a genuine fresh load
 	ld a, [wMonHForm]
@@ -82,6 +88,7 @@ ApplyFormOverride::
 .noForm
 	xor a
 	ld [wMonHForm], a
+	ld [wMonHFormSpecies], a
 	ret
 
 .haveContext
@@ -89,6 +96,7 @@ ApplyFormOverride::
 	xor a
 	ld [wFormContextSpecies], a  ; consume, unconditionally
 	ld [wMonHForm], a            ; and default this header to "no form"
+	ld [wMonHFormSpecies], a     ; keep the pair consistent - .found resets both
 
 	ld a, [wCurSpecies]
 	cp b
@@ -123,6 +131,9 @@ ApplyFormOverride::
 .found
 	ld a, c
 	ld [wMonHForm], a
+	ld a, b
+	ld [wMonHFormSpecies], a     ; remember WHICH species this form belongs to,
+	                             ; so a later refresh can recognise itself
 	ld de, FORM_REC_DATA         ; skip the 2-byte key
 	add hl, de
 	ld de, wMonHeader
