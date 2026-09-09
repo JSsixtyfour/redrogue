@@ -593,10 +593,18 @@ PupitarPicFront::     INCBIN "gfx/pokemon/front/pupitar.pic"
 PupitarPicBack::      INCBIN "gfx/pokemon/back/pupitarb.pic"
 
 ; Species Groups Phase 2 batch 9 onward. "Pics 10" (in $0E) has only ~116
-; bytes free after batch 8 - too little for another batch. Pin further
-; "Pics N" sections elsewhere per this file's own established pattern.
+; bytes free after batch 8 - too little for another batch. "Pics 8" also
+; overflowed again (batch 9's flavour-text growth, sharing $32) by 918
+; bytes, so Ursaring/Slugma (~968 bytes) are pulled back into this section
+; too, same "pull the boundary back into a previous batch" pattern as
+; batch 7's Swinub/Piloswine move. Pin further "Pics N" sections elsewhere
+; per this file's own established pattern.
 SECTION "Pics 11", ROMX
 
+UrsaringPicFront::    INCBIN "gfx/pokemon/front/ursaring.pic"
+UrsaringPicBack::     INCBIN "gfx/pokemon/back/ursaringb.pic"
+SlugmaPicFront::      INCBIN "gfx/pokemon/front/slugma.pic"
+SlugmaPicBack::       INCBIN "gfx/pokemon/back/slugmab.pic"
 TyranitarPicFront::   INCBIN "gfx/pokemon/front/tyranitar.pic"
 TyranitarPicBack::    INCBIN "gfx/pokemon/back/tyranitarb.pic"
 LugiaPicFront::       INCBIN "gfx/pokemon/front/lugia.pic"

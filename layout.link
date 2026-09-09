@@ -155,6 +155,11 @@ ROMX $17
 	"Starter Dex"
 	"Maps 16"
 	"Hidden Events 3"
+	; Species Groups Phase 2 batch 9. This bank had ~7 KB free after the
+	; sections above. Pinned here so a future unrelated floating-section
+	; shuffle can't displace it - only ~3 bytes remain free after it,
+	; re-measure before adding anything else here.
+	"Pics 11"
 ROMX $18
 	"Maps 17"
 	"Cinnabar Lab Fossils"
