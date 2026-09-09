@@ -290,7 +290,19 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld [wPokedexNum], a
 	xor a
 	ld [wMonDataLocation], a
+	; Battle EXP already offered every crossed-level move before evolution, using
+	; the species that existed at each point in the timeline. Do not add a second,
+	; evolved-species move at the same final level. Stone, trade, and Rare Candy
+	; evolutions occur out of battle and retain the established behavior below.
+	ldh a, [hIsInBattle]
+	and a
+	jr nz, .skipPostEvolutionLevelMove
 	call LearnMoveFromLevelUp
+	jr .finishedPostEvolutionLevelMove
+.skipPostEvolutionLevelMove
+	ld a, [wCurSpecies]
+	ld [wCurPartySpecies], a
+.finishedPostEvolutionLevelMove
 	; NOTE: this LearnMoveFromLevelUp is the EVOLUTION path (learn the NEW
 	; species' moves after evolving) - NOT the normal level-up path. A fusion
 	; can never evolve (Phase 3 blocks it), so no fusion hook belongs here.

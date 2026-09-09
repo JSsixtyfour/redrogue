@@ -230,6 +230,8 @@ GainExperience:
 	ld a, [hl] ; current level
 	cp d
 	jp z, .restoreExpAmount ; if level didn't change, finish this recipient
+	inc a
+	push af ; first crossed level; kept on the stack until move learning
 	push hl
 	callfar KeepEXPBarFull ; Shin Red import Phase 9.1; hl is live (party mon level ptr)
 	pop hl
@@ -333,14 +335,27 @@ GainExperience:
 	callfar PrintStatsBox
 	call WaitForTextScrollButtonPress
 	call LoadScreenTilesFromBuffer1
+	; Learn every move crossed during a multi-level EXP award. Evolution runs only
+	; after this award completes, so every crossed level uses the pre-evolution
+	; species. de holds the inclusive first/final level range across each predef.
+	pop hl                           ; party mon level pointer
+	ld a, [hl]                      ; final level
+	pop bc                           ; previous wCurEnemyLevel (b = saved a)
+	pop de                           ; d = first crossed level
+	ld e, a                          ; e = final level
+	push bc                          ; preserve previous wCurEnemyLevel for exit
+.learnMovesForCrossedLevel
+	ld a, d
+	ld [wCurEnemyLevel], a
+	push de
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
 	ld a, [wCurSpecies]
 	ld [wPokedexNum], a
 	predef LearnMoveFromLevelUp
 	; Fusion (Phase 5b): after the PRIMARY's level-up moves, also learn the
-	; SECONDARY species' moves for this level. Forward-only by design: only what
-	; is learnable at the level just reached, no retroactive backfill.
+	; SECONDARY species' moves for this crossed level. Primary then secondary
+	; ordering is preserved at every level.
 	; This is the REAL battle level-up site (the one in evos_moves.asm is the
 	; post-EVOLUTION learn, which a fusion never reaches - Phase 3 blocks
 	; fusions from evolving). de = party mon struct base is IsFusionMon's input
@@ -366,12 +381,18 @@ GainExperience:
 	ld [wPokedexNum], a              ; LearnMoveFromLevelUp leaves BOTH holding
 	                                 ; the secondary - restore the primary
 .notFusionLevelUpMoves
+	pop de
+	ld a, d
+	cp e
+	jr z, .finishedCrossedLevelMoves
+	inc d
+	jr .learnMovesForCrossedLevel
+.finishedCrossedLevelMoves
 	ld hl, wCanEvolveFlags
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, FLAG_SET
 	predef FlagActionPredef
-	pop hl
 	pop af
 	ld [wCurEnemyLevel], a
 

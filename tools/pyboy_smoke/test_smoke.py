@@ -250,6 +250,22 @@ class EvolutionContextSmokeTest(HarnessTestCase):
         h.probe_routine_until("EvolutionAfterBattle", lambda: hit["count"] > 0, limit=600)
         self.assertEqual(observed["species"], species["VAPOREON"])
 
+    def test_battle_evolution_skips_only_post_evolution_level_move(self):
+        source = (REPO_ROOT / "engine" / "pokemon" / "evos_moves.asm").read_text()
+        gate = source.index("\tldh a, [hIsInBattle]\n", source.index("\tcall CalcStats\n"))
+        skip = source.index("\n.skipPostEvolutionLevelMove\n", gate) + 1
+        finish = source.index("\n.finishedPostEvolutionLevelMove\n", skip) + 1
+        block = source[gate:finish]
+        self.assertIn(
+            "\tldh a, [hIsInBattle]\n"
+            "\tand a\n"
+            "\tjr nz, .skipPostEvolutionLevelMove\n"
+            "\tcall LearnMoveFromLevelUp\n"
+            "\tjr .finishedPostEvolutionLevelMove\n",
+            block,
+        )
+        self.assertLess(block.index("\tcall LearnMoveFromLevelUp\n"), skip - gate)
+
 class AIPhaseZeroSmokeTest(HarnessTestCase):
     def boot_single_mon_fight(self) -> tuple[dict[str, int], dict[str, int]]:
         assert self.harness is not None
@@ -358,6 +374,10 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
             if h.read8("hWhichPokemon") == 4:
                 observed["stack_after"] = h.pyboy.register_file.SP
 
+        def capture_level_up_move_check():
+            if h.read8("hWhichPokemon") == 4:
+                observed.setdefault("learn_levels", []).append(h.read8("wCurEnemyLevel"))
+
         def capture_message():
             if h.pyboy.register_file.HL != h.address("WithExpAllText"):
                 return
@@ -368,6 +388,7 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
 
         h.hook_flag("GainExperience.next2", capture_entry)
         h.hook_flag("GainExperience.nextMon", capture_exit)
+        h.hook_flag("LearnMoveFromLevelUp", capture_level_up_move_check)
         h.hook_flag("GainExperience.notFusionLevelUpMoves", lambda: observed.update(
             string_prefix=h.read_bytes("wStringBuffer", 2)))
         h.hook_flag("PrintText", capture_message)
@@ -395,10 +416,10 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
         # Real award/level-up/learn-move paths. Only slot 5 earns EXP;
         # earlier ineligible and fainted slots and a trailing fainted slot
         # also exercise the paths that must not pop the saved amount.
-        for level, experience, final_level, learns_move in (
-            (19, 19 ** 3, 19, False),
-            (18, 19 ** 3 - 1, 19, False),
-            (19, 20 ** 3 - 1, 20, True),
+        for level, experience, final_level, learns_move, learn_levels in (
+            (19, 19 ** 3, 19, False, ()),
+            (18, 19 ** 3 - 1, 19, False, (19,)),
+            (18, 21 ** 3 - 1, 21, True, (19, 20, 21)),
         ):
             with self.subTest(level=level, experience=experience):
                 observed.clear()
@@ -435,6 +456,7 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                 self.assertEqual(observed["exp"], experience + 70)
                 self.assertEqual(observed["level"], final_level)
                 self.assertEqual(observed["stack_before"], observed["stack_after"])
+                self.assertEqual(tuple(observed.get("learn_levels", ())), learn_levels)
                 if learns_move:
                     self.assertIn(0x09, observed["moves"])  # THUNDERPUNCH
                     self.assertEqual(observed["string_prefix"], [0x93, 0x87])  # TH
