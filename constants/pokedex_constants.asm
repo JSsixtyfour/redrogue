@@ -200,5 +200,71 @@
 	const DEX_SUDOWOODO   ; 185
 	const DEX_POLITOED    ; 186
 	const DEX_HOPPIP      ; 187
+; --- Species Groups Phase 2: Johto batch 4 ---
+	const DEX_SKIPLOOM    ; 188
+	const DEX_JUMPLUFF    ; 189
+	const DEX_AIPOM       ; 190
+	const DEX_SUNKERN     ; 191
+	const DEX_SUNFLORA    ; 192
+	const DEX_YANMA       ; 193
+	const DEX_WOOPER      ; 194
+	const DEX_QUAGSIRE    ; 195
+	const DEX_MURKROW     ; 196
+	const DEX_SLOWKING    ; 197
+; --- Species Groups Phase 2: Johto batch 5 ---
+	const DEX_MISDREAVUS  ; 198
+	const DEX_GIRAFARIG   ; 199
+	const DEX_PINECO      ; 200
+	const DEX_FORRETRESS  ; 201
+	const DEX_DUNSPARCE   ; 202
+	const DEX_GLIGAR      ; 203
+	const DEX_STEELIX     ; 204
+	const DEX_SNUBBULL    ; 205
+	const DEX_GRANBULL    ; 206
+	const DEX_QWILFISH    ; 207
+; --- Species Groups Phase 2: Johto batch 6 ---
+	const DEX_SCIZOR      ; 208
+	const DEX_SHUCKLE     ; 209
+	const DEX_HERACROSS   ; 210
+	const DEX_SNEASEL     ; 211
+	const DEX_TEDDIURSA   ; 212
+	const DEX_URSARING    ; 213
+	const DEX_SLUGMA      ; 214
+	const DEX_MAGCARGO    ; 215
+	const DEX_SWINUB      ; 216
+	const DEX_PILOSWINE   ; 217
+; --- Species Groups Phase 2: Johto batch 7 ---
+	const DEX_CORSOLA     ; 218
+	const DEX_REMORAID    ; 219
+	const DEX_OCTILLERY   ; 220
+	const DEX_MANTINE     ; 221
+	const DEX_SKARMORY    ; 222
+	const DEX_HOUNDOUR    ; 223
+	const DEX_HOUNDOOM    ; 224
+	const DEX_KINGDRA     ; 225
+	const DEX_PHANPY      ; 226
+	const DEX_DONPHAN     ; 227
+; --- Species Groups Phase 2: Johto batch 8 ---
+	const DEX_PORYGON2    ; 228
+	const DEX_STANTLER    ; 229
+	const DEX_HITMONTOP   ; 230
+	const DEX_MILTANK     ; 231
+	const DEX_BLISSEY     ; 232
+	const DEX_RAIKOU      ; 233
+	const DEX_ENTEI       ; 234
+	const DEX_SUICUNE     ; 235
+	const DEX_LARVITAR    ; 236
+	const DEX_PUPITAR     ; 237
+; --- Species Groups Phase 2: Johto batch 9 ---
+	const DEX_TYRANITAR   ; 238
+	const DEX_LUGIA       ; 239
+	const DEX_HO_OH       ; 240
+	const DEX_CELEBI      ; 241
+	const DEX_ANNIHILAPE  ; 242
+	const DEX_LICKILICKY  ; 243
+	const DEX_SIRFETCHD   ; 244
+	const DEX_MAGNEZONE   ; 245
+	const DEX_TANGROWTH   ; 246
+	const DEX_RHYPERIOR   ; 247
 
 DEF NUM_POKEMON EQU const_value - 1

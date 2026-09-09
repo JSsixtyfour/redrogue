@@ -1,16 +1,12 @@
 _CeruleanTradeHouseGrannyText::
-	text "My husband likes"
-	line "trading #MON."
-
-	para "If you are a"
-	line "collector, would"
-	cont "you please trade"
-	cont "with him?"
+	text "I'm FLORA. This"
+	line "grotto nurtures"
+	cont "life and growth."
 	done
 
 _CeruleanTradeHouseGrannyAlreadyGotText::
-	text "Thanks again for"
-	line "stopping by!"
+	text "May your team"
+	line "keep flourishing!"
 	done
 
 _TradeHouseGift1Desc::

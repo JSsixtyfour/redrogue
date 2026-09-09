@@ -223,3 +223,35 @@ HandlePoisonBurnLeechSeed_IncreaseEnemyHP::
 	xor 1
 	ldh [hWhoseTurn], a
 	ret
+
+; Mom's SECOND CHANCE restores KO Defiance's single charge, but only while
+; that key item is in the active loadout and its charge has been spent.
+BridgeMomSecondChanceFar::
+	call BridgeMomSecondChanceEligibleFar
+	ret nc
+	ld a, 1
+	ld [wKODefianceUsages], a
+	scf
+	ret
+
+; Out: carry set only when KO Defiance is active and has zero charges.
+; Preserve wCurItem because it aliases wCurPartySpecies.
+BridgeMomSecondChanceEligibleFar::
+	ld a, [wKODefianceUsages]
+	and a
+	ret nz
+	ld a, [wCurItem]
+	push af
+	ld a, KO_DEFIANCE
+	ld [wCurItem], a
+	farcall IsKeyItemActive
+	jr z, .inactive
+	pop af
+	ld [wCurItem], a
+	scf
+	ret
+.inactive
+	pop af
+	ld [wCurItem], a
+	and a
+	ret

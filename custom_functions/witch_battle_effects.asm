@@ -435,7 +435,7 @@ WitchApplyMoneyEffects::
 .checkMoneyPrize
 	ld a, [wWitchPrizesEarned]
 	and 1 << (PRIZE_MONEY - 1)
-	ret z
+	jr z, .checkBridgeMoney
 	; wAmountMoneyWon += wAmountMoneyWon / 10. DivideBCD only ever divides
 	; hMoney (engine/math/bcd.asm), so copy the 3-byte BCD value in first.
 	ld a, [wAmountMoneyWon]
@@ -454,6 +454,30 @@ WitchApplyMoneyEffects::
 	ld hl, hDivideBCDQuotient + 2
 	ld c, $3
 	predef AddBCDPredef ; wAmountMoneyWon += wAmountMoneyWon / 10
+
+.checkBridgeMoney
+	ld e, BRIDGE_EFFECT_MONEY
+	farcall BridgeHasGlobalEffect
+	ret nc
+	; Oak's RESEARCH GRANT adds 20% after all earlier payout modifiers. Copy
+	; the current BCD amount into DivideBCD's fixed hMoney input, divide by
+	; five, then add that quotient back to the payout.
+	ld a, [wAmountMoneyWon]
+	ldh [hMoney], a
+	ld a, [wAmountMoneyWon + 1]
+	ldh [hMoney + 1], a
+	ld a, [wAmountMoneyWon + 2]
+	ldh [hMoney + 2], a
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
+	ld a, $05
+	ldh [hDivideBCDDivisor + 2], a
+	predef DivideBCDPredef3
+	ld de, wAmountMoneyWon + 2
+	ld hl, hDivideBCDQuotient + 2
+	ld c, $3
+	predef AddBCDPredef ; wAmountMoneyWon += wAmountMoneyWon / 5
 	ret
 
 ; ============================================================

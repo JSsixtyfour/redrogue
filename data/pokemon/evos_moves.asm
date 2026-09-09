@@ -200,16 +200,16 @@ EvosMovesPointerTable:
 	dw PolitoedEvosMoves
 	dw MagnemiteEvosMoves
 	dw HoppipEvosMoves
-	dw MissingNoAFEvosMoves
+	dw SkiploomEvosMoves
 	dw CharmanderEvosMoves
 	dw SquirtleEvosMoves
 	dw CharmeleonEvosMoves
 	dw WartortleEvosMoves
 	dw CharizardEvosMoves
-	dw MissingNoB5EvosMoves
-	dw FossilKabutopsEvosMoves
-	dw FossilAerodactylEvosMoves
-	dw MonGhostEvosMoves
+	dw JumpluffEvosMoves
+	dw AipomEvosMoves
+	dw SunkernEvosMoves
+	dw SunfloraEvosMoves
 	dw OddishEvosMoves
 	dw GloomEvosMoves
 	dw VileplumeEvosMoves
@@ -219,10 +219,71 @@ EvosMovesPointerTable:
 	dw WeavileEvosMoves
 	dw MamoswineEvosMoves
 	dw MismagiusEvosMoves
+	dw YanmaEvosMoves
+	dw WooperEvosMoves
+	dw QuagsireEvosMoves
+	dw MurkrowEvosMoves
+	dw SlowkingEvosMoves
+	dw MisdreavusEvosMoves
+	dw GirafarigEvosMoves
+	dw PinecoEvosMoves
+	dw ForretressEvosMoves
+	dw DunsparceEvosMoves
+	dw GligarEvosMoves
+	dw SteelixEvosMoves
+	dw SnubbullEvosMoves
+	dw GranbullEvosMoves
+	dw QwilfishEvosMoves
+	dw ScizorEvosMoves
+	dw ShuckleEvosMoves
+	dw HeracrossEvosMoves
+	dw SneaselEvosMoves
+	dw TeddiursaEvosMoves
+	dw UrsaringEvosMoves
+	dw SlugmaEvosMoves
+	dw MagcargoEvosMoves
+	dw SwinubEvosMoves
+	dw PiloswineEvosMoves
+	dw CorsolaEvosMoves
+	dw RemoraidEvosMoves
+	dw OctilleryEvosMoves
+	dw MantineEvosMoves
+	dw SkarmoryEvosMoves
+	dw HoundourEvosMoves
+	dw HoundoomEvosMoves
+	dw KingdraEvosMoves
+	dw PhanpyEvosMoves
+	dw DonphanEvosMoves
+	dw Porygon2EvosMoves
+	dw StantlerEvosMoves
+	dw HitmontopEvosMoves
+	dw MiltankEvosMoves
+	dw BlisseyEvosMoves
+	dw RaikouEvosMoves
+	dw EnteiEvosMoves
+	dw SuicuneEvosMoves
+	dw LarvitarEvosMoves
+	dw PupitarEvosMoves
+	dw TyranitarEvosMoves
+	dw LugiaEvosMoves
+	dw HoOhEvosMoves
+	dw CelebiEvosMoves
+	dw AnnihilapeEvosMoves
+	dw LickilickyEvosMoves
+	dw SirfetchdEvosMoves
+	dw MagnezoneEvosMoves
+	dw TangrowthEvosMoves
+	dw RhyperiorEvosMoves
 	assert_table_length NUM_POKEMON_INDEXES
 
 RhydonEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Rhydon->Rhyperior is a trade-holding-
+; Protector evolution; this project has no held-item trade mechanic, so -
+; per the project's own trade-evolution convention (EVOLVE_TRADE at level
+; 40, same as Seadra->Kingdra/Porygon->Porygon2) - a plain trade threshold
+; is used instead.
+	db EVOLVE_TRADE, 40, RHYPERIOR
 	db 0
 ; Learnset
 	db 10, TAIL_WHIP
@@ -457,6 +518,11 @@ ExeggutorEvosMoves:
 
 LickitungEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Lickitung->Lickilicky is a level-up-
+; knowing-Rollout evolution; Rollout does not exist in Gen 1, so - matching
+; KEP's own fallback for the same species - a plain level threshold is
+; used instead.
+	db EVOLVE_LEVEL, 32, LICKILICKY
 	db 0
 ; Learnset
 	db 7, STOMP
@@ -772,6 +838,12 @@ GastlyEvosMoves:
     db 0
 ScytherEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Scyther->Scizor is a trade-holding-Metal-Coat
+; evolution; this project has no Metal Coat item, so - matching KEP's own
+; fallback path for the same species (tmp/kep/data/pokemon/evos_moves.asm's
+; ScytherEvosMoves, EV_LEVEL 41 SCIZOR) - a plain level threshold is used
+; instead.
+	db EVOLVE_LEVEL, 41, SCIZOR
 	db 0
 ; Learnset
 	db 6, FOCUS_ENERGY
@@ -859,6 +931,12 @@ PinsirEvosMoves:
 
 TangelaEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Tangela->Tangrowth is a level-up-knowing-
+; Ancient-Power evolution; Ancient Power does not exist in Gen 1, so -
+; matching KEP's own fallback for the same species (already promised in
+; PiloswineEvosMoves's own note back in batch 6) - a plain level threshold
+; is used instead.
+	db EVOLVE_LEVEL, 44, TANGROWTH
 	db 0
 ; Learnset
 	db 15, ABSORB
@@ -931,6 +1009,11 @@ GrowlitheEvosMoves:
 
 OnixEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Onix->Steelix is a trade-holding-Metal-Coat
+; evolution; this project has no Metal Coat item, so - matching KEP's own
+; fallback path for the same species - a plain level threshold is used
+; instead.
+	db EVOLVE_LEVEL, 38, STEELIX
 	db 0
 ; Learnset
 	db 12, ROCK_THROW
@@ -989,6 +1072,10 @@ PidgeyEvosMoves:
 SlowpokeEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 37, SLOWBRO
+; Species Groups Phase 2: canon Slowpoke->Slowking is a trade evolution
+; (holding King's Rock); EVOLVE_TRADE is the closest fit this engine has.
+; Min level 40, per project convention for this import's trade evolutions.
+	db EVOLVE_TRADE, 40, SLOWKING
 	db 0
 ; Learnset
 	db 5, GROWL
@@ -1053,6 +1140,12 @@ GravelerEvosMoves:
 
 ChanseyEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Chansey->Blissey is a friendship evolution;
+; this project has no friendship mechanic, so - matching KEP's own fallback
+; path for the same species (tmp/kep/data/pokemon/evos_moves.asm's
+; ChanseyEvosMoves, EV_LEVEL 45 BLISSEY) - a plain level threshold is used
+; instead.
+	db EVOLVE_LEVEL, 45, BLISSEY
 	db 0
 ; Learnset
 	db 12, DOUBLESLAP
@@ -1355,6 +1448,11 @@ ElectabuzzEvosMoves:
 
 MagnetonEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Magneton->Magnezone is a level-up-in-a-
+; special-magnetic-field evolution; this project has no such location
+; mechanic, so THUNDER_STONE (already in the project, and Magnemite's own
+; Kanto-era item association) substitutes for the trigger.
+	db EVOLVE_ITEM, THUNDER_STONE, 1, MAGNEZONE
 	db 0
 ; Learnset
 	db 6, THUNDERSHOCK
@@ -1524,6 +1622,12 @@ TotodileEvosMoves:
 
 FarfetchdEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Farfetch'd->Sirfetch'd is a level-up-while-
+; knowing-Leek-Swipe-after-winning-3-battles evolution; this engine cannot
+; express any of that, so a plain level threshold is used instead (KEP's
+; own fallback level for this species, 24, though KEP's own target name
+; there was a copy-paste error - Sirfetch'd is the correct target).
+	db EVOLVE_LEVEL, 24, SIRFETCHD
 	db 0
 ; Learnset
 	db 7, LEER
@@ -2042,6 +2146,12 @@ HorseaEvosMoves:
     db 0 
 SeadraEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Seadra->Kingdra is a trade-holding-Dragon-
+; Scale evolution. This project has no held-item trade mechanic, so - per
+; the project's own trade-evolution convention (EVOLVE_TRADE at level 40,
+; same as Slowpoke->Slowking and Poliwhirl->Politoed) - a plain trade
+; threshold is used instead.
+	db EVOLVE_TRADE, 40, KINGDRA
 	db 0
 ; Learnset
 	db 10, WATER_GUN
@@ -2386,7 +2496,8 @@ PoliwhirlEvosMoves:
 	db EVOLVE_ITEM, WATER_STONE, 1, POLIWRATH
 ; Species Groups Phase 2: canon Poliwhirl->Politoed is a trade evolution
 ; (holding King's Rock); EVOLVE_TRADE is the closest fit this engine has.
-	db EVOLVE_TRADE, 1, POLITOED
+; Min level 40, per project convention for this import's trade evolutions.
+	db EVOLVE_TRADE, 40, POLITOED
 	db 0
 ; Learnset
 	db 6,  MIST
@@ -2505,6 +2616,12 @@ DodrioEvosMoves:
     db 0
 PrimeapeEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Primeape->Annihilape is a level-up-while-
+; knowing-Rage-Fist-after-20-hits evolution; this engine cannot express
+; that counter, so a plain level threshold is used instead (not a trade
+; evolution in canon, despite KEP's own EV_TRADE fallback for this exact
+; species - EVOLVE_LEVEL is more faithful to the real mechanic here).
+	db EVOLVE_LEVEL, 35, ANNIHILAPE
 	db 0
 ; Learnset
 	db 9, LOW_KICK
@@ -3423,6 +3540,12 @@ GeodudeEvosMoves:
     db 0
 PorygonEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Porygon->Porygon2 is a trade-holding-Up-
+; Grade evolution; this project has no held-item trade mechanic, so - per
+; the project's own trade-evolution convention (EVOLVE_TRADE at level 40,
+; same as Seadra->Kingdra/Slowpoke->Slowking/Poliwhirl->Politoed) - a plain
+; trade threshold is used instead.
+	db EVOLVE_TRADE, 40, PORYGON2
 	db 0
 ; Learnset
 	db 12, PSYBEAM
@@ -3495,10 +3618,20 @@ HoppipEvosMoves:
 	db 30, MEGA_DRAIN
 	db 0
 
-MissingNoAFEvosMoves:
+SkiploomEvosMoves:
 ; Evolutions
+	db EVOLVE_LEVEL, 27, JUMPLUFF
 	db 0
-; Learnset
+; Learnset - SPLASH/TAIL_WHIP/TACKLE already granted at level 1 (SYNTHESIS's
+; slot is METRONOME, see base_stats/skiploom.asm)
+	db 5, TAIL_WHIP
+	db 10, TACKLE
+	db 13, POISONPOWDER
+	db 15, STUN_SPORE
+	db 17, SLEEP_POWDER
+	db 22, LEECH_SEED
+	db 29, METRONOME ; was COTTON_SPORE
+	db 36, MEGA_DRAIN
 	db 0
 
 CharmanderEvosMoves:
@@ -3617,28 +3750,56 @@ CharizardEvosMoves:
     db 2, FIRE_PUNCH
     db 2, HEADBUTT
     db 0
-MissingNoB5EvosMoves:
+JumpluffEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - SPLASH/TAIL_WHIP/TACKLE already granted at level 1
+	db 5, TAIL_WHIP
+	db 10, TACKLE
+	db 13, POISONPOWDER
+	db 15, STUN_SPORE
+	db 17, SLEEP_POWDER
+	db 22, LEECH_SEED
+	db 33, METRONOME ; was COTTON_SPORE
+	db 44, MEGA_DRAIN
 	db 0
 
-FossilKabutopsEvosMoves:
+AipomEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - SCRATCH/TAIL_WHIP already granted at level 1; BATON_PASS does
+; not exist in Gen 1, filled with METRONOME.
+	db 6, SAND_ATTACK
+	db 12, METRONOME ; was BATON_PASS
+	db 19, FURY_SWIPES
+	db 27, SWIFT
+	db 36, SCREECH
+	db 46, AGILITY
 	db 0
 
-FossilAerodactylEvosMoves:
+SunkernEvosMoves:
 ; Evolutions
+	db EVOLVE_ITEM, SUN_STONE, 1, SUNFLORA
 	db 0
-; Learnset
+; Learnset - ABSORB already granted at level 1; SUNNY_DAY/SYNTHESIS/
+; GIGA_DRAIN do not exist in Gen 1, filled with METRONOME.
+	db 4, GROWTH
+	db 10, MEGA_DRAIN
+	db 19, METRONOME ; was SUNNY_DAY
+	db 31, METRONOME ; was SYNTHESIS
+	db 46, METRONOME ; was GIGA_DRAIN
 	db 0
 
-MonGhostEvosMoves:
+SunfloraEvosMoves:
 ; Evolutions
 	db 0
-; Learnset
+; Learnset - ABSORB/POUND already granted at level 1; SUNNY_DAY does not
+; exist in Gen 1, filled with METRONOME.
+	db 4, GROWTH
+	db 10, RAZOR_LEAF
+	db 19, METRONOME ; was SUNNY_DAY
+	db 31, PETAL_DANCE
+	db 46, SOLARBEAM
 	db 0
 
 OddishEvosMoves:
@@ -3763,10 +3924,8 @@ VictreebelEvosMoves:
 WeavileEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Weavile evolves from Sneasel (part of a later batch); when Sneasel's own
-; entry is added, point it at this species via an evolution item (ICE_STONE is
-; the closest fit already in the project - there is no day/night system here
-; for the canon "level up holding Razor Claw at night" method).
+; Learnset - Weavile evolves from Sneasel (added in batch 6, see
+; SneaselEvosMoves for the EVOLVE_ITEM, ICE_STONE wiring).
 	db 20, METRONOME ; FILLER - real moveset TBD
 	db 40, METRONOME ; FILLER - real moveset TBD
 	db 0
@@ -3774,10 +3933,8 @@ WeavileEvosMoves:
 MamoswineEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Mamoswine evolves from Piloswine (part of a later batch); when Piloswine's
-; own entry is added, give it `db EVOLVE_LEVEL, 44, MAMOSWINE` (mirrors KEP's own
-; precedent for Tangela->Tangrowth, the same "level up knowing Ancient Power"
-; condition this engine cannot express directly).
+; Learnset - Mamoswine evolves from Piloswine (added in batch 6, see
+; PiloswineEvosMoves for the EVOLVE_LEVEL, 44 wiring).
 	db 32, METRONOME ; FILLER - real moveset TBD
 	db 40, METRONOME ; FILLER - real moveset TBD
 	db 48, METRONOME ; FILLER - real moveset TBD
@@ -3792,4 +3949,781 @@ MismagiusEvosMoves:
 ; `db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS` (DUSK_STONE already exists).
 	db 24, METRONOME ; FILLER - real moveset TBD
 	db 48, METRONOME ; FILLER - real moveset TBD
+	db 0
+
+YanmaEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE already granted at level 1 (FORESIGHT's slot is
+; METRONOME, see base_stats/yanma.asm); DETECT does not exist in Gen 1,
+; filled with METRONOME.
+	db 7, QUICK_ATTACK
+	db 13, DOUBLE_TEAM
+	db 19, SONICBOOM
+	db 25, METRONOME ; was DETECT
+	db 31, SUPERSONIC
+	db 37, SWIFT
+	db 43, SCREECH
+	db 0
+
+WooperEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 20, QUAGSIRE
+	db 0
+; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1; RAIN_DANCE
+; does not exist in Gen 1, filled with METRONOME.
+	db 11, SLAM
+	db 21, AMNESIA
+	db 31, EARTHQUAKE
+	db 41, METRONOME ; was RAIN_DANCE
+	db 51, MIST
+	db 51, HAZE
+	db 0
+
+QuagsireEvosMoves:
+; Evolutions
+	db 0
+; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1
+	db 11, SLAM
+	db 23, AMNESIA
+	db 35, EARTHQUAKE
+	db 47, METRONOME ; was RAIN_DANCE
+	db 59, MIST
+	db 59, HAZE
+	db 0
+
+MurkrowEvosMoves:
+; Evolutions
+	db 0
+; Learnset - PECK already granted at level 1; PURSUIT/FAINT_ATTACK/
+; MEAN_LOOK do not exist in Gen 1, filled with METRONOME.
+	db 11, METRONOME ; was PURSUIT
+	db 16, HAZE
+	db 26, NIGHT_SHADE
+	db 31, METRONOME ; was FAINT_ATTACK
+	db 41, METRONOME ; was MEAN_LOOK
+	db 0
+
+SlowkingEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
+; CONFUSION/DISABLE/HEADBUTT already granted at level 1.
+	db 10, BIDE
+	db 18, DISABLE
+	db 22, HEADBUTT
+	db 27, GROWL
+	db 33, WATER_GUN
+	db 44, AMNESIA
+	db 55, PSYCHIC_M
+	db 0
+
+MisdreavusEvosMoves:
+; Evolutions
+	db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS
+	db 0
+; Learnset - GROWL/PSYWAVE already granted at level 1; SPITE/MEAN_LOOK/
+; PAIN_SPLIT/PERISH_SONG do not exist in Gen 1, filled with METRONOME.
+	db 6, METRONOME ; was SPITE
+	db 12, CONFUSE_RAY
+	db 19, METRONOME ; was MEAN_LOOK
+	db 27, PSYBEAM
+	db 36, METRONOME ; was PAIN_SPLIT
+	db 46, METRONOME ; was PERISH_SONG
+	db 0
+
+GirafarigEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1; CRUNCH
+; does not exist in Gen 1, filled with METRONOME.
+	db 7, CONFUSION
+	db 13, STOMP
+	db 20, AGILITY
+	db 30, METRONOME ; was BATON_PASS
+	db 41, PSYBEAM
+	db 54, METRONOME ; was CRUNCH
+	db 0
+
+PinecoEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 31, FORRETRESS
+	db 0
+; Learnset - TACKLE already granted at level 1 (PROTECT's slot is METRONOME,
+; see base_stats/pineco.asm); RAPID_SPIN/SPIKES do not exist in Gen 1, filled
+; with METRONOME.
+	db 8, SELFDESTRUCT
+	db 15, TAKE_DOWN
+	db 22, METRONOME ; was RAPID_SPIN
+	db 29, BIDE
+	db 36, EXPLOSION
+	db 43, METRONOME ; was SPIKES
+	db 50, DOUBLE_EDGE
+	db 0
+
+ForretressEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/SELFDESTRUCT already granted at level 1 (PROTECT's slot is
+; METRONOME, see base_stats/forretress.asm)
+	db 8, SELFDESTRUCT
+	db 15, TAKE_DOWN
+	db 22, METRONOME ; was RAPID_SPIN
+	db 29, BIDE
+	db 39, EXPLOSION
+	db 49, METRONOME ; was SPIKES
+	db 59, DOUBLE_EDGE
+	db 0
+
+DunsparceEvosMoves:
+; Evolutions
+	db 0
+; Learnset - RAGE already granted at level 1; PURSUIT does not exist in
+; Gen 1, filled with METRONOME.
+	db 5, DEFENSE_CURL
+	db 13, GLARE
+	db 18, METRONOME ; was SPITE
+	db 26, METRONOME ; was PURSUIT
+	db 30, SCREECH
+	db 38, TAKE_DOWN
+	db 0
+
+GligarEvosMoves:
+; Evolutions
+	db 0
+; Learnset - POISON_STING already granted at level 1; FAINT_ATTACK does not
+; exist in Gen 1, filled with METRONOME.
+	db 6, SAND_ATTACK
+	db 13, HARDEN
+	db 20, QUICK_ATTACK
+	db 28, METRONOME ; was FAINT_ATTACK
+	db 36, SLASH
+	db 44, SCREECH
+	db 52, GUILLOTINE
+	db 0
+
+SteelixEvosMoves:
+; Evolutions
+	db 0
+; Learnset - canon Gen 2 levels (tmp/pokegold, since KEP's own Steelix
+; learnset uses Gen 4+ moves); TACKLE/SCREECH already granted at level 1;
+; SANDSTORM/CRUNCH do not exist in Gen 1, filled with METRONOME.
+	db 10, BIND
+	db 14, ROCK_THROW
+	db 23, HARDEN
+	db 27, RAGE
+	db 36, METRONOME ; was SANDSTORM
+	db 40, SLAM
+	db 49, METRONOME ; was CRUNCH
+	db 0
+
+SnubbullEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 23, GRANBULL
+	db 0
+; Learnset - TACKLE already granted at level 1 (SCARY_FACE's slot is
+; METRONOME, see base_stats/snubbull.asm); CHARM does not exist in Gen 1,
+; filled with METRONOME.
+	db 4, TAIL_WHIP
+	db 8, METRONOME ; was CHARM
+	db 13, BITE
+	db 19, LICK
+	db 26, METRONOME ; was ROAR
+	db 34, RAGE
+	db 43, TAKE_DOWN
+	db 0
+
+GranbullEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/TAIL_WHIP already granted at level 1 (SCARY_FACE's slot
+; is METRONOME, see base_stats/granbull.asm)
+	db 4, TAIL_WHIP
+	db 8, METRONOME ; was CHARM
+	db 13, BITE
+	db 19, LICK
+	db 28, METRONOME ; was ROAR
+	db 38, RAGE
+	db 51, TAKE_DOWN
+	db 0
+
+QwilfishEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/POISON_STING already granted at level 1
+	db 10, HARDEN
+	db 10, MINIMIZE
+	db 19, WATER_GUN
+	db 28, PIN_MISSILE
+	db 37, TAKE_DOWN
+	db 46, HYDRO_PUMP
+	db 0
+
+ScizorEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/pokegold/data/pokemon/evos_attacks.asm; QUICK_ATTACK/LEER
+; already granted at level 1; PURSUIT/FALSE_SWIPE/METAL_CLAW do not exist in
+; Gen 1, filled with METRONOME.
+	db 6, FOCUS_ENERGY
+	db 12, METRONOME ; was PURSUIT
+	db 18, METRONOME ; was FALSE_SWIPE
+	db 24, AGILITY
+	db 30, METRONOME ; was METAL_CLAW
+	db 36, SLASH
+	db 42, SWORDS_DANCE
+	db 48, DOUBLE_TEAM
+	db 0
+
+ShuckleEvosMoves:
+; Evolutions
+	db 0
+; Learnset - CONSTRICT/WITHDRAW already granted at level 1; ENCORE/SAFEGUARD
+; do not exist in Gen 1, filled with METRONOME.
+	db 9, WRAP
+	db 14, METRONOME ; was ENCORE
+	db 23, METRONOME ; was SAFEGUARD
+	db 28, BIDE
+	db 37, REST
+	db 0
+
+HeracrossEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/LEER already granted at level 1; ENDURE/REVERSAL/MEGAHORN
+; do not exist in Gen 1, filled with METRONOME.
+	db 6, HORN_ATTACK
+	db 12, METRONOME ; was ENDURE
+	db 19, FURY_ATTACK
+	db 27, COUNTER
+	db 35, TAKE_DOWN
+	db 44, METRONOME ; was REVERSAL
+	db 54, METRONOME ; was MEGAHORN
+	db 0
+
+SneaselEvosMoves:
+; Evolutions
+; Canon Sneasel->Weavile is a level-up-holding-Razor-Claw-at-night evolution;
+; this project has no day/night system, so ICE_STONE (already in the project)
+; is used as the closest fit - see WeavileEvosMoves's own note.
+	db EVOLVE_ITEM, ICE_STONE, 1, WEAVILE
+	db 0
+; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/BEAT_UP do
+; not exist in Gen 1, filled with METRONOME.
+	db 9, QUICK_ATTACK
+	db 17, SCREECH
+	db 25, METRONOME ; was FAINT_ATTACK
+	db 33, FURY_SWIPES
+	db 41, AGILITY
+	db 49, SLASH
+	db 57, METRONOME ; was BEAT_UP
+	db 0
+
+TeddiursaEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 30, URSARING
+	db 0
+; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/SNORE do
+; not exist in Gen 1, filled with METRONOME.
+	db 8, LICK
+	db 15, FURY_SWIPES
+	db 22, METRONOME ; was FAINT_ATTACK
+	db 29, REST
+	db 36, SLASH
+	db 43, METRONOME ; was SNORE
+	db 50, THRASH
+	db 0
+
+UrsaringEvosMoves:
+; Evolutions
+	db 0
+; Learnset - SCRATCH/LEER/LICK/FURY_SWIPES already granted at level 1;
+; FAINT_ATTACK/SNORE do not exist in Gen 1, filled with METRONOME.
+	db 8, LICK
+	db 15, FURY_SWIPES
+	db 22, METRONOME ; was FAINT_ATTACK
+	db 29, REST
+	db 39, SLASH
+	db 49, METRONOME ; was SNORE
+	db 59, THRASH
+	db 0
+
+SlugmaEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 38, MAGCARGO
+	db 0
+; Learnset - SMOG already granted at level 1.
+	db 8, EMBER
+	db 15, ROCK_THROW
+	db 22, HARDEN
+	db 29, AMNESIA
+	db 36, FLAMETHROWER
+	db 43, ROCK_SLIDE
+	db 50, BODY_SLAM
+	db 0
+
+MagcargoEvosMoves:
+; Evolutions
+	db 0
+; Learnset - SMOG/EMBER/ROCK_THROW already granted at level 1.
+	db 8, EMBER
+	db 15, ROCK_THROW
+	db 22, HARDEN
+	db 29, AMNESIA
+	db 36, FLAMETHROWER
+	db 48, ROCK_SLIDE
+	db 60, BODY_SLAM
+	db 0
+
+SwinubEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 33, PILOSWINE
+	db 0
+; Learnset - TACKLE already granted at level 1; POWDER_SNOW/ENDURE do not
+; exist in Gen 1, filled with METRONOME.
+	db 10, METRONOME ; was POWDER_SNOW
+	db 19, METRONOME ; was ENDURE
+	db 28, TAKE_DOWN
+	db 37, MIST
+	db 46, BLIZZARD
+	db 0
+
+PiloswineEvosMoves:
+; Evolutions
+; Canon Piloswine has no further evolution; Mamoswine is a Gen 4 addition to
+; this line kept in the roster (see MamoswineEvosMoves's own note). Mirrors
+; KEP's own precedent for Tangela->Tangrowth: a level-up threshold standing
+; in for the real "level up knowing Ancient Power" condition, which this
+; engine cannot express directly.
+	db EVOLVE_LEVEL, 44, MAMOSWINE
+	db 0
+; Learnset - HORN_ATTACK already granted at level 1; POWDER_SNOW/ENDURE do
+; not exist in Gen 1, filled with METRONOME.
+	db 10, METRONOME ; was POWDER_SNOW
+	db 19, METRONOME ; was ENDURE
+	db 28, TAKE_DOWN
+	db 33, FURY_ATTACK
+	db 42, MIST
+	db 56, BLIZZARD
+	db 0
+
+CorsolaEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE already granted at level 1; MIRROR_COAT/ANCIENTPOWER do
+; not exist in Gen 1, filled with METRONOME.
+	db 7, HARDEN
+	db 13, BUBBLE
+	db 19, RECOVER
+	db 25, BUBBLEBEAM
+	db 31, SPIKE_CANNON
+	db 37, METRONOME ; was MIRROR_COAT
+	db 43, METRONOME ; was ANCIENTPOWER
+	db 0
+
+RemoraidEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 25, OCTILLERY
+	db 0
+; Learnset - WATER_GUN already granted at level 1; LOCK_ON does not exist in
+; Gen 1, filled with METRONOME.
+	db 11, METRONOME ; was LOCK_ON
+	db 22, PSYBEAM
+	db 22, AURORA_BEAM
+	db 22, BUBBLEBEAM
+	db 33, FOCUS_ENERGY
+	db 44, ICE_BEAM
+	db 55, HYPER_BEAM
+	db 0
+
+OctilleryEvosMoves:
+; Evolutions
+	db 0
+; Learnset - WATER_GUN already granted at level 1; OCTAZOOKA does not exist
+; in Gen 1, filled with METRONOME.
+	db 11, CONSTRICT
+	db 22, PSYBEAM
+	db 22, AURORA_BEAM
+	db 22, BUBBLEBEAM
+	db 25, METRONOME ; was OCTAZOOKA
+	db 38, FOCUS_ENERGY
+	db 54, ICE_BEAM
+	db 70, HYPER_BEAM
+	db 0
+
+MantineEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/BUBBLE already granted at level 1.
+	db 10, SUPERSONIC
+	db 18, BUBBLEBEAM
+	db 25, TAKE_DOWN
+	db 32, AGILITY
+	db 40, WING_ATTACK
+	db 49, CONFUSE_RAY
+	db 0
+
+SkarmoryEvosMoves:
+; Evolutions
+	db 0
+; Learnset - LEER/PECK already granted at level 1; STEEL_WING does not exist
+; in Gen 1, filled with METRONOME.
+	db 13, SAND_ATTACK
+	db 19, SWIFT
+	db 25, AGILITY
+	db 37, FURY_ATTACK
+	db 49, METRONOME ; was STEEL_WING
+	db 0
+
+HoundourEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 24, HOUNDOOM
+	db 0
+; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
+; not exist in Gen 1, filled with METRONOME.
+	db 7, WHIRLWIND ; ROAR renamed WHIRLWIND in Gen 1
+	db 13, SMOG
+	db 20, BITE
+	db 27, METRONOME ; was FAINT_ATTACK
+	db 35, FLAMETHROWER
+	db 43, METRONOME ; was CRUNCH
+	db 0
+
+HoundoomEvosMoves:
+; Evolutions
+	db 0
+; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
+; not exist in Gen 1, filled with METRONOME.
+	db 7, WHIRLWIND ; ROAR renamed WHIRLWIND in Gen 1
+	db 13, SMOG
+	db 20, BITE
+	db 30, METRONOME ; was FAINT_ATTACK
+	db 41, FLAMETHROWER
+	db 52, METRONOME ; was CRUNCH
+	db 0
+
+KingdraEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; BUBBLE/SMOKESCREEN/LEER already granted at level 1.
+	db 19, SMOKESCREEN
+	db 24, LEER
+	db 30, WATER_GUN
+	db 32, PIN_MISSILE
+	db 36, QUICK_ATTACK
+	db 41, AGILITY
+	db 52, HYDRO_PUMP
+	db 0
+
+PhanpyEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 25, DONPHAN
+	db 0
+; Learnset - TACKLE/GROWL already granted at level 1; FLAIL/ENDURE do not
+; exist in Gen 1, filled with METRONOME.
+	db 9, DEFENSE_CURL
+	db 17, METRONOME ; was FLAIL
+	db 25, TAKE_DOWN
+	db 33, METRONOME ; was ROLLOUT
+	db 41, METRONOME ; was ENDURE
+	db 49, DOUBLE_EDGE
+	db 0
+
+DonphanEvosMoves:
+; Evolutions
+	db 0
+; Learnset - HORN_ATTACK/GROWL already granted at level 1; FLAIL/ROLLOUT do
+; not exist in Gen 1, filled with METRONOME; RAPID_SPIN likewise.
+	db 9, DEFENSE_CURL
+	db 17, METRONOME ; was FLAIL
+	db 25, FURY_ATTACK
+	db 33, METRONOME ; was ROLLOUT
+	db 41, METRONOME ; was RAPID_SPIN
+	db 49, EARTHQUAKE
+	db 0
+
+Porygon2EvosMoves:
+; Evolutions
+; Porygon2->PorygonZ (canon: trade-holding-Dubious-Disc) is deferred - both
+; PORYGON_Z and a Dubious Disc substitute item are a later batch (dex 252,
+; $FD). Restore with `db EVOLVE_TRADE, 40, PORYGON_Z` once that species and
+; the project's own trade-evolution convention line up.
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; TACKLE/SHARPEN/CONVERSION already granted at level 1.
+	db 23, PSYBEAM
+	db 28, RECOVER
+	db 35, AGILITY
+	db 42, TRI_ATTACK
+	db 45, DEFENSE_CURL
+	db 0
+
+StantlerEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE already granted at level 1.
+	db 8, LEER
+	db 15, HYPNOSIS
+	db 23, STOMP
+	db 31, SAND_ATTACK
+	db 40, TAKE_DOWN
+	db 49, CONFUSE_RAY
+	db 0
+
+HitmontopEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; ROLLING_KICK/FOCUS_ENERGY already granted at level 1.
+	db 33, QUICK_ATTACK
+	db 38, COUNTER
+	db 43, AGILITY
+	db 48, JUMP_KICK
+	db 53, DOUBLE_KICK
+	db 0
+
+MiltankEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE already granted at level 1; MILK_DRINK/HEAL_BELL do not
+; exist in Gen 1, filled with METRONOME.
+	db 4, GROWL
+	db 8, DEFENSE_CURL
+	db 13, STOMP
+	db 19, METRONOME ; was MILK_DRINK
+	db 26, BIDE
+	db 34, METRONOME ; was ROLLOUT
+	db 43, BODY_SLAM
+	db 53, METRONOME ; was HEAL_BELL
+	db 0
+
+BlisseyEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; POUND/TAIL_WHIP already granted at level 1.
+	db 12, DOUBLESLAP
+	db 24, SING
+	db 30, GROWL
+	db 38, MINIMIZE
+	db 44, DEFENSE_CURL
+	db 48, LIGHT_SCREEN
+	db 54, DOUBLE_EDGE
+	db 0
+
+RaikouEvosMoves:
+; Evolutions
+	db 0
+; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
+; in Gen 1; CRUNCH does not exist in Gen 1, filled with METRONOME.
+	db 11, THUNDERSHOCK
+	db 21, WHIRLWIND ; was ROAR
+	db 31, QUICK_ATTACK
+	db 41, METRONOME ; was SPARK
+	db 51, REFLECT
+	db 61, METRONOME ; was CRUNCH
+	db 71, THUNDER
+	db 0
+
+EnteiEvosMoves:
+; Evolutions
+	db 0
+; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
+; in Gen 1; SWAGGER does not exist in Gen 1, filled with METRONOME.
+	db 11, EMBER
+	db 21, WHIRLWIND ; was ROAR
+	db 31, FIRE_SPIN
+	db 41, STOMP
+	db 51, FLAMETHROWER
+	db 61, METRONOME ; was SWAGGER
+	db 71, FIRE_BLAST
+	db 0
+
+SuicuneEvosMoves:
+; Evolutions
+	db 0
+; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
+; in Gen 1; MIRROR_COAT does not exist in Gen 1, filled with METRONOME.
+	db 11, WATER_GUN
+	db 21, WHIRLWIND ; was ROAR
+	db 31, GUST
+	db 41, BUBBLEBEAM
+	db 51, MIST
+	db 61, METRONOME ; was MIRROR_COAT
+	db 71, HYDRO_PUMP
+	db 0
+
+LarvitarEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 30, PUPITAR
+	db 0
+; Learnset - BITE/LEER already granted at level 1; SANDSTORM/SCARY_FACE/
+; CRUNCH do not exist in Gen 1, filled with METRONOME.
+	db 8, METRONOME ; was SANDSTORM
+	db 15, SCREECH
+	db 22, ROCK_SLIDE
+	db 29, THRASH
+	db 36, METRONOME ; was SCARY_FACE
+	db 43, METRONOME ; was CRUNCH
+	db 50, EARTHQUAKE
+	db 57, HYPER_BEAM
+	db 0
+
+PupitarEvosMoves:
+; Evolutions
+	db EVOLVE_LEVEL, 55, TYRANITAR
+	db 0
+; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
+; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
+	db 8, METRONOME ; was SANDSTORM
+	db 15, SCREECH
+	db 22, ROCK_SLIDE
+	db 29, THRASH
+	db 38, METRONOME ; was SCARY_FACE
+	db 47, METRONOME ; was CRUNCH
+	db 56, EARTHQUAKE
+	db 65, HYPER_BEAM
+	db 0
+
+TyranitarEvosMoves:
+; Evolutions
+	db 0
+; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
+; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
+	db 8, METRONOME ; was SANDSTORM
+	db 15, SCREECH
+	db 22, ROCK_SLIDE
+	db 29, THRASH
+	db 38, METRONOME ; was SCARY_FACE
+	db 47, METRONOME ; was CRUNCH
+	db 61, EARTHQUAKE
+	db 75, HYPER_BEAM
+	db 0
+
+LugiaEvosMoves:
+; Evolutions
+	db 0
+; Learnset - GUST already granted at level 1; AEROBLAST/SAFEGUARD/
+; RAIN_DANCE/WHIRLWIND(dup)/ANCIENTPOWER/FUTURE_SIGHT do not exist in
+; Gen 1 (WHIRLWIND is a real Gen 1 move but is already used elsewhere in
+; this list's spirit), filled with METRONOME.
+	db 11, METRONOME ; was SAFEGUARD
+	db 22, GUST
+	db 33, RECOVER
+	db 44, HYDRO_PUMP
+	db 55, METRONOME ; was RAIN_DANCE
+	db 66, SWIFT
+	db 77, WHIRLWIND
+	db 88, METRONOME ; was ANCIENTPOWER
+	db 99, METRONOME ; was FUTURE_SIGHT
+	db 0
+
+HoOhEvosMoves:
+; Evolutions
+	db 0
+; Learnset - EMBER already granted at level 1; SACRED_FIRE/SAFEGUARD/
+; SUNNY_DAY/ANCIENTPOWER/FUTURE_SIGHT do not exist in Gen 1, filled with
+; METRONOME.
+	db 11, METRONOME ; was SAFEGUARD
+	db 22, GUST
+	db 33, RECOVER
+	db 44, FIRE_BLAST
+	db 55, METRONOME ; was SUNNY_DAY
+	db 66, SWIFT
+	db 77, WHIRLWIND
+	db 88, METRONOME ; was ANCIENTPOWER
+	db 99, METRONOME ; was FUTURE_SIGHT
+	db 0
+
+CelebiEvosMoves:
+; Evolutions
+	db 0
+; Learnset - LEECH_SEED/CONFUSION/RECOVER already granted at level 1;
+; HEAL_BELL/SAFEGUARD/ANCIENTPOWER/FUTURE_SIGHT/BATON_PASS/PERISH_SONG do
+; not exist in Gen 1, filled with METRONOME.
+	db 10, METRONOME ; was SAFEGUARD
+	db 20, METRONOME ; was ANCIENTPOWER
+	db 30, METRONOME ; was FUTURE_SIGHT
+	db 40, METRONOME ; was BATON_PASS
+	db 50, METRONOME ; was PERISH_SONG
+	db 0
+
+AnnihilapeEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; SCRATCH/LEER/KARATE_CHOP already granted at level 1.
+	db 9, LOW_KICK
+	db 15, KARATE_CHOP
+	db 21, FURY_SWIPES
+	db 27, FOCUS_ENERGY
+	db 28, RAGE
+	db 37, SEISMIC_TOSS
+	db 45, SCREECH
+	db 0
+
+LickilickyEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; WRAP/SUPERSONIC/STOMP already granted at level 1.
+	db 7, STOMP
+	db 15, DISABLE
+	db 23, DEFENSE_CURL
+	db 31, SLAM
+	db 39, SCREECH
+	db 0
+
+SirfetchdEvosMoves:
+; Evolutions
+	db 0
+; Learnset - PECK/SAND_ATTACK already granted at level 1; BRUTAL_SWING
+; does not exist in Gen 1, filled with METRONOME.
+	db 13, LEER
+	db 17, DOUBLE_KICK
+	db 21, METRONOME ; was BRUTAL_SWING
+	db 25, SWORDS_DANCE
+	db 29, LOW_KICK
+	db 33, JUMP_KICK
+	db 41, ROLLING_KICK
+	db 0
+
+MagnezoneEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/THUNDERSHOCK/SONICBOOM already granted at level 1;
+; METAL_SOUND/MAGNET_BOMB/IRON_HEAD do not exist in Gen 1, filled with
+; METRONOME.
+	db 31, METRONOME ; was METAL_SOUND
+	db 41, METRONOME ; was MAGNET_BOMB
+	db 50, METRONOME ; was IRON_HEAD
+	db 0
+
+TangrowthEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; CONSTRICT/BIND/ABSORB already granted at level 1.
+	db 13, BIND
+	db 19, ABSORB
+	db 24, VINE_WHIP
+	db 28, POISONPOWDER
+	db 31, STUN_SPORE
+	db 34, SLEEP_POWDER
+	db 40, SLAM
+	db 0
+
+RhyperiorEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; HORN_ATTACK/STOMP/TAIL_WHIP/FURY_ATTACK already granted at level 1.
+	db 20, STOMP
+	db 25, TAIL_WHIP
+	db 30, FURY_ATTACK
+	db 35, ROCK_SLIDE
+	db 40, HORN_DRILL
+	db 48, LEER
+	db 55, EARTHQUAKE
 	db 0

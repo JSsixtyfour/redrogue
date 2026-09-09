@@ -140,6 +140,11 @@ RedrawPartyMenu_::
 	ld a, [hli]
 	and a ; reached terminator?
 	jr z, .placeEvolutionStoneString ; if so, place the "NOT ABLE" string
+	ld b, a
+	ld a, [wEvoStoneItemID]
+	cp MIST_STONE
+	ld a, b
+	jr z, .mistStoneAble
 	inc hl
 	inc hl
 	cp EVOLVE_ITEM
@@ -156,6 +161,9 @@ RedrawPartyMenu_::
 	jr nz, .checkEvolutionsLoop
 ; if it does match
 	ld de, .ableToEvolveText
+	jr .placeEvolutionStoneString
+.mistStoneAble
+	ld de, .ableToEvolveText
 .placeEvolutionStoneString
 	ld bc, 20 + 9 ; down 1 row and right 9 columns
 	pop hl
@@ -163,7 +171,7 @@ RedrawPartyMenu_::
 	add hl, bc
 	call PlaceString
 	pop hl
-	jr .printLevel
+	jp .printLevel
 .ableToEvolveText
 	db "ABLE@"
 .notAbleToEvolveText

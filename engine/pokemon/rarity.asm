@@ -60,7 +60,7 @@ RarityJohto:
 	rarity_tier JohtoGreatball
 	rarity_tier JohtoUltraball
 	rarity_tier JohtoMasterball
-	rarity_tier_empty ; uber
+	rarity_tier JohtoUber
 
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
 RarityWarp:
@@ -268,6 +268,14 @@ JohtoPokeball:
 	db MAREEP
 	db MARILL
 	db HOPPIP
+	db AIPOM
+	db SUNKERN
+	db WOOPER
+	db GIRAFARIG
+	db PINECO
+	db SNUBBULL
+	db TEDDIURSA
+	db PHANPY
 JohtoPokeball_Evos:
 ; stage 1
 	db FURRET
@@ -276,8 +284,16 @@ JohtoPokeball_Evos:
 	db ARIADOS
 	db FLAAFFY
 	db AZUMARILL
+	db SKIPLOOM
+	db SUNFLORA
+	db QUAGSIRE
+	db FORRETRESS
+	db GRANBULL
+	db URSARING
+	db DONPHAN
 ; stage 2
 	db AMPHAROS
+	db JUMPLUFF
 ; Crobat/Bellossom/Politoed are evolved-only (from Golbat/Gloom/Poliwhirl, all
 ; Kanto base species - see the EVOLVE_LEVEL/EVOLVE_ITEM/EVOLVE_TRADE additions
 ; to their EvosMoves). Parked here as classification-only placeholders, same
@@ -286,47 +302,136 @@ JohtoPokeball_Evos:
 	db CROBAT
 	db BELLOSSOM
 	db POLITOED
+; Kingdra is evolved-only (from Seadra, a Kanto POKEBALL-tier base species -
+; see the EVOLVE_TRADE added to SeadraEvosMoves). Same classification-only-
+; placeholder pattern as above, matched to Seadra's own tier.
+	db KINGDRA
+; Annihilape/Magnezone are evolved-only (from Primeape/Magneton, both Kanto
+; POKEBALL-tier evolved forms - see the EVOLVE_LEVEL/EVOLVE_ITEM added to
+; PrimeapeEvosMoves/MagnetonEvosMoves). Sirfetch'd is evolved-only (from
+; Farfetch'd, a Kanto POKEBALL-tier base form - see the EVOLVE_LEVEL added
+; to FarfetchdEvosMoves). All three matched to their own Kanto pre-
+; evolution's POKEBALL tier, same pattern as above.
+	db ANNIHILAPE
+	db MAGNEZONE
+	db SIRFETCHD
 JohtoPokeball_End:
 
 JohtoGreatball:
 	db CHIKORITA
 	db CYNDAQUIL
 	db TOTODILE
+	db MISDREAVUS
+	db SNEASEL
+	db SLUGMA
+	db SWINUB
+	db CORSOLA
+	db REMORAID
+	db HOUNDOUR
+	db MILTANK
 JohtoGreatball_Evos:
 ; stage 1
 	db BAYLEEF
 	db QUILAVA
 	db CROCONAW
+	db MAGCARGO
+	db PILOSWINE
+	db OCTILLERY
+	db HOUNDOOM
 ; stage 2
 	db MEGANIUM
 	db TYPHLOSION
 	db FERALIGATR
-; Weavile/Mamoswine/Mismagius are evolved-only (Sneasel/Piloswine/Misdreavus
-; are not classified into a tier yet). Parked here as classification-only
-; placeholders - PLEASE MOVE to whichever tier their own pre-evolution lands
-; in once that species is added, matching how every other _Evos entry sits
-; under its OWN tier's rollable base form.
+; Weavile/Mamoswine are evolved-only, from Sneasel/Piloswine (both added in
+; batch 6 - see SneaselEvosMoves's EVOLVE_ITEM, ICE_STONE and
+; PiloswineEvosMoves's EVOLVE_LEVEL, 44 wiring). Parked here as
+; classification-only placeholders, matched to their own pre-evolution's
+; GREATBALL tier, same pattern as every other _Evos entry below.
 	db WEAVILE
 	db MAMOSWINE
 	db MISMAGIUS
+; Slowking is evolved-only (from Slowpoke, a Kanto GREATBALL-tier base
+; species - see the EVOLVE_TRADE added to SlowpokeEvosMoves). Same
+; classification-only-placeholder pattern as above, matched to Slowpoke's
+; own tier rather than JohtoPokeball.
+	db SLOWKING
+; Steelix is evolved-only (from Onix, a Kanto GREATBALL-tier base species -
+; see the EVOLVE_LEVEL added to OnixEvosMoves). Same pattern as Slowking
+; above, matched to Onix's own tier.
+	db STEELIX
+; Porygon2 is evolved-only (from Porygon, a Kanto GREATBALL-tier base
+; species - see the EVOLVE_TRADE added to PorygonEvosMoves). Same
+; classification-only-placeholder pattern as above, matched to Porygon's
+; own tier.
+	db PORYGON2
+; Lickilicky/Tangrowth are evolved-only (from Lickitung/Tangela, both Kanto
+; GREATBALL-tier base species - see the EVOLVE_LEVEL added to
+; LickitungEvosMoves/TangelaEvosMoves). Same pattern as above.
+	db LICKILICKY
+	db TANGROWTH
 JohtoGreatball_End:
 
 JohtoUltraball:
 	db CHINCHOU
 	db NATU
 	db SUDOWOODO
+	db YANMA
+	db MURKROW
+	db DUNSPARCE
+	db GLIGAR
+	db QWILFISH
+	db SHUCKLE
+	db HERACROSS
+	db MANTINE
+	db SKARMORY
+	db STANTLER
+	db HITMONTOP
+	db LARVITAR
 JohtoUltraball_Evos:
 ; stage 1
 	db LANTURN
 	db XATU
+	db PUPITAR
+; Scizor is evolved-only (from Scyther, a Kanto ULTRABALL-tier base species -
+; see the EVOLVE_LEVEL added to ScytherEvosMoves). Same classification-only-
+; placeholder pattern as Slowking/Steelix in JohtoGreatball, matched to
+; Scyther's own tier.
+	db SCIZOR
+; Blissey is evolved-only (from Chansey, a Kanto ULTRABALL-tier base
+; species - see the EVOLVE_LEVEL added to ChanseyEvosMoves). Same pattern
+; as Scizor above, matched to Chansey's own tier.
+	db BLISSEY
+; Rhyperior is evolved-only (from Rhydon, a Kanto ULTRABALL-tier evolved
+; form - see the EVOLVE_TRADE added to RhydonEvosMoves). Same pattern as
+; above, matched to Rhydon's own tier.
+	db RHYPERIOR
+; stage 3 - Tyranitar continues the Larvitar/Pupitar line already placed in
+; this tier's base/stage-1 sections above.
+	db TYRANITAR
 JohtoUltraball_End:
 
 JohtoMasterball:
 	db TOGEPI
+; Raikou/Entei/Suicune are the legendary beasts - no evolution, same
+; singular-legendary rarity treatment as Zapdos in the Kanto pool.
+	db RAIKOU
+	db ENTEI
+	db SUICUNE
 JohtoMasterball_Evos:
 ; stage 1
 	db TOGETIC
 JohtoMasterball_End:
+
+; Never rollable and never reached by evolution - same pattern as KantoUber,
+; so Lugia/Ho-oh/Celebi (box legendaries/mythical, no evolution) classify
+; into a tier of their own rather than being rolled as ordinary encounters.
+; Its base count is 0, so the roller skips it like an empty group.
+JohtoUber:
+JohtoUber_Evos:
+	db LUGIA
+	db HO_OH
+	db CELEBI
+JohtoUber_End:
 
 
 ; The Kanto pool must still describe exactly the 151 Kanto species.

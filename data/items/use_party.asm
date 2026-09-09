@@ -54,4 +54,5 @@ UsableItems_PartyMenu:
 	db SUN_STONE
 	db DUSK_STONE
 	db ICE_STONE
+	db MIST_STONE
 	db -1 ; end

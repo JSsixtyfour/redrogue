@@ -3,25 +3,13 @@ _LavenderCuboneHouseCuboneText::
 	text_end
 
 _LavenderCuboneHouseBrunetteGirlPoorCubonesMotherText::
-	text "I hate those"
-	line "horrible ROCKETs!"
-
-	para "That poor CUBONE's"
-	line "mother..."
-
-	para "It was killed"
-	line "trying to escape"
-	cont "from TEAM ROCKET!"
+	text "Use what I taught"
+	line "you with honor."
 	done
 
 _LavenderCuboneHouseBrunetteGirlGhostIsGoneText::
-	text "The GHOST of"
-	line "#MON TOWER is"
-	cont "gone!"
-
-	para "Someone must have"
-	line "soothed its"
-	cont "restless soul!"
+	text "I am IGA, a ninja"
+	line "of hidden arts."
 	done
 
 _IgaGift1Desc::

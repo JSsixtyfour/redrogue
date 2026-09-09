@@ -82,6 +82,7 @@ DEF FIRST_STILL_SPRITE EQU const_value
 DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_JESSIE                 ; $4b
 	const SPRITE_JAMES                  ; $4c
+	const SPRITE_OFFICER_JENNY          ; $4d
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

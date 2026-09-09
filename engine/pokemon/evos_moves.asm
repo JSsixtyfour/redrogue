@@ -95,12 +95,34 @@ Evolution_PartyMonLoop: ; loop over party mons
 	and a ; have we reached the end of the evolution data?
 	jr z, Evolution_PartyMonLoop
 	ld b, a ; evolution type
+	ld a, [wForceEvolution]
+	and a
+	jr z, .normalEvolutionChecks
+	ld a, [wEvoStoneItemID]
+	cp MIST_STONE
+	jr nz, .normalEvolutionChecks
+	ld a, b
+	cp EVOLVE_ITEM
+	jr nz, .mistSkipRequirement
+	inc hl                       ; ignore required item
+.mistSkipRequirement
+	inc hl                       ; ignore minimum level
+	ld a, [wEvoNewSpecies]
+	cp [hl]
+	jr z, .mistDoEvolution
+	inc hl
+	jp .evoEntryLoop
+.mistDoEvolution
+	ld a, [wLoadedMonLevel]
+	jr .doEvolution
+.normalEvolutionChecks
+	ld a, b
 	cp EVOLVE_TRADE
 	jr z, .checkTradeEvo
 ; not trade evolution
 	ld a, [wLinkState]
 	cp LINK_STATE_TRADING
-	jr z, Evolution_PartyMonLoop ; if trading, go the next mon
+	jp z, Evolution_PartyMonLoop ; if trading, go the next mon
 	ld a, b
 	cp EVOLVE_ITEM
 	jr z, .checkItemEvo

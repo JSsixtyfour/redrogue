@@ -152,6 +152,7 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 	const SUN_STONE         ; $73 - Espeon
 	const DUSK_STONE        ; $74 - Umbreon
 	const ICE_STONE         ; $75 - Glaceon
+	const MIST_STONE        ; $76 - universal evolution item
 
 	const_next $C4
 

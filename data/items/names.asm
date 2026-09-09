@@ -118,4 +118,5 @@ ItemNames::
 	li "SUN STONE"
 	li "DUSK STONE"
 	li "ICE STONE"
-	assert_list_length NUM_ITEMS + NUM_FLOORS + 20
+	li "MIST STONE"
+	assert_list_length NUM_ITEMS + NUM_FLOORS + 21

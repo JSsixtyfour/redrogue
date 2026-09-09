@@ -47,6 +47,8 @@ UseItem_::
 	jp z, ItemUseEvoStone
 	cp ICE_STONE ; outside ItemUsePtrTable's range
 	jp z, ItemUseEvoStone
+	cp MIST_STONE ; outside ItemUsePtrTable's range
+	jp z, ItemUseEvoStone
 	cp HM01
 	jp nc, ItemUseTMHM
 	ld hl, ItemUsePtrTable
@@ -736,6 +738,12 @@ ItemUseEvoStone:
 	call PrintText
 	jr .canceledItemUse
 .willEvolve
+	ld a, [wEvoStoneItemID]
+	cp MIST_STONE
+	jr nz, .chosenEvolution
+	farcall MistStoneChooseEvolution
+	jr nc, .canceledItemUse
+.chosenEvolution
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, SFX_HEAL_AILMENT
@@ -3008,8 +3016,11 @@ IsKeyItem_::
 	cp ELEMENT_PRISM ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; ELEMENT_PRISM is a key item: can't be tossed
 .notLeftovers
+	cp MIST_STONE ; outside KeyItemFlags' range, but it is a consumable stat item
+	jr z, .notKeyItem
 	cp PEARL ; outside KeyItemFlags' range (added after the elevator floors)
 	jr nz, .notPearl
+.notKeyItem
 	xor a
 	ld [wIsKeyItem], a
 	ret

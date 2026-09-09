@@ -288,11 +288,22 @@ BridgeGiftIsEligible:
 	jr z, BridgeSpecialFormGiftEligible
 .notOakPikachu
 	ld a, e
+	cp LOW(BridgeMomSecondChance)
+	jr nz, .notMomSecondChance
+	ld a, d
+	cp HIGH(BridgeMomSecondChance)
+	jr nz, .notMomSecondChance
+	farcall BridgeMomSecondChanceEligibleFar
+	ret
+.notMomSecondChance
+	ld a, e
 	cp LOW(BridgeMrFujiRescue)
-	jr nz, .eligible
+	; Species Groups Phase 2 pushed .eligible just out of jr range from here -
+	; jp is the same semantics, just no +/-128 byte limit.
+	jp nz, .eligible
 	ld a, d
 	cp HIGH(BridgeMrFujiRescue)
-	jr nz, .eligible
+	jp nz, .eligible
 	ld a, [wRoguePokemon1]
 	; fall through
 
@@ -805,6 +816,12 @@ BridgeOakExpertTraining::
 	scf
 	ret
 
+; Mom's SECOND CHANCE restores KO Defiance's single charge, but only while
+; that key item is in the active loadout and its charge has been spent.
+BridgeMomSecondChance::
+	farcall BridgeMomSecondChanceFar
+	ret
+
 ; Copycat's SUPER DITTO: a BIT_SPECIAL_FORM DITTO with perfect DVs, maxed stat
 ; exp, and the SUPER_TRANSFORM + TRANSFORM move pair. Party and boxed delivery
 ; both receive the complete persistent form data.
@@ -1260,7 +1277,7 @@ FossilScientistGiftList:
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_GROWTH_RAY, FossilGift9_Text, FossilGift9_Desc
 
 FanClubChairmanGiftList:
-	db 7
+	db 8
 	gift_entry GIFT_ITEM, PP_UP, FanClubGift1_Text, FanClubGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  PONYTA, FanClubGift2_Text, FanClubGift2_Desc
 	gift_entry GIFT_ITEM, RARE_CANDY,   FanClubGift3_Text, FanClubGift3_Desc
@@ -1268,6 +1285,7 @@ FanClubChairmanGiftList:
     gift_entry GIFT_MON_EVOLVE,  SPEAROW, FanClubGift5_Text, FanClubGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_CUTE_BOOST, FanClubGift6_Text, FanClubGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REWARD_RARITY, FanClubGift7_Text, FanClubGift7_Desc
+	gift_entry GIFT_ITEM, MIST_STONE, FanClubGift8_Text, FanClubGift8_Desc
 
 WardenGiftList:
 	db 7
@@ -1313,7 +1331,7 @@ OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her h
 	gift_entry GIFT_MON_EVOLVE, GROWLITHE | (BRIDGE_MON_FINALIZE_INTIMIDATE << 8), NoThanksText, TrashedGift8_Desc
 
 RedsHouseMomGiftList:
-	db 8
+	db 9
 	gift_entry GIFT_ITEM, FULL_RESTORE, MomGift1_Text, MomGift1_Desc
 	gift_entry GIFT_MON,  CHANSEY,        MomGift2_Text, MomGift2_Desc
 	gift_entry GIFT_ITEM, FULL_HEAL,   MomGift3_Text, MomGift3_Desc
@@ -1322,6 +1340,7 @@ RedsHouseMomGiftList:
 	gift_entry GIFT_ITEM, TM_REST, MomGift6_Text, MomGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_HEALING, MomGift7_Text, MomGift7_Desc
 	gift_entry GIFT_MON_EVOLVE, MR_MIME, MomGift8_Text, MomGift8_Desc
+	gift_entry GIFT_SPECIAL, BridgeMomSecondChance, MomGift9_Text, MomGift9_Desc
 
 IgaGiftList: ; Ninja named Iga, use Koga Sprite
 	db 8
@@ -1334,7 +1353,7 @@ IgaGiftList: ; Ninja named Iga, use Koga Sprite
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_EVASION, IgaGift7_Text, IgaGift7_Desc
 	gift_entry GIFT_TEACH_MOVE, POISON_GAS, IgaGift8_Text, IgaGift8_Desc
 
-TradeHouseGrannyGiftList: ; Flora identity/map replacement is Phase C9.
+TradeHouseGrannyGiftList: ; Flora's grotto roster (legacy label kept for dispatch ABI).
 	db 9
 	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
 	gift_entry GIFT_MON_EVOLVE, ODDISH | (BRIDGE_MON_FINALIZE_SPORE << 8), NoThanksText, TradeHouseGift2_Desc
@@ -1407,6 +1426,7 @@ FanClubGift4_Text: db "DROWZEE@"
 FanClubGift5_Text: db "SPEAROW@"
 FanClubGift6_Text: db "CUTE BOOST@"
 FanClubGift7_Text: db "BETTER RARITY@"
+FanClubGift8_Text: db "MIST STONE@"
 
 WardenGift1_Text: db "STRENGTH HM@"
 WardenGift2_Text: db "KANGASKHAN@"
@@ -1448,6 +1468,7 @@ MomGift5_Text: db "SOFTBOILED TM@"
 MomGift6_Text: db "REST TM@"
 MomGift7_Text: db "NURTURING CARE@"
 MomGift8_Text: db "MR.MIME@"
+MomGift9_Text: db "SECOND CHANCE@"
 
 IgaGift2_Text: db "GRIMER@"
 IgaGift3_Text: db "TOXIC TM@"
@@ -1714,6 +1735,7 @@ ENDM
 	bridge_new_desc FossilGift9
 	bridge_new_desc FanClubGift6
 	bridge_new_desc FanClubGift7
+	bridge_new_desc FanClubGift8
 	bridge_new_desc WardenGift6
 	bridge_new_desc WardenGift7
 	bridge_new_desc SchoolGift4
@@ -1733,6 +1755,7 @@ ENDM
 	bridge_new_desc TrashedGift8
 	bridge_new_desc MomGift7
 	bridge_new_desc MomGift8
+	bridge_new_desc MomGift9
 	bridge_new_desc IgaGift4
 	bridge_new_desc IgaGift5
 	bridge_new_desc IgaGift6

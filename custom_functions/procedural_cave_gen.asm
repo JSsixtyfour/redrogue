@@ -699,11 +699,11 @@ PokemonSpriteCategoryTable:
 	db $00 ; $A9,$AA GEODUDE,PORYGON
 	db $00 ; $AB,$AC AERODACTYL,POLITOED
 	db $00 ; $AD,$AE MAGNEMITE,HOPPIP
-	db $00 ; $AF,$B0 skip,CHARMANDER
+	db $00 ; $AF,$B0 SKIPLOOM,CHARMANDER
 	db $20 ; $B1,$B2 SQUIRTLE,CHARMELEON
 	db $20 ; $B3,$B4 WARTORTLE,CHARIZARD
-	db $00 ; $B5,$B6 both free holes
-	db $00 ; $B7 free hole, $B8 MON_GHOST
+	db $00 ; $B5,$B6 JUMPLUFF,AIPOM
+	db $00 ; $B7,$B8 SUNKERN,SUNFLORA (was: free hole, MON_GHOST)
 	db $00 ; $B9,$BA ODDISH,GLOOM
 	db $00 ; $BB,$BC VILEPLUME,BELLSPROUT
 	db $00 ; $BD,$BE WEEPINBELL,VICTREEBEL
@@ -713,7 +713,34 @@ PokemonSpriteCategoryTable:
 	; EDIT this line's high nybble in place when that species is added - do NOT
 	; append a new db line, or every following pair shifts by one nybble and the
 	; table desyncs from PokemonSpriteCategoryTableEnd's own assert.
-	db $00 ; $C1,$C2 MISMAGIUS,(next new species)
+	db $00 ; $C1,$C2 MISMAGIUS,YANMA
+	db $00 ; $C3,$C4 WOOPER,QUAGSIRE
+	db $01 ; $C5,$C6 MURKROW,SLOWKING (bird sprite for Murkrow)
+	db $00 ; $C7,$C8 MISDREAVUS,GIRAFARIG
+	db $00 ; $C9,$CA PINECO,FORRETRESS
+	db $00 ; $CB,$CC DUNSPARCE,GLIGAR
+	db $00 ; $CD,$CE STEELIX,SNUBBULL
+	db $00 ; $CF,$D0 GRANBULL,QWILFISH
+	db $00 ; $D1,$D2 SCIZOR,SHUCKLE
+	db $00 ; $D3,$D4 HERACROSS,SNEASEL
+	db $00 ; $D5,$D6 TEDDIURSA,URSARING
+	db $00 ; $D7,$D8 SLUGMA,MAGCARGO
+	db $00 ; $D9,$DA SWINUB,PILOSWINE
+	db $00 ; $DB,$DC CORSOLA,REMORAID
+	db $00 ; $DD,$DE OCTILLERY,MANTINE
+	db $01 ; $DF,$E0 SKARMORY,HOUNDOUR (bird sprite for Skarmory)
+	db $00 ; $E1,$E2 HOUNDOOM,KINGDRA
+	db $00 ; $E3,$E4 PHANPY,DONPHAN
+	db $00 ; $E5,$E6 PORYGON2,STANTLER
+	db $00 ; $E7,$E8 HITMONTOP,MILTANK
+	db $00 ; $E9,$EA BLISSEY,RAIKOU
+	db $00 ; $EB,$EC ENTEI,SUICUNE
+	db $00 ; $ED,$EE LARVITAR,PUPITAR
+	db $10 ; $EF,$F0 TYRANITAR,LUGIA (bird sprite for Lugia)
+	db $01 ; $F1,$F2 HO_OH,CELEBI (bird sprite for Ho-oh)
+	db $00 ; $F3,$F4 ANNIHILAPE,LICKILICKY
+	db $01 ; $F5,$F6 SIRFETCHD,MAGNEZONE (bird sprite for Sirfetch'd)
+	db $00 ; $F7,$F8 TANGROWTH,RHYPERIOR
 PokemonSpriteCategoryTableEnd:
 	assert PokemonSpriteCategoryTableEnd - PokemonSpriteCategoryTable == (NUM_POKEMON_INDEXES + 1) / 2
 

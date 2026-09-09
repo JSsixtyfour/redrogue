@@ -740,3 +740,63 @@ BridgeGiftReplaceFirstMove:
 	predef LoadMovePPs
 	pop de
 	ret
+
+; Choose among every immediate evolution in the selected species' table.
+; Requirements are intentionally ignored; EvolutionAfterBattle validates the
+; chosen target again before evolving. Carry clear means the player declined
+; every available branch or the species has no evolution.
+MistStoneChooseEvolution::
+	ld a, [wCurPartySpecies]
+	dec a
+	ld b, 0
+	add a
+	rl b
+	ld c, a
+	ld hl, EvosMovesPointerTable
+	add hl, bc
+	ld de, wEvoDataBuffer
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, 2
+	call FarCopyData
+	ld hl, wEvoDataBuffer
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld de, wEvoDataBuffer
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
+	call FarCopyData
+	ld hl, wEvoDataBuffer
+.nextEvolution
+	ld a, [hli]
+	and a
+	jr z, .noneChosen
+	cp EVOLVE_ITEM
+	jr nz, .skipRequirement
+	inc hl                       ; item id
+.skipRequirement
+	inc hl                       ; minimum level
+	ld a, [hli]                  ; target species
+	ld [wEvoNewSpecies], a
+	push hl
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	ld hl, MistStoneChoiceText
+	call PrintText
+	lb bc, 8, 15
+	ld a, TWO_OPTION_MENU
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	ld a, [wMenuExitMethod]
+	cp CHOSE_SECOND_ITEM
+	pop hl
+	jr z, .nextEvolution
+	scf
+	ret
+.noneChosen
+	and a
+	ret
+
+MistStoneChoiceText:
+	text_far _MistStoneChoiceText
+	text_end

@@ -1884,7 +1884,7 @@ wPokedexSeenEnd::
 wRecoveryItemCounts:: ds NUM_RECOVERY_ITEMS  ; 21 bytes
 
 ; Stat pocket — evolution stones, vitamins, Rare Candy, PP Up.
-wStatItemCounts:: ds NUM_STAT_ITEMS          ; 14 bytes (Phase 11: +M_GENE, +M_TOME)
+wStatItemCounts:: ds NUM_STAT_ITEMS          ; 15 bytes (Bridge: +MIST_STONE)
 
 ; Valuable pocket — sell-only items (Nugget, Pearl, etc.).
 wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
@@ -1896,7 +1896,7 @@ wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
 ; pokemart, and inventory code compiles while it is migrated to the new system.
 ; Nothing should route here in normal play (GiveItem dispatches to count arrays).
 wNumBagItems:: db
-wBagItems:: ds 7        ; padded — enough clearance so sentinel can't reach wPlayerMoney
+wBagItems:: ds 6        ; one legacy pad byte reclaimed for MIST_STONE; later addresses stay fixed
 ; wNumBagKeyItems alias pointing at the old byte; now meaningless (0 always)
 wNumBagKeyItems:: db
 
@@ -2761,7 +2761,7 @@ wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
 ; every OWNED item, so the old ds 10 would overrun into wRecoveryPocketBuf.
 wKeyItemPocketBuf:: ds 34   ; 1 + 15×2 + 1 = 32 bytes, 34 for slack
 wRecoveryPocketBuf:: ds 44  ; 1 + 21×2 + 1 = 44 bytes
-wStatPocketBuf::    ds 30   ; 1 + 14×2 + 1 = 30 bytes (Phase 11: +M_GENE, +M_TOME)
+wStatPocketBuf::    ds 32   ; 1 + 15×2 + 1 = 32 bytes (Bridge: +MIST_STONE)
 wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
 ; Credit Exchange vendor stock (engine/events/credit_mart.asm): count + up to
 ; 15 one-byte item ids + $ff terminator. Cannot share wItemList (ds 16) - the

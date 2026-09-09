@@ -126,6 +126,23 @@ _MomGift8Desc::
 	line "MR.MIME"
 	done
 
+_MomGift9Desc::
+	text "Restore one spent"
+	line "KO DEFIANCE use"
+	done
+
+_MistStoneChoiceText::
+	text "Evolve into"
+	line "@"
+	text_ram wNameBuffer
+	text "?@"
+	text_end
+
+_FanClubGift8Desc::
+	text "Evolve any #MON"
+	line "with an evolution"
+	done
+
 _IgaGift4Desc::
 	text "Your poison will"
 	line "becomes toxic"

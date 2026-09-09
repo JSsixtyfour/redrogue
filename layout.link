@@ -74,6 +74,13 @@ ROMX $7
 	"Clear Save and Elevator"
 	"Maps 4"
 	"Hidden Events 1"
+	; Species Groups Phase 2 batch 7. "Pics 8" (in $32) overflowed its bank
+	; once batch 7's flavour text growth ate the last of its shared slack;
+	; this bank had ~5.8 KB free after the sections above. Pinned here so a
+	; future unrelated floating-section shuffle can't displace it - only
+	; ~36 bytes remain free in this bank after it, so nothing else should be
+	; added here without re-measuring first.
+	"Pics 9"
 ROMX $8
 	"Sound Effect Headers 2"
 	"Music Headers 2"
@@ -100,6 +107,11 @@ ROMX $D
 	"Slot Machines"
 ROMX $E
 	"Battle Engine 7"
+	; Species Groups Phase 2 batch 8. Magcargo (pulled from "Pics 8" once
+	; batch 8's flavour-text growth squeezed it again) plus batch 8's own
+	; ten species. This bank had ~1.8 KB free after "Battle Engine 7"; only
+	; ~116 bytes remain after this - re-measure before adding anything else.
+	"Pics 10"
 ROMX $F
 	"Battle Core"
 ROMX $10
@@ -123,7 +135,10 @@ ROMX $13
 ROMX $14
 	"Maps 10"
 	"Battle Engine 8"
-	"Hidden Events 2"
+	; Unpinned (Species Groups Phase 2): this bank overflowed by 4 bytes once
+	; batch 3/4's table growth landed elsewhere in the ROM and shifted first-fit
+	; placement. "Hidden Events 2" had no documented reason to sit specifically
+	; in $14, so it now floats to wherever rgblink finds room.
 ROMX $15
 	"Maps 11"
 	"Battle Engine 9"
@@ -279,13 +294,18 @@ ROMX $32
 	; 16 KiB at the full roster. Legal to split because entries are reached by
 	; bank-aware `text_far`.
 	"Pokédex Text 2"
+	; Species Groups Phase 2 batch 5. "Pics 7" (in $33) overflowed its bank once
+	; batch 5's pics landed there; this bank had room after "Pokédex Text 2".
+	"Pics 8"
 	; New species pics. With BASE_PIC_BANK (step 6) a pic may live in ANY bank, so
 	; these are free to go anywhere - but they are PINNED rather than floated, per
 	; this file's own $2E rule, so a large pic blob cannot land in $30/$31 and eat
 	; the growth headroom reserved there. The full 153-species set is ~78 KB, so
 	; expect "Pics 7".."Pics N" to spill onto $33, $34 and then the mid-banks that
 	; carry 4-7 KB of slack each ($15-$2D). Add each one here explicitly.
-	"Pics 6"
+	; "Pics 6" moved OUT to bank $34 (see below) once batch 3/4's growth of
+	; "Pokédex Text 2" (sharing this bank) ate the slack it depended on. Do not
+	; re-add "Pics 6" here.
 ROMX $33
 	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
 	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in
@@ -314,6 +334,13 @@ ROMX $34
 	; bank. Every exported entry is reached by farcall and reads no local data
 	; from another bank.
 	"Bridge Extended Effects"
+	; Species Groups Phase 2, batches 1-2 plus the six species done ahead of
+	; the batch (26 species, 52 pics, ~12.9 KB). Was floating and fit fine on
+	; its own, but batch 3/4's growth elsewhere ate the slack it depended on
+	; and it overflowed wherever rgblink's first-fit put it. Pinned here,
+	; which had ~15.7 KB free after the existing Bridge/effect code - same
+	; "pin small floating sections; do not trust first-fit" rule as "Pics 7".
+	"Pics 6"
 WRAM0
 	"Audio RAM"
 	org $c100

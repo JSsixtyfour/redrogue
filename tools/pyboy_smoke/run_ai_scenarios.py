@@ -76,7 +76,9 @@ def main() -> int:
     scenarios = load_scenarios(args.scenarios, repo_root)
     coverage = validate_scenario_coverage(scenarios)
 
-    for scenario in scenarios:
+    scenario_count = len(scenarios)
+    for scenario_index, scenario in enumerate(scenarios, start=1):
+        print(f"[{scenario_index}/{scenario_count}] {scenario.name}", flush=True)
         harness = RedRogueHarness(repo_root, args.output.parent)
         try:
             harness.inject_fight2_spec(

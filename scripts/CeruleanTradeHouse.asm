@@ -1,6 +1,5 @@
-; Repurposed as a bridge gift room - Granny is the gift giver
-; (TradeHouseGrannyGiftList in bridge_gift_menu.asm). The Gambler's in-game
-; trade offer is untouched.
+; Flora's grotto. The former granny is Flora's gift-giver seam; the original
+; in-game trader object was removed with the identity replacement.
 CeruleanTradeHouse_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
@@ -15,7 +14,6 @@ CeruleanTradeHouse_Script:
 CeruleanTradeHouse_TextPointers:
 	def_text_pointers
 	dw_const CeruleanTradeHouseGrannyText,  TEXT_CERULEANTRADEHOUSE_GRANNY
-	dw_const CeruleanTradeHouseGamblerText, TEXT_CERULEANTRADEHOUSE_GAMBLER
 	dw_const CeruleanTradeHouse_Gift_Text, TEXT_CERULEANTRADEHOUSE_GIFT_1
 	EXPORT TEXT_CERULEANTRADEHOUSE_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
@@ -50,10 +48,3 @@ CeruleanTradeHouseGrannyText:
 
 CeruleanTradeHouse_Gift_Text:
 	script_bridge_gift
-
-CeruleanTradeHouseGamblerText:
-	text_asm
-	ld a, TRADE_FOR_LOLA
-	ld [wWhichTrade], a
-	predef DoInGameTradeDialogue
-	jp TextScriptEnd

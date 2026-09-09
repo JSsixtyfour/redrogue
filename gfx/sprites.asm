@@ -144,3 +144,10 @@ ChanseySprite:: ; pokeyellow's source art is only 16x48px (192 bytes / 12 raw
 SECTION "Jessie James Sprites", ROMX, BANK[$2C]
 JessieSprite:: INCBIN "gfx/sprites/jessie.2bpp"
 JamesSprite::  INCBIN "gfx/sprites/james.2bpp"
+
+; Source-faithful pret/pokeyellow sheet. Yellow stores 12 raw tiles (192 B),
+; while this fork's walking-sheet loader consumes 384 B for a 12-tile entry.
+; Repeat the authored poses exactly as the existing Chansey import does.
+OfficerJennySprite::
+	INCBIN "gfx/sprites/officer_jenny.2bpp"
+	INCBIN "gfx/sprites/officer_jenny.2bpp"

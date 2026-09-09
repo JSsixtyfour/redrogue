@@ -118,7 +118,8 @@ ItemPrices::
 	bcd3 2100  ; SUN_STONE
 	bcd3 2100  ; DUSK_STONE
 	bcd3 2100  ; ICE_STONE
-	assert_table_length NUM_ITEMS + NUM_FLOORS + 20
+	bcd3 0     ; MIST_STONE
+	assert_table_length NUM_ITEMS + NUM_FLOORS + 21
 
 ; Credit (not money) prices for the Credit Exchange key-item seller.
 ; See engine/events/credit_mart.asm.

@@ -1,11 +1,7 @@
 _ViridianNicknameHouseBaldingGuyText::
-	text "Coming up with"
-	line "nicknames is fun,"
-	cont "but hard."
-
-	para "Simple names are"
-	line "the easiest to"
-	cont "remember."
+	text "Ah, a young"
+	line "TRAINER! Let me"
+	cont "share my wisdom."
 	done
 
 _ViridianNicknameHouseLittleGirlText::
@@ -23,8 +19,8 @@ _ViridianNicknameHouseSpearySignText::
 	done
 
 _ViridianNicknameHouseBaldingGuyAlreadyGotText::
-	text "Good luck naming"
-	line "your #MON!"
+	text "Put that wisdom"
+	line "to good use!"
 	done
 
 _OldManGift1Desc::

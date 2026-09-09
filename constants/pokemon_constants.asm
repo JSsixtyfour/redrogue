@@ -181,16 +181,16 @@
 	const POLITOED            ; $AC
 	const MAGNEMITE          ; $AD
 	const HOPPIP              ; $AE
-	const_skip               ; $AF
+	const SKIPLOOM            ; $AF
 	const CHARMANDER         ; $B0
 	const SQUIRTLE           ; $B1
 	const CHARMELEON         ; $B2
 	const WARTORTLE          ; $B3
 	const CHARIZARD          ; $B4
-	const_skip               ; $B5
-	const_skip               ; $B6 was FOSSIL_KABUTOPS - retired, see below
-	const_skip               ; $B7 was FOSSIL_AERODACTYL - retired, see below
-	const_skip               ; $B8 was MON_GHOST - retired, see below
+	const JUMPLUFF            ; $B5
+	const AIPOM               ; $B6 was FOSSIL_KABUTOPS - retired, see below
+	const SUNKERN             ; $B7 was FOSSIL_AERODACTYL - retired, see below
+	const SUNFLORA            ; $B8 was MON_GHOST - retired, see below
 	const ODDISH             ; $B9
 	const GLOOM              ; $BA
 	const VILEPLUME          ; $BB
@@ -207,6 +207,67 @@
 	const WEAVILE             ; $BF
 	const MAMOSWINE           ; $C0
 	const MISMAGIUS           ; $C1
+; --- Species Groups Phase 2: Johto batch 4, appended sequentially from $C2 ---
+	const YANMA               ; $C2
+	const WOOPER              ; $C3
+	const QUAGSIRE            ; $C4
+	const MURKROW             ; $C5
+	const SLOWKING            ; $C6
+; --- Species Groups Phase 2: Johto batch 5, appended sequentially from $C7 ---
+	const MISDREAVUS          ; $C7
+	const GIRAFARIG           ; $C8
+	const PINECO              ; $C9
+	const FORRETRESS          ; $CA
+	const DUNSPARCE           ; $CB
+	const GLIGAR              ; $CC
+	const STEELIX             ; $CD
+	const SNUBBULL            ; $CE
+	const GRANBULL            ; $CF
+	const QWILFISH            ; $D0
+; --- Species Groups Phase 2: Johto batch 6, appended sequentially from $D1 ---
+	const SCIZOR              ; $D1
+	const SHUCKLE             ; $D2
+	const HERACROSS           ; $D3
+	const SNEASEL             ; $D4
+	const TEDDIURSA           ; $D5
+	const URSARING            ; $D6
+	const SLUGMA              ; $D7
+	const MAGCARGO            ; $D8
+	const SWINUB              ; $D9
+	const PILOSWINE           ; $DA
+; --- Species Groups Phase 2: Johto batch 7, appended sequentially from $DB ---
+	const CORSOLA             ; $DB
+	const REMORAID            ; $DC
+	const OCTILLERY           ; $DD
+	const MANTINE             ; $DE
+	const SKARMORY            ; $DF
+	const HOUNDOUR            ; $E0
+	const HOUNDOOM            ; $E1
+	const KINGDRA             ; $E2
+	const PHANPY              ; $E3
+	const DONPHAN             ; $E4
+; --- Species Groups Phase 2: Johto batch 8, appended sequentially from $E5 ---
+	const PORYGON2            ; $E5
+	const STANTLER            ; $E6
+	const HITMONTOP           ; $E7
+	const MILTANK             ; $E8
+	const BLISSEY             ; $E9
+	const RAIKOU              ; $EA
+	const ENTEI               ; $EB
+	const SUICUNE             ; $EC
+	const LARVITAR            ; $ED
+	const PUPITAR             ; $EE
+; --- Species Groups Phase 2: Johto batch 9, appended sequentially from $EF ---
+	const TYRANITAR           ; $EF
+	const LUGIA               ; $F0
+	const HO_OH               ; $F1
+	const CELEBI              ; $F2
+	const ANNIHILAPE          ; $F3
+	const LICKILICKY          ; $F4
+	const SIRFETCHD           ; $F5
+	const MAGNEZONE           ; $F6
+	const TANGROWTH           ; $F7
+	const RHYPERIOR           ; $F8
 
 DEF NUM_POKEMON_INDEXES EQU const_value - 1
 

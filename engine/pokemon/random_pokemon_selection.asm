@@ -93,6 +93,21 @@ ld a, $FF      ; clamp at 255
 .rarityBonusDone
 ld b, a
 .noRarityMod
+; Fan Club BETTER RARITY: use the same +51 reward-class increment as the
+; established witch rarity prize. This is an independent run bonus, so it
+; stacks additively with witch, mini-boss, and Rare Scope modifiers.
+push bc
+ld e, BRIDGE_EFFECT_REWARD_RARITY
+farcall BridgeHasGlobalEffect
+pop bc
+jr nc, .noBridgeRarityMod
+ld a, b
+add 51
+jr nc, .bridgeRarityDone
+ld a, $ff
+.bridgeRarityDone
+ld b, a
+.noBridgeRarityMod
 ; Mini-boss framework: stacks an ADDITIONAL rarity bonus on top of whatever the
 ; witch logic above contributed (both can be active at once - see
 ; MINIBOSS_FRAMEWORK.md "rarity stacks additively").

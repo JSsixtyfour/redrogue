@@ -96,10 +96,12 @@ Route2TradeHouse_Blocks:
 SaffronPidgeyHouse_Blocks:
 VermilionPidgeyHouse_Blocks:
 LavenderCuboneHouse_Blocks:
-CeruleanTradeHouse_Blocks:
 PewterNidoranHouse_Blocks:
 PewterSpeechHouse_Blocks:
 ViridianNicknameHouse_Blocks: INCBIN "maps/ViridianNicknameHouse.blk"
+
+; The approved Flora grotto is a distinct 4x4 Gym-blockset layout.
+CeruleanTradeHouse_Blocks: INCBIN "maps/FlorasHouse.blk"
 
 CeladonMansionRoofHouse_Blocks:
 ViridianSchoolHouse_Blocks: INCBIN "maps/ViridianSchoolHouse.blk"
