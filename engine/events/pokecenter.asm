@@ -1,26 +1,21 @@
 DisplayPokemonCenterDialogue_::
 	call SaveScreenTilesToBuffer1 ; save screen
-	ld hl, PokemonCenterWelcomeText
-	call PrintText
 	ld hl, wStatusFlags4
 	bit BIT_USED_POKECENTER, [hl]
 	set BIT_UNKNOWN_4_1, [hl]
 	set BIT_USED_POKECENTER, [hl]
-	jr nz, .skipShallWeHealYourPokemon
-	ld hl, ShallWeHealYourPokemonText
+	jr nz, .repeatHealText
+	ld hl, PokemonCenterFirstHealText
 	call PrintText
-.skipShallWeHealYourPokemon
-	call YesNoChoicePokeCenter ; yes/no menu
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .declinedHealing ; if the player chose No
+	jr .heal
+.repeatHealText
+	ld hl, PokemonCenterRepeatHealText
+	call PrintText
+.heal
 	call SetLastBlackoutMap
 	call LoadScreenTilesFromBuffer1 ; restore screen
-	ld hl, NeedYourPokemonText
-	call PrintText
 	ld a, $28
 	ld [wSprite01StateData1ImageIndex], a ; make the nurse turn to face the machine
-	call Delay3
 	predef HealParty
 	farcall AnimateHealingMachine ; do the healing machine animation
 	xor a
@@ -31,38 +26,14 @@ DisplayPokemonCenterDialogue_::
 	ld [wLastMusicSoundID], a
 	ld [wNewSoundID], a
 	call PlaySound
-	ld hl, PokemonFightingFitText
-	call PrintText
 	ld a, $24
 	ld [wSprite01StateData1ImageIndex], a ; make the nurse bow
-	ld c, a
-	call DelayFrames
-	jr .done
-.declinedHealing
-	call LoadScreenTilesFromBuffer1 ; restore screen
-.done
-	ld hl, PokemonCenterFarewellText
-	call PrintText
 	jp UpdateSprites
 
-PokemonCenterWelcomeText:
-	text_far _PokemonCenterWelcomeText
+PokemonCenterFirstHealText:
+	text_far _PokemonCenterFirstHealText
 	text_end
 
-ShallWeHealYourPokemonText:
-	text_pause
-	text_far _ShallWeHealYourPokemonText
-	text_end
-
-NeedYourPokemonText:
-	text_far _NeedYourPokemonText
-	text_end
-
-PokemonFightingFitText:
-	text_far _PokemonFightingFitText
-	text_end
-
-PokemonCenterFarewellText:
-	text_pause
-	text_far _PokemonCenterFarewellText
+PokemonCenterRepeatHealText:
+	text_far _PokemonCenterRepeatHealText
 	text_end

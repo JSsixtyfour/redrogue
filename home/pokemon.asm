@@ -410,6 +410,21 @@ GetMonHeader::
 	ld de, wMonHeader
 	ld bc, BASE_DATA_SIZE
 	call CopyData
+	; Species Groups Phase 2R: if a form context is pending for this species,
+	; overwrite the row just copied with that form's own 28-byte row. Costs
+	; three bytes of ROM0 (HOME has ~113 free); the table walk and the copy all
+	; live in bank $30. Returns with wMonHForm = the form applied, or 0.
+	;
+	; Placed AFTER the base copy and BEFORE the wMonHIndex write on purpose: the
+	; form row overwrites byte 0 (BASE_DEX_NO) along with everything else, and
+	; the write below then puts the species index back where the rest of the
+	; engine expects it, exactly as it does for an ordinary species.
+	;
+	; Clobbering af/bc/de/hl here is safe - all three pairs were pushed at entry
+	; and `a` is reloaded on the very next line.
+	ASSERT BANK(ApplyFormOverride) == BANK(BaseStats), \
+	       "Species Forms must be pinned to BANK(BaseStats) - see layout.link"
+	call ApplyFormOverride
 	ld a, [wCurSpecies]
 	ld [wMonHIndex], a
 	pop af

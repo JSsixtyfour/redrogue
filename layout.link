@@ -288,6 +288,13 @@ ROMX $30
 	"Base Stats"
 	"Monster Names"
 	"Pokemon Data 1"
+	; Species Groups Phase 2R. MUST share this bank with "Base Stats":
+	; GetMonHeader switches to BANK(BaseStats) and then plain-calls
+	; ApplyFormOverride, so the two being in different banks would be a silent
+	; cross-bank call into garbage. home/pokemon.asm carries a link-time ASSERT
+	; that fails the build if this pin is ever dropped. Small and intentional -
+	; this is NOT the kind of section the headroom warning above is about.
+	"Species Forms"
 ROMX $31
 	; "Evos Moves" holds EvosMovesPointerTable AND the blocks it points at. Those
 	; pointers are bare 16-bit `dw`, so table and data must share one bank - this

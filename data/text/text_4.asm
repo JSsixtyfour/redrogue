@@ -156,35 +156,15 @@ _HMCantDeleteText::
 	line "can't be deleted!"
 	prompt
 
-_PokemonCenterWelcomeText::
-	text "Welcome to our"
-	line "#MON CENTER!"
-
-	para "We heal your"
-	line "#MON back to"
-	cont "perfect health!"
+_PokemonCenterFirstHealText::
+	text "Welcome! I'll"
+	line "heal your #MON."
 	prompt
 
-_ShallWeHealYourPokemonText::
-	text "Shall we heal your"
-	line "#MON?"
-	done
-
-_NeedYourPokemonText::
-	text "OK. We'll need"
-	line "your #MON."
-	done
-
-_PokemonFightingFitText::
-	text "Thank you!"
-	line "Your #MON are"
-	cont "fighting fit!"
+_PokemonCenterRepeatHealText::
+	text "Let's heal your"
+	line "#MON!"
 	prompt
-
-_PokemonCenterFarewellText::
-	text "We hope to see"
-	line "you again!"
-	done
 
 _CableClubNPCAreaReservedFor2FriendsLinkedByCableText::
 	text "This area is"

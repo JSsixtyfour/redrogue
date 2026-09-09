@@ -326,6 +326,16 @@ SECTION "Base Stats", ROMX
 INCLUDE "data/pokemon/base_stats.asm"
 
 
+; Species Groups Phase 2R. Pinned to the SAME bank as BaseStats in layout.link,
+; because GetMonHeader calls ApplyFormOverride with that bank already mapped -
+; a plain in-bank call, no farcall, no register laundering, and ROM0 pays only
+; the 3 bytes of the call itself. home/pokemon.asm asserts the two banks match.
+SECTION "Species Forms", ROMX
+
+INCLUDE "custom_functions/func_forms.asm"
+INCLUDE "data/pokemon/forms.asm"
+
+
 SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"

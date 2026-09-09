@@ -1670,6 +1670,32 @@ wMonHLearnset:: flag_array NUM_TMS + NUM_HMS
 wMonHPicBank:: db
 wMonHeaderEnd::
 
+; --- Species Groups Phase 2R: form plumbing (3 bytes) ---------------------
+; A form clone is <species> + a 2-bit form index stored in the mon's own
+; MON_CATCH_RATE (bits 5-6). The problem these three bytes solve: GetMonHeader
+; and GetMonName are handed a bare SPECIES, never a mon, so neither can see that
+; form byte on its own. Threading a form alongside the species was measured and
+; rejected - wCurSpecies has 66 write sites and wCurPartySpecies has 84.
+;
+; Instead the ~20 call sites that DO already hold a struct pointer publish a
+; one-shot context here just before calling, and GetMonHeader CONSUMES it.
+;
+; Consume-on-read is load-bearing, not tidiness. The species guard alone is not
+; enough because the dangerous collision is a SAME-species one: two Meowths in a
+; party, one Alolan, is an ordinary party, and a menu walk that sets the context
+; for slot 1 but not slot 2 would render slot 2's vanilla Meowth as Alolan.
+; Zeroing on read means an un-edited call site always sees "no form" and the
+; failure mode becomes a form silently dropped rather than an unrelated mon
+; being restatted or renamed.
+wFormContextSpecies:: db ; species the pending form applies to; 0 = no context
+wFormContextForm::    db ; form index 1..NUM_FORM_SLOTS; 0 = base species
+; The form GetMonHeader actually applied. Exists because five sites
+; (status_view.asm x4, status_screen.asm x1) re-derive wCurSpecies from
+; wMonHIndex to reload a header they already had; without this they would
+; silently drop the form on the second load. Restoring the context from here is
+; one instruction pair instead of five threading edits.
+wMonHForm::           db
+
 ; saved at the start of a battle and then written back at the end of the battle
 wSavedTileAnimations:: db
 

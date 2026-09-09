@@ -35,12 +35,12 @@ AnimateHealingMachine:
 	ld b, a
 .partyLoop
 	call CopyHealingMachineOAM
+	dec b
+	jr nz, .partyLoop
 	ld a, SFX_HEALING_MACHINE
 	call PlaySound
 	ld c, 30
 	call DelayFrames
-	dec b
-	jr nz, .partyLoop
 	ld a, [wAudioROMBank]
 	cp BANK("Audio Engine 3")
 	ld [wAudioSavedROMBank], a

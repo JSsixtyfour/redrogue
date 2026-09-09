@@ -122,6 +122,46 @@ DEF HOF_TEAM_CAPACITY EQU 50
 ; evolution data (see data/pokemon/evos_moves.asm)
 DEF NUM_EVOS_IN_BUFFER EQU 3
 
+; ---------------------------------------------------------------------------
+; Species Groups Phase 2R - regional / convergent / eeveelution FORMS.
+;
+; A "form" is a distinct-looking mon delivered as <existing species> + a small
+; form index rather than as a new species id, so it costs ZERO species ids.
+; The index lives in MON_CATCH_RATE bits 5-6 - see MON_CATCH_RATE_BITFIELD_PC.md
+; for the full registry of that byte (bits 0-4 are ghost/fusion/type-variant/
+; special-form/shiny; bit 7 is the last free one and is deliberately reserved).
+;
+; TWO BITS = 3 non-zero forms per base species. That is not arbitrary: the
+; binding case across the whole 52-form roster is TAUROS, which needs exactly
+; three (Paldean Combat/Blaze/Aqua). Nothing else needs more than two. A fourth
+; form on any base species means spending bit 7.
+;
+; NOTE this is a small INTEGER sharing a flag byte, not an independent flag.
+; Read and write it with the mask/shift below, never bit/set/res on one of its
+; two bits.
+DEF FORM_MASK      EQU %01100000 ; MON_CATCH_RATE bits 5-6
+DEF FORM_SHIFT     EQU 5
+DEF NUM_FORM_SLOTS EQU 3         ; non-zero form indexes per base species
+
+; One row of the FormOverrides table (data/pokemon/forms.asm). A form record
+; carries a FULL base-stats row, so a form gets its own stats, both types, catch
+; rate, base exp, pic size, front/back pic pointers AND pic bank, starting
+; moves, growth rate and TM/HM compatibility for free - all of it lives in the
+; 28-byte struct that becomes wMonHeader. Only the level-up learnset stays
+; species-keyed (EvosMovesPointerTable is indexed by species), which is an
+; accepted limitation, not an oversight.
+; NAME_LENGTH is NOT available here - includes.asm pulls this file in at line 33
+; and constants/text_constants.asm only at line 53. The 10 below is the same
+; NAME_LENGTH - 1 stride MonsterNames uses; data/pokemon/forms.asm carries an
+; ASSERT tying the two together, which is where NAME_LENGTH *is* in scope.
+DEF FORM_REC_NAME_LEN EQU 10
+rsreset
+DEF FORM_REC_BASE    rb        ; base species internal index
+DEF FORM_REC_FORM    rb        ; form index, 1..NUM_FORM_SLOTS
+DEF FORM_REC_DATA    rb BASE_DATA_SIZE     ; full base-stats row, patched over wMonHeader
+DEF FORM_REC_NAME    rb FORM_REC_NAME_LEN  ; 10 chars, no terminator
+DEF FORM_REC_SIZE EQU _RS
+
 ; wMonHGrowthRate values
 ; GrowthRateTable indexes (see data/growth_rates.asm)
 	const_def
