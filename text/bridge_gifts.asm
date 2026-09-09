@@ -145,7 +145,7 @@ _FanClubGift8Desc::
 
 _IgaGift4Desc::
 	text "Your poison will"
-	line "becomes toxic"
+	line "become toxic"
 	done
 
 _IgaGift5Desc::

@@ -24,16 +24,16 @@ _ViridianNicknameHouseBaldingGuyAlreadyGotText::
 	done
 
 _OldManGift1Desc::
-	text "Easy to nickname"
-	line "and raise!"
+	text "A level-matched"
+	line "WEEDLE"
 	done
 
 _OldManGift2Desc::
-	text "Raises a move's"
-	line "max PP!"
+	text "A level-matched"
+	line "RATTATA"
 	done
 
 _OldManGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "The REST"
+	line "Technical Machine"
 	done

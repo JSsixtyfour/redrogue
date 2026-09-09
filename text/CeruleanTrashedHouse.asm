@@ -22,16 +22,16 @@ _CeruleanTrashedHouseWallHoleText::
 	done
 
 _TrashedGift1Desc::
-	text "Fish up #MON"
-	line "in the water!"
+	text "A refreshing"
+	line "LEMONADE"
 	done
 
 _TrashedGift2Desc::
-	text "It splashes"
-	line "around!"
+	text "A level-matched"
+	line "SQUIRTLE"
 	done
 
 _TrashedGift3Desc::
-	text "Fresh from the"
-	line "river!"
+	text "The BODY SLAM"
+	line "Technical Machine"
 	done

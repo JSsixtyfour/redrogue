@@ -18,9 +18,10 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.harness.close()
 
-    def grant_global_effect(self, effect: int) -> None:
-        self.harness.pyboy.register_file.E = effect
-        self.harness.call_routine("BridgeGrantGlobalEffect")
+    def enable_research_grant(self) -> None:
+        # BRIDGE_EFFECT_MONEY is bit 16 in the global-effect registry. Other
+        # tests exercise the grant routine; keep this test to one injected call.
+        self.harness.write8("wBridgeGlobalEffects", 1, offset=2)
 
     def test_research_grant_adds_twenty_percent_to_current_payout(self) -> None:
         self.harness.write8("wWitchPrizesEarned", 0)
@@ -28,7 +29,7 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
             self.harness.address("wAmountMoneyWon") :
             self.harness.address("wAmountMoneyWon") + 3
         ] = [0x00, 0x10, 0x00]  # 1000 BCD
-        self.grant_global_effect(16)  # BRIDGE_EFFECT_MONEY
+        self.enable_research_grant()
 
         self.harness.call_routine("WitchApplyMoneyEffects")
 
@@ -42,7 +43,7 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
             self.harness.address("wAmountMoneyWon") :
             self.harness.address("wAmountMoneyWon") + 3
         ] = [0x00, 0x10, 0x00]
-        self.grant_global_effect(16)
+        self.enable_research_grant()
 
         self.harness.call_routine("WitchApplyMoneyEffects")
 
@@ -50,7 +51,7 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
             self.harness.read_bytes("wAmountMoneyWon", 3), [0x00, 0x13, 0x20]
         )
 
-    def test_second_chance_requires_active_empty_ko_defiance(self) -> None:
+    def test_second_chance_rejects_inactive_ko_defiance(self) -> None:
         self.harness.write8("wCurItem", 0x3E)
         self.harness.write8("wKODefianceUsages", 0)
         self.harness.write_sram_bytes("sKeyItemsBitfield", [0])
@@ -58,13 +59,21 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 0)
         self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
+    def test_second_chance_restores_an_active_empty_charge(self) -> None:
+        self.harness.write8("wCurItem", 0x3E)
+        self.harness.write8("wKODefianceUsages", 0)
         self.harness.write_sram_bytes("sKeyItemsBitfield", [1 << 5])
         self.harness.call_routine("BridgeMomSecondChanceFar")
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 1)
+        self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
+    def test_second_chance_does_not_stack_an_existing_charge(self) -> None:
+        self.harness.write8("wCurItem", 0x3E)
         self.harness.write8("wKODefianceUsages", 2)
+        self.harness.write_sram_bytes("sKeyItemsBitfield", [1 << 5])
         self.harness.call_routine("BridgeMomSecondChanceFar")
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 2)
+        self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
 
 class BridgeCompletionSourceContractTest(unittest.TestCase):
@@ -103,6 +112,28 @@ class BridgeCompletionSourceContractTest(unittest.TestCase):
         self.assertIn("ld a, [wCurItem]", predicate)
         self.assertIn("push af", predicate)
         self.assertGreaterEqual(predicate.count("ld [wCurItem], a"), 3)
+
+    def test_bridge_giver_identity_replacements_are_wired(self) -> None:
+        trashed = (REPO_ROOT / "data/maps/objects/CeruleanTrashedHouse.asm").read_text()
+        cubone = (REPO_ROOT / "data/maps/objects/LavenderCuboneHouse.asm").read_text()
+        nickname = (REPO_ROOT / "data/maps/objects/ViridianNicknameHouse.asm").read_text()
+        sprites = (REPO_ROOT / "data/sprites/sprites.asm").read_text()
+        self.assertIn("SPRITE_OFFICER_JENNY", trashed)
+        self.assertIn("SPRITE_KOGA", cubone)
+        self.assertIn("SPRITE_GAMBLER", nickname)
+        self.assertIn("SPRITE_OFFICER_JENNY", sprites)
+
+    def test_flora_grotto_uses_supplied_map_and_bridge_pc(self) -> None:
+        header = (REPO_ROOT / "data/maps/headers/CeruleanTradeHouse.asm").read_text()
+        maps = (REPO_ROOT / "maps.asm").read_text()
+        objects = (REPO_ROOT / "data/maps/objects/CeruleanTradeHouse.asm").read_text()
+        hidden = (REPO_ROOT / "data/events/hidden_events.asm").read_text()
+        self.assertIn("GYM", header)
+        self.assertIn('CeruleanTradeHouse_Blocks: INCBIN "maps/FlorasHouse.blk"', maps)
+        self.assertIn("SPRITE_BEAUTY", objects)
+        self.assertIn("warp_event  3,  7", objects)
+        flora_hidden = hidden.split("hidden_events_for CERULEAN_TRADE_HOUSE", 1)[1]
+        self.assertIn("hidden_event  4,  0, OpenBridgeBillsPC", flora_hidden)
 
 
 if __name__ == "__main__":

@@ -18,11 +18,11 @@ _IgaGift1Desc::
 	done
 
 _IgaGift2Desc::
-	text "A gaseous"
-	line "#MON!"
+	text "A level-matched"
+	line "GRIMER"
 	done
 
 _IgaGift3Desc::
-	text "Revives a"
-	line "fainted #MON!"
+	text "The TOXIC"
+	line "Technical Machine"
 	done

@@ -1258,7 +1258,7 @@ CaptainGiftList:
 	gift_entry GIFT_ITEM,    HM_CUT,    CaptainGift1_Text, CaptainGift1_Desc
 	gift_entry GIFT_MON_EVOLVE, TENTACOOL, NoThanksText, CaptainGift2_Desc
 	gift_entry GIFT_SPECIAL, BridgeCaptainWaterVariant, CaptainGift3_Text, CaptainGift3_Desc
-	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc ; needs perfect stats
+	gift_entry GIFT_SPECIAL, BridgeCaptainFarfetchd, CaptainGift4_Text, CaptainGift4_Desc
     gift_entry GIFT_MON,     LAPRAS, CaptainGift5_Text, CaptainGift5_Desc
     gift_entry GIFT_ITEM,    HM_SURF,    CaptainGift6_Text, CaptainGift6_Desc
     gift_entry GIFT_TEACH_MOVE, CRABHAMMER, CaptainGift7_Text, CaptainGift7_Desc
@@ -1308,7 +1308,7 @@ SchoolCooltrainerGiftList:
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REPEAT, SchoolGift7_Text, SchoolGift7_Desc
 	gift_entry GIFT_MON_EVOLVE, NIDORAN_F | (BRIDGE_MON_FINALIZE_QUICK_CLAW << 8), NoThanksText, SchoolGift8_Desc
 
-OldManGiftList: ;this should be changed to the Old Man's sprite from viridian who teaches the player how to catch pokemon
+OldManGiftList:
 	db 8
 	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    OldManGift1_Text, OldManGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  RATTATA,   OldManGift2_Text, OldManGift2_Desc
@@ -1319,7 +1319,7 @@ OldManGiftList: ;this should be changed to the Old Man's sprite from viridian wh
 	gift_entry GIFT_TEACH_MOVE, DIZZY_PUNCH, OldManGift7_Text, OldManGift7_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STATUS_CHANCE, OldManGift8_Text, OldManGift8_Desc
 
-OfficerJennyGiftList: ; import officer jenny from pokemon yellow and place her here, could put cop temporarily
+OfficerJennyGiftList:
 	db 8
 	gift_entry GIFT_ITEM, LEMONADE, TrashedGift1_Text, TrashedGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, TrashedGift2_Text, TrashedGift2_Desc
@@ -1342,7 +1342,7 @@ RedsHouseMomGiftList:
 	gift_entry GIFT_MON_EVOLVE, MR_MIME, MomGift8_Text, MomGift8_Desc
 	gift_entry GIFT_SPECIAL, BridgeMomSecondChance, MomGift9_Text, MomGift9_Desc
 
-IgaGiftList: ; Ninja named Iga, use Koga Sprite
+IgaGiftList:
 	db 8
 	gift_entry GIFT_MON_EVOLVE, EKANS | (BRIDGE_MON_FINALIZE_SUPER_FANG << 8), NoThanksText, IgaGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  GRIMER, IgaGift2_Text, IgaGift2_Desc
@@ -1420,7 +1420,7 @@ FossilGift8_Text: db "SHRINK RAY@"
 FossilGift9_Text: db "GROWTH RAY@"
 
 FanClubGift1_Text: db "PP UP@"
-FanClubGift2_Text: db "CLEFAIRY@"
+FanClubGift2_Text: db "PONYTA@"
 FanClubGift3_Text: db "RARE CANDY@"
 FanClubGift4_Text: db "DROWZEE@"
 FanClubGift5_Text: db "SPEAROW@"
@@ -1683,7 +1683,7 @@ MomGift4_Desc:
 	text_far _MomGift4Desc
 	text_end
 MomGift5_Desc:
-	text_far _MomGift3Desc
+	text_far _MomGift5Desc
 	text_end  
 MomGift6_Desc:
 	text_far _MomGift6Desc
