@@ -39,15 +39,56 @@
 ; each time, so it is unaffected.
 ; ---------------------------------------------------------------------------
 ApplyFormOverride::
-	xor a
-	ld [wMonHForm], a            ; default: this header carries no form
 	ld a, [wFormContextSpecies]
 	and a
-	ret z                        ; no context pending - the common case
+	jr nz, .haveContext
 
+; ---- No context pending. Is this a RELOAD of the header we already hold? ----
+; Measured 2026-09-09: several routines reload wMonHeader from the species it
+; already describes, WITHOUT publishing a context, purely to refresh it -
+; PrintMonType (engine/battle/print_type.asm:6, reached from the status screen
+; BEFORE the sprite is drawn) and five sites in status_view.asm/status_screen.asm
+; that re-derive wCurSpecies from wMonHIndex. Every one of them would silently
+; strip a form: the status screen applied Alolan Meowth's row, then PrintMonType
+; overwrote it with vanilla Meowth's, and the sprite drew from the vanilla
+; pointers. The form context was provably correct at this routine's entry; it had
+; simply already been consumed.
+;
+; Fixing that HERE rather than at each call site kills all six at once and, more
+; importantly, is immune to the seventh nobody has found yet.
+;
+; The test is exact, not a heuristic: GetMonHeader writes wMonHIndex AFTER this
+; routine returns, so wMonHIndex still names the species the CURRENT wMonHeader
+; was built for. wCurSpecies == wMonHIndex therefore means "same species, loaded
+; again", which is precisely a refresh - and the form it carried is still in
+; wMonHForm.
+;
+; This cannot mis-fire on two same-species mons in a row (an Alolan Meowth in
+; slot 4 and a vanilla one in slot 5): every real per-mon load goes through
+; LoadMonData_, which ALWAYS publishes a context - form 0 included - so those
+; take the .haveContext path and never reach this code.
+	ld a, [wCurSpecies]
+	ld hl, wMonHIndex
+	cp [hl]
+	jr nz, .noForm               ; different species: a genuine fresh load
+	ld a, [wMonHForm]
+	and a
+	jr z, .noForm                ; the held header had no form either
+	ld c, a                      ; re-apply the same form
+	ld a, [wCurSpecies]
+	ld b, a
+	jr .lookup
+
+.noForm
+	xor a
+	ld [wMonHForm], a
+	ret
+
+.haveContext
 	ld b, a                      ; b = context species
 	xor a
 	ld [wFormContextSpecies], a  ; consume, unconditionally
+	ld [wMonHForm], a            ; and default this header to "no form"
 
 	ld a, [wCurSpecies]
 	cp b
@@ -58,11 +99,15 @@ ApplyFormOverride::
 	ret z                        ; form 0 is the base species: nothing to patch
 	ld c, a                      ; c = wanted form index
 
+.lookup
 	ld hl, FormOverrides
 .loop
 	ld a, [hl]                   ; record's base species
 	and a
-	ret z                        ; end of table, no match: wMonHForm stays 0
+	jr z, .noForm                ; end of table, no match. Routed through .noForm
+	                             ; rather than a bare `ret` so the re-apply path
+	                             ; above cannot leave wMonHForm claiming a form
+	                             ; that was never actually copied in.
 	cp b
 	jr nz, .next
 	inc hl

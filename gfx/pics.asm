@@ -655,5 +655,7 @@ PorygonZPicBack::     INCBIN "gfx/pokemon/back/porygonzb.pic"
 ; PIN its new Pics sections - layout.link's bank $30 entry warns that a floating
 ; Pics section landing there would eat the headroom BaseStats and FormOverrides
 ; need. One pair here is well inside this section's existing slack.
+ADugtrioPicFront::    INCBIN "gfx/pokemon/front/adugtrio.pic"
+ADugtrioPicBack::     INCBIN "gfx/pokemon/back/adugtriob.pic"
 AMeowthPicFront::     INCBIN "gfx/pokemon/front/ameowth.pic"
 AMeowthPicBack::      INCBIN "gfx/pokemon/back/ameowthb.pic"

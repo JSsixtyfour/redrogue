@@ -79,5 +79,6 @@ FormOverrides::
 ; Records must be dex-order-independent - ApplyFormOverride walks linearly and
 ; matches on (species, form), so order here is cosmetic. Group by base species.
 INCLUDE "data/pokemon/forms/ameowth.asm"
+INCLUDE "data/pokemon/forms/adugtrio.asm"
 
 	db 0 ; terminator

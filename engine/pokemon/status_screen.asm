@@ -133,10 +133,6 @@ StatusScreen:
 	ld hl, vChars2 tile $76
 	lb bc, BANK(BattleHudTiles3), 2
 	call CopyVideoDataDouble ; ─ ┘
-	ld de, PTile
-	ld hl, vChars2 tile $72
-	lb bc, BANK(PTile), 1
-	call CopyVideoDataDouble ; bold P (for PP)
 	ldh a, [hTileAnimations]
 	push af
 	xor a
@@ -289,8 +285,6 @@ DrawLineBox:
 	jr nz, .PrintHorizLine
 	ld [hl], $6f ; ← (halfarrow ending)
 	ret
-
-PTile: INCBIN "gfx/font/P.1bpp"
 
 ; d = STATUS_SCREEN_STATS_BOX or LEVEL_UP_STATS_BOX (box position/size).
 ; e = STATS_BOX_* content, ONLY consulted when d == STATUS_SCREEN_STATS_BOX; the
