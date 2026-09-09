@@ -188,24 +188,15 @@ SaveMenu:
 	SetEvent EVENT_GAMMA_SHADER
 .doneGamma
 	call SaveGameData
-	hlcoord 1, 13
-	lb bc, 4, 18
-	call ClearScreenArea
-	hlcoord 1, 14
-	ld de, NowSavingString
-	call PlaceString
-	ld c, 120
+	ld c, 10
 	call DelayFrames
 	ld hl, GameSavedText
 	call PrintText
 	ld a, SFX_SAVE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish
-	ld c, 30
+	ld c, 10
 	jp DelayFrames
-
-NowSavingString:
-	db "Now saving...@"
 
 SaveTheGame_YesOrNo:
 	call PrintText
