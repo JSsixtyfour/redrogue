@@ -1281,7 +1281,6 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
-	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
@@ -1375,7 +1374,6 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
-	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
@@ -1427,7 +1425,6 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
-	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level

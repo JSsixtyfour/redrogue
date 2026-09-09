@@ -4840,8 +4840,6 @@ GetEnemyMonStat:
 	ld [wCurEnemyLevel], a
 	ld a, [wEnemyMonSpecies]
 	ld [wCurSpecies], a
-	ld hl, wEnemyMon ; Phase 2R: form-correct base stats for the DV/stat calc
-	call PublishFormContext
 	call GetMonHeader
 	ld hl, wEnemyMonDVs
 	ld de, wLoadedMonSpeedExp

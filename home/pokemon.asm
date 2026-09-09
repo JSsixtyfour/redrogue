@@ -369,6 +369,50 @@ GetwMoves::
 	ld a, [hl]
 	ret
 
+; ---------------------------------------------------------------------------
+; PublishFormContext  (Species Groups Phase 2R)
+;
+; Publishes a mon's form so that the GetMonHeader call which FOLLOWS applies
+; that mon's form rather than the base species' row.
+;
+; INPUT:  hl = the mon's struct base (party / box / wBattleMon / wEnemyMon)
+;         wCurSpecies = that mon's species, already set by the caller
+; OUTPUT: wFormContextSpecies / wFormContextForm published
+; PRESERVES: hl, bc, de.  CLOBBERS: af only.
+;   de is preserved deliberately rather than documented as clobbered. Several
+;   call sites hold a live struct pointer and item_effects.asm carries an
+;   explicit warning about de as scratch around one; auditing de liveness at
+;   every site is exactly how this project's recurring register-contract bugs
+;   happen. Two bytes of HOME removes the whole question.
+;
+; Call this immediately before `call GetMonHeader`, at any site that loads a
+; SPECIFIC mon's header without going through LoadMonData_ (which publishes for
+; itself). Sites that merely RELOAD the header they already hold do not need it -
+; ApplyFormOverride recognises a refresh on its own; see func_forms.asm.
+;
+; Publishing unconditionally, form 0 included, is the point: ApplyFormOverride
+; consumes the context, so a formless mon actively clears whatever the previous
+; mon published instead of inheriting it.
+;
+; Lives in HOME so every bank can plain-call it. 22 bytes here buys 3 bytes per
+; call site, which is the right trade with HOME this tight.
+PublishFormContext::
+	push hl
+	push de
+	ld de, MON_CATCH_RATE
+	add hl, de
+	ld a, [hl]
+	and FORM_MASK
+	rlca                  ; bits 5-6 -> bits 0-1
+	rlca
+	rlca
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
+	pop de
+	pop hl
+	ret
+
 ; copies the base stat data of a pokemon to wMonHeader
 ; INPUT:
 ; [wCurSpecies] = pokemon ID

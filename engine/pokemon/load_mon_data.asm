@@ -74,18 +74,10 @@ LoadMonData_::
 ; the previous slot published. That is what stops a party menu walking an Alolan
 ; Meowth in slot 1 and a vanilla Meowth in slot 2 from rendering both as Alolan.
 	push hl
-	ld de, MON_CATCH_RATE
-	add hl, de
-	ld a, [hl]
-	and FORM_MASK
-	rlca            ; bits 5-6 -> bits 0-1 (8 - FORM_SHIFT = 3 rotations)
-	rlca
-	rlca
-	ld [wFormContextForm], a
-	ld a, [wCurSpecies]
-	ld [wFormContextSpecies], a
-	call GetMonHeader ; preserves hl, but the struct pointer is popped below
-	pop hl            ; defensively, since this is the register-contract bug class
+	call PublishFormContext ; hl = struct base; HOME, see home/pokemon.asm
+	call GetMonHeader       ; preserves hl, but the struct pointer is popped
+	pop hl                  ; below defensively - this is the register-contract
+	                        ; bug class that has bitten this project repeatedly
 
 .copyMonData
 	ld de, wLoadedMon
