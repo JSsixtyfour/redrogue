@@ -11,6 +11,19 @@ GetMonName::
 	ld c, NAME_LENGTH - 1
 	ld b, 0
 	call AddNTimes
+	; Species Groups Phase 2R: a form clone shares its base species' index, so
+	; without this it would print the BASE name (Alolan Meowth as "MEOWTH").
+	; GetFormNameSource returns hl pointing at the form's own 10-character name
+	; when a form context is pending for wNamedObjectIndex, and leaves hl alone
+	; otherwise, so the copy below is untouched in the common case.
+	;
+	; Cheap because names are BAKED, not read live: every mon carries a stored
+	; nickname buffer and the species name is written into it once, at creation.
+	; There are only three such bake sites in the whole game, so hooking the
+	; lookup here covers all of them rather than needing 174 call sites edited.
+	ASSERT BANK(GetFormNameSource) == BANK(MonsterNames), \
+	       "Species Forms must share MonsterNames' bank - see layout.link"
+	call GetFormNameSource
 	ld de, wNameBuffer
 	push de
 	ld bc, NAME_LENGTH - 1

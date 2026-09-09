@@ -645,3 +645,15 @@ MagmortarPicFront::   INCBIN "gfx/pokemon/front/magmortar.pic"
 MagmortarPicBack::    INCBIN "gfx/pokemon/back/magmortarb.pic"
 PorygonZPicFront::    INCBIN "gfx/pokemon/front/porygonz.pic"
 PorygonZPicBack::     INCBIN "gfx/pokemon/back/porygonzb.pic"
+
+; Species Groups Phase 2R - FORM pics. These belong to no species id; a form
+; record in data/pokemon/forms/ names them, and BASE_PIC_BANK in that record
+; carries the bank, so they can live in any section.
+;
+; Increment 2 puts the first one in this existing floating section rather than
+; opening a new one. Increment 7, which adds the other 51 pairs (~34 KB), must
+; PIN its new Pics sections - layout.link's bank $30 entry warns that a floating
+; Pics section landing there would eat the headroom BaseStats and FormOverrides
+; need. One pair here is well inside this section's existing slack.
+AMeowthPicFront::     INCBIN "gfx/pokemon/front/ameowth.pic"
+AMeowthPicBack::      INCBIN "gfx/pokemon/back/ameowthb.pic"
