@@ -248,4 +248,9 @@ MonsterNames::
 	dname "MAGNEZONE"
 	dname "TANGROWTH"
 	dname "RHYPERIOR"
+	dname "KLEAVOR"
+	dname "MR.RIME"
+	dname "ELECTIVIRE"
+	dname "MAGMORTAR"
+	dname "PORYGON-Z"
 	assert_table_length NUM_POKEMON_INDEXES

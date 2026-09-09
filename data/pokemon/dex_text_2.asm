@@ -969,3 +969,53 @@ _RhyperiorDexEntry::
 	next "lava only feels"
 	next "like a warm bath"
 	dex
+
+_KleavorDexEntry::
+	text "It swings its"
+	next "sharp stone axes"
+	next "with tremendous"
+
+	page "force, said to be"
+	next "able to fell a"
+	next "tree in one strike"
+	dex
+
+_MrRimeDexEntry::
+	text "It slides and"
+	next "spins across icy"
+	next "ground, showing"
+
+	page "off dance moves"
+	next "to cheer up its"
+	next "companions"
+	dex
+
+_ElectivireDexEntry::
+	text "The tips of its"
+	next "two tails contain"
+	next "organs similar to"
+
+	page "an electric eel's,"
+	next "letting it deliver"
+	next "shocking punches"
+	dex
+
+_MagmortarDexEntry::
+	text "It blasts fire"
+	next "balls of over"
+	next "3,600 degrees"
+
+	page "from the ends of"
+	next "its arms, torching"
+	next "everything nearby"
+	dex
+
+_PorygonZDexEntry::
+	text "A programming"
+	next "error during an"
+	next "upgrade warped"
+
+	page "its data, causing"
+	next "it to move in odd,"
+	next "unpredictable ways"
+	dex

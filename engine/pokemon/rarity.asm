@@ -369,6 +369,10 @@ JohtoGreatball_Evos:
 ; LickitungEvosMoves/TangelaEvosMoves). Same pattern as above.
 	db LICKILICKY
 	db TANGROWTH
+; Porygon-Z is evolved-only (from Porygon2, itself already classified in
+; this tier above - see the EVOLVE_TRADE added to Porygon2EvosMoves).
+; Matched to Porygon2's own tier, same pattern as every other _Evos entry.
+	db PORYGON_Z
 JohtoGreatball_End:
 
 JohtoUltraball:
@@ -387,16 +391,18 @@ JohtoUltraball:
 	db STANTLER
 	db HITMONTOP
 	db LARVITAR
+	db MR_RIME
 JohtoUltraball_Evos:
 ; stage 1
 	db LANTURN
 	db XATU
 	db PUPITAR
-; Scizor is evolved-only (from Scyther, a Kanto ULTRABALL-tier base species -
-; see the EVOLVE_LEVEL added to ScytherEvosMoves). Same classification-only-
-; placeholder pattern as Slowking/Steelix in JohtoGreatball, matched to
-; Scyther's own tier.
+; Scizor/Kleavor are evolved-only (both from Scyther, a Kanto ULTRABALL-
+; tier base species - see the EVOLVE_LEVEL/EVOLVE_TRADE added to
+; ScytherEvosMoves). Same classification-only-placeholder pattern as
+; Slowking/Steelix in JohtoGreatball, matched to Scyther's own tier.
 	db SCIZOR
+	db KLEAVOR
 ; Blissey is evolved-only (from Chansey, a Kanto ULTRABALL-tier base
 ; species - see the EVOLVE_LEVEL added to ChanseyEvosMoves). Same pattern
 ; as Scizor above, matched to Chansey's own tier.
@@ -405,6 +411,11 @@ JohtoUltraball_Evos:
 ; form - see the EVOLVE_TRADE added to RhydonEvosMoves). Same pattern as
 ; above, matched to Rhydon's own tier.
 	db RHYPERIOR
+; Electivire/Magmortar are evolved-only (from Electabuzz/Magmar, both
+; Kanto ULTRABALL-tier base species - see the EVOLVE_ITEM added to
+; ElectabuzzEvosMoves/MagmarEvosMoves). Same pattern as above.
+	db ELECTIVIRE
+	db MAGMORTAR
 ; stage 3 - Tyranitar continues the Larvitar/Pupitar line already placed in
 ; this tier's base/stage-1 sections above.
 	db TYRANITAR

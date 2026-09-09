@@ -741,6 +741,13 @@ PokemonSpriteCategoryTable:
 	db $00 ; $F3,$F4 ANNIHILAPE,LICKILICKY
 	db $01 ; $F5,$F6 SIRFETCHD,MAGNEZONE (bird sprite for Sirfetch'd)
 	db $00 ; $F7,$F8 TANGROWTH,RHYPERIOR
+	db $00 ; $F9,$FA KLEAVOR,MR_RIME
+	db $00 ; $FB,$FC ELECTIVIRE,MAGMORTAR
+; $FD PORYGON_Z (odd, the final species in the roster) shares this byte's
+; high nybble with $FE, the one spare internal id that no species ever
+; uses - see the SPECIES_IMPORT_SPEC.md roster note. High nybble left at
+; its default (0) since $FE names nothing.
+	db $00 ; $FD,$FE PORYGON_Z,(unused)
 PokemonSpriteCategoryTableEnd:
 	assert PokemonSpriteCategoryTableEnd - PokemonSpriteCategoryTable == (NUM_POKEMON_INDEXES + 1) / 2
 

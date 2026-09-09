@@ -523,10 +523,6 @@ ShucklePicFront::     INCBIN "gfx/pokemon/front/shuckle.pic"
 ShucklePicBack::      INCBIN "gfx/pokemon/back/shuckleb.pic"
 HeracrossPicFront::   INCBIN "gfx/pokemon/front/heracross.pic"
 HeracrossPicBack::    INCBIN "gfx/pokemon/back/heracrossb.pic"
-SneaselPicFront::     INCBIN "gfx/pokemon/front/sneasel.pic"
-SneaselPicBack::      INCBIN "gfx/pokemon/back/sneaselb.pic"
-TeddiursaPicFront::   INCBIN "gfx/pokemon/front/teddiursa.pic"
-TeddiursaPicBack::    INCBIN "gfx/pokemon/back/teddiursab.pic"
 
 ; Species Groups Phase 2 batch 7 onward. "Pics 8" (sharing bank $32 with the
 ; growing "Pokédex Text 2") overflowed by only ~571 bytes once batch 7's
@@ -625,3 +621,27 @@ TangrowthPicFront::   INCBIN "gfx/pokemon/front/tangrowth.pic"
 TangrowthPicBack::    INCBIN "gfx/pokemon/back/tangrowthb.pic"
 RhyperiorPicFront::   INCBIN "gfx/pokemon/front/rhyperior.pic"
 RhyperiorPicBack::    INCBIN "gfx/pokemon/back/rhyperiorb.pic"
+
+; Species Groups Phase 2 batch 10 (final batch). "Pics 11" (in $17) has
+; only ~3 bytes free after batch 9. "Pics 8" also overflowed again (batch
+; 10's flavour-text growth, sharing $32) by 453 bytes, so Sneasel/
+; Teddiursa (~861 bytes) are pulled back into this section too, same
+; "pull the boundary back into a previous batch" pattern as every prior
+; round of this. Pin further "Pics N" sections elsewhere per this file's
+; own established pattern.
+SECTION "Pics 12", ROMX
+
+SneaselPicFront::     INCBIN "gfx/pokemon/front/sneasel.pic"
+SneaselPicBack::      INCBIN "gfx/pokemon/back/sneaselb.pic"
+TeddiursaPicFront::   INCBIN "gfx/pokemon/front/teddiursa.pic"
+TeddiursaPicBack::    INCBIN "gfx/pokemon/back/teddiursab.pic"
+KleavorPicFront::     INCBIN "gfx/pokemon/front/kleavor.pic"
+KleavorPicBack::      INCBIN "gfx/pokemon/back/kleavorb.pic"
+MrRimePicFront::      INCBIN "gfx/pokemon/front/mrrime.pic"
+MrRimePicBack::       INCBIN "gfx/pokemon/back/mrrimeb.pic"
+ElectivirePicFront::  INCBIN "gfx/pokemon/front/electivire.pic"
+ElectivirePicBack::   INCBIN "gfx/pokemon/back/electivireb.pic"
+MagmortarPicFront::   INCBIN "gfx/pokemon/front/magmortar.pic"
+MagmortarPicBack::    INCBIN "gfx/pokemon/back/magmortarb.pic"
+PorygonZPicFront::    INCBIN "gfx/pokemon/front/porygonz.pic"
+PorygonZPicBack::     INCBIN "gfx/pokemon/back/porygonzb.pic"

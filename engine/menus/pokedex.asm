@@ -196,13 +196,21 @@ HandlePokedexListMenu:
 	ld de, PokedexMenuItemsText
 	call PlaceString
 ; find the highest pokedex number among the pokemon the player has seen
+;
+; Species Groups Phase 2: at 252 species, (byte count * 8 + 1) is 257, which
+; no longer fits the 8-bit `b` this counter used to live in - rgblink's own
+; truncation warning caught it. Widened to `de` (free here; last used for
+; PokedexMenuItemsText, not needed again until after this block). The
+; match is always found at or below the true species count (252), well
+; under 256, before the counter could ever need its high byte, so reading
+; just `e` at the end is still correct.
 	ld hl, wPokedexSeenEnd - 1
-	ld b, (wPokedexSeenEnd - wPokedexSeen) * 8 + 1
+	ld de, (wPokedexSeenEnd - wPokedexSeen) * 8 + 1
 .maxSeenPokemonLoop
 	ld a, [hld]
 	ld c, 8
 .maxSeenPokemonInnerLoop
-	dec b
+	dec de
 	sla a
 	jr c, .storeMaxSeenPokemon
 	dec c
@@ -210,7 +218,7 @@ HandlePokedexListMenu:
 	jr .maxSeenPokemonLoop
 
 .storeMaxSeenPokemon
-	ld a, b
+	ld a, e
 	ld [wDexMaxSeenMon], a
 .loop
 	xor a

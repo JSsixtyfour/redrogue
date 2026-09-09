@@ -266,5 +266,11 @@
 	const DEX_MAGNEZONE   ; 245
 	const DEX_TANGROWTH   ; 246
 	const DEX_RHYPERIOR   ; 247
+; --- Species Groups Phase 2: Johto batch 10 (final batch) ---
+	const DEX_KLEAVOR     ; 248
+	const DEX_MR_RIME     ; 249
+	const DEX_ELECTIVIRE  ; 250
+	const DEX_MAGMORTAR   ; 251
+	const DEX_PORYGON_Z   ; 252
 
 DEF NUM_POKEMON EQU const_value - 1

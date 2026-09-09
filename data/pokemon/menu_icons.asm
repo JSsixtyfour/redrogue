@@ -248,4 +248,9 @@ MonPartyData:
 	nybble ICON_BALL      ; Magnezone
 	nybble ICON_GRASS     ; Tangrowth
 	nybble ICON_MON       ; Rhyperior
+	nybble ICON_BUG       ; Kleavor
+	nybble ICON_MON       ; Mr. Rime
+	nybble ICON_MON       ; Electivire
+	nybble ICON_MON       ; Magmortar
+	nybble ICON_MON       ; Porygon-Z
 	end_nybble_array NUM_POKEMON

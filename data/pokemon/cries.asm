@@ -254,4 +254,9 @@ CryData::
 	mon_cry SFX_CRY_25, $A0, $D0 ; Magnezone
 	mon_cry SFX_CRY_16, $60, $50 ; Tangrowth
 	mon_cry SFX_CRY_17, $F0, $50 ; Rhyperior
+	mon_cry SFX_CRY_1A, $80, $60 ; Kleavor
+	mon_cry SFX_CRY_20, $30, $60 ; Mr. Rime
+	mon_cry SFX_CRY_06, $50, $D0 ; Electivire
+	mon_cry SFX_CRY_04, $A0, $50 ; Magmortar
+	mon_cry SFX_CRY_25, $90, $E0 ; Porygon-Z
 	assert_table_length NUM_POKEMON_INDEXES

@@ -268,6 +268,11 @@ INCLUDE "data/pokemon/base_stats/sirfetchd.asm"
 INCLUDE "data/pokemon/base_stats/magnezone.asm"
 INCLUDE "data/pokemon/base_stats/tangrowth.asm"
 INCLUDE "data/pokemon/base_stats/rhyperior.asm"
+INCLUDE "data/pokemon/base_stats/kleavor.asm"
+INCLUDE "data/pokemon/base_stats/mrrime.asm"
+INCLUDE "data/pokemon/base_stats/electivire.asm"
+INCLUDE "data/pokemon/base_stats/magmortar.asm"
+INCLUDE "data/pokemon/base_stats/porygon_z.asm"
 
 	assert_table_length NUM_POKEMON
 
@@ -283,4 +288,4 @@ MACRO assert_dex_row_at
 ENDM
 
 	; anchored at the end of the table, so every preceding row must be in place
-	assert_dex_row_at DEX_RHYPERIOR
+	assert_dex_row_at DEX_PORYGON_Z

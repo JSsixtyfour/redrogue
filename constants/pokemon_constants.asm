@@ -268,6 +268,12 @@
 	const MAGNEZONE           ; $F6
 	const TANGROWTH           ; $F7
 	const RHYPERIOR           ; $F8
+; --- Species Groups Phase 2: Johto batch 10 (final batch), $F9-$FD ---
+	const KLEAVOR             ; $F9
+	const MR_RIME             ; $FA
+	const ELECTIVIRE          ; $FB
+	const MAGMORTAR           ; $FC
+	const PORYGON_Z           ; $FD
 
 DEF NUM_POKEMON_INDEXES EQU const_value - 1
 

@@ -248,6 +248,11 @@ PokedexEntryPointers:
 	dw MagnezoneDexEntry
 	dw TangrowthDexEntry
 	dw RhyperiorDexEntry
+	dw KleavorDexEntry
+	dw MrRimeDexEntry
+	dw ElectivireDexEntry
+	dw MagmortarDexEntry
+	dw PorygonZDexEntry
 	assert_table_length NUM_POKEMON_INDEXES
 
 ; string: species name
@@ -1990,4 +1995,39 @@ RhyperiorDexEntry:
 	db 7,11
 	dw 6228
 	text_far _RhyperiorDexEntry
+	text_end
+
+KleavorDexEntry:
+	db "AXE@"
+	db 4,7
+	dw 2205
+	text_far _KleavorDexEntry
+	text_end
+
+MrRimeDexEntry:
+	db "COMEDIAN@"
+	db 4,11
+	dw 1289
+	text_far _MrRimeDexEntry
+	text_end
+
+ElectivireDexEntry:
+	db "THUNDER@"
+	db 5,11
+	dw 3056
+	text_far _ElectivireDexEntry
+	text_end
+
+MagmortarDexEntry:
+	db "BLAST@"
+	db 5,3
+	dw 1499
+	text_far _MagmortarDexEntry
+	text_end
+
+PorygonZDexEntry:
+	db "VIRTUAL@"
+	db 3,3
+	dw 750
+	text_far _PorygonZDexEntry
 	text_end

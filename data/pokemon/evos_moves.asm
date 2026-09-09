@@ -274,6 +274,11 @@ EvosMovesPointerTable:
 	dw MagnezoneEvosMoves
 	dw TangrowthEvosMoves
 	dw RhyperiorEvosMoves
+	dw KleavorEvosMoves
+	dw MrRimeEvosMoves
+	dw ElectivireEvosMoves
+	dw MagmortarEvosMoves
+	dw PorygonZEvosMoves
 	assert_table_length NUM_POKEMON_INDEXES
 
 RhydonEvosMoves:
@@ -842,8 +847,14 @@ ScytherEvosMoves:
 ; evolution; this project has no Metal Coat item, so - matching KEP's own
 ; fallback path for the same species (tmp/kep/data/pokemon/evos_moves.asm's
 ; ScytherEvosMoves, EV_LEVEL 41 SCIZOR) - a plain level threshold is used
-; instead.
+; instead. Scyther's second branch, Kleavor (added in batch 10), is canon's
+; own trade-holding-Black-Augurite evolution - no such item here either, so
+; per the project's trade-evolution convention it uses EVOLVE_TRADE at
+; level 40, same as every other held-item trade substitute this import.
+; Multiple evolution entries on one species are already supported (see
+; EeveeEvosMoves's three stone branches).
 	db EVOLVE_LEVEL, 41, SCIZOR
+	db EVOLVE_TRADE, 40, KLEAVOR
 	db 0
 ; Learnset
 	db 6, FOCUS_ENERGY
@@ -1381,6 +1392,9 @@ BayleefEvosMoves:
 
 MagmarEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Magmar->Magmortar is an item evolution -
+; FIRE_STONE, already in this project, is the exact canon trigger.
+	db EVOLVE_ITEM, FIRE_STONE, 1, MAGMORTAR
 	db 0
 ; Learnset
 	db 10, SMOG
@@ -1424,6 +1438,10 @@ MeganiumEvosMoves:
 
 ElectabuzzEvosMoves:
 ; Evolutions
+; Species Groups Phase 2: canon Electabuzz->Electivire is an item
+; evolution - THUNDER_STONE, already in this project, is the exact canon
+; trigger.
+	db EVOLVE_ITEM, THUNDER_STONE, 1, ELECTIVIRE
 	db 0
 ; Learnset
 	db 15, THUNDERSHOCK
@@ -4445,10 +4463,12 @@ DonphanEvosMoves:
 
 Porygon2EvosMoves:
 ; Evolutions
-; Porygon2->PorygonZ (canon: trade-holding-Dubious-Disc) is deferred - both
-; PORYGON_Z and a Dubious Disc substitute item are a later batch (dex 252,
-; $FD). Restore with `db EVOLVE_TRADE, 40, PORYGON_Z` once that species and
-; the project's own trade-evolution convention line up.
+; Species Groups Phase 2: canon Porygon2->Porygon-Z is a trade-holding-
+; Dubious-Disc evolution; this project has no held-item trade mechanic, so
+; - per the project's own trade-evolution convention (EVOLVE_TRADE at
+; level 40, same as Porygon->Porygon2) - a plain trade threshold is used
+; instead.
+	db EVOLVE_TRADE, 40, PORYGON_Z
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; TACKLE/SHARPEN/CONVERSION already granted at level 1.
@@ -4726,4 +4746,65 @@ RhyperiorEvosMoves:
 	db 40, HORN_DRILL
 	db 48, LEER
 	db 55, EARTHQUAKE
+	db 0
+
+KleavorEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; QUICK_ATTACK/ROCK_THROW already granted at level 1.
+	db 17, LEER
+	db 20, FOCUS_ENERGY
+	db 24, DOUBLE_TEAM
+	db 29, SLASH
+	db 35, SWORDS_DANCE
+	db 42, AGILITY
+	db 50, ROCK_SLIDE
+	db 0
+
+MrRimeEvosMoves:
+; Evolutions
+	db 0
+; Learnset - CONFUSION/BARRIER/REFLECT already granted at level 1;
+; FEINT_ATTACK does not exist in Gen 1, filled with METRONOME.
+	db 23, LIGHT_SCREEN
+	db 28, PSYBEAM
+	db 31, AURORA_BEAM
+	db 39, ICE_BEAM
+	db 44, PSYCHIC_M
+	db 50, METRONOME ; was FEINT_ATTACK
+	db 0
+
+ElectivireEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; QUICK_ATTACK/LEER already granted at level 1.
+	db 34, THUNDERSHOCK
+	db 37, SCREECH
+	db 42, THUNDERPUNCH
+	db 49, LIGHT_SCREEN
+	db 54, THUNDER
+	db 58, LOW_KICK
+	db 0
+
+MagmortarEvosMoves:
+; Evolutions
+	db 0
+; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; EMBER already granted at level 1.
+	db 36, LEER
+	db 39, CONFUSE_RAY
+	db 43, FIRE_PUNCH
+	db 48, SMOKESCREEN
+	db 52, SMOG
+	db 55, FLAMETHROWER
+	db 0
+
+PorygonZEvosMoves:
+; Evolutions
+	db 0
+; Learnset - TACKLE/SHARPEN/CONVERSION already granted at level 1;
+; NASTY_PLOT does not exist in Gen 1, filled with METRONOME.
+	db 50, METRONOME ; was NASTY_PLOT
 	db 0
