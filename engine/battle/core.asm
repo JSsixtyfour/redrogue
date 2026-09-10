@@ -7171,6 +7171,15 @@ LoadEnemyMonData:
 	ld a, [wEnemyMonSpecies2]
 	ld [wEnemyMonSpecies], a
 	ld [wCurSpecies], a
+; Phase 2R, TOUCH 1 of 2 (see SPECIES_GROUPS_PLAN.md 2R.8c). The form has to be
+; known HERE, because this header load decides the enemy's stats, types and
+; sprite, and .copyTypes below copies wMonHBaseStats straight into
+; wEnemyMonBaseStats. Publishing at the tail of this routine - the seam the
+; cemetery ghost boss uses - would be far too late for all three.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	call GetMonHeader
 	ld a, [wEnemyBattleStatus3]
 	bit TRANSFORMED, a ; is enemy mon transformed?
@@ -7288,6 +7297,20 @@ LoadEnemyMonData:
 	; so it does not cover the box path.
 	xor a
 	ld [de], a
+; Phase 2R, TOUCH 2 of 2. The clear above is load-bearing and must stay
+; unconditional (MON_CATCH_RATE_BITFIELD_PC.md explains why), so the form is
+; written back immediately after it rather than by making it conditional.
+;
+; This has to happen BEFORE the species name is baked into wEnemyMonNick at the
+; tail of this routine, or a formed wild mon announces itself by its base
+; species' name. de still points at wEnemyMonCatchRate here, so the write is a
+; single store and every other bit stays cleared exactly as intended.
+	ld a, [wSpawnForm]
+	and NUM_FORM_SLOTS
+	rrca                   ; 0-3 -> bits 5-6
+	rrca
+	rrca
+	ld [de], a
 	inc de
 	ldh a, [hIsInBattle]
 	cp $2 ; is it a trainer battle?
@@ -7351,6 +7374,14 @@ LoadEnemyMonData:
 	ld [de], a
 	ld a, [wEnemyMonSpecies2]
 	ld [wNamedObjectIndex], a
+; Phase 2R: this is bake site #2 from 2R.2 - the ONE place every enemy mon's
+; name is written, wild and trainer alike. Publish so a formed enemy is
+; announced as "A-DUGTRIO" rather than "DUGTRIO"; the stored nick is what every
+; battle message reads from afterwards.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wNamedObjectIndex]
+	ld [wFormContextSpecies], a
 	call GetMonName
 	ld hl, wNameBuffer
 	ld de, wEnemyMonNick
