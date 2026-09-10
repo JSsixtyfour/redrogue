@@ -1281,6 +1281,7 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
+	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
@@ -1374,6 +1375,7 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
+	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
@@ -1425,6 +1427,7 @@ ItemUseMedicine:
 	ld a, [hl]
 	ld [wCurSpecies], a
 	ld [wPokedexNum], a
+	call PublishFormContext ; Phase 2R: hl is still the struct base here
 	ld bc, MON_LEVEL
 	add hl, bc ; hl now points to level
 	ld a, [hl] ; a = level
@@ -3073,6 +3076,12 @@ SendNewMonToBox:
 	cp -1
 	jr nz, .shiftSpeciesLoop
 
+	; Phase 2R: publish the pending form so this boxed mon is built from the
+	; FORM's base stats, not its base species'.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	call GetMonHeader
 	ld hl, wBoxMonOT
 	ld bc, NAME_LENGTH

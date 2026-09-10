@@ -14,11 +14,6 @@ Rogue_Reward_Script_PokeballText_1::
     .GetMon
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
-	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
     push de
     call GetMonName
     ld hl, PickRewardPokeballText
@@ -93,11 +88,6 @@ Rogue_Reward_Script_PokeballText_2::
     .GetMon
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
-	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
     push de
     call GetMonName
     ld hl, PickRewardPokeballText
@@ -135,11 +125,6 @@ Rogue_Reward_Script_PokeballText_3::
     .GetMon
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
-	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
     push de
     call GetMonName
     ld hl, PickRewardPokeballText

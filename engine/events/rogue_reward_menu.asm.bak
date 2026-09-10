@@ -106,11 +106,6 @@ RogueDrawRewardSlots:
 	add hl, de
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
-	; Phase 2R: show the offer's form name in the reward list.
-	ld a, [wSpawnForm]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
 	call GetMonName
 	pop hl
 	call PlaceString             ; preserves hl

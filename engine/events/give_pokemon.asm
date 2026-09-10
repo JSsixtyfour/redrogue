@@ -64,6 +64,14 @@ SetPokedexOwnedFlag:
 	predef FlagActionPredef
 	pop af
 	ld [wNamedObjectIndex], a
+; Phase 2R: name the mon by its FORM for the "You got X!" line. This routine
+; runs BEFORE AddPartyMon / SendNewMonToBox, which is what makes it safe to read
+; wSpawnForm here - neither has consumed it yet. Both the party and the box path
+; reach this, so one publish covers the message in either case.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wNamedObjectIndex]
+	ld [wFormContextSpecies], a
 	call GetMonName
 	ld hl, GotMonText
 	jp PrintText

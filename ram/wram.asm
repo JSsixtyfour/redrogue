@@ -1707,6 +1707,15 @@ wMonHForm::           db
 ; Found on hardware 2026-09-09 by breaking on the second GetMonHeader of a
 ; status-screen open.
 wMonHFormSpecies::    db
+; The form to give the NEXT mon that gets created. Set by whatever spawns the
+; mon (reward roll, wild encounter, debug poke); consumed by _AddPartyMon.
+;
+; Distinct from wFormContextForm on purpose. The context is a one-shot hint to
+; the very next GetMonHeader/GetMonName; this is the durable "what am I about to
+; make" input that survives across the several header loads and the naming
+; screen that mon creation performs. Zeroed once the mon exists so it can never
+; leak into the following one.
+wSpawnForm::          db
 
 ; saved at the start of a battle and then written back at the end of the battle
 wSavedTileAnimations:: db

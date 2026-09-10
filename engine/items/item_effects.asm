@@ -3076,6 +3076,12 @@ SendNewMonToBox:
 	cp -1
 	jr nz, .shiftSpeciesLoop
 
+	; Phase 2R: publish the pending form so this boxed mon is built from the
+	; FORM's base stats, not its base species'.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	call GetMonHeader
 	ld hl, wBoxMonOT
 	ld bc, NAME_LENGTH
@@ -3149,6 +3155,12 @@ SendNewMonToBox:
 	ld hl, wBoxMon1Nick
 	ld a, NAME_MON_SCREEN
 	ld [wNamingScreenType], a
+	; Phase 2R: and again for the NAME, which AskName bakes into wBoxMonNicks
+	; once and for good. Republished because GetMonHeader above consumed it.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurPartySpecies]
+	ld [wFormContextSpecies], a
 	predef AskName
 
 	ld a, [wBoxCount]
@@ -3183,6 +3195,22 @@ SendNewMonToBox:
 	jr nz, .shiftMonDataLoop
 
 .skipMonDataShift
+; Phase 2R: fold the pending form into wEnemyMon's flag byte BEFORE the copy
+; below. That copy spans MON_CATCH_RATE (it runs species..moves), so this is what
+; makes the form stick to the boxed mon and survive withdrawal - box mons do not
+; store stats, so a withdrawn form recalculates from its own base stats for free.
+;
+; b is free here: the shift loop above has finished with it and bc is reloaded
+; for the CopyData two lines down.
+	ld a, [wSpawnForm]
+	and NUM_FORM_SLOTS
+	rrca                      ; 0-3 -> bits 5-6
+	rrca
+	rrca
+	ld b, a
+	ld a, [wEnemyMonCatchRate]
+	or b
+	ld [wEnemyMonCatchRate], a
 	ld a, [wEnemyMonLevel]
 	ld [wEnemyMonBoxLevel], a
 	ld hl, wEnemyMon
@@ -3236,6 +3264,10 @@ SendNewMonToBox:
 	; location-owned bridge effects attached to the existing records as they
 	; shift one slot toward the tail.
 	farcall BridgeTrackSendNewMonToBox
+; Phase 2R: consume the spawn request, same contract as _AddPartyMon's .done.
+; Leaving it set would give the form to the next mon created as well.
+	xor a
+	ld [wSpawnForm], a
 	ret
 
 ; checks if the tile in front of the player is a shore or water tile

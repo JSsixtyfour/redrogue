@@ -102,7 +102,7 @@ HandlePokedexSideMenu:
 	dec a
 	jr z, .choseCry
 	dec a
-	jr z, .choseArea
+	jr z, .choseMove
 ; chose Quit
 	ld b, 1
 .exitSideMenu
@@ -145,8 +145,10 @@ HandlePokedexSideMenu:
 	call PlaySound
 	jr .handleMenuInput
 
-.choseArea
-	predef LoadTownMap_Nest ; display pokemon areas
+.choseMove
+	ld a, [wPokedexNum] ; already converted to an internal species index
+	ld e, a
+	farcall PokedexMoveViewer
 	ld b, 0
 	jr .exitSideMenu
 
@@ -377,7 +379,7 @@ PokedexContentsText:
 PokedexMenuItemsText:
 	db   "DATA"
 	next "CRY"
-	next "AREA"
+	next "MOVE"
 	next "QUIT@"
 
 ; tests if a pokemon's bit is set in the seen or owned pokemon bit fields

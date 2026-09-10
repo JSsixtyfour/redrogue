@@ -5,12 +5,16 @@ DEF STATUS_EXP_TILE EQU $c0
 DEF STATUS_START_TILE EQU STATUS_EXP_TILE + 11
 
 StatusScreenInitView:
+	call LoadStatusViewGraphics
+	ld e, STATS_BOX_NORMAL
+	jp StatusScreenDrawView
+
+LoadStatusViewGraphics::
 	ld de, StatusViewGraphics
 	ld hl, vChars1 tile (STATUS_EXP_TILE - $80)
 	lb bc, BANK(StatusViewGraphics), 14
 	call CopyVideoData
-	ld e, STATS_BOX_NORMAL
-	jp StatusScreenDrawView
+	ret
 
 StatusScreenWaitView:
 	ld e, STATS_BOX_NORMAL
@@ -409,6 +413,7 @@ StatusScreen2WaitView:
 	call StatusScreen2SelectHook
 	pop de
 	jr .wait
+
 .checkStart
 	ldh a, [hJoyPressed]
 	bit B_PAD_START, a
@@ -435,6 +440,101 @@ StatusScreen2WaitView:
 	                              ; blanket redraw here on every press is
 	                              ; exactly what used to still flicker
 	jr .wait
+
+; Pokedex MOVE replacement. Unlike the status-page loop, this omits only the
+; loaded-mon CURRENT view. Input travels in e because a
+; farcall cannot carry it in a. No new persistent menu state is required.
+PokedexMoveViewer::
+	ld a, e
+	ld [wMonHIndex], a
+	ld [wNamedObjectIndex], a
+	ld hl, wLoadedMonCatchRate
+	ld a, [hl]
+	push af
+	xor a
+	ld [hl], a ; prevent stale fusion/form instance state affecting dex data
+	ld a, [wFormContextSpecies]
+	push af
+	ld a, [wFormContextForm]
+	push af
+	ld a, [wMonHForm]
+	push af
+	ld a, [wMonHFormSpecies]
+	push af
+	xor a
+	ld [wFormContextSpecies], a
+	ld [wFormContextForm], a
+	ld [wMonHForm], a
+	ld [wMonHFormSpecies], a ; Pokedex MOVE always describes the base species
+	ldh a, [hTileAnimations]
+	push af
+	xor a
+	ldh [hTileAnimations], a
+	call GBPalWhiteOut
+	call ClearScreen
+	call LoadHpBarAndStatusTilePatterns ; Pokedex graphics overwrite <LV>
+	call LoadStatusViewGraphics
+	call GetMonName
+	hlcoord 1, 1
+	call PlaceString
+	hlcoord 1, 3
+	ld de, .HelpText
+	call PlaceString
+	ld d, 0
+	ld e, MOVES_BOX_LEVELUP
+	push de
+	call StatusScreen2DrawView
+	pop de
+	call GBPalNormal
+.wait
+	push de
+	call DelayFrame
+	call Joypad
+	pop de
+	ldh a, [hJoyPressed]
+	and PAD_A | PAD_B
+	jr nz, .exit
+	ldh a, [hJoyPressed]
+	bit B_PAD_START, a
+	jr z, .checkCursor
+	ld a, e
+	cp MOVES_BOX_LEVELUP
+	ld e, MOVES_BOX_TMHM
+	jr z, .switchView
+	cp MOVES_BOX_TMHM
+	ld e, MOVES_BOX_TUTOR
+	jr z, .switchView
+	ld e, MOVES_BOX_LEVELUP
+.switchView
+	ld d, 0
+	push de
+	call StatusScreen2DrawView
+	pop de
+	jr .wait
+.checkCursor
+	ldh a, [hJoyPressed]
+	and PAD_UP | PAD_DOWN
+	jr z, .wait
+	call StatusScreen2MoveCursor
+	jr .wait
+.exit
+	call GBPalWhiteOut
+	pop af
+	ldh [hTileAnimations], a
+	pop af
+	ld [wMonHFormSpecies], a
+	pop af
+	ld [wMonHForm], a
+	pop af
+	ld [wFormContextForm], a
+	pop af
+	ld [wFormContextSpecies], a
+	pop af
+	ld [wLoadedMonCatchRate], a
+	ret
+
+.HelpText:
+	db "START: CHANGE@"
 
 ; Full draw: border (which also blanks the interior) + content + view label
 ; + START badge on row 8. Used on a view switch (START) and page 2's initial

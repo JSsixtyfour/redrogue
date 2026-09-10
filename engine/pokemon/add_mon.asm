@@ -49,6 +49,18 @@ _AddPartyMon::
 	call SkipFixedLengthTextEntries
 	ld a, NAME_MON_SCREEN
 	ld [wNamingScreenType], a
+; Species Groups Phase 2R: publish the pending form so AskName's GetMonName
+; bakes the FORM's name into the nickname buffer ("A-DUGTRIO", not "DUGTRIO").
+;
+; This is THE site that makes form names work at all. Names are not read live -
+; AskName's .declinedNickname path copies wNameBuffer into wPartyMonNicks once,
+; and that stored string is what the player sees forever afterwards, surviving
+; boxes, trades and saves. Publishing here rather than editing naming_screen.asm
+; keeps the hook at the site that actually knows a form is pending.
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurPartySpecies]
+	ld [wFormContextSpecies], a
 	predef AskName
 .skipNaming
 	ld hl, wPartyMons
@@ -66,6 +78,17 @@ _AddPartyMon::
 	push hl
 	ld a, [wCurPartySpecies]
 	ld [wCurSpecies], a
+; Phase 2R: publish the pending form BEFORE the header load. Everything this
+; routine derives from wMonHeader below - the four starting moves, the growth
+; rate, and above all CalcStats - therefore uses the FORM's base stats. That is
+; what stops a properly-spawned form from carrying its base species' numbers and
+; then jumping the first time something recalculates (see SPECIES_GROUPS_STATUS
+; §9f: a poked Alolan Dugtrio gained +24 Attack on its first Rare Candy purely
+; because it had been CREATED as a vanilla one).
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	call GetMonHeader
 	ld hl, wMonHeader
 	ld a, [hli]
@@ -291,6 +314,21 @@ _AddPartyMon::
 .isShiny
 	ld a, 1 << BIT_SHINY
 .writeShinyFlag
+; Phase 2R: fold the pending form index into the same repurposed byte (bits 5-6)
+; alongside the shiny flag (bit 4). This is what makes the form STICK to the mon
+; - everything up to here only affected how it was built. Once written, the form
+; travels with the struct through boxes, trades and saves for free, and survives
+; evolution, because the whole party_struct is copied around as one block.
+;
+; ORs rather than assigns: `a` already holds the shiny result and both flags live
+; in this byte. See MON_CATCH_RATE_BITFIELD_PC.md for the full registry.
+	ld b, a
+	ld a, [wSpawnForm]
+	and NUM_FORM_SLOTS             ; ignore anything that would overflow bits 5-6
+	rrca                           ; 0-3 -> bits 5-6 (3 right-rotations = <<5)
+	rrca
+	rrca
+	or b
 	ld [de], a
 	ld hl, wMonHMoves
 	ld a, [hli]
@@ -379,6 +417,12 @@ _AddPartyMon::
 ; and was caught immediately by every boot smoke test crashing).
 	farcall AIFinishEnemyMonStats
 .done
+; Phase 2R: the mon now exists and carries its form in its own MON_CATCH_RATE,
+; so consume the spawn request. Leaving it set would silently give the form to
+; the NEXT mon created - a whole party of Alolan Dugtrio from one roll. Cleared
+; on every exit path through .done, success or not, for exactly that reason.
+	xor a
+	ld [wSpawnForm], a
 	scf
 	ret
 
