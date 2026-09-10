@@ -14,6 +14,28 @@ ReadTrainer:
 	dec a
 	ld [hl], a
 
+; Phase 2: a party spec for (wTrainerClass, wTrainerNo) supersedes BOTH older
+; team paths. RogueBuildParty returns carry clear when there is no spec, and
+; everything below then runs exactly as it did before, which is what makes the
+; migration incremental.
+;
+; This is hooked HERE, above the TrainerDataPointers lookup, and not further
+; down at .IterateTrainer. It has to be: the .SkipTrainer walk below advances
+; through (wTrainerNo - 1) authored teams by scanning for their terminators, so
+; a class whose rounds have moved to specs and no longer carries 24 authored
+; teams would have that scan run off the end of its data and into the next
+; class's. Deciding before the walk means a spec-driven class needs no authored
+; teams at all.
+;
+; It still falls into .AddAdditionalMoveData rather than returning: that block
+; applies the SpecialTrainerMoves table (preserved deliberately, so nothing
+; regresses) and, at .FinishUp, computes wAmountMoneyWon - which every trainer
+; battle needs regardless of how its party was built.
+	xor a
+	ld [wTrainerPartyFormMode], a ; specs carry per-mon forms themselves
+	call RogueBuildParty          ; same bank, so a plain call
+	jp c, .AddAdditionalMoveData
+
 ; get the pointer to trainer data for this class
 	ld a, [wTrainerClass] ; get trainer class
 	dec a

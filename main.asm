@@ -312,11 +312,17 @@ INCLUDE "engine/battle/move_effects/leech_seed.asm"
 SECTION "Battle Engine 5", ROMX
 
 INCLUDE "engine/battle/display_effectiveness.asm"
+; Fixed-size trainer-card assets stay here. The roster-sized ones (the per-leader
+; face/badge sheet) declare their own pinned section; see gfx/trainer_card_art.asm.
 INCLUDE "gfx/trainer_card.asm"
 INCLUDE "engine/items/tmhm.asm"
 INCLUDE "engine/battle/scale_sprites.asm"
 INCLUDE "engine/battle/move_effects/pay_day.asm"
 INCLUDE "engine/slots/game_corner_slots2.asm"
+
+
+; Declares its own inline-pinned SECTION "Trainer Card Art" in bank $3C.
+INCLUDE "gfx/trainer_card_art.asm"
 
 
 SECTION "Battle Engine 6", ROMX
@@ -396,6 +402,24 @@ INCLUDE "data/trainers/special_moves.asm"
 
 INCLUDE "data/trainers/parties.asm"
 
+; Phase 2 party spec system. All four files MUST share this bank with
+; RogueBuildParty, which walks every one of them with plain [hli] reads:
+;   party_specs.asm  PartySpecPointers -> bare `dw` spec records, and the
+;                    MovesetMixTable / field-width rows read alongside them
+;   pools.asm        TrainerPoolTable  -> bare `dw` species runs
+;   move_ranks.asm   MoveRankByID + MoveRankWeightTable, consulted once per
+;                    candidate move per weighted pick - the hottest read in the
+;                    whole party build, so a farcall per lookup is not an option
+; A link-time ASSERT in rogue_build_party.asm fails the build if any of them
+; drifts out of this bank.
+INCLUDE "data/trainers/party_specs.asm"
+
+INCLUDE "data/trainers/pools.asm"
+
+INCLUDE "data/moves/move_ranks.asm"
+
+INCLUDE "engine/battle/rogue_build_party.asm"
+
 ; Shin Red import Phase 5: UndoBurnParStats needs to be farcall-reachable from
 ; both "bank3" (item_effects.asm) and here (trainer_ai.asm's AICureStatus), so
 ; it gets its own floating section rather than living in either.
@@ -417,6 +441,9 @@ INCLUDE "engine/battle/draw_hud_pokeball_gfx.asm"
 ; this file is bank-independent.
 SECTION "Evos Moves", ROMX
 INCLUDE "engine/pokemon/evos_moves.asm"
+; Must share this bank with EvosMovesPointerTable, which it walks with plain
+; [hli] reads; a link-time ASSERT in the file enforces it.
+INCLUDE "engine/pokemon/get_levelup_moves.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 

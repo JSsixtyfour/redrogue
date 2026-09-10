@@ -102,7 +102,7 @@ FlashSprite8Times:
 	ldh a, [rOBP1]
 	xor d
 	ldh [rOBP1], a
-  ;  call UpdateGBCPal_OBP1
+	call UpdateGBCPal_OBP1
 	ld c, 10
 	call DelayFrames
 	dec b

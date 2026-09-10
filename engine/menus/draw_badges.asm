@@ -106,5 +106,9 @@ DrawBadges:
 .FaceBadgeTiles
 	db $20, $28, $30, $38, $40, $48, $50, $58
 
-GymLeaderFaceAndBadgeTileGraphics:
-	INCBIN "gfx/trainer_card/badges.2bpp"
+; GymLeaderFaceAndBadgeTileGraphics moved out of this file, and out of bank $03,
+; on 2026-09-10 (Phase 1c). The sheet grew from 8 leader blocks to 17 and no
+; longer fits here: the pinned "bank3" section had 542 bytes left inside its own
+; span against a 1,152-byte growth. It is pure data, blitted by DrawTrainerInfo
+; through an explicit BANK() + FarCopyData2, so it is bank-independent.
+; It now lives in gfx/trainer_card_art.asm, bank $3C.

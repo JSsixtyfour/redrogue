@@ -592,6 +592,50 @@ RogueGetActiveGroupMask::
 	ret
 
 ; ---------------------------------------------------------------------------
+; RogueGetActiveGroupMaskFar
+; OUTPUT: e = the same mask RogueGetActiveGroupMask returns in a
+; CLOBBERS: af (bc, d, hl preserved, as above)
+;
+; RogueGetActiveGroupMask returns in `a`, which makes it UNREACHABLE by farcall:
+; Bankswitch's return leg does `pop bc / ld a, b / ldh [hLoadedROMBank], a`, so
+; `a` is destroyed on the way back and the caller would read the restored bank
+; number as a group mask. Every in-tree caller so far is a plain call from this
+; same bank, which is why the hazard had not surfaced.
+;
+; RogueBuildParty (bank $39) is the first out-of-bank caller, so it goes through
+; this wrapper instead. `e` is used because d and e are the only registers
+; Bankswitch spares - the same contract RogueClassifySpeciesFar and
+; RogueRollFormForSpecies use, and for the same reason. Do NOT "simplify" this
+; away by farcalling the routine above directly.
+RogueGetActiveGroupMaskFar::
+	call RogueGetActiveGroupMask
+	ld e, a
+	ret
+
+; ---------------------------------------------------------------------------
+; RogueGetSpeciesTierFar
+; INPUT:  e = species
+; OUTPUT: e = RARITY_TIER_*, or $FF if the species is in no pool
+; CLOBBERS: af, bc, d, hl
+;
+; The farcall-safe face of RogueClassifySpecies, returning the RAW tier. Note
+; the difference from RogueClassifySpeciesFar, which folds RARITY_TIER_UBER into
+; masterball for backwards compatibility with the old reverse lookups: that fold
+; makes it useless for telling a legendary from an ordinary masterball species,
+; which is exactly what RogueBuildParty's BIT_PSPEC_ALLOW_LEGEND filter needs to
+; do. Hence a second wrapper rather than a caller of the first.
+;
+; $FF for "in no pool" rather than a tier, so an unclassified species cannot
+; accidentally satisfy a rarity filter.
+RogueGetSpeciesTierFar::
+	ld a, e
+	call RogueClassifySpecies    ; b = tier, c = group, carry set if unknown
+	ld e, $FF
+	ret c
+	ld e, b
+	ret
+
+; ---------------------------------------------------------------------------
 ; RogueFormsUnlocked
 ; OUTPUT: Z SET   = regional forms must NOT appear this run
 ;         Z CLEAR = forms may appear

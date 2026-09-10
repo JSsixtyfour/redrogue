@@ -166,6 +166,16 @@ _PokemonCenterRepeatHealText::
 	line "#MON!"
 	prompt
 
+_NeedYourPokemonText::
+	text "OK. We'll need"
+	line "your #MON."
+	done
+
+_PokemonCenterFarewellText::
+	text "We hope to see"
+	line "you again!"
+	done
+
 _CableClubNPCAreaReservedFor2FriendsLinkedByCableText::
 	text "This area is"
 	line "reserved for 2"

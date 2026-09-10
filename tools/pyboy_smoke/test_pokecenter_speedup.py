@@ -32,7 +32,9 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         )
         self.assertIn("call SetLastBlackoutMap", flow)
         self.assertIn("call LoadScreenTilesFromBuffer1", flow)
+        self.assertIn("ld hl, NeedYourPokemonText\n\tcall PrintText", flow)
         self.assertIn("ld a, $28", flow)
+        self.assertIn("call Delay3", flow)
         self.assertIn("predef HealParty", flow)
         self.assertIn("farcall AnimateHealingMachine", flow)
         self.assertIn("xor a\n\tld [wAudioFadeOutControl], a", flow)
@@ -40,12 +42,12 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         self.assertIn("ld a, [wMapMusicSoundID]", flow)
         self.assertIn("call PlaySound", flow)
         self.assertIn("ld a, $24", flow)
+        self.assertIn("ld c, a\n\tcall DelayFrames", flow)
+        self.assertIn("ld hl, PokemonCenterFarewellText\n\tcall PrintText", flow)
         self.assertIn("jp UpdateSprites", flow)
         self.assertNotIn("PokemonFightingFitText", flow)
-        self.assertNotIn("PokemonCenterFarewellText", flow)
-        self.assertNotIn("Delay", flow)
 
-    def test_healing_machine_loop_copies_then_delays_once(self) -> None:
+    def test_healing_machine_loop_copies_then_delays_once_and_flashes_palette(self) -> None:
         source = (REPO_ROOT / "engine" / "overworld" / "healing_machine.asm").read_text()
         loop_start = source.index(".partyLoop")
         after_loop = source.index("\tld a, [wAudioROMBank]", loop_start)
@@ -59,6 +61,8 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         self.assertNotIn("DelayFrames", copy_phase)
         self.assertEqual(loop.count("ld a, SFX_HEALING_MACHINE"), 1)
         self.assertIn("ld c, 30\n\tcall DelayFrames", loop[sound:])
+        flash = source[source.index("FlashSprite8Times:"):source.index("CopyHealingMachineOAM:")]
+        self.assertIn("ldh [rOBP1], a\n\tcall UpdateGBCPal_OBP1", flash)
         for anchor in (
             "ld a, $ff",
             "wSprite15StateData1 + SPRITESTATEDATA1_IMAGEINDEX",
@@ -83,6 +87,14 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         ]
         repeat = source[
             source.index("_PokemonCenterRepeatHealText::"):
+            source.index("_NeedYourPokemonText::")
+        ]
+        need = source[
+            source.index("_NeedYourPokemonText::"):
+            source.index("_PokemonCenterFarewellText::")
+        ]
+        farewell = source[
+            source.index("_PokemonCenterFarewellText::"):
             source.index("_CableClubNPCAreaReservedFor2FriendsLinkedByCableText::")
         ]
         self.assertIn('text "Welcome! I\'ll"', first)
@@ -91,7 +103,13 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         self.assertIn('text "Let\'s heal your"', repeat)
         self.assertIn('line "#MON!"', repeat)
         self.assertIn("prompt", repeat)
-        self.assertNotIn("@", first + repeat)
+        self.assertIn('text "OK. We\'ll need"', need)
+        self.assertIn('line "your #MON."', need)
+        self.assertIn("done", need)
+        self.assertIn('text "We hope to see"', farewell)
+        self.assertIn('line "you again!"', farewell)
+        self.assertIn("done", farewell)
+        self.assertNotIn("@", first + repeat + need + farewell)
 
         def rendered_length(block: str) -> int:
             return sum(
@@ -100,7 +118,7 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
                 if any(line.lstrip().startswith(op) for op in ("text ", "line ", "cont ", "para "))
             )
 
-        for block in (first, repeat):
+        for block in (first, repeat, need, farewell):
             for line in block.splitlines():
                 stripped = line.lstrip()
                 if any(stripped.startswith(op) for op in ("text ", "line ", "cont ", "para ")):

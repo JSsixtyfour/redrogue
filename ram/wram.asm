@@ -947,7 +947,88 @@ wSwappedMenuItem::
 ; 2 = no fish on map
 wRodResponse::
 	db
+
+NEXTU
+; Gym-leader expansion Phase 2: RogueBuildParty's working set.
+;
+; ZERO WRAM COST. This union's span is 30 bytes, set by its unique-largest
+; member wTraded* (the link/in-game trade animation). Anything up to 30 bytes
+; added here is free, per the rule at the top of WRAM_BIBLE.md. WRAM0 had only
+; 186 bytes free, so a dedicated allocation was the wrong answer.
+;
+; LIVENESS PROOF (the cost a union member actually carries). This scratch is
+; live only INSIDE RogueBuildParty, which runs entirely inside ReadTrainer,
+; which battle init reaches at engine/battle/core.asm's
+; `callfar ReadTrainer` - and nothing here is touched by an interrupt. So the
+; only way to break is a sibling member holding a value written BEFORE
+; ReadTrainer and read AFTER it. Audited by read site, not by intuition:
+;
+;   - Battle transition members (wBattleTransitionCircleScreenQuadrant*,
+;     wBattleTransitionCopyTilesOffset, wInwardSpiralUpdateScreenCounter,
+;     wBattleTransitionSpiralDirection) are safe because of the ORDER, which is
+;     the opposite of what it looks like: InitBattleCommon runs
+;     `callfar ReadTrainer` and only THEN
+;     `call DoBattleTransitionAndInitBattleVariables`. The transition is written
+;     after this scratch is already dead, so the two clobber each other in a
+;     direction that cannot matter.
+;   - Trainer sight (wTrainerSpriteOffset, wTrainerEngageDistance,
+;     wTrainerFacingDirection, wTrainerScreenY/X): all 30 read sites are in
+;     engine/overworld/trainer_sight.asm and home/trainers.asm, inside the
+;     overworld scan-and-engage window. home/trainers.asm writes
+;     wTrainerSpriteOffset, calls `predef TrainerEngage`, and reads it back
+;     immediately; the battle starts frames later. Nothing survives into battle.
+;   - The three battle-ish bytes of the multiplexed block below
+;     (wWereAnyMonsAsleep, wChargeMoveNum, wNumShakes) are each written AND read
+;     inside one mid-battle routine (item_effects_pokeflute.asm,
+;     effects.asm:1005-1012, animations.asm), all after init.
+;   - Every other member is menu, cutscene, day care, slots, Hall of Fame, fly,
+;     town map, trainer card or box state, none of which is live at battle init.
+;
+; ~93% confident, from a complete read-site audit rather than a spot check. The
+; one thing that would invalidate it is a future member with a lifetime that
+; SPANS battle init; if you add one, this member needs a new home.
+wPartyGenScratch::
+; MSRC_* assigned to each party slot. Filled once up front: slot overrides claim
+; their slots first, then the mix quotas are shuffled across whatever is left.
+wPartyGenSlotSource:: ds PARTY_LENGTH
+; Level-up move candidates for the mon being built. 16 bytes, sized from the
+; measured worst case of 15 (11 = the longest learnset in evos_moves.asm,
+; Vaporeon, plus NUM_MOVES level-1 moves from the base-stats row). TM/HM
+; candidates are enumerated straight from wMonHLearnset instead of being
+; buffered here, which is what keeps this at 16 bytes rather than 71.
+wPartyGenCandidates:: ds PARTY_GEN_MAX_CANDIDATES
+wPartyGenCandidateCount:: db
+; popcount(wMonHLearnset), cached so each rejection-sampling draw does not
+; recount the bitfield.
+wPartyGenTMCount:: db
+; TM-ONLY moves taken by this slot so far, checked against the mix row's
+; tm_cap. A move that is both level-learnable and a TM does not count here.
+wPartyGenTMUsed:: db
+; The MSRC_* the BIT_PSPEC_ACE_LAST rule claimed for the last slot, or $FF if
+; that rule did not fire. Exists because the ace spends one unit of that
+; source's quota, and the quota lives in ROM: decrementing it in place would be
+; a write to $4000-$5FFF, which on MBC3 is the RAM-bank select register rather
+; than a store. So the spend is charged here instead.
+wPartyGenAceSource:: db
+wPartyGenSlot:: db          ; party slot being built, 0-based
+; The MSRC_* actually in force for the slot being built. Distinct from
+; wPartyGenSlotSource[slot] because MSRC_SET degrades to MSRC_RANDOM here
+; without rewriting the slot's assignment.
+wPartyGenSource:: db
+; The spec record itself. Held instead of the six unpacked header fields
+; (n_mons, base level, level step, pool, mix, flags) because re-reading them
+; from ROM is a 3-cycle in-bank [hl] read, and holding them would cost 6 of the
+; 30 bytes this union member is allowed.
+wPartyGenSpecPtr:: dw
+wPartyGenScratchEnd::
 ENDU
+
+; Keeps the zero-cost property honest. If the scratch ever outgrows the union's
+; span it stops being free and silently widens the union for all 33 members, so
+; fail the build instead and make the size increase a deliberate decision.
+ASSERT wPartyGenScratchEnd - wPartyGenScratch <= 30, \
+       "wPartyGenScratch must fit the 30-byte union span to stay zero-cost; \
+see WRAM_BIBLE.md before widening it"
 
 ; 0 = neither
 ; 1 = warp pad

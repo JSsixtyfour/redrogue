@@ -111,3 +111,21 @@ ENDM
 	trainer_const WILL           ; $3C
 	trainer_const KAREN          ; $3D
 DEF NUM_TRAINERS EQU const_value - 1
+
+; Trainer-card face/badge blocks (gfx/trainer_card/badges.png, blitted by
+; DrawTrainerInfo, drawn by DrawBadges). One block per gym leader that can ever
+; appear on the card: the Kanto eight, the Johto eight, and Janine.
+;
+; This is a SEPARATE index space from the trainer class ids above, and is not
+; derivable from them - the Kanto eight must stay in wObtainedBadges BIT order
+; (BIT_BOULDERBADGE..BIT_EARTHBADGE) because DrawBadges walks that bitfield
+; LSB-first and indexes the sheet with the same counter, whereas their class ids
+; are BROCK $22, MISTY $23, LT_SURGE $24, ERIKA $25, KOGA $26, BLAINE $27,
+; SABRINA $28, GIOVANNI $1D - neither contiguous nor in badge order. Phase 4
+; adds the class -> block lookup; the sheet's block map is documented in
+; tools/make_placeholder_badges.py.
+;
+; Elite Four members get no block: WILL and KAREN never appear on the card, and
+; KOGA's E4 appearance reuses his gym-leader block.
+DEF NUM_CARD_LEADERS EQU 17
+DEF CARD_TILES_PER_LEADER EQU 8 ; 4 face + 4 badge, badge second (DrawBadges `add 4`)
