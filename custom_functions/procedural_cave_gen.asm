@@ -548,6 +548,13 @@ PCGetBossOWSprite::
 	; boss sprite). Cross-bank callers must use PFStoreBossOWSpriteToSRAM below.
 	ld a, [wRoguePokemon1]
 	ld e, a
+	ld a, [wRoguePokemonForm1]
+	ld d, a
+	call PCGetDedicatedPokemonSprite
+	jr nc, .categoryFallback
+	ld a, e
+	ret
+.categoryFallback
 	call PCGetPokemonSpriteCategory
 	ld a, e
 	; a = neutral Pokemon sprite category -> boss SPRITE_* constant
@@ -559,6 +566,50 @@ PCGetBossOWSprite::
 .noCarry
 	ld a, [hl]
 	ret
+
+; ============================================================
+; PCGetDedicatedPokemonSprite
+; INPUT:  E = valid base species; D = 0 for base appearance, nonzero to force
+;         the existing category fallback (regional/special form or fusion)
+; OUTPUT: carry set and E = dedicated SPRITE_* picture ID when supported;
+;         carry clear and E unchanged otherwise
+; CLOBBERS: a, b, hl
+; The E return and carry flag both survive the project's farcall trampoline.
+; ============================================================
+PCGetDedicatedPokemonSprite::
+	ld a, d
+	and a
+	jr nz, .fallback
+	ld a, e
+	ld hl, .speciesSprites
+	ld b, (.speciesSpritesEnd - .speciesSprites) / 2
+.scan
+	cp [hl]
+	inc hl
+	jr z, .found
+	inc hl
+	dec b
+	jr nz, .scan
+.fallback
+	and a
+	ret
+.found
+	ld e, [hl]
+	scf
+	ret
+
+.speciesSprites
+	db DODUO, SPRITE_DODUO
+	db PSYDUCK, SPRITE_PSYDUCK
+	db NIDORINO, SPRITE_NIDORINO
+	db KABUTO, SPRITE_KABUTO
+	db SPEAROW, SPRITE_SPEAROW
+	db CUBONE, SPRITE_CUBONE
+	db ARTICUNO, SPRITE_ARTICUNO
+	db ZAPDOS, SPRITE_ZAPDOS
+	db MOLTRES, SPRITE_MOLTRES
+	db MEWTWO, SPRITE_MEWTWO
+.speciesSpritesEnd
 
 ; ============================================================
 ; PCGetPokemonSpriteCategory

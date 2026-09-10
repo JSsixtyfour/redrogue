@@ -253,7 +253,8 @@ FollowerMapInArray:
 
 ; Resolve the first conscious party member, matching the Pokemon battle would
 ; select when earlier party slots have fainted.
-; OUTPUT: E = species and carry set, or E = 0 and carry clear.
+; OUTPUT: E = species, D = this mon's instance flags, and carry set;
+;         or DE = 0 and carry clear.
 FollowerResolveActiveSpecies:
 	ld a, [wPartyCount]
 	and a
@@ -273,6 +274,14 @@ FollowerResolveActiveSpecies:
 	jr .reject
 .found
 	ld a, c
+	push af
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld d, [hl]
+	pop af
 	ld hl, wPartySpecies
 	add l
 	ld l, a
@@ -289,6 +298,7 @@ FollowerResolveActiveSpecies:
 	ret
 .reject
 	xor a
+	ld d, a
 	ld e, a
 	ret
 
@@ -300,6 +310,14 @@ FollowerResolveActiveSpecies:
 FollowerResolveLeadPicture:
 	call FollowerResolveActiveSpecies
 	jr nc, .reject
+	; Regional/special forms and fusions retain the neutral category fallback
+	; until they have dedicated overworld sheets of their own. Ghost, type, and
+	; shiny instance flags do not change the species silhouette.
+	ld a, d
+	and FORM_MASK | %00001010 ; regional form bits, fusion bit, special-form bit
+	ld d, a
+	farcall PCGetDedicatedPokemonSprite
+	ret c
 	farcall PCGetPokemonSpriteCategory
 	ld a, e
 	cp NUM_MON_SPRITE_CATEGORIES

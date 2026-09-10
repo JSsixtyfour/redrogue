@@ -65,6 +65,29 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
         fuji = (object_dir / "MrFujisHouse.asm").read_text()
         self.assertIn("SPRITE_NIDORINO, STAY, NONE, TEXT_MRFUJISHOUSE_NIDORINO", fuji)
 
+    def test_dynamic_consumers_share_dedicated_lookup_with_fallback(self):
+        procedural = (ROOT / "custom_functions/procedural_cave_gen.asm").read_text()
+        follower = (ROOT / "engine/overworld/follower_yellow_test.asm").read_text()
+        lookup = procedural.split("PCGetDedicatedPokemonSprite::", 1)[1].split(
+            "; ============================================================", 1
+        )[0]
+        for sprite in SPRITES:
+            self.assertIn(f"db {sprite}, SPRITE_{sprite}", lookup)
+        self.assertIn("ld a, [wRoguePokemonForm1]", procedural)
+        self.assertRegex(
+            procedural,
+            r"(?s)call PCGetDedicatedPokemonSprite\s+jr nc, \.categoryFallback\s+"
+            r"ld a, e\s+ret\s+\.categoryFallback\s+call PCGetPokemonSpriteCategory",
+        )
+        self.assertIn("farcall PCGetDedicatedPokemonSprite", follower)
+        self.assertIn("and FORM_MASK | %00001010", follower)
+        self.assertRegex(
+            follower,
+            r"(?s)FollowerResolveActiveSpecies:.*?ld hl, wPartyMons\s+"
+            r"ld bc, PARTYMON_STRUCT_LENGTH\s+call AddNTimes.*?"
+            r"ld bc, MON_CATCH_RATE\s+add hl, bc\s+ld d, \[hl\]",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
