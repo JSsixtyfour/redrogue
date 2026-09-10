@@ -246,9 +246,18 @@ RogueRollFormForSpecies::
 ; of ROM that cannot change between the passes, only 1 spawn in 8 gets this far,
 ; and it needs no WRAM at all. Reservoir sampling would be one pass but costs a
 ; Random call PER match, which is strictly worse here.
+; ⚠ The record stride is added to hl by hand, NOT via `ld de, FORM_REC_SIZE` +
+; `add hl, de`. That is not a style choice. This routine's contract says d is
+; PRESERVED because every caller parks the species there across the farcall
+; (Bankswitch spares only d/e/flags), and loading the stride into de sets
+; d = HIGH(40) = 0 - so the caller's species silently became SPECIES 0.
+;
+; It only fired when the odds roll SUCCEEDED, since .noForm returns above this
+; point, which made it intermittent: 1 reward offer in 8 came out as a species-0
+; glitch mon. Cost a smoke failure and an in-game repro to find. Keep hl's
+; advance af-only.
 	ld c, 0                      ; c = matching records found
 	ld hl, FormOverrides
-	ld de, FORM_REC_SIZE         ; d is dead from here - see the CLOBBERS note
 .countLoop
 	ld a, [hl]
 	and a
@@ -258,18 +267,18 @@ RogueRollFormForSpecies::
 ; end of the table.
 	cp b
 	jr nz, .countNext
-; A tier-placed form is NOT a candidate here. Its rarity is pinned to a specific
-; tier (FormTierTable), and reaching it from its base species' tier as well is
-; exactly the thing that table exists to prevent - Scream Tail would still fall
-; out of a pokeball-tier Jigglypuff.
-	inc hl
-	ld a, [hl]                   ; this record's form index
-	dec hl
-	call IsFormTierPlaced        ; preserves bc/de/hl
-	jr c, .countNext
+; Skip records that are not candidates: tier-pinned ones (reachable only through
+; FormTierTable, or Scream Tail would still fall out of a pokeball Jigglypuff)
+; and ones whose species group is not unlocked this run.
+	call IsFormCandidate         ; preserves bc/de/hl
+	jr nc, .countNext
 	inc c
 .countNext
-	add hl, de
+	ld a, l
+	add FORM_REC_SIZE
+	ld l, a
+	jr nc, .countLoop
+	inc h
 	jr .countLoop
 .counted
 	ld a, c
@@ -283,17 +292,18 @@ RogueRollFormForSpecies::
 	ld a, [hl]
 	cp b
 	jr nz, .pickNext
-	inc hl                       ; same tier-placed exclusion as the count pass -
-	ld a, [hl]                   ; the two walks MUST agree or the ordinal picked
-	dec hl                       ; from the count would select the wrong record
-	call IsFormTierPlaced
-	jr c, .pickNext
-	ld a, c
+	call IsFormCandidate         ; MUST match the count pass exactly, or the
+	jr nc, .pickNext             ; ordinal chosen from the count selects the
+	ld a, c                      ; wrong record
 	and a
 	jr z, .found
 	dec c
 .pickNext
-	add hl, de
+	ld a, l                      ; af-only advance, same reason as .countNext
+	add FORM_REC_SIZE
+	ld l, a
+	jr nc, .pickLoop
+	inc h
 	jr .pickLoop
 .found
 	inc hl
@@ -355,6 +365,82 @@ IsFormTierPlaced:
 	ret
 
 ; ---------------------------------------------------------------------------
+; IsFormAllowed
+;
+; Is this form's species-group unlock active for the current run?
+;
+; INPUT:  b = species, a = form index, d = active group mask
+;         (the mask comes from RogueGetActiveGroupMask, which lives in the
+;         roller's bank - it is passed in rather than called, because only
+;         d/e/flags survive the farcall that got us here)
+; OUTPUT: carry SET if the form may appear
+; CLOBBERS: af   (bc, de, hl PRESERVED)
+;
+; Warp is the default and Johto the listed exception - see FormJohtoPairs.
+; ---------------------------------------------------------------------------
+IsFormAllowed:
+	push bc
+	push hl
+	ld c, a                      ; c = wanted form
+	ld a, (FormJohtoPairsEnd - FormJohtoPairs) / 2
+	and a
+	jr z, .warp
+	ld hl, FormJohtoPairs
+.loop
+	push af                      ; a = pairs remaining
+	ld a, [hli]
+	cp b
+	jr nz, .next
+	ld a, [hl]
+	cp c
+	jr z, .johto
+.next
+	inc hl
+	pop af
+	dec a
+	jr nz, .loop
+.warp
+	ld a, 1 << BIT_GROUP_WARP
+	jr .test
+.johto
+	pop af                       ; discard the loop counter
+	ld a, 1 << BIT_GROUP_JOHTO
+.test
+	and d                        ; is that group active this run?
+	pop hl
+	pop bc                       ; pops do not disturb the flags
+	ret z                        ; locked - carry clear
+	scf
+	ret
+
+; ---------------------------------------------------------------------------
+; IsFormCandidate
+;
+; May this record be rolled as a form OF ITS BASE SPECIES? Two independent
+; reasons it might not be: its rarity is pinned to a specific tier (so it is
+; reached only through FormTierTable), or its species group is not unlocked.
+;
+; INPUT:  hl -> a form record whose species already matches, b = species,
+;         d = active group mask
+; OUTPUT: carry SET if the record is a candidate
+; CLOBBERS: af   (bc, de, hl PRESERVED)
+; ---------------------------------------------------------------------------
+IsFormCandidate:
+	push hl
+	inc hl
+	ld a, [hl]                   ; a = this record's form index
+	pop hl
+	push af                      ; the tier test clobbers a
+	call IsFormTierPlaced
+	jr c, .excluded
+	pop af
+	jp IsFormAllowed
+.excluded
+	pop af
+	and a                        ; clear carry
+	ret
+
+; ---------------------------------------------------------------------------
 ; RogueRollFormForTier
 ;
 ; Gives tier-placed forms first refusal on a pick at this tier. A hit REPLACES
@@ -404,8 +490,13 @@ RogueRollFormForTier::
 	ld b, 0
 	add hl, bc
 	ld a, [hli]
-	ld d, a                      ; species
-	ld e, [hl]                   ; form
+	ld b, a                      ; b = species
+	ld c, [hl]                   ; c = form (IsFormAllowed preserves bc)
+	ld a, c
+	call IsFormAllowed           ; tier-placed forms are group-gated too - Scream
+	jr nc, .none                 ; Tail is Gen 9, so it rides the Warp unlock
+	ld d, b                      ; species - written only AFTER the mask in d has
+	ld e, c                      ; been consumed by IsFormAllowed
 	ret
 
 .none

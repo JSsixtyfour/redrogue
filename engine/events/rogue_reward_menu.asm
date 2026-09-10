@@ -95,6 +95,18 @@ RogueRewardTextChoice:
 RogueDrawRewardSlots:
 	ld c, 0                      ; c = slot index (0-based), also wRoguePokemon offset
 .slotLoop
+; ⚠ c CANNOT be held across the calls below. PlaceString ends its terminator
+; branch with `ld b, h / ld c, l` (home/text.asm, PlaceNextChar), so it returns
+; bc = the FINAL CURSOR POSITION, and GetMonName leaves bc = 0 from its CopyData.
+; Either one turns the slot counter into a tilemap address low byte (~$fc), after
+; which `inc c` / `cp ROGUE_REWARD_NUM_SLOTS` fails its `jr c` and the loop ENDS
+; after drawing slot 0 - the bottom two offers silently never render, while
+; NO THANKS below still does because it is outside the loop.
+;
+; Found 2026-09-09 from an in-game screenshot showing only the first offer, with
+; all three species bytes verified valid in WRAM. Pre-dates the form work: it
+; arrived with the count-driven loop that replaced three unrolled draws.
+	push bc
 	ld a, c
 	add a
 	add 4                        ; row = 4 + 2*index
@@ -119,7 +131,8 @@ RogueDrawRewardSlots:
 	ld [wFormContextSpecies], a
 	call GetMonName
 	pop hl
-	call PlaceString             ; preserves hl
+	call PlaceString             ; preserves hl, DESTROYS bc
+	pop bc                       ; slot index back
 	; slot 0 only: TRADE label if a trade offer occupies it
 	ld a, c
 	and a
@@ -127,9 +140,11 @@ RogueDrawRewardSlots:
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_TRADE_ACTIVE, a
 	jr z, .noTradeLabel
+	push bc                      ; this PlaceString destroys bc too
 	hlcoord 12, 4
 	ld de, TradeSlotLabel
 	call PlaceString
+	pop bc
 .noTradeLabel
 	inc c
 	ld a, c

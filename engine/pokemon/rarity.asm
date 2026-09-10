@@ -552,6 +552,21 @@ RogueGetTierBaseCount::
 ; ---------------------------------------------------------------------------
 RogueGetActiveGroupMask::
 	push bc
+; Debug 2: every group unlocked AND enabled, no champion wins and no PC toggle
+; required. This is the ONLY practical way to test Johto/Warp species and the
+; regional forms, which ride the same unlocks (see RogueFormsUnlocked) - a fresh
+; run has wNumHoFTeams = 0 and therefore no forms at all, by design.
+;
+; Returns before the SRAM read below on purpose: the player's toggle byte must
+; not be able to switch a group back OFF in debug 2, or the mode would not be a
+; reliable test harness.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .deriveUnlocks
+	ld a, (1 << BIT_GROUP_KANTO) | (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	pop bc
+	ret
+.deriveUnlocks
 	ld a, [wNumHoFTeams]
 	ld b, 1 << BIT_GROUP_KANTO
 	and a
@@ -574,6 +589,28 @@ RogueGetActiveGroupMask::
 	set BIT_GROUP_KANTO, a      ; Kanto is always in the pool
 	and b                       ; drop anything not yet unlocked
 	pop bc
+	ret
+
+; ---------------------------------------------------------------------------
+; RogueFormsUnlocked
+; OUTPUT: Z SET   = regional forms must NOT appear this run
+;         Z CLEAR = forms may appear
+; CLOBBERS: af   (bc, de, hl PRESERVED - callers hold a rolled species in d)
+;
+; Regional forms are expansion content and are gated behind the same unlocks as
+; the Johto and Kanto Time Warp species groups, so a base Kanto run never sees
+; one.
+;
+; ⚠ This is NOT the same as asking whether a form's BASE species is in an
+; unlocked group, and that distinction is the whole reason this exists: 48 of the
+; 52 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
+; Tauros...), and Kanto is always active. Only gslowking/hqwilfish/hsneasel/
+; pwooper have Johto bases. Without an explicit gate, Alolan Meowth shows up on
+; turn one of a fresh run - which is exactly what happened in testing.
+; ---------------------------------------------------------------------------
+RogueFormsUnlocked::
+	call RogueGetActiveGroupMask ; documented to preserve bc/de/hl
+	and (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
 	ret
 
 ; ---------------------------------------------------------------------------

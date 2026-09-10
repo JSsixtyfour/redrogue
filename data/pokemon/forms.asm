@@ -139,6 +139,28 @@ INCLUDE "data/pokemon/forms/pwooper.asm"
 	db 0 ; terminator
 
 ; ===========================================================================
+; Which species-group unlock each form rides on - Phase 2R increment 8c.
+;
+; Forms are expansion content and must never appear in a base Kanto run, even
+; though 48 of the 52 records hang off KANTO base species (Meowth, Dugtrio,
+; Moltres, Tauros...). Without this, Alolan Meowth shows up on turn one of a
+; fresh game - which is exactly what testing found.
+;
+; The rule is GENERATIONAL, per the user's call: Gen 2 content unlocks with
+; JOHTO, everything Gen 4 and later with KANTO TIME WARP.
+;
+; That makes Warp the overwhelming default (50 of 52), so only the Johto
+; exceptions are listed here. A form absent from this table is a Warp form. A new
+; record therefore needs no edit here unless it is Gen 2.
+FormJohtoPairs::
+	db JOLTEON, 1 ; Espeon  - Gen 2
+	db JOLTEON, 2 ; Umbreon - Gen 2
+FormJohtoPairsEnd::
+; Everything else is Time Warp: Glaceon/Leafeon (Gen 4), Sylveon (Gen 6), all
+; Alolan (Gen 7), Galarian/Hisuian/Perrserker (Gen 8), Paldean and the
+; convergents/paradoxes (Gen 9).
+
+; ===========================================================================
 ; Form rarity overrides - Phase 2R increment 8b.
 ;
 ; A form's rarity is its BASE SPECIES' rarity by default, and for 47 of the 48

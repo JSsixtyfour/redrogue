@@ -185,14 +185,19 @@ RogueSelectFromTier::
 ;
 ; b (the tier) does not survive the farcall - Bankswitch spares only d/e/flags -
 ; hence the push.
-	ld e, b
+	call RogueFormsUnlocked       ; forms are Johto/Warp-gated expansion content
+	jr z, .noTierForm
+	ld e, b                       ; e = tier
 	push bc
+	call RogueGetActiveGroupMask  ; preserves de, so the tier in e survives
+	ld d, a                       ; d = active group mask, per-form gate input
 	farcall RogueRollFormForTier  ; d = species (0 = no tier-placed pick), e = form
 	pop bc
 	ld a, d
 	and a
 	ret nz                        ; d and e are both final; no evolve step, a form
 	                              ; record already names the exact species
+.noTierForm
 	ld c, 32                      ; retry budget
 .attempt
 	push bc                       ; b = tier, c = budget
@@ -250,8 +255,15 @@ RogueSelectFromTier::
 ; AFTER the evolve step, never before: the tier lists hold base forms and this
 ; routine promotes them, so rolling earlier would ask the table about
 ; (EXEGGCUTE, 1), which has no record, instead of (EXEGGUTOR, 1), which does.
-	ld e, a
+	call RogueFormsUnlocked         ; preserves d (the species we just settled on)
+	ld e, 0                         ; ld does not touch flags
+	ret z                           ; base Kanto run - no forms at all
+	ld e, d                         ; e = species, BEFORE d is reused for the mask
+	call RogueGetActiveGroupMask
+	ld d, a                         ; d = active group mask, per-form gate input
 	farcall RogueRollFormForSpecies ; e = form index, 0 if none
+	ld a, [wCurPartySpecies]
+	ld d, a                         ; restore the species this routine returns
 	ret
 
 ; Like Random_Pokemon_Selection but skips AllSpeciesCheck entirely - the
@@ -290,13 +302,18 @@ Random_Pokemon_Selection_Any::
 ; Phase 2R increment 8b: tier-placed forms get first refusal here too, so a
 ; masterball-tier wild encounter can be the Scream Tail that no Jigglypuff roll
 ; is allowed to produce. b (tier) does not survive the farcall.
-	ld e, b
+	call RogueFormsUnlocked       ; Johto/Warp-gated, same as RogueSelectFromTier
+	jr z, .noTierForm
+	ld e, b                       ; e = tier
 	push bc
+	call RogueGetActiveGroupMask  ; preserves de
+	ld d, a                       ; d = active group mask
 	farcall RogueRollFormForTier  ; d = species (0 = none), e = form
 	pop bc
 	ld a, d
 	and a
 	jr nz, .tierForm
+.noTierForm
 	call RogueRollGroupForTier    ; a = group; b (tier) preserved
 	jr c, .fallback
 	call RogueGetTierEntry        ; hl = list, b = base count, c = total
@@ -338,8 +355,15 @@ Random_Pokemon_Selection_Any::
 ; per-encounter storage alongside wherever the stage stages its species, which is
 ; its own increment - the enemy-side plumbing to render one already exists from
 ; increment 4b. No caller reads e here yet; it is returned for that future work.
-	ld e, a
+	call RogueFormsUnlocked
+	ld e, 0
+	jr z, .tierForm                 ; base Kanto run - no forms at all
+	ld e, d                         ; e = species, before d becomes the mask
+	call RogueGetActiveGroupMask
+	ld d, a
 	farcall RogueRollFormForSpecies ; e = form index, 0 if none
+	ld a, [wCurPartySpecies]
+	ld d, a                         ; restore the species this routine returns
 .tierForm
 	ret
 
