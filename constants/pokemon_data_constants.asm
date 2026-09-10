@@ -120,7 +120,21 @@ DEF HOF_TEAM_CAPACITY EQU 50
 	const EVOLVE_TRADE ; 3
 
 ; evolution data (see data/pokemon/evos_moves.asm)
-DEF NUM_EVOS_IN_BUFFER EQU 3
+;
+; Raised 3 -> 8 for Species Groups Phase 2R (plan 2R.8b). This is NOT cosmetic:
+; EvolveMonByLevel (custom_functions/func_enc_gen.asm) does not stream the
+; evolution list, it BULK-COPIES it into wEvoDataBuffer, which is sized
+; NUM_EVOS_IN_BUFFER * 4 + 1. The old comment on that WRAM line read "enough for
+; Eevee's three 4-byte evolutions" - and Eevee reaches EIGHT once the
+; eeveelutions land (Fire/Thunder/Water plus Leaf/Sun/Dusk/Ice/Moon). At 3 that
+; copy would have written 33 bytes into a 13-byte buffer: a 20-byte overrun, on
+; every reward and trainer path that evolves anything, not just Eevee's.
+;
+; Cost, per WRAM_BIBLE.md's Potential-vs-Actual rule: the buffer is a UNION
+; member and the union spans 20 bytes (set by wNameBuffer, NAME_BUFFER_LENGTH).
+; Growing the member to 33 grows the union 20 -> 33, so the ACTUAL WRAM0 cost is
+; 13 bytes, not 20.
+DEF NUM_EVOS_IN_BUFFER EQU 8
 
 ; ---------------------------------------------------------------------------
 ; Species Groups Phase 2R - regional / convergent / eeveelution FORMS.

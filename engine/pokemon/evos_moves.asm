@@ -230,23 +230,25 @@ Evolution_PartyMonLoop: ; loop over party mons
 	call DelayFrames
 	call ClearScreen
 	call RenameEvolvedMon
-	ld a, [wPokedexNum]
-	push af
-	ld a, [wCurSpecies]
-	ld [wPokedexNum], a
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld hl, BaseStats
-	ld bc, BASE_DATA_SIZE
-	call AddNTimes
-	ld de, wMonHeader
-	ld a, BANK(BaseStats)
-	call FarCopyData
-	ld a, [wCurSpecies]
-	ld [wMonHIndex], a
-	pop af
-	ld [wPokedexNum], a
+; Species Groups Phase 2R (plan 2R.8a). This USED TO BE a hand-rolled copy of
+; GetMonHeader - the same wPokedexNum save/restore, the same IndexToPokedex, the
+; same AddNTimes into BaseStats, the same wMonHIndex write - reading the ROM
+; table directly. There were exactly TWO direct readers of BaseStats in the whole
+; tree, GetMonHeader and this one, and because the form hook lives inside
+; GetMonHeader this copy silently bypassed it: an Alolan Meowth evolving into
+; Persian got vanilla Persian's stats, types and sprite, and the recalculation
+; below baked them in.
+;
+; Replaced with the real call, which fixes the bypass and deletes a duplicated
+; table walk. PublishFormContext carries the mon's OWN form (from wLoadedMon,
+; which still holds the pre-evolution struct) onto the NEW species, so
+; Meowth+Alolan -> Persian+Alolan. Form-preserving evolution is the default and
+; this is what implements it for the header; the flag itself already survives,
+; because the party struct is copied back from wLoadedMon afterwards.
+	call ApplyEvoStoneForm ; Phase 2R: form-SETTING evolutions (eeveelutions)
+	ld hl, wLoadedMon
+	call PublishFormContext
+	call GetMonHeader
 	ld hl, wLoadedMonHPExp - 1
 	ld de, wLoadedMonStats
 	ld b, $1
@@ -923,3 +925,78 @@ PrepareMoveTutorList::
 
 
 INCLUDE "data/pokemon/evos_moves.asm"
+
+; ---------------------------------------------------------------------------
+; ApplyEvoStoneForm  (Species Groups Phase 2R)
+;
+; Almost every evolution is form-PRESERVING and needs no help: the party struct
+; is copied back from wLoadedMon and nothing touches its MON_CATCH_RATE, so an
+; Alolan Meowth simply stays Alolan as a Persian.
+;
+; The eeveelutions are the exception. Espeon, Umbreon, Leafeon, Glaceon and
+; Sylveon ship as FORMS of the three Kanto eeveelutions rather than as species
+; of their own, so Eevee -> Espeon has to change both the species AND the form.
+; The 4-byte evolution record has no room for a form, so the mapping lives here.
+;
+; Keyed on the stone AND the target species, which is not redundant: MOON_STONE
+; also evolves Nidorino, Nidorina, Clefairy and Jigglypuff, and none of those
+; may pick up Sylveon's form index. Keying on the stone alone would hand form 2
+; to every Nidoking in the game.
+;
+; INPUT:  wCurSpecies = the species being evolved INTO
+;         wEvoStoneItemID = the stone used (0 on a level/trade evolution)
+; OUTPUT: wLoadedMon's MON_CATCH_RATE form bits set, if this is a form evolution
+; CLOBBERS: af, bc, hl
+;
+; Runs BEFORE PublishFormContext at the call site, so the header load that
+; follows already sees the NEW form.
+; ---------------------------------------------------------------------------
+ApplyEvoStoneForm:
+	ld a, [wEvoStoneItemID]
+	and a
+	ret z                      ; level or trade evolution: nothing to set
+	ld b, a
+	ld a, [wCurSpecies]
+	ld c, a
+	ld hl, EvoStoneForms
+.loop
+	ld a, [hl]
+	and a
+	ret z                      ; end of table: an ordinary stone evolution
+	cp b
+	jr nz, .next
+	inc hl
+	ld a, [hl]
+	dec hl
+	cp c
+	jr z, .found
+.next
+	inc hl
+	inc hl
+	inc hl
+	jr .loop
+
+.found
+	inc hl
+	inc hl
+	ld a, [hl]                 ; form index, 1..NUM_FORM_SLOTS
+	and NUM_FORM_SLOTS
+	rrca                       ; 0-3 -> bits 5-6
+	rrca
+	rrca
+	ld b, a
+	ld hl, wLoadedMon + MON_CATCH_RATE
+	ld a, [hl]
+	and FORM_MASK ^ $FF        ; clear any inherited form, keep the other flags
+	or b
+	ld [hl], a
+	ret
+
+EvoStoneForms:
+; db <stone>, <target species>, <form index>
+	db LEAF_STONE,  FLAREON,  1 ; Leafeon
+	db SUN_STONE,   JOLTEON,  1 ; Espeon
+	db DUSK_STONE,  JOLTEON,  2 ; Umbreon
+	db ICE_STONE,   VAPOREON, 1 ; Glaceon
+	db MOON_STONE,  VAPOREON, 2 ; Sylveon
+	db 0 ; terminator

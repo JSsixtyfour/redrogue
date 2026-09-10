@@ -357,6 +357,19 @@ ROMX $34
 	; which had ~15.7 KB free after the existing Bridge/effect code - same
 	; "pin small floating sections; do not trust first-fit" rule as "Pics 7".
 	"Pics 6"
+ROMX $35
+	; Species Groups Phase 2R increment 7. Banks $35-$3F were entirely
+	; unallocated before this (see the $2F-$3F note on bank $32 above), so the
+	; 48 remaining form pics (~24 KB) are pinned here across three fresh banks
+	; rather than fought for scraps in an already-tight bank - each section
+	; below has several KB of margin. Alolan alone (15 species, ~7.8 KB).
+	"Pics 13"
+ROMX $36
+	; Galarian + Hisuian forms (18 species, ~8.5 KB).
+	"Pics 14"
+ROMX $37
+	; Paldean + Gen-9 convergents + eeveelutions/Perrserker (15 species, ~7 KB).
+	"Pics 15"
 WRAM0
 	"Audio RAM"
 	org $c100

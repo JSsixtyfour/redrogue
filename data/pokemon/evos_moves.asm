@@ -2350,9 +2350,24 @@ WigglytuffEvosMoves:
     db 0
 EeveeEvosMoves:
 ; Evolutions
+; Species Groups Phase 2R: eight branches, all EVOLVE_ITEM. The last five reuse
+; the three Kanto eeveelutions as SPECIES and are distinguished by the form index
+; ApplyEvoStoneForm assigns from the stone used (evos_moves.asm's EvoStoneForms).
+; The 4-byte record has no room for a form, which is why the mapping lives there
+; rather than here.
+;
+; Eight entries is safe: the parser is an unbounded walk terminated by a 0 byte.
+; It did NOT used to be - EvolveMonByLevel bulk-copies this list into
+; wEvoDataBuffer, which was sized for exactly three entries and would have taken
+; a 20-byte overrun. NUM_EVOS_IN_BUFFER was raised to 8 for this.
 	db EVOLVE_ITEM, FIRE_STONE, 1, FLAREON
 	db EVOLVE_ITEM, THUNDER_STONE, 1, JOLTEON
 	db EVOLVE_ITEM, WATER_STONE, 1, VAPOREON
+	db EVOLVE_ITEM, LEAF_STONE, 1, FLAREON     ; -> Leafeon  (Flareon form 1)
+	db EVOLVE_ITEM, SUN_STONE, 1, JOLTEON      ; -> Espeon   (Jolteon form 1)
+	db EVOLVE_ITEM, DUSK_STONE, 1, JOLTEON     ; -> Umbreon  (Jolteon form 2)
+	db EVOLVE_ITEM, ICE_STONE, 1, VAPOREON     ; -> Glaceon  (Vaporeon form 1)
+	db EVOLVE_ITEM, MOON_STONE, 1, VAPOREON    ; -> Sylveon  (Vaporeon form 2)
 	db 0
 ; Learnset
 	db 6, TAIL_WHIP

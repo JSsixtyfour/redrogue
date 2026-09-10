@@ -80,5 +80,6 @@ FormOverrides::
 ; matches on (species, form), so order here is cosmetic. Group by base species.
 INCLUDE "data/pokemon/forms/ameowth.asm"
 INCLUDE "data/pokemon/forms/adugtrio.asm"
+INCLUDE "data/pokemon/forms/adiglett.asm"
 
 	db 0 ; terminator

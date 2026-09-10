@@ -45,8 +45,8 @@ MACRO form_end
 ; where `assert_table_length` passed for 25 years while the table was misaligned.
 ; A count assert cannot see this; an offset assert can.
 ;
-; Put this at the end of EVERY form record file. Increment 7 adds 51 more of
-; them by hand, which is precisely when this will earn its keep.
+; Put this at the end of EVERY form record file. Increment 7 added 48 more of
+; them by hand (SPECIES_GROUPS_STATUS.md §9h) and it fired correctly on every one.
 	ASSERT (@ - FormOverrides) % FORM_REC_SIZE == 0, \
 	       "form record is not FORM_REC_SIZE bytes - the table is now misaligned"
 ENDM
@@ -73,13 +73,67 @@ ENDM
 ;   JOLTEON     Espeon        Umbreon       -
 ;   FLAREON     Leafeon       -             -
 ;   TAUROS      P-Combat      P-Blaze       P-Aqua
+;   SNEASEL     Hisuian       -             -
 ;   (every other Group R base) its one regional variant
+;
+; SNEASEL isn't listed in PHASE_2R_SONNET_SPEC.md section 3's table (an
+; omission there, not a capacity problem) but follows the same one-slot
+; default as every other single-form base; see hsneasel.asm.
 
 FormOverrides::
 ; Records must be dex-order-independent - ApplyFormOverride walks linearly and
 ; matches on (species, form), so order here is cosmetic. Group by base species.
 INCLUDE "data/pokemon/forms/ameowth.asm"
+INCLUDE "data/pokemon/forms/gmeowth.asm"
 INCLUDE "data/pokemon/forms/adugtrio.asm"
+INCLUDE "data/pokemon/forms/wugtrio.asm"
 INCLUDE "data/pokemon/forms/adiglett.asm"
+INCLUDE "data/pokemon/forms/wiglett.asm"
+INCLUDE "data/pokemon/forms/apersian.asm"
+INCLUDE "data/pokemon/forms/perrserker.asm"
+INCLUDE "data/pokemon/forms/espeon.asm"
+INCLUDE "data/pokemon/forms/umbreon.asm"
+INCLUDE "data/pokemon/forms/glaceon.asm"
+INCLUDE "data/pokemon/forms/sylveon.asm"
+INCLUDE "data/pokemon/forms/leafeon.asm"
+INCLUDE "data/pokemon/forms/ptauroscombat.asm"
+INCLUDE "data/pokemon/forms/ptaurosblaze.asm"
+INCLUDE "data/pokemon/forms/ptaurosaqua.asm"
+INCLUDE "data/pokemon/forms/toedscool.asm"
+INCLUDE "data/pokemon/forms/toedscruel.asm"
+INCLUDE "data/pokemon/forms/screamtail.asm"
+INCLUDE "data/pokemon/forms/sandyshocks.asm"
+INCLUDE "data/pokemon/forms/aexeggutor.asm"
+INCLUDE "data/pokemon/forms/ageodude.asm"
+INCLUDE "data/pokemon/forms/agolem.asm"
+INCLUDE "data/pokemon/forms/agraveler.asm"
+INCLUDE "data/pokemon/forms/agrimer.asm"
+INCLUDE "data/pokemon/forms/amarowak.asm"
+INCLUDE "data/pokemon/forms/amuk.asm"
+INCLUDE "data/pokemon/forms/aninetales.asm"
+INCLUDE "data/pokemon/forms/araichu.asm"
+INCLUDE "data/pokemon/forms/araticate.asm"
+INCLUDE "data/pokemon/forms/arattata.asm"
+INCLUDE "data/pokemon/forms/asandshrew.asm"
+INCLUDE "data/pokemon/forms/asandslash.asm"
+INCLUDE "data/pokemon/forms/avulpix.asm"
+INCLUDE "data/pokemon/forms/garticuno.asm"
+INCLUDE "data/pokemon/forms/gfarfetchd.asm"
+INCLUDE "data/pokemon/forms/gmoltres.asm"
+INCLUDE "data/pokemon/forms/gmrmime.asm"
+INCLUDE "data/pokemon/forms/gponyta.asm"
+INCLUDE "data/pokemon/forms/grapidash.asm"
+INCLUDE "data/pokemon/forms/gslowbro.asm"
+INCLUDE "data/pokemon/forms/gslowking.asm"
+INCLUDE "data/pokemon/forms/gslowpoke.asm"
+INCLUDE "data/pokemon/forms/gweezing.asm"
+INCLUDE "data/pokemon/forms/gzapdos.asm"
+INCLUDE "data/pokemon/forms/harcanine.asm"
+INCLUDE "data/pokemon/forms/helectrode.asm"
+INCLUDE "data/pokemon/forms/hgrowlithe.asm"
+INCLUDE "data/pokemon/forms/hqwilfish.asm"
+INCLUDE "data/pokemon/forms/hsneasel.asm"
+INCLUDE "data/pokemon/forms/hvoltorb.asm"
+INCLUDE "data/pokemon/forms/pwooper.asm"
 
 	db 0 ; terminator

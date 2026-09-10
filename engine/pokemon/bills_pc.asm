@@ -1169,9 +1169,9 @@ LoadBillsPCSelectedAlternateFrame:
 	cp ICON_MON << 2
 	jr z, .monster
 	cp ICON_FAIRY << 2
-	jr z, .fairy
+	jp z, .fairy
 	cp ICON_BIRD << 2
-	jr z, .bird
+	jp z, .bird
 	cp ICON_WATER << 2
 	jp z, .water
 	cp ICON_BUG << 2

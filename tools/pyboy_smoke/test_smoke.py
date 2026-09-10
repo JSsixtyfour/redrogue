@@ -226,7 +226,15 @@ class EvolutionContextSmokeTest(HarnessTestCase):
         cases = (
             ("ordinary level-up", 0, 0, items["FIRE_STONE"]),
             ("midbattle stale force", 2, 1, items["FIRE_STONE"]),
-            ("wrong stone", 0, 1, items["MOON_STONE"]),
+            # Was MOON_STONE until 2026-09-09. Species Groups Phase 2R gave Eevee
+            # five more EVOLVE_ITEM branches for the eeveelution forms (Leaf/Sun/
+            # Dusk/Ice/Moon Stone -> Leafeon/Espeon/Umbreon/Glaceon/Sylveon), so a
+            # Moon Stone on an Eevee now legitimately evolves it into Sylveon and
+            # the case no longer tested what its name says. Eevee accepts EVERY
+            # stone in the game now, Mist Stone included, so no stone can serve as
+            # the "wrong" one here - hence a plain non-evolution item, which still
+            # exercises the rejection path this case exists for.
+            ("non-evolution item", 0, 1, items["POTION"]),
         )
         for name, in_battle, forced, stone in cases:
             with self.subTest(name=name):
