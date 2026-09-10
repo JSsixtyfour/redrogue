@@ -1,3 +1,35 @@
+; ===========================================================================
+; Trainer party layouts. The FIRST byte of each team selects the layout, and
+; every team is terminated by a 0 in the LEVEL position.
+;
+;   db <level>, <species>, ..., 0
+;       Shared level. Every mon on the team is that level.
+;
+;   db TRAINERPARTY_LEVELS, <level>, <species>, ..., 0     ; $ff
+;       Per-mon levels. The vanilla "special trainer" layout.
+;
+;   db TRAINERPARTY_FORMS, <level>, <species>, <form>, ..., 0   ; $fe
+;       Per-mon levels AND regional forms (Species Groups Phase 2R, increment
+;       8c). <form> is 0 for an ordinary mon, or 1..NUM_FORM_SLOTS to pick that
+;       species' form record from data/pokemon/forms/.
+;
+;       e.g.  db TRAINERPARTY_FORMS
+;             db 25, DUGTRIO, 1     ; Alolan Dugtrio  (adugtrio.asm)
+;             db 24, GRIMER,  1     ; Alolan Grimer   (agrimer.asm)
+;             db 26, TAUROS,  3     ; Paldean Tauros (Aqua)
+;             db 22, PIDGEY,  0     ; ordinary Pidgey
+;             db 0
+;
+;       The form index is the SECOND argument of that record's `form_record`
+;       line - grep `form_record` in data/pokemon/forms/ to find it. A form on a
+;       species with no matching record is simply ignored, not an error.
+;
+;       ⚠ These teams ignore the species-group unlocks on purpose: a handcrafted
+;       team is authored content, not a roll, so it shows exactly what you wrote
+;       regardless of whether the player has unlocked Johto or Time Warp. Only
+;       the RANDOM rollers are gated (RogueFormsUnlocked).
+; ===========================================================================
+
 TrainerDataPointers:
 	table_width 2
 	dw YoungsterData

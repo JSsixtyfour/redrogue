@@ -51,11 +51,22 @@ ReadTrainer:
 	; Same bank, so a plain call keeps hl valid (unlike the rogue-bank farcalls).
 	ld a, [wTrainerClass]
 	cp RIVAL_MINIBOSS
-	jr z, .miniBoss
-	cp GIOVANNI_MINIBOSS
-	jr z, .miniBoss
+	jp z, .miniBoss          ; jp, not jr: increment 8c's form-layout dispatch
+	cp GIOVANNI_MINIBOSS     ; below pushed .miniBoss out of jr range
+	jp z, .miniBoss
+; Phase 2R increment 8c: the layout marker also selects whether entries carry a
+; form byte. TRAINERPARTY_FORMS teams are <level, species, form> triples; every
+; other layout is unchanged. The flag is cleared FIRST so a normal team can never
+; inherit form mode from a previous battle.
+	xor a
+	ld [wTrainerPartyFormMode], a
 	ld a, [hli]
-	cp $FF ; is the trainer special?
+	cp TRAINERPARTY_FORMS
+	jr nz, .notFormParty
+	ld [wTrainerPartyFormMode], a ; nonzero = entries carry a form byte
+	jr .SpecialTrainer            ; otherwise identical to the per-mon-level path
+.notFormParty
+	cp TRAINERPARTY_LEVELS ; is the trainer special?
 	jr z, .SpecialTrainer ; if so, check for special moves
     farcall GetRandRoster
     jp z, .AddAdditionalMoveData
@@ -84,6 +95,25 @@ ReadTrainer:
 	pop hl
 	ld a, [hli]
 	ld [wCurPartySpecies], a
+; Phase 2R increment 8c: consume this entry's form byte, if the layout has one.
+;
+; It MUST be consumed here, before the terminator peek below: that peek reads the
+; next byte expecting it to be the following mon's LEVEL, and in a
+; TRAINERPARTY_FORMS team the very next byte is this mon's form. Leaving it for
+; later would make the ace detection read a form index as a level.
+;
+; wSpawnForm survives to AddPartyMon below - the farcalls in between only patch
+; the species, they never create a mon - and AddPartyMon folds it into this mon's
+; own MON_CATCH_RATE and zeroes it again.
+	ld a, [wTrainerPartyFormMode]
+	and a
+	jr z, .noPartyForm
+	ld a, [hli]               ; the entry's form index
+	jr .gotPartyForm
+.noPartyForm
+	xor a                     ; ordinary layouts: explicitly no form
+.gotPartyForm
+	ld [wSpawnForm], a
 	push hl
 	farcall PatchRivalStarterSpecies
 	pop hl

@@ -1379,6 +1379,20 @@ wGymLeaderNo:: db
 ; which instance of [youngster, lass, etc] is this?
 wTrainerNo:: db
 
+; Phase 2R increment 8c: nonzero when the trainer party currently being read uses
+; the TRAINERPARTY_FORMS ($fe) layout, whose entries are
+; <level, species, form> instead of <level, species>.
+;
+; A flag rather than a register because ReadTrainer's per-mon loop calls
+; AddPartyMon and three farcalls, none of which preserve a working register
+; across the iteration.
+;
+; Deliberately in "WRAM" and NOT "Main Data": it is scratch that lives only for
+; the duration of one ReadTrainer call, so it must not join the saved block and
+; shift every field after it in the save layout - the wRoguePokemonForm1..3
+; addition earlier in this increment already cost one save break.
+wTrainerPartyFormMode:: db
+
 ; $00 = normal attack
 ; $01 = critical hit
 ; $02 = successful OHKO

@@ -185,6 +185,21 @@ DEF FORM_TIER_ODDS EQU 16
 ; One FormTierTable row: pair count + list pointer.
 DEF FORM_TIER_ENTRY_SIZE EQU 3
 
+; Trainer party layout markers - the FIRST byte of a team in data/trainers/parties.asm.
+;
+;   (any level 1-100) = every mon on the team shares that level; entries are
+;                       <species> bytes.
+;   TRAINERPARTY_LEVELS ($ff) = vanilla per-mon levels; entries are
+;                       <level, species> pairs.
+;   TRAINERPARTY_FORMS  ($fe) = per-mon levels AND regional forms; entries are
+;                       <level, species, form> triples. Phase 2R increment 8c.
+;
+; $fe is safe as a marker for the same reason $ff is: the byte is otherwise a
+; LEVEL, and no mon is level 254. In every layout the 0 terminator is tested on
+; the level byte, so a form of 0 mid-record is fine.
+DEF TRAINERPARTY_LEVELS EQU $ff
+DEF TRAINERPARTY_FORMS  EQU $fe
+
 ; ===========================================================================
 ; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
 ;
@@ -203,7 +218,7 @@ DEF FORM_TIER_ENTRY_SIZE EQU 3
 ; Alolan Grimers, which is exactly what several AI/roster tests assert against.
 ; That is expected, not a regression. Set it to 0 and re-run before trusting a
 ; smoke result.
-DEF FORCE_TRAINER_FORM_TEST EQU 1
+DEF FORCE_TRAINER_FORM_TEST EQU 0
 ; ===========================================================================
 
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record
