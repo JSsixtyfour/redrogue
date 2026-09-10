@@ -209,3 +209,206 @@ GetFormNameSource::
 	add hl, de                   ; hl = the form's name field
 	pop de                       ; discard the saved default row
 	ret
+
+; ---------------------------------------------------------------------------
+; RogueRollFormForSpecies
+;
+; Decides whether a freshly-rolled species spawns as one of its regional forms.
+; This is the ONLY thing that makes the 48 records in data/pokemon/forms/
+; reachable from ordinary play - everything before increment 8 could only be
+; reached by setting wSpawnForm by hand from a debugger.
+;
+; INPUT:  e = species. Must be the FINAL species, after any evolution step:
+;         RogueSelectFromTier rolls a base form and then promotes it with
+;         EvolveMonByLevel, and it is the promoted species that has to own a
+;         form record. Rolling before the evolve would ask for (EXEGGCUTE, 1),
+;         which does not exist, instead of (EXEGGUTOR, 1), which does.
+; OUTPUT: e = form index; 0 = ordinary base species, 1..NUM_FORM_SLOTS = a form
+; CLOBBERS: af, bc, hl  (d PRESERVED - callers park the species there)
+;
+; Farcall-safe by construction. Bankswitch destroys a/b/c/h/l on BOTH legs of a
+; farcall and only d/e/flags survive, so the species arrives and the answer
+; leaves in e - the same contract RogueClassifySpeciesFar uses, and for the same
+; reason. Do NOT "simplify" this to return in a or c.
+;
+; Random and Rangerandom are both HOME (home/random.asm), so they are plain
+; calls from this bank and Random's internal farcall restores bank $30 on the
+; way back.
+; ---------------------------------------------------------------------------
+RogueRollFormForSpecies::
+	ld b, e                      ; b = species; e is the return slot from here on
+	call Random                  ; preserves bc/de/hl
+	cp FORM_SPAWN_ODDS
+	jr nc, .noForm               ; the common case - an ordinary base-species spawn
+
+; Count this species' records first, then walk again to fetch the chosen one.
+; Two passes rather than one pass into a scratch buffer: the table is 52 records
+; of ROM that cannot change between the passes, only 1 spawn in 8 gets this far,
+; and it needs no WRAM at all. Reservoir sampling would be one pass but costs a
+; Random call PER match, which is strictly worse here.
+	ld c, 0                      ; c = matching records found
+	ld hl, FormOverrides
+	ld de, FORM_REC_SIZE         ; d is dead from here - see the CLOBBERS note
+.countLoop
+	ld a, [hl]
+	and a
+	jr z, .counted               ; terminator
+; The terminator test above runs BEFORE the compare, which is what makes a
+; species of 0 safe: it can never "match" the terminator byte and walk off the
+; end of the table.
+	cp b
+	jr nz, .countNext
+; A tier-placed form is NOT a candidate here. Its rarity is pinned to a specific
+; tier (FormTierTable), and reaching it from its base species' tier as well is
+; exactly the thing that table exists to prevent - Scream Tail would still fall
+; out of a pokeball-tier Jigglypuff.
+	inc hl
+	ld a, [hl]                   ; this record's form index
+	dec hl
+	call IsFormTierPlaced        ; preserves bc/de/hl
+	jr c, .countNext
+	inc c
+.countNext
+	add hl, de
+	jr .countLoop
+.counted
+	ld a, c
+	and a
+	jr z, .noForm                ; this species has no forms - most of them
+	call Rangerandom             ; a = 0 .. matches-1, unbiased; preserves bc/de
+	ld c, a                      ; c = which match to take, counted down below
+
+	ld hl, FormOverrides
+.pickLoop
+	ld a, [hl]
+	cp b
+	jr nz, .pickNext
+	inc hl                       ; same tier-placed exclusion as the count pass -
+	ld a, [hl]                   ; the two walks MUST agree or the ordinal picked
+	dec hl                       ; from the count would select the wrong record
+	call IsFormTierPlaced
+	jr c, .pickNext
+	ld a, c
+	and a
+	jr z, .found
+	dec c
+.pickNext
+	add hl, de
+	jr .pickLoop
+.found
+	inc hl
+	ld e, [hl]                   ; the record's OWN form index, not its ordinal -
+	                             ; so a species with records for forms 1 and 3 but
+	                             ; not 2 still returns a valid index
+	ret
+
+.noForm
+	ld e, 0
+	ret
+
+; ---------------------------------------------------------------------------
+; IsFormTierPlaced
+;
+; Is this (species, form) listed in FormTierTable - i.e. is its rarity pinned to
+; a specific tier rather than inherited from its base species?
+;
+; INPUT:  b = species, a = form index
+; OUTPUT: carry SET if the pair is tier-placed
+; CLOBBERS: af   (bc, de, hl PRESERVED - both callers are mid-walk over
+;           FormOverrides with a live cursor in hl and a stride in de)
+;
+; Walks FormTierPairs..FormTierPairsEnd as one flat pair array. The five per-tier
+; lists are contiguous by declaration order, so this sees every entry regardless
+; of which tier it sits under, and a tier added later is covered automatically.
+; ---------------------------------------------------------------------------
+IsFormTierPlaced:
+	push bc
+	push hl
+	ld c, a                      ; c = wanted form
+	ld a, (FormTierPairsEnd - FormTierPairs) / 2
+	and a
+	jr z, .notFound              ; no overrides exist at all - the usual case
+	ld hl, FormTierPairs
+.loop
+	push af                      ; a = pairs remaining
+	ld a, [hli]                  ; species
+	cp b
+	jr nz, .next
+	ld a, [hl]                   ; form
+	cp c
+	jr z, .foundPop
+.next
+	inc hl
+	pop af
+	dec a
+	jr nz, .loop
+.notFound
+	pop hl
+	pop bc
+	and a                        ; clear carry
+	ret
+.foundPop
+	pop af
+	pop hl
+	pop bc
+	scf
+	ret
+
+; ---------------------------------------------------------------------------
+; RogueRollFormForTier
+;
+; Gives tier-placed forms first refusal on a pick at this tier. A hit REPLACES
+; the species the tier's own list would have rolled - that is the whole point:
+; Scream Tail's base species is only ever rolled at pokeball tier, so a form that
+; was merely blocked at low tiers would be unreachable instead of rare.
+;
+; INPUT:  e = tier id (RARITY_TIER_*)
+; OUTPUT: d = species, e = form index. d = 0 means "no tier-placed form, roll a
+;         species normally" - the overwhelmingly common answer.
+; CLOBBERS: af, bc, hl
+;
+; Consumes NO randomness when the tier has an empty list, so tiers with no
+; overrides roll byte-identically to before this existed. That is deliberate:
+; this project has had smoke tests shift on RNG consumption alone.
+; ---------------------------------------------------------------------------
+RogueRollFormForTier::
+	ld a, e
+	cp NUM_RARITY_TIERS
+	jr nc, .none                 ; defensive - an out-of-range tier picks nothing
+	ld l, a
+	ld h, 0
+	add hl, hl                   ; tier * 2
+	ld c, a
+	ld b, 0
+	add hl, bc                   ; tier * 3 = tier * FORM_TIER_ENTRY_SIZE
+	ASSERT FORM_TIER_ENTRY_SIZE == 3, "RogueRollFormForTier hardcodes a 3-byte stride"
+	ld bc, FormTierTable
+	add hl, bc
+	ld a, [hli]                  ; pair count for this tier
+	and a
+	jr z, .none                  ; empty tier - return before touching Random
+	ld c, a
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a                      ; hl = this tier's pair list
+	push hl
+	push bc
+	call Random
+	pop bc
+	pop hl
+	cp FORM_TIER_ODDS
+	jr nc, .none
+	call Rangerandom             ; a = 0 .. count-1; preserves hl
+	add a                        ; pairs are 2 bytes
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld d, a                      ; species
+	ld e, [hl]                   ; form
+	ret
+
+.none
+	ld d, 0
+	ld e, 0
+	ret

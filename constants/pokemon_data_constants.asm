@@ -157,6 +157,34 @@ DEF FORM_MASK      EQU %01100000 ; MON_CATCH_RATE bits 5-6
 DEF FORM_SHIFT     EQU 5
 DEF NUM_FORM_SLOTS EQU 3         ; non-zero form indexes per base species
 
+; How often a rolled species spawns as one of its regional forms, out of 256.
+; Checked ONCE per spawn, before the form table is consulted, so it is the rate
+; for "this mon is a form at all" and NOT a per-form rate: a species with three
+; forms is no more likely to be formed than a species with one, it just picks
+; uniformly among its own once the roll succeeds.
+;
+; 32/256 = 12.5%. Deliberately in the same "pleasant surprise" band as the shiny
+; rate rather than the "every other Meowth is Alolan" band. This is the one knob
+; that tunes how often the 48 records in data/pokemon/forms/ are actually seen -
+; raise it to make forms common, set it to 0 to switch the whole system off
+; without touching code.
+DEF FORM_SPAWN_ODDS EQU 32
+
+; How often a pick at a given rarity tier is taken over by a TIER-PLACED form
+; instead of an ordinary species roll, out of 256. Only forms listed in
+; FormTierTable (data/pokemon/forms.asm) are reachable this way - the ones whose
+; power does not match their base species' tier, currently just Scream Tail.
+;
+; Checked only after confirming the tier HAS entries, so tiers with an empty list
+; consume no randomness and roll exactly as they did before this existed.
+;
+; 16/256 = 6.25%, half the ordinary form rate: these are the outliers, and a
+; tier-placed form displaces the species the tier would otherwise have offered.
+DEF FORM_TIER_ODDS EQU 16
+
+; One FormTierTable row: pair count + list pointer.
+DEF FORM_TIER_ENTRY_SIZE EQU 3
+
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record
 ; carries a FULL base-stats row, so a form gets its own stats, both types, catch
 ; rate, base exp, pic size, front/back pic pointers AND pic bank, starting

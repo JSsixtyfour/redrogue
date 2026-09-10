@@ -15,7 +15,9 @@ Rogue_Reward_Script_PokeballText_1::
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
+	; Increment 8: read THIS slot's form. wSpawnForm is one byte and all three
+	; offers exist at once, so it labelled every ball with the last roll's form.
+	ld a, [wRoguePokemonForm1]
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
@@ -29,6 +31,11 @@ Rogue_Reward_Script_PokeballText_1::
     pop de
 	jr nz, .done
     push de
+    ; Increment 8: the offer was NAMED as a form above; this is what makes the
+    ; mon actually BE one. _AddPartyMon reads wSpawnForm, folds it into the new
+    ; mon's MON_CATCH_RATE bits 5-6, and zeroes it again on the way out.
+    ld a, [wRoguePokemonForm1]
+    ld [wSpawnForm], a
     ld a, [wRoguePokemon1]
 	ld b, a
     ld c, 5
@@ -94,7 +101,7 @@ Rogue_Reward_Script_PokeballText_2::
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
+	ld a, [wRoguePokemonForm2]
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
@@ -108,6 +115,8 @@ Rogue_Reward_Script_PokeballText_2::
     pop de
 	jr nz, .done
 
+    ld a, [wRoguePokemonForm2]
+    ld [wSpawnForm], a
     ld a, [wRoguePokemon2]
 	ld b, a
     ld c, 5
@@ -136,7 +145,7 @@ Rogue_Reward_Script_PokeballText_3::
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
-	ld a, [wSpawnForm]
+	ld a, [wRoguePokemonForm3]
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
@@ -150,6 +159,8 @@ Rogue_Reward_Script_PokeballText_3::
     pop de
 	jr nz, .done
 
+    ld a, [wRoguePokemonForm3]
+    ld [wSpawnForm], a
     ld a, [wRoguePokemon3]
 	ld b, a
     ld c, 5

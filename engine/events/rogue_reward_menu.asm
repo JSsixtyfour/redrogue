@@ -107,7 +107,13 @@ RogueDrawRewardSlots:
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: show the offer's form name in the reward list.
-	ld a, [wSpawnForm]
+	; Increment 8: index THIS slot's form. This loop draws all three names in one
+	; pass, which is exactly why the single wSpawnForm could not serve - it gave
+	; slots 1 and 2 whatever form slot 3 happened to roll. de is still the slot
+	; offset here; `add hl, de` does not modify de.
+	ld hl, wRoguePokemonForm1
+	add hl, de
+	ld a, [hl]
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
@@ -148,7 +154,10 @@ HandleRewardChoice:
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: show the offer's form name in the reward list.
-	ld a, [wSpawnForm]
+	; Increment 8: the SELECTED slot's form, indexed the same way as the draw loop.
+	ld hl, wRoguePokemonForm1
+	add hl, de
+	ld a, [hl]
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
@@ -224,6 +233,17 @@ HandleRewardChoice:
     call PrintText
     ret
 .noPartyLimit
+    ; Increment 8: publish the chosen slot's form before the mon is built. b is
+    ; still the slot index here and is reloaded with the SPECIES a few lines down
+    ; (just before GivePokemon), so this has to read it now, not there.
+    push bc
+    ld c, b
+    ld b, 0
+    ld hl, wRoguePokemonForm1
+    add hl, bc
+    ld a, [hl]
+    ld [wSpawnForm], a
+    pop bc
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
     add a, b
 	ld [wToggleableObjectIndex], a

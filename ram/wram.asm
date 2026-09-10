@@ -2255,6 +2255,22 @@ wProceduralForestCurScript:: db
 wRoguePokemon1:: db
 wRoguePokemon2:: db
 wRoguePokemon3:: db
+; Phase 2R increment 8: the form index for each reward offer, parallel to the
+; three species bytes above and in the same order.
+;
+; These exist because wSpawnForm CANNOT serve the purpose, which is not obvious:
+; it is a single byte meaning "the form of the next mon to be created", but the
+; reward screen names all three offers in ONE draw pass (RogueDrawRewardSlots)
+; before any of them is created. A single global can only ever hold the last
+; roll, so slots 1 and 2 would both be labelled with slot 3's form. The three
+; offers are rolled together and picked from later, so the form has to be stored
+; per offer and only copied into wSpawnForm once the player has chosen.
+;
+; In "Main Data" on purpose - the offers must survive a save-and-reload while
+; the player is standing in the reward room, exactly like the species bytes.
+wRoguePokemonForm1:: db
+wRoguePokemonForm2:: db
+wRoguePokemonForm3:: db
 wRogueMap:: db
 
 ; scratch for GetRewardMonLevel's cross-bank table read - must NOT be wEvoDataBuffer

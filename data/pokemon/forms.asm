@@ -137,3 +137,75 @@ INCLUDE "data/pokemon/forms/hvoltorb.asm"
 INCLUDE "data/pokemon/forms/pwooper.asm"
 
 	db 0 ; terminator
+
+; ===========================================================================
+; Form rarity overrides - Phase 2R increment 8b.
+;
+; A form's rarity is its BASE SPECIES' rarity by default, and for 47 of the 48
+; records that is correct. Measured 2026-09-09: every form except one lands
+; within -15..+40 base-stat-total of the species it hangs off, because Gen 1
+; folds SpA/SpD into a single Special (this file takes the HIGHER of the two),
+; which collapses most of the modern power gap. Sandy Shocks is modern-BST 570
+; but converts to 405 against Magneton's 395; Toedscruel and the Paldean Tauros
+; trio come out dead level with their bases.
+;
+; SCREAM TAIL is the exception, and it is a big one: 505 against Jigglypuff's
+; 225. Jigglypuff sits in the Kanto POKEBALL tier - the commonest pool in the
+; game - so inheriting its base's rarity would let the single most common roll
+; hand out a paradox mon.
+;
+; This table is the fix. A (species, form) pair listed under a tier:
+;   1. is EXCLUDED from the ordinary per-species form roll, so it can never be
+;      reached from its base species' tier, and
+;   2. becomes reachable as a direct pick at the tier it is listed under,
+;      overriding the species that tier's list would otherwise have rolled.
+;
+; Point 2 is why gating alone is not enough. Jigglypuff is never rolled at
+; masterball tier, so a form that is merely BLOCKED at low tiers would become
+; unreachable rather than rare.
+;
+; It deliberately does NOT live in engine/pokemon/rarity.asm. Those lists are
+; scanned by species byte by RogueClassifySpecies to map an owned mon back to
+; its tier, and a second `db JIGGLYPUFF` in another tier would make every owned
+; Jigglypuff classify ambiguously. Keeping form rarity in its own table leaves
+; classification untouched.
+;
+; Only exceptions belong here. A form that sits within a reasonable distance of
+; its base does NOT need an entry - leave it out and it inherits, which keeps
+; adding a new form record a one-file job.
+; ===========================================================================
+
+MACRO form_tier
+; \1 = list label. Requires \1 and \1_End. Entries are (species, form) pairs.
+	ASSERT (\1_End - \1) % 2 == 0, "form tier list must be whole (species, form) pairs"
+	db (\1_End - \1) / 2 ; pair count
+	dw \1
+ENDM
+
+FormTierTable::
+	form_tier FormTierPokeball
+	form_tier FormTierGreatball
+	form_tier FormTierUltraball
+	form_tier FormTierMasterball
+	form_tier FormTierUber
+FormTierTableEnd:
+ASSERT FormTierTableEnd - FormTierTable == NUM_RARITY_TIERS * FORM_TIER_ENTRY_SIZE, \
+       "FormTierTable needs exactly one entry per rarity tier"
+
+; The five lists below MUST stay contiguous and in this order. The exclusion
+; scan in RogueRollFormForSpecies walks FormTierPairs..FormTierPairsEnd as one
+; flat array of pairs rather than re-walking the five-entry table above, which
+; is both cheaper and immune to a tier being added without the scan noticing.
+FormTierPairs::
+FormTierPokeball:
+FormTierPokeball_End:
+FormTierGreatball:
+FormTierGreatball_End:
+FormTierUltraball:
+FormTierUltraball_End:
+FormTierMasterball:
+	db JIGGLYPUFF, 1 ; Scream Tail - 505 BST hanging off a 225 BST base
+FormTierMasterball_End:
+FormTierUber:
+FormTierUber_End:
+FormTierPairsEnd::

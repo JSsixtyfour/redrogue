@@ -178,6 +178,21 @@ jp RogueSelectFromTier
 ; duplicate. Falling back to the last roll is strictly better than not returning.
 ; ---------------------------------------------------------------------------
 RogueSelectFromTier::
+; Phase 2R increment 8b: tier-placed forms get first refusal on this pick, and a
+; hit REPLACES the species this tier's list would have offered. Scream Tail's
+; base species is only ever rolled at pokeball tier, so pinning its rarity to
+; masterball has to be able to override the species, not merely veto it.
+;
+; b (the tier) does not survive the farcall - Bankswitch spares only d/e/flags -
+; hence the push.
+	ld e, b
+	push bc
+	farcall RogueRollFormForTier  ; d = species (0 = no tier-placed pick), e = form
+	pop bc
+	ld a, d
+	and a
+	ret nz                        ; d and e are both final; no evolve step, a form
+	                              ; record already names the exact species
 	ld c, 32                      ; retry budget
 .attempt
 	push bc                       ; b = tier, c = budget
@@ -217,6 +232,26 @@ RogueSelectFromTier::
 	call EvolveMonByLevel
 	ld a, [wCurPartySpecies]
 	ld d, a                       ; d = possibly-evolved species
+; Phase 2R increment 8: roll a form for the species we ended up with, and RETURN
+; it in e rather than writing wSpawnForm.
+;
+; Returning it is the whole trick. wSpawnForm means "the form of the very next
+; mon to be created", and most of this routine's callers do not create anything
+; for a long time - PCRollBoss (procedural_cave_gen.asm) rolls the cave boss
+; during PRELOAD and the mon is not built until the player walks into the
+; overworld sprite, an unbounded number of wild battles later. A form written to
+; the global here would sit stale across all of them and be eaten by whichever
+; unrelated mon got created first.
+;
+; So: wSpawnForm is written only IMMEDIATELY before a creation, by the caller.
+; This routine just answers the question. Callers that defer store the answer
+; themselves - see rogue_pokemon_randomized_batch's per-offer form bytes.
+;
+; AFTER the evolve step, never before: the tier lists hold base forms and this
+; routine promotes them, so rolling earlier would ask the table about
+; (EXEGGCUTE, 1), which has no record, instead of (EXEGGUTOR, 1), which does.
+	ld e, a
+	farcall RogueRollFormForSpecies ; e = form index, 0 if none
 	ret
 
 ; Like Random_Pokemon_Selection but skips AllSpeciesCheck entirely - the
@@ -252,6 +287,16 @@ Random_Pokemon_Selection_Any::
 .tierGreatball
 	ld b, RARITY_TIER_GREATBALL
 .pick
+; Phase 2R increment 8b: tier-placed forms get first refusal here too, so a
+; masterball-tier wild encounter can be the Scream Tail that no Jigglypuff roll
+; is allowed to produce. b (tier) does not survive the farcall.
+	ld e, b
+	push bc
+	farcall RogueRollFormForTier  ; d = species (0 = none), e = form
+	pop bc
+	ld a, d
+	and a
+	jr nz, .tierForm
 	call RogueRollGroupForTier    ; a = group; b (tier) preserved
 	jr c, .fallback
 	call RogueGetTierEntry        ; hl = list, b = base count, c = total
@@ -273,6 +318,29 @@ Random_Pokemon_Selection_Any::
 	call EvolveMonByLevel
 	ld a, [wCurPartySpecies]
 	ld d, a
+; Phase 2R increment 8: answer with the form in e, and write NOTHING global -
+; same rule as RogueSelectFromTier's tail above.
+;
+; ⚠ This routine originally DID write wSpawnForm, on the reasoning that a wild
+; encounter is built immediately so the value could not go stale. That reasoning
+; was WRONG and the smoke suite caught it:
+; test_fight2_seed17_party_generation_is_well_formed started finding a species of
+; 0 in the enemy trainer party. Bisected 2026-09-09 by probe - with the write
+; disabled and forms otherwise fully live, it passes; with the write restored it
+; fails - so the global, not RNG drift, was the cause.
+;
+; The mistake: the procedural stage generators PRE-ROLL their wild encounter
+; species during preload, exactly like PCRollBoss pre-rolls the boss. So this
+; roller is a DEFERRED path too, and the leaked form was still sitting in
+; wSpawnForm when the enemy trainer roster was built.
+;
+; Wild encounters therefore get no forms for now. Giving them one needs
+; per-encounter storage alongside wherever the stage stages its species, which is
+; its own increment - the enemy-side plumbing to render one already exists from
+; increment 4b. No caller reads e here yet; it is returned for that future work.
+	ld e, a
+	farcall RogueRollFormForSpecies ; e = form index, 0 if none
+.tierForm
 	ret
 
 ; Roll ~10% chance of one reward slot becoming a trade offer.
@@ -350,6 +418,25 @@ RogueRewardTradeRoll::
     ld [wRoguePokemon1], a
     ld [wroguenpctradeget], a
     ld [wNamedObjectIndex], a
+; Phase 2R increment 8: the trade offer is deliberately NEVER a form. The batch
+; clear already zeroed this byte and nothing between here and there sets it, so
+; the store is belt-and-braces - it states the intent at the site that would
+; otherwise be the obvious place to add a form roll later.
+;
+; The trade is excluded because it advertises
+; and delivers in two different places: the name is BAKED into wroguenpctradename
+; here, at roll time, while the mon itself is not built until the player picks the
+; slot, hands over a party mon and the animation finishes - and the mon that comes
+; out of that path is post-processed by InGameTrade_CopyDataToReceivedMon, which
+; has not been checked for whether it preserves MON_CATCH_RATE's form bits. Two
+; independent chances to advertise a form the player does not receive.
+;
+; Adding it later is a small, self-contained change: publish the form context
+; before the GetMonName below, and set wSpawnForm from wRoguePokemonForm1 just
+; before RogueDoInGameTradeDialogue at both trade entry points. Verify the
+; delivered mon's bits actually survive first.
+    xor a
+    ld [wRoguePokemonForm1], a
     call GetMonName                 ; offered mon's name → wNameBuffer
     ld hl, wNameBuffer
     ld de, wroguenpctradename
@@ -365,11 +452,21 @@ rogue_pokemon_randomized_batch::
    ld b, FLAG_RESET
    ld hl, wCompletedInGameTradeFlags
    predef FlagActionPredef
+; Phase 2R increment 8: the three form bytes sit immediately after the three
+; species bytes so this one walk clears both, and so the draw loop can index
+; them with the offset it already computed. The ASSERT is what makes that
+; adjacency a build error to break rather than a silent mislabelling of every
+; reward offer.
+   ASSERT wRoguePokemonForm1 == wRoguePokemon3 + 1, \
+          "reward form bytes must follow the species bytes - the clear and the draw loop both walk straight through"
    ld hl, wRoguePokemon1
    xor a
    ld [hli], a          ; clear out prior pokemon
    ld [hli], a          ; clear out prior pokemon
-   ld [hl], a           ; clear out prior pokemon
+   ld [hli], a          ; clear out prior pokemon
+   ld [hli], a          ; and their forms - a slot the trade roll pre-fills or a
+   ld [hli], a          ; roll skips must read as form 0, not as last stage's
+   ld [hl], a           ; leftover
 
    call RogueRewardTradeRoll   ; may pre-fill wRoguePokemon1; wroguenpctradeget=0 if no trade
 
@@ -383,6 +480,12 @@ rogue_pokemon_randomized_batch::
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
    ld [hl], d
+   ; Phase 2R increment 8: Random_Pokemon_Selection returns d = species AND
+   ; e = form. Bank the form against this offer's own slot - see the wram.asm
+   ; note on why the single wSpawnForm cannot serve three offers that are all
+   ; named in one draw pass.
+   ld a, e
+   ld [wRoguePokemonForm1], a
 
    .roguepokemon2
    ; slot 2 (skip if pre-filled by trade roll)
@@ -398,6 +501,8 @@ rogue_pokemon_randomized_batch::
    jr z, .rollpokemon2
    ld hl, wRoguePokemon2
    ld [hl], d
+   ld a, e
+   ld [wRoguePokemonForm2], a
 
    .roguepokemon3
    ; slot 3 (skip if pre-filled by trade roll)
@@ -416,8 +521,17 @@ rogue_pokemon_randomized_batch::
    jr z, .rollpokemon3
    ld hl, wRoguePokemon3
    ld [hl], d
+   ld a, e
+   ld [wRoguePokemonForm3], a
 
    .doneBatch
+; Phase 2R increment 8: nothing above writes wSpawnForm, but a wild encounter
+; earlier in the stage did (Random_Pokemon_Selection_Any sets it and the enemy
+; build reads it without clearing). Drop it here so a gift or script-given mon
+; collected in the reward room cannot inherit that leftover. Insurance against a
+; path that forgets to set its own, not a fix for a known break.
+   xor a
+   ld [wSpawnForm], a
 RET
 
 ; a check to see if pokemon is already in players box or party
