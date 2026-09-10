@@ -42,6 +42,6 @@ IndigoPlateauLobby_Object:
 	object_event 11, 10, SPRITE_CHANNELER, STAY, LEFT, TEXT_PC_WITCH                            ; issues mystical challenges that provide rewards
 	object_event  2, 10, SPRITE_MIDDLE_AGED_MAN, WALK, LEFT_RIGHT, TEXT_PC_POKEMON_SALESMAN     ; sells a random pokemon to trainer
 	object_event  5, 11, SPRITE_SUPER_NERD, STAY, UP, TEXT_PC_TRADER_SUPER_NERD                 ; trades a random pokemon of the same rarity as a pokemon you currently have
-	object_event  0,  2, SPRITE_GAMEBOY_KID, STAY, RIGHT, TEXT_PC_MOVE_TUTOR                     ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
+	object_event  0,  2, SPRITE_GAMEBOY_KID, STAY, DOWN, TEXT_PC_MOVE_TUTOR                      ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

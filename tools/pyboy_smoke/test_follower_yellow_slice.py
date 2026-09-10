@@ -437,6 +437,22 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertIn("DEF FOLLOWER_ANIM_TICKS    EQU 2", self.core)
         self.assertIn("call Check60FPS", advance)
 
+        start = self.core.split("FollowerStartCommand:", 1)[1].split(
+            "FollowerCommandData:", 1
+        )[0]
+        self.assertRegex(
+            start,
+            r"(?ms)call FollowerAtLeastTwoQueued.*?jr c, \.fast.*?"
+            r"bit BIT_RUNNING, a\s+jr z, \.speedReady\s+\.fast\s+"
+            r"ld b, FOLLOWER_FAST_FRAMES\s+ld c, FOLLOWER_STATUS_FAST",
+        )
+        wait = self.core.split("FollowerWait:", 1)[1].split(
+            "FollowerCheckVisibility:", 1
+        )[0]
+        self.assertIn("SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER", wait)
+        self.assertIn("SPRITESTATEDATA1_ANIMFRAMECOUNTER", wait)
+        self.assertLess(wait.index("xor a"), wait.index("jp FollowerUpdateImage"))
+
     def test_camera_hook_is_only_in_actual_scroll_branch(self):
         advancement = self.overworld.split("AdvancePlayerSprite::", 1)[1]
         before_scroll, scroll = advancement.split(".scrollBackgroundAndSprites", 1)
@@ -466,12 +482,19 @@ class YellowFollowerSliceTests(unittest.TestCase):
             outside,
             r"(?s)call \.isFollowerOutsideMap\s+call c, "
             r"\.insertFollowerIntoSpriteSet.*?\.insertFollowerIntoSpriteSet.*?"
+            r"\.findExistingFollowerEntry.*?cp d.*?jr z, \.haveDropIndex.*?cp 9.*?"
             r"\.findUnusedWalkingEntry.*?ld a, \[wNumSprites\].*?"
             r"\.checkAuthoredPictures.*?cp d.*?\.entryUsed.*?cp 9.*?"
             r"ld hl, wSpriteSet \+ 7.*?"
             r"ld de, wSpriteSet \+ 8.*?ld b, 8.*?"
             r"ld a, \[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]\s+"
             r"ld \[wSpriteSet\], a",
+        )
+
+        lobby = (ROOT / "data" / "maps" / "objects" / "IndigoPlateauLobby.asm").read_text()
+        self.assertRegex(
+            lobby,
+            r"object_event\s+0,\s+2,\s+SPRITE_GAMEBOY_KID,\s+STAY,\s+DOWN,",
         )
         generic_loader = self.loader.split("LoadMapSpriteTilePatterns:", 1)[1].split(
             "InitOutsideMapSprites:", 1

@@ -430,8 +430,23 @@ InitOutsideMapSprites:
 
 .insertFollowerIntoSpriteSet
 	; Yellow gives fixed-set entry 0/base 2 to the follower and retains eight
-	; authored walking sheets. Red's sets have nine walking entries, so find one
-	; the current map does not author, including either live half of split maps.
+	; authored walking sheets. If the resolved follower sheet is already one of
+	; those nine, remove that duplicate first. Otherwise find one the current map
+	; does not author, including either live half of split maps. Keeping the
+	; adjusted walking entries unique is required because the graphics loader
+	; deduplicates sheets before map objects derive their bases from wSpriteSet.
+	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
+	ld d, a
+	ld hl, wSpriteSet
+	ld c, 0
+.findExistingFollowerEntry
+	ld a, [hli]
+	cp d
+	jr z, .haveDropIndex
+	inc c
+	ld a, c
+	cp 9
+	jr c, .findExistingFollowerEntry
 	ld c, 0
 .findUnusedWalkingEntry
 	ld hl, wSpriteSet

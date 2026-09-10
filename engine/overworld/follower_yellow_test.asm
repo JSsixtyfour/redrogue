@@ -841,7 +841,14 @@ FollowerStartCommand:
 	call FollowerAtLeastTwoQueued
 	ld b, FOLLOWER_NORMAL_FRAMES
 	ld c, FOLLOWER_STATUS_WALKING
-	jr nc, .speedReady
+	jr c, .fast
+	; Red Rogue adaptation: the player receives an extra pixel update while
+	; BIT_RUNNING is active. Use the same fast follower path during a sustained
+	; run so the one-step-lag queue does not grow merely because B is held.
+	ld a, [wMovementFlags]
+	bit BIT_RUNNING, a
+	jr z, .speedReady
+.fast
 	ld b, FOLLOWER_FAST_FRAMES
 	ld c, FOLLOWER_STATUS_FAST
 	jr .speedReady
@@ -1002,6 +1009,11 @@ FollowerGetAnimationTicks:
 FollowerWait:
 	call FollowerHideIfOverlappingPlayer
 	ret c
+	; Yellow Func_fc803 clears both animation counters on the empty-command
+	; path, guaranteeing that a stopped follower uses its standing frame.
+	xor a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER], a
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_ANIMFRAMECOUNTER], a
 	jp FollowerUpdateImage
 
 ; Yellow WillPikachuSpawnOnTheScreen. The outer update calls this before the

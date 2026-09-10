@@ -365,6 +365,19 @@ Random_Pokemon_Selection_Any::
 	ld a, [wCurPartySpecies]
 	ld d, a                         ; restore the species this routine returns
 .tierForm
+; Increment 8e: publishing the global IS correct here. This roller's only real
+; caller is PCRollWildEncounter (procedural_cave_gen.asm), which rolls the
+; species at ENCOUNTER time - it sets wEnemyMonSpecies2 and returns straight into
+; the battle - so the mon is genuinely built immediately and there is no window
+; for the value to go stale.
+;
+; ⚠ Increment 8b removed this write on the theory that stages pre-roll their wild
+; species at preload. That was WRONG on both counts: the probe that "proved" it
+; was really catching the d-clobber in RogueRollFormForSpecies, and PCRollWildEncounter
+; does not pre-roll at all. The BOSS is the deferred one (PCRollBoss at preload),
+; and it needs its own storage - see wRoguePokemonForm1.
+	ld a, e
+	ld [wSpawnForm], a
 	ret
 
 ; Roll ~10% chance of one reward slot becoming a trade offer.

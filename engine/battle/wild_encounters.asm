@@ -100,6 +100,17 @@ TryDoWildEncounter:
 	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a
 .afterEncounterData
+IF FORCE_WILD_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_WILD_FORM_TEST in pokemon_data_constants.asm.
+; The single chokepoint both wild paths converge on: PCRollWildEncounter for the
+; procedural stages, the wGrassMons/wWaterMons tables for vanilla routes.
+; Change the species and form on the two `ld a,` lines below to test any record.
+	ld a, MEOWTH            ; <- species to force
+	ld [wCurPartySpecies], a
+	ld [wEnemyMonSpecies2], a ; BOTH are needed: LoadEnemyMonData reads the latter
+	ld a, 1                 ; <- form index (ameowth.asm is form_record MEOWTH, 1)
+	ld [wSpawnForm], a
+ENDC
 	ld a, [wRepelRemainingSteps]
 	and a
 	jr z, .willEncounter

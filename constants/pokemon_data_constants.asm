@@ -219,6 +219,23 @@ DEF TRAINERPARTY_FORMS  EQU $fe
 ; That is expected, not a regression. Set it to 0 and re-run before trusting a
 ; smoke result.
 DEF FORCE_TRAINER_FORM_TEST EQU 0
+
+; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
+;
+; 1 = every WILD encounter, in procedural stages and on vanilla routes alike, is
+;     forced to a fixed species + form (edit the two `ld a,` lines at
+;     .afterEncounterData in engine/battle/wild_encounters.asm to change which).
+;
+; It writes wSpawnForm DIRECTLY, which deliberately bypasses BOTH gates that make
+; casual testing so slow:
+;   - FORM_SPAWN_ODDS (32/256 = 12.5%), so you are not waiting on a 1-in-8 roll
+;   - RogueFormsUnlocked, so it works with NO champion wins and NO Debug 2
+;
+; Forcing only the species is not enough on its own: at that point the roll has
+; already happened and wSpawnForm holds a form rolled for the species you just
+; overwrote - which is 0 almost every time, hence "I forced a Meowth and got a
+; plain Meowth".
+DEF FORCE_WILD_FORM_TEST EQU 1
 ; ===========================================================================
 
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record

@@ -136,8 +136,49 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                     ),
                     image_base,
                 )
+        self.assertEqual(
+            self.harness.read8("wSprite11StateData1FacingDirection"),
+            0,
+            "the lobby Game Boy Kid should default to facing down",
+        )
         self.assertNotEqual(self.harness.read8("wSprite15StateData1PictureID"), 0)
         self.assertEqual(self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2)
+
+    def test_running_uses_fast_follower_cadence_and_wait_resets_pose(self) -> None:
+        maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
+        ram = parse_rgbds_constants(ROOT / "constants" / "ram_constants.asm")
+        self.load_debug_follower_map(maps["SILPH_CO_DORM"])
+        self.harness.tick(60)
+
+        self.harness.call_routine("FollowerClearQueue")
+        self.harness.write8("wFollowerCommandBufferSize", 1)
+        self.harness.write8("wFollowerCommandBuffer", 1)
+        self.harness.write8("wFollowerCommandBuffer", 1, 1)
+        movement_flags = self.harness.read8("wMovementFlags")
+        self.harness.write8(
+            "wMovementFlags",
+            movement_flags | (1 << ram["BIT_RUNNING"]),
+        )
+        self.harness.write8("wSprite15StateData1MovementStatus", 1)
+        self.harness.call_routine("FollowerUpdate")
+        self.assertEqual(
+            self.harness.read8("wSprite15StateData1MovementStatus"),
+            5,
+            "a sustained player run should start the follower fast path",
+        )
+
+        self.harness.write8("wMovementFlags", movement_flags)
+        for _ in range(40):
+            self.harness.call_routine("FollowerUpdate")
+            if self.harness.read8("wSprite15StateData1MovementStatus") == 1:
+                break
+        self.assertEqual(self.harness.read8("wSprite15StateData1MovementStatus"), 1)
+        self.harness.write8("wSprite15StateData1IntraAnimFrameCounter", 4)
+        self.harness.write8("wSprite15StateData1AnimFrameCounter", 3)
+        self.harness.call_routine("FollowerUpdate")
+        self.assertEqual(self.harness.read8("wSprite15StateData1IntraAnimFrameCounter"), 0)
+        self.assertEqual(self.harness.read8("wSprite15StateData1AnimFrameCounter"), 0)
+        self.assertEqual(self.harness.read8("wSprite15StateData1ImageIndex") & 3, 0)
 
     def test_healing_machine_hides_follower_before_oam_freeze(self) -> None:
         self.harness.boot_to_lobby(battle_count=1)
@@ -206,7 +247,13 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                 self.assertEqual(
                     self.harness.read8("wSprite15StateData2ImageBaseOffset"), 2
                 )
-                self.assertEqual(self.harness.read8("wSpriteSet"), follower_picture)
+                fixed_set = self.harness.read_bytes("wSpriteSet", 11)
+                self.assertEqual(fixed_set[0], follower_picture)
+                self.assertNotIn(
+                    follower_picture,
+                    fixed_set[1:9],
+                    f"{map_name} retained a duplicate follower walking sheet",
+                )
 
     def test_debug2_procedural_group_preserves_dynamic_objects_and_follower(self) -> None:
         maps = parse_map_constants(ROOT / "constants" / "map_constants.asm")
