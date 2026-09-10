@@ -234,6 +234,7 @@ ROMX $2C
 	"Status View Navigation"
 ROMX $2D
 	"Tilesets 4"
+	"Animated Tiles"
 	"Room"
 	"Room PC"
 	"Room Vendor"

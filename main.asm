@@ -519,6 +519,11 @@ SECTION "Yellow Legacy Unique Icons", ROMX
 INCLUDE "gfx/unique_party_icons.asm"
 
 
+SECTION "Animated Tiles", ROMX
+
+INCLUDE "engine/gfx/animated_tiles.asm"
+
+
 ; Relocated from bank $1C. Both public entry points are dispatched through the
 ; bank-aware predef table; all internal code, data, and local pointer tables
 ; remain together in this section.
