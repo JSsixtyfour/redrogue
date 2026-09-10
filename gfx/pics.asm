@@ -403,6 +403,33 @@ LancePic::         INCBIN "gfx/trainers/lance.pic"
 SECTION "Jessie James Portrait", ROMX, BANK[$2C]
 JessieJamesPic:: INCBIN "gfx/trainers/jessiejames.pic"
 
+; Gym-leader expansion (Phase 1). The 8 Johto gym leaders, Janine, and the two
+; Johto Elite Four members, imported from pret/pokegold at their native 56x56
+; and converted to this tree's 4-shade greyscale by
+; tools/convert_gold_trainer_pics.py.
+;
+; A SEPARATE bank from "Trainer Pics" on purpose: that section also holds
+; RedPicFront/GreenPicFront so every PlayerAppearanceTable pic shares one bank,
+; and it has only ~85 bytes free - not enough for even one more 56x56 pic.
+;
+; This is only possible because Phase 1b made the pic bank data-driven:
+; TrainerPicAndMoneyPointers now carries db BANK(pic) per row and
+; _LoadTrainerPic reads wTrainerPicBank, replacing a `cp JESSIE_JAMES` that
+; hardcoded the only two banks a trainer pic could live in. So these need no
+; special case at all.
+SECTION "Trainer Pics 2", ROMX, BANK[$3C]
+FalknerPic::       INCBIN "gfx/trainers/falkner.pic"
+BugsyPic::         INCBIN "gfx/trainers/bugsy.pic"
+WhitneyPic::       INCBIN "gfx/trainers/whitney.pic"
+MortyPic::         INCBIN "gfx/trainers/morty.pic"
+ChuckPic::         INCBIN "gfx/trainers/chuck.pic"
+JasminePic::       INCBIN "gfx/trainers/jasmine.pic"
+PrycePic::         INCBIN "gfx/trainers/pryce.pic"
+ClairPic::         INCBIN "gfx/trainers/clair.pic"
+JaninePic::        INCBIN "gfx/trainers/janine.pic"
+WillPic::          INCBIN "gfx/trainers/will.pic"
+KarenPic::         INCBIN "gfx/trainers/karen.pic"
+
 ; Species Groups Phase 2 pics. With BASE_PIC_BANK (see home/pics.asm) a mon's
 ; pic may live in ANY bank, so this section floats - there is no index-range
 ; constraint any more. Split into further "Pics N" sections as it grows.

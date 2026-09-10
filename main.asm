@@ -279,8 +279,29 @@ INCLUDE "engine/pokemon/bills_pc.asm"
 SECTION "Battle Engine 3", ROMX
 
 INCLUDE "engine/battle/print_type.asm"
-INCLUDE "engine/battle/save_trainer_name.asm"
+; save_trainer_name.asm moved out 2026-09-10 (gym-leader expansion, Phase 1) to
+; SECTION "Trainer Class Names" in bank $39. It carries TrainerNamePointers,
+; which is NUM_TRAINERS entries wide, and this bank had 10 bytes free - the 11
+; new leader classes needed 22, overflowing bank $09 by 12.
 INCLUDE "engine/battle/move_effects/focus_energy.asm"
+
+
+; Gym-leader expansion, Phase 1. SaveTrainerName plus the TrainerNamePointers
+; table and every name string it points at, moved here as one unit from
+; "Battle Engine 3" (bank $09, which had 10 bytes free).
+;
+; Indivisible: SaveTrainerName does a plain in-bank read of TrainerNamePointers
+; and then dereferences the bare `dw` it finds there into a name string in the
+; same file, so the routine, the table and the strings must share a bank.
+; Its only caller is `farcall SaveTrainerName` (home/trainers.asm), so the
+; entry point is already bank-independent and no call site changed.
+;
+; Pinned to $39 in layout.link, beside "Trainer Parties" - all the per-class
+; trainer data now lives in one bank with ~12 KB of headroom, instead of being
+; scattered across banks that are individually full.
+SECTION "Trainer Class Names", ROMX
+
+INCLUDE "engine/battle/save_trainer_name.asm"
 
 
 SECTION "Battle Engine 4", ROMX

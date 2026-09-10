@@ -8072,17 +8072,19 @@ _LoadTrainerPic:
 	ld e, a
 	ld a, [wTrainerPicPointer + 1]
 	ld d, a ; de contains pointer to trainer pic
+; The bank now comes from the pic table via wTrainerPicBank (set by
+; GetTrainerInformation), replacing a `cp JESSIE_JAMES` that hardcoded the only
+; two banks a trainer pic could live in. Any pic may now live in any bank, which
+; is what the gym-leader expansion needs: "Trainer Pics" has 85 bytes free and
+; cannot fit another 56x56 pic.
+;
+; The link path is still special-cased, because GetTrainerInformation's
+; .linkBattle branch sets only the pointer and never the bank.
 	ld a, [wLinkState]
 	and a
-	jr nz, .linkPic
-	ld a, [wTrainerClass]
-	cp JESSIE_JAMES
-	ld a, BANK(JessieJamesPic)
-	jr z, .loadSprite
-	ld a, BANK("Trainer Pics")
-	jr .loadSprite
-.linkPic
 	ld a, BANK(RedPicFront)
+	jr nz, .loadSprite
+	ld a, [wTrainerPicBank]
 .loadSprite
 	call UncompressSpriteFromDE
 	ld de, vFrontPic

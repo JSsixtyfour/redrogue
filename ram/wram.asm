@@ -1327,8 +1327,27 @@ wTrainerClass:: db
 	ds 1
 
 wTrainerPicPointer:: dw
-
-	ds 1
+; ROM bank of the pic wTrainerPicPointer points at, copied out of
+; TrainerPicAndMoneyPointers by GetTrainerInformation (home/trainers2.asm).
+;
+; Claimed from the `ds 1` that already sat here - a WRAM_BIBLE.md D2 gap,
+; unsaved (below wMainDataStart) - so this byte costs ZERO WRAM0 and shifts
+; nothing: `dw` + `db` is the same 3 bytes as `dw` + `ds 1`. Safe to name
+; because the pointer is only ever touched through the explicit
+; `wTrainerPicPointer` / `wTrainerPicPointer + 1` pairs in GetTrainerInformation
+; and _LoadTrainerPic; no `hli` walk runs into it (~98% confident, all four
+; references audited).
+;
+; Why it exists: _LoadTrainerPic used to pick the pic's bank with
+; `cp JESSIE_JAMES`, hardcoding the only two banks a trainer pic could live in
+; ("Trainer Pics" and JessieJamesPic's). That bank has 85 bytes free and cannot
+; hold another 56x56 pic, so the gym-leader expansion's new leader pics must be
+; free to live anywhere. The bank now travels in the table beside the pointer.
+;
+; NOT written on the link-battle path: GetTrainerInformation's .linkBattle
+; branch sets only the pointer, and _LoadTrainerPic supplies BANK(RedPicFront)
+; itself for that case.
+wTrainerPicBank:: db
 
 UNION
 wTempMoveNameBuffer:: ds MOVE_NAME_LENGTH

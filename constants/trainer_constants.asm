@@ -93,8 +93,21 @@ ENDM
 	; move-choice rows (they should look and battle like the real character),
 	; but have their OWN TrainerDataPointers entry so mini-boss teams stay
 	; isolated from the vanilla rival/Giovanni battles used elsewhere.
-	trainer_const RIVAL_MINIBOSS    ; $30 — OPP_RIVAL_MINIBOSS = 248
-	trainer_const GIOVANNI_MINIBOSS ; $31 — OPP_GIOVANNI_MINIBOSS = 249
+	trainer_const RIVAL_MINIBOSS    ; $30 — OPP_RIVAL_MINIBOSS = 208 (OPP_ID_OFFSET 160 + $30)
+	trainer_const GIOVANNI_MINIBOSS ; $31 — OPP_GIOVANNI_MINIBOSS = 209
 	; Paired Yellow trainer, defined for future encounters only.
-	trainer_const JESSIE_JAMES     ; $32 - OPP_JESSIE_JAMES = 250
+	trainer_const JESSIE_JAMES     ; $32 - OPP_JESSIE_JAMES = 210
+; Gym-leader expansion: the 8 Johto leaders, Janine, and the two Johto
+; Elite Four members. Added 2026-09-10 (Phase 1).
+	trainer_const FALKNER        ; $33
+	trainer_const BUGSY          ; $34
+	trainer_const WHITNEY        ; $35
+	trainer_const MORTY          ; $36
+	trainer_const CHUCK          ; $37
+	trainer_const JASMINE        ; $38
+	trainer_const PRYCE          ; $39
+	trainer_const CLAIR          ; $3A
+	trainer_const JANINE         ; $3B
+	trainer_const WILL           ; $3C
+	trainer_const KAREN          ; $3D
 DEF NUM_TRAINERS EQU const_value - 1

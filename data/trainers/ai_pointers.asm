@@ -54,4 +54,15 @@ TrainerAIPointers:
 	dbw 3, GenericAI ; rival_miniboss
 	dbw 1, GiovanniAI ; giovanni_miniboss
 	dbw 3, GenericAI ; jessie_james, same as Rocket
+	dbw 1, LtSurgeAI ; falkner
+	dbw 1, KogaAI ; bugsy
+	dbw 1, MistyAI ; whitney
+	dbw 2, AgathaAI ; morty
+	dbw 2, BlackbeltAI ; chuck
+	dbw 1, BrockAI ; jasmine
+	dbw 2, LoreleiAI ; pryce
+	dbw 1, LanceAI ; clair
+	dbw 2, KogaAI ; janine
+	dbw 2, SabrinaAI ; will
+	dbw 2, AgathaAI ; karen
 	assert_table_length NUM_TRAINERS

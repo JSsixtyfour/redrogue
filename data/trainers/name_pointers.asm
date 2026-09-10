@@ -53,6 +53,17 @@ TrainerNamePointers:
 	dw wTrainerName
 	dw wTrainerName
 	dw wTrainerName ; JESSIE_JAMES
+	dw wTrainerName ; FALKNER
+	dw wTrainerName ; BUGSY
+	dw wTrainerName ; WHITNEY
+	dw wTrainerName ; MORTY
+	dw wTrainerName ; CHUCK
+	dw wTrainerName ; JASMINE
+	dw wTrainerName ; PRYCE
+	dw wTrainerName ; CLAIR
+	dw wTrainerName ; JANINE
+	dw wTrainerName ; WILL
+	dw wTrainerName ; KAREN
 	assert_table_length NUM_TRAINERS
 
 .YoungsterName:     db "YOUNGSTER@"

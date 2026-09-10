@@ -82,6 +82,17 @@ TrainerDataPointers:
 	dw RivalMiniBossData    ; RIVAL_MINIBOSS
 	dw GiovanniMiniBossData ; GIOVANNI_MINIBOSS
 	dw JessieJamesData    ; JESSIE_JAMES
+	dw FalknerData          ; FALKNER
+	dw BugsyData            ; BUGSY
+	dw WhitneyData          ; WHITNEY
+	dw MortyData            ; MORTY
+	dw ChuckData            ; CHUCK
+	dw JasmineData          ; JASMINE
+	dw PryceData            ; PRYCE
+	dw ClairData            ; CLAIR
+	dw JanineData           ; JANINE
+	dw WillData             ; WILL
+	dw KarenData            ; KAREN
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then
@@ -574,9 +585,12 @@ LanceData:
 	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
 
 ; Elite4OrderTable was moved to custom_functions/final_sequence.asm (the rogue
-; bank) so it is same-bank with the code that reads it - this file compiles into
-; "Battle Engine 7" (a different bank), and a plain ld a,[hl] from the rogue
-; bank was reading garbage, making every Elite Four room resolve to Lance.
+; bank) so it is same-bank with the code that reads it. A plain ld a,[hl] from
+; the rogue bank was reading garbage, making every Elite Four room resolve to
+; Lance. This file compiles into a DIFFERENT bank from the rogue bank, so the
+; split is still required: it was "Battle Engine 7" (bank $0E) when that bug was
+; fixed, and is "Trainer Parties" (bank $39) as of the 2026-09-10 Phase 0b
+; relocation.
 
 ; Official pret/pokeyellow Jessie & James parties, in donor order.
 ; Explicit per-mon levels select the existing fixed-party path, avoiding the
@@ -586,3 +600,36 @@ JessieJamesData:
 	db $FF, 25, KOFFING, 25, MEOWTH, 25, EKANS,   0
 	db $FF, 27, MEOWTH,  27, ARBOK,  27, WEEZING, 0
 	db $FF, 31, WEEZING, 31, ARBOK,  31, MEOWTH,  0
+
+
+; Gym-leader expansion: the 8 Johto leaders, Janine, and the two Johto
+; Elite Four members. Added 2026-09-10 (Phase 1).
+; PLACEHOLDER teams - one each, replaced by Phase 3's real pools.
+; One team is deliberate: InitGymBattle picks
+;   wTrainerNo = (round-1)*3 + 1 + rand(3)
+; so a leader wired into gym rotation needs 24 teams, or ReadTrainer's
+; .SkipTrainer scan walks off the end of its data. No map or script
+; references these classes yet, so wTrainerNo is only ever 1 here.
+FalknerData:
+	db $FF, 13, PIDGEOTTO, 13, HOOTHOOT, 15, NOCTOWL, 0
+BugsyData:
+	db $FF, 15, SPINARAK, 15, ARIADOS, 17, SCYTHER, 0
+WhitneyData:
+	db $FF, 19, CLEFAIRY, 19, MILTANK, 21, MILTANK, 0
+MortyData:
+	db $FF, 23, GASTLY, 23, HAUNTER, 25, MISDREAVUS, 27, GENGAR, 0
+ChuckData:
+	db $FF, 29, PRIMEAPE, 29, MACHOKE, 31, POLIWRATH, 0
+JasmineData:
+	db $FF, 31, MAGNEMITE, 31, MAGNETON, 33, ONIX, 35, STEELIX, 0
+PryceData:
+	db $FF, 33, SEEL, 33, SWINUB, 35, DEWGONG, 37, PILOSWINE, 0
+ClairData:
+	db $FF, 37, DRATINI, 37, HORSEA, 39, DRAGONAIR, 41, KINGDRA, 0
+JanineData:
+	db $FF, 33, KOFFING, 33, VENOMOTH, 35, ARBOK, 37, WEEZING, 0
+WillData:
+	db $FF, 51, NATU, 53, XATU, 53, JYNX, 55, EXEGGUTOR, 55, SLOWBRO, 0
+KarenData:
+	db $FF, 51, MURKROW, 53, GENGAR, 53, VENOMOTH, 55, HOUNDOOM, 0
+

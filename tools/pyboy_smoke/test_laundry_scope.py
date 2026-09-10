@@ -46,6 +46,92 @@ class LaundryScopeSmokeTest(HarnessTestCase):
                 self.assertEqual(h.read8("wEnemyPartyCount"), 3)
                 self.assertEqual(h.read_bytes("wEnemyPartySpecies", 4),
                                  [species[name] for name in team] + [0xFF])
+
+    def test_new_leader_classes_build_their_placeholder_parties(self) -> None:
+        """Every new gym-leader class resolves through ReadTrainer end to end.
+
+        This is the check that the eleven new rows landed in the SAME position
+        in all six NUM_TRAINERS-keyed tables. `assert_table_length` only proves
+        each table has 61 rows; it cannot see a row inserted at the wrong index,
+        which is this repo's documented "misaligned table whose count assert
+        passes" failure mode. Driving ReadTrainer per class and matching the
+        exact species list does see it: a shifted party pointer yields another
+        class's team, and a shifted pic/name row yields the wrong bank or name.
+
+        The parties are Phase 1 placeholders (one team each). When Phase 3
+        replaces them with the real 8-tier pools, update the expectations here
+        rather than deleting the test - the alignment property is permanent.
+        """
+        assert self.harness is not None
+        self.harness.boot_fight2(seed=1)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants" / "trainer_constants.asm"
+        )
+
+        expected = {
+            "FALKNER": ["PIDGEOTTO", "HOOTHOOT", "NOCTOWL"],
+            "BUGSY": ["SPINARAK", "ARIADOS", "SCYTHER"],
+            "WHITNEY": ["CLEFAIRY", "MILTANK", "MILTANK"],
+            "MORTY": ["GASTLY", "HAUNTER", "MISDREAVUS", "GENGAR"],
+            "CHUCK": ["PRIMEAPE", "MACHOKE", "POLIWRATH"],
+            "JASMINE": ["MAGNEMITE", "MAGNETON", "ONIX", "STEELIX"],
+            "PRYCE": ["SEEL", "SWINUB", "DEWGONG", "PILOSWINE"],
+            "CLAIR": ["DRATINI", "HORSEA", "DRAGONAIR", "KINGDRA"],
+            "JANINE": ["KOFFING", "VENOMOTH", "ARBOK", "WEEZING"],
+            "WILL": ["NATU", "XATU", "JYNX", "EXEGGUTOR", "SLOWBRO"],
+            "KAREN": ["MURKROW", "GENGAR", "VENOMOTH", "HOUNDOOM"],
+        }
+
+        for name, team in expected.items():
+            with self.subTest(leader=name):
+                self.harness.write8("wTrainerClass", classes[name])
+                self.harness.write8("wTrainerNo", 1)
+                self.harness.call_routine("ReadTrainer", limit=600)
+                self.assertEqual(self.harness.read8("wEnemyPartyCount"), len(team))
+                self.assertEqual(
+                    self.harness.read_bytes("wEnemyPartySpecies", len(team) + 1),
+                    [species[s] for s in team] + [0xFF],
+                )
+
+
+    def test_trainer_pic_bank_is_data_driven_per_class(self) -> None:
+        """GetTrainerInformation publishes each class's pic pointer AND bank.
+
+        Phase 1b replaced _LoadTrainerPic's `cp JESSIE_JAMES` with a bank byte
+        in TrainerPicAndMoneyPointers, so a trainer pic may now live in any
+        bank. Verified against the built symbol table rather than literals, and
+        deliberately spanning three different banks:
+
+          BROCK   -> "Trainer Pics"    (the original bank)
+          FALKNER -> "Trainer Pics 2"  (bank $3C, only reachable via the new byte)
+          KAREN   -> "Trainer Pics 2"
+          JESSIE_JAMES -> its own bank ($2C), the case the old special case existed for
+
+        A wrong stride in the 6-byte row shows up here as a pointer/bank pair
+        borrowed from a neighbouring class, which the old 5-byte layout could
+        not have detected at all.
+        """
+        assert self.harness is not None
+        self.harness.boot_fight2(seed=1)
+        classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants" / "trainer_constants.asm"
+        )
+
+        for class_name, pic_label in (
+            ("BROCK", "BrockPic"),
+            ("FALKNER", "FalknerPic"),
+            ("KAREN", "KarenPic"),
+            ("JESSIE_JAMES", "JessieJamesPic"),
+        ):
+            with self.subTest(trainer=class_name):
+                want_bank, want_addr = self.harness.symbols.get(pic_label)
+                self.harness.write8("wTrainerClass", classes[class_name])
+                self.harness.call_routine("GetTrainerInformation", limit=600)
+                lo, hi = self.harness.read_bytes("wTrainerPicPointer", 2)
+                self.assertEqual(lo | (hi << 8), want_addr)
+                self.assertEqual(self.harness.read8("wTrainerPicBank"), want_bank)
+
     def test_move_swap_restores_audio_state_before_resuming_music(self):
         import io
         h = self.harness

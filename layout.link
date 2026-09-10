@@ -385,6 +385,11 @@ ROMX $39
 	; for 11 new leader classes), and this file's own $2E rule says a section
 	; whose size is going to change must not be left to first-fit.
 	"Trainer Parties"
+	; Phase 1: SaveTrainerName + TrainerNamePointers + its name strings,
+	; evicted from bank $09 ("Battle Engine 3", 10 bytes free) by the 11 new
+	; leader classes. Kept beside the party data so every per-class trainer
+	; table lives in one bank.
+	"Trainer Class Names"
 WRAM0
 	"Audio RAM"
 	org $c100
