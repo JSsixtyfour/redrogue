@@ -194,7 +194,34 @@ LoadTradingGFXAndMonNames:
 	ld de, wStringBuffer
 	ld bc, NAME_LENGTH
 	call CopyData
+; Phase 2R increment 8k: publish the form context for the RECEIVED mon's name.
+; wNameBuffer is filled ONCE here and then read by every text_ram in the
+; animation - _TradeSendsText, _TradeTransferredText and the closing
+; _TradeTakeCareText ("Take good care of <NAME>.") - so this single publish is
+; what makes all of them say "A-MEOWTH" instead of "MEOWTH". Nothing between
+; here and the end of the sequence calls GetMonName again (Trade_SwapNames only
+; swaps the two TRAINER names), so the buffer survives intact.
+;
+; Published AFTER the player-mon GetMonName above, never before it: the context
+; is one-shot and GetFormNameSource consumes it, so an earlier publish would be
+; eaten by the give-side name and the received mon would fall back to its base
+; name. Same two-name-paths trap as in_game_trades.asm.
+;
+; Guarded on the species matching wRoguePokemon1 (the rogue trade's offer) so an
+; authored TradeMons entry can never inherit a reward slot's form.
+;
+; `ld a, 0` not `xor a` - the flags from `cp [hl]` have to survive to the jr.
+; hl is free here: the CopyData above has finished with it.
 	ld a, [wTradedEnemyMonSpecies]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0
+	jr nz, .noNameForm
+	ld a, [wRoguePokemonForm1]
+.noNameForm
+	ld [wFormContextForm], a
+	ld a, [wTradedEnemyMonSpecies]
+	ld [wFormContextSpecies], a
 	ld [wNamedObjectIndex], a
 	jp GetMonName
 
