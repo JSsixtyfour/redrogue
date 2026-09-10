@@ -55,7 +55,13 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(self.harness.read8("wPartyCount"), 6)
         self.assertEqual(self.harness.read8("wEnemyPartyCount"), 6)
         self.assertEqual(self.harness.read8("wIsTrainerBattle"), 1)
-        self.assertEqual(self.harness.read8("wCurOpponent"), 0xE7)  # COOLTRAINER_M
+        # Derived, not hardcoded: this was 0xE7 while OPP_ID_OFFSET was 200.
+        trainers = parse_trainer_constants(
+            REPO_ROOT / "constants" / "trainer_constants.asm"
+        )
+        self.assertEqual(
+            self.harness.read8("wCurOpponent"), trainers["COOLTRAINER_M"]
+        )
         for species_label, mon_label in (
             ("wPartySpecies", "wPartyMon1"),
             ("wEnemyPartySpecies", "wEnemyMon1"),
@@ -525,7 +531,11 @@ class UndergroundRouteSmokeTest(HarnessTestCase):
         slot_five_class = self.harness.read8("wMapSpriteExtraData", offset=4 * 2)
         self.assertTrue(self.harness.read8("wRogueFlagsBitfield") & 0x80)
         self.assertEqual(slot_five_picture, 0x17)  # SPRITE_GIOVANNI
-        self.assertEqual(slot_five_class, 0xF9)  # OPP_GIOVANNI_MINIBOSS
+        # Derived, not hardcoded: this was 0xF9 while OPP_ID_OFFSET was 200.
+        trainers = parse_trainer_constants(
+            REPO_ROOT / "constants" / "trainer_constants.asm"
+        )
+        self.assertEqual(slot_five_class, trainers["GIOVANNI_MINIBOSS"])
 
 
 class RouteContractSmokeTest(HarnessTestCase):
@@ -654,6 +664,14 @@ class SaveLoadSmokeTest(HarnessTestCase):
             "wBridgeState": [0x42],
             "wEarnedStatBoosts": [0x0D],
             "wBridgeGlobalEffects": [0xA5, 0x5A, 0x01],
+            # Gym-leader expansion run state (Phase 0d). Values are real trainer
+            # class ids so a mis-sized field shows up as a recognisable shift
+            # rather than as arbitrary noise.
+            "wRunGymLineup": [0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2F],
+            "wBadgeSlotOrder": [0x28, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2F],
+            "wRunElite4": [0x2C, 0x21, 0x2E, 0x2F],
+            "wRunChampion": [0x2B],
+            "wGymsUsedMask": [0xA5, 0x5A],
         }
         for label, values in sentinels.items():
             for offset, value in enumerate(values):
@@ -683,6 +701,46 @@ class SaveLoadSmokeTest(HarnessTestCase):
             self.assertEqual(self.harness.read_bytes(label, len(values)), values)
         self.assertEqual(self.harness.read8("hCurMap"), saved_map)
         self.assertEqual(self.harness.pyboy.memory[transient_address], 0x6A)
+
+
+
+    def test_gym_expansion_run_state_is_inside_the_new_game_zero_range(self) -> None:
+        """The Phase 0d run block must be both saved and zeroed on a new game.
+
+        Saving comes from being inside wMainData; zeroing comes from being BELOW
+        wGameProgressFlagsEnd, which is where init_player_data.asm's FillMemory
+        stops. Every field reads all-zero as "no lineup rolled yet", so if a
+        future edit moves the block past that label the fields would survive a
+        new game with a previous run's leaders still in them - a bug that would
+        only show up as a stale trainer card several phases later.
+
+        Checked against the built symbol table, not the source text, so a
+        reordering in ram/wram.asm cannot slip past it.
+        """
+        assert self.harness is not None
+        self.harness.boot_to_lobby()
+
+        zero_end = self.harness.address("wGameProgressFlagsEnd")
+        main_start = self.harness.address("wMainDataStart")
+        main_end = self.harness.address("wMainDataEnd")
+
+        for label, size in (
+            ("wRunGymLineup", 8),
+            ("wBadgeSlotOrder", 8),
+            ("wRunElite4", 4),
+            ("wRunChampion", 1),
+            ("wGymsUsedMask", 2),
+        ):
+            with self.subTest(field=label):
+                start = self.harness.address(label)
+                self.assertGreaterEqual(start, main_start, f"{label} is not saved")
+                self.assertLessEqual(start + size, main_end, f"{label} is not saved")
+                self.assertLessEqual(
+                    start + size,
+                    zero_end,
+                    f"{label} is above wGameProgressFlagsEnd, so a new game "
+                    f"would not clear it",
+                )
 
 
 class ProceduralStageSmokeTest(HarnessTestCase):

@@ -1,5 +1,5 @@
 """Machine-state checks for retired field moves and unused Yellow trainers."""
-from source_constants import parse_rgbds_constants, parse_trainer_constants
+from source_constants import parse_rgbds_constants, parse_trainer_class_indexes
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 
@@ -29,7 +29,9 @@ class LaundryScopeSmokeTest(HarnessTestCase):
         assert h is not None
         h.boot_fight2(seed=1)
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
-        trainers = parse_trainer_constants(REPO_ROOT / "constants/trainer_constants.asm")
+        classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants/trainer_constants.asm"
+        )
         teams = (
             ("EKANS", "MEOWTH", "KOFFING"),
             ("KOFFING", "MEOWTH", "EKANS"),
@@ -38,7 +40,7 @@ class LaundryScopeSmokeTest(HarnessTestCase):
         )
         for number, team in enumerate(teams, 1):
             with self.subTest(team=number):
-                h.write8("wTrainerClass", trainers["JESSIE_JAMES"] - 200)
+                h.write8("wTrainerClass", classes["JESSIE_JAMES"])
                 h.write8("wTrainerNo", number)
                 h.call_routine("ReadTrainer", limit=600)
                 self.assertEqual(h.read8("wEnemyPartyCount"), 3)

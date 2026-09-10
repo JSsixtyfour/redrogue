@@ -1,4 +1,31 @@
-DEF OPP_ID_OFFSET EQU 200
+; Trainer class ids are stored in wCurOpponent as OPP_ID_OFFSET + class, so this
+; offset caps how many classes exist: the id must fit a byte, giving
+; (255 - OPP_ID_OFFSET) classes.
+;
+; Lowered 200 -> 160 on 2026-09-10 (gym-leader expansion, Phase 0a). At 200
+; there were only 5 ids left above the 50 classes in use, and the expansion adds
+; 11 (the 8 Johto leaders plus Janine, Will and Karen). 160 gives 95.
+;
+; Why this is safe, audited site by site 2026-09-09 and re-verified 2026-09-10:
+; every read of wCurOpponent is either a zero test (`and a` for "no battle
+; queued", engine/battle/core.asm InitBattle and home/overworld.asm x2), a
+; straight passthrough into wCurPartySpecies/wEnemyMonSpecies2 (InitOpponent),
+; or a SYMBOLIC equality (`cp OPP_RIVAL1` in core.asm, `cp OPP_RIVAL3` /
+; `cp OPP_LANCE` in audio/play_battle_music.asm). There is no numeric range
+; check anywhere, and the only arithmetic site - `sub OPP_ID_OFFSET` in
+; InitBattleCommon - is offset-relative and adjusts itself.
+;
+; The offset was originally chosen to keep trainer ids clear of the 151 species
+; ids, but that separation is long gone: species indexes now reach $FD (253) and
+; already overlapped the old OPP range 201-250. wIsTrainerBattle is what
+; actually discriminates wild from trainer, and always has been in this tree.
+;
+; Two dead classes ($0D UNUSED_JUGGLER, $1B CHIEF) have zero references in
+; data/maps/objects/ and scripts/ and could be repurposed in place if the id
+; space is ever tight again. Deleting them outright would renumber every class
+; after them and require reordering five parallel tables by hand, so they are
+; deliberately left alone - the offset change makes it unnecessary.
+DEF OPP_ID_OFFSET EQU 160
 
 MACRO trainer_const
 	const \1

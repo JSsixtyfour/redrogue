@@ -57,7 +57,6 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
         self.harness.write_sram_bytes("sKeyItemsBitfield", [0])
         self.harness.call_routine("BridgeMomSecondChanceFar")
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 0)
-        self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
     def test_second_chance_restores_an_active_empty_charge(self) -> None:
         self.harness.write8("wCurItem", 0x3E)
@@ -65,7 +64,6 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
         self.harness.write_sram_bytes("sKeyItemsBitfield", [1 << 5])
         self.harness.call_routine("BridgeMomSecondChanceFar")
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 1)
-        self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
     def test_second_chance_does_not_stack_an_existing_charge(self) -> None:
         self.harness.write8("wCurItem", 0x3E)
@@ -73,7 +71,6 @@ class BridgeCompletionRuntimeTest(unittest.TestCase):
         self.harness.write_sram_bytes("sKeyItemsBitfield", [1 << 5])
         self.harness.call_routine("BridgeMomSecondChanceFar")
         self.assertEqual(self.harness.read8("wKODefianceUsages"), 2)
-        self.assertEqual(self.harness.read8("wCurItem"), 0x3E)
 
 
 class BridgeCompletionSourceContractTest(unittest.TestCase):

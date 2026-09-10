@@ -2604,6 +2604,55 @@ wStatExpPasses::    db   ; scratch: STAT_BOOSTER pass count, set once per GainEx
 ; RoguePrismShouldRerollSpecies. Scratch, not persistent state.
 wPrismRerollsLeft:: db
 
+; ============================================================================
+; Gym-leader expansion run state (GYM_LEADER_EXPANSION_PLAN.md, Phase 0d).
+;
+; Placed ABOVE wGameProgressFlagsEnd deliberately, which buys both properties
+; this block needs:
+;   - saved, because it is inside wMainData, and a run spans play sessions;
+;   - bulk-zeroed on new game by init_player_data.asm's FillMemory, so an
+;     all-zero read is a correct "no lineup rolled yet" and no field needs a
+;     sentinel. (Below the boundary it would be saved but NOT zeroed - see the
+;     wElite4Order comment just past the label for a field that accepts that.)
+;
+; 23 bytes taken from WRAM0's free span, NOT from the `ds` below the boundary:
+; that padding well is down to `ds 5` and cannot fund this, while WRAM0 itself
+; had 209 free bytes as of the 2026-09-10 build (one span, $de2f-$deff, all
+; three ROMs). This does shift saved offsets, i.e. it invalidates older .sav
+; files - accepted per WRAM_BIBLE.md's project decision on save-breaking.
+;
+; INERT until Phase 7 wires the rollers and Phase 4 the trainer card. Declared
+; now so Phases 2/4/6/7 can be written against fixed addresses, and so the
+; save/load path can be proven before anything depends on it.
+;
+; wElite4Order (just below the boundary) is the single-byte permutation index
+; this block's wRunElite4 is intended to REPLACE in Phase 7. Both exist for now;
+; do not delete wElite4Order until final_sequence.asm stops reading it.
+
+; Which gym leader fills each of the 8 badge slots this run, as a trainer class
+; id (not an OPP_ id - add OPP_ID_OFFSET when writing wCurOpponent). Rolled once
+; at run start from the 8 Kanto leaders, plus the 8 Johto leaders when the Johto
+; species group is enabled. 0 = slot unrolled.
+wRunGymLineup::   ds 8
+
+; The same leaders in DEFEAT order, appended one per gym victory at index
+; popcount(wObtainedBadges) BEFORE the new badge bit is set. This is what the
+; trainer card renders, so beating Sabrina first puts her badge in slot 1.
+wBadgeSlotOrder:: ds 8
+
+; The four Elite Four members drawn for this run, as trainer class ids, in room
+; order. Replaces wElite4Order's 0-23 index into Elite4OrderTable.
+wRunElite4::      ds 4
+
+; This run's Champion, as a trainer class id.
+wRunChampion::    db
+
+; One bit per pool leader (16 leaders, bit = pool index) marking leaders already
+; used, so an exhausted lineup re-rolls from the unused half rather than
+; repeating. Distinct from wObtainedBadges, which tracks progress WITHIN a run;
+; this tracks which leaders a player has already faced ACROSS lineups.
+wGymsUsedMask::   dw
+
 wGameProgressFlagsEnd::
 
 ; Elite Four room order for the final sequence: index (0-23) into

@@ -90,7 +90,50 @@ def parse_map_constants(path: Path) -> dict[str, int]:
 
 
 def parse_trainer_constants(path: Path) -> dict[str, int]:
-    """Resolve OPP_* values produced by trainer_const."""
+    """Resolve OPP_* values produced by trainer_const.
+
+    The offset is read from the file's own `DEF OPP_ID_OFFSET EQU n` rather than
+    hardcoded. It used to be a literal 200 here, which meant this "derived"
+    helper would have silently kept reporting pre-change ids after the offset
+    was lowered to 160 in Phase 0a of the gym-leader expansion.
+    """
+    current = 0
+    offset: int | None = None
+    constants: dict[str, int] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split(";", 1)[0].strip()
+        def_match = DEF_EQU_RE.match(line)
+        if def_match and def_match.group(1) == "OPP_ID_OFFSET":
+            offset = _integer_expression(def_match.group(2))
+            continue
+        if line.startswith("const_def"):
+            expression = line[len("const_def") :].strip()
+            current = _integer_expression(expression) if expression else 0
+            continue
+        match = TRAINER_CONST_RE.match(line)
+        if match:
+            if offset is None:
+                raise ValueError(
+                    f"{path}: trainer_const seen before DEF OPP_ID_OFFSET"
+                )
+            constants[match.group(1)] = offset + current
+            current += 1
+    return constants
+
+
+
+
+def parse_trainer_class_indexes(path: Path) -> dict[str, int]:
+    """Resolve the raw class indexes produced by trainer_const.
+
+    This is what wTrainerClass holds - the `const` half of trainer_const, with
+    OPP_ID_OFFSET NOT applied. Use this when writing wTrainerClass directly;
+    use parse_trainer_constants when comparing against wCurOpponent.
+
+    Added because a test computed the class as `parse_trainer_constants(...)[k]
+    - 200`, which silently returned the wrong class the moment OPP_ID_OFFSET
+    stopped being 200.
+    """
     current = 0
     constants: dict[str, int] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -101,10 +144,9 @@ def parse_trainer_constants(path: Path) -> dict[str, int]:
             continue
         match = TRAINER_CONST_RE.match(line)
         if match:
-            constants[match.group(1)] = 200 + current
+            constants[match.group(1)] = current
             current += 1
     return constants
-
 
 def parse_object_events(path: Path) -> list[tuple[str, ...]]:
     """Return comma-separated object_event arguments in declaration order."""

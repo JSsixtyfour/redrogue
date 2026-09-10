@@ -267,7 +267,7 @@ DEF FORCE_BOSS_FORM_TEST EQU 0
 ; Forced after the batch has rolled, so the duplicate-species rejection in
 ; rogue_pokemon_randomized_batch cannot interfere. Bypasses FORM_SPAWN_ODDS and
 ; RogueFormsUnlocked - no Debug 2 or champion wins needed.
-DEF FORCE_REWARD_FORM_TEST EQU 1
+DEF FORCE_REWARD_FORM_TEST EQU 0
 
 ; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
 ;
@@ -286,7 +286,7 @@ DEF FORCE_REWARD_FORM_TEST EQU 1
 ; ⚠ The TRADE still needs its own preconditions to fire at all: at least 3 party
 ; members, and Debug 2 (which skips the ~10% trade roll and always attempts one).
 ; Forcing the form does not force the trade to be OFFERED.
-DEF FORCE_GIFT_TRADE_FORM_TEST EQU 1
+DEF FORCE_GIFT_TRADE_FORM_TEST EQU 0
 ; ===========================================================================
 
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record

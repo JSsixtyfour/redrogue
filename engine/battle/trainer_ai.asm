@@ -679,12 +679,20 @@ INCLUDE "data/trainers/names.asm"
 
 INCLUDE "engine/battle/misc.asm"
 
-INCLUDE "engine/battle/read_trainer_party.asm"
-
-INCLUDE "data/trainers/special_moves.asm"
-
-INCLUDE "data/trainers/parties.asm"
-
+; Relocated 2026-09-10 (gym-leader expansion, Phase 0b) to
+; SECTION "Trainer Parties" in bank $39 - see main.asm and layout.link.
+;
+; read_trainer_party.asm, special_moves.asm and parties.asm move as ONE unit
+; because ReadTrainer walks both tables with plain `[hli]` reads: splitting any
+; of them from the others would turn that walk into a cross-bank read. The only
+; outward data dependency left behind is the Moves table, which is reached
+; through the GetMoveMaxPPFar farcall (engine/battle/get_move_max_pp_far.asm).
+; ReadTrainer's one caller already used `callfar` (engine/battle/core.asm), so
+; no call site changed.
+;
+; Reason: this bank was down to 75 free bytes, and Phase 0a adds 11 trainer
+; classes - a row in each of five NUM_TRAINERS-keyed tables, two of which
+; (TrainerPicAndMoneyPointers, TrainerNames) stay in this bank.
 TrainerAI:
 	and a
 	ldh a, [hIsInBattle]

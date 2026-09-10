@@ -178,17 +178,21 @@ ReadTrainer:
 	ld a, [de]
 	inc de
 	ld [hl], a
-	; new: give the substituted move its own max PP
+	; Give the substituted move its own max PP.
+	;
+	; The Moves table lives in bank $0E and this routine no longer does, so the
+	; lookup is a farcall to GetMoveMaxPPFar, which sits beside the table. e is
+	; the only register pair Bankswitch preserves, so it carries both the move
+	; id in and the max PP back out; de is pushed anyway because it is the live
+	; SpecialTrainerMoves read cursor.
 	push de
 	push hl
-	dec a
-	ld hl, Moves + 5      ; +5 = the PP field within a move entry
-	ld bc, MOVE_LENGTH
-	call AddNTimes        ; hl -> PP byte for this move
-	ld a, [hl]
-	pop hl                ; hl -> the move byte just written
+	ld e, a                   ; e = move id just written
+	farcall GetMoveMaxPPFar   ; e = its max PP
+	pop hl                    ; hl -> the move byte just written
 	ld bc, MON_PP - MON_MOVES
-	add hl, bc            ; hl -> matching PP byte in the enemy mon struct
+	add hl, bc                ; hl -> matching PP byte in the enemy mon struct
+	ld a, e
 	ld [hl], a
 	pop de
 	jr .writeAdditionalMoveDataLoop

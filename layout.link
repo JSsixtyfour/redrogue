@@ -371,6 +371,20 @@ ROMX $36
 ROMX $37
 	; Paldean + Gen-9 convergents + eeveelutions/Perrserker (15 species, ~7 KB).
 	"Pics 15"
+ROMX $39
+	; Gym-leader expansion, Phase 0b (2026-09-10). First use of the $39-$3F
+	; range: banks $35/$36/$37 are now "Pics 13/14/15" (Phase 2R form pics) and
+	; $38 holds the floating "rogue" section, so $39-$3F are the only fully
+	; unallocated banks left in the 64-bank ROM.
+	;
+	; Evacuated out of bank $0E (75 bytes free) as one unit - ReadTrainer plus
+	; the two tables it walks with plain [hli] reads. See the block comment in
+	; main.asm for the relocation audit.
+	;
+	; Pinned, not floated: Phase 2 grows this section substantially (party specs
+	; for 11 new leader classes), and this file's own $2E rule says a section
+	; whose size is going to change must not be left to first-fit.
+	"Trainer Parties"
 WRAM0
 	"Audio RAM"
 	org $c100

@@ -339,8 +339,41 @@ INCLUDE "data/pokemon/forms.asm"
 SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"
+; Must stay in this section: it does a plain in-bank read of Moves, above,
+; and carries a link-time ASSERT that enforces it.
+INCLUDE "engine/battle/get_move_max_pp_far.asm"
 INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
+
+
+; ============================================================================
+; Gym-leader expansion, Phase 0b (2026-09-10). Evacuated from "Battle Engine 7"
+; in bank $0E, which was down to 75 free bytes.
+;
+; These three files are ONE indivisible unit. ReadTrainer walks
+; TrainerDataPointers and each team's data with plain `[hli]` reads and walks
+; SpecialTrainerMoves the same way, so any split between them becomes a silent
+; cross-bank read. The audit behind the move: no label in parties.asm is
+; referenced from outside these files, ReadTrainer's only caller already used
+; `callfar`, and BuildMiniBossTeam / MiniBossAddMon are called only from within
+; read_trainer_party.asm.
+;
+; The one dependency that could NOT come along is the Moves table (bank $0E),
+; read for a substituted move's max PP. That is now a farcall to
+; GetMoveMaxPPFar, which lives beside Moves and carries a link-time ASSERT.
+;
+; Pinned to bank $39 in layout.link rather than floated: this section grows a
+; lot in Phase 2 (party specs for 11 new leader classes), and per this repo's
+; first-fit rule a large section must never be left to land wherever rgblink
+; happens to find room.
+; ============================================================================
+SECTION "Trainer Parties", ROMX
+
+INCLUDE "engine/battle/read_trainer_party.asm"
+
+INCLUDE "data/trainers/special_moves.asm"
+
+INCLUDE "data/trainers/parties.asm"
 
 ; Shin Red import Phase 5: UndoBurnParStats needs to be farcall-reachable from
 ; both "bank3" (item_effects.asm) and here (trainer_ai.asm's AICureStatus), so
