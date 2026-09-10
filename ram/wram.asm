@@ -2391,6 +2391,12 @@ wroguenpctradedialogue:: db
 wroguenpctradename:: ds NAME_LENGTH
 
 wroguenpcsell:: db
+; Phase 2R increment 8j: the salesman's offer needs its own form byte because its
+; species lives in wroguenpcsell, NOT in wRoguePokemon1 - so it cannot share
+; wRoguePokemonForm1 with the reward/trade/gift/boss paths. The offer persists in
+; the lobby while the player does other things, so this is a deferred path and
+; the form must be stored rather than left in wSpawnForm.
+wroguenpcsellform:: db
 wroguenpcclass:: db
 
 wItemBonusRarity:: db

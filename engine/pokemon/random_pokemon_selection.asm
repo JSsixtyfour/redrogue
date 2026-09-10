@@ -455,25 +455,40 @@ RogueRewardTradeRoll::
     ld [wRoguePokemon1], a
     ld [wroguenpctradeget], a
     ld [wNamedObjectIndex], a
-; Phase 2R increment 8: the trade offer is deliberately NEVER a form. The batch
-; clear already zeroed this byte and nothing between here and there sets it, so
-; the store is belt-and-braces - it states the intent at the site that would
-; otherwise be the obvious place to add a form roll later.
+IF FORCE_GIFT_TRADE_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_GIFT_TRADE_FORM_TEST in pokemon_data_constants.asm.
+; Forced BEFORE the form/name block below so the baked wroguenpctradename - which
+; becomes the traded mon's actual nickname - matches what is delivered.
+    ld a, MEOWTH
+    ld [wRoguePokemon1], a
+    ld [wroguenpctradeget], a
+    ld [wNamedObjectIndex], a
+    ld e, 1                         ; form 1; the store below reads e
+ENDC
+; Phase 2R increment 8i: the trade offer CAN be a form. This supersedes the 8c
+; exclusion, whose stated risk turned out not to exist.
 ;
-; The trade is excluded because it advertises
-; and delivers in two different places: the name is BAKED into wroguenpctradename
-; here, at roll time, while the mon itself is not built until the player picks the
-; slot, hands over a party mon and the animation finishes - and the mon that comes
-; out of that path is post-processed by InGameTrade_CopyDataToReceivedMon, which
-; has not been checked for whether it preserves MON_CATCH_RATE's form bits. Two
-; independent chances to advertise a form the player does not receive.
+; 8c excluded it on two worries, both now resolved by reading the code:
 ;
-; Adding it later is a small, self-contained change: publish the form context
-; before the GetMonName below, and set wSpawnForm from wRoguePokemonForm1 just
-; before RogueDoInGameTradeDialogue at both trade entry points. Verify the
-; delivered mon's bits actually survive first.
-    xor a
+;   1. "InGameTrade_CopyDataToReceivedMon might clobber MON_CATCH_RATE." It does
+;      not. It copies the nickname, the OT name and the OT ID, and never touches
+;      the catch-rate byte, so a form survives the trade intact.
+;   2. "It advertises in one place and delivers in another." True, and it works
+;      in our favour: the name baked HERE into wroguenpctradename IS the received
+;      mon's nickname. RogueDoInGameTradeDialogue points hl at wroguenpctradegive,
+;      roguenpctrade_dialogue_continue copies the name field into
+;      wInGameTradeMonNick, and CopyDataToReceivedMon writes that over the new
+;      mon's nick. So publishing the context before the GetMonName below is
+;      exactly what makes the traded mon BE called "A-MEOWTH".
+;
+; e still holds the form here - the three stores above only touch a. The form
+; BITS are published separately, immediately before the trade path's AddPartyMon
+; (engine/events/in_game_trades.asm).
+    ld a, e
     ld [wRoguePokemonForm1], a
+    ld [wFormContextForm], a
+    ld a, [wNamedObjectIndex]
+    ld [wFormContextSpecies], a
     call GetMonName                 ; offered mon's name → wNameBuffer
     ld hl, wNameBuffer
     ld de, wroguenpctradename

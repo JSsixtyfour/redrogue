@@ -89,6 +89,13 @@ rogue_gift_randomized_batch::
 ; value from the last reward batch while wRoguePokemon1 was overwritten here.
 	ld a, e
 	ld [wRoguePokemonForm1], a
+IF FORCE_GIFT_TRADE_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_GIFT_TRADE_FORM_TEST in pokemon_data_constants.asm.
+	ld a, DUGTRIO
+	ld [wRoguePokemon1], a
+	ld a, 1
+	ld [wRoguePokemonForm1], a
+ENDC
 	call GetGiverCount          ; a = number of gifts this giver has
 	ld [wBuffer], a             ; gift count / Rangerandom range
 	and a
@@ -427,7 +434,15 @@ BridgeGiftMenu::
 	ld c, 18
 	call TextBoxBorder
 	call BridgePlaceGiftNames
-	call UpdateSprites
+	; This nested menu covers nearly the full map view. Freeze object rendering
+	; and clear shadow OAM so map actors cannot composite over gift-name text.
+	; Preserve the caller's sprite-update state for the enclosing text lifecycle.
+	ldh a, [hUpdateSpritesEnabled]
+	push af
+	ld a, $ff
+	ldh [hUpdateSpritesEnabled], a
+	call ClearSprites
+	call DelayFrame
 	xor a
 	call BridgePrintGiftDesc     ; description for the initially-hovered gift
 .menuLoop
@@ -450,6 +465,8 @@ BridgeGiftMenu::
 	call BridgeDoGift
 	; fall through to clear BIT_NO_TEXT_DELAY before returning
 .noChoice
+	pop af
+	ldh [hUpdateSpritesEnabled], a
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	ret

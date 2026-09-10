@@ -63,8 +63,10 @@ IndigoPlateauLobby_Script:
 	ld hl, wCompletedInGameTradeFlags
 	predef FlagActionPredef
 	ResetEvent EVENT_BOUGHT_POKEMON
-	call PCTraderSuperNerdSetup
 	call PCPokemonSalesmanSetup
+	; Both setups use wroguenpctradename as scratch. Leave the trader last so its
+	; receive species, rather than the salesman's species, owns the trade nickname.
+	call PCTraderSuperNerdSetup
 	call PCClerksSetup
 	farcall PCWitchSetup
 
@@ -1367,6 +1369,10 @@ PCPokemonSalesmanText:
     
     ld a, [wroguenpcsell]   ; load pokemon for sale
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
+    ld a, [wroguenpcsellform]   ; increment 8j: name the offer as its form
+    ld [wFormContextForm], a
+    ld a, [wNamedObjectIndex]
+    ld [wFormContextSpecies], a
     call GetMonName         ; get name of pokemon to receive
     
     ld a, [wroguenpcclass]
@@ -1425,6 +1431,8 @@ PCPokemonSalesmanText:
     farcall GetRewardMonLevel
     ld a, [wCurEnemyLevel]
     ld c, a             ; c = level
+    ld a, [wroguenpcsellform]   ; increment 8j: build it as that form
+    ld [wSpawnForm], a
     ld a, [wroguenpcsell]
     ld b, a             ; b = species
 	call GivePokemon
@@ -1748,9 +1756,25 @@ PCPokemonSalesmanSetup:
     farcall Random_Pokemon_Selection_Far ; bank $2F; plain call would execute garbage
     ld a, d
     ld [wroguenpcsell], a ; load in pokemon that they will give player
-    
-    
+; Phase 2R increment 8j: bank the salesman's form. e carries it out of the roll;
+; the store above only touches a. Its own byte, not wRoguePokemonForm1 - the
+; salesman's species is wroguenpcsell, so sharing would collide with the reward
+; and trade offers.
+    ld a, e
+    ld [wroguenpcsellform], a
+IF FORCE_GIFT_TRADE_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_GIFT_TRADE_FORM_TEST in pokemon_data_constants.asm.
+    ld a, VULPIX
+    ld [wroguenpcsell], a
+    ld a, 1
+    ld [wroguenpcsellform], a
+ENDC
+    ld a, [wroguenpcsell]
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
+    ld a, [wroguenpcsellform]   ; name the offer as its form
+    ld [wFormContextForm], a
+    ld a, [wNamedObjectIndex]
+    ld [wFormContextSpecies], a
     call GetMonName         ; get name of pokemon to receive
     ld hl, wNameBuffer      ; name address
     ld de, wroguenpctradename   ; load name into this location
@@ -1777,4 +1801,3 @@ PCPokemonSalesmanSetup:
     ld de, PCClerkText2Items    ; ram address to save ids to
     farcall Random_StatTM_Mart_Selection  ; same bank-mismatch issue as above
     ret
-

@@ -383,6 +383,8 @@ Trade_ShowEnemyMon:
 
 Trade_AnimLeftToRight:
 ; Animates the mon moving from the left GB to the right one.
+	ld a, [wLeftGBMonSpecies]
+	ld [wMonPartySpriteSpecies], a
 	call Trade_InitGameboyTransferGfx
 	ld a, $1
 	ld [wTradedMonMovingRight], a
@@ -393,8 +395,6 @@ Trade_AnimLeftToRight:
 	ld [wBaseCoordX], a
 	ld a, $1c
 	ld [wBaseCoordY], a
-	ld a, [wLeftGBMonSpecies]
-	ld [wMonPartySpriteSpecies], a
 	call Trade_WriteCircledMonOAM
 	call Trade_DrawLeftGameboy
 	call Trade_CopyTileMapToVRAM
@@ -418,6 +418,8 @@ Trade_AnimLeftToRight:
 
 Trade_AnimRightToLeft:
 ; Animates the mon moving from the right GB to the left one.
+	ld a, [wRightGBMonSpecies]
+	ld [wMonPartySpriteSpecies], a
 	call Trade_InitGameboyTransferGfx
 	xor a
 	ld [wTradedMonMovingRight], a
@@ -425,8 +427,6 @@ Trade_AnimRightToLeft:
 	ld [wBaseCoordX], a
 	ld a, $44
 	ld [wBaseCoordY], a
-	ld a, [wRightGBMonSpecies]
-	ld [wMonPartySpriteSpecies], a
 	call Trade_WriteCircledMonOAM
 	call Trade_DrawRightGameboy
 	call Trade_CopyTileMapToVRAM
@@ -775,6 +775,35 @@ Trade_LoadMonSprite:
 	ldh a, [hAutoBGTransferEnabled]
 	xor $1
 	ldh [hAutoBGTransferEnabled], a
+; Phase 2R increment 8k: publish the form context so the trade animation draws a
+; formed mon as its FORM. Without this the header is vanilla, which means BOTH a
+; vanilla pic pointer and a vanilla pic bank (UncompressMonSprite takes the bank
+; from wMonHPicBank), so a traded Alolan Meowth animated as a plain Meowth even
+; though the mon itself was correct in the party afterwards.
+;
+; Published HERE, immediately before GetMonHeader, and deliberately NOT earlier:
+; RunPaletteCommand above can load a header of its own, and the context is
+; one-shot - ApplyFormOverride consumes it - so an earlier publish would be eaten
+; before it reached this call.
+;
+; Guarded on the species matching wRoguePokemon1, the rogue trade's offer. hl is
+; free: hlcoord below loads its own.
+;
+; ⚠ KNOWN GAP: this only forms the RECEIVED mon. The mon the PLAYER gives up
+; animates as its base species even if it is a form - its form lives in that
+; party mon's own MON_CATCH_RATE and would need hWhichPokemon to index it, which
+; is not reliably live this deep in the animation. Cosmetic, one-way, and only
+; visible for the couple of seconds the give-side sprite is on screen.
+	ld a, [wCurSpecies]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0                 ; ld a, 0 not xor a - the cp flags must reach the jr
+	jr nz, .noAnimForm
+	ld a, [wRoguePokemonForm1]
+.noAnimForm
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	call GetMonHeader
 	hlcoord 7, 2
 	call LoadFlippedFrontSpriteByMonIndex

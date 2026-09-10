@@ -1,3 +1,17 @@
+; ===========================================================================
+; ART CREDIT - do not lose this.
+;
+; The Gen-1-style redraws of the post-Kanto species (Johto and later: Lugia,
+; Ho-Oh, Celebi, the legendary beasts, the Johto starters and the rest of the
+; Species Groups Phase 2 import) are by **SkidMarc25**. They begin at "Pics 8"
+; below; "Pics 1".."Pics 7" are the vanilla Kanto 151.
+;
+; The regional/convergent FORM sprites in "Pics 13".."Pics 15" (Species Groups
+; Phase 2R) are the same lineage of Gen-1-style redraws.
+;
+; If this art is ever replaced, moved or re-batched, the credit travels with it.
+; ===========================================================================
+
 SECTION "Pics 1", ROMX
 
 RhydonPicFront::      INCBIN "gfx/pokemon/front/rhydon.pic"

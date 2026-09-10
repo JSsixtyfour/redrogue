@@ -112,10 +112,6 @@ Rogue_Lab_Script_PokeballText_1:
 .GetMon
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
-	ld a, [wRoguePokemonForm1]  ; increment 8j: name the starter as its form
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
 	call GetMonName
 	ld a, [wRoguePokemon1]
 	call OaksLabShowStarterDex
@@ -128,8 +124,6 @@ Rogue_Lab_Script_PokeballText_1:
 	and a
 	jr nz, .end_text
 
-	ld a, [wRoguePokemonForm1]  ; increment 8j: build the starter as its form
-	ld [wSpawnForm], a
 	ld a, [wRoguePokemon1]
 	ld b, a
 	ld c, 5
@@ -158,10 +152,6 @@ Rogue_Lab_Script_PokeballText_2:
 .GetMon
 	ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
-	ld a, [wRoguePokemonForm2]  ; increment 8j
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
 	call GetMonName
 	ld a, [wRoguePokemon2]
 	call OaksLabShowStarterDex
@@ -174,8 +164,6 @@ Rogue_Lab_Script_PokeballText_2:
 	and a
 	jr nz, .end_text
 
-	ld a, [wRoguePokemonForm2]  ; increment 8j
-	ld [wSpawnForm], a
 	ld a, [wRoguePokemon2]
 	ld b, a
 	ld c, 5
@@ -204,10 +192,6 @@ Rogue_Lab_Script_PokeballText_3:
 .GetMon
 	ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
-	ld a, [wRoguePokemonForm3]  ; increment 8j
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
 	call GetMonName
 	ld a, [wRoguePokemon3]
 	call OaksLabShowStarterDex
@@ -220,8 +204,6 @@ Rogue_Lab_Script_PokeballText_3:
 	and a
 	jr nz, .end_text
 
-	ld a, [wRoguePokemonForm3]  ; increment 8j
-	ld [wSpawnForm], a
 	ld a, [wRoguePokemon3]
 	ld b, a
 	ld c, 5

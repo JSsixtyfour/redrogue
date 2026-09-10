@@ -39,7 +39,7 @@ class LobbyPoseLayoutTests(unittest.TestCase):
     def test_two_fixed_south_services_use_the_four_tile_slots(self):
         self.assertIn("SPRITE_LOBBY_MOVE_RELEARNER, STAY, DOWN", self.objects)
         self.assertIn("SPRITE_LOBBY_DAYCARE_LADY, STAY, DOWN", self.objects)
-        self.assertIn("SPRITE_GAMEBOY_KID, STAY, RIGHT", self.objects)
+        self.assertIn("SPRITE_GAMEBOY_KID, STAY, DOWN", self.objects)
         self.assertIn(
             "overworld_sprite_slice SilphPresidentSprite, 0, 4",
             self.sprites,

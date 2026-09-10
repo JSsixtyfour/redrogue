@@ -92,12 +92,14 @@ DisplayNamingScreen:
 	call RunPaletteCommand
 	call LoadHpBarAndStatusTilePatterns
 	call LoadEDTile
-	farcall LoadMonPartySpriteGfx
 	hlcoord 0, 4
 	ld b, 9
 	ld c, 18
 	call TextBoxBorder
 	call PrintNamingText
+	; The mon-name path publishes wMonPartySpriteSpecies while drawing its OAM.
+	; Load its slot-zero graphics only after that species is authoritative.
+	farcall LoadMonPartySpriteGfx
 	ld a, 3
 	ld [wTopMenuItemY], a
 	ld a, 1

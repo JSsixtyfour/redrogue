@@ -55,6 +55,29 @@ DoInGameTradeDialogue:
 	ld a, [wInGameTradeGiveMonSpecies]
 	ld de, wInGameTradeGiveMonName
 	call InGameTrade_GetMonName
+; Phase 2R increment 8i: the offer's DISPLAY name is re-derived from the species
+; HERE, and it is a completely separate path from wroguenpctradename - that buffer
+; only ever becomes the received mon's NICKNAME, via wInGameTradeMonNick. Baking
+; the form into the nickname therefore did NOT make the offer text say "A-MEOWTH";
+; this publish is what does. Two name paths, both need the context.
+;
+; Published between the two InGameTrade_GetMonName calls on purpose: the context
+; is one-shot and GetFormNameSource consumes it, so the GIVE call above must not
+; be allowed to eat it.
+;
+; Guarded on the species so only the rogue random trade (offer = wRoguePokemon1)
+; can show a form; authored TradeMons entries must not. hl is free here - the
+; trade-data walk above has finished with it and .printText reloads its own.
+	ld a, [wInGameTradeReceiveMonSpecies]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0
+	jr nz, .noOfferForm
+	ld a, [wRoguePokemonForm1]
+.noOfferForm
+	ld [wFormContextForm], a
+	ld a, [wInGameTradeReceiveMonSpecies]
+	ld [wFormContextSpecies], a
 	ld a, [wInGameTradeReceiveMonSpecies]
 	ld de, wInGameTradeReceiveMonName
 	call InGameTrade_GetMonName
@@ -129,7 +152,9 @@ InGameTrade_DoTrade:
 	ld a, [wCurPartySpecies]
 	cp b
 	ld a, TRADETEXT_WRONG_MON
-	jr nz, .tradeFailed ; jump if the selected mon's species is not the required one
+	jp nz, .tradeFailed ; jump if the selected mon's species is not the required one
+	                    ; jp, not jr: increment 8i's form publish below pushed
+	                    ; .tradeFailed out of range
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Level
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -162,6 +187,26 @@ InGameTrade_DoTrade:
 	call RemovePokemon
 	ld a, $80 ; prevent the player from naming the mon
 	ld [wMonDataLocation], a
+; Phase 2R increment 8i: publish the offered mon's form so AddPartyMon folds it
+; into the new mon's own MON_CATCH_RATE. Safe here because the routine that
+; post-processes this mon (InGameTrade_CopyDataToReceivedMon, below) touches only
+; the nickname, OT name and OT ID - never the catch-rate byte.
+;
+; Guarded on the species so ONLY the rogue random trade can carry a form: its
+; offer is wRoguePokemon1, set by RogueRewardTradeRoll. An authored TradeMons
+; entry or the legendary-boss trade must not inherit a reward slot's form, and
+; the 0 on the mismatch path stops one inheriting a stale wSpawnForm either.
+;
+; `ld a, 0` not `xor a` - the flags from `cp [hl]` have to reach the jr. hl is
+; free: the next routine loads its own.
+	ld a, [wInGameTradeReceiveMonSpecies]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0
+	jr nz, .noTradeForm
+	ld a, [wRoguePokemonForm1]
+.noTradeForm
+	ld [wSpawnForm], a
 	call AddPartyMon
 	call InGameTrade_CopyDataToReceivedMon
 	callfar InGameTrade_CheckForTradeEvo
