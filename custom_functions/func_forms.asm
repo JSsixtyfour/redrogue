@@ -503,3 +503,53 @@ RogueRollFormForTier::
 	ld d, 0
 	ld e, 0
 	ret
+
+; ---------------------------------------------------------------------------
+; GetEnemySpawnForm
+;
+; The form index for the enemy mon LoadEnemyMonData is about to build.
+;
+; INPUT:  none (reads hIsInBattle / hWhichPokemon / the enemy party)
+; OUTPUT: e = form index (0 = base species, 1..NUM_FORM_SLOTS = a form)
+; CLOBBERS: af, bc, hl   (d PRESERVED)
+;
+; A TRAINER mon carries its own form in its party struct's MON_CATCH_RATE bits
+; 5-6, written once at roster-build time by _AddPartyMon. It has to be read back
+; from THERE, not from wSpawnForm: that global is consumed and zeroed as each
+; roster mon is created, so by the time the battle actually starts it is 0 and
+; every trainer mon would be rebuilt as its plain base species - stats, types,
+; sprite and name - whatever was stored on it. That is also what made handcrafted
+; teams unable to carry a form at all.
+;
+; A WILD mon has no party struct to read, so it still uses the wSpawnForm
+; hand-off published just before the encounter is built.
+;
+; Indexed by hWhichPokemon, NOT wEnemyMonPartyPos - the latter is not written
+; until .copyHPAndStatusFromPartyData, and TOUCH 1 runs well before that. Same
+; reasoning as the DV read a few lines below it.
+;
+; Lives HERE rather than in core.asm because "Battle Core" is a full 16 KiB bank
+; and adding ~30 bytes overflowed it by 8 (measured 2026-09-09). Nothing in this
+; routine needs bank $30 - it touches only HRAM, WRAM and HOME - so it is here to
+; sit with the rest of the form code in a bank that has room. Returns in e
+; because only d/e/flags cross a farcall, and Bankswitch's return path writes a.
+; ---------------------------------------------------------------------------
+GetEnemySpawnForm::
+	ldh a, [hIsInBattle]
+	cp $2                  ; trainer battle?
+	jr nz, .wild
+	ld hl, wEnemyMon1CatchRate
+	ldh a, [hWhichPokemon]
+	ld bc, wEnemyMon2 - wEnemyMon1
+	call AddNTimes         ; HOME; clobbers af/hl only
+	ld a, [hl]
+	and FORM_MASK
+	rlca                   ; bits 5-6 -> 0..3; three LEFT rotations are the
+	rlca                   ; inverse of the three rrca the encode side uses
+	rlca
+	ld e, a
+	ret
+.wild
+	ld a, [wSpawnForm]
+	ld e, a
+	ret

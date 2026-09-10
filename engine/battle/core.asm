@@ -7176,7 +7176,10 @@ LoadEnemyMonData:
 ; sprite, and .copyTypes below copies wMonHBaseStats straight into
 ; wEnemyMonBaseStats. Publishing at the tail of this routine - the seam the
 ; cemetery ghost boss uses - would be far too late for all three.
-	ld a, [wSpawnForm]
+; Increment 8c: a trainer mon's form comes from its OWN party struct, not the
+; global - see GetEnemySpawnForm above. Wild mons are unaffected.
+	farcall GetEnemySpawnForm ; e = form; de is not live here
+	ld a, e
 	ld [wFormContextForm], a
 	ld a, [wCurSpecies]
 	ld [wFormContextSpecies], a
@@ -7305,7 +7308,13 @@ LoadEnemyMonData:
 ; tail of this routine, or a formed wild mon announces itself by its base
 ; species' name. de still points at wEnemyMonCatchRate here, so the write is a
 ; single store and every other bit stays cleared exactly as intended.
-	ld a, [wSpawnForm]
+; Increment 8c: same source as TOUCH 1. For a trainer mon this reads the stored
+; bits and writes them straight back, which is what makes the form SURVIVE the
+; unconditional clear above rather than being wiped to the base species.
+	push de                ; de is on wEnemyMonCatchRate and e is the return slot
+	farcall GetEnemySpawnForm
+	ld a, e
+	pop de
 	and NUM_FORM_SLOTS
 	rrca                   ; 0-3 -> bits 5-6
 	rrca

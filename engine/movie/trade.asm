@@ -612,21 +612,26 @@ Trade_AnimCircledMon:
   ; call UpdateGBCPal_BGP
 	ld hl, wShadowOAMSprite00TileID
 	ld de, OBJ_SIZE
+	ld a, [hl]
+	and 7
+	cp 1
+	jr nz, .animateMon
+	; Ball/Helix category icons use their original coordinate-only party shake;
+	; the trade scene has no slot-local second frame for them.
+	ld bc, OBJ_SIZE * 4
+	add hl, bc
+	jr .circle
+.animateMon
 	ld c, 4
 .monLoop
 	ld a, [hl]
-	cp YELLOW_LEGACY_ICON_VRAM_TILE
-	jr c, .categoryMon
 	xor 4
-	jr .storeMon
-.categoryMon
-	xor ICONOFFSET
-.storeMon
 	ld [hl], a
 	add hl, de
 	dec c
 	jr nz, .monLoop
 	; The surrounding cable circle always uses the original $40 frame split.
+.circle
 	ld c, $10
 .circleLoop
 	ld a, [hl]

@@ -56,20 +56,17 @@ GetAnimationSpeed:
 	ldh a, [hCurrentMenuItem]
 	call AddNTimes
 	ld a, [hl]
-	cp YELLOW_LEGACY_ICON_VRAM_TILE
-	jr nc, .uniqueIcon
-	ld c, ICONOFFSET
-	cp ICON_BALL << 2
+	and 7
+	cp 1
 	jr z, .editCoords
-	cp ICON_HELIX << 2
-	jr nz, .editTileIDS
-; ICON_BALL and ICON_HELIX only shake up and down
+	; Every ordinary slot owns four tiles for each animation frame.
+	ld c, 4
+	jr .editTiles
 .editCoords
 	dec hl
-	dec hl ; dec hl to the OAM y coord
-	ld c, $1 ; amount to increase the y coord by
-; otherwise, load a second sprite frame
-.editTileIDS
+	dec hl
+	ld c, 1
+.editTiles
 	ld b, 4
 	ld de, OBJ_SIZE
 .loop
@@ -82,10 +79,6 @@ GetAnimationSpeed:
 	pop bc
 	ld a, c
 	jr .incTimer
-.uniqueIcon
-	; The streamed icons store four tiles per frame contiguously.
-	ld c, 4
-	jr .editTileIDS
 
 ; Party mon animations cycle between 2 frames.
 ; The members of the PartyMonSpeeds array specify the number of V-blanks
@@ -95,18 +88,19 @@ PartyMonSpeeds:
 	db 5, 16, 32
 
 LoadMonPartySpriteGfx:
-; Load mon party sprite tile patterns into VRAM during V-blank.
-	ld hl, MonPartySpritePointers
-	ld a, $20
-	call LoadAnimSpriteGfx
+; Naming and trade screens use the first per-slot icon block.
+	xor a
+	ldh [hPartyMonIndex], a
 	ld a, [wMonPartySpriteSpecies]
-	call GetYellowLegacyUniqueIcon
-	ret nc
-	ld d, h
-	ld e, l
-	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
-	ld b, a
-	ld c, 8
+	call LoadPartyIconForSpecies
+	; Trade's circle occupies the same legacy tiles it used before.
+	ld de, TradeBubbleIconGFX
+	ld hl, vSprites tile (ICON_TRADEBUBBLE << 2)
+	lb bc, BANK(TradeBubbleIconGFX), 4
+	call CopyVideoData
+	ld de, TradeBubbleIconGFX tile 4
+	ld hl, vSprites tile (ICONOFFSET + (ICON_TRADEBUBBLE << 2))
+	lb bc, BANK(TradeBubbleIconGFX), 4
 	jp CopyVideoData
 
 LoadAnimSpriteGfx:
@@ -141,7 +135,7 @@ LoadAnimSpriteGfx:
 	jr nz, .loop
 	ret
 
-DEF YELLOW_LEGACY_ICON_VRAM_TILE EQU $80
+DEF YELLOW_LEGACY_ICON_VRAM_TILE EQU $00
 DEF YELLOW_LEGACY_ICON_SLOT_TILES EQU 8
 
 ; Input: a = internal species ID.
@@ -188,43 +182,12 @@ LoadMonPartySpriteGfxWithLCDDisabled:
 ; Load mon party sprite tile patterns into VRAM immediately by disabling the
 ; LCD.
 	call DisableLCD
-	ld hl, MonPartySpritePointers
-	ld a, $20
-	ld bc, $0
-.loop
-	push af
-	push bc
-	push hl
-	add hl, bc
-	ld a, [hli]
-	ld e, a
-	ld a, [hli]
-	ld d, a
-	push de
-	ld a, [hli]
-	ld c, a
-	swap c
-	ld b, $0
-	ld a, [hli]
-	ld e, [hl]
-	inc hl
-	ld d, [hl]
-	pop hl
-	call FarCopyData2
-	pop hl
-	pop bc
-	ld a, $6
-	add c
-	ld c, a
-	pop af
-	dec a
-	jr nz, .loop
-	call LoadYellowLegacyPartyIcons
+	call LoadPartyIconsBySlot
 	jp EnableLCD
 
-; Stream supported icons into a stable eight-tile range for each party slot.
-; The category atlas remains resident for every unsupported species.
-LoadYellowLegacyPartyIcons:
+; The guide's slot layout uses exactly tiles $00-$2f. This is below the font at
+; $80 and gives each party member four tiles for each of two frames.
+LoadPartyIconsBySlot:
 	ld hl, wPartySpecies
 	xor a
 .loop
@@ -233,67 +196,143 @@ LoadYellowLegacyPartyIcons:
 	cp $ff
 	ret z
 	push hl
-	call LoadYellowLegacyPartyIcon
+	call LoadPartyIconForSpecies
 	pop hl
 	ldh a, [hPartyMonIndex]
 	inc a
 	jr .loop
 
-LoadYellowLegacyPartyIcon:
+; Input: a = internal species ID, hPartyMonIndex = destination slot.
+LoadPartyIconForSpecies:
 	call GetYellowLegacyUniqueIcon
-	ret nc
-	push af
-	push hl
-	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
-	ld bc, YELLOW_LEGACY_ICON_SLOT_TILES tiles
-	ldh a, [hPartyMonIndex]
-	call AddNTimes
+	jr nc, .category
 	ld d, h
 	ld e, l
-	pop hl
-	pop af
-	ld bc, 8 tiles
-	jp FarCopyData
-
-; Party reorder leaves the category atlas intact, so only the streamed slots
-; need refreshing while the menu remains active.
-ReloadYellowLegacyPartyIcons::
-	ld hl, wPartySpecies
-	xor a
-.loop
-	ldh [hPartyMonIndex], a
-	ld a, [hli]
-	cp $ff
-	ret z
-	push hl
-	call GetYellowLegacyUniqueIcon
-	jr nc, .next
-	ld d, h
-	ld e, l
-	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
-	ld bc, YELLOW_LEGACY_ICON_SLOT_TILES tiles
-	ldh a, [hPartyMonIndex]
-	call AddNTimes
-	; Recover the source through the resolver after calculating the destination.
-	push hl
-	ldh a, [hPartyMonIndex]
-	ld hl, wPartySpecies
-	ld e, a
-	ld d, 0
-	add hl, de
-	ld a, [hl]
-	call GetYellowLegacyUniqueIcon
-	ld d, h
-	ld e, l
-	pop hl
 	ld b, a
 	ld c, 8
-	call CopyVideoData
-.next
-	pop hl
+	xor a
+	jp CopyPartyIconChunk
+.category
+	call GetPartyMonSpriteID
+	cp ICON_MON << 2
+	jp z, LoadPartyIconMonster
+	cp ICON_BALL << 2
+	jp z, LoadPartyIconBall
+	cp ICON_HELIX << 2
+	jp z, LoadPartyIconHelix
+	cp ICON_FAIRY << 2
+	jp z, LoadPartyIconFairy
+	cp ICON_BIRD << 2
+	jp z, LoadPartyIconBird
+	cp ICON_WATER << 2
+	jp z, LoadPartyIconWater
+	cp ICON_BUG << 2
+	jp z, LoadPartyIconBug
+	cp ICON_GRASS << 2
+	jp z, LoadPartyIconGrass
+	cp ICON_SNAKE << 2
+	jp z, LoadPartyIconSnake
+	cp ICON_QUADRUPED << 2
+	jp z, LoadPartyIconQuadruped
+	cp ICON_PIKACHU << 2
+	jp z, LoadPartyIconPikachu
+	jp LoadPartyIconChansey
+
+MACRO load_party_icon_chunk
+	ld de, \1 tile \2
+	lb bc, BANK(\1), \3
+	ld a, \4
+	call CopyPartyIconChunk
+ENDM
+
+; Input: de = source, b = source bank, c = tile count, a = slot offset.
+CopyPartyIconChunk:
+	push bc
+	push de
+	push af
+	ld hl, vSprites
+	ld bc, YELLOW_LEGACY_ICON_SLOT_TILES tiles
 	ldh a, [hPartyMonIndex]
-	inc a
-	jr .loop
+	call AddNTimes
+	pop af
+	ld bc, 1 tiles
+	call AddNTimes
+	pop de
+	pop bc
+	ldh a, [rLCDC]
+	bit B_LCDC_ENABLE, a
+	jr nz, .videoCopy
+	; With the LCD off there is no VBlank for CopyVideoData to wait on.
+	push hl
+	ld h, d
+	ld l, e
+	pop de
+	ld a, b
+	ld b, 0
+	swap c
+	jp FarCopyData
+.videoCopy
+	jp CopyVideoData
+
+LoadPartyIconMonster:
+	load_party_icon_chunk MonsterSprite, 12, 4, 0
+	load_party_icon_chunk MonsterSprite, 0, 4, 4
+	ret
+LoadPartyIconBall:
+	; Offset one marks the two legacy shake-only categories for AnimatePartyMon.
+	load_party_icon_chunk PokeBallSprite, 0, 4, 1
+	ret
+LoadPartyIconHelix:
+	load_party_icon_chunk PokeBallSprite, 4, 4, 1
+	ret
+LoadPartyIconFairy:
+	load_party_icon_chunk FairySprite, 12, 4, 0
+	load_party_icon_chunk FairySprite, 0, 4, 4
+	ret
+LoadPartyIconBird:
+	load_party_icon_chunk BirdSprite, 12, 4, 0
+	load_party_icon_chunk BirdSprite, 0, 4, 4
+	ret
+LoadPartyIconWater:
+	load_party_icon_chunk SeelSprite, 0, 4, 0
+	load_party_icon_chunk SeelSprite, 12, 4, 4
+	ret
+LoadPartyIconBug:
+	load_party_icon_chunk BugIconFrame2, 0, 1, 0
+	load_party_icon_chunk BugIconFrame2, 1, 1, 2
+	load_party_icon_chunk BugIconFrame1, 0, 1, 4
+	load_party_icon_chunk BugIconFrame1, 1, 1, 6
+	ret
+LoadPartyIconGrass:
+	load_party_icon_chunk PlantIconFrame2, 0, 1, 0
+	load_party_icon_chunk PlantIconFrame2, 1, 1, 2
+	load_party_icon_chunk PlantIconFrame1, 0, 1, 4
+	load_party_icon_chunk PlantIconFrame1, 1, 1, 6
+	ret
+LoadPartyIconSnake:
+	load_party_icon_chunk SnakeIconFrame1, 0, 1, 0
+	load_party_icon_chunk SnakeIconFrame1, 1, 1, 2
+	load_party_icon_chunk SnakeIconFrame2, 0, 1, 4
+	load_party_icon_chunk SnakeIconFrame2, 1, 1, 6
+	ret
+LoadPartyIconQuadruped:
+	load_party_icon_chunk QuadrupedIconFrame1, 0, 1, 0
+	load_party_icon_chunk QuadrupedIconFrame1, 1, 1, 2
+	load_party_icon_chunk QuadrupedIconFrame2, 0, 1, 4
+	load_party_icon_chunk QuadrupedIconFrame2, 1, 1, 6
+	ret
+LoadPartyIconPikachu:
+	load_party_icon_chunk PikachuSprite, 12, 4, 0
+	load_party_icon_chunk PikachuSprite, 0, 4, 4
+	ret
+LoadPartyIconChansey:
+	load_party_icon_chunk ChanseySprite, 0, 4, 0
+	load_party_icon_chunk ChanseySprite, 0, 4, 4
+	ret
+
+; A reorder changes which graphics belong to each eight-tile slot.
+ReloadYellowLegacyPartyIcons::
+	jp LoadPartyIconsBySlot
 
 INCLUDE "data/icon_pointers.asm"
 
@@ -317,7 +356,10 @@ WriteMonPartySpriteOAMByPartyIndex:
 	add hl, de
 	ld a, [hl]
 	call GetPartyMonSpriteID
+	push af
+	call GetYellowLegacyPartySlotBaseTile
 	ld [wOAMBaseTile], a
+	pop af
 	call WriteMonPartySpriteOAM
 	jr .done
 .unique
@@ -340,7 +382,10 @@ WriteMonPartySpriteOAMBySpecies:
 	jr c, .unique
 	ld a, [wMonPartySpriteSpecies]
 	call GetPartyMonSpriteID
+	push af
+	xor a
 	ld [wOAMBaseTile], a
+	pop af
 	jr WriteMonPartySpriteOAM
 .unique
 	ld a, YELLOW_LEGACY_ICON_VRAM_TILE
@@ -370,6 +415,14 @@ WriteMonPartySpriteOAM:
 ; Write the OAM blocks for the first animation frame into the OAM buffer and
 ; make a copy at wMonPartySpritesSavedOAM.
 	push af
+	cp ICON_BALL << 2
+	jr z, .markShakeOnly
+	cp ICON_HELIX << 2
+	jr nz, .setup
+.markShakeOnly
+	ld hl, wOAMBaseTile
+	inc [hl]
+.setup
 	ld c, $10
 	ld h, HIGH(wShadowOAM)
 	ldh a, [hPartyMonIndex]

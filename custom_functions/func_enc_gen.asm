@@ -248,7 +248,47 @@ GetRandRosterLoop:
 	pop bc
 	pop hl
 .skipEvolution
-	;push hl                 ; preserve h1
+; Increment 8c: roll this roster mon's regional form and publish it IMMEDIATELY
+; before AddPartyMon, which folds it into this mon's own MON_CATCH_RATE bits 5-6.
+; That is the whole storage problem solved for free - unlike bosses and wild
+; encounters, every roster mon gets its own party struct, so no side table is
+; needed and the "write wSpawnForm only just before a creation" rule holds by
+; construction: the two are adjacent.
+;
+; wCurPartySpecies is FINAL here - ScaleTrainer_evolution has already run - which
+; matters because a form record is keyed to the species that carries the sprite.
+;
+; Every register in this loop is live (b = class loop, d = inner counter,
+; e = minimum level, hl = difficulty table cursor) and the form roll needs d and
+; e for its own arguments, so the whole thing is bracketed by pushes.
+	push hl
+	push bc
+	push de
+	call RogueFormsUnlocked
+	jr z, .noRosterForm
+	ld a, [wCurPartySpecies]
+	ld e, a                 ; e = species
+	call RogueGetActiveGroupMask
+	ld d, a                 ; d = active group mask, for the per-form gate
+	farcall RogueRollFormForSpecies ; e = form index, 0 if none
+	ld a, e
+	jr .storeRosterForm
+.noRosterForm
+	xor a
+.storeRosterForm
+	ld [wSpawnForm], a
+	pop de
+	pop bc
+	pop hl
+IF FORCE_TRAINER_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_TRAINER_FORM_TEST in pokemon_data_constants.asm.
+; Forces the whole enemy roster to Alolan Grimer so the stored-form send-out path
+; can be observed without waiting on two random rolls to line up.
+	ld a, GRIMER
+	ld [wCurPartySpecies], a
+	ld a, 1                 ; agrimer.asm is form_record GRIMER, 1
+	ld [wSpawnForm], a
+ENDC
 	call AddPartyMon    ; add the pokemon
     ; Gambler's Paradise: replace the just-added mon's rolled moves with its
     ; fixed themed moveset (and correct PP).

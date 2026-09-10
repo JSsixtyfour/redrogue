@@ -185,6 +185,27 @@ DEF FORM_TIER_ODDS EQU 16
 ; One FormTierTable row: pair count + list pointer.
 DEF FORM_TIER_ENTRY_SIZE EQU 3
 
+; ===========================================================================
+; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
+;
+; 1 = every mon on every RANDOM ENEMY TRAINER's roster is forced to Alolan Grimer
+;     (GRIMER + form 1), bypassing both the species roll and the unlock gate.
+;
+; This exists to test ONE thing: does a form STORED in a trainer mon's party
+; struct survive being sent out? If the enemy leads with "A-GRIMER" and the
+; Alolan sprite, GetEnemySpawnForm is reading the stored bits correctly. If it
+; leads with a plain "GRIMER", the send-out path is still wiping the form.
+;
+; It deliberately bypasses RogueFormsUnlocked, so it works WITHOUT Debug 2 and
+; without any champion wins - it is testing the battle path, not the gating.
+;
+; ⚠ `make smoke` WILL FAIL with this set to 1. Every trainer roster becomes six
+; Alolan Grimers, which is exactly what several AI/roster tests assert against.
+; That is expected, not a regression. Set it to 0 and re-run before trusting a
+; smoke result.
+DEF FORCE_TRAINER_FORM_TEST EQU 1
+; ===========================================================================
+
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record
 ; carries a FULL base-stats row, so a form gets its own stats, both types, catch
 ; rate, base exp, pic size, front/back pic pointers AND pic bank, starting
