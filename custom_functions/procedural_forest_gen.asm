@@ -2077,6 +2077,8 @@ PFRollBoss:
     ld a, d
     ld [wRoguePokemon1], a
     ld [sProcForestBossSpecies], a
+    ld a, e                          ; increment 8f: e = the form the roll picked
+    ld [wRoguePokemonForm1], a       ; e survives the SRAM re-assert above
     ; Store the OW sprite category. Must NOT `farcall PCGetBossOWSprite` —
     ; that returns the sprite in A, and farcall's Bankswitch clobbers A with
     ; the restored bank number on return (was the "boss = gentleman" bug).

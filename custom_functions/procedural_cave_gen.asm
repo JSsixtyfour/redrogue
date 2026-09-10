@@ -494,6 +494,26 @@ PCRollBoss:
 	ld [rRAMB], a
 	ld a, d
 	ld [wRoguePokemon1], a
+; Phase 2R increment 8f: bank the boss's form alongside its species. This costs
+; nothing to obtain - Random_Pokemon_Selection returns d = species AND e = form,
+; and e survives the SRAM re-assert above (it only touches a).
+;
+; wRoguePokemonForm1 is the right home because the boss species already lives in
+; wRoguePokemon1; storing the form anywhere else would leave the two able to
+; drift apart. This also closes the aliasing hole where every generator wrote
+; wRoguePokemon1 while the parallel form byte kept a stale reward value.
+	ld a, e
+	ld [wRoguePokemonForm1], a
+IF FORCE_BOSS_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_BOSS_FORM_TEST in pokemon_data_constants.asm.
+; d is overwritten too, so the sprite lookup below matches the forced species.
+	ld d, GRIMER                    ; <- species to force
+	ld a, d
+	ld [wRoguePokemon1], a
+	ld a, 1                         ; <- form (agrimer.asm is form_record GRIMER, 1)
+	ld [wRoguePokemonForm1], a
+ENDC
+	ld a, d                         ; PCGetBossOWSprite wants the species in a
 	; look up the matching SPRITE_* for this species
 	call PCGetBossOWSprite          ; a = species → a = SPRITE_* constant
 	ld [sProcCaveStagingBossSprite], a

@@ -363,6 +363,28 @@ EngageMapTrainer::
 	ld [wEngagedTrainerSet], a
 	xor a
 	ld [wIsTrainerBattle], a
+; Phase 2R increment 8f: republish the staged boss's form. 17 bytes of HOME.
+;
+; The procedural boss is rolled at PRELOAD and not built until the player walks
+; into its sprite, so wSpawnForm has long since been overwritten by whatever wild
+; encounters happened in between. This is the one moment that knows a specific
+; overworld mon is engaging, so it is where the form has to be restored from the
+; byte that travels with wRoguePokemon1.
+;
+; Guarded on the species so an ordinary scripted overworld mon - Mewtwo in
+; Cerulean Cave, say - cannot pick up a stale boss form, and set to 0 when it
+; does not match so it cannot inherit the last wild encounter's form either.
+;
+; `ld a, 0` not `xor a`: the flags from `cp [hl]` have to survive to the jr.
+; hl is free here - the caller is done with it and PlayTrainerMusic reloads it.
+	ld a, [wEngagedTrainerClass]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0
+	jr nz, .noBossForm
+	ld a, [wRoguePokemonForm1]
+.noBossForm
+	ld [wSpawnForm], a
 	jp PlayTrainerMusic
 
 PrintEndBattleText::

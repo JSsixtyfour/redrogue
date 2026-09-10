@@ -188,6 +188,13 @@ PCemRollBoss:
 	farcall Random_Pokemon_Selection_Far ; d = species
 	ld a, d
 	ld [wRoguePokemon1], a
+	ld a, e                           ; increment 8f: e = the form the roll picked
+	ld [wRoguePokemonForm1], a
+; Stored BEFORE PCemAvoidGhostBoss on purpose. If that reroll swaps the species,
+; the form no longer belongs to it - but ApplyFormOverride keys on (species,
+; form) and simply finds no record, so the boss comes out as its plain self
+; rather than wearing another species' form. Failing to "no form" is the right
+; outcome here, and it costs nothing to get.
 	call PCemAvoidGhostBoss           ; reroll if it landed on Gastly/Haunter/Gengar
 	; roll the ghost move -> b (0=LICK, 1=NIGHT_SHADE, 2=CONFUSE_RAY)
 	ld c, 3

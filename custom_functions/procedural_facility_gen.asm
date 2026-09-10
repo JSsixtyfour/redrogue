@@ -1564,6 +1564,9 @@ PFacRollBoss:
     ld a, d
     ld [wRoguePokemon1], a
     ld [sProcFacilityBossSpecies], a
+    ld a, e                          ; increment 8f: e = the form the roll picked
+    ld [wRoguePokemonForm1], a       ; travels with wRoguePokemon1; republished by
+                                     ; EngageMapTrainer when the player walks in
     farcall PFacStoreBossOWSpriteToSRAM  ; stores SPRITE_* to sProcFacilityBossSprite
     ret
 

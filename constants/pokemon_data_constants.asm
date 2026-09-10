@@ -235,7 +235,23 @@ DEF FORCE_TRAINER_FORM_TEST EQU 0
 ; already happened and wSpawnForm holds a form rolled for the species you just
 ; overwrote - which is 0 almost every time, hence "I forced a Meowth and got a
 ; plain Meowth".
-DEF FORCE_WILD_FORM_TEST EQU 1
+DEF FORCE_WILD_FORM_TEST EQU 0
+
+; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
+;
+; 1 = the WILD AREA (procedural cave) boss is always Alolan Grimer. Edit the two
+;     `ld` lines in PCRollBoss (custom_functions/procedural_cave_gen.asm) to test
+;     a different record.
+;
+; Forces both wRoguePokemon1 and wRoguePokemonForm1, so it also bypasses
+; FORM_SPAWN_ODDS and RogueFormsUnlocked - no Debug 2 or champion wins needed.
+; Without it you would be waiting for a random boss species that happens to own a
+; form record AND for a 1-in-8 roll on top.
+;
+; The forced species feeds the overworld SPRITE lookup too, so the boss sprite on
+; the map should be a Grimer before you ever engage it - a useful early signal
+; that PCRollBoss ran at all.
+DEF FORCE_BOSS_FORM_TEST EQU 1
 ; ===========================================================================
 
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record
