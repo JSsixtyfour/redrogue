@@ -83,6 +83,16 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_JESSIE                 ; $4b
 	const SPRITE_JAMES                  ; $4c
 	const SPRITE_OFFICER_JENNY          ; $4d
+	const SPRITE_DODUO                  ; $4e
+	const SPRITE_PSYDUCK                ; $4f
+	const SPRITE_NIDORINO               ; $50
+	const SPRITE_KABUTO                 ; $51
+	const SPRITE_SPEAROW                ; $52
+	const SPRITE_CUBONE                 ; $53
+	const SPRITE_ARTICUNO               ; $54
+	const SPRITE_ZAPDOS                 ; $55
+	const SPRITE_MOLTRES                ; $56
+	const SPRITE_MEWTWO                 ; $57
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

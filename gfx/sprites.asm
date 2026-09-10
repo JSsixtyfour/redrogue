@@ -151,3 +151,18 @@ JamesSprite::  INCBIN "gfx/sprites/james.2bpp"
 OfficerJennySprite::
 	INCBIN "gfx/sprites/officer_jenny.2bpp"
 	INCBIN "gfx/sprites/officer_jenny.2bpp"
+
+; Species-specific overworld sheets imported from Pokemon Yellow Legacy
+; commit 15169d137e2ef778e8765f7f3381acc4093dc169. The three donor half-sheets
+; were expanded to the full 16x96 format before conversion.
+SECTION "Yellow Legacy Pokemon Sprites", ROMX, BANK[$3E]
+DoduoSprite::    INCBIN "gfx/sprites/doduo.2bpp"
+PsyduckSprite::  INCBIN "gfx/sprites/psyduck.2bpp"
+NidorinoSprite:: INCBIN "gfx/sprites/nidorino.2bpp"
+KabutoSprite::   INCBIN "gfx/sprites/kabuto.2bpp"
+SpearowSprite::  INCBIN "gfx/sprites/spearow.2bpp"
+CuboneSprite::   INCBIN "gfx/sprites/cubone.2bpp"
+ArticunoSprite:: INCBIN "gfx/sprites/articuno.2bpp"
+ZapdosSprite::   INCBIN "gfx/sprites/zapdos.2bpp"
+MoltresSprite::  INCBIN "gfx/sprites/moltres.2bpp"
+MewtwoSprite::   INCBIN "gfx/sprites/mewtwo.2bpp"

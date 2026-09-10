@@ -390,6 +390,11 @@ ROMX $39
 	; leader classes. Kept beside the party data so every per-class trainer
 	; table lives in one bank.
 	"Trainer Class Names"
+ROMX $3E
+	; Yellow Legacy 6A authored-map baseline. Species-specific overworld art is
+	; kept together in a fresh bank so the pointer table's BANK() entries remain
+	; authoritative and future follower/procedural adaptations can grow safely.
+	"Yellow Legacy Pokemon Sprites"
 WRAM0
 	"Audio RAM"
 	org $c100

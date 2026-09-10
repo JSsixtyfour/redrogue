@@ -91,4 +91,14 @@ SpriteSheetPointerTable:
 	overworld_sprite JessieSprite, 12          ; SPRITE_JESSIE
 	overworld_sprite JamesSprite, 12           ; SPRITE_JAMES
 	overworld_sprite OfficerJennySprite, 12    ; SPRITE_OFFICER_JENNY
+	overworld_sprite DoduoSprite, 12           ; SPRITE_DODUO
+	overworld_sprite PsyduckSprite, 12         ; SPRITE_PSYDUCK
+	overworld_sprite NidorinoSprite, 12        ; SPRITE_NIDORINO
+	overworld_sprite KabutoSprite, 12          ; SPRITE_KABUTO
+	overworld_sprite SpearowSprite, 12         ; SPRITE_SPEAROW
+	overworld_sprite CuboneSprite, 12          ; SPRITE_CUBONE
+	overworld_sprite ArticunoSprite, 12        ; SPRITE_ARTICUNO
+	overworld_sprite ZapdosSprite, 12          ; SPRITE_ZAPDOS
+	overworld_sprite MoltresSprite, 12          ; SPRITE_MOLTRES
+	overworld_sprite MewtwoSprite, 12          ; SPRITE_MEWTWO
 	assert_table_length NUM_SPRITES
