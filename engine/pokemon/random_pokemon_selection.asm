@@ -562,6 +562,22 @@ rogue_pokemon_randomized_batch::
    ld [wRoguePokemonForm3], a
 
    .doneBatch
+IF FORCE_REWARD_FORM_TEST
+; ⚠ TEMPORARY - see FORCE_REWARD_FORM_TEST in pokemon_data_constants.asm.
+; Slots 1 and 2 are the SAME species, differing only by form: that is the case
+; the old shared-global bug collapsed into one repeated name.
+   ld a, MEOWTH
+   ld [wRoguePokemon1], a
+   ld [wRoguePokemon2], a
+   ld a, DUGTRIO
+   ld [wRoguePokemon3], a
+   ld a, 1
+   ld [wRoguePokemonForm1], a   ; A-MEOWTH
+   ld a, 2
+   ld [wRoguePokemonForm2], a   ; G-MEOWTH
+   ld a, 1
+   ld [wRoguePokemonForm3], a   ; A-DUGTRIO
+ENDC
 ; Phase 2R increment 8: nothing above writes wSpawnForm, but a wild encounter
 ; earlier in the stage did (Random_Pokemon_Selection_Any sets it and the enemy
 ; build reads it without clearing). Drop it here so a gift or script-given mon

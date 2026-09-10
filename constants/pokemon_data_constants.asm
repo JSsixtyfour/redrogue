@@ -251,7 +251,23 @@ DEF FORCE_WILD_FORM_TEST EQU 0
 ; The forced species feeds the overworld SPRITE lookup too, so the boss sprite on
 ; the map should be a Grimer before you ever engage it - a useful early signal
 ; that PCRollBoss ran at all.
-DEF FORCE_BOSS_FORM_TEST EQU 1
+DEF FORCE_BOSS_FORM_TEST EQU 0
+
+; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠
+;
+; 1 = the three reward offers are forced to A-MEOWTH / G-MEOWTH / A-DUGTRIO.
+;
+; This is the ONE test that actually proves the per-offer form storage
+; (wRoguePokemonForm1..3) fixed the shared-global labelling bug, and the species
+; choice is the whole point: slots 1 and 2 are the SAME SPECIES differing only by
+; FORM. Under the old single-wSpawnForm code every slot was labelled with
+; whichever form was rolled last, so those two would have printed an identical
+; name. Three distinct names means each slot is reading its own byte.
+;
+; Forced after the batch has rolled, so the duplicate-species rejection in
+; rogue_pokemon_randomized_batch cannot interfere. Bypasses FORM_SPAWN_ODDS and
+; RogueFormsUnlocked - no Debug 2 or champion wins needed.
+DEF FORCE_REWARD_FORM_TEST EQU 0
 ; ===========================================================================
 
 ; One row of the FormOverrides table (data/pokemon/forms.asm). A form record

@@ -80,9 +80,15 @@ rogue_gift_randomized_batch::
 	ld [wCurEnemyLevel], a
 	ld e, 0                     ; random class by odds; only d/e cross a farcall
 	call Random                 ; primes hRandomAdd for the class-odds roll (HOME)
-	farcall Random_Pokemon_Selection_Far  ; -> d = species
+	farcall Random_Pokemon_Selection_Far  ; -> d = species, e = form
 	ld a, d
 	ld [wRoguePokemon1], a
+; Phase 2R increment 8h: bank the rolled form alongside the species, exactly as
+; the procedural bosses do. Free - the roller already returns it in e, and e
+; crosses the farcall intact. Without this, wRoguePokemonForm1 would keep a stale
+; value from the last reward batch while wRoguePokemon1 was overwritten here.
+	ld a, e
+	ld [wRoguePokemonForm1], a
 	call GetGiverCount          ; a = number of gifts this giver has
 	ld [wBuffer], a             ; gift count / Rangerandom range
 	and a
@@ -548,6 +554,10 @@ BridgePrintGiftDesc:
 	jr nz, .notRescue
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
+	ld a, [wRoguePokemonForm1]   ; increment 8h: name the offer as its form
+	ld [wFormContextForm], a
+	ld a, [wNamedObjectIndex]
+	ld [wFormContextSpecies], a
 	call GetMonName              ; -> wNameBuffer (@-terminated)
 .notRescue
 	pop hl
@@ -639,8 +649,26 @@ BridgeDoGift:
 ; ---------------------------------------------------------------------------
 ; Generic gift helpers.
 
-; in: a = species. Gives it at the current reward level.
+; in: a = species. Gives it at the current reward level, explicitly WITHOUT a
+; form - every caller but the rescue hands out a fixed species, and clearing here
+; stops one inheriting whatever form the last wild encounter or reward left in
+; wSpawnForm.
 BridgeGiveMon:
+	push af
+	xor a
+	ld [wSpawnForm], a
+	pop af
+	jr BridgeGiveMonCommon
+
+; in: a = species. Gives it wearing the form banked by rogue_gift_randomized_batch.
+; Only BridgeMrFujiRescue uses this - it is the one bridge gift whose species is
+; ROLLED rather than authored, so it is the only one that can be a form.
+BridgeGiveRescueMon:
+	push af
+	ld a, [wRoguePokemonForm1]
+	ld [wSpawnForm], a
+	pop af
+BridgeGiveMonCommon:
 	push af
 	call GetRewardMonLevel
 	ld c, a                      ; level
@@ -788,7 +816,7 @@ GetGiftEntry:
 ; Mr. Fuji "#MON RESCUE": give the run's rogue pokemon at reward level.
 BridgeMrFujiRescue::
 	ld a, [wRoguePokemon1]
-	jp BridgeGiveMon
+	jp BridgeGiveRescueMon       ; increment 8h: the one bridge gift that can be a form
 
 ; Oak's Light-Ball PIKACHU: given as a BIT_SPECIAL_FORM mon (DOUBLE_ATK |
 ; DOUBLE_SPC | NO_EVOLVE per SpecialFormCaps).
