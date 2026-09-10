@@ -514,6 +514,11 @@ INCLUDE "engine/gfx/palettes.asm"
 INCLUDE "engine/menus/save.asm"
 
 
+SECTION "Yellow Legacy Unique Icons", ROMX
+
+INCLUDE "gfx/unique_party_icons.asm"
+
+
 ; Relocated from bank $1C. Both public entry points are dispatched through the
 ; bank-aware predef table; all internal code, data, and local pointer tables
 ; remain together in this section.

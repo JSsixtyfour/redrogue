@@ -91,6 +91,16 @@ DEF BILLS_PC_BOX_ROWS    EQU 4
 DEF BILLS_PC_ICON_ANIM_DELAY EQU 6
 DEF BILLS_PC_ICON_SCRATCH_TILE EQU $30
 
+; The category atlas occupies $00-$2f and the selected-icon animation scratch
+; occupies $30-$33. Keep six species-specific first frames in the intervening
+; free BG-tile range; each entry is four tiles (one 2x2 frame).
+DEF BILLS_PC_ICON_EXEGGUTOR_TILE EQU $34
+DEF BILLS_PC_ICON_MEW_TILE       EQU $38
+DEF BILLS_PC_ICON_JOLTEON_TILE   EQU $3c
+DEF BILLS_PC_ICON_DUGTRIO_TILE   EQU $40
+DEF BILLS_PC_ICON_ARTICUNO_TILE  EQU $44
+DEF BILLS_PC_ICON_PIKACHU_TILE   EQU $48
+
 MACRO load_bills_pc_box_icon_to_scratch
 	ld de, \1 tile \2
 	ld hl, vChars2 tile BILLS_PC_ICON_SCRATCH_TILE
@@ -127,6 +137,15 @@ MACRO load_bills_pc_box_symmetric_icon_to_scratch
 	ld hl, vChars2 tile (BILLS_PC_ICON_SCRATCH_TILE + 3)
 	ld a, BANK(\1)
 	call CopyFlippedBillsPCBoxIconTile
+ENDM
+
+; The six Yellow Legacy icon assets are 16x32px: four raw tiles for the
+; initial 2x2 frame followed by four raw tiles for its alternate frame.
+MACRO load_bills_pc_unique_icon_to_scratch
+	ld de, \1 tile 4
+	ld hl, vChars2 tile BILLS_PC_ICON_SCRATCH_TILE
+	lb bc, BANK(\1), 4
+	call CopyVideoData
 ENDM
 
 ; Yume's 5x4 BG-icon storage screen, reconciled with Red Rogue's compact box
@@ -1036,11 +1055,56 @@ GetBillsPCIconCategoryForMenuItem:
 	jr z, .empty
 .gotSpecies
 	ld [wCurPartySpecies], a
+	; Six debug-party species have Yellow Legacy's two-frame, eight-tile
+	; icons. All other species retain the category atlas path.
+	jp GetBillsPCIconTileBase
+.empty
+	scf
+	ret
+
+; Input: wCurPartySpecies = internal species ID. Output: e = the four-tile
+; first-frame BG base; carry clear. The fallback is bank-safe because
+; GetCurPartyMonSpriteID returns its category in e after its farcall.
+GetBillsPCIconTileBase:
+	ld a, [wCurPartySpecies]
+	cp EXEGGUTOR
+	jr z, .exeggutor
+	cp MEW
+	jr z, .mew
+	cp JOLTEON
+	jr z, .jolteon
+	cp DUGTRIO
+	jr z, .dugtrio
+	cp ARTICUNO
+	jr z, .articuno
+	cp PIKACHU
+	jr z, .pikachu
 	farcall GetCurPartyMonSpriteID
 	and a
 	ret
-.empty
-	scf
+.exeggutor
+	ld e, BILLS_PC_ICON_EXEGGUTOR_TILE
+	and a
+	ret
+.mew
+	ld e, BILLS_PC_ICON_MEW_TILE
+	and a
+	ret
+.jolteon
+	ld e, BILLS_PC_ICON_JOLTEON_TILE
+	and a
+	ret
+.dugtrio
+	ld e, BILLS_PC_ICON_DUGTRIO_TILE
+	and a
+	ret
+.articuno
+	ld e, BILLS_PC_ICON_ARTICUNO_TILE
+	and a
+	ret
+.pikachu
+	ld e, BILLS_PC_ICON_PIKACHU_TILE
+	and a
 	ret
 
 GetBillsPCSelectedIconCategory:
@@ -1090,6 +1154,18 @@ PlaceBillsPCSelectedBaseIcon:
 ; BG tilemaps cannot express that sub-tile movement without an OAM overlay.
 LoadBillsPCSelectedAlternateFrame:
 	ld a, e
+	cp BILLS_PC_ICON_EXEGGUTOR_TILE
+	jr z, .uniqueExeggutor
+	cp BILLS_PC_ICON_MEW_TILE
+	jr z, .uniqueMew
+	cp BILLS_PC_ICON_JOLTEON_TILE
+	jr z, .uniqueJolteon
+	cp BILLS_PC_ICON_DUGTRIO_TILE
+	jr z, .uniqueDugtrio
+	cp BILLS_PC_ICON_ARTICUNO_TILE
+	jr z, .uniqueArticuno
+	cp BILLS_PC_ICON_PIKACHU_TILE
+	jr z, .uniquePikachu
 	cp ICON_MON << 2
 	jr z, .monster
 	cp ICON_FAIRY << 2
@@ -1110,6 +1186,24 @@ LoadBillsPCSelectedAlternateFrame:
 	jp z, .pikachu
 	; ICON_BALL, ICON_HELIX, and ICON_CHANSEY have no alternate tile frame.
 	scf
+	ret
+.uniqueExeggutor
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconExeggutor
+	ret
+.uniqueMew
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconMew
+	ret
+.uniqueJolteon
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconJolteon
+	ret
+.uniqueDugtrio
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconDugtrio
+	ret
+.uniqueArticuno
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconArticuno
+	ret
+.uniquePikachu
+	load_bills_pc_unique_icon_to_scratch YellowLegacyIconPikachu
 	ret
 .monster
 	load_bills_pc_box_icon_to_scratch MonsterSprite, 0
@@ -1455,7 +1549,7 @@ DrawBillsPCPartyMons:
 	ld [wCurPartySpecies], a
 	push hl
 	push bc
-	farcall GetCurPartyMonSpriteID
+	call GetBillsPCIconTileBase
 	pop bc
 	ld c, e
 	ld a, b
@@ -1477,7 +1571,7 @@ DrawBillsPCBoxMons:
 	ld [wCurPartySpecies], a
 	push hl
 	push bc
-	farcall GetCurPartyMonSpriteID
+	call GetBillsPCIconTileBase
 	pop bc
 	ld c, e
 	ld a, b
@@ -1621,8 +1715,20 @@ MACRO load_bills_pc_box_symmetric_icon
 	call CopyFlippedBillsPCBoxIconTile
 ENDM
 
+; Copy the first four raw tiles (one 2x2 frame) of a Yellow Legacy icon into
+; its reserved BG-tile base. The source bank is explicit so this remains safe
+; when the icon section is not colocated with Bill's PC.
+MACRO load_bills_pc_unique_icon
+	ld de, \1
+	ld hl, vChars2 tile \2
+	lb bc, BANK(\1), 4
+	call CopyVideoData
+ENDM
+
 ; Load all 12 species icon categories as BG tiles. Chansey extends Yume's 44
 ; tiles to 48, occupying tile IDs $00-$2f and preserving Red Rogue's icon set.
+; The six reserved bases in $34-$4b hold first frames for the debug-party
+; species; every other species resolves to the category atlas above.
 LoadBillsPCBoxIconTilePatterns:
 	load_bills_pc_box_icon MonsterSprite, 12, ICON_MON
 	load_bills_pc_box_icon PokeBallSprite, 0, ICON_BALL
@@ -1636,6 +1742,12 @@ LoadBillsPCBoxIconTilePatterns:
 	load_bills_pc_box_symmetric_icon QuadrupedIconFrame1, 0, ICON_QUADRUPED
 	load_bills_pc_box_icon PikachuSprite, 12, ICON_PIKACHU
 	load_bills_pc_box_icon ChanseySprite, 0, ICON_CHANSEY
+	load_bills_pc_unique_icon YellowLegacyIconExeggutor, BILLS_PC_ICON_EXEGGUTOR_TILE
+	load_bills_pc_unique_icon YellowLegacyIconMew,       BILLS_PC_ICON_MEW_TILE
+	load_bills_pc_unique_icon YellowLegacyIconJolteon,   BILLS_PC_ICON_JOLTEON_TILE
+	load_bills_pc_unique_icon YellowLegacyIconDugtrio,   BILLS_PC_ICON_DUGTRIO_TILE
+	load_bills_pc_unique_icon YellowLegacyIconArticuno,  BILLS_PC_ICON_ARTICUNO_TILE
+	load_bills_pc_unique_icon YellowLegacyIconPikachu,   BILLS_PC_ICON_PIKACHU_TILE
 	ret
 
 ; Copy one icon tile through existing text scratch while reversing each row.

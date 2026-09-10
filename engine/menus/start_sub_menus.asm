@@ -554,6 +554,7 @@ StartMenu_Option::
 
 SwitchPartyMon::
 	call SwitchPartyMon_InitVarOrSwapData ; swap data
+	farcall ReloadYellowLegacyPartyIcons
 	ld a, [wSwappedMenuItem]
 	call SwitchPartyMon_ClearGfx
 	ldh a, [hCurrentMenuItem]

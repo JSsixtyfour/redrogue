@@ -198,6 +198,10 @@ ROMX $23
 	"Text 4"
 ROMX $24
 	"Text 5"
+	; Six initial species-specific menu icons imported from Yellow Legacy.
+	; Every consumer uses BANK(label) and a far-copy path, so the assets are
+	; pinned together in this bank instead of floating between build variants.
+	"Yellow Legacy Unique Icons"
 ROMX $25
 	"Text 6"
 ROMX $26

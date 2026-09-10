@@ -202,6 +202,15 @@ gfx/tilesets/dorm.2bpp: tools/gfx += --preserve=0x5f
 
 gfx/trade/game_boy.2bpp: tools/gfx += --remove-duplicates
 
+# Yellow Legacy's unique menu icons carry an indexed green source palette.
+# Preserve those four source indices exactly; the runtime supplies the DMG/CGB
+# object or background palette just as it does for the legacy category icons.
+yellow_legacy_menu_icons := exeggutor mew jolteon dugtrio articuno pikachu
+yellow_legacy_menu_icon_2bpp := $(yellow_legacy_menu_icons:%=gfx/icons/%.2bpp)
+
+$(yellow_legacy_menu_icon_2bpp): gfx/icons/%.2bpp: gfx/icons/%.png
+	$(RGBGFX) $(RGBGFXFLAGS) -o $@ $<
+
 
 ### Catch-all graphics rules
 

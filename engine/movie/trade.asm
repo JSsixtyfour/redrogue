@@ -612,14 +612,29 @@ Trade_AnimCircledMon:
   ; call UpdateGBCPal_BGP
 	ld hl, wShadowOAMSprite00TileID
 	ld de, OBJ_SIZE
-	ld c, $14
-.loop
+	ld c, 4
+.monLoop
+	ld a, [hl]
+	cp YELLOW_LEGACY_ICON_VRAM_TILE
+	jr c, .categoryMon
+	xor 4
+	jr .storeMon
+.categoryMon
+	xor ICONOFFSET
+.storeMon
+	ld [hl], a
+	add hl, de
+	dec c
+	jr nz, .monLoop
+	; The surrounding cable circle always uses the original $40 frame split.
+	ld c, $10
+.circleLoop
 	ld a, [hl]
 	xor ICONOFFSET
 	ld [hl], a
 	add hl, de
 	dec c
-	jr nz, .loop
+	jr nz, .circleLoop
 	pop hl
 	pop bc
 	pop de

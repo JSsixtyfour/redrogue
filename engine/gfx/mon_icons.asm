@@ -55,8 +55,10 @@ GetAnimationSpeed:
 	ld bc, OBJ_SIZE * 4
 	ldh a, [hCurrentMenuItem]
 	call AddNTimes
-	ld c, ICONOFFSET
 	ld a, [hl]
+	cp YELLOW_LEGACY_ICON_VRAM_TILE
+	jr nc, .uniqueIcon
+	ld c, ICONOFFSET
 	cp ICON_BALL << 2
 	jr z, .editCoords
 	cp ICON_HELIX << 2
@@ -80,6 +82,10 @@ GetAnimationSpeed:
 	pop bc
 	ld a, c
 	jr .incTimer
+.uniqueIcon
+	; The streamed icons store four tiles per frame contiguously.
+	ld c, 4
+	jr .editTileIDS
 
 ; Party mon animations cycle between 2 frames.
 ; The members of the PartyMonSpeeds array specify the number of V-blanks
@@ -92,6 +98,16 @@ LoadMonPartySpriteGfx:
 ; Load mon party sprite tile patterns into VRAM during V-blank.
 	ld hl, MonPartySpritePointers
 	ld a, $20
+	call LoadAnimSpriteGfx
+	ld a, [wMonPartySpriteSpecies]
+	call GetYellowLegacyUniqueIcon
+	ret nc
+	ld d, h
+	ld e, l
+	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
+	ld b, a
+	ld c, 8
+	jp CopyVideoData
 
 LoadAnimSpriteGfx:
 ; Load animated sprite tile patterns into VRAM during V-blank. hl is the address
@@ -123,6 +139,49 @@ LoadAnimSpriteGfx:
 	pop af
 	dec a
 	jr nz, .loop
+	ret
+
+DEF YELLOW_LEGACY_ICON_VRAM_TILE EQU $80
+DEF YELLOW_LEGACY_ICON_SLOT_TILES EQU 8
+
+; Input: a = internal species ID.
+; Output when supported: carry set, a = source bank, hl = eight-tile icon.
+; Unsupported species return carry clear and continue using the category atlas.
+GetYellowLegacyUniqueIcon:
+	cp EXEGGUTOR
+	jr z, .exeggutor
+	cp MEW
+	jr z, .mew
+	cp JOLTEON
+	jr z, .jolteon
+	cp DUGTRIO
+	jr z, .dugtrio
+	cp ARTICUNO
+	jr z, .articuno
+	cp PIKACHU
+	jr z, .pikachu
+	and a
+	ret
+.exeggutor
+	ld hl, YellowLegacyIconExeggutor
+	jr .found
+.mew
+	ld hl, YellowLegacyIconMew
+	jr .found
+.jolteon
+	ld hl, YellowLegacyIconJolteon
+	jr .found
+.dugtrio
+	ld hl, YellowLegacyIconDugtrio
+	jr .found
+.articuno
+	ld hl, YellowLegacyIconArticuno
+	jr .found
+.pikachu
+	ld hl, YellowLegacyIconPikachu
+.found
+	ld a, BANK(YellowLegacyIconExeggutor)
+	scf
 	ret
 
 LoadMonPartySpriteGfxWithLCDDisabled:
@@ -160,7 +219,81 @@ LoadMonPartySpriteGfxWithLCDDisabled:
 	pop af
 	dec a
 	jr nz, .loop
+	call LoadYellowLegacyPartyIcons
 	jp EnableLCD
+
+; Stream supported icons into a stable eight-tile range for each party slot.
+; The category atlas remains resident for every unsupported species.
+LoadYellowLegacyPartyIcons:
+	ld hl, wPartySpecies
+	xor a
+.loop
+	ldh [hPartyMonIndex], a
+	ld a, [hli]
+	cp $ff
+	ret z
+	push hl
+	call LoadYellowLegacyPartyIcon
+	pop hl
+	ldh a, [hPartyMonIndex]
+	inc a
+	jr .loop
+
+LoadYellowLegacyPartyIcon:
+	call GetYellowLegacyUniqueIcon
+	ret nc
+	push af
+	push hl
+	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
+	ld bc, YELLOW_LEGACY_ICON_SLOT_TILES tiles
+	ldh a, [hPartyMonIndex]
+	call AddNTimes
+	ld d, h
+	ld e, l
+	pop hl
+	pop af
+	ld bc, 8 tiles
+	jp FarCopyData
+
+; Party reorder leaves the category atlas intact, so only the streamed slots
+; need refreshing while the menu remains active.
+ReloadYellowLegacyPartyIcons::
+	ld hl, wPartySpecies
+	xor a
+.loop
+	ldh [hPartyMonIndex], a
+	ld a, [hli]
+	cp $ff
+	ret z
+	push hl
+	call GetYellowLegacyUniqueIcon
+	jr nc, .next
+	ld d, h
+	ld e, l
+	ld hl, vSprites tile YELLOW_LEGACY_ICON_VRAM_TILE
+	ld bc, YELLOW_LEGACY_ICON_SLOT_TILES tiles
+	ldh a, [hPartyMonIndex]
+	call AddNTimes
+	; Recover the source through the resolver after calculating the destination.
+	push hl
+	ldh a, [hPartyMonIndex]
+	ld hl, wPartySpecies
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	call GetYellowLegacyUniqueIcon
+	ld d, h
+	ld e, l
+	pop hl
+	ld b, a
+	ld c, 8
+	call CopyVideoData
+.next
+	pop hl
+	ldh a, [hPartyMonIndex]
+	inc a
+	jr .loop
 
 INCLUDE "data/icon_pointers.asm"
 
@@ -175,9 +308,23 @@ WriteMonPartySpriteOAMByPartyIndex:
 	ld d, 0
 	add hl, de
 	ld a, [hl]
+	call GetYellowLegacyUniqueIcon
+	jr c, .unique
+	ldh a, [hPartyMonIndex]
+	ld hl, wPartySpecies
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
 	call GetPartyMonSpriteID
 	ld [wOAMBaseTile], a
 	call WriteMonPartySpriteOAM
+	jr .done
+.unique
+	call GetYellowLegacyPartySlotBaseTile
+	ld [wOAMBaseTile], a
+	call WriteYellowLegacyMonPartySpriteOAM
+.done
 	pop bc
 	pop de
 	pop hl
@@ -189,9 +336,35 @@ WriteMonPartySpriteOAMBySpecies:
 	xor a
 	ldh [hPartyMonIndex], a
 	ld a, [wMonPartySpriteSpecies]
+	call GetYellowLegacyUniqueIcon
+	jr c, .unique
+	ld a, [wMonPartySpriteSpecies]
 	call GetPartyMonSpriteID
 	ld [wOAMBaseTile], a
 	jr WriteMonPartySpriteOAM
+.unique
+	ld a, YELLOW_LEGACY_ICON_VRAM_TILE
+	ld [wOAMBaseTile], a
+	jr WriteYellowLegacyMonPartySpriteOAM
+
+GetYellowLegacyPartySlotBaseTile:
+	ldh a, [hPartyMonIndex]
+	add a
+	add a
+	add a
+	add YELLOW_LEGACY_ICON_VRAM_TILE
+	ret
+
+WriteYellowLegacyMonPartySpriteOAM:
+	ld c, $10
+	ld h, HIGH(wShadowOAM)
+	ldh a, [hPartyMonIndex]
+	swap a
+	ld l, a
+	add $10
+	ld b, a
+	call WriteAsymmetricMonPartySpriteOAM
+	jr CopyMonPartySpriteOAM
 
 WriteMonPartySpriteOAM:
 ; Write the OAM blocks for the first animation frame into the OAM buffer and
@@ -214,6 +387,8 @@ WriteMonPartySpriteOAM:
 ; Make a copy of the OAM buffer with the first animation frame written so that
 ; we can flip back to it from the second frame by copying it back.
 .makeCopy
+	; fallthrough
+CopyMonPartySpriteOAM:
 	ld hl, wShadowOAM
 	ld de, wMonPartySpritesSavedOAM
 	ld bc, OBJ_SIZE * 4 * PARTY_LENGTH
