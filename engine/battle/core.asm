@@ -7178,11 +7178,8 @@ LoadEnemyMonData:
 ; cemetery ghost boss uses - would be far too late for all three.
 ; Increment 8c: a trainer mon's form comes from its OWN party struct, not the
 ; global - see GetEnemySpawnForm above. Wild mons are unaffected.
-	farcall GetEnemySpawnForm ; e = form; de is not live here
-	ld a, e
-	ld [wFormContextForm], a
-	ld a, [wCurSpecies]
-	ld [wFormContextSpecies], a
+	farcall PublishEnemyFormContext ; reads the form from the party struct for a
+	                                ; trainer mon, wSpawnForm for a wild one
 	call GetMonHeader
 	ld a, [wEnemyBattleStatus3]
 	bit TRANSFORMED, a ; is enemy mon transformed?
@@ -7387,10 +7384,15 @@ LoadEnemyMonData:
 ; name is written, wild and trainer alike. Publish so a formed enemy is
 ; announced as "A-DUGTRIO" rather than "DUGTRIO"; the stored nick is what every
 ; battle message reads from afterwards.
-	ld a, [wSpawnForm]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
+;
+; Increment 8c, TOUCH 3: same source as the other two. Reading wSpawnForm here
+; was the reason a forced Alolan Grimer rendered the ALOLAN SPRITE but announced
+; itself as plain "GRIMER" - the header load had already been fixed to read the
+; stored bits while this one still read a global that _AddPartyMon had zeroed at
+; roster-build time. Three sites, one source; miss one and the mon is half a form.
+;
+; de and hl are both reloaded immediately below, so nothing needs saving here.
+	farcall PublishEnemyFormContext
 	call GetMonName
 	ld hl, wNameBuffer
 	ld de, wEnemyMonNick

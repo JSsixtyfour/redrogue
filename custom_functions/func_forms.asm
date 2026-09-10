@@ -553,3 +553,34 @@ GetEnemySpawnForm::
 	ld a, [wSpawnForm]
 	ld e, a
 	ret
+
+; ---------------------------------------------------------------------------
+; PublishEnemyFormContext
+;
+; Publishes the form context for the enemy mon LoadEnemyMonData is building, so
+; the very next GetMonHeader / GetMonName sees it.
+;
+; INPUT:  none (resolves the form itself via GetEnemySpawnForm)
+; OUTPUT: wFormContextForm / wFormContextSpecies set for wEnemyMonSpecies2
+; CLOBBERS: af, bc, e, hl   (d PRESERVED)
+;
+; Exists for SPACE, not tidiness. "Battle Core" is a full 16 KiB bank and the
+; _DEBUG build overflowed it by 3 bytes once each of the three form touches
+; carried its own farcall plus four stores. Folding the four stores in here makes
+; each touch a single farcall, which nets the section back to its ORIGINAL size
+; while still reading the form from the party struct.
+;
+; wEnemyMonSpecies2 is the right species for both callers: TOUCH 1 has just
+; copied it into wCurSpecies, and TOUCH 3 has just copied it into
+; wNamedObjectIndex. Reading it directly here saves the caller a load.
+;
+; The context is ONE-SHOT - ApplyFormOverride and GetFormNameSource each consume
+; it - which is exactly why LoadEnemyMonData publishes twice rather than once.
+; ---------------------------------------------------------------------------
+PublishEnemyFormContext::
+	call GetEnemySpawnForm       ; e = form index
+	ld a, e
+	ld [wFormContextForm], a
+	ld a, [wEnemyMonSpecies2]
+	ld [wFormContextSpecies], a
+	ret
