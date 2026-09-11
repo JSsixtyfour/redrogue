@@ -185,10 +185,10 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const VIOLET_GYM,                     5,  7 ; $6F (was UNUSED_MAP_6F)
 	map_const MINI_SAFFRON,                  13,  8 ; $70
 	map_const LANCES_ROOM,                   13, 13 ; $71
-	map_const UNUSED_MAP_72,                  0,  0 ; $72
-	map_const UNUSED_MAP_73,                  0,  0 ; $73
-	map_const UNUSED_MAP_74,                  0,  0 ; $74
-	map_const UNUSED_MAP_75,                  0,  0 ; $75
+	map_const AZALEA_GYM,                     5,  7 ; $72 (was UNUSED_MAP_72)
+	map_const GOLDENROD_GYM,                  5,  7 ; $73 (was UNUSED_MAP_73)
+	map_const ECRUTEAK_GYM,                   5,  7 ; $74 (was UNUSED_MAP_74)
+	map_const CIANWOOD_GYM,                   5,  7 ; $75 (was UNUSED_MAP_75)
 	map_const HALL_OF_FAME,                   5,  4 ; $76
 	end_indoor_group POKEMON_LEAGUE
 
@@ -333,9 +333,9 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const ROCKET_HIDEOUT_B3F,            15, 14 ; $C9
 	map_const ROCKET_HIDEOUT_B4F,            15, 12 ; $CA
 	map_const ROCKET_HIDEOUT_ELEVATOR,        3,  4 ; $CB
-	map_const UNUSED_MAP_CC,                  0,  0 ; $CC
-	map_const UNUSED_MAP_CD,                  0,  0 ; $CD
-	map_const UNUSED_MAP_CE,                  0,  0 ; $CE
+	map_const OLIVINE_GYM,                    5,  7 ; $CC (was UNUSED_MAP_CC)
+	map_const MAHOGANY_GYM,                   5,  7 ; $CD (was UNUSED_MAP_CD)
+	map_const BLACKTHORN_GYM,                 5,  7 ; $CE (was UNUSED_MAP_CE)
 	end_indoor_group ROCKET_HQ
 
 	map_const SILPH_CO_2F,                   15,  9 ; $CF

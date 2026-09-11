@@ -455,6 +455,27 @@ ToggleableObjectStates:
 	toggleable_objects_for VIOLET_GYM
 	toggle_object_state VIOLETGYM_GYM_GUIDE, ON
 
+	toggleable_objects_for AZALEA_GYM
+	toggle_object_state AZALEAGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for GOLDENROD_GYM
+	toggle_object_state GOLDENRODGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for ECRUTEAK_GYM
+	toggle_object_state ECRUTEAKGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for CIANWOOD_GYM
+	toggle_object_state CIANWOODGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for OLIVINE_GYM
+	toggle_object_state OLIVINEGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for MAHOGANY_GYM
+	toggle_object_state MAHOGANYGYM_GYM_GUIDE, ON
+
+	toggleable_objects_for BLACKTHORN_GYM
+	toggle_object_state BLACKTHORNGYM_GYM_GUIDE, ON
+
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 
 	db -1, 1, ON ; end

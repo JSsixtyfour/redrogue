@@ -115,10 +115,10 @@ MapHeaderPointers::
 	dw VioletGym_h ; VIOLET_GYM
 	dw MiniSaffron_h ; MINI_SAFFRON
 	dw LancesRoom_h
-	dw LancesRoom_h ; UNUSED_MAP_72
-	dw LancesRoom_h ; UNUSED_MAP_73
-	dw LancesRoom_h ; UNUSED_MAP_74
-	dw LancesRoom_h ; UNUSED_MAP_75
+	dw AzaleaGym_h ; AZALEA_GYM
+	dw GoldenrodGym_h ; GOLDENROD_GYM
+	dw EcruteakGym_h ; ECRUTEAK_GYM
+	dw CianwoodGym_h ; CIANWOOD_GYM
 	dw HallOfFame_h
 	dw UndergroundPathNorthSouth_h
 	dw ChampionsRoom_h
@@ -205,9 +205,9 @@ MapHeaderPointers::
 	dw RocketHideoutB3F_h
 	dw RocketHideoutB4F_h
 	dw RocketHideoutElevator_h
-	dw RocketHideoutElevator_h ; UNUSED_MAP_CC
-	dw RocketHideoutElevator_h ; UNUSED_MAP_CD
-	dw RocketHideoutElevator_h ; UNUSED_MAP_CE
+	dw OlivineGym_h ; OLIVINE_GYM
+	dw MahoganyGym_h ; MAHOGANY_GYM
+	dw BlackthornGym_h ; BLACKTHORN_GYM
 	dw SilphCo2F_h
 	dw SilphCo3F_h
 	dw SilphCo4F_h

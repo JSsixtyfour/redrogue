@@ -1340,3 +1340,38 @@ INCLUDE "data/maps/headers/VioletGym.asm"
 INCLUDE "scripts/VioletGym.asm"
 INCLUDE "data/maps/objects/VioletGym.asm"
 VioletGym_Blocks: INCBIN "maps/VioletGym.blk"
+
+INCLUDE "data/maps/headers/AzaleaGym.asm"
+INCLUDE "scripts/AzaleaGym.asm"
+INCLUDE "data/maps/objects/AzaleaGym.asm"
+AzaleaGym_Blocks: INCBIN "maps/AzaleaGym.blk"
+
+INCLUDE "data/maps/headers/GoldenrodGym.asm"
+INCLUDE "scripts/GoldenrodGym.asm"
+INCLUDE "data/maps/objects/GoldenrodGym.asm"
+GoldenrodGym_Blocks: INCBIN "maps/GoldenrodGym.blk"
+
+INCLUDE "data/maps/headers/EcruteakGym.asm"
+INCLUDE "scripts/EcruteakGym.asm"
+INCLUDE "data/maps/objects/EcruteakGym.asm"
+EcruteakGym_Blocks: INCBIN "maps/EcruteakGym.blk"
+
+INCLUDE "data/maps/headers/CianwoodGym.asm"
+INCLUDE "scripts/CianwoodGym.asm"
+INCLUDE "data/maps/objects/CianwoodGym.asm"
+CianwoodGym_Blocks: INCBIN "maps/CianwoodGym.blk"
+
+INCLUDE "data/maps/headers/OlivineGym.asm"
+INCLUDE "scripts/OlivineGym.asm"
+INCLUDE "data/maps/objects/OlivineGym.asm"
+OlivineGym_Blocks: INCBIN "maps/OlivineGym.blk"
+
+INCLUDE "data/maps/headers/MahoganyGym.asm"
+INCLUDE "scripts/MahoganyGym.asm"
+INCLUDE "data/maps/objects/MahoganyGym.asm"
+MahoganyGym_Blocks: INCBIN "maps/MahoganyGym.blk"
+
+INCLUDE "data/maps/headers/BlackthornGym.asm"
+INCLUDE "scripts/BlackthornGym.asm"
+INCLUDE "data/maps/objects/BlackthornGym.asm"
+BlackthornGym_Blocks: INCBIN "maps/BlackthornGym.blk"

@@ -115,10 +115,10 @@ MapHeaderBanks::
 	db BANK(VioletGym_h) ; VIOLET_GYM
 	db BANK(MiniSaffron_h) ; MINI_SAFFRON
 	db BANK(LancesRoom_h)
-	db $1D ; UNUSED_MAP_72
-	db $1D ; UNUSED_MAP_73
-	db $1D ; UNUSED_MAP_74
-	db $1D ; UNUSED_MAP_75
+	db BANK(AzaleaGym_h) ; AZALEA_GYM
+	db BANK(GoldenrodGym_h) ; GOLDENROD_GYM
+	db BANK(EcruteakGym_h) ; ECRUTEAK_GYM
+	db BANK(CianwoodGym_h) ; CIANWOOD_GYM
 	db BANK(HallOfFame_h)
 	db BANK(UndergroundPathNorthSouth_h)
 	db BANK(ChampionsRoom_h)
@@ -205,9 +205,9 @@ MapHeaderBanks::
 	db BANK(RocketHideoutB3F_h)
 	db BANK(RocketHideoutB4F_h)
 	db BANK(RocketHideoutElevator_h)
-	db $01 ; UNUSED_MAP_CC
-	db $01 ; UNUSED_MAP_CD
-	db $01 ; UNUSED_MAP_CE
+	db BANK(OlivineGym_h) ; OLIVINE_GYM
+	db BANK(MahoganyGym_h) ; MAHOGANY_GYM
+	db BANK(BlackthornGym_h) ; BLACKTHORN_GYM
 	db BANK(SilphCo2F_h)
 	db BANK(SilphCo3F_h)
 	db BANK(SilphCo4F_h)

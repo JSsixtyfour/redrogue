@@ -438,4 +438,25 @@ ENDM
 	toggle_consts_for VIOLET_GYM
 	const TOGGLE_VIOLET_GYM_GUIDE
 
+	toggle_consts_for AZALEA_GYM
+	const TOGGLE_AZALEA_GYM_GUIDE
+
+	toggle_consts_for GOLDENROD_GYM
+	const TOGGLE_GOLDENROD_GYM_GUIDE
+
+	toggle_consts_for ECRUTEAK_GYM
+	const TOGGLE_ECRUTEAK_GYM_GUIDE
+
+	toggle_consts_for CIANWOOD_GYM
+	const TOGGLE_CIANWOOD_GYM_GUIDE
+
+	toggle_consts_for OLIVINE_GYM
+	const TOGGLE_OLIVINE_GYM_GUIDE
+
+	toggle_consts_for MAHOGANY_GYM
+	const TOGGLE_MAHOGANY_GYM_GUIDE
+
+	toggle_consts_for BLACKTHORN_GYM
+	const TOGGLE_BLACKTHORN_GYM_GUIDE
+
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

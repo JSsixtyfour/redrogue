@@ -23,7 +23,8 @@ from __future__ import annotations
 import re
 import unittest
 
-from test_smoke import REPO_ROOT, HarnessTestCase, parse_map_constants
+from harness import RedRogueHarness
+from test_smoke import ARTIFACTS, REPO_ROOT, HarnessTestCase, parse_map_constants
 
 # parse_map_constants() returns NAME -> id only; it drops the width/height
 # operands. Reading them here rather than via maps.get(f"{name}_WIDTH"), which
@@ -46,6 +47,13 @@ def parse_map_dimensions(path) -> dict[str, tuple[int, int]]:
 # One row per gym. The object count is Falkner + 4 trainers + the gym guide.
 GYMS = {
     "VIOLET_GYM": (6, "FALKNER"),
+    "AZALEA_GYM": (6, "BUGSY"),
+    "GOLDENROD_GYM": (6, "WHITNEY"),
+    "ECRUTEAK_GYM": (6, "MORTY"),
+    "CIANWOOD_GYM": (6, "CHUCK"),
+    "OLIVINE_GYM": (6, "JASMINE"),
+    "MAHOGANY_GYM": (6, "PRYCE"),
+    "BLACKTHORN_GYM": (6, "CLAIR"),
 }
 
 LOBBY_MAP = "INDIGO_PLATEAU_LOBBY"
@@ -112,6 +120,18 @@ class JohtoGymMapContracts(HarnessTestCase):
         lobby_id = maps[LOBBY_MAP]
         for name, (objects, leader) in sorted(GYMS.items()):
             with self.subTest(gym=name):
+                # boot_to_lobby() drives the title-screen select+start debug
+                # hotkey, which only exists at power-on. It is NOT reentrant on
+                # one PyBoy instance: once a gym has been entered the emulator
+                # is no longer at the title screen, so a second call on the
+                # same harness never reaches DebugMenu. Measured directly: two
+                # boot_to_lobby() calls in a row on one harness fail the second
+                # call 100% of the time, deterministically (see GYM_LEADER_
+                # EXPANSION_PLAN.md Phase 6). A fresh harness per gym avoids
+                # this rather than trying to make mid-run reentry work.
+                if self.harness is not None:
+                    self.harness.close()
+                self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
                 map_id = maps[name]
                 self.assertIn(
                     name, dimensions, f"{name} has no map_const width/height to check against"

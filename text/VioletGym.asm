@@ -17,7 +17,7 @@ _VioletGymFalknerReceivedBadgeText::
 	line "You've won."
 
 	para "As proof, take"
-	line "this BADGE."
+	line "the ZEPHYRBADGE."
 	done
 
 _VioletGymFalknerPostBattleAdviceText::

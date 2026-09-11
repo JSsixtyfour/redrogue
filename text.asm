@@ -312,3 +312,10 @@ INCLUDE "data/text/text_rogue.asm"
 SECTION "Text Johto Gyms", ROMX
 
 INCLUDE "text/VioletGym.asm"
+INCLUDE "text/AzaleaGym.asm"
+INCLUDE "text/GoldenrodGym.asm"
+INCLUDE "text/EcruteakGym.asm"
+INCLUDE "text/CianwoodGym.asm"
+INCLUDE "text/OlivineGym.asm"
+INCLUDE "text/MahoganyGym.asm"
+INCLUDE "text/BlackthornGym.asm"

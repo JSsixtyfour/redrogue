@@ -2259,14 +2259,14 @@ wToggleableObjectList:: ds 16 * 2 + 1
 wGameProgressFlags::
 wOaksLabCurScript:: db
 wPalletTownCurScript:: db
-	ds 1
+wAzaleaGymCurScript:: db
 wBluesHouseCurScript:: db
 wViridianCityCurScript:: db
 	ds 2
 wPewterCityCurScript:: db
 wRoute3CurScript:: db
 wRoute4CurScript:: db
-	ds 1
+wGoldenrodGymCurScript:: db
 wViridianGymCurScript:: db
 wPewterGymCurScript:: db
 wCeruleanGymCurScript:: db
@@ -2283,7 +2283,7 @@ wMtMoonB2FCurScript:: db
 wSSAnne1FRoomsCurScript:: db
 wSSAnne2FRoomsCurScript:: db
 wRoute22CurScript:: db
-	ds 1
+wEcruteakGymCurScript:: db
 wRedsHouse2FCurScript:: db
 wSilphCoB1FCurScript:: db
 wRoute22GateCurScript:: db
@@ -2300,7 +2300,7 @@ wRoute21CurScript:: db
 wSafariZoneGateCurScript:: db
 wRockTunnelB1FCurScript:: db
 wRockTunnel1FCurScript:: db
-	ds 1
+wCianwoodGymCurScript:: db
 wRoute11CurScript:: db
 wRoute12CurScript:: db
 wRoute15CurScript:: db
@@ -2319,13 +2319,13 @@ wRocketHideoutB1FCurScript:: db
 wRocketHideoutB2FCurScript:: db
 wRocketHideoutB3FCurScript:: db
 wRocketHideoutB4FCurScript:: db
-	ds 1
+wOlivineGymCurScript:: db
 wRoute6GateCurScript:: db
 wRoute8GateCurScript:: db
-	ds 1
+wMahoganyGymCurScript:: db
 wCinnabarIslandCurScript:: db
 wPokemonMansion1FCurScript:: db
-	ds 1
+wBlackthornGymCurScript:: db
 wPokemonMansion2FCurScript:: db
 wPokemonMansion3FCurScript:: db
 wPokemonMansionB1FCurScript:: db
