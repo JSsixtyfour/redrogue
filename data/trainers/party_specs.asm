@@ -42,22 +42,65 @@ MACRO mix
 ENDM
 DEF MIX_ENTRY_SIZE EQU 13
 
+; --- The difficulty grid (Phase 5) -----------------------------------------
+; Ten rows, in the shape the plan's Phase 5 table describes: three trainer
+; KINDS by three ROUND BANDS, plus a sets-only row for the Elite Four.
+;
+;   kind \ band        rounds 1-2        rounds 3-5        rounds 6-8
+;   route trainer      ROUTE_EARLY       ROUTE_MID         ROUTE_LATE
+;   final route / gym  TRAINER_EARLY     TRAINER_MID       TRAINER_LATE
+;   gym leader         GYM_EARLY         GYM_LATE          ELITE
+;   mini-boss / rival  (the gym leader row of the same band)
+;   Elite Four         E4_SETS at every tier
+;
+; The first two kinds reach their row through RogueRosterMixId, which derives
+; kind and band from wBattleCount. The leader rows are selected by the spec
+; record the round already picks (gym_team_spec), so they need no lookup.
+;
+; MIX_ELITE keeps its Phase 2 name rather than becoming MIX_GYM_ELITE: it is
+; the gym leader's rounds 6-8 row, it is referenced by name in a dozen comments
+; and five tests, and the genuinely-Elite-Four row is MIX_E4_SETS.
 	const_def
-	const MIX_ROUTE_EARLY
-	const MIX_ROUTE_MID
-	const MIX_GYM_EARLY
-	const MIX_GYM_LATE
-	const MIX_ELITE
+	const MIX_ROUTE_EARLY     ; 0
+	const MIX_ROUTE_MID       ; 1
+	const MIX_ROUTE_LATE      ; 2
+	const MIX_TRAINER_EARLY   ; 3
+	const MIX_TRAINER_MID     ; 4
+	const MIX_TRAINER_LATE    ; 5
+	const MIX_GYM_EARLY       ; 6
+	const MIX_GYM_LATE        ; 7
+	const MIX_ELITE           ; 8
+	const MIX_E4_SETS         ; 9
 DEF NUM_MOVESET_MIXES EQU const_value
 
+; Reading the rows: a quota that is not spent falls back to MSRC_LEARNSET, so
+; "6 learnset" and "no quotas at all" build the same team. The explicit 6 on
+; MIX_ROUTE_EARLY says "vanilla on purpose" rather than "not filled in yet".
+;
+; rank_row rises with the band on every kind, and with the kind at every band:
+; BAD/EASY/NORMAL down the route column, EASY/NORMAL/HARD down the trainer
+; column, NORMAL/HARD/ELITE down the leader column. That is the whole
+; difficulty ladder in one readable diagonal, and it is deliberately NOT the
+; lever AITierByRound pulls - that one scales how well the AI uses a moveset,
+; this one scales what is in the moveset.
+;
+; Explosion is forbidden on the three ROUTE rows at every band and allowed from
+; the gym-trainer rows up. A random route battle ending to a one-shot
+; Selfdestruct reads as a feel-bad; the same move on a gym trainer is a threat
+; the player walked into knowingly.
 MovesetMixTable::
 	table_width MIX_ENTRY_SIZE, MovesetMixTable
-	;   learn full rand rTM TMonly set   tier_mask               rank_row       tm_cap require        forbid
-	mix     4,   0,   0,   0,  0,   0,   0,                      RANK_ROW_BAD,    0,   0,             MOVEFLAG_EXPLOSION
-	mix     2,   1,   1,   0,  0,   0,   0,                      RANK_ROW_EASY,   1,   0,             MOVEFLAG_EXPLOSION
-	mix     0,   1,   1,   1,  0,   1,   TIER_NORMAL,            RANK_ROW_NORMAL, 2,   0,             0
-	mix     0,   0,   1,   1,  1,   2,   TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,  3,   0,             0
-	mix     0,   0,   1,   1,  1,   3,   TIER_HARD | TIER_ELITE, RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0
+	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid
+	mix     6,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION
+	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION
+	mix     0,   3,   3,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION
+	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0
+	mix     0,   0,   5,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0
+	mix     0,   0,   0,   5,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   3,   0,              0
+	mix     0,   1,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0
+	mix     0,   0,   1,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0
+	mix     0,   0,   1,   1,  1,   3,  TIER_HARD | TIER_ELITE,  RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0
+	mix     0,   0,   0,   0,  0,   6,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0
 	assert_table_length NUM_MOVESET_MIXES
 
 ; --- Slot override field widths --------------------------------------------
@@ -87,6 +130,39 @@ DEF PARTY_SPEC_HEADER_SIZE EQU 6
 MACRO slot_override
 	db \1, \2
 ENDM
+
+; --- Mix-only pseudo-specs (Phase 5) ---------------------------------------
+; One spec record per MovesetMixTable row, carrying NOTHING but the mix id.
+;
+; RogueApplyMixToParty re-uses the whole Phase 2 source-assignment and moveset
+; machinery on a party that some OTHER path already built - GetRandRoster's
+; rarity-class roll, or BuildMiniBossTeam's curated list. That machinery reads
+; the mix id, the BIT_PSPEC_* flags and the slot-override list back out of a
+; spec record through wPartyGenSpecPtr, so the cheapest way to drive it is to
+; hand it a real record that happens to describe nothing else.
+;
+; Every field but the mix id is zero and is genuinely unread on this path:
+;
+;   n_mons       superseded by wPartyGenNMons, which RogueApplyMixToParty sets
+;                from wEnemyPartyCount (the party already exists, so the count
+;                is a measurement rather than an instruction)
+;   base, step   levels are already final; the applier reads each mon's own
+;                MON_LEVEL into wCurEnemyLevel instead
+;   pool         no species is rolled
+;   flags        0, so no ACE_LAST claim and no NO_DUPES retry
+;   overrides    PARTY_SPEC_OVERRIDES_END immediately - there are none
+;
+; 7 bytes x NUM_MOVESET_MIXES. Generated by FOR rather than written out, so a
+; new mix row cannot be added without its pseudo-spec appearing with it.
+DEF MIX_ONLY_SPEC_SIZE EQU PARTY_SPEC_HEADER_SIZE + 1
+
+MixOnlySpecs::
+	table_width MIX_ONLY_SPEC_SIZE, MixOnlySpecs
+	FOR m, NUM_MOVESET_MIXES
+	party_spec 0, 0, 0, 0, m, 0
+	db PARTY_SPEC_OVERRIDES_END
+	ENDR
+	assert_table_length NUM_MOVESET_MIXES
 
 
 ; ===========================================================================
@@ -279,11 +355,21 @@ ENDM
 ; \5/\6 = secondary. Forms are parameters here and not on the gym macro
 ; because both shipping E4 secondaries need one: there is no ESPEON or UMBREON
 ; species in this tree, they are JOLTEON forms 1 and 2.
+;
+; Phase 5 moved these off MIX_ELITE and onto MIX_E4_SETS, the plan's "sets
+; only, ELITE mask" row. Every slot draws a curated set, and a species with no
+; TIER_ELITE record at this level falls back to MSRC_RANDOM under
+; RANK_ROW_ELITE - the documented MSRC_SET degradation, and the reason the tier
+; mask can be this narrow without any slot coming out empty.
+;
+; There is no tier ladder here, unlike the gym rows: all four E4 tiers are
+; within 3 levels of each other, so the same row serves all of them and the
+; ladder lives in the levels instead.
 MACRO e4_team_spec
 	DEF _t    = \1
 	DEF _tier = (_t - 1) / NUM_ROUND_VARIANTS + 1
 	DEF _var  = (_t - 1) % NUM_ROUND_VARIANTS
-	party_spec 5, 52 + _tier, 2, \2, MIX_ELITE, GYM_SPEC_FLAGS
+	party_spec 5, 52 + _tier, 2, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
 	IF _var == 0
 	slot_override 4, 1 << BIT_POVR_SPECIES
 	db \3, \4

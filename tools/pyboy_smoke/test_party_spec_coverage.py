@@ -291,6 +291,11 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         an E4-only class is asked for 1-12. Giving one 24 teams would leave half
         unreachable; giving it 8 rounds' worth of levels would put tier 1 at a
         gym leader's round-1 levels.
+
+        All four tiers share MIX_E4_SETS, the Phase 5 "sets only, ELITE mask"
+        row - the one place in the grid where the row does NOT vary with the
+        round, because the four tiers are within three levels of each other and
+        the ladder lives in the levels instead.
         """
         for image in self.images:
             for prefix, (_cls, pool, ace, ace_form, alt, alt_form) \
@@ -304,7 +309,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                         self.assertEqual(
                             header,
                             (5, 52 + tier, 2, self.pools[pool],
-                             self.mixes["MIX_ELITE"], BASE_FLAGS),
+                             self.mixes["MIX_E4_SETS"], BASE_FLAGS),
                             f"{label} serves tier {tier}")
                         if variant == 1:
                             self.assertEqual(overrides, [])

@@ -91,7 +91,31 @@ ReadTrainer:
 	cp TRAINERPARTY_LEVELS ; is the trainer special?
 	jr z, .SpecialTrainer ; if so, check for special moves
     farcall GetRandRoster
-    jp z, .AddAdditionalMoveData
+    jr nz, .LoopTrainerData
+; Phase 5: the roster is built, with vanilla WriteMonMoves movesets. Apply the
+; difficulty grid's row for this battle on top. wBattleCount decides which -
+; route trainers and gym trainers get different rows, and both ramp with the
+; round. Same bank, so plain calls.
+;
+; GetRandRoster has always returned with z set unconditionally (`xor a` then
+; `ret`), so the old `jp z` here was already unconditional. The conditional is
+; kept rather than dropped because it is what documents the contract, and
+; because a future non-z return must NOT be mixed - it would mean the roster
+; path declined and the authored list below is live.
+;
+; ⚠ GAMBLER IS EXEMPT, and this is not a special case so much as the one place
+; the roster path already owns its movesets. Gambler's Paradise draws its whole
+; team from GamblerMonMovesets and OverrideGamblerMoves writes each mon's four
+; moves from that table INSIDE GetRandRosterLoop, immediately after AddPartyMon.
+; Mixing on top would roll those away and delete the feature. SpecialTrainerMoves
+; needs no such guard: it runs at .AddAdditionalMoveData, after this, so it still
+; wins.
+    ld a, [wTrainerClass]
+    cp GAMBLER
+    jr z, .AddAdditionalMoveData
+    call RogueRosterMixId
+    call RogueApplyMixToParty
+    jp .AddAdditionalMoveData
 .LoopTrainerData
 	ld a, [hli]
 	and a ; have we reached the end of the trainer data?
@@ -163,6 +187,11 @@ ReadTrainer:
 	jp .SpecialTrainer
 .miniBossCustom
 	call BuildMiniBossTeam ; hl -> mini-boss team data (same bank; builds the enemy party)
+; Phase 5: "mini-boss / rival matches the gym leader of the same round". The
+; mini-boss keeps its curated signature species and its own level scaling; only
+; the movesets come from the leader row for this round.
+	call RogueBossMixId
+	call RogueApplyMixToParty
 	jp .AddAdditionalMoveData
 .AddAdditionalMoveData
 ; does the trainer have additional move data?

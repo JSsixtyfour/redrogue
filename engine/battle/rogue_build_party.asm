@@ -34,13 +34,25 @@ RogueBuildParty::
 	ld a, h
 	ld [wPartyGenSpecPtr + 1], a
 
+; n_mons is clamped ONCE, here, into wPartyGenNMons, and every later reader
+; takes it from there rather than from the spec header. Two reasons: the clamp
+; then cannot be forgotten at one of the three read sites (it used to be
+; repeated in PartyGenPickFreeSlot and open-coded again in this loop), and
+; Phase 5's RogueApplyMixToParty can drive the same machinery with a count that
+; has no spec header to come from.
+	ld a, [hl]                     ; n_mons
+	cp PARTY_LENGTH + 1
+	jr c, .countOk
+	ld a, PARTY_LENGTH
+.countOk
+	ld [wPartyGenNMons], a
+
 	call PartyGenAssignSources
 
 	xor a
 	ld [wPartyGenSlot], a
 .slotLoop
-	call PartyGenSpecHeader
-	ld a, [hl]                     ; n_mons
+	ld a, [wPartyGenNMons]
 	ld b, a
 	ld a, [wPartyGenSlot]
 	cp b
@@ -49,8 +61,7 @@ RogueBuildParty::
 	ld a, [wPartyGenSlot]
 	inc a
 	ld [wPartyGenSlot], a
-	cp PARTY_LENGTH
-	jr c, .slotLoop                ; hard stop at PARTY_LENGTH even if n_mons lies
+	jr .slotLoop
 .done
 	scf
 	ret
@@ -222,13 +233,10 @@ PartyGenAssignSources:
 	add hl, bc
 	bit BIT_PSPEC_ACE_LAST, [hl]
 	jr z, .quotas
-	call PartyGenSpecHeader
-	ld a, [hl]                     ; n_mons
+	ld a, [wPartyGenNMons]         ; already clamped to PARTY_LENGTH
 	and a
 	jr z, .quotas
 	dec a                          ; last slot index
-	cp PARTY_LENGTH
-	jr nc, .quotas
 	ld c, a
 	ld b, 0
 	ld hl, wPartyGenSlotSource
@@ -329,12 +337,7 @@ PartyGenAssignSources:
 ; so the choice is uniform without needing a retry loop.
 ; ===========================================================================
 PartyGenPickFreeSlot:
-	call PartyGenSpecHeader
-	ld a, [hl]                     ; n_mons
-	cp PARTY_LENGTH + 1
-	jr c, .gotLimit
-	ld a, PARTY_LENGTH
-.gotLimit
+	ld a, [wPartyGenNMons]         ; already clamped to PARTY_LENGTH
 	ld e, a                        ; e = slots in play
 	and a
 	jr z, .none
@@ -1109,7 +1112,7 @@ PartyGenRollMoveset:
 ; GetMonHeader last saw. Species and form are read back out of the mon's own
 ; struct rather than from wCurPartySpecies, which AddPartyMon is free to have
 ; modified on its way through.
-	call PartyGenLastMonBase       ; hl -> the mon's party_struct base
+	call PartyGenSlotMonBase       ; hl -> the mon's party_struct base
 	ld a, [hl]                     ; MON_SPECIES
 	ld [wCurSpecies], a
 	call PublishFormContext        ; HOME; reads MON_CATCH_RATE at hl, keeps hl
@@ -1206,7 +1209,7 @@ PartyGenRollMoveset:
 ;         carry CLEAR otherwise - caller falls back to MSRC_RANDOM.
 ; ===========================================================================
 PartyGenApplySetMoveset:
-	call PartyGenLastMonBase       ; hl -> mon struct; MON_SPECIES is byte 0
+	call PartyGenSlotMonBase       ; hl -> mon struct; MON_SPECIES is byte 0
 	ld a, [hl]
 	ld c, a
 	ld b, 0
@@ -1564,7 +1567,7 @@ PartyGenMoveFlags:
 ; A fresh read via PartyGenMixRow rather than a cached value: this is called
 ; only a handful of times per mon, so the extra in-bank read costs nothing,
 ; and it avoids every register-lifetime problem that keeping the mask alive
-; across PartyGenLastMonMoves/PartyGenMoveFlags (which between them clobber
+; across PartyGenSlotMonMoves/PartyGenMoveFlags (which between them clobber
 ; af/bc/de/hl) would otherwise create.
 PartyGenRequireFlagsMask:
 	call PartyGenMixRow
@@ -1622,7 +1625,7 @@ PartyGenMoveHasRequiredFlag:
 ; (lowest MOVE_RANK_*; ties keep the earliest slot).
 ;
 ; Every register gets clobbered by the mix of calls this needs
-; (PartyGenLastMonMoves alone clobbers af/bc/hl), so slot indices and other
+; (PartyGenSlotMonMoves alone clobbers af/bc/hl), so slot indices and other
 ; loop state that must survive a sub-call are carried on the stack via
 ; push/pop pairs rather than in a register, throughout.
 ; ===========================================================================
@@ -1639,7 +1642,7 @@ PartyGenApplyRequireFlags:
 	cp NUM_MOVES
 	jr nc, .chosenPassFailed
 	push bc
-	call PartyGenLastMonMoves        ; hl -> MON_MOVES[0]
+	call PartyGenSlotMonMoves        ; hl -> MON_MOVES[0]
 	pop bc
 	push bc
 	ld b, 0
@@ -1668,7 +1671,7 @@ PartyGenApplyRequireFlags:
 	jr nc, .rankLoopDone
 	push bc
 	push de
-	call PartyGenLastMonMoves
+	call PartyGenSlotMonMoves
 	pop de
 	pop bc
 	push bc
@@ -1944,7 +1947,7 @@ PartyGenChargeTMOnly:
 ; OUTPUT: carry SET if it is already in one of this mon's four move slots.
 ; CLOBBERS af, bc, hl. PRESERVES de.
 PartyGenMoveAlreadyChosen:
-	call PartyGenLastMonMoves
+	call PartyGenSlotMonMoves
 	ld b, NUM_MOVES
 .loop
 	ld a, [hli]
@@ -1973,35 +1976,45 @@ PartyGenMoveAlreadyChosen:
 ; = 11,220 bytes to wEnemyMon1 - wrapping clean out of WRAM and landing in
 ; $0000-$1FFF, which is the MBC3 RAM-ENABLE register, not memory. The
 ; subsequent move/PP writes would toggle SRAM instead of writing anything.
-PartyGenLastMonBase:
+; hl -> the party_struct of the mon this build step is working on, which is
+; wPartyGenSlot's.
+;
+; Phase 5 changed the index from "wEnemyPartyCount - 1" to wPartyGenSlot. On the
+; spec path the two are the same number by construction - PartyGenBuildSlot
+; calls AddPartyMon for slot i and the count is i + 1 immediately afterwards,
+; and n_mons is clamped to PARTY_LENGTH so AddPartyMon can never fail on a party
+; that started empty. What the change buys is Phase 5's RogueApplyMixToParty,
+; which walks a party that is ALREADY complete and so cannot use the count to
+; name a slot.
+PartyGenSlotMonBase:
 	ld hl, wEnemyMon1
-	ld a, [wEnemyPartyCount]
-	and a
-	ret z
-	dec a
-	ld bc, PARTYMON_STRUCT_LENGTH
-	jp AddNTimes
+	jr PartyGenSlotOffset
 
-; hl -> MON_MOVES of the most recently added enemy mon. Same guard, same reason.
-PartyGenLastMonMoves:
+; hl -> MON_MOVES of the same mon.
+PartyGenSlotMonMoves:
 	ld hl, wEnemyMon1Moves
+	; fallthrough
+
+; Guarded against an empty party so a caller that reaches here before any mon
+; exists gets slot 0's address rather than walking backwards off the array.
+PartyGenSlotOffset:
 	ld a, [wEnemyPartyCount]
 	and a
 	ret z
-	dec a
+	ld a, [wPartyGenSlot]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	jp AddNTimes
 
 ; Zeroes this mon's four move ids and their PP.
 PartyGenClearMoves:
-	call PartyGenLastMonMoves
+	call PartyGenSlotMonMoves
 	ld b, NUM_MOVES
 	xor a
 .moveLoop
 	ld [hli], a
 	dec b
 	jr nz, .moveLoop
-	call PartyGenLastMonMoves
+	call PartyGenSlotMonMoves
 	ld bc, MON_PP - MON_MOVES
 	add hl, bc
 	ld b, NUM_MOVES
@@ -2019,7 +2032,7 @@ PartyGenWriteMove:
 	push de
 	ld e, a                        ; e = move id; the only pair a farcall spares
 	push bc
-	call PartyGenLastMonMoves
+	call PartyGenSlotMonMoves
 	pop bc
 	ld b, 0
 	add hl, bc
@@ -2070,6 +2083,193 @@ PartyGenApplyExplicitMoves:
 	cp NUM_MOVES
 	jr c, .loop
 	ret
+
+; ===========================================================================
+; Phase 5: binding MovesetMixTable to wBattleCount
+;
+; Gym leaders and the Elite Four already reach their mix row through the spec
+; record the round selects, so nothing here is needed for them. Everything
+; below exists for the trainers that have NO spec: GetRandRoster's rarity-class
+; rosters, which are most of the battles in a run, and BuildMiniBossTeam's
+; curated teams. Those keep their own species, form and level choices; this
+; applies the moveset half of the spec system to the party afterwards.
+;
+; Doing it afterwards rather than per-mon inside GetRandRoster is deliberate.
+; That loop holds four live registers across every step (b = class loop,
+; d = inner counter, e = minimum level, hl = difficulty-table cursor) and
+; already brackets its form roll in three pushes for exactly that reason; it
+; also lives in another bank, so each hook would be a farcall with the
+; a/b/c/h/l destruction that implies. One call on a finished party needs none
+; of that, and it is the same call for the mini-boss path.
+; ===========================================================================
+
+; ===========================================================================
+; RogueBattleRound
+;
+; OUTPUT: b = round index 0-8, a = step within the round 0-9
+;
+; The clamp and the repeated subtraction are GetRandRoster's own, copied rather
+; than re-derived: the two have to agree about which battle is which, and
+; `Divide` would answer the same question at ten times the cost.
+; ===========================================================================
+RogueBattleRound:
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89                       ; clamp to round 9 (Victory Road / Elite Four)
+.noClamp
+	ld b, 0
+.roundLoop
+	cp 10
+	ret c
+	sub 10
+	inc b
+	jr .roundLoop
+
+; ===========================================================================
+; RogueRoundBand
+;
+; INPUT:  a = round index, 0-based (0 = the run's first gym)
+; OUTPUT: a = 0 for the plan's rounds 1-2, 1 for rounds 3-5, 2 for 6-8 and up
+; ===========================================================================
+RogueRoundBand:
+	cp 2
+	jr c, .early
+	cp 5
+	jr c, .mid
+	ld a, 2
+	ret
+.mid
+	ld a, 1
+	ret
+.early
+	xor a
+	ret
+
+; ===========================================================================
+; RogueRosterMixId
+;
+; OUTPUT: a = the MovesetMixTable row for the roster trainer wBattleCount
+;         implies.
+;
+; THE ROUTE/TRAINER LINE FALLS AT STEP 5 HERE AND AT STEP 6 IN GetRandRoster,
+; and that is intended, not a drift. GetRandRoster puts step 5 - the final route
+; trainer - on the ROUTE level table; the plan's difficulty grid groups it with
+; the gym trainers, because "final route / gym trainer" is one row of that grid.
+; Step 5 is already the step that alone gets BIT_ROGUE_FINAL_TRAINER's level
+; bonus and rarer class distribution, so giving it the tougher moveset row is
+; the same statement about the same battle.
+; ===========================================================================
+RogueRosterMixId::
+	call RogueBattleRound          ; b = round index, a = step
+	ld c, 0                        ; c = kind row 0: route trainers
+	cp 5
+	jr c, .gotKind
+	ld c, NUM_ROUND_BANDS          ; kind row 1: final route / gym trainers
+.gotKind
+	ld a, b
+	call RogueRoundBand
+	add c
+	ld c, a
+	ld b, 0
+	ld hl, RosterMixByKindAndBand
+	add hl, bc
+	ld a, [hl]
+	ret
+
+; ===========================================================================
+; RogueBossMixId
+;
+; OUTPUT: a = the gym-leader mix row for the current round, which is the plan's
+;         "mini-boss / rival matches the gym leader of the same round".
+; ===========================================================================
+RogueBossMixId::
+	call RogueBattleRound          ; b = round index
+	ld a, b
+	call RogueRoundBand
+	ld c, a
+	ld b, 0
+	ld hl, GymMixByBand
+	add hl, bc
+	ld a, [hl]
+	ret
+
+RosterMixByKindAndBand:
+	table_width NUM_ROUND_BANDS, RosterMixByKindAndBand
+	;      rounds 1-2         rounds 3-5        rounds 6-8
+	db MIX_ROUTE_EARLY,   MIX_ROUTE_MID,   MIX_ROUTE_LATE    ; steps 0-4
+	db MIX_TRAINER_EARLY, MIX_TRAINER_MID, MIX_TRAINER_LATE  ; steps 5-9
+	assert_table_length 2
+
+GymMixByBand:
+	table_width 1, GymMixByBand
+	db MIX_GYM_EARLY
+	db MIX_GYM_LATE
+	db MIX_ELITE
+	assert_table_length NUM_ROUND_BANDS
+
+; ===========================================================================
+; RogueApplyMixToParty
+;
+; INPUT: a = MovesetMixTable row id
+;
+; Re-rolls the movesets of an enemy party that is ALREADY complete, slot by
+; slot, under that mix. Species, forms, levels and the party count are left
+; exactly as the path that built them left them.
+;
+; It drives the ordinary Phase 2 machinery through a mix-only pseudo-spec (see
+; MixOnlySpecs in data/trainers/party_specs.asm), so nothing downstream needs
+; to know it is running without a real spec. The two things a finished party
+; cannot take from a spec header are supplied here: the slot count, from
+; wEnemyPartyCount into wPartyGenNMons, and each mon's level, from its own
+; MON_LEVEL into wCurEnemyLevel.
+;
+; CLOBBERS: everything.
+; ===========================================================================
+RogueApplyMixToParty::
+	ld b, a                        ; b = mix id
+	ld a, [wEnemyPartyCount]
+	and a
+	ret z                          ; nothing was built, so nothing to mix
+	cp PARTY_LENGTH + 1
+	jr c, .countOk
+	ld a, PARTY_LENGTH
+.countOk
+	ld [wPartyGenNMons], a
+
+	ld a, b
+	ld hl, MixOnlySpecs
+	ld bc, MIX_ONLY_SPEC_SIZE
+	call AddNTimes
+	ld a, l
+	ld [wPartyGenSpecPtr], a
+	ld a, h
+	ld [wPartyGenSpecPtr + 1], a
+
+	call PartyGenAssignSources
+
+	xor a
+	ld [wPartyGenSlot], a
+.slotLoop
+	ld a, [wPartyGenNMons]
+	ld b, a
+	ld a, [wPartyGenSlot]
+	cp b
+	ret nc
+; wCurEnemyLevel gates both the level-up candidate walk (GetLevelUpMovesFar)
+; and the curated set's level band, and on this path it still holds whatever
+; the LAST mon the builder made was - which is the right answer for exactly one
+; of the slots. Read it back out of the mon being worked on instead.
+	call PartyGenSlotMonBase
+	ld bc, MON_LEVEL
+	add hl, bc
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	call PartyGenApplyMoveset
+	ld a, [wPartyGenSlot]
+	inc a
+	ld [wPartyGenSlot], a
+	jr .slotLoop
 
 ; ===========================================================================
 ; Bank contract

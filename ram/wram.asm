@@ -1011,6 +1011,20 @@ wPartyGenTMUsed:: db
 ; than a store. So the spend is charged here instead.
 wPartyGenAceSource:: db
 wPartyGenSlot:: db          ; party slot being built, 0-based
+; How many slots this build covers, clamped to PARTY_LENGTH once on entry.
+;
+; Held here rather than re-read from the spec header because Phase 5's
+; RogueApplyMixToParty has NO spec header worth reading: it re-uses this
+; machinery on a party some other path already built (GetRandRoster,
+; BuildMiniBossTeam), driving it from a mix-only pseudo-spec whose every field
+; but the mix id is zero. Its count is wEnemyPartyCount - a measurement of a
+; party that already exists, not an instruction - so it has to come from
+; somewhere other than ROM.
+;
+; This is the one byte that took wPartyGenScratch from 30 to 31 and so made it
+; the union's unique largest member. See WRAM_BIBLE.md section V: it is the
+; only byte of WRAM0 the whole of Phase 5 spends.
+wPartyGenNMons:: db
 ; The MSRC_* actually in force for the slot being built. Distinct from
 ; wPartyGenSlotSource[slot] because MSRC_SET degrades to MSRC_RANDOM here
 ; without rewriting the slot's assignment.
@@ -1026,9 +1040,14 @@ ENDU
 ; Keeps the zero-cost property honest. If the scratch ever outgrows the union's
 ; span it stops being free and silently widens the union for all 33 members, so
 ; fail the build instead and make the size increase a deliberate decision.
-ASSERT wPartyGenScratchEnd - wPartyGenScratch <= 30, \
-       "wPartyGenScratch must fit the 30-byte union span to stay zero-cost; \
-see WRAM_BIBLE.md before widening it"
+; Was <= 30, the union's original span, which made this member zero-cost. Phase
+; 5 widened it to 31 for wPartyGenNMons and it is now the unique largest member,
+; so every further byte costs a real byte of WRAM0. Keep the assert tight: it
+; exists to make a size increase a deliberate, measured decision rather than a
+; silent widening of a union with 33 members.
+ASSERT wPartyGenScratchEnd - wPartyGenScratch <= 31, \
+       "wPartyGenScratch is now the largest member of its union, so every byte \
+past 31 costs a byte of WRAM0; see WRAM_BIBLE.md section V before widening it"
 
 ; 0 = neither
 ; 1 = warp pad

@@ -311,6 +311,10 @@ class RequireFlagsSmokeTest(HarnessTestCase):
         move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
         self._set_synthetic_header(mix_id)
         h.write8("wEnemyPartyCount", 1)
+        # Phase 5 made PartyGenSlotMonMoves index by wPartyGenSlot instead of
+        # wEnemyPartyCount - 1, so "the mon under test" is now slot 0 because
+        # this says so, not because the party happens to hold one mon.
+        h.write8("wPartyGenSlot", 0)
         for i, name in enumerate(moves):
             h.write8("wEnemyMon1Moves", move_ids[name] if name else 0, offset=i)
         h.write8("wPartyGenCandidateCount", len(candidates))
@@ -451,6 +455,7 @@ class SetMovesetSmokeTest(HarnessTestCase):
         h.write8("wPartyGenSpecPtr", header_addr & 0xFF)
         h.write8("wPartyGenSpecPtr", header_addr >> 8, offset=1)
         h.write8("wEnemyPartyCount", 1)
+        h.write8("wPartyGenSlot", 0)  # see the same note in RequireFlagsSmokeTest
         h.write8("wEnemyMon1", species[species_name])  # MON_SPECIES, struct offset 0
         h.write8("wCurEnemyLevel", level)
 
