@@ -58,7 +58,9 @@ RogueSyncBadgeSlots::
 	and a
 	jr nz, .haveBadges
 	; Zero badges means a fresh run, so anything still in the array belongs to
-	; a previous one. This is what resets it; no separate run-start hook.
+	; a previous one. This is what resets it; no separate run-start hook. Any
+	; unspent foresight dies with the run too.
+	call RogueSpendForesight
 	ld hl, wBadgeSlotOrder
 	ld bc, NUM_BADGES
 	xor a
@@ -74,12 +76,32 @@ RogueSyncBadgeSlots::
 	ld a, c
 	call RogueCardLeaderForBadgeBit
 	call RogueRecordBadgeSlot
+	; Carry = this leader is newly recorded, i.e. the gym foresight was bought
+	; for has just been beaten. Foresight is per-gym, so spend it here rather
+	; than letting one purchase reveal the rest of the run.
+	call c, RogueSpendForesight
 	pop bc
 .nextBit
 	inc c
 	ld a, c
 	cp NUM_BADGES
 	jr c, .bitLoop
+	ret
+
+; ============================================================
+; RogueSpendForesight
+; Consumes BIT_ROGUE_PREDICT_BADGES.
+;
+; Foresight is bought per gym, not once per run: whoever grants it reveals the
+; leader behind the NEXT gym door, and beating that leader uses it up. Without
+; this the bit is simply persistent run state and a single purchase would name
+; every remaining leader, which is not what it is worth paying for.
+;
+; Single-bit `res` so the rest of wRogueFlagsBitfield2 survives - bits 0-1 are
+; Credit Exchange slot pulls and bits 2-6 are the Shin Red VRAM/DMA flags.
+RogueSpendForesight::
+	ld hl, wRogueFlagsBitfield2
+	res BIT_ROGUE_PREDICT_BADGES, [hl]
 	ret
 
 ; ============================================================
@@ -106,10 +128,14 @@ RogueCardLeaderForBadgeBit::
 
 ; ============================================================
 ; RogueRecordBadgeSlot
-; INPUT: a = trainer class id
-; Appends it at the first empty slot, unless it is already recorded. The array
-; is always densely packed from index 0, so the first zero found is both the end
-; of the recorded run and the correct append point.
+; INPUT:  a = trainer class id
+; OUTPUT: carry set if this leader was NEWLY recorded, clear if it was already
+;         there (or could not be stored). The caller uses that as "a gym has
+;         just been beaten", which is the only edge in the whole system.
+;
+; Appends at the first empty slot. The array is always densely packed from index
+; 0, so the first zero found is both the end of the recorded run and the correct
+; append point.
 RogueRecordBadgeSlot::
 	ld b, a
 	ld hl, wBadgeSlotOrder
@@ -117,16 +143,20 @@ RogueRecordBadgeSlot::
 .find
 	ld a, [hl]
 	cp b
-	ret z                      ; already recorded
+	jr z, .notNew              ; already recorded
 	and a
 	jr z, .append
 	inc hl
 	dec c
 	jr nz, .find
-	ret                        ; all 8 slots full and this class is not among
+	                           ; all 8 slots full and this class is not among
 	                           ; them: drop it rather than overwrite history
+.notNew
+	and a                      ; clear carry
+	ret
 .append
 	ld [hl], b
+	scf
 	ret
 
 ; ============================================================
@@ -134,9 +164,24 @@ RogueRecordBadgeSlot::
 ; INPUT:  a = card slot index (0-7)
 ; OUTPUT: a = block index into GymLeaderFaceAndBadgeTileGraphics (0-16)
 ;
-; An empty slot, or a class with no block (which should not happen), falls back
-; to the slot index. That is exactly vanilla's mapping, so a card drawn before
-; any sync still looks like the old one rather than like garbage.
+; Three cases:
+;   earned          the leader recorded in wBadgeSlotOrder
+;   the NEXT slot   the leader of the gym currently queued, if the player has
+;                   foresight and a gym really is queued
+;   anything else   CARD_BLOCK_UNKNOWN, whose face half is the "?"
+;
+; The reveal is deliberately ONE slot, not every unearned slot. Foresight tells
+; the player who is behind the next gym door; it is not a table of contents for
+; the whole run. So it lands on the slot that the next victory will fill, which
+; is the first empty one - and because the array is densely packed, "slot i is
+; the next one" is just "slot i is empty and slot i-1 is not".
+;
+; The revealed leader comes from the QUEUED GYM's badge bit, not from the slot
+; index. Those are different numbers once any badge has been earned: with two
+; badges the next slot is 2, while the queued gym might be badge bit 5.
+;
+; A recorded class with no block at all (which should not happen) also draws the
+; "?" rather than something arbitrary.
 RogueCardBlockForSlot::
 	ld e, a
 	ld d, 0
@@ -144,7 +189,22 @@ RogueCardBlockForSlot::
 	add hl, de
 	ld a, [hl]
 	and a
-	jr z, .fallback
+	jr nz, .haveClass
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_PREDICT_BADGES, a
+	jr z, .unknown
+	ld a, e
+	and a
+	jr z, .nextSlot            ; slot 0, and empty, so it is the next one
+	dec hl                     ; hl = wBadgeSlotOrder[slot - 1]
+	ld a, [hl]
+	and a
+	jr z, .unknown             ; empty slot before this one: not next, stay hidden
+.nextSlot
+	call RogueCardNextGymBadgeBit
+	jr nc, .unknown            ; a route is queued, so there is nothing to reveal
+	call RogueCardLeaderForBadgeBit
+.haveClass
 	ld b, a
 	ld hl, CardLeaderClasses
 	ld c, 0
@@ -156,11 +216,48 @@ RogueCardBlockForSlot::
 	ld a, c
 	cp NUM_CARD_LEADERS
 	jr c, .scan
-.fallback
-	ld a, e
+.unknown
+	ld a, CARD_BLOCK_UNKNOWN
 	ret
 .found
 	ld a, c
+	ret
+
+; ============================================================
+; RogueCardNextGymBadgeBit
+; OUTPUT: carry set and a = badge bit (0-7) of the gym the player is queued to
+;         enter; carry clear if the queued stage is a route, not a gym.
+;
+; _PickNextGym computes exactly this index, then discards it and keeps only the
+; map id, so recover it by reverse-scanning the table it used. That costs no
+; WRAM, which matters here: wRogueFlagsBitfield2 is now full and this is a
+; display-only convenience that does not deserve a fresh byte.
+;
+; wRogueMap is the right source rather than either wLobbyDoorNStageMap: both
+; doors default to it, and the bridge layer, the only thing that can repoint
+; them on a gym cycle, still routes onward to wRogueMap after its gift.
+;
+; GymMapByBadge lives in random_stage_selection.asm, which shares SECTION "rogue"
+; with this file, so this read is in-bank BY CONSTRUCTION. If either file is ever
+; moved, they move together or this needs a far read.
+RogueCardNextGymBadgeBit::
+	ld a, [wRogueMap]
+	ld b, a
+	ld hl, GymMapByBadge
+	ld c, 0
+.scan
+	ld a, [hli]
+	cp b
+	jr z, .found
+	inc c
+	ld a, c
+	cp NUM_BADGES
+	jr c, .scan
+	and a                      ; clear carry: the queued stage is not a gym
+	ret
+.found
+	ld a, c
+	scf
 	ret
 
 ; ============================================================

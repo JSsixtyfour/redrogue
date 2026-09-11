@@ -22,7 +22,13 @@ SECTION "Trainer Card Art", ROMX, BANK[$3C]
 ; Blocks 8-16 are Phase 1c placeholders (Kanto art, index for index, so the
 ; eight stay visually distinct while the Phase 4 per-slot blit is developed).
 ; Block 16 is Janine, whose badge half is final rather than placeholder: she
-; carries Koga's Soul Badge, so 17 blocks hold 16 unique badge graphics.
+; carries Koga's Soul Badge, so the 17 leader blocks hold 16 unique badges.
+;
+; Block 17 is NOT a leader: it is CARD_BLOCK_UNKNOWN, the "?" drawn in a slot
+; whose leader the player has not earned and is not being shown. Added in
+; Phase 4b, when the next-gym-leader reveal made it necessary to stop borrowing
+; Giovanni's block for that job. Hence NUM_CARD_BLOCKS rather than
+; NUM_CARD_LEADERS in the size assert below.
 GymLeaderFaceAndBadgeTileGraphics::
 	INCBIN "gfx/trainer_card/badges.2bpp"
 GymLeaderFaceAndBadgeTileGraphicsEnd::
@@ -31,6 +37,6 @@ GymLeaderFaceAndBadgeTileGraphicsEnd::
 ; regeneration would assemble silently and blit whatever happened to follow.
 ; This catches it at link time instead.
 ASSERT GymLeaderFaceAndBadgeTileGraphicsEnd - GymLeaderFaceAndBadgeTileGraphics \
-       == NUM_CARD_LEADERS * CARD_TILES_PER_LEADER * TILE_SIZE, \
-       "gfx/trainer_card/badges.png must hold exactly NUM_CARD_LEADERS blocks \
+       == NUM_CARD_BLOCKS * CARD_TILES_PER_LEADER * TILE_SIZE, \
+       "gfx/trainer_card/badges.png must hold exactly NUM_CARD_BLOCKS blocks \
 of CARD_TILES_PER_LEADER tiles; re-run tools/make_placeholder_badges.py"

@@ -179,6 +179,20 @@ DEF NUM_BADGES EQU const_value
 	const BIT_MINIBOSS_DOOR         ; 6 — which lobby door holds the mini-boss (0 = door 1, 1 = door 2)
 	const BIT_MINIBOSS_ACTIVE       ; 7 — a mini-boss is active on the stage being entered
 
+; wRogueFlagsBitfield2 bit 7. The rest of that byte is claimed - bits 0-1 are
+; Credit Exchange slot pulls and bits 2-6 are the Shin Red hFlagsFFFA VRAM/DMA
+; flags, despite what the stale "6 of its 8 bits are still free" note in
+; ram/wram.asm used to say. Bit 7 is safe to hold a persistent gameplay flag:
+; every writer of that byte was audited (2026-09-11) and all of them preserve
+; the other bits - engine/gfx/palettes.asm uses single-bit set/res,
+; custom_functions/func_gamma.asm round-trips the whole byte through push/pop af,
+; and slot_machine.asm's `inc b` cannot carry out of bits 0-1.
+;
+; Set: the trainer card reveals the FACE of the leader behind the NEXT gym door
+; in the slot that beating them will fill. One slot only, and only while a gym
+; is actually queued; every other unearned slot stays CARD_BLOCK_UNKNOWN.
+DEF BIT_ROGUE_PREDICT_BADGES EQU 7
+
 ; wRogueFlagsBitfield bits 4-5 encode the offered mini-boss type (see MINIBOSS_* below).
 ; Read/written as a 2-bit field: (flags & MINIBOSS_TYPE_MASK) >> MINIBOSS_TYPE_SHIFT.
 DEF MINIBOSS_TYPE_SHIFT EQU 4

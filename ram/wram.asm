@@ -2668,9 +2668,13 @@ wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level by
 
 ; General-purpose second rogue-run bitfield: wRogueFlagsBitfield (above) has
 ; zero free bits (see its own comment), so new run-scoped flags land here
-; instead of on that byte. 6 of its 8 bits are still free - see WRAM_BIBLE.md
-; §0/§K for current WRAM0 headroom. Document every bit here as it's claimed;
-; do not add a bit without a comment.
+; instead of on that byte. As of 2026-09-11 this byte is FULL: bits 0-1 below,
+; bits 2-6 imported from Shin Red's hFlagsFFFA, bit 7 taken by Phase 4b. (The
+; note that used to sit here claiming "6 of its 8 bits are still free" was
+; stale - the hFlagsFFFA bits documented right below it were already live in
+; engine/gfx/palettes.asm and custom_functions/func_gamma.asm.) The next
+; run-scoped flag needs a new byte; see WRAM_BIBLE.md §0/§K for headroom.
+; Document every bit here as it's claimed; do not add a bit without a comment.
 ;   bits 0-1: Credit Exchange slot pulls USED this run (0-3, see
 ;             engine/slots/slot_machine.asm MainSlotMachineLoop and
 ;             custom_functions/credit_popup.asm RogueOnBlackout, which
@@ -2682,7 +2686,11 @@ wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level by
 ;bit 4 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
 ;bit 5 - DMARoutine will not run in Vblank while this bit is set, was bit 0 in Shinred hFlagsFFFA
 ;bit 6 - BGmap update functions will not run in Vblank while this bit is set
-; bit 7: unused; the saved enhanced-color option now lives in wOptions2 bit 6
+;   bit 7: BIT_ROGUE_PREDICT_BADGES - the trainer card reveals the face of each
+;          UNearned badge slot instead of CARD_BLOCK_UNKNOWN's "?" glyph. Read
+;          by RogueCardBlockForSlot (custom_functions/trainer_card_slots.asm).
+;          The saved enhanced-color option that used to be proposed for this bit
+;          lives in wOptions2 bit 6 instead, so bit 7 was genuinely free.
 wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above

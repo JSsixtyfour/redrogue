@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Expand gfx/trainer_card/badges.png from 8 leader blocks to 17.
+"""Expand gfx/trainer_card/badges.png to its full block count.
 
 ONE-SHOT, BY HAND. Not wired into `make`. The PNG it writes is the committed
 source asset; `badges.2bpp` is gitignored and built by rgbgfx as usual. Run it
 once, commit the PNG, then hand-edit the PNG when real art arrives. Re-running
 it would overwrite any real Johto art with Kanto placeholders again, so it
-refuses to touch a file that already has 17 blocks unless --force is given.
+refuses to touch a file that already has all blocks unless --force is given.
 
 Sheet geometry (do not change without changing DrawBadges):
   16 px wide = 2 tiles. Each leader block is 4 image rows = 8 tiles:
@@ -17,7 +17,7 @@ Block order is the trainer-card block index, which is NOT the trainer class id.
 Blocks 0-7 are the vanilla Kanto eight, in wObtainedBadges BIT order
 (BIT_BOULDERBADGE..BIT_EARTHBADGE, constants/ram_constants.asm), because
 DrawBadges walks that bitfield LSB-first and indexes this sheet with the same
-counter. Blocks 8-16 are appended by this script:
+counter. Blocks 8-16 are appended by this script, then block 17, the "?":
 
   8..15  the 8 Johto leaders -> PLACEHOLDER copies of blocks 0..7, index for
          index. Index order rather than a thematic type match, deliberately:
@@ -26,9 +26,10 @@ counter. Blocks 8-16 are appended by this script:
          A type match would have collided (Whitney and Jasmine both -> Boulder).
   16     Janine -> copy of block 4 (Koga). For the badge half this is not a
          placeholder but the final intent: Janine carries her father's Soul
-         Badge, so 17 blocks hold 16 unique badge graphics. Duplicating 8 tiles
-         of art buys zero special-casing in the drawing code. Her FACE half is
-         still a placeholder.
+         Badge, so the leader blocks hold 16 unique badge graphics. Duplicating
+         8 tiles of art buys zero special-casing in the drawing code. Her FACE
+         half is still a placeholder.
+  17     CARD_BLOCK_UNKNOWN, the "?" glyph. See UNKNOWN_BLOCK below.
 """
 
 from __future__ import annotations
@@ -63,7 +64,24 @@ APPENDED = [
     (16, 4, "JANINE   (badge INTENTIONALLY Koga's Soul Badge; face placeholder)"),
 ]
 
-TOTAL_BLOCKS = KANTO_BLOCKS + len(APPENDED)  # 17
+# The dedicated "unknown leader" block, CARD_BLOCK_UNKNOWN. Added 2026-09-11.
+#
+# This used to be block 7: Giovanni was vanilla's hidden eighth leader, so his
+# FACE half is the "?" glyph and DrawBadges got the behaviour for free. That
+# conflates two meanings the moment Giovanni gets a real portrait, which the
+# next-gym-leader reveal needs, so "?" now has a block of its own.
+#
+# Its art comes from unknown_face.png, NOT from block 7, precisely so that
+# dropping a real Giovanni face into block 7 cannot silently overwrite the "?".
+#
+# BOTH halves are the glyph. The badge half is reachable: RogueCardBlockForSlot
+# falls back here when a recorded class is not in CardLeaderClasses, and that
+# slot IS earned, so DrawBadges would draw the badge half. Better a "?" than a
+# spurious Earth Badge.
+UNKNOWN_BLOCK = KANTO_BLOCKS + len(APPENDED)  # 17
+UNKNOWN_FACE_PNG = REPO_ROOT / "gfx" / "trainer_card" / "unknown_face.png"
+
+TOTAL_BLOCKS = UNKNOWN_BLOCK + 1  # 18
 
 
 def block_box(index: int) -> tuple[int, int, int, int]:
@@ -74,7 +92,7 @@ def block_box(index: int) -> tuple[int, int, int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--force", action="store_true",
-                    help="overwrite even if the sheet already has 17 blocks")
+                    help="overwrite even if the sheet already has all blocks")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -112,6 +130,17 @@ def main() -> int:
     for dst, srcblk, label in APPENDED:
         out.paste(src.crop(block_box(srcblk)), (0, dst * BLOCK_H_PX))
         print(f"  block {dst:2d} <- block {srcblk}  {label}")
+
+    glyph = Image.open(UNKNOWN_FACE_PNG)
+    if glyph.mode != "L" or glyph.size != (SHEET_W_PX, BLOCK_H_PX // 2):
+        print(f"error: {UNKNOWN_FACE_PNG.name} is {glyph.mode} {glyph.size}, "
+              f"expected L {(SHEET_W_PX, BLOCK_H_PX // 2)}", file=sys.stderr)
+        return 1
+    top = UNKNOWN_BLOCK * BLOCK_H_PX
+    out.paste(glyph, (0, top))                      # face half
+    out.paste(glyph, (0, top + BLOCK_H_PX // 2))    # badge half, see above
+    print(f"  block {UNKNOWN_BLOCK:2d} <- {UNKNOWN_FACE_PNG.name}  "
+          f"CARD_BLOCK_UNKNOWN (both halves)")
 
     print(f"{have_blocks} blocks -> {TOTAL_BLOCKS} blocks "
           f"({out.height}px tall, {TOTAL_BLOCKS * 8} tiles, "

@@ -129,3 +129,25 @@ DEF NUM_TRAINERS EQU const_value - 1
 ; KOGA's E4 appearance reuses his gym-leader block.
 DEF NUM_CARD_LEADERS EQU 17
 DEF CARD_TILES_PER_LEADER EQU 8 ; 4 face + 4 badge, badge second (DrawBadges `add 4`)
+
+; The sheet holds one more block than there are leaders: the leader blocks, then
+; CARD_BLOCK_UNKNOWN. Keep this and NUM_CARD_LEADERS distinct - the scan over
+; CardLeaderClasses is bounded by the LEADER count, so folding the "?" into it
+; would make the resolver able to return it as if it were somebody's portrait.
+DEF NUM_CARD_BLOCKS EQU NUM_CARD_LEADERS + 1
+
+; The block drawn in a slot whose leader the player is not entitled to know:
+; every unearned slot except the one the next-gym reveal may fill.
+;
+; This was GIOVANNI's block until 2026-09-11, which worked for free because he
+; was vanilla's hidden eighth leader and his FACE half IS the "?" glyph. The
+; next-gym-leader reveal needs those two meanings separated: with the reveal on,
+; a queued Giovanni would draw the same "?" as an unknown slot. So the glyph now
+; has a block of its own, sourced from gfx/trainer_card/unknown_face.png rather
+; than copied from block 7, so that dropping a real Giovanni portrait into block
+; 7 cannot silently overwrite it.
+;
+; BOTH halves of the block are the glyph. The badge half is reachable:
+; RogueCardBlockForSlot lands here when a recorded class is missing from
+; CardLeaderClasses, and that slot IS earned, so DrawBadges draws the badge half.
+DEF CARD_BLOCK_UNKNOWN EQU NUM_CARD_LEADERS
