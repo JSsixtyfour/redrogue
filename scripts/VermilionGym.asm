@@ -89,8 +89,7 @@ VermilionGymLTSurgeReceiveTM24Script:
 	ldh [hTextID], a
 	call DisplayTextID
 .gym_victory
-	ld hl, wObtainedBadges
-	set BIT_THUNDERBADGE, [hl]
+	predef RogueAwardCurrentGymBadge
 	ld hl, wRogueFlagsBitfield
 	res 0, [hl]                 ; route is next after this gym
 

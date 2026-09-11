@@ -117,6 +117,7 @@ PredefPointers::
     add_predef SingleCPUSpeed
     add_predef SetCPUSpeed
     add_predef SetAttackANimPal
+    add_predef RogueAwardCurrentGymBadge
 
 ; GetPredefPointer (engine/predefs.asm) computes offset = 3 * wPredefID using an 8-bit multiply
 ; that discards the carry out of the doubling step, so it silently wraps for IDs >= 128 instead of

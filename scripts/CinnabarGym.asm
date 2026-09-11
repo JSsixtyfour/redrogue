@@ -157,8 +157,7 @@ CinnabarGymReceiveTM38:
 	ldh [hTextID], a
 	call DisplayTextID
 .gymVictory
-	ld hl, wObtainedBadges
-	set BIT_VOLCANOBADGE, [hl]
+	predef RogueAwardCurrentGymBadge
 	ld hl, wRogueFlagsBitfield
 	res 0, [hl]                 ; route is next after this gym
 

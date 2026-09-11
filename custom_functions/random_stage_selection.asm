@@ -103,6 +103,23 @@ _PickNextGym:
 	inc e
 	jr .gym_pick
 .gym_chosen
+	; e = the badge bit index just selected. Stash it as a PRE-SHIFTED MASK for
+	; RogueAwardCurrentGymBadge (gym victory) and GymStatues (flavour text),
+	; both of which need to know which badge THIS gym awards. Must happen here,
+	; before e is consumed as a GymMapByBadge offset below, and it is the only
+	; place the index exists: Phase 7 swaps the table lookup for
+	; wRunGymLineup[e] -> GymMapByLeader, but e keeps exactly this meaning.
+	ld a, 1
+	ld b, e
+	inc b
+	jr .badgeMaskEntry
+.badgeMaskLoop
+	add a
+.badgeMaskEntry
+	dec b
+	jr nz, .badgeMaskLoop
+	ld [wRogueCurGymBadgeMask], a
+
 	ld hl, GymMapByBadge
 	ld d, 0
 	add hl, de

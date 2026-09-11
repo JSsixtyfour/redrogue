@@ -2331,7 +2331,30 @@ wPokemonMansion3FCurScript:: db
 wPokemonMansionB1FCurScript:: db
 wVictoryRoad2FCurScript:: db
 wVictoryRoad3FCurScript:: db
-	ds 1
+; Which badge the gym the player is currently headed into / standing in will
+; award, as a PRE-SHIFTED MASK (1 << bit), not a bit index. Written by
+; _PickNextGym at .gym_chosen, where register e already holds the badge bit it
+; selected; read by RogueAwardCurrentGymBadge (predef) on gym victory and by
+; GymStatues for its flavour text.
+;
+; A mask rather than an index specifically so that ZERO IS A SENTINEL. Bit index
+; 0 is a legitimate value (Boulder) and would be indistinguishable from "never
+; set"; mask 0 cannot be a real badge. It matters because this byte lives inside
+; wGameProgressFlags and so is auto-zeroed on new game, and because a debug-menu
+; warp can drop the player into a gym without ever passing through _PickNextGym.
+; Consumers must handle 0: the predef falls back to the lowest unset badge bit,
+; GymStatues shows the "don't have it" text.
+;
+; Inside wGameProgressFlags so it is SAVED - the player can save inside a gym
+; between the warp that sets this and the victory that reads it.
+;
+; PLACED IN AN EXISTING `ds 1` PADDING SLOT, deliberately, rather than appended
+; before wGameProgressFlagsEnd. Appending shifts every WRAM address after it by
+; one, and this suite is sensitive to that: doing so drifted the procedural
+; forest generator's RNG into a seed where the boss lands on a pokeball cell,
+; failing test_procedural_forest_generation. Consuming a gap keeps every
+; subsequent address byte-identical. See GYM_LEADER_EXPANSION_PLAN.md Phase 6.
+wRogueCurGymBadgeMask:: db
 wFightingDojoCurScript:: db
 wSilphCo2FCurScript:: db
 wSilphCo3FCurScript:: db
