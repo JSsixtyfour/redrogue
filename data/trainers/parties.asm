@@ -399,7 +399,13 @@ KogaData:
     ; Fifth Gym
 	db $FF, 37, KOFFING, 39, MUK, 37, DITTO, 43, WEEZING, 0
 	db $FF, 37, ODDISH, 39, NIDOKING, 37, SCYTHER, 43, MUK, 0
-	db $FF, 37, NIDORINO, 39, VICTREEBEL, 37, HAUNTER, NIDOQUEEN, 0
+	; NIDOQUEEN's level byte was MISSING here until 2026-09-10. In the
+	; TRAINERPARTY_LEVELS ($FF) layout every mon is a level/species pair and
+	; ReadTrainer stops on a 0 in the LEVEL position, so this team read
+	; NIDOQUEEN's species id as a level, 0 as a species, and then walked the
+	; FOLLOWING teams' bytes as more mons. 43 matches every other round-5
+	; ace across all eight leaders.
+	db $FF, 37, NIDORINO, 39, VICTREEBEL, 37, HAUNTER, 43, NIDOQUEEN, 0
     ; Sixth Gym
     db $FF, 38, HAUNTER, 37, HYPNO, 38, SCYTHER, 43, WEEZING, 0
 	db $FF, 38, PARASECT, 37, NIDOQUEEN, 38, TAUROS, 43, VENUSAUR, 0

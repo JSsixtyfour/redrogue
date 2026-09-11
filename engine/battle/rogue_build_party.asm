@@ -1729,9 +1729,20 @@ PartyGenApplyRequireFlags:
 	ld a, d
 	cp b
 	jr nc, .noneFound
+; PartyGenTMMoveByIndex takes its ordinal in `a` and then uses `d` AS THAT
+; COUNTDOWN, so it returns with d clobbered - de must be saved here, not just
+; bc. It was not, until 2026-09-10: d is this loop's index, so the first call
+; reset it to 0, `inc d` made it 1, the next call reset it to 0 again, and the
+; loop never reached b. Measured as 2,962,876 calls without returning.
+;
+; Nothing could reach it before Phase 3. MIX_ELITE is the only shipping mix row
+; with a nonzero require_flags and no spec referenced MIX_ELITE until the round
+; 6-8 leader specs landed, so the whole TM leg of this scan was dead code.
 	push bc
+	push de
 	ld a, d
 	call PartyGenTMMoveByIndex        ; a = the move for the d-th set TM bit
+	pop de
 	pop bc
 	push bc
 	push de
@@ -1822,6 +1833,11 @@ PartyGenCountTMs:
 ; INPUT:  a = which SET bit of wMonHLearnset to take (0-based)
 ; OUTPUT: a = the corresponding move id, 0 if the index runs off the end
 ; CLOBBERS af, bc, de, hl
+;
+; ⚠ `d` IN PARTICULAR. This routine copies the input ordinal into d and counts
+; it down, so a caller looping over TM indexes must NOT keep its loop counter
+; there - and must push de, not just bc, across the call. PartyGenApplyRequireFlags
+; did exactly that and span forever; see the note at its .tmLoop.
 ;
 ; Bit i of the bitfield means "can learn TMMovesForPartyGen[i]" - the convention
 ; CanLearnTM establishes in engine/items/tms.asm, where one counter indexes

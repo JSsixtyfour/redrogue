@@ -131,10 +131,11 @@ TrainerPoolTable::
 ; cover the legendary birds. See that flag's note in
 ; constants/party_spec_constants.asm.
 ;
-; MEWTWO is here to exercise BIT_PSPEC_ALLOW_UBER from both sides - FalknerSpec2
-; must never draw it and FalknerSpec3 must be able to. ⚠ PHASE 3: delete this
-; entry when writing Falkner's real pool. It is off-theme and only earns its
-; place while this is the one pool in the tree.
+; MEWTWO was here through Phase 2 purely so BIT_PSPEC_ALLOW_UBER had an uber to
+; reject. Phase 3 removed it: it was off-theme, and the test that needed it
+; (test_uber_filter_reads_the_spec_flag) drives PartyGenPoolCandidateOk directly
+; with wCurPartySpecies written by hand, so it never read the pool at all.
+; SabrinaPool is where MEW and MEWTWO are real, on-theme content.
 ;
 ; AERODACTYL is deliberately in the Kanto run despite being a fossil mon: run
 ; membership follows the rarity tables' group split, not flavour.
@@ -152,7 +153,6 @@ FalknerPool:
 	pool_mon FARFETCHD
 	pool_mon AERODACTYL
 	pool_mon ARTICUNO
-	pool_mon MEWTWO ; RARITY_TIER_UBER; see the header note. Phase 3: remove.
 FalknerPool_Johto:
 	pool_mon HOOTHOOT
 	pool_mon NOCTOWL
@@ -591,12 +591,26 @@ WillPool_Warp:
 WillPool_End:
 
 ; ---------------------------------------------------------------------------
-; Karen - Elite Four, Dark. No Kanto run: Dark did not exist as a type until
-; Generation 2, so no Gen 1 species in this dex was ever Dark-typed. UMBREON
-; is JOLTEON form 2 in this tree, pinned for the same reason WillPool pins
-; Espeon.
+; Karen - Elite Four, Dark. UMBREON is JOLTEON form 2 in this tree, pinned for
+; the same reason WillPool pins Espeon.
+;
+; Dark did not exist as a type until Generation 2, so no Gen 1 species in this
+; dex was ever Dark-typed, and this pool started life with an EMPTY Kanto run.
+; That is a real fault rather than just thin content: with Johto locked every
+; run of the pool is ineligible, PartyGenRollFromPool takes its .giveUp branch,
+; and that branch falls back to the pool's FIRST entry UNFILTERED - yielding a
+; team of five identical Murkrow rather than a crash, which is exactly the kind
+; of fault that survives a clean build. The Kanto run below is her own Gen 2
+; roster's Kanto half (Gengar and Vileplume are literally on it) plus three
+; Kanto mons that read as her kind of dark. Phase 7 is expected to draw Karen
+; only when Johto is enabled, but the pool must not depend on that holding.
 ; ---------------------------------------------------------------------------
 KarenPool:
+	pool_mon GENGAR
+	pool_mon VILEPLUME
+	pool_mon ARBOK
+	pool_mon PERSIAN
+	pool_mon GOLBAT
 KarenPool_Johto:
 	pool_mon MURKROW
 	pool_mon HOUNDOUR

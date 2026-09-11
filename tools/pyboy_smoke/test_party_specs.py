@@ -8,12 +8,19 @@ real ROM and read the resulting enemy party out of WRAM.
 The specs under test are in data/trainers/party_specs.asm:
 
   FALKNER wTrainerNo 1  a `dw 0` hole - no spec, so the Phase 1 authored
-                        placeholder team still serves this round
+                        placeholder team still serves this round. Phase 3 made
+                        that hole the convention on all 19 characters rather
+                        than a Falkner quirk; see test_party_spec_coverage.py.
           wTrainerNo 2  3 mons, base level 13 step +1, POOL_FALKNER,
                         MIX_GYM_EARLY, NO_DUPES | ACE_LAST, and a slot 2
                         override pinning PIDGEOT at level 17 with four
                         explicit moves
           wTrainerNo 3  the same pool and mix with ALLOW_UBER and no overrides
+
+These two are round 1's B and C variants and are kept hand-written; every other
+round of every character is generated. Phase 3 also removed FalknerPool's
+MEWTWO, which was only ever a fixture for test_uber_filter_reads_the_spec_flag -
+and that test never read the pool, it writes wCurPartySpecies itself.
 
 ⚠ HARNESS LIMIT, MEASURED, NOT GUESSED. `call_routine("ReadTrainer")` cannot be
 invoked more than roughly ten times per boot: somewhere between build 10 and
@@ -50,7 +57,7 @@ def _mix_id(name):
 # champion win, so the Johto entries must be unreachable here.
 FALKNER_KANTO_RUN = [
     "PIDGEY", "PIDGEOTTO", "PIDGEOT", "SPEAROW", "FEAROW", "DODUO", "DODRIO",
-    "ZUBAT", "GOLBAT", "FARFETCHD", "AERODACTYL", "ARTICUNO", "MEWTWO",
+    "ZUBAT", "GOLBAT", "FARFETCHD", "AERODACTYL", "ARTICUNO",
 ]
 FALKNER_JOHTO_RUN = [
     "HOOTHOOT", "NOCTOWL", "CROBAT", "MURKROW", "SKARMORY", "YANMA", "GLIGAR",
@@ -503,3 +510,98 @@ class SetMovesetSmokeTest(HarnessTestCase):
         self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 101)
         found, _ = self._run()
         self.assertFalse(found, "level 101 is outside BAYLEEF's 35-100 record range")
+
+
+class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
+    """Phase 3: a high wTrainerNo must reach a SPEC, not another class's data.
+
+    test_party_spec_coverage.py proves all 434 records decode correctly from the
+    built ROM, but decoding a table is not the same as the resolver reaching it.
+    The failure this guards against is silent and specific: before Phase 3,
+    wTrainerNo above a class's authored team count fell through to
+    TrainerDataPointers, where .SkipTrainer walked forward wTrainerNo - 1
+    terminators and stopped inside the NEXT class's data. The party that came
+    back was well-formed, just somebody else's.
+
+    So each case below is chosen to be DISTINGUISHABLE from what the old path
+    would have produced, rather than merely plausible:
+
+      BROCK 4      round 2 A. The authored team 4 is also two mons, so a count
+                   check proves nothing - but it is 18 ONIX / 21 AERODACTYL,
+                   ace AERODACTYL, where the spec pins ONIX as the ace. The
+                   ACE, not the size, is the discriminator.
+      WHITNEY 22   round 8 A. WhitneyData holds ONE team, so the old path would
+                   have walked into MORTY's. Six mons with MILTANK last cannot
+                   come from anywhere else.
+      WHITNEY 24   round 8 C, the secondary ace. Pairs with 22 so a bug that
+                   always pins the primary is caught.
+      KAREN 12     E4 tier 4 C. Proves the twelve-team Elite Four grid resolves
+                   at its top end, and that the ace is a JOLTEON carrying a FORM
+                   byte - Umbreon is not a species in this tree.
+
+    Capped well under the harness's ~10-invocation ceiling; see the module note.
+    """
+
+    def _build(self, trainer_class, trainer_no):
+        h = self.harness
+        assert h is not None
+        classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants/trainer_constants.asm"
+        )
+        h.write8("wTrainerClass", classes[trainer_class])
+        h.write8("wTrainerNo", trainer_no)
+        h.call_routine("ReadTrainer", limit=4000)
+        count = h.read8("wEnemyPartyCount")
+        return count, h.read_bytes("wEnemyPartySpecies", count + 1)
+
+    def test_generated_rounds_resolve_to_their_own_specs(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+
+        for trainer_class, trainer_no, mons, ace in (
+            ("BROCK", 4, 2, "ONIX"),
+            ("WHITNEY", 22, 6, "MILTANK"),
+            ("WHITNEY", 24, 6, "CLEFABLE"),
+            ("KAREN", 12, 5, "JOLTEON"),
+        ):
+            with self.subTest(trainer=trainer_class, wTrainerNo=trainer_no):
+                count, party = self._build(trainer_class, trainer_no)
+                self.assertEqual(
+                    count, mons,
+                    f"{trainer_class} wTrainerNo {trainer_no} built {count} mons")
+                self.assertEqual(party[count], 0xFF, "party list not terminated")
+                self.assertEqual(
+                    party[count - 1], species[ace],
+                    f"{trainer_class} wTrainerNo {trainer_no} ace is "
+                    f"{party[count - 1]}, expected {ace}={species[ace]}")
+                for slot, got in enumerate(party[:count]):
+                    self.assertNotIn(
+                        got, (0, 0xFF),
+                        f"slot {slot} holds {got}, which is not a species")
+
+    def test_ace_form_byte_survives_into_the_built_mon(self):
+        """KAREN's ace is JOLTEON form 2 (Umbreon), and the form must stick.
+
+        AddPartyMon folds wSpawnForm into that mon's MON_CATCH_RATE bits 5-6 and
+        then clears wSpawnForm, so reading the species alone cannot tell Umbreon
+        from an ordinary Jolteon. The established rule is "write wSpawnForm only
+        just before a creation"; a pool or override that rolled the form earlier
+        would leak it into whichever mon is built first, which is exactly the
+        bug this reads back.
+        """
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        count, _ = self._build("KAREN", 12)
+        self.assertEqual(count, 5)
+        stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
+        forms = []
+        for slot in range(count):
+            catch_rate = h.read8("wEnemyMon1CatchRate", offset=slot * stride)
+            forms.append((catch_rate >> 5) & 0b11)
+        self.assertEqual(
+            forms[4], 2,
+            f"the ace's form index is {forms[4]}, expected 2 (Umbreon); "
+            f"whole party read {forms}")
