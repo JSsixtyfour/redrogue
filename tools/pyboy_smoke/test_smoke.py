@@ -792,40 +792,168 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         assert self.harness is not None
         self.harness.boot_to_lobby()
         self.harness.call_routine("PFacPreload", limit=60000)
-        self.harness.call_routine("PFacFinalize", limit=120000)
+        baseline = io.BytesIO()
+        self.harness.save_state(baseline)
 
-        block_buffer = self.harness.read_bytes("wOverworldMap", 601)
-        playable = [
-            block_buffer[81 + row * 26 + col]
+        seeds = (
+            (0x01, 0x23, 0x45, 0x67),
+            (0x89, 0xAB, 0xCD, 0xEF),
+            (0x13, 0x37, 0xC0, 0xDE),
+            (0xDE, 0xAD, 0xBE, 0xEF),
+            (0x55, 0xAA, 0x5A, 0xA5),
+            (0xFE, 0xED, 0xFA, 0xCE),
+            (0x10, 0x20, 0x30, 0x40),
+            (0x7F, 0x80, 0x81, 0x82),
+        )
+        allowed_blocks = {
+            0x0E,
+            0x2E,
+            0x40,
+            0x41,
+            0x42,
+            0x44,
+            0x46,
+            0x48,
+            0x49,
+            0x4A,
+            0x55,
+            0x56,
+            0x57,
+            0x58,
+            0x59,
+            0x5A,
+            0x63,
+            0x67,
+        }
+        signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
+
+        for seed in seeds:
+            with self.subTest(seed=seed):
+                self.harness.load_state(baseline)
+                self.harness.write8("hRandomAdd", seed[0])
+                self.harness.write8("hRandomSub", seed[1])
+                self.harness.write8("hRandomLast", seed[2])
+                self.harness.write8("hRandomLast", seed[3], offset=1)
+                self.harness.call_routine("PFacFinalize", limit=120000)
+
+                block_buffer = self.harness.read_bytes("wOverworldMap", 601)
+                playable = tuple(
+                    block_buffer[81 + row * 26 + col]
+                    for row in range(20)
+                    for col in range(20)
+                )
+                self.assertTrue(set(playable).issubset(allowed_blocks))
+                self.assertIn(0x0E, playable)
+                self.assertIn(0x2E, playable)
+                self.assertTrue(set(playable).intersection({0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}))
+                self.assertTrue(set(playable).intersection({0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}))
+
+                exit_x = self.harness.read_sram_bytes("sProcFacilityExitI", 1)[0]
+                self.assertIn(exit_x, range(1, 19))
+                self.assertEqual(playable[17 * 20 + 9], 0x0E)
+                self.assertEqual(playable[exit_x], 0x0E)
+                self.assertEqual(playable[20 + exit_x], 0x0E)
+                self.assertEqual(
+                    [col for col in range(20) if playable[col] == 0x0E],
+                    [exit_x],
+                )
+
+                ball_xy = self.harness.read_sram_bytes("sProcFacilityBallXY", 8)
+                ball_blocks = []
+                for tile_y, tile_x in zip(ball_xy[::2], ball_xy[1::2]):
+                    self.assertGreaterEqual(tile_y, 4)
+                    self.assertGreaterEqual(tile_x, 4)
+                    self.assertEqual((tile_y - 4) % 2, 0)
+                    self.assertEqual((tile_x - 4) % 2, 0)
+                    block_y = (tile_y - 4) // 2
+                    block_x = (tile_x - 4) // 2
+                    self.assertIn(block_y, range(20))
+                    self.assertIn(block_x, range(20))
+                    self.assertEqual(playable[block_y * 20 + block_x], 0x0E)
+                    ball_blocks.append((block_x, block_y))
+                self.assertEqual(len(set(ball_blocks)), 4)
+
+                reachable = {(9, 17)}
+                frontier = [(9, 17)]
+                while frontier:
+                    col, row = frontier.pop()
+                    for near_col, near_row in (
+                        (col - 1, row),
+                        (col + 1, row),
+                        (col, row - 1),
+                        (col, row + 1),
+                    ):
+                        if (
+                            0 <= near_col < 20
+                            and 0 <= near_row < 20
+                            and playable[near_row * 20 + near_col] == 0x0E
+                            and (near_col, near_row) not in reachable
+                        ):
+                            reachable.add((near_col, near_row))
+                            frontier.append((near_col, near_row))
+                self.assertIn((exit_x, 0), reachable)
+                self.assertIn((exit_x, 1), reachable)
+                self.assertTrue(set(ball_blocks).issubset(reachable))
+
+                for row in range(20):
+                    for col in range(20):
+                        if playable[row * 20 + col] != 0x0E:
+                            continue
+                        for near_col, near_row in (
+                            (col - 1, row),
+                            (col + 1, row),
+                            (col, row - 1),
+                            (col, row + 1),
+                        ):
+                            if 0 <= near_col < 20 and 0 <= near_row < 20:
+                                self.assertNotEqual(
+                                    playable[near_row * 20 + near_col],
+                                    0x2E,
+                                    f"naked floor/void edge at ({col}, {row})",
+                                )
+
+                warps = self.harness.read_bytes("wWarpEntries", 12)
+                self.assertEqual((warps[4], warps[5]), (0, 2 * exit_x))
+                self.assertEqual((warps[8], warps[9]), (0, 2 * exit_x + 1))
+                self.assertEqual(
+                    self.harness.read8("wSprite01StateData2MapY"), 6
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite01StateData2MapX"),
+                    2 * exit_x + 4,
+                )
+                item_ids = tuple(
+                    self.harness.read_sram_bytes("sProcFacilityBallItems", 4)
+                )
+                self.assertTrue(all(item_ids))
+                self.assertEqual(
+                    tuple(self.harness.read_bytes("wRogueItem", 7)[::2]),
+                    item_ids,
+                )
+                signatures.append((playable, exit_x, tuple(ball_xy), item_ids))
+
+        self.assertGreaterEqual(len({signature[0] for signature in signatures}), 2)
+
+        self.harness.load_state(baseline)
+        seed = seeds[0]
+        self.harness.write8("hRandomAdd", seed[0])
+        self.harness.write8("hRandomSub", seed[1])
+        self.harness.write8("hRandomLast", seed[2])
+        self.harness.write8("hRandomLast", seed[3], offset=1)
+        self.harness.call_routine("PFacFinalize", limit=120000)
+        replay_buffer = self.harness.read_bytes("wOverworldMap", 601)
+        replay_map = tuple(
+            replay_buffer[81 + row * 26 + col]
             for row in range(20)
             for col in range(20)
-        ]
-        self.assertFalse({0xF0, 0xFD, 0xFE, 0xFF}.intersection(playable))
-        self.assertIn(0x0E, playable)
-        self.assertIn(0x2E, playable)
-        for row in range(20):
-            for col in range(20):
-                if playable[row * 20 + col] != 0x0E:
-                    continue
-                for delta_row, delta_col in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    near_row = row + delta_row
-                    near_col = col + delta_col
-                    if 0 <= near_row < 20 and 0 <= near_col < 20:
-                        self.assertNotEqual(
-                            playable[near_row * 20 + near_col],
-                            0x2E,
-                            f"naked floor/void edge at ({col}, {row})",
-                        )
-        self.assertTrue(
-            set(playable).intersection(
-                {0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}
-            )
         )
-        self.assertTrue(
-            set(playable).intersection(
-                {0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}
-            )
+        replay = (
+            replay_map,
+            self.harness.read_sram_bytes("sProcFacilityExitI", 1)[0],
+            tuple(self.harness.read_sram_bytes("sProcFacilityBallXY", 8)),
+            tuple(self.harness.read_sram_bytes("sProcFacilityBallItems", 4)),
         )
+        self.assertEqual(replay, signatures[0])
     def test_procedural_forest_generation(self) -> None:
         self.assert_generation_contract(
             "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 5, True
