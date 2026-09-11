@@ -399,6 +399,10 @@ SECTION "Trainer Parties", ROMX
 INCLUDE "engine/battle/read_trainer_party.asm"
 
 INCLUDE "data/trainers/special_moves.asm"
+; YL-6B Joy/Jenny battles are archived as inactive future options.
+; See reference/yellow_legacy/joy_jenny/options.asm before selecting a role,
+; progression gate, rewards, rematch policy, or trainer-class allocation.
+; INCLUDE "reference/yellow_legacy/joy_jenny/options.asm"
 
 INCLUDE "data/trainers/parties.asm"
 
