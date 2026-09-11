@@ -20,6 +20,8 @@ ProcBossPatchStageSprite::
 	jr z, .cave
 	cp PROCEDURAL_FOREST
 	jr z, .forest
+	cp PROCEDURAL_FACILITY
+	jr z, .facility
 	cp SILPH_CO_DORM
 	jr z, .dorm
 	ret
@@ -47,6 +49,16 @@ ProcBossPatchStageSprite::
 	ld [rRAMB], a
 	ld a, [sProcForestBossSprite]
 	ld b, a
+	jr .close
+.facility
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityStagingBuffer)
+	ld [rRAMB], a
+	ld a, [sProcFacilityBossSprite]
+	ld b, a
 .close
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -72,6 +84,8 @@ ProcStageLoadDispatch::
 	jr z, .addExitBattles
 	cp PROCEDURAL_FOREST
 	jr z, .addExitBattles
+	cp PROCEDURAL_FACILITY
+	jr z, .addExitBattles
 	cp PROCEDURAL_CEMETERY_4
 	jr nz, .noExitBattles
 .addExitBattles
@@ -91,6 +105,15 @@ ProcStageLoadDispatch::
 	; SHELVED facility preload: farcall PFacPreload
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
+	cp SILPH_CO_B1F
+	jr nz, .notFacilityTestEntrance
+	call ProcGenerationBeginDoubleSpeed
+	push af
+	farcall PFacPreload
+	pop af
+	call ProcGenerationEndDoubleSpeed
+	ret
+.notFacilityTestEntrance
 	cp SILPH_CO_DORM
 	jr nz, .notDorm
 	farcall RoomStampBlocks
@@ -114,7 +137,15 @@ ProcStageLoadDispatch::
 	call ProcGenerationEndDoubleSpeed
 	ret
 .notForest
-	; SHELVED facility finalize: cp PROCEDURAL_FACILITY / farcall PFacFinalize
+	cp PROCEDURAL_FACILITY
+	jr nz, .notFacility
+	call ProcGenerationBeginDoubleSpeed
+	push af
+	farcall PFacFinalize
+	pop af
+	call ProcGenerationEndDoubleSpeed
+	ret
+.notFacility
 	cp PROCEDURAL_CEMETERY_1
 	jr z, .cemetery
 	cp PROCEDURAL_CEMETERY_2
@@ -138,7 +169,7 @@ ProcStageLoadDispatch::
 ; assigned type. No-op if neither door is a wild-area entry map.
 ProcPreloadAssignedWildArea::
 	ld a, [wLobbyDoor1StageMap]
-	call .classify           ; a mapped to 1=cave 2=forest 3=cem, 0=not wild
+	call .classify           ; 1=cave 2=forest 3=cem 4=facility, 0=not wild
 	and a
 	jr nz, .preload
 	ld a, [wLobbyDoor2StageMap]
@@ -150,7 +181,10 @@ ProcPreloadAssignedWildArea::
 	jr z, .cave
 	dec a
 	jr z, .forest
-	; cemetery
+	dec a
+	jr z, .cemetery
+	jr .facility
+.cemetery
 	call ProcGenerationBeginDoubleSpeed
 	push af
 	farcall PCemGenerateMaps
@@ -171,7 +205,15 @@ ProcPreloadAssignedWildArea::
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret
-; a = map id -> a = 1 (cave) / 2 (forest) / 3 (cemetery_1) / 0 (not a wild entry map).
+.facility:
+	call ProcGenerationBeginDoubleSpeed
+	push af
+	farcall PFacPreload
+	pop af
+	call ProcGenerationEndDoubleSpeed
+	ret
+; a = map id -> a = 1 (cave) / 2 (forest) / 3 (cemetery_1) /
+; 4 (facility) / 0 (not a wild entry map).
 .classify:
 	cp PROCEDURAL_CAVE_1
 	jr z, .isCave
@@ -179,6 +221,8 @@ ProcPreloadAssignedWildArea::
 	jr z, .isForest
 	cp PROCEDURAL_CEMETERY_1
 	jr z, .isCem
+	cp PROCEDURAL_FACILITY
+	jr z, .isFacility
 	xor a
 	ret
 .isCave:
@@ -189,6 +233,9 @@ ProcPreloadAssignedWildArea::
 	ret
 .isCem:
 	ld a, 3
+	ret
+.isFacility:
+	ld a, 4
 	ret
 
 ; Run active procedural generation at the speed selected by ShinRed's CGB

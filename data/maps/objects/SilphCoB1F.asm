@@ -9,8 +9,8 @@ SilphCoB1F_Object:
 	warp_event  3,  0, SILPH_CO_DORM, 1
 	warp_event 11,  0, SILPH_CO_VR, 2
 	warp_event 10,  0, SILPH_CO_VR, 1
-	warp_event  7,  0, CREDIT_EXCHANGE, 2
-	warp_event  6,  0, CREDIT_EXCHANGE, 1
+	warp_event  7,  0, PROCEDURAL_FACILITY, 1
+	warp_event  6,  0, PROCEDURAL_FACILITY, 1
 
 	def_bg_events
 	bg_event 18, 0, TEXT_SILPHCOB1F_ELEVATOR
