@@ -54,6 +54,7 @@ DEF PFAC_WALL    EQU 46   ; solid interior wall AND the map border/void block.
 DEF PFAC_UNTOUCHED EQU $FF   ; PFacFillUntouched's seed value: "nothing has
                              ; claimed this cell yet". Converted to PFAC_WALL
                              ; by PFacConvertUntouched once generation is done.
+DEF PFAC_PENDING   EQU $FD   ; ambiguous corridor boundary; becomes floor after classification
 DEF PFAC_CORRIDOR  EQU $FE   ; a corridor cell (PFacCarveCorridors/
                              ; PFacCarveEntryCorridor). Converted to PFAC_FLOOR
                              ; by PFacConvertPseudoFloors.
@@ -75,6 +76,16 @@ DEF PFAC_C_TL     EQU 64  ; solid top-left,  floor SE  (floor to S and E)
 DEF PFAC_C_TR     EQU 66  ; solid top-right, floor SW  (floor to S and W)
 DEF PFAC_C_BL     EQU 72  ; solid bottom-left,  floor NE (floor to N and E)
 DEF PFAC_C_BR     EQU 74  ; solid bottom-right, floor NW (floor to N and W)
+
+; Doorway jamb/end pieces. Names describe the flank's position around the gap.
+DEF PFAC_J_TOP_W    EQU $63
+DEF PFAC_J_TOP_E    EQU $67
+DEF PFAC_J_BOTTOM_W EQU $58
+DEF PFAC_J_BOTTOM_E EQU $57
+DEF PFAC_J_LEFT_N   EQU $55
+DEF PFAC_J_LEFT_S   EQU $59
+DEF PFAC_J_RIGHT_N  EQU $56
+DEF PFAC_J_RIGHT_S  EQU $5A
 
 ; --- Room record model (sProcFacilityGenScratch, 81 bytes: 12*6 = 72 used) ---
 ; Record layout (6 bytes, read/written positionally via PFacRoomRecordAddr):
@@ -120,6 +131,17 @@ DEF wPFacItemRetry    EQU 11  ; PFacPlaceItems: item-dedup retry counter
 DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
                               ; existing bake step copies this to
                               ; sProcFacilityBallItems by name, unchanged.
+
+; Corridor-wall and doorway-jamb passes. These run before item placement, so
+; offsets 16-24 are phase-local and do not overlap the four rolled item bytes.
+DEF wPFacLoopX        EQU 16
+DEF wPFacLoopY        EQU 17
+DEF wPFacFlags        EQU 18
+DEF wPFacDX           EQU 19
+DEF wPFacDY           EQU 20
+DEF wPFacFlankExpect  EQU 21
+DEF wPFacFlankFirst   EQU 22
+DEF wPFacFlankSecond  EQU 23
 
 ; Room-placement phase (PFacPlaceEntryRoom/PFacPlaceExitRoom/PFacPlaceMiddleRooms
 ; and their helpers). Reuses 4-15; must not touch 25 (wPFacRoomCount).
@@ -539,6 +561,274 @@ PFacRingWrite:
     ret
 
 ; ============================================================
+; PFacBuildCorridorWalls
+; Classify untouched cells immediately beside corridor sentinels. Room rings
+; are already complete and remain authoritative. This is the orthogonal subset
+; of the 6baa4a29 classifier: N/S/E/W bits are 1/2/4/8. Opposite and ambiguous
+; masks become PFAC_PENDING and resolve to floor after the cascade-safe scan.
+; ============================================================
+PFacBuildCorridorWalls:
+    xor a
+    ld [wBuffer + wPFacLoopY], a
+.row
+    xor a
+    ld [wBuffer + wPFacLoopX], a
+.col
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .next
+    call PFacClassifyCorridorWall
+    call PFacWriteBlock
+.next
+    ld a, [wBuffer + wPFacLoopX]
+    inc a
+    ld [wBuffer + wPFacLoopX], a
+    cp PFAC_SIZE
+    jr nz, .col
+    ld a, [wBuffer + wPFacLoopY]
+    inc a
+    ld [wBuffer + wPFacLoopY], a
+    cp PFAC_SIZE
+    jr nz, .row
+    ret
+
+PFacClassifyCorridorWall:
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacDX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacDY], a
+    xor a
+    ld [wBuffer + wPFacFlags], a
+
+    ; north
+    ld a, [wBuffer + wPFacDY]
+    and a
+    jr z, .south
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    ld b, 1
+    call PFacMarkCorridorNeighbor
+.south
+    ld a, [wBuffer + wPFacDY]
+    cp PFAC_SIZE - 1
+    jr z, .east
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    ld b, 2
+    call PFacMarkCorridorNeighbor
+.east
+    ld a, [wBuffer + wPFacDX]
+    cp PFAC_SIZE - 1
+    jr z, .west
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    ld b, 4
+    call PFacMarkCorridorNeighbor
+.west
+    ld a, [wBuffer + wPFacDX]
+    and a
+    jr z, .result
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    ld b, 8
+    call PFacMarkCorridorNeighbor
+.result
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacFlags]
+    ld c, a
+    ld b, 0
+    ld hl, PFacCorridorWallTable
+    add hl, bc
+    ld a, [hl]
+    ret
+
+PFacMarkCorridorNeighbor:
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    ret nz
+    ld a, [wBuffer + wPFacFlags]
+    or b
+    ld [wBuffer + wPFacFlags], a
+    ret
+
+PFacCorridorWallTable:
+    ; 0, N, S, NS, E, NE, SE, NSE
+    db PFAC_WALL, PFAC_W_BOTTOM, PFAC_W_TOP, PFAC_PENDING
+    db PFAC_W_LEFT, PFAC_C_BL, PFAC_C_TL, PFAC_PENDING
+    ; W, NW, SW, NSW, EW, NEW, SEW, NSEW
+    db PFAC_W_RIGHT, PFAC_C_BR, PFAC_C_TR, PFAC_PENDING
+    db PFAC_PENDING, PFAC_PENDING, PFAC_PENDING, PFAC_PENDING
+
+; ============================================================
+; PFacApplyDoorJambs
+; A corridor sentinel directly beside room-floor marks a cut through that
+; room's ring. Rewrite only the two still-plain wall flanks around that gap,
+; preserving corners, existing jambs, and unrelated art. Mapping is the guarded
+; doorway rule from 0640346a.
+; ============================================================
+PFacApplyDoorJambs:
+    xor a
+    ld [wBuffer + wPFacLoopY], a
+.row
+    xor a
+    ld [wBuffer + wPFacLoopX], a
+.col
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld [wBuffer + wPFacDX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    ld [wBuffer + wPFacDY], a
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    call z, PFacJambDoorway
+    ld a, [wBuffer + wPFacLoopX]
+    inc a
+    ld [wBuffer + wPFacLoopX], a
+    cp PFAC_SIZE
+    jr nz, .col
+    ld a, [wBuffer + wPFacLoopY]
+    inc a
+    ld [wBuffer + wPFacLoopY], a
+    cp PFAC_SIZE
+    jr nz, .row
+    ret
+
+PFacJambDoorway:
+    ; room floor north: doorway is in a bottom wall
+    ld a, [wBuffer + wPFacDY]
+    and a
+    jr z, .south
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_ROOMFLOOR
+    jr nz, .south
+    ld a, PFAC_W_BOTTOM
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_BOTTOM_W
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_BOTTOM_E
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteHorizontalFlanks
+.south
+    ld a, [wBuffer + wPFacDY]
+    cp PFAC_SIZE - 1
+    jr z, .east
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_ROOMFLOOR
+    jr nz, .east
+    ld a, PFAC_W_TOP
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_TOP_W
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_TOP_E
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteHorizontalFlanks
+.east
+    ld a, [wBuffer + wPFacDX]
+    cp PFAC_SIZE - 1
+    jr z, .west
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_ROOMFLOOR
+    jr nz, .west
+    ld a, PFAC_W_LEFT
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_LEFT_N
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_LEFT_S
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteVerticalFlanks
+.west
+    ld a, [wBuffer + wPFacDX]
+    and a
+    ret z
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_ROOMFLOOR
+    ret nz
+    ld a, PFAC_W_RIGHT
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_RIGHT_N
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_RIGHT_S
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteVerticalFlanks
+
+PFacRewriteHorizontalFlanks:
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacFlankExpect
+    cp [hl]
+    jr nz, .right
+    ld a, [wBuffer + wPFacFlankFirst]
+    call PFacWriteBlock
+.right
+    ld a, [wBuffer + wPFacDX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacFlankExpect
+    cp [hl]
+    ret nz
+    ld a, [wBuffer + wPFacFlankSecond]
+    jp PFacWriteBlock
+
+PFacRewriteVerticalFlanks:
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacFlankExpect
+    cp [hl]
+    jr nz, .below
+    ld a, [wBuffer + wPFacFlankFirst]
+    call PFacWriteBlock
+.below
+    ld a, [wBuffer + wPFacDY]
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacFlankExpect
+    cp [hl]
+    ret nz
+    ld a, [wBuffer + wPFacFlankSecond]
+    jp PFacWriteBlock
+; ============================================================
 ; PFacConvertPseudoFloors
 ; Sweeps the full 20x20 player area, converting PFAC_ROOMFLOOR ($F0) and
 ; PFAC_CORRIDOR ($FE) to the real floor block (14). Runs after PFacEncloseRooms
@@ -555,6 +845,8 @@ PFacConvertPseudoFloors:
     cp PFAC_ROOMFLOOR
     jr z, .toFloor
     cp PFAC_CORRIDOR
+    jr z, .toFloor
+    cp PFAC_PENDING
     jr nz, .next
 .toFloor
     ld a, PFAC_FLOOR
@@ -589,7 +881,7 @@ PFacConvertUntouched:
     call PFacReadBlock
     cp PFAC_UNTOUCHED
     jr nz, .next
-    ld a, 14 ; experimental
+    ld a, PFAC_WALL
     call PFacWriteBlock
 .next
     ld a, [wBuffer + wPFacCurX]
@@ -724,7 +1016,8 @@ PFacPlaceItems:
 ; PFacGenerateFacility  (top-level driver)
 ; Runs the whole room-tree pipeline into wOverworldMap (already seeded with
 ; PFAC_UNTOUCHED by PFacFillUntouched). On return the map holds only real block
-; IDs (14 floor, 46 wall, 64-74 directional walls) and sProcFacilityGenScratch/
+; IDs ($0E floor, $2E void, directional walls, and doorway jambs) plus
+; sProcFacilityGenScratch/
 ; wPFacItemTemp hold the 4 ball block-coords + item IDs for PFacFinalize to bake.
 ; ============================================================
 PFacGenerateFacility:
@@ -737,6 +1030,8 @@ PFacGenerateFacility:
     call PFacCarveCorridors        ; rooms 11..1 -> parent (spanning tree to entry)
     call PFacEncloseRooms
     call PFacCarveNorthExitOpening
+    call PFacBuildCorridorWalls
+    call PFacApplyDoorJambs
     call PFacConvertPseudoFloors
     call PFacConvertUntouched
     call PFacPlaceItems
@@ -1400,19 +1695,32 @@ PFacCorFillCell:
 ; Open the 1-wide warp gap at (exitCol, 0) and punch the exit room's top wall
 ; ring at (exitCol, 1), connecting the north-edge warp down into the exit room.
 ; Runs AFTER PFacEncloseRooms (so it overwrites the ring wall) and writes real
-; PFAC_FLOOR (untouched by the later convert sweeps).
+; PFAC_CORRIDOR so the boundary pass encloses it before floor conversion.
 ; ============================================================
 PFacCarveNorthExitOpening:
     ld a, [sProcFacilityExitI]
     ld [wBuffer + wPFacCurX], a
     xor a
     ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_FLOOR
+    ld a, PFAC_CORRIDOR
     call PFacWriteBlock
     ld a, 1
     ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_FLOOR
-    jp PFacWriteBlock
+    ld a, PFAC_CORRIDOR
+    call PFacWriteBlock
+    ; The row-1 opening pierces the exit room's top wall. Give it the same
+    ; guarded west/east jambs as ordinary north-facing room doorways.
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacDX], a
+    ld a, 1
+    ld [wBuffer + wPFacDY], a
+    ld a, PFAC_W_TOP
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_TOP_W
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_TOP_E
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteHorizontalFlanks
 
 ; ============================================================
 ; PFacAbs - a = |a| (two's complement). Port of PFAbs.

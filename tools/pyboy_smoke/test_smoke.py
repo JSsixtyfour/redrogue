@@ -784,6 +784,48 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 5, True
         )
 
+    def test_procedural_facility_generation(self) -> None:
+        base_blocks = (REPO_ROOT / "maps" / "ProceduralFacility.blk").read_bytes()
+        self.assertEqual(len(base_blocks), 400)
+        self.assertEqual(set(base_blocks), {0x2E})
+
+        assert self.harness is not None
+        self.harness.boot_to_lobby()
+        self.harness.call_routine("PFacPreload", limit=60000)
+        self.harness.call_routine("PFacFinalize", limit=120000)
+
+        block_buffer = self.harness.read_bytes("wOverworldMap", 601)
+        playable = [
+            block_buffer[81 + row * 26 + col]
+            for row in range(20)
+            for col in range(20)
+        ]
+        self.assertFalse({0xF0, 0xFD, 0xFE, 0xFF}.intersection(playable))
+        self.assertIn(0x0E, playable)
+        self.assertIn(0x2E, playable)
+        for row in range(20):
+            for col in range(20):
+                if playable[row * 20 + col] != 0x0E:
+                    continue
+                for delta_row, delta_col in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    near_row = row + delta_row
+                    near_col = col + delta_col
+                    if 0 <= near_row < 20 and 0 <= near_col < 20:
+                        self.assertNotEqual(
+                            playable[near_row * 20 + near_col],
+                            0x2E,
+                            f"naked floor/void edge at ({col}, {row})",
+                        )
+        self.assertTrue(
+            set(playable).intersection(
+                {0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}
+            )
+        )
+        self.assertTrue(
+            set(playable).intersection(
+                {0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}
+            )
+        )
     def test_procedural_forest_generation(self) -> None:
         self.assert_generation_contract(
             "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 5, True

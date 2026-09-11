@@ -1,7 +1,7 @@
 ; custom_functions/wild_area_selection.asm
 ; Wild-area door layer for the unified special-encounter roll (see miniboss.asm's
 ; SpecialEncounterRollAndAssign). No-repeat rotation over the 3 rollable types
-; (Cave/Forest/Cemetery; Facility shelved), tracked in wWildAreaState.
+; (Cave/Forest/Cemetery; Facility intentionally excluded), tracked in wWildAreaState.
 
 ; type id (0-2) -> lobby door ENTRY map id. Cemetery enters at floor 1.
 WildAreaTypeMaps:

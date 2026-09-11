@@ -2,7 +2,7 @@
 	const_export FACILITY_BOSS ; = 1 (first object_event = sprite slot 1)
 
 ProceduralFacility_Object:
-	db 46 ; border block (facility void/solid tile, player-area never uses this - see procedural_facility_gen.asm)
+	db $2E ; border block and generated black/solid void
 
 	def_warp_events
 	warp_event 19, 34, LAST_MAP, 1 ; tile coords = block (9,17) = cell (4,8), the generator's

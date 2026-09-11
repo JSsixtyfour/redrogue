@@ -3,8 +3,8 @@
 ; Load-time procedural-stage hooks, moved OUT of home/overworld.asm's LoadMapData
 ; to relieve ROM0/HOME bank pressure (the inline versions overflowed ROM0). These
 ; are farcall'd from LoadMapData, the same pattern master uses for
-; MiniBossPatchStageSprite. Facility is shelved: its (unreachable) branches are
-; intentionally omitted here; see the comments to re-enable.
+; MiniBossPatchStageSprite. Facility remains excluded from normal rotation, but its
+; Silph Co. B1F test entrance and load-time branches are active.
 
 SECTION "ProcStageHooks", ROMX
 
@@ -102,7 +102,7 @@ ProcStageLoadDispatch::
 	;farcall PCPreloadCave
 	;farcall PCemGenerateMaps
 	;farcall PFPreloadForest
-	; SHELVED facility preload: farcall PFacPreload
+	; Facility preload is intentionally driven by the Silph Co. B1F test entrance below.
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
 	cp SILPH_CO_B1F
