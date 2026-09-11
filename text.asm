@@ -305,3 +305,10 @@ INCLUDE "text/bridge_gifts.asm"
 SECTION "Rogue", ROMX
 
 INCLUDE "data/text/text_rogue.asm"
+
+; Johto gym dialogue (Phase 6). Its own floating section for the same reason as
+; "Maps 23" in maps.asm: the existing text banks are tight and first-fit should
+; be free to place this wherever there is room.
+SECTION "Text Johto Gyms", ROMX
+
+INCLUDE "text/VioletGym.asm"

@@ -418,4 +418,24 @@ ENDM
 	toggle_consts_for PROCEDURAL_CEMETERY_4
 	const TOGGLE_CEMETERY_4_POKEBALL
 
+; Fuchsia Gym carries BOTH leader objects and hides one per run, so the
+; Koga/Janine coin flip needs no map swap. APPENDED at the end of this file
+; deliberately: toggle_consts_for records TOGGLEMAP{id}_ID = the running
+; const_value, and data/maps/toggleable_objects.asm asserts
+; TOGGLEMAP{id}_ID * 3 == its own byte offset, so the blocks in the two files
+; must appear in the SAME ORDER. Appending renumbers nothing; inserting this
+; block next to the other gyms would shift every later TOGGLE_* constant and
+; require the same move in that file to stay in lockstep.
+	toggle_consts_for FUCHSIA_GYM
+	const TOGGLE_FUCHSIA_KOGA
+	const TOGGLE_FUCHSIA_JANINE
+
+; New Johto gyms. Each needs its OWN gym-guide toggle: the Kanto gyms hide
+; TOGGLE_GYM_GUY, which belongs to PEWTER_CITY, and ToggleableObjectStates rows
+; carry the map id, so reusing it from another map would hide Pewter City's
+; object instead. Append each new gym here AND in the same order at the end of
+; data/maps/toggleable_objects.asm.
+	toggle_consts_for VIOLET_GYM
+	const TOGGLE_VIOLET_GYM_GUIDE
+
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

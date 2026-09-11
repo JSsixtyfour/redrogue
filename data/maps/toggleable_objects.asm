@@ -443,6 +443,18 @@ ToggleableObjectStates:
 	toggleable_objects_for PROCEDURAL_CEMETERY_4
 	toggle_object_state 1, ON
 
+; Both Fuchsia leaders start ON; FuchsiaGymHideUnusedLeader hides exactly one on
+; map load. Must stay LAST here to match the matching block at the end of
+; constants/toggle_constants.asm - the macro asserts this table's byte offset
+; equals TOGGLEMAP{FUCHSIA_GYM}_ID * 3, so the two files' block order is a
+; build-time contract, not a convention.
+	toggleable_objects_for FUCHSIA_GYM
+	toggle_object_state FUCHSIAGYM_KOGA,   ON
+	toggle_object_state FUCHSIAGYM_JANINE, ON
+
+	toggleable_objects_for VIOLET_GYM
+	toggle_object_state VIOLETGYM_GYM_GUIDE, ON
+
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 
 	db -1, 1, ON ; end

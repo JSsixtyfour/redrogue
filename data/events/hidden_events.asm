@@ -67,7 +67,7 @@ HiddenEventMaps:
 	hidden_event_map POKEMON_MANSION_3F
 	hidden_event_map ROUTE_23
 	hidden_event_map VICTORY_ROAD_2F
-	hidden_event_map UNUSED_MAP_6F
+	hidden_event_map VIOLET_GYM
 	hidden_event_map BILLS_HOUSE
 	hidden_event_map VIRIDIAN_CITY
 	hidden_event_map SAFARI_ZONE_WEST_REST_HOUSE
@@ -450,7 +450,10 @@ DEF ANY_FACING EQU $d0
 	hidden_event 26,  7, HiddenItems, FULL_RESTORE
 	db -1 ; end
 
-	hidden_events_for UNUSED_MAP_6F
+; Inherited from the UNUSED_MAP_6F slot VIOLET_GYM reclaimed. x=14 is outside a
+; 5-block-wide map (x max 9), so this is unreachable and inert. Kept rather than
+; deleted because HiddenItemCoords rows are index-significant.
+	hidden_events_for VIOLET_GYM
 	hidden_event 14, 11, HiddenItems, MAX_ELIXER
 	db -1 ; end
 

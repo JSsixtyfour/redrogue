@@ -13,10 +13,15 @@ FuchsiaGym_Script:
 .initial:
 	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
-	ld hl, .CityName
+	call FuchsiaGymHideUnusedLeader
 	ld de, .LeaderName
+	call FuchsiaGymIsJanine
+	jr nz, .nameChosen
+	ld de, .JanineName
+.nameChosen
+	ld hl, .CityName        ; loaded AFTER the call, which clobbers hl
 	jp LoadGymLeaderAndCityName
-    
+
 
 
 .CityName:
@@ -24,6 +29,62 @@ FuchsiaGym_Script:
 
 .LeaderName:
 	db "KOGA@"
+
+.JanineName:
+	db "JANINE@"
+
+; ============================================================
+; FuchsiaGymIsJanine
+; Z set   = Janine is this run's Fuchsia leader
+; Z clear = Koga
+;
+; Reads wRunGymLineup directly rather than owning a flag of its own. The lineup
+; holds trainer CLASS ids, and the Koga/Janine coin flip (Phase 7) fills ONE
+; pool entry with one of the pair, so JANINE appearing anywhere in the 8 slots
+; is an exact answer. That costs ZERO new WRAM, which matters because
+; wRogueFlagsBitfield2 is full and the next run-scoped flag would need a whole
+; new byte.
+;
+; An unrolled lineup is all zeroes, so this answers Koga - the same vanilla
+; fallback every other lineup consumer uses on a save with no lineup.
+;
+; Preserves bc: this is reached from a text_asm handler, where bc can be a live
+; text cursor (see project_text_asm_bc_cursor). pop bc does not disturb flags.
+; Clobbers a and hl.
+; ============================================================
+FuchsiaGymIsJanine:
+	push bc
+	ld hl, wRunGymLineup
+	ld b, 8
+.janineLoop
+	ld a, [hli]
+	cp JANINE
+	jr z, .isJanine
+	dec b
+	jr nz, .janineLoop
+	ld a, 1
+	and a                   ; Z clear = Koga
+	pop bc
+	ret
+.isJanine
+	xor a                   ; Z set = Janine
+	pop bc
+	ret
+
+; ============================================================
+; FuchsiaGymHideUnusedLeader
+; Hides whichever of the two leader objects is not this run's leader. Both are
+; declared ON in data/maps/toggleable_objects.asm, so exactly one HideObject
+; call is needed and the survivor needs no ShowObject.
+; ============================================================
+FuchsiaGymHideUnusedLeader:
+	call FuchsiaGymIsJanine
+	ld a, TOGGLE_FUCHSIA_JANINE
+	jr nz, .hideChosen      ; Koga's run, so hide Janine
+	ld a, TOGGLE_FUCHSIA_KOGA
+.hideChosen
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
     
     KogaShowOrHideExitBlock:
 ; Blocks or clears the exit to the next room.
@@ -104,6 +165,11 @@ FuchsiaGym_TextPointers:
 	dw_const FuchsiaGymRocker3Text,           TEXT_FUCHSIAGYM_ROCKER3
 	dw_const FuchsiaGymRocker4Text,           TEXT_FUCHSIAGYM_ROCKER4
 	dw_const FuchsiaGymGymGuideText,          TEXT_FUCHSIAGYM_GYM_GUIDE
+; Janine reuses Koga's handler rather than duplicating it: the handler already
+; picks the OPP class and the pre-battle line from FuchsiaGymIsJanine, so one
+; code path serves both and there is only one place to change. This entry must
+; sit here, as the 7th, to stay aligned with the 7th object_event.
+	dw_const FuchsiaGymKogaText,              TEXT_FUCHSIAGYM_JANINE
 	dw_const FuchsiaGymKogaSoulBadgeInfoText, TEXT_FUCHSIAGYM_KOGA_SOUL_BADGE_INFO
 	dw_const FuchsiaGymKogaReceivedTM06Text,  TEXT_FUCHSIAGYM_KOGA_RECEIVED_TM06
 	dw_const FuchsiaGymKogaTM06NoRoomText,    TEXT_FUCHSIAGYM_KOGA_TM06_NO_ROOM
@@ -134,7 +200,11 @@ FuchsiaGymKogaText:
 	call PrintText
 	jr .done
 .beforeBeat
+	call FuchsiaGymIsJanine  ; clobbers hl, so choose the text after it
 	ld hl, .BeforeBattleText
+	jr nz, .beforeTextChosen
+	ld hl, .JanineBeforeBattleText
+.beforeTextChosen
 	call PrintText
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
@@ -147,7 +217,11 @@ FuchsiaGymKogaText:
 	ld a, $5
 	ld [wGymLeaderNo], a
 	call EngageMapTrainer
+	call FuchsiaGymIsJanine
 	ld d, OPP_KOGA
+	jr nz, .classChosen
+	ld d, OPP_JANINE
+.classChosen
     farcall InitGymBattle
 	xor a
 	ldh [hJoyHeld], a
@@ -158,6 +232,10 @@ FuchsiaGymKogaText:
 
 .BeforeBattleText:
 	text_far _FuchsiaGymKogaBeforeBattleText
+	text_end
+
+.JanineBeforeBattleText:
+	text_far _FuchsiaGymJanineBeforeBattleText
 	text_end
 
 .ReceivedSoulBadgeText:

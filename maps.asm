@@ -1326,3 +1326,17 @@ INCLUDE "data/maps/headers/Truck.asm"
 INCLUDE "scripts/Truck.asm"
 INCLUDE "data/maps/objects/Truck.asm"
 Truck_Blocks: INCBIN "maps/truck.blk"
+
+; ============================================================
+; Johto gyms (Phase 6). A NEW floating section rather than growing an existing
+; "Maps N": bank $17 holds four Kanto gym scripts with 2 bytes free, and rgblink
+; first-fit would otherwise be free to make things worse there. Floating lets it
+; land in one of the high banks with 9-14 KB free. Re-measure per ROM_BIBLE.md
+; section 6 after adding gyms, and pin only if it actually lands badly.
+; ============================================================
+SECTION "Maps 23", ROMX
+
+INCLUDE "data/maps/headers/VioletGym.asm"
+INCLUDE "scripts/VioletGym.asm"
+INCLUDE "data/maps/objects/VioletGym.asm"
+VioletGym_Blocks: INCBIN "maps/VioletGym.blk"

@@ -69,7 +69,6 @@ FollowerIsTestMap:
 
 .excludedIndoorMaps
 	db TRUCK
-	db UNUSED_MAP_6F
 	db MINI_SAFFRON
 	db UNUSED_MAP_72
 	db UNUSED_MAP_73

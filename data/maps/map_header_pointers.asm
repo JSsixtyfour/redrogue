@@ -112,7 +112,7 @@ MapHeaderPointers::
 	dw VictoryRoad1F_h
 	dw ProceduralCemetery4_h
 	dw Truck_h ; TRUCK
-	dw LancesRoom_h ; UNUSED_MAP_6F
+	dw VioletGym_h ; VIOLET_GYM
 	dw MiniSaffron_h ; MINI_SAFFRON
 	dw LancesRoom_h
 	dw LancesRoom_h ; UNUSED_MAP_72

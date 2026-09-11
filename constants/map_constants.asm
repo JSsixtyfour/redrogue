@@ -182,7 +182,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 
 	map_const PROCEDURAL_CEMETERY_4,          10,  9 ; $6D - boss room (shares base template; stair-patched south exit)
 	map_const TRUCK,                          3,  2 ; $6E (was UNUSED_MAP_6E)
-	map_const UNUSED_MAP_6F,                  0,  0 ; $6F
+	map_const VIOLET_GYM,                     5,  7 ; $6F (was UNUSED_MAP_6F)
 	map_const MINI_SAFFRON,                  13,  8 ; $70
 	map_const LANCES_ROOM,                   13, 13 ; $71
 	map_const UNUSED_MAP_72,                  0,  0 ; $72

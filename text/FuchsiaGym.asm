@@ -16,6 +16,22 @@ _FuchsiaGymKogaBeforeBattleText::
 	cont "techniques!"
 	done
 
+_FuchsiaGymJanineBeforeBattleText::
+	text "JANINE: So, you"
+	line "got past the"
+	cont "others!"
+
+	para "My father KOGA"
+	line "left this GYM to"
+	cont "me. I won't let"
+	cont "his name down!"
+
+	para "I'll show you a"
+	line "ninja's poison"
+	cont "techniques are"
+	cont "not just his!"
+	done
+
 _FuchsiaGymKogaReceivedSoulBadgeText::
 	text "Humph!"
 	line "You have proven"

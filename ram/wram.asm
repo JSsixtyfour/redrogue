@@ -2376,7 +2376,12 @@ wLancesRoomCurScript:: db
 	ds 4
 wSilphCo10FCurScript:: db
 wSilphCo11FCurScript:: db
-	ds 1
+; Phase 6 Johto gym script bytes CONSUME EXISTING `ds` PADDING, never append.
+; Appending shifts every later WRAM address and drifts the smoke suite; this one
+; replaced the `ds 1` that sat here, so every address below is unchanged. There
+; are ~16 bytes of padding left in this region against the 8 gyms Phase 6 needs.
+; See GYM_LEADER_EXPANSION_PLAN.md Phase 6.
+wVioletGymCurScript:: db
 wFuchsiaGymCurScript:: db
 wSaffronGymCurScript:: db
 	ds 1

@@ -270,6 +270,11 @@ EXTRA_SEEDS = {
     # gyms (GymMapByBadge, random_stage_selection.asm)
     "PEWTER_GYM", "CERULEAN_GYM", "VERMILION_GYM", "CELADON_GYM",
     "FUCHSIA_GYM", "SAFFRON_GYM", "CINNABAR_GYM", "VIRIDIAN_GYM",
+    # Johto gyms (Phase 6). Reached the same way the Kanto eight are - by a
+    # code-patched warp through the lineup, never by a static warp - so each one
+    # MUST be seeded here or the reachability pass graveyards its events and the
+    # gym silently loses its trainer/beat flags.
+    "VIOLET_GYM",
     # intro
     "PALLET_TOWN", "OAKS_LAB", "REDS_HOUSE_1F", "REDS_HOUSE_2F",
     # procedural stages
@@ -289,6 +294,32 @@ EXTRA_SEEDS = {
     "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
     "GAME_CORNER", "ROUTE_17", "ROUTE_24",
 }
+
+# ---------------------------------------------------------------------------
+# TABLE 6 - event names to INTRODUCE.
+#
+# scrape_events() takes its canonical name list from constants/event_constants.asm
+# itself, so this script renumbers existing events but cannot invent new ones. A
+# brand-new event therefore has to be named here once; after that it is an
+# ordinary event and the generator owns its number, zone and asserts like any
+# other. Hand-adding the const to the generated file would also work but leaves
+# no record and is undone by the next regeneration.
+#
+# Names listed here that are already in the file are ignored, so entries can stay
+# after they land. Classification is unchanged: a name nothing references still
+# comes out UNREF/DEAD, so listing one does not force it live.
+# ---------------------------------------------------------------------------
+NEW_EVENTS = [
+    # Phase 6 Johto gyms. Six per gym, mirroring the Kanto eight: the leader's
+    # beat flag, the TM-received flag, and four trainer flags which the
+    # def_trainers contract requires to stay consecutive.
+    "EVENT_BEAT_FALKNER",
+    "EVENT_GOT_TM_VIOLET",
+    "EVENT_BEAT_VIOLET_GYM_TRAINER_0",
+    "EVENT_BEAT_VIOLET_GYM_TRAINER_1",
+    "EVENT_BEAT_VIOLET_GYM_TRAINER_2",
+    "EVENT_BEAT_VIOLET_GYM_TRAINER_3",
+]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")
 BAD_WARP = {"LAST_MAP", "WARP_NO_RETURN", "ROGUE_MAP"}
@@ -322,6 +353,12 @@ def scrape_events():
         if m and m.group(1) not in seen and m.group(1) not in NOT_EVENTS:
             seen.add(m.group(1))
             names.append(m.group(1))
+    # TABLE 6: introduce names that do not exist in the file yet. Appended, so
+    # existing events keep their relative order and the diff stays readable.
+    for name in NEW_EVENTS:
+        if name not in seen and name not in NOT_EVENTS:
+            seen.add(name)
+            names.append(name)
     return names
 
 
@@ -336,7 +373,13 @@ def scrape_trainer_blocks():
         trainers = re.findall(r"^\s*trainer\s+(EVENT_[A-Z0-9_]+)", text, re.M)
         if not trainers:
             continue
-        dt = re.findall(r"def_trainers(?:\s+(\d+))?", text)
+        # ANCHORED to line start, like the `trainer` regex above. Unanchored it
+        # also matched the token inside a COMMENT, and a comment mentioning
+        # def_trainers with no number silently made `first` default to 1 - which
+        # then emitted the wrong bit asserts and failed the build with a
+        # misleading "Expected ... to be bit 2, got 1". A comment must not be
+        # able to change generated output.
+        dt = re.findall(r"^\s*def_trainers(?:\s+(\d+))?", text, re.M)
         first = int(dt[0]) if (dt and dt[0]) else 1
         blocks[fn[:-4]] = (first, trainers)
     return blocks

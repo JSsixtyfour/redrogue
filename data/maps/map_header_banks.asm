@@ -112,7 +112,7 @@ MapHeaderBanks::
 	db BANK(VictoryRoad1F_h)
 	db BANK(ProceduralCemetery4_h) ; PROCEDURAL_CEMETERY_4
 	db BANK(Truck_h) ; TRUCK
-	db $1D ; UNUSED_MAP_6F
+	db BANK(VioletGym_h) ; VIOLET_GYM
 	db BANK(MiniSaffron_h) ; MINI_SAFFRON
 	db BANK(LancesRoom_h)
 	db $1D ; UNUSED_MAP_72
