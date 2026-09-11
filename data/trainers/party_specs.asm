@@ -23,11 +23,22 @@
 ;           MSRC_RANDOM_TM. A move that is both level-learnable and a TM does
 ;           not spend the cap, so tm_cap 4 makes it a fully unrestricted union.
 ; \10     = require_flags, \11 = forbid_flags (MOVEFLAG_* masks)
+;
+; ⚠ RGBDS's `\<digit>` substitution only reaches \1-\9 - `\10` parses as `\1`
+; (parameter 1) followed by a LITERAL character "0", not as parameter 10. An
+; earlier version of this macro wrote `dw \10` / `dw \11` directly and it
+; assembled without error, silently emitting garbage (row 0's `\1` is 4, so
+; `\10` rendered as the number 40, `\11` as 41) into every row's
+; require_flags/forbid_flags - found 2026-09-10 while wiring up require_flags,
+; by dumping the built ROM's actual table bytes against the source. `SHIFT 9`
+; is the standard fix: it discards the first 9 arguments, so what was
+; parameter 10 becomes \1 and what was parameter 11 becomes \2.
 MACRO mix
 	db \1, \2, \3, \4, \5, \6
 	db \7, \8, \9
-	dw \10
-	dw \11
+	SHIFT 9
+	dw \1                   ; require_flags (was param 10)
+	dw \2                   ; forbid_flags  (was param 11)
 ENDM
 DEF MIX_ENTRY_SIZE EQU 13
 

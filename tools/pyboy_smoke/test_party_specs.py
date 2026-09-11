@@ -31,6 +31,20 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 # Keep well under the harness's repeated-invocation ceiling described above.
 MAX_BUILDS = 8
 
+# All rank F (see data/moves/move_ranks.asm), so a "replace the weakest chosen
+# move" test that uses all four has a tied lowest rank and must deterministically
+# pick the FIRST slot - exercising the tie-break rather than avoiding it.
+NO_SLEEP_MOVES = ["TACKLE", "SCRATCH", "GROWL", "TAIL_WHIP"]
+# Every move in this tree whose MoveFlagsByID row has MOVEFLAG_SLEEP (bit 0 in
+# THIS tree's numbering - see tools/reorder_move_ranks.py) set. Confirmed by
+# reading the generated table directly, not assumed from the corpus.
+SLEEP_FLAGGED_MOVE = "HYPNOSIS"
+ALREADY_SLEEP_FLAGGED_MOVE = "SPORE"
+
+
+def _mix_id(name):
+    return parse_rgbds_constants(REPO_ROOT / "data/trainers/party_specs.asm")[name]
+
 # FalknerPool's Kanto run, in data/trainers/pools.asm order. Only this run is
 # eligible on a fresh save: RogueGetActiveGroupMask enables Johto only after a
 # champion win, so the Johto entries must be unreachable here.
@@ -247,3 +261,245 @@ class PartySpecSmokeTest(HarnessTestCase):
                     f"{'accepted' if verdict[0] else 'rejected'}; expected "
                     f"{'accepted' if expected else 'rejected'}",
                 )
+
+
+class RequireFlagsSmokeTest(HarnessTestCase):
+    """PartyGenApplyRequireFlags, driven directly rather than through a full
+    ReadTrainer build.
+
+    No shipping spec uses a nonzero require_flags mask yet (MIX_ELITE has one,
+    MOVEFLAG_SLEEP, but nothing is wired to it until a later phase), so these
+    point wPartyGenSpecPtr at a synthetic 6-byte header written into
+    wEnemyMon2's struct - unused scratch in a test that sets wEnemyPartyCount
+    to 1, since PartyGenSpecHeader just returns wPartyGenSpecPtr verbatim and
+    does not care whether it points into ROM or WRAM. Only the header's mix_id
+    byte (offset 4) is read by anything this routine touches.
+
+    This is the same isolation-testing style as test_uber_filter_reads_the_
+    spec_flag above: the mechanism is exercised directly because no production
+    data exercises it yet, and because the four-way branch (already satisfied,
+    empty slot wins, weakest real move replaced, no legal candidate) needs
+    exact control over both the chosen moves and the candidate space to pin
+    down deterministically.
+    """
+
+    MIX_ID_OFFSET = 4
+
+    def _set_synthetic_header(self, mix_id):
+        h = self.harness
+        assert h is not None
+        header_addr = h.address("wEnemyMon2")
+        for i in range(6):
+            h.write8("wEnemyMon2", mix_id if i == self.MIX_ID_OFFSET else 0, offset=i)
+        h.write8("wPartyGenSpecPtr", header_addr & 0xFF)
+        h.write8("wPartyGenSpecPtr", header_addr >> 8, offset=1)
+
+    def _setup(self, mix_id, moves, candidates):
+        """One mon (wEnemyMon1) with `moves` written into its 4 move slots,
+        and `candidates` available as the level-up candidate segment. The TM
+        segment is left empty (wPartyGenTMCount = 0) - these tests only need
+        one candidate segment to pin the behaviour down."""
+        h = self.harness
+        assert h is not None
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        self._set_synthetic_header(mix_id)
+        h.write8("wEnemyPartyCount", 1)
+        for i, name in enumerate(moves):
+            h.write8("wEnemyMon1Moves", move_ids[name] if name else 0, offset=i)
+        h.write8("wPartyGenCandidateCount", len(candidates))
+        for i, name in enumerate(candidates):
+            h.write8("wPartyGenCandidates", move_ids[name], offset=i)
+        h.write8("wPartyGenTMCount", 0)
+        return move_ids
+
+    def _run(self):
+        h = self.harness
+        assert h is not None
+        h.call_routine("PartyGenApplyRequireFlags", limit=2000)
+        return h.read_bytes("wEnemyMon1Moves", 4)
+
+    def test_fills_empty_slot_before_touching_a_real_move(self):
+        """An empty (NO_MOVE) slot wins over replacing any real move, even the
+        weakest one - nothing has to be sacrificed."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        move_ids = self._setup(
+            mix_id=_mix_id("MIX_ELITE"),
+            moves=["TACKLE", None, "GROWL", "TAIL_WHIP"],
+            candidates=[SLEEP_FLAGGED_MOVE],
+        )
+        result = self._run()
+        self.assertEqual(
+            result,
+            [move_ids["TACKLE"], move_ids[SLEEP_FLAGGED_MOVE],
+             move_ids["GROWL"], move_ids["TAIL_WHIP"]],
+            f"expected the empty slot (index 1) to receive {SLEEP_FLAGGED_MOVE}, "
+            f"got {result}",
+        )
+
+    def test_replaces_weakest_move_when_no_empty_slot(self):
+        """No empty slot: replace the weakest chosen move.
+
+        All four of NO_SLEEP_MOVES are MOVE_RANK_F - a tie - so this also pins
+        the tie-break: the FIRST slot (index 0) must be the one replaced.
+        """
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        move_ids = self._setup(
+            mix_id=_mix_id("MIX_ELITE"),
+            moves=NO_SLEEP_MOVES,
+            candidates=[SLEEP_FLAGGED_MOVE],
+        )
+        result = self._run()
+        self.assertEqual(
+            result,
+            [move_ids[SLEEP_FLAGGED_MOVE]] + [move_ids[m] for m in NO_SLEEP_MOVES[1:]],
+            f"expected slot 0 (the tie-break winner among four MOVE_RANK_F "
+            f"moves) replaced with {SLEEP_FLAGGED_MOVE}, got {result}",
+        )
+
+    def test_noop_when_one_chosen_move_already_satisfies_it(self):
+        """Pass 1 must short-circuit: a move already on the team that carries
+        the flag means nothing gets touched, even if a candidate also
+        qualifies (which would otherwise look like a second, wrong injection).
+        """
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        moves = ["TACKLE", ALREADY_SLEEP_FLAGGED_MOVE, "GROWL", "TAIL_WHIP"]
+        move_ids = self._setup(
+            mix_id=_mix_id("MIX_ELITE"),
+            moves=moves,
+            candidates=[SLEEP_FLAGGED_MOVE],
+        )
+        result = self._run()
+        self.assertEqual(
+            result, [move_ids[m] for m in moves],
+            f"already-satisfied team was changed anyway: got {result}",
+        )
+
+    def test_noop_when_no_legal_candidate_exists(self):
+        """'When a legal candidate exists' - and here none does, so this must
+        do nothing rather than loop or crash."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        move_ids = self._setup(
+            mix_id=_mix_id("MIX_ELITE"),
+            moves=NO_SLEEP_MOVES,
+            candidates=["POUND", "LEER"],  # neither carries MOVEFLAG_SLEEP
+        )
+        result = self._run()
+        self.assertEqual(
+            result, [move_ids[m] for m in NO_SLEEP_MOVES],
+            f"team changed despite no candidate carrying the required flag: {result}",
+        )
+
+    def test_noop_when_mix_has_no_requirement(self):
+        """mix_id 0 (MIX_ROUTE_EARLY) has require_flags == 0: the whole
+        routine must return immediately without touching anything, even
+        though a qualifying candidate is sitting right there."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        move_ids = self._setup(
+            mix_id=_mix_id("MIX_ROUTE_EARLY"),
+            moves=NO_SLEEP_MOVES,
+            candidates=[SLEEP_FLAGGED_MOVE],
+        )
+        result = self._run()
+        self.assertEqual(
+            result, [move_ids[m] for m in NO_SLEEP_MOVES],
+            f"a zero require_flags mask should be a pure no-op: got {result}",
+        )
+
+
+
+class SetMovesetSmokeTest(HarnessTestCase):
+    """PartyGenApplySetMoveset (MSRC_SET), driven directly.
+
+    A clean build proves nothing about this routine specifically: it is the
+    first thing in RogueBuildParty that reads a DIFFERENT ROMX bank
+    (data/trainers/movesets.asm lives in $3A/$3B/$3D, this routine in $39) via
+    FarCopyData2 rather than a same-bank [hli] walk - exactly this project's
+    single most-repeated bug class when it goes wrong, so it gets its own
+    real-ROM test rather than trusting the assembly.
+
+    BAYLEEF has exactly one curated record (data/trainers/movesets.asm):
+    RAZOR_LEAF, BODY_SLAM, REFLECT, TOXIC, TIER_HARD, level range 35-100. One
+    record makes the "found" case deterministic with no RNG dependency: only
+    one record can ever be picked, so there is nothing to sample and no seed
+    to depend on. MIX_ELITE's set_tier_mask is TIER_HARD | TIER_ELITE.
+    """
+
+    def _setup(self, mix_id, species_name, level):
+        h = self.harness
+        assert h is not None
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        header_addr = h.address("wEnemyMon2")
+        for i in range(6):
+            h.write8("wEnemyMon2", mix_id if i == 4 else 0, offset=i)
+        h.write8("wPartyGenSpecPtr", header_addr & 0xFF)
+        h.write8("wPartyGenSpecPtr", header_addr >> 8, offset=1)
+        h.write8("wEnemyPartyCount", 1)
+        h.write8("wEnemyMon1", species[species_name])  # MON_SPECIES, struct offset 0
+        h.write8("wCurEnemyLevel", level)
+
+    def _run(self):
+        h = self.harness
+        assert h is not None
+        verdict = []
+        h.register_hook("PartyGenApplySetMoveset.noMatch", lambda ctx: verdict.append(False))
+        h.call_routine("PartyGenApplySetMoveset", limit=4000)
+        # PartyGenApplySetMoveset's success path has no single labelled exit
+        # (it returns straight from the fourth PartyGenWriteMove call), so the
+        # positive case is read back from the mon's struct rather than hooked
+        # - the .noMatch hook is enough to disambiguate a genuine "found and
+        # wrote" carry from the call_routine harness's own flag-restore trap
+        # (see project_call_routine_harness_limits: never read a callee's
+        # carry after call_routine, its F is discarded and overwritten with
+        # the caller's).
+        found = not verdict
+        moves = h.read_bytes("wEnemyMon1Moves", 4)
+        return found, moves
+
+    def test_finds_and_writes_the_single_matching_record(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 50)
+        found, result = self._run()
+        self.assertTrue(found, "BAYLEEF has one TIER_HARD record and MIX_ELITE "
+                                "allows TIER_HARD; expected a match")
+        self.assertEqual(
+            result,
+            [moves["RAZOR_LEAF"], moves["BODY_SLAM"], moves["REFLECT"], moves["TOXIC"]],
+        )
+        pp = h.read_bytes("wEnemyMon1PP", 4)
+        for i, p in enumerate(pp):
+            with self.subTest(slot=i):
+                self.assertGreater(p, 0, f"slot {i} was written with 0 PP")
+
+    def test_falls_back_when_tier_mask_excludes_every_record(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        # MIX_ROUTE_EARLY's set_tier_mask is 0: it can never intersect any
+        # record's tier bit, so this must fail regardless of level.
+        self._setup(_mix_id("MIX_ROUTE_EARLY"), "BAYLEEF", 50)
+        found, _ = self._run()
+        self.assertFalse(found, "a zero set_tier_mask should never match")
+
+    def test_falls_back_when_level_is_outside_every_records_range(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        # Tier matches (MIX_ELITE allows TIER_HARD), but 101 is outside
+        # BAYLEEF's recorded 35-100 band - this isolates the level check from
+        # the tier check the previous test isolates.
+        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 101)
+        found, _ = self._run()
+        self.assertFalse(found, "level 101 is outside BAYLEEF's 35-100 record range")
