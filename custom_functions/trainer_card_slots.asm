@@ -58,9 +58,14 @@ RogueSyncBadgeSlots::
 	and a
 	jr nz, .haveBadges
 	; Zero badges means a fresh run, so anything still in the array belongs to
-	; a previous one. This is what resets it; no separate run-start hook. Any
-	; unspent foresight dies with the run too.
-	call RogueSpendForesight
+	; a previous one. This is what resets it; no separate run-start hook.
+	;
+	; Foresight is deliberately NOT cleared here. Zero badges is also the state
+	; the player is in while walking into the FIRST gym of a run, so spending it
+	; on this branch would make gym 1 the one gym that can never be revealed.
+	; Unspent foresight surviving into a later run is the far smaller problem,
+	; and a new game zeroes the byte anyway: wRogueFlagsBitfield2 sits above
+	; wGameProgressFlagsEnd, inside init_player_data's bulk clear.
 	ld hl, wBadgeSlotOrder
 	ld bc, NUM_BADGES
 	xor a

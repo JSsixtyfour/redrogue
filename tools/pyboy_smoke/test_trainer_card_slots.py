@@ -276,14 +276,27 @@ class TrainerCardSlotSyncSmokeTest(HarnessTestCase):
                 self._foresight(), "a sync with no new badge spent foresight"
             )
 
-    def test_a_new_run_drops_unspent_foresight(self) -> None:
+    def test_zero_badges_resets_the_array_but_keeps_foresight(self) -> None:
+        """Gym 1 must be revealable, and zero badges IS the walk-in state.
+
+        The zero-badge branch is the run reset for wBadgeSlotOrder, so it is
+        tempting to clear foresight there too. That makes the first gym of every
+        run the one gym that can never be previewed, which is the bug this
+        pins. Unspent foresight leaking into a later run is the smaller evil,
+        and a new game zeroes the byte regardless.
+        """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        for index in range(NUM_BADGES):
+            h.write8("wBadgeSlotOrder", self.classes["CLAIR"], offset=index)
         h.write8("wRogueFlagsBitfield2", 0x80)
         self._seed(0)
-        self._sync()
-        self.assertFalse(self._foresight())
+        self.assertEqual(self._sync(), [0] * NUM_BADGES)
+        self.assertTrue(
+            self._foresight(),
+            "foresight bought before the first gym was spent by the run reset",
+        )
 
     def test_a_rolled_lineup_overrides_the_kanto_default(self) -> None:
         """Phase 7's contract, proven now so Phase 7 only has to roll the array.
@@ -392,9 +405,23 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         h.write8("wRogueMap", queued_map)
         for index in range(NUM_BADGES):
             h.write8("wRunGymLineup", 0, offset=index)
-            h.write8("wBadgeSlotOrder", 0, offset=index)
         for index, value in (lineup or {}).items():
             h.write8("wRunGymLineup", value, offset=index)
+
+        # Seed wBadgeSlotOrder to AGREE with wObtainedBadges, rather than
+        # wiping it. RogueBlitCardBadges syncs before it resolves anything, and
+        # that sync is not side-effect free: recording a new leader spends
+        # foresight. Leaving the array empty would make every badge look newly
+        # earned, so the flag would be consumed before the reveal was resolved
+        # and every prediction test would silently check the wrong thing.
+        recorded = [
+            (lineup or {}).get(bit) or self.classes[EXPECTED_BLOCKS[bit]]
+            for bit in range(NUM_BADGES)
+            if badges & (1 << bit)
+        ]
+        for index in range(NUM_BADGES):
+            value = recorded[index] if index < len(recorded) else 0
+            h.write8("wBadgeSlotOrder", value, offset=index)
 
         h.hook_flag(
             "RogueCardBlockForSlot.found",
