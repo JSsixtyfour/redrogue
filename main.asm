@@ -691,6 +691,7 @@ INCLUDE "engine/events/credit_mart.asm"
 SECTION "rogue", ROMX
 
 INCLUDE "custom_functions/random_stage_selection.asm"
+INCLUDE "custom_functions/trainer_card_slots.asm"
 INCLUDE "custom_functions/miniboss.asm"
 INCLUDE "custom_functions/wild_area_selection.asm"
 INCLUDE "custom_functions/bridge_selection.asm"

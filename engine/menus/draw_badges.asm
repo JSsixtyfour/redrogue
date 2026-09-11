@@ -19,10 +19,14 @@ DrawBadges:
 	call FillMemory
 
 ; Alter these based on owned badges.
+; The mask is per SLOT, not per badge bit: DrawTrainerInfo has already blitted
+; wBadgeSlotOrder[i]'s block into VRAM slot i, and slots fill in defeat order
+; while badge bits are set in scattered order. Returned in e because farcall
+; destroys a/b/c/h/l on both sides. Done before de/hl are loaded for that reason.
+	farcall RogueCardEarnedSlotMask
+	ld b, e
 	ld de, wTempObtainedBadgesBooleans
 	ld hl, wBadgeOrFaceTiles
-	ld a, [wObtainedBadges]
-	ld b, a
 	ld c, NUM_BADGES
 .CheckBadge
 	srl b

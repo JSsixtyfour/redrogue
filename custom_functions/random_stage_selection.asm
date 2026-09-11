@@ -396,6 +396,13 @@ ENDC
 ; door choice only determines which item-category reward is offered.
 ; ============================================================
 SelectAndPatchLobbyExit::
+	; Trainer-card bookkeeping, not stage selection: record the leader behind
+	; any newly-set badge bit in wBadgeSlotOrder before the next stage can set
+	; another one. Every return to the lobby passes through here, so at most one
+	; badge is new per call and the card's defeat order stays exact. In-bank
+	; call; see custom_functions/trainer_card_slots.asm.
+	call RogueSyncBadgeSlots
+
 	; Pick two distinct random item types (HEALING=0, STAT=1, TM=2, MONEY=3).
 	; Door 1: pick freely from 4.
 	ld c, 4

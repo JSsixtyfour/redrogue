@@ -386,11 +386,11 @@ DrawTrainerInfo:
 	ld hl, BadgeNumbersTileGraphics
 	ld de, vChars1 tile $58
 	call TrainerInfo_FarCopyData
-	ld hl, GymLeaderFaceAndBadgeTileGraphics
-	ld de, vChars2 tile $20
-	ld bc, 8 * 8 tiles
-	ld a, BANK(GymLeaderFaceAndBadgeTileGraphics)
-	call FarCopyData2
+	; Was a single 64-tile copy of the sheet's first 8 blocks, which could only
+	; ever produce the Kanto eight in badge-bit order. Now eight per-slot block
+	; copies driven by wBadgeSlotOrder (Phase 4a); the LCD is still off here,
+	; which RogueBlitCardBadges requires.
+	farcall RogueBlitCardBadges
 	ld hl, TextBoxGraphics
 	ld de, 13 tiles
 	add hl, de ; hl = colon tile pattern
