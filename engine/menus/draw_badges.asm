@@ -42,10 +42,18 @@ DrawBadges:
 	dec c
 	jr nz, .CheckBadge
 
+; Which slot, if any, draws the revealed leader's name. Asked for here rather
+; than handed over by RogueBlitCardBadges, which already knows: wBadgeNameTile
+; shares a UNION with wTrainerInfoTextBoxWidth, and DrawTrainerInfo writes that
+; AFTER the blit, so a value left there would not survive to this point.
+; Returned in e because farcall destroys a/b/c/h/l on both sides.
+	farcall RogueCardRevealedSlotForDraw
+
 ; Draw two rows of badges.
 	ld hl, wBadgeNumberTile
 	ld a, $d8 ; [1]
 	ld [hli], a
+	ld [hl], e ; wBadgeNameTile: counts down to 0 on the revealed slot
 
 	hlcoord 2, 11
 	ld de, wTempObtainedBadgesBooleans
@@ -68,13 +76,28 @@ DrawBadges:
 	ld [hli], a
 	inc a
 	ld [wBadgeNumberTile], a
+
+; hl is now the name column. wBadgeNameTile counts down one per slot from the
+; revealed slot index, so it reads 0 on exactly that cell; $FF means "no reveal"
+; and cannot reach 0 in eight steps. The `inc a` restores the pre-decrement
+; value AND sets Z from it, which is the whole test.
 	ld a, [wBadgeNameTile]
+	dec a
+	ld [wBadgeNameTile], a
 	inc a
+	jr nz, .noName
+	push hl
+	ld a, CARD_NAME_VRAM_TILE
+	ld [hli], a
 	inc a
+	ld [hli], a
+	inc a
+	ld [hl], a
+	pop hl
+.noName
 	inc hl
 
 .PlaceBadge
-	ld [wBadgeNameTile], a
 	ld de, SCREEN_WIDTH - 1
 	add hl, de
 	ld a, [wBadgeOrFaceTiles]

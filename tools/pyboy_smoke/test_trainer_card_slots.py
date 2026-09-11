@@ -377,6 +377,38 @@ class UnknownBlockContractTest(unittest.TestCase):
         self.assertEqual(face, badge)
 
 
+class LeaderNameArtTest(unittest.TestCase):
+    """The name sheet is addressed by the same block index as the badge sheet."""
+
+    def test_sheet_has_one_strip_per_block(self) -> None:
+        constants = parse_rgbds_constants(TRAINER_CONSTANTS)
+        art = (REPO_ROOT / "gfx" / "trainer_card" / "leader_names.2bpp").read_bytes()
+        self.assertEqual(
+            len(art),
+            constants["NUM_CARD_BLOCKS"] * constants["CARD_NAME_TILES"] * 16,
+            "leader_names.png and badges.png disagree on the block count; "
+            "re-run tools/make_leader_names.py",
+        )
+
+    def test_the_unknown_blocks_strip_is_blank(self) -> None:
+        """An unrevealed slot must not leak a name beside its question mark."""
+        constants = parse_rgbds_constants(TRAINER_CONSTANTS)
+        stride = constants["CARD_NAME_TILES"] * 16
+        art = (REPO_ROOT / "gfx" / "trainer_card" / "leader_names.2bpp").read_bytes()
+        base = constants["CARD_BLOCK_UNKNOWN"] * stride
+        self.assertEqual(set(art[base:base + stride]), {0})
+
+    def test_every_leader_block_has_a_name(self) -> None:
+        """A blank strip would render as empty space, not as an obvious bug."""
+        constants = parse_rgbds_constants(TRAINER_CONSTANTS)
+        stride = constants["CARD_NAME_TILES"] * 16
+        art = (REPO_ROOT / "gfx" / "trainer_card" / "leader_names.2bpp").read_bytes()
+        for block in range(constants["NUM_CARD_LEADERS"]):
+            with self.subTest(block=block, leader=EXPECTED_BLOCKS[block]):
+                strip = art[block * stride:(block + 1) * stride]
+                self.assertNotEqual(set(strip), {0}, "strip is blank")
+
+
 class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
     """Which block RogueCardBlockForSlot picks for each of the eight slots.
 
@@ -432,7 +464,12 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         )
         h.park_before_hijack()
         h.call_routine("RogueBlitCardBadges")
-        return chosen
+        # A ninth hit means the blit resolved the revealed slot again to pick a
+        # NAME strip. Split it out: the first eight are the badge cells, and the
+        # extra one must agree with them or the card would name one leader while
+        # showing another's face.
+        self.name_block = chosen[NUM_BADGES] if len(chosen) > NUM_BADGES else None
+        return chosen[:NUM_BADGES]
 
     def test_every_unearned_slot_draws_the_question_mark(self) -> None:
         h = self.harness
@@ -469,6 +506,18 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
             self._blocks(badges=0, predict=True, queued_map=self.maps["CELADON_GYM"]),
             [EXPECTED_BLOCKS.index("ERIKA")] + [unknown] * (NUM_BADGES - 1),
         )
+        # The name strip has to be Erika's too, not merely present.
+        self.assertEqual(self.name_block, EXPECTED_BLOCKS.index("ERIKA"))
+
+    def test_nothing_names_a_leader_when_nothing_is_revealed(self) -> None:
+        """No reveal means no name blit at all, so no name can linger in VRAM."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        self._blocks(badges=1 << 5, predict=False, queued_map=self.maps["CELADON_GYM"])
+        self.assertIsNone(self.name_block)
+        self._blocks(badges=0, predict=True, queued_map=self.maps["ROUTE_3"])
+        self.assertIsNone(self.name_block)
 
     def test_reveal_lands_on_the_next_slot_not_the_badge_bit(self) -> None:
         """The two indexes differ as soon as any badge is earned.

@@ -195,19 +195,11 @@ RogueCardBlockForSlot::
 	ld a, [hl]
 	and a
 	jr nz, .haveClass
-	ld a, [wRogueFlagsBitfield2]
-	bit BIT_ROGUE_PREDICT_BADGES, a
-	jr z, .unknown
-	ld a, e
-	and a
-	jr z, .nextSlot            ; slot 0, and empty, so it is the next one
-	dec hl                     ; hl = wBadgeSlotOrder[slot - 1]
-	ld a, [hl]
-	and a
-	jr z, .unknown             ; empty slot before this one: not next, stay hidden
-.nextSlot
-	call RogueCardNextGymBadgeBit
-	jr nc, .unknown            ; a route is queued, so there is nothing to reveal
+	call RogueCardRevealedSlot ; preserves e
+	jr nc, .unknown
+	cp e                       ; is THIS the one slot being revealed?
+	jr nz, .unknown
+	call RogueCardNextGymBadgeBit  ; carry is guaranteed: the check above passed
 	call RogueCardLeaderForBadgeBit
 .haveClass
 	ld b, a
@@ -226,6 +218,63 @@ RogueCardBlockForSlot::
 	ret
 .found
 	ld a, c
+	ret
+
+; ============================================================
+; RogueCardRevealedSlot
+; OUTPUT: carry set and a = the single card slot the foresight reveal occupies;
+;         carry clear if nothing is being revealed.
+; PRESERVES de, which RogueCardBlockForSlot depends on.
+;
+; The revealed slot is the one the next win will fill, which - because
+; wBadgeSlotOrder is always densely packed from index 0 - is simply its first
+; empty entry. Three things must hold: the player has foresight, a gym is
+; queued rather than a route, and there is a slot left to fill at all.
+;
+; Single source of truth for "which slot", used by RogueCardBlockForSlot to
+; choose a face, by RogueBlitCardBadges to choose a name strip, and by
+; DrawBadges to decide which cell draws the name.
+RogueCardRevealedSlot::
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_PREDICT_BADGES, a
+	jr z, .none
+	call RogueCardNextGymBadgeBit
+	jr nc, .none
+	ld hl, wBadgeSlotOrder
+	ld c, 0
+.scan
+	ld a, [hli]
+	and a
+	jr z, .found
+	inc c
+	ld a, c
+	cp NUM_BADGES
+	jr c, .scan
+.none
+	and a                      ; clear carry
+	ret
+.found
+	ld a, c
+	scf
+	ret
+
+; ============================================================
+; RogueCardRevealedSlotForDraw
+; OUTPUT: e = the revealed slot index, or $FF when nothing is revealed.
+;
+; Exists only so DrawBadges can ask the question across a farcall: it returns in
+; e because Bankswitch destroys a/b/c/h/l on both sides.
+;
+; DrawBadges has to ask for itself rather than being handed the answer by
+; RogueBlitCardBadges, even though the blit already computed it. wBadgeNameTile
+; is the obvious place to pass it and is a TRAP: it shares a UNION with
+; wTrainerInfoTextBoxWidth, which DrawTrainerInfo writes AFTER the blit runs, so
+; anything left there would be overwritten before DrawBadges ever read it.
+RogueCardRevealedSlotForDraw::
+	call RogueCardRevealedSlot
+	ld e, $FF
+	ret nc
+	ld e, a
 	ret
 
 ; ============================================================
@@ -342,7 +391,20 @@ RogueBlitCardBadges::
 	ld a, c
 	cp NUM_BADGES
 	jr c, .loop
-	ret
+
+	; The revealed leader's name, into vChars2 tile CARD_NAME_VRAM_TILE. Only
+	; one name is ever on the card, so this is three tiles rather than a strip
+	; per slot - see CARD_NAME_TILES for why an earned badge gets none.
+	call RogueCardRevealedSlot
+	ret nc
+	call RogueCardBlockForSlot
+	call .NameOffset
+	ld de, LeaderNameTileGraphics
+	add hl, de
+	ld de, vChars2 tile CARD_NAME_VRAM_TILE
+	ld bc, CARD_NAME_TILES tiles
+	ld a, BANK(LeaderNameTileGraphics)
+	jp FarCopyData2
 
 ; a -> hl = a * CARD_TILES_PER_LEADER tiles (128). The source block stride and
 ; the destination slot stride are both one block, so this serves both.
@@ -352,4 +414,18 @@ RogueBlitCardBadges::
 	REPT 7
 	add hl, hl
 	ENDR
+	ret
+
+; a -> hl = a * CARD_NAME_TILES tiles (48). Not a power of two, so it is 32 + 16
+; rather than a shift run. Clobbers de, which the caller reloads anyway.
+.NameOffset
+	ld h, 0
+	ld l, a
+	REPT 4
+	add hl, hl
+	ENDR
+	ld d, h
+	ld e, l                    ; de = a * 16
+	add hl, hl                 ; hl = a * 32
+	add hl, de                 ; hl = a * 48
 	ret

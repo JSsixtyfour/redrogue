@@ -151,3 +151,19 @@ DEF NUM_CARD_BLOCKS EQU NUM_CARD_LEADERS + 1
 ; RogueCardBlockForSlot lands here when a recorded class is missing from
 ; CardLeaderClasses, and that slot IS earned, so DrawBadges draws the badge half.
 DEF CARD_BLOCK_UNKNOWN EQU NUM_CARD_LEADERS
+
+; Leader names (gfx/trainer_card/leader_names.png, one strip per card block in
+; the same order, block 17's being deliberately blank).
+;
+; Only ONE name is ever on the card: the leader the foresight reveal is naming.
+; An earned badge gets none, because the gym that awarded it already said the
+; badge's name out loud, and an unrevealed slot must not leak one beside its "?".
+; So this costs three VRAM tiles, not eight strips' worth.
+;
+; Three tiles because the badge cell is four columns wide and column 0 is the
+; badge number. Two names do not fit 24px at the font's natural spacing and are
+; abbreviated in tools/make_leader_names.py rather than squeezed.
+DEF CARD_NAME_TILES EQU 3
+; vChars2 tile the name is blitted to. $60 is the first tile past the badge
+; blocks ($20-$5F) and well clear of CircleTile ($76) and the text box ($77).
+DEF CARD_NAME_VRAM_TILE EQU $60

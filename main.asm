@@ -145,7 +145,6 @@ INCLUDE "engine/overworld/field_move_messages.asm"
 INCLUDE "engine/items/inventory.asm"
 INCLUDE "engine/overworld/wild_mons.asm"
 INCLUDE "engine/items/item_effects.asm"
-INCLUDE "engine/menus/draw_badges.asm"
 INCLUDE "engine/overworld/update_map.asm"
 INCLUDE "engine/overworld/cut.asm"
 INCLUDE "engine/overworld/toggleable_objects.asm"
@@ -163,6 +162,19 @@ INCLUDE "engine/events/hidden_events/book_or_sculpture.asm"
 INCLUDE "engine/events/hidden_events/elevator.asm"
 INCLUDE "engine/events/hidden_events/town_map.asm"
 INCLUDE "engine/events/hidden_events/pokemon_stuff.asm"
+
+
+; Relocated out of the pinned "bank3" section on 2026-09-11 (Phase 4c), which
+; the leader-name drawing had taken down to 14 free bytes - the same "bank is
+; effectively full" hazard ROM_BIBLE.md flags for Battle Core. Moving it gives
+; that bank back the whole routine instead of spending its last scraps.
+;
+; Safe to relocate: DrawBadges is reached through the bank-aware predef table,
+; and every symbol it touches is HOME (CopyData, FillMemory), WRAM, a farcall,
+; or one of its own local labels. It does not reference the art it draws - the
+; tile data is blitted into VRAM beforehand by RogueBlitCardBadges.
+SECTION "Draw Badges", ROMX
+INCLUDE "engine/menus/draw_badges.asm"
 
 
 ; Relocated from bank $03. GetQuantityOfItemInBag is dispatched through the
