@@ -87,6 +87,25 @@ DEF PFAC_J_LEFT_S   EQU $59
 DEF PFAC_J_RIGHT_N  EQU $56
 DEF PFAC_J_RIGHT_S  EQU $5A
 
+; --- Structural room decor (user-authored hexadecimal block catalog) ---
+; Occupancy describes the four movement quadrants, not visual tile coverage.
+DEF PFAC_DECOR_SOLID_A  EQU $06
+DEF PFAC_DECOR_SOLID_B  EQU $47
+DEF PFAC_DECOR_SOLID_C  EQU $35
+DEF PFAC_DECOR_RIGHT_A  EQU $56
+DEF PFAC_DECOR_RIGHT_B  EQU $09
+DEF PFAC_DECOR_LEFT_A   EQU $0D
+DEF PFAC_DECOR_LEFT_B   EQU $39
+DEF PFAC_DECOR_UPPER_A  EQU $07
+DEF PFAC_DECOR_UPPER_B  EQU $19
+DEF PFAC_DECOR_BOTTOM_A EQU $49
+DEF PFAC_DECOR_BOTTOM_B EQU $1D
+
+; Wall-decoration compatibility catalog, retained for the later perimeter/socket
+; pass. These replacements become fully solid, so they must not be applied by a
+; blind whole-map substitution:
+;   $44 -> $5C, $46 -> $5D, $41 -> $61, $40 -> $68, $42 -> $69.
+
 ; --- Room record model (sProcFacilityGenScratch, 81 bytes: 12*6 = 72 used) ---
 ; Record layout (6 bytes, read/written positionally via PFacRoomRecordAddr):
 ;   +0 X      floor-rect top-left block col
@@ -169,6 +188,17 @@ ASSERT wPFacRoomCount < 30
 DEF wPFacCorId        EQU 4   ; source room whose corridor we're carving
 DEF wPFacCorTX        EQU 5   ; target center X
 DEF wPFacCorTY        EQU 6   ; target center Y
+
+; PFacDecorateExploreRooms. Runs after item placement; offsets 12-15 remain
+; untouched because PFacFinalize still needs the rolled item IDs there.
+DEF wPFacDecorId      EQU 16
+DEF wPFacDecorX       EQU 17
+DEF wPFacDecorY       EQU 18
+DEF wPFacDecorW       EQU 19
+DEF wPFacDecorH       EQU 20
+DEF wPFacDecorType    EQU 21
+DEF wPFacDecorCenterX EQU 23
+DEF wPFacDecorCenterY EQU 24
 
 ; ============================================================
 ; PFacRowOffsetTable / PFacWriteBlock / PFacReadBlock / PFacRoomRecordAddr
@@ -986,6 +1016,171 @@ PFacPlaceItems:
     ret
 
 ; ============================================================
+; PFacDecorateExploreRooms
+; Place at most one structural obstruction in each placed exploration room
+; (ids 5-10), selected by its authored Type. Entry, item, and exit rooms are
+; excluded categorically. A candidate must still be plain floor and must be off
+; the room's full center cross; that cross is the generator's protected
+; socket-to-center route. A bounded scan guarantees placement when a safe cell exists;
+; thin rooms receive an orientation-safe half obstruction and 1x1 rooms skip.
+;
+; This runs after PFacPlaceItems so decor RNG cannot change item positions or
+; contents. Item IDs in wBuffer+12..15 and explore records at SRAM offsets
+; 30..65 remain intact.
+; ============================================================
+PFacDecorTypeTable:
+    ; count, up to four block ids
+    db 3, PFAC_DECOR_SOLID_A,  PFAC_DECOR_SOLID_B,  PFAC_DECOR_SOLID_C,  PFAC_DECOR_SOLID_A
+    db 3, PFAC_DECOR_UPPER_A,  PFAC_DECOR_UPPER_B,  PFAC_DECOR_BOTTOM_B, PFAC_DECOR_UPPER_A
+    db 1, PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B
+    db 2, PFAC_DECOR_LEFT_A,   PFAC_DECOR_LEFT_B,   PFAC_DECOR_LEFT_A,   PFAC_DECOR_LEFT_B
+
+; Thin rooms cannot spare a whole 2x2 movement block. These tables select an
+; obstruction whose opposite half remains continuously walkable along the long
+; axis. Entries intentionally avoid $49/$56, which are also structural blocks.
+PFacDecorThinHorizontalTable:
+    db PFAC_DECOR_UPPER_A, PFAC_DECOR_UPPER_B, PFAC_DECOR_BOTTOM_B, PFAC_DECOR_UPPER_A
+PFacDecorThinVerticalTable:
+    db PFAC_DECOR_RIGHT_B, PFAC_DECOR_LEFT_A, PFAC_DECOR_LEFT_B, PFAC_DECOR_RIGHT_B
+
+PFacDecorateExploreRooms:
+    ld a, 5
+    ld [wBuffer + wPFacDecorId], a
+.roomLoop
+    ld a, [wBuffer + wPFacDecorId]
+    cp 11
+    ret nc
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacDecorX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacDecorY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacDecorW], a
+    and a
+    jp z, .nextRoom
+    ld a, [hli]
+    ld [wBuffer + wPFacDecorH], a
+    inc hl
+    ld a, [hl]
+    and 3
+    ld [wBuffer + wPFacDecorType], a
+
+    ld a, [wBuffer + wPFacDecorW]
+    cp 1
+    jr nz, .checkThinHorizontal
+    ld a, [wBuffer + wPFacDecorH]
+    cp 1
+    jp z, .nextRoom
+    jp .thinVertical
+.checkThinHorizontal
+    ld a, [wBuffer + wPFacDecorH]
+    cp 1
+    jp z, .thinHorizontal
+
+    ld a, [wBuffer + wPFacDecorW]
+    srl a
+    ld hl, wBuffer + wPFacDecorX
+    add a, [hl]
+    ld [wBuffer + wPFacDecorCenterX], a
+    ld a, [wBuffer + wPFacDecorH]
+    srl a
+    ld hl, wBuffer + wPFacDecorY
+    add a, [hl]
+    ld [wBuffer + wPFacDecorCenterY], a
+
+    ; A complete bounded scan guarantees one obstruction whenever the room has
+    ; a plain floor cell outside its protected center row and column.
+    ld a, [wBuffer + wPFacDecorY]
+    ld [wBuffer + wPFacCurY], a
+.scanRow
+    ld a, [wBuffer + wPFacDecorX]
+    ld [wBuffer + wPFacCurX], a
+.scanColumn
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacDecorCenterX
+    cp [hl]
+    jr z, .advanceColumn
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacDecorCenterY
+    cp [hl]
+    jr z, .advanceColumn
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr z, .placeTyped
+.advanceColumn
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [wBuffer + wPFacDecorX]
+    ld hl, wBuffer + wPFacDecorW
+    add a, [hl]
+    ld hl, wBuffer + wPFacCurX
+    cp [hl]
+    jr nz, .scanColumn
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [wBuffer + wPFacDecorY]
+    ld hl, wBuffer + wPFacDecorH
+    add a, [hl]
+    ld hl, wBuffer + wPFacCurY
+    cp [hl]
+    jr nz, .scanRow
+    jr .nextRoom
+
+.placeTyped
+    ld a, [wBuffer + wPFacDecorType]
+    ld c, a
+    add a, a
+    add a, a
+    add a, c
+    ld c, a
+    ld b, 0
+    ld hl, PFacDecorTypeTable
+    add hl, bc
+    ld a, [hli]
+    ld c, a
+    call Rangerandom
+    ld c, a
+    ld b, 0
+    add hl, bc
+    ld a, [hl]
+    call PFacWriteBlock
+    jr .nextRoom
+
+.thinHorizontal
+    ld a, [wBuffer + wPFacDecorY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDecorX]
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .nextRoom
+    ld hl, PFacDecorThinHorizontalTable
+    jr .placeThin
+
+.thinVertical
+    ld a, [wBuffer + wPFacDecorX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDecorY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .nextRoom
+    ld hl, PFacDecorThinVerticalTable
+.placeThin
+    ld a, [wBuffer + wPFacDecorType]
+    ld c, a
+    ld b, 0
+    add hl, bc
+    ld a, [hl]
+    call PFacWriteBlock
+.nextRoom
+    ld a, [wBuffer + wPFacDecorId]
+    inc a
+    ld [wBuffer + wPFacDecorId], a
+    jp .roomLoop
+
+; ============================================================
 ; PFacGenerateFacility  (top-level driver)
 ; Runs the whole room-tree pipeline into wOverworldMap (already seeded with
 ; PFAC_UNTOUCHED by PFacFillUntouched). On return the map holds only real block
@@ -1007,6 +1202,7 @@ PFacGenerateFacility:
     call PFacApplyDoorJambs
     call PFacFinalizeBlocks
     call PFacPlaceItems
+    call PFacDecorateExploreRooms
     ret
 
 ; ============================================================
