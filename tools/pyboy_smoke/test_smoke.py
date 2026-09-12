@@ -838,6 +838,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x58,
             0x59,
             0x5A,
+            0x5C,
+            0x5D,
             0x63,
             0x67,
         } | decor_blocks
@@ -845,6 +847,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         decor_types_seen: set[int] = set()
         total_decor = 0
         eligible_decor_rooms = 0
+        selected_premade_rooms = 0
 
         for seed in seeds:
             with self.subTest(seed=seed):
@@ -870,6 +873,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 records = self.harness.read_sram_bytes(
                     "sProcFacilityGenScratch", 72
                 )
+                for room_id in range(1, 11):
+                    offset = room_id * 6
+                    room_w = records[offset + 2]
+                    room_h = records[offset + 3]
+                    selected = bool(records[offset + 5] & 0x80)
+                    if selected:
+                        self.assertEqual((room_w, room_h), (1, 1))
+                    selected_premade_rooms += int(selected)
+
                 for room_id in range(5, 11):
                     offset = room_id * 6
                     room_x, room_y, room_w, room_h, _parent, room_type = records[
@@ -1011,6 +1023,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 )
                 signatures.append((playable, exit_x, tuple(ball_xy), item_ids))
 
+        self.assertGreater(selected_premade_rooms, 0)
         self.assertGreater(eligible_decor_rooms, 0)
         self.assertEqual(total_decor, eligible_decor_rooms)
         self.assertGreaterEqual(len(decor_types_seen), 2)

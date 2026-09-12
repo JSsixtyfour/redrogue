@@ -24,7 +24,7 @@ FalknerShowOrHideExitBlock:
 	ld a, $24
 .setExitBlock
 	ld [wNewTileBlockID], a
-	lb bc, 0, 2
+	lb bc, 0, 3
 	predef_jump ReplaceTileBlock
 
 initialViolet:

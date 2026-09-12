@@ -182,12 +182,12 @@ DEF FIRST_INDOOR_MAP EQU const_value
 
 	map_const PROCEDURAL_CEMETERY_4,          10,  9 ; $6D - boss room (shares base template; stair-patched south exit)
 	map_const TRUCK,                          3,  2 ; $6E (was UNUSED_MAP_6E)
-	map_const VIOLET_GYM,                     5,  7 ; $6F (was UNUSED_MAP_6F)
+	map_const VIOLET_GYM,                     7,  11 ; $6F (was UNUSED_MAP_6F)
 	map_const MINI_SAFFRON,                  13,  8 ; $70
 	map_const LANCES_ROOM,                   13, 13 ; $71
-	map_const AZALEA_GYM,                     5,  7 ; $72 (was UNUSED_MAP_72)
+	map_const AZALEA_GYM,                     5,  9 ; $72 (was UNUSED_MAP_72)
 	map_const GOLDENROD_GYM,                  5,  7 ; $73 (was UNUSED_MAP_73)
-	map_const ECRUTEAK_GYM,                   5,  7 ; $74 (was UNUSED_MAP_74)
+	map_const ECRUTEAK_GYM,                   5,  8 ; $74 (was UNUSED_MAP_74)
 	map_const CIANWOOD_GYM,                   5,  7 ; $75 (was UNUSED_MAP_75)
 	map_const HALL_OF_FAME,                   5,  4 ; $76
 	end_indoor_group POKEMON_LEAGUE

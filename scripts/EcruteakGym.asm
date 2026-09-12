@@ -18,10 +18,10 @@ MortyShowOrHideExitBlock:
 	ret z
 	CheckEvent EVENT_BEAT_MORTY
 	jr z, .blockExitToNextRoom
-	ld a, $5
+	ld a, $E
 	jp .setExitBlock
 .blockExitToNextRoom
-	ld a, $24
+	ld a, $3B
 .setExitBlock
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2

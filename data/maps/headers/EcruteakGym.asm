@@ -1,2 +1,2 @@
-	map_header EcruteakGym, ECRUTEAK_GYM, GYM, 0
+	map_header EcruteakGym, ECRUTEAK_GYM, CEMETERY, 0
 	end_map_header

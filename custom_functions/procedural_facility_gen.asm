@@ -117,6 +117,24 @@ DEF PFAC_DECOR_BOTTOM_B EQU $1D
 DEF PFAC_ROOM_STRIDE EQU 6
 DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 DEF PFAC_ROOM_NONE   EQU $FF  ; Parent sentinel for room 0
+DEF PFAC_TEMPLATE_FLAG EQU $80
+DEF PFAC_SOCKET_N EQU 1
+DEF PFAC_SOCKET_E EQU 2
+DEF PFAC_SOCKET_S EQU 4
+DEF PFAC_SOCKET_W EQU 8
+DEF PFAC_MIDDLE_ROOM_3X3_SOCKETS EQU PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W
+ASSERT PFAC_MIDDLE_ROOM_3X3_SOCKETS == $0F
+
+; Same-bank descriptor: full footprint, permitted middle-room ids, socket mask, hub,
+; item anchor, flags, payload. The committed .blkv suffix is intentional.
+PFacMiddleRoom3x3Descriptor:
+    db 3, 3, 1, 10
+    db PFAC_MIDDLE_ROOM_3X3_SOCKETS
+    db 1, 1, 1, 1, 0
+    dw PFacMiddleRoom3x3Blocks
+PFacMiddleRoom3x3Blocks:
+    INCBIN "maps/ProceduralFacility_3x3_rock_room.blkv"
+ASSERT @ - PFacMiddleRoom3x3Blocks == 9
 
 ASSERT PFAC_SIZE <= PFAC_STRIDE
 ASSERT PFAC_ROOM_MAX * PFAC_ROOM_STRIDE <= 81
@@ -345,6 +363,140 @@ PFacFillUntouched:
 ; failed to place) is skipped. Runs after all placement, before corridors, so
 ; PFacCarveCorridors can test "is this cell already room floor".
 ; ============================================================
+; Select every middle room (ids 1-10) whose stored 1x1 floor interior matches
+; this full 3x3 footprint. Entry 0 and exit 11 are excluded explicitly.
+PFacSelectPremadeMiddleRooms:
+    ld b, 1
+.loop
+    push bc
+    ld a, b
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    cp 1
+    jr nz, .next
+    ld a, [hli]
+    cp 1
+    jr nz, .next
+    call PFacPremadeCornersClear
+    jr nc, .next
+    pop bc
+    push bc
+    ld a, b
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    set 7, [hl]
+.next
+    pop bc
+    inc b
+    ld a, b
+    cp 11
+    jr nz, .loop
+    ret
+
+; Carry set if the four non-socket corners of a 3x3 footprint are still
+; untouched. A corridor through a cardinal edge can be reopened safely after
+; stamping; a corridor through a corner cannot, so that room stays generic.
+PFacPremadeCornersClear:
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+    ld a, [wBuffer + wPFacRmX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+    ld a, [wBuffer + wPFacRmY]
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+    scf
+    ret
+.blocked
+    and a
+    ret
+
+; Stamp selected item or exploration middle rooms; role-specific object behavior
+; remains elsewhere (PFacPlaceItems still addresses only item ids 1-4).
+PFacStampPremadeMiddleRooms:
+    ld b, 1
+.room
+    push bc
+    ld a, b
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    dec a
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    dec a
+    ld [wBuffer + wPFacRmY], a
+    inc hl
+    inc hl
+    inc hl
+    bit 7, [hl]
+    jr z, .doneRoom
+    xor a
+    ld [wBuffer + wPFacRmCounter], a
+.cell
+    ld a, [wBuffer + wPFacRmCounter]
+    ld c, a
+    ld b, 0
+    ld hl, PFacMiddleRoom3x3Blocks
+    add hl, bc
+    ld a, [hl]
+    push af
+    ld a, [wBuffer + wPFacRmCounter]
+    call PFacDivMod3
+    ld hl, wBuffer + wPFacRmX
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, b
+    ld hl, wBuffer + wPFacRmY
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    pop af
+    call PFacWriteBlock
+    ld hl, wBuffer + wPFacRmCounter
+    inc [hl]
+    ld a, [hl]
+    cp 9
+    jr nz, .cell
+.doneRoom
+    pop bc
+    inc b
+    ld a, b
+    cp 11
+    jr nz, .room
+    ret
+
+PFacDivMod3:
+    ld b, 0
+.loop
+    cp 3
+    ret c
+    sub 3
+    inc b
+    jr .loop
+
 PFacStampRoomFloors:
     xor a
     ld [wBuffer + wPFacRmIdx], a
@@ -439,6 +591,12 @@ PFacEncloseRooms:
     ld a, [wBuffer + wPFacRmW]
     and a
     jp z, .roomNext            ; unplaced slot, skip
+    ld a, [wBuffer + wPFacRmIdx]
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    bit 7, [hl]
+    jp nz, .roomNext           ; complete premade owns its perimeter
 
     ; --- Top edge (row Y-1, cols X..X+W-1): PFAC_W_TOP ---
     ld a, [wBuffer + wPFacRmY]
@@ -1195,7 +1353,10 @@ PFacGenerateFacility:
     call PFacPlaceMiddleRooms     ; rooms 1-10 (items guaranteed, explore best-effort)
     call PFacAssignExitParent     ; room 11's parent = nearest placed room
     call PFacStampRoomFloors
-    call PFacCarveCorridors        ; rooms 11..1 -> parent (spanning tree to entry)
+    call PFacCarveCorridors        ; establish the complete corridor plan
+    call PFacSelectPremadeMiddleRooms
+    call PFacStampPremadeMiddleRooms
+    call PFacCarveCorridors        ; reopen only traversed cardinal sockets
     call PFacEncloseRooms
     call PFacCarveNorthExitOpening
     call PFacBuildCorridorWalls
@@ -1819,9 +1980,67 @@ PFacCarveOneCorridor:
 PFacCorStampCell:
     call PFacReadBlock
     cp PFAC_UNTOUCHED
-    ret nz
+    jr z, .carve
+    call PFacTryCutPremadeSocket
+    ret nc
+.carve
     ld a, PFAC_CORRIDOR
     jp PFacWriteBlock
+
+PFacTryCutPremadeSocket:
+    ld b, 1
+.room
+    push bc
+    ld a, b
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld d, a
+    ld a, [hli]
+    ld e, a
+    inc hl
+    inc hl
+    inc hl
+    bit 7, [hl]
+    jr z, .next
+    ld a, [wBuffer + wPFacCurX]
+    cp d
+    jr nz, .horizontal
+    ld a, [wBuffer + wPFacCurY]
+    ld c, a
+    ld a, e
+    dec a
+    cp c
+    jr z, .yes
+    ld a, e
+    inc a
+    cp c
+    jr z, .yes
+.horizontal
+    ld a, [wBuffer + wPFacCurY]
+    cp e
+    jr nz, .next
+    ld a, [wBuffer + wPFacCurX]
+    ld c, a
+    ld a, d
+    dec a
+    cp c
+    jr z, .yes
+    ld a, d
+    inc a
+    cp c
+    jr z, .yes
+.next
+    pop bc
+    inc b
+    ld a, b
+    cp 11
+    jr nz, .room
+    and a
+    ret
+.yes
+    pop bc
+    scf
+    ret
 ; ============================================================
 ; PFacCarveNorthExitOpening
 ; Open the 1-wide warp gap at (exitCol, 0) and punch the exit room's top wall
