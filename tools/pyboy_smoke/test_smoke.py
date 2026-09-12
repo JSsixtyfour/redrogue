@@ -811,6 +811,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             (0xFE, 0xED, 0xFA, 0xCE),
             (0x10, 0x20, 0x30, 0x40),
             (0x7F, 0x80, 0x81, 0x82),
+        ) + tuple(
+            (
+                (index * 0x3D + 0x11) & 0xFF,
+                (index * 0x71 + 0x29) & 0xFF,
+                (index * 0xA7 + 0x43) & 0xFF,
+                (index * 0xD3 + 0x5F) & 0xFF,
+            )
+            for index in range(1, 57)
         )
         decor_by_type = {
             0: {0x06, 0x47, 0x35},
@@ -821,6 +829,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         thin_horizontal_by_type = {0: 0x07, 1: 0x19, 2: 0x1D, 3: 0x07}
         thin_vertical_by_type = {0: 0x09, 1: 0x0D, 2: 0x39, 3: 0x09}
         decor_blocks = set().union(*decor_by_type.values())
+        large_decor_blocks = {
+            0x0B, 0x18, 0x1A, 0x20, 0x2C, 0x31, 0x38,
+            0x3B, 0x3F, 0x45, 0x77,
+        }
+        large_decor_marker_blocks = {
+            0x0B, 0x18, 0x1A, 0x20, 0x31, 0x38, 0x45, 0x77,
+        }
+        item_anchor_blocks = {0x0E, 0x2C, 0x3B, 0x3F, 0x47}
         allowed_blocks = {
             0x0E,
             0x2E,
@@ -842,12 +858,16 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x5D,
             0x63,
             0x67,
-        } | decor_blocks
+        } | decor_blocks | large_decor_blocks
         signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
         decor_types_seen: set[int] = set()
         total_decor = 0
         eligible_decor_rooms = 0
         selected_premade_rooms = 0
+        large_decor_seen: set[int] = set()
+        decorated_item_rooms = 0
+        large_decorated_rooms = 0
+        layouts_with_large_decor = 0
 
         for seed in seeds:
             with self.subTest(seed=seed):
@@ -869,18 +889,38 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertIn(0x2E, playable)
                 self.assertTrue(set(playable).intersection({0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}))
                 self.assertTrue(set(playable).intersection({0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}))
+                large_decor_seen.update(
+                    set(playable) & large_decor_marker_blocks
+                )
 
                 records = self.harness.read_sram_bytes(
                     "sProcFacilityGenScratch", 72
                 )
+                layout_large_decor = 0
                 for room_id in range(1, 11):
                     offset = room_id * 6
+                    room_x = records[offset]
+                    room_y = records[offset + 1]
                     room_w = records[offset + 2]
                     room_h = records[offset + 3]
                     selected = bool(records[offset + 5] & 0x80)
+                    large_selected = bool(records[offset + 5] & 0x40)
                     if selected:
                         self.assertEqual((room_w, room_h), (1, 1))
                     selected_premade_rooms += int(selected)
+                    large_decorated_rooms += int(large_selected)
+                    layout_large_decor += int(large_selected)
+                    if room_id <= 4 and large_selected:
+                        decorated_item_rooms += 1
+                    # Ball coordinate baking reuses scratch bytes 0-7, which
+                    # overwrite room 0 and room 1 X/Y after generation.
+                    if large_selected and room_id >= 2:
+                        self.assertTrue(any(
+                        playable[row * 20 + col] in large_decor_marker_blocks
+                        for row in range(room_y, room_y + room_h)
+                        for col in range(room_x, room_x + room_w)
+                        ), f"room {room_id} flagged large decor without payload markers at {(room_x, room_y, room_w, room_h)}")
+                layouts_with_large_decor += int(layout_large_decor > 0)
 
                 for room_id in range(5, 11):
                     offset = room_id * 6
@@ -889,6 +929,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     ]
                     if room_w == 0:
                         continue
+                    if room_type & 0x40:
+                        continue
+                    room_type &= 3
                     room_decor = []
                     for row in range(room_y, room_y + room_h):
                         for col in range(room_x, room_x + room_w):
@@ -937,7 +980,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     block_x = (tile_x - 4) // 2
                     self.assertIn(block_y, range(20))
                     self.assertIn(block_x, range(20))
-                    self.assertEqual(playable[block_y * 20 + block_x], 0x0E)
+                    self.assertIn(
+                        playable[block_y * 20 + block_x], item_anchor_blocks
+                    )
                     ball_blocks.append((block_x, block_y))
                 self.assertEqual(len(set(ball_blocks)), 4)
 
@@ -981,11 +1026,40 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             frontier.append((near_col, near_row))
                 self.assertIn((2 * exit_x, 0), reachable)
                 self.assertIn((2 * exit_x + 1, 0), reachable)
+                # Records 2-11 retain their coordinates after item baking.
+                # Every placed room hub must remain in the entry component.
+                for room_id in range(2, 12):
+                    offset = room_id * 6
+                    room_x, room_y, room_w, room_h = records[offset:offset + 4]
+                    if room_w == 0:
+                        continue
+                    hub_x = 2 * (room_x + room_w // 2)
+                    hub_y = 2 * (room_y + room_h // 2)
+                    self.assertTrue(
+                        any(
+                            (hub_x + dx, hub_y + dy) in reachable
+                            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1))
+                        ),
+                        f"room {room_id} hub disconnected at {(hub_x, hub_y)}",
+                    )
                 ball_cells = {
                     (tile_x - 4, tile_y - 4)
                     for tile_y, tile_x in zip(ball_xy[::2], ball_xy[1::2])
                 }
-                self.assertTrue(ball_cells.issubset(reachable))
+                for ball_col, ball_row in ball_cells:
+                    self.assertTrue(
+                        (ball_col, ball_row) in reachable
+                        or any(
+                            adjacent in reachable
+                            for adjacent in (
+                                (ball_col - 1, ball_row),
+                                (ball_col + 1, ball_row),
+                                (ball_col, ball_row - 1),
+                                (ball_col, ball_row + 1),
+                            )
+                        ),
+                        f"item anchor {(ball_col, ball_row)} has no reachable interaction tile",
+                    )
                 for row in range(20):
                     for col in range(20):
                         if playable[row * 20 + col] != 0x0E:
@@ -1024,6 +1098,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 signatures.append((playable, exit_x, tuple(ball_xy), item_ids))
 
         self.assertGreater(selected_premade_rooms, 0)
+        self.assertGreaterEqual(len(large_decor_seen), 2)
+        self.assertGreater(decorated_item_rooms, 0)
+        self.assertGreaterEqual(large_decorated_rooms, len(seeds) * 3 // 2)
+        self.assertGreaterEqual(layouts_with_large_decor, len(seeds) * 7 // 8)
         self.assertGreater(eligible_decor_rooms, 0)
         self.assertEqual(total_decor, eligible_decor_rooms)
         self.assertGreaterEqual(len(decor_types_seen), 2)

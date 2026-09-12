@@ -188,7 +188,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const AZALEA_GYM,                     5,  9 ; $72 (was UNUSED_MAP_72)
 	map_const GOLDENROD_GYM,                  5,  7 ; $73 (was UNUSED_MAP_73)
 	map_const ECRUTEAK_GYM,                   5,  8 ; $74 (was UNUSED_MAP_74)
-	map_const CIANWOOD_GYM,                   5,  7 ; $75 (was UNUSED_MAP_75)
+	map_const CIANWOOD_GYM,                   5,  10 ; $75 (was UNUSED_MAP_75)
 	map_const HALL_OF_FAME,                   5,  4 ; $76
 	end_indoor_group POKEMON_LEAGUE
 

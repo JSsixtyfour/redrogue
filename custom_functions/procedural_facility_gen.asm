@@ -136,6 +136,37 @@ PFacMiddleRoom3x3Blocks:
     INCBIN "maps/ProceduralFacility_3x3_rock_room.blkv"
 ASSERT @ - PFacMiddleRoom3x3Blocks == 9
 
+DEF PFAC_LARGE_DECOR_COUNT EQU 5
+; Interior-only large-decor descriptors: width, height, payload pointer.
+; These may be placed in any larger compatible middle-room interior. They do
+; not own or replace the room's surrounding wall ring.
+PFacLargeDecorDescriptors:
+    db 2, 2
+    dw PFacLargeDecor2x2Eve
+    db 2, 3
+    dw PFacLargeDecor2x3Eve
+    db 3, 2
+    dw PFacLargeDecor3x2Tree
+    db 3, 3
+    dw PFacLargeDecor3x3Eve
+    db 3, 3
+    dw PFacLargeDecor3x3RockTree
+PFacLargeDecor2x2Eve:
+    INCBIN "maps/ProceduralFacility_2x2_eve_decor.blk"
+ASSERT @ - PFacLargeDecor2x2Eve == 4
+PFacLargeDecor2x3Eve:
+    INCBIN "maps/ProceduralFacility_2x3_eve_decor.blk"
+ASSERT @ - PFacLargeDecor2x3Eve == 6
+PFacLargeDecor3x2Tree:
+    INCBIN "maps/ProceduralFacility_3x2_tree_decor.blk"
+ASSERT @ - PFacLargeDecor3x2Tree == 6
+PFacLargeDecor3x3Eve:
+    INCBIN "maps/ProceduralFacility_3x3_eve_decor.blk"
+ASSERT @ - PFacLargeDecor3x3Eve == 9
+PFacLargeDecor3x3RockTree:
+    INCBIN "maps/ProceduralFacility_3x3_rocktree_decor.blk"
+ASSERT @ - PFacLargeDecor3x3RockTree == 9
+
 ASSERT PFAC_SIZE <= PFAC_STRIDE
 ASSERT PFAC_ROOM_MAX * PFAC_ROOM_STRIDE <= 81
 
@@ -171,6 +202,8 @@ DEF wPFacItemRetry    EQU 11  ; PFacPlaceItems: item-dedup retry counter
 DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
                               ; existing bake step copies this to
                               ; sProcFacilityBallItems by name, unchanged.
+DEF wPFacItemCheckX   EQU 16  ; item-anchor adjacency check: saved block X
+DEF wPFacItemCheckY   EQU 17  ; item-anchor adjacency check: saved block Y
 
 ; Corridor-wall and doorway-jamb passes. These run before item placement, so
 ; offsets 16-24 are phase-local and do not overlap the four rolled item bytes.
@@ -217,6 +250,26 @@ DEF wPFacDecorH       EQU 20
 DEF wPFacDecorType    EQU 21
 DEF wPFacDecorCenterX EQU 23
 DEF wPFacDecorCenterY EQU 24
+
+; PFacPlaceLargeDecor. Runs after sentinel finalization and before item
+; placement. Item coordinates/IDs are not yet using offsets 9-24.
+DEF wPFacLargeTemplate EQU 9
+DEF wPFacLargeTries    EQU 10
+DEF wPFacLargeW        EQU 11
+DEF wPFacLargeH        EQU 12
+DEF wPFacLargePtrLo    EQU 13
+DEF wPFacLargePtrHi    EQU 14
+DEF wPFacLargeOffX     EQU 15
+DEF wPFacLargeOffY     EQU 16
+DEF wPFacLargeRow      EQU 17
+DEF wPFacLargeCol      EQU 18
+DEF wPFacLargeCenterX  EQU 19
+DEF wPFacLargeCenterY  EQU 20
+DEF wPFacLargeMaxX     EQU 21
+DEF wPFacLargeMaxY     EQU 22
+DEF wPFacLargeBlock    EQU 23
+DEF wPFacLargeDoors    EQU 24 ; N/E/S/W bits for actual finalized door openings
+ASSERT wPFacLargeDoors < wPFacRoomCount
 
 ; ============================================================
 ; PFacRowOffsetTable / PFacWriteBlock / PFacReadBlock / PFacRoomRecordAddr
@@ -1058,18 +1111,393 @@ PFacFinalizeBlocks:
     ret
 
 ; ============================================================
+; PFacPlaceLargeDecor
+; Try the five connectivity-safe user-authored interior payloads in a
+; room-specific cyclic order
+; for every middle room (items 1-4, exploration 5-10). A payload may sit inside
+; any interior at least as large as itself. Candidate offsets are scanned until
+; the room hub remains fully walkable and every actual doorway approach retains
+; a path in its travel direction. Authored payload connectivity is validated
+; offline. If no payload/offset is safe, the ordinary interior remains unchanged.
+; ============================================================
+PFacPlaceLargeDecor:
+    ld a, 1
+    ld [wBuffer + wPFacRmIdx], a
+.roomLoop
+    ld a, [wBuffer + wPFacRmIdx]
+    cp 11
+    ret nc
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    and a
+    jp z, .nextRoom
+    ld a, [hl]
+    ld [wBuffer + wPFacRmH], a
+
+    ld a, [wBuffer + wPFacRmW]
+    srl a
+    ld hl, wBuffer + wPFacRmX
+    add a, [hl]
+    ld [wBuffer + wPFacLargeCenterX], a
+    ld a, [wBuffer + wPFacRmH]
+    srl a
+    ld hl, wBuffer + wPFacRmY
+    add a, [hl]
+    ld [wBuffer + wPFacLargeCenterY], a
+    call PFacLoadLargeDecorDoorMask
+
+    ; Room id supplies a deterministic rotating start so every payload appears
+    ; across ordinary layouts without perturbing item RNG.
+    ld a, [wBuffer + wPFacRmIdx]
+.reduceTemplate
+    cp PFAC_LARGE_DECOR_COUNT
+    jr c, .templateReady
+    sub PFAC_LARGE_DECOR_COUNT
+    jr .reduceTemplate
+.templateReady
+    ld [wBuffer + wPFacLargeTemplate], a
+    ld a, PFAC_LARGE_DECOR_COUNT
+    ld [wBuffer + wPFacLargeTries], a
+.templateLoop
+    call PFacLoadLargeDecorDescriptor
+    ld a, [wBuffer + wPFacRmW]
+    ld hl, wBuffer + wPFacLargeW
+    sub [hl]
+    jr c, .nextTemplate
+    ld [wBuffer + wPFacLargeMaxX], a
+    ld a, [wBuffer + wPFacRmH]
+    ld hl, wBuffer + wPFacLargeH
+    sub [hl]
+    jr c, .nextTemplate
+    ld [wBuffer + wPFacLargeMaxY], a
+    xor a
+    ld [wBuffer + wPFacLargeOffX], a
+    ld [wBuffer + wPFacLargeOffY], a
+.offsetLoop
+    call PFacLargeDecorCandidateSafe
+    jr c, .stamp
+    ld hl, wBuffer + wPFacLargeOffX
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeMaxX]
+    cp [hl]
+    jr nc, .offsetLoop
+    xor a
+    ld [wBuffer + wPFacLargeOffX], a
+    ld hl, wBuffer + wPFacLargeOffY
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeMaxY]
+    cp [hl]
+    jr nc, .offsetLoop
+.nextTemplate
+    ld a, [wBuffer + wPFacLargeTemplate]
+    inc a
+    cp PFAC_LARGE_DECOR_COUNT
+    jr c, .storeTemplate
+    xor a
+.storeTemplate
+    ld [wBuffer + wPFacLargeTemplate], a
+    ld hl, wBuffer + wPFacLargeTries
+    dec [hl]
+    jr nz, .templateLoop
+    jr .nextRoom
+.stamp
+    call PFacStampLargeDecor
+    ; Bit 6 records ownership of the interior so the later one-block decor pass
+    ; cannot combine with this payload and close its authored route.
+    ld a, [wBuffer + wPFacRmIdx]
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    set 6, [hl]
+.nextRoom
+    ld hl, wBuffer + wPFacRmIdx
+    inc [hl]
+    jp .roomLoop
+
+PFacLoadLargeDecorDescriptor:
+    ld a, [wBuffer + wPFacLargeTemplate]
+    add a, a
+    add a, a
+    ld c, a
+    ld b, 0
+    ld hl, PFacLargeDecorDescriptors
+    add hl, bc
+    ld a, [hli]
+    ld [wBuffer + wPFacLargeW], a
+    ld a, [hli]
+    ld [wBuffer + wPFacLargeH], a
+    ld a, [hli]
+    ld [wBuffer + wPFacLargePtrLo], a
+    ld a, [hl]
+    ld [wBuffer + wPFacLargePtrHi], a
+    ret
+
+; Read the finalized wall ring and record only doorway approaches that really
+; exist. Corridor/door openings are plain floor; walls and void are not.
+PFacLoadLargeDecorDoorMask:
+    xor a
+    ld [wBuffer + wPFacLargeDoors], a
+    ld a, [wBuffer + wPFacLargeCenterX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .east
+    ld hl, wBuffer + wPFacLargeDoors
+    set 0, [hl]
+.east
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLargeCenterY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .south
+    ld hl, wBuffer + wPFacLargeDoors
+    set 1, [hl]
+.south
+    ld a, [wBuffer + wPFacLargeCenterX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacRmH
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .west
+    ld hl, wBuffer + wPFacLargeDoors
+    set 2, [hl]
+.west
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLargeCenterY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    ret nz
+    ld hl, wBuffer + wPFacLargeDoors
+    set 3, [hl]
+    ret
+
+PFacLargeDecorCandidateSafe:
+    ld a, [wBuffer + wPFacLargePtrLo]
+    ld l, a
+    ld a, [wBuffer + wPFacLargePtrHi]
+    ld h, a
+    xor a
+    ld [wBuffer + wPFacLargeRow], a
+.row
+    xor a
+    ld [wBuffer + wPFacLargeCol], a
+.col
+    ld a, [hli]
+    ld [wBuffer + wPFacLargeBlock], a
+    push hl
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacLargeOffX
+    add a, [hl]
+    ld hl, wBuffer + wPFacLargeCol
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacLargeOffY
+    add a, [hl]
+    ld hl, wBuffer + wPFacLargeRow
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jp nz, .unsafePop
+    ; The hub is the join between every doorway route.
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacLargeCenterX
+    cp [hl]
+    jr nz, .checkNorthSouth
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacLargeCenterY
+    cp [hl]
+    jr nz, .checkNorthSouth
+    ld a, [wBuffer + wPFacLargeBlock]
+    call PFacLargeDecorBlockFullyWalkable
+    jp nz, .unsafePop
+    jr .cellOK
+.checkNorthSouth
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacLargeCenterX
+    cp [hl]
+    jr nz, .checkEastWest
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacLargeCenterY
+    cp [hl]
+    jr z, .checkEastWest
+    jr c, .northLane
+    ld a, [wBuffer + wPFacLargeDoors]
+    bit 2, a
+    jr z, .checkEastWest
+    jr .checkVertical
+.northLane
+    ld a, [wBuffer + wPFacLargeDoors]
+    bit 0, a
+    jr z, .checkEastWest
+.checkVertical
+    ld a, [wBuffer + wPFacLargeBlock]
+    call PFacLargeDecorBlockVerticalPass
+    jp nz, .unsafePop
+.checkEastWest
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacLargeCenterY
+    cp [hl]
+    jr nz, .cellOK
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacLargeCenterX
+    cp [hl]
+    jr z, .cellOK
+    jr c, .westLane
+    ld a, [wBuffer + wPFacLargeDoors]
+    bit 1, a
+    jr z, .cellOK
+    jr .checkHorizontal
+.westLane
+    ld a, [wBuffer + wPFacLargeDoors]
+    bit 3, a
+    jr z, .cellOK
+.checkHorizontal
+    ld a, [wBuffer + wPFacLargeBlock]
+    call PFacLargeDecorBlockHorizontalPass
+    jp nz, .unsafePop
+.cellOK
+    pop hl
+    push hl
+    ld hl, wBuffer + wPFacLargeCol
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeW]
+    cp [hl]
+    jr nz, .moreColumns
+    ld hl, wBuffer + wPFacLargeRow
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeH]
+    cp [hl]
+    jr nz, .moreRows
+    pop hl
+    scf
+    ret
+.moreColumns
+    pop hl
+    jp .col
+.moreRows
+    pop hl
+    jp .row
+.unsafePop
+    pop hl
+    and a
+    ret
+
+; Z set for payload blocks whose four movement quadrants are all walkable.
+PFacLargeDecorBlockFullyWalkable:
+    cp $0E
+    ret z
+    cp $2C
+    ret z
+    cp $3B
+    ret z
+    cp $3F
+    ret
+
+; Z set when a payload block has a continuous north/south lane.
+PFacLargeDecorBlockVerticalPass:
+    call PFacLargeDecorBlockFullyWalkable
+    ret z
+    cp $31
+    ret z
+    cp $45
+    ret z
+    cp $39
+    ret z
+    cp $77
+    ret z
+    cp $20
+    ret z
+    cp $38
+    ret
+
+; Z set when a payload block has a continuous west/east lane.
+PFacLargeDecorBlockHorizontalPass:
+    call PFacLargeDecorBlockFullyWalkable
+    ret z
+    cp $19
+    ret
+
+PFacStampLargeDecor:
+    ld a, [wBuffer + wPFacLargePtrLo]
+    ld l, a
+    ld a, [wBuffer + wPFacLargePtrHi]
+    ld h, a
+    xor a
+    ld [wBuffer + wPFacLargeRow], a
+.row
+    xor a
+    ld [wBuffer + wPFacLargeCol], a
+.col
+    ld a, [hli]
+    push hl
+    push af
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacLargeOffX
+    add a, [hl]
+    ld hl, wBuffer + wPFacLargeCol
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacLargeOffY
+    add a, [hl]
+    ld hl, wBuffer + wPFacLargeRow
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    pop af
+    call PFacWriteBlock
+    pop hl
+    push hl
+    ld hl, wBuffer + wPFacLargeCol
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeW]
+    cp [hl]
+    jr nz, .moreColumns
+    ld hl, wBuffer + wPFacLargeRow
+    inc [hl]
+    ld a, [wBuffer + wPFacLargeH]
+    cp [hl]
+    jr nz, .moreRows
+    pop hl
+    ret
+.moreColumns
+    pop hl
+    jr .col
+.moreRows
+    pop hl
+    jr .row
+
+; ============================================================
 ; PFacPlaceItems
 ; One pokeball per item room (fixed room ids 1-4; rule e guarantees these are
 ; always placed, so no scan is needed - just address them directly). Picks a
-; random floor tile within each room's interior, rolls a unique item (dedup
+; random approved object anchor within each room's decorated interior, rolls a unique item (dedup
 ; against earlier rolls, same rejection-sampling pattern the retired
 ; PFacScanForBall used), and stores block coords + item IDs into
 ; sProcFacilityGenScratch[0..7] / wPFacItemTemp[0..3] - the exact contract
 ; PFacFinalize's existing bake step already reads (X,Y pairs per ball, then 4
 ; item IDs), so that copy-to-SRAM code needs no changes.
-; Runs AFTER PFacFinalizeBlocks (room interiors are
-; real PFAC_FLOOR by then). Room record bytes (X/Y/W/H) are never touched by
-; the stamp/enclose/convert passes, only the map buffer is, so re-reading a
+; Runs after block finalization and the large-decor pass. Room record bytes
+; (X/Y/W/H) are never touched by the stamp/enclose/convert passes, only the map buffer, so re-reading a
 ; room's record here is safe.
 ; ============================================================
 PFacPlaceItems:
@@ -1102,6 +1530,9 @@ PFacPlaceItems:
     ld a, 1
     ld [wBuffer + wPFacRmH], a
 .havePosition
+    ld a, 32
+    ld [wBuffer + wPFacItemRetry], a
+.positionRetry
     ld a, [wBuffer + wPFacRmW]
     ld c, a
     call Rangerandom              ; 0..W-1
@@ -1116,6 +1547,25 @@ PFacPlaceItems:
     ld a, [wBuffer + wPFacRmY]
     add a, b
     ld [wBuffer + wPFacCurY], a
+
+    call PFacItemAnchorAtCurrentValid
+    jr z, .positionOK
+    ld hl, wBuffer + wPFacItemRetry
+    dec [hl]
+    jr nz, .positionRetry
+    ; The protected center cross guarantees a fallback anchor even when a
+    ; decorated room's random samples repeatedly hit occupied machinery.
+    ld a, [wBuffer + wPFacRmW]
+    srl a
+    ld hl, wBuffer + wPFacRmX
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmH]
+    srl a
+    ld hl, wBuffer + wPFacRmY
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+.positionOK
 
     ; Save block coords -> sProcFacilityGenScratch[ballIdx*2 .. +1] (X,Y)
     ld a, [wBuffer + wPFacBallIdx]
@@ -1171,6 +1621,60 @@ PFacPlaceItems:
     ld [wBuffer + wPFacBallIdx], a
     cp 4
     jp nz, .ballLoop
+    ret
+
+; Z set when the current block is an approved item-display anchor. $47 is a
+; solid table, so it is accepted only when a fully walkable cardinal neighbor
+; provides a conservative interaction position. Object-anchor safety is
+; deliberately broader than player walkability.
+PFacItemAnchorAtCurrentValid:
+    call PFacReadBlock
+    cp $0E
+    ret z
+    cp $2C
+    ret z
+    cp $3B
+    ret z
+    cp $3F
+    ret z
+    cp $47
+    ret nz
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacItemCheckX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacItemCheckY], a
+
+    ld hl, wBuffer + wPFacCurX
+    dec [hl]
+    call .checkNeighbor
+    ret z
+    ld a, [wBuffer + wPFacItemCheckX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call .checkNeighbor
+    ret z
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    call .checkNeighbor
+    ret z
+    ld a, [wBuffer + wPFacItemCheckY]
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    call .checkNeighbor
+    ret z
+    or 1
+    ret
+.checkNeighbor
+    call PFacReadBlock
+    call PFacLargeDecorBlockFullyWalkable
+    push af
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacItemCheckY]
+    ld [wBuffer + wPFacCurY], a
+    pop af
     ret
 
 ; ============================================================
@@ -1303,6 +1807,7 @@ PFacDecorateExploreRooms:
     add hl, bc
     ld a, [hl]
     call PFacWriteBlock
+    call PFacMarkSmallDecor
     jr .nextRoom
 
 .thinHorizontal
@@ -1332,11 +1837,22 @@ PFacDecorateExploreRooms:
     add hl, bc
     ld a, [hl]
     call PFacWriteBlock
+    call PFacMarkSmallDecor
 .nextRoom
     ld a, [wBuffer + wPFacDecorId]
     inc a
     ld [wBuffer + wPFacDecorId], a
     jp .roomLoop
+
+; Bit 5 records that the light pass found and filled a remaining plain-floor
+; cell. Bit 6 independently records large-decor ownership.
+PFacMarkSmallDecor:
+    ld a, [wBuffer + wPFacDecorId]
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    set 5, [hl]
+    ret
 
 ; ============================================================
 ; PFacGenerateFacility  (top-level driver)
@@ -1362,6 +1878,7 @@ PFacGenerateFacility:
     call PFacBuildCorridorWalls
     call PFacApplyDoorJambs
     call PFacFinalizeBlocks
+    call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
     ret
