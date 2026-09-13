@@ -49,6 +49,9 @@ DEF PFAC_BASE    EQU 81
 
 DEF PFAC_FLOOR   EQU 14   ; facility floor block (all-$01, passable)
 DEF PFAC_WALL    EQU 46   ; solid interior wall AND the map border/void block.
+DEF PFAC_EXIT_N  EQU $08
+DEF PFAC_EXIT_E  EQU $04
+DEF PFAC_EXIT_W  EQU $05
 
 ; --- Generation-time pseudo values (never written to the final map) ---
 DEF PFAC_UNTOUCHED EQU $FF   ; PFacFillUntouched's seed value: "nothing has
@@ -1905,6 +1908,12 @@ PFacItemAnchorAtCurrentValid:
     ret z
     cp $2C
     ret z
+    cp $34
+    ret z
+    cp $36
+    ret z
+    cp $37
+    ret z
     cp $3B
     ret z
     cp $3F
@@ -1991,7 +2000,7 @@ PFacPlaceFakeBalls:
     call PFacItemAnchorAtCurrentValid
     jr nz, .advance
     call PFacFakeAnchorUnused
-    jr z, .save
+    jp z, .save
 .advance
     ld hl, wBuffer + wPFacCurX
     inc [hl]
@@ -2025,6 +2034,12 @@ PFacPlaceFakeBalls:
     ld hl, wBuffer + wPFacFakeReusePass
     bit 0, [hl]
     jr nz, .globalFallback
+    ; Before allowing a room to hold a second fake ball, use safe one-wide
+    ; corridor straightaways. This materially spreads encounters away from
+    ; item rooms without putting them on sockets, turns, or branches.
+    call PFacFindFakeCorridorAnchor
+    jr z, .save
+    ld hl, wBuffer + wPFacFakeReusePass
     set 0, [hl]
     jp .roomPass
 .globalFallback
@@ -2114,6 +2129,120 @@ PFacPlaceFakeBalls:
     pop bc
     add a, b
     ld [sProcFacilityGenScratch + 80], a
+    ret
+
+; Z set with CurX/CurY on a free corridor anchor. The bounded center-area scan
+; excludes all room interiors plus the north/side boss bands and south entry.
+PFacFindFakeCorridorAnchor:
+    ld a, 3
+    ld [wBuffer + wPFacCurY], a
+.row
+    ld a, 2
+    ld [wBuffer + wPFacCurX], a
+.column
+    call PFacCorridorAnchorValid
+    jr nz, .advance
+    call PFacFakeAnchorUnused
+    jr nz, .advance
+    xor a
+    ld [wBuffer + wPFacFakeRoomId], a
+    ret
+.advance
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [hl]
+    cp 18
+    jr c, .column
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [hl]
+    cp 17
+    jr c, .row
+    or 1
+    ret
+
+; Z set only for finalized plain floor outside every room floor rectangle, with
+; exactly one straight pair of plain-floor neighbors. CurX/CurY are preserved.
+PFacCorridorAnchorValid:
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    ret nz
+    xor a
+    ld [wBuffer + wPFacScanId], a
+.room
+    ld a, [wBuffer + wPFacScanId]
+    cp PFAC_ROOM_MAX
+    jr nc, .topology
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld b, a
+    ld a, [hli]
+    ld c, a
+    ld a, [hli]
+    and a
+    jr z, .nextRoom
+    ld d, a
+    ld e, [hl]
+    ld a, [wBuffer + wPFacCurX]
+    cp b
+    jr c, .nextRoom
+    sub b
+    cp d
+    jr nc, .nextRoom
+    ld a, [wBuffer + wPFacCurY]
+    cp c
+    jr c, .nextRoom
+    sub c
+    cp e
+    jr c, .invalid
+.nextRoom
+    ld hl, wBuffer + wPFacScanId
+    inc [hl]
+    jr .room
+.topology
+    ; Record N,S,W,E plain-floor membership as bits 0-3 in b.
+    ld b, 0
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .south
+    set 0, b
+.south
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    inc [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .west
+    set 1, b
+.west
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    ld hl, wBuffer + wPFacCurX
+    dec [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .east
+    set 2, b
+.east
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    inc [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .restore
+    set 3, b
+.restore
+    ld hl, wBuffer + wPFacCurX
+    dec [hl]
+    ld a, b
+    cp %00000011                 ; north + south only
+    ret z
+    cp %00001100                 ; west + east only
+    ret
+.invalid
+    or 1
     ret
 
 ; Z set when current X/Y does not overlap a real item or an earlier fake ball.
@@ -2438,7 +2567,7 @@ PFacGenerateFacility:
 .layoutAccepted
     pop bc
 .layoutContinue
-    call PFacCarveNorthExitOpening
+    call PFacCarveEdgeOpenings
     call PFacBuildCorridorWalls
     call PFacApplyDoorJambs
     call PFacFinalizeBlocks
@@ -2580,9 +2709,9 @@ PFacPlaceEntryRoom:
     jp PFacStoreRoom
 
 ; ============================================================
-; PFacPlaceExitRoom  (room 11, north edge)
-; Floor top at row 2 (ring at row 1, warp opening at row 0). Rolls an exit block
-; column inside the room's width -> sProcFacilityExitI. Parent set later.
+; PFacPlaceExitRoom  (room 11, north/west/east edge)
+; The floor starts two blocks in from the selected edge, leaving a wall ring
+; and an edge socket. sProcFacilityExitI is the coordinate along that edge.
 ; ============================================================
 PFacPlaceExitRoom:
     ld a, 11
@@ -2591,6 +2720,70 @@ PFacPlaceExitRoom:
     ld [wBuffer + wPFacCandW], a
     call PFacRollRoomDim
     ld [wBuffer + wPFacCandH], a
+    ld a, [sProcFacilityExitEdge]
+    and a
+    jr z, .north
+    dec a
+    jr z, .west
+    ; East: X = 18-W; random Y; exit row = Y+rand(H).
+    ld a, 18
+    ld hl, wBuffer + wPFacCandW
+    sub [hl]
+    ld [wBuffer + wPFacCandX], a
+    jr .side
+.west
+    ld a, 2
+    ld [wBuffer + wPFacCandX], a
+.side
+    ld a, 32
+    ld [wBuffer + wPFacRetry], a
+.sideRoll
+    ld a, 19
+    ld hl, wBuffer + wPFacCandH
+    sub [hl]
+    ld c, a
+    call Rangerandom
+    inc a
+    ld [wBuffer + wPFacCandY], a
+    call PFacCandOverlaps
+    and a
+    jr z, .sideAccepted
+    ld hl, wBuffer + wPFacRetry
+    dec [hl]
+    jr nz, .sideRoll
+    ; The entry is bottom-aligned, so this deterministic fallback is separated.
+    ld a, 1
+    ld [wBuffer + wPFacCandY], a
+.sideAccepted
+    ld a, [wBuffer + wPFacCandH]
+    ld c, a
+    call Rangerandom
+    ld hl, wBuffer + wPFacCandY
+    add a, [hl]
+    ld [sProcFacilityExitI], a
+    ; Keep side exits at least 12 block steps from the south entry (9,19).
+    ; West contributes 9 horizontal steps, so row <=16; east contributes 10,
+    ; so row <=17.
+    ld b, a
+    ld a, [sProcFacilityExitEdge]
+    cp 1
+    ld a, b
+    jr nz, .eastDistance
+    cp 17
+    jr c, .store
+    jr .sideDistanceReject
+.eastDistance
+    cp 18
+    jr c, .store
+.sideDistanceReject
+    ld hl, wBuffer + wPFacRetry
+    dec [hl]
+    jr nz, .sideRoll
+    ld a, 1
+    ld [wBuffer + wPFacCandY], a
+    ld [sProcFacilityExitI], a
+    jr .store
+.north
     ld a, 2
     ld [wBuffer + wPFacCandY], a
     ; X = 1 + rand(19 - W)
@@ -2608,6 +2801,7 @@ PFacPlaceExitRoom:
     ld hl, wBuffer + wPFacCandX
     add a, [hl]
     ld [sProcFacilityExitI], a
+.store
     ld a, PFAC_ROOM_NONE
     ld [wBuffer + wPFacParent], a
     jp PFacStoreRoom
@@ -3131,18 +3325,75 @@ PFacTryCutPremadeSocket:
     scf
     ret
 ; ============================================================
-; PFacCarveNorthExitOpening
-; Open the 1-wide warp gap at (exitCol, 0) and punch the exit room's top wall
-; ring at (exitCol, 1), connecting the north-edge warp down into the exit room.
+; PFacCarveEdgeOpenings
+; Stamp the fixed south entrance socket, then open the selected exit boundary
+; and its room wall. Exit sockets are $08 north, $05 west, and $04 east.
 ; Runs AFTER PFacEncloseRooms (so it overwrites the ring wall) and writes real
 ; PFAC_CORRIDOR so the boundary pass encloses it before floor conversion.
 ; ============================================================
-PFacCarveNorthExitOpening:
+PFacCarveEdgeOpenings:
+    ld a, 9
+    ld [wBuffer + wPFacCurX], a
+    ld a, 19
+    ld [wBuffer + wPFacCurY], a
+    ld a, $2C
+    call PFacWriteBlock
+
+    ld a, [sProcFacilityExitEdge]
+    and a
+    jr z, .north
+    dec a
+    jr z, .west
+.east
+    ld a, 19
+    ld [wBuffer + wPFacCurX], a
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_EXIT_E
+    call PFacWriteBlock
+    ld a, 18
+    ld [wBuffer + wPFacCurX], a
+    ld a, PFAC_CORRIDOR
+    call PFacWriteBlock
+    ld a, 18
+    ld [wBuffer + wPFacDX], a
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacDY], a
+    ld a, PFAC_W_RIGHT
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_RIGHT_N
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_RIGHT_S
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteVerticalFlanks
+.west
+    xor a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_EXIT_W
+    call PFacWriteBlock
+    ld a, 1
+    ld [wBuffer + wPFacCurX], a
+    ld a, PFAC_CORRIDOR
+    call PFacWriteBlock
+    ld a, 1
+    ld [wBuffer + wPFacDX], a
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacDY], a
+    ld a, PFAC_W_LEFT
+    ld [wBuffer + wPFacFlankExpect], a
+    ld a, PFAC_J_LEFT_N
+    ld [wBuffer + wPFacFlankFirst], a
+    ld a, PFAC_J_LEFT_S
+    ld [wBuffer + wPFacFlankSecond], a
+    jp PFacRewriteVerticalFlanks
+.north
     ld a, [sProcFacilityExitI]
     ld [wBuffer + wPFacCurX], a
     xor a
     ld [wBuffer + wPFacCurY], a
-    ld a, PFAC_CORRIDOR
+    ld a, PFAC_EXIT_N
     call PFacWriteBlock
     ld a, 1
     ld [wBuffer + wPFacCurY], a
@@ -3270,11 +3521,23 @@ PFacPreload::
     xor a
     ld [sProcFacilityBaked], a       ; 0 = needs fresh generation
     ld [sProcFacilityItemGot], a     ; clear ball-collected bits
+    ld a, [wBattleCount]
     ld [sProcFacilityEntryBattleCount], a
-    ld [sProcFacilityExitEdge], a    ; 0 = N (v1 ships north exit only)
+
+    ; Select and persist the exit edge: 0=N, 1=W, 2=E.
+    ld c, 3
+    call Rangerandom
+    ld [sProcFacilityExitEdge], a
 
     ; Roll the facility's own boss (species + OW sprite -> SRAM).
+    ld a, [wBattleCount]
+    push af
     call PFacRollBoss
+    ; Species selection borrows broad generation scratch. Keep stage progress
+    ; authoritative across the preload regardless of the selected species/form.
+    pop af
+    ld [wBattleCount], a
+    ld [sProcFacilityEntryBattleCount], a
 
     ; Roll palette variant: 0 = PowerPlant (green), 1 = Mansion (red). Cosmetic
     ; only now - read by SetPal_Overworld's FACILITY case, no longer branches
@@ -3334,7 +3597,6 @@ PFacPreload::
 ;     sprites from SRAM.
 ; SRAM is kept open through generation (RAMG/BMODE/RAMB only gate $A000-$BFFF,
 ; not WRAM), so sProcFacilityGenScratch is reachable during the carve.
-; v1 ships a NORTH exit only (sProcFacilityExitEdge is always 0).
 ; ============================================================
 PFacFinalize::
     ld a, RAMG_SRAM_ENABLE
@@ -3459,34 +3721,95 @@ PFacFinalize::
     jr nz, .blitRowLoop
 
 .placeSprites
-    ; --- Patch the two exit warp entries (north edge, 2 tiles wide) ---
-    ; sProcFacilityExitI holds the exit BLOCK column. Left exit tile X = 2*exitX.
+    ; --- Patch the south entrance and the selected two-tile exit ---
+    ld hl, wWarpEntries
+    ld a, 38
+    ld [hli], a
+    ld a, 19
+    ld [hl], a
+
+    ; sProcFacilityExitI is a block column for north or row for west/east.
     ; wWarpEntries+4 = entry 1 (Y,X,..), +8 = entry 2.
     ld a, [sProcFacilityExitI]
     add a, a
-    ld c, a                         ; c = 2*exitX = left exit tile X
+    ld c, a
     ld hl, wWarpEntries + 4
-    xor a
-    ld [hli], a                     ; entry1 Y = 0
+    ld a, [sProcFacilityExitEdge]
+    and a
+    jr z, .warpsNorth
+    dec a
+    jr z, .warpsWest
+.warpsEast
     ld a, c
-    ld [hli], a                     ; entry1 X = 2*exitX
+    ld [hli], a
+    ld a, PFAC_SIZE * 2 - 1
+    ld [hli], a
     inc hl
     inc hl
-    xor a
-    ld [hli], a                     ; entry2 Y = 0
     ld a, c
     inc a
-    ld [hl], a                      ; entry2 X = 2*exitX+1
+    ld [hli], a
+    ld a, PFAC_SIZE * 2 - 1
+    ld [hl], a
+    jr .restoreBoss
+.warpsWest
+    ld a, c
+    ld [hli], a
+    xor a
+    ld [hli], a
+    inc hl
+    inc hl
+    ld a, c
+    inc a
+    ld [hli], a
+    xor a
+    ld [hl], a
+    jr .restoreBoss
+.warpsNorth
+    xor a
+    ld [hli], a
+    ld a, c
+    ld [hli], a
+    inc hl
+    inc hl
+    xor a
+    ld [hli], a
+    ld a, c
+    inc a
+    ld [hl], a
 
     ; --- Restore boss species and place its sprite (slot 1) ---
+.restoreBoss
     ld a, [sProcFacilityBossSpecies]
     ld [wRoguePokemon1], a
     ld a, [sProcFacilitySignVariant]
     srl a
     ld [wRoguePokemonForm1], a
 
-    ; Boss stands on block (exitX, 1), one cell below the opening, facing DOWN so
-    ; it guards the only approach. tile = block*2+4.
+    ld a, [sProcFacilityExitEdge]
+    and a
+    jr z, .bossNorth
+    dec a
+    jr z, .bossWest
+.bossEast
+    ld a, 18 * 2 + 4
+    ld [wSprite01StateData2MapX], a
+    ld a, [sProcFacilityExitI]
+    add a, a
+    add a, 4
+    ld [wSprite01StateData2MapY], a
+    ld a, SPRITE_FACING_LEFT
+    jr .bossFacing
+.bossWest
+    ld a, 1 * 2 + 4
+    ld [wSprite01StateData2MapX], a
+    ld a, [sProcFacilityExitI]
+    add a, a
+    add a, 4
+    ld [wSprite01StateData2MapY], a
+    ld a, SPRITE_FACING_RIGHT
+    jr .bossFacing
+.bossNorth
     ld a, [sProcFacilityExitI]
     add a, a
     add a, 4                        ; tile X = exitX*2+4
@@ -3494,6 +3817,7 @@ PFacFinalize::
     ld a, 1 * 2 + 4                 ; block Y=1 -> tile Y = 6
     ld [wSprite01StateData2MapY], a
     ld a, SPRITE_FACING_DOWN
+.bossFacing
     ld [wSprite01StateData1FacingDirection], a
 
     ; Boss species/level into wMapSpriteExtraData slot 1 (offset 0).

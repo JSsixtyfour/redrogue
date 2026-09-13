@@ -943,8 +943,13 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x0A, 0x0B, 0x18, 0x1A, 0x20, 0x31, 0x34, 0x36,
             0x37, 0x38, 0x45, 0x77,
         }
-        item_anchor_blocks = {0x0E, 0x2C, 0x3B, 0x3F, 0x47}
+        item_anchor_blocks = {
+            0x0E, 0x2C, 0x34, 0x36, 0x37, 0x3B, 0x3F, 0x47,
+        }
         allowed_blocks = {
+            0x04,
+            0x05,
+            0x08,
             0x0E,
             0x2E,
             0x40,
@@ -976,6 +981,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         large_decorated_rooms = 0
         layouts_with_large_decor = 0
         combined_decor_rooms = 0
+        corridor_fake_balls = 0
         pre_item_records: list[bytes] = []
         room_ring_contacts: list[tuple[tuple[int, int, int, int], int, int]] = []
         corner_defects: list[tuple[tuple[int, int, int, int], int, int, int]] = []
@@ -994,10 +1000,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
         self.harness.register_hook("PFacPlaceItems", capture_pre_item_records)
 
-        for seed in seeds:
+        edges_seen: set[int] = set()
+        for seed_index, seed in enumerate(seeds):
             with self.subTest(seed=seed):
                 pre_item_records.clear()
                 self.harness.load_state(baseline)
+                forced_edge = seed_index % 3
+                self.harness.write_sram_bytes(
+                    "sProcFacilityExitEdge", [forced_edge]
+                )
                 self.harness.write8("hRandomAdd", seed[0])
                 self.harness.write8("hRandomSub", seed[1])
                 self.harness.write8("hRandomLast", seed[2])
@@ -1079,19 +1090,27 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         decor_types_seen.add(room_type)
                         total_decor += 1
 
-                exit_x = self.harness.read_sram_bytes("sProcFacilityExitI", 1)[0]
+                exit_edge = self.harness.read_sram_bytes(
+                    "sProcFacilityExitEdge", 1
+                )[0]
+                exit_i = self.harness.read_sram_bytes("sProcFacilityExitI", 1)[0]
+                edges_seen.add(exit_edge)
                 record_summary = [
                     tuple(records[room_id * 6 : room_id * 6 + 6])
                     for room_id in range(2, 12)
                 ]
-                self.assertIn(exit_x, range(1, 19))
+                self.assertIn(exit_i, range(1, 19))
                 self.assertEqual(playable[17 * 20 + 9], 0x0E)
-                self.assertEqual(playable[exit_x], 0x0E)
-                self.assertEqual(playable[20 + exit_x], 0x0E)
-                self.assertEqual(
-                    [col for col in range(20) if playable[col] == 0x0E],
-                    [exit_x],
-                )
+                self.assertEqual(playable[19 * 20 + 9], 0x2C)
+                if exit_edge == 0:
+                    self.assertEqual(playable[exit_i], 0x08)
+                    self.assertEqual(playable[20 + exit_i], 0x0E)
+                elif exit_edge == 1:
+                    self.assertEqual(playable[exit_i * 20], 0x05)
+                    self.assertEqual(playable[exit_i * 20 + 1], 0x0E)
+                else:
+                    self.assertEqual(playable[exit_i * 20 + 19], 0x04)
+                    self.assertEqual(playable[exit_i * 20 + 18], 0x0E)
 
                 ball_xy = self.harness.read_sram_bytes("sProcFacilityBallXY", 8)
                 ball_blocks = []
@@ -1161,7 +1180,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                         (2 * block_x + quadrant_x, 2 * block_y + quadrant_y)
                                     )
 
-                entrance = (19, 34)
+                entrance = (19, 38)
                 self.assertIn(entrance, passable_cells)
                 reachable = {entrance}
                 frontier = [entrance]
@@ -1262,8 +1281,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             for x, y in ring_a
                         ):
                             room_ring_contacts.append((seed, room_a, room_b))
-                self.assertIn((2 * exit_x, 0), reachable, record_summary)
-                self.assertIn((2 * exit_x + 1, 0), reachable)
+                if exit_edge == 0:
+                    exit_cells = ((2 * exit_i, 0), (2 * exit_i + 1, 0))
+                elif exit_edge == 1:
+                    exit_cells = ((0, 2 * exit_i), (0, 2 * exit_i + 1))
+                else:
+                    exit_cells = ((39, 2 * exit_i), (39, 2 * exit_i + 1))
+                self.assertIn(exit_cells[0], reachable, record_summary)
+                self.assertIn(exit_cells[1], reachable)
                 # Records 2-11 retain their coordinates after item baking.
                 # Decor may occupy the geometric center, so require any
                 # walkable quadrant in each placed room to remain connected.
@@ -1336,7 +1361,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             if (anchor_x, anchor_y) in real_item_blocks or (anchor_x, anchor_y) == (9, 17):
                                 continue
                             block_id = playable[anchor_y * 20 + anchor_x]
-                            if block_id in (0x0E, 0x2C, 0x3B, 0x3F):
+                            if block_id in (
+                                0x0E, 0x2C, 0x34, 0x36, 0x37, 0x3B, 0x3F,
+                            ):
                                 eligible_fake_rooms.add(candidate_id)
                             elif block_id == 0x47 and any(
                                 0 <= near_x < 20 and 0 <= near_y < 20
@@ -1367,7 +1394,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         self.assertEqual(len(containing_rooms), 1)
                         fake_room_ids.append(containing_rooms[0])
                     else:
+                        corridor_fake_balls += 1
                         self.assertLess(len(eligible_fake_rooms), 4)
+                        cardinal_plain = (
+                            playable[(anchor_block_y - 1) * 20 + anchor_block_x] == 0x0E,
+                            playable[(anchor_block_y + 1) * 20 + anchor_block_x] == 0x0E,
+                            playable[anchor_block_y * 20 + anchor_block_x - 1] == 0x0E,
+                            playable[anchor_block_y * 20 + anchor_block_x + 1] == 0x0E,
+                        )
+                        self.assertIn(cardinal_plain, ((True, True, False, False), (False, False, True, True)))
                     self.assertTrue(
                         (ball_col, ball_row) in reachable
                         or any(
@@ -1384,6 +1419,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertEqual(
                     len(set(fake_room_ids)), min(4, len(eligible_fake_rooms))
                 )
+                if fake_room_ids:
+                    self.assertLessEqual(
+                        max(fake_room_ids.count(room_id) for room_id in set(fake_room_ids)),
+                        2,
+                    )
                 for row in range(20):
                     for col in range(20):
                         if playable[row * 20 + col] != 0x0E:
@@ -1402,14 +1442,20 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 )
 
                 warps = self.harness.read_bytes("wWarpEntries", 12)
-                self.assertEqual((warps[4], warps[5]), (0, 2 * exit_x))
-                self.assertEqual((warps[8], warps[9]), (0, 2 * exit_x + 1))
+                self.assertEqual((warps[0], warps[1]), (38, 19))
+                self.assertEqual((warps[4], warps[5]), exit_cells[0][::-1])
+                self.assertEqual((warps[8], warps[9]), exit_cells[1][::-1])
+                if exit_edge == 0:
+                    boss_xy = (2 * exit_i + 4, 6)
+                elif exit_edge == 1:
+                    boss_xy = (6, 2 * exit_i + 4)
+                else:
+                    boss_xy = (40, 2 * exit_i + 4)
                 self.assertEqual(
-                    self.harness.read8("wSprite01StateData2MapY"), 6
+                    self.harness.read8("wSprite01StateData2MapX"), boss_xy[0]
                 )
                 self.assertEqual(
-                    self.harness.read8("wSprite01StateData2MapX"),
-                    2 * exit_x + 4,
+                    self.harness.read8("wSprite01StateData2MapY"), boss_xy[1]
                 )
                 item_ids = tuple(
                     self.harness.read_sram_bytes("sProcFacilityBallItems", 4)
@@ -1419,9 +1465,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     tuple(self.harness.read_bytes("wRogueItem", 7)[::2]),
                     item_ids,
                 )
-                signatures.append((playable, exit_x, tuple(ball_xy), item_ids))
+                signatures.append((playable, exit_i, tuple(ball_xy), item_ids))
 
         self.assertGreater(selected_premade_rooms, 0)
+        self.assertEqual(edges_seen, {0, 1, 2})
+        self.assertGreater(corridor_fake_balls, 0)
         self.assertGreaterEqual(len(large_decor_seen), 2)
         self.assertGreater(decorated_item_rooms, 0)
         self.assertGreaterEqual(large_decorated_rooms, len(seeds) * 5 // 4)
@@ -1440,11 +1488,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
         self.harness.load_state(baseline)
         seed = seeds[0]
+        self.harness.write_sram_bytes("sProcFacilityExitEdge", [0])
         self.harness.write8("hRandomAdd", seed[0])
         self.harness.write8("hRandomSub", seed[1])
         self.harness.write8("hRandomLast", seed[2])
         self.harness.write8("hRandomLast", seed[3], offset=1)
-        self.harness.call_routine("PFacFinalize", limit=120000)
+        self.harness.call_routine("PFacFinalize", limit=240000)
         replay_buffer = self.harness.read_bytes("wOverworldMap", 601)
         replay_map = tuple(
             replay_buffer[81 + row * 26 + col]
@@ -1503,18 +1552,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             [59],
         )
 
-        # A baked-map restore keeps the generation snapshot even if the live
-        # run count crosses the species boundary.
+        # There is no same-generation Facility re-entry in the route lifecycle.
+        # Crossing the threshold matters on the next assigned Facility, whose
+        # preload intentionally creates a fresh generation and fresh objects.
         self.harness.write8("wBattleCount", 60)
-        self.harness.call_routine("PFacFinalize", limit=120000)
-        self.assertEqual(
-            self.harness.read_bytes("wMapSpriteExtraData", 18)[10:18:2],
-            [species["VOLTORB"]] * 4,
-        )
-
-        # A later assigned Facility gets a new preload and generation.
         self.harness.call_routine("PFacPreload", limit=60000)
-        self.harness.call_routine("PFacFinalize", limit=120000)
+        self.harness.call_routine("PFacFinalize", limit=240000)
         self.assertEqual(
             self.harness.read_sram_bytes("sProcFacilityEntryBattleCount", 1),
             [60],

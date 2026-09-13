@@ -83,9 +83,67 @@ ProceduralFacility_Script:
 
 ProceduralFacility_ScriptPointers:
 	def_script_pointers
-	dw_const CheckFightingMapTrainers,              SCRIPT_PROCEDURALFACILITY_DEFAULT
+	dw_const ProceduralFacilityDefaultScript,       SCRIPT_PROCEDURALFACILITY_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_PROCEDURALFACILITY_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_PROCEDURALFACILITY_END_BATTLE
+
+; The fixed-facing boss guards one of the two exit tiles through ordinary
+; trainer sight. Detect the unguarded flank and dispatch the same object text
+; interaction used when the player presses A, matching Procedural Forest.
+ProceduralFacilityDefaultScript:
+	CheckEvent EVENT_BEAT_PC_BOSS
+	jp nz, CheckFightingMapTrainers
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityStagingBuffer)
+	ld [rRAMB], a
+	ld a, [sProcFacilityExitEdge]
+	ld c, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, c
+	and a
+	jr z, .flankNorth
+	; West/East: same column as boss, one tile below.
+	ld a, [wSprite01StateData2MapX]
+	sub 4
+	ld b, a
+	ld a, [wXCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	ld a, [wSprite01StateData2MapY]
+	sub 4
+	inc a
+	ld b, a
+	ld a, [wYCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	jr .flankHit
+.flankNorth
+	ld a, [wSprite01StateData2MapY]
+	sub 4
+	ld b, a
+	ld a, [wYCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+	ld a, [wSprite01StateData2MapX]
+	sub 4
+	inc a
+	ld b, a
+	ld a, [wXCoord]
+	cp b
+	jp nz, CheckFightingMapTrainers
+.flankHit
+	xor a
+	ldh [hJoyHeld], a
+	ld a, TEXT_PROCEDURALFACILITY_BOSS
+	ldh [hTextID], a
+	call DisplayTextID
+	ret
 
 ; The join offer itself. Shown via DisplayTextID so the text box / font are set
 ; up properly (raw PrintText from a map-script state left the tiles unloaded,

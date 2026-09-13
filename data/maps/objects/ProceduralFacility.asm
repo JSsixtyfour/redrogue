@@ -5,8 +5,7 @@ ProceduralFacility_Object:
 	db $2E ; border block and generated black/solid void
 
 	def_warp_events
-	warp_event 19, 34, LAST_MAP, 1 ; tile coords = block (9,17) = cell (4,8), the generator's
-	                               ; HuntAndKill entrance cell (same as forest)
+	warp_event 19, 38, LAST_MAP, 1 ; south entry socket at generated block (9,19)
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  - runtime-patched to (4*exitI+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile - runtime-patched to (4*exitI+3, 0)
 
