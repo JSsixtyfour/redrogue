@@ -1,7 +1,7 @@
 ; Close copy of scripts/ProceduralCave1.asm (the fundamentals-mandated baseline
 ; for a stage with a real overworld boss sprite - see PROCEDURAL_STAGE_FUNDAMENTALS.md).
 ; Reused events (never concurrent with cave/forest/cemetery, all reset at Pallet
-; Town entry by PFacPreload):
+; lobby assignment by PFacPreload):
 ;   EVENT_BEAT_PC_BOSS  - boss defeated / offered (bit-aligned for slot-1 trainer)
 ;   EVENT_PC_BOSS_OFFERED
 ;   EVENT_PC_BUDGET_ENDED / EVENT_PC_CALMED_SHOWN - wild budget calmed message

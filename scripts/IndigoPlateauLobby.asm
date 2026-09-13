@@ -393,6 +393,8 @@ LobbySignWildAreaCheck:
 	jr z, .forest
 	cp PROCEDURAL_CEMETERY_1
 	jr z, .cem
+	cp PROCEDURAL_FACILITY
+	jr z, .facility
 	xor a                 ; Z = not wild
 	ret
 .cave:
@@ -403,6 +405,9 @@ LobbySignWildAreaCheck:
 	jr .done
 .cem:
 	ld hl, .cemText
+	jr .done
+.facility:
+	ld hl, .facilityText
 .done:
 	or 1                  ; NZ = handled
 	ret
@@ -418,8 +423,12 @@ LobbySignWildAreaCheck:
 	text "WILD AREA:"
 	line "CEMETERY@"
 	text_end
+.facilityText:
+	text "WILD AREA:"
+	line "FACILITY@"
+	text_end
 
-; a = map -> NZ if it's a wild-area entry map (cave/forest/cemetery_1), else Z.
+; a = map -> NZ if it's a wild-area entry map, else Z.
 ; Clobbers a.
 LobbyIsWildEntryMap:
 	cp PROCEDURAL_CAVE_1
@@ -427,6 +436,8 @@ LobbyIsWildEntryMap:
 	cp PROCEDURAL_FOREST
 	jr z, .yes
 	cp PROCEDURAL_CEMETERY_1
+	jr z, .yes
+	cp PROCEDURAL_FACILITY
 	jr z, .yes
 	xor a
 	ret

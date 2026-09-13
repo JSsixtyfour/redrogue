@@ -1,24 +1,26 @@
 ; custom_functions/wild_area_selection.asm
 ; Wild-area door layer for the unified special-encounter roll (see miniboss.asm's
-; SpecialEncounterRollAndAssign). No-repeat rotation over the 3 rollable types
-; (Cave/Forest/Cemetery; Facility intentionally excluded), tracked in wWildAreaState.
+; SpecialEncounterRollAndAssign). No-repeat rotation over the four rollable types
+; (Cave/Forest/Cemetery/Facility), tracked in wWildAreaState.
 
-; type id (0-2) -> lobby door ENTRY map id. Cemetery enters at floor 1.
+; type id (0-3) -> lobby door ENTRY map id. Cemetery enters at floor 1.
 WildAreaTypeMaps:
 	db PROCEDURAL_CAVE_1      ; WILD_AREA_CAVE
 	db PROCEDURAL_FOREST      ; WILD_AREA_FOREST
 	db PROCEDURAL_CEMETERY_1  ; WILD_AREA_CEMETERY
+	db PROCEDURAL_FACILITY    ; WILD_AREA_FACILITY
 
-; type id (0-2) -> its offered-this-cycle bit mask.
+; type id (0-3) -> its offered-this-cycle bit mask.
 WildAreaTypeBit:
 	db %001                   ; WILD_AREA_CAVE
 	db %010                   ; WILD_AREA_FOREST
 	db %100                   ; WILD_AREA_CEMETERY
+	db %10000000              ; WILD_AREA_FACILITY
 
 ; ============================================================
 ; WildAreaPickAndAssign
 ; INPUT: carry = forced (mandatory single door) / clear = choosable one-of-two.
-; Picks a not-yet-offered-this-cycle wild type (resets the cycle when all 3 offered),
+; Picks a not-yet-offered-this-cycle wild type (resets after all four are offered),
 ; marks it in wWildAreaState + bumps the saturating count, resolves it to its entry
 ; map, and writes wLobbyDoor1/2StageMap. wRogueMap (the route _PickNextStage picked)
 ; stays on the non-wild door in the choosable case.
@@ -27,7 +29,7 @@ WildAreaTypeBit:
 WildAreaPickAndAssign:
 	; preserve the forced flag across the Rangerandom-heavy pick
 	push af                       ; bit: carry = forced
-	call WildAreaPickType         ; a = chosen type (0-2); updates wWildAreaState
+	call WildAreaPickType         ; a = chosen type (0-3); updates wWildAreaState
 	call WildAreaTypeToMap        ; a = entry map id for that type
 	ld b, a                       ; b = wild entry map
 	pop af                        ; restore carry = forced
@@ -59,10 +61,10 @@ WildAreaPickAndAssign:
 
 ; ============================================================
 ; WildAreaPickType
-; Picks a random wild type whose "offered this cycle" bit is clear; if all 3 are
+; Picks a random wild type whose "offered this cycle" bit is clear; if all four are
 ; already set, resets the cycle mask first (keeping the count bits). Sets the chosen
 ; type's bit and increments the saturating count (bits 3-4, cap 3).
-; OUTPUT: a = chosen type (0-2). Clobbers a/bc/de/hl.
+; OUTPUT: a = chosen type (0-3). Clobbers a/bc/de/hl.
 ; ============================================================
 WildAreaPickType:
 	ld a, [wWildAreaState]
@@ -70,12 +72,12 @@ WildAreaPickType:
 	and WILD_AREA_MASK
 	cp WILD_AREA_MASK
 	jr nz, .haveRoom
-	; all 3 offered this cycle -> reset the low-3 mask, keep the count bits
+	; all four offered this cycle -> clear their noncontiguous mask, keep count bits
 	ld a, d
 	and WILD_AREA_COUNT_MASK
 	ld d, a
 .haveRoom:
-	; --- pass 1: count unoffered types (clear low-3 bits) ---
+	; --- pass 1: count unoffered types ---
 	ld b, 0                       ; b = unoffered count
 	ld c, 0                       ; c = type iterator
 .cntLoop:
@@ -125,10 +127,10 @@ WildAreaPickType:
 .store:
 	ld a, d
 	ld [wWildAreaState], a
-	ld a, b                       ; return chosen type (0-2)
+	ld a, b                       ; return chosen type (0-3)
 	ret
 
-; a = wild type (0-2) -> a = its offered-cycle bit mask. Preserves bc/de; clobbers hl.
+; a = wild type (0-3) -> a = its offered-cycle bit mask. Preserves bc/de; clobbers hl.
 WildAreaMaskForType:
 	push bc
 	ld c, a
@@ -139,7 +141,7 @@ WildAreaMaskForType:
 	pop bc
 	ret
 
-; a = wild type (0-2) -> a = its entry map id (from WildAreaTypeMaps). Preserves de; clobbers bc/hl.
+; a = wild type (0-3) -> a = its entry map id (from WildAreaTypeMaps). Preserves de; clobbers bc/hl.
 WildAreaTypeToMap:
 	ld c, a
 	ld b, 0

@@ -212,8 +212,16 @@ EndTrainerBattle::
 	jr z, .skipRemoveSprite
 	cp PROCEDURAL_FOREST     ; forest boss too — offer script controls its visibility
 	jr z, .skipRemoveSprite
+	cp PROCEDURAL_FACILITY
+	jr nz, .notFacility
+	ldh a, [hActiveSpriteIndex]
+	cp FACILITY_BOSS         ; only slot 1 belongs to the join-offer lifecycle
+	jr z, .skipRemoveSprite  ; slots 6-9 must use ordinary hide-on-defeat
+	jr .removeSprite
+.notFacility
 	cp POKEMON_TOWER_7F
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
+.removeSprite
 	ld hl, wToggleableObjectList
 	ld de, $2
 	ldh a, [hActiveSpriteIndex]

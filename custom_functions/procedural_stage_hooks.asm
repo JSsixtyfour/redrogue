@@ -3,14 +3,13 @@
 ; Load-time procedural-stage hooks, moved OUT of home/overworld.asm's LoadMapData
 ; to relieve ROM0/HOME bank pressure (the inline versions overflowed ROM0). These
 ; are farcall'd from LoadMapData, the same pattern master uses for
-; MiniBossPatchStageSprite. Facility remains excluded from normal rotation, but its
-; Silph Co. B1F test entrance and load-time branches are active.
+; MiniBossPatchStageSprite. All four procedural Wild Areas use this dispatch.
 
 SECTION "ProcStageHooks", ROMX
 
 ; Patch wSprite01's PICTUREID to the rolled boss's overworld-sprite category
 ; BEFORE InitMapSprites loads tile patterns, for the procedural cave/forest maps.
-; The SPRITE_* constant was staged into SRAM at Pallet Town entry.
+; The SPRITE_* constant was staged into SRAM by the assigned-area preload.
 ProcBossPatchStageSprite::
 	farcall MiniBossPatchStageSprite   ; chained here to save a HOME farcall; a map is
 	                                   ; never both a miniboss stage and a procedural
@@ -102,18 +101,8 @@ ProcStageLoadDispatch::
 	;farcall PCPreloadCave
 	;farcall PCemGenerateMaps
 	;farcall PFPreloadForest
-	; Facility preload is intentionally driven by the Silph Co. B1F test entrance below.
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
-	cp SILPH_CO_B1F
-	jr nz, .notFacilityTestEntrance
-	call ProcGenerationBeginDoubleSpeed
-	push af
-	farcall PFacPreload
-	pop af
-	call ProcGenerationEndDoubleSpeed
-	ret
-.notFacilityTestEntrance
 	cp SILPH_CO_DORM
 	jr nz, .notDorm
 	farcall RoomStampBlocks

@@ -2496,7 +2496,7 @@ wBattleCount:: db
 ; wRogueFlagsBitfield bits 4-7 at zero byte cost.
 wRoutesSinceSpecial:: db ; non-special routes since the last special (miniboss OR wild area); drives the escalating chance
 wMiniBossCount:: db       ; mini-bosses encountered this run; drives the >=2 guarantee
-wWildAreaState:: db ; bits 0-2 = cave/forest/cemetery offered-this-cycle mask;
+wWildAreaState:: db ; bits 0-2 and 7 = cave/forest/cemetery/facility cycle mask;
                     ; bits 3-4 = saturating wild-area offered-count (0-3) for the
                     ; >=2-per-run guarantee. Run-scoped: zeroed by FillMemory on new
                     ; game (inside wGameProgressFlags). See WILD_AREA_* in ram_constants.

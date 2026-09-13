@@ -322,8 +322,8 @@ SetPal_Overworld:
 	jr .town
 .facilityTileset
 	; FACILITY tileset. The procedural facility ($F3) gets a randomized
-	; Mansion/PowerPlant palette (sProcFacilityPalette, rolled at Pallet Town
-	; entry). Other FACILITY maps (Power Plant, Pokemon Mansion) keep their
+	; Mansion/PowerPlant palette (sProcFacilityPalette, rolled during assigned
+	; stage preload). Other FACILITY maps (Power Plant, Pokemon Mansion) keep their
 	; normal location palette — add their map IDs here to opt them in.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_FACILITY

@@ -45,12 +45,12 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "PROCEDURAL_CEMETERY_2",
             "PROCEDURAL_CEMETERY_3",
             "PROCEDURAL_CEMETERY_4",
+            "PROCEDURAL_FACILITY",
         ):
             self.assertNotIn(f"db {enabled_procedural}", self.core)
         for excluded in (
             "TRADE_CENTER",
             "COLOSSEUM",
-            "PROCEDURAL_FACILITY",
             "MINI_SAFFRON",
             "SILPH_CO_VR",
         ):

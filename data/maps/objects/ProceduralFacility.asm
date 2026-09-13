@@ -30,7 +30,7 @@ ProceduralFacility_Object:
 
 	; Fake item balls (slots 6-9). The placeholder positions are replaced by the
 	; generator placement checkpoint; species and level are already patched at
-	; every finalize from the battle-count-50 preload snapshot.
+	; every finalize from the battle-count-60 preload snapshot.
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_1, VOLTORB, 5 | OW_POKEMON
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_2, VOLTORB, 5 | OW_POKEMON
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_3, VOLTORB, 5 | OW_POKEMON

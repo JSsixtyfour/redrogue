@@ -73,7 +73,6 @@ FollowerIsTestMap:
 	db UNUSED_MAP_E7
 	db TRADE_CENTER
 	db COLOSSEUM
-	db PROCEDURAL_FACILITY
 	db SILPH_CO_VR
 	db $ff
 

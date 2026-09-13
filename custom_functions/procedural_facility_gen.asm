@@ -2913,7 +2913,8 @@ PFacRollBoss:
 
 ; ============================================================
 ; PFacPreload::
-; Called at Pallet Town entry. Resets bake flag + per-run SRAM state, rolls the
+; Called when Facility is assigned at the lobby. Resets bake flag + per-generation
+; SRAM state, rolls the
 ; palette variant and sign variant, and sets the wild budget.
 ; ============================================================
 PFacPreload::
@@ -2967,9 +2968,13 @@ PFacPreload::
 
     ; Reset reused run events (shared cave events; facility never concurrent).
     ResetEvent EVENT_BEAT_PC_BOSS
-    ResetEvent EVENT_ENTER_ROOM
+    ResetEvent EVENT_PC_BOSS_OFFERED
     ResetEvent EVENT_PC_BUDGET_ENDED
     ResetEvent EVENT_PC_CALMED_SHOWN
+    ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_1
+    ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_2
+    ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_3
+    ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_4
 
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
@@ -3214,7 +3219,7 @@ PFacFinalize::
     set 7, a
     ld c, a
     ld a, [sProcFacilityEntryBattleCount]
-    cp 50
+    cp 60
     ld a, VOLTORB
     jr c, .fakeSpeciesReady
     ld a, ELECTRODE

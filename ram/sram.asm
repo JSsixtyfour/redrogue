@@ -112,7 +112,7 @@ sProcFacilityExitI:: db            ; 0-8: which cell along the exit edge is the 
 sProcFacilityExitEdge:: db         ; 0=N (default), 1=W, 2=E; zeroed every Pallet Town
                                    ; entry by PFacPreload, W/E debug-only
 sProcFacilityBaked:: db            ; non-zero = buffer holds finished baked map
-sProcFacilityBossSpecies:: db      ; wRoguePokemon1 saved at Pallet Town entry
+sProcFacilityBossSpecies:: db      ; wRoguePokemon1 saved at assigned-stage preload
 sProcFacilityBossSprite:: db       ; SPRITE_* overworld category (PCGetBossOWSprite),
                                    ; patched into wSprite01 PICTUREID BEFORE InitMapSprites
 sProcFacilityBallXY:: ds 8         ; Y0,X0,Y1,X1,Y2,X2,Y3,X3 in tile coords (block*2+4)
@@ -121,7 +121,7 @@ sProcFacilityItemGot:: db          ; bit N = pokeball N collected this run
 sProcFacilitySignVariant:: db      ; 0=items text, 1=boss text; rolled once at Pallet
                                    ; Town entry (PFacPreload), stable for the run
 sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion
-                                   ; (PAL_CINNABAR/red); rolled at Pallet Town entry,
+                                   ; (PAL_CINNABAR/red); rolled at assigned-stage preload,
                                    ; read by SetPal_Overworld's FACILITY case (step 9)
   sProcFacilityEntryBattleCount:: db ; wBattleCount snapshot taken on first Facility
                                      ; warp-in; owns all four fake-ball species/levels

@@ -202,11 +202,88 @@ class BootSmokeTest(HarnessTestCase):
             maps["PROCEDURAL_CAVE_1"],
             maps["PROCEDURAL_FOREST"],
             maps["PROCEDURAL_CEMETERY_1"],
+            maps["PROCEDURAL_FACILITY"],
         }
         self.harness.boot_to_lobby(encounter_kind=4)
         door1 = self.harness.read8("wLobbyDoor1StageMap")
         self.assertIn(door1, wild_maps)
         self.assertEqual(door1, self.harness.read8("wLobbyDoor2StageMap"))
+
+    def test_wild_area_four_type_no_repeat_cycle(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        wild_maps = {
+            maps["PROCEDURAL_CAVE_1"],
+            maps["PROCEDURAL_FOREST"],
+            maps["PROCEDURAL_CEMETERY_1"],
+            maps["PROCEDURAL_FACILITY"],
+        }
+        self.harness.boot_to_lobby(encounter_kind=4)
+        self.harness.write8("wWildAreaState", 0)
+        picked = []
+        states = []
+        for _ in range(5):
+            self.harness.write8("wDebug2ForcedDoor1", 0xC0)
+            self.harness.call_routine("SpecialEncounterRollAndAssign", limit=60000)
+            door1 = self.harness.read8("wLobbyDoor1StageMap")
+            self.assertEqual(door1, self.harness.read8("wLobbyDoor2StageMap"))
+            picked.append(door1)
+            states.append(self.harness.read8("wWildAreaState"))
+
+        self.assertEqual(set(picked[:4]), wild_maps)
+        self.assertEqual(states[3] & 0x87, 0x87)
+        self.assertIn(picked[4], wild_maps)
+        self.assertEqual((states[4] & 0x87).bit_count(), 1)
+        self.assertEqual(states[2] & 0x18, 0x18)
+        self.assertEqual(states[4] & 0x18, 0x18)
+
+    def test_facility_is_selected_when_other_three_types_were_offered(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        self.harness.boot_to_lobby(encounter_kind=4)
+        self.harness.write8("wWildAreaState", 0x0F)  # three mask bits + count 1
+        self.harness.write8("wDebug2ForcedDoor1", 0xC0)
+        self.harness.call_routine("SpecialEncounterRollAndAssign", limit=60000)
+        self.assertEqual(
+            self.harness.read8("wLobbyDoor1StageMap"),
+            maps["PROCEDURAL_FACILITY"],
+        )
+        self.assertEqual(
+            self.harness.read8("wLobbyDoor2StageMap"),
+            maps["PROCEDURAL_FACILITY"],
+        )
+        self.assertEqual(self.harness.read8("wWildAreaState") & 0x87, 0x87)
+
+    def test_facility_preload_does_not_restart_lobby_selection(self) -> None:
+        assert self.harness is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        events = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "event_constants.asm"
+        )
+        self.harness.boot_to_lobby(encounter_kind=4)
+        self.assertTrue(self.harness.event_is_set(events["EVENT_ENTER_ROOM"]))
+
+        self.harness.write8("wWildAreaState", 0x07)
+        self.harness.write8("wDebug2ForcedDoor1", 0xC0)
+        self.harness.call_routine("SelectAndPatchLobbyExit", limit=60000)
+        self.harness.call_routine("ProcPreloadAssignedWildArea", limit=60000)
+        self.assertEqual(
+            self.harness.read8("wLobbyDoor1StageMap"),
+            maps["PROCEDURAL_FACILITY"],
+        )
+        self.assertEqual(
+            [entry[3] for entry in self.harness.warp_entries()[:2]],
+            [maps["PROCEDURAL_FACILITY"]] * 2,
+        )
+        self.assertTrue(self.harness.event_is_set(events["EVENT_ENTER_ROOM"]))
+
+        # If preload clears the shared entry event, the next lobby frame reruns
+        # selection and replaces the forced Facility destination.
+        self.harness.tick(10)
+        self.assertEqual(
+            self.harness.read8("wLobbyDoor1StageMap"),
+            maps["PROCEDURAL_FACILITY"],
+        )
 
 
 
@@ -1010,7 +1087,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     0x06
                     if self.harness.read_sram_bytes(
                         "sProcFacilityEntryBattleCount", 1
-                    )[0] < 50
+                    )[0] < 60
                     else 0x8D
                 )
                 self.assertEqual(fake_extra[::2], [expected_species] * 4)
@@ -1176,6 +1253,72 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             tuple(self.harness.read_sram_bytes("sProcFacilityBallItems", 4)),
         )
         self.assertEqual(replay, signatures[0])
+
+    def test_facility_regeneration_resets_objects_and_uses_count_60_threshold(self) -> None:
+        assert self.harness is not None
+        species = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "pokemon_constants.asm"
+        )
+        events = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "event_constants.asm"
+        )
+        reset_events = (
+            "EVENT_BEAT_PC_BOSS",
+            "EVENT_PC_BOSS_OFFERED",
+            "EVENT_PC_BUDGET_ENDED",
+            "EVENT_PC_CALMED_SHOWN",
+            "EVENT_BEAT_FACILITY_FAKE_BALL_1",
+            "EVENT_BEAT_FACILITY_FAKE_BALL_2",
+            "EVENT_BEAT_FACILITY_FAKE_BALL_3",
+            "EVENT_BEAT_FACILITY_FAKE_BALL_4",
+        )
+
+        self.harness.boot_to_lobby()
+        self.harness.write_sram_bytes("sProcFacilityBaked", [1])
+        self.harness.write_sram_bytes("sProcFacilityItemGot", [0x0F])
+        self.harness.write_sram_bytes("sProcFacilityBallItems", [0, 0, 0, 0])
+        for name in reset_events:
+            self.harness.set_event(events[name])
+
+        self.harness.write8("wBattleCount", 59)
+        self.harness.call_routine("PFacPreload", limit=60000)
+        self.assertEqual(self.harness.read_sram_bytes("sProcFacilityBaked", 1), [0])
+        self.assertEqual(self.harness.read_sram_bytes("sProcFacilityItemGot", 1), [0])
+        for name in reset_events:
+            self.assertFalse(self.harness.event_is_set(events[name]), name)
+
+        self.harness.call_routine("PFacFinalize", limit=120000)
+        self.assertTrue(all(self.harness.read_sram_bytes("sProcFacilityBallItems", 4)))
+        self.assertEqual(
+            self.harness.read_bytes("wMapSpriteExtraData", 18)[10:18:2],
+            [species["VOLTORB"]] * 4,
+        )
+        self.assertEqual(
+            self.harness.read_sram_bytes("sProcFacilityEntryBattleCount", 1),
+            [59],
+        )
+
+        # A baked-map restore keeps the generation snapshot even if the live
+        # run count crosses the species boundary.
+        self.harness.write8("wBattleCount", 60)
+        self.harness.call_routine("PFacFinalize", limit=120000)
+        self.assertEqual(
+            self.harness.read_bytes("wMapSpriteExtraData", 18)[10:18:2],
+            [species["VOLTORB"]] * 4,
+        )
+
+        # A later assigned Facility gets a new preload and generation.
+        self.harness.call_routine("PFacPreload", limit=60000)
+        self.harness.call_routine("PFacFinalize", limit=120000)
+        self.assertEqual(
+            self.harness.read_sram_bytes("sProcFacilityEntryBattleCount", 1),
+            [60],
+        )
+        self.assertEqual(
+            self.harness.read_bytes("wMapSpriteExtraData", 18)[10:18:2],
+            [species["ELECTRODE"]] * 4,
+        )
+
     def test_procedural_forest_generation(self) -> None:
         self.assert_generation_contract(
             "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 5, True

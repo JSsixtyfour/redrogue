@@ -320,19 +320,21 @@ DEF MINIBOSS_FIRST_BATTLECOUNT EQU 10 ; not eligible until wBattleCount >= this 
 DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
 
 ; --- Wild Area door integration ---
-; Rollable wild-area types (Facility is shelved, never rolled).
+; Rollable wild-area types.
 DEF WILD_AREA_CAVE      EQU 0
 DEF WILD_AREA_FOREST    EQU 1
 DEF WILD_AREA_CEMETERY  EQU 2
-DEF NUM_WILD_AREA_TYPES EQU 3
+DEF WILD_AREA_FACILITY  EQU 3
+DEF NUM_WILD_AREA_TYPES EQU 4
 DEF WILD_AREA_MIN_PER_RUN EQU 2          ; >=2 wild areas guaranteed per run
 ; Not eligible until wBattleCount >= this (skips route 1), same as miniboss.
 DEF WILD_AREA_FIRST_BATTLECOUNT EQU 10
 
 ; wWildAreaState bit layout:
-;   bits 0-2 = "offered this cycle" mask (bit WILD_AREA_CAVE/FOREST/CEMETERY)
+;   bits 0-2 and 7 = "offered this cycle" mask (one bit per wild-area type)
 ;   bits 3-4 = saturating count of wild areas offered this run (0-3)
-DEF WILD_AREA_MASK        EQU %00000111
+; Facility uses bit 7 so existing saves retain the original count encoding.
+DEF WILD_AREA_MASK        EQU %10000111
 DEF WILD_AREA_COUNT_SHIFT EQU 3
 DEF WILD_AREA_COUNT_MASK  EQU %00011000
 

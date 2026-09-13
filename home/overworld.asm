@@ -2516,7 +2516,7 @@ LoadMapData::
 	call LoadTileBlockMap
 	; Procedural preload (PALLET_TOWN) + per-map finalize dispatch — moved to ROMX
 	; (ProcStageLoadDispatch) to relieve ROM0/HOME. Runs after LoadTileBlockMap,
-	; before LoadTilesetTilePatternData. Facility shelved (omitted in the ROMX hook).
+	; before LoadTilesetTilePatternData, including all four procedural Wild Areas.
 	farcall ProcStageLoadDispatch
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
