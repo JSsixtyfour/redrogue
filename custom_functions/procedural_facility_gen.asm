@@ -118,6 +118,7 @@ DEF PFAC_ROOM_STRIDE EQU 6
 DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 DEF PFAC_ROOM_NONE   EQU $FF  ; Parent sentinel for room 0
 DEF PFAC_TEMPLATE_FLAG EQU $80
+DEF BIT_PFAC_FAKE_ROOM EQU 4
 DEF PFAC_SOCKET_N EQU 1
 DEF PFAC_SOCKET_E EQU 2
 DEF PFAC_SOCKET_S EQU 4
@@ -222,7 +223,9 @@ DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
                               ; sProcFacilityBallItems by name, unchanged.
 DEF wPFacItemCheckX   EQU 16  ; item-anchor adjacency check: saved block X
 DEF wPFacItemCheckY   EQU 17  ; item-anchor adjacency check: saved block Y
-DEF wPFacFakeRoomId   EQU 18  ; PFacPlaceFakeBalls: preferred/fallback room id
+DEF wPFacFakeRoomId   EQU 18  ; PFacPlaceFakeBalls: current middle-room id
+DEF wPFacFakeRoomTries EQU 19 ; rooms remaining in the circular scan
+DEF wPFacFakeReusePass EQU 20 ; 0 = distinct rooms only, 1 = reuse allowed
 
 ; Corridor-wall and doorway-jamb passes. These run before item placement, so
 ; offsets 16-24 are phase-local and do not overlap the four rolled item bytes.
@@ -817,6 +820,168 @@ PFacRingWrite:
     pop af
     ret
 
+; Carry set when every generated room still owns its four exact corner blocks.
+; A mismatch means a planned center-to-center corridor crossed a diagonal ring
+; corner. Rejecting that topology before decor/object RNG is safer and smaller
+; than trying to patch a severed corridor after enclosure.
+PFacValidateGeneratedCorners:
+    xor a
+    ld [wBuffer + wPFacRmIdx], a
+.room
+    ld a, [wBuffer + wPFacRmIdx]
+    cp PFAC_ROOM_MAX
+    jr nc, .valid
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    and a
+    jr z, .next
+    ld a, [hli]
+    ld [wBuffer + wPFacRmH], a
+    inc hl
+    bit 7, [hl]
+    jr nz, .next
+
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_C_TL
+    jr nz, .invalid
+
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_C_TR
+    jr nz, .invalid
+
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacRmH
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_C_BR
+    jr nz, .invalid
+
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_C_BL
+    jr nz, .invalid
+.next
+    ld hl, wBuffer + wPFacRmIdx
+    inc [hl]
+    jr .room
+.valid
+    scf
+    ret
+.invalid
+    and a
+    ret
+
+; Remove only generated ring corners that became completely isolated by
+; legitimate openings on all four sides. Authored premade footprints are
+; skipped, so their structural art is never normalized by this pass.
+PFacRemoveIsolatedGeneratedCorners:
+    xor a
+    ld [wBuffer + wPFacRmIdx], a
+.room
+    ld a, [wBuffer + wPFacRmIdx]
+    cp PFAC_ROOM_MAX
+    ret nc
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    and a
+    jr z, .next
+    ld a, [hli]
+    ld [wBuffer + wPFacRmH], a
+    inc hl
+    bit 7, [hl]
+    jr nz, .next
+
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    call PFacRemoveCornerIfIsolated
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    call PFacRemoveCornerIfIsolated
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacRmH
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call PFacRemoveCornerIfIsolated
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacRemoveCornerIfIsolated
+.next
+    ld hl, wBuffer + wPFacRmIdx
+    inc [hl]
+    jr .room
+
+PFacRemoveCornerIfIsolated:
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacItemCheckX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacItemCheckY], a
+    ld hl, wBuffer + wPFacCurX
+    dec [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .restore
+    ld a, [wBuffer + wPFacItemCheckX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .restore
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .restore
+    ld a, [wBuffer + wPFacItemCheckY]
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .restore
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacItemCheckY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, PFAC_FLOOR
+    jp PFacWriteBlock
+.restore
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacItemCheckY]
+    ld [wBuffer + wPFacCurY], a
+    ret
+
 ; ============================================================
 ; PFacBuildCorridorWalls
 ; Classify untouched cells immediately beside corridor sentinels. Room rings
@@ -907,11 +1072,99 @@ PFacClassifyCorridorWall:
     ld a, [wBuffer + wPFacDY]
     ld [wBuffer + wPFacCurY], a
     ld a, [wBuffer + wPFacFlags]
+    and a
+    jr z, PFacClassifyCorridorDiagonal
     ld c, a
     ld b, 0
     ld hl, PFacCorridorWallTable
     add hl, bc
     ld a, [hl]
+    ret
+
+; No cardinal corridor neighbor exists. A single diagonal corridor still needs
+; a matching corner cap so the walkable half of the adjacent straight wall
+; cannot open directly onto $2E at a path end or turn.
+PFacClassifyCorridorDiagonal:
+    ld a, [wBuffer + wPFacDX]
+    and a
+    jr z, .northEast
+    ld a, [wBuffer + wPFacDY]
+    and a
+    jr z, .southWest
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    jr z, .useBR
+.northEast
+    ld a, [wBuffer + wPFacDX]
+    cp PFAC_SIZE - 1
+    jr z, .southWest
+    ld a, [wBuffer + wPFacDY]
+    and a
+    jr z, .southEast
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    jr z, .useBL
+.southWest
+    ld a, [wBuffer + wPFacDX]
+    and a
+    jr z, .southEast
+    ld a, [wBuffer + wPFacDY]
+    cp PFAC_SIZE - 1
+    jr z, .none
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    jr z, .useTR
+.southEast
+    ld a, [wBuffer + wPFacDX]
+    cp PFAC_SIZE - 1
+    jr z, .none
+    ld a, [wBuffer + wPFacDY]
+    cp PFAC_SIZE - 1
+    jr z, .none
+    inc a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacDX]
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock
+    cp PFAC_CORRIDOR
+    jr z, .useTL
+.none
+    ld a, PFAC_WALL
+    jr .restore
+.useBR
+    ld a, PFAC_C_BR
+    jr .restore
+.useBL
+    ld a, PFAC_C_BL
+    jr .restore
+.useTR
+    ld a, PFAC_C_TR
+    jr .restore
+.useTL
+    ld a, PFAC_C_TL
+.restore
+    push af
+    ld a, [wBuffer + wPFacDX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacDY]
+    ld [wBuffer + wPFacCurY], a
+    pop af
     ret
 
 PFacMarkCorridorNeighbor:
@@ -1686,28 +1939,41 @@ PFacItemAnchorAtCurrentValid:
     or 1
     ret
 
-; Place four fake item-ball encounters after both decor passes. Prefer four
-; distinct exploration rooms (5-8); if one was not placed, use its matching
-; item room (1-4). Coordinates live in the otherwise-unused tail of the
-; 81-byte generation scratch and therefore survive the baked-map re-entry path.
+; Place four fake item-ball encounters after both decor passes. Search every
+; intact middle-room record (2-10) from a random circular starting point and
+; prefer a distinct room for each ball. Only reuse a room after every placed
+; room has been tried. Room 1 is excluded because PFacPlaceItems has already
+; reused its X/Y bytes for real-ball coordinates.
 PFacPlaceFakeBalls:
     xor a
     ld [wBuffer + wPFacBallIdx], a
 .ballLoop
-    ld a, [wBuffer + wPFacBallIdx]
-    add a, 5
+    ld c, 9
+    call Rangerandom
+    add a, 2
     ld [wBuffer + wPFacFakeRoomId], a
+    xor a
+    ld [wBuffer + wPFacFakeReusePass], a
+.roomPass
+    ld a, 9
+    ld [wBuffer + wPFacFakeRoomTries], a
+.roomLoop
+    ld a, [wBuffer + wPFacFakeRoomId]
     call PFacRoomRecordAddr
     inc hl
     inc hl
     ld a, [hl]
     and a
+    jr z, .nextRoom
+    ld a, [wBuffer + wPFacFakeReusePass]
+    and a
     jr nz, .loadRoom
-    ; PFacPlaceItems has already reused scratch bytes 0-7 for real-ball XY,
-    ; so room 1's X/Y record is no longer intact. Room 4 remains intact and
-    ; can host more than one fallback because prior anchors are rejected.
-    ld a, 4
-    ld [wBuffer + wPFacFakeRoomId], a
+    ld a, [wBuffer + wPFacFakeRoomId]
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    bit BIT_PFAC_FAKE_ROOM, [hl]
+    jr nz, .nextRoom
 .loadRoom
     ld a, [wBuffer + wPFacFakeRoomId]
     call PFacRoomRecordAddr
@@ -1745,6 +2011,23 @@ PFacPlaceFakeBalls:
     ld hl, wBuffer + wPFacCurY
     cp [hl]
     jr nz, .scan
+.nextRoom
+    ld hl, wBuffer + wPFacFakeRoomId
+    inc [hl]
+    ld a, [hl]
+    cp 11
+    jr c, .roomAdvanced
+    ld [hl], 2
+.roomAdvanced
+    ld hl, wBuffer + wPFacFakeRoomTries
+    dec [hl]
+    jr nz, .roomLoop
+    ld hl, wBuffer + wPFacFakeReusePass
+    bit 0, [hl]
+    jr nz, .globalFallback
+    set 0, [hl]
+    jp .roomPass
+.globalFallback
     ; A cramped decorated room can have no second legal object anchor. Fall
     ; back to a bounded scan of the connected interior, excluding the north
     ; exit/boss rows and the outer wall ring.
@@ -1775,7 +2058,17 @@ PFacPlaceFakeBalls:
     ld [wBuffer + wPFacCurX], a
     ld a, 17
     ld [wBuffer + wPFacCurY], a
+    xor a
+    ld [wBuffer + wPFacFakeRoomId], a
 .save
+    ld a, [wBuffer + wPFacFakeRoomId]
+    and a
+    jr z, .saveCoordinate
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    set BIT_PFAC_FAKE_ROOM, [hl]
+.saveCoordinate
     ld a, [wBuffer + wPFacBallIdx]
     add a, a
     ld e, a
@@ -1956,14 +2249,27 @@ PFacDecorateExploreRooms:
     bit 6, [hl]
     jr z, .scanReady
 
+    ; The door-mask helper consumes wPFacRm*. Reload this room before the
+    ; center aliases overwrite wPFacDecorW/H below. Without this handoff, the
+    ; last room visited by the large-decor phase leaks its dimensions into the
+    ; light-decor scan and can let decor overwrite a doorway or wall ring.
+    ld a, [wBuffer + wPFacDecorX]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [wBuffer + wPFacDecorY]
+    ld [wBuffer + wPFacRmY], a
     ld a, [wBuffer + wPFacDecorW]
+    ld [wBuffer + wPFacRmW], a
+    ld a, [wBuffer + wPFacDecorH]
+    ld [wBuffer + wPFacRmH], a
+
+    ld a, [wBuffer + wPFacRmW]
     srl a
-    ld hl, wBuffer + wPFacDecorX
+    ld hl, wBuffer + wPFacRmX
     add a, [hl]
     ld [wBuffer + wPFacDecorCenterX], a
-    ld a, [wBuffer + wPFacDecorH]
+    ld a, [wBuffer + wPFacRmH]
     srl a
-    ld hl, wBuffer + wPFacDecorY
+    ld hl, wBuffer + wPFacRmY
     add a, [hl]
     ld [wBuffer + wPFacDecorCenterY], a
 
@@ -2106,6 +2412,10 @@ PFacMarkSmallDecor:
 ; wPFacItemTemp hold the 4 ball block-coords + item IDs for PFacFinalize to bake.
 ; ============================================================
 PFacGenerateFacility:
+    ld b, 64
+.layoutRetry
+    push bc
+    call PFacFillUntouched
     call PFacInitRoomRecords
     call PFacPlaceEntryRoom       ; room 0
     call PFacPlaceExitRoom        ; room 11 (+ sProcFacilityExitI)
@@ -2117,10 +2427,22 @@ PFacGenerateFacility:
     call PFacStampPremadeMiddleRooms
     call PFacCarveCorridors        ; reopen only traversed cardinal sockets
     call PFacEncloseRooms
+    call PFacValidateGeneratedCorners
+    jr c, .layoutAccepted
+    pop bc
+    dec b
+    jp nz, .layoutRetry
+    ; Defensive exhaustion path: retain the final connected layout. The
+    ; deterministic corpus proves ordinary generation accepts well before it.
+    jr .layoutContinue
+.layoutAccepted
+    pop bc
+.layoutContinue
     call PFacCarveNorthExitOpening
     call PFacBuildCorridorWalls
     call PFacApplyDoorJambs
     call PFacFinalizeBlocks
+    call PFacRemoveIsolatedGeneratedCorners
     call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
@@ -2150,16 +2472,16 @@ PFacRoomCenter:
 
 ; ============================================================
 ; PFacInitRoomRecords
-; Zero the W (unplaced) byte of all 12 room slots and set wPFacRoomCount = 12.
+; Clear all 12 room records and set wPFacRoomCount = 12. Full clearing matters
+; when a rejected layout is retried: an unplaced slot must not retain template,
+; decor, or fake-room ownership bits from the prior attempt.
 ; ============================================================
 PFacInitRoomRecords:
-    ld hl, sProcFacilityGenScratch + 2
-    ld de, PFAC_ROOM_STRIDE
-    ld b, PFAC_ROOM_MAX
+    ld hl, sProcFacilityGenScratch
+    ld b, PFAC_ROOM_MAX * PFAC_ROOM_STRIDE
 .loop
     xor a
-    ld [hl], a                  ; W = 0 = unplaced
-    add hl, de
+    ld [hli], a
     dec b
     jr nz, .loop
     ld a, PFAC_ROOM_MAX
@@ -2426,7 +2748,8 @@ PFacCandInBounds:
     ld a, 1
     ret
 
-; a=0 if wPFacCand rect keeps >=2 gap from every placed room; a=1 on overlap.
+; a=0 if wPFacCand rect keeps >=3 floor-cell separation from every placed
+; room, leaving a full void cell between their one-block wall rings.
 PFacCandOverlaps:
     xor a
     ld [wBuffer + wPFacScanId], a
@@ -2447,39 +2770,44 @@ PFacCandOverlaps:
     ld a, [wBuffer + wPFacBW]
     and a
     jr z, .next                  ; unplaced, ignore
-    ; separated (>=2 gap) if any of the 4 hold; else overlap. The +1 before
+    ; separated if any of the 4 hold; else overlap. The +2 before
     ; each cp is deliberate: a >=1 gap lets two rooms' wall rings (each 1 cell
     ; wide) land on the same shared cell, so whichever room's PFacEncloseRooms
     ; pass runs later silently overwrites the other's corner/edge there. >=2
-    ; gap gives every room's ring its own dedicated cell.
+    ; gap gives every room's ring its own dedicated cell; the second increment
+    ; prevents those two dedicated ring cells from touching one another.
     ld a, [wBuffer + wPFacCandX]
     ld hl, wBuffer + wPFacCandW
     add a, [hl]
     inc a
+    inc a
     ld hl, wBuffer + wPFacBX
     cp [hl]
-    jr c, .next                  ; candX+candW+1 < Bx
+    jr c, .next                  ; candX+candW+2 < Bx
     ld a, [wBuffer + wPFacBX]
     ld hl, wBuffer + wPFacBW
     add a, [hl]
     inc a
+    inc a
     ld hl, wBuffer + wPFacCandX
     cp [hl]
-    jr c, .next                  ; Bx+Bw+1 < candX
+    jr c, .next                  ; Bx+Bw+2 < candX
     ld a, [wBuffer + wPFacCandY]
     ld hl, wBuffer + wPFacCandH
     add a, [hl]
     inc a
+    inc a
     ld hl, wBuffer + wPFacBY
     cp [hl]
-    jr c, .next                  ; candY+candH+1 < By
+    jr c, .next                  ; candY+candH+2 < By
     ld a, [wBuffer + wPFacBY]
     ld hl, wBuffer + wPFacBH
     add a, [hl]
     inc a
+    inc a
     ld hl, wBuffer + wPFacCandY
     cp [hl]
-    jr c, .next                  ; By+Bh+1 < candY
+    jr c, .next                  ; By+Bh+2 < candY
     ld a, 1                      ; none separated -> overlap
     ret
 .next

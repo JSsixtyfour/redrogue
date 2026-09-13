@@ -1191,7 +1191,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         if not (0 <= near_x < 40 and 0 <= near_y < 40):
                             continue
                         if playable[(near_y // 2) * 20 + near_x // 2] == 0x2E:
-                            exposed_voids.append((seed, cell_x, cell_y))
+                            exposed_voids.append((
+                                seed, cell_x, cell_y,
+                                playable[(cell_y // 2) * 20 + cell_x // 2],
+                                near_x, near_y,
+                            ))
 
                 generated_rings: list[tuple[int, set[tuple[int, int]]]] = []
                 structural_blocks = {0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}
@@ -1220,7 +1224,20 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         corner_x = left if dx == -1 else right
                         corner_y = top if dy == -1 else bottom
                         actual = playable[corner_y * 20 + corner_x]
-                        if actual != expected:
+                        cleaned_isolated_corner = (
+                            actual == 0x0E
+                            and all(
+                                0 <= near_x < 20 and 0 <= near_y < 20
+                                and playable[near_y * 20 + near_x] == 0x0E
+                                for near_x, near_y in (
+                                    (corner_x - 1, corner_y),
+                                    (corner_x + 1, corner_y),
+                                    (corner_x, corner_y - 1),
+                                    (corner_x, corner_y + 1),
+                                )
+                            )
+                        )
+                        if actual != expected and not cleaned_isolated_corner:
                             corner_defects.append((seed, room_id, expected, actual))
                     for ring_x, ring_y in ring:
                         actual = playable[ring_y * 20 + ring_x]
@@ -1248,20 +1265,30 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertIn((2 * exit_x, 0), reachable, record_summary)
                 self.assertIn((2 * exit_x + 1, 0), reachable)
                 # Records 2-11 retain their coordinates after item baking.
-                # Every placed room hub must remain in the entry component.
+                # Decor may occupy the geometric center, so require any
+                # walkable quadrant in each placed room to remain connected.
                 for room_id in range(2, 12):
                     offset = room_id * 6
                     room_x, room_y, room_w, room_h = records[offset:offset + 4]
                     if room_w == 0:
                         continue
-                    hub_x = 2 * (room_x + room_w // 2)
-                    hub_y = 2 * (room_y + room_h // 2)
+                    room_quadrants = (
+                        (2 * block_x + quadrant_x, 2 * block_y + quadrant_y)
+                        for block_y in range(room_y, room_y + room_h)
+                        for block_x in range(room_x, room_x + room_w)
+                        for quadrant_y in range(2)
+                        for quadrant_x in range(2)
+                        if facility_blockset[
+                            playable[block_y * 20 + block_x] * 16
+                            + quadrant_y * 8 + quadrant_x * 2
+                        ] in facility_walkable_tiles
+                    )
                     self.assertTrue(
-                        any(
-                            (hub_x + dx, hub_y + dy) in reachable
-                            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1))
-                        ),
-                        f"room {room_id} hub disconnected at {(hub_x, hub_y)}",
+                        any(cell in reachable for cell in room_quadrants),
+                        f"room {room_id} has no connected walkable interior; "
+                        f"record={tuple(complete_records[offset:offset + 6])}; "
+                        f"parent_record={tuple(complete_records[complete_records[offset + 4] * 6:complete_records[offset + 4] * 6 + 6])}; "
+                        f"blocks={tuple(playable[y * 20 + x] for y in range(max(0, room_y - 1), min(20, room_y + room_h + 1)) for x in range(max(0, room_x - 1), min(20, room_x + room_w + 1)))}",
                     )
                 ball_cells = {
                     (tile_x - 4, tile_y - 4)
@@ -1285,7 +1312,62 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     (tile_x - 4, tile_y - 4)
                     for tile_y, tile_x in zip(fake_xy[::2], fake_xy[1::2])
                 }
+                self.assertEqual(len(fake_cells), 4)
+                real_item_blocks = {
+                    ((tile_x - 4) // 2, (tile_y - 4) // 2)
+                    for tile_y, tile_x in zip(ball_xy[::2], ball_xy[1::2])
+                }
+                fully_walkable_blocks = {
+                    block_id for block_id in range(len(facility_blockset) // 16)
+                    if all(
+                        facility_blockset[block_id * 16 + tile_offset]
+                        in facility_walkable_tiles
+                        for tile_offset in (0, 2, 8, 10)
+                    )
+                }
+                eligible_fake_rooms = set()
+                for candidate_id in range(2, 11):
+                    candidate_offset = candidate_id * 6
+                    candidate_x, candidate_y, candidate_w, candidate_h = (
+                        complete_records[candidate_offset:candidate_offset + 4]
+                    )
+                    for anchor_y in range(candidate_y, candidate_y + candidate_h):
+                        for anchor_x in range(candidate_x, candidate_x + candidate_w):
+                            if (anchor_x, anchor_y) in real_item_blocks or (anchor_x, anchor_y) == (9, 17):
+                                continue
+                            block_id = playable[anchor_y * 20 + anchor_x]
+                            if block_id in (0x0E, 0x2C, 0x3B, 0x3F):
+                                eligible_fake_rooms.add(candidate_id)
+                            elif block_id == 0x47 and any(
+                                0 <= near_x < 20 and 0 <= near_y < 20
+                                and playable[near_y * 20 + near_x] in fully_walkable_blocks
+                                for near_x, near_y in (
+                                    (anchor_x - 1, anchor_y), (anchor_x + 1, anchor_y),
+                                    (anchor_x, anchor_y - 1), (anchor_x, anchor_y + 1),
+                                )
+                            ):
+                                eligible_fake_rooms.add(candidate_id)
+                fake_room_ids = []
                 for ball_col, ball_row in fake_cells:
+                    anchor_block_x = ball_col // 2
+                    anchor_block_y = ball_row // 2
+                    containing_rooms = []
+                    for candidate_id in range(2, 11):
+                        candidate_offset = candidate_id * 6
+                        candidate_x, candidate_y, candidate_w, candidate_h = (
+                            complete_records[candidate_offset:candidate_offset + 4]
+                        )
+                        if (
+                            candidate_w
+                            and candidate_x <= anchor_block_x < candidate_x + candidate_w
+                            and candidate_y <= anchor_block_y < candidate_y + candidate_h
+                        ):
+                            containing_rooms.append(candidate_id)
+                    if containing_rooms:
+                        self.assertEqual(len(containing_rooms), 1)
+                        fake_room_ids.append(containing_rooms[0])
+                    else:
+                        self.assertLess(len(eligible_fake_rooms), 4)
                     self.assertTrue(
                         (ball_col, ball_row) in reachable
                         or any(
@@ -1299,6 +1381,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         ),
                         f"fake-ball anchor {(ball_col, ball_row)} has no reachable interaction tile",
                     )
+                self.assertEqual(
+                    len(set(fake_room_ids)), min(4, len(eligible_fake_rooms))
+                )
                 for row in range(20):
                     for col in range(20):
                         if playable[row * 20 + col] != 0x0E:
@@ -1346,29 +1431,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         self.assertEqual(total_decor, eligible_decor_rooms)
         self.assertGreaterEqual(len(decor_types_seen), 2)
         self.assertGreaterEqual(len({signature[0] for signature in signatures}), 2)
-        # These are the four defect families R1 was requested to reproduce.
-        # R2 will replace these positive-characterization assertions with
-        # empty-list assertions as each structural repair lands.
-        self.assertTrue(room_ring_contacts, "R1 did not reproduce touching room rings")
-        self.assertTrue(corner_defects, "R1 did not reproduce missing/wrong corners")
-        self.assertTrue(exposed_voids, "R1 did not reproduce reachable $2E exposure")
-        self.assertTrue(isolated_structure, "R1 did not reproduce isolated structure")
-        self.assertTrue(any(
-            defect[0] == (0x01, 0x23, 0x45, 0x67)
-            for defect in room_ring_contacts
-        ))
-        self.assertTrue(any(
-            defect[0] == (0x89, 0xAB, 0xCD, 0xEF)
-            for defect in corner_defects
-        ))
-        self.assertTrue(any(
-            defect[0] == (0x01, 0x23, 0x45, 0x67)
-            for defect in exposed_voids
-        ))
-        self.assertTrue(any(
-            defect[0] == (0x36, 0x22, 0x22, 0xCA)
-            for defect in isolated_structure
-        ))
+        # R2 structural contract: none of the four characterized defect
+        # families may survive the seed corpus.
+        self.assertEqual(room_ring_contacts, [])
+        self.assertEqual(corner_defects, [])
+        self.assertEqual(exposed_voids, [])
+        self.assertEqual(isolated_structure, [])
 
         self.harness.load_state(baseline)
         seed = seeds[0]
