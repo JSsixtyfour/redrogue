@@ -139,36 +139,51 @@ PFacMiddleRoom3x3Blocks:
     INCBIN "maps/ProceduralFacility_3x3_rock_room.blkv"
 ASSERT @ - PFacMiddleRoom3x3Blocks == 9
 
-DEF PFAC_LARGE_DECOR_COUNT EQU 5
+DEF PFAC_LARGE_DECOR_COUNT EQU 8
 ; Interior-only large-decor descriptors: width, height, payload pointer.
 ; These may be placed in any larger compatible middle-room interior. They do
 ; not own or replace the room's surrounding wall ring.
 PFacLargeDecorDescriptors:
+    db 1, 3
+    dw PFacLargeDecor1x3DoubleTableTree
+    db 2, 1
+    dw PFacLargeDecor2x1DoubleTable
     db 2, 2
-    dw PFacLargeDecor2x2Eve
+    dw PFacLargeDecor2x2RockTree
     db 2, 3
-    dw PFacLargeDecor2x3Eve
+    dw PFacLargeDecor2x3Block
     db 3, 2
     dw PFacLargeDecor3x2Tree
     db 3, 3
-    dw PFacLargeDecor3x3Eve
+    dw PFacLargeDecor3x3BlockRock
     db 3, 3
     dw PFacLargeDecor3x3RockTree
-PFacLargeDecor2x2Eve:
-    INCBIN "maps/ProceduralFacility_2x2_eve_decor.blk"
-ASSERT @ - PFacLargeDecor2x2Eve == 4
-PFacLargeDecor2x3Eve:
-    INCBIN "maps/ProceduralFacility_2x3_eve_decor.blk"
-ASSERT @ - PFacLargeDecor2x3Eve == 6
+    db 3, 3
+    dw PFacLargeDecor3x3TripleBigTable
+PFacLargeDecor1x3DoubleTableTree:
+    INCBIN "maps/ProceduralFacility_1x3_doubletabletree_decor.blk"
+ASSERT @ - PFacLargeDecor1x3DoubleTableTree == 3
+PFacLargeDecor2x1DoubleTable:
+    INCBIN "maps/ProceduralFacility_2x1_doubletable_decor.blk"
+ASSERT @ - PFacLargeDecor2x1DoubleTable == 2
+PFacLargeDecor2x2RockTree:
+    INCBIN "maps/ProceduralFacility_2x2_rocktree_decor.blk"
+ASSERT @ - PFacLargeDecor2x2RockTree == 4
+PFacLargeDecor2x3Block:
+    INCBIN "maps/ProceduralFacility_2x3_block_decor.blk"
+ASSERT @ - PFacLargeDecor2x3Block == 6
 PFacLargeDecor3x2Tree:
     INCBIN "maps/ProceduralFacility_3x2_tree_decor.blk"
 ASSERT @ - PFacLargeDecor3x2Tree == 6
-PFacLargeDecor3x3Eve:
-    INCBIN "maps/ProceduralFacility_3x3_eve_decor.blk"
-ASSERT @ - PFacLargeDecor3x3Eve == 9
+PFacLargeDecor3x3BlockRock:
+    INCBIN "maps/ProceduralFacility_3x3_blockrock_decor.blk"
+ASSERT @ - PFacLargeDecor3x3BlockRock == 9
 PFacLargeDecor3x3RockTree:
     INCBIN "maps/ProceduralFacility_3x3_rocktree_decor.blk"
 ASSERT @ - PFacLargeDecor3x3RockTree == 9
+PFacLargeDecor3x3TripleBigTable:
+    INCBIN "maps/ProceduralFacility_3x3_triplebigtable_decor.blk"
+ASSERT @ - PFacLargeDecor3x3TripleBigTable == 9
 
 ASSERT PFAC_SIZE <= PFAC_STRIDE
 ASSERT PFAC_ROOM_MAX * PFAC_ROOM_STRIDE <= 81

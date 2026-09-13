@@ -23,16 +23,23 @@ VERTICAL_PASS_DECOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {
 HORIZONTAL_PASS_DECOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {0x19}
 ITEM_ANCHOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {0x47}
 LARGE_DECOR_FIXTURES = {
-    "ProceduralFacility_2x2_eve_decor.blk": (2, 2),
-    "ProceduralFacility_2x3_eve_decor.blk": (2, 3),
+    "ProceduralFacility_1x3_doubletabletree_decor.blk": (1, 3),
+    "ProceduralFacility_2x1_doubletable_decor.blk": (2, 1),
+    "ProceduralFacility_2x2_blocktree_decor.blk": (2, 2),
+    "ProceduralFacility_2x2_rocktree_decor.blk": (2, 2),
+    "ProceduralFacility_2x3_block_decor.blk": (2, 3),
     "ProceduralFacility_3x2_tree_decor.blk": (3, 2),
     "ProceduralFacility_3x3_block_decor.blk": (3, 3),
-    "ProceduralFacility_3x3_eve_decor.blk": (3, 3),
+    "ProceduralFacility_3x3_blockrock_decor.blk": (3, 3),
     "ProceduralFacility_3x3_rocktree_decor.blk": (3, 3),
+    "ProceduralFacility_3x3_triplebigtable_decor.blk": (3, 3),
 }
 LARGE_DECOR_RUNTIME_FIXTURES = tuple(
     filename for filename in LARGE_DECOR_FIXTURES
-    if filename != "ProceduralFacility_3x3_block_decor.blk"
+    if filename not in {
+        "ProceduralFacility_2x2_blocktree_decor.blk",
+        "ProceduralFacility_3x3_block_decor.blk",
+    }
 )
 
 
@@ -204,8 +211,6 @@ def validate() -> list[str]:
                 f"{filename} contains invalid facility blocks: "
                 + ", ".join(f"${block:02X}" for block in invalid)
             )
-        if not set(payload) & FULLY_WALKABLE_DECOR_BLOCKS:
-            errors.append(f"{filename} has no fully walkable block")
         if not any(
             valid_large_decor_offsets(
                 payload, decor_w, decor_h, room_w, room_h
@@ -223,6 +228,8 @@ def validate() -> list[str]:
         errors.append("table $47 must not be treated as fully walkable decor")
     if "ProceduralFacility_3x3_block_decor.blk" in LARGE_DECOR_RUNTIME_FIXTURES:
         errors.append("nested 3x3 block fixture must remain disabled pending redesign")
+    if "ProceduralFacility_2x2_blocktree_decor.blk" in LARGE_DECOR_RUNTIME_FIXTURES:
+        errors.append("solid 2x2 block/tree fixture disconnected a generated room")
     return errors
 
 

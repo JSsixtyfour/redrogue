@@ -50,14 +50,22 @@ class FacilityPremadeContractTest(unittest.TestCase):
         )
 
     def test_actual_door_mask_allows_compact_direction_safe_decor(self) -> None:
-        payload = (ROOT / "maps" / "ProceduralFacility_2x2_eve_decor.blk").read_bytes()
+        payload = (
+            ROOT / "maps" / "ProceduralFacility_2x2_blocktree_decor.blk"
+        ).read_bytes()
         self.assertTrue(
-            validator.valid_large_decor_offsets(payload, 2, 2, 3, 3, 0x01)
+            validator.valid_large_decor_offsets(payload, 2, 2, 2, 4, 0x02)
         )
 
     def test_nested_block_fixture_is_disabled_pending_redesign(self) -> None:
         self.assertNotIn(
             "ProceduralFacility_3x3_block_decor.blk",
+            validator.LARGE_DECOR_RUNTIME_FIXTURES,
+        )
+
+    def test_disconnect_reproducer_is_disabled_pending_safe_placement(self) -> None:
+        self.assertNotIn(
+            "ProceduralFacility_2x2_blocktree_decor.blk",
             validator.LARGE_DECOR_RUNTIME_FIXTURES,
         )
 

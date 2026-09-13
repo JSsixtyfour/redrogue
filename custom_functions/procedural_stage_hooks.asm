@@ -103,6 +103,17 @@ ProcStageLoadDispatch::
 	;farcall PFPreloadForest
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
+	cp SILPH_CO_B1F
+	jr nz, .notFacilityTestEntrance
+	; The temporary Credit Exchange replacement is a complete Facility test
+	; entrance, so prepare a fresh run exactly as lobby assignment would.
+	call ProcGenerationBeginDoubleSpeed
+	push af
+	farcall PFacPreload
+	pop af
+	call ProcGenerationEndDoubleSpeed
+	ret
+.notFacilityTestEntrance
 	cp SILPH_CO_DORM
 	jr nz, .notDorm
 	farcall RoomStampBlocks
