@@ -123,11 +123,11 @@ sProcFacilitySignVariant:: db      ; 0=items text, 1=boss text; rolled once at P
 sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion
                                    ; (PAL_CINNABAR/red); rolled at Pallet Town entry,
                                    ; read by SetPal_Overworld's FACILITY case (step 9)
-sProcFacilityAlgoForce:: db        ; debug: facility ships Rooms/Dungeon only, but keep
-                                   ; a force byte for parity with forest's selector
+  sProcFacilityEntryBattleCount:: db ; wBattleCount snapshot taken on first Facility
+                                     ; warp-in; owns all four fake-ball species/levels
 ; Generation-time scratch — NEVER use wOverworldMap's border padding (same hazard
 ; as forest). Reused across non-concurrent generation phases.
-sProcFacilityGenScratch:: ds 81
+  sProcFacilityGenScratch:: ds 81    ; bytes 72-79 persist four fake-ball Y/X pairs
 
 ; Packed wall-room tessellation (redesign v2, see Red Rogue Files/
 ; 1-i-need-you-foamy-otter.md): every grown room is tracked here as it's placed

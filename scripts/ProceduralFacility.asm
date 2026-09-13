@@ -23,6 +23,20 @@ ProceduralFacility_Script:
 	ld a, TOGGLE_WILD_AREA_POKEBALL_4
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	; Fresh generation also restores all four fake balls. Their independent
+	; trainer events and toggle bits keep defeated balls hidden on re-entry.
+	ld a, TOGGLE_FACILITY_FAKE_BALL_1
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_FACILITY_FAKE_BALL_2
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_FACILITY_FAKE_BALL_3
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_FACILITY_FAKE_BALL_4
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	; Show the boss only if it hasn't been beaten yet.
 	CheckEvent EVENT_BEAT_PC_BOSS
 	jr nz, .afterSetup
@@ -125,7 +139,7 @@ PFacSignText:
 	ld [rBMODE], a
 	ld [rRAMG], a
 	ld a, b
-	and a
+	and 1                       ; bit 7 snapshots fake-ball species, bit 0 is sign
 	jr nz, .showBoss
 	ld hl, PFacSignItemsText
 	jr .show
@@ -153,17 +167,36 @@ ProceduralFacility_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFACILITY_WILD_AREA_POKEBALL_2
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFACILITY_WILD_AREA_POKEBALL_3
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFACILITY_WILD_AREA_POKEBALL_4
+	dw_const ProceduralFacilityFakeBall1Text, TEXT_PROCEDURALFACILITY_FAKE_BALL_1
+	dw_const ProceduralFacilityFakeBall2Text, TEXT_PROCEDURALFACILITY_FAKE_BALL_2
+	dw_const ProceduralFacilityFakeBall3Text, TEXT_PROCEDURALFACILITY_FAKE_BALL_3
+	dw_const ProceduralFacilityFakeBall4Text, TEXT_PROCEDURALFACILITY_FAKE_BALL_4
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
 	EXPORT TEXT_PROCEDURALFACILITY_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFacSignText, TEXT_PROCEDURALFACILITY_SIGN
 
 ProceduralFacilityTrainerHeaders:
-	def_trainers 1  ; boss is slot 1; CheckForEngagingTrainers uses CURRENT_TRAINER_BIT
-	                ; as the sprite slot, so this must match the boss's object_event position.
-	                ; EVENT_BEAT_PC_BOSS % 8 == 1 == 1 % 8 to satisfy trainer ASSERT.
 PFacBossTrainerHeader:
-	trainer EVENT_BEAT_PC_BOSS, 0, ProceduralFacilityBossBattleText, ProceduralFacilityBossBattleText, ProceduralFacilityBossBattleText
+	; EVENT_BEAT_PC_BOSS is shared with the other procedural maps. Emit this
+	; established slot-1 header directly so the event-layout generator can treat
+	; the new slot-6-through-9 quartet as its own aligned trainer run.
+	ASSERT EVENT_BEAT_PC_BOSS % 8 == 1
+	db 1
+	db 0
+	dw wEventFlags + (EVENT_BEAT_PC_BOSS - 1) / 8
+	dw ProceduralFacilityBossBattleText, ProceduralFacilityBossBattleText
+	dw ProceduralFacilityBossBattleText, ProceduralFacilityBossBattleText
+	; Slots 2-5 are items, so resume the trainer-bit sequence at object slot 6.
+	def_trainers 6
+PFacFakeBall1Header:
+	trainer EVENT_BEAT_FACILITY_FAKE_BALL_1, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
+PFacFakeBall2Header:
+	trainer EVENT_BEAT_FACILITY_FAKE_BALL_2, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
+PFacFakeBall3Header:
+	trainer EVENT_BEAT_FACILITY_FAKE_BALL_3, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
+PFacFakeBall4Header:
+	trainer EVENT_BEAT_FACILITY_FAKE_BALL_4, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
 	db -1 ; end
 
 ProceduralFacilityInitBattleScript:
@@ -204,3 +237,27 @@ ProceduralFacilityBossBattleText:
 	; TalkToTrainer increments wCurMapScript after this text returns, and
 	; StartTrainerBattle increments it again. Setting it here corrupts
 	; the state machine and causes a post-battle freeze.
+
+ProceduralFacilityFakeBall1Text:
+	text_asm
+	ld hl, PFacFakeBall1Header
+	jr ProceduralFacilityInitBattleScript
+
+ProceduralFacilityFakeBall2Text:
+	text_asm
+	ld hl, PFacFakeBall2Header
+	jr ProceduralFacilityInitBattleScript
+
+ProceduralFacilityFakeBall3Text:
+	text_asm
+	ld hl, PFacFakeBall3Header
+	jr ProceduralFacilityInitBattleScript
+
+ProceduralFacilityFakeBall4Text:
+	text_asm
+	ld hl, PFacFakeBall4Header
+	jr ProceduralFacilityInitBattleScript
+
+ProceduralFacilityFakeBallBattleText:
+	text_far _PowerPlantVoltorbBattleText
+	text_end

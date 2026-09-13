@@ -430,6 +430,10 @@ ToggleableObjectStates:
 	;toggle_object_state 3, ON                 ; slot 3 = pokeball 2
 	;toggle_object_state 4, ON                 ; slot 4 = pokeball 3
 	;toggle_object_state 5, ON                 ; slot 5 = pokeball 4
+	toggle_object_state 6, ON                 ; slot 6 = fake pokeball 1
+	toggle_object_state 7, ON                 ; slot 7 = fake pokeball 2
+	toggle_object_state 8, ON                 ; slot 8 = fake pokeball 3
+	toggle_object_state 9, ON                 ; slot 9 = fake pokeball 4
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball

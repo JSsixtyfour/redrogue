@@ -28,4 +28,12 @@ ProceduralFacility_Object:
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_WILD_AREA_POKEBALL_3, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_WILD_AREA_POKEBALL_4, 0
 
+	; Fake item balls (slots 6-9). The placeholder positions are replaced by the
+	; generator placement checkpoint; species and level are already patched at
+	; every finalize from the battle-count-50 preload snapshot.
+	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_1, VOLTORB, 5 | OW_POKEMON
+	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_2, VOLTORB, 5 | OW_POKEMON
+	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_3, VOLTORB, 5 | OW_POKEMON
+	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_4, VOLTORB, 5 | OW_POKEMON
+
 	def_warps_to PROCEDURAL_FACILITY

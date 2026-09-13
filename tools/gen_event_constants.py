@@ -362,6 +362,13 @@ NEW_EVENTS = [
     "EVENT_BEAT_BLACKTHORN_GYM_TRAINER_1",
     "EVENT_BEAT_BLACKTHORN_GYM_TRAINER_2",
     "EVENT_BEAT_BLACKTHORN_GYM_TRAINER_3",
+    # Procedural Facility fake item balls. These four trainer flags must remain
+    # consecutive and begin at object-slot bit 6; the trainer-block allocator
+    # derives that alignment from scripts/ProceduralFacility.asm.
+    "EVENT_BEAT_FACILITY_FAKE_BALL_1",
+    "EVENT_BEAT_FACILITY_FAKE_BALL_2",
+    "EVENT_BEAT_FACILITY_FAKE_BALL_3",
+    "EVENT_BEAT_FACILITY_FAKE_BALL_4",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

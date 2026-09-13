@@ -125,6 +125,9 @@ DEF PFAC_SOCKET_W EQU 8
 DEF PFAC_MIDDLE_ROOM_3X3_SOCKETS EQU PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W
 ASSERT PFAC_MIDDLE_ROOM_3X3_SOCKETS == $0F
 
+PFacFakeWildLevelTable:
+    db 5, 9, 13, 17, 21, 25, 29, 33, 37
+
 ; Same-bank descriptor: full footprint, permitted middle-room ids, socket mask, hub,
 ; item anchor, flags, payload. The committed .blkv suffix is intentional.
 PFacMiddleRoom3x3Descriptor:
@@ -204,6 +207,7 @@ DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
                               ; sProcFacilityBallItems by name, unchanged.
 DEF wPFacItemCheckX   EQU 16  ; item-anchor adjacency check: saved block X
 DEF wPFacItemCheckY   EQU 17  ; item-anchor adjacency check: saved block Y
+DEF wPFacFakeRoomId   EQU 18  ; PFacPlaceFakeBalls: preferred/fallback room id
 
 ; Corridor-wall and doorway-jamb passes. These run before item placement, so
 ; offsets 16-24 are phase-local and do not overlap the four rolled item bytes.
@@ -1207,8 +1211,8 @@ PFacPlaceLargeDecor:
     jr .nextRoom
 .stamp
     call PFacStampLargeDecor
-    ; Bit 6 records ownership of the interior so the later one-block decor pass
-    ; cannot combine with this payload and close its authored route.
+    ; Bit 6 records ownership of the interior so the later light pass and tests
+    ; can distinguish authored payload blocks from one-cell decoration.
     ld a, [wBuffer + wPFacRmIdx]
     call PFacRoomRecordAddr
     ld de, 5
@@ -1646,27 +1650,221 @@ PFacItemAnchorAtCurrentValid:
 
     ld hl, wBuffer + wPFacCurX
     dec [hl]
-    call .checkNeighbor
+    call PFacItemAnchorCheckNeighbor
     ret z
     ld a, [wBuffer + wPFacItemCheckX]
     inc a
     ld [wBuffer + wPFacCurX], a
-    call .checkNeighbor
+    call PFacItemAnchorCheckNeighbor
     ret z
     ld a, [wBuffer + wPFacItemCheckX]
     ld [wBuffer + wPFacCurX], a
     ld hl, wBuffer + wPFacCurY
     dec [hl]
-    call .checkNeighbor
+    call PFacItemAnchorCheckNeighbor
     ret z
     ld a, [wBuffer + wPFacItemCheckY]
     inc a
     ld [wBuffer + wPFacCurY], a
-    call .checkNeighbor
+    call PFacItemAnchorCheckNeighbor
     ret z
     or 1
     ret
-.checkNeighbor
+
+; Place four fake item-ball encounters after both decor passes. Prefer four
+; distinct exploration rooms (5-8); if one was not placed, use its matching
+; item room (1-4). Coordinates live in the otherwise-unused tail of the
+; 81-byte generation scratch and therefore survive the baked-map re-entry path.
+PFacPlaceFakeBalls:
+    xor a
+    ld [wBuffer + wPFacBallIdx], a
+.ballLoop
+    ld a, [wBuffer + wPFacBallIdx]
+    add a, 5
+    ld [wBuffer + wPFacFakeRoomId], a
+    call PFacRoomRecordAddr
+    inc hl
+    inc hl
+    ld a, [hl]
+    and a
+    jr nz, .loadRoom
+    ; PFacPlaceItems has already reused scratch bytes 0-7 for real-ball XY,
+    ; so room 1's X/Y record is no longer intact. Room 4 remains intact and
+    ; can host more than one fallback because prior anchors are rejected.
+    ld a, 4
+    ld [wBuffer + wPFacFakeRoomId], a
+.loadRoom
+    ld a, [wBuffer + wPFacFakeRoomId]
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld [wBuffer + wPFacCurY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    ld a, [hl]
+    ld [wBuffer + wPFacRmH], a
+.scan
+    call PFacItemAnchorAtCurrentValid
+    jr nz, .advance
+    call PFacFakeAnchorUnused
+    jr z, .save
+.advance
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    ld hl, wBuffer + wPFacCurX
+    cp [hl]
+    jr nz, .scan
+    ld a, [wBuffer + wPFacRmX]
+    ld [wBuffer + wPFacCurX], a
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacRmH
+    add a, [hl]
+    ld hl, wBuffer + wPFacCurY
+    cp [hl]
+    jr nz, .scan
+    ; A cramped decorated room can have no second legal object anchor. Fall
+    ; back to a bounded scan of the connected interior, excluding the north
+    ; exit/boss rows and the outer wall ring.
+    ld a, 2
+    ld [wBuffer + wPFacCurY], a
+.globalRow
+    ld a, 1
+    ld [wBuffer + wPFacCurX], a
+.globalColumn
+    call PFacItemAnchorAtCurrentValid
+    jr nz, .globalAdvance
+    call PFacFakeAnchorUnused
+    jr z, .save
+.globalAdvance
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [hl]
+    cp 19
+    jr c, .globalColumn
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [hl]
+    cp 19
+    jr c, .globalRow
+    ; Every valid Facility has substantially more than eight walkable anchors.
+    ; Keep a deterministic defensive value for malformed debug fixtures.
+    ld a, 9
+    ld [wBuffer + wPFacCurX], a
+    ld a, 17
+    ld [wBuffer + wPFacCurY], a
+.save
+    ld a, [wBuffer + wPFacBallIdx]
+    add a, a
+    ld e, a
+    ld d, 0
+    ld hl, sProcFacilityGenScratch + 72
+    add hl, de
+    ld a, [wBuffer + wPFacCurY]
+    add a, a
+    add a, 4
+    ld [hli], a
+    ld a, [wBuffer + wPFacCurX]
+    add a, a
+    add a, 4
+    ld [hl], a
+    ld hl, wBuffer + wPFacBallIdx
+    inc [hl]
+    ld a, [hl]
+    cp 4
+    jp nz, .ballLoop
+    ; Roll one ordinary-wild level from the same entry snapshot and persist it
+    ; for all four encounters and every later re-entry.
+    ld a, [sProcFacilityEntryBattleCount]
+    cp 90
+    jr c, .noClamp
+    ld a, 89
+.noClamp
+    ld b, 0
+.round
+    cp 10
+    jr c, .gotRound
+    sub 10
+    inc b
+    jr .round
+.gotRound
+    ld hl, PFacFakeWildLevelTable
+    ld c, b
+    ld b, 0
+    add hl, bc
+    ld a, [hl]
+    push af
+    ld c, 3
+    call Rangerandom
+    pop bc
+    add a, b
+    ld [sProcFacilityGenScratch + 80], a
+    ret
+
+; Z set when current X/Y does not overlap a real item or an earlier fake ball.
+PFacFakeAnchorUnused:
+    ld a, [wBuffer + wPFacCurX]
+    cp 9
+    jr nz, .checkReal
+    ld a, [wBuffer + wPFacCurY]
+    cp 17
+    jr z, .used
+.checkReal
+    ld hl, sProcFacilityGenScratch
+    ld b, 4
+.real
+    ld a, [hli]
+    ld c, a
+    ld a, [wBuffer + wPFacCurX]
+    cp c
+    jr nz, .realNext
+    ld a, [hl]
+    ld c, a
+    ld a, [wBuffer + wPFacCurY]
+    cp c
+    jr z, .used
+.realNext
+    inc hl
+    dec b
+    jr nz, .real
+    ld a, [wBuffer + wPFacBallIdx]
+    and a
+    jr z, .free
+    ld b, a
+    ld hl, sProcFacilityGenScratch + 72
+.fake
+    ld a, [hli]
+    sub 4
+    srl a
+    ld c, a
+    ld a, [wBuffer + wPFacCurY]
+    cp c
+    jr nz, .fakeNext
+    ld a, [hl]
+    sub 4
+    srl a
+    ld c, a
+    ld a, [wBuffer + wPFacCurX]
+    cp c
+    jr z, .used
+.fakeNext
+    inc hl
+    dec b
+    jr nz, .fake
+.free
+    xor a
+    ret
+.used
+    or 1
+    ret
+PFacItemAnchorCheckNeighbor:
     call PFacReadBlock
     call PFacLargeDecorBlockFullyWalkable
     push af
@@ -1730,15 +1928,18 @@ PFacDecorateExploreRooms:
 
     ld a, [wBuffer + wPFacDecorW]
     cp 1
-    jr nz, .checkThinHorizontal
-    ld a, [wBuffer + wPFacDecorH]
-    cp 1
     jp z, .nextRoom
-    jp .thinVertical
 .checkThinHorizontal
     ld a, [wBuffer + wPFacDecorH]
     cp 1
-    jp z, .thinHorizontal
+    jp z, .nextRoom
+
+    ld a, [wBuffer + wPFacDecorId]
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    bit 6, [hl]
+    jr z, .scanReady
 
     ld a, [wBuffer + wPFacDecorW]
     srl a
@@ -1750,6 +1951,33 @@ PFacDecorateExploreRooms:
     ld hl, wBuffer + wPFacDecorY
     add a, [hl]
     ld [wBuffer + wPFacDecorCenterY], a
+
+    ; A room or stamped payload may rely on open cells outside the center cross
+    ; to connect multiple doorway lanes. Layer light decor only in a terminal
+    ; branch with exactly one actual doorway; its protected door-to-hub lane is
+    ; then the complete connectivity contract.
+    ; Keep the layered light pass to terminal large-decor rooms. A multi-door
+    ; room is transit space, and quadrant-level wall geometry makes a one-block
+    ; obstruction capable of cutting a turn around the hub.
+    ld a, [wBuffer + wPFacDecorCenterX]
+    ld [wBuffer + wPFacLargeCenterX], a
+    ld a, [wBuffer + wPFacDecorCenterY]
+    ld [wBuffer + wPFacLargeCenterY], a
+    call PFacLoadLargeDecorDoorMask
+    ld a, [wBuffer + wPFacRmW]
+    ld [wBuffer + wPFacDecorW], a
+    ld a, [wBuffer + wPFacRmH]
+    ld [wBuffer + wPFacDecorH], a
+    ld a, [wBuffer + wPFacLargeDoors]
+    cp 1
+    jr z, .scanReady
+    cp 2
+    jr z, .scanReady
+    cp 4
+    jr z, .scanReady
+    cp 8
+    jp nz, .nextRoom
+.scanReady
 
     ; A complete bounded scan guarantees one obstruction whenever the room has
     ; a plain floor cell outside its protected center row and column.
@@ -1881,6 +2109,7 @@ PFacGenerateFacility:
     call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
+    call PFacPlaceFakeBalls
     ret
 
 ; ============================================================
@@ -2675,6 +2904,10 @@ PFacRollBoss:
     ld [sProcFacilityBossSpecies], a
     ld a, e
     ld [wRoguePokemonForm1], a
+    ; Preserve the boss form in sign-variant bits 1-7. Bit 0 remains the
+    ; independently rolled sign text selector.
+    add a, a
+    ld [sProcFacilitySignVariant], a
     farcall PFacStoreBossOWSpriteToSRAM  ; stores SPRITE_* to sProcFacilityBossSprite
     ret
 
@@ -2693,7 +2926,7 @@ PFacPreload::
     xor a
     ld [sProcFacilityBaked], a       ; 0 = needs fresh generation
     ld [sProcFacilityItemGot], a     ; clear ball-collected bits
-    ld [sProcFacilityAlgoForce], a
+    ld [sProcFacilityEntryBattleCount], a
     ld [sProcFacilityExitEdge], a    ; 0 = N (v1 ships north exit only)
 
     ; Roll the facility's own boss (species + OW sprite -> SRAM).
@@ -2709,6 +2942,10 @@ PFacPreload::
     ; Roll sign variant: 0 = items text, 1 = boss text.
     call Random
     and 1
+    ld b, a
+    ld a, [sProcFacilitySignVariant]
+    and $fe
+    or b
     ld [sProcFacilitySignVariant], a
 
     ; Wild-battle budget: 10 + wBattleCount/5, saturating at 255 (cave formula).
@@ -2762,6 +2999,9 @@ PFacFinalize::
     ld a, [sProcFacilityBaked]
     and a
     jp nz, .fastBlit
+
+    ld a, [wBattleCount]
+    ld [sProcFacilityEntryBattleCount], a
 
     ; === First visit: generate directly into wOverworldMap ===
     ld a, LOW(wOverworldMap + PFAC_BASE)
@@ -2893,6 +3133,9 @@ PFacFinalize::
     ; --- Restore boss species and place its sprite (slot 1) ---
     ld a, [sProcFacilityBossSpecies]
     ld [wRoguePokemon1], a
+    ld a, [sProcFacilitySignVariant]
+    srl a
+    ld [wRoguePokemonForm1], a
 
     ; Boss stands on block (exitX, 1), one cell below the opening, facing DOWN so
     ; it guards the only approach. tile = block*2+4.
@@ -2945,6 +3188,47 @@ PFacFinalize::
     inc de
     dec b
     jr nz, .itemRestore
+
+    ; Fake encounter balls (slots 6-9) use the four persistent Y/X pairs in
+    ; scratch bytes 72-79. All four share the first-entry battle-count snapshot.
+    ld hl, sProcFacilityGenScratch + 72
+    ld de, wSprite01StateData2MapY + 16 * 5
+    ld b, 4
+.fakeRestoreXY
+    ld a, [hli]
+    ld [de], a
+    inc de
+    ld a, [hli]
+    ld [de], a
+    ld a, e
+    add a, 15
+    ld e, a
+    jr nc, .fakeNoCarry
+    inc d
+.fakeNoCarry
+    dec b
+    jr nz, .fakeRestoreXY
+
+    ; Byte 80 stores the one ordinary-wild level rolled during generation.
+    ld a, [sProcFacilityGenScratch + 80]
+    set 7, a
+    ld c, a
+    ld a, [sProcFacilityEntryBattleCount]
+    cp 50
+    ld a, VOLTORB
+    jr c, .fakeSpeciesReady
+    ld a, ELECTRODE
+.fakeSpeciesReady
+    ld d, a
+    ld hl, wMapSpriteExtraData + 10
+    ld b, 4
+.fakeExtra
+    ld a, d
+    ld [hli], a
+    ld a, c
+    ld [hli], a
+    dec b
+    jr nz, .fakeExtra
 
     ld a, BMODE_SIMPLE
     ld [rBMODE], a

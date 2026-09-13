@@ -515,603 +515,609 @@ DEF EVENT_PC_BOSS_OFFERED                        EQU  222 ; byte 27 bit 6
 DEF EVENT_PC_BUDGET_ENDED                        EQU  223 ; byte 27 bit 7
 DEF EVENT_PC_CALMED_SHOWN                        EQU  224 ; byte 28 bit 0
 
-; -- RockTunnel1F  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0           EQU  225 ; byte 28 bit 1
-DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1           EQU  226 ; byte 28 bit 2
-DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2           EQU  227 ; byte 28 bit 3
-DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3           EQU  228 ; byte 28 bit 4
-DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4           EQU  229 ; byte 28 bit 5
-
 ; -- (engine / cross-map)
-DEF EVENT_PC_CEM_BUDGET_ENDED                    EQU  230 ; byte 28 bit 6
-DEF EVENT_PC_CEM_CALMED_SHOWN                    EQU  231 ; byte 28 bit 7
-DEF EVENT_PF_ITEM_GOT                            EQU  232 ; byte 29 bit 0
-
-; -- RocketHideoutB1F  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0        EQU  233 ; byte 29 bit 1
-DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_1        EQU  234 ; byte 29 bit 2
-DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_2        EQU  235 ; byte 29 bit 3
-DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3        EQU  236 ; byte 29 bit 4
-DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4        EQU  237 ; byte 29 bit 5
+DEF EVENT_PC_CEM_BUDGET_ENDED                    EQU  225 ; byte 28 bit 1
+DEF EVENT_PC_CEM_CALMED_SHOWN                    EQU  226 ; byte 28 bit 2
+DEF EVENT_PF_ITEM_GOT                            EQU  227 ; byte 28 bit 3
 
 ; -- PokemonFanClub
-DEF EVENT_PIKACHU_FAN_BOAST                      EQU  238 ; byte 29 bit 6
+DEF EVENT_PIKACHU_FAN_BOAST                      EQU  228 ; byte 28 bit 4
 
 ; -- LavenderMart
-DEF EVENT_RESCUED_MR_FUJI                        EQU  239 ; byte 29 bit 7
+DEF EVENT_RESCUED_MR_FUJI                        EQU  229 ; byte 28 bit 5
+
+; -- ProceduralFacility  [def_trainers 6, 4 trainers]
+DEF EVENT_BEAT_FACILITY_FAKE_BALL_1              EQU  230 ; byte 28 bit 6
+DEF EVENT_BEAT_FACILITY_FAKE_BALL_2              EQU  231 ; byte 28 bit 7
+DEF EVENT_BEAT_FACILITY_FAKE_BALL_3              EQU  232 ; byte 29 bit 0
+DEF EVENT_BEAT_FACILITY_FAKE_BALL_4              EQU  233 ; byte 29 bit 1
 
 ; -- PokemonTower7F  [def_trainers 1, 5 trainers]
-DEF EVENT_RESCUED_MR_FUJI_2                      EQU  240 ; byte 30 bit 0
-
-; -- Route1  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_1_TRAINER_0                 EQU  241 ; byte 30 bit 1
-DEF EVENT_BEAT_ROUTE_1_TRAINER_1                 EQU  242 ; byte 30 bit 2
-DEF EVENT_BEAT_ROUTE_1_TRAINER_2                 EQU  243 ; byte 30 bit 3
-DEF EVENT_BEAT_ROUTE_1_TRAINER_3                 EQU  244 ; byte 30 bit 4
-DEF EVENT_BEAT_ROUTE_1_TRAINER_4                 EQU  245 ; byte 30 bit 5
+DEF EVENT_RESCUED_MR_FUJI_2                      EQU  234 ; byte 29 bit 2
 
 ; -- DiglettsCave  [def_trainers 1, 5 trainers]
-DEF EVENT_ROGUE_POKEMON_OFFERED                  EQU  246 ; byte 30 bit 6
+DEF EVENT_ROGUE_POKEMON_OFFERED                  EQU  235 ; byte 29 bit 3
 
 ; -- Route22
-DEF EVENT_ROUTE22_RIVAL_WANTS_BATTLE             EQU  247 ; byte 30 bit 7
+DEF EVENT_ROUTE22_RIVAL_WANTS_BATTLE             EQU  236 ; byte 29 bit 4
 
 ; -- SSAnneCaptainsRoom
-DEF EVENT_RUBBED_CAPTAINS_BACK                   EQU  248 ; byte 31 bit 0
-
-; -- Route12  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_12_TRAINER_0                EQU  249 ; byte 31 bit 1
-DEF EVENT_BEAT_ROUTE_12_TRAINER_1                EQU  250 ; byte 31 bit 2
-DEF EVENT_BEAT_ROUTE_12_TRAINER_2                EQU  251 ; byte 31 bit 3
-DEF EVENT_BEAT_ROUTE_12_TRAINER_3                EQU  252 ; byte 31 bit 4
-DEF EVENT_BEAT_ROUTE_12_TRAINER_4                EQU  253 ; byte 31 bit 5
+DEF EVENT_RUBBED_CAPTAINS_BACK                   EQU  237 ; byte 29 bit 5
 
 ; -- SafariZoneGate
-DEF EVENT_SAFARI_GAME_OVER                       EQU  254 ; byte 31 bit 6
+DEF EVENT_SAFARI_GAME_OVER                       EQU  238 ; byte 29 bit 6
 
 ; -- PokemonFanClub
-DEF EVENT_SEEL_FAN_BOAST                         EQU  255 ; byte 31 bit 7
+DEF EVENT_SEEL_FAN_BOAST                         EQU  239 ; byte 29 bit 7
 
 ; -- SSAnneB1F
-DEF EVENT_SSANNE_ALL_TRAINERS_DEFEATED           EQU  256 ; byte 32 bit 0
+DEF EVENT_SSANNE_ALL_TRAINERS_DEFEATED           EQU  240 ; byte 30 bit 0
 
-; -- Route13  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_13_TRAINER_0                EQU  257 ; byte 32 bit 1
-DEF EVENT_BEAT_ROUTE_13_TRAINER_1                EQU  258 ; byte 32 bit 2
-DEF EVENT_BEAT_ROUTE_13_TRAINER_2                EQU  259 ; byte 32 bit 3
-DEF EVENT_BEAT_ROUTE_13_TRAINER_3                EQU  260 ; byte 32 bit 4
-DEF EVENT_BEAT_ROUTE_13_TRAINER_4                EQU  261 ; byte 32 bit 5
+; -- RockTunnel1F  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0           EQU  241 ; byte 30 bit 1
+DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1           EQU  242 ; byte 30 bit 2
+DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2           EQU  243 ; byte 30 bit 3
+DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3           EQU  244 ; byte 30 bit 4
+DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4           EQU  245 ; byte 30 bit 5
 
 ; -- RewardRoom
-DEF EVENT_STEP_FORWARD                           EQU  262 ; byte 32 bit 6
+DEF EVENT_STEP_FORWARD                           EQU  246 ; byte 30 bit 6
 
 ; -- BillsHouse
-DEF EVENT_USED_CELL_SEPARATOR_ON_BILL            EQU  263 ; byte 32 bit 7
+DEF EVENT_USED_CELL_SEPARATOR_ON_BILL            EQU  247 ; byte 30 bit 7
 
 ; -- VictoryRoad2F  [def_trainers 1, 6 trainers]
-DEF EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH       EQU  264 ; byte 33 bit 0
+DEF EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH       EQU  248 ; byte 31 bit 0
 
-; -- Route15  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_15_TRAINER_0                EQU  265 ; byte 33 bit 1
-DEF EVENT_BEAT_ROUTE_15_TRAINER_1                EQU  266 ; byte 33 bit 2
-DEF EVENT_BEAT_ROUTE_15_TRAINER_2                EQU  267 ; byte 33 bit 3
-DEF EVENT_BEAT_ROUTE_15_TRAINER_3                EQU  268 ; byte 33 bit 4
-DEF EVENT_BEAT_ROUTE_15_TRAINER_4                EQU  269 ; byte 33 bit 5
-
-; -- Route23
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  270 ; byte 33 bit 6
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  271 ; byte 33 bit 7
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  272 ; byte 34 bit 0
-
-; -- Route17  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_17_TRAINER_0                EQU  273 ; byte 34 bit 1
-DEF EVENT_BEAT_ROUTE_17_TRAINER_1                EQU  274 ; byte 34 bit 2
-DEF EVENT_BEAT_ROUTE_17_TRAINER_2                EQU  275 ; byte 34 bit 3
-DEF EVENT_BEAT_ROUTE_17_TRAINER_3                EQU  276 ; byte 34 bit 4
-DEF EVENT_BEAT_ROUTE_17_TRAINER_4                EQU  277 ; byte 34 bit 5
+; -- RocketHideoutB1F  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0        EQU  249 ; byte 31 bit 1
+DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_1        EQU  250 ; byte 31 bit 2
+DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_2        EQU  251 ; byte 31 bit 3
+DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3        EQU  252 ; byte 31 bit 4
+DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4        EQU  253 ; byte 31 bit 5
 
 ; -- Route23
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  278 ; byte 34 bit 6
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  254 ; byte 31 bit 6
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  255 ; byte 31 bit 7
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  256 ; byte 32 bit 0
+
+; -- Route1  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROUTE_1_TRAINER_0                 EQU  257 ; byte 32 bit 1
+DEF EVENT_BEAT_ROUTE_1_TRAINER_1                 EQU  258 ; byte 32 bit 2
+DEF EVENT_BEAT_ROUTE_1_TRAINER_2                 EQU  259 ; byte 32 bit 3
+DEF EVENT_BEAT_ROUTE_1_TRAINER_3                 EQU  260 ; byte 32 bit 4
+DEF EVENT_BEAT_ROUTE_1_TRAINER_4                 EQU  261 ; byte 32 bit 5
+
+; -- Route23
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  262 ; byte 32 bit 6
 
 ; -- IndigoPlateauLobby
-DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  279 ; byte 34 bit 7
+DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  263 ; byte 32 bit 7
+
+; -- Route12  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROUTE_12_TRAINER_0                EQU  265 ; byte 33 bit 1
+DEF EVENT_BEAT_ROUTE_12_TRAINER_1                EQU  266 ; byte 33 bit 2
+DEF EVENT_BEAT_ROUTE_12_TRAINER_2                EQU  267 ; byte 33 bit 3
+DEF EVENT_BEAT_ROUTE_12_TRAINER_3                EQU  268 ; byte 33 bit 4
+DEF EVENT_BEAT_ROUTE_12_TRAINER_4                EQU  269 ; byte 33 bit 5
+
+; -- Route13  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROUTE_13_TRAINER_0                EQU  273 ; byte 34 bit 1
+DEF EVENT_BEAT_ROUTE_13_TRAINER_1                EQU  274 ; byte 34 bit 2
+DEF EVENT_BEAT_ROUTE_13_TRAINER_2                EQU  275 ; byte 34 bit 3
+DEF EVENT_BEAT_ROUTE_13_TRAINER_3                EQU  276 ; byte 34 bit 4
+DEF EVENT_BEAT_ROUTE_13_TRAINER_4                EQU  277 ; byte 34 bit 5
+
+; -- Route15  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROUTE_15_TRAINER_0                EQU  281 ; byte 35 bit 1
+DEF EVENT_BEAT_ROUTE_15_TRAINER_1                EQU  282 ; byte 35 bit 2
+DEF EVENT_BEAT_ROUTE_15_TRAINER_2                EQU  283 ; byte 35 bit 3
+DEF EVENT_BEAT_ROUTE_15_TRAINER_3                EQU  284 ; byte 35 bit 4
+DEF EVENT_BEAT_ROUTE_15_TRAINER_4                EQU  285 ; byte 35 bit 5
+
+; -- Route17  [def_trainers 1, 5 trainers]
+DEF EVENT_BEAT_ROUTE_17_TRAINER_0                EQU  289 ; byte 36 bit 1
+DEF EVENT_BEAT_ROUTE_17_TRAINER_1                EQU  290 ; byte 36 bit 2
+DEF EVENT_BEAT_ROUTE_17_TRAINER_2                EQU  291 ; byte 36 bit 3
+DEF EVENT_BEAT_ROUTE_17_TRAINER_3                EQU  292 ; byte 36 bit 4
+DEF EVENT_BEAT_ROUTE_17_TRAINER_4                EQU  293 ; byte 36 bit 5
 
 ; -- Route24  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_24_TRAINER_0                EQU  281 ; byte 35 bit 1
-DEF EVENT_BEAT_ROUTE_24_TRAINER_1                EQU  282 ; byte 35 bit 2
-DEF EVENT_BEAT_ROUTE_24_TRAINER_2                EQU  283 ; byte 35 bit 3
-DEF EVENT_BEAT_ROUTE_24_TRAINER_3                EQU  284 ; byte 35 bit 4
-DEF EVENT_BEAT_ROUTE_24_TRAINER_4                EQU  285 ; byte 35 bit 5
+DEF EVENT_BEAT_ROUTE_24_TRAINER_0                EQU  297 ; byte 37 bit 1
+DEF EVENT_BEAT_ROUTE_24_TRAINER_1                EQU  298 ; byte 37 bit 2
+DEF EVENT_BEAT_ROUTE_24_TRAINER_2                EQU  299 ; byte 37 bit 3
+DEF EVENT_BEAT_ROUTE_24_TRAINER_3                EQU  300 ; byte 37 bit 4
+DEF EVENT_BEAT_ROUTE_24_TRAINER_4                EQU  301 ; byte 37 bit 5
 
 ; -- Route25  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_25_TRAINER_0                EQU  289 ; byte 36 bit 1
-DEF EVENT_BEAT_ROUTE_25_TRAINER_1                EQU  290 ; byte 36 bit 2
-DEF EVENT_BEAT_ROUTE_25_TRAINER_2                EQU  291 ; byte 36 bit 3
-DEF EVENT_BEAT_ROUTE_25_TRAINER_3                EQU  292 ; byte 36 bit 4
-DEF EVENT_BEAT_ROUTE_25_TRAINER_4                EQU  293 ; byte 36 bit 5
+DEF EVENT_BEAT_ROUTE_25_TRAINER_0                EQU  305 ; byte 38 bit 1
+DEF EVENT_BEAT_ROUTE_25_TRAINER_1                EQU  306 ; byte 38 bit 2
+DEF EVENT_BEAT_ROUTE_25_TRAINER_2                EQU  307 ; byte 38 bit 3
+DEF EVENT_BEAT_ROUTE_25_TRAINER_3                EQU  308 ; byte 38 bit 4
+DEF EVENT_BEAT_ROUTE_25_TRAINER_4                EQU  309 ; byte 38 bit 5
 
 ; -- Route3  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_3_TRAINER_0                 EQU  297 ; byte 37 bit 1
-DEF EVENT_BEAT_ROUTE_3_TRAINER_1                 EQU  298 ; byte 37 bit 2
-DEF EVENT_BEAT_ROUTE_3_TRAINER_2                 EQU  299 ; byte 37 bit 3
-DEF EVENT_BEAT_ROUTE_3_TRAINER_3                 EQU  300 ; byte 37 bit 4
-DEF EVENT_BEAT_ROUTE_3_TRAINER_4                 EQU  301 ; byte 37 bit 5
+DEF EVENT_BEAT_ROUTE_3_TRAINER_0                 EQU  313 ; byte 39 bit 1
+DEF EVENT_BEAT_ROUTE_3_TRAINER_1                 EQU  314 ; byte 39 bit 2
+DEF EVENT_BEAT_ROUTE_3_TRAINER_2                 EQU  315 ; byte 39 bit 3
+DEF EVENT_BEAT_ROUTE_3_TRAINER_3                 EQU  316 ; byte 39 bit 4
+DEF EVENT_BEAT_ROUTE_3_TRAINER_4                 EQU  317 ; byte 39 bit 5
 
 ; -- Route5  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_5_TRAINER_0                 EQU  305 ; byte 38 bit 1
-DEF EVENT_BEAT_ROUTE_5_TRAINER_1                 EQU  306 ; byte 38 bit 2
-DEF EVENT_BEAT_ROUTE_5_TRAINER_2                 EQU  307 ; byte 38 bit 3
-DEF EVENT_BEAT_ROUTE_5_TRAINER_3                 EQU  308 ; byte 38 bit 4
-DEF EVENT_BEAT_ROUTE_5_TRAINER_4                 EQU  309 ; byte 38 bit 5
+DEF EVENT_BEAT_ROUTE_5_TRAINER_0                 EQU  321 ; byte 40 bit 1
+DEF EVENT_BEAT_ROUTE_5_TRAINER_1                 EQU  322 ; byte 40 bit 2
+DEF EVENT_BEAT_ROUTE_5_TRAINER_2                 EQU  323 ; byte 40 bit 3
+DEF EVENT_BEAT_ROUTE_5_TRAINER_3                 EQU  324 ; byte 40 bit 4
+DEF EVENT_BEAT_ROUTE_5_TRAINER_4                 EQU  325 ; byte 40 bit 5
 
 ; -- Route6  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_6_TRAINER_0                 EQU  313 ; byte 39 bit 1
-DEF EVENT_BEAT_ROUTE_6_TRAINER_1                 EQU  314 ; byte 39 bit 2
-DEF EVENT_BEAT_ROUTE_6_TRAINER_2                 EQU  315 ; byte 39 bit 3
-DEF EVENT_BEAT_ROUTE_6_TRAINER_3                 EQU  316 ; byte 39 bit 4
-DEF EVENT_BEAT_ROUTE_6_TRAINER_4                 EQU  317 ; byte 39 bit 5
+DEF EVENT_BEAT_ROUTE_6_TRAINER_0                 EQU  329 ; byte 41 bit 1
+DEF EVENT_BEAT_ROUTE_6_TRAINER_1                 EQU  330 ; byte 41 bit 2
+DEF EVENT_BEAT_ROUTE_6_TRAINER_2                 EQU  331 ; byte 41 bit 3
+DEF EVENT_BEAT_ROUTE_6_TRAINER_3                 EQU  332 ; byte 41 bit 4
+DEF EVENT_BEAT_ROUTE_6_TRAINER_4                 EQU  333 ; byte 41 bit 5
 
 ; -- Route9  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_ROUTE_9_TRAINER_0                 EQU  321 ; byte 40 bit 1
-DEF EVENT_BEAT_ROUTE_9_TRAINER_1                 EQU  322 ; byte 40 bit 2
-DEF EVENT_BEAT_ROUTE_9_TRAINER_2                 EQU  323 ; byte 40 bit 3
-DEF EVENT_BEAT_ROUTE_9_TRAINER_3                 EQU  324 ; byte 40 bit 4
-DEF EVENT_BEAT_ROUTE_9_TRAINER_4                 EQU  325 ; byte 40 bit 5
+DEF EVENT_BEAT_ROUTE_9_TRAINER_0                 EQU  337 ; byte 42 bit 1
+DEF EVENT_BEAT_ROUTE_9_TRAINER_1                 EQU  338 ; byte 42 bit 2
+DEF EVENT_BEAT_ROUTE_9_TRAINER_2                 EQU  339 ; byte 42 bit 3
+DEF EVENT_BEAT_ROUTE_9_TRAINER_3                 EQU  340 ; byte 42 bit 4
+DEF EVENT_BEAT_ROUTE_9_TRAINER_4                 EQU  341 ; byte 42 bit 5
 
 ; -- SSAnneB1FRooms  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_SS_ANNE_10_TRAINER_0              EQU  329 ; byte 41 bit 1
-DEF EVENT_BEAT_SS_ANNE_10_TRAINER_1              EQU  330 ; byte 41 bit 2
-DEF EVENT_BEAT_SS_ANNE_10_TRAINER_2              EQU  331 ; byte 41 bit 3
-DEF EVENT_BEAT_SS_ANNE_10_TRAINER_3              EQU  332 ; byte 41 bit 4
-DEF EVENT_BEAT_SS_ANNE_10_TRAINER_4              EQU  333 ; byte 41 bit 5
+DEF EVENT_BEAT_SS_ANNE_10_TRAINER_0              EQU  345 ; byte 43 bit 1
+DEF EVENT_BEAT_SS_ANNE_10_TRAINER_1              EQU  346 ; byte 43 bit 2
+DEF EVENT_BEAT_SS_ANNE_10_TRAINER_2              EQU  347 ; byte 43 bit 3
+DEF EVENT_BEAT_SS_ANNE_10_TRAINER_3              EQU  348 ; byte 43 bit 4
+DEF EVENT_BEAT_SS_ANNE_10_TRAINER_4              EQU  349 ; byte 43 bit 5
 
 ; -- SaffronGym  [def_trainers 2, 4 trainers]
-DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_0             EQU  338 ; byte 42 bit 2
-DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_1             EQU  339 ; byte 42 bit 3
-DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_2             EQU  340 ; byte 42 bit 4
-DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_3             EQU  341 ; byte 42 bit 5
+DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_0             EQU  354 ; byte 44 bit 2
+DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_1             EQU  355 ; byte 44 bit 3
+DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_2             EQU  356 ; byte 44 bit 4
+DEF EVENT_BEAT_SAFFRON_GYM_TRAINER_3             EQU  357 ; byte 44 bit 5
 
 ; -- SeafoamIslands1F  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0      EQU  345 ; byte 43 bit 1
-DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1      EQU  346 ; byte 43 bit 2
-DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2      EQU  347 ; byte 43 bit 3
-DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3      EQU  348 ; byte 43 bit 4
-DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4      EQU  349 ; byte 43 bit 5
+DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0      EQU  361 ; byte 45 bit 1
+DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1      EQU  362 ; byte 45 bit 2
+DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2      EQU  363 ; byte 45 bit 3
+DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3      EQU  364 ; byte 45 bit 4
+DEF EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4      EQU  365 ; byte 45 bit 5
 
 ; -- UndergroundPathWestEast  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 EQU  353 ; byte 44 bit 1
-DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1 EQU  354 ; byte 44 bit 2
-DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2 EQU  355 ; byte 44 bit 3
-DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3 EQU  356 ; byte 44 bit 4
-DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4 EQU  357 ; byte 44 bit 5
+DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 EQU  369 ; byte 46 bit 1
+DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1 EQU  370 ; byte 46 bit 2
+DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2 EQU  371 ; byte 46 bit 3
+DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3 EQU  372 ; byte 46 bit 4
+DEF EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4 EQU  373 ; byte 46 bit 5
 
 ; -- VermilionGym  [def_trainers 2, 4 trainers]
-DEF EVENT_BEAT_VERMILION_GYM_TRAINER_0           EQU  362 ; byte 45 bit 2
-DEF EVENT_BEAT_VERMILION_GYM_TRAINER_1           EQU  363 ; byte 45 bit 3
-DEF EVENT_BEAT_VERMILION_GYM_TRAINER_2           EQU  364 ; byte 45 bit 4
-DEF EVENT_BEAT_VERMILION_GYM_TRAINER_3           EQU  365 ; byte 45 bit 5
+DEF EVENT_BEAT_VERMILION_GYM_TRAINER_0           EQU  378 ; byte 47 bit 2
+DEF EVENT_BEAT_VERMILION_GYM_TRAINER_1           EQU  379 ; byte 47 bit 3
+DEF EVENT_BEAT_VERMILION_GYM_TRAINER_2           EQU  380 ; byte 47 bit 4
+DEF EVENT_BEAT_VERMILION_GYM_TRAINER_3           EQU  381 ; byte 47 bit 5
 
 ; -- VictoryRoad1F  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0          EQU  369 ; byte 46 bit 1
-DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1          EQU  370 ; byte 46 bit 2
-DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2          EQU  371 ; byte 46 bit 3
-DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3          EQU  372 ; byte 46 bit 4
-DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_4          EQU  373 ; byte 46 bit 5
+DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0          EQU  385 ; byte 48 bit 1
+DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1          EQU  386 ; byte 48 bit 2
+DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2          EQU  387 ; byte 48 bit 3
+DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3          EQU  388 ; byte 48 bit 4
+DEF EVENT_BEAT_VICTORY_ROAD_1_TRAINER_4          EQU  389 ; byte 48 bit 5
 
 ; -- VictoryRoad2F  [def_trainers 1, 6 trainers]
-DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_0          EQU  377 ; byte 47 bit 1
-DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_1          EQU  378 ; byte 47 bit 2
-DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_2          EQU  379 ; byte 47 bit 3
-DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_3          EQU  380 ; byte 47 bit 4
-DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_4          EQU  381 ; byte 47 bit 5
-DEF EVENT_BEAT_MOLTRES                           EQU  382 ; byte 47 bit 6
+DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_0          EQU  393 ; byte 49 bit 1
+DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_1          EQU  394 ; byte 49 bit 2
+DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_2          EQU  395 ; byte 49 bit 3
+DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_3          EQU  396 ; byte 49 bit 4
+DEF EVENT_BEAT_VICTORY_ROAD_2_TRAINER_4          EQU  397 ; byte 49 bit 5
+DEF EVENT_BEAT_MOLTRES                           EQU  398 ; byte 49 bit 6
 
 ; -- VictoryRoad3F  [def_trainers 1, 4 trainers]
-DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_0          EQU  385 ; byte 48 bit 1
-DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_1          EQU  386 ; byte 48 bit 2
-DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_2          EQU  387 ; byte 48 bit 3
-DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_3          EQU  388 ; byte 48 bit 4
+DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_0          EQU  401 ; byte 50 bit 1
+DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_1          EQU  402 ; byte 50 bit 2
+DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_2          EQU  403 ; byte 50 bit 3
+DEF EVENT_BEAT_VICTORY_ROAD_3_TRAINER_3          EQU  404 ; byte 50 bit 4
 
 ; -- VioletGym  [def_trainers 2, 4 trainers]
-DEF EVENT_BEAT_VIOLET_GYM_TRAINER_0              EQU  394 ; byte 49 bit 2
-DEF EVENT_BEAT_VIOLET_GYM_TRAINER_1              EQU  395 ; byte 49 bit 3
-DEF EVENT_BEAT_VIOLET_GYM_TRAINER_2              EQU  396 ; byte 49 bit 4
-DEF EVENT_BEAT_VIOLET_GYM_TRAINER_3              EQU  397 ; byte 49 bit 5
+DEF EVENT_BEAT_VIOLET_GYM_TRAINER_0              EQU  410 ; byte 51 bit 2
+DEF EVENT_BEAT_VIOLET_GYM_TRAINER_1              EQU  411 ; byte 51 bit 3
+DEF EVENT_BEAT_VIOLET_GYM_TRAINER_2              EQU  412 ; byte 51 bit 4
+DEF EVENT_BEAT_VIOLET_GYM_TRAINER_3              EQU  413 ; byte 51 bit 5
 
 ; -- ViridianForest  [def_trainers 1, 5 trainers]
-DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0         EQU  401 ; byte 50 bit 1
-DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_1         EQU  402 ; byte 50 bit 2
-DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_2         EQU  403 ; byte 50 bit 3
-DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3         EQU  404 ; byte 50 bit 4
-DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_4         EQU  405 ; byte 50 bit 5
+DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0         EQU  417 ; byte 52 bit 1
+DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_1         EQU  418 ; byte 52 bit 2
+DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_2         EQU  419 ; byte 52 bit 3
+DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3         EQU  420 ; byte 52 bit 4
+DEF EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_4         EQU  421 ; byte 52 bit 5
 
 ; -- ViridianGym  [def_trainers 2, 4 trainers]
-DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0            EQU  410 ; byte 51 bit 2
-DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_1            EQU  411 ; byte 51 bit 3
-DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_2            EQU  412 ; byte 51 bit 4
-DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_3            EQU  413 ; byte 51 bit 5
+DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0            EQU  426 ; byte 53 bit 2
+DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_1            EQU  427 ; byte 53 bit 3
+DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_2            EQU  428 ; byte 53 bit 4
+DEF EVENT_BEAT_VIRIDIAN_GYM_TRAINER_3            EQU  429 ; byte 53 bit 5
 
-DEF RUN_EVENTS_END   EQU 415
+DEF RUN_EVENTS_END   EQU 431
 
 ; ==========================================================================
 ; ZONE 2 - GRAVEYARD (unreachable maps; aliases, deliberately overlapping)
 ; ==========================================================================
-DEF EVENT_GRAVEYARD_BASE EQU 416
+DEF EVENT_GRAVEYARD_BASE EQU 432
 
 ; -- BikeShop (unreachable)
-DEF EVENT_GOT_BICYCLE                            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_BICYCLE                            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- CeladonCity (unreachable)
-DEF EVENT_1B8                                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_1BF                                    EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_67F                                    EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_GOT_TM41                               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_1B8                                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_1BF                                    EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_67F                                    EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_GOT_TM41                               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- CeladonDiner (unreachable)
-DEF EVENT_GOT_COIN_CASE                          EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_COIN_CASE                          EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- CeladonMart3F (unreachable)
-DEF EVENT_GOT_TM18                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_TM18                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- CeladonMartRoof (unreachable)
-DEF EVENT_GOT_TM13                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_GOT_TM48                               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_GOT_TM49                               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_GOT_TM13                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_GOT_TM48                               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_GOT_TM49                               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- CeruleanCaveB1F (unreachable)
-DEF EVENT_BEAT_MEWTWO                            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_BEAT_MEWTWO                            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- CeruleanCity (unreachable)
-DEF EVENT_BEAT_CERULEAN_RIVAL                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_CERULEAN_ROCKET_THIEF             EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_BEAT_CERULEAN_RIVAL                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_CERULEAN_ROCKET_THIEF             EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- CinnabarLabMetronomeRoom (unreachable)
-DEF EVENT_GOT_TM35                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_TM35                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- FightingDojo (unreachable)
-DEF EVENT_DEFEATED_FIGHTING_DOJO                 EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_KARATE_MASTER                     EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_0           EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_1           EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_2           EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_3           EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_GOT_HITMONLEE                          EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_GOT_HITMONCHAN                         EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
+DEF EVENT_DEFEATED_FIGHTING_DOJO                 EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_KARATE_MASTER                     EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_0           EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_1           EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_2           EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_FIGHTING_DOJO_TRAINER_3           EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_GOT_HITMONLEE                          EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_GOT_HITMONCHAN                         EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
 
 ; -- FuchsiaCity (unreachable)
-DEF EVENT_GOT_DOME_FOSSIL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_GOT_HELIX_FOSSIL                       EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_GOT_DOME_FOSSIL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_GOT_HELIX_FOSSIL                       EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- MrPsychicsHouse (unreachable)
-DEF EVENT_GOT_TM29                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_TM29                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- MtMoonB2F (unreachable)
-DEF EVENT_BEAT_MT_MOON_3_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_MT_MOON_3_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_MT_MOON_3_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_MT_MOON_3_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_MT_MOON_EXIT_SUPER_NERD           EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_BEAT_MT_MOON_3_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_MT_MOON_3_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_MT_MOON_3_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_MT_MOON_3_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_MT_MOON_EXIT_SUPER_NERD           EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- MtMoonPokecenter (unreachable)
-DEF EVENT_BOUGHT_MAGIKARP                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_BOUGHT_MAGIKARP                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Museum1F (unreachable)
-DEF EVENT_BOUGHT_MUSEUM_TICKET                   EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_GOT_OLD_AMBER                          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_BOUGHT_MUSEUM_TICKET                   EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_GOT_OLD_AMBER                          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- PokemonMansion2F (unreachable)
-DEF EVENT_BEAT_MANSION_2_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_BEAT_MANSION_2_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- PokemonMansion3F (unreachable)
-DEF EVENT_BEAT_MANSION_3_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_MANSION_3_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_BEAT_MANSION_3_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_MANSION_3_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- PokemonMansionB1F (unreachable)
-DEF EVENT_BEAT_MANSION_4_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_MANSION_4_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_BEAT_MANSION_4_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_MANSION_4_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- PokemonTower3F (unreachable)
-DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_POKEMONTOWER_3_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- PokemonTower4F (unreachable)
-DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_POKEMONTOWER_4_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- PokemonTower5F (unreachable)
-DEF EVENT_IN_PURIFIED_ZONE                       EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_3          EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
+DEF EVENT_IN_PURIFIED_ZONE                       EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_POKEMONTOWER_5_TRAINER_3          EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
 
 ; -- PokemonTower6F (unreachable)
-DEF EVENT_BEAT_GHOST_MAROWAK                     EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_BEAT_GHOST_MAROWAK                     EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_0          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_1          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_POKEMONTOWER_6_TRAINER_2          EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- RockTunnelB1F (unreachable)
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_0           EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_1           EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_2           EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_3           EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_4           EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_5           EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_6           EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_7           EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_0           EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_1           EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_2           EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_3           EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_4           EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_5           EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_6           EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_7           EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
 
 ; -- RocketHideoutB2F (unreachable)
-DEF EVENT_BEAT_ROCKET_HIDEOUT_2_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_BEAT_ROCKET_HIDEOUT_2_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- RocketHideoutB3F (unreachable)
-DEF EVENT_BEAT_ROCKET_HIDEOUT_3_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROCKET_HIDEOUT_3_TRAINER_1        EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_BEAT_ROCKET_HIDEOUT_3_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROCKET_HIDEOUT_3_TRAINER_1        EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- RocketHideoutB4F (unreachable)
-DEF EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI           EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_ROCKET_DROPPED_LIFT_KEY                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_1        EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_2        EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_ROCKET_HIDEOUT_4_DOOR_UNLOCKED         EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
+DEF EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI           EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_ROCKET_DROPPED_LIFT_KEY                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_0        EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_1        EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROCKET_HIDEOUT_4_TRAINER_2        EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_ROCKET_HIDEOUT_4_DOOR_UNLOCKED         EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
 
 ; -- Route10 (unreachable)
-DEF EVENT_BEAT_ROUTE_10_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_10_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_10_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_10_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_10_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_10_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_BEAT_ROUTE_10_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_10_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_10_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_10_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_10_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_10_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- Route11 (unreachable)
-DEF EVENT_BEAT_ROUTE_11_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_11_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_11_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_11_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_11_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_11_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_11_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_11_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_11_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
-DEF EVENT_BEAT_ROUTE_11_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 53 bit 2
+DEF EVENT_BEAT_ROUTE_11_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_11_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_11_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_11_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_11_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_11_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_11_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_11_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_11_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
+DEF EVENT_BEAT_ROUTE_11_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 55 bit 2
 
 ; -- Route11Gate2F (unreachable)
-DEF EVENT_GOT_ITEMFINDER                         EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_ITEMFINDER                         EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Route12Gate2F (unreachable)
-DEF EVENT_GOT_TM39                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_TM39                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Route14 (unreachable)
-DEF EVENT_BEAT_ROUTE_14_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_14_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_14_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_14_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_14_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_14_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_14_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_14_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_14_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
-DEF EVENT_BEAT_ROUTE_14_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 53 bit 2
+DEF EVENT_BEAT_ROUTE_14_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_14_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_14_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_14_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_14_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_14_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_14_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_14_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_14_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
+DEF EVENT_BEAT_ROUTE_14_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 55 bit 2
 
 ; -- Route15Gate2F (unreachable)
-DEF EVENT_GOT_EXP_ALL                            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_EXP_ALL                            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Route16 (unreachable)
-DEF EVENT_BEAT_ROUTE_16_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_16_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_16_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_16_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_16_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_16_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_BEAT_ROUTE_16_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_16_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_16_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_16_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_16_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_16_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- Route16FlyHouse (unreachable)
-DEF EVENT_GOT_HM02                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_HM02                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Route18 (unreachable)
-DEF EVENT_BEAT_ROUTE_18_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_18_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_18_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_BEAT_ROUTE_18_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_18_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_18_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- Route19 (unreachable)
-DEF EVENT_BEAT_ROUTE_19_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_19_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_19_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_19_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_19_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_19_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_19_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_19_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_19_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
-DEF EVENT_BEAT_ROUTE_19_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 53 bit 2
+DEF EVENT_BEAT_ROUTE_19_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_19_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_19_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_19_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_19_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_19_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_19_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_19_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_19_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
+DEF EVENT_BEAT_ROUTE_19_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 55 bit 2
 
 ; -- Route20 (unreachable)
-DEF EVENT_IN_SEAFOAM_ISLANDS                     EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_ROUTE_20_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_20_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_20_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_20_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_20_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_20_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_20_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_20_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_20_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
-DEF EVENT_BEAT_ROUTE_20_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 53 bit 2
-DEF EVENT_SEAFOAM3_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 11  ; byte 53 bit 3
-DEF EVENT_SEAFOAM3_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 12  ; byte 53 bit 4
-DEF EVENT_SEAFOAM4_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 13  ; byte 53 bit 5
-DEF EVENT_SEAFOAM4_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 14  ; byte 53 bit 6
+DEF EVENT_IN_SEAFOAM_ISLANDS                     EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_ROUTE_20_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_20_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_20_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_20_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_20_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_20_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_20_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_20_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_20_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
+DEF EVENT_BEAT_ROUTE_20_TRAINER_9                EQU EVENT_GRAVEYARD_BASE + 10  ; byte 55 bit 2
+DEF EVENT_SEAFOAM3_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 11  ; byte 55 bit 3
+DEF EVENT_SEAFOAM3_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 12  ; byte 55 bit 4
+DEF EVENT_SEAFOAM4_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 13  ; byte 55 bit 5
+DEF EVENT_SEAFOAM4_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 14  ; byte 55 bit 6
 
 ; -- Route21 (unreachable)
-DEF EVENT_BEAT_ROUTE_21_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_21_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_21_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_21_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_21_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_21_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_21_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_21_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_21_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
+DEF EVENT_BEAT_ROUTE_21_TRAINER_0                EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_21_TRAINER_1                EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_21_TRAINER_2                EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_21_TRAINER_3                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_21_TRAINER_4                EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_21_TRAINER_5                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_21_TRAINER_6                EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_21_TRAINER_7                EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_21_TRAINER_8                EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
 
 ; -- Route22 (unreachable)
-DEF EVENT_1ST_ROUTE22_RIVAL_BATTLE               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_ROUTE22_RIVAL_1ST_BATTLE          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE22_RIVAL_2ND_BATTLE          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_1ST_ROUTE22_RIVAL_BATTLE               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_ROUTE22_RIVAL_1ST_BATTLE          EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE22_RIVAL_2ND_BATTLE          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- Route23 (unreachable)
-DEF EVENT_PASSED_CASCADEBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_PASSED_THUNDERBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_PASSED_RAINBOWBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_PASSED_SOULBADGE_CHECK                 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_PASSED_MARSHBADGE_CHECK                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_PASSED_VOLCANOBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_PASSED_EARTHBADGE_CHECK                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_PASSED_CASCADEBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_PASSED_THUNDERBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_PASSED_RAINBOWBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_PASSED_SOULBADGE_CHECK                 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_PASSED_MARSHBADGE_CHECK                EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_PASSED_VOLCANOBADGE_CHECK              EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_PASSED_EARTHBADGE_CHECK                EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- Route2Gate (unreachable)
-DEF EVENT_GOT_HM05                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_HM05                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- Route4 (unreachable)
-DEF EVENT_BEAT_ROUTE_4_TRAINER_0                 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_BEAT_ROUTE_4_TRAINER_0                 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- Route8 (unreachable)
-DEF EVENT_BEAT_ROUTE_8_TRAINER_0                 EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_ROUTE_8_TRAINER_1                 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_ROUTE_8_TRAINER_2                 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_ROUTE_8_TRAINER_3                 EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_ROUTE_8_TRAINER_4                 EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_ROUTE_8_TRAINER_5                 EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_ROUTE_8_TRAINER_6                 EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_ROUTE_8_TRAINER_7                 EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
-DEF EVENT_BEAT_ROUTE_8_TRAINER_8                 EQU EVENT_GRAVEYARD_BASE + 9   ; byte 53 bit 1
+DEF EVENT_BEAT_ROUTE_8_TRAINER_0                 EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_ROUTE_8_TRAINER_1                 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_ROUTE_8_TRAINER_2                 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_ROUTE_8_TRAINER_3                 EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_ROUTE_8_TRAINER_4                 EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_ROUTE_8_TRAINER_5                 EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_ROUTE_8_TRAINER_6                 EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_ROUTE_8_TRAINER_7                 EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
+DEF EVENT_BEAT_ROUTE_8_TRAINER_8                 EQU EVENT_GRAVEYARD_BASE + 9   ; byte 55 bit 1
 
 ; -- SSAnne1FRooms (unreachable)
-DEF EVENT_BEAT_SS_ANNE_8_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SS_ANNE_8_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SS_ANNE_8_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SS_ANNE_8_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
+DEF EVENT_BEAT_SS_ANNE_8_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SS_ANNE_8_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SS_ANNE_8_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SS_ANNE_8_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
 
 ; -- SSAnne2FRooms (unreachable)
-DEF EVENT_BEAT_SS_ANNE_9_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SS_ANNE_9_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SS_ANNE_9_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SS_ANNE_9_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
+DEF EVENT_BEAT_SS_ANNE_9_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SS_ANNE_9_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SS_ANNE_9_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SS_ANNE_9_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
 
 ; -- SSAnneBow (unreachable)
-DEF EVENT_AUTOWALKED_INTO_SS_ANNE_BOW            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_SS_ANNE_5_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SS_ANNE_5_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SS_ANNE_5_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SS_ANNE_5_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_SS_ANNE_5_TRAINER_4               EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
+DEF EVENT_AUTOWALKED_INTO_SS_ANNE_BOW            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_SS_ANNE_5_TRAINER_0               EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SS_ANNE_5_TRAINER_1               EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SS_ANNE_5_TRAINER_2               EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SS_ANNE_5_TRAINER_3               EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_SS_ANNE_5_TRAINER_4               EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
 
 ; -- SafariZoneSecretHouse (unreachable)
-DEF EVENT_GOT_HM03                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
+DEF EVENT_GOT_HM03                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
 
 ; -- SeafoamIslandsB1F (unreachable)
-DEF EVENT_SEAFOAM2_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SEAFOAM2_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_SEAFOAM2_BOULDER1_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SEAFOAM2_BOULDER2_DOWN_HOLE            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- SeafoamIslandsB4F (unreachable)
-DEF EVENT_BEAT_ARTICUNO                          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_BEAT_ARTICUNO                          EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- SilphCo10F (unreachable)
-DEF EVENT_SILPH_CO_10_UNLOCKED_DOOR              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_SILPH_CO_10F_TRAINER_0            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_10F_TRAINER_1            EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
+DEF EVENT_SILPH_CO_10_UNLOCKED_DOOR              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_SILPH_CO_10F_TRAINER_0            EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_10F_TRAINER_1            EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
 
 ; -- SilphCo11F (unreachable)
-DEF EVENT_GOT_MASTER_BALL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_11_UNLOCKED_DOOR              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_11F_TRAINER_0            EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_SILPH_CO_11F_TRAINER_1            EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
+DEF EVENT_GOT_MASTER_BALL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_11_UNLOCKED_DOOR              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_11F_TRAINER_0            EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_SILPH_CO_11F_TRAINER_1            EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
 
 ; -- SilphCo2F (unreachable)
-DEF EVENT_GOT_TM36                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_2_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_SILPH_CO_2_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_GOT_TM36                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_2_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_SILPH_CO_2F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_SILPH_CO_2_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- SilphCo3F (unreachable)
-DEF EVENT_SILPH_CO_3_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_3_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_3F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_3F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_SILPH_CO_3_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_3_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_3F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_3F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- SilphCo4F (unreachable)
-DEF EVENT_SILPH_CO_4_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_4_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
+DEF EVENT_SILPH_CO_4_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_4_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_4F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
 
 ; -- SilphCo5F (unreachable)
-DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_SILPH_CO_5F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_SILPH_CO_5_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- SilphCo6F (unreachable)
-DEF EVENT_SILPH_CO_6_UNLOCKED_DOOR               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
+DEF EVENT_SILPH_CO_6_UNLOCKED_DOOR               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_SILPH_CO_6F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
 
 ; -- SilphCo7F (unreachable)
-DEF EVENT_BEAT_SILPH_CO_RIVAL                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
-DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 7   ; byte 52 bit 7
-DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 8   ; byte 53 bit 0
+DEF EVENT_BEAT_SILPH_CO_RIVAL                    EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_SILPH_CO_7_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
+DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 7   ; byte 54 bit 7
+DEF EVENT_BEAT_SILPH_CO_7F_TRAINER_3             EQU EVENT_GRAVEYARD_BASE + 8   ; byte 55 bit 0
 
 ; -- SilphCo8F (unreachable)
-DEF EVENT_SILPH_CO_8_UNLOCKED_DOOR               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
+DEF EVENT_SILPH_CO_8_UNLOCKED_DOOR               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_8F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
 
 ; -- SilphCo9F (unreachable)
-DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
-DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR4              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 52 bit 6
+DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR1              EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR2              EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_0             EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_1             EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_SILPH_CO_9F_TRAINER_2             EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR3              EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
+DEF EVENT_SILPH_CO_9_UNLOCKED_DOOR4              EQU EVENT_GRAVEYARD_BASE + 6   ; byte 54 bit 6
 
 ; -- UndergroundPathRoute5 (unreachable)
-DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_0 EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
-DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_1 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_2 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
-DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_3 EQU EVENT_GRAVEYARD_BASE + 4   ; byte 52 bit 4
-DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_4 EQU EVENT_GRAVEYARD_BASE + 5   ; byte 52 bit 5
+DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_0 EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
+DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_1 EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_2 EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
+DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_3 EQU EVENT_GRAVEYARD_BASE + 4   ; byte 54 bit 4
+DEF EVENT_BEAT_UNDERGROUND_PATH_ROUTE5_TRAINER_4 EQU EVENT_GRAVEYARD_BASE + 5   ; byte 54 bit 5
 
 ; -- VermilionCity (unreachable)
-DEF EVENT_WALKED_PAST_GUARD_AFTER_SS_ANNE_LEFT   EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_SS_ANNE_LEFT                           EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_WALKED_PAST_GUARD_AFTER_SS_ANNE_LEFT   EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_SS_ANNE_LEFT                           EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- VermilionDock (unreachable)
-DEF EVENT_GOT_HM01                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_STARTED_WALKING_OUT_OF_DOCK            EQU EVENT_GRAVEYARD_BASE + 2   ; byte 52 bit 2
-DEF EVENT_WALKED_OUT_OF_DOCK                     EQU EVENT_GRAVEYARD_BASE + 3   ; byte 52 bit 3
+DEF EVENT_GOT_HM01                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_STARTED_WALKING_OUT_OF_DOCK            EQU EVENT_GRAVEYARD_BASE + 2   ; byte 54 bit 2
+DEF EVENT_WALKED_OUT_OF_DOCK                     EQU EVENT_GRAVEYARD_BASE + 3   ; byte 54 bit 3
 
 ; -- ViridianCity (unreachable)
-DEF EVENT_GOT_TM42                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_VIRIDIAN_GYM_OPEN                      EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_GOT_TM42                               EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_VIRIDIAN_GYM_OPEN                      EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; -- ViridianMart (unreachable)
-DEF EVENT_GOT_OAKS_PARCEL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 52 bit 0
-DEF EVENT_OAK_GOT_PARCEL                         EQU EVENT_GRAVEYARD_BASE + 1   ; byte 52 bit 1
+DEF EVENT_GOT_OAKS_PARCEL                        EQU EVENT_GRAVEYARD_BASE + 0   ; byte 54 bit 0
+DEF EVENT_OAK_GOT_PARCEL                         EQU EVENT_GRAVEYARD_BASE + 1   ; byte 54 bit 1
 
 ; ==========================================================================
 ; Build-time invariants. Each encodes a consumer that would otherwise
@@ -1170,6 +1176,7 @@ ASSERT EVENT_BEAT_POKEMONTOWER_5_TRAINER_3 - EVENT_BEAT_POKEMONTOWER_5_TRAINER_0
 ASSERT EVENT_BEAT_POKEMONTOWER_6_TRAINER_2 - EVENT_BEAT_POKEMONTOWER_6_TRAINER_0 == 2 ; PokemonTower6F trainer block
 ASSERT EVENT_BEAT_POKEMONTOWER_7_TRAINER_4 - EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 == 4 ; PokemonTower7F trainer block
 ASSERT EVENT_BEAT_POWER_PLANT_TRAINER_4 - EVENT_BEAT_POWER_PLANT_TRAINER_0 == 4 ; PowerPlant trainer block
+ASSERT EVENT_BEAT_FACILITY_FAKE_BALL_4 - EVENT_BEAT_FACILITY_FAKE_BALL_1 == 3 ; ProceduralFacility trainer block
 ASSERT EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4 - EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0 == 4 ; RockTunnel1F trainer block
 ASSERT EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_7 - EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_0 == 7 ; RockTunnelB1F trainer block
 ASSERT EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4 - EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0 == 4 ; RocketHideoutB1F trainer block

@@ -143,6 +143,20 @@ IsObjectHidden:
 	cp 5
 	jr z, .checkRewardBit
 .checkMaybeRoguePB
+	; Facility owns slots 6-9 as four independent fake item balls. Do this
+	; before the generic rogue-stage slot mapping: Facility deliberately is not
+	; in RogueStageMapTable, and must not inherit its reward/trade meanings.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_FACILITY
+	jr nz, .checkMaybeGenericRoguePB
+	ld a, b
+	sub 6
+	cp 4
+	jr nc, .normalCheck
+	add a, TOGGLE_FACILITY_FAKE_BALL_1
+	ld c, a
+	jr .checkRewardBit
+.checkMaybeGenericRoguePB
 	push bc
 	farcall IsRogueStageMap
 	pop bc
