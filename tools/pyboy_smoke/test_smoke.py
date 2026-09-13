@@ -943,9 +943,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x0A, 0x0B, 0x18, 0x1A, 0x20, 0x31, 0x34, 0x36,
             0x37, 0x38, 0x45, 0x77,
         }
-        item_anchor_blocks = {
-            0x0E, 0x2C, 0x34, 0x36, 0x37, 0x3B, 0x3F, 0x47,
-        }
+        item_anchor_blocks = {0x0E, 0x2C, 0x3B, 0x3F, 0x47}
+        fake_anchor_blocks = item_anchor_blocks | {0x34, 0x36, 0x37}
         allowed_blocks = {
             0x04,
             0x05,
@@ -968,8 +967,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x5A,
             0x5C,
             0x5D,
+            0x61,
             0x63,
             0x67,
+            0x68,
+            0x69,
         } | decor_blocks | large_decor_blocks
         signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
         decor_types_seen: set[int] = set()
@@ -1028,6 +1030,13 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertIn(0x2E, playable)
                 self.assertTrue(set(playable).intersection({0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}))
                 self.assertTrue(set(playable).intersection({0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}))
+                for row in range(19):
+                    for col in range(20):
+                        self.assertNotEqual(
+                            (playable[row * 20 + col], playable[(row + 1) * 20 + col]),
+                            (0x4A, 0x42),
+                            f"reversed right corners at ({col}, {row})",
+                        )
                 large_decor_seen.update(
                     set(playable) & large_decor_marker_blocks
                 )
@@ -1100,6 +1109,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     for room_id in range(2, 12)
                 ]
                 self.assertIn(exit_i, range(1, 19))
+                exit_block = (
+                    (exit_i, 0) if exit_edge == 0
+                    else (0, exit_i) if exit_edge == 1
+                    else (19, exit_i)
+                )
+                self.assertGreaterEqual(
+                    abs(exit_block[0] - 9) + abs(exit_block[1] - 19), 12
+                )
                 self.assertEqual(playable[17 * 20 + 9], 0x0E)
                 self.assertEqual(playable[19 * 20 + 9], 0x2C)
                 if exit_edge == 0:
@@ -1137,12 +1154,13 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 for tile_y, tile_x in zip(fake_xy[::2], fake_xy[1::2]):
                     self.assertGreaterEqual(tile_y, 4)
                     self.assertGreaterEqual(tile_x, 4)
-                    self.assertEqual((tile_y - 4) % 2, 0)
                     self.assertEqual((tile_x - 4) % 2, 0)
                     block_y = (tile_y - 4) // 2
                     block_x = (tile_x - 4) // 2
+                    if (tile_y - 4) % 2:
+                        self.assertEqual(playable[block_y * 20 + block_x], 0x37)
                     self.assertIn(
-                        playable[block_y * 20 + block_x], item_anchor_blocks
+                        playable[block_y * 20 + block_x], fake_anchor_blocks
                     )
                     fake_blocks.append((block_x, block_y))
                 self.assertEqual(len(set(fake_blocks)), 4)
@@ -1217,7 +1235,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             ))
 
                 generated_rings: list[tuple[int, set[tuple[int, int]]]] = []
-                structural_blocks = {0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}
+                structural_blocks = {
+                    0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A,
+                    0x5C, 0x5D, 0x61, 0x68, 0x69,
+                }
                 expected_corners = (
                     (-1, -1, 0x40), (0, -1, 0x42),
                     (-1, 0, 0x48), (0, 0, 0x4A),
@@ -1256,7 +1277,29 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 )
                             )
                         )
-                        if actual != expected and not cleaned_isolated_corner:
+                        decorated_expected = (
+                            (expected == 0x40 and actual == 0x68)
+                            or (expected == 0x42 and actual == 0x69)
+                            or (
+                                expected == 0x4A
+                                and actual == 0x46
+                                and corner_y + 1 < 20
+                                and playable[(corner_y + 1) * 20 + corner_x]
+                                in (0x46, 0x5D)
+                            )
+                            or (
+                                expected == 0x42
+                                and actual in (0x46, 0x5D)
+                                and corner_y > 0
+                                and playable[(corner_y - 1) * 20 + corner_x]
+                                in (0x46, 0x5D)
+                            )
+                        )
+                        if (
+                            actual != expected
+                            and not decorated_expected
+                            and not cleaned_isolated_corner
+                        ):
                             corner_defects.append((seed, room_id, expected, actual))
                     for ring_x, ring_y in ring:
                         actual = playable[ring_y * 20 + ring_x]
@@ -1361,9 +1404,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             if (anchor_x, anchor_y) in real_item_blocks or (anchor_x, anchor_y) == (9, 17):
                                 continue
                             block_id = playable[anchor_y * 20 + anchor_x]
-                            if block_id in (
-                                0x0E, 0x2C, 0x34, 0x36, 0x37, 0x3B, 0x3F,
-                            ):
+                            if block_id in (0x0E, 0x2C, 0x34, 0x37, 0x3B, 0x3F):
                                 eligible_fake_rooms.add(candidate_id)
                             elif block_id == 0x47 and any(
                                 0 <= near_x < 20 and 0 <= near_y < 20
@@ -1447,15 +1488,22 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertEqual((warps[8], warps[9]), exit_cells[1][::-1])
                 if exit_edge == 0:
                     boss_xy = (2 * exit_i + 4, 6)
+                    boss_facing = 0x00
                 elif exit_edge == 1:
                     boss_xy = (6, 2 * exit_i + 4)
+                    boss_facing = 0x0C
                 else:
                     boss_xy = (40, 2 * exit_i + 4)
+                    boss_facing = 0x08
                 self.assertEqual(
                     self.harness.read8("wSprite01StateData2MapX"), boss_xy[0]
                 )
                 self.assertEqual(
                     self.harness.read8("wSprite01StateData2MapY"), boss_xy[1]
+                )
+                self.assertEqual(
+                    self.harness.read8("wSprite01StateData1FacingDirection"),
+                    boss_facing,
                 )
                 item_ids = tuple(
                     self.harness.read_sram_bytes("sProcFacilityBallItems", 4)

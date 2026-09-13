@@ -1908,18 +1908,13 @@ PFacItemAnchorAtCurrentValid:
     ret z
     cp $2C
     ret z
-    cp $34
-    ret z
-    cp $36
-    ret z
-    cp $37
-    ret z
     cp $3B
     ret z
     cp $3F
     ret z
     cp $47
     ret nz
+PFacSolidAnchorHasNeighbor:
     ld a, [wBuffer + wPFacCurX]
     ld [wBuffer + wPFacItemCheckX], a
     ld a, [wBuffer + wPFacCurY]
@@ -1928,24 +1923,31 @@ PFacItemAnchorAtCurrentValid:
     ld hl, wBuffer + wPFacCurX
     dec [hl]
     call PFacItemAnchorCheckNeighbor
-    ret z
+    jr z, .found
     ld a, [wBuffer + wPFacItemCheckX]
     inc a
     ld [wBuffer + wPFacCurX], a
     call PFacItemAnchorCheckNeighbor
-    ret z
+    jr z, .found
     ld a, [wBuffer + wPFacItemCheckX]
     ld [wBuffer + wPFacCurX], a
     ld hl, wBuffer + wPFacCurY
     dec [hl]
     call PFacItemAnchorCheckNeighbor
-    ret z
+    jr z, .found
     ld a, [wBuffer + wPFacItemCheckY]
     inc a
     ld [wBuffer + wPFacCurY], a
     call PFacItemAnchorCheckNeighbor
-    ret z
+    jr z, .found
     or 1
+    ret
+.found
+    ld a, [wBuffer + wPFacItemCheckX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacItemCheckY]
+    ld [wBuffer + wPFacCurY], a
+    xor a
     ret
 
 ; Place four fake item-ball encounters after both decor passes. Search every
@@ -1997,7 +1999,7 @@ PFacPlaceFakeBalls:
     ld a, [hl]
     ld [wBuffer + wPFacRmH], a
 .scan
-    call PFacItemAnchorAtCurrentValid
+    call PFacFakeAnchorAtCurrentValid
     jr nz, .advance
     call PFacFakeAnchorUnused
     jp z, .save
@@ -2052,7 +2054,7 @@ PFacPlaceFakeBalls:
     ld a, 1
     ld [wBuffer + wPFacCurX], a
 .globalColumn
-    call PFacItemAnchorAtCurrentValid
+    call PFacFakeAnchorAtCurrentValid
     jr nz, .globalAdvance
     call PFacFakeAnchorUnused
     jr z, .save
@@ -2093,6 +2095,15 @@ PFacPlaceFakeBalls:
     ld a, [wBuffer + wPFacCurY]
     add a, a
     add a, 4
+    ld b, a
+    push hl
+    call PFacReadBlock
+    cp $37
+    pop hl
+    ld a, b
+    jr nz, .fakeYReady
+    inc a                         ; $37 is walkable on its bottom half
+.fakeYReady
     ld [hli], a
     ld a, [wBuffer + wPFacCurX]
     add a, a
@@ -2131,6 +2142,21 @@ PFacPlaceFakeBalls:
     ld [sProcFacilityGenScratch + 80], a
     ret
 
+; Fake encounters may additionally occupy the explicitly approved authored
+; blocks. $34 uses its walkable upper half; $37 is shifted to its walkable
+; lower half when saved; solid $36 requires a walkable interaction neighbor.
+PFacFakeAnchorAtCurrentValid:
+    call PFacItemAnchorAtCurrentValid
+    ret z
+    call PFacReadBlock
+    cp $34
+    ret z
+    cp $37
+    ret z
+    cp $36
+    ret nz
+    jp PFacSolidAnchorHasNeighbor
+
 ; Z set with CurX/CurY on a free corridor anchor. The bounded center-area scan
 ; excludes all room interiors plus the north/side boss bands and south entry.
 PFacFindFakeCorridorAnchor:
@@ -2152,12 +2178,12 @@ PFacFindFakeCorridorAnchor:
     inc [hl]
     ld a, [hl]
     cp 18
-    jr c, .column
+    jp c, .column
     ld hl, wBuffer + wPFacCurY
     inc [hl]
     ld a, [hl]
     cp 17
-    jr c, .row
+    jp c, .row
     or 1
     ret
 
@@ -2572,10 +2598,51 @@ PFacGenerateFacility:
     call PFacApplyDoorJambs
     call PFacFinalizeBlocks
     call PFacRemoveIsolatedGeneratedCorners
+    call PFacNormalizeReversedCorners
     call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
     call PFacPlaceFakeBalls
+    ret
+
+; Normalize the observed reversed right-corner pair: $4A directly above $42.
+; It becomes a continuous right wall with the same open side.
+PFacNormalizeReversedCorners:
+    ld a, 1
+    ld [wBuffer + wPFacCurY], a
+.row
+    ld a, 1
+    ld [wBuffer + wPFacCurX], a
+.column
+    call PFacReadBlock
+    cp PFAC_C_BR
+    jr nz, .advance
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    call PFacReadBlock
+    cp PFAC_C_TR
+    jr z, .fix
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    jr .advance
+.fix
+    ld a, PFAC_W_RIGHT
+    call PFacWriteBlock
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    ld a, PFAC_W_RIGHT
+    call PFacWriteBlock
+.advance
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE - 1
+    jp c, .column
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE - 1
+    jp c, .row
     ret
 
 ; ============================================================
