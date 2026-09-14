@@ -1,21 +1,33 @@
 _BlackthornGymClairPreBattleText::
-	text "CLAIR: So, you"
-	line "made it this"
-	cont "far."
+	text "I am CLAIR. I'm"
+	line "the world's best"
+	cont "dragon master."
 
-	para "I am a master of"
-	line "DRAGON #MON, the"
-	cont "strongest there"
-	cont "are."
+	para "I can hold my own"
+	line "against even the"
 
-	para "Prove you deserve"
-	line "to stand here!"
+	para "#MON LEAGUE's"
+	line "ELITE FOUR."
+
+	para "Do you still want"
+	line "to take me on?"
+
+	para "…Fine."
+	line "Let's do it!"
+
+	para "As a trainer, I"
+	line "will use my full"
+
+	para "power against any"
+	line "opponent!"
 	done
 
 _BlackthornGymClairReceivedBadgeText::
-	text "...Impressive."
-	line "You have real"
-	cont "strength."
+	text "I lost?"
+
+	para "I don't believe"
+	line "it. There must be"
+	cont "some mistake…"
 
 	para "Take the"
 	line "RISINGBADGE. You"
@@ -24,19 +36,24 @@ _BlackthornGymClairReceivedBadgeText::
 	done
 
 _BlackthornGymClairPostBattleAdviceText::
-	text "CLAIR: DRAGON"
-	line "#MON fear only"
-	cont "their own kind."
+	text "Don't you dare"
+	line "lose at the"
+	cont "#MON LEAGUE!"
 
-	para "But ICE moves"
-	line "will bring even"
-	cont "a DRAGON down."
+	para "If you do, I'll"
+	line "feel even worse"
+
+	para "about having lost"
+	line "to you!"
 	done
 
 _BlackthornGymClairWaitTakeThisText::
-	text "CLAIR: Wait."
-	line "Take this as"
-	cont "well."
+	text "CLAIR: You have"
+	line "proven yourself to"
+	cont "me."
+
+	para "I want you to have"
+	line "this TM."
 	done
 
 _BlackthornGymReceivedTMText::
@@ -51,33 +68,119 @@ _BlackthornGymTMNoRoomText::
 	line "for this!"
 	done
 
-_BlackthornGymCooltrainerMBattleText::
-	text "None can match"
-	line "a DRAGON tamer!"
+_BlackthornGymTrainer1BattleText::
+	text "Your first battle"
+	line "against dragons?"
+
+	para "I'll show you how"
+	line "tough they are!"
 	done
 
-_BlackthornGymCooltrainerMEndBattleText::
-	text "Outmatched!"
+_BlackthornGymTrainer1EndBattleText::
+	text "I'm disappointed."
 	done
 
-_BlackthornGymCooltrainerMAfterBattleText::
-	text "DRAGON #MON"
-	line "fall hard to"
-	cont "ICE moves."
+_BlackthornGymTrainer1AfterBattleText::
+	text "Have you met"
+	line "LANCE the dragon"
+	cont "master?"
+	done
+
+_BlackthornGymTrainer2BattleText::
+	text "Dragons are sacred"
+	line "#MON."
+
+	para "They are full of"
+	line "life energy."
+
+	para "If you're not"
+	line "serious, you won't"
+
+	para "be able to beat"
+	line "them."
+	done
+
+_BlackthornGymTrainer2EndBattleText::
+	text "Way to go!"
+	done
+
+_BlackthornGymTrainer2AfterBattleText::
+	text "Dragons are weak"
+	line "against dragon-"
+	cont "type moves."
+	done
+
+_BlackthornGymTrainer3BattleText::
+	text "It's not as if we"
+	line "all use dragon-"
+	cont "type #MON."
+
+	para "My policy is to"
+	line "use #MON that"
+
+	para "are stronger than"
+	line "dragon #MON."
+	done
+
+_BlackthornGymTrainer3EndBattleText::
+	text "You are special…"
+	done
+
+_BlackthornGymTrainer3AfterBattleText::
+	text "But just watch!"
+	line "My #MON will"
+
+	para "become even more"
+	line "powerful."
+
+	para "We'll be tougher"
+	line "as a trainer and"
+	cont "#MON team."
+	done
+
+_BlackthornGymTrainer4BattleText::
+	text "We go through rig-"
+	line "orous training un-"
+	cont "der CLAIR. I can't"
+	cont "afford to lose."
+	done
+
+_BlackthornGymTrainer4EndBattleText::
+	text "Arrrgh! I'm so"
+	line "disgusted!"
+	done
+
+_BlackthornGymTrainer4AfterBattleText::
+	text "Whew…"
+
+	para "I'll have to re-"
+	line "think my training…"
 	done
 
 _BlackthornGymGuideAdviceText::
-	text "Yo! Ready to"
-	line "face CLAIR?"
+	text "Yo! CHAMP in"
+	line "making!"
 
-	para "Her DRAGON #MON"
-	line "are no joke. ICE"
-	cont "moves are your"
-	cont "best shot!"
+	para "CLAIR uses the"
+	line "mythical and sac-"
+	cont "red dragon-type"
+	cont "#MON."
+
+	para "You can't damage"
+	line "them very easily."
+
+	para "But you know,"
+	line "they're supposed"
+
+	para "to be weak against"
+	line "ice-type moves."
 	done
 
 _BlackthornGymGuideVictoryText::
-	text "You beat CLAIR!"
-	line "You have earned"
-	cont "every badge now!"
+	text "You were great to"
+	line "beat CLAIR!"
+
+	para "You're on the way"
+	line "to becoming the"
+	cont "#MON CHAMPION!"
 	done

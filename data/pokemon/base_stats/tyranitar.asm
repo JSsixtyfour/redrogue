@@ -1,6 +1,6 @@
 	db DEX_TYRANITAR ; pokedex id
 
-	db 100, 134, 110,  61, 100
+	db 100, 134, 110,  61, 95
 	;   hp  atk  def  spd  spc
 
 	db ROCK, ROCK ; type - Dark (secondary) dropped per project type rules

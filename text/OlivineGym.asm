@@ -1,39 +1,36 @@
 _OlivineGymJasminePreBattleText::
-	text "JASMINE: Oh..."
-	line "You must be here"
-	cont "for a match."
+	text "Allow me to intro-"
+	line "duce myself."
 
-	para "I have been"
-	line "training my STEEL"
-	cont "#MON carefully."
+	para "I am JASMINE, a"
+	line "GYM LEADER."
 
-	para "I will do my"
-	line "very best."
+	para "…Um… May I begin?"
 	done
 
 _OlivineGymJasmineReceivedBadgeText::
-	text "...Thank you for"
-	line "a wonderful"
-	cont "battle."
+	text "…You are a better"
+	line "trainer than me,"
 
-	para "Please, take"
-	line "the MINERALBADGE."
+	para "in both skill and"
+	line "kindness."
+
+	para "In accordance with"
+	line "LEAGUE rules, I"
+
+	para "confer upon you"
+	line "this BADGE."
 	done
 
 _OlivineGymJasminePostBattleAdviceText::
-	text "JASMINE: STEEL"
-	line "#MON resist"
-	cont "almost everything."
-
-	para "But FIRE and"
-	line "FIGHTING moves"
-	cont "melt right through."
+	text "Um… I don't know"
+	line "how to say this,"
+	cont "but good luck…"
 	done
 
 _OlivineGymJasmineWaitTakeThisText::
-	text "JASMINE: Oh, one"
-	line "more thing for"
-	cont "you."
+	text "…Um… Please take"
+	line "this too…"
 	done
 
 _OlivineGymReceivedTMText::
@@ -58,23 +55,22 @@ _OlivineGymCooltrainerMEndBattleText::
 	done
 
 _OlivineGymCooltrainerMAfterBattleText::
-	text "STEEL #MON"
-	line "shrug off POISON"
-	cont "with ease."
+	text "JASMINE uses"
+	line "#MON with"
+	cont "unknown properties"
 	done
 
 _OlivineGymGuideAdviceText::
-	text "Yo! Here to"
-	line "battle JASMINE?"
-
-	para "STEEL #MON take"
-	line "little damage, but"
-	cont "FIRE and FIGHTING"
-	cont "moves work great!"
+	text "JASMINE seems"
+	line "to use ROCK"
+	cont "type #MON, but."
+    cont "it's hard to say"
 	done
 
 _OlivineGymGuideVictoryText::
-	text "You beat JASMINE!"
-	line "She trained so"
-	cont "hard for that!"
+	text "Way to go kid."
+	line "JASMINE is a"
+	cont "real enigma, but"
+	cont "you figured her"
+    cont "out!"
 	done

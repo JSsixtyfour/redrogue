@@ -205,15 +205,15 @@ GoldenrodGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 GoldenrodGymCooltrainerM1BattleText:
-	text_far _GoldenrodGymCooltrainerMBattleText
+	text_far _GoldenrodGymTrainer1BattleText
 	text_end
 
 GoldenrodGymCooltrainerM1EndBattleText:
-	text_far _GoldenrodGymCooltrainerMEndBattleText
+	text_far _GoldenrodGymTrainer1EndBattleText
 	text_end
 
 GoldenrodGymCooltrainerM1AfterBattleText:
-	text_far _GoldenrodGymCooltrainerMAfterBattleText
+	text_far _GoldenrodGymTrainer1AfterBattleText
 	text_end
 
 GoldenrodGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ GoldenrodGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 GoldenrodGymCooltrainerM2BattleText:
-	text_far _GoldenrodGymCooltrainerMBattleText
+	text_far _GoldenrodGymTrainer2BattleText
 	text_end
 
 GoldenrodGymCooltrainerM2EndBattleText:
-	text_far _GoldenrodGymCooltrainerMEndBattleText
+	text_far _GoldenrodGymTrainer2EndBattleText
 	text_end
 
 GoldenrodGymCooltrainerM2AfterBattleText:
-	text_far _GoldenrodGymCooltrainerMAfterBattleText
+	text_far _GoldenrodGymTrainer2AfterBattleText
 	text_end
 
 GoldenrodGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ GoldenrodGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 GoldenrodGymCooltrainerM3BattleText:
-	text_far _GoldenrodGymCooltrainerMBattleText
+	text_far _GoldenrodGymTrainer3BattleText
 	text_end
 
 GoldenrodGymCooltrainerM3EndBattleText:
-	text_far _GoldenrodGymCooltrainerMEndBattleText
+	text_far _GoldenrodGymTrainer3EndBattleText
 	text_end
 
 GoldenrodGymCooltrainerM3AfterBattleText:
-	text_far _GoldenrodGymCooltrainerMAfterBattleText
+	text_far _GoldenrodGymTrainer3AfterBattleText
 	text_end
 
 GoldenrodGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ GoldenrodGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 GoldenrodGymCooltrainerM4BattleText:
-	text_far _GoldenrodGymCooltrainerMBattleText
+	text_far _GoldenrodGymTrainer4BattleText
 	text_end
 
 GoldenrodGymCooltrainerM4EndBattleText:
-	text_far _GoldenrodGymCooltrainerMEndBattleText
+	text_far _GoldenrodGymTrainer4EndBattleText
 	text_end
 
 GoldenrodGymCooltrainerM4AfterBattleText:
-	text_far _GoldenrodGymCooltrainerMAfterBattleText
+	text_far _GoldenrodGymTrainer4AfterBattleText
 	text_end
 
 GoldenrodGymGuideText:

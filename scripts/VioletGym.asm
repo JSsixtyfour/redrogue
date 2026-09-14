@@ -205,15 +205,15 @@ VioletGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 VioletGymCooltrainerM1BattleText:
-	text_far _VioletGymCooltrainerMBattleText
+	text_far _VioletGymTrainer1BattleText
 	text_end
 
 VioletGymCooltrainerM1EndBattleText:
-	text_far _VioletGymCooltrainerMEndBattleText
+	text_far _VioletGymTrainer1EndBattleText
 	text_end
 
 VioletGymCooltrainerM1AfterBattleText:
-	text_far _VioletGymCooltrainerMAfterBattleText
+	text_far _VioletGymTrainer1AfterBattleText
 	text_end
 
 VioletGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ VioletGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 VioletGymCooltrainerM2BattleText:
-	text_far _VioletGymCooltrainerMBattleText
+	text_far _VioletGymTrainer2BattleText
 	text_end
 
 VioletGymCooltrainerM2EndBattleText:
-	text_far _VioletGymCooltrainerMEndBattleText
+	text_far _VioletGymTrainer2EndBattleText
 	text_end
 
 VioletGymCooltrainerM2AfterBattleText:
-	text_far _VioletGymCooltrainerMAfterBattleText
+	text_far _VioletGymTrainer2AfterBattleText
 	text_end
 
 VioletGymCooltrainerM3Text:

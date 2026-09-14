@@ -205,15 +205,15 @@ AzaleaGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 AzaleaGymCooltrainerM1BattleText:
-	text_far _AzaleaGymCooltrainerMBattleText
+	text_far _AzaleaGymTrainer1BattleText
 	text_end
 
 AzaleaGymCooltrainerM1EndBattleText:
-	text_far _AzaleaGymCooltrainerMEndBattleText
+	text_far _AzaleaGymTrainer1EndBattleText
 	text_end
 
 AzaleaGymCooltrainerM1AfterBattleText:
-	text_far _AzaleaGymCooltrainerMAfterBattleText
+	text_far _AzaleaGymTrainer1AfterBattleText
 	text_end
 
 AzaleaGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ AzaleaGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 AzaleaGymCooltrainerM2BattleText:
-	text_far _AzaleaGymCooltrainerMBattleText
+	text_far _AzaleaGymTrainer2BattleText
 	text_end
 
 AzaleaGymCooltrainerM2EndBattleText:
-	text_far _AzaleaGymCooltrainerMEndBattleText
+	text_far _AzaleaGymTrainer2EndBattleText
 	text_end
 
 AzaleaGymCooltrainerM2AfterBattleText:
-	text_far _AzaleaGymCooltrainerMAfterBattleText
+	text_far _AzaleaGymTrainer2AfterBattleText
 	text_end
 
 AzaleaGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ AzaleaGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 AzaleaGymCooltrainerM3BattleText:
-	text_far _AzaleaGymCooltrainerMBattleText
+	text_far _AzaleaGymTrainer3BattleText
 	text_end
 
 AzaleaGymCooltrainerM3EndBattleText:
-	text_far _AzaleaGymCooltrainerMEndBattleText
+	text_far _AzaleaGymTrainer3EndBattleText
 	text_end
 
 AzaleaGymCooltrainerM3AfterBattleText:
-	text_far _AzaleaGymCooltrainerMAfterBattleText
+	text_far _AzaleaGymTrainer3AfterBattleText
 	text_end
 
 AzaleaGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ AzaleaGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 AzaleaGymCooltrainerM4BattleText:
-	text_far _AzaleaGymCooltrainerMBattleText
+	text_far _AzaleaGymTrainer4BattleText
 	text_end
 
 AzaleaGymCooltrainerM4EndBattleText:
-	text_far _AzaleaGymCooltrainerMEndBattleText
+	text_far _AzaleaGymTrainer4EndBattleText
 	text_end
 
 AzaleaGymCooltrainerM4AfterBattleText:
-	text_far _AzaleaGymCooltrainerMAfterBattleText
+	text_far _AzaleaGymTrainer4AfterBattleText
 	text_end
 
 AzaleaGymGuideText:

@@ -205,15 +205,15 @@ CianwoodGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 CianwoodGymCooltrainerM1BattleText:
-	text_far _CianwoodGymCooltrainerMBattleText
+	text_far _CianwoodGymTrainer1BattleText
 	text_end
 
 CianwoodGymCooltrainerM1EndBattleText:
-	text_far _CianwoodGymCooltrainerMEndBattleText
+	text_far _CianwoodGymTrainer1EndBattleText
 	text_end
 
 CianwoodGymCooltrainerM1AfterBattleText:
-	text_far _CianwoodGymCooltrainerMAfterBattleText
+	text_far _CianwoodGymTrainer1AfterBattleText
 	text_end
 
 CianwoodGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ CianwoodGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 CianwoodGymCooltrainerM2BattleText:
-	text_far _CianwoodGymCooltrainerMBattleText
+	text_far _CianwoodGymTrainer2BattleText
 	text_end
 
 CianwoodGymCooltrainerM2EndBattleText:
-	text_far _CianwoodGymCooltrainerMEndBattleText
+	text_far _CianwoodGymTrainer2EndBattleText
 	text_end
 
 CianwoodGymCooltrainerM2AfterBattleText:
-	text_far _CianwoodGymCooltrainerMAfterBattleText
+	text_far _CianwoodGymTrainer2AfterBattleText
 	text_end
 
 CianwoodGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ CianwoodGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 CianwoodGymCooltrainerM3BattleText:
-	text_far _CianwoodGymCooltrainerMBattleText
+	text_far _CianwoodGymTrainer3BattleText
 	text_end
 
 CianwoodGymCooltrainerM3EndBattleText:
-	text_far _CianwoodGymCooltrainerMEndBattleText
+	text_far _CianwoodGymTrainer3EndBattleText
 	text_end
 
 CianwoodGymCooltrainerM3AfterBattleText:
-	text_far _CianwoodGymCooltrainerMAfterBattleText
+	text_far _CianwoodGymTrainer3AfterBattleText
 	text_end
 
 CianwoodGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ CianwoodGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 CianwoodGymCooltrainerM4BattleText:
-	text_far _CianwoodGymCooltrainerMBattleText
+	text_far _CianwoodGymTrainer4BattleText
 	text_end
 
 CianwoodGymCooltrainerM4EndBattleText:
-	text_far _CianwoodGymCooltrainerMEndBattleText
+	text_far _CianwoodGymTrainer4EndBattleText
 	text_end
 
 CianwoodGymCooltrainerM4AfterBattleText:
-	text_far _CianwoodGymCooltrainerMAfterBattleText
+	text_far _CianwoodGymTrainer4AfterBattleText
 	text_end
 
 CianwoodGymGuideText:

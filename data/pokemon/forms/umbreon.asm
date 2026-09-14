@@ -10,7 +10,7 @@
 	db DEX_JOLTEON ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  95,  65, 110,  65, 130
+	db  65,  60, 110,  65, 130
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

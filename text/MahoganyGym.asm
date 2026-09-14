@@ -1,41 +1,66 @@
 _MahoganyGymPrycePreBattleText::
-	text "PRYCE: Ho ho..."
-	line "A young trainer,"
-	cont "come to test me."
+	text "#MON have many"
+	line "experiences in"
 
-	para "I have battled"
-	line "with ICE #MON"
-	cont "for many years."
+	para "their lives, just "
+	line "like we do. "
 
-	para "Let me show you"
-	line "what age can"
-	cont "teach."
+	para "I, too, have seen"
+	line "and suffered much"
+	cont "in my life."
+
+	para "Since I am your"
+	line "elder, let me show"
+	cont "you what I mean."
+
+	para "I have been with"
+	line "#MON since"
+
+	para "before you were"
+	line "born."
+
+	para "I do not lose"
+	line "easily."
+
+	para "I, PRYCE--the"
+	line "winter trainer--"
+
+	para "shall demonstrate"
+	line "my power!"
 	done
 
 _MahoganyGymPryceReceivedBadgeText::
-	text "...Ho ho! Fine"
-	line "work, young one."
+	text "Ah, I am impressed"
+	line "by your prowess."
 
-	para "Take the"
-	line "GLACIERBADGE, you"
-	cont "have earned it."
+	para "With your strong"
+	line "will, I know you"
+
+	para "will overcome all"
+	line "life's obstacles."
+
+	para "You are worthy of"
+	line "this BADGE!"
 	done
 
 _MahoganyGymPrycePostBattleAdviceText::
-	text "PRYCE: ICE"
-	line "#MON hit hard,"
-	cont "but shatter fast."
+	text "When the ice and"
+	line "snow melt, spring"
+	cont "arrives."
 
-	para "FIRE, FIGHTING,"
-	line "and ROCK moves"
-	cont "crack them wide"
-	cont "open."
+	para "You and your"
+	line "#MON will be to-"
+
+	para "gether for many"
+	line "years to come."
+
+	para "Cherish your time"
+	line "together!"
 	done
 
 _MahoganyGymPryceWaitTakeThisText::
-	text "PRYCE: Ho ho,"
-	line "wait! Take this"
-	cont "too!"
+	text "And this… This is"
+	line "a gift from me!"
 	done
 
 _MahoganyGymReceivedTMText::
@@ -50,34 +75,110 @@ _MahoganyGymTMNoRoomText::
 	line "for this!"
 	done
 
-_MahoganyGymCooltrainerMBattleText::
-	text "The cold never"
-	line "bothered me!"
+_MahoganyGymTrainer1BattleText::
+	text "To get to PRYCE,"
+	line "our GYM LEADER,"
+
+	para "you need to think"
+	line "before you act."
 	done
 
-_MahoganyGymCooltrainerMEndBattleText::
-	text "Frozen solid!"
+_MahoganyGymTrainer1EndBattleText::
+	text "I wouldn't lose to"
+	line "you in skiing!"
 	done
 
-_MahoganyGymCooltrainerMAfterBattleText::
-	text "ICE #MON break"
-	line "easily under"
-	cont "FIGHTING moves."
+_MahoganyGymTrainer1AfterBattleText::
+	text "If you don't act"
+	line "with precision,"
+
+	para "you won't get far"
+	line "in this GYM."
+	done
+
+_MahoganyGymTrainer2BattleText::
+	text "I'll freeze your"
+	line "#MON, so you"
+	cont "can't do a thing!"
+	done
+
+_MahoganyGymTrainer2EndBattleText::
+	text "Darn. I couldn't"
+	line "do a thing."
+	done
+
+_MahoganyGymTrainer2AfterBattleText::
+	text "I don't think"
+	line "there's a move"
+	cont "a #MON can"
+    cont "use while it's"
+	cont "frozen."
+	done
+
+_MahoganyGymTrainer3BattleText::
+	text "Check out my"
+	line "parallel turn!"
+	done
+
+_MahoganyGymTrainer3EndBattleText::
+	text "No! You made me"
+	line "wipe out!"
+	done
+
+_MahoganyGymTrainer3AfterBattleText::
+	text "I shouldn't have"
+	line "been bragging"
+	cont "about my skiing…"
+	done
+
+_MahoganyGymTrainer4BattleText::
+	text "#MON is fun,"
+	line "isn't it?"
+
+	para "But hey--we're"
+	line "not playing games"
+	cont "here!"
+	done
+
+_MahoganyGymTrainer4EndBattleText::
+	text "Do you see how"
+	line "serious we are?"
+	done
+
+_MahoganyGymTrainer4AfterBattleText::
+	text "This GYM is great."
+	line "I love boarding"
+	cont "with my #MON!"
 	done
 
 _MahoganyGymGuideAdviceText::
-	text "Yo! Challenging"
-	line "PRYCE today?"
+	text "PRYCE is a veteran"
+	line "who has trained"
 
-	para "His ICE #MON"
-	line "look tough, but"
-	cont "FIRE, FIGHTING,"
-	cont "and ROCK moves"
-	cont "shatter them fast!"
+	para "#MON for some"
+	line "50 years."
+
+	para "He's said to be"
+	line "good at freezing"
+
+	para "opponents with"
+	line "ice-type moves."
+
+	para "That means you"
+	line "should melt him"
+
+	para "with your burning"
+	line "ambition!"
 	done
 
 _MahoganyGymGuideVictoryText::
-	text "You beat PRYCE!"
-	line "That old man"
-	cont "still has it!"
+	text "PRYCE is some-"
+	line "thing, but you're"
+	cont "something else!"
+
+	para "That was a hot"
+	line "battle that"
+
+	para "bridged the gen-"
+	line "eration gap!"
 	done

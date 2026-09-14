@@ -11,7 +11,7 @@
 	db DEX_FLAREON ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  65, 110, 130,  95,  65
+	db  65, 110, 130,  60,  65
 	;   hp  atk  def  spd  spc
 
 	db GRASS, GRASS ; type

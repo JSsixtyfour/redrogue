@@ -205,15 +205,15 @@ EcruteakGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 EcruteakGymCooltrainerM1BattleText:
-	text_far _EcruteakGymCooltrainerMBattleText
+	text_far _EcruteakGymTrainer1BattleText
 	text_end
 
 EcruteakGymCooltrainerM1EndBattleText:
-	text_far _EcruteakGymCooltrainerMEndBattleText
+	text_far _EcruteakGymTrainer1EndBattleText
 	text_end
 
 EcruteakGymCooltrainerM1AfterBattleText:
-	text_far _EcruteakGymCooltrainerMAfterBattleText
+	text_far _EcruteakGymTrainer1AfterBattleText
 	text_end
 
 EcruteakGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ EcruteakGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 EcruteakGymCooltrainerM2BattleText:
-	text_far _EcruteakGymCooltrainerMBattleText
+	text_far _EcruteakGymTrainer2BattleText
 	text_end
 
 EcruteakGymCooltrainerM2EndBattleText:
-	text_far _EcruteakGymCooltrainerMEndBattleText
+	text_far _EcruteakGymTrainer2EndBattleText
 	text_end
 
 EcruteakGymCooltrainerM2AfterBattleText:
-	text_far _EcruteakGymCooltrainerMAfterBattleText
+	text_far _EcruteakGymTrainer2AfterBattleText
 	text_end
 
 EcruteakGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ EcruteakGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 EcruteakGymCooltrainerM3BattleText:
-	text_far _EcruteakGymCooltrainerMBattleText
+	text_far _EcruteakGymTrainer3BattleText
 	text_end
 
 EcruteakGymCooltrainerM3EndBattleText:
-	text_far _EcruteakGymCooltrainerMEndBattleText
+	text_far _EcruteakGymTrainer3EndBattleText
 	text_end
 
 EcruteakGymCooltrainerM3AfterBattleText:
-	text_far _EcruteakGymCooltrainerMAfterBattleText
+	text_far _EcruteakGymTrainer3AfterBattleText
 	text_end
 
 EcruteakGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ EcruteakGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 EcruteakGymCooltrainerM4BattleText:
-	text_far _EcruteakGymCooltrainerMBattleText
+	text_far _EcruteakGymTrainer4BattleText
 	text_end
 
 EcruteakGymCooltrainerM4EndBattleText:
-	text_far _EcruteakGymCooltrainerMEndBattleText
+	text_far _EcruteakGymTrainer4EndBattleText
 	text_end
 
 EcruteakGymCooltrainerM4AfterBattleText:
-	text_far _EcruteakGymCooltrainerMAfterBattleText
+	text_far _EcruteakGymTrainer4AfterBattleText
 	text_end
 
 EcruteakGymGuideText:

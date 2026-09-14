@@ -205,15 +205,15 @@ BlackthornGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 BlackthornGymCooltrainerM1BattleText:
-	text_far _BlackthornGymCooltrainerMBattleText
+	text_far _BlackthornGymTrainer1BattleText
 	text_end
 
 BlackthornGymCooltrainerM1EndBattleText:
-	text_far _BlackthornGymCooltrainerMEndBattleText
+	text_far _BlackthornGymTrainer1EndBattleText
 	text_end
 
 BlackthornGymCooltrainerM1AfterBattleText:
-	text_far _BlackthornGymCooltrainerMAfterBattleText
+	text_far _BlackthornGymTrainer1AfterBattleText
 	text_end
 
 BlackthornGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ BlackthornGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 BlackthornGymCooltrainerM2BattleText:
-	text_far _BlackthornGymCooltrainerMBattleText
+	text_far _BlackthornGymTrainer2BattleText
 	text_end
 
 BlackthornGymCooltrainerM2EndBattleText:
-	text_far _BlackthornGymCooltrainerMEndBattleText
+	text_far _BlackthornGymTrainer2EndBattleText
 	text_end
 
 BlackthornGymCooltrainerM2AfterBattleText:
-	text_far _BlackthornGymCooltrainerMAfterBattleText
+	text_far _BlackthornGymTrainer2AfterBattleText
 	text_end
 
 BlackthornGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ BlackthornGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 BlackthornGymCooltrainerM3BattleText:
-	text_far _BlackthornGymCooltrainerMBattleText
+	text_far _BlackthornGymTrainer3BattleText
 	text_end
 
 BlackthornGymCooltrainerM3EndBattleText:
-	text_far _BlackthornGymCooltrainerMEndBattleText
+	text_far _BlackthornGymTrainer3EndBattleText
 	text_end
 
 BlackthornGymCooltrainerM3AfterBattleText:
-	text_far _BlackthornGymCooltrainerMAfterBattleText
+	text_far _BlackthornGymTrainer3AfterBattleText
 	text_end
 
 BlackthornGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ BlackthornGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 BlackthornGymCooltrainerM4BattleText:
-	text_far _BlackthornGymCooltrainerMBattleText
+	text_far _BlackthornGymTrainer4BattleText
 	text_end
 
 BlackthornGymCooltrainerM4EndBattleText:
-	text_far _BlackthornGymCooltrainerMEndBattleText
+	text_far _BlackthornGymTrainer4EndBattleText
 	text_end
 
 BlackthornGymCooltrainerM4AfterBattleText:
-	text_far _BlackthornGymCooltrainerMAfterBattleText
+	text_far _BlackthornGymTrainer4AfterBattleText
 	text_end
 
 BlackthornGymGuideText:

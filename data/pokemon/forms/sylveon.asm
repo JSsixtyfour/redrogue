@@ -10,7 +10,7 @@
 	db DEX_VAPOREON ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  95,  65,  65,  60, 130
+	db  110, 65,  65,  60, 130
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type
@@ -20,14 +20,17 @@
 	INCBIN "gfx/pokemon/front/sylveon.pic", 0, 1 ; sprite dimensions
 	dw SylveonPicFront, SylveonPicBack
 
-	db TACKLE, SAND_ATTACK, QUICK_ATTACK, WATER_GUN ; level 1 learnset
+	db TACKLE, SAND_ATTACK, QUICK_ATTACK, SWIFT ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
-	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
+	     MEGA_KICK,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   SURF
+	     SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         WATER_GUN     \
+         SOLAR_BEAM,   THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN  \
+         METRONOME,    FIRE_BLAST,   THUNDER_WAVE, PSYWAVE,      TRI_ATTACK    \
+         FLASH,        FLAMETHROWER
 	; end
 
 	db BANK(SylveonPicFront) ; pic bank

@@ -1,38 +1,55 @@
 _CianwoodGymChuckPreBattleText::
-	text "CHUCK: HAH! A"
-	line "challenger! Just"
-	cont "what I wanted!"
+	text "WAHAHAH!"
 
-	para "My #MON and I"
-	line "train hard every"
-	cont "single day!"
+	para "So you've come"
+	line "this far!"
 
-	para "Come on, let's"
-	line "go all out!"
+	para "Let me tell you,"
+	line "I'm tough!"
+
+	para "My #MON will"
+	line "crush stones and"
+	cont "shatter bones!"
+
+	para "Watch this!"
+
+	para "There! Scared"
+	line "now, are you?"
+
+	para "What?"
+	line "It has nothing to"
+	cont "to do with #MON?"
+	cont "#MON?"
+    
+    para "That's true!"
+	line "Come on. We"
+	cont "shall do battle!"
 	done
 
 _CianwoodGymChuckReceivedBadgeText::
-	text "...HAH! Now"
-	line "THAT's a battle!"
+	text "Wha? Huh?"
+	line "I lost?"
 
-	para "Take the"
-	line "STORMBADGE, you"
-	cont "earned it!"
+	para "How about that!"
+	line "You're worthy of"
+	cont "STORMBADGE!"
 	done
 
 _CianwoodGymChuckPostBattleAdviceText::
-	text "CHUCK: FIGHTING"
-	line "#MON hit hard"
-	cont "up close."
+	text "WAHAHAH! I enjoyed"
+	line "battling you!"
 
-	para "But FLYING and"
-	line "PSYCHIC moves"
-	cont "keep them at bay!"
+	para "But a loss is a"
+	line "loss!"
+
+	para "From now on, I'm"
+	line "going to train 24"
+	cont "hours a day!"
 	done
 
 _CianwoodGymChuckWaitTakeThisText::
-	text "CHUCK: Hold up!"
-	line "Take this too!"
+	text "Here, take this"
+	line "too!"
 	done
 
 _CianwoodGymReceivedTMText::
@@ -47,20 +64,69 @@ _CianwoodGymTMNoRoomText::
 	line "for this!"
 	done
 
-_CianwoodGymCooltrainerMBattleText::
-	text "Feel the power"
-	line "of training!"
+_CianwoodGymTrainer1BattleText::
+	text "My #MON and I"
+	line "are bound togeth-"
+	cont "er by friendship."
+
+	para "Our bond will"
+	line "never be broken!"
 	done
 
-_CianwoodGymCooltrainerMEndBattleText::
-	text "Down for the"
-	line "count!"
+_CianwoodGymTrainer1EndBattleText::
+	text "This isn't real!"
 	done
 
-_CianwoodGymCooltrainerMAfterBattleText::
-	text "FIGHTING #MON"
-	line "struggle against"
-	cont "quick fliers."
+_CianwoodGymTrainer1AfterBattleText::
+	text "You seem to have a"
+	line "strong bond with"
+	cont "your #MON too!"
+	done
+
+_CianwoodGymTrainer2BattleText::
+	text "We martial artists"
+	line "fear nothing!"
+	done
+
+_CianwoodGymTrainer2EndBattleText::
+	text "That's shocking!"
+	done
+
+_CianwoodGymTrainer2AfterBattleText::
+	text "Fighting #MON"
+	line "are afraid of psy-"
+	cont "chics…"
+	done
+
+_CianwoodGymTrainer3BattleText::
+	text "Words are useless."
+	line "Let your fists do"
+	cont "the talking!"
+	done
+
+_CianwoodGymTrainer3EndBattleText::
+	text "…"
+	done
+
+_CianwoodGymTrainer3AfterBattleText::
+	text "I lost! "
+	line "I'm speechless!"
+	done
+
+_CianwoodGymTrainer4BattleText::
+	text "My raging fists"
+	line "will shatter your"
+	cont "#MON!"
+	done
+
+_CianwoodGymTrainer4EndBattleText::
+	text "I got shattered!"
+	done
+
+_CianwoodGymTrainer4AfterBattleText::
+	text "My #MON lost…"
+	line "My pride is shat-"
+	cont "tered…"
 	done
 
 _CianwoodGymGuideAdviceText::

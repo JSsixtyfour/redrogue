@@ -205,15 +205,15 @@ MahoganyGymCooltrainerM1Text:
 	jp TextScriptEnd
 
 MahoganyGymCooltrainerM1BattleText:
-	text_far _MahoganyGymCooltrainerMBattleText
+	text_far _MahoganyGymTrainer1BattleText
 	text_end
 
 MahoganyGymCooltrainerM1EndBattleText:
-	text_far _MahoganyGymCooltrainerMEndBattleText
+	text_far _MahoganyGymTrainer1EndBattleText
 	text_end
 
 MahoganyGymCooltrainerM1AfterBattleText:
-	text_far _MahoganyGymCooltrainerMAfterBattleText
+	text_far _MahoganyGymTrainer1AfterBattleText
 	text_end
 
 MahoganyGymCooltrainerM2Text:
@@ -223,15 +223,15 @@ MahoganyGymCooltrainerM2Text:
 	jp TextScriptEnd
 
 MahoganyGymCooltrainerM2BattleText:
-	text_far _MahoganyGymCooltrainerMBattleText
+	text_far _MahoganyGymTrainer2BattleText
 	text_end
 
 MahoganyGymCooltrainerM2EndBattleText:
-	text_far _MahoganyGymCooltrainerMEndBattleText
+	text_far _MahoganyGymTrainer2EndBattleText
 	text_end
 
 MahoganyGymCooltrainerM2AfterBattleText:
-	text_far _MahoganyGymCooltrainerMAfterBattleText
+	text_far _MahoganyGymTrainer2AfterBattleText
 	text_end
 
 MahoganyGymCooltrainerM3Text:
@@ -241,15 +241,15 @@ MahoganyGymCooltrainerM3Text:
 	jp TextScriptEnd
 
 MahoganyGymCooltrainerM3BattleText:
-	text_far _MahoganyGymCooltrainerMBattleText
+	text_far _MahoganyGymTrainer3BattleText
 	text_end
 
 MahoganyGymCooltrainerM3EndBattleText:
-	text_far _MahoganyGymCooltrainerMEndBattleText
+	text_far _MahoganyGymTrainer3EndBattleText
 	text_end
 
 MahoganyGymCooltrainerM3AfterBattleText:
-	text_far _MahoganyGymCooltrainerMAfterBattleText
+	text_far _MahoganyGymTrainer3AfterBattleText
 	text_end
 
 MahoganyGymCooltrainerM4Text:
@@ -259,15 +259,15 @@ MahoganyGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 MahoganyGymCooltrainerM4BattleText:
-	text_far _MahoganyGymCooltrainerMBattleText
+	text_far _MahoganyGymTrainer4BattleText
 	text_end
 
 MahoganyGymCooltrainerM4EndBattleText:
-	text_far _MahoganyGymCooltrainerMEndBattleText
+	text_far _MahoganyGymTrainer4EndBattleText
 	text_end
 
 MahoganyGymCooltrainerM4AfterBattleText:
-	text_far _MahoganyGymCooltrainerMAfterBattleText
+	text_far _MahoganyGymTrainer4AfterBattleText
 	text_end
 
 MahoganyGymGuideText:

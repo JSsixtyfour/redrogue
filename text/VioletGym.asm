@@ -1,38 +1,58 @@
 _VioletGymFalknerPreBattleText::
-	text "FALKNER: I'm"
-	line "VIOLET CITY's"
-	cont "GYM LEADER!"
+	text "I'm FALKNER, the"
+	line "VIOLET #MON"
+	cont "GYM leader!"
 
-	para "I keep birds, and"
-	line "people say I'm"
-	cont "just a rookie."
+	para "People say you can"
+	line "clip flying-type"
 
-	para "But my father's"
-	line "FLYING #MON"
-	cont "won't lose!"
+	para "#MON's wings"
+	line "with a jolt of"
+	cont "electricity…"
+
+	para "I won't allow such"
+	line "insults to bird"
+	cont "#MON!"
+
+	para "I'll show you the"
+	line "real power of the"
+
+	para "magnificent bird"
+	line "#MON!"
 	done
 
 _VioletGymFalknerReceivedBadgeText::
-	text "...Fine."
-	line "You've won."
+	text "…Darn! My Dad's"
+	line "cherished bird"
+	cont "#MON…"
 
-	para "As proof, take"
-	line "the ZEPHYRBADGE."
+	para "All right."
+	line "Take this."
+
+	para "It's the official"
+	line "#MON LEAGUE"
+	cont "ZEPHYRBADGE."
 	done
 
 _VioletGymFalknerPostBattleAdviceText::
-	text "FALKNER: FLYING"
-	line "#MON aren't"
-	cont "just fast."
+	text "There are #MON"
+	line "GYMS in cities and"
+	cont "towns ahead."
 
-	para "Learn their type"
-	line "match-ups and"
-	cont "they'll carry you."
+	para "You should test"
+	line "your skills at"
+	cont "these GYMS."
+
+	para "I'm going to train"
+	line "harder to become"
+
+	para "the greatest bird"
+	line "master!"
 	done
 
 _VioletGymFalknerWaitTakeThisText::
-	text "FALKNER: Wait!"
-	line "Take this too!"
+	text "Here--take this"
+	line "too."
 	done
 
 _VioletGymReceivedTMText::
@@ -62,18 +82,74 @@ _VioletGymCooltrainerMAfterBattleText::
 	cont "sparks alike."
 	done
 
-_VioletGymGuideAdviceText::
-	text "Yo! Champ in"
-	line "waiting!"
+_VioletGymTrainer1BattleText::
+	text "The keyword is"
+	line "guts!"
 
-	para "FALKNER's birds"
-	line "are quick, but"
-	cont "ELECTRIC and ROCK"
-	cont "moves ground them!"
+	para "Those here are"
+	line "training night and"
+
+	para "day to become bird"
+	line "#MON masters."
+
+	para "Come on!"
+	done
+
+_VioletGymTrainer1EndBattleText::
+	text "Gaaah!"
+	done
+
+_VioletGymTrainer1AfterBattleText::
+	text "FALKNER's skills"
+	line "are for real!"
+
+	para "Don't get cocky"
+	line "just because you"
+	cont "beat me!"
+	done
+
+_VioletGymTrainer2BattleText::
+	text "Let me see if you"
+	line "are good enough to"
+	cont "face FALKNER!"
+	done
+
+_VioletGymTrainer2EndBattleText::
+	text "This can't be"
+	line "true!"
+	done
+
+_VioletGymTrainer2AfterBattleText::
+	text "This is pathetic,"
+	line "losing to some"
+	cont "rookie trainer…"
+	done
+
+_VioletGymGuideAdviceText::
+	text "Hey! I'm no train-"
+	line "er but I can give"
+	cont "some advice!"
+
+	para "Believe me!"
+	line "If you believe, a"
+
+	para "championship dream"
+	line "can come true."
+
+	para "You believe?"
+	line "Then listen."
+
+	para "The grass-type is"
+	line "weak against the"
+
+	para "flying-type. Keep"
+	line "this in mind."
 	done
 
 _VioletGymGuideVictoryText::
-	text "You beat FALKNER!"
-	line "I knew you had it"
-	cont "in you!"
+	text "Nice battle! Keep"
+	line "it up, and you'll"
+
+	para "be the CHAMP in no"
+	line "time at all!"
 	done
