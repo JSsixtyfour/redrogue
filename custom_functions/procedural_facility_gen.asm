@@ -59,7 +59,7 @@ DEF PFAC_UNTOUCHED EQU $FF   ; PFacFillUntouched's seed value: "nothing has
                              ; by PFacFinalizeBlocks once generation is done.
 DEF PFAC_PENDING   EQU $FD   ; ambiguous corridor boundary; becomes floor after classification
 DEF PFAC_CORRIDOR  EQU $FE   ; a corridor cell (PFacCarveCorridors/
-                             ; PFacCarveEntryCorridor). Converted to PFAC_FLOOR
+                             ; PFacCarveOneCorridor). Converted to PFAC_FLOOR
                              ; by PFacFinalizeBlocks.
 DEF PFAC_ROOMFLOOR EQU $F0   ; a room-interior floor cell (PFacStampRoomFloors).
                              ; Single value this pass; a decor follow-up can
@@ -751,15 +751,25 @@ DEF wPFacBX           EQU 12  ; scanned room B rect (overlap test) / exit-parent
 DEF wPFacBY           EQU 13
 DEF wPFacBW           EQU 14
 DEF wPFacBH           EQU 15
+DEF wPFacCandSumX     EQU 16  ; candX + candW + 2, hoisted out of the overlap scan
+DEF wPFacCandSumY     EQU 17  ; candY + candH + 2
+ASSERT wPFacCandSumY < wPFacRoomCount
 
 ASSERT wPFacItemTemp + 3 < 30
 ASSERT wPFacFlankSecond < 30
 ASSERT wPFacRoomCount < 30
-; Corridor phase (PFacCarveCorridors/PFacCarveEntryCorridor). Same 4-8 window,
+; Corridor phase (PFacCarveCorridors/PFacCarveOneCorridor). Same 4-12 window,
 ; different names (placement is finished by the time corridors run).
 DEF wPFacCorId        EQU 4   ; source room whose corridor we're carving
 DEF wPFacCorTX        EQU 5   ; target center X
 DEF wPFacCorTY        EQU 6   ; target center Y
+DEF wPFacCorSX        EQU 7   ; source center X
+DEF wPFacCorSY        EQU 8   ; source center Y
+DEF wPFacCorElbow     EQU 9   ; column the route turns down (PFacCarveOneCorridor)
+DEF wPFacCorPX        EQU 10  ; ring corner under test by PFacRouteClipsCorner
+DEF wPFacCorPY        EQU 11
+DEF wPFacCorScan      EQU 12  ; room index while testing a candidate route
+ASSERT wPFacCorScan < wPFacRoomCount
 
 ; Full-room premade phase (PFacSelectPremadeMiddleRooms, which also stamps).
 ; Runs between the two corridor passes: room placement and the first corridor
@@ -820,44 +830,44 @@ PFacRowOffsetTable:
     dw pfac_row * PFAC_STRIDE
     ENDR
 
-; INPUT: a = block ID; [wBuffer+wPFacCurX/Y] = logical coords (0-19). Preserves BC.
+; INPUT: a = block ID; [wBuffer+wPFacCurX/Y] = logical coords (0-19).
+; Preserves AF and BC; clobbers DE and HL.
 ; Invalid coordinates are ignored so a failed placement cannot index past the
 ; row table and corrupt unrelated WRAM.
+;
+; R6 rewrite. These two are the generator's hottest primitive by a wide margin,
+; so the address math is now built once straight into HL. The original read
+; CurX and CurY twice each, reloaded the target base through a spare `push hl`
+; / `pop hl` pair around the row lookup, and pushed BC it did not need to. The
+; body is deliberately duplicated rather than shared as a subroutine: a
+; `call`/`ret` pair costs 10 cycles, which is a fifth of what the whole
+; calculation now takes.
 PFacWriteBlock:
     push af
-    ld a, [wBuffer + wPFacCurX]
-    cp PFAC_SIZE
-    jr nc, .skip
     ld a, [wBuffer + wPFacCurY]
     cp PFAC_SIZE
     jr nc, .skip
-    pop af
-    push af
-    push bc
-    ld a, [wBuffer + wPFacTargetBaseLo]
-    ld l, a
-    ld a, [wBuffer + wPFacTargetBaseHi]
-    ld h, a
-    push hl
-    ld a, [wBuffer + wPFacCurY]
     add a, a
-    ld c, a
-    ld b, 0
-    ld hl, PFacRowOffsetTable
-    add hl, bc
-    ld a, [hli]
     ld e, a
-    ld a, [hl]
-    ld d, a
-    pop hl
+    ld d, 0
+    ld hl, PFacRowOffsetTable
     add hl, de
+    ld a, [hli]
+    ld d, [hl]
+    ld e, a                 ; de = Y * PFAC_STRIDE
     ld a, [wBuffer + wPFacCurX]
-    add a, l
-    ld l, a
+    cp PFAC_SIZE
+    jr nc, .skip
+    add a, e
+    ld e, a
     jr nc, .noCarry
-    inc h
+    inc d
 .noCarry
-    pop bc
+    ld hl, wBuffer + wPFacTargetBaseLo
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    add hl, de
     pop af
     ld [hl], a
     ret
@@ -865,41 +875,35 @@ PFacWriteBlock:
     pop af
     ret
 
-; INPUT: [wBuffer+wPFacCurX/Y] = logical coords. OUTPUT: a = block value. Preserves BC.
+; INPUT: [wBuffer+wPFacCurX/Y] = logical coords. OUTPUT: a = block value.
+; Preserves BC; clobbers DE and HL.
 ; Invalid coordinates read as a solid wall instead of reading outside the map.
 PFacReadBlock:
-    ld a, [wBuffer + wPFacCurX]
-    cp PFAC_SIZE
-    jr nc, .oob
     ld a, [wBuffer + wPFacCurY]
     cp PFAC_SIZE
     jr nc, .oob
-    push bc
-    ld a, [wBuffer + wPFacTargetBaseLo]
-    ld l, a
-    ld a, [wBuffer + wPFacTargetBaseHi]
-    ld h, a
-    push hl
-    ld a, [wBuffer + wPFacCurY]
     add a, a
-    ld c, a
-    ld b, 0
-    ld hl, PFacRowOffsetTable
-    add hl, bc
-    ld a, [hli]
     ld e, a
-    ld a, [hl]
-    ld d, a
-    pop hl
+    ld d, 0
+    ld hl, PFacRowOffsetTable
     add hl, de
+    ld a, [hli]
+    ld d, [hl]
+    ld e, a                 ; de = Y * PFAC_STRIDE
     ld a, [wBuffer + wPFacCurX]
-    add a, l
-    ld l, a
+    cp PFAC_SIZE
+    jr nc, .oob
+    add a, e
+    ld e, a
     jr nc, .noCarry
-    inc h
+    inc d
 .noCarry
+    ld hl, wBuffer + wPFacTargetBaseLo
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    add hl, de
     ld a, [hl]
-    pop bc
     ret
 
 .oob
@@ -1411,7 +1415,7 @@ PFacStampRoomFloors:
 ; For every registered room (W=0 slots skipped), draws the directional 9-slice
 ; wall ring on the cells immediately outside its floor rect (X-1..X+W,
 ; Y-1..Y+H). A ring cell already PFAC_CORRIDOR or PFAC_ROOMFLOOR (a doorway
-; carved by PFacCarveCorridors/PFacCarveEntryCorridor, or another room's floor)
+; carved by PFacCarveCorridors/PFacCarveOneCorridor, or another room's floor)
 ; is left untouched - that's how doorways survive. Everything else in the ring
 ; becomes a straight wall (65/68/70/73) or corner post (64/66/72/74). Relies on
 ; every placed room's floor rect staying within blocks 1..18 (guaranteed by
@@ -3794,72 +3798,83 @@ PFacCandInBounds:
 
 ; a=0 if wPFacCand rect keeps >=3 floor-cell separation from every placed
 ; room, leaving a full void cell between their one-block wall rings.
+;
+; The +2 before each comparison is deliberate: a >=1 gap lets two rooms' wall
+; rings (each 1 cell wide) land on the same shared cell, so whichever room's
+; PFacEncloseRooms pass runs later silently overwrites the other's corner/edge
+; there. A >=2 gap gives every room's ring its own dedicated cell; the second
+; increment prevents those two dedicated ring cells from touching one another.
+;
+; R6: this is the inner loop of the generator's most expensive phase, so it now
+; walks the record array with hl instead of recomputing id*6 through
+; PFacRoomRecordAddr for all twelve slots, keeps the scanned rect in registers
+; instead of copying it through four wBuffer bytes, and hoists the two
+; candidate edge sums out of the loop. BC is preserved because
+; PFacForceItemRoom holds its scan bound in b across the call.
 PFacCandOverlaps:
-    xor a
-    ld [wBuffer + wPFacScanId], a
-.loop
-    ld a, [wBuffer + wPFacScanId]
-    cp PFAC_ROOM_MAX
-    jr nc, .clear
-    ld a, [wBuffer + wPFacScanId]
-    call PFacRoomRecordAddr
-    ld a, [hli]
-    ld [wBuffer + wPFacBX], a
-    ld a, [hli]
-    ld [wBuffer + wPFacBY], a
-    ld a, [hli]
-    ld [wBuffer + wPFacBW], a
-    ld a, [hl]
-    ld [wBuffer + wPFacBH], a
-    ld a, [wBuffer + wPFacBW]
-    and a
-    jr z, .next                  ; unplaced, ignore
-    ; separated if any of the 4 hold; else overlap. The +2 before
-    ; each cp is deliberate: a >=1 gap lets two rooms' wall rings (each 1 cell
-    ; wide) land on the same shared cell, so whichever room's PFacEncloseRooms
-    ; pass runs later silently overwrites the other's corner/edge there. >=2
-    ; gap gives every room's ring its own dedicated cell; the second increment
-    ; prevents those two dedicated ring cells from touching one another.
+    push bc
     ld a, [wBuffer + wPFacCandX]
     ld hl, wBuffer + wPFacCandW
     add a, [hl]
-    inc a
-    inc a
-    ld hl, wBuffer + wPFacBX
-    cp [hl]
-    jr c, .next                  ; candX+candW+2 < Bx
-    ld a, [wBuffer + wPFacBX]
-    ld hl, wBuffer + wPFacBW
-    add a, [hl]
-    inc a
-    inc a
-    ld hl, wBuffer + wPFacCandX
-    cp [hl]
-    jr c, .next                  ; Bx+Bw+2 < candX
+    add a, 2
+    ld [wBuffer + wPFacCandSumX], a
     ld a, [wBuffer + wPFacCandY]
     ld hl, wBuffer + wPFacCandH
     add a, [hl]
-    inc a
-    inc a
-    ld hl, wBuffer + wPFacBY
+    add a, 2
+    ld [wBuffer + wPFacCandSumY], a
+
+    ld a, PFAC_ROOM_MAX
+    ld [wBuffer + wPFacScanId], a
+    ld hl, sProcFacilityGenScratch
+.loop
+    ld a, [hli]
+    ld d, a                      ; d = scanned room X
+    ld a, [hli]
+    ld e, a                      ; e = scanned room Y
+    ld a, [hli]
+    and a
+    jr z, .next                  ; unplaced slot; hl now points at its H byte
+    ld b, a                      ; b = scanned room W
+    ld c, [hl]                   ; c = scanned room H
+    push hl
+
+    ld hl, wBuffer + wPFacCandSumX
+    ld a, [hl]
+    cp d
+    jr c, .separated             ; candX + candW + 2 < roomX
+    ld a, d
+    add a, b
+    add a, 2
+    ld hl, wBuffer + wPFacCandX
     cp [hl]
-    jr c, .next                  ; candY+candH+2 < By
-    ld a, [wBuffer + wPFacBY]
-    ld hl, wBuffer + wPFacBH
-    add a, [hl]
-    inc a
-    inc a
+    jr c, .separated             ; roomX + roomW + 2 < candX
+    ld hl, wBuffer + wPFacCandSumY
+    ld a, [hl]
+    cp e
+    jr c, .separated             ; candY + candH + 2 < roomY
+    ld a, e
+    add a, c
+    add a, 2
     ld hl, wBuffer + wPFacCandY
     cp [hl]
-    jr c, .next                  ; By+Bh+2 < candY
-    ld a, 1                      ; none separated -> overlap
+    jr c, .separated             ; roomY + roomH + 2 < candY
+
+    pop hl
+    pop bc
+    ld a, 1                      ; no axis separated them -> overlap
     ret
+.separated
+    pop hl
 .next
+    inc hl
+    inc hl
+    inc hl                       ; H byte -> the next record
     ld a, [wBuffer + wPFacScanId]
-    inc a
+    dec a
     ld [wBuffer + wPFacScanId], a
-    jr .loop
-.clear
+    jr nz, .loop
+    pop bc
     xor a
     ret
 
@@ -3995,25 +4010,6 @@ PFacCarveCorridors:
     ld [wBuffer + wPFacCorId], a
     jp .loop
 
-; ============================================================
-; PFacCarveEntryCorridor
-; Room 0 -> a random placed room, +25% chance of a second one.
-; ============================================================
-PFacCarveEntryCorridor:
-    xor a
-    ld [wBuffer + wPFacCorId], a
-    call PFacRandOtherRoom
-    cp 255
-    ret z
-    call PFacCarveOneCorridor
-    call Random
-    cp 64
-    ret nc
-    call PFacRandOtherRoom
-    cp 255
-    ret z
-    jp PFacCarveOneCorridor
-
 ; Z set (a=0) if room wPFacCorId is unplaced (W=0); else NZ.
 PFacCorRoomPlaced:
     ld a, [wBuffer + wPFacCorId]
@@ -4024,87 +4020,299 @@ PFacCorRoomPlaced:
     and a
     ret
 
-; OUT a = a random placed room id != wPFacCorId, or 255 if none exists.
-PFacRandOtherRoom:
-    ld c, PFAC_ROOM_MAX
-    call Rangerandom
-    ld e, a                      ; start id
-    ld b, PFAC_ROOM_MAX
-.loop
-    ld a, e
-    cp PFAC_ROOM_MAX
-    jr c, .noWrap
-    xor a
-    ld e, a
-.noWrap
-    ld a, [wBuffer + wPFacCorId]
-    cp e
-    jr z, .advance
-    ld a, e
-    call PFacRoomRecordAddr
-    inc hl
-    inc hl
-    ld a, [hl]
-    and a
-    jr z, .advance
-    ld a, e
-    ret
-.advance
-    inc e
-    dec b
-    jr nz, .loop
-    ld a, 255
-    ret
-
 ; ============================================================
 ; PFacCarveOneCorridor
 ; INPUT a = target room id; wPFacCorId = source room id. Carves a 1-wide
-; direct-manhattan (L-shaped) corridor of PFAC_CORRIDOR from the source center
-; all the way to the target center. Crossing another room or corridor does not
-; stop the walk, preserving the recorded parent-tree connectivity contract.
+; manhattan corridor of PFAC_CORRIDOR from the source center all the way to the
+; target center. Crossing another room or corridor does not stop the walk,
+; preserving the recorded parent-tree connectivity contract.
+;
+; R6: the route is no longer fixed. Every path here is described by a single
+; number, the ELBOW column, and is walked in three legs: along row SY from SX to
+; the elbow, down column elbow from SY to TY, then along row TY to TX. An elbow
+; of TX collapses leg 3 and reproduces the original horizontal-leg-first L
+; exactly; an elbow of SX collapses leg 1 and gives the vertical-first L; any
+; column between them gives a Z with one extra turn. All three shapes leave the
+; source along its center row and arrive at the target along a center row or
+; column, so every one of them still enters and leaves through canonical
+; sockets.
+;
+; Why this exists. PFacValidateGeneratedCorners is the ONLY gate that can throw
+; a layout away, and measurement showed every single rejection was one corridor
+; clipping one room's footprint ring corner - the cell PFacRingWrite then
+; refuses to overwrite, leaving the corner wrong. A rejection costs a full
+; pipeline re-roll, and the worst measured seed paid for eighteen of them.
+; Choosing an elbow that misses every corner rescues about 84% of those
+; layouts (tools/pyboy_smoke/simulate_facility_corridor_policy.py). TX is tried
+; first, so any layout that is accepted today carves exactly the path it always
+; did.
 ; ============================================================
 PFacCarveOneCorridor:
     push af
     ld a, [wBuffer + wPFacCorId]
     call PFacRoomCenter
     ld a, b
-    ld [wBuffer + wPFacCurX], a
+    ld [wBuffer + wPFacCorSX], a
     ld a, c
-    ld [wBuffer + wPFacCurY], a
+    ld [wBuffer + wPFacCorSY], a
     pop af
     call PFacRoomCenter
     ld a, b
     ld [wBuffer + wPFacCorTX], a
     ld a, c
     ld [wBuffer + wPFacCorTY], a
-.hLeg
+    call PFacChooseCorridorRoute
+
+    ld a, [wBuffer + wPFacCorSX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacCorSY]
+    ld [wBuffer + wPFacCurY], a
+.leg1                            ; row SY, walk X to the elbow
     call PFacCorStampCell
     ld a, [wBuffer + wPFacCurX]
-    ld hl, wBuffer + wPFacCorTX
+    ld hl, wBuffer + wPFacCorElbow
     cp [hl]
-    jr z, .vLeg
-    jr c, .hInc
+    jr z, .leg2
+    jr c, .leg1Inc
     dec a
     ld [wBuffer + wPFacCurX], a
-    jr .hLeg
-.hInc
+    jr .leg1
+.leg1Inc
     inc a
     ld [wBuffer + wPFacCurX], a
-    jr .hLeg
-.vLeg
+    jr .leg1
+.leg2                            ; column elbow, walk Y to TY
     call PFacCorStampCell
     ld a, [wBuffer + wPFacCurY]
     ld hl, wBuffer + wPFacCorTY
     cp [hl]
-    ret z
-    jr c, .vInc
+    jr z, .leg3
+    jr c, .leg2Inc
     dec a
     ld [wBuffer + wPFacCurY], a
-    jr .vLeg
-.vInc
+    jr .leg2
+.leg2Inc
     inc a
     ld [wBuffer + wPFacCurY], a
-    jr .vLeg
+    jr .leg2
+.leg3                            ; row TY, walk X to TX
+    call PFacCorStampCell
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacCorTX
+    cp [hl]
+    ret z
+    jr c, .leg3Inc
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    jr .leg3
+.leg3Inc
+    inc a
+    ld [wBuffer + wPFacCurX], a
+    jr .leg3
+
+; Pick the elbow column for the route described by wPFacCorSX/SY and
+; wPFacCorTX/TY, and leave it in wPFacCorElbow. TX is tried first so an already
+; clean layout is carved exactly as before, then SX, then every column between
+; them. If no candidate is clean the original TX shape is restored and the
+; layout is rejected downstream exactly as it is today.
+PFacChooseCorridorRoute:
+    ld a, [wBuffer + wPFacCorTX]
+    ld [wBuffer + wPFacCorElbow], a
+    call PFacRouteClipsCorner
+    ret nc
+    ld a, [wBuffer + wPFacCorSX]
+    ld [wBuffer + wPFacCorElbow], a
+    call PFacRouteClipsCorner
+    ret nc
+.span
+    ld a, [wBuffer + wPFacCorElbow]
+    ld hl, wBuffer + wPFacCorTX
+    cp [hl]
+    jr z, .exhausted
+    jr c, .spanInc
+    dec a
+    jr .spanStore
+.spanInc
+    inc a
+.spanStore
+    ld [wBuffer + wPFacCorElbow], a
+    ld hl, wBuffer + wPFacCorTX
+    cp [hl]
+    jr z, .exhausted             ; walked back to TX, which was candidate one
+    call PFacRouteClipsCorner
+    ret nc
+    jr .span
+.exhausted
+    ld a, [wBuffer + wPFacCorTX]
+    ld [wBuffer + wPFacCorElbow], a
+    ret
+
+; Carry set when the candidate route passes through any placed room's footprint
+; ring corner - the exact condition PFacValidateGeneratedCorners rejects on.
+;
+; Every placed room is tested, including ones that will later be replaced by a
+; premade, because PFacCarveCorridors runs once BEFORE premade selection and
+; once after, and both passes must choose the same elbow or the second pass
+; would carve a different corridor than the first. That costs nothing in
+; practice: PFacPremadePerimeterClear scans the full top and bottom footprint
+; rows, so a room whose ring corner a corridor crossed is refused a template
+; anyway and is validated as a generic room.
+PFacRouteClipsCorner:
+    xor a
+    ld [wBuffer + wPFacCorScan], a
+.room
+    ld a, [wBuffer + wPFacCorScan]
+    cp PFAC_ROOM_MAX
+    jr nc, .clean
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld d, a                      ; d = interior X
+    ld a, [hli]
+    ld e, a                      ; e = interior Y
+    ld a, [hli]
+    and a
+    jr z, .next                  ; unplaced slot
+    ld b, a                      ; b = interior W
+    ld c, [hl]                   ; c = interior H
+
+    ; Cheap per-room rejection before the four per-corner tests. The route only
+    ; ever occupies row SY, row TY and column elbow, so a corner of this room
+    ; can only be on it if one of the room's two ring ROWS is SY or TY, or one
+    ; of its two ring COLUMNS is the elbow. Most rooms fail all six compares and
+    ; never pay for a single PFacRouteHitsPoint call. hl is free here: the
+    ; record pointer has already been fully consumed.
+    ld a, e
+    dec a                        ; top ring row
+    ld hl, wBuffer + wPFacCorSY
+    cp [hl]
+    jr z, .candidate
+    ld hl, wBuffer + wPFacCorTY
+    cp [hl]
+    jr z, .candidate
+    ld a, e
+    add a, c                     ; bottom ring row
+    ld hl, wBuffer + wPFacCorSY
+    cp [hl]
+    jr z, .candidate
+    ld hl, wBuffer + wPFacCorTY
+    cp [hl]
+    jr z, .candidate
+    ld hl, wBuffer + wPFacCorElbow
+    ld a, d
+    dec a                        ; left ring column
+    cp [hl]
+    jr z, .candidate
+    ld a, d
+    add a, b                     ; right ring column
+    cp [hl]
+    jr nz, .next
+
+.candidate
+    ld a, d
+    dec a
+    ld [wBuffer + wPFacCorPX], a ; left ring column
+    ld a, e
+    dec a
+    ld [wBuffer + wPFacCorPY], a ; top ring row
+    call PFacRouteHitsPoint
+    ret c
+    ld a, d
+    add a, b
+    ld [wBuffer + wPFacCorPX], a ; right ring column
+    call PFacRouteHitsPoint
+    ret c
+    ld a, e
+    add a, c
+    ld [wBuffer + wPFacCorPY], a ; bottom ring row
+    call PFacRouteHitsPoint
+    ret c
+    ld a, d
+    dec a
+    ld [wBuffer + wPFacCorPX], a
+    call PFacRouteHitsPoint
+    ret c
+.next
+    ld hl, wBuffer + wPFacCorScan
+    inc [hl]
+    jr .room
+.clean
+    and a
+    ret
+
+; Carry set if the candidate route passes through (wPFacCorPX, wPFacCorPY).
+; Preserves BC and DE so PFacRouteClipsCorner keeps the room rect it loaded.
+PFacRouteHitsPoint:
+    push bc
+    push de
+    ld a, [wBuffer + wPFacCorPY]
+    ld hl, wBuffer + wPFacCorSY
+    cp [hl]
+    jr nz, .leg2                 ; not on the source row
+    ld a, [wBuffer + wPFacCorSX]
+    ld b, a
+    ld a, [wBuffer + wPFacCorElbow]
+    ld c, a
+    ld a, [wBuffer + wPFacCorPX]
+    call PFacWithinSpan
+    jr c, .hit
+.leg2
+    ld a, [wBuffer + wPFacCorPX]
+    ld hl, wBuffer + wPFacCorElbow
+    cp [hl]
+    jr nz, .leg3                 ; not on the elbow column
+    ld a, [wBuffer + wPFacCorSY]
+    ld b, a
+    ld a, [wBuffer + wPFacCorTY]
+    ld c, a
+    ld a, [wBuffer + wPFacCorPY]
+    call PFacWithinSpan
+    jr c, .hit
+.leg3
+    ld a, [wBuffer + wPFacCorPY]
+    ld hl, wBuffer + wPFacCorTY
+    cp [hl]
+    jr nz, .miss                 ; not on the target row
+    ld a, [wBuffer + wPFacCorElbow]
+    ld b, a
+    ld a, [wBuffer + wPFacCorTX]
+    ld c, a
+    ld a, [wBuffer + wPFacCorPX]
+    call PFacWithinSpan
+    jr c, .hit
+.miss
+    pop de
+    pop bc
+    and a
+    ret
+.hit
+    pop de
+    pop bc
+    scf
+    ret
+
+; Carry set when a lies in the inclusive span between b and c, given in either
+; order. Clobbers a, b, c and d.
+PFacWithinSpan:
+    ld d, a
+    ld a, b
+    cp c
+    jr c, .ordered
+    jr z, .ordered
+    ld a, b
+    ld b, c
+    ld c, a                      ; swap so b is the low end
+.ordered
+    ld a, d
+    cp b
+    jr c, .outside
+    ld a, c
+    cp d
+    jr c, .outside
+    scf
+    ret
+.outside
+    and a
+    ret
 
 ; Primary cell: carve UNTOUCHED -> CORRIDOR. Existing room floors and corridors
 ; remain unchanged, but never stop the walk: every mandatory corridor must reach
