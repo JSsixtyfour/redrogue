@@ -616,6 +616,20 @@ class RedRogueHarness:
             raise ValueError("Encounter kind must be 1 (normal), 2 (bridge), 3 (miniboss), or 4 (wild area)")
         debug_menu = self.hook_flag("DebugMenu")
         quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
+        # The lobby is not "ready" when a door map first goes non-zero: both
+        # doors are set by _PickNextStage EARLY in SelectAndPatchLobbyExit, and
+        # the bridge roll, the mini-boss / wild-area roll and the Debug 2
+        # forced-door consumption all still run AFTER that. Waiting on the door
+        # byte alone therefore returns mid-routine, and how far mid-routine
+        # depends on how many cycles the lobby path happens to take - so adding
+        # work anywhere in it (Phase 7's gym-lineup roll did exactly this) made
+        # tests read a half-finished lobby and fail for no real reason.
+        #
+        # .noDebug2DoorForce is the single point every path through the tail
+        # converges on, so it is an exact completion signal rather than a magic
+        # settle count. Debug-build only, which is fine: this whole helper
+        # drives the Debug 2 menu and cannot run on a release ROM.
+        lobby_exit_done = self.hook_flag("SelectAndPatchLobbyExit.noDebug2DoorForce")
 
         self.tick(240)
         self.pyboy.button_press("select")
@@ -689,7 +703,8 @@ class RedRogueHarness:
 
         def lobby_ready() -> bool:
             return (
-                self.read8("wLobbyDoor1StageMap") != 0
+                lobby_exit_done["count"] > 0
+                and self.read8("wLobbyDoor1StageMap") != 0
                 and self.read8("wSpritePlayerStateData1", 4) != 0
             )
 

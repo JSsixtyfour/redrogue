@@ -1375,3 +1375,32 @@ INCLUDE "data/maps/headers/BlackthornGym.asm"
 INCLUDE "scripts/BlackthornGym.asm"
 INCLUDE "data/maps/objects/BlackthornGym.asm"
 BlackthornGym_Blocks: INCBIN "maps/BlackthornGym.blk"
+
+
+; Phase 7 Elite Four rooms. A NEW floating section rather than an append to
+; "Maps 23": that section already carries all eight Phase 6 Johto gyms, and a
+; ROMX section must fit WHOLLY inside one 16 KiB bank - total free ROM does not
+; solve a bank overflow (ROM_BIBLE.md). Floating, so rgblink places it wherever
+; it fits. Re-measure per the ROM Bible's section 6 after this lands.
+;
+; PINNED to bank $3C for the same reason "Text Elite Four Rooms" is pinned to
+; $2F: left floating, first fit put these 1,215 bytes in bank $06 and left it
+; with 43 bytes free. These three room scripts still need in-emulator warp and
+; entrance-coordinate verification, so they are likely to be edited, and 43
+; bytes is not enough headroom for that to be safe. $3C had ~9.8 KB spare.
+SECTION "Maps 24", ROMX, BANK[$3C]
+
+INCLUDE "data/maps/headers/KogasRoom.asm"
+INCLUDE "scripts/KogasRoom.asm"
+INCLUDE "data/maps/objects/KogasRoom.asm"
+KogasRoom_Blocks: INCBIN "maps/KogasRoom.blk"
+
+INCLUDE "data/maps/headers/WillsRoom.asm"
+INCLUDE "scripts/WillsRoom.asm"
+INCLUDE "data/maps/objects/WillsRoom.asm"
+WillsRoom_Blocks: INCBIN "maps/WillsRoom.blk"
+
+INCLUDE "data/maps/headers/KarensRoom.asm"
+INCLUDE "scripts/KarensRoom.asm"
+INCLUDE "data/maps/objects/KarensRoom.asm"
+KarensRoom_Blocks: INCBIN "maps/KarensRoom.blk"

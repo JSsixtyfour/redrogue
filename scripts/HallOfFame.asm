@@ -37,7 +37,9 @@ HallOfFameResetEventsAndSaveScript:
 	set BIT_UNUSED_BEAT_ELITE_4, [hl] ; unused
 	res BIT_STARTED_ELITE_4, [hl]
 	xor a ; SCRIPT_*_DEFAULT
-	ld [wElite4Order], a
+	; Phase 7: wElite4Order is gone. The run's drawn Elite Four and Champion
+	; live in wRunElite4 / wRunChampion, which are cleared with the rest of the
+	; run block below rather than one byte at a time here.
 	ld hl, wLoreleisRoomCurScript
 	ld [hli], a ; wLoreleisRoomCurScript
 	ld [hli], a ; wBrunosRoomCurScript
@@ -45,6 +47,17 @@ HallOfFameResetEventsAndSaveScript:
 	ld [wLancesRoomCurScript], a
 	ld [wChampionsRoomCurScript], a
 	ld [wHallOfFameCurScript], a
+	; The three Phase 7 Elite Four rooms. Not contiguous with the three above,
+	; so they get their own stores rather than extending that hli run.
+	ld [wKogasRoomCurScript], a
+	ld [wWillsRoomCurScript], a
+	ld [wKarensRoomCurScript], a
+	; wRunGymLineup / wBadgeSlotOrder / wRunElite4 / wRunChampion are NOT
+	; cleared here: they sit inside wGameProgressFlags, so the farcall to
+	; RogueResetRunState at the end of this script already blanket-clears them,
+	; and that routine is also the one place that knows to preserve
+	; wGymsUsedMask across the wipe. Duplicating the clear here would be
+	; redundant at best and, if it ever grew to cover the mask, wrong.
 	; Finishing the game ends the run exactly like a blackout does: one wipe
 	; over ZONE 1 of constants/event_constants.asm plus badges and the
 	; visited-stage bitfield. That range subsumes the Elite 4 events and

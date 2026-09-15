@@ -646,9 +646,9 @@ Debug2ApplyRoundState::
 	; "not yet cleared" (the flag is normally only set by actually beating
 	; the Victory Road Rival), so the Lobby gate kept sending the debug
 	; jump to Victory Road instead of the Elite Four. Rolling a fresh
-	; wElite4Order here (only the first time this flips the bit on) also
-	; means repeated debug jumps into the finale still get a shuffled order,
-	; not always the same Elite4OrderTable[0] default.
+	; wRunElite4/wRunChampion here (only the first time this flips the bit on)
+	; also means repeated debug jumps into the finale still get a shuffled
+	; order, not always the same default.
 	ld a, [wBattleCount]
 	cp 86
 	jr c, .debugBeforeVictoryRoad
@@ -658,9 +658,7 @@ Debug2ApplyRoundState::
 	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr nz, .debugFinaleStateDone
 	SetEvent EVENT_VICTORY_ROAD_CLEARED
-	ld c, 24
-	call Rangerandom
-	ld [wElite4Order], a
+	farcall RollElite4AndChampion
 	jr .debugFinaleStateDone
 .debugBeforeVictoryRoad
 	ResetEvent EVENT_VICTORY_ROAD_CLEARED

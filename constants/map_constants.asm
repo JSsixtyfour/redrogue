@@ -395,6 +395,19 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const LORELEIS_ROOM,                  5,  6 ; $F5
 	map_const BRUNOS_ROOM,                    5,  6 ; $F6
 	map_const AGATHAS_ROOM,                   5,  6 ; $F7
+; Phase 7 Elite Four rooms. Unlike the Phase 6 gyms, these APPEND rather than
+; reclaim an UNUSED_MAP_* slot: Phase 6 consumed all eight in-place slots and
+; only $E7 remains, against three rooms needed. Appending here is safe because
+; these land inside the LAST indoor group, so no INDOORGROUP_* boundary moves
+; and LoadTownMapEntry's scan is untouched. NUM_MAPS becomes $FB, leaving $FB
+; banked and keeping ASSERT WARP_NO_RETURN ($FD) > NUM_MAPS true with two to
+; spare. Dimensions are MEASURED from each .blk (see PHASE_7_SPEC.md), not
+; guessed: Koga and Will are 5x7 GYM rooms, Karen is a 5x8 CEMETERY room.
+; These three also append a row to map_header_pointers / map_header_banks /
+; songs, in THIS order, Koga then Will then Karen.
+	map_const KOGAS_ROOM,                     5,  7 ; $F8
+	map_const WILLS_ROOM,                     5,  7 ; $F9
+	map_const KARENS_ROOM,                    5,  8 ; $FA
 	end_indoor_group POKEMON_LEAGUE_3
 DEF NUM_MAPS EQU const_value
 

@@ -118,11 +118,31 @@ class TrainerCardSourceContractTest(unittest.TestCase):
     """
 
     def test_lobby_exit_syncs_the_slot_array(self) -> None:
+        """The sync must happen in the lobby path, BEFORE the stage is picked.
+
+        This used to read only the first blank-line-separated paragraph of
+        SelectAndPatchLobbyExit, which made it a test of comment layout as much
+        as of call order: Phase 7 added the gym-lineup roll above the sync, with
+        its own comment block, and the test failed while the contract it exists
+        to protect was untouched.
+
+        What actually matters is that the sync runs before _PickNextStage can
+        set another badge, so that is what is checked now - the two calls in
+        order, anywhere in the routine.
+        """
         source = (
             REPO_ROOT / "custom_functions" / "random_stage_selection.asm"
         ).read_text(encoding="utf-8")
         body = source.split("SelectAndPatchLobbyExit::", 1)[1]
-        self.assertRegex(body.split("\n\n", 1)[0], r"call\s+RogueSyncBadgeSlots")
+        sync = re.search(r"^\tcall\s+RogueSyncBadgeSlots\s*$", body, re.M)
+        pick = re.search(r"^\tcall\s+_PickNextStage\s*$", body, re.M)
+        self.assertIsNotNone(sync, "SelectAndPatchLobbyExit no longer syncs the slot array")
+        self.assertIsNotNone(pick, "SelectAndPatchLobbyExit no longer picks the next stage")
+        self.assertLess(
+            sync.start(), pick.start(),
+            "the badge sync must run BEFORE _PickNextStage, or two badges earned "
+            "between syncs collapse into badge-bit order",
+        )
 
     def test_trainer_info_blits_per_slot(self) -> None:
         source = (

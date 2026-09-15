@@ -446,6 +446,8 @@ FOR n, 1, NUM_TRAINERS + 1
 	dw WillSpecs
 	ELIF n == KAREN
 	dw KarenSpecs
+	ELIF n == KOGA_E4
+	dw KogaE4Specs
 	ELSE
 	dw 0
 	ENDC
@@ -580,3 +582,20 @@ FalknerSpec3:
 
 	e4_member_pointers Karen
 	e4_member_records  Karen, POOL_KAREN, HOUNDOOM, POOL_FORM_ROLL, JOLTEON, 2 ; Umbreon
+
+; ---------------------------------------------------------------------------
+; KOGA_E4 - the Elite Four Koga, a SEPARATE class from the gym KOGA.
+;
+; The two roles need different grids: the gym Koga is 24 records indexed by
+; ROUND, while InitElite4Battle hands out wTrainerNo 1-12 on the four-tier E4
+; grid. On one shared class an Elite Four Koga would have fielded his gym
+; rounds 1-4 - about level 15 against a level 55 party - through BOTH the spec
+; path and the authored KogaData fallback.
+;
+; Because he is his own class, this is the Will/Karen shape verbatim: no macro
+; of his own, no offset arithmetic, and InitElite4Battle needs no branch. He
+; draws from POOL_KOGA, the same pool the gym Koga uses, so the flavour holds.
+; His aces are his two Gen 2 signatures, both already in this tree as species.
+; ---------------------------------------------------------------------------
+	e4_member_pointers KogaE4
+	e4_member_records  KogaE4, POOL_KOGA, CROBAT, 0, FORRETRESS, 0

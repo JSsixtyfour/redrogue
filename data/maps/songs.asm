@@ -248,4 +248,10 @@ MapSongBanks::
 	db MUSIC_GYM, BANK(Music_Gym) ; LORELEIS_ROOM
 	db MUSIC_DUNGEON1, BANK(Music_Dungeon1) ; BRUNOS_ROOM
 	db MUSIC_POKEMON_TOWER, BANK(Music_PokemonTower) ; AGATHAS_ROOM
+; Phase 7 Elite Four rooms, same order as map_header_pointers.asm. Koga and Will
+; take the gym theme their GYM-tileset neighbours use; Karen takes the Pokemon
+; Tower theme Agatha uses, matching her CEMETERY tileset.
+	db MUSIC_GYM, BANK(Music_Gym) ; KOGAS_ROOM
+	db MUSIC_GYM, BANK(Music_Gym) ; WILLS_ROOM
+	db MUSIC_POKEMON_TOWER, BANK(Music_PokemonTower) ; KARENS_ROOM
 	assert_table_length NUM_MAPS

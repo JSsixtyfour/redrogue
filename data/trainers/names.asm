@@ -61,4 +61,5 @@ TrainerNames::
 	li "JANINE"
 	li "WILL"
 	li "KAREN"
+	li "KOGA" ; KOGA_E4 - displays as KOGA, same as the gym class
 	assert_list_length NUM_TRAINERS

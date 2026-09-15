@@ -64,6 +64,7 @@ TrainerNamePointers:
 	dw wTrainerName ; JANINE
 	dw wTrainerName ; WILL
 	dw wTrainerName ; KAREN
+	dw wTrainerName ; KOGA_E4
 	assert_table_length NUM_TRAINERS
 
 .YoungsterName:     db "YOUNGSTER@"

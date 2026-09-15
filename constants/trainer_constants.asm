@@ -110,6 +110,15 @@ ENDM
 	trainer_const JANINE         ; $3B
 	trainer_const WILL           ; $3C
 	trainer_const KAREN          ; $3D
+; Koga stands in BOTH Fuchsia Gym and the Johto Elite Four, and the two roles
+; need different parties: his gym grid is 24 records indexed by ROUND, while
+; InitElite4Battle hands out wTrainerNo 1-12 on the four-tier E4 grid. Sharing
+; one class would mean an E4 Koga fielding his gym rounds 1-4, about level 15
+; against a level 55 party. A second class is the cheap fix - five appended
+; table rows, no InitElite4Battle change, and no dual-role special case - and it
+; follows the RIVAL_MINIBOSS / GIOVANNI_MINIBOSS precedent above. He keeps
+; Koga's pic, name and AI; only the party data differs.
+	trainer_const KOGA_E4        ; $3E
 DEF NUM_TRAINERS EQU const_value - 1
 
 ; Trainer-card face/badge blocks (gfx/trainer_card/badges.png, blitted by

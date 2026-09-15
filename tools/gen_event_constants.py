@@ -193,6 +193,11 @@ PERSISTENT = [
     "EVENT_PRISM_E4_FIGHTING_SHOWN",
     "EVENT_PRISM_E4_GHOST_SHOWN",
     "EVENT_PRISM_E4_DRAGON_SHOWN",
+    # Phase 7: Koga and Will. Karen grants no cartridge (her signature type is
+    # DARK, absent from Gen 1, and GHOST is already Agatha's), so there is no
+    # EVENT_PRISM_E4_DARK_SHOWN and there should not be one.
+    "EVENT_PRISM_E4_POISON_SHOWN",
+    "EVENT_PRISM_E4_PSYCHIC_SHOWN",
     "EVENT_PRISM_CHAMPION_SHOWN",
 ]
 
@@ -267,6 +272,11 @@ EXTRA_SEEDS = {
     "CREDIT_EXCHANGE", "REWARD_ROOM", "HALL_OF_FAME",
     "LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM", "LANCES_ROOM",
     "CHAMPIONS_ROOM", "VICTORY_ROAD_1F", "VICTORY_ROAD_2F", "VICTORY_ROAD_3F",
+    # Phase 7 Elite Four rooms. Like the Johto gyms, these are reached only
+    # through warps patched at runtime (Elite4PatchRoomWarps), never through a
+    # static warp, so omitting them here would graveyard their events and the
+    # rooms would silently lose their beat flags.
+    "KOGAS_ROOM", "WILLS_ROOM", "KARENS_ROOM",
     # gyms (GymMapByBadge, random_stage_selection.asm)
     "PEWTER_GYM", "CERULEAN_GYM", "VERMILION_GYM", "CELADON_GYM",
     "FUCHSIA_GYM", "SAFFRON_GYM", "CINNABAR_GYM", "VIRIDIAN_GYM",
@@ -369,6 +379,23 @@ NEW_EVENTS = [
     "EVENT_BEAT_FACILITY_FAKE_BALL_2",
     "EVENT_BEAT_FACILITY_FAKE_BALL_3",
     "EVENT_BEAT_FACILITY_FAKE_BALL_4",
+    # Phase 7 Elite Four rooms. Two per room, mirroring the four shipped rooms
+    # exactly (see EVENT_BEAT_AGATHAS_ROOM_TRAINER_0 /
+    # EVENT_AUTOWALKED_INTO_AGATHAS_ROOM): the member's beat flag, which is a
+    # def_trainers trainer flag and so must be the room's ONLY one, and the
+    # one-shot that stops the entrance auto-walk replaying on every re-entry.
+    # These rooms carry no gym trainers and no TM.
+    "EVENT_BEAT_KOGAS_ROOM_TRAINER_0",
+    "EVENT_AUTOWALKED_INTO_KOGAS_ROOM",
+    "EVENT_BEAT_WILLS_ROOM_TRAINER_0",
+    "EVENT_AUTOWALKED_INTO_WILLS_ROOM",
+    "EVENT_BEAT_KARENS_ROOM_TRAINER_0",
+    "EVENT_AUTOWALKED_INTO_KARENS_ROOM",
+    # Phase 7 ELEMENT PRISM cartridges for the two new grantors. Also listed in
+    # PERSISTENT (TABLE 2): a prism message fires once EVER, so it must not be
+    # swept by RogueResetRunState.
+    "EVENT_PRISM_E4_POISON_SHOWN",
+    "EVENT_PRISM_E4_PSYCHIC_SHOWN",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

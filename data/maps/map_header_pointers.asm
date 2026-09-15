@@ -249,4 +249,11 @@ MapHeaderPointers::
 	dw LoreleisRoom_h
 	dw BrunosRoom_h
 	dw AgathasRoom_h
+; Phase 7 Elite Four rooms. APPENDED, not edited in place: Phase 6 consumed the
+; last eight reclaimable UNUSED_MAP_* slots. Keep Koga, Will, Karen in this order
+; here and in map_header_banks.asm and songs.asm - three parallel NUM_MAPS tables
+; that must stay in lockstep.
+	dw KogasRoom_h
+	dw WillsRoom_h
+	dw KarensRoom_h
 	assert_table_length NUM_MAPS

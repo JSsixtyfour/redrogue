@@ -65,4 +65,5 @@ TrainerAIPointers:
 	dbw 2, KogaAI ; janine
 	dbw 2, SabrinaAI ; will
 	dbw 2, AgathaAI ; karen
+	dbw 2, KogaAI ; koga_e4 - same AI as the gym Koga, only the party differs
 	assert_table_length NUM_TRAINERS

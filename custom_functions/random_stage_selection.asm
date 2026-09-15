@@ -44,7 +44,13 @@ RogueStageMapTable:
 	db -1
 
 ; Badge bit → gym map. Index matches wObtainedBadges bit position (0=Boulder…7=Earth).
-; Used by _PickNextGym to find which gym the player should face next.
+;
+; PHASE 7: this is now only the FALLBACK, used while wRunGymLineup is still all
+; zeroes. Once a lineup is rolled, _PickNextGym resolves badge bit i through
+; wRunGymLineup[i] -> GymMapByLeader instead, so which eight gyms a run visits
+; stops being fixed. Kept rather than deleted because an unrolled lineup is a
+; real state (a save from before Phase 7, or the first lobby entry of a run
+; before the roll) and the vanilla Kanto eight is the right answer there.
 GymMapByBadge:
 	db PEWTER_GYM      ; bit 0 – Boulder Badge
 	db CERULEAN_GYM    ; bit 1 – Cascade Badge
@@ -54,6 +60,263 @@ GymMapByBadge:
 	db SAFFRON_GYM     ; bit 5 – Marsh Badge
 	db CINNABAR_GYM    ; bit 6 – Volcano Badge
 	db VIRIDIAN_GYM    ; bit 7 – Earth Badge
+
+; ------------------------------------------------------------
+; The gym-leader pool. ONE ROW PER POOL INDEX, and the index is what
+; wGymsUsedMask's bits and wRunGymLineup's draw both count in.
+;
+; ORDER IS SIGNIFICANT twice over: the eight Kanto leaders must come first so
+; the pool size alone (NUM_GYM_POOL_KANTO or NUM_GYM_POOL_ALL) expresses the
+; Johto gate, and KOGA's index is named because it is the one entry whose
+; OCCUPANT is not fixed.
+;
+; Janine is not a ninth Johto leader and has no gym of her own: she is the
+; alternate occupant of FUCHSIA_GYM, toggled against Koga by a coin flip at
+; roll time (scripts/FuchsiaGym.asm carries both objects). So the pool is 16
+; entries, not 17, and index 4 holds KOGA or JANINE.
+;
+; The gym-to-leader mapping is otherwise FIXED - Pewter is always Brock. The
+; lineup decides which eight gyms you visit, not who stands in them.
+; ------------------------------------------------------------
+GymLeaderPool:
+	db BROCK         ; 0   PEWTER_GYM
+	db MISTY         ; 1   CERULEAN_GYM
+	db LT_SURGE      ; 2   VERMILION_GYM
+	db ERIKA         ; 3   CELADON_GYM
+	db KOGA          ; 4   FUCHSIA_GYM   (or JANINE - see above)
+	db SABRINA       ; 5   SAFFRON_GYM
+	db BLAINE        ; 6   CINNABAR_GYM
+	db GIOVANNI      ; 7   VIRIDIAN_GYM
+	db FALKNER       ; 8   VIOLET_GYM     Johto only
+	db BUGSY         ; 9   AZALEA_GYM     Johto only
+	db WHITNEY       ; 10  GOLDENROD_GYM  Johto only
+	db MORTY         ; 11  ECRUTEAK_GYM   Johto only
+	db CHUCK         ; 12  CIANWOOD_GYM   Johto only
+	db JASMINE       ; 13  OLIVINE_GYM    Johto only
+	db PRYCE         ; 14  MAHOGANY_GYM   Johto only
+	db CLAIR         ; 15  BLACKTHORN_GYM Johto only
+DEF NUM_GYM_POOL_KANTO EQU 8
+DEF NUM_GYM_POOL_ALL   EQU 16
+DEF GYM_POOL_IDX_KOGA  EQU 4
+ASSERT NUM_GYM_POOL_ALL <= 16, "wGymsUsedMask is 16 bits"
+
+; Trainer class -> that leader's gym map. Seventeen rows: the sixteen pool
+; entries plus JANINE, who shares Koga's pool index but is a different class
+; and so needs her own row pointing at the same gym.
+;
+; A table scan rather than an index, because the lineup stores CLASSES and a
+; class id is not a pool index. A miss answers PEWTER_GYM: not a silent
+; plausible default, but a real gym with a real exit, which is what an
+; unreachable-in-practice fallback should be.
+GymMapByLeader:
+	db BROCK,    PEWTER_GYM
+	db MISTY,    CERULEAN_GYM
+	db LT_SURGE, VERMILION_GYM
+	db ERIKA,    CELADON_GYM
+	db KOGA,     FUCHSIA_GYM
+	db JANINE,   FUCHSIA_GYM    ; same gym, alternate occupant
+	db SABRINA,  SAFFRON_GYM
+	db BLAINE,   CINNABAR_GYM
+	db GIOVANNI, VIRIDIAN_GYM
+	db FALKNER,  VIOLET_GYM
+	db BUGSY,    AZALEA_GYM
+	db WHITNEY,  GOLDENROD_GYM
+	db MORTY,    ECRUTEAK_GYM
+	db CHUCK,    CIANWOOD_GYM
+	db JASMINE,  OLIVINE_GYM
+	db PRYCE,    MAHOGANY_GYM
+	db CLAIR,    BLACKTHORN_GYM
+	db -1
+
+; ============================================================
+; RogueRollGymLineup  -- farcall entry point, also called in-bank
+; Draws 8 distinct leaders into wRunGymLineup and marks them in wGymsUsedMask.
+;
+; Two levels of no-repeat, which is the whole point of the pair:
+;   WITHIN a run  - wObtainedBadges already does it. _PickNextGym picks a
+;                   random UNSET badge bit, so no slot repeats until all 8 are
+;                   cleared. Unchanged by this phase.
+;   ACROSS runs   - wGymsUsedMask. A leader already used stays out of the next
+;                   lineup, so in Johto mode two runs cover all 16 leaders
+;                   before anyone repeats. When fewer than 8 candidates remain
+;                   the mask is cleared and a fresh cycle starts, which in
+;                   Kanto-only mode is every run (8 of 8 used) and is the
+;                   correct degenerate behaviour.
+;
+; CLOBBERS: a, bc, de, hl
+; ============================================================
+; Register budget, which is why the helpers below are so careful: c holds the
+; pool size for the whole routine (Rangerandom needs it in c on every draw),
+; d counts the slots left, and hl is the wRunGymLineup write pointer. Every
+; helper therefore preserves bc/de/hl and returns in a or the flags. There is
+; no scratch WRAM byte here on purpose; the routine needs none.
+RogueRollGymLineup::
+	farcall RogueGetActiveGroupMaskFar  ; e = active group mask (d preserved)
+	ld c, NUM_GYM_POOL_KANTO
+	bit BIT_GROUP_JOHTO, e
+	jr z, .poolSized
+	ld c, NUM_GYM_POOL_ALL
+.poolSized
+
+	call GymLineupFreeCandidates        ; a = candidates whose mask bit is clear
+	cp NUM_BADGES
+	jr nc, .maskUsable
+	; Fewer than eight left, so this cycle is spent. Start a fresh one rather
+	; than drawing from a pool too small to ever fill the lineup - without this
+	; the draw loop below would spin forever.
+	xor a
+	ld [wGymsUsedMask], a
+	ld [wGymsUsedMask + 1], a
+.maskUsable
+
+	ld hl, wRunGymLineup
+	ld d, NUM_BADGES                    ; d = slots still to fill
+.slotLoop
+	call Rangerandom                    ; a = 0 .. c-1; preserves bc, de, hl
+	push af
+	call GymPoolBitIsUsed               ; NZ = already drawn, or used last run
+	jr nz, .retry
+	pop af
+	push af
+	call GymPoolMarkUsed
+	pop af
+
+	push hl                             ; GymLeaderPool lookup needs hl
+	ld hl, GymLeaderPool
+	add a, l
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld a, [hl]                          ; a = that candidate's class id
+	pop hl
+	ld [hli], a
+	dec d
+	jr nz, .slotLoop
+	jp GymLineupApplyJanineFlip         ; c is still the pool size, which it needs
+.retry
+	pop af
+	jr .slotLoop
+
+; ============================================================
+; GymLineupFreeCandidates  (private)
+; INPUT:  c = pool size
+; OUTPUT: a = how many of the first c pool entries have a clear mask bit
+; CLOBBERS: a only. bc, de and hl are preserved.
+; ============================================================
+GymLineupFreeCandidates:
+	push bc
+	push de
+	push hl
+	ld a, [wGymsUsedMask]
+	ld l, a
+	ld a, [wGymsUsedMask + 1]
+	ld h, a                             ; hl = the 16-bit mask
+	ld b, c                             ; b = entries left to examine
+	ld e, 0                             ; e = free count
+.countLoop
+	srl h
+	rr l
+	jr c, .used
+	inc e
+.used
+	dec b
+	jr nz, .countLoop
+	ld a, e
+	pop hl
+	pop de
+	pop bc
+	ret
+
+; ============================================================
+; GymPoolBitIsUsed / GymPoolMarkUsed  (private)
+; INPUT:  a = pool index 0-15
+; OUTPUT: (IsUsed) NZ if that index is already spoken for
+; CLOBBERS: a only. bc, de and hl are ALL live in the caller - hl in particular
+;           is the lineup write pointer, so these must not leave it pointing at
+;           the mask.
+;
+; One mask serves double duty: it enters the roll holding the ACROSS-RUN
+; history and picks up this lineup's own draws as they happen, so distinctness
+; within the lineup needs no second bitmask.
+; ============================================================
+GymPoolBitIsUsed:
+	push hl
+	call GymPoolMaskByteAndBit          ; hl = the byte, a = the bit
+	and [hl]
+	pop hl                              ; pop does not disturb the Z flag
+	ret
+
+GymPoolMarkUsed:
+	push hl
+	call GymPoolMaskByteAndBit
+	or [hl]
+	ld [hl], a
+	pop hl
+	ret
+
+; INPUT:  a = pool index 0-15
+; OUTPUT: hl = the wGymsUsedMask byte holding it, a = its bit within that byte
+; CLOBBERS: a, hl  (bc and de preserved)
+GymPoolMaskByteAndBit:
+	push bc
+	ld hl, wGymsUsedMask
+	cp 8
+	jr c, .lowByte
+	sub 8
+	inc hl
+.lowByte
+	inc a                               ; so index 0 exits after one dec
+	ld b, a
+	ld a, 1
+.shift
+	dec b
+	jr z, .done
+	add a, a
+	jr .shift
+.done
+	pop bc
+	ret
+
+; ============================================================
+; GymLineupApplyJanineFlip  (private)
+; Fuchsia Gym carries both Koga and Janine as toggleable objects, and exactly
+; one of them stands in it per run. Koga is the pool entry, so the flip happens
+; here: half the time his slot in the drawn lineup becomes Janine instead.
+;
+; Kanto-only runs never flip. Janine is a Johto leader, and a Kanto-only run
+; should see the Fuchsia Gym it has always seen.
+;
+; This also feeds the Elite Four: RollElite4AndChampion drops the Elite Four
+; Koga from its pool when EITHER class appears here, so a run never contains
+; both a Fuchsia Koga and an Elite Four one.
+; CLOBBERS: a, bc, de, hl
+; ============================================================
+; INPUT: c = the pool size the lineup was drawn from
+GymLineupApplyJanineFlip:
+	ld a, c
+	cp NUM_GYM_POOL_ALL
+	ret nz                              ; Kanto-only: Koga always
+	ld c, 2
+	call Rangerandom
+	and a
+	ret z                               ; heads: Koga keeps the slot
+	; Tails: find Koga in the drawn lineup, if he was drawn at all, and
+	; replace him. He is in at most one slot, so this can stop on the match.
+	ld hl, wRunGymLineup
+	ld b, NUM_BADGES
+.scan
+	ld a, [hl]
+	cp KOGA
+	jr z, .found
+	inc hl
+	dec b
+	jr nz, .scan
+	ret                                 ; Koga was not drawn this run
+.found
+	ld a, JANINE
+	ld [hl], a
+	ret
 
 ; ============================================================
 ; _PickNextGym  (private)
@@ -120,12 +383,54 @@ _PickNextGym:
 	jr nz, .badgeMaskLoop
 	ld [wRogueCurGymBadgeMask], a
 
-	ld hl, GymMapByBadge
+	; PHASE 7: badge bit e now selects wRunGymLineup[e], and THAT leader picks
+	; the map. Badge bit i and lineup slot i are the same gym by construction,
+	; which is also what RogueCardLeaderForBadgeBit relies on to render the card.
 	ld d, 0
+	ld hl, wRunGymLineup
 	add hl, de
 	ld a, [hl]
+	and a
+	jr z, .noLineup
+	call GymMapForLeader
+	jr .gotMap
+.noLineup
+	; No lineup rolled: a save from before Phase 7, or a run whose first lobby
+	; entry has not happened yet. Fall back to the fixed Kanto eight, which is
+	; exactly what this did before the lineup existed.
+	ld hl, GymMapByBadge
+	add hl, de
+	ld a, [hl]
+.gotMap
 	ldh [hWarpDestinationMap], a
 	ld [wRogueMap], a
+	ret
+
+; ============================================================
+; GymMapForLeader  (private)
+; INPUT:  a = trainer CLASS id of a gym leader (not an OPP_ id)
+; OUTPUT: a = that leader's gym map
+; CLOBBERS: a only
+; ============================================================
+GymMapForLeader:
+	push bc
+	push hl
+	ld c, a
+	ld hl, GymMapByLeader
+.scan
+	ld a, [hli]
+	cp -1
+	jr z, .notFound
+	cp c
+	ld a, [hli]                  ; the map byte; ld does not disturb cp's flags
+	jr nz, .scan
+	pop hl
+	pop bc
+	ret
+.notFound
+	ld a, PEWTER_GYM
+	pop hl
+	pop bc
 	ret
 
 ; Returns: Z clear if current map is a roguelike stage, Z set if not
@@ -413,6 +718,22 @@ ENDC
 ; door choice only determines which item-category reward is offered.
 ; ============================================================
 SelectAndPatchLobbyExit::
+	; Roll this run's eight gym leaders if it has not happened yet. This is the
+	; run-start hook, and it is a lazy check rather than a call from some
+	; new-run routine for the same reason RogueSyncBadgeSlots is a sync rather
+	; than an append: there IS no single run-start site, and a lazy check is
+	; self-correcting for a save that predates the lineup.
+	;
+	; It sits ABOVE RogueSyncBadgeSlots deliberately. The card reads the lineup
+	; to name the leader behind each badge, so rolling after the sync would
+	; render one lobby visit's card against a zero lineup and fall back to the
+	; Kanto identity mapping - visibly the wrong faces.
+	;
+	; Zero is an unambiguous "unrolled": no trainer class is 0.
+	ld a, [wRunGymLineup]
+	and a
+	call z, RogueRollGymLineup
+
 	; Trainer-card bookkeeping, not stage selection: record the leader behind
 	; any newly-set badge bit in wBadgeSlotOrder before the next stage can set
 	; another one. Every return to the lobby passes through here, so at most one

@@ -136,9 +136,32 @@ RogueResetRunState::
 
 	; --- 2. blanket-clear the run-progress region (same range/routine as
 	; true new game) ---
+	;
+	; wGymsUsedMask is the ONE field in this region that must survive, so it
+	; rides across the wipe in de (FillMemory preserves de - home/tilemap.asm).
+	; It marks which gym leaders a player has already faced ACROSS lineups, so
+	; that run 2 draws the eight leaders run 1 did not; clearing it here would
+	; make every run re-roll from all 16 and defeat the whole point of the byte
+	; pair. It is still zeroed at TRUE new game, because init_player_data does
+	; this same blanket clear without this save/restore - which is exactly the
+	; semantics wanted: persistent across runs, fresh per save file.
+	ld a, [wGymsUsedMask]
+	ld d, a
+	ld a, [wGymsUsedMask + 1]
+	ld e, a
 	ld hl, wGameProgressFlags
 	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
+	xor a                         ; FillMemory's fill VALUE, and it is in `a`.
+	                              ; Before the save above, `a` happened to be 0
+	                              ; on arrival from ResetEventRange and this line
+	                              ; was not needed; reading the mask into `a`
+	                              ; broke that, and the region was filled with
+	                              ; the mask's high byte instead of zero.
 	call FillMemory
+	ld a, d
+	ld [wGymsUsedMask], a
+	ld a, e
+	ld [wGymsUsedMask + 1], a
 
 	; --- 3. re-derive the SRAM-tier caches step 2 just zeroed ---
 	farcall ApplyKeyItemTierEffects

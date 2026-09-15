@@ -86,6 +86,13 @@ GYM_LEADERS = {
 E4_MEMBERS = {
     "Will": ("WILL", "POOL_WILL", "XATU", POOL_FORM_ROLL, "JOLTEON", 1),
     "Karen": ("KAREN", "POOL_KAREN", "HOUNDOOM", POOL_FORM_ROLL, "JOLTEON", 2),
+    # KOGA_E4 is a SEPARATE class from the gym KOGA above, and belongs here
+    # rather than in the gym registry. The two roles need different grids: the
+    # gym Koga is 24 records indexed by ROUND, the Elite Four grid is 12 on
+    # four tiers. Sharing one class made an Elite Four Koga field his gym
+    # rounds 1-4, roughly level 15 against a level 55 party. His aces are plain
+    # species, so unlike Will and Karen neither needs a form index.
+    "KogaE4": ("KOGA_E4", "POOL_KOGA", "CROBAT", 0, "FORRETRESS", 0),
 }
 # Falkner's round 1 B and C are the Phase 2 worked examples, kept verbatim
 # because five tests drive them by name and number. They do not follow the
@@ -480,13 +487,18 @@ class PartySpecCoverageContractTest(unittest.TestCase):
 
         The table is built by a FOR loop matching `n == BROCK` rather than 61
         positional rows precisely because a positional row at the wrong index is
-        invisible to assert_table_length. This checks the result: exactly the 19
+        invisible to assert_table_length. This checks the result: exactly the 20
         intended classes carry a list and every other row is still `dw 0`, so a
         mistyped ELIF cannot quietly give a route trainer a gym leader's specs.
+
+        17 gym leaders + 3 Elite Four only. Was 19 before KOGA_E4, the Phase 7
+        class that carries the Elite Four Koga's party grid so it is not the gym
+        Koga's 24-round one. Raise this only alongside a deliberate new entry in
+        GYM_LEADERS or E4_MEMBERS above.
         """
         expected = {entry[0] for entry in GYM_LEADERS.values()}
         expected |= {entry[0] for entry in E4_MEMBERS.values()}
-        self.assertEqual(len(expected), 19)
+        self.assertEqual(len(expected), 20)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
         for image in self.images:

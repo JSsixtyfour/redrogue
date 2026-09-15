@@ -76,4 +76,5 @@ TrainerPicAndMoneyPointers::
 	pic_money JaninePic,       500
 	pic_money WillPic,         500
 	pic_money KarenPic,        500
+	pic_money KogaPic,         500 ; KOGA_E4 reuses the gym Koga's pic
 	assert_table_length NUM_TRAINERS

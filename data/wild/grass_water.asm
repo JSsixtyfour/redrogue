@@ -248,6 +248,12 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
+; Phase 7 Elite Four rooms (KOGAS_ROOM, WILLS_ROOM, KARENS_ROOM). This table is
+; NUM_MAPS-indexed, so appending a map id appends a row here too - the Phase 6
+; gyms did not need one only because they REUSED ids that already had rows.
+	dw NothingWildMons
+	dw NothingWildMons
+	dw NothingWildMons
 	assert_table_length NUM_MAPS
 	dw -1 ; end
 

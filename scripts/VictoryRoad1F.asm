@@ -175,9 +175,12 @@ VictoryRoad1FCooltrainerM4EndBattleText:
 	text_asm
 	SetEvent EVENT_VICTORY_ROAD_CLEARED   ; clobbers hl only, like the ld hl/set it replaces
 	                                       ; - safe in a text_asm, where bc is the live cursor
-	ld c, 24
-	call Rangerandom
-	ld [wElite4Order], a
+	; Phase 7: rolls wRunElite4 (4 members) and wRunChampion, replacing the old
+	; 0-23 Elite4OrderTable index. Like the code it replaces this destroys bc,
+	; the live text cursor, which is only safe because the very next instruction
+	; ends the text script (project_text_asm_bc_cursor). Do NOT move this above
+	; anything that still prints.
+	farcall RollElite4AndChampion
 	jp TextScriptEnd
 
 VictoryRoad1FCooltrainerM4AfterBattleText:

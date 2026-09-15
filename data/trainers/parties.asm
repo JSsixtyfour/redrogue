@@ -93,6 +93,7 @@ TrainerDataPointers:
 	dw JanineData           ; JANINE
 	dw WillData             ; WILL
 	dw KarenData            ; KAREN
+	dw KogaE4Data           ; KOGA_E4
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then
@@ -638,4 +639,8 @@ WillData:
 	db $FF, 51, NATU, 53, XATU, 53, JYNX, 55, EXEGGUTOR, 55, SLOWBRO, 0
 KarenData:
 	db $FF, 51, MURKROW, 53, GENGAR, 53, VENOMOTH, 55, HOUNDOOM, 0
+; KOGA_E4. Serves wTrainerNo 1 only - the authored hole every E4 character has,
+; which InitElite4Battle reaches at tier 0 variant 0. Records 2-12 are specs.
+KogaE4Data:
+	db $FF, 51, ARIADOS, 53, VENOMOTH, 53, FORRETRESS, 55, MUK, 55, CROBAT, 0
 

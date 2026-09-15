@@ -146,6 +146,14 @@ RogueGrantCartridgeGhost::
 	ld de, EVENT_PRISM_E4_GHOST_SHOWN
 	ld a, GHOST
 	jr RoguePrismGrantAndAnnounce
+RogueGrantCartridgePoison::
+	ld de, EVENT_PRISM_E4_POISON_SHOWN
+	ld a, POISON
+	jr RoguePrismGrantAndAnnounce
+RogueGrantCartridgePsychic::
+	ld de, EVENT_PRISM_E4_PSYCHIC_SHOWN
+	ld a, PSYCHIC_TYPE
+	jr RoguePrismGrantAndAnnounce
 RogueGrantCartridgeDragon::
 	ld de, EVENT_PRISM_E4_DRAGON_SHOWN
 	ld a, DRAGON

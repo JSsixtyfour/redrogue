@@ -2373,7 +2373,16 @@ wCeruleanCaveB1FCurScript:: db
 wVictoryRoad1FCurScript:: db
 	ds 1
 wLancesRoomCurScript:: db
-	ds 4
+; Phase 7 Elite Four room script bytes. Same rule as the Phase 6 gyms: these
+; CONSUME the `ds 4` that sat here rather than appending, so every WRAM address
+; below is byte-identical and the smoke suite's RNG does not drift
+; (project_wram_take_padding_not_append). One byte of that gap is left.
+; HallOfFame.asm zeroes these three alongside the other Elite Four room bytes
+; on run completion.
+wKogasRoomCurScript:: db
+wWillsRoomCurScript:: db
+wKarensRoomCurScript:: db
+	ds 1
 wSilphCo10FCurScript:: db
 wSilphCo11FCurScript:: db
 ; Phase 6 Johto gym script bytes CONSUME EXISTING `ds` PADDING, never append.
@@ -2780,9 +2789,10 @@ wPrismRerollsLeft:: db
 ; now so Phases 2/4/6/7 can be written against fixed addresses, and so the
 ; save/load path can be proven before anything depends on it.
 ;
-; wElite4Order (just below the boundary) is the single-byte permutation index
-; this block's wRunElite4 is intended to REPLACE in Phase 7. Both exist for now;
-; do not delete wElite4Order until final_sequence.asm stops reading it.
+; PHASE 7 LANDED: wRunElite4 and wRunChampion are live, rolled by
+; RollElite4AndChampion (custom_functions/final_sequence.asm) when the Victory
+; Road Rival falls. wElite4Order, the 0-23 permutation index this block replaced,
+; is retired to padding just below the boundary.
 
 ; Which gym leader fills each of the 8 badge slots this run, as a trainer class
 ; id (not an OPP_ id - add OPP_ID_OFFSET when writing wCurOpponent). Rolled once
@@ -2796,10 +2806,13 @@ wRunGymLineup::   ds 8
 wBadgeSlotOrder:: ds 8
 
 ; The four Elite Four members drawn for this run, as trainer class ids, in room
-; order. Replaces wElite4Order's 0-23 index into Elite4OrderTable.
+; order. Replaced wElite4Order's 0-23 index into Elite4OrderTable in Phase 7.
+; Drawn from Lorelei/Bruno/Agatha/Lance, plus Koga/Will/Karen when the Johto
+; species group is enabled, minus Koga if he or Janine stood in a gym this run.
 wRunElite4::      ds 4
 
-; This run's Champion, as a trainer class id.
+; This run's Champion, as a trainer class id: RIVAL3, LANCE (Johto, and only if
+; he missed the Elite Four draw) or PROF_OAK (Kanto Time Warp).
 wRunChampion::    db
 
 ; One bit per pool leader (16 leaders, bit = pool index) marking leaders already
@@ -2810,13 +2823,16 @@ wGymsUsedMask::   dw
 
 wGameProgressFlagsEnd::
 
-; Elite Four room order for the final sequence: index (0-23) into
-; Elite4OrderTable (data/trainers/parties.asm), rolled once when the Victory
-; Road Rival is defeated (see BIT_VICTORY_ROAD_CLEARED). Below
-; wGameProgressFlagsEnd, so NOT auto-zeroed on new game - harmless here since
-; it is only ever read after being freshly rolled that same run, and is
-; explicitly reset in HallOfFame.asm on run completion.
-wElite4Order:: db
+; RETIRED in Phase 7. This was wElite4Order, a 0-23 index into the 24-row
+; Elite4OrderTable; both are gone, replaced by wRunElite4 above (four trainer
+; class ids in room order) and RollElite4AndChampion in final_sequence.asm.
+;
+; The byte is kept as padding rather than deleted ON PURPOSE. Removing it would
+; shift every saved address below this point, which invalidates save files for
+; no benefit and drifts the smoke suite's RNG - the same reason new bytes are
+; taken from `ds` gaps rather than appended (project_wram_take_padding_not_append).
+; Available for the next field that needs a saved-but-not-auto-zeroed byte.
+	ds 1
 
 ; Second options byte, for the extra options menu (SELECT on the OPTION screen).
 ; Deliberately NOT extra bits on wOptions: bits 0-3 of that byte are consumed by

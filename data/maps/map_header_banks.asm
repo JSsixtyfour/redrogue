@@ -249,4 +249,8 @@ MapHeaderBanks::
 	db BANK(LoreleisRoom_h)
 	db BANK(BrunosRoom_h)
 	db BANK(AgathasRoom_h)
+; Phase 7 Elite Four rooms, same order as map_header_pointers.asm.
+	db BANK(KogasRoom_h)
+	db BANK(WillsRoom_h)
+	db BANK(KarensRoom_h)
 	assert_table_length NUM_MAPS
