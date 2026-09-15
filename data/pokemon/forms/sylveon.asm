@@ -27,9 +27,9 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     MEGA_KICK,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         WATER_GUN     \
-         SOLAR_BEAM,   THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN  \
-         METRONOME,    FIRE_BLAST,   THUNDER_WAVE, PSYWAVE,      TRI_ATTACK    \
+	     SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         WATER_GUN,    \
+         SOLARBEAM,    THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, \
+         METRONOME,    FIRE_BLAST,   THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
          FLASH,        FLAMETHROWER
 	; end
 

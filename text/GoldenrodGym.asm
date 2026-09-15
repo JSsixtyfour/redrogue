@@ -122,7 +122,7 @@ _GoldenrodGymTrainer4BattleText::
 
 _GoldenrodGymTrainer4EndBattleText::
 	text "No! Oh, my"
-    libw "#MON."
+    line "#MON."
 	
     para "I'm so sorry!"
 	done

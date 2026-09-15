@@ -20,7 +20,7 @@
 	     DOUBLE_TEAM,  BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         \
 	     DRAGON_RAGE,  ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     FLAMETHROWER,  \
          THUNDER_WAVE, SURF,         THUNDERBOLT,  ICE_BEAM,     BLIZZARD,      \
-         HYDRO_PUMP,   THUNDER,      CUT,          BUBBLEBEAM,   WATER_GUN,     \
+         THUNDER,      CUT,          BUBBLEBEAM,   WATER_GUN                    \
 	; end
 
 	db BANK(TyranitarPicFront) ; pic bank
