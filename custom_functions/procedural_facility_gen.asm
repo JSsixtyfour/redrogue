@@ -132,16 +132,512 @@ ASSERT PFAC_MIDDLE_ROOM_3X3_SOCKETS == $0F
 PFacFakeWildLevelTable:
     db 5, 9, 13, 17, 21, 25, 29, 33, 37
 
-; Same-bank descriptor: full footprint, permitted middle-room ids, socket mask, hub,
-; item anchor, flags, payload. The committed .blkv suffix is intentional.
-PFacMiddleRoom3x3Descriptor:
-    db 3, 3, 1, 10
-    db PFAC_MIDDLE_ROOM_3X3_SOCKETS
-    db 1, 1, 1, 1, 0
-    dw PFacMiddleRoom3x3Blocks
-PFacMiddleRoom3x3Blocks:
+; --- Full-room premade library (R4) -----------------------------------------
+;
+; A full-room premade owns a room's ENTIRE footprint, generated wall ring
+; included. Room records store the floor interior, and the generic ring is
+; exactly one block thick, so a premade is eligible for a room only when
+;     footprint width  == interior width  + 2
+;     footprint height == interior height + 2
+; That is one size test written in two coordinate systems, not an extra
+; qualifier. Interiors roll 1..7, so footprints run 3x3 through 9x9.
+;
+; Socket POSITIONS are canonical and are not stored: the four sockets sit on the
+; footprint perimeter at the room's own center row/column, which is exactly where
+; PFacRoomCenter sends corridors. Which of those four a given payload can
+; actually open is NOT canonical and IS stored.
+;
+; It has to be measured rather than assumed, because of one non-obvious property
+; of this tileset: every generic ring block has its INNER quadrants walkable
+; ($41 top wall BL+BR, $44 left wall TR+BR, $40 TL corner BR, and so on), so an
+; intact ring is a continuous one-block walkable baseboard around the interior.
+; A room whose center is solid is therefore still fully traversable - the player
+; walks around the furniture - which is exactly what the pool, water and table
+; payloads are for. But the wall-DECORATION variants $5C and $5D are fully
+; solid, so a payload using them severs the baseboard on that side and has to
+; route through its interior instead. Connectivity genuinely differs per payload.
+;
+; tools/check_facility_premades.py derives each mask offline: it cuts one side at
+; a time to prove no uncut perimeter leaks, then cuts all four and reports the
+; largest set of sides that are mutually connected. The runtime only compares
+; masks.
+;
+; Descriptor, PFAC_TPL_STRIDE bytes:
+;   +0 footprint width  (3..9)
+;   +1 footprint height (3..9)
+;   +2 socket mask: which of PFAC_SOCKET_N/E/S/W this payload can open
+;   +3 flags (PFAC_TPL_ITEM = the payload's HUB is itself a legal item anchor,
+;      so item rooms 1-4 may take it - see PFacSelectPremadeMiddleRooms for why
+;      the hub specifically is what matters)
+;   +4/+5 payload pointer, footprint W*H block ids, row-major
+DEF PFAC_TPL_STRIDE EQU 6
+DEF PFAC_TPL_ITEM   EQU 1 << 0
+
+; Size-group index. Two bytes per (footprint W, footprint H) pair, addressed
+; directly by (W - 3) * 7 + (H - 3) so selection never searches:
+;   +0 first descriptor index in that group
+;   +1 total descriptors in the group
+; Ordering inside a group carries no meaning: PFacChooseTemplate filters the
+; whole group on socket mask and role, then picks uniformly from what survives.
+DEF PFAC_TPL_GROUP_STRIDE EQU 2
+DEF PFAC_TPL_GROUP_COUNT  EQU 7 * 7
+
+; Descriptors are laid out one size group after another, each group opened by a
+; PFacTpl<W>x<H> label and closed by that group's End label. The group table
+; PFacTpl<W>x<H> label and closed by that group's End label. The group table
+; below derives first index and count from those labels.
+;
+; GENERATED. Socket masks and PFAC_TPL_ITEM are MEASURED, not authored: they
+; come from tools/check_facility_premades.py, which decodes each payload against
+; facility.bst. Do not hand-edit and do not infer a mask by eye. To add or
+; change an asset, drop the .blk in maps/, then:
+;     python3 tools/check_facility_premades.py --report > \
+;         tools/pyboy_smoke/artifacts/facility_fullroom_audit.txt
+;     python3 tools/gen_facility_room_table.py
+; and replace the block below with its output.
+PFacRoomDescriptors:
+
+PFacTpl3x3:
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3BedRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3BlockRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData3x3RockRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3RockRoom2
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3ServerRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3TableRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x3TreeRoom
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData3x3TreeRoom2
+PFacTpl3x3End:
+
+PFacTpl3x6:
+    db 3, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData3x6TableserverRoom
+PFacTpl3x6End:
+
+PFacTpl4x3:
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x3BedRoom
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x3RockRoom
+PFacTpl4x3End:
+
+PFacTpl4x4:
+    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData4x4ServerRoom
+    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData4x4ServerRoom2
+PFacTpl4x4End:
+
+PFacTpl4x5:
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x5BlockRoom
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x5DoubletableRoom
+    db 4, 5, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x5RockRoom
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData4x5TableserverRoom
+PFacTpl4x5End:
+
+PFacTpl4x6:
+    db 4, 6, PFAC_SOCKET_N | PFAC_SOCKET_S, 0
+    dw PFacTplData4x6RockCombinedroom
+PFacTpl4x6End:
+
+PFacTpl4x7:
+    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x7DoubletableTreeCombinedroom
+    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData4x7ServerTableCombinedroom
+PFacTpl4x7End:
+
+PFacTpl5x3:
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData5x3BedRoom
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x3RockserverRoom
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x3ServerRoom
+PFacTpl5x3End:
+
+PFacTpl5x4:
+    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x4DoubletabletreeRoom
+    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x4ServerTableRoom
+PFacTpl5x4End:
+
+PFacTpl5x5:
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData5x5RockRoom
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x5TableBedRoom
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x5TableRockRoom
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x5TableRoom
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x5TreeRoom
+PFacTpl5x5End:
+
+PFacTpl5x6:
+    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x6TableserverRoom
+    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x6TablestatueRoom
+PFacTpl5x6End:
+
+PFacTpl5x7:
+    db 5, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData5x7DoublebigtableserverRoom
+PFacTpl5x7End:
+
+PFacTpl6x3:
+    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData6x3BedRoom
+    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x3ServerRoom
+PFacTpl6x3End:
+
+PFacTpl6x4:
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x4BlockRoom
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x4TabletreeRoom
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x4TripletableRockRoom
+PFacTpl6x4End:
+
+PFacTpl6x5:
+    db 6, 5, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x5TableRockRoom
+PFacTpl6x5End:
+
+PFacTpl6x6:
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData6x6BlockRoom
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData6x6WaterRoom
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData6x6WaterRoom2
+PFacTpl6x6End:
+
+PFacTpl6x7:
+    db 6, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData6x7TripletableTreeCombinedroom
+PFacTpl6x7End:
+
+PFacTpl7x7:
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData7x7BlockrockRoom
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData7x7DoublebigtabletreeRoom
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData7x7DoubletableServerCombinedroom
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData7x7Pool
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData7x7TreerockCombinedroom
+PFacTpl7x7End:
+
+PFacTpl8x3:
+    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x3BlockRoom
+    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x3ServerRoom
+    db 8, 3, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x3ServerrockRoom
+PFacTpl8x3End:
+
+PFacTpl8x4:
+    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x4BlockserverCombinedroom
+    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x4TableservertreeRoom
+PFacTpl8x4End:
+
+PFacTpl8x5:
+    db 8, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData8x5CombinedtableRockRoom
+PFacTpl8x5End:
+
+PFacTpl8x6:
+    db 8, 6, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x6RockCombinedroom
+PFacTpl8x6End:
+
+PFacTpl8x7:
+    db 8, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData8x7PoolRoom
+PFacTpl8x7End:
+
+PFacTpl9x5:
+    db 9, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
+    dw PFacTplData9x5BlockrockRoom
+PFacTpl9x5End:
+
+PFacTpl9x7:
+    db 9, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
+    dw PFacTplData9x7TreerockCombinedroom
+PFacTpl9x7End:
+
+PFacRoomDescriptorsEnd:
+DEF PFAC_TPL_TOTAL EQU (PFacRoomDescriptorsEnd - PFacRoomDescriptors) / PFAC_TPL_STRIDE
+ASSERT PFAC_TPL_TOTAL == 58
+
+; An empty size group is two zero bytes; a populated one names its run.
+MACRO pfac_tpl_group ; \1 = group label, \2 = group end label
+    db (\1 - PFacRoomDescriptors) / PFAC_TPL_STRIDE
+    db (\2 - \1) / PFAC_TPL_STRIDE
+ENDM
+MACRO pfac_tpl_no_group
+    db 0, 0
+ENDM
+
+; Addressed by (footprint W - 3) * 7 + (footprint H - 3). Rows are W, columns H.
+PFacRoomGroupTable:
+    ; footprint width 3
+    pfac_tpl_group PFacTpl3x3, PFacTpl3x3End ; 3x3, 8
+    pfac_tpl_no_group ; 3x4
+    pfac_tpl_no_group ; 3x5
+    pfac_tpl_group PFacTpl3x6, PFacTpl3x6End ; 3x6, 1
+    pfac_tpl_no_group ; 3x7
+    pfac_tpl_no_group ; 3x8
+    pfac_tpl_no_group ; 3x9
+    ; footprint width 4
+    pfac_tpl_group PFacTpl4x3, PFacTpl4x3End ; 4x3, 2
+    pfac_tpl_group PFacTpl4x4, PFacTpl4x4End ; 4x4, 2
+    pfac_tpl_group PFacTpl4x5, PFacTpl4x5End ; 4x5, 4
+    pfac_tpl_group PFacTpl4x6, PFacTpl4x6End ; 4x6, 1
+    pfac_tpl_group PFacTpl4x7, PFacTpl4x7End ; 4x7, 2
+    pfac_tpl_no_group ; 4x8
+    pfac_tpl_no_group ; 4x9
+    ; footprint width 5
+    pfac_tpl_group PFacTpl5x3, PFacTpl5x3End ; 5x3, 3
+    pfac_tpl_group PFacTpl5x4, PFacTpl5x4End ; 5x4, 2
+    pfac_tpl_group PFacTpl5x5, PFacTpl5x5End ; 5x5, 5
+    pfac_tpl_group PFacTpl5x6, PFacTpl5x6End ; 5x6, 2
+    pfac_tpl_group PFacTpl5x7, PFacTpl5x7End ; 5x7, 1
+    pfac_tpl_no_group ; 5x8
+    pfac_tpl_no_group ; 5x9
+    ; footprint width 6
+    pfac_tpl_group PFacTpl6x3, PFacTpl6x3End ; 6x3, 2
+    pfac_tpl_group PFacTpl6x4, PFacTpl6x4End ; 6x4, 3
+    pfac_tpl_group PFacTpl6x5, PFacTpl6x5End ; 6x5, 1
+    pfac_tpl_group PFacTpl6x6, PFacTpl6x6End ; 6x6, 3
+    pfac_tpl_group PFacTpl6x7, PFacTpl6x7End ; 6x7, 1
+    pfac_tpl_no_group ; 6x8
+    pfac_tpl_no_group ; 6x9
+    ; footprint width 7
+    pfac_tpl_no_group ; 7x3
+    pfac_tpl_no_group ; 7x4
+    pfac_tpl_no_group ; 7x5
+    pfac_tpl_no_group ; 7x6
+    pfac_tpl_group PFacTpl7x7, PFacTpl7x7End ; 7x7, 5
+    pfac_tpl_no_group ; 7x8
+    pfac_tpl_no_group ; 7x9
+    ; footprint width 8
+    pfac_tpl_group PFacTpl8x3, PFacTpl8x3End ; 8x3, 3
+    pfac_tpl_group PFacTpl8x4, PFacTpl8x4End ; 8x4, 2
+    pfac_tpl_group PFacTpl8x5, PFacTpl8x5End ; 8x5, 1
+    pfac_tpl_group PFacTpl8x6, PFacTpl8x6End ; 8x6, 1
+    pfac_tpl_group PFacTpl8x7, PFacTpl8x7End ; 8x7, 1
+    pfac_tpl_no_group ; 8x8
+    pfac_tpl_no_group ; 8x9
+    ; footprint width 9
+    pfac_tpl_no_group ; 9x3
+    pfac_tpl_no_group ; 9x4
+    pfac_tpl_group PFacTpl9x5, PFacTpl9x5End ; 9x5, 1
+    pfac_tpl_no_group ; 9x6
+    pfac_tpl_group PFacTpl9x7, PFacTpl9x7End ; 9x7, 1
+    pfac_tpl_no_group ; 9x8
+    pfac_tpl_no_group ; 9x9
+ASSERT @ - PFacRoomGroupTable == PFAC_TPL_GROUP_COUNT * PFAC_TPL_GROUP_STRIDE
+
+PFacTplData3x3BedRoom:
+    INCBIN "maps/ProceduralFacility_3x3_bed_room.blk"
+ASSERT @ - PFacTplData3x3BedRoom == 9
+PFacTplData3x3BlockRoom:
+    INCBIN "maps/ProceduralFacility_3x3_block_room.blk"
+ASSERT @ - PFacTplData3x3BlockRoom == 9
+PFacTplData3x3RockRoom:
     INCBIN "maps/ProceduralFacility_3x3_rock_room.blkv"
-ASSERT @ - PFacMiddleRoom3x3Blocks == 9
+ASSERT @ - PFacTplData3x3RockRoom == 9
+PFacTplData3x3RockRoom2:
+    INCBIN "maps/ProceduralFacility_3x3_rock_room2.blk"
+ASSERT @ - PFacTplData3x3RockRoom2 == 9
+PFacTplData3x3ServerRoom:
+    INCBIN "maps/ProceduralFacility_3x3_server_room.blk"
+ASSERT @ - PFacTplData3x3ServerRoom == 9
+PFacTplData3x3TableRoom:
+    INCBIN "maps/ProceduralFacility_3x3_table_room.blk"
+ASSERT @ - PFacTplData3x3TableRoom == 9
+PFacTplData3x3TreeRoom:
+    INCBIN "maps/ProceduralFacility_3x3_tree_room.blk"
+ASSERT @ - PFacTplData3x3TreeRoom == 9
+PFacTplData3x3TreeRoom2:
+    INCBIN "maps/ProceduralFacility_3x3_tree_room2.blk"
+ASSERT @ - PFacTplData3x3TreeRoom2 == 9
+PFacTplData3x6TableserverRoom:
+    INCBIN "maps/ProceduralFacility_3x6_tableserver_room.blk"
+ASSERT @ - PFacTplData3x6TableserverRoom == 18
+PFacTplData4x3BedRoom:
+    INCBIN "maps/ProceduralFacility_4x3_bed_room.blk"
+ASSERT @ - PFacTplData4x3BedRoom == 12
+PFacTplData4x3RockRoom:
+    INCBIN "maps/ProceduralFacility_4x3_rock_room.blk"
+ASSERT @ - PFacTplData4x3RockRoom == 12
+PFacTplData4x4ServerRoom:
+    INCBIN "maps/ProceduralFacility_4x4_server_room.blk"
+ASSERT @ - PFacTplData4x4ServerRoom == 16
+PFacTplData4x4ServerRoom2:
+    INCBIN "maps/ProceduralFacility_4x4_server_room2.blk"
+ASSERT @ - PFacTplData4x4ServerRoom2 == 16
+PFacTplData4x5BlockRoom:
+    INCBIN "maps/ProceduralFacility_4x5_block_room.blk"
+ASSERT @ - PFacTplData4x5BlockRoom == 20
+PFacTplData4x5DoubletableRoom:
+    INCBIN "maps/ProceduralFacility_4x5_doubletable_room.blk"
+ASSERT @ - PFacTplData4x5DoubletableRoom == 20
+PFacTplData4x5RockRoom:
+    INCBIN "maps/ProceduralFacility_4x5_rock_room.blk"
+ASSERT @ - PFacTplData4x5RockRoom == 20
+PFacTplData4x5TableserverRoom:
+    INCBIN "maps/ProceduralFacility_4x5_tableserver_room.blk"
+ASSERT @ - PFacTplData4x5TableserverRoom == 20
+PFacTplData4x6RockCombinedroom:
+    INCBIN "maps/ProceduralFacility_4x6_rock_combinedroom.blk"
+ASSERT @ - PFacTplData4x6RockCombinedroom == 24
+PFacTplData4x7DoubletableTreeCombinedroom:
+    INCBIN "maps/ProceduralFacility_4x7_doubletable_tree_combinedroom.blk"
+ASSERT @ - PFacTplData4x7DoubletableTreeCombinedroom == 28
+PFacTplData4x7ServerTableCombinedroom:
+    INCBIN "maps/ProceduralFacility_4x7_server_table_combinedroom.blk"
+ASSERT @ - PFacTplData4x7ServerTableCombinedroom == 28
+PFacTplData5x3BedRoom:
+    INCBIN "maps/ProceduralFacility_5x3_bed_room.blk"
+ASSERT @ - PFacTplData5x3BedRoom == 15
+PFacTplData5x3RockserverRoom:
+    INCBIN "maps/ProceduralFacility_5x3_rockserver_room.blk"
+ASSERT @ - PFacTplData5x3RockserverRoom == 15
+PFacTplData5x3ServerRoom:
+    INCBIN "maps/ProceduralFacility_5x3_server_room.blk"
+ASSERT @ - PFacTplData5x3ServerRoom == 15
+PFacTplData5x4DoubletabletreeRoom:
+    INCBIN "maps/ProceduralFacility_5x4_doubletabletree_room.blk"
+ASSERT @ - PFacTplData5x4DoubletabletreeRoom == 20
+PFacTplData5x4ServerTableRoom:
+    INCBIN "maps/ProceduralFacility_5x4_server_table_room.blk"
+ASSERT @ - PFacTplData5x4ServerTableRoom == 20
+PFacTplData5x5RockRoom:
+    INCBIN "maps/ProceduralFacility_5x5__rock_room.blk"
+ASSERT @ - PFacTplData5x5RockRoom == 25
+PFacTplData5x5TableBedRoom:
+    INCBIN "maps/ProceduralFacility_5x5__table_bed_room.blk"
+ASSERT @ - PFacTplData5x5TableBedRoom == 25
+PFacTplData5x5TableRockRoom:
+    INCBIN "maps/ProceduralFacility_5x5_table_rock_room.blk"
+ASSERT @ - PFacTplData5x5TableRockRoom == 25
+PFacTplData5x5TableRoom:
+    INCBIN "maps/ProceduralFacility_5x5_table_room.blk"
+ASSERT @ - PFacTplData5x5TableRoom == 25
+PFacTplData5x5TreeRoom:
+    INCBIN "maps/ProceduralFacility_5x5_tree_room.blk"
+ASSERT @ - PFacTplData5x5TreeRoom == 25
+PFacTplData5x6TableserverRoom:
+    INCBIN "maps/ProceduralFacility_5x6_tableserver_room.blk"
+ASSERT @ - PFacTplData5x6TableserverRoom == 30
+PFacTplData5x6TablestatueRoom:
+    INCBIN "maps/ProceduralFacility_5x6_tablestatue_room.blk"
+ASSERT @ - PFacTplData5x6TablestatueRoom == 30
+PFacTplData5x7DoublebigtableserverRoom:
+    INCBIN "maps/ProceduralFacility_5x7_doublebigtableserver_room.blk"
+ASSERT @ - PFacTplData5x7DoublebigtableserverRoom == 35
+PFacTplData6x3BedRoom:
+    INCBIN "maps/ProceduralFacility_6x3_bed_room.blk"
+ASSERT @ - PFacTplData6x3BedRoom == 18
+PFacTplData6x3ServerRoom:
+    INCBIN "maps/ProceduralFacility_6x3_server_room.blk"
+ASSERT @ - PFacTplData6x3ServerRoom == 18
+PFacTplData6x4BlockRoom:
+    INCBIN "maps/ProceduralFacility_6x4_block_room.blk"
+ASSERT @ - PFacTplData6x4BlockRoom == 24
+PFacTplData6x4TabletreeRoom:
+    INCBIN "maps/ProceduralFacility_6x4_tabletree_room.blk"
+ASSERT @ - PFacTplData6x4TabletreeRoom == 24
+PFacTplData6x4TripletableRockRoom:
+    INCBIN "maps/ProceduralFacility_6x4_tripletable_rock_room.blk"
+ASSERT @ - PFacTplData6x4TripletableRockRoom == 24
+PFacTplData6x5TableRockRoom:
+    INCBIN "maps/ProceduralFacility_6x5_table_rock_room.blk"
+ASSERT @ - PFacTplData6x5TableRockRoom == 30
+PFacTplData6x6BlockRoom:
+    INCBIN "maps/ProceduralFacility_6x6_block_room.blk"
+ASSERT @ - PFacTplData6x6BlockRoom == 36
+PFacTplData6x6WaterRoom:
+    INCBIN "maps/ProceduralFacility_6x6_water_room.blk"
+ASSERT @ - PFacTplData6x6WaterRoom == 36
+PFacTplData6x6WaterRoom2:
+    INCBIN "maps/ProceduralFacility_6x6_water_room2.blk"
+ASSERT @ - PFacTplData6x6WaterRoom2 == 36
+PFacTplData6x7TripletableTreeCombinedroom:
+    INCBIN "maps/ProceduralFacility_6x7_tripletable_tree_combinedroom.blk"
+ASSERT @ - PFacTplData6x7TripletableTreeCombinedroom == 42
+PFacTplData7x7BlockrockRoom:
+    INCBIN "maps/ProceduralFacility_7x7_blockrock_room.blk"
+ASSERT @ - PFacTplData7x7BlockrockRoom == 49
+PFacTplData7x7DoublebigtabletreeRoom:
+    INCBIN "maps/ProceduralFacility_7x7_doublebigtabletree_room.blk"
+ASSERT @ - PFacTplData7x7DoublebigtabletreeRoom == 49
+PFacTplData7x7DoubletableServerCombinedroom:
+    INCBIN "maps/ProceduralFacility_7x7_doubletable_server_combinedroom.blk"
+ASSERT @ - PFacTplData7x7DoubletableServerCombinedroom == 49
+PFacTplData7x7Pool:
+    INCBIN "maps/ProceduralFacility_7x7_pool.blk"
+ASSERT @ - PFacTplData7x7Pool == 49
+PFacTplData7x7TreerockCombinedroom:
+    INCBIN "maps/ProceduralFacility_7x7_treerock_combinedroom.blk"
+ASSERT @ - PFacTplData7x7TreerockCombinedroom == 49
+PFacTplData8x3BlockRoom:
+    INCBIN "maps/ProceduralFacility_8x3_block_room.blk"
+ASSERT @ - PFacTplData8x3BlockRoom == 24
+PFacTplData8x3ServerRoom:
+    INCBIN "maps/ProceduralFacility_8x3_server_room.blk"
+ASSERT @ - PFacTplData8x3ServerRoom == 24
+PFacTplData8x3ServerrockRoom:
+    INCBIN "maps/ProceduralFacility_8x3_serverrock_room.blk"
+ASSERT @ - PFacTplData8x3ServerrockRoom == 24
+PFacTplData8x4BlockserverCombinedroom:
+    INCBIN "maps/ProceduralFacility_8x4_blockserver_combinedroom.blk"
+ASSERT @ - PFacTplData8x4BlockserverCombinedroom == 32
+PFacTplData8x4TableservertreeRoom:
+    INCBIN "maps/ProceduralFacility_8x4_tableservertree_room.blk"
+ASSERT @ - PFacTplData8x4TableservertreeRoom == 32
+PFacTplData8x5CombinedtableRockRoom:
+    INCBIN "maps/ProceduralFacility_8x5_combinedtable_rock_room.blk"
+ASSERT @ - PFacTplData8x5CombinedtableRockRoom == 40
+PFacTplData8x6RockCombinedroom:
+    INCBIN "maps/ProceduralFacility_8x6_rock_combinedroom.blk"
+ASSERT @ - PFacTplData8x6RockCombinedroom == 48
+PFacTplData8x7PoolRoom:
+    INCBIN "maps/ProceduralFacility_8x7_pool_room.blk"
+ASSERT @ - PFacTplData8x7PoolRoom == 56
+PFacTplData9x5BlockrockRoom:
+    INCBIN "maps/ProceduralFacility_9x5_blockrock_room.blk"
+ASSERT @ - PFacTplData9x5BlockrockRoom == 45
+PFacTplData9x7TreerockCombinedroom:
+    INCBIN "maps/ProceduralFacility_9x7_treerock_combinedroom.blk"
+ASSERT @ - PFacTplData9x7TreerockCombinedroom == 63
+
+; generated by tools/gen_facility_room_table.py from tools/pyboy_smoke/artifacts/facility_fullroom_audit.txt
+
 
 DEF PFAC_LARGE_DECOR_COUNT EQU 8
 ; Interior-only large-decor descriptors: width, height, payload pointer.
@@ -264,6 +760,25 @@ ASSERT wPFacRoomCount < 30
 DEF wPFacCorId        EQU 4   ; source room whose corridor we're carving
 DEF wPFacCorTX        EQU 5   ; target center X
 DEF wPFacCorTY        EQU 6   ; target center Y
+
+; Full-room premade phase (PFacSelectPremadeMiddleRooms, which also stamps).
+; Runs between the two corridor passes: room placement and the first corridor
+; plan are both finished, and item rolling (12-15) has not started, so 10-17
+; are free. wPFacRmX/Y/W/H (5-8) and wPFacRmCounter (9) stay live across it.
+DEF wPFacTplW         EQU 10  ; selected footprint width  (= RmW + 2)
+DEF wPFacTplH         EQU 11  ; selected footprint height (= RmH + 2)
+DEF wPFacTplPtrLo     EQU 12  ; payload cursor, advanced one block at a time
+DEF wPFacTplPtrHi     EQU 13
+DEF wPFacTplRow       EQU 14  ; blit row counter
+DEF wPFacTplCol       EQU 15  ; blit / perimeter-scan column counter
+DEF wPFacTplFirst     EQU 16  ; first descriptor index of the matching size group
+DEF wPFacTplSX        EQU 17  ; absolute socket column (RmX + RmW/2)
+DEF wPFacTplSY        EQU 18  ; absolute socket row    (RmY + RmH/2)
+DEF wPFacTplNeed      EQU 19  ; N/E/S/W sockets this room's corridors actually use
+DEF wPFacTplCount     EQU 20  ; descriptors in the matching size group
+DEF wPFacTplPick      EQU 21  ; countdown to the chosen eligible descriptor
+DEF wPFacTplItemOnly  EQU 22  ; non-zero for item rooms 1-4 (hub must be an anchor)
+ASSERT wPFacTplItemOnly < wPFacRoomCount
 
 ; PFacDecorateExploreRooms. Runs after item placement; offsets 12-15 remain
 ; untouched because PFacFinalize still needs the rolled item IDs there.
@@ -441,8 +956,24 @@ PFacFillUntouched:
 ; failed to place) is skipped. Runs after all placement, before corridors, so
 ; PFacCarveCorridors can test "is this cell already room floor".
 ; ============================================================
-; Select every middle room (ids 1-10) whose stored 1x1 floor interior matches
-; this full 3x3 footprint. Entry 0 and exit 11 are excluded explicitly.
+; ============================================================
+; PFacSelectPremadeMiddleRooms
+; Selects AND stamps full-room premades for middle rooms 1-10. Entry 0 and exit
+; 11 are excluded: their spawn, edge-socket, warp, and boss-approach lifecycles
+; have no template validation yet.
+;
+; Selection and stamping are one pass on purpose. The chosen descriptor index is
+; then never stored anywhere - it lives in a register for the length of one room
+; - because every later pass (enclosure, corner validation, isolated-corner
+; cleanup, socket re-cutting, decoration) only needs to know THAT a template owns
+; the footprint, which is what the room record's Type bit 7 already records. The
+; room record has no spare field for an index, and this avoids inventing one.
+;
+; Runs between the two PFacCarveCorridors passes, which is what makes the socket
+; test possible: the complete corridor plan is already drawn on the map, so the
+; room's OWN perimeter tells us which sides it actually needs, and the second
+; pass reopens the sockets the stamp covered.
+; ============================================================
 PFacSelectPremadeMiddleRooms:
     ld b, 1
 .loop
@@ -454,13 +985,70 @@ PFacSelectPremadeMiddleRooms:
     ld a, [hli]
     ld [wBuffer + wPFacRmY], a
     ld a, [hli]
-    cp 1
-    jr nz, .next
+    ld [wBuffer + wPFacRmW], a
+    and a
+    jr z, .next                 ; unplaced slot
+    ld a, [hl]
+    ld [wBuffer + wPFacRmH], a
+
+    ; Item rooms 1-4 may only take a template whose hub is itself a legal item
+    ; anchor. PFacPlaceItems falls back unconditionally to the room center when
+    ; its random samples miss, and the room center IS the hub, so a template
+    ; with an occupied hub would drop that room's pokeball onto a solid block.
+    ld a, b
+    cp 5
+    ld a, 0
+    jr nc, .roleStored
+    inc a
+.roleStored
+    ld [wBuffer + wPFacTplItemOnly], a
+
+    ; Footprint = interior + the one-block generic ring on each side.
+    ld a, [wBuffer + wPFacRmW]
+    add a, 2
+    ld [wBuffer + wPFacTplW], a
+    sub 3
+    ld c, a                     ; c = W - 3
+    ld a, [wBuffer + wPFacRmH]
+    add a, 2
+    ld [wBuffer + wPFacTplH], a
+    sub 3
+    ld e, a                     ; e = H - 3
+
+    ; group entry = PFacRoomGroupTable + ((W-3)*7 + (H-3)) * 2
+    ld a, c
+    add a, a
+    add a, a
+    add a, a                    ; 8*(W-3)
+    sub c                       ; 7*(W-3)
+    add a, e
+    add a, a                    ; *PFAC_TPL_GROUP_STRIDE
+    ld c, a
+    ld b, 0
+    ld hl, PFacRoomGroupTable
+    add hl, bc
     ld a, [hli]
-    cp 1
-    jr nz, .next
-    call PFacPremadeCornersClear
+    ld [wBuffer + wPFacTplFirst], a
+    ld a, [hl]
+    ld [wBuffer + wPFacTplCount], a
+    and a
+    jr z, .next                 ; no template of this size, stay generic
+
+    call PFacPremadePerimeterClear
     jr nc, .next
+    call PFacChooseTemplate
+    jr nc, .next                ; nothing in the group fits this room's sockets
+
+    inc hl
+    inc hl
+    inc hl
+    inc hl                      ; hl -> descriptor payload pointer
+    ld a, [hli]
+    ld [wBuffer + wPFacTplPtrLo], a
+    ld a, [hl]
+    ld [wBuffer + wPFacTplPtrHi], a
+    call PFacStampPremadeFootprint
+
     pop bc
     push bc
     ld a, b
@@ -473,108 +1061,292 @@ PFacSelectPremadeMiddleRooms:
     inc b
     ld a, b
     cp 11
-    jr nz, .loop
+    jp nz, .loop
     ret
 
-; Carry set if the four non-socket corners of a 3x3 footprint are still
-; untouched. A corridor through a cardinal edge can be reopened safely after
-; stamping; a corridor through a corner cannot, so that room stays generic.
-PFacPremadeCornersClear:
-    ld a, [wBuffer + wPFacRmX]
+; ============================================================
+; PFacChooseTemplate
+; Picks one descriptor uniformly from the matching size group, considering only
+; descriptors that can open every side this room's corridors actually use and,
+; for item rooms, that carry PFAC_TPL_ITEM.
+;
+; Two deterministic passes (count, then take the nth) rather than rejection
+; sampling: groups are small, and a bounded retry loop would both bias the
+; choice and consume a variable number of RNG draws, which would shift every
+; later roll in the generation and drift the deterministic corpus.
+;
+; INPUT: wPFacTplFirst, wPFacTplCount, wPFacTplNeed, wPFacTplItemOnly.
+; OUTPUT: carry set and hl -> chosen descriptor; carry clear if none qualify.
+; Clobbers a, bc, de, hl.
+; ============================================================
+PFacChooseTemplate:
+    call .firstDescriptor       ; hl -> group start, b = group count
+    ld c, 0
+.countLoop
+    call .eligible
+    jr nc, .countNext
+    inc c
+.countNext
+    REPT PFAC_TPL_STRIDE
+    inc hl
+    ENDR
+    dec b
+    jr nz, .countLoop
+    ld a, c
+    and a
+    ret z                       ; carry already clear
+
+    ld c, a
+    call Rangerandom            ; a = 0 .. eligible-1
+    ld [wBuffer + wPFacTplPick], a
+    call .firstDescriptor
+.pickLoop
+    call .eligible
+    jr nc, .pickNext
+    ld a, [wBuffer + wPFacTplPick]
+    and a
+    jr z, .found
     dec a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacRmY]
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_UNTOUCHED
-    jr nz, .blocked
-    ld a, [wBuffer + wPFacRmX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_UNTOUCHED
-    jr nz, .blocked
-    ld a, [wBuffer + wPFacRmY]
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_UNTOUCHED
-    jr nz, .blocked
-    ld a, [wBuffer + wPFacRmX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_UNTOUCHED
-    jr nz, .blocked
+    ld [wBuffer + wPFacTplPick], a
+.pickNext
+    REPT PFAC_TPL_STRIDE
+    inc hl
+    ENDR
+    dec b
+    jr nz, .pickLoop
+    ; Unreachable: the second pass sees exactly the eligible set the first one
+    ; counted. Fail closed to the generic room rather than stamp hl blindly.
+    and a
+    ret
+.found
     scf
     ret
+
+.firstDescriptor
+    ld a, [wBuffer + wPFacTplFirst]
+    ld h, 0
+    ld l, a
+    ld d, h
+    ld e, l
+    add hl, hl                  ; 2i
+    add hl, de                  ; 3i
+    add hl, hl                  ; 6i = i * PFAC_TPL_STRIDE
+    ASSERT PFAC_TPL_STRIDE == 6
+    ld de, PFacRoomDescriptors
+    add hl, de
+    ld a, [wBuffer + wPFacTplCount]
+    ld b, a
+    ret
+
+.eligible
+    ; Carry set if the descriptor at hl can serve this room. Preserves hl and b.
+    push hl
+    inc hl
+    inc hl
+    ld a, [hli]                 ; +2 socket mask
+    cpl
+    ld d, a
+    ld a, [wBuffer + wPFacTplNeed]
+    and d
+    jr nz, .reject              ; room needs a side this template cannot open
+    ld a, [wBuffer + wPFacTplItemOnly]
+    and a
+    jr z, .accept
+    ld a, [hl]                  ; +3 flags
+    and PFAC_TPL_ITEM
+    jr z, .reject
+.accept
+    pop hl
+    scf
+    ret
+.reject
+    pop hl
+    and a
+    ret
+
+; ============================================================
+; PFacPremadePerimeterClear
+; Decides whether a template may own this footprint at all, and reports which
+; sides it would have to open.
+;
+; Carry CLEAR: a corridor already crosses the footprint perimeter somewhere
+; that is not one of the four canonical socket cells. The stamp would seal that
+; corridor and PFacTryCutPremadeSocket would not reopen it, so the room stays
+; generic.
+;
+; Carry SET: wPFacTplNeed holds the N/E/S/W mask of sockets that carry a
+; corridor and therefore must be re-cuttable through whichever template is
+; chosen. Sockets sit at the room's own center row/column, which is exactly
+; where PFacRoomCenter aims corridors.
+;
+; The scan is ring-only rather than a full rect sweep because the caller runs
+; inside the layout-retry loop, where sweeping ten whole footprints per attempt
+; would cost real frames.
+;
+; INPUT: wPFacRmX/RmY/RmW/RmH (floor interior), wPFacTplW/TplH (footprint).
+; Clobbers a, bc, de, hl, wPFacCurX/CurY, wPFacTplCol/TplSX/TplSY/TplNeed.
+; ============================================================
+PFacPremadePerimeterClear:
+    ld a, [wBuffer + wPFacRmW]
+    srl a                       ; W/2, matching PFacRoomCenter exactly
+    ld hl, wBuffer + wPFacRmX
+    add a, [hl]
+    ld [wBuffer + wPFacTplSX], a
+    ld a, [wBuffer + wPFacRmH]
+    srl a
+    ld hl, wBuffer + wPFacRmY
+    add a, [hl]
+    ld [wBuffer + wPFacTplSY], a
+    ld c, 0                     ; accumulated required-socket mask
+
+    ; Top row, then bottom row: full footprint width. PFacReadBlock preserves
+    ; bc, so b (the side under test) and c (the mask) survive the whole scan.
+    ld a, [wBuffer + wPFacRmY]
+    dec a
+    ld [wBuffer + wPFacCurY], a
+    ld b, PFAC_SOCKET_N
+    call .scanRow
+    ret nc
+    ld a, [wBuffer + wPFacRmY]
+    ld hl, wBuffer + wPFacRmH
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    ld b, PFAC_SOCKET_S
+    call .scanRow
+    ret nc
+
+    ; Left column, then right column: interior rows only, the corners having
+    ; already been covered by the two row scans.
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld b, PFAC_SOCKET_W
+    call .scanCol
+    ret nc
+    ld a, [wBuffer + wPFacRmX]
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld b, PFAC_SOCKET_E
+    call .scanCol
+    ret nc
+
+    ld a, c
+    ld [wBuffer + wPFacTplNeed], a
+    scf
+    ret
+
+.scanRow
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacTplW]
+    ld [wBuffer + wPFacTplCol], a
+.rowCell
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacTplSX
+    cp [hl]
+    jr nz, .rowWall
+    call PFacReadBlock          ; the socket cell itself
+    cp PFAC_UNTOUCHED
+    jr z, .rowNext
+    ld a, c                     ; a corridor arrives here: this side is required
+    or b
+    ld c, a
+    jr .rowNext
+.rowWall
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+.rowNext
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld hl, wBuffer + wPFacTplCol
+    dec [hl]
+    jr nz, .rowCell
+    scf
+    ret
+
+.scanCol
+    ld a, [wBuffer + wPFacRmY]  ; first interior row
+    ld [wBuffer + wPFacCurY], a
+    ld a, [wBuffer + wPFacRmH]
+    ld [wBuffer + wPFacTplCol], a
+.colCell
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacTplSY
+    cp [hl]
+    jr nz, .colWall
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr z, .colNext
+    ld a, c
+    or b
+    ld c, a
+    jr .colNext
+.colWall
+    call PFacReadBlock
+    cp PFAC_UNTOUCHED
+    jr nz, .blocked
+.colNext
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld hl, wBuffer + wPFacTplCol
+    dec [hl]
+    jr nz, .colCell
+    scf
+    ret
+
 .blocked
     and a
     ret
 
-; Stamp selected item or exploration middle rooms; role-specific object behavior
-; remains elsewhere (PFacPlaceItems still addresses only item ids 1-4).
-PFacStampPremadeMiddleRooms:
-    ld b, 1
-.room
-    push bc
-    ld a, b
-    call PFacRoomRecordAddr
-    ld a, [hli]
+; ============================================================
+; PFacStampPremadeFootprint
+; Blits the selected descriptor's payload over the room's full footprint. The
+; footprint's top-left is one block up and left of the floor interior, which is
+; exactly where PFacEncloseRooms would otherwise have written the generic ring.
+;
+; INPUT: wPFacRmX/RmY = floor-interior top-left, wPFacTplW/TplH = footprint
+; size, wPFacTplPtrLo/Hi = payload start. Consumes the pointer as it walks.
+; Clobbers a, hl and wPFacCurX/CurY, wPFacRmCounter, wPFacTplRow.
+; ============================================================
+PFacStampPremadeFootprint:
+    ld a, [wBuffer + wPFacTplH]
+    ld [wBuffer + wPFacTplRow], a
+    ld a, [wBuffer + wPFacRmY]
     dec a
-    ld [wBuffer + wPFacRmX], a
-    ld a, [hli]
-    dec a
-    ld [wBuffer + wPFacRmY], a
-    inc hl
-    inc hl
-    inc hl
-    bit 7, [hl]
-    jr z, .doneRoom
-    xor a
-    ld [wBuffer + wPFacRmCounter], a
-.cell
-    ld a, [wBuffer + wPFacRmCounter]
-    ld c, a
-    ld b, 0
-    ld hl, PFacMiddleRoom3x3Blocks
-    add hl, bc
-    ld a, [hl]
-    push af
-    ld a, [wBuffer + wPFacRmCounter]
-    call PFacDivMod3
-    ld hl, wBuffer + wPFacRmX
-    add a, [hl]
-    ld [wBuffer + wPFacCurX], a
-    ld a, b
-    ld hl, wBuffer + wPFacRmY
-    add a, [hl]
     ld [wBuffer + wPFacCurY], a
-    pop af
-    call PFacWriteBlock
-    ld hl, wBuffer + wPFacRmCounter
-    inc [hl]
-    ld a, [hl]
-    cp 9
-    jr nz, .cell
-.doneRoom
-    pop bc
-    inc b
+.row
+    ld a, [wBuffer + wPFacRmX]
+    dec a
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacTplW]
+    ld [wBuffer + wPFacRmCounter], a
+.col
+    ld a, [wBuffer + wPFacTplPtrLo]
+    ld l, a
+    ld a, [wBuffer + wPFacTplPtrHi]
+    ld h, a
+    ld a, [hli]
+    ld b, h
+    ld c, l                     ; PFacWriteBlock clobbers hl and de but keeps
+    call PFacWriteBlock         ; bc, so park the advanced cursor there
+    ld a, c
+    ld [wBuffer + wPFacTplPtrLo], a
     ld a, b
-    cp 11
-    jr nz, .room
+    ld [wBuffer + wPFacTplPtrHi], a
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld hl, wBuffer + wPFacRmCounter
+    dec [hl]
+    jr nz, .col
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld hl, wBuffer + wPFacTplRow
+    dec [hl]
+    jr nz, .row
     ret
-
-PFacDivMod3:
-    ld b, 0
-.loop
-    cp 3
-    ret c
-    sub 3
-    inc b
-    jr .loop
-
 PFacStampRoomFloors:
     xor a
     ld [wBuffer + wPFacRmIdx], a
@@ -1413,6 +2185,15 @@ PFacPlaceLargeDecor:
     jp z, .nextRoom
     ld a, [hl]
     ld [wBuffer + wPFacRmH], a
+    ; A full-room premade owns its whole footprint, authored interior included.
+    ; Large decor would stamp over that art and, worse, is only validated
+    ; against the GENERIC room's socket-to-center cross - a template's interior
+    ; routes are its own. Skip it. This never mattered while templates were
+    ; 1x1 interiors, because decor skips 1xN rooms anyway (R4).
+    inc hl
+    inc hl
+    bit 7, [hl]
+    jp nz, .nextRoom
 
     ld a, [wBuffer + wPFacRmW]
     srl a
@@ -2385,6 +3166,8 @@ PFacDecorateExploreRooms:
     ld a, [hli]
     ld [wBuffer + wPFacDecorH], a
     inc hl
+    bit 7, [hl]
+    jp nz, .nextRoom            ; full-room premade owns its own interior (R4)
     ld a, [hl]
     and 3
     ld [wBuffer + wPFacDecorType], a
@@ -2579,7 +3362,7 @@ PFacGenerateFacility:
     call PFacStampRoomFloors
     call PFacCarveCorridors        ; establish the complete corridor plan
     call PFacSelectPremadeMiddleRooms
-    call PFacStampPremadeMiddleRooms
+    ; PFacSelectPremadeMiddleRooms stamps in the same pass (R4).
     call PFacCarveCorridors        ; reopen only traversed cardinal sockets
     call PFacEncloseRooms
     call PFacValidateGeneratedCorners
@@ -3337,6 +4120,14 @@ PFacCorStampCell:
     ld a, PFAC_CORRIDOR
     jp PFacWriteBlock
 
+; Carry set if the cell the corridor wants is one of a stamped premade's four
+; canonical sockets, which may therefore be re-cut through the template's wall.
+;
+; Sockets sit on the footprint perimeter at the room's own center row/column -
+; the same cells PFacRoomCenter aims corridors at, and the same cells
+; tools/check_facility_premades.py proves cuttable through to the hub.
+; PFacPremadePerimeterClear already refused the template outright if any OTHER
+; perimeter cell had been crossed, so nothing else is ever re-cuttable here.
 PFacTryCutPremadeSocket:
     ld b, 1
 .room
@@ -3344,41 +4135,60 @@ PFacTryCutPremadeSocket:
     ld a, b
     call PFacRoomRecordAddr
     ld a, [hli]
-    ld d, a
+    ld d, a                     ; d = interior X
     ld a, [hli]
-    ld e, a
-    inc hl
-    inc hl
-    inc hl
+    ld e, a                     ; e = interior Y
+    ld a, [hli]
+    ld b, a                     ; b = interior W
+    ld a, [hli]
+    ld c, a                     ; c = interior H
+    inc hl                      ; hl -> record +5 (Type)
     bit 7, [hl]
-    jr z, .next
+    jr z, .next                 ; generic room, or an unplaced slot
+
+    ; --- north / south: column X + W/2, one row outside the interior ---
+    ld a, b
+    srl a
+    add a, d
+    ld h, a                     ; socket column
     ld a, [wBuffer + wPFacCurX]
-    cp d
+    cp h
     jr nz, .horizontal
+    ld a, e
+    dec a                       ; Y - 1
+    ld h, a
     ld a, [wBuffer + wPFacCurY]
-    ld c, a
-    ld a, e
-    dec a
-    cp c
+    cp h
     jr z, .yes
     ld a, e
-    inc a
-    cp c
+    add a, c                    ; Y + H
+    ld h, a
+    ld a, [wBuffer + wPFacCurY]
+    cp h
     jr z, .yes
+
 .horizontal
+    ; --- west / east: row Y + H/2, one column outside the interior ---
+    ld a, c
+    srl a
+    add a, e
+    ld h, a                     ; socket row
     ld a, [wBuffer + wPFacCurY]
-    cp e
+    cp h
     jr nz, .next
+    ld a, d
+    dec a                       ; X - 1
+    ld h, a
     ld a, [wBuffer + wPFacCurX]
-    ld c, a
-    ld a, d
-    dec a
-    cp c
+    cp h
     jr z, .yes
     ld a, d
-    inc a
-    cp c
+    add a, b                    ; X + W
+    ld h, a
+    ld a, [wBuffer + wPFacCurX]
+    cp h
     jr z, .yes
+
 .next
     pop bc
     inc b
@@ -3865,7 +4675,7 @@ PFacFinalize::
     add a, a
     add a, 4
     ld [wSprite01StateData2MapY], a
-    ld a, SPRITE_FACING_LEFT
+    ld bc, (LEFT << 8) | SPRITE_FACING_LEFT
     jr .bossFacing
 .bossWest
     ld a, 1 * 2 + 4
@@ -3874,7 +4684,7 @@ PFacFinalize::
     add a, a
     add a, 4
     ld [wSprite01StateData2MapY], a
-    ld a, SPRITE_FACING_RIGHT
+    ld bc, (RIGHT << 8) | SPRITE_FACING_RIGHT
     jr .bossFacing
 .bossNorth
     ld a, [sProcFacilityExitI]
@@ -3883,9 +4693,21 @@ PFacFinalize::
     ld [wSprite01StateData2MapX], a
     ld a, 1 * 2 + 4                 ; block Y=1 -> tile Y = 6
     ld [wSprite01StateData2MapY], a
-    ld a, SPRITE_FACING_DOWN
+    ld bc, (DOWN << 8) | SPRITE_FACING_DOWN
 .bossFacing
+    ; c = SPRITESTATEDATA1_FACINGDIRECTION, b = the object's movement byte 2.
+    ; Writing the facing byte alone is NOT enough. UpdateNPCSprite re-reads
+    ; movement byte 2 out of wMapSpriteData every tick, and for a STAY sprite
+    ; with a fixed direction .determineDirection falls into .moveDown /
+    ; .moveUp / .moveLeft / .moveRight, whose TryWalking unconditionally
+    ; rewrites SPRITESTATEDATA1_FACINGDIRECTION from that constant. The
+    ; authored object direction is DOWN, so a west/east boss snapped back to
+    ; DOWN on the first frame after generation. Patch the source of truth too.
+    ; Slot 1's entry is wMapSpriteData + (slot - 1) * 2 = offset 0.
+    ld a, c
     ld [wSprite01StateData1FacingDirection], a
+    ld a, b
+    ld [wMapSpriteData], a
 
     ; Boss species/level into wMapSpriteExtraData slot 1 (offset 0).
     farcall PCGetBossLevel          ; wCurEnemyLevel from wBattleCount (bank 7)

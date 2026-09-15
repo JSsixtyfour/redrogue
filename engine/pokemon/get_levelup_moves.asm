@@ -193,6 +193,25 @@ GetEvosMovesEntry::
 	ld l, a
 	ret
 
+; ---------------------------------------------------------------------------
+; LearndexLoadRecordFar  (Form Learnsets Phase 3)
+;
+; The Learndex's form-aware record loader. Runs IN bank $31, so the record is
+; a plain in-bank read and CopyData suffices; the caller over in bank $2C
+; reaches it by farcall. Reads wCurSpecies, resolves through GetEvosMovesEntry
+; so a form gets its own learnset, and leaves the copy in wMoveBuffer.
+; CLOBBERS: af, bc, de, hl - de is the CopyData destination pointer, same as
+; the old LearndexLoadRecord. Both call sites already push/pop de around this
+; call (a documented past crash fixed it), so that is not this routine's
+; problem to solve.
+; ---------------------------------------------------------------------------
+LearndexLoadRecordFar::
+	ld a, [wCurSpecies]
+	call GetEvosMovesEntry
+	ld de, wMoveBuffer
+	ld bc, LEARNDEX_RECORD_SIZE
+	jp CopyData
+
 ASSERT BANK(GetLevelUpMovesFar) == BANK(EvosMovesPointerTable), \
        "GetLevelUpMovesFar does plain in-bank reads of EvosMovesPointerTable \
 and the learnset blocks it points at; it must stay in that bank"
@@ -205,3 +224,8 @@ three must share one bank"
 ASSERT BANK(FormEvosMovesPointers) == BANK(EvosMovesPointerTable), \
        "FormEvosMovesPointers' records are reached by bare `dw`, so the table, \
 its records and EvosMovesPointerTable must all share one bank"
+
+ASSERT BANK(LearndexLoadRecordFar) == BANK(EvosMovesPointerTable), \
+       "LearndexLoadRecordFar reads GetEvosMovesEntry's returned record with a \
+plain CopyData (not FarCopyData), which only works if it executes in the same \
+bank as the record it is copying"

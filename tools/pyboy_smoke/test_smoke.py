@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import io
 import unittest
 
@@ -20,6 +21,56 @@ from text_contract import EndBattleContract, overlong_segments, rendered_end_bat
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+
+_FACILITY_TEMPLATE_INTERIORS: set[tuple[int, int]] | None = None
+
+
+def _facility_template_interiors() -> set[tuple[int, int]]:
+    """Floor interiors the Facility full-room descriptor table can replace.
+
+    Descriptor groups are declared as `PFacTpl<W>x<H>:` labels whose W/H are the
+    FULL footprint, ring included; the generator matches them against a room
+    record's floor interior, which is two blocks smaller on each axis.
+    """
+    global _FACILITY_TEMPLATE_INTERIORS
+    if _FACILITY_TEMPLATE_INTERIORS is None:
+        source = (
+            REPO_ROOT / "custom_functions" / "procedural_facility_gen.asm"
+        ).read_text(encoding="utf-8", errors="replace")
+        _FACILITY_TEMPLATE_INTERIORS = {
+            (int(w) - 2, int(h) - 2)
+            for w, h in re.findall(r"^PFacTpl(\d+)x(\d+):", source, re.MULTILINE)
+        }
+        assert _FACILITY_TEMPLATE_INTERIORS, "no PFacTpl<W>x<H> groups found"
+    return _FACILITY_TEMPLATE_INTERIORS
+
+
+_FACILITY_INCBIN_BLOCKS: set[int] | None = None
+
+
+def _facility_incbin_blocks() -> set[int]:
+    """Every block id reachable through a Facility payload the generator INCBINs.
+
+    Authored full-room and large-decor art legitimately uses far more blocks
+    than procedural generation emits, so the map-content whitelist has to
+    include them. Derived from the INCBINs actually wired into the generator
+    rather than from a glob of maps/, so an asset sitting in the tree unwired
+    still cannot excuse an unexpected block on the map - which is the whole
+    point of that assertion.
+    """
+    global _FACILITY_INCBIN_BLOCKS
+    if _FACILITY_INCBIN_BLOCKS is None:
+        source = (
+            REPO_ROOT / "custom_functions" / "procedural_facility_gen.asm"
+        ).read_text(encoding="utf-8", errors="replace")
+        blocks: set[int] = set()
+        for name in re.findall(
+            r'^\s*INCBIN\s+"(maps/ProceduralFacility_[^"]+)"', source, re.MULTILINE
+        ):
+            blocks.update((REPO_ROOT / name).read_bytes())
+        assert blocks, "no Facility payload INCBINs found"
+        _FACILITY_INCBIN_BLOCKS = blocks
+    return _FACILITY_INCBIN_BLOCKS
 
 
 class HarnessTestCase(unittest.TestCase):
@@ -981,7 +1032,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x67,
             0x68,
             0x69,
-        } | decor_blocks | large_decor_blocks
+        } | decor_blocks | large_decor_blocks | _facility_incbin_blocks()
         signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
         decor_types_seen: set[int] = set()
         total_decor = 0
@@ -1063,7 +1114,19 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     selected = bool(records[offset + 5] & 0x80)
                     large_selected = bool(records[offset + 5] & 0x40)
                     if selected:
-                        self.assertEqual((room_w, room_h), (1, 1))
+                        # A premade owns the full footprint, so the interior it
+                        # replaces must be exactly one of the sizes the
+                        # generator's descriptor table actually declares. Read
+                        # those from source rather than pinning a literal, so
+                        # wiring a new size group does not require editing this
+                        # assertion - but a room taking a template of a size
+                        # nothing declares still fails loudly.
+                        self.assertIn(
+                            (room_w, room_h),
+                            _facility_template_interiors(),
+                            "premade stamped over an interior no descriptor "
+                            "group covers",
+                        )
                     selected_premade_rooms += int(selected)
                     large_decorated_rooms += int(large_selected)
                     layout_large_decor += int(large_selected)
@@ -1349,6 +1412,19 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     room_x, room_y, room_w, room_h = records[offset:offset + 4]
                     if room_w == 0:
                         continue
+                    if records[offset + 5] & 0x80:
+                        # A full-room premade owns its wall ring, and every
+                        # generic ring block has its INNER quadrants walkable -
+                        # an intact ring is a continuous walkable baseboard. So
+                        # a premade whose centre is deliberately solid (a pool,
+                        # a machine, a table) is still perfectly traversable,
+                        # just around the outside. Widen to the footprint it
+                        # actually owns. Generic rooms keep the strict
+                        # interior-only test, where a blocked interior IS a bug.
+                        room_x -= 1
+                        room_y -= 1
+                        room_w += 2
+                        room_h += 2
                     room_quadrants = (
                         (2 * block_x + quadrant_x, 2 * block_y + quadrant_y)
                         for block_y in range(room_y, room_y + room_h)
@@ -1498,12 +1574,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 if exit_edge == 0:
                     boss_xy = (2 * exit_i + 4, 6)
                     boss_facing = 0x00
+                    boss_movement2 = 0xD0  # DOWN
                 elif exit_edge == 1:
                     boss_xy = (6, 2 * exit_i + 4)
                     boss_facing = 0x0C
+                    boss_movement2 = 0xD3  # RIGHT
                 else:
                     boss_xy = (40, 2 * exit_i + 4)
                     boss_facing = 0x08
+                    boss_movement2 = 0xD2  # LEFT
                 self.assertEqual(
                     self.harness.read8("wSprite01StateData2MapX"), boss_xy[0]
                 )
@@ -1513,6 +1592,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertEqual(
                     self.harness.read8("wSprite01StateData1FacingDirection"),
                     boss_facing,
+                )
+                # Facing alone does not survive a single frame: UpdateNPCSprite
+                # re-derives it from the object's movement byte 2 in
+                # wMapSpriteData (slot 1 -> offset 0) on every tick, so that
+                # byte has to agree with the chosen edge or the boss snaps back
+                # to the authored DOWN.
+                self.assertEqual(
+                    self.harness.read8("wMapSpriteData"), boss_movement2
                 )
                 item_ids = tuple(
                     self.harness.read_sram_bytes("sProcFacilityBallItems", 4)
@@ -1529,8 +1616,18 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         self.assertGreater(corridor_fake_balls, 0)
         self.assertGreaterEqual(len(large_decor_seen), 2)
         self.assertGreater(decorated_item_rooms, 0)
-        self.assertGreaterEqual(large_decorated_rooms, len(seeds) * 5 // 4)
-        self.assertGreaterEqual(layouts_with_large_decor, len(seeds) * 3 // 4)
+        # Rebased when R4 wired the full-room premade library. Premade rooms own
+        # authored interiors and so skip large decor by design, which leaves
+        # fewer eligible rooms: this was 5//4 (160) when the only template was a
+        # single 3x3, and measured 117 with 56 templates wired. Deliberately set
+        # well below the measured value rather than just under it - a threshold
+        # with a five-sample margin becomes a flaky test on ordinary RNG drift.
+        # Total collapse (0) or a halving (~58) both still trip this, and
+        # layouts_with_large_decor below carries the real coverage guarantee.
+        self.assertGreaterEqual(large_decorated_rooms, len(seeds) * 3 // 4)
+        # Same R4 rebase, same reasoning: measured 85 of 128 layouts (66%) with
+        # the premade library wired, against 3//4 (96) before it.
+        self.assertGreaterEqual(layouts_with_large_decor, len(seeds) // 2)
         self.assertGreater(combined_decor_rooms, 0)
         self.assertGreater(eligible_decor_rooms, 0)
         self.assertEqual(total_decor, eligible_decor_rooms)

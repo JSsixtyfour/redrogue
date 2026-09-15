@@ -487,6 +487,16 @@ PreloadFusionSecondaryPic::
     pop af                           ; primary species
     ld [wCurPartySpecies], a
     ld [wCurSpecies], a
+    ; Form Learnsets Phase 3: publish the PRIMARY's form context before the
+    ; restore below. Without this, GetMonHeader's own refresh guard
+    ; (ApplyFormOverride, func_forms.asm) sees wFormContextSpecies still
+    ; holding the SECONDARY (set by the call at :482 above) and takes its
+    ; .noForm path, stripping wMonHForm/wMonHFormSpecies from the primary's
+    ; header even when the primary itself has a form. wLoadedMon is provably
+    ; the displayed mon's struct: this routine's caller (status_screen.asm)
+    ; hands it to IsFusionMon two lines before calling here.
+    ld hl, wLoadedMon
+    call PublishFormContext
     call GetMonHeader                ; restore the PRIMARY's header (wMonHIndex etc.)
     ret
 

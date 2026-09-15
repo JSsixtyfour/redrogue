@@ -647,10 +647,9 @@ StatusScreen2DrawContent:
 ; moves): PrepareMoveTutorList is equally primary-only.
 ; ============================================================================
 
-DEF LEARNDEX_RECORD_SIZE  EQU 64 ; bytes copied per LearndexLoadRecord call;
-                                  ; measured worst-case real record is 47
-                                  ; bytes (PikachuEvosMoves) - see
-                                  ; LEARNDEX_DESIGN.md SS3.1
+; LEARNDEX_RECORD_SIZE moved to constants/pokemon_data_constants.asm (Form
+; Learnsets Phase 3): LearndexLoadRecordFar (get_levelup_moves.asm, bank $31)
+; needs it too, and that file assembles before this one.
 DEF LEARNDEX_MAX_ENTRIES  EQU 30 ; defensive walk cap, NOT a real limit -
                                   ; measured worst-case real learnset is 11
                                   ; entries (VaporeonEvosMoves); this only
@@ -865,6 +864,15 @@ LearndexLoadRecord:
 ; status_screen.asm:206-210) and loads its evos_moves record, positioning hl
 ; on the learnset block (past the evolutions block, which every species has
 ; even if it never evolves - a single db 0).
+;
+; Form Learnsets Phase 3: this is the LEVEL-UP half, so it routes through
+; LearndexLoadRecordFar (get_levelup_moves.asm, bank $31), which resolves the
+; record via GetEvosMovesEntry - a form gets its own learnset here. The TUTOR
+; half (LearndexPrepareTutorWalk below) deliberately keeps calling the plain
+; species-keyed LearndexLoadRecord: form records carry no tutor block, and
+; PrepareMoveTutorList (what the tutor NPC actually reads) is species-keyed
+; too, so showing anything but the base species' tutor moves here would be a
+; lie about what the tutor offers. Do not "unify" these two calls.
 ; Output: hl = wMoveBuffer's learnset block start.
 ; Clobbers af, bc, de, hl.
 LearndexPrepareLevelUpWalk:
@@ -872,7 +880,7 @@ LearndexPrepareLevelUpWalk:
 	ld [wCurSpecies], a
 	call GetMonHeader ; populates wMonHeader (incl. wMonHMoves) fresh, rather
 	                  ; than trusting whatever state page 1 left it in
-	call LearndexLoadRecord
+	farcall LearndexLoadRecordFar
 	ld hl, wMoveBuffer
 .skipEvo
 	ld a, [hli]

@@ -136,6 +136,16 @@ DEF HOF_TEAM_CAPACITY EQU 50
 ; 13 bytes, not 20.
 DEF NUM_EVOS_IN_BUFFER EQU 8
 
+; Moved here from engine/pokemon/status_view.asm (Form Learnsets Phase 3):
+; main.asm assembles "Evos Moves" (get_levelup_moves.asm, bank $31) before
+; "Status View Navigation" (status_view.asm, bank $2C), so a routine added to
+; the former needs this constant before status_view.asm defines it.
+DEF LEARNDEX_RECORD_SIZE  EQU 64 ; bytes copied per LearndexLoadRecord /
+                                  ; LearndexLoadRecordFar call; measured
+                                  ; worst-case real record is 47 bytes
+                                  ; (PikachuEvosMoves) - see
+                                  ; LEARNDEX_DESIGN.md SS3.1
+
 ; ---------------------------------------------------------------------------
 ; Species Groups Phase 2R - regional / convergent / eeveelution FORMS.
 ;
