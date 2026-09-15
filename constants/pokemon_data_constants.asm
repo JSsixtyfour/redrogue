@@ -293,9 +293,10 @@ DEF FORCE_GIFT_TRADE_FORM_TEST EQU 0
 ; carries a FULL base-stats row, so a form gets its own stats, both types, catch
 ; rate, base exp, pic size, front/back pic pointers AND pic bank, starting
 ; moves, growth rate and TM/HM compatibility for free - all of it lives in the
-; 28-byte struct that becomes wMonHeader. Only the level-up learnset stays
-; species-keyed (EvosMovesPointerTable is indexed by species), which is an
-; accepted limitation, not an oversight.
+; 28-byte struct that becomes wMonHeader. The level-up learnset is form-aware
+; too (Phase 2, Species Groups form learnsets) via GetEvosMovesEntry and
+; FormEvosMovesPointers (data/pokemon/form_evos_moves.asm). Only the tutor
+; learnset stays species-keyed, since form records carry no tutor block.
 ; NAME_LENGTH is NOT available here - includes.asm pulls this file in at line 33
 ; and constants/text_constants.asm only at line 53. The 10 below is the same
 ; NAME_LENGTH - 1 stride MonsterNames uses; data/pokemon/forms.asm carries an

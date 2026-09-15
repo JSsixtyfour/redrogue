@@ -4,8 +4,12 @@
 ; species' row, so a form gets its own stats, both types, catch rate, base exp,
 ; pic size, front/back pic pointers, PIC BANK, starting moves, growth rate and
 ; TM/HM compatibility - everything that lives in the 28-byte base-stats struct.
-; Only the level-up learnset stays species-keyed (EvosMovesPointerTable is
-; indexed by species), which is an accepted limitation.
+; The level-up learnset is form-aware too (Phase 2, Species Groups form
+; learnsets): GetEvosMovesEntry (engine/pokemon/get_levelup_moves.asm) resolves
+; FormEvosMovesPointers (data/pokemon/form_evos_moves.asm) whenever the loaded
+; header carries a form, falling back to the species' own EvosMovesPointerTable
+; entry otherwise. Only the tutor learnset stays species-keyed - form records
+; carry no tutor block by design, so a form keeps its base species' tutor moves.
 ;
 ; Record layout is FORM_REC_* in constants/pokemon_data_constants.asm:
 ;   db <base species>, <form index 1..NUM_FORM_SLOTS>
