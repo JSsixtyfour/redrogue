@@ -475,6 +475,10 @@ INCLUDE "engine/pokemon/evos_moves.asm"
 ; Must share this bank with EvosMovesPointerTable, which it walks with plain
 ; [hli] reads; a link-time ASSERT in the file enforces it.
 INCLUDE "engine/pokemon/get_levelup_moves.asm"
+; Per-form learnset overrides. Same bank rule as above and for the same reason:
+; the entries hold bare `dw` record pointers, so table and records can never be
+; split from each other or from EvosMovesPointerTable, which they fall back to.
+INCLUDE "data/pokemon/form_evos_moves.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 

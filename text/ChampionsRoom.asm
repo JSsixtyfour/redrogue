@@ -144,3 +144,167 @@ _ChampionsRoomOakComeWithMeText::
 	para "<PLAYER>!"
 	line "Come with me!"
 	done
+
+; ============================================================
+; Lance as an alternate Champion (Phase 7e)
+; ============================================================
+
+_ChampionsRoomLanceIntroText::
+	text "LANCE: <PLAYER>!"
+
+	para "You made it"
+	line "through the"
+	cont "ELITE FOUR!"
+
+	para "I am LANCE, the"
+	line "DRAGON master!"
+
+	para "My #MON have"
+	line "never lost to"
+	cont "a challenger!"
+
+	para "Show me the bond"
+	line "you share with"
+	cont "your own #MON!"
+	done
+
+_LanceDefeatedText::
+	text "LANCE: What?!"
+	line "My dragons..."
+	cont "defeated?!"
+
+	para "I trained them"
+	line "with all my"
+	cont "heart!"
+
+	para "You are truly a"
+	line "#MON master!"
+	prompt
+
+_LanceVictoryText::
+	text "LANCE: Ha!"
+
+	para "My DRAGONITE is"
+	line "unbeatable!"
+
+	para "Come back when"
+	line "you're ready,"
+	cont "<PLAYER>!"
+	prompt
+
+_ChampionsRoomLanceAfterBattleText::
+	text "LANCE: Amazing!"
+
+	para "Not even my"
+	line "dragons could"
+	cont "stop you!"
+
+	para "You are the new"
+	line "#MON LEAGUE"
+	cont "champion!"
+	done
+
+_ChampionsRoomOakDisappointedWithLanceText::
+	text "OAK: LANCE! I'm"
+	line "surprised!"
+
+	para "I heard you"
+	line "swept the"
+	cont "ELITE FOUR!"
+
+	para "But <PLAYER> has"
+	line "bested you here!"
+
+	para "LANCE, this is"
+	line "how #MON"
+	cont "training should"
+	cont "always be!"
+
+	para "Never stop"
+	line "striving to"
+	cont "improve!"
+	done
+
+; ============================================================
+; Oak as an alternate Champion (Phase 7e)
+; ============================================================
+
+_ChampionsRoomOakChampionIntroText::
+	text "OAK: <PLAYER>!"
+
+	para "I couldn't"
+	line "resist testing"
+	cont "you myself!"
+
+	para "A lifetime of"
+	line "studying #MON"
+	cont "taught me much!"
+
+	para "But knowledge"
+	line "alone won't win"
+	cont "a #MON battle!"
+
+	para "Show me what"
+	line "you've learned,"
+	cont "<PLAYER>!"
+	done
+
+_OakChampionDefeatedText::
+	text "OAK: Ha ha ha!"
+
+	para "Just as I"
+	line "hoped!"
+
+	para "You've surpassed"
+	line "your old"
+	cont "professor!"
+	prompt
+
+_OakChampionVictoryText::
+	text "OAK: Not bad,"
+	line "<PLAYER>!"
+
+	para "But there's still"
+	line "more for you to"
+	cont "learn!"
+	prompt
+
+_ChampionsRoomOakChampionAfterBattleText::
+	text "OAK: Wonderful!"
+
+	para "You've done what"
+	line "I always"
+	cont "believed you"
+	cont "could!"
+
+	para "Congratulations,"
+	line "<PLAYER>!"
+
+	para "You are the new"
+	line "#MON LEAGUE"
+	cont "champion!"
+	done
+
+_ChampionsRoomOakChampionCongratulatesText::
+	text "OAK: <PLAYER>!"
+
+	para "I never thought"
+	line "my own #MON"
+	cont "would lose to"
+	cont "you!"
+
+	para "You've grown up so"
+	line "much since you"
+	cont "first left with"
+	cont "@"
+	text_ram wNameBuffer
+	text "!"
+
+	para "The bond you"
+	line "share with your"
+	cont "#MON is"
+	cont "marvelous!"
+
+	para "<PLAYER>, you have"
+	line "come of age!"
+	done

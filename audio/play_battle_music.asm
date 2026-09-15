@@ -20,9 +20,26 @@ PlayBattleMusic::
 	cp OPP_RIVAL3
 	jr z, .finalBattle
 	cp OPP_LANCE
-	jr nz, .normalTrainerBattle
+	jr z, .checkChampionsRoomLance
+	cp OPP_PROF_OAK
+	jr z, .checkChampionsRoomOak
+	jr .normalTrainerBattle
+.checkChampionsRoomLance
+; Lance as an Elite Four member still gets the gym leader theme; Lance as an
+; alternate Champion (Phase 7e, wRunChampion == LANCE) gets the same finale
+; theme RIVAL3 does. wCurOpponent alone can't tell the two apart.
+	ldh a, [hCurMap]
+	cp CHAMPIONS_ROOM
+	jr z, .finalBattle
 	ld a, MUSIC_GYM_LEADER_BATTLE ; lance also plays gym leader theme
 	jr .playSong
+.checkChampionsRoomOak
+; OPP_PROF_OAK only ever reaches battle as an alternate Champion (Phase 7e);
+; give him the same finale theme for consistency with LANCE and RIVAL3.
+	ldh a, [hCurMap]
+	cp CHAMPIONS_ROOM
+	jr z, .finalBattle
+	jr .normalTrainerBattle
 .normalTrainerBattle
 	ld a, MUSIC_TRAINER_BATTLE
 	jr .playSong

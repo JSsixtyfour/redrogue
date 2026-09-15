@@ -15,6 +15,88 @@ ChampionsRoomPatchWarps:
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	farcall Elite4PatchChampionRoomWarps
+	call ChampionsRoomHideUnusedChampion
+	ret
+
+; ============================================================
+; ChampionsRoomHideUnusedChampion
+; Exactly one of Blue/Lance/Oak-as-champion is this run's Champion
+; (wRunChampion). All three are declared ON in
+; data/maps/toggleable_objects.asm, so only the other two need a HideObject
+; call, mirroring FuchsiaGymHideUnusedLeader's two-way form.
+; CLOBBERS: a
+; ============================================================
+ChampionsRoomHideUnusedChampion:
+	ld a, [wRunChampion]
+	cp LANCE
+	jr z, .lance
+	cp PROF_OAK
+	jr z, .oak
+.rival3
+	ld a, TOGGLE_CHAMPIONS_ROOM_LANCE
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
+.lance
+	ld a, TOGGLE_CHAMPIONS_ROOM_RIVAL
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
+.oak
+	ld a, TOGGLE_CHAMPIONS_ROOM_RIVAL
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_CHAMPIONS_ROOM_LANCE
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
+
+; ============================================================
+; ChampionsRoomChampionSpriteIndex
+; a = this run's Champion's own object_event index (CHAMPIONSROOM_RIVAL,
+; _LANCE or _OAK_CHAMPION), read from wRunChampion. Used wherever the script
+; needs to freeze/hide "whichever sprite actually fought" rather than
+; assuming CHAMPIONSROOM_RIVAL.
+; CLOBBERS: a
+; ============================================================
+ChampionsRoomChampionSpriteIndex:
+	ld a, [wRunChampion]
+	cp LANCE
+	jr z, .lance
+	cp PROF_OAK
+	jr z, .oak
+	ld a, CHAMPIONSROOM_RIVAL
+	ret
+.lance
+	ld a, CHAMPIONSROOM_LANCE
+	ret
+.oak
+	ld a, CHAMPIONSROOM_OAK_CHAMPION
+	ret
+
+; ============================================================
+; ChampionsRoomOakExitSpriteAndToggle
+; b = the Oak sprite object index to move/freeze for the walk to the Hall of
+; Fame; c = its toggle constant to hide once he is off-screen. Oak-as-
+; arriving-NPC (CHAMPIONSROOM_OAK) leads every run except when Oak himself is
+; the Champion, in which case Oak-as-champion (CHAMPIONSROOM_OAK_CHAMPION,
+; already on screen at the rival's tile) leads instead - there is no separate
+; congratulator to walk in for that run.
+; CLOBBERS: a
+; ============================================================
+ChampionsRoomOakExitSpriteAndToggle:
+	ld a, [wRunChampion]
+	cp PROF_OAK
+	jr nz, .normalOak
+	ld b, CHAMPIONSROOM_OAK_CHAMPION
+	ld c, TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION
+	ret
+.normalOak
+	ld b, CHAMPIONSROOM_OAK
+	ld c, TOGGLE_CHAMPIONS_ROOM_OAK
 	ret
 
 ResetRivalScript:
@@ -33,6 +115,7 @@ ChampionsRoom_ScriptPointers:
 	dw_const ChampionsRoomOakArrivesScript,               SCRIPT_CHAMPIONSROOM_OAK_ARRIVES
 	dw_const ChampionsRoomOakCongratulatesPlayerScript,   SCRIPT_CHAMPIONSROOM_OAK_CONGRATULATES_PLAYER
 	dw_const ChampionsRoomOakDisappointedWithRivalScript, SCRIPT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_RIVAL
+	dw_const ChampionsRoomOakChampionCongratulatesScript, SCRIPT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
 	dw_const ChampionsRoomOakComeWithMeScript,            SCRIPT_CHAMPIONSROOM_OAK_COME_WITH_ME
 	dw_const ChampionsRoomOakExitsScript,                 SCRIPT_CHAMPIONSROOM_OAK_EXITS
 	dw_const ChampionsRoomPlayerFollowsOakScript,         SCRIPT_CHAMPIONSROOM_PLAYER_FOLLOWS_OAK
@@ -60,6 +143,18 @@ RivalEntrance_RLEMovement:
 	db PAD_UP, 3
 	db -1 ; end
 
+; ============================================================
+; ChampionsRoomRivalReadyToBattleScript
+; Branches on wRunChampion (rolled by RollElite4AndChampion,
+; custom_functions/final_sequence.asm) to set up the correct opponent, team
+; roll and end-of-battle text before starting the Champion battle. RIVAL3
+; keeps its original 5-variant roll and RIVAL_STARTER_PLACEHOLDER ace; LANCE
+; and PROF_OAK use their own OPP_ class and their own authored
+; TrainerDataPointers team (LanceData's variants are all identical, so
+; wTrainerNo just needs to be in range; ProfOakData has 3 distinct variants,
+; the same "Unused" level-66-70 team already sitting in parties.asm, rolled
+; the same way the rival's 5 variants are).
+; ============================================================
 ChampionsRoomRivalReadyToBattleScript:
 	ldh a, [hSimulatedJoypadStatesIndex]
 	and a
@@ -69,6 +164,14 @@ ChampionsRoomRivalReadyToBattleScript:
 	ldh [hJoyIgnore], a
 	ld hl, wOptions
 	res BIT_BATTLE_ANIMATION, [hl]
+
+	ld a, [wRunChampion]
+	cp LANCE
+	jp z, .lance
+	cp PROF_OAK
+	jp z, .oak
+
+.rival3
 	ld a, TEXT_CHAMPIONSROOM_RIVAL
 	ldh [hTextID], a
 	call DisplayTextID
@@ -89,7 +192,45 @@ ChampionsRoomRivalReadyToBattleScript:
 	call Rangerandom
 	inc a
 	ld [wTrainerNo], a
-    ld a, 1
+	jr .startBattle
+
+.lance
+	ld a, TEXT_CHAMPIONSROOM_LANCE
+	ldh [hTextID], a
+	call DisplayTextID
+	call Delay3
+	ld hl, wStatusFlags3
+	set BIT_TALKED_TO_TRAINER, [hl]
+	set BIT_PRINT_END_BATTLE_TEXT, [hl]
+	ld hl, LanceDefeatedText
+	ld de, LanceVictoryText
+	call SaveEndBattleTextPointers
+	ld a, OPP_LANCE
+	ld [wCurOpponent], a
+	ld a, 1 ; LanceData's tiers are all the same team
+	ld [wTrainerNo], a
+	jr .startBattle
+
+.oak
+	ld a, TEXT_CHAMPIONSROOM_OAK_CHAMPION
+	ldh [hTextID], a
+	call DisplayTextID
+	call Delay3
+	ld hl, wStatusFlags3
+	set BIT_TALKED_TO_TRAINER, [hl]
+	set BIT_PRINT_END_BATTLE_TEXT, [hl]
+	ld hl, OakChampionDefeatedText
+	ld de, OakChampionVictoryText
+	call SaveEndBattleTextPointers
+	ld a, OPP_PROF_OAK
+	ld [wCurOpponent], a
+	ld c, 3 ; ProfOakData's 3 authored variants
+	call Rangerandom
+	inc a
+	ld [wTrainerNo], a
+
+.startBattle
+	ld a, 1
 	ld [wIsTrainerBattle], a
 
 	xor a
@@ -98,6 +239,14 @@ ChampionsRoomRivalReadyToBattleScript:
 	ld [wChampionsRoomCurScript], a
 	ret
 
+; ============================================================
+; ChampionsRoomRivalDefeatedScript
+; PROF_OAK skips straight to SCRIPT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
+; (no separate arriving Oak to walk in - see the HANDOFF spec, user decision:
+; Oak congratulates in place, no arrival walk, no disappointed-with-rival
+; beat). RIVAL3 and LANCE both continue into the unchanged 7-script Oak
+; epilogue.
+; ============================================================
 ChampionsRoomRivalDefeatedScript:
 	ldh a, [hIsInBattle]
 	cp $ff
@@ -111,13 +260,33 @@ ChampionsRoomRivalDefeatedScript:
 	                                  ; gym leader or Elite Four member owns
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
+
+	ld a, [wRunChampion]
+	cp LANCE
+	jr z, .lance
+	cp PROF_OAK
+	jr z, .oak
+.rival3
 	ld a, TEXT_CHAMPIONSROOM_RIVAL
+	jr .display
+.lance
+	ld a, TEXT_CHAMPIONSROOM_LANCE
+	jr .display
+.oak
+	ld a, TEXT_CHAMPIONSROOM_OAK_CHAMPION
+.display
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
-	ld a, CHAMPIONSROOM_RIVAL
+	call ChampionsRoomChampionSpriteIndex ; a = this run's champion object index; re-derived AFTER the display call, which clobbers everything
 	ldh [hSpriteIndex], a
 	call SetSpriteMovementBytesToFF
+
+	ld a, [wRunChampion]
+	cp PROF_OAK
+	ld a, SCRIPT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
+	jr z, .scriptChosen
 	ld a, SCRIPT_CHAMPIONSROOM_OAK_ARRIVES
+.scriptChosen
 	ld [wChampionsRoomCurScript], a
 	ret
 
@@ -171,13 +340,32 @@ ChampionsRoomOakCongratulatesPlayerScript:
 	ld [wChampionsRoomCurScript], a
 	ret
 
+; RIVAL3: Oak is disappointed with the rival. LANCE: full epilogue, same beat,
+; rewritten to be about Lance instead (user decision, HANDOFF spec). PROF_OAK
+; never reaches this state.
 ChampionsRoomOakDisappointedWithRivalScript:
 	ld a, CHAMPIONSROOM_OAK
 	ldh [hSpriteIndex], a
 	ld a, SPRITE_FACING_RIGHT
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
+	ld a, [wRunChampion]
+	cp LANCE
+	ld a, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_LANCE
+	jr z, .textChosen
 	ld a, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_RIVAL
+.textChosen
+	ldh [hTextID], a
+	call ChampionsRoom_DisplayTextID_AllowABSelectStart
+	ld a, SCRIPT_CHAMPIONSROOM_OAK_COME_WITH_ME
+	ld [wChampionsRoomCurScript], a
+	ret
+
+; PROF_OAK only: Oak congratulates the player in place (he is already on
+; screen as the defeated Champion), then joins the same COME_WITH_ME tail
+; every other Champion uses.
+ChampionsRoomOakChampionCongratulatesScript:
+	ld a, TEXT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
 	ld a, SCRIPT_CHAMPIONSROOM_OAK_COME_WITH_ME
@@ -185,7 +373,8 @@ ChampionsRoomOakDisappointedWithRivalScript:
 	ret
 
 ChampionsRoomOakComeWithMeScript:
-	ld a, CHAMPIONSROOM_OAK
+	call ChampionsRoomOakExitSpriteAndToggle ; b = sprite, c = toggle
+	ld a, b
 	ldh [hSpriteIndex], a
 	xor a ; SPRITE_FACING_DOWN
 	ldh [hSpriteFacingDirection], a
@@ -193,14 +382,18 @@ ChampionsRoomOakComeWithMeScript:
 	ld a, TEXT_CHAMPIONSROOM_OAK_COME_WITH_ME
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
+	call ChampionsRoomOakExitSpriteAndToggle ; re-derive: the calls above clobber b/c
 	ld de, OakExitChampionsRoomMovement
-	ld a, CHAMPIONSROOM_OAK
+	ld a, b
 	ldh [hSpriteIndex], a
 	call MoveSprite
 	ld a, SCRIPT_CHAMPIONSROOM_OAK_EXITS
 	ld [wChampionsRoomCurScript], a
 	ret
 
+; UP x2 reaches a north warp (3,0 or 4,0) from either Oak's post-arrival rest
+; tile (3,2) or Oak-as-champion's tile (4,2 - the rival's own tile), so one
+; table serves both paths.
 OakExitChampionsRoomMovement:
 	db NPC_MOVEMENT_UP
 	db NPC_MOVEMENT_UP
@@ -210,7 +403,8 @@ ChampionsRoomOakExitsScript:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
-	ld a, TOGGLE_CHAMPIONS_ROOM_OAK
+	call ChampionsRoomOakExitSpriteAndToggle ; c = toggle to hide
+	ld a, c
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, SCRIPT_CHAMPIONSROOM_PLAYER_FOLLOWS_OAK
@@ -257,8 +451,12 @@ ChampionsRoom_TextPointers:
 	def_text_pointers
 	dw_const ChampionsRoomRivalText,                    TEXT_CHAMPIONSROOM_RIVAL
 	dw_const ChampionsRoomOakText,                      TEXT_CHAMPIONSROOM_OAK
+	dw_const ChampionsRoomLanceText,                    TEXT_CHAMPIONSROOM_LANCE
+	dw_const ChampionsRoomOakChampionText,              TEXT_CHAMPIONSROOM_OAK_CHAMPION
 	dw_const ChampionsRoomOakCongratulatesPlayerText,   TEXT_CHAMPIONSROOM_OAK_CONGRATULATES_PLAYER
 	dw_const ChampionsRoomOakDisappointedWithRivalText, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_RIVAL
+	dw_const ChampionsRoomOakDisappointedWithLanceText, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_LANCE
+	dw_const ChampionsRoomOakChampionCongratulatesText, TEXT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
 	dw_const ChampionsRoomOakComeWithMeText,            TEXT_CHAMPIONSROOM_OAK_COME_WITH_ME
 
 ChampionsRoomRivalText:
@@ -291,6 +489,60 @@ ChampionsRoomOakText:
 	text_far _ChampionsRoomOakText
 	text_end
 
+; Lance-as-Champion. Same before/after-battle shape as ChampionsRoomRivalText.
+ChampionsRoomLanceText:
+	text_asm
+	CheckEvent EVENT_BEAT_CHAMPION_RIVAL
+	ld hl, .IntroText
+	jr z, .printText
+	ld hl, ChampionsRoomLanceAfterBattleText
+.printText
+	call PrintText
+	jp TextScriptEnd
+
+.IntroText:
+	text_far _ChampionsRoomLanceIntroText
+	text_end
+
+LanceDefeatedText:
+	text_far _LanceDefeatedText
+	text_end
+
+LanceVictoryText:
+	text_far _LanceVictoryText
+	text_end
+
+ChampionsRoomLanceAfterBattleText:
+	text_far _ChampionsRoomLanceAfterBattleText
+	text_end
+
+; Oak-as-Champion. Same before/after-battle shape as ChampionsRoomRivalText.
+ChampionsRoomOakChampionText:
+	text_asm
+	CheckEvent EVENT_BEAT_CHAMPION_RIVAL
+	ld hl, .IntroText
+	jr z, .printText
+	ld hl, ChampionsRoomOakChampionAfterBattleText
+.printText
+	call PrintText
+	jp TextScriptEnd
+
+.IntroText:
+	text_far _ChampionsRoomOakChampionIntroText
+	text_end
+
+OakChampionDefeatedText:
+	text_far _OakChampionDefeatedText
+	text_end
+
+OakChampionVictoryText:
+	text_far _OakChampionVictoryText
+	text_end
+
+ChampionsRoomOakChampionAfterBattleText:
+	text_far _ChampionsRoomOakChampionAfterBattleText
+	text_end
+
 ChampionsRoomOakCongratulatesPlayerText:
 	text_asm
 	ld a, [wPlayerStarter]
@@ -306,6 +558,23 @@ ChampionsRoomOakCongratulatesPlayerText:
 
 ChampionsRoomOakDisappointedWithRivalText:
 	text_far _ChampionsRoomOakDisappointedWithRivalText
+	text_end
+
+ChampionsRoomOakDisappointedWithLanceText:
+	text_far _ChampionsRoomOakDisappointedWithLanceText
+	text_end
+
+ChampionsRoomOakChampionCongratulatesText:
+	text_asm
+	ld a, [wPlayerStarter]
+	ld [wNamedObjectIndex], a
+	call GetMonName
+	ld hl, .Text
+	call PrintText
+	jp TextScriptEnd
+
+.Text:
+	text_far _ChampionsRoomOakChampionCongratulatesText
 	text_end
 
 ChampionsRoomOakComeWithMeText:

@@ -299,6 +299,17 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ldh a, [hIsInBattle]
 	and a
 	jr nz, .skipPostEvolutionLevelMove
+; Re-publish before the learnset read. The header loaded up at the evolution's
+; own PublishFormContext/GetMonHeader pair is the right one, but
+; PrepareFusionAndBridgeRayCalcStats sits between it and here and may load a
+; header of its own; that would leave wMonHFormSpecies naming a different mon
+; and GetEvosMovesEntry would silently fall back to the base species' learnset.
+; wLoadedMon still holds this mon's struct (the CopyData above copies FROM it),
+; so its MON_CATCH_RATE still carries the form, and wCurSpecies is already the
+; POST-evolution species - which is what the new learnset should be keyed on.
+	ld hl, wLoadedMon
+	call PublishFormContext
+	call GetMonHeader
 	call LearnMoveFromLevelUp
 	jr .finishedPostEvolutionLevelMove
 .skipPostEvolutionLevelMove
@@ -455,19 +466,9 @@ Evolution_ReloadTilesetTilePatterns:
 	jp ReloadTilesetTilePatterns
 
 LearnMoveFromLevelUp:
-	ld hl, EvosMovesPointerTable
 	ld a, [wPokedexNum] ; species
 	ld [wCurPartySpecies], a
-	dec a
-	ld bc, 0
-	ld hl, EvosMovesPointerTable
-	add a
-	rl b
-	ld c, a
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
+	call GetEvosMovesEntry ; the form's learnset if the loaded header carries one
 .skipEvolutionDataLoop ; loop to skip past the evolution data, which comes before the move data
 	ld a, [hli]
 	and a ; have we reached the end of the evolution data?
@@ -527,17 +528,10 @@ WriteMonMoves:
 	push hl
 	push de
 	push bc
-	ld hl, EvosMovesPointerTable
-	ld b, 0
+; de is the destination move slots and must survive; GetEvosMovesEntry does not
+; touch it. bc is already saved above, so clobbering it here is free.
 	ld a, [wCurPartySpecies]
-	dec a
-	add a
-	rl b
-	ld c, a
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
+	call GetEvosMovesEntry
 .skipEvoEntriesLoop
 	ld a, [hli]
 	and a
@@ -668,17 +662,23 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 	add hl, bc
 	ld a, [hl] ; a = mon id
 	ld [wCurSpecies], a	;joenote - put mon id into wram for potential later usage of GetMonHeader
+; Load THIS mon's header, with its form applied, before anything below reads a
+; learnset or wMonHMoves. That used to happen only down at .done (the level-0
+; move scan) and without a published context, so the relearner offered an Alolan
+; Marowak vanilla Marowak's starting moves AND vanilla Marowak's learnset.
+; PublishFormContext takes the struct base in hl and reads the form out of its
+; MON_CATCH_RATE; the GetMonHeader at .done is then a same-species reload, which
+; ApplyFormOverride's refresh guard re-applies the same form to.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMon1
+	ld bc, wPartyMon2 - wPartyMon1
+	call AddNTimes
+	call PublishFormContext
+	call GetMonHeader
 	; Get pointer to evos moves data.
-	dec a
-	ld c, a
-	ld b, 0
-	ld hl, EvosMovesPointerTable
-	add hl, bc
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a  ; hl = pointer to evos moves data for our mon
-	push hl
+	ld a, [wCurSpecies]
+	call GetEvosMovesEntry
+	push hl ; hl = pointer to evos moves data for our mon
 	; Get pointer to mon's currently-known moves.
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1Level
@@ -730,7 +730,10 @@ PrepareRelearnableMoveList:: ; I don't know how the fuck you're a single colon i
 ;joenote - start checking for level-0 moves
 	xor a
 	ld b, a	;b will act as a counter, as there can only be up to 4 level-0 moves
-	call GetMonHeader ;mon id already stored earlier in wd0b5
+	call GetMonHeader ;mon id already stored earlier in wd0b5. Same-species
+	                  ;reload: ApplyFormOverride's refresh guard re-applies the
+	                  ;form published at the top of this routine, so wMonHMoves
+	                  ;below is the FORM's level-1 moves.
 	ld hl, wMonHMoves
 .loop2
 	ld a, b	;get the current loop counter into a

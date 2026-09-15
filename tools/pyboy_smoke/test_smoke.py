@@ -355,15 +355,24 @@ class EvolutionContextSmokeTest(HarnessTestCase):
         skip = source.index("\n.skipPostEvolutionLevelMove\n", gate) + 1
         finish = source.index("\n.finishedPostEvolutionLevelMove\n", skip) + 1
         block = source[gate:finish]
+        # Asserted as a PROPERTY, not as one contiguous string. The arm is
+        # allowed to grow - it now publishes a form context before the learn, so
+        # GetEvosMovesEntry resolves the evolved mon's form - and an exact-text
+        # match fails on any such edit while proving nothing extra.
         self.assertIn(
             "\tldh a, [hIsInBattle]\n"
             "\tand a\n"
-            "\tjr nz, .skipPostEvolutionLevelMove\n"
-            "\tcall LearnMoveFromLevelUp\n"
-            "\tjr .finishedPostEvolutionLevelMove\n",
+            "\tjr nz, .skipPostEvolutionLevelMove\n",
             block,
         )
-        self.assertLess(block.index("\tcall LearnMoveFromLevelUp\n"), skip - gate)
+        not_in_battle = block[: skip - gate]
+        in_battle = block[skip - gate :]
+        # Out of battle: the learn runs, and the arm jumps to the join.
+        self.assertIn("\tcall LearnMoveFromLevelUp\n", not_in_battle)
+        self.assertIn("\tjr .finishedPostEvolutionLevelMove\n", not_in_battle)
+        # In battle: it must not run at all. That is the whole point of this
+        # test, and the old string match only implied it.
+        self.assertNotIn("LearnMoveFromLevelUp", in_battle)
 
 class AIPhaseZeroSmokeTest(HarnessTestCase):
     def boot_single_mon_fight(self) -> tuple[dict[str, int], dict[str, int]]:

@@ -337,6 +337,17 @@ ENDM
 
 	toggle_consts_for CHAMPIONS_ROOM
 	const TOGGLE_CHAMPIONS_ROOM_OAK ; C8
+; Lance and Oak as alternate Champions (Phase 7e). Appended directly after the
+; map's existing single entry, NOT at the file's end like the Johto gym guides:
+; ToggleableObjectMapPointers holds exactly ONE pointer per map, and
+; MarkTownVisitedAndLoadToggleableObjects walks forward from it only while the
+; map id byte keeps matching, so an existing map's toggle block must stay ONE
+; contiguous run in data/maps/toggleable_objects.asm. There is no way to add
+; to it except in place. This renumbers every later TOGGLE_* constant, which
+; is safe: nothing outside these two files reads a TOGGLE_* value as a literal.
+	const TOGGLE_CHAMPIONS_ROOM_RIVAL
+	const TOGGLE_CHAMPIONS_ROOM_LANCE
+	const TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION
 
 	toggle_consts_for SEAFOAM_ISLANDS_1F
 	const TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_1 ; C9

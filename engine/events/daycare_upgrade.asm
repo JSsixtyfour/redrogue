@@ -98,8 +98,20 @@ DaycareRetrieveUpgrade::
 	add hl, bc
 	ld a, [hl]
 	ld [wPokedexNum], a        ; LearnMoveFromLevelUp reads the species here
+	ld [wCurSpecies], a        ; and PublishFormContext below publishes for it
 	xor a
 	ld [wMonDataLocation], a   ; PLAYER_PARTY_DATA
+; The learnset lookup follows the loaded header (GetEvosMovesEntry), and nothing
+; in this loop loads one - so without this the daycare would teach an Alolan
+; Marowak vanilla Marowak's moves. Inside the loop rather than before it, because
+; .tryEvolve runs between passes and loads a header of its own for the evolved
+; species. GetMonHeader preserves bc/de/hl, so the level cursor in d/e survives.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	call PublishFormContext
+	call GetMonHeader
 	push de
 	predef LearnMoveFromLevelUp
 	pop de

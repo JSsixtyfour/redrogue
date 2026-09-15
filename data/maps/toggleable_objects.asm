@@ -366,6 +366,12 @@ ToggleableObjectStates:
 
 	toggleable_objects_for CHAMPIONS_ROOM
 	toggle_object_state CHAMPIONSROOM_OAK, OFF
+; Exactly one of these three is this run's Champion (wRunChampion); all three
+; default ON and ChampionsRoomHideUnusedChampion (scripts/ChampionsRoom.asm)
+; hides the other two once per map load, mirroring FuchsiaGymHideUnusedLeader.
+	toggle_object_state CHAMPIONSROOM_RIVAL, ON
+	toggle_object_state CHAMPIONSROOM_LANCE, ON
+	toggle_object_state CHAMPIONSROOM_OAK_CHAMPION, ON
 
 	toggleable_objects_for SEAFOAM_ISLANDS_1F
 	toggle_object_state SEAFOAMISLANDS1F_BOULDER1, ON
