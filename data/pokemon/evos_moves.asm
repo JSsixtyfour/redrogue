@@ -4595,14 +4595,14 @@ LarvitarEvosMoves:
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; SANDSTORM/SCARY_FACE/
 ; CRUNCH do not exist in Gen 1, filled with METRONOME.
-	db 8, METRONOME ; was SANDSTORM
+	db 8, TAIL_WHIP ; was SANDSTORM
 	db 15, SCREECH
-	db 22, ROCK_SLIDE
+	db 22, ROCK_THROW
 	db 29, THRASH
-	db 36, METRONOME ; was SCARY_FACE
-	db 43, METRONOME ; was CRUNCH
-	db 50, EARTHQUAKE
-	db 57, HYPER_BEAM
+	db 36, ROCK_SLIDE ; was SCARY_FACE
+	db 43, STOMP ; was CRUNCH
+	db 45, EARTHQUAKE
+	db 50, HYPER_BEAM
 	db 0
 
 PupitarEvosMoves:
@@ -4611,14 +4611,14 @@ PupitarEvosMoves:
 	db 0
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
 ; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
-	db 8, METRONOME ; was SANDSTORM
+	db 8,  TAIL_WHIP ; was SANDSTORM
 	db 15, SCREECH
-	db 22, ROCK_SLIDE
+	db 22, ROCK_THROW
 	db 29, THRASH
-	db 38, METRONOME ; was SCARY_FACE
-	db 47, METRONOME ; was CRUNCH
-	db 56, EARTHQUAKE
-	db 65, HYPER_BEAM
+	db 38, ROCK_SLIDE ; was SCARY_FACE
+	db 44, STOMP ; was CRUNCH
+	db 49, EARTHQUAKE
+	db 55, HYPER_BEAM
 	db 0
 
 TyranitarEvosMoves:
@@ -4626,14 +4626,14 @@ TyranitarEvosMoves:
 	db 0
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
 ; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
-	db 8, METRONOME ; was SANDSTORM
+	db 8,  TAIL_WHIP ; was SANDSTORM
 	db 15, SCREECH
-	db 22, ROCK_SLIDE
+	db 22, ROCK_THROW
 	db 29, THRASH
-	db 38, METRONOME ; was SCARY_FACE
-	db 47, METRONOME ; was CRUNCH
-	db 61, EARTHQUAKE
-	db 75, HYPER_BEAM
+	db 38, ROCK_SLIDE ; was SCARY_FACE
+	db 44, STOMP ; was CRUNCH
+	db 49, EARTHQUAKE
+	db 55, HYPER_BEAM
 	db 0
 
 LugiaEvosMoves:
