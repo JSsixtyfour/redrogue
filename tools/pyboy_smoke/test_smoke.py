@@ -1036,7 +1036,30 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x69,
             0x80,
             0x81,
+            # Ring-corner end caps, 3 per corner, generated into facility.bst
+            # from the corner plus the matching straight-wall cap tiles.
+            0x82,
+            0x83,
+            0x84,
+            0x85,
+            0x86,
+            0x87,
+            0x88,
+            0x89,
+            0x8A,
+            0x8B,
+            0x8C,
+            0x8D,
         } | decor_blocks | large_decor_blocks | _facility_incbin_blocks()
+        # Mirrors PFacCornerCapTable in
+        # custom_functions/procedural_facility_gen.asm: each ring corner's two
+        # wall arms, then the replacement for arm A alone, arm B alone, both.
+        corner_caps = {
+            0x40: ((1, 0), (0, 1), (0x82, 0x83, 0x84)),
+            0x42: ((-1, 0), (0, 1), (0x85, 0x86, 0x87)),
+            0x48: ((0, -1), (1, 0), (0x88, 0x89, 0x8A)),
+            0x4A: ((0, -1), (-1, 0), (0x8B, 0x8C, 0x8D)),
+        }
         signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
         decor_types_seen: set[int] = set()
         total_decor = 0
@@ -1056,6 +1079,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         room_ring_contacts: list[tuple[tuple[int, int, int, int], int, int]] = []
         corner_defects: list[tuple[tuple[int, int, int, int], int, int, int]] = []
         exposed_voids: list[tuple[tuple[int, int, int, int], int, int]] = []
+        stranded_jambs: list[tuple[tuple[int, int, int, int], int, int, int]] = []
+        uncapped_walls: list[tuple[tuple[int, int, int, int], int, int, int]] = []
+        uncapped_corners: list[tuple[tuple[int, int, int, int], int, int, int, int, int]] = []
         isolated_structure: list[tuple[tuple[int, int, int, int], int, int, int]] = []
 
         scratch_address = self.harness.address("sProcFacilityGenScratch")
@@ -1130,6 +1156,77 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             (0x4A, 0x42),
                             f"reversed right corners at ({col}, {row})",
                         )
+                # A doorway jamb draws its wall "arm" on the side away from the
+                # gap, so $58 and the authored $2A must never sit against floor
+                # to the WEST, and $57 and $2B never against floor to the EAST.
+                # Where that happened the jamb was a stub floating in the open,
+                # which the user reported from screenshots. Asserted at zero
+                # rather than characterized because PFacRemoveStrandedJambs
+                # takes the measured baseline of 10 across this corpus (3 $57
+                # from doubled doorways, 7 $2A from premade socket carves) to
+                # zero. Anything here is that pass failing to run, or a new
+                # source of mid-wall floor introduced after it.
+                for row in range(20):
+                    for col in range(20):
+                        block = playable[row * 20 + col]
+                        arm = {0x58: -1, 0x2A: -1, 0x57: 1, 0x2B: 1}.get(block)
+                        if arm is None:
+                            continue
+                        near_col = col + arm
+                        if not 0 <= near_col < 20:
+                            continue
+                        if playable[row * 20 + near_col] == 0x0E:
+                            stranded_jambs.append((seed, block, col, row))
+                # And the mirror invariant: a straight wall must never END
+                # against floor along its own run axis, which is what
+                # PFacApplyWallEndCaps converts into the matching jamb cap.
+                # $41/$49 run east-west and $44/$46 run north-south. Measured
+                # baseline before that pass was 842 uncapped ends (546 vertical,
+                # 296 horizontal) across this corpus; it is zero after. A hit
+                # here is that pass not running, or a later pass writing floor
+                # beside a wall after it.
+                run_axis = {0x41: ((-1, 0), (1, 0)), 0x49: ((-1, 0), (1, 0)),
+                            0x44: ((0, -1), (0, 1)), 0x46: ((0, -1), (0, 1))}
+                for row in range(20):
+                    for col in range(20):
+                        block = playable[row * 20 + col]
+                        for step_x, step_y in run_axis.get(block, ()):
+                            near_col, near_row = col + step_x, row + step_y
+                            if not (0 <= near_col < 20 and 0 <= near_row < 20):
+                                continue
+                            if playable[near_row * 20 + near_col] == 0x0E:
+                                uncapped_walls.append((seed, block, col, row))
+                # Corner caps, both directions. A plain ring corner must not
+                # have floor on either of its wall arms, and every cap block
+                # that IS on the map must be the exact variant its geometry
+                # calls for. The second half is what stops a cap pass from
+                # "passing" by stamping the both-arms block everywhere.
+                for row in range(20):
+                    for col in range(20):
+                        block = playable[row * 20 + col]
+                        for plain, (arm_a, arm_b, caps) in corner_caps.items():
+                            if block == plain:
+                                want = 0
+                            elif block in caps:
+                                want = caps.index(block) + 1
+                            else:
+                                continue
+
+                            def _ends(step: tuple[int, int]) -> bool:
+                                near_col = col + step[0]
+                                near_row = row + step[1]
+                                if not (0 <= near_col < 20 and 0 <= near_row < 20):
+                                    return False
+                                return playable[near_row * 20 + near_col] == 0x0E
+
+                            actual_case = (1 if _ends(arm_a) else 0) | (
+                                2 if _ends(arm_b) else 0
+                            )
+                            if actual_case != want:
+                                uncapped_corners.append(
+                                    (seed, block, col, row, want, actual_case)
+                                )
+                            break
                 large_decor_seen.update(
                     set(playable) & large_decor_marker_blocks
                 )
@@ -1474,6 +1571,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 )
                             )
                         )
+                        # PFacNormalizeReversedCorners turns a reversed $4A/$42
+                        # pair into a continuous $46 right wall, which is what
+                        # the two clauses below allow. Since PFacApplyWallEndCaps
+                        # that run may now END in a cap rather than in more $46:
+                        # $56 caps the bottom of a right wall and $5A the top, so
+                        # they are legal continuations of exactly one direction
+                        # each. Verified on all 7 corpus cases 2026-09-16, e.g.
+                        # seed (66,94,134,126) room 11, where col 15 runs $46 $46
+                        # $46 $56 down to floor.
                         decorated_expected = (
                             (expected == 0x40 and actual == 0x68)
                             or (expected == 0x42 and actual == 0x69)
@@ -1482,20 +1588,43 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 and actual in (0x46, 0x5D)
                                 and corner_y + 1 < 20
                                 and playable[(corner_y + 1) * 20 + corner_x]
-                                in (0x46, 0x5D)
+                                in (0x46, 0x5D, 0x56)
                             )
                             or (
                                 expected == 0x42
                                 and actual in (0x46, 0x5D)
                                 and corner_y > 0
                                 and playable[(corner_y - 1) * 20 + corner_x]
-                                in (0x46, 0x5D)
+                                in (0x46, 0x5D, 0x5A)
                             )
                         )
+                        # A ring corner may now carry an end cap from
+                        # PFacApplyCornerCaps. Accept one only when it is the
+                        # RIGHT cap: recompute which of that corner's two wall
+                        # arms actually terminate against floor and require the
+                        # exact block the generator's table pairs with that
+                        # case. A cap on the wrong corner, or the both-arms
+                        # block where only one arm ends, still fails here.
+                        arm_a, arm_b, replacements = corner_caps[expected]
+
+                        def _arm_ends(step: tuple[int, int]) -> bool:
+                            near_x = corner_x + step[0]
+                            near_y = corner_y + step[1]
+                            if not (0 <= near_x < 20 and 0 <= near_y < 20):
+                                return False
+                            return playable[near_y * 20 + near_x] == 0x0E
+
+                        which = (1 if _arm_ends(arm_a) else 0) | (
+                            2 if _arm_ends(arm_b) else 0
+                        )
+                        capped_expected = bool(which) and actual == replacements[
+                            which - 1
+                        ]
                         if (
                             actual != expected
                             and not decorated_expected
                             and not cleaned_isolated_corner
+                            and not capped_expected
                         ):
                             corner_defects.append((seed, room_id, expected, actual))
                     for ring_x, ring_y in ring:
@@ -1848,6 +1977,21 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         self.assertEqual(room_ring_contacts, [])
         self.assertEqual(corner_defects, [])
         self.assertEqual(exposed_voids, [])
+        self.assertEqual(
+            stranded_jambs,
+            [],
+            "door jambs left standing in open floor with their wall arm gone",
+        )
+        self.assertEqual(
+            uncapped_walls,
+            [],
+            "straight wall runs ending against floor without a jamb end cap",
+        )
+        self.assertEqual(
+            uncapped_corners,
+            [],
+            "ring corner carrying the wrong end cap for its arm geometry",
+        )
         self.assertEqual(isolated_structure, [])
 
         self.harness.load_state(baseline)

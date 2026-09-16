@@ -48,8 +48,6 @@ Gate_Block::        INCBIN "gfx/blocksets/gate.bst"
 
 Forest_GFX::        INCBIN "gfx/tilesets/forest.2bpp"
 Forest_Block::      INCBIN "gfx/blocksets/forest.bst"
-Facility_GFX::      INCBIN "gfx/tilesets/facility.2bpp"
-Facility_Block::    INCBIN "gfx/blocksets/facility.bst"
 
 
 SECTION "Tilesets 3", ROMX
@@ -76,3 +74,22 @@ ShipPort_GFX::      INCBIN "gfx/tilesets/ship_port.2bpp"
 ShipPort_Block::    INCBIN "gfx/blocksets/ship_port.bst"
 Dorm_GFX::          INCBIN "gfx/tilesets/dorm.2bpp"
 Dorm_Block::        INCBIN "gfx/blocksets/dorm.bst"
+
+
+; Facility lives alone in its own bank. It was in "Tilesets 2" (ROMX $1A) until
+; 2026-09-16, ending flush at $7fb0 with 80 bytes left in that bank, which is
+; five blocks. The procedural generator keeps needing new structural blocks
+; (the wall end caps, and the 12 corner caps after them), so the pair was moved
+; somewhere it can grow instead of being rationed. Both consumers switch to
+; BANK(Facility_GFX) before reading: LoadCurrentMapView writes wTilesetBank to
+; rROMB before DrawTileBlock dereferences wTilesetBlocksPtr, and
+; LoadTilesetTilePatternData goes through FarCopyData2. Facility_Coll is in
+; ROM0 at $1848 and is always mapped, so it neither moves nor cares.
+;
+; _GFX must stay immediately before _Block: LoadTilesetTilePatternData always
+; copies $600 bytes regardless of the artwork's real size, and facility.2bpp is
+; exactly $600, so the copy stops precisely where the blockset begins.
+SECTION "Tilesets 5", ROMX
+
+Facility_GFX::      INCBIN "gfx/tilesets/facility.2bpp"
+Facility_Block::    INCBIN "gfx/blocksets/facility.bst"

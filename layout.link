@@ -395,6 +395,10 @@ ROMX $3E
 	; kept together in a fresh bank so the pointer table's BANK() entries remain
 	; authoritative and future follower/procedural adaptations can grow safely.
 	"Yellow Legacy Pokemon Sprites"
+	; Facility tileset + blockset, moved out of "Tilesets 2" (ROMX $1A) on
+	; 2026-09-16 because that bank had only 80 bytes left after it. See the
+	; comment in gfx/tilesets.asm for the bank-safety argument.
+	"Tilesets 5"
 WRAM0
 	"Audio RAM"
 	org $c100

@@ -114,6 +114,30 @@ DEF PFAC_J_LEFT_S   EQU $59
 DEF PFAC_J_RIGHT_N  EQU $56
 DEF PFAC_J_RIGHT_S  EQU $5A
 
+; Authored premade counterparts. These are art, not generator output: $2A is
+; the right half of a $6B/$2A pair a premade payload draws, and $2B is its
+; mirror. They are listed here only so PFacRemoveStrandedJambs can apply the
+; same lost-arm rule to them that it applies to $58/$57.
+DEF PFAC_J_AUTHORED_W EQU $2A
+DEF PFAC_J_AUTHORED_E EQU $2B
+
+; Ring-corner end caps, three per corner: arm 1 alone, arm 2 alone, both.
+; GENERATED into facility.bst from the corner plus the matching straight-wall
+; cap tiles, never drawn by hand. See PFacApplyCornerCaps for the arm pairing
+; and ROM_BIBLE.md for the recipe.
+DEF PFAC_CC_TL_E  EQU $82
+DEF PFAC_CC_TL_S  EQU $83
+DEF PFAC_CC_TL_ES EQU $84
+DEF PFAC_CC_TR_W  EQU $85
+DEF PFAC_CC_TR_S  EQU $86
+DEF PFAC_CC_TR_WS EQU $87
+DEF PFAC_CC_BL_N  EQU $88
+DEF PFAC_CC_BL_E  EQU $89
+DEF PFAC_CC_BL_NE EQU $8A
+DEF PFAC_CC_BR_N  EQU $8B
+DEF PFAC_CC_BR_W  EQU $8C
+DEF PFAC_CC_BR_NW EQU $8D
+
 ; --- Structural room decor (user-authored hexadecimal block catalog) ---
 ; Occupancy describes the four movement quadrants, not visual tile coverage.
 DEF PFAC_DECOR_SOLID_A  EQU $06
@@ -1043,6 +1067,10 @@ DEF wPFacDY           EQU 20
 DEF wPFacFlankExpect  EQU 21
 DEF wPFacFlankFirst   EQU 22
 DEF wPFacFlankSecond  EQU 23
+; PFacApplyWallEndCaps runs after the doorway pass, so wPFacDX is dead by then
+; and this reuses that slot. LoopX/LoopY stay the authoritative sweep position
+; because CurX/CurY are scratch for the neighbour probe.
+DEF wPFacCapWall      EQU 19
 
 ; Room-placement phase (PFacPlaceEntryRoom/PFacPlaceExitRoom/PFacPlaceMiddleRooms
 ; and their helpers). Reuses 4-15; must not touch 25 (wPFacRoomCount).
@@ -4358,6 +4386,9 @@ PFacGenerateFacility:
     call PFacFinalizeBlocks
     call PFacRemoveIsolatedGeneratedCorners
     call PFacNormalizeReversedCorners
+    call PFacApplyWallEndCaps
+    call PFacApplyCornerCaps
+    call PFacRemoveStrandedJambs
     call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
@@ -4403,6 +4434,317 @@ PFacNormalizeReversedCorners:
     ld a, [hl]
     cp PFAC_SIZE - 1
     jp c, .row
+    ret
+
+; ============================================================
+; PFacApplyWallEndCaps
+; PFacApplyDoorJambs only fires where a corridor sentinel sits directly beside
+; ROOM FLOOR, so it caps room doorways and nothing else. Every other way a wall
+; run can end against open floor - a corridor wall reaching a junction, a
+; premade socket carve, a corner deleted by PFacRemoveIsolatedGeneratedCorners -
+; leaves the run terminating on a plain straight wall block, which draws as a
+; flat cut edge hanging in the floor. User-reported from screenshots.
+;
+; The eight jamb blocks are already the right art for this: each differs from
+; its straight wall in exactly the two tiles that cap ONE edge, so "which jamb"
+; is fully determined by which side the floor is on.
+;
+;   $44 W_LEFT   caps top    -> $59, caps bottom -> $55   (run is N-S)
+;   $46 W_RIGHT  caps top    -> $5A, caps bottom -> $56   (run is N-S)
+;   $41 W_TOP    caps west   -> $67, caps east   -> $63   (run is E-W)
+;   $49 W_BOTTOM caps west   -> $57, caps east   -> $58   (run is E-W)
+;
+; Verified against gfx/blocksets/facility.bst, 2026-09-16: $55 differs from $44
+; at tile offsets 12-13 (bottom row) and $59 at 0-1 (top row), $63 from $41 at
+; 3/7 (east column) and $67 at 0/4 (west column), and so on for all eight.
+;
+; Safe for the reachability and stranded-quadrant assertions WITHOUT a
+; connectivity argument about any particular layout: every jamb carries the
+; same walkable-quadrant mask as the wall it replaces, measured at block offsets
+; 5/7/13/15 - $44/$55/$59 are all .1.1 and $46/$56/$5A are all 1.1. - so the
+; substitution changes art only. That also leaves the premade socket masks in
+; tools/check_facility_premades.py valid, since they describe connectivity.
+;
+; Runs BEFORE PFacRemoveStrandedJambs so that a one-block wall island, floor on
+; both ends, is capped toward one side and then deleted by that pass rather than
+; left as a stub. No such island occurs in the 128-layout corpus; the ordering
+; is defensive. Runs BEFORE PFacDecorateCorridorWalls so decoration only ever
+; considers the plain middle of a run, never a cap.
+; ============================================================
+PFacApplyWallEndCaps:
+    xor a
+    ld [wBuffer + wPFacLoopY], a
+.row
+    xor a
+    ld [wBuffer + wPFacLoopX], a
+.column
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    ld [wBuffer + wPFacCapWall], a
+    ld hl, PFacWallEndCapTable
+    ld b, PFAC_WALL_END_CAP_COUNT
+.entry
+    ld a, [wBuffer + wPFacCapWall]
+    cp [hl]
+    jr nz, .nextEntry
+    push hl
+    inc hl
+    ld a, [wBuffer + wPFacLoopX]
+    add a, [hl]                   ; + probe dx, $FF reads as -1
+    ld [wBuffer + wPFacCurX], a
+    inc hl
+    ld a, [wBuffer + wPFacLoopY]
+    add a, [hl]                   ; + probe dy
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock            ; out of range reads as solid wall
+    pop hl
+    cp PFAC_FLOOR
+    jr nz, .nextEntry
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    ld de, 3
+    add hl, de
+    ld a, [hl]
+    call PFacWriteBlock
+    jr .advance
+.nextEntry
+    ld de, PFAC_WALL_END_CAP_STRIDE
+    add hl, de
+    dec b
+    jr nz, .entry
+.advance
+    ld hl, wBuffer + wPFacLoopX
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jp c, .column
+    ld hl, wBuffer + wPFacLoopY
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jp c, .row
+    ret
+
+; wall block, probe dx, probe dy, capped replacement. First match wins, so a
+; one-block island with floor on both ends takes the earlier row here and is
+; then removed by PFacRemoveStrandedJambs.
+DEF PFAC_WALL_END_CAP_STRIDE EQU 4
+PFacWallEndCapTable:
+    db PFAC_W_LEFT,   0, -1, PFAC_J_LEFT_S    ; floor N, run ends at the top
+    db PFAC_W_LEFT,   0,  1, PFAC_J_LEFT_N    ; floor S, run ends at the bottom
+    db PFAC_W_RIGHT,  0, -1, PFAC_J_RIGHT_S
+    db PFAC_W_RIGHT,  0,  1, PFAC_J_RIGHT_N
+    db PFAC_W_TOP,   -1,  0, PFAC_J_TOP_E     ; floor W, run ends at the west
+    db PFAC_W_TOP,    1,  0, PFAC_J_TOP_W     ; floor E, run ends at the east
+    db PFAC_W_BOTTOM, -1, 0, PFAC_J_BOTTOM_E
+    db PFAC_W_BOTTOM,  1, 0, PFAC_J_BOTTOM_W
+DEF PFAC_WALL_END_CAP_COUNT EQU 8
+
+; ============================================================
+; PFacApplyCornerCaps
+; The straight-wall half of this problem is PFacApplyWallEndCaps. A ring corner
+; has the same defect but needs three variants rather than two, because it
+; carries TWO wall arms and either or both can end against floor:
+;
+;   $40 C_TL arms E and S    $42 C_TR arms W and S
+;   $48 C_BL arms N and E    $4A C_BR arms N and W
+;
+; The 12 replacements were generated mechanically, not drawn: each is its ring
+; corner with the SAME cap-tile substitution the matching straight-wall jamb
+; uses, so the whole set needed no new tile art. That mattered because
+; facility.2bpp is exactly $600 bytes and LoadTilesetTilePatternData copies
+; exactly $600, so the tileset is full at 96 tiles with only 2 unreferenced
+; slots, while block ids $82-$FF were free. Generated by the recipe recorded in
+; ROM_BIBLE.md; the cap alphabet is $2D top-left, $2E top-right, $3B
+; bottom-left, $3C bottom-right, which the ring corners were already built from.
+;
+; Connectivity-neutral for the same reason the straight caps are: none of the
+; substituted tile offsets is one of the quadrant offsets 5/7/13/15, so every
+; variant keeps its corner's walkable mask exactly ($82-$84 are ...1 like $40,
+; $85-$87 are ..1. like $42, $88-$8A are .1.. like $48, $8B-$8D are 1... like
+; $4A). Verified by the generator, which refuses to emit a block whose mask
+; moved.
+; ============================================================
+PFacApplyCornerCaps:
+    xor a
+    ld [wBuffer + wPFacLoopY], a
+.row
+    xor a
+    ld [wBuffer + wPFacLoopX], a
+.column
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    ld [wBuffer + wPFacCapWall], a
+    ld hl, PFacCornerCapTable
+    ld b, PFAC_CORNER_CAP_COUNT
+.entry
+    ld a, [wBuffer + wPFacCapWall]
+    cp [hl]
+    jr z, .found
+    ld de, PFAC_CORNER_CAP_STRIDE
+    add hl, de
+    dec b
+    jr nz, .entry
+    jr .advance
+.found
+    ld c, 0                       ; bit 0 = arm 1 ends, bit 1 = arm 2 ends
+    push hl
+    inc hl                        ; -> arm 1 dx
+    call PFacCornerArmIsFloor     ; leaves hl -> arm 2 dx
+    jr nz, .arm2
+    set 0, c
+.arm2
+    call PFacCornerArmIsFloor     ; leaves hl -> the replacement triple
+    jr nz, .pick
+    set 1, c
+.pick
+    pop hl
+    ld a, c
+    and a
+    jr z, .advance                ; both arms continue, the corner is fine
+    dec a                         ; 0 = arm 1 only, 1 = arm 2 only, 2 = both
+    ld e, a
+    ld d, 0
+    add hl, de
+    ld de, 5
+    add hl, de
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, [hl]
+    call PFacWriteBlock
+.advance
+    ld hl, wBuffer + wPFacLoopX
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jp c, .column
+    ld hl, wBuffer + wPFacLoopY
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jp c, .row
+    ret
+
+; INPUT hl -> a [dx, dy] pair, with the sweep cell in LoopX/LoopY.
+; OUTPUT Z when that neighbour is plain floor. Advances hl past the pair and
+; preserves c, which carries the caller's arm flags. Out-of-range coordinates
+; read as solid wall, so the map edges need no guard.
+PFacCornerArmIsFloor:
+    ld a, [wBuffer + wPFacLoopX]
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    inc hl
+    ld a, [wBuffer + wPFacLoopY]
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    inc hl
+    push hl
+    call PFacReadBlock            ; preserves bc
+    pop hl
+    cp PFAC_FLOOR
+    ret
+
+; corner id, arm 1 dx/dy, arm 2 dx/dy, then the replacement for arm 1 alone,
+; arm 2 alone, and both. Arm order matches the block ids, which run
+; arm1 / arm2 / both per corner from $82.
+DEF PFAC_CORNER_CAP_STRIDE EQU 8
+PFacCornerCapTable:
+    db PFAC_C_TL,  1,  0,  0,  1, PFAC_CC_TL_E, PFAC_CC_TL_S, PFAC_CC_TL_ES
+    db PFAC_C_TR, -1,  0,  0,  1, PFAC_CC_TR_W, PFAC_CC_TR_S, PFAC_CC_TR_WS
+    db PFAC_C_BL,  0, -1,  1,  0, PFAC_CC_BL_N, PFAC_CC_BL_E, PFAC_CC_BL_NE
+    db PFAC_C_BR,  0, -1, -1,  0, PFAC_CC_BR_N, PFAC_CC_BR_W, PFAC_CC_BR_NW
+DEF PFAC_CORNER_CAP_COUNT EQU 4
+
+; ============================================================
+; PFacRemoveStrandedJambs
+; A doorway jamb draws a wall "arm" on the side AWAY from its gap: $58 and the
+; authored $2A extend west, $57 and the authored $2B extend east. Three ways
+; that arm goes missing, all of which leave the jamb standing alone in open
+; floor, which reads in game as a short wall stub floating in the middle of a
+; room. Measured over the 128-layout smoke corpus, 2026-09-16:
+;
+;   Two doorways through one wall with a single block between them. The flank
+;   rewrite only touches blocks that are STILL the plain straight wall, so the
+;   shared block keeps the first doorway's jamb and the second doorway's
+;   corridor eats the floor on its other side. 3 of the 103 $57 placed; seeds
+;   (92,96,180,132) at (12,8) and (12,13), (166,82,114,90) at (8,4).
+;
+;   A premade's west socket carve removing the $6B half of the authored $6B/$2A
+;   pair. This is the common case: 7 of the 22 $2A placed. Every $2A in the
+;   corpus sits against either $6B or floor, never anything else, which is what
+;   makes "floor to the west" an unambiguous defect rather than a style.
+;
+;   PFacRemoveIsolatedGeneratedCorners writing floor over a ring corner that a
+;   jamb was leaning on. Not observed, but it runs before this pass precisely so
+;   that it cannot hide one.
+;
+; Repair is to delete the stub, replacing it with plain floor. That direction is
+; safe by construction for the reachability and stranded-quadrant assertions:
+; PFAC_FLOOR is walkable in all four quadrants, so overwriting ANY block with it
+; can only add walkable cells, never remove one. It cannot expose a void either
+; in the measured corpus - all 10 offenders had a wall or floor on every
+; cardinal side, never $2E.
+;
+; A single forward sweep is enough. Two same-id jambs cannot end up adjacent:
+; the flank rewrite skips a block that already holds a jamb, so the only
+; neighbouring pair it can produce is $57 beside $58, which is a genuine
+; two-block wall segment between two doorways and is deliberately left alone.
+; PFacReadBlock reads out of range as solid wall, so the map edges need no
+; guard of their own.
+; ============================================================
+PFacRemoveStrandedJambs:
+    xor a
+    ld [wBuffer + wPFacCurY], a
+.row
+    xor a
+    ld [wBuffer + wPFacCurX], a
+.column
+    call PFacReadBlock
+    ld c, $FF                     ; arm lies to the WEST
+    cp PFAC_J_BOTTOM_W
+    jr z, .probe
+    cp PFAC_J_AUTHORED_W
+    jr z, .probe
+    ld c, 1                       ; arm lies to the EAST
+    cp PFAC_J_BOTTOM_E
+    jr z, .probe
+    cp PFAC_J_AUTHORED_E
+    jr nz, .advance
+.probe
+    ld a, [wBuffer + wPFacCurX]
+    ld b, a                       ; column to come back to
+    add a, c
+    ld [wBuffer + wPFacCurX], a
+    call PFacReadBlock            ; preserves bc
+    ld c, a
+    ld a, b
+    ld [wBuffer + wPFacCurX], a
+    ld a, c
+    cp PFAC_FLOOR
+    jr nz, .advance
+    ld a, PFAC_FLOOR
+    call PFacWriteBlock
+.advance
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jr c, .column
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    ld a, [hl]
+    cp PFAC_SIZE
+    jr c, .row
     ret
 
 ; ============================================================
