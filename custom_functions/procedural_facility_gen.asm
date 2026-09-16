@@ -200,13 +200,32 @@ DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 ; Clamping AFTER the roll leaves the RNG draw count unchanged, so only the
 ; stored value differs. Both caps are one-line tunables.
 ;
-; Raised 3/4 -> 4/5 on 2026-09-16, but ONLY as part of C9. Measured on the old
-; placement code, raising these two alone made the map worse, not better: rooms
-; placed per layout fell 6.70 -> 6.50 and forced item rooms rose 48% -> 66%,
-; because entry and exit are placed first and a bigger pair simply ate the space
-; the other ten rooms were already failing to reach. With C9 able to route around
-; them the same change is a gain instead.
-DEF PFAC_ENTRY_MAX_DIM EQU 4   ; interior; footprint up to 6x6
+; EXIT raised 4 -> 5 on 2026-09-16 as part of C9. Measured on the OLD placement
+; code, raising the caps alone made the map worse, not better: rooms placed per
+; layout fell 6.70 -> 6.50 and forced item rooms rose 48% -> 66%, because entry
+; and exit are placed first and a bigger pair simply ate the space the other ten
+; rooms were already failing to reach. With C9 able to route around them it is a
+; gain instead.
+;
+; ENTRY STAYS AT 3, and this is a safety limit, not a tuning choice. It was
+; briefly raised to 4 in C9 and that produced a HARD SOFTLOCK: interior 4 admits
+; 6-wide entry footprints, room 0 drew ProceduralFacility_6x5-shaped premade art
+; whose bottom interior cell above the entrance column is solid $06, and the
+; player spawned sealed into the single entrance block with all 529 other
+; walkable quadrants unreachable (audit seed D8 E9 4D 8C, 1 layout in 400).
+;
+; The root cause is NOT this constant: _spawn_safe in
+; tools/check_facility_premades.py measures PFAC_TPL_SPAWN with all four
+; canonical sockets held open, so a payload passes by borrowing a path through a
+; socket that is still solid art at runtime (the same defect described at
+; PFacCarveEdgeOpenings). Raising this cap merely widened the pool until a
+; payload with that property became reachable. Do not raise it again until that
+; measurement is corrected.
+;
+; The cap costs nothing anyway. Measured over 3000 simulated layouts, entry 3
+; with exit 5 beats entry 4 with exit 5 on both room count (7.50 vs 7.46) and
+; interiors 5x5 or larger (0.43 vs 0.41), for slightly less mean area.
+DEF PFAC_ENTRY_MAX_DIM EQU 3   ; interior; footprint up to 5x5
 DEF PFAC_EXIT_MAX_DIM  EQU 5   ; interior; footprint up to 7x7, the boss room
                                ; stays the grander of the two
 
@@ -3199,9 +3218,12 @@ PFacSolidAnchorHasNeighbor:
 ; last ball, so its rect is still intact for every attempt made here.
 ;
 ; The band is DERIVED from PFAC_ENTRY_MAX_DIM rather than written as a literal.
-; It used to be a hardcoded 14, correct only while that cap was 3; raising the
-; cap to 4 in C9 moved the entry ring up to row 14 and put a real ball inside
-; the entry footprint, caught by test_procedural_facility_generation.
+; It used to be a hardcoded 14, correct only while that cap happened to be 3.
+; C9 raised the cap to 4, which moved the entry ring up to row 14 and put a real
+; ball inside the entry footprint (caught by test_procedural_facility_generation);
+; the cap was then put back to 3 for an unrelated safety reason, so the band is
+; numerically 3-14 again. It stays derived so the next person to touch that cap
+; does not have to rediscover this.
 ;
 ; Clobbers a, b, c, de, hl. CurX/CurY are meaningful only when Z.
 ; ============================================================
