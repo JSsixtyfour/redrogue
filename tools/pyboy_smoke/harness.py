@@ -194,6 +194,49 @@ class RedRogueHarness:
     def write8(self, label: str, value: int, offset: int = 0) -> None:
         self.pyboy.memory[self.address(label) + offset] = value & 0xFF
 
+    def seed_rng(self, seed) -> None:
+        """Deterministically seed the CMWC RNG state from a 4-element seed.
+
+        This only needs to be reproducible across runs, not statistically
+        ideal: the same seed must always produce the same wRandomTable
+        contents. wRandomCarry (offset 1) is kept below 253, the generator's
+        hard invariant; wRandomIndex (offset 0) is fixed at 1, a valid
+        running-generator lag index (1..8); the 8 wRandomQ lag bytes
+        (offsets 2..9) accept any byte value and are derived from a small
+        16-bit LCG stepped 8 times so that different seeds give clearly
+        different tables.
+        """
+        values = [int(value) & 0xFF for value in seed]
+        while len(values) < 4:
+            values.append(0)
+        values = values[:4]
+
+        self.write8("hRandomAdd", values[0])
+        self.write8("hRandomSub", values[1])
+
+        index = 1
+        carry = values[2] % 253
+
+        # Carry the whole 4-byte seed in 32 bits. Folding it into 16 first
+        # would let two distinct corpus seeds collide onto one q table, and
+        # since Random_ takes no input from hRandomAdd/hRandomSub those two
+        # seeds would then produce an identical stream - silently turning a
+        # 128-seed generator corpus into fewer than 128 distinct layouts.
+        lcg_state = (
+            (values[0] << 24) | (values[1] << 16) | (values[2] << 8) | values[3]
+        )
+        if lcg_state == 0:
+            lcg_state = 0xACE1ACE1
+
+        q_bytes = []
+        for _ in range(8):
+            lcg_state = (lcg_state * 1103515245 + 12345) & 0xFFFFFFFF
+            q_bytes.append((lcg_state >> 16) & 0xFF)
+
+        table = [index, carry] + q_bytes
+        for offset, value in enumerate(table):
+            self.write8("wRandomTable", value, offset=offset)
+
     def plant_sentinels(self, values: dict[str, int]) -> dict[str, int]:
         """Write named borrowed-state sentinels and return the expected snapshot."""
         expected = {label: value & 0xFF for label, value in values.items()}
@@ -718,6 +761,25 @@ class RedRogueHarness:
             raise AssertionError(
                 f"Expected lobby map ${self.LOBBY_MAP:02x}, got ${self.read8('hCurMap'):02x}"
             )
+        # NOTE (2026-09-15): unlike boot_fight2, this helper does NOT park. It
+        # cannot: the loop above stops on a hook firing, and in the lobby every
+        # frame boundary lands inside PrepareOAMData ($4ca0, bank 1) - VBlank's
+        # ROMX callee - so park_before_hijack's HOME-only PC window
+        # ($2034-$20c0) never matches and it times out after 240 frames.
+        # Ticking is frame-granular, so no amount of it reaches HOME VBlank here.
+        #
+        # That leaves every call_routine test built on boot_to_lobby resuming
+        # mid-routine with a live stack frame, which is exactly the hazard
+        # park_before_hijack documents. It survives only by luck. Measured when
+        # the xor-shift RNG was replaced with CMWC: the resume PC stayed at
+        # $4ca0 but the stack sat one frame deeper (SP $dfe1 -> $dfdf), because
+        # the lobby roll's retry loops consume a different number of Random
+        # calls. That two-byte difference alone made call_routine's SP-matched
+        # Bankswitch.Return hook fire on the wrong return; the stack ran away
+        # from $dfdf down to $ca5d, filling $ca69-$dfe7 with the repeated pushed
+        # word, and 70 tests failed reading WRAM that had become stack. Not one
+        # WRAM symbol moved and the generator was verified correct in-ROM, so
+        # the ROM was innocent - the completion heuristic is the defect.
 
     def enter_route_door1(self, *, giovanni: bool = False) -> None:
         self.enter_stage_door1(
@@ -830,14 +892,56 @@ class RedRogueHarness:
             name: getattr(self.pyboy.register_file, name) for name in register_names
         }
         saved_bank = self.read8("hLoadedROMBank")
+        enter_bank, enter_address = self.symbols.get("Bankswitch")
         return_bank, return_address = self.symbols.get("Bankswitch.Return")
         expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
         completed = {"value": False}
+        # Nesting depth, not stack position, is what identifies our return.
+        #
+        # Bankswitch has exactly one entry and reaches .Return exactly once per
+        # invocation (`ld bc, .Return / push bc / jp hl`), so entries and
+        # returns balance perfectly - including the ones VBlank makes
+        # asynchronously, since VBlank calls Random every frame and Random
+        # farcalls. Counting them means a nested or interrupt-driven return can
+        # never be mistaken for ours.
+        #
+        # SP alone could not do this. It was a proxy for depth that holds only
+        # while the hijack point's stack depth is the one the heuristic was
+        # tuned against. Measured 2026-09-15: replacing the RNG left the resume
+        # PC identical ($4ca0, inside PrepareOAMData) but the stack one frame
+        # deeper (SP $dfe1 -> $dfdf), because the lobby roll's retry loops
+        # consume a different number of Random calls. A nested return then
+        # matched expected_return_sp, registers were restored mid-flight, and
+        # the stack ran away from $dfdf to $ca5d - filling $ca69-$dfe7 with the
+        # repeated pushed word and failing 70 tests that then read WRAM which
+        # had become stack. Not one WRAM symbol moved; the ROM was innocent.
+        #
+        # SP is still checked, but now only as a corroborating assertion on a
+        # return that depth has already identified as the outer one.
+        depth = {"value": 0}
+
+        def entered(_context) -> None:
+            depth["value"] += 1
 
         def returned(_context) -> None:
-            # Nested farcalls also pass through Bankswitch.Return. Only the
-            # outer trampoline has exactly its saved-bank word on our original
-            # stack, so ignore deeper returns.
+            depth["value"] -= 1
+            # Fire ONCE. wait_until only observes this flag between frames, so
+            # without this guard the hook keeps matching for the rest of the
+            # frame - and every later match force-restores PC and SP into
+            # whatever the CPU is doing by then.
+            #
+            # That is not hypothetical and it is what the RNG change exposed.
+            # VBlank calls Random every frame and Random farcalls, so a
+            # Bankswitch.Return arrives ~once a frame forever. Whether one of
+            # them happens to land on expected_return_sp is pure stack-depth
+            # coincidence: under the old RNG the lobby's returns sat at $dfd9 /
+            # $dfdb and never collided, and under CMWC they sit at exactly
+            # $dfdd and collide every frame. The repeated restores walked the
+            # stack from $dfdf down to $ca5d and failed 70 tests.
+            if completed["value"]:
+                return
+            if depth["value"] > 0:
+                return
             if self.pyboy.register_file.SP != expected_return_sp:
                 return
             # Preserve call_routine's established bank-effect contract. A
@@ -851,6 +955,7 @@ class RedRogueHarness:
                 setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
 
+        self.pyboy.hook_register(enter_bank, enter_address, entered, None)
         self.pyboy.hook_register(return_bank, return_address, returned, None)
         try:
             # Route ROM0 and ROMX alike through the real bank trampoline. Its
@@ -861,6 +966,7 @@ class RedRogueHarness:
             self.pyboy.register_file.PC = self.address("Bankswitch")
             self.wait_until(lambda: completed["value"], label, limit)
         finally:
+            self.pyboy.hook_deregister(enter_bank, enter_address)
             self.pyboy.hook_deregister(return_bank, return_address)
 
     def probe_routine_until(self, label: str, predicate, limit: int = 12000) -> None:
@@ -1011,12 +1117,11 @@ class RedRogueHarness:
             "sprite_count": safe("wNumSprites"),
             "warps": diagnostic_warps,
             "sprite_extra": self.read_bytes("wMapSpriteExtraData", 20),
-            "rng_state": [
-                safe("hRandomAdd"),
-                safe("hRandomSub"),
-                safe("hRandomLast"),
-                safe("hRandomLast", 1),
-            ],
+            "rng_state": {
+                "add": safe("hRandomAdd"),
+                "sub": safe("hRandomSub"),
+                "table": self.read_bytes("wRandomTable", 10),
+            },
             "player_party": self.read_bytes("wPartySpecies", safe("wPartyCount") + 1),
             "enemy_party": self.read_bytes(
                 "wEnemyPartySpecies", safe("wEnemyPartyCount") + 1

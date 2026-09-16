@@ -349,9 +349,10 @@ hUnlockedSilphCoDoors::
 ; the first tile ID in a sequence of tile IDs that increase by 1 each step
 hStartTileID:: db
 
-; xor-shift RNG state, second pair. hRandomLast = x[n-1], hRandomLast+1 = x[n-3].
-; Must stay contiguous; see engine/math/random.asm.
-hRandomLast:: ds 2
+; Free. Held hRandomLast (the xor-shift RNG's second state pair) from 2026-08-13
+; until the CMWC replacement of 2026-09-15, which keeps its whole 10-byte state
+; in WRAM as wRandomTable - see engine/math/random.asm.
+	ds 2
 
 hNewPartyLength:: db
 

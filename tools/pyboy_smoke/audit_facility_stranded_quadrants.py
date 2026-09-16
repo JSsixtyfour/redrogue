@@ -109,10 +109,7 @@ def main() -> int:
         seed = [(state >> shift) & 0xFF for shift in (0, 8, 16, 24)]
         harness.load_state(baseline)
         harness.write_sram_bytes("sProcFacilityExitEdge", [index % 3])
-        harness.write8("hRandomAdd", seed[0])
-        harness.write8("hRandomSub", seed[1])
-        harness.write8("hRandomLast", seed[2])
-        harness.write8("hRandomLast", seed[3], offset=1)
+        harness.seed_rng(seed)
         harness.call_routine("PFacFinalize", limit=4000)
 
         block_buffer = harness.read_bytes("wOverworldMap", 601)

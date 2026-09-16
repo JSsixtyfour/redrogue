@@ -1073,10 +1073,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.harness.write_sram_bytes(
                     "sProcFacilityExitEdge", [forced_edge]
                 )
-                self.harness.write8("hRandomAdd", seed[0])
-                self.harness.write8("hRandomSub", seed[1])
-                self.harness.write8("hRandomLast", seed[2])
-                self.harness.write8("hRandomLast", seed[3], offset=1)
+                self.harness.seed_rng(seed)
                 self.harness.call_routine("PFacFinalize", limit=120000)
                 self.assertEqual(len(pre_item_records), 1, seed)
                 complete_records = pre_item_records[0]
@@ -1679,10 +1676,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         self.harness.load_state(baseline)
         seed = seeds[0]
         self.harness.write_sram_bytes("sProcFacilityExitEdge", [0])
-        self.harness.write8("hRandomAdd", seed[0])
-        self.harness.write8("hRandomSub", seed[1])
-        self.harness.write8("hRandomLast", seed[2])
-        self.harness.write8("hRandomLast", seed[3], offset=1)
+        self.harness.seed_rng(seed)
         self.harness.call_routine("PFacFinalize", limit=240000)
         replay_buffer = self.harness.read_bytes("wOverworldMap", 601)
         replay_map = tuple(

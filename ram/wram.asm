@@ -3157,6 +3157,30 @@ wBoxMonNicksEnd::
 wBoxDataEnd::
 
 
+SECTION "Random State", WRAM0
+
+; Patrik Rak's 8-bit CMWC PRNG state - see engine/math/random.asm.
+;   wRandomIndex  lag index. 1..8 while running; 0 is Init's fresh state, which
+;                 the generator walks out of by itself (there is no absorbing
+;                 state, which is why this replaced the xor-shift).
+;   wRandomCarry  multiply-with-carry carry. INVARIANT: always < 253. The
+;                 generator maintains this; nothing else may write an arbitrary
+;                 byte here. Seeding code perturbs wRandomQ instead.
+;   wRandomQ      the 8 lag bytes, q[1..8]. Any byte value is legal.
+;
+; The generator indexes this with `inc l` and `add a, l`, never carrying into h,
+; so all ten bytes MUST sit inside one 256-byte page. The ASSERT below is the
+; guard; it is a link-time check, so a future WRAM reshuffle that straddles a
+; page boundary fails the build instead of silently corrupting the stream.
+wRandomTable::
+wRandomIndex:: db
+wRandomCarry:: db
+wRandomQ:: ds 8
+wRandomTableEnd::
+
+ASSERT HIGH(wRandomTable) == HIGH(wRandomTableEnd - 1), "the whole CMWC table must be within a single 256-byte block"
+
+
 SECTION "ProcCaveReadyFlag", WRAM0
 
 ; 1 = SRAM preload is ready in sProcCaveStagingBuffer; 0 = not ready.

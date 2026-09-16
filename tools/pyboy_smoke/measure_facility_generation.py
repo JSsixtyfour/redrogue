@@ -85,10 +85,7 @@ def main() -> int:
     for index, seed in enumerate(SEEDS[: args.seeds]):
         harness.load_state(baseline)
         harness.write_sram_bytes("sProcFacilityExitEdge", [index % 3])
-        harness.write8("hRandomAdd", seed[0])
-        harness.write8("hRandomSub", seed[1])
-        harness.write8("hRandomLast", seed[2])
-        harness.write8("hRandomLast", seed[3], offset=1)
+        harness.seed_rng(seed)
         fills["count"] = 0
         before = harness.cycle_count()
         harness.call_routine("PFacFinalize", limit=CALL_LIMIT)

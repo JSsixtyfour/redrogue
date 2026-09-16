@@ -123,8 +123,23 @@ class TrainerAIItemGateTest(RosterHarnessTestCase):
         self.harness.write8("wEnemyMon2HP", 0 if ace else 100, offset=1)
         self.harness.write8("wAICount", 5)
         dispatch = self.harness.hook_flag("TrainerAI.dispatch")
-        self.harness.hook_flag("TrainerAI.noItem")
-        self.harness.call_routine("TrainerAI")
+        no_item = self.harness.hook_flag("TrainerAI.noItem")
+        # probe_routine_until, not call_routine, for this module header's
+        # reason #1 - the same one the AIUseXAttack helper below already cites.
+        # The gate has decided as soon as one of the two seams is reached;
+        # past .dispatch the AI may go on to genuinely use an item, which
+        # prints text and halts for a real VBlank frame that a hijacked PC
+        # cannot be driven through.
+        #
+        # Whether it gets that far depends on the RNG stream, so call_routine
+        # here only ever worked by luck. It stopped working when the xor-shift
+        # RNG was replaced with CMWC on 2026-09-15: .dispatch was still reached
+        # (the assertion this test actually makes), but TrainerAI then used an
+        # item and never returned, so the call timed out at DelayFrame.halt.
+        self.harness.probe_routine_until(
+            "TrainerAI",
+            lambda: bool(dispatch["count"] or no_item["count"]),
+        )
         return bool(dispatch["count"])
 
     def test_t2_non_ace_is_blocked_from_item_consideration(self) -> None:

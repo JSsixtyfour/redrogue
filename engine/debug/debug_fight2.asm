@@ -35,21 +35,28 @@ DebugFight2Entry::
 	jr .loop
 
 .seedRNG
-	; Expand the entered 1-99 value into all four xorshift state bytes. Each
-	; byte differs so no valid entry can create the absorbing all-zero state.
+	; Expand the entered 1-99 value into the whole CMWC state so each entry gives
+	; a distinct, reproducible stream. wRandomCarry must stay below 253 and
+	; wRandomIndex in 1..8 (see ram/wram.asm); q[] accepts any byte, so the eight
+	; lag bytes carry all of the entered value's influence.
 	ld a, [wItemQuantity]
 	ld b, a
 	ldh [hRandomAdd], a
 	xor $a5
 	ldh [hRandomSub], a
+	ld hl, wRandomTable
+	ld a, 1
+	ld [hli], a               ; wRandomIndex = 1
+	xor a
+	ld [hli], a               ; wRandomCarry = 0, trivially below 253
 	ld a, b
-	rrca
-	xor $3c
-	ldh [hRandomLast], a
-	ld a, b
-	swap a
-	xor $c3
-	ldh [hRandomLast + 1], a
+	ld c, 8
+.seedQ
+	xor $5d
+	add a, c
+	ld [hli], a               ; q[1..8]
+	dec c
+	jr nz, .seedQ
 	ret
 
 DebugFight2Setup::
