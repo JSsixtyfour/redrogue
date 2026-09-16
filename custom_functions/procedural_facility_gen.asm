@@ -199,13 +199,20 @@ DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 ;
 ; Clamping AFTER the roll leaves the RNG draw count unchanged, so only the
 ; stored value differs. Both caps are one-line tunables.
-DEF PFAC_ENTRY_MAX_DIM EQU 3   ; interior; footprint up to 5x5
-DEF PFAC_EXIT_MAX_DIM  EQU 4   ; interior; footprint up to 6x6, the boss room
+;
+; Raised 3/4 -> 4/5 on 2026-09-16, but ONLY as part of C9. Measured on the old
+; placement code, raising these two alone made the map worse, not better: rooms
+; placed per layout fell 6.70 -> 6.50 and forced item rooms rose 48% -> 66%,
+; because entry and exit are placed first and a bigger pair simply ate the space
+; the other ten rooms were already failing to reach. With C9 able to route around
+; them the same change is a gain instead.
+DEF PFAC_ENTRY_MAX_DIM EQU 4   ; interior; footprint up to 6x6
+DEF PFAC_EXIT_MAX_DIM  EQU 5   ; interior; footprint up to 7x7, the boss room
                                ; stays the grander of the two
 
 ; C4. Consecutive placement failures before the candidate shrinks by one on each
 ; axis. Item rooms have a 40-retry budget, so 8 gives five size steps; explore
-; rooms have 16, so 4 gives four.
+; rooms have 32, so 4 gives eight.
 ;
 ; The point is that the SIZE is now rolled once per room and survives a
 ; collision. Previously every retry re-rolled size and position together, so a
@@ -221,10 +228,35 @@ DEF PFAC_EXIT_MAX_DIM  EQU 4   ; interior; footprint up to 6x6, the boss room
 ; placed rooms to a 1x1 interior and pulled the mean interior area down to 3.20,
 ; because shrinking makes placement SUCCEED more often, so the extra rooms C4
 ; wins are all tiny ones. C4 is supposed to raise mean size, not trade it for
-; count.
-DEF PFAC_SHRINK_FLOOR   EQU 2
+; count. Raised 2 -> 3 alongside C9: once PFacRollCandidate can actually reach a
+; legal cell, shrinking is no longer the only way an attempt ever succeeds, so
+; the floor can afford to protect size instead of rescuing placement.
+DEF PFAC_SHRINK_FLOOR   EQU 3
 DEF PFAC_SHRINK_ITEM    EQU 8
 DEF PFAC_SHRINK_EXPLORE EQU 4
+
+; C9. Geometry of a beside-the-parent placement roll (see PFacRollCandidate).
+;
+; PFAC_ROOM_GAP is the distance from a parent edge to the nearest candidate edge
+; that PFacCandOverlaps will accept. That test separates when
+; parentX + parentW + 2 < candX, so the closest legal candX is
+; parentX + parentW + 3. Keep this in step with the +2 there: a smaller value
+; makes every roll overlap, a larger one wastes floor space.
+DEF PFAC_ROOM_GAP  EQU 3
+; Hall-anchor sample band for real pokeballs (PFacTryHallAnchor). Derived, not
+; written out, so it tracks the entry-room cap: the entry rect is bottom
+; aligned at Y = 19 - H, so its top ring sits at row 18 - PFAC_ENTRY_MAX_DIM in
+; the worst case and the band must stop one row short of it.
+DEF PFAC_HALL_ANCHOR_Y_MIN  EQU 3
+DEF PFAC_HALL_ANCHOR_Y_SPAN EQU 15 - PFAC_ENTRY_MAX_DIM
+ASSERT PFAC_HALL_ANCHOR_Y_MIN + PFAC_HALL_ANCHOR_Y_SPAN - 1 < 18 - PFAC_ENTRY_MAX_DIM
+ASSERT PFAC_HALL_ANCHOR_Y_SPAN > 0
+; Slide along the axis the candidate did NOT leave by, as rand(0..SPAN-1) - BIAS,
+; so SPAN 7 / BIAS 3 gives -3..3. Widening it finds more distinct layouts but
+; misses more often, since a slid candidate can clip a third room.
+DEF PFAC_SLIDE_SPAN EQU 7
+DEF PFAC_SLIDE_BIAS EQU 3
+ASSERT PFAC_SLIDE_BIAS * 2 < PFAC_SLIDE_SPAN
 DEF PFAC_ROOM_NONE   EQU $FF  ; Parent sentinel for room 0
 DEF PFAC_TEMPLATE_FLAG EQU $80
 DEF BIT_PFAC_FAKE_ROOM EQU 4
@@ -3156,15 +3188,20 @@ PFacSolidAnchorHasNeighbor:
 ; Random sampling rather than PFacFindFakeCorridorAnchor's sweep, so real
 ; balls are not pinned to whichever corridor cell the sweep reaches first.
 ;
-; The Y band stops at 14 on purpose. Ball baking overwrites room 0's record
-; in place (sProcFacilityGenScratch 0-7), so from ball 1 onward the rect
-; PFacCorridorAnchorValid tests for room 0 is garbage and can no longer keep
-; a ball out of the entry room. Entry Y is 19 - H with H at most
-; PFAC_ENTRY_MAX_DIM (3), so the entry room and its top ring never reach above
-; row 15; banding at 14 enforces "no item in the entry room" (user decision
-; 2026-09-16) structurally instead of trusting that record. Room 1 needs no
-; such guard: its X/Y bytes are written by ball 3, the last ball, so its rect
-; is still intact for every attempt made here.
+; The Y band stops below the entry room on purpose. Ball baking overwrites
+; room 0's record in place (sProcFacilityGenScratch 0-7), so from ball 1 onward
+; the rect PFacCorridorAnchorValid tests for room 0 is garbage and can no longer
+; keep a ball out of the entry room. Entry Y is 19 - H with H at most
+; PFAC_ENTRY_MAX_DIM, so the entry room and its top ring never reach above row
+; 18 - PFAC_ENTRY_MAX_DIM; banding one row below that enforces "no item in the
+; entry room" (user decision 2026-09-16) structurally instead of trusting that
+; record. Room 1 needs no such guard: its X/Y bytes are written by ball 3, the
+; last ball, so its rect is still intact for every attempt made here.
+;
+; The band is DERIVED from PFAC_ENTRY_MAX_DIM rather than written as a literal.
+; It used to be a hardcoded 14, correct only while that cap was 3; raising the
+; cap to 4 in C9 moved the entry ring up to row 14 and put a real ball inside
+; the entry footprint, caught by test_procedural_facility_generation.
 ;
 ; Clobbers a, b, c, de, hl. CurX/CurY are meaningful only when Z.
 ; ============================================================
@@ -3181,9 +3218,9 @@ PFacTryHallAnchor:
     call Rangerandom
     add a, 2                      ; X 2-17, the same band fake halls use
     ld [wBuffer + wPFacCurX], a
-    ld c, 12
+    ld c, PFAC_HALL_ANCHOR_Y_SPAN
     call Rangerandom
-    add a, 3                      ; Y 3-14, see the entry-room note above
+    add a, PFAC_HALL_ANCHOR_Y_MIN ; see the entry-room note above
     ld [wBuffer + wPFacCurY], a
     call PFacCorridorAnchorValid
     jr nz, .nextSample
@@ -5033,7 +5070,7 @@ PFacPlaceMiddleRooms:
     ld a, PFAC_SHRINK_ITEM
     jr .setRetries
 .exploreRetries
-    ld a, 16
+    ld a, 32
     ld [wBuffer + wPFacRetry], a
     ld a, PFAC_SHRINK_EXPLORE
 .setRetries
@@ -5096,41 +5133,127 @@ PFacPlaceMiddleRooms:
     ld [wBuffer + wPFacPlaceId], a
     jp .roomLoop
 
-; Roll one placement POSITION for the current candidate size, near a chosen
+; Roll one placement POSITION for the current candidate size, beside a chosen
 ; parent. OUT a=0 accept, a=1 reject.
 ;
 ; C4: this used to roll wPFacCandW/H as well, so every retry threw away the size
 ; along with the position. The caller now rolls the size once per room and
 ; shrinks it on sustained failure, which is what lets a big room compete for
-; space. Three Rangerandom draws per attempt instead of seven.
+; space.
+;
+; C9 (2026-09-16): the position used to be the parent's CENTER plus an offset of
+; rand(-5..5) on each axis, which could not reach a legal cell. PFacCandOverlaps
+; wants a 2-cell gap, so clearing a parent needs an offset of
+; parentW + 2 - parentW/2 + candW/2. That passes 5 as soon as
+; parent interior + candidate interior >= 6, and then NO offset on that axis can
+; ever separate the two rects. Measured consequences on the old code, 128
+; layouts: an interior of 5 or more on both axes occurred 0.00 times per layout
+; (it is arithmetically impossible against any parent, including a 1x1 one),
+; 674 of 768 explore rooms never placed, and 49% of item rooms fell through to
+; PFacForceItemRoom's top-left linear scan, which is why so many rooms were 3x3
+; and huddled in a corner. The shrink schedule was never the binding constraint:
+; simulating a floor of 1 still yielded 0.00 big rooms.
+;
+; So the candidate is now placed BESIDE the parent instead of on top of it: roll
+; a side, sit exactly PFAC_ROOM_GAP clear of the parent on that axis (the
+; closest cell the +2 rule permits, so no space is wasted), and slide along the
+; other axis by rand(-3..3) for variety. Every roll is now a geometrically legal
+; position with respect to the parent, and only the OTHER placed rooms and the
+; map bounds can reject it. Corridors get shorter too, since PFacCarveCorridors
+; routes each room to this same parent.
+;
+; Two random draws per attempt, one fewer than the version it replaces.
+;
+; Register contract: Random preserves bc/de/hl and Rangerandom preserves de/hl
+; (both documented in home/random.asm), so the side and slide survive in d and e
+; without touching wBuffer. PFacRoomRecordAddr clobbers de, so the parent rect
+; is copied out BEFORE those two rolls, not after.
 PFacRollCandidate:
     call PFacPickParent           ; -> wPFacParent (a placed id < placeId)
+    ; Copy the parent rect into the B temps. The branch below needs all four
+    ; bytes and only b/c stay free once the side and slide are rolled. These
+    ; slots are dead here: R6 moved PFacCandOverlaps' scanned rect into
+    ; registers, and PFacAssignExitParent runs in a later phase.
     ld a, [wBuffer + wPFacParent]
-    call PFacRoomCenter           ; b=pcx c=pcy
-    ; candidate center X = pcx + rand(-5..5), then X = centerX - W/2
-    push bc
-    ld c, 11
-    call Rangerandom
-    sub 5
-    pop bc
-    add a, b
+    call PFacRoomRecordAddr       ; hl -> parent X
+    ld a, [hli]
+    ld [wBuffer + wPFacBX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacBY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacBW], a
+    ld a, [hl]
+    ld [wBuffer + wPFacBH], a
+    ld c, PFAC_SLIDE_SPAN
+    call Rangerandom              ; 0..PFAC_SLIDE_SPAN-1
+    sub PFAC_SLIDE_BIAS
+    ld e, a                       ; e = slide, -3..3 as a signed byte
+    call Random
+    and 3
+    ld d, a                       ; d = side: 0 N, 1 S, 2 W, 3 E
+    cp 2
+    jr nc, .horizontal
+
+    ; Leaving north or south: clear the parent on Y, centre on X plus the slide.
+    ld a, [wBuffer + wPFacBW]
+    srl a
+    ld hl, wBuffer + wPFacBX
+    add a, [hl]                   ; parent center X
     ld hl, wBuffer + wPFacCandW
-    ld d, [hl]
-    srl d
-    sub d
+    ld b, [hl]
+    srl b
+    sub b                         ; - candW/2
+    add a, e
     ld [wBuffer + wPFacCandX], a
-    ; center Y = pcy + rand(-5..5), Y = centerY - H/2
-    push bc
-    ld c, 11
-    call Rangerandom
-    sub 5
-    pop bc
-    add a, c
+    ld a, d
+    and a
+    jr nz, .south
+    ; North: Y = parentY - candH - PFAC_ROOM_GAP. Underflow wraps high and
+    ; PFacCandInBounds rejects it on the `cp 19` test.
+    ld a, [wBuffer + wPFacBY]
     ld hl, wBuffer + wPFacCandH
-    ld d, [hl]
-    srl d
-    sub d
+    sub [hl]
+    sub PFAC_ROOM_GAP
+    jr .storeY
+.south
+    ld a, [wBuffer + wPFacBY]
+    ld hl, wBuffer + wPFacBH
+    add a, [hl]
+    add a, PFAC_ROOM_GAP
+.storeY
     ld [wBuffer + wPFacCandY], a
+    jr .bounds
+
+.horizontal
+    ; Leaving west or east: clear the parent on X, centre on Y plus the slide.
+    ld a, [wBuffer + wPFacBH]
+    srl a
+    ld hl, wBuffer + wPFacBY
+    add a, [hl]                   ; parent center Y
+    ld hl, wBuffer + wPFacCandH
+    ld b, [hl]
+    srl b
+    sub b                         ; - candH/2
+    add a, e
+    ld [wBuffer + wPFacCandY], a
+    ld a, d
+    cp 3
+    jr z, .east
+    ; West: X = parentX - candW - PFAC_ROOM_GAP.
+    ld a, [wBuffer + wPFacBX]
+    ld hl, wBuffer + wPFacCandW
+    sub [hl]
+    sub PFAC_ROOM_GAP
+    jr .storeX
+.east
+    ld a, [wBuffer + wPFacBX]
+    ld hl, wBuffer + wPFacBW
+    add a, [hl]
+    add a, PFAC_ROOM_GAP
+.storeX
+    ld [wBuffer + wPFacCandX], a
+
+.bounds
     call PFacCandInBounds
     and a
     jr z, .checkOverlap
@@ -5819,6 +5942,55 @@ PFacCarveEdgeOpenings:
     ld [wBuffer + wPFacCurY], a
     ld a, $2C
     call PFacWriteBlock
+
+    ; C9: a PREMADE exit room must be opened at its CANONICAL socket.
+    ;
+    ; sProcFacilityExitI is rolled in PFacPlaceExitRoom, long before any
+    ; template is chosen, and names an arbitrary interior row (west/east) or
+    ; column (north). For a plain room that is harmless, every interior cell
+    ; being floor. For a premade it is not: the payload owns its ring AND its
+    ; interior art, so an opening can land against a cell that is solid on the
+    ; exit side, and then the boss, both exit warp tiles and the whole room
+    ; beyond are unreachable.
+    ;
+    ; Measured 2026-09-16 on ProceduralFacility_5x5__rock_room, whose west ring
+    ; is 68 5C 5C 44 48 and whose first interior column is 41 38 0E 0E 49: an
+    ; opening on its first interior row meets $38, solid on its west half, and
+    ; stranded 8 quadrants including the exit itself.
+    ;
+    ; The canonical socket is the one position that carries a guarantee. The
+    ; socket mask in PFacRoomDescriptors is measured by
+    ; tools/check_facility_premades.py as "cutting THIS cell to floor connects
+    ; to the interior without leaking", so aligning the opening with it is
+    ; exactly the case that was verified. Its coordinate is the room centre,
+    ; matching _hub_and_sockets in that tool and PFacRoomCenter here.
+    ;
+    ; NOTE the PFAC_TPL_EXIT_N/W/E bits do NOT cover this. They are measured
+    ; with all four canonical sockets held open at once, but at runtime
+    ; PFacCarveCorridors reopens only the sockets a corridor actually traversed,
+    ; so a payload can pass that check by borrowing a path through a socket that
+    ; is still solid art on the real map. Correcting that measurement moves
+    ; exit bits on 24 of 83 payloads and spawn bits on 9, so it is left alone
+    ; here and this aligns the opening instead.
+    ;
+    ; Plain and large-decor exit rooms keep their rolled position, which is what
+    ; preserves variety in where the exit sits along its edge.
+    ld a, 11
+    call PFacRoomRecordAddr
+    ld de, 5
+    add hl, de
+    bit 7, [hl]                   ; PFAC_TEMPLATE_FLAG
+    jr z, .exitIndexKept
+    ld a, 11
+    call PFacRoomCenter           ; b = centre X, c = centre Y
+    ld a, [sProcFacilityExitEdge]
+    and a
+    ld a, c                       ; west/east: the socket is a ROW
+    jr nz, .exitIndexStore
+    ld a, b                       ; north: the socket is a COLUMN
+.exitIndexStore
+    ld [sProcFacilityExitI], a
+.exitIndexKept
 
     ld a, [sProcFacilityExitEdge]
     and a
