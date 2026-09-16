@@ -483,8 +483,12 @@ def _spawn_safe(
     """Whether this payload may be the ENTRY room (slot 0).
 
     C3. PFacPlaceEntryRoom bottom-aligns room 0 at Y = 19 - H and picks
-    X = 9 - rand(W) so the fixed spawn block (9,17) is always inside the
-    interior. In FOOTPRINT coordinates that puts:
+    X = 9 - rand(W) so the reserved block (9,17) is always inside the interior.
+    Measured 2026-09-16: the player actually ARRIVES at (9,19), the south warp
+    tile, as usual for pokered. (9,17) is NOT the spawn despite what the
+    generator's older comment calls it, and no mechanical reason for reserving
+    it has been found - but a pre-existing corpus assertion requires it to be
+    plain $0E, so this keeps it so. In FOOTPRINT coordinates that puts:
 
       the spawn at row h - 3, a row FIXED per template, and at column 10 - X,
       which sweeps the whole interior 1 .. w - 2 as X takes its range;
@@ -501,11 +505,11 @@ def _spawn_safe(
        the stamp, so its art is irrelevant -- but REACHING the room through it
        is not, exactly as for the C2 exit. Cut it and check the opening reaches
        both the spawn and the payload's socket component.
-    2. The spawn cell itself is overwritten by nothing at all. It must be plain
-       $0E outright. This is stricter than the item-anchor whitelist on purpose:
-       spawning inside solid art is a hard softlock, and test_smoke asserts
-       playable[(9,17)] == $0E directly. Relaxing this to the whitelist would
-       gain three $47-centre templates and cost that assertion.
+    2. The (9,17) cell is overwritten by nothing at all, and test_smoke asserts
+       playable[(9,17)] == $0E directly, so this requires exactly that. Stricter
+       than the item-anchor whitelist, which would gain three $47-centre
+       templates at the cost of that assertion. If (9,17) is ever confirmed
+       vestigial, this is the one line to relax.
     """
     spawn_row = h - 3
     if spawn_row < 1 or not reference:

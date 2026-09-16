@@ -247,19 +247,41 @@ DEF PFAC_TPL_EXIT_N EQU 1 << 1
 DEF PFAC_TPL_EXIT_W EQU 1 << 2
 DEF PFAC_TPL_EXIT_E EQU 1 << 3
 
-; C3. Entry-room (slot 0) safety. MEASURED the same way, and for the same
-; reason position-independent: PFacPlaceEntryRoom bottom-aligns room 0 at
-; Y = 19 - H and picks X = 9 - rand(W), so in footprint coordinates the fixed
-; spawn block (9,17) sits at row H_fp - 3 - a row fixed per template - and at a
-; column that sweeps the whole interior as X takes its range. The bit holds for
-; every one of those columns, so selection needs no arithmetic here either.
+; C3. Entry-room (slot 0) safety. MEASURED the same way, and position-independent
+; for the same reason: PFacPlaceEntryRoom bottom-aligns room 0 at Y = 19 - H and
+; picks X = 9 - rand(W), so in footprint coordinates the reserved block (9,17)
+; sits at row H_fp - 3 - a row fixed per template - and at a column that sweeps
+; the whole interior as X takes its range. The bit holds for every one of those
+; columns, so selection needs no arithmetic here either.
 ;
-; Two requirements, which are NOT the same requirement. The south entrance cell
-; below the spawn is overwritten with $2C by PFacCarveEdgeOpenings after the
-; stamp, so only REACHING the room through it matters, as with the exit. The
-; spawn cell itself is overwritten by nothing, so it must be plain $0E outright.
-; That is stricter than the item-anchor whitelist deliberately: spawning inside
-; solid art is a hard softlock, and the corpus test asserts that cell is $0E.
+; THREE cells matter here and they are three different cells. Measured
+; 2026-09-16 by warping in and reading wYCoord/wXCoord:
+;
+;   (9,19) is where the player ACTUALLY arrives, standing on the south warp tile
+;          itself, which is the ordinary pokered behaviour - nothing in this
+;          file, procedural_stage_hooks.asm or scripts/ProceduralFacility.asm
+;          ever writes the player's coordinates. It is the footprint's bottom
+;          RING row, and PFacCarveEdgeOpenings overwrites it with $2C after the
+;          stamp, so its payload art is irrelevant. Only REACHING the room
+;          through it matters, exactly as for the C2 exit. This is the cell the
+;          reachability flood starts from.
+;   (9,18) is the first interior row, the cell the player steps onto. Covered
+;          transitively: the flood runs from (9,19) and must arrive at (9,17),
+;          which cannot happen without crossing it.
+;   (9,17) is overwritten by NOTHING, and is required to be plain $0E.
+;
+; Be careful with (9,17): the older comment on PFacPlaceEntryRoom calls it "the
+; fixed spawn block" and that name is simply WRONG - the player spawns at
+; (9,19). No mechanical reason for the cell has been found. There is a
+; bg_event at tile (19,35) inside it, but the Facility has no sign art, so that
+; event is vestigial, inherited along with the rest of the file from
+; scripts/ProceduralCave1.asm.
+;
+; What DOES depend on it today is a pre-existing corpus assertion,
+; playable[(9,17)] == $0E, plus that cell's exclusion from fake-ball anchors. C3
+; keeps the requirement because it is the conservative reading and costs only
+; three $47-centre templates. If that assertion is ever retired as vestigial
+; too, relax this to the item-anchor whitelist in _spawn_safe and regenerate.
 DEF PFAC_TPL_SPAWN  EQU 1 << 4
 
 ; Size-group index. Two bytes per (footprint W, footprint H) pair, addressed
@@ -341,6 +363,8 @@ PFacTpl4x3:
     dw PFacTplData4x3BedRoom
     db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
     dw PFacTplData4x3RockRoom
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    dw PFacTplData4x3TabletreeRoom
 PFacTpl4x3End:
 
 PFacTpl4x4:
@@ -518,7 +542,7 @@ PFacTpl9x7End:
 
 PFacRoomDescriptorsEnd:
 DEF PFAC_TPL_TOTAL EQU (PFacRoomDescriptorsEnd - PFacRoomDescriptors) / PFAC_TPL_STRIDE
-ASSERT PFAC_TPL_TOTAL == 73
+ASSERT PFAC_TPL_TOTAL == 74
 
 ; An empty size group is two zero bytes; a populated one names its run.
 MACRO pfac_tpl_group ; \1 = group label, \2 = group end label
@@ -540,7 +564,7 @@ PFacRoomGroupTable:
     pfac_tpl_no_group ; 3x8
     pfac_tpl_no_group ; 3x9
     ; footprint width 4
-    pfac_tpl_group PFacTpl4x3, PFacTpl4x3End ; 4x3, 2
+    pfac_tpl_group PFacTpl4x3, PFacTpl4x3End ; 4x3, 3
     pfac_tpl_group PFacTpl4x4, PFacTpl4x4End ; 4x4, 2
     pfac_tpl_group PFacTpl4x5, PFacTpl4x5End ; 4x5, 4
     pfac_tpl_group PFacTpl4x6, PFacTpl4x6End ; 4x6, 1
@@ -652,6 +676,9 @@ ASSERT @ - PFacTplData4x3BedRoom == 12
 PFacTplData4x3RockRoom:
     INCBIN "maps/ProceduralFacility_4x3_rock_room.blk"
 ASSERT @ - PFacTplData4x3RockRoom == 12
+PFacTplData4x3TabletreeRoom:
+    INCBIN "maps/ProceduralFacility_4x3_tabletree_room.blk"
+ASSERT @ - PFacTplData4x3TabletreeRoom == 12
 PFacTplData4x4ServerRoom:
     INCBIN "maps/ProceduralFacility_4x4_server_room.blk"
 ASSERT @ - PFacTplData4x4ServerRoom == 16
@@ -809,10 +836,10 @@ PFacTplData9x7TreerockCombinedroom:
     INCBIN "maps/ProceduralFacility_9x7_treerock_combinedroom.blk"
 ASSERT @ - PFacTplData9x7TreerockCombinedroom == 63
 
-; generated by tools/gen_facility_room_table.py from tools/pyboy_smoke/artifacts/facility_fullroom_audit.txt
+; generated by tools/gen_facility_room_table.py from tools/check_facility_premades.py
 
 
-DEF PFAC_LARGE_DECOR_COUNT EQU 14
+DEF PFAC_LARGE_DECOR_COUNT EQU 16
 ; Interior-only large-decor descriptors: width, height, payload pointer.
 ; These may be placed in any larger compatible middle-room interior. They do
 ; not own or replace the room's surrounding wall ring.
@@ -821,6 +848,8 @@ PFacLargeDecorDescriptors:
     dw PFacLargeDecor1x3Doubletabletree
     db 2, 1
     dw PFacLargeDecor2x1Doubletable
+    db 2, 1
+    dw PFacLargeDecor2x1RockBlock
     db 2, 2
     dw PFacLargeDecor2x2Block
     db 2, 2
@@ -840,6 +869,8 @@ PFacLargeDecorDescriptors:
     db 3, 3
     dw PFacLargeDecor3x3Blockrock
     db 3, 3
+    dw PFacLargeDecor3x3Rock
+    db 3, 3
     dw PFacLargeDecor3x3Rocktree
     db 3, 3
     dw PFacLargeDecor3x3Tabletree
@@ -851,6 +882,9 @@ ASSERT @ - PFacLargeDecor1x3Doubletabletree == 3
 PFacLargeDecor2x1Doubletable:
     INCBIN "maps/ProceduralFacility_2x1_doubletable_decor.blk"
 ASSERT @ - PFacLargeDecor2x1Doubletable == 2
+PFacLargeDecor2x1RockBlock:
+    INCBIN "maps/ProceduralFacility_2x1_rockblock_decor.blk"
+ASSERT @ - PFacLargeDecor2x1RockBlock == 2
 PFacLargeDecor2x2Block:
     INCBIN "maps/ProceduralFacility_2x2_block_decor.blk"
 ASSERT @ - PFacLargeDecor2x2Block == 4
@@ -878,6 +912,9 @@ ASSERT @ - PFacLargeDecor3x3Block == 9
 PFacLargeDecor3x3Blockrock:
     INCBIN "maps/ProceduralFacility_3x3_blockrock_decor.blk"
 ASSERT @ - PFacLargeDecor3x3Blockrock == 9
+PFacLargeDecor3x3Rock:
+    INCBIN "maps/ProceduralFacility_3x3_rock_decor.blk"
+ASSERT @ - PFacLargeDecor3x3Rock == 9
 PFacLargeDecor3x3Rocktree:
     INCBIN "maps/ProceduralFacility_3x3_rocktree_decor.blk"
 ASSERT @ - PFacLargeDecor3x3Rocktree == 9
@@ -3767,7 +3804,17 @@ PFacRollRoomDim:
 ; ============================================================
 ; PFacPlaceEntryRoom  (room 0)
 ; Small floor rect, bottom-aligned (floor bottom = row 18, wall ring at row 19),
-; positioned so the fixed spawn block (9,17) is inside it. Always succeeds.
+; positioned so the reserved block (9,17) is inside it. Always succeeds.
+;
+; (9,17) was called "the fixed spawn block" here until 2026-09-16, when warping
+; in and reading wYCoord/wXCoord measured the player arriving at (9,19) instead,
+; standing on the south warp tile, which is the ordinary pokered behaviour -
+; nothing in this file, procedural_stage_hooks.asm or scripts/
+; ProceduralFacility.asm ever writes the player's coordinates. No mechanical
+; reason for reserving (9,17) has been found; it may be vestigial. What still
+; depends on it is the corpus assertion that it is plain $0E, which the H floor
+; of 2 below is what keeps satisfiable: it keeps that row interior floor rather
+; than wall ring. See PFAC_TPL_SPAWN for the full three-cell picture.
 ; ============================================================
 PFacPlaceEntryRoom:
     xor a
@@ -3787,8 +3834,8 @@ PFacPlaceEntryRoom:
     jr nc, .heightOK
     inc a
 .heightOK
-    ld [wBuffer + wPFacCandH], a  ; floor H 2-PFAC_ENTRY_MAX_DIM; must contain
-                                  ; the spawn row, hence the floor of 2
+    ld [wBuffer + wPFacCandH], a  ; floor H 2-PFAC_ENTRY_MAX_DIM; keeps row 17
+                                  ; interior floor, hence the floor of 2
     ; Y = 19 - H
     ld a, 19
     ld hl, wBuffer + wPFacCandH
