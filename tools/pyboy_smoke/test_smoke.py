@@ -1069,10 +1069,28 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
         self.harness.register_hook("PFacPlaceItems", capture_pre_item_records)
 
+        wall_decor_writes: list[tuple[int, int]] = []
+        wbuffer_address = self.harness.address("wBuffer")
+
+        def capture_wall_decor_write(_context) -> None:
+            # Fires once per PFacDecorateCorridorWalls (C6b/C7) decoration,
+            # right before PFacWriteBlock. CurX/CurY (wBuffer+2/+3) already
+            # hold the base cell by this point - every helper on the path
+            # here preserves and restores them.
+            wall_decor_writes.append((
+                self.harness.pyboy.memory[wbuffer_address + 2],
+                self.harness.pyboy.memory[wbuffer_address + 3],
+            ))
+
+        self.harness.register_hook(
+            "PFacDecorateCorridorWalls.write", capture_wall_decor_write
+        )
+
         edges_seen: set[int] = set()
         for seed_index, seed in enumerate(seeds):
             with self.subTest(seed=seed):
                 pre_item_records.clear()
+                wall_decor_writes.clear()
                 self.harness.load_state(baseline)
                 forced_edge = seed_index % 3
                 self.harness.write_sram_bytes(
@@ -1146,6 +1164,25 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     layout_large_decor += int(large_selected)
                     if room_id <= 4 and large_selected:
                         decorated_item_rooms += 1
+                    # C7: verify PFacWallInsideDecorated by checking the wall
+                    # pass's actual WRITE coordinates (captured below via the
+                    # PFacDecorateCorridorWalls.write hook) against this
+                    # room's footprint, not by scanning for decor tile IDs.
+                    # $5C/$5D/$61/$33/$28 are also legitimate authored art in
+                    # premade/large-decor payloads, so their mere presence in
+                    # a footprint proves nothing about what THIS pass wrote -
+                    # only the write coordinates themselves do. Rooms 0-1 are
+                    # excluded from this check: ball-coordinate baking reuses
+                    # their record X/Y (see the comment below), corrupting the
+                    # footprint before this pass even runs.
+                    if room_w and room_id >= 2 and (selected or large_selected):
+                        for (wx, wy) in wall_decor_writes:
+                            self.assertFalse(
+                                (room_x - 1) <= wx <= (room_x + room_w)
+                                and (room_y - 1) <= wy <= (room_y + room_h),
+                                f"wall decor written inside room {room_id} "
+                                f"footprint at ({wx}, {wy})",
+                            )
                     # Ball coordinate baking reuses scratch bytes 0-7, which
                     # overwrite room 0 and room 1 X/Y after generation. Some
                     # valid payloads contain only blocks also used by the light

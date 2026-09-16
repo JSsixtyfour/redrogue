@@ -204,6 +204,13 @@ DEF PFAC_SHRINK_EXPLORE EQU 4
 DEF PFAC_ROOM_NONE   EQU $FF  ; Parent sentinel for room 0
 DEF PFAC_TEMPLATE_FLAG EQU $80
 DEF BIT_PFAC_FAKE_ROOM EQU 4
+; Bit 6 (set by PFacPlaceLargeDecor's .stamp) records authored large-decor
+; ownership of a room's interior. Combined with bit 7 (PFAC_TEMPLATE_FLAG),
+; this mask picks out every room whose walls must NOT be touched by C7 room
+; wall decor: a template's ring is part of its own art, and a large-decor
+; room's ring may be load-bearing for a solid authored interior the same way
+; a premade's is (PROCEDURAL_FACILITY_CONTENT_PLAN.md, C7).
+DEF PFAC_ROOM_DECORATED_MASK EQU $C0
 DEF PFAC_SOCKET_N EQU 1
 DEF PFAC_SOCKET_E EQU 2
 DEF PFAC_SOCKET_S EQU 4
@@ -3713,12 +3720,25 @@ PFacMarkSmallDecor:
     ret
 
 ; ============================================================
-; PFacDecorateCorridorWalls (C6b)
-; Cosmetic pass over finalized straight wall blocks, replacing a fraction of
-; them with their fully-solid decorated variant (PROCEDURAL_FACILITY_CONTENT_
-; PLAN.md, C6a's decode). MUST run after PFacPlaceItems and PFacPlaceFakeBalls:
-; R3's actual failure was stranding a ball's interaction quadrant, so every
-; ball position must be known before any decoration decision.
+; PFacDecorateCorridorWalls (C6b, extended to room walls by C7)
+; Cosmetic pass over EVERY finalized straight wall block on the map, corridor
+; or room ring alike, replacing a fraction of them with their fully-solid
+; decorated variant (PROCEDURAL_FACILITY_CONTENT_PLAN.md, C6a's decode). The
+; scan is block-id driven and never distinguished corridor from room wall, so
+; C7 needed no new scan: a room's ring is just another straight-wall run, and
+; a generic room's OPEN INTERIOR (not its baseboard) carries connectivity, so
+; losing a ring quadrant there is exactly as safe as losing one in a corridor.
+; The one gap C7 closed is PFacWallInsideDecorated: it used to exclude only
+; premade footprints, which left a large-decor room's ring eligible even
+; though that room's authored interior can be just as solid as a premade's.
+; It now excludes any room with PFAC_ROOM_DECORATED_MASK set (template bit 7
+; OR large-decor bit 6) - i.e. decorates only rooms with no template and no
+; large decor, the C7 additional rule.
+;
+; MUST run after PFacPlaceItems and PFacPlaceFakeBalls: R3's actual failure
+; was stranding a ball's interaction quadrant, so every ball position must be
+; known before any decoration decision. Must also run after PFacPlaceLargeDecor
+; so PFAC_ROOM_DECORATED_MASK is fully populated before this pass reads it.
 ;
 ; The safety rule is REDUNDANCY, not reachability. A decorated block loses its
 ; walkable quadrants entirely, so the pass only fires where those quadrants are
@@ -3861,21 +3881,23 @@ PFacWallGateRoll:
     ret
 
 ; Z when CurX/CurY must NOT be decorated for structural reasons: inside a
-; premade room's footprint, or cardinally adjacent to a placed ball (real or
-; fake). NZ when neither applies. Preserves CurX/CurY.
+; premade or large-decor room's footprint, or cardinally adjacent to a placed
+; ball (real or fake). NZ when neither applies. Preserves CurX/CurY.
 PFacWallSiteBlocked:
-    call PFacWallInsidePremade
+    call PFacWallInsideDecorated
     ret z
     jp PFacWallNearBall
 
-; Z when CurX/CurY lies inside some premade room's full footprint (its
-; interior rect grown by one on every side, matching the ring PFacEncloseRooms
-; skips for a "complete premade owns its perimeter" room - see C6b rule 5/6:
-; an uncut template socket only ever exists inside that same footprint, so
-; excluding the footprint wholesale also excludes every socket cell). NZ when
-; outside every premade footprint. Preserves CurX/CurY. Clobbers a, b, c, de,
-; hl.
-PFacWallInsidePremade:
+; Z when CurX/CurY lies inside some premade OR large-decor room's full
+; footprint (its interior rect grown by one on every side, matching the ring
+; PFacEncloseRooms skips for a "complete premade owns its perimeter" room -
+; see C6b rule 5/6: an uncut template socket only ever exists inside that same
+; footprint, so excluding the footprint wholesale also excludes every socket
+; cell). A large-decor room's authored interior can be just as solid as a
+; premade's (C7's additional rule: only rooms with no template and no large
+; decor are bare enough for wall decor). NZ when outside every excluded
+; footprint. Preserves CurX/CurY. Clobbers a, b, c, de, hl.
+PFacWallInsideDecorated:
     xor a
     ld [wBuffer + wPFacWallScan], a
 .room
@@ -3894,7 +3916,8 @@ PFacWallInsidePremade:
     ld a, [hli]
     ld [wBuffer + wPFacWallRH], a
     inc hl
-    bit 7, [hl]
+    ld a, [hl]
+    and PFAC_ROOM_DECORATED_MASK
     jr z, .nextRoom
 
     ld a, [wBuffer + wPFacWallRX]
