@@ -54,7 +54,19 @@ GetRandTrainer:
 	pop bc
 	and a
 	jr z, .reroll
-	add $C8
+; wEngagedTrainerClass holds an OPP id, not a raw class: PlayTrainerMusic
+; compares it against OPP_RIVAL1 and InitBattleEnemyParameters copies it
+; straight into wCurOpponent. So the roll has to be offset-relative.
+; This said `add $C8` (200), the OPP_ID_OFFSET from before it was lowered to
+; 160 on 2026-09-10, which would have produced ids 201-247 = classes 41-87 and
+; indexed TrainerDataPointers well past its last entry ($31). Harmless only
+; because nothing calls this today - upstream shinpokered's two callers
+; (ssanne6, undergroundpathwe) do not exist in this tree.
+;
+; The roll covers classes $01-$2F, i.e. YOUNGSTER through LANCE, which includes
+; the gym leaders, the rivals, Oak and the Elite Four. Any future caller has to
+; filter, or it will hand the player a random Lance.
+	add OPP_ID_OFFSET
 	ld [wEngagedTrainerClass], a
 	ld a, 1
 	ld [wEngagedTrainerSet], a

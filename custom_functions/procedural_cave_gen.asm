@@ -202,6 +202,20 @@ DEF wProcCaveDropInCol        EQU 15
 ; See Red Rogue Files/size-randomization-notes.md for findings and next steps.
 DEF wProcCaveTargetBase       EQU 27 ; 2 bytes (27,28) - low,high
 
+; --- wBuffer bounds ---
+; wBuffer is 30 bytes (ram/wram.asm). This overlay is EXACTLY full: it uses
+; offsets 0-29 inclusive, so there is no spare byte for a future DEF. Anything
+; added past 29 spills out of the arena and into the next member of wBuffer's
+; UNION (wEvoOldSpecies/wEvoNewSpecies/wEvoMonTileOffset/wEvoCancelled), which
+; assembles clean and corrupts at runtime. Every new DEF added above needs a
+; line here too, at least for the offset it lands on.
+ASSERT wProcCaveBossY          < 30, "cave wBuffer overlay overflows the 30-byte arena"
+ASSERT wProcCaveCountY         < 30, "cave wBuffer overlay overflows the 30-byte arena"
+ASSERT wProcCaveIncludeWater   < 30, "cave wBuffer overlay overflows the 30-byte arena"
+ASSERT wProcCaveBallPos + 8    <= 30, "wProcCaveBallPos (8 bytes) runs past wBuffer"
+ASSERT wProcCaveItemTemp + 4   <= 30, "wProcCaveItemTemp (4 bytes) runs past wBuffer"
+ASSERT wProcCaveTargetBase + 2 <= 30, "wProcCaveTargetBase (2 bytes) runs past wBuffer"
+
 ; ============================================================
 ; GenerateProceduralCave
 ; Entry point. See header comment for the hook site and call convention.

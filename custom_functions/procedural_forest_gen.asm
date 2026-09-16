@@ -115,6 +115,23 @@ DEF wPFScanRowHi    EQU 29  ; alias: PFPlaceRooms overlap-scan row upper
 ; only, dead during the carve which runs before any maze/braid pass).
 DEF wPFRivDir       EQU 18
 
+; --- wBuffer bounds ---
+; wBuffer is 30 bytes (ram/wram.asm). This overlay is EXACTLY full: it uses
+; offsets 0-29 inclusive, so there is no spare byte for a future DEF. Anything
+; added past 29 spills out of the arena and into the next member of wBuffer's
+; UNION (wEvoOldSpecies/wEvoNewSpecies/wEvoMonTileOffset/wEvoCancelled), which
+; assembles clean and corrupts at runtime - the exact failure mode the
+; PFScanWall/PFBinaryTree bugs hit. Every new DEF added above needs a line
+; here too, at least for the offset it lands on.
+ASSERT wPFRoomCount      < 30, "forest wBuffer overlay overflows the 30-byte arena"
+ASSERT wPFRoomTries      < 30, "forest wBuffer overlay overflows the 30-byte arena"
+ASSERT wPFRoomIdx        < 30, "forest wBuffer overlay overflows the 30-byte arena"
+ASSERT wPFDoorCount      < 30, "forest wBuffer overlay overflows the 30-byte arena"
+ASSERT wPFSideBound      < 30, "forest wBuffer overlay overflows the 30-byte arena"
+ASSERT wPFAcceptedXY + 8 <= 30, "wPFAcceptedXY (8 bytes) runs past wBuffer"
+ASSERT wPFItemTemp + 4   <= 30, "wPFItemTemp (4 bytes) runs past wBuffer"
+ASSERT wPFNeighbors + 4  <= 30, "wPFNeighbors (4 bytes) runs past wBuffer"
+
 ; ============================================================
 ; PFRowOffsetTable
 ; Byte offset for each row in the 20-row logical map space.
@@ -2732,15 +2749,32 @@ PFinalizeForest::
     cp 1
     jr z, .bossFaceRight
 .bossFaceLeft
-    ld a, SPRITE_FACING_LEFT
+    ld bc, (LEFT << 8) | SPRITE_FACING_LEFT
     jr .bossFacingSet
 .bossFaceRight
-    ld a, SPRITE_FACING_RIGHT
+    ld bc, (RIGHT << 8) | SPRITE_FACING_RIGHT
     jr .bossFacingSet
 .bossFaceDown
-    ld a, SPRITE_FACING_DOWN
+    ld bc, (DOWN << 8) | SPRITE_FACING_DOWN
 .bossFacingSet
+    ; c = the facing byte, b = the object's movement byte 2. Writing the facing
+    ; byte alone does not hold: UpdateNPCSprite re-reads movement byte 2 out of
+    ; wMapSpriteData every tick, and for a STAY sprite .determineDirection falls
+    ; into .moveDown/.moveUp/.moveLeft/.moveRight, whose TryWalking rewrites
+    ; SPRITESTATEDATA1_FACINGDIRECTION from that constant BEFORE it tests
+    ; whether the step is even legal. The authored object direction is DOWN.
+    ; Slot 1's entry is wMapSpriteData + (slot - 1) * 2 = offset 0.
+    ;
+    ; This changes nothing in normal play, and that is the point: PFPreloadForest
+    ; zeroes sProcForestExitEdge every run, so the exit is always north and the
+    ; intended facing is DOWN either way. It is the debug W/E path the
+    ; sProcForestExitEdge comment advertises that was broken - a west exit's boss
+    ; snapped back to DOWN on its first visible frame. Same two-write fix the
+    ; Facility already carries at its .bossFacing.
+    ld a, c
     ld [wSprite01StateData1FacingDirection], a
+    ld a, b
+    ld [wMapSpriteData], a
 
     ; Set boss species/level in wMapSpriteExtraData (slot 1 = offset 0)
     farcall PCGetBossLevel          ; bank 7 — must farcall from bank 6

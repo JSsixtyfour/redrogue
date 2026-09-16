@@ -1234,6 +1234,18 @@ PCemRollItem:
 
 DEF wCemGhostRetry EQU 20   ; scratch retry counter for PCemAvoidGhostBoss
 
+; --- wBuffer bounds ---
+; wBuffer is 30 bytes (ram/wram.asm). This overlay uses offsets 0-20
+; inclusive (21 bytes), 9 bytes free. Anything added at offset 30 or beyond
+; spills out of the arena and into the next member of wBuffer's UNION
+; (wEvoOldSpecies/wEvoNewSpecies/wEvoMonTileOffset/wEvoCancelled), which
+; assembles clean and corrupts at runtime. Every new DEF added above needs a
+; line here too, at least for the offset it lands on.
+ASSERT wCemGhostRetry < 30, "cemetery wBuffer overlay overflows the 30-byte arena"
+ASSERT wCemPrefabIndex < 30, "cemetery wBuffer overlay overflows the 30-byte arena"
+; wCemPX0/PX1/PY0/PY1 (15-18) are four separate 1-byte DEFs, not an array -
+; each already sits below wCemGhostRetry's bound, so no separate assert.
+
 ; ============================================================
 ; PCemAvoidGhostBoss
 ; Cemetery-only exclusion: the cemetery's boss must never be Gastly,

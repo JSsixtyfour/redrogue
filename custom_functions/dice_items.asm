@@ -45,16 +45,20 @@ RogueItemUseDoorDice::
 ; coordinates (11,7)/(11,8) - calling it from any other map would corrupt
 ; that map's warp table, which is exactly why the map gate above runs first.
 ;
-; KNOWN GAP: unlike the normal lobby-entry path (IndigoPlateauLobby_Script,
-; which farcalls ProcPreloadAssignedWildArea right after this same call), a
-; reroll here does NOT re-preload. If the reroll lands a door on a wild area,
-; PCFinalizeCave/PFinalizeForest/etc. run against whatever cave/forest was
-; already staged from the PREVIOUS assignment (or nothing, on a fresh save) -
-; not a crash (regenerates the last-rolled layout instead of the new door's
-; intended fresh one), but not a true fresh generation either. Not fixed:
-; a farcall ProcPreloadAssignedWildArea here would add a ~0.5s hitch right
-; after this reroll's text box. See Red Rogue Files/PROC_GEN_NOTES.md.
+; RESOLVED 2026-09-16: like the normal lobby-entry path (IndigoPlateauLobby_Script,
+; which farcalls ProcPreloadAssignedWildArea right after its own SelectAndPatchLobbyExit),
+; a reroll now re-preloads too. Decision: the ~0.5s hitch mid-reroll is accepted rather
+; than staging the preload behind the text box - a rerolled door landing on a wild area
+; must show the door's OWN fresh layout/boss, not whatever cave/forest was staged for
+; the PREVIOUS assignment (or nothing, on a fresh save).
+;
+; TRAP for the next editor: this is a plain `call`, not a `farcall`, and that is only
+; correct because dice_items.asm and procedural_stage_hooks.asm are both INCLUDEd into
+; the same "rogue" ROMX SECTION (main.asm). If ProcPreloadAssignedWildArea (or this file)
+; is ever moved to a different bank, this must become a farcall or it will silently jump
+; into whatever happens to be mapped in this bank slot at the time.
 	call SelectAndPatchLobbyExit
+	call ProcPreloadAssignedWildArea
 	ld hl, DoorDiceRerolledText
 	call PrintText
 	ret
