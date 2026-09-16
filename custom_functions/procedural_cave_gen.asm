@@ -116,6 +116,19 @@ DEF wProcCaveItemTemp     EQU 3   ; PCPlaceWildAreaItems: 4 bytes (3-6), each ba
                                   ; warp patch + boss position before items run.
 DEF wProcCaveItemRetry    EQU 7   ; PCPlaceWildAreaItems: dedup re-roll budget (offset 7
                                   ; = TargetY, free during item placement).
+; PCPlaceWildAreaItems: the exit cell, where the boss stands, snapshotted so a
+; candidate ball can be rejected for landing on top of it.
+;
+; It CANNOT just read wProcCaveExitX/Y: wProcCaveItemTemp aliases offsets 3-6
+; and starts filling them with rolled item IDs from ball 0's accept onward, so
+; from ball 1 those two bytes hold item data, not coordinates. Snapshotted from
+; the SRAM mirror instead, before this routine closes SRAM.
+;
+; Offsets 21 and 29 are the only two bytes in the cave's overlay allocated to
+; nothing at all - both are disabled margin experiments (see the commented-out
+; DEFs below).
+DEF wProcCaveBossX        EQU 21
+DEF wProcCaveBossY        EQU 29
 DEF wProcCaveBallPos      EQU 10  ; PCPlaceWildAreaItems: 8 bytes, X/Y interleaved for
                                   ; each of the 4 already-placed balls (offset+i*2 = X,
                                   ; +i*2+1 = Y) - used to reject new candidates that
@@ -1402,6 +1415,33 @@ PCPlaceBoss:
 ; carving/autotiling/decoration/exit-ladder have all permanently settled,
 ; so "is this cell floor" can never go stale afterward.
 ; ============================================================
+; ============================================================
+; PCItemTooClose
+; Chebyshev spacing test for a pokeball candidate against one fixed point.
+; INPUT:  b = point block X, c = point block Y; the candidate is read from
+;         wProcCaveCurX / wProcCaveCurY.
+; OUTPUT: carry SET = closer than PC_ITEM_MIN_DIST, i.e. reject.
+; Clobbers a/d. Preserves b/c/e/hl (PCAbs touches only a).
+;
+; Factored out of PCPlaceWildAreaItems' entrance and exit checks, which were
+; the same sixteen instructions twice. Bank #5 has almost no slack left, so the
+; boss check pays for itself instead of duplicating the block a third time.
+; ============================================================
+PCItemTooClose:
+	ld a, [wBuffer + wProcCaveCurX]
+	sub b
+	call PCAbs
+	ld d, a                       ; d = |dx|
+	ld a, [wBuffer + wProcCaveCurY]
+	sub c
+	call PCAbs                    ; a = |dy|
+	cp d
+	jr nc, .haveMax
+	ld a, d
+.haveMax
+	cp PC_ITEM_MIN_DIST           ; carry set when the Chebyshev distance is short
+	ret
+
 PCPlaceWildAreaItems:
 	; On re-entry, restore positions/items from SRAM instead of re-rolling.
 	; (Re-rolling moves the balls every time the player enters the cave.)
@@ -1450,6 +1490,13 @@ PCPlaceWildAreaItems:
 	ld [rRAMG], a
 	ret
 .pcbFreshRoll
+	; Snapshot the exit (= boss) cell while SRAM is still open. See
+	; wProcCaveBossX's declaration for why wProcCaveExitX/Y is not readable
+	; from this routine.
+	ld a, [sProcCaveStagingExitX]
+	ld [wBuffer + wProcCaveBossX], a
+	ld a, [sProcCaveStagingExitY]
+	ld [wBuffer + wProcCaveBossY], a
 	; first entry: close SRAM and run the placement algorithm
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -1478,23 +1525,24 @@ PCPlaceWildAreaItems:
 	jr nz, .floorRetry
 	ret
 .gotFloor
-	; --- must be far enough from entrance ---
-	ld a, [wBuffer + wProcCaveCurX]
-	ld c, a
+	; --- must be far enough from the entrance ---
 	ld a, [wBuffer + wProcCaveEntranceX]
-	sub c
-	call PCAbs
-	ld c, a
-	ld a, [wBuffer + wProcCaveCurY]
-	ld d, a
+	ld b, a
 	ld a, [wBuffer + wProcCaveEntranceY]
-	sub d
-	call PCAbs
-	cp c
-	jr nc, .haveMaxEnt
-	ld a, c
-.haveMaxEnt
-	cp PC_ITEM_MIN_DIST
+	ld c, a
+	call PCItemTooClose
+	jr c, .spaceFail
+	; --- must be far enough from the exit, where the boss stands ---
+	; Exact overlap is already impossible: PCPlaceExitLadder has overwritten the
+	; exit cell with a ladder block by now, and the candidate test above only
+	; accepts PC_BLOCK_FLOOR. What this rejects is a ball sitting immediately
+	; NEXT to the boss, which nothing else here was checking. The boss's own
+	; sub-tile ladder offset is ignored; it is well under one block.
+	ld a, [wBuffer + wProcCaveBossX]
+	ld b, a
+	ld a, [wBuffer + wProcCaveBossY]
+	ld c, a
+	call PCItemTooClose
 	jr c, .spaceFail
 	; --- must be far enough from each already-placed ball ---
 	ld a, [wBuffer + wProcCaveItemCounter]
@@ -1528,7 +1576,7 @@ PCPlaceWildAreaItems:
 	ld a, [wBuffer + wProcCaveIncludeRocks]
 	dec a
 	ld [wBuffer + wProcCaveIncludeRocks], a
-	jr nz, .spacingRetry
+	jp nz, .spacingRetry   ; jp: the exit-distance check above pushed this past jr range
 .accept
 	; record position for future spacing checks
 	ld a, [wBuffer + wProcCaveItemCounter]

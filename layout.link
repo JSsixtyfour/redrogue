@@ -50,16 +50,8 @@ ROMX $4
 ROMX $5
 	"NPC Sprites 2"
 	"Battle Engine 2"
-	; Pinned 2026-09-08 (Species Groups Phase 2 step 4). This section holds
-	; PokemonSpriteCategoryTable, a nybble array asserted against
-	; NUM_POKEMON_INDEXES, so it grows ~32 bytes over the full species roster.
-	; It was already sitting in $05 by first-fit and the bank had 2 bytes free:
-	; moving "Pokemon Data 1"/CryData out of here freed 570 bytes and two small
-	; floaters ("HUD Pokeball GFX", "Pick Up Item") immediately took them.
-	; Pinning it means rgblink reserves its space BEFORE placing floaters, so the
-	; growth is guaranteed and the floaters get pushed elsewhere on their own.
-	; No code moved for this; the section stays exactly where it already was.
-	"ProceduralCaveGen"
+	; "ProceduralCaveGen" was pinned here 2026-09-08 and MOVED OUT to $3F on
+	; 2026-09-16 - see that bank's comment for why.
 ROMX $6
 	"Maps 1"
 	"Play Time"
@@ -399,6 +391,51 @@ ROMX $3E
 	; 2026-09-16 because that bank had only 80 bytes left after it. See the
 	; comment in gfx/tilesets.asm for the bank-safety argument.
 	"Tilesets 5"
+ROMX $3F
+	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
+	;
+	; It had grown to within 13 bytes of filling $5 (shared with "NPC Sprites 2",
+	; "Battle Engine 2", "HUD Pokeball GFX" and "Draw Badges"), and the planned
+	; cave water-visibility and generator-review work both add code to it. It
+	; also holds PokemonSpriteCategoryTable, a nybble array asserted against
+	; NUM_POKEMON_INDEXES, which grows with every species added - that was the
+	; original reason for pinning it, and it is a reason to give it room, not to
+	; keep it wedged in a full bank.
+	;
+	; $3F is physical padding past the highest linked bank (#62) in a ROM that is
+	; already 64 banks, so this consumes no new space and the section has a clean
+	; 16 KiB to grow into.
+	;
+	; The relocation contract was audited edge by edge before the move:
+	;   - all 11 exported symbols (PCPreloadCave, PCFinalizeCave, PCGetBossLevel,
+	;     PCRollMonClassFar, PCRollWildEncounter, the sprite helpers, ...) are
+	;     reached from other files ONLY via farcall - no plain call/jp, no dw
+	;     pointer table, no predef entry, no BANK() consumer;
+	;   - the only non-local call/jp targets INSIDE the file are Random and
+	;     Rangerandom, both at 00:xxxx in HOME, so they stay reachable;
+	;   - every ld hl/de target is a w*/s* RAM or SRAM label, which is
+	;     bank-independent;
+	;   - the file never writes rROMB and never switches its own bank mid-body.
+	"ProceduralCaveGen"
+	; "ProceduralForestGen" pinned here the same day, for a problem the move
+	; above CREATED. It was floating, and when the cave section vacated $5 the
+	; linker's first-fit immediately backfilled it there - out of bank $10 with
+	; 295 bytes spare and into bank $5 with 15. That is the same wedged-in-a-full
+	; bank state the cave was just rescued from, and the forest generator is due
+	; to grow (procedural stage events add NPC slots and hideout placement to it).
+	;
+	; Its contract is the same shape as the cave's and was audited the same way:
+	; PFPreloadForest and PFinalizeForest are reached only by farcall from
+	; procedural_stage_hooks.asm, the forest deliberately keeps its OWN copies of
+	; the primitives that take input in b (PFRollMonClass, PFAbs) precisely
+	; because farcall destroys b, and it reaches cave code only through farcall.
+	; It was already a floating section, so it had to be bank-agnostic anyway -
+	; every build was free to place it somewhere new.
+	;
+	; ⚠ Cave and forest now share a bank. That makes a plain call between them
+	; silently WORK, and it would keep working right up until one of them is
+	; moved again. Keep using farcall across the two files.
+	"ProceduralForestGen"
 WRAM0
 	"Audio RAM"
 	org $c100

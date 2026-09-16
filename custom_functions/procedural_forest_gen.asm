@@ -74,6 +74,13 @@ DEF wPFAcceptedXY   EQU 10  ; 8 contiguous bytes (10-17): 4x(blockX,blockY) for
                             ; balls accepted so far, reuses wPFNeighborCnt/
                             ; Neighbors/NCol/NRow/AlgoForce (all dead by Phase 2)
 DEF wPFItemTemp     EQU 21  ; 4 bytes (21-24): rolled item IDs before dedup-write
+; PFScanForBall Phase 1: the boss's own cell, packed (col | row<<4), or $FF when
+; the boss stands somewhere that is not a cell centre at all (east exit - see
+; PFRollExitIndex). Aliases wPFRoomCount, which is dead here: it only has to
+; survive from PFPlaceRooms to PFConnectRooms, both INSIDE
+; PFGenerateRoomsDungeon, which has already returned by the time .algosDone
+; calls PFScanForBall.
+DEF wPFBossCell     EQU 25
 
 ; --- Rooms/Dungeon scratch (sProcForestAlgoForce=5) ---
 ; col/row/w/h alias the Sidewinder/BinaryTree/Backtracker-only offsets
@@ -1664,7 +1671,81 @@ PFAbs:
 ; Must be called BEFORE PFBraidPass (braid removes dead ends, shrinking
 ; the candidate pool available here).
 ; ============================================================
+; PFRollExitIndex
+; Rolls the exit's index along whichever edge sProcForestExitEdge selects and
+; stores it in sProcForestExitI. Split out of PFinalizeForest's exit block and
+; hoisted to run BEFORE PFScanForBall, so the ball scan can see where the boss
+; is going to stand.
+;
+; Why the roll moved but the exit BLOCK-WRITE did not: the write has to happen
+; after PFBraidPass, which carves through walls and would otherwise erase the
+; opening. The roll itself depends only on sProcForestExitEdge and
+; sProcForestRiverSide, both fixed at preload, so it is free to move.
+;
+; The boss is placed one cell inward from the exit, at the exit's own row or
+; column - so the exit index IS the boss's cell index, and a ball allowed to
+; spawn there lands on exactly the boss's tile (north and west; the east boss
+; sits on the block-18 connector, which is not a cell centre and so can never
+; collide). That overlap was a real, RNG-dependent bug.
+;
+; SRAM is open for the whole first-visit path, so this writes straight through.
+; Clobbers a/c; Rangerandom preserves de/hl.
+; ============================================================
+PFRollExitIndex:
+    ld a, [sProcForestExitEdge]
+    and a
+    jr nz, .vertical
+
+    ; North: the river variant (dormant/debug) forces the exit onto the half
+    ; opposite the river so entrance and exit stay connected.
+    ld a, [sProcForestRiverSide]
+    cp $FF
+    jr z, .unconstrained
+    cp 1
+    jr z, .riverRight
+    ; river on the left -> exit on the right half: exitI = 4 + Rangerandom(5)
+    ld c, 5
+    call Rangerandom
+    add a, 4
+    jr .store
+.riverRight
+    ; river on the right -> exit on the left half: exitI = Rangerandom(4)
+    ld c, 4
+    call Rangerandom
+    jr .store
+.unconstrained
+    ld c, PF_CELL_W
+    call Rangerandom        ; a = 0..8
+    jr .store
+.vertical
+    ; West/East: the roll picks a ROW (j) instead of a column.
+    ld c, PF_CELL_H
+    call Rangerandom        ; a = 0..8
+.store
+    ld [sProcForestExitI], a
+    ret
+
+; ============================================================
 PFScanForBall:
+    ; --- Phase 0: where is the boss going to stand? ---
+    ; Packed as (col | row<<4) to match the candidate list's own encoding, so
+    ; the Phase 1 filter below is a single byte compare. North: cell
+    ; (exitI, 0). West: cell (0, exitJ). East: the boss stands on the block-18
+    ; floor connector, which is not a cell centre, so no candidate can ever
+    ; match - $FF is unreachable as a packed value (both nibbles are <= 8).
+    ld a, [sProcForestExitEdge]
+    cp 2
+    jr z, .sfbBossNone
+    and a                      ; flags from the EDGE; `ld a, [nn]` below
+    ld a, [sProcForestExitI]   ; does not disturb them
+    jr z, .sfbBossStore        ; north -> packed = exitI (row 0)
+    swap a                     ; west  -> packed = exitJ<<4 (col 0)
+    jr .sfbBossStore
+.sfbBossNone
+    ld a, $FF
+.sfbBossStore
+    ld [wBuffer + wPFBossCell], a
+
     ; --- Phase 1: collect dead-end candidates ---
     xor a
     ld [wBuffer + wPFCandCount], a
@@ -1732,15 +1813,26 @@ PFScanForBall:
     ld a, [wBuffer + wPFCandCount]
     cp PF_MAX_DEADENDS
     jr nc, .sfbCollectNext    ; list full — skip (mild bias, list is generous)
-    ld e, a
-    ld d, 0
-    ld hl, sProcForestGenScratch
-    add hl, de
+    ; Pack first, so the boss's cell can be rejected before it ever enters the
+    ; candidate list. Filtering HERE rather than in Phase 2's spacing loop is
+    ; deliberate: that loop's retry budget ends in "accept the last candidate
+    ; anyway", which would have let the boss cell back in at low probability.
+    ; A cell that is never collected can never be picked.
     ld a, [wBuffer + wPFRowJ]
     swap a
     ld b, a
     ld a, [wBuffer + wPFBraidCol]
-    or b
+    or b                       ; a = packed col | row<<4
+    ld b, a                    ; b = packed candidate
+    ld a, [wBuffer + wPFBossCell]
+    cp b
+    jr z, .sfbCollectNext      ; the boss stands here — never a ball cell
+    ld a, [wBuffer + wPFCandCount]
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, b
     ld [hl], a                 ; packed col | row<<4
     ld a, [wBuffer + wPFCandCount]
     inc a
@@ -2256,6 +2348,12 @@ PFinalizeForest::
     call PFGenerateRoomsDungeon
 .algosDone
 
+    ; Roll the exit index BEFORE the ball scan, so PFScanForBall can exclude
+    ; the boss's cell from the candidate list. The exit BLOCK is still written
+    ; further down, after PFBraidPass — only the roll moved. See
+    ; PFRollExitIndex's header.
+    call PFRollExitIndex
+
     ; Phase 4: scan for a dead-end cell to place the pokeball (BEFORE braid
     ; removes dead ends). Stores block coords in wBuffer+wPFBallX/Y,
     ; rolls item into wRogueItem.
@@ -2290,31 +2388,11 @@ PFinalizeForest::
     jr nz, .exitNotNorth
 
 .exitNorth
-    ; If a river ran this generation, the exit must land on the side
-    ; opposite the river (entrance's block X=9) so entrance and exit stay
-    ; connected while the river walls off the far strip. River mode is
-    ; north-only (dormant/debug); sProcForestRiverSide is $FF when no river
-    ; ran this generation (normal unconstrained pick).
-    ld a, [sProcForestRiverSide]
-    cp $FF
-    jr z, .exitUnconstrainedN
-    cp 1
-    jr z, .exitRiverRight
-.exitRiverLeft
-    ; river on the left -> exit on the right half: exitI = 4 + Rangerandom(5)
-    ld c, 5
-    call Rangerandom
-    add a, 4
-    jr .exitRolledN
-.exitRiverRight
-    ; river on the right -> exit on the left half: exitI = Rangerandom(4)
-    ld c, 4
-    call Rangerandom
-    jr .exitRolledN
-.exitUnconstrainedN
-    ld c, PF_CELL_W
-    call Rangerandom        ; a = 0..8
-.exitRolledN
+    ; The index was already rolled by PFRollExitIndex, before PFScanForBall —
+    ; including the river-side constraint that used to live here. Only the
+    ; block write stays at this point in the pipeline, because PFBraidPass
+    ; would carve over an opening written any earlier.
+    ld a, [sProcForestExitI]
     ld b, a                 ; b = i (B preserved by PFWriteBlock)
     add a, a                ; 2i
     inc a                   ; 2i+1
@@ -2331,9 +2409,8 @@ PFinalizeForest::
     ; block 18 since the outermost east cell is at block 17). block Y = 2*j+1
     ; (same cell-center formula as every other cell position here). The
     ; river-side constraint above doesn't apply — river mode is north-only
-    ; and dormant.
-    ld c, PF_CELL_H
-    call Rangerandom        ; a = 0..8
+    ; and dormant. Index already rolled by PFRollExitIndex (see .exitNorth).
+    ld a, [sProcForestExitI]
     ld b, a                 ; b = j (B preserved by PFWriteBlock)
     add a, a                ; 2j
     inc a                   ; 2j+1
