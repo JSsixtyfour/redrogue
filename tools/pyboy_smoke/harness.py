@@ -751,7 +751,14 @@ class RedRogueHarness:
                 and self.read8("wSpritePlayerStateData1", 4) != 0
             )
 
-        for _ in range(300):
+        # This bound is a timeout, not a contract: it only needs to exceed the
+        # slowest real lobby entry. Measured 2026-09-15, it had no margin at
+        # all. In CGB mode the old 300 ran out at frame 1446 and
+        # SelectAndPatchLobbyExit reached .noDebug2DoorForce at frame 1448, so
+        # the two CGB tests failed two frames short while the lobby itself had
+        # loaded correctly (right map, doors patched, player sprite live).
+        # Inlining the RNG into HOME shifted timing just enough to cross it.
+        for _ in range(400):
             self.tap("a", 1)
             if lobby_ready():
                 break
@@ -944,13 +951,27 @@ class RedRogueHarness:
                 return
             if self.pyboy.register_file.SP != expected_return_sp:
                 return
-            # Preserve call_routine's established bank-effect contract. A
-            # ROMX resume needs its interrupted bank restored; a HOME resume
-            # deliberately retains the callee's final bank. Procedural wild-
-            # area preload relies on that final bank during lobby entry.
-            if saved_registers["PC"] >= 0x4000:
-                self.pyboy.memory[0x2000] = saved_bank
-                self.write8("hLoadedROMBank", saved_bank)
+            # Always restore the interrupted code's ROM bank. It used to be
+            # restored only for a ROMX resume, on the theory that a HOME resume
+            # could safely inherit the callee's final bank because HOME is
+            # always mapped. That is false: HOME code sets up a bank and then
+            # calls into it, so resuming in HOME can land on an instruction that
+            # needs a bank it already selected.
+            #
+            # Measured 2026-09-15, and it is a crash rather than a wrong value.
+            # park_before_hijack parks wherever the frame boundary falls inside
+            # VBlank, and inlining the RNG into HOME made VBlank ~236 cycles
+            # shorter, so that boundary moved onto $208b - exactly VBlank's
+            # `call Music_DoLowHealthAlarm`, three bytes after it sets
+            # hLoadedROMBank/rROMB for that call. Resuming there with the
+            # callee's bank still mapped jumped into WardensHouse_Object data in
+            # bank $1d, ran it as code, and hit an $ff padding byte: rst $38,
+            # stack walking down into VRAM. Nine tests across three files.
+            #
+            # A test that wants the callee's final bank should assert it from
+            # hLoadedROMBank rather than rely on the resume leaking it.
+            self.pyboy.memory[0x2000] = saved_bank
+            self.write8("hLoadedROMBank", saved_bank)
             for name, value in saved_registers.items():
                 setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
