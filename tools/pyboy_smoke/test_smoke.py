@@ -1040,6 +1040,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         total_decor = 0
         eligible_decor_rooms = 0
         selected_premade_rooms = 0
+        entry_premade_rooms = 0
+        exit_premade_rooms = 0
         large_decor_seen: set[int] = set()
         decorated_item_rooms = 0
         large_decorated_rooms = 0
@@ -1437,6 +1439,48 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     exit_cells = ((39, 2 * exit_i), (39, 2 * exit_i + 1))
                 self.assertIn(exit_cells[0], reachable, record_summary)
                 self.assertIn(exit_cells[1], reachable)
+
+                # C3. The player spawns on the fixed block (9,17), which room 0
+                # now owns whenever it takes a template. Nothing overwrites that
+                # cell the way PFacCarveEdgeOpenings overwrites the boss cell, so
+                # a payload with art there would strand the player inside solid
+                # ground on arrival. PFAC_TPL_SPAWN is what keeps this true, and
+                # the assertion that (9,17) is plain $0E is above; this is the
+                # other half, that the spawn is actually connected to the map.
+                spawn_quadrants = {
+                    (18 + dx, 34 + dy) for dx in (0, 1) for dy in (0, 1)
+                } & passable_cells
+                self.assertTrue(
+                    spawn_quadrants,
+                    f"spawn block (9,17) has no walkable quadrant{record_summary}",
+                )
+                self.assertTrue(
+                    spawn_quadrants & reachable,
+                    f"spawn block (9,17) is unreachable{record_summary}",
+                )
+
+                # C2/C3. Rooms 0 and 11 take templates from the same descriptor
+                # table as the middle rooms, so a stamp over an interior size no
+                # group declares is the same defect there as at rooms 1-10.
+                for edge_room in (0, 11):
+                    edge_offset = edge_room * 6
+                    if not complete_records[edge_offset + 5] & 0x80:
+                        continue
+                    self.assertIn(
+                        (
+                            complete_records[edge_offset + 2],
+                            complete_records[edge_offset + 3],
+                        ),
+                        _facility_template_interiors(),
+                        f"room {edge_room} premade stamped over an interior no "
+                        f"descriptor group covers",
+                    )
+                entry_premade_rooms += int(
+                    complete_records[5] & 0x80 != 0
+                )
+                exit_premade_rooms += int(
+                    complete_records[11 * 6 + 5] & 0x80 != 0
+                )
                 # Records 2-11 retain their coordinates after item baking.
                 # Decor may occupy the geometric center, so require any
                 # walkable quadrant in each placed room to remain connected.
@@ -1645,6 +1689,16 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 signatures.append((playable, exit_i, tuple(ball_xy), item_ids))
 
         self.assertGreater(selected_premade_rooms, 0)
+        # C2/C3 are live, not silently filtered out of existence. Both predicates
+        # are conservative by design (every opening position must be safe), so a
+        # bug that made them reject everything would leave every other assertion
+        # in this test passing.
+        self.assertGreater(
+            entry_premade_rooms, 0, "C3: no layout gave room 0 a template"
+        )
+        self.assertGreater(
+            exit_premade_rooms, 0, "C2: no layout gave room 11 a template"
+        )
         self.assertEqual(edges_seen, {0, 1, 2})
         self.assertGreater(corridor_fake_balls, 0)
         self.assertGreaterEqual(len(large_decor_seen), 2)

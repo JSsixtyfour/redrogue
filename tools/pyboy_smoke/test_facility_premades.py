@@ -35,15 +35,11 @@ class FacilityDescriptorTableFreshnessTest(unittest.TestCase):
     """
 
     def test_committed_table_matches_the_validator(self) -> None:
-        audit = ROOT / "tools" / "pyboy_smoke" / "artifacts" / "facility_fullroom_audit.txt"
-        results = validator.scan_fullrooms()
-        self.assertEqual(
-            audit.read_text(encoding="utf-8").strip(),
-            validator.format_report(results).strip(),
-            "facility_fullroom_audit.txt is stale; re-run "
-            "tools/check_facility_premades.py --report > that file",
-        )
-
+        # Deliberately NOT compared against
+        # artifacts/facility_fullroom_audit.txt: that directory is gitignored,
+        # so the file is absent on a fresh clone and asserting against it would
+        # fail on a missing file rather than on a stale table. The generator
+        # reads the validator directly for the same reason.
         source = (
             ROOT / "custom_functions" / "procedural_facility_gen.asm"
         ).read_text(encoding="utf-8")
@@ -53,7 +49,8 @@ class FacilityDescriptorTableFreshnessTest(unittest.TestCase):
             source[start:end].strip(),
             generator.build_table().strip(),
             "the descriptor table is stale; re-run "
-            "tools/gen_facility_room_table.py and splice its output in",
+            "tools/gen_facility_room_table.py and splice its output over the "
+            "block from PFacRoomDescriptors: to the generated-by marker",
         )
 
 

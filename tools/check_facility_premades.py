@@ -317,6 +317,7 @@ class FullRoomResult:
         is_integrity_error: bool = False,
         socket_mask: str = "",
         exit_safe: str = "",
+        spawn_safe: bool = False,
     ) -> None:
         self.filename = filename
         self.w = w
@@ -328,6 +329,7 @@ class FullRoomResult:
         self.is_integrity_error = is_integrity_error
         self.socket_mask = socket_mask
         self.exit_safe = exit_safe
+        self.spawn_safe = spawn_safe
 
 
 def discover_fullroom_files(maps_dir: Path = MAPS_DIR) -> list[Path]:
@@ -472,6 +474,74 @@ def _exit_safe_sides(
         else:
             safe += side
     return safe
+
+
+def _spawn_safe(
+    grid: list[list[int]], blockset: bytes, w: int, h: int,
+    sockets: dict[str, tuple[int, int]], reference: set[tuple[int, int]],
+) -> bool:
+    """Whether this payload may be the ENTRY room (slot 0).
+
+    C3. PFacPlaceEntryRoom bottom-aligns room 0 at Y = 19 - H and picks
+    X = 9 - rand(W) so the fixed spawn block (9,17) is always inside the
+    interior. In FOOTPRINT coordinates that puts:
+
+      the spawn at row h - 3, a row FIXED per template, and at column 10 - X,
+      which sweeps the whole interior 1 .. w - 2 as X takes its range;
+      the south entrance block (9,19) at row h - 1, the bottom ring row, in
+      that same column.
+
+    So, like the C2 exit flag, this is deliberately position-independent: it
+    holds for EVERY column the spawn can land on, and selection needs no
+    arithmetic at runtime.
+
+    Two separate requirements, and they are not the same requirement:
+
+    1. The entrance cell is overwritten with $2C by PFacCarveEdgeOpenings after
+       the stamp, so its art is irrelevant -- but REACHING the room through it
+       is not, exactly as for the C2 exit. Cut it and check the opening reaches
+       both the spawn and the payload's socket component.
+    2. The spawn cell itself is overwritten by nothing at all. It must be plain
+       $0E outright. This is stricter than the item-anchor whitelist on purpose:
+       spawning inside solid art is a hard softlock, and test_smoke asserts
+       playable[(9,17)] == $0E directly. Relaxing this to the whitelist would
+       gain three $47-centre templates and cost that assertion.
+    """
+    spawn_row = h - 3
+    if spawn_row < 1 or not reference:
+        return False
+
+    all_cut = set(sockets.values())
+    for col in range(1, w - 1):
+        if grid[spawn_row][col] != 0x0E:
+            return False
+        cells = _expanded_cells_wh(grid, blockset, w, h, all_cut | {(col, h - 1)})
+        entrance = {
+            (col * 2 + dx, (h - 1) * 2 + dy) for dx in (0, 1) for dy in (0, 1)
+        } & cells
+        if not entrance:
+            return False
+        seen = reachable(cells, next(iter(entrance)))
+        spawn = {
+            (col * 2 + dx, spawn_row * 2 + dy) for dx in (0, 1) for dy in (0, 1)
+        }
+        if not (seen & spawn) or not (seen & reference):
+            return False
+    return True
+
+
+def _socket_component(
+    grid: list[list[int]], blockset: bytes, w: int, h: int,
+    sockets: dict[str, tuple[int, int]],
+    edge_cells: dict[str, set[tuple[int, int]]], socket_mask: str,
+) -> set[tuple[int, int]]:
+    """The component the reported socket mask lives in, all sockets cut."""
+    cells = _expanded_cells_wh(grid, blockset, w, h, set(sockets.values()))
+    for name in socket_mask:
+        for comp in _connected_components(cells):
+            if edge_cells[name] & comp:
+                return comp
+    return set()
 
 
 def _connected_components(cells: set[tuple[int, int]]) -> list[set[tuple[int, int]]]:
@@ -679,6 +749,10 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
     result.exit_safe = _exit_safe_sides(
         grid, blockset, w, h, sockets, edge_cells, passed
     )
+    result.spawn_safe = _spawn_safe(
+        grid, blockset, w, h, sockets,
+        _socket_component(grid, blockset, w, h, sockets, edge_cells, passed),
+    )
     if item_anchor_safe(grid, hub_x, hub_y):
         result.roles = ("item", "explore")
         result.item_anchor = hub
@@ -716,7 +790,8 @@ def format_report(results: list[FullRoomResult]) -> str:
             item = f"{r.item_anchor[0]},{r.item_anchor[1]}" if r.item_anchor else "-,-"
             lines.append(
                 f"{r.filename} W={r.w} H={r.h} sockets={r.socket_mask} "
-                f"item={item} exitsafe={r.exit_safe or '-'} status=OK"
+                f"item={item} exitsafe={r.exit_safe or '-'} "
+                f"spawnsafe={'Y' if r.spawn_safe else '-'} status=OK"
             )
         else:
             lines.append(
