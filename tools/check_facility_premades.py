@@ -419,6 +419,39 @@ def _connected_components(cells: set[tuple[int, int]]) -> list[set[tuple[int, in
     return components
 
 
+def _diagonal_split(grid, blockset, w, h):
+    """Walkable quadrants that no orthogonal path reaches from the largest group.
+
+    The overworld has no diagonal movement, so two walkable quadrants touching
+    only at a corner are NOT connected. An asset can look completely open in a
+    block editor and contain floor the player can see but never stand on, and
+    nothing in the block-level view shows it.
+
+    A full-room template owns its entire footprint, so anything stranded here is
+    stranded in game. (Decor payloads are different - they are stamped into the
+    middle of a room and the surrounding floor rejoins them - which is why this
+    runs only on full rooms.)
+
+    Found in the wild twice: ProceduralFacility_7x7_blockrock_room.blk and
+    ProceduralFacility_8x3_serverrock_room.blk each had their $40 top-left
+    corner's single walkable quadrant orphaned by the solid $5C decorated wall
+    beside it. Both were repaired by finishing the decoration the author had
+    started, $40 -> $68, which removes the orphan quadrant entirely.
+    """
+    cells = set()
+    for y in range(h):
+        for x in range(w):
+            quadrants = block_quadrants(blockset, grid[y][x])
+            for index, walkable in enumerate(quadrants):
+                if walkable:
+                    cells.add((2 * x + (index % 2), 2 * y + (index // 2)))
+    if not cells:
+        return set()
+    components = _connected_components(cells)
+    components.sort(key=len, reverse=True)
+    return cells - components[0]
+
+
 def _outward_spills(
     grid: list[list[int]], blockset: bytes, w: int, h: int,
     sockets: dict[str, tuple[int, int]],
@@ -510,6 +543,16 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
             "walkable outward quadrant on a non-socket perimeter cell at "
             + ", ".join(f"({x},{y})=${block:02X}" for x, y, block in spills[:4])
             + (" ..." if len(spills) > 4 else "")
+        )
+        return result
+
+    stranded = _diagonal_split(grid, blockset, w, h)
+    if stranded:
+        result.reason = (
+            f"{len(stranded)} walkable quadrant(s) reachable only diagonally, "
+            "so unreachable in game, at "
+            + ", ".join(f"({x},{y})" for x, y in sorted(stranded)[:4])
+            + (" ..." if len(stranded) > 4 else "")
         )
         return result
 

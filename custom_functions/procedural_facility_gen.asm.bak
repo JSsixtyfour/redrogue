@@ -80,30 +80,6 @@ DEF PFAC_C_TR     EQU 66  ; solid top-right, floor SW  (floor to S and W)
 DEF PFAC_C_BL     EQU 72  ; solid bottom-left,  floor NE (floor to N and E)
 DEF PFAC_C_BR     EQU 74  ; solid bottom-right, floor NW (floor to N and W)
 
-; Fully solid (0/4 walkable) corner caps, used ONLY by
-; PFacClassifyCorridorDiagonal. A plain corner is 1/4 walkable, and its single
-; open quadrant sits on the corner OPPOSITE the solid one - which touches the
-; block to the N and the block to the E (for C_BL), never the NE diagonal. The
-; diagonal branch fires precisely when no CARDINAL neighbour is a corridor, so
-; the cap's opening can never face the corridor that justified placing it. When
-; the two cardinal neighbours then happen to be solid as well, that quadrant is
-; walkable floor the player can see and can never reach, because the overworld
-; has no diagonal movement. Measured: seed (57,241,59,183) stranded quadrant
-; (11,18) exactly this way.
-;
-; Sealing the cap is what the branch's own comment always intended ("so the
-; walkable half of the adjacent straight wall cannot open directly onto $2E").
-; $68/$69 already existed; $80/$81 are appended to facility.bst by the same
-; mechanical recipe (plain corner + the 53 54 / 36 26 object filling its open
-; quadrant). The art in $80/$81 is placeholder and may be redrawn freely - the
-; ONLY contract is that tile offsets 5, 7, 13 and 15 stay out of the walkable
-; set, which tools/check_facility_diagonal_splits.py and the C0a corpus
-; assertion both verify.
-DEF PFAC_C_TL_SOLID EQU $68
-DEF PFAC_C_TR_SOLID EQU $69
-DEF PFAC_C_BL_SOLID EQU $80
-DEF PFAC_C_BR_SOLID EQU $81
-
 ; Doorway jamb/end pieces. Names describe the flank's position around the gap.
 DEF PFAC_J_TOP_W    EQU $63
 DEF PFAC_J_TOP_E    EQU $67
@@ -153,17 +129,9 @@ DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 ; for item rooms) - and they are also the only two rooms no content pass touches,
 ; so the biggest rooms were reliably the empty ones.
 ;
-; The clamp is applied INLINE at each of the four roll sites rather than through
-; a shared PFacRollRoomDimCapped helper. That is deliberate and load-bearing: a
-; helper adds a call level, and the PyBoy harness decides an injected routine has
-; returned by matching SP at Bankswitch.Return, which nested farcalls pass
-; through ~20 times per PFacPreload. The extra depth shifted that match and made
-; test_facility_regeneration_resets_objects_and_uses_count_60_threshold read a
-; corrupted wBattleCount. Layout and cycle-count controls both ruled themselves
-; out; only the added call depth reproduced it. Keep these inline.
-;
-; Clamping AFTER the roll leaves the RNG draw count unchanged, so only the
-; stored value differs. Both caps are one-line tunables.
+; Capping them costs nothing visually and hands grid area back to the middle
+; rooms, which matters: the 20x20 grid is saturated and explore slots 5-10 were
+; landing only 16-33% of the time. Both are one-line tunables.
 DEF PFAC_ENTRY_MAX_DIM EQU 3   ; interior; footprint up to 5x5
 DEF PFAC_EXIT_MAX_DIM  EQU 4   ; interior; footprint up to 6x6, the boss room
                                ; stays the grander of the two
@@ -263,32 +231,6 @@ PFacTpl3x3:
     db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
     dw PFacTplData3x3TreeRoom2
 PFacTpl3x3End:
-
-PFacTpl3x4:
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x4ServerRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
-    dw PFacTplData3x4ServerblockRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
-    dw PFacTplData3x4ServerrockRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x4ServertableRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x4TreerockRoom
-PFacTpl3x4End:
-
-PFacTpl3x5:
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x5BedrockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x5BlockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM
-    dw PFacTplData3x5RockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
-    dw PFacTplData3x5ServerrockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
-    dw PFacTplData3x5TablerockRoom
-PFacTpl3x5End:
 
 PFacTpl3x6:
     db 3, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, 0
@@ -464,7 +406,7 @@ PFacTpl9x7End:
 
 PFacRoomDescriptorsEnd:
 DEF PFAC_TPL_TOTAL EQU (PFacRoomDescriptorsEnd - PFacRoomDescriptors) / PFAC_TPL_STRIDE
-ASSERT PFAC_TPL_TOTAL == 68
+ASSERT PFAC_TPL_TOTAL == 58
 
 ; An empty size group is two zero bytes; a populated one names its run.
 MACRO pfac_tpl_group ; \1 = group label, \2 = group end label
@@ -479,8 +421,8 @@ ENDM
 PFacRoomGroupTable:
     ; footprint width 3
     pfac_tpl_group PFacTpl3x3, PFacTpl3x3End ; 3x3, 8
-    pfac_tpl_group PFacTpl3x4, PFacTpl3x4End ; 3x4, 5
-    pfac_tpl_group PFacTpl3x5, PFacTpl3x5End ; 3x5, 5
+    pfac_tpl_no_group ; 3x4
+    pfac_tpl_no_group ; 3x5
     pfac_tpl_group PFacTpl3x6, PFacTpl3x6End ; 3x6, 1
     pfac_tpl_no_group ; 3x7
     pfac_tpl_no_group ; 3x8
@@ -559,36 +501,6 @@ ASSERT @ - PFacTplData3x3TreeRoom == 9
 PFacTplData3x3TreeRoom2:
     INCBIN "maps/ProceduralFacility_3x3_tree_room2.blk"
 ASSERT @ - PFacTplData3x3TreeRoom2 == 9
-PFacTplData3x4ServerRoom:
-    INCBIN "maps/ProceduralFacility_3x4_server_room.blk"
-ASSERT @ - PFacTplData3x4ServerRoom == 12
-PFacTplData3x4ServerblockRoom:
-    INCBIN "maps/ProceduralFacility_3x4_serverblock_room.blk"
-ASSERT @ - PFacTplData3x4ServerblockRoom == 12
-PFacTplData3x4ServerrockRoom:
-    INCBIN "maps/ProceduralFacility_3x4_serverrock_room.blk"
-ASSERT @ - PFacTplData3x4ServerrockRoom == 12
-PFacTplData3x4ServertableRoom:
-    INCBIN "maps/ProceduralFacility_3x4_servertable_room.blk"
-ASSERT @ - PFacTplData3x4ServertableRoom == 12
-PFacTplData3x4TreerockRoom:
-    INCBIN "maps/ProceduralFacility_3x4_treerock_room.blk"
-ASSERT @ - PFacTplData3x4TreerockRoom == 12
-PFacTplData3x5BedrockRoom:
-    INCBIN "maps/ProceduralFacility_3x5_bedrock_room.blk"
-ASSERT @ - PFacTplData3x5BedrockRoom == 15
-PFacTplData3x5BlockRoom:
-    INCBIN "maps/ProceduralFacility_3x5_block_room.blk"
-ASSERT @ - PFacTplData3x5BlockRoom == 15
-PFacTplData3x5RockRoom:
-    INCBIN "maps/ProceduralFacility_3x5_rock_room.blk"
-ASSERT @ - PFacTplData3x5RockRoom == 15
-PFacTplData3x5ServerrockRoom:
-    INCBIN "maps/ProceduralFacility_3x5_serverrock_room.blk"
-ASSERT @ - PFacTplData3x5ServerrockRoom == 15
-PFacTplData3x5TablerockRoom:
-    INCBIN "maps/ProceduralFacility_3x5_tablerock_room.blk"
-ASSERT @ - PFacTplData3x5TablerockRoom == 15
 PFacTplData3x6TableserverRoom:
     INCBIN "maps/ProceduralFacility_3x6_tableserver_room.blk"
 ASSERT @ - PFacTplData3x6TableserverRoom == 18
@@ -2031,16 +1943,16 @@ PFacClassifyCorridorDiagonal:
     ld a, PFAC_WALL
     jr .restore
 .useBR
-    ld a, PFAC_C_BR_SOLID
+    ld a, PFAC_C_BR
     jr .restore
 .useBL
-    ld a, PFAC_C_BL_SOLID
+    ld a, PFAC_C_BL
     jr .restore
 .useTR
-    ld a, PFAC_C_TR_SOLID
+    ld a, PFAC_C_TR
     jr .restore
 .useTL
-    ld a, PFAC_C_TL_SOLID
+    ld a, PFAC_C_TL
 .restore
     push af
     ld a, [wBuffer + wPFacDX]
@@ -3606,6 +3518,20 @@ PFacStoreRoom:
 ; independent 0-6 rolls skews the result low. Resulting floor distribution ~=
 ; 1:27% 2:22% 3:18% 4:14% 5:10% 6:6% 7:2%. Clobbers a, b, c.
 ; ============================================================
+; Roll an interior dimension and clamp it to a, the caller's maximum.
+; OUT a = 1..max. Used by the entry and exit placers, which never retry and so
+; would otherwise keep the full 1-7 range (see PFAC_ENTRY_MAX_DIM).
+PFacRollRoomDimCapped:
+    ld b, a
+    push bc
+    call PFacRollRoomDim
+    pop bc
+    cp b
+    ret c                       ; below the cap
+    ret z                       ; exactly the cap
+    ld a, b
+    ret
+
 PFacRollRoomDim:
     ld c, 7
     call Rangerandom            ; r1 = 0..6
@@ -3628,23 +3554,17 @@ PFacRollRoomDim:
 PFacPlaceEntryRoom:
     xor a
     ld [wBuffer + wPFacPlaceId], a
-    call PFacRollRoomDim
-    cp PFAC_ENTRY_MAX_DIM + 1
-    jr c, .widthCapped
     ld a, PFAC_ENTRY_MAX_DIM
-.widthCapped
+    call PFacRollRoomDimCapped
     ld [wBuffer + wPFacCandW], a  ; floor W 1-PFAC_ENTRY_MAX_DIM, biased small
-    call PFacRollRoomDim
-    cp PFAC_ENTRY_MAX_DIM + 1
-    jr c, .heightCapped
     ld a, PFAC_ENTRY_MAX_DIM
-.heightCapped
+    call PFacRollRoomDimCapped
     cp 2
     jr nc, .heightOK
     inc a
 .heightOK
     ld [wBuffer + wPFacCandH], a  ; floor H 2-PFAC_ENTRY_MAX_DIM; must contain
-                                  ; the spawn row, hence the floor of 2
+                                  ; spawn row 17, hence the floor of 2
     ; Y = 19 - H
     ld a, 19
     ld hl, wBuffer + wPFacCandH
@@ -3683,17 +3603,11 @@ PFacPlaceEntryRoom:
 PFacPlaceExitRoom:
     ld a, 11
     ld [wBuffer + wPFacPlaceId], a
-    call PFacRollRoomDim
-    cp PFAC_EXIT_MAX_DIM + 1
-    jr c, .widthCapped
     ld a, PFAC_EXIT_MAX_DIM
-.widthCapped
+    call PFacRollRoomDimCapped
     ld [wBuffer + wPFacCandW], a
-    call PFacRollRoomDim
-    cp PFAC_EXIT_MAX_DIM + 1
-    jr c, .heightCapped
     ld a, PFAC_EXIT_MAX_DIM
-.heightCapped
+    call PFacRollRoomDimCapped
     ld [wBuffer + wPFacCandH], a
     ld a, [sProcFacilityExitEdge]
     and a

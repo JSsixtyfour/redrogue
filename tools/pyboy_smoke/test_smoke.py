@@ -1032,6 +1032,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x67,
             0x68,
             0x69,
+            0x80,
+            0x81,
         } | decor_blocks | large_decor_blocks | _facility_incbin_blocks()
         signatures: list[tuple[tuple[int, ...], int, tuple[int, ...], tuple[int, ...]]] = []
         decor_types_seen: set[int] = set()
@@ -1289,6 +1291,40 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             reachable.add((near_col, near_row))
                             frontier.append((near_col, near_row))
 
+                # C0a: every walkable quadrant must be REACHABLE, not merely
+                # present. The overworld has no diagonal movement, so two
+                # walkable quadrants touching only at a corner are not
+                # connected, and a sealed pocket looks perfectly open in any
+                # block-level view. The old room test asked only that SOME
+                # quadrant of each room was reachable, which cannot see a pocket
+                # stranded inside an otherwise-connected room, in a corridor, or
+                # along a wall baseboard.
+                #
+                # This is asserted at zero rather than characterized because the
+                # measured baseline IS zero: tools/pyboy_smoke/
+                # audit_facility_stranded_quadrants.py reports 0 stranded
+                # quadrants across 64 generated layouts. Any regression here is
+                # therefore a real defect, and after the C6/C7 wall-decoration
+                # passes land it is specifically decoration removing a
+                # connection - that is the whole reason this guard exists.
+                #
+                # If a deliberately sealed area is ever wanted, allowlist it
+                # here BY COORDINATE with a comment saying why. Do not relax the
+                # assertion: an allowlist that grows silently is exactly how
+                # this defect class stayed invisible in the first place.
+                stranded_quadrants = passable_cells - reachable
+                if stranded_quadrants:
+                    detail = ", ".join(
+                        f"({cell_x},{cell_y}) in block "
+                        f"${playable[(cell_y // 2) * 20 + cell_x // 2]:02X}"
+                        for cell_x, cell_y in sorted(stranded_quadrants)[:12]
+                    )
+                    self.fail(
+                        f"seed {seed}: {len(stranded_quadrants)} walkable "
+                        f"quadrant(s) unreachable from the entrance {entrance}; "
+                        f"diagonal-only contact is not traversable. {detail}"
+                    )
+
                 # R1 is a characterization checkpoint. Record the known
                 # geometry failures now; R2 changes these into zero-defect
                 # assertions after repairing the generator.
@@ -1309,7 +1345,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 generated_rings: list[tuple[int, set[tuple[int, int]]]] = []
                 structural_blocks = {
                     0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A,
-                    0x5C, 0x5D, 0x61, 0x68, 0x69,
+                    0x5C, 0x5D, 0x61, 0x68, 0x69, 0x80, 0x81,
                 }
                 expected_corners = (
                     (-1, -1, 0x40), (0, -1, 0x42),
