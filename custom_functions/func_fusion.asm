@@ -2,7 +2,9 @@
 ; Mirrors custom_functions/func_ghost_variant.asm architecture.
 ;
 ; Storage: bit 1 of MON_CATCH_RATE (bit 0 is ghost variant).
-; Secondary species ID stored globally in wFusionSecondarySpecies (saved WRAM).
+; Secondary species ID stored globally in wFusionSecondarySpecies (saved WRAM),
+; and its FORM index alongside it in wFusionSecondaryForm - the secondary is
+; released from the party, so that byte is the only record of its form left.
 ; One fusion per run.
 
 DEF BIT_FUSION EQU 1  ; bit within MON_CATCH_RATE (bit 0 = ghost variant)
@@ -31,26 +33,63 @@ IsFusionMon::
 	ret
 
 ; ---------------------------------------------------------------------------
+; PublishFusionSecondaryFormContext
+; Publishes (wFusionSecondarySpecies, wFusionSecondaryForm) as the pending form
+; context, so the GetMonHeader that FOLLOWS builds the SECONDARY's own form row
+; rather than its base species'.
+;
+; PublishFormContext (HOME) cannot be used for the secondary: it reads the form
+; bits out of a live mon struct, and CreateFusion releases the secondary from
+; the party. wFusionSecondaryForm is the only surviving record - see ram/wram.asm.
+;
+; Species 0 (no fusion active) publishes a 0 context, which ApplyFormOverride
+; reads as "nothing pending" - the correct no-op.
+;
+; PRESERVES: bc, de, hl.  CLOBBERS: af.
+; ---------------------------------------------------------------------------
+PublishFusionSecondaryFormContext::
+	ld a, [wFusionSecondaryForm]
+	ld [wFormContextForm], a
+	ld a, [wFusionSecondarySpecies]
+	ld [wFormContextSpecies], a
+	ret
+
+; ---------------------------------------------------------------------------
 ; CacheFusionSecondaryBaseStats
 ; Loads wFusionSecondarySpecies's 5 base stats into wFusionSecondaryBaseStats
 ; via GetMonHeader, so _CalcStat (engine/pokemon/calc_stats.asm) can compare
 ; against them without ever calling GetMonHeader itself mid-read (that would
 ; clobber wMonHeader out from under the primary's own in-progress calc).
 ; Caller MUST re-populate wMonHeader for its real target mon afterward - this
-; routine borrows it as scratch for the secondary and does not restore it.
-; INPUT: none (reads wFusionSecondarySpecies)
-; CLOBBERS: af, bc, de, hl, wCurSpecies (saved/restored), wMonHeader (NOT restored)
+; routine borrows it as scratch for the secondary and does not restore it. It
+; DOES leave wMonHForm/wMonHFormSpecies zeroed, so the caller's own reload is not
+; ambushed by ApplyFormOverride's refresh guard; see the comment at that store.
+; INPUT: none (reads wFusionSecondarySpecies + wFusionSecondaryForm)
+; CLOBBERS: af, bc, de, hl, wCurSpecies (saved/restored), wMonHeader (NOT restored),
+;           wMonHForm/wMonHFormSpecies (zeroed), the pending form context (consumed)
 ; ---------------------------------------------------------------------------
 CacheFusionSecondaryBaseStats::
 	ld a, [wCurSpecies]
 	push af                          ; preserve caller's species
 	ld a, [wFusionSecondarySpecies]
 	ld [wCurSpecies], a
+	call PublishFusionSecondaryFormContext  ; or the secondary's form is ignored and
+	                                        ; a Sylveon caches as Vaporeon
 	call GetMonHeader                ; fills wMonHeader with the secondary's base stats
 	ld hl, wMonHBaseHP                ; skip wMonHIndex - only need the 5 stat bytes
 	ld de, wFusionSecondaryBaseStats
 	ld bc, NUM_STATS
 	call CopyData
+	; Leave the header's form pair ZEROED, exactly as the old no-context load left
+	; it. PrepareFusionCalcStats reloads the PRIMARY's header immediately after this
+	; returns, and ApplyFormOverride's refresh guard fires on
+	; wCurSpecies == wMonHFormSpecies. Without this, fusing two mons of the SAME
+	; species where only the SECONDARY has a form (two Vaporeons, one a Sylveon -
+	; CreateFusion rejects only the same party INDEX, not the same species) would
+	; make that guard apply the secondary's form to the primary.
+	xor a
+	ld [wMonHForm], a
+	ld [wMonHFormSpecies], a
 	pop af
 	ld [wCurSpecies], a               ; restore caller's species
 	ret
@@ -200,14 +239,37 @@ CreateFusion::
     ; Save secondary species
     ld a, [hl]
     ld [wFusionSecondarySpecies], a
+    ld [wCurSpecies], a                  ; moved up - `a` is clobbered just below
+
+    ; ...and save its FORM. This mon is RELEASED from the party at the end of
+    ; this routine, so the form bits in its own MON_CATCH_RATE vanish with it.
+    ; Every later consumer of the secondary (base stats, front pic, back pic)
+    ; has to publish from this byte instead of from a live struct - see
+    ; PublishFusionSecondaryFormContext above and ram/wram.asm. hl is still the
+    ; secondary's struct base from the AddNTimes above.
+    push hl
+    ld bc, MON_CATCH_RATE
+    add hl, bc
+    ld a, [hl]
+    and FORM_MASK
+    rlca
+    rlca
+    rlca                                 ; bits 5-6 -> bits 0-1, as PublishFormContext does
+    ld [wFusionSecondaryForm], a
+    pop hl
 
     ; Get secondary type1, then cache it + the secondary's moves/PP into
     ; wFusionSecondaryBaseStats, borrowed here as 5 bytes of scratch:
     ;   [0]=type1  [1]=move0  [2]=move1  [3]=pp0  [4]=pp1
     ; It's free until the stat recalc at the end of this routine refills it, and
     ; nothing reads it in between (only _CalcStat does, and none runs here).
-    ld [wCurSpecies], a
-    call GetMonHeader                    ; fills wMonHType1
+    ;
+    ; PublishFormContext here (hl = the secondary's struct base, still live) is
+    ; what makes the type bake below correct: type1 is written into the PRIMARY's
+    ; MON_TYPE2 permanently, so without it a Sylveon secondary baked WATER onto
+    ; the primary instead of NORMAL, for the rest of the run.
+    call PublishFormContext
+    call GetMonHeader                    ; fills wMonHType1 - the FORM's type1
     ld a, [wMonHType1]
     ld [wFusionSecondaryBaseStats + 0], a
 
@@ -479,6 +541,8 @@ PreloadFusionSecondaryPic::
     ld a, [wFusionSecondarySpecies]
     ld [wCurPartySpecies], a
     ld [wCurSpecies], a
+    call PublishFusionSecondaryFormContext  ; without this the overlay draws the
+                                            ; secondary's BASE species' front pic
     call GetMonHeader
     ld de, vBackPic
     call LoadMonFrontSprite
@@ -631,6 +695,8 @@ MergeFusionBackPic::
     ld a, [wFusionSecondarySpecies]
     ld [wCurPartySpecies], a
     ld [wCurSpecies], a
+    call PublishFusionSecondaryFormContext  ; without this the overlay draws the
+                                            ; secondary's BASE species' back pic
     call GetMonHeader                ; wMonHeader = secondary's attributes
 
     ; --- Run the secondary through LoadMonBackPic's own pipeline, stopping
@@ -721,5 +787,15 @@ MergeFusionBackPic::
     pop af                           ; primary species
     ld [wCurPartySpecies], a
     ld [wCurSpecies], a
+    ; Publish the PRIMARY's form before the restore, the same fix Phase 3 applied
+    ; to PreloadFusionSecondaryPic. Without it GetMonHeader's own refresh guard
+    ; (ApplyFormOverride) sees wFormContextSpecies still naming the SECONDARY and
+    ; takes .noForm, restoring the primary's BASE species' row even when the
+    ; primary itself has a form. wBattleMon is the right struct base: this routine
+    ; runs only in battle, for the active battler, which IS the fused primary, and
+    ; battle_struct carries MON_CATCH_RATE at the same offset party_struct does
+    ; (macros/ram.asm).
+    ld hl, wBattleMon
+    call PublishFormContext
     call GetMonHeader
     ret

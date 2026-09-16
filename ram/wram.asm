@@ -2376,13 +2376,27 @@ wLancesRoomCurScript:: db
 ; Phase 7 Elite Four room script bytes. Same rule as the Phase 6 gyms: these
 ; CONSUME the `ds 4` that sat here rather than appending, so every WRAM address
 ; below is byte-identical and the smoke suite's RNG does not drift
-; (project_wram_take_padding_not_append). One byte of that gap is left.
+; (project_wram_take_padding_not_append). The one byte that was left of that
+; gap is now spent on wFusionSecondaryForm below.
 ; HallOfFame.asm zeroes these three alongside the other Elite Four room bytes
 ; on run completion.
 wKogasRoomCurScript:: db
 wWillsRoomCurScript:: db
 wKarensRoomCurScript:: db
-	ds 1
+; The fusion secondary's form index 0-3, already shifted down out of
+; MON_CATCH_RATE bits 5-6. CreateFusion RELEASES the secondary from the party,
+; so its own form bits vanish with it and this byte becomes the ONLY surviving
+; record of the form - every later consumer (base stats, front pic, back pic)
+; publishes from here instead of from a live struct. See func_fusion.asm.
+;
+; PLACED IN THE EXISTING `ds 1` PADDING SLOT that sat here, never appended:
+; appending shifts every WRAM address below it by one and drifts the smoke
+; suite's RNG (project_wram_take_padding_not_append). Net WRAM0 cost: 0 bytes.
+; Inside wGameProgressFlags, which buys both properties this needs for free -
+; SAVED (a fusion persists across saves, so its form must too) and zeroed by
+; the new-game / run-boundary FillMemory over wGameProgressFlags..End (see
+; custom_functions/credit_popup.asm, which already lists the other fusion bytes).
+wFusionSecondaryForm:: db
 wSilphCo10FCurScript:: db
 wSilphCo11FCurScript:: db
 ; Phase 6 Johto gym script bytes CONSUME EXISTING `ds` PADDING, never append.

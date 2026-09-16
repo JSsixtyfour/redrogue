@@ -128,10 +128,21 @@ DEF PFAC_DECOR_UPPER_B  EQU $19
 DEF PFAC_DECOR_BOTTOM_A EQU $49
 DEF PFAC_DECOR_BOTTOM_B EQU $1D
 
-; Wall-decoration compatibility catalog, retained for the later perimeter/socket
-; pass. These replacements become fully solid, so they must not be applied by a
-; blind whole-map substitution:
-;   $44 -> $5C, $46 -> $5D, $41 -> $61, $40 -> $68, $42 -> $69.
+; Wall-decoration compatibility catalog, consumed by PFacDecorateCorridorWalls
+; (C6b). Decoded from facility.bst by tools/decode_facility_wall_decor.py
+; (PROCEDURAL_FACILITY_CONTENT_PLAN.md, C6a) - every one is fully solid, so
+; none may be applied by a blind whole-map substitution, only through that
+; pass's redundancy proof.
+;
+; The decode also found corner variants ($40 -> $68, $42 -> $69, $4A -> $0C,
+; with $48 having no art at all), but corners are NOT decorated: a corner has
+; a single walkable quadrant hanging off two flanking walls, and placing them
+; safely needs real quadrant-occupancy data rather than a block-id test.
+DEF PFAC_DECOR_WALL_LEFT     EQU $5C  ; replaces PFAC_W_LEFT   ($44)
+DEF PFAC_DECOR_WALL_RIGHT    EQU $5D  ; replaces PFAC_W_RIGHT  ($46)
+DEF PFAC_DECOR_WALL_TOP      EQU $61  ; replaces PFAC_W_TOP    ($41)
+DEF PFAC_DECOR_WALL_BOTTOM_A EQU $33  ; replaces PFAC_W_BOTTOM ($49), variant A
+DEF PFAC_DECOR_WALL_BOTTOM_B EQU $28  ; replaces PFAC_W_BOTTOM ($49), variant B
 
 ; --- Room record model (sProcFacilityGenScratch, 81 bytes: 12*6 = 72 used) ---
 ; Record layout (6 bytes, read/written positionally via PFacRoomRecordAddr):
@@ -3702,6 +3713,368 @@ PFacMarkSmallDecor:
     ret
 
 ; ============================================================
+; PFacDecorateCorridorWalls (C6b)
+; Cosmetic pass over finalized straight wall blocks, replacing a fraction of
+; them with their fully-solid decorated variant (PROCEDURAL_FACILITY_CONTENT_
+; PLAN.md, C6a's decode). MUST run after PFacPlaceItems and PFacPlaceFakeBalls:
+; R3's actual failure was stranding a ball's interaction quadrant, so every
+; ball position must be known before any decoration decision.
+;
+; The safety rule is REDUNDANCY, not reachability. A decorated block loses its
+; walkable quadrants entirely, so the pass only fires where those quadrants are
+; provably surplus: a cell decorates only in the interior of a run of three
+; identical straight wall blocks whose open sides are all plain PFAC_FLOOR.
+; The removed quadrants then have exactly three walkable edge-neighbours - the
+; floor cell on the open side, and the run neighbours above and below - and
+; every one of them keeps its own independent link into that continuous floor
+; lane. Nothing can be cut off, without consulting quadrant occupancy at all.
+;
+; Two properties fall out of the same test and are load-bearing:
+;   - A wall cell next to a CORNER never decorates, because the corner is not
+;     the same block id as the run. That is what protects the 1/4-walkable
+;     corners, whose single quadrant hangs off exactly two flanking walls.
+;   - Two decorated cells can never be adjacent along the run, because the
+;     first write replaces the plain id the second one's test requires. So the
+;     pass is order-safe and produces no runs.
+; The first attempt at this phase decorated unconditionally on C6a's finding 2
+; (measured corridor WIDTH, not connectivity) and broke both cases; see the
+; C6b record in the plan.
+;
+; Corners are never decorated. $48 has no decorated art at all, and the other
+; three would need real quadrant-occupancy data to place safely.
+;
+; Reuses wBuffer offsets 4-19: room placement, item and fake-ball state have
+; already been copied out to sProcFacilityGenScratch/SRAM by this point, and
+; wPFacRoomCount (offset 25) is never touched.
+; ============================================================
+DEF wPFacWallX      EQU 4   ; scan column
+DEF wPFacWallY      EQU 5   ; scan row
+DEF wPFacWallScan   EQU 6   ; room-record scan index (premade-footprint test)
+DEF wPFacWallRX     EQU 7   ; scanned room/ball X
+DEF wPFacWallRY     EQU 8   ; scanned room/ball Y
+DEF wPFacWallRW     EQU 9   ; scanned room W (premade-footprint test only)
+DEF wPFacWallRH     EQU 10  ; scanned room H (premade-footprint test only)
+DEF wPFacWallSaveX  EQU 11  ; base cell X, restored after each lane probe
+DEF wPFacWallSaveY  EQU 12  ; base cell Y, restored after each lane probe
+DEF wPFacWallType   EQU 13  ; plain wall id the run must repeat
+DEF wPFacWallDecorA EQU 14  ; decorated replacement, variant A
+DEF wPFacWallDecorB EQU 15  ; decorated replacement, variant B
+DEF wPFacWallRunDX  EQU 16  ; one step ALONG the wall
+DEF wPFacWallRunDY  EQU 17
+DEF wPFacWallOpenDX EQU 18  ; one step toward the wall's walkable side
+DEF wPFacWallOpenDY EQU 19
+ASSERT wPFacWallOpenDY < wPFacRoomCount
+
+; Decorable straight walls. Run is the axis the wall repeats along; open is the
+; side its walkable quadrants face, named by each block's own doc comment
+; above. Only PFAC_W_BOTTOM has two decorated variants; the others repeat one
+; so the variant roll can stay branch-free.
+DEF PFAC_WALL_RUN_STRIDE EQU 7
+PFacWallRunTable:
+    ;  plain wall,    run dx, run dy, open dx, open dy, decor A, decor B
+    db PFAC_W_LEFT,        0,     -1,       1,       0, PFAC_DECOR_WALL_LEFT,     PFAC_DECOR_WALL_LEFT
+    db PFAC_W_RIGHT,       0,     -1,      -1,       0, PFAC_DECOR_WALL_RIGHT,    PFAC_DECOR_WALL_RIGHT
+    db PFAC_W_TOP,        -1,      0,       0,       1, PFAC_DECOR_WALL_TOP,      PFAC_DECOR_WALL_TOP
+    db PFAC_W_BOTTOM,     -1,      0,       0,      -1, PFAC_DECOR_WALL_BOTTOM_A, PFAC_DECOR_WALL_BOTTOM_B
+PFacWallRunTableEnd:
+ASSERT PFacWallRunTableEnd - PFacWallRunTable == 4 * PFAC_WALL_RUN_STRIDE
+
+PFacDecorateCorridorWalls:
+    xor a
+    ld [wBuffer + wPFacWallY], a
+.row
+    xor a
+    ld [wBuffer + wPFacWallX], a
+.col
+    ld a, [wBuffer + wPFacWallX]
+    ld [wBuffer + wPFacCurX], a
+    ld [wBuffer + wPFacWallSaveX], a
+    ld a, [wBuffer + wPFacWallY]
+    ld [wBuffer + wPFacCurY], a
+    ld [wBuffer + wPFacWallSaveY], a
+
+    call PFacReadBlock
+    ld [wBuffer + wPFacWallType], a
+    ld hl, PFacWallRunTable
+    ld b, 4
+.scanType
+    cp [hl]
+    jr z, .foundType
+    ld de, PFAC_WALL_RUN_STRIDE
+    add hl, de
+    dec b
+    jr nz, .scanType
+    jr .next                    ; corners and everything else: never decorated
+.foundType
+    inc hl
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRunDX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRunDY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallOpenDX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallOpenDY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallDecorA], a
+    ld a, [hl]
+    ld [wBuffer + wPFacWallDecorB], a
+
+    call PFacWallRunRedundant
+    jr z, .next
+    call PFacWallSiteBlocked
+    jr z, .next
+    call PFacWallGateRoll
+    jr z, .next
+
+    call Random
+    bit 0, a
+    ld a, [wBuffer + wPFacWallDecorA]
+    jr z, .write
+    ld a, [wBuffer + wPFacWallDecorB]
+.write
+    call PFacWriteBlock
+.next
+    ld a, [wBuffer + wPFacWallX]
+    inc a
+    ld [wBuffer + wPFacWallX], a
+    cp PFAC_SIZE
+    jp nz, .col
+    ld a, [wBuffer + wPFacWallY]
+    inc a
+    ld [wBuffer + wPFacWallY], a
+    cp PFAC_SIZE
+    jp nz, .row
+    ret
+
+; NZ set with 1-in-4 probability (the C6b scatter gate), Z otherwise.
+; Clobbers a, bc (Rangerandom's contract).
+PFacWallGateRoll:
+    ld c, 4
+    call Rangerandom
+    and a
+    jr nz, .miss
+    or 1
+    ret
+.miss
+    xor a
+    ret
+
+; Z when CurX/CurY must NOT be decorated for structural reasons: inside a
+; premade room's footprint, or cardinally adjacent to a placed ball (real or
+; fake). NZ when neither applies. Preserves CurX/CurY.
+PFacWallSiteBlocked:
+    call PFacWallInsidePremade
+    ret z
+    jp PFacWallNearBall
+
+; Z when CurX/CurY lies inside some premade room's full footprint (its
+; interior rect grown by one on every side, matching the ring PFacEncloseRooms
+; skips for a "complete premade owns its perimeter" room - see C6b rule 5/6:
+; an uncut template socket only ever exists inside that same footprint, so
+; excluding the footprint wholesale also excludes every socket cell). NZ when
+; outside every premade footprint. Preserves CurX/CurY. Clobbers a, b, c, de,
+; hl.
+PFacWallInsidePremade:
+    xor a
+    ld [wBuffer + wPFacWallScan], a
+.room
+    ld a, [wBuffer + wPFacWallScan]
+    cp PFAC_ROOM_MAX
+    jr nc, .safe
+    call PFacRoomRecordAddr
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRY], a
+    ld a, [hli]
+    and a
+    jr z, .nextRoom
+    ld [wBuffer + wPFacWallRW], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRH], a
+    inc hl
+    bit 7, [hl]
+    jr z, .nextRoom
+
+    ld a, [wBuffer + wPFacWallRX]
+    dec a
+    ld b, a
+    ld a, [wBuffer + wPFacCurX]
+    cp b
+    jr c, .nextRoom
+    sub b
+    ld c, a
+    ld a, [wBuffer + wPFacWallRW]
+    add a, 2
+    cp c
+    jr c, .nextRoom
+    jr z, .nextRoom
+
+    ld a, [wBuffer + wPFacWallRY]
+    dec a
+    ld b, a
+    ld a, [wBuffer + wPFacCurY]
+    cp b
+    jr c, .nextRoom
+    sub b
+    ld c, a
+    ld a, [wBuffer + wPFacWallRH]
+    add a, 2
+    cp c
+    jr c, .nextRoom
+    jr z, .nextRoom
+
+    xor a
+    ret
+.nextRoom
+    ld hl, wBuffer + wPFacWallScan
+    inc [hl]
+    jr .room
+.safe
+    or 1
+    ret
+
+; Z when CurX/CurY is cardinally adjacent (Manhattan distance 1) to a placed
+; ball, real or fake. Real coordinates are already block coords
+; (sProcFacilityGenScratch 0-7, X/Y pairs for balls 0-3). Fake coordinates are
+; tile coords (sProcFacilityGenScratch+72, Y/X pairs) and are converted back
+; with the same sub 4 / srl pattern PFacFakeAnchorUnused uses. NZ when no
+; ball is adjacent. Preserves CurX/CurY. Clobbers a, b, c, hl.
+PFacWallNearBall:
+    ld hl, sProcFacilityGenScratch
+    ld b, 4
+.realLoop
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacWallRY], a
+    push bc
+    push hl
+    call PFacWallAdjacentTest
+    pop hl
+    pop bc
+    jr z, .near
+    dec b
+    jr nz, .realLoop
+
+    ld hl, sProcFacilityGenScratch + 72
+    ld b, 4
+.fakeLoop
+    ld a, [hli]                 ; Y (tile coord)
+    sub 4
+    srl a
+    ld [wBuffer + wPFacWallRY], a
+    ld a, [hli]                 ; X (tile coord)
+    sub 4
+    srl a
+    ld [wBuffer + wPFacWallRX], a
+    push bc
+    push hl
+    call PFacWallAdjacentTest
+    pop hl
+    pop bc
+    jr z, .near
+    dec b
+    jr nz, .fakeLoop
+
+    or 1
+    ret
+.near
+    xor a
+    ret
+
+; INPUT: wPFacWallRX/RY = a ball's block coords. Z when CurX/CurY is exactly
+; one cardinal step away (Manhattan distance 1). Clobbers a, b, c.
+PFacWallAdjacentTest:
+    ld a, [wBuffer + wPFacCurX]
+    ld b, a
+    ld a, [wBuffer + wPFacWallRX]
+    sub b
+    call PFacAbs
+    ld c, a
+    ld a, [wBuffer + wPFacCurY]
+    ld b, a
+    ld a, [wBuffer + wPFacWallRY]
+    sub b
+    call PFacAbs
+    add a, c
+    cp 1
+    ret
+
+; NZ when the base cell (wPFacWallSaveX/Y) sits in the INTERIOR of a run of
+; three identical wPFacWallType blocks whose open sides are all plain
+; PFAC_FLOOR, which is the redundancy proof described in the header. Z
+; otherwise. Reads five cells: the base cell's open neighbour, and each run
+; neighbour plus its own open neighbour. Off-map probes read as PFAC_WALL and
+; therefore reject, so the map edge needs no special case. CurX/CurY are
+; restored to the base cell on both paths. Clobbers a, hl.
+PFacWallRunRedundant:
+    call .openSideIsFloor
+    jr z, .reject
+
+    ld a, [wBuffer + wPFacWallSaveX]
+    ld hl, wBuffer + wPFacWallRunDX
+    sub [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacWallSaveY]
+    ld hl, wBuffer + wPFacWallRunDY
+    sub [hl]
+    ld [wBuffer + wPFacCurY], a
+    call .runNeighbourOK
+    jr z, .reject
+
+    ld a, [wBuffer + wPFacWallSaveX]
+    ld hl, wBuffer + wPFacWallRunDX
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacWallSaveY]
+    ld hl, wBuffer + wPFacWallRunDY
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call .runNeighbourOK
+    jr z, .reject
+
+    call .restoreBase
+    or 1
+    ret
+.reject
+    call .restoreBase
+    xor a
+    ret
+
+; CurX/CurY = a run-neighbour cell. NZ when it repeats the run's wall type and
+; its own open side is plain floor. Falls through by design.
+.runNeighbourOK
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacWallType
+    cp [hl]
+    jr nz, .fail
+.openSideIsFloor
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacWallOpenDX
+    add a, [hl]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacWallOpenDY
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock
+    cp PFAC_FLOOR
+    jr nz, .fail
+    or 1                        ; PFAC_FLOOR is nonzero, so this only sets NZ
+    ret
+.fail
+    xor a
+    ret
+.restoreBase
+    ld a, [wBuffer + wPFacWallSaveX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacWallSaveY]
+    ld [wBuffer + wPFacCurY], a
+    ret
+
+; ============================================================
 ; PFacGenerateFacility  (top-level driver)
 ; Runs the whole room-tree pipeline into wOverworldMap (already seeded with
 ; PFAC_UNTOUCHED by PFacFillUntouched). On return the map holds only real block
@@ -3746,6 +4119,7 @@ PFacGenerateFacility:
     call PFacPlaceItems
     call PFacDecorateExploreRooms
     call PFacPlaceFakeBalls
+    call PFacDecorateCorridorWalls
     ret
 
 ; Normalize the observed reversed right-corner pair: $4A directly above $42.

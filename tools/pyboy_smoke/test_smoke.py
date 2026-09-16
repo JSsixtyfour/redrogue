@@ -1027,6 +1027,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x5A,
             0x5C,
             0x5D,
+            0x28,
+            0x33,
             0x61,
             0x63,
             0x67,
@@ -1399,7 +1401,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             or (expected == 0x42 and actual == 0x69)
                             or (
                                 expected == 0x4A
-                                and actual == 0x46
+                                and actual in (0x46, 0x5D)
                                 and corner_y + 1 < 20
                                 and playable[(corner_y + 1) * 20 + corner_x]
                                 in (0x46, 0x5D)

@@ -189,6 +189,17 @@ CalcEXPBarPixelLength:
 .skip
 	ld a, [hl]
 	ld [wCurSpecies], a
+	; hl is a struct base on BOTH branches above - wBattleMon (battle_struct) when
+	; not transformed, or the active party mon (party_struct) via BattleMonPartyAttr
+	; when it is - and both carry MON_CATCH_RATE at the same offset (macros/ram.asm),
+	; so PublishFormContext is valid for either. Without it this bare GetMonHeader
+	; strips the player battler's form whenever the previously loaded header was a
+	; DIFFERENT species, e.g. the last slot the party menu walked on the switch-mon
+	; path in core.asm. Nothing observable depends on it today (every form row shares
+	; its base species' growth rate, the only field CalcExperience reads out of the
+	; header, and every caller's consumer reloads the header before using it), so
+	; this is defence against the next caller inserted between the two.
+	call PublishFormContext
 	call GetMonHeader
 	ld a, [wBattleMonLevel]
 	ld d, a
