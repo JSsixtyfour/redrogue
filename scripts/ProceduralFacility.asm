@@ -179,45 +179,6 @@ PFacWildCalmedText:
 	text_far _PCWildCalmedText
 	text_end
 
-PFacSignText:
-	text_asm
-	; Read sign variant from SRAM (rolled at preload, stable for the whole run).
-	; Use call PrintText — ld hl/ret causes TX_START to pop the text stream
-	; pointer as the tile cursor, so line 1 writes off-screen (invisible).
-	; PrintText sets up its own tile cursor through the normal init path.
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ld a, BANK(sProcFacilityStagingBuffer)  ; facility SRAM is bank 1
-	ld [rRAMB], a
-	ld a, [sProcFacilitySignVariant]
-	ld b, a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ld [rRAMG], a
-	ld a, b
-	and 1                       ; bit 7 snapshots fake-ball species, bit 0 is sign
-	jr nz, .showBoss
-	ld hl, PFacSignItemsText
-	jr .show
-.showBoss
-	ld hl, PFacSignBossText
-.show
-	call PrintText
-	ld hl, .signEnd    ; point NextTextCommand at TX_END for clean exit
-	jp TextScriptEnd
-.signEnd
-	text_end
-
-PFacSignItemsText:
-	text_far _PFacSignItemsText
-	text_end
-
-PFacSignBossText:
-	text_far _PFacSignBossText
-	text_end
-
 ProceduralFacility_TextPointers:
 	def_text_pointers
     dw_const ProceduralFacilityBossText, TEXT_PROCEDURALFACILITY_BOSS
@@ -232,7 +193,6 @@ ProceduralFacility_TextPointers:
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
 	EXPORT TEXT_PROCEDURALFACILITY_CALMED ; used by engine/battle/wild_encounters.asm
-	dw_const PFacSignText, TEXT_PROCEDURALFACILITY_SIGN
 
 ProceduralFacilityTrainerHeaders:
 PFacBossTrainerHeader:

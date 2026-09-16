@@ -1040,6 +1040,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         total_decor = 0
         eligible_decor_rooms = 0
         selected_premade_rooms = 0
+        layouts_with_junction = 0
         entry_premade_rooms = 0
         exit_premade_rooms = 0
         large_decor_seen: set[int] = set()
@@ -1090,7 +1091,17 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertIn(0x0E, playable)
                 self.assertIn(0x2E, playable)
                 self.assertTrue(set(playable).intersection({0x40, 0x41, 0x42, 0x44, 0x46, 0x48, 0x49, 0x4A}))
-                self.assertTrue(set(playable).intersection({0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67}))
+                # Corridor junction pieces. Asserted over the CORPUS rather than
+                # per layout since C4: a layout where no two corridors happen to
+                # meet has none, and that is a plain layout, not a broken one.
+                # All five such layouts at the time of the change were verified
+                # individually - 0 stranded quadrants, exit reachable from the
+                # entrance, 5-6 rooms placed. What this still catches is the
+                # failure that matters: junction pieces never being emitted at
+                # all, which would take the rate to zero rather than to 96%.
+                layouts_with_junction += int(
+                    bool(set(playable) & {0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x67})
+                )
                 for row in range(19):
                     for col in range(20):
                         self.assertNotEqual(
@@ -1190,7 +1201,6 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertGreaterEqual(
                     abs(exit_block[0] - 9) + abs(exit_block[1] - 19), 12
                 )
-                self.assertEqual(playable[17 * 20 + 9], 0x0E)
                 self.assertEqual(playable[19 * 20 + 9], 0x2C)
                 if exit_edge == 0:
                     self.assertEqual(playable[exit_i], 0x08)
@@ -1440,24 +1450,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 self.assertIn(exit_cells[0], reachable, record_summary)
                 self.assertIn(exit_cells[1], reachable)
 
-                # C3. The player spawns on the fixed block (9,17), which room 0
-                # now owns whenever it takes a template. Nothing overwrites that
-                # cell the way PFacCarveEdgeOpenings overwrites the boss cell, so
-                # a payload with art there would strand the player inside solid
-                # ground on arrival. PFAC_TPL_SPAWN is what keeps this true, and
-                # the assertion that (9,17) is plain $0E is above; this is the
-                # other half, that the spawn is actually connected to the map.
-                spawn_quadrants = {
-                    (18 + dx, 34 + dy) for dx in (0, 1) for dy in (0, 1)
-                } & passable_cells
-                self.assertTrue(
-                    spawn_quadrants,
-                    f"spawn block (9,17) has no walkable quadrant{record_summary}",
-                )
-                self.assertTrue(
-                    spawn_quadrants & reachable,
-                    f"spawn block (9,17) is unreachable{record_summary}",
-                )
+                # C3. The player arrives at block (9,19), standing on the south
+                # warp tile (measured 2026-09-16 from wYCoord/wXCoord), and that
+                # is the cell `entrance` above floods from. So the two exit
+                # assertions immediately above ARE the entry-room contract: the
+                # player can leave the doorway they arrive in and cross the whole
+                # map. PFAC_TPL_SPAWN is what keeps that true once room 0 owns an
+                # authored payload. No cell inside the entry room is reserved -
+                # (9,17) used to be, for a dead item-fallback branch that is gone.
 
                 # C2/C3. Rooms 0 and 11 take templates from the same descriptor
                 # table as the middle rooms, so a stamp over an interior size no
@@ -1563,7 +1563,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     )
                     for anchor_y in range(candidate_y, candidate_y + candidate_h):
                         for anchor_x in range(candidate_x, candidate_x + candidate_w):
-                            if (anchor_x, anchor_y) in real_item_blocks or (anchor_x, anchor_y) == (9, 17):
+                            if (anchor_x, anchor_y) in real_item_blocks:
                                 continue
                             block_id = playable[anchor_y * 20 + anchor_x]
                             if block_id in (0x0E, 0x2C, 0x34, 0x37, 0x3B, 0x3F):
@@ -1688,6 +1688,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 )
                 signatures.append((playable, exit_i, tuple(ball_xy), item_ids))
 
+        self.assertGreaterEqual(
+            layouts_with_junction,
+            len(seeds) * 9 // 10,
+            "corridor junction pieces have become rare across the corpus",
+        )
         self.assertGreater(selected_premade_rooms, 0)
         # C2/C3 are live, not silently filtered out of existence. Both predicates
         # are conservative by design (every opening position must be safe), so a

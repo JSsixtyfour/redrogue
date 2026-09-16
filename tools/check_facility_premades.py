@@ -499,17 +499,17 @@ def _spawn_safe(
     holds for EVERY column the spawn can land on, and selection needs no
     arithmetic at runtime.
 
-    Two separate requirements, and they are not the same requirement:
+    One requirement, since 2026-09-16: the entrance cell is overwritten with $2C
+    by PFacCarveEdgeOpenings after the stamp, so its art is irrelevant, but
+    REACHING the room through it is not. Cut it and check the opening reaches the
+    payload's socket component. This is exactly the C2 exit test applied to the
+    south edge.
 
-    1. The entrance cell is overwritten with $2C by PFacCarveEdgeOpenings after
-       the stamp, so its art is irrelevant -- but REACHING the room through it
-       is not, exactly as for the C2 exit. Cut it and check the opening reaches
-       both the spawn and the payload's socket component.
-    2. The (9,17) cell is overwritten by nothing at all, and test_smoke asserts
-       playable[(9,17)] == $0E directly, so this requires exactly that. Stricter
-       than the item-anchor whitelist, which would gain three $47-centre
-       templates at the cost of that assertion. If (9,17) is ever confirmed
-       vestigial, this is the one line to relax.
+    It used to ALSO require block (9,17) to be plain $0E. That is gone: the only
+    thing that ever depended on it was a dead defensive branch in PFacPlaceItems
+    which dropped a pokeball on that block, and nothing may spawn in the entry
+    room any more. The map's sign bg_event, which sat in the same block and was
+    invisible for want of sign art, is gone with it.
     """
     spawn_row = h - 3
     if spawn_row < 1 or not reference:
@@ -517,19 +517,13 @@ def _spawn_safe(
 
     all_cut = set(sockets.values())
     for col in range(1, w - 1):
-        if grid[spawn_row][col] != 0x0E:
-            return False
         cells = _expanded_cells_wh(grid, blockset, w, h, all_cut | {(col, h - 1)})
         entrance = {
             (col * 2 + dx, (h - 1) * 2 + dy) for dx in (0, 1) for dy in (0, 1)
         } & cells
         if not entrance:
             return False
-        seen = reachable(cells, next(iter(entrance)))
-        spawn = {
-            (col * 2 + dx, spawn_row * 2 + dy) for dx in (0, 1) for dy in (0, 1)
-        }
-        if not (seen & spawn) or not (seen & reference):
+        if not (reachable(cells, next(iter(entrance))) & reference):
             return False
     return True
 

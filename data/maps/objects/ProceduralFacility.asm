@@ -9,8 +9,9 @@ ProceduralFacility_Object:
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  - runtime-patched to (4*exitI+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile - runtime-patched to (4*exitI+3, 0)
 
+	; No bg events. The Facility has no sign art, so the sign inherited from
+	; ProceduralCave1 was invisible and unreachable; removed 2026-09-16.
 	def_bg_events
-	bg_event 19, 35, TEXT_PROCEDURALFACILITY_SIGN
 
 	def_object_events
 	; Boss pokemon first (slot 1) so toggle-table lookup via hActiveSpriteIndex
