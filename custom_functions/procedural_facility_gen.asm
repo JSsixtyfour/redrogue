@@ -1029,7 +1029,9 @@ DEF wPFacItemCheckX   EQU 16  ; item-anchor adjacency check: saved block X
 DEF wPFacItemCheckY   EQU 17  ; item-anchor adjacency check: saved block Y
 DEF wPFacFakeRoomId   EQU 18  ; PFacPlaceFakeBalls: current middle-room id
 DEF wPFacFakeRoomTries EQU 19 ; rooms remaining in the circular scan
-DEF wPFacFakeReusePass EQU 20 ; 0 = distinct rooms only, 1 = reuse allowed
+DEF wPFacFakeReusePass EQU 20 ; C8 pass: 0 = rooms holding neither a fake nor
+                              ; a real ball, 1 = any fake-free room, 2 = reuse
+DEF wPFacFakeRowsLeft EQU 21  ; rows left in the wrapped hall sweep (C8)
 
 ; Corridor-wall and doorway-jamb passes. These run before item placement, so
 ; offsets 16-24 are phase-local and do not overlap the four rolled item bytes.
@@ -2915,6 +2917,8 @@ PFacPlaceItems:
     xor a
     ld [wBuffer + wPFacBallIdx], a
 .ballLoop
+    call PFacTryHallAnchor        ; C8: one real ball in four goes in a hall
+    jp z, .positionOK
     ld a, [wBuffer + wPFacBallIdx]
     inc a                        ; item room ids are 1-4 (ball index 0-3 -> id 1-4)
     call PFacRoomRecordAddr
@@ -3109,6 +3113,189 @@ PFacSolidAnchorHasNeighbor:
     xor a
     ret
 
+; ============================================================
+; PFacTryHallAnchor (C8)
+; One real pokeball in four is offered a corridor ("hall") anchor instead of
+; its own item room. Z with CurX/CurY on an accepted hall cell; NZ to fall
+; through to the untouched in-room anchor search.
+;
+; Why a roll and not a fallback: the plan specified C8 as a fallback for when
+; a room anchor cannot be found, but PFacPlaceItems' room fallback is
+; unreachable (rule e guarantees rooms 1-4 place), so a fallback-shaped C8
+; would be dead code and would never put a ball in a hall. The roll is the
+; only form that ships.
+;
+; Random sampling rather than PFacFindFakeCorridorAnchor's sweep, so real
+; balls are not pinned to whichever corridor cell the sweep reaches first.
+;
+; The Y band stops at 14 on purpose. Ball baking overwrites room 0's record
+; in place (sProcFacilityGenScratch 0-7), so from ball 1 onward the rect
+; PFacCorridorAnchorValid tests for room 0 is garbage and can no longer keep
+; a ball out of the entry room. Entry Y is 19 - H with H at most
+; PFAC_ENTRY_MAX_DIM (3), so the entry room and its top ring never reach above
+; row 15; banding at 14 enforces "no item in the entry room" (user decision
+; 2026-09-16) structurally instead of trusting that record. Room 1 needs no
+; such guard: its X/Y bytes are written by ball 3, the last ball, so its rect
+; is still intact for every attempt made here.
+;
+; Clobbers a, b, c, de, hl. CurX/CurY are meaningful only when Z.
+; ============================================================
+PFacTryHallAnchor:
+    ld c, 4
+    call Rangerandom
+    and a
+    jr nz, .decline
+    ld a, 24
+    ld [wBuffer + wPFacRmIdx], a  ; sample budget; RmIdx is dead until the
+                                  ; caller loads this ball's room record
+.sample
+    ld c, 16
+    call Rangerandom
+    add a, 2                      ; X 2-17, the same band fake halls use
+    ld [wBuffer + wPFacCurX], a
+    ld c, 12
+    call Rangerandom
+    add a, 3                      ; Y 3-14, see the entry-room note above
+    ld [wBuffer + wPFacCurY], a
+    call PFacCorridorAnchorValid
+    jr nz, .nextSample
+    ld b, 0                       ; no fake ball exists yet
+    ld a, [wBuffer + wPFacBallIdx]
+    ld c, a                       ; real balls placed so far
+    call PFacBallSpacingOK
+    jr nz, .nextSample
+    xor a
+    ret
+.nextSample
+    ld hl, wBuffer + wPFacRmIdx
+    dec [hl]
+    jr nz, .sample
+.decline
+    or 1
+    ret
+
+; INPUT: c = real balls to test (0-4), b = fake balls to test (0-4).
+; Z when CurX/CurY is two or more cells away on at least one axis from every
+; one of those balls. That is stricter than "not the same cell" on purpose: a
+; hall is one cell wide, so two balls parked beside each other read as a single
+; clump and, for real items, gate the same corridor twice in a row. Only balls
+; actually placed are tested, because the unwritten slots still hold room
+; record bytes rather than coordinates.
+; Real coords are block coords (sProcFacilityGenScratch 0-7, X then Y). Fake
+; coords are tile coords (+72, Y then X) and convert back with the same
+; sub 4 / srl pattern PFacFakeAnchorUnused uses. Preserves CurX/CurY.
+; Clobbers a, b, c, de, hl.
+PFacBallSpacingOK:
+    ld a, c
+    and a
+    jr z, .fakes
+    ld hl, sProcFacilityGenScratch
+.realLoop
+    ld a, [hli]
+    ld d, a                       ; ball X
+    ld a, [hli]
+    ld e, a                       ; ball Y
+    call PFacBallSpacingTest
+    jr z, .tooClose
+    dec c
+    jr nz, .realLoop
+.fakes
+    ld a, b
+    and a
+    jr z, .clear
+    ld hl, sProcFacilityGenScratch + 72
+.fakeLoop
+    ld a, [hli]                   ; Y (tile coord)
+    sub 4
+    srl a
+    ld e, a
+    ld a, [hli]                   ; X (tile coord)
+    sub 4
+    srl a
+    ld d, a
+    call PFacBallSpacingTest
+    jr z, .tooClose
+    dec b
+    jr nz, .fakeLoop
+.clear
+    xor a
+    ret
+.tooClose
+    or 1
+    ret
+
+; INPUT: d/e = a placed ball's block X/Y. Z when CurX/CurY is within one cell
+; of it on BOTH axes. Preserves b, c, d, e, hl and CurX/CurY. Clobbers a.
+PFacBallSpacingTest:
+    ld a, [wBuffer + wPFacCurX]
+    sub d
+    jr nc, .absX
+    cpl
+    inc a
+.absX
+    cp 2
+    jr nc, .apart
+    ld a, [wBuffer + wPFacCurY]
+    sub e
+    jr nc, .absY
+    cpl
+    inc a
+.absY
+    cp 2
+    jr nc, .apart
+    xor a
+    ret
+.apart
+    or 1
+    ret
+
+; Z when one of the four real pokeballs sits inside the room rect currently
+; loaded in wPFacRmX/RmY/RmW/RmH. Every real ball is placed by the time the
+; fake pass runs, so all four slots hold coordinates here. Preserves the rect
+; and CurX/CurY. Clobbers a, b, de, hl.
+PFacRoomHoldsRealBall:
+    ld hl, sProcFacilityGenScratch
+    ld b, 4
+.loop
+    ld a, [hli]
+    ld d, a                       ; ball X
+    ld a, [hli]
+    ld e, a                       ; ball Y
+    push hl
+    call PFacRectHoldsPoint
+    pop hl
+    jr z, .holds
+    dec b
+    jr nz, .loop
+    or 1
+    ret
+.holds
+    xor a
+    ret
+
+; INPUT: d/e = a point's block X/Y; wPFacRmX/RmY/RmW/RmH = the rect.
+; Z when the point lies inside the rect. Preserves b, c, d, e. Clobbers a, hl.
+PFacRectHoldsPoint:
+    ld a, d
+    ld hl, wBuffer + wPFacRmX
+    sub [hl]
+    jr c, .outside
+    ld hl, wBuffer + wPFacRmW
+    cp [hl]
+    jr nc, .outside
+    ld a, e
+    ld hl, wBuffer + wPFacRmY
+    sub [hl]
+    jr c, .outside
+    ld hl, wBuffer + wPFacRmH
+    cp [hl]
+    jr nc, .outside
+    xor a
+    ret
+.outside
+    or 1
+    ret
+
 ; Place four fake item-ball encounters after both decor passes. Search every
 ; intact middle-room record (2-10) from a random circular starting point and
 ; prefer a distinct room for each ball. Only reuse a room after every placed
@@ -3136,8 +3323,8 @@ PFacPlaceFakeBalls:
     and a
     jr z, .nextRoom
     ld a, [wBuffer + wPFacFakeReusePass]
-    and a
-    jr nz, .loadRoom
+    cp 2
+    jr nc, .loadRoom              ; pass 2 is the reuse pass
     ld a, [wBuffer + wPFacFakeRoomId]
     call PFacRoomRecordAddr
     ld de, 5
@@ -3157,6 +3344,16 @@ PFacPlaceFakeBalls:
     ld [wBuffer + wPFacRmW], a
     ld a, [hl]
     ld [wBuffer + wPFacRmH], a
+    ; C8: on pass 0 a room that already displays a real item is skipped, so
+    ; fakes fill the bare rooms first. Before C8 the pool was rooms 2-10, of
+    ; which 2/3/4 always place and always hold a real ball while 5-10
+    ; contributed only ~0.9 rooms, forcing 3 of 4 fakes to double up: 72.3%
+    ; of fakes shared a real item's room over 64 seeds.
+    ld a, [wBuffer + wPFacFakeReusePass]
+    and a
+    jr nz, .scan
+    call PFacRoomHoldsRealBall
+    jp z, .nextRoom
 .scan
     call PFacFakeAnchorAtCurrentValid
     jr nz, .advance
@@ -3191,18 +3388,24 @@ PFacPlaceFakeBalls:
 .roomAdvanced
     ld hl, wBuffer + wPFacFakeRoomTries
     dec [hl]
-    jr nz, .roomLoop
-    ld hl, wBuffer + wPFacFakeReusePass
-    bit 0, [hl]
-    jr nz, .globalFallback
-    ; Before allowing a room to hold a second fake ball, use safe one-wide
-    ; corridor straightaways. This materially spreads encounters away from
-    ; item rooms without putting them on sockets, turns, or branches.
+    jp nz, .roomLoop
+    ; Halls are tried once pass 0 is exhausted, before any pass that lets a
+    ; fake share a room. Safe one-wide straightaways only: never a socket, a
+    ; turn or a branch (PFacCorridorAnchorValid). C8 moved this ahead of the
+    ; fake-free-room pass, which is what takes the sharing rate down rather
+    ; than merely reordering which room gets doubled up.
+    ld a, [wBuffer + wPFacFakeReusePass]
+    and a
+    jr nz, .passAdvance
     call PFacFindFakeCorridorAnchor
     jr z, .save
+.passAdvance
     ld hl, wBuffer + wPFacFakeReusePass
-    set 0, [hl]
-    jp .roomPass
+    inc [hl]
+    ld a, [hl]
+    cp 3
+    jp c, .roomPass
+    jr .globalFallback
 .globalFallback
     ; A cramped decorated room can have no second legal object anchor. Fall
     ; back to a bounded scan of the connected interior, excluding the north
@@ -3319,8 +3522,15 @@ PFacFakeAnchorAtCurrentValid:
 ; Z set with CurX/CurY on a free corridor anchor. The bounded center-area scan
 ; excludes all room interiors plus the north/side boss bands and south entry.
 PFacFindFakeCorridorAnchor:
-    ld a, 3
+    ; C8: begin the sweep on a random row and wrap, rather than always at row
+    ; 3. Now that halls are tried before any room-sharing pass, a fixed start
+    ; would pack all four encounters into the top-left-most corridor run.
+    ld c, 14
+    call Rangerandom
+    add a, 3
     ld [wBuffer + wPFacCurY], a
+    ld a, 14
+    ld [wBuffer + wPFacFakeRowsLeft], a
 .row
     ld a, 2
     ld [wBuffer + wPFacCurX], a
@@ -3328,6 +3538,11 @@ PFacFindFakeCorridorAnchor:
     call PFacCorridorAnchorValid
     jr nz, .advance
     call PFacFakeAnchorUnused
+    jr nz, .advance
+    ld a, [wBuffer + wPFacBallIdx]
+    ld b, a                       ; fakes placed so far
+    ld c, 4                       ; every real ball is already placed
+    call PFacBallSpacingOK
     jr nz, .advance
     xor a
     ld [wBuffer + wPFacFakeRoomId], a
@@ -3342,7 +3557,12 @@ PFacFindFakeCorridorAnchor:
     inc [hl]
     ld a, [hl]
     cp 17
-    jp c, .row
+    jr c, .rowReady
+    ld [hl], 3                    ; wrap to the top of the band
+.rowReady
+    ld hl, wBuffer + wPFacFakeRowsLeft
+    dec [hl]
+    jp nz, .row
     or 1
     ret
 

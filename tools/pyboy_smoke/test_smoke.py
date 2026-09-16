@@ -1051,6 +1051,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         layouts_with_large_decor = 0
         combined_decor_rooms = 0
         corridor_fake_balls = 0
+        hall_real_balls = 0
         pre_item_records: list[bytes] = []
         room_ring_contacts: list[tuple[tuple[int, int, int, int], int, int]] = []
         corner_defects: list[tuple[tuple[int, int, int, int], int, int, int]] = []
@@ -1267,6 +1268,46 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     )
                     ball_blocks.append((block_x, block_y))
                 self.assertEqual(len(set(ball_blocks)), 4)
+
+                # C8: a real ball may now sit in a hall instead of its item
+                # room. That path owes two guarantees. First, it never reaches
+                # the entry room: PFacTryHallAnchor bands its sample rows at 14
+                # because ball baking overwrites room 0's record in place, so
+                # the rect PFacCorridorAnchorValid would test is already
+                # garbage by ball 1. complete_records is the pre-baking
+                # snapshot, so the entry footprint here is the real one.
+                # Second, a hall ball sits on a straight one-wide run, never on
+                # a turn, a branch or a socket.
+                entry_x, entry_y, entry_w, entry_h = complete_records[0:4]
+                for block_x, block_y in ball_blocks:
+                    self.assertFalse(
+                        entry_x - 1 <= block_x <= entry_x + entry_w
+                        and entry_y - 1 <= block_y <= entry_y + entry_h,
+                        f"real ball {(block_x, block_y)} inside the entry footprint",
+                    )
+                    in_room = any(
+                        complete_records[rid * 6 + 2]
+                        and complete_records[rid * 6]
+                        <= block_x
+                        < complete_records[rid * 6] + complete_records[rid * 6 + 2]
+                        and complete_records[rid * 6 + 1]
+                        <= block_y
+                        < complete_records[rid * 6 + 1] + complete_records[rid * 6 + 3]
+                        for rid in range(12)
+                    )
+                    if in_room:
+                        continue
+                    hall_real_balls += 1
+                    self.assertIn(
+                        (
+                            playable[(block_y - 1) * 20 + block_x] == 0x0E,
+                            playable[(block_y + 1) * 20 + block_x] == 0x0E,
+                            playable[block_y * 20 + block_x - 1] == 0x0E,
+                            playable[block_y * 20 + block_x + 1] == 0x0E,
+                        ),
+                        ((True, True, False, False), (False, False, True, True)),
+                        f"hall ball {(block_x, block_y)} is not on a straight run",
+                    )
 
                 facility_scratch = self.harness.read_sram_bytes(
                     "sProcFacilityGenScratch", 81
@@ -1616,7 +1657,30 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 )
                             ):
                                 eligible_fake_rooms.add(candidate_id)
+                # C8: pass 0 of PFacPlaceFakeBalls skips any room that already
+                # displays a real item, and halls are tried before any pass that
+                # lets a fake double up. So the pool that governs hall use is
+                # "has a legal anchor AND holds no real ball", not the old
+                # "has a legal anchor".
+                rooms_with_real_ball = {
+                    candidate_id
+                    for candidate_id in range(2, 11)
+                    if complete_records[candidate_id * 6 + 2]
+                    and any(
+                        complete_records[candidate_id * 6]
+                        <= bx
+                        < complete_records[candidate_id * 6]
+                        + complete_records[candidate_id * 6 + 2]
+                        and complete_records[candidate_id * 6 + 1]
+                        <= by
+                        < complete_records[candidate_id * 6 + 1]
+                        + complete_records[candidate_id * 6 + 3]
+                        for bx, by in ball_blocks
+                    )
+                }
+                bare_fake_rooms = eligible_fake_rooms - rooms_with_real_ball
                 fake_room_ids = []
+                layout_hall_fakes = 0
                 for ball_col, ball_row in fake_cells:
                     anchor_block_x = ball_col // 2
                     anchor_block_y = ball_row // 2
@@ -1637,7 +1701,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         fake_room_ids.append(containing_rooms[0])
                     else:
                         corridor_fake_balls += 1
-                        self.assertLess(len(eligible_fake_rooms), 4)
+                        layout_hall_fakes += 1
                         cardinal_plain = (
                             playable[(anchor_block_y - 1) * 20 + anchor_block_x] == 0x0E,
                             playable[(anchor_block_y + 1) * 20 + anchor_block_x] == 0x0E,
@@ -1658,8 +1722,19 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         ),
                         f"fake-ball anchor {(ball_col, ball_row)} has no reachable interaction tile",
                     )
-                self.assertEqual(
-                    len(set(fake_room_ids)), min(4, len(eligible_fake_rooms))
+                # A fake only reaches a hall once pass 0 is exhausted, and
+                # pass 0 puts at most one fake in a room. So if any fake took a
+                # hall, every bare eligible room must already hold one: halls
+                # are never taken in preference to an unused bare room.
+                if layout_hall_fakes:
+                    self.assertTrue(
+                        bare_fake_rooms.issubset(set(fake_room_ids)),
+                        f"hall used while {sorted(bare_fake_rooms - set(fake_room_ids))} "
+                        f"stayed empty",
+                    )
+                self.assertGreaterEqual(
+                    len(set(fake_room_ids)),
+                    min(len(fake_room_ids), len(bare_fake_rooms)),
                 )
                 if fake_room_ids:
                     self.assertLessEqual(
@@ -1745,6 +1820,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
         self.assertEqual(edges_seen, {0, 1, 2})
         self.assertGreater(corridor_fake_balls, 0)
+        # C8 ships a rolled hall chance for real items, not a fallback: the
+        # room fallback it was specified against is unreachable, so a
+        # fallback-shaped C8 would never fire at all.
+        self.assertGreater(hall_real_balls, 0)
         self.assertGreaterEqual(len(large_decor_seen), 2)
         self.assertGreater(decorated_item_rooms, 0)
         # Rebased when R4 wired the full-room premade library. Premade rooms own
