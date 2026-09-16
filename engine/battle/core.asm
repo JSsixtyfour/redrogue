@@ -1812,19 +1812,19 @@ TryRunningFromBattle:
 	jp nz, .trainerBattle ; jump if it's a trainer battle
 	ldh a, [hCurMap]      ; procedural areas: wild battles can't run
 	cp PROCEDURAL_CAVE_1
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_FOREST
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_FACILITY
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_CEMETERY_1     ; cemetery floors are wild areas too - no running
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_CEMETERY_2
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_CEMETERY_3
-	jp z, .procNoRun
+	jp z, .procBattle
 	cp PROCEDURAL_CEMETERY_4
-	jp z, .procNoRun
+	jp z, .procBattle
 	ld a, [wNumRunAttempts]
 	inc a
 	ld [wNumRunAttempts], a
@@ -1899,15 +1899,33 @@ TryRunningFromBattle:
 	call TrainerBattleVictory ; plays victory fanfare + awards prize money, then returns here
 	scf                        ; signal battle over to BattleMenu_RunWasSelected
 	ret
+.procBattle
+	; A procedural wild area blocks running exactly the way a trainer battle
+	; does, sharing this path rather than owning a parallel one.
+	;
+	; Two things change against the old .procNoRun. It shows the trainer text
+	; instead of a generic one, and - the real fix - it no longer sets
+	; wActionResultOrTookBattleTurn, so choosing RUN here costs the player a
+	; turn no more than it does in a real trainer battle. That asymmetry was
+	; never intended; it just fell out of .procNoRun being written next to the
+	; wild "can't escape" case, which DOES cost a turn.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG_MODE, a
+	jr z, .normalTrainerBattle
+	; Debug quick-win, deliberately MINIMAL - it must NOT reach
+	; TrainerBattleVictory the way .trainerBattle does. That would inc
+	; wBattleCount, fire RogueAwardCredits1 (its wild-area-boss branch matches
+	; all three procedural map ids, so every wild mon would pay out), and run
+	; ScrollTrainerPicAfterBattle + MoneyForWinningText against a battle that
+	; has no trainer pic to scroll.
+	;
+	; Ending the battle is the whole job: InitBattleVariables already zeroed
+	; wBattleResult, and 0 IS "win", so there is nothing to write.
+	scf                        ; signal battle over to BattleMenu_RunWasSelected
+	ret
 .normalTrainerBattle
 	ld hl, NoRunningText
-	jr .printCantEscapeOrNoRunningText
-.procNoRun
-	; procedural cave/forest wild battle — can't run, but it's not a trainer,
-	; so show the generic "no running from this battle" message.
-	ld a, $1
-	ld [wActionResultOrTookBattleTurn], a
-	ld hl, ProcNoRunningText
+	; falls through - .procNoRun used to sit between these two
 .printCantEscapeOrNoRunningText
 	call PrintText
 	ld a, 1
@@ -1950,10 +1968,6 @@ CantEscapeText:
 
 NoRunningText:
 	text_far _NoRunningText
-	text_end
-
-ProcNoRunningText:
-	text_far _ProcNoRunningText
 	text_end
 
 GotAwayText:
