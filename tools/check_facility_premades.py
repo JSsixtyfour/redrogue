@@ -316,6 +316,7 @@ class FullRoomResult:
         item_anchor: tuple[int, int] | None = None,
         is_integrity_error: bool = False,
         socket_mask: str = "",
+        exit_safe: str = "",
     ) -> None:
         self.filename = filename
         self.w = w
@@ -326,6 +327,7 @@ class FullRoomResult:
         self.item_anchor = item_anchor
         self.is_integrity_error = is_integrity_error
         self.socket_mask = socket_mask
+        self.exit_safe = exit_safe
 
 
 def discover_fullroom_files(maps_dir: Path = MAPS_DIR) -> list[Path]:
@@ -406,6 +408,70 @@ def _side_leak_free(
         return False
     seen = reachable(cells, start)
     return not any(seen & edge_cells[other] for other in set("NESW") - {side})
+
+
+def _exit_safe_sides(
+    grid: list[list[int]], blockset: bytes, w: int, h: int,
+    sockets: dict[str, tuple[int, int]],
+    edge_cells: dict[str, set[tuple[int, int]]],
+    socket_mask: str,
+) -> str:
+    """Which map edges this payload may serve as the exit (boss) room on.
+
+    C2. The exit room is slot 11. PFacCarveEdgeOpenings writes PFAC_CORRIDOR
+    over the footprint cell at sProcFacilityExitI AFTER the premade stamp, so
+    the cell the boss stands on is walkable whatever the payload holds -- the
+    hazard is not the boss cell, it is REACHING it. If the payload seals the
+    interior beside that opening and its ring baseboard is severed there, the
+    boss and both exit warp tiles become unreachable and the stage cannot be
+    finished.
+
+    sProcFacilityExitI is rolled in PFacPlaceExitRoom, long before any template
+    is chosen, and lands on an arbitrary interior column (north) or row
+    (west/east) -- not the canonical centre socket that socket_mask describes.
+    So this tests EVERY position the opening can take. That makes the resulting
+    flag position-independent, which is what lets PFacChooseTemplate decide with
+    a single bit test and no ExitI arithmetic at runtime.
+
+    South is absent by construction: the south edge carries the fixed player
+    entrance at (9,19), never the exit.
+    """
+    all_cut = set(sockets.values())
+
+    reference = None
+    for name in socket_mask:
+        for comp in _connected_components(
+            _expanded_cells_wh(grid, blockset, w, h, all_cut)
+        ):
+            if edge_cells[name] & comp:
+                reference = comp
+                break
+        if reference:
+            break
+    if not reference:
+        return ""
+
+    safe = ""
+    for side in "NWE":
+        if side == "N":
+            positions = [(col, 0) for col in range(1, w - 1)]
+        elif side == "W":
+            positions = [(0, row) for row in range(1, h - 1)]
+        else:
+            positions = [(w - 1, row) for row in range(1, h - 1)]
+
+        for px, py in positions:
+            cells = _expanded_cells_wh(grid, blockset, w, h, all_cut | {(px, py)})
+            opening = {
+                (px * 2 + dx, py * 2 + dy) for dx in (0, 1) for dy in (0, 1)
+            } & cells
+            if not opening:
+                break
+            if not (reachable(cells, next(iter(opening))) & reference):
+                break
+        else:
+            safe += side
+    return safe
 
 
 def _connected_components(cells: set[tuple[int, int]]) -> list[set[tuple[int, int]]]:
@@ -610,6 +676,9 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
     result.status = "OK"
     result.roles = ("explore",)
     result.socket_mask = passed
+    result.exit_safe = _exit_safe_sides(
+        grid, blockset, w, h, sockets, edge_cells, passed
+    )
     if item_anchor_safe(grid, hub_x, hub_y):
         result.roles = ("item", "explore")
         result.item_anchor = hub
@@ -647,7 +716,7 @@ def format_report(results: list[FullRoomResult]) -> str:
             item = f"{r.item_anchor[0]},{r.item_anchor[1]}" if r.item_anchor else "-,-"
             lines.append(
                 f"{r.filename} W={r.w} H={r.h} sockets={r.socket_mask} "
-                f"item={item} status=OK"
+                f"item={item} exitsafe={r.exit_safe or '-'} status=OK"
             )
         else:
             lines.append(
