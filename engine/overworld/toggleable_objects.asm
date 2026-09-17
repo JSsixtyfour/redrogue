@@ -120,7 +120,7 @@ IsObjectHidden:
 	jr z, .checkMaybeRoguePB
 	cp 10
 	jr z, .checkMaybeRoguePB
-	jr .normalCheck
+	jp .normalCheck
 .checkMaybeRoguePG
 	push bc
 	farcall IsWildAreaStageMap
@@ -148,7 +148,7 @@ IsObjectHidden:
 	; in RogueStageMapTable, and must not inherit its reward/trade meanings.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_FACILITY
-	jr nz, .checkMaybeGenericRoguePB
+	jr nz, .checkMaybeWildAreaNpc
 	ld a, b
 	sub 6
 	cp 4
@@ -156,6 +156,27 @@ IsObjectHidden:
 	add a, TOGGLE_FACILITY_FAKE_BALL_1
 	ld c, a
 	jr .checkRewardBit
+.checkMaybeWildAreaNpc
+	; Phase 7 rollout: the cave and forest's stage-event NPC pair, slots 6-7,
+	; resolved the same way .checkMaybeRoguePG resolves slots 1-5 - directly to
+	; TOGGLE_WILD_AREA_NPC_1/2 for any WildAreaStageMapTable member, never
+	; through the per-map ToggleableObjectStates table below. This is what lets
+	; the forest reuse the cave's exact declared rows (both stages' scripts
+	; already share TOGGLE_WILD_AREA_BOSS/POKEBALL_1-4 the same way) without a
+	; second, forest-only pair of consts and a second HideObject/ShowObject
+	; target to keep in sync.
+	push bc
+	farcall IsWildAreaStageMap
+	pop bc
+	jr z, .checkMaybeGenericRoguePB     ; Z set = not a wild-area stage map
+	ld c, TOGGLE_WILD_AREA_NPC_1
+	ld a, b
+	cp 6
+	jr z, .checkRewardBit
+	ld c, TOGGLE_WILD_AREA_NPC_2
+	cp 7
+	jr z, .checkRewardBit
+	; slot 8+ on a wild-area map (none declare one today): fall through
 .checkMaybeGenericRoguePB
 	push bc
 	farcall IsRogueStageMap

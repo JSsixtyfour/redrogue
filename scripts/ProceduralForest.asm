@@ -31,7 +31,43 @@ ProceduralForest_Script:
 	ld a, TOGGLE_WILD_AREA_BOSS
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	; Phase 7 rollout: reveal the stage-event NPC slots, but only for the
+	; slots this event actually uses. Same idiom as the cave's own script -
+	; the staged sprite doubles as the "slot in use" flag.
+	farcall StageEventShowCaveNpcs
 .afterSetup
+	; --- Phase 7 rollout: stage-event arrival -----------------------------
+	; Byte-for-byte the same shape as the cave's own .afterSetup block - see
+	; that file for the full reasoning (arrival fires on load rather than the
+	; player's first step, the phase field IS the one-shot, good NPCs skip
+	; the vanish).
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .afterStageEvent
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterStageEvent          ; no event armed on this wild area
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr nz, .afterStageEvent         ; already spoken
+	ld a, TEXT_PROCEDURALFOREST_STAGE_EVENT
+	ldh [hTextID], a
+	call DisplayTextID
+	farcall StageEventDoTheft       ; no-op for the good NPCs (7d's dispatch)
+	; Good NPCs (Joy, Jenny, the pair) do not hide - see scripts/
+	; ProceduralCave1.asm's identical branch for the full reasoning.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	jr c, .villainVanish
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	jr .afterStageEvent
+.villainVanish
+	farcall PFStageEventVanish      ; fade out, relocate, fade in; -> HIDING
+.afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
@@ -45,6 +81,37 @@ ProceduralForest_Script:
 	ldh [hTextID], a
 	call DisplayTextID
 .afterCalm
+	; --- Phase 7 rollout: recovery, once the villain is beaten -------------
+	; Byte-for-byte the same shape as the cave's own recovery block.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterRecovery            ; no event armed
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	cp STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	jr nz, .afterRecovery           ; not robbed-and-hiding, so nothing owed
+	CheckEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+	jr nz, .recover
+	CheckEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+	jr z, .afterRecovery
+.recover
+	ld a, [wStatusFlags3]
+	bit BIT_PRINT_END_BATTLE_TEXT, a
+	jr nz, .afterRecovery
+	farcall Delay3
+	farcall StageEventGiveBack      ; a = STAGE_GIVEBACK_*; -> SETTLED
+	ld [wStageEventScratch], a      ; the text handler picks its line from this
+	ld a, TOGGLE_WILD_AREA_NPC_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_WILD_AREA_NPC_2
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TEXT_PROCEDURALFOREST_STAGE_RECOVER
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
 	; text has fully cleared (same shape PowerPlant uses for its reward).
 	CheckEvent EVENT_PC_BOSS_OFFERED
@@ -91,6 +158,14 @@ ProceduralForestTrainerHeaders:
 	                ; EVENT_BEAT_PC_BOSS % 8 == 1 == 1 % 8 to satisfy trainer ASSERT.
 PFBossTrainerHeader:
 	trainer EVENT_BEAT_PC_BOSS, 0, ProceduralForestBossBattleText, ProceduralForestBossBattleText, ProceduralForestBossBattleText
+	; Slots 2-5 are pokeballs, so resume the trainer-bit sequence at object
+	; slot 6, where the Phase 7 stage-event NPCs live - same shape as the
+	; cave's own header.
+	def_trainers 6
+PFStageNpc1Header:
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PFStageEventHideoutText, PFStageEventHideoutText, PFStageEventHideoutText
+PFStageNpc2Header:
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PFStageEventHideoutText, PFStageEventHideoutText, PFStageEventHideoutText
 	db -1 ; end
 
 ProceduralForest_ScriptPointers:
@@ -416,6 +491,151 @@ PFSignBossText:
 	text_far _PFSignBossText
 	text_end
 
+; --- Phase 7 rollout: stage-event NPCs (object slots 6-7) -----------------
+; Byte-for-byte the same shape as the cave's own dispatch (scripts/
+; ProceduralCave1.asm), reusing the SAME shared strings in text/StageEvents.asm
+; - only the per-type pick/dispatch code is duplicated, per that file's own
+; header ("The Forest, Facility and Cemetery reuse these strings as they grow
+; their own NPC slots").
+
+PFStageEventArrivalText:
+	text_asm
+	ld hl, PFStageEventArrivalTexts
+	call PFStageEventPickText
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFStageEventHideoutText:
+	text_asm
+	ld hl, PFStageEventHideoutTexts
+	call PFStageEventPickText
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFStageEventRecoverText:
+	text_asm
+	ld a, [wStageEventScratch]
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, PFStageEventRecoverTexts
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFStageEventRecoverTexts:
+	dw PFStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
+	dw PFStageRecoverMon          ; STAGE_GIVEBACK_MON
+	dw PFStageRecoverItem         ; STAGE_GIVEBACK_ITEM
+	dw PFStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
+
+PFStageRecoverNothing:
+	text_far _StageEventRecoverNothingText
+	text_end
+PFStageRecoverMon:
+	text_far _StageEventRecoverMonText
+	text_end
+PFStageRecoverItem:
+	text_far _StageEventRecoverItemText
+	text_end
+PFStageRecoverNoRoom:
+	text_far _StageEventRecoverNoRoomText
+	text_end
+
+PFStageEventNpc1Text:
+	text_asm
+	ld hl, PFStageNpc1Header
+	jp ProceduralForestInitBattleScript
+
+PFStageEventNpc2Text:
+	text_asm
+	ld hl, PFStageNpc2Header
+	jp ProceduralForestInitBattleScript
+
+; INPUT: hl = a six-entry table of text pointers, ordered by STAGE_EVENT_*
+; type starting at type 1. OUTPUT: hl = the entry for the currently armed
+; event. Same logic as the cave's own PCStageEventPickText, duplicated rather
+; than shared - map scripts are not guaranteed same-bank, and both are tiny.
+; bc is free to clobber (see the cave's version for why).
+PFStageEventPickText:
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	dec a
+	add a, a
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+
+PFStageEventArrivalTexts:
+	dw PFStageArrivalJessieJames  ; STAGE_EVENT_JESSIE_JAMES
+	dw PFStageArrivalPsychic      ; STAGE_EVENT_PSYCHIC
+	dw PFStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
+	dw PFStageArrivalJoy          ; STAGE_EVENT_JOY
+	dw PFStageArrivalJenny        ; STAGE_EVENT_JENNY
+	dw PFStageArrivalBothGood     ; STAGE_EVENT_BOTH_GOOD
+
+PFStageEventHideoutTexts:
+	dw PFStageHideoutJessieJames
+	dw PFStageHideoutPsychic
+	dw PFStageHideoutBurglar
+	dw PFStageHideoutJoy
+	dw PFStageHideoutJenny
+	dw PFStageHideoutBothGood
+
+PFStageArrivalJessieJames:
+	text_far _StageEventArrivalJessieJamesText
+	text_end
+PFStageArrivalPsychic:
+	text_far _StageEventArrivalPsychicText
+	text_end
+PFStageArrivalBurglar:
+	text_far _StageEventArrivalBurglarText
+	text_end
+PFStageArrivalJoy:
+	text_far _StageEventArrivalJoyText
+	text_end
+PFStageArrivalJenny:
+	text_far _StageEventArrivalJennyText
+	text_end
+PFStageArrivalBothGood:
+	text_far _StageEventArrivalBothGoodText
+	text_end
+
+PFStageHideoutJessieJames:
+	text_far _StageEventHideoutJessieJamesText
+	text_end
+PFStageHideoutPsychic:
+	text_far _StageEventHideoutPsychicText
+	text_end
+PFStageHideoutBurglar:
+	text_far _StageEventHideoutBurglarText
+	text_end
+PFStageHideoutJoy:
+	text_far _StageEventHideoutJoyText
+	text_end
+PFStageHideoutJenny:
+	text_far _StageEventHideoutJennyText
+	text_end
+PFStageHideoutBothGood:
+	text_far _StageEventHideoutBothGoodText
+	text_end
+
 ProceduralForest_TextPointers:
 	def_text_pointers
 	dw_const ProceduralForestBossText, TEXT_PROCEDURALFOREST_BOSS
@@ -427,3 +647,7 @@ ProceduralForest_TextPointers:
 	dw_const PCWildCalmedText, TEXT_PROCEDURALFOREST_CALMED
 	EXPORT TEXT_PROCEDURALFOREST_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN
+	dw_const PFStageEventNpc1Text, TEXT_PROCEDURALFOREST_STAGE_NPC_1
+	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
+	dw_const PFStageEventArrivalText, TEXT_PROCEDURALFOREST_STAGE_EVENT
+	dw_const PFStageEventRecoverText, TEXT_PROCEDURALFOREST_STAGE_RECOVER

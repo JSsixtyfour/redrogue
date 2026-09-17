@@ -574,22 +574,24 @@ DEF EVENT_USED_CELL_SEPARATOR_ON_BILL            EQU  244 ; byte 30 bit 4
 ; -- VictoryRoad2F  [def_trainers 1, 6 trainers]
 DEF EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH       EQU  245 ; byte 30 bit 5
 
-; -- ProceduralFacility  [def_trainers 6, 4 trainers]
+; -- ProceduralFacility  [def_trainers 6, 4 trainers, def_trainers 10, 2 trainers]
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_1              EQU  246 ; byte 30 bit 6
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_2              EQU  247 ; byte 30 bit 7
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_3              EQU  248 ; byte 31 bit 0
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_4              EQU  249 ; byte 31 bit 1
+DEF EVENT_BEAT_FACILITY_STAGE_NPC_1              EQU  250 ; byte 31 bit 2
+DEF EVENT_BEAT_FACILITY_STAGE_NPC_2              EQU  251 ; byte 31 bit 3
 
 ; -- Route23
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  250 ; byte 31 bit 2
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  251 ; byte 31 bit 3
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  252 ; byte 31 bit 4
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  253 ; byte 31 bit 5
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  252 ; byte 31 bit 4
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  253 ; byte 31 bit 5
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  254 ; byte 31 bit 6
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  255 ; byte 31 bit 7
 
 ; -- IndigoPlateauLobby
-DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  254 ; byte 31 bit 6
+DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  256 ; byte 32 bit 0
 
-; -- ProceduralForest  [def_trainers 1, 1 trainers]
+; -- ProceduralForest  [def_trainers 1, 1 trainers, def_trainers 6, 2 trainers]
 DEF EVENT_BEAT_PC_BOSS                           EQU  257 ; byte 32 bit 1
 
 ; -- RockTunnel1F  [def_trainers 1, 5 trainers]
@@ -1200,6 +1202,8 @@ ASSERT EVENT_BEAT_POKEMONTOWER_7_TRAINER_4 - EVENT_BEAT_POKEMONTOWER_7_TRAINER_0
 ASSERT EVENT_BEAT_POWER_PLANT_TRAINER_4 - EVENT_BEAT_POWER_PLANT_TRAINER_0 == 4 ; PowerPlant trainer block
 ASSERT EVENT_BEAT_STAGE_EVENT_NPC_2 - EVENT_BEAT_STAGE_EVENT_NPC_1 == 1 ; ProceduralCave1 trainer block
 ASSERT EVENT_BEAT_FACILITY_FAKE_BALL_4 - EVENT_BEAT_FACILITY_FAKE_BALL_1 == 3 ; ProceduralFacility trainer block
+ASSERT EVENT_BEAT_FACILITY_STAGE_NPC_2 - EVENT_BEAT_FACILITY_STAGE_NPC_1 == 1 ; ProceduralFacility trainer block
+ASSERT EVENT_BEAT_STAGE_EVENT_NPC_2 - EVENT_BEAT_STAGE_EVENT_NPC_1 == 1 ; ProceduralForest trainer block
 ASSERT EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4 - EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0 == 4 ; RockTunnel1F trainer block
 ASSERT EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_7 - EVENT_BEAT_ROCK_TUNNEL_2_TRAINER_0 == 7 ; RockTunnelB1F trainer block
 ASSERT EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4 - EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0 == 4 ; RocketHideoutB1F trainer block

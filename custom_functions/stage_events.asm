@@ -141,19 +141,26 @@ StageEventSpriteTable:
 ; The team number (wTrainerNo) is the SAME round-tier for both slots, computed
 ; once by StageEventRoundTier rather than read from the table - this is what
 ; makes the rolled team scale with the round instead of pinning to team 1
-; forever. Class differs per slot only for STAGE_EVENT_BOTH_GOOD (Joy in slot
-; 6, Jenny in slot 7); every other row uses the same class for both, which for
-; Jessie & James is exactly the point - talking to either starts the identical
-; battle, so the pair reads as one encounter.
-; Clobbers a/bc/de/hl.
+; forever. Class differs per slot only for STAGE_EVENT_BOTH_GOOD (Joy in the
+; base slot, Jenny in the next one); every other row uses the same class for
+; both, which for Jessie & James is exactly the point - talking to either
+; starts the identical battle, so the pair reads as one encounter.
+;
+; INPUT: d = this map's base NPC object slot (6 for Cave/Forest, 10 for
+; Facility - Cemetery has no pair and does not call this). The base slot's
+; pair gets the table's two class bytes; the base+1 slot is contiguous with
+; it in wMapSpriteExtraData, so no second input is needed. Survives the
+; StageEventRoundTier call (that routine only touches a/b) and the table
+; walk (which uses bc for the row offset, not d/e).
+; Clobbers a/bc/hl. Preserves e only incidentally (not a caller contract).
 ; ============================================================
 StageEventApplyTrainers::
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	ret z
 	push af
-	call StageEventRoundTier      ; a = wTrainerNo (1-9), shared by both slots
-	ld e, a
+	call StageEventRoundTier      ; a = wTrainerNo (1-9); d (base slot) survives
+	ld e, a                       ; e = team number, shared by both slots
 	pop af
 	dec a                         ; 1-based type -> 0-based row
 	add a                         ; 2 bytes per row
@@ -161,15 +168,28 @@ StageEventApplyTrainers::
 	ld b, 0
 	ld hl, StageEventTrainerTable
 	add hl, bc
-	ld a, [hli]                   ; slot 6 class
-	ld [wMapSpriteExtraData + (6 - 1) * 2], a
+	ld a, [hli]
+	ld c, a                       ; c = base slot's class
+	ld a, [hl]
+	ld b, a                       ; b = base+1 slot's class (0 = unused, harmless)
+
+	push bc
+	ld a, d
+	dec a
+	add a
+	ld l, a
+	ld h, 0
+	ld bc, wMapSpriteExtraData
+	add hl, bc                    ; hl -> base slot's (class, team) pair
+	pop bc
+	ld a, c
+	ld [hli], a
 	ld a, e
-	ld [wMapSpriteExtraData + (6 - 1) * 2 + 1], a
-	ld a, [hl]                    ; slot 7 class (0 = slot unused, harmless -
-	                               ; the object stays invisible and unengageable)
-	ld [wMapSpriteExtraData + (7 - 1) * 2], a
+	ld [hli], a                   ; hl now -> base+1 slot's pair
+	ld a, b
+	ld [hli], a
 	ld a, e
-	ld [wMapSpriteExtraData + (7 - 1) * 2 + 1], a
+	ld [hl], a
 	ret
 
 ; a = wTrainerNo (1-9), the SAME round-tier stage_event_team_spec

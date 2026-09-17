@@ -94,16 +94,26 @@ ProcBossPatchStageSprite::
 	;     declared them, costing two 12-tile VRAM slots.
 	;   * FACILITY - worse, because there the write would LAND on something.
 	;     Its slots 6-9 are the four fake item balls, so an unconditional patch
-	;     would replace a pokeball's sprite with a villain's.
+	;     would replace a pokeball's sprite with a villain's. That is why the
+	;     Facility's own pair lives at slots 10-11 instead (see below) - it is
+	;     the same reason Forest was safe to reuse slots 6-7 and Facility was
+	;     not.
 	;
-	; So the patch is gated to the maps that own these slots. Today that is the
-	; Cave alone. CONTRACT for adding another stage: it needs BOTH the object
-	; slots in its object list AND a farcall to StageEventStageSprites in its
-	; own preload, and only then a case here. Gating on wNumSprites instead
-	; would be wrong - the Facility has nine objects and would pass.
+	; So the patch is gated to the maps that own these slots, AND to the slot
+	; pair each map actually declared. CONTRACT for adding another stage: it
+	; needs BOTH the object slots in its object list AND a farcall to
+	; StageEventStageSprites in its own preload, and only then a case here.
+	; Gating on wNumSprites instead would be wrong - the Facility has nine
+	; objects even before its own pair and would pass that test wrongly.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
-	ret nz
+	jr z, .npcSlots67
+	cp PROCEDURAL_FOREST
+	jr z, .npcSlots67
+	cp PROCEDURAL_FACILITY
+	jr z, .npcSlots1011
+	ret
+.npcSlots67
 	; 0 here is not "hide it later" but "this slot does not exist":
 	; LoadMapSpriteTilePatterns skips a zero PICTUREID outright, so an unarmed
 	; event costs no VRAM tile-pattern slot.
@@ -111,6 +121,12 @@ ProcBossPatchStageSprite::
 	ld [wSprite06StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld a, e
 	ld [wSprite07StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ret
+.npcSlots1011
+	ld a, d
+	ld [wSprite10StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, e
+	ld [wSprite11StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ret
 
 ; Procedural preload (at PALLET_TOWN entry) + per-map finalize dispatch. Runs

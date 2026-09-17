@@ -6288,6 +6288,13 @@ PFacPreload::
     ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_3
     ResetEvent EVENT_BEAT_FACILITY_FAKE_BALL_4
 
+    ; Phase 7 rollout: publish the stage-event NPC sprites for this
+    ; assignment, same reason and timing as the cave/forest's own preload.
+    ; Re-asserts SRAM bank 0 itself (this routine has been on bank 1 -
+    ; "facility SRAM" - throughout) and leaves the window open; the close
+    ; below does not care which bank was last selected.
+    farcall StageEventStageSprites
+
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -6351,6 +6358,13 @@ PFacFinalize::
     ld [hli], a                     ; then tile X
     dec b
     jr nz, .ballSave
+
+    ; Phase 7 rollout: pick the stage-event hideout. Must run after
+    ; PFacGenerateFacility (room records need to be final) and works fine
+    ; here despite PFacPlaceItems having already overwritten
+    ; sProcFacilityGenScratch bytes 0-7 (room 0's record + room 1's X/Y) -
+    ; PFacPickHideout never reads rooms 0 or 1.
+    call PFacPickHideout
 
     ; Save 4 rolled items (wPFacItemTemp) to sProcFacilityBallItems.
     ld hl, wBuffer + wPFacItemTemp
@@ -6624,4 +6638,282 @@ PFacFinalize::
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
+
+    ; Phase 7 rollout: stage-event NPC slots 10-11. ONE call site, not two -
+    ; both paths already converge at .placeSprites, well before this point.
+    ; Each routine opens its own SRAM window (sStageEventHideoutX/Y are bank
+    ; 0; everything above this point has been bank 1).
+    call PFacPlaceStageEventNpcs
+    call PFacApplyStageEventTrainers
+    ret
+
+; ============================================================
+; PFacPickHideout  (Phase 7 rollout)
+; Picks the stage-event hideout from a placed, non-entry, non-exit room.
+; Candidates are rooms 2-10 ONLY, never 0 or 1: PFacPlaceItems (already run,
+; as part of PFacGenerateFacility above) overwrites sProcFacilityGenScratch
+; bytes 0-7 with the four real balls' (X,Y) - room 0's whole record plus room
+; 1's X,Y - so those two rooms' records are no longer trustworthy by the time
+; this runs. Rooms 2-4 (the other item rooms) are guaranteed placed (rule e
+; in this file's own header), so there are always at least 3 real candidates
+; and the "no candidates" branch below is unreachable in practice - kept as a
+; defined outcome rather than an assumption.
+;
+; The hideout is the room's CENTER cell (X + W/2, Y + H/2), always inside the
+; room's own stamped floor interior: PFacEncloseRooms only walls the OUTSIDE
+; perimeter, never the interior a non-degenerate placed room already stamped
+; as floor.
+;
+; Target ordinal parked in wStageEventScratch, not a register: the room-id
+; loop calls PFacRoomRecordAddr repeatedly, which clobbers d/e, and b/c are
+; already the loop counter and the room count.
+;
+; SRAM enters on bank 1 (sProcFacilityGenScratch's bank, already selected by
+; the caller) and MUST leave on bank 1 - PFacFinalize's own item-save and
+; bake steps immediately after this call assume it.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFacPickHideout:
+    ld b, 2
+    ld c, 0
+.countLoop
+    ld a, b
+    call PFacRoomRecordAddr
+    ld de, 2
+    add hl, de
+    ld a, [hl]                      ; W byte (0 = not placed)
+    and a
+    jr z, .countNext
+    inc c
+.countNext
+    inc b
+    ld a, b
+    cp 11
+    jr c, .countLoop
+    ld a, c
+    and a
+    jr nz, .haveCandidates
+    jp .disarm
+.haveCandidates
+    call Rangerandom                ; a = 0..count-1 (c holds the count)
+    ld [wStageEventScratch], a      ; target ordinal
+    ld b, 2
+.pickLoop
+    ld a, b
+    call PFacRoomRecordAddr
+    push hl
+    ld de, 2
+    add hl, de
+    ld a, [hl]                      ; W byte
+    pop hl
+    and a
+    jr z, .pickNext
+    ld a, [wStageEventScratch]
+    and a
+    jr z, .found
+    dec a
+    ld [wStageEventScratch], a
+.pickNext
+    inc b
+    jr .pickLoop
+.found
+    ld a, [hli]
+    ld d, a                         ; d = room X
+    ld a, [hli]
+    ld e, a                         ; e = room Y
+    ld a, [hli]                     ; W
+    srl a
+    add a, d
+    ld d, a                         ; d = center X
+    ld a, [hl]                      ; H
+    srl a
+    add a, e
+    ld e, a                         ; e = center Y
+    xor a
+    ld [rRAMB], a                   ; bank 0: sStageEventHideoutX/Y
+    ld a, d
+    ld [sStageEventHideoutX], a
+    ld a, e
+    ld [sStageEventHideoutY], a
+    jr .restoreBank
+.disarm
+    xor a
+    ld [rRAMB], a
+    ld a, STAGE_EVENT_NO_HIDEOUT
+    ld [sStageEventHideoutX], a
+    ld [sStageEventHideoutY], a
+.restoreBank
+    ld a, BANK(sProcFacilityStagingBuffer)
+    ld [rRAMB], a
+    ret
+
+; ============================================================
+; PFacPlaceStageEventNpcs  (Phase 7 rollout)
+; Facility's counterpart to the cave's PCPlaceStageEventNpcs, for slots 10-11
+; instead of 6-7. The entrance is a FIXED block, (9,19) - see this file's own
+; warp_event comment in data/maps/objects/ProceduralFacility.asm ("south
+; entry socket at generated block (9,19)") - so, like the forest, no SRAM
+; read is needed for it.
+;
+; "One cell inward" does not carry over from the cave/forest: those hideouts
+; are dead-end maze cells with a well-defined single open direction; this one
+; is a room CENTER, which has no such direction. Slot 11 is simply one block
+; to the right of slot 10 (left if that would leave the grid), which costs
+; nothing beyond guaranteeing the pair never shares a cell - the only hard
+; requirement (see the cave's own PCPlaceStageEventNpcs header for why
+; walkability itself was proven unnecessary to check).
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFacPlaceStageEventNpcs:
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a                   ; bank 0: sStageEventHideoutX/Y
+    ld a, [sStageEventHideoutX]
+    ld b, a                         ; b = hideout block X
+    ld a, [sStageEventHideoutY]
+    ld c, a                         ; c = hideout block Y
+    ld a, b
+    cp STAGE_EVENT_NO_HIDEOUT
+    jr nz, .haveHideout
+    ld b, 9                         ; no hideout - park on the entrance block
+    ld c, 19
+.haveHideout
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+
+    ld a, [wStageEvent]
+    and STAGE_EVENT_PHASE_MASK
+    jr nz, .atHideout
+    ld d, 9
+    ld e, 19
+    jp PFacPlaceStageEventArrival
+.atHideout
+    ld hl, wSprite10StateData2MapY
+    ld a, c
+    add a, a
+    add a, 4
+    ld [hli], a
+    ld a, b
+    add a, a
+    add a, 4
+    ld [hl], a
+
+    ld a, b
+    cp PFAC_SIZE - 1
+    jr nc, .inwardLeft
+    inc b
+    jr .haveSecond
+.inwardLeft
+    dec b
+.haveSecond
+    ld hl, wSprite11StateData2MapY
+    ld a, c
+    add a, a
+    add a, 4
+    ld [hli], a
+    ld a, b
+    add a, a
+    add a, 4
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFacPlaceStageEventArrival  (Phase 7 rollout)
+; Facility's counterpart to the cave's PCPlaceStageEventArrival.
+; INPUT: d = entrance block X, e = entrance block Y. SRAM already closed.
+; Clobbers a/hl.
+; ============================================================
+PFacPlaceStageEventArrival:
+    ld hl, wSprite10StateData2MapY
+    ld a, e
+    add a, a
+    add a, 3
+    ld [hli], a
+    ld a, d
+    add a, a
+    add a, 5
+    ld [hl], a
+    ld hl, wSprite11StateData2MapY
+    ld a, e
+    add a, a
+    add a, 3
+    ld [hli], a
+    ld a, d
+    add a, a
+    add a, 6
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFacApplyStageEventTrainers  (Phase 7 rollout)
+; Thin shim so PFacFinalize reaches the generic trainer patch in the "Stage
+; Events" section, with d set to this map's base NPC slot (10 - the facility
+; is the one stage that cannot reuse slots 6-7, see procedural_stage_hooks.asm).
+; ============================================================
+PFacApplyStageEventTrainers:
+    ld d, 10
+    farcall StageEventApplyTrainers
+    ret
+
+; ============================================================
+; PFacStageEventVanish  (Phase 7 rollout)
+; Facility's counterpart to the cave's PCStageEventVanish.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFacStageEventVanish::
+    call GBFadeOutToBlack
+    ld a, [wStageEvent]
+    and ~STAGE_EVENT_PHASE_MASK & $ff
+    or STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+    ld [wStageEvent], a
+    call PFacPlaceStageEventNpcs
+    call UpdateSprites
+    call Delay3
+    call GBFadeInFromBlack
+    ret
+
+; ============================================================
+; PFacShowStageEventNpcs  (Phase 7 rollout)
+; Facility's counterpart to the shared StageEventShowCaveNpcs
+; (custom_functions/stage_events.asm), duplicated rather than parameterized:
+; TOGGLE_FACILITY_NPC_1/2 are genuinely different constants from
+; TOGGLE_WILD_AREA_NPC_1/2 (see the toggle_constants.asm note), so this can't
+; just reuse the shared routine's slot-6/7 assumption the way the forest does.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFacShowStageEventNpcs::
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
+    ld a, [sStageEventSprite6]
+    ld d, a
+    ld a, [sStageEventSprite7]
+    ld e, a
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+    ld a, d
+    and a
+    ret z                            ; no event armed - leave both hidden
+    push de
+    ld a, TOGGLE_FACILITY_NPC_1
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
+    pop de
+    ld a, e
+    and a
+    ret z                            ; single-NPC event
+    ld a, TOGGLE_FACILITY_NPC_2
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
     ret

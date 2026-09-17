@@ -36,4 +36,10 @@ ProceduralFacility_Object:
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_3, VOLTORB, 5 | OW_POKEMON
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFACILITY_FAKE_BALL_4, VOLTORB, 5 | OW_POKEMON
 
+	; Slots 10-11: stage-event NPC pair (Phase 7 rollout). NOT slots 6-7 -
+	; those are already the four fake balls above. Same placeholder-until-
+	; runtime-patched shape as every other slot here.
+	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALFACILITY_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
+	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALFACILITY_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
+
 	def_warps_to PROCEDURAL_FACILITY

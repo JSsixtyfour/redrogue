@@ -397,6 +397,12 @@ ENDM
 	;const TOGGLE_FOREST_POKEBALL_2   ; slot 3
 	;const TOGGLE_FOREST_POKEBALL_3   ; slot 4
 	;const TOGGLE_FOREST_POKEBALL_4   ; slot 5
+	; Stage-event NPCs (Phase 7 rollout) stay commented too, for the same
+	; reason slots 1-5 do: IsObjectHidden's WildAreaStageMapTable fast path
+	; (.checkMaybeRoguePB in engine/overworld/toggleable_objects.asm) now
+	; resolves slots 6/7 to TOGGLE_WILD_AREA_NPC_1/2 directly for any map in
+	; WildAreaStageMapTable, the same way .checkMaybeRoguePG already does for
+	; slots 1-5 - so this per-map table is never consulted for them either.
 
 	toggle_consts_for PROCEDURAL_CAVE_1
     const TOGGLE_WILD_AREA_BOSS       ; slot 1 (first object_event)
@@ -430,6 +436,16 @@ ENDM
 	const TOGGLE_FACILITY_FAKE_BALL_2  ; slot 7
 	const TOGGLE_FACILITY_FAKE_BALL_3  ; slot 8
 	const TOGGLE_FACILITY_FAKE_BALL_4  ; slot 9
+	; Stage-event NPC pair (Phase 7 rollout), slots 10-11. Unlike the cave and
+	; forest's shared TOGGLE_WILD_AREA_NPC_1/2 (resolved by a hardcoded
+	; WildAreaStageMapTable fast path in IsObjectHidden), slots 10-11 are NOT
+	; covered by any fast path - IsObjectHidden's slot dispatch chain stops at
+	; 10, and even that one falls through to .normalCheck for the facility
+	; (its slot 6-9 fake-ball branch only claims b-6 < 4). So these need real
+	; entries, both here and in data/maps/toggleable_objects.asm's
+	; PROCEDURAL_FACILITY block.
+	const TOGGLE_FACILITY_NPC_1        ; slot 10
+	const TOGGLE_FACILITY_NPC_2        ; slot 11
 
 	toggle_consts_for PROCEDURAL_CEMETERY_1
 	const TOGGLE_CEMETERY_1_POKEBALL

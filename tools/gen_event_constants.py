@@ -389,6 +389,15 @@ NEW_EVENTS = [
     # stages can reuse the same two names as they are wired up.
     "EVENT_BEAT_STAGE_EVENT_NPC_1",
     "EVENT_BEAT_STAGE_EVENT_NPC_2",
+    # Procedural stage events, Facility only. The facility could not reuse
+    # EVENT_BEAT_STAGE_EVENT_NPC_1/2 above: its NPC pair sits at object slots
+    # 10-11 (slots 6-9 are the four fake balls), and def_trainers' bit-per-
+    # slot contract needs an event pair whose OWN bit position matches that
+    # alignment, not slot 6-7's. The pair must stay consecutive and begin at
+    # object-slot bit 10; the allocator derives that from the
+    # `def_trainers 10` in scripts/ProceduralFacility.asm.
+    "EVENT_BEAT_FACILITY_STAGE_NPC_1",
+    "EVENT_BEAT_FACILITY_STAGE_NPC_2",
     # Phase 7 Elite Four rooms. Two per room, mirroring the four shipped rooms
     # exactly (see EVENT_BEAT_AGATHAS_ROOM_TRAINER_0 /
     # EVENT_AUTOWALKED_INTO_AGATHAS_ROOM): the member's beat flag, which is a
@@ -450,25 +459,50 @@ def scrape_events():
 
 
 def scrape_trainer_blocks():
-    """map -> (def_trainers, [event names in trainer order])"""
+    """map -> [(def_trainers, [event names in trainer order]), ...]
+
+    ONE ENTRY PER def_trainers CALL, not one per file. A script may carry more
+    than one - e.g. a boss's own header at `def_trainers 1` followed later by
+    an unrelated NPC pair's `def_trainers 6` (scripts/ProceduralForest.asm and
+    ProceduralFacility.asm both do this for the Phase 7 stage-event NPCs).
+    Treating a whole file as a single run used to flatten these into one
+    combined list keyed on only the FIRST def_trainers value - harmless while
+    every trainer in a file shared one CURRENT_TRAINER_BIT run, but wrong the
+    moment a second, independently-numbered run appeared in the same file:
+    the flattened run would claim bits starting from the wrong offset, and if
+    any of its names were already placed by an earlier map (as
+    EVENT_BEAT_STAGE_EVENT_NPC_1/2 are, shared across Cave/Forest) while
+    others were not, allocate() raised "run ... is only partly placed by an
+    earlier map" - a real bug, not a warning, caught the day Facility's own
+    NPC pair needed a second def_trainers block in the same file as its four
+    fake-ball trainers.
+    """
     blocks = {}
     sd = os.path.join(ROOT, "scripts")
     for fn in sorted(os.listdir(sd)):
         if not fn.endswith(".asm") or fn.startswith("delete"):
             continue
         text = read(os.path.join(sd, fn))
-        trainers = re.findall(r"^\s*trainer\s+(EVENT_[A-Z0-9_]+)", text, re.M)
-        if not trainers:
-            continue
-        # ANCHORED to line start, like the `trainer` regex above. Unanchored it
+        # ANCHORED to line start, like the `trainer` regex below. Unanchored it
         # also matched the token inside a COMMENT, and a comment mentioning
         # def_trainers with no number silently made `first` default to 1 - which
         # then emitted the wrong bit asserts and failed the build with a
         # misleading "Expected ... to be bit 2, got 1". A comment must not be
         # able to change generated output.
-        dt = re.findall(r"^\s*def_trainers(?:\s+(\d+))?", text, re.M)
-        first = int(dt[0]) if (dt and dt[0]) else 1
-        blocks[fn[:-4]] = (first, trainers)
+        dt_matches = list(re.finditer(r"^\s*def_trainers(?:\s+(\d+))?", text, re.M))
+        if not dt_matches:
+            continue
+        segments = []
+        for i, m in enumerate(dt_matches):
+            first = int(m.group(1)) if m.group(1) else 1
+            seg_start = m.end()
+            seg_end = dt_matches[i + 1].start() if i + 1 < len(dt_matches) else len(text)
+            trainers = re.findall(r"^\s*trainer\s+(EVENT_[A-Z0-9_]+)",
+                                  text[seg_start:seg_end], re.M)
+            if trainers:
+                segments.append((first, trainers))
+        if segments:
+            blocks[fn[:-4]] = segments
     return blocks
 
 
@@ -591,9 +625,10 @@ class Runs(object):
 def build_owner_runs(trainer_blocks):
     """map -> [Runs], merging CONTIG runs that overlap the trainer block."""
     owner = defaultdict(list)
-    for name, (first, trainers) in trainer_blocks.items():
-        owner[name].append(
-            Runs(trainers, first, "def_trainers %d trainer block" % first))
+    for name, segments in trainer_blocks.items():
+        for first, trainers in segments:
+            owner[name].append(
+                Runs(trainers, first, "def_trainers %d trainer block" % first))
     for map_name, names, pinned, why in CONTIG:
         existing = owner.get(map_name, [])
         merged = False
@@ -910,8 +945,9 @@ def emit(alloc, trainer_blocks, reach_count):
             label = owner if owner else "(engine / cross-map)"
             extra = ""
             if owner in trainer_blocks:
-                extra = "  [def_trainers %d, %d trainers]" % (
-                    trainer_blocks[owner][0], len(trainer_blocks[owner][1]))
+                extra = "  [%s]" % ", ".join(
+                    "def_trainers %d, %d trainers" % (first, len(trainers))
+                    for first, trainers in trainer_blocks[owner])
             w("")
             w("; -- %s%s" % (label, extra))
         w("DEF %-44s EQU %4d %s" % (name, layout[name], bitcomment(layout[name])))
@@ -959,12 +995,12 @@ def emit(alloc, trainer_blocks, reach_count):
         w("; %s: %s" % (map_name, why))
         w("ASSERT %s - %s == %d" % (names[-1], names[0], len(names) - 1))
     for map_name in sorted(trainer_blocks):
-        _first, trainers = trainer_blocks[map_name]
-        trainers = [t for t in trainers if t in layout]
-        if len(trainers) < 2:
-            continue
-        w("ASSERT %s - %s == %d ; %s trainer block"
-          % (trainers[-1], trainers[0], len(trainers) - 1, map_name))
+        for _first, trainers in trainer_blocks[map_name]:
+            trainers = [t for t in trainers if t in layout]
+            if len(trainers) < 2:
+                continue
+            w("ASSERT %s - %s == %d ; %s trainer block"
+              % (trainers[-1], trainers[0], len(trainers) - 1, map_name))
     w("")
     w("; -- trainer runs folded into ONE byte read by an ALL_TRAINERS_MASK --")
     for map_name, members in scrape_mask_groups():
@@ -1016,15 +1052,16 @@ def verify(alloc, trainer_blocks):
                 "%s run not consecutive (span %d, expected %d): %s"
                 % (map_name, span, len(names) - 1, why))
 
-    for map_name, (_first, trainers) in sorted(trainer_blocks.items()):
-        trainers = [t for t in trainers if t in layout]
-        if len(trainers) < 2:
-            continue
-        span = bit(trainers[-1]) - bit(trainers[0])
-        if span != len(trainers) - 1:
-            problems.append("%s trainer block not consecutive (span %d, "
-                            "expected %d)" % (map_name, span,
-                                              len(trainers) - 1))
+    for map_name, segments in sorted(trainer_blocks.items()):
+        for _first, trainers in segments:
+            trainers = [t for t in trainers if t in layout]
+            if len(trainers) < 2:
+                continue
+            span = bit(trainers[-1]) - bit(trainers[0])
+            if span != len(trainers) - 1:
+                problems.append("%s trainer block not consecutive (span %d, "
+                                "expected %d)" % (map_name, span,
+                                                  len(trainers) - 1))
 
     for map_name, members in scrape_mask_groups():
         members = [m for m in members if m in layout]

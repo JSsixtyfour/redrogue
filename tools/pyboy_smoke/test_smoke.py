@@ -2105,8 +2105,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
 
     def test_procedural_forest_generation(self) -> None:
+        # 7, not 5, since the Phase 7 rollout: the boss, four pokeballs, and
+        # the two stage-event NPC slots - same reasoning as the cave's own
+        # test_procedural_cave_generation above.
         self.assert_generation_contract(
-            "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 5, True
+            "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 7, True
         )
 
     def test_procedural_cemetery_generation(self) -> None:

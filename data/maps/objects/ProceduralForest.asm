@@ -24,4 +24,14 @@ ProceduralForest_Object:
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFOREST_POKEBALL_3, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALFOREST_POKEBALL_4, 0
 
+	; Slots 6-7: stage-event NPC pair (Phase 7 rollout), same shape as the
+	; cave's own slots 6-7. Placeholder sprite/position/class - all four are
+	; runtime-patched (StageEventStageSprites, PFPlaceStageEventNpcs,
+	; StageEventApplyTrainers) before either slot can ever be seen or engaged.
+	; The TRAINER flag (from declaring 8 args, not 7) is what has to be right at
+	; build time - talking to an object declared as an ITEM would run the
+	; pickup path, never a battle.
+	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALFOREST_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
+	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALFOREST_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
+
 	def_warps_to PROCEDURAL_FOREST

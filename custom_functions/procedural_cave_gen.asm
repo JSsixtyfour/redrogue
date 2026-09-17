@@ -2848,6 +2848,7 @@ PCPlaceStageEventArrival:
 ; moment.
 ; ============================================================
 PCApplyStageEventTrainers:
+	ld d, 6                         ; Phase 7f: base NPC slot, shared with Forest
 	farcall StageEventApplyTrainers
 	ret
 

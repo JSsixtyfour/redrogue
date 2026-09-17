@@ -2010,6 +2010,15 @@ PFScanForBall:
     cp 4
     jp nz, .sfbPickBall
 
+    ; Phase 7 rollout: pick the stage-event hideout from the SAME candidate
+    ; list, while it is still intact - the copy two blocks below destroys
+    ; offsets 0-7. Must run here, not earlier: it needs the full set of 4
+    ; accepted ball cells (wPFAcceptedXY) to reject a collision, and not
+    ; later, because that copy is about to overwrite the packed candidates
+    ; this reads. The boss's own cell is already excluded (Phase 1, above),
+    ; so this only has to avoid the 4 balls.
+    call PFPickForestHideout
+
     ; All 4 picked — copy accepted (X,Y) pairs into sProcForestGenScratch[0..7]
     ; (the candidate list there is no longer needed) so they survive the
     ; upcoming PFBraidPass call untouched, and write items to wRogueItem/2/3/4.
@@ -2025,6 +2034,23 @@ PFScanForBall:
     jr .sfbWriteItems
 
 .sfbAllFallback
+    ; No dead ends found at all - there is nowhere for a hideout either.
+    ; Disarming here (rather than leaving whatever the previous forest wrote)
+    ; is required, not defensive: this SRAM field is shared across all four
+    ; procedural stages and a stale hideout from the last cave/facility visit
+    ; would otherwise leak into this forest's stage event.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
+    ld a, STAGE_EVENT_NO_HIDEOUT
+    ld [sStageEventHideoutX], a
+    ld [sStageEventHideoutY], a
+    ; No BMODE/RAMG restore here - the very next instructions re-enter the
+    ; item-roll loop below, which re-asserts RAMG_SRAM_ENABLE + bank 0 itself
+    ; before its first farcall, exactly like .sfbRollItem does on the normal
+    ; path.
     ; No dead ends found at all — default all 4 balls to the entrance block.
     ld hl, sProcForestGenScratch
     ld b, 4
@@ -2097,6 +2123,94 @@ PFScanForBall:
     inc de                     ; skip high byte of each dw slot
     dec b
     jr nz, .sfbWriteItemsLoop
+    ret
+
+; ============================================================
+; PFPickForestHideout  (Phase 7 rollout)
+; Picks the stage-event hideout from the dead-end candidate list
+; PFScanForBall just built (sProcForestGenScratch[0..candCount-1], packed
+; col|row<<4), called right after all 4 balls are accepted and BEFORE the
+; caller's own copy overwrites offsets 0-7 with their block-XY pairs.
+;
+; The boss's own cell is already excluded at collection time (Phase 1), so
+; this only has to avoid the 4 accepted ball cells, which live in
+; wBuffer + wPFAcceptedXY in the same block-XY format this routine's own
+; decode produces - a plain byte-pair compare, no further conversion needed.
+;
+; Bounded retry, same shape as the ball spacing/item-dedup loops above:
+; accept the last draw anyway once the budget is spent, rather than spin.
+; wPFCurX/Y/wPFSpaceRetry are dead by this point (the ball-picking loop that
+; owns them has already finished), so this reuses them rather than costing
+; new wBuffer bytes - the overlay is fully allocated, 0-29 (see the ASSERTs
+; at this file's top).
+;
+; SRAM is assumed open (RAMG_SRAM_ENABLE, bank 0) on entry - true here
+; because .sfbRollItem's own re-assert (immediately before this is called)
+; leaves it that way - and is re-asserted defensively before the write
+; anyway, matching this file's own established paranoia about RARE LENS/
+; GetKeyItemPower silently disabling SRAM.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFPickForestHideout:
+    ld a, 8
+    ld [wBuffer + wPFSpaceRetry], a
+.pfhRetry
+    ld a, [wBuffer + wPFCandCount]
+    ld c, a
+    call Rangerandom           ; a = 0..candCount-1
+    ld e, a
+    ld d, 0
+    ld hl, sProcForestGenScratch
+    add hl, de
+    ld a, [hl]                 ; packed col|row<<4
+    ld b, a
+    and $0F
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a  ; candidate block X = 2*col+1
+    ld a, b
+    swap a
+    and $0F
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a  ; candidate block Y = 2*row+1
+
+    ; reject if it matches any of the 4 accepted ball cells
+    ld b, 4
+    ld hl, wBuffer + wPFAcceptedXY
+.pfhCheckLoop
+    ld a, [hl]                 ; ball X
+    ld c, a
+    inc hl
+    ld a, [hl]                 ; ball Y
+    ld d, a
+    inc hl
+    ld a, [wBuffer + wPFCurX]
+    cp c
+    jr nz, .pfhCheckNext
+    ld a, [wBuffer + wPFCurY]
+    cp d
+    jr z, .pfhCollision
+.pfhCheckNext
+    dec b
+    jr nz, .pfhCheckLoop
+    jr .pfhAccept
+.pfhCollision
+    ld a, [wBuffer + wPFSpaceRetry]
+    dec a
+    ld [wBuffer + wPFSpaceRetry], a
+    jr nz, .pfhRetry
+    ; budget exhausted — accept anyway (established pattern in this file)
+.pfhAccept
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
+    ld a, [wBuffer + wPFCurX]
+    ld [sStageEventHideoutX], a
+    ld a, [wBuffer + wPFCurY]
+    ld [sStageEventHideoutY], a
     ret
 
 ; ============================================================
@@ -2266,6 +2380,15 @@ PFPreloadForest::
     ResetEvent EVENT_BEAT_PC_BOSS
     ResetEvent EVENT_PC_BUDGET_ENDED
     ResetEvent EVENT_PC_CALMED_SHOWN
+
+    ; Phase 7 rollout: publish the stage-event NPC sprites for this
+    ; assignment, same reason and same timing as the cave's own preload -
+    ; ProcBossPatchStageSprite reads these between LoadMapHeader and
+    ; InitMapSprites on the FIRST load, too early for anything rolled at
+    ; finalize. Re-asserts SRAM bank 0 itself and deliberately leaves the
+    ; window open, since this routine owns it and closes it below.
+    farcall StageEventStageSprites
+
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -2852,4 +2975,172 @@ PFinalizeForest::
     ld [rBMODE], a
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
+
+    ; Phase 7 rollout: stage-event NPC slots 6-7. ONE call site, not two like
+    ; the cave's - Forest's slow and fast paths already reconverge at
+    ; .patchWarp, well before this point, so there is nowhere for a
+    ; fast-re-entry-only gap to hide.
+    call PFPlaceStageEventNpcs
+    call PFApplyStageEventTrainers
+    ret
+
+; ============================================================
+; PFPlaceStageEventNpcs  (Phase 7 rollout)
+; Forest's counterpart to the cave's PCPlaceStageEventNpcs. Positions object
+; slots 6-7 for this forest: slot 6 on the hideout, slot 7 one cell inward
+; from it (paired events only), or both in front of the player if the event
+; is still in phase WAITING.
+;
+; UNLIKE THE CAVE, the player's warp-in position needs no SRAM read at all:
+; the forest's entrance is a FIXED block, (9,17) - see this file's own header
+; ("Entrance: cell (4,8) = block (9,17) = static warp_event tile (19,34)")
+; and PFScanForBall's ball-fallback default, which uses the same two literals.
+; Positioning unconditionally, armed event or not, matches the cave's own
+; reasoning: every object on the map must occupy a distinct cell, and a slot
+; left at the object list's placeholder (10,10) would collide with itself.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFPlaceStageEventNpcs:
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
+    ld a, [sStageEventHideoutX]
+    ld b, a                         ; b = hideout block X
+    ld a, [sStageEventHideoutY]
+    ld c, a                         ; c = hideout block Y
+    ld a, b
+    cp STAGE_EVENT_NO_HIDEOUT
+    jr nz, .haveHideout
+    ld b, 9                         ; no hideout - park on the entrance block
+    ld c, 17
+.haveHideout
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+
+    ; --- phase WAITING puts them in front of the player instead ---------
+    ld a, [wStageEvent]
+    and STAGE_EVENT_PHASE_MASK
+    jr nz, .atHideout               ; HIDING or SETTLED - use the hideout below
+    ld d, 9
+    ld e, 17
+    jp PFPlaceStageEventArrival
+.atHideout
+
+    ; --- slot 6 on the hideout itself ---
+    ld hl, wSprite06StateData2MapY
+    ld a, c
+    add a, a
+    add a, 4                        ; sprite position is block*2 + 4 everywhere
+    ld [hli], a
+    ld a, b
+    add a, a
+    add a, 4
+    ld [hl], a
+
+    ; --- slot 7 one cell inward (2 blocks - Forest cells are 2 blocks
+    ; apart), so the pair never stacks. Dead-end candidates always sit at odd
+    ; block coords 1..17 (PF_CELL_W/H = 9), so the edge test is a plain
+    ; compare against those two literals - no cell/block conversion needed.
+    ld a, c
+    cp 1
+    jr nz, .notTopEdge
+    ld a, c
+    add a, 2                        ; top edge: inward is +1 cell (2 blocks) down
+    ld c, a
+    jr .haveSecond
+.notTopEdge
+    cp 17
+    jr nz, .notBottomEdge
+    ld a, c
+    sub 2
+    ld c, a
+    jr .haveSecond
+.notBottomEdge
+    ld a, b
+    cp 1
+    jr nz, .notLeftEdge
+    ld a, b
+    add a, 2
+    ld b, a
+    jr .haveSecond
+.notLeftEdge
+    ld a, b
+    sub 2
+    ld b, a
+.haveSecond
+    ld hl, wSprite07StateData2MapY
+    ld a, c
+    add a, a
+    add a, 4
+    ld [hli], a
+    ld a, b
+    add a, a
+    add a, 4
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFPlaceStageEventArrival  (Phase 7 rollout)
+; Forest's counterpart to the cave's PCPlaceStageEventArrival. Byte-for-byte
+; the same coordinate math - the only difference is the entrance is a fixed
+; literal here instead of an SRAM-staged value, since the forest only ever
+; has one entrance position.
+; INPUT: d = entrance block X, e = entrance block Y. SRAM already closed.
+; Clobbers a/hl.
+; ============================================================
+PFPlaceStageEventArrival:
+    ld hl, wSprite06StateData2MapY
+    ld a, e
+    add a, a
+    add a, 3                        ; blockY*2+3 = one step above the player
+    ld [hli], a
+    ld a, d
+    add a, a
+    add a, 5                        ; blockX*2+5 = the player's own column
+    ld [hl], a
+    ld hl, wSprite07StateData2MapY
+    ld a, e
+    add a, a
+    add a, 3
+    ld [hli], a
+    ld a, d
+    add a, a
+    add a, 6                        ; one step to the right of slot 6
+    ld [hl], a
+    ret
+
+; ============================================================
+; PFApplyStageEventTrainers  (Phase 7 rollout)
+; Thin shim so PFinalizeForest reaches the generic trainer patch in the
+; "Stage Events" section, with d set to this map's base NPC slot (6, same as
+; the cave - Forest and Cave are the only two stages using slots 6-7).
+; ============================================================
+PFApplyStageEventTrainers:
+    ld d, 6
+    farcall StageEventApplyTrainers
+    ret
+
+; ============================================================
+; PFStageEventVanish  (Phase 7 rollout)
+; Forest's counterpart to the cave's PCStageEventVanish - byte-for-byte the
+; same dark-flash idiom, just calling PFPlaceStageEventNpcs (this file's own
+; placement routine) instead of the cave's. See that routine's header for the
+; full reasoning (lifted from Giovanni's disappear idiom, ordering is load
+; bearing: the phase advances to HIDING BEFORE the reposition).
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFStageEventVanish::
+    call GBFadeOutToBlack
+    ld a, [wStageEvent]
+    and ~STAGE_EVENT_PHASE_MASK & $ff
+    or STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+    ld [wStageEvent], a
+    call PFPlaceStageEventNpcs      ; now takes the hideout branch
+    call UpdateSprites
+    call Delay3
+    call GBFadeInFromBlack
     ret

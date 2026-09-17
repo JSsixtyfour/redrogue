@@ -43,7 +43,39 @@ ProceduralFacility_Script:
 	ld a, TOGGLE_WILD_AREA_BOSS
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	; Phase 7 rollout: reveal the stage-event NPC slots (10-11), but only for
+	; the slots this event actually uses.
+	farcall PFacShowStageEventNpcs
 .afterSetup
+	; --- Phase 7 rollout: stage-event arrival -----------------------------
+	; Byte-for-byte the same shape as the cave's own .afterSetup block.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .afterStageEvent
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterStageEvent          ; no event armed on this wild area
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr nz, .afterStageEvent         ; already spoken
+	ld a, TEXT_PROCEDURALFACILITY_STAGE_EVENT
+	ldh [hTextID], a
+	call DisplayTextID
+	farcall StageEventDoTheft       ; no-op for the good NPCs (7d's dispatch)
+	; Good NPCs (Joy, Jenny, the pair) do not hide - see scripts/
+	; ProceduralCave1.asm's identical branch for the full reasoning.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	jr c, .villainVanish
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	jr .afterStageEvent
+.villainVanish
+	farcall PFacStageEventVanish    ; fade out, relocate, fade in; -> HIDING
+.afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
@@ -57,6 +89,37 @@ ProceduralFacility_Script:
 	ldh [hTextID], a
 	call DisplayTextID
 .afterCalm
+	; --- Phase 7 rollout: recovery, once the villain is beaten -------------
+	; Byte-for-byte the same shape as the cave's own recovery block.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterRecovery            ; no event armed
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	cp STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	jr nz, .afterRecovery           ; not robbed-and-hiding, so nothing owed
+	CheckEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+	jr nz, .recover
+	CheckEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
+	jr z, .afterRecovery
+.recover
+	ld a, [wStatusFlags3]
+	bit BIT_PRINT_END_BATTLE_TEXT, a
+	jr nz, .afterRecovery
+	farcall Delay3
+	farcall StageEventGiveBack      ; a = STAGE_GIVEBACK_*; -> SETTLED
+	ld [wStageEventScratch], a      ; the text handler picks its line from this
+	ld a, TOGGLE_FACILITY_NPC_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_FACILITY_NPC_2
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TEXT_PROCEDURALFACILITY_STAGE_RECOVER
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
 	; text has fully cleared (same shape cave/forest use).
 	CheckEvent EVENT_PC_BOSS_OFFERED
@@ -209,6 +272,10 @@ ProceduralFacility_TextPointers:
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
 	EXPORT TEXT_PROCEDURALFACILITY_CALMED ; used by engine/battle/wild_encounters.asm
+	dw_const PFacStageEventNpc1Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_1
+	dw_const PFacStageEventNpc2Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_2
+	dw_const PFacStageEventArrivalText, TEXT_PROCEDURALFACILITY_STAGE_EVENT
+	dw_const PFacStageEventRecoverText, TEXT_PROCEDURALFACILITY_STAGE_RECOVER
 
 ProceduralFacilityTrainerHeaders:
 PFacBossTrainerHeader:
@@ -231,6 +298,14 @@ PFacFakeBall3Header:
 	trainer EVENT_BEAT_FACILITY_FAKE_BALL_3, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
 PFacFakeBall4Header:
 	trainer EVENT_BEAT_FACILITY_FAKE_BALL_4, 0, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText, ProceduralFacilityFakeBallBattleText
+	; Slots 6-9 are the four fake balls above, so resume the trainer-bit
+	; sequence at object slot 10, where the Phase 7 stage-event NPCs live -
+	; the facility is the one stage that could not reuse slots 6-7.
+	def_trainers 10
+PFacStageNpc1Header:
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventHideoutText, PFacStageEventHideoutText
+PFacStageNpc2Header:
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventHideoutText, PFacStageEventHideoutText
 	db -1 ; end
 
 ProceduralFacilityInitBattleScript:
@@ -294,4 +369,144 @@ ProceduralFacilityFakeBall4Text:
 
 ProceduralFacilityFakeBallBattleText:
 	text_far _PowerPlantVoltorbBattleText
+	text_end
+
+; --- Phase 7 rollout: stage-event NPCs (object slots 10-11) ---------------
+; Byte-for-byte the same shape as the cave's own dispatch, reusing the shared
+; strings in text/StageEvents.asm.
+
+PFacStageEventArrivalText:
+	text_asm
+	ld hl, PFacStageEventArrivalTexts
+	call PFacStageEventPickText
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFacStageEventHideoutText:
+	text_asm
+	ld hl, PFacStageEventHideoutTexts
+	call PFacStageEventPickText
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFacStageEventRecoverText:
+	text_asm
+	ld a, [wStageEventScratch]
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, PFacStageEventRecoverTexts
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PFacStageEventRecoverTexts:
+	dw PFacStageRecoverNothing    ; STAGE_GIVEBACK_NOTHING
+	dw PFacStageRecoverMon        ; STAGE_GIVEBACK_MON
+	dw PFacStageRecoverItem       ; STAGE_GIVEBACK_ITEM
+	dw PFacStageRecoverNoRoom     ; STAGE_GIVEBACK_NO_ROOM
+
+PFacStageRecoverNothing:
+	text_far _StageEventRecoverNothingText
+	text_end
+PFacStageRecoverMon:
+	text_far _StageEventRecoverMonText
+	text_end
+PFacStageRecoverItem:
+	text_far _StageEventRecoverItemText
+	text_end
+PFacStageRecoverNoRoom:
+	text_far _StageEventRecoverNoRoomText
+	text_end
+
+PFacStageEventNpc1Text:
+	text_asm
+	ld hl, PFacStageNpc1Header
+	jp ProceduralFacilityInitBattleScript
+
+PFacStageEventNpc2Text:
+	text_asm
+	ld hl, PFacStageNpc2Header
+	jp ProceduralFacilityInitBattleScript
+
+; INPUT: hl = a six-entry table of text pointers, ordered by STAGE_EVENT_*
+; type starting at type 1. OUTPUT: hl = the entry for the currently armed
+; event. Own copy, not shared - map scripts are not guaranteed same-bank.
+PFacStageEventPickText:
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	dec a
+	add a, a
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+
+PFacStageEventArrivalTexts:
+	dw PFacStageArrivalJessieJames
+	dw PFacStageArrivalPsychic
+	dw PFacStageArrivalBurglar
+	dw PFacStageArrivalJoy
+	dw PFacStageArrivalJenny
+	dw PFacStageArrivalBothGood
+
+PFacStageEventHideoutTexts:
+	dw PFacStageHideoutJessieJames
+	dw PFacStageHideoutPsychic
+	dw PFacStageHideoutBurglar
+	dw PFacStageHideoutJoy
+	dw PFacStageHideoutJenny
+	dw PFacStageHideoutBothGood
+
+PFacStageArrivalJessieJames:
+	text_far _StageEventArrivalJessieJamesText
+	text_end
+PFacStageArrivalPsychic:
+	text_far _StageEventArrivalPsychicText
+	text_end
+PFacStageArrivalBurglar:
+	text_far _StageEventArrivalBurglarText
+	text_end
+PFacStageArrivalJoy:
+	text_far _StageEventArrivalJoyText
+	text_end
+PFacStageArrivalJenny:
+	text_far _StageEventArrivalJennyText
+	text_end
+PFacStageArrivalBothGood:
+	text_far _StageEventArrivalBothGoodText
+	text_end
+
+PFacStageHideoutJessieJames:
+	text_far _StageEventHideoutJessieJamesText
+	text_end
+PFacStageHideoutPsychic:
+	text_far _StageEventHideoutPsychicText
+	text_end
+PFacStageHideoutBurglar:
+	text_far _StageEventHideoutBurglarText
+	text_end
+PFacStageHideoutJoy:
+	text_far _StageEventHideoutJoyText
+	text_end
+PFacStageHideoutJenny:
+	text_far _StageEventHideoutJennyText
+	text_end
+PFacStageHideoutBothGood:
+	text_far _StageEventHideoutBothGoodText
 	text_end

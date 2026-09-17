@@ -418,6 +418,8 @@ ToggleableObjectStates:
 	;toggle_object_state 3, ON                 ; slot 3 = pokeball 2
 	;toggle_object_state 4, ON                 ; slot 4 = pokeball 3
 	;toggle_object_state 5, ON                 ; slot 5 = pokeball 4
+	; Stage-event NPCs (slots 6-7) stay commented too - see the matching note
+	; in constants/toggle_constants.asm.
 
 	toggleable_objects_for PROCEDURAL_CAVE_1
     toggle_object_state WILD_AREA_BOSS, ON ; slot 1 = boss
@@ -446,6 +448,10 @@ ToggleableObjectStates:
 	toggle_object_state 7, ON                 ; slot 7 = fake pokeball 2
 	toggle_object_state 8, ON                 ; slot 8 = fake pokeball 3
 	toggle_object_state 9, ON                 ; slot 9 = fake pokeball 4
+	; Stage-event NPCs default to OFF, same reasoning as PROCEDURAL_CAVE_1's
+	; own pair - shown explicitly by the map script once an event is armed.
+	toggle_object_state 10, OFF               ; slot 10 = stage-event NPC 1
+	toggle_object_state 11, OFF               ; slot 11 = stage-event NPC 2
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball
