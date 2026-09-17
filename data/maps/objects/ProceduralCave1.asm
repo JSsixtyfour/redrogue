@@ -34,4 +34,25 @@ ProceduralCave1_Object:
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_3, 0
 	object_event 10, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_4, 0
 
+	; Stage-event NPC slots (6-7), Phase 7b. Both are placeholders in every
+	; respect: position is runtime-patched (in front of the player, then the
+	; hideout) and the sprite is repointed by ProcBossPatchStageSprite from
+	; sStageEventSprite6/7 in the window between LoadMapHeader and
+	; InitMapSprites, the same load-bearing ordering the boss sprite uses.
+	;
+	; WHEN NO EVENT IS ARMED these slots cost nothing at all, not merely
+	; nothing visible: the sprite patch writes PICTUREID = 0, and
+	; LoadMapSpriteTilePatterns' `and a / jp z, .nextSpriteSlot` treats a zero
+	; picture ID as an unused slot, so no VRAM tile pattern slot is allocated
+	; for them. That is why a 12-tile walking sprite is a safe declared
+	; default here - it is never the sprite that actually loads.
+	;
+	; SPRITE_JESSIE/SPRITE_JAMES are the declared placeholders because they are
+	; on no map at all today, so nothing else can be affected by the choice.
+	; Procedural maps are indoor (>= FIRST_INDOOR_MAP), so InitMapSprites loads
+	; tiles per object from this list and the outdoor sprite-set bound that
+	; restricts which SPRITE_* a route may use does not apply.
+	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_1, 0
+	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_2, 0
+
 	def_warps_to PROCEDURAL_CAVE_1

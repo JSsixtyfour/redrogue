@@ -379,6 +379,16 @@ NEW_EVENTS = [
     "EVENT_BEAT_FACILITY_FAKE_BALL_2",
     "EVENT_BEAT_FACILITY_FAKE_BALL_3",
     "EVENT_BEAT_FACILITY_FAKE_BALL_4",
+    # Procedural stage events (PROCEDURAL_WILD_AREA_PLAN.md Phase 7). The two
+    # NPC object slots a wild area can carry. Like EVENT_BEAT_PC_BOSS, these
+    # are SHARED across the procedural stages rather than one pair per stage:
+    # the lobby offers exactly one wild area at a time, so two bits is the
+    # whole requirement. The pair must stay consecutive and begin at
+    # object-slot bit 6; the allocator derives that from the `def_trainers 6`
+    # in scripts/ProceduralCave1.asm, and the shared-run path means the other
+    # stages can reuse the same two names as they are wired up.
+    "EVENT_BEAT_STAGE_EVENT_NPC_1",
+    "EVENT_BEAT_STAGE_EVENT_NPC_2",
     # Phase 7 Elite Four rooms. Two per room, mirroring the four shipped rooms
     # exactly (see EVENT_BEAT_AGATHAS_ROOM_TRAINER_0 /
     # EVENT_AUTOWALKED_INTO_AGATHAS_ROOM): the member's beat flag, which is a

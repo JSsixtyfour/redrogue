@@ -119,6 +119,44 @@ sProcCavePalette:: db              ; 0=default cavern, 1=cold/blue, 2=dark
 sProcForestPalette:: db            ; 0=default forest; 1+ added in Phase 4d
 sProcCemeteryPalette:: db          ; 0=default cemetery; 1+ added in Phase 4d
 
+; --- Phase 7: stage-event placement state -------------------------------
+; APPENDED AT THE END for the same reason the palette bytes above were: the
+; pyboy harness reads the staging buffers by offset, so nothing may be
+; inserted ahead of them. Measured 2026-09-16: SRAM bank 0 had $00fe (254)
+; free before this block.
+;
+; Only ONE wild area is live at a time (the lobby offers exactly one), so a
+; single set of fields serves all four stages rather than one set per stage.
+;
+; These must be SRAM, not wBuffer, because the fast-blit re-entry paths
+; (PCFinalizeCaveFast and friends) skip generation entirely - a hideout that
+; lived only in wBuffer would be lost the moment the player stepped out and
+; back in, and the villain would relocate somewhere new.
+;
+; ⚠ Fresh SRAM powers up $ff and ClearAllSRAMBanks FILLS $ff, so every read
+; here happens only when wStageEvent says an event is armed; the generator
+; writes all of them before the first read on that path.
+; The resolved hideout, in BLOCK coords (0-19). Sprite position is block*2+4,
+; as everywhere else. $ff = NO hideout this cave (STAGE_EVENT_NO_HIDEOUT), which
+; is also what fresh/cleared SRAM reads, so "unset" and "disarmed" are the same
+; value by design and every consumer needs only the one check.
+sStageEventHideoutX:: db
+sStageEventHideoutY:: db
+; Second candidate, kept only between PCStageHideoutCapture and
+; PCStageHideoutResolve. Two of the generator's five edge targets CAN land on
+; the same cell (same edge, same offset: 1 in 54), and a hideout on the exit
+; cell is a villain standing inside the boss - measured, 1 collision in 200
+; caves, the same exact-overlap class as the forest's ball/boss bug. The
+; resolve step compares both candidates against the exit AFTER the target loop
+; has finished, which is what makes the check immune to whether the exit was
+; rolled before or after the candidate.
+sStageEventHideoutAltX:: db
+sStageEventHideoutAltY:: db
+sStageEventSprite6:: db            ; SPRITE_* for NPC object slot 6, staged at preload and
+sStageEventSprite7:: db            ; patched into PICTUREID before InitMapSprites loads tiles
+                                   ; (the same ordering constraint as the boss sprite - see
+                                   ; ProcBossPatchStageSprite). $00 = slot unused this visit.
+
 
 ; Procedural facility: 20x20 block map staged here at warp-in time. Same layout
 ; as cave/forest (600-byte stride buffer). Lives in its OWN SRAM section (not the

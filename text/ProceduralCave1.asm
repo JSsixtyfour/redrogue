@@ -62,3 +62,22 @@ _PCBossJoinText::
 	cont "to join your"
 	cont "party!@"
 	text_end
+
+; --- Phase 7 stage events ------------------------------------------------
+; Placeholder encounter line for the stage-event NPCs in object slots 6-7.
+; 7c replaces this with the real appear/speak/vanish script and 7d with the
+; theft; until then the NPC is interactable so the placement itself can be
+; tested in the emulator.
+_PCStageNpcText::
+	text "Hey! Nice"
+	line "#MON you've"
+	cont "got there...@"
+	text_end
+
+; What TalkToTrainer shows before the recovery battle (7e).
+_PCStageNpcBattleText::
+	text "You want it"
+	line "back? Take it"
+	cont "from me!@"
+	text_promptbutton
+	text_end

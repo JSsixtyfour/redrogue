@@ -59,12 +59,35 @@ ProcBossPatchStageSprite::
 	ld a, [sProcFacilityBossSprite]
 	ld b, a
 .close
+	; Phase 7b: the stage-event NPC sprites ride along in the SAME open-SRAM
+	; window as the boss sprite, read here and installed below. They live in
+	; bank 0 while the Facility's boss sprite came from bank 1, so re-select
+	; bank 0 before reading them rather than inheriting whichever branch ran.
+	;
+	; Reading them on EVERY procedural map (not just the cave) is deliberate:
+	; only one wild area is ever live, so the fields describe whichever stage
+	; the player is in, and a stage that has not grown NPC slots yet simply has
+	; no object in slot 6/7 for the write to affect.
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventSprite6]
+	ld d, a
+	ld a, [sStageEventSprite7]
+	ld e, a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 	ld a, b
 	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	; 0 here is not "hide it later" but "this slot does not exist":
+	; LoadMapSpriteTilePatterns skips a zero PICTUREID outright, so an unarmed
+	; event costs no VRAM tile-pattern slot.
+	ld a, d
+	ld [wSprite06StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, e
+	ld [wSprite07StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ret
 
 ; Procedural preload (at PALLET_TOWN entry) + per-map finalize dispatch. Runs

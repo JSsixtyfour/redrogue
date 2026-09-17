@@ -915,8 +915,15 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             self.assertTrue(all(item_id != 0 for item_id in item_ids))
 
     def test_procedural_cave_generation(self) -> None:
+        # 7, not 5, since Phase 7b: the boss, four pokeballs, and the two
+        # stage-event NPC slots. The NPCs are invisible unless an event is
+        # armed (PICTUREID 0 plus an OFF toggle), but they are real objects in
+        # the map's object list, so wNumSprites counts them and the distinct-
+        # position assertion below covers them - PCPlaceStageEventNpcs places
+        # both on every cave precisely so that assertion stays meaningful
+        # rather than needing an exemption.
         self.assert_generation_contract(
-            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 5, True
+            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 7, True
         )
 
     def test_silph_b1f_test_entrance_preloads_a_fresh_cave(self) -> None:

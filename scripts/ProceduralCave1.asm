@@ -15,6 +15,13 @@ ProceduralCave1_Script:
 	ld a, TOGGLE_WILD_AREA_POKEBALL_4
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	; Phase 7b: reveal the stage-event NPC slots, but only for the slots this
+	; event actually uses. The staged sprite doubles as the "slot in use" flag
+	; - it is the same byte ProcBossPatchStageSprite installs as PICTUREID, so
+	; showing a slot whose sprite is 0 could never put anything on screen
+	; anyway. Reading it here keeps the two decisions from being able to
+	; disagree.
+	farcall StageEventShowCaveNpcs
 	; Show the boss only if it hasn't been beaten yet.
 	CheckEvent EVENT_BEAT_PC_BOSS
 	jr nz, .afterSetup
@@ -22,6 +29,42 @@ ProceduralCave1_Script:
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 .afterSetup
+	; --- Phase 7c: stage-event arrival ------------------------------------
+	; The villains are standing in front of the player when the map fades in;
+	; this fires their line on the first script tick after the load, then the
+	; dark flash relocates them to the hideout.
+	;
+	; Deliberately NOT waiting for the player to take a step. Nothing here
+	; needs the player to have moved, and firing on load removes an entire
+	; class of trigger bug (a player who walks straight into the exit, or who
+	; never steps in the direction the trigger expected).
+	;
+	; THE ONE-SHOT IS wStageEvent's OWN PHASE FIELD, not a new event flag.
+	; WAITING -> HIDING is a transition the feature needs regardless, so there
+	; is no second piece of state that could fall out of sync with it, and no
+	; EVENT_* bit spent.
+	;
+	; BIT_CUR_MAP_LOADED_1 is TESTED here and never `res`-ed, exactly like the
+	; calm check below. That is what keeps this clear of the shared-script-flag
+	; starvation trap (project_shared_script_flag_bit): that bug is caused by a
+	; check-AND-CLEAR consuming the bit before a later reader sees it. Two pure
+	; tests of the same bit cannot starve each other. If anything in this
+	; script ever starts clearing bit 1, both of these readers break together
+	; and this one must move to bit 2.
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	jr z, .afterStageEvent
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterStageEvent          ; no event armed on this wild area
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr nz, .afterStageEvent         ; already spoken - they are at the hideout
+	ld a, TEXT_PROCEDURALCAVE1_STAGE_EVENT
+	ldh [hTextID], a
+	call DisplayTextID
+	farcall PCStageEventVanish      ; fade out, relocate, fade in; -> HIDING
+.afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
@@ -134,6 +177,126 @@ PCSignItemsText:
 	text_far _PCSignItemsText
 	text_end
 
+; --- Phase 7 stage-event NPCs (object slots 6-7) -------------------------
+; TEXT IS PER EVENT TYPE, dispatched through the two tables below. To give a
+; trainer its own voice, edit only its string in text/StageEvents.asm; nothing
+; here needs to change. The tables are indexed by wStageEvent's type field, so
+; a row exists for all six types even though STAGE_EVENT_MAX_ROLLABLE
+; currently stops Joy and Jenny from rolling.
+;
+; Both NPC object slots share one text handler per beat. For a pair (Jessie &
+; James) that means talking to either one says the same thing, which is the
+; right default - 7e can split them by testing hSpriteIndex if a pair ever
+; wants two voices.
+
+; Spoken once, standing in front of the player, before the vanish.
+PCStageEventArrivalText:
+	text_asm
+	ld hl, PCStageEventArrivalTexts
+	call PCStageEventPickText     ; hl = this event type's string
+	call PrintText
+	; Terminate the stream rather than returning hl: PrintText has already
+	; done the printing, and TextScriptEnd closes the box cleanly. Same shape
+	; as PCSignText above, whose header explains why `ld hl / ret` misprints.
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+; Spoken when the player tracks them down at the hideout. 7e puts the battle
+; behind this.
+PCStageEventHideoutText:
+	text_asm
+	ld hl, PCStageEventHideoutTexts
+	call PCStageEventPickText
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+; INPUT: hl = a six-entry table of text pointers, ordered by STAGE_EVENT_* type
+;        starting at type 1.
+; OUTPUT: hl = the entry for the currently armed event.
+;
+; bc is free to clobber here: both callers hand the result straight to
+; PrintText and then terminate the stream with TextScriptEnd, so there is no
+; live text cursor to preserve. A text_asm handler that RETURNS hl to continue
+; the stream would have to push/pop bc (see ProceduralCave1BossText, which
+; does exactly that).
+PCStageEventPickText:
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	dec a                         ; type is 1-based; the table is 0-based
+	add a, a                      ; two bytes per pointer
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+
+PCStageEventArrivalTexts:
+	dw PCStageArrivalJessieJames  ; STAGE_EVENT_JESSIE_JAMES
+	dw PCStageArrivalPsychic      ; STAGE_EVENT_PSYCHIC
+	dw PCStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
+	dw PCStageArrivalJoy          ; STAGE_EVENT_JOY
+	dw PCStageArrivalJenny        ; STAGE_EVENT_JENNY
+	dw PCStageArrivalBothGood     ; STAGE_EVENT_BOTH_GOOD
+
+PCStageEventHideoutTexts:
+	dw PCStageHideoutJessieJames
+	dw PCStageHideoutPsychic
+	dw PCStageHideoutBurglar
+	dw PCStageHideoutJoy
+	dw PCStageHideoutJenny
+	dw PCStageHideoutBothGood
+
+PCStageArrivalJessieJames:
+	text_far _StageEventArrivalJessieJamesText
+	text_end
+PCStageArrivalPsychic:
+	text_far _StageEventArrivalPsychicText
+	text_end
+PCStageArrivalBurglar:
+	text_far _StageEventArrivalBurglarText
+	text_end
+PCStageArrivalJoy:
+	text_far _StageEventArrivalJoyText
+	text_end
+PCStageArrivalJenny:
+	text_far _StageEventArrivalJennyText
+	text_end
+PCStageArrivalBothGood:
+	text_far _StageEventArrivalBothGoodText
+	text_end
+
+PCStageHideoutJessieJames:
+	text_far _StageEventHideoutJessieJamesText
+	text_end
+PCStageHideoutPsychic:
+	text_far _StageEventHideoutPsychicText
+	text_end
+PCStageHideoutBurglar:
+	text_far _StageEventHideoutBurglarText
+	text_end
+PCStageHideoutJoy:
+	text_far _StageEventHideoutJoyText
+	text_end
+PCStageHideoutJenny:
+	text_far _StageEventHideoutJennyText
+	text_end
+PCStageHideoutBothGood:
+	text_far _StageEventHideoutBothGoodText
+	text_end
+
+; TalkToTrainer's before-battle text for both NPC slots (7e). Still one shared
+; string; 7e gives it the same per-type table treatment as the two above.
+PCStageNpcBattleText:
+	text_far _PCStageNpcBattleText
+	text_end
+
 PCSignBossText:
 	text_far _PCSignBossText
 	text_end
@@ -149,15 +312,35 @@ ProceduralCave1_TextPointers:
 	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
 	EXPORT TEXT_PROCEDURALCAVE1_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PCSignText, TEXT_PROCEDURALCAVE1_SIGN
+	dw_const PCStageEventHideoutText, TEXT_PROCEDURALCAVE1_STAGE_NPC_1
+	dw_const PCStageEventHideoutText, TEXT_PROCEDURALCAVE1_STAGE_NPC_2
+	dw_const PCStageEventArrivalText, TEXT_PROCEDURALCAVE1_STAGE_EVENT
     ;dw_const PCBossEncounterText, TEXT_PROCEDURALCAVE1_BOSS_ENCOUNTER
     ;dw_const ProceduralCave1BossRoarText, TEXT_PROCEDURALCAVE1_BOSS_ROAR
 
 ProceduralCave1TrainerHeaders:
-	def_trainers 1  ; boss is slot 1; CheckForEngagingTrainers uses CURRENT_TRAINER_BIT
-	                ; as the sprite slot, so this must match the boss's object_event position.
-	                ; EVENT_BEAT_PC_BOSS % 8 == 1 == 1 % 8 to satisfy trainer ASSERT.
 PCBossTrainerHeader:
-	trainer EVENT_BEAT_PC_BOSS, 0, ProceduralCave1BossBattleText, ProceduralCave1BossBattleText, ProceduralCave1BossBattleText
+	; The boss is slot 1 and CheckForEngagingTrainers uses CURRENT_TRAINER_BIT
+	; as the sprite slot, so its flag bit must be 1. EVENT_BEAT_PC_BOSS is
+	; shared with the other procedural maps, so - exactly as
+	; scripts/ProceduralFacility.asm does for its slots 6-9 - this established
+	; slot-1 header is emitted directly rather than through `def_trainers 1`,
+	; which lets the event-layout generator treat the slot-6/7 pair below as
+	; its own byte-aligned trainer run instead of forcing it to share the
+	; boss's.
+	ASSERT EVENT_BEAT_PC_BOSS % 8 == 1
+	db 1
+	db 0
+	dw wEventFlags + (EVENT_BEAT_PC_BOSS - 1) / 8
+	dw ProceduralCave1BossBattleText, ProceduralCave1BossBattleText
+	dw ProceduralCave1BossBattleText, ProceduralCave1BossBattleText
+	; Slots 2-5 are pokeballs, so resume the trainer-bit sequence at object
+	; slot 6, where the Phase 7 stage-event NPCs live.
+	def_trainers 6
+PCStageNpc1Header:
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 0, PCStageNpcBattleText, PCStageNpcBattleText, PCStageNpcBattleText
+PCStageNpc2Header:
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 0, PCStageNpcBattleText, PCStageNpcBattleText, PCStageNpcBattleText
 	db -1 ; end
 
 ProceduralCaveInitBattleScript:

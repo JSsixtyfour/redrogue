@@ -21,7 +21,7 @@ IF DEF(_BLUE)
 	RGB 31,29,31, 30,30,17, 21,00,04, 14,19,29 ; PAL_LOGO1
 ENDC
 	RGB 31,29,31, 30,30,17, 18,18,24, 07,07,16 ; PAL_LOGO2
-	RGB 31,29,31, 10,14,24, 17,24,29, 03,02,02 ; PAL_0F / PAL_CAVE_COLD - procedural cave variant 1. Derived from PAL_CAVE by swapping its brown mid-tone for steel blue and cooling its highlight; c0/c3 identical so UI and text contrast are unchanged.
+	RGB 27,29,31, 14,20,29, 09,10,20, 00,00,00 ; PAL_0F / PAL_CAVE_COLD - procedural cave variant 1
 	RGB 31,29,31, 30,22,17, 16,14,19, 03,02,02 ; PAL_MEWMON
 	RGB 31,29,31, 18,20,27, 11,15,23, 03,02,02 ; PAL_BLUEMON
 	RGB 31,29,31, 31,20,10, 26,10,06, 03,02,02 ; PAL_REDMON

@@ -338,6 +338,52 @@ DEF WILD_AREA_MASK        EQU %10000111
 DEF WILD_AREA_COUNT_SHIFT EQU 3
 DEF WILD_AREA_COUNT_MASK  EQU %00011000
 
+; --- Procedural stage events (Phase 7, PROCEDURAL_WILD_AREA_PLAN.md) ---
+; A wild area can carry one "stage event": an NPC pair or single NPC placed in
+; front of the player at finalize time, which speaks once and then either robs
+; the player and hides (villains) or hands over a favour (Joy/Jenny). The type
+; is rolled by StageEventRoll (custom_functions/wild_area_selection.asm) right
+; after the wild-area type is settled, so an event can only ever exist on a
+; lobby visit that actually offers a wild area.
+DEF STAGE_EVENT_NONE         EQU 0
+DEF STAGE_EVENT_JESSIE_JAMES EQU 1  ; villain pair, steals a party mon
+DEF STAGE_EVENT_PSYCHIC      EQU 2  ; villain, steals a party mon (rebuilt into its team)
+DEF STAGE_EVENT_BURGLAR      EQU 3  ; villain, steals a bag item
+DEF STAGE_EVENT_JOY          EQU 4  ; good NPC (7f)
+DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
+DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
+DEF NUM_STAGE_EVENT_TYPES    EQU 6
+
+; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled today; the good NPCs still
+; need their trainer classes and pics, which is 7f's job. Raise this as they
+; land - the same escape hatch MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss
+; registry, so a half-wired type can sit in the table without being rollable.
+DEF STAGE_EVENT_MAX_ROLLABLE EQU STAGE_EVENT_BURGLAR
+
+; wStageEvent bit layout (ram/wram.asm). One byte holds the whole lifecycle.
+;   bits 0-2 = type (STAGE_EVENT_*)
+;   bits 3-4 = phase (STAGE_EVENT_PHASE_*)
+;   bit 5    = the theft took an ITEM, not a mon (set by the party-size and
+;              fusion-ineligibility fallbacks, so recovery knows what to give back)
+;   bits 6-7 = free
+DEF STAGE_EVENT_TYPE_MASK      EQU %00000111
+DEF STAGE_EVENT_PHASE_MASK     EQU %00011000
+DEF STAGE_EVENT_PHASE_SHIFT    EQU 3
+DEF BIT_STAGE_EVENT_STOLE_ITEM EQU 5
+
+DEF STAGE_EVENT_PHASE_WAITING EQU 0 ; standing in front of the player, not yet spoken to
+DEF STAGE_EVENT_PHASE_HIDING  EQU 1 ; spoke, robbed the player, vanished to the hideout
+DEF STAGE_EVENT_PHASE_SETTLED EQU 2 ; beaten / resolved, nothing left to do this visit
+
+; Chance out of 256 that an offered wild area carries an event at all.
+DEF STAGE_EVENT_CHANCE EQU 128
+
+; sStageEventHideoutX/Y sentinel: this cave produced no usable hideout, so the
+; event does not manifest. Deliberately $ff, because that is what fresh SRAM and
+; ClearAllSRAMBanks both leave behind - "never written" and "deliberately
+; disarmed" then need exactly one check, not two.
+DEF STAGE_EVENT_NO_HIDEOUT EQU $ff
+
 ; --- Bridge System (twice-per-run gift-room interludes) ---
 ; Bridges sit ON TOP of the door randomization: when one fires, BOTH lobby doors
 ; become two different bridge rooms; entering either gives a gift, then the room's

@@ -404,6 +404,16 @@ ENDM
 	const TOGGLE_WILD_AREA_POKEBALL_2 ; slot 3
 	const TOGGLE_WILD_AREA_POKEBALL_3 ; slot 4
 	const TOGGLE_WILD_AREA_POKEBALL_4 ; slot 5
+	; Phase 7b stage-event NPCs. Unlike slots 1-5, these need NO new branch in
+	; IsObjectHidden: its hardcoded wild-area mapping only covers slots 1-5,
+	; and slots 6+ fall through .checkMaybeGenericRoguePB, which tests
+	; IsRogueStageMap - PROCEDURAL_CAVE_1 is in WildAreaStageMapTable but NOT
+	; in RogueStageMapTable, so the cave lands in .normalCheck and is resolved
+	; from wToggleableObjectList, i.e. from these constants. (The Facility
+	; needed its own branch precisely because its slots 6-9 collided with the
+	; generic rogue-stage reward meanings.)
+	const TOGGLE_WILD_AREA_NPC_1      ; slot 6
+	const TOGGLE_WILD_AREA_NPC_2      ; slot 7
 
 	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants above (same
 	; port-don't-reimplement pattern as PROCEDURAL_FOREST above) - still needs

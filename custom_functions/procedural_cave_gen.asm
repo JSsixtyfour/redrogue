@@ -272,6 +272,34 @@ DEF wProcCaveCountY       EQU 25  ; NOT reuse DX/DY, which PCVerifyCorner (its
                                   ; only caller) is using for its OWN save at the
                                   ; same time
 
+; PCPlaceWildAreaItems: the stage-event hideout cell, snapshotted from SRAM in
+; the same open-SRAM window as wProcCaveBossX/Y above, so a candidate ball can
+; be rejected for landing on top of the villain.
+;
+; WHY THIS EXISTS. The item placer rejects candidates near the entrance, near
+; the exit/boss and near each other, but knew nothing about the hideout.
+; Measured with audit_cave_hideout.py over 400 caves: 20 caves (5.0%) put a
+; pokeball on the villain's exact cell. Same exact-overlap class as the forest
+; ball/boss bug Phase 1 fixed, and far more frequent than it was.
+;
+; ALIASING, checked rather than assumed, in this file's usual style. Both
+; donors belong to the AUTOTILE phase, which is completely finished before item
+; placement begins (see PCPlaceWildAreaItems' header: it runs last, after
+; carving, autotiling, decoration and the exit ladder have all permanently
+; settled):
+;   22 wProcCaveFlags  - PCClassifyCell / PCVerifyCorner
+;   23 wProcCaveCount  - PCCountFloorNeighbors' running tally
+; Neither routine is reachable from anything PCPlaceWildAreaItems calls
+; (Rangerandom, PCReadCell, PCFloorTouchesWater, PCItemTooClose, PCAbs,
+; Random_Item_Selection). PCPlaceDropIn, the one phase that runs later, aliases
+; offsets 0-15 and never reaches up here.
+;
+; Verified by measurement and not only by that reading: the collision count has
+; to drop to 0/400. If either byte were being clobbered mid-loop the rejection
+; would silently stop working and the count would sit near 20.
+DEF wProcCaveHideoutX     EQU wProcCaveFlags
+DEF wProcCaveHideoutY     EQU wProcCaveCount
+
 ; PCPlaceDropIn scratch - runs absolute LAST in GenerateProceduralCave, so
 ; every offset below is long finished with by every earlier phase; freely
 ; reuses EntranceX/Y/Edge/ExitX/Y/Index/TargetX/Y (0-7) and Edge/Offset/DX/
@@ -508,6 +536,7 @@ PCPreloadCave::
 	call PCWriteCell                ; punch the exit boundary opening
 .notExit
 
+	call PCStageHideoutCapture      ; Phase 7b: mirror the hideout target to SRAM
 	call PCCarveOne
 
 	ld a, [wBuffer + wProcCaveLoopI]
@@ -515,6 +544,10 @@ PCPreloadCave::
 	ld [wBuffer + wProcCaveLoopI], a
 	cp 5
 	jp nz, .targetLoop  ; jr out of range now that the loop body is bigger
+
+	; Phase 7b: both hideout candidates and the exit cell are final now, so the
+	; exact-overlap check can run without caring which was rolled first.
+	call PCStageHideoutResolve
 
 	; --- re-stamp the entrance: every walk above starts by resetting to the
 	; entrance position and immediately overwrites it with plain floor on
@@ -558,6 +591,13 @@ PCPreloadCave::
 	; roll exit ladder and boss species while SRAM is still open
 	call PCRollExitLadder
 	call PCRollBoss
+	; Phase 7b: publish the stage-event NPC sprites for this assignment. Must
+	; happen at PRELOAD, not finalize: ProcBossPatchStageSprite reads these
+	; between LoadMapHeader and InitMapSprites on the FIRST load of the map,
+	; which is already too late to roll anything. The routine re-asserts SRAM
+	; bank 0 itself and deliberately leaves the window open, since this routine
+	; owns it and closes it a few lines below.
+	farcall StageEventStageSprites
 
 	; close SRAM before setting the ready flag - the flag itself is WRAM
 	; so PyBoy scripts can poll it without SRAM enabled
@@ -1179,6 +1219,7 @@ PCFinalizeCave::
 	; the real, final floor layout instead. See PCPlaceWildAreaItems.
 	call PCPlaceWildAreaItems
 	call PCPlaceBoss
+	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
 
@@ -1336,6 +1377,7 @@ PCFinalizeCaveFast:
 
 	call PCPlaceWildAreaItems        ; restores positions/items from SRAM
 	call PCPlaceBoss                 ; species/level into wMapSpriteExtraData
+	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
 
 	xor a
 	ld [wProcCavePreloadReady], a
@@ -1644,6 +1686,15 @@ PCPlaceWildAreaItems:
 	ld [wBuffer + wProcCaveBossX], a
 	ld a, [sProcCaveStagingExitY]
 	ld [wBuffer + wProcCaveBossY], a
+	; Phase 7b: snapshot the stage-event hideout in the same open-SRAM window,
+	; for the rejection test below. Taken unconditionally, even with no event
+	; armed - the cell is a real dead end either way, and branching on
+	; wStageEvent here would make ball layout depend on whether an event was
+	; rolled, which is a gratuitous extra way for two builds to diverge.
+	ld a, [sStageEventHideoutX]
+	ld [wBuffer + wProcCaveHideoutX], a
+	ld a, [sStageEventHideoutY]
+	ld [wBuffer + wProcCaveHideoutY], a
 	; first entry: close SRAM and run the placement algorithm
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -1699,6 +1750,27 @@ PCPlaceWildAreaItems:
 	ld c, a
 	call PCItemTooClose
 	jr c, .spaceFail
+	; --- must be far enough from the stage-event hideout (Phase 7b) ---
+	; Unlike the boss, exact overlap here is NOT already impossible: the
+	; hideout is left as plain PC_BLOCK_FLOOR, which is exactly what the
+	; candidate test accepts, so a ball can and did land right on the villain
+	; (measured 5.0% of caves before this check existed).
+	;
+	; The STAGE_EVENT_NO_HIDEOUT sentinel MUST be skipped explicitly rather
+	; than left to fall through the distance test. It is tempting to assume
+	; $ff is simply "very far away", but PCAbs is negate-if-bit-7, not a true
+	; absolute value over a wider type: cur - $ff wraps to cur + 1, so a
+	; sentinel hideout reads as a distance of 1-20 and would spuriously reject
+	; every candidate near the top-left corner.
+	ld a, [wBuffer + wProcCaveHideoutX]
+	cp STAGE_EVENT_NO_HIDEOUT
+	jr z, .hideoutOK
+	ld b, a
+	ld a, [wBuffer + wProcCaveHideoutY]
+	ld c, a
+	call PCItemTooClose
+	jr c, .spaceFail
+.hideoutOK
 	; --- must be far enough from each already-placed ball ---
 	ld a, [wBuffer + wProcCaveItemCounter]
 	and a
@@ -2488,6 +2560,348 @@ PCOtherEdgesTable:
 	db PC_EDGE_TOP,    PC_EDGE_LEFT,   PC_EDGE_RIGHT  ; entrance = BOTTOM
 	db PC_EDGE_TOP,    PC_EDGE_BOTTOM, PC_EDGE_RIGHT  ; entrance = LEFT
 	db PC_EDGE_TOP,    PC_EDGE_BOTTOM, PC_EDGE_LEFT   ; entrance = RIGHT
+
+; ============================================================
+; PCStageHideoutCapture  (Phase 7b)
+; Called once per iteration of PCPreloadCave's 5-target loop, after TargetX/Y
+; are set. If this iteration's target is the stage-event hideout, mirrors it
+; into sStageEventHideoutX/Y (BLOCK coords).
+;
+; WHY THE HIDEOUT IS ONE OF THE 4 UNUSED TARGETS. The loop rolls 5 edge points
+; and promotes the one at wProcCaveExitIndex to the exit, and therefore to the
+; boss's cell. The other four are carved to and then used for nothing. Taking
+; one of them gives, by construction rather than by any search or distance
+; math:
+;   - reachable: PCCarveOne walks a corridor to every target, and its
+;     deterministic L-connector writes floor onto the target cell itself, so
+;     the hideout is never an isolated island
+;   - never the boss's cell: a different index from wProcCaveExitIndex
+;   - a dead end, on an edge that is not the entrance's (PCOtherEdgesTable),
+;     which is exactly "hidden"
+;
+; WHY (exit + 1) mod 5 AND NOT A SECOND Rangerandom. The plan called for a
+; second roll held in a spare wBuffer byte, citing offsets 21 and 29 as dead
+; experiment slots. That went stale the same day: Phase 6 aliased both as the
+; river's bounding box (wProcCaveRiverMinY/MaxY), and the overlay is now fully
+; allocated, 0-29. Deriving the index instead costs no wBuffer byte AND no RNG
+; draw, and loses nothing: all 5 targets get an independently rolled edge and
+; offset, so "the target after the exit" is distributed identically to "a
+; uniformly random target that is not the exit". Only the two INDICES are
+; correlated, and no index is ever observable in play.
+;
+; SRAM is already open on bank 0 for the whole of PCPreloadCave (that is where
+; the staging buffer lives and where every PCWriteCell in this loop is going),
+; so this writes straight through with no enable/bank dance.
+;
+; WHY TWO CANDIDATES AND A SEPARATE RESOLVE STEP. A different INDEX is not a
+; different CELL. Each target rolls its edge (1 of 3) and its offset (1 of 18)
+; independently, so any two targets land on the same cell about 1 time in 54,
+; and a hideout on the exit cell puts the villain inside the boss. That is not
+; a hypothetical: measured with audit_cave_hideout.py, 1 collision in 200
+; caves (seed 119, block (19,6)), which is the same exact-overlap class as the
+; forest ball/boss bug Phase 1 fixed. So this captures candidates at BOTH
+; (exit+1) mod 5 and (exit+2) mod 5, and PCStageHideoutResolve picks between
+; them after the loop.
+;
+; Comparing after the loop rather than inside it is the whole trick. The exit
+; cell is only known from iteration wProcCaveExitIndex onward, and the hideout
+; candidate can be rolled either before or after that (index 0 comes before
+; index 4), so an in-loop comparison would be right 4 times in 5 and silently
+; wrong the fifth. Post-loop, both cells are always known and ordering stops
+; mattering at all.
+;
+; Runs unconditionally, whether or not a stage event is armed: it is two byte
+; writes, and keeping it out of the conditional means the value can never be
+; left over from a previous cave.
+; Clobbers a/b.
+; ============================================================
+PCStageHideoutCapture:
+	ld a, [wBuffer + wProcCaveExitIndex]
+	inc a
+	cp 5                            ; same literal target count the loop uses
+	jr c, .haveA
+	xor a                           ; wrap 5 -> 0
+.haveA
+	ld b, a                         ; b = candidate A's target index
+	ld a, [wBuffer + wProcCaveLoopI]
+	cp b
+	jr nz, .tryB
+	ld a, [wBuffer + wProcCaveTargetX]
+	ld [sStageEventHideoutX], a
+	ld a, [wBuffer + wProcCaveTargetY]
+	ld [sStageEventHideoutY], a
+	ret
+.tryB
+	ld a, b
+	inc a
+	cp 5
+	jr c, .haveB
+	xor a
+.haveB
+	ld b, a                         ; b = candidate B's target index
+	ld a, [wBuffer + wProcCaveLoopI]
+	cp b
+	ret nz                          ; this iteration is neither candidate
+	ld a, [wBuffer + wProcCaveTargetX]
+	ld [sStageEventHideoutAltX], a
+	ld a, [wBuffer + wProcCaveTargetY]
+	ld [sStageEventHideoutAltY], a
+	ret
+
+; ============================================================
+; PCStageHideoutResolve  (Phase 7b)
+; Called once, after PCPreloadCave's target loop, with SRAM still open on bank
+; 0 and wProcCaveExitX/Y final. Promotes candidate B over candidate A if A
+; landed on the exit cell, and disarms the hideout entirely if both did.
+;
+; Both colliding needs two independent 1-in-54 coincidences (~1 in 2,900
+; caves). The response is STAGE_EVENT_NO_HIDEOUT rather than a third candidate
+; or a nudge onto a neighbouring cell: at that point every carved dead end the
+; generator produced is the boss's own, so there is genuinely nowhere hidden
+; left to stand, and no event is a better answer than one stacked on the boss.
+; $ff is also what unwritten SRAM reads, so consumers need one check, not two.
+; Clobbers a/b.
+; ============================================================
+; ============================================================
+; PCPlaceStageEventNpcs  (Phase 7b)
+; Positions the stage-event NPC objects (map object slots 6-7) for this cave.
+; Called at the end of PCFinalizeCave, after the map is final, which is the
+; same ordering rule PCPlaceWildAreaItems documents: "is this cell floor" must
+; be a settled question by the time anything is placed on it.
+;
+; Slot 6 stands on the hideout. Slot 7 exists only for the two-NPC events
+; (Jessie & James; the Joy + Jenny pair) and stands one cell INWARD from the
+; hideout's edge.
+;
+; "One cell inward" was a deliberately cheap first cut - the hideout is an edge
+; target and PCCarveOne's connector can arrive at it along either axis, so the
+; inward neighbour is the corridor most of the time but not obviously always.
+; MEASURED (audit_cave_hideout.py --layouts 400, 2026-09-16): that cell is
+; walkable and reachable from the player's spawn in 400 of 400 caves, so the
+; 4-neighbour PC_BLOCK_FLOOR scan this was going to need is not needed.
+;
+; Note the metric: REACHABILITY, not block id. By block id the same 400 caves
+; read only 96.2% PC_BLOCK_FLOOR, because the autotile pass rewrites 15 of
+; them to floor-edge and corner variants that are perfectly walkable. Judging
+; this cell by `== PC_BLOCK_FLOOR` would have condemned a placement that is
+; in fact always fine.
+;
+; VISIBILITY IS NOT THIS ROUTINE'S JOB, and the separation is deliberate. Both
+; slots are positioned on EVERY cave, armed event or not. Whether either is
+; actually on screen is decided twice over elsewhere, and both of those are
+; hard gates: ProcBossPatchStageSprite writes PICTUREID 0 for an unused slot
+; (so the object does not exist and costs no VRAM), and ToggleableObjectStates
+; defaults both to OFF. Positioning unconditionally costs four byte writes and
+; buys a real invariant - every object on the map occupies a distinct cell -
+; which the generation smoke contract asserts and which a slot parked on the
+; object list's placeholder (10,10) would break, since BOTH would sit there.
+;
+; With no hideout (STAGE_EVENT_NO_HIDEOUT, when PCStageHideoutResolve found
+; every candidate on the boss) the pair is parked on the ENTRANCE instead. That
+; keeps the invariant intact: the ball placer already holds PC_ITEM_MIN_DIST
+; away from the entrance, and the boss is on the exit, which is never the
+; entrance.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PCPlaceStageEventNpcs:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventHideoutX]
+	ld b, a                         ; b = hideout block X
+	ld a, [sStageEventHideoutY]
+	ld c, a                         ; c = hideout block Y
+	; The no-hideout parking spot comes from SRAM too, NOT from
+	; wBuffer + wProcCaveEntranceX. This routine is called from both finalize
+	; paths, and the fast re-entry path never repopulates that wBuffer overlay
+	; (it replays a baked map and skips the whole carve), so the wBuffer copy
+	; can be stale there. The SRAM staging copy is written at preload and is
+	; correct on both paths.
+	ld a, b
+	cp STAGE_EVENT_NO_HIDEOUT
+	jr nz, .haveHideout
+	ld a, [sProcCaveStagingEntranceX]
+	ld b, a
+	ld a, [sProcCaveStagingEntranceY]
+	ld c, a
+.haveHideout
+	ld a, [sProcCaveStagingEntranceX]
+	ld d, a                         ; d = entrance block X (arrival placement)
+	ld a, [sProcCaveStagingEntranceY]
+	ld e, a                         ; e = entrance block Y
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	; --- phase WAITING puts them in front of the player instead ---------
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr nz, .atHideout               ; HIDING or SETTLED - use the hideout below
+	jp PCPlaceStageEventArrival
+.atHideout
+
+	; --- slot 6 on the hideout itself ---
+	ld hl, wSprite06StateData2MapY
+	ld a, c
+	add a, a
+	add a, 4                        ; sprite position is block*2 + 4 everywhere
+	ld [hli], a
+	ld a, b
+	add a, a
+	add a, 4
+	ld [hl], a
+
+	; --- slot 7 one cell inward, so the pair never stacks ---
+	ld a, c
+	and a
+	jr nz, .notTopEdge
+	inc c                           ; top edge: inward is +Y
+	jr .haveSecond
+.notTopEdge
+	cp PC_SIZE - 1
+	jr nz, .notBottomEdge
+	dec c                           ; bottom edge: inward is -Y
+	jr .haveSecond
+.notBottomEdge
+	ld a, b
+	and a
+	jr nz, .notLeftEdge
+	inc b                           ; left edge: inward is +X
+	jr .haveSecond
+.notLeftEdge
+	dec b                           ; right edge: inward is -X
+.haveSecond
+	ld hl, wSprite07StateData2MapY
+	ld a, c
+	add a, a
+	add a, 4
+	ld [hli], a
+	ld a, b
+	add a, a
+	add a, 4
+	ld [hl], a
+	ret
+
+; ============================================================
+; PCPlaceStageEventArrival  (Phase 7c)
+; Tail of PCPlaceStageEventNpcs for phase STAGE_EVENT_PHASE_WAITING: put the
+; NPCs where the player will see them the instant the map fades in.
+; INPUT: d = entrance block X, e = entrance block Y. SRAM already closed.
+;
+; THE PLACEMENT NEEDS NO FLOOR CHECK, and that is the whole reason it is done
+; this way. The cell is derived from the ENTRANCE, i.e. from the block the
+; player is standing in, so it is walkable by definition - the player is on it.
+; Every other candidate cell in this generator has to be tested or measured;
+; this one cannot be wrong.
+;
+; The coordinate chain, since it crosses three units and getting it wrong is
+; silent:
+;   entrance is a BLOCK (9,19) for the cave's pinned bottom-edge entrance
+;   the player's STEP is (blockX*2 + 1, blockY*2)   - the warp_event's own
+;     formula, tileX = blockX*2+1 / tileY = blockY*2, confirmed against a live
+;     read of wXCoord/wYCoord = (19,38)
+;   a sprite's MapX/MapY field is STEP + 4          - the border offset every
+;     other placement here applies as `block*2 + 4`
+; so slot 6 lands one step ABOVE the player at MapX = blockX*2 + 5,
+; MapY = blockY*2 + 3, and slot 7 one step to its right.
+;
+; Slot 7 is only meaningful for the paired events (Jessie & James, Joy +
+; Jenny); for a single villain that slot's sprite is 0, so the object does not
+; exist and the position is inert. It is still written, to keep the
+; every-object-on-a-distinct-cell invariant the smoke contract asserts.
+; Clobbers a/hl.
+; ============================================================
+PCPlaceStageEventArrival:
+	ld hl, wSprite06StateData2MapY
+	ld a, e
+	add a, a
+	add a, 3                        ; blockY*2 + 3 = one step above the player
+	ld [hli], a
+	ld a, d
+	add a, a
+	add a, 5                        ; blockX*2 + 5 = the player's own column
+	ld [hl], a
+	ld hl, wSprite07StateData2MapY
+	ld a, e
+	add a, a
+	add a, 3                        ; same row as its partner
+	ld [hli], a
+	ld a, d
+	add a, a
+	add a, 6                        ; one step to the right of slot 6
+	ld [hl], a
+	ret
+
+; ============================================================
+; PCStageEventVanish  (Phase 7c)
+; The dark flash: the villains blink out of the player's face and reappear at
+; the hideout. Farcalled from ProceduralCave1_Script immediately after the
+; arrival text has been displayed.
+;
+; Lifted from Giovanni's disappear idiom at scripts/ViridianGym.asm - fade to
+; black, change the world, UpdateSprites, Delay3, fade back in - rather than
+; the scripted walk the plan originally specified. There is no MoveSprite_
+; drive, no wNPCMovementDirections2, and no script-pointer state machine,
+; because procedural maps have none of that infrastructure.
+;
+; ORDER IS LOAD BEARING. The phase is advanced to HIDING *before* the
+; reposition, so that PCPlaceStageEventNpcs takes its hideout branch. That also
+; means the single placement routine serves both the arrival and the
+; relocation, instead of this routine carrying a second copy of the hideout
+; arithmetic that could drift out of step with it.
+;
+; The reposition happens entirely inside the fade, so the sprites are never
+; seen moving - they are simply somewhere else when the screen comes back.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PCStageEventVanish::
+	call GBFadeOutToBlack
+	; advance WAITING -> HIDING, preserving type and the stole-an-item bit
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	call PCPlaceStageEventNpcs      ; now takes the hideout branch
+	call UpdateSprites
+	call Delay3
+	call GBFadeInFromBlack
+	ret
+
+PCStageHideoutResolve:
+	ld a, [sStageEventHideoutX]
+	ld b, a
+	ld a, [wBuffer + wProcCaveExitX]
+	cp b
+	ret nz                          ; A differs from the exit in X - keep it
+	ld a, [sStageEventHideoutY]
+	ld b, a
+	ld a, [wBuffer + wProcCaveExitY]
+	cp b
+	ret nz                          ; A differs in Y - keep it
+	; A IS the exit cell: promote B.
+	ld a, [sStageEventHideoutAltX]
+	ld [sStageEventHideoutX], a
+	ld a, [sStageEventHideoutAltY]
+	ld [sStageEventHideoutY], a
+	ld b, a                         ; b = B's Y
+	ld a, [wBuffer + wProcCaveExitY]
+	cp b
+	ret nz                          ; B differs from the exit in Y - keep it
+	ld a, [sStageEventHideoutAltX]
+	ld b, a
+	ld a, [wBuffer + wProcCaveExitX]
+	cp b
+	ret nz                          ; B differs in X - keep it
+	; Both candidates sit on the boss. Disarm.
+	ld a, STAGE_EVENT_NO_HIDEOUT
+	ld [sStageEventHideoutX], a
+	ld [sStageEventHideoutY], a
+	ret
 
 ; ============================================================
 ; PCWriteCell

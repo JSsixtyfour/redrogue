@@ -337,3 +337,12 @@ SECTION "Text Elite Four Rooms", ROMX, BANK[$2F]
 INCLUDE "text/KogasRoom.asm"
 INCLUDE "text/WillsRoom.asm"
 INCLUDE "text/KarensRoom.asm"
+
+; Procedural stage-event dialogue (Phase 7). Its own floating section rather
+; than an append to "Text 4" beside text/ProceduralCave1.asm: the same six
+; events can fire on any of the four procedural wild areas, so this is shared
+; text, and letting rgblink place it keeps it out of the way of the near-full
+; text banks. Pin it reactively if first-fit ever drops it somewhere awkward.
+SECTION "Stage Event Text", ROMX
+
+INCLUDE "text/StageEvents.asm"

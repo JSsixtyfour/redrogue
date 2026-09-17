@@ -81,6 +81,13 @@ SpecialEncounterRollAndAssign::
 	ld a, [hl]
 	and %11001111           ; clear type field (bits 4-5), keep the rest
 	ld [hl], a
+	; Phase 7a: clear last selection's stage event. This must happen BEFORE the
+	; gym-next / first-route gates below, not inside .doWildArea, because those
+	; gates return early and would otherwise leave a stale event armed for a
+	; stage the player is about to enter. wStageEvent sits below
+	; wGameProgressFlagsEnd, so nothing else ever zeroes it.
+	xor a
+	ld [wStageEvent], a
 IF DEF(_DEBUG)
 	; Debug 2 choices 3/4 bypass normal eligibility and chance gates.
 	ld a, [wStatusFlags6]
@@ -170,6 +177,7 @@ ENDC
 .waAssign:
 	call WildAreaPickAndAssign    ; input carry = forced; picks type (no-repeat),
 	                              ; updates wWildAreaState (mask bit + count), sets doors
+	call StageEventRoll           ; Phase 7a: may arm a stage event on that wild area
 	xor a
 	ld [wRoutesSinceSpecial], a
 	ret

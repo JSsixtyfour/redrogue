@@ -425,6 +425,12 @@ ToggleableObjectStates:
 	toggle_object_state 3, ON              ; slot 3 = pokeball 2
 	toggle_object_state 4, ON              ; slot 4 = pokeball 3
 	toggle_object_state 5, ON              ; slot 5 = pokeball 4
+	; Stage-event NPCs default to OFF (hidden). Unlike the boss and the balls,
+	; which exist on every cave, these manifest only when wStageEvent says an
+	; event is armed, so the map script ShowObjects them rather than hiding
+	; them on the far more common no-event path.
+	toggle_object_state 6, OFF             ; slot 6 = stage-event NPC 1
+	toggle_object_state 7, OFF             ; slot 7 = stage-event NPC 2
 
 	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants (ShowObject calls
 	; in scripts/ProceduralFacility.asm reference them directly at

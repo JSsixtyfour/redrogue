@@ -2857,8 +2857,23 @@ wGameProgressFlagsEnd::
 ; shift every saved address below this point, which invalidates save files for
 ; no benefit and drifts the smoke suite's RNG - the same reason new bytes are
 ; taken from `ds` gaps rather than appended (project_wram_take_padding_not_append).
-; Available for the next field that needs a saved-but-not-auto-zeroed byte.
-	ds 1
+; CLAIMED 2026-09-16 by wStageEvent below - this slot was the one advertised
+; here as "available for the next field that needs a saved-but-not-auto-zeroed
+; byte", and consuming it in place costs zero WRAM0 bytes and shifts nothing.
+
+; Procedural stage event for the wild area currently offered by the lobby
+; (Phase 7). Type in bits 0-2, lifecycle phase in bits 3-4, "stole an item
+; rather than a mon" in bit 5 - see the STAGE_EVENT_* block in
+; constants/ram_constants.asm for the full layout.
+;
+; Rolled by StageEventRoll (custom_functions/wild_area_selection.asm) and
+; cleared at the top of SpecialEncounterRollAndAssign, so it is rewritten on
+; EVERY lobby selection, including the gym-next and first-route ones that
+; return before rolling anything. That explicit clear is load-bearing: this
+; byte sits BELOW wGameProgressFlagsEnd, so the run-reset FillMemory over
+; wGameProgressFlags..wGameProgressFlagsEnd does NOT sweep it, and it is
+; inside wMainData so a Continue restores whatever the save held.
+wStageEvent:: db
 
 ; Second options byte, for the extra options menu (SELECT on the OPTION screen).
 ; Deliberately NOT extra bits on wOptions: bits 0-3 of that byte are consumed by
