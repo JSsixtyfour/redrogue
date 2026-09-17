@@ -104,16 +104,24 @@ ProcStageLoadDispatch::
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
 	cp SILPH_CO_B1F
-	jr nz, .notFacilityTestEntrance
-	; The temporary Credit Exchange replacement is a complete Facility test
+	jr nz, .notWildAreaTestEntrance
+	; The temporary Credit Exchange replacement is a complete wild-area test
 	; entrance, so prepare a fresh run exactly as lobby assignment would.
+	;
+	; POINTED AT THE CAVE 2026-09-16 (was PFacPreload / PROCEDURAL_FACILITY)
+	; for visual review of the river, which PCCarveRiver only started actually
+	; producing today. The other half of this switch is SilphCoB1F's warps 6
+	; and 7 in data/maps/objects/SilphCoB1F.asm - BOTH must point at the same
+	; stage or the door stages one kind of run and walks into another. To put
+	; the Facility back, revert this farcall and those two warp_events
+	; together.
 	call ProcGenerationBeginDoubleSpeed
 	push af
-	farcall PFacPreload
+	farcall PCPreloadCave
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret
-.notFacilityTestEntrance
+.notWildAreaTestEntrance
 	cp SILPH_CO_DORM
 	jr nz, .notDorm
 	farcall RoomStampBlocks

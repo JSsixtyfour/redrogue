@@ -54,6 +54,8 @@ DEF NUM_PC_OBSTACLES EQU 2  ; PCObstacleTable - 117 moved to its own pass, see P
 DEF NUM_PC_ROCKS     EQU 7  ; PCRockTable - stray-corner fallback decoration
 DEF NUM_PC_LADDER_IDS EQU 3 ; PCLadderTable - exit warp ladder tile, 35 deliberately excluded
 
+DEF PC_RIVER_START_TRIES EQU 8 ; PCCarveRiver start-point rolls before giving up
+
 ; Scratch storage: WRAM0 has no free bytes left for a new dedicated section
 ; (confirmed via the linker map), so this borrows wBuffer (ram/wram.asm,
 ; generic 30-byte scratch already reused by many unrelated one-off systems).
@@ -92,6 +94,16 @@ DEF wProcCaveCurY         EQU 9
 DEF wProcCaveMaxSteps     EQU 10
 DEF wProcCaveEdge         EQU 11
 DEF wProcCaveOffset       EQU 12
+; PCCarveRiver's walk reuses those same two bytes as its previous-cell save
+; slots. Safe, and checked rather than assumed: Edge/Offset exist only to feed
+; PCEdgePoint, PCCarveRiver has already called it for both endpoints before the
+; walk starts, and nothing the walk calls (PCStep, PCNearClaimed, PCReadCell,
+; PCWriteCell, PCIsClaimedCarry) reads or writes offset 11 or 12. They are NOT
+; free generally - PCPlaceDropIn aliases the same bytes for its own scratch,
+; which is fine because it runs much later. wBuffer is fully allocated (0-29),
+; so a dedicated pair was not an option.
+DEF wProcCaveRiverPrevX   EQU wProcCaveEdge
+DEF wProcCaveRiverPrevY   EQU wProcCaveOffset
 DEF wProcCaveDX           EQU 13
 DEF wProcCaveDY           EQU 14
 DEF wProcCaveLoopI        EQU 15
@@ -1548,9 +1560,17 @@ PCPlaceWildAreaItems:
 	ld [wBuffer + wProcCaveCurY], a
 	push bc
 	call PCReadCell
-	pop bc
 	cp PC_BLOCK_FLOOR
-	jr z, .gotFloor
+	jr nz, .notFloor
+	; Reject floor that touches water: that is a peninsula island the river's
+	; autotile pass minted inside itself, and a ball there is unreachable.
+	; See PCFloorTouchesWater's header for the measurement behind this.
+	call PCFloorTouchesWater
+	jr c, .notFloor
+	pop bc
+	jr .gotFloor
+.notFloor
+	pop bc
 	dec b
 	jr nz, .floorRetry
 	ret
@@ -3892,6 +3912,30 @@ PCBulge:
 ; of exactly this happening.
 ; Reuses DX/DY as save/restore scratch - safe here, PCCarveRiver's walk
 ; loop (this function's only caller) never needs DX/DY once walking starts.
+;
+; BOUNDS (fixed 2026-09-16, measured - this made the whole river feature
+; dead code from the day it was written):
+; The four probes below used to run with NO bounds check. PCCarveRiver
+; always starts its walk on a map EDGE (PCEdgePoint only ever yields x=0,
+; x=19, y=0 or y=19), so on the very first cell exactly one probe is
+; always off the grid:
+;   y=0  -> north reads CurY=255, which indexes PCRowOffsetTable at row
+;           255, i.e. 510 bytes past the end of a 40-byte table, and uses
+;           whatever ROM bytes are there as a row offset.
+;   x=0  -> west reads CurX=255, i.e. 255 bytes further along
+;           wOverworldMap: a real but completely unrelated cell.
+;   x=19 / y=19 -> the mirror of those, off the far edge.
+; Whatever comes back is essentially never 25 or PC_BLOCK_WATER, so it
+; read as claimed and killed the walk before it wrote a single block.
+; MEASURED over 24 generated caves (harness trace of every
+; PCIsClaimedCarry / PCNearClaimed call inside the river window): the
+; walk died on its START cell in 24 of 24, with 0 writes. In 12 of those
+; the start cell and all three IN-BOUNDS neighbours were plain fill, so
+; the off-grid probe was the only thing that could have set carry.
+; Off-grid now counts as NOT claimed, which is also the right answer on
+; the merits: outside the 20x20 playable area is the MAP_BORDER pad, not
+; something that needs a cell of separation, and the river is SUPPOSED to
+; touch the edge - that is where both of its endpoints are.
 ; ============================================================
 PCNearClaimed:
 	ld a, [wBuffer + wProcCaveCurX]
@@ -3899,36 +3943,58 @@ PCNearClaimed:
 	ld a, [wBuffer + wProcCaveCurY]
 	ld [wBuffer + wProcCaveDY], a
 
+	; Each probe is bounds-checked with `cp PC_SIZE` before it is taken, and
+	; an off-grid neighbour counts as NOT claimed - see the BOUNDS block in
+	; this routine's header for why that is both required and correct.
+	; `cp PC_SIZE` catches a coordinate of 255 (a dec that wrapped past 0)
+	; and 20 (an inc past the last column/row) in one test, since both are
+	; >= PC_SIZE unsigned. Skipping a probe also skips its CurX/CurY store,
+	; which is safe: every following block reloads the coordinate it needs
+	; from DX/DY rather than assuming what the previous block left behind.
+
 	; north
 	dec a
+	cp PC_SIZE
+	jr nc, .skipNorth
 	ld [wBuffer + wProcCaveCurY], a
 	call PCReadCell
 	call PCIsClaimedCarry
 	jr c, .restore
+.skipNorth
 
 	; south
 	ld a, [wBuffer + wProcCaveDY]
 	inc a
+	cp PC_SIZE
+	jr nc, .skipSouth
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, [wBuffer + wProcCaveDX]
 	ld [wBuffer + wProcCaveCurX], a
 	call PCReadCell
 	call PCIsClaimedCarry
 	jr c, .restore
+.skipSouth
 
 	; west
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, [wBuffer + wProcCaveDX]
 	dec a
+	cp PC_SIZE
+	jr nc, .skipWest
 	ld [wBuffer + wProcCaveCurX], a
 	call PCReadCell
 	call PCIsClaimedCarry
 	jr c, .restore
+.skipWest
 
 	; east
 	ld a, [wBuffer + wProcCaveDX]
 	inc a
+	cp PC_SIZE
+	jr nc, .restore     ; carry is already CLEAR here (that is what `jr nc`
+	                    ; tested), so falling into .restore reports "not
+	                    ; claimed", which is the answer we want
 	ld [wBuffer + wProcCaveCurX], a
 	call PCReadCell
 	call PCIsClaimedCarry
@@ -3939,6 +4005,72 @@ PCNearClaimed:
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
 	pop af
+	ret
+
+; ============================================================
+; PCFloorTouchesWater
+; INPUT: wProcCaveCurX/Y = the cell to test.
+; OUTPUT: carry SET if any of its 4 orthogonal neighbours is PC_BLOCK_WATER.
+; Clobbers a, de, hl. Leaves wProcCaveCurX/Y and every wBuffer byte alone.
+;
+; WHY THIS EXISTS (2026-09-16, found by measurement, not by review).
+; PCAutotileRiverEdges' Pass A' resolves peninsulas: a plain-fill cell with
+; three or more floor-like neighbours becomes real floor, and during that pass
+; water counts as floor-like (wProcCaveIncludeWater). So a cell the river
+; wrapped around on three sides is CONVERTED TO PC_BLOCK_FLOOR - a one-cell
+; island of floor sitting inside the water.
+; PCPlaceWildAreaItems then rolls random coordinates until one reads
+; PC_BLOCK_FLOOR, with no reachability test of any kind, so it will happily
+; drop a pokeball on that island, where the player cannot get to it. Measured:
+; 1 stranded ball in 64 caves (audit_cave_water_stranding.py, seed 13) once
+; PCCarveRiver started producing water at all.
+; None of this could happen before, because the river had never carved a
+; single block in its life - see PCNearClaimed's BOUNDS note.
+;
+; A floor cell orthogonally adjacent to water is ALWAYS one of these islands:
+; PCCarveRiver refuses any cell within one step of a claimed cell, and floor
+; is claimed, so genuine corridor floor is never closer than two cells to
+; water. Rejecting "floor that touches water" therefore rejects exactly the
+; minted islands and nothing the player could reach anyway.
+;
+; Reads the neighbours through hl arithmetic rather than four PCReadCell
+; calls with CurX/CurY save/restore (the way PCNearClaimed does it) because
+; its only caller, PCPlaceWildAreaItems, aliases wProcCaveBallPos over wBuffer
+; offsets 10-17 - which includes DX/DY. There is no scratch pair free here.
+; Reading one cell off the 0-19 grid lands in the MAP_BORDER pad, which never
+; contains PC_BLOCK_WATER, so the edges need no special case.
+; ============================================================
+PCFloorTouchesWater:
+	call PCReadCell         ; PCReadCell's last act is `ld a, [hl]`, so hl comes
+	                        ; back pointing at the cell itself
+	dec hl
+	ld a, [hl]              ; west
+	cp PC_BLOCK_WATER
+	jr z, .yes
+	inc hl
+	inc hl
+	ld a, [hl]              ; east
+	cp PC_BLOCK_WATER
+	jr z, .yes
+	dec hl                  ; back to the cell
+	push hl
+	ld de, PC_STRIDE
+	add hl, de
+	ld a, [hl]              ; south
+	cp PC_BLOCK_WATER
+	jr z, .yesPop
+	pop hl
+	ld de, -PC_STRIDE
+	add hl, de
+	ld a, [hl]              ; north
+	cp PC_BLOCK_WATER
+	jr z, .yes
+	and a                   ; clear carry: no water beside this cell
+	ret
+.yesPop
+	pop hl
+.yes
+	scf
 	ret
 
 ; INPUT: a = a cell's current block ID. OUTPUT: carry SET if it's
@@ -3955,7 +4087,25 @@ PCIsClaimedCarry:
 	ret
 
 PCCarveRiver:
-	; pick start point (any edge)
+	; Pick a start point on any edge, RETRYING if it is unusable.
+	;
+	; This used to be a single roll with no retry, which was the second of
+	; the two reasons no river ever appeared (the first is the bounds bug in
+	; PCNearClaimed's header). MEASURED over 24 caves: 8 of 24 start rolls
+	; landed straight onto an already-claimed cell - a carved corridor, its
+	; autotiled edge, or a decoration, all of which sit on the edge ring
+	; because the entrance, the exit and four dead-end items are all placed
+	; against it. One roll, one chance, and a third of caves lost the river
+	; before the walk began.
+	;
+	; PC_RIVER_START_TRIES rolls is a compromise, not a search: with roughly
+	; two thirds of edge cells usable it makes a wasted river very unlikely,
+	; while keeping the worst case bounded at preload time. Giving up
+	; silently (ret with nothing carved) stays a legal outcome - a cave with
+	; no river is the same cave this code produced for its whole life so far.
+	ld b, PC_RIVER_START_TRIES
+.pickStart
+	push bc
 	ld c, 4
 	call Rangerandom
 	ld [wBuffer + wProcCaveEdge], a
@@ -3964,6 +4114,19 @@ PCCarveRiver:
 	inc a
 	ld [wBuffer + wProcCaveOffset], a
 	call PCEdgePoint
+	call PCReadCell
+	call PCIsClaimedCarry
+	jr c, .startRejected
+	call PCNearClaimed          ; same 2-cell rule the walk itself uses, so a
+	jr nc, .startAccepted       ; start that the first walk step would reject
+.startRejected                  ; is rejected here instead of wasting the roll
+	pop bc
+	dec b
+	jr nz, .pickStart
+	ret
+.startAccepted
+	pop bc
+
 	ld a, [wBuffer + wProcCaveCurX]
 	ld [wBuffer + wProcCaveDX], a   ; reuse DX/DY as start-point save slots
 	ld a, [wBuffer + wProcCaveCurY]
@@ -4009,22 +4172,44 @@ PCCarveRiver:
 	inc a
 .haveMax
 	ld [wBuffer + wProcCaveMaxSteps], a
+	; The walk's first cell has no previous cell to back up to, so seed the
+	; save slots with the start itself. A deflection there simply re-steps
+	; from the start, which is what we want.
+	ld a, [wBuffer + wProcCaveCurX]
+	ld [wBuffer + wProcCaveRiverPrevX], a
+	ld a, [wBuffer + wProcCaveCurY]
+	ld [wBuffer + wProcCaveRiverPrevY], a
 .walkLoop
 	call PCReadCell
-	; die the moment this step would land on, or next to, anything already
-	; claimed (real floor, an existing floor/rock edge tile, a decoration,
-	; etc.) - not just real floor itself. See PCNearClaimed's header
-	; comment for why this needs to be a full 2-cell buffer (one cell for
-	; whatever's already there's own edge tile, one more left over, still
-	; plain fill, for the river's own edge tile to be carved into
-	; afterward) rather than just "don't touch real floor."
+	; Refuse any cell that is, or sits next to, something already claimed
+	; (real floor, an existing floor/rock edge tile, a decoration, etc.) -
+	; not just real floor itself. See PCNearClaimed's header comment for why
+	; this needs to be a full 2-cell buffer (one cell for whatever is already
+	; there to own its edge tile, one more left over, still plain fill, for
+	; the river's own edge tile to be carved into afterward) rather than just
+	; "don't touch real floor."
+	;
+	; DEFLECTION (2026-09-16). This used to `ret` outright on a refusal. The
+	; original objection to continuing was that skipping the blocked cell and
+	; wobbling on from THERE leaves a gap, fragmenting the river into
+	; disconnected blobs - which is true, so that is not what this does.
+	; It backs up to the last accepted cell and takes a different step from
+	; it, so every written cell stays orthogonally adjacent to the one before
+	; and the river stays a single connected run. Measured effect over 64
+	; caves: mean river length 5.1 -> see the ROM_BIBLE entry for the after
+	; figures. Each deflection spends one MaxSteps decrement, which is what
+	; bounds the work: wBuffer is fully allocated (0-29, no free byte), so a
+	; dedicated retry counter would have cost real WRAM for no extra safety.
 	call PCIsClaimedCarry
-	jr c, .done               ; hit a real path/edge/rock/decoration - die
-	call PCNearClaimed         ; here, permanently (used to skip past it and
-	jr c, .done                ; keep wobbling, which could fragment the
-	                            ; river into multiple disconnected blobs)
+	jr c, .deflect
+	call PCNearClaimed
+	jr c, .deflect
 	ld a, PC_BLOCK_WATER
 	call PCWriteCell
+	ld a, [wBuffer + wProcCaveCurX]
+	ld [wBuffer + wProcCaveRiverPrevX], a
+	ld a, [wBuffer + wProcCaveCurY]
+	ld [wBuffer + wProcCaveRiverPrevY], a
 	ld a, [wBuffer + wProcCaveCurX]
 	ld b, a
 	ld a, [wBuffer + wProcCaveTargetX]
@@ -4042,6 +4227,25 @@ PCCarveRiver:
 	dec a
 	ld [wBuffer + wProcCaveMaxSteps], a
 	call PCStep               ; same wobble-walk helper PCCarveOne uses
+	jr .walkLoop
+
+.deflect
+	; Back up to the last accepted cell and take a different step from it.
+	; Spending a MaxSteps decrement here is what stops a river wedged in a
+	; pocket with no free neighbour from spinning: worst case it burns the
+	; remaining budget on PCNearClaimed probes and stops, which is bounded at
+	; 3x the start-to-target Manhattan distance and is cheap next to
+	; PCAutotilePass's own 400-cell sweep.
+	ld a, [wBuffer + wProcCaveMaxSteps]
+	and a
+	jr z, .done
+	dec a
+	ld [wBuffer + wProcCaveMaxSteps], a
+	ld a, [wBuffer + wProcCaveRiverPrevX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveRiverPrevY]
+	ld [wBuffer + wProcCaveCurY], a
+	call PCStep
 	jr .walkLoop
 .done
 	ret
