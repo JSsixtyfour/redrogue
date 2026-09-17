@@ -52,7 +52,15 @@ ProceduralCave1_Object:
 	; Procedural maps are indoor (>= FIRST_INDOOR_MAP), so InitMapSprites loads
 	; tiles per object from this list and the outdoor sprite-set bound that
 	; restricts which SPRITE_* a route may use does not apply.
-	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_1, 0
-	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_2, 0
+	; DECLARED AS TRAINERS (8 args), not items. The arg count is what selects
+	; the branch in the object_event macro: 7 args emits `db ITEM | textid`,
+	; 8 emits `db TRAINER | textid` plus a class and a team number. These were
+	; briefly written with 7 args, which silently made them ITEM objects with
+	; item id 0 - they would have run the pickup path instead of a battle.
+	; The class and team here are placeholders, patched at finalize by
+	; StageEventApplyTrainers from the rolled event type; only the TRAINER flag
+	; itself has to be right at build time.
+	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
+	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
 
 	def_warps_to PROCEDURAL_CAVE_1

@@ -1220,6 +1220,7 @@ PCFinalizeCave::
 	call PCPlaceWildAreaItems
 	call PCPlaceBoss
 	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
+	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
 
@@ -1378,6 +1379,7 @@ PCFinalizeCaveFast:
 	call PCPlaceWildAreaItems        ; restores positions/items from SRAM
 	call PCPlaceBoss                 ; species/level into wMapSpriteExtraData
 	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
+	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
 
 	xor a
 	ld [wProcCavePreloadReady], a
@@ -2835,6 +2837,18 @@ PCPlaceStageEventArrival:
 	add a, a
 	add a, 6                        ; one step to the right of slot 6
 	ld [hl], a
+	ret
+
+; ============================================================
+; PCApplyStageEventTrainers  (Phase 7e)
+; Thin shim so PCFinalizeCave reaches the generic trainer patch in the
+; "Stage Events" section. Separate from PCPlaceStageEventNpcs because that
+; routine is also called from inside PCStageEventVanish's fade, where
+; re-patching the trainer data would be pointless work at a timing-sensitive
+; moment.
+; ============================================================
+PCApplyStageEventTrainers:
+	farcall StageEventApplyTrainers
 	ret
 
 ; ============================================================

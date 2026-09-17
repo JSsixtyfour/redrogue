@@ -120,6 +120,63 @@ StageEventSpriteTable:
 ; on entry and restores it before returning.
 ; Clobbers a/bc/de/hl.
 ; ============================================================
+; ============================================================
+; StageEventApplyTrainers  (Phase 7e)
+; Patches the OPP class and team number of the two NPC object slots from the
+; rolled event type, the same mechanism MiniBossApplyStageTrainer uses for a
+; mini-boss: wMapSpriteExtraData + (slot-1)*2, two bytes, class then set.
+;
+; EngageMapTrainer reads that pair fresh at engage time and copies the class
+; into wCurOpponent and the set into wTrainerNo, so patching once per map load
+; is sufficient and nothing needs to re-run per battle.
+;
+; The object list's declared class is a placeholder; what it has to get right
+; at build time is the TRAINER flag, which comes from declaring the object
+; with eight arguments rather than seven.
+;
+; Called from the cave's finalize, beside the sprite placement. No-ops when no
+; event is armed - the objects are invisible and PICTUREID-zeroed then, so the
+; stale class in wMapSpriteExtraData is unreachable.
+; Clobbers a/bc/de/hl.
+; ============================================================
+StageEventApplyTrainers::
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	ret z
+	dec a                         ; 1-based type -> 0-based row
+	add a                         ; 2 bytes per row
+	ld c, a
+	ld b, 0
+	ld hl, StageEventTrainerTable
+	add hl, bc
+	ld a, [hli]
+	ld d, a                       ; d = OPP class for both slots
+	ld e, [hl]                    ; e = team number
+	; slot 6 -> wMapSpriteExtraData + (6-1)*2
+	ld hl, wMapSpriteExtraData + (6 - 1) * 2
+	ld a, d
+	ld [hli], a
+	ld a, e
+	ld [hli], a                   ; hl now points at slot 7's pair
+	ld a, d
+	ld [hli], a
+	ld a, e
+	ld [hl], a
+	ret
+
+; One row per STAGE_EVENT_* type from 1: OPP class, then which authored team
+; to use. Both NPC slots of a pair share a class and a team for now; 7f
+; replaces the team number with MiniBossSetLevel + a species pool, which is
+; what makes these scale with the round instead of pinning a level.
+StageEventTrainerTable:
+	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JESSIE_JAMES
+	db OPP_PSYCHIC_TR,   1        ; STAGE_EVENT_PSYCHIC
+	db OPP_BURGLAR,      1        ; STAGE_EVENT_BURGLAR
+	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JOY   - placeholder until 7f
+	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JENNY - gives them classes
+	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
+
 StageEventShowCaveNpcs::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a

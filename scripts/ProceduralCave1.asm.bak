@@ -232,12 +232,12 @@ PCStageEventHideoutText:
 PCStageEventNpc1Text:
 	text_asm
 	ld hl, PCStageNpc1Header
-	jp ProceduralCaveInitBattleScript
+	jr ProceduralCaveInitBattleScript
 
 PCStageEventNpc2Text:
 	text_asm
 	ld hl, PCStageNpc2Header
-	jp ProceduralCaveInitBattleScript
+	jr ProceduralCaveInitBattleScript
 
 ; INPUT: hl = a six-entry table of text pointers, ordered by STAGE_EVENT_* type
 ;        starting at type 1.
