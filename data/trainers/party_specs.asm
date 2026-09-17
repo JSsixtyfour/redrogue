@@ -448,6 +448,16 @@ FOR n, 1, NUM_TRAINERS + 1
 	dw KarenSpecs
 	ELIF n == KOGA_E4
 	dw KogaE4Specs
+	ELIF n == JESSIE_JAMES
+	dw JessieJamesSpecs
+	ELIF n == PSYCHIC_TR
+	dw PsychicSpecs
+	ELIF n == BURGLAR
+	dw BurglarSpecs
+	ELIF n == NURSE_JOY
+	dw NurseJoySpecs
+	ELIF n == OFFICER_JENNY
+	dw OfficerJennySpecs
 	ELSE
 	dw 0
 	ENDC
@@ -599,3 +609,104 @@ FalknerSpec3:
 ; ---------------------------------------------------------------------------
 	e4_member_pointers KogaE4
 	e4_member_records  KogaE4, POOL_KOGA, CROBAT, 0, FORRETRESS, 0
+
+; ===========================================================================
+; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).
+;
+; These are not gym leaders - there is no round/variant grid, because
+; InitGymBattle never touches them. StageEventApplyTrainers
+; (custom_functions/stage_events.asm) drives wTrainerNo itself, computing it
+; from wBattleCount with the exact same round formula
+; custom_functions/func_enc_gen.asm's GetMiniBossTierPtr uses for
+; trainer_difficulty_settings_miniboss (wBattleCount / 10, clamped to round
+; 9) - a duplicated three-line clamp, not a cross-bank pointer, for the same
+; reason PFRollMonClass/PCAbs are duplicated rather than shared: the routine
+; that needs it lives in a different bank, and GetMiniBossTierPtr returns a
+; pointer into ITS bank's own table, which cannot survive a farcall back out.
+;
+; One spec per round (1-9), matching that same 9-row table, so "scales like a
+; mini-boss" is literally true here: base_level is that table's own min_level
+; per round. Team size ramps 2/2/3/3/4/4/5/5/6, reaching a full team only at
+; the final tier - these are a casual ambush, not a gym battle, so they start
+; smaller than gym_team_spec's 2/2/3/3/4/4/5/6 ladder, which reaches 6 by
+; round 7.
+; ===========================================================================
+
+; \1 = round (1-9). \2 = pool id. \3 = extra BIT_PSPEC_* flags beyond
+; NO_DUPES (0 for none).
+MACRO stage_event_team_spec
+	DEF _r = \1
+	IF _r == 1
+	DEF _n = 2
+	DEF _bl = 5
+	DEF _mix = MIX_ROUTE_EARLY
+	ELIF _r == 2
+	DEF _n = 2
+	DEF _bl = 15
+	DEF _mix = MIX_ROUTE_EARLY
+	ELIF _r == 3
+	DEF _n = 3
+	DEF _bl = 20
+	DEF _mix = MIX_ROUTE_MID
+	ELIF _r == 4
+	DEF _n = 3
+	DEF _bl = 25
+	DEF _mix = MIX_ROUTE_MID
+	ELIF _r == 5
+	DEF _n = 4
+	DEF _bl = 33
+	DEF _mix = MIX_ROUTE_MID
+	ELIF _r == 6
+	DEF _n = 4
+	DEF _bl = 37
+	DEF _mix = MIX_ROUTE_LATE
+	ELIF _r == 7
+	DEF _n = 5
+	DEF _bl = 41
+	DEF _mix = MIX_ROUTE_LATE
+	ELIF _r == 8
+	DEF _n = 5
+	DEF _bl = 45
+	DEF _mix = MIX_ROUTE_LATE
+	ELSE
+	DEF _n = 6
+	DEF _bl = 52
+	DEF _mix = MIX_TRAINER_LATE
+	ENDC
+	party_spec _n, _bl, 1, \2, _mix, (1 << BIT_PSPEC_NO_DUPES) | \3
+	db PARTY_SPEC_OVERRIDES_END
+ENDM
+
+; \1 = label prefix.
+MACRO stage_event_pointers
+\1Specs::
+	db NUM_STAGE_EVENT_TIERS
+	FOR t, 1, NUM_STAGE_EVENT_TIERS + 1
+	dw \1Spec{d:t}
+	ENDR
+ENDM
+
+; \1 = label prefix, \2 = pool id, \3 = extra flags (0 for none).
+MACRO stage_event_records
+	FOR t, 1, NUM_STAGE_EVENT_TIERS + 1
+\1Spec{d:t}:
+	stage_event_team_spec t, \2, \3
+	ENDR
+ENDM
+
+DEF NUM_STAGE_EVENT_TIERS EQU 9 ; matches trainer_difficulty_settings_miniboss
+
+	stage_event_pointers JessieJames
+	stage_event_records  JessieJames, POOL_JESSIE_JAMES, 0
+
+	stage_event_pointers Psychic
+	stage_event_records  Psychic, POOL_PSYCHIC, 0
+
+	stage_event_pointers Burglar
+	stage_event_records  Burglar, POOL_BURGLAR, 0
+
+	stage_event_pointers NurseJoy
+	stage_event_records  NurseJoy, POOL_JOY, 0
+
+	stage_event_pointers OfficerJenny
+	stage_event_records  OfficerJenny, POOL_JENNY, 0

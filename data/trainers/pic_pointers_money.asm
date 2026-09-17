@@ -27,7 +27,7 @@ TrainerPicAndMoneyPointers::
 	pic_money BikerPic,        150
 	pic_money BurglarPic,      150
 	pic_money EngineerPic,     150
-	pic_money JugglerPic,      150
+	pic_money JoyPic,          150
 	pic_money FisherPic,       150
 	pic_money SwimmerPic,      150
 	pic_money CueBallPic,      150
@@ -41,7 +41,7 @@ TrainerPicAndMoneyPointers::
 	pic_money BlackbeltPic,    150
 	pic_money Rival1Pic,       200
 	pic_money ProfOakPic,      600
-	pic_money ChiefPic,        150
+	pic_money JennyPic,        150
 	pic_money ScientistPic,    150
 	pic_money GiovanniPic,     500
 	pic_money RocketPic,       150

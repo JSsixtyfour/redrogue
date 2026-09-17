@@ -15,7 +15,7 @@ TrainerNamePointers:
 	dw wTrainerName
 	dw .BurglarName
 	dw .EngineerName
-	dw .UnusedJugglerName
+	dw wTrainerName ; NURSE_JOY - "NURSE JOY" needs no shortened defeat speech
 	dw wTrainerName
 	dw .SwimmerName
 	dw wTrainerName
@@ -29,7 +29,7 @@ TrainerNamePointers:
 	dw .BlackbeltName
 	dw wTrainerName
 	dw .ProfOakName
-	dw .ChiefName
+	dw wTrainerName ; OFFICER_JENNY - "OFC.JENNY" needs no shortened defeat speech
 	dw .ScientistName
 	dw wTrainerName
 	dw .RocketName
@@ -76,14 +76,12 @@ TrainerNamePointers:
 .SuperNerdName:     db "SUPER NERD@"
 .BurglarName:       db "BURGLAR@"
 .EngineerName:      db "ENGINEER@"
-.UnusedJugglerName: db "JUGGLER@"
 .SwimmerName:       db "SWIMMER@"
 .BeautyName:        db "BEAUTY@"
 .RockerName:        db "ROCKER@"
 .JugglerName:       db "JUGGLER@"
 .BlackbeltName:     db "BLACKBELT@"
 .ProfOakName:       db "PROF.OAK@"
-.ChiefName:         db "CHIEF@"
 .ScientistName:     db "SCIENTIST@"
 .RocketName:        db "ROCKET@"
 .CooltrainerMName:  db "COOLTRAINER♂@"

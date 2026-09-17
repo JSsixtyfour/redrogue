@@ -377,7 +377,6 @@ BirdKeeperPic::    INCBIN "gfx/trainers/birdkeeper.pic"
 BlackbeltPic::     INCBIN "gfx/trainers/blackbelt.pic"
 Rival1Pic::        INCBIN "gfx/trainers/rival1.pic"
 ProfOakPic::       INCBIN "gfx/trainers/prof.oak.pic"
-ChiefPic::
 ScientistPic::     INCBIN "gfx/trainers/scientist.pic"
 GiovanniPic::      INCBIN "gfx/trainers/giovanni.pic"
 RocketPic::        INCBIN "gfx/trainers/rocket.pic"
@@ -402,6 +401,19 @@ LancePic::         INCBIN "gfx/trainers/lance.pic"
 ; Yellow paired portrait uses its own bank; _LoadTrainerPic selects it by class.
 SECTION "Jessie James Portrait", ROMX, BANK[$2C]
 JessieJamesPic:: INCBIN "gfx/trainers/jessiejames.pic"
+
+; Nurse Joy and Officer Jenny (Phase 7f), the two stage-event good NPCs.
+; Portraits ported from the dormant reference/yellow_legacy/joy_jenny package
+; (joy.png credited to ZuperZACH, jenny.png to Karlos - see
+; "credits for contributors.txt"), converted here for the first time.
+;
+; Floating, not pinned: like every trainer pic since Phase 1b, the bank byte
+; travels in TrainerPicAndMoneyPointers (BANK() resolved at link time), so
+; these do not need to fight for space in the near-full "Trainer Pics" bank -
+; rgblink can drop them wherever there is room.
+SECTION "Joy Jenny Portraits", ROMX
+JoyPic::   INCBIN "gfx/trainers/joy.pic"
+JennyPic:: INCBIN "gfx/trainers/jenny.pic"
 
 ; Gym-leader expansion (Phase 1). The 8 Johto gym leaders, Janine, and the two
 ; Johto Elite Four members, imported from pret/pokegold at their native 56x56

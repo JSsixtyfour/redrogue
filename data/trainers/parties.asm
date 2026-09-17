@@ -44,7 +44,7 @@ TrainerDataPointers:
 	dw BikerData
 	dw BurglarData
 	dw EngineerData
-	dw UnusedJugglerData
+	dw NurseJoyData
 	dw FisherData
 	dw SwimmerData
 	dw CueBallData
@@ -58,7 +58,7 @@ TrainerDataPointers:
 	dw BlackbeltData
 	dw Rival1Data
 	dw ProfOakData
-	dw ChiefData
+	dw OfficerJennyData
 	dw ScientistData
 	dw GiovanniData
 	dw RocketData
@@ -124,11 +124,17 @@ HikerData:
 
 BikerData:
 
+; Empty deliberately: Phase 7f gave BURGLAR a PartySpecPointers entry (a
+; rogue-flavoured pool, scaled by round), so this authored fallback is never
+; reached.
 BurglarData:
 
 EngineerData:
 
-UnusedJugglerData:
+; Empty deliberately, like every other spec-driven class here: PartySpecPointers
+; carries NURSE_JOY's real team (Phase 7f), and RogueBuildParty always finds a
+; spec for it, so this authored fallback is never reached.
+NurseJoyData:
 
 FisherData:
 
@@ -140,6 +146,9 @@ GamblerData:
 
 BeautyData:
 
+; Empty deliberately: Phase 7f gave PSYCHIC_TR a PartySpecPointers entry (a
+; psychic-type pool, scaled by round), so this authored fallback is never
+; reached.
 PsychicData:
 
 RockerData:
@@ -173,8 +182,9 @@ ProfOakData:
 	db $FF, 66, TAUROS, 67, EXEGGUTOR, 68, ARCANINE, 69, VENUSAUR, 70, GYARADOS, 0
 	db $FF, 66, TAUROS, 67, EXEGGUTOR, 68, ARCANINE, 69, CHARIZARD, 70, GYARADOS, 0
 
-ChiefData:
-; none
+; Empty deliberately, like NurseJoyData above: PartySpecPointers carries
+; OFFICER_JENNY's real team (Phase 7f).
+OfficerJennyData:
 
 ScientistData:
 db 14, SPEAROW, 0
@@ -599,9 +609,11 @@ LanceData:
 ; fixed, and is "Trainer Parties" (bank $39) as of the 2026-09-10 Phase 0b
 ; relocation.
 
-; Official pret/pokeyellow Jessie & James parties, in donor order.
-; Explicit per-mon levels select the existing fixed-party path, avoiding the
-; ordinary Rocket class's procedural roster. No map or encounter uses these yet.
+; Official pret/pokeyellow Jessie & James parties, in donor order. Superseded
+; by Phase 7f's PartySpecPointers entry (the three-run Kanto/Johto/Time Warp
+; pool from PROCEDURAL_WILD_AREA_PLAN.md's 7f section), which RogueBuildParty
+; always finds first, so this authored fallback is kept for reference only and
+; is never read by the stage-event cave/forest/facility/cemetery encounter.
 JessieJamesData:
 	db $FF, 14, EKANS,   14, MEOWTH, 14, KOFFING, 0
 	db $FF, 25, KOFFING, 25, MEOWTH, 25, EKANS,   0

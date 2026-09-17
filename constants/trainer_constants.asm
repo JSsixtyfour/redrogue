@@ -20,11 +20,12 @@
 ; already overlapped the old OPP range 201-250. wIsTrainerBattle is what
 ; actually discriminates wild from trainer, and always has been in this tree.
 ;
-; Two dead classes ($0D UNUSED_JUGGLER, $1B CHIEF) have zero references in
-; data/maps/objects/ and scripts/ and could be repurposed in place if the id
-; space is ever tight again. Deleting them outright would renumber every class
-; after them and require reordering five parallel tables by hand, so they are
-; deliberately left alone - the offset change makes it unnecessary.
+; The two dead classes this comment used to describe ($0D, $1B) were
+; repurposed in place by Phase 7f: $0D is now NURSE_JOY and $1B is now
+; OFFICER_JENNY, the two good NPCs procedural stage events can roll. Renaming
+; the const in place, rather than appending after KOGA_E4, kept all seven
+; parallel tables (see the block below) at the same row and needed no
+; renumbering.
 DEF OPP_ID_OFFSET EQU 160
 
 MACRO trainer_const
@@ -54,7 +55,7 @@ ENDM
 	trainer_const BIKER          ; $0A
 	trainer_const BURGLAR        ; $0B
 	trainer_const ENGINEER       ; $0C
-	trainer_const UNUSED_JUGGLER ; $0D
+	trainer_const NURSE_JOY      ; $0D - repurposed from UNUSED_JUGGLER, Phase 7f
 	trainer_const FISHER         ; $0E
 	trainer_const SWIMMER        ; $0F
 	trainer_const CUE_BALL       ; $10
@@ -68,7 +69,7 @@ ENDM
 	trainer_const BLACKBELT      ; $18
 	trainer_const RIVAL1         ; $19
 	trainer_const PROF_OAK       ; $1A
-	trainer_const CHIEF          ; $1B
+	trainer_const OFFICER_JENNY  ; $1B - repurposed from CHIEF, Phase 7f
 	trainer_const SCIENTIST      ; $1C
 	trainer_const GIOVANNI       ; $1D
 	trainer_const ROCKET         ; $1E

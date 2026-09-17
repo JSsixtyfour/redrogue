@@ -121,7 +121,7 @@ StageEventSpriteTable:
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 ; ============================================================
-; StageEventApplyTrainers  (Phase 7e)
+; StageEventApplyTrainers  (Phase 7e, team number dynamic since 7f)
 ; Patches the OPP class and team number of the two NPC object slots from the
 ; rolled event type, the same mechanism MiniBossApplyStageTrainer uses for a
 ; mini-boss: wMapSpriteExtraData + (slot-1)*2, two bytes, class then set.
@@ -137,44 +137,77 @@ StageEventSpriteTable:
 ; Called from the cave's finalize, beside the sprite placement. No-ops when no
 ; event is armed - the objects are invisible and PICTUREID-zeroed then, so the
 ; stale class in wMapSpriteExtraData is unreachable.
+;
+; The team number (wTrainerNo) is the SAME round-tier for both slots, computed
+; once by StageEventRoundTier rather than read from the table - this is what
+; makes the rolled team scale with the round instead of pinning to team 1
+; forever. Class differs per slot only for STAGE_EVENT_BOTH_GOOD (Joy in slot
+; 6, Jenny in slot 7); every other row uses the same class for both, which for
+; Jessie & James is exactly the point - talking to either starts the identical
+; battle, so the pair reads as one encounter.
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 StageEventApplyTrainers::
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	ret z
+	push af
+	call StageEventRoundTier      ; a = wTrainerNo (1-9), shared by both slots
+	ld e, a
+	pop af
 	dec a                         ; 1-based type -> 0-based row
 	add a                         ; 2 bytes per row
 	ld c, a
 	ld b, 0
 	ld hl, StageEventTrainerTable
 	add hl, bc
-	ld a, [hli]
-	ld d, a                       ; d = OPP class for both slots
-	ld e, [hl]                    ; e = team number
-	; slot 6 -> wMapSpriteExtraData + (6-1)*2
-	ld hl, wMapSpriteExtraData + (6 - 1) * 2
-	ld a, d
-	ld [hli], a
+	ld a, [hli]                   ; slot 6 class
+	ld [wMapSpriteExtraData + (6 - 1) * 2], a
 	ld a, e
-	ld [hli], a                   ; hl now points at slot 7's pair
-	ld a, d
-	ld [hli], a
+	ld [wMapSpriteExtraData + (6 - 1) * 2 + 1], a
+	ld a, [hl]                    ; slot 7 class (0 = slot unused, harmless -
+	                               ; the object stays invisible and unengageable)
+	ld [wMapSpriteExtraData + (7 - 1) * 2], a
 	ld a, e
-	ld [hl], a
+	ld [wMapSpriteExtraData + (7 - 1) * 2 + 1], a
 	ret
 
-; One row per STAGE_EVENT_* type from 1: OPP class, then which authored team
-; to use. Both NPC slots of a pair share a class and a team for now; 7f
-; replaces the team number with MiniBossSetLevel + a species pool, which is
-; what makes these scale with the round instead of pinning a level.
+; a = wTrainerNo (1-9), the SAME round-tier stage_event_team_spec
+; (data/trainers/party_specs.asm) is keyed on. Duplicates
+; GetMiniBossTierPtr's clamp/divide (custom_functions/func_enc_gen.asm) rather
+; than reaching it by farcall: that routine returns a pointer into its OWN
+; bank's table, which cannot survive the bank restore on the way back out -
+; the same reason PFRollMonClass/PCAbs are duplicated rather than shared.
+; Clobbers a/b.
+StageEventRoundTier:
+	ld a, [wBattleCount]
+	cp 90
+	jr c, .noClamp
+	ld a, 89
+.noClamp
+	ld b, 0
+.loop
+	cp 10
+	jr c, .done
+	sub 10
+	inc b
+	jr .loop
+.done
+	ld a, b
+	inc a                         ; 0-based round -> 1-based wTrainerNo
+	ret
+
+; One row per STAGE_EVENT_* type from 1: OPP class for slot 6, then for slot
+; 7 (0 = slot 7 unused). STAGE_EVENT_BOTH_GOOD is the only row where the two
+; differ - Joy and Jenny are two independent ordinary trainers, not a pair
+; sharing one battle the way Jessie & James do.
 StageEventTrainerTable:
-	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JESSIE_JAMES
-	db OPP_PSYCHIC_TR,   1        ; STAGE_EVENT_PSYCHIC
-	db OPP_BURGLAR,      1        ; STAGE_EVENT_BURGLAR
-	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JOY   - placeholder until 7f
-	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_JENNY - gives them classes
-	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_BOTH_GOOD
+	db OPP_JESSIE_JAMES,  OPP_JESSIE_JAMES   ; STAGE_EVENT_JESSIE_JAMES
+	db OPP_PSYCHIC_TR,    0                  ; STAGE_EVENT_PSYCHIC
+	db OPP_BURGLAR,       0                  ; STAGE_EVENT_BURGLAR
+	db OPP_NURSE_JOY,     0                  ; STAGE_EVENT_JOY
+	db OPP_OFFICER_JENNY, 0                  ; STAGE_EVENT_JENNY
+	db OPP_NURSE_JOY,     OPP_OFFICER_JENNY  ; STAGE_EVENT_BOTH_GOOD
 	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
 
 ; ============================================================

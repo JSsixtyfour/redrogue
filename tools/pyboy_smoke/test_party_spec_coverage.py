@@ -99,6 +99,18 @@ E4_MEMBERS = {
 # generated shape and are checked separately.
 HAND_WRITTEN = {("Falkner", 2), ("Falkner", 3)}
 
+# Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).
+# A separate set, not folded into GYM_LEADERS/E4_MEMBERS above: those two
+# dicts drive the byte-for-byte gym_team_spec/e4_team_spec shape checks
+# elsewhere in this file, and the stage-event classes use a different macro
+# (stage_event_team_spec, data/trainers/party_specs.asm) with no round/variant
+# grid and no ace pin, so they would fail those checks for having the wrong
+# shape rather than for a real defect. Only test_no_other_trainer_class_...
+# below needs to know these five now carry a spec list.
+STAGE_EVENT_CLASSES = {
+    "JESSIE_JAMES", "PSYCHIC_TR", "BURGLAR", "NURSE_JOY", "OFFICER_JENNY",
+}
+
 _SYM_LINE = re.compile(r"^([0-9A-Fa-f]{2,4}):([0-9A-Fa-f]{4})\s+(\S+)$")
 
 
@@ -491,14 +503,18 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         intended classes carry a list and every other row is still `dw 0`, so a
         mistyped ELIF cannot quietly give a route trainer a gym leader's specs.
 
-        17 gym leaders + 3 Elite Four only. Was 19 before KOGA_E4, the Phase 7
-        class that carries the Elite Four Koga's party grid so it is not the gym
-        Koga's 24-round one. Raise this only alongside a deliberate new entry in
-        GYM_LEADERS or E4_MEMBERS above.
+        17 gym leaders + 3 Elite Four + 5 Phase 7f stage-event characters.
+        Was 19 before KOGA_E4, the Phase 7 class that carries the Elite Four
+        Koga's party grid so it is not the gym Koga's 24-round one, and 20
+        before Phase 7f gave JESSIE_JAMES, PSYCHIC_TR, BURGLAR, NURSE_JOY and
+        OFFICER_JENNY their own 9-row stage_event_team_spec lists. Raise this
+        only alongside a deliberate new entry in GYM_LEADERS, E4_MEMBERS or
+        STAGE_EVENT_CLASSES above.
         """
         expected = {entry[0] for entry in GYM_LEADERS.values()}
         expected |= {entry[0] for entry in E4_MEMBERS.values()}
-        self.assertEqual(len(expected), 20)
+        expected |= STAGE_EVENT_CLASSES
+        self.assertEqual(len(expected), 25)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
         for image in self.images:

@@ -67,8 +67,26 @@ ProceduralCave1_Script:
 	; reads threat -> loss -> escape. Leaves sStolenKind = STOLEN_NOTHING if
 	; its guards refuse (one mon left, or every mon fused), which is a valid
 	; outcome rather than an error - the villain still flees and can still be
-	; fought, there is just nothing to win back.
+	; fought, there is just nothing to win back. A no-op for the good NPCs -
+	; StageEventDoTheft's own dispatch returns without stealing for any type
+	; past STAGE_EVENT_PSYCHIC.
 	farcall StageEventDoTheft
+	; Phase 7f: Joy, Jenny and the pair do not hide. Per the user's design,
+	; "unlike the stealers, they just exist on the map and can be approached
+	; for a battle" - no vanish, no hideout, no recovery. Jump the phase
+	; straight to SETTLED (skipping HIDING entirely) so the arrival text's own
+	; WAITING gate above cannot fire twice, and the recovery block below,
+	; which only opens on HIDING, never opens for them either.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	jr c, .villainVanish            ; JESSIE_JAMES/PSYCHIC/BURGLAR - hide as usual
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	jr .afterStageEvent
+.villainVanish
 	farcall PCStageEventVanish      ; fade out, relocate, fade in; -> HIDING
 .afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.

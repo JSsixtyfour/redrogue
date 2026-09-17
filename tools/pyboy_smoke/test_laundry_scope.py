@@ -24,28 +24,33 @@ class LaundryScopeSmokeTest(HarnessTestCase):
                 h.call_routine("IsKeyItem_", limit=600)
                 self.assertEqual(h.read8("wIsKeyItem"), 0)
 
-    def test_jessie_james_fixed_team_definitions_load(self):
+    def test_jessie_james_fixed_team_definitions_are_superseded_by_the_spec(self):
+        """JessieJamesData's four authored teams are kept for reference only.
+
+        Phase 7f gave JESSIE_JAMES (and PSYCHIC_TR, BURGLAR, NURSE_JOY,
+        OFFICER_JENNY) a PartySpecPointers entry - a 9-row, round-tiered
+        pool spec (data/trainers/party_specs.asm's stage_event_team_spec).
+        RogueBuildParty is consulted BEFORE TrainerDataPointers and finds a
+        spec for every wTrainerNo 1-9, so JessieJamesData's old `db $FF,
+        level, species, ...` rows - what this test used to load and check
+        species-for-species - are now unreachable dead data. What is left to
+        prove is the property that replaced them: team SIZE follows
+        stage_event_team_spec's own round ladder (2/2/3/3/4/4/5/5/6), which is
+        deterministic even though the pool draw is not.
+        """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
         classes = parse_trainer_class_indexes(
             REPO_ROOT / "constants/trainer_constants.asm"
         )
-        teams = (
-            ("EKANS", "MEOWTH", "KOFFING"),
-            ("KOFFING", "MEOWTH", "EKANS"),
-            ("MEOWTH", "ARBOK", "WEEZING"),
-            ("WEEZING", "ARBOK", "MEOWTH"),
-        )
-        for number, team in enumerate(teams, 1):
+        team_sizes = (2, 2, 3, 3, 4, 4, 5, 5, 6)
+        for number, expected_n in enumerate(team_sizes, 1):
             with self.subTest(team=number):
                 h.write8("wTrainerClass", classes["JESSIE_JAMES"])
                 h.write8("wTrainerNo", number)
                 h.call_routine("ReadTrainer", limit=600)
-                self.assertEqual(h.read8("wEnemyPartyCount"), 3)
-                self.assertEqual(h.read_bytes("wEnemyPartySpecies", 4),
-                                 [species[name] for name in team] + [0xFF])
+                self.assertEqual(h.read8("wEnemyPartyCount"), expected_n)
 
     def test_new_leader_classes_build_their_placeholder_parties(self) -> None:
         """Every new gym-leader class resolves through ReadTrainer end to end.

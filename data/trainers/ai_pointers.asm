@@ -16,7 +16,7 @@ TrainerAIPointers:
 	dbw 3, GenericAI
 	dbw 3, GenericAI
 	dbw 3, GenericAI
-	dbw 3, JugglerAI ; unused_juggler
+	dbw 3, GenericAI ; nurse_joy - a good NPC, no special AI
 	dbw 3, GenericAI
 	dbw 3, GenericAI
 	dbw 3, GenericAI
@@ -30,7 +30,7 @@ TrainerAIPointers:
 	dbw 2, BlackbeltAI ; blackbelt
 	dbw 3, GenericAI ; rival1
 	dbw 3, GenericAI
-	dbw 1, GenericAI ; chief
+	dbw 3, GenericAI ; officer_jenny - a good NPC, no special AI
 	dbw 3, GenericAI
 	dbw 1, GiovanniAI ; giovanni
 	dbw 3, GenericAI

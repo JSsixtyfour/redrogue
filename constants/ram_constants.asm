@@ -354,11 +354,11 @@ DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
 DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
 DEF NUM_STAGE_EVENT_TYPES    EQU 6
 
-; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled today; the good NPCs still
-; need their trainer classes and pics, which is 7f's job. Raise this as they
-; land - the same escape hatch MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss
+; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled. Phase 7f gave Joy and
+; Jenny their trainer classes, pics, and pools, so all six types roll now -
+; the same escape hatch MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss
 ; registry, so a half-wired type can sit in the table without being rollable.
-DEF STAGE_EVENT_MAX_ROLLABLE EQU STAGE_EVENT_BURGLAR
+DEF STAGE_EVENT_MAX_ROLLABLE EQU NUM_STAGE_EVENT_TYPES
 
 ; wStageEvent bit layout (ram/wram.asm). One byte holds the whole lifecycle.
 ;   bits 0-2 = type (STAGE_EVENT_*)

@@ -97,6 +97,12 @@ ENDM
 	const POOL_JANINE
 	const POOL_WILL
 	const POOL_KAREN
+; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).
+	const POOL_JESSIE_JAMES
+	const POOL_PSYCHIC
+	const POOL_BURGLAR
+	const POOL_JOY
+	const POOL_JENNY
 DEF NUM_TRAINER_POOLS EQU const_value
 
 TrainerPoolTable::
@@ -120,6 +126,11 @@ TrainerPoolTable::
 	trainer_pool JaninePool
 	trainer_pool WillPool
 	trainer_pool KarenPool
+	trainer_pool JessieJamesPool
+	trainer_pool PsychicPool
+	trainer_pool BurglarPool
+	trainer_pool JoyPool
+	trainer_pool JennyPool
 	assert_table_length NUM_TRAINER_POOLS
 
 ; ---------------------------------------------------------------------------
@@ -620,3 +631,144 @@ KarenPool_Johto:
 	pool_mon JOLTEON, 2 ; pinned Umbreon form
 KarenPool_Warp:
 KarenPool_End:
+
+; ===========================================================================
+; Phase 7f pools - procedural stage-event characters
+; (PROCEDURAL_WILD_AREA_PLAN.md, 7f). Team size and level ride
+; stage_event_team_spec's own round ladder (data/trainers/party_specs.asm), so
+; every pool below just supplies the species.
+;
+; The Warp run is left empty on all five, matching FalknerPool's own precedent
+; and the caution above KarenPool's entry: LICKILICKY, PORYGON2/PORYGON_Z and
+; WEAVILE are all classification-only Warp-group species reached by evolving a
+; Kanto/Johto pool member (LICKITUNG, PORYGON, SNEASEL respectively) once that
+; group unlocks, not by a direct pool_mon entry. "Meowth alternates" likewise
+; need no Warp entry - they are FORMS of the one Kanto MEOWTH entry, rolled by
+; the ordinary default POOL_FORM_ROLL, independent of which run a species sits
+; in.
+; ===========================================================================
+
+; ---------------------------------------------------------------------------
+; Jessie & James - the paired villain. "Line" families expanded to every
+; member; the plan's single-species entries (Lickitung, Shellder, Chansey,
+; Scyther, Growlithe, Mr. Mime, Pinsir, Porygon, Hitmonlee) are deliberately
+; NOT expanded to their evolutions, several of which are Warp-group and reach
+; the team automatically once that group unlocks (see the header note above).
+; ---------------------------------------------------------------------------
+JessieJamesPool:
+	pool_mon MEOWTH
+	pool_mon PERSIAN
+	pool_mon EKANS
+	pool_mon ARBOK
+	pool_mon LICKITUNG
+	pool_mon SHELLDER
+	pool_mon CHANSEY
+	pool_mon KOFFING
+	pool_mon WEEZING
+	pool_mon SCYTHER
+	pool_mon CLEFAIRY
+	pool_mon CLEFABLE
+	pool_mon GROWLITHE
+	pool_mon MR_MIME
+	pool_mon MAGIKARP
+	pool_mon GYARADOS
+	pool_mon BELLSPROUT
+	pool_mon WEEPINBELL
+	pool_mon VICTREEBEL
+	pool_mon PIDGEY
+	pool_mon PIDGEOTTO
+	pool_mon PIDGEOT
+	pool_mon PINSIR
+	pool_mon GRIMER
+	pool_mon MUK
+	pool_mon PORYGON
+	pool_mon KRABBY
+	pool_mon KINGLER
+	pool_mon HITMONLEE
+	pool_mon MACHOP
+	pool_mon MACHOKE
+	pool_mon MACHAMP
+	pool_mon RHYHORN
+	pool_mon RHYDON
+	pool_mon ZUBAT
+	pool_mon GOLBAT
+	pool_mon MANKEY
+	pool_mon PRIMEAPE
+JessieJamesPool_Johto:
+	pool_mon YANMA
+	pool_mon BLISSEY
+	pool_mon STANTLER
+	pool_mon SNEASEL
+	pool_mon HOPPIP
+JessieJamesPool_Warp:
+JessieJamesPool_End:
+
+; ---------------------------------------------------------------------------
+; The Psychic - themed on the type, the same brief SabrinaPool follows.
+; ---------------------------------------------------------------------------
+PsychicPool:
+	pool_mon ABRA
+	pool_mon KADABRA
+	pool_mon ALAKAZAM
+	pool_mon SLOWPOKE
+	pool_mon SLOWBRO
+	pool_mon DROWZEE
+	pool_mon HYPNO
+	pool_mon EXEGGCUTE
+	pool_mon EXEGGUTOR
+	pool_mon MR_MIME
+	pool_mon JYNX
+PsychicPool_Johto:
+PsychicPool_Warp:
+PsychicPool_End:
+
+; ---------------------------------------------------------------------------
+; The Burglar - sneaky, venomous, urban-pest flavour rather than a type theme
+; (Gen 1 has no Dark type to draw on).
+; ---------------------------------------------------------------------------
+BurglarPool:
+	pool_mon RATTATA
+	pool_mon RATICATE
+	pool_mon EKANS
+	pool_mon ARBOK
+	pool_mon GRIMER
+	pool_mon MUK
+	pool_mon KOFFING
+	pool_mon WEEZING
+	pool_mon ZUBAT
+	pool_mon GOLBAT
+	pool_mon MEOWTH
+	pool_mon PERSIAN
+BurglarPool_Johto:
+BurglarPool_Warp:
+BurglarPool_End:
+
+; ---------------------------------------------------------------------------
+; Nurse Joy - donor species from reference/yellow_legacy/joy_jenny/options.asm
+; (cRz-Shadows/Pokemon_Yellow_Legacy), taken as a pool rather than pasted as
+; the donor's flat level-65 team - see that file's own README.
+; ---------------------------------------------------------------------------
+JoyPool:
+	pool_mon KANGASKHAN
+	pool_mon SNORLAX
+	pool_mon STARMIE
+	pool_mon PORYGON
+	pool_mon EXEGGUTOR
+	pool_mon CHANSEY
+JoyPool_Johto:
+JoyPool_Warp:
+JoyPool_End:
+
+; ---------------------------------------------------------------------------
+; Officer Jenny - donor species, same source and reasoning as JoyPool above.
+; ---------------------------------------------------------------------------
+JennyPool:
+	pool_mon PIDGEOT
+	pool_mon BLASTOISE
+	pool_mon TANGELA
+	pool_mon GENGAR
+	pool_mon PARASECT
+	pool_mon ARCANINE
+JennyPool_Johto:
+JennyPool_Warp:
+JennyPool_End:
