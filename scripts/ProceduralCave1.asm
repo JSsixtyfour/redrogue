@@ -114,6 +114,16 @@ ProceduralCave1_Script:
 	farcall Delay3
 	farcall StageEventGiveBack      ; a = STAGE_GIVEBACK_*; -> SETTLED
 	ld [wStageEventScratch], a      ; the text handler picks its line from this
+	; A PAIR IS ONE ENCOUNTER, not two. Jessie and James are two objects
+	; because they are two sprites, but beating either ends the event - the
+	; goods come back and both clear out together. Without this the partner
+	; stays standing at the hideout, fightable, with nothing left to win.
+	ld a, TOGGLE_WILD_AREA_NPC_1
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_WILD_AREA_NPC_2
+	ld [wToggleableObjectIndex], a
+	predef HideObject
 	ld a, TEXT_PROCEDURALCAVE1_STAGE_RECOVER
 	ldh [hTextID], a
 	call DisplayTextID
@@ -129,6 +139,22 @@ ProceduralCave1_Script:
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	jr nz, .runScripts
 	SetEvent EVENT_PC_BOSS_OFFERED
+	; Wild-area boss credits. This is where the award has to live, NOT in
+	; TrainerBattleVictory: the boss is declared OW_POKEMON, so it fights as a
+	; WILD battle (hIsInBattle = 1) and both callers of that routine return
+	; before reaching its credits block. The .wildAreaBossCredits branch that
+	; used to sit there tested these same three maps and was unreachable from
+	; the day it was written - wild-area bosses had never actually paid out.
+	;
+	; Here instead, because this one-shot is already exactly the right event:
+	; guarded by EVENT_PC_BOSS_OFFERED so it fires once, gated on
+	; EVENT_BEAT_PC_BOSS so it fires only on a real defeat, and it costs
+	; Battle Core (bank $0F) nothing at all.
+	;
+	; RogueAwardCredits1 draws nothing - it adds to wPlayerCoins and
+	; wCreditsEarnedThisRun and returns - so it is safe to run immediately
+	; before the join-offer text box.
+	farcall RogueAwardCredits1
 	farcall Delay3
 	ld a, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	ldh [hTextID], a

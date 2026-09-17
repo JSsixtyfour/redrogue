@@ -67,6 +67,22 @@ ProceduralFacility_Script:
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	jr nz, .runScripts
 	SetEvent EVENT_PC_BOSS_OFFERED
+	; Wild-area boss credits. This is where the award has to live, NOT in
+	; TrainerBattleVictory: the boss is declared OW_POKEMON, so it fights as a
+	; WILD battle (hIsInBattle = 1) and both callers of that routine return
+	; before reaching its credits block. The .wildAreaBossCredits branch that
+	; used to sit there tested these same three maps and was unreachable from
+	; the day it was written - wild-area bosses had never actually paid out.
+	;
+	; Here instead, because this one-shot is already exactly the right event:
+	; guarded by EVENT_PC_BOSS_OFFERED so it fires once, gated on
+	; EVENT_BEAT_PC_BOSS so it fires only on a real defeat, and it costs
+	; Battle Core (bank $0F) nothing at all.
+	;
+	; RogueAwardCredits1 draws nothing - it adds to wPlayerCoins and
+	; wCreditsEarnedThisRun and returns - so it is safe to run immediately
+	; before the join-offer text box.
+	farcall RogueAwardCredits1
 	farcall Delay3
 	ld a, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	ldh [hTextID], a

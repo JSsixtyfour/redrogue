@@ -383,6 +383,115 @@ StageEventRebuildStolenMon:
 	call CalcStats                ; writes the five stats to [de]
 	ret
 
+; ============================================================
+; StageEventInjectStolenMon  (Phase 7e)
+; Puts the mon the Psychic stole onto the Psychic's own team, as its last
+; slot, so the player fights their own Pokemon to get it back.
+;
+; ORDERING IS THE WHOLE TRAP HERE, and it is a known one in this codebase.
+; This runs from .FinishUp in read_trainer_party.asm, which is AFTER
+; RogueApplyMixToParty (the plan's explicit requirement) and also after the
+; SpecialTrainerMoves loop. Both of those rewrite movesets across the enemy
+; party, so injecting earlier would have the stolen mon's own four moves
+; rolled away - which is the same shape as the GetRandRosterLoop override
+; ordering already recorded for the GAMBLER path.
+;
+; THE LAST SLOT, not the first: it reads as the trainer's ace, and it means
+; the injection cannot be masked by a lead that the AI switches out.
+;
+; Gated four ways, because this writes into a live enemy party and any of
+; these being wrong would corrupt an unrelated trainer's team:
+;   - the armed event is the Psychic
+;   - the trainer being built IS a Psychic (not some other class on the map)
+;   - something was actually stolen, and it was a mon
+;   - the enemy party is non-empty
+; Clobbers a/bc/de/hl.
+; ============================================================
+StageEventInjectStolenMon::
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_PSYCHIC
+	ret nz
+	ld a, [wTrainerClass]
+	cp PSYCHIC_TR
+	ret nz
+	call StageEventReadStolenKind
+	cp STOLEN_MON
+	ret nz
+	ld a, [wEnemyPartyCount]
+	and a
+	ret z
+	dec a                         ; 0-based index of the last slot
+	ld [wStageEventScratch], a
+
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	; species also has to go into the parallel list, or the battle engine and
+	; the party menu disagree about what this slot holds
+	ld a, [wStageEventScratch]
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyPartySpecies
+	add hl, bc
+	ld a, [sStolenBoxMon]
+	ld [hl], a
+	ld [wCurPartySpecies], a
+	; the struct itself
+	ld a, [wStageEventScratch]
+	ld hl, wEnemyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenBoxMon
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+	; the nickname, so the player recognises their own mon on the field
+	ld a, [wStageEventScratch]
+	ld hl, wEnemyMonNicks
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenNickname
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+
+	; Recompute level and stats from experience, exactly as the give-back
+	; does - same reason, and the same CalcStats convention (de = MON_STATS
+	; destination, hl = the stat-exp base, NOT the same pointer).
+	ld a, [wStageEventScratch]
+	ldh [hWhichPokemon], a
+	ld a, ENEMY_PARTY_DATA
+	ld [wMonDataLocation], a
+	call LoadMonData
+	farcall CalcLevelFromExperience ; d = level
+	ld a, [wStageEventScratch]
+	ld hl, wEnemyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	push de
+	call AddNTimes
+	pop de
+	ld bc, BOXMON_STRUCT_LENGTH
+	add hl, bc                    ; hl = this slot's Level byte
+	ld a, d
+	ld [hli], a                   ; hl now = MON_STATS
+	ld d, h
+	ld e, l
+	ld bc, (MON_HP_EXP - 1) - MON_STATS
+	add hl, bc                    ; hl = HPExp - 1
+	ld b, $1
+	call CalcStats
+	ret
+
 StageEventShowCaveNpcs::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a

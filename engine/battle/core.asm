@@ -987,35 +987,48 @@ ReplaceFaintedEnemyMon:
 	ret
 
 TrainerBattleVictory:
+	; --- Phase 7e: procedural-map trainer victories are FREE -----------------
+	; A trainer-class victory on one of the three procedural maps can only be a
+	; stage-event NPC, and those must not advance the run: no wBattleCount, no
+	; credits. They are a side encounter the player did not choose, and the
+	; count drives enemy levels, AI tier and reward tiers for everything after.
+	; A Jessie & James pair would otherwise have cost +2 on its own.
+	;
+	; THE OLD .wildAreaBossCredits BRANCH WAS DEAD CODE AND IS GONE. It tested
+	; these same three maps and claimed the wild-area boss was "the only
+	; trainer-class battle" on them. The boss is declared OW_POKEMON, so
+	; EngageMapTrainer takes its .pokemon branch, wIsTrainerBattle stays 0, and
+	; the fight runs through InitWildBattle with hIsInBattle = 1 - which both
+	; call sites of this routine `ret z` on, well before here. So the branch
+	; was unreachable from the day it was written, and wild-area bosses have
+	; NEVER awarded credits. Removing it is what pays for this guard: the
+	; restructure is a net ~10 bytes SMALLER in a bank with 33 free.
+	; ⚠ If boss credits are actually wanted, they need a hook on the WILD
+	; victory path; adding the branch back here cannot work.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .creditsDone
+	cp PROCEDURAL_FOREST
+	jr z, .creditsDone
+	cp PROCEDURAL_FACILITY
+	jr z, .creditsDone
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
 	; Credits award (see custom_functions/credit_award.asm): exactly one of the
-	; three branches below fires per victory - gym leader, wild-area boss (the
-	; only trainer-class battle on those 3 maps), or the route's 5th trainer
-	; (wBattleCount mod 10 == 5, matching func_enc_gen.asm's GetRandRoster
-	; remainder scheme, checked AFTER the inc [hl] above). Mutually exclusive
-	; by construction - gym trainers 6-9 and anything else get no award.
+	; two branches below fires per victory - gym leader, or the route's 5th
+	; trainer (wBattleCount mod 10 == 5, matching func_enc_gen.asm's
+	; GetRandRoster remainder scheme, checked AFTER the inc [hl] above).
+	; Mutually exclusive by construction - gym trainers 6-9 and anything else
+	; get no award.
 	ld a, [wGymLeaderNo]
 	and a
-	jr z, .notGymLeaderCredits
+	jr z, .checkFifthTrainerCredits
 	; RogueGymLeaderVictory = RogueAwardCredits2 + the first-defeat ELEMENT PRISM
 	; grant (custom_functions/element_prism.asm). Same 8-byte farcall as before,
 	; just a different target, so this hook costs this (very tight) bank nothing.
 	; Not folded into RogueAwardCredits2 itself - the Elite Four scripts call
 	; that too, and the prism is a gym-leader grant only.
 	farcall RogueGymLeaderVictory
-	jr .creditsDone
-.notGymLeaderCredits
-	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_1
-	jr z, .wildAreaBossCredits
-	cp PROCEDURAL_FOREST
-	jr z, .wildAreaBossCredits
-	cp PROCEDURAL_FACILITY
-	jr z, .wildAreaBossCredits
-	jr .checkFifthTrainerCredits
-.wildAreaBossCredits
-	farcall RogueAwardCredits1
 	jr .creditsDone
 .checkFifthTrainerCredits
 	ld a, [wBattleCount]

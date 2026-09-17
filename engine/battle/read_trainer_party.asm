@@ -253,6 +253,12 @@ ReadTrainer:
 	jr nz, .loopSkipTrainer
 	jr .loopAdditionalMoveData
 .FinishUp
+; Phase 7e: if the Psychic stole one of the player's mon, it is on their team.
+; Deliberately here and not earlier - RogueApplyMixToParty and the
+; SpecialTrainerMoves loop above both rewrite movesets across the whole enemy
+; party, and the stolen mon has to keep its own four moves. Self-gating; a
+; no-op for every other trainer in the game.
+	farcall StageEventInjectStolenMon
 ; clear wAmountMoneyWon addresses
 	xor a
 	ld de, wAmountMoneyWon
