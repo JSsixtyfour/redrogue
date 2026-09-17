@@ -204,7 +204,39 @@ sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 SECTION "Save Data", SRAM
 
-	ds $3f4 ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
+; Phase 7d: the stage-event theft record. What a villain took off the player,
+; held until it is either won back or the player leaves the wild area.
+;
+; NOT part of sGameData, on purpose: the record is meant to die with the visit,
+; so it must not participate in save/load or the checksum. Carved from the
+; padding well below, the same one every previous feature has drawn from.
+;
+; ⚠ This is SRAM BANK 1 ("Save Data"), while every other stage-event field
+; (sStageEventHideout*, sStageEventSprite*) is in bank 0 ("Sprite Buffers").
+; Anything touching both must re-select rRAMB between them - measured from the
+; map file, not assumed, because the plan had this well in bank 0.
+;
+; THE FORM NEEDS NO FIELD HERE. A mon's form index lives in MON_CATCH_RATE
+; bits 5-6 (FORM_MASK), inside the box struct, alongside the fusion, shiny and
+; ghost bits. So a flat copy of the struct carries the form - and the shiny
+; flag, and everything else - at full fidelity for free. The plan budgeted a
+; separate form byte and a wSpawnForm read; both are unnecessary, and the
+; wSpawnForm read would have been actively wrong, since wSpawnForm describes
+; the mon most recently CREATED, not the one being copied.
+sStolenRecord::
+sStolenKind::     db  ; STOLEN_NOTHING / STOLEN_MON / STOLEN_ITEM; also the
+                      ; validity tag, since fresh $ff matches no valid kind
+sStolenItem::     db  ; item id, when kind = STOLEN_ITEM (7d.2)
+sStolenBoxMon::   ds BOXMON_STRUCT_LENGTH ; 33: species, level, moves, PP, DVs,
+                                          ; stat exp, OT ID, and the catch-rate
+                                          ; byte carrying form/fusion/shiny
+sStolenNickname:: ds NAME_LENGTH
+sStolenOTName::   ds NAME_LENGTH
+sStolenRecordEnd::
+ASSERT sStolenRecordEnd - sStolenRecord == 57
+
+	ds $3bb ; was $3f4; 57 bytes carved for sStolenRecord above (Phase 7d).
+	        ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
 	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
 	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System),
 	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below,

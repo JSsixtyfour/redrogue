@@ -63,6 +63,12 @@ ProceduralCave1_Script:
 	ld a, TEXT_PROCEDURALCAVE1_STAGE_EVENT
 	ldh [hTextID], a
 	call DisplayTextID
+	; Phase 7d: rob the player BETWEEN the threat and the vanish, so the beat
+	; reads threat -> loss -> escape. Leaves sStolenKind = STOLEN_NOTHING if
+	; its guards refuse (one mon left, or every mon fused), which is a valid
+	; outcome rather than an error - the villain still flees and can still be
+	; fought, there is just nothing to win back.
+	farcall StageEventDoTheft
 	farcall PCStageEventVanish      ; fade out, relocate, fade in; -> HIDING
 .afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.

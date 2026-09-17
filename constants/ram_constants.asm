@@ -384,6 +384,22 @@ DEF STAGE_EVENT_CHANCE EQU 128
 ; disarmed" then need exactly one check, not two.
 DEF STAGE_EVENT_NO_HIDEOUT EQU $ff
 
+; --- Phase 7d: what the villain took --------------------------------------
+; sStolenKind, beside the record itself in SRAM, is the SINGLE source of truth
+; for what was stolen. wStageEvent bit 5 was originally specified to carry
+; "took an item rather than a mon"; it is deliberately NOT used for that, and
+; is left reserved. Two copies of the same fact in two different memories is
+; exactly the shape that drifts, and the copy that matters is the one that can
+; disagree with the record's actual contents - so it lives with the record.
+;
+; It doubles as the record's validity tag: SRAM powers up $ff and
+; ClearAllSRAMBanks fills $ff, neither of which equals STOLEN_MON or
+; STOLEN_ITEM, so an unwritten record reads as "nothing to give back" without
+; needing a separate magic byte.
+DEF STOLEN_NOTHING EQU 0
+DEF STOLEN_MON     EQU 1
+DEF STOLEN_ITEM    EQU 2
+
 ; --- Bridge System (twice-per-run gift-room interludes) ---
 ; Bridges sit ON TOP of the door randomization: when one fires, BOTH lobby doors
 ; become two different bridge rooms; entering either gives a gift, then the room's

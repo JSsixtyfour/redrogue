@@ -63,11 +63,6 @@ ProcBossPatchStageSprite::
 	; window as the boss sprite, read here and installed below. They live in
 	; bank 0 while the Facility's boss sprite came from bank 1, so re-select
 	; bank 0 before reading them rather than inheriting whichever branch ran.
-	;
-	; Reading them on EVERY procedural map (not just the cave) is deliberate:
-	; only one wild area is ever live, so the fields describe whichever stage
-	; the player is in, and a stage that has not grown NPC slots yet simply has
-	; no object in slot 6/7 for the write to affect.
 	ASSERT BANK("Sprite Buffers") == 0
 	xor a
 	ld [rRAMB], a
@@ -81,6 +76,34 @@ ProcBossPatchStageSprite::
 	ld [rRAMG], a
 	ld a, b
 	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+
+	; --- stage-event NPC slots: ONLY on maps that actually declare them -----
+	; MEASURED BUG, 2026-09-17. This patch was originally unconditional, on the
+	; reasoning that only one wild area is ever live so a stage without NPC
+	; slots "has no object for the write to affect". That reasoning is wrong
+	; twice, and both ways are real:
+	;
+	;   * FOREST - LoadMapHeader zeroes slots 01-15 and then loads only
+	;     wNumSprites objects, so the forest's slots 6/7 are genuinely empty.
+	;     Writing a PICTUREID into one does not hit a dormant object, it
+	;     CREATES one. And sStageEventSprite6/7 are written only by
+	;     PCPreloadCave, so after any cave visit with an armed event they still
+	;     hold that event's sprites. Probed directly: entering the forest with
+	;     $4b/$4c staged produced wNumSprites=5 with slots 6 and 7 holding
+	;     $4b/$4c at MapX=0 - a phantom Jessie and James on a map that never
+	;     declared them, costing two 12-tile VRAM slots.
+	;   * FACILITY - worse, because there the write would LAND on something.
+	;     Its slots 6-9 are the four fake item balls, so an unconditional patch
+	;     would replace a pokeball's sprite with a villain's.
+	;
+	; So the patch is gated to the maps that own these slots. Today that is the
+	; Cave alone. CONTRACT for adding another stage: it needs BOTH the object
+	; slots in its object list AND a farcall to StageEventStageSprites in its
+	; own preload, and only then a case here. Gating on wNumSprites instead
+	; would be wrong - the Facility has nine objects and would pass.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	ret nz
 	; 0 here is not "hide it later" but "this slot does not exist":
 	; LoadMapSpriteTilePatterns skips a zero PICTUREID outright, so an unarmed
 	; event costs no VRAM tile-pattern slot.
