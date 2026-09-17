@@ -48,88 +48,23 @@ StageEventRoll:
 	ret
 
 ; ============================================================
-; StageEventStageSprites  (Phase 7b)
-; Publishes the overworld sprite each stage-event NPC slot should wear into
-; sStageEventSprite6/7, for ProcBossPatchStageSprite to install into PICTUREID
-; in the window between LoadMapHeader and InitMapSprites.
-;
-; Called from a wild area's PRELOAD rather than its finalize, because the
-; sprite has to be staged before the map is ever loaded, and the preload is the
-; only hook guaranteed to run before the first load and to re-run per lobby
-; assignment.
-;
-; A slot's table entry of 0 means "no NPC in this slot", and that is load
-; bearing rather than conventional: LoadMapSpriteTilePatterns skips a slot
-; whose PICTUREID is 0 (`and a / jp z, .nextSpriteSlot`), so an unused slot
-; costs no VRAM tile-pattern slot at all. Hence the no-event path writes 0/0
-; explicitly instead of leaving the previous assignment's sprites staged.
-;
-; SRAM: re-asserted to bank 0 here rather than trusted from the caller, per the
-; standing rule about farcalls and rRAMG/rRAMB. Deliberately left OPEN on
-; return - the caller (PCPreloadCave) owns this window and closes it itself.
-; Clobbers a/bc/hl.
-; ============================================================
-; ============================================================
-; StageEventClearStagedSprites  (Phase 7c)
-; Zeroes sStageEventSprite6/7, from the top of SpecialEncounterRollAndAssign
-; beside the wStageEvent clear.
-;
-; This is the STRUCTURAL half of the phantom-NPC fix; the other half is the
-; per-map gate in ProcBossPatchStageSprite. Either alone stops today's bug, but
-; only this one stops it coming back: without it, the staged sprites outlive
-; the assignment that set them, because only a stage's own preload ever writes
-; them and only the Cave has one that does. Anything that later reads them on
-; another stage - a new stage growing NPC slots, a debug path, a reordering -
-; would see a previous cave's villains. Clearing at the single choke point
-; every lobby selection passes through means there is no stale value to read,
-; rather than a rule that each new stage has to remember.
-;
-; ORDERING, checked not assumed: the lobby does `call SelectAndPatchLobbyExit`
-; then `call ProcPreloadAssignedWildArea` (custom_functions/dice_items.asm:60),
-; so the roll and this clear both run BEFORE the preload that re-stages them.
-; Clearing here cannot wipe the sprites the current assignment just published.
-;
-; Opens and closes its own SRAM window: this runs from the lobby, where no
-; caller guarantees SRAM state either way.
-; Clobbers a.
-; ============================================================
-StageEventClearStagedSprites:
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK("Sprite Buffers") == 0
-	xor a
-	ld [rRAMB], a
-	ld [sStageEventSprite6], a
-	ld [sStageEventSprite7], a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	; Phase 7d: the theft record is the other half of this lobby-time reset,
-	; so a robbery can never outlive the visit that produced it. It gets its
-	; own SRAM window rather than sharing this one, because it lives in a
-	; DIFFERENT bank (1, "Save Data") from the sprites above (0).
-	jp StageEventClearStolenRecord
-
-; ============================================================
 ; StageEventDoTheft  (Phase 7d)
 ; The robbery. Farcalled from the map script between the villain's arrival
 ; text and the dark flash, so the player reads the threat, then loses the
 ; thing, then watches them vanish with it.
 ;
-; Only the mon-stealing villains are wired (7d.1). The Burglar's item theft is
-; 7d.2, and until it exists STAGE_EVENT_MAX_ROLLABLE keeps him out of the roll
-; rather than letting him appear and take nothing.
-;
-; THREE GUARDS, in order, each of which can leave STOLEN_NOTHING behind:
+; THE FALLBACK CHAIN IS mon -> item -> nothing. The two mon thieves fall back
+; to robbing the bag when either guard refuses them:
 ;   1. party size < 2 - never leave the player with an empty party
 ;   2. every eligible mon is FUSED - see below
-;   3. (implicit) the event type does not steal at all
-; A failed theft is not an error state: the villain still speaks, vanishes and
-; can be fought; there is simply nothing to hand back. 7e reads sStolenKind and
-; gives back only what was actually taken.
+; Only when the bag is ALSO empty of Recovery, Stat, Valuable items and
+; TMs/HMs does nothing get stolen. That is close to unreachable in practice,
+; but it is a defined outcome, not an unhandled one: the villain still speaks,
+; vanishes and can be fought, and 7e reads sStolenKind to know there is
+; nothing to hand back.
+;
+; The good NPCs (Joy, Jenny, and the pair) steal nothing by design; they are
+; not yet rollable in any case.
 ;
 ; WHY FUSED MONS ARE EXCLUDED, and why it is exclusion rather than fidelity. A
 ; fusion's identity is NOT in its struct. The struct carries only bit 1 of
@@ -144,7 +79,7 @@ StageEventClearStagedSprites:
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 StageEventDoTheft::
-	call StageEventClearStolenRecord
+	farcall StageEventClearStolenRecord
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	cp STAGE_EVENT_BURGLAR
@@ -235,13 +170,24 @@ StageEventStealMon:
 ; Takes one unit of a random owned item and records it. Reached either
 ; directly (the Burglar) or as the fallback when a mon theft is refused.
 ;
-; POCKETS: Recovery, Stat and Valuable. Key Items are excluded because the
-; plan says so and because losing one would be unrecoverable in a way an
-; ordinary item is not. The TM pocket is excluded for a mechanical reason
-; rather than a design one: TMs live in sTMBitfield, not in a count array, so
-; RemovePocketItem cannot remove one. Adding them needs a second removal path,
-; which is not worth it while three pockets already make an empty bag
-; vanishingly unlikely.
+; POCKETS: Recovery, Stat, Valuable and TMs.
+;
+; Key Items are excluded because the plan says so and because losing one would
+; be unrecoverable in a way an ordinary item is not.
+;
+; HMs ARE included, alongside the TMs, and that is a Red Rogue-specific call
+; rather than a vanilla one: this game does not use out-of-combat field moves,
+; so an HM is just a TM that happens to live at bit index NUM_TMS or above.
+; There is no Surf/Strength progression to strand, which is the only reason
+; vanilla would have to protect them. The whole bitfield, indexes
+; 0..NUM_TMS+NUM_HMS-1, is fair game.
+;
+; TMs and HMs need their own pass because they are ownership BITS in
+; sTMBitfield, not counts in an array - RemovePocketItem cannot touch them,
+; RemoveTMHM does (and it handles both id ranges).
+; Giving them back, though, needs nothing special: GiveItem already routes a
+; TM id to AcquireTMHM (home/give.asm), so 7e hands back a stolen TM with the
+; same call it uses for a potion, and the record needs no separate kind.
 ;
 ; POKE_FLUTE is skipped in both passes. RemovePocketItem refuses to decrement
 ; it (`cp POKE_FLUTE / ret z`, it is an infinite-use item), so "stealing" it
@@ -267,6 +213,7 @@ StageEventStealItem:
 	ld hl, ValuableItemTable
 	ld de, wValuableItemCounts
 	call StageEventCountPocket
+	call StageEventCountTMs       ; fourth pocket; opens its own SRAM window
 	ld a, b
 	and a
 	ret z                         ; empty bag AND no stealable mon: the
@@ -285,7 +232,11 @@ StageEventStealItem:
 	ld hl, ValuableItemTable
 	ld de, wValuableItemCounts
 	call StageEventPickPocket
-	ret nc                        ; defensive: pass 1 promised one exists
+	jr c, .got
+	; TMs are resolved last, and unlike the three count pockets this call
+	; records AND removes the TM itself, because both need sTMBitfield rather
+	; than the count-array machinery below.
+	jp StageEventPickTM           ; carry = took one; pass 1 promised it exists
 .got
 	; ⚠ wCurItem IS wCurPartySpecies - one byte, several labels. Writing it
 	; here destroys any live species value. Safe at this call site: this runs
@@ -350,6 +301,145 @@ StageEventPickPocket:
 	ret
 .notHere
 	and a
+	ret
+
+; ============================================================
+; The TM pocket. Ownership is a BIT in sTMBitfield, not a count, so these
+; three routines stand apart from the count-array pair above.
+;
+; The whole bitfield is in scope: indexes 0..NUM_TMS-1 are TM01-TM50 and
+; NUM_TMS..NUM_TMS+NUM_HMS-1 are HM01-HM05. Red Rogue does not use
+; out-of-combat field moves, so an HM carries no progression that losing it
+; could strand - it is simply a TM at a higher index, and the only difference
+; that survives is which base its item id is computed from.
+;
+; _TMBitInfo in tm_bag.asm does this bit arithmetic already, but it is a
+; file-local label (single colon, not exported), so it is not reachable from
+; here. StageEventTMOwned reimplements only the read side; the WRITE side
+; correctly goes through tm_bag's own exported RemoveTMHM rather than poking
+; the bitfield directly, and that routine already handles both id ranges.
+; ============================================================
+
+; Add the player's owned TMs to b. Opens and closes its own SRAM window,
+; because the three pockets counted before it are ordinary WRAM.
+; Preserves b. Clobbers a/c/de/hl.
+StageEventCountTMs:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sTMBitfield)
+	ld [rRAMB], a
+	ld c, 0
+.loop
+	ld a, c
+	cp NUM_TMS + NUM_HMS
+	jr z, .done
+	call StageEventTMOwned        ; carry = owned; preserves bc
+	jr nc, .next
+	inc b
+.next
+	inc c
+	jr .loop
+.done
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ret
+
+; Resolve the b-th owned stack when it falls in the TM pocket, then record and
+; remove that TM.
+; INPUT: b = remaining target index.
+; OUTPUT: carry SET = a TM was taken. Clobbers a/bc/de/hl.
+StageEventPickTM:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sTMBitfield)
+	ld [rRAMB], a
+	ASSERT BANK(sTMBitfield) == BANK(sStolenRecord) ; one window covers both
+	ld c, 0
+.loop
+	ld a, c
+	cp NUM_TMS + NUM_HMS
+	jr z, .notFound
+	call StageEventTMOwned
+	jr nc, .next
+	ld a, b
+	and a
+	jr z, .found
+	dec b
+.next
+	inc c
+	jr .loop
+.notFound
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	and a
+	ret
+.found
+	; bit index -> item id. The bitfield is one run but the ids are two:
+	; 0..NUM_TMS-1 map onto TM01 upward, NUM_TMS.. onto HM01 upward. This is
+	; the inverse of tm_bag.asm's _TMHMIndex, and getting it wrong would
+	; record an id that RemoveTMHM then clears a DIFFERENT bit for.
+	ld a, c
+	cp NUM_TMS
+	jr c, .isTM
+	sub NUM_TMS
+	add HM01
+	jr .haveItemId
+.isTM
+	add TM01
+.haveItemId
+	ld c, a
+	; The record lives in the SAME SRAM bank as the bitfield, so it is written
+	; inside this window rather than reopening one.
+	ld [sStolenItem], a
+	ld a, STOLEN_ITEM             ; no separate TM kind: GiveItem routes a TM
+	ld [sStolenKind], a           ; id to AcquireTMHM on the way back
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	; ⚠ Same wCurItem/wCurPartySpecies aliasing caveat as the count pockets.
+	ld a, c
+	ld [wCurItem], a
+	call RemoveTMHM               ; tm_bag's own remover; leaves SRAM CLOSED
+	scf                           ; and rRAMB on bank 1
+	ret
+
+; INPUT: c = TM bit index (0-49). SRAM must already be open on bank 1.
+; OUTPUT: carry SET = the player owns this TM.
+; Preserves bc. Clobbers a/de/hl.
+StageEventTMOwned:
+	push bc
+	ld a, c
+	and 7
+	ld b, a
+	inc b                         ; +1 so bit 0 takes zero shifts
+	ld a, 1
+.mask
+	dec b
+	jr z, .haveMask
+	rlca
+	jr .mask
+.haveMask
+	ld e, a                       ; e = 1 << (index & 7)
+	ld a, c
+	srl a
+	srl a
+	srl a                         ; a = index >> 3
+	ld c, a
+	ld b, 0
+	ld hl, sTMBitfield
+	add hl, bc
+	ld a, [hl]
+	and e
+	pop bc                        ; pop does not disturb the flags from `and`
+	ret z                         ; not owned; `and` already cleared carry
+	scf
 	ret
 
 ; INPUT: c = item id. Tags the record as an item theft.
@@ -453,130 +543,6 @@ StageEventCopyMonToRecord:
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
-	ret
-
-; Zeroes the theft record's tag. Called at the top of every theft and from the
-; lobby-time reset, so a record can never outlive the visit that created it.
-; Clobbers a.
-StageEventClearStolenRecord:
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ld a, BANK(sStolenRecord)
-	ld [rRAMB], a
-	xor a
-	ld [sStolenKind], a
-	ld [sStolenItem], a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	ret
-
-StageEventStageSprites::
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK("Sprite Buffers") == 0
-	xor a
-	ld [rRAMB], a
-	ld [sStageEventSprite6], a      ; a is still 0: default both slots to unused
-	ld [sStageEventSprite7], a
-	ld a, [wStageEvent]
-	and STAGE_EVENT_TYPE_MASK
-	ret z                           ; STAGE_EVENT_NONE - leave both at 0
-	; No hideout means the generator found nowhere for the villain to go after
-	; the theft, so the event must not manifest AT ALL - appearing and then
-	; having nowhere to vanish to would be worse than not appearing. Gating it
-	; here, on the sprite bytes, makes that one decision rather than one per
-	; consumer: every later stage of the lifecycle already treats a zero sprite
-	; as "this slot does not exist".
-	ld a, [sStageEventHideoutX]
-	cp STAGE_EVENT_NO_HIDEOUT
-	ret z
-	ld a, [wStageEvent]
-	and STAGE_EVENT_TYPE_MASK
-	dec a                           ; type is 1-based; table row is 0-based
-	add a                           ; 2 bytes per row
-	ld c, a
-	ld b, 0
-	ld hl, StageEventSpriteTable
-	add hl, bc
-	ld a, [hli]
-	ld [sStageEventSprite6], a
-	ld a, [hl]
-	ld [sStageEventSprite7], a
-	ret
-
-; One row per STAGE_EVENT_* type, starting at type 1: the sprite for NPC object
-; slot 6, then for slot 7. 0 = this event does not use that slot.
-;
-; Jessie and James are the only pair among the villains, so every other villain
-; row leaves slot 7 empty; STAGE_EVENT_BOTH_GOOD is the good-NPC pair. All five
-; sprites are 12-tile walking sprites that already exist with .png/.2bpp in the
-; tree, and procedural maps are indoor, so the outdoor sprite-set bound that
-; restricts which SPRITE_* a route may use does not apply to any of them.
-;
-; SUPER_NERD and ROCKET are placeholders for the Psychic and the Burglar chosen
-; for flavour from sprites already on other maps; 7f may repoint them when it
-; wires the trainer classes. Nothing else keys off these values.
-StageEventSpriteTable:
-	db SPRITE_JESSIE,        SPRITE_JAMES         ; STAGE_EVENT_JESSIE_JAMES
-	db SPRITE_SUPER_NERD,    0                    ; STAGE_EVENT_PSYCHIC
-	db SPRITE_ROCKET,        0                    ; STAGE_EVENT_BURGLAR
-	db SPRITE_NURSE,         0                    ; STAGE_EVENT_JOY
-	db SPRITE_OFFICER_JENNY, 0                    ; STAGE_EVENT_JENNY
-	db SPRITE_NURSE,         SPRITE_OFFICER_JENNY ; STAGE_EVENT_BOTH_GOOD
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventSpriteTable needs a row per type"
-
-; ============================================================
-; StageEventShowCaveNpcs  (Phase 7b)
-; Reveals whichever of the cave's two stage-event NPC objects this event
-; actually uses. Both default to OFF in ToggleableObjectStates, because the
-; common case - a cave with no event - should show neither.
-;
-; The staged SPRITE byte is the single source of truth for "is this slot in
-; use". Re-deriving it from wStageEvent's type here would be a second copy of
-; the same decision, free to drift out of step with StageEventStageSprites;
-; reading the byte that routine published cannot drift.
-;
-; Farcalled from ProceduralCave1_Script's EVENT_ENTER_ROOM setup. Reaching
-; ShowObject from ROMX is safe: Predef (home/predef.asm) saves hLoadedROMBank
-; on entry and restores it before returning.
-; Clobbers a/bc/de/hl.
-; ============================================================
-StageEventShowCaveNpcs::
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK("Sprite Buffers") == 0
-	xor a
-	ld [rRAMB], a
-	ld a, [sStageEventSprite6]
-	ld d, a
-	ld a, [sStageEventSprite7]
-	ld e, a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	ld a, d
-	and a
-	ret z                           ; no event armed - leave both hidden
-	push de                         ; ShowObject clobbers freely
-	ld a, TOGGLE_WILD_AREA_NPC_1
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
-	pop de
-	ld a, e
-	and a
-	ret z                           ; single-NPC event
-	ld a, TOGGLE_WILD_AREA_NPC_2
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
 	ret
 
 ; ============================================================

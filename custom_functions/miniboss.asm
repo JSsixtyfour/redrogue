@@ -88,7 +88,13 @@ SpecialEncounterRollAndAssign::
 	; wGameProgressFlagsEnd, so nothing else ever zeroes it.
 	xor a
 	ld [wStageEvent], a
-	call StageEventClearStagedSprites
+	farcall StageEventClearStagedSprites
+	; farcall destroys a/b/c/h/l on both sides - only d/e and the flags
+	; survive. hl was pointing at wRogueFlagsBitfield and the gym-next gate
+	; below still reads [hl], so it has to be reloaded. (This clear became a
+	; farcall in 7d, when the stage-event support moved to its own section;
+	; as a plain call it did not disturb hl.)
+	ld hl, wRogueFlagsBitfield
 IF DEF(_DEBUG)
 	; Debug 2 choices 3/4 bypass normal eligibility and chance gates.
 	ld a, [wStatusFlags6]

@@ -710,6 +710,9 @@ INCLUDE "custom_functions/random_stage_selection.asm"
 INCLUDE "custom_functions/trainer_card_slots.asm"
 INCLUDE "custom_functions/miniboss.asm"
 INCLUDE "custom_functions/wild_area_selection.asm"
+; NOTE: custom_functions/stage_events.asm is NOT included here. It declares its
+; own SECTION so the farcall-only half of the stage-event system can float into
+; a bank with room - "rogue" overflowed when TM theft landed. See its header.
 INCLUDE "custom_functions/bridge_selection.asm"
 INCLUDE "custom_functions/bridge_effects.asm"
 INCLUDE "custom_functions/bridge_selected_effects.asm"
@@ -757,3 +760,8 @@ INCLUDE "custom_functions/func_enhancedcolor.asm"
 SECTION "Bridge Extended Effects", ROMX
 
 INCLUDE "custom_functions/bridge_effects_extended.asm"
+
+; Procedural stage events (Phase 7): the farcall-only half, in its own section
+; so it can float. See custom_functions/stage_events.asm's header for why the
+; theft itself had to stay behind in "rogue".
+INCLUDE "custom_functions/stage_events.asm"

@@ -47,6 +47,13 @@ POCKETS = [
     ("wValuableItemCounts", "NUM_VALUABLE_ITEMS"),
 ]
 
+# Mirrors constants/item_constants.asm: HM01-HM05 are $C4-$C8, TM01-TM50 start
+# at $C9. Both ranges are stealable - see the note on owned_tm_indexes.
+HM01 = 0xC4
+NUM_HMS = 5
+TM01 = 0xC9
+NUM_TMS = 50
+
 BOXMON_STRUCT_LENGTH = 0x21
 PARTYMON_STRUCT_LENGTH = 0x2C
 NAME_LENGTH = 11
@@ -73,6 +80,30 @@ def read_pockets(h, lengths):
     return out
 
 
+def read_tms(h):
+    """Snapshot the TM/HM ownership bitfield (7 bytes, SRAM bank 1)."""
+    return h.read_sram_bytes("sTMBitfield", 7, bank=RECORD_BANK)
+
+
+def owned_tm_indexes(bits):
+    """Owned TM/HM bit indexes.
+
+    HMs are INCLUDED. Red Rogue has no out-of-combat field moves, so an HM is
+    mechanically just a TM at a higher index - there is no Surf/Strength
+    progression for losing one to strand. Spanning only NUM_TMS here would
+    silently exclude five stealable items and quietly disagree with the
+    theft code, which walks the whole bitfield.
+    """
+    return [i for i in range(NUM_TMS + NUM_HMS) if bits[i >> 3] & (1 << (i & 7))]
+
+
+def item_id_for_bit(index):
+    """Inverse of tm_bag.asm's _TMHMIndex: one bit run, two id ranges."""
+    if index < NUM_TMS:
+        return TM01 + index
+    return HM01 + (index - NUM_TMS)
+
+
 def read_party(h):
     """Snapshot every party mon's box struct, nickname and OT name."""
     count = h.read8("wPartyCount")
@@ -96,6 +127,11 @@ def main() -> int:
     parser.add_argument("--expect-item", action="store_true",
                         help="assert an ITEM was taken: use for the Burglar, and "
                              "with --force-party 1 for the mon->item fallback")
+    parser.add_argument("--only-hm", action="store_true",
+                        help="empty every other pocket and leave exactly one HM, so "
+                             "the theft MUST take it - proves the HM branch and its "
+                             "bit-index->item-id conversion, which a random pick "
+                             "almost never reaches (5 HMs against 50 TMs)")
     parser.add_argument("--force-party", type=int, default=0,
                         help="shrink wPartyCount to this before the theft, to "
                              "exercise the >=2 guard (the plan's explicit test)")
@@ -117,13 +153,29 @@ def main() -> int:
         if args.force_party:
             h.write8("wPartyCount", args.force_party)
 
+        if args.only_hm:
+            # Strip every count pocket and every TM, keeping HM03 (bit
+            # NUM_TMS+2) alone. With one stack left the pick is forced onto it.
+            for label, length_name in POCKETS:
+                base = h.address(label)
+                for i in range(pocket_lengths()[length_name]):
+                    h.pyboy.memory[base + i] = 0
+            bits = [0] * 7
+            target = NUM_TMS + 2
+            bits[target >> 3] |= 1 << (target & 7)
+            h.write_sram_bytes("sTMBitfield", bits, bank=RECORD_BANK)
+            print("forced: only HM bit %d (id %d) remains"
+                  % (target, item_id_for_bit(target)))
+
         lengths = pocket_lengths()
         pockets_before = read_pockets(h, lengths)
+        tms_before = read_tms(h)
         before = read_party(h)
         print("party before: %d mon(s), species %s"
               % (len(before), [m["box"][0] for m in before]))
-        print("owned stacks before: %d"
-              % sum(1 for v in pockets_before.values() for c in v if c))
+        print("owned stacks before: %d count-array + %d TM(s)"
+              % (sum(1 for v in pockets_before.values() for c in v if c),
+                 len(owned_tm_indexes(tms_before))))
         if len(before) < 2:
             print("  (party of %d - the >=2 guard should REFUSE this theft)" % len(before))
 
@@ -150,18 +202,42 @@ def main() -> int:
                 if pockets_after[label][index] < count:
                     dropped.append((label, index, count, pockets_after[label][index]))
 
+        tms_after = read_tms(h)
+        lost_tms = sorted(set(owned_tm_indexes(tms_before))
+                          - set(owned_tm_indexes(tms_after)))
+
+        # No HM assertion here, deliberately. An earlier version asserted HMs
+        # were never touched, on the vanilla reasoning that losing Surf or
+        # Strength can strand a run. Red Rogue has no field moves, so that is
+        # not true and HMs are ordinary theft targets; the bit checks below
+        # cover them like any TM.
+
         if kind == STOLEN_ITEM or args.expect_item:
             # Either the Burglar, or a mon thief that fell back to the bag.
-            print("item theft: sStolenItem = %d, pocket deltas = %s" % (item, dropped))
+            # A stolen TM shows up as a cleared bit, not a shrunken stack, so
+            # exactly one of the two has to have moved - never both, never
+            # neither.
+            print("item theft: sStolenItem = %d, pocket deltas = %s, TM bits lost = %s"
+                  % (item, dropped, lost_tms))
             if kind != STOLEN_ITEM:
                 failures.append("expected an ITEM theft, got sStolenKind = %d" % kind)
             if item == 0:
                 failures.append("sStolenItem is 0 with an item theft recorded")
-            if len(dropped) != 1:
-                failures.append("expected exactly one pocket stack to shrink, got %s"
-                                % (dropped,))
-            elif dropped[0][2] - dropped[0][3] != 1:
+            if len(dropped) + len(lost_tms) != 1:
+                failures.append("expected exactly ONE thing to leave the bag, got "
+                                "%d stack(s) and %d TM(s)" % (len(dropped), len(lost_tms)))
+            elif dropped and dropped[0][2] - dropped[0][3] != 1:
                 failures.append("stack fell by %d, expected 1" % (dropped[0][2] - dropped[0][3]))
+            if lost_tms:
+                # The recorded id must name the bit that actually cleared. This
+                # is the check that catches a wrong TM/HM index->id conversion,
+                # which would otherwise record one item while removing another.
+                want = item_id_for_bit(lost_tms[0])
+                if item != want:
+                    failures.append("recorded item %d but bit index %d (id %d) was removed"
+                                    % (item, lost_tms[0], want))
+                kind_word = "HM" if lost_tms[0] >= NUM_TMS else "TM"
+                print("  (%s taken: bit %d -> id %d)" % (kind_word, lost_tms[0], want))
             if len(after) != len(before):
                 failures.append("an item theft also changed the party size")
         elif len(before) < 2:
