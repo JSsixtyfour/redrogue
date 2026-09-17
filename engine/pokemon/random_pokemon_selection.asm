@@ -335,8 +335,19 @@ Random_Pokemon_Selection_Any::
 	call EvolveMonByLevel
 	ld a, [wCurPartySpecies]
 	ld d, a
-; Phase 2R increment 8: answer with the form in e, and write NOTHING global -
-; same rule as RogueSelectFromTier's tail above.
+; ⚠⚠ THE TWO PARAGRAPHS BELOW ARE INCREMENT 8b HISTORY AND DESCRIBE BEHAVIOUR
+; THIS ROUTINE NO LONGER HAS. Increment 8e restored the write, and the write is
+; live today - see the note at .tierForm and the `ld [wSpawnForm], a` at the end
+; of this routine. Read them as "what was tried and reverted", not as a
+; description of the code.
+;
+; Left in place rather than deleted because they record a real regression and the
+; reasoning that caused it. But they are written in the present tense, and that
+; cost real time: PROCEDURAL_WILD_AREA_PLAN.md's Phase 6.5 was specified from
+; them, concluding that wild encounters get no forms and that any nonzero
+; wSpawnForm on a wild build must therefore be a stale value leaked from some
+; other writer. Measured 2026-09-16 and that is false - see the correction note
+; at .tierForm.
 ;
 ; ⚠ This routine originally DID write wSpawnForm, on the reasoning that a wild
 ; encounter is built immediately so the value could not go stale. That reasoning
@@ -355,6 +366,9 @@ Random_Pokemon_Selection_Any::
 ; per-encounter storage alongside wherever the stage stages its species, which is
 ; its own increment - the enemy-side plumbing to render one already exists from
 ; increment 4b. No caller reads e here yet; it is returned for that future work.
+;
+; ⚠ END OF THE 8b HISTORY BLOCK. "Wild encounters therefore get no forms" has
+; been FALSE since increment 8e. They do, at about 3%. Measured below.
 	call RogueFormsUnlocked
 	ld e, 0
 	jr z, .tierForm                 ; base Kanto run - no forms at all
@@ -376,6 +390,27 @@ Random_Pokemon_Selection_Any::
 ; was really catching the d-clobber in RogueRollFormForSpecies, and PCRollWildEncounter
 ; does not pre-roll at all. The BOSS is the deferred one (PCRollBoss at preload),
 ; and it needs its own storage - see wRoguePokemonForm1.
+;
+; MEASURED 2026-09-16 (Phase 6.5), and this settles it with numbers rather than
+; another round of reasoning. tools/pyboy_smoke/probe_spawnform_writers.py hooks
+; every one of the 23 assembled `ld [wSpawnForm], a` sites individually and
+; delimits builds by LoadEnemyMonData itself, so one hook hit is exactly one mon:
+;
+;   forest  175 builds, 5 nonzero (2.9%)   cave  122 builds, 4 nonzero (3.3%)
+;   writes 175 / builds 175, ORPHANED 0    writes 122 / builds 122, ORPHANED 0
+;
+; This site is the ONLY writer that fires at all on the wild path, in either
+; stage, and every single write is consumed by the very next build - zero writes
+; left sitting across a build, which is the only shape a stale-value leak can
+; take. Every nonzero value was form 1 for a species that genuinely has a form 1
+; record (VOLTORB, FARFETCHD, JIGGLYPUFF, RATTATA). So publishing here is not
+; leaking: it is the wild encounter's own form, rolled and consumed immediately,
+; exactly as 8e intended.
+;
+; The earlier "2 of 60 forest encounters leaked a form, cave was clean on 36"
+; observation was this same ~3% behaviour plus sample size: 0 of 36 at 3.3% has
+; probability 0.29, so the cave arm never showed it. Do not re-derive a leak from
+; a small clean run.
 	ld a, e
 	ld [wSpawnForm], a
 	ret
