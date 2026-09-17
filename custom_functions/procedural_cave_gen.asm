@@ -141,6 +141,39 @@ DEF wProcCaveItemRetry    EQU 7   ; PCPlaceWildAreaItems: dedup re-roll budget (
 ; DEFs below).
 DEF wProcCaveBossX        EQU 21
 DEF wProcCaveBossY        EQU 29
+; PCCarveRiver's bounding box, consumed by PCAutotileRiverEdges (2026-09-16,
+; Phase 6). The walk records the min/max X/Y of every cell it actually writes;
+; the edge pass then sweeps that rectangle grown by 2 instead of the whole
+; 400-cell grid. See PCAutotileRiverEdges' header for the measurements and for
+; why 2 is the right margin.
+;
+; ALIASING, checked rather than assumed. wBuffer is fully allocated (0-29), so
+; these had to come from somewhere. All four donors belong to phases that run
+; strictly AFTER the river, and all four are write-before-read there:
+;   19 wProcCaveLadderOffset - written by PCPlaceExitLadder, the very next call
+;   20 wProcCaveItemCounter  - PCPlaceWildAreaItems, later still
+;   21 wProcCaveBossX        - same routine
+;   29 wProcCaveBossY        - same routine
+; Nothing between PCCarveRiver's entry and PCAutotileRiverEdges' return reads
+; any of them (grepped: every use site is at line 1192 or beyond, inside those
+; two routines). The reverse direction is safe too - this pass is finished with
+; the box before PCPlaceExitLadder's first write to offset 19.
+;
+; PCFinalizeCaveFast is NOT a concern: it replays an already-baked map and
+; never calls PCCarveRiver or PCAutotileRiverEdges at all, so the box can never
+; be read uninitialised. It does write offset 19 (the staged ladder offset),
+; which is exactly the donor-phase use above.
+DEF wProcCaveRiverMinX    EQU wProcCaveLadderOffset
+DEF wProcCaveRiverMaxX    EQU wProcCaveItemCounter
+DEF wProcCaveRiverMinY    EQU wProcCaveBossX
+DEF wProcCaveRiverMaxY    EQU wProcCaveBossY
+; MinX/MinY hold this while no water has been written yet. Real coordinates are
+; 0-19, so it can never collide with one, and PCAutotileRiverEdges returns
+; immediately when it sees it - a cave whose river never carved anything now
+; skips three full sweeps instead of running them over a grid with no water in
+; it. PCCarveRiver can genuinely end that way: it gives up after
+; PC_RIVER_START_TRIES rejected start rolls.
+DEF PC_RIVER_NO_BOX       EQU $ff
 DEF wProcCaveBallPos      EQU 10  ; PCPlaceWildAreaItems: 8 bytes, X/Y interleaved for
                                   ; each of the 4 already-placed balls (offset+i*2 = X,
                                   ; +i*2+1 = Y) - used to reject new candidates that
@@ -224,6 +257,7 @@ DEF wProcCaveTargetBase       EQU 27 ; 2 bytes (27,28) - low,high
 ASSERT wProcCaveBossY          < 30, "cave wBuffer overlay overflows the 30-byte arena"
 ASSERT wProcCaveCountY         < 30, "cave wBuffer overlay overflows the 30-byte arena"
 ASSERT wProcCaveIncludeWater   < 30, "cave wBuffer overlay overflows the 30-byte arena"
+ASSERT wProcCaveRiverMaxY      < 30, "cave wBuffer overlay overflows the 30-byte arena"
 ASSERT wProcCaveBallPos + 8    <= 30, "wProcCaveBallPos (8 bytes) runs past wBuffer"
 ASSERT wProcCaveItemTemp + 4   <= 30, "wProcCaveItemTemp (4 bytes) runs past wBuffer"
 ASSERT wProcCaveTargetBase + 2 <= 30, "wProcCaveTargetBase (2 bytes) runs past wBuffer"
@@ -4087,6 +4121,17 @@ PCIsClaimedCarry:
 	ret
 
 PCCarveRiver:
+	; Reset the bounding box FIRST, before the start-roll loop, so that the
+	; give-up `ret` below (all PC_RIVER_START_TRIES rolls rejected) still
+	; leaves PCAutotileRiverEdges a well-formed "no water anywhere" answer
+	; rather than last cave's box.
+	ld a, PC_RIVER_NO_BOX
+	ld [wBuffer + wProcCaveRiverMinX], a
+	ld [wBuffer + wProcCaveRiverMinY], a
+	xor a
+	ld [wBuffer + wProcCaveRiverMaxX], a
+	ld [wBuffer + wProcCaveRiverMaxY], a
+
 	; Pick a start point on any edge, RETRYING if it is unusable.
 	;
 	; This used to be a single roll with no retry, which was the second of
@@ -4206,6 +4251,7 @@ PCCarveRiver:
 	jr c, .deflect
 	ld a, PC_BLOCK_WATER
 	call PCWriteCell
+	call PCRiverTrackCell     ; grow the bounding box to include this cell
 	ld a, [wBuffer + wProcCaveCurX]
 	ld [wBuffer + wProcCaveRiverPrevX], a
 	ld a, [wBuffer + wProcCaveCurY]
@@ -4251,6 +4297,50 @@ PCCarveRiver:
 	ret
 
 ; ============================================================
+; PCRiverTrackCell
+; Grows the river's bounding box to include wProcCaveCurX/Y. Called by
+; PCCarveRiver once per cell it actually writes - never for a cell it
+; considered and rejected, so the box covers exactly the water that exists.
+; Clobbers a and b; touches no wBuffer offset except the four box bytes.
+; Safe at its one call site: it runs immediately after `call PCWriteCell`,
+; where nothing is live in registers (the next instruction reloads CurX from
+; wBuffer anyway).
+;
+; The PC_RIVER_NO_BOX/0 seeding makes the first call fall out correctly with
+; no special case: MinX starts at $ff so any real 0-19 coordinate is smaller,
+; and MaxX starts at 0 so any real coordinate is >= it.
+; ============================================================
+PCRiverTrackCell:
+	ld a, [wBuffer + wProcCaveCurX]
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMinX]
+	cp b
+	jr c, .minXKept              ; MinX < CurX already
+	ld a, b
+	ld [wBuffer + wProcCaveRiverMinX], a
+.minXKept
+	ld a, [wBuffer + wProcCaveRiverMaxX]
+	cp b
+	jr nc, .maxXKept             ; MaxX >= CurX already
+	ld a, b
+	ld [wBuffer + wProcCaveRiverMaxX], a
+.maxXKept
+	ld a, [wBuffer + wProcCaveCurY]
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMinY]
+	cp b
+	jr c, .minYKept
+	ld a, b
+	ld [wBuffer + wProcCaveRiverMinY], a
+.minYKept
+	ld a, [wBuffer + wProcCaveRiverMaxY]
+	cp b
+	ret nc                       ; MaxY >= CurY already
+	ld a, b
+	ld [wBuffer + wProcCaveRiverMaxY], a
+	ret
+
+; ============================================================
 ; PCAutotileRiverEdges
 ; Runs right after PCCarveRiver. Gives water (118) the SAME edge/corner
 ; treatment PCAutotilePass already gives floor, reusing the exact same
@@ -4275,23 +4365,95 @@ PCCarveRiver:
 ; directly (not PCIsFloorLike), so it's blind to water entirely and
 ; would reject every real water corner as a false "dead-end nub".
 ;
-; Cost note: a second close-to-full 400-cell sweep (two sub-passes + a
-; cleanup pass, no Pass C) - real added load time, see Red Rogue Files/
-; procedural-cave-performance-plan.md. A cheaper, position-tracked
-; version (only visiting actual water cells' neighbors, via a list built
-; during PCCarveRiver's walk instead of rescanning the whole grid) was
-; considered but doesn't fit in wBuffer's remaining free bytes for a
-; river of unbounded length - revisit if this pass's cost matters.
+; SCOPED TO THE RIVER'S BOUNDING BOX (2026-09-16, Phase 6). This used to be
+; three full 400-cell sweeps (Pass A', cleanup, Pass B'), and it measured as
+; 16.71 frames - 25.3% of the whole finalize, second only to PCAutotilePass -
+; on a build where the river finally carves something. It now sweeps only
+; PCCarveRiver's bounding box grown by 2 and clipped to the grid, and returns
+; immediately when the walk carved nothing at all.
+;
+; WHY THAT IS OUTPUT-IDENTICAL, and it is measured, not argued.
+; PCAutotilePass has already classified the whole grid before the river runs,
+; so a cell still reading plain fill is one PCClassifyCell has already declined
+; to convert. This pass differs only in setting wProcCaveIncludeWater, which
+; changes PCIsFloorLike's answer for exactly one block ID (118), so a fill cell
+; with no water in the neighbourhood PCClassifyCell examines must reclassify to
+; the same "leave it alone" - visiting it cannot do anything.
+; tools/pyboy_smoke/audit_cave_river_edge_locality.py tests precisely that,
+; by diffing the grid across this routine and reporting each converted cell's
+; distance to the nearest water block: 959 conversions over 64 caves, 100% of
+; them at Chebyshev distance 1, none at 2 or beyond. That audit is a contract,
+; not a one-off - it exits nonzero if a conversion ever lands outside the
+; margin, which is the thing that would make this scoping wrong.
+;
+; WHY THE MARGIN IS 2 AND NOT 1, despite nothing ever being observed past 1:
+; Pass A' can mint a floor cell adjacent to water, and Pass B' then classifies
+; THAT cell's own neighbours, one step further out again. It is rare enough not
+; to have occurred in 64 caves, but it is a real path through the code, so the
+; box carries the margin the mechanism can reach rather than the margin that
+; happened to show up.
+;
+; WHY A BOUNDING BOX RATHER THAN THE POSITION LIST the previous version of this
+; note proposed (track each water cell during the walk, visit only those
+; neighbours; rejected then for not fitting in wBuffer for a river of unbounded
+; length). Measured over 64 caves with
+; tools/pyboy_smoke/analyse_cave_river_locality.py: the deduplicated
+; distance-2 neighbourhood averages 53.0 cells of 400 (7.5x less work) and the
+; bounding box averages 65.3 (6.1x). The list wins by 0.5 frames - and only if
+; it deduplicates, since 10 water cells' 5x5 neighbourhoods naively enumerate
+; 250 overlapping visits, four times WORSE than the box, so it would need a
+; 400-bit visited map on top of the list itself. The box costs four wBuffer
+; bytes that were already dead here and no SRAM at all.
 ; ============================================================
 PCAutotileRiverEdges:
+	; No water at all: nothing in here can convert anything, so skip all three
+	; sweeps. PCCarveRiver leaves this sentinel when every start roll was
+	; rejected, and it re-seeds it on entry, so this can never read a stale box.
+	ld a, [wBuffer + wProcCaveRiverMinX]
+	cp PC_RIVER_NO_BOX
+	ret z
+
+	; Grow the box by 2 on every side and clip it to the grid, in place - from
+	; here down the four bytes hold the sweep bounds rather than the water's own
+	; extent. See the header for why the margin is 2.
+	ld a, [wBuffer + wProcCaveRiverMinX]
+	sub 2
+	jr nc, .minXClipped
+	xor a
+.minXClipped
+	ld [wBuffer + wProcCaveRiverMinX], a
+	ld a, [wBuffer + wProcCaveRiverMinY]
+	sub 2
+	jr nc, .minYClipped
+	xor a
+.minYClipped
+	ld [wBuffer + wProcCaveRiverMinY], a
+	ld a, [wBuffer + wProcCaveRiverMaxX]
+	add a, 2                     ; MaxX <= 19, so this cannot wrap
+	cp PC_SIZE
+	jr c, .maxXClipped
+	ld a, PC_SIZE - 1
+.maxXClipped
+	ld [wBuffer + wProcCaveRiverMaxX], a
+	ld a, [wBuffer + wProcCaveRiverMaxY]
+	add a, 2
+	cp PC_SIZE
+	jr c, .maxYClipped
+	ld a, PC_SIZE - 1
+.maxYClipped
+	ld [wBuffer + wProcCaveRiverMaxY], a
+
 	ld a, 1
 	ld [wBuffer + wProcCaveIncludeWater], a
 
 	; --- Pass A': peninsula resolution only, plain fill (25) only ---
-	xor a
+	; All three sweeps below walk the clipped box instead of 0..PC_SIZE-1. The
+	; tail test is "continue while Max >= the incremented loop variable", which
+	; is why each one loads the bound into b and compares the other way round.
+	ld a, [wBuffer + wProcCaveRiverMinY]
 	ld [wBuffer + wProcCaveLoopY], a
 .aYLoop
-	xor a
+	ld a, [wBuffer + wProcCaveRiverMinX]
 	ld [wBuffer + wProcCaveLoopX], a
 .aXLoop
 	ld a, [wBuffer + wProcCaveLoopX]
@@ -4311,20 +4473,27 @@ PCAutotileRiverEdges:
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
-	cp PC_SIZE
-	jr nz, .aXLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxX]
+	cp b
+	jr nc, .aXLoop
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
-	cp PC_SIZE
-	jr nz, .aYLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxY]
+	cp b
+	jr nc, .aYLoop
 
 	; cleanup: convert this pass's own pending-floor sentinels to real
-	; floor now that Pass A's own sweep is fully finished
-	xor a
+	; floor now that Pass A's own sweep is fully finished.
+	; Box-scoped like the other two: Pass A' only ever writes
+	; PC_BLOCK_PENDING_FLOOR inside the box, so there is nothing outside it
+	; for this sweep to find.
+	ld a, [wBuffer + wProcCaveRiverMinY]
 	ld [wBuffer + wProcCaveLoopY], a
 .cleanYLoop
-	xor a
+	ld a, [wBuffer + wProcCaveRiverMinX]
 	ld [wBuffer + wProcCaveLoopX], a
 .cleanXLoop
 	ld a, [wBuffer + wProcCaveLoopX]
@@ -4340,19 +4509,23 @@ PCAutotileRiverEdges:
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
-	cp PC_SIZE
-	jr nz, .cleanXLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxX]
+	cp b
+	jr nc, .cleanXLoop
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
-	cp PC_SIZE
-	jr nz, .cleanYLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxY]
+	cp b
+	jr nc, .cleanYLoop
 
 	; --- Pass B': edge/corner classification, layout now fully fixed ---
-	xor a
+	ld a, [wBuffer + wProcCaveRiverMinY]
 	ld [wBuffer + wProcCaveLoopY], a
 .bYLoop
-	xor a
+	ld a, [wBuffer + wProcCaveRiverMinX]
 	ld [wBuffer + wProcCaveLoopX], a
 .bXLoop
 	ld a, [wBuffer + wProcCaveLoopX]
@@ -4374,13 +4547,17 @@ PCAutotileRiverEdges:
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
-	cp PC_SIZE
-	jr nz, .bXLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxX]
+	cp b
+	jr nc, .bXLoop
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
-	cp PC_SIZE
-	jr nz, .bYLoop
+	ld b, a
+	ld a, [wBuffer + wProcCaveRiverMaxY]
+	cp b
+	jr nc, .bYLoop
 
 	xor a
 	ld [wBuffer + wProcCaveIncludeWater], a
