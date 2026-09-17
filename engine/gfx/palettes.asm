@@ -315,6 +315,19 @@ SetPal_Overworld:
 	ld a, PAL_GRAYMON - 1
 	jr .town
 .caveOrBruno
+	; Phase 4a/4d: the procedural cave picks its palette from the SAME
+	; sProcCavePalette byte the CGB enhanced path reads
+	; (ResolveEnhancedBasePalSet, custom_functions/func_enhancedcolor.asm), so
+	; the two colour systems can never disagree about which variant a run is in.
+	; Every other CAVERN map, and Bruno, keep PAL_CAVE unconditionally.
+	;
+	; The SRAM read lives down past .Lorelei, NOT here. Inlining its ~45 bytes
+	; in this block pushed .Lorelei 138 bytes away from the conditional jump
+	; that targets it and broke the link outright. Keep this stub short.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .procCaveVariant
+.caveDefault
 	ld a, PAL_CAVE - 1
 	jr .town
 .procForest
@@ -353,6 +366,33 @@ SetPal_Overworld:
 .Lorelei
 	xor a
 	jr .town
+
+.procCaveVariant
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcCavePalette)
+	ld [rRAMB], a
+	ld a, [sProcCavePalette]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	cp PROC_CAVE_PAL_COUNT
+	jr nc, .caveDefault     ; $ff on a save that predates the field, or any
+	                        ; out-of-range value, falls back to the default look
+	and a
+	jr z, .caveDefault
+	; Only variant 1 remains; a third (darkened) variant was built and cut.
+	; Adding more: turn this into a compare chain or a small table here, bump
+	; PROC_CAVE_PAL_COUNT, and add the matching row to ProcCavePalSets on the
+	; enhanced side. Keep any new body DOWN HERE past .Lorelei, not up in
+	; .caveOrBruno - see the note there.
+	ld a, PAL_CAVE_COLD - 1
+	jp .town                ; jp, not jr: .town is ~150 bytes back from here
 
 ; used when a Pokemon is the only thing on the screen
 ; such as evolution, trading and the Hall of Fame

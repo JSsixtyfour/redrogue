@@ -2228,6 +2228,14 @@ PFPreloadForest::
     and 1
     ld [sProcForestSignVariant], a
 
+    ; Phase 4a: the forest's palette variant. It only has variant 0 until Phase
+    ; 4d authors its alternates, so this is a deliberate write of 0 rather than
+    ; a roll - writing it is still necessary, because fresh SRAM powers up $ff
+    ; and an old save predates the field entirely. Phase 4d replaces these two
+    ; lines with a weighted roll like PCPreloadCave's.
+    xor a
+    ld [sProcForestPalette], a
+
     ; Set the forest's wild-battle budget for this run: 10 + wBattleCount/5,
     ; saturating at 255 (identical formula to cave's PCPreloadCave).
     ld a, [wBattleCount]

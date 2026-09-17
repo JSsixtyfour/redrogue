@@ -67,6 +67,30 @@ DEF SET_PAL_DEFAULT EQU $ff
 DEF NUM_SGB_PALS EQU const_value
 	const PAL_BW        ; $28, CGB only
 	const PAL_UBALL     ; $29, CGB only
+
+; --- Phase 4 (procedural stage palette variants) ---------------------------
+; Readable aliases for two spare rows claimed by the procedural cave, rather
+; than appended rows. Appending would cost 16 bytes each across SuperPalettes
+; and CGBPalettes in bank $1C (345 bytes free) AND would shift PAL_BW/PAL_UBALL,
+; which sit past NUM_SGB_PALS. These two rows shift nothing:
+;   PAL_0F has NO references anywhere in the tree.
+;   PAL_27 is referenced only by UnknownPalPacket_72821 (data/sgb/sgb_packets.asm),
+;          which is itself referenced by nothing - vanilla dead data. Its own
+;          name is kept above so that dead row still assembles.
+; The aliases are defined here, not in either palette file, so the SGB path
+; (engine/gfx/palettes.asm) and the CGB enhanced path
+; (custom_functions/func_enhancedcolor.asm) name the same thing.
+DEF PAL_CAVE_COLD EQU PAL_0F
+; PAL_CAVE_DARK (was PAL_27) was built and CUT 2026-09-16 - the darkened cavern
+; is unreadable as a normal-navigation cave. PAL_27 is back to its original
+; colours and is still spare, as is PAL_25; those two are the next free rows.
+
+; How many palette variants the procedural cave rolls. Shared, because BOTH
+; colour paths range-check against it: fresh SRAM powers up $ff, so
+; sProcCavePalette can legitimately be out of range on a save that predates the
+; field, and neither path may index a table with it unchecked.
+; func_enhancedcolor.asm ASSERTs its ProcCavePalSets table against this.
+DEF PROC_CAVE_PAL_COUNT EQU 2
 ; SHINY CHARM adds NO palettes here. Shin Red's system (which this is ported
 ; from) remaps a shiny mon onto another EXISTING mon palette rather than
 ; defining new ones - see ShinyPaletteConvert in engine/gfx/palettes.asm.

@@ -95,6 +95,30 @@ sProcForestGenScratch:: ds 81
                                    ; so re-entry just blits instead of re-running
                                    ; the whole pipeline
 
+; --- Phase 4a: per-stage palette variant ---------------------------------
+; The generalisation of sProcFacilityPalette (which stays put in the facility's
+; own bank-1 section). One byte per procedural stage, rolled in that stage's
+; preload beside its sign variant while SRAM is already open, stable for the
+; whole run. Read by ResolveEnhancedBasePalSet
+; (custom_functions/func_enhancedcolor.asm) on the CGB enhanced path and by
+; SetPal_Overworld (engine/gfx/palettes.asm) on the SGB/DMG path, so both colour
+; systems key off the SAME byte and can never disagree about which variant a run
+; is in.
+;
+; APPENDED AT THE END of the bank-0 section on purpose. Inserting them next to
+; their sibling sProc*SignVariant bytes would read better but would shift every
+; later sProc* address, and the staging buffers either side of them are read
+; back by offset from the pyboy harness.
+;
+; ⚠ Fresh SRAM powers up $ff, and an old save predates these fields entirely, so
+; a variant byte can legitimately be $ff the first time it is read. Every
+; consumer therefore RANGE-CHECKS against that stage's variant count and falls
+; back to 0 (the stage's default look) rather than indexing a table with it.
+; 0 is always "default", so the fallback is also the correct-looking answer.
+sProcCavePalette:: db              ; 0=default cavern, 1=cold/blue, 2=dark
+sProcForestPalette:: db            ; 0=default forest; 1+ added in Phase 4d
+sProcCemeteryPalette:: db          ; 0=default cemetery; 1+ added in Phase 4d
+
 
 ; Procedural facility: 20x20 block map staged here at warp-in time. Same layout
 ; as cave/forest (600-byte stride buffer). Lives in its OWN SRAM section (not the

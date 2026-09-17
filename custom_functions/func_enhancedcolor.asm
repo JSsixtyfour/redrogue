@@ -215,6 +215,161 @@ GBCEnhancedOverworldPalettes_DarkCavern:	;palette set used for darkened areas li
 	GBCEnh_Dark2
 
 
+; ---------------------------------------------------------------------------
+; Phase 4b: base palette set selection
+; ---------------------------------------------------------------------------
+; Enhanced colour is two-level: a per-tileset PalSettings_* table decides WHICH
+; of the 8 BG registers a tile draws from, and one of the 64-byte base sets
+; above decides what colours those 8 registers hold. Until now the choice of
+; base set was 16 hardcoded lines living inside .ReadMasterPals - a Seafoam
+; map-ID range plus one wMapPalOffset == 6 test - re-evaluated on all 64 colours
+; of every single rebuild.
+;
+; It is now an INDEX, resolved once per palette command into wEnhBasePalSet by
+; ResolveEnhancedBasePalSet below, and .ReadMasterPals just indexes this table.
+; Two reasons, both load-bearing:
+;
+;  1. The procedural stages pick their variant from a byte in SRAM. Reading SRAM
+;     64 times per rebuild would mean 64 enable/select/read/disable dances
+;     inside the palette inner loop, and every one of them is a chance to hit
+;     the "SRAM left disabled, or rRAMB left on the wrong bank, across a call"
+;     trap this project has already been bitten by twice (PROC_GEN_NOTES.md).
+;     Once per palette command, there is exactly one such dance to audit.
+;  2. It is strictly FASTER than what it replaces: the map compares leave the
+;     64-iteration inner loop entirely.
+;
+; Adding a base set in Phase 4c/4d = write its 64-byte table above, add a dw
+; here, bump ENH_BASE_SET_COUNT, add the variant row to that stage's
+; Proc*PalSets. That is the whole contract.
+;
+; SAME-BANK REQUIREMENT: .ReadMasterPals reads through these pointers with a
+; plain `ld a, [hli]`, so every table they point at must live in this bank
+; alongside this one. MEASURED 2026-09-16, do not infer it from main.asm: this
+; file lands in ROMX bank $2C, SECTION "Relocated HOME Routines", NOT in the
+; "rogue" section that encloses its INCLUDE line - a file earlier in that
+; include run opens its own SECTION. Bank $2C had 742 bytes free after Phase
+; 4a/4b, room for ~11 more 64-byte base sets. A base set moved to another bank
+; would read whatever happens to be mapped there and assemble perfectly clean.
+EnhBasePalSetPointers:
+	dw GBCEnhancedOverworldPalettes             ; ENH_BASE_DEFAULT
+	dw GBCEnhancedOverworldPalettes_ColdCavern  ; ENH_BASE_COLD
+	dw GBCEnhancedOverworldPalettes_DarkCavern  ; ENH_BASE_DARK
+EnhBasePalSetPointers_End:
+
+DEF ENH_BASE_DEFAULT EQU 0
+DEF ENH_BASE_COLD    EQU 1
+DEF ENH_BASE_DARK    EQU 2
+DEF ENH_BASE_SET_COUNT EQU 3
+
+ASSERT (EnhBasePalSetPointers_End - EnhBasePalSetPointers) / 2 == ENH_BASE_SET_COUNT, \
+	"ENH_BASE_SET_COUNT does not match EnhBasePalSetPointers; .ReadMasterPals would index past the table"
+
+; Variant byte -> base set, per stage. The variant is what the run rolled and
+; what the SGB/DMG path in SetPal_Overworld also reads; the base set is a
+; CGB-only implementation detail. Keeping them separate is what lets both colour
+; systems key off one SRAM byte without the generator knowing about either.
+ProcCavePalSets:
+	db ENH_BASE_DEFAULT   ; sProcCavePalette 0 - ordinary cavern
+	db ENH_BASE_COLD      ; 1 - cold/blue cavern, reusing the Seafoam set
+	; A third row selecting ENH_BASE_DARK was built and then CUT 2026-09-16.
+	; ENH_BASE_DARK is the Rock Tunnel set: it crushes every mid-tone to
+	; near-black and is meant for a room you are supposed to need Flash in, so
+	; as a cave you have to navigate normally it was unreadable. The base set
+	; itself stays in EnhBasePalSetPointers above - it is still reachable
+	; through the wMapPalOffset selector - it is just not a cave variant.
+	; To add a variant here: append a db, bump PROC_CAVE_PAL_COUNT in
+	; constants/palette_constants.asm, widen the roll in PCPreloadCave, and add
+	; the matching SGB row in SetPal_Overworld. The ASSERT below catches the
+	; count if you forget it.
+ProcCavePalSets_End:
+; PROC_CAVE_PAL_COUNT lives in constants/palette_constants.asm, not here: the
+; SGB/DMG path in engine/gfx/palettes.asm range-checks the same variant byte
+; against the same number, and two copies of it would be free to drift apart.
+
+ASSERT ProcCavePalSets_End - ProcCavePalSets == PROC_CAVE_PAL_COUNT, \
+	"PROC_CAVE_PAL_COUNT does not match ProcCavePalSets; the range check would let a bad variant through"
+
+; Resolve the base palette set for the current map into wEnhBasePalSet.
+;
+; Called once per palette command from LoadEnhancedOverworldPaletteCommand,
+; BEFORE TransferGBCEnhancedOverworldPalettes rebuilds the 64-colour buffer.
+; That ordering is the single thing to re-check if a variant ever shows the
+; PREVIOUS map's colours for a frame: resolve must precede the rebuild, and
+; every other rebuild path (fades via UpdateEnhancedGBCPal_*, the options-menu
+; gamma change via func_gamma.asm) happens on a map whose palette command has
+; already run, so the cached index is still the right one.
+;
+; Clobbers a, b, c, hl. Runs in ordinary WRAM bank 1.
+ResolveEnhancedBasePalSet::
+	ld b, ENH_BASE_DEFAULT
+	ld a, [hCurMap]
+	cp SEAFOAM_ISLANDS_1F
+	jr z, .cold
+	cp SEAFOAM_ISLANDS_B1F
+	jr c, .notSeafoam
+	cp SEAFOAM_ISLANDS_B4F + 1
+	jr c, .cold
+.notSeafoam
+	; Vanilla's darkened-area selector. Kept wired even though nothing in Red
+	; Rogue writes wMapPalOffset non-zero, so an imported map that does still
+	; behaves. The Cave reaches the same set through its own variant instead.
+	ld a, [wMapPalOffset]
+	cp 6
+	jr nz, .notDark
+	ld b, ENH_BASE_DARK
+	jr .store
+.notDark
+	ld a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .procCave
+	jr .store
+.cold
+	ld b, ENH_BASE_COLD
+.store
+	ld a, b
+	ld [wEnhBasePalSet], a
+	ret
+
+.procCave
+	ld a, BANK(sProcCavePalette)
+	ld hl, sProcCavePalette
+	call ReadProcPaletteVariant
+	cp PROC_CAVE_PAL_COUNT
+	jr nc, .store          ; $ff on a save that predates the field, or any
+	                       ; out-of-range value, keeps ENH_BASE_DEFAULT
+	ld hl, ProcCavePalSets
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld b, [hl]
+	jr .store
+
+; Read one procedural stage's palette-variant byte out of SRAM.
+; INPUT:  a = its SRAM bank, hl = its address.
+; OUTPUT: a = the byte. SRAM is closed again and rBMODE is back to simple.
+; Deliberately the same open/read/close shape as SetPal_Overworld's
+; .facilityRandom in engine/gfx/palettes.asm, down to the rBMODE dance, so there
+; is one pattern to audit rather than two that drift apart.
+ReadProcPaletteVariant:
+	ld c, a
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, c
+	ld [rRAMB], a
+	ld a, [hl]
+	ld c, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, c
+	ret
+
+
 
 PalSettings_TownSpecialPal:
 	db	PAL_ENH_OVW_PURPLE	;	PALLET_TOWN,		; $00
@@ -267,6 +422,10 @@ LoadEnhancedOverworldPaletteCommand::
 	; flash (MapEntryAfterBattle's GBFadeInFromWhite ran on an already-revealed
 	; screen, yanking it back to white and ramping in). ShinRed's own
 	; .enhancedGBCOverworld has no rBGP write at all; this matches it.
+	; Phase 4b: pick this map's base palette set before anything rebuilds the
+	; 64-colour buffer from it. MUST stay above the Transfer call - that call
+	; is what does the rebuild.
+	call ResolveEnhancedBasePalSet
 	call TransferGBCEnhancedOverworldPalettes
 	call TransferGBCEnhancedBGMapAttributes
 	ret
@@ -1179,23 +1338,23 @@ BufferAllEnhancedColorsGBC:
 	add a
 	ld e, a
 
-	ld hl, GBCEnhancedOverworldPalettes
-	ld a, [hCurMap]
-	cp SEAFOAM_ISLANDS_1F
-	jr z, .isColdCavern
-	cp SEAFOAM_ISLANDS_B1F
-	jr c, .notColdCavern
-	cp SEAFOAM_ISLANDS_B4F + 1
-	jr nc, .notColdCavern
-.isColdCavern	
-	ld hl, GBCEnhancedOverworldPalettes_ColdCavern
-.notColdCavern
+	; Phase 4b: what used to be four map compares plus a wMapPalOffset test,
+	; re-run here on all 64 colours of every rebuild, is now one indexed load.
+	; The base set was chosen once per palette command by
+	; ResolveEnhancedBasePalSet. de holds the colour offset and must survive;
+	; c holds the colour index carried in from bank 2 and must survive too.
+	ld hl, EnhBasePalSetPointers
+	ld a, [wEnhBasePalSet]
+	add a
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 
-	ld a, [wMapPalOffset]
-	cp 6
-	jr nz, .notdark
-	ld hl, GBCEnhancedOverworldPalettes_DarkCavern
-.notdark
 
 	add hl, de
 	pop de ;get the pal pattern back

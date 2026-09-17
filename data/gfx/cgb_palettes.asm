@@ -164,11 +164,14 @@ ELSE
 	RGB  7,  7, 25	;blue logo text shadow
 	RGB  0,  0, 17	;blue logo text outline
 ENDC
-	; PAL_0F
+	; PAL_0F / PAL_CAVE_COLD - procedural cave variant 1 on the non-enhanced
+	; CGB path. Paired with the SuperPalettes row of the same index; these two
+	; tables have no assert tying them together (GetGBCBasePalAddress just does
+	; id * 8), so they can silently desync - always edit them together.
 	RGB 31, 31, 31
-	RGB 13,  1, 31
-	RGB  0,  9, 31
-	RGB  1,  1,  1
+	RGB  6, 12, 26
+	RGB 14, 18, 26
+	RGB  3,  3,  3
 
 	; PAL_MEWMON	;reworked to match red/blue tones 
 	RGB 31, 31, 31
@@ -363,7 +366,7 @@ ENDC
 	RGB 30, 22, 17
 	RGB  3,  3,  3
 
-	; PAL_27
+	; PAL_27 - spare, no live caller
 	RGB 31, 31, 31
 	RGB  9,  9,  9
 	RGB 31, 21,  0

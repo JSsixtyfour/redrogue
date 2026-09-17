@@ -548,6 +548,22 @@ ENDC
 	call Random
 	and 1
 	ld [sProcCaveSignVariant], a
+	; Phase 4a: roll the palette variant, also while SRAM is open.
+	;   0 default  3/4
+	;   1 cold     1/4   blue cavern, reuses the Seafoam base set
+	; Cosmetic only: nothing downstream branches on this.
+	; Retune by changing the cp bound. To add a variant, see ProcCavePalSets in
+	; custom_functions/func_enhancedcolor.asm - the value written here must stay
+	; below PROC_CAVE_PAL_COUNT, which is what both colour paths range-check.
+	call Random
+	and 3
+	ld b, 0
+	cp 3
+	jr c, .palVariantSet
+	inc b
+.palVariantSet
+	ld a, b
+	ld [sProcCavePalette], a
 	; new cave preloaded: invalidate ball staging AND the baked-tiles flag so
 	; the first entry re-runs the full pipeline and re-rolls item positions.
 	; Also clear boss events so the new cave's boss actually appears.

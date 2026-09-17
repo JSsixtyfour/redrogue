@@ -130,6 +130,9 @@ PCemGenerateMaps::
 	ld [sProcCemeteryItemGot], a
 	ld [sProcCemeteryUsedPrefabs], a
 	ld [sProcCemeteryUsedPrefabs+1], a
+	; Phase 4a: the cemetery's palette variant. Variant 0 only until Phase 4d
+	; authors its alternates; written anyway because fresh SRAM powers up $ff.
+	ld [sProcCemeteryPalette], a
 
 	; close SRAM
 	ld a, BMODE_SIMPLE

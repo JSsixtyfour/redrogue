@@ -21,7 +21,7 @@ IF DEF(_BLUE)
 	RGB 31,29,31, 30,30,17, 21,00,04, 14,19,29 ; PAL_LOGO1
 ENDC
 	RGB 31,29,31, 30,30,17, 18,18,24, 07,07,16 ; PAL_LOGO2
-	RGB 31,29,31, 24,20,30, 11,20,30, 03,02,02 ; PAL_0F
+	RGB 31,29,31, 10,14,24, 17,24,29, 03,02,02 ; PAL_0F / PAL_CAVE_COLD - procedural cave variant 1. Derived from PAL_CAVE by swapping its brown mid-tone for steel blue and cooling its highlight; c0/c3 identical so UI and text contrast are unchanged.
 	RGB 31,29,31, 30,22,17, 16,14,19, 03,02,02 ; PAL_MEWMON
 	RGB 31,29,31, 18,20,27, 11,15,23, 03,02,02 ; PAL_BLUEMON
 	RGB 31,29,31, 31,20,10, 26,10,06, 03,02,02 ; PAL_REDMON
@@ -53,5 +53,5 @@ ENDC
     
 	RGB 31, 31, 31, 31, 31,  0, 11, 23, 31, 3,  3,  3 ; PAL_25
 	RGB 31, 31, 31, 31, 31, 31, 30, 22, 17, 3,  3,  3 ; PAL_BILLS_PC
-	RGB 31, 31, 31, 9,  9,  9, 31, 21,  0, 3,  3,  3 ; PAL_27
+	RGB 31, 31, 31, 9,  9,  9, 31, 21,  0, 3,  3,  3 ; PAL_27 - spare, no live caller (only the unreferenced UnknownPalPacket_72821)
 	assert_table_length NUM_SGB_PALS

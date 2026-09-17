@@ -299,7 +299,19 @@ wMenuWatchMovingOutOfBounds:: db
 
 wTradeCenterPointerTableIndex:: db
 
-	ds 1
+; Phase 4b: which base palette set the enhanced-colour engine reads its 8 BG
+; registers from, resolved ONCE per palette command by
+; ResolveEnhancedBasePalSet (custom_functions/func_enhancedcolor.asm) and read
+; 64 times per rebuild by that file's .ReadMasterPals. It is an index into
+; EnhBasePalSetPointers, never a pointer, so a garbage value cannot produce a
+; garbage pointer - the resolver range-checks before it ever gets here.
+;
+; PLACED IN THE EXISTING ANONYMOUS `ds 1` PADDING SLOT that sat here, never
+; appended: appending would shift every later WRAM0 address and drift the smoke
+; suite's seeded RNG for a byte that is pure derived state. Unsaved (line 302 is
+; well below wMainDataStart at ~2054), which is correct - it is recomputed on
+; every SetPal_Overworld, so it must not participate in save/load at all.
+wEnhBasePalSet:: db
 
 ; destination pointer for text output
 ; this variable is written to, but is never read from
