@@ -93,9 +93,13 @@ def sample(map_id: int, seed: int):
             harness.close()
         except Exception:
             pass
-    if not before or not after:
-        return None, None
-    return before[0], after[0]
+    # Since 2026-09-16 the river is rolled at 50%, so PCAutotileRiverEdges
+    # genuinely does not run in about half of caves and its entry hook never
+    # fires. That is a clean skip, NOT a harness failure - the caller tells the
+    # two apart by whether the PCPlaceExitLadder snapshot arrived, since that
+    # phase runs unconditionally. Reporting no-river caves as errors would both
+    # look like a broken harness and halve the sample without saying so.
+    return (before[0] if before else None), (after[0] if after else None)
 
 
 def main() -> int:
@@ -110,6 +114,7 @@ def main() -> int:
     conversions = 0
     errors = 0
     caves = 0
+    no_river = 0
     started = time.time()
 
     for seed in range(args.layouts):
@@ -119,9 +124,12 @@ def main() -> int:
             errors += 1
             print("  seed %d: %s: %s" % (seed, type(exc).__name__, exc))
             continue
-        if before is None:
+        if after is None:
             errors += 1
-            print("  seed %d: hooks did not both fire" % seed)
+            print("  seed %d: PCPlaceExitLadder never ran - harness failure" % seed)
+            continue
+        if before is None:
+            no_river += 1          # river rolled off this cave; nothing to audit
             continue
         caves += 1
 
@@ -152,7 +160,8 @@ def main() -> int:
     elapsed = time.time() - started
     print()
     print("=== PCAutotileRiverEdges conversion locality ===")
-    print("%d caves profiled, %d harness errors, %.0fs wall" % (caves, errors, elapsed))
+    print("%d caves with a river audited, %d rolled no river, %d harness errors, %.0fs wall"
+          % (caves, no_river, errors, elapsed))
     print("%d cells converted in total (%.1f per cave)"
           % (conversions, conversions / max(caves, 1)))
     print()
@@ -161,6 +170,17 @@ def main() -> int:
         print("  %2d: %5d (%5.1f%%)"
               % (distance, distances[distance], 100.0 * distances[distance] / max(conversions, 1)))
     print()
+    # Same guard as audit_cave_passc_locality.py, added for the same reason: a
+    # contract that passes on zero samples reports success for a broken harness
+    # or a renamed hook. Checked before the verdict, never hidden in a
+    # max(1, denominator).
+    if caves == 0 or conversions == 0:
+        print("PREMISE INCONCLUSIVE: %d caves and %d conversions sampled."
+              % (caves, conversions))
+        print("Nothing was measured, so nothing is proven. Check that the hook")
+        print("labels still exist in the .sym and that the ROM is freshly built.")
+        return 1
+
     if violations:
         print("PREMISE FALSIFIED: %d conversion(s) beyond distance %d"
               % (len(violations), MAX_LEGAL_DISTANCE))

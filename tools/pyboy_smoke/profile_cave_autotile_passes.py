@@ -57,7 +57,7 @@ MARKS = (
     ("PCAutotilePass.aYLoop", "Pass A  (peninsula)"),
     ("PCAutotilePass.cleanYLoop", "cleanup (sentinels)"),
     ("PCAutotilePass.yLoop", "Pass B  (edges/corners)"),
-    ("PCAutotilePass.cYLoop", "Pass C  (rock edges)"),
+    ("PCAutotilePass.passCStart", "Pass C  (rock edges)"),
     ("PCDecorateLast", "-- end of PCAutotilePass --"),
 )
 

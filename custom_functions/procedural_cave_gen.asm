@@ -174,6 +174,59 @@ DEF wProcCaveRiverMaxY    EQU wProcCaveBossY
 ; it. PCCarveRiver can genuinely end that way: it gives up after
 ; PC_RIVER_START_TRIES rejected start rolls.
 DEF PC_RIVER_NO_BOX       EQU $ff
+; --- Pass C position list (2026-09-16, Phase 6 follow-up) ---
+; PCAutotilePass's Pass C used to re-sweep all 400 cells to put cosmetic edges
+; around PCRockTable boulders. Measured: 10.91 frames, 29% of PCAutotilePass and
+; 20% of the whole cave finalize, to change 7.1 cells - nine times worse per cell
+; than Pass B. Pass B now records each position Pass C could possibly react to,
+; and Pass C walks the 3x3 around each one instead of the grid.
+;
+; TWO KINDS OF POSITION, and the second one is the whole reason this is a list
+; rather than the river's cheap bounding box:
+;   1. Rocks, written by PCVerifyCorner's stray-corner fallback. 98.5% of the
+;      work, and the advertised job.
+;   2. Cells Pass B escalates to floor mid-sweep (the PCRecheckNeighbors call
+;      site). These are why Pass C is ALSO, undocumented until now, repairing
+;      Pass B's own order-dependent output: a straight edge classified before
+;      the floor beside it existed is a real corner by the time Pass C runs, and
+;      Pass C silently upgrades it. Measured 7 times in 64 caves. Dropping that
+;      repair leaves a visible notch in the wall trim where a corridor turns, so
+;      it is tracked, not discarded.
+; tools/pyboy_smoke/audit_cave_passc_locality.py is the contract: 470
+; conversions over 64 caves, 463 next to a rock, 7 next to an escalation, ZERO
+; next to neither.
+;
+; Chebyshev 1, not the river's 2, because Pass C cannot cascade: it writes only
+; edge/corner IDs and PCIsFloorLike does not count those as floor-like, so no
+; conversion it makes can change another cell's classification. That also makes
+; it order-independent and idempotent, which is what lets neighbouring entries'
+; 3x3 windows overlap and revisit a cell without changing the result.
+;
+; STORAGE: the first 50 bytes of sProcCaveStagingBuffer, which is dead for the
+; whole of finalize. PCPreloadCave fills all 600 bytes with plain fill (25), but
+; both the blit (PCFinalizeCave) and the bake (end of the same routine) work at
+; +PC_BASE only, so offsets 0-80 are written once at preload and never read -
+; 81 bytes, exactly the size of the Forest's and Facility's gen scratch. Nothing
+; reads them back here, and off-grid classification reads land in wOverworldMap's
+; border pad, not this buffer, because wProcCaveTargetBase points at wOverworldMap
+; throughout finalize. SRAM is closed during PCAutotilePass, so every access
+; below opens and closes it around itself.
+DEF PC_PASSC_CAP          EQU 24  ; entries; measured max is 14 (rocks + escalations)
+DEF PC_PASSC_LIST         EQU 0   ; PC_PASSC_CAP * 2 bytes, X,Y interleaved
+DEF PC_PASSC_COUNT        EQU PC_PASSC_LIST + PC_PASSC_CAP * 2
+DEF PC_PASSC_OVERFLOW     EQU PC_PASSC_COUNT + 1  ; non-zero = list full, Pass C
+                                                  ; falls back to the full sweep
+                                                  ; so an unusual cave can only
+                                                  ; ever cost time, never a tile
+ASSERT PC_PASSC_OVERFLOW < PC_BASE, "Pass C list runs into the staged map area"
+; Pass C's own scratch, all free while PCAutotilePass runs: offset 5 is
+; wProcCaveExitIndex (written and read only inside PCPreloadCave), 10 and 11 are
+; the river's MaxSteps/Edge, and the river runs after PCAutotilePass returns.
+; None of them is touched by PCClassifyCell (DX/DY/Flags), PCVerifyCorner (the
+; same) or PCCountFloorNeighbors (Count/CountX/CountY).
+DEF wProcCavePassCIdx     EQU 5
+DEF wProcCavePassCAnchorX EQU 10
+DEF wProcCavePassCAnchorY EQU 11
 DEF wProcCaveBallPos      EQU 10  ; PCPlaceWildAreaItems: 8 bytes, X/Y interleaved for
                                   ; each of the 4 already-placed balls (offset+i*2 = X,
                                   ; +i*2+1 = Y) - used to reject new candidates that
@@ -1012,12 +1065,30 @@ PCFinalizeCave::
 
 	; --- river: impassable water obstacle, connectivity-safe by
 	; construction (see PCCarveRiver's header comment) since it never
-	; overwrites real floor. TESTING OVERRIDE: called unconditionally
-	; (100%) right now - the real design is ~25% of caves get a river.
-	; To restore that: ld c, 4 / call Rangerandom / and a / jr nz, .skipRiver
-	; / call PCCarveRiver / .skipRiver (and delete the line below).
+	; overwrites real floor.
+	;
+	; ROLLED AT 50% (2026-09-16). This was called unconditionally as a testing
+	; override from 2026-06-26 until now; Phase 5a kept it at 100% on purpose so
+	; the river could be reviewed on hardware after the two bugs that had stopped
+	; it carving anything at all were fixed. That review has happened, and the
+	; user's call is 50%, not the ~25% the original design note proposed.
+	;
+	; The roll covers BOTH calls. Skipping only the carve would leave
+	; PCAutotileRiverEdges sweeping for water that was never written - harmless
+	; now that it early-outs on PCCarveRiver's PC_RIVER_NO_BOX sentinel, but it
+	; would be relying on the sentinel to paper over a wrong jump target, and the
+	; sentinel exists for the case where the carve RUNS and gives up.
+	;
+	; Costs one Rangerandom per cave, which shifts the seeded stream for
+	; everything downstream - expect golden-test rebaselines from this line, not
+	; from the scoping work around it.
+	ld c, 2
+	call Rangerandom
+	and a
+	jr nz, .skipRiver
 	call PCCarveRiver
 	call PCAutotileRiverEdges
+.skipRiver
 
 	; --- exit ladder tile: pick BEFORE patching wWarpEntries, since which ID
 	; gets picked determines the sub-tile remainder needed below ---
@@ -2976,6 +3047,11 @@ PCVerifyCorner:
 	ld [wBuffer + wProcCaveCurX], a
 	ld a, [wBuffer + wProcCaveDY]
 	ld [wBuffer + wProcCaveCurY], a
+	; Record the cell for Pass C before rolling the rock ID. CurX/CurY have just
+	; been restored to the cell the caller is about to write, and the caller
+	; ALWAYS writes whatever this returns (Pass B's .haveValue -> PCWriteCell),
+	; so one append here is exactly one rock on the grid.
+	call PCPassCTrack
 	ld c, NUM_PC_ROCKS
 	call Rangerandom
 	ld hl, PCRockTable
@@ -3173,7 +3249,141 @@ PCRecheckOne:
 	call PCWriteCell
 	ret
 
+; ============================================================
+; PCPassCOpenSRAM / PCPassCCloseSRAM
+; The Pass C position list lives in sProcCaveStagingBuffer, and SRAM is CLOSED
+; for the whole of PCAutotilePass (PCFinalizeCave shuts it right after the blit,
+; deliberately, so everything from there on works against live WRAM only). These
+; two reopen and reshut it around each access, using exactly the sequence
+; PCFinalizeCave itself uses, including the explicit bank-0 select - leaving
+; rRAMB on another bank is how a bank-0 write ends up inside sGameData.
+; Clobbers a. Cheap enough not to matter: at most 15 open/close pairs in Pass B
+; (measured max 14 tracked entries) plus one spanning Pass C.
+; ============================================================
+PCPassCOpenSRAM:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ret
+
+PCPassCCloseSRAM:
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ret
+
+; ============================================================
+; PCPassCReset
+; Empties the position list. Called at the top of PCAutotilePass, which is the
+; only caller of the whole mechanism (one call site, in PCFinalizeCave's slow
+; path; PCFinalizeCaveFast replays a baked map and never runs any of this).
+; Clobbers a.
+; ============================================================
+PCPassCReset:
+	call PCPassCOpenSRAM
+	xor a
+	ld [sProcCaveStagingBuffer + PC_PASSC_COUNT], a
+	ld [sProcCaveStagingBuffer + PC_PASSC_OVERFLOW], a
+	jp PCPassCCloseSRAM
+
+; ============================================================
+; PCPassCTrack
+; Appends wProcCaveCurX/Y to the Pass C position list. Called from Pass B at the
+; two places that create something Pass C can react to: PCVerifyCorner's
+; stray-corner fallback (a rock is about to be written at this cell) and the
+; floor-escalation site (PCRecheckNeighbors' call).
+;
+; Preserves every register, because both call sites sit mid-routine inside
+; PCVerifyCorner and Pass B respectively, and neither was written expecting a
+; call there. At 14 appends per cave the pushes cost nothing.
+;
+; On overflow it sets the flag and drops the entry, and Pass C then does the old
+; full-grid sweep. That is what keeps the optimisation from ever being a
+; correctness risk: an unusual cave costs the time it used to cost, and still
+; gets every tile it used to get.
+; ============================================================
+PCPassCTrack:
+	push af
+	push bc
+	push de
+	push hl
+	call PCPassCOpenSRAM
+	ld a, [sProcCaveStagingBuffer + PC_PASSC_COUNT]
+	cp PC_PASSC_CAP
+	jr c, .haveRoom
+	ld a, 1
+	ld [sProcCaveStagingBuffer + PC_PASSC_OVERFLOW], a
+	jr .done
+.haveRoom
+	ld b, a
+	inc a
+	ld [sProcCaveStagingBuffer + PC_PASSC_COUNT], a
+	ld a, b
+	add a, a                 ; entry index -> byte offset
+	ld c, a
+	ld b, 0
+	ld hl, sProcCaveStagingBuffer + PC_PASSC_LIST
+	add hl, bc
+	ld a, [wBuffer + wProcCaveCurX]
+	ld [hli], a
+	ld a, [wBuffer + wProcCaveCurY]
+	ld [hl], a
+.done
+	call PCPassCCloseSRAM
+	pop hl
+	pop de
+	pop bc
+	pop af
+	ret
+
+; ============================================================
+; PCPassCCell
+; One cell of Pass C, operating on wProcCaveLoopX/Y. Factored out so the
+; list-driven walk and the overflow fallback run byte-for-byte the same body -
+; the fallback exists to be a safety net, and a safety net that has drifted from
+; what it backs up is worse than none.
+;
+; Eligibility is plain fill (25) AND any already-placed straight edge
+; (21/29/26/24), but NOT existing corners (22/20/30/28), which are already the
+; maximal 2-sided representation with no further upgrade path.
+;
+; A PC_BLOCK_PENDING_FLOOR result is deliberately discarded (the cell keeps
+; whatever it had, 25 or a prior edge ID) rather than written: rocks are NOT
+; passable, so rock-adjacency must never open a cell into real floor the way a
+; genuine 3-real-floor-sides peninsula does.
+; ============================================================
+PCPassCCell:
+	ld a, [wBuffer + wProcCaveLoopX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveLoopY]
+	ld [wBuffer + wProcCaveCurY], a
+
+	call PCReadCell
+	cp 25
+	jr z, .eligible
+	cp 21
+	jr z, .eligible
+	cp 29
+	jr z, .eligible
+	cp 26
+	jr z, .eligible
+	cp 24
+	ret nz
+.eligible
+	call PCClassifyCell
+	ret nc
+	cp PC_BLOCK_PENDING_FLOOR
+	ret z
+	jp PCWriteCell
+
 PCAutotilePass:
+	call PCPassCReset
+
 	; --- Pass A: peninsula resolution only ---
 	xor a
 	ld [wBuffer + wProcCaveLoopY], a
@@ -3286,6 +3496,11 @@ PCAutotilePass:
 	jr nz, .notPending
 	ld a, PC_BLOCK_FLOOR
 	call PCWriteCell
+	; This cell has just become floor mid-sweep, which is what leaves already-
+	; classified straight edges beside it stale - see the Pass C list's header.
+	; Tracked BEFORE PCRecheckNeighbors, while CurX/CurY still hold the escalated
+	; cell rather than whatever that routine is walking.
+	call PCPassCTrack
 	call PCRecheckNeighbors
 	jr .skipCell
 .notPending
@@ -3340,49 +3555,118 @@ PCAutotilePass:
 	; Corners produced here skip PCVerifyCorner too - that check is about
 	; real-path continuity, which doesn't apply when triggered by
 	; rock-adjacency.
+	; SCOPED TO A TRACKED POSITION LIST (2026-09-16, Phase 6 follow-up). This
+	; used to be a fourth full 400-cell sweep and measured 10.91 frames, 29% of
+	; PCAutotilePass and 20% of the entire cave finalize, to change 7.1 cells.
+	; Pass B now records every position this pass can react to - see the Pass C
+	; list's header at the top of this file - and the walk below visits only the
+	; 3x3 around each one. Chebyshev 1 is sufficient AND exact, because this pass
+	; cannot cascade: it writes only edge/corner IDs and PCIsFloorLike does not
+	; count those as floor-like, so nothing it does changes another cell's
+	; classification. That also makes it order-independent and idempotent, which
+	; is what lets adjacent entries' windows overlap harmlessly.
+.passCStart
+	; Deliberate, otherwise-unused label. Pass C's entry used to be hookable as
+	; .cYLoop, and tools/pyboy_smoke/audit_cave_passc_locality.py snapshots the
+	; grid there to diff what this pass converts. The scoping below replaced that
+	; loop with two path-dependent ones (.cEntryLoop and .cFullSweep), so the
+	; audit needs one stable marker that means "Pass C is about to start,
+	; whichever path it takes". Labels cost no bytes.
 	ld a, 1
 	ld [wBuffer + wProcCaveIncludeRocks], a
+
+	call PCPassCOpenSRAM
+	ld a, [sProcCaveStagingBuffer + PC_PASSC_OVERFLOW]
+	and a
+	jp nz, .cFullSweep          ; more positions than the list holds: do it the
+	                            ; old way rather than lose a tile. jp, not jr:
+	                            ; both of these clear the whole entry loop
+	ld a, [sProcCaveStagingBuffer + PC_PASSC_COUNT]
+	and a
+	jp z, .cFinish              ; no rocks and no escalations: nothing here can
+	                            ; convert anything, so skip the pass entirely
+	xor a
+	ld [wBuffer + wProcCavePassCIdx], a
+
+.cEntryLoop
+	ld a, [wBuffer + wProcCavePassCIdx]
+	add a, a                    ; entry index -> byte offset
+	ld c, a
+	ld b, 0
+	ld hl, sProcCaveStagingBuffer + PC_PASSC_LIST
+	add hl, bc
+	ld a, [hli]
+	ld [wBuffer + wProcCavePassCAnchorX], a
+	ld a, [hl]
+	ld [wBuffer + wProcCavePassCAnchorY], a
+
+	; Rows anchorY-1 .. anchorY+1. An anchor on row 0 underflows to $ff, which
+	; the PC_SIZE test below rejects exactly like an overflow past 19, so the
+	; grid edges need no special case in either direction.
+	ld a, [wBuffer + wProcCavePassCAnchorY]
+	dec a
+	ld [wBuffer + wProcCaveLoopY], a
+.cRowLoop
+	ld a, [wBuffer + wProcCaveLoopY]
+	cp PC_SIZE
+	jr nc, .cRowNext
+	ld a, [wBuffer + wProcCavePassCAnchorX]
+	dec a
+	ld [wBuffer + wProcCaveLoopX], a
+.cColLoop
+	ld a, [wBuffer + wProcCaveLoopX]
+	cp PC_SIZE
+	jr nc, .cColNext
+	call PCPassCCell
+.cColNext
+	ld a, [wBuffer + wProcCaveLoopX]
+	inc a
+	ld [wBuffer + wProcCaveLoopX], a
+	ld b, a
+	ld a, [wBuffer + wProcCavePassCAnchorX]
+	inc a
+	cp b
+	jr nc, .cColLoop
+.cRowNext
+	ld a, [wBuffer + wProcCaveLoopY]
+	inc a
+	ld [wBuffer + wProcCaveLoopY], a
+	ld b, a
+	ld a, [wBuffer + wProcCavePassCAnchorY]
+	inc a
+	cp b
+	jr nc, .cRowLoop
+
+	ld a, [wBuffer + wProcCavePassCIdx]
+	inc a
+	ld [wBuffer + wProcCavePassCIdx], a
+	ld b, a
+	ld a, [sProcCaveStagingBuffer + PC_PASSC_COUNT]
+	cp b
+	jp nz, .cEntryLoop          ; jp, not jr: the entry body is 133 bytes
+	jr .cFinish
+
+.cFullSweep
 	xor a
 	ld [wBuffer + wProcCaveLoopY], a
-.cYLoop
+.cFullYLoop
 	xor a
 	ld [wBuffer + wProcCaveLoopX], a
-.cXLoop
-	ld a, [wBuffer + wProcCaveLoopX]
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveLoopY]
-	ld [wBuffer + wProcCaveCurY], a
-
-	call PCReadCell
-	cp 25
-	jr z, .cEligible
-	cp 21
-	jr z, .cEligible
-	cp 29
-	jr z, .cEligible
-	cp 26
-	jr z, .cEligible
-	cp 24
-	jr z, .cEligible
-	jr .cSkipCell
-.cEligible
-	call PCClassifyCell
-	jr nc, .cSkipCell
-	cp PC_BLOCK_PENDING_FLOOR
-	jr z, .cSkipCell
-	call PCWriteCell
-.cSkipCell
+.cFullXLoop
+	call PCPassCCell
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
 	cp PC_SIZE
-	jr nz, .cXLoop
+	jr nz, .cFullXLoop
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
 	cp PC_SIZE
-	jr nz, .cYLoop
+	jr nz, .cFullYLoop
 
+.cFinish
+	call PCPassCCloseSRAM
 	xor a
 	ld [wBuffer + wProcCaveIncludeRocks], a
 	ret
