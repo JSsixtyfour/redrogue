@@ -177,6 +177,212 @@ StageEventTrainerTable:
 	db OPP_JESSIE_JAMES, 1        ; STAGE_EVENT_BOTH_GOOD
 	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
 
+; ============================================================
+; StageEventGiveBack  (Phase 7e)
+; Returns whatever the villain took, once, after they are beaten. Farcalled
+; from the cave's map script when a stage-event NPC's beat flag is set and the
+; end-battle text has cleared - the same shape the boss join offer uses.
+;
+; Advances the phase to SETTLED and clears the record's tag whatever happens,
+; so this can never fire twice and a half-returned mon cannot be re-returned.
+;
+; OUTPUT: a = a STAGE_GIVEBACK_* result for the caller to pick text with.
+; Clobbers a/bc/de/hl.
+; ============================================================
+StageEventGiveBack::
+	call StageEventReadStolenKind ; a = sStolenKind
+	ld b, a
+	; Advance the phase FIRST. Every path below ends the event, and doing it
+	; up front means an early return cannot leave the event re-triggerable.
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	ld a, b
+	cp STOLEN_ITEM
+	jr z, .giveItem
+	cp STOLEN_MON
+	jr z, .giveMon
+	ld a, STAGE_GIVEBACK_NOTHING  ; they never managed to take anything
+	ret
+.giveItem
+	call StageEventReadStolenItem ; a = sStolenItem
+	ld b, a
+	ld c, 1
+	; GiveItem routes by id: a TM or HM goes to sTMBitfield via AcquireTMHM, a
+	; count-pocket item to its array. One call covers every pocket the theft
+	; can draw from, which is why the record needs no separate TM kind.
+	call GiveItem
+	jr nc, .noRoom
+	call StageEventClearStolenRecord
+	ld a, STAGE_GIVEBACK_ITEM
+	ret
+.noRoom
+	ld a, STAGE_GIVEBACK_NO_ROOM
+	ret
+.giveMon
+	; A full party is the one way this can legitimately fail. The theft
+	; guaranteed at least 2 mons at the time, so at most 5 remained - but the
+	; player can catch or be given one inside the wild area before recovering,
+	; and then there is nowhere to put it back.
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	jr nc, .noRoom
+	call StageEventRebuildStolenMon
+	call StageEventClearStolenRecord
+	ld a, STAGE_GIVEBACK_MON
+	ret
+
+; OUTPUT: a = sStolenKind. Clobbers a.
+StageEventReadStolenKind:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	ld a, [sStolenKind]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	ret
+
+; OUTPUT: a = sStolenItem. Clobbers a/b.
+StageEventReadStolenItem:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	ld a, [sStolenItem]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
+	ld a, b
+	ret
+
+; ============================================================
+; StageEventRebuildStolenMon  (Phase 7e)
+; Appends the recorded mon to the party at full fidelity.
+;
+; WHY NOT AddPartyMon OR GivePokemon: both CREATE a mon from a species and a
+; level, rolling fresh DVs and fresh moves. The whole point of the record is
+; that the player gets THEIR mon back - same DVs, same stat exp, same moves
+; and PP, same OT and nickname, same form. So the box struct is copied in
+; verbatim and only the two DERIVED fields are recomputed.
+;
+; Level and stats are recomputed rather than stored, which is what _MoveMon's
+; box-to-party path does for exactly the same reason: experience is the source
+; of truth, the party struct's level and five stats are a cache of it, and
+; copying a cache is how it goes stale.
+;
+; The form needs no special handling on the way back either - it rode in on
+; MON_CATCH_RATE bits 5-6 inside the struct and is still there.
+; Clobbers a/bc/de/hl.
+; ============================================================
+StageEventRebuildStolenMon:
+	; --- grow the party list ---
+	ld a, [wPartyCount]
+	inc a
+	ld [wPartyCount], a
+	ld c, a                       ; c = new party length (1-based)
+	ld b, 0
+	ld hl, wPartySpecies
+	add hl, bc
+	ld [hl], $ff                  ; terminator one past the new entry
+	dec hl
+	; species comes from the record's first byte
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	ld a, [sStolenBoxMon]         ; box struct byte 0 = species
+	ld [hl], a
+	ld [wCurPartySpecies], a
+	; --- copy the struct and both names into the new slot ---
+	ld a, [wPartyCount]
+	dec a                         ; 0-based slot index
+	ld [wStageEventScratch], a
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenBoxMon
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+	ld a, [wStageEventScratch]
+	ld hl, wPartyMonNicks
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenNickname
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wStageEventScratch]
+	ld hl, wPartyMonOT
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenOTName
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	; --- recompute the two derived fields from experience ---
+	ld a, [wStageEventScratch]
+	ldh [hWhichPokemon], a
+	xor a
+	ld [wMonDataLocation], a      ; PLAYER_PARTY_DATA
+	call LoadMonData
+	farcall CalcLevelFromExperience ; d = level; farcall keeps d/e
+	ld a, [wStageEventScratch]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	push de
+	call AddNTimes                ; hl = the new mon's struct base
+	pop de
+	ld bc, BOXMON_STRUCT_LENGTH
+	add hl, bc                    ; hl = its Level byte, just past the box part
+	ld a, d
+	ld [wCurEnemyLevel], a
+	; The CalcStats call convention is copied verbatim from _MoveMon's
+	; box-to-party tail (engine/pokemon/add_mon.asm), because getting it from
+	; the doc comment alone is easy to get wrong: de is the MON_STATS
+	; destination but hl is the STAT EXP base, wPartyMon*HPExp - 1, NOT the
+	; same pointer. An earlier draft passed MON_STATS in both and would have
+	; computed every stat from the wrong bytes.
+	ld [hli], a                   ; write level; hl now = MON_STATS
+	ld d, h
+	ld e, l                       ; de = MON_STATS destination
+	ld bc, (MON_HP_EXP - 1) - MON_STATS
+	add hl, bc                    ; hl = wPartyMon*HPExp - 1
+	ld b, $1                      ; consider stat exp
+	; Same wrapper every other recalc site uses. The theft excludes fused mons
+	; so the fusion half is moot here, but the bridge-ray half is not, and
+	; keeping the sequence identical to the reference is cheaper than
+	; reasoning about which half this path needs.
+	push de
+	push bc
+	push hl
+	farcall PrepareFusionAndBridgeRayCalcStats
+	pop hl
+	pop bc
+	pop de
+	call CalcStats                ; writes the five stats to [de]
+	ret
+
 StageEventShowCaveNpcs::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a

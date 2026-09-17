@@ -92,3 +92,33 @@ _StageEventHideoutBothGoodText::
 	line "be nearby if"
 	cont "you need us.@"
 	text_end
+
+; --- RECOVERY: what the player is told after beating the villain ---------
+; Picked by STAGE_GIVEBACK_* result, not by event type, because what matters
+; here is what came back rather than who took it.
+
+_StageEventRecoverMonText::
+	text "You got your"
+	line "#MON back!@"
+	text_end
+
+_StageEventRecoverItemText::
+	text "You got your"
+	line "item back!@"
+	text_end
+
+; The villain's guards refused the theft, so there was never anything to win
+; back. Reached when the player had one mon and an empty bag.
+_StageEventRecoverNothingText::
+	text "They didn't get"
+	line "away with"
+	cont "anything!@"
+	text_end
+
+; Party full at recovery time - the player caught something in here after
+; being robbed, so there is nowhere to put the mon back.
+_StageEventRecoverNoRoomText::
+	text "Your party is"
+	line "full! There's no"
+	cont "room for it!@"
+	text_end

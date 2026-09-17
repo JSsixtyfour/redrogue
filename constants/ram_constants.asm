@@ -400,6 +400,15 @@ DEF STOLEN_NOTHING EQU 0
 DEF STOLEN_MON     EQU 1
 DEF STOLEN_ITEM    EQU 2
 
+; What StageEventGiveBack managed to do, so the map script can pick its text.
+; NO_ROOM is a real outcome, not an error: the theft guarantees the party had
+; at least 2 mons at the time, but the player can fill it inside the wild area
+; before recovering, and a full party has nowhere to put the mon back.
+DEF STAGE_GIVEBACK_NOTHING EQU 0  ; the villain never took anything
+DEF STAGE_GIVEBACK_MON     EQU 1
+DEF STAGE_GIVEBACK_ITEM    EQU 2
+DEF STAGE_GIVEBACK_NO_ROOM EQU 3
+
 ; --- Bridge System (twice-per-run gift-room interludes) ---
 ; Bridges sit ON TOP of the door randomization: when one fires, BOTH lobby doors
 ; become two different bridge rooms; entering either gives a gift, then the room's

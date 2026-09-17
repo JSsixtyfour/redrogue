@@ -2897,7 +2897,19 @@ wOptions2:: db
 wRGB:: ds 3
 ; former hRGB in shinred
 
-	ds 5  ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
+; Phase 7e scratch: the party slot StageEventRebuildStolenMon is filling. It
+; has to survive three CopyData calls, an AddNTimes and a farcall, all of which
+; clobber every register pair, so it cannot live in one.
+;
+; CARVED IN PLACE from the dead pad below (ds 5 -> ds 4), which is why it costs
+; ZERO WRAM0 bytes and shifts NO later address - the pad absorbs it and nothing
+; sits between the two. Same discipline as wStageEvent above
+; (project_wram_take_padding_not_append). Transient within a single routine, so
+; it needs no clear anywhere.
+wStageEventScratch:: db
+
+	ds 4  ; was ds 5; 1 byte carved in place for wStageEventScratch above.
+	      ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the
 	      ; relocated EVENT_BEAT_PC_BOSS). This ds is dead padding below

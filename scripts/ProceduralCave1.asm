@@ -84,6 +84,41 @@ ProceduralCave1_Script:
 	ldh [hTextID], a
 	call DisplayTextID
 .afterCalm
+	; --- Phase 7e: recovery, once the villain is beaten ---------------------
+	; Same shape as the boss join offer below: wait for the beat flag AND for
+	; the end-battle text to have cleared, or the reward text lands on top of
+	; the battle's own closing box.
+	;
+	; The one-shot is the phase again: HIDING -> SETTLED, advanced inside
+	; StageEventGiveBack before it can early-return, so this cannot fire twice
+	; even if both halves of a pair are beaten.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .afterRecovery            ; no event armed
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	cp STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	jr nz, .afterRecovery           ; not robbed-and-hiding, so nothing owed
+	; EITHER half of a pair counts. Jessie and James are two objects with two
+	; flags, and the player can fight them in either order; making only slot 6
+	; pay out would hide the reward behind whichever one they happened to
+	; approach second.
+	CheckEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+	jr nz, .recover
+	CheckEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+	jr z, .afterRecovery
+.recover
+	ld a, [wStatusFlags3]
+	bit BIT_PRINT_END_BATTLE_TEXT, a
+	jr nz, .afterRecovery
+	farcall Delay3
+	farcall StageEventGiveBack      ; a = STAGE_GIVEBACK_*; -> SETTLED
+	ld [wStageEventScratch], a      ; the text handler picks its line from this
+	ld a, TEXT_PROCEDURALCAVE1_STAGE_RECOVER
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
 	; text has fully cleared (same shape PowerPlant uses for its reward).
 	CheckEvent EVENT_PC_BOSS_OFFERED
@@ -224,6 +259,45 @@ PCStageEventHideoutText:
 .done
 	text_end
 
+; Shown once after the villain is beaten. Dispatches on the STAGE_GIVEBACK_*
+; result the script stashed, not on the event type: the player cares what came
+; back, not who took it.
+PCStageEventRecoverText:
+	text_asm
+	ld a, [wStageEventScratch]
+	add a, a                      ; two bytes per pointer
+	ld c, a
+	ld b, 0
+	ld hl, PCStageEventRecoverTexts
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call PrintText
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
+PCStageEventRecoverTexts:
+	dw PCStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
+	dw PCStageRecoverMon          ; STAGE_GIVEBACK_MON
+	dw PCStageRecoverItem         ; STAGE_GIVEBACK_ITEM
+	dw PCStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
+
+PCStageRecoverNothing:
+	text_far _StageEventRecoverNothingText
+	text_end
+PCStageRecoverMon:
+	text_far _StageEventRecoverMonText
+	text_end
+PCStageRecoverItem:
+	text_far _StageEventRecoverItemText
+	text_end
+PCStageRecoverNoRoom:
+	text_far _StageEventRecoverNoRoomText
+	text_end
+
 ; The two NPC objects' own text entries. Each hands TalkToTrainer its slot's
 ; header and nothing else - exactly the shape ProceduralCave1BossText uses, so
 ; there is one text box and one A press, not two. Which header matters: the
@@ -339,6 +413,7 @@ ProceduralCave1_TextPointers:
 	dw_const PCStageEventNpc1Text, TEXT_PROCEDURALCAVE1_STAGE_NPC_1
 	dw_const PCStageEventNpc2Text, TEXT_PROCEDURALCAVE1_STAGE_NPC_2
 	dw_const PCStageEventArrivalText, TEXT_PROCEDURALCAVE1_STAGE_EVENT
+	dw_const PCStageEventRecoverText, TEXT_PROCEDURALCAVE1_STAGE_RECOVER
     ;dw_const PCBossEncounterText, TEXT_PROCEDURALCAVE1_BOSS_ENCOUNTER
     ;dw_const ProceduralCave1BossRoarText, TEXT_PROCEDURALCAVE1_BOSS_ROAR
 
