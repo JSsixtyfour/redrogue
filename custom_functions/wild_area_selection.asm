@@ -37,10 +37,12 @@ WildAreaTypeBit:
 ; STAGE_EVENT_NONE behind without writing anything.
 ; Clobbers a/bc/hl. Preserves de.
 ; ============================================================
-StageEventRoll:
+StageEventRoll::
+IF STAGE_EVENT_CHANCE < 256
 	call Random                   ; a = 0..255
 	cp STAGE_EVENT_CHANCE
 	ret nc                        ; no event on this wild area
+ENDC
 	ld c, STAGE_EVENT_MAX_ROLLABLE
 	call Rangerandom              ; a = [0, MAX_ROLLABLE-1]
 	inc a                         ; -> [1, MAX_ROLLABLE]; 0 is STAGE_EVENT_NONE
@@ -90,7 +92,19 @@ StageEventDoTheft::
 	ret nz                        ; the good NPCs take nothing, by design
 .stealMon
 	call StageEventStealMon       ; carry set = a mon was taken
-	ret c
+	jr nc, .stealItem
+	; The stolen mon may have been the lead the follower is mirroring. Slot 15
+	; keeps no species cache - its identity is re-derived as "first party mon
+	; with nonzero HP" - so a removal silently changes who the follower IS
+	; while its VRAM tiles still belong to the mon that left. Left alone, the
+	; next text close reloads only the WALKING half of the new sheet
+	; (LoadMapSpriteTilePatterns skips the standing half while BIT_FONT_LOADED
+	; is set), so the follower alternates between the two mons until the party
+	; menu forces a full reload. FollowerPrepareAfterBattle exists for exactly
+	; this and uses the LCD-off reload, so both halves land.
+	farcall FollowerPrepareAfterBattle
+	scf                           ; farcall does not preserve flags
+	ret
 	; FALL THROUGH, and this is the point of the chain: a mon thief who cannot
 	; find an eligible victim settles for an item rather than leaving
 	; empty-handed. Only when the bag is ALSO empty does nothing get stolen,

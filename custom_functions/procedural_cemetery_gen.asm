@@ -134,6 +134,15 @@ PCemGenerateMaps::
 	; authors its alternates; written anyway because fresh SRAM powers up $ff.
 	ld [sProcCemeteryPalette], a
 
+	; Phase 7 rollout. Both of these need SRAM bank 0 open, which it is here,
+	; and both must happen at PRELOAD: ProcBossPatchStageSprite reads the
+	; staged sprites between LoadMapHeader and InitMapSprites on the first
+	; load of a floor, which is already too late to roll anything.
+	; StageEventStageSprites re-asserts bank 0 itself and leaves the window
+	; open, so the close below still closes what this routine opened.
+	call PCemRollStageHideoutFloor
+	farcall StageEventStageSprites
+
 	; close SRAM
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -164,6 +173,14 @@ PCemGenerateMaps::
 	; skip its own boss. Cave (PCPreloadCave) and forest (PFPreloadForest) both
 	; do this in their preload; the cemetery was missing it.
 	ResetEvent EVENT_BEAT_PC_BOSS
+	; Phase 7: the stage-event NPCs need the same per-preload reset the boss
+	; gets. They are run-scoped events, so without this a run whose SECOND
+	; wild area also rolls an event would find the flag already set by the
+	; first, and that villain could never be engaged.
+	ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+	ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+	ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+	ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
 	; Roll the cemetery's OWN boss species + ghost move now. Previously the
 	; cemetery boss read wRoguePokemon1 as if the CAVE's PCRollBoss (inside
 	; PCPreloadCave) had populated it - true only under the old all-preload-at-
@@ -1338,6 +1355,10 @@ PCemFinalizeMap::
 	ld a, [sProcCemeteryReady]
 	or b
 	ld [sProcCemeteryReady], a
+	; Phase 7 rollout: this floor's blocks are complete and untouched for
+	; exactly this instant, which is the only moment a hideout cell on it can
+	; be chosen (see sStageEventHideoutFloor's comment in ram/sram.asm).
+	call PCemPickStageHideoutCell
 .cemAlreadyReady
 
 	; get SRAM source for this map
@@ -1418,6 +1439,12 @@ PCemFinalizeMap::
 	add a, a
 	add a, 4
 	ld [hl], a           ; MapX
+
+	; Phase 7 rollout: position the stage-event pair for THIS floor (off-grid
+	; if they are not on it) and patch their trainer class. Both are no-ops
+	; when no event is armed.
+	call PCemPlaceStageEventNpcs
+	call PCemApplyStageEventTrainers
 	ret
 
 ; ============================================================
@@ -1486,6 +1513,518 @@ PCemToggleTable:
 	db TOGGLE_CEMETERY_2_POKEBALL
 	db TOGGLE_CEMETERY_3_POKEBALL
 	db TOGGLE_CEMETERY_4_POKEBALL
+
+
+; ============================================================
+; Phase 7 rollout: stage events on the cemetery
+;
+; The cemetery is the only wild area whose arrival and hideout are on
+; DIFFERENT MAPS. The player can only enter at floor 1, so that is where the
+; villain appears, speaks and robs; the hideout is rolled among floors 2-4 so
+; recovering the stolen thing always costs a descent.
+;
+; That splits the roll in two, because the cemetery also generates LAZILY:
+; PCemFinalizeMap builds a floor the first time the player enters it, so at
+; preload floors 2-4 do not exist and no cell on them can be chosen. The FLOOR
+; is rolled at preload (costs nothing, needs no map); the CELL is chosen inside
+; the lazy-generation branch, the one instant that floor's blocks are known to
+; be fresh and complete.
+; ============================================================
+
+; ============================================================
+; PCemRollStageHideoutFloor
+; Rolls which floor the villain will hide on. Floor 1 is excluded by
+; construction: it is the arrival floor, and a villain who hid there would be
+; standing next to the player they just robbed.
+;
+; The floor is rolled for EVERY armed type, including the good NPCs who never
+; hide. That is deliberate - StageEventStageSprites refuses to publish sprites
+; for an event with nowhere to hide, and skipping the roll for Joy and Jenny
+; would make them fail that gate and never appear at all.
+;
+; SRAM bank 0 must already be open. Clobbers a/bc/hl.
+; ============================================================
+PCemRollStageHideoutFloor:
+	ld a, STAGE_EVENT_NO_HIDEOUT
+	ld [sStageEventHideoutX], a
+	ld [sStageEventHideoutY], a
+	ld [sStageEventHideoutFloor], a
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	ret z                          ; nothing armed on this wild area
+	ld c, 3
+	call Rangerandom               ; a = 0-2
+	inc a                          ; -> 1-3, i.e. cemetery floors 2-4
+	ld [sStageEventHideoutFloor], a
+	ret
+
+; ============================================================
+; PCemPickStageHideoutCell
+; Chooses the hideout cell on the floor that was just generated, if this is
+; the floor the preload rolled. Walks the 90 blocks from a random start with
+; wraparound and takes the first usable one, so it always terminates and
+; degrades to STAGE_EVENT_NO_HIDEOUT rather than spinning if a floor somehow
+; offers nothing.
+;
+; SRAM bank 0 must already be open (PCemFinalizeMap's window). Clobbers
+; a/bc/de/hl.
+; ============================================================
+PCemPickStageHideoutCell:
+	ld a, [sStageEventHideoutFloor]
+	cp STAGE_EVENT_NO_HIDEOUT
+	ret z                          ; nothing armed, or already disarmed
+	ld b, a
+	ld a, [wBuffer + wCemMapIndex]
+	cp b
+	ret nz                         ; some other floor - not this one's job
+	ld c, CEMAP_SIZE
+	call Rangerandom               ; a = 0-89: a random place to start looking
+	ld c, a
+	ld b, CEMAP_SIZE               ; attempts remaining
+.scan
+	; decompose the linear index in c into X (column) and Y (row)
+	ld a, c
+	ld d, 0
+.divLoop
+	cp CEMAP_WIDTH
+	jr c, .divDone
+	sub CEMAP_WIDTH
+	inc d
+	jr .divLoop
+.divDone
+	ld [wBuffer + wCemTryX], a
+	ld a, d
+	ld [wBuffer + wCemTryY], a
+	push bc
+	call PCemStageHideoutCellOk    ; Z set = usable
+	pop bc
+	jr z, .found
+	inc c
+	ld a, c
+	cp CEMAP_SIZE
+	jr c, .noWrap
+	ld c, 0
+.noWrap
+	dec b
+	jr nz, .scan
+	; Nowhere to hide on the rolled floor. Disarm rather than drop a villain
+	; into a grave: StageEventStageSprites already treats a missing hideout as
+	; "this event does not manifest", and that is the right outcome here too.
+	ld a, STAGE_EVENT_NO_HIDEOUT
+	ld [sStageEventHideoutX], a
+	ld [sStageEventHideoutY], a
+	ld [sStageEventHideoutFloor], a
+	ret
+.found
+	ld a, [wBuffer + wCemTryX]
+	ld [sStageEventHideoutX], a
+	ld a, [wBuffer + wCemTryY]
+	ld [sStageEventHideoutY], a
+	ret
+
+; ============================================================
+; PCemStageHideoutCellOk
+; Z set if the cell at wCemTryX/Y can hold the hideout.
+;
+; EXCLUSIONS, each one load-bearing:
+;   * not a floor block - a villain inside a grave is unreachable
+;   * the floor's own pokeball cell - two objects on one cell is the same
+;     exact-overlap class as the forest's measured boss/ball collision
+;   * both staircase blocks, (1,4) and (9,4) - every floor's entrance and exit
+;     is one or the other, and an NPC is SOLID, so a villain parked on a
+;     staircase walls the player out of the rest of the run
+;   * floor 4 only, (4,7) and (5,8) - the blocks holding
+;     ProceduralCemetery4BossCoords' player steps (9,15) and (10,16). The boss
+;     is a coordinate trigger with no sprite, so a villain standing there is
+;     not a graphical clash, it is a trigger the player can never reach
+;   * floor 4 only, (4,8) - the south exit warp at step (9,16)
+;
+; SRAM bank 0 must already be open. Clobbers a/bc/de/hl.
+; ============================================================
+PCemStageHideoutCellOk:
+	call PCemGetCellHL
+	ld a, [hl]
+	call PCemIsFloor
+	jr nz, .no
+	; not the pokeball's own cell
+	ld a, [wBuffer + wCemMapIndex]
+	ld e, a
+	ld d, 0
+	ld hl, sProcCemeteryBallX
+	add hl, de
+	ld a, [hl]
+	ld hl, wBuffer + wCemTryX
+	cp [hl]
+	jr nz, .notBall
+	ld hl, sProcCemeteryBallY
+	add hl, de
+	ld a, [hl]
+	ld hl, wBuffer + wCemTryY
+	cp [hl]
+	jr z, .no
+.notBall
+	ld hl, PCemHideoutExcludeCommon
+	call PCemCellInList
+	jr z, .no
+	ld a, [wBuffer + wCemMapIndex]
+	cp 3
+	jr nz, .ok
+	ld hl, PCemHideoutExcludeFloor4
+	call PCemCellInList
+	jr z, .no
+.ok
+	xor a
+	ret                            ; Z set = usable
+.no
+	ld a, 1
+	and a
+	ret                            ; Z clear = rejected
+
+; INPUT: hl = list of X,Y block pairs terminated by $ff.
+; OUTPUT: Z set if wCemTryX/Y appears in the list. Clobbers a/bc/hl.
+PCemCellInList:
+.loop
+	ld a, [hli]
+	cp $ff
+	jr z, .notFound
+	ld b, a
+	ld a, [hli]
+	ld c, a
+	ld a, [wBuffer + wCemTryX]
+	cp b
+	jr nz, .loop
+	ld a, [wBuffer + wCemTryY]
+	cp c
+	jr nz, .loop
+	xor a
+	ret
+.notFound
+	ld a, 1
+	and a
+	ret
+
+PCemHideoutExcludeCommon:
+	db 1, 4                        ; west staircase block  (player step 3,9)
+	db 9, 4                        ; east staircase block  (player step 18,9)
+	db $ff
+PCemHideoutExcludeFloor4:
+	db 4, 7                        ; boss trigger, player step (9,15)
+	db 5, 8                        ; boss trigger, player step (10,16)
+	db 4, 8                        ; south exit warp, player step (9,16)
+	db $ff
+
+; ============================================================
+; PCemStageEventFloor
+; Which cemetery floor INDEX (0-3) the NPC pair belongs on right now, or
+; STAGE_EVENT_NO_HIDEOUT for "nowhere". Single source of truth for all four
+; consumers (sprite patch, placement, show/hide, trainer patch) - three copies
+; of this decision would be three chances to drift, and the forest already
+; paid for that class of mistake.
+;
+;   no type armed -> nowhere
+;   a GOOD NPC    -> the hideout floor, in EVERY phase
+;   WAITING       -> 0, the arrival on floor 1
+;   HIDING        -> the floor rolled at preload
+;   SETTLED       -> nowhere; the villain has been beaten and has already
+;                    handed the stolen thing back
+;
+; THE GOOD-NPC ROW CHANGED 2026-09-17. It used to be "floor 1, where they
+; arrived", which put Joy or Jenny in the corridor the player walks down on
+; spawn - the cemetery's version of the confrontation the other three areas
+; staged at the entrance. They are meant to be found, so they now live on
+; the hideout floor like a villain does, and the phase stops mattering for
+; them: they have no arrival and no vanish, so there is no transition for a
+; phase to name. PCemRollStageHideoutFloor already rolls a floor for every
+; armed type, including theirs, and its header says why - so there is
+; always a floor to send them to.
+;
+; Opens and closes its own SRAM window. Clobbers a/bc/hl.
+; ============================================================
+PCemStageEventFloor::
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jr z, .nowhere
+	cp STAGE_EVENT_JOY
+	jr nc, .hideout                ; good NPC - at the hideout in every phase
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr z, .floor1                  ; WAITING
+	cp STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	jr z, .hideout
+	; SETTLED villain: beaten, paid out, gone.
+.nowhere
+	ld a, STAGE_EVENT_NO_HIDEOUT
+	ret
+.floor1
+	xor a
+	ret
+.hideout
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventHideoutFloor]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	ret
+
+; Z set = the pair belongs on the CURRENT floor. Clobbers a/bc/hl.
+PCemStageEventNpcsHere::
+	call PCemStageEventFloor
+	cp STAGE_EVENT_NO_HIDEOUT
+	jr z, .no
+	ld b, a
+	call PCemMapToIndex
+	cp b
+	ret
+.no
+	ld a, 1
+	and a
+	ret
+
+; Same answer, returned in e instead of the flags, for farcall callers.
+; Bankswitch destroys a/b/c/h/l on the return leg, so d and e are the only
+; channel that survives a farcall - the flags cannot be trusted across one.
+; OUTPUT: e = 1 if the pair belongs on this floor, 0 if not.
+PCemStageEventNpcsHereFar::
+	call PCemStageEventNpcsHere
+	ld e, 0
+	ret nz
+	ld e, 1
+	ret
+
+; OUTPUT: b = this floor's NPC_1 toggle constant, c = its NPC_2.
+; Clobbers a/hl; preserves d/e.
+PCemNpcToggles:
+	call PCemMapToIndex
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, PCemNpcToggleTable
+	add hl, bc
+	ld b, [hl]
+	inc hl
+	ld c, [hl]
+	ret
+
+PCemNpcToggleTable:
+	db TOGGLE_CEMETERY_1_NPC_1, TOGGLE_CEMETERY_1_NPC_2
+	db TOGGLE_CEMETERY_2_NPC_1, TOGGLE_CEMETERY_2_NPC_2
+	db TOGGLE_CEMETERY_3_NPC_1, TOGGLE_CEMETERY_3_NPC_2
+	db TOGGLE_CEMETERY_4_NPC_1, TOGGLE_CEMETERY_4_NPC_2
+
+; ============================================================
+; PCemPlaceStageEventNpcs
+; Positions object slots 2 and 3 for the current floor. Called on every floor
+; load, and again from the vanish.
+; ============================================================
+PCemPlaceStageEventNpcs:
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	ret z
+	; Nothing armed: leave the slots at the position the object list gave
+	; them. Every map load re-reads that list, so there is no stale value to
+	; scrub here, and parking them off-grid anyway would put two objects
+	; outside the map on a floor that has no event at all.
+	call PCemStageEventNpcsHere
+	jr z, .here
+	; Armed, but not on this floor. NOW parking matters, and it matters for
+	; one specific caller: the vanish re-runs this routine on the arrival
+	; floor immediately after the phase flips to HIDING, and without the park
+	; the villain would simply keep standing in front of the player it just
+	; robbed.
+	xor a
+	ld [wSprite02StateData2MapY], a
+	ld [wSprite02StateData2MapX], a
+	ld [wSprite03StateData2MapY], a
+	ld [wSprite03StateData2MapX], a
+	jr .syncPixels
+.here
+	; A GOOD NPC HAS NO ARRIVAL, in any phase. Joy and Jenny are found, not
+	; met: the map script settles them without a greeting, so without this
+	; test the WAITING branch below would stand them in front of the player
+	; for the one frame before that script runs, and they would then never
+	; move - the vanish that repositions a villain is exactly what they skip.
+	; Testing TYPE before PHASE is the whole fix.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	jr nc, .atHideout
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	jr nz, .atHideout
+	; ARRIVAL, floor 1. The cave and forest stand the pair one step ABOVE the
+	; player, but floor 1's entrance (warp 1, player step 3,9) is against the
+	; WEST wall, so "above" here is inside that wall. They stand in the
+	; corridor the player is about to walk down instead. That reads the same
+	; way - they are blocking your path - and both cells sit inside block
+	; (2,4), the cell the generator's own march carves away from the entrance.
+	ld a, 9 + 4
+	ld [wSprite02StateData2MapY], a
+	ld a, 4 + 4
+	ld [wSprite02StateData2MapX], a
+	ld a, 8 + 4
+	ld [wSprite03StateData2MapY], a
+	ld a, 4 + 4
+	ld [wSprite03StateData2MapX], a
+	jr .syncPixels
+.atHideout
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventHideoutX]
+	ld b, a
+	ld a, [sStageEventHideoutY]
+	ld c, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld hl, wSprite02StateData2MapY
+	ld a, c
+	add a, a
+	add a, 4                       ; sprite position is block*2 + 4 everywhere
+	ld [hli], a
+	ld a, b
+	add a, a
+	add a, 4
+	ld [hl], a
+	; Slot 3 one step right. A cemetery block is two steps wide, so +1 keeps
+	; the partner inside the SAME walkable block - stepping a whole block over
+	; could land them in a grave.
+	ld hl, wSprite03StateData2MapY
+	ld a, c
+	add a, a
+	add a, 4
+	ld [hli], a
+	ld a, b
+	add a, a
+	add a, 5
+	ld [hl], a
+
+.syncPixels
+	; Every path above wrote MAP coordinates; the SCREEN PIXEL copies in
+	; StateData1 are now stale, and nothing resyncs them on its own - see
+	; StageEventSyncPairScreenPos. The PARK path needs this as much as the
+	; other two: it is reached from the vanish, which runs on the arrival
+	; floor right after the phase flips, so without it the pair keeps its
+	; old pixel position and goes on blocking and triggering text from a
+	; cell it no longer occupies.
+	;
+	; The "nothing armed" early return above deliberately does NOT come here:
+	; it writes no map coordinate, so the two copies are still whatever
+	; LoadMapHeader's object-list load made them, which is consistent.
+	ld d, 2
+	farcall StageEventSyncPairScreenPos
+	ret
+
+; ============================================================
+; PCemApplyStageEventTrainers
+; Thin shim to the generic trainer patch, with d = this map's base NPC slot.
+; The cemetery uses slots 2-3 (slot 1 is the floor's pokeball), where the cave
+; and forest use 6-7 and the facility 10-11. Gated on the floor, so the class
+; is only ever written where the pair actually stands.
+; ============================================================
+PCemApplyStageEventTrainers:
+	call PCemStageEventNpcsHere
+	ret nz
+	ld d, 2
+	farcall StageEventApplyTrainers
+	ret
+
+; ============================================================
+; PCemShowStageEventNpcs
+; Reveals whichever of slots 2/3 this event actually uses, and only on the
+; floor the pair is on. The staged sprite doubles as the "slot in use" flag,
+; exactly as StageEventShowCaveNpcs does it - this is the cemetery's copy
+; because the cemetery owns per-floor toggle constants rather than sharing
+; the wild-area ones (it is deliberately not in WildAreaStageMapTable).
+; ============================================================
+PCemShowStageEventNpcs::
+	call PCemStageEventNpcsHere
+	ret nz
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventSprite6]
+	ld d, a
+	ld a, [sStageEventSprite7]
+	ld e, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, d
+	and a
+	ret z                          ; no event armed - leave both hidden
+	call PCemNpcToggles            ; b/c = this floor's two toggle constants
+	push bc
+	push de
+	ld a, b
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	pop de
+	pop bc
+	ld a, e
+	and a
+	ret z                          ; single-NPC event
+	ld a, c
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ret
+
+; Hides both slots on the current floor. Clobbers a/bc/de/hl.
+PCemHideStageEventNpcs::
+	call PCemNpcToggles
+	push bc
+	ld a, b
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	pop bc
+	ld a, c
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ret
+
+; ============================================================
+; PCemStageEventVanish
+; The cemetery's dark flash. Unlike the other three stages this is a real
+; exit, not a relocation: the hideout is on ANOTHER FLOOR, so there is nothing
+; on this map to move to. Hide the pair and park them off-grid, and they
+; reappear when the player reaches the rolled floor.
+;
+; Ordering is load-bearing, same as the cave's: the phase advances to HIDING
+; BEFORE the reposition, so PCemPlaceStageEventNpcs takes the "not this floor"
+; branch rather than re-placing the arrival.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PCemStageEventVanish::
+	call GBFadeOutToBlack
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	call PCemHideStageEventNpcs
+	call PCemPlaceStageEventNpcs
+	call UpdateSprites
+	call Delay3
+	call GBFadeInFromBlack
+	ret
 
 ; ============================================================
 ; IsCemeteryMap

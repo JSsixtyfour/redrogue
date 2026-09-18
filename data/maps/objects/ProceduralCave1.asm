@@ -5,10 +5,17 @@ ProceduralCave1_Object:
 	db 46 ; border block (solid_wall, confirmed impassable in both classification passes)
 
 	def_warp_events
-	warp_event 19, 38, LAST_MAP, 1 ; tile coords = block (9,19), matches generator's hardcoded entrance
+	warp_event 18, 39, LAST_MAP, 1 ; tile coords = block (9,19) BOTTOM-LEFT quadrant, matches generator's hardcoded entrance
 	warp_event 15, 15, LAST_MAP, 1 ; exit (runtime-patched position)
 	; EXPERIMENT (tabled): random entrance — see size-randomization-notes.md for findings.
-	; Confirmed warp_event format: (tile_X, tile_Y) where tile_X=block_X*2+1, tile_Y=block_Y*2.
+	; warp_event format is (tile_X, tile_Y), and a block is 2x2 tiles, so a
+	; block has FOUR legal spawn tiles. This one is deliberately the bottom-left
+	; quadrant (block_X*2, block_Y*2+1): it leaves both TOP quadrants of the
+	; same block free for the stage-event NPC pair. It used to be the top-right
+	; (block_X*2+1, block_Y*2), which forced the pair up into the block ABOVE -
+	; and slot 7 into the block diagonally above that, which is not even part
+	; of the carved entrance column, so it stood inside rock.
+	; Block 36 (PC_BLOCK_ENTRANCE) is open_floor, so all four quadrants walk.
 	; Bottom confirmed: block(9,19)→warp_event(19,38). Left block(1,9)→(3,18), Right block(18,9)→(37,18).
 	; Top view ptr falls below PC_BASE. Left/right spawn in fill — not yet solved.
 

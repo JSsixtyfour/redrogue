@@ -144,12 +144,14 @@ def main() -> int:
     try:
         h.boot_to_lobby()
         h.write8("wStageEvent", args.type)
-        h.preload_and_enter_wild_area(map_id, "Procedural Cave")
-
-        # Shrink the party BEFORE the text is dismissed, i.e. before
-        # StageEventDoTheft reads wPartyCount. The theft runs between the
-        # arrival text and the dark flash, and the arrival text is still open
-        # at this point, so this lands in the window the guard reads.
+        # REORDERED 2026-09-17: StageEventDoTheft now runs at map LOAD, before
+        # the arrival text, so the greeting can name what was taken. Both the
+        # setup and the "before" snapshot therefore have to happen in the
+        # LOBBY - taken after entry they are already post-theft, which is
+        # exactly how this audit failed when the reorder landed ("could not
+        # identify exactly one missing mon (0 candidates)").
+        # Shrink the party before ENTERING, so StageEventDoTheft reads the
+        # reduced wPartyCount when it fires during the load.
         if args.force_party:
             h.write8("wPartyCount", args.force_party)
 
@@ -179,7 +181,10 @@ def main() -> int:
         if len(before) < 2:
             print("  (party of %d - the >=2 guard should REFUSE this theft)" % len(before))
 
-        # Dismiss the arrival text; the theft runs between it and the flash.
+
+        h.preload_and_enter_wild_area(map_id, "Procedural Cave")
+        # The theft already happened during the load above; the taps below
+        # just close the greeting and the new loot line.
         for _ in range(6):
             h.tap("a", frames=12)
             h.tick(40)

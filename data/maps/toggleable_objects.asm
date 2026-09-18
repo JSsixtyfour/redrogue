@@ -455,15 +455,23 @@ ToggleableObjectStates:
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball
+	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
+	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_2
 	toggle_object_state 1, ON
+	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
+	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_3
 	toggle_object_state 1, ON
+	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
+	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_4
 	toggle_object_state 1, ON
+	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
+	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
 
 ; Both Fuchsia leaders start ON; FuchsiaGymHideUnusedLeader hides exactly one on
 ; map load. Must stay LAST here to match the matching block at the end of

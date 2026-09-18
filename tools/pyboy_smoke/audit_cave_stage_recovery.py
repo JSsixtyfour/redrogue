@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -67,6 +68,21 @@ def read_party(h):
     return mons
 
 
+def giveback_const(name):
+    """STAGE_GIVEBACK_* value, read from the asm so this cannot go stale."""
+    text = (REPO_ROOT / "constants" / "ram_constants.asm").read_text()
+    m = re.search(r"^DEF %s\s+EQU\s+(\d+)" % name, text, re.M)
+    if m is None:
+        raise SystemExit("could not find DEF %s in ram_constants.asm" % name)
+    return int(m.group(1))
+
+
+STAGE_GIVEBACK_MON = giveback_const("STAGE_GIVEBACK_MON")
+STAGE_GIVEBACK_MAX = max(
+    giveback_const(n) for n in ("STAGE_GIVEBACK_NOTHING", "STAGE_GIVEBACK_MON",
+                                "STAGE_GIVEBACK_ITEM", "STAGE_GIVEBACK_NO_ROOM"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--type", type=int, default=2,
@@ -80,11 +96,16 @@ def main() -> int:
     try:
         h.boot_to_lobby()
         h.write8("wStageEvent", args.type)
-        h.preload_and_enter_wild_area(map_id, "Procedural Cave")
-
+        # Snapshot in the LOBBY. StageEventDoTheft was reordered 2026-09-17 to
+        # run at map LOAD, before the arrival text, so the greeting can name
+        # what it took - a snapshot taken after entry is already post-theft.
         before = read_party(h)
         print("party before theft: %s" % [m["box"][0] for m in before])
 
+        h.preload_and_enter_wild_area(map_id, "Procedural Cave")
+
+        # The theft already happened during the load; these taps just close
+        # the greeting and the loot line.
         for _ in range(6):
             h.tap("a", frames=12)
             h.tick(40)
@@ -105,6 +126,30 @@ def main() -> int:
         # trainer battle in the harness, which tests the map script's trigger
         # rather than the rebuild this audit is about.
         h.call_routine("StageEventGiveBack")
+
+        # The give-back's RESULT CODE, which the map script uses to pick the
+        # recovery line. It must arrive through wStageEventScratch, written by
+        # GiveBack itself - it cannot come back in `a`, because every caller is
+        # a map script reaching this by farcall and Bankswitch's return leg
+        # ends `ld a, b` with the caller's ROM bank. That is what printed
+        # "12 ERROR.": $11 indexed 26 bytes past a 4-entry text table and
+        # PrintText ran on garbage. Nothing read this byte before, which is
+        # exactly why the bug shipped.
+        scratch = h.read8("wStageEventScratch")
+        print("wStageEventScratch after GiveBack = %d" % scratch)
+        if scratch > STAGE_GIVEBACK_MAX:
+            failures.append(
+                "wStageEventScratch is %d, outside the valid STAGE_GIVEBACK_* "
+                "range 0..%d - the recovery text handler indexes a %d-entry "
+                "pointer table with this, so anything larger runs PrintText on "
+                "whatever follows the table"
+                % (scratch, STAGE_GIVEBACK_MAX, STAGE_GIVEBACK_MAX + 1))
+        elif scratch != STAGE_GIVEBACK_MON:
+            failures.append(
+                "wStageEventScratch is %d, expected %d (STAGE_GIVEBACK_MON) - "
+                "a mon was stolen and the party had room, so the give-back "
+                "should report returning a mon"
+                % (scratch, STAGE_GIVEBACK_MON))
 
         after = read_party(h)
         print("party after return: %s" % [m["box"][0] for m in after])

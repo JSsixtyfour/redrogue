@@ -449,15 +449,23 @@ ENDM
 
 	toggle_consts_for PROCEDURAL_CEMETERY_1
 	const TOGGLE_CEMETERY_1_POKEBALL
+	const TOGGLE_CEMETERY_1_NPC_1
+	const TOGGLE_CEMETERY_1_NPC_2
 
 	toggle_consts_for PROCEDURAL_CEMETERY_2
 	const TOGGLE_CEMETERY_2_POKEBALL
+	const TOGGLE_CEMETERY_2_NPC_1
+	const TOGGLE_CEMETERY_2_NPC_2
 
 	toggle_consts_for PROCEDURAL_CEMETERY_3
 	const TOGGLE_CEMETERY_3_POKEBALL
+	const TOGGLE_CEMETERY_3_NPC_1
+	const TOGGLE_CEMETERY_3_NPC_2
 
 	toggle_consts_for PROCEDURAL_CEMETERY_4
 	const TOGGLE_CEMETERY_4_POKEBALL
+	const TOGGLE_CEMETERY_4_NPC_1
+	const TOGGLE_CEMETERY_4_NPC_2
 
 ; Fuchsia Gym carries BOTH leader objects and hides one per run, so the
 ; Koga/Janine coin flip needs no map swap. APPENDED at the end of this file

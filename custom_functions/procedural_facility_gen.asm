@@ -6280,6 +6280,14 @@ PFacPreload::
 
     ; Reset reused run events (shared cave events; facility never concurrent).
     ResetEvent EVENT_BEAT_PC_BOSS
+    ; Phase 7: the stage-event NPCs need the same per-preload reset the boss
+    ; gets. They are run-scoped events, so without this a run whose SECOND
+    ; wild area also rolls an event would find the flag already set by the
+    ; first, and that villain could never be engaged.
+    ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+    ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+    ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+    ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
     ResetEvent EVENT_PC_BOSS_OFFERED
     ResetEvent EVENT_PC_BUDGET_ENDED
     ResetEvent EVENT_PC_CALMED_SHOWN
@@ -6442,10 +6450,18 @@ PFacFinalize::
 
 .placeSprites
     ; --- Patch the south entrance and the selected two-tile exit ---
+    ; THIS, not the object list, is where the facility's entrance actually
+    ; comes from: the literals below overwrite warp entry 0 on every
+    ; finalize, so editing data/maps/objects/ProceduralFacility.asm alone
+    ; changes nothing the player ever stands on. The two are kept in step
+    ; deliberately - the object list is what a reader looks at first.
+    ; (39,18) is the BOTTOM-LEFT quadrant of block (9,19), in wWarpEntries'
+    ; Y-then-X order; the top two quadrants of that block belong to the
+    ; stage-event NPC pair.
     ld hl, wWarpEntries
-    ld a, 38
+    ld a, 39
     ld [hli], a
-    ld a, 19
+    ld a, 18
     ld [hl], a
 
     ; sProcFacilityExitI is a block column for north or row for west/east.
@@ -6659,10 +6675,13 @@ PFacFinalize::
 ; and the "no candidates" branch below is unreachable in practice - kept as a
 ; defined outcome rather than an assumption.
 ;
-; The hideout is the room's CENTER cell (X + W/2, Y + H/2), always inside the
-; room's own stamped floor interior: PFacEncloseRooms only walls the OUTSIDE
-; perimeter, never the interior a non-degenerate placed room already stamped
-; as floor.
+; The hideout starts as the room's CENTER cell (X + W/2, Y + H/2) and is then
+; nudged onto plain floor by PFacHideoutFindFloor. The center is inside the
+; room's stamped interior - PFacEncloseRooms only walls the OUTSIDE perimeter
+; - but "interior" is NOT the same as "floor", because the decoration passes
+; at the end of PFacGenerateFacility stamp furniture there. That was the
+; original claim here and it was wrong; see PFacHideoutFindFloor for the
+; measurement that falsified it.
 ;
 ; Target ordinal parked in wStageEventScratch, not a register: the room-id
 ; loop calls PFacRoomRecordAddr repeatedly, which clobbers d/e, and b/c are
@@ -6716,6 +6735,42 @@ PFacPickHideout:
 .pickNext
     inc b
     jr .pickLoop
+
+; This room's center and all four of its neighbours are decorated or void, so
+; try the NEXT placed room rather than giving up. Measured 2026-09-17: probing
+; the five cells alone left 2 of 40 layouts with no hideout at all, which is a
+; 5% chance of the event simply not happening; walking on to the next room took
+; that to 0 of 40. The walk goes b+1..10 and then wraps once through 2..b, so
+; every placed room is tried before .disarm - which remains a defined
+; outcome, just a much rarer one. Disarming is still the right end state
+; when it happens: no event at all beats one standing inside a wall.
+.nextRoom
+    inc b
+    ld a, b
+    cp 11
+    jr c, .nextRoomHaveId
+    ; Past room 10. Go round ONCE from room 2 rather than giving up, so a pick
+    ; that happened to land on a high room is not penalised for it -
+    ; wStageEventScratch counted the target ordinal down to exactly 0 on the
+    ; way into .found, so it is free to reuse here as the "already wrapped"
+    ; flag and costs no new state.
+    ld a, [wStageEventScratch]
+    and a
+    jr nz, .disarm
+    inc a
+    ld [wStageEventScratch], a
+    ld b, 2
+.nextRoomHaveId
+    ld a, b
+    call PFacRoomRecordAddr
+    push hl
+    ld de, 2
+    add hl, de
+    ld a, [hl]                      ; W byte (0 = not placed)
+    pop hl
+    and a
+    jr z, .nextRoom
+    ; fall through with hl = this room's record, exactly as .pickLoop leaves it
 .found
     ld a, [hli]
     ld d, a                         ; d = room X
@@ -6729,6 +6784,24 @@ PFacPickHideout:
     srl a
     add a, e
     ld e, a                         ; e = center Y
+    ; THE CENTER IS NOT RELIABLY FLOOR, despite this routine's header
+    ; having claimed it was. The decoration passes (PFacPlaceLargeDecor,
+    ; PFacDecorateExploreRooms) run at the END of PFacGenerateFacility,
+    ; after the room interiors are stamped, and a room's center is exactly
+    ; where a premade puts its furniture. MEASURED 2026-09-17 over 40
+    ; layouts: 9 of them (22.5%) put the pair on a decoration block, and
+    ; ONE of those was solid void with no walkable neighbour at all, so the
+    ; encounter could not be reached and was simply lost. Block $37 and
+    ; $67 are furniture tops - solid above, walkable along the bottom edge,
+    ; the ordinary Gen 1 convention - while $47 is a furniture middle and
+    ; $5b is solid void.
+    ;
+    ; So test it, and take a neighbour if it fails. PFAC_FLOOR is the
+    ; all-$01 block, which is walkable in all four quadrants - the pair
+    ; stands on two of them, so "walkable somewhere in this block" is not
+    ; a strong enough test and the exact block id is the right one.
+    call PFacHideoutFindFloor
+    jr nc, .nextRoom                ; nothing plain-floor at or beside it
     xor a
     ld [rRAMB], a                   ; bank 0: sStageEventHideoutX/Y
     ld a, d
@@ -6764,6 +6837,73 @@ PFacPickHideout:
 ; walkability itself was proven unnecessary to check).
 ; Clobbers a/bc/de/hl.
 ; ============================================================
+; ============================================================
+; PFacHideoutFindFloor  (2026-09-17)
+; Nudges a hideout candidate onto a PFAC_FLOOR block.
+;
+; INPUT:  d,e = candidate block X,Y
+; OUTPUT: carry SET  = d,e now name a PFAC_FLOOR block
+;         carry CLEAR = neither the candidate nor any of its four
+;                       orthogonal neighbours is plain floor; the caller
+;                       disarms, which is the right answer - no event at
+;                       all beats one standing inside a wall.
+;
+; The candidate itself is tried first, then SOUTH before the other three.
+; That ordering is not arbitrary: the two decoration blocks that actually
+; came up in measurement ($37, $67) are furniture TOPS, solid on their top
+; half and walkable along the bottom, which is the Gen 1 convention for
+; standing in front of an object - so the cell one step south of a piece of
+; furniture is the most likely plain floor in the room.
+;
+; Reads the map through PFacReadBlock, which needs wPFacTargetBaseLo/Hi and
+; the final block ids - both true at PFacPickHideout's call site, which
+; runs after PFacGenerateFacility has returned. It touches no SRAM, so the
+; caller's bank-1 window is unaffected.
+;
+; PFacReadBlock clobbers a/de/hl and is the reason d/e and the table cursor
+; are both stacked across it. Out-of-range coordinates are safe: its own
+; .oob path returns something that is not PFAC_FLOOR, so an edge candidate
+; rejects rather than reading off the grid.
+; Clobbers a/hl; preserves bc.
+; ============================================================
+PFacHideoutFindFloor:
+    ld hl, .offsets
+.probe
+    ld a, [hl]
+    cp $80                          ; table terminator
+    jr z, .none
+    add a, d
+    ld [wBuffer + wPFacCurX], a
+    inc hl
+    ld a, [hl]
+    add a, e
+    ld [wBuffer + wPFacCurY], a
+    inc hl
+    push hl
+    push de
+    call PFacReadBlock
+    pop de
+    pop hl
+    cp PFAC_FLOOR
+    jr nz, .probe
+    ld a, [wBuffer + wPFacCurX]
+    ld d, a
+    ld a, [wBuffer + wPFacCurY]
+    ld e, a
+    scf
+    ret
+.none
+    and a                           ; carry clear
+    ret
+
+.offsets
+    db  0,  0                       ; the room center, the usual answer
+    db  0,  1                       ; one SOUTH - in front of the furniture
+    db  0, -1
+    db -1,  0
+    db  1,  0
+    db $80
+
 PFacPlaceStageEventNpcs:
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
@@ -6786,12 +6926,23 @@ PFacPlaceStageEventNpcs:
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
 
+    ; A GOOD NPC HAS NO ARRIVAL, in any phase. Joy and Jenny are found, not
+    ; met: the map script settles them without a greeting, so without this
+    ; test the WAITING branch below would stand them in front of the player
+    ; for the one frame before that script runs, and they would then never
+    ; move - the vanish that repositions a villain is exactly what they skip.
+    ; Testing TYPE before PHASE is the whole fix.
+    ld a, [wStageEvent]
+    and STAGE_EVENT_TYPE_MASK
+    cp STAGE_EVENT_JOY
+    jr nc, .atHideout
     ld a, [wStageEvent]
     and STAGE_EVENT_PHASE_MASK
     jr nz, .atHideout
     ld d, 9
     ld e, 19
-    jp PFacPlaceStageEventArrival
+    call PFacPlaceStageEventArrival
+    jr .syncPixels
 .atHideout
     ld hl, wSprite10StateData2MapY
     ld a, c
@@ -6803,14 +6954,20 @@ PFacPlaceStageEventNpcs:
     add a, 4
     ld [hl], a
 
-    ld a, b
-    cp PFAC_SIZE - 1
-    jr nc, .inwardLeft
-    inc b
-    jr .haveSecond
-.inwardLeft
-    dec b
-.haveSecond
+    ; --- slot 11 one STEP right, in the same block's top-right quadrant ---
+    ; This used to step a whole BLOCK (inc b, or dec b at the right edge),
+    ; which stood the pair two tiles apart with a tile of floor between them.
+    ; A block is two steps wide, so +1 on the sprite's MapX is all the
+    ; "never stack" guarantee needs, and it keeps the partner inside the
+    ; hideout's own block instead of gambling on a neighbour - which matters
+    ; more here than anywhere else, since a facility hideout sits in a room
+    ; and the block beside it can be the room's wall ring. The block is
+    ; walkable in all four quadrants because PFacHideoutFindFloor only ever
+    ; publishes a PFAC_FLOOR cell; before that existed this was NOT true and
+    ; the pair stood in furniture on 22.5% of layouts.
+    ; Safe at the right edge too: b = PFAC_SIZE - 1 = 19
+    ; gives MapX 43 = tile 39, the last legal column. Same shape as the
+    ; cave, forest and cemetery.
     ld hl, wSprite11StateData2MapY
     ld a, c
     add a, a
@@ -6818,34 +6975,49 @@ PFacPlaceStageEventNpcs:
     ld [hli], a
     ld a, b
     add a, a
-    add a, 4
+    add a, 5
     ld [hl], a
+
+.syncPixels
+    ; Both slots moved in MAP space; their SCREEN PIXEL copies are now stale.
+    ; See StageEventSyncPairScreenPos for why that is not self-healing.
+    ld d, 10
+    farcall StageEventSyncPairScreenPos
     ret
 
 ; ============================================================
 ; PFacPlaceStageEventArrival  (Phase 7 rollout)
 ; Facility's counterpart to the cave's PCPlaceStageEventArrival.
 ; INPUT: d = entrance block X, e = entrance block Y. SRAM already closed.
+;
+; The player warps to the entrance block's BOTTOM-LEFT quadrant
+; (warp_event 18,39), so slot 10 takes the TOP-LEFT quadrant of that same
+; block and slot 11 the TOP-RIGHT. No floor check is needed or possible to
+; get wrong: the player is standing in the block.
+;
+; THIS WAS WRONG UNTIL 2026-09-17, the same block-vs-step confusion the
+; cave and forest had - blockY*2 + 3 is one step above the BLOCK, not above
+; the player-in-the-block, so the pair landed in block (9,18) and (10,18).
 ; Clobbers a/hl.
 ; ============================================================
 PFacPlaceStageEventArrival:
     ld hl, wSprite10StateData2MapY
     ld a, e
     add a, a
-    add a, 3
+    add a, 4                        ; blockY*2 + 4 = the block's TOP row
     ld [hli], a
     ld a, d
     add a, a
-    add a, 5
+    add a, 4                        ; blockX*2 + 4 = top-LEFT, above the player
     ld [hl], a
     ld hl, wSprite11StateData2MapY
     ld a, e
     add a, a
-    add a, 3
+    add a, 4                        ; same row as its partner
     ld [hli], a
     ld a, d
     add a, a
-    add a, 6
+    add a, 5                        ; one STEP right: the same block's top-right
     ld [hl], a
     ret
 

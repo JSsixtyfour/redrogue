@@ -2,31 +2,34 @@ ProceduralCemetery4_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
-	farcall PCemRefreshBall
+	call PCemStageEnterSetup
 .afterSetup
 	call PCemCalmedCheck
+	; Phase 7 rollout: floor 4 can be the rolled hideout like floors 2 and 3,
+	; so it runs the same shared recovery. It sits BEFORE the script dispatch
+	; below, so the boss trigger is untouched by it.
+	ld d, TEXT_PROCEDURALCEMETERY4_STAGE_RECOVER
+	call PCemStageEventRecoverCheck
 	call EnableAutoTextBoxDrawing
-	ld hl, ProceduralCemetery4TrainerHeaders
+	; FIXED 2026-09-17. This used to pass ProceduralCemetery4TrainerHeaders,
+	; a label with ZERO bytes of trainer data behind it - it pointed straight
+	; at the opcodes of the routine that followed it, which
+	; CheckFightingMapTrainers then walked as if they were header records.
+	; It was reachable the moment the boss was beaten (the `jp nz,
+	; CheckFightingMapTrainers` in the default script below). The cemetery now
+	; has real trainers, so it points at the real shared table.
+	ld hl, PCemStageTrainerHeaders
 	ld de, ProceduralCemetery4_ScriptPointers
 	ld a, [wProceduralCemetery4CurScript]
 	call ExecuteCurMapScriptInTable
 	ld [wProceduralCemetery4CurScript], a
 	ret
-ProceduralCemetery4TrainerHeaders:
 
-ProceduralCemetery4SetDefaultScript:
-	xor a
-	ldh [hJoyIgnore], a
-	ld [wProceduralCemetery4CurScript], a ; SCRIPT_PROCEDURALCEMETERY4_DEFAULT
-	ld [wCurMapScript], a ; SCRIPT_PROCEDURALCEMETERY4_DEFAULT
-	ret
-    
 ProceduralCemetery4_ScriptPointers:
 	def_script_pointers
 	dw_const ProceduralCemetery4DefaultScript,           SCRIPT_PROCEDURALCEMETERY4_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_PROCEDURALCEMETERY4_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_PROCEDURALCEMETERY4_END_BATTLE
-	dw_const ProceduralCemetery4PlayerMovingScript,      SCRIPT_PROCEDURALCEMETERY4_PLAYER_MOVING
 	dw_const ProceduralCemetery4BossBattleScript,     SCRIPT_PROCEDURALCEMETERY4_BOSS_BATTLE
 
 
@@ -120,16 +123,6 @@ ProceduralCemetery4BossOfferText:
 	text_end
 
 
-ProceduralCemetery4PlayerMovingScript:
-	ldh a, [hSimulatedJoypadStatesIndex]
-	and a
-	ret nz
-	call Delay3
-	xor a
-	ld [wProceduralCemetery4CurScript], a
-	ld [wCurMapScript], a
-	ret
-
 ; PCemCalmedText is exported from ProceduralCemetery1.asm — just referenced here
 ; via the dw_const in TextPointers above.
 
@@ -139,15 +132,22 @@ PCemBossJoinTextWrap:
 
 ProceduralCemetery4_TextPointers:
 	def_text_pointers
+	; ORDER IS LOAD-BEARING: see scripts/ProceduralCave1.asm's copy of this
+	; note. The first wNumSprites entries must be the objects' own text, in
+	; slot order, or DisplayTextID's .spriteHandling branch reroutes any
+	; script-fired constant whose value is <= the object count. Measured here
+	; before the reorder: CALMED printed the stage NPC's line.
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETERY4_POKEBALL
+	dw_const PCemStageEventNpc1Text, TEXT_PROCEDURALCEMETERY4_STAGE_NPC_1
+	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY4_STAGE_NPC_2
+	; --- end of the object block (3 objects); script-only ids follow ---
 	dw_const ProceduralCemetery4BeGoneText,    TEXT_PROCEDURALCEMETERY4_BEGONE
 	dw_const ProceduralCemetery4BossOfferText, TEXT_PROCEDURALCEMETERY4_BOSS_OFFER
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY4_CALMED
+	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY4_STAGE_EVENT
+	dw_const PCemStageEventRecoverText, TEXT_PROCEDURALCEMETERY4_STAGE_RECOVER
 
 ProceduralCemetery4BeGoneText:
 	text_far _PokemonTower6FBeGoneText
 	text_end
     
-ProceduralCemetery4JoinText:
-	text_far _PCBossJoinText
-	text_end

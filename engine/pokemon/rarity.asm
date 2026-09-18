@@ -853,8 +853,33 @@ RogueClassifySpeciesFar::
 	ret
 
 ; ---------------------------------------------------------------------------
+; RogueIsSpeciesEvolutionAllowedFar
+; The farcall-safe face of RogueIsSpeciesEvolutionAllowed, and the ONLY way to
+; reach it from another bank.
+; INPUT:  e = the species an evolution is about to produce
+; OUTPUT: carry as below; flags survive Bankswitch's all-pop/ld/ret exit
+; CLOBBERS: af, bc, de, hl
+;
+; RogueIsSpeciesEvolutionAllowed takes its species in `a`, and Bankswitch's
+; FIRST instruction is `ldh a, [hLoadedROMBank]` - so a farcall can never
+; deliver an `a` input. Both callers did exactly that, which meant they were
+; really asking "is the species whose internal id happens to equal my own ROM
+; BANK NUMBER allowed?" - one constant answer per calling bank, applied to
+; every evolution in the game. Measured 2026-09-17: with the trainer path
+; calling from bank $38, a Kanto-only run evolved NOTHING, and unlocking Johto
+; let a Porygon run all the way to Warp-group PORYGON_Z.
+;
+; Same hazard, same `e`-shaped fix as RogueClassifySpeciesFar and
+; RogueGetActiveGroupMaskFar above. Do NOT farcall the routine below directly.
+; ---------------------------------------------------------------------------
+RogueIsSpeciesEvolutionAllowedFar::
+	ld a, e
+	jr RogueIsSpeciesEvolutionAllowed
+
+; ---------------------------------------------------------------------------
 ; RogueIsSpeciesEvolutionAllowed
-; INPUT:  a = the species an evolution is about to produce
+; INPUT:  a = the species an evolution is about to produce (NOT farcall-safe -
+;         use RogueIsSpeciesEvolutionAllowedFar from another bank)
 ; OUTPUT: carry SET   = that species' group is unlocked AND enabled - evolve
 ;         carry CLEAR = group locked or toggled off - caller skips the branch
 ; CLOBBERS: af, bc, de, hl

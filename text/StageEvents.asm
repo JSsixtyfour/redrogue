@@ -56,6 +56,57 @@ _StageEventArrivalBothGoodText::
 	cont "trainers!@"
 	text_end
 
+; --- THE THEFT ITSELF: printed straight after the greeting ----------------
+; Named rather than generic, which is why StageEventDoTheft now runs BEFORE
+; the arrival text: the record has to exist before the line can read it.
+; Shared across the villains by what was taken rather than by who took it,
+; the same split the recovery lines already use.
+
+; One per thief per kind: "They" only fits the pair, and each of the three
+; has a different reason for taking it.
+
+_StageEventTookMonJessieJamesText::
+	text "They made off"
+	line "with @"
+	text_ram wNameBuffer
+	text "!@"
+	text_end
+
+_StageEventTookMonPsychicText::
+	text "@"
+	text_ram wNameBuffer
+	text " vanished"
+	line "from your party!@"
+	text_end
+
+_StageEventTookMonBurglarText::
+	text "He grabbed @"
+	text_ram wNameBuffer
+	text ""
+	line "and bolted!@"
+	text_end
+
+_StageEventTookItemJessieJamesText::
+	text "They swiped"
+	line "your @"
+	text_ram wNameBuffer
+	text "!@"
+	text_end
+
+_StageEventTookItemPsychicText::
+	text "Your @"
+	text_ram wNameBuffer
+	text ""
+	line "floated away!@"
+	text_end
+
+_StageEventTookItemBurglarText::
+	text "He pocketed"
+	line "your @"
+	text_ram wNameBuffer
+	text "!@"
+	text_end
+
 ; --- HIDEOUT: spoken when the player finds them again ---------------------
 
 _StageEventHideoutJessieJamesText::
@@ -98,13 +149,16 @@ _StageEventHideoutBothGoodText::
 ; here is what came back rather than who took it.
 
 _StageEventRecoverMonText::
-	text "You got your"
-	line "#MON back!@"
+	text "You got @"
+	text_ram wNameBuffer
+	text " back!@"
 	text_end
 
 _StageEventRecoverItemText::
 	text "You got your"
-	line "item back!@"
+	line "@"
+	text_ram wNameBuffer
+	text " back!@"
 	text_end
 
 ; The villain's guards refused the theft, so there was never anything to win

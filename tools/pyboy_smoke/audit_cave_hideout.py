@@ -181,6 +181,7 @@ def main() -> int:
     on_ball = 0
     npc2_on_floor = 0
     npc2_blocks = Counter()
+    npc2_off_floor = []
     out_of_range = 0
     disarmed = 0
     promoted = []
@@ -273,12 +274,16 @@ def main() -> int:
             print("  UNREACHABLE seed %d: hideout block (%d,%d) = block id %d, player at %s"
                   % (seed, hx, hy, grid[hy][hx], player))
 
-        npc2_step = (npc2_cell[0] * 2, npc2_cell[1] * 2)
-        if npc2_step in seen or any(
-            (npc2_step[0] + dx, npc2_step[1] + dy) in seen
-            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0))
-        ):
+        # TILE precision, not cell. Since 2026-09-17 slot 7 stands one STEP
+        # right of slot 6, inside the SAME block, so a cell-level test is now
+        # just the hideout test again and proves nothing about the partner.
+        # What matters is whether that exact quadrant is walkable - if it is
+        # not, Jessie stands in rock next to James.
+        if (npc2_step_x, npc2_step_y) in seen:
             npc2_on_floor += 1
+        else:
+            npc2_off_floor.append(
+                (seed, (npc2_step_x, npc2_step_y), grid[npc2_cell[1]][npc2_cell[0]]))
 
     elapsed = time.time() - started
     n = max(1, args.layouts - errors)
@@ -288,8 +293,11 @@ def main() -> int:
           % (len(promoted), promoted[:10]))
     print("disarmed (both candidates on the exit): %d" % disarmed)
     print("pokeball sharing the hideout cell: %d" % on_ball)
-    print("NPC-2 cell (one inward) is reachable: %d/%d (%.1f%%)"
+    print("NPC-2 TILE (one step right, same block) is walkable: %d/%d (%.1f%%)"
           % (npc2_on_floor, n, 100.0 * npc2_on_floor / n))
+    for seed_i, step, block_id in npc2_off_floor[:10]:
+        print("  NPC-2 IN ROCK seed %d: step %s, block id %d"
+              % (seed_i, step, block_id))
     print("NPC-2 cell block ids seen: %s" % dict(npc2_blocks))
     print("hideout edge distribution: %s" % dict(edges))
     print("distinct hideout cells: %d over %d caves" % (len(cells), n))
@@ -297,10 +305,13 @@ def main() -> int:
     if most:
         print("most repeated cell: %s x%d" % most[0])
 
-    failures = unreachable + on_boss + out_of_range
+    # The partner standing in rock is a real defect, not a statistic: it is
+    # the visible "Jessie and James are not side by side" symptom.
+    failures = unreachable + on_boss + out_of_range + len(npc2_off_floor)
     if failures:
-        print("FAIL: %d unreachable, %d on the boss's cell, %d out of range"
-              % (unreachable, on_boss, out_of_range))
+        print("FAIL: %d unreachable, %d on the boss's cell, %d out of range, "
+              "%d with NPC-2 standing on a non-walkable tile"
+              % (unreachable, on_boss, out_of_range, len(npc2_off_floor)))
         return 1
     print("PASS: every hideout is in range, off the boss's cell, and reachable on foot")
     return 0

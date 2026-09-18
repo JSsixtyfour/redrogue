@@ -5,7 +5,13 @@ ProceduralForest_Object:
 	db 2 ; border block (tree)
 
 	def_warp_events
-	warp_event 19, 34, LAST_MAP, 1 ; entrance at cell (4,8) = block(9,17)
+	; Tile coords, and a block is 2x2 tiles, so block (9,17) has FOUR legal
+	; spawn tiles. This is deliberately the BOTTOM-LEFT quadrant
+	; (blockX*2, blockY*2+1): it leaves both TOP quadrants of the same block
+	; free for the stage-event NPC pair. It used to be the top-right
+	; (19,34), which forced the pair up into the block ABOVE - which the
+	; backtracker has not carved, so they stood inside trees.
+	warp_event 18, 35, LAST_MAP, 1 ; entrance at cell (4,8) = block(9,17), bottom-left quadrant
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  — runtime-patched to (4i+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile — runtime-patched to (4i+3, 0)
 

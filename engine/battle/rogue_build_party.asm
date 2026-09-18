@@ -680,8 +680,41 @@ PartyGenPoolCandidateOk:
 	add hl, bc
 	bit BIT_PSPEC_NO_DUPES, [hl]
 	jr z, .dupesOk
+; TEST THE SPECIES THIS SLOT WILL ACTUALLY FIELD, not the one drawn.
+; PartyGenSpeciesAlreadyUsed compares against wEnemyPartySpecies, which holds
+; BUILT - i.e. post-evolution - species. Comparing the raw draw against those
+; made NO_DUPES a no-op for exactly the pools most likely to set it: a pool
+; listing ABRA, KADABRA and ALAKAZAM would pass ABRA against an already-built
+; ALAKAZAM and then evolve it into a second one.
+;
+; The level is already resolved here - PartyGenBuildSlot calls
+; PartyGenResolveLevel before the species roll precisely so
+; ScaleTrainer_evolution has one - so the promotion is knowable now. We restore
+; the draw afterwards and let PartyGenBuildSlot do the real evolve, so this is
+; a pure test with no side effect on what gets built.
+	ld a, [wCurPartySpecies]
+	cp EEVEE
+	jr z, .dupeTestAsDrawn         ; see below
+	push af                        ; the draw, to put back either way
+	ld d, a
+	farcall ScaleTrainer_evolution ; wCurPartySpecies = what we would field
 	call PartyGenSpeciesAlreadyUsed
-	jr c, .reject
+	jr c, .dupeRejectRestore
+	pop af
+	ld [wCurPartySpecies], a
+	jr .dupesOk
+.dupeRejectRestore
+	pop af
+	ld [wCurPartySpecies], a
+	jp .reject
+.dupeTestAsDrawn
+; EEVEE is the one species whose evolution is a Random roll rather than a
+; function of species and level (EvolveMonByLevel.handleeevee), so "what this
+; slot will field" is not knowable in advance. Test-evolving it would both
+; consume an RNG draw the real build then repeats, and dedupe against an
+; eeveelution other than the one fielded. Dedupe it as EEVEE instead.
+	call PartyGenSpeciesAlreadyUsed
+	jp c, .reject
 .dupesOk
 
 ; --- legendary ---

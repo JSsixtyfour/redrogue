@@ -1844,6 +1844,18 @@ PFScanForBall:
     ld a, [wBuffer + wPFBossCell]
     cp b
     jr z, .sfbCollectNext      ; the boss stands here — never a ball cell
+    ; The ENTRANCE cell, rejected here for the same reason and in the same
+    ; place. Since 2026-09-17 the stage-event pair stands on the entrance
+    ; BLOCK's two top quadrants while the player stands on its bottom-left,
+    ; and a ball is placed on its block's top-LEFT quadrant - which is
+    ; exactly slot 6's tile. Measured before the fix: 4 of 6 layouts put a
+    ; ball there, which the generation contract catches as two objects on
+    ; one cell. The entrance is a legitimate dead end - PFBacktracker
+    ; starts there and the walk may never come back - so it has to be
+    ; rejected by name rather than falling out of the dead-end test.
+    ld a, (4 | (8 << 4))       ; the entrance cell, PFBacktracker's own literal
+    cp b
+    jr z, .sfbCollectNext
     ld a, [wBuffer + wPFCandCount]
     ld e, a
     ld d, 0
@@ -2378,6 +2390,14 @@ PFPreloadForest::
     ; %8==1 for a slot-1 trainer, and that alignment was already spent here.
     ResetEvent EVENT_PF_ITEM_GOT
     ResetEvent EVENT_BEAT_PC_BOSS
+    ; Phase 7: the stage-event NPCs need the same per-preload reset the boss
+    ; gets. They are run-scoped events, so without this a run whose SECOND
+    ; wild area also rolls an event would find the flag already set by the
+    ; first, and that villain could never be engaged.
+    ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+    ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+    ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+    ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
     ResetEvent EVENT_PC_BUDGET_ENDED
     ResetEvent EVENT_PC_CALMED_SHOWN
 
@@ -3021,13 +3041,24 @@ PFPlaceStageEventNpcs:
     ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
     ld [rRAMG], a
 
+    ; A GOOD NPC HAS NO ARRIVAL, in any phase. Joy and Jenny are found, not
+    ; met: the map script settles them without a greeting, so without this
+    ; test the WAITING branch below would stand them in front of the player
+    ; for the one frame before that script runs, and they would then never
+    ; move - the vanish that repositions a villain is exactly what they skip.
+    ; Testing TYPE before PHASE is the whole fix.
+    ld a, [wStageEvent]
+    and STAGE_EVENT_TYPE_MASK
+    cp STAGE_EVENT_JOY
+    jr nc, .atHideout
     ; --- phase WAITING puts them in front of the player instead ---------
     ld a, [wStageEvent]
     and STAGE_EVENT_PHASE_MASK
     jr nz, .atHideout               ; HIDING or SETTLED - use the hideout below
     ld d, 9
     ld e, 17
-    jp PFPlaceStageEventArrival
+    call PFPlaceStageEventArrival
+    jr .syncPixels
 .atHideout
 
     ; --- slot 6 on the hideout itself ---
@@ -3041,37 +3072,16 @@ PFPlaceStageEventNpcs:
     add a, 4
     ld [hl], a
 
-    ; --- slot 7 one cell inward (2 blocks - Forest cells are 2 blocks
-    ; apart), so the pair never stacks. Dead-end candidates always sit at odd
-    ; block coords 1..17 (PF_CELL_W/H = 9), so the edge test is a plain
-    ; compare against those two literals - no cell/block conversion needed.
-    ld a, c
-    cp 1
-    jr nz, .notTopEdge
-    ld a, c
-    add a, 2                        ; top edge: inward is +1 cell (2 blocks) down
-    ld c, a
-    jr .haveSecond
-.notTopEdge
-    cp 17
-    jr nz, .notBottomEdge
-    ld a, c
-    sub 2
-    ld c, a
-    jr .haveSecond
-.notBottomEdge
-    ld a, b
-    cp 1
-    jr nz, .notLeftEdge
-    ld a, b
-    add a, 2
-    ld b, a
-    jr .haveSecond
-.notLeftEdge
-    ld a, b
-    sub 2
-    ld b, a
-.haveSecond
+    ; --- slot 7 one STEP right, in the same block's top-right quadrant ---
+    ; This used to step a whole CELL inward - 2 blocks, because forest cells
+    ; are 2 blocks apart - which put the pair FOUR tiles apart, and on a top
+    ; or bottom edge it stepped VERTICALLY, so Jessie and James were not even
+    ; on the same row. A block is two steps wide, so +1 on the sprite's MapX
+    ; is all the "never stack" guarantee needs, and it keeps the partner
+    ; inside the block the hideout already proved walkable instead of
+    ; gambling on a neighbour. Same shape as the cave and the cemetery. Safe
+    ; at the right edge: dead ends sit at odd block coords 1..17, so the
+    ; worst case is b = 17, MapX 39 = tile 35, well inside the map.
     ld hl, wSprite07StateData2MapY
     ld a, c
     add a, a
@@ -3079,8 +3089,14 @@ PFPlaceStageEventNpcs:
     ld [hli], a
     ld a, b
     add a, a
-    add a, 4
+    add a, 5
     ld [hl], a
+
+.syncPixels
+    ; Both slots moved in MAP space; their SCREEN PIXEL copies are now stale.
+    ; See StageEventSyncPairScreenPos for why that is not self-healing.
+    ld d, 6
+    farcall StageEventSyncPairScreenPos
     ret
 
 ; ============================================================
@@ -3089,6 +3105,18 @@ PFPlaceStageEventNpcs:
 ; the same coordinate math - the only difference is the entrance is a fixed
 ; literal here instead of an SRAM-staged value, since the forest only ever
 ; has one entrance position.
+;
+; The coordinate chain, since it crosses three units: the entrance is a
+; BLOCK, a block is 2x2 STEPS, and a sprite's MapX/MapY field is STEP + 4.
+; The player warps to the block's BOTTOM-LEFT quadrant (warp_event 18,35),
+; so slot 6 takes the TOP-LEFT quadrant and slot 7 the TOP-RIGHT - both in
+; the player's own block, which is walkable by definition because the
+; player is standing in it.
+;
+; THIS WAS WRONG UNTIL 2026-09-17, the same block-vs-step confusion the
+; cave had: blockY*2 + 3 is one step above the BLOCK, not above the
+; player-in-the-block, so slot 6 landed in block (9,16) and slot 7 in
+; (10,16) - neither of them carved.
 ; INPUT: d = entrance block X, e = entrance block Y. SRAM already closed.
 ; Clobbers a/hl.
 ; ============================================================
@@ -3096,20 +3124,20 @@ PFPlaceStageEventArrival:
     ld hl, wSprite06StateData2MapY
     ld a, e
     add a, a
-    add a, 3                        ; blockY*2+3 = one step above the player
+    add a, 4                        ; blockY*2 + 4 = the block's TOP row
     ld [hli], a
     ld a, d
     add a, a
-    add a, 5                        ; blockX*2+5 = the player's own column
+    add a, 4                        ; blockX*2 + 4 = top-LEFT, above the player
     ld [hl], a
     ld hl, wSprite07StateData2MapY
     ld a, e
     add a, a
-    add a, 3
+    add a, 4                        ; same row as its partner
     ld [hli], a
     ld a, d
     add a, a
-    add a, 6                        ; one step to the right of slot 6
+    add a, 5                        ; one STEP right: the same block's top-right
     ld [hl], a
     ret
 

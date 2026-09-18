@@ -156,6 +156,19 @@ sStageEventSprite6:: db            ; SPRITE_* for NPC object slot 6, staged at p
 sStageEventSprite7:: db            ; patched into PICTUREID before InitMapSprites loads tiles
                                    ; (the same ordering constraint as the boss sprite - see
                                    ; ProcBossPatchStageSprite). $00 = slot unused this visit.
+; CEMETERY ONLY. Which floor the villain hid on, as a floor INDEX 0-3 (so 1-3
+; are cemetery floors 2-4; 0 is never rolled because floor 1 is the arrival
+; floor). $ff = no hideout / not a cemetery run, matching the X/Y sentinel
+; above so "unset" and "disarmed" stay the same value everywhere.
+;
+; WHY A FLOOR AND A CELL ARE ROLLED AT DIFFERENT TIMES. The cemetery generates
+; LAZILY - PCemFinalizeMap builds a floor the first time the player enters it,
+; so at preload (PCemGenerateMaps) floors 2-4 do not exist yet and no cell on
+; them can be chosen. The floor is rolled at preload, where it costs nothing
+; and needs no map; the CELL is chosen inside PCemGenerateOneMap, at the one
+; moment that floor's blocks are known to be fresh and complete. No other
+; stage needs this split because the other three are one map generated whole.
+sStageEventHideoutFloor:: db
 
 
 ; Procedural facility: 20x20 block map staged here at warp-in time. Same layout

@@ -1,19 +1,39 @@
-"""Audit: Phase 7f's good-NPC branch (Joy, Jenny, the pair).
+"""Audit: the good NPCs (Joy, Jenny) are FOUND, not met.
 
-Per the user's design ("unlike the stealers, they just exist on the map and
-can be approached for a battle"), STAGE_EVENT_JOY/_JENNY/_BOTH_GOOD must NOT
-run the villains' vanish-and-hide sequence: no theft, no dark flash, no
-relocation, no recovery text. This checks the branch added in
-scripts/ProceduralCave1.asm's .afterSetup:
+The user's design, restated 2026-09-17 after the first play session: "these are
+two separate encounters ... only one should appear at a time ... they should
+not initially confront the player when the player spawns. They should just
+exist in their spots as something the player can find without any prior
+warning."
 
-  1. the arrival text fires once, exactly as for a villain
-  2. after it is dismissed, the phase goes straight to SETTLED (2), never
-     touching HIDING (1) - the villains' phase
-  3. the NPC sprite(s) do NOT move - they stay exactly where they arrived,
-     one step above the player
-  4. StageEventRoundTier's wTrainerNo, and therefore the built team's size,
-     tracks wBattleCount the way stage_event_team_spec's ladder promises
-     (2/2/3/3/4/4/5/5/6 across rounds 1-9)
+Phase 7f got the first half right - a good NPC never runs the villains'
+vanish-and-hide sequence - and the second half wrong in two ways that this
+script now pins down:
+
+  1. BOTH of them appeared at once. STAGE_EVENT_BOTH_GOOD (type 6) put Joy and
+     Jenny on the map together. STAGE_EVENT_MAX_ROLLABLE is 5 as of
+     2026-09-17, so type 6 is unreachable; its rows stay in all seven parallel
+     tables on purpose.
+  2. They AMBUSHED the player. The type gate sat below the DisplayTextID, so a
+     good NPC delivered the villain's arrival box the instant the map faded in
+     and then stood at the entrance for the rest of the visit. The gate moved
+     above the theft, and their placement routine learned to take the hideout
+     branch regardless of phase.
+
+So the contract measured here is:
+
+  A. rolling never yields type 6
+  B. on entry, with NO input at all, a good NPC's phase is already SETTLED -
+     no greeting was shown and none is waiting to be dismissed
+  C. on entry, both NPC slots are at the HIDEOUT, not at the entrance
+  D. they still never move afterwards, and never enter HIDING
+  E. StageEventRoundTier's ladder still gives 2/2/3/3/4/4/5/5/6 across rounds
+
+B and C are differential: the same checks run for a VILLAIN, which must still
+arrive at the entrance with its greeting up. Without that control, a build
+where the stage event never armed at all would pass B and C trivially - which
+is exactly the failure mode `project_fixture_hides_missing_production_code`
+records.
 
 Usage:
     python3 tools/pyboy_smoke/audit_stage_event_good_npc.py
@@ -21,6 +41,7 @@ Usage:
 
 from __future__ import annotations
 
+import random
 import re
 import sys
 from pathlib import Path
@@ -34,7 +55,8 @@ from source_constants import parse_map_constants, parse_trainer_class_indexes  #
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
 SRAM_BANK = 0
 SPRITE_SLOTS = 7
-NPC1, NPC2 = 5, 6
+NPC1, NPC2 = 5, 6          # 0-based indexes of object slots 6 and 7
+ENTRANCE_BLOCK = (9, 19)   # the cave's pinned entrance
 
 
 def stage_event_constants() -> dict:
@@ -53,48 +75,157 @@ def stage_event_constants() -> dict:
     return out
 
 
-def run_arrival(event_type: int, const: dict, failures: list) -> None:
+def run_arrival(event_type: int, label: str, good: bool, const: dict,
+                failures: list) -> None:
     phase_mask = const["STAGE_EVENT_PHASE_MASK"]
     phase_shift = const["STAGE_EVENT_PHASE_SHIFT"]
     hiding = const["STAGE_EVENT_PHASE_HIDING"]
     settled = const["STAGE_EVENT_PHASE_SETTLED"]
-    map_id = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
+    waiting = const["STAGE_EVENT_PHASE_WAITING"]
+    map_id = parse_map_constants(
+        REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
 
     h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
     try:
         h.boot_to_lobby()
         h.write8("wStageEvent", event_type)
         h.preload_and_enter_wild_area(map_id, "Procedural Cave")
+
         player = (h.read8("wXCoord"), h.read8("wYCoord"))
         before = [tuple(p) for p in h.sprite_positions(SPRITE_SLOTS)]
-        npc1_before = (before[NPC1][1], before[NPC1][0])  # (x, y)
+        npc1_before = (before[NPC1][1], before[NPC1][0])   # (x, y) in steps
+        npc2_before = (before[NPC2][1], before[NPC2][0])
+        entry_phase = (h.read8("wStageEvent") & phase_mask) >> phase_shift
+        hx = h.read_sram_bytes("sStageEventHideoutX", 1, bank=SRAM_BANK)[0]
+        hy = h.read_sram_bytes("sStageEventHideoutY", 1, bank=SRAM_BANK)[0]
+
+        at_entrance = (npc1_before[0] // 2, npc1_before[1] // 2) == ENTRANCE_BLOCK
+        at_hideout = (npc1_before[0] // 2, npc1_before[1] // 2) == (hx, hy)
+
+        print("%-10s type %d: player=%s npc1=%s npc2=%s hideout=(%d,%d) "
+              "entry phase=%d %s"
+              % (label, event_type, player, npc1_before, npc2_before, hx, hy,
+                 entry_phase,
+                 "AT-HIDEOUT" if at_hideout else
+                 ("AT-ENTRANCE" if at_entrance else "elsewhere")))
+
+        if good:
+            # B: no greeting was shown and none is pending.
+            if entry_phase != settled:
+                failures.append(
+                    "%s: phase is %d on arrival with no input, expected SETTLED "
+                    "(%d). A good NPC's type gate must run BEFORE the "
+                    "DisplayTextID, so no greeting is ever displayed."
+                    % (label, entry_phase, settled))
+            # C: at the hideout from the first frame.
+            if not at_hideout:
+                failures.append(
+                    "%s: slot 6 is at step %s = block %s on arrival, but the "
+                    "hideout is block (%d,%d). They must be placed there from "
+                    "the first frame - nothing repositions them later, because "
+                    "the vanish is exactly what they skip."
+                    % (label, npc1_before,
+                       (npc1_before[0] // 2, npc1_before[1] // 2), hx, hy))
+            if at_entrance:
+                failures.append(
+                    "%s: slot 6 is standing on the entrance block - this is the "
+                    "reported ambush" % label)
+        else:
+            # The control. A villain must still do the old thing.
+            if entry_phase != waiting:
+                failures.append(
+                    "%s (CONTROL): phase is %d on arrival, expected WAITING "
+                    "(%d) - the villain's greeting should be up. If this fails "
+                    "the good-NPC checks above prove nothing, because the event "
+                    "is not arming at all."
+                    % (label, entry_phase, waiting))
+            if not at_entrance:
+                failures.append(
+                    "%s (CONTROL): slot 6 is at block %s, not the entrance %s - "
+                    "villains must still arrive in front of the player"
+                    % (label, (npc1_before[0] // 2, npc1_before[1] // 2),
+                       ENTRANCE_BLOCK))
 
         for _ in range(6):
             h.tap("a", frames=12)
             h.tick(40)
 
-        after_event = h.read8("wStageEvent")
-        after_phase = (after_event & phase_mask) >> phase_shift
+        after_phase = (h.read8("wStageEvent") & phase_mask) >> phase_shift
         after = [tuple(p) for p in h.sprite_positions(SPRITE_SLOTS)]
         npc1_after = (after[NPC1][1], after[NPC1][0])
 
-        print("type %d: player=%s  npc1 before=%s after=%s  phase=%d"
-              % (event_type, player, npc1_before, npc1_after, after_phase))
-
-        if after_phase != settled:
-            failures.append("type %d: phase is %d, expected SETTLED (%d) - a good "
-                            "NPC must not enter HIDING" % (event_type, after_phase, settled))
-        if after_phase == hiding:
-            failures.append("type %d: phase is HIDING - the villain vanish ran for "
-                            "a good NPC" % event_type)
-        if npc1_after != npc1_before:
-            failures.append("type %d: slot 6 moved from %s to %s - a good NPC must "
-                            "stay put" % (event_type, npc1_before, npc1_after))
+        if good:
+            # D
+            if after_phase != settled:
+                failures.append("%s: phase is %d after input, expected SETTLED "
+                                "(%d)" % (label, after_phase, settled))
+            if after_phase == hiding:
+                failures.append("%s: phase is HIDING - the villain vanish ran "
+                                "for a good NPC" % label)
+            if npc1_after != npc1_before:
+                failures.append("%s: slot 6 moved from %s to %s - a good NPC "
+                                "must stay put" % (label, npc1_before, npc1_after))
+        else:
+            if after_phase != hiding:
+                failures.append(
+                    "%s (CONTROL): phase is %d after the greeting, expected "
+                    "HIDING (%d) - the vanish did not run"
+                    % (label, after_phase, hiding))
     finally:
         try:
             h.close()
         except Exception:
             pass
+
+
+def run_roll_distribution(const: dict, failures: list) -> None:
+    """A: StageEventRoll must never produce STAGE_EVENT_BOTH_GOOD."""
+    both_good = const["STAGE_EVENT_BOTH_GOOD"]
+    max_rollable = const["STAGE_EVENT_MAX_ROLLABLE"]
+    type_mask = const["STAGE_EVENT_TYPE_MASK"]
+
+    seen = {}
+    # call_routine corrupts the machine after roughly ten invocations per boot,
+    # so this is spread over fresh boots rather than looped on one.
+    #
+    # EVERY BOOT MUST BE RESEEDED. Without this the boots are identical, replay
+    # the same nine rolls, and the sample is 9 wide while the total reads 36 -
+    # which would drop the confidence that type 6 is gone from ~99.9% to ~81%
+    # while looking stronger on the page. Measured: unseeded gave exactly
+    # {1: 20, 3: 8, 5: 8}, i.e. 5+2+2 repeated four times.
+    for boot in range(4):
+        h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
+        try:
+            h.boot_to_lobby()
+            rng = random.Random(boot)
+            base = h.address("wRandomTable")
+            for offset in range(10):
+                h.pyboy.memory[base + offset] = rng.randrange(1, 256)
+            for i in range(9):
+                h.write8("wStageEvent", 0)
+                h.call_routine("StageEventRoll", limit=4000)
+                t = h.read8("wStageEvent") & type_mask
+                seen[t] = seen.get(t, 0) + 1
+        finally:
+            try:
+                h.close()
+            except Exception:
+                pass
+
+    total = sum(seen.values())
+    print("roll distribution over %d rolls: %s"
+          % (total, {k: seen[k] for k in sorted(seen)}))
+    if both_good in seen:
+        failures.append(
+            "StageEventRoll produced type %d (BOTH_GOOD) %d times in %d rolls. "
+            "Joy and Jenny are separate encounters and only one may appear per "
+            "wild area; STAGE_EVENT_MAX_ROLLABLE is %d."
+            % (both_good, seen[both_good], total, max_rollable))
+    # The same sample has to show the roll IS live, or "never 6" is vacuous.
+    if len([k for k in seen if k]) < 3:
+        failures.append(
+            "only %d distinct armed types in %d rolls - the roll looks dead, so "
+            "'never type 6' proves nothing" % (len([k for k in seen if k]), total))
 
 
 def run_round_tier(failures: list) -> None:
@@ -128,8 +259,11 @@ def run_round_tier(failures: list) -> None:
 def main() -> int:
     const = stage_event_constants()
     failures: list = []
-    for t in (const["STAGE_EVENT_JOY"], const["STAGE_EVENT_JENNY"], const["STAGE_EVENT_BOTH_GOOD"]):
-        run_arrival(t, const, failures)
+
+    run_roll_distribution(const, failures)
+    run_arrival(const["STAGE_EVENT_JESSIE_JAMES"], "villain", False, const, failures)
+    run_arrival(const["STAGE_EVENT_JOY"], "joy", True, const, failures)
+    run_arrival(const["STAGE_EVENT_JENNY"], "jenny", True, const, failures)
     run_round_tier(failures)
 
     print()
@@ -137,7 +271,8 @@ def main() -> int:
         for line in failures:
             print("  FAIL: %s" % line)
         return 1
-    print("PASS: good NPCs never hide, and stage-event teams scale with the round")
+    print("PASS: good NPCs wait at the hideout with no greeting, villains still "
+          "arrive and vanish, type 6 never rolls, and teams scale with the round")
     return 0
 
 

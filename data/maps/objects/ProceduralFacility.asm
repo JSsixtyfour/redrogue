@@ -5,7 +5,12 @@ ProceduralFacility_Object:
 	db $2E ; border block and generated black/solid void
 
 	def_warp_events
-	warp_event 19, 38, LAST_MAP, 1 ; south entry socket at generated block (9,19)
+	; Tile coords, and a block is 2x2 tiles, so block (9,19) has FOUR legal
+	; spawn tiles. This is deliberately the BOTTOM-LEFT quadrant
+	; (blockX*2, blockY*2+1): it leaves both TOP quadrants of the same block
+	; free for the stage-event NPC pair in slots 10-11. It used to be the
+	; top-right (19,38), which forced the pair into the block ABOVE.
+	warp_event 18, 39, LAST_MAP, 1 ; south entry socket at generated block (9,19), bottom-left quadrant
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  - runtime-patched to (4*exitI+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile - runtime-patched to (4*exitI+3, 0)
 

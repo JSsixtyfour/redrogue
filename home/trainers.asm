@@ -207,20 +207,28 @@ EndTrainerBattle::
 	ld a, [wWasTrainerBattle]
 	and a
 	jr nz, .skipRemoveSprite ; test if trainer was fought (in that case skip removing the corresponding sprite)
+	; The three procedural maps all exempt their BOSS (slot 1) from the engine's
+	; hide-on-defeat, because a join-offer script owns its visibility instead.
+	; Only the boss: the Cave and Forest used to exempt EVERY slot, which meant
+	; a defeated stage-event NPC was never hidden by the engine at all and only
+	; vanished if the recovery block happened to run. The Facility already had
+	; it right; this is the Facility's shape applied to all three.
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_1     ; boss sprite is managed by the offer script, not here
-	jr z, .skipRemoveSprite
-	cp PROCEDURAL_FOREST     ; forest boss too — offer script controls its visibility
-	jr z, .skipRemoveSprite
+	cp PROCEDURAL_CAVE_1
+	jr z, .bossSlotOnly
+	cp PROCEDURAL_FOREST
+	jr z, .bossSlotOnly
 	cp PROCEDURAL_FACILITY
-	jr nz, .notFacility
-	ldh a, [hActiveSpriteIndex]
-	cp FACILITY_BOSS         ; only slot 1 belongs to the join-offer lifecycle
-	jr z, .skipRemoveSprite  ; slots 6-9 must use ordinary hide-on-defeat
-	jr .removeSprite
-.notFacility
+	jr z, .bossSlotOnly
 	cp POKEMON_TOWER_7F
 	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
+	jr .removeSprite
+.bossSlotOnly
+	ASSERT WILD_AREA_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
+	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
+	ldh a, [hActiveSpriteIndex]
+	cp FACILITY_BOSS         ; slot 1 = the join-offer lifecycle; everything
+	jr z, .skipRemoveSprite  ; else takes ordinary hide-on-defeat
 .removeSprite
 	ld hl, wToggleableObjectList
 	ld de, $2

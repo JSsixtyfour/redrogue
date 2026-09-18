@@ -23,6 +23,14 @@ ProcBossPatchStageSprite::
 	jr z, .facility
 	cp SILPH_CO_DORM
 	jr z, .dorm
+	cp PROCEDURAL_CEMETERY_1
+	jp z, .cemetery
+	cp PROCEDURAL_CEMETERY_2
+	jp z, .cemetery
+	cp PROCEDURAL_CEMETERY_3
+	jp z, .cemetery
+	cp PROCEDURAL_CEMETERY_4
+	jp z, .cemetery
 	ret
 .dorm
 	farcall RoomPatchSprites
@@ -129,6 +137,52 @@ ProcBossPatchStageSprite::
 	ld [wSprite11StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ret
 
+.cemetery
+	; The cemetery has NO overworld boss sprite - its boss is a coordinate
+	; trigger (ProceduralCemetery4BossCoords) - so it must not fall into
+	; .close below, which writes a boss PICTUREID into slot 1. Slot 1 here is
+	; the floor's pokeball. Only the stage-event pair needs patching.
+	;
+	; Gated on the floor, and that gate is the whole point: the cemetery is
+	; four maps and the pair is on exactly one of them, so an ungated patch
+	; would create phantom NPCs on the other three - the same bug the comment
+	; above records for the forest, but firing three times out of four.
+	;
+	; The answer comes back in e, not in a or the flags: this is a farcall,
+	; and Bankswitch destroys a/b/c/h/l on the return leg.
+	farcall PCemStageEventNpcsHereFar   ; -> e = 1 here, 0 not here
+	ld a, e
+	and a
+	jr z, .cemNoNpcs
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld a, [sStageEventSprite6]
+	ld d, a
+	ld a, [sStageEventSprite7]
+	ld e, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, d
+	ld [wSprite02StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, e
+	ld [wSprite03StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ret
+.cemNoNpcs
+	; 0 is "this slot does not exist", not "hide it later":
+	; LoadMapSpriteTilePatterns skips a zero PICTUREID outright, so the three
+	; floors without the pair pay no VRAM tile-pattern slot for it.
+	xor a
+	ld [wSprite02StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld [wSprite03StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ret
+
 ; Procedural preload (at PALLET_TOWN entry) + per-map finalize dispatch. Runs
 ; after LoadTileBlockMap, before LoadTilesetTilePatternData. Uses farcall (NOT
 ; homecall) to reach the generators, because homecall is only valid from a HOME
@@ -169,6 +223,24 @@ ProcStageLoadDispatch::
 	jr nz, .notWildAreaTestEntrance
 	; The temporary Credit Exchange replacement is a complete wild-area test
 	; entrance, so prepare a fresh run exactly as lobby assignment would.
+	;
+	; STAGE EVENT ARMING, added 2026-09-17. This branch used to call only
+	; PCPreloadCave, which left wStageEvent at whatever the last run set.
+	; SelectAndPatchLobbyExit is the ONLY other thing that ever writes it, and
+	; this door does not go through the lobby, so on a fresh boot the value was
+	; always STAGE_EVENT_NONE: StageEventStageSprites (inside PCPreloadCave)
+	; then marked both NPC slots unused and no stage event could ever appear
+	; through this entrance. The clear is as load-bearing as the roll - without
+	; it a second trip through the door inherits the previous run's phase and
+	; the NPC returns already HIDING or SETTLED. Mirrors the head of
+	; SpecialEncounterRollAndAssign, minus its gym-next / battle-count gates,
+	; which exist to pace a real run and would defeat the point of a test door.
+	; Must precede PCPreloadCave: that is what reads wStageEvent to stage the
+	; sprites, and preload is already the last moment anything can be rolled.
+	xor a
+	ld [wStageEvent], a
+	farcall StageEventClearStagedSprites
+	farcall StageEventRoll
 	;
 	; POINTED AT THE CAVE 2026-09-16 (was PFacPreload / PROCEDURAL_FACILITY)
 	; for visual review of the river, which PCCarveRiver only started actually
@@ -252,7 +324,7 @@ ProcPreloadAssignedWildArea::
 	dec a
 	jr z, .forest
 	dec a
-	jr z, .cemetery
+	jp z, .cemetery
 	jr .facility
 .cemetery
 	call ProcGenerationBeginDoubleSpeed

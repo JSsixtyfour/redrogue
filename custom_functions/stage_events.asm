@@ -68,7 +68,22 @@ StageEventStageSprites::
 	; as "this slot does not exist".
 	ld a, [sStageEventHideoutX]
 	cp STAGE_EVENT_NO_HIDEOUT
+	jr nz, .haveSomewhereToHide
+	; The CEMETERY resolves its hideout later than the other three. Its floors
+	; generate lazily, so at preload - which is when this routine runs - only
+	; the FLOOR has been rolled and the cell on it does not exist yet. A
+	; pending floor answers this question just as well as a resolved cell, and
+	; checking it here keeps "an event with nowhere to hide must not manifest"
+	; ONE rule rather than giving the cemetery its own copy of this routine.
+	;
+	; The floor byte is cemetery-only, so it is cleared back to the sentinel by
+	; StageEventClearStagedSprites at every lobby selection. Without that
+	; clear a cave with no hideout could pass this gate on a floor left behind
+	; by an earlier cemetery run.
+	ld a, [sStageEventHideoutFloor]
+	cp STAGE_EVENT_NO_HIDEOUT
 	ret z
+.haveSomewhereToHide
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	dec a                           ; type is 1-based; table row is 0-based
@@ -97,7 +112,7 @@ StageEventStageSprites::
 ; wires the trainer classes. Nothing else keys off these values.
 StageEventSpriteTable:
 	db SPRITE_JESSIE,        SPRITE_JAMES         ; STAGE_EVENT_JESSIE_JAMES
-	db SPRITE_SUPER_NERD,    0                    ; STAGE_EVENT_PSYCHIC
+	db SPRITE_YOUNGSTER,     0                    ; STAGE_EVENT_PSYCHIC
 	db SPRITE_ROCKET,        0                    ; STAGE_EVENT_BURGLAR
 	db SPRITE_NURSE,         0                    ; STAGE_EVENT_JOY
 	db SPRITE_OFFICER_JENNY, 0                    ; STAGE_EVENT_JENNY
@@ -231,6 +246,45 @@ StageEventTrainerTable:
 	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
 
 ; ============================================================
+; StageEventSyncPairScreenPos  (2026-09-17)
+; Re-derives SPRITESTATEDATA1_YPIXELS/XPIXELS from MAPY/MAPX for the stage
+; event's two NPC slots.
+;
+; WHY THIS HAS TO EXIST. A sprite carries its position twice: MAPY/MAPX in
+; StateData2, and YPIXELS/XPIXELS in StateData1. CheckSpriteAvailability
+; decides the on-screen window test from the MAP pair but the text-box test
+; (GetTileSpriteStandsOn) and TrainerEngage both read the PIXEL pair. The only
+; thing that resyncs them in normal play is InitializeSpriteScreenPosition,
+; reached from UpdateNPCSprite - but UpdateNPCSprite does `ret c` on an
+; invisible sprite BEFORE it gets there, so once the two disagree the sprite
+; cannot repair itself.
+;
+; Every stage-event placement writes MAP coords and never pixels. That is
+; harmless on an ordinary map load, where LoadMapHeader has just zeroed the
+; sprite state - but NOT after a battle: LoadMapHeader skips the object-list
+; load when BIT_BATTLE_OVER_OR_BLACKOUT is set ("battles don't destroy this
+; data"), so the pixels still hold wherever the trainer walked to, while
+; PCPlaceStageEventNpcs slams the map coords back to the hideout. The sprite
+; then reads as offscreen (IMAGEINDEX $ff), which also makes
+; DetectCollisionBetweenSprites skip it - the reported "they flicker on and
+; off and no longer block you, and the location can change".
+;
+; INPUT: d = base sprite slot (the pair is d and d+1).
+; Clobbers a/b/c/h/l. Preserves d/e - which is why the slot travels in d:
+; farcall destroys a/b/c/h/l on BOTH legs.
+; ============================================================
+StageEventSyncPairScreenPos::
+	ld a, d
+	call .one
+	ld a, d
+	inc a
+.one
+	swap a                          ; slot -> sprite state offset
+	ldh [hCurrentSpriteOffset], a
+	farcall InitializeSpriteScreenPosition
+	ret
+
+; ============================================================
 ; StageEventGiveBack  (Phase 7e)
 ; Returns whatever the villain took, once, after they are beaten. Farcalled
 ; from the cave's map script when a stage-event NPC's beat flag is set and the
@@ -239,10 +293,137 @@ StageEventTrainerTable:
 ; Advances the phase to SETTLED and clears the record's tag whatever happens,
 ; so this can never fire twice and a half-returned mon cannot be re-returned.
 ;
-; OUTPUT: a = a STAGE_GIVEBACK_* result for the caller to pick text with.
+; OUTPUT: wStageEventScratch = a STAGE_GIVEBACK_* result for the caller to
+; pick text with. a holds the same value, but callers must NOT read it: every
+; caller is a map script reaching this by `farcall`, and Bankswitch's return
+; leg does `ld a, b` with the caller's ROM bank, so `a` arrives holding the
+; BANK NUMBER. That is what the "12 ERROR." box was - $11 indexed 26 bytes
+; past the end of a 4-entry text table. See [[project_farcall_home_clobbers_a]].
 ; Clobbers a/bc/de/hl.
 ; ============================================================
+; ============================================================
+; StageEventNameLoot  (2026-09-17)
+; Fills wNameBuffer with the name of whatever the villain took, so both the
+; arrival line and the recovery line can say it out loud instead of "your
+; #MON".
+;
+; The mon case uses the stored NICKNAME, not the species: that is the name
+; the player knows it by, and it is already sitting in SRAM, so it costs a
+; copy rather than a GetMonName call.
+;
+; MUST run while the stolen record still exists. For the arrival that is
+; automatic (the theft just happened); for the recovery it is why
+; StageEventGiveBack calls this as its very first action, before either of
+; its StageEventClearStolenRecord calls.
+;
+; OUTPUT: a = sStolenKind. Clobbers a/bc/de/hl.
+; ============================================================
+StageEventNameLoot::
+	call StageEventReadStolenKind
+	cp STOLEN_MON
+	jr z, .mon
+	cp STOLEN_ITEM
+	jr z, .item
+	ret                           ; nothing taken - leave the buffer alone
+.item
+	call StageEventReadStolenItem
+	ld [wNamedObjectIndex], a
+	call GetItemName              ; -> wNameBuffer
+	ld a, STOLEN_ITEM
+	ret
+.mon
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	ld hl, sStolenNickname
+	ld de, wNameBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, STOLEN_MON
+	ret
+
+; ============================================================
+; StageEventPrintLootLine  (2026-09-17)
+; The second half of the arrival: the villain names what they just took.
+; Farcalled from each map's arrival text handler, after it has printed that
+; type's greeting, so the two print as one box sequence.
+;
+; Silent for the good NPCs and for the empty-handed fallback (one mon left
+; and an empty bag) - in both cases nothing was taken and there is nothing to
+; announce, and the greeting already stands on its own.
+; ============================================================
+StageEventPrintLootLine::
+	call StageEventNameLoot       ; a = kind, wNameBuffer = its name
+	cp STOLEN_MON
+	jr z, .mon
+	cp STOLEN_ITEM
+	jr z, .item
+	ret
+.mon
+	ld hl, StageEventTookMonTexts
+	jr .pickByType
+.item
+	ld hl, StageEventTookItemTexts
+.pickByType
+	; One line per villain, because "They" only fits Jessie & James. Both
+	; tables are indexed by STAGE_EVENT_* type starting at 1 and hold rows
+	; for the three THIEVES only - the good NPCs take nothing, so they never
+	; reach here, and the guard below keeps a future type from indexing past
+	; the end if that ever stops being true.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	ret nc
+	dec a                         ; type is 1-based; row is 0-based
+	add a, a
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	jp PrintText
+
+StageEventTookMonTexts:
+	dw StageEventTookMonJessieJames
+	dw StageEventTookMonPsychic
+	dw StageEventTookMonBurglar
+StageEventTookItemTexts:
+	dw StageEventTookItemJessieJames
+	dw StageEventTookItemPsychic
+	dw StageEventTookItemBurglar
+
+StageEventTookMonJessieJames:
+	text_far _StageEventTookMonJessieJamesText
+	text_end
+StageEventTookMonPsychic:
+	text_far _StageEventTookMonPsychicText
+	text_end
+StageEventTookMonBurglar:
+	text_far _StageEventTookMonBurglarText
+	text_end
+StageEventTookItemJessieJames:
+	text_far _StageEventTookItemJessieJamesText
+	text_end
+StageEventTookItemPsychic:
+	text_far _StageEventTookItemPsychicText
+	text_end
+StageEventTookItemBurglar:
+	text_far _StageEventTookItemBurglarText
+	text_end
+
 StageEventGiveBack::
+	; Name the loot BEFORE anything below can clear the record - both the
+	; item and the mon paths call StageEventClearStolenRecord on success, and
+	; the recovery text needs the name after that has happened.
+	call StageEventNameLoot
 	call StageEventReadStolenKind ; a = sStolenKind
 	ld b, a
 	; Advance the phase FIRST. Every path below ends the event, and doing it
@@ -257,7 +438,7 @@ StageEventGiveBack::
 	cp STOLEN_MON
 	jr z, .giveMon
 	ld a, STAGE_GIVEBACK_NOTHING  ; they never managed to take anything
-	ret
+	jr .done
 .giveItem
 	call StageEventReadStolenItem ; a = sStolenItem
 	ld b, a
@@ -269,10 +450,10 @@ StageEventGiveBack::
 	jr nc, .noRoom
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_ITEM
-	ret
+	jr .done
 .noRoom
 	ld a, STAGE_GIVEBACK_NO_ROOM
-	ret
+	jr .done
 .giveMon
 	; A full party is the one way this can legitimately fail. The theft
 	; guaranteed at least 2 mons at the time, so at most 5 remained - but the
@@ -284,6 +465,11 @@ StageEventGiveBack::
 	call StageEventRebuildStolenMon
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_MON
+; The store has to be the LAST thing on every path: StageEventRebuildStolenMon
+; uses wStageEventScratch as its own scratch, so writing the result any earlier
+; would be overwritten by the very path that produces it.
+.done
+	ld [wStageEventScratch], a
 	ret
 
 ; OUTPUT: a = sStolenKind. Clobbers a.
@@ -611,6 +797,12 @@ StageEventClearStagedSprites::
 	ld [rRAMB], a
 	ld [sStageEventSprite6], a
 	ld [sStageEventSprite7], a
+	; The cemetery's hideout FLOOR belongs to this same reset. It is the only
+	; stage-event field a non-cemetery run never writes, so without clearing
+	; it here a stale floor from an earlier cemetery would survive into a cave
+	; or forest run and wrongly satisfy StageEventStageSprites' hideout gate.
+	ld a, STAGE_EVENT_NO_HIDEOUT
+	ld [sStageEventHideoutFloor], a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE

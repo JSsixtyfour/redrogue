@@ -1490,7 +1490,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                         (2 * block_x + quadrant_x, 2 * block_y + quadrant_y)
                                     )
 
-                entrance = (19, 38)
+                # Bottom-left quadrant of block (9,19) since 2026-09-17:
+                # the top two quadrants belong to the stage-event pair.
+                entrance = (18, 39)
                 self.assertIn(entrance, passable_cells)
                 reachable = {entrance}
                 frontier = [entrance]
@@ -1920,7 +1922,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 )
 
                 warps = self.harness.read_bytes("wWarpEntries", 12)
-                self.assertEqual((warps[0], warps[1]), (38, 19))
+                self.assertEqual((warps[0], warps[1]), (39, 18))
                 self.assertEqual((warps[4], warps[5]), exit_cells[0][::-1])
                 self.assertEqual((warps[8], warps[9]), exit_cells[1][::-1])
                 if exit_edge == 0:
@@ -2113,8 +2115,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
 
     def test_procedural_cemetery_generation(self) -> None:
+        # 3, not 1, since the Phase 7 rollout: the floor's pokeball plus the
+        # two stage-event NPC slots, which every cemetery floor now declares
+        # (floor 1 hosts the arrival, floors 2-4 can hold the hideout). Same
+        # reasoning as the forest's 5 -> 7 above.
         self.assert_generation_contract(
-            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 1, False
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 3, False
         )
 
 

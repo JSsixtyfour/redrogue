@@ -50,23 +50,35 @@ ProceduralForest_Script:
 	ld a, [wStageEvent]
 	and STAGE_EVENT_PHASE_MASK
 	jr nz, .afterStageEvent         ; already spoken
-	ld a, TEXT_PROCEDURALFOREST_STAGE_EVENT
-	ldh [hTextID], a
-	call DisplayTextID
-	farcall StageEventDoTheft       ; no-op for the good NPCs (7d's dispatch)
-	; Good NPCs (Joy, Jenny, the pair) do not hide - see scripts/
-	; ProceduralCave1.asm's identical branch for the full reasoning.
+	; THE TYPE GATE MOVED UP HERE 2026-09-17, from four instructions below the
+	; DisplayTextID. Joy and Jenny are meant to be FOUND - "they should just
+	; exist in their spots as something the player can find without any prior
+	; warning" - but gating AFTER the greeting meant a good NPC still walked up
+	; and delivered the villain's arrival box the instant the map faded in.
+	; Testing here skips the theft AND the greeting and drops the phase straight
+	; to SETTLED, past HIDING, so the recovery block below (which only opens on
+	; HIDING) stays shut for them too. The placement routine carries the
+	; matching test, so they start at the hideout instead of at the entrance.
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	cp STAGE_EVENT_JOY
-	jr c, .villainVanish
+	jr nc, .goodNpcSettle           ; JOY/JENNY - no theft, no greeting, no vanish
+	; REORDERED 2026-09-17: the theft now runs BEFORE the greeting, so the
+	; greeting can NAME what was taken - StageEventPrintLootLine, called
+	; from the arrival text handler, reads the record this call writes.
+	; On screen the beat still reads threat -> loss -> escape, because the
+	; loot line prints as the second half of the same box sequence.
+	farcall StageEventDoTheft
+	ld a, TEXT_PROCEDURALFOREST_STAGE_EVENT
+	ldh [hTextID], a
+	call DisplayTextID
+	farcall PFStageEventVanish      ; fade out, relocate, fade in; -> HIDING
+	jr .afterStageEvent
+.goodNpcSettle
 	ld a, [wStageEvent]
 	and ~STAGE_EVENT_PHASE_MASK & $ff
 	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
 	ld [wStageEvent], a
-	jr .afterStageEvent
-.villainVanish
-	farcall PFStageEventVanish      ; fade out, relocate, fade in; -> HIDING
 .afterStageEvent
 	; Wild budget calmed check — runs every frame, independent of boss state.
 	ld hl, wCurrentMapScriptFlags
@@ -99,17 +111,23 @@ ProceduralForest_Script:
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	jr nz, .afterRecovery
 	farcall Delay3
-	farcall StageEventGiveBack      ; a = STAGE_GIVEBACK_*; -> SETTLED
-	ld [wStageEventScratch], a      ; the text handler picks its line from this
+	; GiveBack stores its own result into wStageEventScratch. It cannot hand
+	; it back in `a`: farcall returns through Bankswitch, which ends with
+	; `ld a, b` = this script's ROM bank.
+	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED
+	ld a, TEXT_PROCEDURALFOREST_STAGE_RECOVER
+	ldh [hTextID], a
+	call DisplayTextID
+	; HIDE AFTER THE TEXT, not before. The recovery line now reads a name
+	; out of wNameBuffer that StageEventGiveBack filled moments ago, and
+	; predef HideObject runs a lot of code in between. Printing first
+	; keeps that buffer live across the shortest possible window.
 	ld a, TOGGLE_WILD_AREA_NPC_1
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, TOGGLE_WILD_AREA_NPC_2
 	ld [wToggleableObjectIndex], a
 	predef HideObject
-	ld a, TEXT_PROCEDURALFOREST_STAGE_RECOVER
-	ldh [hTextID], a
-	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 .afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
@@ -146,6 +164,32 @@ ProceduralForest_Script:
 .runScripts
 	call EnableAutoTextBoxDrawing
 	ld hl, ProceduralForestTrainerHeaders
+	; PICK THE HEADER BLOCK THAT MATCHES THE ENGAGED TRAINER. Measured bug,
+	; 2026-09-17 ("it battles you, the battle ends, it sees you and battles
+	; you again"). ExecuteCurMapScriptInTable stores whatever hl it is given
+	; into wTrainerHeaderPtr on EVERY tick, and EndTrainerBattle later takes
+	; the flag BIT from wTrainerHeaderFlagBit - cached by TalkToTrainer from
+	; the ENGAGED trainer's own header - but re-reads the flag BYTE POINTER
+	; from wTrainerHeaderPtr, i.e. from the table base.
+	;
+	; Vanilla never trips on this because `dw wEventFlags + (event -
+	; CURRENT_TRAINER_BIT) / 8` is CONSTANT across one consecutive
+	; def_trainers block: every trainer in a block shares a byte, so the base
+	; header's byte is right for all of them. This map has TWO blocks with
+	; DIFFERENT bytes, so the NPC's bit was being written into the boss's
+	; byte - the NPC's own event never got set, it never read as beaten, and
+	; it re-engaged forever.
+	;
+	; Gating on wTrainerHeaderFlagBit rather than on hActiveSpriteIndex is
+	; deliberate: it is the exact value EndTrainerBattle will pair with this
+	; pointer, so the bit and the byte cannot disagree. It is 0 whenever no
+	; trainer is engaged (CheckFightingMapTrainers zeroes it), which selects
+	; the full table for the ordinary sight-range scan.
+	ld a, [wTrainerHeaderFlagBit]
+	cp 6
+	jr c, .haveTrainerHeaders
+	ld hl, PFStageNpc1Header
+.haveTrainerHeaders
 	ld de, ProceduralForest_ScriptPointers
 	ld a, [wProceduralForestCurScript]
 	call ExecuteCurMapScriptInTable
@@ -503,6 +547,7 @@ PFStageEventArrivalText:
 	ld hl, PFStageEventArrivalTexts
 	call PFStageEventPickText
 	call PrintText
+	farcall StageEventPrintLootLine
 	ld hl, .done
 	jp TextScriptEnd
 .done
@@ -638,16 +683,22 @@ PFStageHideoutBothGood:
 
 ProceduralForest_TextPointers:
 	def_text_pointers
+	; ORDER IS LOAD-BEARING: see scripts/ProceduralCave1.asm's copy of this
+	; note. The first wNumSprites entries must be the objects' own text, in
+	; slot order, or DisplayTextID's .spriteHandling branch reroutes any
+	; script-fired constant whose value is <= the object count. Measured here
+	; before the reorder: CALMED printed the stage NPC's line.
 	dw_const ProceduralForestBossText, TEXT_PROCEDURALFOREST_BOSS
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFOREST_POKEBALL_1
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFOREST_POKEBALL_2
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFOREST_POKEBALL_3
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFOREST_POKEBALL_4
+	dw_const PFStageEventNpc1Text, TEXT_PROCEDURALFOREST_STAGE_NPC_1
+	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
+	; --- end of the object block (7 objects); script-only ids follow ---
 	dw_const ProceduralForestBossOfferText, TEXT_PROCEDURALFOREST_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALFOREST_CALMED
 	EXPORT TEXT_PROCEDURALFOREST_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN
-	dw_const PFStageEventNpc1Text, TEXT_PROCEDURALFOREST_STAGE_NPC_1
-	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
 	dw_const PFStageEventArrivalText, TEXT_PROCEDURALFOREST_STAGE_EVENT
 	dw_const PFStageEventRecoverText, TEXT_PROCEDURALFOREST_STAGE_RECOVER

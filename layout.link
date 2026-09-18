@@ -110,9 +110,19 @@ ROMX $10
 	"bank10"
 ROMX $11
 	"Maps 5"
-	"Pokédex Rating"
 	"Maps 6"
+	; "Hidden Events Core" is pinned HERE, and must stay here: Seafoam
+	; Islands 1F/B1F/B2F/B3F and Victory Road 3F all reach
+	; IsPlayerOnDungeonWarp with a plain call/jp, and every one of those
+	; scripts is in "Maps 6". Moving Core would turn five working map
+	; scripts into cross-bank calls into garbage.
 	"Hidden Events Core"
+	; "Pokédex Rating" was unpinned 2026-09-17, when the Cemetery's stage-event
+	; scripts grew "Maps 6" and overflowed this bank by 493 bytes. It is
+	; reached ONLY through `predef DisplayDexRating`, which carries its own
+	; bank, so unlike Core it has no same-bank dependency on the Maps
+	; sections and can float to wherever rgblink finds room. Same reasoning
+	; and same precedent as "Hidden Events 2" in $14 below.
 ROMX $12
 	"Maps 7"
 	"Screen Effects"

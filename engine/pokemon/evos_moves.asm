@@ -174,8 +174,10 @@ Evolution_PartyMonLoop: ; loop over party mons
 ; the branch below; the later `pop af` is only reached after that branch.
 	push af                      ; mon level, consumed just below
 	push hl                      ; evo-table cursor
-	ld a, [hl]                   ; target species
-	farcall RogueIsSpeciesEvolutionAllowed
+	ld e, [hl]                   ; target species - in e, NOT a: Bankswitch's
+	                             ; first instruction overwrites a, so an `a`
+	                             ; input cannot survive a farcall
+	farcall RogueIsSpeciesEvolutionAllowedFar
 	pop hl
 	jr c, .evoGroupActive
 	pop af                       ; discard the saved level, keep the stack even

@@ -354,11 +354,17 @@ DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
 DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
 DEF NUM_STAGE_EVENT_TYPES    EQU 6
 
-; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled. Phase 7f gave Joy and
-; Jenny their trainer classes, pics, and pools, so all six types roll now -
-; the same escape hatch MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss
-; registry, so a half-wired type can sit in the table without being rollable.
-DEF STAGE_EVENT_MAX_ROLLABLE EQU NUM_STAGE_EVENT_TYPES
+; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled, the same escape hatch
+; MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss registry: a type can sit in
+; every table without being reachable.
+;
+; FIVE, not six, since 2026-09-17. STAGE_EVENT_BOTH_GOOD put Joy and Jenny on
+; the map together, but they are two SEPARATE encounters and only one should
+; appear per wild area. Its row is deliberately left in all seven parallel
+; tables rather than deleted - index 6 simply becomes unreachable, and
+; churning seven 6-row tables to save nothing is how a table drifts out of
+; step with its siblings. Joy and Jenny go from 1-in-6 each to 1-in-5 each.
+DEF STAGE_EVENT_MAX_ROLLABLE EQU 5
 
 ; wStageEvent bit layout (ram/wram.asm). One byte holds the whole lifecycle.
 ;   bits 0-2 = type (STAGE_EVENT_*)
@@ -376,7 +382,10 @@ DEF STAGE_EVENT_PHASE_HIDING  EQU 1 ; spoke, robbed the player, vanished to the 
 DEF STAGE_EVENT_PHASE_SETTLED EQU 2 ; beaten / resolved, nothing left to do this visit
 
 ; Chance out of 256 that an offered wild area carries an event at all.
-DEF STAGE_EVENT_CHANCE EQU 128
+; 256 = every offered wild area carries one. StageEventRoll skips its `cp`
+; entirely at that value rather than comparing against an 8-bit-unrepresentable
+; 256, so the knob still works for any value below it.
+DEF STAGE_EVENT_CHANCE EQU 256
 
 ; sStageEventHideoutX/Y sentinel: this cave produced no usable hideout, so the
 ; event does not manifest. Deliberately $ff, because that is what fresh SRAM and

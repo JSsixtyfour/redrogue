@@ -657,46 +657,29 @@ KarenPool_End:
 ; ---------------------------------------------------------------------------
 JessieJamesPool:
 	pool_mon MEOWTH
-	pool_mon PERSIAN
 	pool_mon EKANS
-	pool_mon ARBOK
 	pool_mon LICKITUNG
 	pool_mon SHELLDER
 	pool_mon CHANSEY
 	pool_mon KOFFING
-	pool_mon WEEZING
 	pool_mon SCYTHER
 	pool_mon CLEFAIRY
-	pool_mon CLEFABLE
 	pool_mon GROWLITHE
 	pool_mon MR_MIME
 	pool_mon MAGIKARP
-	pool_mon GYARADOS
 	pool_mon BELLSPROUT
-	pool_mon WEEPINBELL
-	pool_mon VICTREEBEL
 	pool_mon PIDGEY
-	pool_mon PIDGEOTTO
-	pool_mon PIDGEOT
 	pool_mon PINSIR
 	pool_mon GRIMER
-	pool_mon MUK
 	pool_mon PORYGON
 	pool_mon KRABBY
-	pool_mon KINGLER
 	pool_mon HITMONLEE
 	pool_mon MACHOP
-	pool_mon MACHOKE
-	pool_mon MACHAMP
 	pool_mon RHYHORN
-	pool_mon RHYDON
 	pool_mon ZUBAT
-	pool_mon GOLBAT
 	pool_mon MANKEY
-	pool_mon PRIMEAPE
 JessieJamesPool_Johto:
 	pool_mon YANMA
-	pool_mon BLISSEY
 	pool_mon STANTLER
 	pool_mon SNEASEL
 	pool_mon HOPPIP
@@ -708,17 +691,18 @@ JessieJamesPool_End:
 ; ---------------------------------------------------------------------------
 PsychicPool:
 	pool_mon ABRA
-	pool_mon KADABRA
-	pool_mon ALAKAZAM
 	pool_mon SLOWPOKE
-	pool_mon SLOWBRO
 	pool_mon DROWZEE
-	pool_mon HYPNO
 	pool_mon EXEGGCUTE
-	pool_mon EXEGGUTOR
 	pool_mon MR_MIME
 	pool_mon JYNX
+	pool_mon PSYDUCK
+	pool_mon STARYU
+	pool_mon CLEFAIRY
+	pool_mon PORYGON
 PsychicPool_Johto:
+	pool_mon NATU
+	pool_mon GIRAFARIG
 PsychicPool_Warp:
 PsychicPool_End:
 
@@ -728,47 +712,101 @@ PsychicPool_End:
 ; ---------------------------------------------------------------------------
 BurglarPool:
 	pool_mon RATTATA
-	pool_mon RATICATE
 	pool_mon EKANS
-	pool_mon ARBOK
 	pool_mon GRIMER
-	pool_mon MUK
 	pool_mon KOFFING
-	pool_mon WEEZING
 	pool_mon ZUBAT
-	pool_mon GOLBAT
 	pool_mon MEOWTH
-	pool_mon PERSIAN
+	pool_mon SANDSHREW
+	pool_mon GASTLY
+	pool_mon MANKEY
+	pool_mon DIGLETT
 BurglarPool_Johto:
+	pool_mon MURKROW
+	pool_mon SNEASEL
 BurglarPool_Warp:
 BurglarPool_End:
 
 ; ---------------------------------------------------------------------------
-; Nurse Joy - donor species from reference/yellow_legacy/joy_jenny/options.asm
-; (cRz-Shadows/Pokemon_Yellow_Legacy), taken as a pool rather than pasted as
-; the donor's flat level-65 team - see that file's own README.
+; Nurse Joy - "healing and cute". Seeded from the donor species in
+; reference/yellow_legacy/joy_jenny/options.asm (cRz-Shadows/Pokemon_Yellow_Legacy),
+; taken as a pool rather than pasted as the donor's flat level-65 team - see
+; that file's own README - then extended on the user's brief.
+;
+; SYLVEON is VAPOREON form 2, and it is the one deliberate exception to the
+; "sublist must match the species' rarity group" rule at the top of this file.
+; VAPOREON is a KANTO-group species, so by that rule the entry would belong in
+; the Kanto run - but a PINNED form index is passed through UNGATED
+; (PartyGenResolveForm says so explicitly, matching authored TRAINERPARTY_FORMS
+; teams), and Sylveon is Time Warp content. Sitting it in the _Warp run is the
+; only thing that stops a Kanto-only run fielding one, and it serves exactly
+; the intent that rule exists for: no late-game-only content from round one.
+;
+; It is also the one entry here that is NOT a base form, because Sylveon has no
+; pre-evolution that reaches it - EEVEE picks its evolution at random
+; (EvolveMonByLevel.handleeevee), so a plain EEVEE entry could never guarantee
+; one. Consequence: a round-1 Time Warp run can field a level-5 Sylveon.
+; Accepted as the price of having it at all.
 ; ---------------------------------------------------------------------------
 JoyPool:
 	pool_mon KANGASKHAN
 	pool_mon SNORLAX
-	pool_mon STARMIE
+	pool_mon STARYU
 	pool_mon PORYGON
-	pool_mon EXEGGUTOR
+	pool_mon EXEGGCUTE
 	pool_mon CHANSEY
+	pool_mon JIGGLYPUFF
+	pool_mon CLEFAIRY
+	pool_mon PIKACHU
 JoyPool_Johto:
+	pool_mon MILTANK
+	pool_mon MARILL
+	pool_mon TOGEPI
 JoyPool_Warp:
+	pool_mon VAPOREON, 2          ; Sylveon
 JoyPool_End:
 
 ; ---------------------------------------------------------------------------
-; Officer Jenny - donor species, same source and reasoning as JoyPool above.
+; Officer Jenny - police-dog and patrol flavour, same donor source and
+; reasoning as JoyPool above, extended on the user's brief.
+;
+; Every line here is entered at its BASE form, per this file's own convention:
+; GROWLITHE not Arcanine, GASTLY not Gengar, SQUIRTLE not Blastoise, PIDGEY not
+; Pidgeot, PARAS not Parasect, HOPPIP not Jumpluff, CHIKORITA not Meganium,
+; TOTODILE not Feraligatr, MARILL not Azumarill, SNUBBULL not Granbull, REMORAID
+; not Octillery. ScaleTrainer_evolution promotes each one back at a high enough
+; level, so listing the base fixes the round-1 case without weakening round 9 -
+; and listing BOTH stages, as this pool used to, is exactly what produced the
+; reported level-5 Arcanine.
+;
+; HITMONCHAN is the one entry with no evolution in either direction - there is
+; no TYROGUE in this tree - so it is already its own base form, the same way
+; HITMONLEE sits in JessieJamesPool.
+;
+; The KANTO run is deliberately 9 deep, not 6. Seven of the twelve lines this
+; roster wanted are Johto-group and correctly sit below, which left the Kanto
+; run - the only one a first playthrough ever sees - the same size as a round-9
+; team. PARTY_GEN_MAX_RETRIES is 8 and PartyGenRollFromPool is
+; bounded-then-accept, so a pool that tight repeats a species outright. See
+; audit_stage_pool_base_forms.py.
 ; ---------------------------------------------------------------------------
 JennyPool:
-	pool_mon PIDGEOT
-	pool_mon BLASTOISE
+	pool_mon PIDGEY
+	pool_mon SQUIRTLE
 	pool_mon TANGELA
-	pool_mon GENGAR
-	pool_mon PARASECT
-	pool_mon ARCANINE
+	pool_mon GASTLY
+	pool_mon PARAS
+	pool_mon GROWLITHE
+	pool_mon MACHOP
+	pool_mon PONYTA
+	pool_mon HITMONCHAN
 JennyPool_Johto:
+	pool_mon SPINARAK
+	pool_mon HOPPIP
+	pool_mon CHIKORITA
+	pool_mon TOTODILE
+	pool_mon MARILL
+	pool_mon SNUBBULL
+	pool_mon REMORAID
 JennyPool_Warp:
 JennyPool_End:

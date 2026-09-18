@@ -710,6 +710,14 @@ ENDC
 	ld [sProcCaveBallsStaged], a
 	ld [sProcCaveBaked], a
 	ResetEvent EVENT_BEAT_PC_BOSS
+	; Phase 7: the stage-event NPCs need the same per-preload reset the boss
+	; gets. They are run-scoped events, so without this a run whose SECOND
+	; wild area also rolls an event would find the flag already set by the
+	; first, and that villain could never be engaged.
+	ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+	ResetEvent EVENT_BEAT_STAGE_EVENT_NPC_2
+	ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+	ResetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
 	ResetEvent EVENT_PC_BOSS_OFFERED
 	ResetEvent EVENT_PC_BUDGET_ENDED
 	ResetEvent EVENT_PC_CALMED_SHOWN
@@ -2671,21 +2679,24 @@ PCStageHideoutCapture:
 ; same ordering rule PCPlaceWildAreaItems documents: "is this cell floor" must
 ; be a settled question by the time anything is placed on it.
 ;
-; Slot 6 stands on the hideout. Slot 7 exists only for the two-NPC events
-; (Jessie & James; the Joy + Jenny pair) and stands one cell INWARD from the
-; hideout's edge.
+; Slot 6 stands on the hideout block's TOP-LEFT quadrant. Slot 7 exists only
+; for the two-NPC events (Jessie & James) and stands one STEP right, in the
+; same block's top-right quadrant.
 ;
-; "One cell inward" was a deliberately cheap first cut - the hideout is an edge
-; target and PCCarveOne's connector can arrive at it along either axis, so the
-; inward neighbour is the corridor most of the time but not obviously always.
-; MEASURED (audit_cave_hideout.py --layouts 400, 2026-09-16): that cell is
-; walkable and reachable from the player's spawn in 400 of 400 caves, so the
-; 4-neighbour PC_BLOCK_FLOOR scan this was going to need is not needed.
+; IT USED TO STEP A WHOLE CELL INWARD, which is a BLOCK, which is two steps -
+; so the pair stood two tiles apart with floor between them, and on a top or
+; bottom edge the step was vertical and they were not even on the same row.
+; That is the reported "Jesse and James should stand side by side". A block
+; is 2x2 steps, so +1 on the sprite's MapX is the entire "never stack"
+; requirement and it keeps the partner inside a block already known walkable.
+; MEASURED after the change (audit_stage_hideout_partner.py, 2026-09-17):
+; 40 of 40 caves put that exact tile inside the player's reachable set.
 ;
-; Note the metric: REACHABILITY, not block id. By block id the same 400 caves
-; read only 96.2% PC_BLOCK_FLOOR, because the autotile pass rewrites 15 of
-; them to floor-edge and corner variants that are perfectly walkable. Judging
-; this cell by `== PC_BLOCK_FLOOR` would have condemned a placement that is
+; The old scheme's own measurement is kept because its LESSON still applies:
+; by block id those 400 caves read only 96.2% PC_BLOCK_FLOOR, because the
+; autotile pass rewrites 15 of them to floor-edge and corner variants that
+; are perfectly walkable. Judging a cell by `== PC_BLOCK_FLOOR` would have
+; condemned a placement that is
 ; in fact always fine.
 ;
 ; VISIBILITY IS NOT THIS ROUTINE'S JOB, and the separation is deliberate. Both
@@ -2740,14 +2751,25 @@ PCPlaceStageEventNpcs:
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 
+	; A GOOD NPC HAS NO ARRIVAL, in any phase. Joy and Jenny are found, not
+	; met: the map script settles them without a greeting, so without this
+	; test the WAITING branch below would stand them in front of the player
+	; for the one frame before that script runs, and they would then never
+	; move - the vanish that repositions a villain is exactly what they skip.
+	; Testing TYPE before PHASE is the whole fix.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	jr nc, .atHideout
 	; --- phase WAITING puts them in front of the player instead ---------
 	ld a, [wStageEvent]
 	and STAGE_EVENT_PHASE_MASK
 	jr nz, .atHideout               ; HIDING or SETTLED - use the hideout below
-	jp PCPlaceStageEventArrival
+	call PCPlaceStageEventArrival
+	jr .syncPixels
 .atHideout
 
-	; --- slot 6 on the hideout itself ---
+	; --- slot 6 on the hideout's TOP-LEFT quadrant ---
 	ld hl, wSprite06StateData2MapY
 	ld a, c
 	add a, a
@@ -2758,26 +2780,15 @@ PCPlaceStageEventNpcs:
 	add a, 4
 	ld [hl], a
 
-	; --- slot 7 one cell inward, so the pair never stacks ---
-	ld a, c
-	and a
-	jr nz, .notTopEdge
-	inc c                           ; top edge: inward is +Y
-	jr .haveSecond
-.notTopEdge
-	cp PC_SIZE - 1
-	jr nz, .notBottomEdge
-	dec c                           ; bottom edge: inward is -Y
-	jr .haveSecond
-.notBottomEdge
-	ld a, b
-	and a
-	jr nz, .notLeftEdge
-	inc b                           ; left edge: inward is +X
-	jr .haveSecond
-.notLeftEdge
-	dec b                           ; right edge: inward is -X
-.haveSecond
+	; --- slot 7 one STEP right, in the same block's top-right quadrant ---
+	; This used to step a whole BLOCK inward (inc/dec b or c depending on which
+	; edge the hideout sat on), which put the pair TWO tiles apart - and on a
+	; top or bottom edge it stepped vertically, so Jessie and James were not
+	; even on the same row. A block is two steps wide, so +1 on the sprite's
+	; MapX is all the "never stack" guarantee needs, and it keeps the partner
+	; inside the block we already know is walkable. Same shape the cemetery has
+	; always used. Safe on the right edge too: b = 19 gives MapX 43 = tile 39,
+	; the last legal column.
 	ld hl, wSprite07StateData2MapY
 	ld a, c
 	add a, a
@@ -2785,8 +2796,14 @@ PCPlaceStageEventNpcs:
 	ld [hli], a
 	ld a, b
 	add a, a
-	add a, 4
+	add a, 5
 	ld [hl], a
+
+.syncPixels
+	; Both slots moved in MAP space; their SCREEN PIXEL copies are now stale.
+	; See StageEventSyncPairScreenPos for why that is not self-healing.
+	ld d, 6
+	farcall StageEventSyncPairScreenPos
 	ret
 
 ; ============================================================
@@ -2804,13 +2821,23 @@ PCPlaceStageEventNpcs:
 ; The coordinate chain, since it crosses three units and getting it wrong is
 ; silent:
 ;   entrance is a BLOCK (9,19) for the cave's pinned bottom-edge entrance
-;   the player's STEP is (blockX*2 + 1, blockY*2)   - the warp_event's own
-;     formula, tileX = blockX*2+1 / tileY = blockY*2, confirmed against a live
-;     read of wXCoord/wYCoord = (19,38)
+;   a block is 2x2 STEPS, so it has four quadrants:
+;     top-left  = (blockX*2,     blockY*2)
+;     top-right = (blockX*2 + 1, blockY*2)
+;     bot-left  = (blockX*2,     blockY*2 + 1)   <- the player, per warp_event
+;     bot-right = (blockX*2 + 1, blockY*2 + 1)
 ;   a sprite's MapX/MapY field is STEP + 4          - the border offset every
 ;     other placement here applies as `block*2 + 4`
-; so slot 6 lands one step ABOVE the player at MapX = blockX*2 + 5,
-; MapY = blockY*2 + 3, and slot 7 one step to its right.
+; so slot 6 takes the block's top-left quadrant (MapX = blockX*2 + 4,
+; MapY = blockY*2 + 4) and slot 7 the top-right (MapX = blockX*2 + 5).
+;
+; THIS WAS WRONG UNTIL 2026-09-17 and the doc above it was wrong with it. The
+; old literals were blockY*2 + 3 / blockX*2 + 5 and + 6, which is one step
+; above the BLOCK, not above the player-in-the-block: slot 6 landed in block
+; (9,18) and slot 7 in block (10,18). The "verified live: NPCs at (19,37) and
+; (20,37)" note was a check of raw tile numbers that never converted them back
+; to blocks. The `+ 6` is the same block-vs-step confusion the hideout
+; placement had.
 ;
 ; Slot 7 is only meaningful for the paired events (Jessie & James, Joy +
 ; Jenny); for a single villain that slot's sprite is 0, so the object does not
@@ -2822,20 +2849,20 @@ PCPlaceStageEventArrival:
 	ld hl, wSprite06StateData2MapY
 	ld a, e
 	add a, a
-	add a, 3                        ; blockY*2 + 3 = one step above the player
+	add a, 4                        ; blockY*2 + 4 = the block's TOP row
 	ld [hli], a
 	ld a, d
 	add a, a
-	add a, 5                        ; blockX*2 + 5 = the player's own column
+	add a, 4                        ; blockX*2 + 4 = top-LEFT, above the player
 	ld [hl], a
 	ld hl, wSprite07StateData2MapY
 	ld a, e
 	add a, a
-	add a, 3                        ; same row as its partner
+	add a, 4                        ; same row as its partner
 	ld [hli], a
 	ld a, d
 	add a, a
-	add a, 6                        ; one step to the right of slot 6
+	add a, 5                        ; one STEP right: the same block's top-right
 	ld [hl], a
 	ret
 

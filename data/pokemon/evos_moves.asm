@@ -3636,8 +3636,12 @@ MagnemiteEvosMoves:
     db 0
 HoppipEvosMoves:
 ; Evolutions
-; SKIPLOOM is a later batch. When it is added, restore:
-;	db EVOLVE_LEVEL, 18, SKIPLOOM
+; Restored 2026-09-17: SKIPLOOM was the "later batch" this note was waiting on
+; and it has existed for a while - it is in JohtoPokeball_Evos and carries its
+; own `EVOLVE_LEVEL, 27, JUMPLUFF`. Without this line nothing reached Skiploom,
+; so the whole Jumpluff line was dead: a pooled Hoppip stayed a Hoppip at any
+; level, and Skiploom's own entry was unreachable.
+	db EVOLVE_LEVEL, 18, SKIPLOOM
 	db 0
 ; Learnset - canon Gen 2 levels; SYNTHESIS (level 1, filled with METRONOME)
 ; and COTTON_SPORE do not exist in Gen 1.

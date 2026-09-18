@@ -12,4 +12,11 @@ ProceduralCemetery1_Object:
 	; pokeball (slot 1) - position runtime-patched by PCemGenerateMaps
 	object_event 5, 5, SPRITE_POKE_BALL, STAY, NONE, TEXT_PROCEDURALCEMETERY1_POKEBALL, 0
 
+	; Slots 2-3: stage-event NPC pair (Phase 7 rollout). Sprite, position and
+	; trainer class are ALL runtime-patched (StageEventStageSprites,
+	; PCemPlaceStageEventNpcs, StageEventApplyTrainers) before either slot can
+	; be seen or engaged; only the 8-arg TRAINER shape has to be right here.
+	object_event 5, 5, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
+	object_event 6, 5, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
+
 	def_warps_to PROCEDURAL_CEMETERY_1

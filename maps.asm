@@ -255,16 +255,25 @@ SECTION "Maps 5", ROMX
 
 INCLUDE "data/maps/headers/LavenderTown.asm"
 INCLUDE "data/maps/objects/LavenderTown.asm"
-LavenderTown_Blocks: INCBIN "maps/LavenderTown.blk"
 
+INCLUDE "scripts/LavenderTown.asm"
+
+
+; Unpinned 2026-09-17. Pure block data, no code: every consumer reaches these
+; through a map header, which carries its own bank, so they have no same-bank
+; dependency at all - unlike the Seafoam Islands and Victory Road 3F scripts
+; in "Maps 6", which plain-call IsPlayerOnDungeonWarp in "Hidden Events Core"
+; and are the reason that bank cannot simply be rearranged. Floated out of
+; pinned bank $11 to make room for the Cemetery's stage-event scripts.
+SECTION "Small Map Blocks", ROMX
+
+LavenderTown_Blocks: INCBIN "maps/LavenderTown.blk"
 ViridianPokecenter_Blocks: INCBIN "maps/ViridianPokecenter.blk"
 
 SafariZoneCenterRestHouse_Blocks:
 SafariZoneWestRestHouse_Blocks:
 SafariZoneEastRestHouse_Blocks:
 SafariZoneNorthRestHouse_Blocks: INCBIN "maps/SafariZoneCenterRestHouse.blk"
-
-INCLUDE "scripts/LavenderTown.asm"
 
 
 SECTION "Maps 6", ROMX

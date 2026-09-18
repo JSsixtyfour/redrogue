@@ -1289,15 +1289,32 @@ EvolveMonByLevel:
 	cp EVOLVE_TRADE
 	jr z, .trade_evolve
 	;else item evolve
-	inc hl
-	;only item evolve if lvl 35 or more
-	ld b, 35
-	ld a, [wCurEnemyLevel]
-	cp b
-	jr nc, .lvl_evolve ;after incrementing hl one space, maintains the same structure as lvl evolving
+	inc hl              ; past the item id; hl -> [level][species]
 .trade_evolve
-	inc hl	;increment to see if it level or stone evolves instead
-	inc hl
+; EVOLVE_TRADE is handled here, NOT skipped. A trade evolution can never fire
+; in a run - the player path (engine/pokemon/evos_moves.asm) requires
+; LINK_STATE_TRADING - so skipping it on the trainer side too made PORYGON2,
+; PORYGON_Z, RHYPERIOR, KLEAVOR, SLOWKING, KINGDRA and POLITOED unobtainable by
+; ANYONE. That contradicts data/trainers/pools.asm's own design note, which
+; lists those species as deliberately reached "by including its Kanto/Johto
+; pre-evolution and letting ScaleTrainer_evolution promote it".
+;
+; It shares EVOLVE_ITEM's level-35 floor. Both are "cannot happen in the wild"
+; methods and neither belongs on an early-round trainer, so they take one gate
+; rather than each inventing its own. Every authored EVOLVE_TRADE entry is at
+; level 40 today, so the per-entry level below dominates in practice; the floor
+; is here to hold if one is ever written lower.
+;
+; The two layouts differ - EVOLVE_ITEM is [method][item][level][species] and
+; EVOLVE_TRADE is [method][level][species] - which is why the item path does
+; its extra `inc hl` above and then falls in here with hl on the level byte,
+; exactly where a trade entry already is.
+	ld a, [wCurEnemyLevel]
+	cp 35
+	jr nc, .lvl_evolve
+.skipentry
+	inc hl              ; past [level]
+	inc hl              ; past [species]
 	jr .evoloop
 
 .lvl_evolve
@@ -1308,11 +1325,38 @@ EvolveMonByLevel:
 	ld b, a
 	ld a, [wCurEnemyLevel]
 	cp b
-	ret c
+	jr c, .tooLowForThisEntry
+; SPECIES GROUPS. The player's evolution path has gated on this since Phase 2
+; (engine/pokemon/evos_moves.asm's .doEvolution) so a Kanto-locked run cannot
+; produce a Johto evolution. The TRAINER path never did, so a trainer's Zubat
+; at level 45 became a Johto CROBAT in a Kanto-only run. Gating per ENTRY keeps
+; split evolutions independent: with Johto off and Warp on, Scyther still
+; reaches Kleavor even though Scizor is blocked.
+;
+; hl is stacked because the farcall macro loads it with the target address.
+; `pop` does not disturb flags, so the callee's carry survives to the branch.
+	push hl
+	push de             ; d = the species we are evolving FROM; the callee
+	                    ; clobbers de and the loop still needs d for its
+	                    ; EEVEE test on a later entry
+	ld e, [hl]          ; target species in e, NOT a - Bankswitch's first
+	                    ; instruction is `ldh a, [hLoadedROMBank]`, so an `a`
+	                    ; input cannot cross a farcall
+	farcall RogueIsSpeciesEvolutionAllowedFar
+	pop de              ; pop does not disturb flags
+	pop hl              ; carry still set = this group is active
+	jr nc, .tooLowForThisEntry
 	ld a, [hl]
 	ld [wCurPartySpecies], a
 	ld d, a             ; carry the evolved species forward so chains (e.g. Charmander->Charmeleon->Charizard) cascade
 	jp EvolveMonByLevel
+.tooLowForThisEntry
+; hl is on the species byte. Try the NEXT entry rather than abandoning the
+; search, matching the player path's .nextEvoEntry2. Abandoning it meant a
+; Scyther at level 40 never saw its second entry (Kleavor, also 40) because its
+; first (Scizor, 41) failed.
+	inc hl
+	jr .evoloop
 
 .handleeevee
 	call Random
