@@ -106,18 +106,15 @@ StageEventStageSprites::
 ; sprites are 12-tile walking sprites that already exist with .png/.2bpp in the
 ; tree, and procedural maps are indoor, so the outdoor sprite-set bound that
 ; restricts which SPRITE_* a route may use does not apply to any of them.
-;
-; SUPER_NERD and ROCKET are placeholders for the Psychic and the Burglar chosen
-; for flavour from sprites already on other maps; 7f may repoint them when it
-; wires the trainer classes. Nothing else keys off these values.
+
 StageEventSpriteTable:
 	db SPRITE_JESSIE,        SPRITE_JAMES         ; STAGE_EVENT_JESSIE_JAMES
 	db SPRITE_YOUNGSTER,     0                    ; STAGE_EVENT_PSYCHIC
-	db SPRITE_ROCKET,        0                    ; STAGE_EVENT_BURGLAR
+	db SPRITE_SUPER_NERD,    0                    ; STAGE_EVENT_BURGLAR
 	db SPRITE_NURSE,         0                    ; STAGE_EVENT_JOY
 	db SPRITE_OFFICER_JENNY, 0                    ; STAGE_EVENT_JENNY
-	db SPRITE_NURSE,         SPRITE_OFFICER_JENNY ; STAGE_EVENT_BOTH_GOOD
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventSpriteTable needs a row per type"
+	;db SPRITE_NURSE,         SPRITE_OFFICER_JENNY ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventSpriteTable needs a row per type"
 
 ; ============================================================
 ; StageEventShowCaveNpcs  (Phase 7b)
@@ -242,8 +239,8 @@ StageEventTrainerTable:
 	db OPP_BURGLAR,       0                  ; STAGE_EVENT_BURGLAR
 	db OPP_NURSE_JOY,     0                  ; STAGE_EVENT_JOY
 	db OPP_OFFICER_JENNY, 0                  ; STAGE_EVENT_JENNY
-	db OPP_NURSE_JOY,     OPP_OFFICER_JENNY  ; STAGE_EVENT_BOTH_GOOD
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
+	;db OPP_NURSE_JOY,     OPP_OFFICER_JENNY  ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventTrainerTable needs a row per type"
 
 ; ============================================================
 ; StageEventSyncPairScreenPos  (2026-09-17)

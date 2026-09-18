@@ -351,8 +351,8 @@ DEF STAGE_EVENT_PSYCHIC      EQU 2  ; villain, steals a party mon (rebuilt into 
 DEF STAGE_EVENT_BURGLAR      EQU 3  ; villain, steals a bag item
 DEF STAGE_EVENT_JOY          EQU 4  ; good NPC (7f)
 DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
-DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
-DEF NUM_STAGE_EVENT_TYPES    EQU 6
+;DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
+DEF NUM_STAGE_EVENT_TYPES    EQU 5
 
 ; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled, the same escape hatch
 ; MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss registry: a type can sit in
