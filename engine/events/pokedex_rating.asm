@@ -3,11 +3,13 @@ DisplayDexRating:
 	ld b, wPokedexSeenEnd - wPokedexSeen
 	call CountSetBits
 	ld a, [wNumSetBits]
+	call .ClampDexCount
 	ldh [hDexRatingNumMonsSeen], a
 	ld hl, wPokedexOwned
 	ld b, wPokedexOwnedEnd - wPokedexOwned
 	call CountSetBits
 	ld a, [wNumSetBits]
+	call .ClampDexCount
 	ldh [hDexRatingNumMonsOwned], a
 	ld hl, DexRatingsTable
 .findRating
@@ -49,6 +51,16 @@ DisplayDexRating:
 	jr .copyRatingTextLoop
 .doneCopying
 	ld [de], a
+	ret
+
+.ClampDexCount:
+; Older debug saves set three unused bits above DEX_PORYGON_Z, producing a
+; count of 255. The rating table's final boundary is NUM_POKEMON + 1, so such
+; a count would walk beyond the table forever. Clamp both displayed counts and
+; the lookup input to the real dex size so those saves remain usable.
+	cp NUM_POKEMON + 1
+	ret c
+	ld a, NUM_POKEMON
 	ret
 
 DexCompletionText:

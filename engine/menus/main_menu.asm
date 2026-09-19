@@ -118,7 +118,10 @@ MainMenu:
 	ldh a, [hCurMap]
 	cp HALL_OF_FAME
 	jp nz, SpecialEnterMap
-	xor a
+	; A completed run is saved in the Hall of Fame immediately before the
+	; credits. Continue through the existing special-warp path, but return to
+	; the player's Dorm instead of vanilla Pallet Town.
+	ld a, SILPH_CO_DORM
 	ld [wDestinationMap], a
 	ld hl, wStatusFlags6
 	set BIT_FLY_OR_DUNGEON_WARP, [hl]

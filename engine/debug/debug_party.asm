@@ -238,13 +238,15 @@ IF DEF(_DEBUG)
 	ret
 
 DebugSetPokedexEntries:
-	ld b, wPokedexOwnedEnd - wPokedexOwned - 1
+	ld b, NUM_POKEMON / 8
 	ld a, %11111111
 .loop
 	ld [hli], a
 	dec b
 	jr nz, .loop
-	ld [hl], %01111111
+	IF NUM_POKEMON % 8
+		ld [hl], (1 << (NUM_POKEMON % 8)) - 1
+	ENDC
 	ret
 
 DebugNewGameItemsList: ; marcelnote - moved some to key items pocket
