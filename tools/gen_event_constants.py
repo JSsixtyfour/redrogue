@@ -199,6 +199,15 @@ PERSISTENT = [
     "EVENT_PRISM_E4_POISON_SHOWN",
     "EVENT_PRISM_E4_PSYCHIC_SHOWN",
     "EVENT_PRISM_CHAMPION_SHOWN",
+    "EVENT_RIVAL_CHAMPION_DEFEATED",
+    "EVENT_LANCE_CHAMPION_DEFEATED",
+    "EVENT_OAK_CHAMPION_DEFEATED",
+    "EVENT_AI_FACED",
+    "EVENT_AI_DEFEATED",
+    "EVENT_JOHTO_ACTIVATED",
+    "EVENT_KANTO_TIMEWARP_ACTIVATED",
+    "EVENT_FINAL_BRIEFING_COMPLETE",
+    "EVENT_POST_GAME"
 ]
 
 PERSISTENT_GROUP = "__persistent__"
@@ -415,6 +424,19 @@ NEW_EVENTS = [
     # swept by RogueResetRunState.
     "EVENT_PRISM_E4_POISON_SHOWN",
     "EVENT_PRISM_E4_PSYCHIC_SHOWN",
+    # Checkpoint 1 persistent progression state. These are introduced here so
+    # they exist before the champion, AI, timewarp, and credit consumers land.
+    # They are classified in PERSISTENT (TABLE 2), even while currently
+    # unreferenced by live assembly.
+    "EVENT_RIVAL_CHAMPION_DEFEATED",
+    "EVENT_LANCE_CHAMPION_DEFEATED",
+    "EVENT_OAK_CHAMPION_DEFEATED",
+    "EVENT_AI_FACED",
+    "EVENT_AI_DEFEATED",
+    "EVENT_JOHTO_ACTIVATED",
+    "EVENT_KANTO_TIMEWARP_ACTIVATED",
+    "EVENT_FINAL_BRIEFING_COMPLETE",
+    "EVENT_POST_GAME",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

@@ -35,13 +35,12 @@ RogueStageMapTable:
 	db POKEMON_TOWER_2F
 	db POKEMON_TOWER_7F
 	db SS_ANNE_B1F       ; unique: custom multi-room mechanics and EVENT_SSANNE_ALL_TRAINERS_DEFEATED gate
-	;db SS_ANNE_BOW
 	db POWER_PLANT
-	;db SILPH_CO_1F
 	db POKEMON_MANSION_1F
 	db SEAFOAM_ISLANDS_1F
-	;db VICTORY_ROAD_1F
 	db -1
+    
+    ; VICTORY_ROAD_1F is a specialized stage only faced after 8th gym
 
 ; Badge bit → gym map. Index matches wObtainedBadges bit position (0=Boulder…7=Earth).
 ;

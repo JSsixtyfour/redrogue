@@ -267,12 +267,15 @@ ChampionsRoomRivalDefeatedScript:
 	cp PROF_OAK
 	jr z, .oak
 .rival3
+	SetEvent EVENT_RIVAL_CHAMPION_DEFEATED
 	ld a, TEXT_CHAMPIONSROOM_RIVAL
 	jr .display
 .lance
+	SetEvent EVENT_LANCE_CHAMPION_DEFEATED
 	ld a, TEXT_CHAMPIONSROOM_LANCE
 	jr .display
 .oak
+	SetEvent EVENT_OAK_CHAMPION_DEFEATED
 	ld a, TEXT_CHAMPIONSROOM_OAK_CHAMPION
 .display
 	ldh [hTextID], a
