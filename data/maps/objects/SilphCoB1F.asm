@@ -1,6 +1,7 @@
 SilphCoB1F_Object:
 	db 46 ; border block (facility void/solid tile, matches ProceduralFacility's border)
 	object_const_def
+	const_export SILPHCOB1F_SCIENTIST
 	const_export SILPHCOB1F_PROF_PALM
 
 	def_warp_events
@@ -24,5 +25,6 @@ SilphCoB1F_Object:
 
 	def_object_events
 	object_event 16, 1, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCOB1F_SCIENTIST
+	object_event 16, 1, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCOB1F_PROF_PALM
 
 	def_warps_to SILPH_CO_B1F

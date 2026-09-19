@@ -506,6 +506,12 @@ ToggleableObjectStates:
 	toggleable_objects_for BLACKTHORN_GYM
 	toggle_object_state BLACKTHORNGYM_GYM_GUIDE, ON
 
+	; Separate objects are required because the scientist must be independently
+	; restored during normal/postgame B1F states.
+	toggleable_objects_for SILPH_CO_B1F
+	toggle_object_state SILPHCOB1F_SCIENTIST, OFF
+	toggle_object_state SILPHCOB1F_PROF_PALM, ON
+
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 
 	db -1, 1, ON ; end

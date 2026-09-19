@@ -113,8 +113,6 @@ SSAnneB1F_ScriptPointers:
 
 SSAnneB1F_TextPointers:
 	def_text_pointers
-	dw_const SSAnneB1FCaptainText, TEXT_SSANNEB1F_CAPTAIN
-	dw_const SSAnneB1FSailorText, TEXT_SSANNEB1F_SAILOR
 	dw_const SSAnneB1FJrTrainerM3Text, TEXT_SSANNEB1F_JR_TRAINER_M3
 	dw_const SSAnneB1FJrTrainerM4Text, TEXT_SSANNEB1F_JR_TRAINER_M4
 	dw_const SSAnneB1FJrTrainerM5Text, TEXT_SSANNEB1F_JR_TRAINER_M5
@@ -123,6 +121,8 @@ SSAnneB1F_TextPointers:
     dw_const SSAnneB1F_Rogue_Reward_Script_PokeballText_2, TEXT_SSANNEB1F_ROGUE_REWARD_POKEBALL_2
     dw_const SSAnneB1F_Rogue_Reward_Script_PokeballText_3, TEXT_SSANNEB1F_ROGUE_REWARD_POKEBALL_3
     dw_const SSAnneB1F_Rogue_Reward_Script_PokeballText_1, TEXT_SSANNEB1F_ROGUE_TRADE_NPC
+    dw_const SSAnneB1FCaptainText, TEXT_SSANNEB1F_CAPTAIN
+	dw_const SSAnneB1FSailorText, TEXT_SSANNEB1F_SAILOR
     dw_const Rogue_SSAnneB1F_Reward_Text, TEXT_SSANNEB1F_REWARD_VENDOR_1
     EXPORT TEXT_SSANNEB1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const SSAnneB1FNoTurningBackText, TEXT_SSANNEB1F_NO_TURNING_BACK

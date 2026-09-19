@@ -49,3 +49,27 @@ _SilphCoB1FElevatorText::
 	text "The elevator is"
 	line "out of order."
 	done
+
+_SilphCoB1FJohtoActivationText::
+	text "PROF PALM: Great"
+	line "work in there!"
+
+	para "I've upgraded the"
+	line "system so you can"
+	cont "face new"
+	cont "challenges from"
+	cont "our neighbors"
+	cont "from Johto."
+
+	para "You may turn it"
+	line "off at your PC if"
+	cont "you like, but it"
+	cont "is strongly"
+	cont "encouraged that"
+	cont "you attempt this,"
+	cont "greater rewards"
+	cont "will be offered."
+
+	para "Join me when"
+	line "you're ready."
+	done

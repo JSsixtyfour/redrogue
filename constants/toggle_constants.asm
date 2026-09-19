@@ -508,4 +508,10 @@ ENDM
 	toggle_consts_for BLACKTHORN_GYM
 	const TOGGLE_BLACKTHORN_GYM_GUIDE
 
+; B1F keeps Palm separate from the stair scientist. Appended so no existing
+; toggle id shifts; keep this block last in data/maps/toggleable_objects.asm.
+	toggle_consts_for SILPH_CO_B1F
+	const TOGGLE_SILPH_CO_B1F_SCIENTIST
+	const TOGGLE_SILPH_CO_B1F_PROF_PALM
+
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value
