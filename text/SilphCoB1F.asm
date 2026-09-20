@@ -96,3 +96,33 @@ _SilphCoB1FTimeWarpActivationText::
 	para "Join me when"
 	line "you're ready."
 	done
+
+_SilphCoB1FFinalLanceWarningText::
+	text "<PLAYER>, I'm"
+	line "LANCE."
+
+	para "PROF PALM is not"
+	line "who he says he"
+	cont "is..."
+	done
+
+_SilphCoB1FFinalFakePalmText::
+	text "PROF PALM: You're"
+	line "too late!"
+
+	para "It's already done"
+	line "thanks to"
+	cont "<PLAYER>."
+
+	para "I'll get my"
+	line "associates!"
+	done
+
+_SilphCoB1FFinalLanceReactionText::
+	text "LANCE: No! He got"
+	line "away."
+
+	para "Let's check the"
+	line "back room for"
+	cont "evidence."
+	done

@@ -8,7 +8,7 @@ SilphCoB1F_Script:
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
-	cp SCRIPT_SILPHCOB1F_ACTIVATION_RETURN_DONE + 1
+	cp SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM + 1
 	jp nc, SilphCoB1FElevatorBlockerScript
 .introTour
 	ld hl, SilphCoB1F_ScriptPointers
@@ -31,6 +31,12 @@ SilphCoB1F_ScriptPointers:
 	dw_const SilphCoB1FActivationGreetingScript,    SCRIPT_SILPHCOB1F_JOHTO_GREETING
 	dw_const SilphCoB1FActivationGreetingScript,    SCRIPT_SILPHCOB1F_TIMEWARP_GREETING
 	dw_const SilphCoB1FActivationReturnScript,      SCRIPT_SILPHCOB1F_ACTIVATION_RETURN_DONE
+	dw_const SilphCoB1FFinalLanceWarningScript,      SCRIPT_SILPHCOB1F_FINAL_LANCE_WARNING
+	dw_const SilphCoB1FFinalPalmApproachScript,      SCRIPT_SILPHCOB1F_FINAL_PALM_APPROACH
+	dw_const SilphCoB1FFinalPalmEscapeScript,        SCRIPT_SILPHCOB1F_FINAL_PALM_ESCAPE
+	dw_const SilphCoB1FFinalWalkToDoorScript,        SCRIPT_SILPHCOB1F_FINAL_WALK_TO_DOOR
+	dw_const SilphCoB1FFinalOpenDoorScript,          SCRIPT_SILPHCOB1F_FINAL_OPEN_DOOR
+	dw_const SilphCoB1FFinalEnterRoomScript,         SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM
 
 ; Normalize the distinct Palm and stair-scientist objects on every map load,
 ; then stage Checkpoint 2 on the first fresh return from the Dorm after the
@@ -42,17 +48,28 @@ SilphCoB1FHandleMapEntry:
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	call SilphCoB1FRestorePalmRoomDoor
+	call SilphCoB1FApplyStoryMusic
 	; A warp can interrupt the shared 1F/B1F dispatcher before its Done state.
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	jp z, .introTourActors
+	jp z, SilphCoB1FIntroTourActors
+	; The Dorm preloads Lance's toggle before B1F object data is created. Branch
+	; into final staging before ordinary actor normalization can hide him again.
+	call SilphCoB1FShouldStageFinalOpening
+	jp c, SilphCoB1FStageFinalOpening
 	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_ROCKET
+	ld [wToggleableObjectIndex], a
+	predef HideObject
 	ld a, SCRIPT_SILPHCOB1F_NOOP
 	ld [wSilphCoB1FCurScript], a
 	ld a, [wWarpedFromWhichMap]
@@ -69,6 +86,7 @@ SilphCoB1FHandleMapEntry:
 .eligibleDormWarp
 	; Later story beats take priority if debug progression or an imported save
 	; leaves more than one activation pending at once.
+.checkTimeWarpActivation
 	CheckEvent EVENT_LANCE_CHAMPION_DEFEATED
 	jr z, .checkRivalActivation
 	CheckEvent EVENT_KANTO_TIMEWARP_ACTIVATED
@@ -100,14 +118,40 @@ SilphCoB1FHandleMapEntry:
 	; Sprite map coordinates include the four-tile map border.
 	ld a, 1 + 4
 	ld [wSprite02StateData2MapY], a
-	ld a, 8 + 4
+	ld a, 9 + 4
 	ld [wSprite02StateData2MapX], a
 	ld a, SILPHCOB1F_PROF_PALM
 	swap a
 	ldh [hCurrentSpriteOffset], a
 	farcall InitializeSpriteScreenPosition
 	ret
-.introTourActors
+
+; Carry set only for the first final-opening entry from either Dorm warp.
+SilphCoB1FShouldStageFinalOpening:
+	ld a, [wWarpedFromWhichMap]
+	cp SILPH_CO_DORM
+	jr nz, .no
+	ld a, [wYCoord]
+	and a
+	jr nz, .no
+	ld a, [wXCoord]
+	cp 2
+	jr z, .events
+	cp 3
+	jr nz, .no
+.events
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	jr z, .no
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
+	jr nz, .no
+	CheckEvent EVENT_PALMS_ROOM_OPEN
+	jr nz, .no
+	scf
+	ret
+.no
+	and a
+	ret
+SilphCoB1FIntroTourActors:
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -115,21 +159,204 @@ SilphCoB1FHandleMapEntry:
 	ld [wToggleableObjectIndex], a
 	predef_jump ShowObject
 
-; The authored map keeps Palm's room locked. Once Lance opens it, a persistent
-; event reconstructs the open block after every reload. The live cutscene will
-; call SilphCoB1FOpenPalmRoomDoor at the moment the door opens.
+; Match Saffron Gym's reload convention exactly: the authored map contains the
+; open block, and every load reconstructs the persistent locked/open state.
 SilphCoB1FRestorePalmRoomDoor:
 	CheckEvent EVENT_PALMS_ROOM_OPEN
-	ret z
+	ld a, $54
+	jr z, SilphCoB1FReplacePalmRoomDoor
+	ld a, $0e
 	jr SilphCoB1FReplacePalmRoomDoor
 
 SilphCoB1FOpenPalmRoomDoor::
 	SetEvent EVENT_PALMS_ROOM_OPEN
-SilphCoB1FReplacePalmRoomDoor:
 	ld a, $0e
+SilphCoB1FReplacePalmRoomDoor:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 10
 	predef_jump ReplaceTileBlock
+
+; The crisis theme begins on the first post-Oak B1F entry and remains the B1F
+; default until the AI is defeated. Later checkpoints extend the same override
+; to the other facility maps.
+SilphCoB1FApplyStoryMusic:
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	ret z
+	CheckEvent EVENT_AI_DEFEATED
+	ret nz
+	ld a, MUSIC_SILPH_CO
+	ld [wMapMusicSoundID], a
+	ld a, BANK(Music_SilphCo)
+	ld [wMapMusicROMBank], a
+	jp PlayDefaultMusic
+
+SilphCoB1FStageFinalOpening:
+	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_ROCKET
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	call SilphCoB1FFaceLanceAndPlayer
+
+	; Stage Fake Palm offscreen at (9,1).
+	ld a, 1 + 4
+	ld [wSprite02StateData2MapY], a
+	ld a, 9 + 4
+	ld [wSprite02StateData2MapX], a
+	ld a, SILPHCOB1F_PROF_PALM
+	swap a
+	ldh [hCurrentSpriteOffset], a
+	farcall InitializeSpriteScreenPosition
+
+	; Stage Lance one row below whichever Dorm warp the player used.
+	ld a, 1 + 4
+	ld [wSprite03StateData2MapY], a
+	ld a, [wXCoord]
+	add 4
+	ld [wSprite03StateData2MapX], a
+	ld a, SILPHCOB1F_LANCE
+	swap a
+	ldh [hCurrentSpriteOffset], a
+	farcall InitializeSpriteScreenPosition
+
+	ld a, SCRIPT_SILPHCOB1F_FINAL_LANCE_WARNING
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalLanceWarningScript:
+	call SilphCoB1FFaceLanceAndPlayer
+	call UpdateSprites
+	ld a, TEXT_SILPHCOB1F_FINAL_LANCE_WARNING
+	call SilphCoB1FDisplayFinalText
+	ld de, SilphCoB1FFakePalmApproachMovement
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hSpriteIndex], a
+	call MoveSprite
+	ld a, SCRIPT_SILPHCOB1F_FINAL_PALM_APPROACH
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalPalmApproachScript:
+	ld a, [wStatusFlags5]
+	bit BIT_SCRIPTED_NPC_MOVEMENT, a
+	ret nz
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hSpriteIndex], a
+	; MoveSprite replaces the authored facing constraint with NONE. Restore the
+	; fixed direction as well as the displayed frame so the bubble/text wait
+	; cannot let Palm's idle animation turn him down.
+	call GetSpriteMovementByte2Pointer
+	ld [hl], LEFT
+	ld a, SPRITE_FACING_LEFT
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	call UpdateSprites
+	ld a, SILPHCOB1F_PROF_PALM
+	ld [wEmotionBubbleSpriteIndex], a
+	xor a ; EXCLAMATION_BUBBLE
+	ld [wWhichEmotionBubble], a
+	predef EmotionBubble
+	ld a, TEXT_SILPHCOB1F_FINAL_FAKE_PALM
+	call SilphCoB1FDisplayFinalText
+	ld de, SilphCoB1FFakePalmEscapeMovement
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hSpriteIndex], a
+	call MoveSprite
+	ld a, SCRIPT_SILPHCOB1F_FINAL_PALM_ESCAPE
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalPalmEscapeScript:
+	ld a, [wStatusFlags5]
+	bit BIT_SCRIPTED_NPC_MOVEMENT, a
+	ret nz
+	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	call SilphCoB1FFaceLanceAndPlayer
+	call UpdateSprites
+	ld a, TEXT_SILPHCOB1F_FINAL_LANCE_REACTION
+	call SilphCoB1FDisplayFinalText
+	ld a, SILPHCOB1F_LANCE
+	ldh [hActiveSpriteIndex], a
+	ld a, 15
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_FINAL_WALK_TO_DOOR
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalWalkToDoorScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a
+	ret nz
+	ld a, SILPHCOB1F_LANCE
+	ldh [hSpriteIndex], a
+	; The synchronized MoveSprite path clears the authored STAY/UP constraint.
+	; Restore the constraint as well as the frame so Lance remains facing up.
+	call GetSpriteMovementByte2Pointer
+	ld [hl], UP
+	ld a, SPRITE_FACING_UP
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	ld a, SCRIPT_SILPHCOB1F_FINAL_OPEN_DOOR
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalOpenDoorScript:
+	call SilphCoB1FOpenPalmRoomDoor
+	call UpdateSprites
+	ld a, SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalEnterRoomScript:
+	ld a, SILPHCOB1F_LANCE
+	ldh [hActiveSpriteIndex], a
+	ld a, 17
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFaceLanceAndPlayer:
+	ld a, PLAYER_DIR_DOWN
+	ld [wPlayerMovingDirection], a
+	ld a, SPRITE_FACING_DOWN
+	ld [wSpritePlayerStateData1FacingDirection], a
+	ld a, SILPHCOB1F_LANCE
+	ldh [hSpriteIndex], a
+	ld a, SPRITE_FACING_UP
+	ldh [hSpriteFacingDirection], a
+	jp SetSpriteFacingDirection
+
+SilphCoB1FDisplayFinalText:
+	ldh [hTextID], a
+	ld a, PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	call DisplayTextID
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	ret
+
+SilphCoB1FFakePalmApproachMovement:
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1
+
+SilphCoB1FFakePalmEscapeMovement:
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db -1
 
 SilphCoB1FJohtoApproachScript:
 	ld a, SCRIPT_SILPHCOB1F_JOHTO_GREETING
@@ -140,11 +367,11 @@ SilphCoB1FTimeWarpApproachScript:
 
 SilphCoB1FStartActivationApproach:
 	push af
-	ld de, SilphCoB1FPalmLeftSixMovement
+	ld de, SilphCoB1FPalmLeftSevenMovement
 	ld a, [wXCoord]
 	cp 2
 	jr z, .start
-	ld de, SilphCoB1FPalmLeftFiveMovement
+	ld de, SilphCoB1FPalmLeftSixMovement
 .start
 	ld a, SILPHCOB1F_PROF_PALM
 	ldh [hSpriteIndex], a
@@ -197,11 +424,11 @@ SilphCoB1FActivationGreetingScript:
 	predef FlagActionPredef
 	farcall SaveGameData
 
-	ld de, SilphCoB1FPalmRightSixMovement
+	ld de, SilphCoB1FPalmRightSevenMovement
 	ld a, [wXCoord]
 	cp 2
 	jr z, .startReturn
-	ld de, SilphCoB1FPalmRightFiveMovement
+	ld de, SilphCoB1FPalmRightSixMovement
 .startReturn
 	ld a, SILPHCOB1F_PROF_PALM
 	ldh [hSpriteIndex], a
@@ -240,7 +467,7 @@ SilphCoB1FActivationReturnScript:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
-	; Palm has returned to his offscreen (8,1) start. Hide his dedicated story
+	; Palm has returned to his offscreen (9,1) start. Hide his dedicated story
 	; object and restore the separate stair scientist for ordinary B1F play.
 	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
 	ld [wToggleableObjectIndex], a
@@ -255,9 +482,10 @@ SilphCoB1FActivationReturnScript:
 	ld [wSilphCoB1FCurScript], a
 	ret
 
+SilphCoB1FPalmLeftSevenMovement:
+	db NPC_MOVEMENT_LEFT
 SilphCoB1FPalmLeftSixMovement:
 	db NPC_MOVEMENT_LEFT
-SilphCoB1FPalmLeftFiveMovement:
 	db NPC_MOVEMENT_LEFT
 	db NPC_MOVEMENT_LEFT
 	db NPC_MOVEMENT_LEFT
@@ -265,9 +493,10 @@ SilphCoB1FPalmLeftFiveMovement:
 	db NPC_MOVEMENT_LEFT
 	db -1
 
+SilphCoB1FPalmRightSevenMovement:
+	db NPC_MOVEMENT_RIGHT
 SilphCoB1FPalmRightSixMovement:
 	db NPC_MOVEMENT_RIGHT
-SilphCoB1FPalmRightFiveMovement:
 	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_RIGHT
@@ -457,6 +686,9 @@ SilphCoB1F_TextPointers:
 	dw_const SilphCoB1FVRText,             TEXT_SILPHCOB1F_VR
 	dw_const SilphCoB1FJohtoActivationText, TEXT_SILPHCOB1F_JOHTO_ACTIVATION
 	dw_const SilphCoB1FTimeWarpActivationText, TEXT_SILPHCOB1F_TIMEWARP_ACTIVATION
+	dw_const SilphCoB1FFinalLanceWarningText, TEXT_SILPHCOB1F_FINAL_LANCE_WARNING
+	dw_const SilphCoB1FFinalFakePalmText,      TEXT_SILPHCOB1F_FINAL_FAKE_PALM
+	dw_const SilphCoB1FFinalLanceReactionText, TEXT_SILPHCOB1F_FINAL_LANCE_REACTION
 
 SilphCoB1FScientistText:
 	text_far _SilphCoB1FScientistText
@@ -490,6 +722,18 @@ SilphCoB1FJohtoActivationText:
 
 SilphCoB1FTimeWarpActivationText:
 	text_far _SilphCoB1FTimeWarpActivationText
+	text_end
+
+SilphCoB1FFinalLanceWarningText:
+	text_far _SilphCoB1FFinalLanceWarningText
+	text_end
+
+SilphCoB1FFinalFakePalmText:
+	text_far _SilphCoB1FFinalFakePalmText
+	text_end
+
+SilphCoB1FFinalLanceReactionText:
+	text_far _SilphCoB1FFinalLanceReactionText
 	text_end
 
 SilphCoB1FLanceText:

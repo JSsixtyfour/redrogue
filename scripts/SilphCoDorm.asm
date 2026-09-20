@@ -1,5 +1,28 @@
 SilphCoDorm_Script:
-	jp EnableAutoTextBoxDrawing
+	call EnableAutoTextBoxDrawing
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+	res BIT_CUR_MAP_LOADED_1, [hl]
+
+	; Stage Lance's global toggle while still in the Dorm, before B1F loads its
+	; object data. This prevents the final-opening actor from appearing a frame
+	; late. Normalize it off for every non-qualifying Dorm visit.
+	CheckEvent EVENT_INTRO_TOUR_COMPLETE
+	jr z, .hideLance
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	jr z, .hideLance
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
+	jr nz, .hideLance
+	CheckEvent EVENT_PALMS_ROOM_OPEN
+	jr nz, .hideLance
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef_jump ShowObject
+.hideLance
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
 
 SilphCoDorm_TextPointers:
 	def_text_pointers

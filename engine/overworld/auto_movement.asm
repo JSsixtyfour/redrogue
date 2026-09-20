@@ -308,6 +308,10 @@ SaffronPalmMovementScriptPointerTable::
 	dw SilphCoB1FMovementScript_DoneAtVR
 	dw SilphCoB1FMovementScript_EnterVR
 	dw SilphCoB1FMovementScript_DoneEnteringVR
+	dw SilphCoB1FFinalMovementScript_WalkToDoor
+	dw SilphCoB1FFinalMovementScript_DoneAtDoor
+	dw SilphCoB1FFinalMovementScript_EnterPalmRoom
+	dw SilphCoB1FFinalMovementScript_DoneEnteringPalmRoom
 
 SaffronPalmMovementScript_WalkToSilphCo:
 	xor a
@@ -676,5 +680,69 @@ RLEList_SilphCoB1FPalmEnterVR:
 RLEList_SilphCoB1FPlayerEnterVR:
 	; The first input reaches the north-edge warp coordinate. The second pushes
 	; into the edge so CheckWarpsCollision follows the authored B1F warp entry.
+	db PAD_UP, 2
+	db -1
+
+; --- Final briefing: B1F to Palm's room ---
+; This uses the same synchronized leader/follower dispatcher as the accepted
+; intro tour. Lance is authoritative; the player trails him by one tile.
+
+SilphCoB1FFinalMovementScript_WalkToDoor:
+	ld de, RLEList_SilphCoB1FFinalLanceFromX2
+	ld hl, RLEList_SilphCoB1FFinalPlayerFromX2
+	ld a, [wXCoord]
+	cp 2
+	jr z, .start
+	ld de, RLEList_SilphCoB1FFinalLanceFromX3
+	ld hl, RLEList_SilphCoB1FFinalPlayerFromX3
+.start
+	ld a, 16
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FFinalMovementScript_DoneAtDoor:
+	ld b, 1 + 4
+	ld c, 21 + 4
+	jp SilphCoB1FMovementScript_Done
+
+SilphCoB1FFinalMovementScript_EnterPalmRoom:
+	ld de, RLEList_SilphCoB1FFinalLanceEnterPalmRoom
+	ld hl, RLEList_SilphCoB1FFinalPlayerEnterPalmRoom
+	ld a, 18
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FFinalMovementScript_DoneEnteringPalmRoom:
+	ld b, 0 + 4
+	ld c, 21 + 4
+	jp SilphCoB1FMovementScript_Done
+
+; Lance starts beneath the player's Dorm exit and walks to (21,1).
+RLEList_SilphCoB1FFinalLanceFromX2:
+	db NPC_MOVEMENT_RIGHT, 19
+	db -1
+
+RLEList_SilphCoB1FFinalLanceFromX3:
+	db NPC_MOVEMENT_RIGHT, 18
+	db -1
+
+; Simulated player RLE is consumed backward. The initial downward step supplies
+; Lance's lead naturally; an additional wait would put the player two tiles back.
+RLEList_SilphCoB1FFinalPlayerFromX2:
+	db PAD_RIGHT, 19
+	db PAD_DOWN, 1
+	db -1
+
+RLEList_SilphCoB1FFinalPlayerFromX3:
+	db PAD_RIGHT, 18
+	db PAD_DOWN, 1
+	db -1
+
+RLEList_SilphCoB1FFinalLanceEnterPalmRoom:
+	db NPC_MOVEMENT_UP, 1
+	db -1
+
+RLEList_SilphCoB1FFinalPlayerEnterPalmRoom:
+	; Match the accepted B1F-to-VR pair: both actors move north together on their
+	; adjacent passable tiles, and the player's second input activates the edge
+	; warp after reaching (20,0).
 	db PAD_UP, 2
 	db -1
