@@ -126,3 +126,10 @@ _SilphCoB1FFinalLanceReactionText::
 	line "back room for"
 	cont "evidence."
 	done
+
+_SilphCoB1FFinalLanceHoldOffText::
+	text "LANCE: I'll hold"
+	line "them off, you"
+	cont "take care of that"
+	cont "machine!"
+	done

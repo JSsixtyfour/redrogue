@@ -6,6 +6,8 @@ PalmsRoom_Object:
 	db $2E
 
 	def_warp_events
+	; Palm exits at (4,7) and returns on B1F's left-hand warp (20,0).
+	; The player exits at (5,7) and returns on the right-hand warp (21,0).
 	warp_event 4, 7, SILPH_CO_B1F, 8
 	warp_event 5, 7, SILPH_CO_B1F, 9
 

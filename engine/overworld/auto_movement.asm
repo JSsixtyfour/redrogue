@@ -312,6 +312,14 @@ SaffronPalmMovementScriptPointerTable::
 	dw SilphCoB1FFinalMovementScript_DoneAtDoor
 	dw SilphCoB1FFinalMovementScript_EnterPalmRoom
 	dw SilphCoB1FFinalMovementScript_DoneEnteringPalmRoom
+	dw PalmsRoomMovementScript_Exit
+	dw PalmsRoomMovementScript_DoneExiting
+	dw SilphCoB1FFinalMovementScript_ReturnApproach
+	dw SilphCoB1FFinalMovementScript_DoneReturnApproach
+	dw PalmsRoomMovementScript_PlayerApproach
+	dw PalmsRoomMovementScript_DonePlayerApproach
+	dw PalmsRoomMovementScript_LanceExit
+	dw PalmsRoomMovementScript_DoneLanceExit
 
 SaffronPalmMovementScript_WalkToSilphCo:
 	xor a
@@ -745,4 +753,104 @@ RLEList_SilphCoB1FFinalPlayerEnterPalmRoom:
 	; adjacent passable tiles, and the player's second input activates the edge
 	; warp after reaching (20,0).
 	db PAD_UP, 2
+	db -1
+
+PalmsRoomMovementScript_Exit:
+	ld de, RLEList_PalmsRoomPalmExit
+	ld hl, RLEList_PalmsRoomPlayerExit
+	ld a, 20
+	jp SilphCoB1FMovementScript_Start
+
+PalmsRoomMovementScript_DoneExiting:
+	ld b, 7 + 4
+	ld c, 4 + 4
+	jp SilphCoB1FMovementScript_Done
+
+SilphCoB1FFinalMovementScript_ReturnApproach:
+	ld de, RLEList_SilphCoB1FPalmFinalReturn
+	ld hl, RLEList_SilphCoB1FPlayerFinalReturn
+	ld a, 22
+	jp SilphCoB1FMovementScript_Start
+
+SilphCoB1FFinalMovementScript_DoneReturnApproach:
+	ld b, 2 + 4
+	ld c, 16 + 4
+	jp SilphCoB1FMovementScript_Done
+
+; Palm leaves first for his Palm's Room exit at (4,7). He moves south before
+; crossing the player's column, so he never walks through the player at (5,3).
+RLEList_PalmsRoomPalmExit:
+	db NPC_MOVEMENT_DOWN, 2
+	db NPC_MOVEMENT_LEFT, 2
+	db NPC_MOVEMENT_DOWN, 2
+	db -1
+
+; The simulated player list executes backward. Hold the player until Palm has
+; cleared the doorway, then move straight south in column 5. The fifth DOWN
+; input activates the edge warp after the player reaches (5,7).
+RLEList_PalmsRoomPlayerExit:
+	db PAD_DOWN, 5
+	db NO_INPUT, 32
+	db -1
+
+; B1F return: Palm/player (20,0)/(21,0) -> (16,2)/(17,2).
+RLEList_SilphCoB1FPalmFinalReturn:
+	db NPC_MOVEMENT_DOWN, 2
+	db NPC_MOVEMENT_LEFT, 4
+	db -1
+
+RLEList_SilphCoB1FPlayerFinalReturn:
+	db PAD_LEFT, 4
+	db PAD_DOWN, 2
+	db -1
+
+PalmsRoomMovementScript_PlayerApproach:
+	xor a
+	ld [wSpritePlayerStateData2MovementByte1], a
+	ld hl, wSimulatedJoypadStatesEnd
+	ld de, RLEList_PalmsRoomPlayerApproach
+	call DecodeRLEList
+	dec a
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, 24
+	ld [wNPCMovementScriptFunctionNum], a
+	ret
+
+PalmsRoomMovementScript_DonePlayerApproach:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	jp EndNPCMovementScript
+
+PalmsRoomMovementScript_LanceExit:
+	ld de, PalmsRoomLanceExitMovement
+	ld a, PALMSROOM_LANCE
+	ldh [hSpriteIndex], a
+	call MoveSprite
+	ld a, 26
+	ld [wNPCMovementScriptFunctionNum], a
+	ret
+
+PalmsRoomMovementScript_DoneLanceExit:
+	ld a, [wStatusFlags5]
+	bit BIT_SCRIPTED_NPC_MOVEMENT, a
+	ret nz
+	jp EndNPCMovementScript
+
+; Palm's Room approach: player (4,7) -> (5,3). Simulated input is decoded
+; backward, so the source order is the reverse of the visible route.
+RLEList_PalmsRoomPlayerApproach::
+	db PAD_RIGHT, 1
+	db PAD_UP, 4
+	db NO_INPUT, 1
+	db -1
+
+; Lance (6,4) -> (4,7), where he leaves through the player's return warp.
+PalmsRoomLanceExitMovement::
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
 	db -1

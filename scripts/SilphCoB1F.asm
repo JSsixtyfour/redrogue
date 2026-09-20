@@ -8,7 +8,7 @@ SilphCoB1F_Script:
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
-	cp SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM + 1
+	cp SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING + 1
 	jp nc, SilphCoB1FElevatorBlockerScript
 .introTour
 	ld hl, SilphCoB1F_ScriptPointers
@@ -37,6 +37,8 @@ SilphCoB1F_ScriptPointers:
 	dw_const SilphCoB1FFinalWalkToDoorScript,        SCRIPT_SILPHCOB1F_FINAL_WALK_TO_DOOR
 	dw_const SilphCoB1FFinalOpenDoorScript,          SCRIPT_SILPHCOB1F_FINAL_OPEN_DOOR
 	dw_const SilphCoB1FFinalEnterRoomScript,         SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM
+	dw_const SilphCoB1FFinalReturnApproachScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_APPROACH
+	dw_const SilphCoB1FFinalReturnGreetingScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING
 
 ; Normalize the distinct Palm and stair-scientist objects on every map load,
 ; then stage Checkpoint 2 on the first fresh return from the Dorm after the
@@ -54,6 +56,8 @@ SilphCoB1FHandleMapEntry:
 	call SilphCoB1FClearMovementState
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
 	jp z, SilphCoB1FIntroTourActors
+	call SilphCoB1FShouldStageFinalReturn
+	jp c, SilphCoB1FStageFinalReturn
 	; The Dorm preloads Lance's toggle before B1F object data is created. Branch
 	; into final staging before ordinary actor normalization can hide him again.
 	call SilphCoB1FShouldStageFinalOpening
@@ -145,6 +149,22 @@ SilphCoB1FShouldStageFinalOpening:
 	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	jr nz, .no
 	CheckEvent EVENT_PALMS_ROOM_OPEN
+	jr nz, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+SilphCoB1FShouldStageFinalReturn:
+	ld a, [wWarpedFromWhichMap]
+	cp PALMS_ROOM
+	jr nz, .no
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	jr z, .no
+	CheckEvent EVENT_PALMS_ROOM_OPEN
+	jr z, .no
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	jr nz, .no
 	scf
 	ret
@@ -314,6 +334,13 @@ SilphCoB1FFinalWalkToDoorScript:
 
 SilphCoB1FFinalOpenDoorScript:
 	call SilphCoB1FOpenPalmRoomDoor
+	; Preload Palm's Room actors before its object data is created.
+	ld a, TOGGLE_PALMS_ROOM_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_PALMS_ROOM_LANCE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	call UpdateSprites
 	ld a, SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM
 	ld [wSilphCoB1FCurScript], a
@@ -324,6 +351,104 @@ SilphCoB1FFinalEnterRoomScript:
 	ldh [hActiveSpriteIndex], a
 	ld a, 17
 	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FStageFinalReturn:
+	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_SILPH_CO_B1F_ROCKET
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+
+	; Palm returns on the left warp at (20,0).
+	ld a, 0 + 4
+	ld [wSprite02StateData2MapY], a
+	ld a, 20 + 4
+	ld [wSprite02StateData2MapX], a
+	ld a, SILPHCOB1F_PROF_PALM
+	call SilphCoB1FInitializeStagedSprite
+
+	; Lance and the Rocket block the stairs.
+	ld a, 1 + 4
+	ld [wSprite03StateData2MapY], a
+	ld a, 16 + 4
+	ld [wSprite03StateData2MapX], a
+	ld a, SILPHCOB1F_LANCE
+	call SilphCoB1FInitializeStagedSprite
+	ld a, 0 + 4
+	ld [wSprite04StateData2MapY], a
+	ld a, 16 + 4
+	ld [wSprite04StateData2MapX], a
+	ld a, SILPHCOB1F_ROCKET
+	call SilphCoB1FInitializeStagedSprite
+
+	ld a, SCRIPT_SILPHCOB1F_FINAL_RETURN_APPROACH
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+; IN: a = object index after its bordered map coordinates have been written.
+SilphCoB1FInitializeStagedSprite:
+	swap a
+	ldh [hCurrentSpriteOffset], a
+	farcall InitializeSpriteScreenPosition
+	ret
+
+SilphCoB1FFinalReturnApproachScript:
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hActiveSpriteIndex], a
+	ld a, 21
+	call SilphCoB1FStartMovementDispatcher
+	ld a, SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+SilphCoB1FFinalReturnGreetingScript:
+	ld a, [wNPCMovementScriptPointerTableNum]
+	and a
+	ret nz
+	ld a, PLAYER_DIR_UP
+	ld [wPlayerMovingDirection], a
+	ld a, SPRITE_FACING_UP
+	ld [wSpritePlayerStateData1FacingDirection], a
+	ld a, SILPHCOB1F_PROF_PALM
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], UP
+	ld a, SPRITE_FACING_UP
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	ld a, SILPHCOB1F_LANCE
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], DOWN
+	ld a, SPRITE_FACING_DOWN
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	call UpdateSprites
+	ld a, TEXT_SILPHCOB1F_FINAL_LANCE_HOLD_OFF
+	call SilphCoB1FDisplayFinalText
+	; Lance turns back toward the Rocket after addressing the player.
+	ld a, SILPHCOB1F_LANCE
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], UP
+	ld a, SPRITE_FACING_UP
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	call UpdateSprites
+	xor a
+	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SILPHCOB1F_NOOP
 	ld [wSilphCoB1FCurScript], a
 	ret
@@ -689,6 +814,7 @@ SilphCoB1F_TextPointers:
 	dw_const SilphCoB1FFinalLanceWarningText, TEXT_SILPHCOB1F_FINAL_LANCE_WARNING
 	dw_const SilphCoB1FFinalFakePalmText,      TEXT_SILPHCOB1F_FINAL_FAKE_PALM
 	dw_const SilphCoB1FFinalLanceReactionText, TEXT_SILPHCOB1F_FINAL_LANCE_REACTION
+	dw_const SilphCoB1FFinalLanceHoldOffText,  TEXT_SILPHCOB1F_FINAL_LANCE_HOLD_OFF
 
 SilphCoB1FScientistText:
 	text_far _SilphCoB1FScientistText
@@ -736,8 +862,12 @@ SilphCoB1FFinalLanceReactionText:
 	text_far _SilphCoB1FFinalLanceReactionText
 	text_end
 
+SilphCoB1FFinalLanceHoldOffText:
+	text_far _SilphCoB1FFinalLanceHoldOffText
+	text_end
+
 SilphCoB1FLanceText:
-	text "..."
+	text_far _SilphCoB1FFinalLanceHoldOffText
 	text_end
 
 SilphCoB1FRocketText:
