@@ -166,15 +166,11 @@ RollElite4AndChampion::
 ; candidate if he did NOT land in the Elite Four, and that is read off
 ; wRunElite4.
 ;
-; The plan called for two "first clear" flags in SRAM beside
-; sRogueSpeciesGroupsEnabled. They are not needed: RogueGetActiveGroupMask
-; already DERIVES unlock state from wNumHoFTeams (0 clears = Kanto only, 1
-; unlocks Johto, 2 unlocks Time Warp), so "forced until the first Johto clear"
-; is exactly wNumHoFTeams == 1 and "until the first KEP clear" is exactly
-; wNumHoFTeams == 2. That avoids two new SRAM fields and the explicit
-; new-game clear each one would have required (SRAM powers up $ff, and
-; ClearAllSRAMBanks FILLS $ff - see project_sram_new_field_needs_explicit_clear),
-; and keeps one source of truth for progression.
+; The activation events are persistent story flags, and the corresponding
+; Champion-defeated events record whether each first-clear reward has already
+; been consumed. That keeps first-clear forcing independent of the number of
+; historical Hall of Fame teams, which is a record count rather than an
+; expansion-unlock state.
 ; CLOBBERS: a, bc, de, hl
 ; ============================================================
 RollChampion:
@@ -199,19 +195,26 @@ RollChampion:
 
 	; Forced first-clear champions, in unlock order. Each only fires if that
 	; candidate is actually available, so a player who has switched the group
-	; back off in the PC still gets a reachable Champion.
-	ld a, [wNumHoFTeams]
-	cp 1
-	jr nz, .notFirstJohto
+	; back off in the PC still gets a reachable Champion. If Johto is disabled
+	; while its first clear is pending, continue to the independent Warp check.
+	; Each pending first-clear pair is "activation set, defeated clear" in the
+	; same persistent event byte. Preserve that byte in c for the Warp check.
+	ld a, [wEventFlags + (EVENT_JOHTO_ACTIVATED / 8)]
+	ld c, a
 	bit 1, b
-	jr z, .randomChampion
+	jr z, .checkFirstWarp
+	and (1 << (EVENT_JOHTO_ACTIVATED % 8)) | (1 << (EVENT_LANCE_CHAMPION_DEFEATED % 8))
+	cp 1 << (EVENT_JOHTO_ACTIVATED % 8)
+	jr nz, .checkFirstWarp
 	ld a, LANCE
 	jr .storeChampion
-.notFirstJohto
-	cp 2
-	jr nz, .randomChampion
+.checkFirstWarp
 	bit 2, b
 	jr z, .randomChampion
+	ld a, c
+	and (1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8)) | (1 << (EVENT_OAK_CHAMPION_DEFEATED % 8))
+	cp 1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8)
+	jr nz, .randomChampion
 	ld a, PROF_OAK
 	jr .storeChampion
 

@@ -41,6 +41,7 @@ SilphCoB1FHandleMapEntry:
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
+	call SilphCoB1FRestorePalmRoomDoor
 	; A warp can interrupt the shared 1F/B1F dispatcher before its Done state.
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState
@@ -113,6 +114,22 @@ SilphCoB1FHandleMapEntry:
 	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
 	ld [wToggleableObjectIndex], a
 	predef_jump ShowObject
+
+; The authored map keeps Palm's room locked. Once Lance opens it, a persistent
+; event reconstructs the open block after every reload. The live cutscene will
+; call SilphCoB1FOpenPalmRoomDoor at the moment the door opens.
+SilphCoB1FRestorePalmRoomDoor:
+	CheckEvent EVENT_PALMS_ROOM_OPEN
+	ret z
+	jr SilphCoB1FReplacePalmRoomDoor
+
+SilphCoB1FOpenPalmRoomDoor::
+	SetEvent EVENT_PALMS_ROOM_OPEN
+SilphCoB1FReplacePalmRoomDoor:
+	ld a, $0e
+	ld [wNewTileBlockID], a
+	lb bc, 0, 10
+	predef_jump ReplaceTileBlock
 
 SilphCoB1FJohtoApproachScript:
 	ld a, SCRIPT_SILPHCOB1F_JOHTO_GREETING
@@ -432,6 +449,8 @@ SilphCoB1F_TextPointers:
 	def_text_pointers
 	dw_const SilphCoB1FScientistText,      TEXT_SILPHCOB1F_SCIENTIST
 	dw_const SilphCoB1FProfPalmText,       TEXT_SILPHCOB1F_PROF_PALM
+	dw_const SilphCoB1FLanceText,          TEXT_SILPHCOB1F_LANCE
+	dw_const SilphCoB1FRocketText,         TEXT_SILPHCOB1F_ROCKET
 	dw_const SilphCoB1FElevatorText,       TEXT_SILPHCOB1F_ELEVATOR
 	dw_const SilphCoB1FDormText,           TEXT_SILPHCOB1F_DORM
 	dw_const SilphCoB1FCreditExchangeText, TEXT_SILPHCOB1F_CREDIT_EXCHANGE
@@ -471,4 +490,12 @@ SilphCoB1FJohtoActivationText:
 
 SilphCoB1FTimeWarpActivationText:
 	text_far _SilphCoB1FTimeWarpActivationText
+	text_end
+
+SilphCoB1FLanceText:
+	text "..."
+	text_end
+
+SilphCoB1FRocketText:
+	text "..."
 	text_end

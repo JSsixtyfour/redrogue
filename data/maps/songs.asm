@@ -231,7 +231,9 @@ MapSongBanks::
 	db MUSIC_DUNGEON1, BANK(Music_Dungeon1) ; CERULEAN_CAVE_1F
 	db MUSIC_CITIES2, BANK(Music_Cities2) ; NAME_RATERS_HOUSE
 	db MUSIC_CITIES1, BANK(Music_Cities1) ; CERULEAN_BADGE_HOUSE
-	db MUSIC_CINNABAR, BANK(Music_Cinnabar) ; UNUSED_MAP_E7
+	; AILair_Script stops this immediately on load. A valid table entry is
+	; still required because map music is indexed before the map script runs.
+	db MUSIC_CITIES1, BANK(Music_Cities1) ; AI_LAIR (silent after load)
 	db MUSIC_DUNGEON3, BANK(Music_Dungeon3) ; ROCK_TUNNEL_B1F
 	db MUSIC_SILPH_CO, BANK(Music_SilphCo) ; SILPH_CO_9F
 	db MUSIC_SILPH_CO, BANK(Music_SilphCo) ; SILPH_CO_10F
@@ -254,4 +256,5 @@ MapSongBanks::
 	db MUSIC_GYM, BANK(Music_Gym) ; KOGAS_ROOM
 	db MUSIC_GYM, BANK(Music_Gym) ; WILLS_ROOM
 	db MUSIC_POKEMON_TOWER, BANK(Music_PokemonTower) ; KARENS_ROOM
+	db MUSIC_CITIES1, BANK(Music_Cities1) ; PALMS_ROOM
 	assert_table_length NUM_MAPS

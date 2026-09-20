@@ -3,6 +3,8 @@ SilphCoB1F_Object:
 	object_const_def
 	const_export SILPHCOB1F_SCIENTIST
 	const_export SILPHCOB1F_PROF_PALM
+	const_export SILPHCOB1F_LANCE
+	const_export SILPHCOB1F_ROCKET
 
 	def_warp_events
 	warp_event 16,  0, SILPH_CO_1F, 1
@@ -19,6 +21,9 @@ SilphCoB1F_Object:
 	; entry - change both together or the door stages one stage and enters another.
 	warp_event  7,  0, PROCEDURAL_CAVE_1, 1
 	warp_event  6,  0, PROCEDURAL_CAVE_1, 1
+	; Palm's locked back room. Appended so existing warp ids 1-7 remain stable.
+	warp_event 20,  0, PALMS_ROOM, 1
+	warp_event 21,  0, PALMS_ROOM, 2
 
 	def_bg_events
 	bg_event 18, 0, TEXT_SILPHCOB1F_ELEVATOR
@@ -26,5 +31,7 @@ SilphCoB1F_Object:
 	def_object_events
 	object_event 16, 1, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCOB1F_SCIENTIST
 	object_event 16, 1, SPRITE_SCIENTIST, STAY, DOWN, TEXT_SILPHCOB1F_PROF_PALM
+	object_event 16, 1, SPRITE_LANCE,     STAY, UP,   TEXT_SILPHCOB1F_LANCE
+	object_event 16, 0, SPRITE_ROCKET,    STAY, DOWN, TEXT_SILPHCOB1F_ROCKET
 
 	def_warps_to SILPH_CO_B1F

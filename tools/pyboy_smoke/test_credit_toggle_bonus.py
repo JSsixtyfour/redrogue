@@ -1,9 +1,9 @@
 """Runtime contract for expansion-sensitive credit awards.
 
 Credits are boosted by the live PC toggle mask, not merely by progression
-events or unlock eligibility.  Use two Hall of Fame teams so both expansion
-groups are eligible, then exercise every toggle combination directly through
-the shipped award routine.
+events or unlock eligibility. Set both persistent activation events so both
+expansion groups are eligible, then exercise every toggle combination directly
+through the shipped award routine.
 """
 
 from source_constants import parse_rgbds_constants
@@ -12,6 +12,7 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 
 GROUP_CONSTANTS = REPO_ROOT / "constants" / "rogue_species_groups.asm"
 RAM_CONSTANTS = REPO_ROOT / "constants" / "ram_constants.asm"
+EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 
 
 class CreditToggleBonusTest(HarnessTestCase):
@@ -22,6 +23,7 @@ class CreditToggleBonusTest(HarnessTestCase):
 
         groups = parse_rgbds_constants(GROUP_CONSTANTS)
         ram = parse_rgbds_constants(RAM_CONSTANTS)
+        events = parse_rgbds_constants(EVENT_CONSTANTS)
         johto = 1 << groups["BIT_GROUP_JOHTO"]
         warp = 1 << groups["BIT_GROUP_WARP"]
 
@@ -30,7 +32,8 @@ class CreditToggleBonusTest(HarnessTestCase):
         flags = h.read8("wStatusFlags6")
         flags &= ~(1 << ram["BIT_DEBUG2_MODE"]) & 0xFF
         h.write8("wStatusFlags6", flags)
-        h.write8("wNumHoFTeams", 2)
+        h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+        h.set_event(events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
 
         for enabled, expected in (
             (0, 1),

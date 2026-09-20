@@ -47,8 +47,10 @@ from source_constants import (  # noqa: E402
 )
 
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
+EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 STAGE_CLASSES = ["JESSIE_JAMES", "PSYCHIC_TR", "BURGLAR", "NURSE_JOY", "OFFICER_JENNY"]
 ALL_GROUPS = 0b111
+EVENTS = parse_rgbds_constants(EVENT_CONSTANTS)
 
 
 def evolution_targets():
@@ -67,8 +69,11 @@ def evolution_targets():
     return out
 
 
-def build(h, class_index, battle_count, trainer_no, hof_teams):
-    h.write8("wNumHoFTeams", hof_teams)
+def build(h, class_index, battle_count, trainer_no, unlock_stage):
+    if unlock_stage >= 1:
+        h.set_event(EVENTS["EVENT_JOHTO_ACTIVATED"])
+    if unlock_stage >= 2:
+        h.set_event(EVENTS["EVENT_KANTO_TIMEWARP_ACTIVATED"])
     h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [ALL_GROUPS], bank=1)
     h.write8("wBattleCount", battle_count)
     h.write8("wTrainerClass", class_index)
@@ -139,15 +144,15 @@ def main() -> int:
     print("SYLVEON (VAPOREON form 2) - must be Warp-run only")
     vaporeon = parse_rgbds_constants(
         REPO_ROOT / "constants" / "pokemon_constants.asm")["VAPOREON"]
-    for label, hof, want_possible in (("Kanto only", 0, False),
-                                      ("Warp unlocked", 2, True)):
+    for label, unlock_stage, want_possible in (("Kanto only", 0, False),
+                                               ("Warp unlocked", 2, True)):
         drawn = 0
         as_sylveon = 0
         h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         try:
             h.boot_fight2(seed=11)
             for _ in range(4):
-                team = build(h, classes["NURSE_JOY"], 85, 9, hof)
+                team = build(h, classes["NURSE_JOY"], 85, 9, unlock_stage)
                 base = h.address("wEnemyMon1")
                 stride = h.address("wEnemyMon2") - base
                 cr_off = h.address("wEnemyMon1CatchRate") - base

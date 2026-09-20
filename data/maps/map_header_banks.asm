@@ -232,7 +232,7 @@ MapHeaderBanks::
 	db BANK(CeruleanCave1F_h)
 	db BANK(NameRatersHouse_h)
 	db BANK(CeruleanBadgeHouse_h)
-	db $01 ; UNUSED_MAP_E7
+	db BANK(AILair_h) ; AI_LAIR (was UNUSED_MAP_E7)
 	db BANK(RockTunnelB1F_h)
 	db BANK(SilphCo9F_h)
 	db BANK(SilphCo10F_h)
@@ -253,4 +253,5 @@ MapHeaderBanks::
 	db BANK(KogasRoom_h)
 	db BANK(WillsRoom_h)
 	db BANK(KarensRoom_h)
+	db BANK(PalmsRoom_h)
 	assert_table_length NUM_MAPS

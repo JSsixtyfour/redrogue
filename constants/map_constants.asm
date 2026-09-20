@@ -374,7 +374,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const CERULEAN_BADGE_HOUSE,           4,  4 ; $E6
 	end_indoor_group CERULEAN_CITY_3
 
-	map_const UNUSED_MAP_E7,                  0,  0 ; $E7
+	map_const AI_LAIR,                        5,  4 ; $E7 (was UNUSED_MAP_E7)
 	map_const ROCK_TUNNEL_B1F,               20, 18 ; $E8
 	end_indoor_group ROCK_TUNNEL_2
 
@@ -399,15 +399,19 @@ DEF FIRST_INDOOR_MAP EQU const_value
 ; reclaim an UNUSED_MAP_* slot: Phase 6 consumed all eight in-place slots and
 ; only $E7 remains, against three rooms needed. Appending here is safe because
 ; these land inside the LAST indoor group, so no INDOORGROUP_* boundary moves
-; and LoadTownMapEntry's scan is untouched. NUM_MAPS becomes $FB, leaving $FB
-; banked and keeping ASSERT WARP_NO_RETURN ($FD) > NUM_MAPS true with two to
-; spare. Dimensions are MEASURED from each .blk (see PHASE_7_SPEC.md), not
+; and LoadTownMapEntry's scan is untouched. After PALMS_ROOM is appended below,
+; NUM_MAPS becomes $FC, leaving $FC reserved and keeping
+; ASSERT WARP_NO_RETURN ($FD) > NUM_MAPS true. Dimensions are MEASURED from
+; each .blk (see PHASE_7_SPEC.md), not
 ; guessed: Koga and Will are 5x7 GYM rooms, Karen is a 5x8 CEMETERY room.
 ; These three also append a row to map_header_pointers / map_header_banks /
 ; songs, in THIS order, Koga then Will then Karen.
 	map_const KOGAS_ROOM,                     5,  7 ; $F8
 	map_const WILLS_ROOM,                     5,  7 ; $F9
 	map_const KARENS_ROOM,                    5,  8 ; $FA
+	; Final-sequence set piece. Appended inside the last indoor group so no
+	; INDOORGROUP_* boundary moves; $FC remains reserved before WARP_NO_RETURN.
+	map_const PALMS_ROOM,                     4,  4 ; $FB
 	end_indoor_group POKEMON_LEAGUE_3
 DEF NUM_MAPS EQU const_value
 

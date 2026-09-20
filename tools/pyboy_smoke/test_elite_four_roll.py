@@ -10,9 +10,10 @@ predecessor of this code shipped a silent routing bug for weeks.
 
 Group control. RogueGetActiveGroupMask short-circuits to "every group" when
 BIT_DEBUG2_MODE is set in wStatusFlags6, and otherwise derives unlocks from
-wNumHoFTeams and ANDs in the player's SRAM toggle byte. That gives two clean
-levers that do not interfere: the debug bit selects the POOL, and wNumHoFTeams
-independently drives the forced-first-clear Champion.
+the persistent activation events and ANDs in the player's SRAM toggle byte.
+That gives two clean levers that do not interfere: the debug bit selects the
+POOL, and the activation/defeat events independently drive the forced
+first-clear Champion.
 
 Roll budget. call_routine corrupts the machine after roughly ten invocations on
 one boot (project_call_routine_harness_limits), so no method below rolls more
@@ -30,6 +31,7 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 TRAINER_CONSTANTS = REPO_ROOT / "constants" / "trainer_constants.asm"
 RAM_CONSTANTS = REPO_ROOT / "constants" / "ram_constants.asm"
 MAP_CONSTANTS = REPO_ROOT / "constants" / "map_constants.asm"
+EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 
 E4_ROOMS = [
     "LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM", "LANCES_ROOM",
@@ -52,6 +54,7 @@ class Elite4RollTest(HarnessTestCase):
         super().setUp()
         self.classes = parse_trainer_class_indexes(TRAINER_CONSTANTS)
         ram = parse_rgbds_constants(RAM_CONSTANTS)
+        self.events = parse_rgbds_constants(EVENT_CONSTANTS)
         self.debug2_bit = ram["BIT_DEBUG2_MODE"]
         self.by_id = {self.classes[name]: name for name in self.classes}
         self.map_ids = parse_map_constants(MAP_CONSTANTS)
@@ -59,7 +62,9 @@ class Elite4RollTest(HarnessTestCase):
 
     # -- helpers ----------------------------------------------------------
 
-    def _boot(self, *, johto: bool, hof_teams: int = 0) -> None:
+    def _boot(
+        self, *, johto: bool, unlock_stage: int = 0, defeat_stage: int = 0
+    ) -> None:
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
@@ -69,7 +74,14 @@ class Elite4RollTest(HarnessTestCase):
         else:
             flags &= ~(1 << self.debug2_bit) & 0xFF
         h.write8("wStatusFlags6", flags)
-        h.write8("wNumHoFTeams", hof_teams)
+        if unlock_stage >= 1:
+            h.set_event(self.events["EVENT_JOHTO_ACTIVATED"])
+        if unlock_stage >= 2:
+            h.set_event(self.events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
+        if defeat_stage >= 1:
+            h.set_event(self.events["EVENT_LANCE_CHAMPION_DEFEATED"])
+        if defeat_stage >= 2:
+            h.set_event(self.events["EVENT_OAK_CHAMPION_DEFEATED"])
         self._set_lineup({})
 
     def _set_lineup(self, lineup: dict[int, int]) -> None:
@@ -148,7 +160,7 @@ class Elite4RollTest(HarnessTestCase):
 
     def test_champion_is_never_also_an_elite_four_member(self) -> None:
         """Lance is in both pools; drawing him twice would make one room wrong."""
-        self._boot(johto=True, hof_teams=5)
+        self._boot(johto=True, unlock_stage=5, defeat_stage=2)
         for _ in range(6):
             members, champion = self._roll()
             self.assertNotIn(
@@ -157,8 +169,8 @@ class Elite4RollTest(HarnessTestCase):
             self.assertIn(champion, CHAMPION_POOL)
 
     def test_first_johto_clear_forces_lance_unless_he_is_in_the_four(self) -> None:
-        """wNumHoFTeams == 1 is exactly "Johto unlocked, not yet cleared"."""
-        self._boot(johto=True, hof_teams=1)
+        """Johto active with Lance's first-clear event still unset."""
+        self._boot(johto=True, unlock_stage=1)
         for _ in range(6):
             members, champion = self._roll()
             if "LANCE" in members:
@@ -171,12 +183,12 @@ class Elite4RollTest(HarnessTestCase):
                 )
 
     def test_first_warp_clear_forces_oak(self) -> None:
-        """wNumHoFTeams == 2 is exactly "Time Warp unlocked, not yet cleared".
+        """Time Warp active with Oak's first-clear event still unset.
 
         Oak is never an Elite Four candidate, so unlike Lance he has no
         escape branch: this one is unconditional.
         """
-        self._boot(johto=True, hof_teams=2)
+        self._boot(johto=True, unlock_stage=2, defeat_stage=1)
         for _ in range(5):
             _, champion = self._roll()
             self.assertEqual(champion, "PROF_OAK")

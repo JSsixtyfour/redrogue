@@ -1336,6 +1336,19 @@ INCLUDE "scripts/Truck.asm"
 INCLUDE "data/maps/objects/Truck.asm"
 Truck_Blocks: INCBIN "maps/truck.blk"
 
+; Final-sequence static set pieces live with the other Silph Co support maps.
+; Keeping them in Maps 22 preserves the established header/script/object/block
+; organization and uses this section's measured headroom.
+INCLUDE "data/maps/headers/AILair.asm"
+INCLUDE "scripts/AILair.asm"
+INCLUDE "data/maps/objects/AILair.asm"
+AILair_Blocks: INCBIN "maps/AILair.blk"
+
+INCLUDE "data/maps/headers/PalmsRoom.asm"
+INCLUDE "scripts/PalmsRoom.asm"
+INCLUDE "data/maps/objects/PalmsRoom.asm"
+PalmsRoom_Blocks: INCBIN "maps/PalmsRoom.blk"
+
 ; ============================================================
 ; Johto gyms (Phase 6). A NEW floating section rather than growing an existing
 ; "Maps N": bank $17 holds four Kanto gym scripts with 2 bytes free, and rgblink

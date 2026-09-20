@@ -540,11 +540,10 @@ RogueGetTierBaseCount::
 ;         Kanto (bit 0) is always set; it is not toggleable.
 ; CLOBBERS: af   (bc, de, hl PRESERVED)
 ;
-; Unlock state is DERIVED from wNumHoFTeams rather than stored: one champion win
-; unlocks Johto, two unlock Kanto Time Warp. That byte is already saved, already
-; saturating (engine/movie/hall_of_fame.asm), and already survives the run-reset
-; script, so deriving it avoids a second source of truth that could desync from
-; the save file.
+; Unlock state is derived from the persistent activation events rather than from
+; the number of recorded Hall of Fame teams. The events are saved with the
+; player's story flags and survive the run-reset script, so the event itself is
+; the source of truth for Johto and Kanto Time Warp availability.
 ;
 ; A save made before sRogueSpeciesGroupsEnabled existed reads $ff here, which the
 ; final AND clamps to "every unlocked group enabled" - a sane default, and
@@ -555,7 +554,7 @@ RogueGetActiveGroupMask::
 ; Debug 2: every group unlocked AND enabled, no champion wins and no PC toggle
 ; required. This is the ONLY practical way to test Johto/Warp species and the
 ; regional forms, which ride the same unlocks (see RogueFormsUnlocked) - a fresh
-; run has wNumHoFTeams = 0 and therefore no forms at all, by design.
+; run has neither activation event and therefore no forms at all, by design.
 ;
 ; Returns before the SRAM read below on purpose: the player's toggle byte must
 ; not be able to switch a group back OFF in debug 2, or the mode would not be a
@@ -567,15 +566,16 @@ RogueGetActiveGroupMask::
 	pop bc
 	ret
 .deriveUnlocks
-	ld a, [wNumHoFTeams]
-	ld b, 1 << BIT_GROUP_KANTO
-	and a
-	jr z, .gotUnlocks
-	set BIT_GROUP_JOHTO, b
-	dec a
-	jr z, .gotUnlocks
-	set BIT_GROUP_WARP, b
-.gotUnlocks
+	; The two persistent activation bits are deliberately four positions above
+	; their species-group bits (5->1 and 6->2). One nibble swap converts both
+	; unlocks at once; Kanto is then added unconditionally.
+	ASSERT EVENT_JOHTO_ACTIVATED % 8 == BIT_GROUP_JOHTO + 4
+	ASSERT EVENT_KANTO_TIMEWARP_ACTIVATED % 8 == BIT_GROUP_WARP + 4
+	ld a, [wEventFlags + (EVENT_JOHTO_ACTIVATED / 8)]
+	and (1 << (EVENT_JOHTO_ACTIVATED % 8)) | (1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8))
+	swap a
+	inc a ; bit 0 is clear after the mask/swap, so this sets Kanto size-neutrally
+	ld b, a
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ASSERT BANK("Save Data") == 1

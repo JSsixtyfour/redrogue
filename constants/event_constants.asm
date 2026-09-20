@@ -34,7 +34,7 @@
 ; Reachability comes from the warp graph in data/maps/objects, the
 ; connection graph in data/maps/headers, and the code-driven destination
 ; tables named in TABLE 5 of the generator (rogue stages, gyms, bridge
-; rooms, wild areas). 100 maps are reachable.
+; rooms, wild areas). 102 maps are reachable.
 ; ==========================================================================
 
 DEF NUM_EVENTS EQU 512
@@ -76,7 +76,8 @@ DEF EVENT_JOHTO_ACTIVATED                        EQU   29 ; byte 3 bit 5
 DEF EVENT_KANTO_TIMEWARP_ACTIVATED               EQU   30 ; byte 3 bit 6
 DEF EVENT_FINAL_BRIEFING_COMPLETE                EQU   31 ; byte 3 bit 7
 DEF EVENT_POST_GAME                              EQU   32 ; byte 4 bit 0
-DEF PERSISTENT_EVENTS_END   EQU 32
+DEF EVENT_PALMS_ROOM_OPEN                        EQU   33 ; byte 4 bit 1
+DEF PERSISTENT_EVENTS_END   EQU 33
 
 ; ==========================================================================
 ; ZONE 1 - RUN-SCOPED (cleared by RogueResetRunState)

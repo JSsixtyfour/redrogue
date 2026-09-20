@@ -511,6 +511,15 @@ ToggleableObjectStates:
 	toggleable_objects_for SILPH_CO_B1F
 	toggle_object_state SILPHCOB1F_SCIENTIST, OFF
 	toggle_object_state SILPHCOB1F_PROF_PALM, ON
+	toggle_object_state SILPHCOB1F_LANCE, OFF
+	toggle_object_state SILPHCOB1F_ROCKET, OFF
+
+	toggleable_objects_for AI_LAIR
+	toggle_object_state AILAIR_OPPONENT, OFF
+
+	toggleable_objects_for PALMS_ROOM
+	toggle_object_state PALMSROOM_PROF_PALM, OFF
+	toggle_object_state PALMSROOM_LANCE, OFF
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

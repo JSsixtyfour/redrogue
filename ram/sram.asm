@@ -329,8 +329,9 @@ sPrismCartridges:: ds 2
 ; is unused - Kanto is always in the pool and cannot be toggled off.
 ;
 ; This is the ENABLED state only. Whether a group is UNLOCKED is derived from
-; wNumHoFTeams at read time (see RogueGetActiveGroupMask), so a toggle set here
-; for a group the player has not earned yet is simply ignored.
+; the persistent activation events at read time (see RogueGetActiveGroupMask),
+; so a toggle set here for a group the player has not earned yet is simply
+; ignored.
 ;
 ; SRAM, outside sGameData, because the toggles are meant to persist across runs
 ; and blackouts exactly like sPrismCartridges above. MUST stay adjacent to

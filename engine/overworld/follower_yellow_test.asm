@@ -70,7 +70,7 @@ FollowerIsTestMap:
 .excludedIndoorMaps
 	db TRUCK
 	db MINI_SAFFRON
-	db UNUSED_MAP_E7
+	db AI_LAIR
 	db TRADE_CENTER
 	db COLOSSEUM
 	db SILPH_CO_VR

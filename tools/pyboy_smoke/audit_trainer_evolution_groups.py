@@ -28,9 +28,9 @@ Three properties, all in the trainer team-build path.
     listing ABRA, KADABRA and ALAKAZAM would pass ABRA against an already-built
     ALAKAZAM and field a second one.
 
-Species groups are driven by wNumHoFTeams (0 = Kanto only, 1 = +Johto, 2+ =
-+Warp) ANDed with the player's sRogueSpeciesGroupsEnabled toggle byte in SRAM
-bank 1. Both are set here.
+Species groups are driven by the persistent activation events (0 = Kanto only,
+Johto event = +Johto, Time Warp event = +Warp) ANDed with the player's
+sRogueSpeciesGroupsEnabled toggle byte in SRAM bank 1. Both are set here.
 
 call_routine corrupts the machine after roughly ten invocations, so the builds
 are split across two boots.
@@ -55,9 +55,11 @@ from source_constants import (  # noqa: E402
 )
 
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
+EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 ROUND9_BATTLE_COUNT = 85
 ROUND9_TRAINER_NO = 9
 ALL_GROUPS = 0b111
+EVENTS = parse_rgbds_constants(EVENT_CONSTANTS)
 
 
 def species_by_name():
@@ -93,14 +95,17 @@ def non_kanto_species():
     return out
 
 
-def set_groups(h, hof_teams):
-    """Unlock groups by champion wins, and enable them in the player toggle."""
-    h.write8("wNumHoFTeams", hof_teams)
+def set_groups(h, unlock_stage):
+    """Set the corresponding persistent activation events and enable groups."""
+    if unlock_stage >= 1:
+        h.set_event(EVENTS["EVENT_JOHTO_ACTIVATED"])
+    if unlock_stage >= 2:
+        h.set_event(EVENTS["EVENT_KANTO_TIMEWARP_ACTIVATED"])
     h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [ALL_GROUPS], bank=1)
 
 
-def build(h, class_index, hof_teams):
-    set_groups(h, hof_teams)
+def build(h, class_index, unlock_stage):
+    set_groups(h, unlock_stage)
     h.write8("wBattleCount", ROUND9_BATTLE_COUNT)
     h.write8("wTrainerClass", class_index)
     h.write8("wTrainerNo", ROUND9_TRAINER_NO)
@@ -123,13 +128,13 @@ def main() -> int:
     # extended, so a single build no longer guarantees the draw - take the UNION
     # over several builds instead. (Noting this because the original one-build
     # version silently stopped measuring anything the moment the pool grew.)
-    def union_builds(hof, count, seed):
+    def union_builds(unlock_stage, count, seed):
         seen = set()
         h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         try:
             h.boot_fight2(seed=seed)
             for _ in range(count):
-                seen.update(build(h, classes["NURSE_JOY"], hof))
+                seen.update(build(h, classes["NURSE_JOY"], unlock_stage))
         finally:
             try:
                 h.close()

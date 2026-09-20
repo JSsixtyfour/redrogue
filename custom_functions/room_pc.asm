@@ -21,9 +21,8 @@ DEF ROOM_PC_KEY_ITEMS   EQU 0
 DEF ROOM_PC_FURNITURE   EQU 1
 DEF ROOM_PC_DECORATIONS EQU 2
 DEF ROOM_PC_HOF         EQU 3
-DEF ROOM_PC_TOGGLES     EQU 4  ; shares its gate with ROOM_PC_HOF - see RoomPC
-DEF ROOM_PC_LOGOFF_NOHOF EQU 3
-DEF ROOM_PC_LOGOFF_HOF   EQU 5
+DEF ROOM_PC_TOGGLES     EQU 4  ; index when the HALL OF FAME row is present
+DEF ROOM_PC_TOGGLES_NOHOF EQU 3 ; index when the HALL OF FAME row is absent
 
 ; ============================================================
 ; RoomPC — entry point, farcalled from SilphCoDorm's PC bg_event text_asm.
@@ -41,12 +40,32 @@ RoomPC::
 	ldh a, [hUILayoutFlags]
 	res BIT_DOUBLE_SPACED_MENU, a
 	ldh [hUILayoutFlags], a
+	; HALL OF FAME is gated by the existence of an actual recorded team.
+	; TOGGLES is gated independently by the persistent expansion events. Keep
+	; this two-bit layout mask in the unused tail of wBuffer for the rest of
+	; this menu; RoomDrawPickList uses only wBuffer + 0..6. Bit 0 is HALL OF
+	; FAME, bit 1 is TOGGLES.
+	ld c, 3                      ; LOG OFF index before optional rows
+	xor a
+	ld [wBuffer + 7], a          ; HALL OF FAME absent
 	ld a, [wNumHoFTeams]
 	and a
-	ld a, ROOM_PC_LOGOFF_NOHOF
-	jr z, .noHof
-	ld a, ROOM_PC_LOGOFF_HOF
-.noHof
+	jr z, .checkToggleGate
+	ld a, 1
+	ld [wBuffer + 7], a          ; HALL OF FAME present
+	inc c
+.checkToggleGate
+	CheckEvent EVENT_JOHTO_ACTIVATED
+	jr nz, .togglesAvailable
+	CheckEventReuseA EVENT_KANTO_TIMEWARP_ACTIVATED
+	jr z, .gotMenuGates
+.togglesAvailable
+	ld a, [wBuffer + 7]
+	or 1 << 1
+	ld [wBuffer + 7], a
+	inc c
+.gotMenuGates
+	ld a, c                      ; wMaxMenuItem is the LOG OFF index
 	ld [wMaxMenuItem], a
 	push af
 	hlcoord 0, 0
@@ -66,12 +85,15 @@ RoomPC::
 	hlcoord 2, 6
 	ld de, .DecorationsString
 	call PlaceString
-	ld a, [wNumHoFTeams]
-	and a
+	ld a, [wBuffer + 7]
+	bit 0, a
 	jr z, .noHofLabel
 	hlcoord 2, 8
 	ld de, .HallOfFameString
 	call PlaceString
+	ld a, [wBuffer + 7]
+	bit 1, a
+	jr z, .hofOnlyLabel
 	hlcoord 2, 10
 	ld de, .TogglesString
 	call PlaceString
@@ -79,7 +101,23 @@ RoomPC::
 	ld de, .LogOffString
 	call PlaceString
 	jr .inputSetup
+.hofOnlyLabel
+	hlcoord 2, 10
+	ld de, .LogOffString
+	call PlaceString
+	jr .inputSetup
 .noHofLabel
+	ld a, [wBuffer + 7]
+	bit 1, a
+	jr z, .noHofNoToggleLabel
+	hlcoord 2, 8
+	ld de, .TogglesString
+	call PlaceString
+	hlcoord 2, 10
+	ld de, .LogOffString
+	call PlaceString
+	jr .inputSetup
+.noHofNoToggleLabel
 	hlcoord 2, 8
 	ld de, .LogOffString
 	call PlaceString
@@ -102,13 +140,18 @@ RoomPC::
 	ld [hli], a
 	ld [hl], a
 	; Descriptions in the text box, through the same PrintBagInfoText cursor
-	; hook the option lists use. Two tables, because HALL OF FAME existing
-	; shifts LOG OFF's menu index.
-	ld hl, RoomPCDescTable
-	ld a, [wNumHoFTeams]
-	and a
-	jr z, .descTableSet
-	ld hl, RoomPCDescTableHoF
+	; hook the option lists use. Select the table for the two independent
+	; optional rows, since either one may exist without the other in an
+	; imported or otherwise unusual save.
+	ld a, [wBuffer + 7]
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, RoomPCDescTablePointers
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 .descTableSet
 	ld a, 2
 	call RoomSetPickListOpts
@@ -140,23 +183,29 @@ RoomPC::
 	call RoomDecorationsMenu
 	jp .menu
 .notDecorations
-	; Without a Hall of Fame entry, item 3 is the ONLY remaining option
-	; (ROOM_PC_LOGOFF_NOHOF), so no further index check is needed. With one,
-	; items 3-5 (HALL OF FAME / TOGGLES / LOG OFF) all reach this point and
-	; MUST be told apart by index - a bare wNumHoFTeams check here used to
-	; treat both HALL OF FAME and LOG OFF as "open the Hall of Fame", so
-	; pressing A on LOG OFF silently reopened it instead of logging off.
-	ld a, [wNumHoFTeams]
-	and a
-	jr z, .logOff
+	; Convert the optional-row selection to 0-based form, then consume the
+	; HALL OF FAME slot when that row exists. The remaining zero is TOGGLES;
+	; every other value is LOG OFF.
 	ldh a, [hCurrentMenuItem]
-	cp ROOM_PC_HOF
-	jr nz, .notHof
+	sub ROOM_PC_HOF
+	ld c, a
+	ld a, [wBuffer + 7]
+	and 1
+	jr z, .dispatchToggle
+	ld a, c
+	and a
+	jr nz, .consumeHofSlot
 	farcall PKMNLeaguePC
 	jp .menu
-.notHof
-	cp ROOM_PC_TOGGLES
-	jr nz, .logOff              ; only ROOM_PC_LOGOFF_HOF remains
+.consumeHofSlot
+	dec c
+.dispatchToggle
+	ld a, [wBuffer + 7]
+	and 2
+	jr z, .logOff
+	ld a, c
+	and a
+	jr nz, .logOff
 	call RogueGroupToggleMenu
 	jp .menu
 .logOff
@@ -389,10 +438,10 @@ RoomBottomNameTable:
 ; Two lines of at most 18 characters, joined by <NEXT>; they are drawn at
 ; (1,14) and (1,16) inside the standard text box by RoomPrintDescription.
 
-; RoomPC's own top menu. HALL OF FAME and TOGGLES share one gate - both
-; only appear once the player has a Hall of Fame entry - and their presence
-; pushes LOG OFF from index 3 to 5, so the two layouts need separate index
-; tables over the same strings.
+; RoomPC's own top menu. HALL OF FAME is controlled by the actual recorded
+; team count, while TOGGLES is controlled by the persistent activation events.
+; Keep a table for each combination because either optional row can be absent
+; independently in an imported or otherwise unusual save.
 RoomPCDescTable:
 	dw .KeyItems, .Furniture, .Decorations, .LogOff
 .KeyItems:    db "Store or take back<NEXT>your KEY ITEMS.@"
@@ -406,6 +455,18 @@ RoomPCDescTableHoF:
 	dw RoomPCDescTable.KeyItems, RoomPCDescTable.Furniture, \
 	   RoomPCDescTable.Decorations, RoomPCDescTable.HallOfFame, \
 	   RoomPCDescTable.Toggles, RoomPCDescTable.LogOff
+
+RoomPCDescTableHofOnly:
+	dw RoomPCDescTable.KeyItems, RoomPCDescTable.Furniture, \
+	   RoomPCDescTable.Decorations, RoomPCDescTable.HallOfFame, \
+	   RoomPCDescTable.LogOff
+
+RoomPCDescTablePointers:
+	; Activation events are awarded only after a Hall of Fame record exists, so
+	; mask 2 is not reachable in normal play. Keep a safe fallback pointer for
+	; manually edited/imported saves without spending another five-entry table.
+	dw RoomPCDescTable, RoomPCDescTableHofOnly, \
+	   RoomPCDescTable, RoomPCDescTableHoF
 
 RoomTopDescTable:
 	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, \
@@ -961,9 +1022,10 @@ RoomDrawEntries:
 ; ============================================================
 ; RogueGroupToggleMenu — lists the species groups the player has unlocked
 ; and lets them flip each on or off. Reached from RoomPC's TOGGLES entry,
-; which shares its gate with HALL OF FAME (wNumHoFTeams non-zero), so Johto
-; is always present here; Kanto Time Warp is a second row only once
-; wNumHoFTeams >= 2. Kanto itself is never listed - it cannot be disabled.
+; whose gate is independent of the Hall of Fame. Each row is controlled by
+; its own persistent activation event, so imported saves with either event
+; alone still receive the correct option. Kanto itself is never listed - it
+; cannot be disabled.
 ;
 ; Drawing/input follow RoomDrawPickList's single-spaced list conventions
 ; (BIT_DOUBLE_SPACED_MENU SET = 1-row cursor stride, PAD_A|PAD_B watched,
@@ -987,12 +1049,32 @@ RogueGroupToggleMenu::
 	set BIT_DOUBLE_SPACED_MENU, a ; inverted name: SET gives a 1-row stride
 	ldh [hUILayoutFlags], a
 
-	ld a, [wNumHoFTeams]
-	ld b, 1                      ; interior rows: JOHTO only...
-	cp 2
-	jr c, .gotRowCount
-	ld b, 2                      ; ...or JOHTO + KANTO WARP
+	; wBuffer + 7/+8 hold the group mask for row 0/row 1. The second row is
+	; compacted away when Johto is not active, so a Warp-only save still flips
+	; the Warp bit when the first row is selected.
+	xor a
+	ld [wBuffer + 8], a
+	CheckEvent EVENT_JOHTO_ACTIVATED
+	jr z, .warpOnly
+	ld a, 1 << BIT_GROUP_JOHTO
+	ld [wBuffer + 7], a
+	ld b, 1
+	; a now holds the Johto group mask, not the event byte, so this must reload.
+	CheckEvent EVENT_KANTO_TIMEWARP_ACTIVATED
+	jr z, .gotRowCount
+	ld a, 1 << BIT_GROUP_WARP
+	ld [wBuffer + 8], a
+	inc b
+	jr .gotRowCount
+.warpOnly
+	; The caller exposes this menu only when at least one activation event is
+	; set, so a missing Johto event means Warp is the sole available row.
+	ld a, 1 << BIT_GROUP_WARP
+	ld [wBuffer + 7], a
+	ld b, 1
 .gotRowCount
+	ld a, b
+	ld [wBuffer + 9], a
 	push bc
 	hlcoord 0, 0
 	pop bc
@@ -1000,16 +1082,27 @@ RogueGroupToggleMenu::
 	call TextBoxBorder
 	call UpdateSprites
 
+	ld a, [wBuffer + 7]
+	bit BIT_GROUP_JOHTO, a
+	jr z, .drawWarpRow0
 	hlcoord 2, 1
 	ld de, .JohtoText
 	call PlaceString
 	hlcoord 13, 1
 	ld c, 1 << BIT_GROUP_JOHTO
 	call .drawValue
-
-	ld a, [wNumHoFTeams]
-	cp 2
-	jr c, .drawn                 ; Kanto Time Warp not unlocked yet
+	jr .drawRow1
+.drawWarpRow0
+	hlcoord 2, 1
+	ld de, .WarpText
+	call PlaceString
+	hlcoord 13, 1
+	ld c, 1 << BIT_GROUP_WARP
+	call .drawValue
+.drawRow1
+	ld a, [wBuffer + 8]
+	and a
+	jr z, .drawn
 	hlcoord 2, 2
 	ld de, .WarpText
 	call PlaceString
@@ -1025,13 +1118,8 @@ RogueGroupToggleMenu::
 	ld [hli], a                  ; wTopMenuItemY
 	ld [hli], a                  ; wTopMenuItemX
 	inc hl                       ; skip wTileBehindCursor
-	ld a, [wNumHoFTeams]
-	ld b, 0
-	cp 2
-	jr c, .gotMaxItem
-	ld b, 1
-.gotMaxItem
-	ld a, b
+	ld a, [wBuffer + 9]
+	dec a
 	ld [hli], a                  ; wMaxMenuItem
 	ld a, PAD_A | PAD_B
 	ld [hli], a                  ; wMenuWatchedKeys
@@ -1048,10 +1136,13 @@ RogueGroupToggleMenu::
 
 	ldh a, [hCurrentMenuItem]
 	and a
-	ld c, 1 << BIT_GROUP_JOHTO
-	jr z, .flip
-	ld c, 1 << BIT_GROUP_WARP
+	jr z, .flipRow0
+	ld a, [wBuffer + 8]
+	jr .flip
+.flipRow0
+	ld a, [wBuffer + 7]
 .flip
+	ld c, a
 	call .flipGroupBit
 	jp .redraw
 

@@ -254,6 +254,8 @@ WildDataPointers:
 	dw NothingWildMons
 	dw NothingWildMons
 	dw NothingWildMons
+	; PALMS_ROOM appends at $FB; AI_LAIR reuses $E7's existing no-wild row.
+	dw NothingWildMons
 	assert_table_length NUM_MAPS
 	dw -1 ; end
 
