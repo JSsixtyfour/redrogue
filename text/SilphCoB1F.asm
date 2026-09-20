@@ -73,3 +73,26 @@ _SilphCoB1FJohtoActivationText::
 	para "Join me when"
 	line "you're ready."
 	done
+
+_SilphCoB1FTimeWarpActivationText::
+	text "PROF PALM:"
+	line "Amazing!"
+
+	para "I've upgraded our"
+	line "system with"
+	cont "Pokemon from"
+	cont "beyond our space"
+	cont "and time."
+
+	para "You may turn it"
+	line "off at your PC if"
+	cont "you like, but it"
+	cont "is strongly"
+	cont "encouraged that"
+	cont "you attempt this,"
+	cont "greater rewards"
+	cont "will be offered."
+
+	para "Join me when"
+	line "you're ready."
+	done

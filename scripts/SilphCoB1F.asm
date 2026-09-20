@@ -8,7 +8,7 @@ SilphCoB1F_Script:
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
-	cp SCRIPT_SILPHCOB1F_JOHTO_RETURN_DONE + 1
+	cp SCRIPT_SILPHCOB1F_ACTIVATION_RETURN_DONE + 1
 	jp nc, SilphCoB1FElevatorBlockerScript
 .introTour
 	ld hl, SilphCoB1F_ScriptPointers
@@ -27,8 +27,10 @@ SilphCoB1F_ScriptPointers:
 	dw_const SilphCoB1FEnterVRScript,              SCRIPT_SILPHCOB1F_ENTER_VR
 	dw_const SilphCoB1FNoopScript,                 SCRIPT_SILPHCOB1F_NOOP
 	dw_const SilphCoB1FJohtoApproachScript,         SCRIPT_SILPHCOB1F_JOHTO_APPROACH
-	dw_const SilphCoB1FJohtoGreetingScript,         SCRIPT_SILPHCOB1F_JOHTO_GREETING
-	dw_const SilphCoB1FJohtoReturnScript,           SCRIPT_SILPHCOB1F_JOHTO_RETURN_DONE
+	dw_const SilphCoB1FTimeWarpApproachScript,      SCRIPT_SILPHCOB1F_TIMEWARP_APPROACH
+	dw_const SilphCoB1FActivationGreetingScript,    SCRIPT_SILPHCOB1F_JOHTO_GREETING
+	dw_const SilphCoB1FActivationGreetingScript,    SCRIPT_SILPHCOB1F_TIMEWARP_GREETING
+	dw_const SilphCoB1FActivationReturnScript,      SCRIPT_SILPHCOB1F_ACTIVATION_RETURN_DONE
 
 ; Normalize the distinct Palm and stair-scientist objects on every map load,
 ; then stage Checkpoint 2 on the first fresh return from the Dorm after the
@@ -43,7 +45,7 @@ SilphCoB1FHandleMapEntry:
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	jr z, .introTourActors
+	jp z, .introTourActors
 	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -64,10 +66,22 @@ SilphCoB1FHandleMapEntry:
 	cp 3
 	ret nz
 .eligibleDormWarp
+	; Later story beats take priority if debug progression or an imported save
+	; leaves more than one activation pending at once.
+	CheckEvent EVENT_LANCE_CHAMPION_DEFEATED
+	jr z, .checkRivalActivation
+	CheckEvent EVENT_KANTO_TIMEWARP_ACTIVATED
+	jr nz, .checkRivalActivation
+	ld a, SCRIPT_SILPHCOB1F_TIMEWARP_APPROACH
+	jr .stageActivation
+.checkRivalActivation
 	CheckEvent EVENT_RIVAL_CHAMPION_DEFEATED
 	ret z
 	CheckEvent EVENT_JOHTO_ACTIVATED
 	ret nz
+	ld a, SCRIPT_SILPHCOB1F_JOHTO_APPROACH
+.stageActivation
+	ld [wSilphCoB1FCurScript], a
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -91,8 +105,6 @@ SilphCoB1FHandleMapEntry:
 	swap a
 	ldh [hCurrentSpriteOffset], a
 	farcall InitializeSpriteScreenPosition
-	ld a, SCRIPT_SILPHCOB1F_JOHTO_APPROACH
-	ld [wSilphCoB1FCurScript], a
 	ret
 .introTourActors
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
@@ -103,6 +115,14 @@ SilphCoB1FHandleMapEntry:
 	predef_jump ShowObject
 
 SilphCoB1FJohtoApproachScript:
+	ld a, SCRIPT_SILPHCOB1F_JOHTO_GREETING
+	jr SilphCoB1FStartActivationApproach
+
+SilphCoB1FTimeWarpApproachScript:
+	ld a, SCRIPT_SILPHCOB1F_TIMEWARP_GREETING
+
+SilphCoB1FStartActivationApproach:
+	push af
 	ld de, SilphCoB1FPalmLeftSixMovement
 	ld a, [wXCoord]
 	cp 2
@@ -112,11 +132,11 @@ SilphCoB1FJohtoApproachScript:
 	ld a, SILPHCOB1F_PROF_PALM
 	ldh [hSpriteIndex], a
 	call MoveSprite
-	ld a, SCRIPT_SILPHCOB1F_JOHTO_GREETING
+	pop af
 	ld [wSilphCoB1FCurScript], a
 	ret
 
-SilphCoB1FJohtoGreetingScript:
+SilphCoB1FActivationGreetingScript:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
@@ -134,26 +154,30 @@ SilphCoB1FJohtoGreetingScript:
 	call UpdateSprites
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	ld a, TEXT_SILPHCOB1F_JOHTO_ACTIVATION
+	call SilphCoB1FGetActivationParameters
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 
 	; Match the Room PC's short SRAM transaction and preserve every other group
-	; toggle.  This activation starts Johto enabled rather than replacing the
-	; complete option mask.
+	; toggle. The parameter mask enables Johto alone for Event 1, or Johto plus
+	; Kanto Time Warp for Event 2, without replacing the complete option mask.
+	call SilphCoB1FGetActivationParameters
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
 	ld a, [sRogueSpeciesGroupsEnabled]
-	set BIT_GROUP_JOHTO, a
+	or c
 	ld [sRogueSpeciesGroupsEnabled], a
 	xor a
 	ld [rRAMG], a
-	SetEvent EVENT_JOHTO_ACTIVATED
+	ld hl, wEventFlags
+	ld c, e
+	ld b, FLAG_SET
+	predef FlagActionPredef
 	farcall SaveGameData
 
 	ld de, SilphCoB1FPalmRightSixMovement
@@ -165,11 +189,37 @@ SilphCoB1FJohtoGreetingScript:
 	ld a, SILPHCOB1F_PROF_PALM
 	ldh [hSpriteIndex], a
 	call MoveSprite
-	ld a, SCRIPT_SILPHCOB1F_JOHTO_RETURN_DONE
+	ld a, SCRIPT_SILPHCOB1F_ACTIVATION_RETURN_DONE
 	ld [wSilphCoB1FCurScript], a
 	ret
 
-SilphCoB1FJohtoReturnScript:
+; Returns a = dialogue text id, c = group-enable mask, e = completion event.
+; The current greeting state selects one of two three-byte parameter rows.
+SilphCoB1FGetActivationParameters:
+	ld a, [wSilphCoB1FCurScript]
+	sub SCRIPT_SILPHCOB1F_JOHTO_GREETING
+	ld c, a
+	add a
+	add c
+	ld c, a
+	ld b, 0
+	ld hl, SilphCoB1FActivationParameters
+	add hl, bc
+	ld a, [hli]
+	ld c, [hl]
+	inc hl
+	ld e, [hl]
+	ret
+
+SilphCoB1FActivationParameters:
+	db TEXT_SILPHCOB1F_JOHTO_ACTIVATION
+	db 1 << BIT_GROUP_JOHTO
+	db EVENT_JOHTO_ACTIVATED
+	db TEXT_SILPHCOB1F_TIMEWARP_ACTIVATION
+	db (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	db EVENT_KANTO_TIMEWARP_ACTIVATED
+
+SilphCoB1FActivationReturnScript:
 	ld a, [wStatusFlags5]
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
@@ -387,6 +437,7 @@ SilphCoB1F_TextPointers:
 	dw_const SilphCoB1FCreditExchangeText, TEXT_SILPHCOB1F_CREDIT_EXCHANGE
 	dw_const SilphCoB1FVRText,             TEXT_SILPHCOB1F_VR
 	dw_const SilphCoB1FJohtoActivationText, TEXT_SILPHCOB1F_JOHTO_ACTIVATION
+	dw_const SilphCoB1FTimeWarpActivationText, TEXT_SILPHCOB1F_TIMEWARP_ACTIVATION
 
 SilphCoB1FScientistText:
 	text_far _SilphCoB1FScientistText
@@ -416,4 +467,8 @@ SilphCoB1FVRText:
 
 SilphCoB1FJohtoActivationText:
 	text_far _SilphCoB1FJohtoActivationText
+	text_end
+
+SilphCoB1FTimeWarpActivationText:
+	text_far _SilphCoB1FTimeWarpActivationText
 	text_end
