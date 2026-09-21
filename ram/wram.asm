@@ -2059,6 +2059,7 @@ ENDR
 wPartyMonNicksEnd::
 
 wPartyDataEnd::
+ASSERT wPartyDataEnd - wPartyDataStart == 404
 
 
 SECTION "Main Data", WRAM0
@@ -3179,6 +3180,13 @@ wDayCareMon2:: box_struct wDayCareMon2
 
 
 wMainDataEnd::
+
+; Unsaved identity sidecar for an archived fusion loaded as the final AI's
+; party. The party record itself carries the fusion bit, form, moves, types,
+; stats and DVs; only the released secondary's identity is absent from it.
+SECTION "Final AI Fusion State", WRAM0
+wFinalAISecondarySpecies:: db
+wFinalAISecondaryForm:: db
 
 
 SECTION "Current Box Data", WRAM0

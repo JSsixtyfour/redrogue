@@ -1,5 +1,8 @@
 InitPlayerData:
 InitPlayerData2:
+	; Fresh SRAM is $ff. Establish a versioned empty final-team archive before
+	; any Hall of Fame capture or restore can inspect it.
+	farcall FinalTeamArchiveInit
 	; clear TM/HM bitfield so SRAM $FF default doesn't grant all TMs
 	farcall ClearTMBitfield
 	; clear key items ownership bitfield (true new game only — death/run-reset does NOT clear this)

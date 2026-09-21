@@ -215,6 +215,31 @@ sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion
 sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
 
 
+; Four-entry rolling archive of champion parties for the final AI encounter.
+; This is deliberately separate from sGameData and its all-or-nothing checksum:
+; each record has its own checksum, so one interrupted write cannot invalidate
+; the player's ordinary save or the other three archived teams.
+SECTION "Final Team Archive SRAM", SRAM, BANK[1]
+
+DEF FINAL_TEAM_ARCHIVE_CAPACITY EQU 4
+DEF FINAL_TEAM_PARTY_SIZE EQU 404
+DEF FINAL_TEAM_RECORD_SIZE EQU FINAL_TEAM_PARTY_SIZE + 2
+DEF FINAL_TEAM_ARCHIVE_HEADER_SIZE EQU 11
+
+sFinalTeamArchive::
+sFinalTeamArchiveMagic:: ds 2
+sFinalTeamArchiveVersion:: db
+sFinalTeamArchiveCount:: db
+sFinalTeamArchiveNextIndex:: db
+sFinalTeamArchiveLatestIndex:: db
+sFinalTeamArchiveRecordChecksums:: ds FINAL_TEAM_ARCHIVE_CAPACITY
+sFinalTeamArchiveHeaderChecksum:: db
+sFinalTeamArchiveRecords:: ds FINAL_TEAM_ARCHIVE_CAPACITY * FINAL_TEAM_RECORD_SIZE
+sFinalTeamArchiveEnd::
+ASSERT FINAL_TEAM_RECORD_SIZE == 406
+ASSERT sFinalTeamArchiveEnd - sFinalTeamArchive == 1635
+
+
 SECTION "Save Data", SRAM
 
 ; Phase 7d: the stage-event theft record. What a villain took off the player,

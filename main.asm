@@ -765,3 +765,7 @@ INCLUDE "custom_functions/bridge_effects_extended.asm"
 ; so it can float. See custom_functions/stage_events.asm's header for why the
 ; theft itself had to stay behind in "rogue".
 INCLUDE "custom_functions/stage_events.asm"
+
+SECTION "Final Team Archive", ROMX
+
+INCLUDE "custom_functions/final_team_archive.asm"

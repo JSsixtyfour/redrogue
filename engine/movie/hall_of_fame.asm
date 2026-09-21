@@ -1,4 +1,7 @@
 AnimateHallOfFame:
+	; Capture the intact champion team before the presentation and subsequent
+	; run reset can alter it. The archive routine owns its SRAM bank lifecycle.
+	farcall FinalTeamArchiveCapture
 	call HoFFadeOutScreenAndMusic
 	call ClearScreen
 	ld c, 100
