@@ -8,7 +8,7 @@ SilphCoB1F_Script:
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
-	cp SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING + 1
+	cp SCRIPT_SILPHCOB1F_FINAL_ENTER_VR + 1
 	jp nc, SilphCoB1FElevatorBlockerScript
 .introTour
 	ld hl, SilphCoB1F_ScriptPointers
@@ -39,6 +39,7 @@ SilphCoB1F_ScriptPointers:
 	dw_const SilphCoB1FFinalEnterRoomScript,         SCRIPT_SILPHCOB1F_FINAL_ENTER_ROOM
 	dw_const SilphCoB1FFinalReturnApproachScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_APPROACH
 	dw_const SilphCoB1FFinalReturnGreetingScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING
+	dw_const SilphCoB1FFinalEnterVRScript,            SCRIPT_SILPHCOB1F_FINAL_ENTER_VR
 
 ; Normalize the distinct Palm and stair-scientist objects on every map load,
 ; then stage Checkpoint 2 on the first fresh return from the Dorm after the
@@ -50,7 +51,6 @@ SilphCoB1FHandleMapEntry:
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	call SilphCoB1FRestorePalmRoomDoor
-	call SilphCoB1FApplyStoryMusic
 	; A warp can interrupt the shared 1F/B1F dispatcher before its Done state.
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState
@@ -62,6 +62,8 @@ SilphCoB1FHandleMapEntry:
 	; into final staging before ordinary actor normalization can hide him again.
 	call SilphCoB1FShouldStageFinalOpening
 	jp c, SilphCoB1FStageFinalOpening
+	call SilphCoB1FShouldRestoreCrisisActors
+	jp c, SilphCoB1FRestoreCrisisActors
 	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -171,6 +173,38 @@ SilphCoB1FShouldStageFinalReturn:
 .no
 	and a
 	ret
+
+SilphCoB1FShouldRestoreCrisisActors:
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	jr z, .no
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
+	jr z, .no
+	CheckEvent EVENT_AI_DEFEATED
+	jr nz, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+SilphCoB1FRestoreCrisisActors:
+	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_SILPH_CO_B1F_LANCE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_SILPH_CO_B1F_ROCKET
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, SCRIPT_SILPHCOB1F_NOOP
+	ld [wSilphCoB1FCurScript], a
+	xor a
+	ldh [hJoyIgnore], a
+	ret
 SilphCoB1FIntroTourActors:
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
 	ld [wToggleableObjectIndex], a
@@ -195,20 +229,6 @@ SilphCoB1FReplacePalmRoomDoor:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 10
 	predef_jump ReplaceTileBlock
-
-; The crisis theme begins on the first post-Oak B1F entry and remains the B1F
-; default until the AI is defeated. Later checkpoints extend the same override
-; to the other facility maps.
-SilphCoB1FApplyStoryMusic:
-	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
-	ret z
-	CheckEvent EVENT_AI_DEFEATED
-	ret nz
-	ld a, MUSIC_SILPH_CO
-	ld [wMapMusicSoundID], a
-	ld a, BANK(Music_SilphCo)
-	ld [wMapMusicROMBank], a
-	jp PlayDefaultMusic
 
 SilphCoB1FStageFinalOpening:
 	ld a, TOGGLE_SILPH_CO_B1F_SCIENTIST
@@ -328,12 +348,24 @@ SilphCoB1FFinalWalkToDoorScript:
 	ld a, SPRITE_FACING_UP
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirection
+	call UpdateSprites
 	ld a, SCRIPT_SILPHCOB1F_FINAL_OPEN_DOOR
 	ld [wSilphCoB1FCurScript], a
 	ret
 
 SilphCoB1FFinalOpenDoorScript:
 	call SilphCoB1FOpenPalmRoomDoor
+	; ReplaceTileBlock and the state transition must not expose Lance's final
+	; horizontal movement frame. Reassert both the authored constraint and live
+	; facing byte before the first post-door sprite redraw.
+	ld a, SILPHCOB1F_LANCE
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], UP
+	ld a, SPRITE_FACING_UP
+	ld [wSprite03StateData1FacingDirection], a
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
 	; Preload Palm's Room actors before its object data is created.
 	ld a, TOGGLE_PALMS_ROOM_PROF_PALM
 	ld [wToggleableObjectIndex], a
@@ -447,11 +479,96 @@ SilphCoB1FFinalReturnGreetingScript:
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirection
 	call UpdateSprites
+	; Palm leads the player single-file to the existing right-hand VR warp.
+	; Decode the map-local route now, then reuse the established bank-$06
+	; completion routine at dispatcher state 14.
+	ld de, RLEList_SilphCoB1FFinalPalmEnterVR
+	ld hl, RLEList_SilphCoB1FFinalPlayerEnterVR
+	ld a, 14
+	call SilphCoB1FStartFinalVRMovement
+	ld a, SCRIPT_SILPHCOB1F_FINAL_ENTER_VR
+	ld [wSilphCoB1FCurScript], a
+	ret
+
+; IN: de = Palm RLE, hl = player RLE, a = existing bank-$06 Done state.
+; This is the map-bank half of the established synchronized dispatcher start.
+; The ongoing movement and authoritative completion remain in bank $06.
+SilphCoB1FStartFinalVRMovement:
+	push af
+	push de
+	ld d, h
+	ld e, l
+	ld a, SILPHCOB1F_PROF_PALM
+	swap a
+	ld [wNPCMovementScriptSpriteOffset], a
 	xor a
-	ldh [hJoyIgnore], a
+	ld [wSpritePlayerStateData2MovementByte1], a
+	ld hl, wSimulatedJoypadStatesEnd
+	call DecodeRLEList
+	dec a
+	ldh [hSimulatedJoypadStatesIndex], a
+	pop de
+	ld hl, wNPCMovementDirections2
+	call DecodeRLEList
+	xor a
+	ld [wOverrideSimulatedJoypadStatesMask], a
+	ld hl, wStatusFlags4
+	res BIT_INIT_SCRIPTED_MOVEMENT, [hl]
+	ld hl, wStatusFlags5
+	set BIT_SCRIPTED_MOVEMENT_STATE, [hl]
+	pop af
+	ld [wNPCMovementScriptFunctionNum], a
+	ld a, 1
+	ld [wNPCMovementScriptPointerTableNum], a
+	ld a, BANK(SaffronPalmMovementScriptPointerTable)
+	ld [wNPCMovementScriptBank], a
+	ret
+
+SilphCoB1FFinalEnterVRScript:
+	; The dispatcher remains authoritative for both paths. Once Palm reaches his
+	; terminator, remove him before the trailing player enters the same warp.
+	ld hl, wNPCMovementDirections2
+	ld a, [wNPCMovementDirections2Index]
+	add l
+	ld l, a
+	jr nc, .checkPalm
+	inc h
+.checkPalm
+	ld a, [hl]
+	cp -1
+	ret nz
+	ld a, TOGGLE_SILPH_CO_B1F_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	; The synchronized sprite slot bypasses hidden-object checks. Commit Palm's
+	; endpoint, release that slot, and hand completion to the existing player-only
+	; wait state before toggling Palm away.
+	ld a, 0 + 4
+	ld [wSprite02StateData2MapY], a
+	ld a, 11 + 4
+	ld [wSprite02StateData2MapX], a
+	xor a
+	ld [wNPCMovementScriptSpriteOffset], a
+	ld a, 2
+	ld [wNPCMovementScriptFunctionNum], a
+	predef HideObject
 	ld a, SCRIPT_SILPHCOB1F_NOOP
 	ld [wSilphCoB1FCurScript], a
 	ret
+
+; Palm: (16,2) -> (11,2) -> (11,1) -> the warp at (11,0). Staying on
+; y=2 until column 11 avoids Lance, who is holding position at (16,1).
+RLEList_SilphCoB1FFinalPalmEnterVR:
+	db NPC_MOVEMENT_LEFT, 5
+	db NPC_MOVEMENT_UP, 2
+	db -1
+
+; Player executes backward after Palm gets clear: (17,2) -> (11,2), then
+; presses UP three times to reach and activate the edge warp at (11,0).
+RLEList_SilphCoB1FFinalPlayerEnterVR:
+	db PAD_UP, 3
+	db PAD_LEFT, 6
+	db NO_INPUT, 8
+	db -1
 
 SilphCoB1FFaceLanceAndPlayer:
 	ld a, PLAYER_DIR_DOWN

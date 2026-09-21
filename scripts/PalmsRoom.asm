@@ -24,9 +24,14 @@ PalmsRoomHandleMapEntry:
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	call EndNPCMovementScript
-	call PalmsRoomApplyCrisisMusic
 	call PalmsRoomShouldStageRescue
 	jr c, .stageRescue
+	ld a, TOGGLE_PALMS_ROOM_PROF_PALM
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, TOGGLE_PALMS_ROOM_LANCE
+	ld [wToggleableObjectIndex], a
+	predef HideObject
 	xor a
 	ldh [hJoyIgnore], a
 	ld a, SCRIPT_PALMSROOM_NOOP
@@ -74,17 +79,6 @@ PalmsRoomShouldStageRescue:
 .no
 	and a
 	ret
-
-PalmsRoomApplyCrisisMusic:
-	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
-	ret z
-	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
-	ret nz
-	ld a, MUSIC_SILPH_CO
-	ld [wMapMusicSoundID], a
-	ld a, BANK(Music_SilphCo)
-	ld [wMapMusicROMBank], a
-	jp PlayDefaultMusic
 
 ; IN: a = object index after its bordered map coordinates have been written.
 PalmsRoomInitializeStagedSprite:

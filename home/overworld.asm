@@ -2477,6 +2477,33 @@ LoadMapHeader::
 	pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
+	call OverrideFinaleFacilityMusic
+	ret
+
+; Resolve the finale facility theme before LoadMapData plays the selected map
+; song. Doing this in the header lifecycle preserves vanilla's same-song
+; comparison across warps instead of restarting music from a later map script.
+OverrideFinaleFacilityMusic:
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	ret z
+	CheckEvent EVENT_AI_DEFEATED
+	ret nz
+	ldh a, [hCurMap]
+	cp SILPH_CO_B1F
+	jr z, .silph
+	cp SILPH_CO_DORM
+	jr z, .silph
+	cp CREDIT_EXCHANGE
+	jr z, .silph
+	cp SILPH_CO_VR
+	jr z, .silph
+	cp PALMS_ROOM
+	ret nz
+.silph
+	ld a, MUSIC_SILPH_CO
+	ld [wMapMusicSoundID], a
+	ld a, BANK(Music_SilphCo)
+	ld [wMapMusicROMBank], a
 	ret
 
 ; function to copy map connection data from ROM to WRAM

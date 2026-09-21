@@ -723,7 +723,7 @@ SilphCoB1FFinalMovementScript_DoneEnteringPalmRoom:
 	ld c, 21 + 4
 	jp SilphCoB1FMovementScript_Done
 
-; Lance starts beneath the player's Dorm exit and walks to (21,1).
+; Lance walks continuously from beneath the Dorm exit to (21,1).
 RLEList_SilphCoB1FFinalLanceFromX2:
 	db NPC_MOVEMENT_RIGHT, 19
 	db -1
@@ -732,15 +732,17 @@ RLEList_SilphCoB1FFinalLanceFromX3:
 	db NPC_MOVEMENT_RIGHT, 18
 	db -1
 
-; Simulated player RLE is consumed backward. The initial downward step supplies
-; Lance's lead naturally; an additional wait would put the player two tiles back.
+; Simulated input executes backward. DOWN turns onto y=1, NO_INPUT absorbs the
+; settling beat, and the exact horizontal count leaves the player at (20,1).
 RLEList_SilphCoB1FFinalPlayerFromX2:
-	db PAD_RIGHT, 19
+	db PAD_RIGHT, 18
+	db NO_INPUT, 1
 	db PAD_DOWN, 1
 	db -1
 
 RLEList_SilphCoB1FFinalPlayerFromX3:
-	db PAD_RIGHT, 18
+	db PAD_RIGHT, 17
+	db NO_INPUT, 1
 	db PAD_DOWN, 1
 	db -1
 
