@@ -51,7 +51,7 @@ ENDC
 	RGB 31,29,31, 21,14,09, 18,24,22, 03,02,02 ; PAL_CAVE
 	RGB 31,29,31, 31,28,14, 24,20,10, 03,02,02 ; PAL_GAMEFREAK
     
-	RGB 31, 31, 31, 31, 31,  0, 11, 23, 31, 3,  3,  3 ; PAL_25
+	RGB 28, 31, 26, 25, 14, 14, 27, 16, 16, 6,  0,  0 ; PAL_25 / PAL_FOREST_SPRING - maps/springtrees2.pal day row
 	RGB 31, 31, 31, 31, 31, 31, 30, 22, 17, 3,  3,  3 ; PAL_BILLS_PC
-	RGB 31, 31, 31, 9,  9,  9, 31, 21,  0, 3,  3,  3 ; PAL_27 - spare, no live caller (only the unreferenced UnknownPalPacket_72821)
+	RGB 28, 31, 26, 25, 15,  0, 31, 10,  3, 6,  0,  0 ; PAL_27 / PAL_FOREST_FALL - maps/falltrees2.pal day row
 	assert_table_length NUM_SGB_PALS

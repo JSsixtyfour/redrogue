@@ -331,8 +331,10 @@ SetPal_Overworld:
 	ld a, PAL_CAVE - 1
 	jr .town
 .procForest
-	ld a, PAL_VIRIDIAN - 1  ; +1 in .town → PAL_VIRIDIAN (the green forest palette)
-	jr .town
+	; 2B: same shape as .caveOrBruno/.procCaveVariant just below - keep this
+	; stub short (see that block's own note about the link breaking) and do
+	; the SRAM read down past .Lorelei with .procCaveVariant.
+	jp .procForestVariant
 .facilityTileset
 	; FACILITY tileset. The procedural facility ($F3) gets a randomized
 	; Mansion/PowerPlant palette (sProcFacilityPalette, rolled during assigned
@@ -393,6 +395,39 @@ SetPal_Overworld:
 	; .caveOrBruno - see the note there.
 	ld a, PAL_CAVE_COLD - 1
 	jp .town                ; jp, not jr: .town is ~150 bytes back from here
+
+.procForestVariant
+	; Phase 4a/4d parallel for the forest: sProcForestPalette is the SAME byte
+	; the CGB enhanced path reads (ResolveEnhancedBasePalSet,
+	; custom_functions/func_enhancedcolor.asm), so both colour systems agree
+	; on which season a run is in. PAL_FOREST_SPRING/PAL_FOREST_FALL are the
+	; two spare rows this claims (constants/palette_constants.asm).
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcForestPalette)
+	ld [rRAMB], a
+	ld a, [sProcForestPalette]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, b
+	cp PROC_FOREST_PAL_COUNT
+	jr nc, .forestDefault  ; $ff on a save that predates the field, or any
+	                       ; out-of-range value, falls back to the old look
+	and a
+	jr z, .forestSpring
+	ld a, PAL_FOREST_FALL - 1
+	jp .town
+.forestSpring
+	ld a, PAL_FOREST_SPRING - 1
+	jp .town
+.forestDefault
+	ld a, PAL_VIRIDIAN - 1  ; the pre-2B unconditional green forest palette
+	jp .town
 
 ; used when a Pokemon is the only thing on the screen
 ; such as evolution, trading and the Hall of Fame
