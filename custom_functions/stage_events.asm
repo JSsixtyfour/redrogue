@@ -266,20 +266,62 @@ StageEventTrainerTable:
 ; DetectCollisionBetweenSprites skip it - the reported "they flicker on and
 ; off and no longer block you, and the location can change".
 ;
+; SYNCING ONCE IS NOT ENOUGH - the slot also has to be left READY (2026-09-22).
+; Reported as "I see the sprite, but it can't be interacted with, it will
+; eventually warp to another space within the hideout and finalize."
+;
+; MEASURED on the approach to the hideout: both slots sit at MOVEMENTSTATUS 2
+; (delayed) with MOVEMENTDELAY 95 and 3, and the delay NEVER DECREMENTS while
+; the pair is off screen, because UpdateNPCSprite does CheckSpriteAvailability
+; / `ret c` before it dispatches on the status. So an off-screen NPC is frozen:
+; status 2 forever, and UpdateSpriteMovementDelay is the one path that never
+; calls InitializeSpriteScreenPosition. The pixel pair therefore stops tracking
+; the player the moment he takes a step (16 of 16 steps desynced), the sprite
+; draws where it used to be, and GetTileSpriteStandsOn - which reads the PIXEL
+; pair - does not match where the player is standing, so it will not talk.
+; Walk close enough for CheckSpriteAvailability to pass and the frozen delay
+; finally drains, status returns to 1, and the position snaps. That drain is
+; the "warp, then finalize".
+;
+; Clearing MOVEMENTSTATUS is the whole fix, one byte per slot. UpdateNPCSprite
+; tests it for zero and `jp z, InitializeSpriteStatus` BEFORE the availability
+; check, so the slot re-initialises even while off screen, and the status-1
+; path it lands in re-derives the screen position every tick. That is exactly
+; the state a non-battle LoadMapHeader leaves a freshly loaded sprite in.
+;
 ; INPUT: d = base sprite slot (the pair is d and d+1).
 ; Clobbers a/b/c/h/l. Preserves d/e - which is why the slot travels in d:
 ; farcall destroys a/b/c/h/l on BOTH legs.
 ; ============================================================
 StageEventSyncPairScreenPos::
 	ld a, d
-	call .one
+	call StageEventSettleSprite
 	ld a, d
 	inc a
-.one
+	; fall through to settle the partner
+
+; INPUT: a = sprite slot. In-bank callers only; farcall destroys a.
+StageEventSettleSprite:
 	swap a                          ; slot -> sprite state offset
 	ldh [hCurrentSpriteOffset], a
+	ld h, HIGH(wSpriteStateData1)   ; page-aligned, so the offset IS the low byte
+	add SPRITESTATEDATA1_MOVEMENTSTATUS
+	ld l, a
+	xor a
+	ld [hl], a                      ; -> UpdateNPCSprite re-initialises this slot
 	farcall InitializeSpriteScreenPosition
 	ret
+
+; ============================================================
+; StageEventSyncOneScreenPos  (2026-09-22)
+; Single-slot entry, for the procedural BOSS in slot 1: PCFinalizeCave and
+; PCFinalizeCaveFast rewrite its MAPY/MAPX with nothing resyncing its pixels at
+; all, and it is exempt from hide-on-defeat so it is on screen for the window.
+; INPUT: d = sprite slot. Clobbers a/b/c/h/l. Preserves d/e.
+; ============================================================
+StageEventSyncOneScreenPos::
+	ld a, d
+	jr StageEventSettleSprite
 
 ; ============================================================
 ; StageEventGiveBack  (Phase 7e)
