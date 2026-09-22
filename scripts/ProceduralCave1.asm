@@ -382,18 +382,15 @@ PCStageEventDefeatText::
 ; Shown once after the villain is beaten. Dispatches on the STAGE_GIVEBACK_*
 ; result the script stashed, not on the event type: the player cares what came
 ; back, not who took it.
+;
+; THE DISPATCH AND THE STRINGS ARE IN BANK $3A (1C, 2026-09-22). All four
+; stages used to carry a private copy of this handler, a private five-row
+; pointer table and five private text_far wrappers, every one of them naming
+; the same shared string - roughly 60 bytes per map for nothing but the
+; duplication, in the bank that can least afford it. One farcall now.
 PCStageEventRecoverText:
 	text_asm
-	ld a, [wStageEventScratch]
-	add a, a                      ; two bytes per pointer
-	ld c, a
-	ld b, 0
-	ld hl, PCStageEventRecoverTexts
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	call PrintText
+	farcall StageEventPrintRecoverLine
 	ld hl, .done
 	jp TextScriptEnd
 .done
@@ -420,29 +417,6 @@ PCStageEventAfterText::
 	ld hl, .done
 	jp TextScriptEnd
 .done
-	text_end
-
-PCStageEventRecoverTexts:
-	dw PCStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
-	dw PCStageRecoverMon          ; STAGE_GIVEBACK_MON
-	dw PCStageRecoverItem         ; STAGE_GIVEBACK_ITEM
-	dw PCStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
-	dw PCStageRecoverToBox        ; STAGE_GIVEBACK_TO_BOX
-
-PCStageRecoverNothing:
-	text_far _StageEventRecoverNothingText
-	text_end
-PCStageRecoverMon:
-	text_far _StageEventRecoverMonText
-	text_end
-PCStageRecoverItem:
-	text_far _StageEventRecoverItemText
-	text_end
-PCStageRecoverNoRoom:
-	text_far _StageEventRecoverNoRoomText
-	text_end
-PCStageRecoverToBox:
-	text_far _StageEventRecoverToBoxText
 	text_end
 
 ; The two NPC objects' own text entries. Each hands TalkToTrainer its slot's

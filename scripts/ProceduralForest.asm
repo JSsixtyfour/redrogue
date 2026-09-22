@@ -603,44 +603,13 @@ PFStageEventAfterText:
 .done
 	text_end
 
+; Dispatch and strings are in bank $3A - see the Cave's copy of this stub.
 PFStageEventRecoverText:
 	text_asm
-	ld a, [wStageEventScratch]
-	add a, a
-	ld c, a
-	ld b, 0
-	ld hl, PFStageEventRecoverTexts
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	call PrintText
+	farcall StageEventPrintRecoverLine
 	ld hl, .done
 	jp TextScriptEnd
 .done
-	text_end
-
-PFStageEventRecoverTexts:
-	dw PFStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
-	dw PFStageRecoverMon          ; STAGE_GIVEBACK_MON
-	dw PFStageRecoverItem         ; STAGE_GIVEBACK_ITEM
-	dw PFStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
-	dw PFStageRecoverToBox        ; STAGE_GIVEBACK_TO_BOX
-
-PFStageRecoverNothing:
-	text_far _StageEventRecoverNothingText
-	text_end
-PFStageRecoverMon:
-	text_far _StageEventRecoverMonText
-	text_end
-PFStageRecoverItem:
-	text_far _StageEventRecoverItemText
-	text_end
-PFStageRecoverNoRoom:
-	text_far _StageEventRecoverNoRoomText
-	text_end
-PFStageRecoverToBox:
-	text_far _StageEventRecoverToBoxText
 	text_end
 
 PFStageEventNpc1Text:

@@ -253,15 +253,32 @@ _StageEventRecoverNothingText::
 
 ; Party full at recovery time - the player caught something in here after
 ; being robbed - but the current box had space, so the mon is safe.
-; The name leads, so the longest possible nickname (10) plus " went to" (8)
-; lands exactly on the box's 18 columns instead of running into the border.
-_StageEventRecoverToBoxText::
-	text "@"
+; Party full at recovery time, but the box had space. WORDED AND SHAPED AS THE
+; CAPTURE PATH'S OWN TRANSFER LINE (_ItemUseBallText07/08), including the
+; EVENT_MET_BILL split, because from the player's side this is the same event:
+; something they now own went to the PC instead of the party.
+;
+; The one deliberate difference is the name source. The capture path reads
+; `text_ram wBoxMonNicks` because SendNewMonToBox FRONT-INSERTS, so the new mon
+; is box slot 0. The give-back APPENDS at wBoxCount, so slot 0 is somebody
+; else; wNameBuffer, filled by StageEventNameLoot, is the right source here.
+;
+; Ends `prompt`, not "@", and that is load-bearing: StageEventPrintRecoverLine
+; may print the box-full reminder straight afterwards, and PrintText redraws
+; the box, so without a wait the second line would erase this one unread.
+_StageEventRecoverToBoxBillText::
 	text_ram wNameBuffer
-	text " went to"
-	line "your BOX! Your"
-	cont "party was full!@"
-	text_end
+	text " was"
+	line "transferred to"
+	cont "BILL's PC!"
+	prompt
+
+_StageEventRecoverToBoxPCText::
+	text_ram wNameBuffer
+	text " was"
+	line "transferred to"
+	cont "someone's PC!"
+	prompt
 
 ; Party AND box both full, or the bag pocket full for a stolen item. The only
 ; outcome that does not end the event: the villain stays put and the record

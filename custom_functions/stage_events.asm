@@ -932,12 +932,7 @@ StageEventPrintAfterLine::
 	cp STAGE_EVENT_PHASE_OWED << STAGE_EVENT_PHASE_SHIFT
 	jr nz, .idle
 	call StageEventGiveBack       ; in-bank: -> wStageEventScratch
-	ld a, [wStageEventScratch]
-	add a, a                      ; two bytes per pointer
-	ld c, a
-	ld b, 0
-	ld hl, StageEventRecoverTexts
-	jr .pick
+	jp StageEventPrintRecoverLine
 .idle
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
@@ -946,12 +941,61 @@ StageEventPrintAfterLine::
 	ld c, a
 	ld b, 0
 	ld hl, StageEventAfterTexts
-.pick
 	add hl, bc
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
 	jp PrintText
+
+; ============================================================
+; StageEventPrintRecoverLine  (1C, 2026-09-22)
+; Prints the line that says what came back, picked by the STAGE_GIVEBACK_*
+; result the give-back left in wStageEventScratch.
+;
+; THIS USED TO BE FOUR IDENTICAL COPIES, one per stage: each map script had its
+; own handler, its own five-row pointer table and its own five text_far
+; wrappers, all naming the same shared strings, and bank $3A carried a fifth
+; copy for the retry path. Folding them into one saved roughly 170 bytes in
+; bank 17, which is where "Maps 6" lives and where there is least to spare.
+; Each map now carries a 16-byte text_asm stub that farcalls this.
+;
+; THE BOX RESULT IS NOT A TABLE ROW, because it is the one line with a
+; condition in it. It reuses ItemUseBall's own transfer wording and its
+; EVENT_MET_BILL split, and follows it with the same box-full reminder the
+; capture path prints - a give-back that lands in the box is the same event
+; from the player's side, so it should not have a private vocabulary.
+;
+; CheckEvent only clobbers `a` in this tree (event compaction turned it into a
+; direct `ld a, [wEventFlags + byte]` + `bit`), which is what makes the
+; load-hl-then-test shape below legal - it is copied from item_effects.asm.
+;
+; INPUT: wStageEventScratch. Clobbers a/bc/de/hl.
+; ============================================================
+StageEventPrintRecoverLine::
+	ld a, [wStageEventScratch]
+	cp STAGE_GIVEBACK_TO_BOX
+	jr z, .toBox
+	add a, a                      ; two bytes per pointer
+	ld c, a
+	ld b, 0
+	ld hl, StageEventRecoverTexts
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	jp PrintText
+.toBox
+	ld hl, StageEventRecoverToBoxBill
+	CheckEvent EVENT_MET_BILL
+	jr nz, .haveLine
+	ld hl, StageEventRecoverToBoxPC
+.haveLine
+	call PrintText
+	; The capture path's own follow-up, reused rather than reinvented. Its
+	; guard is `wBoxCount == MONS_PER_BOX`, so it is silent unless this
+	; give-back is what filled the box.
+	farcall BridgeMaybePrintBoxFullReminder
+	ret
 
 StageEventAfterTexts:
 	dw StageEventAfterJessieJames ; STAGE_EVENT_JESSIE_JAMES
@@ -961,15 +1005,18 @@ StageEventAfterTexts:
 	dw StageEventAfterJenny       ; STAGE_EVENT_JENNY
 	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventAfterTexts needs a row per stage-event type"
 
-; A second copy of what each map's own …RecoverTexts table holds, because the
-; retry above prints from THIS bank. Every row points at the same shared
-; string the map tables point at, so there is nothing that can diverge.
+; The ONLY recover-line table now - all four stages print from it. The TO_BOX
+; row is still listed so the table stays dense and indexable by the result,
+; but StageEventPrintRecoverLine intercepts that result before the lookup,
+; because the box line needs the EVENT_MET_BILL branch. The row is what the
+; length assert counts, and it is a live fallback if that branch is ever
+; removed.
 StageEventRecoverTexts:
-	dw StageEventRecoverNothing   ; STAGE_GIVEBACK_NOTHING
-	dw StageEventRecoverMon       ; STAGE_GIVEBACK_MON
-	dw StageEventRecoverItem      ; STAGE_GIVEBACK_ITEM
-	dw StageEventRecoverNoRoom    ; STAGE_GIVEBACK_NO_ROOM
-	dw StageEventRecoverToBox     ; STAGE_GIVEBACK_TO_BOX
+	dw StageEventRecoverNothing     ; STAGE_GIVEBACK_NOTHING
+	dw StageEventRecoverMon         ; STAGE_GIVEBACK_MON
+	dw StageEventRecoverItem        ; STAGE_GIVEBACK_ITEM
+	dw StageEventRecoverNoRoom      ; STAGE_GIVEBACK_NO_ROOM
+	dw StageEventRecoverToBoxPC     ; STAGE_GIVEBACK_TO_BOX
 	ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5, "StageEventRecoverTexts needs a row per give-back result"
 
 StageEventAfterJessieJames:
@@ -999,8 +1046,11 @@ StageEventRecoverItem:
 StageEventRecoverNoRoom:
 	text_far _StageEventRecoverNoRoomText
 	text_end
-StageEventRecoverToBox:
-	text_far _StageEventRecoverToBoxText
+StageEventRecoverToBoxBill:
+	text_far _StageEventRecoverToBoxBillText
+	text_end
+StageEventRecoverToBoxPC:
+	text_far _StageEventRecoverToBoxPCText
 	text_end
 
 ; ============================================================

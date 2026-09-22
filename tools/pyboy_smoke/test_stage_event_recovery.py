@@ -33,11 +33,14 @@ STAGE_SCRIPTS = (
     ("scripts/ProceduralCemetery1.asm", "EVENT_BEAT_FACILITY_STAGE_NPC", "PCStageEventAfterText"),
 )
 
-RECOVER_TABLES = (
-    ("scripts/ProceduralCave1.asm", "PCStageEventRecoverTexts"),
-    ("scripts/ProceduralForest.asm", "PFStageEventRecoverTexts"),
-    ("scripts/ProceduralFacility.asm", "PFacStageEventRecoverTexts"),
-    ("scripts/ProceduralCemetery1.asm", "PCemStageEventRecoverTexts"),
+# Each map's recover-line handler, which must be a thin farcall stub. The four
+# private dispatchers, tables and text_far wrappers these replaced were ~60
+# bytes each of pure duplication in bank 17.
+RECOVER_STUBS = (
+    ("scripts/ProceduralCave1.asm", "PCStageEventRecoverText:"),
+    ("scripts/ProceduralForest.asm", "PFStageEventRecoverText:"),
+    ("scripts/ProceduralFacility.asm", "PFacStageEventRecoverText:"),
+    ("scripts/ProceduralCemetery1.asm", "PCemStageEventRecoverText::"),
 )
 
 
@@ -265,13 +268,13 @@ class AfterBattleTextContractTest(unittest.TestCase):
 
     def test_shared_body_retries_only_from_owed(self) -> None:
         body = routine(STAGE_EVENTS.read_text(), "StageEventPrintAfterLine::",
-                       end="StageEventAfterTexts:")
+                       end="\nStageEventPrintRecoverLine::")
         self.assertIn("cp STAGE_EVENT_PHASE_OWED << STAGE_EVENT_PHASE_SHIFT", body)
         self.assertIn("jr nz, .idle", body)
         self.assertIn("call StageEventGiveBack", body)
-        # The result must be read back from memory: farcall's return leg ends
-        # `ld a, b`, so `a` would hold the caller's ROM bank.
-        self.assertIn("ld a, [wStageEventScratch]", body)
+        # The retry prints its outcome through the same shared line printer the
+        # automatic recovery uses, so the two can never word it differently.
+        self.assertIn("jp StageEventPrintRecoverLine", body)
 
     def test_every_type_and_result_has_a_row(self) -> None:
         source = STAGE_EVENTS.read_text()
@@ -283,38 +286,99 @@ class AfterBattleTextContractTest(unittest.TestCase):
         self.assertIn("ASSERT NUM_STAGE_EVENT_TYPES == 5", after)
         self.assertIn("ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5", recover)
 
-    def test_map_recover_tables_gained_the_box_row(self) -> None:
-        for rel, label in RECOVER_TABLES:
+    def test_map_recover_handlers_are_thin_stubs(self) -> None:
+        """One dispatcher and one set of strings, not four of each."""
+        for rel, label in RECOVER_STUBS:
             with self.subTest(rel):
-                table = routine(read(rel), label + ":")
-                self.assertEqual(table.count("\tdw "),
-                                 const("NUM_STAGE_GIVEBACK_RESULTS"))
-                # The row's own text label, not the trailing comment naming
-                # the constant - code_only() has stripped comments by here.
-                self.assertRegex(table, r"\tdw \w+StageRecoverToBox\b")
+                source = read(rel)
+                stub = routine(source, label)
+                self.assertIn("farcall StageEventPrintRecoverLine", stub)
+                self.assertIn("jp TextScriptEnd", stub)
+                # The private table and wrappers must be gone, or a stale copy
+                # can drift away from the shared strings.
+                self.assertNotIn("StageEventRecoverTexts", source.replace(
+                    "StageEventPrintRecoverLine", ""))
+                self.assertNotIn("StageRecoverToBox", source)
+
+
+class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
+    """The give-back's box case is the capture path's event, so it says and
+    does the same things: ItemUseBall's transfer wording, its EVENT_MET_BILL
+    split, and its box-full follow-up."""
+
+    def setUp(self) -> None:
+        self.body = routine(STAGE_EVENTS.read_text(), "StageEventPrintRecoverLine::",
+                            end="StageEventAfterTexts:")
+
+    def test_box_result_is_intercepted_before_the_table(self) -> None:
+        self.assertIn("cp STAGE_GIVEBACK_TO_BOX", self.body)
+        self.assertLess(self.body.index("cp STAGE_GIVEBACK_TO_BOX"),
+                        self.body.index("ld hl, StageEventRecoverTexts"))
+
+    def test_bill_split_matches_the_capture_path(self) -> None:
+        to_box = self.body[self.body.index("\n.toBox\n"):]
+        self.assertIn("CheckEvent EVENT_MET_BILL", to_box)
+        self.assertIn("StageEventRecoverToBoxBill", to_box)
+        self.assertIn("StageEventRecoverToBoxPC", to_box)
+        # hl is loaded BEFORE the test, which is only legal because this
+        # tree's CheckEvent clobbers `a` alone. Guard that premise.
+        macro = (REPO_ROOT / "macros" / "scripts" / "events.asm").read_text()
+        check = macro[macro.index("MACRO CheckEvent"):]
+        check = check[:check.index("ENDM")]
+        self.assertNotIn("ld hl", check)
+
+    def test_box_full_reminder_is_reused_not_reinvented(self) -> None:
+        """The capture path prints it; a give-back into slot 20 must too."""
+        self.assertIn("farcall BridgeMaybePrintBoxFullReminder", self.body)
+        to_box = self.body[self.body.index("\n.toBox\n"):]
+        self.assertIn("farcall BridgeMaybePrintBoxFullReminder", to_box)
+        # Gated on the RESULT. The helper's own guard only asks whether the box
+        # is full, so an item handed back into an already-full box would
+        # otherwise announce a transfer that never happened.
+        self.assertNotIn("BridgeMaybePrintBoxFullReminder",
+                         self.body[:self.body.index("\n.toBox\n")])
+
+    def test_transfer_line_names_the_right_mon(self) -> None:
+        """The capture path reads wBoxMonNicks because it FRONT-inserts.
+
+        The give-back appends at wBoxCount, so box slot 0 is somebody else.
+        """
+        source = STAGE_TEXT.read_text()
+        for name in ("_StageEventRecoverToBoxBillText", "_StageEventRecoverToBoxPCText"):
+            with self.subTest(name):
+                body = routine(source, name + "::", code=False)
+                body = body[:body.index("prompt")]
+                self.assertIn("text_ram wNameBuffer", body)
+                self.assertNotIn("wBoxMonNicks", body)
+
+    def test_transfer_line_waits_so_the_reminder_cannot_erase_it(self) -> None:
+        """PrintText redraws the box, so a second line with no wait wipes it."""
+        source = STAGE_TEXT.read_text()
+        for name in ("_StageEventRecoverToBoxBillText", "_StageEventRecoverToBoxPCText"):
+            with self.subTest(name):
+                body = routine(source, name + "::", code=False)
+                head = body[:body.index("prompt")]
+                self.assertNotIn("@", head)  # '@' before a prompt orphans it
 
     def test_new_strings_fit_the_box(self) -> None:
         source = STAGE_TEXT.read_text()
         names = ["_StageEventAfter%sText" % n for n in
                  ("JessieJames", "Psychic", "Burglar", "Joy", "Jenny")]
-        names += ["_StageEventRecoverToBoxText", "_StageEventRecoverNoRoomText"]
+        names += ["_StageEventRecoverToBoxBillText",
+                  "_StageEventRecoverToBoxPCText",
+                  "_StageEventRecoverNoRoomText"]
         for name in names:
             with self.subTest(name):
                 self.assertIn(name + "::", source)
-                body = routine(source, name + "::")
-                body = body[:body.index("text_end")]
+                body = routine(source, name + "::", code=False)
+                stop = min(i for i in (body.find("text_end"), body.find("prompt"))
+                           if i != -1)
+                body = body[:stop]
                 for literal in re.findall(r'\b(?:text|line|cont|para) "([^"]*)"', body):
-                    # "#" expands to "POKe" + the long form; count it as 7.
+                    # "#" expands to POKeMON; count it as 7 columns, not 1.
                     width = len(literal) + literal.count("#") * 6
+                    # A leading text_ram is a nickname of up to 10 columns.
                     self.assertLessEqual(width, 18, literal)
-
-    def test_no_at_sign_before_a_prompt(self) -> None:
-        """PlaceNextChar returns at '@', so a prompt after one never waits."""
-        source = STAGE_TEXT.read_text()
-        for name in ("_StageEventAfterJessieJamesText", "_StageEventRecoverToBoxText"):
-            body = routine(source, name + "::")
-            body = body[:body.index("text_end") + len("text_end")]
-            self.assertNotIn("prompt", body)
 
 
 if __name__ == "__main__":

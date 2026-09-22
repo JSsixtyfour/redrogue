@@ -229,18 +229,10 @@ PCemStageEventHideoutText::
 .done
 	text_end
 
+; Dispatch and strings are in bank $3A - see the Cave's copy of this stub.
 PCemStageEventRecoverText::
 	text_asm
-	ld a, [wStageEventScratch]
-	add a, a
-	ld c, a
-	ld b, 0
-	ld hl, PCemStageEventRecoverTexts
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	call PrintText
+	farcall StageEventPrintRecoverLine
 	ld hl, .done
 	jp TextScriptEnd
 .done
@@ -278,13 +270,6 @@ PCemStageEventHideoutTexts:
 	dw PCemStageHideoutJenny
 	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCemStageEventHideoutTexts needs a row per stage-event type"
 
-PCemStageEventRecoverTexts:
-	dw PCemStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
-	dw PCemStageRecoverMon          ; STAGE_GIVEBACK_MON
-	dw PCemStageRecoverItem         ; STAGE_GIVEBACK_ITEM
-	dw PCemStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
-	dw PCemStageRecoverToBox        ; STAGE_GIVEBACK_TO_BOX
-
 PCemStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
 	text_end
@@ -315,22 +300,6 @@ PCemStageHideoutJoy:
 	text_end
 PCemStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
-	text_end
-
-PCemStageRecoverNothing:
-	text_far _StageEventRecoverNothingText
-	text_end
-PCemStageRecoverMon:
-	text_far _StageEventRecoverMonText
-	text_end
-PCemStageRecoverItem:
-	text_far _StageEventRecoverItemText
-	text_end
-PCemStageRecoverNoRoom:
-	text_far _StageEventRecoverNoRoomText
-	text_end
-PCemStageRecoverToBox:
-	text_far _StageEventRecoverToBoxText
 	text_end
 
 ProceduralCemetery1_TextPointers:
