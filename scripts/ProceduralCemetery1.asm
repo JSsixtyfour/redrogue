@@ -123,15 +123,19 @@ PCemStageEventRecoverCheck::
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.
-	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED
+	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED or OWED
+	; A PAIR IS ONE ENCOUNTER: beating either one ends it. Both NPCs used to
+	; be hidden here, which is what made that true. 1C leaves them standing so
+	; a hand-over that found no room can be retried by talking to them, so the
+	; partner is marked beaten instead - otherwise the player could start a
+	; second battle with nothing left to win. Both flags set means
+	; TalkToTrainer gives the survivor the after-battle line, which is also
+	; the retry. SetEvent only touches a/hl, so d survives it.
+	SetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+	SetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
 	ld a, d
 	ldh [hTextID], a
 	call DisplayTextID
-	; HIDE AFTER THE TEXT, not before. The recovery line now reads a name
-	; out of wNameBuffer that StageEventGiveBack filled moments ago, and
-	; predef HideObject runs a lot of code in between. Printing first
-	; keeps that buffer live across the shortest possible window.
-	farcall PCemHideStageEventNpcs
 	jp DisableWaitingAfterTextDisplay
 
 ; ============================================================
@@ -163,9 +167,9 @@ PCemStageTrainerHeaders::
 	                ; EVENT_BEAT_FACILITY_STAGE_NPC_1 % 8 == 2 == 2 % 8
 	                ; satisfies the trainer macro's alignment ASSERT.
 PCemStageNpc1Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCemStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
 PCemStageNpc2Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCemStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
 	db -1 ; end
 
 ; Shared by floors 1-3. Floor 4 keeps its own five-entry table because it also
@@ -279,6 +283,7 @@ PCemStageEventRecoverTexts:
 	dw PCemStageRecoverMon          ; STAGE_GIVEBACK_MON
 	dw PCemStageRecoverItem         ; STAGE_GIVEBACK_ITEM
 	dw PCemStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
+	dw PCemStageRecoverToBox        ; STAGE_GIVEBACK_TO_BOX
 
 PCemStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -323,6 +328,9 @@ PCemStageRecoverItem:
 	text_end
 PCemStageRecoverNoRoom:
 	text_far _StageEventRecoverNoRoomText
+	text_end
+PCemStageRecoverToBox:
+	text_far _StageEventRecoverToBoxText
 	text_end
 
 ProceduralCemetery1_TextPointers:

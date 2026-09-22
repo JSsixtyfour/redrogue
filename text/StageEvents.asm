@@ -188,6 +188,44 @@ _StageEventDefeatJennyText::
 	cont "yourself fine!"
 	prompt
 
+; --- AFTER BATTLE: spoken when the player talks to them again ------------
+; These did not exist before 1C (2026-09-22), because there was nothing to
+; say: both NPCs were hidden the instant either was beaten, so the headers'
+; after-battle slot pointed harmlessly back at the hideout line. They stay on
+; the map now, so this beat is reachable - and for a PAIR it is the ONLY thing
+; the surviving partner can do, since beating either one ends the encounter.
+;
+; Printed through DisplayTextID like the hideout lines, not by
+; PrintEndBattleText, so there is no "<CLASS>: " prefix eating line 1 and no
+; need for a trailing `prompt` - AfterDisplayingTextID waits.
+
+_StageEventAfterJessieJamesText::
+	text "We'll get you"
+	line "next time,"
+	cont "twerp!@"
+	text_end
+
+_StageEventAfterPsychicText::
+	text "My mind is"
+	line "clouded. Just"
+	cont "go.@"
+	text_end
+
+_StageEventAfterBurglarText::
+	text "Beat it, kid."
+	line "I'm done here.@"
+	text_end
+
+_StageEventAfterJoyText::
+	text "Take care of"
+	line "your #MON!@"
+	text_end
+
+_StageEventAfterJennyText::
+	text "I'll keep watch"
+	line "here. Go on.@"
+	text_end
+
 ; --- RECOVERY: what the player is told after beating the villain ---------
 ; Picked by STAGE_GIVEBACK_* result, not by event type, because what matters
 ; here is what came back rather than who took it.
@@ -214,9 +252,22 @@ _StageEventRecoverNothingText::
 	text_end
 
 ; Party full at recovery time - the player caught something in here after
-; being robbed, so there is nowhere to put the mon back.
+; being robbed - but the current box had space, so the mon is safe.
+; The name leads, so the longest possible nickname (10) plus " went to" (8)
+; lands exactly on the box's 18 columns instead of running into the border.
+_StageEventRecoverToBoxText::
+	text "@"
+	text_ram wNameBuffer
+	text " went to"
+	line "your BOX! Your"
+	cont "party was full!@"
+	text_end
+
+; Party AND box both full, or the bag pocket full for a stolen item. The only
+; outcome that does not end the event: the villain stays put and the record
+; stays live, so the player can make space and talk to them again.
 _StageEventRecoverNoRoomText::
-	text "Your party is"
-	line "full! There's no"
-	cont "room for it!@"
+	text "There's no room"
+	line "for it anywhere!"
+	cont "Come back for it!@"
 	text_end

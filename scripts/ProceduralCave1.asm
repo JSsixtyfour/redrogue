@@ -113,9 +113,11 @@ ProceduralCave1_Script:
 	; the end-battle text to have cleared, or the reward text lands on top of
 	; the battle's own closing box.
 	;
-	; The one-shot is the phase again: HIDING -> SETTLED, advanced inside
-	; StageEventGiveBack before it can early-return, so this cannot fire twice
-	; even if both halves of a pair are beaten.
+	; The one-shot is the phase: this only runs at HIDING, and
+	; StageEventGiveBack always leaves a different one - SETTLED when the
+	; goods went back, OWED when there was no room for them. Either way this
+	; cannot fire twice, even if both halves of a pair are beaten. OWED then
+	; hands the retry to the NPC's own after-battle text.
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	jr z, .afterRecovery            ; no event armed
@@ -139,24 +141,21 @@ ProceduralCave1_Script:
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.
-	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED
+	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED or OWED
 	; A PAIR IS ONE ENCOUNTER, not two. Jessie and James are two objects
-	; because they are two sprites, but beating either ends the event - the
-	; goods come back and both clear out together. Without this the partner
-	; stays standing at the hideout, fightable, with nothing left to win.
+	; because they are two sprites, but beating either ends the event.
+	;
+	; They used to be HIDDEN here, both of them, which is what made that true.
+	; 1C leaves them standing so a hand-over that found no room can be
+	; retried by talking to them - so the partner has to be marked beaten
+	; instead, or the player could start a second battle with nothing left to
+	; win. With both flags set, TalkToTrainer gives the survivor the
+	; after-battle line, which is also the retry.
+	SetEvent EVENT_BEAT_STAGE_EVENT_NPC_1
+	SetEvent EVENT_BEAT_STAGE_EVENT_NPC_2
 	ld a, TEXT_PROCEDURALCAVE1_STAGE_RECOVER
 	ldh [hTextID], a
 	call DisplayTextID
-	; HIDE AFTER THE TEXT, not before. The recovery line now reads a name
-	; out of wNameBuffer that StageEventGiveBack filled moments ago, and
-	; predef HideObject runs a lot of code in between. Printing first
-	; keeps that buffer live across the shortest possible window.
-	ld a, TOGGLE_WILD_AREA_NPC_1
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ld a, TOGGLE_WILD_AREA_NPC_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
 	call DisableWaitingAfterTextDisplay
 .afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
@@ -400,11 +399,35 @@ PCStageEventRecoverText:
 .done
 	text_end
 
+; What a beaten stage-event NPC says when the player talks to them again (1C,
+; 2026-09-22). Before 1C there was nothing to say - both NPCs were hidden the
+; instant either was beaten - so every header's after-battle pointer went back
+; to the hideout line. They stay on the map now, so this beat is reachable.
+;
+; THE BODY IS IN BANK $3A, not here, and deliberately so. "Maps 6" is bank 17,
+; which is one of the tightest banks in the ROM (95 free bytes when the
+; Cemetery's headers were written, and it has only shrunk); a dispatcher plus
+; a five-row table plus five text_far wrappers does not fit in that, and the
+; same argument is already why the Cemetery borrows this file's defeat
+; dispatcher. StageEventPrintAfterLine is reached by farcall, so bank $3A is
+; mapped while it runs and its own local text streams are what PrintText sees
+; - exactly how StageEventPrintLootLine has always worked.
+;
+; SHARED WITH THE CEMETERY, whose headers point straight at this label.
+PCStageEventAfterText::
+	text_asm
+	farcall StageEventPrintAfterLine
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
 PCStageEventRecoverTexts:
 	dw PCStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
 	dw PCStageRecoverMon          ; STAGE_GIVEBACK_MON
 	dw PCStageRecoverItem         ; STAGE_GIVEBACK_ITEM
 	dw PCStageRecoverNoRoom       ; STAGE_GIVEBACK_NO_ROOM
+	dw PCStageRecoverToBox        ; STAGE_GIVEBACK_TO_BOX
 
 PCStageRecoverNothing:
 	text_far _StageEventRecoverNothingText
@@ -417,6 +440,9 @@ PCStageRecoverItem:
 	text_end
 PCStageRecoverNoRoom:
 	text_far _StageEventRecoverNoRoomText
+	text_end
+PCStageRecoverToBox:
+	text_far _StageEventRecoverToBoxText
 	text_end
 
 ; The two NPC objects' own text entries. Each hands TalkToTrainer its slot's
@@ -598,10 +624,15 @@ PCBossTrainerHeader:
 	; face: the arrival text and the dark flash both run in .afterSetup, which
 	; is earlier in the same script tick than .runScripts' CheckFightingMapTrainers,
 	; so by the time sight lines are tested they are already at the hideout.
+	;
+	; Arg 5 is AFTER-BATTLE text, and it used to point back at the hideout
+	; line because it was unreachable - both NPCs were hidden the moment
+	; either was beaten. 1C leaves them standing, so it now points at the real
+	; after-battle handler, which also carries the no-room retry.
 PCStageNpc1Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
 PCStageNpc2Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
 	db -1 ; end
 
 ProceduralCaveInitBattleScript:

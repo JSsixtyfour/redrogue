@@ -122,20 +122,16 @@ ProceduralFacility_Script:
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.
-	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED
+	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED or OWED
+	; Both NPCs used to be hidden here. 1C leaves them standing so a
+	; hand-over that found no room can be retried by talking to them, so the
+	; partner is marked beaten instead of removed - see the cave's copy of
+	; this block for the full reasoning.
+	SetEvent EVENT_BEAT_FACILITY_STAGE_NPC_1
+	SetEvent EVENT_BEAT_FACILITY_STAGE_NPC_2
 	ld a, TEXT_PROCEDURALFACILITY_STAGE_RECOVER
 	ldh [hTextID], a
 	call DisplayTextID
-	; HIDE AFTER THE TEXT, not before. The recovery line now reads a name
-	; out of wNameBuffer that StageEventGiveBack filled moments ago, and
-	; predef HideObject runs a lot of code in between. Printing first
-	; keeps that buffer live across the shortest possible window.
-	ld a, TOGGLE_FACILITY_NPC_1
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ld a, TOGGLE_FACILITY_NPC_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
 	call DisableWaitingAfterTextDisplay
 .afterRecovery
 	; One-time join offer, shown after the boss is beaten and the end-battle
@@ -353,9 +349,9 @@ PFacFakeBall4Header:
 	; the facility is the one stage that could not reuse slots 6-7.
 	def_trainers 10
 PFacStageNpc1Header:
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventAfterText
 PFacStageNpc2Header:
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventAfterText
 	db -1 ; end
 
 ProceduralFacilityInitBattleScript:
@@ -479,6 +475,17 @@ PFacStageEventDefeatText:
 	pop bc
 	ret
 
+; What a beaten stage-event NPC says when talked to again (1C, 2026-09-22).
+; The body is StageEventPrintAfterLine in bank $3A, shared by all four stages
+; - see the Cave's copy of this stub for why it is not inline.
+PFacStageEventAfterText:
+	text_asm
+	farcall StageEventPrintAfterLine
+	ld hl, .done
+	jp TextScriptEnd
+.done
+	text_end
+
 PFacStageEventRecoverText:
 	text_asm
 	ld a, [wStageEventScratch]
@@ -501,6 +508,7 @@ PFacStageEventRecoverTexts:
 	dw PFacStageRecoverMon        ; STAGE_GIVEBACK_MON
 	dw PFacStageRecoverItem       ; STAGE_GIVEBACK_ITEM
 	dw PFacStageRecoverNoRoom     ; STAGE_GIVEBACK_NO_ROOM
+	dw PFacStageRecoverToBox      ; STAGE_GIVEBACK_TO_BOX
 
 PFacStageRecoverNothing:
 	text_far _StageEventRecoverNothingText
@@ -513,6 +521,9 @@ PFacStageRecoverItem:
 	text_end
 PFacStageRecoverNoRoom:
 	text_far _StageEventRecoverNoRoomText
+	text_end
+PFacStageRecoverToBox:
+	text_far _StageEventRecoverToBoxText
 	text_end
 
 PFacStageEventNpc1Text:

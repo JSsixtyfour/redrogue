@@ -380,6 +380,17 @@ DEF BIT_STAGE_EVENT_STOLE_ITEM EQU 5
 DEF STAGE_EVENT_PHASE_WAITING EQU 0 ; standing in front of the player, not yet spoken to
 DEF STAGE_EVENT_PHASE_HIDING  EQU 1 ; spoke, robbed the player, vanished to the hideout
 DEF STAGE_EVENT_PHASE_SETTLED EQU 2 ; beaten / resolved, nothing left to do this visit
+; Beaten, but the goods could NOT be handed back - party and box both full, or
+; the bag pocket full. The theft record is still live and the villain is still
+; standing at the hideout; talking to them retries the hand-over.
+;
+; WHY A FOURTH PHASE rather than re-checking the record. The auto-recovery
+; block in each map script fires on every script tick while the phase is
+; HIDING and a beat flag is set, so a failed hand-over that left the phase at
+; HIDING would reprint its "no room" box forever. OWED stops that block dead
+; while still being distinguishable from SETTLED, which is what the talk-time
+; retry keys off. Phase is two bits (0-3), so this costs nothing.
+DEF STAGE_EVENT_PHASE_OWED    EQU 3
 
 ; Chance out of 256 that an offered wild area carries an event at all.
 ; 256 = every offered wild area carries one. StageEventRoll skips its `cp`
@@ -413,10 +424,21 @@ DEF STOLEN_ITEM    EQU 2
 ; NO_ROOM is a real outcome, not an error: the theft guarantees the party had
 ; at least 2 mons at the time, but the player can fill it inside the wild area
 ; before recovering, and a full party has nowhere to put the mon back.
+;
+; TO_BOX is the party-full case, which used to be NO_ROOM and used to lose the
+; mon outright. It is a SUCCESS - the mon is in the current box - so it clears
+; the record and settles the event exactly as MON does.
+;
+; NO_ROOM now means party AND box both full (or, for an item, the pocket full).
+; It is the only result that does NOT settle the event: it leaves the phase at
+; STAGE_EVENT_PHASE_OWED with the record intact, so talking to the villain
+; again retries the hand-over.
 DEF STAGE_GIVEBACK_NOTHING EQU 0  ; the villain never took anything
 DEF STAGE_GIVEBACK_MON     EQU 1
 DEF STAGE_GIVEBACK_ITEM    EQU 2
 DEF STAGE_GIVEBACK_NO_ROOM EQU 3
+DEF STAGE_GIVEBACK_TO_BOX  EQU 4
+DEF NUM_STAGE_GIVEBACK_RESULTS EQU 5
 
 ; --- Bridge System (twice-per-run gift-room interludes) ---
 ; Bridges sit ON TOP of the door randomization: when one fires, BOTH lobby doors

@@ -329,8 +329,13 @@ StageEventSyncOneScreenPos::
 ; from the cave's map script when a stage-event NPC's beat flag is set and the
 ; end-battle text has cleared - the same shape the boss join offer uses.
 ;
-; Advances the phase to SETTLED and clears the record's tag whatever happens,
-; so this can never fire twice and a half-returned mon cannot be re-returned.
+; On every SUCCESSFUL path it clears the record's tag and advances the phase to
+; SETTLED, so this can never fire twice and a half-returned mon cannot be
+; re-returned. On the ONE failing path - no room anywhere - it does neither:
+; the phase goes to OWED and the record stays live, which is what lets the
+; player make space and talk to the villain again (1C, 2026-09-22). The phase
+; used to be advanced to SETTLED up front, before the outcome was known, which
+; is exactly what destroyed the mon on a full party.
 ;
 ; OUTPUT: wStageEventScratch = a STAGE_GIVEBACK_* result for the caller to
 ; pick text with. a holds the same value, but callers must NOT read it: every
@@ -464,20 +469,17 @@ StageEventGiveBack::
 	; the recovery text needs the name after that has happened.
 	call StageEventNameLoot
 	call StageEventReadStolenKind ; a = sStolenKind
-	ld b, a
-	; Advance the phase FIRST. Every path below ends the event, and doing it
-	; up front means an early return cannot leave the event re-triggerable.
-	ld a, [wStageEvent]
-	and ~STAGE_EVENT_PHASE_MASK & $ff
-	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
-	ld [wStageEvent], a
-	ld a, b
+	; The phase is advanced at the TAIL now, not here. It used to be set to
+	; SETTLED up front, on the reasoning that every path ended the event; that
+	; stopped being true the moment one path could fail, and a full party then
+	; took the .noRoom exit with the event already closed and the record about
+	; to be wiped at the next lobby selection. The mon was simply gone.
 	cp STOLEN_ITEM
 	jr z, .giveItem
 	cp STOLEN_MON
 	jr z, .giveMon
 	ld a, STAGE_GIVEBACK_NOTHING  ; they never managed to take anything
-	jr .done
+	jr .settle
 .giveItem
 	call StageEventReadStolenItem ; a = sStolenItem
 	ld b, a
@@ -489,26 +491,154 @@ StageEventGiveBack::
 	jr nc, .noRoom
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_ITEM
-	jr .done
+	jr .settle
 .noRoom
+	; The ONE path that leaves the event open. OWED rather than SETTLED, so
+	; the map script's automatic recovery block stops firing (it would reprint
+	; this box every tick) while the villain stays fightable-and-talkable and
+	; the record stays live for the retry.
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_OWED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
 	ld a, STAGE_GIVEBACK_NO_ROOM
 	jr .done
 .giveMon
-	; A full party is the one way this can legitimately fail. The theft
-	; guaranteed at least 2 mons at the time, so at most 5 remained - but the
-	; player can catch or be given one inside the wild area before recovering,
-	; and then there is nowhere to put it back.
+	; A full party is no longer a failure - it is the BOX path. The theft
+	; guaranteed at least 2 mons at the time, so at most 5 remained, but the
+	; player can catch or be given one inside the wild area before recovering.
 	ld a, [wPartyCount]
 	cp PARTY_LENGTH
-	jr nc, .noRoom
+	jr nc, .giveMonToBox
 	call StageEventRebuildStolenMon
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_MON
+	jr .settle
+.giveMonToBox
+	call StageEventStolenMonToBox ; carry set = it fitted
+	jr nc, .noRoom                ; party AND box both full
+	call StageEventClearStolenRecord
+	ld a, STAGE_GIVEBACK_TO_BOX
+.settle
+	push af
+	ld a, [wStageEvent]
+	and ~STAGE_EVENT_PHASE_MASK & $ff
+	or STAGE_EVENT_PHASE_SETTLED << STAGE_EVENT_PHASE_SHIFT
+	ld [wStageEvent], a
+	pop af
 ; The store has to be the LAST thing on every path: StageEventRebuildStolenMon
-; uses wStageEventScratch as its own scratch, so writing the result any earlier
-; would be overwritten by the very path that produces it.
+; and StageEventStolenMonToBox both use wStageEventScratch as their own
+; scratch, so writing the result any earlier would be overwritten by the very
+; path that produces it.
 .done
 	ld [wStageEventScratch], a
+	ret
+
+; ============================================================
+; StageEventStolenMonToBox  (1C, 2026-09-22)
+; Appends the recorded mon to the CURRENT BOX when the party is full.
+;
+; WHY NOT SendNewMonToBox, which is the obvious candidate: it rebuilds the mon
+; from wEnemyMon, stamps the player's own name over the OT and pops the
+; AskName nickname prompt. None of that is wanted - this is the player's own
+; mon coming home, and the record already holds it at full fidelity. The shape
+; copied instead is _MoveMon's PARTY_TO_BOX tail (engine/pokemon/add_mon.asm):
+; bounds-check against MONS_PER_BOX, then APPEND at wBoxCount.
+;
+; The record is a 33-byte BOX struct, so unlike the party path there is no
+; struct conversion to do and no stats to recompute - a box mon stores neither.
+; The one derived field a box mon DOES store is MON_BOX_LEVEL, and the record's
+; copy of it is stale: the struct was copied out of a PARTY struct, where byte
+; 3 is the unused BoxLevel cache and the live level lives at MON_LEVEL, past
+; the 33 bytes that were saved. _MoveMon has the same problem and solves it by
+; copying the party struct's MON_LEVEL across; there is no MON_LEVEL here, so
+; the level is recomputed from experience the same way the give-to-party path
+; recomputes it.
+;
+; MONS_PER_BOX is 20 and nothing here advances to the next box, so a full box
+; is a hard stop - that is the carry-clear exit, and it is the only one.
+;
+; OUTPUT: carry set = the mon is in the box. carry clear = the box was full and
+; NOTHING was written. Clobbers a/bc/de/hl.
+; ============================================================
+StageEventStolenMonToBox:
+	ld a, [wBoxCount]
+	cp MONS_PER_BOX
+	jr c, .haveRoom
+	and a                         ; carry clear = no room
+	ret
+.haveRoom
+	; --- grow the box list ---
+	inc a
+	ld [wBoxCount], a
+	ld c, a                       ; c = new box count (1-based)
+	ld b, 0
+	ld hl, wBoxSpecies
+	add hl, bc
+	ld [hl], $ff                  ; terminator one past the new entry
+	dec hl
+	; sStolenRecord is in SRAM bank 1 while every other stage-event field is
+	; in bank 0, so rRAMB has to be re-selected here rather than assumed.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sStolenRecord)
+	ld [rRAMB], a
+	ld a, [sStolenBoxMon]         ; box struct byte 0 = species
+	ld [hl], a
+	ld [wCurPartySpecies], a
+	; --- copy the struct and both names into the new slot ---
+	ld a, [wBoxCount]
+	dec a                         ; 0-based slot index
+	ld [wStageEventScratch], a
+	ld hl, wBoxMons
+	ld bc, BOXMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenBoxMon
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+	ld a, [wStageEventScratch]
+	ld hl, wBoxMonNicks
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenNickname
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wStageEventScratch]
+	ld hl, wBoxMonOT
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, sStolenOTName
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	; --- MON_BOX_LEVEL, recomputed from the experience that is the truth ---
+	ld a, [wStageEventScratch]
+	ldh [hWhichPokemon], a
+	ld a, BOX_DATA
+	ld [wMonDataLocation], a
+	call LoadMonData
+	farcall CalcLevelFromExperience ; d = level; farcall keeps d/e
+	ld a, [wStageEventScratch]
+	ld hl, wBoxMons
+	ld bc, BOXMON_STRUCT_LENGTH
+	push de
+	call AddNTimes                ; hl = the new mon's struct base
+	pop de
+	ld bc, MON_BOX_LEVEL
+	add hl, bc
+	ld [hl], d
+	scf
 	ret
 
 ; OUTPUT: a = sStolenKind. Clobbers a.
@@ -769,6 +899,198 @@ StageEventInjectStolenMon::
 	ld b, $1
 	call CalcStats
 	ret
+
+; ============================================================
+; StageEventPrintAfterLine  (1C, 2026-09-22)
+; The whole after-battle beat for a stage-event NPC, farcalled from each map's
+; one-line text_asm stub. It lives here rather than in the map scripts because
+; "Maps 6" is bank 17 and has tens of bytes free, not hundreds - and because
+; the four stages would otherwise carry four identical copies of it.
+;
+; The local text streams below are legal for the same reason
+; StageEventPrintLootLine's are: this is entered by farcall, so bank $3A is
+; the mapped bank while PrintText walks them.
+;
+; TWO JOBS:
+;
+; 1. THE RETRY. A hand-over that found no room left the phase at OWED with the
+;    theft record still live, and talking is how the player collects once they
+;    have made space. StageEventGiveBack re-reads the record and, on success,
+;    clears it and settles the event, so this is safe to reach repeatedly and
+;    stops being the retry the moment it works. Its result comes back through
+;    wStageEventScratch, never through `a`.
+; 2. Otherwise, a per-type idle line. For a PAIR that is the only thing the
+;    surviving partner can do: beating either one ends the encounter, and the
+;    recovery block sets BOTH beat flags precisely so the other gives this
+;    instead of starting a second battle with nothing left to win.
+;
+; Clobbers a/bc/de/hl.
+; ============================================================
+StageEventPrintAfterLine::
+	ld a, [wStageEvent]
+	and STAGE_EVENT_PHASE_MASK
+	cp STAGE_EVENT_PHASE_OWED << STAGE_EVENT_PHASE_SHIFT
+	jr nz, .idle
+	call StageEventGiveBack       ; in-bank: -> wStageEventScratch
+	ld a, [wStageEventScratch]
+	add a, a                      ; two bytes per pointer
+	ld c, a
+	ld b, 0
+	ld hl, StageEventRecoverTexts
+	jr .pick
+.idle
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	dec a                         ; type is 1-based; the table is 0-based
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, StageEventAfterTexts
+.pick
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	jp PrintText
+
+StageEventAfterTexts:
+	dw StageEventAfterJessieJames ; STAGE_EVENT_JESSIE_JAMES
+	dw StageEventAfterPsychic     ; STAGE_EVENT_PSYCHIC
+	dw StageEventAfterBurglar     ; STAGE_EVENT_BURGLAR
+	dw StageEventAfterJoy         ; STAGE_EVENT_JOY
+	dw StageEventAfterJenny       ; STAGE_EVENT_JENNY
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventAfterTexts needs a row per stage-event type"
+
+; A second copy of what each map's own …RecoverTexts table holds, because the
+; retry above prints from THIS bank. Every row points at the same shared
+; string the map tables point at, so there is nothing that can diverge.
+StageEventRecoverTexts:
+	dw StageEventRecoverNothing   ; STAGE_GIVEBACK_NOTHING
+	dw StageEventRecoverMon       ; STAGE_GIVEBACK_MON
+	dw StageEventRecoverItem      ; STAGE_GIVEBACK_ITEM
+	dw StageEventRecoverNoRoom    ; STAGE_GIVEBACK_NO_ROOM
+	dw StageEventRecoverToBox     ; STAGE_GIVEBACK_TO_BOX
+	ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5, "StageEventRecoverTexts needs a row per give-back result"
+
+StageEventAfterJessieJames:
+	text_far _StageEventAfterJessieJamesText
+	text_end
+StageEventAfterPsychic:
+	text_far _StageEventAfterPsychicText
+	text_end
+StageEventAfterBurglar:
+	text_far _StageEventAfterBurglarText
+	text_end
+StageEventAfterJoy:
+	text_far _StageEventAfterJoyText
+	text_end
+StageEventAfterJenny:
+	text_far _StageEventAfterJennyText
+	text_end
+StageEventRecoverNothing:
+	text_far _StageEventRecoverNothingText
+	text_end
+StageEventRecoverMon:
+	text_far _StageEventRecoverMonText
+	text_end
+StageEventRecoverItem:
+	text_far _StageEventRecoverItemText
+	text_end
+StageEventRecoverNoRoom:
+	text_far _StageEventRecoverNoRoomText
+	text_end
+StageEventRecoverToBox:
+	text_far _StageEventRecoverToBoxText
+	text_end
+
+; ============================================================
+; StageEventKeepSpriteOnDefeat  (1C, 2026-09-22)
+; EndTrainerBattle's hide-on-defeat carve-out, lifted out of HOME.
+;
+; Three kinds of object on the procedural maps must NOT vanish when beaten:
+;
+;   - the BOSS (slot 1 on Cave, Forest and Facility). A join-offer script owns
+;     its visibility, and has since Phase 7.
+;   - the STAGE-EVENT NPC PAIR. New in 1C. They used to be hidden by the
+;     engine here AND by an explicit HideObject pair in each map's recovery
+;     block; both are gone, because a hand-over that found no room has to be
+;     retryable, which means the villain has to still be standing there.
+;   - POKEMON_TOWER_7F, whose scripts end the battle themselves.
+;
+; Everything else on these maps takes ordinary hide-on-defeat, and that is not
+; academic: the Facility's four FAKE POKEBALLS are OW_POKEMON trainer objects
+; in slots 6-9 and are CONSUMED when beaten. A blanket per-map exemption would
+; leave them standing and re-fightable, which is exactly the bug the
+; 2026-09-17 narrowing fixed. Hence slot lists, not map lists.
+;
+; SIDE EFFECT, and it is a real fix: PROCEDURAL_FOREST declares no entries at
+; all in data/maps/toggleable_objects.asm, so the caller's unchecked IsInArray
+; would read past that list's terminator and HideObject a garbage toggle
+; index. Slots 1, 6 and 7 are every trainer object the Forest has, so the
+; caller can no longer reach that path on that map.
+;
+; INPUT: hCurMap, hActiveSpriteIndex (the beaten sprite's slot).
+; OUTPUT: carry set = leave the sprite where it is.
+; Clobbers a/bc/hl. Preserves d/e.
+; ============================================================
+StageEventKeepSpriteOnDefeat::
+	; 7F is the one EVERY-slot exemption, so it is a compare and not a table
+	; row: a row's slot list is matched against hActiveSpriteIndex, which is
+	; 1-based and so can never match the 0 that would have to pad it.
+	ldh a, [hCurMap]
+	cp POKEMON_TOWER_7F
+	jr z, .keep
+	ld hl, StageEventKeepSpriteTable
+.rowLoop
+	ld a, [hli]
+	ld b, a                         ; b = this row's map id
+	inc a
+	jr z, .hide                     ; hit the -1 terminator: an ordinary map
+	ldh a, [hCurMap]
+	cp b
+	jr z, .matched
+	inc hl                          ; step over the row's three slot bytes
+	inc hl
+	inc hl
+	jr .rowLoop
+.matched
+	ldh a, [hActiveSpriteIndex]
+	ld b, a
+	ld c, STAGE_EVENT_KEEP_SLOTS
+.slotLoop
+	ld a, [hli]
+	cp b
+	jr z, .keep
+	dec c
+	jr nz, .slotLoop
+.hide
+	and a                           ; carry clear
+	ret
+.keep
+	scf
+	ret
+
+DEF STAGE_EVENT_KEEP_SLOTS EQU 3
+
+; One row per map: the map id, then STAGE_EVENT_KEEP_SLOTS sprite slots to
+; exempt. 0 pads a row that needs fewer - sprite slot 0 does not exist, since
+; hActiveSpriteIndex here is a 1-based object index, so it can never match.
+;
+; The Cemetery has no boss OBJECT: its ghost boss is a wild battle, and slot 1
+; on every floor is a plain item pokeball that never reaches EndTrainerBattle.
+; Its floors are also not contiguous map ids (VICTORY_ROAD_1F sits between
+; PROCEDURAL_CEMETERY_3 and _4), which is why this is a table and not a range.
+StageEventKeepSpriteTable:
+	ASSERT WILD_AREA_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
+	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
+	db PROCEDURAL_CAVE_1,     1, 6, 7    ; boss, stage-event NPC pair
+	db PROCEDURAL_FOREST,     1, 6, 7
+	db PROCEDURAL_FACILITY,   1, 10, 11  ; slots 6-9 are the fake balls: hide those
+	db PROCEDURAL_CEMETERY_1, 0, 2, 3
+	db PROCEDURAL_CEMETERY_2, 0, 2, 3
+	db PROCEDURAL_CEMETERY_3, 0, 2, 3
+	db PROCEDURAL_CEMETERY_4, 0, 2, 3
+	db -1
 
 StageEventShowCaveNpcs::
 	ld a, RAMG_SRAM_ENABLE

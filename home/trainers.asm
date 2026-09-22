@@ -207,28 +207,18 @@ EndTrainerBattle::
 	ld a, [wWasTrainerBattle]
 	and a
 	jr nz, .skipRemoveSprite ; test if trainer was fought (in that case skip removing the corresponding sprite)
-	; The three procedural maps all exempt their BOSS (slot 1) from the engine's
-	; hide-on-defeat, because a join-offer script owns its visibility instead.
-	; Only the boss: the Cave and Forest used to exempt EVERY slot, which meant
-	; a defeated stage-event NPC was never hidden by the engine at all and only
-	; vanished if the recovery block happened to run. The Facility already had
-	; it right; this is the Facility's shape applied to all three.
-	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_1
-	jr z, .bossSlotOnly
-	cp PROCEDURAL_FOREST
-	jr z, .bossSlotOnly
-	cp PROCEDURAL_FACILITY
-	jr z, .bossSlotOnly
-	cp POKEMON_TOWER_7F
-	jr z, .skipRemoveSprite ; the two 7F scripts call EndTrainerBattle manually after wIsTrainerBattle has been unset
-	jr .removeSprite
-.bossSlotOnly
-	ASSERT WILD_AREA_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
-	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
-	ldh a, [hActiveSpriteIndex]
-	cp FACILITY_BOSS         ; slot 1 = the join-offer lifecycle; everything
-	jr z, .skipRemoveSprite  ; else takes ordinary hide-on-defeat
+	; Which sprites survive being beaten is a per-map, per-slot question, and
+	; the answer table does not belong in HOME. It used to be an inline chain
+	; of map compares here; 1C (2026-09-22) added the stage-event NPC pair to
+	; the exemption - they now STAY so the player can come back for a
+	; hand-over that had no room - which would have meant per-map SLOT lists
+	; in the tightest bank in the ROM. The whole decision is one farcall now,
+	; and this costs HOME less than the chain it replaced.
+	;
+	; POKEMON_TOWER_7F moved in there too: its two scripts call
+	; EndTrainerBattle manually after wIsTrainerBattle has been unset.
+	farcall StageEventKeepSpriteOnDefeat
+	jr c, .skipRemoveSprite
 .removeSprite
 	ld hl, wToggleableObjectList
 	ld de, $2
