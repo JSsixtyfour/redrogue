@@ -109,6 +109,12 @@ DEF wProcCaveDY           EQU 14
 DEF wProcCaveLoopI        EQU 15
 DEF wProcCaveLoopX        EQU 16
 DEF wProcCaveLoopY        EQU 17
+; 1E: the exit-distance re-roll budget, live only inside the target loop's
+; exit iteration - between PCRollTargetPoint and PCBossFarEnough, neither of
+; which touches offset 16. LoopX's own users are all in PCAutotilePass's Pass
+; C (line 3800-odd), which runs after every walk is carved, so this is the
+; same write-before-read donor argument the river's bounding box uses.
+DEF wProcCaveBossDistRetry EQU wProcCaveLoopX
 ; offsets 19/20/21 (SaveY, BulgeX/Y) were used by an earlier live-during-
 ; carving autotiling design, now removed - see the note above
 ; PCAutotilePass for why. Free again; reuse before adding new offsets.
@@ -238,6 +244,31 @@ DEF wProcCaveBallPos      EQU 10  ; PCPlaceWildAreaItems: 8 bytes, X/Y interleav
 DEF PC_ITEM_MIN_DIST      EQU 4   ; PCPlaceWildAreaItems: minimum Chebyshev distance
                                   ; (max(|dx|,|dy|)) a candidate must keep from the
                                   ; entrance and from every already-placed ball.
+
+; --- the boss must not be next door (1E, 2026-09-22) ----------------------
+; The boss is not placed by a search at all: it stands on the EXIT ladder
+; (PCPlaceBoss snapshots sProcCaveStagingExitX/Y), so constraining the exit is
+; what constrains the boss. Until now the only thing keeping it away was
+; PCOtherEdgesTable excluding the entrance's own edge, which still allowed the
+; near corners.
+;
+; The candidate set is exactly 3 edges x 18 offsets = 54, and the entrance is
+; pinned at block (9,19) on the BOTTOM edge, so every distance is known:
+;   TOP   (y=0),  x=1..18: |x-9| + 19  -> 19..28
+;   LEFT  (x=0),  y=1..18: 9 + (19-y)  -> 10..27
+;   RIGHT (x=19), y=1..18: 10 + (19-y) -> 11..28
+; The old minimum was 10, at the left/right near corners. A floor of 20 keeps
+; 34 of the 54: 17 TOP (every x but 9), 8 LEFT (y<=8), 9 RIGHT (y<=9). The
+; maximum achievable is 28, so a floor above that would be unsatisfiable.
+DEF PC_BOSS_MIN_DIST      EQU 20  ; minimum Manhattan distance, entrance to exit
+
+; Re-roll budget, NOT a spin. 34/54 of candidates pass, so a single roll
+; succeeds ~63% of the time and eight consecutive failures are about one cave
+; in 2,800; on that cave the last candidate is accepted as-is. PCPreloadCave
+; runs inside a double-speed window during LoadMapData, so an unbounded retry
+; is not an option - this is the same budget-then-accept idiom
+; PCPlaceWildAreaItems uses for its ball spacing.
+DEF PC_BOSS_DIST_TRIES    EQU 8
 DEF wProcCaveIncludeRocks EQU 18  ; toggle read by PCClassifyCell's floor-check -
                                   ; see PCIsFloorLike. 0 (default) = only real
                                   ; floor/entrance count; set to 1 only during
@@ -492,38 +523,36 @@ PCPreloadCave::
 	xor a
 	ld [wBuffer + wProcCaveLoopI], a
 .targetLoop
-	; pick target edge: one of the 3 NOT equal to the entrance edge
-	ld c, 3
-	call Rangerandom
-	ld b, a                        ; b = sub-index 0-2 (Rangerandom preserves b)
-	ld a, [wBuffer + wProcCaveEntranceEdge]
-	ld c, a
-	add a, a                       ; a = edge*2
-	add a, c                       ; a = edge*3
-	add a, b                       ; + sub-index = table row*3 + col
-	ld hl, PCOtherEdgesTable
-	ld c, a
-	ld b, 0
-	add hl, bc
-	ld a, [hl]
-	ld [wBuffer + wProcCaveEdge], a
-
-	ld c, 18
-	call Rangerandom
-	inc a
-	ld [wBuffer + wProcCaveOffset], a
-	call PCEdgePoint
-	ld a, [wBuffer + wProcCaveCurX]
-	ld [wBuffer + wProcCaveTargetX], a
-	ld a, [wBuffer + wProcCaveCurY]
-	ld [wBuffer + wProcCaveTargetY], a
-
-	; is this target the exit?
-	ld a, [wBuffer + wProcCaveLoopI]
-	ld b, a
+	; IS THIS THE EXIT? Asked BEFORE the roll now (1E), not after it. The exit
+	; is where the boss ends up standing, and it is the one target that can be
+	; REJECTED and rolled again, so the branch has to come first. Every other
+	; target is rolled exactly once and accepted, exactly as before - re-rolling
+	; a non-exit index would break PCStageHideoutCapture's reasoning, which
+	; takes targets (exit+1) mod 5 and (exit+2) mod 5 and documents them as
+	; independently rolled and identically distributed.
 	ld a, [wBuffer + wProcCaveExitIndex]
+	ld b, a
+	ld a, [wBuffer + wProcCaveLoopI]
 	cp b
-	jr nz, .notExit
+	jr z, .exitTarget
+
+	call PCRollTargetPoint
+	jr .haveTarget
+
+.exitTarget
+	ld a, PC_BOSS_DIST_TRIES
+	ld [wBuffer + wProcCaveBossDistRetry], a
+.exitRoll
+	call PCRollTargetPoint
+	call PCBossFarEnough            ; carry set = far enough from the entrance
+	jr c, .exitAccepted
+	ld hl, wBuffer + wProcCaveBossDistRetry
+	dec [hl]
+	jr nz, .exitRoll
+	; Budget exhausted. Fall through and take the last candidate rather than
+	; spin: a boss that is closer than intended is a worse cave, a generator
+	; that never returns is a hung game.
+.exitAccepted
 	ld a, [wBuffer + wProcCaveTargetX]
 	ld [wBuffer + wProcCaveExitX], a
 	ld a, [wBuffer + wProcCaveTargetY]
@@ -534,7 +563,7 @@ PCPreloadCave::
 	ld [wBuffer + wProcCaveCurY], a
 	ld a, PC_BLOCK_FLOOR
 	call PCWriteCell                ; punch the exit boundary opening
-.notExit
+.haveTarget
 
 	call PCStageHideoutCapture      ; Phase 7b: mirror the hideout target to SRAM
 	call PCCarveOne
@@ -2563,6 +2592,73 @@ PCEdgePoint:
 	ld [wBuffer + wProcCaveCurX], a
 	xor a
 	ld [wBuffer + wProcCaveCurY], a
+	ret
+
+; ============================================================
+; PCRollTargetPoint  (1E, 2026-09-22)
+; One roll of a carve target: a random edge that is not the entrance's, then a
+; random offset 1-18 along it.
+;
+; Factored out of GenerateProceduralCave's target loop when the exit gained a
+; re-roll. The instruction sequence is unchanged, so a non-exit target draws
+; exactly the same two Rangerandom values in the same order it always did.
+;
+; OUTPUT: wProcCaveTargetX/Y, and wProcCaveCurX/Y left on the same point.
+; Clobbers a/bc/hl.
+; ============================================================
+PCRollTargetPoint:
+	; pick target edge: one of the 3 NOT equal to the entrance edge
+	ld c, 3
+	call Rangerandom
+	ld b, a                        ; b = sub-index 0-2 (Rangerandom preserves b)
+	ld a, [wBuffer + wProcCaveEntranceEdge]
+	ld c, a
+	add a, a                       ; a = edge*2
+	add a, c                       ; a = edge*3
+	add a, b                       ; + sub-index = table row*3 + col
+	ld hl, PCOtherEdgesTable
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	ld [wBuffer + wProcCaveEdge], a
+
+	ld c, 18
+	call Rangerandom
+	inc a
+	ld [wBuffer + wProcCaveOffset], a
+	call PCEdgePoint
+	ld a, [wBuffer + wProcCaveCurX]
+	ld [wBuffer + wProcCaveTargetX], a
+	ld a, [wBuffer + wProcCaveCurY]
+	ld [wBuffer + wProcCaveTargetY], a
+	ret
+
+; ============================================================
+; PCBossFarEnough  (1E, 2026-09-22)
+; Is the rolled target at least PC_BOSS_MIN_DIST (Manhattan) from the
+; entrance? The exit cell is where PCPlaceBoss stands the boss, so this is the
+; boss's distance.
+;
+; PCManhattan measures target-to-CURRENT, so the current point is moved to the
+; entrance first. It is deliberately LEFT there: PCCarveOne's first act is to
+; set wProcCaveCurX/Y to the entrance anyway, so there is nothing to restore
+; and no state for a restore to get wrong.
+;
+; PCManhattan also writes wProcCaveDX/DY, which is harmless here - PCCarveOne
+; recomputes both through its own PCManhattan call, and PCStep recomputes them
+; every step after that.
+;
+; OUTPUT: carry SET = accept. Clobbers a/bc/hl.
+; ============================================================
+PCBossFarEnough:
+	ld a, [wBuffer + wProcCaveEntranceX]
+	ld [wBuffer + wProcCaveCurX], a
+	ld a, [wBuffer + wProcCaveEntranceY]
+	ld [wBuffer + wProcCaveCurY], a
+	call PCManhattan                ; a = |target - entrance|
+	cp PC_BOSS_MIN_DIST             ; carry set when the distance is too SHORT
+	ccf                             ; so invert it: carry set = far enough
 	ret
 
 PCOtherEdgesTable:
