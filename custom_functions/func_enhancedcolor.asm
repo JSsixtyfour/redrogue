@@ -215,6 +215,168 @@ GBCEnhancedOverworldPalettes_DarkCavern:	;palette set used for darkened areas li
 	GBCEnh_Dark2
 
 
+; 2B (2026-09-22): the Procedural Forest's two seasonal variants. Both are the
+; DEFAULT set with only PAL_ENH_OVW_GREEN (register 4) replaced - that is the
+; register PalSettings_FOREST assigns to the tree tiles
+; (data/gfx/overworld_tile_palettes.asm), and it is the only thing that
+; changes between the two. Colours are the "day" row of maps/springtrees2.pal
+; and maps/falltrees2.pal, transcribed by hand (those files are pokecrystal
+; morn/day/nite blocks with no INCBIN anywhere and no tool that reads them).
+GBCEnhancedOverworldPalettes_ForestSpring:
+	; PAL_ENH_OVW_RED     	; $00
+	GBCEnh_White
+	RGB 31, 10,  0
+	RGB 21,  0,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PINK  	; $01
+	GBCEnh_White
+	RGB 31, 15, 18
+	RGB 31,  0,  6
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PURPLE 	; $02
+	GBCEnh_White
+	RGB 25, 15, 31
+	RGB 19,  0, 22
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GRAY   	; $03
+	GBCEnh_White
+	RGB 20, 23, 10
+	RGB 11, 11,  5
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GREEN    	; $04 - spring trees (maps/springtrees2.pal, day row)
+	RGB 28, 31, 26
+	RGB 25, 14, 14
+	RGB 27, 16, 16
+	RGB  6,  0,  0
+
+	; PAL_ENH_OVW_YELLOW  	; $05
+	GBCEnh_White
+	RGB 31, 31,  0
+	RGB 28, 14,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BROWN    	; $06
+	GBCEnh_White
+	RGB 22, 16,  5
+	RGB 15,  7,  3
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BLUE  	; $07
+	GBCEnh_White
+	RGB 12, 14, 31
+	RGB  0,  1, 25
+	GBCEnh_Black
+
+GBCEnhancedOverworldPalettes_ForestFall:
+	; PAL_ENH_OVW_RED     	; $00
+	GBCEnh_White
+	RGB 31, 10,  0
+	RGB 21,  0,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PINK  	; $01
+	GBCEnh_White
+	RGB 31, 15, 18
+	RGB 31,  0,  6
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PURPLE 	; $02
+	GBCEnh_White
+	RGB 25, 15, 31
+	RGB 19,  0, 22
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GRAY   	; $03
+	GBCEnh_White
+	RGB 20, 23, 10
+	RGB 11, 11,  5
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GREEN    	; $04 - fall trees (maps/falltrees2.pal, day row)
+	RGB 28, 31, 26
+	RGB 25, 15,  0
+	RGB 31, 10,  3
+	RGB  6,  0,  0
+
+	; PAL_ENH_OVW_YELLOW  	; $05
+	GBCEnh_White
+	RGB 31, 31,  0
+	RGB 28, 14,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BROWN    	; $06
+	GBCEnh_White
+	RGB 22, 16,  5
+	RGB 15,  7,  3
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BLUE  	; $07
+	GBCEnh_White
+	RGB 12, 14, 31
+	RGB  0,  1, 25
+	GBCEnh_Black
+
+; 2B (2026-09-22): PLACEHOLDER red alt set for the Procedural Facility's coin
+; flip and for Pokemon Mansion (both use the FACILITY/MANSION tilesets, whose
+; PalSettings_* tables lean hardest on PAL_ENH_OVW_GRAY (register 3, walls and
+; floor) and PAL_ENH_OVW_BROWN (register 6)). Warms those two registers toward
+; the same reddish hue the SGB path already uses for Cinnabar
+; (data/sgb/sgb_palettes.asm's PAL_CINNABAR); everything else is DEFAULT
+; verbatim, same minimal-diff shape as the Cave's ColdCavern set above.
+GBCEnhancedOverworldPalettes_FacilityRed:
+	; PAL_ENH_OVW_RED     	; $00
+	GBCEnh_White
+	RGB 31, 10,  0
+	RGB 21,  0,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PINK  	; $01
+	GBCEnh_White
+	RGB 31, 15, 18
+	RGB 31,  0,  6
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_PURPLE 	; $02
+	GBCEnh_White
+	RGB 25, 15, 31
+	RGB 19,  0, 22
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GRAY   	; $03 - warm/reddish, was khaki-gray
+	GBCEnh_White
+	RGB 27, 14, 10
+	RGB 18,  6,  4
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_GREEN    	; $04
+	GBCEnh_White
+	RGB 17, 31, 11
+	RGB  1, 22,  6
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_YELLOW  	; $05
+	GBCEnh_White
+	RGB 31, 31,  0
+	RGB 28, 14,  0
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BROWN    	; $06 - Cinnabar-matched red-brown
+	GBCEnh_White
+	RGB 26, 10,  6
+	RGB 17,  4,  2
+	GBCEnh_Black
+
+	; PAL_ENH_OVW_BLUE  	; $07
+	GBCEnh_White
+	RGB 12, 14, 31
+	RGB  0,  1, 25
+	GBCEnh_Black
+
+
 ; ---------------------------------------------------------------------------
 ; Phase 4b: base palette set selection
 ; ---------------------------------------------------------------------------
@@ -254,12 +416,18 @@ EnhBasePalSetPointers:
 	dw GBCEnhancedOverworldPalettes             ; ENH_BASE_DEFAULT
 	dw GBCEnhancedOverworldPalettes_ColdCavern  ; ENH_BASE_COLD
 	dw GBCEnhancedOverworldPalettes_DarkCavern  ; ENH_BASE_DARK
+	dw GBCEnhancedOverworldPalettes_ForestSpring ; ENH_BASE_FOREST_SPRING
+	dw GBCEnhancedOverworldPalettes_ForestFall   ; ENH_BASE_FOREST_FALL
+	dw GBCEnhancedOverworldPalettes_FacilityRed  ; ENH_BASE_FACILITY_RED
 EnhBasePalSetPointers_End:
 
-DEF ENH_BASE_DEFAULT EQU 0
-DEF ENH_BASE_COLD    EQU 1
-DEF ENH_BASE_DARK    EQU 2
-DEF ENH_BASE_SET_COUNT EQU 3
+DEF ENH_BASE_DEFAULT       EQU 0
+DEF ENH_BASE_COLD          EQU 1
+DEF ENH_BASE_DARK          EQU 2
+DEF ENH_BASE_FOREST_SPRING EQU 3
+DEF ENH_BASE_FOREST_FALL   EQU 4
+DEF ENH_BASE_FACILITY_RED  EQU 5
+DEF ENH_BASE_SET_COUNT EQU 6
 
 ASSERT (EnhBasePalSetPointers_End - EnhBasePalSetPointers) / 2 == ENH_BASE_SET_COUNT, \
 	"ENH_BASE_SET_COUNT does not match EnhBasePalSetPointers; .ReadMasterPals would index past the table"
@@ -288,6 +456,22 @@ ProcCavePalSets_End:
 
 ASSERT ProcCavePalSets_End - ProcCavePalSets == PROC_CAVE_PAL_COUNT, \
 	"PROC_CAVE_PAL_COUNT does not match ProcCavePalSets; the range check would let a bad variant through"
+
+ProcForestPalSets:
+	db ENH_BASE_FOREST_SPRING ; sProcForestPalette 0
+	db ENH_BASE_FOREST_FALL   ; 1
+ProcForestPalSets_End:
+
+ASSERT ProcForestPalSets_End - ProcForestPalSets == PROC_FOREST_PAL_COUNT, \
+	"PROC_FOREST_PAL_COUNT does not match ProcForestPalSets; the range check would let a bad variant through"
+
+ProcFacilityPalSets:
+	db ENH_BASE_DEFAULT      ; sProcFacilityPalette 0 - PowerPlant
+	db ENH_BASE_FACILITY_RED ; 1 - Mansion
+ProcFacilityPalSets_End:
+
+ASSERT ProcFacilityPalSets_End - ProcFacilityPalSets == PROC_FACILITY_PAL_COUNT, \
+	"PROC_FACILITY_PAL_COUNT does not match ProcFacilityPalSets; the range check would let a bad variant through"
 
 ; Resolve the base palette set for the current map into wEnhBasePalSet.
 ;
@@ -322,6 +506,21 @@ ResolveEnhancedBasePalSet::
 	ld a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
 	jr z, .procCave
+	cp PROCEDURAL_FOREST
+	jr z, .procForest
+	cp PROCEDURAL_FACILITY
+	jr z, .procFacility
+	; Pokemon Mansion is not rolled - it always gets the same warm set the
+	; Facility's coin flip uses for its own "Mansion" result. Four explicit
+	; compares because the map IDs are not contiguous ($A5, then $D6-$D8).
+	cp POKEMON_MANSION_1F
+	jr z, .mansion
+	cp POKEMON_MANSION_2F
+	jr z, .mansion
+	cp POKEMON_MANSION_3F
+	jr z, .mansion
+	cp POKEMON_MANSION_B1F
+	jr z, .mansion
 	jr .store
 .cold
 	ld b, ENH_BASE_COLD
@@ -329,6 +528,10 @@ ResolveEnhancedBasePalSet::
 	ld a, b
 	ld [wEnhBasePalSet], a
 	ret
+
+.mansion
+	ld b, ENH_BASE_FACILITY_RED
+	jr .store
 
 .procCave
 	ld a, BANK(sProcCavePalette)
@@ -338,6 +541,36 @@ ResolveEnhancedBasePalSet::
 	jr nc, .store          ; $ff on a save that predates the field, or any
 	                       ; out-of-range value, keeps ENH_BASE_DEFAULT
 	ld hl, ProcCavePalSets
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld b, [hl]
+	jr .store
+
+.procForest
+	ld a, BANK(sProcForestPalette)
+	ld hl, sProcForestPalette
+	call ReadProcPaletteVariant
+	cp PROC_FOREST_PAL_COUNT
+	jr nc, .store
+	ld hl, ProcForestPalSets
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld b, [hl]
+	jr .store
+
+.procFacility
+	ld a, BANK(sProcFacilityPalette)
+	ld hl, sProcFacilityPalette
+	call ReadProcPaletteVariant
+	cp PROC_FACILITY_PAL_COUNT
+	jr nc, .store
+	ld hl, ProcFacilityPalSets
 	add l
 	ld l, a
 	adc h

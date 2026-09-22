@@ -745,7 +745,7 @@ PFacTplData3x3BlockRoom:
     INCBIN "maps/ProceduralFacility_3x3_block_room.blk"
 ASSERT @ - PFacTplData3x3BlockRoom == 9
 PFacTplData3x3RockRoom:
-    INCBIN "maps/ProceduralFacility_3x3_rock_room.blkv"
+    INCBIN "maps/ProceduralFacility_3x3_rock_room.blk"
 ASSERT @ - PFacTplData3x3RockRoom == 9
 PFacTplData3x3RockRoom2:
     INCBIN "maps/ProceduralFacility_3x3_rock_room2.blk"

@@ -33,30 +33,35 @@ _StageEventArrivalJessieJamesText::
 	text "Hold it right"
 	line "there! Hand over"
 	cont "that #MON!@"
+	text_promptbutton
 	text_end
 
 _StageEventArrivalPsychicText::
 	text "I foresaw your"
 	line "arrival... and"
 	cont "your loss.@"
+	text_promptbutton
 	text_end
 
 _StageEventArrivalBurglarText::
 	text "Nice bag! I'll"
 	line "be taking"
 	cont "something.@"
+	text_promptbutton
 	text_end
 
 _StageEventArrivalJoyText::
 	text "Oh! A trainer"
 	line "way out here?"
 	cont "Let me help.@"
+	text_promptbutton
 	text_end
 
 _StageEventArrivalJennyText::
 	text "This area isn't"
 	line "safe. I'm on"
 	cont "patrol here.@"
+	text_promptbutton
 	text_end
 
 ; --- THE THEFT ITSELF: printed straight after the greeting ----------------
@@ -116,29 +121,34 @@ _StageEventHideoutJessieJamesText::
 	text "You followed us"
 	line "all the way out"
 	cont "here?@"
+	text_promptbutton
 	text_end
 
 _StageEventHideoutPsychicText::
 	text "Predictable. I"
 	line "knew you would"
 	cont "come.@"
+	text_promptbutton
 	text_end
 
 _StageEventHideoutBurglarText::
 	text "Tch. You've got"
 	line "a good nose,"
 	cont "kid.@"
+	text_promptbutton
 	text_end
 
 _StageEventHideoutJoyText::
 	text "Your #MON look"
 	line "much better"
 	cont "now!@"
+	text_promptbutton
 	text_end
 
 _StageEventHideoutJennyText::
 	text "Stay safe out"
 	line "here, trainer.@"
+	text_promptbutton
 	text_end
 
 ; --- DEFEAT: spoken by the trainer the moment the player wins -------------

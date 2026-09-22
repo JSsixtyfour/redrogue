@@ -10,7 +10,7 @@ water is rare on screen. Two competing explanations, and this separates them:
 
 The complication is that ANY count of block 118 in a finished cave is
 ambiguous: PCPlaceDropIn runs AFTER the river and one of its three stamps is
-maps/25tilepooldrop.blk, a 2x2 block of 118 inside an autotiled ring. A cave
+maps/ProceduralCave_4x4_pool_decor.blk, a 2x2 block of 118 inside an autotiled ring. A cave
 with four water blocks is almost certainly that pool, not a river. So the grid
 is sampled at a hook on PCPlaceDropIn's entry, before the pool can exist, and
 again once the map is fully up.

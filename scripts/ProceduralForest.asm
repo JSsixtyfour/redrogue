@@ -466,7 +466,7 @@ ProceduralForestBossText:
 ; Shows "<NAME>!" → player presses A → cry plays → battle starts.
 ; wNameBuffer was filled by ProceduralCave1BossText before TalkToTrainer ran.
 ProceduralForestBossBattleText:
-	text_far _PCBossEncounterText   ; "<NAME>!" + text_promptbutton (one A press)
+	text_far _PCBossEncounterText   ; "<NAME>!@" + text_end, no prompt
 	text_asm
 	ld a, [wRoguePokemon1]
 	call PlayCry

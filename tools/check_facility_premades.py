@@ -37,7 +37,7 @@ given asset depends on whether ITS baseboard segments are intact between
 them, so connectivity must be measured per asset (cut all four sockets,
 take connected components) rather than assumed from the hub block alone in
 either direction -- neither "hub must be walkable" nor "hub must be solid
-therefore isolated" holds in general. ProceduralFacility_3x3_rock_room.blkv
+therefore isolated" holds in general. ProceduralFacility_3x3_rock_room.blk
 (`5c 0e 5d`) is the clearest example: its baseboard is severed left and
 right by $5C/$5D, so its N/E/S/W connectivity runs through the open $0E
 centre instead of around the ring.
@@ -52,7 +52,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MAPS_DIR = ROOT / "maps"
-FIXTURE = MAPS_DIR / "ProceduralFacility_3x3_rock_room.blkv"
+FIXTURE = MAPS_DIR / "ProceduralFacility_3x3_rock_room.blk"
 BLOCKSET = ROOT / "gfx" / "blocksets" / "facility.bst"
 WIDTH = HEIGHT = 3
 HUB = ITEM = (1, 1)
@@ -333,23 +333,23 @@ class FullRoomResult:
 
 
 def discover_fullroom_files(maps_dir: Path = MAPS_DIR) -> list[Path]:
-    """Every ProceduralFacility_<W>x<H>_* full-room asset, .blk or .blkv.
+    """Every ProceduralFacility_<W>x<H>_* full-room asset.
 
-    Covers the *_room.blk, *_room2.blk (alternate variant), *_combinedroom.blk,
-    *_pool*.blk families, and the one currently-wired ProceduralFacility_
-    3x3_rock_room.blkv fixture (the .blkv extension is deliberate: it is
-    the sole full-room premade the generator actually INCBINs today).
-    Large-decor payloads (*_decor.blk) are handled elsewhere.
+    Covers the *_room.blk, *_room2.blk (alternate variant), *_combinedroom.blk
+    and *_pool*.blk families. All full-room premades are .blk now -
+    ProceduralFacility_3x3_rock_room.blk used to be the one .blkv exception
+    (2026-09-22 rename; there was never a Makefile rule for that extension,
+    so it only ever worked by luck of no implicit rule matching). Large-decor
+    payloads (*_decor.blk) are handled elsewhere.
     """
     out = []
-    for pattern in ("ProceduralFacility_*.blk", "ProceduralFacility_*.blkv"):
-        for path in maps_dir.glob(pattern):
-            name = path.name
-            if name.endswith("_decor.blk"):
-                continue
-            lowered = name.lower()
-            if "room" in lowered or "pool" in lowered:
-                out.append(path)
+    for path in maps_dir.glob("ProceduralFacility_*.blk"):
+        name = path.name
+        if name.endswith("_decor.blk"):
+            continue
+        lowered = name.lower()
+        if "room" in lowered or "pool" in lowered:
+            out.append(path)
     return sorted(out, key=lambda p: p.name)
 
 

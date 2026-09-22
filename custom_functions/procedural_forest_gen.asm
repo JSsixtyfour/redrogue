@@ -2354,12 +2354,13 @@ PFPreloadForest::
     and 1
     ld [sProcForestSignVariant], a
 
-    ; Phase 4a: the forest's palette variant. It only has variant 0 until Phase
-    ; 4d authors its alternates, so this is a deliberate write of 0 rather than
-    ; a roll - writing it is still necessary, because fresh SRAM powers up $ff
-    ; and an old save predates the field entirely. Phase 4d replaces these two
-    ; lines with a weighted roll like PCPreloadCave's.
-    xor a
+    ; 2B (2026-09-22): the forest's palette variant, spring (0) or fall (1),
+    ; rolled once here and stable for the whole visit, same mechanism as the
+    ; sign variant roll just above. PROC_FOREST_PAL_COUNT (2) is what both
+    ; colour paths range-check against - see ProcForestPalSets in
+    ; func_enhancedcolor.asm and .procForest in engine/gfx/palettes.asm.
+    call Random
+    and 1
     ld [sProcForestPalette], a
 
     ; Set the forest's wild-battle budget for this run: 10 + wBattleCount/5,

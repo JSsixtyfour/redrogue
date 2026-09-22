@@ -151,7 +151,7 @@ _AddPartyMon::
 	ld a, DV_BOOSTER
 	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte,
 	                               ; ram/wram.asm) - restored below before it escapes
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-4 (1 + displayed tier 0-3)
 	pop bc
 	pop de
 	pop hl
@@ -297,12 +297,12 @@ _AddPartyMon::
 	push de
 	ld a, SHINY_CHARM
 	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte)
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	farcall GetKeyItemPower        ; a = 0 (not active) or 1-4 (1 + displayed tier 0-3)
 	ld hl, .ShinyThresholdTable
 	ld e, a
 	ld d, 0
 	add hl, de
-	ld d, [hl]                     ; d = threshold (1/2/4/8); Random preserves de
+	ld d, [hl]                     ; d = threshold (1/2/4/8/16); Random preserves de
 	ld a, [wCurSpecies]            ; restore the aliased byte before it escapes to
 	ld [wCurPartySpecies], a       ; callers, which read it after AddPartyMon returns
 	call Random                    ; a = fresh roll
@@ -428,9 +428,12 @@ _AddPartyMon::
 
 .ShinyThresholdTable:
 ; SHINY CHARM (see KEY_ITEM_EFFECTS_PLAN_PC.md §3a). Index 0 is the base
-; rate with no charm owned; GetKeyItemPower's 1-3 (displayed tier) select
-; entries 1-3.
-	db 1, 2, 4, 8
+; rate with no charm owned; GetKeyItemPower's 1-4 (1 + displayed tier 0-3)
+; select entries 1-4. Doubles each tier; tier 3 (max, purchasable per
+; credit_mart.asm) caps at 16/256 = 6.3%.
+	table_width 1
+	db 1, 2, 4, 8, 16
+	assert_table_length 5
 
 ; ============================================================
 ; ApplyDVFloor — DV BOOSTER helper (see KEY_ITEM_EFFECTS_PLAN_PC.md §3d).

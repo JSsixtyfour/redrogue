@@ -83,7 +83,13 @@ DEF NUM_SGB_PALS EQU const_value
 DEF PAL_CAVE_COLD EQU PAL_0F
 ; PAL_CAVE_DARK (was PAL_27) was built and CUT 2026-09-16 - the darkened cavern
 ; is unreadable as a normal-navigation cave. PAL_27 is back to its original
-; colours and is still spare, as is PAL_25; those two are the next free rows.
+; colours.
+
+; 2B (2026-09-22): the Procedural Forest's SGB/CGB-non-enhanced seasonal rows,
+; claiming the last two spare slots (PAL_25 and PAL_27) the same way
+; PAL_CAVE_COLD claimed PAL_0F. There are no spare SGB rows left after this.
+DEF PAL_FOREST_SPRING EQU PAL_25
+DEF PAL_FOREST_FALL   EQU PAL_27
 
 ; How many palette variants the procedural cave rolls. Shared, because BOTH
 ; colour paths range-check against it: fresh SRAM powers up $ff, so
@@ -91,6 +97,14 @@ DEF PAL_CAVE_COLD EQU PAL_0F
 ; field, and neither path may index a table with it unchecked.
 ; func_enhancedcolor.asm ASSERTs its ProcCavePalSets table against this.
 DEF PROC_CAVE_PAL_COUNT EQU 2
+
+; How many palette variants the Procedural Forest and Facility roll (2B,
+; 2026-09-22). Same reasoning as PROC_CAVE_PAL_COUNT: fresh SRAM powers up
+; $ff, so both the CGB enhanced path (func_enhancedcolor.asm) and the
+; SGB/DMG path range-check against these before indexing a table.
+DEF PROC_FOREST_PAL_COUNT   EQU 2 ; sProcForestPalette: 0 spring, 1 fall
+DEF PROC_FACILITY_PAL_COUNT EQU 2 ; sProcFacilityPalette: 0 PowerPlant, 1 Mansion
+
 ; SHINY CHARM adds NO palettes here. Shin Red's system (which this is ported
 ; from) remaps a shiny mon onto another EXISTING mon palette rather than
 ; defining new ones - see ShinyPaletteConvert in engine/gfx/palettes.asm.

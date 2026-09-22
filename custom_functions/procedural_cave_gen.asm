@@ -2127,26 +2127,30 @@ PCSprinkleFloorDecor:
 ; Drop-in stamps (DRAFT 5, IMPLEMENTED 2026-06-26): small hand-authored
 ; .blk files, dropped onto a verified-clear rectangle of the finished
 ; cave. User-authored, not extracted from existing maps. Two backing
-; types, named by file prefix:
-; - "1tile*": backed by real floor (PC_BLOCK_FLOOR). The file holds ONLY
-;   the stamp's own interior (confirmed by decoding 1tilepooldrop.blk -
-;   4 bytes, all raw value 96, no edge variation at all - floor needs no
-;   edge transition, matching PCSprinkleFloorDecor's same reasoning).
-;   Needs a SEPARATE, runtime-checked-but-never-written 1-cell buffer
-;   ring of real floor around its own footprint, so nothing else (an
-;   item, the boss, floor decor, another stamp) ends up jammed directly
-;   against it. Matches the user's own example exactly: "for the 2x2
-;   pool [1tilepooldrop.blk] a 4x4 space would be required to drop in" -
-;   2x2 footprint + 1-cell buffer on all 4 sides = 4x4 checked, only the
-;   inner 2x2 actually written.
-; - "25tile*": backed by plain fill (25, the same "untouched" cells
-;   PCDecorateLast targets). The file BAKES ITS OWN buffer/edge-ring
-;   directly into its data (confirmed by decoding 25tilepooldrop.blk - a
-;   4x4 block whose outer ring is real autotile edge IDs, 21/24/26/29,
-;   the exact same N/S/E/W-alone IDs PCAutotilePass itself uses, framing
-;   a 2x2 pool-texture interior - not generic fill). So the file's own
-;   declared width/height IS the full required space already; no extra
-;   runtime buffer on top of it (PC_DROPIN_BUF_FILL = 0).
+; types. The old filenames encoded which type by a "1tile"/"25tile"
+; prefix; the files are now named by footprint (`<W>x<H>`, matching the
+; Facility's convention) instead, so that distinction is documented here
+; and by the PC_DROPIN_BUF_* comment on each PCDropInTable row below:
+; - floor-backed (PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR): the file holds
+;   ONLY the stamp's own interior (confirmed by decoding the old
+;   1tilepooldrop.blk - 4 bytes, all raw value 96, no edge variation at
+;   all - floor needs no edge transition, matching PCSprinkleFloorDecor's
+;   same reasoning). Needs a SEPARATE, runtime-checked-but-never-written
+;   1-cell buffer ring of real floor around its own footprint, so nothing
+;   else (an item, the boss, floor decor, another stamp) ends up jammed
+;   directly against it. Matches the user's own example exactly: "for the
+;   2x2 pool a 4x4 space would be required to drop in" - 2x2 footprint +
+;   1-cell buffer on all 4 sides = 4x4 checked, only the inner 2x2
+;   actually written.
+; - fill-backed (background 25, PC_DROPIN_BUF_FILL): backed by plain fill
+;   (25, the same "untouched" cells PCDecorateLast targets). The file
+;   BAKES ITS OWN buffer/edge-ring directly into its data (confirmed by
+;   decoding ProceduralCave_4x4_pool_decor.blk - a 4x4 block whose outer
+;   ring is real autotile edge IDs, 21/24/26/29, the exact same N/S/E/W-
+;   alone IDs PCAutotilePass itself uses, framing a 2x2 pool-texture
+;   interior - not generic fill). So the file's own declared width/height
+;   IS the full required space already; no extra runtime buffer on top of
+;   it (PC_DROPIN_BUF_FILL = 0).
 ;
 ; Picks one random stamp, rejection-samples a valid top-left corner for
 ; its full checked rectangle (footprint + 2*buffer on each axis), then
@@ -2158,24 +2162,25 @@ PCSprinkleFloorDecor:
 DEF PC_DROPIN_BUF_FLOOR EQU 1   ; 1-tile runtime-checked buffer, floor-backed
 DEF PC_DROPIN_BUF_FILL  EQU 0   ; fill-backed stamps bake their own buffer/edges
 DEF NUM_PC_DROPINS      EQU 3
-; 1tilepooldrop.blk (a 2x2 plain-96 pool patch) axed 2026-06-27 - user's
-; direct call after seeing it in actual play: "doesn't work visually."
-; The file itself is left in maps/ in case it's revisited later, just no
-; longer wired into the table below.
+; maps/1tilepooldrop.blk (a 2x2 plain-96 pool patch) axed 2026-06-27 -
+; user's direct call after seeing it in actual play: "doesn't work
+; visually." The file itself is left in maps/, still under its old name
+; since it is comment-only now, in case it's revisited later; it is just
+; no longer wired into the table below.
 
-PCDropIn1tileTallRockData: INCBIN "maps/1tiletallrockdrop.blk"
-PCDropIn1tileWideRockData: INCBIN "maps/1tilewiderockdrop.blk"
-PCDropIn25tilePoolData:    INCBIN "maps/25tilepooldrop.blk"
+PCDropIn1x3TallRockData: INCBIN "maps/ProceduralCave_1x3_tallrock_decor.blk"
+PCDropIn3x1WideRockData: INCBIN "maps/ProceduralCave_3x1_widerock_decor.blk"
+PCDropIn4x4PoolData:     INCBIN "maps/ProceduralCave_4x4_pool_decor.blk"
 
 ; one row per stamp: width, height, background value, buffer
 PCDropInTable:
-	db 1, 3, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1tiletallrockdrop
-	db 3, 1, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1tilewiderockdrop
-	db 4, 4, 25,             PC_DROPIN_BUF_FILL   ; 25tilepooldrop
+	db 1, 3, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 1x3 tall rock, floor-backed
+	db 3, 1, PC_BLOCK_FLOOR, PC_DROPIN_BUF_FLOOR  ; 3x1 wide rock, floor-backed
+	db 4, 4, 25,             PC_DROPIN_BUF_FILL   ; 4x4 pool, fill-backed (bakes its own edge ring)
 PCDropInPtrTable:
-	dw PCDropIn1tileTallRockData
-	dw PCDropIn1tileWideRockData
-	dw PCDropIn25tilePoolData
+	dw PCDropIn1x3TallRockData
+	dw PCDropIn3x1WideRockData
+	dw PCDropIn4x4PoolData
 
 ; ============================================================
 ; PCDropInCheckRect
