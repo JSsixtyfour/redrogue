@@ -14,9 +14,18 @@
 ;
 ; ⚠ No "@" before a `prompt`/`text_promptbutton`: "@" terminates the
 ; PlaceString run and PlaceNextChar returns the instant it sees one, so a
-; prompt byte after it is never dispatched and the text does not wait. These
-; all end "@" + `text_end` and rely on DisplayTextID's own after-text wait,
-; the same shape _PCBossJoinText uses.
+; prompt byte after it is never dispatched and the text does not wait.
+;
+; EVERY STRING HERE EXCEPT THE DEFEAT BLOCK ends "@" + `text_end` and leans on
+; DisplayTextID's own after-text wait (AfterDisplayingTextID ->
+; WaitForTextScrollButtonPress), the same shape _PCBossJoinText uses.
+;
+; THE DEFEAT BLOCK IS THE ONE EXCEPTION, and it has to be. It is the only
+; stage-event text NOT fired through DisplayTextID - engine/battle/core.asm
+; calls PrintEndBattleText directly - so there is no AfterDisplayingTextID to
+; fall back on. Without its own `prompt` that box printed and returned, and
+; the "got money for winning" box drew straight over it. Those strings end in
+; `prompt`, exactly like every route trainer's _...EndBattleText.
 
 ; --- ARRIVAL: spoken once, standing in front of the player on map load ----
 
@@ -48,12 +57,6 @@ _StageEventArrivalJennyText::
 	text "This area isn't"
 	line "safe. I'm on"
 	cont "patrol here.@"
-	text_end
-
-_StageEventArrivalBothGoodText::
-	text "We came out to"
-	line "look for lost"
-	cont "trainers!@"
 	text_end
 
 ; --- THE THEFT ITSELF: printed straight after the greeting ----------------
@@ -138,11 +141,52 @@ _StageEventHideoutJennyText::
 	line "here, trainer.@"
 	text_end
 
-_StageEventHideoutBothGoodText::
-	text "Take care! We'll"
-	line "be nearby if"
-	cont "you need us.@"
-	text_end
+; --- DEFEAT: spoken by the trainer the moment the player wins -------------
+; Printed by PrintEndBattleText, which has ALREADY written "<CLASS>: " into
+; the box from _TrainerNameText. Line 1 is therefore not empty when these
+; start, and the first token has to fit whatever the name prefix leaves of the
+; box's 18 columns:
+;
+;   "JESSIE/JAMES: " 14 used, 4 left    "NURSE JOY: " 11 used, 7 left
+;   "PSYCHIC: "       9 used, 9 left    "OFC.JENNY: " 11 used, 7 left
+;   "BURGLAR: "       9 used, 9 left
+;
+; That budget is the whole reason these are separate strings instead of the
+; hideout lines reused: a hideout line opens on a full-width line 1 and would
+; run off into the border. It is also the vanilla shape - look at
+; _SSAnneBowSailor2EndBattleText, which opens with just "You're".
+;
+; Each ends `prompt`, not "@" + `text_end`. See the file header for why.
+
+_StageEventDefeatJessieJamesText::
+	text "No!"
+	line "We're blasting"
+	cont "off again!"
+	prompt
+
+_StageEventDefeatPsychicText::
+	text "Unseen!"
+	line "My visions have"
+	cont "failed me."
+	prompt
+
+_StageEventDefeatBurglarText::
+	text "Tch!"
+	line "Take your junk"
+	cont "back, then."
+	prompt
+
+_StageEventDefeatJoyText::
+	text "My my!"
+	line "You and your"
+	cont "team are strong!"
+	prompt
+
+_StageEventDefeatJennyText::
+	text "Whew!"
+	line "You can handle"
+	cont "yourself fine!"
+	prompt
 
 ; --- RECOVERY: what the player is told after beating the villain ---------
 ; Picked by STAGE_GIVEBACK_* result, not by event type, because what matters

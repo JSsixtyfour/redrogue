@@ -16,7 +16,12 @@ from source_constants import (
     parse_trainer_constants,
     parse_warp_events,
 )
-from text_contract import EndBattleContract, overlong_segments, rendered_end_battle_width
+from text_contract import (
+    EndBattleContract,
+    overlong_segments,
+    rendered_end_battle_width,
+    text_blocks,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -2129,9 +2134,28 @@ class TextContractSmokeTest(unittest.TestCase):
         route_text = REPO_ROOT / "text" / "UndergroundPathWestEast.asm"
         self.assertEqual(overlong_segments(route_text), [])
 
+    def test_stage_event_defeat_text_fits(self) -> None:
+        """Continuation lines too, not just the name-prefixed opener.
+
+        overlong_segments cannot read the whole of StageEvents.asm: most strings
+        there embed wNameBuffer and end "@", which literal_width refuses to
+        measure. Only the defeat block is fully literal, so check exactly it.
+        """
+        stage_text = REPO_ROOT / "text" / "StageEvents.asm"
+        blocks = text_blocks(stage_text)
+        failures = [
+            (label, segment, len(segment))
+            for label, segments in blocks.items()
+            if label.startswith("_StageEventDefeat")
+            for segment in segments
+            if len(segment) > 17
+        ]
+        self.assertEqual(failures, [])
+
     def test_end_battle_prefixes_fit(self) -> None:
         route_text = REPO_ROOT / "text" / "UndergroundPathWestEast.asm"
         rogue_text = REPO_ROOT / "data" / "text" / "text_rogue.asm"
+        stage_text = REPO_ROOT / "text" / "StageEvents.asm"
         contracts = [
             EndBattleContract(
                 route_text, "_UndergroundPathWestEastBiker1EndBattleText", "BIKER"
@@ -2150,6 +2174,26 @@ class TextContractSmokeTest(unittest.TestCase):
             ),
             EndBattleContract(
                 rogue_text, "_GiovanniMiniBossEndBattleText", "GIOVANNI"
+            ),
+            # The Wild Area stage-event trainers. These are the only stage-event
+            # strings printed by PrintEndBattleText rather than DisplayTextID, so
+            # they are the only ones that open on a line the trainer name has
+            # already partly consumed. JESSIE/JAMES is 12 characters, the longest
+            # class name that reaches this path, which leaves 3 for the opener.
+            EndBattleContract(
+                stage_text, "_StageEventDefeatJessieJamesText", "JESSIE/JAMES"
+            ),
+            EndBattleContract(
+                stage_text, "_StageEventDefeatPsychicText", "PSYCHIC"
+            ),
+            EndBattleContract(
+                stage_text, "_StageEventDefeatBurglarText", "BURGLAR"
+            ),
+            EndBattleContract(
+                stage_text, "_StageEventDefeatJoyText", "NURSE JOY"
+            ),
+            EndBattleContract(
+                stage_text, "_StageEventDefeatJennyText", "OFC.JENNY"
             ),
         ]
         failures = [

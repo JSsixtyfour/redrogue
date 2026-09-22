@@ -342,6 +342,44 @@ PCStageEventHideoutText:
 .done
 	text_end
 
+; The END-BATTLE beat: what the trainer says the instant the player wins.
+;
+; THIS IS THE ONLY STAGE-EVENT TEXT NOT FIRED THROUGH DisplayTextID.
+; engine/battle/core.asm calls PrintEndBattleText directly, which means two
+; things that are not true anywhere else in this file:
+;
+;   1. There is no AfterDisplayingTextID wait afterwards, so the string has to
+;      carry its own `prompt`. Without one the box printed and returned and
+;      the "got money for winning" box drew straight over the top of it.
+;   2. PrintEndBattleText has ALREADY written "<CLASS>: " into the box from
+;      _TrainerNameText before handing the stream here.
+;
+; (2) is why this RETURNS hl instead of doing `call PrintText` the way every
+; other handler here does. PrintText goes through DisplayTextBoxID, which
+; redraws the message box - and TextBoxBorder blanks the interior - so calling
+; it wiped the trainer's name three frames after it appeared. That flash was
+; the reported bug. Continuing the stream leaves the name where it is and the
+; defeat line flows on after it, exactly like a route trainer.
+;
+; bc IS THE LIVE TILE CURSOR and PCStageEventPickText destroys it (it uses bc
+; as the table offset). That is precisely the misprint the PCSignText header
+; warns about - TX_START then places line 1 at a garbage coordinate, off
+; screen. Saving bc across the call is what makes the `ld hl` / `ret` shape
+; legal here; do not drop the push/pop.
+;
+; SHARED WITH THE CEMETERY. scripts/ProceduralCemetery1.asm points its own
+; trainer headers at this label rather than carrying a second copy. Legal
+; because maps.asm includes both files in the one "Maps 6" SECTION and a
+; section cannot span banks, so they always share a bank. If the Cemetery is
+; ever moved into a section of its own it needs its own copy back.
+PCStageEventDefeatText::
+	text_asm
+	push bc
+	ld hl, PCStageEventDefeatTexts
+	call PCStageEventPickText
+	pop bc
+	ret
+
 ; Shown once after the villain is beaten. Dispatches on the STAGE_GIVEBACK_*
 ; result the script stashed, not on the event type: the player cares what came
 ; back, not who took it.
@@ -424,7 +462,7 @@ PCStageEventArrivalTexts:
 	dw PCStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PCStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PCStageArrivalJenny        ; STAGE_EVENT_JENNY
-	dw PCStageArrivalBothGood     ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventArrivalTexts needs a row per stage-event type"
 
 PCStageEventHideoutTexts:
 	dw PCStageHideoutJessieJames
@@ -432,7 +470,15 @@ PCStageEventHideoutTexts:
 	dw PCStageHideoutBurglar
 	dw PCStageHideoutJoy
 	dw PCStageHideoutJenny
-	dw PCStageHideoutBothGood
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventHideoutTexts needs a row per stage-event type"
+
+PCStageEventDefeatTexts:
+	dw PCStageDefeatJessieJames
+	dw PCStageDefeatPsychic
+	dw PCStageDefeatBurglar
+	dw PCStageDefeatJoy
+	dw PCStageDefeatJenny
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventDefeatTexts needs a row per stage-event type"
 
 PCStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -448,9 +494,6 @@ PCStageArrivalJoy:
 	text_end
 PCStageArrivalJenny:
 	text_far _StageEventArrivalJennyText
-	text_end
-PCStageArrivalBothGood:
-	text_far _StageEventArrivalBothGoodText
 	text_end
 
 PCStageHideoutJessieJames:
@@ -468,8 +511,21 @@ PCStageHideoutJoy:
 PCStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
-PCStageHideoutBothGood:
-	text_far _StageEventHideoutBothGoodText
+
+PCStageDefeatJessieJames:
+	text_far _StageEventDefeatJessieJamesText
+	text_end
+PCStageDefeatPsychic:
+	text_far _StageEventDefeatPsychicText
+	text_end
+PCStageDefeatBurglar:
+	text_far _StageEventDefeatBurglarText
+	text_end
+PCStageDefeatJoy:
+	text_far _StageEventDefeatJoyText
+	text_end
+PCStageDefeatJenny:
+	text_far _StageEventDefeatJennyText
 	text_end
 
 ; TalkToTrainer's before-battle text for both NPC slots (7e). Still one shared
@@ -543,9 +599,9 @@ PCBossTrainerHeader:
 	; is earlier in the same script tick than .runScripts' CheckFightingMapTrainers,
 	; so by the time sight lines are tested they are already at the hideout.
 PCStageNpc1Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PCStageEventHideoutText, PCStageEventHideoutText, PCStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventHideoutText
 PCStageNpc2Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PCStageEventHideoutText, PCStageEventHideoutText, PCStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventHideoutText
 	db -1 ; end
 
 ProceduralCaveInitBattleScript:

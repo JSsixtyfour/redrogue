@@ -179,8 +179,14 @@ def run_arrival(event_type: int, label: str, good: bool, const: dict,
 
 
 def run_roll_distribution(const: dict, failures: list) -> None:
-    """A: StageEventRoll must never produce STAGE_EVENT_BOTH_GOOD."""
-    both_good = const["STAGE_EVENT_BOTH_GOOD"]
+    """A: StageEventRoll must never produce a type above MAX_ROLLABLE.
+
+    Phrased as "above MAX_ROLLABLE" rather than "equal to STAGE_EVENT_BOTH_GOOD"
+    because that constant no longer exists - it is commented out in
+    ram_constants.asm now that the pair cannot roll - and reading it by name
+    crashed this audit with a KeyError. The general form is also strictly
+    stronger: it catches a seventh type added later just as well.
+    """
     max_rollable = const["STAGE_EVENT_MAX_ROLLABLE"]
     type_mask = const["STAGE_EVENT_TYPE_MASK"]
 
@@ -215,12 +221,13 @@ def run_roll_distribution(const: dict, failures: list) -> None:
     total = sum(seen.values())
     print("roll distribution over %d rolls: %s"
           % (total, {k: seen[k] for k in sorted(seen)}))
-    if both_good in seen:
+    over = sorted(t for t in seen if t > max_rollable)
+    if over:
         failures.append(
-            "StageEventRoll produced type %d (BOTH_GOOD) %d times in %d rolls. "
-            "Joy and Jenny are separate encounters and only one may appear per "
-            "wild area; STAGE_EVENT_MAX_ROLLABLE is %d."
-            % (both_good, seen[both_good], total, max_rollable))
+            "StageEventRoll produced type(s) %s, above STAGE_EVENT_MAX_ROLLABLE "
+            "(%d), %d times in %d rolls. Type 6 was Joy and Jenny together; they "
+            "are separate encounters and only one may appear per wild area."
+            % (over, max_rollable, sum(seen[t] for t in over), total))
     # The same sample has to show the roll IS live, or "never 6" is vacuous.
     if len([k for k in seen if k]) < 3:
         failures.append(

@@ -353,9 +353,9 @@ PFacFakeBall4Header:
 	; the facility is the one stage that could not reuse slots 6-7.
 	def_trainers 10
 PFacStageNpc1Header:
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventHideoutText, PFacStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventHideoutText
 PFacStageNpc2Header:
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventHideoutText, PFacStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventHideoutText
 	db -1 ; end
 
 ProceduralFacilityInitBattleScript:
@@ -446,6 +446,39 @@ PFacStageEventHideoutText:
 .done
 	text_end
 
+; The END-BATTLE beat: what the trainer says the instant the player wins.
+;
+; THIS IS THE ONLY STAGE-EVENT TEXT NOT FIRED THROUGH DisplayTextID.
+; engine/battle/core.asm calls PrintEndBattleText directly, which means two
+; things that are not true anywhere else in this file:
+;
+;   1. There is no AfterDisplayingTextID wait afterwards, so the string has to
+;      carry its own `prompt`. Without one the box printed and returned and
+;      the "got money for winning" box drew straight over the top of it.
+;   2. PrintEndBattleText has ALREADY written "<CLASS>: " into the box from
+;      _TrainerNameText before handing the stream here.
+;
+; (2) is why this RETURNS hl instead of doing `call PrintText` the way every
+; other handler here does. PrintText goes through DisplayTextBoxID, which
+; redraws the message box - and TextBoxBorder blanks the interior - so calling
+; it wiped the trainer's name three frames after it appeared. That flash was
+; the reported bug. Continuing the stream leaves the name where it is and the
+; defeat line flows on after it, exactly like a route trainer.
+;
+; bc IS THE LIVE TILE CURSOR and PFacStageEventPickText destroys it (it uses bc
+; as the table offset). That is precisely the misprint the Cave's PCSignText
+; header warns about - TX_START then places line 1 at a garbage coordinate, off
+; screen. Saving bc across the call is what makes the `ld hl` / `ret` shape
+; legal here; do not drop the push/pop.
+;
+PFacStageEventDefeatText:
+	text_asm
+	push bc
+	ld hl, PFacStageEventDefeatTexts
+	call PFacStageEventPickText
+	pop bc
+	ret
+
 PFacStageEventRecoverText:
 	text_asm
 	ld a, [wStageEventScratch]
@@ -514,7 +547,7 @@ PFacStageEventArrivalTexts:
 	dw PFacStageArrivalBurglar
 	dw PFacStageArrivalJoy
 	dw PFacStageArrivalJenny
-	dw PFacStageArrivalBothGood
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventArrivalTexts needs a row per stage-event type"
 
 PFacStageEventHideoutTexts:
 	dw PFacStageHideoutJessieJames
@@ -522,7 +555,15 @@ PFacStageEventHideoutTexts:
 	dw PFacStageHideoutBurglar
 	dw PFacStageHideoutJoy
 	dw PFacStageHideoutJenny
-	dw PFacStageHideoutBothGood
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventHideoutTexts needs a row per stage-event type"
+
+PFacStageEventDefeatTexts:
+	dw PFacStageDefeatJessieJames
+	dw PFacStageDefeatPsychic
+	dw PFacStageDefeatBurglar
+	dw PFacStageDefeatJoy
+	dw PFacStageDefeatJenny
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventDefeatTexts needs a row per stage-event type"
 
 PFacStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -538,9 +579,6 @@ PFacStageArrivalJoy:
 	text_end
 PFacStageArrivalJenny:
 	text_far _StageEventArrivalJennyText
-	text_end
-PFacStageArrivalBothGood:
-	text_far _StageEventArrivalBothGoodText
 	text_end
 
 PFacStageHideoutJessieJames:
@@ -558,6 +596,19 @@ PFacStageHideoutJoy:
 PFacStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
-PFacStageHideoutBothGood:
-	text_far _StageEventHideoutBothGoodText
+
+PFacStageDefeatJessieJames:
+	text_far _StageEventDefeatJessieJamesText
+	text_end
+PFacStageDefeatPsychic:
+	text_far _StageEventDefeatPsychicText
+	text_end
+PFacStageDefeatBurglar:
+	text_far _StageEventDefeatBurglarText
+	text_end
+PFacStageDefeatJoy:
+	text_far _StageEventDefeatJoyText
+	text_end
+PFacStageDefeatJenny:
+	text_far _StageEventDefeatJennyText
 	text_end

@@ -207,9 +207,9 @@ PFBossTrainerHeader:
 	; cave's own header.
 	def_trainers 6
 PFStageNpc1Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PFStageEventHideoutText, PFStageEventHideoutText, PFStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventHideoutText
 PFStageNpc2Header:
-	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PFStageEventHideoutText, PFStageEventHideoutText, PFStageEventHideoutText
+	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventHideoutText
 	db -1 ; end
 
 ProceduralForest_ScriptPointers:
@@ -563,6 +563,39 @@ PFStageEventHideoutText:
 .done
 	text_end
 
+; The END-BATTLE beat: what the trainer says the instant the player wins.
+;
+; THIS IS THE ONLY STAGE-EVENT TEXT NOT FIRED THROUGH DisplayTextID.
+; engine/battle/core.asm calls PrintEndBattleText directly, which means two
+; things that are not true anywhere else in this file:
+;
+;   1. There is no AfterDisplayingTextID wait afterwards, so the string has to
+;      carry its own `prompt`. Without one the box printed and returned and
+;      the "got money for winning" box drew straight over the top of it.
+;   2. PrintEndBattleText has ALREADY written "<CLASS>: " into the box from
+;      _TrainerNameText before handing the stream here.
+;
+; (2) is why this RETURNS hl instead of doing `call PrintText` the way every
+; other handler here does. PrintText goes through DisplayTextBoxID, which
+; redraws the message box - and TextBoxBorder blanks the interior - so calling
+; it wiped the trainer's name three frames after it appeared. That flash was
+; the reported bug. Continuing the stream leaves the name where it is and the
+; defeat line flows on after it, exactly like a route trainer.
+;
+; bc IS THE LIVE TILE CURSOR and PFStageEventPickText destroys it (it uses bc
+; as the table offset). That is precisely the misprint the Cave's PCSignText
+; header warns about - TX_START then places line 1 at a garbage coordinate, off
+; screen. Saving bc across the call is what makes the `ld hl` / `ret` shape
+; legal here; do not drop the push/pop.
+;
+PFStageEventDefeatText:
+	text_asm
+	push bc
+	ld hl, PFStageEventDefeatTexts
+	call PFStageEventPickText
+	pop bc
+	ret
+
 PFStageEventRecoverText:
 	text_asm
 	ld a, [wStageEventScratch]
@@ -633,7 +666,7 @@ PFStageEventArrivalTexts:
 	dw PFStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PFStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PFStageArrivalJenny        ; STAGE_EVENT_JENNY
-	dw PFStageArrivalBothGood     ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventArrivalTexts needs a row per stage-event type"
 
 PFStageEventHideoutTexts:
 	dw PFStageHideoutJessieJames
@@ -641,7 +674,15 @@ PFStageEventHideoutTexts:
 	dw PFStageHideoutBurglar
 	dw PFStageHideoutJoy
 	dw PFStageHideoutJenny
-	dw PFStageHideoutBothGood
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventHideoutTexts needs a row per stage-event type"
+
+PFStageEventDefeatTexts:
+	dw PFStageDefeatJessieJames
+	dw PFStageDefeatPsychic
+	dw PFStageDefeatBurglar
+	dw PFStageDefeatJoy
+	dw PFStageDefeatJenny
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventDefeatTexts needs a row per stage-event type"
 
 PFStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -657,9 +698,6 @@ PFStageArrivalJoy:
 	text_end
 PFStageArrivalJenny:
 	text_far _StageEventArrivalJennyText
-	text_end
-PFStageArrivalBothGood:
-	text_far _StageEventArrivalBothGoodText
 	text_end
 
 PFStageHideoutJessieJames:
@@ -677,8 +715,21 @@ PFStageHideoutJoy:
 PFStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
-PFStageHideoutBothGood:
-	text_far _StageEventHideoutBothGoodText
+
+PFStageDefeatJessieJames:
+	text_far _StageEventDefeatJessieJamesText
+	text_end
+PFStageDefeatPsychic:
+	text_far _StageEventDefeatPsychicText
+	text_end
+PFStageDefeatBurglar:
+	text_far _StageEventDefeatBurglarText
+	text_end
+PFStageDefeatJoy:
+	text_far _StageEventDefeatJoyText
+	text_end
+PFStageDefeatJenny:
+	text_far _StageEventDefeatJennyText
 	text_end
 
 ProceduralForest_TextPointers:

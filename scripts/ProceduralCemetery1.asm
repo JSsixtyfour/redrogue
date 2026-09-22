@@ -149,14 +149,23 @@ PCemStageEventRecoverCheck::
 ; area is ever offered per lobby visit, and every stage's preload now resets
 ; both pairs.
 ; ============================================================
+; The END-BATTLE pointer below is the CAVE's PCStageEventDefeatText, not a
+; local one. maps.asm includes ProceduralCave1.asm and this file in the one
+; "Maps 6" SECTION, and a SECTION cannot straddle a bank, so the call is
+; always in-bank. Bank 17 had 95 free bytes when this was written and a
+; second dispatcher plus table plus six text_far wrappers does not fit in
+; that. The dispatcher reads wStageEvent and nothing map-specific, and this
+; map's own PCemStageEventPickText is byte-identical to the Cave's, so there
+; is nothing to diverge. If this file ever moves to its own SECTION, give it
+; a local copy back.
 PCemStageTrainerHeaders::
 	def_trainers 2  ; slot 1 is the pokeball; the NPC pair is slots 2-3, and
 	                ; EVENT_BEAT_FACILITY_STAGE_NPC_1 % 8 == 2 == 2 % 8
 	                ; satisfies the trainer macro's alignment ASSERT.
 PCemStageNpc1Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCemStageEventHideoutText, PCemStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCemStageEventHideoutText
 PCemStageNpc2Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCemStageEventHideoutText, PCemStageEventHideoutText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCemStageEventHideoutText
 	db -1 ; end
 
 ; Shared by floors 1-3. Floor 4 keeps its own five-entry table because it also
@@ -255,7 +264,7 @@ PCemStageEventArrivalTexts:
 	dw PCemStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PCemStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PCemStageArrivalJenny        ; STAGE_EVENT_JENNY
-	dw PCemStageArrivalBothGood     ; STAGE_EVENT_BOTH_GOOD
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCemStageEventArrivalTexts needs a row per stage-event type"
 
 PCemStageEventHideoutTexts:
 	dw PCemStageHideoutJessieJames
@@ -263,7 +272,7 @@ PCemStageEventHideoutTexts:
 	dw PCemStageHideoutBurglar
 	dw PCemStageHideoutJoy
 	dw PCemStageHideoutJenny
-	dw PCemStageHideoutBothGood
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCemStageEventHideoutTexts needs a row per stage-event type"
 
 PCemStageEventRecoverTexts:
 	dw PCemStageRecoverNothing      ; STAGE_GIVEBACK_NOTHING
@@ -286,9 +295,6 @@ PCemStageArrivalJoy:
 PCemStageArrivalJenny:
 	text_far _StageEventArrivalJennyText
 	text_end
-PCemStageArrivalBothGood:
-	text_far _StageEventArrivalBothGoodText
-	text_end
 
 PCemStageHideoutJessieJames:
 	text_far _StageEventHideoutJessieJamesText
@@ -304,9 +310,6 @@ PCemStageHideoutJoy:
 	text_end
 PCemStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
-	text_end
-PCemStageHideoutBothGood:
-	text_far _StageEventHideoutBothGoodText
 	text_end
 
 PCemStageRecoverNothing:
