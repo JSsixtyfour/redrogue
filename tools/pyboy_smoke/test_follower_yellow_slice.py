@@ -415,7 +415,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         # than an `xor [hl]` toggle, so assert the row and its order table.
         self.assertRegex(
             self.options_menu,
-            r"optrow OptFollowerLabel,\s+\d+,\s+wOptions2,"
+            r"optrow OptFollowerLabel,\s+\d+,\s+\d+,\s+wOptions2,"
             r"\s+1 << BIT_FOLLOWER_DISABLED,",
         )
         self.assertRegex(

@@ -582,26 +582,48 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             "wStatusFlags4",
             self.harness.read8("wStatusFlags4") | (1 << battle_bit),
         )
+        # LoadMapData waits frames (DisableLCD, CopyVideoData), so call_routine
+        # returns mid-frame and resumes the parked overworld loop for the rest
+        # of it. That loop's UpdateSprites would see the forced battle bit and
+        # hide slot 15, which is FollowerUpdate's intended battle suppression,
+        # not LoadMapData's doing. Whether it reached UpdateSprites before the
+        # frame ended depended on the map song's bank path (2026-09-23 probe).
+        # Observe at LoadMapData's shared exit and drop the forced bit there.
+        load_map_exit = {"armed": True, "fields": None, "queue": None}
+
+        def capture_load_map_exit() -> None:
+            if not load_map_exit["armed"]:
+                return
+            load_map_exit["armed"] = False
+            load_map_exit["fields"] = tuple(
+                self.harness.read8(field) for field in battle_fields
+            )
+            load_map_exit["queue"] = self.harness.read_bytes(
+                "wFollowerCommandBuffer", 16
+            )
+            self.harness.write8(
+                "wStatusFlags4",
+                self.harness.read8("wStatusFlags4") & ~(1 << battle_bit),
+            )
+
+        self.harness.hook_flag("LoadMapData.restoreRomBank", capture_load_map_exit)
         prepare_before_battle_return = prepare["count"]
         self.harness.call_routine("LoadMapData")
+        self.assertFalse(load_map_exit["armed"], "LoadMapData exit was never reached")
         self.assertGreater(
             prepare["count"],
             prepare_before_battle_return,
             "battle-return map load did not reach follower scheduling",
         )
         self.assertEqual(
-            tuple(self.harness.read8(field) for field in battle_fields),
+            load_map_exit["fields"],
             battle_snapshot,
             "battle-return map loading changed slot-15 follower state",
         )
         self.assertEqual(
-            self.harness.read_bytes("wFollowerCommandBuffer", 16),
+            load_map_exit["queue"],
             queue_snapshot,
             "battle-return map loading changed the follower queue",
-        )
-        self.harness.write8(
-            "wStatusFlags4",
-            self.harness.read8("wStatusFlags4") & ~(1 << battle_bit),
         )
         self.harness.call_routine("FollowerUpdate")
 

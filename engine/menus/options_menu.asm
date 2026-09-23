@@ -6,9 +6,10 @@
 ; and the Shin Red "extra options" second page (engine/menus/extra_options.asm,
 ; deleted). engine/debug/debug2_config.asm reuses this same engine.
 ;
-; STYLE. One setting per row, no blank rows, label at column 1, value at a
-; per-row column, cursor a single '▷' at column 0. This is ShinRed's second-page
-; look; the double-spaced layout it replaced burned eleven rows on six settings.
+; STYLE. One setting per row with a blank row between groups, label at column 1,
+; value RIGHT ALIGNED so every row's value ends on the same column, cursor a
+; single '▷' at column 0. This is ShinRed's second-page look; the fully
+; double-spaced layout it replaced burned eleven rows on six settings.
 ;
 ; WHY A TABLE AND NOT MORE HANDWRITTEN ROWS. The vanilla screen inferred each
 ; setting's value from WHERE THE CURSOR SAT, and rebuilt wOptions from those
@@ -19,18 +20,21 @@
 ; variable DIRECTLY, so there is nothing to fight, INSTANT is simply the fastest
 ; step of TEXT SPEED, and both halves of that guard are gone rather than ported.
 ;
-; PADDING. Every value string for a row is padded to one fixed width so a short
-; value fully overwrites a longer one left behind by the previous draw. The
-; engine never blanks a value cell first.
+; PADDING AND ALIGNMENT. Every value string in one row's table is padded to the
+; same width, with the padding on the LEFT, and the row's ValueColumn is chosen
+; so that width ends on OPT_VALUE_RIGHT. That gives right alignment and means a
+; short value still fully overwrites a longer one left behind by the previous
+; draw - the engine never blanks a value cell first.
 ;
 ; ENTRY POINTS. Two, differing only in which page set they pass:
-;   DisplayOptionMenu_       title screen - page 1 alone, SELECT does nothing
-;   DisplayOptionMenuInGame_ start menu   - page 1 + the CHEAT page
-; The split is deliberate. The CHEAT row writes progression events and calls
-; SaveGameData, and the title screen reaches this menu BEFORE a save is loaded,
-; where wEventFlags holds nothing meaningful and a save would write garbage.
-; Giving the title screen a one-page set removes that hazard outright instead of
-; guarding it with an invented "is a game running" predicate.
+;   DisplayOptionMenu_       title screen - the settings alone
+;   DisplayOptionMenuInGame_ start menu   - the settings plus the CHEAT row
+; They share ONE row table; the title page's descriptor simply declares one row
+; fewer, so it stops before CHEAT. The split is deliberate: the CHEAT row writes
+; progression events and calls SaveGameData, and the title screen reaches this
+; menu BEFORE a save is loaded, where wEventFlags holds nothing meaningful and a
+; save would write garbage. Declaring a shorter page removes that hazard outright
+; instead of guarding it with an invented "is a game running" predicate.
 ;
 ; SCRATCH. wOptionsMenuRow is the cursor. hCurrentMenuItem is the row currently
 ; being drawn or edited, transient for the lifetime of this menu's own loop -
@@ -43,7 +47,10 @@ SECTION "Options Menu", ROMX
 ; ----------------------------------------------------------------------------
 ; Row descriptor, OPTROW_SIZE bytes.
 ;
-;   dw LabelText    placed at column 1 of the row
+;   dw LabelText    placed at OPT_LABEL_COL of the row
+;   db RowY         this row's screen Y. Rows carry their own Y rather than
+;                   sitting at a fixed stride, so a blank spacer between groups
+;                   costs one byte here and no special case in the engine.
 ;   db ValueColumn  hlcoord X where this row's value is drawn
 ;   dw VarAddr      the byte holding this row's field
 ;   db Mask         the field's bits within that byte
@@ -62,34 +69,38 @@ SECTION "Options Menu", ROMX
 ; so it cannot collide with one.
 ; ----------------------------------------------------------------------------
 DEF OPTROW_LABEL   EQU 0
-DEF OPTROW_VALCOL  EQU 2
-DEF OPTROW_VAR     EQU 3
-DEF OPTROW_MASK    EQU 5
-DEF OPTROW_ORDER   EQU 6
-DEF OPTROW_STRINGS EQU 8
-DEF OPTROW_COUNT   EQU 10
-DEF OPTROW_HOOK    EQU 11
-DEF OPTROW_SIZE    EQU 13
+DEF OPTROW_ROWY    EQU 2
+DEF OPTROW_VALCOL  EQU 3
+DEF OPTROW_VAR     EQU 4
+DEF OPTROW_MASK    EQU 6
+DEF OPTROW_ORDER   EQU 7
+DEF OPTROW_STRINGS EQU 9
+DEF OPTROW_COUNT   EQU 11
+DEF OPTROW_HOOK    EQU 12
+DEF OPTROW_SIZE    EQU 14
 
+; label, screen Y, value column, variable, mask, order, strings, count, hook
 MACRO optrow
 	dw \1
 	db \2
-	dw \3
-	db \4
-	dw \5
+	db \3
+	dw \4
+	db \5
 	dw \6
-	db \7
-	dw \8
+	dw \7
+	db \8
+	dw \9
 ENDM
 
-; label, value column, draw routine, cycle routine
+; label, screen Y, value column, draw routine, cycle routine
 MACRO optrow_custom
 	dw \1
 	db \2
+	db \3
 	dw 0
 	db 0 ; mask 0: custom row
-	dw \3
 	dw \4
+	dw \5
 	db 0
 	dw 0
 ENDM
@@ -98,34 +109,48 @@ ENDM
 ; Page descriptor.
 ;
 ;   db NumRows    setting rows. Also the CANCEL row's cursor index, so the
-;                 cursor walks 0..NumRows inclusive.
+;                 cursor walks 0..NumRows inclusive. A page may declare FEWER
+;                 rows than its table holds, which is how the title screen
+;                 shares the in-game table but stops before CHEAT.
 ;   db BoxHeight  TextBoxBorder's b. Kept separate from NumRows so a short page
 ;                 can still reserve room for rows it does not have yet.
-;   db FirstRowY  screen Y of row 0
 ;   db CancelY    screen Y of the CANCEL row, which sits outside the box
 ;   dw RowTable
-;   dw PromptText placed at column 8 of the CANCEL row; 0 for none
+;   db PromptCol  column for the page-switch prompt, which is drawn one row
+;                 BELOW CANCEL. Stored rather than computed so the prompt can be
+;                 centred by hand for its exact length.
+;   dw PromptText 0 for none
 ;
 ; A page set is `db pageCount` followed by one `dw` per page.
 ; ----------------------------------------------------------------------------
-DEF OPTPAGE_NUMROWS EQU 0
-DEF OPTPAGE_BOXH    EQU 1
-DEF OPTPAGE_FIRSTY  EQU 2
-DEF OPTPAGE_CANCELY EQU 3
-DEF OPTPAGE_ROWS    EQU 4
-DEF OPTPAGE_PROMPT  EQU 6
+DEF OPTPAGE_NUMROWS   EQU 0
+DEF OPTPAGE_BOXH      EQU 1
+DEF OPTPAGE_CANCELY   EQU 2
+DEF OPTPAGE_ROWS      EQU 3
+DEF OPTPAGE_PROMPTCOL EQU 5
+DEF OPTPAGE_PROMPT    EQU 6
 
+; rows, box height, CANCEL Y, row table, prompt column, prompt
 MACRO optpage
 	db \1
 	db \2
 	db \3
-	db \4
-	dw \5
+	dw \4
+	db \5
 	dw \6
 ENDM
 
-DEF OPT_PROMPT_COLUMN EQU 8
-DEF OPT_BOX_WIDTH     EQU 18
+; The box spans columns 1-19, leaving column 0 outside it for the cursor.
+;
+; The cursor USED to sit at column 0 with the box starting there too, which is
+; what vanilla does - and it overwrote the left border tile on whichever row was
+; selected, so the box's left edge appeared to be cut away. Giving the cursor a
+; column of its own is the fix; it costs one column of content, which is why
+; TEXT SPEED is abbreviated. Column 18 is the last cell inside the right border.
+DEF OPT_BOX_LEFT    EQU 1
+DEF OPT_LABEL_COL   EQU 2
+DEF OPT_BOX_WIDTH   EQU 17
+DEF OPT_VALUE_RIGHT EQU 18
 
 ; ============================================================================
 ; Entry points
@@ -153,6 +178,18 @@ OptionsMenuEngine:
 	ASSERT BIT_FAST_TEXT_DELAY == 0
 	inc a ; 1 << BIT_FAST_TEXT_DELAY
 	ld [wLetterPrintingDelayFlags], a
+; This screen is a full-width tilemap, so any inherited camera offset shears its
+; right border off the edge. Zero the scroll for the menu and put it back on the
+; way out - the overworld's hSCX is a running value, and clearing it for good
+; would jump the camera out from under the player.
+	ldh a, [hSCX]
+	ld b, a
+	ldh a, [hSCY]
+	ld c, a
+	push bc
+	xor a
+	ldh [hSCX], a
+	ldh [hSCY], a
 .redrawPage
 	xor a
 	ldh [hAutoBGTransferEnabled], a
@@ -193,6 +230,11 @@ OptionsMenuEngine:
 .exit
 	ld a, SFX_PRESS_AB
 	call PlaySound
+	pop bc
+	ld a, b
+	ldh [hSCX], a
+	ld a, c
+	ldh [hSCY], a
 	ret
 
 .movePressed
@@ -226,10 +268,13 @@ OptionsMenuEngine:
 	call OptDrawCursor
 	jp .loop
 
+; Page switching is intact but currently unreachable: both page sets below
+; declare a single page while the second page is shelved. Reviving that page is
+; enough to bring SELECT back.
 .selectPressed
 	call OptGetPageCount
 	cp 2
-	jp c, .loop ; a one-page screen ignores SELECT
+	jp c, .loop
 	ld a, SFX_PRESS_AB
 	call PlaySound
 	call OptGetPageCount
@@ -295,21 +340,29 @@ OptGetRow:
 
 ; a = row index. Returns a = that row's screen Y. Clobbers af.
 ; Preserves bc, de, hl.
+;
+; Rows carry their own Y rather than sitting at FirstRowY + index, so blank
+; spacer rows cost a byte in the table instead of a special case here.
 OptRowY:
 	push hl
 	push bc
+	push de
 	ld c, a
 	call OptGetPage
 	ld a, [hli] ; NumRows
 	cp c
-	ld a, [hli] ; BoxHeight, skipped
-	ld a, [hli] ; FirstRowY
 	jr z, .cancelRow
-	add c
+	ld a, c
+	call OptGetRow
+	ld de, OPTROW_ROWY
+	add hl, de
+	ld a, [hl]
 	jr .done
 .cancelRow
+	inc hl     ; past BoxHeight
 	ld a, [hl] ; CancelY
 .done
+	pop de
 	pop bc
 	pop hl
 	ret
@@ -377,14 +430,14 @@ OptEnumIndex:
 ; ============================================================================
 
 ; Draws the current page in full: border, every setting row, the CANCEL row,
-; the SELECT prompt and the cursor.
+; the page prompt and the cursor.
 OptDrawPage:
 	call OptGetPage
 	inc hl ; -> BoxHeight
 	ld a, [hl]
 	ld b, a
 	ld c, OPT_BOX_WIDTH
-	hlcoord 0, 0
+	hlcoord OPT_BOX_LEFT, 0
 	call TextBoxBorder
 	xor a
 	ldh [hCurrentMenuItem], a
@@ -399,13 +452,11 @@ OptDrawPage:
 	cp c
 	jr nz, .rowLoop
 ; a = NumRows, which is the CANCEL row's index.
-	push af
 	call OptRowCoord
-	inc hl ; column 1
+	ld bc, OPT_LABEL_COL
+	add hl, bc
 	ld de, OptTextCancel
 	call PlaceString
-	pop af
-	push af
 	call OptGetPage
 	ld de, OPTPAGE_PROMPT
 	add hl, de
@@ -416,17 +467,29 @@ OptDrawPage:
 	or l
 	jr z, .noPrompt
 	ld d, h
-	ld e, l
-	pop af
+	ld e, l ; de = the prompt text
+	call OptGetPage
 	push de
-	call OptRowCoord
-	ld bc, OPT_PROMPT_COLUMN
+	ld de, OPTPAGE_CANCELY
+	add hl, de
+	ld a, [hl]
+	inc a ; the prompt sits one row below CANCEL
+	push af
+	call OptGetPage
+	ld de, OPTPAGE_PROMPTCOL
+	add hl, de
+	ld c, [hl]
+	ld b, 0
+	pop af ; the prompt's screen Y
+	push bc
+	hlcoord 0, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	pop bc
 	add hl, bc
 	pop de
 	call PlaceString
-	jp OptDrawCursor
 .noPrompt
-	pop af
 	jp OptDrawCursor
 
 ; Places the cursor glyph at column 0 of the selected row and a space on every
@@ -461,8 +524,11 @@ OptDrawRow:
 	ld e, a
 	ld d, [hl] ; de = the label
 	ldh a, [hCurrentMenuItem]
+	push de
 	call OptRowCoord
-	inc hl ; column 1
+	ld bc, OPT_LABEL_COL
+	add hl, bc
+	pop de
 	call PlaceString
 	; fall through
 
@@ -617,7 +683,7 @@ OptCycleValue:
 	jp hl
 
 ; ============================================================================
-; The CHEAT row (page 2, in-game entry only)
+; The CHEAT row (in-game entry only)
 ;
 ; A fully reversible four-way selector over the two species-group activation
 ; events and the SRAM enable byte - the same state Prof. Palm's Silph Co B1F
@@ -742,44 +808,75 @@ Opt60FPSHook:
 
 ; ============================================================================
 ; Page sets and pages
+;
+; Both sets hold ONE page. The second page is shelved rather than deleted - see
+; the commented block below - so CHEAT lives on the main page for now. The
+; engine's SELECT handling is still live and costs nothing while unreachable.
 ; ============================================================================
 
 OptionsPageSetTitle:
 	db 1
-	dw OptionsPage1Title
+	dw OptionsPageTitle
 
 OptionsPageSetInGame:
-	db 2
-	dw OptionsPage1
-	dw OptionsPage2
+	db 1
+	dw OptionsPageInGame
 
-; rows, box height, first row Y, CANCEL Y, row table, prompt
-OptionsPage1Title:
-	optpage 8, 8, 1, 16, OptionsPage1Rows, 0
-OptionsPage1:
-	optpage 8, 8, 1, 16, OptionsPage1Rows, OptTextPage2Prompt
-OptionsPage2:
-	optpage 1, 3, 1, 16, OptionsPage2Rows, OptTextPage1Prompt
+; rows, box height, CANCEL Y, row table, prompt column, prompt
+;
+; Both pages share OptionsRows. The title screen declares 8 rows and so stops
+; one short of CHEAT, which is the last entry in that table; its box is
+; correspondingly shorter, ending just under 60 FPS.
+OptionsPageTitle:
+	optpage 8, 10, 15, OptionsRows, 0, 0
+OptionsPageInGame:
+	optpage 9, 12, 15, OptionsRows, 0, 0
 
-; label, value column, variable, mask, order table, string table, count, hook
-OptionsPage1Rows:
-	optrow OptTextSpeedLabel,   12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
-	optrow OptBattleAnimLabel,  15, wOptions,  1 << BIT_BATTLE_ANIMATION,  OptBattleAnimOrder,  OptOnOffValues,       2, 0
-	optrow OptBattleStyleLabel, 13, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
-	optrow OptAudioLabel,        9, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
-	optrow OptDifficultyLabel,  12, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
-	optrow OptFollowerLabel,    15, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
-	optrow OptColorLabel,       15, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
-	optrow Opt60FPSLabel,       15, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+; label, screen Y, value column, variable, mask, order, strings, count, hook
+;
+; Screen Ys leave a blank row between groups. Nine rows cannot ALL be spaced
+; apart: nine rows plus eight gaps plus two border rows is 19, and the screen
+; holds 18. Spacing every row would mean eight rows at most, which is only
+; possible with CHEAT back on a page of its own.
+;
+; Value columns are OPT_VALUE_RIGHT + 1 minus the row's value width, so every
+; value ends flush on column 18.
+OptionsRows:
+	optrow OptTextSpeedLabel,    1, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
+	optrow OptBattleAnimLabel,   2, 16, wOptions,  1 << BIT_BATTLE_ANIMATION,  OptBattleAnimOrder,  OptOnOffValues,       2, 0
+	optrow OptBattleStyleLabel,  3, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
+	optrow OptAudioLabel,        5, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
+	optrow OptDifficultyLabel,   6, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
+	optrow OptFollowerLabel,     7, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
+	optrow OptColorLabel,        9, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
+	optrow Opt60FPSLabel,       10, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+; In-game only. The title page's descriptor declares 8 rows and stops above it.
+	optrow_custom OptCheatLabel, 12, 9, OptDrawCheat, OptCycleCheat
 
-OptionsPage2Rows:
-	optrow_custom OptCheatLabel, 7, OptDrawCheat, OptCycleCheat
+; ----------------------------------------------------------------------------
+; SHELVED SECOND PAGE. Kept as a worked example so a second page can come back
+; without re-deriving the shape. To revive it:
+;   1. uncomment OptionsPage2 and OptionsPage2Rows below, and the two prompt
+;      strings at the end of this file;
+;   2. give OptionsPageSetInGame a count of 2 and a second `dw OptionsPage2`;
+;   3. set OptionsPageInGame's prompt column and pointer to 3 and
+;      OptTextPage2Prompt, and move CHEAT's row out of OptionsRows if the page
+;      is meant to hold it again (dropping OptionsPageInGame back to 8 rows).
+; Column 3 centres a 14-character prompt across the 20-column screen.
+;
+; OptionsPage2:
+;	optpage 1, 3, 15, OptionsPage2Rows, 3, OptTextPage1Prompt
+;
+; OptionsPage2Rows:
+;	optrow_custom OptCheatLabel, 1, 9, OptDrawCheat, OptCycleCheat
+; ----------------------------------------------------------------------------
 
 ; ----------------------------------------------------------------------------
 ; Order tables. Each entry is a raw value already shifted into its row's mask.
 ; ----------------------------------------------------------------------------
 
-; INSTANT is the step above FAST, not a row of its own.
+; INSTANT is the step above FAST, not a row of its own, and is what InitOptions_
+; now defaults to.
 OptTextSpeedOrder:
 	db TEXT_DELAY_INSTANT
 	db TEXT_DELAY_FAST
@@ -857,8 +954,8 @@ OptCheatValues::
 ; and so on); the old display label was the outlier.
 ; ----------------------------------------------------------------------------
 
-OptTextSpeedLabel:   db "TEXT SPEED@"
-OptBattleAnimLabel:  db "B. ANIMATION@"
+OptTextSpeedLabel:   db "TEXT SPD@"
+OptBattleAnimLabel:  db "B. ANIM.@"
 OptBattleStyleLabel: db "B. STYLE@"
 OptAudioLabel:       db "AUDIO@"
 OptDifficultyLabel:  db "DIFFICULTY@"
@@ -868,46 +965,49 @@ Opt60FPSLabel:       db "60 FPS@"
 OptCheatLabel:       db "CHEAT@"
 
 ; ----------------------------------------------------------------------------
-; Values. Every string in one table is padded to the same width so a short
-; value fully overwrites a longer one.
+; Values. Every string in one table is padded to the same width, on the LEFT,
+; so the values right-align on column OPT_VALUE_RIGHT and a short value still
+; fully overwrites a longer one.
 ; ----------------------------------------------------------------------------
 
 ; width 7, column 12
 OptTextInstant:   db "INSTANT@"
-OptTextFast:      db "FAST   @"
-OptTextMedium:    db "MEDIUM @"
-OptTextSlow:      db "SLOW   @"
+OptTextFast:      db "   FAST@"
+OptTextMedium:    db " MEDIUM@"
+OptTextSlow:      db "   SLOW@"
 
-; width 3, column 15
-OptTextOn:        db "ON @"
+; width 3, column 16
+OptTextOn:        db " ON@"
 OptTextOff:       db "OFF@"
 
-; width 5, column 13
+; width 5, column 14
 OptTextShift:     db "SHIFT@"
-OptTextSet:       db "SET  @"
+OptTextSet:       db "  SET@"
 
-; width 9, column 9
-OptTextMono:      db "MONO     @"
+; width 9, column 10
+OptTextMono:      db "     MONO@"
 OptTextEarphone1: db "EARPHONE1@"
 OptTextEarphone2: db "EARPHONE2@"
 OptTextEarphone3: db "EARPHONE3@"
 
-; width 6, column 12. DIFFICULTY is 10 characters, which leaves only 8 columns
+; width 6, column 13. DIFFICULTY is 10 characters, and with the label at column
+; 2 that leaves exactly 7 columns
 ; before the border, so the two extremes are abbreviated.
 OptTextVeryEasy:  db "V.EASY@"
-OptTextEasy:      db "EASY  @"
+OptTextEasy:      db "  EASY@"
 OptTextNormal:    db "NORMAL@"
-OptTextHard:      db "HARD  @"
+OptTextHard:      db "  HARD@"
 OptTextVeryHard:  db "V.HARD@"
 
-; width 10, column 7. "WARP+JOHTO" would read better, but '+' is not in the
+; width 10, column 9. "WARP+JOHTO" would read better, but '+' is not in the
 ; charmap (constants/charmap.asm).
-OptTextCheatKanto: db "KANTO     @"
-OptTextCheatJohto: db "JOHTO     @"
-OptTextCheatWarp:  db "TIME WARP @"
+OptTextCheatKanto: db "     KANTO@"
+OptTextCheatJohto: db "     JOHTO@"
+OptTextCheatWarp:  db " TIME WARP@"
 OptTextCheatBoth:  db "WARP/JOHTO@"
 
-OptTextCancel:      db "CANCEL@"
-; Column 8 of row 16, matching the Pokemon Status Screen's "START: CHANGE".
-OptTextPage2Prompt: db "SEL: PAGE 2@"
-OptTextPage1Prompt: db "SEL: PAGE 1@"
+OptTextCancel: db "CANCEL@"
+
+; Shelved with the second page above. 14 characters, centred at column 3.
+; OptTextPage2Prompt: db "SELECT: PAGE 2@"
+; OptTextPage1Prompt: db "SELECT: PAGE 1@"

@@ -256,7 +256,13 @@ GBFadeDecCommon_:
 InitOptions_::
 	ld a, 1 << BIT_FAST_TEXT_DELAY
 	ld [wLetterPrintingDelayFlags], a
-	ld a, TEXT_DELAY_FAST
+	; Instant is the default text speed, not merely an option above FAST.
+	; TEXT_DELAY_INSTANT is 0, and so are the other two wOptions fields'
+	; defaults (battle animation ON, battle style SHIFT), so this clears the
+	; whole byte. PrintLetterDelay's existing zero-delay path picks it up with
+	; no new check on the per-letter hot path.
+	ASSERT TEXT_DELAY_INSTANT == 0
+	xor a
 	ld [wOptions], a
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a
