@@ -22,6 +22,6 @@ WillsRoom_Object:
 	def_bg_events
 
 	def_object_events
-	object_event  5,  2, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_WILLSROOM_WILL, OPP_WILL, 1
+	object_event  5,  2, SPRITE_BIKE_SHOP_CLERK, STAY, DOWN, TEXT_WILLSROOM_WILL, OPP_WILL, 1
 
 	def_warps_to WILLS_ROOM

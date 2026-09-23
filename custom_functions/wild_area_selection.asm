@@ -619,6 +619,27 @@ WildAreaPickType:
 	and WILD_AREA_COUNT_MASK
 	ld d, a
 .haveRoom:
+IF DEF(_DEBUG)
+	; Debug 2 can name the wild-area type outright. Door 1 carries the index
+	; because a wild-area visit only ever has one special door. The cycle mask
+	; and count below are still updated through .chosen, so forcing a type does
+	; not desync the no-repeat rotation.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .noForcedType
+	ld a, [wDebug2ForcedDoor1]
+	and %00011111
+	and a
+	jr z, .noForcedType           ; 0 = random
+	dec a                         ; 1-based screen index -> type 0-3
+	cp NUM_WILD_AREA_TYPES
+	jr nc, .noForcedType          ; out of range: fall back to the normal pick
+	ld b, a                       ; b = chosen type, as .chosen expects
+	call WildAreaMaskForType      ; a = type in, its mask out; preserves bc/de
+	ld e, a                       ; e = its mask, as .chosen expects
+	jp .chosen
+.noForcedType
+ENDC
 	; --- pass 1: count unoffered types ---
 	ld b, 0                       ; b = unoffered count
 	ld c, 0                       ; c = type iterator

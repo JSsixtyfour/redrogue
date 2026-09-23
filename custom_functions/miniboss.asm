@@ -263,6 +263,40 @@ MiniBossCountBadges:
 ; among available types); if none is available (endless mode), forces a revisit.
 ; Returns carry set with a = type, b = chosen mini-boss map.
 MiniBossPickTypeAndStage:
+IF DEF(_DEBUG)
+	; Debug 2 can name the boss outright. Door 1 carries the index because a
+	; mini-boss visit only ever has one special door, and the config screen's
+	; list is 1-based over the ROLLABLE types, which is exactly the type id.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .noForcedType
+	ld a, [wDebug2ForcedDoor1]
+	and %00011111
+	and a
+	jr z, .noForcedType           ; 0 = random
+	cp MINIBOSS_MAX_ROLLABLE_TYPE + 1
+	jr nc, .noForcedType          ; out of range, or a type with no encounter hook
+	ld c, a                       ; c = forced type, as .foundType expects
+	push bc
+	call BossHasUnvisitedMap
+	pop bc
+	jr nc, .forcedExhausted
+	jp .foundType
+.forcedExhausted
+	; PickUnvisitedMapForBoss requires its caller to guarantee an unvisited map
+	; exists, and this boss has none left. Keep the forced type and take any of
+	; its maps, which is what the .endless path below does for the random case.
+	ld a, c
+	push bc
+	call PickAnyMapForBoss        ; b = map
+	ld a, b
+	pop bc
+	ld b, a                       ; b = map
+	ld a, c                       ; a = type
+	scf
+	ret
+.noForcedType
+ENDC
 	; Pass 1: count rollable types with an unvisited map
 	ld b, 0                 ; b = available count
 	ld c, 1                 ; c = type iterator

@@ -15,9 +15,10 @@ KogasRoomShowOrHideExitBlock:
 ; ROM-authored (vanilla-order) warps would misroute otherwise. Idempotent,
 ; safe to run on every map load, including backtracking.
 ;
-; The exit block ids are per TILESET, not per room: this is a GYM-tileset room,
-; so it uses $5 open / $24 blocked like Bruno's and Lorelei's. Agatha's $e/$3b
-; are the CEMETERY pair and would paint garbage here.
+; The exit block ids are per TILESET, not per room: this is a FOREST-tileset
+; room (maps/koga2forest.blk, 2026-09-23), so it uses $00 open path / $17
+; blocked. The GYM pair ($5/$24) Bruno, Lorelei and Will use, and Agatha's
+; CEMETERY pair ($e/$3b), would both paint garbage here.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
@@ -26,10 +27,10 @@ KogasRoomShowOrHideExitBlock:
 	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_BEAT_KOGAS_ROOM_TRAINER_0
 	jr z, .blockExitToNextRoom
-	ld a, $5
+	ld a, $00
 	jp .setExitBlock
 .blockExitToNextRoom
-	ld a, $24
+	ld a, $17
 .setExitBlock
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2

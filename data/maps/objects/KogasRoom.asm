@@ -2,7 +2,7 @@
 	const_export KOGASROOM_KOGA
 
 KogasRoom_Object:
-	db $3 ; border block
+	db 2 ; border block (forest tree, as ProceduralForest)
 
 ; Warp coordinates are MEASURED from maps/KogasRoom.blk, not copied from the
 ; three original Elite Four rooms: this map is 5x7 blocks (14 steps tall), so

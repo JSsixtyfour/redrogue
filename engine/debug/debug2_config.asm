@@ -120,9 +120,13 @@ Debug2CycleBattles:
 ; ============================================================================
 
 Debug2DrawAI:
-	ld de, wAIDebugTierOverride
-	lb bc, 1, 1
-	jp PrintNumber
+; NOT PrintNumber: it documents itself as "allows 2 to 7 digits" and says to add
+; the value to "0" for a single digit, which is what this is. Asking it for one
+; digit writes outside the cell.
+	ld a, [wAIDebugTierOverride]
+	add '0'
+	ld [hl], a
+	ret
 
 Debug2CycleAI:
 	ld hl, wAIDebugTierOverride
@@ -360,7 +364,10 @@ Debug2DoorList::
 	ld hl, Debug2GiftNames
 	ret
 .miniBoss
-	ld b, NUM_MINIBOSS_TYPES
+; ROLLABLE, not NUM_MINIBOSS_TYPES: a boss type only manifests on a map whose
+; stage script calls the encounter hook, and Karate has none yet, so offering it
+; would be a door that silently does nothing.
+	ld b, MINIBOSS_MAX_ROLLABLE_TYPE
 	ld hl, Debug2MiniBossNames
 	ret
 .wildArea
@@ -414,16 +421,18 @@ Debug2AILabel:       db "AI@"
 Debug2StatusLabel:   db "STATUS@"
 Debug2Door1Label:    db "DOOR 1@"
 Debug2Door2Label:    db "DOOR 2@"
-Debug2UpgradesLabel: db "UPGRADES@"
+; 7 characters, not "UPGRADES": the CHEAT values are 10 wide, so their column
+; is 9, and an 8-character label ran into it and lost its last letter.
+Debug2UpgradesLabel: db "UPGRADE@"
 
 ; width 11, column 8. The number the old prompt used is kept alongside the name
 ; so an existing muscle-memory value still reads the same.
-Debug2StatusNormalText:   db "1 NORMAL   @"
-Debug2StatusGiftText:     db "2 GIFT     @"
-Debug2StatusMiniBossText: db "3 MINIBOSS @"
+Debug2StatusNormalText:   db "   1 NORMAL@"
+Debug2StatusGiftText:     db "     2 GIFT@"
+Debug2StatusMiniBossText: db " 3 MINIBOSS@"
 Debug2StatusWildText:     db "4 WILD AREA@"
 
-Debug2RandomText:  db "RANDOM     @"
+Debug2RandomText:  db "     RANDOM@"
 Debug2UnnamedText: db "- SEE INDEX@"
 
 ; ----------------------------------------------------------------------------
@@ -450,6 +459,8 @@ DEF Debug2GiftNames  EQU 0
 
 ; These two are short enough to be worth writing inline.
 ; KEEP IN SYNC with MINIBOSS_RIVAL/GIOVANNI/KARATE (constants/ram_constants.asm).
+; Karate is listed for when its encounter hook lands, but the count above stops
+; short of it, so it is not selectable yet.
 Debug2MiniBossNames:
 	dw Debug2MiniBossRivalText
 	dw Debug2MiniBossGiovanniText
@@ -470,5 +481,96 @@ Debug2WildCaveText:     db "       CAVE@"
 Debug2WildForestText:   db "     FOREST@"
 Debug2WildCemeteryText: db "   CEMETERY@"
 Debug2WildFacilityText: db "   FACILITY@"
+
+; ============================================================================
+; Debug2ApplyRoundState  (debug builds only)
+; Applies the Debug 2 new-game extras that only touch WRAM. Reached by farcall
+; from PrepareNewGameDebug in bank1, which was over its size limit with this
+; inline. Reads wBattleCount.
+;
+; Moved here from custom_functions/legendary_boss_helpers.asm on 2026-09-23. It
+; sat in the "rogue" section, which had 64 bytes left - not enough for the
+; forced-door hooks this phase adds to the three pickers that also live there.
+; It is _DEBUG-only and reached only by farcall, so it relocates freely, and it
+; belongs beside the configuration screen that now feeds it.
+;   - Rival's starter = Porygon.
+;   - Money = half of max (500000, 3-byte BCD $50 $00 $00).
+;   - gyms completed = wBattleCount / 10 -> wObtainedBadges = (1 << gyms) - 1
+;     (clamped to 8), overriding the shared 7-badge debug default.
+;   - remainder = wBattleCount mod 10 -> rem >= 6 sets BIT_ROGUE_GYM_NEXT (gym
+;     next), else clears it (route next), so the lobby door matches.
+Debug2ApplyRoundState::
+	ld a, PORYGON
+	ld [wRivalStarter], a
+	ld a, $50
+	ld [wPlayerMoney], a
+	xor a
+	ld [wPlayerMoney + 1], a
+	ld [wPlayerMoney + 2], a
+	ld a, [wBattleCount]
+	ld b, 0                    ; b = quotient = gyms completed
+.div
+	cp 10
+	jr c, .divDone
+	sub 10
+	inc b
+	jr .div
+.divDone
+	ld c, a                    ; c = remainder (0-9)
+	ld a, b                    ; clamp gyms completed to the 8 badge bits
+	cp 8
+	jr c, .clampOk
+	ld b, 8
+.clampOk
+	ld a, b                    ; wObtainedBadges = (1 << gyms) - 1 (0 if none)
+	and a
+	jr z, .writeBadges
+	ld d, b
+	xor a
+.badgeLoop
+	scf
+	rla                        ; mask = (mask << 1) | 1
+	dec d
+	jr nz, .badgeLoop
+.writeBadges
+	ld [wObtainedBadges], a
+	ld hl, wRogueFlagsBitfield
+	ld a, c
+	cp 6
+	jr c, .routeNext
+	set BIT_ROGUE_GYM_NEXT, [hl]
+	jr .forcedStageDone
+.routeNext
+	res BIT_ROGUE_GYM_NEXT, [hl]
+.forcedStageDone
+	; The encounter selector and the two door indices used to be prompted for
+	; here, in three more DisplayChooseQuantityMenu boxes. They are now set on
+	; the Debug 2 configuration screen (engine/debug/debug2_config.asm), which
+	; runs before this routine, so wDebug2ForcedDoor1/2 are ALREADY WRITTEN and
+	; must be left alone - door 1's top two bits carry the encounter selector.
+	;
+	; Final sequence: derive BIT_VICTORY_ROAD_CLEARED from the forced battle
+	; count too. Without this, forcing count >= 86 still left Victory Road
+	; "not yet cleared" (the flag is normally only set by actually beating
+	; the Victory Road Rival), so the Lobby gate kept sending the debug
+	; jump to Victory Road instead of the Elite Four. Rolling a fresh
+	; wRunElite4/wRunChampion here (only the first time this flips the bit on)
+	; also means repeated debug jumps into the finale still get a shuffled
+	; order, not always the same default.
+	ld a, [wBattleCount]
+	cp 86
+	jr c, .debugBeforeVictoryRoad
+	; The shared `ld hl, wElite4Flags` that used to sit above the branch is
+	; gone: VICTORY_ROAD_CLEARED is an event flag now, and CheckEvent would
+	; clobber the carry from `cp 86` before the jr could use it.
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
+	jr nz, .debugFinaleStateDone
+	SetEvent EVENT_VICTORY_ROAD_CLEARED
+	farcall RollElite4AndChampion
+	jr .debugFinaleStateDone
+.debugBeforeVictoryRoad
+	ResetEvent EVENT_VICTORY_ROAD_CLEARED
+.debugFinaleStateDone
+	ret
 
 ENDC

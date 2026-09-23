@@ -207,7 +207,12 @@ ChampionsRoomRivalReadyToBattleScript:
 	call SaveEndBattleTextPointers
 	ld a, OPP_LANCE
 	ld [wCurOpponent], a
-	ld a, 1 ; LanceData's tiers are all the same team
+	; Champion Lance takes the Elite Four's TOP tier (wTrainerNo 10-12, tier 4
+	; of the 4x3 E4 grid - see e4_team_spec). Once LANCE is spec-driven, the old
+	; fixed `1` would hand the Champion tier-1 E4 levels.
+	ld c, 3
+	call Rangerandom
+	add 10
 	ld [wTrainerNo], a
 	jr .startBattle
 
@@ -333,7 +338,9 @@ ChampionsRoomOakCongratulatesPlayerScript:
 	ret nz
 	ld a, PLAYER_DIR_LEFT
 	ld [wPlayerMovingDirection], a
-	ld a, CHAMPIONSROOM_RIVAL
+	; The champion who actually fought, not a hard-coded CHAMPIONSROOM_RIVAL:
+	; on a Lance run that turned the HIDDEN Blue and left Lance facing down.
+	call ChampionsRoomChampionSpriteIndex
 	ldh [hSpriteIndex], a
 	ld a, SPRITE_FACING_LEFT
 	ldh [hSpriteFacingDirection], a

@@ -109,13 +109,46 @@ BridgePickTwoRooms:
 	jr nc, .haveTwo
 	call BridgeResetOfferedMask
 .haveTwo
-	call BridgePickOneUnoffered   ; a = room index (now marked offered)
-	call BridgeRoomIndexToMap
+IF DEF(_DEBUG)
+	ld hl, wDebug2ForcedDoor1
+ENDC
+	call BridgePickRoomForDoor    ; a = room map (its room now marked offered)
 	ld [wLobbyDoor1StageMap], a
-	call BridgePickOneUnoffered   ; distinct: the first is already marked
-	call BridgeRoomIndexToMap
+IF DEF(_DEBUG)
+	ld hl, wDebug2ForcedDoor2
+ENDC
+	call BridgePickRoomForDoor    ; distinct unless Debug 2 forces otherwise
 	ld [wLobbyDoor2StageMap], a
 	ret
+
+; ------------------------------------------------------------
+; BridgePickRoomForDoor - pick one door's gift room and mark it offered.
+; OUT: a = its map id. In debug builds, hl = that door's Debug 2 forced-index
+; byte; a non-zero low five bits name a specific room (1-based) instead of
+; rolling. That is what lets the Debug 2 screen put a chosen gift room behind a
+; chosen door - before this, a forced GIFT status could only produce two random
+; rooms. Clobbers all.
+BridgePickRoomForDoor:
+IF DEF(_DEBUG)
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .roll
+	ld a, [hl]
+	and %00011111
+	and a
+	jr z, .roll                   ; 0 = random, which is the normal roll
+	dec a                         ; 1-based screen index -> 0-based room index
+	cp NUM_BRIDGE_ROOMS
+	jr nc, .roll                  ; out of range: roll rather than read past
+	push af
+	call BridgeMarkRoomOffered
+	pop af
+	jr .toMap
+.roll
+ENDC
+	call BridgePickOneUnoffered
+.toMap
+	jp BridgeRoomIndexToMap
 
 ; ------------------------------------------------------------
 ; BridgePickOneUnoffered - pick a random unoffered room, mark it, return its

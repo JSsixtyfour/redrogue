@@ -1415,7 +1415,7 @@ SECTION "Maps 24", ROMX, BANK[$3C]
 INCLUDE "data/maps/headers/KogasRoom.asm"
 INCLUDE "scripts/KogasRoom.asm"
 INCLUDE "data/maps/objects/KogasRoom.asm"
-KogasRoom_Blocks: INCBIN "maps/KogasRoom.blk"
+KogasRoom_Blocks: INCBIN "maps/koga2forest.blk"
 
 INCLUDE "data/maps/headers/WillsRoom.asm"
 INCLUDE "scripts/WillsRoom.asm"

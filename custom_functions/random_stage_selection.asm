@@ -698,13 +698,27 @@ ApplyDebug2DoorForce::
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
 	ld hl, RogueStageMapTable
+	ld a, NUM_STAGE_MAPS
 	jr z, .haveForceTable
 	ld hl, GymMapByBadge
+	ld a, NUM_BADGES
 .haveForceTable
+	; Bounds check. The index field is five bits, so it reaches 31, and BOTH
+	; tables are shorter than that - the route table is 22 entries and the gym
+	; table 8. Nothing checked it before, so an index past the end read whatever
+	; followed the table and patched a door to a garbage map id. The config
+	; screen clamps as well, but this is the last line of defence and the tables
+	; are what it is actually indexing.
+	cp e
+	jr z, .outOfRange
+	jr c, .outOfRange
 	add hl, de
 	ld a, [hl]
 	pop hl                      ; restore door map address
 	ld [hl], a
+	ret
+.outOfRange
+	pop hl
 	ret
 ENDC
 
@@ -817,7 +831,13 @@ IF DEF(_DEBUG)
 	jr z, .noDebug2DoorForce
 	ld a, [wDebug2ForcedDoor1]
 	and %11000000
-	jr nz, .consumeDebug2Forces  ; forced encounter has final authority over doors
+	; A forced encounter (gift / mini-boss / wild area) resolves its own door
+	; indices INSIDE the picker that ran above - BridgePickRoomForDoor,
+	; MiniBossPickTypeAndStage and WildAreaPickType each read them. There is
+	; nothing left to overwrite here, so just consume the bytes. Overwriting the
+	; door map now would strand the state those pickers set up alongside it (the
+	; bridge exit patch, the wild-area no-repeat mask).
+	jr nz, .consumeDebug2Forces
 	ld a, [wDebug2ForcedDoor1]
 	push af
 	xor a
