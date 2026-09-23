@@ -39,8 +39,18 @@ AILair_Script:
 	ld [wSilphCo1FCurScript], a
 	ret
 .afterBattle
-	; Checkpoint 11 (loss) and 12 (victory) extend this. A loss normally never
-	; gets here: the overworld loop jumps to HandleBlackOut first.
+	ldh a, [hIsInBattle]
+	cp $ff
+	jr nz, .won
+	; Loss. .allPokemonFainted (home/overworld.asm) runs this script once with
+	; hIsInBattle = $ff before HandleBlackOut. Spend the attempt, and black out
+	; to the Dorm: the Hall of Fame left wLastBlackoutMap at PALLET_TOWN and
+	; nothing on the Dorm -> Lair path resets it.
+	SetEvent EVENT_AI_ATTEMPT_SPENT
+	ld a, SILPH_CO_DORM
+	ld [wLastBlackoutMap], a
+.won
+	; Checkpoint 12 extends the victory side.
 	xor a
 	ld [wIsTrainerBattle], a
 	ld a, AILAIR_STATE_DONE

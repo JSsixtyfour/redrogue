@@ -77,7 +77,8 @@ DEF EVENT_KANTO_TIMEWARP_ACTIVATED               EQU   30 ; byte 3 bit 6
 DEF EVENT_FINAL_BRIEFING_COMPLETE                EQU   31 ; byte 3 bit 7
 DEF EVENT_POST_GAME                              EQU   32 ; byte 4 bit 0
 DEF EVENT_PALMS_ROOM_OPEN                        EQU   33 ; byte 4 bit 1
-DEF PERSISTENT_EVENTS_END   EQU 33
+DEF EVENT_AI_ATTEMPT_SPENT                       EQU   34 ; byte 4 bit 2
+DEF PERSISTENT_EVENTS_END   EQU 34
 
 ; ==========================================================================
 ; ZONE 1 - RUN-SCOPED (cleared by RogueResetRunState)

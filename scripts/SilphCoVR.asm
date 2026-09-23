@@ -98,11 +98,12 @@ SilphCoVRShouldStageCrisisBriefing:
 	ret
 
 ; Carry set iff the VR machine should send the player to the AI Lair.
-; Checkpoint 11 adds the spent-attempt condition here and nowhere else.
 SilphCoVRAILairAuthorized:
 	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	jr z, .no
 	CheckEvent EVENT_AI_DEFEATED
+	jr nz, .no
+	CheckEvent EVENT_AI_ATTEMPT_SPENT
 	jr nz, .no
 	farcall FinalTeamArchiveHasValidTeam
 	ld a, [wActionResultOrTookBattleTurn]
@@ -232,9 +233,12 @@ SilphCoVR_TextPointers:
 SilphCoVR_ProfPalmText:
 	text_asm
 	push bc
-	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	ld hl, .normalText
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	jr z, .print
+	ld hl, SilphCoVRAttemptSpentText
+	CheckEvent EVENT_AI_ATTEMPT_SPENT
+	jr nz, .print
 	ld hl, SilphCoVRFinalRepeatText
 .print
 	call PrintText
@@ -254,4 +258,8 @@ SilphCoVRFinalBriefingText:
 
 SilphCoVRFinalRepeatText:
 	text_far _SilphCoVRFinalRepeatText
+	text_end
+
+SilphCoVRAttemptSpentText:
+	text_far _SilphCoVRAttemptSpentText
 	text_end

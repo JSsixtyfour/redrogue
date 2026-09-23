@@ -208,7 +208,8 @@ PERSISTENT = [
     "EVENT_KANTO_TIMEWARP_ACTIVATED",
     "EVENT_FINAL_BRIEFING_COMPLETE",
     "EVENT_POST_GAME",
-    "EVENT_PALMS_ROOM_OPEN"
+    "EVENT_PALMS_ROOM_OPEN",
+    "EVENT_AI_ATTEMPT_SPENT"
 ]
 
 PERSISTENT_GROUP = "__persistent__"
@@ -439,6 +440,9 @@ NEW_EVENTS = [
     "EVENT_FINAL_BRIEFING_COMPLETE",
     "EVENT_POST_GAME",
     "EVENT_PALMS_ROOM_OPEN",
+    # Checkpoint 11: set on an AI Lair loss, cleared on the post-loss retry
+    # capture. Persistent so a loss survives RogueResetRunState.
+    "EVENT_AI_ATTEMPT_SPENT",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

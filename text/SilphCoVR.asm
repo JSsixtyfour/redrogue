@@ -53,3 +53,12 @@ _SilphCoVRFinalRepeatText::
 	cont "have to win"
 	cont "anyways!"
 	done
+
+_SilphCoVRAttemptSpentText::
+	text "PALM: The AI"
+	line "deleted your data."
+	cont "You'll need to"
+	cont "start your run"
+	cont "over again to"
+	cont "face it."
+	done

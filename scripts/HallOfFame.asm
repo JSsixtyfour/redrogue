@@ -24,11 +24,27 @@ HallOfFameResetEventsAndSaveScript:
 	predef SingleCPUSpeed ; Hall of Fame and credits retain single-speed timing
 	call Delay3
 	ld a, [wLetterPrintingDelayFlags]
-	push af
+	push af                        ; saved delay flags
 	xor a
 	ldh [hJoyIgnore], a
+	call HallOfFameIsAIRetry
+	jr c, .aiRetry
 	predef HallOfFamePC
-	pop af
+	xor a                          ; retry marker: normal clear
+	jr .presented
+.aiRetry
+	; Post-loss retry (CHECKPOINT_11_SPEC.md 1.6): no Hall of Fame record and no
+	; credits, since those belong to the AI victory. Archive the new Champion
+	; team (the Lair restores it on arrival) and re-authorize the VR machine.
+	; An unrepresentable fusion is refused by the capture, and the previous
+	; latest record is used instead; the retry is not blocked on it.
+	farcall FinalTeamArchiveCapture
+	ResetEvent EVENT_AI_ATTEMPT_SPENT
+	ld a, 1                        ; retry marker: warp to the Lair
+.presented
+	pop bc                         ; b = saved delay flags (pushed from af)
+	push af                        ; retry marker, popped after SaveGameData
+	ld a, b
 	ld [wLetterPrintingDelayFlags], a
 	ld hl, wStatusFlags7
 	res BIT_NO_MAP_MUSIC, [hl]
@@ -65,9 +81,15 @@ HallOfFameResetEventsAndSaveScript:
 	farcall RogueResetRunState
 	xor a
 	ld [wHallOfFameCurScript], a
-	ld a, PALLET_TOWN
+	; Never Pallet Town: nothing on the Dorm -> B1F -> VR -> Lair path passes
+	; through IndigoPlateauLobby_Script, the only other place that corrects
+	; this, so a blackout from the Lair used to land in Pallet Town.
+	ld a, SILPH_CO_DORM
 	ld [wLastBlackoutMap], a
 	farcall SaveGameData
+	pop af
+	and a
+	jr nz, .warpToAILair
 	ld b, 5
 .delayLoop
 	ld c, 600 / 5
@@ -76,6 +98,30 @@ HallOfFameResetEventsAndSaveScript:
 	jr nz, .delayLoop
 	call WaitForTextScrollButtonPress
 	jp Init
+
+.warpToAILair
+	ld a, AI_LAIR
+	ldh [hWarpDestinationMap], a
+	xor a                          ; AI_LAIR warp 1, the arrival tile (3,4)
+	ld [wDestinationWarpID], a
+	ld a, HALL_OF_FAME
+	ld [wLastMap], a
+	ld hl, wStatusFlags3
+	set BIT_WARP_FROM_CUR_SCRIPT, [hl]
+	ret
+
+; Carry set iff this Champion victory is a post-loss AI retry
+; (CHECKPOINT_11_SPEC.md 1.4).
+HallOfFameIsAIRetry:
+	CheckEvent EVENT_AI_DEFEATED
+	jr nz, .no
+	CheckEvent EVENT_AI_ATTEMPT_SPENT
+	jr z, .no
+	scf
+	ret
+.no
+	and a
+	ret
 
 HallOfFameDefaultScript:
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
