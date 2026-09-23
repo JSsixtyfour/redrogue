@@ -401,8 +401,9 @@ Debug2PlaceDoorName:
 	ld e, l
 	pop hl
 	jp PlaceString
-; Phase C3 has not written this list's names yet. Draw a placeholder rather
-; than dereferencing a null table; the index still drives the force, so the row
+; Guards a null table (hl = 0), which every list here now populates, but a
+; future STATUS added without names would hit this again. Draw a placeholder
+; rather than dereferencing it; the index still drives the force, so the row
 ; remains usable.
 .noTable
 	pop hl
@@ -437,25 +438,120 @@ Debug2UnnamedText: db "- SEE INDEX@"
 
 ; ----------------------------------------------------------------------------
 ; Destination name tables, indexed 0-based by (door index - 1) and kept in step
-; with the map table each one mirrors.
-;
-; PHASE C3 (the mechanical half of this phase) writes the three long ones. Each
-; string is DBG2_NAME_WIDTH characters, left-padded so short names right-align
-; the way every other value on these screens does, and each table must stay
-; index-aligned with its map table or a door will name one place and open on
-; another:
+; with the map table each one mirrors. Each string is DBG2_NAME_WIDTH
+; characters, left-padded so short names right-align the way every other value
+; on these screens does, and each table stays index-aligned with its map table
+; so a door cannot name one place and open on another:
 ;   Debug2RouteNames  22 entries, mirroring RogueStageMapTable
 ;                     (custom_functions/random_stage_selection.asm)
 ;   Debug2GymNames     8 entries, mirroring GymMapByBadge (same file)
 ;   Debug2GiftNames   14 entries, mirroring BridgeRoomMaps
 ;                     (custom_functions/bridge_selection.asm)
-; Define each as a label followed by NUM `dw` entries, then replace the matching
-; `EQU 0` below with the label. While a table is 0 the row draws
-; Debug2UnnamedText instead, so the build stays green either way.
 ; ----------------------------------------------------------------------------
-DEF Debug2RouteNames EQU 0
-DEF Debug2GymNames   EQU 0
-DEF Debug2GiftNames  EQU 0
+
+; KEEP IN SYNC with RogueStageMapTable (custom_functions/random_stage_selection.asm).
+; That table's ROUTE_17 entry is commented out and is NOT counted here; the
+; entry after it (ROUTE_24) is index 9.
+Debug2RouteNames:
+	dw Debug2Route1Text
+	dw Debug2Route3Text
+	dw Debug2Route5Text
+	dw Debug2Route6Text
+	dw Debug2Route9Text
+	dw Debug2Route12Text
+	dw Debug2Route13Text
+	dw Debug2Route15Text
+	dw Debug2UndergroundText
+	dw Debug2Route24Text
+	dw Debug2Route25Text
+	dw Debug2VirForestText
+	dw Debug2DiglettsCvText
+	dw Debug2MtMoon1FText
+	dw Debug2RockTunnelText
+	dw Debug2HideoutB1FText
+	dw Debug2Tower2FText
+	dw Debug2Tower7FText
+	dw Debug2SSAnneB1FText
+	dw Debug2PowerPlantText
+	dw Debug2Mansion1FText
+	dw Debug2Seafoam1FText
+
+Debug2Route1Text:      db "    ROUTE 1@"
+Debug2Route3Text:      db "    ROUTE 3@"
+Debug2Route5Text:      db "    ROUTE 5@"
+Debug2Route6Text:      db "    ROUTE 6@"
+Debug2Route9Text:      db "    ROUTE 9@"
+Debug2Route12Text:     db "   ROUTE 12@"
+Debug2Route13Text:     db "   ROUTE 13@"
+Debug2Route15Text:     db "   ROUTE 15@"
+Debug2UndergroundText: db "UNDERGROUND@"
+Debug2Route24Text:     db "   ROUTE 24@"
+Debug2Route25Text:     db "   ROUTE 25@"
+Debug2VirForestText:   db "VIR. FOREST@"
+Debug2DiglettsCvText:  db "DIGLETTS CV@"
+Debug2MtMoon1FText:    db " MT MOON 1F@"
+Debug2RockTunnelText:  db "ROCK TUNNEL@"
+Debug2HideoutB1FText:  db "HIDEOUT B1F@"
+Debug2Tower2FText:     db "   TOWER 2F@"
+Debug2Tower7FText:     db "   TOWER 7F@"
+Debug2SSAnneB1FText:   db "SS ANNE B1F@"
+Debug2PowerPlantText:  db "POWER PLANT@"
+Debug2Mansion1FText:   db " MANSION 1F@"
+Debug2Seafoam1FText:   db " SEAFOAM 1F@"
+
+; KEEP IN SYNC with GymMapByBadge (custom_functions/random_stage_selection.asm).
+; This is the fallback badge-slot list, not necessarily the gyms a rolled
+; wRunGymLineup will send a given run to; see that table's own comment.
+Debug2GymNames:
+	dw Debug2GymPewterText
+	dw Debug2GymCeruleanText
+	dw Debug2GymVermilionText
+	dw Debug2GymCeladonText
+	dw Debug2GymFuchsiaText
+	dw Debug2GymSaffronText
+	dw Debug2GymCinnabarText
+	dw Debug2GymViridianText
+
+Debug2GymPewterText:    db "     PEWTER@"
+Debug2GymCeruleanText:  db "   CERULEAN@"
+Debug2GymVermilionText: db "  VERMILION@"
+Debug2GymCeladonText:   db "    CELADON@"
+Debug2GymFuchsiaText:   db "    FUCHSIA@"
+Debug2GymSaffronText:   db "    SAFFRON@"
+Debug2GymCinnabarText:  db "   CINNABAR@"
+Debug2GymViridianText:  db "   VIRIDIAN@"
+
+; KEEP IN SYNC with BridgeRoomMaps (custom_functions/bridge_selection.asm).
+Debug2GiftNames:
+	dw Debug2GiftCopycatText
+	dw Debug2GiftBillsText
+	dw Debug2GiftFujiText
+	dw Debug2GiftSSAnneCapText
+	dw Debug2GiftFossilLabText
+	dw Debug2GiftFanClubText
+	dw Debug2GiftWardenText
+	dw Debug2GiftVirSchoolText
+	dw Debug2GiftNicknameText
+	dw Debug2GiftTrashedHseText
+	dw Debug2GiftRedsHouseText
+	dw Debug2GiftCuboneHseText
+	dw Debug2GiftTradeHouseText
+	dw Debug2GiftOaksLabText
+
+Debug2GiftCopycatText:    db " COPYCAT 2F@"
+Debug2GiftBillsText:      db "BILLS HOUSE@"
+Debug2GiftFujiText:       db "    MR FUJI@"
+Debug2GiftSSAnneCapText:  db "SS ANNE CAP@"
+Debug2GiftFossilLabText:  db " FOSSIL LAB@"
+Debug2GiftFanClubText:    db "   FAN CLUB@"
+Debug2GiftWardenText:     db "     WARDEN@"
+Debug2GiftVirSchoolText:  db " VIR SCHOOL@"
+Debug2GiftNicknameText:   db "   NICKNAME@"
+Debug2GiftTrashedHseText: db "TRASHED HSE@"
+Debug2GiftRedsHouseText:  db " REDS HOUSE@"
+Debug2GiftCuboneHseText:  db " CUBONE HSE@"
+Debug2GiftTradeHouseText: db "TRADE HOUSE@"
+Debug2GiftOaksLabText:    db "   OAKS LAB@"
 
 ; These two are short enough to be worth writing inline.
 ; KEEP IN SYNC with MINIBOSS_RIVAL/GIOVANNI/KARATE (constants/ram_constants.asm).
