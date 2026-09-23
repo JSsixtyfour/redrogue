@@ -6,10 +6,10 @@
 ; and the Shin Red "extra options" second page (engine/menus/extra_options.asm,
 ; deleted). engine/debug/debug2_config.asm reuses this same engine.
 ;
-; STYLE. One setting per row with a blank row between groups, label at column 1,
+; STYLE. One setting per row with a blank row between groups, label at column 2,
 ; value RIGHT ALIGNED so every row's value ends on the same column, cursor a
-; single '▷' at column 0. This is ShinRed's second-page look; the fully
-; double-spaced layout it replaced burned eleven rows on six settings.
+; single '▷' at column 1, inside the box. This is ShinRed's second-page look;
+; the fully double-spaced layout it replaced burned eleven rows on six settings.
 ;
 ; WHY A TABLE AND NOT MORE HANDWRITTEN ROWS. The vanilla screen inferred each
 ; setting's value from WHERE THE CURSOR SAT, and rebuilt wOptions from those
@@ -42,7 +42,12 @@
 ; scribbled it too. Nothing here reads it as "the" global current menu item.
 ; ============================================================================
 
-SECTION "Options Menu", ROMX
+; FRAGMENT because engine/debug/debug2_config.asm appends its Debug 2 screen to
+; this same section. The engine dispatches every row's Draw and Cycle routine
+; with `jp hl`, which cannot cross a bank, so a screen's row routines MUST sit
+; in the same bank as the engine. Anything reaching this section from outside
+; it uses farcall/farjp, as both entry points' callers do.
+SECTION FRAGMENT "Options Menu", ROMX
 
 ; ----------------------------------------------------------------------------
 ; Row descriptor, OPTROW_SIZE bytes.
@@ -140,16 +145,18 @@ MACRO optpage
 	dw \6
 ENDM
 
-; The box spans columns 1-19, leaving column 0 outside it for the cursor.
+; The box spans the full width, columns 0-19, and the cursor lives INSIDE it at
+; column 1 with labels starting at column 2.
 ;
-; The cursor USED to sit at column 0 with the box starting there too, which is
-; what vanilla does - and it overwrote the left border tile on whichever row was
-; selected, so the box's left edge appeared to be cut away. Giving the cursor a
-; column of its own is the fix; it costs one column of content, which is why
-; TEXT SPEED is abbreviated. Column 18 is the last cell inside the right border.
-DEF OPT_BOX_LEFT    EQU 1
+; The cursor used to sit at column 0, which was also the box's left border
+; column, so it ate the border tile on whichever row was selected and the box
+; looked cut away down its left edge. Moving the cursor inside is what fixes
+; that. Putting it in a margin outside the box works too, but costs a content
+; column: DIFFICULTY plus its widest value needs all 17 columns from 2 to 18.
+DEF OPT_BOX_LEFT    EQU 0
+DEF OPT_CURSOR_COL  EQU 1
 DEF OPT_LABEL_COL   EQU 2
-DEF OPT_BOX_WIDTH   EQU 17
+DEF OPT_BOX_WIDTH   EQU 18
 DEF OPT_VALUE_RIGHT EQU 18
 
 ; ============================================================================
@@ -492,9 +499,9 @@ OptDrawPage:
 .noPrompt
 	jp OptDrawCursor
 
-; Places the cursor glyph at column 0 of the selected row and a space on every
-; other row, CANCEL included. Redraws all of them rather than tracking where
-; the cursor was.
+; Places the cursor glyph at OPT_CURSOR_COL of the selected row and a space on
+; every other row, CANCEL included. Redraws all of them rather than tracking
+; where the cursor was.
 OptDrawCursor:
 	call OptGetPage
 	ld a, [hl]
@@ -504,6 +511,8 @@ OptDrawCursor:
 .loop
 	ld a, c
 	call OptRowCoord
+	ASSERT OPT_CURSOR_COL == 1
+	inc hl
 	ld a, [wOptionsMenuRow]
 	cp c
 	ld a, ' '
@@ -826,7 +835,7 @@ OptionsPageSetInGame:
 ;
 ; Both pages share OptionsRows. The title screen declares 8 rows and so stops
 ; one short of CHEAT, which is the last entry in that table; its box is
-; correspondingly shorter, ending just under 60 FPS.
+; correspondingly shorter, ending just under B. STYLE.
 OptionsPageTitle:
 	optpage 8, 10, 15, OptionsRows, 0, 0
 OptionsPageInGame:
@@ -834,22 +843,22 @@ OptionsPageInGame:
 
 ; label, screen Y, value column, variable, mask, order, strings, count, hook
 ;
-; Screen Ys leave a blank row between groups. Nine rows cannot ALL be spaced
-; apart: nine rows plus eight gaps plus two border rows is 19, and the screen
-; holds 18. Spacing every row would mean eight rows at most, which is only
-; possible with CHEAT back on a page of its own.
+; Grouped, with a blank row between groups: on-screen extras, then text/audio
+; presentation, then the two that change how a battle plays, then the cheat.
+; A blank row between EVERY item does not fit - nine rows plus eight gaps plus
+; two border rows is 19, and the screen holds 18.
 ;
 ; Value columns are OPT_VALUE_RIGHT + 1 minus the row's value width, so every
 ; value ends flush on column 18.
 OptionsRows:
-	optrow OptTextSpeedLabel,    1, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
+	optrow OptFollowerLabel,     1, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
 	optrow OptBattleAnimLabel,   2, 16, wOptions,  1 << BIT_BATTLE_ANIMATION,  OptBattleAnimOrder,  OptOnOffValues,       2, 0
-	optrow OptBattleStyleLabel,  3, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
-	optrow OptAudioLabel,        5, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
-	optrow OptDifficultyLabel,   6, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
-	optrow OptFollowerLabel,     7, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
-	optrow OptColorLabel,        9, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
-	optrow Opt60FPSLabel,       10, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+	optrow OptColorLabel,        3, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
+	optrow Opt60FPSLabel,        4, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+	optrow OptTextSpeedLabel,    6, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
+	optrow OptAudioLabel,        7, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
+	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
+	optrow OptBattleStyleLabel, 10, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
 ; In-game only. The title page's descriptor declares 8 rows and stops above it.
 	optrow_custom OptCheatLabel, 12, 9, OptDrawCheat, OptCycleCheat
 

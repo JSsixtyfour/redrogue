@@ -128,8 +128,16 @@ AgathasRoomAgathaEndBattleScript:
 	cp $ff
 	jp z, ResetAgathaScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeGhost   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_AGATHASROOM_AGATHA
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_GHOST_SHOWN
+	ret nz
+	ld a, TEXT_AGATHASROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -137,6 +145,7 @@ AgathasRoom_TextPointers:
 	def_text_pointers
 	dw_const AgathasRoomAgathaText,            TEXT_AGATHASROOM_AGATHA
 	dw_const AgathasRoomAgathaDontRunAwayText, TEXT_AGATHASROOM_AGATHA_DONT_RUN_AWAY
+	dw_const AgathasRoomPrismText, TEXT_AGATHASROOM_PRISM
 
 AgathasRoomTrainerHeaders:
 	def_trainers
@@ -178,3 +187,9 @@ AgathaAfterBattleText:
 AgathasRoomAgathaDontRunAwayText:
 	text_far _AgathasRoomAgathaDontRunAwayText
 	text_end
+
+AgathasRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgeGhost
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

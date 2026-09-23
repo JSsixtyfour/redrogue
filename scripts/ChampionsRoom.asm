@@ -256,8 +256,6 @@ ChampionsRoomRivalDefeatedScript:
 	call UpdateSprites
 	SetEvent EVENT_BEAT_CHAMPION_RIVAL
 	farcall RogueAwardCredits3
-	farcall RogueChampionCartridges   ; NORMAL + FLYING + BUG - the three types no
-	                                  ; gym leader or Elite Four member owns
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 
@@ -291,7 +289,16 @@ ChampionsRoomRivalDefeatedScript:
 	ld a, SCRIPT_CHAMPIONSROOM_OAK_ARRIVES
 .scriptChosen
 	ld [wChampionsRoomCurScript], a
-	ret
+; ELEMENT PRISM: NORMAL + FLYING + BUG, the three types no gym leader or Elite
+; Four member owns. Announced from its own text id so PrintText runs inside
+; DisplayTextID - fired raw from this script it drew an invisible box that
+; silently waited for A (confirmed in BGB 2026-09-23 by pre-setting the event).
+; Gated on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_CHAMPION_SHOWN
+	ret nz
+	ld a, TEXT_CHAMPIONSROOM_PRISM
+	ldh [hTextID], a
+	jp ChampionsRoom_DisplayTextID_AllowABSelectStart
 
 ChampionsRoomOakArrivesScript:
 	farcall Music_Cities1AlternateTempo
@@ -461,6 +468,7 @@ ChampionsRoom_TextPointers:
 	dw_const ChampionsRoomOakDisappointedWithLanceText, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_LANCE
 	dw_const ChampionsRoomOakChampionCongratulatesText, TEXT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
 	dw_const ChampionsRoomOakComeWithMeText,            TEXT_CHAMPIONSROOM_OAK_COME_WITH_ME
+	dw_const ChampionsRoomPrismText,                   TEXT_CHAMPIONSROOM_PRISM
 
 ChampionsRoomRivalText:
 	text_asm
@@ -583,3 +591,9 @@ ChampionsRoomOakChampionCongratulatesText:
 ChampionsRoomOakComeWithMeText:
 	text_far _ChampionsRoomOakComeWithMeText
 	text_end
+
+ChampionsRoomPrismText:
+	text_asm
+	farcall RogueChampionCartridges
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

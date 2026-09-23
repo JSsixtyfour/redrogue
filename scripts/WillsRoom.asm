@@ -134,8 +134,16 @@ WillsRoomWillEndBattleScript:
 	cp $ff
 	jp z, ResetWillsRoomScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgePsychic   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_WILLSROOM_WILL
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_PSYCHIC_SHOWN
+	ret nz
+	ld a, TEXT_WILLSROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -143,6 +151,7 @@ WillsRoom_TextPointers:
 	def_text_pointers
 	dw_const WillsRoomWillText,            TEXT_WILLSROOM_WILL
 	dw_const WillsRoomWillDontRunAwayText, TEXT_WILLSROOM_WILL_DONT_RUN_AWAY
+	dw_const WillsRoomPrismText, TEXT_WILLSROOM_PRISM
 
 WillsRoomTrainerHeaders:
 	def_trainers
@@ -184,3 +193,9 @@ WillAfterBattleText:
 WillsRoomWillDontRunAwayText:
 	text_far _WillsRoomWillDontRunAwayText
 	text_end
+
+WillsRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgePsychic
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

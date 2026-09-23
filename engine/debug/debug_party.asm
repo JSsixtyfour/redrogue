@@ -217,25 +217,24 @@ IF DEF(_DEBUG)
 
 	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
 .debug2
-	; Prompt for a starting battle count (mart-style counter, 1-99, min 1).
-	; The debug speech was skipped, so ensure font/text-box tiles are loaded
-	; before drawing the quantity box.
+	; One labelled configuration screen replaces the five blind number prompts
+	; that used to run here in sequence (battle count, AI tier, encounter
+	; selector, door 1, door 2). The debug speech was skipped, so ensure
+	; font/text-box tiles are loaded before it draws.
 	call LoadFontTilePatterns
 	call LoadTextBoxTilePatterns
-	xor a
-	ld [wListMenuID], a        ; NOLISTMENU - plain quantity box, not the priced variant
-	ld a, 99
-	ld [wMaxItemQuantity], a
-	call DisplayChooseQuantityMenu
-	ld a, [wItemQuantity]      ; 1-99
+	ld a, 1 ; the old quantity prompt's minimum, so the default is unchanged
 	ld [wBattleCount], a
-
-	; This helper is kept in the floating debug bank because bank 1 is full.
-	farcall Debug2ChooseAITier
+	xor a
+	ld [wAIDebugTierOverride], a
+	ld [wDebug2ForcedDoor1], a
+	ld [wDebug2ForcedDoor2], a
+	farcall Debug2ConfigMenu
 
 	; Apply the Porygon rival starter, half-max money, and the battle-count-
-	; derived round state (badge count + gym/route flag), then the two forced-
-	; door prompts (door 1, door 2). This lives in the rogue bank to keep
+	; derived round state (badge count, gym/route flag, Victory Road). It no
+	; longer prompts for anything and must NOT touch wDebug2ForcedDoor1, which
+	; the screen above has already written. This lives in the rogue bank to keep
 	; bank1 within its size limit; it only touches WRAM, so farcall is safe.
 	farcall Debug2ApplyRoundState
 	ret

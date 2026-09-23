@@ -585,62 +585,16 @@ Debug2ApplyRoundState::
 	cp 6
 	jr c, .routeNext
 	set BIT_ROGUE_GYM_NEXT, [hl]
-	jr .forcedStagePrompt
+	jr .forcedStageDone
 .routeNext
 	res BIT_ROGUE_GYM_NEXT, [hl]
-.forcedStagePrompt
-	; One-shot encounter selector for the next lobby visit:
-	;   1 = normal, 2 = bridge, 3 = mini-boss, 4 = wild area.
-	; Store the zero-based choice in wDebug2ForcedDoor1 bits 6-7. The low five
-	; bits remain available for its existing 1-based route/gym door override.
-	ld a, 4
-	ld [wMaxItemQuantity], a
-	xor a
-	ld [wListMenuID], a
-	call DisplayChooseQuantityMenu
-	ld a, [wItemQuantity]
-	dec a
-	rrca
-	rrca
-	ld [wDebug2ForcedDoor1], a
-
-	; Follow-up prompts: pick which specific gym (1-8) or route (1-22) each
-	; lobby door leads to independently, or leave either random. Entry 1 =
-	; random (no override); entry N (N>=2) forces gym/route (N-1). The choice
-	; is contingent on the battle count: the gym-vs-route flag (just set from
-	; the remainder) selects the max, and ApplyDebug2DoorForce
-	; (random_stage_selection.asm, called from SelectAndPatchLobbyExit) applies
-	; each index to its own door on the next lobby visit. Uses the same
-	; counter UI as the battle-count prompt (font/text-box tiles already
-	; loaded by caller). Max is the same for both doors (route-next always
-	; offers 2 doors; gym-next has only 1 usable door, but door 2's prompt is
-	; harmless - PatchWarpEntry never patches a blocked door).
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_ROGUE_GYM_NEXT, a
-	ld a, 23                   ; route next: 1 (random) + NUM_STAGE_MAPS (22) routes
-	jr z, .haveMax
-	ld a, 9                    ; gym next: 1 (random) + 8 gyms
-.haveMax
-	ld [wMaxItemQuantity], a
-	xor a
-	ld [wListMenuID], a
-	call DisplayChooseQuantityMenu
-	ld a, [wItemQuantity]
-	dec a                       ; 1 (random) -> 0 (wDebug2ForcedDoor1/2's "no
-	                             ; force" sentinel); 2..max -> 1..(max-1), the
-	                             ; 1-based gym/route index ApplyDebug2DoorForce
-	                             ; expects
-	ld b, a
-	ld a, [wDebug2ForcedDoor1]
-	or b                         ; retain encounter choice in bits 6-7
-	ld [wDebug2ForcedDoor1], a
-
-	; Door 2: identical prompt, same max (wMaxItemQuantity/wListMenuID already set).
-	call DisplayChooseQuantityMenu
-	ld a, [wItemQuantity]
-	dec a
-	ld [wDebug2ForcedDoor2], a
-
+.forcedStageDone
+	; The encounter selector and the two door indices used to be prompted for
+	; here, in three more DisplayChooseQuantityMenu boxes. They are now set on
+	; the Debug 2 configuration screen (engine/debug/debug2_config.asm), which
+	; runs before this routine, so wDebug2ForcedDoor1/2 are ALREADY WRITTEN and
+	; must be left alone - door 1's top two bits carry the encounter selector.
+	;
 	; Final sequence: derive BIT_VICTORY_ROAD_CLEARED from the forced battle
 	; count too. Without this, forcing count >= 86 still left Victory Road
 	; "not yet cleared" (the flag is normally only set by actually beating

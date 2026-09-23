@@ -123,8 +123,16 @@ LancesRoomLanceEndBattleScript:
 	cp $ff
 	jp z, ResetLanceScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeDragon   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_LANCESROOM_LANCE
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_DRAGON_SHOWN
+	ret nz
+	ld a, TEXT_LANCESROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -164,6 +172,7 @@ LancesRoomPlayerIsMovingScript:
 LancesRoom_TextPointers:
 	def_text_pointers
 	dw_const LancesRoomLanceText, TEXT_LANCESROOM_LANCE
+	dw_const LancesRoomPrismText, TEXT_LANCESROOM_PRISM
 
 LancesRoomTrainerHeaders:
 	def_trainers
@@ -202,3 +211,9 @@ LancesRoomLanceAfterBattleText:
 .GoToChampion
 	text_far _Elite4GoToChampionText
 	text_end
+
+LancesRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgeDragon
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

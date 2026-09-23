@@ -127,8 +127,16 @@ LoreleisRoomLoreleiEndBattleScript:
 	cp $ff
 	jp z, ResetLoreleiScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeIce   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_LORELEISROOM_LORELEI
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_ICE_SHOWN
+	ret nz
+	ld a, TEXT_LORELEISROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -136,6 +144,7 @@ LoreleisRoom_TextPointers:
 	def_text_pointers
 	dw_const LoreleisRoomLoreleiText,            TEXT_LORELEISROOM_LORELEI
 	dw_const LoreleisRoomLoreleiDontRunAwayText, TEXT_LORELEISROOM_DONT_RUN_AWAY
+	dw_const LoreleisRoomPrismText, TEXT_LORELEISROOM_PRISM
 
 LoreleisRoomTrainerHeaders:
 	def_trainers
@@ -177,3 +186,9 @@ LoreleisRoomLoreleiAfterBattleText:
 LoreleisRoomLoreleiDontRunAwayText:
 	text_far _LoreleisRoomLoreleiDontRunAwayText
 	text_end
+
+LoreleisRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgeIce
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

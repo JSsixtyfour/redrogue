@@ -134,8 +134,16 @@ KogasRoomKogaEndBattleScript:
 	cp $ff
 	jp z, ResetKogasRoomScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgePoison   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_KOGASROOM_KOGA
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_POISON_SHOWN
+	ret nz
+	ld a, TEXT_KOGASROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -143,6 +151,7 @@ KogasRoom_TextPointers:
 	def_text_pointers
 	dw_const KogasRoomKogaText,            TEXT_KOGASROOM_KOGA
 	dw_const KogasRoomKogaDontRunAwayText, TEXT_KOGASROOM_KOGA_DONT_RUN_AWAY
+	dw_const KogasRoomPrismText, TEXT_KOGASROOM_PRISM
 
 KogasRoomTrainerHeaders:
 	def_trainers
@@ -184,3 +193,9 @@ KogaAfterBattleText:
 KogasRoomKogaDontRunAwayText:
 	text_far _KogasRoomKogaDontRunAwayText
 	text_end
+
+KogasRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgePoison
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

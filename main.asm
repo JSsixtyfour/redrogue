@@ -99,6 +99,13 @@ INCLUDE "engine/battle/ai/ai_fairplay.asm"
 ; Its only bank1 callers use farcall, so keep it in a floating section.
 INCLUDE "engine/debug/debug_fight2.asm"
 
+; The Debug 2 configuration screen. Declares its own floating _DEBUG-gated
+; SECTION, reached only by farcall from PrepareNewGameDebug in bank1, and it
+; calls into the option-page engine ("Options Menu") by plain label - both are
+; floating ROMX sections, so that edge is a farcall too. Kept out of bank1 for
+; the usual reason: bank1 has no slack.
+INCLUDE "engine/debug/debug2_config.asm"
+
 ; RemovePokemon's HOME stub already uses jpfar, and the implementation only
 ; accesses RAM and its own local labels. Keep this infrequent routine out of
 ; bank $01 so per-frame 60 FPS sprite timing can remain in its native bank.

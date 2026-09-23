@@ -124,8 +124,16 @@ BrunosRoomBrunoEndBattleScript:
 	cp $ff
 	jp z, ResetBrunoScript
 	farcall RogueAwardCredits2
-	farcall RogueGrantCartridgeFighting   ; ELEMENT PRISM signature-type cartridge
 	ld a, TEXT_BRUNOSROOM_BRUNO
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; PrintText runs inside DisplayTextID - fired raw from this map script, the
+; announcement drew an invisible box that silently waited for A. Gated here
+; on the grant's own one-time event so a repeat win shows no empty box.
+	CheckEvent EVENT_PRISM_E4_FIGHTING_SHOWN
+	ret nz
+	ld a, TEXT_BRUNOSROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -133,6 +141,7 @@ BrunosRoom_TextPointers:
 	def_text_pointers
 	dw_const BrunosRoomBrunoText,            TEXT_BRUNOSROOM_BRUNO
 	dw_const BrunosRoomBrunoDontRunAwayText, TEXT_BRUNOSROOM_BRUNO_DONT_RUN_AWAY
+	dw_const BrunosRoomPrismText, TEXT_BRUNOSROOM_PRISM
 
 BrunosRoomTrainerHeaders:
 	def_trainers
@@ -174,3 +183,9 @@ BrunoAfterBattleText:
 BrunosRoomBrunoDontRunAwayText:
 	text_far _BrunosRoomBrunoDontRunAwayText
 	text_end
+
+BrunosRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgeFighting
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd
