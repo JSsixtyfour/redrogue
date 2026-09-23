@@ -33,6 +33,12 @@ ReadTrainer:
 ; battle needs regardless of how its party was built.
 	xor a
 	ld [wTrainerPartyFormMode], a ; specs carry per-mon forms themselves
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	jr nz, .notFinalAI
+	call ReadFinalAITrainer       ; same bank
+	jp .FinishUp                  ; no SpecialTrainerMoves row exists for it
+.notFinalAI
 	call RogueBuildParty          ; same bank, so a plain call
 	jp c, .AddAdditionalMoveData
 
@@ -400,3 +406,40 @@ MiniBossAddMon:
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	jp AddPartyMon
+
+; FINAL_AI setup, run inside ReadTrainer after GetTrainerInformation and before
+; _LoadTrainerPic. Loads a random archived Champion team as the enemy party,
+; points the trainer portrait at the player's current front pic, and seeds
+; wCurEnemyLevel for ReadTrainer's money loop.
+ReadFinalAITrainer:
+	farcall FinalTeamArchiveLoadRandomEnemy
+	ld a, [wActionResultOrTookBattleTurn]
+	and a
+	jr nz, .partyLoaded
+; The VR only authorizes the Lair when a valid record exists, so this is
+; unreachable in play. Mirror the player's current party rather than
+; fielding an empty one.
+	ld hl, wPartyDataStart
+	ld de, wEnemyPartyCount
+	ld bc, wPartyDataEnd - wPartyDataStart
+	call CopyData
+.partyLoaded
+	farcall GetPlayerFrontPic ; de = front pic, always in BANK(RedPicFront)
+	ld a, e
+	ld [wTrainerPicPointer], a
+	ld a, d
+	ld [wTrainerPicPointer + 1], a
+	ld a, BANK(RedPicFront)
+	ld [wTrainerPicBank], a
+; ReadTrainer's money loop runs wCurEnemyLevel times; use the last mon's
+; level, the vanilla "level of last enemy mon" rule.
+	ld a, [wEnemyPartyCount]
+	and a
+	ret z
+	dec a
+	ld hl, wEnemyMon1Level
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]
+	ld [wCurEnemyLevel], a
+	ret

@@ -46,6 +46,8 @@ AITierByRound:
 	assert @ - AITierByRound == (AI_MAX_ROUND + 1) * NUM_AI_DIFFICULTY_ROWS, \
 		"AITierByRound must have one row per difficulty and one entry per round"
 
+ASSERT FINAL_AI > AI_MAX_TIER, "FINAL_AI's tier trick needs the class id above every tier"
+
 ; Highest tier each difficulty may reach, applied AFTER the boss bumps. Without
 ; this a gym leader's +1 would walk VERY EASY into T2 and EASY into T3, undoing
 ; the "stop" the rows above exist to express. It also subsumes the AI_MAX_TIER
@@ -169,6 +171,13 @@ AIResolveTier::
 	jr z, .notFinalTrainer
 	inc b
 .notFinalTrainer
+; FINAL_AI always plays at its difficulty's ceiling. Loading b with the class id
+; (well above AI_MAX_TIER) lets the clamp below pick AITierCeiling[difficulty].
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	jr nz, .notFinalAI
+	ld b, a
+.notFinalAI
 ; Clamp to this difficulty's ceiling. Deliberately AFTER the bumps - see
 ; AITierCeiling. No separate AI_MAX_TIER clamp is needed: no ceiling entry
 ; exceeds it.
@@ -217,6 +226,9 @@ AIGetLayerWord::
 ; Test a behaviour flag (AI_OMNISCIENT and friends) for this battle's tier.
 ; INPUT:  de = flag mask to test
 ; OUTPUT: z clear if any tested bit is set, z set if none are.
+; NOTE: FINAL_AI's forced omniscience does NOT go through this - it is an
+; identity override in AIGetPlayerMoveN, independent of AITierLayers. A future
+; second AI_OMNISCIENT consumer must honour that override itself.
 AIHasFlag::
 	push de
 	call AIGetLayerWord

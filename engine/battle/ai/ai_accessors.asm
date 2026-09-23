@@ -67,13 +67,20 @@ AIGetTargetStatus::
 ; AIHasFlag returned in is still live for the branch below.
 AIGetPlayerMoveN::
 	ld c, a
+; FINAL_AI is omniscient regardless of its tier (plan 1.6): an identity
+; override, deliberately independent of AITierLayers.
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	jr z, .omniscient
 	push bc
 	ld de, AI_OMNISCIENT
 	farcall AIHasFlag ; z clear = this tier is omniscient; z set = fair play
 	pop bc
-	ld hl, wBattleMonMoves
-	jr nz, .known ; omniscient: read the real moveset
+	jr nz, .omniscient
 	ld hl, wAISeenPlayerMoves ; fair play: only what has actually been shown
+	jr .known
+.omniscient
+	ld hl, wBattleMonMoves
 .known
 	ld a, c
 	ld d, 0

@@ -19,6 +19,8 @@ PlayBattleMusic::
 	ld a, [wCurOpponent]
 	cp OPP_RIVAL3
 	jr z, .finalBattle
+	cp OPP_FINAL_AI
+	jr z, .finalBattle
 	cp OPP_LANCE
 	jr z, .checkChampionsRoomLance
 	cp OPP_PROF_OAK

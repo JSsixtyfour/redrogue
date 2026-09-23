@@ -7195,6 +7195,17 @@ LoadEnemyMonData:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jp z, LoadEnemyMonFromParty
+; FINAL_AI fields an archived PLAYER team: its structs already hold the real
+; stats (fusion/Bridge bonuses included), baked types and flag bits, so load it
+; exactly like a link opponent. hIsInBattle first: InitWildBattle calls this
+; before it zeroes wTrainerClass.
+	ldh a, [hIsInBattle]
+	cp 2
+	jr nz, .notFinalAI
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	jp z, LoadEnemyMonFromParty
+.notFinalAI
 	ld a, [wEnemyMonSpecies2]
 	ld [wEnemyMonSpecies], a
 	ld [wCurSpecies], a

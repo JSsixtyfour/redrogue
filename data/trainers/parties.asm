@@ -94,6 +94,7 @@ TrainerDataPointers:
 	dw WillData             ; WILL
 	dw KarenData            ; KAREN
 	dw KogaE4Data           ; KOGA_E4
+	dw Rival3Data           ; FINAL_AI - never read: ReadTrainer loads the archive before this lookup
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then

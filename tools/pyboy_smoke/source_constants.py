@@ -17,6 +17,7 @@ TRAINER_CONST_RE = re.compile(r"^trainer_const\s+([A-Za-z0-9_]+)")
 
 def _integer_expression(expression: str, names=None) -> int:
     converted = re.sub(r"\$([0-9a-fA-F]+)", r"0x\1", expression.strip())
+    converted = re.sub(r"%([01]+)", r"0b\1", converted)
     if names:
         # Resolve identifiers against symbols defined earlier in the file, so
         # generated forms like `EQU EVENT_GRAVEYARD_BASE + 3` parse.

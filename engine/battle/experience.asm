@@ -2,7 +2,10 @@ GainExperience:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; return if link battle
-    
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	ret z ; the final AI's archived mons carry no base-exp value; like a link battle, no EXP
+
     ;shinpokered feature having to do with the GBC double speed CPU mode
 ;Running in double speed CPU mode shaves off about 1 second of computation delay
 	predef SetCPUSpeed

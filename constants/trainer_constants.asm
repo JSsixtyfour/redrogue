@@ -120,6 +120,10 @@ ENDM
 ; follows the RIVAL_MINIBOSS / GIOVANNI_MINIBOSS precedent above. He keeps
 ; Koga's pic, name and AI; only the party data differs.
 	trainer_const KOGA_E4        ; $3E
+; The final AI. Its party is the archived Champion team loaded directly by
+; ReadTrainer (read_trainer_party.asm), its portrait is the player's front
+; pic, and its tier is its difficulty's ceiling (AIResolveTier).
+	trainer_const FINAL_AI       ; $3F - OPP_FINAL_AI = 223
 DEF NUM_TRAINERS EQU const_value - 1
 
 ; Trainer-card face/badge blocks (gfx/trainer_card/badges.png, blitted by

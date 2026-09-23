@@ -77,4 +77,5 @@ TrainerPicAndMoneyPointers::
 	pic_money WillPic,         500
 	pic_money KarenPic,        500
 	pic_money KogaPic,         500 ; KOGA_E4 reuses the gym Koga's pic
+	pic_money RedPicFront,     500 ; FINAL_AI - portrait overridden at runtime by ReadFinalAITrainer
 	assert_table_length NUM_TRAINERS
