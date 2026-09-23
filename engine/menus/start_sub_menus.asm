@@ -546,7 +546,10 @@ StartMenu_Option::
 	ldh [hAutoBGTransferEnabled], a
 	call ClearScreen
 	call UpdateSprites
-	callfar DisplayOptionMenu
+	; The in-game entry, which is the only one that offers the CHEAT page: the
+	; title screen reaches the options before a save is loaded, where that row
+	; would write progression events into uninitialised wEventFlags.
+	callfar DisplayOptionMenuInGame_
 	call LoadScreenTilesFromBuffer2
 	call LoadTextBoxTilePatterns
 	call UpdateSprites

@@ -50,9 +50,9 @@ INCLUDE "engine/overworld/follower_yellow_test.asm"
 
 
 ; Declares its own floating SECTION (see the file header). Kept out of "bank1",
-; which has almost no slack: the only thing in bank1 that references it is the
-; SELECT hook in DisplayOptionMenu, and that reaches it by farcall.
-INCLUDE "engine/menus/extra_options.asm"
+; which has almost no slack: this is the whole body of both option pages, and
+; bank1 keeps only a farjp stub (DisplayOptionMenu in main_menu.asm).
+INCLUDE "engine/menus/options_menu.asm"
 
 ; Declares its own floating SECTION (see the file header). Reached only by
 ; callfar (from engine/battle/core.asm and engine/battle/experience.asm), so

@@ -892,10 +892,12 @@ wTrainerInfoTextBoxWidth:: db
 wTrainerInfoTextBoxNextRowOffset:: db
 
 NEXTU
-wOptionsTextSpeedCursorX:: db
-wOptionsBattleAnimCursorX:: db
-wOptionsBattleStyleCursorX:: db
-wOptionsCancelCursorX:: db
+; Option / Debug page engine state (engine/menus/options_menu.asm).
+; Deliberately kept at the same 4 bytes as the four cursor-X coordinates it
+; replaced, so no address downstream of this union shifts.
+wOptionsMenuRow:: db ; cursor row index within the current page
+wOptionsMenuPage:: db ; index into the active page set
+wOptionsMenuPageSet:: dw ; the page set currently being displayed
 
 NEXTU
 ; tile ID of the badge number being drawn

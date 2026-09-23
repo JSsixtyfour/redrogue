@@ -26,7 +26,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.predef_text = (ROOT / "data/text_predef_pointers.asm").read_text()
         cls.wram = (ROOT / "ram/wram.asm").read_text()
         cls.ram_constants = (ROOT / "constants/ram_constants.asm").read_text()
-        cls.extra_options = (ROOT / "engine/menus/extra_options.asm").read_text()
+        cls.options_menu = (ROOT / "engine/menus/options_menu.asm").read_text()
 
     def test_only_scoped_core_is_included(self):
         self.assertIn('INCLUDE "engine/overworld/follower_yellow_test.asm"', self.main)
@@ -409,10 +409,20 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"bit BIT_FOLLOWER_DISABLED, a\s+jr z, \.enabledOption\s+"
             r"call FollowerClearState",
         )
-        self.assertIn("DEF ROW_FOLLOWER EQU 4", self.extra_options)
-        self.assertIn("DEF NUM_EXTRA_OPTION_ROWS EQU 6", self.extra_options)
-        self.assertIn("xor [hl]", self.extra_options)
-        self.assertIn("ExtraOptionsFollowerLabelText:", self.extra_options)
+        # The FOLLOWER row moved from extra_options.asm's hand-rolled handlers
+        # into the shared page table in options_menu.asm. Same wOptions2 bit,
+        # same inverted sense (bit CLEAR is ON); it is now a table row rather
+        # than an `xor [hl]` toggle, so assert the row and its order table.
+        self.assertRegex(
+            self.options_menu,
+            r"optrow OptFollowerLabel,\s+\d+,\s+wOptions2,"
+            r"\s+1 << BIT_FOLLOWER_DISABLED,",
+        )
+        self.assertRegex(
+            self.options_menu,
+            r"OptFollowerOrder:\s+db 0, 1 << BIT_FOLLOWER_DISABLED",
+        )
+        self.assertRegex(self.options_menu, r'OptFollowerLabel:\s+db "FOLLOWER@"')
 
     def test_yellow_visibility_precedes_font_and_checks_four_tiles(self):
         visibility = self.core.split("FollowerCheckVisibility:", 1)[1].split(

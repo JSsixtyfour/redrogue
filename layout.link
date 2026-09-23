@@ -258,16 +258,19 @@ ROMX $2E
 	; clusters intact. Pin them so all three build targets agree on placement.
 	"Bag Item Quantity"
 	"In-Game Trades"
-	; Both pinned here 2026-08-14, for the same reason: left floating, rgblink
-	; first-fit drops a small section into whichever tight bank happens to have
-	; room, and it can pick a DIFFERENT bank per build target. "Random" ($45
-	; bytes) had landed in bank $1, taking it from $52 free to $0d. "Extra
-	; Options Menu" ($67 bytes) then landed in bank $1 in the release build but
-	; bank $7 in _DEBUG - and bank $7 is already one of the two that shrink most
-	; under _DEBUG. Both are reached only by farcall, so BANK() resolves wherever
-	; they sit. Pin small floating sections; do not trust first-fit.
+	; Pinned here 2026-08-14: left floating, rgblink first-fit drops a small
+	; section into whichever tight bank happens to have room, and it can pick a
+	; DIFFERENT bank per build target. "Random" ($45 bytes) had landed in bank
+	; $1, taking it from $52 free to $0d. "Extra Options Menu" ($67 bytes) then
+	; landed in bank $1 in the release build but bank $7 in _DEBUG - and bank $7
+	; is already one of the two that shrink most under _DEBUG. It is reached only
+	; by farcall, so BANK() resolves wherever it sits. Pin small floating
+	; sections; do not trust first-fit.
+	;
+	; 2026-09-23: "Extra Options Menu" was absorbed into "Options Menu" (both
+	; option pages plus the shared page engine) and no longer fits here - it
+	; overflowed this bank by 218 bytes. Repinned to $3A; see the note there.
 	"Random"
-	"Extra Options Menu"
 	; Temporary Pokedex-only BG tiles. LoadPokedexTilePatterns uses BANK(), so
 	; the asset is bank-independent and is pinned away from tight bank $04.
 	"Pokedex Stats Bar Graphics"
@@ -392,6 +395,14 @@ ROMX $39
 	; leader classes. Kept beside the party data so every per-class trainer
 	; table lives in one bank.
 	"Trainer Class Names"
+ROMX $3A
+	; Both option pages and the table-driven page engine they share
+	; (engine/menus/options_menu.asm), moved off bank $2E on 2026-09-23 when
+	; absorbing the old "Extra Options Menu" overflowed that bank by 218 bytes.
+	; Pinned rather than floated for this file's two standing reasons: it is
+	; reached only by farjp/callfar so BANK() resolves wherever it sits, and its
+	; size is still changing - the Debug 2 config screen reuses this engine.
+	"Options Menu"
 ROMX $3E
 	; Yellow Legacy 6A authored-map baseline. Species-specific overworld art is
 	; kept together in a fresh bank so the pointer table's BANK() entries remain
