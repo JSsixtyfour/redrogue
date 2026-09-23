@@ -23,6 +23,8 @@ ProcBossPatchStageSprite::
 	jr z, .facility
 	cp SILPH_CO_DORM
 	jr z, .dorm
+	cp AI_LAIR
+	jr z, .aiLair
 	cp PROCEDURAL_CEMETERY_1
 	jp z, .cemetery
 	cp PROCEDURAL_CEMETERY_2
@@ -34,6 +36,9 @@ ProcBossPatchStageSprite::
 	ret
 .dorm
 	farcall RoomPatchSprites
+	ret
+.aiLair
+	farcall AILairPatchMirrorSprite
 	ret
 .cave
 	ld a, RAMG_SRAM_ENABLE

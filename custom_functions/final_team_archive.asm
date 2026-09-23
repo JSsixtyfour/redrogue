@@ -255,6 +255,40 @@ FinalTeamArchiveLoadRandomEnemy::
 	call FinalTeamArchiveClose
 	ret
 
+; Publish 1 iff at least one checksum-valid record exists. Reads only.
+FinalTeamArchiveHasValidTeam::
+	xor a
+	ld [wActionResultOrTookBattleTurn], a
+	call FinalTeamArchiveOpen
+	call FinalTeamArchiveValidateHeader
+	jr nc, .fail
+	ld a, [sFinalTeamArchiveCount]
+	and a
+	jr z, .fail
+	ld b, a
+	ld a, [sFinalTeamArchiveLatestIndex]
+	and FINAL_TEAM_ARCHIVE_CAPACITY - 1
+	ld d, a
+.find
+	push bc
+	call FinalTeamArchiveRecordIsValid
+	pop bc
+	jr c, .found
+	ld a, d
+	dec a
+	and FINAL_TEAM_ARCHIVE_CAPACITY - 1
+	ld d, a
+	dec b
+	jr nz, .find
+.fail
+	call FinalTeamArchiveClose
+	ret
+.found
+	call FinalTeamArchiveClose
+	ld a, 1
+	ld [wActionResultOrTookBattleTurn], a
+	ret
+
 ; Carry set iff the current party has a representable fusion sidecar.
 FinalTeamArchiveValidateFusion:
 	ld a, [wPartyCount]

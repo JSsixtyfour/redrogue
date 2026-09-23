@@ -37,6 +37,7 @@ SilphCoVRHandleMapEntry:
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	call SilphCoVRClearMovementState
+	call SilphCoVRPatchMachineWarp
 	call SilphCoVRShouldStageCrisisBriefing
 	jr c, .crisisBriefing
 	CheckEvent EVENT_INTRO_TOUR_COMPLETE
@@ -94,6 +95,36 @@ SilphCoVRShouldStageCrisisBriefing:
 	ret
 .no
 	and a
+	ret
+
+; Carry set iff the VR machine should send the player to the AI Lair.
+; Checkpoint 11 adds the spent-attempt condition here and nowhere else.
+SilphCoVRAILairAuthorized:
+	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
+	jr z, .no
+	CheckEvent EVENT_AI_DEFEATED
+	jr nz, .no
+	farcall FinalTeamArchiveHasValidTeam
+	ld a, [wActionResultOrTookBattleTurn]
+	and a
+	jr z, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+DEF SILPHCOVR_MACHINE_WARP_INDEX EQU 2 ; third warp_event in SilphCoVR.asm
+
+; Rewrite the machine warp's in-RAM destination on every VR load. wWarpEntries
+; is rebuilt from ROM each time, so this must run on every entry, not just once.
+SilphCoVRPatchMachineWarp:
+	call SilphCoVRAILairAuthorized
+	ret nc
+	ld hl, wWarpEntries + SILPHCOVR_MACHINE_WARP_INDEX * 4 + 2
+	xor a ; AI_LAIR warp 1, stored as warp id - 1
+	ld [hli], a
+	ld [hl], AI_LAIR
 	ret
 
 SilphCoVRClearMovementState:
@@ -179,6 +210,7 @@ SilphCoVRCrisisWaitForPalm:
 	call DisplayTextID
 	SetEvent EVENT_FINAL_BRIEFING_COMPLETE
 	farcall SaveGameData
+	call SilphCoVRPatchMachineWarp
 	call SilphCoVRClearMovementState
 	ld a, SILPHCOVR_STATE_DONE
 	ld [wSilphCo1FCurScript], a

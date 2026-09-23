@@ -91,6 +91,7 @@ SpriteSheetPointerTable:
 	overworld_sprite JessieSprite, 12          ; SPRITE_JESSIE
 	overworld_sprite JamesSprite, 12           ; SPRITE_JAMES
 	overworld_sprite OfficerJennySprite, 12    ; SPRITE_OFFICER_JENNY
+	overworld_sprite GreenSprite, 12           ; SPRITE_GREEN
 	overworld_sprite DoduoSprite, 12           ; SPRITE_DODUO
 	overworld_sprite PsyduckSprite, 12         ; SPRITE_PSYDUCK
 	overworld_sprite NidorinoSprite, 12        ; SPRITE_NIDORINO
