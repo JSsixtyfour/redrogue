@@ -44,13 +44,47 @@ AILair_Script:
 	jr nz, .won
 	; Loss. .allPokemonFainted (home/overworld.asm) runs this script once with
 	; hIsInBattle = $ff before HandleBlackOut. Spend the attempt, and black out
-	; to the Dorm: the Hall of Fame left wLastBlackoutMap at PALLET_TOWN and
-	; nothing on the Dorm -> Lair path resets it.
+	; to the Dorm. The Hall of Fame now defaults wLastBlackoutMap to the Dorm;
+	; this store still repairs saves made before that change.
 	SetEvent EVENT_AI_ATTEMPT_SPENT
 	ld a, SILPH_CO_DORM
 	ld [wLastBlackoutMap], a
+	jr .done
 .won
-	; Checkpoint 12 extends the victory side.
+	; Victory (plan section 8.4). Nothing below returns to the overworld: the
+	; credits end in jp Init, like a normal Hall of Fame clear.
+	xor a
+	ld [wIsTrainerBattle], a
+	ld a, AILAIR_STATE_DONE
+	ld [wSilphCo1FCurScript], a
+	farcall RogueAwardCredits3 ; the largest award, live option bonuses included
+	call UpdateSprites
+	ld a, TEXT_AILAIR_POSTBATTLE
+	ldh [hTextID], a
+	call DisplayTextID
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	; Durable before the credits: a reset during them must not replay the
+	; fight. The run reset belongs in this same save so that reset also lands
+	; in the Dorm with no party (the Continue redirect in main_menu.asm sends
+	; an AI_LAIR save there). The Hall of Fame clear or retry that preceded
+	; this fight already reset the Elite Four scripts and run events, so only
+	; the restored party and this fight's run state remain.
+	SetEvent EVENT_AI_DEFEATED
+	farcall RogueResetRunState
+	farcall SaveGameData
+	farcall AIVictoryCredits
+	SetEvent EVENT_POST_GAME
+	farcall SaveGameData
+	ld b, 5
+.delayLoop
+	ld c, 600 / 5
+	call DelayFrames
+	dec b
+	jr nz, .delayLoop
+	call WaitForTextScrollButtonPress
+	jp Init
+.done
 	xor a
 	ld [wIsTrainerBattle], a
 	ld a, AILAIR_STATE_DONE
@@ -146,6 +180,7 @@ AILair_TextPointers:
 	def_text_pointers
 	dw_const AILairOpponentText, TEXT_AILAIR_OPPONENT
 	dw_const AILairOpeningText, TEXT_AILAIR_OPENING
+	dw_const AILairPostBattleText, TEXT_AILAIR_POSTBATTLE
 
 AILairOpponentText:
 	text "I know you better"
@@ -164,5 +199,9 @@ AILairDefeatedText:
 	prompt
 
 AILairVictoryText:
+	text "INSERT TEST HERE"
+	prompt
+
+AILairPostBattleText:
 	text "INSERT TEST HERE"
 	prompt

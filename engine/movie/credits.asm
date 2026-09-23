@@ -1,5 +1,9 @@
 HallOfFamePC:
 	farcall AnimateHallOfFame
+; AIVictoryCredits (engine/movie/hall_of_fame.asm) enters here after reproducing
+; the screen state AnimateHallOfFame leaves, so the AI victory rolls the same
+; credits without recording another Hall of Fame team.
+HallOfFameCredits::
 	call ClearScreen
 	ld c, 100
 	call DelayFrames

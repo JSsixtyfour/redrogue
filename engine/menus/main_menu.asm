@@ -112,12 +112,22 @@ MainMenu:
 	ld [wPlayerDirection], a
 	ld c, 10
 	call DelayFrames
+	ldh a, [hCurMap]
+	; The final AI victory saves in the AI Lair before and after its credits
+	; (scripts/AILair.asm), and nothing else saves there. Setting the postgame
+	; event here too covers a reset during those credits, between the saves.
+	cp AI_LAIR
+	jr nz, .notAILair
+	SetEvent EVENT_POST_GAME
+	jr .toDorm
+.notAILair
 	ld a, [wNumHoFTeams]
 	and a
 	jp z, SpecialEnterMap
 	ldh a, [hCurMap]
 	cp HALL_OF_FAME
 	jp nz, SpecialEnterMap
+.toDorm
 	; A completed run is saved in the Hall of Fame immediately before the
 	; credits. Continue through the existing special-warp path, but return to
 	; the player's Dorm instead of vanilla Pallet Town.

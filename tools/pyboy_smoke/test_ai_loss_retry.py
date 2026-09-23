@@ -64,7 +64,12 @@ class AILairLossHookTest(HarnessTestCase):
         else:
             h.pyboy.memory[addr] &= ~bit & 0xFF
 
-    def _arrive_after_battle(self, *, lost: bool) -> None:
+    def _arrive_after_battle(self, *, lost: bool) -> bool:
+        """Run the after-battle state once. Returns whether the victory branch
+        was entered. Checkpoint 12's victory branch rolls credits and ends in
+        jp Init, so it is cut off at its first instruction by a forced return
+        (the same technique as the Delay3 hook below); the full victory
+        sequence is covered in test_ai_victory.py."""
         h = self.harness
         assert h is not None
         h.write8("wSilphCo1FCurScript", AILAIR_STATE_AFTER_BATTLE)
@@ -77,13 +82,29 @@ class AILairLossHookTest(HarnessTestCase):
         # `ret z` is the path taken (it is not an arrival, so nothing else in
         # that routine should fire).
         h.pyboy.memory[flags] &= ~(1 << 1) & 0xFF
+        won_bank, won_addr = h.symbols.get("AILair_Script.won")
+        entered = []
+
+        def force_return_at_won(_context) -> None:
+            # .won is reached by jr inside AILair_Script with nothing pushed,
+            # so the stack top is AILair_Script's own return address.
+            entered.append(True)
+            sp = h.pyboy.register_file.SP
+            h.pyboy.register_file.SP = (sp + 2) & 0xFFFF
+            h.pyboy.register_file.PC = h.pyboy.memory[sp] | (h.pyboy.memory[sp + 1] << 8)
+
         h.park_before_hijack()
-        h.call_routine("AILair_Script")
+        h.pyboy.hook_register(won_bank, won_addr, force_return_at_won, None)
+        try:
+            h.call_routine("AILair_Script")
+        finally:
+            h.pyboy.hook_deregister(won_bank, won_addr)
+        return bool(entered)
 
     def test_loss_spends_attempt_and_blacks_out_to_dorm(self) -> None:
         h = self.harness
         assert h is not None
-        self._arrive_after_battle(lost=True)
+        self.assertFalse(self._arrive_after_battle(lost=True))
         self.assertTrue(self._event_is_set("EVENT_AI_ATTEMPT_SPENT"))
         self.assertEqual(h.read8("wLastBlackoutMap"), self.maps["SILPH_CO_DORM"])
         self.assertEqual(h.read8("wSilphCo1FCurScript"), AILAIR_STATE_DONE)
@@ -91,10 +112,9 @@ class AILairLossHookTest(HarnessTestCase):
     def test_win_does_not_spend_attempt(self) -> None:
         h = self.harness
         assert h is not None
-        self._arrive_after_battle(lost=False)
+        self.assertTrue(self._arrive_after_battle(lost=False))
         self.assertFalse(self._event_is_set("EVENT_AI_ATTEMPT_SPENT"))
         self.assertEqual(h.read8("wLastBlackoutMap"), self.maps["PALLET_TOWN"])
-        self.assertEqual(h.read8("wSilphCo1FCurScript"), AILAIR_STATE_DONE)
 
     def _event_is_set(self, name: str) -> bool:
         h = self.harness

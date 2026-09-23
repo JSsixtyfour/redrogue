@@ -94,6 +94,42 @@ AnimateHallOfFame:
 	res B_LCDC_BG_MAP, [hl]
 	ret
 
+; Final AI victory credits (Checkpoint 12). Reproduces the screen state that
+; AnimateHallOfFame leaves for HallOfFamePC's credits tail, without its team
+; capture, wNumHoFTeams increment, SaveHallOfFameTeams record, or presentation.
+; Entered from the AI Lair's overworld script, so it also has to undo overworld
+; state the Hall of Fame room would have lost during its own presentation:
+; map scroll, live sprites and tile animation. Returns once THE END fades in.
+AIVictoryCredits::
+	call HoFFadeOutScreenAndMusic
+	call ClearScreen
+	ld c, 100
+	call DelayFrames
+	call LoadFontTilePatterns
+	call LoadTextBoxTilePatterns
+	call DisableLCD
+	ld hl, vBGMap0
+	ld bc, 2 * TILEMAP_AREA
+	ld a, ' '
+	call FillMemory
+	call EnableLCD
+	xor a
+	ldh [hUpdateSpritesEnabled], a
+	ldh [hTileAnimations], a
+	ldh [hSCX], a
+	ldh [hSCY], a
+	ldh [hWY], a
+	ld [wSpriteFlipped], a
+	ld [wLetterPrintingDelayFlags], a ; no delay
+	ld [wWholeScreenPaletteMonSpecies], a ; the HoF's last (player) screen palette
+	inc a
+	ldh [hAutoBGTransferEnabled], a
+	call ClearSprites
+	ld b, SET_PAL_POKEMON_WHOLE_SCREEN
+	ld c, 0
+	call RunPaletteCommand
+	farjp HallOfFameCredits
+
 HallOfFameText:
 	db "HALL OF FAME@"
 

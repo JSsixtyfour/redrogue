@@ -234,6 +234,8 @@ SilphCoVR_ProfPalmText:
 	text_asm
 	push bc
 	ld hl, .normalText
+	CheckEvent EVENT_AI_DEFEATED ; postgame: back to his ordinary line
+	jr nz, .print
 	CheckEvent EVENT_FINAL_BRIEFING_COMPLETE
 	jr z, .print
 	ld hl, SilphCoVRAttemptSpentText
