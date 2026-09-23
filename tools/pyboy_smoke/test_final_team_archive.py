@@ -148,6 +148,43 @@ class FinalTeamArchiveTest(HarnessTestCase):
         self.assertEqual(h.read8("wActionResultOrTookBattleTurn"), 0)
         self.assertEqual(h.read_sram_bytes("sFinalTeamArchiveCount", 1, bank=1), [1])
 
+    def test_animate_hall_of_fame_captures_before_any_other_state_change(self) -> None:
+        """Every test above calls FinalTeamArchiveCapture directly and proves
+        nothing about whether AnimateHallOfFame actually reaches it, or reaches
+        it before something else (a fade, the run reset) can alter the team.
+
+        AnimateHallOfFame cannot be driven through call_routine: within a few
+        instructions of its start it hits DelayFrames -> DelayFrame, which
+        halts waiting for a VBlank interrupt. call_routine's precondition is
+        parked inside the VBlank handler with IME disabled, so that halt would
+        spin until the harness's step limit and fail without ever completing
+        the sequence. See park_before_hijack's docstring in harness.py.
+
+        Instead, assert statically that the farcall to FinalTeamArchiveCapture
+        is byte-for-byte the FIRST thing AnimateHallOfFame does, by reading the
+        compiled ROM. This is a stronger check for the property that matters
+        (capture happens before any mutation) than a dynamic call could give
+        without walking through the actual champion-defeat encounter.
+        """
+        h = self.harness
+        assert h is not None
+        target_bank, target_addr = h.symbols.get("FinalTeamArchiveCapture")
+        entry_bank, entry_addr = h.symbols.get("AnimateHallOfFame")
+        _, bankswitch_addr = h.symbols.get("Bankswitch")
+
+        saved_bank = h.read8("hLoadedROMBank")
+        h.pyboy.memory[0x2000] = entry_bank
+        opcode_bytes = list(h.pyboy.memory[entry_addr : entry_addr + 8])
+        h.pyboy.memory[0x2000] = saved_bank
+
+        # farcall expands to: ld b, BANK(target) / ld hl, target / call Bankswitch
+        expected = [
+            0x06, target_bank,
+            0x21, target_addr & 0xFF, target_addr >> 8,
+            0xCD, bankswitch_addr & 0xFF, bankswitch_addr >> 8,
+        ]
+        self.assertEqual(opcode_bytes, expected)
+
     def test_archive_survives_main_save_and_load(self) -> None:
         self._empty_archive()
         self._party(42, hp=4, max_hp=70)

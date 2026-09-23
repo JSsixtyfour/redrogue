@@ -623,6 +623,13 @@ SilphCoB1FMovementScript_Start:
 	ldh a, [hActiveSpriteIndex]
 	swap a
 	ld [wNPCMovementScriptSpriteOffset], a
+; Absolute placement before the relative walk begins. DoScriptedNPCMovement is
+; pure screen-pixel arithmetic and never derives a sprite's screen position
+; from its map position, and the ordinary per-sprite update is skipped while a
+; textbox is open, which is exactly how the final corridor is entered. Same
+; mandatory block as SilphCoPalmMovementScript_WalkToDesk.
+	ldh [hCurrentSpriteOffset], a
+	farcall InitializeSpriteScreenPosition
 	xor a
 	ld [wSpritePlayerStateData2MovementByte1], a
 	ld hl, wSimulatedJoypadStatesEnd
@@ -732,15 +739,22 @@ RLEList_SilphCoB1FFinalLanceFromX3:
 	db NPC_MOVEMENT_RIGHT, 18
 	db -1
 
-; Simulated input executes backward. DOWN turns onto y=1, NO_INPUT absorbs the
-; settling beat, and the exact horizontal count leaves the player at (20,1).
+; Simulated input executes backward. DOWN turns onto y=1 and the exact
+; horizontal count leaves the player at (20,1), beside Lance at (21,1) on the
+; double-wide Palm's Room door (warp_event 20/21).
+; The first-declared NO_INPUT executes LAST. CollisionCheckOnLand skips all
+; collision while hSimulatedJoypadStatesIndex is nonzero, so the input read at
+; index 0 is the only collision-checked one. Lance walks a tile ahead in the
+; same row, so a RIGHT read there is always blocked by him.
 RLEList_SilphCoB1FFinalPlayerFromX2:
+	db NO_INPUT, 1
 	db PAD_RIGHT, 18
 	db NO_INPUT, 1
 	db PAD_DOWN, 1
 	db -1
 
 RLEList_SilphCoB1FFinalPlayerFromX3:
+	db NO_INPUT, 1
 	db PAD_RIGHT, 17
 	db NO_INPUT, 1
 	db PAD_DOWN, 1

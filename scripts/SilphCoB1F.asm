@@ -3,8 +3,8 @@ DEF SILPHCOB1F_STATE_ELEVATOR_MOVING EQU $fe
 SilphCoB1F_Script:
 	call EnableAutoTextBoxDrawing
 	call SilphCoB1FHandleMapEntry
-	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	jr z, .introTour
+	call SilphCoB1FIntroTourActive
+	jr c, .introTour
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
@@ -54,8 +54,8 @@ SilphCoB1FHandleMapEntry:
 	; A warp can interrupt the shared 1F/B1F dispatcher before its Done state.
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState
-	CheckEvent EVENT_INTRO_TOUR_COMPLETE
-	jp z, SilphCoB1FIntroTourActors
+	call SilphCoB1FIntroTourActive
+	jp c, SilphCoB1FIntroTourActors
 	call SilphCoB1FShouldStageFinalReturn
 	jp c, SilphCoB1FStageFinalReturn
 	; The Dorm preloads Lance's toggle before B1F object data is created. Branch
@@ -130,6 +130,22 @@ SilphCoB1FHandleMapEntry:
 	swap a
 	ldh [hCurrentSpriteOffset], a
 	farcall InitializeSpriteScreenPosition
+	ret
+
+; Carry set only while the genuine intro tour is running: its completion event
+; is clear AND this B1F visit began at the 1F stairs. A save that never
+; completed the tour can re-enter B1F from the Dorm, where the tour's authored
+; route walks the player off the west edge of the map.
+SilphCoB1FIntroTourActive:
+	CheckEvent EVENT_INTRO_TOUR_COMPLETE
+	jr nz, .no
+	ld a, [wWarpedFromWhichMap]
+	cp SILPH_CO_1F
+	jr nz, .no
+	scf
+	ret
+.no
+	and a
 	ret
 
 ; Carry set only for the first final-opening entry from either Dorm warp.

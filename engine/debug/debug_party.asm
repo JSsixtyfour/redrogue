@@ -202,14 +202,17 @@ IF DEF(_DEBUG)
 	; granting only there is useless. Every debug new game gets them.
 	farcall RoomGrantAllPieces
 
+	; Neither debug sandbox plays the VR intro that would normally set this,
+	; and B1F replays the tour on every entry while it is clear. Set it for
+	; both modes before the branch.
+	SetEvent EVENT_INTRO_TOUR_COMPLETE
+
 	; Split Debug 1's sandbox state from Debug 2's rogue-run setup.
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
 	jr nz, .debug2
 
-	; Debug 1 is the general sandbox. Start in the dorm with the intro tour
-	; complete so its connected facilities are immediately available.
-	SetEvent EVENT_INTRO_TOUR_COMPLETE
+	; Debug 1 is the general sandbox; it starts in the dorm with no extras.
 	ret
 
 	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---

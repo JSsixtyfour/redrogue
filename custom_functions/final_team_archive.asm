@@ -36,6 +36,18 @@ FinalTeamArchiveInit::
 	ld [hli], a
 	dec b
 	jr nz, .clearChecksums
+	; Zero every record's party-count byte so a stale team from before this
+	; reset can never decode as populated, even if its checksum slot were
+	; somehow resurrected.
+	ld hl, sFinalTeamArchiveRecords
+	ld b, FINAL_TEAM_ARCHIVE_CAPACITY
+.clearRecords
+	xor a
+	ld [hl], a
+	ld de, FINAL_TEAM_RECORD_SIZE
+	add hl, de
+	dec b
+	jr nz, .clearRecords
 	call FinalTeamArchiveWriteHeaderChecksum
 	ret
 
@@ -68,6 +80,14 @@ FinalTeamArchiveCapture::
 	ld c, e
 	add hl, bc
 	ld [hl], $ff
+	; Keep the stored header checksum matching the header's actual contents for
+	; the whole duration of the copy below. Otherwise a reset mid-copy leaves
+	; the stored checksum computed against the OLD (pre-invalidation) record
+	; checksums, so FinalTeamArchiveValidateHeader rejects the ENTIRE header on
+	; next boot and all 4 records are lost, not just the one being replaced.
+	push de
+	call FinalTeamArchiveWriteHeaderChecksum
+	pop de
 	ld a, d
 	call FinalTeamArchiveRecordAddress
 	push hl
