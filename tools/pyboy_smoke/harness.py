@@ -653,12 +653,24 @@ class RedRogueHarness:
         ai_tier: int | None = None,
         encounter_kind: int = 1,
     ) -> None:
+        if not 1 <= battle_count <= 99:
+            raise ValueError("Battle count must be 1-99")
         if ai_tier is not None and not 0 <= ai_tier <= 3:
             raise ValueError("AI tier must be 0-3 or None for automatic")
         if not 1 <= encounter_kind <= 4:
             raise ValueError("Encounter kind must be 1 (normal), 2 (bridge), 3 (miniboss), or 4 (wild area)")
         debug_menu = self.hook_flag("DebugMenu")
-        quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
+        # Debug 2 used to prompt for these five values one at a time via
+        # DisplayChooseQuantityMenu; the Options/Debug redesign (Phase C)
+        # replaced that chain with Debug2ConfigMenu, a labelled config screen
+        # sharing engine/menus/options_menu.asm's row engine with the option
+        # pages. OptDrawCursor fires once that screen (or either option page)
+        # has drawn and is blocked on input, so it is the signal that
+        # wBattleCount/wAIDebugTierOverride/wDebug2ForcedDoor1/2 are safe to
+        # write directly - .debug2 in debug_party.asm resets all four to their
+        # defaults just before the farcall, and nothing touches them again
+        # until a row's Cycle routine responds to input we never send.
+        debug2_drawn = self.hook_flag("OptDrawCursor")
         # The lobby is not "ready" when a door map first goes non-zero: both
         # doors are set by _PickNextStage EARLY in SelectAndPatchLobbyExit, and
         # the bridge roll, the mini-boss / wild-area roll and the Debug 2
@@ -690,59 +702,28 @@ class RedRogueHarness:
         self.tap("down")
         self.tap("a")
         self.wait_until(
-            lambda: quantity_menu["count"] >= 1,
-            "the Debug 2 battle-count prompt",
+            lambda: debug2_drawn["count"] >= 1,
+            "the Debug 2 config screen",
             600,
         )
 
-        for _ in range(100):
-            current = self.read8("wItemQuantity")
-            if current == battle_count:
-                break
-            self.tap("up" if current < battle_count else "down")
-        else:
-            raise AssertionError(f"Could not select battle count {battle_count}")
-
-        self.tap("a")
-        self.wait_until(
-            lambda: quantity_menu["count"] >= 2,
-            "the Debug 2 AI-tier prompt",
-            600,
-        )
-        tier_quantity = 1 if ai_tier is None else ai_tier + 2
-        for _ in range(6):
-            current = self.read8("wItemQuantity")
-            if current == tier_quantity:
-                break
-            self.tap("up" if current < tier_quantity else "down")
-        else:
-            raise AssertionError(f"Could not select AI tier {ai_tier}")
-        self.tap("a")
-        self.wait_until(
-            lambda: quantity_menu["count"] >= 3,
-            "the Debug 2 encounter-kind prompt",
-            600,
-        )
-        for _ in range(5):
-            current = self.read8("wItemQuantity")
-            if current == encounter_kind:
-                break
-            self.tap("up" if current < encounter_kind else "down")
-        else:
-            raise AssertionError(f"Could not select encounter kind {encounter_kind}")
-        self.tap("a")
-        self.wait_until(
-            lambda: quantity_menu["count"] >= 4,
-            "the Debug 2 Door 1 prompt",
-            600,
-        )
-        self.tap("a")
-        self.wait_until(
-            lambda: quantity_menu["count"] >= 5,
-            "the Debug 2 Door 2 prompt",
-            600,
-        )
-        self.tap("a")
+        # STATUS packs into wDebug2ForcedDoor1's top two bits (DBG2_STATUS_MASK
+        # in engine/debug/debug2_config.asm); encounter_kind is 1-based to match
+        # that screen's displayed numbering (1 NORMAL .. 4 WILD AREA). Neither
+        # door index is forced here - callers of this helper have never had a
+        # way to pin a specific destination, only the STATUS kind, so both stay
+        # at 0 (RANDOM) exactly as the old prompt chain left them.
+        self.write8("wBattleCount", battle_count)
+        self.write8("wAIDebugTierOverride", 0 if ai_tier is None else ai_tier + 1)
+        self.write8("wDebug2ForcedDoor1", (encounter_kind - 1) << 6)
+        self.write8("wDebug2ForcedDoor2", 0)
+        # B and START both exit the row engine from anywhere without touching
+        # the bytes just written, since we never move its cursor. Measured: the
+        # default 2-frame tap() hold is too short here - OptionsMenuEngine.loop
+        # only caught the press on its 3rd held frame in a direct hook trace,
+        # so a 2-frame tap can release before the loop ever samples it. 6
+        # frames clears that with margin.
+        self.tap("start", 6)
 
         def lobby_ready() -> bool:
             return (
