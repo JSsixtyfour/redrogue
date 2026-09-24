@@ -276,10 +276,15 @@ PCemRestoreBossSpecies::
 ; PCemApplyGhostBoss
 ; Flags the mon at [de] as the cemetery ghost boss: sets the ghost-variant bit
 ; (func_ghost_variant.asm), forces MON_TYPE2 = GHOST, and writes the rolled ghost
-; move (sProcCemeteryBossMove) into move slot 4 with its base PP. Takes the struct
-; base in DE (not HL) so callers can reach it across a farcall (Bankswitch clobbers
-; hl, preserves de - same reason IsGhostVariant takes de). Works for any mon struct
-; (wEnemyMon / wPartyMonN / wBoxMonN - MON_MOVES/PP/CATCH_RATE/TYPE2 share offsets).
+; move (sProcCemeteryBossMove) into the first empty move slot, else slot 4. Takes
+; the struct base in DE (not HL), same reason IsGhostVariant takes de. Works for
+; any mon struct (wEnemyMon / wPartyMonN / wBoxMonN): MON_MOVES/CATCH_RATE/TYPE2
+; share offsets across all three.
+; PP does NOT share an offset: a battle_struct keeps it at $19, box and party
+; structs at MON_PP ($1D). Writing MON_PP into wEnemyMon hit the byte past the
+; struct and left the boss's ghost move at 0 PP. So this does not store the PP;
+; it returns it for PCemStoreGhostMovePP with the caller's own offset.
+; OUTPUT: hl = the move slot written, a = that move's base PP.
 ; Clobbers a/bc/hl (preserves de).
 ; ============================================================
 PCemApplyGhostBoss::
@@ -304,10 +309,22 @@ PCemApplyGhostBoss::
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
-	; write the move into slot 4 (MON_MOVES + 3)
-	ld hl, MON_MOVES + 3
+	; the move goes in the first EMPTY slot, else slot 4. Always writing slot 4
+	; hid it on a low-level boss with fewer than 3 moves: the move list stops
+	; at the first empty slot, so POUND/DOUBLESLAP/---/LICK showed two moves.
+	ld hl, MON_MOVES
 	add hl, de
+	ld b, NUM_MOVES - 1        ; slots checked before falling back to the last
+.findSlot
+	ld a, [hl]
+	and a
+	jr z, .gotSlot
+	inc hl
+	dec b
+	jr nz, .findSlot
+.gotSlot                       ; hl -> the chosen slot
 	ld [hl], c
+	push hl                    ; its PP byte is MON_PP - MON_MOVES further on
 	; look up the move's base PP (Moves struct byte 5) via FarCopyData, a HOME
 	; routine. It MUST be a HOME-based far read: this function runs in ROMX bank
 	; 06, so doing the bank switch inline here (call SetCurBank / read / restore)
@@ -329,10 +346,8 @@ PCemApplyGhostBoss::
 	call FarCopyData              ; wBuffer[0..5] = move struct (HOME-safe switch)
 	ld a, [wBuffer + 5]           ; base PP
 	pop de                        ; restore struct base
-	ld hl, MON_PP + 3
-	add hl, de
-	ld [hl], a
-	ret
+	pop hl                        ; the move slot written above
+	ret                           ; the caller stores a at its own PP offset
 
 ; ============================================================
 ; PCemMaybeApplyGhostBoss
@@ -348,7 +363,9 @@ PCemMaybeApplyGhostBoss::
 	xor a
 	ld [wProcCemBossBattle], a    ; one-shot: only the boss mon, not later wild loads
 	ld de, wEnemyMon
-	jp PCemApplyGhostBoss
+	call PCemApplyGhostBoss
+	ld bc, wEnemyMonPP - wEnemyMonMoves ; battle_struct's PP offset, not MON_PP's
+	jr PCemStoreGhostMovePP
 
 ; ============================================================
 ; PCemApplyGhostToGivenMon
@@ -376,7 +393,15 @@ PCemApplyGhostToGivenMon::
 .haveStruct
 	ld d, h
 	ld e, l
-	jp PCemApplyGhostBoss
+	call PCemApplyGhostBoss
+	ld bc, MON_PP - MON_MOVES     ; party and box structs share MON_PP
+	; fallthrough
+
+; hl = move slot, bc = distance from the moves to this struct's PP, a = PP
+PCemStoreGhostMovePP:
+	add hl, bc
+	ld [hl], a
+	ret
 
 ; ============================================================
 ; PCemGenerateOneMap
