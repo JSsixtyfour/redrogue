@@ -229,6 +229,35 @@ IF DEF(_DEBUG)
 	ld [wAIDebugTierOverride], a
 	ld [wDebug2ForcedDoor1], a
 	ld [wDebug2ForcedDoor2], a
+
+	; Seed Timewarp+Johto (every species group unlocked) as Debug 2's default,
+	; matching the behaviour RogueGetActiveGroupMask's old Debug 2 short-circuit
+	; used to hardcode. This MUST run before Debug2ConfigMenu: that screen's
+	; UPGRADES row (engine/debug/debug2_config.asm) writes these same two events
+	; and this same SRAM byte via OptCycleCheat, and RogueGetActiveGroupMask now
+	; reads them for real in Debug 2 too, so seeding after the screen would
+	; silently overwrite whatever the player picked.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ASSERT BANK("Save Data") == 1
+	ld a, 1
+	ld [rRAMB], a ; select bank 1 explicitly; the ambient bank is unreliable
+	ASSERT BIT_GROUP_KANTO == 0
+	ASSERT BIT_GROUP_JOHTO == 1
+	ASSERT BIT_GROUP_WARP == 2
+	ld a, (1 << BIT_GROUP_KANTO) | (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	ld [sRogueSpeciesGroupsEnabled], a
+	xor a
+	ld [rRAMG], a ; never leave SRAM enabled across a return
+	ld hl, wEventFlags
+	ld c, EVENT_JOHTO_ACTIVATED
+	ld b, FLAG_SET
+	predef FlagActionPredef
+	ld hl, wEventFlags
+	ld c, EVENT_KANTO_TIMEWARP_ACTIVATED
+	ld b, FLAG_SET
+	predef FlagActionPredef
+
 	farcall Debug2ConfigMenu
 
 	; Apply the Porygon rival starter, half-max money, and the battle-count-

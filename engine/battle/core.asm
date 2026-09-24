@@ -2435,14 +2435,6 @@ DisplayBattleMenu::
 .menuselected
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
-; TURN REWIND: items are unusable in battle (see the dispatch hook below), so
-; the ITEM slot is repurposed to "UNDO". Full logic - including the "is this a
-; normal battle" gate, which is load-bearing because Safari's template puts
-; completely different text at this same screen position - lives in
-; custom_functions/turn_rewind.asm. Patched AFTER SaveScreenTilesToBuffer1
-; above, so the label survives every DisplayBattleMenu re-entry (including
-; every refusal path) without needing to be undone anywhere.
-	farcall RogueSetTurnRewindLabel
  ; handle menu input if it's not the old man tutorial
 	ld a, [wBattleType]
 	ASSERT BATTLE_TYPE_OLD_MAN == 1
@@ -2606,14 +2598,6 @@ DisplayBattleMenu::
 	jp DisplayBattleMenu
 
 .notLinkBattle
-; TURN REWIND takes over this slot for a normal (non-link, non-Safari,
-; non-old-man) battle only; everything else keeps the vanilla bag/bait path
-; below untouched. Link battles keep the "can't use items" refusal above
-; unconditionally: rewinding only this side's local state, with no way to tell
-; the other Game Boy, would desync the two sides' shared battle state.
-	ld a, [wBattleType]
-	and a
-	jp z, HandleTurnRewindMenuSelection
 	call SaveScreenTilesToBuffer2
 	ld a, [wBattleType]
 	cp BATTLE_TYPE_SAFARI
@@ -2649,39 +2633,10 @@ OldManItemList:
 	db -1 ; end
 
 DisplayPlayerBag:
-	; get the pointer to player's bag when in a normal battle
-	ld hl, wNumBagItems
-    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
-	ld a, [wBagPocketsFlags]
-	and POCKET_INDEX_MASK
-	cp POCKET_RECOVERY
-	jr z, .bagRecovery
-	cp POCKET_KEY_ITEMS
-	jr z, .bagKey
-	cp POCKET_TM_PACK
-	jr z, .bagTM
-	cp POCKET_STAT
-	jr z, .bagStat
-	; POCKET_VALUABLE
-	farcall BuildValuablePocketList
-	ld hl, wValuablePocketBuf
-	jp DisplayBagMenu
-.bagRecovery
-	farcall BuildRecoveryPocketList
-	ld hl, wRecoveryPocketBuf
-	jp DisplayBagMenu
-.bagKey
-	farcall BuildKeyItemPocketList
+	; A normal battle's ITEM list is not the bag: only the active key items plus
+	; POKE FLUTE, with no pocket switching (custom_functions/battle_menu_extras.asm).
+	farcall BuildBattleItemList
 	ld hl, wKeyItemPocketBuf
-	jp DisplayBagMenu
-.bagTM
-	farcall BuildTMPocketList
-	ld hl, wTMPocketBuf
-	jp DisplayBagMenu
-.bagStat
-	farcall BuildStatPocketList
-	ld hl, wStatPocketBuf
-	;;;;;;;;;;
 	; fallthrough
 
 DisplayBagMenu:
@@ -2711,6 +2666,7 @@ DisplayBagMenu:
     ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
 	ld hl, wBagPocketsFlags
 	res BIT_PRINT_INFO_BOX, [hl] ; reset bit when using item or exiting menu
+	res BIT_BATTLE_ITEM_LIST, [hl] ; res leaves carry alone for the jp below
 	;;;;;;;;;;
 	jp c, DisplayBattleMenu ; go back to battle menu if an item was not selected
 
@@ -2775,22 +2731,6 @@ UseBagItem:
 ItemsCantBeUsedHereText:
 	text_far _ItemsCantBeUsedHereText
 	text_end
-
-; ============================================================
-; HandleTurnRewindMenuSelection — TURN REWIND (see
-; KEY_ITEM_EFFECTS_PLAN_PC.md §5). Kept to the bare minimum that MUST stay
-; same-bank as DisplayBattleMenu: the tail `jp`. DisplayBattleMenu can only be
-; safely re-entered by a same-bank jp, never a call/farcall - farcall is
-; call-based with no tail-call form, so repeated presses would grow the stack
-; by a frame each. Everything not needing that (the active check, the restore,
-; the refusal message) lives in RogueTurnRewindAttempt.
-; Always returns to DisplayBattleMenu - success or refusal, the player still
-; gets to act this turn, so wActionResultOrTookBattleTurn is never touched.
-; ============================================================
-HandleTurnRewindMenuSelection:
-	farcall RogueTurnRewindAttempt
-	call DrawHUDsAndHPBars          ; harmless no-op redraw on a refusal too
-	jp DisplayBattleMenu
 
 PartyMenuOrRockOrRun:
 	dec a ; was Run selected?

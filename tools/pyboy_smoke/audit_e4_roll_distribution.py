@@ -46,6 +46,8 @@ def main() -> int:
     classes = parse_trainer_class_indexes(REPO_ROOT / "constants" / "trainer_constants.asm")
     by_id = {v: k for k, v in classes.items()}
     ram = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
+    events = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
+    groups = parse_rgbds_constants(REPO_ROOT / "constants" / "rogue_species_groups.asm")
     debug2_bit = ram["BIT_DEBUG2_MODE"]
 
     position = [Counter() for _ in range(NUM_E4)]
@@ -57,6 +59,12 @@ def main() -> int:
         try:
             h.boot_fight2(seed=seed)
             h.write8("wStatusFlags6", h.read8("wStatusFlags6") | (1 << debug2_bit))
+            # RogueGetActiveGroupMask no longer short-circuits to "every group"
+            # in Debug 2 (2026-09-23) - it needs a real activation event AND a
+            # real SRAM enable bit now, same as a live game.
+            h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+            enabled = (1 << groups["BIT_GROUP_KANTO"]) | (1 << groups["BIT_GROUP_JOHTO"])
+            h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [enabled], bank=1)
             for i in range(8):
                 h.write8("wRunGymLineup", 0, offset=i)
             for _ in range(ROLLS_PER_BOOT):

@@ -31,6 +31,8 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 TRAINER_CONSTANTS = REPO_ROOT / "constants" / "trainer_constants.asm"
 RAM_CONSTANTS = REPO_ROOT / "constants" / "ram_constants.asm"
 MAP_CONSTANTS = REPO_ROOT / "constants" / "map_constants.asm"
+EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
+GROUP_CONSTANTS = REPO_ROOT / "constants" / "rogue_species_groups.asm"
 
 NUM_BADGES = 8
 
@@ -50,6 +52,8 @@ class GymLineupRollTest(HarnessTestCase):
         self.classes = parse_trainer_class_indexes(TRAINER_CONSTANTS)
         self.by_id = {self.classes[name]: name for name in self.classes}
         self.debug2_bit = parse_rgbds_constants(RAM_CONSTANTS)["BIT_DEBUG2_MODE"]
+        self.events = parse_rgbds_constants(EVENT_CONSTANTS)
+        self.groups = parse_rgbds_constants(GROUP_CONSTANTS)
         self.map_ids = parse_map_constants(MAP_CONSTANTS)
 
     def _boot(self, *, johto: bool) -> None:
@@ -62,6 +66,18 @@ class GymLineupRollTest(HarnessTestCase):
         else:
             flags &= ~(1 << self.debug2_bit) & 0xFF
         h.write8("wStatusFlags6", flags)
+
+        # RogueGetActiveGroupMask no longer short-circuits to "every group" in
+        # Debug 2 (2026-09-23: that short-circuit made the Debug 2 config
+        # screen's UPGRADES row silently inert). `johto` here means "the Johto
+        # leader pool must be reachable", which now takes a real activation
+        # event AND a real SRAM enable bit, exactly as in a live game.
+        enabled = 1 << self.groups["BIT_GROUP_KANTO"]
+        if johto:
+            h.set_event(self.events["EVENT_JOHTO_ACTIVATED"])
+            enabled |= 1 << self.groups["BIT_GROUP_JOHTO"]
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [enabled], bank=1)
+
         self._clear_mask()
         self._clear_lineup()
 

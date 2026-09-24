@@ -32,6 +32,7 @@ TRAINER_CONSTANTS = REPO_ROOT / "constants" / "trainer_constants.asm"
 RAM_CONSTANTS = REPO_ROOT / "constants" / "ram_constants.asm"
 MAP_CONSTANTS = REPO_ROOT / "constants" / "map_constants.asm"
 EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
+GROUP_CONSTANTS = REPO_ROOT / "constants" / "rogue_species_groups.asm"
 
 E4_ROOMS = [
     "LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM", "LANCES_ROOM",
@@ -55,6 +56,7 @@ class Elite4RollTest(HarnessTestCase):
         self.classes = parse_trainer_class_indexes(TRAINER_CONSTANTS)
         ram = parse_rgbds_constants(RAM_CONSTANTS)
         self.events = parse_rgbds_constants(EVENT_CONSTANTS)
+        self.groups = parse_rgbds_constants(GROUP_CONSTANTS)
         self.debug2_bit = ram["BIT_DEBUG2_MODE"]
         self.by_id = {self.classes[name]: name for name in self.classes}
         self.map_ids = parse_map_constants(MAP_CONSTANTS)
@@ -74,10 +76,26 @@ class Elite4RollTest(HarnessTestCase):
         else:
             flags &= ~(1 << self.debug2_bit) & 0xFF
         h.write8("wStatusFlags6", flags)
-        if unlock_stage >= 1:
+
+        # RogueGetActiveGroupMask no longer short-circuits to "every group" in
+        # Debug 2 (2026-09-23: that short-circuit made the Debug 2 config
+        # screen's UPGRADES row silently inert). `johto` here means "the Johto
+        # species pool must be reachable", which now takes a real activation
+        # event AND a real SRAM enable bit, exactly as in a live game - so
+        # `johto=True` implies at least unlock_stage 1 for both, on top of
+        # whatever unlock_stage was explicitly requested.
+        effective_stage = max(unlock_stage, 1 if johto else 0)
+        if effective_stage >= 1:
             h.set_event(self.events["EVENT_JOHTO_ACTIVATED"])
-        if unlock_stage >= 2:
+        if effective_stage >= 2:
             h.set_event(self.events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
+        enabled = 1 << self.groups["BIT_GROUP_KANTO"]
+        if effective_stage >= 1:
+            enabled |= 1 << self.groups["BIT_GROUP_JOHTO"]
+        if effective_stage >= 2:
+            enabled |= 1 << self.groups["BIT_GROUP_WARP"]
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [enabled], bank=1)
+
         if defeat_stage >= 1:
             h.set_event(self.events["EVENT_LANCE_CHAMPION_DEFEATED"])
         if defeat_stage >= 2:

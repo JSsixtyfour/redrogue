@@ -32,44 +32,9 @@
 ;          copied individually rather than assumed contiguous, since only
 ;          the three runs above are macro-guaranteed to be adjacent
 
-; ============================================================
-; RogueSetTurnRewindLabel — called every DisplayBattleMenu entry
-; (engine/battle/core.asm), right after DisplayTextBoxID. Repurposes the
-; ITEM menu slot: "UNDO" if TURN REWIND is active, blank otherwise (items
-; are never usable in battle any more - see HandleTurnRewindMenuSelection in
-; core.asm). Only for a genuine normal battle: Safari's menu template places
-; completely different text at this same screen position (x=2 start versus
-; the normal template's x=10, so (10,16) lands mid-word in "THROW ROCK"),
-; and the old-man tutorial drives this slot programmatically - touching
-; either would corrupt them, not just look wrong.
-;
-; HandleTurnRewindMenuSelection (core.asm) infers "was this active" by
-; re-reading the tile this routine draws, rather than a second
-; GetKeyItemPower farcall - valid because key items can't change ownership
-; mid-battle, and it's only reached when wBattleType is already confirmed 0
-; by its own dispatch gate, so the tile is guaranteed to be one of the two
-; strings below, never Safari/old-man's unrelated text.
-; ============================================================
-RogueSetTurnRewindLabel::
-	ld a, [wBattleType]
-	and a
-	ret nz                          ; Safari / old-man tutorial - leave their own text alone
-
-	ld a, TURN_REWIND
-	ld [wCurItem], a
-	call GetKeyItemPower            ; same bank as key_item_pocket.asm - plain call
-	and a
-	ld de, .BlankLabel
-	jr z, .gotLabel
-	ld de, .RewindLabel
-.gotLabel
-	hlcoord 10, 16
-	jp PlaceString                  ; tail call - PlaceString's own ret covers us
-
-.RewindLabel:
-	db "UNDO@"
-.BlankLabel:
-	db "    @"
+; The battle menu's ITEM list offers TURN REWIND whenever it is active; picking
+; it runs TurnRewindRestore from BattleKeyItemGate
+; (custom_functions/battle_menu_extras.asm), which prints the result.
 
 ; ============================================================
 ; TurnRewindInit — call once at battle start (InitBattleCommon,
@@ -155,10 +120,9 @@ TurnRewindSnapshot::
 	ret
 
 ; ============================================================
-; TurnRewindRestore — called from the battle menu's TURN REWIND selection
-; (engine/battle/core.asm). Caller has already confirmed the item is active
-; (via the drawn menu label, see HandleTurnRewindMenuSelection); this only
-; checks whether a usable snapshot exists.
+; TurnRewindRestore — called by BattleKeyItemGate when TURN REWIND is picked
+; from the battle ITEM list. The list only shows active key items, so the item
+; is known to be active; this only checks whether a usable snapshot exists.
 ; OUTPUT: Z set = refused (no snapshot yet, or switched since it was taken),
 ;         Z clear (NZ) = restored. Flags survive the farcall back to the
 ;         caller (Bankswitch preserves flags).
@@ -250,37 +214,3 @@ TurnRewindRestore::
 	xor a
 	ld [rRAMG], a
 	ret                             ; a=0 from the xor above -> Z = refused
-
-; ============================================================
-; RogueTurnRewindAttempt — the full TURN REWIND menu-selection logic.
-; Reached via a single farcall from HandleTurnRewindMenuSelection
-; (engine/battle/core.asm), which is kept to the bare minimum that must
-; stay same-bank as DisplayBattleMenu - see that routine's comment for why.
-; Handles the active check, the restore, and printing the refusal message
-; (PrintText is HOME-bank and callable from anywhere, and the text stub
-; below lives in this same bank, so no cross-bank stub issue). The caller
-; doesn't need a return value: it unconditionally redraws the HUD and
-; returns to DisplayBattleMenu either way, since a refusal here has already
-; printed its own message.
-;
-; "Is it active" is inferred by reading back the tile
-; RogueSetTurnRewindLabel already drew this DisplayBattleMenu cycle, rather
-; than a second GetKeyItemPower call - valid because key items can't change
-; ownership mid-battle, and HandleTurnRewindMenuSelection is only reached
-; when wBattleType is already confirmed 0 by its own dispatch gate, so the
-; tile is guaranteed to be one of RogueSetTurnRewindLabel's two strings.
-; ============================================================
-RogueTurnRewindAttempt::
-	lda_coord 10, 16
-	cp 'U'                          ; first char of "UNDO" - blank starts with a space
-	jr nz, .refuse
-	call TurnRewindRestore         ; NZ = restored, Z = refused (no snapshot / switched)
-	ret nz
-.refuse
-	ld hl, TurnRewindRefuseText
-	call PrintText
-	ret
-
-TurnRewindRefuseText:
-	text_far _TurnRewindRefuseText
-	text_end

@@ -551,20 +551,17 @@ RogueGetTierBaseCount::
 ; ---------------------------------------------------------------------------
 RogueGetActiveGroupMask::
 	push bc
-; Debug 2: every group unlocked AND enabled, no champion wins and no PC toggle
-; required. This is the ONLY practical way to test Johto/Warp species and the
-; regional forms, which ride the same unlocks (see RogueFormsUnlocked) - a fresh
-; run has neither activation event and therefore no forms at all, by design.
-;
-; Returns before the SRAM read below on purpose: the player's toggle byte must
-; not be able to switch a group back OFF in debug 2, or the mode would not be a
-; reliable test harness.
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr z, .deriveUnlocks
-	ld a, (1 << BIT_GROUP_KANTO) | (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
-	pop bc
-	ret
+; Debug 2 used to short-circuit here and return every group unlocked
+; unconditionally, so a fresh Debug 2 run could test Johto/Warp species and the
+; regional forms (see RogueFormsUnlocked) without a champion win or a PC visit.
+; The Debug 2 config screen's UPGRADES row (engine/debug/debug2_config.asm,
+; sharing OptCycleCheat with the option menu's CHEAT row) now writes the exact
+; same events and SRAM byte .deriveUnlocks reads below, so the short-circuit
+; made that row decorative: it could rewrite the real state, but this routine
+; never looked at it in Debug 2. engine/debug/debug_party.asm's .debug2 setup
+; seeds Timewarp+Johto before Debug2ConfigMenu runs, so an untouched Debug 2
+; game still gets today's "everything unlocked" default, and .deriveUnlocks is
+; now the single source of truth for both modes.
 .deriveUnlocks
 	; The two persistent activation bits are deliberately four positions above
 	; their species-group bits (5->1 and 6->2). One nibble swap converts both

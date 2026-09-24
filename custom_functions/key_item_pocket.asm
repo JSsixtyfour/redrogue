@@ -102,6 +102,13 @@ GetKeyItemTierForCurItem::
     xor a
     ret
 
+; GetKeyItemTierForCurItem for a farcall from another bank: Bankswitch's return
+; path overwrites a, so the tier comes back in e, which it preserves.
+GetKeyItemTierInE::
+    call GetKeyItemTierForCurItem
+    ld e, a
+    ret
+
 ; ============================================================
 ; _KeyBitInfo (same-bank private)
 ; INPUT: c = bit_index (0-7); SRAM must be enabled by caller.

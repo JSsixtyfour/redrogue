@@ -275,6 +275,8 @@ PocketSwitchROMX::
 	ld hl, wBagPocketsFlags
 	bit BIT_PC_WITHDRAWING, [hl]
 	jr nz, .rejected
+	bit BIT_BATTLE_ITEM_LIST, [hl] ; the battle ITEM list is one fixed list
+	jr nz, .rejected
 	ld a, SFX_TINK
 	; PlaySound is a HOME routine that takes the sound ID in a and manages its own
 	; audio bank internally. It must be a plain `call` from any bank: `farcall` routes
@@ -395,6 +397,12 @@ PrintBagInfoText::
 	farcall RoomPrintDescription
 	ret
 .notRoomPC
+	; The battle ITEM list draws its own description box (battle_menu_extras.asm).
+	bit BIT_BATTLE_ITEM_LIST, [hl]
+	jr z, .notBattleList
+	farcall PrintBattleItemInfo
+	ret
+.notBattleList
 	bit BIT_PRINT_INFO_BOX, [hl]
 	jp z, .notBag ; jp, not jr: the key-item tier block below pushed .notBag out of range
 	ld a, [wBagPocketsFlags]

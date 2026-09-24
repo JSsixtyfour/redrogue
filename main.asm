@@ -798,3 +798,10 @@ INCLUDE "custom_functions/rogue_boss_after_battle.asm"
 SECTION "Rogue Run Toggle Clear", ROMX, BANK[$3C]
 
 INCLUDE "custom_functions/run_toggle_clear.asm"
+
+; RogueShowStageRewards: shows a stage's reward pokeballs / trade NPC on demand,
+; for stages that hide them until a custom condition (SS Anne B1F). farcall
+; only; pinned to $3C because RogueRefresh's bank ($20) is full.
+SECTION "Rogue Show Stage Rewards", ROMX, BANK[$3C]
+
+INCLUDE "custom_functions/show_stage_rewards.asm"

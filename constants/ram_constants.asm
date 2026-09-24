@@ -489,6 +489,9 @@ DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
 	; Reuses the same PrintBagInfoText cursor-move hook the TM pack's move-name
 	; box uses, to draw the room PC's furniture/decoration descriptions.
 	DEF BIT_ROOM_DESC_BOX    EQU 5  ; room PC option list open; see room_pc.asm
+	; The battle menu's ITEM list (key items + POKE FLUTE) is open: no pocket
+	; switching, and the info box describes the item. See battle_menu_extras.asm.
+	DEF BIT_BATTLE_ITEM_LIST EQU 6
 	DEF NUM_RECOVERY_ITEMS  EQU 21
 	DEF NUM_STAT_ITEMS      EQU 15
 	DEF NUM_VALUABLE_ITEMS  EQU 4

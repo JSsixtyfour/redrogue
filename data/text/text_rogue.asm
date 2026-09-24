@@ -123,13 +123,6 @@ _TurnRewindDescriptionText::
 	cont "in battle."
 	done
 
-; Battle menu handler (engine/battle/core.asm HandleTurnRewindMenuSelection).
-; Covers both refusal cases (no snapshot yet, switched since the snapshot).
-_TurnRewindRefuseText::
-	text "Can't rewind"
-	line "right now!"
-	done
-
 _RareScopeDescriptionText::
 	text "Increases the"
 	line "rarity of wild"

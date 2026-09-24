@@ -11,4 +11,4 @@ _SSAnneB1FCaptainText::
 	text "CAPTAIN: Ooargh..."
 	line "I feel hideous..."
 	cont "Urrp! Seasick..."
-    text_end
+	done

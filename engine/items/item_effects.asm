@@ -1,6 +1,10 @@
 UseItem_::
 	ld a, 1
 	ld [wActionResultOrTookBattleTurn], a ; initialise to success value
+	; In a normal battle, key items never take the turn and TURN REWIND runs here
+	; (custom_functions/battle_menu_extras.asm). carry = handled; flags survive.
+	farcall BattleKeyItemGate
+	ret c
 	ld a, [wCurItem]
 	cp LEFTOVERS ; outside ItemUsePtrTable's range (added after the elevator floors)
 	jp z, ItemUseLeftovers
