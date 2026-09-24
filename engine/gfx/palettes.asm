@@ -282,32 +282,51 @@ SetPal_Overworld:
 	ld de, wPalPacket
 	ld bc, $10
 	call CopyData
-	ld a, [wCurMapTileset]
-	cp CEMETERY
-	jr z, .PokemonTowerOrAgatha
-	cp CAVERN
-	jr z, .caveOrBruno
-	cp FACILITY
-	jr z, .facilityTileset
+	call GetOverworldPalette
+	ld hl, wPalPacket + 1
+	ld [hld], a
+	ld de, BlkPacket_WholeScreen
+	ld a, SET_PAL_OVERWORLD
+	ld [wDefaultPaletteCommand], a
+	ret
+
+; Returns a = the PAL_* palette for the current map on the SGB / non-enhanced
+; CGB path (the enhanced path never comes here). Table-driven, after pureRGB's
+; GetOverworldPalette. It replaces a tileset/map compare chain whose jr ranges
+; broke the link more than once; a new special case is now one table row.
+;
+; Precedence: MapPaletteFunctions (map -> routine), then MapPalettes (map ->
+; palette), then TilesetPalettes (tileset -> palette), then town/route by map
+; ID, then an indoor map's wLastMap town. The old chain tested the CEMETERY /
+; CAVERN / FACILITY tilesets before any map ID. Map-first is identical because
+; every map in the two map tables is either not on those tilesets or maps to
+; the palette its tileset would have given (audited 2026-09-24, and diffed
+; against the old chain for every map header in a PyBoy dump).
+; Clobbers a, bc, de, hl.
+GetOverworldPalette:
 	ldh a, [hCurMap]
-	cp PROCEDURAL_FOREST
-	jr z, .procForest    ; force a green forest palette; without this the
-	                     ; procedural forest ($F2, dungeon-range map ID) falls
-	                     ; through to wLastMap = Pallet Town = PAL_PALLET (blue).
-	                     ; Mirrors how CAVERN is special-cased to PAL_CAVE.
+	ld hl, MapPaletteFunctions
+	ld de, 3
+	call IsInArray
+	jr nc, .noFunction
+	inc hl
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	jp hl
+.noFunction
+	ldh a, [hCurMap]
+	ld hl, MapPalettes
+	ld de, 2
+	call IsInArray
+	jr c, .found
+	ld a, [wCurMapTileset]
+	ld hl, TilesetPalettes
+	call IsInArray ; de is still 2
+	jr c, .found
+	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP
 	jr c, .townOrRoute
-	cp CERULEAN_CAVE_2F
-	jr c, .normalDungeonOrBuilding
-	cp CERULEAN_CAVE_1F + 1
-	jr c, .caveOrBruno
-	cp LORELEIS_ROOM
-	jr z, .Lorelei
-	cp BRUNOS_ROOM
-	jr z, .caveOrBruno
-.normalDungeonOrBuilding
-	jp .silphHubOrLastMap ; body is out of line below: jr-range budget, see .caveOrBruno
-.lastMapPalette
 	ld a, [wLastMap] ; town or route that current dungeon or building is located
 .townOrRoute
 	cp NUM_CITY_MAPS
@@ -315,152 +334,111 @@ SetPal_Overworld:
 	ld a, PAL_ROUTE - 1
 .town
 	inc a ; a town's palette ID is its map ID + 1
-	ld hl, wPalPacket + 1
-	ld [hld], a
-	ld de, BlkPacket_WholeScreen
-	ld a, SET_PAL_OVERWORLD
-	ld [wDefaultPaletteCommand], a
 	ret
-.PokemonTowerOrAgatha
-	ld a, PAL_GRAYMON - 1
-	jr .town
-.caveOrBruno
-	; Phase 4a/4d: the procedural cave picks its palette from the SAME
-	; sProcCavePalette byte the CGB enhanced path reads
-	; (ResolveEnhancedBasePalSet, custom_functions/func_enhancedcolor.asm), so
-	; the two colour systems can never disagree about which variant a run is in.
-	; Every other CAVERN map, and Bruno, keep PAL_CAVE unconditionally.
-	;
-	; The SRAM read lives down past .Lorelei, NOT here. Inlining its ~45 bytes
-	; in this block pushed .Lorelei 138 bytes away from the conditional jump
-	; that targets it and broke the link outright. Keep this stub short.
-	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_1
-	jr z, .procCaveVariant
-.caveDefault
-	ld a, PAL_CAVE - 1
-	jr .town
-.procForest
-	; 2B: same shape as .caveOrBruno/.procCaveVariant just below - keep this
-	; stub short (see that block's own note about the link breaking) and do
-	; the SRAM read down past .Lorelei with .procCaveVariant.
-	jp .procForestVariant
-.facilityTileset
-	; FACILITY tileset. The procedural facility ($F3) gets a randomized
-	; Mansion/PowerPlant palette (sProcFacilityPalette, rolled during assigned
-	; stage preload). Other FACILITY maps (Power Plant, Pokemon Mansion) keep their
-	; normal location palette — add their map IDs here to opt them in.
-	ldh a, [hCurMap]
-	cp PROCEDURAL_FACILITY
-	jr z, .facilityRandom
-	jr .normalDungeonOrBuilding
-.facilityRandom
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ld a, BANK(sProcFacilityStagingBuffer)  ; facility SRAM is bank 1
-	ld [rRAMB], a
-	ld a, [sProcFacilityPalette]
-	ld b, a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	ld a, b
-	and a
-	jr nz, .facilityMansion
-	ld a, PAL_ROUTE - 1     ; 0 = PowerPlant (greenish route palette)
-	jr .town
-.facilityMansion
-	ld a, PAL_CINNABAR - 1  ; 1 = Mansion (reddish Cinnabar palette)
-	jr .town
-.Lorelei
-	xor a
-	jr .town
+.found
+	inc hl
+	ld a, [hl]
+	ret
 
-.procCaveVariant
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ld a, BANK(sProcCavePalette)
-	ld [rRAMB], a
-	ld a, [sProcCavePalette]
-	ld b, a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	ld a, b
-	cp PROC_CAVE_PAL_COUNT
-	jr nc, .caveDefault     ; $ff on a save that predates the field, or any
-	                        ; out-of-range value, falls back to the default look
-	and a
-	jr z, .caveDefault
-	; Only variant 1 remains; a third (darkened) variant was built and cut.
-	; Adding more: turn this into a compare chain or a small table here, bump
-	; PROC_CAVE_PAL_COUNT, and add the matching row to ProcCavePalSets on the
-	; enhanced side. Keep any new body DOWN HERE past .Lorelei, not up in
-	; .caveOrBruno - see the note there.
-	ld a, PAL_CAVE_COLD - 1
-	jp .town                ; jp, not jr: .town is ~150 bytes back from here
-
-.procForestVariant
-	; Phase 4a/4d parallel for the forest: sProcForestPalette is the SAME byte
-	; the CGB enhanced path reads (ResolveEnhancedBasePalSet,
-	; custom_functions/func_enhancedcolor.asm), so both colour systems agree
-	; on which season a run is in. PAL_FOREST_SPRING/PAL_FOREST_FALL are the
-	; two spare rows this claims (constants/palette_constants.asm).
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ld a, BANK(sProcForestPalette)
-	ld [rRAMB], a
-	ld a, [sProcForestPalette]
-	ld b, a
-	ld a, BMODE_SIMPLE
-	ld [rBMODE], a
-	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
-	ld [rRAMG], a
-	ld a, b
-	cp PROC_FOREST_PAL_COUNT
-	jr nc, .forestDefault  ; $ff on a save that predates the field, or any
-	                       ; out-of-range value, falls back to the old look
-	and a
-	jr z, .forestSpring
-	ld a, PAL_FOREST_FALL - 1
-	jp .town
-.forestSpring
-	ld a, PAL_FOREST_SPRING - 1
-	jp .town
-.forestDefault
-	ld a, PAL_VIRIDIAN - 1  ; the pre-2B unconditional green forest palette
-	jp .town
-
-.silphHubOrLastMap
-	; The Silph Co hub is always Saffron. Inheriting wLastMap made its colours
-	; depend on the route in: a new game (Debug or not) zero-fills wLastMap,
-	; and 0 is PALLET_TOWN. wLastMap itself is left alone because Silph Co
-	; 1F's bottom doors are LAST_MAP warps. Enhanced Colors is unaffected; it
-	; keys off the current map, not wLastMap.
-	ldh a, [hCurMap]
-	ld hl, .silphHubMaps
-	ld de, 1
-	call IsInArray
-	jp nc, .lastMapPalette
-	ld a, PAL_SAFFRON - 1
-	jp .town
-
-.silphHubMaps
-	db SILPH_CO_1F
-	db SILPH_CO_B1F
-	db SILPH_CO_DORM
-	db SILPH_CO_VR
-	db PALMS_ROOM
-	db CREDIT_EXCHANGE
+; Map -> palette routine (returns a = PAL_*). Each reads its procedural
+; stage's SRAM variant byte, the same byte the enhanced path's
+; ResolveEnhancedBasePalSet reads (custom_functions/func_enhancedcolor.asm),
+; so the two colour systems always agree about which variant a run is in.
+MapPaletteFunctions:
+	db PROCEDURAL_CAVE_1
+	dw ProcCaveOverworldPalette
+	db PROCEDURAL_FOREST
+	dw ProcForestOverworldPalette
+	db PROCEDURAL_FACILITY
+	dw ProcFacilityOverworldPalette
 	db -1
+
+MapPalettes:
+	db CERULEAN_CAVE_2F,  PAL_CAVE
+	db CERULEAN_CAVE_B1F, PAL_CAVE
+	db CERULEAN_CAVE_1F,  PAL_CAVE
+	db LORELEIS_ROOM,     PAL_PALLET ; vanilla's `xor a / jr .town`
+	db BRUNOS_ROOM,       PAL_CAVE
+	; The Silph Co hub is always Saffron. Inheriting wLastMap made its colours
+	; depend on the route in: a new game zero-fills wLastMap, and 0 is
+	; PALLET_TOWN. wLastMap itself is left alone because Silph Co 1F's bottom
+	; doors are LAST_MAP warps.
+	db SILPH_CO_1F,       PAL_SAFFRON
+	db SILPH_CO_B1F,      PAL_SAFFRON
+	db SILPH_CO_DORM,     PAL_SAFFRON
+	db SILPH_CO_VR,       PAL_SAFFRON
+	db PALMS_ROOM,        PAL_SAFFRON
+	db CREDIT_EXCHANGE,   PAL_SAFFRON
+	db -1
+
+TilesetPalettes:
+	db CEMETERY, PAL_GRAYMON ; Pokemon Tower, Agatha, the procedural cemeteries
+	db CAVERN,   PAL_CAVE    ; every cave without its own row above
+	db -1
+
+ProcCaveOverworldPalette:
+	ld a, BANK(sProcCavePalette)
+	ld hl, sProcCavePalette
+	call ReadOverworldPaletteVariant
+	; $ff on a save that predates the field, any out-of-range value, and
+	; variant 0 all keep the default look. Only variant 1 (cold) remains; to add
+	; one, bump PROC_CAVE_PAL_COUNT and add the ProcCavePalSets row on the
+	; enhanced side.
+	cp PROC_CAVE_PAL_COUNT
+	jr nc, .default
+	and a
+	jr z, .default
+	ld a, PAL_CAVE_COLD
+	ret
+.default
+	ld a, PAL_CAVE
+	ret
+
+ProcForestOverworldPalette:
+	ld a, BANK(sProcForestPalette)
+	ld hl, sProcForestPalette
+	call ReadOverworldPaletteVariant
+	cp PROC_FOREST_PAL_COUNT
+	ld a, PAL_VIRIDIAN ; the pre-2B green, for $ff / out-of-range
+	ret nc
+	ld a, c            ; ReadOverworldPaletteVariant leaves the byte in c too
+	and a
+	ld a, PAL_FOREST_SPRING
+	ret z
+	ld a, PAL_FOREST_FALL
+	ret
+
+ProcFacilityOverworldPalette:
+	; Any nonzero byte, $ff included, is the Mansion look: unchanged from the
+	; compare chain this replaced, which had no range check here.
+	ld a, BANK(sProcFacilityPalette)
+	ld hl, sProcFacilityPalette
+	call ReadOverworldPaletteVariant
+	and a
+	ld a, PAL_ROUTE    ; 0 = PowerPlant (greenish route palette)
+	ret z
+	ld a, PAL_CINNABAR ; Mansion (reddish Cinnabar palette)
+	ret
+
+; a = SRAM bank, hl = address. Returns the byte in a and c, with SRAM closed
+; and rBMODE back to simple. Same open/read/close shape as the enhanced path's
+; ReadProcPaletteVariant, which lives in another bank.
+ReadOverworldPaletteVariant:
+	ld c, a
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, c
+	ld [rRAMB], a
+	ld a, [hl]
+	ld c, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, c
+	ret
 
 ; used when a Pokemon is the only thing on the screen
 ; such as evolution, trading and the Hall of Fame

@@ -189,20 +189,19 @@ class SgbForestSeasonMirrorTest(unittest.TestCase):
         self.assertEqual(self._cgb_row("PAL_25"), SPRING_ROW)
         self.assertEqual(self._cgb_row("PAL_27"), FALL_ROW)
 
-    def test_sgb_path_dispatches_forest_through_a_short_stub(self) -> None:
-        """.procForest must stay short (the file's own note: inlining ~45
-        bytes there once broke the link by pushing .Lorelei out of jr range)."""
+    def test_sgb_path_dispatches_forest_through_the_function_table(self) -> None:
+        """2026-09-24: SetPal_Overworld's compare chain (whose .procForest stub
+        had to stay short to keep .Lorelei in jr range) became the table-driven
+        GetOverworldPalette. The forest is now one MapPaletteFunctions row."""
         src = SGB_PATH.read_text()
-        stub = src[src.index("\n.procForest\n"):src.index("\n.facilityTileset:")
-                    if ".facilityTileset:" in src else src.index("\n.facilityTileset\n")]
-        self.assertLessEqual(stub.count("\n"), 6, "the .procForest stub grew again")
-        self.assertIn(".procForestVariant", stub)
-        self.assertNotIn("sProcForestPalette", stub)
+        table = src[src.index("\nMapPaletteFunctions:\n"):src.index("\nMapPalettes:\n")]
+        self.assertRegex(table, r"db PROCEDURAL_FOREST\s*\n\s*dw ProcForestOverworldPalette")
+        self.assertNotIn("sProcForestPalette", table)
 
     def test_procforestvariant_reads_the_same_byte_the_cgb_path_reads(self) -> None:
         src = SGB_PATH.read_text()
-        start = src.index("\n.procForestVariant\n")
-        end = src.index("\n; used when a Pokemon")
+        start = src.index("\nProcForestOverworldPalette:\n")
+        end = src.index("\nProcFacilityOverworldPalette:\n")
         body = src[start:end]
         self.assertIn("sProcForestPalette", body)
         self.assertIn("PROC_FOREST_PAL_COUNT", body)

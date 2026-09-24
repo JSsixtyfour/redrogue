@@ -2358,7 +2358,8 @@ PFPreloadForest::
     ; rolled once here and stable for the whole visit, same mechanism as the
     ; sign variant roll just above. PROC_FOREST_PAL_COUNT (2) is what both
     ; colour paths range-check against - see ProcForestPalSets in
-    ; func_enhancedcolor.asm and .procForest in engine/gfx/palettes.asm.
+    ; func_enhancedcolor.asm and ProcForestOverworldPalette in
+    ; engine/gfx/palettes.asm.
     call Random
     and 1
     ld [sProcForestPalette], a

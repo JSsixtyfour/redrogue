@@ -6246,7 +6246,8 @@ PFacPreload::
     ld [sProcFacilityEntryBattleCount], a
 
     ; Roll palette variant: 0 = PowerPlant (green), 1 = Mansion (red). Cosmetic
-    ; only now - read by SetPal_Overworld's FACILITY case, no longer branches
+    ; only now - read by ProcFacilityOverworldPalette (SGB) and
+    ; ResolveEnhancedBasePalSet (CGB enhanced), no longer branches
     ; generation.
     call Random
     and 1

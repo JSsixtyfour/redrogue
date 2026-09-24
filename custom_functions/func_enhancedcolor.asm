@@ -251,7 +251,11 @@ GBCEnhancedOverworldPalettes_ForestSpring:
 	RGB 28, 31, 26
 	RGB 25, 14, 14
 	RGB 27, 16, 16
-	RGB  6,  0,  0
+	; Colour 3 was the .pal file's RGB 6,0,0 (dark red). Every screen-black hold
+	; (rBGP = $FF) shows each palette's colour 3, so the trees - most of the
+	; Forest - flashed dark red for ~6 frames before every reveal (measured
+	; 2026-09-24). The shared near-black keeps the hold black; outlines barely change.
+	GBCEnh_Black
 
 	; PAL_ENH_OVW_YELLOW  	; $05
 	GBCEnh_White
@@ -300,7 +304,7 @@ GBCEnhancedOverworldPalettes_ForestFall:
 	RGB 28, 31, 26
 	RGB 25, 15,  0
 	RGB 31, 10,  3
-	RGB  6,  0,  0
+	GBCEnh_Black ; was RGB 6,0,0 - see the spring row above
 
 	; PAL_ENH_OVW_YELLOW  	; $05
 	GBCEnh_White
@@ -447,7 +451,8 @@ ProcCavePalSets:
 	; through the wMapPalOffset selector - it is just not a cave variant.
 	; To add a variant here: append a db, bump PROC_CAVE_PAL_COUNT in
 	; constants/palette_constants.asm, widen the roll in PCPreloadCave, and add
-	; the matching SGB row in SetPal_Overworld. The ASSERT below catches the
+	; the matching SGB case in ProcCaveOverworldPalette (engine/gfx/palettes.asm).
+	; The ASSERT below catches the
 	; count if you forget it.
 ProcCavePalSets_End:
 ; PROC_CAVE_PAL_COUNT lives in constants/palette_constants.asm, not here: the
@@ -582,9 +587,9 @@ ResolveEnhancedBasePalSet::
 ; Read one procedural stage's palette-variant byte out of SRAM.
 ; INPUT:  a = its SRAM bank, hl = its address.
 ; OUTPUT: a = the byte. SRAM is closed again and rBMODE is back to simple.
-; Deliberately the same open/read/close shape as SetPal_Overworld's
-; .facilityRandom in engine/gfx/palettes.asm, down to the rBMODE dance, so there
-; is one pattern to audit rather than two that drift apart.
+; Deliberately the same open/read/close shape as ReadOverworldPaletteVariant
+; in engine/gfx/palettes.asm (the SGB-side twin, in another bank), down to the
+; rBMODE dance, so there is one pattern to audit rather than two that drift apart.
 ReadProcPaletteVariant:
 	ld c, a
 	ld a, RAMG_SRAM_ENABLE
@@ -1678,17 +1683,23 @@ UpdateEnhancedGBCPal_BGP:
 
 	ld de, w2GBCFullPalBuffer
 
-;since the background is getting updates, wait until vblank starts
-;this way the scanlines don't update halfway down the screen
+; Write all 32 BG colours inside one VBlank. This used to wait for VBlank and
+; then call GBCBufferFastTransfer_BGP, which deliberately waits for VBlank to
+; END and writes one colour per HBlank - so the 32 colours landed across the
+; top 32 scanlines of the next visible frame, and every Enhanced reveal (stage
+; loads, measured 2026-09-24) showed one torn frame: the top tile rows in the
+; new palettes, the rest still dark. Interrupts are off here, so the VBlank
+; handler cannot eat into the window; wait for its exact start (LY == $90;
+; `>= $90` could fall through late in a VBlank) and burst.
 	ld a, [rLCDC]
 	bit 7, a
 	jr z, .next
 .wait
 	ld a, [rLY]
 	cp $90
-	jr c, .wait
+	jr nz, .wait
 .next
-	call GBCBufferFastTransfer_BGP
+	call GBCBufferFastTransfer_BGPVBlank
 
 	pop af		;re-enable interrupts
 	ld [rIE], a
@@ -1830,54 +1841,29 @@ GBCBufferFastTransfer:
 	ld sp, hl
 	ret
 	
-GBCBufferFastTransfer_BGP:
-	ld hl, sp + 0
-	ld a, h
-	ld [hSPTemp], a
-	ld a, l
-	ld [hSPTemp + 1], a ; save stack pinter
-	
+; All 32 BG colours from the big-endian buffer at de, in one burst: 14 M-cycles
+; per colour, ~450 in total, well inside VBlank's ~1140 at single speed. The
+; caller has interrupts off and has waited for VBlank to start. Byte order
+; matches the pop-based transfers above: the buffer stores each colour high
+; byte first, and hardware takes low byte first.
+GBCBufferFastTransfer_BGPVBlank:
 	ld h, d
 	ld l, e
-	ld sp, hl
-	
-	ld hl, rBGPI	
-	ld a, %10000000	
-	ld [hli], a		
-	ld c, 32		
-
+	ld a, %10000000 ; BG palette index 0, auto-increment
+	ldh [rBGPI], a
+	ld c, LOW(rBGPD)
+	ld b, 32
 .loop
-	ld a, [rLCDC]
-	bit 7, a
-	jr z, .next
-.wait
-; In case we're already in H-blank or V-blank, wait for it to end. This is a
-; precaution so that the transfer doesn't extend past the blanking period.
-	ld a, [rSTAT]
-	and %10 ; mask for non-V-blank/non-H-blank STAT mode
-	jr z, .wait	;repeat if still in h-blank or v-blank
-; Wait for H-blank or V-blank to begin.
-.notInBlankingPeriod
-	ld a, [rSTAT]
-	and %10 ; mask for non-V-blank/non-H-blank STAT mode
-	jr nz, .notInBlankingPeriod
-	
-.next
-	pop de			;12 cycles
-	ld a, d			;4 cycles
-	ld [hl], a		;8 cycles
-	ld a, e			;4 cycles
-	ld [hl], a		;8 cycles
-	dec c			;4 cycles
-	jr nz, .loop	;12 cycles on loop, 8 on pass-through
-
-	ld a, [hSPTemp]
-	ld h, a
-	ld a, [hSPTemp + 1]
-	ld l, a
-	ld sp, hl
+	ld a, [hli] ; high byte
+	ld e, a
+	ld a, [hli] ; low byte
+	ldh [c], a
+	ld a, e
+	ldh [c], a
+	dec b
+	jr nz, .loop
 	ret
-	
+
 GBCBufferFastTransfer_OBP0:
 	ld hl, sp + 0
 	ld a, h
