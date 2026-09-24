@@ -274,16 +274,9 @@ AIReadMoveIntoPlayerBlock:
 	push hl
 	push de
 	push bc
-	dec a
-	ld hl, Moves
-	ld bc, MOVE_LENGTH
-	call AddNTimes
 	ld de, wPlayerMoveNum
-	call CopyData
-	pop bc
-	pop de
-	pop hl
-	ret
+	ASSERT BANK(ReadMoveIntoDE) == BANK(@) ; plain jp: must stay co-located
+	jp ReadMoveIntoDE    ; pops bc/de/hl and returns for us
 
 ; Carry SET if the loaded enemy move is an "investment": it spends this turn to
 ; be better on a later one. Two contiguous stat-raising bands plus the four

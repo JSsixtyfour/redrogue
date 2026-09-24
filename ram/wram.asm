@@ -2284,7 +2284,11 @@ wViridianCityCurScript:: db
 ; (project_wram_take_padding_not_append): saved, and zeroed at run boundaries
 ; with the rest of wGameProgressFlags. Net WRAM0 cost: 0 bytes.
 wTurnRewindUsages:: db
-	ds 1
+; Stage-class cache, KEY half: the map GetCurMapStageClass (home) last classified.
+; The VALUE half is wStageClassCache, after wVictoryRoad1FCurScript. Each takes a
+; `ds 1` padding slot, never appended (project_wram_take_padding_not_append), so
+; no address moves. Zeroed with wGameProgressFlags, which reads as "invalid".
+wStageClassCacheMap:: db
 wPewterCityCurScript:: db
 wRoute3CurScript:: db
 wRoute4CurScript:: db
@@ -2393,7 +2397,9 @@ wBrunosRoomCurScript:: db
 wAgathasRoomCurScript:: db
 wCeruleanCaveB1FCurScript:: db
 wVictoryRoad1FCurScript:: db
-	ds 1
+; Stage-class cache, VALUE half (key: wStageClassCacheMap). Bit 7 = valid,
+; bit 0 = wild-area stage map, bit 1 = rogue stage map. Took this `ds 1` slot.
+wStageClassCache:: db
 wLancesRoomCurScript:: db
 ; Phase 7 Elite Four room script bytes. Same rule as the Phase 6 gyms: these
 ; CONSUME the `ds 4` that sat here rather than appending, so every WRAM address

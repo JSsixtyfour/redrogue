@@ -499,6 +499,26 @@ IsWildAreaStageMap::
 	xor a             ; Z set = not a wild-area stage map
 	ret
 
+; Cache-miss half of GetCurMapStageClass (home/map_objects.asm): classify
+; hCurMap with both tables above and store the result keyed by the map.
+; OUTPUT: e = $80 | (1 if wild-area stage) | (2 if rogue stage). Clobbers a/c/hl.
+; Both checks depend only on the map id, so a key match is always still valid.
+ComputeCurMapStageClass::
+	ld e, $80         ; valid
+	call IsWildAreaStageMap
+	jr z, .notWild
+	set 0, e
+.notWild
+	call IsRogueStageMap
+	jr z, .notRogue
+	set 1, e
+.notRogue
+	ld a, e
+	ld [wStageClassCache], a
+	ldh a, [hCurMap]
+	ld [wStageClassCacheMap], a
+	ret
+
 ; ============================================================
 ; _StageBitInfo  (private helper)
 ; Converts a stage index into the byte address and bit mask

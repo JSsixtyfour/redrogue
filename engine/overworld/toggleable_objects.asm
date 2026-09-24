@@ -122,9 +122,11 @@ IsObjectHidden:
 	jr z, .checkMaybeRoguePB
 	jp .normalCheck
 .checkMaybeRoguePG
-	push bc
-	farcall IsWildAreaStageMap
-	pop bc
+	; The three map-class questions below go through GetCurMapStageClass's
+	; per-map cache (home/map_objects.asm), not two far calls each: this runs
+	; per sprite per pass and made the lobby drop frames on DMG/SGB.
+	call GetCurMapStageClass        ; preserves bc
+	bit 0, a                        ; wild-area stage map?
 	jr z, .normalCheck              ; Z set = not a stage map
 	ld c, TOGGLE_WILD_AREA_BOSS  ; slot 1 = boss
 	ld a, b
@@ -165,9 +167,8 @@ IsObjectHidden:
 	; already share TOGGLE_WILD_AREA_BOSS/POKEBALL_1-4 the same way) without a
 	; second, forest-only pair of consts and a second HideObject/ShowObject
 	; target to keep in sync.
-	push bc
-	farcall IsWildAreaStageMap
-	pop bc
+	call GetCurMapStageClass        ; preserves bc
+	bit 0, a                        ; wild-area stage map?
 	jr z, .checkMaybeGenericRoguePB     ; Z set = not a wild-area stage map
 	ld c, TOGGLE_WILD_AREA_NPC_1
 	ld a, b
@@ -178,9 +179,8 @@ IsObjectHidden:
 	jr z, .checkRewardBit
 	; slot 8+ on a wild-area map (none declare one today): fall through
 .checkMaybeGenericRoguePB
-	push bc
-	farcall IsRogueStageMap
-	pop bc
+	call GetCurMapStageClass        ; preserves bc
+	bit 1, a                        ; rogue stage map?
 	jr z, .normalCheck              ; Z set = not a stage map
 	ld c, TOGGLE_STAGE_RANDOM_ITEM  ; slot 6 = random item
 	ld a, b

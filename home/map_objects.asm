@@ -81,6 +81,30 @@ IsItemInBag::
 	and a
 	ret
 
+; a = hCurMap's stage class: bit 0 = wild-area stage map, bit 1 = rogue stage map
+; (test with `bit`: Z set = not that kind, same sense as IsWildAreaStageMap /
+; IsRogueStageMap). Preserves bc/de; clobbers hl.
+; IsObjectHidden asks this for every sprite in slots 1-10 on every overworld pass.
+; Answering with two far calls and two table scans each time was ~18,000 cycles
+; per pass in the lobby, enough to drop every third frame on DMG/SGB (measured
+; 2026-09-24). The answer only depends on the map, so it is cached per map id.
+GetCurMapStageClass::
+	ldh a, [hCurMap]
+	ld hl, wStageClassCacheMap
+	cp [hl]
+	jr nz, .miss
+	ld a, [wStageClassCache]
+	bit 7, a          ; valid? (zeroed RAM reads as invalid)
+	ret nz
+.miss
+	push bc
+	push de
+	rfarcall ComputeCurMapStageClass ; e = class
+	ld a, e
+	pop de
+	pop bc
+	ret
+
 DisplayPokedex::
 	ld [wPokedexNum], a
 	rfarjp _DisplayPokedex

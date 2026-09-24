@@ -656,11 +656,25 @@ ReadMove:
 	push hl
 	push de
 	push bc
-	dec a
-	ld hl, Moves
-	ld bc, MOVE_LENGTH
-	call AddNTimes
 	ld de, wEnemyMoveNum
+; Shared with AIReadMoveIntoPlayerBlock (ai_threat.asm, same bank), which pushes
+; the same three pairs and jumps here with its own de. Copies move a's Moves row
+; to de. The row offset is (a-1)*6 done as three adds (~68 cycles) instead of
+; AddNTimes: these two lookups were 12.8% of AI decision time
+; (AI_PERF_INVESTIGATION.md §9). a = 0 wraps to row 255, exactly as before.
+ReadMoveIntoDE::
+	ASSERT MOVE_LENGTH == 6
+	dec a
+	ld l, a
+	ld h, 0
+	ld c, l
+	ld b, h              ; bc = n
+	add hl, hl           ; 2n
+	add hl, bc           ; 3n
+	add hl, hl           ; 6n
+	ld bc, Moves
+	add hl, bc
+	ld bc, MOVE_LENGTH
 	call CopyData
 	pop bc
 	pop de

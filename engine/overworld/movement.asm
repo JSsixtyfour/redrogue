@@ -551,7 +551,10 @@ InitializeSpriteScreenPosition::
 
 ; tests if sprite is off screen or otherwise unable to do anything
 CheckSpriteAvailability:
-	predef IsObjectHidden
+	; rfarcall, not predef: runs per sprite per overworld pass, and predef's
+	; dispatch cost ~170 more cycles each. IsObjectHidden reads no predef
+	; registers and answers in hIsToggleableObjectOff, which survives either way.
+	rfarcall IsObjectHidden
 	ldh a, [hIsToggleableObjectOff]
 	and a
 	jp nz, .spriteInvisible
