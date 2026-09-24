@@ -16,10 +16,11 @@ INCLUDE "home/copy.asm"
 ; leaf, no callers outside its own two routines) is the documented cheap first
 ; move: both "High Home" and "Home" are always-mapped bank 0, so this is a
 ; free, zero-risk ROM0-to-ROM0 relocation (the HOME->ROMX bank-switch landmine
-; does not apply here).
-INCLUDE "home/array.asm"
+; does not apply here). 2026-09-24: array.asm moved BACK to "Home" - the hybrid
+; AddNTimes grew it by 20 B, "High Home" had 5 B left, and "Home" had ~330 free
+; after the rst far-call/predef work.
 ; Same reason and same free, zero-risk ROM0-to-ROM0 relocation as array.asm
-; above: the Shin Red import Phase 2 audio/SFX fixes (badge SFX bank force,
+; was: the Shin Red import Phase 2 audio/SFX fixes (badge SFX bank force,
 ; warp-tile thud relocation, zero-delay-text SFX flag) overflowed "Home" by
 ; 11+ bytes. CountSetBits is a self-contained leaf (no calls out, only
 ; touches wNumSetBits) with no dependency on which ROM0 sub-section it lives
@@ -41,6 +42,7 @@ FollowerInteraction::
 SECTION "Home", ROM0
 
 INCLUDE "home/cgb_speed.asm"
+INCLUDE "home/array.asm"   ; back from "High Home" (see the note there)
 
 INCLUDE "home/start.asm"
 INCLUDE "home/joypad.asm"
