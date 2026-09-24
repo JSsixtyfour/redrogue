@@ -88,6 +88,11 @@ PlayerSpinWhileMovingDown:
 	ld [hli], a ; wPlayerSpinWhileMovingUpOrDownAnimMaxY
 	call GetPlayerTeleportAnimFrameDelay
 	ld [hl], a ; wPlayerSpinWhileMovingUpOrDownAnimFrameDelay
+	; pureRGB fix: SpinPlayerSprite shows [hl] as the player's frame and
+	; rotates wFacingDirectionList, so hl must point at that list. It was
+	; left on the delay byte above, so every spin step drew that value as a
+	; sprite frame (a garbled player during teleport arrival).
+	ld hl, wFacingDirectionList
 	jp PlayerSpinWhileMovingUpOrDown
 
 _LeaveMapAnim::
@@ -108,15 +113,20 @@ _LeaveMapAnim::
 	ld [hli], a ; wPlayerSpinWhileMovingUpOrDownAnimMaxY
 	call GetPlayerTeleportAnimFrameDelay
 	ld [hl], a ; wPlayerSpinWhileMovingUpOrDownAnimFrameDelay
+	ld hl, wFacingDirectionList ; see PlayerSpinWhileMovingDown
 	call PlayerSpinWhileMovingUpOrDown
 	call IsPlayerStandingOnWarpPadOrHole
 	ld a, b
 	dec a
-	jr z, .playerStandingOnWarpPad
 ; if not standing on a warp pad, there is an extra delay
 	ld c, 10
+	jr nz, .delayBeforeFade
+	; pureRGB fix: on a warp pad, wait a few frames too. The fade went straight
+	; in, and with the smooth GBC fade that cut TELEPORT_EXIT_1 /
+	; TELEPORT_ENTER_1 short.
+	ld c, 5
+.delayBeforeFade
 	call DelayFrames
-.playerStandingOnWarpPad
 	call GBFadeOutToWhite
 	jp RestoreFacingDirectionAndYScreenPos
 .playerNotStandingOnWarpPadOrHole

@@ -1660,21 +1660,57 @@ BufferAllEnhancedColorsGBC:
 UpdateEnhancedGBCPal_BGP:
 	ld a, [rBGP]
 	ld [w2LastBGP], a
+	ld b, 1 ; a real BGP change also stages any changed sprite palette, below
+	jr .buildBG
 .skipHardwareUpdate
+	ld b, 0 ; TransferGBCEnhancedOverworldPalettes does its own OBP calls
 
 ;;We're on a GBC and this stuff takes a while. Switch to double speed mode if not already.
 ;	ld a, [rKEY1]
 ;	bit 7, a
 ;	ld a, $ff
-;	jr nz, .doublespeed	
+;	jr nz, .doublespeed
 ;	predef SetCPUSpeed
 ;	xor a
 ;.doublespeed
 ;	push af
 
-	ld de, rBGP	
-	call BufferAllEnhancedColorsGBC.BGP0to3Loop
+.buildBG
+	ld de, rBGP
+	call BufferAllEnhancedColorsGBC.BGP0to3Loop ; these preserve bc
 	call BufferAllEnhancedColorsGBC.BGP4to7Loop
+
+; Sprite palettes ride along in the same VBlank. LoadGBPal_ (and every fade
+; step) writes rBGP, rOBP0 and rOBP1 first and only then calls the three
+; UpdateGBCPal_* routines, so the OBP registers already hold their new values
+; here. The OBP updates themselves write one colour per HBlank with no VBlank
+; wait at all, and at a stage reveal they landed mid-frame (measured
+; 2026-09-24: OBJ pals 0-3 on scanlines 52-67, right across the player sprite,
+; 4-7 on 113-128). Build whichever OBP changed and mark its cache current, so
+; the UpdateGBCPal_OBP0/1 call that follows returns early. An unchanged half is
+; left alone: other code (follower, battle) writes OBJ palettes directly, and
+; rewriting them from this buffer would clobber that.
+	dec b
+	ld b, 0 ; becomes bit 0 = OBP0 staged, bit 1 = OBP1 staged
+	jr nz, .spritesStaged
+	ld a, [rOBP0]
+	ld hl, w2LastOBP0
+	cp [hl]
+	jr z, .obp0Current
+	ld [hl], a
+	ld de, rOBP0 - 1 ; the loop increments de once before reading
+	call BufferAllEnhancedColorsGBC.OBP0to3Loop
+	set 0, b
+.obp0Current
+	ld a, [rOBP1]
+	ld hl, w2LastOBP1
+	cp [hl]
+	jr z, .spritesStaged
+	ld [hl], a
+	ld de, rOBP1 - 1 ; ditto
+	call BufferAllEnhancedColorsGBC.OBP4to7Loop
+	set 1, b
+.spritesStaged
 
 	ld a, [rIE]		;manually disable interrupts
 	push af
@@ -1699,7 +1735,23 @@ UpdateEnhancedGBCPal_BGP:
 	cp $90
 	jr nz, .wait
 .next
+	push bc
 	call GBCBufferFastTransfer_BGPVBlank
+	pop bc
+	bit 0, b
+	jr z, .obp0Written
+	push bc
+	ld hl, w2GBCFullPalBuffer + 64 ; OBJ palettes 0-3
+	ld a, %10000000                ; OBJ palette 0, auto-increment
+	call GBCBufferFastTransfer_OBJHalfVBlank
+	pop bc
+.obp0Written
+	bit 1, b
+	jr z, .obp1Written
+	ld hl, w2GBCFullPalBuffer + 96 ; OBJ palettes 4-7
+	ld a, %10100000                ; OBJ palette 4, auto-increment
+	call GBCBufferFastTransfer_OBJHalfVBlank
+.obp1Written
 
 	pop af		;re-enable interrupts
 	ld [rIE], a
@@ -1841,11 +1893,10 @@ GBCBufferFastTransfer:
 	ld sp, hl
 	ret
 	
-; All 32 BG colours from the big-endian buffer at de, in one burst: 14 M-cycles
-; per colour, ~450 in total, well inside VBlank's ~1140 at single speed. The
-; caller has interrupts off and has waited for VBlank to start. Byte order
-; matches the pop-based transfers above: the buffer stores each colour high
-; byte first, and hardware takes low byte first.
+; All 32 BG colours from the big-endian buffer at de, in one burst. The caller
+; has interrupts off and has waited for VBlank to start. With both sprite
+; halves staged too (UpdateEnhancedGBCPal_BGP) that is 64 colours at 14
+; M-cycles each, ~900 plus overhead, inside VBlank's ~1140 at single speed.
 GBCBufferFastTransfer_BGPVBlank:
 	ld h, d
 	ld l, e
@@ -1853,7 +1904,21 @@ GBCBufferFastTransfer_BGPVBlank:
 	ldh [rBGPI], a
 	ld c, LOW(rBGPD)
 	ld b, 32
-.loop
+	jr GBCPalBurst
+
+; 16 OBJ colours (one OBP half, 4 palettes) from the buffer at hl. a = the
+; rOBPI value (start index with the auto-increment bit).
+GBCBufferFastTransfer_OBJHalfVBlank:
+	ldh [rOBPI], a
+	ld c, LOW(rOBPD)
+	ld b, 16
+	; fallthrough
+
+; hl = big-endian colour buffer, c = LOW(data port), b = colour count, index
+; register already set. Byte order matches the pop-based transfers above: the
+; buffer stores each colour high byte first, and hardware takes low byte first.
+; Clobbers a, b, e, hl.
+GBCPalBurst:
 	ld a, [hli] ; high byte
 	ld e, a
 	ld a, [hli] ; low byte
@@ -1861,7 +1926,7 @@ GBCBufferFastTransfer_BGPVBlank:
 	ld a, e
 	ldh [c], a
 	dec b
-	jr nz, .loop
+	jr nz, GBCPalBurst
 	ret
 
 GBCBufferFastTransfer_OBP0:
