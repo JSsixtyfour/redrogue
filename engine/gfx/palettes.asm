@@ -65,6 +65,14 @@ SetPal_Battle:
 	; to `ld b, BANK(...)`, so b is destroyed before the callee even runs and
 	; the compare was reading a bank number. Player only - enemies can never be
 	; shiny (see func_shiny.asm).
+	;
+	; Species 0 means slot +5 is the player's TRAINER pic (the battle intro):
+	; InitBattleVariables zeroes wBattleMonSpecies but leaves the rest of
+	; wBattleMon holding the previous battle's last active mon. Its ghost bit,
+	; DVs and type 2 would otherwise tint the trainer purple/shiny/type-colored.
+	ld a, [wBattleMonSpecies]
+	and a
+	jr z, .playerNotTypeVariant
 	ld de, wBattleMon
 	farcall IsShiny
 	jr z, .playerNotShiny
