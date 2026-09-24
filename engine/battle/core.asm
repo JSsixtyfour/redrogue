@@ -3126,8 +3126,21 @@ SelectMenuItem:
 	; Test battles normally source their move from the host-controlled byte.
 	; Mirror a real menu choice so FIGHT 2 remains playable by a human too.
 	ld [wTestBattlePlayerSelectedMove], a
+	; GetCurrentMove picks a side by hWhoseTurn, and at the move menu that can
+	; still be 1 (enemy send-out animation, or the enemy moved last). It then
+	; loaded the ENEMY's move, so Body Armor checked a stale wPlayerMovePower;
+	; and with wEnemySelectedMove = 0 (fresh boot) its dec a -> 255 sent GetName
+	; 255 names past MoveNames and CopyString wiped all of WRAM with $7F.
+	; Force the player side for this check only, then restore hWhoseTurn.
+	ldh a, [hWhoseTurn]
+	push af
+	xor a
+	ldh [hWhoseTurn], a
 	call GetCurrentMove
-	farcall BridgeBodyArmorBlocksSelectedMove
+	farcall BridgeBodyArmorBlocksSelectedMove ; carry = blocked
+	pop bc                      ; b = saved hWhoseTurn; pop bc leaves F intact
+	ld a, b
+	ldh [hWhoseTurn], a         ; ldh leaves carry intact
 	jp c, MoveSelectionMenu
 .moveAccepted
 	xor a

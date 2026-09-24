@@ -116,7 +116,9 @@ def fired_by_name():
     fired = set()
     for path in REPO_ROOT.rglob("*.asm"):
         parts = path.parts
-        if "tmp" in parts or ".git" in parts:
+        # .claude: Claude Code worktrees are full checkouts inside the repo; one
+        # appearing mid-session failed this audit with no source change (2026-09-24).
+        if "tmp" in parts or ".git" in parts or ".claude" in parts:
             continue
         if path.parent == OBJECTS:
             continue        # a declaration, not a firing

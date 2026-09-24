@@ -604,7 +604,10 @@ def scrape_refs(names):
     nameset = set(names)
     for dirpath, _, files in os.walk(ROOT):
         parts = dirpath.replace("\\", "/").split("/")
-        if "tmp" in parts or ".git" in parts or "pyboy_smoke" in parts:
+        # .claude holds Claude Code worktrees: full checkouts whose EVENT_ refs
+        # (possibly from another branch) must not count as references here.
+        if ("tmp" in parts or ".git" in parts or "pyboy_smoke" in parts
+                or ".claude" in parts):
             continue
         for fn in files:
             if not fn.endswith(".asm") or fn.startswith("delete"):

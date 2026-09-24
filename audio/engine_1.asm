@@ -168,6 +168,17 @@ Audio1_PlayNextNote:
 	ld a, [wLowHealthAlarm]
 	bit BIT_LOW_HEALTH_ALARM, a
 	jr z, .asm_918c
+
+;joenote - treat non-active wLowHealthTonePairs the same as a disabled wLowHealthAlarm
+;			- needed for limiting the hp alarm or else some sfx get cut off
+; Restored from shinpokered (audio/engine_1.asm); the port had dropped it. Without
+; it, an alarm flagged active after its tone pairs ran out (HP bar already red, so
+; the idle rearm never refilled them) parks channel 5 forever: FaintEnemyPokemon's
+; .sfxwait then spins on SFX_FAINT_FALL. Measured 2026-09-24 (T3 benchmark seed 4).
+	ld a, [wLowHealthTonePairs]
+	bit 7, a
+	jr z, .asm_918c
+
 	call Audio1_EnableChannelOutput
 	ret
 .asm_918c

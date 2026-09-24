@@ -80,9 +80,10 @@ def parse_move_powers(path: Path) -> dict[int, int]:
     return powers
 
 
-def choose_player_move(
+def choose_player_slot(
     harness: RedRogueHarness, policy: str, powers: dict[int, int]
-) -> int:
+) -> tuple[int, int]:
+    """Return (slot, move) for the player's policy choice."""
     moves = harness.read_bytes("wBattleMonMoves", 4)
     pp = harness.read_bytes("wBattleMonPP", 4)
     legal = [
@@ -91,10 +92,16 @@ def choose_player_move(
         if move and move_pp & 0x3F
     ]
     if not legal:
-        return moves[0]
+        return 0, moves[0]
     if policy == "first_slot":
-        return legal[0][1]
-    return max(legal, key=lambda entry: (powers.get(entry[1], 0), -entry[0]))[1]
+        return legal[0]
+    return max(legal, key=lambda entry: (powers.get(entry[1], 0), -entry[0]))
+
+
+def choose_player_move(
+    harness: RedRogueHarness, policy: str, powers: dict[int, int]
+) -> int:
+    return choose_player_slot(harness, policy, powers)[1]
 
 
 def prepare_party_driver(
@@ -205,9 +212,18 @@ def run_tier(
             "DisplayBattleMenu",
             action=lambda: harness.write8("wBattleAndStartSavedMenuItem", 0),
         )
+        # Open the move menu with the cursor ON the policy's chosen slot. Since
+        # SelectMenuItem mirrors the cursor's move into
+        # wTestBattlePlayerSelectedMove, pinning the cursor to slot 0 made every
+        # trial use slot 0 regardless of policy, and once slot 0 ran out of PP
+        # the "no PP" bounce re-opened the menu on slot 0 forever (seed 1:
+        # 887 bounces, measured 2026-09-24).
         harness.hook_flag(
             "MoveSelectionMenu",
-            action=lambda: harness.write8("wPlayerMoveListIndex", 0),
+            action=lambda: harness.write8(
+                "wPlayerMoveListIndex",
+                choose_player_slot(harness, player_policy, move_powers)[0],
+            ),
         )
         party_inputs, party_modes, party_trace = prepare_party_driver(harness)
         harness.boot_fight2(seed=seed)

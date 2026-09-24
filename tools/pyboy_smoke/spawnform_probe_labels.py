@@ -35,7 +35,7 @@ PATTERN = re.compile(r"^\s*ld\s+\[wSpawnForm\]\s*,\s*a\s*(;.*)?$")
 INDEX_PATH = REPO_ROOT / "tools" / "pyboy_smoke" / "spawnform_probes.json"
 
 # Vendored upstream copies and build scratch, never the live tree.
-SKIP_DIRS = {"tmp", ".git"}
+SKIP_DIRS = {"tmp", ".git", ".claude"}  # .claude: Claude Code worktrees (full checkouts)
 
 
 def source_files() -> list[Path]:
