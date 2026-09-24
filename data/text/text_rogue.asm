@@ -200,12 +200,12 @@ _PrismNoCartridgesText::
 ; One-time grant messages (custom_functions/element_prism.asm), gated on
 ; persistent per-grantor events - shown once ever, never again, even across
 ; runs. text_ram reads the granted type's name out of wStringBuffer.
-; The three grant announcements below all end in `prompt`, because they are
+; The two grant announcements below all end in `prompt`, because they are
 ; shown from two contexts that both need the text to wait for A itself:
 ;   - the gym leader's, from TrainerBattleVictory mid-battle, where nothing
 ;     waits afterwards - with `done` the "defeated"/prize-money boxes drew
 ;     straight over it and it flashed for one frame
-;   - the Elite Four / Champion ones, from a DisplayTextID text_asm that calls
+;   - the Elite Four ones, from a DisplayTextID text_asm that calls
 ;     DisableWaitingAfterTextDisplay so the prompt is the only wait
 ; The type name (wStringBuffer, up to 8 chars: FIGHTING, ELECTRIC) goes on its
 ; own line: "ELECTRIC CARTRIDGE!" is 19 columns against the box's 18, and the
@@ -227,13 +227,6 @@ _PrismCartridgeGrantText::
 	text_ram wStringBuffer
 	text " type"
 	cont "CARTRIDGE!"
-	prompt
-
-_PrismChampionGrantText::
-	text "Received the"
-	line "NORMAL, FLYING"
-	cont "and BUG"
-	cont "CARTRIDGES!"
 	prompt
 
 _PrismCartridgeReceivedText::

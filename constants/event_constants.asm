@@ -66,7 +66,7 @@ DEF EVENT_PRISM_E4_GHOST_SHOWN                   EQU   19 ; byte 2 bit 3
 DEF EVENT_PRISM_E4_DRAGON_SHOWN                  EQU   20 ; byte 2 bit 4
 DEF EVENT_PRISM_E4_POISON_SHOWN                  EQU   21 ; byte 2 bit 5
 DEF EVENT_PRISM_E4_PSYCHIC_SHOWN                 EQU   22 ; byte 2 bit 6
-DEF EVENT_PRISM_CHAMPION_SHOWN                   EQU   23 ; byte 2 bit 7
+DEF EVENT_PRISM_FALKNER_SHOWN                    EQU   23 ; byte 2 bit 7
 DEF EVENT_RIVAL_CHAMPION_DEFEATED                EQU   24 ; byte 3 bit 0
 DEF EVENT_LANCE_CHAMPION_DEFEATED                EQU   25 ; byte 3 bit 1
 DEF EVENT_OAK_CHAMPION_DEFEATED                  EQU   26 ; byte 3 bit 2
@@ -78,7 +78,9 @@ DEF EVENT_FINAL_BRIEFING_COMPLETE                EQU   31 ; byte 3 bit 7
 DEF EVENT_POST_GAME                              EQU   32 ; byte 4 bit 0
 DEF EVENT_PALMS_ROOM_OPEN                        EQU   33 ; byte 4 bit 1
 DEF EVENT_AI_ATTEMPT_SPENT                       EQU   34 ; byte 4 bit 2
-DEF PERSISTENT_EVENTS_END   EQU 34
+DEF EVENT_PRISM_BUGSY_SHOWN                      EQU   35 ; byte 4 bit 3
+DEF EVENT_PRISM_WHITNEY_SHOWN                    EQU   36 ; byte 4 bit 4
+DEF PERSISTENT_EVENTS_END   EQU 36
 
 ; ==========================================================================
 ; ZONE 1 - RUN-SCOPED (cleared by RogueResetRunState)
@@ -1168,7 +1170,7 @@ ASSERT EVENT_GRAVEYARD_BASE > RUN_EVENTS_END
 ASSERT EVENT_GRAVEYARD_BASE % 8 == 0
 ; ELEMENT PRISM first-time-ever flags must survive the run wipe:
 ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START
-ASSERT EVENT_PRISM_CHAMPION_SHOWN < RUN_EVENTS_START
+ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START
 ; the whole layout must fit the pinned budget:
 ASSERT EVENT_GRAVEYARD_BASE + 15 <= NUM_EVENTS
 

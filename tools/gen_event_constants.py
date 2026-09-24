@@ -198,7 +198,12 @@ PERSISTENT = [
     # EVENT_PRISM_E4_DARK_SHOWN and there should not be one.
     "EVENT_PRISM_E4_POISON_SHOWN",
     "EVENT_PRISM_E4_PSYCHIC_SHOWN",
-    "EVENT_PRISM_CHAMPION_SHOWN",
+    # Johto leaders with their own cartridge type (2026-09-23): the NORMAL /
+    # FLYING / BUG trio moved here off the Champion. FALKNER reuses the retired
+    # EVENT_PRISM_CHAMPION_SHOWN bit, BUGSY / WHITNEY are appended at the end,
+    # so no existing persistent flag moves. Not contiguous on purpose:
+    # RogueGymLeaderVictory looks them up through a table (element_prism.asm).
+    "EVENT_PRISM_FALKNER_SHOWN",
     "EVENT_RIVAL_CHAMPION_DEFEATED",
     "EVENT_LANCE_CHAMPION_DEFEATED",
     "EVENT_OAK_CHAMPION_DEFEATED",
@@ -209,7 +214,9 @@ PERSISTENT = [
     "EVENT_FINAL_BRIEFING_COMPLETE",
     "EVENT_POST_GAME",
     "EVENT_PALMS_ROOM_OPEN",
-    "EVENT_AI_ATTEMPT_SPENT"
+    "EVENT_AI_ATTEMPT_SPENT",
+    "EVENT_PRISM_BUGSY_SHOWN",
+    "EVENT_PRISM_WHITNEY_SHOWN",
 ]
 
 PERSISTENT_GROUP = "__persistent__"
@@ -332,6 +339,11 @@ EXTRA_SEEDS = {
 # comes out UNREF/DEAD, so listing one does not force it live.
 # ---------------------------------------------------------------------------
 NEW_EVENTS = [
+    # 2026-09-23: NORMAL / FLYING / BUG cartridges moved off the Champion onto
+    # Falkner, Bugsy and Whitney (element_prism.asm JohtoPrismEventTable).
+    "EVENT_PRISM_FALKNER_SHOWN",
+    "EVENT_PRISM_BUGSY_SHOWN",
+    "EVENT_PRISM_WHITNEY_SHOWN",
     # Phase 6 Johto gyms. Six per gym, mirroring the Kanto eight: the leader's
     # beat flag, the TM-received flag, and four trainer flags which the
     # def_trainers contract requires to stay consecutive.
@@ -1011,7 +1023,7 @@ def emit(alloc, trainer_blocks, reach_count):
     w("ASSERT EVENT_GRAVEYARD_BASE % 8 == 0")
     w("; ELEMENT PRISM first-time-ever flags must survive the run wipe:")
     w("ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START")
-    w("ASSERT EVENT_PRISM_CHAMPION_SHOWN < RUN_EVENTS_START")
+    w("ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START")
     w("; the whole layout must fit the pinned budget:")
     w("ASSERT EVENT_GRAVEYARD_BASE + %d <= NUM_EVENTS" % gsize)
     w("")
@@ -1066,7 +1078,8 @@ def verify(alloc, trainer_blocks):
         problems.append("RUN_EVENTS_END %d is not byte aligned" % z1e)
     if gbase % 8 != 0 or gbase <= z1e:
         problems.append("graveyard base %d misplaced" % gbase)
-    for name in ("EVENT_PRISM_GYM1_SHOWN", "EVENT_PRISM_CHAMPION_SHOWN"):
+    for name in ("EVENT_PRISM_GYM1_SHOWN", "EVENT_PRISM_FALKNER_SHOWN",
+                 "EVENT_PRISM_BUGSY_SHOWN", "EVENT_PRISM_WHITNEY_SHOWN"):
         if name in layout and bit(name) >= z1s:
             problems.append("%s is inside the run-wiped range" % name)
 

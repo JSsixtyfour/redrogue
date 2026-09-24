@@ -485,7 +485,15 @@ PartyGenBuildSlot:
 ; A pinned species is NOT evolved. Evolving it would defeat the pin, which is
 ; the whole point of BIT_POVR_SPECIES - an author writing PIDGEOT at level 17
 ; means Pidgeot, not "whatever Pidgeot evolves into by then".
-	jr c, .noEvolve
+	jr nc, .poolDrawn
+; The one pin that IS evolved: RIVAL_STARTER_PLACEHOLDER becomes this run's
+; wRivalStarter, promoted by the same rule every authored rival team uses
+; (RivalStarterEvolve), so a spec-built rival keeps his starter as the ace.
+; A no-op for every other pinned species. wCurEnemyLevel is already resolved
+; above, and the pinned-carry is safe on the stack.
+	farcall PatchRivalStarterSpecies
+	jr .noEvolve
+.poolDrawn
 	ld a, [wCurPartySpecies]
 	ld d, a
 	farcall ScaleTrainer_evolution ; d = species in; publishes the promoted one
@@ -659,8 +667,9 @@ PartyGenPoolList:
 ; OUTPUT: carry SET if the freshly drawn wCurPartySpecies passes every filter
 ;         that applies to this slot.
 ;
-; Four filters, cheapest first:
+; Five filters, cheapest first:
 ;   BIT_PSPEC_NO_DUPES     already on the team
+;   BIT_PSPEC_NO_RIVAL_STARTER  the rival's starter species (wRivalStarter)
 ;   BIT_PSPEC_ALLOW_UBER RARITY_TIER_UBER species are excluded unless set, so
 ;                          a pool may list Articuno without a route trainer
 ;                          being handed one
@@ -716,6 +725,23 @@ PartyGenPoolCandidateOk:
 	call PartyGenSpeciesAlreadyUsed
 	jp c, .reject
 .dupesOk
+
+; --- the rival's own starter ---
+; Pools list base forms and wRivalStarter is one of the three offered base
+; starters, so comparing the draw blocks the whole line: Rival3's pool may list
+; CHARMANDER without a Charmeleon ever standing next to his Charizard ace.
+; Exact species only - an EEVEE starter does not block pool eeveelutions.
+	call PartyGenSpecHeader
+	ld bc, 5
+	add hl, bc
+	bit BIT_PSPEC_NO_RIVAL_STARTER, [hl]
+	jr z, .starterOk
+	ld a, [wRivalStarter]
+	ld b, a
+	ld a, [wCurPartySpecies]
+	cp b
+	jr z, .reject
+.starterOk
 
 ; --- legendary ---
 	call PartyGenSpecHeader

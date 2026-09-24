@@ -86,6 +86,18 @@ RogueGymLeaderVictory::
 	; compile-time CheckEvent/SetEvent call sites. This event number is
 	; ~2600+, so it travels in de (a 16-bit add), never a - NUM_EVENTS is
 	; thousands, so it does not fit an 8-bit register or an 8-bit `add a, n`.
+	call RogueGetJohtoPrismIndex   ; a = 0-2 for FALKNER/BUGSY/WHITNEY, carry if one
+	jr nc, .kantoEvent
+	add a
+	ld e, a
+	ld d, 0
+	ld hl, JohtoPrismEventTable
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a                        ; de = this Johto leader's own event number
+	jr .checkEvent
+.kantoEvent
 	ld a, [wGymLeaderNo]
 	dec a
 	ld e, a
@@ -94,6 +106,7 @@ RogueGymLeaderVictory::
 	add hl, de
 	ld d, h
 	ld e, l                        ; de = this leader's event number
+.checkEvent
 	call RoguePrismCheckAndSetEvent ; Z = first time this leader's message fires
 	ret nz
 	call RogueGetGymLeaderType
@@ -101,15 +114,44 @@ RogueGymLeaderVictory::
 
 ; wGymLeaderNo (1-8) -> a = signature type. Order is badge order, matching
 ; the `ld a, $N / ld [wGymLeaderNo], a` in each gym script.
+; Johto leaders reuse wGymLeaderNo 1-8 (Falkner is 1, like Brock), so the
+; three with their own cartridge are told apart by wTrainerClass first;
+; the other five Johto leaders still grant their Kanto counterpart's type.
 RogueGetGymLeaderType:
+	call RogueGetJohtoPrismIndex
+	ld hl, JohtoCartridgeTable
+	jr c, .index
 	ld a, [wGymLeaderNo]
 	dec a
 	ld hl, GymLeaderCartridgeTable
+.index
 	ld e, a
 	ld d, 0
 	add hl, de
 	ld a, [hl]
 	ret
+
+; OUTPUT: carry + a = 0-2 when the beaten leader is FALKNER / BUGSY / WHITNEY
+; (consecutive trainer classes), else no carry. CLOBBERS: af
+RogueGetJohtoPrismIndex:
+	ld a, [wTrainerClass]
+	sub FALKNER
+	cp WHITNEY - FALKNER + 1
+	ret
+	ASSERT BUGSY == FALKNER + 1 && WHITNEY == FALKNER + 2
+
+; The NORMAL / FLYING / BUG trio used to be the Champion's (2026-09-23 moved).
+JohtoCartridgeTable:
+	db FLYING        ; Falkner
+	db BUG           ; Bugsy
+	db NORMAL        ; Whitney
+
+; Separate events, not GYM1-3: Brock and Falkner share wGymLeaderNo 1, so a
+; shared event would silence whichever of the two was beaten second.
+JohtoPrismEventTable:
+	dw EVENT_PRISM_FALKNER_SHOWN
+	dw EVENT_PRISM_BUGSY_SHOWN
+	dw EVENT_PRISM_WHITNEY_SHOWN
 
 GymLeaderCartridgeTable:
 	db ROCK          ; 1 Brock
@@ -175,25 +217,6 @@ RoguePrismGrantAndAnnounce:
 	call RoguePrismGrantCartridge
 	pop af                        ; a = type, restored
 	jp RoguePrismShowCartridgeMessage ; tail call
-
-; Champion covers the three types no gym leader or Elite Four member owns
-; (provisional - if these later get their own owners, drop them from here).
-; One shared event and one combined message, not per-type, since all three
-; are always granted together.
-RogueChampionCartridges::
-	ld de, EVENT_PRISM_CHAMPION_SHOWN
-	call RoguePrismCheckAndSetEvent ; Z = first time; clobbers af/bc/de/hl
-	push af                       ; save the result across the three grants below
-	ld a, NORMAL
-	call RoguePrismGrantCartridge
-	ld a, FLYING
-	call RoguePrismGrantCartridge
-	ld a, BUG
-	call RoguePrismGrantCartridge
-	pop af
-	ret nz                        ; not first time - grants above are idempotent, stay silent
-	ld hl, PrismChampionGrantText
-	jp PrintText
 
 ; ============================================================
 ; RoguePrismCheckAndSetEvent — test-and-set a wEventFlags bit given a
@@ -277,10 +300,6 @@ PrismFirstGrantText:
 
 PrismCartridgeGrantText:
 	text_far _PrismCartridgeGrantText
-	text_end
-
-PrismChampionGrantText:
-	text_far _PrismChampionGrantText
 	text_end
 
 ; ============================================================

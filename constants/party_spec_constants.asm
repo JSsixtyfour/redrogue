@@ -174,6 +174,10 @@ DEF POOL_TABLE_ENTRY_SIZE EQU 5
 	; have quietly let them through wherever an author trusted the name. Use
 	; BIT_POVR_RARITY on a slot, or leave them out of the pool, to control those.
 	const BIT_PSPEC_ALLOW_UBER   ; 2
+	; Reroll a pool draw equal to wRivalStarter. For a rival whose ace is the
+	; RIVAL_STARTER_PLACEHOLDER pin: the pool may then list every starter line
+	; without doubling up on his own. Same bounded retry as NO_DUPES.
+	const BIT_PSPEC_NO_RIVAL_STARTER ; 3
 
 ; --- Slot override flags ---------------------------------------------------
 ; A slot override is `db slot_index, ovr_flags` followed by the optional bytes
