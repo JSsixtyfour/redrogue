@@ -2277,7 +2277,14 @@ wPalletTownCurScript:: db
 wAzaleaGymCurScript:: db
 wBluesHouseCurScript:: db
 wViridianCityCurScript:: db
-	ds 2
+; TURN REWIND rewinds left this run: 2 + its tier, refilled with KO DEFIANCE's
+; charges by ApplyKeyItemTierEffects (engine/events/credit_mart.asm) and seeded
+; on first purchase. Spent by BattleKeyItemGate (battle_menu_extras.asm).
+; Takes the first byte of the `ds 2` that sat here, never appended
+; (project_wram_take_padding_not_append): saved, and zeroed at run boundaries
+; with the rest of wGameProgressFlags. Net WRAM0 cost: 0 bytes.
+wTurnRewindUsages:: db
+	ds 1
 wPewterCityCurScript:: db
 wRoute3CurScript:: db
 wRoute4CurScript:: db

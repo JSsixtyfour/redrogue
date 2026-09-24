@@ -140,7 +140,8 @@ BuildBattleItemList::
 ; PrintBattleItemInfo - the battle ITEM list's description box, redrawn on
 ; every cursor move (PrintBagInfoText, custom_functions/tm_bag.asm, hands off
 ; here while BIT_BATTLE_ITEM_LIST is set). Two lines of description, then a
-; third with the item's remaining uses, dice charges or upgrade tier.
+; third with "Charges: now/max" for the items that have charges (KO DEFIANCE,
+; TURN REWIND and the dice). Tiers are left to the field bag.
 ; The box is taller and wider than the field bag's one-line BAG_INFO_BOX, which it
 ; covers: rows 13-17 are the battle text box, idle while the list is open, and a
 ; full-width line is needed because '#' alone expands to four tiles (POKe).
@@ -196,12 +197,27 @@ PrintBattleItemInfo::
 	call PlaceString
 	pop de
 	ld a, e
-	and a                      ; INFO_NONE
+	and a                      ; INFO_NONE: no charges to show
 	ret z
-	dec a                      ; INFO_TIER
-	jr z, .tier
+	; "Charges: now/max". Every charged key item refills to 1 + its tier
+	; (ApplyKeyItemTierEffects, engine/events/credit_mart.asm, for KO DEFIANCE;
+	; RogueOnBlackout, custom_functions/credit_popup.asm, for the dice).
+	; TURN REWIND alone starts at 2 (wram.asm, wTurnRewindUsages).
+	ld d, e                    ; d = kind; farcall keeps d/e, loses a/b/c/h/l
+	farcall GetKeyItemTierInE  ; reads wCurItem, set above
+	inc e                      ; e = max charges
+	ld a, d
 	dec a                      ; INFO_KO_USES
-	jr z, .koUses
+	jr nz, .notKO
+	ld a, [wKODefianceUsages]
+	jr .printCharges
+.notKO
+	dec a                      ; INFO_REWIND_USES
+	jr nz, .dice
+	inc e
+	ld a, [wTurnRewindUsages]
+	jr .printCharges
+.dice
 	; INFO_DOOR_DICE / _MON_DICE / _ITEM_DICE leave a = 1 / 2 / 3: each die owns
 	; 2 bits of wDiceCharges, DOOR lowest (custom_functions/dice_items.asm)
 	ld b, a
@@ -214,37 +230,32 @@ PrintBattleItemInfo::
 	jr .diceShift
 .gotDice
 	and %11
-	ld de, .ChargesLabel
-	jr .printCount
-.koUses
-	ld a, [wKODefianceUsages]
-	ld de, .UsesLabel
-	jr .printCount
-.tier
-	farcall GetKeyItemTierInE  ; reads wCurItem, set above
-	ld a, e
-	inc a                      ; displayed TIER 1-3, as the field bag shows it
-	ld de, .TierLabel
-.printCount
+.printCharges
+	push de
 	push af
+	ld de, .ChargesLabel
 	hlcoord 1, 16
 	call PlaceString           ; bc = the tile after the label
 	pop af
 	add '0'
 	ld [bc], a
+	inc bc
+	ld a, '/'
+	ld [bc], a
+	inc bc
+	pop de
+	ld a, e
+	add '0'
+	ld [bc], a
 	ret
 
-.TierLabel:
-	db "TIER @"
-.UsesLabel:
-	db "USES LEFT: @"
 .ChargesLabel:
-	db "CHARGES: @"
+	db "Charges: @"
 
 	const_def
 	const INFO_NONE
-	const INFO_TIER
 	const INFO_KO_USES
+	const INFO_REWIND_USES     ; must stay directly before the dice
 	const INFO_DOOR_DICE       ; the three dice must stay in this order and last
 	const INFO_MON_DICE
 	const INFO_ITEM_DICE
@@ -256,21 +267,21 @@ MACRO battle_item_info
 ENDM
 
 BattleItemInfoTable:
-	battle_item_info LEFTOVERS,     INFO_TIER,      .Leftovers
-	battle_item_info PP_TONIC,      INFO_TIER,      .PPTonic
+	battle_item_info LEFTOVERS,     INFO_NONE,      .Leftovers
+	battle_item_info PP_TONIC,      INFO_NONE,      .PPTonic
 	battle_item_info KO_DEFIANCE,   INFO_KO_USES,   .KODefiance
-	battle_item_info EXP_ALL,       INFO_TIER,      .ExpAll
-	battle_item_info SHINY_CHARM,   INFO_TIER,      .ShinyCharm
-	battle_item_info AMULET_COIN,   INFO_TIER,      .AmuletCoin
-	battle_item_info TURN_REWIND,   INFO_NONE,      .TurnRewind
-	battle_item_info RARE_SCOPE,    INFO_TIER,      .RareScope
-	battle_item_info RARE_LENS,     INFO_TIER,      .RareLens
-	battle_item_info DV_BOOSTER,    INFO_TIER,      .DVBooster
-	battle_item_info STAT_BOOSTER,  INFO_TIER,      .StatBooster
+	battle_item_info EXP_ALL,       INFO_NONE,      .ExpAll
+	battle_item_info SHINY_CHARM,   INFO_NONE,      .ShinyCharm
+	battle_item_info AMULET_COIN,   INFO_NONE,      .AmuletCoin
+	battle_item_info TURN_REWIND,   INFO_REWIND_USES, .TurnRewind
+	battle_item_info RARE_SCOPE,    INFO_NONE,      .RareScope
+	battle_item_info RARE_LENS,     INFO_NONE,      .RareLens
+	battle_item_info DV_BOOSTER,    INFO_NONE,      .DVBooster
+	battle_item_info STAT_BOOSTER,  INFO_NONE,      .StatBooster
 	battle_item_info DOOR_DICE,     INFO_DOOR_DICE, .DoorDice
 	battle_item_info MON_DICE,      INFO_MON_DICE,  .MonDice
 	battle_item_info ITEM_DICE,     INFO_ITEM_DICE, .ItemDice
-	battle_item_info ELEMENT_PRISM, INFO_TIER,      .ElementPrism
+	battle_item_info ELEMENT_PRISM, INFO_NONE,      .ElementPrism
 	battle_item_info POKE_FLUTE,    INFO_NONE,      .PokeFlute
 	db $FF
 
@@ -327,10 +338,16 @@ BattleKeyItemGate::
 	ld hl, .AlwaysActiveText
 	jr .print
 .rewind
+	ld a, [wTurnRewindUsages]
+	and a
+	ld hl, .NoRewindsText
+	jr z, .print
 	farcall TurnRewindRestore  ; NZ = restored; flags survive the farcall
-	ld hl, .RewoundText
-	jr nz, .print
 	ld hl, .CantRewindText
+	jr z, .print               ; a refusal costs no charge
+	ld hl, wTurnRewindUsages
+	dec [hl]
+	ld hl, .RewoundText
 .print
 	call PrintText
 	scf
@@ -356,3 +373,159 @@ BattleKeyItemGate::
 	text "Can't rewind"
 	line "right now!"
 	prompt
+
+.NoRewindsText:
+	text "No rewinds left"
+	line "this run!"
+	prompt
+
+; ============================================================
+; Ghost-variant entrance: the mon fades in from nothing, the way the vanilla
+; ghost MAROWAK was revealed. Four Battle Core draw sites hand off here, each by a
+; farcall the same size as the `hlcoord` + `predef` pair it replaced, and each
+; keeps the vanilla draw for any mon that is not a ghost variant.
+;   RogueDrawWildEnemyPic        InitWildBattle: a ghost stays blank for the slide.
+;   RogueWildEnemyGhostEntrance  PrintBeginningBattleText (common_text.asm): the
+;                                fade, before the cry and "Wild X appeared!".
+;   RogueAnimateEnemySendOut     EnemySendOut: a trainer's ghost (none exist yet).
+;   RogueAnimatePlayerSendOut    SendOutMon: the player's own ghost variant.
+; The ghost flag is bit 0 of the struct's catch-rate byte (func_ghost_variant.asm).
+; ============================================================
+RogueDrawWildEnemyPic::
+	ld de, wEnemyMon
+	farcall IsGhostVariant
+	ret nz                     ; ghost: RogueWildEnemyGhostEntrance fades it in
+	hlcoord 12, 0              ; hStartTileID is already 0 here
+	predef_jump CopyUncompressedPicToTilemap
+
+RogueWildEnemyGhostEntrance::
+	ld de, wEnemyMon
+	farcall IsGhostVariant
+	ret z
+	ld e, 1
+	jr RogueGhostFadeIn
+
+RogueAnimateEnemySendOut::
+	ld de, wEnemyMon
+	farcall IsGhostVariant     ; flags survive the farcall; ld keeps them
+	ld e, 1
+	jr nz, RogueGhostFadeIn
+	hlcoord 15, 6              ; the caller set hStartTileID = -$31
+	predef_jump AnimateSendingOutMon
+
+RogueAnimatePlayerSendOut::
+	ld de, wBattleMon
+	farcall IsGhostVariant
+	ld e, 0
+	jr nz, RogueGhostFadeIn
+	hlcoord 4, 11
+	predef_jump AnimateSendingOutMon
+
+; ============================================================
+; RogueGhostFadeIn - ported from the MarowakAnim this tree used to carry
+; (git show c1a0d2f1^:engine/battle/ghost_marowak_anim.asm): its fade-in half
+; and CopyMonPicFromBGToSpriteVRAM, parametrized by side. The pic is shown as a
+; 6x6 grid of OBP1 sprites while rOBP1 ramps from $00 to $e4, then drawn into
+; the tilemap and the sprites cleared. As in the original, the pic's top row and
+; left column get no sprite (6x6 = 36 of the 40 OAM slots); pics rarely use them,
+; and they appear when the tilemap copy lands.
+; INPUT: e = 0 player back pic at (1,5), 1 enemy front pic at (12,0)
+;
+; CGB: UpdateGBCPal_OBP1 fills OBJ palettes 4-7 from base palettes 0-3, and
+; SetPal_Battle puts the player mon's palette in base 2 and the enemy's in base 3,
+; so the sprites use OBJ palette 6 / 7 (attr $16 / $17: OBP1 + that palette) and
+; fade in the same purple the BG pic is drawn in. The original used $14 (OBJ
+; palette 4 = the player's HP bar color).
+; ============================================================
+RogueGhostFadeIn:
+	xor a
+	ldh [rOBP1], a             ; every shade white: the sprites start invisible
+	call UpdateGBCPal_OBP1     ; preserves every register
+	ld a, e
+	and a
+	jr z, .player
+	ld de, vFrontPic
+	ld a, $10
+	ld [wBaseCoordY], a
+	ld a, $70
+	ld [wBaseCoordX], a
+	ld c, $17
+	xor a                      ; vFrontPic's first tile
+	hlcoord 12, 0
+	jr .gotSide
+.player
+	ld de, vBackPic
+	ld a, $38
+	ld [wBaseCoordY], a
+	ld a, $18
+	ld [wBaseCoordX], a
+	ld c, $16
+	ld a, $31                  ; vBackPic's first tile
+	hlcoord 1, 5
+.gotSide
+	; for the tilemap redraw at the end; nothing in between reads it
+	ldh [hStartTileID], a
+	push hl                    ; the pic's tilemap corner, for the clear and redraw
+	push bc                    ; c = OAM attribute
+	ld hl, vSprites
+	lb bc, BANK(@), PIC_SIZE   ; VRAM source: the bank byte only has to be harmless
+	call CopyVideoData
+	pop bc
+	; OAM grid (CopyMonPicFromBGToSpriteVRAM): pic tiles are column-major, 7 per
+	; column; start at column 1 row 1 (tile 8) and skip each column's row 0
+	ld hl, wShadowOAM
+	ld b, 6
+	ld d, $8
+.oamLoop
+	push bc
+	ld a, [wBaseCoordY]
+	ld e, a
+	ld b, 6
+.oamInnerLoop
+	ld a, e
+	add $8
+	ld e, a
+	ld [hli], a
+	ld a, [wBaseCoordX]
+	ld [hli], a
+	ld a, d
+	ld [hli], a
+	ld a, c
+	ld [hli], a
+	inc d
+	dec b
+	jr nz, .oamInnerLoop
+	inc d
+	ld a, [wBaseCoordX]
+	add $8
+	ld [wBaseCoordX], a
+	pop bc
+	dec b
+	jr nz, .oamLoop
+	; clear the BG pic so only the fading sprites show it
+	pop hl
+	push hl
+	lb bc, 7, 7
+	call ClearScreenArea
+	call Delay3
+	ld b, $e4
+.fadeInLoop
+	ld c, 10
+	call DelayFrames
+	ldh a, [rOBP1]
+	srl b
+	rra
+	srl b
+	rra
+	ldh [rOBP1], a
+	call UpdateGBCPal_OBP1
+	ld a, b
+	and a
+	jr nz, .fadeInLoop
+	; the pic back into the tilemap, then drop the sprites
+	pop hl
+	predef CopyUncompressedPicToTilemap
+	xor a
+	ldh [hStartTileID], a
+	call Delay3
+	jp ClearSprites

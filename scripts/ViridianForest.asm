@@ -80,7 +80,6 @@ ViridianForest_ScriptPointers:
 
 ViridianForest_TextPointers:
 	def_text_pointers
-	dw_const ViridianForestNoTurningBackText,   TEXT_VIRIDIANFOREST_NO_TURNING_BACK
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
@@ -94,6 +93,8 @@ ViridianForest_TextPointers:
     dw_const ViridianForestYoungster1Text,      TEXT_VIRIDIANFOREST_YOUNGSTER1
     dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_ANTIDOTE
 	dw_const PickUpItemText,                    TEXT_VIRIDIANFOREST_POTION
+	; script-fired only, past wNumSprites (13):
+	dw_const ViridianForestNoTurningBackText,   TEXT_VIRIDIANFOREST_NO_TURNING_BACK
     dw_const Rogue_ViridianForest_Reward_Text, TEXT_VIRIDIANFOREST_REWARD_VENDOR_1
     EXPORT TEXT_VIRIDIANFOREST_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
     

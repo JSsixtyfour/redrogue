@@ -34,7 +34,8 @@
 
 ; The battle menu's ITEM list offers TURN REWIND whenever it is active; picking
 ; it runs TurnRewindRestore from BattleKeyItemGate
-; (custom_functions/battle_menu_extras.asm), which prints the result.
+; (custom_functions/battle_menu_extras.asm), which prints the result. Each
+; successful rewind spends one of wTurnRewindUsages, 2 + tier per run (ram/wram.asm).
 
 ; ============================================================
 ; TurnRewindInit — call once at battle start (InitBattleCommon,

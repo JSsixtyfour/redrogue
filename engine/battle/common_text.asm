@@ -6,6 +6,8 @@ PrintBeginningBattleText:
 ; unidentified-ghost gimmick - tower encounters now announce themselves like any
 ; other wild battle.
 .notPokemonTower
+	; a ghost variant was left blank for the slide: fade it in before its cry
+	farcall RogueWildEnemyGhostEntrance ; custom_functions/battle_menu_extras.asm
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
 	ld hl, WildMonAppearedText

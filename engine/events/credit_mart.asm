@@ -209,12 +209,19 @@ CreditBuyItem:
 ; no SRAM read needed. RogueOnBlackout (custom_functions/credit_popup.asm)
 ; re-derives the real 1+tier value from sKeyItemTiers on every subsequent
 ; run boundary; this only covers the gap between "just bought this run" and
-; the next blackout. No-op for every other item id.
+; the next blackout. TURN REWIND gets the same treatment with its own count,
+; 2 + tier, so a plain 2. No-op for every other item id.
 ; INPUT: wCurItem = item id just successfully GiveItem'd.
 ; CLOBBERS: af, hl
 ; ============================================================
 InitDiceChargeOnFirstPurchase:
 	ld a, [wCurItem]
+	cp TURN_REWIND
+	jr nz, .notRewind
+	ld a, 2
+	ld [wTurnRewindUsages], a
+	ret
+.notRewind
 	cp DOOR_DICE
 	jr z, .door
 	cp MON_DICE
@@ -588,6 +595,11 @@ ApplyKeyItemTierEffects::
 	call GetKeyItemTier
 	inc a                         ; charges = 1 + tier
 	ld [wKODefianceUsages], a
+
+	ld c, KEY_ITEM_BIT_TURN_REWIND_OWNED / 2
+	call GetKeyItemTier
+	add 2                         ; rewinds = 2 + tier
+	ld [wTurnRewindUsages], a
 
 	ld c, KEY_ITEM_BIT_EXP_ALL_OWNED / 2
 	call GetKeyItemTier

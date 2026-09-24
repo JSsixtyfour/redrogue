@@ -1729,8 +1729,7 @@ EnemySendOutFirstMon:
 	call LoadMonFrontSprite
 	ld a, -$31
 	ldh [hStartTileID], a
-	hlcoord 15, 6
-	predef AnimateSendingOutMon
+	farcall RogueAnimateEnemySendOut ; the grow-in, or a ghost variant's fade-in
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
 	call DrawEnemyHUDAndHPBar
@@ -2148,8 +2147,7 @@ SendOutMon:
 	ldh [hWhoseTurn], a
 	ld a, POOF_ANIM
 	call PlayMoveAnimation
-	hlcoord 4, 11
-	predef AnimateSendingOutMon
+	farcall RogueAnimatePlayerSendOut ; the grow-in, or a ghost variant's fade-in
 	ld a, [wCurPartySpecies]
 	call PlayCry
 	call PrintEmptyString
@@ -8010,8 +8008,9 @@ InitWildBattle:
 	xor a
 	ld [wTrainerClass], a
 	ldh [hStartTileID], a
-	hlcoord 12, 0
-	predef CopyUncompressedPicToTilemap
+	; the pic at (12,0), or nothing yet for a ghost variant, which fades in once
+	; the slide is over (custom_functions/battle_menu_extras.asm)
+	farcall RogueDrawWildEnemyPic
 
 ; common code that executes after init battle code specific to trainer or wild battles
 _InitBattleCommon:

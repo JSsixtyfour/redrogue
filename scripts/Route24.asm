@@ -112,20 +112,24 @@ Route24AfterRocketBattleScript:
 
 Route24_TextPointers:
 	def_text_pointers
-	dw_const Route24CooltrainerM1Text, TEXT_ROUTE24_COOLTRAINER_M1
-	dw_const Route24CooltrainerM2Text, TEXT_ROUTE24_COOLTRAINER_M2
+	; The first 13 entries MUST be the objects' texts in slot order: DisplayTextID
+	; reroutes any id <= wNumSprites through that slot's declared id (the nugget
+	; guy, fired by name, printed the first trainer's line).
 	dw_const Route24CooltrainerM3Text, TEXT_ROUTE24_COOLTRAINER_M3
 	dw_const Route24CooltrainerF1Text, TEXT_ROUTE24_COOLTRAINER_F1
 	dw_const Route24Youngster1Text,    TEXT_ROUTE24_YOUNGSTER1
 	dw_const Route24CooltrainerF2Text, TEXT_ROUTE24_COOLTRAINER_F2
 	dw_const Route24Youngster2Text,    TEXT_ROUTE24_YOUNGSTER2
+	dw_const RandomPickUpItemText,     TEXT_ROUTE24_RANDOM
+	dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_1
+	dw_const Route24_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_2
+	dw_const Route24_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_3
+	dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_TRADE_NPC
 	dw_const PickUpItemText,           TEXT_ROUTE24_TM_THUNDER_WAVE
-    dw_const RandomPickUpItemText,     TEXT_ROUTE24_RANDOM
-    dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_1
-    dw_const Route24_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_2
-    dw_const Route24_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE24_ROGUE_REWARD_POKEBALL_3
-    dw_const Route24_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE24_ROGUE_TRADE_NPC
-    dw_const Rogue_Route24_Reward_Text, TEXT_ROUTE24_REWARD_VENDOR_1
+	dw_const Route24CooltrainerM1Text, TEXT_ROUTE24_COOLTRAINER_M1
+	dw_const Route24CooltrainerM2Text, TEXT_ROUTE24_COOLTRAINER_M2
+	; script-fired only, past wNumSprites:
+	dw_const Rogue_Route24_Reward_Text, TEXT_ROUTE24_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE24_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route24NoTurningBackText, TEXT_ROUTE24_NO_TURNING_BACK
 

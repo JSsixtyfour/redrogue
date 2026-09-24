@@ -28,6 +28,12 @@ PokemonTower7F_Script:
     .normal
     CheckEvent EVENT_ROGUE_POKEMON_OFFERED
     jr nz, .afterRewardCheck
+    ; Wait while a scripted sequence owns input (the beaten rocket's walk to the
+    ; stairs masks the D-pad until HideNPCScript clears it). Offering now opened
+    ; the reward menu with the D-pad masked: the cursor couldn't move.
+    ldh a, [hJoyIgnore]
+    and a
+    jr nz, .afterRewardCheck
     ld a, [wStatusFlags3]
     bit BIT_PRINT_END_BATTLE_TEXT, a
     jr nz, .afterRewardCheck

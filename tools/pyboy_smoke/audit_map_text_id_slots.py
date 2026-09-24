@@ -32,10 +32,9 @@ Usage:
     python3 tools/pyboy_smoke/audit_map_text_id_slots.py [--scope procedural|all]
                                                          [--verbose]
 
-`--scope all` surveys the whole game. It reports the pre-existing cases outside
-the procedural maps but does not fail on them; those are recorded in
-`FOLLOWUPS.md` rather than fixed here, because they are a mod-wide ordering
-convention rather than this change's business.
+`--scope all` checks the whole game and FAILS on any map (2026-09-23: the last
+pre-existing cases outside the procedural maps, SSAnneB1F, Route24 and
+ViridianForest, were fixed, so there is no longer a report-only list).
 
 NEGATIVE CONTROL: move a SCRIPT-FIRED entry (CALMED, say) up into the object
 block and this must name that map and slot. Swapping two of the objects' OWN
@@ -178,7 +177,9 @@ def main() -> int:
                      "slot %d declares %s, so firing %s by name prints %s "
                      "instead" % (slot, declared, victim, declared))
             if victim in fired:
-                (failures if name in PROCEDURAL else survey).append(entry)
+                # Every map fails since 2026-09-23 (the last pre-existing cases,
+                # SSAnneB1F, Route24 and ViridianForest, were fixed).
+                failures.append(entry)
             elif args.verbose:
                 print("  (harmless) %s: %s" % entry)
         if args.verbose:

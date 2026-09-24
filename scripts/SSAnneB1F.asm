@@ -57,6 +57,12 @@ SSAnneB1F_Script:
 	jr z, .afterRewardCheck
 	CheckEvent EVENT_ROGUE_POKEMON_OFFERED
 	jr nz, .afterRewardCheck
+	; Wait while a scripted step owns input: coming back from the rooms lands
+	; on a door tile, and PlayerStepOutFromDoor masks all but A/B until its
+	; simulated step ends. Offering then left the reward cursor frozen.
+	ldh a, [hJoyIgnore]
+	and a
+	jr nz, .afterRewardCheck
 	SetEvent EVENT_ROGUE_POKEMON_OFFERED
 	xor a
 	ldh [hJoyHeld], a
