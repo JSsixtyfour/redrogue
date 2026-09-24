@@ -8,9 +8,7 @@ ROM0
 	org $0018
 	"rst18"	; FarJumpInline, 16 B: also fills the old $20 slot
 	org $0028
-	"rst28"
-	org $0030
-	"rst30"
+	"rst28"	; Predef entry, 16 B: also fills the old $30 slot
 	org $0038
 	"rst38"
 	org $0040

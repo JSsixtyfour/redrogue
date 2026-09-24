@@ -2,9 +2,12 @@ MACRO? predef_id
 	ld a, (\1Predef - PredefPointers) / 3
 ENDM
 
+; Predef's entry is the rst $28 vector (home/header.asm): 3 B per site, not 5.
+DEF RST_PREDEF EQU $28
+
 MACRO? predef
 	predef_id \1
-	call Predef
+	rst RST_PREDEF
 ENDM
 
 MACRO? predef_jump

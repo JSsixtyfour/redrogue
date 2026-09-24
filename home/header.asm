@@ -50,14 +50,22 @@ FarJumpInline::
 	ds $28 - @, 0 ; unused
 
 SECTION "rst28", ROM0[$0028]
-	rst $38
-
-	ds $30 - @, 0 ; unused
-
-SECTION "rst30", ROM0[$0030]
-	rst $38
-
-	ds $38 - @, 0 ; unused
+Predef::
+; Call predefined function a (`predef` = ld a, id / rst Predef: 3 B, not 5).
+; rst pushes the same return address `call` does, so targets see no change.
+; The first 13 bytes of the dispatcher live here in dead vector padding; the
+; rest, and .done, are PredefContinue (home/predef.asm).
+	ld [wPredefID], a ; Save the predef id for GetPredefPointer.
+	; A hack for LoadDestinationWarpPosition.
+	; See LoadTilesetHeader (predef $19).
+	ldh a, [hLoadedROMBank]
+	ld [wPredefParentBank], a
+	push af
+	ld a, BANK(GetPredefPointer)
+	ldh [hLoadedROMBank], a
+	jp PredefContinue
+	ASSERT @ <= $38, "Predef entry overran into the $38 crash trap"
+	ASSERT Predef == RST_PREDEF
 
 SECTION "rst38", ROM0[$0038]
 	rst $38
