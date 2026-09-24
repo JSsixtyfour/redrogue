@@ -162,6 +162,13 @@ GetPocketItemCount::
     xor a
     ret
 
+; GetPocketItemCount for a farcall from another bank: Bankswitch's return path
+; loads a with the CALLER's bank number, so the count comes back in e instead.
+GetPocketItemCountInE::
+    call GetPocketItemCount
+    ld e, a
+    ret
+
 ; ============================================================
 ; BuildXxxPocketList — scan count array + item table, emit entries for
 ; items with count > 0 into the display buffer.

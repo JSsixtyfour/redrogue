@@ -165,7 +165,8 @@ BridgeTryQuickClaw::
 	call GetSpecialFormCaps
 	bit SF_QUICK_CLAW, e
 	jr z, .failed
-	call BattleRandom
+	call Random                 ; HOME; BattleRandom is in another bank, and link
+	                            ; battles (its only reason to exist) bail out above
 	cp 25 percent + 1
 	ret
 .failed

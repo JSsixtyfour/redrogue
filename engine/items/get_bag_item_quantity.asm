@@ -30,11 +30,15 @@ GetQuantityOfItemInBag:
 	ret
 .notKeyPocket
 	; Recovery/Stat/Valuable: quantity is the count from the count array
+; Count comes back in e: a holds the caller's bank after a farcall. This used to
+; read a into c and then `pop bc` over it, so every Recovery/Stat/Valuable item
+; reported the caller's c as its quantity (fixed 2026-09-24).
 	push bc
-	farcall GetPocketItemCount ; a = count (0 if not in any count-array pocket)
-	ld c, a
+	push de
+	farcall GetPocketItemCountInE ; e = count (0 if not in any count-array pocket)
+	ld a, e
+	pop de
 	pop bc
-	ld a, c
 	and a
 	jr nz, .gotCount   ; found in a count array
 	; Uncategorized: scan legacy wBagItems

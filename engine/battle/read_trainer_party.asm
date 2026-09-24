@@ -294,7 +294,8 @@ ReadTrainer:
 	push bc
 	ld a, AMULET_COIN
 	ld [wCurItem], a
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
+	ld a, e                        ; not a: Bankswitch returns the caller's bank in a
 	pop bc
 	and a
 	jr z, .noAmuletCoin

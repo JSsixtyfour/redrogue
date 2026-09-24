@@ -151,7 +151,8 @@ _AddPartyMon::
 	ld a, DV_BOOSTER
 	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte,
 	                               ; ram/wram.asm) - restored below before it escapes
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-4 (1 + displayed tier 0-3)
+	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
+	ld a, e                        ; before pop de; a itself holds the caller's bank
 	pop bc
 	pop de
 	pop hl
@@ -297,9 +298,9 @@ _AddPartyMon::
 	push de
 	ld a, SHINY_CHARM
 	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte)
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-4 (1 + displayed tier 0-3)
+	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier);
+	                               ; a holds the caller's bank, never read it here
 	ld hl, .ShinyThresholdTable
-	ld e, a
 	ld d, 0
 	add hl, de
 	ld d, [hl]                     ; d = threshold (1/2/4/8/16); Random preserves de

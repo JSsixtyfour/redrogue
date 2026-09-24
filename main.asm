@@ -747,6 +747,9 @@ INCLUDE "custom_functions/func_ghost_variant.asm"
 INCLUDE "custom_functions/func_fusion.asm"
 INCLUDE "custom_functions/func_special_form.asm"
 INCLUDE "custom_functions/func_shiny.asm"
+; "rogue" ENDS HERE. procedural_cave_gen.asm and most files below open their own
+; SECTION, so everything from here down floats to other banks: a plain call between
+; a file above this line and one below it is a cross-bank bug waiting on layout.
 INCLUDE "custom_functions/procedural_cave_gen.asm"
 INCLUDE "custom_functions/procedural_cemetery_gen.asm"
 INCLUDE "custom_functions/procedural_forest_gen.asm"

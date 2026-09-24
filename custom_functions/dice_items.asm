@@ -52,13 +52,12 @@ RogueItemUseDoorDice::
 ; must show the door's OWN fresh layout/boss, not whatever cave/forest was staged for
 ; the PREVIOUS assignment (or nothing, on a fresh save).
 ;
-; TRAP for the next editor: this is a plain `call`, not a `farcall`, and that is only
-; correct because dice_items.asm and procedural_stage_hooks.asm are both INCLUDEd into
-; the same "rogue" ROMX SECTION (main.asm). If ProcPreloadAssignedWildArea (or this file)
-; is ever moved to a different bank, this must become a farcall or it will silently jump
-; into whatever happens to be mapped in this bank slot at the time.
+; farcall, not call: procedural_stage_hooks.asm opens its own SECTION "ProcStageHooks",
+; so despite being INCLUDEd under "rogue" in main.asm it floats to another bank. This
+; used to be a plain call on the belief the two shared a SECTION, and it jumped into
+; whatever was mapped at that address in this bank (fixed 2026-09-24).
 	call SelectAndPatchLobbyExit
-	call ProcPreloadAssignedWildArea
+	farcall ProcPreloadAssignedWildArea
 	ld hl, DoorDiceRerolledText
 	call PrintText
 	ret

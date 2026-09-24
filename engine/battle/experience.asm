@@ -17,7 +17,8 @@ GainExperience:
 ; pass. See KEY_ITEM_EFFECTS_PLAN_PC.md §3e.
 	ld a, STAT_BOOSTER
 	ld [wCurItem], a
-	farcall GetKeyItemPower        ; a = 0 (not active) or 1-3 (displayed tier)
+	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
+	ld a, e                        ; not a: Bankswitch returns the caller's bank in a
 	inc a
 	ld [wStatExpPasses], a
 

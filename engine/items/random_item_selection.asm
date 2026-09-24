@@ -90,13 +90,16 @@ ld b, a
 ; mon side, so a flat bonus calibrated for one threshold would make the other
 ; threshold's pokeball tier unreachable (exactly what the witch-prize +51 a few
 ; lines above does to THIS threshold). This table is scaled to item_pokeball_odds
-; instead - see KEY_ITEM_EFFECTS_PLAN_PC.md §3c. GetKeyItemPower clobbers bc, so
-; b (the roll accumulator) is saved across it. This file and key_item_pocket.asm
-; are both in SECTION "rogue", so a plain call reaches it, no farcall needed.
+; instead - see KEY_ITEM_EFFECTS_PLAN_PC.md §3c. farcall clobbers bc, so b (the
+; roll accumulator) is saved across it. This file is NOT in SECTION "rogue" with
+; key_item_pocket.asm: relocated_home.asm, INCLUDEd just above it in main.asm,
+; opens its own SECTION, so this lands in a different bank. It used to be a plain
+; call, which ran whatever was mapped at that address here (fixed 2026-09-24).
 push bc
 ld a, RARE_LENS
 ld [wCurItem], a
-call GetKeyItemPower           ; a = 0 (not active) or 1-3 (displayed tier)
+farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
+ld a, e                        ; not a: Bankswitch returns the caller's bank in a
 pop bc
 and a
 jr z, .no_overflow

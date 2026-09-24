@@ -241,6 +241,14 @@ GetKeyItemPower::
     xor a
     ret
 
+; GetKeyItemPower for a farcall from another bank: Bankswitch's return path
+; loads a with the CALLER's bank number, so a farcaller reading a saw its own
+; bank as the power (always "active", garbage tier). e survives Bankswitch.
+GetKeyItemPowerInE::
+    call GetKeyItemPower
+    ld e, a
+    ret
+
 ; ============================================================
 ; OwnKeyItem — grant wCurItem. Sets own bit always.
 ; Also sets active bit if fewer than KEY_ITEM_MAX_ACTIVE items active.
