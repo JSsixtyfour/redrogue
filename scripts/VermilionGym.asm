@@ -117,7 +117,7 @@ VermilionGymTrainerHeader0:
 VermilionGymTrainerHeader1:
 	trainer EVENT_BEAT_VERMILION_GYM_TRAINER_1, 5, VermilionGymSuperNerdBattleText, VermilionGymSuperNerdEndBattleText, VermilionGymSuperNerdAfterBattleText
 VermilionGymTrainerHeader2:
-    trainer EVENT_BEAT_VERMILION_GYM_TRAINER_2, 2, VermilionGymGentlemanBattleText, VermilionGymGentlemanEndBattleText, VermilionGymGentlemanAfterBattleText
+    trainer EVENT_BEAT_VERMILION_GYM_TRAINER_2, 3, VermilionGymGentlemanBattleText, VermilionGymGentlemanEndBattleText, VermilionGymGentlemanAfterBattleText
 VermilionGymTrainerHeader3:
 	trainer EVENT_BEAT_VERMILION_GYM_TRAINER_3, 1, VermilionGymSailorBattleText, VermilionGymSailorEndBattleText, VermilionGymSailorAfterBattleText
 	db -1 ; end
