@@ -1,8 +1,8 @@
 LoadFontTilePatterns::
-	farjp LoadFontTilePatterns_
+	rfarjp LoadFontTilePatterns_
 
 LoadTextBoxTilePatterns::
-	farjp LoadTextBoxTilePatterns_
+	rfarjp LoadTextBoxTilePatterns_
 
 LoadHpBarAndStatusTilePatterns::
-	farjp LoadHpBarAndStatusTilePatterns_
+	rfarjp LoadHpBarAndStatusTilePatterns_

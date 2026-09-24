@@ -1,4 +1,12 @@
-; rst vectors (unused)
+; rst vectors
+;
+; $00 and $38 stay crash traps (a jump to NULL or into $FF padding lands on
+; one). $08 and $18 hold the inline far call/jump used by `rfarcall`/`rfarjp`
+; (macros/farcall.asm): 4 bytes per site instead of 8, with the routine itself
+; living in padding that used to be dead, so it costs HOME nothing. Both end in
+; the real Bankswitch, so the target sees exactly what `farcall` gives it
+; (a = b = bank, hl = target, de and flags passed through) and returns hl/de/
+; flags the same way.
 
 SECTION "rst0", ROM0[$0000]
 	rst $38
@@ -6,22 +14,38 @@ SECTION "rst0", ROM0[$0000]
 	ds $08 - @, 0 ; unused
 
 SECTION "rst8", ROM0[$0008]
-	rst $38
-
-	ds $10 - @, 0 ; unused
-
-SECTION "rst10", ROM0[$0010]
-	rst $38
+FarCallInline::
+; rst FarCallInline / dba Target: call Target in its bank, return past the dba.
+	pop hl        ; hl -> inline dba (bank, low, high)
+	ld a, [hli]
+	ld b, a
+	ld a, [hli]
+	ld c, a
+	ld a, [hli]
+	push hl       ; resume after the 3 data bytes
+	ld h, a
+	ld l, c
+	jp Bankswitch
+	ASSERT @ <= $18, "FarCallInline overran into the $18 vector"
 
 	ds $18 - @, 0 ; unused
 
 SECTION "rst18", ROM0[$0018]
-	rst $38
-
-	ds $20 - @, 0 ; unused
-
-SECTION "rst20", ROM0[$0020]
-	rst $38
+FarJumpInline::
+; rst FarJumpInline / dba Target: tail-jump to Target in its bank. The inline
+; return address is dropped, so Target returns straight to our caller's
+; caller - exactly `farjp`, with no extra stack depth.
+	pop hl        ; hl -> inline dba (bank, low, high)
+	ld a, [hli]
+	ld b, a
+	ld a, [hli]
+	ld c, a
+	ld a, [hl]
+	ld h, a
+	ld l, c
+	jp Bankswitch
+	ASSERT @ <= $28, "FarJumpInline overran into the $28 vector"
+	ASSERT FarCallInline == RST_FARCALL && FarJumpInline == RST_FARJUMP
 
 	ds $28 - @, 0 ; unused
 

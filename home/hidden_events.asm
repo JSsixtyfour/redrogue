@@ -1,5 +1,5 @@
 UpdateCinnabarGymGateTileBlocks::
-	farjp UpdateCinnabarGymGateTileBlocks_
+	rfarjp UpdateCinnabarGymGateTileBlocks_
 
 CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 	ldh a, [hLoadedROMBank]
@@ -25,7 +25,7 @@ CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 	xor a
 	jr .done
 .hiddenEventNotFound
-	farcall PrintBookshelfText
+	rfarcall PrintBookshelfText
 	ldh a, [hInteractedWithBookshelf]
 	and a
 	jr z, .done

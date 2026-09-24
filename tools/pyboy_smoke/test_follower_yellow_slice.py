@@ -326,7 +326,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_yellow_interaction_scans_slot15_without_changing_collision_count(self):
         self.assertRegex(
             self.home,
-            r"(?ms)FollowerInteraction::\s+farjp FollowerFindInteraction",
+            # r?farjp: HOME uses the rst-vector rfarjp (same contract, 4 B).
+            r"(?ms)FollowerInteraction::\s+r?farjp FollowerFindInteraction",
         )
         self.assertIn("call FollowerInteraction", self.overworld)
         interaction = self.core.split("FollowerFindInteraction::", 1)[1].split(
@@ -469,7 +470,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertNotIn("FollowerApplyCameraScroll", before_scroll)
         self.assertRegex(
             scroll,
-            r"(?ms)\.done\s+.*?ld d, b\s+ld e, c\s+farcall FollowerApplyCameraScroll",
+            # r?farcall: HOME uses the rst-vector rfarcall (same contract, 4 B).
+            r"(?ms)\.done\s+.*?ld d, b\s+ld e, c\s+r?farcall FollowerApplyCameraScroll",
         )
 
     def test_loader_forces_reserved_base_two_for_slot15(self):

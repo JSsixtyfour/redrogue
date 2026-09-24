@@ -1,19 +1,19 @@
 ; These routines manage gradual fading
 ; (e.g., entering a doorway)
 LoadGBPal::
-	farjp LoadGBPal_
+	rfarjp LoadGBPal_
 
 GBFadeInFromBlack::
-	farjp GBFadeInFromBlack_
+	rfarjp GBFadeInFromBlack_
 
 GBFadeOutToWhite::
-	farjp GBFadeOutToWhite_
+	rfarjp GBFadeOutToWhite_
 
 GBFadeOutToBlack::
-	farjp GBFadeOutToBlack_
+	rfarjp GBFadeOutToBlack_
 
 GBFadeInFromWhite::
-	farjp GBFadeInFromWhite_
+	rfarjp GBFadeInFromWhite_
 
 FadePal1:: dc 3,3,3,3, 3,3,3,3, 3,3,3,3
 FadePal2:: dc 3,3,3,2, 3,3,3,2, 3,3,2,0

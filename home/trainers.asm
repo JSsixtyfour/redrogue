@@ -217,7 +217,7 @@ EndTrainerBattle::
 	;
 	; POKEMON_TOWER_7F moved in there too: its two scripts call
 	; EndTrainerBattle manually after wIsTrainerBattle has been unset.
-	farcall StageEventKeepSpriteOnDefeat
+	rfarcall StageEventKeepSpriteOnDefeat
 	jr c, .skipRemoveSprite
 .removeSprite
 	ld hl, wToggleableObjectList
@@ -249,7 +249,7 @@ EndTrainerBattleWhiteout::
 
 ; calls TrainerWalkUpToPlayer
 TrainerWalkUpToPlayer_Bank0::
-	farjp TrainerWalkUpToPlayer
+	rfarjp TrainerWalkUpToPlayer
 
 ; sets opponent type and mon set/lvl based on the engaging trainer data
 InitBattleEnemyParameters::
@@ -406,14 +406,14 @@ PrintEndBattleText::
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
 	push hl
-	farcall SaveTrainerName
+	rfarcall SaveTrainerName
 	ld hl, TrainerEndBattleText
 	call PrintText
 	pop hl
 	pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
-	farcall SetEnemyTrainerToStayAndFaceAnyDirection
+	rfarcall SetEnemyTrainerToStayAndFaceAnyDirection
 	jp WaitForSoundToFinish
 
 GetSavedEndBattleTextPointer::

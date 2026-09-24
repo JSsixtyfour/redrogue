@@ -1,7 +1,7 @@
 HandleMidJump::
 ; Handle the player jumping down
 ; a ledge in the overworld.
-	farjp _HandleMidJump
+	rfarjp _HandleMidJump
 
 EnterMap::
 ; Load a new map.
@@ -10,7 +10,7 @@ EnterMap::
 	;call LoadMapData
 	;farcall ClearVariablesOnEnterMap
     ;GBCNote - flipping these so the enhanced gbc colors load from main menu
-	callfar ClearVariablesOnEnterMap
+	rfarcall ClearVariablesOnEnterMap
 	call LoadMapData
 	ld hl, wStatusFlags2
 	bit BIT_WILD_ENCOUNTER_COOLDOWN, [hl]
@@ -28,10 +28,10 @@ EnterMap::
 	and (1 << BIT_FLY_WARP) | (1 << BIT_DUNGEON_WARP)
 	jr z, .didNotEnterUsingFlyWarpOrDungeonWarp
 	res BIT_FLY_WARP, [hl]
-	farcall EnterMapAnim
+	rfarcall EnterMapAnim
 	call UpdateSprites
 .didNotEnterUsingFlyWarpOrDungeonWarp
-	farcall CheckForceBikeOrSurf ; handle currents in SF islands and forced bike riding in cycling road
+	rfarcall CheckForceBikeOrSurf ; handle currents in SF islands and forced bike riding in cycling road
 	ld hl, wStatusFlags3
 	res BIT_NO_NPC_FACE_PLAYER, [hl]
 	call UpdateSprites
@@ -60,7 +60,7 @@ OverworldLoopLessDelay::
 	and a
 	jp nz, .moveAhead ; if the player sprite has not yet completed the walking animation
 	call JoypadOverworld ; get joypad state (which is possibly simulated)
-	farcall SafariZoneCheck
+	rfarcall SafariZoneCheck
 	ld a, [wSafariZoneGameOver]
 	and a
 	jp nz, WarpFound2
@@ -142,7 +142,7 @@ OverworldLoopLessDelay::
 .noDirectionButtonsPressed
 	ld hl, wMiscFlags
 	res BIT_TURNING, [hl]
-	farcall SwitchRunningToWalkingSprites
+	rfarcall SwitchRunningToWalkingSprites
 	call UpdateSprites
 	ld a, 1
 	ld [wCheckFor180DegreeTurn], a
@@ -299,21 +299,21 @@ OverworldLoopLessDelay::
 	ld [wWalkCounter], a
 	; Yellow Func_fcc08 seam: enqueue only after land/water collision accepted
 	; this tile step. The follower routine itself limits this to the two maps.
-	farcall FollowerQueuePlayerStep
+	rfarcall FollowerQueuePlayerStep
 	jr .moveAhead2
 
 .moveAhead
 	ld a, [wMovementFlags]
 	bit BIT_SPINNING, a
 	jr z, .noSpinning
-	farcall LoadSpinnerArrowTiles
+	rfarcall LoadSpinnerArrowTiles
 .noSpinning
 	call UpdateSprites
 
 .moveAhead2
 	ld hl, wMiscFlags
 	res BIT_TURNING, [hl]
-	farcall HandlePlayerRunning
+	rfarcall HandlePlayerRunning
 .normalPlayerSpriteAdvancement
 	call AdvancePlayerSprite
 	ld a, [wWalkCounter]
@@ -337,7 +337,7 @@ OverworldLoopLessDelay::
 .doneStepCounting
 	CheckEvent EVENT_IN_SAFARI_ZONE
 	jr z, .notSafariZone
-	farcall SafariZoneCheckSteps
+	rfarcall SafariZoneCheckSteps
 	ld a, [wSafariZoneGameOver]
 	and a
 	jp nz, WarpFound2
@@ -374,7 +374,7 @@ OverworldLoopLessDelay::
 	ldh a, [hCurMap]
 	cp OAKS_LAB
 	jp z, .noFaintCheck ; no blacking out if the player lost to the rival in Oak's lab
-	callfar AnyPartyAlive
+	rfarcall AnyPartyAlive
 	ld a, d
 	and a
 	jr z, .allPokemonFainted
@@ -399,7 +399,7 @@ NewBattle::
 	ld a, [wStatusFlags4]
 	bit BIT_NO_BATTLES, a
 	jr nz, .noBattle
-	farjp InitBattle
+	rfarjp InitBattle
 .noBattle
 	and a
 	ret
@@ -430,7 +430,7 @@ CheckWarpsNoCollisionLoop::
 	push bc
 	ld hl, wMovementFlags
 	set BIT_STANDING_ON_WARP, [hl]
-	farcall IsPlayerStandingOnDoorTileOrWarpTile
+	rfarcall IsPlayerStandingOnDoorTileOrWarpTile
 	pop bc
 	pop hl
 	jr c, WarpFound1 ; jump if standing on door or warp
@@ -568,7 +568,7 @@ WarpFound2::
 	; Size-neutral Yellow transition seam. This moved the existing indoor
 	; warp-pad farcall before the source-map split; the banked wrapper selects
 	; the matching Yellow spawn policy and then runs the original detector.
-	farcall FollowerSetWarpSpawnStateAndCheck
+	rfarcall FollowerSetWarpSpawnStateAndCheck
 	call CheckIfInOutsideMap
 	jr nz, .indoorMaps
 ; this is for handling "outside" maps that can't have the 0xFF destination map
@@ -787,7 +787,7 @@ CheckMapConnections::
 ; x#SPRITESTATEDATA2_IMAGEBASEOFFSET without loading any tile patterns.
 	; Size-neutral Yellow connected-map seam. The banked tail wrapper sets
 	; spawn state 2, then reaches the same InitMapSprites routine.
-	farcall FollowerInitConnectedMapSprites
+	rfarcall FollowerInitConnectedMapSprites
 	call LoadTileBlockMap
 	jp OverworldLoopLessDelay
 
@@ -866,7 +866,7 @@ MapEntryAfterBattle::
 	; The banked wrapper prepares the active follower, then preserves the
 	; original DelayFrame and IsPlayerStandingOnWarp call order without growing
 	; this now-full HOME section.
-	farcall FollowerPrepareAfterBattleAndCheckWarp
+	rfarcall FollowerPrepareAfterBattleAndCheckWarp
 	ld a, [wMapPalOffset]
 	and a
 	jp z, GBFadeInFromWhite
@@ -925,7 +925,7 @@ HandleFlyWarpOrDungeonWarp::
 	jp SpecialEnterMap
 
 LeaveMapAnim::
-	farjp _LeaveMapAnim
+	rfarjp _LeaveMapAnim
 
 LoadPlayerSpriteGraphics::
 ; Load walking or bicycle graphics; retire legacy surfing state.
@@ -1400,7 +1400,7 @@ CheckForJumpingAndTilePairCollisions::
 	predef GetTileAndCoordsInFrontOfPlayer
 	push de
 	push bc
-	farcall HandleLedges ; check if the player is trying to jump a ledge
+	rfarcall HandleLedges ; check if the player is trying to jump a ledge
 	pop bc
 	pop de
 	pop hl
@@ -1596,7 +1596,7 @@ LoadCurrentMapView::
 	ld a, [wOptions2]
 	bit BIT_ENHANCED_COLORS, a
 	ret z
-	callfar MakeOverworldBGMapAttributes	
+	rfarcall MakeOverworldBGMapAttributes	
 	ret
 
 AdvancePlayerSprite::
@@ -1816,7 +1816,7 @@ AdvancePlayerSprite::
 	push de
 	ld d, b
 	ld e, c
-	farcall FollowerApplyCameraScroll
+	rfarcall FollowerApplyCameraScroll
 	pop de
 	pop bc
 	ret
@@ -2144,11 +2144,11 @@ RunMapScript::
 	push hl
 	push de
 	push bc
-	farcall TryPushingBoulder
+	rfarcall TryPushingBoulder
 	ld a, [wMiscFlags]
 	bit BIT_BOULDER_DUST, a
 	jr z, .afterBoulderEffect
-	farcall DoBoulderDustAnimation
+	rfarcall DoBoulderDustAnimation
 .afterBoulderEffect
 	pop bc
 	pop de
@@ -2173,7 +2173,7 @@ LoadWalkingPlayerSpriteGraphics::
 ; LoadPlayerSpriteGraphicsCommon below needs no change and this costs HOME only
 ; the 5 bytes farcall adds over `ld de, RedSprite`.
 ; farcall clobbers a and bc; neither is live across this point.
-	farcall GetPlayerWalkSprite ; -> de = sprite gfx
+	rfarcall GetPlayerWalkSprite ; -> de = sprite gfx
 	ld hl, vNPCSprites
 	jr LoadPlayerSpriteGraphicsCommon
 
@@ -2205,7 +2205,7 @@ LoadPlayerSpriteGraphicsCommon::
 
 ; function to load data from the map header
 LoadMapHeader::
-	farcall MarkTownVisitedAndLoadToggleableObjects
+	rfarcall MarkTownVisitedAndLoadToggleableObjects
 	ld a, [wCurMapTileset]
 	ldh a, [hCurMap]
 	call SwitchToMapRomBank
@@ -2451,7 +2451,7 @@ LoadMapHeader::
 	jp nz, .loadSpriteLoop
 .finishUp
 	predef LoadTilesetHeader
-	callfar LoadWildData
+	rfarcall LoadWildData
 	pop hl ; restore hl from before going to the warp/sign/sprite data (this value was saved for seemingly no purpose)
 	ld a, [wCurMapHeight] ; map height in 4x4 tile blocks
 	add a ; double it
@@ -2538,13 +2538,13 @@ LoadMapData::
 	; (ProcBossPatchStageSprite) to relieve ROM0/HOME; must run before
 	; InitMapSprites. It chains MiniBossPatchStageSprite as its first step, so this
 	; single farcall covers both the mini-boss and procedural boss sprite repoints.
-	farcall ProcBossPatchStageSprite
-	farcall InitMapSprites ; load tile pattern data for sprites
+	rfarcall ProcBossPatchStageSprite
+	rfarcall InitMapSprites ; load tile pattern data for sprites
 	call LoadTileBlockMap
 	; Procedural preload (PALLET_TOWN) + per-map finalize dispatch — moved to ROMX
 	; (ProcStageLoadDispatch) to relieve ROM0/HOME. Runs after LoadTileBlockMap,
 	; before LoadTilesetTilePatternData, including all four procedural Wild Areas.
-	farcall ProcStageLoadDispatch
+	rfarcall ProcStageLoadDispatch
 	call LoadTilesetTilePatternData
 	call LoadCurrentMapView
 ; copy current map view to VRAM

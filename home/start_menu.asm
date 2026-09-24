@@ -8,8 +8,8 @@ DisplayStartMenu::
 	call PlaySound
 
 RedisplayStartMenu::
-	farcall DrawStartMenu
-	farcall PrintSafariZoneSteps ; print Safari Zone info, if in Safari Zone
+	rfarcall DrawStartMenu
+	rfarcall PrintSafariZoneSteps ; print Safari Zone info, if in Safari Zone
     
     ;GBCNote - if using enhanced GBC color, add some extra delay
 	ld a, [wOptions2]

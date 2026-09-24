@@ -225,7 +225,7 @@ Serial_ExchangeLinkMenuSelection::
 
 Serial_PrintWaitingTextAndSyncAndExchangeNybble::
 	call SaveScreenTilesToBuffer1
-	callfar PrintWaitingText
+	rfarcall PrintWaitingText
 	call Serial_SyncAndExchangeNybble
 	jp LoadScreenTilesFromBuffer1
 

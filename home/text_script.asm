@@ -4,7 +4,7 @@ DisplayTextID::
 	ASSERT hSpriteIndex == hTextID ; these are at the same memory location
 	ldh a, [hLoadedROMBank]
 	push af
-	farcall DisplayTextIDInit ; initialization
+	rfarcall DisplayTextIDInit ; initialization
 	ld hl, wTextPredefFlag
 	bit BIT_TEXT_PREDEF, [hl]
 	res BIT_TEXT_PREDEF, [hl]
@@ -126,7 +126,7 @@ CloseTextDisplay::
 	xor a
 	ldh [hAutoBGTransferEnabled], a ; disable continuous WRAM to VRAM transfer each V-blank
 	call LoadCurrentMapView
-	farcall MakeAndTransferOverworldBGMapAttributes_CloseText
+	rfarcall MakeAndTransferOverworldBGMapAttributes_CloseText
 	ld a, $90
 	ldh [hWY], a ; move the window off the screen
 	call DelayFrame
@@ -203,7 +203,7 @@ DisplayPokemonCenterDialogue::
 	jp AfterDisplayingTextID
 
 DisplaySafariGameOverText::
-	callfar PrintSafariGameOverText
+	rfarcall PrintSafariGameOverText
 	jp AfterDisplayingTextID
 
 DisplayPokemonFaintedText::

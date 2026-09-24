@@ -81,7 +81,7 @@ DrawHPBar::
 ; wLoadedMon = base address of pokemon data
 ; wMonHeader = base address of base stats
 LoadMonData::
-	jpfar LoadMonData_
+	rfarjp LoadMonData_
 
 OverwritewMoves::
 ; Write c to [wMoves + b]. Unused.
@@ -281,7 +281,7 @@ HandlePartyMenuInput::
 	bit B_PAD_B, b
 	jr z, .handleSwap ; if not, handle swapping the pokemon
 .cancelSwap ; if the B button was pressed
-	farcall ErasePartyMenuCursors
+	rfarcall ErasePartyMenuCursors
 	xor a
 	ld [wMenuItemToSwap], a
 	ld [wPartyMenuTypeOrMessageID], a
@@ -290,7 +290,7 @@ HandlePartyMenuInput::
 .handleSwap
 	ldh a, [hCurrentMenuItem]
 	ldh [hWhichPokemon], a
-	farcall SwitchPartyMon
+	rfarcall SwitchPartyMon
 	jr HandlePartyMenuInput
 
 DrawPartyMenu::

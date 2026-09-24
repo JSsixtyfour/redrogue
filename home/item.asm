@@ -8,7 +8,7 @@
 ; 01: successful
 ; 02: not able to be used right now, no extra menu displayed (only certain items use this)
 UseItem::
-	farjp UseItem_
+	rfarjp UseItem_
 
 ; confirms the item toss and then tosses the item
 ; INPUT:
@@ -42,7 +42,7 @@ IsKeyItem::
 	push hl
 	push de
 	push bc
-	farcall IsKeyItem_
+	rfarcall IsKeyItem_
 	pop bc
 	pop de
 	pop hl

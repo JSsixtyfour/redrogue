@@ -45,10 +45,10 @@ RunNPCMovementScript::
 ; movement routines were removed. Slot 1 now owns the complete intro escort.
 	dw SaffronPalmMovementScriptPointerTable
 .playerStepOutFromDoor
-	farjp PlayerStepOutFromDoor
+	rfarjp PlayerStepOutFromDoor
 
 EndNPCMovementScript::
-	farjp _EndNPCMovementScript
+	rfarjp _EndNPCMovementScript
 
 DebugPressedOrHeldB:: ; dummy except in _DEBUG
 ; This is used to skip Trainer battles, the

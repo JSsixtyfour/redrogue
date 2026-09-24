@@ -1,2 +1,2 @@
 ResetPlayerSpriteData::
-	farjp ResetPlayerSpriteData_
+	rfarjp ResetPlayerSpriteData_

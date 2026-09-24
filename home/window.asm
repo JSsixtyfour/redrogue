@@ -21,7 +21,7 @@ HandleMenuInput_::
 	ld a, [wPartyMenuAnimMonEnabled]
 	and a ; is it a pokemon selection menu?
 	jr z, .getJoypadState
-	farcall AnimatePartyMon ; shake mini sprite of selected pokemon
+	rfarcall AnimatePartyMon ; shake mini sprite of selected pokemon
 .getJoypadState
 	pop hl
 	call JoypadLowSensitivity
@@ -60,7 +60,7 @@ HandleMenuInput_::
 	dec a
 	ldh [hCurrentMenuItem], a ; move selected menu item up one space
     push bc
-	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
+	rfarcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
 	pop bc
 	jr .checkOtherKeys
 .alreadyAtTop
@@ -89,7 +89,7 @@ HandleMenuInput_::
 	ld a, c
 	ldh [hCurrentMenuItem], a
     push bc
-	farcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
+	rfarcall PrintBagInfoText ; in ROMX; marcelnote - for bag pockets and TM printing
 	pop bc
 .checkOtherKeys
 	ld a, [wMenuWatchedKeys]

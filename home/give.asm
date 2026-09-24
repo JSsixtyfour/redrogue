@@ -7,17 +7,17 @@ GiveItem::
 	ld [wNamedObjectIndex], a
 	ld [wCurItem], a
 	push bc
-	farcall IsTMHMItem     ; reads wCurItem (farcall clobbers b)
+	rfarcall IsTMHMItem     ; reads wCurItem (farcall clobbers b)
 	pop bc
 	jr nc, .notTMHM
-	farcall AcquireTMHM
+	rfarcall AcquireTMHM
 	jr .getName
 .notTMHM
 	push bc
-	farcall IsKeyPocketItem
+	rfarcall IsKeyPocketItem
 	pop bc
 	jr nc, .notKeyPocketItem
-	farcall AcquireKeyPocketItem
+	rfarcall AcquireKeyPocketItem
 	; hSpriteOffset: 0=equipped, $FF=carry full (sent to PC)
 	ldh a, [hSpriteOffset]
 	and a
@@ -27,11 +27,11 @@ GiveItem::
 	ld a, c
 	ld [wItemQuantity], a  ; save qty before farcalls clobber c
 	; Each GiveXxxItem self-scans its table using wCurItem, returns carry set if matched.
-	farcall GiveRecoveryItem
+	rfarcall GiveRecoveryItem
 	jr c, .getName
-	farcall GiveStatItem
+	rfarcall GiveStatItem
 	jr c, .getName
-	farcall GiveValuableItem
+	rfarcall GiveValuableItem
 	jr c, .getName
 	; Uncategorized — legacy wBagItems (should be empty in normal play)
 	ld hl, wNumBagItems
@@ -59,4 +59,4 @@ GivePokemon::
 	ld [wCurEnemyLevel], a
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
-	farjp _GivePokemon
+	rfarjp _GivePokemon

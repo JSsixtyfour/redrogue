@@ -536,7 +536,7 @@ TextCommand_SOUND::
 	cp BANK(Audio2_PlaySound)
 	jr nz, .notKeyItem
 	push de ; de = text destination; farcall and the helper both clobber it
-	farcall Music_GetKeyItemInBattle
+	rfarcall Music_GetKeyItemInBattle
 	pop de
 	jr .soundDone
 .notKeyItem

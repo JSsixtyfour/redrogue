@@ -18,7 +18,7 @@ DisplayListMenuID::
 	cp PRICEDITEMLISTMENU
 	jr nz, .skipBagInfo
 .doPrintBagInfo
-    farcall PrintBagInfoText ; in ROMX
+    rfarcall PrintBagInfoText ; in ROMX
 .skipBagInfo
 	ld a, $01 ; hardcoded bank
 	jr .bankswitch
@@ -95,7 +95,7 @@ DisplayListMenuIDLoop::
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jr nz, .skipBagInfoLoop
-    farcall PrintBagInfoText ; in ROMX
+    rfarcall PrintBagInfoText ; in ROMX
 .skipBagInfoLoop
 	call HandleMenuInput
 	push af
@@ -239,7 +239,7 @@ DisplayListMenuIDLoop::
 	cp PRICEDITEMLISTMENU
 	ret nz
 .doRefresh
-	farcall PrintBagInfoText
+	rfarcall PrintBagInfoText
 	ret
 ; marcelnote - new for bag pockets; 5 pockets cycle in ROMX (PocketSwitchROMX)
 ; to keep this HOME-bank stub small. d = direction (1 = forward/RIGHT,
@@ -253,7 +253,7 @@ DisplayListMenuIDLoop::
 .switchPocketBackward
 	ld d, 0
 .doPocketSwitch
-	farcall PocketSwitchROMX
+	rfarcall PocketSwitchROMX
 	jp c, DisplayListMenuIDLoop
 	xor a
 	ldh [hCurrentMenuItem], a

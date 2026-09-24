@@ -29,6 +29,23 @@ MACRO jpfar
 	jp Bankswitch
 ENDM
 
+; Compact far call/jump through the rst vectors in home/header.asm: 4 bytes
+; per site instead of 8, identical register contract (it ends in Bankswitch).
+; Costs ~70 extra cycles per call, so keep plain `farcall` on per-frame paths
+; (VBlank, audio) and in hot loops. Used where ROM space is tight, e.g. HOME.
+DEF RST_FARCALL EQU $08
+DEF RST_FARJUMP EQU $18
+
+MACRO rfarcall
+	rst RST_FARCALL
+	dba \1
+ENDM
+
+MACRO rfarjp
+	rst RST_FARJUMP
+	dba \1
+ENDM
+
 MACRO homecall
 	ldh a, [hLoadedROMBank]
 	push af

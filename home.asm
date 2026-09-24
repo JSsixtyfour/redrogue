@@ -35,7 +35,7 @@ INCLUDE "home/money.asm"
 ; Keep the A-button follower interaction banked without growing the packed
 ; main Home section. Bankswitch returns directly to the call site below.
 FollowerInteraction::
-	farjp FollowerFindInteraction
+	rfarjp FollowerFindInteraction
 
 
 SECTION "Home", ROM0

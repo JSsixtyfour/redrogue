@@ -18,13 +18,13 @@ CopyDataUntil::
 ; [wRemoveMonFromBox] == 0 specifies the party.
 ; [wRemoveMonFromBox] != 0 specifies the current box.
 RemovePokemon::
-	jpfar _RemovePokemon
+	rfarjp _RemovePokemon
 
 AddPartyMon::
 	push hl
 	push de
 	push bc
-	farcall _AddPartyMon
+	rfarcall _AddPartyMon
 	pop bc
 	pop de
 	pop hl
