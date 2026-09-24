@@ -963,8 +963,29 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         sprites = parse_rgbds_constants(ROOT / "constants" / "sprite_constants.asm")
         prepare = self.load_debug_follower_map(maps["SILPH_CO_DORM"])
 
-        for _ in range(3):
-            self.harness.move_tile("right")
+        # Walk to the door column (x = 4; the exit warps are x = 4/5, y = 7) one
+        # exact step at a time: a 20-frame move_tile can take two steps once the
+        # map is fully settled, which boot_debug1 now guarantees. Three fixed
+        # presses only ever worked because the old boot returned mid-intro and
+        # the first presses were partly eaten. wXCoord changes when a step
+        # STARTS, so release as soon as it does and let the walk finish.
+        for _ in range(8):
+            x = self.harness.read8("wXCoord")
+            if x >= 4:
+                break
+            self.harness.pyboy.button_press("right")
+            for _ in range(40):
+                self.harness.tick(1)
+                if self.harness.read8("wXCoord") != x:
+                    break
+            self.harness.pyboy.button_release("right")
+            self.harness.wait_until(
+                lambda: self.harness.read8("wWalkCounter") == 0,
+                "Dorm step completion",
+                120,
+            )
+            self.harness.tick(2)
+        self.assertEqual(self.harness.read8("wXCoord"), 4, "did not stop at the Dorm door")
         prepare_before = prepare["count"]
         self.harness.move_tile("down")
         self.harness.wait_until(

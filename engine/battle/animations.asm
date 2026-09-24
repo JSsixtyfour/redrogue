@@ -1261,6 +1261,17 @@ _AnimationSlideMonUp:
 	ret
 
 ShakeEnemyHUD_WritePlayerMonPicOAM:
+; CGB: the OAM copy below draws with OBJ palette 0, but the back pic itself uses
+; BG palette 2 (the player mon's slot in the battle attribute layout), so the
+; copied rows showed in the wrong colours for the length of the shake (measured
+; 2026-09-24: Pikachu's orange came out green). pureRGB 2.6.0b fixes this with
+; TransferMonPal on the battle mon's species; copying the palette already on
+; screen instead is right for every species, form and shiny, and leaves the
+; wCurPartySpecies/wCurItem byte alone. Move animations set their own OBJ
+; palettes, so nothing needs restoring afterwards.
+	ldh a, [hGBC]
+	and a
+	call nz, .copyPlayerMonPalToOBJ0
 ; Writes the OAM entries for a copy of the player mon's pic in OAM.
 ; The top 5 rows are reproduced in OAM, although only 2 are actually needed.
 	ld a, $10
@@ -1287,6 +1298,36 @@ ShakeEnemyHUD_WritePlayerMonPicOAM:
 	add 8
 	ld [wBaseCoordX], a
 	jr .loop
+
+; Copy CGB BG palette 2 to OBJ palette 0, one byte at a time. Reading BGPD does
+; not auto-increment, so both index registers are set per byte. Palette RAM is
+; inaccessible while the PPU is in mode 2/3, hence the same STAT wait the
+; enhanced-colour VRAM writers use (func_enhancedcolor.asm .waitVRAM*).
+.copyPlayerMonPalToOBJ0
+	lb bc, 2 * PAL_SIZE, 0 ; b = BG palette 2 byte index, c = OBJ palette 0 byte index
+.copyPalByte
+.waitRead
+	ldh a, [rSTAT]
+	and %10
+	jr nz, .waitRead
+	ld a, b
+	ldh [rBGPI], a
+	ldh a, [rBGPD]
+	ld e, a
+.waitWrite
+	ldh a, [rSTAT]
+	and %10
+	jr nz, .waitWrite
+	ld a, c
+	ldh [rOBPI], a
+	ld a, e
+	ldh [rOBPD], a
+	inc b
+	inc c
+	ld a, c
+	cp PAL_SIZE
+	jr nz, .copyPalByte
+	ret
 
 BattleAnimWriteOAMEntry:
 ; Y coordinate = e (increased by 8 each call, before the write to OAM)

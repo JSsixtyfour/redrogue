@@ -193,27 +193,43 @@ _CalcStat::
 	ld a, d
 	and a
 	jr z, .statExpDone  ; consider stat exp?
-	add hl, bc          ; skip to corresponding stat exp value
-.statExpLoop            ; calculates ceil(Sqrt(stat exp)) in b
-	xor a
-	ldh [hMultiplicand], a
-	ldh [hMultiplicand+1], a
+	add hl, bc          ; skip to corresponding stat exp value (hl -> its low byte)
+; b = ceil(Sqrt(stat exp)), capped at $ff: the smallest b >= 1 with b*b >= stat
+; exp. Vanilla called Multiply once per candidate b, which costs nothing at the
+; zero stat exp vanilla trainers have but up to 254 Multiplies per stat at
+; Red Rogue's late-run stat exp: measured 3720 calls and ~63 of ~108 frames of
+; an Elite Four ReadTrainer. Same result, with the running square built by
+; addition instead: b*b = (b-1)*(b-1) + b + (b - 1). hl and d are reloaded by
+; the code below; e (base stat) is live, hence the push.
+	push de
+	ld a, [hld]
+	ld e, a
+	ld d, [hl]          ; de = stat exp
+	ld hl, 0            ; hl = b*b (b = 0 here)
+.statExpLoop
 	inc b               ; increment current stat exp bonus
 	ld a, b
 	cp $ff
-	jr z, .statExpDone
-	ldh [hMultiplicand+2], a
-	ldh [hMultiplier], a
-	call Multiply
-	ld a, [hld]
-	ld d, a
-	ldh a, [hProduct + 3]
-	sub d
-	ld a, [hli]
-	ld d, a
-	ldh a, [hProduct + 2]
+	jr z, .statExpSqrtDone
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a             ; hl += b
+	ld a, b
+	dec a
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a             ; hl += b - 1, so hl = b*b
+	ld a, l
+	sub e
+	ld a, h
 	sbc d               ; test if (current stat exp bonus)^2 < stat exp
 	jr c, .statExpLoop
+.statExpSqrtDone
+	pop de
 .statExpDone
 	srl c
 	pop hl

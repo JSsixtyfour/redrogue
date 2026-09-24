@@ -228,7 +228,12 @@ LoadCGBScreenAttributesForBlkPacket::
 	db BGMAP_ATTR_NIDORINO_INTRO
 	dw BlkPacket_GameFreakIntro
 	db BGMAP_ATTR_GAMEFREAK_INTRO
-	dw BlkPacket_TrainerCard
+	; SetPal_TrainerCard patches badge rows into a WRAM copy and passes THAT
+	; copy in de, so the key must be the copy (like wPartyMenuBlkPacket below).
+	; Keying on the ROM BlkPacket_TrainerCard never matched: the card wrote no
+	; attributes and inherited the previous screen's, whiting out tiles under
+	; Enhanced Colors.
+	dw wTrainerCardBlkPacket
 	db BGMAP_ATTR_TRAINER_CARD
 	dw wPartyMenuBlkPacket
 	db BGMAP_ATTR_PARTY_MENU

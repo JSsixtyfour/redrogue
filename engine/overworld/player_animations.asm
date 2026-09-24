@@ -503,6 +503,13 @@ _HandleMidJump::
 	ld [wSpritePlayerStateData1YPixels], a
 	ret
 .finishedJump
+	; pureRGB v2.7.6 (241747c): lock input until the landing completes. The
+	; simulated ledge inputs run out (and .doneSimulating clears hJoyIgnore)
+	; before a 60 FPS jump finishes, so holding A through the last frames left
+	; the player in ledge-hop state, able to walk through walls. Re-enabled by
+	; the xor a / ldh [hJoyIgnore], a at the end once the jump is done.
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
 	ld a, [wWalkCounter]
 	cp 0
 	ret nz

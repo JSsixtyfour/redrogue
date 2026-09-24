@@ -28,6 +28,38 @@ class CGBSpeedSmokeTest(unittest.TestCase):
         finally:
             harness.close()
 
+    def test_trainer_party_builds_double_speed_and_transition_runs_single(self) -> None:
+        """ReadTrainerFast runs the enemy party build at the 60 FPS speed, and
+        battle is back at single speed by the transition. Also pins the
+        harness KEY1 fix: without it bit 7 reads 1 after every switch, so the
+        BattleTransition half of this could never fail."""
+        harness = RedRogueHarness(REPO_ROOT, ARTIFACTS, cgb_mode=True)
+        seen: dict[str, int] = {}
+
+        def record(label: str):
+            def callback(_context) -> None:
+                seen.setdefault(label, harness.pyboy.memory[0xFF4D] & 0x80)
+            return callback
+
+        try:
+            harness.boot_to_lobby()
+            harness.register_hook("ReadTrainer", record("ReadTrainer"))
+            harness.register_hook("BattleTransition", record("BattleTransition"))
+            # OPP_LORELEI = OPP_ID_OFFSET (160) + LORELEI ($2C); the lobby's own
+            # OverworldLoop .newBattle path starts the battle from these bytes.
+            harness.write8("wCurOpponent", 160 + 0x2C)
+            harness.write8("wTrainerNo", 1)
+            harness.write8("wIsTrainerBattle", 1)
+            harness.wait_until(
+                lambda: "BattleTransition" in seen,
+                "the Lorelei battle transition",
+                1500,
+            )
+            self.assertEqual(seen.get("ReadTrainer"), 0x80, "party build ran at single speed")
+            self.assertEqual(seen["BattleTransition"], 0x00, "transition ran at double speed")
+        finally:
+            harness.close()
+
 
 class YellowFollowerRoute1CGBTest(
     YellowFollowerRoute1CGBContract,

@@ -7990,7 +7990,7 @@ InitBattleCommon:
 	bit BIT_TEST_BATTLE, a
 	jr nz, .trainerPartyReady
 	ENDC
-	callfar ReadTrainer
+	callfar ReadTrainerFast ; ReadTrainer, run at the player's CGB speed setting
 .trainerPartyReady
 	call DoBattleTransitionAndInitBattleVariables
 	call _LoadTrainerPic

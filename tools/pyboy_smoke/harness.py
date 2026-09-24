@@ -136,6 +136,44 @@ class RedRogueHarness:
                 self.pyboy = PyBoy(
                     self._rom_file, ram_file=ram_file, **options
                 )
+        if cgb_mode:
+            self._install_key1_speed_fix(rom_data)
+
+    def _install_key1_speed_fix(self, rom_data: bytearray) -> None:
+        """Make KEY1 ($FF4D) bit 7 report the real CPU speed after a switch.
+
+        PyBoy 2.7 stores the raw byte written to KEY1 (`mb.py`: `self.key1 =
+        value`) and on STOP does `key1 ^= 0b10000001`. The ROM arms a switch by
+        writing $01, so after EVERY switch key1 reads $80: "double speed", even
+        when the switch was back to single. Its internal speed flag toggles
+        correctly, but the ROM's SetCPUSpeed/SingleCPUSpeed decide from bit 7,
+        so from the first switch-down onward they choose wrongly and emulated
+        speed stops matching hardware. Measured 2026-09-24: battles ran at
+        double speed in PyBoy while BGB read KEY1 $7E (single) at the same point.
+
+        ToggleCPUSpeed is the ROM's only STOP. Its entry bit 7 is the true
+        current speed (kept true by this fix), so right after the STOP the
+        harness writes what hardware shows: $FE double, $7E single, which is
+        what BGB reads there.
+        """
+        bank, entry = self.symbols.get("ToggleCPUSpeed")
+        base = bank * 0x4000 + (entry - 0x4000)
+        body = bytes(rom_data[base:base + 64])
+        stop = body.find(b"\x10\x00")
+        if stop < 0:
+            raise ValueError("ToggleCPUSpeed has no STOP; the KEY1 fix needs updating")
+        after_stop = entry + stop + 2
+        state = {"was_double": False}
+
+        def on_entry(_context) -> None:
+            state["was_double"] = bool(self.pyboy.memory[0xFF4D] & 0x80)
+
+        def on_after_stop(_context) -> None:
+            self.pyboy.memory[0xFF4D] = 0x7E if state["was_double"] else 0xFE
+
+        self.register_hook("ToggleCPUSpeed", on_entry)
+        self.pyboy.hook_register(bank, after_stop, on_after_stop, None)
+        self._registered_hooks.append((bank, after_stop))
 
     def _validate_rom_and_symbols(self, rom_data: bytearray) -> None:
         """Reject obviously stale or structurally incompatible build artifacts."""
@@ -583,6 +621,8 @@ class RedRogueHarness:
         if not debug_menu["count"]:
             raise AssertionError("DebugMenu was not reached")
 
+        entered = self.hook_flag("SpecialEnterMap")
+        overworld = self.hook_flag("OverworldLoop")
         self.tick(30)
         self.tap("down")
         self.tap("down")
@@ -590,6 +630,22 @@ class RedRogueHarness:
         self.wait_until(
             lambda: self.read8("hCurMap") == destination_map,
             "the Debug 1 destination",
+            2400,
+        )
+        # hCurMap is written from wDefaultMap BEFORE the Debug 1 intro dialogue
+        # plays, so it is not an "arrived" signal (measured 2026-09-24: the old
+        # return point was mid-dialogue). Advance the intro until the special
+        # warp actually enters the map, then wait for the overworld loop.
+        for _ in range(400):
+            if entered["count"]:
+                break
+            self.tap("a", 4)
+            self.tick(8)
+        if not entered["count"]:
+            raise AssertionError("Debug 1 intro never reached SpecialEnterMap")
+        self.wait_until(
+            lambda: overworld["count"] > 0,
+            "the overworld loop after the Debug 1 intro",
             2400,
         )
         self.tick(180)

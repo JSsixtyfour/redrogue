@@ -1,3 +1,15 @@
+; InitBattleCommon's entry point (callfar). Building the enemy party is pure
+; computation and renders nothing, so it runs at the player's CGB speed setting
+; like the AI move choice (trainer_ai.asm) and the EXP calculation
+; (experience.asm). Battle's single-speed rule protects transitions and
+; animations, not this. InitBattleVariables has just forced single speed, so
+; restoring single on exit returns to exactly that state. SetCPUSpeed honours
+; the 60 FPS option: with it off, neither call switches.
+ReadTrainerFast:
+	predef SetCPUSpeed
+	call ReadTrainer
+	predef_jump SingleCPUSpeed
+
 ReadTrainer:
 
 ; don't change any moves in a link battle

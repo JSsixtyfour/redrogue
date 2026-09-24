@@ -64,7 +64,14 @@ IF DEF(_DEBUG)
 	ld hl, wStatusFlags6
 	set BIT_DEBUG_MODE, [hl]
 	ld a, SILPH_CO_DORM
+.startDebugGame ; a = spawn map
 	ld [wDefaultMap], a
+	; This path never runs MainMenu, the only code that zeroes
+	; wOptionsInitialized, and that byte is a UNION shared with scratch, so it
+	; holds junk here. Nonzero junk made PrepareOakSpeech skip InitOptions and
+	; left wOptions2 zeroed: Enhanced Colors and 60 FPS off for the session.
+	xor a
+	ld [wOptionsInitialized], a
 	jp StartNewGameDebug
 
 .debug2
@@ -76,8 +83,7 @@ IF DEF(_DEBUG)
 	set BIT_DEBUG_MODE, [hl]
 	set BIT_DEBUG2_MODE, [hl]
 	ld a, INDIGO_PLATEAU_LOBBY
-	ld [wDefaultMap], a
-	jp StartNewGameDebug
+	jr .startDebugGame
 
 DebugBattlePlayerName:
 	db "Tom@"

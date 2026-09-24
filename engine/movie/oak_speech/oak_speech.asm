@@ -3,6 +3,10 @@ PrepareOakSpeech:
 	push af
 	ld a, [wOptions]
 	push af
+	; wOptions2 is inside the fill below too; keep it for the same reason as
+	; wOptions (a player may have set it on the OPTION screen before New Game).
+	ld a, [wOptions2]
+	push af
 	; Retrieve BIT_DEBUG_MODE set in DebugMenu for StartNewGameDebug.
 	; BUG: StartNewGame carries over BIT_ALWAYS_ON_BIKE from previous save files,
 	; which causes CheckForceBikeOrSurf to not return.
@@ -20,6 +24,8 @@ PrepareOakSpeech:
 	call FillMemory
 	pop af
 	ld [wStatusFlags6], a
+	pop af
+	ld [wOptions2], a
 	pop af
 	ld [wOptions], a
 	pop af

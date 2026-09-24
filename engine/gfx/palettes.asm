@@ -306,6 +306,8 @@ SetPal_Overworld:
 	cp BRUNOS_ROOM
 	jr z, .caveOrBruno
 .normalDungeonOrBuilding
+	jp .silphHubOrLastMap ; body is out of line below: jr-range budget, see .caveOrBruno
+.lastMapPalette
 	ld a, [wLastMap] ; town or route that current dungeon or building is located
 .townOrRoute
 	cp NUM_CITY_MAPS
@@ -436,6 +438,29 @@ SetPal_Overworld:
 .forestDefault
 	ld a, PAL_VIRIDIAN - 1  ; the pre-2B unconditional green forest palette
 	jp .town
+
+.silphHubOrLastMap
+	; The Silph Co hub is always Saffron. Inheriting wLastMap made its colours
+	; depend on the route in: a new game (Debug or not) zero-fills wLastMap,
+	; and 0 is PALLET_TOWN. wLastMap itself is left alone because Silph Co
+	; 1F's bottom doors are LAST_MAP warps. Enhanced Colors is unaffected; it
+	; keys off the current map, not wLastMap.
+	ldh a, [hCurMap]
+	ld hl, .silphHubMaps
+	ld de, 1
+	call IsInArray
+	jp nc, .lastMapPalette
+	ld a, PAL_SAFFRON - 1
+	jp .town
+
+.silphHubMaps
+	db SILPH_CO_1F
+	db SILPH_CO_B1F
+	db SILPH_CO_DORM
+	db SILPH_CO_VR
+	db PALMS_ROOM
+	db CREDIT_EXCHANGE
+	db -1
 
 ; used when a Pokemon is the only thing on the screen
 ; such as evolution, trading and the Hall of Fame
