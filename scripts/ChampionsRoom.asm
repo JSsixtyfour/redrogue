@@ -278,11 +278,15 @@ ChampionsRoomRivalDefeatedScript:
 	ld a, TEXT_CHAMPIONSROOM_LANCE
 	jr .display
 .oak
+; No after-battle speech for Oak: his congratulations straight after carries
+; it (Trainer Revamp, "Oak rambles" - the flow was 4 + 5 + 3 boxes). The
+; after-battle text id still serves a re-talk.
 	SetEvent EVENT_OAK_CHAMPION_DEFEATED
-	ld a, TEXT_CHAMPIONSROOM_OAK_CHAMPION
+	jr .freezeChampion
 .display
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
+.freezeChampion
 	call ChampionsRoomChampionSpriteIndex ; a = this run's champion object index; re-derived AFTER the display call, which clobbers everything
 	ldh [hSpriteIndex], a
 	call SetSpriteMovementBytesToFF
@@ -387,9 +391,15 @@ ChampionsRoomOakComeWithMeScript:
 	xor a ; SPRITE_FACING_DOWN
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
+; Oak-as-Champion already said "Come with me!" at the end of his
+; congratulations, so he only turns and walks.
+	ld a, [wRunChampion]
+	cp PROF_OAK
+	jr z, .walk
 	ld a, TEXT_CHAMPIONSROOM_OAK_COME_WITH_ME
 	ldh [hTextID], a
 	call ChampionsRoom_DisplayTextID_AllowABSelectStart
+.walk
 	call ChampionsRoomOakExitSpriteAndToggle ; re-derive: the calls above clobber b/c
 	ld de, OakExitChampionsRoomMovement
 	ld a, b

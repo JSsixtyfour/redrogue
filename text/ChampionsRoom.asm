@@ -285,26 +285,22 @@ _ChampionsRoomOakChampionAfterBattleText::
 	cont "champion!"
 	done
 
+; The whole post-battle speech on an Oak-as-Champion run: three boxes, ending
+; in the "Come with me!" his skipped COME_WITH_ME text used to carry.
 _ChampionsRoomOakChampionCongratulatesText::
 	text "OAK: <PLAYER>!"
+	line "I never thought"
+	cont "my #MON would"
+	cont "lose to you!"
 
-	para "I never thought"
-	line "my own #MON"
-	cont "would lose to"
-	cont "you!"
-
-	para "You've grown up so"
+	para "You've grown so"
 	line "much since you"
-	cont "first left with"
+	cont "left with"
 	cont "@"
 	text_ram wNameBuffer
 	text "!"
 
-	para "The bond you"
-	line "share with your"
-	cont "#MON is"
-	cont "marvelous!"
-
-	para "<PLAYER>, you have"
-	line "come of age!"
+	para "You're the new"
+	line "champion!"
+	cont "Come with me!"
 	done
