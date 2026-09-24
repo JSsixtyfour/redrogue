@@ -34,9 +34,17 @@ NUM_E4_TIERS = 4
 NUM_E4_TEAMS = NUM_E4_TIERS * NUM_ROUND_VARIANTS
 
 # constants/party_spec_constants.asm bit order
-BIT_ACE_LAST, BIT_NO_DUPES, BIT_ALLOW_UBER = 0, 1, 2
+BIT_ACE_LAST, BIT_NO_DUPES, BIT_ALLOW_UBER, BIT_NO_RIVAL_STARTER = 0, 1, 2, 3
 BASE_FLAGS = (1 << BIT_ACE_LAST) | (1 << BIT_NO_DUPES)
 ALLOW_UBER = 1 << BIT_ALLOW_UBER
+NO_RIVAL_STARTER = 1 << BIT_NO_RIVAL_STARTER
+# e4_team_spec (Trainer Revamp 2026-09-23): six mons, base 51 + tier, step 2,
+# ace pinned in the last slot, and NO wTrainerNo 1 hole.
+E4_TEAM_SIZE = 6
+E4_BASE_LEVEL = 51
+POOL_FORM_BASE = 0
+# ChampionsRoom.asm hands RIVAL3 wTrainerNo 1-5, all reaching Rival3Spec.
+NUM_RIVAL3_TEAMS = 5
 POOL_FORM_ROLL = 0xFF
 OVERRIDES_END = 0xFF
 # PartySpecOverrideFieldWidths, in bit order.
@@ -92,7 +100,15 @@ E4_MEMBERS = {
     # four tiers. Sharing one class made an Elite Four Koga field his gym
     # rounds 1-4, roughly level 15 against a level 55 party. His aces are plain
     # species, so unlike Will and Karen neither needs a form index.
-    "KogaE4": ("KOGA_E4", "POOL_KOGA", "CROBAT", 0, "FORRETRESS", 0),
+    # Since the Trainer Revamp he draws his own POOL_KOGA_E4 (Articuno is
+    # E4-only, Beedrill gym-only) and his C ace is Galarian Weezing.
+    "KogaE4": ("KOGA_E4", "POOL_KOGA_E4", "CROBAT", 0, "WEEZING", 1),
+    # The Kanto four had no spec list at all until the Trainer Revamp, so every
+    # tier fielded one authored team. LANCE's list also serves Champion Lance.
+    "Lorelei": ("LORELEI", "POOL_LORELEI", "LAPRAS", 0, "CLOYSTER", 0),
+    "Bruno": ("BRUNO", "POOL_BRUNO", "MACHAMP", 0, "HITMONTOP", 0),
+    "Agatha": ("AGATHA", "POOL_AGATHA", "GENGAR", 0, "MAROWAK", 1),
+    "Lance": ("LANCE", "POOL_LANCE", "DRAGONITE", 0, "KINGDRA", 0),
 }
 # Falkner's round 1 B and C are the Phase 2 worked examples, kept verbatim
 # because five tests drive them by name and number. They do not follow the
@@ -240,16 +256,22 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 [(p, NUM_GYM_TEAMS) for p in GYM_LEADERS]
                 + [(p, NUM_E4_TEAMS) for p in E4_MEMBERS]
             ):
+                # Gym leaders keep the wTrainerNo 1 hole; the Elite Four do not
+                # (their authored round-1 team was the "not random" report).
+                has_hole = prefix in GYM_LEADERS
                 with self.subTest(rom=image.name, character=prefix):
                     count, pointers = image.spec_list(prefix)
                     self.assertEqual(
                         count, teams,
                         f"{prefix}Specs declares {count} teams; InitGymBattle / "
                         f"InitElite4Battle can ask for {teams}")
-                    self.assertEqual(
-                        pointers[0], 0,
-                        f"{prefix} wTrainerNo 1 should be the authored-team hole")
-                    for number, pointer in enumerate(pointers[1:], start=2):
+                    if has_hole:
+                        self.assertEqual(
+                            pointers[0], 0,
+                            f"{prefix} wTrainerNo 1 should be the authored-team hole")
+                    for number, pointer in enumerate(
+                            pointers[1:] if has_hole else pointers,
+                            start=2 if has_hole else 1):
                         self.assertEqual(
                             pointer, image.addr(f"{prefix}Spec{number}"),
                             f"{prefix} wTrainerNo {number} points at "
@@ -319,7 +341,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         for image in self.images:
             for prefix, (_cls, pool, ace, ace_form, alt, alt_form) \
                     in E4_MEMBERS.items():
-                for number in range(2, NUM_E4_TEAMS + 1):
+                for number in range(1, NUM_E4_TEAMS + 1):
                     tier = (number - 1) // NUM_ROUND_VARIANTS + 1
                     variant = (number - 1) % NUM_ROUND_VARIANTS
                     label = f"{prefix}Spec{number}"
@@ -327,7 +349,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                         header, overrides = image.record(label)
                         self.assertEqual(
                             header,
-                            (5, 52 + tier, 2, self.pools[pool],
+                            (E4_TEAM_SIZE, E4_BASE_LEVEL + tier, 2, self.pools[pool],
                              self.mixes["MIX_E4_SETS"], BASE_FLAGS),
                             f"{label} serves tier {tier}")
                         if variant == 1:
@@ -337,9 +359,35 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                                         else (alt, alt_form))
                         self.assertEqual(len(overrides), 1)
                         slot, _flags, fields = overrides[0]
-                        self.assertEqual(slot, 4)
+                        self.assertEqual(slot, E4_TEAM_SIZE - 1)
                         self.assertEqual(fields[BIT_POVR_SPECIES],
                                          [self.species[pinned], form])
+
+    def test_rival3_champion_record(self):
+        """All five Champion-rival numbers reach one pool-rolled record.
+
+        Six mons at 60-65, and the last slot pins RIVAL_STARTER_PLACEHOLDER,
+        which PartyGenBuildSlot resolves to his own selected starter. The
+        NO_RIVAL_STARTER flag is what keeps the other five slots off that line;
+        without it the pool's CHARMANDER could stand next to his Charizard.
+        """
+        for image in self.images:
+            with self.subTest(rom=image.name):
+                count, pointers = image.spec_list("Rival3")
+                self.assertEqual(count, NUM_RIVAL3_TEAMS)
+                self.assertEqual(set(pointers), {image.addr("Rival3Spec")})
+                header, overrides = image.record("Rival3Spec")
+                self.assertEqual(
+                    header,
+                    (6, 60, 1, self.pools["POOL_RIVAL3"],
+                     self.mixes["MIX_E4_SETS"], BASE_FLAGS | NO_RIVAL_STARTER))
+                self.assertEqual(len(overrides), 1)
+                slot, flags, fields = overrides[0]
+                self.assertEqual(slot, 5)
+                self.assertEqual(flags, 1 << BIT_POVR_SPECIES)
+                self.assertEqual(
+                    fields[BIT_POVR_SPECIES],
+                    [self.species["RIVAL_STARTER_PLACEHOLDER"], POOL_FORM_BASE])
 
     def test_curve_tracks_the_authored_rosters(self):
         """The generated level curve is measured, not invented.
@@ -503,7 +551,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         intended classes carry a list and every other row is still `dw 0`, so a
         mistyped ELIF cannot quietly give a route trainer a gym leader's specs.
 
-        17 gym leaders + 3 Elite Four + 5 Phase 7f stage-event characters.
+        17 gym leaders + 7 Elite Four + RIVAL3 + 5 Phase 7f stage-event
+        characters. The Trainer Revamp added LORELEI, BRUNO, AGATHA, LANCE and
+        RIVAL3 (25 -> 30).
         Was 19 before KOGA_E4, the Phase 7 class that carries the Elite Four
         Koga's party grid so it is not the gym Koga's 24-round one, and 20
         before Phase 7f gave JESSIE_JAMES, PSYCHIC_TR, BURGLAR, NURSE_JOY and
@@ -514,7 +564,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         expected = {entry[0] for entry in GYM_LEADERS.values()}
         expected |= {entry[0] for entry in E4_MEMBERS.values()}
         expected |= STAGE_EVENT_CLASSES
-        self.assertEqual(len(expected), 25)
+        expected |= {"RIVAL3"}
+        self.assertEqual(len(expected), 30)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
         for image in self.images:

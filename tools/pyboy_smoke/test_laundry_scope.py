@@ -84,8 +84,11 @@ class LaundryScopeSmokeTest(HarnessTestCase):
             "PRYCE": ["SEEL", "SWINUB", "DEWGONG", "PILOSWINE"],
             "CLAIR": ["DRATINI", "HORSEA", "DRAGONAIR", "KINGDRA"],
             "JANINE": ["KOFFING", "VENOMOTH", "ARBOK", "WEEZING"],
-            "WILL": ["NATU", "XATU", "JYNX", "EXEGGUTOR", "SLOWBRO"],
-            "KAREN": ["MURKROW", "GENGAR", "VENOMOTH", "HOUNDOOM"],
+            # WILL and KAREN left this list with the Trainer Revamp: the Elite
+            # Four lost the wTrainerNo 1 hole, so ReadTrainer now rolls their
+            # team from a spec instead of reading the placeholder. Their table
+            # alignment is still covered - test_party_spec_coverage decodes
+            # their spec lists by class constant.
         }
 
         for name, team in expected.items():

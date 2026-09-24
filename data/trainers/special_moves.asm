@@ -36,36 +36,11 @@ SpecialTrainerMoves:
 	db 5, 3, FISSURE ; Rhydon has Fissure in the third slot
 	db 0
 
-	db LORELEI, 1
-	db 5, 3, BLIZZARD ; Lapras has Blizzard in the third slot
-	db 0
-
-	db BRUNO, 1
-	db 5, 3, FISSURE ; Machamp has Fissure in the third slot
-	db 0
-
-	db AGATHA, 1
-	db 5, 3, TOXIC ; Gengar 2 has Toxic in the third slot
-	db 0
-
-	db LANCE, 1
-	db 5, 3, BARRIER ; Dragonite has Barrier in the third slot
-	db 0
-
-	db RIVAL3, 1 ; Blastoise Team
-	db 1, 3, SKY_ATTACK ; Pidgeot has Sky Attack in the third slot
-	db 6, 3, BLIZZARD ; Blastoise has Blizzard in the third slot
-	db 0
-
-	db RIVAL3, 2 ; Venusaur Team
-	db 1, 3, SKY_ATTACK ; Pidgeot has Sky Attack in the third slot
-	db 6, 3, MEGA_DRAIN ; Venusaur has Mega Drain in the third slot
-	db 0
-
-	db RIVAL3, 3 ; Charizard Team
-	db 1, 3, SKY_ATTACK ; Pidgeot has Sky Attack in the third slot
-	db 6, 3, FIRE_BLAST ; Charizard has Fire Blast in the third slot
-	db 0
+; LORELEI / BRUNO / AGATHA / LANCE wTrainerNo 1 and RIVAL3 wTrainerNo 1-3
+; rows removed (Trainer Revamp, 2026-09-23). Those numbers now reach a party
+; spec whose teams are rolled from a pool, so a slot-addressed move would land
+; on whatever species rolled there - Barrier on a random slot-5 Lance mon,
+; Blizzard on the rival's Charizard. The spec's own moveset mix covers them.
 
 ; Phase 7f: donor move records from reference/yellow_legacy/joy_jenny/options.asm
 ; (cRz-Shadows/Pokemon_Yellow_Legacy), kept verbatim - only the trainer id

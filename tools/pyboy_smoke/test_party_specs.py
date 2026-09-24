@@ -569,7 +569,7 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
             ("BROCK", 4, 2, "ONIX"),
             ("WHITNEY", 22, 6, "MILTANK"),
             ("WHITNEY", 24, 6, "CLEFABLE"),
-            ("KAREN", 12, 5, "JOLTEON"),
+            ("KAREN", 12, 6, "JOLTEON"),  # six since the Trainer Revamp
         ):
             with self.subTest(trainer=trainer_class, wTrainerNo=trainer_no):
                 count, party = self._build(trainer_class, trainer_no)
@@ -600,13 +600,13 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
         assert h is not None
         h.boot_fight2(seed=1)
         count, _ = self._build("KAREN", 12)
-        self.assertEqual(count, 5)
+        self.assertEqual(count, 6)  # E4 teams are six since the Trainer Revamp
         stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
         forms = []
         for slot in range(count):
             catch_rate = h.read8("wEnemyMon1CatchRate", offset=slot * stride)
             forms.append((catch_rate >> 5) & 0b11)
         self.assertEqual(
-            forms[4], 2,
-            f"the ace's form index is {forms[4]}, expected 2 (Umbreon); "
+            forms[-1], 2,
+            f"the ace's form index is {forms[-1]}, expected 2 (Umbreon); "
             f"whole party read {forms}")

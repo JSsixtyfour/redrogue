@@ -213,6 +213,13 @@ MixOnlySpecs::
 ;     same index in all six NUM_TRAINERS-keyed tables, which assert_table_length
 ;     cannot see; it drives wTrainerNo 1, so the hole is what keeps it alive.
 ;
+; THE ELITE FOUR HAVE NO HOLE (Trainer Revamp, 2026-09-23). The seven E4
+; classes and the Champion rival cover wTrainerNo 1 with a spec too, because
+; their authored round-1 team was the same fixed 4-5 mon list on every run - the
+; "E4 teams aren't random" report. Their authored data in parties.asm is now
+; unreachable. The .SkipTrainer landmine above cannot fire for them either way:
+; a full list means RogueBuildParty never declines.
+;
 ; ACE PINS ARE NOT GATED BY SPECIES GROUPS, and that is deliberate and
 ; consistent: an authored team shows exactly what you wrote, which is already
 ; how TRAINERPARTY_FORMS teams behave and how FalknerData's placeholder team
@@ -348,8 +355,11 @@ ENDM
 ; The Elite Four grid is FOUR tiers, not eight rounds: InitElite4Battle derives
 ; the tier linearly from wBattleCount 86-89 rather than from the /10 round grid
 ; gym leaders use, so an E4-only character needs 12 teams and asking it for 24
-; is a bug, not extra headroom. Levels land 53-61 at tier 1 through 56-64 at
-; tier 4, bracketing the shipped Lorelei/Bruno/Agatha/Lance rosters (53-62).
+; is a bug, not extra headroom. Six mons (was five), levels 52-62 at tier 1
+; through 55-65 at tier 4: the ace at tier 4 lands on 65, the Champion rival's
+; ace level, which is what Champion Lance draws (ChampionsRoom.asm, wTrainerNo
+; 10-12). The base moved from 52 + tier to 51 + tier along with the sixth slot so
+; the ace stayed within one level of the shipped rosters' 62.
 ;
 ; \1 = wTrainerNo, \2 = pool, \3/\4 = primary ace species and form spec,
 ; \5/\6 = secondary. Forms are parameters here and not on the gym macro
@@ -365,16 +375,18 @@ ENDM
 ; There is no tier ladder here, unlike the gym rows: all four E4 tiers are
 ; within 3 levels of each other, so the same row serves all of them and the
 ; ladder lives in the levels instead.
+DEF E4_TEAM_SIZE EQU 6
+
 MACRO e4_team_spec
 	DEF _t    = \1
 	DEF _tier = (_t - 1) / NUM_ROUND_VARIANTS + 1
 	DEF _var  = (_t - 1) % NUM_ROUND_VARIANTS
-	party_spec 5, 52 + _tier, 2, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
+	party_spec E4_TEAM_SIZE, 51 + _tier, 2, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
 	IF _var == 0
-	slot_override 4, 1 << BIT_POVR_SPECIES
+	slot_override E4_TEAM_SIZE - 1, 1 << BIT_POVR_SPECIES
 	db \3, \4
 	ELIF _var == 2
-	slot_override 4, 1 << BIT_POVR_SPECIES
+	slot_override E4_TEAM_SIZE - 1, 1 << BIT_POVR_SPECIES
 	db \5, \6
 	ENDC
 	db PARTY_SPEC_OVERRIDES_END
@@ -383,14 +395,13 @@ ENDM
 MACRO e4_member_pointers
 \1Specs::
 	db NUM_E4_TEAMS
-	dw 0                            ; wTrainerNo 1 - the authored-team hole
-	FOR t, 2, NUM_E4_TEAMS + 1
+	FOR t, 1, NUM_E4_TEAMS + 1      ; no wTrainerNo 1 hole - see above
 	dw \1Spec{d:t}
 	ENDR
 ENDM
 
 MACRO e4_member_records
-	FOR t, 2, NUM_E4_TEAMS + 1
+	FOR t, 1, NUM_E4_TEAMS + 1
 \1Spec{d:t}:
 	e4_team_spec t, \2, \3, \4, \5, \6
 	ENDR
@@ -448,6 +459,16 @@ FOR n, 1, NUM_TRAINERS + 1
 	dw KarenSpecs
 	ELIF n == KOGA_E4
 	dw KogaE4Specs
+	ELIF n == LORELEI
+	dw LoreleiSpecs
+	ELIF n == BRUNO
+	dw BrunoSpecs
+	ELIF n == AGATHA
+	dw AgathaSpecs
+	ELIF n == LANCE
+	dw LanceSpecs
+	ELIF n == RIVAL3
+	dw Rival3Specs
 	ELIF n == JESSIE_JAMES
 	dw JessieJamesSpecs
 	ELIF n == PSYCHIC_TR
@@ -604,11 +625,56 @@ FalknerSpec3:
 ;
 ; Because he is his own class, this is the Will/Karen shape verbatim: no macro
 ; of his own, no offset arithmetic, and InitElite4Battle needs no branch. He
-; draws from POOL_KOGA, the same pool the gym Koga uses, so the flavour holds.
-; His aces are his two Gen 2 signatures, both already in this tree as species.
+; draws from POOL_KOGA_E4, his own pool since the Trainer Revamp split the two
+; roles (Articuno is E4-only, Beedrill gym-only). Aces: Crobat, and Galarian
+; Weezing (WEEZING form 1).
 ; ---------------------------------------------------------------------------
 	e4_member_pointers KogaE4
-	e4_member_records  KogaE4, POOL_KOGA, CROBAT, 0, FORRETRESS, 0
+	e4_member_records  KogaE4, POOL_KOGA_E4, CROBAT, 0, WEEZING, 1 ; Galarian
+
+; ---------------------------------------------------------------------------
+; The Kanto Elite Four (Trainer Revamp, 2026-09-23). Until now they had no
+; spec list at all, so every tier fielded the same authored five - LANCE's
+; list also serves Champion Lance, who draws wTrainerNo 10-12 (tier 4).
+; Aces: A is each member's shipped ace, C a second signature.
+; ---------------------------------------------------------------------------
+	e4_member_pointers Lorelei
+	e4_member_records  Lorelei, POOL_LORELEI, LAPRAS,    0, CLOYSTER,  0
+
+	e4_member_pointers Bruno
+	e4_member_records  Bruno,   POOL_BRUNO,   MACHAMP,   0, HITMONTOP, 0
+
+	e4_member_pointers Agatha
+	e4_member_records  Agatha,  POOL_AGATHA,  GENGAR,    0, MAROWAK,   1 ; Alolan
+
+	e4_member_pointers Lance
+	e4_member_records  Lance,   POOL_LANCE,   DRAGONITE, 0, KINGDRA,   0
+
+; ---------------------------------------------------------------------------
+; RIVAL3, the Champion rival. ChampionsRoom.asm hands out wTrainerNo 1-5 and
+; all five reach ONE record: the variety comes from the pool roll, not from
+; five authored teams (Rival3Data in parties.asm is now unreachable).
+;
+; His ace is always his own selected starter: slot 5 pins
+; RIVAL_STARTER_PLACEHOLDER, which PartyGenBuildSlot turns into wRivalStarter
+; evolved to the slot's level (PatchRivalStarterSpecies). NO_RIVAL_STARTER keeps
+; the five pool slots from drawing that same line again. Levels 60-65, the
+; authored rosters' 59-65 with the ace on the same 65.
+; ---------------------------------------------------------------------------
+DEF NUM_RIVAL3_TEAMS EQU 5          ; ChampionsRoom.asm's `ld c, 5`
+
+Rival3Specs::
+	db NUM_RIVAL3_TEAMS
+	REPT NUM_RIVAL3_TEAMS
+	dw Rival3Spec
+	ENDR
+
+Rival3Spec:
+	party_spec 6, 60, 1, POOL_RIVAL3, MIX_E4_SETS, \
+	           GYM_SPEC_FLAGS | (1 << BIT_PSPEC_NO_RIVAL_STARTER)
+	slot_override 5, 1 << BIT_POVR_SPECIES
+	db RIVAL_STARTER_PLACEHOLDER, POOL_FORM_BASE
+	db PARTY_SPEC_OVERRIDES_END
 
 ; ===========================================================================
 ; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).

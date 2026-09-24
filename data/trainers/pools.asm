@@ -103,6 +103,14 @@ ENDM
 	const POOL_BURGLAR
 	const POOL_JOY
 	const POOL_JENNY
+; Trainer Revamp (TRAINER_REVAMP_FIXES_PLAN.md step 4). Appended rather than
+; slotted in by role so no existing pool id moves.
+	const POOL_LORELEI
+	const POOL_BRUNO
+	const POOL_AGATHA
+	const POOL_LANCE
+	const POOL_KOGA_E4
+	const POOL_RIVAL3
 DEF NUM_TRAINER_POOLS EQU const_value
 
 TrainerPoolTable::
@@ -131,6 +139,12 @@ TrainerPoolTable::
 	trainer_pool BurglarPool
 	trainer_pool JoyPool
 	trainer_pool JennyPool
+	trainer_pool LoreleiPool
+	trainer_pool BrunoPool
+	trainer_pool AgathaPool
+	trainer_pool LancePool
+	trainer_pool KogaE4Pool
+	trainer_pool RivalThreePool
 	assert_table_length NUM_TRAINER_POOLS
 
 ; ---------------------------------------------------------------------------
@@ -810,3 +824,157 @@ JennyPool_Johto:
 	pool_mon REMORAID
 JennyPool_Warp:
 JennyPool_End:
+
+; ===========================================================================
+; Trainer Revamp pools (TRAINER_REVAMP_FIXES_PLAN.md step 4).
+;
+; !!! The five Elite Four pools below are PLACEHOLDERS: each member's own
+; authored team (plus Articuno for the E4 Koga), so step 4's wiring builds
+; and tests against real content. Step 7 replaces them with the user's full
+; lists from the plan's "E4 pool contents" section, expanding every
+; "all <type>" clause with tools/list_pool_candidates.py.
+; ===========================================================================
+
+LoreleiPool:
+	pool_mon DEWGONG
+	pool_mon CLOYSTER
+	pool_mon SLOWBRO
+	pool_mon JYNX
+	pool_mon LAPRAS
+LoreleiPool_Johto:
+LoreleiPool_Warp:
+LoreleiPool_End:
+
+BrunoPool:
+	pool_mon ONIX
+	pool_mon HITMONCHAN
+	pool_mon HITMONLEE
+	pool_mon MACHAMP
+BrunoPool_Johto:
+BrunoPool_Warp:
+BrunoPool_End:
+
+AgathaPool:
+	pool_mon GENGAR
+	pool_mon GOLBAT
+	pool_mon HAUNTER
+	pool_mon ARBOK
+AgathaPool_Johto:
+AgathaPool_Warp:
+AgathaPool_End:
+
+LancePool:
+	pool_mon GYARADOS
+	pool_mon DRAGONAIR
+	pool_mon AERODACTYL
+	pool_mon DRAGONITE
+LancePool_Johto:
+LancePool_Warp:
+LancePool_End:
+
+; The Elite Four Koga's own pool, split from the gym KogaPool because the two
+; roles now differ: Articuno is Elite Four only (and Beedrill gym only).
+KogaE4Pool:
+	pool_mon EKANS
+	pool_mon ARBOK
+	pool_mon NIDORAN_M
+	pool_mon NIDORINO
+	pool_mon NIDOKING
+	pool_mon NIDORAN_F
+	pool_mon NIDORINA
+	pool_mon NIDOQUEEN
+	pool_mon ZUBAT
+	pool_mon GOLBAT
+	pool_mon GRIMER
+	pool_mon MUK
+	pool_mon WEEZING
+	pool_mon KOFFING
+	pool_mon VENONAT
+	pool_mon VENOMOTH
+	pool_mon GASTLY
+	pool_mon HAUNTER
+	pool_mon GENGAR
+	pool_mon ARTICUNO
+KogaE4Pool_Johto:
+	pool_mon CROBAT
+	pool_mon QWILFISH
+KogaE4Pool_Warp:
+KogaE4Pool_End:
+
+; ---------------------------------------------------------------------------
+; Rival (Champion). The user's list, transcribed in full.
+;
+; Entries are BASE forms, and that is load-bearing: the Champion spec sets
+; BIT_PSPEC_NO_RIVAL_STARTER, which rejects a draw EQUAL to wRivalStarter, and
+; the starter is always a base species. A base-form pool therefore blocks the
+; whole line of whatever he picked - list CHARMANDER, never CHARMELEON. The
+; user's SEADRA is entered as HORSEA for exactly that reason (at level 60+
+; ScaleTrainer_evolution promotes it to Kingdra anyway).
+;
+; The accepted exceptions, listed by name by the user: the eeveelutions
+; (VAPOREON / JOLTEON / FLAREON and the pinned Espeon / Umbreon / Glaceon /
+; Sylveon / Leafeon forms), SCIZOR and ELECTIVIRE. Only an EEVEE / SCYTHER /
+; ELECTABUZZ starter can double up with those. test_rival3_pool_is_base_forms
+; holds the rest of the pool to the rule.
+;
+; Groups follow engine/pokemon/rarity.asm (tools/list_pool_candidates.py
+; --species): SCIZOR is Johto, ELECTIVIRE is Warp. Espeon / Umbreon sit in the
+; Johto run, as KarenPool's Umbreon does; the three later eeveelutions are Warp.
+; ---------------------------------------------------------------------------
+RivalThreePool:
+	pool_mon GROWLITHE
+	pool_mon PONYTA
+	pool_mon WEEDLE
+	pool_mon CHARMANDER
+	pool_mon NIDORAN_M
+	pool_mon ELECTABUZZ
+	pool_mon SLOWPOKE
+	pool_mon PIDGEY
+	pool_mon BULBASAUR
+	pool_mon SQUIRTLE
+	pool_mon RHYHORN
+	pool_mon NIDORAN_F
+	pool_mon MAGMAR
+	pool_mon SCYTHER
+	pool_mon KRABBY
+	pool_mon GEODUDE
+	pool_mon DODUO
+	pool_mon EEVEE
+	pool_mon VAPOREON
+	pool_mon JOLTEON
+	pool_mon FLAREON
+	pool_mon PINSIR
+	pool_mon SPEAROW
+	pool_mon ABRA
+	pool_mon HORSEA
+	pool_mon MAGIKARP
+	pool_mon EXEGGCUTE
+	pool_mon SANDSHREW
+	pool_mon VULPIX
+	pool_mon MAGNEMITE
+	pool_mon SHELLDER
+	pool_mon MACHOP
+	pool_mon AERODACTYL
+	pool_mon TAUROS
+	pool_mon CUBONE
+	pool_mon CLEFAIRY
+	pool_mon GASTLY
+	pool_mon DRATINI
+	pool_mon ZAPDOS
+	pool_mon RATTATA
+RivalThreePool_Johto:
+	pool_mon SCIZOR
+	pool_mon LARVITAR
+	pool_mon HOUNDOUR
+	pool_mon SKARMORY
+	pool_mon HERACROSS
+	pool_mon MILTANK
+	pool_mon SWINUB
+	pool_mon JOLTEON, 1 ; Espeon
+	pool_mon JOLTEON, 2 ; Umbreon
+RivalThreePool_Warp:
+	pool_mon ELECTIVIRE
+	pool_mon VAPOREON, 1 ; Glaceon
+	pool_mon VAPOREON, 2 ; Sylveon
+	pool_mon FLAREON, 1 ; Leafeon
+RivalThreePool_End:
