@@ -356,7 +356,8 @@ INCLUDE "engine/movie/title2.asm"
 INCLUDE "engine/battle/link_battle_versus_text.asm"
 INCLUDE "engine/slots/slot_machine.asm"
 INCLUDE "engine/events/pewter_guys.asm"
-INCLUDE "engine/math/multiply_divide.asm"
+; engine/math/multiply_divide.asm was here: _Multiply/_Divide moved INLINE into
+; home/math.asm (2026-09-24) to drop their bank-switch trampolines.
 INCLUDE "engine/slots/game_corner_slots.asm"
 
 

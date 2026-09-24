@@ -880,6 +880,15 @@ class RedRogueHarness:
             name: getattr(self.pyboy.register_file, name) for name in register_names
         }
         saved_bank = self.read8("hLoadedROMBank")
+        # The parking boundary is usually INSIDE VBlank, after VBlank saved the
+        # interrupted code's bank in wVBlankSavedROMBank. A callee that lets real
+        # VBlanks run (e.g. one that EIs and waits on audio) overwrites that byte,
+        # and the parked VBlank would then reti into the interrupted code with the
+        # CALLEE's bank mapped. Measured 2026-09-24: parked over bank-$03 code at
+        # $4022, the resumed VBlank mapped $2C and ran MoveNames data into a STOP,
+        # freezing pyboy.tick() for good (test_move_swap_restores_audio_state...).
+        # It only surfaced when a timing change moved the park point off HOME code.
+        saved_vblank_bank = self.read8("wVBlankSavedROMBank")
         enter_bank, enter_address = self.symbols.get("Bankswitch")
         return_bank, return_address = self.symbols.get("Bankswitch.Return")
         expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
@@ -953,6 +962,7 @@ class RedRogueHarness:
             # hLoadedROMBank rather than rely on the resume leaking it.
             self.pyboy.memory[0x2000] = saved_bank
             self.write8("hLoadedROMBank", saved_bank)
+            self.write8("wVBlankSavedROMBank", saved_vblank_bank)
             for name, value in saved_registers.items():
                 setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
