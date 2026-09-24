@@ -326,10 +326,56 @@ KogaPool:
 	pool_mon GASTLY
 	pool_mon HAUNTER
 	pool_mon GENGAR
+	pool_mon BULBASAUR
+	pool_mon IVYSAUR
+	pool_mon VENUSAUR
+	pool_mon ODDISH
+	pool_mon GLOOM
+	pool_mon VILEPLUME
+	pool_mon BELLSPROUT
+	pool_mon WEEPINBELL
+	pool_mon VICTREEBEL
+	pool_mon WEEDLE
+	pool_mon KAKUNA
+	pool_mon BEEDRILL ; gym-only - see KogaE4Pool's note
+	pool_mon TENTACOOL
+	pool_mon TENTACRUEL
+	pool_mon PARASECT
+	pool_mon TANGELA
+	pool_mon HYPNO
+	pool_mon ELECTRODE
+	pool_mon MAGMAR
+	pool_mon LAPRAS
+	pool_mon SCYTHER
+	pool_mon RHYDON
+	pool_mon NINETALES
+	pool_mon CHANSEY
+	pool_mon DITTO
+	pool_mon PIDGEY
+	pool_mon PIDGEOTTO
+	pool_mon PIDGEOT
+	pool_mon VAPOREON
 KogaPool_Johto:
 	pool_mon CROBAT
 	pool_mon QWILFISH
+	pool_mon ARIADOS
+	pool_mon SPINARAK
+	pool_mon FORRETRESS
+	pool_mon STANTLER
+	pool_mon LANTURN
+	pool_mon SCIZOR
+	pool_mon GIRAFARIG
+	pool_mon MEGANIUM
+	pool_mon SHUCKLE
 KogaPool_Warp:
+	pool_mon GRIMER, 1 ; Alolan
+	pool_mon MUK, 1 ; Alolan
+	pool_mon QWILFISH, 1 ; Hisuian
+	pool_mon SLOWBRO, 1 ; Galarian
+	pool_mon SLOWKING, 1 ; Galarian
+	pool_mon SNEASEL, 1 ; Hisuian
+	pool_mon WEEZING, 1 ; Galarian
+	pool_mon WOOPER, 1 ; Paldean
 KogaPool_End:
 
 ; ---------------------------------------------------------------------------
@@ -589,11 +635,13 @@ JaninePool_Warp:
 JaninePool_End:
 
 ; ---------------------------------------------------------------------------
-; Will - Elite Four, Psychic. Matches the plan's own pools.txt example
-; verbatim: type PSYCHIC plus explicit additions CLEFABLE/ELECTABUZZ/MANTINE/
-; FLAREON/CHANSEY/HYPNO, and ESPEON translated to this tree's JOLTEON form 1
-; (there is no ESPEON species - see [[project_forms_are_not_species]]). NATU
-; is added alongside the brief's own XATU as its pre-evolution.
+; Will - Elite Four, Psychic. The user's named additions (CLEFABLE/
+; ELECTABUZZ/MANTINE/FLAREON/CHANSEY/HYPNO) plus every PSYCHIC_TYPE species
+; and form (tools/list_pool_candidates.py PSYCHIC_TYPE). ESPEON is this
+; tree's JOLTEON form 1 (there is no ESPEON species - see
+; [[project_forms_are_not_species]]), sitting in the Warp run with every
+; other pinned form so it stays gated on a Kanto-only run. NATU is added
+; alongside the brief's own XATU as its pre-evolution.
 ; ---------------------------------------------------------------------------
 WillPool:
 	pool_mon EXEGGUTOR
@@ -605,7 +653,12 @@ WillPool:
 	pool_mon FLAREON
 	pool_mon CHANSEY
 	pool_mon HYPNO
-	pool_mon JOLTEON, 1 ; pinned Espeon form
+	pool_mon ABRA
+	pool_mon KADABRA
+	pool_mon DROWZEE
+	pool_mon MR_MIME
+	pool_mon SLOWPOKE
+	pool_mon STARMIE
 WillPool_Johto:
 	pool_mon NATU
 	pool_mon XATU
@@ -613,6 +666,17 @@ WillPool_Johto:
 	pool_mon GIRAFARIG
 	pool_mon MANTINE
 WillPool_Warp:
+	pool_mon JOLTEON, 1 ; Espeon
+	pool_mon MR_RIME
+	pool_mon ARTICUNO, 1 ; Galarian
+	pool_mon JIGGLYPUFF, 1 ; Paldean
+	pool_mon MR_MIME, 1 ; Galarian
+	pool_mon PONYTA, 1 ; Galarian
+	pool_mon RAICHU, 1 ; Alolan
+	pool_mon RAPIDASH, 1 ; Galarian
+	pool_mon SLOWBRO, 1 ; Galarian
+	pool_mon SLOWKING, 1 ; Galarian
+	pool_mon SLOWPOKE, 1 ; Galarian
 WillPool_End:
 
 ; ---------------------------------------------------------------------------
@@ -620,15 +684,19 @@ WillPool_End:
 ; the same reason WillPool pins Espeon.
 ;
 ; Dark did not exist as a type until Generation 2, so no Gen 1 species in this
-; dex was ever Dark-typed, and this pool started life with an EMPTY Kanto run.
-; That is a real fault rather than just thin content: with Johto locked every
-; run of the pool is ineligible, PartyGenRollFromPool takes its .giveUp branch,
-; and that branch falls back to the pool's FIRST entry UNFILTERED - yielding a
-; team of five identical Murkrow rather than a crash, which is exactly the kind
-; of fault that survives a clean build. The Kanto run below is her own Gen 2
-; roster's Kanto half (Gengar and Vileplume are literally on it) plus three
-; Kanto mons that read as her kind of dark. Phase 7 is expected to draw Karen
-; only when Johto is enabled, but the pool must not depend on that holding.
+; dex was ever Dark-typed, and this tree has no DARK type to sweep with
+; tools/list_pool_candidates.py - the Warp pins below are the real-world
+; Dark-types the user named by hand (Alolan Persian/Meowth/Rattata/Raticate/
+; Muk/Grimer, Galarian Moltres, Hisuian Qwilfish).
+;
+; An empty Kanto run is a real fault, not just thin content: with Johto
+; locked every run of the pool would be ineligible, PartyGenRollFromPool
+; takes its .giveUp branch, and that branch falls back to the pool's FIRST
+; entry UNFILTERED - yielding a team of six identical Murkrow rather than a
+; crash, which is exactly the kind of fault that survives a clean build. The
+; Kanto run below (her own Gen 2 roster's Kanto half plus the user's other
+; Kanto-side additions) keeps that from ever happening, even though Karen is
+; only expected to be drawn with Johto enabled.
 ; ---------------------------------------------------------------------------
 KarenPool:
 	pool_mon GENGAR
@@ -636,14 +704,31 @@ KarenPool:
 	pool_mon ARBOK
 	pool_mon PERSIAN
 	pool_mon GOLBAT
+	pool_mon MAGMAR
+	pool_mon SLOWBRO
+	pool_mon ELECTRODE
+	pool_mon RAPIDASH
+	pool_mon FLAREON
 KarenPool_Johto:
 	pool_mon MURKROW
 	pool_mon HOUNDOUR
 	pool_mon HOUNDOOM
 	pool_mon SNEASEL
 	pool_mon TYRANITAR
-	pool_mon JOLTEON, 2 ; pinned Umbreon form
+	pool_mon LARVITAR
+	pool_mon PUPITAR
+	pool_mon MISDREAVUS
+	pool_mon URSARING
 KarenPool_Warp:
+	pool_mon JOLTEON, 2 ; Umbreon
+	pool_mon PERSIAN, 1 ; Alolan
+	pool_mon MEOWTH, 1 ; Alolan
+	pool_mon RATTATA, 1 ; Alolan
+	pool_mon RATICATE, 1 ; Alolan
+	pool_mon MUK, 1 ; Alolan
+	pool_mon GRIMER, 1 ; Alolan
+	pool_mon MOLTRES, 1 ; Galarian
+	pool_mon QWILFISH, 1 ; Hisuian
 KarenPool_End:
 
 ; ===========================================================================
@@ -826,13 +911,17 @@ JennyPool_Warp:
 JennyPool_End:
 
 ; ===========================================================================
-; Trainer Revamp pools (TRAINER_REVAMP_FIXES_PLAN.md step 4).
+; Trainer Revamp pools (TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7).
 ;
-; !!! The five Elite Four pools below are PLACEHOLDERS: each member's own
-; authored team (plus Articuno for the E4 Koga), so step 4's wiring builds
-; and tests against real content. Step 7 replaces them with the user's full
-; lists from the plan's "E4 pool contents" section, expanding every
-; "all <type>" clause with tools/list_pool_candidates.py.
+; Lorelei/Bruno/Agatha/Lance carry the user's full lists from the plan's "E4
+; pool contents" section: their own authored team plus every "all <type>"
+; clause, expanded with tools/list_pool_candidates.py.
+;
+; Uber-tier species (MEW/MEWTWO, and CELEBI/LUGIA/HO_OH which classify the
+; same way - engine/pokemon/rarity.asm's JohtoUber) are left out of every
+; type sweep below: none of these specs sets BIT_PSPEC_ALLOW_UBER, matching
+; the FalknerPool/SabrinaPool precedent that only one leader's pool ever
+; carries uber-tier content.
 ; ===========================================================================
 
 LoreleiPool:
@@ -841,35 +930,151 @@ LoreleiPool:
 	pool_mon SLOWBRO
 	pool_mon JYNX
 	pool_mon LAPRAS
+	pool_mon ARTICUNO
+	pool_mon EXEGGUTOR
+	pool_mon WIGGLYTUFF
+	pool_mon STARMIE
+	pool_mon OMASTAR
+	pool_mon POLIWRATH
 LoreleiPool_Johto:
+	pool_mon SWINUB
+	pool_mon PILOSWINE
+	pool_mon SNEASEL
+	pool_mon SLOWKING
 LoreleiPool_Warp:
+	pool_mon MAMOSWINE
+	pool_mon MR_RIME
+	pool_mon WEAVILE
+	pool_mon MR_MIME, 1 ; Galarian
+	pool_mon NINETALES, 1 ; Alolan
+	pool_mon SANDSHREW, 1 ; Alolan
+	pool_mon SANDSLASH, 1 ; Alolan
+	pool_mon VAPOREON, 1 ; Glaceon
+	pool_mon VULPIX, 1 ; Alolan
 LoreleiPool_End:
 
 BrunoPool:
-	pool_mon ONIX
 	pool_mon HITMONCHAN
 	pool_mon HITMONLEE
 	pool_mon MACHAMP
+	pool_mon MACHOKE
+	pool_mon MACHOP
+	pool_mon MANKEY
+	pool_mon POLIWRATH
+	pool_mon PRIMEAPE
+	pool_mon CLEFABLE
+	pool_mon MUK
+	pool_mon SLOWBRO
+	pool_mon RHYDON
+	pool_mon GOLEM
+	pool_mon ONIX
+	pool_mon KANGASKHAN
+	pool_mon BLASTOISE
+	pool_mon EXEGGUTOR
+	pool_mon CLOYSTER
 BrunoPool_Johto:
+	pool_mon HERACROSS
+	pool_mon HITMONTOP
+	pool_mon STEELIX
+	pool_mon GRANBULL
+	pool_mon URSARING
 BrunoPool_Warp:
+	pool_mon ANNIHILAPE
+	pool_mon SIRFETCHD
+	pool_mon FARFETCHD, 1 ; Galarian
+	pool_mon SNEASEL, 1 ; Hisuian
+	pool_mon TAUROS, 1 ; Paldean Combat
+	pool_mon TAUROS, 2 ; Paldean Blaze
+	pool_mon TAUROS, 3 ; Paldean Aqua
+	pool_mon ZAPDOS, 1 ; Galarian
+	pool_mon GOLEM, 1 ; Alolan
 BrunoPool_End:
 
 AgathaPool:
-	pool_mon GENGAR
-	pool_mon GOLBAT
+	pool_mon GASTLY
 	pool_mon HAUNTER
+	pool_mon GENGAR
 	pool_mon ARBOK
+	pool_mon BEEDRILL
+	pool_mon BELLSPROUT
+	pool_mon BULBASAUR
+	pool_mon EKANS
+	pool_mon GLOOM
+	pool_mon GOLBAT
+	pool_mon GRIMER
+	pool_mon IVYSAUR
+	pool_mon KAKUNA
+	pool_mon KOFFING
+	pool_mon MUK
+	pool_mon NIDOKING
+	pool_mon NIDOQUEEN
+	pool_mon NIDORAN_F
+	pool_mon NIDORAN_M
+	pool_mon NIDORINA
+	pool_mon NIDORINO
+	pool_mon ODDISH
+	pool_mon TENTACOOL
+	pool_mon TENTACRUEL
+	pool_mon VENOMOTH
+	pool_mon VENONAT
+	pool_mon VENUSAUR
+	pool_mon VICTREEBEL
+	pool_mon VILEPLUME
+	pool_mon WEEDLE
+	pool_mon WEEPINBELL
+	pool_mon WEEZING
+	pool_mon ZUBAT
+	pool_mon MAROWAK
+	pool_mon NINETALES
+	pool_mon JYNX
+	pool_mon ALAKAZAM
+	pool_mon GYARADOS
 AgathaPool_Johto:
+	pool_mon MISDREAVUS
+	pool_mon ARIADOS
+	pool_mon CROBAT
+	pool_mon QWILFISH
+	pool_mon SPINARAK
 AgathaPool_Warp:
+	pool_mon ANNIHILAPE
+	pool_mon MISMAGIUS
+	pool_mon MAROWAK, 1 ; Alolan
+	pool_mon GRIMER, 1 ; Alolan
+	pool_mon MUK, 1 ; Alolan
+	pool_mon QWILFISH, 1 ; Hisuian
+	pool_mon SLOWBRO, 1 ; Galarian
+	pool_mon SLOWKING, 1 ; Galarian
+	pool_mon SNEASEL, 1 ; Hisuian
+	pool_mon WEEZING, 1 ; Galarian
+	pool_mon WOOPER, 1 ; Paldean
 AgathaPool_End:
 
 LancePool:
-	pool_mon GYARADOS
 	pool_mon DRAGONAIR
-	pool_mon AERODACTYL
 	pool_mon DRAGONITE
+	pool_mon DRATINI
+	pool_mon GYARADOS
+	pool_mon AERODACTYL
+	pool_mon CHARIZARD
+	pool_mon HORSEA
+	pool_mon SEADRA
+	pool_mon LAPRAS
+	pool_mon EXEGGUTOR
+	pool_mon KANGASKHAN
+	pool_mon ARCANINE
+	pool_mon SNORLAX
+	pool_mon ELECTABUZZ
 LancePool_Johto:
+	pool_mon KINGDRA
+	pool_mon LARVITAR
+	pool_mon PUPITAR
+	pool_mon TYRANITAR
+	pool_mon STEELIX
+	pool_mon FERALIGATR
+	pool_mon AMPHAROS
 LancePool_Warp:
+	pool_mon EXEGGUTOR, 1 ; Alolan
+	pool_mon ELECTIVIRE
 LancePool_End:
 
 ; The Elite Four Koga's own pool, split from the gym KogaPool because the two
@@ -894,11 +1099,56 @@ KogaE4Pool:
 	pool_mon GASTLY
 	pool_mon HAUNTER
 	pool_mon GENGAR
-	pool_mon ARTICUNO
+	pool_mon BULBASAUR
+	pool_mon IVYSAUR
+	pool_mon VENUSAUR
+	pool_mon ODDISH
+	pool_mon GLOOM
+	pool_mon VILEPLUME
+	pool_mon BELLSPROUT
+	pool_mon WEEPINBELL
+	pool_mon VICTREEBEL
+	pool_mon WEEDLE
+	pool_mon KAKUNA
+	pool_mon TENTACOOL
+	pool_mon TENTACRUEL
+	pool_mon PARASECT
+	pool_mon TANGELA
+	pool_mon HYPNO
+	pool_mon ELECTRODE
+	pool_mon MAGMAR
+	pool_mon LAPRAS
+	pool_mon SCYTHER
+	pool_mon RHYDON
+	pool_mon NINETALES
+	pool_mon CHANSEY
+	pool_mon DITTO
+	pool_mon PIDGEY
+	pool_mon PIDGEOTTO
+	pool_mon PIDGEOT
+	pool_mon VAPOREON
+	pool_mon ARTICUNO ; Elite Four only - see KogaPool's BEEDRILL
 KogaE4Pool_Johto:
 	pool_mon CROBAT
 	pool_mon QWILFISH
+	pool_mon ARIADOS
+	pool_mon SPINARAK
+	pool_mon FORRETRESS
+	pool_mon STANTLER
+	pool_mon LANTURN
+	pool_mon SCIZOR
+	pool_mon GIRAFARIG
+	pool_mon MEGANIUM
+	pool_mon SHUCKLE
 KogaE4Pool_Warp:
+	pool_mon GRIMER, 1 ; Alolan
+	pool_mon MUK, 1 ; Alolan
+	pool_mon QWILFISH, 1 ; Hisuian
+	pool_mon SLOWBRO, 1 ; Galarian
+	pool_mon SLOWKING, 1 ; Galarian
+	pool_mon SNEASEL, 1 ; Hisuian
+	pool_mon WEEZING, 1 ; Galarian
+	pool_mon WOOPER, 1 ; Paldean
 KogaE4Pool_End:
 
 ; ---------------------------------------------------------------------------

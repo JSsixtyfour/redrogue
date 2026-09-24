@@ -357,9 +357,10 @@ _RivalMiniBossBattleText::
 	done
 
 _RivalMiniBossEndBattleText::
-	text "Feh! You got"
-	line "lucky this time."
-	done
+	text "Feh!"
+	line "You got lucky"
+	cont "this time."
+	prompt
 
 ; Mini-boss framework: shared Giovanni mini-boss dialogue, callable from any
 ; of his 3 dungeon maps' 5th-trainer encounter. Placeholder text - user will

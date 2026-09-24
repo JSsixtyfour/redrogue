@@ -74,8 +74,9 @@ _CianwoodGymTrainer1BattleText::
 	done
 
 _CianwoodGymTrainer1EndBattleText::
-	text "This isn't real!"
-	done
+	text "Wha-?"
+	line "This isn't real!"
+	prompt
 
 _CianwoodGymTrainer1AfterBattleText::
 	text "You seem to have a"
@@ -89,8 +90,9 @@ _CianwoodGymTrainer2BattleText::
 	done
 
 _CianwoodGymTrainer2EndBattleText::
-	text "That's shocking!"
-	done
+	text "Whoa!"
+	line "That's shocking!"
+	prompt
 
 _CianwoodGymTrainer2AfterBattleText::
 	text "Fighting #MON"
@@ -106,7 +108,7 @@ _CianwoodGymTrainer3BattleText::
 
 _CianwoodGymTrainer3EndBattleText::
 	text "…"
-	done
+	prompt
 
 _CianwoodGymTrainer3AfterBattleText::
 	text "I lost! "
@@ -120,8 +122,9 @@ _CianwoodGymTrainer4BattleText::
 	done
 
 _CianwoodGymTrainer4EndBattleText::
-	text "I got shattered!"
-	done
+	text "Ugh!"
+	line "I got shattered!"
+	prompt
 
 _CianwoodGymTrainer4AfterBattleText::
 	text "My #MON lost…"

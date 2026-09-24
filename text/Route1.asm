@@ -58,7 +58,7 @@ _Route1Youngster4EndBattleText::
 	text "Woah"
 	line "You're way"
 	cont "too good!"
-	done
+	prompt
 
 _Route1Youngster4AfterBattleText::
 	text "Do you have"
@@ -74,7 +74,7 @@ _Route1Youngster5EndBattleText::
 	text "Darn"
 	line "This did not"
 	cont "help me remember"
-	done
+	prompt
 
 _Route1Youngster5AfterBattleText::
 	text "Do you know the"
@@ -91,7 +91,7 @@ _Route1Youngster6EndBattleText::
 	text "Dang"
 	line "Guess we need"
 	cont "more training."
-	done
+	prompt
 
 _Route1Youngster6AfterBattleText::
 	text "Where did you get"
@@ -106,7 +106,7 @@ _Route1Youngster7BattleText::
 _Route1Youngster7EndBattleText::
 	text "Waah"
 	line "That's not fair!"
-	done
+	prompt
 
 _Route1Youngster7AfterBattleText::
 	text "Go away!"

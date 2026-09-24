@@ -92,9 +92,10 @@ _EcruteakGymTrainer1BattleText::
 	done
 
 _EcruteakGymTrainer1EndBattleText::
-	text "Wins and losses, I"
-	line "experienced both."
-	done
+	text "Whew…"
+	line "Winning, losing…"
+	cont "I've felt both."
+	prompt
 
 _EcruteakGymTrainer1AfterBattleText::
 	text "Where did #MON"
@@ -108,8 +109,9 @@ _EcruteakGymTrainer2BattleText::
 	done
 
 _EcruteakGymTrainer2EndBattleText::
-	text "Ah! Well done!"
-	done
+	text "Ah!"
+	line "Well done!"
+	prompt
 
 _EcruteakGymTrainer2AfterBattleText::
 	text "MORTY uses ghost-"
@@ -125,8 +127,9 @@ _EcruteakGymTrainer3BattleText::
 	done
 
 _EcruteakGymTrainer3EndBattleText::
-	text "I, I, I lost!"
-	done
+	text "Gah!"
+	line "I, I, I lost!"
+	prompt
 
 _EcruteakGymTrainer3AfterBattleText::
 	text "The one who wants"
@@ -143,8 +146,9 @@ _EcruteakGymTrainer4BattleText::
 	done
 
 _EcruteakGymTrainer4EndBattleText::
-	text "Wha-what?"
-	done
+	text "Huh?!"
+	line "Wha-what?"
+	prompt
 
 _EcruteakGymTrainer4AfterBattleText::
 	text "Great, I'm glad"

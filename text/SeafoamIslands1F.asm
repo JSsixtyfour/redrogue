@@ -4,8 +4,9 @@ _SeafoamIslands1FSwimmer1BattleText::
 	done
 
 _SeafoamIslands1FSwimmer1EndBattleText::
-	text "You're as cold"
-	line "as the water!"
+	text "Brr…"
+	line "You're as cold as"
+	cont "the water!"
 	prompt
 
 _SeafoamIslands1FSwimmer1AfterBattleText::

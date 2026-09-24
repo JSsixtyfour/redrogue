@@ -78,8 +78,9 @@ _SSAnneB1FRoomsGentlemanBattleText::
 	done
 
 _SSAnneB1FRoomsGentlemanEndBattleText::
-	text "I should've used"
-	line "MACHOKE!"
+	text "Darn!"
+	line "I should've used"
+	cont "MACHOKE!"
 	prompt
 
 _SSAnneB1FRoomsGentlemanAfterBattleText::

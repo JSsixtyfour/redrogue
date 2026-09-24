@@ -5,8 +5,9 @@ _DiglettsCaveBugCatcher1BattleText::
 	done
 
 _DiglettsCaveBugCatcher1EndBattleText::
-	text "Your #MON are"
-	line "so strong!"
+	text "Wow…"
+	line "Your #MON are"
+	cont "so strong!"
 	prompt
 
 _DiglettsCaveBugCatcher1AfterBattleText::

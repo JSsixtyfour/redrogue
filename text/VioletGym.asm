@@ -73,8 +73,9 @@ _VioletGymCooltrainerMBattleText::
 	done
 
 _VioletGymCooltrainerMEndBattleText::
-	text "Grounded!"
-	done
+	text "Ugh!"
+	line "Grounded!"
+	prompt
 
 _VioletGymCooltrainerMAfterBattleText::
 	text "A FLYING #MON"
@@ -96,8 +97,8 @@ _VioletGymTrainer1BattleText::
 	done
 
 _VioletGymTrainer1EndBattleText::
-	text "Gaaah!"
-	done
+	text "Gaah!"
+	prompt
 
 _VioletGymTrainer1AfterBattleText::
 	text "FALKNER's skills"
@@ -115,9 +116,9 @@ _VioletGymTrainer2BattleText::
 	done
 
 _VioletGymTrainer2EndBattleText::
-	text "This can't be"
-	line "true!"
-	done
+	text "Huh?!"
+	line "It can't be true!"
+	prompt
 
 _VioletGymTrainer2AfterBattleText::
 	text "This is pathetic,"

@@ -169,7 +169,7 @@ _ChampionsRoomLanceIntroText::
 	done
 
 _LanceDefeatedText::
-	text "LANCE: What?!"
+	text "What?!"
 	line "My dragons..."
 	cont "defeated?!"
 
@@ -182,7 +182,7 @@ _LanceDefeatedText::
 	prompt
 
 _LanceVictoryText::
-	text "LANCE: Ha!"
+	text "Ha!"
 
 	para "My DRAGONITE is"
 	line "unbeatable!"
@@ -250,10 +250,8 @@ _ChampionsRoomOakChampionIntroText::
 	done
 
 _OakChampionDefeatedText::
-	text "OAK: Ha ha ha!"
-
-	para "Just as I"
-	line "hoped!"
+	text "Ha ha!"
+	line "Just as I hoped!"
 
 	para "You've surpassed"
 	line "your old"
@@ -261,7 +259,7 @@ _OakChampionDefeatedText::
 	prompt
 
 _OakChampionVictoryText::
-	text "OAK: Not bad,"
+	text "Not bad,"
 	line "<PLAYER>!"
 
 	para "But there's still"

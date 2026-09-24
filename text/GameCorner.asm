@@ -4,8 +4,9 @@ _GameCornerGamblerBattleText::
 	done
 
 _GameCornerGamblerEndBattleText::
-	text "Beginner's luck..."
-	done
+	text "Ha!"
+	line "Beginner's luck..."
+	prompt
 
 _GameCornerGamblerAfterBattleText::
 	text "The house doesn't"

@@ -36,7 +36,8 @@ _PokemonMansion1FScientist3BattleText::
 	done
 
 _PokemonMansion1FScientist3EndBattleText::
-	text "Security breach!"
+	text "Alarm!"
+	line "Security breach!"
 	prompt
 
 _PokemonMansion1FScientist3AfterBattleText::
@@ -52,7 +53,8 @@ _PokemonMansion1FScientist4BattleText::
 	done
 
 _PokemonMansion1FScientist4EndBattleText::
-	text "Unbelievable!"
+	text "What?!"
+	line "Unbelievable!"
 	prompt
 
 _PokemonMansion1FScientist4AfterBattleText::
@@ -67,7 +69,8 @@ _PokemonMansion1FScientist5BattleText::
 	done
 
 _PokemonMansion1FScientist5EndBattleText::
-	text "Remarkable..."
+	text "Whoa…"
+	line "Remarkable..."
 	prompt
 
 _PokemonMansion1FScientist5AfterBattleText::

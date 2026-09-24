@@ -58,9 +58,10 @@ _GoldenrodGymTrainer1BattleText::
 	done
 
 _GoldenrodGymTrainer1EndBattleText::
-	text "Darn… I thought"
-	line "you were weak…"
-	done
+	text "Darn…"
+	line "I thought you were"
+	cont "weak…"
+	prompt
 
 _GoldenrodGymTrainer1AfterBattleText::
 	text "In the world of"
@@ -80,8 +81,9 @@ _GoldenrodGymTrainer2BattleText::
 	done
 
 _GoldenrodGymTrainer2EndBattleText::
-	text "Oh, no, no, no!"
-	done
+	text "Ugh!"
+	line "Oh, no, no, no!"
+	prompt
 
 _GoldenrodGymTrainer2AfterBattleText::
 	text "I'm trying to beat"
@@ -104,9 +106,9 @@ _GoldenrodGymTrainer3BattleText::
 	done
 
 _GoldenrodGymTrainer3EndBattleText::
-	text "Let's see… Oops,"
-	line "it's over?"
-	done
+	text "Oops!"
+	line "It's already over?"
+	prompt
 
 _GoldenrodGymTrainer3AfterBattleText::
 	text "Wow, you must be"
@@ -121,11 +123,10 @@ _GoldenrodGymTrainer4BattleText::
 	done
 
 _GoldenrodGymTrainer4EndBattleText::
-	text "No! Oh, my"
-    line "#MON."
-	
-    para "I'm so sorry!"
-	done
+	text "No!"
+	line "Oh, my #MON."
+	para "I'm so sorry!"
+	prompt
 
 _GoldenrodGymTrainer4AfterBattleText::
 	text "I taught my"

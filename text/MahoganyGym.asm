@@ -84,9 +84,10 @@ _MahoganyGymTrainer1BattleText::
 	done
 
 _MahoganyGymTrainer1EndBattleText::
-	text "I wouldn't lose to"
-	line "you in skiing!"
-	done
+	text "Hmph!"
+	line "I wouldn't lose to"
+	cont "you in skiing!"
+	prompt
 
 _MahoganyGymTrainer1AfterBattleText::
 	text "If you don't act"
@@ -103,9 +104,10 @@ _MahoganyGymTrainer2BattleText::
 	done
 
 _MahoganyGymTrainer2EndBattleText::
-	text "Darn. I couldn't"
-	line "do a thing."
-	done
+	text "Darn."
+	line "I couldn't do a"
+	cont "thing."
+	prompt
 
 _MahoganyGymTrainer2AfterBattleText::
 	text "I don't think"
@@ -121,9 +123,10 @@ _MahoganyGymTrainer3BattleText::
 	done
 
 _MahoganyGymTrainer3EndBattleText::
-	text "No! You made me"
-	line "wipe out!"
-	done
+	text "No!"
+	line "You made me wipe"
+	cont "out!"
+	prompt
 
 _MahoganyGymTrainer3AfterBattleText::
 	text "I shouldn't have"
@@ -141,9 +144,10 @@ _MahoganyGymTrainer4BattleText::
 	done
 
 _MahoganyGymTrainer4EndBattleText::
-	text "Do you see how"
-	line "serious we are?"
-	done
+	text "Whew!"
+	line "Do you see how"
+	cont "serious we are?"
+	prompt
 
 _MahoganyGymTrainer4AfterBattleText::
 	text "This GYM is great."

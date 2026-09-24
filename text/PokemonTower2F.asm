@@ -63,9 +63,10 @@ _PokemonTower2FChanneler1BattleText::
 	done
 
 _PokemonTower2FChanneler1EndBattleText::
-	text "The spirits have"
-	line "abandoned me..."
-	done
+	text "Oh no…"
+	line "The spirits have"
+	cont "abandoned me..."
+	prompt
 
 _PokemonTower2FChanneler1AfterBattleText::
 	text "This tower is full"

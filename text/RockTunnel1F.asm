@@ -39,7 +39,8 @@ _RockTunnel1FHiker3BattleText::
 	done
 
 _RockTunnel1FHiker3EndBattleText::
-	text "I give!"
+	text "Ugh!"
+	line "I give!"
 	prompt
 
 _RockTunnel1FHiker3AfterBattleText::

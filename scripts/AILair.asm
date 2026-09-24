@@ -195,11 +195,14 @@ AILairOpeningText:
 	prompt
 
 AILairDefeatedText:
-	text "INSERT TEST HERE"
+	text "Impossible!"
+	line "You outsmarted me."
 	prompt
 
 AILairVictoryText:
-	text "INSERT TEST HERE"
+	text "As expected."
+	line "You need more"
+	cont "training."
 	prompt
 
 AILairPostBattleText:

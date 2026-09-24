@@ -65,9 +65,10 @@ _AzaleaGymTrainer1BattleText::
 	done
 
 _AzaleaGymTrainer1EndBattleText::
-	text "Just evolving"
-	line "isn't enough!"
-	done
+	text "Huh?"
+	line "Just evolving"
+	cont "isn't enough!"
+	prompt
 
 _AzaleaGymTrainer1AfterBattleText::
 	text "#MON become"
@@ -84,9 +85,10 @@ _AzaleaGymTrainer2BattleText::
 	done
 
 _AzaleaGymTrainer2EndBattleText::
-	text "You proved how"
-	line "tough you are…"
-	done
+	text "Ugh…"
+	line "You proved how"
+	cont "tough you are…"
+	prompt
 
 _AzaleaGymTrainer2AfterBattleText::
 	text "They're so cool,"
@@ -106,8 +108,9 @@ _AzaleaGymTrainer3BattleText::
 	done
 
 _AzaleaGymTrainer3EndBattleText::
-	text "Urrgggh!"
-	done
+	text "Ugh!"
+	line "Urrgggh!"
+	prompt
 
 _AzaleaGymTrainer3AfterBattleText::
 	text "I guess I should"
@@ -124,7 +127,7 @@ _AzaleaGymTrainer4BattleText::
 _AzaleaGymTrainer4EndBattleText::
 	text "Oh,"
 	line "double goodness!"
-	done
+	prompt
 
 _AzaleaGymTrainer4AfterBattleText::
 	text "You're really"

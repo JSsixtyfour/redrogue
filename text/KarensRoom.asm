@@ -22,9 +22,10 @@ _KarenBeforeBattleText::
 	done
 
 _KarenEndBattleText::
-	text "Well, aren't you"
-	line "good. I like that"
-	cont "in a trainer."
+	text "Well…"
+	line "aren't you good."
+	cont "I like that in a"
+	cont "trainer."
 	prompt
 
 _KarenAfterBattleText::

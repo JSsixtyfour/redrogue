@@ -77,8 +77,9 @@ _BlackthornGymTrainer1BattleText::
 	done
 
 _BlackthornGymTrainer1EndBattleText::
-	text "I'm disappointed."
-	done
+	text "Oh…"
+	line "I'm disappointed."
+	prompt
 
 _BlackthornGymTrainer1AfterBattleText::
 	text "Have you met"
@@ -101,8 +102,9 @@ _BlackthornGymTrainer2BattleText::
 	done
 
 _BlackthornGymTrainer2EndBattleText::
-	text "Way to go!"
-	done
+	text "Ah!"
+	line "Way to go!"
+	prompt
 
 _BlackthornGymTrainer2AfterBattleText::
 	text "Dragons are weak"
@@ -123,8 +125,9 @@ _BlackthornGymTrainer3BattleText::
 	done
 
 _BlackthornGymTrainer3EndBattleText::
-	text "You are special…"
-	done
+	text "Oh?"
+	line "You are special…"
+	prompt
 
 _BlackthornGymTrainer3AfterBattleText::
 	text "But just watch!"
@@ -146,9 +149,9 @@ _BlackthornGymTrainer4BattleText::
 	done
 
 _BlackthornGymTrainer4EndBattleText::
-	text "Arrrgh! I'm so"
-	line "disgusted!"
-	done
+	text "Ugh!"
+	line "I'm so disgusted!"
+	prompt
 
 _BlackthornGymTrainer4AfterBattleText::
 	text "Whew…"

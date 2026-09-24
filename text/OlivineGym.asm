@@ -51,8 +51,9 @@ _OlivineGymCooltrainerMBattleText::
 	done
 
 _OlivineGymCooltrainerMEndBattleText::
-	text "Dented..."
-	done
+	text "Ugh…"
+	line "Dented my pride!"
+	prompt
 
 _OlivineGymCooltrainerMAfterBattleText::
 	text "JASMINE uses"
