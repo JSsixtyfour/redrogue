@@ -230,23 +230,29 @@ PowerPlantCooltrainerMEndBattleText:
 	text_end
 
 PowerPlantCooltrainerMAfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, PowerPlantGreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_POWERPLANT_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_POWER_PLANT_TRAINER_0 / 8)]
+	and POWER_PLANT_ALL_TRAINERS_MASK
+	sub POWER_PLANT_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, PowerPlantBossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_POWERPLANT_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 Rogue_PowerPlant_Reward_Text:
 script_rogue_reward
@@ -273,6 +279,6 @@ PowerPlantNoTurningBackText:
 	text_far _NoTurningBackText
 	text_end
 
-PowerPlantGreedyText:
-	text_far _GreedyText
+PowerPlantBossAfterText:
+	text_far _PowerPlantScientist1AfterBattleText
 	text_end

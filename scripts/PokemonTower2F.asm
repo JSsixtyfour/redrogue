@@ -313,23 +313,29 @@ PokemonTower2FChanneler5EndBattleText:
 	text_end
 
 PokemonTower2FChanneler5AfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, PokemonTower2FGreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_POKEMONTOWER2F_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0 / 8)]
+	and POKEMON_TOWER_2F_ALL_TRAINERS_MASK
+	sub POKEMON_TOWER_2F_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, PokemonTower2FBossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_POKEMONTOWER2F_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 ;PokemonTower2FRivalText:
 ;	text_asm
@@ -422,6 +428,6 @@ PokemonTower2FNoTurningBackText:
 	text_far _NoTurningBackText
 	text_end
 
-PokemonTower2FGreedyText:
-	text_far _GreedyText
+PokemonTower2FBossAfterText:
+	text_far _PokemonTower2FChanneler1AfterBattleText
 	text_end

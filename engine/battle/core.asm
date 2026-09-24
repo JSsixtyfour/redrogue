@@ -2954,6 +2954,16 @@ AlreadyOutText:
 
 BattleMenu_RunWasSelected:
 	call LoadScreenTilesFromBuffer1
+; The menu reads END: confirm, then forfeit the run as a blackout (logic in
+; custom_functions/battle_menu_extras.asm). Debug keeps the old RUN body below,
+; which auto-wins trainer and procedural battles.
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG_MODE, a
+	jr nz, .debugRun
+	farcall RogueConfirmEndBattle ; carry = confirmed; flags survive Bankswitch
+	jp nc, DisplayBattleMenu
+	jp HandlePlayerBlackOut       ; returns carry: the battle ends as a loss
+.debugRun
 	ld a, $3
 	ldh [hCurrentMenuItem], a
 	ld hl, wBattleMonSpeed

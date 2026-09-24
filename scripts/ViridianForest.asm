@@ -265,23 +265,29 @@ ViridianForestCooltrainer_FEndBattleText:
 	text_end
 
 ViridianForestCooltrainer_FAfterBattleText:
-    text_asm
-	farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-   
-    ld hl, viridianforestGreedyText
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0 / 8)]
+	and VIRIDIAN_FOREST_ALL_TRAINERS_MASK
+	sub VIRIDIAN_FOREST_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, viridianforestBossAfterText
 	call PrintText
 	jr .done
-    
-    .GetMon
-    xor a
-    ld a, TEXT_VIRIDIANFOREST_REWARD_VENDOR_1
+.reward
+	ld a, TEXT_VIRIDIANFOREST_REWARD_VENDOR_1
 	ldh [hTextID], a
 	call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 Rogue_ViridianForest_Reward_Text:
 script_rogue_reward
@@ -306,8 +312,8 @@ farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 
 
-viridianforestGreedyText:
-	text_far _GreedyText
+viridianforestBossAfterText:
+	text_far _ViridianForestYoungster4AfterBattleText
 	text_end
 
 ViridianForestNoTurningBackText:

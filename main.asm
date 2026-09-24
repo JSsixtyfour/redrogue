@@ -776,3 +776,25 @@ INCLUDE "custom_functions/stage_events.asm"
 SECTION "Final Team Archive", ROMX
 
 INCLUDE "custom_functions/final_team_archive.asm"
+
+; Battle menu END/ITEM logic and the ghost-variant entrance fade. Reached only
+; by farcall from Battle Core, which has no room for it. Pinned to $3A in
+; layout.link (see the header of the file for the register contract).
+SECTION "Battle Menu Extras", ROMX
+
+INCLUDE "custom_functions/battle_menu_extras.asm"
+
+; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
+; line). Reached only by farcall from the route scripts, whose map
+; banks are too tight to hold it. Pinned to $3C (8.6 KB free) so first-fit
+; cannot backfill it into bank 1's last free bytes, as it did unpinned.
+SECTION "Rogue Boss After Battle", ROMX, BANK[$3C]
+
+INCLUDE "custom_functions/rogue_boss_after_battle.asm"
+
+; Run reset, toggle step: re-shows the objects stage scripts hide (hide bits
+; are not events, so the ZONE 1 event wipe cannot reach them). farcall only,
+; from RogueResetRunState; pinned to $3C because "rogue" is nearly full.
+SECTION "Rogue Run Toggle Clear", ROMX, BANK[$3C]
+
+INCLUDE "custom_functions/run_toggle_clear.asm"

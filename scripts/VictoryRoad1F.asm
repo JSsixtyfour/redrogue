@@ -184,23 +184,28 @@ VictoryRoad1FCooltrainerM4EndBattleText:
 	jp TextScriptEnd
 
 VictoryRoad1FCooltrainerM4AfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, VictoryRoad1FGreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; See custom_functions/rogue_boss_after_battle.asm. Deliberately UNGATED
+	; (e = 0): Victory Road has no all-trainers auto-offer, so re-talking the
+	; Rival is its only reward trigger, as before. The Rival's class makes the
+	; shared routine print his after-battle line itself once the reward is
+	; claimed, so the wrapper below is only reached if that ever changes.
+	text_asm
+	ld e, 0                       ; never gated on the other trainers
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, VictoryRoad1FBossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 Rogue_VictoryRoad1F_Reward_Text:
 script_rogue_reward
@@ -223,6 +228,6 @@ ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 
-VictoryRoad1FGreedyText:
-	text_far _GreedyText
+VictoryRoad1FBossAfterText:
+	text_far _VictoryRoad1FCooltrainerMAfterBattleText
 	text_end

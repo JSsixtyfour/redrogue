@@ -245,23 +245,29 @@ PokemonMansion1FScientist5EndBattleText:
 	text_end
 
 PokemonMansion1FScientist5AfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, PokemonMansion1FGreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_POKEMONMANSION1F_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_MANSION_1_TRAINER_0 / 8)]
+	and MANSION_1_ALL_TRAINERS_MASK
+	sub MANSION_1_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, PokemonMansion1FBossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_POKEMONMANSION1F_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 PokemonMansion1FSwitchText:
 	text_asm
@@ -326,6 +332,6 @@ PokemonMansion1FNoTurningBackText:
 	text_far _NoTurningBackText
 	text_end
 
-PokemonMansion1FGreedyText:
-	text_far _GreedyText
+PokemonMansion1FBossAfterText:
+	text_far _PokemonMansion1FScientist5AfterBattleText
 	text_end

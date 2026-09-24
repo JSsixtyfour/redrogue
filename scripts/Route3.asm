@@ -198,23 +198,29 @@ Route3JrTrainerFEndBattleText:
 	text_end
 
 Route3JrTrainerFAfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, Route3GreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_ROUTE3_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_3_TRAINER_0 / 8)]
+	and ROUTE3_ALL_TRAINERS_MASK
+	sub ROUTE3_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, Route3BossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_ROUTE3_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 Route3SignText:
 	text_far _Route3SignText
@@ -241,8 +247,8 @@ ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 
-Route3GreedyText:
-	text_far _GreedyText
+Route3BossAfterText:
+	text_far _Route3CooltrainerF3AfterBattleText
 	text_end
 
 Route3NoTurningBackText:

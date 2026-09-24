@@ -42,7 +42,7 @@ SSAnneB1F_Script:
     
     .normal_2
 	call EnableAutoTextBoxDrawing
-	;ld hl, SSAnneB1FTrainerHeaders
+	ld hl, SSAnneB1FTrainerHeaders
 	ld de, SSAnneB1F_ScriptPointers
 	ld a, [wSSAnneB1FCurScript]
 	call ExecuteCurMapScriptInTable
@@ -93,16 +93,26 @@ SSAnneB1F_Script:
     jp .normal_2
     
 
-	RogueAutoWalkScripts SSAnneB1F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SS_ANNE_B1F, TEXT_SSANNEB1F_NO_TURNING_BACK, SCRIPT_SSANNEB1F_PLAYER_IS_MOVING, wSSAnneB1FCurScript
+	RogueAutoWalkScripts SSAnneB1F, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SS_ANNE_B1F, TEXT_SSANNEB1F_NO_TURNING_BACK, SCRIPT_SSANNEB1F_PLAYER_IS_MOVING, wSSAnneB1FCurScript
 
+; The lobby door lands the player on warp 1, (27,5), at the corridor's east end.
+; Column 26 is the only way back to that tile, so it is the "no turning back"
+; strip. The arrival tile itself must NOT be in NoCoords (checked first).
 SSAnneB1FEntranceCoords:
-	dbmapcoord 3, 15
+	dbmapcoord 27, 5
 	db -1
 
 SSAnneB1FNoCoords:
-	dbmapcoord 3, 14
-	dbmapcoord 3, 13
+	dbmapcoord 26, 4
+	dbmapcoord 26, 5
 	db -1
+
+; B1F's own objects are plain NPCs (its trainers live in SSAnneB1FRooms), but
+; ExecuteCurMapScriptInTable stores hl as wTrainerHeaderPtr and the default
+; script runs CheckFightingMapTrainers. Without a real, empty list here it
+; walked WRAM as trainer headers and started phantom walk-up battles.
+SSAnneB1FTrainerHeaders:
+	db -1 ; end
 
 SSAnneB1F_ScriptPointers:
 	def_script_pointers
@@ -136,10 +146,7 @@ SSAnneB1FSailorText:
     text_asm
     CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
     jr nz, .reward
-    
-	text_far _SSAnneB1FSailorText
-	text_end
-    
+
     ld hl, .SSAnneB1FSailorText
 	call PrintText
 	jr .done

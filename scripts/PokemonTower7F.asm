@@ -59,13 +59,15 @@ PokemonTower7FSetDefaultScript:
 
 	RogueAutoWalkScripts PokemonTower7F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_TOWER_7F, TEXT_POKEMONTOWER7F_NO_TURNING_BACK, SCRIPT_POKEMONTOWER7F_PLAYER_IS_MOVING, wPokemonTower7FCurScript
 
+; No forced walk-in on 7F (deliberate). The player lands on warp 1, (9,16), and
+; the tile above it is wall, so every way out of the arrival tile crosses row 16:
+; any "no turning back" tile there would fire on the first step. (9,16) is a
+; WARP_NO_RETURN warp that WarpFound2 already refuses, so nothing is lost. Both
+; lists are empty and the default script just runs CheckFightingMapTrainers.
 PokemonTower7FEntranceCoords:
-	dbmapcoord 16, 9
 	db -1
 
 PokemonTower7FNoCoords:
-	dbmapcoord 16, 8
-	dbmapcoord 16, 7
 	db -1
 
 PokemonTower7F_ScriptPointers:
@@ -104,11 +106,14 @@ PokemonTower7FHideNPCScript:
 	ld b, a
 .toggleableObjectsListLoop
 	ld a, [hli]
+	cp -1           ; end of list: not toggleable, so leave it (the old unbounded
+	jr z, .notToggleable ; search ran off the list and hid a random object)
 	cp b            ; search for sprite ID in toggleable objects list
 	ld a, [hli]
 	jr nz, .toggleableObjectsListLoop
 	ld [wToggleableObjectIndex], a   ; remove toggleable object
 	predef HideObject
+.notToggleable
 	xor a
 	ldh [hJoyIgnore], a
 	ldh [hActiveSpriteIndex], a
@@ -126,12 +131,14 @@ PokemonTower7FWarpToMrFujiHouseScript:
 	predef HideObject
 	ld a, SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
+	; Land exactly where the (10,1) tile warp does: INDIGO_PLATEAU_LOBBY warp 1,
+	; stored 0-based. wLastMap is left alone, as the indoor tile-warp path in
+	; WarpFound2 leaves it (it is already the lobby, from .randomStage); vanilla's
+	; LAVENDER_TOWN here would send the lobby's LAST_MAP warps to Lavender.
 	ld a, INDIGO_PLATEAU_LOBBY
 	ldh [hWarpDestinationMap], a
-	ld a, $1
+	xor a
 	ld [wDestinationWarpID], a
-	ld a, LAVENDER_TOWN
-	ld [wLastMap], a
 	ld hl, wStatusFlags3
 	set BIT_WARP_FROM_CUR_SCRIPT, [hl]
 	ld a, SCRIPT_POKEMONTOWER7F_DEFAULT
@@ -140,56 +147,179 @@ PokemonTower7FWarpToMrFujiHouseScript:
 	ret
 
 PokemonTower7FRocketLeaveMovementScript:
-	ld hl, PokemonTower7FNPCCoordMovementTable
+; Walk the beaten rocket down to the stairs row. Each rocket has its own
+; -1-terminated list keyed on where the PLAYER stands when the battle ends
+; (sight engage, or a talk position). The old vanilla table was keyed on the
+; vanilla rocket positions, had no rows for rockets 4/5 and no terminator, so
+; it matched the wrong rocket or ran into movement data and walked garbage.
+; No match now means no walk: HideNPCScript hides the rocket where it stands.
 	ldh a, [hActiveSpriteIndex]
 	dec a
-	swap a
-	ld d, $0
+	cp 5            ; rockets are object slots 1-5
+	ret nc
+	add a
+	ld hl, PokemonTower7FRocketExitTables
+	ld d, 0
 	ld e, a
 	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 	ld a, [wYCoord]
 	ld b, a
 	ld a, [wXCoord]
 	ld c, a
 .loop
 	ld a, [hli]
+	cp -1
+	ret z
 	cp b
-	jr nz, .inc_and_skip
+	jr nz, .skipX
 	ld a, [hli]
 	cp c
-	jr nz, .skip
+	jr nz, .skipPointer
 	ld a, [hli]
 	ld d, [hl]
 	ld e, a
 	ldh a, [hActiveSpriteIndex]
 	ldh [hSpriteIndex], a
 	jp MoveSprite
-.inc_and_skip
+.skipX
 	inc hl
-.skip
+.skipPointer
 	inc hl
 	inc hl
 	jr .loop
 
-PokemonTower7FNPCCoordMovementTable:
-	map_coord_movement  9, 12, PokemonTower7FRocket1ExitRightDownMovement
-	map_coord_movement 10, 11, PokemonTower7FRocket1ExitDownRightMovement
-	map_coord_movement 11, 11, PokemonTower7FRocketExitDownMovement
-	map_coord_movement 12, 11, PokemonTower7FRocketExitDownMovement
-	map_coord_movement 12, 10, PokemonTower7FRocket2ExitLeftDownMovement
-	map_coord_movement 11,  9, PokemonTower7FRocket2ExitDownLeftMovement
-	map_coord_movement 10,  9, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  9,  9, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  9,  8, PokemonTower7FRocket3ExitRightDownMovement
-	map_coord_movement 10,  7, PokemonTower7FRocketExitDownMovement
-	map_coord_movement 11,  7, PokemonTower7FRocketExitDownMovement
-	map_coord_movement 12,  7, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  7,  5, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  6,  6, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  9,  4, PokemonTower7FRocketExitDownMovement
-	map_coord_movement  8,  4, PokemonTower7FRocketExitDownMovement
+PokemonTower7FRocketExitTables:
+	dw PokemonTower7FRocket1Exits
+	dw PokemonTower7FRocket2Exits
+	dw PokemonTower7FRocket3Exits
+	dw PokemonTower7FRocket4Exits
+	dw PokemonTower7FRocket5Exits
 
-PokemonTower7FRocket1ExitRightDownMovement:
+PokemonTower7FRocket1Exits:
+	map_coord_movement 10, 12, PokemonTower7FExit1
+	map_coord_movement 11, 12, PokemonTower7FExit2
+	map_coord_movement 12, 12, PokemonTower7FExit3
+	map_coord_movement  9, 11, PokemonTower7FExit4
+	db -1 ; end
+
+PokemonTower7FRocket2Exits:
+	map_coord_movement 11, 10, PokemonTower7FExit5
+	map_coord_movement 12,  9, PokemonTower7FExit5
+	map_coord_movement 10, 10, PokemonTower7FExit6
+	map_coord_movement  9, 10, PokemonTower7FExit7
+	map_coord_movement 12, 11, PokemonTower7FExit8
+	db -1 ; end
+
+PokemonTower7FRocket3Exits:
+	map_coord_movement 10,  9, PokemonTower7FExit9
+	map_coord_movement  9,  8, PokemonTower7FExit9
+	map_coord_movement 11,  9, PokemonTower7FExit10
+	map_coord_movement 12,  9, PokemonTower7FExit11
+	map_coord_movement  9, 10, PokemonTower7FExit12
+	db -1 ; end
+
+PokemonTower7FRocket4Exits:
+	map_coord_movement 11,  7, PokemonTower7FExit13
+	map_coord_movement 12,  6, PokemonTower7FExit13
+	map_coord_movement 12,  8, PokemonTower7FExit14
+	db -1 ; end
+
+PokemonTower7FRocket5Exits:
+	map_coord_movement 10,  6, PokemonTower7FExit15
+	map_coord_movement  9,  5, PokemonTower7FExit15
+	map_coord_movement  9,  7, PokemonTower7FExit16
+	db -1 ; end
+
+PokemonTower7FExit1: ; U R R D D D D D L L
+	db NPC_MOVEMENT_UP
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit2: ; D D D D L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit3: ; D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit4: ; R D D D D L
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit5: ; D D L D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit6: ; D D D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit7: ; D D D D D D L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit8: ; L D D D D D D L L
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit9: ; D D R D D D D D L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -199,43 +329,30 @@ PokemonTower7FRocket1ExitRightDownMovement:
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FRocket1ExitDownRightMovement:
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_RIGHT
+PokemonTower7FExit10: ; D D D D D D D L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
-	db -1 ; end
-
-PokemonTower7FRocketExitDownMovement:
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db -1 ; end
-
-PokemonTower7FRocket2ExitLeftDownMovement:
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db -1 ; end
-
-PokemonTower7FRocket2ExitDownLeftMovement:
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
 	db -1 ; end
 
-PokemonTower7FRocket3ExitRightDownMovement:
+PokemonTower7FExit11: ; D D D D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit12: ; R D D D D D D D L
 	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -243,6 +360,68 @@ PokemonTower7FRocket3ExitRightDownMovement:
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit13: ; D D L D D D D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit14: ; L D D D D D D D D D L L
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit15: ; D D R D D D D D D D D L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit16: ; R D D D D D D D D D D L
+	db NPC_MOVEMENT_RIGHT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
 PokemonTower7F_TextPointers:
@@ -271,9 +450,9 @@ PokemonTower7TrainerHeader1:
 PokemonTower7TrainerHeader2:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_2, 3, PokemonTower7FRocket3BattleText, PokemonTower7FRocket3EndBattleText, PokemonTower7FRocket3AfterBattleText
 PokemonTower7TrainerHeader3:
-	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_3, 1, PokemonTower7FRocket4BattleText, PokemonTower7FRocket4EndBattleText, PokemonTower7FRocket4AfterBattleText
+	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_3, 3, PokemonTower7FRocket4BattleText, PokemonTower7FRocket4EndBattleText, PokemonTower7FRocket4AfterBattleText
 PokemonTower7TrainerHeader4:
-	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_4, 1, PokemonTower7FRocket5BattleText, PokemonTower7FRocket5EndBattleText, PokemonTower7FRocket5AfterBattleText
+	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_4, 3, PokemonTower7FRocket5BattleText, PokemonTower7FRocket5EndBattleText, PokemonTower7FRocket5AfterBattleText
 	db -1 ; end
 
 PokemonTower7FRocket1Text:
@@ -381,23 +560,29 @@ PokemonTower7FRocket5EndBattleText:
 	text_end
 
 PokemonTower7FRocket5AfterBattleText:
-    text_asm
-    farcall Delay3
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-    jr z, .GetMon
-
-    ld hl, PokemonTower7FGreedyText
-    call PrintText
-    jr .done
-
-    .GetMon
-    xor a
-    ld a, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
-    ldh [hTextID], a
-    call DisplayTextID
-    call DisableWaitingAfterTextDisplay
-    .done
-    jp TextScriptEnd
+	; Reward menu only once all five are beaten; otherwise (and after the
+	; reward is claimed) the boss's own line, or the mini-boss's. See
+	; custom_functions/rogue_boss_after_battle.asm.
+	text_asm
+	ld a, [wEventFlags + (EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 / 8)]
+	and POKEMONTOWER_7_ALL_TRAINERS_MASK
+	sub POKEMONTOWER_7_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all five beaten
+	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
+	dec d
+	jr z, .reward
+	dec d
+	jr z, .done
+	ld hl, PokemonTower7FBossAfterText
+	call PrintText
+	jr .done
+.reward
+	ld a, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
+	ldh [hTextID], a
+	call DisplayTextID
+	call DisableWaitingAfterTextDisplay
+.done
+	jp TextScriptEnd
 
 Rogue_PokemonTower7F_Reward_Text:
 script_rogue_reward
@@ -424,6 +609,6 @@ PokemonTower7FNoTurningBackText:
 	text_far _NoTurningBackText
 	text_end
 
-PokemonTower7FGreedyText:
-	text_far _GreedyText
+PokemonTower7FBossAfterText:
+	text_far _PokemonTower7FRocket2AfterBattleText
 	text_end

@@ -72,6 +72,9 @@ RogueCreditPopupCheck::
 ;    (every stage/gym/Elite 4 trainer bit, auto-walk "no turning back" flags,
 ;    reward/offer flags, procedural stage flags, EVENT_VICTORY_ROAD_CLEARED).
 ;    ZONE 0 (ELEMENT PRISM one-time-ever flags) is untouched by design.
+;    1b. Toggles: RogueRunToggleClear re-shows a LISTED set of objects that
+;    stage scripts hide (Tower 7F's rockets and Fuji). Hide bits live in
+;    wToggleableObjectFlags, not wEventFlags, so step 1 never reached them.
 ;
 ; 2. wGameProgressFlags - the SAME region init_player_data.asm blanket-clears
 ;    at true new game (FillMemory over wGameProgressFlags..wGameProgressFlagsEnd).
@@ -133,6 +136,9 @@ RogueCreditPopupCheck::
 RogueResetRunState::
 	; --- 1. events ---
 	ResetEventRange RUN_EVENTS_START, RUN_EVENTS_END
+	; --- 1b. toggles - the listed hidden objects come back. Hide bits are not
+	; events, so step 1 cannot reach them. See custom_functions/run_toggle_clear.asm.
+	farcall RogueRunToggleClear
 
 	; --- 2. blanket-clear the run-progress region (same range/routine as
 	; true new game) ---
