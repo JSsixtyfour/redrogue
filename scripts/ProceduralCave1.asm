@@ -137,7 +137,7 @@ ProceduralCave1_Script:
 	ld a, [wStatusFlags3]
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	jr nz, .afterRecovery
-	farcall Delay3
+	call Delay3
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.
@@ -184,7 +184,7 @@ ProceduralCave1_Script:
 	; wCreditsEarnedThisRun and returns - so it is safe to run immediately
 	; before the join-offer text box.
 	farcall RogueAwardCredits1
-	farcall Delay3
+	call Delay3
 	ld a, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	ldh [hTextID], a
 	call DisplayTextID

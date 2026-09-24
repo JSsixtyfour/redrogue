@@ -34,7 +34,7 @@ Route12_Script:
     jr nz, .afterRewardCheck
 
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_ROUTE12_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID

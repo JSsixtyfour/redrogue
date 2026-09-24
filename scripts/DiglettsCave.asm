@@ -36,7 +36,7 @@ DiglettsCave_Script:
     cp DIGLETTS_CAVE_ALL_TRAINERS_MASK
     jr nz, .afterRewardCheck
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_DIGLETTSCAVE_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID

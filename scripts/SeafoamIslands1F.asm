@@ -36,7 +36,7 @@ SeafoamIslands1F_Script:
     cp SEAFOAM_ISLANDS_1F_ALL_TRAINERS_MASK
     jr nz, .afterRewardCheck
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_SEAFOAMISLANDS1F_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID

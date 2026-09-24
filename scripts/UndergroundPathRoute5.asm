@@ -148,7 +148,7 @@ UndergroundPathRoute5SuperNerdEndBattleText:
 
 UndergroundPathRoute5SuperNerdAfterBattleText:
     text_asm
-    farcall Delay3
+    call Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 

@@ -584,7 +584,9 @@ class YellowFollowerSliceTests(unittest.TestCase):
         bridge = self.core.split("FollowerPrepareAfterBattleAndCheckWarp::", 1)[1].split(
             "; Called by InitMapSprites", 1
         )[0]
-        self.assertLess(bridge.index("farcall DelayFrame"), bridge.index("farjp IsPlayerStandingOnWarp"))
+        delay = re.search(r"\b(?:r?farcall|call)\s+DelayFrame\b", bridge)
+        self.assertIsNotNone(delay)
+        self.assertLess(delay.start(), bridge.index("farjp IsPlayerStandingOnWarp"))
         self.assertIn("farjp FollowerRefreshAfterHeal", self.healing)
         heal_refresh = self.core.split("FollowerRefreshAfterHeal::", 1)[1].split(
             "; Called by InitMapSprites", 1

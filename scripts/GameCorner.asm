@@ -31,7 +31,7 @@ GameCorner_Script:
     cp GAME_CORNER_ALL_TRAINERS_MASK
     jr nz, .afterRewardCheck
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_GAME_CORNER_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID
@@ -181,7 +181,7 @@ GameCornerBeauty1Text:
 
 GameCornerClerk1Text:
 	text_asm
-	farcall Delay3
+	call Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
    

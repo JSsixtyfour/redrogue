@@ -390,7 +390,7 @@ FollowerReloadMapSpritesAfterBattle:
 ; warp-check order after preparing the active follower in this bank.
 FollowerPrepareAfterBattleAndCheckWarp::
 	call FollowerPrepareAfterBattle
-	farcall DelayFrame
+	call DelayFrame
 	farjp IsPlayerStandingOnWarp
 
 ; Healing can make slot 1 the first conscious member again. Refresh its sheet

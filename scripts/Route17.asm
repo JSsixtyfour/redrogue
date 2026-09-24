@@ -34,7 +34,7 @@ Route17_Script:
     jr nz, .afterRewardCheck
 
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_ROUTE17_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID
@@ -194,7 +194,7 @@ Route17Biker5EndBattleText:
 
 Route17Biker5AfterBattleText:
     text_asm
-    farcall Delay3
+    call Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 

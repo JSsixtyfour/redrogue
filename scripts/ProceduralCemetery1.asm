@@ -119,7 +119,7 @@ PCemStageEventRecoverCheck::
 	ld a, [wStatusFlags3]
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	ret nz
-	farcall Delay3
+	call Delay3
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.

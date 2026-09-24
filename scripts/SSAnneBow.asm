@@ -31,7 +31,7 @@ SSAnneBow_Script:
     cp SS_ANNE_5_ALL_TRAINERS_MASK
     jr nz, .afterRewardCheck
     SetEvent EVENT_ROGUE_POKEMON_OFFERED
-    farcall Delay3
+    call Delay3
     ld a, TEXT_SSANNEBOW_REWARD_VENDOR_1
     ldh [hTextID], a
     call DisplayTextID
@@ -187,7 +187,7 @@ SSAnneBowJrTrainerFEndBattleText:
 
 SSAnneBowJrTrainerFAfterBattleText:
     text_asm
-    farcall Delay3
+    call Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 
