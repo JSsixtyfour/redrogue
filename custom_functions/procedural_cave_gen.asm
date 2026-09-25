@@ -1317,18 +1317,18 @@ PCFinalizeCave::
 	ld [rRAMG], a
 
 	; Fresh entry only (slow path): set the wild-battle budget for this visit.
-	; cap = 10 + wBattleCount/5, saturating at 255.
+	; cap = WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR, saturating at 255.
 	ld a, [wBattleCount]
 	ld b, 0
 .budgetDivLoop
-	cp 5
+	cp WILD_BUDGET_DIVISOR
 	jr c, .budgetGotQuotient
-	sub 5
+	sub WILD_BUDGET_DIVISOR
 	inc b
 	jr .budgetDivLoop
 .budgetGotQuotient
 	ld a, b
-	add a, 10                       ; 10 + wBattleCount/5
+	add a, WILD_BUDGET_BASE         ; WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR
 	jr nc, .budgetNoClamp
 	ld a, 255
 .budgetNoClamp
@@ -1488,19 +1488,7 @@ PCEntranceTable:
 	db 18,  9, PC_EDGE_RIGHT,  5  ; right (1 block inside border, block 18,9)
 	db  1,  9, PC_EDGE_LEFT,   4  ; left repeated (top dropped: view ptr in border at Y=0)
 
-PCBossLevelTable:
-; one entry per round (0-8, based on wBattleCount / 10)
-; designed to be ~15-20 levels above typical reward pokemon at the same
-; battle count (reward pokemon cap at 50; boss reaches up to 80)
-	db 11  ; round 0 (battles  0-9)
-	db 22  ; round 1 (battles 10-19)
-	db 25  ; round 2 (battles 20-29)
-	db 30  ; round 3 (battles 30-39)
-	db 44  ; round 4 (battles 40-49)
-	db 44  ; round 5 (battles 50-59)
-	db 48  ; round 6 (battles 60-69)
-	db 51  ; round 7 (battles 70-79)
-	db 60  ; round 8 (battles 80-89)
+INCLUDE "data/balance/wild_boss_levels.asm"
 
 ; ============================================================
 ; PCRollMonClass
@@ -1607,8 +1595,7 @@ PCGetWildLevel:
 	ld [wCurEnemyLevel], a
 	ret
 
-PCWildLevelTable:
-	db 5, 9, 13, 17, 21, 25, 29, 33, 37 ; rounds 0-8, min level (add 0-2 for range)
+INCLUDE "data/balance/wild_levels.asm"
 
 PCRollWildEncounter::
 	call PCGetWildLevel                  ; wCurEnemyLevel (set before species pick)

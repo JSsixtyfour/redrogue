@@ -1,5 +1,5 @@
 ProceduralFacilityWildMons:
-	def_grass_wildmons 10 ; encounter rate
+	def_grass_wildmons WILD_AREA_ENCOUNTER_RATE ; chance per step = rate/256
 	db 14, VOLTORB
 	db 15, MAGNEMITE
 	db 16, KOFFING

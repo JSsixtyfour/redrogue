@@ -401,17 +401,17 @@ GetRewardMonLevel::
 	; (round 2 route-next gave 16; now 14). Every reward-level consumer moves with
 	; it: stage reward pokeballs and trade, lobby salesman/trader, both daycares.
 	ld a, [wRewardLevelDataBuffer]   ; byte 0: level range
-	srl a                    ; half the range
+	srl a                    ; half the range (code, not a knob)
 	ld b, a
 	ld a, [wRewardLevelDataBuffer + 1] ; byte 1: minimum level
 	add b                    ; minimum + range/2
-	cp 5
+	cp REWARD_LEVEL_FLOOR
 	jr nc, .atLeastFive
-	ld a, 5                  ; round 1 route-next would be 3, below a starter
+	ld a, REWARD_LEVEL_FLOOR ; round 1 route-next would be 3, below a starter
 .atLeastFive
-	cp 51
+	cp REWARD_LEVEL_CAP + 1
 	jr c, .levelOk
-	ld a, 50
+	ld a, REWARD_LEVEL_CAP
 .levelOk
 	ld [wCurEnemyLevel], a
 	ret

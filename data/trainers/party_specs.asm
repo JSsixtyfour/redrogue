@@ -246,6 +246,9 @@ DEF NUM_E4_TEAMS       EQU NUM_E4_TIERS * NUM_ROUND_VARIANTS
 ;
 ; base + slot * step reproduces both endpoints exactly on every round but 4,
 ; which lands 25-29 against the authored 24-29.
+;
+; The table above is the ORIGINAL shipped curve. The live values are the
+; GYM_R<round>_* constants in constants/balance_constants.asm; tune them there.
 DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 
 ; \1 = wTrainerNo. Derives round and variant from it, so the record and the
@@ -261,45 +264,15 @@ MACRO gym_team_spec
 	DEF _t   = \1
 	DEF _rnd = (_t - 1) / NUM_ROUND_VARIANTS + 1
 	DEF _var = (_t - 1) % NUM_ROUND_VARIANTS
-	IF _rnd == 1
-	DEF _n = 2
-	DEF _bl = 12
-	DEF _st = 2
+	; Team size and level curve: GYM_R<round>_* in constants/balance_constants.asm.
+	DEF _n = GYM_R{d:_rnd}_MONS
+	DEF _bl = GYM_R{d:_rnd}_BASE
+	DEF _st = GYM_R{d:_rnd}_STEP
+	IF _rnd <= 2
 	DEF _mix = MIX_GYM_EARLY
-	ELIF _rnd == 2
-	DEF _n = 2
-	DEF _bl = 18
-	DEF _st = 3
-	DEF _mix = MIX_GYM_EARLY
-	ELIF _rnd == 3
-	DEF _n = 3
-	DEF _bl = 18
-	DEF _st = 3
+	ELIF _rnd <= 5
 	DEF _mix = MIX_GYM_LATE
-	ELIF _rnd == 4
-	DEF _n = 3
-	DEF _bl = 25
-	DEF _st = 2
-	DEF _mix = MIX_GYM_LATE
-	ELIF _rnd == 5
-	DEF _n = 4
-	DEF _bl = 37
-	DEF _st = 2
-	DEF _mix = MIX_GYM_LATE
-	ELIF _rnd == 6
-	DEF _n = 4
-	DEF _bl = 37
-	DEF _st = 2
-	DEF _mix = MIX_ELITE
-	ELIF _rnd == 7
-	DEF _n = 5
-	DEF _bl = 39
-	DEF _st = 2
-	DEF _mix = MIX_ELITE
 	ELSE
-	DEF _n = 6
-	DEF _bl = 40
-	DEF _st = 2
 	DEF _mix = MIX_ELITE
 	ENDC
 	DEF _flags = GYM_SPEC_FLAGS
@@ -381,7 +354,7 @@ MACRO e4_team_spec
 	DEF _t    = \1
 	DEF _tier = (_t - 1) / NUM_ROUND_VARIANTS + 1
 	DEF _var  = (_t - 1) % NUM_ROUND_VARIANTS
-	party_spec E4_TEAM_SIZE, 51 + _tier, 2, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
+	party_spec E4_TEAM_SIZE, E4_BASE_LEVEL + _tier, E4_LEVEL_STEP, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
 	IF _var == 0
 	slot_override E4_TEAM_SIZE - 1, 1 << BIT_POVR_SPECIES
 	db \3, \4
@@ -702,44 +675,19 @@ Rival3Spec:
 ; NO_DUPES (0 for none).
 MACRO stage_event_team_spec
 	DEF _r = \1
-	IF _r == 1
-	DEF _n = 2
-	DEF _bl = 5
+	; Team size and level: STAGE_EVENT_R<round>_* in constants/balance_constants.asm.
+	DEF _n = STAGE_EVENT_R{d:_r}_MONS
+	DEF _bl = STAGE_EVENT_R{d:_r}_BASE
+	IF _r <= 2
 	DEF _mix = MIX_ROUTE_EARLY
-	ELIF _r == 2
-	DEF _n = 2
-	DEF _bl = 15
-	DEF _mix = MIX_ROUTE_EARLY
-	ELIF _r == 3
-	DEF _n = 3
-	DEF _bl = 20
+	ELIF _r <= 5
 	DEF _mix = MIX_ROUTE_MID
-	ELIF _r == 4
-	DEF _n = 3
-	DEF _bl = 25
-	DEF _mix = MIX_ROUTE_MID
-	ELIF _r == 5
-	DEF _n = 4
-	DEF _bl = 33
-	DEF _mix = MIX_ROUTE_MID
-	ELIF _r == 6
-	DEF _n = 4
-	DEF _bl = 37
-	DEF _mix = MIX_ROUTE_LATE
-	ELIF _r == 7
-	DEF _n = 5
-	DEF _bl = 41
-	DEF _mix = MIX_ROUTE_LATE
-	ELIF _r == 8
-	DEF _n = 5
-	DEF _bl = 45
+	ELIF _r <= 8
 	DEF _mix = MIX_ROUTE_LATE
 	ELSE
-	DEF _n = 6
-	DEF _bl = 52
 	DEF _mix = MIX_TRAINER_LATE
 	ENDC
-	party_spec _n, _bl, 1, \2, _mix, (1 << BIT_PSPEC_NO_DUPES) | \3
+	party_spec _n, _bl, STAGE_EVENT_LEVEL_STEP, \2, _mix, (1 << BIT_PSPEC_NO_DUPES) | \3
 	db PARTY_SPEC_OVERRIDES_END
 ENDM
 

@@ -62,6 +62,7 @@ RGBGFXFLAGS  ?= -Weverything
 	compare \
 	smoke \
 	ai_scenarios \
+	balance_report \
 	tools
 
 all: $(roms)
@@ -113,6 +114,10 @@ ai_scenarios: pokeblue_debug.gbc
 
 ai_benchmark: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_benchmark.py $(BENCHMARK_ARGS)
+
+balance_report:
+	python3 tools/balance/model.py --runs 200 --selfcheck
+	python3 tools/balance/report.py
 
 
 RGBASMFLAGS += -Q8 -P includes.asm

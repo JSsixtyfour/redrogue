@@ -931,7 +931,7 @@ PCPokemonSalesmanText:
     jr z, .print
     inc c       ; greatball class
     ld hl, .IGotADealTextGreatball
-    ld b, $60
+    ld b, SALESMAN_PRICE_GREATBALL_BCD
     cp c
     jr z, .print
 	ld hl, .IGotADealTextUltraball
@@ -948,19 +948,19 @@ PCPokemonSalesmanText:
 	ldh [hMoney + 2], a
     
     ld a, [wroguenpcclass]
-    ld b, $20
+    ld b, SALESMAN_PRICE_POKEBALL_BCD
     ld c, 1
     cp c
     jr z, .pokemon_cost
     inc c       ; greatball class
 
-    ld b, $60
+    ld b, SALESMAN_PRICE_GREATBALL_BCD
     cp c
     jr z, .pokemon_cost
-    
+
     ; ultraball class
-    ld b, $90
-    
+    ld b, SALESMAN_PRICE_ULTRABALL_BCD
+
     .pokemon_cost
     ld a, b
 	ldh [hMoney + 1], a
@@ -991,20 +991,20 @@ PCPokemonSalesmanText:
 	ld [wPriceTemp + 2], a
     
     ld a, [wroguenpcclass]
-    ld b, $20
+    ld b, SALESMAN_PRICE_POKEBALL_BCD
     ld c, 1
     cp c
     jr z, .pokemon_cost_2
     inc c       ; greatball class
 
-    ld b, $60
+    ld b, SALESMAN_PRICE_GREATBALL_BCD
     cp c
     jr z, .pokemon_cost_2
-    
+
     ; ultraball class
-    ld b, $90
-    
-    
+    ld b, SALESMAN_PRICE_ULTRABALL_BCD
+
+
 	.pokemon_cost_2
     ld a, b
 	ld [wPriceTemp + 1], a
@@ -1075,7 +1075,7 @@ PCMoveTutorText::
 	;charge 5000 money
 	ld [hMoney], a
 	ld [hMoney + 2], a
-	ld a, $50                ; bcd3 5000 is $00,$50,$00
+	ld a, MOVE_RELEARNER_PRICE_BCD ; bcd3 5000 is $00,$50,$00
 	ld [hMoney + 1], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
@@ -1155,7 +1155,7 @@ PCMoveTutorText::
 	xor a
 	ld [wPriceTemp], a
 	ld [wPriceTemp + 2], a
-	ld a, $50                ; bcd3 5000 is $00,$50,$00
+	ld a, MOVE_RELEARNER_PRICE_BCD ; bcd3 5000 is $00,$50,$00
 	ld [wPriceTemp + 1], a
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2

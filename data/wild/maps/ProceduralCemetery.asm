@@ -1,5 +1,5 @@
 ProceduralCemeteryWildMons:
-	def_grass_wildmons 10 ; encounter rate
+	def_grass_wildmons WILD_AREA_ENCOUNTER_RATE ; chance per step = rate/256
 	db 14, GASTLY
 	db 15, CUBONE
 	db 16, GASTLY

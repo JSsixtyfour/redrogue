@@ -136,9 +136,13 @@ GainExperience:
 	ld a, 1
 .next
 	ld [wGainBoostedExp], a
+IF WILD_EXP_MATCHES_TRAINER
+	call BoostExp ; every battle gets the trainer 1.5x (constants/balance_constants.asm)
+ELSE
 	ldh a, [hIsInBattle]
 	dec a ; is it a trainer battle?
 	call nz, BoostExp ; if so, boost exp
+ENDC
 	; PRIZE_EXP_BOOST (d): PERMANENT (2026-09-02) - does NOT gate on
 	; BIT_WITCH_ACCEPTED. Once earned, applies to every kill for the rest of
 	; the run. Rebalanced from a flat 1.5x pass (BoostExp) to +10%, to match

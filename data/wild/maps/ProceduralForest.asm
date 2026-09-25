@@ -1,5 +1,5 @@
 ProceduralForestWildMons:
-	def_grass_wildmons 10 ; encounter rate
+	def_grass_wildmons WILD_AREA_ENCOUNTER_RATE ; chance per step = rate/256
 	db 14, CATERPIE
 	db 15, ODDISH
 	db 16, PIDGEOTTO

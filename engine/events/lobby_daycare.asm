@@ -153,7 +153,7 @@ LobbyDaycareLady::
 	inc de
 	ld [de], a
 	ld hl, wDayCarePerLevelCost2
-	ld a, $5
+	ld a, DAYCARE_PRICE_PER_ROUND_BCD
 	ld [hli], a
 	ld [hl], $0
 	ld a, b                     ; a = rounds to charge (price multiplier; 0 = free)
@@ -377,7 +377,7 @@ LobbyDaycareGentleman::
 	inc de
 	ld [de], a
 	ld hl, wDayCarePerLevelCost
-	ld a, $5
+	ld a, DAYCARE_PRICE_PER_ROUND_BCD
 	ld [hli], a
 	ld [hl], $0
 	ld a, b                     ; a = rounds to charge (price multiplier; 0 = free)

@@ -577,6 +577,13 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                 h.pyboy.button_release("a")
             return "display" in observed
 
+        # 70 base EXP x level 7 / 7 = 70; wild battles get the trainer x1.5
+        # when constants/balance_constants.asm says so.
+        wild_matches = parse_rgbds_constants(
+            REPO_ROOT / "constants/balance_constants.asm"
+        )["WILD_EXP_MATCHES_TRAINER"]
+        expected_gain = 105 if wild_matches else 70
+
         # Real award/level-up/learn-move paths. Only slot 5 earns EXP;
         # earlier ineligible and fainted slots and a trailing fainted slot
         # also exercise the paths that must not pop the saved amount.
@@ -605,7 +612,7 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                 h.write8("wBoostExpByExpAll", 1)
                 h.write8("wEnemyMonBaseExp", 70)
                 h.write8("wEnemyMonLevel", 7)
-                h.write8("hIsInBattle", 1)  # Wild: no trainer EXP multiplier.
+                h.write8("hIsInBattle", 1)  # Wild; x1.5 only if WILD_EXP_MATCHES_TRAINER.
                 h.write8("wRogueFlagsBitfield", 0)  # No witch EXP boost.
                 baseline = io.BytesIO()
                 h.save_state(baseline)
@@ -616,8 +623,8 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                     entry["armed"] = False
                     h.load_state(baseline)
                     h.pyboy.button_release("a")
-                self.assertEqual(observed["display"], 70)
-                self.assertEqual(observed["exp"], experience + 70)
+                self.assertEqual(observed["display"], expected_gain)
+                self.assertEqual(observed["exp"], experience + expected_gain)
                 self.assertEqual(observed["level"], final_level)
                 self.assertEqual(observed["stack_before"], observed["stack_after"])
                 self.assertEqual(tuple(observed.get("learn_levels", ())), learn_levels)

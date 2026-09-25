@@ -6262,18 +6262,19 @@ PFacPreload::
     or b
     ld [sProcFacilitySignVariant], a
 
-    ; Wild-battle budget: 10 + wBattleCount/5, saturating at 255 (cave formula).
+    ; Wild-battle budget: WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR,
+    ; saturating at 255 (cave formula).
     ld a, [wBattleCount]
     ld b, 0
 .budgetDivLoop
-    cp 5
+    cp WILD_BUDGET_DIVISOR
     jr c, .budgetGotQuotient
-    sub 5
+    sub WILD_BUDGET_DIVISOR
     inc b
     jr .budgetDivLoop
 .budgetGotQuotient
     ld a, b
-    add a, 10
+    add a, WILD_BUDGET_BASE
     jr nc, .budgetNoClamp
     ld a, 255
 .budgetNoClamp

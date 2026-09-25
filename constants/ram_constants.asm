@@ -392,12 +392,6 @@ DEF STAGE_EVENT_PHASE_SETTLED EQU 2 ; beaten / resolved, nothing left to do this
 ; retry keys off. Phase is two bits (0-3), so this costs nothing.
 DEF STAGE_EVENT_PHASE_OWED    EQU 3
 
-; Chance out of 256 that an offered wild area carries an event at all.
-; 256 = every offered wild area carries one. StageEventRoll skips its `cp`
-; entirely at that value rather than comparing against an 8-bit-unrepresentable
-; 256, so the knob still works for any value below it.
-DEF STAGE_EVENT_CHANCE EQU 256
-
 ; sStageEventHideoutX/Y sentinel: this cave produced no usable hideout, so the
 ; event does not manifest. Deliberately $ff, because that is what fresh SRAM and
 ; ClearAllSRAMBanks both leave behind - "never written" and "deliberately

@@ -149,18 +149,19 @@ PCemGenerateMaps::
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 
-	; set wild battle budget for the entire cemetery run (10 + wBattleCount/5)
+	; set wild battle budget for the entire cemetery run
+	; (WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR)
 	ld a, [wBattleCount]
 	ld b, 0
 .cemBudgetDiv
-	cp 5
+	cp WILD_BUDGET_DIVISOR
 	jr c, .cemBudgetDone
-	sub 5
+	sub WILD_BUDGET_DIVISOR
 	inc b
 	jr .cemBudgetDiv
 .cemBudgetDone
 	ld a, b
-	add a, 10
+	add a, WILD_BUDGET_BASE
 	jr nc, .cemBudgetNoClamp
 	ld a, 255
 .cemBudgetNoClamp

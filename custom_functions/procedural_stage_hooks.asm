@@ -210,7 +210,7 @@ ProcStageLoadDispatch::
 	jr nz, .noExitBattles
 .addExitBattles
 	ld a, [wBattleCount]
-	add a, 5
+	add a, WILD_AREA_EXIT_BATTLES
 	jr nc, .noExitClamp
 	ld a, $ff
 .noExitClamp
