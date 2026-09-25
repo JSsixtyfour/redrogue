@@ -10,10 +10,13 @@
 ; generic, non-item-specific pieces (HasEnoughCoins, predef SubBCDPredef) are
 ; shared.
 ;
-; Piece ids (0-24) match sRoomOwned's bit layout exactly: 0-7 = TOP options
+; Piece ids (0-26) match sRoomOwned's bit layout exactly: 0-7 = TOP options
 ; 1-8, 8 = LONG DESK, 9-12 = MIDDLE options 1-4, 13 = POTTED PLANT,
-; 14-24 = decorations 1-11. The four defaults (WALL/DESK/NOTHING/NOTHING)
-; are option 0 of each category and are never sold - always free.
+; 14-24 = decorations 1-11, 25 = TOP 9 (DINOSAUR POSTER), 26 = MIDDLE 5
+; (SPACESHIP). Later pieces take the next free bit rather than renumbering,
+; so owned bits in existing saves keep their meaning; each category's
+; *Ids table maps its rows to bits. The four defaults (WALL/DESK/NOTHING/
+; NOTHING) are option 0 of each category and are never sold - always free.
 
 SECTION "Room Vendor", ROMX
 
@@ -85,8 +88,7 @@ RoomVendorMenu::
 	jr nz, .notTop
 	ld hl, RoomVendorTopNames
 	ld de, RoomVendorTopPrices
-	ld b, 8
-	ld c, 0
+	ld bc, RoomVendorTopIds
 	call RoomVendorCategory
 	jp .menu
 .notTop
@@ -94,8 +96,7 @@ RoomVendorMenu::
 	jr nz, .notMiddle
 	ld hl, RoomVendorMiddleNames
 	ld de, RoomVendorMiddlePrices
-	ld b, 4
-	ld c, 9
+	ld bc, RoomVendorMiddleIds
 	call RoomVendorCategory
 	jp .menu
 .notMiddle
@@ -103,8 +104,7 @@ RoomVendorMenu::
 	jr nz, .notDesk
 	ld hl, RoomVendorDeskNames
 	ld de, RoomVendorDeskPrices
-	ld b, 1
-	ld c, 8
+	ld bc, RoomVendorDeskIds
 	call RoomVendorCategory
 	jp .menu
 .notDesk
@@ -112,16 +112,14 @@ RoomVendorMenu::
 	jr nz, .notPlant
 	ld hl, RoomVendorPlantNames
 	ld de, RoomVendorPlantPrices
-	ld b, 1
-	ld c, 13
+	ld bc, RoomVendorPlantIds
 	call RoomVendorCategory
 	jp .menu
 .notPlant
 	; ROOM_VENDOR_PALS
 	ld hl, RoomVendorPalsNames
 	ld de, RoomVendorPalsPrices
-	ld b, 11
-	ld c, 14
+	ld bc, RoomVendorPalsIds
 	call RoomVendorCategory
 	jp .menu
 .exit
@@ -138,31 +136,48 @@ RoomVendorMenu::
 ; ============================================================
 ; RoomVendorCategory — show one category's pieces, handle the purchase.
 ; INPUT: hl = name table (dw per piece), de = price table (bcd2 per piece),
-;        b = piece count, c = owned-bit base (piece id of this category's
-;        first entry).
+;        bc = piece-id table (a count byte, then one sRoomOwned bit per piece).
+; This category state lives at wBuffer + 8..13, clear of RoomDrawPickList's
+; + 0..6 (RoomDrawEntries' scratch plus RoomSetPickListOpts' row and
+; description pointer). Sharing + 4..6 drew these lists at the owned-bit
+; base's row and printed price bytes as descriptions.
 ; ============================================================
 RoomVendorCategory:
 	ld a, e
-	ld [wBuffer + 4], a
+	ld [wBuffer + 10], a
 	ld a, d
-	ld [wBuffer + 5], a          ; price table pointer
+	ld [wBuffer + 11], a         ; price table pointer
 	ld a, c
-	ld [wBuffer + 6], a          ; owned-bit base
+	ld [wBuffer + 12], a
+	ld a, b
+	ld [wBuffer + 13], a         ; piece-id table pointer
+	ld a, [bc]
+	ld b, a                      ; b = piece count
 	push hl
 	push bc
 	hlcoord 0, 0
 	ld b, 12
-	ld c, 14
+	ld c, 16                     ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
 	call TextBoxBorder
 	call UpdateSprites
+	ld hl, 0                     ; no description box
+	ld a, 2
+	call RoomSetPickListOpts
 	pop bc
 	pop hl
 	call RoomDrawPickList
 	ret c                        ; cancelled
 	ld [wBuffer + 8], a          ; category-relative index
+	ld a, [wBuffer + 12]
+	ld l, a
+	ld a, [wBuffer + 13]
+	ld h, a
+	inc hl                       ; skip the count byte
+	ld a, [wBuffer + 8]
 	ld c, a
-	ld a, [wBuffer + 6]
-	add c
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
 	ld [wBuffer + 9], a          ; piece id
 	ld c, a
 	call RoomIsPieceOwned
@@ -170,9 +185,9 @@ RoomVendorCategory:
 	ld hl, .AlreadyOwnedText
 	jp PrintText
 .notOwned
-	ld a, [wBuffer + 4]
+	ld a, [wBuffer + 10]
 	ld l, a
-	ld a, [wBuffer + 5]
+	ld a, [wBuffer + 11]
 	ld h, a                      ; hl = price table base
 	ld a, [wBuffer + 8]
 	add a
@@ -223,8 +238,8 @@ RoomVendorCategory:
 	text_end
 
 ; ============================================================
-; RoomIsPieceOwned — INPUT: c = piece id (0-24). OUTPUT: carry set if owned.
-; RoomSetPieceOwned — INPUT: a = piece id (0-24). Sets the owned bit.
+; RoomIsPieceOwned — INPUT: c = piece id (0-26). OUTPUT: carry set if owned.
+; RoomSetPieceOwned — INPUT: a = piece id (0-26). Sets the owned bit.
 ; Both address sRoomOwned (ram/sram.asm, "Save Data" section, bank 1) as a
 ; byte-index/bit-index pair via RoomBitMasks rather than a shift loop.
 ; ============================================================
@@ -310,10 +325,11 @@ RoomBitMasks:
 	db %00010000, %00100000, %01000000, %10000000
 
 ; ============================================================
-; Category data: names + bcd2 prices, one row per piece, in owned-bit order.
+; Category data: names + bcd2 prices + piece ids, one row per piece.
 ; ============================================================
 RoomVendorTopNames:
-	dw .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, .Map, .Couch
+	dw .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, .Map, .Couch, \
+	   .DinoPoster
 .Bookshelf:  db "BOOKSHELF@"
 .AwardShelf: db "AWARD SHELF@"
 .Window:     db "WINDOW@"
@@ -322,6 +338,7 @@ RoomVendorTopNames:
 .TvGame:     db "TV/GAME@"
 .Map:        db "MAP@"
 .Couch:      db "COUCH@"
+.DinoPoster: db "DINOSAUR POSTER@"
 RoomVendorTopPrices:
 	bcd2 10
 	bcd2 15
@@ -331,30 +348,45 @@ RoomVendorTopPrices:
 	bcd2 30
 	bcd2 10
 	bcd2 25
+	bcd2 15
+RoomVendorTopIds:
+	db 9
+	db 0, 1, 2, 3, 4, 5, 6, 7, 25
 
 RoomVendorMiddleNames:
-	dw .NoteTable, .FlowerTable, .PlainTable, .TvGame
+	dw .NoteTable, .FlowerTable, .PlainTable, .TvGame, .Spaceship
 .NoteTable:   db "NOTE TABLE@"
 .FlowerTable: db "FLOWER TABLE@"
 .PlainTable:  db "PLAIN TABLE@"
 .TvGame:      db "TV/GAME@"
+.Spaceship:   db "SPACESHIP@"
 RoomVendorMiddlePrices:
 	bcd2 15
 	bcd2 15
 	bcd2 10
 	bcd2 25
+	bcd2 25
+RoomVendorMiddleIds:
+	db 5
+	db 9, 10, 11, 12, 26
 
 RoomVendorDeskNames:
 	dw .LongDesk
 .LongDesk: db "LONG DESK@"
 RoomVendorDeskPrices:
 	bcd2 20
+RoomVendorDeskIds:
+	db 1
+	db 8
 
 RoomVendorPlantNames:
 	dw .PottedPlant
 .PottedPlant: db "POTTED PLANT@"
 RoomVendorPlantPrices:
 	bcd2 5
+RoomVendorPlantIds:
+	db 1
+	db 13
 
 RoomVendorPalsNames:
 	dw .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
@@ -382,3 +414,6 @@ RoomVendorPalsPrices:
 	bcd2 10
 	bcd2 15
 	bcd2 15
+RoomVendorPalsIds:
+	db 11
+	db 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24

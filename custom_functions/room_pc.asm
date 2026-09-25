@@ -329,14 +329,14 @@ RoomFurnitureMenu:
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
 	ld b, 10
-	ld c, 14
+	ld c, 16                     ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
 	call TextBoxBorder
 	call UpdateSprites
 	ld hl, RoomTopDescTable
-	ld a, 2
+	ld a, 1                      ; 10 entries: row 2 would run into the box's bottom border
 	call RoomSetPickListOpts
 	ld hl, RoomTopNameTable
-	ld b, 9
+	ld b, 10
 	call RoomDrawPickList
 	ret c
 	call RoomWriteFurnitureTop
@@ -346,7 +346,7 @@ RoomFurnitureMenu:
 	jr nz, .notMiddle
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	ld b, 6
+	ld b, 7
 	ld c, 14
 	call TextBoxBorder
 	call UpdateSprites
@@ -354,7 +354,7 @@ RoomFurnitureMenu:
 	ld a, 2
 	call RoomSetPickListOpts
 	ld hl, RoomMiddleNameTable
-	ld b, 5
+	ld b, 6
 	call RoomDrawPickList
 	ret c
 	call RoomWriteFurnitureMiddle
@@ -405,7 +405,8 @@ RoomFurnitureMenu:
 	db "BOTTOM@"
 
 RoomTopNameTable:
-	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, .Map, .Couch
+	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, .Map, .Couch, \
+	   .DinoPoster
 .Wall:        db "WALL@"
 .Bookshelf:   db "BOOKSHELF@"
 .AwardShelf:  db "AWARD SHELF@"
@@ -415,14 +416,16 @@ RoomTopNameTable:
 .TvGame:      db "TV/GAME@"
 .Map:         db "MAP@"
 .Couch:       db "COUCH@"
+.DinoPoster:  db "DINOSAUR POSTER@"
 
 RoomMiddleNameTable:
-	dw .Nothing, .NoteTable, .FlowerTable, .PlainTable, .TvGame
+	dw .Nothing, .NoteTable, .FlowerTable, .PlainTable, .TvGame, .Spaceship
 .Nothing:     db "NOTHING@"
 .NoteTable:   db "NOTE TABLE@"
 .FlowerTable: db "FLOWER TABLE@"
 .PlainTable:  db "PLAIN TABLE@"
 .TvGame:      db "TV/GAME@"
+.Spaceship:   db "SPACESHIP@"
 
 RoomPcNameTable:
 	dw .Desk, .LongDesk
@@ -470,8 +473,8 @@ RoomPCDescTablePointers:
 
 RoomTopDescTable:
 	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, \
-	   .Map, .Couch
-.Wall:        db "Bare wall. Nothing<NEXT>hung up here.@"
+	   .Map, .Couch, .DinoPoster
+.Wall:       db "Bare wall. Nothing<NEXT>hung up here.@"
 .Bookshelf:   db "A shelf stuffed<NEXT>with old books.@"
 .AwardShelf:  db "Shows off badges<NEXT>and trophies.@"
 .Window:      db "A window with a<NEXT>view outside.@"
@@ -480,14 +483,16 @@ RoomTopDescTable:
 .TvGame:      db "A TV with a game<NEXT>console below it.@"
 .Map:         db "A KANTO map pinned<NEXT>to the wall.@"
 .Couch:       db "A long couch built<NEXT>into the wall.@"
+.DinoPoster:  db "A poster of a big<NEXT>fossil skeleton.@"
 
 RoomMiddleDescTable:
-	dw .Nothing, .NoteTable, .FlowerTable, .PlainTable, .TvGame
+	dw .Nothing, .NoteTable, .FlowerTable, .PlainTable, .TvGame, .Spaceship
 .Nothing:     db "Leave the middle<NEXT>of the room open.@"
 .NoteTable:   db "A table piled with<NEXT>notes and papers.@"
 .FlowerTable: db "A table set with a<NEXT>vase of flowers.@"
 .PlainTable:  db "A plain table with<NEXT>room for three.@"
 .TvGame:      db "A TV and console<NEXT>set on the floor.@"
+.Spaceship:   db "A model spaceship<NEXT>on a display base.@"
 
 RoomPcDescTable:
 	dw .Desk, .LongDesk
@@ -703,7 +708,8 @@ RoomDecorationsMenu:
 .PcString:      db "PC@"
 
 ; Reads sRoomFurniture's MIDDLE field; 1 live slot (index 3) unless
-; FLOWER(2)/PLAIN(3), which have 3 (indices 3,4,5) and need a spot picker.
+; FLOWER(2)/PLAIN(3), which have 3 (indices 3,4,5), or SPACESHIP(5), which
+; has 2 (indices 3,4); those need a spot picker.
 RoomDecorMiddleSpotPicker:
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
@@ -727,9 +733,17 @@ RoomDecorMiddleSpotPicker:
 	jr z, .threeSpots
 	cp 3
 	jr z, .threeSpots
+	cp 5
+	jr z, .twoSpots
 	ld a, 3
 	jp RoomPickDecorationForSlot
+.twoSpots
+	ld a, 2                        ; SPACESHIP: slots 3, 4
+	jr .spotPicker
 .threeSpots
+	ld a, 3
+.spotPicker
+	push af                        ; [spot count]
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
 	ld b, 8
@@ -739,8 +753,8 @@ RoomDecorMiddleSpotPicker:
 	ld hl, 0                     ; spot pickers get no description box
 	ld a, 2
 	call RoomSetPickListOpts
-	ld hl, RoomThreeSpotNameTable
-	ld b, 3
+	pop bc                         ; b = spot count
+	ld hl, RoomThreeSpotNameTable  ; its first two rows serve the two-spot case
 	call RoomDrawPickList
 	ret c
 	add 3                          ; slot index 3, 4 or 5

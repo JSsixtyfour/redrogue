@@ -109,7 +109,7 @@ RoomStampBlocks::
 	ld [wOverworldMap + 34], a
 	ret
 
-RoomTopBlockTable: ; 9 options x 3 bytes: (2,0) (3,0) (2,1)
+RoomTopBlockTable: ; 10 options x 3 bytes: (2,0) (3,0) (2,1)
 	db  3,  3, 15 ; 0 WALL (default)
 	db  4,  3, 15 ; 1 BOOKSHELF
 	db 30,  3, 15 ; 2 AWARD SHELF
@@ -119,13 +119,15 @@ RoomTopBlockTable: ; 9 options x 3 bytes: (2,0) (3,0) (2,1)
 	db  9,  3,  6 ; 6 TV + GAME
 	db 25,  3, 15 ; 7 MAP
 	db 19, 20, 15 ; 8 COUCH
+	db 32,  3, 15 ; 9 DINOSAUR POSTER (block $20: same shape as MAP's $19)
 
-RoomMiddleBlockTable: ; 5 options x 3 bytes: (1,2) (2,2) (1,3)
+RoomMiddleBlockTable: ; 6 options x 3 bytes: (1,2) (2,2) (1,3)
 	db 15, 15, 15 ; 0 NOTHING (default)
 	db 21, 22, 27 ; 1 NOTE TABLE
 	db  1,  2, 15 ; 2 FLOWER TABLE
 	db 23, 24, 15 ; 3 PLAIN TABLE
 	db 13, 15, 15 ; 4 TV + GAME
+	db  7,  8, 15 ; 5 SPACESHIP (blocks $07 left, $08 right)
 
 RoomBottomBlockTable: ; 2 options x 1 byte: (3,3)
 	db 15 ; 0 NOTHING (default)
@@ -189,7 +191,8 @@ RoomPatchSprites::
 	ld a, 3
 	call RoomApplyEnabledSlot
 
-	; --- slot 4: MIDDLE #1, always live; (2,4) if MIDDLE=FLOWER(2)/PLAIN(3) else (4,4) ---
+	; --- slot 4: MIDDLE #1, always live; (2,4) if MIDDLE=FLOWER(2)/PLAIN(3),
+	; (1,4) beside the ship if MIDDLE=SPACESHIP(5), else (4,4) ---
 	ld a, d
 	swap a
 	and %00000111
@@ -197,7 +200,11 @@ RoomPatchSprites::
 	cp 2
 	jr z, .mid1Narrow
 	cp 3
+	jr z, .mid1Narrow
+	cp 5
 	jr nz, .mid1_4
+	ld b, 1
+	jr .mid1_4
 .mid1Narrow
 	ld b, 2
 .mid1_4
@@ -206,7 +213,8 @@ RoomPatchSprites::
 	ld a, 4
 	call RoomApplyEnabledSlot
 
-	; --- slot 5: MIDDLE #2, live only if MIDDLE=FLOWER(2)/PLAIN(3); (5,4) ---
+	; --- slot 5: MIDDLE #2, live only if MIDDLE=FLOWER(2)/PLAIN(3) at (5,4),
+	; or MIDDLE=SPACESHIP(5) at (1,5) ---
 	ld hl, wSprite05StateData1
 	ld a, d
 	swap a
@@ -215,12 +223,19 @@ RoomPatchSprites::
 	jr z, .mid2Live
 	cp 3
 	jr z, .mid2Live
+	cp 5
+	jr z, .mid2Ship
 	xor a
 	call RoomWriteSlot
 	jr .slot6
+.mid2Ship
+	ld b, 1
+	ld c, 5
+	jr .mid2Apply
 .mid2Live
 	ld b, 5
 	ld c, 4
+.mid2Apply
 	ld a, 5
 	call RoomApplyEnabledSlot
 .slot6
@@ -383,8 +398,8 @@ RoomWriteSlot:
 ; the same reason InitPlayerData already calls ClearTMBitfield ("so SRAM $FF
 ; default doesn't grant all TMs") and ClearKeyItemsBitfield. For this feature
 ; $FF is worse than a wrong-but-legal value: sRoomFurniture $FF gives a TOP
-; index of 15 against a 9-entry table and a MIDDLE index of 7 against a
-; 5-entry one, and sRoomDecorSlots $FF gives decoration id 255 -> index 254
+; index of 15 against a 10-entry table and a MIDDLE index of 7 against a
+; 6-entry one, and sRoomDecorSlots $FF gives decoration id 255 -> index 254
 ; into an 11-entry DecorationSpriteTable. All three are out-of-bounds ROM
 ; reads that stamp garbage blocks and load garbage sprite ids.
 ;
@@ -435,8 +450,8 @@ RoomGrantAllPieces::
 	ld [sRoomOwned], a
 	ld [sRoomOwned + 1], a
 	ld [sRoomOwned + 2], a
-	ld a, $01
-	ld [sRoomOwned + 3], a       ; bits 0-24 = all 25 pieces; byte3 only needs bit0
+	ld a, $07
+	ld [sRoomOwned + 3], a       ; bits 0-26 = all 27 pieces; byte3 needs bits 0-2
 	xor a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
 	ld a, BMODE_SIMPLE
