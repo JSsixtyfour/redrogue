@@ -24,7 +24,6 @@ VBlank::
 	call VBlankCopyBgMap
 	call RedrawRowOrColumn
 	call VBlankCopy
-	call VBlankCopyDouble
 	call UpdateMovingBgTiles
 	call hDMARoutine
 	ld a, BANK(PrepareOAMData)

@@ -908,7 +908,7 @@ class RedRogueHarness:
                 "park_before_hijack needs a new way to bound the handler"
             )
         for _ in range(limit):
-            if start <= self.pyboy.register_file.PC < end:
+            if start <= self.pyboy.register_file.PC < end or self._in_vblank_callee(start, end):
                 return
             self.tick(1)
         raise AssertionError(
@@ -916,6 +916,26 @@ class RedRogueHarness:
             f"(${start:04x}-${end - 1:04x}) within {limit} frames; "
             f"last PC=${self.pyboy.register_file.PC:04x}"
         )
+
+    def _in_vblank_callee(self, start: int, end: int) -> bool:
+        """True when the CPU is inside a routine the VBlank handler called directly.
+
+        Measured 2026-09-24: removing VBlankCopyDouble made the handler shorter,
+        and PyBoy's frame boundary moved from the handler's own HOME body into
+        Music_DoLowHealthAlarm (bank $08), which the handler calls. That is as
+        safe to hijack as the handler body: call_routine restores rROMB,
+        hLoadedROMBank, wVBlankSavedROMBank and every register before resuming.
+        A stack word only counts as the handler's return address if the byte
+        three before it is a CALL opcode ($CD) inside the handler, so data on
+        the stack cannot fake it.
+        """
+        memory = self.pyboy.memory
+        sp = self.pyboy.register_file.SP
+        for offset in range(0, 8, 2):
+            word = memory[(sp + offset) & 0xFFFF] | (memory[(sp + offset + 1) & 0xFFFF] << 8)
+            if start + 3 <= word < end and memory[word - 3] == 0xCD:
+                return True
+        return False
 
     def call_routine(self, label: str, limit: int = 12000) -> None:
         """Call a ROM routine through the engine's bank trampoline.

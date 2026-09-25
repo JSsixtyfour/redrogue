@@ -371,7 +371,7 @@ LoadMoveAnimationTiles:
 	ld b, BANK(MoveAnimationTiles0) ; ROM bank
 	ld a, [wTempTilesetNumTiles]
 	ld c, a ; number of tiles
-	jp CopyVideoData ; load tileset
+	jp CopyVideoData ; load tileset (HBlank copy: ~1.3 frames at 1x instead of 10; pureRGB kept it paced)
 
 MACRO anim_tileset
 	db \1

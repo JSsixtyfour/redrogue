@@ -10,7 +10,7 @@ EmotionBubble:
 	ld d, [hl]
 	ld hl, vChars1 tile $78
 	lb bc, BANK(EmotionBubbles), 4
-	call CopyVideoData
+	call CopyVideoDataPaced ; paced, as pureRGB
 	ldh a, [hUpdateSpritesEnabled]
 	push af
 	ld a, $ff

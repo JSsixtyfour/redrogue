@@ -257,7 +257,7 @@ Credits:
 	ld de, TheEndGfx
 	ld hl, vChars2 tile $60
 	lb bc, BANK(TheEndGfx), (TheEndGfxEnd - TheEndGfx) / TILE_SIZE
-	call CopyVideoData
+	call CopyVideoDataPaced ; paced, as pureRGB
 	hlcoord 4, 8
 	ld de, TheEndTextString
 	call PlaceString
