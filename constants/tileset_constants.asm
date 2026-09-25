@@ -27,3 +27,12 @@
 	const PLATEAU      ; 23
 	const DORM         ; 24
 DEF NUM_TILESETS EQU const_value
+
+; Every tileset owns vChars2 tiles $00-$5F. DORM alone also owns $60-$78, the
+; font_extra glyph slots no text needs (pret wiki "Expanding Tilesets
+; Technique", applied to one tileset). Six of those slots still hold live
+; glyphs and are baked into dorm.png at the same IDs: <COLON> $6D, the quotes
+; $70-$73 and the ellipsis $75. Only $79-$7F (box borders and space) stay
+; font_extra's. See LoadTilesetTilePatternData_ / LoadTextBoxTilePatterns_.
+DEF NUM_TILESET_TILES          EQU $60
+DEF NUM_EXTENDED_TILESET_TILES EQU $79

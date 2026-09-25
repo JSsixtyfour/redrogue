@@ -72,6 +72,11 @@ SECTION "Tilesets 4", ROMX
 
 ShipPort_GFX::      INCBIN "gfx/tilesets/ship_port.2bpp"
 ShipPort_Block::    INCBIN "gfx/blocksets/ship_port.bst"
+; dorm.png is 128 slots; $00-$78 load (constants/tileset_constants.asm).
+;   free for art: $60-$6C, $6E-$6F, $74, $76-$78 (19 tiles)
+;   RESERVED, live text glyphs, keep byte-identical to font_extra:
+;     $6D <COLON>, $70-$73 quotes, $75 ellipsis
+;   $79-$7F are text-box borders, never loaded from here.
 Dorm_GFX::          INCBIN "gfx/tilesets/dorm.2bpp"
 Dorm_Block::        INCBIN "gfx/blocksets/dorm.bst"
 

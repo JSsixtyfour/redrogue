@@ -991,15 +991,9 @@ IsBikeRidingAllowed::
 INCLUDE "data/tilesets/bike_riding_tilesets.asm"
 
 ; load the tile pattern data of the current tileset into VRAM
+; (body in custom_functions/relocated_home.asm: DORM loads $79 tiles, not $60)
 LoadTilesetTilePatternData::
-	ld a, [wTilesetGfxPtr]
-	ld l, a
-	ld a, [wTilesetGfxPtr + 1]
-	ld h, a
-	ld de, vTileset
-	ld bc, $600
-	ld a, [wTilesetBank]
-	jp FarCopyData2
+	rfarjp LoadTilesetTilePatternData_
 
 ; this loads the current map's complete tile map (which references blocks, not individual tiles) to wOverworldMap
 ; it can also load partial tile maps of connected maps into a border of length 3 around the current map

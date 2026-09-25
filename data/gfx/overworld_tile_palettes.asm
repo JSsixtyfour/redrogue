@@ -343,3 +343,10 @@ PalSettings_DORM:
 	db	6,	6,	3,	3,	4,	4,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6
 ;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
 	db	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	3,	3,	3
+; $60-$78: DORM-only extended tiles (constants/tileset_constants.asm). Free
+; slots default to 6 until their art is authored; the six reserved glyph slots
+; ($6D, $70-$73, $75) are text, so they get 3 (PAL_ENH_OVW_GRAY) like any box.
+;	60	61	62	63	64	65	66	67	68	69	6A	6B	6C	6D	6E	6F
+	db	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	6,	3,	6,	6
+;	70	71	72	73	74	75	76	77	78
+	db	3,	3,	3,	3,	6,	3,	6,	6,	6

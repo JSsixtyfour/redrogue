@@ -198,7 +198,7 @@ gfx/slots/blue_slots_1.2bpp: tools/gfx += --trim-whitespace
 
 gfx/tilesets/%.2bpp: tools/gfx += --trim-whitespace
 gfx/tilesets/reds_house.2bpp: tools/gfx += --preserve=0x48
-gfx/tilesets/dorm.2bpp: tools/gfx += --preserve=0x5f
+gfx/tilesets/dorm.2bpp: tools/gfx += --preserve=0x78
 
 gfx/trade/game_boy.2bpp: tools/gfx += --remove-duplicates
 

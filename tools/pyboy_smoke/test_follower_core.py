@@ -124,7 +124,16 @@ class _FollowerRom:
     FACING_RIGHT = 12
     LEDGE_BIT = 6
     FPS_BIT = 7
-    MAP_TILESET_SIZE = 0x60
+    # First text-box tile ID. movement.asm defines MAP_TILESET_SIZE as
+    # NUM_EXTENDED_TILESET_TILES ($79, the Dorm's extended tileset); read the
+    # value from source so this cannot drift from the fixture's own DEF.
+    MAP_TILESET_SIZE = int(
+        re.search(
+            r"(?m)^DEF NUM_EXTENDED_TILESET_TILES\s+EQU \$([0-9A-Fa-f]+)",
+            (REPO_ROOT / "constants/tileset_constants.asm").read_text(),
+        )[1],
+        16,
+    )
     OAM_PRIO = 0x80
 
     _FIXTURE = r'''

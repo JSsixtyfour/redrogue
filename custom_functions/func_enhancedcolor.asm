@@ -828,12 +828,21 @@ MakeOverworldBGMapAttributes::
 	;point to the correct tile
 	ld a, [de]
 
-;error trap
+;error trap: tiles past the tileset are text-box tiles and stay gray. DORM
+;also owns $60-$78 (constants/tileset_constants.asm), so it gets a table
+;lookup there. The branch only runs for tiles >= $60.
 	cp END_OF_OVERWORLD_TILES
-	ld a, PAL_ENH_OVW_GRAY
-	jr nc, .copyColorAttribute
+	jr c, .inTileset
+	cp NUM_EXTENDED_TILESET_TILES
+	jr nc, .grayTile
+	ld a, [w2CurMapTileset]
+	cp DORM
 	ld a, [de]
-	
+	jr z, .inTileset
+.grayTile
+	ld a, PAL_ENH_OVW_GRAY
+	jr .copyColorAttribute
+.inTileset
 	add l
 	ld l, a
 	ld a, 0

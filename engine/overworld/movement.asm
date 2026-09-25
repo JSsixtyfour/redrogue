@@ -1,4 +1,4 @@
-DEF MAP_TILESET_SIZE EQU $60
+DEF MAP_TILESET_SIZE EQU NUM_EXTENDED_TILESET_TILES ; $79: the Dorm draws map tiles up to $78
 
 UpdatePlayerSprite:
 	ld a, [wSpritePlayerStateData2WalkAnimationCounter]
