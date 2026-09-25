@@ -69,7 +69,7 @@ IndigoPlateauLobby_Script:
 	call PCTraderSuperNerdSetup
 	call PCClerksSetup
 	farcall PCWitchSetup
-	farcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap
+	farcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
 
 .normal
 	ld hl, wCurrentMapScriptFlags
@@ -1051,7 +1051,8 @@ PCPokemonSalesmanText:
 	text_far _PCPokemonSalesmanNoRefundsText
 	text_end
 
-; need a way to prevent trading for same pokemon or evolution
+; The offer can't be a line the player already owns: PCTraderSuperNerdSetup rolls
+; it through Random_Pokemon_Selection, whose AllSpeciesCheck rejects the family.
 PCTraderSuperNerdText:
 	text_asm
 	ld a, TRADE_FOR_RANDOM

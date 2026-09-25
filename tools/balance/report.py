@@ -74,10 +74,17 @@ def duration_estimate(g: parse.GameData, run: model.Run) -> float:
     return sec
 
 
+def sink_price_yen(g: parse.GameData, knob: str) -> int:
+    """A lobby sink price in yen. The knob is ONE BCD byte, and the ROM puts it
+    in the MIDDLE byte of a 3-byte amount ($00,$50,$00 = 5000; the daycare's
+    2-byte $05,$00 = 500), so the yen value is its decimal reading x 100."""
+    return model.bcd(g.knobs[knob]) * 100
+
+
 def purchase_counts(money: float, g: parse.GameData) -> dict:
     full_restore = g.item_prices["FULL_RESTORE"]
     revive = g.item_prices["REVIVE"]
-    ball_bcd = model.bcd(g.knobs["SALESMAN_PRICE_POKEBALL_BCD"])
+    ball_bcd = sink_price_yen(g, "SALESMAN_PRICE_POKEBALL_BCD")
     return {
         "full_restores": money / full_restore,
         "revives": money / revive,
@@ -194,8 +201,10 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
     lines.append("| checkpoint | money | Full Restores | Revives | salesman Pokeballs | "
                  "move relearner uses | daycare rounds |")
     lines.append("|---|---|---|---|---|---|---|")
-    relearner = model.bcd(g.knobs["MOVE_RELEARNER_PRICE_BCD"]) * 2   # charged twice
-    daycare = model.bcd(g.knobs["DAYCARE_PRICE_PER_ROUND_BCD"])
+    # The relearner reads its price twice (HasEnoughMoney, then the deduction)
+    # but charges it once.
+    relearner = sink_price_yen(g, "MOVE_RELEARNER_PRICE_BCD")
+    daycare = sink_price_yen(g, "DAYCARE_PRICE_PER_ROUND_BCD")
     for r in rows:
         p = purchase_counts(r["money"], g)
         row = {**config_row(cfg), **r, **{f"buy_{k}": v for k, v in p.items()},

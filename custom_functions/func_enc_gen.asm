@@ -1000,10 +1000,10 @@ RandomizeRegularTrainerMons:
 	ret
 
 
-; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
-; allows (used for enemy trainer mons AND reward/given mons - despite the
-; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
-EvolveMonByLevel:
+; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
+; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.
+; Shared by EvolveMonByLevel and AllSpeciesCheck's family walk.
+LoadEvoListForSpecies::
 	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
 	ld b, 0
 	ld a, d
@@ -1025,6 +1025,13 @@ EvolveMonByLevel:
 	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
 	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
 	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
+	ret
+
+; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
+; allows (used for enemy trainer mons AND reward/given mons - despite the
+; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
+EvolveMonByLevel:
+	call LoadEvoListForSpecies
 
 .evoloop
 	ld a, [hli]

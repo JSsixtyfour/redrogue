@@ -339,6 +339,8 @@ RoomFurnitureMenu:
 	ld hl, RoomTopDescTable
 	ld a, 1                      ; 10 entries: row 2 would run into the box's bottom border
 	call RoomSetPickListOpts
+	ld bc, RoomVendorTopIds      ; show only owned pieces
+	call RoomSetPickListFilter
 	ld hl, RoomTopNameTable
 	ld b, 10
 	call RoomDrawPickList
@@ -357,6 +359,8 @@ RoomFurnitureMenu:
 	ld hl, RoomMiddleDescTable
 	ld a, 2
 	call RoomSetPickListOpts
+	ld bc, RoomVendorMiddleIds   ; show only owned pieces
+	call RoomSetPickListFilter
 	ld hl, RoomMiddleNameTable
 	ld b, 6
 	call RoomDrawPickList
@@ -375,6 +379,8 @@ RoomFurnitureMenu:
 	ld hl, RoomPcDescTable
 	ld a, 2
 	call RoomSetPickListOpts
+	ld bc, RoomVendorDeskIds     ; show only owned pieces
+	call RoomSetPickListFilter
 	ld hl, RoomPcNameTable
 	ld b, 2
 	call RoomDrawPickList
@@ -392,6 +398,8 @@ RoomFurnitureMenu:
 	ld hl, RoomBottomDescTable
 	ld a, 2
 	call RoomSetPickListOpts
+	ld bc, RoomVendorPlantIds    ; show only owned pieces
+	call RoomSetPickListFilter
 	ld hl, RoomBottomNameTable
 	ld b, 2
 	call RoomDrawPickList
@@ -872,6 +880,8 @@ RoomPickDecorationForSlot:
 	ld hl, RoomDecorationDescTable
 	ld a, 1
 	call RoomSetPickListOpts
+	ld bc, RoomVendorPalsIds     ; show only owned dolls; NONE is always there
+	call RoomSetPickListFilter
 	ld hl, RoomDecorationNameTable
 	ld b, 46
 	call RoomDrawPickList
@@ -973,6 +983,16 @@ RoomDecorationNameTable:
 ; Scroll state is wBuffer + 14..18, clear of RoomPC's + 7, the toggles
 ; menu's + 7..9 and the vendor's + 8..13, all live across this call:
 ;   + 14 scroll offset, + 15 entry count, + 16/17 table, + 18 visible rows.
+;
+; OWNERSHIP FILTER (RoomSetPickListFilter): the list then shows entry 0, the
+; always-free default, plus only the entries whose piece the player owns.
+; Every index inside this picker - scroll offset, cursor, entry count - is a
+; VISIBLE index; RoomPickRealIndex converts one to its table index at the
+; three places a table is read (name, description, and the returned choice),
+; so callers still receive and write the real option number.
+;   + 19..26 owned-bit snapshot (sRoomOwned, then sRoomOwnedExt)
+;   + 27/28  piece-id table (a count byte, then one piece id per entry 1..N),
+;            0 = no filter
 ; ============================================================
 DEF ROOM_PICK_LAST_ROW EQU 12
 
@@ -981,6 +1001,7 @@ RoomDrawPickList:
 	ld [wBuffer + 16], a
 	ld a, h
 	ld [wBuffer + 17], a
+	call RoomPickVisibleCount    ; b = entries actually shown
 	ld a, b
 	ld [wBuffer + 15], a
 	xor a
@@ -1080,7 +1101,9 @@ RoomDrawPickList:
 	ldh a, [hCurrentMenuItem]
 	ld b, a
 	ld a, [wBuffer + 14]
-	add b                        ; at most 255, so this also clears carry
+	add b                        ; the visible index
+	call RoomPickRealIndex       ; -> the table index the caller writes
+	and a                        ; carry clear: a choice was made
 	ret
 .cancelled
 	call PlaceUnfilledArrowMenuCursor
@@ -1106,15 +1129,6 @@ RoomDrawVisibleEntries:
 	ld c, 15                     ; cols 1-15: inside the narrowest scrolling box (vendor, c = 16)
 	call ClearScreenArea
 .draw
-	ld a, [wBuffer + 16]
-	ld l, a
-	ld a, [wBuffer + 17]
-	ld h, a
-	ld a, [wBuffer + 14]
-	add a                        ; dw-sized table entries
-	ld c, a
-	ld b, 0
-	add hl, bc
 	ld a, [wBuffer + 18]
 	ld b, a
 	jp RoomDrawEntries
@@ -1134,6 +1148,154 @@ RoomSetPickListOpts:
 	ld [wBuffer + 5], a
 	xor a
 	ld [wBuffer + 14], a         ; RoomPC's own menu prints descriptions with no pick list
+	; No ownership filter unless the caller asks for one afterwards. Every
+	; list, and RoomPC's own menu's descriptions, sets its options first, so a
+	; filter can never leak from one list into the next.
+	ld [wBuffer + 27], a
+	ld [wBuffer + 28], a
+	ret
+
+; ============================================================
+; RoomSetPickListFilter — call AFTER RoomSetPickListOpts to hide unowned
+; pieces from the next RoomDrawPickList. INPUT: bc = a RoomVendor*Ids table
+; (custom_functions/room_vendor.asm): a count byte, then the owned-bit piece id
+; of list entries 1..N. Entry 0 is the free default and is always shown.
+; ============================================================
+RoomSetPickListFilter:
+	ld a, c
+	ld [wBuffer + 27], a
+	ld a, b
+	ld [wBuffer + 28], a
+	ret
+
+; ============================================================
+; RoomPickVisibleCount — b = the entry count RoomDrawPickList was given.
+; OUTPUT: b = how many of them are shown. Unfiltered, b is returned as is.
+; Filtered, snapshots the owned bits into wBuffer + 19..26 (one SRAM open for
+; the whole list rather than one per row drawn) and returns 1 + the number of
+; owned pieces in the filter table. Clobbers a, c, de, hl.
+; ============================================================
+RoomPickVisibleCount:
+	ld a, [wBuffer + 27]
+	ld l, a
+	ld a, [wBuffer + 28]
+	ld h, a
+	or l
+	ret z
+	push hl
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Save Data") == 1
+	ld a, 1
+	ld [rRAMB], a
+	ld hl, sRoomOwned
+	ld de, wBuffer + 19
+	ld c, 4
+.copyOwned
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .copyOwned
+	ld hl, sRoomOwnedExt         ; piece ids 32-63 (see RoomOwnedByteAddr)
+	ld c, 4
+.copyExt
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .copyExt
+	xor a
+	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	pop hl
+	ld c, [hl]                   ; c = pieces in the table
+	ld b, 1                      ; entry 0, the free default
+.countOwned
+	inc hl
+	ld a, [hl]
+	call RoomPickIsOwned
+	jr z, .notOwned
+	inc b
+.notOwned
+	dec c
+	jr nz, .countOwned
+	ret
+
+; ============================================================
+; RoomPickRealIndex — a = a visible index -> a = the table index it shows.
+; Identity when no filter is set. Preserves bc, de, hl.
+; ============================================================
+RoomPickRealIndex:
+	push hl
+	push de
+	push bc
+	ld b, a                      ; b = owned entries still to pass
+	ld a, [wBuffer + 27]
+	ld l, a
+	ld a, [wBuffer + 28]
+	ld h, a
+	or l
+	ld a, b
+	jr z, .done                  ; no filter
+	and a
+	jr z, .done                  ; entry 0 is always itself
+	ld c, 0                      ; c = table index reached
+	inc hl                       ; skip the count byte
+.next
+	inc c
+	ld a, [hli]
+	call RoomPickIsOwned
+	jr z, .next
+	dec b
+	jr nz, .next
+	ld a, c
+.done
+	pop bc
+	pop de
+	pop hl
+	ret
+
+; a = piece id (0-63). Returns NZ if the wBuffer + 19..26 snapshot owns it.
+; Clobbers a, de. Preserves bc, hl.
+RoomPickIsOwned:
+	push hl
+	ld d, a
+	srl a
+	srl a
+	srl a                        ; owned byte index, 0-7
+	ld e, a
+	ld a, d                      ; a = the piece id again
+	ld d, 0
+	ld hl, wBuffer + 19
+	add hl, de
+	ld d, [hl]                   ; d = that owned byte
+	and %111
+	ld e, a                      ; e = bit index
+	ld a, d
+	ld d, 0
+	ld hl, RoomBitMasks          ; custom_functions/room_vendor.asm, same bank
+	add hl, de
+	and [hl]
+	pop hl
+	ret
+
+; a = a visible index, hl = a dw string-pointer table -> de = that entry's
+; string. Clobbers a, bc, hl.
+RoomPickTableEntry:
+	call RoomPickRealIndex
+	add a                        ; dw-sized table entries
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld e, a
+	ld d, [hl]
 	ret
 
 ; ============================================================
@@ -1152,28 +1314,26 @@ RoomPrintDescription::
 	ld b, 3
 	ld c, SCREEN_WIDTH - 2
 	call ClearScreenArea
+	ldh a, [hCurrentMenuItem]
+	ld c, a
+	ld a, [wBuffer + 14]         ; scroll offset: the cursor row is window-relative
+	add c                        ; the visible index
+	ld c, a
 	ld a, [wBuffer + 4]
 	ld l, a
 	ld a, [wBuffer + 5]
 	ld h, a
-	ldh a, [hCurrentMenuItem]
-	ld c, a
-	ld a, [wBuffer + 14]         ; scroll offset: the cursor row is window-relative
-	add c
-	add a                        ; dw-sized table entries
-	ld c, a
-	ld b, 0
-	add hl, bc
-	ld a, [hli]
-	ld e, a
-	ld d, [hl]
+	ld a, c
+	call RoomPickTableEntry      ; de = its description, through any ownership filter
 	hlcoord 1, 14
 	jp PlaceString
 
-; INPUT: hl = table pointer, b = entry count. Draws single-spaced, screen
-; (2,2) downward. Uses wBuffer (transient, this call only) to track the
-; remaining-count/row-index since de/hl/bc are all needed for the walk
-; itself. Also stashes entry count-1 for RoomDrawPickList's wMaxMenuItem.
+; INPUT: b = how many rows to draw. Draws single-spaced from row wBuffer + 6,
+; column 2, the entries from the scroll offset (wBuffer + 14) onward of the
+; table at wBuffer + 16/17. Each row looks its entry up by visible index, so an
+; ownership filter's gaps are skipped. Uses wBuffer (transient, this call only)
+; to track the remaining-count/row-index, since PlaceString destroys bc. Also
+; stashes entry count-1 for RoomDrawPickList's wMaxMenuItem.
 RoomDrawEntries:
 	ld a, b
 	dec a
@@ -1183,30 +1343,22 @@ RoomDrawEntries:
 	xor a
 	ld [wBuffer + 1], a
 .loop
-	ld a, [hli]
-	ld e, a
-	ld a, [hli]
-	ld d, a                      ; de = string pointer for this entry
-	push hl                      ; save table pointer
+	ld a, [wBuffer + 16]
+	ld l, a
+	ld a, [wBuffer + 17]
+	ld h, a
+	ld a, [wBuffer + 14]
+	ld c, a
+	ld a, [wBuffer + 1]
+	add c                        ; this row's visible index
+	call RoomPickTableEntry      ; de = its string
 	ld a, [wBuffer + 6]          ; first entry's row
 	ld hl, wBuffer + 1
-	add [hl]                     ; + this entry's index
-	ld [wBuffer + 2], a
+	add [hl]                     ; + this entry's window position
 	hlcoord 2, 0
-.addRowLoop
-	ld a, [wBuffer + 2]
-	and a
-	jr z, .posReady
-	dec a
-	ld [wBuffer + 2], a
-	push de
-	ld de, SCREEN_WIDTH
-	add hl, de
-	pop de
-	jr .addRowLoop
-.posReady
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
 	call PlaceString
-	pop hl                       ; restore table pointer
 	ld a, [wBuffer + 1]
 	inc a
 	ld [wBuffer + 1], a

@@ -12,21 +12,58 @@
 ; reaches it through text_asm/farcall stubs. The "who is next" question lives in
 ; "rogue" ($38) and is asked through RogueNextGymLeaderFar, which answers in e.
 
-; TESTING: 1 = the Psychic appears on EVERY gym-next lobby visit. Set to 0 for
-; release, which adds the intended 50% appearance roll (still only ever on a
-; gym-next visit). Same role as the witch's commented-out RollLobbyNPCAppearance
-; call in custom_functions/witch_setup.asm.
-DEF PSYCHIC_ALWAYS_APPEARS EQU 1
+; ============================================================
+; LobbyRollNPC
+; Shows or hides one optional lobby resident for this visit. Debug 1 and
+; Debug 2 (BIT_DEBUG_MODE) always show; a normal run shows it on `b` out of
+; 256 visits. The toggle resets on every warp, so both outcomes are written
+; explicitly. Same rule as the witch's RollLobbyNPCAppearance
+; (custom_functions/witch_setup.asm), which lives in another bank.
+; Input: a = toggle index, b = chance out of 256 (a LOBBY_*_CHANCE constant)
+; ============================================================
+LobbyRollNPC:
+	ld [wToggleableObjectIndex], a
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG_MODE, a
+	jr nz, .show
+	call Random                 ; preserves bc
+	cp b
+	jr nc, .hide                ; rolled at or above the chance: not here this visit
+.show
+	predef_jump ShowObject
+.hide
+	predef_jump HideObject
+
+; ============================================================
+; PCLobbyExtrasSetup
+; The salesman, the trader and the move tutor each get an independent
+; appearance roll. Their offers are still rolled every visit by the lobby
+; script's own setups; a hidden NPC's offer simply goes unused.
+; Reached through PCPsychicSetup, so the lobby script (bank $06, a handful of
+; bytes free) needs no second farcall; once per lobby entry.
+; ============================================================
+PCLobbyExtrasSetup:
+	ld a, TOGGLE_PC_POKESALESMAN
+	ld b, LOBBY_SALESMAN_CHANCE
+	call LobbyRollNPC
+	ld a, TOGGLE_PC_TRADENERD
+	ld b, LOBBY_TRADER_CHANCE
+	call LobbyRollNPC
+	ld a, TOGGLE_PC_MOVETUTOR
+	ld b, LOBBY_TUTOR_CHANCE
+	jr LobbyRollNPC
 
 ; ============================================================
 ; PCPsychicSetup
 ; Shows the Psychic only while a gym is queued, and never in the final sequence
-; (all badges earned: Victory Road / Elite Four); with PSYCHIC_ALWAYS_APPEARS
-; off, only half of those visits. Must run after SelectAndPatchLobbyExit, which
-; is what sets wRogueMap. Rolled once per lobby entry (the caller is inside the
-; EVENT_ENTER_ROOM block). The toggle resets on every warp, so both branches
-; are explicit, like PCWitchSetup's.
+; (all badges earned: Victory Road / Elite Four); on those visits, present
+; LOBBY_PSYCHIC_CHANCE of the time in a normal run and always in the debug
+; modes. Must run after SelectAndPatchLobbyExit, which is what sets wRogueMap.
+; Rolled once per lobby entry (the caller is inside the EVENT_ENTER_ROOM
+; block). The toggle resets on every warp, so both branches are explicit, like
+; PCWitchSetup's. Also rolls the salesman, trader and move tutor first.
 PCPsychicSetup::
+	call PCLobbyExtrasSetup
 	ld a, [wObtainedBadges]
 	cp $FF
 	jr z, .hide
@@ -34,14 +71,9 @@ PCPsychicSetup::
 	ld a, e
 	and a
 	jr z, .hide
-IF !PSYCHIC_ALWAYS_APPEARS
-	call Random
-	and 1
-	jr nz, .hide                ; 50%: not here this visit
-ENDC
 	ld a, TOGGLE_PC_PSYCHIC
-	ld [wToggleableObjectIndex], a
-	predef_jump ShowObject
+	ld b, LOBBY_PSYCHIC_CHANCE
+	jr LobbyRollNPC
 .hide
 	ld a, TOGGLE_PC_PSYCHIC
 	ld [wToggleableObjectIndex], a

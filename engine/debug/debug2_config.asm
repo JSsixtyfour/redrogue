@@ -43,6 +43,12 @@ SECTION FRAGMENT "Options Menu", ROMX
 DEF DBG2_STATUS_MASK  EQU %11000000
 DEF DBG2_STATUS_SHIFT EQU 6
 DEF DBG2_DOOR_MASK    EQU %00011111
+; Door 2's index needs only bits 0-4 and nothing else lives in that byte, so
+; bit 7 marks a SEED waiting for the first lobby. It is set only after the
+; screen closes, so the door rows never see it, and it is cleared at the top of
+; SelectAndPatchLobbyExit before anything there reads door 2.
+DEF DBG2_SEED_PENDING_BIT EQU 7
+ASSERT DBG2_DOOR_MASK & (1 << DBG2_SEED_PENDING_BIT) == 0
 
 DEF DBG2_STATUS_NORMAL    EQU 0
 DEF DBG2_STATUS_GIFT      EQU 1
@@ -58,8 +64,70 @@ DEF DBG2_MAX_AI      EQU 4
 ; Entry point. Reached by farcall from PrepareNewGameDebug's Debug 2 path.
 ; ----------------------------------------------------------------------------
 Debug2ConfigMenu::
+	xor a
+	ld [wItemQuantity], a ; SEED row: 0 = RANDOM, leave the RNG alone
 	ld hl, Debug2PageSet
-	jp OptionsMenuEngine
+	call OptionsMenuEngine
+	ld a, [wItemQuantity]
+	and a
+	ret z
+	; Seed now for Debug2ApplyRoundState, which runs in this same frame and
+	; can roll the Elite Four order, then flag the seed to be applied AGAIN
+	; when the first lobby starts rolling (Debug2ConsumePendingSeed).
+	ld hl, wDebug2ForcedDoor2
+	set DBG2_SEED_PENDING_BIT, [hl]
+	jr Debug2ApplySeed
+
+; ----------------------------------------------------------------------------
+; Debug2ConsumePendingSeed - farcall'd first thing in SelectAndPatchLobbyExit.
+; If the SEED row was set, re-applies it (still in wItemQuantity: nothing
+; between the screen and the first lobby uses that byte, measured) and clears
+; the flag, so only the FIRST lobby is seeded. Clobbers af, bc, hl.
+;
+; Why here and not only when the screen closes: the Debug 2 path waits on a
+; button press between this screen and the lobby, and VBlank draws Random once
+; a frame, so a seed applied at the screen was spent on however long that wait
+; took. Measured: the same seed reached the lobby's first roll after 397
+; frames in one run and 394 in another, with different doors. Seeding at the
+; roll itself makes the first lobby a function of the seed alone.
+; ----------------------------------------------------------------------------
+Debug2ConsumePendingSeed::
+	ld hl, wDebug2ForcedDoor2
+	bit DBG2_SEED_PENDING_BIT, [hl]
+	ret z
+	res DBG2_SEED_PENDING_BIT, [hl]
+	ld a, [wItemQuantity]
+	; fall through
+
+; ----------------------------------------------------------------------------
+; Debug2ApplySeed - a = the SEED row's value, 1-255. Expands it into the whole
+; CMWC state so each value gives a distinct, reproducible stream.
+; KEEP IN SYNC with DebugFight2Entry.seedRNG (engine/debug/debug_fight2.asm),
+; which it copies byte for byte. Copied rather than shared so FIGHT 2, whose
+; harness test is layout-sensitive, is not touched.
+;
+; Reproducible from the first lobby's rolls (doors, stage event, wild-area
+; preload, NPC appearances, marts) until the player's first input there.
+; ----------------------------------------------------------------------------
+Debug2ApplySeed:
+	ld b, a
+	ldh [hRandomAdd], a
+	xor $a5
+	ldh [hRandomSub], a
+	ld hl, wRandomTable
+	ld a, 1
+	ld [hli], a               ; wRandomIndex = 1
+	xor a
+	ld [hli], a               ; wRandomCarry = 0, trivially below 253
+	ld a, b
+	ld c, 8
+.seedQ
+	xor $5d
+	add a, c
+	ld [hli], a               ; q[1..8]
+	dec c
+	jr nz, .seedQ
+	ret
 
 ; ============================================================================
 ; Rows
@@ -71,7 +139,7 @@ Debug2PageSet:
 
 ; rows, box height, CANCEL Y, row table, prompt column, prompt
 Debug2Page:
-	optpage 6, 9, 12, Debug2Rows, 0, 0
+	optpage 7, 10, 13, Debug2Rows, 0, 0
 
 ; label, screen Y, value column, draw routine, cycle routine
 Debug2Rows:
@@ -83,6 +151,45 @@ Debug2Rows:
 ; Shares the option screen's CHEAT row wholesale - one implementation, two
 ; callers, so the two screens cannot drift apart.
 	optrow_custom Debug2UpgradesLabel, 8,  9, OptDrawCheat,       OptCycleCheat
+	optrow_custom Debug2SeedLabel,    10, 13, Debug2DrawSeed,     Debug2CycleSeed
+
+; ============================================================================
+; SEED - 0 (RANDOM) leaves the RNG as the boot left it; 1-255 reseeds it when
+; the screen closes (Debug2ApplySeed). Held in wItemQuantity, which exists in
+; every build and is otherwise only used by quantity prompts, none of which run
+; between this screen opening and Debug2ApplySeed reading it.
+; ============================================================================
+
+DEF DBG2_SEED_WIDTH EQU 6 ; "RANDOM"; value column 13 ends it on column 18
+
+Debug2DrawSeed:
+; Blank the whole cell first: a 3-digit number does not cover "RANDOM", and
+; PrintNumber leaves leading-zero cells untouched (see Debug2DrawBattles).
+	push hl
+	ld a, ' '
+	ld b, DBG2_SEED_WIDTH
+.blank
+	ld [hli], a
+	dec b
+	jr nz, .blank
+	pop hl
+	ld a, [wItemQuantity]
+	and a
+	jr z, .random
+	ld de, DBG2_SEED_WIDTH - 3
+	add hl, de
+	ld de, wItemQuantity
+	lb bc, 1, 3
+	jp PrintNumber
+.random
+	ld de, Debug2SeedRandomText
+	jp PlaceString
+
+Debug2CycleSeed:
+	ld hl, wItemQuantity
+	call Debug2StepValue ; a plain byte, so 255 <-> 0 wraps for free
+	ld [wItemQuantity], a
+	ret
 
 ; ============================================================================
 ; BATTLES - a plain 1-99 count. Everything else Debug 2 derives (badge count,
@@ -90,7 +197,15 @@ Debug2Rows:
 ; Debug2ApplyRoundState.
 ; ============================================================================
 
+; PrintNumber writes NOTHING to a leading-zero cell (see its .PrintLeadingZero)
+; and the row engine does not blank a custom row's cell first, so a one-digit
+; value left the previous tens digit on screen: 99 -> 1 read "91" and counting
+; down from 10 read 19, 18 ... 11 before "wrapping" to 99. The stored value was
+; always right (measured). Blank the cell before printing.
 Debug2DrawBattles:
+	ld a, ' '
+	ld [hli], a
+	ld [hld], a
 	ld de, wBattleCount
 	lb bc, 1, 2
 	jp PrintNumber
@@ -425,6 +540,8 @@ Debug2Door2Label:    db "DOOR 2@"
 ; 7 characters, not "UPGRADES": the CHEAT values are 10 wide, so their column
 ; is 9, and an 8-character label ran into it and lost its last letter.
 Debug2UpgradesLabel: db "UPGRADE@"
+Debug2SeedLabel:     db "SEED@"
+Debug2SeedRandomText: db "RANDOM@"
 
 ; width 11, column 8. The number the old prompt used is kept alongside the name
 ; so an existing muscle-memory value still reads the same.

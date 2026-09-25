@@ -451,51 +451,53 @@ RoomVendorPalsNames:
 .Jolteon:    db "JOLTEON@"
 .Flareon:    db "FLAREON@"
 .Wigglytuff: db "WIGGLYTUFF@"
+; Tiered by how rare the Pokemon is: 10 common basics, 15 uncommon, 20 evolved
+; and fossils, 25 prized, 30 rare, 40 legendary birds, 50 Mewtwo and Mew.
 RoomVendorPalsPrices:
-	bcd2 15
-	bcd2 10
-	bcd2 15
-	bcd2 10
-	bcd2 15
-	bcd2 20
-	bcd2 20
-	bcd2 25
-	bcd2 10
-	bcd2 15
-	bcd2 15
-	bcd2 15 ; DODUO
-	bcd2 15 ; PSYDUCK
-	bcd2 15 ; NIDORINO
+	bcd2 20 ; CHARMELEON
+	bcd2 10 ; PIDGEY
+	bcd2 20 ; OMANYTE
+	bcd2 10 ; VOLTORB
+	bcd2 15 ; CLEFAIRY
+	bcd2 25 ; CHANSEY
+	bcd2 30 ; SNORLAX
+	bcd2 25 ; PIKACHU
+	bcd2 10 ; POKEDEX
+	bcd2 25 ; OLD AMBER
+	bcd2 15 ; SEEL
+	bcd2 10 ; DODUO
+	bcd2 10 ; PSYDUCK
+	bcd2 20 ; NIDORINO
 	bcd2 20 ; KABUTO
 	bcd2 10 ; SPEAROW
 	bcd2 15 ; CUBONE
-	bcd2 30 ; ARTICUNO
-	bcd2 30 ; ZAPDOS
-	bcd2 30 ; MOLTRES
-	bcd2 40 ; MEWTWO
-	bcd2 15 ; FEAROW
-	bcd2 20 ; KANGASKHAN
-	bcd2 20 ; LAPRAS
-	bcd2 15 ; MACHOP
-	bcd2 40 ; MEW
-	bcd2 15 ; NIDORAN F
-	bcd2 15 ; PIDGEY
+	bcd2 40 ; ARTICUNO
+	bcd2 40 ; ZAPDOS
+	bcd2 40 ; MOLTRES
+	bcd2 50 ; MEWTWO
+	bcd2 20 ; FEAROW
+	bcd2 25 ; KANGASKHAN
+	bcd2 30 ; LAPRAS
+	bcd2 10 ; MACHOP
+	bcd2 50 ; MEW
+	bcd2 10 ; NIDORAN F
+	bcd2 10 ; PIDGEY
 	bcd2 15 ; SLOWPOKE
-	bcd2 15 ; VAPOREON
+	bcd2 25 ; VAPOREON
 	bcd2 15 ; BULBASAUR
 	bcd2 15 ; CLEFAIRY
 	bcd2 15 ; JIGGLYPUFF
-	bcd2 15 ; MACHOKE
-	bcd2 15 ; MEOWTH
+	bcd2 20 ; MACHOKE
+	bcd2 10 ; MEOWTH
 	bcd2 15 ; MR. MIME
-	bcd2 15 ; NIDORAN M
-	bcd2 15 ; ODDISH
-	bcd2 15 ; PIDGEOT
-	bcd2 15 ; POLIWRATH
-	bcd2 15 ; SANDSHREW
+	bcd2 10 ; NIDORAN M
+	bcd2 10 ; ODDISH
+	bcd2 20 ; PIDGEOT
+	bcd2 20 ; POLIWRATH
+	bcd2 10 ; SANDSHREW
 	bcd2 15 ; SEEL2
-	bcd2 20 ; JOLTEON
-	bcd2 20 ; FLAREON
+	bcd2 25 ; JOLTEON
+	bcd2 25 ; FLAREON
 	bcd2 20 ; WIGGLYTUFF
 RoomVendorPalsIds:
 	db 45

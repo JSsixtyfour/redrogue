@@ -19,24 +19,30 @@
 ; appears, rolls her challenge and prize independently. BIT_WITCH_ACCEPTED
 ; stays clear until the player actually accepts in PCWitchText. Effects of
 ; the challenge/prize are not applied here - just the roll and bookkeeping.
-; Rolls whether a lobby NPC appears this lobby visit (~1/3 chance) and shows
-; or hides its toggleable object accordingly. Shared by every lobby resident
-; that should get an independent appear-or-not roll - currently only the
-; witch uses it; trader/salesman/clerks still always appear.
+; Rolls whether a lobby NPC appears this lobby visit and shows or hides its
+; toggleable object accordingly. Debug 1 and Debug 2 (BIT_DEBUG_MODE) skip the
+; roll and always show. Only the witch uses this copy; the Psychic, salesman,
+; trader and move tutor roll through LobbyRollNPC in engine/events/
+; lobby_psychic.asm, which sits in another bank and follows the same rule.
 ; Input:  a = toggle index of the NPC's toggleable object
+;         b = chance out of 256 that it appears (a LOBBY_*_CHANCE constant)
 ; Output: Z set (and a = 0) if the NPC appears this visit, NZ (a = 1) if hidden
 RollLobbyNPCAppearance:
     ld [wToggleableObjectIndex], a
-    ld c, 3
-    call Rangerandom         ; a = 0..2
-    and a
-    jr nz, .hide              ; nonzero = stays hidden this visit (2/3 chance)
+    ld a, [wStatusFlags6]
+    bit BIT_DEBUG_MODE, a
+    jr nz, .show
+    call Random               ; preserves bc
+    cp b
+    jr nc, .hide              ; rolled at or above the chance: not here this visit
+.show
     predef ShowObject
     xor a
     ret
 .hide
     predef HideObject
     ld a, 1
+    and a                     ; `ld` sets no flags; the caller branches on NZ
     ret
 
 ; Rolls whether the witch appears, and if so, her challenge and prize as two
@@ -84,13 +90,13 @@ PCWitchSetup::
     CheckEvent EVENT_VICTORY_ROAD_CLEARED
     jp nz, .hideWitch         ; jp, not jr: .hideWitch is at the far end of the routine
 .showWitch
-    ; TESTING: appearance roll disabled, witch is always active
-;   ld a, TOGGLE_PC_WITCH
-;   call RollLobbyNPCAppearance
-;   jr nz, .hideWitch
+    ; Present on LOBBY_WITCH_CHANCE of visits; always in the debug modes.
+    ; Absent -> .hideWitch, which also zeroes the challenge and prize so
+    ; nothing downstream sees an offer from a witch who is not there.
     ld a, TOGGLE_PC_WITCH
-    ld [wToggleableObjectIndex], a
-    predef ShowObject
+    ld b, LOBBY_WITCH_CHANCE
+    call RollLobbyNPCAppearance
+    jp nz, .hideWitch         ; jp: .hideWitch is out of jr range, as above
     ; Debug 2 used to force CHALLENGE_LEGENDARY_BOSS here unconditionally,
     ; skipping the roll and the map/badge/masterball gates below. Removed
     ; 2026-09-02 at user request: the witch now rolls normally in every build,

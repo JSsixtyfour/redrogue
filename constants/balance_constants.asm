@@ -141,9 +141,22 @@ DEF REWARD_LEVEL_CAP EQU 50
 DEF SALESMAN_PRICE_POKEBALL_BCD EQU $20
 DEF SALESMAN_PRICE_GREATBALL_BCD EQU $60
 DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $90
-; Charged twice (the yes/no confirm, then the actual deduction) by the move
-; relearner (PCMoveTutorText).
+; Used twice by the move relearner (PCMoveTutorText): once for the
+; HasEnoughMoney check, once for the deduction. The player pays it once.
 DEF MOVE_RELEARNER_PRICE_BCD EQU $50
 ; BCD $0500 = Y500 per round. Read by engine/events/lobby_daycare.asm.
 DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
 ; The Psychic's price is computed (Y1000 x (badges + 1)), not a literal here.
+
+; --- Lobby NPC appearance odds ----------------------------------------------
+; Chance out of 256 that each optional lobby resident is present on a lobby
+; visit, rolled on every lobby entry. Debug 1 and Debug 2 (BIT_DEBUG_MODE)
+; skip the roll and always show them. The Witch is still hidden for the
+; Elite Four stretch, and the Psychic only ever appears when a gym is next.
+; Rolled in custom_functions/witch_setup.asm (Witch) and
+; engine/events/lobby_psychic.asm (the other four).
+DEF LOBBY_WITCH_CHANCE EQU 85     ; ~1/3
+DEF LOBBY_PSYCHIC_CHANCE EQU 128  ; 1/2
+DEF LOBBY_SALESMAN_CHANCE EQU 85  ; ~1/3
+DEF LOBBY_TRADER_CHANCE EQU 85    ; ~1/3
+DEF LOBBY_TUTOR_CHANCE EQU 85     ; ~1/3

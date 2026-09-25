@@ -751,6 +751,12 @@ ENDC
 ; door choice only determines which item-category reward is offered.
 ; ============================================================
 SelectAndPatchLobbyExit::
+IF DEF(_DEBUG)
+	; Debug 2 SEED row: reseed before this visit's first roll, once per new
+	; game. Also clears the flag from door 2's bit 7 before anything below
+	; reads that byte. See engine/debug/debug2_config.asm.
+	farcall Debug2ConsumePendingSeed
+ENDC
 	; Roll this run's eight gym leaders if it has not happened yet. This is the
 	; run-start hook, and it is a lazy check rather than a call from some
 	; new-run routine for the same reason RogueSyncBadgeSlots is a sync rather

@@ -195,7 +195,15 @@ RogueSelectFromTier::
 	pop bc
 	ld a, d
 	and a
-	ret nz                        ; d and e are both final; no evolve step, a form
+	jr z, .noTierForm
+	; This pick used to skip the ownership check entirely. If the player already
+	; owns its line, fall back to the ordinary roll for this tier.
+	push bc
+	call AllSpeciesCheck          ; c = 1 if owned; de preserved
+	ld a, c
+	pop bc
+	and a
+	ret z                         ; d and e are both final; no evolve step, a form
 	                              ; record already names the exact species
 .noTierForm
 	ld c, 32                      ; retry budget
@@ -637,66 +645,101 @@ ENDC
    ld [wSpawnForm], a
 RET
 
-; a check to see if pokemon is already in players box or party
-; returns a 0 if no and a 1 if yes
+; ---------------------------------------------------------------------------
+; AllSpeciesCheck
+; INPUT:  d = candidate species
+; OUTPUT: c = 1 if the player already owns d OR anything d evolves into (party
+;         or current box), else 0
+; CLOBBERS: af, b, hl   (de PRESERVED - RogueSelectFromTier's tier-form path
+;           holds the form in e across this call)
+;
+; Owning any member of the evolution line rejects the whole line: an EXEGGUTOR
+; in the party used to let an EXEGGCUTE through, because only the exact species
+; byte was compared. Forms ride along - Alolan Exeggutor is still EXEGGUTOR.
+;
+; The walk only goes FORWARD from d, so it is complete only when d is the root
+; of its line. That holds for every caller today: the tier lists roll only
+; their base-form prefix and FormTierTable's lone entry is JIGGLYPUFF. Measured
+; 2026-09-25 against data/pokemon/evos_moves.asm: no rollable species has a
+; pre-evolution, no species has two parents, deepest chain 2, largest family 4
+; (Eevee/Oddish/Poliwag). Form records carry no evolutions of their own.
+;
+; The owned list is $ff-terminated here. It never used to be: the scan ran on
+; into whatever an earlier, longer list or another union member left behind,
+; rejecting a mon the player had since traded away or falling off the end of
+; the buffer into unrelated WRAM (measured 2026-09-25 on the unfixed ROM).
+; ---------------------------------------------------------------------------
+DEF FAMILY_WALK_BUDGET EQU 16   ; expansions; Eevee's 8 duplicate branches cost 9
 
-; UPDATE, need a way to check if evolution
 AllSpeciesCheck::
-    ld b, 0
-    ld c, 0
-    ld hl, wPartySpecies
-    push hl
-    
-    .loop
-    pop hl
-    ld a, [hli]
-    push hl
+	ASSERT PARTY_LENGTH + MONS_PER_BOX + 1 <= $40, \
+	       "wAllSpecies (ds $40, ram/wram.asm) must hold a full party, a full box and the terminator"
+	push de
+	ld bc, wAllSpecies
+	ld hl, wPartySpecies
+	call .appendList
+	ld hl, wBoxSpecies
+	call .appendList
+	ld a, $ff
+	ld [bc], a
+
+; Depth-first over the evolution tree, with the pending species on the stack.
+; Each species' evolution list is fully consumed (pushed) before the next
+; LoadEvoListForSpecies overwrites wEvoDataBuffer, so one buffer serves all.
+	xor a
+	push af                       ; NO_MON sentinel marks the bottom
+	ld a, d
+	ld b, FAMILY_WALK_BUDGET
+.visit                            ; a = species to test
+	ld d, a
+	ld hl, wAllSpecies
+.scan
+	ld a, [hli]
+	cp d
+	jr z, .owned
+	inc a                         ; $ff terminator -> 0
+	jr nz, .scan
+	dec b
+	jr z, .next                   ; budget spent: stop expanding, keep testing
+	push bc
+	call LoadEvoListForSpecies    ; hl = wEvoDataBuffer; clobbers af/bc/de
+	pop bc
+.evoEntry
+	ld a, [hli]
+	and a
+	jr z, .next
+	cp EVOLVE_ITEM
+	jr nz, .noItem
+	inc hl                        ; [method][item][level][species]
+.noItem
+	inc hl                        ; past [level]
+	ld a, [hli]                   ; target species
+	push af
+	jr .evoEntry
+.next
+	pop af
+	and a
+	jr nz, .visit
+	ld c, a                       ; sentinel reached: not owned, c = 0
+	jr .end
+
+.owned
+	pop af                        ; discard pending species down to the sentinel
+	and a
+	jr nz, .owned
+	ld c, 1
+.end                              ; single exit, c = result
+	pop de
+	ret
+
+; copy [hl] to [bc] up to (not including) the $ff terminator
+.appendList
+	ld a, [hli]
 	cp $ff
-	jr z, .box
-    
-    inc c
-    ld hl, wAllSpecies - 1
-    add hl, bc
-    ld [hl], a ; load mon into allspecies
-    jr .loop
-    
-    .box ;
-    pop hl
-    ld hl, wBoxSpecies
-    push hl
-    
-    .loop2
-    pop hl
-    ld a, [hli]
-    push hl
-	cp $ff
-	jr z, .begin_checking
-    
-    inc c
-    ld hl, wAllSpecies - 1
-    add hl, bc
-    ld [hl], a ; load mon into allspecies
-    jr .loop2
-    
-    .begin_checking
-    pop hl
-    ld hl, wAllSpecies
-    
-    .checkloop
-    ld a, [hli]         ; load pokemon
-    cp d                ; compare to selected random pokemon
-    jr z, .rejection    ; if the same pokemon flag for rejection
-    cp $ff              
-    jr nz, .checkloop   ; if not end of list, loop
-    
-    ld c, $0               ; set c to 0 as the pokemon isn't on players team
-    jp  .end
-    
-    .rejection
-    ld c, $1            ; set c to 1 as the pokemon is already on players team
-    
-    .end
-    RET
+	ret z
+	ld [bc], a
+	inc bc
+	jr .appendList
 
 ; Choose Blue's starter from the two slots the player did NOT take.
 ; in:  e = player's chosen slot (1..3)   [passed via 'e' because farcall/Bankswitch
