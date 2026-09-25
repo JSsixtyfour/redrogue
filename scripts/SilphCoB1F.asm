@@ -235,7 +235,7 @@ SilphCoB1FRestorePalmRoomDoor:
 	CheckEvent EVENT_PALMS_ROOM_OPEN
 	ld a, $54
 	jr z, SilphCoB1FReplacePalmRoomDoor
-	ld a, $0e
+	ld a, $08
 	jr SilphCoB1FReplacePalmRoomDoor
 
 SilphCoB1FOpenPalmRoomDoor::

@@ -401,7 +401,11 @@ RoomVendorPlantIds:
 RoomVendorPalsNames:
 	dw .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
 	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel, .Doduo, .Psyduck, \
-	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo
+	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo, \
+	   .Fearow, .Kangaskhan, .Lapras, .Machop, .Mew, .NidoranF, .Pidgey2, .Slowpoke, \
+	   .Vaporeon, .Bulbasaur, .Clefairy2, .Jigglypuff, .Machoke, .Meowth, .MrMime, \
+	   .NidoranM, .Oddish, .Pidgeot, .Poliwrath, .Sandshrew, .Seel2, .Jolteon, \
+	   .Flareon, .Wigglytuff
 .Charmeleon: db "CHARMELEON@"
 .Pidgey:     db "PIDGEY@"
 .Omanyte:    db "OMANYTE@"
@@ -423,6 +427,30 @@ RoomVendorPalsNames:
 .Zapdos:     db "ZAPDOS@"
 .Moltres:    db "MOLTRES@"
 .Mewtwo:     db "MEWTWO@"
+.Fearow:     db "FEAROW@"
+.Kangaskhan: db "KANGASKHAN@"
+.Lapras:     db "LAPRAS@"
+.Machop:     db "MACHOP@"
+.Mew:        db "MEW@"
+.NidoranF:   db "NIDORAN F@"
+.Pidgey2:    db "PIDGEY@"
+.Slowpoke:   db "SLOWPOKE@"
+.Vaporeon:   db "VAPOREON@"
+.Bulbasaur:  db "BULBASAUR@"
+.Clefairy2:  db "CLEFAIRY@"
+.Jigglypuff: db "JIGGLYPUFF@"
+.Machoke:    db "MACHOKE@"
+.Meowth:     db "MEOWTH@"
+.MrMime:     db "MR. MIME@"
+.NidoranM:   db "NIDORAN M@"
+.Oddish:     db "ODDISH@"
+.Pidgeot:    db "PIDGEOT@"
+.Poliwrath:  db "POLIWRATH@"
+.Sandshrew:  db "SANDSHREW@"
+.Seel2:      db "SEEL@"
+.Jolteon:    db "JOLTEON@"
+.Flareon:    db "FLAREON@"
+.Wigglytuff: db "WIGGLYTUFF@"
 RoomVendorPalsPrices:
 	bcd2 15
 	bcd2 10
@@ -445,7 +473,34 @@ RoomVendorPalsPrices:
 	bcd2 30 ; ZAPDOS
 	bcd2 30 ; MOLTRES
 	bcd2 40 ; MEWTWO
+	bcd2 15 ; FEAROW
+	bcd2 20 ; KANGASKHAN
+	bcd2 20 ; LAPRAS
+	bcd2 15 ; MACHOP
+	bcd2 40 ; MEW
+	bcd2 15 ; NIDORAN F
+	bcd2 15 ; PIDGEY
+	bcd2 15 ; SLOWPOKE
+	bcd2 15 ; VAPOREON
+	bcd2 15 ; BULBASAUR
+	bcd2 15 ; CLEFAIRY
+	bcd2 15 ; JIGGLYPUFF
+	bcd2 15 ; MACHOKE
+	bcd2 15 ; MEOWTH
+	bcd2 15 ; MR. MIME
+	bcd2 15 ; NIDORAN M
+	bcd2 15 ; ODDISH
+	bcd2 15 ; PIDGEOT
+	bcd2 15 ; POLIWRATH
+	bcd2 15 ; SANDSHREW
+	bcd2 15 ; SEEL2
+	bcd2 20 ; JOLTEON
+	bcd2 20 ; FLAREON
+	bcd2 20 ; WIGGLYTUFF
 RoomVendorPalsIds:
-	db 21
+	db 45
 	db 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
 	db 27, 28, 29, 30, 31, 32, 33, 34, 35, 36
+	db 37, 38, 39, 40, 41, 42, 43, 44
+	db 45, 46, 47, 48, 49, 50, 51, 52, 53, 54
+	db 55, 56, 57, 58, 59, 60

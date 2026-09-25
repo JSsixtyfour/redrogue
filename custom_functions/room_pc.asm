@@ -511,7 +511,11 @@ RoomBottomDescTable:
 RoomDecorationDescTable:
 	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
 	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel, .Doduo, .Psyduck, \
-	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo
+	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo, \
+	   .Fearow, .Kangaskhan, .Lapras, .Machop, .Mew, .NidoranF, .Pidgey2, .Slowpoke, \
+	   .Vaporeon, .Bulbasaur, .Clefairy2, .Jigglypuff, .Machoke, .Meowth, .MrMime, \
+	   .NidoranM, .Oddish, .Pidgeot, .Poliwrath, .Sandshrew, .Seel2, .Jolteon, \
+	   .Flareon, .Wigglytuff
 .None:       db "Clear this spot.@"
 .Charmeleon: db "A plush CHARMELEON<NEXT>with a sewn flame.@"
 .Pidgey:     db "A soft PIDGEY doll<NEXT>with a bent wing.@"
@@ -534,6 +538,30 @@ RoomDecorationDescTable:
 .Zapdos:     db "A ZAPDOS doll with<NEXT>jagged wings.@"
 .Moltres:    db "A MOLTRES doll in<NEXT>fiery felt.@"
 .Mewtwo:     db "A rare MEWTWO doll<NEXT>It stares back.@"
+.Fearow:     db "A FEAROW doll with<NEXT>a long sharp beak.@"
+.Kangaskhan: db "A KANGASKHAN doll,<NEXT>baby in its pouch.@"
+.Lapras:     db "A LAPRAS plush,<NEXT>long, gentle neck.@"
+.Machop:     db "A MACHOP doll with<NEXT>stubby small arms.@"
+.Mew:        db "A rare pink MEW<NEXT>plush. So cute.@"
+.NidoranF:   db "A NIDORAN F doll<NEXT>with round ears.@"
+.Pidgey2:    db "A tiny PIDGEY doll<NEXT>with fluffy down.@"
+.Slowpoke:   db "A SLOWPOKE doll<NEXT>with a blank look.@"
+.Vaporeon:   db "A VAPOREON plush,<NEXT>smooth, finned.@"
+.Bulbasaur:  db "A BULBASAUR plush<NEXT>with a leafy bulb.@"
+.Clefairy2:  db "A CLEFAIRY plush<NEXT>a tiny pink wing.@"
+.Jigglypuff: db "A JIGGLYPUFF doll,<NEXT>round and bouncy.@"
+.Machoke:    db "A MACHOKE doll,<NEXT>muscled physique.@"
+.Meowth:     db "A MEOWTH doll with<NEXT>a gold coin charm.@"
+.MrMime:     db "A MR. MIME doll in<NEXT>a mime's costume.@"
+.NidoranM:   db "A NIDORAN M doll<NEXT>with a small horn.@"
+.Oddish:     db "An ODDISH plush,<NEXT>round with leaves.@"
+.Pidgeot:    db "A PIDGEOT doll,<NEXT>a sweeping tail.@"
+.Poliwrath:  db "A POLIWRATH doll,<NEXT>muscled, swirled.@"
+.Sandshrew:  db "A SANDSHREW doll<NEXT>with a tough hide.@"
+.Seel2:      db "A sitting SEEL<NEXT>tail curled up.@"
+.Jolteon:    db "A JOLTEON plush,<NEXT>spiky, electric.@"
+.Flareon:    db "A FLAREON plush,<NEXT>fluffy and warm.@"
+.Wigglytuff: db "A WIGGLYTUFF doll,<NEXT>big, round, soft.@"
 
 ; a = selected option (0-8); writes into sRoomFurniture byte0 bits0-3
 RoomWriteFurnitureTop:
@@ -827,7 +855,7 @@ RoomTwoSpotNameTable:
 .Spot1: db "SPOT 1@"
 .Spot2: db "SPOT 2@"
 
-; INPUT: a = sRoomDecorSlots index (0-7). Shows the 21-decoration + NONE
+; INPUT: a = sRoomDecorSlots index (0-7). Shows the 45-decoration + NONE
 ; picker and writes the choice back to that slot.
 RoomPickDecorationForSlot:
 	push af
@@ -835,7 +863,7 @@ RoomPickDecorationForSlot:
 	; The longest list here, so it starts on row 1 and its box is full width,
 	; ending at row 13 - flush against the text box's first text row (14) and
 	; covering the box's own top border so the two read as one frame. Rows
-	; 1-12 show 12 of the 22 entries; RoomDrawPickList scrolls the rest.
+	; 1-12 show 12 of the 46 entries; RoomDrawPickList scrolls the rest.
 	hlcoord 0, 0
 	ld b, 12
 	ld c, 18
@@ -845,11 +873,11 @@ RoomPickDecorationForSlot:
 	ld a, 1
 	call RoomSetPickListOpts
 	ld hl, RoomDecorationNameTable
-	ld b, 22
+	ld b, 46
 	call RoomDrawPickList
 	jr c, .cancelled
-	; a = 0 (NONE) or 1-21 (decoration id) - RoomDrawPickList's index already
-	; matches sRoomDecorSlots' own encoding (0=empty, 1-21=decoration).
+	; a = 0 (NONE) or 1-45 (decoration id) - RoomDrawPickList's index already
+	; matches sRoomDecorSlots' own encoding (0=empty, 1-45=decoration).
 	; Stash it in e (survives the slot-index pop and bc rebuild below - the
 	; SRAM-open sequence and the bc/hl addressing math never touch e).
 	ld e, a
@@ -881,7 +909,11 @@ RoomPickDecorationForSlot:
 RoomDecorationNameTable:
 	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
 	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel, .Doduo, .Psyduck, \
-	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo
+	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo, \
+	   .Fearow, .Kangaskhan, .Lapras, .Machop, .Mew, .NidoranF, .Pidgey2, .Slowpoke, \
+	   .Vaporeon, .Bulbasaur, .Clefairy2, .Jigglypuff, .Machoke, .Meowth, .MrMime, \
+	   .NidoranM, .Oddish, .Pidgeot, .Poliwrath, .Sandshrew, .Seel2, .Jolteon, \
+	   .Flareon, .Wigglytuff
 .None:       db "NONE@"
 .Charmeleon: db "CHARMELEON@"
 .Pidgey:     db "PIDGEY@"
@@ -904,6 +936,30 @@ RoomDecorationNameTable:
 .Zapdos:     db "ZAPDOS@"
 .Moltres:    db "MOLTRES@"
 .Mewtwo:     db "MEWTWO@"
+.Fearow:     db "FEAROW@"
+.Kangaskhan: db "KANGASKHAN@"
+.Lapras:     db "LAPRAS@"
+.Machop:     db "MACHOP@"
+.Mew:        db "MEW@"
+.NidoranF:   db "NIDORAN F@"
+.Pidgey2:    db "PIDGEY@"
+.Slowpoke:   db "SLOWPOKE@"
+.Vaporeon:   db "VAPOREON@"
+.Bulbasaur:  db "BULBASAUR@"
+.Clefairy2:  db "CLEFAIRY@"
+.Jigglypuff: db "JIGGLYPUFF@"
+.Machoke:    db "MACHOKE@"
+.Meowth:     db "MEOWTH@"
+.MrMime:     db "MR. MIME@"
+.NidoranM:   db "NIDORAN M@"
+.Oddish:     db "ODDISH@"
+.Pidgeot:    db "PIDGEOT@"
+.Poliwrath:  db "POLIWRATH@"
+.Sandshrew:  db "SANDSHREW@"
+.Seel2:      db "SEEL@"
+.Jolteon:    db "JOLTEON@"
+.Flareon:    db "FLAREON@"
+.Wigglytuff: db "WIGGLYTUFF@"
 
 ; ============================================================
 ; RoomDrawPickList — a small single-spaced list picker.

@@ -95,7 +95,7 @@ MtMoon1F_TextPointers:
 MtMoon1TrainerHeaders:
 	def_trainers 1
 MtMoon1TrainerHeader0:
-	trainer EVENT_BEAT_MT_MOON_1_TRAINER_0, 2, MtMoon1FLassBattleText, MtMoon1FLassEndBattleText, MtMoon1FLassAfterBattleText
+	trainer EVENT_BEAT_MT_MOON_1_TRAINER_0, 3, MtMoon1FLassBattleText, MtMoon1FLassEndBattleText, MtMoon1FLassAfterBattleText
 MtMoon1TrainerHeader1:
 	trainer EVENT_BEAT_MT_MOON_1_TRAINER_1, 3, MtMoon1FBugCatcherBattleText, MtMoon1FBugCatcherEndBattleText, MtMoon1FBugCatcherAfterBattleText
 MtMoon1TrainerHeader2:

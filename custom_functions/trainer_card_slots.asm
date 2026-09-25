@@ -283,24 +283,51 @@ RogueCardRevealedSlotForDraw::
 ;         enter; carry clear if the queued stage is a route, not a gym.
 ;
 ; _PickNextGym computes exactly this index, then discards it and keeps only the
-; map id, so recover it by reverse-scanning the table it used. That costs no
-; WRAM, which matters here: wRogueFlagsBitfield2 is now full and this is a
-; display-only convenience that does not deserve a fresh byte.
+; map id, so recover it by re-deriving every slot's map THE SAME WAY
+; _PickNextGym does and matching wRogueMap. That costs no WRAM, which matters
+; here: wRogueFlagsBitfield2 is now full and this does not deserve a fresh byte.
+;
+; FIXED 2026-09-25 (lobby Psychic work). This used to reverse-scan the Kanto-only
+; GymMapByBadge, which is only right while the lineup is empty. Since Phase 7,
+; slot i's map is GymMapForLeader(wRunGymLineup[i]), so the old scan named the
+; wrong leader for any shuffled Kanto gym (Brock queued in slot 1 -> PEWTER_GYM
+; -> "bit 0" -> slot 0's leader) and called every Johto gym "not a gym".
+; Measured on a real rolled lineup: 7 of 8 queued gyms resolved wrongly. It had
+; no visible effect only because nothing granted foresight until the Psychic.
+; Slots map to distinct gyms (Koga and Janine share FUCHSIA_GYM, but the pool
+; holds exactly one of them), so the first match is the only match.
 ;
 ; wRogueMap is the right source rather than either wLobbyDoorNStageMap: both
 ; doors default to it, and the bridge layer, the only thing that can repoint
 ; them on a gym cycle, still routes onward to wRogueMap after its gift.
 ;
-; GymMapByBadge lives in random_stage_selection.asm, which shares SECTION "rogue"
-; with this file, so this read is in-bank BY CONSTRUCTION. If either file is ever
-; moved, they move together or this needs a far read.
+; GymMapByBadge and GymMapForLeader live in random_stage_selection.asm, which
+; shares SECTION "rogue" with this file, so these are in-bank BY CONSTRUCTION.
+; If either file is ever moved, they move together or this needs far calls.
+; PRESERVES de (RogueCardRevealedSlot's contract).
 RogueCardNextGymBadgeBit::
-	ld a, [wRogueMap]
-	ld b, a
-	ld hl, GymMapByBadge
 	ld c, 0
 .scan
-	ld a, [hli]
+	; a = slot c's gym this run: its lineup leader's gym, or the fixed Kanto
+	; gym for an empty slot - _PickNextGym's .noLineup fallback, per slot.
+	push de
+	ld e, c
+	ld d, 0
+	ld hl, wRunGymLineup
+	add hl, de
+	ld a, [hl]
+	and a
+	jr z, .kantoSlot
+	call GymMapForLeader       ; preserves bc and hl
+	jr .gotSlotMap
+.kantoSlot
+	ld hl, GymMapByBadge
+	add hl, de
+	ld a, [hl]
+.gotSlotMap
+	pop de
+	ld b, a
+	ld a, [wRogueMap]
 	cp b
 	jr z, .found
 	inc c

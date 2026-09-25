@@ -1,6 +1,7 @@
 """Room decor pieces added on the Dorm's extended tiles, DINOSAUR POSTER (TOP 9)
-and SPACESHIP (MIDDLE 5), plus the decoration dolls 12-21 and the scrolling
-pick list they need.
+and SPACESHIP (MIDDLE 5), plus the decoration dolls 12-45 (Kanto pals 12-21,
+then the Yellow Legacy batch 2 sprites 22-45) and the scrolling pick list
+they need.
 
 Source checks keep the vendor's piece-id tables, the stamp tables and the
 Dorm's collision honest; the runtime checks stamp both pieces through the real
@@ -22,8 +23,8 @@ FIRST_BORDER = 0x79
 RESERVED_GLYPHS = {0x6D, 0x70, 0x71, 0x72, 0x73, 0x75}
 TOP_DINO_POSTER = 9
 MIDDLE_SPACESHIP = 5
-NUM_DECORATIONS = 21
-NUM_PIECES = 37
+NUM_DECORATIONS = 45
+NUM_PIECES = 61
 
 
 def asm(name: str) -> str:
@@ -203,25 +204,25 @@ class RoomDecorRuntimeTest(unittest.TestCase):
             self.press("down")
         self.press("a", 30)      # BEDSIDE (slot 0)
         self.assertEqual(picker["count"], 1, "the decoration picker did not open")
-        self.assertEqual(h.read8("wMaxMenuItem"), 11, "the picker should show 12 of its 22 rows")
+        self.assertEqual(h.read8("wMaxMenuItem"), 11, "the picker should show 12 of its 46 rows")
 
         def state() -> tuple[int, int]:
             return h.read8("wBuffer", 14), h.read8("hCurrentMenuItem")
 
-        for _ in range(21):
+        for _ in range(NUM_DECORATIONS):
             self.press("down")
-        self.assertEqual(state(), (10, 11), "down to MEWTWO: offset 10, bottom row")
+        self.assertEqual(state(), (34, 11), "down to WIGGLYTUFF: offset 34, bottom row")
         for _ in range(12):
             self.press("up")
-        self.assertEqual(state(), (9, 0), "back up past the top row scrolls one entry")
+        self.assertEqual(state(), (33, 0), "back up past the top row scrolls one entry")
         for _ in range(12):
             self.press("down")
-        self.assertEqual(state(), (10, 11))
+        self.assertEqual(state(), (34, 11))
         h.tick(10, render=True)
         ARTIFACTS.mkdir(exist_ok=True)
         h.pyboy.screen.image.save(ARTIFACTS / "room_decor_scrolled_picker.png")
         self.press("a", 30)
-        self.assertEqual(h.read_sram_bytes("sRoomDecorSlots", 1), [NUM_DECORATIONS], "MEWTWO was not stored")
+        self.assertEqual(h.read_sram_bytes("sRoomDecorSlots", 1), [NUM_DECORATIONS], "WIGGLYTUFF was not stored")
         self.assertEqual(h.read8("wMenuWatchMovingOutOfBounds"), 0, "left the out-of-bounds watch on")
 
 

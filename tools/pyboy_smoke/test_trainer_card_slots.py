@@ -586,8 +586,11 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
     def test_reveal_follows_a_rolled_lineup(self) -> None:
         """Phase 7's contract on the reveal path, not just the earned path.
 
-        Celadon is badge bit 3, so a lineup putting MORTY at index 3 must make
-        Celadon Gym reveal Morty rather than Erika.
+        With MORTY in lineup slot 3, _PickNextGym queues HIS gym
+        (GymMapForLeader -> ECRUTEAK_GYM), so that is what must reveal Morty.
+        This used to queue CELADON_GYM - a state the game cannot produce - and
+        so pinned the Kanto-only reverse scan that named the wrong leader for
+        7 of 8 real lineup slots (fixed 2026-09-25).
         """
         h = self.harness
         assert h is not None
@@ -595,10 +598,28 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         blocks = self._blocks(
             badges=0,
             predict=True,
-            queued_map=self.maps["CELADON_GYM"],
+            queued_map=self.maps["ECRUTEAK_GYM"],
             lineup={3: self.classes["MORTY"]},
         )
         self.assertEqual(blocks[0], EXPECTED_BLOCKS.index("MORTY"))
+
+    def test_shuffled_kanto_leader_reveals_the_slot_holding_him(self) -> None:
+        """The wrong-leader half of the 2026-09-25 bug.
+
+        Brock in slot 1 and Falkner in slot 0: queuing PEWTER_GYM must reveal
+        BROCK. The old Kanto-only reverse scan read PEWTER_GYM as badge bit 0
+        and revealed slot 0's leader, Falkner.
+        """
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        blocks = self._blocks(
+            badges=0,
+            predict=True,
+            queued_map=self.maps["PEWTER_GYM"],
+            lineup={0: self.classes["FALKNER"], 1: self.classes["BROCK"]},
+        )
+        self.assertEqual(blocks[0], EXPECTED_BLOCKS.index("BROCK"))
 
     def test_a_queued_gym_reveals_nothing_without_foresight(self) -> None:
         h = self.harness

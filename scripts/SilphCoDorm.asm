@@ -59,7 +59,7 @@ RoomDecorationText:
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
-	ld a, [hl]                  ; a = decoration id (0 = empty, 1-21 = decoration)
+	ld a, [hl]                  ; a = decoration id (0 = empty, 1-45 = decoration)
 	ld b, a
 	xor a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (room_decor.asm header)
@@ -103,6 +103,30 @@ RoomDecorationTextTable:
 	dw .ZapdosText          ; 19
 	dw .MoltresText         ; 20
 	dw .MewtwoText          ; 21
+	dw .FearowText          ; 22
+	dw .KangaskhanText      ; 23
+	dw .LaprasText          ; 24
+	dw .MachopText          ; 25
+	dw .MewText             ; 26
+	dw .NidoranFText        ; 27
+	dw .PidgeyYLText        ; 28
+	dw .SlowpokeText        ; 29
+	dw .VaporeonText        ; 30
+	dw .BulbasaurText       ; 31
+	dw .ClefairyYLText      ; 32
+	dw .JigglypuffText      ; 33
+	dw .MachokeText         ; 34
+	dw .MeowthText          ; 35
+	dw .MrMimeText          ; 36
+	dw .NidoranMText        ; 37
+	dw .OddishText          ; 38
+	dw .PidgeotText         ; 39
+	dw .PoliwrathText       ; 40
+	dw .SandshrewText       ; 41
+	dw .Seel2Text           ; 42
+	dw .JolteonText         ; 43
+	dw .FlareonText         ; 44
+	dw .WigglytuffText      ; 45
 
 .EmptyText:
 	text_far _SilphCoDormEmptyText
@@ -169,6 +193,78 @@ RoomDecorationTextTable:
 	text_end
 .MewtwoText:
 	text_far _SilphCoDormMewtwoText
+	text_end
+.FearowText:
+	text_far _SilphCoDormFearowText
+	text_end
+.KangaskhanText:
+	text_far _SilphCoDormKangaskhanText
+	text_end
+.LaprasText:
+	text_far _SilphCoDormLaprasText
+	text_end
+.MachopText:
+	text_far _SilphCoDormMachopText
+	text_end
+.MewText:
+	text_far _SilphCoDormMewText
+	text_end
+.NidoranFText:
+	text_far _SilphCoDormNidoranFText
+	text_end
+.PidgeyYLText:
+	text_far _SilphCoDormPidgeyYLText
+	text_end
+.SlowpokeText:
+	text_far _SilphCoDormSlowpokeText
+	text_end
+.VaporeonText:
+	text_far _SilphCoDormVaporeonText
+	text_end
+.BulbasaurText:
+	text_far _SilphCoDormBulbasaurText
+	text_end
+.ClefairyYLText:
+	text_far _SilphCoDormClefairyYLText
+	text_end
+.JigglypuffText:
+	text_far _SilphCoDormJigglypuffText
+	text_end
+.MachokeText:
+	text_far _SilphCoDormMachokeText
+	text_end
+.MeowthText:
+	text_far _SilphCoDormMeowthText
+	text_end
+.MrMimeText:
+	text_far _SilphCoDormMrMimeText
+	text_end
+.NidoranMText:
+	text_far _SilphCoDormNidoranMText
+	text_end
+.OddishText:
+	text_far _SilphCoDormOddishText
+	text_end
+.PidgeotText:
+	text_far _SilphCoDormPidgeotText
+	text_end
+.PoliwrathText:
+	text_far _SilphCoDormPoliwrathText
+	text_end
+.SandshrewText:
+	text_far _SilphCoDormSandshrewText
+	text_end
+.Seel2Text:
+	text_far _SilphCoDormSeel2Text
+	text_end
+.JolteonText:
+	text_far _SilphCoDormJolteonText
+	text_end
+.FlareonText:
+	text_far _SilphCoDormFlareonText
+	text_end
+.WigglytuffText:
+	text_far _SilphCoDormWigglytuffText
 	text_end
 
 ; The room PC - Key Items / Furniture / Decorations / Hall of Fame.
