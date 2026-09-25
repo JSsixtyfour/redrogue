@@ -809,3 +809,12 @@ INCLUDE "custom_functions/run_toggle_clear.asm"
 SECTION "Rogue Show Stage Rewards", ROMX, BANK[$3C]
 
 INCLUDE "custom_functions/show_stage_rewards.asm"
+
+; Indigo Plateau lobby NPC logic: the two daycare NPCs and the gym-foresight
+; Psychic. The lobby map script's bank ($06) is effectively full, so its text
+; pointers are text_asm stubs that farcall in here. Pinned to $3C for the same
+; first-fit reason as the sections above.
+SECTION "Lobby NPCs", ROMX, BANK[$3C]
+
+INCLUDE "engine/events/lobby_daycare.asm"
+INCLUDE "engine/events/lobby_psychic.asm"

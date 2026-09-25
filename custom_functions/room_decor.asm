@@ -3,7 +3,7 @@
 ; SilphCoDorm room decoration placement engine. Reads sRoomFurniture /
 ; sRoomDecorSlots / sRoomOwned (ram/sram.asm, "Save Data" section, bank 1)
 ; and applies them to the currently-loaded map: RoomStampBlocks rewrites the
-; 9 configurable wOverworldMap block cells, RoomPatchSprites repoints the 8
+; 10 configurable wOverworldMap block cells, RoomPatchSprites repoints the 8
 ; decoration object slots' PICTUREID/position. Both are farcall'd from
 ; custom_functions/procedural_stage_hooks.asm, the same load-time windows
 ; MiniBossPatchStageSprite/ProcStageLoadDispatch already use for identical
@@ -12,7 +12,7 @@
 ; wOverworldMap addressing matches procedural_cave_gen.asm's documented
 ; formula: wOverworldMap + MAP_BORDER + x + (y + MAP_BORDER) * (width +
 ; MAP_BORDER*2). SilphCoDorm is 4 blocks wide, so stride = 4+6 = 10 and the
-; row-0 base is MAP_BORDER + 3*stride = 33. All 9 offsets below are that
+; row-0 base is MAP_BORDER + 3*stride = 33. All 10 offsets below are that
 ; formula evaluated at compile time for this fixed 4x4 map.
 ;
 ; SRAM BANK DISCIPLINE (applies to room_pc.asm and room_vendor.asm too):
@@ -30,7 +30,7 @@
 SECTION "Room", ROMX
 
 ; ============================================================
-; RoomStampBlocks — write the 9 furniture-selected blocks into wOverworldMap.
+; RoomStampBlocks — write the 10 furniture-selected blocks into wOverworldMap.
 ; Called from ProcStageLoadDispatch, after LoadTileBlockMap and before
 ; LoadCurrentMapView, so the room draws correct on the very first frame.
 ; ============================================================
@@ -69,20 +69,22 @@ RoomStampBlocks::
 	ld a, [hl]
 	ld [wOverworldMap + 45], a
 
-	; --- MIDDLE: cells (1,2)=+54 (2,2)=+55 (1,3)=+64 ---
+	; --- MIDDLE: cells (1,2)=+54 (2,2)=+55 (3,2)=+56 (1,3)=+64 ---
 	ld a, d
 	swap a
 	and %00000111
+	add a
+	add a                       ; 4-byte rows (index 0-7, so no carry)
 	ld c, a
 	ld b, 0
 	ld hl, RoomMiddleBlockTable
-	add hl, bc
-	add hl, bc
 	add hl, bc
 	ld a, [hli]
 	ld [wOverworldMap + 54], a
 	ld a, [hli]
 	ld [wOverworldMap + 55], a
+	ld a, [hli]
+	ld [wOverworldMap + 56], a
 	ld a, [hl]
 	ld [wOverworldMap + 64], a
 
@@ -121,13 +123,13 @@ RoomTopBlockTable: ; 10 options x 3 bytes: (2,0) (3,0) (2,1)
 	db 19, 20, 15 ; 8 COUCH
 	db 32,  3, 15 ; 9 DINOSAUR POSTER (block $20: same shape as MAP's $19)
 
-RoomMiddleBlockTable: ; 6 options x 3 bytes: (1,2) (2,2) (1,3)
-	db 15, 15, 15 ; 0 NOTHING (default)
-	db 21, 22, 27 ; 1 NOTE TABLE
-	db  1,  2, 15 ; 2 FLOWER TABLE
-	db 23, 24, 15 ; 3 PLAIN TABLE
-	db 13, 15, 15 ; 4 TV + GAME
-	db  7,  8, 15 ; 5 SPACESHIP (blocks $07 left, $08 right)
+RoomMiddleBlockTable: ; 6 options x 4 bytes: (1,2) (2,2) (3,2) (1,3)
+	db 15, 15, 15, 15 ; 0 NOTHING (default)
+	db 21, 22, 15, 27 ; 1 NOTE TABLE
+	db  1,  2, 15, 15 ; 2 FLOWER TABLE
+	db 23, 24, 15, 15 ; 3 PLAIN TABLE
+	db 13, 15, 15, 15 ; 4 TV + GAME
+	db 15,  7,  8, 15 ; 5 SPACESHIP (blocks $07 left, $08 right; one block right of the tables)
 
 RoomBottomBlockTable: ; 2 options x 1 byte: (3,3)
 	db 15 ; 0 NOTHING (default)
@@ -192,7 +194,7 @@ RoomPatchSprites::
 	call RoomApplyEnabledSlot
 
 	; --- slot 4: MIDDLE #1, always live; (2,4) if MIDDLE=FLOWER(2)/PLAIN(3),
-	; (1,4) beside the ship if MIDDLE=SPACESHIP(5), else (4,4) ---
+	; (3,4) beside the ship if MIDDLE=SPACESHIP(5), else (4,4) ---
 	ld a, d
 	swap a
 	and %00000111
@@ -203,7 +205,7 @@ RoomPatchSprites::
 	jr z, .mid1Narrow
 	cp 5
 	jr nz, .mid1_4
-	ld b, 1
+	ld b, 3
 	jr .mid1_4
 .mid1Narrow
 	ld b, 2
@@ -214,7 +216,7 @@ RoomPatchSprites::
 	call RoomApplyEnabledSlot
 
 	; --- slot 5: MIDDLE #2, live only if MIDDLE=FLOWER(2)/PLAIN(3) at (5,4),
-	; or MIDDLE=SPACESHIP(5) at (1,5) ---
+	; or MIDDLE=SPACESHIP(5) at (3,5) ---
 	ld hl, wSprite05StateData1
 	ld a, d
 	swap a
@@ -229,7 +231,7 @@ RoomPatchSprites::
 	call RoomWriteSlot
 	jr .slot6
 .mid2Ship
-	ld b, 1
+	ld b, 3
 	ld c, 5
 	jr .mid2Apply
 .mid2Live
@@ -310,7 +312,7 @@ RoomApplyEnabledSlot:
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
-	ld a, [hl]                  ; a = decoration id (0-11)
+	ld a, [hl]                  ; a = decoration id (0-21)
 	ld c, a                     ; stash across the SRAM close (c's old value,
 	                            ; the sRoomDecorSlots offset, is no longer needed)
 	xor a
@@ -349,6 +351,18 @@ DecorationSpriteTable: ; indexed by (decoration id - 1)
 	db SPRITE_POKEDEX      ; 9 POKEDEX (still)
 	db SPRITE_OLD_AMBER    ; 10 OLD AMBER (still)
 	db SPRITE_SEEL         ; 11 SEEL
+	db SPRITE_DODUO        ; 12 DODUO
+	db SPRITE_PSYDUCK      ; 13 PSYDUCK
+	db SPRITE_NIDORINO     ; 14 NIDORINO
+	db SPRITE_KABUTO       ; 15 KABUTO
+	db SPRITE_SPEAROW      ; 16 SPEAROW
+	db SPRITE_CUBONE       ; 17 CUBONE
+	db SPRITE_ARTICUNO     ; 18 ARTICUNO
+	db SPRITE_ZAPDOS       ; 19 ZAPDOS
+	db SPRITE_MOLTRES      ; 20 MOLTRES
+	db SPRITE_MEWTWO       ; 21 MEWTWO
+DEF NUM_ROOM_DECORATIONS EQU 21
+ASSERT @ - DecorationSpriteTable == NUM_ROOM_DECORATIONS
 
 ; ============================================================
 ; RoomWriteSlot — the actual struct writer.
@@ -400,7 +414,7 @@ RoomWriteSlot:
 ; $FF is worse than a wrong-but-legal value: sRoomFurniture $FF gives a TOP
 ; index of 15 against a 10-entry table and a MIDDLE index of 7 against a
 ; 6-entry one, and sRoomDecorSlots $FF gives decoration id 255 -> index 254
-; into an 11-entry DecorationSpriteTable. All three are out-of-bounds ROM
+; into a 21-entry DecorationSpriteTable. All three are out-of-bounds ROM
 ; reads that stamp garbage blocks and load garbage sprite ids.
 ;
 ; All-zero is the intended default state: default furniture, nothing placed,
@@ -426,7 +440,11 @@ RoomClearState::
 	ld [hli], a
 	dec b
 	jr nz, .clearLoop
-	xor a
+	ld hl, sRoomOwnedExt         ; owned bits 32-63, kept apart (see ram/sram.asm)
+	ld [hli], a                  ; a is still 0
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
@@ -450,8 +468,12 @@ RoomGrantAllPieces::
 	ld [sRoomOwned], a
 	ld [sRoomOwned + 1], a
 	ld [sRoomOwned + 2], a
-	ld a, $07
-	ld [sRoomOwned + 3], a       ; bits 0-26 = all 27 pieces; byte3 needs bits 0-2
+	ld [sRoomOwned + 3], a
+	ld hl, sRoomOwnedExt
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], $1f                 ; bits 0-60 = all 61 pieces; the last ext byte needs bits 56-60
 	xor a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
 	ld a, BMODE_SIMPLE

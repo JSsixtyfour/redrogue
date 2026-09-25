@@ -42,8 +42,11 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
         pointers = (ROOT / "data/sprites/sprites.asm").read_text()
         constant_order = re.findall(r"const SPRITE_([A-Z0-9_]+)", constants)
         pointer_order = re.findall(r"; SPRITE_([A-Z0-9_]+)$", pointers, re.MULTILINE)
-        self.assertEqual(constant_order[-len(SPRITES):], list(SPRITES))
-        self.assertEqual(pointer_order[-len(SPRITES):], list(SPRITES))
+        # One contiguous run in both tables; later batches
+        # (test_yl_sprites_batch2.py) append after it.
+        for order in (constant_order, pointer_order):
+            start = order.index(SPRITES[0])
+            self.assertEqual(order[start:start + len(SPRITES)], list(SPRITES))
 
     def test_assets_are_full_walking_sheets(self):
         for sprite in SPRITES:

@@ -828,6 +828,17 @@ PCGetDedicatedPokemonSprite::
 	db ZAPDOS, SPRITE_ZAPDOS
 	db MOLTRES, SPRITE_MOLTRES
 	db MEWTWO, SPRITE_MEWTWO
+	; Yellow Legacy batch 2: full walking sheets only. The standing-only and
+	; one-pose sheets (VAPOREON ... WIGGLYTUFF) have no walk frames, so they are
+	; room dolls and never resolve here for a follower or a boss.
+	db FEAROW, SPRITE_FEAROW
+	db KANGASKHAN, SPRITE_KANGASKHAN
+	db LAPRAS, SPRITE_LAPRAS
+	db MACHOP, SPRITE_MACHOP
+	db MEW, SPRITE_MEW
+	db NIDORAN_F, SPRITE_NIDORAN_F
+	db PIDGEY, SPRITE_PIDGEY
+	db SLOWPOKE, SPRITE_SLOWPOKE
 .speciesSpritesEnd
 
 ; ============================================================

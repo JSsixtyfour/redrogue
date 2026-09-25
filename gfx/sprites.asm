@@ -166,3 +166,113 @@ ArticunoSprite:: INCBIN "gfx/sprites/articuno.2bpp"
 ZapdosSprite::   INCBIN "gfx/sprites/zapdos.2bpp"
 MoltresSprite::  INCBIN "gfx/sprites/moltres.2bpp"
 MewtwoSprite::   INCBIN "gfx/sprites/mewtwo.2bpp"
+
+; Yellow Legacy batch 2 (2026-09-25), from Pokemon_Yellow_Legacy main. The
+; walking-range loader always reads 384 bytes (sheet, then sheet + $C0 for the
+; walk frames), so a standing-poses-only 16x48 sheet is included twice and a
+; one-pose 16x16 sheet six times, as ChanseySprite and the Room Sprites do.
+; INCBINs stay literal: the Makefile's dependency scan reads them as text.
+FearowSprite::
+	INCBIN "gfx/sprites/fearow.2bpp"
+	ASSERT @ - FearowSprite == 24 tiles
+KangaskhanSprite::
+	INCBIN "gfx/sprites/kangaskhan.2bpp"
+	ASSERT @ - KangaskhanSprite == 24 tiles
+LaprasSprite::
+	INCBIN "gfx/sprites/lapras.2bpp"
+	ASSERT @ - LaprasSprite == 24 tiles
+MachopSprite::
+	INCBIN "gfx/sprites/machop.2bpp"
+	ASSERT @ - MachopSprite == 24 tiles
+MewSprite::
+	INCBIN "gfx/sprites/mew.2bpp"
+	ASSERT @ - MewSprite == 24 tiles
+NidoranFSprite::
+	INCBIN "gfx/sprites/nidoran_f.2bpp"
+	ASSERT @ - NidoranFSprite == 24 tiles
+PidgeySprite::
+	INCBIN "gfx/sprites/pidgey.2bpp"
+	ASSERT @ - PidgeySprite == 24 tiles
+SlowpokeSprite::
+	INCBIN "gfx/sprites/slowpoke.2bpp"
+	ASSERT @ - SlowpokeSprite == 24 tiles
+
+VaporeonSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/vaporeon.2bpp"
+	INCBIN "gfx/sprites/vaporeon.2bpp"
+	ASSERT @ - VaporeonSprite == 24 tiles
+BulbasaurSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/bulbasaur.2bpp"
+	INCBIN "gfx/sprites/bulbasaur.2bpp"
+	ASSERT @ - BulbasaurSprite == 24 tiles
+ClefairySprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/clefairy.2bpp"
+	INCBIN "gfx/sprites/clefairy.2bpp"
+	ASSERT @ - ClefairySprite == 24 tiles
+JigglypuffSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/jigglypuff.2bpp"
+	INCBIN "gfx/sprites/jigglypuff.2bpp"
+	ASSERT @ - JigglypuffSprite == 24 tiles
+MachokeSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/machoke.2bpp"
+	INCBIN "gfx/sprites/machoke.2bpp"
+	ASSERT @ - MachokeSprite == 24 tiles
+MeowthSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/meowth.2bpp"
+	INCBIN "gfx/sprites/meowth.2bpp"
+	ASSERT @ - MeowthSprite == 24 tiles
+MrMimeSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/mr_mime.2bpp"
+	INCBIN "gfx/sprites/mr_mime.2bpp"
+	ASSERT @ - MrMimeSprite == 24 tiles
+NidoranMSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/nidoran_m.2bpp"
+	INCBIN "gfx/sprites/nidoran_m.2bpp"
+	ASSERT @ - NidoranMSprite == 24 tiles
+OddishSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/oddish.2bpp"
+	INCBIN "gfx/sprites/oddish.2bpp"
+	ASSERT @ - OddishSprite == 24 tiles
+PidgeotSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/pidgeot.2bpp"
+	INCBIN "gfx/sprites/pidgeot.2bpp"
+	ASSERT @ - PidgeotSprite == 24 tiles
+PoliwrathSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/poliwrath.2bpp"
+	INCBIN "gfx/sprites/poliwrath.2bpp"
+	ASSERT @ - PoliwrathSprite == 24 tiles
+SandshrewSprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/sandshrew.2bpp"
+	INCBIN "gfx/sprites/sandshrew.2bpp"
+	ASSERT @ - SandshrewSprite == 24 tiles
+Seel2Sprite:: ; standing poses only, repeated as the walk frames
+	INCBIN "gfx/sprites/seel2.2bpp"
+	INCBIN "gfx/sprites/seel2.2bpp"
+	ASSERT @ - Seel2Sprite == 24 tiles
+
+; Bank $3E is full after the sheets above; the one-pose sheets follow in $37.
+SECTION "Yellow Legacy Pokemon Sprites 2", ROMX, BANK[$37]
+JolteonSprite:: ; one pose, repeated for all six frames
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	INCBIN "gfx/sprites/jolteon.2bpp"
+	ASSERT @ - JolteonSprite == 24 tiles
+FlareonSprite:: ; one pose, repeated for all six frames
+	INCBIN "gfx/sprites/flareon.2bpp"
+	INCBIN "gfx/sprites/flareon.2bpp"
+	INCBIN "gfx/sprites/flareon.2bpp"
+	INCBIN "gfx/sprites/flareon.2bpp"
+	INCBIN "gfx/sprites/flareon.2bpp"
+	INCBIN "gfx/sprites/flareon.2bpp"
+	ASSERT @ - FlareonSprite == 24 tiles
+WigglytuffSprite:: ; one pose, repeated for all six frames
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	INCBIN "gfx/sprites/wigglytuff.2bpp"
+	ASSERT @ - WigglytuffSprite == 24 tiles

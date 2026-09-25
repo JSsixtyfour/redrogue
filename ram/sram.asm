@@ -273,12 +273,19 @@ sStolenOTName::   ds NAME_LENGTH
 sStolenRecordEnd::
 ASSERT sStolenRecordEnd - sStolenRecord == 57
 
-	ds $3bb ; was $3f4; 57 bytes carved for sStolenRecord above (Phase 7d).
+	ds $3b7 ; was $3bb; 4 bytes carved for sRoomOwnedExt below (room dolls 12-45).
+	        ; was $3f4; 57 bytes carved for sStolenRecord above (Phase 7d).
 	        ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
 	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
 	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System),
 	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below,
 	        ; 1 byte sRogueSpeciesGroupsEnabled (species groups)
+
+; Room decoration owned bits 32-63 (sRoomOwned holds 0-31). Taken from the pad
+; directly above rather than appended to sRoomOwned, so no other SRAM field
+; moves. Not adjacent to the other room fields: RoomClearState clears it
+; separately, and RoomOwnedByteAddr maps owned byte indices 4-7 here.
+sRoomOwnedExt:: ds 4
 
 ; FIGHT 2 deterministic scenario fixture. The harness writes this only for a
 ; debug ROM; release code never reads it. Keeping it outside sGameData means it
@@ -331,10 +338,11 @@ sKeyItemTiers:: ds 4
 ; nothing placed, nothing owned.
 sRoomFurniture:: ds 2 ; b0: bits0-3 TOP(0-9), bits4-6 MIDDLE(0-5), bit7 BOTTOM(0-1)
                       ; b1: bit0 PC(0-1), bits1-7 free
-sRoomDecorSlots:: ds 8 ; slot 0-7: 0 = empty, 1-11 = decoration id
+sRoomDecorSlots:: ds 8 ; slot 0-7: 0 = empty, 1-21 = decoration id
 sRoomOwned:: ds 4 ; bits 0-7 TOP options 1-8, bit 8 LONG DESK, bits 9-12 MIDDLE
                   ; options 1-4, bit 13 POTTED PLANT, bits 14-24 decorations 1-11,
-                  ; bit 25 TOP option 9, bit 26 MIDDLE option 5 (appended, not renumbered)
+                  ; bit 25 TOP option 9, bit 26 MIDDLE option 5 (appended, not renumbered),
+                  ; bits 27-31 decorations 12-16; 17-45 continue in sRoomOwnedExt
 
 ; ELEMENT PRISM's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
 ; chosen. SRAM so the choice survives run reset and blackout, like key-item

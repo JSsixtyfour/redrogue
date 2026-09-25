@@ -59,8 +59,10 @@ RoomDecorationText:
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
-	ld a, [hl]                  ; a = decoration id (0 = empty, 1-11 = decoration)
+	ld a, [hl]                  ; a = decoration id (0 = empty, 1-21 = decoration)
 	ld b, a
+	xor a
+	ld [rRAMB], a               ; restore the ambient bank-0 selection (room_decor.asm header)
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -91,6 +93,16 @@ RoomDecorationTextTable:
 	dw .PokedexText         ; 9
 	dw .OldAmberText        ; 10
 	dw .SeelText            ; 11
+	dw .DoduoText           ; 12
+	dw .PsyduckText         ; 13
+	dw .NidorinoText        ; 14
+	dw .KabutoText          ; 15
+	dw .SpearowText         ; 16
+	dw .CuboneText          ; 17
+	dw .ArticunoText        ; 18
+	dw .ZapdosText          ; 19
+	dw .MoltresText         ; 20
+	dw .MewtwoText          ; 21
 
 .EmptyText:
 	text_far _SilphCoDormEmptyText
@@ -127,6 +139,36 @@ RoomDecorationTextTable:
 	text_end
 .SeelText:
 	text_far _SilphCoDormSeelText
+	text_end
+.DoduoText:
+	text_far _SilphCoDormDoduoText
+	text_end
+.PsyduckText:
+	text_far _SilphCoDormPsyduckText
+	text_end
+.NidorinoText:
+	text_far _SilphCoDormNidorinoText
+	text_end
+.KabutoText:
+	text_far _SilphCoDormKabutoText
+	text_end
+.SpearowText:
+	text_far _SilphCoDormSpearowText
+	text_end
+.CuboneText:
+	text_far _SilphCoDormCuboneText
+	text_end
+.ArticunoText:
+	text_far _SilphCoDormArticunoText
+	text_end
+.ZapdosText:
+	text_far _SilphCoDormZapdosText
+	text_end
+.MoltresText:
+	text_far _SilphCoDormMoltresText
+	text_end
+.MewtwoText:
+	text_far _SilphCoDormMewtwoText
 	text_end
 
 ; The room PC - Key Items / Furniture / Decorations / Hall of Fame.

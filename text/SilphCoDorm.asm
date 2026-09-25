@@ -66,3 +66,63 @@ _SilphCoDormSeelText::
 	line "its flippers"
 	cont "stitched on tight."
 	done
+
+_SilphCoDormDoduoText::
+	text "A DODUO plush."
+	line "Both heads want"
+	cont "a hug."
+	done
+
+_SilphCoDormPsyduckText::
+	text "A PSYDUCK doll."
+	line "It looks like it"
+	cont "has a headache."
+	done
+
+_SilphCoDormNidorinoText::
+	text "A NIDORINO plush."
+	line "The horn is soft,"
+	cont "not sharp."
+	done
+
+_SilphCoDormKabutoText::
+	text "A KABUTO toy."
+	line "Its shell is"
+	cont "polished smooth."
+	done
+
+_SilphCoDormSpearowText::
+	text "A SPEAROW doll."
+	line "Even stuffed, it"
+	cont "looks grumpy."
+	done
+
+_SilphCoDormCuboneText::
+	text "A CUBONE plush."
+	line "Its skull helmet"
+	cont "is sewn from felt."
+	done
+
+_SilphCoDormArticunoText::
+	text "An ARTICUNO doll."
+	line "Its wings shimmer"
+	cont "like frost."
+	done
+
+_SilphCoDormZapdosText::
+	text "A ZAPDOS doll."
+	line "Its jagged wings"
+	cont "look electric."
+	done
+
+_SilphCoDormMoltresText::
+	text "A MOLTRES doll."
+	line "Its flame wings"
+	cont "are orange felt."
+	done
+
+_SilphCoDormMewtwoText::
+	text "A MEWTWO doll."
+	line "It seems to stare"
+	cont "right back at you."
+	done

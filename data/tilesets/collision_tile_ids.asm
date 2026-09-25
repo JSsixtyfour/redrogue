@@ -14,8 +14,13 @@ MiniSaffron_Coll::
 
 RedsHouse1_Coll::
 RedsHouse2_Coll::
-Dorm_Coll:: ; alias — dorm.png is a byte-copy of the working reds_house.png, same passable tiles
 	coll_tiles $01, $02, $03, $11, $12, $13, $14, $1c, $1a
+
+; Started as an alias of RedsHouse*_Coll (dorm.png began as a copy of
+; reds_house.png). Its own list since dorm.png's $1C became spaceship art:
+; walkable there, it let the player walk across the ship's lower half.
+Dorm_Coll::
+	coll_tiles $01, $02, $03, $11, $12, $13, $14, $1a
 
 Mart_Coll::
 Pokecenter_Coll::

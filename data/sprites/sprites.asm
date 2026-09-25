@@ -102,4 +102,28 @@ SpriteSheetPointerTable:
 	overworld_sprite ZapdosSprite, 12          ; SPRITE_ZAPDOS
 	overworld_sprite MoltresSprite, 12          ; SPRITE_MOLTRES
 	overworld_sprite MewtwoSprite, 12          ; SPRITE_MEWTWO
+	overworld_sprite FearowSprite, 12          ; SPRITE_FEAROW
+	overworld_sprite KangaskhanSprite, 12      ; SPRITE_KANGASKHAN
+	overworld_sprite LaprasSprite, 12          ; SPRITE_LAPRAS
+	overworld_sprite MachopSprite, 12          ; SPRITE_MACHOP
+	overworld_sprite MewSprite, 12             ; SPRITE_MEW
+	overworld_sprite NidoranFSprite, 12        ; SPRITE_NIDORAN_F
+	overworld_sprite PidgeySprite, 12          ; SPRITE_PIDGEY
+	overworld_sprite SlowpokeSprite, 12        ; SPRITE_SLOWPOKE
+	overworld_sprite VaporeonSprite, 12        ; SPRITE_VAPOREON
+	overworld_sprite BulbasaurSprite, 12       ; SPRITE_BULBASAUR
+	overworld_sprite ClefairySprite, 12        ; SPRITE_CLEFAIRY
+	overworld_sprite JigglypuffSprite, 12      ; SPRITE_JIGGLYPUFF
+	overworld_sprite MachokeSprite, 12         ; SPRITE_MACHOKE
+	overworld_sprite MeowthSprite, 12          ; SPRITE_MEOWTH
+	overworld_sprite MrMimeSprite, 12          ; SPRITE_MR_MIME
+	overworld_sprite NidoranMSprite, 12        ; SPRITE_NIDORAN_M
+	overworld_sprite OddishSprite, 12          ; SPRITE_ODDISH
+	overworld_sprite PidgeotSprite, 12         ; SPRITE_PIDGEOT
+	overworld_sprite PoliwrathSprite, 12       ; SPRITE_POLIWRATH
+	overworld_sprite SandshrewSprite, 12       ; SPRITE_SANDSHREW
+	overworld_sprite Seel2Sprite, 12           ; SPRITE_SEEL2
+	overworld_sprite JolteonSprite, 12         ; SPRITE_JOLTEON
+	overworld_sprite FlareonSprite, 12         ; SPRITE_FLAREON
+	overworld_sprite WigglytuffSprite, 12      ; SPRITE_WIGGLYTUFF
 	assert_table_length NUM_SPRITES

@@ -315,6 +315,23 @@ RogueCardNextGymBadgeBit::
 	ret
 
 ; ============================================================
+; RogueNextGymLeaderFar
+; OUTPUT: e = trainer class of the leader behind the queued gym, or 0 if the
+;         queued stage is not a gym.
+;
+; The farcall-safe face of RogueCardNextGymBadgeBit + RogueCardLeaderForBadgeBit
+; for the lobby Psychic (engine/events/lobby_psychic.asm, bank $3C), which needs
+; the same "who is next" answer the foresight reveal draws. Returns in e because
+; Bankswitch destroys a/b/c/h/l on both sides.
+RogueNextGymLeaderFar::
+	ld e, 0
+	call RogueCardNextGymBadgeBit
+	ret nc
+	call RogueCardLeaderForBadgeBit ; clobbers de, so e is written after
+	ld e, a
+	ret
+
+; ============================================================
 ; RogueCardEarnedSlotMask
 ; OUTPUT: e = bitmask of earned card slots, bit i = slot i
 ;

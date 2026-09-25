@@ -73,9 +73,18 @@ DaycareGentlemanText:
 	farcall GetRewardMonLevel   ; sets wCurEnemyLevel = current tier level
 	ld a, [wCurEnemyLevel]
 	ld d, a
+	; Growth gate: no growth until at least one battle since drop-off (see
+	; engine/events/lobby_daycare.asm's header). Z from this cp has to reach the
+	; jr below AFTER wDayCareStartLevel is written - .leaveMonInDayCare copies
+	; that byte back into the box level. The ld's in between keep the flags.
+	ld a, [wDayCareDepositBattleCount]
+	ld e, a
+	ld a, [wBattleCount]
+	cp e                        ; Z = no battles since drop-off
 	ld hl, wDayCareMonBoxLevel
 	ld a, [hl]
 	ld [wDayCareStartLevel], a
+	jr z, .noGrowth
 	cp d
 	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
 	callfar CalcExperience
@@ -104,14 +113,17 @@ DaycareGentlemanText:
 	cp PARTY_LENGTH
 	ld hl, .NoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per stage (route/gym) completed since deposit
+	; price = $500 per round (10 battles) started since deposit, rounded up
 	ld a, [wBattleCount]
 	ld b, a
 	ld a, [wDayCareDepositBattleCount]
 	ld c, a
 	ld a, b
 	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = stages elapsed
+	ld b, 0                     ; b = rounds to charge
+	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
+	dec a                       ; round up: 1-10 battles -> 1, 11-20 -> 2, ...
+	inc b
 .countStagesElapsed
 	cp 10
 	jr c, .stagesElapsedDone

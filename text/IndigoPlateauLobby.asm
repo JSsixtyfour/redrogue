@@ -1,17 +1,55 @@
-_IndigoPlateauLobbyGymGuideText::
-	text "Yo! Champ in"
-	line "making!"
+; Lobby Psychic (engine/events/lobby_psychic.asm). The leader's name is in
+; wNameBuffer and the price in wPriceTemp when these print.
+_PsychicOfferText::
+	text "I sense a GYM"
+	line "beyond that door…"
 
-	para "At #MON LEAGUE,"
-	line "you have to face"
-	cont "the ELITE FOUR in"
-	cont "succession."
-
-	para "If you lose, you"
-	line "have to start all"
-	cont "over again! This"
-	cont "is it! Go for it!"
+	para "For ¥@"
+	text_bcd wPriceTemp, 3 | LEADING_ZEROES | LEFT_ALIGN
+	text ", I'll"
+	line "reveal its LEADER."
 	done
+
+_PsychicRefuseText::
+	text "The spirits can"
+	line "wait, then."
+	done
+
+_PsychicNoMoneyText::
+	text "The spirits don't"
+	line "work for free."
+	done
+
+_PsychicRevealText::
+	text "I see it now…"
+
+	para "@"
+	text_ram wNameBuffer
+	text " awaits!"
+
+	para "Look upon your"
+	line "TRAINER CARD."
+	done
+
+_PsychicAlreadyText::
+	text "@"
+	text_ram wNameBuffer
+	text " awaits"
+	line "you. The spirits"
+	cont "have spoken."
+	done
+
+_PsychicNoGymText::
+	text "The spirits are"
+	line "quiet today…"
+	done
+
+; Door 1's sign on a gym cycle once foresight is bought (LobbyDoor1SignText).
+_LobbyGymForesightSignText::
+	text "GYM AHEAD:"
+	line "@"
+	text_ram wNameBuffer
+	text_end
 
 _WitchIntroText::
 	text "Kekeke...."
@@ -289,7 +327,7 @@ _PCPokemonSalesmanIGotADealPokeballText::
     text_ram wNameBuffer
     text "!"
     
-    para "for just 1000!"
+    para "for just 2000!"
 	line "What do you say?"
 	done
     
@@ -304,7 +342,7 @@ _PCPokemonSalesmanIGotADealGreatballText::
     text_ram wNameBuffer
     text "!"
     
-    para  "for just 3000!"
+    para  "for just 6000!"
 	line "What do you say?"
 	done
     
@@ -319,7 +357,7 @@ _PCPokemonSalesmanIGotADealUltraballText::
     text_ram wNameBuffer
     text "!"
     
-    para  "for just 5000!"
+    para  "for just 9000!"
 	line "What do you say?"
 	done
 

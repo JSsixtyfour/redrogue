@@ -255,14 +255,10 @@ hVBlankCopySource:: dw
 ; destination address for VBlankCopy function
 hVBlankCopyDest:: dw
 
-; size of source data for VBlankCopyDouble in 8-byte units
-hVBlankCopyDoubleSize:: db
-
-; source address for VBlankCopyDouble function
-hVBlankCopyDoubleSource:: dw
-
-; destination address for VBlankCopyDouble function
-hVBlankCopyDoubleDest:: dw
+; Free. Held hVBlankCopyDoubleSize/Source/Dest until VBlankCopyDouble was deleted
+; when CopyVideoDataDouble became the HBlank tile copy (2026-09-24). Assessed for
+; hot-variable promotion and left free - see FOLLOWUPS #13 / WRAM_BIBLE.md section F.
+	ds 5
 
 ; controls whether a row or column of 2x2 tile blocks is redrawn in V-blank
 ; 00 = no redraw

@@ -69,6 +69,7 @@ IndigoPlateauLobby_Script:
 	call PCTraderSuperNerdSetup
 	call PCClerksSetup
 	farcall PCWitchSetup
+	farcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap
 
 .normal
 	ld hl, wCurrentMapScriptFlags
@@ -92,7 +93,7 @@ IndigoPlateauLobby_TextPointers:
     dw_const PCDaycareGentlemanText,                 TEXT_PC_DAYCARE_GENTLEMAN
     dw_const PCDaycareLadyText,                      TEXT_PC_DAYCARE_LADY
     dw_const MoveRelearnerText1,                     TEXT_PC_MOVE_RELEARNER
-    dw_const IndigoPlateauLobbyGymGuideText,         TEXT_PC_PSYCHIC
+    dw_const PCPsychicText,                          TEXT_PC_PSYCHIC
 	dw_const PCWitchText,                            TEXT_PC_WITCH
 	dw_const PCPokemonSalesmanText,                  TEXT_PC_POKEMON_SALESMAN
     dw_const PCTraderSuperNerdText,                  TEXT_PC_TRADER_SUPER_NERD
@@ -154,10 +155,27 @@ LobbyDoor1SignText:
 	ld l, a
 	ret
 .gymSign
+	; Foresight bought from the Psychic: name the leader too. bc is the live
+	; text cursor and a farcall destroys it, hence the push.
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_PREDICT_BADGES, a
+	jr z, .plainGymSign
+	push bc
+	farcall PCPsychicLeaderName   ; wNameBuffer = leader, e = 0 if no gym queued
+	pop bc
+	ld a, e
+	and a
+	jr z, .plainGymSign
+	ld hl, .gymForesightSignText
+	ret
+.plainGymSign
 	ld hl, .gymSignText
 	ret
 .gymSignText
 	text "GYM AHEAD@"
+	text_end
+.gymForesightSignText
+	text_far _LobbyGymForesightSignText
 	text_end
 .itemPtrs
 	dw .healingText
@@ -633,9 +651,11 @@ LobbyMiniBossSign:
 IndigoPlateauLobbyNurseText:
 	script_pokecenter_nurse
 
-IndigoPlateauLobbyGymGuideText:
-	text_far _IndigoPlateauLobbyGymGuideText
-	text_end
+; Sells next-gym foresight; see engine/events/lobby_psychic.asm.
+PCPsychicText:
+	text_asm
+	farcall PCPsychicTalk
+	jp TextScriptEnd
 
 YesNoScript:
 	call PrintText
@@ -879,499 +899,17 @@ PCWitchText:
 IndigoPlateauLobbyLinkReceptionistText:
 	script_cable_club_receptionist
 
+; The daycare NPCs live in engine/events/lobby_daycare.asm (pinned to $3C):
+; this map's bank ($06) had 13 bytes free. See that file's header.
 PCDaycareLadyText:
 	text_asm
-	call SaveScreenTilesToBuffer2
-	ld a, [wDayCareInUse2]
-	and a
-	jp nz, .daycareInUse
-	ld hl, IntroText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	ld hl, ComeAgainText
-	jp nz, .done
-	ld a, [wPartyCount]
-	dec a
-	ld hl, OnlyHaveOneMonText
-	jp z, .done
-	ld hl, WhichMonText
-	call PrintText
-	xor a
-	ldh [hUpdateSpritesEnabled], a
-	ld [wPartyMenuTypeOrMessageID], a
-	ld [wMenuItemToSwap], a
-	call DisplayPartyMenu
-	push af
-	call GBPalWhiteOutWithDelay3
-	call RestoreScreenTilesAndReloadTilePatterns
-	call LoadGBPal
-	pop af
-	ld hl, AllRightThenText
-	jp c, .done
-	xor a
-	ld [wPartyAndBillsPCSavedMenuItem], a
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	ld hl, WillLookAfterMonText
-	call PrintText
-	ld a, 1
-	ld [wDayCareInUse2], a
-	ld a, [wBattleCount]
-	ld [wDayCareDepositBattleCount2], a
-	ld a, PARTY_TO_DAYCARE2
-	ld [wMoveMonType], a
-	call MoveMon
-	xor a
-	ld [wRemoveMonFromBox], a
-	call RemovePokemon
-	ld a, [wCurPartySpecies]
-	call PlayCry
-	ld hl, ComeSeeMeInAWhileText
-	jp .done
-
-.daycareInUse
-	xor a
-	ld hl, wDayCareMonName2
-	call GetPartyMonName
-	ld a, DAYCARE_DATA2
-	ld [wMonDataLocation], a
-	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
-	; GetRewardMonLevel's "return in a" does NOT survive a farcall: Bankswitch's
-	; return path ends `pop bc / ld a, b`, which leaves a holding the CALLER's
-	; bank number. This read used to be `ld d, a` and so grew every deposited mon
-	; to level 6 (this script's bank) instead of the tier level. Read the value
-	; the routine actually publishes instead.
-	farcall GetRewardMonLevel   ; sets wCurEnemyLevel = current tier level
-	ld a, [wCurEnemyLevel]
-	ld d, a
-	ld hl, wDayCareMon2BoxLevel
-	ld a, [hl]
-	ld [wDayCareStartLevel2], a
-	cp d
-	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
-	callfar CalcExperience
-	ld hl, wDayCareMon2Exp
-	ldh a, [hExperience]
-	ld [hli], a
-	ldh a, [hExperience + 1]
-	ld [hli], a
-	ldh a, [hExperience + 2]
-	ld [hl], a
-	ld hl, wDayCareMon2BoxLevel
-	ld [hl], d
-	ld a, [wDayCareStartLevel2]  ; display-only: how many levels it gained, no longer used for pricing
-	ld b, a
-	ld a, d
-	sub b
-	ld [wDayCareNumLevelsGrown2], a
-	ld [wDayCareNumLevelsGrown], a  ; MonHasGrownText is shared with the Gentleman and hardcodes this variable
-	ld hl, MonHasGrownText
-	jr .next
-.noGrowth
-	ld hl, MonNeedsMoreTimeText
-
-.next
-	call PrintText
-	ld a, [wPartyCount]
-	cp PARTY_LENGTH
-	ld hl, NoRoomForMonText
-	jp z, .leaveMonInDayCare
-	; price = $500 per stage (route/gym) completed since deposit
-	ld a, [wBattleCount]
-	ld b, a
-	ld a, [wDayCareDepositBattleCount2]
-	ld c, a
-	ld a, b
-	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = stages elapsed
-.countStagesElapsed
-	cp 10
-	jr c, .stagesElapsedDone
-	sub 10
-	inc b
-	jr .countStagesElapsed
-.stagesElapsedDone
-	ld de, wDayCareTotalCost2
-	xor a
-	ld [de], a
-	inc de
-	ld [de], a
-	ld hl, wDayCarePerLevelCost2
-	ld a, $5
-	ld [hli], a
-	ld [hl], $0
-	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
-	and a
-	jr z, .noCost
-	ld b, a
-	ld c, 2
-.calcPriceLoop
-	push hl
-	push de
-	push bc
-	predef AddBCDPredef
-	pop bc
-	pop de
-	pop hl
-	dec b
-	jr nz, .calcPriceLoop
-.noCost
-	ld hl, OweMoneyText
-	call PrintText
-	ld a, MONEY_BOX
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
-	call YesNoChoice
-	ld hl, AllRightThenText
-	ldh a, [hCurrentMenuItem]
-	and a
-	jp nz, .leaveMonInDayCare
-	ld hl, wDayCareTotalCost2
-	ldh [hMoney], a
-	ld a, [hli]
-	ldh [hMoney + 1], a
-	ld a, [hl]
-	ldh [hMoney + 2], a
-	call HasEnoughMoney
-	jr nc, .enoughMoney
-	ld hl, NotEnoughMoneyText
-	jp .leaveMonInDayCare
-
-.enoughMoney
-	xor a
-	ld [wDayCareInUse2], a
-	ld hl, wDayCareNumLevelsGrown2
-	ld [hli], a
-	inc hl
-	ld de, wPlayerMoney + 2
-	ld c, $3
-	predef SubBCDPredef
-	ld a, SFX_PURCHASE
-	call PlaySoundWaitForCurrent
-	ld a, MONEY_BOX
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
-	ld hl, HeresYourMonText
-	call PrintText
-	ld a, DAYCARE_TO_PARTY2
-	ld [wMoveMonType], a
-	call MoveMon
-	ld a, [wDayCareMon2Species]
-	ld [wCurPartySpecies], a
-; Shin Red import Phase 10. The cry moves ahead of everything else so it is the
-; mon you handed over that greets you, not whatever it turns into; the upgrade
-; pass has to run before the HP-to-max write below, because evolving changes
-; MaxHP. The old `predef WriteMonMoves` (which silently shifted the oldest move
-; out with no prompt) is gone, and with it the wLearningMovesFromDayCare flag
-; this was the only place still setting - it was never cleared here either.
-	ld a, [wCurPartySpecies]
-	call PlayCry
-	ld a, [wDayCareStartLevel2]
-	ld [wDayCareStartLevel], a ; the helper reads slot 1's copy for both slots
-	farcall DaycareRetrieveUpgrade
-
-; set mon's HP to max
-	ld a, [wPartyCount]
-	dec a
-	ld bc, PARTYMON_STRUCT_LENGTH
-	ld hl, wPartyMon1HP
-	call AddNTimes
-	ld d, h
-	ld e, l
-	ld bc, MON_MAXHP - MON_HP
-	add hl, bc
-	ld a, [hli]
-	ld [de], a
-	inc de
-	ld a, [hl]
-	ld [de], a
-
-	ld hl, GotMonBackText
-	jr .done
-
-.leaveMonInDayCare
-	ld a, [wDayCareStartLevel2]
-	ld [wDayCareMon2BoxLevel], a
-
-.done
-	call PrintText
+	farcall LobbyDaycareLady
 	jp TextScriptEnd
-
 
 PCDaycareGentlemanText:
 	text_asm
-	call SaveScreenTilesToBuffer2
-	ld a, [wDayCareInUse]
-	and a
-	jp nz, .daycareInUse
-	ld hl, IntroText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	ld hl, ComeAgainText
-	jp nz, .done
-	ld a, [wPartyCount]
-	dec a
-	ld hl, OnlyHaveOneMonText
-	jp z, .done
-	ld hl, WhichMonText
-	call PrintText
-	xor a
-	ldh [hUpdateSpritesEnabled], a
-	ld [wPartyMenuTypeOrMessageID], a
-	ld [wMenuItemToSwap], a
-	call DisplayPartyMenu
-	push af
-	call GBPalWhiteOutWithDelay3
-	call RestoreScreenTilesAndReloadTilePatterns
-	call LoadGBPal
-	pop af
-	ld hl, AllRightThenText
-	jp c, .done
-	xor a
-	ld [wPartyAndBillsPCSavedMenuItem], a
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMonNicks
-	call GetPartyMonName
-	ld hl, WillLookAfterMonText
-	call PrintText
-	ld a, 1
-	ld [wDayCareInUse], a
-	ld a, [wBattleCount]
-	ld [wDayCareDepositBattleCount], a
-	ld a, PARTY_TO_DAYCARE
-	ld [wMoveMonType], a
-	call MoveMon
-	xor a
-	ld [wRemoveMonFromBox], a
-	call RemovePokemon
-	ld a, [wCurPartySpecies]
-	call PlayCry
-	ld hl, ComeSeeMeInAWhileText
-	jp .done
-
-.daycareInUse
-	xor a
-	ld hl, wDayCareMonName
-	call GetPartyMonName
-	ld a, DAYCARE_DATA
-	ld [wMonDataLocation], a
-	call LoadMonData            ; populates wCurPartySpecies, needed for CalcExperience below
-	; GetRewardMonLevel's "return in a" does NOT survive a farcall: Bankswitch's
-	; return path ends `pop bc / ld a, b`, which leaves a holding the CALLER's
-	; bank number. This read used to be `ld d, a` and so grew every deposited mon
-	; to level 6 (this script's bank) instead of the tier level. Read the value
-	; the routine actually publishes instead.
-	farcall GetRewardMonLevel   ; sets wCurEnemyLevel = current tier level
-	ld a, [wCurEnemyLevel]
-	ld d, a
-	ld hl, wDayCareMonBoxLevel
-	ld a, [hl]
-	ld [wDayCareStartLevel], a
-	cp d
-	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
-	callfar CalcExperience
-	ld hl, wDayCareMonExp
-	ldh a, [hExperience]
-	ld [hli], a
-	ldh a, [hExperience + 1]
-	ld [hli], a
-	ldh a, [hExperience + 2]
-	ld [hl], a
-	ld hl, wDayCareMonBoxLevel
-	ld [hl], d
-	ld a, [wDayCareStartLevel]  ; display-only: how many levels it gained, no longer used for pricing
-	ld b, a
-	ld a, d
-	sub b
-	ld [wDayCareNumLevelsGrown], a
-	ld hl, MonHasGrownText
-	jr .next
-.noGrowth
-	ld hl, MonNeedsMoreTimeText
-
-.next
-	call PrintText
-	ld a, [wPartyCount]
-	cp PARTY_LENGTH
-	ld hl, NoRoomForMonText
-	jp z, .leaveMonInDayCare
-	; price = $500 per stage (route/gym) completed since deposit
-	ld a, [wBattleCount]
-	ld b, a
-	ld a, [wDayCareDepositBattleCount]
-	ld c, a
-	ld a, b
-	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = stages elapsed
-.countStagesElapsed
-	cp 10
-	jr c, .stagesElapsedDone
-	sub 10
-	inc b
-	jr .countStagesElapsed
-.stagesElapsedDone
-	ld de, wDayCareTotalCost
-	xor a
-	ld [de], a
-	inc de
-	ld [de], a
-	ld hl, wDayCarePerLevelCost
-	ld a, $5
-	ld [hli], a
-	ld [hl], $0
-	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
-	and a
-	jr z, .noCost
-	ld b, a
-	ld c, 2
-.calcPriceLoop
-	push hl
-	push de
-	push bc
-	predef AddBCDPredef
-	pop bc
-	pop de
-	pop hl
-	dec b
-	jr nz, .calcPriceLoop
-.noCost
-	ld hl, OweMoneyText
-	call PrintText
-	ld a, MONEY_BOX
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
-	call YesNoChoice
-	ld hl, AllRightThenText
-	ldh a, [hCurrentMenuItem]
-	and a
-	jp nz, .leaveMonInDayCare
-	ld hl, wDayCareTotalCost
-	ldh [hMoney], a
-	ld a, [hli]
-	ldh [hMoney + 1], a
-	ld a, [hl]
-	ldh [hMoney + 2], a
-	call HasEnoughMoney
-	jr nc, .enoughMoney
-	ld hl, NotEnoughMoneyText
-	jp .leaveMonInDayCare
-
-.enoughMoney
-	xor a
-	ld [wDayCareInUse], a
-	ld hl, wDayCareNumLevelsGrown
-	ld [hli], a
-	inc hl
-	ld de, wPlayerMoney + 2
-	ld c, $3
-	predef SubBCDPredef
-	ld a, SFX_PURCHASE
-	call PlaySoundWaitForCurrent
-	ld a, MONEY_BOX
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
-	ld hl, HeresYourMonText
-	call PrintText
-	ld a, DAYCARE_TO_PARTY
-	ld [wMoveMonType], a
-	call MoveMon
-	ld a, [wDayCareMonSpecies]
-	ld [wCurPartySpecies], a
-; Shin Red import Phase 10. The cry moves ahead of everything else so it is the
-; mon you handed over that greets you, not whatever it turns into; the upgrade
-; pass has to run before the HP-to-max write below, because evolving changes
-; MaxHP. The old `predef WriteMonMoves` (which silently shifted the oldest move
-; out with no prompt) is gone, and with it the wLearningMovesFromDayCare flag
-; this was the only place still setting - it was never cleared here either.
-	ld a, [wCurPartySpecies]
-	call PlayCry
-	farcall DaycareRetrieveUpgrade
-
-; set mon's HP to max
-	ld a, [wPartyCount]
-	dec a
-	ld bc, PARTYMON_STRUCT_LENGTH
-	ld hl, wPartyMon1HP
-	call AddNTimes
-	ld d, h
-	ld e, l
-	ld bc, MON_MAXHP - MON_HP
-	add hl, bc
-	ld a, [hli]
-	ld [de], a
-	inc de
-	ld a, [hl]
-	ld [de], a
-
-	ld hl, GotMonBackText
-	jr .done
-
-.leaveMonInDayCare
-	ld a, [wDayCareStartLevel]
-	ld [wDayCareMonBoxLevel], a
-
-.done
-	call PrintText
+	farcall LobbyDaycareGentleman
 	jp TextScriptEnd
-
-IntroText:
-	text_far _DaycareGentlemanIntroText
-	text_end
-
-WhichMonText:
-	text_far _DaycareGentlemanWhichMonText
-	text_end
-
-WillLookAfterMonText:
-	text_far _DaycareGentlemanWillLookAfterMonText
-	text_end
-
-ComeSeeMeInAWhileText:
-	text_far _DaycareGentlemanComeSeeMeInAWhileText
-	text_end
-
-MonHasGrownText:
-	text_far _DaycareGentlemanMonHasGrownText
-	text_end
-
-OweMoneyText:
-	text_far _DaycareGentlemanOweMoneyText
-	text_end
-
-GotMonBackText:
-	text_far _DaycareGentlemanGotMonBackText
-	text_end
-
-MonNeedsMoreTimeText:
-	text_far _DaycareGentlemanMonNeedsMoreTimeText
-	text_end
-
-AllRightThenText:
-	text_far _DaycareGentlemanAllRightThenText
-ComeAgainText:
-	text_far _DaycareGentlemanComeAgainText
-	text_end
-
-NoRoomForMonText:
-	text_far _DaycareGentlemanNoRoomForMonText
-	text_end
-
-OnlyHaveOneMonText:
-	text_far _DaycareGentlemanOnlyHaveOneMonText
-	text_end
-
-HeresYourMonText:
-	text_far _DaycareGentlemanHeresYourMonText
-	text_end
-
-NotEnoughMoneyText:
-	text_far _DaycareGentlemanNotEnoughMoneyText
-	text_end
 
 PCPokemonSalesmanText:
 	text_asm
@@ -1393,7 +931,7 @@ PCPokemonSalesmanText:
     jr z, .print
     inc c       ; greatball class
     ld hl, .IGotADealTextGreatball
-    ld b, $30
+    ld b, $60
     cp c
     jr z, .print
 	ld hl, .IGotADealTextUltraball
@@ -1410,18 +948,18 @@ PCPokemonSalesmanText:
 	ldh [hMoney + 2], a
     
     ld a, [wroguenpcclass]
-    ld b, $10
+    ld b, $20
     ld c, 1
     cp c
     jr z, .pokemon_cost
     inc c       ; greatball class
 
-    ld b, $30
+    ld b, $60
     cp c
     jr z, .pokemon_cost
     
     ; ultraball class
-    ld b, $50
+    ld b, $90
     
     .pokemon_cost
     ld a, b
@@ -1453,18 +991,18 @@ PCPokemonSalesmanText:
 	ld [wPriceTemp + 2], a
     
     ld a, [wroguenpcclass]
-    ld b, $10
+    ld b, $20
     ld c, 1
     cp c
     jr z, .pokemon_cost_2
     inc c       ; greatball class
 
-    ld b, $30
+    ld b, $60
     cp c
     jr z, .pokemon_cost_2
     
     ; ultraball class
-    ld b, $50
+    ld b, $90
     
     
 	.pokemon_cost_2

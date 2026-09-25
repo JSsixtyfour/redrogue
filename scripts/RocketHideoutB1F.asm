@@ -76,16 +76,20 @@ RocketHideoutB1F_Script:
 ;	lb bc, 8, 12
 ;	predef_jump ReplaceTileBlock
 
-	RogueAutoWalkScripts RocketHideoutB1F, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROCKET_HIDEOUT_B1F, TEXT_ROCKETHIDEOUTB1F_NO_TURNING_BACK, SCRIPT_ROCKETHIDEOUTB1F_PLAYER_IS_MOVING, wRocketHideoutB1FCurScript
+	RogueAutoWalkScripts RocketHideoutB1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROCKET_HIDEOUT_B1F, TEXT_ROCKETHIDEOUTB1F_NO_TURNING_BACK, SCRIPT_ROCKETHIDEOUTB1F_PLAYER_IS_MOVING, wRocketHideoutB1FCurScript
 
+; dbmapcoord is x, y. The entrance is the two WARP_NO_RETURN warps (24/25, 19),
+; walked into northward; the exit is the stairs at (21, 24).
 RocketHideoutB1FEntranceCoords:
-	dbmapcoord 19, 24
-	dbmapcoord 19, 25
+	dbmapcoord 24, 19
+	dbmapcoord 25, 19
 	db -1
 
 RocketHideoutB1FNoCoords:
-	dbmapcoord 19, 23
-	dbmapcoord 19, 22
+	dbmapcoord 24, 18
+	dbmapcoord 25, 18
+	dbmapcoord 24, 17
+	dbmapcoord 25, 17
 	db -1
 
 RocketHideoutB1F_ScriptPointers:

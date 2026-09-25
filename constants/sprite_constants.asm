@@ -94,6 +94,32 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_ZAPDOS                 ; $56
 	const SPRITE_MOLTRES                ; $57
 	const SPRITE_MEWTWO                 ; $58
+	; Yellow Legacy batch 2 (2026-09-25). Every sheet is a padded 384-byte
+	; walking sheet (gfx/sprites.asm), so all stay in this walking-slot range.
+	const SPRITE_FEAROW                 ; $59 full walking sheets: followers + dolls
+	const SPRITE_KANGASKHAN             ; $5a
+	const SPRITE_LAPRAS                 ; $5b
+	const SPRITE_MACHOP                 ; $5c
+	const SPRITE_MEW                    ; $5d
+	const SPRITE_NIDORAN_F              ; $5e
+	const SPRITE_PIDGEY                 ; $5f
+	const SPRITE_SLOWPOKE               ; $60
+	const SPRITE_VAPOREON               ; $61 standing poses only: dolls, never walk
+	const SPRITE_BULBASAUR              ; $62
+	const SPRITE_CLEFAIRY               ; $63
+	const SPRITE_JIGGLYPUFF             ; $64
+	const SPRITE_MACHOKE                ; $65
+	const SPRITE_MEOWTH                 ; $66
+	const SPRITE_MR_MIME                ; $67
+	const SPRITE_NIDORAN_M              ; $68
+	const SPRITE_ODDISH                 ; $69
+	const SPRITE_PIDGEOT                ; $6a
+	const SPRITE_POLIWRATH              ; $6b
+	const SPRITE_SANDSHREW              ; $6c
+	const SPRITE_SEEL2                  ; $6d
+	const SPRITE_JOLTEON                ; $6e one pose: dolls, never walk
+	const SPRITE_FLAREON                ; $6f
+	const SPRITE_WIGGLYTUFF             ; $70
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

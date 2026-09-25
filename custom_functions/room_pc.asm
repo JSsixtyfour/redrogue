@@ -28,11 +28,14 @@ DEF ROOM_PC_TOGGLES_NOHOF EQU 3 ; index when the HALL OF FAME row is absent
 ; RoomPC — entry point, farcalled from SilphCoDorm's PC bg_event text_asm.
 ; ============================================================
 RoomPC::
-	ld hl, wStatusFlags5
-	set BIT_NO_TEXT_DELAY, [hl]
 	call SaveScreenTilesToBuffer2
 
 .menu
+	; Re-assert on every pass, not once on entry: PlayerPC (KEY ITEMS) clears
+	; BIT_NO_TEXT_DELAY on exit, and the descriptions then typed out letter by
+	; letter for the rest of the visit.
+	ld hl, wStatusFlags5
+	set BIT_NO_TEXT_DELAY, [hl]
 	call LoadScreenTilesFromBuffer2
 	; 2-row-spaced entries: BIT_DOUBLE_SPACED_MENU must be CLEAR (its sense is
 	; inverted from its name - see RoomDrawPickList). A prior visit to a
@@ -170,6 +173,7 @@ RoomPC::
 	ld hl, wMiscFlags
 	set BIT_USING_GENERIC_PC, [hl]
 	farcall PlayerPC
+	ld hl, wMiscFlags            ; farcall returns PlayerPC's hl (wStatusFlags5)
 	res BIT_USING_GENERIC_PC, [hl]
 	jp .menu
 .notKeyItems
@@ -506,7 +510,8 @@ RoomBottomDescTable:
 
 RoomDecorationDescTable:
 	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
-	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel
+	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel, .Doduo, .Psyduck, \
+	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo
 .None:       db "Clear this spot.@"
 .Charmeleon: db "A plush CHARMELEON<NEXT>with a sewn flame.@"
 .Pidgey:     db "A soft PIDGEY doll<NEXT>with a bent wing.@"
@@ -519,6 +524,16 @@ RoomDecorationDescTable:
 .Pokedex:    db "A display POKEDEX,<NEXT>just for show.@"
 .OldAmber:   db "A replica OLD<NEXT>AMBER. A keepsake.@"
 .Seel:       db "A plush SEEL with<NEXT>stitched flippers.@"
+.Doduo:      db "A DODUO plush with<NEXT>two fuzzy heads.@"
+.Psyduck:    db "A PSYDUCK doll. It<NEXT>holds its head.@"
+.Nidorino:   db "A NIDORINO plush<NEXT>with a soft horn.@"
+.Kabuto:     db "A KABUTO toy with<NEXT>a hard shell.@"
+.Spearow:    db "A SPEAROW doll. It<NEXT>looks grumpy.@"
+.Cubone:     db "A CUBONE plush in<NEXT>a felt skull.@"
+.Articuno:   db "An ARTICUNO doll<NEXT>with icy wings.@"
+.Zapdos:     db "A ZAPDOS doll with<NEXT>jagged wings.@"
+.Moltres:    db "A MOLTRES doll in<NEXT>fiery felt.@"
+.Mewtwo:     db "A rare MEWTWO doll<NEXT>It stares back.@"
 
 ; a = selected option (0-8); writes into sRoomFurniture byte0 bits0-3
 RoomWriteFurnitureTop:
@@ -812,15 +827,15 @@ RoomTwoSpotNameTable:
 .Spot1: db "SPOT 1@"
 .Spot2: db "SPOT 2@"
 
-; INPUT: a = sRoomDecorSlots index (0-7). Shows the 11-decoration + NONE
+; INPUT: a = sRoomDecorSlots index (0-7). Shows the 21-decoration + NONE
 ; picker and writes the choice back to that slot.
 RoomPickDecorationForSlot:
 	push af
 	call LoadScreenTilesFromBuffer2
-	; 12 entries is one row too many to sit above the text box at its usual
-	; start row, so this list alone starts on row 1 and its box is full width,
+	; The longest list here, so it starts on row 1 and its box is full width,
 	; ending at row 13 - flush against the text box's first text row (14) and
-	; covering the box's own top border so the two read as one frame.
+	; covering the box's own top border so the two read as one frame. Rows
+	; 1-12 show 12 of the 22 entries; RoomDrawPickList scrolls the rest.
 	hlcoord 0, 0
 	ld b, 12
 	ld c, 18
@@ -830,11 +845,11 @@ RoomPickDecorationForSlot:
 	ld a, 1
 	call RoomSetPickListOpts
 	ld hl, RoomDecorationNameTable
-	ld b, 12
+	ld b, 22
 	call RoomDrawPickList
 	jr c, .cancelled
-	; a = 0 (NONE) or 1-11 (decoration id) - RoomDrawPickList's index already
-	; matches sRoomDecorSlots' own encoding (0=empty, 1-11=decoration).
+	; a = 0 (NONE) or 1-21 (decoration id) - RoomDrawPickList's index already
+	; matches sRoomDecorSlots' own encoding (0=empty, 1-21=decoration).
 	; Stash it in e (survives the slot-index pop and bc rebuild below - the
 	; SRAM-open sequence and the bc/hl addressing math never touch e).
 	ld e, a
@@ -865,7 +880,8 @@ RoomPickDecorationForSlot:
 
 RoomDecorationNameTable:
 	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
-	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel
+	   .Snorlax, .Pikachu, .Pokedex, .OldAmber, .Seel, .Doduo, .Psyduck, \
+	   .Nidorino, .Kabuto, .Spearow, .Cubone, .Articuno, .Zapdos, .Moltres, .Mewtwo
 .None:       db "NONE@"
 .Charmeleon: db "CHARMELEON@"
 .Pidgey:     db "PIDGEY@"
@@ -878,21 +894,53 @@ RoomDecorationNameTable:
 .Pokedex:    db "POKEDEX@"
 .OldAmber:   db "OLD AMBER@"
 .Seel:       db "SEEL@"
+.Doduo:      db "DODUO@"
+.Psyduck:    db "PSYDUCK@"
+.Nidorino:   db "NIDORINO@"
+.Kabuto:     db "KABUTO@"
+.Spearow:    db "SPEAROW@"
+.Cubone:     db "CUBONE@"
+.Articuno:   db "ARTICUNO@"
+.Zapdos:     db "ZAPDOS@"
+.Moltres:    db "MOLTRES@"
+.Mewtwo:     db "MEWTWO@"
 
 ; ============================================================
 ; RoomDrawPickList — a small single-spaced list picker.
 ; INPUT: hl = pointer to a table of dw string-pointers, b = entry count.
 ; OUTPUT: carry set if B pressed (cancelled); else carry clear and a = the
-;         0-based selected index. Draws starting at screen (2,2), inside a
-;         box the caller has already drawn. Single-spaced (BIT_DOUBLE_SPACED
-;         _MENU cleared) so up to ~14 entries fit on one screen - the
-;         largest list here (12) fits comfortably, so no scrolling support
-;         is implemented.
+;         0-based selected index into the whole table. Draws from the row
+;         RoomSetPickListOpts gave, inside a box the caller has already drawn.
+;         Rows past ROOM_PICK_LAST_ROW belong to the text box, so a longer
+;         list shows what fits and scrolls one entry at a time when the
+;         cursor is pushed past the top or bottom row.
+; Scroll state is wBuffer + 14..18, clear of RoomPC's + 7, the toggles
+; menu's + 7..9 and the vendor's + 8..13, all live across this call:
+;   + 14 scroll offset, + 15 entry count, + 16/17 table, + 18 visible rows.
 ; ============================================================
+DEF ROOM_PICK_LAST_ROW EQU 12
+
 RoomDrawPickList:
-	call RoomDrawEntries
+	ld a, l
+	ld [wBuffer + 16], a
+	ld a, h
+	ld [wBuffer + 17], a
+	ld a, b
+	ld [wBuffer + 15], a
 	xor a
+	ld [wBuffer + 14], a
 	ldh [hCurrentMenuItem], a
+	ld a, [wBuffer + 6]
+	ld c, a
+	ld a, ROOM_PICK_LAST_ROW + 1
+	sub c                        ; rows from the first entry's row to the last
+	cp b
+	jr c, .gotVisibleRows
+	ld a, b                      ; the whole list fits
+.gotVisibleRows
+	ld [wBuffer + 18], a
+	call RoomDrawVisibleEntries
+.input
 	ld hl, wTopMenuItemY
 	ld a, [wBuffer + 6]
 	ld [hli], a                  ; wTopMenuItemY = the list's first entry row
@@ -915,10 +963,20 @@ RoomDrawPickList:
 	ldh a, [hUILayoutFlags]
 	set BIT_DOUBLE_SPACED_MENU, a
 	ldh [hUILayoutFlags], a
+	; Only a list that does not fit asks HandleMenuInput to return on a push
+	; past its top or bottom row; that return is the scroll request.
+	ld a, [wBuffer + 18]
+	ld b, a
+	ld a, [wBuffer + 15]
+	sub b                        ; 0 when every entry is on screen
+	jr z, .setWatch
+	ld a, 1
+.setWatch
+	ld [wMenuWatchMovingOutOfBounds], a
 	; Descriptions, if this list has a table: BIT_ROOM_DESC_BOX routes
 	; PrintBagInfoText - which HandleMenuInput_ farcalls on every cursor move -
-	; to RoomPrintDescription. Draw the first entry's text by hand, since the
-	; hook only fires once the cursor actually moves.
+	; to RoomPrintDescription. Draw the current entry's text by hand, since the
+	; hook only fires once the cursor actually moves (and not on a scroll).
 	ld a, [wBuffer + 4]
 	ld b, a
 	ld a, [wBuffer + 5]
@@ -931,15 +989,79 @@ RoomDrawPickList:
 	call HandleMenuInput
 	ld hl, wBagPocketsFlags
 	res BIT_ROOM_DESC_BOX, [hl] ; leaves a alone - it still holds the keys pressed
-	call PlaceUnfilledArrowMenuCursor
+	ld b, a
+	xor a
+	ld [wMenuWatchMovingOutOfBounds], a ; other menus assume it clear
+	ld a, b
 	bit B_PAD_B, a
 	jr nz, .cancelled
-	ldh a, [hCurrentMenuItem]
+	bit B_PAD_A, a
+	jr nz, .selected
+	; Neither: the cursor was pushed past the top (UP) or bottom (DOWN) row.
+	bit B_PAD_UP, a
+	jr z, .scrollDown
+	ld a, [wBuffer + 14]
 	and a
+	jr z, .input                 ; already showing the first entry
+	dec a
+	jr .scrolled
+.scrollDown
+	ld a, [wBuffer + 18]
+	ld b, a
+	ld a, [wBuffer + 14]
+	add b                        ; the entry just below the window
+	ld hl, wBuffer + 15
+	cp [hl]
+	jr nc, .input                ; already showing the last entry
+	ld a, [wBuffer + 14]
+	inc a
+.scrolled
+	ld [wBuffer + 14], a
+	call RoomDrawVisibleEntries
+	jr .input
+.selected
+	call PlaceUnfilledArrowMenuCursor
+	ldh a, [hCurrentMenuItem]
+	ld b, a
+	ld a, [wBuffer + 14]
+	add b                        ; at most 255, so this also clears carry
 	ret
 .cancelled
+	call PlaceUnfilledArrowMenuCursor
 	scf
 	ret
+
+; Draws the wBuffer + 18 visible entries starting at the scroll offset. A
+; redraw after a scroll first blanks the window, cursor column included:
+; PlaceMenuCursor saves the tile under the new arrow and restores it on the
+; next move, so a stale arrow left there would be copied back.
+RoomDrawVisibleEntries:
+	ld a, [wBuffer + 18]
+	ld b, a
+	ld a, [wBuffer + 15]
+	cp b
+	jr z, .draw                  ; not scrolling; the caller's box is fresh
+	ld a, [wBuffer + 6]
+	hlcoord 1, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	ld a, [wBuffer + 18]
+	ld b, a
+	ld c, 15                     ; cols 1-15: inside the narrowest scrolling box (vendor, c = 16)
+	call ClearScreenArea
+.draw
+	ld a, [wBuffer + 16]
+	ld l, a
+	ld a, [wBuffer + 17]
+	ld h, a
+	ld a, [wBuffer + 14]
+	add a                        ; dw-sized table entries
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [wBuffer + 18]
+	ld b, a
+	jp RoomDrawEntries
 
 ; ============================================================
 ; RoomSetPickListOpts — per-list options for the next RoomDrawPickList call.
@@ -954,6 +1076,8 @@ RoomSetPickListOpts:
 	ld [wBuffer + 4], a
 	ld a, h
 	ld [wBuffer + 5], a
+	xor a
+	ld [wBuffer + 14], a         ; RoomPC's own menu prints descriptions with no pick list
 	ret
 
 ; ============================================================
@@ -977,6 +1101,9 @@ RoomPrintDescription::
 	ld a, [wBuffer + 5]
 	ld h, a
 	ldh a, [hCurrentMenuItem]
+	ld c, a
+	ld a, [wBuffer + 14]         ; scroll offset: the cursor row is window-relative
+	add c
 	add a                        ; dw-sized table entries
 	ld c, a
 	ld b, 0

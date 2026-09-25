@@ -324,8 +324,8 @@ NoThanksText:
 GetRewardMonLevel::
 	; Reward Room and Oak's Lab (starter selection) always use a flat level 5
 	; regardless of progress. Everywhere else, the level is tailored to
-	; whichever tier is relevant (1 higher than the highest standard,
-	; non-final-bonus trainer level in that tier), read directly from
+	; whichever tier is relevant (the middle of that tier's standard,
+	; non-final-bonus trainer level band, floored at 5), read directly from
 	; trainer_difficulty_settings/_gym so it can never drift out of sync with
 	; the actual trainer data.
 	;
@@ -396,10 +396,19 @@ GetRewardMonLevel::
 	ld a, BANK(trainer_difficulty_settings) ; this function doesn't - read across
 	ld bc, 2                ; banks instead of a plain (same-bank-only) [hl] read
 	call FarCopyData
+	; Rewards land MID-band: minimum + range/2. This used to be minimum + range,
+	; one above the strongest standard trainer, which the user found too high
+	; (round 2 route-next gave 16; now 14). Every reward-level consumer moves with
+	; it: stage reward pokeballs and trade, lobby salesman/trader, both daycares.
 	ld a, [wRewardLevelDataBuffer]   ; byte 0: level range
+	srl a                    ; half the range
 	ld b, a
 	ld a, [wRewardLevelDataBuffer + 1] ; byte 1: minimum level
-	add b                    ; minimum + range = (max standard level) + 1
+	add b                    ; minimum + range/2
+	cp 5
+	jr nc, .atLeastFive
+	ld a, 5                  ; round 1 route-next would be 3, below a starter
+.atLeastFive
 	cp 51
 	jr c, .levelOk
 	ld a, 50
