@@ -4,4 +4,4 @@
 ; constants/balance_constants.asm.
 
 PCWildLevelTable:
-	db 5, 9, 13, 17, 21, 25, 29, 33, 37 ; rounds 0-8, min level (add 0-2 for range)
+	wild_area_levels ; rounds 0-8, min level (add 0-2 for range); values in balance_constants.asm

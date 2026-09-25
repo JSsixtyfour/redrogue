@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 
@@ -24,13 +25,17 @@ import parse  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Duration coefficients: PLACEHOLDER until Phase 3's calibrate_battle_time.py
-# and one real timed run replace them with measured values.
+# Battle terms: least-squares fit over the WON battles in
+# tools/balance/data/battle_time.csv (calibrate_battle_time.py, 2026-09-25):
+# sec = 17.8 + 15.3 x enemy mons, ~9.2 s per turn. That is a FLOOR: the harness
+# taps A as fast as it can and the clock starts at the first battle menu, so the
+# trainer intro and a human's reading time are not in it. The overworld term is
+# still a placeholder; one real timed run by the user replaces it.
 CALIBRATION = {
-    "source": "placeholder",
-    "fixed_sec_per_trainer_battle": 20,
-    "sec_per_enemy_mon": 25,
-    "sec_per_wild_battle": 20,
+    "source": "battle terms measured (fast-tap floor); overworld placeholder",
+    "fixed_sec_per_trainer_battle": 18,
+    "sec_per_enemy_mon": 15,
+    "sec_per_wild_battle": 33,          # the fit at one mon
     "overworld_sec_per_stage": 180,
 }
 
@@ -58,7 +63,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def duration_estimate(g: parse.GameData, run: model.Run) -> float:
-    """UNCALIBRATED: Sigma battles * sec-per-battle(mons) + Sigma stages * overworld_sec."""
+    """Sigma battles * sec-per-battle(mons) + Sigma stages * overworld_sec (see CALIBRATION)."""
     sec = 0.0
     for bt in run.battles:
         if bt.trainer:
@@ -151,8 +156,9 @@ def section_exp_all(g: parse.GameData, args, out: Path) -> list[str]:
 
 def section_wild_vs_route(g: parse.GameData, args, out: Path) -> list[str]:
     lines = ["## 4. Route vs wild area (take_wild 0.0 vs 1.0; forced areas happen in both)\n",
-             f"**`wild_steps=250` is a placeholder** until Phase 3's "
-             f"`measure_wild_paths.py` measures real layout step counts.\n"]
+             "Encounter-rolling steps come from ROM-generated layouts measured by "
+             "`measure_wild_paths.py` (`tools/balance/data/wild_paths.json`), per wild-area "
+             "type, on the `full` route (every ball, then the boss).\n"]
     all_rows = []
     cfgs = {"take_wild=0.0": model.Config(difficulty="normal", exp_all=0, policy="rotate", take_wild=0.0),
             "take_wild=1.0": model.Config(difficulty="normal", exp_all=0, policy="rotate", take_wild=1.0)}
@@ -205,10 +211,11 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
 
 def section_duration(g: parse.GameData, args, out: Path) -> list[str]:
     marker = CALIBRATION["source"]
-    lines = [f"## 6. Duration (UNCALIBRATED, source={marker})\n",
+    lines = [f"## 6. Duration (partly calibrated: {marker})\n",
              "Coefficients: " + ", ".join(f"{k}={v}" for k, v in CALIBRATION.items() if k != "source") + ".\n",
-             "Phase 3's `calibrate_battle_time.py` (per-battle frame counts) and one "
-             "real timed run (overworld overhead) replace these.\n"]
+             "Battle seconds are fitted to `calibrate_battle_time.py` frame counts, a machine-speed "
+             "floor (no trainer intro, no reading time). The overworld term is still a guess until "
+             "one real timed run replaces it.\n"]
     cfg = model.Config(difficulty="normal", exp_all=0, policy="rotate")
     durations = []
     for seed in range(args.runs):
@@ -259,8 +266,9 @@ def section_caveats() -> list[str]:
         "four. The real Phase 7 lineup roll isn't mirrored. Kanto-only (the default) is exact.\n",
         "- The Gambler class, witch challenges/prizes, Element Prism, Rare Scope, and the "
         "ownership re-roll in `RogueSelectFromTier` are ignored.\n",
-        "- `wild_steps=250` is a placeholder. Wild encounters are "
-        "`min(budget, Binomial(steps, rate/256))`.\n",
+        "- Wild encounters are `min(budget, Binomial(rolling steps, rate/256))`, with rolling "
+        "steps sampled from measured layouts of the offered type. The route is the shortest "
+        "tour past every ball to the boss; a player who wanders gets more rolls.\n",
         "- One reward mon joins per stage, at `GetRewardMonLevel`. Boss catches, salesman "
         "buys and daycare aren't modelled as joins.\n",
         "- A stage event is one battle when armed and taken. Jessie & James counts as a "
@@ -268,8 +276,8 @@ def section_caveats() -> list[str]:
         "- Money spending isn't modelled; every money figure is cumulative earned.\n",
         "- The player wins every battle. Win difficulty is Phase 3.\n",
         "- The Champion is RIVAL3 (`Rival3Spec`, levels 60-65). Champion Lance / Oak aren't modelled.\n",
-        f"- Duration coefficients (section 6) are a placeholder (source={CALIBRATION['source']}), "
-        "not measured frame counts.\n",
+        "- Duration (section 6): battle seconds are a measured machine-speed floor; the overworld "
+        "term waits on a real timed run.\n",
     ]
 
 
@@ -279,9 +287,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", default=str(ROOT / "tmp" / "balance"))
     ap.add_argument("--set", action="append", default=[], metavar="KNOB=VALUE")
+    ap.add_argument("--no-stamp", action="store_true",
+                    help="write straight into --out instead of a new dated subfolder")
     args = ap.parse_args(argv)
 
-    out = Path(args.out)
+    # Each report gets its own dated folder under --out: an older report that
+    # is open in Excel can't block the new one, and the folders are the tuning
+    # history. LATEST.md beside them names the newest.
+    base = Path(args.out)
+    stamp = time.strftime("%Y-%m-%d_%H%M%S")
+    out = base if args.no_stamp else base / stamp
     out.mkdir(parents=True, exist_ok=True)
 
     g = model.apply_overrides(parse.load_all(), args.set)
@@ -306,6 +321,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {report_path}")
     for csv_path in sorted(out.glob("*.csv")):
         print(f"wrote {csv_path}")
+    if not args.no_stamp:
+        overrides = ", ".join(args.set) or "none"
+        latest = base / "LATEST.md"
+        try:
+            latest.write_text(
+                f"# Latest balance report\n\n[{stamp}/BALANCE_REPORT.md]({stamp}/BALANCE_REPORT.md)\n\n"
+                f"{args.runs} runs per config, seed {args.seed}, overrides: {overrides}.\n",
+                encoding="utf-8")
+            print(f"wrote {latest}")
+        except PermissionError:
+            print(f"note: {latest} is open elsewhere; the report itself is in {out}")
     return 0
 
 

@@ -71,7 +71,8 @@ class Config:
     take_wild: float = 0.5           # chance the player picks an optional wild-area door
     take_miniboss: float = 1.0       # chance the player picks the mini-boss door
     fight_stage_event: float = 1.0   # chance the player fights an armed stage event
-    wild_steps: int = 250            # PLACEHOLDER until measure_wild_paths.py (Phase 3)
+    wild_steps: int | None = None    # None = measured layouts (data/wild_paths.json); an int = flat what-if
+    wild_path: str = "full"          # full: collect every ball, then the boss; beeline: straight to the boss
     policy: str = "carry"            # carry: the starter takes every KO; rotate: KOs spread
     amulet_coin: int = 0             # 0 = none, 1-3 = tier
     champion: str = "RIVAL3"
@@ -312,6 +313,20 @@ def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Bat
     return Battle("wild", count, [(sp, lv)], False)
 
 
+FACILITY_FAKE_BALLS = 4
+
+
+def facility_fake_balls(g: GameData, count: int, rng: random.Random) -> list[Battle]:
+    """The facility's four fake item balls (object slots 6-9): each is a wild
+    Voltorb, Electrode from an entry wBattleCount of 60, all four at ONE
+    PFacFakeWildLevelTable level rolled at generation (the same wild_area_levels
+    table plus 0-2). A full clear touches them all, since they look like the
+    real balls; they sit outside the encounter budget."""
+    lv = g.tables.wild[min(count, 89) // 10] + rng.randrange(3)
+    sp = "VOLTORB" if count < 60 else "ELECTRODE"
+    return [Battle("facility_voltorb", count, [(sp, lv)], False) for _ in range(FACILITY_FAKE_BALLS)]
+
+
 def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """PCRollBoss: PCGetBossLevel + a class roll bumped by 60."""
     idx = min(count, 89) // 10
@@ -397,6 +412,7 @@ class Run:
     battles: list[Battle] = field(default_factory=list)
     checkpoints: list[Checkpoint] = field(default_factory=list)
     stages: list[str] = field(default_factory=list)
+    wild_types: list[str] = field(default_factory=list)   # the type of each wild area entered
     offers: list[str] = field(default_factory=list)   # special kind offered per lobby visit
 
 
@@ -450,13 +466,21 @@ class Simulator:
             else:
                 self.fight(roster_battle(self.g, self.cfg, self.count, self.rng))
 
-    def wild_area(self, stage_event: bool) -> None:
+    def wild_area(self, stage_event: bool, wtype: str) -> None:
+        """TryDoWildEncounter: each encounter-rolling step fires when a random
+        byte is under the rate; the per-visit budget caps it. Rolling steps
+        come from a measured layout of this type (every step indoors, grass
+        steps only in the forest)."""
         g, cfg, rng = self.g, self.cfg, self.rng
         k = g.knobs
         budget = min(255, k["WILD_BUDGET_BASE"] + self.count // k["WILD_BUDGET_DIVISOR"])
-        encounters = sum(1 for _ in range(cfg.wild_steps) if rng.randrange(256) < k["WILD_AREA_ENCOUNTER_RATE"])
+        rolls = cfg.wild_steps if cfg.wild_steps is not None else rng.choice(g.wild_paths[wtype][cfg.wild_path])
+        encounters = sum(1 for _ in range(rolls) if rng.randrange(256) < k["WILD_AREA_ENCOUNTER_RATE"])
         for _ in range(min(budget, encounters)):
             self.fight(wild_battle(g, cfg, self.count, rng))
+        if wtype == "facility" and cfg.wild_path == "full":
+            for bt in facility_fake_balls(g, self.count, rng):
+                self.fight(bt)
         if stage_event and rng.random() < cfg.fight_stage_event:
             self.fight(stage_event_battle(g, cfg, self.count, rng))
         boss = wild_boss_battle(g, cfg, self.count, rng)
@@ -474,7 +498,8 @@ class Simulator:
                           g.money["RIVAL1"]))
 
         mb_count = wa_count = since_special = 0
-        wild_types_left = 4
+        types_left = list(parse.WILD_AREA_TYPES)   # WildAreaSelect: no repeats until all four are offered
+        wtype = None
         for rnd in range(1, 9):
             badges = rnd - 1
             kind = None
@@ -500,10 +525,10 @@ class Simulator:
                 else:
                     since_special = 0
                 if kind and kind.startswith("wild"):
-                    if wild_types_left == 0:
+                    if not types_left:
                         kind = None          # all four types offered; the pick fails open to a route
                     else:
-                        wild_types_left -= 1
+                        wtype = types_left.pop(rng.randrange(len(types_left)))
                         wa_count = min(wa_count + 1, 3)
                 elif kind == "miniboss":
                     mb_count += 1
@@ -513,7 +538,8 @@ class Simulator:
                 rng.randrange(256) < k["STAGE_EVENT_CHANCE"]
             if kind == "wild_forced" or (kind == "wild" and rng.random() < cfg.take_wild):
                 self.run.stages.append("wild")
-                self.wild_area(stage_event)
+                self.run.wild_types.append(wtype)
+                self.wild_area(stage_event, wtype)
             elif kind == "miniboss" and rng.random() < cfg.take_miniboss:
                 self.run.stages.append("miniboss")
                 self.route(rng.choice(("RIVAL", "GIOVANNI")))
@@ -676,6 +702,13 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("item evo below 35", evolve_by_level(g, cfg, "POLIWHIRL", 34, rng), "POLIWHIRL")
     check("item evo at 35", evolve_by_level(g, cfg, "POLIWHIRL", 35, rng), "POLIWRATH")
 
+    # Measured wild-area layouts: enough of each type to sample from, and a
+    # full clear is never shorter than walking straight to the boss.
+    for wtype in parse.WILD_AREA_TYPES:
+        paths = g.wild_paths[wtype]
+        check(f"{wtype} layouts >= 100", len(paths["full"]) >= 100, True)
+        check(f"{wtype} full >= beeline", statistics.mean(paths["full"]) >= statistics.mean(paths["beeline"]), True)
+
     # Structural invariants over a batch of real runs.
     for seed in range(runs):
         sim = Simulator(g, Config(), seed)
@@ -693,6 +726,7 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
             check(f"leader r{r} size", len(bt.mons), g.knobs[f"GYM_R{r}_MONS"])
         check("e4 counts", [bt.count for bt in run.battles if bt.kind == "e4"], [86, 87, 88, 89])
         check("no specials on route 1", run.offers[0], "none")
+        check("wild types never repeat", len(set(run.wild_types)), len(run.wild_types))
         for bt in run.battles:
             if bt.kind in ("route", "route_final", "gym_trainer", "gym_final"):
                 idx, rem = min(bt.count, 89) // 10, min(bt.count, 89) % 10
@@ -746,7 +780,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--policy", choices=("carry", "rotate"), default="carry")
     ap.add_argument("--take-wild", type=float, default=0.5)
     ap.add_argument("--take-miniboss", type=float, default=1.0)
-    ap.add_argument("--wild-steps", type=int, default=250)
+    ap.add_argument("--wild-steps", type=int, default=None,
+                    help="flat encounter-rolling steps per wild area (default: measured layouts)")
+    ap.add_argument("--wild-path", choices=("full", "beeline"), default="full")
     ap.add_argument("--amulet-coin", type=int, default=0, choices=(0, 1, 2, 3))
     ap.add_argument("--groups", default="KANTO", help="comma list: KANTO,JOHTO,WARP")
     ap.add_argument("--set", action="append", default=[], metavar="KNOB=VALUE")
@@ -770,6 +806,7 @@ def main(argv: list[str] | None = None) -> int:
         take_wild=args.take_wild,
         take_miniboss=args.take_miniboss,
         wild_steps=args.wild_steps,
+        wild_path=args.wild_path,
         policy=args.policy,
         amulet_coin=args.amulet_coin,
     )

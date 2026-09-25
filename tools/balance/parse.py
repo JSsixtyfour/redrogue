@@ -10,6 +10,7 @@ Stdlib only; runs under Windows python and WSL python3 alike.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -108,13 +109,41 @@ class Tables:
     wild_boss: list[int]
 
 
+def _db_in_macro(rel: str, name: str) -> list[int]:
+    """Numeric `db` bytes between `MACRO name` and its ENDM."""
+    out: list[int] = []
+    inside = False
+    for raw in _lines(rel):
+        code = _code(raw)
+        if not inside:
+            inside = code == f"MACRO {name}"
+            continue
+        if code == "ENDM":
+            return out
+        if code.startswith("db "):
+            out += [_int(tok) for tok in code[3:].split(",")]
+    raise ValueError(f"{rel}: MACRO {name} not found or unterminated")
+
+
+def _wild_levels() -> list[int]:
+    """The wild_area_levels macro, after checking both tables still emit it
+    (a typed-out copy at either label would drift from the model unseen)."""
+    for rel, label in (("data/balance/wild_levels.asm", "PCWildLevelTable"),
+                       ("custom_functions/procedural_facility_gen.asm", "PFacFakeWildLevelTable")):
+        lines = [_code(l) for l in _lines(rel)]
+        at = lines.index(f"{label}:")
+        if not lines[at + 1].startswith("wild_area_levels"):
+            raise ValueError(f"{rel}: {label} no longer emits wild_area_levels")
+    return _db_in_macro("constants/balance_constants.asm", "wild_area_levels")
+
+
 def load_tables() -> Tables:
     mb = _db_after_label("data/balance/miniboss_levels.asm", "trainer_difficulty_settings_miniboss")
     return Tables(
         route=_blocks("trainer_difficulty_settings"),
         gym=_blocks("trainer_difficulty_settings_gym"),
         miniboss=[MiniBossRow(*mb[i:i + 4]) for i in range(0, len(mb), 4)],
-        wild=_db_after_label("data/balance/wild_levels.asm", "PCWildLevelTable"),
+        wild=_wild_levels(),
         wild_boss=_db_after_label("data/balance/wild_boss_levels.asm", "PCBossLevelTable"),
     )
 
@@ -396,6 +425,24 @@ def load_growth_rates() -> dict[str, tuple[int, int, int, int, int]]:
     return dict(zip(names, rows))
 
 
+# --- measured inputs (not source) -------------------------------------------
+
+WILD_PATHS = Path(__file__).resolve().parent / "data" / "wild_paths.json"
+WILD_AREA_TYPES = ("cave", "forest", "cemetery", "facility")   # WildAreaTypeMaps order
+
+
+def load_wild_paths() -> dict[str, dict[str, list[int]]]:
+    """Encounter-rolling steps per layout, per wild-area type, as measured on
+    ROM-generated layouts by measure_wild_paths.py. The one input here that is
+    a MEASUREMENT rather than source: re-run that tool after changing a
+    generator. {type: {"beeline": [...], "full": [...], "unreachable": n}}."""
+    raw = json.loads(WILD_PATHS.read_text(encoding="utf-8"))
+    missing = [t for t in WILD_AREA_TYPES if not raw.get(t, {}).get("full")]
+    if missing:
+        raise ValueError(f"{WILD_PATHS.name}: no measured layouts for {missing}")
+    return raw
+
+
 # --- bundle ------------------------------------------------------------------
 
 @dataclass
@@ -412,6 +459,7 @@ class GameData:
     growth: dict[str, tuple[int, int, int, int, int]]
     constants: dict[str, int]
     item_prices: dict[str, int]
+    wild_paths: dict[str, dict[str, list[int]]]
 
 
 def load_all() -> GameData:
@@ -433,6 +481,7 @@ def load_all() -> GameData:
         growth=load_growth_rates(),
         constants=consts,
         item_prices=load_item_prices(),
+        wild_paths=load_wild_paths(),
     )
     _validate(data)
     return data

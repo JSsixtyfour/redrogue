@@ -294,7 +294,7 @@ DEF PFAC_MIDDLE_ROOM_3X3_SOCKETS EQU PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET
 ASSERT PFAC_MIDDLE_ROOM_3X3_SOCKETS == $0F
 
 PFacFakeWildLevelTable:
-    db 5, 9, 13, 17, 21, 25, 29, 33, 37
+    wild_area_levels ; same per-round levels as PCWildLevelTable (balance_constants.asm)
 
 ; --- Full-room premade library (R4) -----------------------------------------
 ;

@@ -112,6 +112,16 @@ DEF WILD_BUDGET_DIVISOR EQU 5
 ; wild area replaces. Read by procedural_stage_hooks.asm.
 DEF WILD_AREA_EXIT_BATTLES EQU 5
 
+; Wild encounter base level per round (0-8); the caller adds 0-2. Emitted in
+; two banks, so it is a macro rather than one table: PCWildLevelTable
+; (data/balance/wild_levels.asm, every procedural stage's grass encounters) and
+; PFacFakeWildLevelTable (the facility's four fake-ball Voltorb/Electrode
+; encounters, procedural_facility_gen.asm). They used to be two typed-out
+; copies that could drift apart.
+MACRO wild_area_levels
+	db 5, 9, 13, 17, 21, 25, 29, 33, 37
+ENDM
+
 ; Chance out of 256 that an offered wild area carries a stage-event trainer.
 ; 256 = every offered wild area carries one. StageEventRoll (wild_area_selection.asm)
 ; skips its `cp` entirely at that value rather than comparing against an

@@ -578,7 +578,30 @@ class RedRogueHarness:
         trainer_class: int,
         ai_tier: int,
     ) -> None:
-        """Write a declarative FIGHT 2 team fixture into debug SRAM."""
+        """Write a declarative FIGHT 2 team fixture into debug SRAM.
+
+        ⚠ `trainer_class` is an OPPONENT id (OPP_* = class + OPP_ID_OFFSET,
+        from source_constants.parse_trainer_constants), NOT the raw class index
+        (parse_trainer_class_indexes). .buildInjected stores it in wCurOpponent,
+        and the battle derives wTrainerClass by subtracting the offset.
+
+        A raw index used to be accepted silently. Measured 2026-09-25: class 31
+        (COOLTRAINER_M) became wTrainerClass 127, TrainerAI read row 127 of a
+        63-row TrainerAIPointers table (whatever ROM bytes follow it), jumped to
+        $FAC9, ran into $FF00 (rP1 reads $CF = rst $08) and far-called $FF:0000
+        into the RST 38 trap. Because the bad row is "whatever follows the
+        table", the crash moved with every ROM layout change. Hence the check.
+        """
+        from source_constants import parse_trainer_constants
+
+        opponent_ids = set(parse_trainer_constants(
+            self.repo_root / "constants" / "trainer_constants.asm"
+        ).values())
+        if trainer_class not in opponent_ids:
+            raise ValueError(
+                f"trainer_class={trainer_class} is not an OPP_* opponent id; pass "
+                "parse_trainer_constants(...)[NAME], not parse_trainer_class_indexes"
+            )
         if not 1 <= len(player) <= 6 or not 1 <= len(enemy) <= 6:
             raise ValueError("FIGHT 2 scenarios require 1-6 mons on each side")
         if not 0 <= ai_tier <= 3:

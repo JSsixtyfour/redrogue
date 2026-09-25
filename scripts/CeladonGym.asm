@@ -1,6 +1,4 @@
 CeladonGym_Script:
-    CheckEvent EVENT_BEAT_ERIKA
-	jp nz, trade
     call ErikaShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
 	call z, .initial
@@ -14,16 +12,6 @@ CeladonGym_Script:
 
 .initial:
 	SetEvent EVENT_ENTER_ROOM
-    ld a, PIKACHU
-    ld [wroguenpctradegive], a
-    ld a, MEWTWO
-    ld [wroguenpctradeget], a ; load in pokemon that they will give player
-    ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
-    call GetMonName         ; get name of pokemon to receive
-    ld hl, wNameBuffer      ; name address
-    ld de, wroguenpctradename   ; load name into this location
-    ld bc, NAME_LENGTH      ; name length
-    call CopyData           ; copy name to location
     farcall GymLeaderRandomItem
 	ld hl, .CityName
 	ld de, .LeaderName
@@ -58,12 +46,6 @@ CeladonGymResetScripts:
 	ld [wCeladonGymCurScript], a
 	ld [wCurMapScript], a
 	ret
-    
- trade:   
-    ld a, TRADE_FOR_RANDOM
-	ld [wWhichTrade], a
-    predef RogueDoInGameTradeDialogue
-	jp TextScriptEnd
 
 CeladonGym_ScriptPointers:
 	def_script_pointers
@@ -71,7 +53,6 @@ CeladonGym_ScriptPointers:
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_CELADONGYM_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_CELADONGYM_END_BATTLE
 	dw_const CeladonGymErikaPostBattleScript,       SCRIPT_CELADONGYM_ERIKA_POST_BATTLE
-    ;dw_const CeladonGymErikaPostTradeScript,       SCRIPT_CELADONGYM_ERIKA_TRADE
 
 CeladonGymErikaPostBattleScript:
 	ldh a, [hIsInBattle]
