@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for COPYCATS_HOUSE_2F
+; (full note at the top of scripts/CopycatsHouse2F.asm).
 	object_const_def
 	const_export COPYCATSHOUSE2F_COPYCAT
 	const_export COPYCATSHOUSE2F_DODUO

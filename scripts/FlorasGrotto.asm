@@ -1,15 +1,15 @@
 ; ---- Bridge PC ----------------------------------------------------------
 ; Defined in data/events/hidden_events.asm under
-;   hidden_events_for VIRIDIAN_SCHOOL_HOUSE
+;   hidden_events_for FLORAS_GROTTO
 ;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
 ; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
-; maps/ViridianSchoolHouse.blk
+; maps/FlorasGrotto.blk (GYM tileset)
 ; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
-; PC drawn at block (0,0) -> hotspot (0,1).
+; PC block $65 drawn at block (0,0) -> hotspots (0,1),(1,1).
 ; -------------------------------------------------------------------------
-; Repurposed as a bridge gift room - Cooltrainer F is the gift giver
-; (SchoolCooltrainerGiftList in bridge_gift_menu.asm).
-ViridianSchoolHouse_Script:
+; Flora's Grotto (map id formerly CERULEAN_TRADE_HOUSE). Flora is the bridge
+; gift giver (FloraGiftList in bridge_gift_menu.asm); the vanilla trader is gone.
+FlorasGrotto_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
@@ -20,18 +20,13 @@ ViridianSchoolHouse_Script:
 	farcall PatchBridgeExit   ; if entered as a bridge, route the exit to the next stage
 	jp EnableAutoTextBoxDrawing
 
-ViridianSchoolHouse_TextPointers:
+FlorasGrotto_TextPointers:
 	def_text_pointers
-	dw_const ViridianSchoolHouseBrunetteGirlText, TEXT_VIRIDIANSCHOOLHOUSE_BRUNETTE_GIRL
-	dw_const ViridianSchoolHouseCooltrainerFText, TEXT_VIRIDIANSCHOOLHOUSE_COOLTRAINER_F
-	dw_const ViridianSchoolHouse_Gift_Text, TEXT_VIRIDIANSCHOOLHOUSE_GIFT_1
-	EXPORT TEXT_VIRIDIANSCHOOLHOUSE_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
+	dw_const FlorasGrottoFloraText,  TEXT_FLORASGROTTO_FLORA
+	dw_const FlorasGrotto_Gift_Text, TEXT_FLORASGROTTO_GIFT_1
+	EXPORT TEXT_FLORASGROTTO_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
-ViridianSchoolHouseBrunetteGirlText:
-	text_far _ViridianSchoolHouseBrunetteGirlText
-	text_end
-
-ViridianSchoolHouseCooltrainerFText:
+FlorasGrottoFloraText:
 	text_asm
 	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
 	jr nz, .got_item
@@ -41,7 +36,7 @@ ViridianSchoolHouseCooltrainerFText:
 	call PrintText
 	SetEvent EVENT_BRIDGE_INTRO
 	.skip_intro
-	ld a, TEXT_VIRIDIANSCHOOLHOUSE_GIFT_1
+	ld a, TEXT_FLORASGROTTO_GIFT_1
 	ldh [hTextID], a
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
@@ -53,12 +48,12 @@ ViridianSchoolHouseCooltrainerFText:
 	jp TextScriptEnd
 
 .IntroText:
-	text_far _ViridianSchoolHouseCooltrainerFText
+	text_far _FlorasGrottoFloraText
 	text_end
 
 .AlreadyGotText:
-	text_far _ViridianSchoolHouseCooltrainerFAlreadyGotText
+	text_far _FlorasGrottoFloraAlreadyGotText
 	text_end
 
-ViridianSchoolHouse_Gift_Text:
+FlorasGrotto_Gift_Text:
 	script_bridge_gift

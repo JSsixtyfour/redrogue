@@ -16,7 +16,7 @@ CeruleanCity_Object:
 
 	def_warp_events
 	warp_event 27, 11, CERULEAN_TRASHED_HOUSE, 1
-	warp_event 13, 15, CERULEAN_TRADE_HOUSE, 1
+	warp_event 13, 15, FLORAS_GROTTO, 1
 	warp_event 19, 17, CERULEAN_POKECENTER, 1
 	warp_event 30, 19, CERULEAN_GYM, 1
 	warp_event 13, 25, BIKE_SHOP, 1

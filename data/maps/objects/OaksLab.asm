@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for OAKS_LAB
+; (full note at the top of scripts/OaksLab.asm).
 object_const_def
 	const_export ROGUE_STARTER_POKEBALL_1
     const_export ROGUE_STARTER_POKEBALL_2

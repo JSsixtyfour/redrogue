@@ -64,7 +64,7 @@ MapHeaderPointers::
 	dw MtMoonB1F_h
 	dw MtMoonB2F_h
 	dw CeruleanTrashedHouse_h
-	dw CeruleanTradeHouse_h
+	dw FlorasGrotto_h
 	dw CeruleanPokecenter_h
 	dw CeruleanGym_h
 	dw BikeShop_h
@@ -152,7 +152,7 @@ MapHeaderPointers::
 	dw PokemonTower7F_h
 	dw MrFujisHouse_h
 	dw LavenderMart_h
-	dw LavenderCuboneHouse_h
+	dw IgasDojo_h
 	dw FuchsiaMart_h
 	dw FuchsiaBillsGrandpasHouse_h
 	dw FuchsiaPokecenter_h

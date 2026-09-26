@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for WARDENS_HOUSE
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/WardensHouse.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PC drawn at block (0,1) -> hotspots (0,2),(1,2).
+; -------------------------------------------------------------------------
 ; Repurposed as a bridge gift room - the Warden's vanilla gold-teeth/HM04
 ; state machine is replaced by the standard bridge-gift dispatch (HM STRENGTH
 ; is now one of his possible rolled gifts, WardenGiftList in bridge_gift_menu.asm).

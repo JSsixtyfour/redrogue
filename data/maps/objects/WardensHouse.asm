@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for WARDENS_HOUSE
+; (full note at the top of scripts/WardensHouse.asm).
 	object_const_def
 	const_export WARDENSHOUSE_WARDEN
 	const_export WARDENSHOUSE_RARE_CANDY

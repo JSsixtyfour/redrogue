@@ -545,10 +545,10 @@ LobbyBridgeSignTable:
 	dw .trashedText
 	db REDS_HOUSE_1F
 	dw .redsHouseText
-	db LAVENDER_CUBONE_HOUSE
-	dw .cuboneHouseText
-	db CERULEAN_TRADE_HOUSE
-	dw .tradeHouseText
+	db IGAS_DOJO
+	dw .igaDojoText
+	db FLORAS_GROTTO
+	dw .floraGrottoText
 	db OAKS_LAB
 	dw .oaksLabText
 	db $ff
@@ -596,13 +596,13 @@ LobbyBridgeSignTable:
 	text "RED's"
 	line "HOUSE@"
 	text_end
-.cuboneHouseText:
-	text "CUBONE"
-	line "HOUSE@"
+.igaDojoText:
+	text "IGA's"
+	line "DOJO@"
 	text_end
-.tradeHouseText:
-	text "TRADE"
-	line "HOUSE@"
+.floraGrottoText:
+	text "FLORA's"
+	line "GROTTO@"
 	text_end
 .oaksLabText:
 	text "OAK's"

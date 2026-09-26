@@ -1,3 +1,13 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for VIRIDIAN_NICKNAME_HOUSE
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/ViridianNicknameHouse.blk (SHARED by 7 vanilla houses in maps.asm)
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (6,0): no PC drawn yet. Give this room its own .blk
+; in maps.asm before drawing, or every sharing house gets the PC too.
+; -------------------------------------------------------------------------
 ; Repurposed as a bridge gift room - Balding Guy is the gift giver
 ; (NicknameBaldingGuyGiftList in bridge_gift_menu.asm).
 ViridianNicknameHouse_Script:

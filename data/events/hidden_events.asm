@@ -100,8 +100,8 @@ HiddenEventMaps:
 	hidden_event_map VIRIDIAN_NICKNAME_HOUSE
 	hidden_event_map CERULEAN_TRASHED_HOUSE
 	hidden_event_map REDS_HOUSE_1F
-	hidden_event_map LAVENDER_CUBONE_HOUSE
-	hidden_event_map CERULEAN_TRADE_HOUSE
+	hidden_event_map IGAS_DOJO
+	hidden_event_map FLORAS_GROTTO
 	db -1 ; end
 
 HiddenEventPointers:
@@ -159,7 +159,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  5,  0, DisplayOakLabRightPoster, SPRITE_FACING_UP
 	hidden_event  0,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  1,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
-	hidden_event  8,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  8,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC PLACEHOLDER: the drawn PC at (0,1)/(1,1) is the email above, which wins
     ;hidden_event  6,  3, Rogue_Pokemon_Display_1, SPRITE_FACING_UP
 	db -1 ; end
 
@@ -174,7 +174,7 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for VIRIDIAN_SCHOOL_HOUSE
 	hidden_text_predef  3,  4, PrintNotebookText, ViridianSchoolNotebook
 	hidden_text_predef  3,  0, PrintBlackboardLinkCableText, ViridianSchoolBlackboard
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC: block (0,0), see BRIDGE ROOM PCs
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_GYM
@@ -395,7 +395,7 @@ DEF ANY_FACING EQU $d0
 
 	hidden_events_for COPYCATS_HOUSE_2F
 	hidden_event  1,  1, HiddenItems, NUGGET
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC: block (0,0), see BRIDGE ROOM PCs
 	db -1 ; end
 
 	hidden_events_for CERULEAN_CAVE_1F
@@ -459,7 +459,7 @@ DEF ANY_FACING EQU $d0
 
 	hidden_events_for BILLS_HOUSE
 	hidden_event  1,  4, BillsHousePC, SPRITE_FACING_UP
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC PLACEHOLDER: no PC drawn yet
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_CITY
@@ -486,10 +486,11 @@ DEF ANY_FACING EQU $d0
 	db -1 ; end
 
 	hidden_events_for MR_FUJIS_HOUSE
-	hidden_event  0,  1, PrintMagazinesText, SPRITE_FACING_DOWN
+	; bridge PC: drawn at block (0,0) over the old magazine shelf, so it takes
+	; that shelf's (0,1) spot. See BRIDGE ROOM PCs.
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
 	hidden_event  1,  1, PrintMagazinesText, SPRITE_FACING_DOWN
 	hidden_event  7,  1, PrintMagazinesText, SPRITE_FACING_DOWN
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for CELADON_MANSION_ROOF_HOUSE
@@ -568,36 +569,56 @@ DEF ANY_FACING EQU $d0
 	hidden_event 40,  3, HiddenItems, GREAT_BALL
 	db -1 ; end
 
-	; Graphics are deferred. These top-wall interaction spots open Bill's PC
-	; only during bridge visits and leave each map's normal behavior untouched.
+	; ===== BRIDGE ROOM PCs =====================================================
+	; Every bridge room's PC is one `hidden_event X, Y, OpenBridgeBillsPC,
+	; SPRITE_FACING_UP` line. Most sit in the blocks below; Oak's Lab, Copycat 2F,
+	; Bill, Mr. Fuji and the Viridian School keep theirs inside their existing
+	; hidden_events_for blocks above. The Fossil Room uses its vanilla PCs.
+	;
+	; Coordinates are player steps (16x16 px). Block (bx,by) in maps/<Room>.blk
+	; covers x = 2bx..2bx+1, y = 2by..2by+1. X,Y is the tile the player FACES:
+	; they stand at (X, Y+1) facing up. The FIRST entry matching a coordinate
+	; wins, so a PC must not share a spot with an earlier entry. A PC drawn two
+	; steps wide gets two lines (X and X+1).
+	; Measured anchors: House/Red's-house PC at block (0,0) -> (0,1).
+	; Gym/Dojo PC block $65 at (0,0) -> (0,1),(1,1). Lab PC block $08 at
+	; block (bx,by) -> (2bx, 2by),(2bx+1, 2by).
+	; OpenBridgeBillsPC only answers when the room was entered from the lobby.
+	; =========================================================================
 	hidden_events_for SS_ANNE_CAPTAINS_ROOM
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
 	db -1
 
 	hidden_events_for POKEMON_FAN_CLUB
+	; PLACEHOLDER: a PC-like block $38 was drawn at block (3,3), the bottom-right
+	; corner (steps 6-7, 6-7), where nothing can stand below it and face up.
+	; Move it up a row, or pick a facing, then set X,Y.
 	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for WARDENS_HOUSE
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  0,  2, OpenBridgeBillsPC, SPRITE_FACING_UP ; Lab PC $08 at block (0,1)
+	hidden_event  1,  2, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for VIRIDIAN_NICKNAME_HOUSE
-	hidden_event  6,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  6,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
 	db -1
 
 	hidden_events_for CERULEAN_TRASHED_HOUSE
-	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; PC at block (0,0)
 	db -1
 
 	hidden_events_for REDS_HOUSE_1F
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
 	db -1
 
-	hidden_events_for LAVENDER_CUBONE_HOUSE
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_events_for IGAS_DOJO
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; Dojo PC $65 at block (0,0)
+	hidden_event  1,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
-	hidden_events_for CERULEAN_TRADE_HOUSE
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	hidden_events_for FLORAS_GROTTO
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; Gym PC $65 at block (0,0)
+	hidden_event  1,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1

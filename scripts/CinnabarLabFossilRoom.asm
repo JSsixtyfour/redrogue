@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for CINNABAR_LAB_FOSSIL_ROOM
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/CinnabarLabFossilRoom.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; Uses its vanilla PCs at (0,4),(2,4) (OpenPokemonCenterPC).
+; -------------------------------------------------------------------------
 ; Repurposed as a bridge gift room - Scientist 1's vanilla fossil-revival
 ; state machine is replaced by the standard bridge-gift dispatch
 ; (FossilScientistGiftList in bridge_gift_menu.asm). Scientist 2's in-game

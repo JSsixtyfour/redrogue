@@ -104,7 +104,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	end_indoor_group MT_MOON
 
 	map_const CERULEAN_TRASHED_HOUSE,         4,  4 ; $3E
-	map_const CERULEAN_TRADE_HOUSE,           4,  4 ; $3F
+	map_const FLORAS_GROTTO,                  4,  4 ; $3F (was CERULEAN_TRADE_HOUSE)
 	map_const CERULEAN_POKECENTER,            7,  4 ; $40
 	map_const CERULEAN_GYM,                   5,  7 ; $41
 	map_const BIKE_SHOP,                      4,  4 ; $42
@@ -236,7 +236,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 
 	map_const MR_FUJIS_HOUSE,                 4,  4 ; $95
 	map_const LAVENDER_MART,                  4,  4 ; $96
-	map_const LAVENDER_CUBONE_HOUSE,          4,  4 ; $97
+	map_const IGAS_DOJO,                      4,  4 ; $97 (was LAVENDER_CUBONE_HOUSE)
 	end_indoor_group LAVENDER_TOWN_2
 
 	map_const FUCHSIA_MART,                   4,  4 ; $98

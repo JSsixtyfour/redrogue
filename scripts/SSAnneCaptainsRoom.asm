@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for SS_ANNE_CAPTAINS_ROOM
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/SSAnneCaptainsRoom.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (4,0): no PC drawn yet.
+; -------------------------------------------------------------------------
 ; Repurposed as a bridge gift room
 ; is replaced by the standard bridge-gift dispatch (HM CUT is now one of the
 ; Captain's possible rolled gifts, CaptainGiftList in bridge_gift_menu.asm).

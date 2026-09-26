@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for BILLS_HOUSE
+; (full note at the top of scripts/BillsHouse.asm).
 	object_const_def
 	const_export BILLSHOUSE_BILL_POKEMON
 	const_export BILLSHOUSE_BILL1

@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for BILLS_HOUSE
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/BillsHouse.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (4,0): no PC drawn yet.
+; -------------------------------------------------------------------------
 BillsHouse_Script:
     CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup

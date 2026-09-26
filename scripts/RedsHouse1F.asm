@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for REDS_HOUSE_1F
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/RedsHouse1F.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (4,0): no PC drawn yet.
+; -------------------------------------------------------------------------
 ; Dual-purpose room: Red's House 1F remains normally reachable during
 ; gameplay (Mom heals for free, as always). ONLY when entered as a bridge
 ; (wWarpedFromWhichMap == INDIGO_PLATEAU_LOBBY) does Mom instead dispatch a

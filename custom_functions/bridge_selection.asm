@@ -25,8 +25,8 @@ BridgeRoomMaps:
 	db VIRIDIAN_NICKNAME_HOUSE   ; 8
 	db CERULEAN_TRASHED_HOUSE    ; 9
 	db REDS_HOUSE_1F             ; 10
-	db LAVENDER_CUBONE_HOUSE     ; 11
-	db CERULEAN_TRADE_HOUSE      ; 12
+	db IGAS_DOJO     ; 11
+	db FLORAS_GROTTO      ; 12
 	db OAKS_LAB                  ; 13
 DEF NUM_BRIDGE_ROOMS EQU 14
 

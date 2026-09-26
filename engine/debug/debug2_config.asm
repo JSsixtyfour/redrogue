@@ -651,8 +651,8 @@ Debug2GiftNames:
 	dw Debug2GiftNicknameText
 	dw Debug2GiftTrashedHseText
 	dw Debug2GiftRedsHouseText
-	dw Debug2GiftCuboneHseText
-	dw Debug2GiftTradeHouseText
+	dw Debug2GiftIgaText
+	dw Debug2GiftFloraText
 	dw Debug2GiftOaksLabText
 
 Debug2GiftCopycatText:    db " COPYCAT 2F@"
@@ -666,8 +666,8 @@ Debug2GiftVirSchoolText:  db " VIR SCHOOL@"
 Debug2GiftNicknameText:   db "   NICKNAME@"
 Debug2GiftTrashedHseText: db "TRASHED HSE@"
 Debug2GiftRedsHouseText:  db " REDS HOUSE@"
-Debug2GiftCuboneHseText:  db " CUBONE HSE@"
-Debug2GiftTradeHouseText: db "TRADE HOUSE@"
+Debug2GiftIgaText:        db "  IGAS DOJO@"
+Debug2GiftFloraText:      db "FLORAGROTTO@"
 Debug2GiftOaksLabText:    db "   OAKS LAB@"
 
 ; These two are short enough to be worth writing inline.

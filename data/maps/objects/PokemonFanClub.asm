@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for POKEMON_FAN_CLUB
+; (full note at the top of scripts/PokemonFanClub.asm).
 	object_const_def
 	const_export POKEMONFANCLUB_PIKACHU_FAN
 	const_export POKEMONFANCLUB_SEEL_FAN

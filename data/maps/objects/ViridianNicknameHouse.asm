@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for VIRIDIAN_NICKNAME_HOUSE
+; (full note at the top of scripts/ViridianNicknameHouse.asm).
 	object_const_def
 	const_export VIRIDIANNICKNAMEHOUSE_BALDING_GUY
 	const_export VIRIDIANNICKNAMEHOUSE_LITTLE_GIRL

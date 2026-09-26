@@ -231,8 +231,8 @@ class BootSmokeTest(HarnessTestCase):
                 "SS_ANNE_CAPTAINS_ROOM", "CINNABAR_LAB_FOSSIL_ROOM",
                 "POKEMON_FAN_CLUB", "WARDENS_HOUSE", "VIRIDIAN_SCHOOL_HOUSE",
                 "VIRIDIAN_NICKNAME_HOUSE", "CERULEAN_TRASHED_HOUSE",
-                "REDS_HOUSE_1F", "LAVENDER_CUBONE_HOUSE",
-                "CERULEAN_TRADE_HOUSE", "OAKS_LAB",
+                "REDS_HOUSE_1F", "IGAS_DOJO",
+                "FLORAS_GROTTO", "OAKS_LAB",
             )
         }
         self.harness.boot_to_lobby(encounter_kind=2)

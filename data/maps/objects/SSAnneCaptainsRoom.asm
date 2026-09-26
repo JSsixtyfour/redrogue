@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for SS_ANNE_CAPTAINS_ROOM
+; (full note at the top of scripts/SSAnneCaptainsRoom.asm).
 	object_const_def
 	const_export SSANNECAPTAINSROOM_CAPTAIN
 

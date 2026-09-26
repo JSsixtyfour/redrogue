@@ -1,3 +1,13 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for OAKS_LAB
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/OaksLab.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (8,1): the drawn PC at (0,1)/(1,1) is Oak's email
+; hidden event, which is listed first and wins.
+; -------------------------------------------------------------------------
 ;INCLUDE "engine/pokemon/rarity.asm"
 ;INCLUDE "engine/rogue_pointers.asm"
 ;INCLUDE "engine/pokemon/random_pokemon_selection.asm"

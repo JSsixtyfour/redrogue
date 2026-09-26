@@ -1,3 +1,12 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for MR_FUJIS_HOUSE
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/MrFujisHouse.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PC drawn at block (0,0) -> hotspot (0,1) (replaced the magazine shelf).
+; -------------------------------------------------------------------------
 MrFujisHouse_Script:
     CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup

@@ -90,18 +90,20 @@ OaksLab_Blocks: INCBIN "maps/OaksLab.blk"
 
 MrPsychicsHouse_Blocks:
 NameRatersHouse_Blocks:
-MrFujisHouse_Blocks:
 Route16FlyHouse_Blocks:
 Route2TradeHouse_Blocks:
 SaffronPidgeyHouse_Blocks:
 VermilionPidgeyHouse_Blocks:
-LavenderCuboneHouse_Blocks:
 PewterNidoranHouse_Blocks:
 PewterSpeechHouse_Blocks:
 ViridianNicknameHouse_Blocks: INCBIN "maps/ViridianNicknameHouse.blk"
 
-; The approved Flora grotto is a distinct 4x4 Gym-blockset layout.
-CeruleanTradeHouse_Blocks: INCBIN "maps/FlorasHouse.blk"
+; Bridge rooms with their own drawn layouts. Blocks are read with the map
+; header's bank mapped in (LoadTileBlockMap), so these must stay in the same
+; bank as their headers ("Maps 4", bank $07).
+MrFujisHouse_Blocks: INCBIN "maps/MrFujisHouse.blk"   ; shared house + a PC at block (0,0)
+IgasDojo_Blocks: INCBIN "maps/IgasDojo.blk"           ; 4x4 Dojo-blockset layout
+FlorasGrotto_Blocks: INCBIN "maps/FlorasGrotto.blk"   ; 4x4 Gym-blockset layout
 
 CeladonMansionRoofHouse_Blocks:
 ViridianSchoolHouse_Blocks: INCBIN "maps/ViridianSchoolHouse.blk"
@@ -148,9 +150,9 @@ INCLUDE "data/maps/headers/CeruleanTrashedHouse.asm"
 INCLUDE "scripts/CeruleanTrashedHouse.asm"
 INCLUDE "data/maps/objects/CeruleanTrashedHouse.asm"
 
-INCLUDE "data/maps/headers/CeruleanTradeHouse.asm"
-INCLUDE "scripts/CeruleanTradeHouse.asm"
-INCLUDE "data/maps/objects/CeruleanTradeHouse.asm"
+INCLUDE "data/maps/headers/FlorasGrotto.asm"
+INCLUDE "scripts/FlorasGrotto.asm"
+INCLUDE "data/maps/objects/FlorasGrotto.asm"
 
 INCLUDE "data/maps/headers/BikeShop.asm"
 INCLUDE "scripts/BikeShop.asm"
@@ -161,9 +163,9 @@ INCLUDE "data/maps/headers/MrFujisHouse.asm"
 INCLUDE "scripts/MrFujisHouse.asm"
 INCLUDE "data/maps/objects/MrFujisHouse.asm"
 
-INCLUDE "data/maps/headers/LavenderCuboneHouse.asm"
-INCLUDE "scripts/LavenderCuboneHouse.asm"
-INCLUDE "data/maps/objects/LavenderCuboneHouse.asm"
+INCLUDE "data/maps/headers/IgasDojo.asm"
+INCLUDE "scripts/IgasDojo.asm"
+INCLUDE "data/maps/objects/IgasDojo.asm"
 
 INCLUDE "data/maps/headers/NameRatersHouse.asm"
 INCLUDE "scripts/NameRatersHouse.asm"

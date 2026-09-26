@@ -1,13 +1,13 @@
-_LavenderCuboneHouseCuboneText::
+_IgasDojoCuboneText::
 	text "CUBONE: Kyarugoo!@"
 	text_end
 
-_LavenderCuboneHouseBrunetteGirlPoorCubonesMotherText::
+_IgasDojoIgaAlreadyGotText::
 	text "Use what I taught"
 	line "you with honor."
 	done
 
-_LavenderCuboneHouseBrunetteGirlGhostIsGoneText::
+_IgasDojoIgaIntroText::
 	text "I am IGA, a ninja"
 	line "of hidden arts."
 	done

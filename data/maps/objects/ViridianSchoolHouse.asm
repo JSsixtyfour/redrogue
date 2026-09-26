@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for VIRIDIAN_SCHOOL_HOUSE
+; (full note at the top of scripts/ViridianSchoolHouse.asm).
 	object_const_def
 	const_export VIRIDIANSCHOOLHOUSE_BRUNETTE_GIRL
 	const_export VIRIDIANSCHOOLHOUSE_COOLTRAINER_F

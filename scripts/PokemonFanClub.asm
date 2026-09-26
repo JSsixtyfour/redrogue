@@ -1,3 +1,13 @@
+; ---- Bridge PC ----------------------------------------------------------
+; Defined in data/events/hidden_events.asm under
+;   hidden_events_for POKEMON_FAN_CLUB
+;   hidden_event X, Y, OpenBridgeBillsPC, SPRITE_FACING_UP
+; X,Y = the step the player faces (they stand at X,Y+1). Block (bx,by) of
+; maps/PokemonFanClub.blk
+; covers steps x = 2bx..2bx+1, y = 2by..2by+1. Rules: "BRIDGE ROOM PCs" there.
+; PLACEHOLDER at (4,0): the PC drawn at block (3,3) has no spot below
+; it to stand on. Move it up a row, then set X,Y.
+; -------------------------------------------------------------------------
 ; Repurposed as a bridge gift room - the Chairman's vanilla bike-voucher story
 ; is replaced by the standard bridge-gift dispatch (BIKE VOUCHER is now one of
 ; his possible rolled gifts, FanClubChairmanGiftList in bridge_gift_menu.asm).

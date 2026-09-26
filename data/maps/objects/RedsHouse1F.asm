@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for REDS_HOUSE_1F
+; (full note at the top of scripts/RedsHouse1F.asm).
 	object_const_def
 	const_export REDSHOUSE1F_MOM
 

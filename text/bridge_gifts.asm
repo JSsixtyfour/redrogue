@@ -169,32 +169,32 @@ _IgaGift8Desc::
 	line "POISON GAS"
 	done
 
-_TradeHouseGift4Desc::
+_FloraGift4Desc::
 	text "Drain heals 30%"
 	line "more HP"
 	done
 
-_TradeHouseGift5Desc::
+_FloraGift5Desc::
 	text "One #MON resists"
 	line "all major status"
 	done
 
-_TradeHouseGift6Desc::
+_FloraGift6Desc::
 	text "Teaches one #MON"
 	line "LEECH SEED"
 	done
 
-_TradeHouseGift7Desc::
+_FloraGift7Desc::
 	text "The MEGA DRAIN"
 	line "Technical Machine"
 	done
 
-_TradeHouseGift8Desc::
+_FloraGift8Desc::
 	text "Teaches one #MON"
 	line "PETAL DANCE"
 	done
 
-_TradeHouseGift9Desc::
+_FloraGift9Desc::
 	text "A LEAF STONE"
 	done
 

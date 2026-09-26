@@ -1,3 +1,5 @@
+; Bridge PC: see data/events/hidden_events.asm, hidden_events_for MR_FUJIS_HOUSE
+; (full note at the top of scripts/MrFujisHouse.asm).
 	object_const_def
 	const_export MRFUJISHOUSE_SUPER_NERD
 	const_export MRFUJISHOUSE_LITTLE_GIRL

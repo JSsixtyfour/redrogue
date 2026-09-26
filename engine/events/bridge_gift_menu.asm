@@ -1246,8 +1246,8 @@ BridgeGiverMapTable:
 	db VIRIDIAN_NICKNAME_HOUSE
 	db CERULEAN_TRASHED_HOUSE
 	db REDS_HOUSE_1F
-	db LAVENDER_CUBONE_HOUSE
-	db CERULEAN_TRADE_HOUSE
+	db IGAS_DOJO
+	db FLORAS_GROTTO
 	db OAKS_LAB
 
 BridgeGiverLists:
@@ -1263,7 +1263,7 @@ BridgeGiverLists:
 	dw OfficerJennyGiftList
 	dw RedsHouseMomGiftList
 	dw IgaGiftList
-	dw TradeHouseGrannyGiftList
+	dw FloraGiftList
 	dw OaksLabOakGiftList
 
 ; ---------------------------------------------------------------------------
@@ -1398,17 +1398,17 @@ IgaGiftList:
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_EVASION, IgaGift7_Text, IgaGift7_Desc
 	gift_entry GIFT_TEACH_MOVE, POISON_GAS, IgaGift8_Text, IgaGift8_Desc
 
-TradeHouseGrannyGiftList: ; Flora's grotto roster (legacy label kept for dispatch ABI).
+FloraGiftList: ; Flora's Grotto roster.
 	db 9
-	gift_entry GIFT_ITEM, NUGGET,     TradeHouseGift1_Text, TradeHouseGift1_Desc
-	gift_entry GIFT_MON_EVOLVE, ODDISH | (BRIDGE_MON_FINALIZE_SPORE << 8), NoThanksText, TradeHouseGift2_Desc
-	gift_entry GIFT_ITEM, MOON_STONE, TradeHouseGift3_Text, TradeHouseGift3_Desc
-	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DRAINING, TradeHouseGift4_Text, TradeHouseGift4_Desc
-	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY, TradeHouseGift5_Text, TradeHouseGift5_Desc
-	gift_entry GIFT_TEACH_MOVE, LEECH_SEED, TradeHouseGift6_Text, TradeHouseGift6_Desc
-	gift_entry GIFT_ITEM, TM_MEGA_DRAIN, TradeHouseGift7_Text, TradeHouseGift7_Desc
-	gift_entry GIFT_TEACH_MOVE, PETAL_DANCE, TradeHouseGift8_Text, TradeHouseGift8_Desc
-	gift_entry GIFT_ITEM, LEAF_STONE, TradeHouseGift9_Text, TradeHouseGift9_Desc
+	gift_entry GIFT_ITEM, NUGGET,     FloraGift1_Text, FloraGift1_Desc
+	gift_entry GIFT_MON_EVOLVE, ODDISH | (BRIDGE_MON_FINALIZE_SPORE << 8), NoThanksText, FloraGift2_Desc
+	gift_entry GIFT_ITEM, MOON_STONE, FloraGift3_Text, FloraGift3_Desc
+	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DRAINING, FloraGift4_Text, FloraGift4_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY, FloraGift5_Text, FloraGift5_Desc
+	gift_entry GIFT_TEACH_MOVE, LEECH_SEED, FloraGift6_Text, FloraGift6_Desc
+	gift_entry GIFT_ITEM, TM_MEGA_DRAIN, FloraGift7_Text, FloraGift7_Desc
+	gift_entry GIFT_TEACH_MOVE, PETAL_DANCE, FloraGift8_Text, FloraGift8_Desc
+	gift_entry GIFT_ITEM, LEAF_STONE, FloraGift9_Text, FloraGift9_Desc
 
 OaksLabOakGiftList:
 	db 7
@@ -1523,14 +1523,14 @@ IgaGift6_Text: db "LIFE ORB@"
 IgaGift7_Text: db "SHADOW STEP@"
 IgaGift8_Text: db "POISON GAS@"
 
-TradeHouseGift1_Text: db "NUGGET@"
-TradeHouseGift3_Text: db "MOON STONE@"
-TradeHouseGift4_Text: db "VERDANT DRAIN@"
-TradeHouseGift5_Text: db "IMMUNITY@"
-TradeHouseGift6_Text: db "LEECH SEED@"
-TradeHouseGift7_Text: db "MEGA DRAIN TM@"
-TradeHouseGift8_Text: db "PETAL DANCE@"
-TradeHouseGift9_Text: db "LEAF STONE@"
+FloraGift1_Text: db "NUGGET@"
+FloraGift3_Text: db "MOON STONE@"
+FloraGift4_Text: db "VERDANT DRAIN@"
+FloraGift5_Text: db "IMMUNITY@"
+FloraGift6_Text: db "LEECH SEED@"
+FloraGift7_Text: db "MEGA DRAIN TM@"
+FloraGift8_Text: db "PETAL DANCE@"
+FloraGift9_Text: db "LEAF STONE@"
 
 OaksLabGift4_Text: db "LIGHT BALL PIKA@"
 OaksLabGift5_Text: db "EEVEE@"
@@ -1744,14 +1744,14 @@ IgaGift3_Desc:
 	text_far _IgaGift3Desc
 	text_end
 
-TradeHouseGift1_Desc:
-	text_far _TradeHouseGift1Desc
+FloraGift1_Desc:
+	text_far _FloraGift1Desc
 	text_end
-TradeHouseGift2_Desc:
-	text_far _TradeHouseGift2Desc
+FloraGift2_Desc:
+	text_far _FloraGift2Desc
 	text_end
-TradeHouseGift3_Desc:
-	text_far _TradeHouseGift3Desc
+FloraGift3_Desc:
+	text_far _FloraGift3Desc
 	text_end
 
 OaksLabGift1_Desc:
@@ -1806,12 +1806,12 @@ ENDM
 	bridge_new_desc IgaGift6
 	bridge_new_desc IgaGift7
 	bridge_new_desc IgaGift8
-	bridge_new_desc TradeHouseGift4
-	bridge_new_desc TradeHouseGift5
-	bridge_new_desc TradeHouseGift6
-	bridge_new_desc TradeHouseGift7
-	bridge_new_desc TradeHouseGift8
-	bridge_new_desc TradeHouseGift9
+	bridge_new_desc FloraGift4
+	bridge_new_desc FloraGift5
+	bridge_new_desc FloraGift6
+	bridge_new_desc FloraGift7
+	bridge_new_desc FloraGift8
+	bridge_new_desc FloraGift9
 	bridge_new_desc OaksLabGift5
 	bridge_new_desc OaksLabGift6
 	bridge_new_desc OaksLabGift7
