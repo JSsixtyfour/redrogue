@@ -5,10 +5,11 @@
 	const_export FLORASGROTTO_GAMBLER
 
 FlorasGrotto_Object:
-	db $a ; border block
+	db $34 ; border block
 
 	def_warp_events
 	warp_event  3,  7, LAST_MAP, 2
+    warp_event  4,  7, LAST_MAP, 2
 
 	def_bg_events
 

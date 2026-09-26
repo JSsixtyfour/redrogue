@@ -49,6 +49,13 @@ Gate_Block::        INCBIN "gfx/blocksets/gate.bst"
 Forest_GFX::        INCBIN "gfx/tilesets/forest.2bpp"
 Forest_Block::      INCBIN "gfx/blocksets/forest.bst"
 
+; Underground moved here from "Tilesets 3" (ROMX $1B) on 2026-09-25: that bank
+; was exactly full and the Ship tileset/blockset growth pushed it 80 bytes over.
+; Same bank-safety argument as Facility below: the tileset header stores
+; BANK(Underground_GFX), and GFX + Block stay together in one bank.
+Underground_GFX::   INCBIN "gfx/tilesets/underground.2bpp"
+Underground_Block:: INCBIN "gfx/blocksets/underground.bst"
+
 
 SECTION "Tilesets 3", ROMX
 
@@ -64,8 +71,6 @@ Lab_GFX::           INCBIN "gfx/tilesets/lab.2bpp"
 Lab_Block::         INCBIN "gfx/blocksets/lab.bst"
 Club_GFX::          INCBIN "gfx/tilesets/club.2bpp"
 Club_Block::        INCBIN "gfx/blocksets/club.bst"
-Underground_GFX::   INCBIN "gfx/tilesets/underground.2bpp"
-Underground_Block:: INCBIN "gfx/blocksets/underground.bst"
 
 
 SECTION "Tilesets 4", ROMX

@@ -159,8 +159,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  5,  0, DisplayOakLabRightPoster, SPRITE_FACING_UP
 	hidden_event  0,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  1,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
-	hidden_event  8,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC PLACEHOLDER: the drawn PC at (0,1)/(1,1) is the email above, which wins
-    ;hidden_event  6,  3, Rogue_Pokemon_Display_1, SPRITE_FACING_UP
+	hidden_event  2,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; the drawn PC at (0,1)/(1,1) is the email above, so I added another one!
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_POKECENTER
@@ -459,7 +458,7 @@ DEF ANY_FACING EQU $d0
 
 	hidden_events_for BILLS_HOUSE
 	hidden_event  1,  4, BillsHousePC, SPRITE_FACING_UP
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; bridge PC PLACEHOLDER: no PC drawn yet
+	hidden_event  6,  6, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1 ; end
 
 	hidden_events_for VIRIDIAN_CITY
@@ -586,23 +585,21 @@ DEF ANY_FACING EQU $d0
 	; OpenBridgeBillsPC only answers when the room was entered from the lobby.
 	; =========================================================================
 	hidden_events_for SS_ANNE_CAPTAINS_ROOM
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
+	hidden_event  5,  5, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for POKEMON_FAN_CLUB
-	; PLACEHOLDER: a PC-like block $38 was drawn at block (3,3), the bottom-right
-	; corner (steps 6-7, 6-7), where nothing can stand below it and face up.
-	; Move it up a row, or pick a facing, then set X,Y.
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP
+	; Interior PC block $38 at block (3,3): its top half (row 6) is solid, its
+	; bottom row (6,7)/(7,7) is walkable floor to stand on facing up.
+	hidden_event  6,  6, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for WARDENS_HOUSE
 	hidden_event  0,  2, OpenBridgeBillsPC, SPRITE_FACING_UP ; Lab PC $08 at block (0,1)
-	hidden_event  1,  2, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for VIRIDIAN_NICKNAME_HOUSE
-	hidden_event  6,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; used by Old Man's House
 	db -1
 
 	hidden_events_for CERULEAN_TRASHED_HOUSE
@@ -610,15 +607,13 @@ DEF ANY_FACING EQU $d0
 	db -1
 
 	hidden_events_for REDS_HOUSE_1F
-	hidden_event  4,  0, OpenBridgeBillsPC, SPRITE_FACING_UP ; PLACEHOLDER: no PC drawn yet
+	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ;
 	db -1
 
 	hidden_events_for IGAS_DOJO
 	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; Dojo PC $65 at block (0,0)
-	hidden_event  1,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1
 
 	hidden_events_for FLORAS_GROTTO
 	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; Gym PC $65 at block (0,0)
-	hidden_event  1,  1, OpenBridgeBillsPC, SPRITE_FACING_UP
 	db -1

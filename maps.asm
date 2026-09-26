@@ -96,7 +96,9 @@ SaffronPidgeyHouse_Blocks:
 VermilionPidgeyHouse_Blocks:
 PewterNidoranHouse_Blocks:
 PewterSpeechHouse_Blocks:
-ViridianNicknameHouse_Blocks: INCBIN "maps/ViridianNicknameHouse.blk"
+; The Old Man's bridge room owns this file; draw into it freely. The vanilla
+; houses chained above are not in Red Rogue and just inherit whatever it holds.
+ViridianNicknameHouse_Blocks: INCBIN "maps/OldMansHouse.blk"
 
 ; Bridge rooms with their own drawn layouts. Blocks are read with the map
 ; header's bank mapped in (LoadTileBlockMap), so these must stay in the same

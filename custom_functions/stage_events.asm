@@ -283,11 +283,12 @@ StageEventTrainerTable:
 ; finally drains, status returns to 1, and the position snaps. That drain is
 ; the "warp, then finalize".
 ;
-; Clearing MOVEMENTSTATUS is the whole fix, one byte per slot. UpdateNPCSprite
-; tests it for zero and `jp z, InitializeSpriteStatus` BEFORE the availability
-; check, so the slot re-initialises even while off screen, and the status-1
-; path it lands in re-derives the screen position every tick. That is exactly
-; the state a non-battle LoadMapHeader leaves a freshly loaded sprite in.
+; Taking the slot out of status 2 is the whole fix, one byte per slot. The
+; status-1 (ready) path re-derives the screen position every tick once the
+; sprite is available. It is set to 1, not 0: 0 re-runs InitializeSpriteStatus,
+; whose IMAGEINDEX $ff blanked an on-screen NPC for a frame after every battle
+; (2026-09-25). Off screen the two are equivalent, since CheckSpriteAvailability
+; writes $ff itself there.
 ;
 ; INPUT: d = base sprite slot (the pair is d and d+1).
 ; Clobbers a/b/c/h/l. Preserves d/e - which is why the slot travels in d:
@@ -307,8 +308,17 @@ StageEventSettleSprite:
 	ld h, HIGH(wSpriteStateData1)   ; page-aligned, so the offset IS the low byte
 	add SPRITESTATEDATA1_MOVEMENTSTATUS
 	ld l, a
-	xor a
-	ld [hl], a                      ; -> UpdateNPCSprite re-initialises this slot
+	; READY (1), NOT 0 (2026-09-25). Status 0 routes UpdateNPCSprite through
+	; InitializeSpriteStatus, which writes IMAGEINDEX $ff: a sprite already on
+	; screen after a battle blanked for a frame. MEASURED in BGB: $ff from
+	; InitializeSpriteStatus, then UpdateSpriteImage $20, then $2C. Status 1 still
+	; ends the frozen status-2 delay above and re-derives position every tick. A
+	; slot already at 0 (fresh map load) stays 0 so it gets its normal init.
+	ld a, [hl]
+	and a
+	jr z, .statusSet
+	ld [hl], 1
+.statusSet
 	farcall InitializeSpriteScreenPosition
 	ret
 

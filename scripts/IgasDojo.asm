@@ -23,15 +23,16 @@ IgasDojo_Script:
 
 IgasDojo_TextPointers:
 	def_text_pointers
-	dw_const IgasDojoCuboneText,       TEXT_IGASDOJO_CUBONE
+	dw_const IgasDojoNidorinoText,       TEXT_IGASDOJO_NIDORINO
 	dw_const IgasDojoIgaText, TEXT_IGASDOJO_IGA
+    dw_const IgasDojoBoulderText,       TEXT_IGASDOJO_BOULDER
 	dw_const IgasDojo_Gift_Text, TEXT_IGASDOJO_GIFT_1
 	EXPORT TEXT_IGASDOJO_GIFT_1 ; used by engine/events/rogue_reward_menu.asm BridgeGiftMenu
 
-IgasDojoCuboneText:
-	text_far _IgasDojoCuboneText
+IgasDojoNidorinoText:
+	text_far _IgasDojoNidorinoText
 	text_asm
-	ld a, CUBONE
+	ld a, NIDORINO
 	call PlayCry
 	jp TextScriptEnd
 
@@ -66,3 +67,7 @@ IgasDojoIgaText:
 
 IgasDojo_Gift_Text:
 	script_bridge_gift
+
+IgasDojoBoulderText:
+	text_far _IgasDojoBoulderText
+	text_end
