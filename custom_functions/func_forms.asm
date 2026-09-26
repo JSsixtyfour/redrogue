@@ -237,6 +237,28 @@ GetFormNameSource::
 ; ---------------------------------------------------------------------------
 RogueRollFormForSpecies::
 	ld b, e                      ; b = species; e is the return slot from here on
+; An Eevee that EvolveMonByLevel just evolved has already had its branch picked
+; (RogueRollEeveeBranch below), form included - use it rather than rolling. The
+; byte is consumed by ANY call, so a pick whose mon never reached a form roll
+; cannot be claimed by a later one; the species check covers the same case for
+; a call that does arrive, but for a different mon.
+	ld hl, wPendingEeveeForm
+	ld a, [hl]
+	ld [hl], 0
+	bit 7, a
+	jr z, .roll
+	ld c, a
+	rrca
+	rrca
+	and %11                      ; a = species - FLAREON as recorded
+	add FLAREON
+	cp b
+	jr nz, .roll                 ; stale: recorded for some other mon
+	ld a, c
+	and %11
+	ld e, a                      ; the picked form, possibly 0
+	ret
+.roll
 	call Random                  ; preserves bc/de/hl
 	cp FORM_SPAWN_ODDS
 	jr nc, .noForm               ; the common case - an ordinary base-species spawn
@@ -439,6 +461,56 @@ IsFormCandidate:
 	pop af
 	and a                        ; clear carry
 	ret
+
+; ---------------------------------------------------------------------------
+; RogueRollEeveeBranch
+;
+; Uniform pick over Eevee's eight stone branches, keeping only the ones whose
+; form is unlocked this run - the same IsFormAllowed gate every other form uses,
+; so this can never disagree with FormJohtoPairs. Rejection sampling from a
+; uniform 0-7 stays uniform over what is accepted, and the three base
+; eeveelutions always pass, so it ends quickly (at worst 8/3 rolls on average).
+;
+; INPUT:  d = active group mask (RogueGetActiveGroupMask)
+; OUTPUT: d = species, e = form index
+; CLOBBERS: af, bc, hl
+; ---------------------------------------------------------------------------
+RogueRollEeveeBranch::
+	call Random
+	and %111
+	add a                        ; 2-byte (species, form) pairs
+	ld c, a
+	ld b, 0
+	ld hl, EeveeBranches
+	add hl, bc
+	ld b, [hl]                   ; b = species
+	inc hl
+	ld a, [hl]
+	ld c, a                      ; c = form; IsFormAllowed preserves bc
+	and a
+	jr z, .accept                ; a base eeveelution is always allowed
+	call IsFormAllowed           ; b = species, a = form, d = mask
+	jr nc, RogueRollEeveeBranch
+.accept
+	ld d, b
+	ld e, c
+	ret
+
+EeveeBranches:
+; Same eight outcomes as EeveeEvosMoves' stone entries plus evos_moves.asm's
+; EvoStoneForms, in the Mist Stone's order (bridge_effects.asm EeveeMistStones).
+	db FLAREON,  0 ; FIRE_STONE
+	db JOLTEON,  0 ; THUNDER_STONE
+	db VAPOREON, 0 ; WATER_STONE
+	db FLAREON,  1 ; LEAF_STONE  - Leafeon
+	db JOLTEON,  1 ; SUN_STONE   - Espeon
+	db JOLTEON,  2 ; DUSK_STONE  - Umbreon
+	db VAPOREON, 1 ; ICE_STONE   - Glaceon
+	db VAPOREON, 2 ; MOON_STONE  - Sylveon
+EeveeBranchesEnd:
+ASSERT EeveeBranchesEnd - EeveeBranches == 8 * 2, "RogueRollEeveeBranch masks Random to 0-7"
+ASSERT JOLTEON == FLAREON + 1 && VAPOREON == FLAREON + 2, \
+       "wPendingEeveeForm stores the species as a 2-bit offset from FLAREON"
 
 ; ---------------------------------------------------------------------------
 ; RogueRollFormForTier

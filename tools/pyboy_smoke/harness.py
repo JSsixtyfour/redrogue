@@ -240,9 +240,9 @@ class RedRogueHarness:
         contents. wRandomCarry (offset 1) is kept below 253, the generator's
         hard invariant; wRandomIndex (offset 0) is fixed at 1, a valid
         running-generator lag index (1..8); the 8 wRandomQ lag bytes
-        (offsets 2..9) accept any byte value and are derived from a small
-        16-bit LCG stepped 8 times so that different seeds give clearly
-        different tables.
+        (offsets 2..9) accept any byte value and are the TOP byte of a
+        32-bit LCG stepped 8 times, so every bit of all four seed bytes
+        reaches the table and different seeds give clearly different tables.
         """
         values = [int(value) & 0xFF for value in seed]
         while len(values) < 4:
@@ -266,10 +266,18 @@ class RedRogueHarness:
         if lcg_state == 0:
             lcg_state = 0xACE1ACE1
 
+        # Keep the TOP byte. A step mod 2^32 only carries upward, so bit n of
+        # the result depends only on input bits 0..n. The old `>> 16` kept
+        # bits 16-23, which never see bits 24-31 - exactly where values[0]
+        # sits - so seeds differing only in their first element produced the
+        # IDENTICAL table (measured 2026-09-25: [0, 11, 17, 23] and
+        # [1, 11, 17, 23] rolled the same $9f/$a2/$d1). values[0]'s only other
+        # use is hRandomAdd, which Random overwrites and never reads. Bits
+        # 24-31 depend on every input bit.
         q_bytes = []
         for _ in range(8):
             lcg_state = (lcg_state * 1103515245 + 12345) & 0xFFFFFFFF
-            q_bytes.append((lcg_state >> 16) & 0xFF)
+            q_bytes.append((lcg_state >> 24) & 0xFF)
 
         table = [index, carry] + q_bytes
         for offset, value in enumerate(table):

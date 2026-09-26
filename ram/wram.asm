@@ -1278,7 +1278,11 @@ wStatusScreenHPBarColor:: db
 ; growing 12->14. Phase - spinner speedup fix: 1 more B taken for
 ; wSpinnerTileFrameCount (WRAM_BIBLE.md D2 gap, unsaved, below wMainDataStart).
 wSpinnerTileFrameCount:: db
-	ds 4
+; 1 more B from this pad (2026-09-25): EvolveMonByLevel's Eevee branch pick,
+; handed to the next RogueRollFormForSpecies. Transient, so unsaved is correct.
+; Bit 7 = pending, bits 2-3 = species - FLAREON, bits 0-1 = form.
+wPendingEeveeForm:: db
+	ds 3
 
 wCopyingSGBTileData::
 wWhichPartyMenuHPBar::

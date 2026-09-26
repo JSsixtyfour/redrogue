@@ -1031,7 +1031,15 @@ LoadEvoListForSpecies::
 ; allows (used for enemy trainer mons AND reward/given mons - despite the
 ; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
 EvolveMonByLevel:
+	xor a
+	ld [wPendingEeveeForm], a     ; only .handleeevee below may leave one pending
+; d must survive the load: .lvl_evolve's EEVEE test reads it. LoadEvoListForSpecies
+; ends with de pointing past wEvoDataBuffer, so without this push the test compared
+; that address's high byte ($CD) and .handleeevee never ran - every Eevee at 35+
+; became FLAREON, its first-listed entry (measured 2026-09-25, 24/24 runs).
+	push de
 	call LoadEvoListForSpecies
+	pop de
 
 .evoloop
 	ld a, [hli]
@@ -1111,28 +1119,26 @@ EvolveMonByLevel:
 	inc hl
 	jr .evoloop
 
+; Reached only at level 35+ (every Eevee entry is EVOLVE_ITEM, so the item floor
+; above gates it). Uniform over the eight stone branches, like the Mist Stone,
+; restricted to the ones this run has unlocked: the three Kanto eeveelutions
+; always, Espeon/Umbreon with Johto, Leafeon/Glaceon/Sylveon with Time Warp.
+; Five of the eight are FORMS, so the form is published in wPendingEeveeForm for
+; the caller's next RogueRollFormForSpecies instead of being left to that roll.
 .handleeevee
-	call Random
-	and $0F
-	cp $03
-	ret c	;eevee
-	push af
-	ld a, FLAREON
+	call RogueGetActiveGroupMask  ; a = mask; preserves bc
+	ld d, a
+	farcall RogueRollEeveeBranch  ; d = species, e = form
+	ld a, d
 	ld [wCurPartySpecies], a
-	pop af
-	cp $07
-	ret c ;flareon
-	push af
-	ld a, VAPOREON
-	ld [wCurPartySpecies], a
-	pop af
-	cp $0B
-	ret c ;vaporeon
-	;else jolteon
-	ld a, JOLTEON
-	ld [wCurPartySpecies], a
+	sub FLAREON
+	add a
+	add a                         ; species offset -> bits 2-3
+	or e                          ; form -> bits 0-1
+	or $80                        ; pending
+	ld [wPendingEeveeForm], a
 	ret
-	
+
 
 ;joenote - take the 'mon in wCurPartySpecies, find its previous evolution, and put it back in wCurPartySpecies
 DevolveMon:	

@@ -1418,7 +1418,8 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 # garbage by ball 1. complete_records is the pre-baking
                 # snapshot, so the entry footprint here is the real one.
                 # Second, a hall ball sits on a straight one-wide run, never on
-                # a turn, a branch or a socket.
+                # a turn or a branch. A doorway (socket) IS allowed since
+                # 2026-09-25; see the in_doorway note below.
                 entry_x, entry_y, entry_w, entry_h = complete_records[0:4]
                 for block_x, block_y in ball_blocks:
                     self.assertFalse(
@@ -1439,6 +1440,24 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     if in_room:
                         continue
                     hall_real_balls += 1
+                    # A ball in a DOORWAY (a floor cell cut into a room's
+                    # one-block wall ring) is allowed by design (user decision
+                    # 2026-09-25): balls vanish once taken or beaten, so one
+                    # never blocks a door for good. Its neighbours are the room
+                    # interior on one side, which room decoration may later
+                    # cover, so the straight-run rule below does not apply to it.
+                    in_doorway = any(
+                        complete_records[rid * 6 + 2]
+                        and complete_records[rid * 6] - 1
+                        <= block_x
+                        <= complete_records[rid * 6] + complete_records[rid * 6 + 2]
+                        and complete_records[rid * 6 + 1] - 1
+                        <= block_y
+                        <= complete_records[rid * 6 + 1] + complete_records[rid * 6 + 3]
+                        for rid in range(12)
+                    )
+                    if in_doorway:
+                        continue
                     self.assertIn(
                         (
                             playable[(block_y - 1) * 20 + block_x] == 0x0E,

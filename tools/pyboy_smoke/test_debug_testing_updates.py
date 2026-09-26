@@ -179,6 +179,29 @@ class Debug2SeedTest(HarnessTestCase):
         self.assertNotEqual(first, second)
 
 
+class SeedRngTest(HarnessTestCase):
+    def table_for(self, seed: list[int]) -> list[int]:
+        h = self.harness
+        assert h is not None
+        h.seed_rng(seed)
+        return h.read_bytes("wRandomTable", 10)
+
+    def test_every_seed_element_reaches_the_table(self) -> None:
+        # Random reads only wRandomTable, so a seed element that does not
+        # change the table does not change the stream. Element 0 used to sit
+        # in LCG bits 24-31, which the old `>> 16` output never saw.
+        base = [0x11, 0x22, 0x33, 0x44]
+        base_table = self.table_for(base)
+        for position in range(4):
+            varied = list(base)
+            varied[position] ^= 0x01
+            with self.subTest(position=position):
+                self.assertNotEqual(self.table_for(varied), base_table)
+
+    def test_same_seed_same_table(self) -> None:
+        self.assertEqual(self.table_for([5, 6, 7, 8]), self.table_for([5, 6, 7, 8]))
+
+
 class LobbyNpcRollTest(HarnessTestCase):
     EXTRAS = ("TOGGLE_PC_POKESALESMAN", "TOGGLE_PC_TRADENERD", "TOGGLE_PC_MOVETUTOR")
 
@@ -215,7 +238,7 @@ class LobbyNpcRollTest(HarnessTestCase):
         for seed in range(4):  # within call_routine's ~10-per-boot budget
             for name in self.EXTRAS:
                 self.set_hidden(name, True)
-            h.seed_rng([3, 5, 9, seed])  # vary the LOW byte: see test_normal_run_rolls_the_extras
+            h.seed_rng([seed, 3, 5, 9])
             h.park_before_hijack()
             h.call_routine("PCPsychicSetup")
             for name in self.EXTRAS:
@@ -227,15 +250,13 @@ class LobbyNpcRollTest(HarnessTestCase):
         h.boot_fight2(seed=1)  # FIGHT 2 never sets BIT_DEBUG_MODE; clear it anyway
         self.set_debug_mode(False)
         shown = hidden = 0
-        # Vary seed_rng's LAST element. It folds the four bytes into a 32-bit
-        # LCG with element 0 in bits 24-31 and keeps output bits 16-23, which an
-        # LCG step never carries down into, so seeds differing only in element 0
-        # give the IDENTICAL table. Measured: [0, ...] and [1, ...] rolled the
-        # same $9f/$a2/$d1 here.
+        # Varies seed_rng's FIRST element on purpose: before the 2026-09-25
+        # harness fix that element never reached the table, and this test
+        # found it (all six "seeds" rolled the same $9f/$a2/$d1).
         for seed in range(6):
             for name in self.EXTRAS:
                 self.set_hidden(name, False)
-            h.seed_rng([11, 17, 23, seed])
+            h.seed_rng([seed, 11, 17, 23])
             h.park_before_hijack()
             h.call_routine("PCPsychicSetup")
             for name in self.EXTRAS:

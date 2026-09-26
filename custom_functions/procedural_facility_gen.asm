@@ -3655,6 +3655,13 @@ PFacFindFakeCorridorAnchor:
 
 ; Z set only for finalized plain floor outside every room floor rectangle, with
 ; exactly one straight pair of plain-floor neighbors. CurX/CurY are preserved.
+;
+; DOORWAYS ARE ALLOWED, deliberately (user decision 2026-09-25). A doorway is a
+; floor cell cut into a room's one-block wall ring, so it lies outside the floor
+; rectangle, and a corridor entering straight through it reads as a straight
+; run: corridor on one side, room floor on the other. Real and fake balls can
+; therefore land in a doorway. That is safe because both kinds disappear once
+; taken or beaten, so a doorway ball never blocks the room for good.
 PFacCorridorAnchorValid:
     call PFacReadBlock
     cp PFAC_FLOOR
@@ -5022,25 +5029,36 @@ PFacPlaceExitRoom:
     ld a, 1
     ld [wBuffer + wPFacCandY], a
 .sideAccepted
+    ; Keep side exits at least 12 block steps from the south entry (9,19).
+    ; West contributes 9 horizontal steps, so row <=16; east contributes 10,
+    ; so row <=17. d = that limit + 1.
+    ld d, 17
+    ld a, [sProcFacilityExitEdge]
+    cp 1
+    jr z, .haveRowLimit
+    inc d
+.haveRowLimit
+    ; The limit must hold for the room's CENTRE row as well as the row rolled
+    ; below: if this room later takes a premade template, PFacCarveEdgeOpenings
+    ; moves the exit to its canonical socket, the centre (Y + H/2, as
+    ; PFacRoomCenter computes it). Checking only the rolled row let a low
+    ; premade exit room pull the exit to 11 steps from the entry (measured,
+    ; west edge: rolled row 16, room Y 16 H 3, centre 17). Template choice
+    ; keeps this rectangle, so the centre is already known here. Tested before
+    ; the roll so that every room that passes draws exactly what it drew before.
+    ld a, [wBuffer + wPFacCandH]
+    srl a
+    ld hl, wBuffer + wPFacCandY
+    add a, [hl]
+    cp d
+    jr nc, .sideDistanceReject
     ld a, [wBuffer + wPFacCandH]
     ld c, a
-    call Rangerandom
+    call Rangerandom              ; preserves de
     ld hl, wBuffer + wPFacCandY
     add a, [hl]
     ld [sProcFacilityExitI], a
-    ; Keep side exits at least 12 block steps from the south entry (9,19).
-    ; West contributes 9 horizontal steps, so row <=16; east contributes 10,
-    ; so row <=17.
-    ld b, a
-    ld a, [sProcFacilityExitEdge]
-    cp 1
-    ld a, b
-    jr nz, .eastDistance
-    cp 17
-    jr c, .store
-    jr .sideDistanceReject
-.eastDistance
-    cp 18
+    cp d
     jr c, .store
 .sideDistanceReject
     ld hl, wBuffer + wPFacRetry

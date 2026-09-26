@@ -99,9 +99,9 @@ PCemStageRunScripts::
 ; excluded from the hideout roll, so it can never owe anything back).
 ;
 ; INPUT: d = this floor's TEXT_..._STAGE_RECOVER id. It travels in d rather
-; than a because the body farcalls three times and Bankswitch destroys
-; a/b/c/h/l on both legs - d and e are the only registers that survive one.
-; The CheckEvent macro only touches a/hl, so d is safe across it too.
+; than a because Bankswitch destroys a/b/c/h/l on both legs. That only covers
+; the bank switch, not the callee: StageEventGiveBack clobbers de, so d is
+; pushed around that one call. The CheckEvent/SetEvent macros only touch a/hl.
 ; ============================================================
 PCemStageEventRecoverCheck::
 	ld a, [wStageEvent]
@@ -123,7 +123,16 @@ PCemStageEventRecoverCheck::
 	; GiveBack stores its own result into wStageEventScratch. It cannot hand
 	; it back in `a`: farcall returns through Bankswitch, which ends with
 	; `ld a, b` = this script's ROM bank.
+	;
+	; d HAS TO BE SAVED HERE (2026-09-25). Bankswitch keeps d/e, but GiveBack
+	; itself does not: StageEventRebuildStolenMon and GiveItem both use de, so
+	; d came back as a pointer byte and DisplayTextID printed whatever id that
+	; happened to be - reported as "Repel's effect wore off" in place of the
+	; recovery line. The other three stages load a constant after this call
+	; and never had the problem.
+	push de
 	farcall StageEventGiveBack      ; -> wStageEventScratch, -> SETTLED or OWED
+	pop de
 	; A PAIR IS ONE ENCOUNTER: beating either one ends it. Both NPCs used to
 	; be hidden here, which is what made that true. 1C leaves them standing so
 	; a hand-over that found no room can be retried by talking to them, so the

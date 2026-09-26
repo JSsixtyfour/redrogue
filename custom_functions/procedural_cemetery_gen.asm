@@ -426,7 +426,13 @@ PCemGenerateOneMap:
 	xor a
 	ld [wBuffer + wCemIsProcedural], a
 	call PCemCopyPremadeTemplate
-	call PCemDecorateWalls
+	; NO PCemDecorateWalls HERE (2026-09-25, followup 14). Every variant in
+	; PCemWallDecoVariants has FEWER walkable quadrants than the block it
+	; replaces - the sources are walkable-baseboard edge pieces - and a prefab
+	; has no march afterwards to re-carve what decoration closed. Measured:
+	; 9/200 layouts sealed, all premade, all at a decorated cell (Tower6F's
+	; block-6 top corridor, block 29 before floor 4's exit). The procedural
+	; branch keeps it because PCemMarchPath runs after and carves through.
 	call PCemPlaceAuthoredBall
 	call PCemRollItem
 	ret
@@ -716,7 +722,8 @@ PCemPlaceAuthoredBall:
 ; ============================================================
 ; PCemDecorateWalls
 ; Replaces eligible wall/feature tiles with decorative variants.
-; SRAM must be enabled. Runs on both premade and procedural maps.
+; SRAM must be enabled. Procedural maps only: every variant closes walkable
+; cells, so it is safe only ahead of PCemMarchPath's carve (see .premade).
 ; Each eligible tile has a 1-in-4 chance of being decorated.
 ; ============================================================
 PCemDecorateWalls:
@@ -1900,6 +1907,18 @@ PCemPlaceStageEventNpcs:
 	ld [wSprite03StateData2MapY], a
 	ld a, 4 + 4
 	ld [wSprite03StateData2MapX], a
+	; Both stand EAST of the player's entrance cell (3,9), so they face LEFT,
+	; not the object list's DOWN. Same two writes the forest boss needs: the
+	; facing byte alone snaps back, because UpdateNPCSprite re-reads movement
+	; byte 2 from wMapSpriteData every tick. Slot n's entry is at
+	; wMapSpriteData + (n - 1) * 2. Arrival only - the hideout is never on
+	; floor 1, and floors 2-4 reload the object list, so DOWN comes back there.
+	ld a, SPRITE_FACING_LEFT
+	ld [wSprite02StateData1FacingDirection], a
+	ld [wSprite03StateData1FacingDirection], a
+	ld a, LEFT
+	ld [wMapSpriteData + 2], a
+	ld [wMapSpriteData + 4], a
 	jr .syncPixels
 .atHideout
 	ld a, RAMG_SRAM_ENABLE
