@@ -514,6 +514,11 @@ AIScaleDamageByAccuracy::
 ; return - the same reasoning AIGetMoveHitChance's header sets out.
 ; Clobbers af, bc, de, hl.
 AIScaleDamageForCrit::
+	ld a, [wEnemyMoveEffect]
+	cp SPECIAL_DAMAGE_EFFECT
+	ret z ; fixed damage bypasses CriticalHitTest in real execution
+	cp SUPER_FANG_EFFECT
+	ret z
 	ld a, [wCurSpecies]
 	push af
 	ldh a, [hWhoseTurn]

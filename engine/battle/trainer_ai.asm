@@ -42,7 +42,7 @@ AIEnemyTrainerChooseMoves:
 	ld c, a
 	ld b, $0
 	add hl, bc    ; advance pointer to forbidden move
-	ld [hl], $50  ; forbid (highly discourage) disabled move
+	ld [hl], AI_SCORE_DISABLED ; forbid disabled move
 .noMoveDisabled
 ; AI Overhaul Phase 1: which scoring layers run is now driven by the
 ; battle-count-derived SKILL TIER, not by the trainer class. AIGetLayerWord
@@ -89,50 +89,55 @@ AIEnemyTrainerChooseMoves:
 ; class-specific AI (Gambler's Paradise) survives at every skill level rather
 ; than only appearing once its tier happens to include AI_PLAN.
 	call AIRunPersonality
-.loopFindMinimumEntries ; all entries will be decremented sequentially until one of them is zero
-	ld hl, wBuffer  ; temp move selection array
-	ld de, wEnemyMonMoves  ; enemy moves
-	ld c, NUM_MOVES
-.loopDecrementEntries
-	ld a, [de]
-	inc de
-	and a
-	jr z, .loopFindMinimumEntries
-	dec [hl]
-	jr z, .minimumEntriesFound
-	inc hl
-	dec c
-	jr z, .loopFindMinimumEntries
-	jr .loopDecrementEntries
-.minimumEntriesFound
-	ld a, c
-.loopUndoPartialIteration ; undo last (partial) loop iteration
-	inc [hl]
-	dec hl
-	inc a
-	cp NUM_MOVES + 1
-	jr nz, .loopUndoPartialIteration
-	ld hl, wBuffer  ; temp move selection array
-	ld de, wEnemyMonMoves  ; enemy moves
-	ld c, NUM_MOVES
-.filterMinimalEntries ; all minimal entries now have value 1. All other slots will be disabled (move set to 0)
+.loopFindMinimumEntries
+; Find the minimum among legal, existing slots. Legality is checked here even
+; if a personality layer wrote scores directly, bypassing the score helpers.
+	ld hl, wBuffer
+	ld de, wEnemyMonMoves
+	ld b, 1
+	ld c, $ff
+.findMinimum
 	ld a, [de]
 	and a
-	jr nz, .moveExisting
-	ld [hl], a
-.moveExisting
+	jr z, .advanceMinimum
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	cp b
+	jr z, .advanceMinimum
 	ld a, [hl]
-	dec a
-	jr z, .slotWithMinimalValue
-	xor a
-	ld [hli], a     ; disable move slot
-	jr .next
-.slotWithMinimalValue
-	ld a, [de]
-	ld [hli], a     ; enable move slot
-.next
+	cp c
+	jr nc, .advanceMinimum
+	ld c, a
+.advanceMinimum
+	inc hl
 	inc de
-	dec c
+	inc b
+	ld a, b
+	cp NUM_MOVES + 1
+	jr nz, .findMinimum
+	ld hl, wBuffer
+	ld de, wEnemyMonMoves
+	ld b, 1
+.filterMinimalEntries
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	cp b
+	jr z, .exclude
+	ld a, [hl]
+	cp c
+	jr nz, .exclude
+	ld a, [de]
+	jr .storeCandidate
+.exclude
+	xor a
+.storeCandidate
+	ld [hli], a
+	inc de
+	inc b
+	ld a, b
+	cp NUM_MOVES + 1
 	jr nz, .filterMinimalEntries
 	ld hl, wBuffer    ; use created temporary array as move set
 	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
@@ -729,6 +734,8 @@ TrainerAI:
 	dec a ; a = resolved tier (0-3)
 	cp AI_TIER_SKILLED
 	jr c, .dispatch ; T0/T1: vanilla, no ace restriction
+	call AITrySmartSwitch
+	ret c ; switch and item eligibility are independent
 	farcall AIActiveMonIsAce ; bank $2C - loops the enemy party
 	jr nc, .noItem ; not the ace: no item this turn
 .dispatch
@@ -759,6 +766,44 @@ TrainerAI:
 	and a ; carry clear: no item used, TrainerAI's caller falls through to a
 	      ; normal move-based turn
 	ret
+
+; T2+ switching is independent of item eligibility and remaining item uses.
+; Preserve the existing class scope by inspecting the actual dispatch pointer:
+; Juggler, Cooltrainer F, and all classes sharing AgathaAI. The smart predicate
+; owns emergency certainty and its generic probability; low tiers still use
+; the original class rolls below. No selected player input is consulted here.
+AITrySmartSwitch:
+	ld a, [wTrainerClass]
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, TrainerAIPointers + 1
+	add hl, bc
+	add hl, bc
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld hl, .handlers
+	ld b, (.handlersEnd - .handlers) / 2
+.loop
+	ld a, [hli]
+	cp e
+	jr nz, .next
+	ld a, [hl]
+	cp d
+	jp z, AISwitchIfEnoughMons
+.next
+	inc hl
+	dec b
+	jr nz, .loop
+	and a
+	ret
+.handlers
+	dw JugglerAI, CooltrainerFAI, AgathaAI
+.handlersEnd
+	ASSERT BANK(TrainerAIPointers) == BANK(@)
+	ASSERT BANK(AISwitchIfEnoughMons) == BANK(@)
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
@@ -1051,11 +1096,9 @@ AISwitchIfEnoughMons:
 	cp 2    ; don't bother if only 1
 	jr c, .noSwitch
 ; AI Overhaul Phase 4: having a spare mon is now only the PRECONDITION, not the
-; decision. The three callers (JugglerAI / BlackbeltAI / AgathaAI) still make
-; their own class-specific random roll before reaching here, so hooking the
-; decision at this single point upgrades all of them without touching any of
-; them. AIShouldSwitch returns carry SET for "switch" and deliberately returns
-; carry SET at T0/T1 too, so the low tiers keep exactly today's behaviour.
+; decision. T2+ reaches here through AITrySmartSwitch before item gates.
+; T0/T1 retain the JugglerAI / CooltrainerFAI / AgathaAI class rolls, with
+; AIShouldSwitch deliberately returning carry SET for those low tiers.
 	farcall AIShouldSwitch
 	jp c, SwitchEnemyMon
 .noSwitch

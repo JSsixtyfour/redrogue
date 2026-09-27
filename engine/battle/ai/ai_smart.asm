@@ -592,12 +592,9 @@ AISmart_Screen:
 	xor a
 	ret
 
-; Haze is wasted if nothing on either side has actually changed: no player
-; stat is boosted, and no enemy stat is lowered. AI_Redundant does not cover
-; this (it only fires on effect-specific "already applied" states, and Haze
-; has no such single flag - it clears everything at once). Source: Yume
-; IsHazeWasted, HP-mod-only subset (this fork's Haze does not touch status,
-; see move_effects/haze.asm, so no status check is needed here).
+; Prefer retaining our boosts/player debuffs when no beneficial stat reset
+; exists. Haze also clears statuses: leave those mixed cases to later tuning
+; rather than calling them wasted. AIRedundant_Haze owns the exact no-op test.
 AISmart_Haze:
 	ld hl, wPlayerMonAttackMod
 	ld b, 6 ; the 6 real stat mods (Attack/Defense/Speed/Special/Accuracy/
@@ -605,8 +602,8 @@ AISmart_Haze:
 	        ; padding ResetStatMods also sweeps that carries no game state
 .checkPlayerBoosted
 	ld a, [hli]
-	cp BASE_STAT_LEVEL
-	jr nc, .found ; player stat at/above neutral -> Haze would undo a boost
+	cp BASE_STAT_LEVEL + 1
+	jr nc, .found ; strictly boosted, not merely neutral
 	dec b
 	jr nz, .checkPlayerBoosted
 	ld hl, wEnemyMonAttackMod
@@ -617,6 +614,8 @@ AISmart_Haze:
 	jr c, .found ; enemy stat below neutral -> Haze would restore it
 	dec b
 	jr nz, .checkEnemyLowered
+	call AIHazeHasClearableStatus
+	jr nz, .found ; mixed status trade; no blanket penalty
 	ld a, AI_STRONG
 	and a
 	ret

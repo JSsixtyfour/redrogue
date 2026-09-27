@@ -6182,7 +6182,7 @@ _AIEstimateForTurn:
 	cp SPECIAL_DAMAGE_EFFECT
 	jr z, .specialDamage
 	cp OHKO_EFFECT
-	jr z, .done ; CalculateDamage dispatches OHKO_EFFECT straight into
+	jp z, .done ; CalculateDamage dispatches OHKO_EFFECT straight into
 	            ; JumpToOHKOMoveEffect, which CALLS JumpMoveEffect - i.e. it
 	            ; executes the real move effect. Running that here would fire a
 	            ; move in the middle of scoring. OHKO legality is already owned
@@ -6225,7 +6225,7 @@ _AIEstimateForTurn:
 ; .superFangEffect, not recalled.
 .superFang
 ; Super Fang sets damage to half the DEFENDER's current HP, so its value scales
-; with how healthy the target is and it can never finish one off.
+; with how healthy the target is. Execution clamps to 1, including at 1 HP.
 	ld hl, wBattleMonHP ; b = 1: enemy attacks, so the player defends
 	ld a, b
 	and a
@@ -6237,6 +6237,10 @@ _AIEstimateForTurn:
 	ld e, [hl] ; de = defender's current HP
 	srl d
 	rr e       ; de = half of it
+	ld a, d
+	or e
+	jr nz, .storeFixed
+	inc e ; match both real Super Fang effect paths' minimum damage
 	jr .storeFixed
 
 .specialDamage

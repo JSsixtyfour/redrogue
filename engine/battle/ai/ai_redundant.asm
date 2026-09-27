@@ -584,25 +584,19 @@ AIRedundant_OHKO:
 	ret
 
 ; Haze: deliberately conservative. Only asserts "nothing to clear" when
-; every stat modifier on both sides is neutral AND the player has no
-; non-volatile status - this catches the common case without walking every
-; volatile status flag Haze also clears (confusion, disable, etc; see
-; HazeEffect_, move_effects/haze.asm). A false "not redundant" here just
-; costs a wasted turn sometimes; a false "redundant" would suppress a Haze
-; that was actually clearing something this check doesn't look at, so the
-; check only fires when it is certain.
+; every real stat stage is neutral and no Haze-cleared status is present.
+; Whether clearing a state is helpful is a preference, not redundancy.
 AIRedundant_Haze:
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .notRedundant
 	ld hl, wPlayerMonAttackMod
-	ld b, 5
+	ld b, 6
 	call .allNeutral
-	ret nc
+	jr nc, .notRedundant
 	ld hl, wEnemyMonAttackMod
-	ld b, 5
+	ld b, 6
 	call .allNeutral
-	ret nc
+	jr nc, .notRedundant
+	call AIHazeHasClearableStatus
+	jr nz, .notRedundant
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 .notRedundant
@@ -613,8 +607,37 @@ AIRedundant_Haze:
 .allNeutral
 	ld a, [hli]
 	cp BASE_STAT_LEVEL
-	ret nz
+	jr nz, .changed
 	dec b
 	jr nz, .allNeutral
 	scf
+	ret
+.changed
+	and a ; explicit false, regardless of which side of neutral this stage is
+	ret
+
+; NZ if enemy Haze would clear a non-stage state. Mirrors HazeEffect_:
+; only the player's nonvolatile status, but both sides' volatile conditions.
+AIHazeHasClearableStatus:
+	ld a, [wBattleMonStatus]
+	and a
+	ret nz
+	ld a, [wPlayerDisabledMove]
+	ld b, a
+	ld a, [wEnemyDisabledMove]
+	or b
+	ret nz
+	ld hl, wPlayerBattleStatus1
+	call .hasVolatile
+	ret nz
+	ld hl, wEnemyBattleStatus1
+.hasVolatile
+	ld a, [hli]
+	and 1 << CONFUSED
+	ret nz
+	ld a, [hli]
+	and (1 << USING_X_ACCURACY) | (1 << PROTECTED_BY_MIST) | (1 << GETTING_PUMPED) | (1 << SEEDED)
+	ret nz
+	ld a, [hl]
+	and (1 << BADLY_POISONED) | (1 << HAS_LIGHT_SCREEN_UP) | (1 << HAS_REFLECT_UP)
 	ret

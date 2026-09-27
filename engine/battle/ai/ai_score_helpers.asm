@@ -40,6 +40,8 @@ AIEncourage::
 	push bc
 	ld b, a
 	ld a, [hl]
+	cp AI_SCORE_DISABLED
+	jr z, .store ; legality is not a preference
 	sub b
 	jr c, .floor      ; underflowed past zero
 	cp AI_SCORE_MIN
@@ -56,6 +58,8 @@ AIDiscourage::
 	push bc
 	ld b, a
 	ld a, [hl]
+	cp AI_SCORE_DISABLED
+	jr z, .store
 	add b
 	jr c, .ceiling    ; overflowed past 255
 	cp AI_SCORE_MAX + 1
