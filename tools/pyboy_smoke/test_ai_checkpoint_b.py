@@ -13,6 +13,9 @@ class AICheckpointBTest(unittest.TestCase):
         self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
         self.species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
         self.moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
+        self.effects = parse_rgbds_constants(ROOT / "constants/move_effect_constants.asm")
+        self.battle = parse_rgbds_constants(ROOT / "constants/battle_constants.asm")
+        self.ram = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
         trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
 
         def mon(name, moves):
@@ -78,6 +81,195 @@ class AICheckpointBTest(unittest.TestCase):
         # Expected-value ranking still sees a strong hit and the best-damage
         # nudge, but the raw noncritical bound cannot earn the five-point kill.
         self.assertEqual(h.read8("wBuffer"), 17)
+    def test_damage_layer_caps_high_crit_ranking_at_remaining_owner_hp(self):
+        h = self.h
+        raw = self.estimate("SLASH")
+        hp = max(1, raw // 2)
+        self.word("wBattleMonHP", hp)
+        h.write8("wEnemyMonMoves", self.moves["SLASH"])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        for slot in range(4):
+            h.write8("wBuffer", 20, offset=slot)
+        h.park_before_hijack()
+        h.call_routine("AILayerDamage", limit=240)
+        ranked = int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
+        self.assertLessEqual(ranked, hp)
+    def smart_recoil_score(self, substitute_hp=None):
+        h = self.h
+        raw = self.estimate("TAKE_DOWN")
+        self.assertGreaterEqual(raw // 4, 1)
+        self.word("wEnemyMonHP", 1)
+        self.word("wBattleMonHP", 1)
+        h.write8("wPlayerBattleStatus2", 0)
+        if substitute_hp is not None:
+            h.write8(
+                "wPlayerBattleStatus2", 1 << self.battle["HAS_SUBSTITUTE_UP"]
+            )
+            h.write8("wPlayerSubstituteHP", substitute_hp)
+        h.write8("wEnemyMonMoves", self.moves["TAKE_DOWN"])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        h.write8("wBuffer", 20)
+        h.park_before_hijack()
+        h.call_routine("AILayerSmart", limit=240)
+        return h.read8("wBuffer"), raw
+
+    def test_recoil_trade_does_not_treat_substitute_break_as_owner_ko(self):
+        mutual_ko_score, raw = self.smart_recoil_score()
+        substitute_score, _ = self.smart_recoil_score(min(raw, 255))
+        self.assertEqual(mutual_ko_score, 20)
+        self.assertEqual(substitute_score, 30)
+
+    def test_multihit_recoil_into_substitute_is_not_an_owner_ko(self):
+        h = self.h
+        variable = self.effects["TWO_TO_FIVE_ATTACKS_EFFECT"]
+
+        # Recoil and multi-hit use separate effect IDs in move data. Inject the
+        # multi-hit effect at the recoil handler boundary to exercise the
+        # combined owner-delivery case without changing ROM data.
+        h.park_before_hijack()
+        self.load_enemy_move("TAKE_DOWN")
+        h.write8("wEnemyMoveEffect", variable)
+        h.write8("wEnemyMovePower", 20)
+        h.call_routine("AIEstimateDamage", limit=120)
+        one_hit = int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
+        self.assertGreater(one_hit // 4, 0)
+        self.assertLessEqual(one_hit * 5, 255)
+
+        h.park_before_hijack()
+        self.word("wEnemyMonHP", 1)
+        self.word("wBattleMonHP", 1)
+        h.write8("wPlayerBattleStatus2", 1 << self.battle["HAS_SUBSTITUTE_UP"])
+        h.write8("wPlayerSubstituteHP", 255)
+        h.write8("wEnemyMonMoves", self.moves["TAKE_DOWN"])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        for slot in range(4):
+            h.write8("wBuffer", 20, offset=slot)
+
+        recoil_handler = h.hook_flag(
+            "AISmart_RecoilEffect",
+            action=lambda: (
+                h.write8("wEnemyMoveEffect", variable),
+                h.write8("wEnemyMovePower", 20),
+            ),
+        )
+        h.call_routine("AILayerSmart", limit=240)
+
+        self.assertEqual(recoil_handler["count"], 1)
+        self.assertEqual(
+            int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big"),
+            0,
+        )
+        self.assertEqual(h.read8("wBuffer"), 30)
+
+    def delivered(self, routine, effect, damage, substitute_hp=None, witch=False, owner_hp=None):
+        h = self.h
+        h.park_before_hijack()
+        player_attacks = "Player" in routine
+        h.write8("wPlayerMoveEffect" if player_attacks else "wEnemyMoveEffect", effect)
+        h.write8("wAIDamageEstimate", damage >> 8)
+        h.write8("wAIDamageEstimate", damage & 255, offset=1)
+        h.write8("wPlayerBattleStatus2", 0)
+        h.write8("wEnemyBattleStatus2", 0)
+        h.write8("wWitchPrizesEarned", 0, offset=1)
+        if owner_hp is not None:
+            self.word("wEnemyMonHP" if player_attacks else "wBattleMonHP", owner_hp)
+        if witch:
+            bit = self.ram["PRIZE_MULTISTRIKE"] - 9
+            h.write8("wWitchPrizesEarned", 1 << bit, offset=1)
+        if substitute_hp is not None:
+            status = "wEnemyBattleStatus2" if player_attacks else "wPlayerBattleStatus2"
+            sub_hp = "wEnemySubstituteHP" if player_attacks else "wPlayerSubstituteHP"
+            h.write8(status, 1 << self.battle["HAS_SUBSTITUTE_UP"])
+            h.write8(sub_hp, substitute_hp)
+        h.call_routine(routine, limit=240)
+        return int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
+
+    def test_single_and_fixed_two_hit_substitute_delivery_both_directions(self):
+        fixed = self.effects["ATTACK_TWICE_EFFECT"]
+        plain = self.effects["NO_ADDITIONAL_EFFECT"]
+        for prefix in ("Enemy", "Player"):
+            possible = f"AIAdjust{prefix}DamageForPossibleDelivery"
+            with self.subTest(direction=prefix, case="single-no-sub"):
+                self.assertEqual(self.delivered(possible, plain, 20), 20)
+            with self.subTest(direction=prefix, case="single-break-no-spill"):
+                self.assertEqual(self.delivered(possible, plain, 20, 10), 0)
+            with self.subTest(direction=prefix, case="fixed-break-then-owner"):
+                self.assertEqual(self.delivered(possible, fixed, 20, 10), 20)
+            with self.subTest(direction=prefix, case="fixed-equality-then-break"):
+                self.assertEqual(self.delivered(possible, fixed, 20, 20), 0)
+
+    def test_standard_variable_hits_use_maximum_for_possible_and_distribution_for_expected(self):
+        variable = self.effects["TWO_TO_FIVE_ATTACKS_EFFECT"]
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForPossibleDelivery", variable, 20), 100
+        )
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForExpectedDelivery", variable, 20), 60
+        )
+        # A 30-HP shield consumes two hits: at counts 2/3/4/5 the owner receives
+        # 0/1/2/3 hits, whose weighted expectation is exactly one hit.
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForPossibleDelivery", variable, 20, 30), 60
+        )
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForExpectedDelivery", variable, 20, 30), 20
+        )
+
+    def test_effect_1e_shares_the_variable_hit_contract(self):
+        effect = self.effects["EFFECT_1E"]
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForPossibleDelivery", effect, 17), 85
+        )
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForExpectedDelivery", effect, 17), 51
+        )
+
+    def test_delivery_zero_and_worst_case_arithmetic(self):
+        variable = self.effects["TWO_TO_FIVE_ATTACKS_EFFECT"]
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForPossibleDelivery", variable, 0, 0),
+            0,
+        )
+        self.assertEqual(
+            self.delivered("AIAdjustEnemyDamageForPossibleDelivery", variable, 999),
+            4995,
+        )
+        self.assertEqual(
+            self.delivered(
+                "AIAdjustEnemyDamageForExpectedDelivery", variable, 999, owner_hp=999
+            ),
+            999,
+        )
+        self.assertEqual(
+            self.delivered(
+                "AIAdjustEnemyDamageForExpectedDelivery", variable, 100, owner_hp=150
+            ),
+            150,
+        )
+
+    def test_witch_multistrike_is_player_only_and_uses_four_five_expectation(self):
+        variable = self.effects["TWO_TO_FIVE_ATTACKS_EFFECT"]
+        self.assertEqual(
+            self.delivered(
+                "AIAdjustPlayerDamageForExpectedDelivery", variable, 20, witch=True
+            ),
+            90,
+        )
+        self.assertEqual(
+            self.delivered(
+                "AIAdjustPlayerDamageForPossibleDelivery", variable, 20, witch=True
+            ),
+            100,
+        )
+        self.assertEqual(
+            self.delivered(
+                "AIAdjustEnemyDamageForExpectedDelivery", variable, 20, witch=True
+            ),
+            60,
+        )
 
 
 if __name__ == "__main__":

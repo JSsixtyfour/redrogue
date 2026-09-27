@@ -904,6 +904,9 @@ AISmart_RecoilEffect:
 ; The recoil would KO its own user. That is only a bad trade if the target
 ; survives too - AI_DAMAGE has already scored the kill on this move if it has
 ; one, so a mutual KO is left alone rather than fought with a discourage.
+; The estimate is still the original one-hit damage here; apply owner delivery
+; now so a Substitute-only hit cannot masquerade as a mutual KO.
+	call AIAdjustEnemyDamageForPossibleDelivery
 	call AIMoveWouldKO
 	jr c, .noChange
 	ld a, AI_HEAVY

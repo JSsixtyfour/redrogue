@@ -76,21 +76,30 @@ AILayerDamage:
 	                ; farcall here is also most of the layer's cost saved, since
 	                ; a moveset is usually part status.
 .estimate
-	farcall AIEstimateDamage ; -> wAIDamageEstimate (max roll, STAB and dual-type
+	farcall AIEstimateDamage ; -> wAIDamageEstimate (one-hit max, STAB and type
 	                         ; already applied). Clobbers a/bc/hl, all pushed.
-; "Can this kill" is asked FIRST and against the RAW max roll, because it is a
-; question about possibility rather than expectation: a 70%-accurate move that
-; can kill still can kill, and scaling it down first would hide that outright.
-; Crit expectation must not run before this test either: estimate + expected
-; crit contribution is neither an ordinary-hit bound nor an exact crit bound,
-; and treating it as one invents crit-only KOs.
+; Save the one-hit estimate. Possible KO uses the move's maximum owner-delivered
+; damage after Substitute; ranking below uses its expected hit-count delivery.
+	ld a, [wAIDamageEstimate]
+	push af
+	ld a, [wAIDamageEstimate + 1]
+	push af
+	call AIAdjustEnemyDamageForPossibleDelivery
 	ld b, 0
 	call AIDamageReachesFraction
-	push af ; the "can this kill" answer, saved across the scaling below
-; Everything past this point RANKS moves against one another, which is exactly
-; where crit expectation and accuracy belong. This keeps Slash's expected-value
-; advantage without allowing that expectation to masquerade as a possible KO.
+; Preserve the possible-KO flags while restoring the one-hit estimate.
+	push af
+	pop de
+	pop af
+	ld [wAIDamageEstimate + 1], a
+	pop af
+	ld [wAIDamageEstimate], a
+	push de
+; Everything past this point ranks moves. Hit-count expectation is applied
+; before crit and accuracy weighting; it never masquerades as a possible KO.
+	call AIAdjustEnemyDamageForExpectedDelivery
 	call AIScaleDamageForCrit
+	call AICapEnemyDamageAtOwnerHP
 	call AIScaleDamageByAccuracy
 	call .trackBest
 	pop af

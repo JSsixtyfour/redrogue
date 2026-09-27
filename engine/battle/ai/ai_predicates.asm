@@ -184,6 +184,7 @@ AISmartRiderIsWasted::
 	and a
 	jr z, .notLethal
 	farcall AIEstimateDamage
+	call AIAdjustEnemyDamageForPossibleDelivery
 	jp AIMoveIsReliableKO
 .notLethal
 	and a ; clear carry
@@ -387,6 +388,238 @@ AIEnemyActsFirstWith::
 .actsLast
 	and a ; a holds COUNTER here, so this only clears carry
 	ret
+
+; --- Multi-hit / Substitute delivery (Checkpoint B R4/R6) ------------------
+
+; Adjusts the one-hit maximum in wAIDamageEstimate to damage delivered to the
+; Pokemon after the target's current Substitute and the move's hit-count
+; contract. Possible entry points use the maximum count; expected entry points
+; use the engine's actual count distribution, expressed in eighths.
+AIAdjustEnemyDamageForPossibleDelivery::
+	xor a
+	jr AIAdjustDamageForDelivery
+AIAdjustPlayerDamageForPossibleDelivery::
+	ld a, 1
+	jr AIAdjustDamageForDelivery
+AIAdjustEnemyDamageForExpectedDelivery::
+	ld a, 2
+	jr AIAdjustDamageForDelivery
+AIAdjustPlayerDamageForExpectedDelivery::
+	ld a, 3
+
+AIAdjustDamageForDelivery:
+	ld l, a ; bit 0: player attacks; bit 1: expected rather than possible
+	bit 0, l
+	jr nz, .playerAttacks
+	ld a, [wEnemyMoveEffect]
+	ld h, a
+	ld a, [wPlayerBattleStatus2]
+	ld c, $ff
+	bit HAS_SUBSTITUTE_UP, a
+	jr z, .classify
+	ld a, [wPlayerSubstituteHP]
+	ld c, a
+	jr .classify
+.playerAttacks
+	ld a, [wPlayerMoveEffect]
+	ld h, a
+	ld a, [wEnemyBattleStatus2]
+	ld c, $ff
+	bit HAS_SUBSTITUTE_UP, a
+	jr z, .classify
+	ld a, [wEnemySubstituteHP]
+	ld c, a
+.classify
+	ld b, 1
+	ld a, h
+	cp ATTACK_TWICE_EFFECT
+	jr z, .fixedTwo
+	cp TWINEEDLE_EFFECT
+	jr z, .fixedTwo
+	cp TWO_TO_FIVE_ATTACKS_EFFECT
+	jr z, .variable
+	cp EFFECT_1E
+	jr z, .variable
+	ld h, 0
+	jr .countOwnerHits
+.fixedTwo
+	ld b, 2
+	ld h, 1
+	jr .countOwnerHits
+.variable
+	ld b, 5
+	ld h, 2
+	bit 0, l
+	jr z, .countOwnerHits
+	ld a, [wWitchPrizesEarned + 1]
+	and 1 << (PRIZE_MULTISTRIKE - 9)
+	jr z, .countOwnerHits
+	ld h, 3
+.countOwnerHits
+	call .remainingOwnerHits
+	bit 1, l
+	jp z, .possible
+; Expected delivery caps EACH hit-count outcome at owner HP, matching the
+; execution loop's early-faint termination. c keeps the attacker direction.
+	ld a, l
+	and 1
+	ld c, a
+	ld a, h
+	cp 2
+	jr z, .standardVariable
+	cp 3
+	jr z, .witchVariable
+	ld a, b
+	call .cappedOwnerDamage
+	jp .storeDE
+.standardVariable
+	ld hl, 0
+	xor a
+	call .ownerHitsMinus
+	call .addCappedOutcome
+	ld a, 1
+	call .ownerHitsMinus
+	call .addCappedOutcome
+	rept 3
+		ld a, 2
+		call .ownerHitsMinus
+		call .addCappedOutcome
+	endr
+	rept 3
+		ld a, 3
+		call .ownerHitsMinus
+		call .addCappedOutcome
+	endr
+	jr .storeExpected
+.witchVariable
+	ld hl, 0
+	rept 4
+		xor a
+		call .ownerHitsMinus
+		call .addCappedOutcome
+	endr
+	rept 4
+		ld a, 1
+		call .ownerHitsMinus
+		call .addCappedOutcome
+	endr
+.storeExpected
+	ld d, h
+	ld e, l
+	rept 3
+		srl d
+		rr e
+	endr
+.storeDE
+	ld a, d
+	ld [wAIDamageEstimate], a
+	ld a, e
+	ld [wAIDamageEstimate + 1], a
+	ret
+.possible
+	ld a, b
+	call .multiplyEstimateByA
+	jp .storeDE
+; b starts as the move's maximum hit count. c is $ff for no Substitute or the
+; current 8-bit Substitute HP. Returns b = hits that can reach the owner.
+; Equality intentionally leaves an active zero-HP shield for the next hit.
+.remainingOwnerHits
+	ld a, [wAIDamageEstimate]
+	ld d, a
+	ld a, [wAIDamageEstimate + 1]
+	ld e, a
+	or d
+	jr nz, .hasDamage
+	ld b, 0
+	ret
+.hasDamage
+	ld a, c
+	inc a
+	ret z
+.substituteHit
+	ld a, d
+	and a
+	jr nz, .breaksSubstitute
+	ld a, c
+	sub e
+	ld c, a
+	dec b
+	ret z
+	jr nc, .substituteHit
+	ret
+.breaksSubstitute
+	dec b
+	ret
+
+; Returns a = max(b - a, 0). b is the max-count owner hits after Substitute.
+.ownerHitsMinus
+	ld d, a
+	ld a, b
+	sub d
+	ret nc
+	xor a
+	ret
+
+.addCappedOutcome
+	call .cappedOwnerDamage
+	add hl, de
+	ret
+
+; Returns de = min(a * one-hit estimate, current owner HP). Preserves bc/hl.
+.cappedOwnerDamage
+	push bc
+	push hl
+	ld b, a
+	ld a, c
+	and a
+	ld hl, wBattleMonHP
+	jr z, .gotOwnerHP
+	ld hl, wEnemyMonHP
+.gotOwnerHP
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	push de
+	ld a, b
+	call .multiplyEstimateByA
+	pop bc
+	ld a, e
+	sub c
+	ld a, d
+	sbc b
+	jr c, .belowOwnerHP
+	ld d, b
+	ld e, c
+.belowOwnerHP
+	pop hl
+	pop bc
+	ret
+
+; Returns de = a * one-hit estimate. The supported maximum is 5 * 999.
+.multiplyEstimateByA
+	ld b, a
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [wAIDamageEstimate]
+	ldh [hMultiplicand + 1], a
+	ld a, [wAIDamageEstimate + 1]
+	ldh [hMultiplicand + 2], a
+	ld a, b
+	ldh [hMultiplier], a
+	call Multiply
+	ldh a, [hProduct + 2]
+	ld d, a
+	ldh a, [hProduct + 3]
+	ld e, a
+	ret
+
+; Caps a ranking estimate after crit expectation so early faint still bounds it.
+AICapEnemyDamageAtOwnerHP::
+	xor a
+	ld c, a
+	ld a, 1
+	call AIAdjustDamageForDelivery.cappedOwnerDamage
+	jp AIAdjustDamageForDelivery.storeDE
 
 ; --- Accuracy (Phase 3 Step 3) ---------------------------------------------
 

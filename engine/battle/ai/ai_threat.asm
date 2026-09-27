@@ -87,6 +87,7 @@ AILayerThreat:
 	jr nz, .checkHeal ; already faster - nothing to rescue
 	farcall AIEstimateDamage ; AI_DAMAGE's estimate belongs to whichever move it
 	                         ; scored last, so this must be recomputed here
+	call AIAdjustEnemyDamageForPossibleDelivery
 	call AIMoveWouldKO
 	jr nc, .noChange
 	ld a, AI_STRONG
@@ -248,6 +249,7 @@ _AIScanPlayerMovesForKO:
 	                 ; every already-revealed move behind an unrevealed one.
 	call AIReadMoveIntoPlayerBlock
 	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
+	call AIAdjustPlayerDamageForPossibleDelivery
 	call AIDamageWouldKOEnemy
 	jr c, .yesKO
 .emptySlot
