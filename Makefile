@@ -61,6 +61,7 @@ RGBGFXFLAGS  ?= -Weverything
 	tidy \
 	compare \
 	smoke \
+	audit \
 	ai_scenarios \
 	balance_report \
 	tools
@@ -110,6 +111,13 @@ smoke: pokeblue_debug.gbc
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py
+
+# Static audits (bank/call/clobber, stack, SRAM, text traps) against the built
+# .sym/.map of all three ROMs. Fails on any bug-level finding not triaged into
+# tools/static_audit/allowlist.txt. INFO=1 also prints info-level findings.
+audit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
+	python3 tools/static_audit/test_rules.py
+	python3 tools/static_audit/run_all.py $(if $(INFO),--info)
 
 ai_scenarios: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_scenarios.py

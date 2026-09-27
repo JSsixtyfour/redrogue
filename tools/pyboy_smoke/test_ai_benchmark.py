@@ -5,8 +5,11 @@ import unittest
 
 from run_ai_benchmark import (
     classify_decisions,
+    fixture_seeds,
+    matchup_fingerprint,
     nullable_rate,
     parse_move_powers,
+    repeated_values,
 )
 
 
@@ -65,6 +68,34 @@ class BenchmarkMetricTest(unittest.TestCase):
         self.assertEqual(result["ko_opportunities"], result["damage_layer_ko_candidates"])
         self.assertEqual(result["missed_kos"], result["damage_layer_missed_ko_candidates"])
         self.assertEqual(result["wasted_turns"], result["selected_redundant_penalty_decisions"])
+
+    def test_fixture_seed_sequence_wraps_and_reports_repeats(self) -> None:
+        self.assertEqual(fixture_seeds(98, 4), [98, 99, 1, 2])
+        seeds = fixture_seeds(1, 101)
+        self.assertEqual(repeated_values(seeds), {"1": 2, "2": 2})
+
+    def test_matchup_fingerprint_is_canonical_and_matchup_only(self) -> None:
+        identity = {
+            "opponent": 201,
+            "trainer_class": 31,
+            "player_active_slot": 0,
+            "enemy_active_slot": 0,
+            "player_party": [1, 2, 3],
+            "enemy_party": [4, 5, 6],
+            "key_items": [3, 0, 0, 0],
+        }
+        reordered = dict(reversed(list(identity.items())))
+        self.assertEqual(
+            matchup_fingerprint(identity),
+            matchup_fingerprint(reordered),
+        )
+        changed = dict(identity)
+        changed["enemy_party"] = [4, 5, 7]
+        self.assertNotEqual(
+            matchup_fingerprint(identity),
+            matchup_fingerprint(changed),
+        )
+
     def test_move_power_table_matches_source_order(self) -> None:
         powers = parse_move_powers(REPO_ROOT / "data" / "moves" / "moves.asm")
         self.assertEqual(powers[1], 40)  # POUND

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -171,7 +172,42 @@ def prepare_party_driver(
     )
 
 
-def run_tier(
+def fixture_seeds(seed: int, trials_count: int) -> list[int]:
+    return [((seed - 1 + index) % 99) + 1 for index in range(trials_count)]
+
+
+def repeated_values(values: list[object]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for value in values:
+        key = str(value)
+        counts[key] = counts.get(key, 0) + 1
+    return {key: count for key, count in counts.items() if count > 1}
+
+
+def matchup_identity(harness: RedRogueHarness) -> dict[str, object]:
+    player_count = harness.read8("wPartyCount")
+    enemy_count = harness.read8("wEnemyPartyCount")
+    return {
+        "opponent": harness.read8("wCurOpponent"),
+        "trainer_class": harness.read8("wTrainerClass"),
+        "player_active_slot": harness.read8("wPlayerMonNumber"),
+        "enemy_active_slot": harness.read8("wEnemyMonPartyPos"),
+        "player_party": harness.read_bytes(
+            "wPartyMons", player_count * PARTYMON_STRUCT_LENGTH
+        ),
+        "enemy_party": harness.read_bytes(
+            "wEnemyMons", enemy_count * PARTYMON_STRUCT_LENGTH
+        ),
+        "key_items": harness.read_sram_bytes("sKeyItemsBitfield", 4),
+    }
+
+
+def matchup_fingerprint(identity: dict[str, object]) -> str:
+    canonical = json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def run_fixture_corpus(
     repo_root: Path,
     artifacts_dir: Path,
     *,
@@ -182,6 +218,106 @@ def run_tier(
     player_policy: str,
     move_powers: dict[int, int],
 ) -> dict[str, object]:
+    reports = [
+        run_tier(
+            repo_root,
+            artifacts_dir,
+            seed=fixture_seed,
+            trials_count=1,
+            max_steps=max_steps,
+            tier=tier,
+            player_policy=player_policy,
+            move_powers=move_powers,
+            _trial_index=index,
+        )
+        for index, fixture_seed in enumerate(fixture_seeds(seed, trials_count))
+    ]
+    trials = [report["trial_results"][0] for report in reports]
+    summaries = [report["summary"] for report in reports]
+    fingerprints = [trial["matchup_fingerprint"] for trial in trials]
+    seeds = [trial["fixture_seed"] for trial in trials]
+    additive = (
+        "player_wins", "enemy_wins", "wins", "turns", "decisions",
+        "damage_layer_ko_candidates", "damage_layer_missed_ko_candidates",
+        "selected_redundant_penalty_decisions", "ko_opportunities",
+        "missed_kos", "wasted_turns", "switches", "items",
+        "over_frame_ai_decisions", "over_frame_ai_scoring_spans",
+    )
+    summary = dict(summaries[0])
+    for key in additive:
+        summary[key] = sum(int(item[key]) for item in summaries)
+    total_turns = int(summary["turns"])
+    decisions = int(summary["decisions"])
+    opportunities = int(summary["ko_opportunities"])
+    wasted = int(summary["wasted_turns"])
+    summary.update(
+        seed=seed,
+        fixture_seeds=seeds,
+        unique_fixture_seeds=len(set(seeds)),
+        repeated_fixture_seeds=repeated_values(seeds),
+        unique_matchup_fingerprints=len(set(fingerprints)),
+        duplicate_matchup_fingerprints=repeated_values(fingerprints),
+        trials=len(trials),
+        player_win_rate=nullable_rate(int(summary["player_wins"]), len(trials)),
+        enemy_win_rate=nullable_rate(int(summary["enemy_wins"]), len(trials)),
+        win_rate=nullable_rate(int(summary["wins"]), len(trials)),
+        average_turns=mean(int(trial["turns"]) for trial in trials),
+        average_cycles=mean(int(trial["cycles"]) for trial in trials),
+        switch_rate_per_turn=nullable_rate(int(summary["switches"]), total_turns),
+        item_rate_per_turn=nullable_rate(int(summary["items"]), total_turns),
+        missed_ko_rate=nullable_rate(int(summary["missed_kos"]), opportunities),
+        wasted_turn_rate=nullable_rate(wasted, decisions),
+        damage_layer_missed_candidate_rate=nullable_rate(
+            int(summary["damage_layer_missed_ko_candidates"]), opportunities
+        ),
+        selected_redundant_penalty_rate=nullable_rate(wasted, decisions),
+        mean_ai_decision_cycles=(
+            sum(
+                float(trial["mean_ai_decision_cycles"]) * int(trial["ai_decisions"])
+                for trial in trials
+            ) / decisions if decisions else None
+        ),
+        max_ai_decision_cycles=max(
+            int(trial["max_ai_decision_cycles"]) for trial in trials
+        ),
+        max_ai_scoring_span_cycles=max(
+            int(trial["max_ai_decision_cycles"]) for trial in trials
+        ),
+    )
+    summary["mean_ai_scoring_span_cycles"] = summary["mean_ai_decision_cycles"]
+    summary["notes"] = list(dict.fromkeys(
+        note for item in summaries for note in item["notes"]
+        if "repeated trials restore one seeded baseline" not in note
+        and "a single-trial report contains one deterministic FIGHT 2 fixture" not in note
+    ))
+    summary["notes"].extend([
+        "each trial uses a fresh emulator and the next deterministic FIGHT 2 seed",
+        "unique seed and matchup fingerprint counts are reported separately",
+    ])
+    return {"summary": summary, "trial_results": trials}
+def run_tier(
+    repo_root: Path,
+    artifacts_dir: Path,
+    *,
+    seed: int,
+    trials_count: int,
+    max_steps: int,
+    tier: int | None,
+    player_policy: str,
+    move_powers: dict[int, int],
+    _trial_index: int = 0,
+) -> dict[str, object]:
+    if trials_count > 1:
+        return run_fixture_corpus(
+            repo_root,
+            artifacts_dir,
+            seed=seed,
+            trials_count=trials_count,
+            max_steps=max_steps,
+            tier=tier,
+            player_policy=player_policy,
+            move_powers=move_powers,
+        )
     harness = RedRogueHarness(repo_root, artifacts_dir)
     trials: list[dict[str, object]] = []
     tier_override = 0 if tier is None else tier + 1
@@ -233,8 +369,22 @@ def run_tier(
         )
         party_inputs, party_modes, party_trace = prepare_party_driver(harness)
         harness.boot_fight2(seed=seed)
+        identity = matchup_identity(harness)
+        fingerprint = matchup_fingerprint(identity)
+        rng_state = {
+            "add": harness.read8("hRandomAdd"),
+            "sub": harness.read8("hRandomSub"),
+            "table": harness.read_bytes("wRandomTable", 10),
+        }
         baseline = io.BytesIO()
         harness.save_state(baseline)
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        tier_name = "auto" if tier is None else str(tier)
+        stem = f"ai_benchmark_seed{seed}_tier{tier_name}_trial{_trial_index}"
+        state_path = artifacts_dir / f"{stem}.state"
+        state_bytes = baseline.getvalue()
+        state_path.write_bytes(state_bytes)
+        state_sha256 = hashlib.sha256(state_bytes).hexdigest()
 
         for trial_index in range(trials_count):
             harness.load_state(baseline)
@@ -287,7 +437,9 @@ def run_tier(
             )
             trials.append(
                 {
-                    "trial": trial_index,
+                    "trial": _trial_index,
+                    "fixture_seed": seed,
+                    "matchup_fingerprint": fingerprint,
                     "tier": resolved_tier,
                     "result": "win" if victories["count"] > victory_start else "loss",
                     "turns": len(trial_turns),
@@ -308,6 +460,56 @@ def run_tier(
                     ),
                 }
             )
+        replay_command = (
+            "python3 tools/pyboy_smoke/run_ai_benchmark.py "
+            f"--seed {seed} --trials 1 --tier {tier_name} "
+            f"--player-policy {player_policy}"
+        )
+        manifest = {
+            "schema_version": 1,
+            "matchup_fingerprint": fingerprint,
+            "matchup_identity": identity,
+            "seed": seed,
+            "post_setup_rng": rng_state,
+            "requested_tier": tier_name,
+            "resolved_tier": trials[0]["tier"],
+            "player_policy": player_policy,
+            "hardware_mode": harness.hardware_mode,
+            "rom_sha256": harness.rom_sha256,
+            "sym_sha256": harness.sym_sha256,
+            "state_path": str(state_path.resolve()),
+            "state_sha256": state_sha256,
+            "command": replay_command,
+            "turn_telemetry": trial_turns,
+        }
+        replay_identity = {
+            key: manifest[key]
+            for key in (
+                "schema_version", "matchup_fingerprint", "seed", "post_setup_rng",
+                "requested_tier", "resolved_tier", "player_policy",
+                "hardware_mode", "rom_sha256", "sym_sha256", "state_sha256",
+            )
+        }
+        replay_id = hashlib.sha256(
+            json.dumps(
+                replay_identity, sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest()
+        manifest["replay_id"] = replay_id
+        manifest_path = artifacts_dir / f"{stem}.manifest.json"
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        trials[0]["replay"] = {
+            "replay_id": replay_id,
+            "state_path": str(state_path.resolve()),
+            "state_sha256": state_sha256,
+            "manifest_path": str(manifest_path.resolve()),
+            "manifest_sha256": manifest_sha256,
+            "command": replay_command,
+        }
         provenance = {
             "rom_sha256": harness.rom_sha256,
             "sym_sha256": harness.sym_sha256,
@@ -329,6 +531,11 @@ def run_tier(
     summary = {
         **provenance,
         "seed": seed,
+        "fixture_seeds": [seed],
+        "unique_fixture_seeds": 1,
+        "repeated_fixture_seeds": {},
+        "unique_matchup_fingerprints": 1,
+        "duplicate_matchup_fingerprints": {},
         "requested_tier": "auto" if tier is None else tier,
         "resolved_tier": resolved_tier,
         "player_policy": player_policy,
@@ -396,7 +603,7 @@ def run_tier(
         "KO-candidate metrics are derived from AI_DAMAGE score deltas, not an independent damage oracle",
         "redundant-penalty metrics report selected positive AI_REDUNDANT deltas, not observed wasted turns",
         "AI scoring-span timing ends before final filtering and later item or switch selection",
-        "repeated trials restore one seeded baseline and are determinism replays, not independent matchups",
+        "a single-trial report contains one deterministic FIGHT 2 fixture",
     ])
     return {"summary": summary, "trial_results": trials}
 

@@ -1,0 +1,20 @@
+# Findings triaged as correct code. One per line, TAB-separated:
+#   RULE<TAB>FILE<TAB>LABEL (routine, or *)<TAB>why this is not a bug
+# Keep the reason specific enough that a reader can re-check it. Triaged in
+# the 2026-09-27 sweep (Red Rogue Files/CODE_SWEEP_2026-09-27.md).
+
+A1	engine/pokemon/random_pokemon_selection.asm	AllSpeciesCheck	Uses the stack as a variable-depth worklist terminated by a pushed NO_MON sentinel; .next/.owned pop down to it, so depth legitimately varies per path.
+A2	custom_functions/func_enhancedcolor.asm	BufferAllEnhancedColorsGBC	.readwriteinc is a local helper that runs inside a WRAM-bank-2 context and deliberately returns with bank 2 mapped for its caller's loop.
+A2	engine/gfx/palettes.asm	BufferAllPokeyellowColorsGBC	Same .readwriteinc shape as BufferAllEnhancedColorsGBC: returns into a bank-2 caller loop by design.
+B5	home/overworld.asm	OverworldLoopLessDelay	Vanilla pret/pokered: WarpFound2's `sub c` derives wWarpedFromWhichWarp from a stale c on the Safari-game-over and script-warp paths, which never use that index.
+B5	engine/link/cable_club.asm	CableClub_Run	Vanilla LINK_STATE_RESET path (`predef EmptyFunc / jp Init`), commented "this is never used"; Init does not depend on e.
+B6	engine/movie/oak_speech/oak_speech.asm	OakSpeech	Vanilla no-op flagged by pret itself ("bug: switching ROM Bank should not happen outside of Home Bank"): it re-maps the bank already mapped.
+B7	custom_functions/procedural_cave_gen.asm	PFStoreBossOWSpriteToSRAM	"(A preserved)" in the header describes the in-bank PCGetBossOWSprite call, not this routine's contract.
+B7	custom_functions/procedural_cave_gen.asm	PFacStoreBossOWSpriteToSRAM	Same as PFStoreBossOWSpriteToSRAM: the "A preserved" note is about the callee.
+B7	custom_functions/wild_area_selection.asm	StageEventCountPocket	"Preserves b" means b is an in/out accumulator (inc b per stack); the count is the output.
+B7	custom_functions/wild_area_selection.asm	StageEventCountTMs	Same accumulator-in-b contract as StageEventCountPocket.
+B7	engine/battle/ai/ai_plans.asm	AIPlanQualifies	hl IS preserved: `ld a, [hli]` then `dec hl` restores it arithmetically, which the value-set analysis cannot prove.
+B7	engine/battle/experience.asm	WitchBoostExp10Percent	The "preserves bc/de/hl" sentence is about Divide (verified: Divide clobbers only a); this routine uses de itself and documents no contract.
+B7	engine/gfx/cgb_attributes.asm	LoadBGMapAttributes	"preserves DE" refers to Bankswitch in home/bankswitch.asm, not to this routine.
+B7	engine/pokemon/random_pokemon_selection.asm	Random_Pokemon_Selection	"Preserves every register" describes the RoguePrismSetRerollBudget call on the next line, not this routine.
+B7	engine/pokemon/status_view.asm	StatusScreen2DrawView	The header tells CALLERS that need de preserved to push/pop it themselves; it is not a preserve claim.
