@@ -466,8 +466,9 @@ CreateFusion::
 ; fills the tilemap's upper-left triangle. This routine only adds the
 ; secondary on top of that; it does not touch the primary's tiles/pixels.
 ;
-; Technique mirrors engine/events/hidden_events/rogue_pokemon.asm ::
-; DisplayDiagonalTest (proven reference - hardcoded Charizard/Blastoise
+; Technique mirrors DisplayDiagonalTest in engine/events/hidden_events/
+; rogue_pokemon.asm (deleted in the 2026-09-27 code sweep as dead test code;
+; see git history before that date) (proven reference - hardcoded Charizard/Blastoise
 ; diagonal split at a different screen position, hlcoord 5,5). Same two
 ; ingredients: (1) load a second mon's front sprite into a free VRAM pic
 ; region, (2) overwrite part of wTileMap with that region's tile IDs.
