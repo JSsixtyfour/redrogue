@@ -151,7 +151,7 @@ Route12TrainerHeader2:
 Route12TrainerHeader3:
 	trainer EVENT_BEAT_ROUTE_12_TRAINER_3, 4, Route12JrTrainerMBattleText, Route12JrTrainerMEndBattleText, Route12JrTrainerMAfterBattleText
 Route12TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_12_TRAINER_4, 4, Route12Fisher3BattleText, Route12Fisher3EndBattleText, Route12Fisher3AfterBattleText
+	trainer EVENT_BEAT_ROUTE_12_TRAINER_4, 1, Route12Fisher3BattleText, Route12Fisher3EndBattleText, Route12Fisher3AfterBattleText
 	db -1 ; end
 
 Route12SnorlaxText:

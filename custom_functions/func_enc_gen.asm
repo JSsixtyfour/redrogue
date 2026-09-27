@@ -567,26 +567,41 @@ RogueTryMidBattleEvolution::
 	ldh a, [hIsInBattle]
 	dec a
 	ret z                       ; wild battle: no mid-battle evolution
+
+; Only the ACTIVE mon evolves mid-battle.  wCanEvolveFlags has one bit per party
+; slot (set by GainExperience on level-up, bench mons included via Exp. All);
+; the bench bits are held back and restored so EndOfBattle evolves those mons.
+	ld a, [wPlayerMonNumber]
+	inc a
+	ld b, a
+	xor a
+	scf
+.maskLoop
+	rla
+	dec b
+	jr nz, .maskLoop            ; a = the active mon's flag bit
+	ld b, a
+	ld a, [wCanEvolveFlags]
+	ld c, a
+	and b
+	ret z                       ; active mon didn't level: leave flags for EndOfBattle
+	ld a, b
+	cpl
+	and c
+	push af                     ; bench flags, active bit cleared (tried once only)
+	ld a, b
+	ld [wCanEvolveFlags], a
 	predef EvolutionAfterBattle
+	pop af
+	ld [wCanEvolveFlags], a
+
+; wEvolutionOccurred is set before the evolution screen, so it is also set when
+; the player cancels with B.  Either way the screen was cleared and the music /
+; audio bank were switched, so the battle view must be rebuilt.
 	ld a, [wEvolutionOccurred]
 	and a
 	ret z
-
-; Only the active Pokemon needs its battle data refreshed.  Other party members
-; may have evolved through Exp. All, but are refreshed when they are sent out.
-	ld de, wBattleMonSpecies
-	ld hl, wPartyMon1Species
-	ld bc, PARTYMON_STRUCT_LENGTH
-	ld a, [wPlayerMonNumber]
-	call AddNTimes
-	ld a, [de]
-	cp [hl]
-	jr z, .done                 ; a benched mon evolved, not the active one
-	call RogueRefreshBattleMonAfterEvolution
-.done
-	xor a
-	ld [wCanEvolveFlags], a     ; prevent a second evolution this battle
-	ret
+	jp RogueRefreshBattleMonAfterEvolution
 
 ; LoadBattleMonFromParty (engine/battle/core.asm) WITHOUT its trailing stat-mod
 ; reset, so boosts, drops, Substitute and status all survive the evolution.
