@@ -786,4 +786,35 @@ Debug2ApplyRoundState::
 .debugFinaleStateDone
 	ret
 
+; ----------------------------------------------------------------------------
+; DebugMenuDrawText - farcall'd by DebugMenu. Draws its box and option list,
+; plus the build date/ID on the bottom two rows. Lives here rather than in
+; DebugMenu's own bank $01 (2 B free in Debug) because the build strings sit
+; in $3A beside this section; moving the menu's box and strings out with them
+; frees more of $01 than the farcall costs. Clobbers all registers.
+; ----------------------------------------------------------------------------
+DebugMenuDrawText::
+; Four double-spaced options sit on rows 7, 9, 11 and 13, so the box needs 7
+; inner rows. It had 4, left over from vanilla's two options, which put DEBUG
+; on the bottom border and DEBUG 2 below the box.
+	hlcoord 5, 6
+	ld b, 7
+	ld c, 9
+	call TextBoxBorder
+	hlcoord 7, 7
+	ld de, DebugMenuOptions
+	call PlaceString
+	hlcoord 2, SCREEN_HEIGHT - 2
+	ld de, BuildDateText
+	call PlaceString
+	hlcoord 2, SCREEN_HEIGHT - 1
+	ld de, BuildIdText
+	jp PlaceString
+
+DebugMenuOptions:
+	db   "FIGHT"
+	next "FIGHT 2"
+	next "DEBUG"
+	next "DEBUG 2@"
+
 ENDC

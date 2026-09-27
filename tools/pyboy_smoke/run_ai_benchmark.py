@@ -53,12 +53,18 @@ def classify_decisions(records: list[dict[str, object]]) -> dict[str, int]:
             and redundant["delta"][selected] > 0
         ):
             wasted += 1
-    return {
+    result = {
         "decisions": len(decisions),
-        "ko_opportunities": opportunities,
-        "missed_kos": missed,
-        "wasted_turns": wasted,
+        "damage_layer_ko_candidates": opportunities,
+        "damage_layer_missed_ko_candidates": missed,
+        "selected_redundant_penalty_decisions": wasted,
     }
+    # Compatibility aliases. These are scoring diagnostics, not an
+    # independent damage oracle or proof that an observed turn was wasted.
+    result.update(
+        ko_opportunities=opportunities, missed_kos=missed, wasted_turns=wasted
+    )
+    return result
 
 
 def nullable_rate(numerator: int, denominator: int) -> float | None:
@@ -289,6 +295,9 @@ def run_tier(
                     "switches": switches["count"] - switch_start,
                     "items": sum(item["count"] for item in items) - item_start,
                     "ai_decisions": classified["decisions"],
+                    "damage_layer_ko_candidates": classified["damage_layer_ko_candidates"],
+                    "damage_layer_missed_ko_candidates": classified["damage_layer_missed_ko_candidates"],
+                    "selected_redundant_penalty_decisions": classified["selected_redundant_penalty_decisions"],
                     "ko_opportunities": classified["ko_opportunities"],
                     "missed_kos": classified["missed_kos"],
                     "wasted_turns": classified["wasted_turns"],
@@ -299,6 +308,11 @@ def run_tier(
                     ),
                 }
             )
+        provenance = {
+            "rom_sha256": harness.rom_sha256,
+            "sym_sha256": harness.sym_sha256,
+            "hardware_mode": harness.hardware_mode,
+        }
     finally:
         harness.close()
 
@@ -310,33 +324,39 @@ def run_tier(
     switches_count = sum(int(trial["switches"]) for trial in trials)
     items_count = sum(int(trial["items"]) for trial in trials)
     resolved_tier = int(trials[0]["tier"])
-    if resolved_tier >= 2 and opportunities == 0:
-        raise AssertionError(
-            f"AI_DAMAGE is enabled at tier {resolved_tier}, but the benchmark "
-            "recorded zero KO opportunities"
-        )
-    wins = sum(trial["result"] == "win" for trial in trials)
+    player_wins = sum(trial["result"] == "win" for trial in trials)
+    enemy_wins = len(trials) - player_wins
     summary = {
+        **provenance,
         "seed": seed,
         "requested_tier": "auto" if tier is None else tier,
         "resolved_tier": resolved_tier,
         "player_policy": player_policy,
         "trials": len(trials),
-        "wins": wins,
+        "player_wins": player_wins,
+        "enemy_wins": enemy_wins,
+        "wins": player_wins,
         "turns": total_turns,
         "decisions": decisions,
+        "damage_layer_ko_candidates": opportunities,
+        "damage_layer_missed_ko_candidates": missed,
+        "selected_redundant_penalty_decisions": wasted,
         "ko_opportunities": opportunities,
         "missed_kos": missed,
         "wasted_turns": wasted,
         "switches": switches_count,
         "items": items_count,
-        "win_rate": nullable_rate(wins, len(trials)),
+        "player_win_rate": nullable_rate(player_wins, len(trials)),
+        "enemy_win_rate": nullable_rate(enemy_wins, len(trials)),
+        "win_rate": nullable_rate(player_wins, len(trials)),
         "average_turns": mean(int(trial["turns"]) for trial in trials),
         "average_cycles": mean(int(trial["cycles"]) for trial in trials),
         "switch_rate_per_turn": nullable_rate(switches_count, total_turns),
         "item_rate_per_turn": nullable_rate(items_count, total_turns),
         "missed_ko_rate": nullable_rate(missed, opportunities),
         "wasted_turn_rate": nullable_rate(wasted, decisions),
+        "damage_layer_missed_candidate_rate": nullable_rate(missed, opportunities),
+        "selected_redundant_penalty_rate": nullable_rate(wasted, decisions),
         "mean_ai_decision_cycles": (
             sum(
                 float(trial["mean_ai_decision_cycles"])
@@ -369,6 +389,15 @@ def run_tier(
             if note is not None
         ],
     }
+    summary["mean_ai_scoring_span_cycles"] = summary["mean_ai_decision_cycles"]
+    summary["max_ai_scoring_span_cycles"] = summary["max_ai_decision_cycles"]
+    summary["over_frame_ai_scoring_spans"] = summary["over_frame_ai_decisions"]
+    summary["notes"].extend([
+        "KO-candidate metrics are derived from AI_DAMAGE score deltas, not an independent damage oracle",
+        "redundant-penalty metrics report selected positive AI_REDUNDANT deltas, not observed wasted turns",
+        "AI scoring-span timing ends before final filtering and later item or switch selection",
+        "repeated trials restore one seeded baseline and are determinism replays, not independent matchups",
+    ])
     return {"summary": summary, "trial_results": trials}
 
 

@@ -19,14 +19,8 @@ IF DEF(_DEBUG)
 	call ClearSprites
 	call RunDefaultPaletteCommand
 
-	hlcoord 5, 6
-	ld b, 4
-	ld c, 9
-	call TextBoxBorder
-
-	hlcoord 7, 7
-	ld de, DebugMenuOptions
-	call PlaceString
+	; Box, option list and build date/ID, drawn from bank $3A.
+	farcall DebugMenuDrawText
 
 	ld a, TEXT_DELAY_MEDIUM
 	ld [wOptions], a
@@ -90,12 +84,6 @@ DebugBattlePlayerName:
 
 DebugBattleRivalName:
 	db "Juerry@"
-
-DebugMenuOptions:
-	db   "FIGHT"
-	next "FIGHT 2"
-	next "DEBUG"
-	next "DEBUG 2@"
 ELSE
 	ret
 ENDC

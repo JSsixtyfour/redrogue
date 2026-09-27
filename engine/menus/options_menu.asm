@@ -497,6 +497,18 @@ OptDrawPage:
 	pop de
 	call PlaceString
 .noPrompt
+IF DEF(_DEBUG)
+; Debug builds only: build stamp on the bottom two rows, which no page uses. A
+; revived page prompt would sit at CancelY + 1 = 16 on the option pages and
+; collide with it.
+	hlcoord OPT_LABEL_COL, SCREEN_HEIGHT - 2
+	ld de, BuildDateText
+	call PlaceString
+	hlcoord OPT_LABEL_COL, SCREEN_HEIGHT - 1
+	ld de, BuildIdText
+	call PlaceString
+	ASSERT BANK(BuildDateText) == BANK(OptDrawPage), "Build ID must share the Options Menu bank"
+ENDC
 	jp OptDrawCursor
 
 ; Places the cursor glyph at OPT_CURSOR_COL of the selected row and a space on

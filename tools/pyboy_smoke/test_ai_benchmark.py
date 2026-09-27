@@ -40,12 +40,31 @@ class BenchmarkMetricTest(unittest.TestCase):
             classify_decisions([first, min_find_artifact]),
             {
                 "decisions": 1,
+                "damage_layer_ko_candidates": 1,
+                "damage_layer_missed_ko_candidates": 0,
+                "selected_redundant_penalty_decisions": 0,
                 "ko_opportunities": 1,
                 "missed_kos": 0,
                 "wasted_turns": 0,
             },
         )
 
+    def test_classification_labels_score_diagnostics_and_keeps_aliases(self) -> None:
+        record = {
+            "decision": 1,
+            "selected_slot": 1,
+            "layer_trace": [
+                {"layer": "DAMAGE", "enabled": True, "delta": [-5, 0, 0, 0]},
+                {"layer": "REDUNDANT", "enabled": True, "delta": [0, 1, 0, 0]},
+            ],
+        }
+        result = classify_decisions([record])
+        self.assertEqual(result["damage_layer_ko_candidates"], 1)
+        self.assertEqual(result["damage_layer_missed_ko_candidates"], 1)
+        self.assertEqual(result["selected_redundant_penalty_decisions"], 1)
+        self.assertEqual(result["ko_opportunities"], result["damage_layer_ko_candidates"])
+        self.assertEqual(result["missed_kos"], result["damage_layer_missed_ko_candidates"])
+        self.assertEqual(result["wasted_turns"], result["selected_redundant_penalty_decisions"])
     def test_move_power_table_matches_source_order(self) -> None:
         powers = parse_move_powers(REPO_ROOT / "data" / "moves" / "moves.asm")
         self.assertEqual(powers[1], 40)  # POUND

@@ -30,3 +30,6 @@
 *.sn*
 *.sa*
 *.sg1
+
+# timestamped ROM archive (see BUILD_DIR in Makefile)
+builds/

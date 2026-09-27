@@ -94,6 +94,8 @@ tidy:
 	      $(pokered_vc_obj) \
 	      $(pokeblue_vc_obj) \
 	      $(pokeblue_debug_obj) \
+	      $(roms:.gbc=_buildid.o) \
+	      $(patches:.patch=_vc_buildid.o) \
 	      rgbdscheck.o
 	$(MAKE) clean -C tools/
 
@@ -177,9 +179,32 @@ pokeblue_debug.gbc: RGBFIXFLAGS += -p 0xff -t "POKEMON BLUE"
 pokered_vc.gbc:     RGBFIXFLAGS += -p 0x00 -t "POKEMON RED"
 pokeblue_vc.gbc:    RGBFIXFLAGS += -p 0x00 -t "POKEMON BLUE"
 
-%.gbc: $$(%_obj) layout.link
-	$(RGBLINK) $(RGBLINKFLAGS) -l layout.link -m $*.map -n $*.sym -o $@ $(filter %.o,$^)
+# Every linked ROM is also archived to $(BUILD_DIR) as <rom>_<date>_<time>_<git hash>[-dirty].gbc,
+# with its matching .sym so BGB auto-loads symbols. The canonical pokered.gbc etc. stay in place
+# because the PyBoy harness and make's own up-to-date checks use them. One stamp per make run,
+# so ROMs built together share it. BUILD_KEEP=N keeps the newest N per ROM (0 keeps everything).
+BUILD_DIR   ?= builds
+BUILD_KEEP  ?= 20
+#
+# In the debug ROM only, the same date and ID are assembled in (buildid.asm) and shown on the
+# debug menu, the options screens and Debug 2. That object is assembled here rather than by a
+# normal rule so it only changes when a link actually happens.
+BUILD_TIME  := $(shell date '+%Y-%m-%d %H %M %S')
+BUILD_STAMP := $(word 1,$(BUILD_TIME))_$(word 2,$(BUILD_TIME))$(word 3,$(BUILD_TIME))$(word 4,$(BUILD_TIME))
+BUILD_TEXT  := $(word 1,$(BUILD_TIME)) $(word 2,$(BUILD_TIME)):$(word 3,$(BUILD_TIME))
+BUILD_ID    := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git diff --quiet HEAD -- 2>/dev/null || echo -dirty)
+
+%.gbc: $$(%_obj) layout.link buildid.asm
+	$(RGBASM) $(RGBASMFLAGS) $(if $(findstring _debug,$*),-D _DEBUG) -D 'BUILD_DATE_TEXT=$(BUILD_TEXT)' -D 'BUILD_ID_TEXT=$(BUILD_ID)' -o $*_buildid.o buildid.asm
+	$(RGBLINK) $(RGBLINKFLAGS) -l layout.link -m $*.map -n $*.sym -o $@ $(filter %.o,$^) $*_buildid.o
 	$(RGBFIX) $(RGBFIXFLAGS) $@
+	@mkdir -p $(BUILD_DIR)
+	cp $@ $(BUILD_DIR)/$*_$(BUILD_STAMP)_$(BUILD_ID).gbc
+	cp $*.sym $(BUILD_DIR)/$*_$(BUILD_STAMP)_$(BUILD_ID).sym
+	@if [ $(BUILD_KEEP) -gt 0 ]; then \
+		ls -1t $(BUILD_DIR)/$*_2*.gbc | tail -n +$$(( $(BUILD_KEEP) + 1 )) | \
+		while read f; do rm -f "$$f" "$${f%.gbc}.sym"; done; \
+	fi
 
 
 ### Misc file-specific graphics rules
