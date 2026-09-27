@@ -326,6 +326,7 @@ InitOptions_::
 	ASSERT TEXT_DELAY_INSTANT == 0
 	xor a
 	ld [wOptions], a
+	ld [wOptions3], a ; Ironman OFF
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a
 	ldh a, [hGBC]

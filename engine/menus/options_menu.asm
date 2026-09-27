@@ -845,18 +845,18 @@ OptionsPageSetInGame:
 
 ; rows, box height, CANCEL Y, row table, prompt column, prompt
 ;
-; Both pages share OptionsRows. The title screen declares 8 rows and so stops
+; Both pages share OptionsRows. The title screen declares 9 rows and so stops
 ; one short of CHEAT, which is the last entry in that table; its box is
-; correspondingly shorter, ending just under B. STYLE.
+; correspondingly shorter, ending just under IRONMAN.
 OptionsPageTitle:
-	optpage 8, 10, 15, OptionsRows, 0, 0
+	optpage 9, 11, 15, OptionsRows, 0, 0
 OptionsPageInGame:
-	optpage 9, 12, 15, OptionsRows, 0, 0
+	optpage 10, 13, 15, OptionsRows, 0, 0
 
 ; label, screen Y, value column, variable, mask, order, strings, count, hook
 ;
 ; Grouped, with a blank row between groups: on-screen extras, then text/audio
-; presentation, then the two that change how a battle plays, then the cheat.
+; presentation, then the three that change how a run plays, then the cheat.
 ; A blank row between EVERY item does not fit - nine rows plus eight gaps plus
 ; two border rows is 19, and the screen holds 18.
 ;
@@ -871,8 +871,9 @@ OptionsRows:
 	optrow OptAudioLabel,        7, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
 	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
 	optrow OptBattleStyleLabel, 10, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
-; In-game only. The title page's descriptor declares 8 rows and stops above it.
-	optrow_custom OptCheatLabel, 12, 9, OptDrawCheat, OptCycleCheat
+	optrow OptIronmanLabel,     11, 16, wOptions3, 1 << BIT_IRONMAN,           OptIronmanOrder,     OptOnOffValues,       2, 0
+; In-game only. The title page's descriptor declares 9 rows and stops above it.
+	optrow_custom OptCheatLabel, 13, 9, OptDrawCheat, OptCycleCheat
 
 ; ----------------------------------------------------------------------------
 ; SHELVED SECOND PAGE. Kept as a worked example so a second page can come back
@@ -916,6 +917,8 @@ OptColorOrder:
 	db 1 << BIT_ENHANCED_COLORS, 0
 Opt60FPSOrder:
 	db 1 << BIT_60_FPS, 0
+OptIronmanOrder:
+	db 1 << BIT_IRONMAN, 0
 
 OptAudioOrder:
 	db 0 << 4, 1 << 4, 2 << 4, 3 << 4
@@ -984,6 +987,7 @@ OptFollowerLabel:    db "FOLLOWER@"
 OptColorLabel:       db "ENH COLOR@"
 Opt60FPSLabel:       db "60 FPS@"
 OptCheatLabel:       db "CHEAT@"
+OptIronmanLabel:     db "IRONMAN@"
 
 ; ----------------------------------------------------------------------------
 ; Values. Every string in one table is padded to the same width, on the LEFT,

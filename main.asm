@@ -817,3 +817,10 @@ SECTION "Lobby NPCs", ROMX, BANK[$3C]
 
 INCLUDE "engine/events/lobby_daycare.asm"
 INCLUDE "engine/events/lobby_psychic.asm"
+
+; Ironman mode: releases fainted party mons after battle / poison, and keeps
+; them from evolving on the way out. farcall only; pinned to $3C (7 KB free)
+; for the same first-fit reason as the sections above.
+SECTION "Ironman", ROMX, BANK[$3C]
+
+INCLUDE "custom_functions/ironman.asm"

@@ -163,12 +163,10 @@ AIPlayerIsStalled::
 ; move lethal" but "is the thing being paid for still worth anything once the
 ; target is gone".
 ;
-; Uses the SAME determination AI_DAMAGE's own kill test uses, deliberately -
-; AIEstimateDamage's max roll, then AIScaleDamageForCrit, then the b=0 fraction
-; test. Matching it exactly is the point: if AI_DAMAGE is about to hand this move
-; AI_KILL for this board, then AI_SMART paying a rider bonus on top of it is
-; precisely the double-count F22 exists to remove, and the two layers must never
-; disagree about whether a move is lethal.
+; Uses the SAME reliable ordinary-hit determination AI_DAMAGE uses: the raw
+; maximum noncritical estimate must reach HP and the move must have at least 90%
+; hit chance. A crit-weighted expectation is not a KO bound, and an unreliable
+; possible kill can still benefit from its rider when the target survives.
 ;
 ; Status moves (0 power) return "not lethal" without paying for an estimate. In
 ; practice unreachable - every *_SIDE_EFFECT is attached to a damaging move - but
@@ -186,8 +184,7 @@ AISmartRiderIsWasted::
 	and a
 	jr z, .notLethal
 	farcall AIEstimateDamage
-	call AIScaleDamageForCrit
-	jp AIMoveWouldKO
+	jp AIMoveIsReliableKO
 .notLethal
 	and a ; clear carry
 	ret
@@ -255,6 +252,19 @@ AIDamageReachesFraction::
 AIMoveWouldKO::
 	ld b, 0
 	jr AIDamageReachesFraction
+
+; Carry SET if the raw maximum noncritical estimate reaches the player's HP and
+; the move's effective hit chance is at least 90%. This is the shared contract
+; for callers that need a RELIABLE ordinary-hit KO rather than a merely possible
+; one. INPUT: wAIDamageEstimate and the loaded wEnemyMove* block.
+; Clobbers af, bc, de, hl.
+AIMoveIsReliableKO::
+	call AIMoveWouldKO
+	ret nc
+	call AIGetMoveHitChance
+	cp 90 percent
+	ccf
+	ret
 
 ; Carry SET if the currently-estimated PLAYER move reaches the enemy HP total
 ; currently staged in wBuffer + AI_BUF_EFFHP. The mirror of AIMoveWouldKO, used
@@ -478,13 +488,9 @@ AIScaleDamageByAccuracy::
 ; rule. The engine's crit math sanity-checks against Smogon too: Tauros (base
 ; speed 110) gives 55/256 = 21.5%, the published figure.
 ;
-; WHY THE TIER TESTS ARE ALLOWED TO SEE THIS, even though a 21% crit chance is
-; not a 21% larger hit: AIEstimateDamage already reports the MAXIMUM damage roll
-; on purpose, so every consumer in this AI is written against an optimistic
-; bound, not an average. Crit expectation is the same kind of optimism applied
-; consistently, and at the extreme - a guaranteed crit - it is exact rather than
-; optimistic. Introducing a second, separate "raw" value for the kill test would
-; buy accuracy the rest of the simulator does not have.
+; This value is for move ranking and damage tiers only. It is not an ordinary-hit
+; bound or an exact critical-hit bound, so KO predicates must inspect the raw
+; estimate before calling this routine.
 ;
 ; KNOWN LIMITATION, deliberately not fixed here: Gen 1 crits ignore stat stages
 ; and screens, so a real crit into a Reflect or Amnesia wall is worth MORE than

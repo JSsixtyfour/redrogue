@@ -55,6 +55,9 @@ DEF BIT_FOLLOWER_DISABLED EQU 3
 DEF BIT_ENHANCED_COLORS EQU 6
 DEF BIT_60_FPS         EQU 7
 
+; wOptions3 (saved, extra option bits; see ram/wram.asm)
+DEF BIT_IRONMAN EQU 0 ; fainted party mons are released (custom_functions/ironman.asm)
+
 ; wLetterPrintingDelayFlags
 	const_def
 	const BIT_FAST_TEXT_DELAY ; 0

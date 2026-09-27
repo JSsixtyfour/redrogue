@@ -96,7 +96,12 @@ ApplyOutOfBattlePoisonDamage:
 	predef AnyPartyAlive
 	ld a, d
 	and a
-	jr nz, .noBlackOut
+	jr z, .blackOut
+	; Ironman: release whoever just fainted. Silent, because the "fainted!"
+	; box above already carried the Ironman line (_PokemonFaintedText).
+	farcall IronmanReleaseFaintedMonsSilent
+	jr .noBlackOut
+.blackOut
 	call EnableAutoTextBoxDrawing
 	ld a, TEXT_BLACKED_OUT
 	ldh [hTextID], a

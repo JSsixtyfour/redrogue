@@ -2928,7 +2928,16 @@ wRGB:: ds 3
 ; it needs no clear anywhere.
 wStageEventScratch:: db
 
-	ds 4  ; was ds 5; 1 byte carved in place for wStageEventScratch above.
+; Third saved options byte (Ironman mode). CARVED IN PLACE from the dead pad
+; below (ds 4 -> ds 3): zero WRAM0 cost, no later address shifts. Same lifecycle
+; as wOptions2 above: saved, NOT auto-zeroed on new game, seeded by InitOptions_
+; and carried across PrepareOakSpeech's fill.
+;   bit 0: BIT_IRONMAN - any party mon that faints is released (custom_functions/ironman.asm)
+;   bits 1-7: unused.
+wOptions3:: db
+
+	ds 3  ; was ds 4; 1 byte carved in place for wOptions3 above.
+	      ; was ds 5; 1 byte carved in place for wStageEventScratch above.
 	      ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +
 	      ; wProcCemDebugMode, wProcCavePreloadReady, +1 wEventFlags byte from the

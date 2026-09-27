@@ -6,7 +6,24 @@ _PokemartGreetingText::
 _PokemonFaintedText::
 	text_ram wNameBuffer
 	text_start
-	line "fainted!"
+	line "fainted!@"
+	; Ironman appends its release line; otherwise this ends exactly as before.
+	; Only the out-of-battle poison faint (TEXT_MON_FAINTED) prints this text.
+	text_asm
+	ld hl, .vanillaEnd
+	ld a, [wOptions3]
+	bit BIT_IRONMAN, a
+	ret z
+	ld hl, .ironman
+	ret
+.vanillaEnd
+	text_start
+	done
+.ironman
+	; TODO(user): placeholder wording.
+	text_start
+	para "It's gone for"
+	line "good..."
 	done
 
 _PlayerBlackedOutText::
