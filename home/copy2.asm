@@ -10,24 +10,25 @@ FarCopyData2::
 	pop af
 	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
-FarCopyData3::
-; Copy bc bytes from a:de to hl.
-	ldh [hROMBankTemp], a
-	ldh a, [hLoadedROMBank]
-	push af
-	ldh a, [hROMBankTemp]
-	call SetCurBank      ; -2 bytes (HOME space)
-	push hl
-	push de
-	push de
-	ld d, h
-	ld e, l
-	pop hl
-	call CopyData
-	pop de
-	pop hl
-	pop af
-	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;FarCopyData3::
+;; Copy bc bytes from a:de to hl.
+;	ldh [hROMBankTemp], a
+;	ldh a, [hLoadedROMBank]
+;	push af
+;	ldh a, [hROMBankTemp]
+;	call SetCurBank      ; -2 bytes (HOME space)
+;	push hl
+;	push de
+;	push de
+;	ld d, h
+;	ld e, l
+;	pop hl
+;	call CopyData
+;	pop de
+;	pop hl
+;	pop af
+;	jp SetCurBank        ; tail call = restore bank + ret; -3 bytes (HOME space)
 
 FarCopyDataDouble::
 ; Expand bc bytes of 1bpp image data

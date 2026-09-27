@@ -138,146 +138,151 @@ LoadTownMap_Nest:
 MonsNestText:
 	db "'s NEST@"
 
-LoadTownMap_Fly::
-	call ClearSprites
-	call LoadTownMap
-	call LoadPlayerSpriteGraphics
-	call LoadFontTilePatterns
-	ld de, BirdSprite
-	ld hl, vSprites tile BIRD_BASE_TILE
-	lb bc, BANK(BirdSprite), 12
-	call CopyVideoData
-	ld de, TownMapUpArrow
-	ld hl, vChars1 tile $6d
-	lb bc, BANK(TownMapUpArrow), (TownMapUpArrowEnd - TownMapUpArrow) / TILE_1BPP_SIZE
-	call CopyVideoDataDouble
-	call BuildFlyLocationsList
-	ld hl, hUpdateSpritesEnabled
-	ld a, [hl]
-	push af
-	ld [hl], $ff
-	push hl
-	hlcoord 0, 0
-	ld de, ToText
-	call PlaceString
-	ldh a, [hCurMap]
-	ld b, $0
-	call DrawPlayerOrBirdSprite
-	ld hl, wFlyLocationsList
-	decoord 18, 0
-.townMapFlyLoop
-	ld a, ' '
-	ld [de], a
-	push hl
-	push hl
-	hlcoord 3, 0
-	lb bc, 1, 15
-	call ClearScreenArea
-	pop hl
-	ld a, [hl]
-	ld b, BIRD_BASE_TILE
-	call DrawPlayerOrBirdSprite
-	hlcoord 3, 0
-	ld de, wNameBuffer
-	call PlaceString
-	ld c, 15
-	call DelayFrames
-	hlcoord 18, 0
-	ld [hl], '▲'
-	hlcoord 19, 0
-	ld [hl], '▼'
-	pop hl
-.inputLoop
-	push hl
-	call DelayFrame
-	call JoypadLowSensitivity
-	ldh a, [hJoy5]
-	ld b, a
-	pop hl
-	and PAD_A | PAD_B | PAD_UP | PAD_DOWN
-	jr z, .inputLoop
-	bit B_PAD_A, b
-	jr nz, .pressedA
-	ld a, SFX_TINK
-	call PlaySound
-	bit B_PAD_UP, b
-	jr nz, .pressedUp
-	bit B_PAD_DOWN, b
-	jr nz, .pressedDown
-	jr .pressedB
-.pressedA
-	ld a, SFX_HEAL_AILMENT
-	call PlaySound
-	ld a, [hl]
-	ld [wDestinationMap], a
-	ld hl, wStatusFlags6
-	set BIT_FLY_WARP, [hl]
-	ASSERT wStatusFlags6 + 1 == wStatusFlags7
-	inc hl
-	set BIT_USED_FLY, [hl]
-.pressedB
-	xor a
-	ld [wTownMapSpriteBlinkingEnabled], a
-	call GBPalWhiteOutWithDelay3
-	pop hl
-	pop af
-	ld [hl], a
-	ret
-.pressedUp
-	decoord 18, 0
-	inc hl
-	ld a, [hl]
-	cp $ff
-	jr z, .wrapToStartOfList
-	cp NOT_VISITED
-	jr z, .pressedUp ; skip past unvisited towns
-	jp .townMapFlyLoop
-.wrapToStartOfList
-	ld hl, wFlyLocationsList
-	jp .townMapFlyLoop
-.pressedDown
-	decoord 19, 0
-	dec hl
-	ld a, [hl]
-	cp $ff
-	jr z, .wrapToEndOfList
-	cp NOT_VISITED
-	jr z, .pressedDown ; skip past unvisited towns
-	jp .townMapFlyLoop
-.wrapToEndOfList
-	ld hl, wFlyLocationsList + NUM_CITY_MAPS
-	jr .pressedDown
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;LoadTownMap_Fly::
+;	call ClearSprites
+;	call LoadTownMap
+;	call LoadPlayerSpriteGraphics
+;	call LoadFontTilePatterns
+;	ld de, BirdSprite
+;	ld hl, vSprites tile BIRD_BASE_TILE
+;	lb bc, BANK(BirdSprite), 12
+;	call CopyVideoData
+;	ld de, TownMapUpArrow
+;	ld hl, vChars1 tile $6d
+;	lb bc, BANK(TownMapUpArrow), (TownMapUpArrowEnd - TownMapUpArrow) / TILE_1BPP_SIZE
+;	call CopyVideoDataDouble
+;	call BuildFlyLocationsList
+;	ld hl, hUpdateSpritesEnabled
+;	ld a, [hl]
+;	push af
+;	ld [hl], $ff
+;	push hl
+;	hlcoord 0, 0
+;	ld de, ToText
+;	call PlaceString
+;	ldh a, [hCurMap]
+;	ld b, $0
+;	call DrawPlayerOrBirdSprite
+;	ld hl, wFlyLocationsList
+;	decoord 18, 0
+;.townMapFlyLoop
+;	ld a, ' '
+;	ld [de], a
+;	push hl
+;	push hl
+;	hlcoord 3, 0
+;	lb bc, 1, 15
+;	call ClearScreenArea
+;	pop hl
+;	ld a, [hl]
+;	ld b, BIRD_BASE_TILE
+;	call DrawPlayerOrBirdSprite
+;	hlcoord 3, 0
+;	ld de, wNameBuffer
+;	call PlaceString
+;	ld c, 15
+;	call DelayFrames
+;	hlcoord 18, 0
+;	ld [hl], '▲'
+;	hlcoord 19, 0
+;	ld [hl], '▼'
+;	pop hl
+;.inputLoop
+;	push hl
+;	call DelayFrame
+;	call JoypadLowSensitivity
+;	ldh a, [hJoy5]
+;	ld b, a
+;	pop hl
+;	and PAD_A | PAD_B | PAD_UP | PAD_DOWN
+;	jr z, .inputLoop
+;	bit B_PAD_A, b
+;	jr nz, .pressedA
+;	ld a, SFX_TINK
+;	call PlaySound
+;	bit B_PAD_UP, b
+;	jr nz, .pressedUp
+;	bit B_PAD_DOWN, b
+;	jr nz, .pressedDown
+;	jr .pressedB
+;.pressedA
+;	ld a, SFX_HEAL_AILMENT
+;	call PlaySound
+;	ld a, [hl]
+;	ld [wDestinationMap], a
+;	ld hl, wStatusFlags6
+;	set BIT_FLY_WARP, [hl]
+;	ASSERT wStatusFlags6 + 1 == wStatusFlags7
+;	inc hl
+;	set BIT_USED_FLY, [hl]
+;.pressedB
+;	xor a
+;	ld [wTownMapSpriteBlinkingEnabled], a
+;	call GBPalWhiteOutWithDelay3
+;	pop hl
+;	pop af
+;	ld [hl], a
+;	ret
+;.pressedUp
+;	decoord 18, 0
+;	inc hl
+;	ld a, [hl]
+;	cp $ff
+;	jr z, .wrapToStartOfList
+;	cp NOT_VISITED
+;	jr z, .pressedUp ; skip past unvisited towns
+;	jp .townMapFlyLoop
+;.wrapToStartOfList
+;	ld hl, wFlyLocationsList
+;	jp .townMapFlyLoop
+;.pressedDown
+;	decoord 19, 0
+;	dec hl
+;	ld a, [hl]
+;	cp $ff
+;	jr z, .wrapToEndOfList
+;	cp NOT_VISITED
+;	jr z, .pressedDown ; skip past unvisited towns
+;	jp .townMapFlyLoop
+;.wrapToEndOfList
+;	ld hl, wFlyLocationsList + NUM_CITY_MAPS
+;	jr .pressedDown
 
-ToText:
-	db "To@"
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;ToText:
+;	db "To@"
 
-BuildFlyLocationsList:
-	ld hl, wFlyAnimUsingCoordList
-	ld [hl], $ff
-	inc hl
-	ld a, [wTownVisitedFlag]
-	ld e, a
-	ld a, [wTownVisitedFlag + 1]
-	ld d, a
-	lb bc, 0, NUM_CITY_MAPS
-.loop
-	srl d
-	rr e
-	ld a, NOT_VISITED
-	jr nc, .notVisited
-	ld a, b ; store the map number of the town if it has been visited
-.notVisited
-	ld [hl], a
-	inc hl
-	inc b
-	dec c
-	jr nz, .loop
-	ld [hl], $ff
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;BuildFlyLocationsList:
+;	ld hl, wFlyAnimUsingCoordList
+;	ld [hl], $ff
+;	inc hl
+;	ld a, [wTownVisitedFlag]
+;	ld e, a
+;	ld a, [wTownVisitedFlag + 1]
+;	ld d, a
+;	lb bc, 0, NUM_CITY_MAPS
+;.loop
+;	srl d
+;	rr e
+;	ld a, NOT_VISITED
+;	jr nc, .notVisited
+;	ld a, b ; store the map number of the town if it has been visited
+;.notVisited
+;	ld [hl], a
+;	inc hl
+;	inc b
+;	dec c
+;	jr nz, .loop
+;	ld [hl], $ff
+;	ret
 
-TownMapUpArrow:
-	INCBIN "gfx/town_map/up_arrow.1bpp"
-TownMapUpArrowEnd:
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;TownMapUpArrow:
+;	INCBIN "gfx/town_map/up_arrow.1bpp"
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;TownMapUpArrowEnd:
 
 LoadTownMap:
 	call GBPalWhiteOutWithDelay3

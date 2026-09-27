@@ -830,15 +830,16 @@ DoBlizzardSpecialEffects:
 
 ; flashes the screen at 3 points in the subanimation
 ; unused
-FlashScreenUnused:
-	ld a, [wSubAnimCounter]
-	cp 14
-	jp z, AnimationFlashScreen
-	cp 9
-	jp z, AnimationFlashScreen
-	cp 2
-	jp z, AnimationFlashScreen
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;FlashScreenUnused:
+;	ld a, [wSubAnimCounter]
+;	cp 14
+;	jp z, AnimationFlashScreen
+;	cp 9
+;	jp z, AnimationFlashScreen
+;	cp 2
+;	jp z, AnimationFlashScreen
+;	ret
 
 ; function to make the pokemon disappear at the beginning of the animation
 TradeHidePokemon:
@@ -1062,30 +1063,34 @@ AnimationDarkenMonPalette:
 	lb bc, $f9, $f4
 	jr SetAnimationBGPalette
 
-AnimationUnusedPalette1:
-	lb bc, $fe, $f8
-	jr SetAnimationBGPalette
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AnimationUnusedPalette1:
+;	lb bc, $fe, $f8
+;	jr SetAnimationBGPalette
 
-AnimationUnusedPalette2:
-	lb bc, $ff, $ff
-	jr SetAnimationBGPalette
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AnimationUnusedPalette2:
+;	lb bc, $ff, $ff
+;	jr SetAnimationBGPalette
 
 AnimationResetScreenPalette:
 ; Restores the screen's palette to the normal palette.
 	lb bc, $e4, $e4
 	jr SetAnimationBGPalette
 
-AnimationUnusedPalette3:
-	lb bc, $00, $00
-	jr SetAnimationBGPalette
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AnimationUnusedPalette3:
+;	lb bc, $00, $00
+;	jr SetAnimationBGPalette
 
 AnimationLightScreenPalette:
 ; Changes the screen to use a palette with light colors.
 	lb bc, $90, $90
 	jr SetAnimationBGPalette
 
-AnimationUnusedPalette4:
-	lb bc, $40, $40
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AnimationUnusedPalette4:
+;	lb bc, $40, $40
 
 SetAnimationBGPalette:
 	ld a, [wOnSGB]
@@ -1097,9 +1102,10 @@ SetAnimationBGPalette:
 	ldh [rBGP], a
 	ret
 
-AnimationUnusedShakeScreen: ; unreferenced
-; Shakes the screen for a while.
-	ld b, $5
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AnimationUnusedShakeScreen: ; unreferenced
+;; Shakes the screen for a while.
+;	ld b, $5
 
 AnimationShakeScreenVertically:
 	predef_jump PredefShakeScreenVertically
@@ -1346,9 +1352,10 @@ BattleAnimWriteOAMEntry:
 	ld [hli], a
 	ret
 
-AdjustOAMBlockXPos:
-	ld l, e
-	ld h, d
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AdjustOAMBlockXPos:
+;	ld l, e
+;	ld h, d
 
 AdjustOAMBlockXPos2:
 	ld de, OBJ_SIZE
@@ -1370,9 +1377,10 @@ AdjustOAMBlockXPos2:
 	jr nz, .loop
 	ret
 
-AdjustOAMBlockYPos:
-	ld l, e
-	ld h, d
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AdjustOAMBlockYPos:
+;	ld l, e
+;	ld h, d
 
 AdjustOAMBlockYPos2:
 	ld de, OBJ_SIZE

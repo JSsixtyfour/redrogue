@@ -982,38 +982,6 @@ PreventARegOverflow:
 	ret
 
 
-;randomizes the 'mon in wCurPartySpecies to an unevolved 'mon then tries to evolve it	
-;A bias is applied so that trainer 'mons need more levels to evolve
-;Also, the stronger end of unevolved pokemon will only show up in level-30 or higher trainer teams
-RandomizeRegularTrainerMons:
-	;CheckEvent EVENT_8D8
-	ret z
-	push de
-	ld de, ListNonLegendUnEvoPkmn_early
-	ld a, [wCurEnemyLevel]
-	push af
-	ld b, a
-	cp 30
-	jr c, .check15
-	ld de, ListNonLegendUnEvoPkmn
-	srl b
-	jr .next
-.check15
-	cp 15
-	jr c, .next
-	ld de, ListNonLegendUnEvoPkmn_mid
-.next
-	srl b
-	srl b
-	sub b
-	ld [wCurEnemyLevel], a
-	call GetRandMon
-	call EvolveMonByLevel
-	pop af
-	ld [wCurEnemyLevel], a
-	pop de
-	ret
-
 
 ; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
 ; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.
@@ -1155,63 +1123,6 @@ EvolveMonByLevel:
 	ret
 
 
-;joenote - take the 'mon in wCurPartySpecies, find its previous evolution, and put it back in wCurPartySpecies
-DevolveMon:	
-	ld hl, EvosMovesPointerTable
-.nextmonloop
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBuffer
-	;note, HL is now already incremented
-	ld a, [wEvoDataBuffer + 1]
-	cp $FF
-	ret z	;return if reached end of evolution pointer list
-
-	push hl
-	ld hl, wEvoDataBuffer	;let's now point HL to said address
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a				;HL now points to the address of the pokemon's evolution list
-
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
-
-	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
-	call .evosloop
-	pop hl
-	jr nz, .nextmonloop
-	
-	ld bc, 0 - EvosMovesPointerTable
-	add hl, bc
-	srl h
-	rr l
-	ld a, l
-	ld [wCurPartySpecies], a
-	ret
-	
-.evosloop
-	ld a, [hli]
-	and a
-	jr z, .notfound
-	cp EVOLVE_ITEM
-	jr nz, .not_item
-	inc hl
-.not_item
-	inc hl
-	ld a, [wCurPartySpecies]
-	ld b, a
-	ld a, [hli]
-	cp b
-	jr nz, .evosloop
-	ret
-.notfound
-	ld a, 1
-	and a
-	ret
-	
 ; d = Current Gym Leader/Battle, ie. OPP_BROCK
 InitGymBattle::
     ld a, d

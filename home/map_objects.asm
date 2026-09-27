@@ -240,15 +240,16 @@ DecodeRLEList::
 	ret
 
 ; sets movement byte 1 for sprite [hSpriteIndex] to $FE and byte 2 to [hSpriteMovementByte2]
-SetSpriteMovementBytesToFE::
-	push hl
-	call GetSpriteMovementByte1Pointer
-	ld [hl], $fe
-	call GetSpriteMovementByte2Pointer
-	ldh a, [hSpriteMovementByte2]
-	ld [hl], a
-	pop hl
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;SetSpriteMovementBytesToFE::
+;	push hl
+;	call GetSpriteMovementByte1Pointer
+;	ld [hl], $fe
+;	call GetSpriteMovementByte2Pointer
+;	ldh a, [hSpriteMovementByte2]
+;	ld [hl], a
+;	pop hl
+;	ret
 
 ; sets both movement bytes for sprite [hSpriteIndex] to $FF
 SetSpriteMovementBytesToFF::

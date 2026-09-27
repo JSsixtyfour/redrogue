@@ -264,9 +264,9 @@ INCLUDE "engine/overworld/ledges.asm"
 ; The only two raw (non-BANK()) references to MonsterNames were both audited and
 ; are both dead: NamePointers[0] in home/names2.asm is never dereferenced
 ; (MONSTER_NAME branches to GetMonName before the table lookup), and the
-; `ld de, MonsterNames` in InitList (engine/battle/misc.asm) is never stored -
-; that routine only writes hl to wListPointer. Vanilla already flags InitList as
-; doing nothing useful.
+; `ld de, MonsterNames` in InitList (engine/battle/misc.asm) was never stored -
+; that routine only writes hl to wListPointer. It is now commented out (code
+; sweep 2026-09-27), so InitList no longer references MonsterNames at all.
 SECTION "Monster Names", ROMX
 
 INCLUDE "data/pokemon/names.asm"
@@ -603,7 +603,6 @@ INCLUDE "engine/events/hidden_events/route_15_binoculars.asm"
 INCLUDE "engine/events/hidden_events/museum_fossils.asm"
 INCLUDE "engine/events/hidden_events/school_blackboard.asm"
 INCLUDE "engine/events/hidden_events/vermilion_gym_trash.asm"
-INCLUDE "engine/events/hidden_events/rogue_pokemon.asm"
 
 
 SECTION "Cinnabar Lab Fossils", ROMX

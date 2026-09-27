@@ -52,38 +52,42 @@ FormatMovesString:
 	ret
 
 ; XXX this is called in a few places, but it doesn't appear to do anything useful
+; [code sweep 2026-09-27] the four `ld de, <names>` loads below are commented
+; out to reclaim ROM: de is never stored (vestigial from the JP version), and
+; all 6 callfar sites (cable_club x3, pokemart x2, credit_mart) overwrite de
+; before reading it, so the de that survives the far call is never observed.
 InitList:
 	ld a, [wInitListType]
 	cp INIT_ENEMYOT_LIST
 	jr nz, .notEnemy
 	ld hl, wEnemyPartyCount
-	ld de, wEnemyMonOT
+;	ld de, wEnemyMonOT
 	ld a, ENEMYOT_NAME
 	jr .done
 .notEnemy
 	cp INIT_PLAYEROT_LIST
 	jr nz, .notPlayer
 	ld hl, wPartyCount
-	ld de, wPartyMonOT
+;	ld de, wPartyMonOT
 	ld a, PLAYEROT_NAME
 	jr .done
 .notPlayer
 	cp INIT_MON_LIST
 	jr nz, .notMonster
 	ld hl, wItemList
-	ld de, MonsterNames
+;	ld de, MonsterNames
 	ld a, MONSTER_NAME
 	jr .done
 .notMonster
 	cp INIT_BAG_ITEM_LIST
 	jr nz, .notBag
 	ld hl, wNumBagItems
-	ld de, ItemNames
+;	ld de, ItemNames
 	ld a, ITEM_NAME
 	jr .done
 .notBag
 	ld hl, wItemList
-	ld de, ItemNames
+;	ld de, ItemNames
 	ld a, ITEM_NAME
 .done
 	ld [wNameListType], a

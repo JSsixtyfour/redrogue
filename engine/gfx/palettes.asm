@@ -1431,58 +1431,6 @@ _UpdateGBCPal_BGP::
 ;	predef SingleCPUSpeed
 	ret
 	
-;gbcnote - new function
-TranslatePalPacketToBGMapAttributes::
-; translate the SGB pals for blk packets into something usable for the GBC
-	push hl
-	pop de
-	ld hl, PalPacketPointers
-	ld a, [hli]
-	ld c, a
-.loop
-	ld a, e
-.innerLoop
-	cp [hl]
-	jr z, .checkHighByte
-	inc hl
-	inc hl
-	dec c
-	jr nz, .innerLoop
-	ret
-.checkHighByte
-; the low byte of pointer matched, so check the high byte
-	inc hl
-	ld a, d
-	cp [hl]
-	jr z, .foundMatchingPointer
-	inc hl
-	dec c
-	jr nz, .loop
-	ret
-.foundMatchingPointer
-	push de
-	ld d, c
-	callfar LoadBGMapAttributes
-	pop de
-	ret   
-    
-    ;gbcnote - pointers from pokemon yellow
-PalPacketPointers::
-	db (palPacketPointersEnd - palPacketPointers) / 2
-palPacketPointers:
-	dw BlkPacket_WholeScreen
-	dw BlkPacket_Battle
-	dw BlkPacket_StatusScreen
-	dw BlkPacket_Pokedex
-	dw BlkPacket_Slots
-	dw BlkPacket_Titlescreen
-	dw BlkPacket_NidorinoIntro
-	dw wPartyMenuBlkPacket
-	dw wTrainerCardBlkPacket
-	dw BlkPacket_GameFreakIntro
-	dw wPalPacket
-	dw UnknownPacket_72751
-palPacketPointersEnd:
 
 CopySGBBorderTiles:
 ; SGB tile data is stored in a 4BPP planar format.

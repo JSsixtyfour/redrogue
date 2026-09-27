@@ -402,16 +402,6 @@ ProceduralForestDefaultScript:
 ;	ld [wCurMapScript], a
 ;	ret
 
-ProceduralForestPlayerMovingScript:
-	ldh a, [hSimulatedJoypadStatesIndex]
-	and a
-	ret nz
-	call Delay3
-	xor a
-	ld [wProceduralCave1CurScript], a
-	ld [wCurMapScript], a
-	ret
-
 ; Join offer — same shape as cave/cemetery. Shown via DisplayTextID (from the
 ; BossBattle win path) so the text box/font are set up properly.
 ProceduralForestBossOfferText:

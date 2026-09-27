@@ -238,18 +238,6 @@ BuildTMPocketList::
 	ret
 
 ; ============================================================
-; TeachTMHM
-; Trigger the standard teach-move flow.
-; Caller must set wCurItem to the TM/HM item ID before calling.
-; NOTE: do NOT pass the item ID via b — farcall clobbers b with
-; the bank number before this function executes.
-; ============================================================
-TeachTMHM::
-	; wCurItem already set by DisplayListMenuID (do not touch it)
-	farcall ItemUseTMHM
-	ret
-
-; ============================================================
 ; PocketSwitchROMX
 ; Full pocket-switch handling, called via farcall from the HOME-bank list
 ; menu (DisplayListMenuIDLoop) to keep that side small - validates the

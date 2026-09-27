@@ -142,10 +142,11 @@ AIEnemyTrainerChooseMoves:
 	ld hl, wBuffer    ; use created temporary array as move set
 	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
 	ret
-.useOriginalMoveSet
-	ld hl, wEnemyMonMoves    ; use original move set
-	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;.useOriginalMoveSet
+;	ld hl, wEnemyMonMoves    ; use original move set
+;	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
+;	ret
 
 ; Scoring layers, indexed by bit position in the tier's layer word. The order
 ; here IS the execution order (see constants/ai_constants.asm). Entries marked
@@ -475,8 +476,9 @@ AIMoveChoiceModification3:
 	ld a, AI_NUDGE
 	call AIDiscourage
 	jr .nextMove
-AIMoveChoiceModification4:
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AIMoveChoiceModification4:
+;	ret
 
 ; Gambler's Paradise AI (GAMBLER trainer class, via move_choices "1, 5").
 ; Scores the enemy's moves toward the high-risk gambler fantasy. Lower score =
@@ -1181,12 +1183,13 @@ AICureStatus:
 	res BADLY_POISONED, [hl]
 	ret
 
-AIUseXAccuracy: ; unreferenced
-	call AIPlayRestoringSFX
-	ld hl, wEnemyBattleStatus2
-	set USING_X_ACCURACY, [hl]
-	ld a, X_ACCURACY
-	jp AIPrintItemUse
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AIUseXAccuracy: ; unreferenced
+;	call AIPlayRestoringSFX
+;	ld hl, wEnemyBattleStatus2
+;	set USING_X_ACCURACY, [hl]
+;	ld a, X_ACCURACY
+;	jp AIPrintItemUse
 
 AIUseGuardSpec:
 	call AIPlayRestoringSFX
@@ -1195,12 +1198,13 @@ AIUseGuardSpec:
 	ld a, GUARD_SPEC
 	jp AIPrintItemUse
 
-AIUseDireHit: ; unreferenced
-	call AIPlayRestoringSFX
-	ld hl, wEnemyBattleStatus2
-	set GETTING_PUMPED, [hl]
-	ld a, DIRE_HIT
-	jp AIPrintItemUse
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AIUseDireHit: ; unreferenced
+;	call AIPlayRestoringSFX
+;	ld hl, wEnemyBattleStatus2
+;	set GETTING_PUMPED, [hl]
+;	ld a, DIRE_HIT
+;	jp AIPrintItemUse
 
 AICheckIfHPBelowFraction:
 ; return carry if enemy trainer's current HP is below 1 / a of the maximum
@@ -1243,9 +1247,10 @@ AIUseXSpeed:
 	ld a, X_SPEED
 	jr AIIncreaseStat
 
-AIUseXSpecial:
-	ld b, SPECIAL_UP1_EFFECT
-	ld a, X_SPECIAL
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;AIUseXSpecial:
+;	ld b, SPECIAL_UP1_EFFECT
+;	ld a, X_SPECIAL
 	; fallthrough
 
 AIIncreaseStat:

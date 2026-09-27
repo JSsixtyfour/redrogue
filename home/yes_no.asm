@@ -5,11 +5,12 @@ YesNoChoice::
 	call InitYesNoTextBoxParameters
 	jr DisplayYesNoChoice
 
-TwoOptionMenu:: ; unreferenced
-	ld a, TWO_OPTION_MENU
-	ld [wTextBoxID], a
-	call InitYesNoTextBoxParameters
-	jp DisplayTextBoxID
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;TwoOptionMenu:: ; unreferenced
+;	ld a, TWO_OPTION_MENU
+;	ld [wTextBoxID], a
+;	call InitYesNoTextBoxParameters
+;	jp DisplayTextBoxID
 
 InitYesNoTextBoxParameters::
 	xor a ; YES_NO_MENU
@@ -18,13 +19,14 @@ InitYesNoTextBoxParameters::
 	lb bc, 8, 15
 	ret
 
-YesNoChoicePokeCenter::
-	call SaveScreenTilesToBuffer1
-	ld a, HEAL_CANCEL_MENU
-	ld [wTwoOptionMenuID], a
-	hlcoord 11, 6
-	lb bc, 8, 12
-	jr DisplayYesNoChoice
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;YesNoChoicePokeCenter::
+;	call SaveScreenTilesToBuffer1
+;	ld a, HEAL_CANCEL_MENU
+;	ld [wTwoOptionMenuID], a
+;	hlcoord 11, 6
+;	lb bc, 8, 12
+;	jr DisplayYesNoChoice
 
 ;WideYesNoChoice:: ; unreferenced ; marcelnote - removed
 	;call SaveScreenTilesToBuffer1

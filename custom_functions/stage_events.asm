@@ -323,17 +323,6 @@ StageEventSettleSprite:
 	ret
 
 ; ============================================================
-; StageEventSyncOneScreenPos  (2026-09-22)
-; Single-slot entry, for the procedural BOSS in slot 1: PCFinalizeCave and
-; PCFinalizeCaveFast rewrite its MAPY/MAPX with nothing resyncing its pixels at
-; all, and it is exempt from hide-on-defeat so it is on screen for the window.
-; INPUT: d = sprite slot. Clobbers a/b/c/h/l. Preserves d/e.
-; ============================================================
-StageEventSyncOneScreenPos::
-	ld a, d
-	jr StageEventSettleSprite
-
-; ============================================================
 ; StageEventGiveBack  (Phase 7e)
 ; Returns whatever the villain took, once, after they are beaten. Farcalled
 ; from the cave's map script when a stage-event NPC's beat flag is set and the

@@ -23,7 +23,13 @@ ParalyzeEffect_:
 ; bank from CheckTargetSubstitute. Flags survive the far call untouched (the
 ; bank-restore cleanup in Bankswitch uses only ld/ldh, which do not affect
 ; flags), so the jr nz below sees CheckTargetSubstitute's own result.
+; hl MUST be saved: callfar loads hl with the target address and Bankswitch's
+; return path never restores it, so without the push/pop hl came back as
+; CheckTargetSubstitute's own address and `set PAR, [hl]` wrote to ROM
+; (code sweep 2026-09-27, F1). pop does not touch flags.
+	push hl
 	callfar CheckTargetSubstitute
+	pop hl
 	jr nz, .didntAffect
 ; check if the target is immune due to types
 	ld a, [de]

@@ -82,10 +82,11 @@ HiddenCoins:
 	ld a, $20
 	ldh [hCoins + 1], a
 	jr .bcdDone
-.bcd40 ; due to a typo, this is never used
-	ld a, $40
-	ldh [hCoins + 1], a
-	jr .bcdDone
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;.bcd40 ; due to a typo, this is never used
+;	ld a, $40
+;	ldh [hCoins + 1], a
+;	jr .bcdDone
 .bcd100
 	ld a, $1
 	ldh [hCoins], a

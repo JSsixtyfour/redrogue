@@ -5522,8 +5522,22 @@ AttackSubstitute:
 	jr z, .nullifyEffect
 	ld hl, wEnemyMoveEffect ; value for enemy's turn
 .nullifyEffect
+; Multi-hit moves keep their effect when a hit breaks Substitute. The normal
+; post-damage dispatcher initializes or retains the hit count, so remaining
+; hits continue into the now-exposed Pokemon. Other effects keep Gen 1's
+; existing break-time suppression.
+	ld a, [hl]
+	cp TWO_TO_FIVE_ATTACKS_EFFECT
+	jr z, .keepEffect
+	cp EFFECT_1E
+	jr z, .keepEffect
+	cp ATTACK_TWICE_EFFECT
+	jr z, .keepEffect
+	cp TWINEEDLE_EFFECT
+	jr z, .keepEffect
 	xor a
-	ld [hl], a ; zero the effect of the attacker's move
+	ld [hl], a ; zero every non-multi-hit effect
+.keepEffect
 	jp DrawHUDsAndHPBars
 
 SubstituteTookDamageText:

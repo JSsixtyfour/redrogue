@@ -144,16 +144,19 @@ OakSpeech:
 	ld hl, OakSpeechText3
 	call PrintText
 .next
-	ldh a, [hLoadedROMBank]
-	push af
+; [code sweep 2026-09-27] vanilla no-op bank save/restore commented out to
+; reclaim ROM: PlaySound restores hLoadedROMBank itself (DetermineAudioFunction
+; saves and restores it), so this rewrote the bank that was already mapped.
+;	ldh a, [hLoadedROMBank]
+;	push af
 	ld a, SFX_SHRINK
 	call PlaySound
-	pop af
+;	pop af
 ; bug: switching ROM Bank should not happen outside of Home Bank
 ; This code does nothing, as PlaySound does all necessary Bank switch
 ; It looks like a leftover from an early development stage
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
 	ld c, 4
 	call DelayFrames
 	farcall GetPlayerWalkSprite ; -> de (farcall clobbers bc, so set it after)
@@ -169,8 +172,11 @@ OakSpeech:
 	lb bc, BANK(ShrinkPic2), $00
 	call IntroDisplayPicCenteredOrUpperRight
 	call ResetPlayerSpriteData
-	ldh a, [hLoadedROMBank]
-	push af
+; [code sweep 2026-09-27] same vanilla no-op as above, commented out. This
+; PlaySound takes the fade-out path (wAudioFadeOutControl = 10), which never
+; switches banks at all.
+;	ldh a, [hLoadedROMBank]
+;	push af
 	ld a, BANK(Music_PalletTown)
 	ld [wAudioROMBank], a
 	ld [wAudioSavedROMBank], a
@@ -179,10 +185,10 @@ OakSpeech:
 	ld a, SFX_STOP_ALL_MUSIC
 	ld [wNewSoundID], a
 	call PlaySound
-	pop af
+;	pop af
 ; bug: switching ROM Bank should not happen outside of Home Bank
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
 	ld c, 20
 	call DelayFrames
 	hlcoord 6, 5

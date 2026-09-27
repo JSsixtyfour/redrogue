@@ -24,8 +24,9 @@ ClearBgMap::
 
 ; fills a VRAM background map with tile index in register l
 ; INPUT: h - high byte of background tile map address in VRAM
-FillBgMap:: ; unreferenced
-	ld a, l
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;FillBgMap:: ; unreferenced
+;	ld a, l
 
 FillBgMapCommon:
 	ld de, TILEMAP_AREA

@@ -94,182 +94,185 @@ PlayerPCCartridgeSwap:
 	farcall RoguePrismCartridgeMenu
 	jp PlayerPCMenu
 
-PlayerPCDeposit:
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld [wListScrollOffset], a
-	ld a, [wNumBagItems]
-	and a
-	jr nz, .loop
-	; PC deposit of count-array pocket items is future work — check legacy bag only
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;PlayerPCDeposit:
+;	xor a
+;	ldh [hCurrentMenuItem], a
+;	ld [wListScrollOffset], a
+;	ld a, [wNumBagItems]
+;	and a
+;	jr nz, .loop
+;	; PC deposit of count-array pocket items is future work — check legacy bag only
     
-	ld hl, NothingToDepositText
-	call PrintText
-	jp PlayerPCMenu
-.loop
-	ld hl, WhatToDepositText
-	call PrintText
-    call SaveTextBoxTilesToBuffer ; marcelnote - for TM printing
-	;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
-	ld a, [wBagPocketsFlags]
-	bit BIT_KEY_ITEMS_POCKET, a
-	ld hl, wNumBagItems
-	jr z, .gotBagPocket
-	ld hl, wNumBagItems
-.gotBagPocket
-	;;;;;;;;;;
-	ld a, l
-	ld [wListPointer], a
-	ld a, h
-	ld [wListPointer + 1], a
-	xor a
-	ld [wPrintItemPrices], a
-	ld a, ITEMLISTMENU
-	ld [wListMenuID], a
-	call DisplayListMenuID
-	jp c, PlayerPCMenu
-	call IsKeyItem
-	ld a, 1
-	ld [wItemQuantity], a
-	ld a, [wIsKeyItem]
-	and a
-	jr nz, .next
-; if it's not a key item, there can be more than one of the item
-	ld hl, DepositHowManyText
-	call PrintText
-	call DisplayChooseQuantityMenu
-	cp $ff
-	jp z, .loop
-.next
-	ld hl, wNumBoxItems
-	call AddItemToInventory
-	jr c, .roomAvailable
-	ld hl, NoRoomToStoreText
-	call PrintText
-	jp .loop
-.roomAvailable
-	ld hl, wNumBagItems
-	call RemoveItemFromInventory
-	call WaitForSoundToFinish
-	ld a, SFX_WITHDRAW_DEPOSIT
-	call PlaySound
-	call WaitForSoundToFinish
-	ld hl, ItemWasStoredText
-	call PrintText
-	jp .loop
+;	ld hl, NothingToDepositText
+;	call PrintText
+;	jp PlayerPCMenu
+;.loop
+;	ld hl, WhatToDepositText
+;	call PrintText
+;    call SaveTextBoxTilesToBuffer ; marcelnote - for TM printing
+;	;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
+;	ld a, [wBagPocketsFlags]
+;	bit BIT_KEY_ITEMS_POCKET, a
+;	ld hl, wNumBagItems
+;	jr z, .gotBagPocket
+;	ld hl, wNumBagItems
+;.gotBagPocket
+;	;;;;;;;;;;
+;	ld a, l
+;	ld [wListPointer], a
+;	ld a, h
+;	ld [wListPointer + 1], a
+;	xor a
+;	ld [wPrintItemPrices], a
+;	ld a, ITEMLISTMENU
+;	ld [wListMenuID], a
+;	call DisplayListMenuID
+;	jp c, PlayerPCMenu
+;	call IsKeyItem
+;	ld a, 1
+;	ld [wItemQuantity], a
+;	ld a, [wIsKeyItem]
+;	and a
+;	jr nz, .next
+;; if it's not a key item, there can be more than one of the item
+;	ld hl, DepositHowManyText
+;	call PrintText
+;	call DisplayChooseQuantityMenu
+;	cp $ff
+;	jp z, .loop
+;.next
+;	ld hl, wNumBoxItems
+;	call AddItemToInventory
+;	jr c, .roomAvailable
+;	ld hl, NoRoomToStoreText
+;	call PrintText
+;	jp .loop
+;.roomAvailable
+;	ld hl, wNumBagItems
+;	call RemoveItemFromInventory
+;	call WaitForSoundToFinish
+;	ld a, SFX_WITHDRAW_DEPOSIT
+;	call PlaySound
+;	call WaitForSoundToFinish
+;	ld hl, ItemWasStoredText
+;	call PrintText
+;	jp .loop
 
-PlayerPCWithdraw:
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld [wListScrollOffset], a
-	ld a, [wNumBoxItems]
-	and a
-	jr nz, .loop
-	ld hl, NothingStoredText
-	call PrintText
-	jp PlayerPCMenu
-.loop
-    ;;;;;;;;;; marcelnote - flag if withdrawing from PC (to prevent switching bag pocket), new for bag pockets
-	ld hl, wBagPocketsFlags
-	set BIT_PC_WITHDRAWING, [hl]
-	;;;;;;;;;;
-	ld hl, WhatToWithdrawText
-	call PrintText
-	ld hl, wNumBoxItems
-	ld a, l
-	ld [wListPointer], a
-	ld a, h
-	ld [wListPointer + 1], a
-	xor a
-	ld [wPrintItemPrices], a
-	ld a, ITEMLISTMENU
-	ld [wListMenuID], a
-	call DisplayListMenuID
-	jp c, PlayerPCMenu
-	call IsKeyItem
-	ld a, 1
-	ld [wItemQuantity], a
-	ld a, [wIsKeyItem]
-	and a
-    ld hl, wNumBagItems ; marcelnote - new for bag pockets
-	jr nz, .next
-; if it's not a key item, there can be more than one of the item
-	ld hl, WithdrawHowManyText
-	call PrintText
-	call DisplayChooseQuantityMenu
-	ld hl, wNumBagItems ; marcelnote - moved from below, new for bag pockets
-	cp $ff
-	jp z, .loop
-.next
-	ld hl, wNumBagItems
-	call AddItemToInventory
-	jr c, .roomAvailable
-	ld hl, CantCarryMoreText
-	call PrintText
-	jp .loop
-.roomAvailable
-	;;;;;;;;;; marcelnote - check which pocket we are in, new for bag pockets
-	ld a, [wBagPocketsFlags]
-	bit BIT_KEY_ITEMS_POCKET, a
-	ld hl, wNumBagItems
-	jr z, .gotBagPocket2
-	ld hl, wNumBagItems
-.gotBagPocket2
-	;;;;;;;;;;
-	call RemoveItemFromInventory
-	call WaitForSoundToFinish
-	ld a, SFX_WITHDRAW_DEPOSIT
-	call PlaySound
-	call WaitForSoundToFinish
-	ld hl, WithdrewItemText
-	call PrintText
-	jp .loop
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;PlayerPCWithdraw:
+;	xor a
+;	ldh [hCurrentMenuItem], a
+;	ld [wListScrollOffset], a
+;	ld a, [wNumBoxItems]
+;	and a
+;	jr nz, .loop
+;	ld hl, NothingStoredText
+;	call PrintText
+;	jp PlayerPCMenu
+;.loop
+;    ;;;;;;;;;; marcelnote - flag if withdrawing from PC (to prevent switching bag pocket), new for bag pockets
+;	ld hl, wBagPocketsFlags
+;	set BIT_PC_WITHDRAWING, [hl]
+;	;;;;;;;;;;
+;	ld hl, WhatToWithdrawText
+;	call PrintText
+;	ld hl, wNumBoxItems
+;	ld a, l
+;	ld [wListPointer], a
+;	ld a, h
+;	ld [wListPointer + 1], a
+;	xor a
+;	ld [wPrintItemPrices], a
+;	ld a, ITEMLISTMENU
+;	ld [wListMenuID], a
+;	call DisplayListMenuID
+;	jp c, PlayerPCMenu
+;	call IsKeyItem
+;	ld a, 1
+;	ld [wItemQuantity], a
+;	ld a, [wIsKeyItem]
+;	and a
+;    ld hl, wNumBagItems ; marcelnote - new for bag pockets
+;	jr nz, .next
+;; if it's not a key item, there can be more than one of the item
+;	ld hl, WithdrawHowManyText
+;	call PrintText
+;	call DisplayChooseQuantityMenu
+;	ld hl, wNumBagItems ; marcelnote - moved from below, new for bag pockets
+;	cp $ff
+;	jp z, .loop
+;.next
+;	ld hl, wNumBagItems
+;	call AddItemToInventory
+;	jr c, .roomAvailable
+;	ld hl, CantCarryMoreText
+;	call PrintText
+;	jp .loop
+;.roomAvailable
+;	;;;;;;;;;; marcelnote - check which pocket we are in, new for bag pockets
+;	ld a, [wBagPocketsFlags]
+;	bit BIT_KEY_ITEMS_POCKET, a
+;	ld hl, wNumBagItems
+;	jr z, .gotBagPocket2
+;	ld hl, wNumBagItems
+;.gotBagPocket2
+;	;;;;;;;;;;
+;	call RemoveItemFromInventory
+;	call WaitForSoundToFinish
+;	ld a, SFX_WITHDRAW_DEPOSIT
+;	call PlaySound
+;	call WaitForSoundToFinish
+;	ld hl, WithdrewItemText
+;	call PrintText
+;	jp .loop
 
-PlayerPCToss:
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld [wListScrollOffset], a
-	ld a, [wNumBoxItems]
-	and a
-	jr nz, .loop
-	ld hl, NothingStoredText
-	call PrintText
-	jp PlayerPCMenu
-.loop
-	ld hl, WhatToTossText
-	call PrintText
-	ld hl, wNumBoxItems
-	ld a, l
-	ld [wListPointer], a
-	ld a, h
-	ld [wListPointer + 1], a
-	xor a
-	ld [wPrintItemPrices], a
-	ld a, ITEMLISTMENU
-	ld [wListMenuID], a
-	push hl
-	call DisplayListMenuID
-	pop hl
-	jp c, PlayerPCMenu
-	push hl
-	call IsKeyItem
-	pop hl
-	ld a, 1
-	ld [wItemQuantity], a
-	ld a, [wIsKeyItem]
-	and a
-	jr nz, .next
-; if it's not a key item, there can be more than one of the item
-	push hl
-	ld hl, TossHowManyText
-	call PrintText
-	call DisplayChooseQuantityMenu
-	pop hl
-	cp $ff
-	jp z, .loop
-.next
-	call TossItem ; disallows tossing key items
-	jp .loop
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;PlayerPCToss:
+;	xor a
+;	ldh [hCurrentMenuItem], a
+;	ld [wListScrollOffset], a
+;	ld a, [wNumBoxItems]
+;	and a
+;	jr nz, .loop
+;	ld hl, NothingStoredText
+;	call PrintText
+;	jp PlayerPCMenu
+;.loop
+;	ld hl, WhatToTossText
+;	call PrintText
+;	ld hl, wNumBoxItems
+;	ld a, l
+;	ld [wListPointer], a
+;	ld a, h
+;	ld [wListPointer + 1], a
+;	xor a
+;	ld [wPrintItemPrices], a
+;	ld a, ITEMLISTMENU
+;	ld [wListMenuID], a
+;	push hl
+;	call DisplayListMenuID
+;	pop hl
+;	jp c, PlayerPCMenu
+;	push hl
+;	call IsKeyItem
+;	pop hl
+;	ld a, 1
+;	ld [wItemQuantity], a
+;	ld a, [wIsKeyItem]
+;	and a
+;	jr nz, .next
+;; if it's not a key item, there can be more than one of the item
+;	push hl
+;	ld hl, TossHowManyText
+;	call PrintText
+;	call DisplayChooseQuantityMenu
+;	pop hl
+;	cp $ff
+;	jp z, .loop
+;.next
+;	call TossItem ; disallows tossing key items
+;	jp .loop
 
 PlayersPCMenuEntries:
 	db   "WITHDRAW"
@@ -285,57 +288,69 @@ WhatDoYouWantText:
 	text_far _WhatDoYouWantText
 	text_end
 
-WhatToDepositText:
-	text_far _WhatToDepositText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;WhatToDepositText:
+;	text_far _WhatToDepositText
+;	text_end
 
-DepositHowManyText:
-	text_far _DepositHowManyText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;DepositHowManyText:
+;	text_far _DepositHowManyText
+;	text_end
 
-ItemWasStoredText:
-	text_far _ItemWasStoredText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;ItemWasStoredText:
+;	text_far _ItemWasStoredText
+;	text_end
 
-NothingToDepositText:
-	text_far _NothingToDepositText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;NothingToDepositText:
+;	text_far _NothingToDepositText
+;	text_end
 
-NoRoomToStoreText:
-	text_far _NoRoomToStoreText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;NoRoomToStoreText:
+;	text_far _NoRoomToStoreText
+;	text_end
 
-WhatToWithdrawText:
-	text_far _WhatToWithdrawText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;WhatToWithdrawText:
+;	text_far _WhatToWithdrawText
+;	text_end
 
-WithdrawHowManyText:
-	text_far _WithdrawHowManyText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;WithdrawHowManyText:
+;	text_far _WithdrawHowManyText
+;	text_end
 
-WithdrewItemText:
-	text_far _WithdrewItemText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;WithdrewItemText:
+;	text_far _WithdrewItemText
+;	text_end
 
-NothingStoredText:
-	text_far _NothingStoredText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;NothingStoredText:
+;	text_far _NothingStoredText
+;	text_end
 
-CantCarryMoreText:
-	text_far _CantCarryMoreText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;CantCarryMoreText:
+;	text_far _CantCarryMoreText
+;	text_end
 
-WhatToTossText:
-	text_far _WhatToTossText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;WhatToTossText:
+;	text_far _WhatToTossText
+;	text_end
 
-TossHowManyText:
-	text_far _TossHowManyText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;TossHowManyText:
+;	text_far _TossHowManyText
+;	text_end
 
-; TMItContainsText moved to custom_functions/tm_bag.asm (same ROMX bank as
-; PrintBagInfoText, which needs to read it with that bank active)
-	text_end
+;; TMItContainsText moved to custom_functions/tm_bag.asm (same ROMX bank as
+;; PrintBagInfoText, which needs to read it with that bank active)
+;	text_end
 
 ; ============================================================
 ; PlayerPCWithdrawKeyItems — take a key item from PC into bag.

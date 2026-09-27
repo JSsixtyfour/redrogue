@@ -83,15 +83,16 @@ DrawHPBar::
 LoadMonData::
 	rfarjp LoadMonData_
 
-OverwritewMoves::
-; Write c to [wMoves + b]. Unused.
-	ld hl, wMoves
-	ld e, b
-	ld d, 0
-	add hl, de
-	ld a, c
-	ld [hl], a
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;OverwritewMoves::
+;; Write c to [wMoves + b]. Unused.
+;	ld hl, wMoves
+;	ld e, b
+;	ld d, 0
+;	add hl, de
+;	ld a, c
+;	ld [hl], a
+;	ret
 
 LoadFlippedFrontSpriteByMonIndex::
 	ld a, 1
@@ -348,11 +349,12 @@ PrintLevel::
 ; INPUT:
 ; hl = destination address
 ; [wLoadedMonLevel] = level
-PrintLevelFull::
-	ld a, '<LV>' ; ":L" tile ID
-	ld [hli], a
-	ld c, 3 ; number of digits
-	ld a, [wLoadedMonLevel] ; level
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;PrintLevelFull::
+;	ld a, '<LV>' ; ":L" tile ID
+;	ld [hli], a
+;	ld c, 3 ; number of digits
+;	ld a, [wLoadedMonLevel] ; level
 
 PrintLevelCommon::
 	ld [wTempByteValue], a
@@ -360,14 +362,15 @@ PrintLevelCommon::
 	ld b, LEFT_ALIGN | 1 ; 1 byte
 	jp PrintNumber
 
-GetwMoves::
-; Unused. Returns the move at index a from wMoves in a
-	ld hl, wMoves
-	ld c, a
-	ld b, 0
-	add hl, bc
-	ld a, [hl]
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;GetwMoves::
+;; Unused. Returns the move at index a from wMoves in a
+;	ld hl, wMoves
+;	ld c, a
+;	ld b, 0
+;	add hl, bc
+;	ld a, [hl]
+;	ret
 
 ; ---------------------------------------------------------------------------
 ; PublishFormContext  (Species Groups Phase 2R)

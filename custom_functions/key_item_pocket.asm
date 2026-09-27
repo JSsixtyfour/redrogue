@@ -303,7 +303,6 @@ AcquireKeyPocketItem::
 ; OUTPUT: carry set = now active; carry clear = bag full or already active
 ; ============================================================
 WithdrawKeyItem::
-EquipKeyItem::
     call IsKeyPocketItem
     jr nc, .fail
     ld a, RAMG_SRAM_ENABLE
@@ -343,7 +342,6 @@ EquipKeyItem::
 ; OUTPUT: carry set = deposited; carry clear = wasn't active
 ; ============================================================
 DepositKeyItem::
-UnequipKeyItem::
     call IsKeyPocketItem
     jr nc, .fail
     inc c                     ; c = active_bit
@@ -567,9 +565,3 @@ BuildKeyItemPCWithdrawList::
     xor a
     ld [rRAMG], a
     ret
-
-; ============================================================
-; BuildKeyItemPCList — alias for the PC screen (shows bag list).
-; PC DEPOSIT uses the same list as the bag.
-; ============================================================
-BuildKeyItemPCList:: jp BuildKeyItemBagList

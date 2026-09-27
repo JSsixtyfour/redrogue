@@ -343,9 +343,11 @@ def run_tier(
             harness.hook_flag(label)
             for label in (
                 "AIUseFullRestore", "AIUsePotion", "AIUseSuperPotion",
-                "AIUseHyperPotion", "AIUseFullHeal", "AIUseXAccuracy",
-                "AIUseGuardSpec", "AIUseDireHit", "AIUseXAttack",
-                "AIUseXDefend", "AIUseXSpeed", "AIUseXSpecial",
+                # AIUseXAccuracy/DireHit/XSpecial are unreferenced vanilla
+                # code, commented out in the 2026-09-27 code sweep.
+                "AIUseHyperPotion", "AIUseFullHeal",
+                "AIUseGuardSpec", "AIUseXAttack",
+                "AIUseXDefend", "AIUseXSpeed",
             )
         ]
         victories = harness.hook_flag("TrainerBattleVictory")

@@ -5,11 +5,14 @@
 ; Normal and ghost versions of the same species coexist fine, since the flag
 ; lives on the individual mon's own struct, not on anything species-keyed.
 ;
-; STATUS: not wired into anything yet. ApplyGhostVariant/IsGhostVariant below
-; are real and ready to call. The three display hooks (status screen type,
-; battle palette, status screen palette) are written as commented-out
-; reference snippets at the bottom, showing exactly what to insert where once
-; this is ready to go live alongside the procedural cemetery stage work.
+; STATUS: LIVE. The procedural cemetery sets the flag through its own setter,
+; PCemApplyGhostBoss (procedural_cemetery_gen.asm, takes de), and
+; IsGhostVariant is read by the battle entrance (battle_menu_extras.asm);
+; func_shiny.asm reads the bit for the HUD icon. The original generic setter,
+; ApplyGhostVariant, was deleted in the 2026-09-27 code sweep: it had no
+; callers, since PCemApplyGhostBoss does the same two writes inline (plus the
+; ghost move). A new ghost source should reuse PCemApplyGhostBoss.
+; The commented-out display snippets at the bottom predate going live.
 ;
 ; Storage: bit 0 of the CatchRate byte (MON_CATCH_RATE) in
 ; box_struct/party_struct/battle_struct. That field is dead for any owned mon
@@ -31,7 +34,7 @@
 ; the display hooks below go live. Both copy sites now `res 0, a` on the
 ; catch-rate value right before storing it, so every freshly created mon
 ; (player party or enemy) starts at "not ghost" regardless of species, and
-; only ApplyGhostVariant ever sets the bit on purpose. This mod isn't
+; only PCemApplyGhostBoss ever sets the bit on purpose. This mod isn't
 ; planning to keep Pokemon catching as a mechanic - if catching is ever
 ; fully removed, MON_CATCH_RATE (and wEnemyMonActualCatchRate) become
 ; entirely free and those two `res 0, a` clears stop being load-bearing
@@ -46,31 +49,10 @@
 DEF BIT_GHOST_VARIANT EQU 0 ; bit within the repurposed CatchRate byte
 
 ; ---------------------------------------------------------------------------
-; ApplyGhostVariant
-; Marks the mon at [hl] as a ghost variant and forces its secondary type.
-; Call once, at creation time. Does not touch moves (see note above).
-; INPUT: hl = pointer to the mon's struct (its Species field, i.e. the same
-;             address you'd pass as the base of a box_struct/party_struct/
-;             battle_struct - wBoxMonN, wPartyMonN, wEnemyMonN, wBattleMon,
-;             wEnemyMon, wLoadedMon, etc. all qualify)
-; CLOBBERS: af, de
-; ---------------------------------------------------------------------------
-ApplyGhostVariant::
-	push hl
-	ld de, MON_CATCH_RATE
-	add hl, de
-	set BIT_GHOST_VARIANT, [hl]     ; set bit to ghost variant
-	pop hl
-	push hl
-	ld de, MON_TYPE2
-	add hl, de
-	ld [hl], GHOST
-	pop hl
-	ret
-
-; ---------------------------------------------------------------------------
 ; IsGhostVariant
-; INPUT: de = pointer to the mon's struct (see ApplyGhostVariant)
+; INPUT: de = pointer to the mon's struct (its Species field, i.e. the base of
+;             a box_struct/party_struct/battle_struct - wBoxMonN, wPartyMonN,
+;             wEnemyMon, wBattleMon, wLoadedMon, etc. all qualify)
 ; OUTPUT: Z set if NOT a ghost variant, Z clear (NZ) if it IS
 ; CLOBBERS: af, hl
 ;

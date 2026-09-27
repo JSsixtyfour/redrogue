@@ -327,8 +327,8 @@ PCemApplyGhostBoss::
 	ld [hl], c
 	push hl                    ; its PP byte is MON_PP - MON_MOVES further on
 	; look up the move's base PP (Moves struct byte 5) via FarCopyData, a HOME
-	; routine. It MUST be a HOME-based far read: this function runs in ROMX bank
-	; 06, so doing the bank switch inline here (call SetCurBank / read / restore)
+	; routine. It MUST be a HOME-based far read: this function runs in ROMX (bank
+	; $05 as of 2026-09-27), so doing the bank switch inline here (call SetCurBank / read / restore)
 	; swaps the very bank the CPU is executing from out from under it - the next
 	; instruction runs from BANK(Moves), landing in unrelated facility code
 	; (PFacScanForBall) and crashing. FarCopyData does the switch from HOME where

@@ -2171,10 +2171,11 @@ LoadWalkingPlayerSpriteGraphics::
 	ld hl, vNPCSprites
 	jr LoadPlayerSpriteGraphicsCommon
 
-LoadSurfingPlayerSpriteGraphics::
-	ld de, SeelSprite
-	ld hl, vNPCSprites
-	jr LoadPlayerSpriteGraphicsCommon
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;LoadSurfingPlayerSpriteGraphics::
+;	ld de, SeelSprite
+;	ld hl, vNPCSprites
+;	jr LoadPlayerSpriteGraphicsCommon
 
 LoadBikePlayerSpriteGraphics::
 	ld de, RedBikeSprite

@@ -2518,48 +2518,6 @@ PCPlaceExitLadder:
 	ret
 
 ; ============================================================
-; PCEntranceViewPointer
-; Computes the build-time-equivalent view pointer for the generator's
-; chosen entrance tile and writes it to wCurrentTileBlockMapViewPointer.
-; Mirrors the event_displacement macro's formula (macros/scripts/maps.asm):
-;   ptr = wOverworldMap + 7 + width + (width+6)*(tileY>>1) + (tileX>>1)
-; tileY/tileX = entrance block coords * 4 (block -> tile), so
-; tileY>>1 = entranceY*2 and tileX>>1 = entranceX*2. width = PC_SIZE, so
-; width+6 = PC_STRIDE (26) - same numeric stride as PCWriteCell uses, but
-; this is a DIFFERENT addressing scheme (base 7+width vs PC_BASE=81); see
-; the comment at the call site.
-; ============================================================
-PCEntranceViewPointer:
-	ld a, [wBuffer + wProcCaveEntranceY]
-	add a, a            ; blockY*2 = (blockY*4)>>1 = tileY>>1
-	ld b, a
-	ld hl, wOverworldMap + 7 + PC_SIZE
-	and a
-	jr z, .doneRows
-.rowLoop
-	ld a, l
-	add a, PC_STRIDE
-	ld l, a
-	jr nc, .noCarryRow
-	inc h
-.noCarryRow
-	dec b
-	jr nz, .rowLoop
-.doneRows
-	ld a, [wBuffer + wProcCaveEntranceX]
-	add a, a            ; blockX*2 = tileX>>1
-	add a, l
-	ld l, a
-	jr nc, .noCarryCol
-	inc h
-.noCarryCol
-	ld a, l
-	ld [wCurrentTileBlockMapViewPointer], a
-	ld a, h
-	ld [wCurrentTileBlockMapViewPointer + 1], a
-	ret
-
-; ============================================================
 ; PCEdgePoint
 ; INPUT: wProcCaveEdge (0-3), wProcCaveOffset (1-18)
 ; OUTPUT: wProcCaveCurX, wProcCaveCurY

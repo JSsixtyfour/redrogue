@@ -121,16 +121,17 @@ UpdatePlayerSprite:
 	ld [wSpritePlayerStateData2GrassPriority], a
 	ret
 
-UnusedReadSpriteDataFunction:
-	push bc
-	push af
-	ldh a, [hCurrentSpriteOffset]
-	ld c, a
-	pop af
-	add c
-	ld l, a
-	pop bc
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;UnusedReadSpriteDataFunction:
+;	push bc
+;	push af
+;	ldh a, [hCurrentSpriteOffset]
+;	ld c, a
+;	pop af
+;	add c
+;	ld l, a
+;	pop bc
+;	ret
 
 UpdateNPCSprite:
 	ldh a, [hCurrentSpriteOffset]

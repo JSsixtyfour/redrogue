@@ -2328,8 +2328,9 @@ BoxFullCannotThrowBall:
 	ld hl, BoxFullCannotThrowBallText
 	jr ItemUseFailed
 
-SurfingAttemptFailed:
-	ld hl, NoSurfingHereText
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;SurfingAttemptFailed:
+;	ld hl, NoSurfingHereText
 
 ItemUseFailed:
 	xor a
@@ -2360,9 +2361,10 @@ NoCyclingAllowedHereText:
 	text_far _NoCyclingAllowedHereText
 	text_end
 
-NoSurfingHereText:
-	text_far _NoSurfingHereText
-	text_end
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;NoSurfingHereText:
+;	text_far _NoSurfingHereText
+;	text_end
 
 BoxFullCannotThrowBallText:
 	text_far _BoxFullCannotThrowBallText

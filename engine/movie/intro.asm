@@ -278,10 +278,11 @@ CopyTileIDsFromList_ZeroBaseTileID:
 	ld c, 0
 	predef_jump CopyTileIDsFromList
 
-PlayIntroMoveSound: ; unreferenced
-	predef GetIntroMoveSound
-	ld a, b
-	jp PlaySound
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;PlayIntroMoveSound: ; unreferenced
+;	predef GetIntroMoveSound
+;	ld a, b
+;	jp PlaySound
 
 LoadIntroGraphics:
 	ld hl, FightIntroBackMon
@@ -406,12 +407,13 @@ IntroDrawBlackBars:
 	ld c,  TILEMAP_WIDTH * 4
 	jp IntroPlaceBlackTiles
 
-LoadPresentsGraphic: ; unreferenced
-	; This routine loaded the "PRESENTS" text graphic (tiles
-	; $67, $68, $69, $6A, $6B, and $6C from gamefreak_presents.2bpp)
-	; at coordinates (11, 7) in the Japanese versions.
-	; It was dummied out in the English localization.
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;LoadPresentsGraphic: ; unreferenced
+;	; This routine loaded the "PRESENTS" text graphic (tiles
+;	; $67, $68, $69, $6A, $6B, and $6C from gamefreak_presents.2bpp)
+;	; at coordinates (11, 7) in the Japanese versions.
+;	; It was dummied out in the English localization.
+;	ret
 
 IntroNidorinoAnimation0:
 	db 0, 0

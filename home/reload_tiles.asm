@@ -29,10 +29,11 @@ ReloadTilesetTilePatterns::
 	ret
 
 ; shows the town map and lets the player choose a destination to fly to
-ChooseFlyDestination::
-	ld hl, wStatusFlags4
-	res BIT_NO_BATTLES, [hl]
-	rfarjp LoadTownMap_Fly
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;ChooseFlyDestination::
+;	ld hl, wStatusFlags4
+;	res BIT_NO_BATTLES, [hl]
+;	rfarjp LoadTownMap_Fly
 
 ; causes the text box to close without waiting for a button press after displaying text
 DisableWaitingAfterTextDisplay::

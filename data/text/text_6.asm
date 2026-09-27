@@ -252,12 +252,13 @@ _NoCyclingAllowedHereText::
 	next "allowed here."
 	prompt
 
-_NoSurfingHereText::
-	text "No SURFing on"
-	line "@"
-	text_ram wNameBuffer
-	text " here!"
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_NoSurfingHereText::
+;	text "No SURFing on"
+;	line "@"
+;	text_ram wNameBuffer
+;	text " here!"
+;	prompt
 
 _BoxFullCannotThrowBallText::
 	text "The #MON BOX"

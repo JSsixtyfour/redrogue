@@ -131,13 +131,15 @@ IsItemHM::
 
 ; sets carry if move is an HM, clears carry if move is not an HM
 ; Input: a = move ID
-IsMoveHM::
-	ld hl, HMMoves
-	ld de, 1
-	jp IsInArray
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;IsMoveHM::
+;	ld hl, HMMoves
+;	ld de, 1
+;	jp IsInArray
 
-HMMoves::
-INCLUDE "data/moves/hm_moves.asm"
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;HMMoves::
+;INCLUDE "data/moves/hm_moves.asm"
 
 GetMoveName::
 	push hl

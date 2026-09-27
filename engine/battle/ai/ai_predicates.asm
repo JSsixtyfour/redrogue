@@ -86,15 +86,6 @@ AIEnemyHPBelowQuarter::
 ; hides: Phase 7 limits what the AI knows about the player's MOVES and
 ; status/type, not their visible HP bar, which is on screen either way.
 
-; Carry set if the player is at full HP.
-AIPlayerHPAtMax::
-	ld hl, wBattleMonHP
-	ld de, wBattleMonMaxHP
-	ld b, 0
-	call AIHPShiftCompare
-	ccf
-	ret
-
 ; Carry set if the player is strictly below half HP.
 AIPlayerHPBelowHalf::
 	ld hl, wBattleMonHP

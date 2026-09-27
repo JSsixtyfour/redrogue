@@ -581,20 +581,9 @@ MarkCurrentStageVisited::
 	ld [hl], a
 	ret
 
-; ============================================================
-; SelectRandomUnvisitedStage
-; Picks a random stage that has not been visited yet and
-; redirects the player there via BIT_WARP_FROM_CUR_SCRIPT.
-; If every stage has been visited, the bitfield resets first
-; so the cycle begins again.
-;
-; Sets: hWarpDestinationMap, wDestinationWarpID, wLastMap,
-;       BIT_WARP_FROM_CUR_SCRIPT
-; ============================================================
 ; Private helper: pick a random unvisited stage and store its map ID in
 ; hWarpDestinationMap. Does NOT set BIT_WARP_FROM_CUR_SCRIPT or wLastMap.
-; Use SelectRandomUnvisitedStage for the full exit-tile behaviour, or call
-; this directly when patching the warp table on map entry instead.
+; Call this when patching the warp table on map entry.
 _PickRandomUnvisitedStage:
 	; --- Pass 1: count how many stages are unvisited ---
 	ld hl, RogueStageMapTable
@@ -668,17 +657,6 @@ _PickRandomUnvisitedStage:
 	ld a, b             ; a = chosen stage map ID
 	ld [wRogueMap], a
 	ret                 ; caller sets warp flags if needed
-
-SelectRandomUnvisitedStage::
-	; Full exit-tile behaviour: pick stage AND trigger the script warp.
-	call _PickRandomUnvisitedStage
-	ld a, 1
-	ld [wDestinationWarpID], a
-	ld a, INDIGO_PLATEAU_LOBBY
-	ld [wLastMap], a
-	ld hl, wStatusFlags3
-	set BIT_WARP_FROM_CUR_SCRIPT, [hl]
-	ret
 
 ; ============================================================
 ; _PickNextStage  (private)
@@ -952,7 +930,7 @@ SelectAndPatchRewardRoomExit::
 ; PatchWarpEntry
 ; Patches ALL warp entries in wWarpEntries that have Y==b and X==c,
 ; changing their destination map ID to a.
-; Call this after SelectRandomUnvisitedStage to redirect exit warps.
+; Call this after _PickRandomUnvisitedStage to redirect exit warps.
 ;
 ; INPUT: a = new destination map ID, b = exit tile Y, c = exit tile X
 ; ============================================================

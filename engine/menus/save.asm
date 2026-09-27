@@ -152,12 +152,13 @@ GoodCheckSum:
 	ld [rRAMG], a
 	ret
 
-TryLoadSaveFileIgnoreChecksum: ; unreferenced
-; don't update wSaveFileStatus upon success or failure
-; don't display warning in case of failed checksum
-	call LoadMainData
-	call LoadCurrentBoxData
-	jp LoadPartyAndDexData
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;TryLoadSaveFileIgnoreChecksum: ; unreferenced
+;; don't update wSaveFileStatus upon success or failure
+;; don't display warning in case of failed checksum
+;	call LoadMainData
+;	call LoadCurrentBoxData
+;	jp LoadPartyAndDexData
 
 SaveMenu:
 	farcall PrintSaveScreenText

@@ -54,8 +54,7 @@ INCLUDE "data/maps/headers/IndigoPlateauLobby.asm"
 INCLUDE "scripts/IndigoPlateauLobby.asm"
 INCLUDE "data/maps/objects/IndigoPlateauLobby.asm"
 IndigoPlateauLobby_Blocks: INCBIN "maps/IndigoPlateauLobby.blk"
-; Mateo's move relearner/deleter files
-;INCLUDE "scripts/move_deleter.asm"
+; Mateo's move relearner files
 INCLUDE "scripts/move_relearner.asm"
 
 INCLUDE "data/maps/headers/SilphCo4F.asm"

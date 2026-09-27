@@ -4,11 +4,12 @@ HallOfFame_Script:
 	ld a, [wHallOfFameCurScript]
 	jp CallFunctionInTable
 
-HallofFameRoomClearScripts: ; unreferenced
-	xor a
-	ldh [hJoyIgnore], a
-	ld [wHallOfFameCurScript], a
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;HallofFameRoomClearScripts: ; unreferenced
+;	xor a
+;	ldh [hJoyIgnore], a
+;	ld [wHallOfFameCurScript], a
+;	ret
 
 HallOfFame_ScriptPointers:
 	def_script_pointers

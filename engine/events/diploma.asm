@@ -73,17 +73,18 @@ DisplayDiploma::
 	call Delay3
 	jp GBPalNormal
 
-UnusedPlayerNameLengthFunc:
-; Unused function that performs bc = -(player name's length)
-; leftover from the JPN versions
-	ld hl, wPlayerName
-	lb bc, $ff, $00
-.loop
-	ld a, [hli]
-	cp '@'
-	ret z
-	dec c
-	jr .loop
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;UnusedPlayerNameLengthFunc:
+;; Unused function that performs bc = -(player name's length)
+;; leftover from the JPN versions
+;	ld hl, wPlayerName
+;	lb bc, $ff, $00
+;.loop
+;	ld a, [hli]
+;	cp '@'
+;	ret z
+;	dec c
+;	jr .loop
 
 MACRO diploma_text
 	dw \3

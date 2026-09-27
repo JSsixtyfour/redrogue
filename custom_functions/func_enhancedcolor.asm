@@ -2428,7 +2428,6 @@ ToggleCPUSpeed:
 	ret	
     
 SetAttackANimPal::
-SetAttackAnimPal::
 	call GetPredefRegisters
 
 	;set wAnimPalette based on if in grayscale or color

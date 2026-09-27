@@ -1473,61 +1473,72 @@ _WhatDoYouWantText::
 	line "to do?"
 	done
 
-_WhatToDepositText::
-	text "What do you want"
-	line "to deposit?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_WhatToDepositText::
+;	text "What do you want"
+;	line "to deposit?"
+;	done
 
-_DepositHowManyText::
-	text "How many?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_DepositHowManyText::
+;	text "How many?"
+;	done
 
-_ItemWasStoredText::
-	text_ram wNameBuffer
-	text " was"
-	line "stored via PC."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_ItemWasStoredText::
+;	text_ram wNameBuffer
+;	text " was"
+;	line "stored via PC."
+;	prompt
 
-_NothingToDepositText::
-	text "You have nothing"
-	line "to deposit."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_NothingToDepositText::
+;	text "You have nothing"
+;	line "to deposit."
+;	prompt
 
-_NoRoomToStoreText::
-	text "No room left to"
-	line "store items."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_NoRoomToStoreText::
+;	text "No room left to"
+;	line "store items."
+;	prompt
 
-_WhatToWithdrawText::
-	text "What do you want"
-	line "to withdraw?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_WhatToWithdrawText::
+;	text "What do you want"
+;	line "to withdraw?"
+;	done
 
-_WithdrawHowManyText::
-	text "How many?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_WithdrawHowManyText::
+;	text "How many?"
+;	done
 
-_WithdrewItemText::
-	text "Withdrew"
-	line "@"
-	text_ram wNameBuffer
-	text "."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_WithdrewItemText::
+;	text "Withdrew"
+;	line "@"
+;	text_ram wNameBuffer
+;	text "."
+;	prompt
 
-_NothingStoredText::
-	text "There is nothing"
-	line "stored."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_NothingStoredText::
+;	text "There is nothing"
+;	line "stored."
+;	prompt
 
-_CantCarryMoreText::
-	text "You can't carry"
-	line "any more items."
-	prompt
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_CantCarryMoreText::
+;	text "You can't carry"
+;	line "any more items."
+;	prompt
 
-_WhatToTossText::
-	text "What do you want"
-	line "to toss away?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_WhatToTossText::
+;	text "What do you want"
+;	line "to toss away?"
+;	done
     
 _TMItContainsText:: ; marcelnote - new for TM printing
 	text "It contains"
@@ -1536,9 +1547,10 @@ _TMItContainsText:: ; marcelnote - new for TM printing
 	text "."
 	done
 
-_TossHowManyText::
-	text "How many?"
-	done
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;_TossHowManyText::
+;	text "How many?"
+;	done
 
 _AccessedHoFPCText::
 	text "Accessed #MON"

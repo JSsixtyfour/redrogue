@@ -3831,13 +3831,6 @@ PFacDecorTypeTable:
     db 1, PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B,  PFAC_DECOR_RIGHT_B
     db 2, PFAC_DECOR_LEFT_A,   PFAC_DECOR_LEFT_B,   PFAC_DECOR_LEFT_A,   PFAC_DECOR_LEFT_B
 
-; Thin rooms cannot spare a whole 2x2 movement block. These tables select an
-; obstruction whose opposite half remains continuously walkable along the long
-; axis. Entries intentionally avoid $49/$56, which are also structural blocks.
-PFacDecorThinHorizontalTable:
-    db PFAC_DECOR_UPPER_A, PFAC_DECOR_UPPER_B, PFAC_DECOR_BOTTOM_B, PFAC_DECOR_UPPER_A
-PFacDecorThinVerticalTable:
-    db PFAC_DECOR_RIGHT_B, PFAC_DECOR_LEFT_A, PFAC_DECOR_LEFT_B, PFAC_DECOR_RIGHT_B
 
 PFacDecorateExploreRooms:
     ld a, 5
@@ -3989,34 +3982,6 @@ PFacDecorateExploreRooms:
     call PFacMarkSmallDecor
     jr .nextRoom
 
-.thinHorizontal
-    ld a, [wBuffer + wPFacDecorY]
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDecorX]
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .nextRoom
-    ld hl, PFacDecorThinHorizontalTable
-    jr .placeThin
-
-.thinVertical
-    ld a, [wBuffer + wPFacDecorX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDecorY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_FLOOR
-    jr nz, .nextRoom
-    ld hl, PFacDecorThinVerticalTable
-.placeThin
-    ld a, [wBuffer + wPFacDecorType]
-    ld c, a
-    ld b, 0
-    add hl, bc
-    ld a, [hl]
-    call PFacWriteBlock
-    call PFacMarkSmallDecor
 .nextRoom
     ld a, [wBuffer + wPFacDecorId]
     inc a

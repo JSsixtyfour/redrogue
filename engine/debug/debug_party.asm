@@ -96,9 +96,6 @@ IF DEF(_DEBUG)
 	pop bc               ; restore loop counter
 	dec b
 	jr nz, .debugNameLoop
-.DebugMonName
-	db "TEST@"
-.DebugMonNameEnd
 
 	; Exeggutor gets four HM moves.
 	ld hl, wPartyMon1Moves
@@ -214,6 +211,12 @@ IF DEF(_DEBUG)
 
 	; Debug 1 is the general sandbox; it starts in the dorm with no extras.
 	ret
+
+; Nickname data lives after the ret so it can never be executed (it used to
+; sit inline after .debugNameLoop and ran as code; code sweep 2026-09-27, F2).
+.DebugMonName
+	db "TEST@"
+.DebugMonNameEnd
 
 	; --- Debug 2 extras (gated on BIT_DEBUG2_MODE) ---
 .debug2

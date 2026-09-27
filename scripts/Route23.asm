@@ -222,9 +222,10 @@ Route23CheckForBadgeScript:
 	ld [wRoute23CurScript], a
 	ret
 
-Route23PrintOhThatsTheBadgeTextScript: ; unreferenced
-	ld hl, Route23OhThatIsTheBadgeText
-	jp PrintText
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;Route23PrintOhThatsTheBadgeTextScript: ; unreferenced
+;	ld hl, Route23OhThatIsTheBadgeText
+;	jp PrintText
 
 Route23YouDontHaveTheBadgeYetText:
 	text_far _Route23YouDontHaveTheBadgeYetText

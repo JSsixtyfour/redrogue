@@ -49,12 +49,13 @@ Route12_Script:
 	ld [wRoute12CurScript], a
 	ret
 
-Route12ResetScripts:
-	xor a
-	ldh [hJoyIgnore], a
-	ld [wRoute12CurScript], a
-	ld [wCurMapScript], a
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;Route12ResetScripts:
+;	xor a
+;	ldh [hJoyIgnore], a
+;	ld [wRoute12CurScript], a
+;	ld [wCurMapScript], a
+;	ret
 
 	RogueAutoWalkScripts Route12, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_12, TEXT_ROUTE12_NO_TURNING_BACK, SCRIPT_ROUTE12_PLAYER_IS_MOVING, wRoute12CurScript
 

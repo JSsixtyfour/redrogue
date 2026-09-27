@@ -74,12 +74,13 @@ GameCorner_Script:
 ;	lb bc, 2, 8
 ;	predef_jump ReplaceTileBlock
 
-GameCornerReenterMapAfterPlayerLoss:
-	xor a ; SCRIPT_GAMECORNER_DEFAULT
-	ldh [hJoyIgnore], a
-	ld [wGameCornerCurScript], a
-	ld [wCurMapScript], a
-	ret
+; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
+;GameCornerReenterMapAfterPlayerLoss:
+;	xor a ; SCRIPT_GAMECORNER_DEFAULT
+;	ldh [hJoyIgnore], a
+;	ld [wGameCornerCurScript], a
+;	ld [wCurMapScript], a
+;	ret
 
 GameCorner_ScriptPointers:
 	def_script_pointers

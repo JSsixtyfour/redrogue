@@ -192,7 +192,7 @@ ENDC
 ; INPUT: b = current count for this kind, c = its min-per-run.
 ; OUTPUT: carry set if this kind must be forced now (behind schedule vs routes left).
 ; Mirrors the old MiniBossShouldOccur forced-guarantee arithmetic, parameterized.
-; Clobbers a/b/c; preserves d/e/hl.
+; Clobbers a/b/c/d; preserves e/hl.
 SpecialKindForced:
 	ld a, c
 	sub b                    ; needed = min - count

@@ -72,30 +72,6 @@ BridgeGrantSelectedEffect::
 	and a
 	ret
 
-; In:  e = BRIDGE_SELECTED_EFFECT_*, hWhichPokemon = party slot (0..5)
-; Out: carry set if this party mon owns that selected effect.
-BridgeHasSelectedEffect::
-	ld a, e
-	cp BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
-	jr c, .notFound
-	cp NUM_BRIDGE_SELECTED_EFFECTS + 1
-	jr nc, .notFound
-	ldh a, [hWhichPokemon]
-	cp PARTY_LENGTH
-	jr nc, .notFound
-	ld b, a
-	ld a, [wPartyCount]
-	cp b
-	jr c, .notFound
-	jr z, .notFound
-	inc b
-	ld d, b
-	call BridgeOwnerHasSelectedEffect
-	ret c
-.notFound
-	and a
-	ret
-
 ; In: e = BRIDGE_SELECTED_EFFECT_*. Query the active player's party owner.
 ; Out: carry set only when that active mon owns the requested effect.
 BridgeActiveMonHasSelectedEffect::

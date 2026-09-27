@@ -61,25 +61,3 @@ GetQuantityOfItemInBag:
 .zero
 	ld b, 0
 	ret
-
-
-; marcelnote - determines the index of an item in the player's bag
-GetIndexOfItemInBag:
-; In: b = item ID
-; Out: b = index of item in bag ($FF if not found)
-	call GetPredefRegisters
-	ld hl, wBagItems - 1
-	ld c, -1
-.loop
-	inc c
-	inc hl
-	ld a, [hli]
-	cp $ff
-	jr z, .notInBag
-	cp b
-	jr nz, .loop
-	ld b, c
-	ret
-.notInBag
-	ld b, $FF
-	ret

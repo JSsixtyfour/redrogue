@@ -332,23 +332,6 @@ MoveRivalToChosenBall:
 	;jr z, .move
 	ld de, RivalLeftBallMovement2
 	jr .move
-.leftBallReposition
-	ld a, OAKSLAB_RIVAL
-	ldh [hSpriteIndex], a
-	ld a, SPRITESTATEDATA1_YPIXELS
-	ldh [hSpriteDataOffset], a
-	call GetPointerWithinSpriteStateData1
-	push hl
-	ld [hl], $4c ; SPRITESTATEDATA1_YPIXELS
-	inc hl
-	inc hl
-	ld [hl], $0 ; SPRITESTATEDATA1_XPIXELS
-	pop hl
-	inc h
-	ld [hl], 8 ; SPRITESTATEDATA2_MAPY
-	inc hl
-	ld [hl], 9 ; SPRITESTATEDATA2_MAPX
-	ld de, RivalLeftBallReposition
 .move
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -375,9 +358,6 @@ MoveRivalToChosenBall:
 RivalLeftBallMovement2:
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_RIGHT
-	db NPC_MOVEMENT_RIGHT
-	db -1 ; end
-RivalLeftBallReposition:
 	db NPC_MOVEMENT_RIGHT
 	db -1 ; end
 RivalMiddleBallMovement1:

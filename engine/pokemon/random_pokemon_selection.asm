@@ -12,8 +12,10 @@
 ; OUTPUT: d = species
 ;
 ; Bankswitch (home/bankswitch.asm) does `ld bc, .Return` before `jp hl` on the
-; way in and `pop bc` on the way out, so a/b/c/h/l are all destroyed on BOTH
-; sides of a farcall - only d, e and flags cross intact. Every cross-bank caller
+; way in and `pop bc` on the way out, so a/b/c/h/l are all destroyed on the
+; way IN and a/b/c on the way OUT (h/l come back from the callee, which means
+; the far target's own address if it never writes hl) - only d, e and flags
+; cross intact in both directions. Every cross-bank caller
 ; used to pass the class in c and farcall the plain entry point, which meant the
 ; class never arrived and every one of those rolls silently fell through to the
 ; odds ladder: procedural boss rarity bumps and the lobby salesman odds had no
@@ -572,6 +574,9 @@ rogue_pokemon_randomized_batch::
    .rollpokemon1
    farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
    call Random
+   ld c, 0              ; class 0 = roll from the odds ladder. The farcall above
+   ; leaves c = Bankswitch's saved flags byte, which only worked by accident
+   ; (code sweep 2026-09-27, F3)
    call Random_Pokemon_Selection
    ld hl, wRoguePokemon1
    ld [hl], d
@@ -590,6 +595,7 @@ rogue_pokemon_randomized_batch::
    .rollpokemon2
    farcall GetRewardMonLevel
    call Random
+   ld c, 0              ; class 0 = roll (see slot 1)
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d
@@ -607,6 +613,7 @@ rogue_pokemon_randomized_batch::
    .rollpokemon3
    farcall GetRewardMonLevel
    call Random
+   ld c, 0              ; class 0 = roll (see slot 1)
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d
