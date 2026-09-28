@@ -267,6 +267,85 @@ AIMoveIsReliableKO::
 	ccf
 	ret
 
+; Checkpoint D: carry SET if the active enemy has a usable move that satisfies
+; the established reliable-KO contract above AND acts before the player. This
+; is the narrow winning-action veto used by voluntary switching: do not give up
+; a high-confidence finish merely because the player can also KO this turn.
+;
+; "Reliable" retains R5's exact meaning: maximum ordinary-hit damage reaches
+; the owner's HP after Substitute delivery and effective accuracy is at least
+; 90%. It is not a minimum-damage-roll guarantee. Turn order uses the existing
+; AIEnemyActsFirstWith contract and never reads the player's selected action.
+;
+; Forced-action states cannot use a newly selected finisher, so they never
+; qualify. Disable is checked by slot exactly as SelectEnemyMove does. The live
+; wEnemyMove block is restored on every exit.
+; Clobbers af, bc, de, hl.
+AIEnemyHasReliableFirstKO::
+	ld a, [wEnemyMonStatus]
+	and (1 << FRZ) | SLP_MASK
+	jr nz, .noKOWithoutSave
+	ld a, [wEnemyBattleStatus1]
+	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << FLINCHED) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << CONFUSED)
+	jr nz, .noKOWithoutSave
+	ld a, [wEnemyBattleStatus2]
+	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
+	jr nz, .noKOWithoutSave
+
+	ld hl, wEnemyMoveNum
+	ld de, wBuffer + AI_BUF_MOVESAVE
+	ld bc, MOVE_LENGTH
+	call CopyData
+	xor a
+	ld [wBuffer + AI_BUF_SCANSLOT], a
+.nextSlot
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	cp NUM_MOVES
+	jr nc, .noKO
+	ld b, a
+	inc b
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	cp b
+	jr z, .advance
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMonMoves
+	add hl, bc
+	ld a, [hl]
+	and a
+	jr z, .advance
+	call ReadMove
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .advance
+	farcall AIEstimateDamage
+	call AIAdjustEnemyDamageForPossibleDelivery
+	call AIMoveIsReliableKO
+	jr nc, .advance
+	call AIEnemyActsFirstWith
+	jr c, .yesKO
+.advance
+	ld hl, wBuffer + AI_BUF_SCANSLOT
+	inc [hl]
+	jr .nextSlot
+.yesKO
+	call .restoreMove
+	scf
+	ret
+.noKO
+	call .restoreMove
+.noKOWithoutSave
+	and a
+	ret
+.restoreMove
+	ld hl, wBuffer + AI_BUF_MOVESAVE
+	ld de, wEnemyMoveNum
+	ld bc, MOVE_LENGTH
+	jp CopyData
+
 ; Carry SET if the currently-estimated PLAYER move reaches the enemy HP total
 ; currently staged in wBuffer + AI_BUF_EFFHP. The mirror of AIMoveWouldKO, used
 ; by AI_THREAT to answer "am I about to die".

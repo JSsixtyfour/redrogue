@@ -229,6 +229,59 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.harness.write8("wEnemyMonHP", value >> 8, offset=0)
         self.harness.write8("wEnemyMonHP", value & 0xFF, offset=1)
 
+    def prime_both_sides_lethal(self) -> None:
+        """Put both active mons in ordinary-hit finishing range."""
+        assert self.harness is not None
+        self.prime_lethal_hp()
+        max_hi, max_lo = self.harness.read_bytes("wBattleMonMaxHP", 2)
+        max_hp = (max_hi << 8) | max_lo
+        value = max(1, max_hp * 1 // 20)
+        self.harness.write8("wBattleMonHP", value >> 8, offset=0)
+        self.harness.write8("wBattleMonHP", value & 0xFF, offset=1)
+
+    def call_lethal_exchange(self, enemy_move: str, *, disabled: bool = False) -> bool:
+        """Return AIShouldSwitch's choice when either active mon can finish."""
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [self.mon("SNORLAX", ["BODY_SLAM"])],
+            [self.mon("ELECTRODE", [enemy_move]), self.mon("RATTATA")],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.prime_both_sides_lethal()
+        if disabled:
+            self.harness.write8("wEnemyDisabledMove", 0x11)
+        switch = self.harness.hook_flag("AIShouldSwitch.switch")
+        stay = self.harness.hook_flag("AIShouldSwitch.stay")
+        self.harness.call_routine("AIShouldSwitch")
+        self.assertEqual(switch["count"] + stay["count"], 1)
+        return bool(switch["count"])
+
+    def test_reliable_first_ko_vetoes_emergency_switch(self) -> None:
+        self.assertFalse(self.call_lethal_exchange("TACKLE"))
+
+    def test_unreliable_ko_does_not_veto_emergency_switch(self) -> None:
+        self.assertTrue(self.call_lethal_exchange("FIRE_BLAST"))
+
+    def test_disabled_ko_does_not_veto_emergency_switch(self) -> None:
+        self.assertTrue(self.call_lethal_exchange("TACKLE", disabled=True))
+
+    def test_second_action_ko_does_not_veto_emergency_switch(self) -> None:
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [self.mon("ELECTRODE", ["TACKLE"])],
+            [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("RATTATA")],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.prime_both_sides_lethal()
+        switch = self.harness.hook_flag("AIShouldSwitch.switch")
+        stay = self.harness.hook_flag("AIShouldSwitch.stay")
+        self.harness.call_routine("AIShouldSwitch")
+        self.assertEqual((switch["count"], stay["count"]), (1, 0))
+
     def test_emergency_player_would_ko_forces_switch(self) -> None:
         # T2 deliberately, not T3: this is the highest-priority DETERMINISTIC
         # trigger and must fire before the T3-only probabilistic generic case

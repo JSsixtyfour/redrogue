@@ -348,17 +348,13 @@ AIShouldSwitch::
 	cp AI_TIER_SKILLED
 	jp c, .vanilla ; T0/T1 are not supposed to switch intelligently
 
-; --- Emergency triggers, highest priority, short-circuiting, DETERMINISTIC ---
+; --- Emergency triggers and winning-action veto, short-circuiting ---
 ; No probability roll on any of these (contrast the generic case at the bottom,
 ; which does roll): "sometimes forgets to flee certain death" reads as broken
 ; AI to a player, not as personality. Texture belongs on the SOFT preference,
 ; not the hard ones.
 ;
-; 1. The damage simulator says the player kills us next turn.
-	farcall AIPlayerWouldKO
-	jp c, .switch
-
-; 2. Badly statused: frozen is a total lockout, and a long sleep is close to
+; 1. Badly statused: frozen is a total lockout, and a long sleep is close to
 ;    one. A short sleep is left alone - waking up next turn is better than
 ;    spending the switch and giving the player a free hit anyway.
 	ld a, [wEnemyMonStatus]
@@ -369,7 +365,18 @@ AIShouldSwitch::
 	cp 2
 	jp nc, .switch
 
-; 3. Caught in the player's trapping move AND slower, so we cannot break out by
+; 2. A reliable first-action KO wins the exchange. Check this before incoming
+;    KO and trapping pressure so a faster finisher, including Quick Attack,
+;    stays in. The predicate rejects forced-action states and never reads the
+;    player's selected move.
+	farcall AIEnemyHasReliableFirstKO
+	jp c, .stay
+
+; 3. The damage simulator says the player kills us this turn.
+	farcall AIPlayerWouldKO
+	jp c, .switch
+
+; 4. Caught in the player's trapping move AND slower, so we cannot break out by
 ;    KOing first. A faster trapped mon is left in: it still gets to act.
 	ld a, [wPlayerBattleStatus1]
 	bit USING_TRAPPING_MOVE, a
