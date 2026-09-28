@@ -976,6 +976,13 @@ AIPlayRestoringSFX:
 	jp PlaySoundWaitForCurrent
 
 AIUseFullRestore:
+	ld a, [wEnemyMonStatus]
+	and a
+	jr nz, .use ; preserve Full Restore's useful status-cure line
+	xor a ; zero means Full Restore's full-HP heal
+	call AIItemHealWouldStillDie
+	jr c, .futile
+.use
 	call AIPlayRestoringSFX
 	call AICureStatus
 	ld a, FULL_RESTORE
@@ -999,27 +1006,51 @@ AIUseFullRestore:
 	ld [wHPBarMaxHP+1], a
 	ld [wEnemyMonHP], a
 	jr AIPrintItemUseAndUpdateHPBar
+.futile
+	and a
+	ret
 
 AIUsePotion:
 ; enemy trainer heals his monster with a potion
+	ld a, 20
+	call AIItemHealWouldStillDie
+	jr c, .futile
+.use
 	call AIPlayRestoringSFX
 	ld a, POTION
 	ld b, 20
 	jr AIRecoverHP
+.futile
+	and a
+	ret
 
 AIUseSuperPotion:
 ; enemy trainer heals his monster with a super potion
+	ld a, 50
+	call AIItemHealWouldStillDie
+	jr c, .futile
+.use
 	call AIPlayRestoringSFX
 	ld a, SUPER_POTION
 	ld b, 50
 	jr AIRecoverHP
+.futile
+	and a
+	ret
 
 AIUseHyperPotion:
 ; enemy trainer heals his monster with a hyper potion
+	ld a, 200
+	call AIItemHealWouldStillDie
+	jr c, .futile
+.use
 	call AIPlayRestoringSFX
 	ld a, HYPER_POTION
 	ld b, 200
-	; fallthrough
+	jr AIRecoverHP
+.futile
+	and a
+	ret
 
 AIRecoverHP:
 ; heal b HP and print "trainer used $(a) on pokemon!"

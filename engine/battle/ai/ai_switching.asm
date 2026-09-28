@@ -58,10 +58,13 @@ AIPartySlotBit:
 ; would break.
 ;
 ; SELECTION RULE: pick the candidate with the lowest COMBINED score of (a) how
-; hard the player's primary type hits it (PreviewTypeMatchup, in twentieths) and
-; (b) an HP penalty (+15 below a quarter HP, +5 below half) so a nearly-dead
-; candidate is not chosen purely on typing - sending a mon in at 10% HP into
-; ANY hit is a bad trade regardless of matchup. Revealed-player-move weighting
+; hard the player's primary type hits it (PreviewTypeMatchup, in twentieths),
+; (b) an HP penalty (+15 below a quarter HP, +5 below half), and (c) a major
+; status penalty (freeze +40, sleep/paralysis/burn +25, poison +10). This keeps
+; a nominal type counter from outranking a ready reserve when it cannot act or
+; is badly impaired. Every penalty is relative: if all living reserves are in
+; bad shape, the lowest-scoring one still wins, preserving the inherited
+; best-of-a-bad-set contract. Revealed-player-move weighting
 ; is deliberately NOT included: Phase 7 (fair play) has not landed, so every
 ; tier is still omniscient about the player's moveset, and there is no
 ; meaningfully different "revealed" subset to weight against yet - see the
@@ -257,8 +260,43 @@ AISelectSendOut::
 	ld a, 5
 .gotPenalty
 	pop de ; de restored (e = type score); a = HP penalty, untouched by the pop
-	add e  ; a = combined score. Max 80 + 15 = 95, well inside a byte.
-	ld e, a
+	add e
+	ld e, a ; e = type + HP score
+
+; Add the candidate's persistent major-status cost. Recompute the struct base
+; instead of carrying a pointer through PreviewTypeMatchup and the HP math.
+; Party status is offset 4: Species, HP.w, BoxLevel, Status.
+	ld hl, wEnemyMon1
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld bc, 4
+	add hl, bc
+	ld a, [hl]
+	bit FRZ, a
+	jr nz, .freezePenalty
+	and SLP_MASK
+	jr nz, .majorStatusPenalty
+	ld a, [hl]
+	bit PAR, a
+	jr nz, .majorStatusPenalty
+	bit BRN, a
+	jr nz, .majorStatusPenalty
+	bit PSN, a
+	jr nz, .poisonPenalty
+	xor a
+	jr .gotStatusPenalty
+.freezePenalty
+	ld a, 40
+	jr .gotStatusPenalty
+.majorStatusPenalty
+	ld a, 25
+	jr .gotStatusPenalty
+.poisonPenalty
+	ld a, 10
+.gotStatusPenalty
+	add e
+	ld e, a ; combined maximum: 80 + 15 + 40 = 135, safely one byte
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
 	cp e

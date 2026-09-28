@@ -52,7 +52,7 @@ DEF AI_FITNESS_WRAP_LOCK EQU 35
 ; a stronger reason to exist (Sleep Lead, Toxic Stall).
 DEF AI_FITNESS_TRAP_CHIP_BONUS EQU 15
 
-DEF AI_FITNESS_SLEEP_LEAD    EQU 55
+DEF AI_FITNESS_SLEEP_LEAD    EQU 65 ; outranks sustainable setup when both are legal
 DEF AI_FITNESS_SLEEP_FASTER  EQU 15 ; a status "out" only exists if it lands
                                     ; before the fatal hit, so being faster is
                                     ; worth real weight here, not just a nudge

@@ -284,60 +284,55 @@ AIMoveIsReliableKO::
 AIEnemyHasReliableFirstKO::
 	ld a, [wEnemyMonStatus]
 	and (1 << FRZ) | SLP_MASK
-	jr nz, .noKOWithoutSave
+	jr nz, .noKO
 	ld a, [wEnemyBattleStatus1]
 	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << FLINCHED) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << CONFUSED)
-	jr nz, .noKOWithoutSave
+	jr nz, .noKO
 	ld a, [wEnemyBattleStatus2]
 	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
-	jr nz, .noKOWithoutSave
+	jr nz, .noKO
+
+; SelectEnemyMove has already committed this turn's action before TrainerAI
+; considers a switch or item. Evaluate that action only: another finisher in
+; the moveset is irrelevant if it was not selected.
+	ld a, [wEnemySelectedMove]
+	cp CANNOT_MOVE
+	jr z, .noKO
+	and a
+	jr z, .noKO
+	ld a, [wEnemyMoveListIndex]
+	inc a
+	ld c, a
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	cp c
+	jr z, .noKO
 
 	ld hl, wEnemyMoveNum
 	ld de, wBuffer + AI_BUF_MOVESAVE
 	ld bc, MOVE_LENGTH
 	call CopyData
-	xor a
-	ld [wBuffer + AI_BUF_SCANSLOT], a
-.nextSlot
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	cp NUM_MOVES
-	jr nc, .noKO
-	ld b, a
-	inc b
-	ld a, [wEnemyDisabledMove]
-	swap a
-	and $f
-	cp b
-	jr z, .advance
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld c, a
-	ld b, 0
-	ld hl, wEnemyMonMoves
-	add hl, bc
-	ld a, [hl]
-	and a
-	jr z, .advance
+	ld a, [wEnemySelectedMove]
 	call ReadMove
-	ld a, [wEnemyMovePower]
-	and a
-	jr z, .advance
+; Charge-turn actions do not deliver their estimated damage this turn.
+	ld a, [wEnemyMoveEffect]
+	cp CHARGE_EFFECT
+	jr z, .restoreNoKO
+	cp FLY_EFFECT
+	jr z, .restoreNoKO
 	farcall AIEstimateDamage
 	call AIAdjustEnemyDamageForPossibleDelivery
 	call AIMoveIsReliableKO
-	jr nc, .advance
+	jr nc, .restoreNoKO
 	call AIEnemyActsFirstWith
-	jr c, .yesKO
-.advance
-	ld hl, wBuffer + AI_BUF_SCANSLOT
-	inc [hl]
-	jr .nextSlot
-.yesKO
+	jr nc, .restoreNoKO
 	call .restoreMove
 	scf
 	ret
-.noKO
+.restoreNoKO
 	call .restoreMove
-.noKOWithoutSave
+.noKO
 	and a
 	ret
 .restoreMove
@@ -345,7 +340,6 @@ AIEnemyHasReliableFirstKO::
 	ld de, wEnemyMoveNum
 	ld bc, MOVE_LENGTH
 	jp CopyData
-
 ; Carry SET if the currently-estimated PLAYER move reaches the enemy HP total
 ; currently staged in wBuffer + AI_BUF_EFFHP. The mirror of AIMoveWouldKO, used
 ; by AI_THREAT to answer "am I about to die".

@@ -102,6 +102,41 @@ class AISelectSendOutTest(unittest.TestCase):
         self.assertEqual(selected, 1)
         self.assertEqual(multiplier, 20)
 
+    def test_ready_reserve_outranks_frozen_equal_matchup(self) -> None:
+        self.boot_fixture("SNORLAX", ["PIKACHU", "RATTATA", "PIDGEY"])
+        assert self.harness is not None
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemyMon2Status", 1 << 5)
+
+        selected, score = self.call_selector_with_sentinels()
+
+        self.assertEqual(selected, 2)
+        self.assertEqual(score, 20)
+
+    def test_ready_reserve_outranks_sleeping_equal_matchup(self) -> None:
+        self.boot_fixture("SNORLAX", ["PIKACHU", "RATTATA", "PIDGEY"])
+        assert self.harness is not None
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemyMon2Status", 3)
+
+        selected, score = self.call_selector_with_sentinels()
+
+        self.assertEqual(selected, 2)
+        self.assertEqual(score, 20)
+
+    def test_statused_reserve_remains_best_of_bad_set_fallback(self) -> None:
+        self.boot_fixture("SNORLAX", ["PIKACHU", "RATTATA", "PIDGEY"])
+        assert self.harness is not None
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemyMon2Status", 1 << 5)
+        self.harness.write8("wEnemyMon3HP", 0)
+        self.harness.write8("wEnemyMon3HP", 0, offset=1)
+
+        selected, score = self.call_selector_with_sentinels()
+
+        self.assertEqual(selected, 1)
+        self.assertEqual(score, 60)
+
     def test_enemy_send_out_full_flow_uses_effectiveness_ranking(self) -> None:
         assert self.harness is not None
         self.harness.inject_fight2_spec(
@@ -249,6 +284,8 @@ class AIShouldSwitchTest(unittest.TestCase):
         )
         self.harness.boot_fight2(seed=1)
         self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemySelectedMove", self.moves[enemy_move])
+        self.harness.write8("wEnemyMoveListIndex", 0)
         self.prime_both_sides_lethal()
         if disabled:
             self.harness.write8("wEnemyDisabledMove", 0x11)
@@ -266,6 +303,29 @@ class AIShouldSwitchTest(unittest.TestCase):
 
     def test_disabled_ko_does_not_veto_emergency_switch(self) -> None:
         self.assertTrue(self.call_lethal_exchange("TACKLE", disabled=True))
+
+    def test_charge_turn_damage_does_not_veto_emergency_switch(self) -> None:
+        self.assertTrue(self.call_lethal_exchange("SOLARBEAM"))
+
+    def test_zero_power_fixed_damage_can_veto_emergency_switch(self) -> None:
+        self.assertFalse(self.call_lethal_exchange("NIGHT_SHADE"))
+
+    def test_unselected_finisher_does_not_veto_emergency_switch(self) -> None:
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [self.mon("SNORLAX", ["BODY_SLAM"])],
+            [self.mon("ELECTRODE", ["SPLASH", "TACKLE"]), self.mon("RATTATA")],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemySelectedMove", self.moves["SPLASH"])
+        self.harness.write8("wEnemyMoveListIndex", 0)
+        self.prime_both_sides_lethal()
+        switch = self.harness.hook_flag("AIShouldSwitch.switch")
+        stay = self.harness.hook_flag("AIShouldSwitch.stay")
+        self.harness.call_routine("AIShouldSwitch")
+        self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
     def test_second_action_ko_does_not_veto_emergency_switch(self) -> None:
         assert self.harness is not None

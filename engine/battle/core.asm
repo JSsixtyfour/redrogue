@@ -5797,33 +5797,28 @@ AdjustDamageForMoveType:
 	farcall BridgeApplyStabDamageBoost
 	pop de
 .skipSameTypeAttackBonus
+; Combine BOTH defender types into one multiplier first, then apply it once
+; (Shin Red's fix). Vanilla multiplied per matching chart row but OVERWROTE
+; wDamageMultipliers each time, so the "super effective"/"not very effective"
+; text and hit sound reflected only the LAST matching row: Earthquake on
+; Bulbasaur read "super effective", Fighting on Spearow "not very effective",
+; though both deal neutral damage. One combined multiply also stops a 2x/0.5x
+; pair from truncating odd damage down by 1.
 	ld a, [wMoveType]
 	ld b, a
-	ld hl, TypeEffects
-.loop
-	ld a, [hli] ; a = "attacking type" of the current type pair
-	cp $ff
-	jr z, .done
-	cp b ; does move type match "attacking type"?
-	jr nz, .nextTypePair
-	ld a, [hl] ; a = "defending type" of the current type pair
-	cp d ; does type 1 of defender match "defending type"?
-	jr z, .matchingPairFound
-	cp e ; does type 2 of defender match "defending type"?
-	jr z, .matchingPairFound
-	jr .nextTypePair
-.matchingPairFound
-; if the move type matches the "attacking type" and one of the defender's types matches the "defending type"
-	push hl
-	push bc
-	inc hl
+	ld c, EFFECTIVE * 2 ; d/e still hold the defender's two types
+	call TypeMatchupScan ; c = 0, 5, 10, 20, 40 or 80 (twentieths)
+	ld a, c
+	srl a ; -> tenths: 0, 2, 5, 10, 20, 40
+	ld b, a
 	ld a, [wDamageMultipliers]
 	and 1 << BIT_STAB_DAMAGE
-	ld b, a
-	ld a, [hl] ; a = damage multiplier
-	ldh [hMultiplier], a
-	add b
+	or b
 	ld [wDamageMultipliers], a
+	ld a, c
+	cp EFFECTIVE * 2
+	jr z, .done ; neutral - leave damage untouched
+	ldh [hMultiplier], a
 	xor a
 	ldh [hMultiplicand], a
 	ld hl, wDamage
@@ -5832,7 +5827,7 @@ AdjustDamageForMoveType:
 	ld a, [hld]
 	ldh [hMultiplicand + 2], a
 	call Multiply
-	ld a, 10
+	ld a, EFFECTIVE * 2
 	ldh [hDivisor], a
 	ld b, 4
 	call Divide
@@ -5842,20 +5837,13 @@ AdjustDamageForMoveType:
 	ldh a, [hQuotient + 3]
 	ld [hl], a
 	or b ; is damage 0?
-	jr nz, .skipTypeImmunity
+	jr nz, .done
 ; if damage is 0, make the move miss
-; this only occurs if a move that would do 2 or 3 damage is 0.25x effective against the target
+; this only occurs on an immunity, or if a move that would do 2 or 3 damage is 0.25x effective against the target
 ; WIP: NoScratchText miss-text feature, paused - see ROM_BIBLE.md 2026-09-02 entry.
 ; Resume by swapping this back to `ld a, MOVE_MISSED_NO_DAMAGE` once a byte is free.
 	inc a
 	ld [wMoveMissed], a
-.skipTypeImmunity
-	pop bc
-	pop hl
-.nextTypePair
-	inc hl
-	inc hl
-	jp .loop
 .done
 ; Two damage scalers share this single exit, split by whose turn it is. Hooked
 ; here rather than at the two call sites - one hook instead of two, and safe
@@ -6044,42 +6032,25 @@ RogueWitchResistSuperEffective:
 	ld [hl], d                  ; high byte
 	ret
 
-; function to tell how effective the type of an enemy attack is on the player's current pokemon
-; this doesn't take into account the effects that dual types can have
-; (e.g. 4x weakness / resistance, weaknesses and resistances canceling)
-; the result is stored in [wTypeEffectiveness]
-; as far is can tell, this is only used once in some AI code to help decide which move to use
+; How effective the enemy's move type is on the player's current pokemon,
+; stored in [wTypeEffectiveness]. Shin Red's fix: both defender types now
+; combine (0 immune, 2 = x1/4, 5 = x1/2, EFFECTIVE = neutral, 20 = x2, 40 = x4)
+; and neutral is EFFECTIVE (10), not vanilla's $10. Vanilla stopped at the FIRST
+; matching chart row, so the AI saw Earthquake vs Bulbasaur as resisted and
+; Ice vs Articuno as resisted, while the real hit was neutral.
+; Clobbers af, bc, de, hl.
 AIGetTypeEffectiveness:
 	ld a, [wEnemyMoveType]
-	ld d, a                    ; d = type of enemy move
+	ld b, a                    ; b = type of enemy move
 	ld hl, wBattleMonType
-	ld b, [hl]                 ; b = type 1 of player's pokemon
-	inc hl
-	ld c, [hl]                 ; c = type 2 of player's pokemon
-	; initialize to neutral effectiveness
-	ld a, $10 ; bug: should be EFFECTIVE (10)
+	ld a, [hli]
+	ld d, a                    ; d = type 1 of player's pokemon
+	ld e, [hl]                 ; e = type 2 of player's pokemon
+	ld c, EFFECTIVE * 2
+	call TypeMatchupScan
+	srl c                      ; twentieths -> tenths
+	ld a, c
 	ld [wTypeEffectiveness], a
-	ld hl, TypeEffects
-.loop
-	ld a, [hli]
-	cp $ff
-	ret z
-	cp d                      ; match the type of the move
-	jr nz, .nextTypePair1
-	ld a, [hli]
-	cp b                      ; match with type 1 of pokemon
-	jr z, .done
-	cp c                      ; or match with type 2 of pokemon
-	jr z, .done
-	jr .nextTypePair2
-.nextTypePair1
-	inc hl
-.nextTypePair2
-	inc hl
-	jr .loop
-.done
-	ld a, [hl]
-	ld [wTypeEffectiveness], a ; store damage multiplier
 	ret
 
 ; ============================================================

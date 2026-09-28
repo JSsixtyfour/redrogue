@@ -225,6 +225,87 @@ class AIIncreaseStatGateTest(RosterHarnessTestCase):
         )
 
 
+class AIHealItemPayoffTest(RosterHarnessTestCase):
+    """Checkpoint D: T2+ skips healing that cannot survive the exchange."""
+
+    def probe(
+        self,
+        routine: str,
+        ai_tier: int,
+        player: dict,
+        enemy: dict,
+        enemy_status: int = 0,
+    ) -> str:
+        assert self.harness is not None
+        self.boot(player, [enemy], ai_tier=ai_tier)
+        self.harness.write8("wEnemyMonStatus", enemy_status)
+        self.harness.write8("wEnemyMonHP", 0, offset=0)
+        self.harness.write8("wEnemyMonHP", 1, offset=1)
+        self.harness.call_routine("AIGetTier")
+        use = self.harness.hook_flag(f"{routine}.use")
+        futile = self.harness.hook_flag(f"{routine}.futile")
+        self.harness.probe_routine_until(
+            routine, lambda: bool(use["count"] or futile["count"])
+        )
+        return "use" if use["count"] else "futile"
+
+    def test_t2_potion_is_skipped_when_heal_still_dies(self) -> None:
+        self.assertEqual(
+            self.probe(
+                "AIUsePotion",
+                2,
+                self.mon("MEWTWO", ["PSYCHIC_M"]),
+                self.mon("RATTATA", ["TACKLE"]),
+            ),
+            "futile",
+        )
+
+    def test_t2_potion_proceeds_when_it_changes_survival(self) -> None:
+        self.assertEqual(
+            self.probe(
+                "AIUsePotion",
+                2,
+                self.mon("SNORLAX", ["SPLASH"]),
+                self.mon("RATTATA", ["TACKLE"]),
+            ),
+            "use",
+        )
+
+    def test_t2_full_restore_checks_full_post_heal_hp(self) -> None:
+        self.assertEqual(
+            self.probe(
+                "AIUseFullRestore",
+                2,
+                self.mon("MEWTWO", ["PSYCHIC_M"]),
+                self.mon("RATTATA", ["TACKLE"]),
+            ),
+            "futile",
+        )
+
+    def test_t2_full_restore_preserves_status_cure_line(self) -> None:
+        self.assertEqual(
+            self.probe(
+                "AIUseFullRestore",
+                2,
+                self.mon("MEWTWO", ["PSYCHIC_M"]),
+                self.mon("RATTATA", ["TACKLE"]),
+                enemy_status=0x40,
+            ),
+            "use",
+        )
+
+    def test_t1_preserves_vanilla_item_behavior(self) -> None:
+        self.assertEqual(
+            self.probe(
+                "AIUsePotion",
+                1,
+                self.mon("MEWTWO", ["PSYCHIC_M"]),
+                self.mon("RATTATA", ["TACKLE"]),
+            ),
+            "use",
+        )
+
+
 class TierScaledDVsAndStatExpTest(RosterHarnessTestCase):
     """Tier-scaled roster stats through direct and injected lifecycles."""
 

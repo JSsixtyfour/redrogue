@@ -214,6 +214,15 @@ class AICheckpointBTest(unittest.TestCase):
         h.call_routine("AIPlanSelect", limit=480)
         return h.read8("wAIPlan")
 
+    def test_d_sleep_payoff_outranks_nonessential_setup_when_slower(self):
+        selected = self.select_plan(
+            ["HYPNOSIS", "AMNESIA", "RECOVER"],
+            (self.types["NORMAL"], self.types["NORMAL"]),
+            enemy_speed=50,
+            player_speed=100,
+        )
+        self.assertEqual(selected, self.ai["AI_PLAN_SLEEP_LEAD"])
+
     def test_r7_sleep_legality_ignores_normal_ghost_damage_immunity(self):
         selected = self.select_plan(
             ["SING"],

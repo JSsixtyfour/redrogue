@@ -173,7 +173,7 @@ AIPlayerWouldKO::
 	ld [wBuffer + AI_BUF_EFFHP], a
 	ld a, [wEnemyMonHP + 1]
 	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	jr _AIScanPlayerMovesForKO
+	jp _AIScanPlayerMovesForKO
 
 ; Carry SET if the player's best move STILL kills the enemy after the heal move
 ; currently loaded in the wEnemyMove* block resolves - i.e. the heal is a wasted
@@ -215,13 +215,66 @@ AIHealWouldStillDie::
 	ld [wBuffer + AI_BUF_EFFHP], a
 	ld a, e
 	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	jr _AIScanPlayerMovesForKO
+	jp _AIScanPlayerMovesForKO
 .storeMax
 	ld a, h
 	ld [wBuffer + AI_BUF_EFFHP], a
 	ld a, l
 	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	; fallthrough
+	jp _AIScanPlayerMovesForKO
+
+; Checkpoint D item-payoff gate. INPUT: a = fixed item heal amount, or 0 for
+; Full Restore's full-HP heal. Carry SET when a T2/T3 trainer would still be
+; KO'd after that heal; T0/T1 preserve vanilla item behavior and return clear.
+; Uses the same visible-moveset and maximum-damage contract as AIHealWouldStillDie.
+; Clobbers af, bc, de, hl.
+AIItemHealWouldStillDie::
+	ld b, a
+	ld a, [wAITier]
+	and a
+	jr z, .worthwhile
+	dec a
+	cp AI_TIER_SKILLED
+	jr c, .worthwhile
+	ld a, [wEnemyMonMaxHP]
+	ld h, a
+	ld a, [wEnemyMonMaxHP + 1]
+	ld l, a ; hl = max HP
+	ld a, b
+	and a
+	jr z, .storeMax
+	ld d, 0
+	ld e, a
+	ld a, [wEnemyMonHP]
+	ld b, a
+	ld a, [wEnemyMonHP + 1]
+	ld c, a
+	ld a, e
+	add c
+	ld e, a
+	ld a, d
+	adc b
+	ld d, a
+	jr c, .storeMax
+	ld a, l
+	sub e
+	ld a, h
+	sbc d
+	jr c, .storeMax
+	ld a, d
+	ld [wBuffer + AI_BUF_EFFHP], a
+	ld a, e
+	ld [wBuffer + AI_BUF_EFFHP + 1], a
+	jp _AIScanPlayerMovesForKO
+.storeMax
+	ld a, h
+	ld [wBuffer + AI_BUF_EFFHP], a
+	ld a, l
+	ld [wBuffer + AI_BUF_EFFHP + 1], a
+	jp _AIScanPlayerMovesForKO
+.worthwhile
+	and a
+	ret
 
 ; Shared scan. Compares every believed player move against whatever HP total
 ; sits in wBuffer + AI_BUF_EFFHP, which is what lets the "would I survive if I
