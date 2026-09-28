@@ -65,6 +65,29 @@ ReadTrainer:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
+; A roster class (party rolled by GetRandRoster) has no authored teams of its
+; own: its label is empty and aliases the next class's data, and only its FIRST
+; byte matters (anything but TRAINERPARTY_LEVELS/FORMS means "roll a roster").
+; Walking wTrainerNo teams from there left the class entirely: every map
+; trainer with a set above 1 (Pewter Gym sets 2-4, Route 19's swimmers, ...)
+; loaded the rival's Oak's Lab team, a later rival team, or Prof. Oak's.
+; Measured 2026-09-28 (BALANCE_PHASE5_PLAN.md A4). So a roster class uses
+; team 1 whatever its set. The mini-boss classes keep walking: their own team
+; format also starts with a species byte, and GIOVANNI_MINIBOSS picks among
+; three teams by wTrainerNo.
+	ld a, [wTrainerClass]
+	cp RIVAL_MINIBOSS
+	jr z, .walkToTeam
+	cp GIOVANNI_MINIBOSS
+	jr z, .walkToTeam
+	ld a, [hl]
+	cp TRAINERPARTY_LEVELS
+	jr z, .walkToTeam
+	cp TRAINERPARTY_FORMS
+	jr z, .walkToTeam
+	ld b, 1                       ; roster class: never walk out of it
+	jr .CheckNextTrainer
+.walkToTeam
 	ld a, [wTrainerNo]
 	ld b, a
 ; At this point b contains the trainer number,

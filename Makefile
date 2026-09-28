@@ -62,6 +62,7 @@ RGBGFXFLAGS  ?= -Weverything
 	compare \
 	smoke \
 	audit \
+	space \
 	ai_scenarios \
 	balance_report \
 	tools
@@ -118,6 +119,16 @@ integration: pokeblue_debug.gbc
 audit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(if $(INFO),--info)
+
+# Per-bank free space (total and largest gap, min across all three ROMs) and what moved,
+# both relative to the previous `make space` run. SPACE_ARGS passes extra flags, e.g.
+# SPACE_ARGS='--all' or SPACE_ARGS='--min-free ROM0=64'.
+space: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
+	@mkdir -p $(BUILD_DIR)
+	python3 tools/space_report.py pokered.map pokeblue.map pokeblue_debug.map \
+		--compare $(BUILD_DIR)/space_last.json --save $(BUILD_DIR)/space_last.json $(SPACE_ARGS)
+	python3 tools/sym_diff.py $(BUILD_DIR)/space_last_debug.sym pokeblue_debug.sym
+	cp pokeblue_debug.sym $(BUILD_DIR)/space_last_debug.sym
 
 ai_scenarios: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_scenarios.py
