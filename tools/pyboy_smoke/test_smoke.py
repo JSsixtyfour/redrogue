@@ -142,16 +142,13 @@ class BootSmokeTest(HarnessTestCase):
         active_count = sum((byte >> bit) & 1 for byte in key_flags for bit in (1, 3, 5, 7))
         self.assertLessEqual(active_count, 3)
 
-    @unittest.skip(
-        "Layout-fragile, carries no signal, and now HANGS rather than failing - "
-        "which blocks the whole suite. Proven 2026-09-09 by bisect: adding `ds 3` "
-        "of inert padding to HOME (three bytes that never execute) reproduces its "
-        "RST 38 crash exactly, and it has since flipped between pass, fast-fail "
-        "and hang purely on ROM layout. See SPECIES_GROUPS_STATUS.md 9b for the "
-        "full bisect table. Re-enable only once something is sensitive to a HOME "
-        "address shift has been found and fixed - that is its own investigation, "
-        "not the business of whatever change happens to expose it."
-    )
+    # Re-enabled 2026-09-28. It was skipped 2026-09-09 as "layout-fragile", but it was
+    # catching a real bug: the move menu called GetCurrentMove with hWhoseTurn still 1
+    # and wEnemySelectedMove 0, so GetName walked 255 names past MoveNames and flooded
+    # WRAM with $7F; where that walk landed depended on ROM layout. Fixed 2026-09-24
+    # (hWhoseTurn forced to 0 around the Body Armor check). Measured at c218546f:
+    # WRAM $7F count 494 -> 3457 then freeze; the same commit with only that fix
+    # passes. HEAD passes with 0-16 bytes of HOME padding. FOLLOWUPS.md #44.
     def test_fight2_injects_exact_ai_scenario_and_honors_menu_move(self) -> None:
         assert self.harness is not None
         species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
@@ -2083,6 +2080,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         species = parse_rgbds_constants(
             REPO_ROOT / "constants" / "pokemon_constants.asm"
         )
+        # Electrode from round 7 on: `cp 6 * ROUND_BATTLES` in PFacFinalize (60 at 10 per round).
+        threshold = 6 * parse_rgbds_constants(
+            REPO_ROOT / "constants" / "round_constants.asm"
+        )["ROUND_BATTLES"]
         events = parse_rgbds_constants(
             REPO_ROOT / "constants" / "event_constants.asm"
         )
@@ -2104,7 +2105,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         for name in reset_events:
             self.harness.set_event(events[name])
 
-        self.harness.write8("wBattleCount", 59)
+        self.harness.write8("wBattleCount", threshold - 1)
         self.harness.call_routine("PFacPreload", limit=60000)
         self.assertEqual(self.harness.read_sram_bytes("sProcFacilityBaked", 1), [0])
         self.assertEqual(self.harness.read_sram_bytes("sProcFacilityItemGot", 1), [0])
@@ -2119,18 +2120,18 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
         self.assertEqual(
             self.harness.read_sram_bytes("sProcFacilityEntryBattleCount", 1),
-            [59],
+            [threshold - 1],
         )
 
         # There is no same-generation Facility re-entry in the route lifecycle.
         # Crossing the threshold matters on the next assigned Facility, whose
         # preload intentionally creates a fresh generation and fresh objects.
-        self.harness.write8("wBattleCount", 60)
+        self.harness.write8("wBattleCount", threshold)
         self.harness.call_routine("PFacPreload", limit=60000)
         self.harness.call_routine("PFacFinalize", limit=240000)
         self.assertEqual(
             self.harness.read_sram_bytes("sProcFacilityEntryBattleCount", 1),
-            [60],
+            [threshold],
         )
         self.assertEqual(
             self.harness.read_bytes("wMapSpriteExtraData", 18)[10:18:2],

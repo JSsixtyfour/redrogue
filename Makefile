@@ -62,6 +62,7 @@ RGBGFXFLAGS  ?= -Weverything
 	compare \
 	smoke \
 	audit \
+	audits_long \
 	space \
 	ai_scenarios \
 	balance_report \
@@ -129,6 +130,11 @@ space: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
 		--compare $(BUILD_DIR)/space_last.json --save $(BUILD_DIR)/space_last.json $(SPACE_ARGS)
 	python3 tools/sym_diff.py $(BUILD_DIR)/space_last_debug.sym pokeblue_debug.sym
 	cp pokeblue_debug.sym $(BUILD_DIR)/space_last_debug.sym
+
+# Slow standalone regression guards registered in tools/pyboy_smoke/audits.json (not in smoke).
+# AUDITS='*cave*' narrows the set.
+audits_long: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_audits.py $(if $(AUDITS),--only '$(AUDITS)')
 
 ai_scenarios: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_scenarios.py

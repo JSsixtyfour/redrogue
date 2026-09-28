@@ -552,6 +552,23 @@ AIPlanClassMoveLandsFar::
 	and a
 	ret
 ; --- Primary status legality (Checkpoint B R7) -----------------------------
+; The Bridge check below asks "is the ENEMY attacking the player?" by reading
+; hWhoseTurn, and returns "allowed" when it is 0. The AI plans with whatever
+; hWhoseTurn the last executed move left, measured 0 for 30 of 35 calls in a
+; FIGHT 2 battle, so an immune player looked sleepable. Force the enemy side
+; for the check only, then restore it.
+; In: e = BRIDGE_STATUS_CHECK_*. Out: carry = blocked. Clobbers af, bc, de, hl.
+AIBridgePlayerTargetBlocksStatus:
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, 1
+	ldh [hWhoseTurn], a
+	farcall BridgePlayerTargetBlocksStatus ; carry = blocked; flags survive Bankswitch
+	pop bc                      ; b = saved hWhoseTurn; pop bc leaves F intact
+	ld a, b
+	ldh [hWhoseTurn], a         ; ldh leaves carry intact
+	ret
+
 ; Carry SET when the enemy's primary status move cannot affect the player.
 ; These are shared by redundancy scoring and strategy-plan fitness. They mirror
 ; the real effect gates, including Bridge-selected immunities.
@@ -563,8 +580,7 @@ AIPrimarySleepIsBlocked::
 	and a
 	jr nz, .blocked
 	ld e, BRIDGE_STATUS_CHECK_OTHER
-	farcall BridgePlayerTargetBlocksStatus
-	ret
+	jp AIBridgePlayerTargetBlocksStatus
 .blocked
 	scf
 	ret
@@ -583,8 +599,7 @@ AIPrimaryPoisonIsBlocked::
 	cp POISON
 	jr z, .blocked
 	ld e, BRIDGE_STATUS_CHECK_POISON
-	farcall BridgePlayerTargetBlocksStatus
-	ret
+	jp AIBridgePlayerTargetBlocksStatus
 .blocked
 	scf
 	ret
@@ -607,8 +622,7 @@ AIPrimaryParalyzeIsBlocked::
 	jr z, .blocked
 .bridge
 	ld e, BRIDGE_STATUS_CHECK_OTHER
-	farcall BridgePlayerTargetBlocksStatus
-	ret
+	jp AIBridgePlayerTargetBlocksStatus
 .blocked
 	scf
 	ret

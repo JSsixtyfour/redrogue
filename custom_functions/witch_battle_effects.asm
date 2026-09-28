@@ -323,22 +323,16 @@ HandleTurnLimitDrain::
 ; Inlined copy of engine/battle/core.asm's UpdateCurMonHPBar. That routine is a
 ; core.asm local, so reaching it from this bank would mean exporting it and
 ; adding a farcall back - more churn than the 14 bytes it costs to inline it.
-; The hWhoseTurn branch is kept VERBATIM rather than hardcoding the player bar
-; (which is what HandleRecoilChallenge above does), so this relocation changes
-; nothing about which bar is drawn. Whether that branch is CORRECT here is a
-; separate, pre-existing question: on the player-moves-first path hWhoseTurn is
-; still 1 when this runs, so the enemy's bar gets drawn from the player's HP
-; values. Deliberately left exactly as it was - not this change's business.
+; The player's bar is hardcoded, as in HandleRecoilChallenge above. The copied
+; hWhoseTurn branch was wrong here: this runs after both moves, so hWhoseTurn is
+; whoever moved LAST, and on the player-moves-first path that is the enemy.
+; Measured 2026-09-28 (FIGHT 2, faster player): 3 of 3 drains animated the
+; ENEMY bar (hlcoord 2, 2) with the player's HP. The drain only ever hits the
+; player's mon.
 ; The original's push bc / pop bc around the predef is dropped: bc held the
 ; drain amount, which is dead from here on.
 	hlcoord 10, 9         ; tile pointer to player HP bar
-	ldh a, [hWhoseTurn]
-	and a
-	ld a, $1
-	jr z, .gotHPBarCoords
-	hlcoord 2, 2          ; tile pointer to enemy HP bar
-	xor a
-.gotHPBarCoords
+	ld a, $1              ; HP bar type: player
 	ld [wHPBarType], a
 	predef UpdateHPBar2
 ; Faint check. The original read `ld a, [wBattleMonHP]` / `or [hl]`, with a

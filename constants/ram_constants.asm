@@ -57,6 +57,13 @@ DEF BIT_60_FPS         EQU 7
 
 ; wOptions3 (saved, extra option bits; see ram/wram.asm)
 DEF BIT_IRONMAN EQU 0 ; fainted party mons are released (custom_functions/ironman.asm)
+; Battle speed, bits 1-2: the value is how many times DelayFrames halves its
+; count while hIsInBattle is set (home/delay.asm). 0 = 1X (what every save
+; from before the option reads), 1 = 2X (the new-game default, InitOptions_),
+; 2 = 4X.
+DEF BATTLE_SPEED_MASK EQU %110
+DEF BATTLE_SPEED_X2   EQU 1 << 1
+DEF BATTLE_SPEED_X4   EQU 2 << 1
 
 ; wLetterPrintingDelayFlags
 	const_def

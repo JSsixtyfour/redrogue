@@ -29,6 +29,7 @@ from source_constants import parse_map_constants  # noqa: E402
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
 NAME_LENGTH = 11
 RECORD_BANK = 1
+MAX_GREETING_PRESSES = 4   # longest greeting today needs 2; more means the line never came
 
 
 def stage_const(name):
@@ -72,11 +73,18 @@ def main() -> int:
             print("no mon was stolen this run - nothing to check")
             return 0
 
-        # Step through the greeting; the loot line is the second box.
-        h.tap("a", frames=12)
-        h.tick(60)
+        # Step through the greeting until the loot line has named the take. The
+        # greeting's length varies by villain and has grown before (Jessie &
+        # James now scroll one extra box), so count presses instead of assuming.
         name_after_greet = decode(h.read_bytes("wNameBuffer", NAME_LENGTH))
-        print("wNameBuffer after the greeting: %r" % name_after_greet)
+        for presses in range(1, MAX_GREETING_PRESSES + 1):
+            h.tap("a", frames=12)
+            h.tick(60)
+            name_after_greet = decode(h.read_bytes("wNameBuffer", NAME_LENGTH))
+            if name_after_greet == nickname:
+                break
+        print("wNameBuffer after the greeting: %r (%d A presses)"
+              % (name_after_greet, presses))
         h.pyboy.tick(render=True)
         shot = ARTIFACTS / "stage_loot_line.png"
         ARTIFACTS.mkdir(parents=True, exist_ok=True)

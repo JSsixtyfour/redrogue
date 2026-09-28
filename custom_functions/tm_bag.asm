@@ -602,3 +602,69 @@ GetTMHMContent::
 	ld [wMoveNum], a
 	call GetMoveName
 	jp CopyToStringBuffer
+
+; ============================================================
+; MartHideOwnedTMs  (farcall'd from DisplayPokemartDialogue_'s .buyMenuLoop)
+; Removes every TM/HM the player already owns from the mart list in wItemList
+; (count byte, item bytes, $ff) and fixes the count, so owned TMs are never
+; offered and a TM just bought drops out of the list at once. Ownership is one
+; bit, so buying a second copy only cost money (user request 2026-09-28).
+; Then clamps wMartBuyCursor so the kept cursor row cannot sit past the
+; shortened list (CANCEL, at index = count, is the last valid row).
+; Clobbers everything. wCurItem is left holding the last TM/HM checked; the
+; buy loop reloads it from the list before using it.
+; ============================================================
+MartHideOwnedTMs::
+	ld hl, wItemList + 1        ; read pointer
+	ld de, wItemList + 1        ; write pointer
+	ld c, 0                     ; kept count
+.loop
+	ld a, [hli]
+	cp $ff
+	jr z, .done
+	cp HM01
+	jr c, .keep                 ; below the TM/HM range: an ordinary item
+	cp TM01 + NUM_TMS
+	jr nc, .keep                ; above it (none today, but not a TM either)
+	push hl
+	push de
+	push bc
+	ld [wCurItem], a
+	call HasTMHM                ; Z = not owned; clobbers a, b, d, e, hl
+	pop bc
+	pop de
+	pop hl
+	jr nz, .loop                ; owned: drop it
+.keep
+	dec hl
+	ld a, [hli]
+	ld [de], a
+	inc de
+	inc c
+	jr .loop
+.done
+	ld a, $ff
+	ld [de], a
+	ld a, c
+	ld [wItemList], a
+	; clamp: scroll + cursor must not pass the CANCEL row (index c)
+	ld a, [wListScrollOffset]
+	cp c
+	jr c, .scrollOk
+	jr z, .scrollOk
+	xor a                       ; the scroll itself is past the end: start over
+	ld [wListScrollOffset], a
+	ld [wMartBuyCursor], a
+	ret
+.scrollOk
+	ld b, a                     ; b = scroll
+	ld a, c
+	sub b                       ; a = rows from scroll to CANCEL
+	ld b, a
+	ld a, [wMartBuyCursor]
+	cp b
+	ret c
+	ret z
+	ld a, b
+	ld [wMartBuyCursor], a
+	ret

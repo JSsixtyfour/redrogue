@@ -12,6 +12,14 @@ MainMenu:
 	predef TryLoadSaveFile
 
 .mainMenuLoop
+	; The text-speed option only applies while BIT_FAST_TEXT_DELAY is set
+	; (PrintLetterDelay: clear = a fixed one frame per letter, whatever the
+	; option says). wLetterPrintingDelayFlags is SAVE DATA, so TryLoadSaveFile
+	; restores it verbatim, and a save that ever stored 0 ignored the option on
+	; every Continue: the 2026-09-28 playtest save has it at $00. LinkMenu also
+	; clears it and returns here. Force it on every time the menu shows.
+	ld hl, wLetterPrintingDelayFlags
+	set BIT_FAST_TEXT_DELAY, [hl]
 	ld c, 20
 	call DelayFrames
 	xor a ; LINK_STATE_NONE

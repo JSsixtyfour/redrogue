@@ -493,6 +493,77 @@ class RedRogueHarness:
             self.register_hook(label, callback)
         return records
 
+    def hook_trainer_ai_calls(self) -> list[dict[str, object]]:
+        """Measure TrainerAI entry through its caller's returned-action seam.
+
+        Caller-path hooks distinguish the two MainInBattleLoop call sites. A
+        normal move ends at ExecuteEnemyMove entry; an AI item or switch ends
+        at the carry-set AIActionUsed branch. Enemy move execution is excluded.
+        """
+        records: list[dict[str, object]] = []
+        pending: dict[str, object] = {
+            "active": False,
+            "caller_path": None,
+            "next_caller_path": None,
+            "start_cycle": 0,
+            "start_frame": 0,
+        }
+
+        def set_caller_path(caller_path: str):
+            def callback(_context) -> None:
+                pending["next_caller_path"] = caller_path
+
+            return callback
+
+        def begin(_context) -> None:
+            pending["active"] = True
+            pending["caller_path"] = pending["next_caller_path"] or "unknown"
+            pending["start_cycle"] = self.cycle_count()
+            pending["start_frame"] = self.pyboy.frame_count
+
+        def finish(outcome: str):
+            def callback(_context) -> None:
+                if not pending["active"]:
+                    return
+                end_cycle = self.cycle_count()
+                start_cycle = int(pending["start_cycle"])
+                records.append(
+                    {
+                        "caller_path": pending["caller_path"],
+                        "outcome": outcome,
+                        "start_cycle": start_cycle,
+                        "end_cycle": end_cycle,
+                        "cycles": end_cycle - start_cycle,
+                        "start_frame": int(pending["start_frame"]),
+                        "end_frame": self.pyboy.frame_count,
+                    }
+                )
+                pending["active"] = False
+                pending["caller_path"] = None
+                pending["next_caller_path"] = None
+
+            return callback
+
+        for label, callback in (
+            ("MainInBattleLoop.enemyMovesFirst", set_caller_path("enemy_first")),
+            (
+                "MainInBattleLoop.playerFirstPoisonPlayerAlive",
+                set_caller_path("player_first"),
+            ),
+            ("TrainerAI", begin),
+            ("ExecuteEnemyMove", finish("move")),
+            (
+                "MainInBattleLoop.AIActionUsedEnemyFirst",
+                finish("item_or_switch"),
+            ),
+            (
+                "MainInBattleLoop.AIActionUsedPlayerFirst",
+                finish("item_or_switch"),
+            ),
+        ):
+            self.register_hook(label, callback)
+        return records
+
     def hook_enemy_send_out(self) -> list[dict[str, object]]:
         """Trace replacement selection through EnemySendOut's real farcall path."""
         records: list[dict[str, object]] = []

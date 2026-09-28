@@ -1,13 +1,27 @@
-"""Audit: selecting RUN in a procedural wild battle behaves like a trainer battle.
+"""Audit: running from a procedural wild battle behaves like a trainer battle.
 
-Release expectation (BIT_DEBUG_MODE clear):
+Since 584de52d (2026-09-23) the release battle menu's RUN slot is END: it asks
+to forfeit the run (RogueConfirmEndBattle) and never calls TryRunningFromBattle.
+TryRunningFromBattle is still reached in release from DoUseNextMonDialogue
+(answer NO to "Use next POKeMON?" after a faint in a wild battle), so its
+procedural branch keeps its own scenario.
+
+release-run-path (TryRunningFromBattle with BIT_DEBUG_MODE clear):
   - .procBattle -> .normalTrainerBattle -> .printCantEscapeOrNoRunningText,
   - .canEscape never runs (the player cannot leave),
   - wActionResultOrTookBattleTurn stays 0, so the turn is NOT consumed. This is
     the behavioural fix: the old .procNoRun set that flag, so RUN cost a turn in
     a procedural wild battle but never in a real trainer battle.
+  Driven through the debug RUN body (the only menu route into the routine) with
+  the debug bit cleared by a hook on TryRunningFromBattle's entry, so everything
+  from that entry on runs exactly as it does in release.
 
-Debug expectation (BIT_DEBUG_MODE set):
+release-end (the END option, declined with B):
+  - RogueConfirmEndBattle runs, TryRunningFromBattle does not,
+  - HandlePlayerBlackOut does not run, the party keeps its HP, the battle menu
+    comes back and the battle continues.
+
+debug (BIT_DEBUG_MODE set):
   - the battle ends as a win,
   - TrainerBattleVictory is NOT called. Routing there would inc wBattleCount,
     fire RogueAwardCredits1 (its wild-area-boss branch matches all three
@@ -15,7 +29,7 @@ Debug expectation (BIT_DEBUG_MODE set):
     pic that does not exist.
 
 Usage:
-    python3 tools/pyboy_smoke/audit_procedural_run.py [--scenario debug|release|both]
+    python3 tools/pyboy_smoke/audit_procedural_run.py [--scenario debug|release-run-path|release-end|all]
 
 ⚠ Driving the battle menu, learned the hard way and easy to get wrong:
 
@@ -58,14 +72,22 @@ HOOKS = [
     "TryRunningFromBattle.canEscape",
     "BattleMenu_RunWasSelected",
     "TrainerBattleVictory",
+    "RogueConfirmEndBattle",
+    "HandlePlayerBlackOut",
 ]
+SCENARIOS = ["debug", "release-run-path", "release-end"]
 
 
 def run_scenario(scenario: str) -> bool:
     ids = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
     harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
     try:
-        counters = {label: harness.hook_flag(label) for label in HOOKS}
+        def clear_debug_bit():
+            flags = harness.read8("wStatusFlags6")
+            harness.write8("wStatusFlags6", flags & ~BIT_DEBUG_MODE_MASK)
+
+        actions = {"TryRunningFromBattle": clear_debug_bit} if scenario == "release-run-path" else {}
+        counters = {label: harness.hook_flag(label, actions.get(label)) for label in HOOKS}
         menu_up = harness.hook_flag("DisplayBattleMenu")
 
         harness.boot_to_lobby()
@@ -91,17 +113,21 @@ def run_scenario(scenario: str) -> bool:
             return False
         harness.tick(20)
 
-        if scenario == "release":
-            flags = harness.read8("wStatusFlags6")
-            harness.write8("wStatusFlags6", flags & ~BIT_DEBUG_MODE_MASK)
+        if scenario == "release-end":
+            clear_debug_bit()
 
         turn_before = harness.read8("wActionResultOrTookBattleTurn")
+        hp_before = harness.read_bytes("wPartyMon1HP", 2)
+        menus_before = menu_up["count"]
         harness.tap("right", 2)
         harness.tick(20)
         harness.tap("down", 2)
         harness.tick(20)
         harness.tap("a", 2)
         harness.tick(60)
+        if scenario == "release-end":
+            harness.tap("b", 2)   # decline "Give up and end this run?"
+            harness.tick(60)
 
         counts = {label: counters[label]["count"] for label in HOOKS}
         for label in HOOKS:
@@ -114,21 +140,34 @@ def run_scenario(scenario: str) -> bool:
         print(f"    wBattleCount {battles_before} -> {battles_after}")
 
         checks = [
-            ("RUN was selected", counts["BattleMenu_RunWasSelected"] == 1),
-            ("the procedural path ran", counts["TryRunningFromBattle.procBattle"] == 1),
+            ("RUN/END was selected", counts["BattleMenu_RunWasSelected"] == 1),
             ("the player never escaped", counts["TryRunningFromBattle.canEscape"] == 0),
             ("TrainerBattleVictory not called", counts["TrainerBattleVictory"] == 0),
             ("the turn was not consumed", turn_before == turn_after == 0),
             ("wBattleCount unchanged", battles_before == battles_after),
         ]
-        if scenario == "release":
+        if scenario == "release-end":
             checks += [
+                ("END asked to confirm", counts["RogueConfirmEndBattle"] == 1),
+                ("TryRunningFromBattle not called", counts["TryRunningFromBattle"] == 0),
+                ("no blackout after declining", counts["HandlePlayerBlackOut"] == 0),
+                ("party HP untouched", harness.read_bytes("wPartyMon1HP", 2) == hp_before),
+                ("battle menu came back", menu_up["count"] > menus_before),
+                ("battle continues", in_battle_idle == 1),
+            ]
+        elif scenario == "release-run-path":
+            checks += [
+                ("the procedural path ran", counts["TryRunningFromBattle.procBattle"] == 1),
+                ("debug bit was clear inside the routine",
+                 harness.read8("wStatusFlags6") & BIT_DEBUG_MODE_MASK == 0),
                 ("trainer no-running text shown",
                  counts["TryRunningFromBattle.normalTrainerBattle"] == 1
                  and counts["TryRunningFromBattle.printCantEscapeOrNoRunningText"] == 1),
                 ("battle continues", in_battle_idle == 1),
             ]
         else:
+            checks.append(("the procedural path ran",
+                           counts["TryRunningFromBattle.procBattle"] == 1))
             checks += [
                 ("no no-running text on the debug win",
                  counts["TryRunningFromBattle.printCantEscapeOrNoRunningText"] == 0),
@@ -157,10 +196,10 @@ def run_scenario(scenario: str) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scenario", choices=["debug", "release", "both"], default="both")
+    parser.add_argument("--scenario", choices=[*SCENARIOS, "all"], default="all")
     args = parser.parse_args()
 
-    scenarios = ["debug", "release"] if args.scenario == "both" else [args.scenario]
+    scenarios = SCENARIOS if args.scenario == "all" else [args.scenario]
     failures = 0
     for scenario in scenarios:
         print(f"--- {scenario} ---")

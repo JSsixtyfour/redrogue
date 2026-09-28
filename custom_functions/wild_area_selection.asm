@@ -270,7 +270,7 @@ StageEventStealItem:
 
 ; Walk one pocket, adding its owned, stealable stacks to b.
 ; INPUT: hl = $ff-terminated item table, de = parallel count array.
-; Preserves b. Clobbers a/c/de/hl.
+; b = running total, in/out: one inc per counted stack. Clobbers a/c/de/hl.
 StageEventCountPocket:
 .loop
 	ld a, [hli]
@@ -336,7 +336,7 @@ StageEventPickPocket:
 
 ; Add the player's owned TMs to b. Opens and closes its own SRAM window,
 ; because the three pockets counted before it are ordinary WRAM.
-; Preserves b. Clobbers a/c/de/hl.
+; b = running total, in/out: one inc per counted stack. Clobbers a/c/de/hl.
 StageEventCountTMs:
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a

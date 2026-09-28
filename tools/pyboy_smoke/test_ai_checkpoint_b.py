@@ -178,6 +178,7 @@ class AICheckpointBTest(unittest.TestCase):
         enemy_speed=200,
         player_speed=100,
         bridge_effect=None,
+        whose_turn=1,
     ):
         h = self.h
         h.park_before_hijack()
@@ -205,7 +206,7 @@ class AICheckpointBTest(unittest.TestCase):
             "wAIPlanStep",
         ):
             h.write8(label, 0)
-        h.write8("hWhoseTurn", 1)
+        h.write8("hWhoseTurn", whose_turn)
         h.write8("wLinkState", 0)
         h.write8("wPlayerMonNumber", 0)
         for offset in range(4):
@@ -268,6 +269,33 @@ class AICheckpointBTest(unittest.TestCase):
             self.select_plan(["SING"], ghost, bridge_effect=poison),
             self.ai["AI_PLAN_SLEEP_LEAD"],
         )
+
+    def test_r7_bridge_immunities_hold_whoever_moved_last(self):
+        # The AI plans with hWhoseTurn left over from the last move executed, and
+        # measured in FIGHT 2 it is 0 for 30 of 35 predicate calls. The status
+        # predicates used to pass that straight to BridgePlayerTargetBlocksStatus,
+        # which treats 0 as "the player is attacking" and allows everything, so an
+        # immune player looked sleepable. The test above pins hWhoseTurn to 1 and
+        # could not see it.
+        full = self.pokemon_data["BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY"]
+        poison = self.pokemon_data["BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY"]
+        ghost = (self.types["GHOST"], self.types["GHOST"])
+        for whose_turn in (0, 1):
+            with self.subTest(whose_turn=whose_turn):
+                self.assertEqual(
+                    self.select_plan(["SING"], ghost, bridge_effect=full,
+                                     whose_turn=whose_turn),
+                    self.ai["AI_PLAN_BRUISER"],
+                )
+                self.assertEqual(
+                    self.select_plan(["TOXIC", "RECOVER"], ghost, bridge_effect=poison,
+                                     whose_turn=whose_turn),
+                    self.ai["AI_PLAN_BRUISER"],
+                )
+                self.assertEqual(
+                    self.h.read8("hWhoseTurn"), whose_turn,
+                    "AIPlanSelect must leave hWhoseTurn as it found it",
+                )
 
     def delivered(self, routine, effect, damage, substitute_hp=None, witch=False, owner_hp=None):
         h = self.h

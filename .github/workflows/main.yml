@@ -4,99 +4,74 @@ on:
   push:
     branches: [ master ]
   pull_request:
-
-env:
-  rgbds_version: v1.0.1
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Checkout rgbds
-        uses: actions/checkout@v6
         with:
-          path: rgbds
-          ref: ${{ env.rgbds_version }}
-          repository: gbdev/rgbds
+          # make audit diffs against the pret/pokered merge-base, which needs full history.
+          fetch-depth: 0
 
-      - name: Install rgbds
-        working-directory: rgbds
+      - name: Read rgbds version
+        id: rgbds
+        run: echo "version=v$(cat .rgbds-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache rgbds
+        id: rgbds-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/rgbds-install
+          key: rgbds-${{ steps.rgbds.outputs.version }}-${{ runner.os }}-22.04
+
+      - name: Build rgbds
+        if: steps.rgbds-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -yq bison libpng-dev pkg-config
-          sudo make -j$(nproc) install
+          git clone --depth 1 --branch ${{ steps.rgbds.outputs.version }} https://github.com/gbdev/rgbds.git /tmp/rgbds
+          make -C /tmp/rgbds -j"$(nproc)"
+          make -C /tmp/rgbds install PREFIX="$HOME/rgbds-install"
 
-      - name: Remove rgbds
+      - name: Put rgbds on PATH
         run: |
-          rm -rf rgbds
+          echo "$HOME/rgbds-install/bin" >> "$GITHUB_PATH"
+          sudo apt-get install -yq libpng16-16
 
-      - name: Compare
-        if: ${{ github.repository_owner == 'pret' }}
+      - name: Build all three ROMs
         run: |
-          make DEBUG=1 -j$(nproc) compare
+          make -j"$(nproc)"
           .github/checkdiff.sh
 
-      - name: Make
-        if: ${{ github.repository_owner != 'pret' }}
-        run: |
-          make -j$(nproc)
-          .github/checkdiff.sh
+      - name: Static audit
+        run: make audit
 
-      - name: Checkout symbols
-        if: ${{ github.repository_owner == 'pret' && github.event_name == 'push' }}
-        uses: actions/checkout@master
+      - name: Space report
+        run: python3 tools/space_report.py pokered.map pokeblue.map pokeblue_debug.map
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: symbols
-          ref: symbols
+          python-version: "3.10"
 
-      - name: Move symbols
-        if: ${{ github.repository_owner == 'pret' && github.event_name == 'push' }}
-        run: |
-          cp -v *.sym *.map symbols/
+      - name: Install PyBoy
+        run: pip install pyboy==2.7.0
 
-      - name: Update symbols
-        if: ${{ github.repository_owner == 'pret' && github.event_name == 'push' }}
-        uses: EndBug/add-and-commit@v9
+      - name: Smoke tests
+        run: make smoke
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          cwd: "./symbols"
-          add: "*.sym *.map"
-          message: ${{ github.event.commits[0].message }}
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Checkout rgbds
-        uses: actions/checkout@v6
-        with:
-          path: rgbds
-          ref: ${{ env.rgbds_version }}
-          repository: gbdev/rgbds
-
-      - name: Install rgbds
-        working-directory: rgbds
-        run: |
-          brew install bison libpng pkg-config
-          export PATH="$(brew --prefix bison)/bin:$PATH"
-          sudo make -j$(sysctl -n hw.ncpu) install
-
-      - name: Remove rgbds
-        run: |
-          rm -rf rgbds
-
-      - name: Compare
-        if: ${{ github.repository_owner == 'pret' }}
-        run: |
-          make DEBUG=1 -j$(sysctl -n hw.ncpu) compare
-          .github/checkdiff.sh
-
-      - name: Make
-        if: ${{ github.repository_owner != 'pret' }}
-        run: |
-          make -j$(sysctl -n hw.ncpu)
-          .github/checkdiff.sh
+          name: failure-artifacts
+          path: |
+            tools/pyboy_smoke/artifacts/
+            *.map
+            *.sym
+          if-no-files-found: ignore
+          retention-days: 14

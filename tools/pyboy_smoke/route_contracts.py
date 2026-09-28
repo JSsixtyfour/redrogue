@@ -2,6 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+
+from source_constants import parse_rgbds_constants
+
+# Stage trainers per map, boss included (constants/round_constants.asm). Every
+# standard stage map must carry exactly this many trainer events.
+ROUTE_BATTLES = parse_rgbds_constants(
+    Path(__file__).resolve().parents[2] / "constants" / "round_constants.asm"
+)["ROUTE_BATTLES"]
 
 
 class RewardGate(Enum):
@@ -25,7 +34,7 @@ class RouteContract:
     def trainer_events(self) -> tuple[str, ...]:
         if self.trainer_event_prefix is None:
             return ()
-        return tuple(f"{self.trainer_event_prefix}{index}" for index in range(5))
+        return tuple(f"{self.trainer_event_prefix}{index}" for index in range(ROUTE_BATTLES))
 
 
 def route(name, map_constant, object_file, script_symbol, trainer_event_prefix,

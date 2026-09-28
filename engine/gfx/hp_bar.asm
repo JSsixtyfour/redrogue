@@ -144,8 +144,19 @@ UpdateHPBar_AnimateHPBar:
 	push de
 	ld d, $6
 	call DrawHPBar
+	; 2X already halves this wait inside DelayFrames (2 -> 1 frame). At 4X,
+	; also skip it on every other pixel. The bar is still drawn every pixel.
+	call HPBarSpeedMask
+	cp 3
+	jr nz, .delay
+	pop de
+	push de
+	bit 0, e
+	jr nz, .skipDelay
+.delay
 	ld c, 2
 	call DelayFrames
+.skipDelay
 	pop de
 	ld a, [wHPBarDelta] ; +1 or -1
 	add e
@@ -160,6 +171,24 @@ UpdateHPBar_AnimateHPBar:
 .barFilledUp
 	pop af
 	pop hl
+	ret
+
+; BATTLE SPEED for the HP bar (wOptions3, constants/ram_constants.asm).
+; OUT: a = 0 and Z set at 1X or outside battle; a = 1 (2X) or 3 (4X), Z clear.
+; Clobbers a only.
+HPBarSpeedMask:
+	ldh a, [hIsInBattle]
+	and a
+	ret z
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	ret z
+	cp BATTLE_SPEED_X4
+	ld a, 1
+	jr nz, .done
+	ld a, 3
+.done
+	and a
 	ret
 
 ; compares old HP and new HP and sets c and z flags accordingly
@@ -231,7 +260,17 @@ UpdateHPBar_PrintHPNumber:
 	ld de, wHPBarTempHP
 	lb bc, 2, 3
 	call PrintNumber
+	; one frame per HP point at 1X; BATTLE SPEED waits only on every 2nd (2X)
+	; or 4th (4X) point. The number is still printed every time.
+	call HPBarSpeedMask
+	jr z, .delay
+	ld b, a
+	ld a, [wHPBarOldHP]
+	and b
+	jr nz, .skipDelay
+.delay
 	call DelayFrame
+.skipDelay
 	pop hl
 .done
 	pop de

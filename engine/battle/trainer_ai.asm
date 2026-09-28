@@ -190,6 +190,105 @@ AIRunPersonality:
 	ld a, [wTrainerClass]
 	cp GAMBLER
 	jp z, AIMoveChoiceModification5 ; Gambler's Paradise themed AI
+	call AIGetSoftPersonality
+	and a
+	ret z
+	cp NUM_AI_PERSONALITIES
+	ret nc
+	dec a
+	add a
+	ld hl, AISoftPersonalityPointers
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	jp hl
+
+; Resolve a sparse trainer-class assignment. The table is intentionally empty
+; for the framework checkpoint: profile activation is a later balance change.
+; Input: a = trainer class. Output: a = AI_PERSONALITY_*.
+AIGetSoftPersonality:
+	ld b, a
+	ld hl, AISoftPersonalityByClass
+.next
+	ld a, [hli]
+	cp $ff
+	jr z, .none
+	cp b
+	jr z, .found
+	inc hl
+	jr .next
+.found
+	ld a, [hl]
+	ret
+.none
+	xor a
+	ret
+
+AISoftPersonalityByClass:
+	; db TRAINER_CLASS, AI_PERSONALITY_* ; opt in one class per reviewed change
+	db $ff
+
+AISoftPersonalityPointers:
+	dw AISoftPersonalityOffense
+	dw AISoftPersonalityControl
+	assert (@ - AISoftPersonalityPointers) / 2 == NUM_AI_PERSONALITIES - 1, \
+		"AISoftPersonalityPointers must cover every non-neutral personality"
+
+; Prefer direct pressure. This reads only the acting monster's own moves and
+; applies a one-point soft preference without changing legality.
+AISoftPersonalityOffense::
+	ld c, 1
+	jr AISoftPersonalityByPower
+
+; Prefer non-damaging control. The shared loop interprets c = 0 as status.
+AISoftPersonalityControl::
+	ld c, 0
+
+AISoftPersonalityByPower:
+	ld hl, wBuffer
+	ld de, wEnemyMonMoves
+	ld b, NUM_MOVES
+.nextMove
+	ld a, [de]
+	inc de
+	and a
+	jr z, .advance
+	push bc
+	push de
+	call ReadMove
+	ld a, [wEnemyMovePower]
+	and a
+	jr nz, .damagingMove
+	ld a, [wEnemyMoveEffect]
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .damagingMove
+	cp BIDE_EFFECT
+	pop de
+	pop bc
+	jr nz, .statusMove
+	jr .damageClassKnown
+.damagingMove
+	pop de
+	pop bc
+.damageClassKnown
+	ld a, c
+	and a
+	jr z, .advance
+	jr .encourage
+.statusMove
+	ld a, c
+	and a
+	jr nz, .advance
+.encourage
+	ld a, AI_NUDGE
+	call AIEncourage
+.advance
+	inc hl
+	dec b
+	jr nz, .nextMove
 	ret
 
 ; discourages moves that cause no damage but only a status ailment if player's mon already has one

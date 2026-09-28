@@ -633,10 +633,18 @@ _PickRandomUnvisitedStage:
 	push hl
 	push af             ; save map ID
 	push bc             ; save target counter (c) and unvisited count (b)
+	; _StageBitInfo clobbers d AND e, and e is this loop's stage index. Without
+	; this push the index became the byte offset (0) after every call and the
+	; `inc e` below pinned it at 1, so every entry past the first was tested
+	; against ROUTE_3's bit: visited stages got picked again (the 2026-09-28
+	; playtest's repeat Route 15), and with ROUTE_3 visited the walk never
+	; matched and ran on forever (a lobby freeze). Measured both ways in PyBoy.
+	push de
 	ld c, e             ; pass stage index to _StageBitInfo
 	call _StageBitInfo
 	ld a, [hl]
 	and b               ; 0 = unvisited, non-zero = visited
+	pop de              ; e = stage index again (d is overwritten just below)
 	ld d, a             ; save bit-check result — pop af below clobbers Z flag
 	pop bc
 	pop af              ; a = map ID

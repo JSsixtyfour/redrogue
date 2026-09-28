@@ -1204,10 +1204,11 @@ wBankswitchHomeSavedROMBank:: db
 ; used as a temp storage value for the bank to switch to
 wBankswitchHomeTemp:: db
 
-; 0 = nothing bought or sold in pokemart
-; 1 = bought or sold something in pokemart
-; this value is not used for anything
-wBoughtOrSoldItemInMart:: db
+; The mart BUY list's cursor row, kept across purchases so the cursor stays on
+; the item just bought instead of jumping back to the top (user request
+; 2026-09-28). Zeroed on entering BUY. This byte was vanilla's
+; wBoughtOrSoldItemInMart, which nothing ever read.
+wMartBuyCursor:: db
 
 ; $00 - win
 ; $01 - lose

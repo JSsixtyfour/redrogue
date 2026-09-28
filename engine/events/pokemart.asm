@@ -2,8 +2,6 @@ DisplayPokemartDialogue_::
 	ld a, [wListScrollOffset]
 	ld [wSavedListScrollOffset], a
 	call UpdateSprites
-	xor a
-	ld [wBoughtOrSoldItemInMart], a
 .loop
 	xor a
 	ld [wListScrollOffset], a
@@ -164,12 +162,6 @@ DisplayPokemartDialogue_::
 	jp z, .sellMenuLoop
 
 ; sell item
-	ld a, [wBoughtOrSoldItemInMart]
-	and a
-	jr nz, .skipSettingFlag1
-	inc a
-	ld [wBoughtOrSoldItemInMart], a
-.skipSettingFlag1
 	call AddAmountSoldToMoney
 	; Route removal: TMs clear bitfield bit; everything else uses count array
 	ld a, [wBagPocketsFlags]
@@ -206,7 +198,10 @@ DisplayPokemartDialogue_::
     call SaveTextBoxTilesToBuffer ; marcelnote - for TM printing
     call Delay3
 	call SaveScreenTilesToBuffer1
+	xor a
+	ld [wMartBuyCursor], a      ; a fresh BUY visit starts at the top
 .buyMenuLoop
+	farcall MartHideOwnedTMs    ; drop owned TMs/HMs (incl. one just bought); clamps wMartBuyCursor
 	call LoadScreenTilesFromBuffer1
 	ld a, MONEY_BOX
 	ld [wTextBoxID], a
@@ -216,14 +211,16 @@ DisplayPokemartDialogue_::
 	ld [wListPointer], a
 	ld a, h
 	ld [wListPointer + 1], a
-	xor a
-	ldh [hCurrentMenuItem], a
-	inc a
+	ld a, [wMartBuyCursor]      ; back on the row last chosen (wListScrollOffset
+	ldh [hCurrentMenuItem], a   ; already survives the loop), not the top
+	ld a, 1
 	ld [wPrintItemPrices], a
 	ld a, PRICEDITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
 	jr c, .returnToMainPokemartMenu ; if the player closed the menu
+	ldh a, [hCurrentMenuItem]   ; the quantity and yes/no menus reuse
+	ld [wMartBuyCursor], a      ; hCurrentMenuItem, so keep the row here
 	ld a, 99
 	ld [wMaxItemQuantity], a
 	xor a
@@ -270,12 +267,6 @@ DisplayPokemartDialogue_::
 	call GiveItem          ; HOME function, plain call OK; routes to correct pocket
 	jr nc, .bagFull
 	call SubtractAmountPaidFromMoney
-	ld a, [wBoughtOrSoldItemInMart]
-	and a
-	jr nz, .skipSettingFlag2
-	ld a, 1
-	ld [wBoughtOrSoldItemInMart], a
-.skipSettingFlag2
 	ld a, SFX_PURCHASE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish

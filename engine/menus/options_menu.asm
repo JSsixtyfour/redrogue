@@ -849,9 +849,9 @@ OptionsPageSetInGame:
 ; one short of CHEAT, which is the last entry in that table; its box is
 ; correspondingly shorter, ending just under IRONMAN.
 OptionsPageTitle:
-	optpage 9, 11, 15, OptionsRows, 0, 0
+	optpage 10, 11, 15, OptionsRows, 0, 0
 OptionsPageInGame:
-	optpage 10, 13, 15, OptionsRows, 0, 0
+	optpage 11, 13, 15, OptionsRows, 0, 0
 
 ; label, screen Y, value column, variable, mask, order, strings, count, hook
 ;
@@ -867,6 +867,7 @@ OptionsRows:
 	optrow OptBattleAnimLabel,   2, 16, wOptions,  1 << BIT_BATTLE_ANIMATION,  OptBattleAnimOrder,  OptOnOffValues,       2, 0
 	optrow OptColorLabel,        3, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
 	optrow Opt60FPSLabel,        4, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+	optrow OptBattleSpeedLabel,  5, 16, wOptions3, BATTLE_SPEED_MASK,          OptBattleSpeedOrder, OptBattleSpeedValues, 3, 0
 	optrow OptTextSpeedLabel,    6, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
 	optrow OptAudioLabel,        7, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
 	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
@@ -919,6 +920,8 @@ Opt60FPSOrder:
 	db 1 << BIT_60_FPS, 0
 OptIronmanOrder:
 	db 1 << BIT_IRONMAN, 0
+OptBattleSpeedOrder:
+	db 0, BATTLE_SPEED_X2, BATTLE_SPEED_X4
 
 OptAudioOrder:
 	db 0 << 4, 1 << 4, 2 << 4, 3 << 4
@@ -949,6 +952,11 @@ OptOnOffValues:
 OptBattleStyleValues:
 	dw OptTextShift
 	dw OptTextSet
+
+OptBattleSpeedValues:
+	dw OptTextSpeed1x
+	dw OptTextSpeed2x
+	dw OptTextSpeed4x
 
 OptAudioValues:
 	dw OptTextMono
@@ -988,6 +996,7 @@ OptColorLabel:       db "ENH COLOR@"
 Opt60FPSLabel:       db "60 FPS@"
 OptCheatLabel:       db "CHEAT@"
 OptIronmanLabel:     db "IRONMAN@"
+OptBattleSpeedLabel: db "BATTLE SPEED@"
 
 ; ----------------------------------------------------------------------------
 ; Values. Every string in one table is padded to the same width, on the LEFT,
@@ -1004,6 +1013,9 @@ OptTextSlow:      db "   SLOW@"
 ; width 3, column 16
 OptTextOn:        db " ON@"
 OptTextOff:       db "OFF@"
+OptTextSpeed1x:   db " 1X@"
+OptTextSpeed2x:   db " 2X@"
+OptTextSpeed4x:   db " 4X@"
 
 ; width 5, column 14
 OptTextShift:     db "SHIFT@"

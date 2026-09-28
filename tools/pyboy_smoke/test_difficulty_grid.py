@@ -77,10 +77,21 @@ def _mix_ids(values):
     }
 
 
+# The round shape (constants/round_constants.asm), so the positions below
+# follow ROUTE_BATTLES / GYM_TRAINER_BATTLES instead of assuming 10 per round.
+ROUND = parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm")
+R = ROUND["ROUND_BATTLES"]
+
+
+def at(round_index, step):
+    """The wBattleCount of `step` within round `round_index`."""
+    return round_index * R + step
+
+
 def expected_round_and_step(battle_count):
-    """GetRandRoster's own arithmetic, in Python: clamp at 90, then /10."""
-    clamped = min(battle_count, 89)
-    return clamped // 10, clamped % 10
+    """GetRandRoster's own arithmetic, in Python: clamp, then divide by the round size."""
+    clamped = min(battle_count, ROUND["LAST_ROUND_BATTLECOUNT"])
+    return clamped // R, clamped % R
 
 
 def expected_band(round_index):
@@ -100,7 +111,7 @@ def expected_roster_mix(battle_count):
     trainers, and which already gets BIT_ROGUE_FINAL_TRAINER's level bonus.
     """
     round_index, step = expected_round_and_step(battle_count)
-    kind = 0 if step < 5 else 1
+    kind = 0 if step < ROUND["FINAL_ROUTE_STEP"] else 1
     return ROSTER_GRID[kind][expected_band(round_index)]
 
 
@@ -395,11 +406,12 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
 
     def test_route_trainers_walk_the_route_column(self):
         """Steps 0-4 of an early, a middle and a late round."""
-        self._check([0, 23, 63])
+        self._check([0, at(2, 3), at(6, 3)])
 
     def test_gym_trainers_walk_the_trainer_column(self):
         """Step 5 is the final route trainer and belongs to this column too."""
-        self._check([5, 28, 69])
+        self._check([ROUND["FINAL_ROUTE_STEP"], at(2, ROUND["FINAL_GYM_TRAINER_STEP"] - 1),
+                     at(6, ROUND["FINAL_GYM_TRAINER_STEP"])])
 
     def test_band_edges_and_the_round_clamp(self):
         """The three values most likely to be off by one.
@@ -409,7 +421,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         at 90 - without it the round index would run to 9 and index one past
         the end of the band table.
         """
-        self._check([19, 20, 95])
+        self._check([at(2, 0) - 1, at(2, 0), ROUND["LAST_ROUND_BATTLECOUNT"] + 6])
 
     def test_gambler_is_exempt_from_the_grid(self):
         """Gambler's Paradise owns its own movesets and must not be mixed.

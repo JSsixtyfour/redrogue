@@ -706,8 +706,10 @@ AllSpeciesCheck::
 	jr z, .owned
 	inc a                         ; $ff terminator -> 0
 	jr nz, .scan
+	inc b                         ; test b for 0 without changing it: the budget
+	dec b                         ; must SATURATE at 0, not wrap to 255 on the
+	jr z, .next                   ; next visit (budget spent: stop expanding, keep testing)
 	dec b
-	jr z, .next                   ; budget spent: stop expanding, keep testing
 	push bc
 	call LoadEvoListForSpecies    ; hl = wEvoDataBuffer; clobbers af/bc/de
 	pop bc

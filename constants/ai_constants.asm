@@ -124,6 +124,16 @@ DEF AI_KILL        EQU 5
 ; invariant is unaffected.
 DEF AI_KILL_FIRST  EQU AI_KILL + 4
 
+; --- Optional trainer personalities (Checkpoint E) ---
+; These are soft, post-layer score nudges, not skill tiers or legality rules.
+; Profile 0 is deliberately neutral. The live class-to-profile table starts
+; empty so introducing the framework cannot change existing trainer choices;
+; individual class assignments are a separate, reviewable balance step.
+DEF AI_PERSONALITY_NONE    EQU 0
+DEF AI_PERSONALITY_OFFENSE EQU 1
+DEF AI_PERSONALITY_CONTROL EQU 2
+DEF NUM_AI_PERSONALITIES   EQU 3
+
 ; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
 ; for the "this move does literally nothing" case. Deliberately expressed as a
 ; computation, not a literal, so it stays correct if the baseline moves again.

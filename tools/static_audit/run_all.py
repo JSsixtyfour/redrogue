@@ -107,6 +107,13 @@ def main():
         key = f"{f['rule']}/{f['severity']}{'/allowlisted' if f['allowlisted'] else ''}"
         counts[key] = counts.get(key, 0) + 1
     print("\nsummary: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    # An entry nothing matches any more would silently excuse a NEW finding that
+    # happens to land on the same rule/file/label, so surface it for deletion.
+    ran_rules = set(args.rule or []) or {f["rule"] for f in findings} | {e[0] for e in allow}
+    stale = [e for e in allow if e[0] in ran_rules
+             and not any(allowed(f, [e]) for f in findings)]
+    for rule, file, label, _ in stale:
+        print(f"stale allowlist entry (matches nothing, delete it): {rule}\t{file}\t{label}")
     print(f"{len(failing)} unallowlisted bug-level finding(s)")
     if args.json:
         Path(args.json).write_text(json.dumps(findings, indent=1), encoding="utf-8")

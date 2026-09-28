@@ -44,6 +44,14 @@ import parse  # noqa: E402
 MAX_CALLS = 8
 HARNESS_ROM = "pokeblue_debug"
 NUM_ROUND_VARIANTS = 3
+# The round shape (constants/round_constants.asm); counts below are positions in it.
+ROUND = parse.load_round_constants()
+R = ROUND["ROUND_BATTLES"]
+
+
+def at(round_index: int, step: int) -> int:
+    """The wBattleCount of `step` within 0-based round `round_index` (step 0 = that round's leader)."""
+    return round_index * R + step
 MODEL_SAMPLES = 300
 
 # Falkner's round-1 B and C records are the Phase 2 worked examples, written by
@@ -279,13 +287,15 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
                                    levels, money)
 
     def test_early_rosters(self):
-        """Route trainers, the final route trainer (5), a gym trainer, the final
-        gym trainer (9), across rounds 1-3."""
-        self._check_rosters([1, 5, 7, 9, 16, 29])
+        """Route trainers, the final route trainer, a gym trainer, the final
+        gym trainer, across rounds 1-3."""
+        fr, fg, g1 = ROUND["FINAL_ROUTE_STEP"], ROUND["FINAL_GYM_TRAINER_STEP"], ROUND["FIRST_GYM_STEP"]
+        self._check_rosters([at(0, 1), at(0, fr), at(0, g1 + 1), at(0, fg), at(1, g1), at(2, fg)])
 
     def test_late_rosters(self):
-        """Rounds 5-9, including the clamp at 89."""
-        self._check_rosters([45, 55, 62, 79, 89, 95])
+        """Rounds 5-9, including the clamp at LAST_ROUND_BATTLECOUNT."""
+        fr, fg, last = ROUND["FINAL_ROUTE_STEP"], ROUND["FINAL_GYM_TRAINER_STEP"], ROUND["LAST_ROUND_BATTLECOUNT"]
+        self._check_rosters([at(4, fr), at(5, fr), at(6, 2), at(7, fg), last, last + 6])
 
     # --- gym leaders and the Elite Four (RogueBuildParty) ---------------------
 
@@ -304,7 +314,7 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
         for rnd in range(1, 9):
             with self.subTest(round=rnd):
                 battle = model.leader_battle(self.g, cfg, leader, rnd, random.Random(1))
-                self._check_spec("BROCK", (rnd - 1) * NUM_ROUND_VARIANTS + 2, 10 * rnd, battle)
+                self._check_spec("BROCK", (rnd - 1) * NUM_ROUND_VARIANTS + 2, at(rnd, 0), battle)
 
     def test_difficulty_modes(self):
         """RogueApplyDifficulty's rounding, all five modes, on a round-6 team
@@ -315,15 +325,15 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
             with self.subTest(difficulty=difficulty):
                 battle = model.leader_battle(self.g, model.Config(difficulty=difficulty), leader, 6,
                                              random.Random(1))
-                self._check_spec("BROCK", 5 * NUM_ROUND_VARIANTS + 2, 60, battle, difficulty)
+                self._check_spec("BROCK", 5 * NUM_ROUND_VARIANTS + 2, at(6, 0), battle, difficulty)
 
     def test_elite_four_tiers(self):
-        """Lorelei, tiers 1-4 at wBattleCount 86-89."""
+        """Lorelei, tiers 1-4 at wBattleCount E4_FIRST_BATTLECOUNT onwards."""
         self._boot()
         member = next(m for m in self.g.e4 if m.name == "Lorelei")
         cfg = model.Config()
         for tier in range(1, 5):
-            count = 85 + tier
+            count = ROUND["E4_FIRST_BATTLECOUNT"] - 1 + tier
             with self.subTest(tier=tier):
                 battle = model.e4_battle(self.g, cfg, member, count, random.Random(1))
                 self._check_spec("LORELEI", (tier - 1) * NUM_ROUND_VARIANTS + 2, count, battle)

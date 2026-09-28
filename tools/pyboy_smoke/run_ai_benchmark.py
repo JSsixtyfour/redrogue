@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+from math import ceil
 from statistics import mean
 
 from harness import RedRogueHarness
@@ -71,6 +72,42 @@ def classify_decisions(records: list[dict[str, object]]) -> dict[str, int]:
 def nullable_rate(numerator: int, denominator: int) -> float | None:
     return numerator / denominator if denominator else None
 
+
+def trainer_ai_timing_metrics(records: list[dict[str, object]]) -> dict[str, object]:
+    """Summarize whole TrainerAI call spans, retaining path and outcome splits."""
+    def group_metrics(prefix: str, group: list[dict[str, object]]) -> dict[str, object]:
+        cycles = sorted(int(record["cycles"]) for record in group)
+        count = len(cycles)
+        return {
+            f"{prefix}_calls": count,
+            f"{prefix}_mean_cycles": mean(cycles) if cycles else None,
+            f"{prefix}_p95_cycles": (
+                cycles[max(0, ceil(0.95 * count) - 1)] if cycles else None
+            ),
+            f"{prefix}_max_cycles": max(cycles, default=0),
+            f"{prefix}_over_frame_calls": sum(
+                cycles_for_call > FRAME_CYCLES for cycles_for_call in cycles
+            ),
+        }
+
+    metrics = group_metrics("trainer_ai", records)
+    metrics["trainer_ai_frame_budget_cycles"] = FRAME_CYCLES
+    for caller in ("enemy_first", "player_first"):
+        metrics[f"trainer_ai_{caller}_calls"] = sum(
+            record["caller_path"] == caller for record in records
+        )
+        for outcome in ("move", "item_or_switch"):
+            group = [
+                record
+                for record in records
+                if record["caller_path"] == caller and record["outcome"] == outcome
+            ]
+            metrics.update(group_metrics(f"trainer_ai_{caller}_{outcome}", group))
+    for outcome in ("move", "item_or_switch"):
+        metrics[f"trainer_ai_{outcome}_calls"] = sum(
+            record["outcome"] == outcome for record in records
+        )
+    return metrics
 
 def parse_move_powers(path: Path) -> dict[int, int]:
     powers: dict[int, int] = {}
@@ -229,8 +266,14 @@ def run_fixture_corpus(
             player_policy=player_policy,
             move_powers=move_powers,
             _trial_index=index,
+            _fixture_corpus=True,
         )
         for index, fixture_seed in enumerate(fixture_seeds(seed, trials_count))
+    ]
+    all_trainer_ai_calls = [
+        record
+        for report in reports
+        for record in report["_trainer_ai_timing_records"]
     ]
     trials = [report["trial_results"][0] for report in reports]
     summaries = [report["summary"] for report in reports]
@@ -285,6 +328,7 @@ def run_fixture_corpus(
         ),
     )
     summary["mean_ai_scoring_span_cycles"] = summary["mean_ai_decision_cycles"]
+    summary.update(trainer_ai_timing_metrics(all_trainer_ai_calls))
     summary["notes"] = list(dict.fromkeys(
         note for item in summaries for note in item["notes"]
         if "repeated trials restore one seeded baseline" not in note
@@ -293,7 +337,11 @@ def run_fixture_corpus(
     summary["notes"].extend([
         "each trial uses a fresh emulator and the next deterministic FIGHT 2 seed",
         "unique seed and matchup fingerprint counts are reported separately",
+        "TrainerAI timer spans routine entry through the caller return seam",
+        "Move ends at ExecuteEnemyMove entry; item/switch ends at AIActionUsed",
+        "Call p95 is nearest-rank; compare with the 70,224-cycle frame ceiling",
     ])
+    summary["notes"] = list(dict.fromkeys(summary["notes"]))
     return {"summary": summary, "trial_results": trials}
 def run_tier(
     repo_root: Path,
@@ -306,6 +354,7 @@ def run_tier(
     player_policy: str,
     move_powers: dict[int, int],
     _trial_index: int = 0,
+    _fixture_corpus: bool = False,
 ) -> dict[str, object]:
     if trials_count > 1:
         return run_fixture_corpus(
@@ -328,6 +377,8 @@ def run_tier(
             action=lambda: harness.write8("wAIDebugTierOverride", tier_override),
         )
         scores = harness.hook_ai_scores()
+        trainer_ai_calls = harness.hook_trainer_ai_calls()
+        all_trainer_ai_calls: list[dict[str, object]] = []
         harness.register_hook(
             "MainInBattleLoop.noLinkBattle",
             lambda _context: harness.write8(
@@ -392,6 +443,7 @@ def run_tier(
             harness.load_state(baseline)
             harness.write8("wAIDebugTierOverride", tier_override)
             score_start, turn_start = len(scores), len(turns)
+            trainer_ai_start = len(trainer_ai_calls)
             switch_start = switches["count"]
             item_start = sum(item["count"] for item in items)
             victory_start, defeat_start = victories["count"], defeats["count"]
@@ -423,6 +475,9 @@ def run_tier(
             classified = classify_decisions(trial_scores)
             real_decisions = first_decision_records(trial_scores)
             decision_cycles = [int(record["decision_cycles"]) for record in real_decisions]
+            trial_trainer_ai_calls = trainer_ai_calls[trainer_ai_start:]
+            trial_ai_timing = trainer_ai_timing_metrics(trial_trainer_ai_calls)
+            all_trainer_ai_calls.extend(trial_trainer_ai_calls)
             resolved_tiers = {int(record["tier"]) for record in real_decisions}
             if len(resolved_tiers) != 1:
                 raise AssertionError(f"trial resolved inconsistent AI tiers: {resolved_tiers}")
@@ -445,6 +500,7 @@ def run_tier(
                     "tier": resolved_tier,
                     "result": "win" if victories["count"] > victory_start else "loss",
                     "turns": len(trial_turns),
+                    **trial_ai_timing,
                     "cycles": cycle_total,
                     "switches": switches["count"] - switch_start,
                     "items": sum(item["count"] for item in items) - item_start,
@@ -600,14 +656,21 @@ def run_tier(
     }
     summary["mean_ai_scoring_span_cycles"] = summary["mean_ai_decision_cycles"]
     summary["max_ai_scoring_span_cycles"] = summary["max_ai_decision_cycles"]
+    summary.update(trainer_ai_timing_metrics(all_trainer_ai_calls))
     summary["over_frame_ai_scoring_spans"] = summary["over_frame_ai_decisions"]
     summary["notes"].extend([
         "KO-candidate metrics are derived from AI_DAMAGE score deltas, not an independent damage oracle",
         "redundant-penalty metrics report selected positive AI_REDUNDANT deltas, not observed wasted turns",
         "AI scoring-span timing ends before final filtering and later item or switch selection",
+        "TrainerAI timer spans routine entry through the caller return seam",
+        "Move ends at ExecuteEnemyMove entry; item/switch ends at AIActionUsed",
+        "Call p95 is nearest-rank; compare with the 70,224-cycle frame ceiling",
         "a single-trial report contains one deterministic FIGHT 2 fixture",
     ])
-    return {"summary": summary, "trial_results": trials}
+    report = {"summary": summary, "trial_results": trials}
+    if _fixture_corpus:
+        report["_trainer_ai_timing_records"] = all_trainer_ai_calls
+    return report
 
 
 def write_report(output: Path, reports: list[dict[str, object]]) -> None:

@@ -10,6 +10,7 @@ from run_ai_benchmark import (
     nullable_rate,
     parse_move_powers,
     repeated_values,
+    trainer_ai_timing_metrics,
 )
 
 
@@ -17,6 +18,25 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class BenchmarkMetricTest(unittest.TestCase):
+    def test_whole_trainer_ai_timing_splits_paths_and_outcomes(self) -> None:
+        records = [
+            {"caller_path": "enemy_first", "outcome": "move", "cycles": 100},
+            {"caller_path": "player_first", "outcome": "move", "cycles": 200},
+            {
+                "caller_path": "enemy_first",
+                "outcome": "item_or_switch",
+                "cycles": 80000,
+            },
+        ]
+        metrics = trainer_ai_timing_metrics(records)
+        self.assertEqual(metrics["trainer_ai_calls"], 3)
+        self.assertEqual(metrics["trainer_ai_p95_cycles"], 80000)
+        self.assertEqual(metrics["trainer_ai_over_frame_calls"], 1)
+        self.assertEqual(metrics["trainer_ai_enemy_first_move_calls"], 1)
+        self.assertEqual(metrics["trainer_ai_player_first_move_calls"], 1)
+        self.assertEqual(metrics["trainer_ai_item_or_switch_calls"], 1)
+
+
     def test_zero_denominator_is_null(self) -> None:
         self.assertIsNone(nullable_rate(0, 0))
         self.assertEqual(nullable_rate(1, 4), 0.25)

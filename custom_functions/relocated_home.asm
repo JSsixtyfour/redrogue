@@ -326,7 +326,8 @@ InitOptions_::
 	ASSERT TEXT_DELAY_INSTANT == 0
 	xor a
 	ld [wOptions], a
-	ld [wOptions3], a ; Ironman OFF
+	ld a, BATTLE_SPEED_X2 ; Ironman OFF, BATTLE SPEED 2X (user default 2026-09-28)
+	ld [wOptions3], a
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a
 	ldh a, [hGBC]

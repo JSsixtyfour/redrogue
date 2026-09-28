@@ -1,0 +1,57 @@
+#!/bin/sh
+# Red Rogue pre-commit: the source-only audits (no ROM, a few seconds).
+# ROM-level checks stay in `make audit` / `make smoke`.
+# Install once per clone:  git config core.hooksPath tools/hooks
+set -u
+
+# Take the first interpreter that actually runs: on Windows, `python3` can be the
+# Microsoft Store stub, which exists on PATH but refuses to execute.
+PY=
+for candidate in python3 python; do
+    if "$candidate" -c '' >/dev/null 2>&1; then
+        PY=$candidate
+        break
+    fi
+done
+if [ -z "$PY" ]; then
+    echo "pre-commit: no python found; skipping Red Rogue source audits" >&2
+    exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -n "$staged" ] || exit 0
+
+fail=0
+run() {
+    out=$("$PY" "$@" 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "pre-commit: FAILED $*" >&2
+        echo "$out" | tail -25 >&2
+        fail=1
+    fi
+}
+
+# Map, script, text and trainer data feed all three audits.
+if echo "$staged" | grep -qE '^(maps|scripts|text|data|constants|engine|home|custom_functions)/.*\.asm$|^(maps|text)\.asm$'; then
+    run tools/pyboy_smoke/audit_map_text_id_slots.py --scope all
+    run tools/pyboy_smoke/audit_map_object_const_order.py
+    run tools/audit_end_battle_text.py
+fi
+
+# The static analyzers' own unit tests, only when the analyzers change.
+if echo "$staged" | grep -q '^tools/static_audit/'; then
+    run tools/static_audit/test_rules.py
+fi
+
+# Staged Python must at least compile.
+py_files=$(echo "$staged" | grep '\.py$' || true)
+if [ -n "$py_files" ]; then
+    # shellcheck disable=SC2086
+    run -m py_compile $py_files
+fi
+
+if [ $fail -ne 0 ]; then
+    echo "pre-commit: fix the above, or bypass once with git commit --no-verify" >&2
+    exit 1
+fi
+exit 0
