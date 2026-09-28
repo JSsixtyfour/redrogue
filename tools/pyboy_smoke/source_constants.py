@@ -30,15 +30,22 @@ def _integer_expression(expression: str, names=None) -> int:
     # rgbds tolerates leading zeros in decimal literals (e.g.
     # `DEF NOT_VERY_EFFECTIVE EQU 05`); Python does not.
     converted = re.sub(r"\b0+(\d)", r"\1", converted)
-    if not re.fullmatch(r"[0-9a-fA-FxX()+\-\s]+", converted):
+    if not re.fullmatch(r"[0-9a-fA-FxX()+\-*/\s]+", converted):
         raise ValueError(f"Unsupported integer expression: {expression!r}")
+    converted = converted.replace("/", "//")  # rgbds `/` is integer division
     return int(eval(converted, {"__builtins__": {}}, {}))
 
 
-def parse_rgbds_constants(path: Path) -> dict[str, int]:
-    """Resolve the const/const_next/const_skip subset used by event_constants.asm."""
+def parse_rgbds_constants(path: Path, known: dict[str, int] | None = None) -> dict[str, int]:
+    """Resolve the const/const_next/const_skip subset used by event_constants.asm.
+
+    `known` holds names from files INCLUDEd earlier (constants/round_constants.asm
+    for ram_constants.asm and balance_constants.asm), so a DEF may reference
+    them. They are not copied into the result.
+    """
     current = 0
     constants: dict[str, int] = {}
+    known = known or {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.split(";", 1)[0].strip()
         if not line:
@@ -63,7 +70,7 @@ def parse_rgbds_constants(path: Path) -> dict[str, int]:
         if match:
             try:
                 constants[match.group(1)] = _integer_expression(
-                    match.group(2), constants)
+                    match.group(2), {**known, **constants})
             except (ValueError, SyntaxError):
                 # Not a plain integer DEF (string, macro, forward reference).
                 # Skip it rather than failing the whole parse, which is what

@@ -460,12 +460,12 @@ Debug2DoorList::
 ; uses - battle count mod 10 >= 6 - rather than reading BIT_ROGUE_GYM_NEXT.
 	ld a, [wBattleCount]
 .mod10
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .haveRemainder
-	sub 10
+	sub ROUND_BATTLES
 	jr .mod10
 .haveRemainder
-	cp 6
+	cp FIRST_GYM_STEP
 	jr nc, .gym
 	ld b, NUM_STAGE_MAPS
 	ld hl, Debug2RouteNames
@@ -723,9 +723,9 @@ Debug2ApplyRoundState::
 	ld a, [wBattleCount]
 	ld b, 0                    ; b = quotient = gyms completed
 .div
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .divDone
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .div
 .divDone
@@ -749,7 +749,7 @@ Debug2ApplyRoundState::
 	ld [wObtainedBadges], a
 	ld hl, wRogueFlagsBitfield
 	ld a, c
-	cp 6
+	cp FIRST_GYM_STEP
 	jr c, .routeNext
 	set BIT_ROGUE_GYM_NEXT, [hl]
 	jr .forcedStageDone
@@ -771,11 +771,11 @@ Debug2ApplyRoundState::
 	; also means repeated debug jumps into the finale still get a shuffled
 	; order, not always the same default.
 	ld a, [wBattleCount]
-	cp 86
+	cp E4_FIRST_BATTLECOUNT
 	jr c, .debugBeforeVictoryRoad
 	; The shared `ld hl, wElite4Flags` that used to sit above the branch is
 	; gone: VICTORY_ROAD_CLEARED is an event flag now, and CheckEvent would
-	; clobber the carry from `cp 86` before the jr could use it.
+	; clobber the carry from the `cp` before the jr could use it.
 	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr nz, .debugFinaleStateDone
 	SetEvent EVENT_VICTORY_ROAD_CLEARED

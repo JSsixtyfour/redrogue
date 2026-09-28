@@ -228,9 +228,9 @@ HandleRewardChoice:
     ld a, [wBattleCount]
     ld c, 0
 .limitDivLoop
-    cp 10
+    cp ROUND_BATTLES
     jr c, .limitDivDone
-    sub 10
+    sub ROUND_BATTLES
     inc c
     jr .limitDivLoop
 .limitDivDone
@@ -345,36 +345,36 @@ GetRewardMonLevel::
 	jr z, .lobbyCaller
 
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClampRoundStage
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClampRoundStage
 	ld b, 0                 ; b = round index (0-8)
 .getRoundIndexStage
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotTable
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .getRoundIndexStage
 
 .lobbyCaller
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClampRound
-	ld a, 89                ; clamp to round 9's settings, same as GetRandRoster
+	ld a, LAST_ROUND_BATTLECOUNT                ; clamp to round 9's settings, same as GetRandRoster
 .noClampRound
 	ld b, 0                 ; b = round index (0-8)
 .getRoundIndex
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRoundIndex
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .getRoundIndex
 .gotRoundIndex
 	; a = remainder within the round (0-9): 0-4 means a gym was just cleared
 	; (or no battles yet) and a route is next; 5-9 means a route was just
 	; cleared and the gym is next.
-	cp 5
+	cp ROUTE_BATTLES
 	jr nc, .gotTable
 	ld hl, trainer_difficulty_settings
 	jr .pickedTable

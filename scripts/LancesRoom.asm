@@ -198,7 +198,7 @@ LancesRoomLanceAfterBattleText:
 	text_asm
 	SetEvent EVENT_BEAT_LANCE
 	ld a, [wBattleCount]
-	cp 90
+	cp CHAMPION_BATTLECOUNT
 	ld hl, .Normal
 	jr c, .print
 	ld hl, .GoToChampion

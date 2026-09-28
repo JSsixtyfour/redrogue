@@ -45,7 +45,7 @@ DEF NUM_AI_TIERS      EQU AI_MAX_TIER + 1
 
 ; Highest round index AITierByRound is defined for. round = wBattleCount / 10,
 ; clamped here (the Rogue scheme runs rounds 0-8; see func_enc_gen.asm).
-DEF AI_MAX_ROUND EQU 8
+DEF AI_MAX_ROUND EQU NUM_ROGUE_ROUNDS
 
 ; Rows in AITierByRound and entries in AITierCeiling: one per LEVELS difficulty
 ; setting (constants/ram_constants.asm). Derived from the enum rather than

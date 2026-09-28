@@ -3566,15 +3566,15 @@ PFacPlaceFakeBalls:
     ; Roll one ordinary-wild level from the same entry snapshot and persist it
     ; for all four encounters and every later re-entry.
     ld a, [sProcFacilityEntryBattleCount]
-    cp 90
+    cp LAST_ROUND_BATTLECOUNT + 1
     jr c, .noClamp
-    ld a, 89
+    ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
     ld b, 0
 .round
-    cp 10
+    cp ROUND_BATTLES
     jr c, .gotRound
-    sub 10
+    sub ROUND_BATTLES
     inc b
     jr .round
 .gotRound
@@ -6120,15 +6120,15 @@ PFacAbs:
 ; ============================================================
 PFacRollMonClass:
     ld a, [wBattleCount]
-    cp 90
+    cp LAST_ROUND_BATTLECOUNT + 1
     jr c, .noClamp
-    ld a, 89
+    ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
     ld d, 0
 .divLoop
-    cp 10
+    cp ROUND_BATTLES
     jr c, .gotRound
-    sub 10
+    sub ROUND_BATTLES
     inc d
     jr .divLoop
 .gotRound
@@ -6619,7 +6619,7 @@ PFacFinalize::
     set 7, a
     ld c, a
     ld a, [sProcFacilityEntryBattleCount]
-    cp 60
+    cp 6 * ROUND_BATTLES
     ld a, VOLTORB
     jr c, .fakeSpeciesReady
     ld a, ELECTRODE

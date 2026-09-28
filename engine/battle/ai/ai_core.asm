@@ -111,9 +111,9 @@ AIResolveTier::
 	ld a, [wBattleCount]
 	ld b, 0
 .divideByTen
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .divideByTen
 .gotRound

@@ -132,31 +132,31 @@ GetRandRoster:
 	push de
     push hl
     ld a, [wBattleCount]	; load how many battles the player has won
-    cp 90
+    cp LAST_ROUND_BATTLECOUNT + 1
     jr c, .noClampRound
-    ld a, 89                ; clamp to round 9's settings (Victory Road/Elite Four)
+    ld a, LAST_ROUND_BATTLECOUNT                ; clamp to round 9's settings (Victory Road/Elite Four)
 .noClampRound
     ld b, 0                 ; b = round index (0-8)
 .getRoundIndex
-    cp 10
+    cp ROUND_BATTLES
     jr c, .gotRoundIndex
-    sub 10
+    sub ROUND_BATTLES
     inc b
     jr .getRoundIndex
 .gotRoundIndex
-    ; a = remainder within the round (1-9).
-    ; 1-5 = route trainers, 6-9 = gym trainers -> pick the matching table.
+    ; a = step within the round (constants/round_constants.asm).
+    ; route steps, then gym steps -> pick the matching table.
     ld hl, trainer_difficulty_settings
-    cp 6
+    cp FIRST_GYM_STEP
     jr c, .pickedTable
     ld hl, trainer_difficulty_settings_gym
 .pickedTable
-    ; the final trainer of each tier (5 = last route trainer, 9 = last gym
-    ; trainer) gets the level bonus and rarer class distribution, signalled
-    ; via wRogueFlagsBitfield bit 1 for GetRandRosterLoop
-    cp 5
+    ; the final trainer of each tier (last route trainer, last gym trainer)
+    ; gets the level bonus and rarer class distribution, signalled via
+    ; wRogueFlagsBitfield bit 1 for GetRandRosterLoop
+    cp FINAL_ROUTE_STEP
     jr z, .isFinalTrainer
-    cp 9
+    cp FINAL_GYM_TRAINER_STEP
     jr nz, .notFinalTrainer
 .isFinalTrainer
     ld a, [wRogueFlagsBitfield]
@@ -698,15 +698,15 @@ MiniBossRollFillMon::
 ; round (wBattleCount / 10, clamped to 9).
 GetMiniBossTierPtr:
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
 	ld b, 0                      ; b = round
 .rndLoop
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .rndLoop
 .gotRound
@@ -1129,8 +1129,8 @@ InitGymBattle::
 	ld [wCurOpponent], a
 	ld a, [wBattleCount]
     ldh [hDividend], a          ; place battle count in dividend
-    ld   a, 10
-    ldh [hDivisor], a           ; place 10 as divisor
+    ld   a, ROUND_BATTLES
+    ldh [hDivisor], a           ; leader is fought at count = round * ROUND_BATTLES
     ld b, $1                    ; b determines how many bytes the number is, do not remove!
     call Divide
     ldh   a, [hQuotient+3]      ; load in quotient
@@ -1166,10 +1166,10 @@ InitElite4Battle::
 	ld a, d
 	ld [wCurOpponent], a
 	ld a, [wBattleCount]
-	sub a, 86                   ; tier 0 at battle count 86
-	cp a, 4
+	sub a, E4_FIRST_BATTLECOUNT ; tier 0 at the first E4 battle
+	cp a, NUM_E4_BATTLES
 	jr c, .tierOk
-	ld a, 3                     ; clamp to the last tier if called out of range
+	ld a, NUM_E4_BATTLES - 1    ; clamp to the last tier if called out of range
 .tierOk
 	ld b, a
 	ld a, 3                     ; 3 teams per tier

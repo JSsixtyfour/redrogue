@@ -125,9 +125,9 @@ DaycareGentlemanText:
 	dec a                       ; round up: 1-10 battles -> 1, 11-20 -> 2, ...
 	inc b
 .countStagesElapsed
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .stagesElapsedDone
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .countStagesElapsed
 .stagesElapsedDone

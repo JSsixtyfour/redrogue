@@ -177,7 +177,7 @@ KogaEndBattleText:
 KogaAfterBattleText:
 	text_asm
 	ld a, [wBattleCount]
-	cp 90
+	cp CHAMPION_BATTLECOUNT
 	ld hl, .Normal
 	jr c, .print
 	ld hl, .GoToChampion

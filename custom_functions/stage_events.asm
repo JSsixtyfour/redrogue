@@ -213,15 +213,15 @@ StageEventApplyTrainers::
 ; Clobbers a/b.
 StageEventRoundTier:
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
 	ld b, 0
 .loop
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .done
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .loop
 .done

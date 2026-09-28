@@ -388,16 +388,16 @@ WitchInitTurnLimit::
 	ld a, [wBattleCount]
 	ld b, 0
 .getRound
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .getRound
 .gotRound
 	ld a, b
-	cp 9
+	cp NUM_ROGUE_ROUNDS + 1
 	jr c, .roundOk
-	ld a, 8          ; cap round at 8
+	ld a, NUM_ROGUE_ROUNDS ; cap round at the last
 .roundOk
 	add 6            ; limit = 6 + round
 	ld [wBattleTurnLimit], a

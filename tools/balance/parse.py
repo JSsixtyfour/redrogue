@@ -46,9 +46,16 @@ def _lines(rel: str) -> list[str]:
 
 # --- knobs -------------------------------------------------------------------
 
+def load_round_constants() -> dict[str, int]:
+    """constants/round_constants.asm: the round shape on wBattleCount."""
+    return parse_rgbds_constants(ROOT / "constants" / "round_constants.asm")
+
+
 def load_knobs() -> dict[str, int]:
-    """Every integer DEF in constants/balance_constants.asm."""
-    return parse_rgbds_constants(ROOT / "constants" / "balance_constants.asm")
+    """Every integer DEF in constants/balance_constants.asm, plus the round
+    shape (round_constants.asm), which its DEFs are allowed to reference."""
+    rounds = load_round_constants()
+    return {**rounds, **parse_rgbds_constants(ROOT / "constants" / "balance_constants.asm", rounds)}
 
 
 def _db_after_label(rel: str, label: str) -> list[int]:
@@ -467,7 +474,7 @@ def load_all() -> GameData:
     leaders, e4 = load_spec_records()
     consts = {}
     for rel in ("constants/ram_constants.asm", "constants/party_spec_constants.asm"):
-        consts.update(parse_rgbds_constants(ROOT / rel))
+        consts.update(parse_rgbds_constants(ROOT / rel, load_round_constants()))
     data = GameData(
         knobs=knobs,
         tables=load_tables(),

@@ -96,8 +96,8 @@ BridgeShouldOccur:
 	ret
 
 BridgeGuaranteeThresholds:
-	db 40   ; force the 1st bridge once wBattleCount reaches this
-	db 90   ; force the 2nd bridge once wBattleCount reaches this
+	db 4 * ROUND_BATTLES ; force the 1st bridge once wBattleCount reaches this
+	db 9 * ROUND_BATTLES ; force the 2nd bridge (A5: past the last lobby visit, never fires)
 
 ; ------------------------------------------------------------
 ; BridgePickTwoRooms - pick two DISTINCT not-yet-offered bridge rooms, assign to

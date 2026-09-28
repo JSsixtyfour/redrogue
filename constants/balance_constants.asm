@@ -104,13 +104,15 @@ DEF START_MONEY EQU $3000
 ; Encounter chance per step = rate/256. Read by data/wild/maps/Procedural*.asm.
 DEF WILD_AREA_ENCOUNTER_RATE EQU 10
 ; Per-round battle budget, saturating at 255: BASE + wBattleCount/DIVISOR.
+; The divisor is half a round, so the budget grows by 2 per round whatever
+; ROUND_BATTLES is (constants/round_constants.asm).
 ; Read by the cave/forest/cemetery/facility generators.
 DEF WILD_BUDGET_BASE EQU 10
-DEF WILD_BUDGET_DIVISOR EQU 5
-; wBattleCount credit on exiting a wild area. Must stay 5 while the round
-; math is "10 battles per round": it stands in for the 5 route trainers a
-; wild area replaces. Read by procedural_stage_hooks.asm.
-DEF WILD_AREA_EXIT_BATTLES EQU 5
+DEF WILD_BUDGET_DIVISOR EQU ROUND_BATTLES / 2
+; wBattleCount credit on exiting a wild area: it stands in for the stage
+; block (ROUTE_BATTLES) a wild area replaces, so the next battle is the
+; round's first gym trainer. Read by procedural_stage_hooks.asm.
+DEF WILD_AREA_EXIT_BATTLES EQU ROUTE_BATTLES
 
 ; Wild encounter base level per round (0-8); the caller adds 0-2. Emitted in
 ; two banks, so it is a macro rather than one table: PCWildLevelTable

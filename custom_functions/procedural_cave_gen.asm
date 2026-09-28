@@ -1458,15 +1458,15 @@ PCFinalizeCaveFast:
 ; ============================================================
 PCGetBossLevel::
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
 	ld b, 0
 .getRound
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .getRound
 .gotRound
@@ -1503,15 +1503,15 @@ INCLUDE "data/balance/wild_boss_levels.asm"
 PCRollMonClass::
 	; round = clamp(wBattleCount, 0, 89) / 10  → 0-8
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
 	ld d, 0
 .divLoop
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc d
 	jr .divLoop
 .gotRound
@@ -1570,15 +1570,15 @@ PCRollMonClassFar::
 ; ============================================================
 PCGetWildLevel:
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89
+	ld a, LAST_ROUND_BATTLECOUNT
 .noClamp
 	ld b, 0
 .getRound
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRound
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .getRound
 .gotRound

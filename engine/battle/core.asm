@@ -1033,12 +1033,14 @@ TrainerBattleVictory:
 .checkFifthTrainerCredits
 	ld a, [wBattleCount]
 .modLoop
-	cp 10
+	cp ROUND_BATTLES
 	jr c, .gotRemainder
-	sub 10
+	sub ROUND_BATTLES
 	jr .modLoop
 .gotRemainder
-	cp 5
+	; A2 (BALANCE_PHASE5_PLAN.md): this is the step AFTER the inc, so it pays
+	; the step before the final route trainer. Kept for the identity build.
+	cp FINAL_ROUTE_STEP
 	jr nz, .creditsDone
 	farcall RogueAwardCredits1
 .creditsDone

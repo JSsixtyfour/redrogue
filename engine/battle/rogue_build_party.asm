@@ -2173,15 +2173,15 @@ PartyGenApplyExplicitMoves:
 ; ===========================================================================
 RogueBattleRound:
 	ld a, [wBattleCount]
-	cp 90
+	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
-	ld a, 89                       ; clamp to round 9 (Victory Road / Elite Four)
+	ld a, LAST_ROUND_BATTLECOUNT                       ; clamp to round 9 (Victory Road / Elite Four)
 .noClamp
 	ld b, 0
 .roundLoop
-	cp 10
+	cp ROUND_BATTLES
 	ret c
-	sub 10
+	sub ROUND_BATTLES
 	inc b
 	jr .roundLoop
 
@@ -2222,7 +2222,7 @@ RogueRoundBand:
 RogueRosterMixId::
 	call RogueBattleRound          ; b = round index, a = step
 	ld c, 0                        ; c = kind row 0: route trainers
-	cp 5
+	cp FINAL_ROUTE_STEP
 	jr c, .gotKind
 	ld c, NUM_ROUND_BANDS          ; kind row 1: final route / gym trainers
 .gotKind

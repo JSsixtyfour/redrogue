@@ -184,12 +184,26 @@ class Battle:
         return self.mons[-1][1]
 
 
+def round_of(g: GameData, count: int) -> int:
+    """Round index 0-8: count / ROUND_BATTLES, clamped (constants/round_constants.asm)."""
+    k = g.knobs
+    return min(count, k["LAST_ROUND_BATTLECOUNT"]) // k["ROUND_BATTLES"]
+
+
+def step_of(g: GameData, count: int) -> int:
+    """Step within the round: 1..ROUTE_BATTLES stage, then gym trainers, 0 = leader."""
+    k = g.knobs
+    return min(count, k["LAST_ROUND_BATTLECOUNT"]) % k["ROUND_BATTLES"]
+
+
 def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """GetRandRoster: route (mod 1-5) or gym-trainer (mod 6-9) roster."""
-    idx = min(count, 89) // 10
-    rem = min(count, 89) % 10
-    block = (g.tables.route if rem < 6 else g.tables.gym)[idx]
-    final = rem in (5, 9)
+    """GetRandRoster: route-step or gym-trainer-step roster."""
+    k = g.knobs
+    idx = round_of(g, count)
+    rem = step_of(g, count)
+    gym = rem >= k["FIRST_GYM_STEP"]
+    block = (g.tables.gym if gym else g.tables.route)[idx]
+    final = rem in (k["FINAL_ROUTE_STEP"], k["FINAL_GYM_TRAINER_STEP"])
     base = block.min_level + (block.final_bonus if final else 0)
     counts = block.final_counts if final else block.counts
     mons = []
@@ -198,7 +212,7 @@ def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> B
             sp = get_rand_mon(g, cfg, 4 - class_slot, rng)
             lv = apply_difficulty(base + (rng.randrange(block.level_range) if block.level_range else 0), cfg.difficulty)
             mons.append((scale_trainer_evolution(g, cfg, sp, lv, rng), lv))
-    kind = ("route_final" if rem == 5 else "route") if rem < 6 else ("gym_final" if rem == 9 else "gym_trainer")
+    kind = (("gym_final" if final else "gym_trainer") if gym else ("route_final" if final else "route"))
     return Battle(kind, count, mons, True, g.knobs["MONEY_BASE_TRAINER"])
 
 
@@ -253,7 +267,7 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     elif var == 2:
         ace = leader.ace_c_early if rnd <= 3 else leader.ace_c_late
     allow_uber = rnd >= 7 and "ALLOW_UBER" in leader.late_flags
-    return spec_battle(g, cfg, "leader", 10 * rnd, n, base, step, leader.pool, ace, allow_uber,
+    return spec_battle(g, cfg, "leader", g.knobs["ROUND_BATTLES"] * rnd, n, base, step, leader.pool, ace, allow_uber,
                        g.money[class_name(leader.name)], rng)
 
 
@@ -261,7 +275,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
                     kind: str = "miniboss") -> Battle:
     """BuildMiniBossTeam: every mon gets its own MiniBossSetLevel roll; fill mons
     come from MiniBossRollFillMon (base forms, never evolved)."""
-    row = g.tables.miniboss[min(count, 89) // 10]
+    row = g.tables.miniboss[round_of(g, count)]
     teams = g.miniboss_teams["RivalMiniBossData" if who == "RIVAL" else "GiovanniMiniBossData"]
     team = teams[0] if who == "RIVAL" else rng.choice(teams)
 
@@ -288,8 +302,9 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
 
 
 def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng: random.Random) -> Battle:
-    """InitElite4Battle + e4_team_spec: tier from wBattleCount 86-89."""
-    tier = min(max(count - 86, 0), 3) + 1
+    """InitElite4Battle + e4_team_spec: tier from wBattleCount - E4_FIRST_BATTLECOUNT."""
+    k = g.knobs
+    tier = min(max(count - k["E4_FIRST_BATTLECOUNT"], 0), k["NUM_E4_BATTLES"] - 1) + 1
     var = rng.randrange(3)
     ace = member.ace_a if var == 0 else member.ace_c if var == 2 else None
     return spec_battle(g, cfg, "e4", count, 6, g.knobs["E4_BASE_LEVEL"] + tier, g.knobs["E4_LEVEL_STEP"],
@@ -299,7 +314,7 @@ def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng:
 def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """StageEventRoll picks a type; stage_event_team_spec builds it."""
     cls, pool = rng.choice(STAGE_EVENTS)
-    r = min(count, 89) // 10 + 1
+    r = round_of(g, count) + 1
     k = g.knobs
     return spec_battle(g, cfg, "stage_event", count, k[f"STAGE_EVENT_R{r}_MONS"], k[f"STAGE_EVENT_R{r}_BASE"],
                        k["STAGE_EVENT_LEVEL_STEP"], pool, None, False, g.money[cls], rng)
@@ -307,7 +322,7 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random)
 
 def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """PCRollWildEncounter: PCGetWildLevel + class roll, no difficulty modifier."""
-    idx = min(count, 89) // 10
+    idx = round_of(g, count)
     lv = g.tables.wild[idx] + rng.randrange(3)
     sp = select_from_tier_evolved(g, cfg, pc_roll_mon_class(idx, 0, rng), lv, rng)
     return Battle("wild", count, [(sp, lv)], False)
@@ -322,14 +337,14 @@ def facility_fake_balls(g: GameData, count: int, rng: random.Random) -> list[Bat
     PFacFakeWildLevelTable level rolled at generation (the same wild_area_levels
     table plus 0-2). A full clear touches them all, since they look like the
     real balls; they sit outside the encounter budget."""
-    lv = g.tables.wild[min(count, 89) // 10] + rng.randrange(3)
-    sp = "VOLTORB" if count < 60 else "ELECTRODE"
+    lv = g.tables.wild[round_of(g, count)] + rng.randrange(3)
+    sp = "VOLTORB" if count < 6 * g.knobs["ROUND_BATTLES"] else "ELECTRODE"
     return [Battle("facility_voltorb", count, [(sp, lv)], False) for _ in range(FACILITY_FAKE_BALLS)]
 
 
 def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """PCRollBoss: PCGetBossLevel + a class roll bumped by 60."""
-    idx = min(count, 89) // 10
+    idx = round_of(g, count)
     lv = g.tables.wild_boss[idx]
     sp = select_from_tier_evolved(g, cfg, pc_roll_mon_class(idx, 60, rng), lv, rng)
     return Battle("wild_boss", count, [(sp, lv)], False)
@@ -380,7 +395,7 @@ def level_from_exp(curve: tuple[int, int, int, int, int], exp: int) -> int:
 def reward_level(g: GameData, count: int) -> int:
     """GetRewardMonLevel, stage caller: the gym block of the current round,
     min + range/2, clamped to [REWARD_LEVEL_FLOOR, REWARD_LEVEL_CAP]."""
-    block = g.tables.gym[min(count, 89) // 10]
+    block = g.tables.gym[round_of(g, count)]
     lv = block.min_level + (block.level_range >> 1)
     return max(g.knobs["REWARD_LEVEL_FLOOR"], min(lv, g.knobs["REWARD_LEVEL_CAP"]))
 
@@ -460,8 +475,9 @@ class Simulator:
 
     # --- stages ---
     def route(self, miniboss: str | None) -> None:
-        for rem in range(1, 6):
-            if rem == 5 and miniboss:
+        n = self.g.knobs["ROUTE_BATTLES"]
+        for rem in range(1, n + 1):
+            if rem == n and miniboss:
                 self.fight(miniboss_battle(self.g, self.cfg, miniboss, self.count, self.rival_starter, self.rng))
             else:
                 self.fight(roster_battle(self.g, self.cfg, self.count, self.rng))
@@ -500,7 +516,7 @@ class Simulator:
         mb_count = wa_count = since_special = 0
         types_left = list(parse.WILD_AREA_TYPES)   # WildAreaSelect: no repeats until all four are offered
         wtype = None
-        for rnd in range(1, 9):
+        for rnd in range(1, k["NUM_ROGUE_ROUNDS"] + 1):
             badges = rnd - 1
             kind = None
             if self.count >= c["MINIBOSS_FIRST_BATTLECOUNT"]:
@@ -547,17 +563,17 @@ class Simulator:
                 self.run.stages.append("route")
                 self.route(None)
             for _ in range(cfg.reward_joins):
-                self.join(reward_level(g, 10 * (rnd - 1) + 1))
+                self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
 
-            for _ in range(4):
+            for _ in range(k["GYM_TRAINER_BATTLES"]):
                 self.fight(roster_battle(g, cfg, self.count, rng))
             leader = leader_battle(g, cfg, lineup[rnd - 1], rnd, rng)
             self.checkpoint(rnd, lineup[rnd - 1].name, leader.mons[-1][1])
             self.fight(leader)
 
-        # Victory Road: four roster trainers, then the static rival mini-boss.
+        # Victory Road: roster trainers, then the static rival mini-boss.
         self.run.stages.append("victory_road")
-        for _ in range(4):
+        for _ in range(k["VICTORY_ROAD_BATTLES"] - 1):
             self.fight(roster_battle(g, cfg, self.count, rng))
         self.fight(miniboss_battle(g, cfg, "RIVAL", self.count, self.rival_starter, rng, "victory_road"))
 
@@ -713,25 +729,30 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     for seed in range(runs):
         sim = Simulator(g, Config(), seed)
         run = sim.simulate()
-        check("champion fought at count 90", sim.final_count, 90)
+        k = g.knobs
+        check("champion fought at CHAMPION_BATTLECOUNT", sim.final_count, k["CHAMPION_BATTLECOUNT"])
         n_wild = run.stages.count("wild")
         n_event = sum(bt.kind == "stage_event" for bt in run.battles)
         trainer = [bt for bt in run.battles if bt.trainer]
-        check("trainer battles", len(trainer), 1 + 8 * 10 + 5 + 4 + 1 - 5 * n_wild + n_event)
+        check("trainer battles", len(trainer),
+              1 + k["NUM_ROGUE_ROUNDS"] * k["ROUND_BATTLES"] + k["VICTORY_ROAD_BATTLES"] + k["NUM_E4_BATTLES"] + 1
+              - k["ROUTE_BATTLES"] * n_wild + n_event)
         leaders = [bt for bt in run.battles if bt.kind == "leader"]
-        check("leader counts", [bt.count for bt in leaders], [10 * r for r in range(1, 9)])
+        check("leader counts", [bt.count for bt in leaders],
+              [k["ROUND_BATTLES"] * r for r in range(1, k["NUM_ROGUE_ROUNDS"] + 1)])
         for r, bt in enumerate(leaders, 1):
             want = g.knobs[f"GYM_R{r}_BASE"] + (g.knobs[f"GYM_R{r}_MONS"] - 1) * g.knobs[f"GYM_R{r}_STEP"]
             check(f"leader r{r} ace level", bt.mons[-1][1], want)
             check(f"leader r{r} size", len(bt.mons), g.knobs[f"GYM_R{r}_MONS"])
-        check("e4 counts", [bt.count for bt in run.battles if bt.kind == "e4"], [86, 87, 88, 89])
+        check("e4 counts", [bt.count for bt in run.battles if bt.kind == "e4"],
+              list(range(k["E4_FIRST_BATTLECOUNT"], k["CHAMPION_BATTLECOUNT"])))
         check("no specials on route 1", run.offers[0], "none")
         check("wild types never repeat", len(set(run.wild_types)), len(run.wild_types))
         for bt in run.battles:
             if bt.kind in ("route", "route_final", "gym_trainer", "gym_final"):
-                idx, rem = min(bt.count, 89) // 10, min(bt.count, 89) % 10
-                blk = (g.tables.route if rem < 6 else g.tables.gym)[idx]
-                lo = blk.min_level + (blk.final_bonus if rem in (5, 9) else 0)
+                idx, rem = round_of(g, bt.count), step_of(g, bt.count)
+                blk = (g.tables.gym if rem >= k["FIRST_GYM_STEP"] else g.tables.route)[idx]
+                lo = blk.min_level + (blk.final_bonus if rem in (k["FINAL_ROUTE_STEP"], k["FINAL_GYM_TRAINER_STEP"]) else 0)
                 hi = lo + max(blk.level_range - 1, 0)
                 if not all(lo <= lv <= hi for _, lv in bt.mons):
                     fails.append(f"roster levels out of band at count {bt.count}: {bt.mons} vs {lo}-{hi}")

@@ -231,7 +231,7 @@ DEF NUM_WITCH_CHALLENGES            EQU 18
 ; this, so it only appears once the run's levels/species make sense. round =
 ; wBattleCount/10; 40 = round 5 start, whose trainers roll levels 28-34
 ; (min 0x1C + range 6) - i.e. the ~level 30 bracket. Tune freely.
-DEF GAMBLERS_PARADISE_MIN_BATTLES   EQU 40
+DEF GAMBLERS_PARADISE_MIN_BATTLES   EQU 4 * ROUND_BATTLES
 
 ; wWitchPrize values.
 ;
@@ -319,7 +319,7 @@ DEF MINIBOSS_RANDOM_FILL EQU $FE
 DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceSpecial = 0
 DEF MINIBOSS_STEP        EQU 64    ; +~25% per non-mini-boss route (guaranteed by the 4th)
 DEF MINIBOSS_MIN_PER_RUN EQU 2    ; forced-roll floor: at least this many per run
-DEF MINIBOSS_FIRST_BATTLECOUNT EQU 10 ; not eligible until wBattleCount >= this (skips route 1)
+DEF MINIBOSS_FIRST_BATTLECOUNT EQU ROUND_BATTLES ; not eligible until wBattleCount >= this (skips route 1)
 DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
 
 ; --- Wild Area door integration ---
@@ -331,7 +331,7 @@ DEF WILD_AREA_FACILITY  EQU 3
 DEF NUM_WILD_AREA_TYPES EQU 4
 DEF WILD_AREA_MIN_PER_RUN EQU 2          ; >=2 wild areas guaranteed per run
 ; Not eligible until wBattleCount >= this (skips route 1), same as miniboss.
-DEF WILD_AREA_FIRST_BATTLECOUNT EQU 10
+DEF WILD_AREA_FIRST_BATTLECOUNT EQU ROUND_BATTLES
 
 ; wWildAreaState bit layout:
 ;   bits 0-2 and 7 = "offered this cycle" mask (one bit per wild-area type)
@@ -443,7 +443,7 @@ DEF NUM_STAGE_GIVEBACK_RESULTS EQU 5
 ; exit routes straight to the pre-decided next route/gym (no lobby return / choice).
 ; They do NOT consume a route/gym/special slot. See custom_functions/bridge_selection.asm.
 DEF BRIDGE_PER_RUN           EQU 2   ; target bridges per run (also the hard cap)
-DEF BRIDGE_FIRST_BATTLECOUNT EQU 10  ; not eligible until wBattleCount >= this (skips route 1)
+DEF BRIDGE_FIRST_BATTLECOUNT EQU ROUND_BATTLES ; not eligible until wBattleCount >= this (skips route 1)
 DEF BRIDGE_CHANCE_RANGE      EQU 6   ; ~1-in-N per eligible visit before the guarantee kicks in
 ; wBridgeState bit layout: bits 0-5 = offered-this-run mask for room indices 8-13;
 ; bits 6-7 = saturating bridge count (0-3). (Rooms 0-7 live in wBridgeOfferedLo.)
