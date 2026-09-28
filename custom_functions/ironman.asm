@@ -77,6 +77,9 @@ IronmanReleaseCommon:
 	pop bc
 	push bc
 .release
+	call FallenLogRecord ; c = slot
+	pop bc
+	push bc
 	ld a, c
 	ldh [hWhichPokemon], a
 	xor a
@@ -123,6 +126,87 @@ IronmanClearFaintedEvolveFlags::
 	dec c
 	jr nz, .loop
 	ret
+
+; ============================================================================
+; Fallen log. sFallenLog (SRAM bank 2) holds wFallenCount valid entries, each
+; FALLEN_ENTRY_SIZE bytes: the party struct, then the OT name, then the
+; nickname, copied just before RemovePokemon. Capture only; nothing reads it
+; yet. Once FALLEN_LOG_CAPACITY is reached, further releases are not logged.
+; ============================================================================
+	ASSERT FALLEN_ENTRY_SIZE == PARTYMON_STRUCT_LENGTH + NAME_LENGTH + NAME_LENGTH
+
+; In: c = party slot. Clobbers everything.
+FallenLogRecord:
+	ld a, [wFallenCount]
+	cp FALLEN_LOG_CAPACITY
+	ret nc
+	ld hl, sFallenLog
+	push bc
+	ld bc, FALLEN_ENTRY_SIZE
+	call AddNTimes
+	pop bc
+	ld d, h
+	ld e, l ; de = this entry
+	call FallenLogOpen
+	ld a, c
+	push bc
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	call CopyData ; de advances past the struct
+	pop bc
+	ld a, c
+	push bc
+	ld hl, wPartyMonOT
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	call CopyData
+	pop bc
+	ld a, c
+	ld hl, wPartyMonNicks
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	call CopyData
+	call FallenLogClose
+	ld hl, wFallenCount
+	inc [hl]
+	ret
+
+; Zero every entry. Called at every run end (RogueResetRunState) and at new
+; game (IronmanNewGameSRAMInit). wFallenCount itself lives in the region both
+; of those already blanket-clear.
+FallenLogClear::
+	call FallenLogOpen
+	ld hl, sFallenLog
+	ld bc, sFallenLogEnd - sFallenLog
+	xor a
+	call FillMemory
+	; fall through
+
+; SRAM bank 2 selected on open; always leave bank 0 and SRAM disabled on
+; close, the ambient state other SRAM users rely on
+; (project_sram_new_field_needs_explicit_clear).
+FallenLogClose:
+	xor a
+	ld [rRAMB], a
+	ld [rBMODE], a
+	ld [rRAMG], a ; RAMG_SRAM_DISABLE
+	ret
+
+FallenLogOpen:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sFallenLog)
+	ld [rRAMB], a
+	ret
+
+; New game's single SRAM-init farcall (InitPlayerData, bank $03, ~10 B free):
+; the final-team archive, then the fallen log.
+IronmanNewGameSRAMInit::
+	farcall FinalTeamArchiveInit
+	jr FallenLogClear
 
 ; TODO(user): placeholder wording. wNameBuffer holds the mon's nickname.
 IronmanReleasedText:

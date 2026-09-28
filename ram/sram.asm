@@ -407,6 +407,17 @@ MACRO boxes
 	ENDR
 ENDM
 
+; Ironman fallen log: every mon Ironman released this run, stored whole (party
+; struct, then OT name, then nickname) so a future revival can restore it
+; exactly. wFallenCount (WRAM, saved) says how many entries are valid; the rest
+; is garbage by definition. Outside the box checksums and sGameData. Cleared at
+; new game and at every run end (FallenLogClear). Bank 2 shares with "Saved
+; Boxes 1", which leaves ~1.4 KB of it unused.
+SECTION "Fallen Log SRAM", SRAM, BANK[2]
+
+sFallenLog:: ds FALLEN_LOG_CAPACITY * FALLEN_ENTRY_SIZE
+sFallenLogEnd::
+
 SECTION "Saved Boxes 1", SRAM
 
 ; sBox1 - sBox6

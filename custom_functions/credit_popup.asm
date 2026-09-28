@@ -139,6 +139,9 @@ RogueResetRunState::
 	; --- 1b. toggles - the listed hidden objects come back. Hide bits are not
 	; events, so step 1 cannot reach them. See custom_functions/run_toggle_clear.asm.
 	farcall RogueRunToggleClear
+	; --- 1c. Ironman fallen log (SRAM). wFallenCount is zeroed by step 2's
+	; blanket clear; this wipes the entries themselves.
+	farcall FallenLogClear
 
 	; --- 2. blanket-clear the run-progress region (same range/routine as
 	; true new game) ---

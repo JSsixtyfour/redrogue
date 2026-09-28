@@ -344,26 +344,19 @@ AIPlanFindClassMove:
 	ret
 
 ; ---------------------------------------------------------------------------
-; Carry SET if a move of the given class exists AND is not type-immune against
-; the player's mon.
+; Carry SET if ANY move of the given class can legally affect the player's mon.
 ; INPUT: de = class mask.
 ; Clobbers af, bc, de, hl, and the wEnemyMove* block.
 ;
-; Uses AIGetTypeEffectiveness - the same single-type check AI_TYPES scores with
-; and AIHasSuperEffectiveMove tests with - rather than PreviewTypeMatchup's
-; dual-type accumulator, deliberately: a plan must not decide a move is viable
-; on a different reading of the board than the layer that will score it. See
-; AI_OVERHAUL_PLAN.md follow-up F7 for why $10 rather than 10 is this engine's
-; neutral sentinel; zero is zero either way, which is all this asks.
+; Primary status moves use the same effect-specific legality predicates as
+; AI_REDUNDANT, then add the Bridge immunity gate the real effects call. Damage
+; classes use PreviewTypeMatchup's accumulated dual-type chart. Keep scanning:
+; an immune first match must not hide a later legal move of the same class.
 AIPlanClassMoveLands:
-	call AIPlanFindClassMove
-	ret nc
-	ld e, a
-	farcall AIReadMoveFromE ; fills wEnemyMoveType, which the next call reads
-	farcall AIGetTypeEffectiveness
-	ld a, [wTypeEffectiveness]
+	farcall AIPlanClassMoveLandsFar ; e = boolean, safe across Bankswitch
+	ld a, e
 	and a
-	ret z ; immune: carry is already clear
+	ret z
 	scf
 	ret
 

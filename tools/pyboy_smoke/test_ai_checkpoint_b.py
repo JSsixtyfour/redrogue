@@ -15,7 +15,12 @@ class AICheckpointBTest(unittest.TestCase):
         self.moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
         self.effects = parse_rgbds_constants(ROOT / "constants/move_effect_constants.asm")
         self.battle = parse_rgbds_constants(ROOT / "constants/battle_constants.asm")
+        self.types = parse_rgbds_constants(ROOT / "constants/type_constants.asm")
         self.ram = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
+        self.ai = parse_rgbds_constants(ROOT / "constants/ai_constants.asm")
+        self.pokemon_data = parse_rgbds_constants(
+            ROOT / "constants/pokemon_data_constants.asm"
+        )
         trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
 
         def mon(name, moves):
@@ -163,6 +168,95 @@ class AICheckpointBTest(unittest.TestCase):
             0,
         )
         self.assertEqual(h.read8("wBuffer"), 30)
+
+    def select_plan(
+        self,
+        moves,
+        player_types,
+        enemy_speed=200,
+        player_speed=100,
+        bridge_effect=None,
+    ):
+        h = self.h
+        h.park_before_hijack()
+        for slot in range(4):
+            move = self.moves[moves[slot]] if slot < len(moves) else 0
+            h.write8("wEnemyMonMoves", move, offset=slot)
+        h.call_routine("AIClassifyMoveset", limit=240)
+
+        # Install the board after classification so the parked battle loop cannot
+        # refresh live types, status, or selected effects between setup and fit.
+        h.write8("wBattleMonType1", player_types[0])
+        h.write8("wBattleMonType2", player_types[1])
+        self.word("wEnemyMonSpeed", enemy_speed)
+        self.word("wBattleMonSpeed", player_speed)
+        for label in (
+            "wBattleMonStatus",
+            "wPlayerBattleStatus1",
+            "wPlayerBattleStatus2",
+            "wPlayerBattleStatus3",
+            "wEnemyBattleStatus1",
+            "wEnemyBattleStatus2",
+            "wEnemyBattleStatus3",
+            "wEnemyDisabledMove",
+            "wAIPlan",
+            "wAIPlanStep",
+        ):
+            h.write8(label, 0)
+        h.write8("hWhoseTurn", 1)
+        h.write8("wLinkState", 0)
+        h.write8("wPlayerMonNumber", 0)
+        for offset in range(4):
+            h.write8("wBridgeSelectedEffects", 0, offset=offset)
+        if bridge_effect is not None:
+            h.write8("wBridgeSelectedEffects", 1)
+            h.write8("wBridgeSelectedEffects", bridge_effect, offset=1)
+        h.call_routine("AIPlanSelect", limit=480)
+        return h.read8("wAIPlan")
+
+    def test_r7_sleep_legality_ignores_normal_ghost_damage_immunity(self):
+        selected = self.select_plan(
+            ["SING"],
+            (self.types["GHOST"], self.types["GHOST"]),
+        )
+        self.assertEqual(selected, self.ai["AI_PLAN_SLEEP_LEAD"])
+
+    def test_r7_paralysis_ground_immunity_is_electric_only(self):
+        ground = (self.types["WATER"], self.types["GROUND"])
+        self.assertEqual(
+            self.select_plan(["THUNDER_WAVE", "RECOVER"], ground),
+            self.ai["AI_PLAN_BRUISER"],
+        )
+        for move in ("STUN_SPORE", "GLARE"):
+            with self.subTest(move=move):
+                self.assertEqual(
+                    self.select_plan([move, "RECOVER"], ground),
+                    self.ai["AI_PLAN_CHANSEY_STALL"],
+                )
+
+    def test_r7_later_legal_trap_is_not_hidden_by_immune_first_match(self):
+        selected = self.select_plan(
+            ["WRAP", "CLAMP"],
+            (self.types["GHOST"], self.types["GHOST"]),
+        )
+        self.assertEqual(selected, self.ai["AI_PLAN_WRAP_LOCK"])
+
+    def test_r7_bridge_status_immunities_block_only_their_real_categories(self):
+        full = self.pokemon_data["BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY"]
+        poison = self.pokemon_data["BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY"]
+        ghost = (self.types["GHOST"], self.types["GHOST"])
+        self.assertEqual(
+            self.select_plan(["SING"], ghost, bridge_effect=full),
+            self.ai["AI_PLAN_BRUISER"],
+        )
+        self.assertEqual(
+            self.select_plan(["TOXIC", "RECOVER"], ghost, bridge_effect=poison),
+            self.ai["AI_PLAN_BRUISER"],
+        )
+        self.assertEqual(
+            self.select_plan(["SING"], ghost, bridge_effect=poison),
+            self.ai["AI_PLAN_SLEEP_LEAD"],
+        )
 
     def delivered(self, routine, effect, damage, substitute_hp=None, witch=False, owner_hp=None):
         h = self.h

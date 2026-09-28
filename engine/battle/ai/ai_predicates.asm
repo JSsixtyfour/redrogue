@@ -389,6 +389,156 @@ AIEnemyActsFirstWith::
 	and a ; a holds COUNTER here, so this only clears carry
 	ret
 
+; Far target for AIPlanClassMoveLands in bank $2C; returns its boolean in e.
+; Input de = class mask. Output e = 1 if any matching move can legally land, else 0.
+AIPlanClassMoveLandsFar::
+	ld hl, wBuffer + AI_BUF_PLANCLASS
+	ld b, 0
+.next
+	ld a, [hli]
+	and e
+	jr nz, .foundLowByte
+	ld a, [hli]
+	and d
+	jr nz, .candidate
+	jr .advance
+.foundLowByte
+	inc hl
+.candidate
+	push hl
+	push bc
+	push de
+	ld hl, wEnemyMonMoves
+	ld c, b
+	ld b, 0
+	add hl, bc
+	ld e, [hl]
+	farcall AIReadMoveFromE
+	call .loadedMoveLands
+	pop de
+	pop bc
+	pop hl
+	jr c, .lands
+.advance
+	inc b
+	ld a, b
+	cp NUM_MOVES
+	jr c, .next
+	ld e, 0
+	ret
+.lands
+	ld e, 1
+	ret
+
+.loadedMoveLands
+	ld a, [wEnemyMoveEffect]
+	cp SLEEP_EFFECT
+	jr z, .sleep
+	cp POISON_EFFECT
+	jr z, .poison
+	cp PARALYZE_EFFECT
+	jr z, .paralyze
+	ld a, [wPlayerMoveType]
+	push af
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wEnemyMoveType]
+	ld [wPlayerMoveType], a
+	ld a, [wBattleMonType1]
+	ld [wEnemyMonType1], a
+	ld a, [wBattleMonType2]
+	ld [wEnemyMonType2], a
+	farcall PreviewTypeMatchup
+	ld d, e
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	pop af
+	ld [wPlayerMoveType], a
+	ld a, d
+	and a
+	ret z
+	scf
+	ret
+.sleep
+	call AIPrimarySleepIsBlocked
+	jr .statusResult
+.poison
+	call AIPrimaryPoisonIsBlocked
+	jr .statusResult
+.paralyze
+	call AIPrimaryParalyzeIsBlocked
+.statusResult
+	jr c, .doesNotLand
+	scf
+	ret
+.doesNotLand
+	and a
+	ret
+; --- Primary status legality (Checkpoint B R7) -----------------------------
+; Carry SET when the enemy's primary status move cannot affect the player.
+; These are shared by redundancy scoring and strategy-plan fitness. They mirror
+; the real effect gates, including Bridge-selected immunities.
+AIPrimarySleepIsBlocked::
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .blocked
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .blocked
+	ld e, BRIDGE_STATUS_CHECK_OTHER
+	farcall BridgePlayerTargetBlocksStatus
+	ret
+.blocked
+	scf
+	ret
+
+AIPrimaryPoisonIsBlocked::
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .blocked
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .blocked
+	ld a, [wBattleMonType1]
+	cp POISON
+	jr z, .blocked
+	ld a, [wBattleMonType2]
+	cp POISON
+	jr z, .blocked
+	ld e, BRIDGE_STATUS_CHECK_POISON
+	farcall BridgePlayerTargetBlocksStatus
+	ret
+.blocked
+	scf
+	ret
+
+AIPrimaryParalyzeIsBlocked::
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .blocked
+	ld a, [wBattleMonStatus]
+	and a
+	jr nz, .blocked
+	ld a, [wEnemyMoveType]
+	cp ELECTRIC
+	jr nz, .bridge
+	ld a, [wBattleMonType1]
+	cp GROUND
+	jr z, .blocked
+	ld a, [wBattleMonType2]
+	cp GROUND
+	jr z, .blocked
+.bridge
+	ld e, BRIDGE_STATUS_CHECK_OTHER
+	farcall BridgePlayerTargetBlocksStatus
+	ret
+.blocked
+	scf
+	ret
 ; --- Multi-hit / Substitute delivery (Checkpoint B R4/R6) ------------------
 
 ; Adjusts the one-hit maximum in wAIDamageEstimate to damage delivered to the

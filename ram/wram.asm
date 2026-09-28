@@ -2439,7 +2439,13 @@ wSilphCo11FCurScript:: db
 wVioletGymCurScript:: db
 wFuchsiaGymCurScript:: db
 wSaffronGymCurScript:: db
-	ds 1
+; Ironman fallen log: how many sFallenLog entries (SRAM) are valid THIS RUN.
+; Took the `ds 1` padding slot that sat here, never appended. Inside
+; wGameProgressFlags, so new game and RogueResetRunState both zero it, and it
+; is saved with the game: SRAM entries at or past this count are garbage, so a
+; soft reset without saving can never leave a mon both in the party and in the
+; log. See custom_functions/ironman.asm.
+wFallenCount:: db
 wCinnabarGymCurScript:: db
 wGameCornerCurScript:: db
 wRoute16Gate1FCurScript:: db

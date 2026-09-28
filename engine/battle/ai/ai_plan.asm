@@ -191,15 +191,10 @@ AISubWouldSurvive::
 
 ; ---------------------------------------------------------------------------
 ; ReadMove takes its move id in a, and a cannot survive a farcall - Bankswitch's
-; very first instruction is `ldh a, [hLoadedROMBank]`. This trampoline is the
-; entire reason the plan engine's move-inspection helpers (AIPlanFindClassMove,
-; AIPlanClassMoveLands) can live out of bank in $2C: they pass the id in e,
-; which does survive, and get the wEnemyMove* block filled exactly as an
-; in-bank caller would.
-;
-; Four bytes here versus roughly fifty for a whole in-bank scan-and-inspect
-; helper, in a bank with 472 free - which is why the split landed at this
-; boundary rather than one routine further out.
+; very first instruction is `ldh a, [hLoadedROMBank]`. The R7 legality scan now
+; lives in this bank and passes each move id through e to this trampoline; e
+; survives the farcall, so the wEnemyMove* block is filled exactly as it is for
+; an ordinary in-bank ReadMove caller.
 AIReadMoveFromE::
 	ld a, e
 	jp ReadMove

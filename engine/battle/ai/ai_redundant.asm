@@ -196,59 +196,29 @@ AIRedundantTargetHasSubstitute:
 ; this, mildly; this fires first and eliminates it outright, matching the
 ; plan's explicit "status vs an already-statused target" item.
 AIRedundant_AlreadyStatused:
-	call AIRedundantTargetHasSubstitute
-	jr nz, .heavy ; Sleep is blocked by Substitute (effects.asm SleepEffect)
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .heavy
+	call AIPrimarySleepIsBlocked
+	jr c, .heavy
 	xor a
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
-
-; Toxic (POISON_EFFECT): redundant if the target already has a status, is
-; Poison-type (PoisonEffect's own immunity check, effects.asm), or is behind
-; a Substitute.
 AIRedundant_Poison:
-	call AIRedundantTargetHasSubstitute
-	jr nz, .heavy
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .heavy
-	ld a, [wBattleMonType1]
-	cp POISON
-	jr z, .heavy
-	ld a, [wBattleMonType2]
-	cp POISON
-	jr z, .heavy
+	call AIPrimaryPoisonIsBlocked
+	jr c, .heavy
 	xor a
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
-
-; Thunder Wave (PARALYZE_EFFECT): redundant if the target already has a
-; status, is Ground-type (ParalyzeEffect_'s own immunity check), or is behind
-; a Substitute (move_effects/paralyze.asm, fixed alongside this phase).
 AIRedundant_Paralyze:
-	call AIRedundantTargetHasSubstitute
-	jr nz, .heavy
-	ld a, [wBattleMonStatus]
-	and a
-	jr nz, .heavy
-	ld a, [wBattleMonType1]
-	cp GROUND
-	jr z, .heavy
-	ld a, [wBattleMonType2]
-	cp GROUND
-	jr z, .heavy
+	call AIPrimaryParalyzeIsBlocked
+	jr c, .heavy
 	xor a
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
-
 ; A damaging move whose poison SIDE effect (Twineedle etc.) is blocked
 ; entirely when the target has a Substitute up (Substitute blocks the WHOLE
 ; move here, not just the poison chance - PoisonEffect in effects.asm), so

@@ -67,6 +67,12 @@ DEF PARTY_LENGTH EQU 6
 DEF MONS_PER_BOX EQU 20
 DEF NUM_BOXES    EQU 12
 
+; Ironman fallen log (sFallenLog, custom_functions/ironman.asm): one entry per
+; released mon = party struct + OT name + nickname. 11 is NAME_LENGTH, which is
+; defined after this file; ironman.asm ASSERTs the two agree.
+DEF FALLEN_LOG_CAPACITY EQU 12
+DEF FALLEN_ENTRY_SIZE   EQU PARTYMON_STRUCT_LENGTH + 11 + 11
+
 ; Bridge selected-Pokémon effects use a sparse run-scoped registry instead of
 ; adding fields to party_struct/box_struct. A record stores one owner byte and
 ; one effect byte. Owner 0 is empty; party owners are 1..6, box owners are
