@@ -1015,11 +1015,10 @@ TrainerBattleVictory:
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
 	; Credits award (see custom_functions/credit_award.asm): exactly one of the
-	; two branches below fires per victory - gym leader, or the route's 5th
-	; trainer (wBattleCount mod 10 == 5, matching func_enc_gen.asm's
-	; GetRandRoster remainder scheme, checked AFTER the inc [hl] above).
-	; Mutually exclusive by construction - gym trainers 6-9 and anything else
-	; get no award.
+	; two branches below fires per victory - gym leader, or the route's final
+	; trainer (step FINAL_ROUTE_STEP in constants/round_constants.asm, the same
+	; step GetRandRoster gives the level bonus). Mutually exclusive by
+	; construction - gym trainers and anything else get no award.
 	ld a, [wGymLeaderNo]
 	and a
 	jr z, .checkFifthTrainerCredits
@@ -1038,9 +1037,11 @@ TrainerBattleVictory:
 	sub ROUND_BATTLES
 	jr .modLoop
 .gotRemainder
-	; A2 (BALANCE_PHASE5_PLAN.md): this is the step AFTER the inc, so it pays
-	; the step before the final route trainer. Kept for the identity build.
-	cp FINAL_ROUTE_STEP
+	; The count was already incremented above, so the final route trainer
+	; (FINAL_ROUTE_STEP, the one GetRandRoster gives the level bonus) reads one
+	; higher here. Comparing against FINAL_ROUTE_STEP itself paid the trainer
+	; BEFORE it (measured 2026-09-28, BALANCE_PHASE5_PLAN.md A2).
+	cp FINAL_ROUTE_STEP + 1
 	jr nz, .creditsDone
 	farcall RogueAwardCredits1
 .creditsDone
