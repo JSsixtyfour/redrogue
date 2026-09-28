@@ -146,7 +146,9 @@ class AICheckpointBTest(unittest.TestCase):
         self.word("wEnemyMonHP", 1)
         self.word("wBattleMonHP", 1)
         h.write8("wPlayerBattleStatus2", 1 << self.battle["HAS_SUBSTITUTE_UP"])
-        h.write8("wPlayerSubstituteHP", 255)
+        # $ff is the estimator's "no Substitute" sentinel; $fe is the largest
+        # real shield HP and still exceeds the bounded five-hit total above.
+        h.write8("wPlayerSubstituteHP", 254)
         h.write8("wEnemyMonMoves", self.moves["TAKE_DOWN"])
         for slot in range(1, 4):
             h.write8("wEnemyMonMoves", 0, offset=slot)
