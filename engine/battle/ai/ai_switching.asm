@@ -506,8 +506,8 @@ AIShouldSwitch::
 	cp EFFECTIVE * 2 + 1
 	jp c, .stay ; not strictly worse than neutral for us
 
-; The roll. 75% is a design choice, not an engine fact - flagged for the user
-; to retune if a full run feels too random or too predictable here.
+; The roll. 75% is a design choice, not an engine fact - worth retuning if a
+; full run feels too random or too predictable here.
 	call Random
 	cp 75 percent + 1
 	jp nc, .stay

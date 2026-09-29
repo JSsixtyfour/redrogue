@@ -69,7 +69,7 @@ RogueBossAfterBattle::
 	ld d, BOSS_AFTER_DONE
 	ret
 
-; Placeholder lines - the user will author the real quotes.
+; Placeholder lines - real quotes still to be authored.
 RivalMiniBossAfterBattleText:
 	text "INSERT RIVAL"
 	line "AFTER-BATTLE"

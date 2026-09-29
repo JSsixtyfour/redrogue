@@ -3,7 +3,7 @@
 gen_form_evos_moves.py - Phase 2 one-shot generator (Species Groups form learnsets).
 
 RUN ONCE, THEN NEVER AGAIN. This seeds each of the 52 form records with a
-VERBATIM COPY of its base species' level-up learnset, so the user can hand-edit
+VERBATIM COPY of its base species' level-up learnset, ready for hand-editing
 each one afterwards. Re-running this script would silently discard every hand
 edit made since the first run.
 

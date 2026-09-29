@@ -1997,7 +1997,7 @@ PCPlaceWildAreaItems:
 ; Confirmed for real with a labeled debug screenshot: ID 17 directly
 ; north of ID 18 is exactly this case (17 blocks its own bottom-left,
 ; 18 blocks its own top-right) and is genuinely impassable - not a
-; theoretical worry, an actual case the user found and verified.
+; theoretical worry, an actual case found and verified in testing.
 ; PCNearFloorDecor below rejects any candidate adjacent to an existing
 ; decal, which fully prevents this (a lone decal is always safe per the
 ; first paragraph, so "never adjacent to another decal" is sufficient,
@@ -2136,7 +2136,7 @@ PCSprinkleFloorDecor:
 ;   same reasoning). Needs a SEPARATE, runtime-checked-but-never-written
 ;   1-cell buffer ring of real floor around its own footprint, so nothing
 ;   else (an item, the boss, floor decor, another stamp) ends up jammed
-;   directly against it. Matches the user's own example exactly: "for the
+;   directly against it. Matches the reference example exactly: "for the
 ;   2x2 pool a 4x4 space would be required to drop in" - 2x2 footprint +
 ;   1-cell buffer on all 4 sides = 4x4 checked, only the inner 2x2
 ;   actually written.
@@ -3330,7 +3330,7 @@ PCClassifyCell:
 	ret
 .notOppositeSides
 
-	; IDs confirmed 2026-06-25 against the user's hand-drawn Polished Map
+	; IDs confirmed 2026-06-25 against the hand-drawn Polished Map
 	; intersection reference (ground truth - the static border template
 	; used for the EARLIER, wrong derivation has no actual carved floor
 	; anywhere, so it couldn't prove a real floor-adjacency rule). Every
@@ -4685,7 +4685,7 @@ PCBulge:
 ; and arguably the safer order: river tiles land on TOP of whatever
 ; autotiling decided, never the reverse).
 ;
-; CONNECTIVITY GUARANTEE (the user's explicit concern - confirmed safe by
+; CONNECTIVITY GUARANTEE (an explicit design concern - confirmed safe by
 ; construction, not just hoped): rivers run LAST, after the entrance,
 ; exit, and all 4 dead-end items' cells are already permanently real
 ; floor (1/36). The walk below NEVER overwrites a cell that reads as real
@@ -4730,7 +4730,7 @@ PCBulge:
 ; (PC_BLOCK_WATER). This is deliberately NOT "is this real floor" - real
 ; floor's own edge tile (21/24/26/29 etc, placed by the main
 ; PCAutotilePass long before the river runs) is ALSO claimed, and so are
-; rocks/decorations. Per the user's correction: a floor/rock area and a
+; rocks/decorations. Correction: a floor/rock area and a
 ; river each need their OWN edge tile, which means TWO full cells of
 ; separation from real floor, not one - one cell for the floor/rock's
 ; existing edge tile (already non-25, so automatically caught by this
@@ -5142,7 +5142,7 @@ PCRiverTrackCell:
 ; Runs right after PCCarveRiver. Gives water (118) the SAME edge/corner
 ; treatment PCAutotilePass already gives floor, reusing the exact same
 ; ID convention (21/24/26/29 straight edges, 22/20/30/28 corners) - per
-; the user's explicit instruction: "Rivers can use the exact same edges
+; the explicit design rule: "Rivers can use the exact same edges
 ; that the floors do." Only touches cells still reading as plain fill
 ; (25); an already-classified floor edge/corner that's ALSO water-
 ; adjacent on another side is left untouched in this version (no mixed

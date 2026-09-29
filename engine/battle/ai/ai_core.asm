@@ -78,7 +78,7 @@ AITierCeiling:
 ; reason about the player's MOVESET only from what AITrackSeenPlayerMove has
 ; actually recorded this battle (ai_fairplay.asm) - see AIGetPlayerMoveN in
 ; ai_accessors.asm, the one routine this flip changes. Type/status/HP/stat
-; stages stay live at every tier (the user's 2026-08-25 decision: a human
+; stages stay live at every tier (design decision, 2026-08-25: a human
 ; opponent can see all of those on screen too). T2/T3 keep the bit set and
 ; stay fully omniscient, including about the moveset, forever.
 AITierLayers:

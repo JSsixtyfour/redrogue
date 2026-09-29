@@ -1201,7 +1201,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 # gap, so $58 and the authored $2A must never sit against floor
                 # to the WEST, and $57 and $2B never against floor to the EAST.
                 # Where that happened the jamb was a stub floating in the open,
-                # which the user reported from screenshots. Asserted at zero
+                # which screenshots reported. Asserted at zero
                 # rather than characterized because PFacRemoveStrandedJambs
                 # takes the measured baseline of 10 across this corpus (3 $57
                 # from doubled doorways, 7 $2A from premade socket carves) to

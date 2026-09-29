@@ -312,10 +312,10 @@ EXTRA_SEEDS = {
     "PROCEDURAL_CEMETERY_3", "PROCEDURAL_CEMETERY_4",
     # stages commented out of RogueStageMapTable whose events are reserved.
     # SILPH_CO_1F, SS_ANNE_BOW and UNDERGROUND_PATH_ROUTE_5 were REMOVED from this
-    # list 2026-09-03 per user audit: SILPH_CO_1F's trainer events turned out to be
+    # list 2026-09-03 per audit: SILPH_CO_1F's trainer events turned out to be
     # pure UNREF (no scripts/SilphCo1F.asm trainer block exists, so reserving it
-    # bought nothing); SS_ANNE_BOW is commented out of RogueStageMapTable and the
-    # user wants it graveyarded like every other unreachable map rather than kept
+    # bought nothing); SS_ANNE_BOW is commented out of RogueStageMapTable and is
+    # graveyarded like every other unreachable map rather than kept
     # reserved; UNDERGROUND_PATH_ROUTE_5 was never in that table at all - it was a
     # fabricated justification, the map is reachable only through
     # UndergroundPathRoute6 -> UndergroundPathNorthSouth, both themselves
@@ -604,7 +604,7 @@ def scrape_refs(names):
     nameset = set(names)
     for dirpath, _, files in os.walk(ROOT):
         parts = dirpath.replace("\\", "/").split("/")
-        # .claude holds Claude Code worktrees: full checkouts whose EVENT_ refs
+        # .claude holds agent worktrees: full checkouts whose EVENT_ refs
         # (possibly from another branch) must not count as references here.
         if ("tmp" in parts or ".git" in parts or "pyboy_smoke" in parts
                 or ".claude" in parts):

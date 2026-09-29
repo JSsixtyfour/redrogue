@@ -635,7 +635,7 @@ JaninePool_Warp:
 JaninePool_End:
 
 ; ---------------------------------------------------------------------------
-; Will - Elite Four, Psychic. The user's named additions (CLEFABLE/
+; Will - Elite Four, Psychic. Named additions (CLEFABLE/
 ; ELECTABUZZ/MANTINE/FLAREON/CHANSEY/HYPNO) plus every PSYCHIC_TYPE species
 ; and form (tools/list_pool_candidates.py PSYCHIC_TYPE). ESPEON is this
 ; tree's JOLTEON form 1 (there is no ESPEON species - see
@@ -686,7 +686,7 @@ WillPool_End:
 ; Dark did not exist as a type until Generation 2, so no Gen 1 species in this
 ; dex was ever Dark-typed, and this tree has no DARK type to sweep with
 ; tools/list_pool_candidates.py - the Warp pins below are the real-world
-; Dark-types the user named by hand (Alolan Persian/Meowth/Rattata/Raticate/
+; Dark-types named by hand (Alolan Persian/Meowth/Rattata/Raticate/
 ; Muk/Grimer, Galarian Moltres, Hisuian Qwilfish).
 ;
 ; An empty Kanto run is a real fault, not just thin content: with Johto
@@ -694,7 +694,7 @@ WillPool_End:
 ; takes its .giveUp branch, and that branch falls back to the pool's FIRST
 ; entry UNFILTERED - yielding a team of six identical Murkrow rather than a
 ; crash, which is exactly the kind of fault that survives a clean build. The
-; Kanto run below (her own Gen 2 roster's Kanto half plus the user's other
+; Kanto run below (her own Gen 2 roster's Kanto half plus other
 ; Kanto-side additions) keeps that from ever happening, even though Karen is
 ; only expected to be drawn with Johto enabled.
 ; ---------------------------------------------------------------------------
@@ -830,7 +830,7 @@ BurglarPool_End:
 ; Nurse Joy - "healing and cute". Seeded from the donor species in
 ; reference/yellow_legacy/joy_jenny/options.asm (cRz-Shadows/Pokemon_Yellow_Legacy),
 ; taken as a pool rather than pasted as the donor's flat level-65 team - see
-; that file's own README - then extended on the user's brief.
+; that file's own README - then extended per the design brief.
 ;
 ; SYLVEON is VAPOREON form 2, and it is the one deliberate exception to the
 ; "sublist must match the species' rarity group" rule at the top of this file.
@@ -867,7 +867,7 @@ JoyPool_End:
 
 ; ---------------------------------------------------------------------------
 ; Officer Jenny - police-dog and patrol flavour, same donor source and
-; reasoning as JoyPool above, extended on the user's brief.
+; reasoning as JoyPool above, extended per the design brief.
 ;
 ; Every line here is entered at its BASE form, per this file's own convention:
 ; GROWLITHE not Arcanine, GASTLY not Gengar, SQUIRTLE not Blastoise, PIDGEY not
@@ -913,7 +913,7 @@ JennyPool_End:
 ; ===========================================================================
 ; Trainer Revamp pools (TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7).
 ;
-; Lorelei/Bruno/Agatha/Lance carry the user's full lists from the plan's "E4
+; Lorelei/Bruno/Agatha/Lance carry the full lists from the plan's "E4
 ; pool contents" section: their own authored team plus every "all <type>"
 ; clause, expanded with tools/list_pool_candidates.py.
 ;
@@ -1152,16 +1152,16 @@ KogaE4Pool_Warp:
 KogaE4Pool_End:
 
 ; ---------------------------------------------------------------------------
-; Rival (Champion). The user's list, transcribed in full.
+; Rival (Champion). Full roster list, transcribed as specified.
 ;
 ; Entries are BASE forms, and that is load-bearing: the Champion spec sets
 ; BIT_PSPEC_NO_RIVAL_STARTER, which rejects a draw EQUAL to wRivalStarter, and
 ; the starter is always a base species. A base-form pool therefore blocks the
-; whole line of whatever he picked - list CHARMANDER, never CHARMELEON. The
-; user's SEADRA is entered as HORSEA for exactly that reason (at level 60+
+; whole line of whatever he picked - list CHARMANDER, never CHARMELEON.
+; SEADRA is entered as HORSEA for exactly that reason (at level 60+
 ; ScaleTrainer_evolution promotes it to Kingdra anyway).
 ;
-; The accepted exceptions, listed by name by the user: the eeveelutions
+; The accepted exceptions, listed by name: the eeveelutions
 ; (VAPOREON / JOLTEON / FLAREON and the pinned Espeon / Umbreon / Glaceon /
 ; Sylveon / Leafeon forms), SCIZOR and ELECTIVIRE. Only an EEVEE / SCYTHER /
 ; ELECTABUZZ starter can double up with those. test_rival3_pool_is_base_forms

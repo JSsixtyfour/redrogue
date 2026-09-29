@@ -11,7 +11,7 @@ DisplayEffectiveness:
 	ld hl, wEnemyBattleStatus1
 .gotAttackerStatus
 	bit ATTACKING_MULTIPLE_TIMES, [hl]
-	nop ; CONTROL
+	ret nz ; a later hit of a multi-hit move
 	ld a, [wDamageMultipliers]
 	and $7F
 	cp EFFECTIVE

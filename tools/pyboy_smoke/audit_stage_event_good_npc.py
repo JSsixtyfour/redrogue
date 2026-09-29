@@ -1,6 +1,6 @@
 """Audit: the good NPCs (Joy, Jenny) are FOUND, not met.
 
-The user's design, restated 2026-09-17 after the first play session: "these are
+The design, restated 2026-09-17 after the first play session: "these are
 two separate encounters ... only one should appear at a time ... they should
 not initially confront the player when the player spawns. They should just
 exist in their spots as something the player can find without any prior

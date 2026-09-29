@@ -1,6 +1,6 @@
 ; AI Overhaul Phase 7: fair play as a tier axis. See AI_OVERHAUL_PLAN.md.
 ;
-; The user's 2026-08-25 decision: hide the player's MOVESET only. Type,
+; Design decision (2026-08-25): hide the player's MOVESET only. Type,
 ; status, HP and stat stages stay readable at every tier forever, since a
 ; human opponent can see all of those on screen too - hiding them would read
 ; as artificial, not fair. That makes this file's one job narrow: record which

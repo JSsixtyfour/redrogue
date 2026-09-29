@@ -142,7 +142,7 @@ AILayerRisky:
 ; collision the old single-tier code relied on (AIEstimateDamage deliberately
 ; zeroes OHKO_EFFECT - see that routine's header, core.asm). Legality (the
 ; slower-auto-misses rule) is already AIRedundant_OHKO's job; this is purely
-; "a bigger nudge than the generic risky case", per the user's ranking.
+; "a bigger nudge than the generic risky case", per the risk ranking.
 	ld a, AI_STRONG
 	jr .apply
 .metronome

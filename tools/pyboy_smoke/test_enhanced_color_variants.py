@@ -3,7 +3,7 @@
 Wires sProcForestPalette and sProcFacilityPalette onto the Enhanced Colours
 (CGB) path in custom_functions/func_enhancedcolor.asm, following the same
 six-part pattern the Cave already used. These do not run the ROM - the
-enhanced path is only reachable with cgb_mode=True (CLAUDE.md), so the actual
+enhanced path is only reachable with cgb_mode=True, so the actual
 on-screen colours are a hardware/BGB screenshot pass, not a harness check.
 What IS checkable here is that the wiring is the shape the plan specifies:
 one roll per stage, both new base-set tables sized to their PAL_COUNT
@@ -154,7 +154,7 @@ class ResolverDispatchTest(unittest.TestCase):
 
 
 class SgbForestSeasonMirrorTest(unittest.TestCase):
-    """2B's follow-up: the user supplied real colours, so the SGB/DMG and
+    """2B's follow-up: real colours were supplied, so the SGB/DMG and
     CGB-non-enhanced paths (which share one PAL_* table pair) now show the
     season too, not just CGB Enhanced Colours.
     """

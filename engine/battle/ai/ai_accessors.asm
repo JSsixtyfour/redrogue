@@ -1,7 +1,7 @@
 ; Player-state accessor seam (AI_OVERHAUL_PLAN.md). Every heuristic reads the
 ; player's state through these rather than touching wBattleMon* directly.
 ;
-; Phase 7 (2026-08-26) landed the fair-play decision the user locked in
+; Phase 7 (2026-08-26) landed the fair-play decision locked in
 ; 2026-08-25: hide the MOVESET only. Type, status and HP stay live at every
 ; tier forever - a human opponent can see all of those on screen, so hiding
 ; them would read as artificial rather than fair. AIGetTargetType1/2 and

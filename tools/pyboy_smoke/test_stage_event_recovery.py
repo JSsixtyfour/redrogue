@@ -1,6 +1,6 @@
 """Source contracts for the 1C stage-event recovery changes (2026-09-22).
 
-Three behaviours landed together because the user's reasoning ties them: the
+Three behaviours landed together because the reasoning ties them: the
 stolen mon goes to the BOX when the party is full, a hand-over that finds no
 room anywhere stays retryable, and the villain STAYS ON THE MAP so the retry
 is reachable.

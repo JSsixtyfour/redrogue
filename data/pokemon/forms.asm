@@ -150,7 +150,7 @@ INCLUDE "data/pokemon/forms/pwooper.asm"
 ; Moltres, Tauros...). Without this, Alolan Meowth shows up on turn one of a
 ; fresh game - which is exactly what testing found.
 ;
-; The rule is GENERATIONAL, per the user's call: Gen 2 content unlocks with
+; The rule is GENERATIONAL, by design: Gen 2 content unlocks with
 ; JOHTO, everything Gen 4 and later with KANTO TIME WARP.
 ;
 ; That makes Warp the overwhelming default (50 of 52), so only the Johto

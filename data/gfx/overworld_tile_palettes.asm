@@ -51,7 +51,7 @@ OverworldTilePalPointers::
 	; OVERWORLD table so the pointer table's shape is correct (NUM_TILESETS
 	; entries) ahead of the engine landing. A real PalSettings_DORM needs
 	; hand-authoring against DORM's actual tile IDs - ShinRed_Import.md Phase
-	; 3.0b assigns that to Opus, not this mechanical pass.
+	; 3.0b assigns that to a follow-up authoring pass, not this mechanical one.
 	dw PalSettings_DORM    ; 24 DORM - PLACEHOLDER, not authored
 
 ASSERT (@ - OverworldTilePalPointers) / 2 == NUM_TILESETS, "OverworldTilePalPointers entry count must track NUM_TILESETS (constants/tileset_constants.asm) - add a new dw row (and its PalSettings_* table) whenever a tileset is added"

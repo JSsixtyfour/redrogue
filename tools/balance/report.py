@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # sec = 17.8 + 15.3 x enemy mons, ~9.2 s per turn. That is a FLOOR: the harness
 # taps A as fast as it can and the clock starts at the first battle menu, so the
 # trainer intro and a human's reading time are not in it. The overworld term is
-# still a placeholder; one real timed run by the user replaces it.
+# still a placeholder; one real timed run replaces it.
 CALIBRATION = {
     "source": "battle terms measured (fast-tap floor); overworld placeholder",
     "fixed_sec_per_trainer_battle": 18,

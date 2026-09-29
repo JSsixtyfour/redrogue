@@ -397,7 +397,7 @@ GetRewardMonLevel::
 	ld bc, 2                ; banks instead of a plain (same-bank-only) [hl] read
 	call FarCopyData
 	; Rewards land MID-band: minimum + range/2. This used to be minimum + range,
-	; one above the strongest standard trainer, which the user found too high
+	; one above the strongest standard trainer, which turned out too high
 	; (round 2 route-next gave 16; now 14). Every reward-level consumer moves with
 	; it: stage reward pokeballs and trade, lobby salesman/trader, both daycares.
 	ld a, [wRewardLevelDataBuffer]   ; byte 0: level range

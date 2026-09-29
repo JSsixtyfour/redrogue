@@ -105,8 +105,8 @@ CopySpinnerTiles:
 ; The di + ld sp,hl + pop trick: point the stack at the source and use `pop`
 ; as a 2-bytes-per-instruction reader, the fastest bulk copy the hardware
 ; allows. Independent of the spinner rate-limiting above; this is the fast-copy
-; idea from shinpokered's LoadCurrentMapView the user separately asked to have
-; imported (VRAM_BIBLE.md F1) - this is its first use in the tree.
+; idea from shinpokered's LoadCurrentMapView, separately marked for import
+; (VRAM_BIBLE.md F1) - this is its first use in the tree.
 ;
 ; Interrupts are masked for the whole transfer: a bogus SP during an interrupt
 ; is fatal, and nothing may run between "SP = source" and "SP restored" below.
