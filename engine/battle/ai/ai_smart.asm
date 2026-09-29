@@ -426,14 +426,27 @@ AISmart_DrainHP:
 ; AIRedundant_Paralyze has already saturated the move if the target carries ANY
 ; major status (including paralysis itself) or is Ground-type, and confusion is
 ; not a major status, so a confused-but-unstatused target arrives here intact.
+; TURN ORDER (2026-09-29): paralysis that flips who acts first is worth a
+; decisive preference - it lasts the whole matchup in this engine - but stays
+; below AI_KILL, so a KO still wins. Only when the move can actually land:
+; AI_REDUNDANT already saturated a blocked one, and encouraging it here would
+; only fight that.
 AISmart_Paralyze:
 	ld a, [wPlayerBattleStatus1]
 	bit CONFUSED, a
 	jr nz, .parafusion
 	call AIPlayerHPBelowQuarter
-	jr nc, .noChange
+	jr nc, .checkTurnOrder
 	ld a, AI_NUDGE
 	and a
+	ret
+.checkTurnOrder
+	call AIPrimaryParalyzeIsBlocked
+	jr c, .noChange
+	call AIParalysisFlipsTurnOrder
+	jr nc, .noChange
+	ld a, AI_VERY_STRONG
+	scf
 	ret
 .parafusion
 	ld a, AI_STRONG
@@ -813,8 +826,27 @@ AISmart_BurnFreezeParaSide:
 	cp FREEZE_SIDE_EFFECT1
 	jr z, .strong
 	cp PARALYZE_SIDE_EFFECT2
-	jr z, .strong
+	jr z, .paraStrong
+	cp PARALYZE_SIDE_EFFECT1
+	jr z, .paraMild
 	ld a, AI_NUDGE
+	scf
+	ret
+; A paralysis rider that would flip turn order is worth one point more
+; (2026-09-29), the same turn-order fact AISmart_Paralyze scores.
+.paraStrong
+	ld b, AI_STRONG
+	jr .paraTurnOrder
+.paraMild
+	ld b, AI_NUDGE
+.paraTurnOrder
+	push bc
+	call AIParalysisFlipsTurnOrder
+	pop bc ; pop leaves the predicate's carry intact
+	ld a, b
+	jr nc, .encourageRider
+	inc a
+.encourageRider
 	scf
 	ret
 .strong

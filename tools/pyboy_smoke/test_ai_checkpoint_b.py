@@ -124,6 +124,46 @@ class AICheckpointBTest(unittest.TestCase):
         guaranteed = 2 * (raw * 217 // 255)
         self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", guaranteed), 10)
 
+    def smart_scores_by_speed(self, move, boards):
+        """AI_SMART score (from 20, before cross-cutting rules) of a lone move
+        for each (our Speed, player Speed) board."""
+        h = self.h
+        scores = []
+        h.hook_flag("AISmartCrossCutting", action=lambda: scores.append(h.read8("wBuffer")))
+        for ours, theirs in boards:
+            h.park_before_hijack()
+            self.word("wEnemyMonSpeed", ours)
+            self.word("wBattleMonSpeed", theirs)
+            h.write8("wBattleMonStatus", 0)
+            h.write8("wPlayerBattleStatus1", 0)
+            h.write8("wPlayerBattleStatus2", 0)
+            h.write8("wAILastMoveNum", 0)
+            h.write8("wAISameMoveCount", 0)
+            h.write8("wEnemyMonMoves", self.moves[move])
+            for slot in range(1, 4):
+                h.write8("wEnemyMonMoves", 0, offset=slot)
+            h.write8("wBuffer", 20)
+            h.call_routine("AILayerSmart", limit=240)
+        return scores
+
+    def test_thunder_wave_that_flips_turn_order_is_strongly_preferred(self):
+        # Phase 7 (2026-09-29): paralysis quarters Speed for the rest of the
+        # matchup, so flipping who acts first gets AI_VERY_STRONG (20 -> 17).
+        scores = self.smart_scores_by_speed("THUNDER_WAVE", [
+            (100, 200),  # player ahead, 200/4 = 50 < 100: flips
+            (100, 500),  # player ahead, 500/4 = 125: still ahead, no flip
+            (100, 90),   # we are already faster: nothing to flip
+            (100, 100),  # a tie is a coin flip, not "ahead": no flip
+        ])
+        self.assertEqual(scores, [17, 20, 20, 20])
+
+    def test_paralysis_rider_that_flips_turn_order_gains_a_point(self):
+        # Thunderbolt's 10% rider is AI_NUDGE (19); a flip makes it 18. (Not
+        # Body Slam: the player here is Snorlax, and a Normal rider cannot
+        # affect a Normal target - AISmartParaSideBlocked, the Gen 1 rule.)
+        scores = self.smart_scores_by_speed("THUNDERBOLT", [(100, 200), (100, 90)])
+        self.assertEqual(scores, [18, 19])
+
     def test_substitute_breaker_outranks_a_hit_the_shield_absorbs(self):
         # Review F3 (2026-09-29): behind a Substitute every single hit used to
         # rank at 0 owner damage, so Tackle and Body Slam tied at 20. Now the

@@ -438,6 +438,43 @@ AIEnemyIsFaster::
 	sbc b   ; carry set iff de < bc, i.e. player is slower
 	ret
 
+; Carry SET if paralysing the player would FLIP turn order: the player strictly
+; outspeeds us now, and its quartered Speed would be strictly below ours.
+; Mirrors QuarterSpeedDueToParalysis exactly (Speed / 4, minimum 1). A tie is a
+; 50/50 roll in the battle loop, so it counts as "not ahead" on both ends.
+; Paralysis never wears off in this engine, so a flip lasts the whole matchup;
+; that is what makes it worth more than an ordinary status (2026-09-29).
+; Reads live, already-modified Speed on both sides (stages and any existing
+; paralysis are included). Clobbers af, bc, de.
+AIParalysisFlipsTurnOrder::
+	ld a, [wEnemyMonSpeed]
+	ld b, a
+	ld a, [wEnemyMonSpeed + 1]
+	ld c, a ; bc = our Speed
+	ld a, [wBattleMonSpeed]
+	ld d, a
+	ld a, [wBattleMonSpeed + 1]
+	ld e, a ; de = player Speed
+	ld a, c
+	sub e
+	ld a, b
+	sbc d ; carry iff ours < player's
+	ret nc ; the player is not ahead: nothing to flip
+	srl d
+	rr e
+	srl d
+	rr e ; de = player Speed / 4
+	ld a, d
+	or e
+	jr nz, .quartered
+	inc e ; the engine's minimum of 1
+.quartered
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff quartered player Speed < ours
+	ret
+
 ; Carry SET if the enemy acts FIRST this turn using the move currently loaded in
 ; the wEnemyMove* block.
 ;

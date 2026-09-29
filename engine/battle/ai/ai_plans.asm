@@ -747,10 +747,12 @@ AIFit_ParaSweep:
 	bit HAS_SUBSTITUTE_UP, a
 	jr nz, .no
 
-	farcall AIEnemyIsFaster
-	ld a, AI_FITNESS_PARA_SWEEP
-	ret c ; already faster - paralysing does not flip anything, but is still a
-	      ; fine ordinary status play at the base fitness
+; The bonus needs an actual FLIP, not just "the player is faster": a player
+; fast enough to stay ahead at a quarter Speed is not reversed at all
+; (2026-09-29; the old test was AIEnemyIsFaster alone).
+	farcall AIParalysisFlipsTurnOrder ; flags survive the farcall return
+	ld a, AI_FITNESS_PARA_SWEEP ; ld keeps the flags
+	ret nc ; no flip - still a fine ordinary status play at the base fitness
 	add AI_FITNESS_PARA_FASTER
 	ret
 .no
