@@ -80,6 +80,8 @@ ReadTrainer:
 	jr z, .walkToTeam
 	cp GIOVANNI_MINIBOSS
 	jr z, .walkToTeam
+	cp KARATE_MINIBOSS
+	jr z, .walkToTeam
 	ld a, [hl]
 	cp TRAINERPARTY_LEVELS
 	jr z, .walkToTeam
@@ -116,6 +118,8 @@ ReadTrainer:
 	cp RIVAL_MINIBOSS
 	jp z, .miniBoss          ; jp, not jr: increment 8c's form-layout dispatch
 	cp GIOVANNI_MINIBOSS     ; below pushed .miniBoss out of jr range
+	jp z, .miniBoss
+	cp KARATE_MINIBOSS
 	jp z, .miniBoss
 ; Phase 2R increment 8c: the layout marker also selects whether entries carry a
 ; form byte. TRAINERPARTY_FORMS teams are <level, species, form> triples; every

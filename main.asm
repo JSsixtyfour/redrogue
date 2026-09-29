@@ -776,6 +776,10 @@ INCLUDE "custom_functions/bridge_effects_extended.asm"
 ; theft itself had to stay behind in "rogue".
 INCLUDE "custom_functions/stage_events.asm"
 
+; Karate Master mini-boss reward menu. Opens its own floating section; must
+; follow bridge_gift_menu.asm (it reuses BRIDGE_MON_FINALIZE_SPECIAL).
+INCLUDE "custom_functions/karate_dojo.asm"
+
 SECTION "Final Team Archive", ROMX
 
 INCLUDE "custom_functions/final_team_archive.asm"

@@ -682,6 +682,66 @@ class UndergroundRouteSmokeTest(HarnessTestCase):
         self.assertEqual(slot_five_class, trainers["GIOVANNI_MINIBOSS"])
 
 
+class KarateDojoSmokeTest(HarnessTestCase):
+    KARATE_TYPE_BITS = 0x30  # MINIBOSS_KARATE (3) << 4, door 1
+
+    def test_karate_master_owns_the_dojo(self) -> None:
+        assert self.harness is not None
+        h = self.harness
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        events = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "event_constants.asm"
+        )
+        toggles = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "toggle_constants.asm"
+        )
+        trainers = parse_trainer_constants(
+            REPO_ROOT / "constants" / "trainer_constants.asm"
+        )
+        dojo = maps["FIGHTING_DOJO"]
+
+        h.boot_to_lobby()
+        h.enter_stage_door1(
+            dojo, description="Fighting Dojo", miniboss_bits=self.KARATE_TYPE_BITS
+        )
+
+        self.assertEqual(h.read8("hCurMap"), dojo)
+        flags = h.read8("wRogueFlagsBitfield")
+        self.assertTrue(flags & 0x80, "mini-boss not active in the Dojo")
+        self.assertTrue(flags & 0x01, "gym-next bit not set by the Dojo setup")
+
+        # Slot 1 is the master, patched by MiniBossApplyStageTrainer.
+        self.assertEqual(h.read8("wMapSpriteExtraData"), trainers["KARATE_MINIBOSS"])
+        self.assertIn(h.read8("wMapSpriteExtraData", offset=1), (1, 2, 3))
+
+        self.assertTrue(h.event_is_set(events["EVENT_FIGHTING_DOJO_VISITED"]))
+        self.assertFalse(h.event_is_set(events["EVENT_BEAT_KARATE_MASTER"]))
+        excluded = int(h.event_is_set(events["EVENT_DOJO_EXCLUDED_BIT0"])) + 2 * int(
+            h.event_is_set(events["EVENT_DOJO_EXCLUDED_BIT1"])
+        )
+        self.assertIn(excluded, (0, 1, 2))
+
+        item = toggles["TOGGLE_FIGHTING_DOJO_RANDOM_ITEM"]
+        hidden = h.read8("wToggleableObjectFlags", offset=item // 8) & (
+            1 << (item % 8)
+        )
+        self.assertFalse(hidden, "Dojo random item is hidden")
+
+        # The door stays one-way until the master falls.
+        self.assertEqual(
+            [warp[3] for warp in h.warp_entries()],
+            [h.WARP_NO_RETURN, h.WARP_NO_RETURN],
+        )
+
+        # Entrance auto-walk up the aisle from the door at y=11. RogueAutoWalkScripts
+        # writes six presses but starts hSimulatedJoypadStatesIndex at 4, so the
+        # walk is four steps and ends beside blackbelt 4 at (5, 7).
+        h.wait_until(lambda: h.read8("wYCoord") == 7, "Dojo entrance auto-walk", 600)
+        self.assertTrue(
+            h.event_is_set(events["EVENT_AUTOWALKED_INTO_FIGHTING_DOJO"])
+        )
+
+
 class RouteContractSmokeTest(HarnessTestCase):
     def test_all_selectable_route_contracts(self) -> None:
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
@@ -767,6 +827,15 @@ class RouteContractSmokeTest(HarnessTestCase):
             REPO_ROOT / "custom_functions" / "miniboss.asm",
             "MiniBossStageSlots",
         )
+        # PLACE_OWN_STAGE bosses (the Karate Master's FightingDojo) own a map
+        # that is no RogueStageMapTable route, so it has no route contract.
+        own_stage_maps = {
+            row[0]
+            for row in parse_db_table(
+                REPO_ROOT / "custom_functions" / "miniboss.asm", "KarateMaps"
+            )
+        }
+        self.assertEqual(own_stage_maps, {"FIGHTING_DOJO"})
         self.assertEqual(
             [contract.map_constant for contract in ROUTE_CONTRACTS],
             [row[0] for row in stage_rows],
@@ -777,7 +846,7 @@ class RouteContractSmokeTest(HarnessTestCase):
                 for contract in ROUTE_CONTRACTS
                 if contract.miniboss_eligible
             },
-            {row[0] for row in miniboss_rows},
+            {row[0] for row in miniboss_rows} - own_stage_maps,
         )
         self.assertEqual(
             {

@@ -171,8 +171,7 @@ ToggleableObjectStates:
 	toggle_object_state POKEMONMANSION1F_CARBOS,      ON
 
 	toggleable_objects_for FIGHTING_DOJO
-	toggle_object_state FIGHTINGDOJO_HITMONLEE_POKE_BALL,  ON
-	toggle_object_state FIGHTINGDOJO_HITMONCHAN_POKE_BALL, ON
+	toggle_object_state FIGHTINGDOJO_RANDOM_ITEM, ON
 
 	toggleable_objects_for SILPH_CO_1F
 	toggle_object_state SILPHCO1F_PROF_PALM,         ON

@@ -262,7 +262,7 @@ CONTIG = [
      ["EVENT_BEAT_KARATE_MASTER", "EVENT_BEAT_FIGHTING_DOJO_TRAINER_0",
       "EVENT_BEAT_FIGHTING_DOJO_TRAINER_1", "EVENT_BEAT_FIGHTING_DOJO_TRAINER_2",
       "EVENT_BEAT_FIGHTING_DOJO_TRAINER_3"], 1,
-     "SetEventRange BEAT_KARATE_MASTER..TRAINER_3 (FightingDojo.asm:73)"),
+     "SetEventRange BEAT_KARATE_MASTER..TRAINER_3 (FightingDojo.asm post-battle)"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -272,7 +272,8 @@ CONTIG = [
 # ---------------------------------------------------------------------------
 SAME_BYTE_PAIRS = [
     ("EVENT_GOT_TOWN_MAP", "EVENT_ENTERED_BLUES_HOUSE"),
-    ("EVENT_GOT_HITMONLEE", "EVENT_GOT_HITMONCHAN"),
+    # Karate Dojo mini-boss: the excluded reward index (0-2), read as one byte
+    ("EVENT_DOJO_EXCLUDED_BIT0", "EVENT_DOJO_EXCLUDED_BIT1"),
     ("EVENT_GOT_DOME_FOSSIL", "EVENT_GOT_HELIX_FOSSIL"),
     ("EVENT_SEAFOAM3_BOULDER1_DOWN_HOLE", "EVENT_SEAFOAM3_BOULDER2_DOWN_HOLE"),
     ("EVENT_SEAFOAM4_BOULDER1_DOWN_HOLE", "EVENT_SEAFOAM4_BOULDER2_DOWN_HOLE"),
@@ -322,6 +323,9 @@ EXTRA_SEEDS = {
     # unreachable dead ends. Verified: dropping these three strands no other map.
     "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
     "GAME_CORNER", "ROUTE_17", "ROUTE_24",
+    # Karate Master mini-boss stage (miniboss.asm KarateMaps). Reached only by
+    # the lobby's ROGUE_MAP door resolution, never by a static warp.
+    "FIGHTING_DOJO",
 }
 
 # ---------------------------------------------------------------------------
@@ -455,6 +459,11 @@ NEW_EVENTS = [
     # Checkpoint 11: set on an AI Lair loss, cleared on the post-loss retry
     # capture. Persistent so a loss survives RogueResetRunState.
     "EVENT_AI_ATTEMPT_SPENT",
+    # Karate Master mini-boss (MINIBOSS_FRAMEWORK.md). VISITED makes him
+    # once-per-run (a run-zone bit, swept by RogueResetRunState); AUTOWALKED is
+    # the Dojo's RogueAutoWalkScripts one-shot, reset by its own setup block.
+    "EVENT_FIGHTING_DOJO_VISITED",
+    "EVENT_AUTOWALKED_INTO_FIGHTING_DOJO",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

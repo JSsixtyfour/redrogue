@@ -621,7 +621,7 @@ AIPrimaryParalyzeIsBlocked::
 	cp GROUND
 	jr z, .blocked
 .bridge
-	ld e, BRIDGE_STATUS_CHECK_OTHER
+	ld e, BRIDGE_STATUS_CHECK_PARALYSIS
 	jp AIBridgePlayerTargetBlocksStatus
 .blocked
 	scf

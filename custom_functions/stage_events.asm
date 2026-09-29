@@ -896,6 +896,15 @@ StageEventInjectStolenMon::
 	ld bc, (MON_HP_EXP - 1) - MON_STATS
 	add hl, bc                    ; hl = HPExp - 1
 	ld b, $1
+	; same wrapper as the give-back: arms the Mystic swap (special forms are
+	; keyed on the struct, so it applies on the enemy side too)
+	push de
+	push bc
+	push hl
+	farcall PrepareFusionAndBridgeRayCalcStats
+	pop hl
+	pop bc
+	pop de
 	call CalcStats
 	ret
 

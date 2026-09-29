@@ -314,7 +314,7 @@ ASSERT BRIDGE_GLOBAL_EFFECT_BYTES == 3
 DEF MINIBOSS_NONE     EQU 0
 DEF MINIBOSS_RIVAL    EQU 1
 DEF MINIBOSS_GIOVANNI EQU 2
-DEF MINIBOSS_KARATE   EQU 3   ; future: own FightingDojo stage (PLACE_OWN_STAGE)
+DEF MINIBOSS_KARATE   EQU 3   ; own FightingDojo stage (PLACE_OWN_STAGE)
 DEF NUM_MINIBOSS_TYPES EQU 3  ; number of *real* bosses (excludes NONE), = highest type id
 
 ; Registry placement modes

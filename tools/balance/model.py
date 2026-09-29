@@ -286,12 +286,18 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
                        g.money[class_name(leader.name)], rng)
 
 
+# who -> party-data label. KARATE is modelled here for tests but is not rolled by the
+# route simulation: he owns a Dojo stage (PLACE_OWN_STAGE), not a route boss slot.
+MINIBOSS_DATA = {"RIVAL": "RivalMiniBossData", "GIOVANNI": "GiovanniMiniBossData",
+                 "KARATE": "KarateMiniBossData"}
+
+
 def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starter: str, rng: random.Random,
                     kind: str = "miniboss") -> Battle:
     """BuildMiniBossTeam: every mon gets its own MiniBossSetLevel roll; fill mons
     come from MiniBossRollFillMon (base forms, never evolved)."""
     row = g.tables.miniboss[round_of(g, count)]
-    teams = g.miniboss_teams["RivalMiniBossData" if who == "RIVAL" else "GiovanniMiniBossData"]
+    teams = g.miniboss_teams[MINIBOSS_DATA[who]]
     team = teams[0] if who == "RIVAL" else rng.choice(teams)
 
     def level() -> int:
@@ -312,7 +318,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
             mons.append((rival_starter_evolve(g, rival_starter, lv), lv))
         else:
             mons.append((tok, level()))
-    base = g.money["RIVAL_MINIBOSS" if who == "RIVAL" else "GIOVANNI_MINIBOSS"]
+    base = g.money[f"{who}_MINIBOSS"]
     return Battle(kind, count, mons, True, base)
 
 

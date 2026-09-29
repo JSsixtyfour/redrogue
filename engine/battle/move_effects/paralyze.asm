@@ -1,5 +1,5 @@
 ParalyzeEffect_:
-	ld e, BRIDGE_STATUS_CHECK_OTHER
+	ld e, BRIDGE_STATUS_CHECK_PARALYSIS
 	farcall BridgePlayerTargetBlocksStatus
 	jp c, .didntAffect
 	ld hl, wEnemyMonStatus

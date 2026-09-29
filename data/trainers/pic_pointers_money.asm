@@ -78,4 +78,5 @@ TrainerPicAndMoneyPointers::
 	pic_money KarenPic,        MONEY_BASE_E4
 	pic_money KogaPic,         MONEY_BASE_LEADER ; KOGA_E4 reuses the gym Koga's pic
 	pic_money RedPicFront,     MONEY_BASE_CHAMPION ; FINAL_AI - portrait overridden at runtime by ReadFinalAITrainer
+	pic_money BlackbeltPic,    MONEY_BASE_MINIBOSS_KARATE
 	assert_table_length NUM_TRAINERS

@@ -4684,13 +4684,10 @@ GetDamageVarsForEnemyAttack:
 	; Special form (func_special_form.asm): double the attacker's offensive
 	; stat before scaling (see the matching block in GetDamageVarsForPlayerAttack).
 	; Attacker = wEnemyMon.
-	; NOTE: this can never actually fire today. LoadEnemyMonData xor-clears
-	; wEnemyMonCatchRate in .copyTypes for BOTH wild and trainer loads, and
-	; nothing re-sets bit 3 afterwards, so no enemy mon ever has a special form
-	; (Light Ball / Thick Club etc. are player-only). Kept live so enemy forms
-	; work the moment a re-apply hook is added at the TAIL of LoadEnemyMonData -
-	; copy the PCemMaybeApplyGhostBoss pattern, which is exactly why the cemetery
-	; ghost boss (bit 0) does work. See MON_CATCH_RATE_BITFIELD_PC.md.
+	; NOTE: live for trainer mons whose party struct carries bit 3 (a stolen
+	; player mon today). LoadEnemyMonData's .copyTypes copies the party
+	; struct's flag bits via GetEnemyCatchRateByte. Wild mons never have it.
+	; See MON_CATCH_RATE_BITFIELD_PC.md.
 	; NOTE: d holds the move's base power and CalculateDamage requires it intact
 	; on return, so de MUST be saved across the `ld de, wEnemyMon` below.
 	; Without this, every enemy move is computed with base power
@@ -7150,8 +7147,9 @@ LoadEnemyMonData:
 ; cemetery ghost boss uses - would be far too late for all three.
 ; Increment 8c: a trainer mon's form comes from its OWN party struct, not the
 ; global - see GetEnemySpawnForm above. Wild mons are unaffected.
-	farcall PublishEnemyFormContext ; reads the form from the party struct for a
-	                                ; trainer mon, wSpawnForm for a wild one
+	; same publish as TOUCH 3, plus arming CalcStats' special-form stat hooks
+	; (Mystic swap) from the trainer mon's party struct for .calcEnemyStats
+	farcall PublishEnemyFormAndStatContext
 	call GetMonHeader
 	ld a, [wEnemyBattleStatus3]
 	bit TRANSFORMED, a ; is enemy mon transformed?
@@ -7280,14 +7278,13 @@ LoadEnemyMonData:
 ; Increment 8c: same source as TOUCH 1. For a trainer mon this reads the stored
 ; bits and writes them straight back, which is what makes the form SURVIVE the
 ; unconditional clear above rather than being wiped to the base species.
+; Enemy catch-rate flags: a trainer mon now keeps its party struct's whole flag
+; byte (special form, variants, shiny, fusion), not just the form. GetEnemyCatchRateByte
+; returns the byte to store and fixes up wEnemyMonType2 for a variant.
 	push de                ; de is on wEnemyMonCatchRate and e is the return slot
-	farcall GetEnemySpawnForm
+	farcall GetEnemyCatchRateByte
 	ld a, e
 	pop de
-	and NUM_FORM_SLOTS
-	rrca                   ; 0-3 -> bits 5-6
-	rrca
-	rrca
 	ld [de], a
 	inc de
 	ldh a, [hIsInBattle]

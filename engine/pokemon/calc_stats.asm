@@ -14,6 +14,15 @@ _CalcStats::
 	cp NUM_STATS
 	jr nz, .statsLoop
 	pop hl
+	; Mystic special form: swap stored Attack and Special before the ray
+	; modifiers, so those still act on whatever ends up in Attack.
+	ld a, [wBridgeCalcEffectFlags]
+	bit BRIDGE_CALC_SWAP_ATK_SPC, a
+	jr z, .checkShrinkRay
+	push hl
+	call .swapAtkSpc
+	pop hl
+.checkShrinkRay
 	ld a, [wBridgeCalcEffectFlags]
 	bit BRIDGE_SELECTED_EFFECT_SHRINK_RAY, a
 	jr z, .checkGrowthRay
@@ -33,6 +42,25 @@ _CalcStats::
 	jr z, .clearCalcState
 	call .applyBodyArmor
 	jr .clearCalcState
+.swapAtkSpc
+	inc hl
+	inc hl ; Attack
+	ld d, h
+	ld e, l
+	ld bc, (MON_SPC - MON_ATK)
+	add hl, bc ; Special
+	ld b, 2
+.swapLoop
+	ld a, [de]
+	ld c, [hl]
+	ld [hl], a
+	ld a, c
+	ld [de], a
+	inc de
+	inc hl
+	dec b
+	jr nz, .swapLoop
+	ret
 .applyShrinkRay
 	inc hl
 	inc hl ; Attack

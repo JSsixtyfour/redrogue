@@ -17,22 +17,36 @@
 ;   wWildAreaState (wild-area no-repeat mask + >=2 guarantee count).
 ; ============================================================
 
-DEF MINIBOSS_ENTRY_SIZE EQU 7
-; Rival + Giovanni now both roll (Giovanni's Rocket Hideout B1F encounter hook is
-; live). Raise further as more boss types get their encounter hooks.
-DEF MINIBOSS_MAX_ROLLABLE_TYPE EQU MINIBOSS_GIOVANNI
+DEF MINIBOSS_ENTRY_SIZE EQU 8
+; Rival, Giovanni and the Karate Master all roll. Raise further as more boss
+; types get their encounter hooks.
+DEF MINIBOSS_MAX_ROLLABLE_TYPE EQU MINIBOSS_KARATE
+
+; Relative pick weights among the types that still have an unvisited map
+; (MiniBossPickTypeAndStage). Karate is half as likely as the others and, with
+; one map guarded by EVENT_FIGHTING_DOJO_VISITED, at most once per run.
+DEF MINIBOSS_WEIGHT_RIVAL    EQU 2
+DEF MINIBOSS_WEIGHT_GIOVANNI EQU 2
+DEF MINIBOSS_WEIGHT_KARATE   EQU 1
+DEF MINIBOSS_TOTAL_WEIGHT EQU MINIBOSS_WEIGHT_RIVAL + MINIBOSS_WEIGHT_GIOVANNI + MINIBOSS_WEIGHT_KARATE
 
 ; Registry: one entry per real boss type, indexed by (type - 1).
 ; db OPP class, sprite id, overworld approach music, placement mode, team-select
-; mode; dw allowed-map list. (Karate is added here with its own class + map
-; once its FightingDojo stage exists.)
+; mode; dw allowed-map list; db pick weight (offset 7).
 MiniBossTable:
 	; MINIBOSS_RIVAL
 	db OPP_RIVAL_MINIBOSS, SPRITE_BLUE, MUSIC_MEET_RIVAL, PLACE_REPLACE_5TH, TEAM_STARTER_BASED
 	dw RivalMaps
+	db MINIBOSS_WEIGHT_RIVAL
 	; MINIBOSS_GIOVANNI
 	db OPP_GIOVANNI_MINIBOSS, SPRITE_GIOVANNI, MUSIC_MEET_RIVAL, PLACE_REPLACE_5TH, TEAM_RANDOM_3_SET
 	dw GiovanniMaps
+	db MINIBOSS_WEIGHT_GIOVANNI
+	; MINIBOSS_KARATE: his own FightingDojo stage (slot 1 is the master)
+	db OPP_KARATE_MINIBOSS, SPRITE_HIKER, MUSIC_MEET_MALE_TRAINER, PLACE_OWN_STAGE, TEAM_RANDOM_3_SET
+	dw KarateMaps
+	db MINIBOSS_WEIGHT_KARATE
+	ASSERT @ - MiniBossTable == MINIBOSS_MAX_ROLLABLE_TYPE * MINIBOSS_ENTRY_SIZE
 
 ; Allowed-map lists (-1 terminated). A mini-boss only manifests on a map whose
 ; stage script calls MiniBossCheckActivate (the encounter hook), so keep these
@@ -61,6 +75,10 @@ GiovanniMaps:
 	db UNDERGROUND_PATH_WEST_EAST
 	db VIRIDIAN_FOREST
 	db ROCKET_HIDEOUT_B1F
+	db -1
+KarateMaps:
+	; Not a RogueStageMapTable stage: MiniBossIsMapVisited special-cases it.
+	db FIGHTING_DOJO
 	db -1
 
 ; ============================================================
@@ -259,8 +277,9 @@ MiniBossCountBadges:
 	ld a, b
 	ret
 
-; Picks a boss type that still has an unvisited eligible map (weighted uniformly
-; among available types); if none is available (endless mode), forces a revisit.
+; Picks a boss type that still has an unvisited eligible map, weighted by the
+; registry's pick weights among available types; if none is available (endless
+; mode), forces a revisit, weighted over every rollable type.
 ; Returns carry set with a = type, b = chosen mini-boss map.
 MiniBossPickTypeAndStage:
 IF DEF(_DEBUG)
@@ -297,8 +316,8 @@ IF DEF(_DEBUG)
 	ret
 .noForcedType
 ENDC
-	; Pass 1: count rollable types with an unvisited map
-	ld b, 0                 ; b = available count
+	; Pass 1: total pick weight of rollable types with an unvisited map
+	ld b, 0                 ; b = available weight
 	ld c, 1                 ; c = type iterator
 .availLoop
 	ld a, c
@@ -309,7 +328,10 @@ ENDC
 	call BossHasUnvisitedMap
 	pop bc
 	jr nc, .availSkip
-	inc b
+	ld a, c
+	call MiniBossWeightForType ; a = weight (bc/de preserved)
+	add b
+	ld b, a
 .availSkip
 	inc c
 	jr .availLoop
@@ -317,10 +339,10 @@ ENDC
 	ld a, b
 	and a
 	jr z, .endless          ; no boss has an unvisited map
-	; pick the k-th available type
+	; walk the available types until the roll falls inside one's weight
 	ld c, b
-	call Rangerandom        ; a = [0, count-1]
-	ld d, a                 ; d = target index among available
+	call Rangerandom        ; a = [0, weight-1]
+	ld d, a                 ; d = remaining roll
 	ld c, 1                 ; c = type iterator
 .pickLoop
 	ld a, c
@@ -330,10 +352,13 @@ ENDC
 	pop de
 	pop bc
 	jr nc, .pickSkip
+	ld a, c
+	call MiniBossWeightForType
+	ld e, a
 	ld a, d
-	and a
-	jr z, .foundType
-	dec d
+	sub e
+	jr c, .foundType        ; roll < this type's weight
+	ld d, a
 .pickSkip
 	inc c
 	jr .pickLoop
@@ -349,11 +374,23 @@ ENDC
 	scf
 	ret
 .endless
-	; every boss exhausted: pick any rollable boss, any map (ignore visited)
-	ld c, MINIBOSS_MAX_ROLLABLE_TYPE
+	; every boss exhausted: pick any rollable boss (weighted), any map (ignore
+	; visited)
+	ld c, MINIBOSS_TOTAL_WEIGHT
 	call Rangerandom
-	inc a                   ; type in [1, MAX]
-	ld c, a                 ; c = type
+	ld d, a                 ; d = remaining roll
+	ld c, 1                 ; c = type iterator
+.endlessLoop
+	ld a, c
+	call MiniBossWeightForType
+	ld e, a
+	ld a, d
+	sub e
+	jr c, .endlessFound
+	ld d, a
+	inc c
+	jr .endlessLoop
+.endlessFound
 	push bc
 	call PickAnyMapForBoss  ; b = map
 	ld a, b
@@ -361,6 +398,18 @@ ENDC
 	ld b, a                 ; b = map
 	ld a, c                 ; a = type
 	scf
+	ret
+
+; a = boss type (1-based) -> a = its registry pick weight. Preserves bc/de.
+MiniBossWeightForType:
+	push bc
+	push de
+	call MiniBossEntryForType ; hl -> entry
+	ld bc, 7                ; pick weight is at entry offset 7
+	add hl, bc
+	ld a, [hl]
+	pop de
+	pop bc
 	ret
 
 ; a = boss type -> carry set if any map in its list is unvisited/eligible.
@@ -478,6 +527,16 @@ GetBossMapList:
 ; a = map id -> a = 1 if that map is already visited this run OR not a stage
 ; map (ineligible), else a = 0. Clobbers bc/de/hl.
 MiniBossIsMapVisited:
+	; The Karate Master's Dojo is no RogueStageMapTable stage; its own run-zone
+	; event makes it once per run.
+	cp FIGHTING_DOJO
+	jr nz, .stageMap
+	ld a, [wEventFlags + EVENT_FIGHTING_DOJO_VISITED / 8]
+	and 1 << (EVENT_FIGHTING_DOJO_VISITED % 8)
+	jr z, .unvisited
+	ld a, 1
+	ret
+.stageMap
 	ld b, a                 ; b = target map id
 	ld hl, RogueStageMapTable
 	ld c, 0                 ; c = stage index
@@ -730,4 +789,5 @@ MiniBossStageSlots:
 	db MT_MOON_1F, 5
 	db VIRIDIAN_FOREST, 5
 	db ROCKET_HIDEOUT_B1F, 5
+	db FIGHTING_DOJO, 1          ; the master himself (PLACE_OWN_STAGE)
 	db -1

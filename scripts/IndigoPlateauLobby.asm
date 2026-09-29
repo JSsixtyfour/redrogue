@@ -613,19 +613,46 @@ LobbyBridgeSignTable:
 ; category - so both the boss indicator AND the reward stay visible (a full
 ; replacement hid the reward). Shared by both door sign handlers.
 ; INPUT: a = item category (0-3, from wRogueDoor1/2). Returns hl -> combined text.
-; TODO (multi-boss): dispatch on the offered type (wRogueFlagsBitfield bits 4-5)
-; to a per-boss category table. Only the Rival rolls today
-; (MINIBOSS_MAX_ROLLABLE_TYPE), so the Rival table is used unconditionally.
+; Dispatches on the offered type (wRogueFlagsBitfield bits 4-5): Karate has his
+; own table, and Rival and Giovanni share the "RIVAL TRAINER" one (unchanged).
+; bc is the live text cursor of the text_asm caller: only a, d, e, hl are used.
 LobbyMiniBossSign:
-	ld hl, .rivalPtrs
-	ld d, 0
 	ld e, a
+	ld a, [wRogueFlagsBitfield]
+	and MINIBOSS_TYPE_MASK
+	cp MINIBOSS_KARATE << MINIBOSS_TYPE_SHIFT
+	ld hl, .rivalPtrs
+	jr nz, .havePtrs
+	ld hl, .karatePtrs
+.havePtrs
+	ld d, 0
 	add hl, de
 	add hl, de
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
 	ret
+.karatePtrs
+	dw .karateHealing
+	dw .karateStat
+	dw .karateTM
+	dw .karateMoney
+.karateHealing
+	text "KARATE MASTER"
+	line "HEALING ITEMS@"
+	text_end
+.karateStat
+	text "KARATE MASTER"
+	line "STAT BOOSTS@"
+	text_end
+.karateTM
+	text "KARATE MASTER"
+	line "TM ITEMS@"
+	text_end
+.karateMoney
+	text "KARATE MASTER"
+	line "MONEY@"
+	text_end
 .rivalPtrs
 	dw .rivalHealing
 	dw .rivalStat

@@ -33,6 +33,11 @@ DEF SF_ALWAYS_CRIT EQU 5 ; attacker's moves always crit
 DEF SF_QUICK_CLAW  EQU 6 ; 25 percent priority proc (C6 battle hook)
 DEF SF_INTIMIDATE  EQU 7 ; lower enemy Attack on entry (C6 battle hook)
 
+; second capability bitfield (GetSpecialFormCaps2): the byte above is full.
+; Same species-keyed lookup, same BIT_SPECIAL_FORM gate.
+DEF SF2_NO_PARALYSIS EQU 0 ; can't be paralyzed            (Limber, Karate Dojo)
+DEF SF2_SWAP_ATK_SPC EQU 1 ; stored Attack/Special swapped (Mystic, Karate Dojo)
+
 ; ---------------------------------------------------------------------------
 ; NOTE: applying a type variant (set BIT_TYPE_VARIANT + write MON_TYPE2) is done
 ; INLINE by the caller (BridgeApplyTypeVariantGift in bridge_gift_menu.asm) - it's
@@ -114,14 +119,26 @@ ApplySpecialForm::
 ; CLOBBERS: af, hl, e  (bc, d preserved)
 ; ---------------------------------------------------------------------------
 GetSpecialFormCaps::
+	ld hl, SpecialFormCaps
+	jr SpecialFormCapsLookup
+
+; GetSpecialFormCaps2: identical contract, returns SF2_* bits from
+; SpecialFormCaps2.
+GetSpecialFormCaps2::
+	ld hl, SpecialFormCaps2
+	; fall through
+
+; hl = species->caps table
+SpecialFormCapsLookup:
+	push hl
 	ld hl, MON_CATCH_RATE
 	add hl, de
 	bit BIT_SPECIAL_FORM, [hl]
+	pop hl            ; pop leaves flags alone
 	jr z, .none
 	ld a, [de]        ; a = species (MON_SPECIES is the struct base)
 	push bc
 	ld c, a
-	ld hl, SpecialFormCaps
 .loop
 	ld a, [hli]       ; species id from table
 	and a
@@ -146,12 +163,20 @@ SpecialFormCaps:
 	db MAROWAK,   1 << SF_DOUBLE_ATK
 	db PIKACHU,   (1 << SF_DOUBLE_ATK) | (1 << SF_DOUBLE_SPC) | (1 << SF_NO_EVOLVE)
 	db MACHOP,    (1 << SF_NEVER_MISS) | (1 << SF_ALWAYS_HIT)
+	db MACHOKE,   (1 << SF_NEVER_MISS) | (1 << SF_ALWAYS_HIT)
+	db MACHAMP,   (1 << SF_NEVER_MISS) | (1 << SF_ALWAYS_HIT)
 	db FARFETCHD, 1 << SF_ALWAYS_CRIT
 	db NIDORAN_F, 1 << SF_QUICK_CLAW
 	db NIDORINA,   1 << SF_QUICK_CLAW
 	db NIDOQUEEN,  1 << SF_QUICK_CLAW
 	db GROWLITHE,  1 << SF_INTIMIDATE
 	db ARCANINE,   1 << SF_INTIMIDATE
+	db 0 ; terminator
+
+; species (internal id) -> SF2_* bitfield. Terminated by a 0 species.
+SpecialFormCaps2:
+	db HITMONLEE,  1 << SF2_NO_PARALYSIS
+	db HITMONCHAN, 1 << SF2_SWAP_ATK_SPC
 	db 0 ; terminator
 
 ; Return carry when the active player's special Nidoran female family form

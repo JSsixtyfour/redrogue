@@ -160,6 +160,8 @@ AIResolveTier::
 	cp RIVAL_MINIBOSS
 	jr z, .miniBoss
 	cp GIOVANNI_MINIBOSS
+	jr z, .miniBoss
+	cp KARATE_MINIBOSS
 	jr nz, .notMiniBoss
 .miniBoss
 	inc b

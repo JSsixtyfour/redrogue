@@ -1,4 +1,42 @@
+; Karate Master mini-boss stage (MINIBOSS_FRAMEWORK.md). Reached only through a
+; lobby door that rolled MINIBOSS_KARATE; never a normal stage.
 FightingDojo_Script:
+	CheckEvent EVENT_ENTER_ROOM
+	jr nz, .normal
+
+	SetEvent EVENT_ENTER_ROOM
+	ld hl, wRogueFlagsBitfield
+	set 0, [hl]                 ; gym is next after this stage
+
+	; Stage events are run-zone bits, so clear this visit's state explicitly
+	; (the endless-mode revisit fallback can bring the player back).
+	ResetEventRange EVENT_BEAT_KARATE_MASTER, EVENT_BEAT_FIGHTING_DOJO_TRAINER_3
+	ResetEvents EVENT_DEFEATED_FIGHTING_DOJO, EVENT_AUTOWALKED_INTO_FIGHTING_DOJO
+	SetEvent EVENT_FIGHTING_DOJO_VISITED ; once per run (MiniBossIsMapVisited)
+
+	; Roll which of the three Dojo #MON is NOT offered (0-2), stored in two
+	; event bits so NO THANKS and a second talk show the same pair.
+	ResetEvents EVENT_DOJO_EXCLUDED_BIT0, EVENT_DOJO_EXCLUDED_BIT1
+	ld c, 3
+	call Rangerandom
+	ld b, a
+	bit 0, b
+	jr z, .excludedBit1
+	SetEvent EVENT_DOJO_EXCLUDED_BIT0
+.excludedBit1
+	bit 1, b
+	jr z, .excludedDone
+	SetEvent EVENT_DOJO_EXCLUDED_BIT1
+.excludedDone
+
+	farcall Random_Item_Selection
+	call FightingDojoShowRandomItem
+	farcall RogueRefresh
+	farcall MiniBossApplyStageTrainer
+	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
+	ld [wFightingDojoCurScript], a
+
+.normal
 	call EnableAutoTextBoxDrawing
 	ld hl, FightingDojoTrainerHeaders
 	ld de, FightingDojo_ScriptPointers
@@ -6,6 +44,21 @@ FightingDojo_Script:
 	call ExecuteCurMapScriptInTable
 	ld [wFightingDojoCurScript], a
 	ret
+
+; RogueRefresh only toggles the global stage item, so the Dojo mirrors its
+; witch "no random item" check for its own ball.
+FightingDojoShowRandomItem:
+	ld a, TOGGLE_FIGHTING_DOJO_RANDOM_ITEM
+	ld [wToggleableObjectIndex], a
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .show
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_RANDOM_ITEM
+	jr nz, .show
+	predef_jump HideObject
+.show
+	predef_jump ShowObject
 
 FightingDojoResetScripts:
 	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
@@ -16,19 +69,39 @@ FightingDojoResetScripts:
 
 FightingDojo_ScriptPointers:
 	def_script_pointers
-	dw_const FightingDojoDefaultScript,                SCRIPT_FIGHTINGDOJO_DEFAULT
+	dw_const FightingDojoGateScript,                   SCRIPT_FIGHTINGDOJO_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle,    SCRIPT_FIGHTINGDOJO_START_BATTLE
 	dw_const EndTrainerBattle,                         SCRIPT_FIGHTINGDOJO_END_BATTLE
 	dw_const FightingDojoKarateMasterPostBattleScript, SCRIPT_FIGHTINGDOJO_KARATE_MASTER_POST_BATTLE
+	dw_const FightingDojoPlayerIsMovingScript,         SCRIPT_FIGHTINGDOJO_PLAYER_IS_MOVING
 
-FightingDojoDefaultScript:
-	CheckEvent EVENT_DEFEATED_FIGHTING_DOJO
-	ret nz
+; The door is both the arrival and the exit. Its header warps are
+; WARP_NO_RETURN, so until the master falls the entrance auto-walk and the
+; "no turning back" lock apply; after that the door is pointed at the lobby
+; (rewritten every tick, so a header reload can't undo it).
+FightingDojoGateScript:
+	CheckEvent EVENT_BEAT_KARATE_MASTER
+	jp z, FightingDojoDefaultScript
+	ld a, INDIGO_PLATEAU_LOBBY
+	ld [wWarpEntries + 3], a    ; warp 0 destination map
+	ld [wWarpEntries + 7], a    ; warp 1 destination map
+	jp CheckFightingMapTrainers
+
+	RogueAutoWalkScripts FightingDojo, PAD_UP, FightingDojoMasterApproachScript, EVENT_AUTOWALKED_INTO_FIGHTING_DOJO, TEXT_FIGHTINGDOJO_NO_TURNING_BACK, SCRIPT_FIGHTINGDOJO_PLAYER_IS_MOVING, wFightingDojoCurScript
+
+FightingDojoEntranceCoords:
+	dbmapcoord 4, 11
+	dbmapcoord 5, 11
+	db -1
+
+FightingDojoNoCoords:
+	db -1
+
+; Vanilla: stepping beside the master at (4, 3) makes him turn and talk.
+FightingDojoMasterApproachScript:
 	call CheckFightingMapTrainers
 	ld a, [wTrainerHeaderFlagBit]
 	and a
-	ret nz
-	CheckEvent EVENT_BEAT_KARATE_MASTER
 	ret nz
 	xor a
 	ldh [hJoyHeld], a
@@ -71,7 +144,7 @@ FightingDojoKarateMasterPostBattleScript:
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	SetEventRange EVENT_BEAT_KARATE_MASTER, EVENT_BEAT_FIGHTING_DOJO_TRAINER_3
-	ld a, TEXT_FIGHTINGDOJO_KARATE_MASTER_I_WILL_GIVE_YOU_A_POKEMON
+	ld a, TEXT_FIGHTINGDOJO_KARATE_MASTER_REWARD
 	ldh [hTextID], a
 	call DisplayTextID
 	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
@@ -80,16 +153,18 @@ FightingDojoKarateMasterPostBattleScript:
 	ld [wCurMapScript], a
 	ret
 
+; The first entries must be the objects' own texts in slot order (1-6), so
+; the script-fired ids below sit past wNumSprites (DisplayTextID reroute).
 FightingDojo_TextPointers:
 	def_text_pointers
-	dw_const FightingDojoKarateMasterText,                          TEXT_FIGHTINGDOJO_KARATE_MASTER
-	dw_const FightingDojoBlackbelt1Text,                            TEXT_FIGHTINGDOJO_BLACKBELT1
-	dw_const FightingDojoBlackbelt2Text,                            TEXT_FIGHTINGDOJO_BLACKBELT2
-	dw_const FightingDojoBlackbelt3Text,                            TEXT_FIGHTINGDOJO_BLACKBELT3
-	dw_const FightingDojoBlackbelt4Text,                            TEXT_FIGHTINGDOJO_BLACKBELT4
-	dw_const FightingDojoHitmonleePokeBallText,                     TEXT_FIGHTINGDOJO_HITMONLEE_POKE_BALL
-	dw_const FightingDojoHitmonchanPokeBallText,                    TEXT_FIGHTINGDOJO_HITMONCHAN_POKE_BALL
-	dw_const FightingDojoKarateMasterText.IWillGiveYouAPokemonText, TEXT_FIGHTINGDOJO_KARATE_MASTER_I_WILL_GIVE_YOU_A_POKEMON
+	dw_const FightingDojoKarateMasterText,       TEXT_FIGHTINGDOJO_KARATE_MASTER
+	dw_const FightingDojoBlackbelt1Text,         TEXT_FIGHTINGDOJO_BLACKBELT1
+	dw_const FightingDojoBlackbelt2Text,         TEXT_FIGHTINGDOJO_BLACKBELT2
+	dw_const FightingDojoBlackbelt3Text,         TEXT_FIGHTINGDOJO_BLACKBELT3
+	dw_const FightingDojoBlackbelt4Text,         TEXT_FIGHTINGDOJO_BLACKBELT4
+	dw_const RandomPickUpItemText,               TEXT_FIGHTINGDOJO_RANDOM_ITEM
+	dw_const FightingDojoKarateMasterRewardText, TEXT_FIGHTINGDOJO_KARATE_MASTER_REWARD
+	dw_const FightingDojoNoTurningBackText,      TEXT_FIGHTINGDOJO_NO_TURNING_BACK
 
 FightingDojoTrainerHeaders:
 	def_trainers 2
@@ -106,9 +181,9 @@ FightingDojoTrainerHeader3:
 FightingDojoKarateMasterText:
 	text_asm
 	CheckEvent EVENT_DEFEATED_FIGHTING_DOJO
-	jp nz, .defeated_dojo
+	jr nz, .defeated_dojo
 	CheckEventReuseA EVENT_BEAT_KARATE_MASTER
-	jp nz, .defeated_master
+	jr nz, .defeated_master
 	ld hl, .Text
 	call PrintText
 	ld hl, wStatusFlags3
@@ -130,8 +205,8 @@ FightingDojoKarateMasterText:
 	call PrintText
 	jr .end
 .defeated_master
-	ld hl, .IWillGiveYouAPokemonText
-	call PrintText
+	; chose NO THANKS earlier: the same pair is offered again
+	call FightingDojoOfferReward
 .end
 	jp TextScriptEnd
 
@@ -143,12 +218,31 @@ FightingDojoKarateMasterText:
 	text_far _FightingDojoKarateMasterDefeatedText
 	text_end
 
+.StayAndTrainWithUsText:
+	text_far _FightingDojoKarateMasterStayAndTrainWithUsText
+	text_end
+
+FightingDojoKarateMasterRewardText:
+	text_asm
+	call FightingDojoOfferReward
+	jp TextScriptEnd
+
+; The Dojo's own reward menu (custom_functions/karate_dojo.asm). It is NOT the
+; bridge gift system and touches none of its state.
+FightingDojoOfferReward:
+	ld hl, .IWillGiveYouAPokemonText
+	call PrintText
+	farcall KarateDojoRewardMenu ; carry = a #MON was given
+	ret nc
+	SetEvent EVENT_DEFEATED_FIGHTING_DOJO
+	ret
+
 .IWillGiveYouAPokemonText:
 	text_far _FightingDojoKarateMasterIWillGiveYouAPokemonText
 	text_end
 
-.StayAndTrainWithUsText:
-	text_far _FightingDojoKarateMasterStayAndTrainWithUsText
+FightingDojoNoTurningBackText:
+	text_far _NoTurningBackText
 	text_end
 
 FightingDojoBlackbelt1Text:
@@ -221,76 +315,4 @@ FightingDojoBlackbelt4EndBattleText:
 
 FightingDojoBlackbelt4AfterBattleText:
 	text_far _FightingDojoBlackbelt4AfterBattleText
-	text_end
-
-FightingDojoHitmonleePokeBallText:
-	text_asm
-	CheckEitherEventSet EVENT_GOT_HITMONLEE, EVENT_GOT_HITMONCHAN
-	jr z, .GetMon
-	ld hl, FightingDojoBetterNotGetGreedyText
-	call PrintText
-	jr .done
-.GetMon
-	ld a, HITMONLEE
-	call DisplayPokedex
-	ld hl, .Text
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .done
-	ld a, [wCurPartySpecies]
-	ld b, a
-	ld c, 30
-	call GivePokemon
-	jr nc, .done
-
-	; once Poké Ball is taken, hide sprite
-	ld a, TOGGLE_FIGHTING_DOJO_GIFT_1
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	SetEvents EVENT_GOT_HITMONLEE, EVENT_DEFEATED_FIGHTING_DOJO
-.done
-	jp TextScriptEnd
-
-.Text:
-	text_far _FightingDojoHitmonleePokeBallText
-	text_end
-
-FightingDojoHitmonchanPokeBallText:
-	text_asm
-	CheckEitherEventSet EVENT_GOT_HITMONLEE, EVENT_GOT_HITMONCHAN
-	jr z, .GetMon
-	ld hl, FightingDojoBetterNotGetGreedyText
-	call PrintText
-	jr .done
-.GetMon
-	ld a, HITMONCHAN
-	call DisplayPokedex
-	ld hl, .Text
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .done
-	ld a, [wCurPartySpecies]
-	ld b, a
-	ld c, 30
-	call GivePokemon
-	jr nc, .done
-	SetEvents EVENT_GOT_HITMONCHAN, EVENT_DEFEATED_FIGHTING_DOJO
-
-	; once Poké Ball is taken, hide sprite
-	ld a, TOGGLE_FIGHTING_DOJO_GIFT_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-.done
-	jp TextScriptEnd
-
-.Text:
-	text_far _FightingDojoHitmonchanPokeBallText
-	text_end
-
-FightingDojoBetterNotGetGreedyText:
-	text_far _FightingDojoBetterNotGetGreedyText
 	text_end

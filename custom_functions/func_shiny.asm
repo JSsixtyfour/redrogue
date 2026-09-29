@@ -27,12 +27,10 @@
 ; cross-bank hop through this file. Only the read side (IsShiny) lives here,
 ; for the two display hooks in engine/gfx/palettes.asm.
 ;
-; Deliberately no enemy/wild-side hook: LoadEnemyMonData xor a's the whole
-; flag byte for both wild and trainer loads with nothing re-setting bit 4
-; afterward, so enemies can never be shiny. Not worth a hook on the hottest
-; path in the battle engine for a cosmetic - see MON_CATCH_RATE_BITFIELD_PC.md
-; "Enemy-side special forms don't exist yet" for the same reasoning applied
-; to bit 3.
+; Enemy side (2026-09-29): a TRAINER mon keeps its party struct's whole flag
+; byte (GetEnemyCatchRateByte, bridge_effects_extended.asm), so trainer mons
+; rolled shiny at creation now show it on the HUD. Wild mons still carry only
+; their form bits, so a wild mon is never shiny.
 
 DEF BIT_SHINY EQU 4 ; bit within the repurposed CatchRate byte
 
@@ -122,8 +120,8 @@ IsShiny::
 ; that mon is a display variant. Shared entry point rather than a shiny-specific
 ; one so a future ghost/type-variant caller can reuse it with a different
 ; animation ID - see ShinRed_Import.md Phase 9.2.
-; INPUT: none (player side only - enemies can never be shiny here, see the file
-;        header). Call with farcall.
+; INPUT: none (player side only; the enemy send-out has no sparkle hook).
+;        Call with farcall.
 ;
 ; Deviation from shinpokered: it also tracks wUnusedD366 suppression bits so
 ; the sparkle doesn't replay on every one of several redraw paths it hooks.

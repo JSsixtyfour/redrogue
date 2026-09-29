@@ -987,14 +987,21 @@ class RedRogueHarness:
         )
 
     def enter_stage_door1(
-        self, map_id: int, *, description: str, giovanni: bool = False
+        self,
+        map_id: int,
+        *,
+        description: str,
+        giovanni: bool = False,
+        miniboss_bits: int = 0,
     ) -> None:
+        """miniboss_bits: wRogueFlagsBitfield bits 4-6 (type << 4, door 1)."""
         self.write8("wLobbyDoor1StageMap", map_id)
         self.write8("wWarpEntries", map_id, offset=3)
 
         flags = self.read8("wRogueFlagsBitfield") & 0x0F
         if giovanni:
             flags |= self.GIOVANNI_TYPE_BITS
+        flags |= miniboss_bits & 0x70
         self.write8("wRogueFlagsBitfield", flags)
         self.tick(4)
         self.move_tile("up")

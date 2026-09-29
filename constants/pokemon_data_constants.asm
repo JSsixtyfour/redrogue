@@ -103,6 +103,9 @@ DEF NUM_BRIDGE_SELECTED_EFFECTS EQU const_value - 1
 DEF BRIDGE_SELECTED_RECORD_SIZE  EQU 2 ; owner byte + effect byte
 DEF BRIDGE_SELECTED_RECORD_COUNT EQU BRIDGE_PER_RUN
 ASSERT NUM_BRIDGE_SELECTED_EFFECTS == 8
+; wBridgeCalcEffectFlags uses effect ids as bit numbers. Effect 0 is the empty
+; marker, so bit 0 is free for the Mystic (SF2_SWAP_ATK_SPC) special form.
+DEF BRIDGE_CALC_SWAP_ATK_SPC EQU 0
 ASSERT BRIDGE_SELECTED_RECORD_COUNT == 2
 
 DEF HOF_MON           EQU $10

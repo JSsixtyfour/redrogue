@@ -32,7 +32,7 @@ _FightingDojoKarateMasterIWillGiveYouAPokemonText::
 
 	para "Choose whichever"
 	line "one you like!"
-	done
+	prompt
 
 _FightingDojoKarateMasterStayAndTrainWithUsText::
 	text "Ho!"
@@ -112,19 +112,3 @@ _FightingDojoBlackbelt4AfterBattleText::
 	cont "train here."
 	done
 
-_FightingDojoHitmonleePokeBallText::
-	text "You want the"
-	line "hard kicking"
-	cont "HITMONLEE?"
-	done
-
-_FightingDojoHitmonchanPokeBallText::
-	text "You want the"
-	line "piston punching"
-	cont "HITMONCHAN?"
-	done
-
-_FightingDojoBetterNotGetGreedyText::
-	text "Better not get"
-	line "greedy..."
-	done

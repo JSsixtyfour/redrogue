@@ -73,5 +73,6 @@ TrainerClassMoveChoiceModifications:
 	move_choices 1       ; KAREN
 	move_choices 1, 3    ; KOGA_E4 - matches the gym KOGA: 1 plus AI_TYPES
 	move_choices 1, 3    ; FINAL_AI - vestigial; the AI tier drives move choice
+	move_choices 1, 3    ; KARATE_MINIBOSS
 	assert __move_choices__ == NUM_TRAINERS, \
 		"TrainerClassMoveChoiceModifications: expected {d:NUM_TRAINERS} entries, got {d:__move_choices__}"

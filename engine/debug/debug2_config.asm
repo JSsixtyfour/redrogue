@@ -480,8 +480,8 @@ Debug2DoorList::
 	ret
 .miniBoss
 ; ROLLABLE, not NUM_MINIBOSS_TYPES: a boss type only manifests on a map whose
-; stage script calls the encounter hook, and Karate has none yet, so offering it
-; would be a door that silently does nothing.
+; stage script calls the encounter hook, so a type without one would be a door
+; that silently does nothing. Karate's hook is the Fighting Dojo's setup block.
 	ld b, MINIBOSS_MAX_ROLLABLE_TYPE
 	ld hl, Debug2MiniBossNames
 	ret
@@ -672,8 +672,7 @@ Debug2GiftOaksLabText:    db "   OAKS LAB@"
 
 ; These two are short enough to be worth writing inline.
 ; KEEP IN SYNC with MINIBOSS_RIVAL/GIOVANNI/KARATE (constants/ram_constants.asm).
-; Karate is listed for when its encounter hook lands, but the count above stops
-; short of it, so it is not selectable yet.
+; The count above follows MINIBOSS_MAX_ROLLABLE_TYPE, which now includes Karate.
 Debug2MiniBossNames:
 	dw Debug2MiniBossRivalText
 	dw Debug2MiniBossGiovanniText

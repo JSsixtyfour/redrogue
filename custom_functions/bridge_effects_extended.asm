@@ -76,27 +76,46 @@ BridgeInflictPoisonStatus::
 	ld e, a
 	ret
 
-; In: e = BRIDGE_STATUS_CHECK_*. Carry is set when an enemy attempt to inflict
-; that major-status category on the active player mon must be blocked.
+; In: e = BRIDGE_STATUS_CHECK_*. Carry is set when the status attempt on the
+; defending mon must be blocked. Bridge selected effects only guard the player's
+; mon (enemy turn). PARALYSIS also checks the SF2_NO_PARALYSIS special form
+; (Limber Hitmonlee) on whichever side is defending: enemies carry special
+; forms too (GetEnemyCatchRateByte).
 BridgePlayerTargetBlocksStatus::
 	ld d, e
-	ldh a, [hWhoseTurn]
-	and a
-	jr z, .allowed
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jr z, .allowed
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .playerAttacking
 	push de
 	ld e, BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY
 	farcall BridgeActiveMonHasSelectedEffect
 	pop de
 	jr c, .blocked
 	ld a, d
+	cp BRIDGE_STATUS_CHECK_PARALYSIS
+	jr z, .paralysis
 	and a
 	jr nz, .allowed
 	ld e, BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY
 	farcall BridgeActiveMonHasSelectedEffect
 	jr c, .blocked
+	jr .allowed
+.playerAttacking
+	ld a, d
+	cp BRIDGE_STATUS_CHECK_PARALYSIS
+	jr nz, .allowed
+	ld de, wEnemyMon
+	jr .checkLimber
+.paralysis
+	; Limber (Karate Dojo Hitmonlee): a special form, not a selected effect
+	ld de, wBattleMon
+.checkLimber
+	farcall GetSpecialFormCaps2   ; e = SF2_* caps
+	bit SF2_NO_PARALYSIS, e
+	jr nz, .blocked
 .allowed
 	and a
 	ret
@@ -254,4 +273,69 @@ BridgeMomSecondChanceEligibleFar::
 	pop af
 	ld [wCurItem], a
 	and a
+	ret
+
+; ---------------------------------------------------------------------------
+; Enemy-side catch-rate flags. LoadEnemyMonData rebuilds a trainer mon from its
+; species header and zeroes wEnemyMonCatchRate, so these two routines carry the
+; party struct's whole flag byte across (ghost, fusion, type variant, special
+; form, shiny, form). _AddPartyMon builds that byte from scratch, so it never
+; holds a raw species catch rate. A ghost/type variant's type lives in the
+; struct's own MON_TYPE2 and is copied over the header's type 2.
+; Lives here, not beside GetSpecialFormCaps in "rogue": that bank is nearly
+; full, and both routines are reached by farcall anyway.
+; ---------------------------------------------------------------------------
+	ASSERT MON_TYPE2 + 1 == MON_CATCH_RATE
+
+; LoadEnemyMonData .copyTypes (TOUCH 2), after both types are written.
+; OUTPUT: e = the byte to store at wEnemyMonCatchRate. For a variant, also
+;         overwrites wEnemyMonType2 with the struct's stored type.
+; CLOBBERS: af, bc, hl, e  (d preserved)
+GetEnemyCatchRateByte::
+	ldh a, [hIsInBattle]
+	cp 2                   ; trainer battle?
+	jr nz, .wild
+	ld hl, wEnemyMon1CatchRate
+	ldh a, [hWhichPokemon] ; not wEnemyMonPartyPos: see GetEnemySpawnForm
+	ld bc, wEnemyMon2 - wEnemyMon1
+	call AddNTimes
+	ld a, [hl]
+	ld e, a
+	and (1 << BIT_GHOST_VARIANT) | (1 << BIT_TYPE_VARIANT)
+	jr z, .done
+	dec hl                 ; MON_TYPE2
+	ld a, [hl]
+	ld [wEnemyMonType2], a
+	jr .done
+.wild
+	ld a, [wSpawnForm]     ; a wild mon has no struct: form only
+	and NUM_FORM_SLOTS
+	rrca                   ; 0-3 -> bits 5-6
+	rrca
+	rrca
+	ld e, a
+.done                      ; single exit (test_karate_dojo_forms hooks it)
+	ret
+
+; LoadEnemyMonData TOUCH 1: the usual form publish, then arm _CalcStats'
+; Mystic swap from the trainer mon's party struct, for the CalcStats a few
+; lines later in .calcEnemyStats (nothing between them runs CalcStats, and
+; _CalcStats clears the flag byte when it finishes).
+; CLOBBERS: all
+PublishEnemyFormAndStatContext::
+	farcall PublishEnemyFormContext
+	ldh a, [hIsInBattle]
+	cp 2
+	ret nz
+	ld hl, wEnemyMons
+	ldh a, [hWhichPokemon]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld d, h
+	ld e, l
+	farcall GetSpecialFormCaps2   ; e = SF2_* caps
+	bit SF2_SWAP_ATK_SPC, e
+	ret z
+	ld hl, wBridgeCalcEffectFlags
+	set BRIDGE_CALC_SWAP_ATK_SPC, [hl]
 	ret

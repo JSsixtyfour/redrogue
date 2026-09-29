@@ -382,7 +382,7 @@ def load_miniboss_teams() -> dict[str, list[list[str]]]:
     current = None
     for raw in _lines("data/trainers/parties.asm"):
         code = _code(raw)
-        m = re.match(r"^(RivalMiniBossData|GiovanniMiniBossData):$", code)
+        m = re.match(r"^(RivalMiniBossData|GiovanniMiniBossData|KarateMiniBossData):$", code)
         if m:
             current = m.group(1)
             out[current] = []

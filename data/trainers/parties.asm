@@ -95,6 +95,7 @@ TrainerDataPointers:
 	dw KarenData            ; KAREN
 	dw KogaE4Data           ; KOGA_E4
 	dw Rival3Data           ; FINAL_AI - never read: ReadTrainer loads the archive before this lookup
+	dw KarateMiniBossData   ; KARATE_MINIBOSS
 	assert_table_length NUM_TRAINERS
 
 ; if first byte != $FF, then
@@ -545,6 +546,13 @@ GiovanniMiniBossData:
 	db RHYHORN, DUGTRIO, NIDOKING, MINIBOSS_RANDOM_FILL, 2, 0
 	db SANDSLASH, DUGTRIO, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
 	db NIDOQUEEN, MAROWAK, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
+
+KarateMiniBossData:
+	; 3 fighting-themed teams (TEAM_RANDOM_3_SET). The Dojo's reward Pokemon
+	; (Machop line, Hitmonlee, Hitmonchan) headline; two rarer-random fill mons.
+	db HITMONLEE, HITMONCHAN, MACHAMP, MINIBOSS_RANDOM_FILL, 2, 0
+	db PRIMEAPE, POLIWRATH, MACHAMP, MINIBOSS_RANDOM_FILL, 2, 0
+	db HITMONCHAN, PRIMEAPE, HITMONLEE, MINIBOSS_RANDOM_FILL, 2, 0
 
 LoreleiData:
 	; Tier 1 (battle count 86)

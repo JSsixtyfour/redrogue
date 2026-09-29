@@ -124,6 +124,9 @@ ENDM
 ; ReadTrainer (read_trainer_party.asm), its portrait is the player's front
 ; pic, and its tier is its difficulty's ceiling (AIResolveTier).
 	trainer_const FINAL_AI       ; $3F - OPP_FINAL_AI = 223
+; Karate Master mini-boss (Fighting Dojo, KARATE_MINIBOSS_PLAN.md). Own class
+; so his three fighting teams stay isolated from the vanilla Blackbelt roster.
+	trainer_const KARATE_MINIBOSS ; $40 - OPP_KARATE_MINIBOSS = 224
 DEF NUM_TRAINERS EQU const_value - 1
 
 ; Trainer-card face/badge blocks (gfx/trainer_card/badges.png, blitted by

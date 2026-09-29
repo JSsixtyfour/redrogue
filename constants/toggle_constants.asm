@@ -143,8 +143,7 @@ ENDM
 	const TOGGLE_POKEMON_MANSION_1F_ITEM_2 ; 49 X
 
 	toggle_consts_for FIGHTING_DOJO
-	const TOGGLE_FIGHTING_DOJO_GIFT_1 ; 4A
-	const TOGGLE_FIGHTING_DOJO_GIFT_2 ; 4B
+	const TOGGLE_FIGHTING_DOJO_RANDOM_ITEM ; 4A (Karate mini-boss stage item)
 
 	toggle_consts_for SILPH_CO_1F
 	const TOGGLE_SILPH_CO_1F_PROF_PALM

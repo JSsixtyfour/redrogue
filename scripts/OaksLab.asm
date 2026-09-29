@@ -560,7 +560,9 @@ OaksLabRivalStartBattleScript:
 ; Blue battles beside the player on row 2, on whichever exit tile the player
 ; did not walk up to: player at x=4 has him on the right, x=5 on the left.
 ; The player's facing is driven by wPlayerMovingDirection every frame, so that
-; is what must change, not just the sprite's facing byte.
+; is what must change, not just the sprite's facing byte. Facing bytes only
+; become drawn images in UpdateSprites, and the overworld loop starts the
+; battle in the same pass that runs this script, so draw them here.
 OaksLabRivalAndPlayerFaceEachOther:
 	ld a, [wXCoord]
 	cp 4
@@ -577,7 +579,10 @@ OaksLabRivalAndPlayerFaceEachOther:
 	ld [wPlayerMovingDirection], a
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
-	jp SetSpriteFacingDirectionAndDelay
+	call SetSpriteFacingDirection
+	call UpdateSprites
+	ld c, 6
+	jp DelayFrames
 
 OaksLabRivalEndBattleScript:
     xor a

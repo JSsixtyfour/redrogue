@@ -63,4 +63,5 @@ TrainerNames::
 	li "KAREN"
 	li "KOGA" ; KOGA_E4 - displays as KOGA, same as the gym class
 	li "AI" ; FINAL_AI
+	li "KOICHI" ; KARATE_MINIBOSS
 	assert_list_length NUM_TRAINERS

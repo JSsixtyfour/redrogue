@@ -476,9 +476,10 @@ class PartySpecCoverageContractTest(unittest.TestCase):
             r"(?=\n[ \t]*[A-Za-z_0-9]+Data:[ \t]*\n|\Z)",
             text, re.S | re.M)
         # BuildMiniBossTeam supplies levels at runtime from
-        # trainer_difficulty_settings_miniboss, so these two carry species
+        # trainer_difficulty_settings_miniboss, so these three carry species
         # markers with no level bytes at all. Documented in parties.asm.
-        level_less = {"RivalMiniBossData", "GiovanniMiniBossData"}
+        level_less = {"RivalMiniBossData", "GiovanniMiniBossData",
+                      "KarateMiniBossData"}
 
         def is_level(token):
             return token.isdigit() and 0 < int(token) <= 100

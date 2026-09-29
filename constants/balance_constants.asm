@@ -95,6 +95,7 @@ DEF MONEY_BASE_CHAMPION EQU 300 ; RIVAL3, FINAL_AI
 DEF MONEY_BASE_OAK EQU 300
 DEF MONEY_BASE_MINIBOSS_RIVAL EQU 100
 DEF MONEY_BASE_MINIBOSS_GIOVANNI EQU 200
+DEF MONEY_BASE_MINIBOSS_KARATE EQU 150
 
 ; --- Economy -------------------------------------------------------------
 ; BCD, $3000 = Y3000. Read by engine/movie/oak_speech/init_player_data.asm.

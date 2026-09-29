@@ -140,6 +140,21 @@ PrepareFusionAndBridgeRayCalcStats::
 	xor a
 	ld [wBridgeCalcEffectFlags], a
 
+	; Mystic special form (Karate Dojo Hitmonchan) is keyed on the struct
+	; itself, not the owner registry, so it follows the mon into the box.
+	ld hl, -MON_STATS
+	add hl, de
+	ld d, h
+	ld e, l
+	call GetSpecialFormCaps2      ; same bank ("rogue"); e = SF2_* caps
+	bit SF2_SWAP_ATK_SPC, e
+	jr z, .noStatSwap
+	ld hl, wBridgeCalcEffectFlags
+	set BRIDGE_CALC_SWAP_ATK_SPC, [hl]
+.noStatSwap
+	pop de
+	push de
+
 	; Real party structs can be identified directly from their MON_STATS pointer.
 	ld hl, wPartyMon1Stats
 	ld b, 1

@@ -426,8 +426,6 @@ SabrinaPool:
 	pool_mon EXEGGCUTE
 	pool_mon EXEGGUTOR
 	pool_mon STARMIE
-	pool_mon MEW
-	pool_mon MEWTWO
 SabrinaPool_Johto:
 	pool_mon NATU
 	pool_mon XATU

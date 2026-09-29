@@ -206,7 +206,22 @@ ExplodeEffect:
 	ret
 
 FreezeBurnParalyzeEffect:
+	; the attacker's effect decides whether this is a paralysis attempt
+	; (Limber special form, checked on either side)
 	ld e, BRIDGE_STATUS_CHECK_OTHER
+	ldh a, [hWhoseTurn]
+	and a
+	ld a, [wPlayerMoveEffect]
+	jr z, .haveEffect
+	ld a, [wEnemyMoveEffect]
+.haveEffect
+	cp PARALYZE_SIDE_EFFECT1
+	jr z, .paralysis
+	cp PARALYZE_SIDE_EFFECT2
+	jr nz, .checkBridge
+.paralysis
+	ld e, BRIDGE_STATUS_CHECK_PARALYSIS
+.checkBridge
 	farcall BridgePlayerTargetBlocksStatus
 	ret c
 	xor a
