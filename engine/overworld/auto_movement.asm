@@ -677,9 +677,10 @@ RLEList_SilphCoB1FPalmToCreditExchange:
 
 ; Executed backward: wait while Palm passes, then (3,2) -> (3,1) -> (6,1).
 ; The player steps UP into (3,1), which Palm crosses on his second step. The
-; wait is 2.5 Palm tiles: the player starts up as Palm is half out of (3,1), so
-; the two sprites only ever touch edges. Two tiles overlapped them diagonally
-; mid-step; three left the player a full empty tile behind (measured in BGB).
+; wait is 2.25 Palm tiles, tuned by eye in BGB: three left a full empty tile
+; between them, 2.5 still read as lagging. Anything under three overlaps the
+; sprites' corners briefly (here at most ~6x6 px as the player steps up while
+; Palm steps right); two tiles made that a visible walk-through.
 ; NO_INPUT is counted in movement ticks, and a tile is 8 ticks normally but 16
 ; with 60 FPS on (1 px per tick instead of 2), so the wait has a 60 FPS copy at
 ; double length. A single 16-tick wait was two Palm tiles at 30 FPS but one at
@@ -688,14 +689,14 @@ RLEList_SilphCoB1FPlayerToCreditExchange:
 	db NO_INPUT, 1
 	db PAD_RIGHT, 3
 	db PAD_UP, 1
-	db NO_INPUT, 5 * 8 / 2
+	db NO_INPUT, 9 * 8 / 4
 	db -1
 
 RLEList_SilphCoB1FPlayerToCreditExchange60FPS:
 	db NO_INPUT, 1
 	db PAD_RIGHT, 3
 	db PAD_UP, 1
-	db NO_INPUT, 5 * 16 / 2
+	db NO_INPUT, 9 * 16 / 4
 	db -1
 
 ; Palm/player: (7,1)/(6,1) -> (11,1)/(10,1).

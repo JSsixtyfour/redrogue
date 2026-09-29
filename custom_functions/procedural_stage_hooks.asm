@@ -224,43 +224,9 @@ ProcStageLoadDispatch::
 	;farcall PFPreloadForest
 	ret                          ; PALLET_TOWN is never also a procedural map
 .notPalletTown
-	cp SILPH_CO_B1F
-	jr nz, .notWildAreaTestEntrance
-	; The temporary Credit Exchange replacement is a complete wild-area test
-	; entrance, so prepare a fresh run exactly as lobby assignment would.
-	;
-	; STAGE EVENT ARMING, added 2026-09-17. This branch used to call only
-	; PCPreloadCave, which left wStageEvent at whatever the last run set.
-	; SelectAndPatchLobbyExit is the ONLY other thing that ever writes it, and
-	; this door does not go through the lobby, so on a fresh boot the value was
-	; always STAGE_EVENT_NONE: StageEventStageSprites (inside PCPreloadCave)
-	; then marked both NPC slots unused and no stage event could ever appear
-	; through this entrance. The clear is as load-bearing as the roll - without
-	; it a second trip through the door inherits the previous run's phase and
-	; the NPC returns already HIDING or SETTLED. Mirrors the head of
-	; SpecialEncounterRollAndAssign, minus its gym-next / battle-count gates,
-	; which exist to pace a real run and would defeat the point of a test door.
-	; Must precede PCPreloadCave: that is what reads wStageEvent to stage the
-	; sprites, and preload is already the last moment anything can be rolled.
-	xor a
-	ld [wStageEvent], a
-	farcall StageEventClearStagedSprites
-	farcall StageEventRoll
-	;
-	; POINTED AT THE CAVE 2026-09-16 (was PFacPreload / PROCEDURAL_FACILITY)
-	; for visual review of the river, which PCCarveRiver only started actually
-	; producing today. The other half of this switch is SilphCoB1F's warps 6
-	; and 7 in data/maps/objects/SilphCoB1F.asm - BOTH must point at the same
-	; stage or the door stages one kind of run and walks into another. To put
-	; the Facility back, revert this farcall and those two warp_events
-	; together.
-	call ProcGenerationBeginDoubleSpeed
-	push af
-	farcall PCPreloadCave
-	pop af
-	call ProcGenerationEndDoubleSpeed
-	ret
-.notWildAreaTestEntrance
+	; SILPH_CO_B1F's doors at (6,0)/(7,0) were a wild-area test entrance that
+	; preloaded a fresh cave (and rolled a stage event) on every B1F load. They
+	; lead to the Credit Exchange again as of 2026-09-28, so B1F stages nothing.
 	cp SILPH_CO_DORM
 	jr nz, .notDorm
 	farcall RoomStampBlocks

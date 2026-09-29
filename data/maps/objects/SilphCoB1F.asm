@@ -12,15 +12,12 @@ SilphCoB1F_Object:
 	warp_event  3,  0, SILPH_CO_DORM, 1
 	warp_event 11,  0, SILPH_CO_VR, 2
 	warp_event 10,  0, SILPH_CO_VR, 1
-	; Wild-area test entrance. Pointed at the CAVE 2026-09-16 (was
-	; PROCEDURAL_FACILITY) for visual review of the river. Destination warp 1 is
-	; the cave's hardcoded entrance at block (9,19); the cave's own warp 1 leads
-	; back to LAST_MAP, which is this map. The matching half of this switch is
-	; the SILPH_CO_B1F branch of ProcStageLoadDispatch
-	; (custom_functions/procedural_stage_hooks.asm), which stages the run on
-	; entry - change both together or the door stages one stage and enters another.
-	warp_event  7,  0, PROCEDURAL_CAVE_1, 1
-	warp_event  6,  0, PROCEDURAL_CAVE_1, 1
+	; Credit Exchange, restored 2026-09-28. From 2026-09-11 these two doors were
+	; a wild-area test entrance (Facility, then the Cave) whose other half was a
+	; SILPH_CO_B1F branch in ProcStageLoadDispatch; that branch was removed with
+	; this restore. CreditExchange's own warps 1/2 return to ids 7/6 here.
+	warp_event  7,  0, CREDIT_EXCHANGE, 2
+	warp_event  6,  0, CREDIT_EXCHANGE, 1
 	; Palm's locked back room. Appended so existing warp ids 1-7 remain stable.
 	warp_event 20,  0, PALMS_ROOM, 1
 	warp_event 21,  0, PALMS_ROOM, 2

@@ -935,47 +935,53 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 7, True
         )
 
-    def test_silph_b1f_test_entrance_preloads_a_fresh_cave(self) -> None:
-        """SILPH_CO_B1F is the wild-area test entrance: walking in must stage a
-        fresh run of whichever stage its door leads to.
+    def test_silph_b1f_doors_lead_to_credit_exchange_and_stage_nothing(self) -> None:
+        """SILPH_CO_B1F's (7,0)/(6,0) doors are the Credit Exchange again.
 
-        Pointed at the CAVE 2026-09-16 (this test previously asserted the
-        Facility). Two things have to agree or the door stages one stage and
-        walks the player into another, so this checks BOTH:
-          * the SILPH_CO_B1F branch of ProcStageLoadDispatch runs PCPreloadCave,
-          * SilphCoB1F's warps 6 and 7 lead to PROCEDURAL_CAVE_1.
-        To put the Facility back, flip both halves and this test together.
+        From 2026-09-11 to 2026-09-28 they were a wild-area test entrance, with
+        a SILPH_CO_B1F branch in ProcStageLoadDispatch that preloaded a fresh
+        cave on every B1F load. Restoring the doors removed that branch, so this
+        checks both halves stay restored together:
+          * warps 6/7 lead to CREDIT_EXCHANGE, and the exchange's own warps
+            return to B1F ids 7/6 (a mismatch strands the player),
+          * loading B1F leaves the staged cave untouched.
         """
         assert self.harness is not None
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
 
-        warps = (REPO_ROOT / "data" / "maps" / "objects" / "SilphCoB1F.asm").read_text()
-        destinations = [
-            line.split(",")[2].strip()
-            for line in warps.splitlines()
-            if line.strip().startswith("warp_event")
-        ]
-        self.assertEqual(destinations[5:7], ["PROCEDURAL_CAVE_1"] * 2)
+        def warp_fields(name: str) -> list[list[str]]:
+            source = (REPO_ROOT / "data" / "maps" / "objects" / name).read_text()
+            return [
+                [field.strip() for field in line.split("warp_event", 1)[1].split(",")]
+                for line in source.splitlines()
+                if line.strip().startswith("warp_event")
+            ]
+
+        b1f = warp_fields("SilphCoB1F.asm")
+        self.assertEqual(
+            [row[2:4] for row in b1f[5:7]],
+            [["CREDIT_EXCHANGE", "2"], ["CREDIT_EXCHANGE", "1"]],
+        )
+        exchange = warp_fields("CreditExchange.asm")
+        self.assertEqual(
+            [row[2:4] for row in exchange[:2]],
+            [["SILPH_CO_B1F", "7"], ["SILPH_CO_B1F", "6"]],
+        )
 
         self.harness.boot_to_lobby()
-        # Poison the staged run so a preload that never ran cannot be mistaken
-        # for one that ran and produced zeroes.
+        # Poison the staged run: a B1F load that still preloaded a cave would
+        # overwrite these.
         self.harness.write_sram_bytes("sProcCaveBaked", [1], bank=0)
         self.harness.write_sram_bytes("sProcCaveBallsStaged", [0xAA], bank=0)
         self.harness.write_sram_bytes("sProcCaveStagingEntranceX", [0xAA], bank=0)
         self.harness.write8("hCurMap", maps["SILPH_CO_B1F"])
         self.harness.call_routine("ProcStageLoadDispatch", limit=400000)
-        self.assertEqual(self.harness.read_sram_bytes("sProcCaveBaked", 1, bank=0), [0])
+        self.assertEqual(self.harness.read_sram_bytes("sProcCaveBaked", 1, bank=0), [1])
         self.assertEqual(
-            self.harness.read_sram_bytes("sProcCaveBallsStaged", 1, bank=0), [0]
+            self.harness.read_sram_bytes("sProcCaveBallsStaged", 1, bank=0), [0xAA]
         )
-        # The cave's entrance is hardcoded at block (9,19), so this is also a
-        # check that the staged buffer is a real cave and not leftover poison.
         self.assertEqual(
-            self.harness.read_sram_bytes("sProcCaveStagingEntranceX", 1, bank=0), [9]
-        )
-        self.assertIn(
-            self.harness.read_sram_bytes("sProcCavePalette", 1, bank=0)[0], (0, 1)
+            self.harness.read_sram_bytes("sProcCaveStagingEntranceX", 1, bank=0), [0xAA]
         )
 
     def test_procedural_facility_generation(self) -> None:
