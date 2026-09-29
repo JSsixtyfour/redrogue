@@ -888,13 +888,13 @@ RivalPickStarter::
 	callfar AIGetTypeEffectiveness
 	ld a, [wTypeEffectiveness]
 	cp SUPER_EFFECTIVE
-	jr z, .adv
+	jr nc, .adv                   ; x2 or x4 (40 now that both types combine)
 	ld a, [wMonHType2]
 	ld [wEnemyMoveType], a
 	callfar AIGetTypeEffectiveness
 	ld a, [wTypeEffectiveness]
 	cp SUPER_EFFECTIVE
-	jr z, .adv
+	jr nc, .adv
 	xor a
 	ret
 .adv

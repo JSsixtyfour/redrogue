@@ -5872,10 +5872,10 @@ BridgeTrySuperEffectiveDamageBoost:
 	ret
 
 ; Read-only player move matchup preview.  This deliberately does not reuse
-; AIGetTypeEffectiveness below: that routine is enemy-attacks-player only,
-; ignores dual-type stacking, and its neutral initialization is the vanilla
-; $10 bug.  It also does not include RoguePrismDamageBoost.  That hook scales
-; damage, not type effectiveness, so leaving it out of this readout is correct.
+; AIGetTypeEffectiveness below: that routine is enemy-attacks-player only
+; and reports in tenths rather than twentieths.  It also does not include
+; RoguePrismDamageBoost.  That hook scales damage, not type effectiveness, so
+; leaving it out of this readout is correct.
 ; Keep the accumulator in twentieths so two half-resistances remain x1/4
 ; instead of truncating 5 * 5 / 10 to an incorrect x0.2.
 ; Returns the accumulated type multiplier in e (0, 5, 10, 20, 40, or 80).
@@ -5968,9 +5968,8 @@ TypeMatchupScan:
 ; The effectiveness test deliberately does NOT read wDamageMultipliers, even
 ; though AdjustDamageForMoveType just computed it: that variable is overwritten
 ; per matching type pair, so for a dual type it holds only the LAST pair's
-; multiplier and reads 0.5x for a 2x/0.5x mon. It also does not reuse
-; AIGetTypeEffectiveness below, which `ret z`s on the FIRST match and has the
-; same blind spot. This accumulates across both defender types in twentieths,
+; multiplier and reads 0.5x for a 2x/0.5x mon. This accumulates across both
+; defender types in twentieths,
 ; exactly like PreviewTypeMatchup above, so 2x/0.5x correctly cancels to neutral
 ; and 2x/2x correctly reads as 4x.
 ; ============================================================
@@ -6080,7 +6079,7 @@ AIGetTypeEffectiveness:
 ; wPokedexNum, wMaxPP, wNumSetBits and several more - see the shared union in
 ; ram/wram.asm). It is saved and restored below, but do not read anything into
 ; that: AI_TYPES calls AIGetTypeEffectiveness on its own pass, which writes its
-; $10 sentinel into the same byte, so the value visibly changes across a full
+; own result into the same byte, so the value visibly changes across a full
 ; AI cycle no matter what this routine does. Verified by tier: it drifts at T1
 ; with the Phase 3 layers switched off, and does not drift at T0. Any future
 ; code that wants a wMoveType or wTypeEffectiveness value to survive an AI call

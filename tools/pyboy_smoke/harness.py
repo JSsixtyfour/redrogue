@@ -488,39 +488,56 @@ class RedRogueHarness:
             ("AIEnemyTrainerChooseMoves.nextLayer", layer_start),
             ("AIEnemyTrainerChooseMoves.layerReturn", layer_return),
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
+            ("SelectEnemyMove.done", selected),
             ("MainInBattleLoop.noLinkBattle", selected),
         ):
             self.register_hook(label, callback)
         return records
 
-    def hook_ai_personality_timing(self) -> list[dict[str, int]]:
-        """Measure AIRunPersonality through the dispatcher's minimum-scan seam."""
-        records: list[dict[str, int]] = []
-        pending: dict[str, int | None] = {
+    def hook_ai_personality_timing(self) -> list[dict[str, object]]:
+        """Measure AIRunPersonality exactly through the score-minimum seam."""
+        records: list[dict[str, object]] = []
+        pending: dict[str, object | None] = {
             "start_cycle": None,
             "trainer_class": None,
+            "trainer_no": None,
+            "scores_before": None,
         }
 
         def begin(_context) -> None:
             pending["start_cycle"] = self.cycle_count()
             pending["trainer_class"] = self.read8("wTrainerClass")
+            pending["trainer_no"] = self.read8("wTrainerNo")
+            pending["scores_before"] = self.read_bytes("wBuffer", 4)
 
         def finish(_context) -> None:
             start_cycle = pending["start_cycle"]
             trainer_class = pending["trainer_class"]
-            if start_cycle is None or trainer_class is None:
+            trainer_no = pending["trainer_no"]
+            scores_before = pending["scores_before"]
+            if (
+                start_cycle is None
+                or trainer_class is None
+                or trainer_no is None
+                or scores_before is None
+            ):
                 return
             end_cycle = self.cycle_count()
             records.append(
                 {
                     "trainer_class": trainer_class,
+                    "trainer_no": trainer_no,
                     "start_cycle": start_cycle,
                     "end_cycle": end_cycle,
                     "cycles": end_cycle - start_cycle,
+                    "scores_before": scores_before,
+                    "scores_after": self.read_bytes("wBuffer", 4),
                 }
             )
             pending["start_cycle"] = None
             pending["trainer_class"] = None
+            pending["trainer_no"] = None
+            pending["scores_before"] = None
 
         self.register_hook("AIRunPersonality", begin)
         self.register_hook(

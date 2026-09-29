@@ -1054,13 +1054,13 @@ AIScaleDamageForCrit::
 ; Carry SET if the enemy's active mon has at least one move that is
 ; super-effective against the player.
 ;
-; Deliberately uses AIGetTypeEffectiveness - the same single-type check AI_TYPES
-; already scores with - rather than the dual-type PreviewTypeMatchup. The point
-; is to answer "does the scoring layer think I have a good move here", and using
+; Deliberately uses AIGetTypeEffectiveness - the same enemy-attacks-player check
+; AI_TYPES already scores with - rather than PreviewTypeMatchup (player
+; attacks). The point is to answer "does the scoring layer think I have a good move here", and using
 ; a DIFFERENT notion of effectiveness than the layer that actually picks the
 ; move would let the switch decision and the move decision disagree about the
-; same board. See AI_OVERHAUL_PLAN.md follow-up F7 for why $10, not 10, is this
-; engine's neutral sentinel; every caller compares against it, so this does too.
+; same board. Neutral is EFFECTIVE (10) since Shin Red's dual-type fix (it was
+; vanilla's $10 before); every caller compares against it, so this does too.
 ;
 ; Lives in bank $0E because it calls ReadMove, whose Moves table is in this
 ; bank. Farcalled from the switching engine in bank $2C, returning its answer in
@@ -1084,7 +1084,7 @@ AIHasSuperEffectiveMove::
 	ld a, [wTypeEffectiveness]
 	pop bc
 	pop hl
-	cp $10
+	cp EFFECTIVE
 	jr z, .next ; exactly neutral
 	jr c, .next ; below neutral - resisted or immune
 	scf

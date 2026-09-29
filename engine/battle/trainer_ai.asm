@@ -206,11 +206,19 @@ AIRunPersonality:
 	ld l, a
 	jp hl
 
-; Resolve a sparse trainer-class assignment. Keep profile activation explicit
-; so each class receives a deliberate, reviewable balance change.
-; Input: a = trainer class. Output: a = AI_PERSONALITY_*.
+; Resolve individual (trainer class, trainer number) overrides before applying
+; the class-wide default. Carry from the individual lookup distinguishes an
+; explicit AI_PERSONALITY_NONE from a missing record, so NONE can neutralize
+; one trainer without changing the rest of its class.
 AIGetSoftPersonality:
+	ld a, [wTrainerClass]
 	ld b, a
+	ld a, [wTrainerNo]
+	ld c, a
+	ld hl, AISoftPersonalityByTrainer
+	call AIGetSoftPersonalityByTrainer
+	ret c ; a matching NONE record is an explicit neutral override
+	ld a, b
 	ld hl, AISoftPersonalityByClass
 .next
 	ld a, [hli]
@@ -226,6 +234,53 @@ AIGetSoftPersonality:
 .none
 	xor a
 	ret
+
+; Input: b = raw wTrainerClass, c = raw wTrainerNo, hl = sparse table.
+; Table rows are <class, trainer number, profile>, terminated by $ff.
+; Output: a = profile; carry set when the exact pair matched (including NONE).
+AIGetSoftPersonalityByTrainer:
+.next
+	ld a, [hli]
+	cp $ff
+	jr z, .none
+	cp b
+	jr nz, .skipTrainerNumber
+	ld a, [hli]
+	cp c
+	jr nz, .skipProfile
+	ld a, [hli]
+	scf
+	ret
+.skipTrainerNumber
+	inc hl ; trainer number
+.skipProfile
+	inc hl ; profile
+	jr .next
+.none
+	xor a ; clear carry: no individual override was found
+	ret
+
+IF DEF(_DEBUG)
+; PyBoy-only seam: interpret a synthetic table at wBuffer + 2. Input bytes at
+; wBuffer are <class, trainer number>; output is <profile, matched flag>.
+; Production lookup uses the same resolver with AISoftPersonalityByTrainer.
+AISoftPersonalityTestResolveTrainerOverride::
+	ld a, [wBuffer]
+	ld b, a
+	ld a, [wBuffer + 1]
+	ld c, a
+	ld hl, wBuffer + 2
+	call AIGetSoftPersonalityByTrainer
+	ld [wBuffer], a
+	ld a, 0
+	adc a ; matched flag from the helper's carry result
+	ld [wBuffer + 1], a
+	ret
+ENDC
+
+AISoftPersonalityByTrainer:
+	; db TRAINER_CLASS, trainer number, AI_PERSONALITY_* ; sparse overrides
+	db $ff ; none assigned yet
 
 AISoftPersonalityByClass:
 	; db TRAINER_CLASS, AI_PERSONALITY_* ; opt in one class per reviewed change
@@ -526,7 +581,7 @@ AIMoveChoiceModification3:
 	pop bc
 	pop hl
 	ld a, [wTypeEffectiveness]
-	cp $10
+	cp EFFECTIVE
 	jr z, .nextMove
 	jr c, .notEffectiveMove
 	; Phase 2b: was `dec [hl]`.
