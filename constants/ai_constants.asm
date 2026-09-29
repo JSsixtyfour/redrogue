@@ -155,6 +155,11 @@ DEF AI_BUF_SCORES     EQU 0
 ; its pick, and send-out/switch decisions never run inside move selection.
 DEF AI_BUF_THREATTYPES EQU 0
 
+; wAIPlayerKOCache states (AIPlayerWouldKO's one-decision cache).
+DEF AI_KO_CACHE_EMPTY EQU 0 ; not computed this decision
+DEF AI_KO_CACHE_NO    EQU 1 ; computed: the believed moveset cannot KO us
+DEF AI_KO_CACHE_YES   EQU 2 ; computed: it can
+
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
 ; That cache was CANCELLED in Phase 2b: its entire justification was avoiding
 ; cross-bank ReadMove farcalls, which evaporated once every scoring layer was

@@ -160,6 +160,7 @@ class Phase0Probe(unittest.TestCase):
             if stale:
                 h.reveal_player_moves(1, [0])
             self.word("wEnemyMonHP", 5)
+            h.write8("wAIPlayerKOCache", 0)  # a fresh decision each time
             before = yes["count"]
             h.call_routine("AIPlayerWouldKO", limit=240)
             results[label] = yes["count"] - before

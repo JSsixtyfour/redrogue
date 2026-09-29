@@ -26,6 +26,8 @@ AIEnemyTrainerChooseMoves:
 ; ReadMove calls overwrite the wEnemyMove* block this reads from. See
 ; AITrackLastMove in ai_predicates.asm for why this needs no core.asm hook.
 	call AITrackLastMove
+	xor a ; AI_KO_CACHE_EMPTY: a new decision starts with nothing cached
+	ld [wAIPlayerKOCache], a
 	ld a, AI_SCORE_BASE ; Phase 2b: was a hardcoded $a; the baseline is now a
 	                    ; constant so widening it is a single edit
 	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
@@ -877,6 +879,11 @@ TrainerAI:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; if in a link battle, we're done as well
+; A new decision: AIPlayerWouldKO's cache from move selection is stale (on a
+; player-first turn the player has just moved, changing our HP and revealing
+; a move), so it is recomputed at most once here.
+	xor a ; AI_KO_CACHE_EMPTY
+	ld [wAIPlayerKOCache], a
 ; AI Overhaul Phase 6: T2+ trainers only consider items when their active
 ; mon is the ace (Gen 2's rule - no other living party member). T0/T1 fall
 ; straight through to .dispatch, unchanged from vanilla item AI. The farcall

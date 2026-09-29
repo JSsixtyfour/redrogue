@@ -167,13 +167,38 @@ AILayerThreat:
 ; GetCurrentMove does reload that block from wPlayerSelectedMove before the move
 ; actually executes, so this is belt-and-braces - but proving non-destructiveness
 ; is cheaper than proving nothing else reads it in between.
-; Clobbers af, bc, de, hl.
+; Clobbers af, bc, de, hl (only af on a cache hit).
+;
+; ONE-DECISION CACHE (2026-09-29, AI review option 3): every input - both
+; sides' HP, stats, stages, Substitute, and the believed player moveset - is
+; fixed for the length of one decision, yet a T3 move selection asked this up to
+; three times (THREAT, RISKY, plan checks) at ~20-30k cycles each (measured).
+; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves and of
+; TrainerAI, the only two decision entry points, and never survives into the
+; next one: on a player-first turn the player's move lands in between, which
+; changes our HP and reveals a move. A caller outside those two decisions must
+; clear it first (write AI_KO_CACHE_EMPTY).
 AIPlayerWouldKO::
+	ld a, [wAIPlayerKOCache]
+	and a
+	jr z, .compute
+	dec a ; AI_KO_CACHE_NO -> 0, AI_KO_CACHE_YES -> 1
+	rra ; carry = cached answer
+	ret
+.compute
 	ld a, [wEnemyMonHP]
 	ld [wBuffer + AI_BUF_EFFHP], a
 	ld a, [wEnemyMonHP + 1]
 	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	jp _AIScanPlayerMovesForKO
+	call _AIScanPlayerMovesForKO
+	ld a, AI_KO_CACHE_NO
+	jr nc, .store
+	ld a, AI_KO_CACHE_YES
+.store
+	ld [wAIPlayerKOCache], a
+	dec a
+	rra ; carry = the answer just computed
+	ret
 
 ; Carry SET if the player's best move STILL kills the enemy after the heal move
 ; currently loaded in the wEnemyMove* block resolves - i.e. the heal is a wasted

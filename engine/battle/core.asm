@@ -5899,52 +5899,59 @@ PreviewTypeMatchup:
 ; INPUT:  b = attacking move type, d/e = defender's two types,
 ;         c = accumulator seed (EFFECTIVE * 2 for a neutral start)
 ; OUTPUT: c = accumulated multiplier in twentieths (0, 5, 10, 20, 40, 80)
+; Clobbers a, b, hl (every caller reads only c).
 ; Kept in twentieths so two half-resistances land on x1/4 rather than
 ; truncating 5 * 5 / 10 to an incorrect x0.2.
+; TypeEffects is grouped by attacking type (data/types/type_matchups.asm):
+; <attacker, row count, count x <defender, multiplier>>, $ff-terminated. Other
+; attackers' groups are skipped whole, so a lookup reads ~15 group headers plus
+; one group's rows instead of all 82 rows (2026-09-29, AI review option 2).
 ; ------------------------------------------------------------
 TypeMatchupScan:
 	ld hl, TypeEffects
-.loop
-	ld a, [hli]                 ; attacking type in the current pair
+.nextGroup
+	ld a, [hli]                 ; this group's attacking type
 	cp $ff
-	jr z, .done
+	ret z                       ; no group for this attacker: c is unchanged
 	cp b
-	jr nz, .skipPair
-	ld a, [hli]                 ; defending type in the current pair
+	ld a, [hli]                 ; its row count; ld keeps the cp flags
+	jr z, .scanGroup
+	add a                       ; two bytes per row
+	add l
+	ld l, a
+	jr nc, .nextGroup
+	inc h
+	jr .nextGroup
+.scanGroup
+	ld b, a                     ; b = rows left; the attacker is found, and each
+	                            ; attacker has exactly one group
+.loop
+	ld a, [hli]                 ; defending type of this row
 	cp d
 	jr z, .matchingPair
 	cp e
 	jr z, .matchingPair
 	inc hl                      ; skip the multiplier
-	jr .loop
+	jr .nextRow
 .matchingPair
-	ld a, [hl]                  ; multiplier for this type pair
+	ld a, [hli]                 ; multiplier for this type pair
 	cp NO_EFFECT
 	jr z, .zero
 	cp NOT_VERY_EFFECTIVE
 	jr z, .half
 	cp SUPER_EFFECTIVE
-	jr z, .double
-	; EFFECTIVE leaves the accumulated value unchanged.
-	inc hl
-	jr .loop
-.skipPair
-	inc hl                      ; skip defender type
-	inc hl                      ; skip multiplier
-	jr .loop
+	jr nz, .nextRow             ; EFFECTIVE leaves the accumulated value unchanged
+	sla c
+	jr .nextRow
+.half
+	srl c
+.nextRow
+	dec b
+	jr nz, .loop
+	ret
 .zero
 	xor a
 	ld c, a
-	jr .done
-.half
-	srl c
-	inc hl
-	jr .loop
-.double
-	sla c
-	inc hl
-	jr .loop
-.done
 	ret
 
 ; ============================================================

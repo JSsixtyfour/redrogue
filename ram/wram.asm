@@ -610,7 +610,11 @@ wAIPlanStep:: db        ; progress within that plan
 ; the battle-start zeroing gives us - hence it MUST live in this branch. Same
 ; 4-byte footprint as the buffer it replaced, so no later address moved.
 wAISeenPlayerMoveMask:: ds (PARTY_LENGTH * NUM_MOVES) / 8
-	ds 1 ; spare, keeps the old 4-byte footprint
+; AIPlayerWouldKO's answer for the CURRENT decision (AI_KO_CACHE_*). Took the
+; spare byte the old 4-byte revealed-move buffer left, so no address moved.
+; Cleared at the start of move selection and of TrainerAI (see
+; AIPlayerWouldKO); battle-start zeroing also reads as "not computed".
+wAIPlayerKOCache:: db
 
 ; Party slot that used wWitchPrevPlayerMove (see its comment above). Same deal:
 ; carved from this branch's spare ds 1, zero WRAM0 cost, auto-zeroed per battle.

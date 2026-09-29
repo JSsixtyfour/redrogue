@@ -124,6 +124,41 @@ class AICheckpointBTest(unittest.TestCase):
         guaranteed = 2 * (raw * 217 // 255)
         self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", guaranteed), 10)
 
+    # --- AIPlayerWouldKO one-decision cache (AI review option 3) ------------
+    def test_ko_cache_hit_skips_the_scan_and_empty_recomputes(self):
+        h = self.h
+        scans = h.hook_flag("_AIScanPlayerMovesForKO")
+        for state, expected_scans in ((self.ai["AI_KO_CACHE_NO"], 0),
+                                      (self.ai["AI_KO_CACHE_EMPTY"], 1)):
+            with self.subTest(state=state):
+                before = scans["count"]
+                h.park_before_hijack()
+                h.write8("wAIPlayerKOCache", state)
+                h.call_routine("AIPlayerWouldKO", limit=240)
+                self.assertEqual(scans["count"] - before, expected_scans)
+        self.assertIn(h.read8("wAIPlayerKOCache"),
+                      (self.ai["AI_KO_CACHE_NO"], self.ai["AI_KO_CACHE_YES"]))
+
+    def test_ko_cache_is_cleared_when_move_selection_starts(self):
+        # T0 runs no layer that asks AIPlayerWouldKO, so the entry clear is
+        # all that can change the byte.
+        h = self.h
+        h.write8("wAITier", 1)
+        h.write8("wAIPlayerKOCache", self.ai["AI_KO_CACHE_YES"])
+        h.park_before_hijack()
+        h.call_routine("AIEnemyTrainerChooseMoves", limit=600)
+        self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
+
+    def test_ko_cache_is_cleared_when_trainer_ai_starts(self):
+        # T1 TrainerAI never asks AIPlayerWouldKO (AIIncreaseStat's check is
+        # T2+), so the entry clear is all that can change the byte.
+        h = self.h
+        h.write8("wAITier", 2)
+        h.write8("wAIPlayerKOCache", self.ai["AI_KO_CACHE_YES"])
+        h.park_before_hijack()
+        h.call_routine("TrainerAI", limit=600)
+        self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
+
     def test_damage_layer_caps_high_crit_ranking_at_remaining_owner_hp(self):
         h = self.h
         raw = self.estimate("SLASH")
