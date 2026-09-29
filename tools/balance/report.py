@@ -75,10 +75,12 @@ def duration_estimate(g: parse.GameData, run: model.Run) -> float:
 
 
 def sink_price_yen(g: parse.GameData, knob: str) -> int:
-    """A lobby sink price in yen. The knob is ONE BCD byte, and the ROM puts it
-    in the MIDDLE byte of a 3-byte amount ($00,$50,$00 = 5000; the daycare's
-    2-byte $05,$00 = 500), so the yen value is its decimal reading x 100."""
-    return model.bcd(g.knobs[knob]) * 100
+    """A lobby sink price in yen. The salesman, tutor and TM knobs are ONE BCD
+    byte of THOUSANDS since 2026-09-28 ($20 = 20,000; the ROM splits it across
+    the top two money bytes, see the *_WORD DEFs). The daycare's is still the
+    old middle-byte form (2-byte $05,$00 = 500), so it is x 100."""
+    scale = 100 if knob.startswith("DAYCARE") else 1000
+    return model.bcd(g.knobs[knob]) * scale
 
 
 def purchase_counts(money: float, g: parse.GameData) -> dict:
@@ -102,7 +104,7 @@ def section_headline(g: parse.GameData, args, out: Path) -> list[str]:
              f"Rows with `|gap| > 3` are bolded.\n"]
     all_rows = []
     for policy in ("carry", "rotate"):
-        cfg = model.Config(difficulty="normal", exp_all=0, policy=policy)
+        cfg = model.Config(difficulty="normal", exp_all="equal", policy=policy)
         runs = model.simulate(g, cfg, args.runs, args.seed)
         rows = model.summarize(g, runs)
         lines.append(f"### policy={policy}\n")
@@ -125,7 +127,7 @@ def section_difficulty(g: parse.GameData, args, out: Path) -> list[str]:
     lines = ["## 2. Per difficulty (policy=rotate, EXP All tier 0)\n"]
     all_rows = []
     for diff in model.DIFFICULTIES:
-        cfg = model.Config(difficulty=diff, exp_all=0, policy="rotate")
+        cfg = model.Config(difficulty=diff, exp_all="equal", policy="rotate")
         runs = model.simulate(g, cfg, args.runs, args.seed)
         rows = model.summarize(g, runs)
         lines.append(f"### {diff}\n")
@@ -138,16 +140,15 @@ def section_difficulty(g: parse.GameData, args, out: Path) -> list[str]:
 
 
 def section_exp_all(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 3. EXP All comparison: off / tier 0 / tier 3, both policies\n",
-             "Expected pattern: under carry, tier 0 barely changes the ace (the "
-             "fighter's own gain is unaffected; the ace only benefits from the "
-             "reduced-value shares given to the rest of the party, none of which "
-             "come back to it), but roughly doubles the bench's levels.\n"]
+    lines = ["## 3. EXP Share comparison: off / equal (the option's rule), both policies\n",
+             "Expected pattern: equal share gives every party mon half of each KO, "
+             "fighter included, so carry and rotate converge; off gives the fighter "
+             "everything.\n"]
     all_rows = []
     lines.append("| policy | exp_all | checkpoint | ace MedSlow | team MedSlow |")
     lines.append("|---|---|---|---|---|")
     for policy in ("carry", "rotate"):
-        for exp_all in ("off", 0, 3):
+        for exp_all in ("off", "equal"):
             cfg = model.Config(difficulty="normal",
                                exp_all=None if exp_all == "off" else exp_all, policy=policy)
             runs = model.simulate(g, cfg, args.runs, args.seed)
@@ -167,8 +168,8 @@ def section_wild_vs_route(g: parse.GameData, args, out: Path) -> list[str]:
              "`measure_wild_paths.py` (`tools/balance/data/wild_paths.json`), per wild-area "
              "type, on the `full` route (every ball, then the boss).\n"]
     all_rows = []
-    cfgs = {"take_wild=0.0": model.Config(difficulty="normal", exp_all=0, policy="rotate", take_wild=0.0),
-            "take_wild=1.0": model.Config(difficulty="normal", exp_all=0, policy="rotate", take_wild=1.0)}
+    cfgs = {"take_wild=0.0": model.Config(difficulty="normal", exp_all="equal", policy="rotate", take_wild=0.0),
+            "take_wild=1.0": model.Config(difficulty="normal", exp_all="equal", policy="rotate", take_wild=1.0)}
     results = {}
     for name, cfg in cfgs.items():
         runs = model.simulate(g, cfg, args.runs, args.seed)
@@ -194,7 +195,7 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
              "Spending isn't modelled; every money figure is cumulative earned. "
              "Purchases are what that amount alone could buy of one item, not a "
              "shopping plan.\n"]
-    cfg = model.Config(difficulty="normal", exp_all=0, policy="rotate")
+    cfg = model.Config(difficulty="normal", exp_all="equal", policy="rotate")
     runs = model.simulate(g, cfg, args.runs, args.seed)
     rows = model.summarize(g, runs)
     all_rows = []
@@ -225,7 +226,7 @@ def section_duration(g: parse.GameData, args, out: Path) -> list[str]:
              "Battle seconds are fitted to `calibrate_battle_time.py` frame counts, a machine-speed "
              "floor (no trainer intro, no reading time). The overworld term is still a guess until "
              "one real timed run replaces it.\n"]
-    cfg = model.Config(difficulty="normal", exp_all=0, policy="rotate")
+    cfg = model.Config(difficulty="normal", exp_all="equal", policy="rotate")
     durations = []
     for seed in range(args.runs):
         sim = model.Simulator(g, cfg, args.seed * 100003 + seed)

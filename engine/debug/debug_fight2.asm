@@ -91,14 +91,14 @@ DebugFight2Setup::
 	call .nameParty
 
 	; Start from no key items, then grant 0-3 active items. The first index is
-	; random; stepping five rows through the 15-row table guarantees uniqueness
+	; random; stepping five rows through the 14-row table guarantees uniqueness
 	; for all three possible grants without a retry loop.
 	farcall ClearKeyItemsBitfield
 	call Random
 	and 3
 	ld b, a
 	jr z, .itemsDone
-	ld c, 15
+	ld c, 14
 	call Rangerandom
 	ld c, a
 .itemLoop
@@ -113,9 +113,9 @@ DebugFight2Setup::
 	pop bc
 	ld a, c
 	add 5
-	cp 15
+	cp 14
 	jr c, .itemIndexReady
-	sub 15
+	sub 14
 .itemIndexReady
 	ld c, a
 	dec b
@@ -329,7 +329,7 @@ DebugFight2Setup::
 .testNameEnd
 
 .keyItems
-	db LEFTOVERS, PP_TONIC, KO_DEFIANCE, EXP_ALL, SHINY_CHARM
+	db LEFTOVERS, PP_TONIC, KO_DEFIANCE, SHINY_CHARM ; EXP_ALL is an option now
 	db AMULET_COIN, TURN_REWIND, RARE_SCOPE, RARE_LENS, DV_BOOSTER
 	db STAT_BOOSTER, DOOR_DICE, MON_DICE, ITEM_DICE, ELEMENT_PRISM
 ENDC

@@ -286,7 +286,7 @@ _PCMoveTutorGreetingText::
     cont "might consider"
     cont "...unnatural."
     
-    para "¥5000 per move."
+    para "¥{x:MOVE_RELEARNER_PRICE_BCD}000 per move."
 	line "Interested?"
 	done
     
@@ -327,7 +327,7 @@ _PCPokemonSalesmanIGotADealPokeballText::
     text_ram wNameBuffer
     text "!"
     
-    para "for just 2000!"
+    para "for just ¥{x:SALESMAN_PRICE_POKEBALL_BCD}000!"
 	line "What do you say?"
 	done
     
@@ -342,7 +342,7 @@ _PCPokemonSalesmanIGotADealGreatballText::
     text_ram wNameBuffer
     text "!"
     
-    para  "for just 6000!"
+    para  "for just ¥{x:SALESMAN_PRICE_GREATBALL_BCD}000!"
 	line "What do you say?"
 	done
     
@@ -357,7 +357,7 @@ _PCPokemonSalesmanIGotADealUltraballText::
     text_ram wNameBuffer
     text "!"
     
-    para  "for just 9000!"
+    para  "for just ¥{x:SALESMAN_PRICE_ULTRABALL_BCD}000!"
 	line "What do you say?"
 	done
 

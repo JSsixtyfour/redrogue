@@ -576,7 +576,7 @@ SetKeyItemTier:
 ; Exported (2026-09-03) so RogueResetRunState (custom_functions/credit_popup.asm,
 ; the rogue bank) can farcall it after a run-boundary blanket-clear of
 ; wGameProgressFlags - that clear zeroes wHealAllItemLevel/wRestorePPItemLevel/
-; wKODefianceUsages/wExpAllLevel along with everything else in that region, and
+; wKODefianceUsages along with everything else in that region, and
 ; this is what re-derives them from the SRAM tiers that are the actual source
 ; of truth, exactly as the comment above already said it should.
 ; ============================================================
@@ -601,9 +601,8 @@ ApplyKeyItemTierEffects::
 	add 2                         ; rewinds = 2 + tier
 	ld [wTurnRewindUsages], a
 
-	ld c, KEY_ITEM_BIT_EXP_ALL_OWNED / 2
-	call GetKeyItemTier
-	ld [wExpAllLevel], a
+	; EXP_ALL is an option now (BIT_EXP_SHARE) with one fixed rule, so there is
+	; no tier to derive here any more (wExpAllLevel is retired, 2026-09-28).
 
 	; ELEMENT PRISM's damage bonus is derived from its tier the same way, but
 	; its cache lives in custom_functions/element_prism.asm (the "rogue" bank,
@@ -650,7 +649,7 @@ CreditUpgradeTable:
 	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $10, $20, $40
 	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $10, $20, $40
 	db KO_DEFIANCE,   KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2,   $20, $40, $80
-	db EXP_ALL,       KEY_ITEM_BIT_EXP_ALL_OWNED / 2,       $15, $30, $60
+	;db EXP_ALL,       KEY_ITEM_BIT_EXP_ALL_OWNED / 2,       $15, $30, $60 ; now an option (BIT_EXP_SHARE)
 	db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED / 2,   $30, $60, $99
 	db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED / 2,   $15, $30, $60
 	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $25, $50, $75

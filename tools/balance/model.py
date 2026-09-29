@@ -66,7 +66,14 @@ def bcd(value: int) -> int:
 @dataclass
 class Config:
     difficulty: str = "normal"
-    exp_all: int | None = 0          # None = not in the bag; 0-3 = key-item tier
+    exp_all: int | str | None = "equal"  # the ROM's EXP Share option: "equal" = on, None/"off" = off;
+                                     # 0-3 = the retired key-item tiers;
+                                     # "a"/"b"/"c" = the Phase 5 option candidates (exp_share_split)
+    exp_boost: bool = True           # False = drop BoostExp's x1.5 (the parity-at-x1.0 lever)
+    # What-if over-level EXP penalty: ((gap, shift), ...) checked in order; a
+    # recipient whose level exceeds the KO'd mon's by >= gap gets exp >> shift.
+    # Levels are read on the MedSlow curve. () = off (the ROM today).
+    overlevel: tuple[tuple[int, int], ...] = ()
     groups: tuple[str, ...] = ("KANTO",)
     take_wild: float = 0.5           # chance the player picks an optional wild-area door
     take_miniboss: float = 1.0       # chance the player picks the mini-boss door
@@ -206,9 +213,17 @@ def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> B
     final = rem in (k["FINAL_ROUTE_STEP"], k["FINAL_GYM_TRAINER_STEP"])
     base = block.min_level + (block.final_bonus if final else 0)
     counts = block.final_counts if final else block.counts
+    # GetRandRosterLoop.maybeShrink: a normal trainer of MIN..FULL-1 mons skips
+    # its first (commonest-class) mon half the time.
+    size = sum(counts)
+    skip = (not final and k["ROSTER_VARY_MIN_SIZE"] <= size < k["ROSTER_FULL_SIZE"]
+            and rng.random() < 0.5)
     mons = []
     for class_slot, n in enumerate(counts):          # pokeball first; b = 4 .. 1
         for _ in range(n):
+            if skip:
+                skip = False
+                continue
             sp = get_rand_mon(g, cfg, 4 - class_slot, rng)
             lv = apply_difficulty(base + (rng.randrange(block.level_range) if block.level_range else 0), cfg.difficulty)
             mons.append((scale_trainer_evolution(g, cfg, sp, lv, rng), lv))
@@ -354,13 +369,42 @@ def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -
 # ROM mirrors: EXP, money, levels
 # =============================================================================
 
-def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool) -> int:
+def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool, boost: bool = True) -> int:
     """GainExperience: base * L / 7, then BoostExp (x1.5, saturating) for a
-    trainer battle, or for every battle when WILD_EXP_MATCHES_TRAINER."""
+    trainer battle, or for every battle when WILD_EXP_MATCHES_TRAINER.
+    boost=False is the what-if with BoostExp removed."""
     e = base_exp * level // 7
-    if trainer or g.knobs["WILD_EXP_MATCHES_TRAINER"]:
+    if boost and (trainer or g.knobs["WILD_EXP_MATCHES_TRAINER"]):
         e = min(e + e // 2, 0xFFFF)
     return e
+
+
+EXP_SHARE_CANDIDATES = ("equal", "a", "b", "c")
+
+
+def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
+    """Phase 5 EXP Share candidates: (fighter base, each benched mon's base),
+    both fed to exp_for_ko. `party` counts the fighter.
+      a: vanilla Gen 1 restored. The value is halved; the fighter takes that
+         half, then the whole party (fighter included) splits the other half.
+      b: the fighter keeps 100%; each benched mon gets 25%.
+      c: the fighter keeps 100%; the bench splits one 50% pool.
+      equal: THE ROM'S RULE (chosen 2026-09-28): every party mon, the fighter
+         included, gets the value halved rounding up, once (FaintEnemyPokemon
+         .expShare)."""
+    bench = party - 1
+    if mode == "equal":
+        half = base_exp - (base_exp >> 1)
+        return half, half
+    if mode == "a":
+        half = base_exp - (base_exp >> 1)
+        each = half // party
+        return half + each, each
+    if mode == "b":
+        return base_exp, base_exp >> 2
+    if mode == "c":
+        return base_exp, (base_exp >> 1) // bench if bench else 0
+    raise ValueError(f"unknown EXP Share candidate {mode!r}")
 
 
 def exp_all_base(base_exp: int, tier: int) -> int:
@@ -442,6 +486,16 @@ class Simulator:
         self.ko_turn = 0
 
     # --- bookkeeping ---
+    def _penalize(self, m: "Member", exp: int) -> int:
+        if not self.cfg.overlevel:
+            return exp
+        rate = self.g.growth["GROWTH_MEDIUM_SLOW"]
+        level = level_from_exp(rate, exp_at_level(rate, m.join_level) + m.exp_gained)
+        for gap, shift in self.cfg.overlevel:
+            if level - self._ko_level >= gap:
+                return exp >> shift
+        return exp
+
     def fight(self, battle: Battle) -> None:
         g, cfg = self.g, self.cfg
         self.run.battles.append(battle)
@@ -452,13 +506,22 @@ class Simulator:
                 self.ko_turn += 1
             else:
                 fighter = 0
-            if cfg.exp_all is None:
-                self.members[fighter].exp_gained += exp_for_ko(g, base, lv, battle.trainer)
+            boost = cfg.exp_boost
+            if cfg.overlevel:
+                self._ko_level = lv
+            if cfg.exp_all is None or cfg.exp_all == "off":
+                m = self.members[fighter]
+                m.exp_gained += self._penalize(m, exp_for_ko(g, base, lv, battle.trainer, boost))
+            elif cfg.exp_all in EXP_SHARE_CANDIDATES:
+                f_base, b_base = exp_share_split(cfg.exp_all, base, len(self.members))
+                for i, m in enumerate(self.members):
+                    m.exp_gained += self._penalize(m, exp_for_ko(g, f_base if i == fighter else b_base, lv, battle.trainer, boost))
             else:
-                share = exp_for_ko(g, exp_all_base(base, cfg.exp_all), lv, battle.trainer)
-                self.members[fighter].exp_gained += share    # the fighter's own call
+                share = exp_for_ko(g, exp_all_base(base, cfg.exp_all), lv, battle.trainer, boost)
+                f = self.members[fighter]
+                f.exp_gained += self._penalize(f, share)      # the fighter's own call
                 for m in self.members:                        # then every party mon
-                    m.exp_gained += share
+                    m.exp_gained += self._penalize(m, share)
         self.money += money_for(g, battle, cfg.amulet_coin)
         if battle.trainer and battle.kind not in ("stage_event",):
             self.count += 1
@@ -643,7 +706,7 @@ def simulate(g: GameData, cfg: Config, n: int, seed: int = 1) -> list[Run]:
 
 
 def format_round_table(rows: list[dict], cfg: Config) -> str:
-    head = (f"difficulty={cfg.difficulty} exp_all={cfg.exp_all} policy={cfg.policy} "
+    head = (f"difficulty={cfg.difficulty} exp_all={cfg.exp_all} boost={cfg.exp_boost} policy={cfg.policy} "
             f"take_wild={cfg.take_wild} groups={','.join(cfg.groups)}")
     lines = [head,
              "| checkpoint | battles | enemy ace | ace MedSlow (p10-p90) | ace MedFast | ace Fast | ace Slow "
@@ -686,6 +749,12 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("EXP Pidgey L3 wild (knob)", wild, 34 if g.knobs["WILD_EXP_MATCHES_TRAINER"] else 23)
     check("EXP All tier 0 base 55", exp_all_base(55, 0), 28)
     check("EXP All tier 3 base 55", exp_all_base(55, 3), 55)
+    # Candidates on base 120, 6-mon party: a = 60 + 10 / 10; b = 120 / 30; c = 120 / 12.
+    check("share a", exp_share_split("a", 120, 6), (70, 10))
+    check("share b", exp_share_split("b", 120, 6), (120, 30))
+    check("share c", exp_share_split("c", 120, 6), (120, 12))
+    check("share c solo", exp_share_split("c", 120, 1), (120, 0))
+    check("share equal odd", exp_share_split("equal", 55, 6), (28, 28))
 
     # Difficulty: RogueApplyDifficulty on the round-1 leader ace (12 + 2 = 14).
     ace1 = g.knobs["GYM_R1_BASE"] + (g.knobs["GYM_R1_MONS"] - 1) * g.knobs["GYM_R1_STEP"]
@@ -757,6 +826,12 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
                 if not all(lo <= lv <= hi for _, lv in bt.mons):
                     fails.append(f"roster levels out of band at count {bt.count}: {bt.mons} vs {lo}-{hi}")
                     break
+                final = bt.kind.endswith("final")
+                full = sum(blk.final_counts if final else blk.counts)
+                varies = not final and k["ROSTER_VARY_MIN_SIZE"] <= full < k["ROSTER_FULL_SIZE"]
+                if len(bt.mons) not in ((full - 1, full) if varies else (full,)) or len(bt.mons) < 2:
+                    fails.append(f"roster size {len(bt.mons)} at count {bt.count} ({bt.kind}), table size {full}")
+                    break
         if fails:
             break
 
@@ -797,7 +872,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--difficulty", choices=DIFFICULTIES, default="normal")
-    ap.add_argument("--exp-all", default="0", help="off, or key-item tier 0-3")
+    ap.add_argument("--exp-all", default="equal",
+                    help="equal (the ROM's EXP Share on), off, a retired key-item tier 0-3, or candidate a/b/c")
+    ap.add_argument("--no-exp-boost", action="store_true", help="drop BoostExp's x1.5")
+    ap.add_argument("--round-shape", default=None, metavar="ROUTE,GYM",
+                    help="what-if battles per stage and gym trainers per gym, e.g. 4,3")
     ap.add_argument("--policy", choices=("carry", "rotate"), default="carry")
     ap.add_argument("--take-wild", type=float, default=0.5)
     ap.add_argument("--take-miniboss", type=float, default=1.0)
@@ -811,6 +890,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--trace", action="store_true", help="print one run's battles (seed --seed)")
     args = ap.parse_args(argv)
 
+    if args.round_shape:
+        r, gy = (int(x) for x in args.round_shape.split(","))
+        parse.ROUND_OVERRIDES.update(ROUTE_BATTLES=r, GYM_TRAINER_BATTLES=gy)
     g = apply_overrides(parse.load_all(), args.set)
     if args.selfcheck:
         fails = selfcheck(g, args.runs)
@@ -822,7 +904,9 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = Config(
         difficulty=args.difficulty,
-        exp_all=None if args.exp_all == "off" else int(args.exp_all),
+        exp_all=None if args.exp_all == "off" else args.exp_all if args.exp_all in EXP_SHARE_CANDIDATES
+        else int(args.exp_all),
+        exp_boost=not args.no_exp_boost,
         groups=tuple(x.strip().upper() for x in args.groups.split(",")),
         take_wild=args.take_wild,
         take_miniboss=args.take_miniboss,

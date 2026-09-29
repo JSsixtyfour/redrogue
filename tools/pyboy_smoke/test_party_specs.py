@@ -220,7 +220,7 @@ class PartySpecSmokeTest(HarnessTestCase):
           MEWTWO  + FalknerSpec2 (no flag)   -> rejected
           MEWTWO  + FalknerSpec3 (flag set)  -> accepted
           ARTICUNO+ FalknerSpec2 (no flag)   -> accepted, because it is
-                    KantoUltraball, NOT KantoUber. Measured in
+                    KantoMasterball (KantoUltraball before 2026-09-28), NOT KantoUber. Measured in
                     engine/pokemon/rarity.asm: RARITY_TIER_UBER in this tree is
                     exactly {MEW, MEWTWO}, so the legendary BIRDS are not
                     covered. That is why the flag is not called ALLOW_LEGEND -

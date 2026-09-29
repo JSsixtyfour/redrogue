@@ -858,56 +858,38 @@ FaintEnemyPokemon:
 	call SaveScreenTilesToBuffer1
 	xor a
 	ld [wBattleResult], a
-	ld a, EXP_ALL
-	ld [wCurItem], a
-	farcall IsKeyItemActive    ; active = in bag = usable
-	push af
-	jr z, .giveExpToMonsThatFought ; if no exp all, then jump
+	; EXP Share is an option now (wOptions3), not the EXP_ALL key item.
+.expShareGate
+	ld a, [wOptions3]
+	bit BIT_EXP_SHARE, a
+	jr nz, .expShare
 
-; the player has exp all
-; reduce the values that determine exp gain by a wExpAllLevel-scaled amount:
-; tier 0 = halved (vanilla/unchanged), tier 1 = 75%, tier 2 = 87.5%,
-; tier 3 = full experience, no reduction at all. See ApplyKeyItemTierEffects
-; (engine/events/credit_mart.asm) for how wExpAllLevel is derived.
-; the enemy mon base stats are added to stat exp; the base exp (which
-; determines normal exp) is the same span, so both get scaled together
-	ld a, [wExpAllLevel]
-	cp 3
-	jr z, .giveExpToMonsThatFought ; tier 3: no reduction, full experience
-	inc a                      ; tier 0/1/2 -> shift 1/2/3 (/2, /4, /8)
-	ld e, a
-	ld hl, wEnemyMonBaseStats
-	ld b, NUM_STATS + 2
-.expAllReducedLoop
-	ld a, [hl]
-	ld c, a                    ; c = original value
-	ld d, e
-.expAllShiftLoop
-	srl a
-	dec d
-	jr nz, .expAllShiftLoop
-	ld d, a                    ; d = value >> shift
-	ld a, c
-	sub d                      ; value -= value>>shift
-	; tier 0's shift-1 case differs from the old plain `srl [hl]` by at most 1
-	; on odd values (ceil vs floor of value/2) - immaterial for exp/stat scaling
-	ld [hl], a
-	inc hl
-	dec b
-	jr nz, .expAllReducedLoop
-
-; give exp (divided evenly) to the mons that actually fought in battle against the enemy mon that has fainted
-; if exp all is in the bag, this will be only be half of the stat exp and normal exp, due to the above loop
-.giveExpToMonsThatFought
+; EXP Share off: the mons that fought get the full exp (no split between them)
 	xor a
 	ld [wBoostExpByExpAll], a
 	callfar GainExperience
-	pop af
-	jr z, .tryMidBattleEvo ; return if no exp all
+	jr .tryMidBattleEvo
 
-; the player has exp all
-; now, set the gain exp flag for every party member
-; half of the total stat exp and normal exp will divided evenly amongst every party member
+; EXP Share on: an equal share. Every party mon, the fighter included, gets 50%
+; of a KO in one pass; the fighter gets no separate award of its own
+; (BALANCE_PHASE5_PLAN.md C, chosen 2026-09-28: ace and team both land ~60 at
+; the Champion, carry or rotate). Halve the values that determine exp gain
+; (rounding up): the enemy mon base stats are added to stat exp, and the base
+; exp is the same span, so both are halved together.
+.expShare
+	ld hl, wEnemyMonBaseStats
+	ld b, NUM_STATS + 2
+.expShareHalveLoop
+	ld a, [hl]
+	srl a
+	ld c, a                    ; c = value >> 1
+	ld a, [hl]
+	sub c                      ; value - value >> 1
+	ld [hli], a
+	dec b
+	jr nz, .expShareHalveLoop
+
+; set the gain exp flag for every party member
 	ld a, TRUE
 	ld [wBoostExpByExpAll], a
 	ld a, [wPartyCount]

@@ -493,6 +493,41 @@ class RedRogueHarness:
             self.register_hook(label, callback)
         return records
 
+    def hook_ai_personality_timing(self) -> list[dict[str, int]]:
+        """Measure AIRunPersonality through the dispatcher's minimum-scan seam."""
+        records: list[dict[str, int]] = []
+        pending: dict[str, int | None] = {
+            "start_cycle": None,
+            "trainer_class": None,
+        }
+
+        def begin(_context) -> None:
+            pending["start_cycle"] = self.cycle_count()
+            pending["trainer_class"] = self.read8("wTrainerClass")
+
+        def finish(_context) -> None:
+            start_cycle = pending["start_cycle"]
+            trainer_class = pending["trainer_class"]
+            if start_cycle is None or trainer_class is None:
+                return
+            end_cycle = self.cycle_count()
+            records.append(
+                {
+                    "trainer_class": trainer_class,
+                    "start_cycle": start_cycle,
+                    "end_cycle": end_cycle,
+                    "cycles": end_cycle - start_cycle,
+                }
+            )
+            pending["start_cycle"] = None
+            pending["trainer_class"] = None
+
+        self.register_hook("AIRunPersonality", begin)
+        self.register_hook(
+            "AIEnemyTrainerChooseMoves.loopFindMinimumEntries", finish
+        )
+        return records
+
     def hook_trainer_ai_calls(self) -> list[dict[str, object]]:
         """Measure TrainerAI entry through its caller's returned-action seam.
 

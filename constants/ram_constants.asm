@@ -64,6 +64,10 @@ DEF BIT_IRONMAN EQU 0 ; fainted party mons are released (custom_functions/ironma
 DEF BATTLE_SPEED_MASK EQU %110
 DEF BATTLE_SPEED_X2   EQU 1 << 1
 DEF BATTLE_SPEED_X4   EQU 2 << 1
+; EXP Share (the option that replaced the EXP_ALL key item, 2026-09-28): set =
+; the whole party gains EXP from each KO (FaintEnemyPokemon, engine/battle/core.asm).
+; New games start ON (InitOptions_); a save from before the option reads OFF.
+DEF BIT_EXP_SHARE EQU 3
 
 ; wLetterPrintingDelayFlags
 	const_def

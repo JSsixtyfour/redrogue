@@ -61,7 +61,7 @@ OakSpeech:
 	call LoadTextBoxTilePatterns
 	call PrepareOakSpeech
 	predef InitPlayerData2
-	; Give starting items. Key pocket items (EXP_ALL, LEFTOVERS, PP_TONIC,
+	; Give starting items. Key pocket items (LEFTOVERS, PP_TONIC,
 	; KO_DEFIANCE) route through GiveItem so they hit sKeyItemsBitfield +
 	; wKeyItemSlot1/2/3 instead of the item bag. POTION goes to the regular bag.
 	ld a, POTION
@@ -69,9 +69,10 @@ OakSpeech:
 	ld a, 1
 	ld [wItemQuantity], a
 	farcall GiveRecoveryItem
-	ld b, EXP_ALL
-	ld c, 1
-	call GiveItem
+	; EXP_ALL is an option now (BIT_EXP_SHARE), not a starting key item.
+	;ld b, EXP_ALL
+	;ld c, 1
+	;call GiveItem
 	ld b, LEFTOVERS
 	ld c, 1
 	call GiveItem

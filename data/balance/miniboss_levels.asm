@@ -9,11 +9,11 @@
 ; = odds a fill mon is bumped one tier rarer. Fully tunable.
 trainer_difficulty_settings_miniboss:
 	db 3, 5,  3, 64   ; round 1 (between route-final ~4 and gym ~5)
-	db 4, 15, 3, 80   ; round 2
-	db 4, 20, 2, 64   ; round 3
-	db 5, 25, 2, 80   ; round 4
-	db 6, 33, 2, 96   ; round 5
-	db 6, 37, 2, 112  ; round 6
-	db 6, 41, 2, 128  ; round 7
-	db 7, 45, 1, 96   ; round 8
-	db 8, 52, 1, 112  ; round 9
+	db 4, 16, 3, 80   ; round 2
+	db 4, 24, 2, 64   ; round 3
+	db 5, 31, 2, 80   ; round 4
+	db 6, 37, 2, 96   ; round 5
+	db 6, 43, 2, 112  ; round 6
+	db 6, 48, 2, 128  ; round 7
+	db 7, 53, 1, 96   ; round 8
+	db 8, 58, 1, 112  ; round 9

@@ -270,7 +270,7 @@ BattleItemInfoTable:
 	battle_item_info LEFTOVERS,     INFO_NONE,      .Leftovers
 	battle_item_info PP_TONIC,      INFO_NONE,      .PPTonic
 	battle_item_info KO_DEFIANCE,   INFO_KO_USES,   .KODefiance
-	battle_item_info EXP_ALL,       INFO_NONE,      .ExpAll
+	;battle_item_info EXP_ALL,       INFO_NONE,      .ExpAll ; now an option (BIT_EXP_SHARE)
 	battle_item_info SHINY_CHARM,   INFO_NONE,      .ShinyCharm
 	battle_item_info AMULET_COIN,   INFO_NONE,      .AmuletCoin
 	battle_item_info TURN_REWIND,   INFO_REWIND_USES, .TurnRewind
@@ -288,7 +288,7 @@ BattleItemInfoTable:
 .Leftovers:    db "Heals party@",    "after battles@"
 .PPTonic:      db "Restores PP@",    "after battles@"
 .KODefiance:   db "Revives last@",   "mon on a KO@"
-.ExpAll:       db "Whole party@",    "shares EXP@"
+;.ExpAll:       db "Whole party@",    "shares EXP@"
 .ShinyCharm:   db "Ups the odds@",   "of shinies@"
 .AmuletCoin:   db "More money@",     "from battles@"
 .TurnRewind:   db "Undo last turn@", "No turn used@"

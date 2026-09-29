@@ -208,8 +208,6 @@ KantoUltraball:
 	db GASTLY
 	db ABRA
 	db JYNX
-	db ARTICUNO
-	db MOLTRES
 	db CHANSEY
 	db RHYHORN
 	db LAPRAS
@@ -237,6 +235,8 @@ KantoMasterball:
 	db EXEGGCUTE
 	db STARYU
 	db ZAPDOS
+	db ARTICUNO ; masterball with Zapdos since 2026-09-28 (user); was ultraball
+	db MOLTRES
 KantoMasterball_Evos:
 ; stage 2
 	db EXEGGUTOR

@@ -189,7 +189,7 @@ GetRandRosterLoop:
     inc hl      ; move to next byte, normal class counts start
     ld a, [wRogueFlagsBitfield]
     bit 1, a
-    jr z, .overloopSetup
+    jr z, .maybeShrink
 ; final route trainer: apply the level bonus and use the rarer class distribution
     inc hl
     inc hl
@@ -199,6 +199,32 @@ GetRandRosterLoop:
     add a, e
     ld e, a
     inc hl      ; hl = final-trainer class counts
+    jr .overloopSetup
+
+; Varied party sizes (BALANCE_PHASE5_PLAN.md D, 2026-09-28): a normal (not
+; final) trainer whose team would be ROSTER_VARY_MIN_SIZE..ROSTER_FULL_SIZE-1
+; mons fields one fewer, half the time. The final trainer of each block keeps
+; the full size, full-size (6) teams never vary, and a 2-mon team never drops
+; to 1. The dropped mon is the first one rolled, i.e. the commonest class.
+; Bit 7 of c (the level range, always small) carries "skip one" into .loop,
+; which clears it on the first mon; every other register here is live.
+.maybeShrink
+    push hl
+    ld a, [hli]
+    add [hl]
+    inc hl
+    add [hl]
+    inc hl
+    add [hl]    ; a = team size from the four class counts
+    pop hl
+    cp ROSTER_VARY_MIN_SIZE
+    jr c, .overloopSetup
+    cp ROSTER_FULL_SIZE
+    jr nc, .overloopSetup
+    call Random ; preserves bc/de/hl
+    rrca
+    jr nc, .overloopSetup
+    set 7, c
 .overloopSetup
 
 ;.highest_level_set:
@@ -224,6 +250,11 @@ GetRandRosterLoop:
     ld  d, a
     
     .loop
+    bit 7, c
+    jr z, .keepMon
+    res 7, c    ; varied party size: skip this one mon (see .maybeShrink)
+    jr .nextMon
+.keepMon
     ; Gambler's Paradise: draw species from the themed pool instead of the
     ; normal rarity-class roll. Level logic below is unchanged.
     ld a, [wTrainerClass]
@@ -307,6 +338,7 @@ ENDC
     ld a, [wTrainerClass]
     cp GAMBLER
     call z, OverrideGamblerMoves
+.nextMon
 	dec d           ; decrease loop/run through pokemon
     jr nz, .loop    ; pokeball class loop
 

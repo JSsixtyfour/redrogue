@@ -46,9 +46,28 @@ def _lines(rel: str) -> list[str]:
 
 # --- knobs -------------------------------------------------------------------
 
+# What-if round shape, e.g. {"ROUTE_BATTLES": 4, "GYM_TRAINER_BATTLES": 3}.
+# Replaces those DEFs' values before parsing, so every constant derived from
+# them (ROUND_BATTLES, the steps, the battlecounts, the balance knobs built on
+# them) follows. Empty = the source as written.
+ROUND_OVERRIDES: dict[str, int] = {}
+
+
 def load_round_constants() -> dict[str, int]:
     """constants/round_constants.asm: the round shape on wBattleCount."""
-    return parse_rgbds_constants(ROOT / "constants" / "round_constants.asm")
+    path = ROOT / "constants" / "round_constants.asm"
+    if not ROUND_OVERRIDES:
+        return parse_rgbds_constants(path)
+    import tempfile
+    text = path.read_text(encoding="utf-8")
+    for name, value in ROUND_OVERRIDES.items():
+        text, n = re.subn(rf"^(DEF {name}\s+EQU\s+)\S+", rf"\g<1>{value}", text, flags=re.M)
+        if n != 1:
+            raise ValueError(f"round override: DEF {name} not found in {path.name}")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp) / path.name
+        tmp_path.write_text(text, encoding="utf-8")
+        return parse_rgbds_constants(tmp_path)
 
 
 def load_knobs() -> dict[str, int]:

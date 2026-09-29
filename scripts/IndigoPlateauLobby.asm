@@ -931,7 +931,6 @@ PCPokemonSalesmanText:
     jr z, .print
     inc c       ; greatball class
     ld hl, .IGotADealTextGreatball
-    ld b, SALESMAN_PRICE_GREATBALL_BCD
     cp c
     jr z, .print
 	ld hl, .IGotADealTextUltraball
@@ -947,22 +946,26 @@ PCPokemonSalesmanText:
 	ldh [hMoney], a
 	ldh [hMoney + 2], a
     
+    ; de = the price's two high BCD bytes (balance_constants.asm *_WORD):
+    ; the knobs are BCD thousands, so a price can reach Y99,000.
     ld a, [wroguenpcclass]
-    ld b, SALESMAN_PRICE_POKEBALL_BCD
+    ld de, SALESMAN_PRICE_POKEBALL_WORD
     ld c, 1
     cp c
     jr z, .pokemon_cost
     inc c       ; greatball class
 
-    ld b, SALESMAN_PRICE_GREATBALL_BCD
+    ld de, SALESMAN_PRICE_GREATBALL_WORD
     cp c
     jr z, .pokemon_cost
 
     ; ultraball class
-    ld b, SALESMAN_PRICE_ULTRABALL_BCD
+    ld de, SALESMAN_PRICE_ULTRABALL_WORD
 
     .pokemon_cost
-    ld a, b
+    ld a, d
+	ldh [hMoney], a
+    ld a, e
 	ldh [hMoney + 1], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
@@ -991,22 +994,24 @@ PCPokemonSalesmanText:
 	ld [wPriceTemp + 2], a
     
     ld a, [wroguenpcclass]
-    ld b, SALESMAN_PRICE_POKEBALL_BCD
+    ld de, SALESMAN_PRICE_POKEBALL_WORD
     ld c, 1
     cp c
     jr z, .pokemon_cost_2
     inc c       ; greatball class
 
-    ld b, SALESMAN_PRICE_GREATBALL_BCD
+    ld de, SALESMAN_PRICE_GREATBALL_WORD
     cp c
     jr z, .pokemon_cost_2
 
     ; ultraball class
-    ld b, SALESMAN_PRICE_ULTRABALL_BCD
+    ld de, SALESMAN_PRICE_ULTRABALL_WORD
 
 
 	.pokemon_cost_2
-    ld a, b
+    ld a, d
+	ld [wPriceTemp], a
+    ld a, e
 	ld [wPriceTemp + 1], a
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2
@@ -1073,10 +1078,12 @@ PCMoveTutorText::
 	and a
 	jp nz, .exit
 	xor a
-	;charge 5000 money
-	ld [hMoney], a
+	; check for MOVE_RELEARNER_PRICE_BCD (BCD thousands; *_WORD is its two
+	; high money bytes, balance_constants.asm)
 	ld [hMoney + 2], a
-	ld a, MOVE_RELEARNER_PRICE_BCD ; bcd3 5000 is $00,$50,$00
+	ld a, HIGH(MOVE_RELEARNER_PRICE_WORD)
+	ld [hMoney], a
+	ld a, LOW(MOVE_RELEARNER_PRICE_WORD)
 	ld [hMoney + 1], a
 	call HasEnoughMoney
 	jr nc, .enoughMoney
@@ -1152,11 +1159,12 @@ PCMoveTutorText::
 	ld a, b
 	and a
 	jr z, .exit
-	; Charge 5000 money
+	; Charge MOVE_RELEARNER_PRICE_BCD
 	xor a
-	ld [wPriceTemp], a
 	ld [wPriceTemp + 2], a
-	ld a, MOVE_RELEARNER_PRICE_BCD ; bcd3 5000 is $00,$50,$00
+	ld a, HIGH(MOVE_RELEARNER_PRICE_WORD)
+	ld [wPriceTemp], a
+	ld a, LOW(MOVE_RELEARNER_PRICE_WORD)
 	ld [wPriceTemp + 1], a
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2

@@ -14,8 +14,9 @@ UseItem_::
 	jp z, ItemUsePPTonic
 	cp KO_DEFIANCE ; outside ItemUsePtrTable's range (added after the elevator floors)
 	jp z, ItemUseKODefiance
-	cp EXP_ALL ; outside ItemUsePtrTable's range
-	jp z, ItemUseExpAll
+	; EXP_ALL is an option now (BIT_EXP_SHARE), so it can't be used from the bag.
+	;cp EXP_ALL ; outside ItemUsePtrTable's range
+	;jp z, ItemUseExpAll
 	cp SHINY_CHARM ; outside ItemUsePtrTable's range
 	jp z, ItemUseShinyCharm
 	cp AMULET_COIN ; outside ItemUsePtrTable's range
@@ -2761,13 +2762,13 @@ KODefianceDescriptionText:
 ; EXP_ALL is a key item: using it from the bag shows a description.
 ; The actual effect is applied in GainExperience when active.
 ; ============================================================
-ItemUseExpAll:
-	ld hl, ExpAllDescriptionText
-	jp PrintText
-
-ExpAllDescriptionText:
-	text_far _ExpAllDescriptionText
-	text_end
+;ItemUseExpAll:
+;	ld hl, ExpAllDescriptionText
+;	jp PrintText
+;
+;ExpAllDescriptionText:
+;	text_far _ExpAllDescriptionText
+;	text_end
 
 ; ============================================================
 ; ItemUsePPTonic

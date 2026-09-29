@@ -2773,7 +2773,7 @@ wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
 ; wPlayerCoins; these are run-scoped state, above wGameProgressFlagsEnd so they
 ; zero on new game.
 wCreditsEarnedThisRun:: db   ; tally for the respawn popup; nonzero IS "popup pending"
-wExpAllLevel::          db   ; EXP_ALL upgrade tier 0-3 (EXP_ALL had no level byte)
+	ds 1 ; free (was wExpAllLevel, retired 2026-09-28 when EXP_ALL became the EXP Share option)
 
 ; General-purpose second rogue-run bitfield: wRogueFlagsBitfield (above) has
 ; zero free bits (see its own comment), so new run-scoped flags land here

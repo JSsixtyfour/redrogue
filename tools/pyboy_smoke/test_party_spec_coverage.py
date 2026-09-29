@@ -51,17 +51,16 @@ OVERRIDES_END = 0xFF
 OVERRIDE_FIELD_WIDTHS = (2, 1, 1, 4, 1, 1)
 BIT_POVR_SPECIES = 0
 
-# round -> (n_mons, base_level, level_step). Asserted against the shipped
-# authored rosters below rather than trusted; see test_curve_tracks_the_authored_rosters.
+# round -> (n_mons, base_level, level_step), read from the GYM_Rn_* knobs in
+# constants/balance_constants.asm. Until 2026-09-28 these were literals measured
+# from the authored parties.asm rosters; curve D (BALANCE_PHASE5_PLAN.md D) is a
+# deliberate departure from those levels, so the knobs are now the source.
+_BALANCE = parse_rgbds_constants(
+    REPO_ROOT / "constants/balance_constants.asm",
+    parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm"))
 GYM_CURVE = {
-    1: (2, 12, 2),
-    2: (2, 18, 3),
-    3: (3, 18, 3),
-    4: (3, 25, 2),
-    5: (4, 37, 2),
-    6: (4, 37, 2),
-    7: (5, 39, 2),
-    8: (6, 40, 2),
+    r: (_BALANCE[f"GYM_R{r}_MONS"], _BALANCE[f"GYM_R{r}_BASE"], _BALANCE[f"GYM_R{r}_STEP"])
+    for r in range(1, 9)
 }
 GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_LATE",
            4: "MIX_GYM_LATE", 5: "MIX_GYM_LATE", 6: "MIX_ELITE",
@@ -390,13 +389,13 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                     [self.species["RIVAL_STARTER_PLACEHOLDER"], POOL_FORM_BASE])
 
     def test_curve_tracks_the_authored_rosters(self):
-        """The generated level curve is measured, not invented.
+        """The generated team sizes still match the authored rosters.
 
         All eight shipped Kanto rosters are identical round for round, which is
-        what makes one shared curve correct. Asserting the generated curve
-        against the authored data means a future edit to either has to justify
-        itself against the other, instead of the curve silently drifting from
-        the content it replaced.
+        what made one shared curve correct. The LEVEL half of this check is
+        retired (2026-09-28): curve D raised the leader levels on purpose
+        (BALANCE_PHASE5_PLAN.md D), so the authored level envelopes no longer
+        describe the game. Team sizes did not change and are still held.
         """
         rosters = authored_rosters()
         sizes = {}
@@ -426,19 +425,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                     len(envelopes[round_no]), 1,
                     f"round {round_no} level envelopes diverge across the eight "
                     f"authored rosters: {sorted(envelopes[round_no])}")
-                low, high = envelopes[round_no].pop()
-                # The ACE is held to within one level because it is the fight's
-                # difficulty peak. The base gets two, because base + slot * step
-                # is linear and some authored rounds are not: round 8 spans
-                # 42-50 over six mons, which needs a step of 1.6. Where the two
-                # cannot both be met the ace wins and the low end gives way.
-                self.assertLessEqual(
-                    abs(base + (mons - 1) * step - high), 1,
-                    f"round {round_no} ace level {base + (mons - 1) * step} vs "
-                    f"authored {high}")
-                self.assertLessEqual(
-                    abs(base - low), 2,
-                    f"round {round_no} base level {base} vs authored {low}")
+                # Level envelope vs the authored rosters: retired with curve D
+                # (see the docstring). The knobs are the source of the levels.
 
     def test_allow_uber_is_confined_to_sabrina(self):
         """Only the one leader whose pool holds an uber may set the flag.

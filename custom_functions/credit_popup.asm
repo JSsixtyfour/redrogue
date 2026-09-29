@@ -88,11 +88,11 @@ RogueCreditPopupCheck::
 ;    wFusionSecondarySpecies/BaseStats, wCreditsEarnedThisRun,
 ;    wRogueFlagsBitfield2, and every map's CurScript byte (every map resets to
 ;    its default entry state) - plus wHealAllItemLevel/wRestorePPItemLevel/
-;    wKODefianceUsages/wExpAllLevel/wDiceCharges/wPrismType/wPrismDamageBonus/
+;    wKODefianceUsages/wDiceCharges/wPrismType/wPrismDamageBonus/
 ;    wPrismRerollsLeft, which step 3 immediately re-derives.
 ;
-; 3. Re-derive the SRAM-tier caches step 2 just zeroed. wKODefianceUsages,
-;    wDiceCharges and wExpAllLevel are not run flags - they are cached copies
+; 3. Re-derive the SRAM-tier caches step 2 just zeroed. wKODefianceUsages and
+;    wDiceCharges are not run flags - they are cached copies
 ;    of a persistent SRAM upgrade tier (sKeyItemTiers), refreshed here so the
 ;    upgrade a player already bought keeps working instead of silently
 ;    downgrading to tier 0 until their next Credit Exchange visit.

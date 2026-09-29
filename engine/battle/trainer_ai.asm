@@ -206,8 +206,8 @@ AIRunPersonality:
 	ld l, a
 	jp hl
 
-; Resolve a sparse trainer-class assignment. The table is intentionally empty
-; for the framework checkpoint: profile activation is a later balance change.
+; Resolve a sparse trainer-class assignment. Keep profile activation explicit
+; so each class receives a deliberate, reviewable balance change.
 ; Input: a = trainer class. Output: a = AI_PERSONALITY_*.
 AIGetSoftPersonality:
 	ld b, a
@@ -229,6 +229,7 @@ AIGetSoftPersonality:
 
 AISoftPersonalityByClass:
 	; db TRAINER_CLASS, AI_PERSONALITY_* ; opt in one class per reviewed change
+	db BLACKBELT, AI_PERSONALITY_OFFENSE
 	db $ff
 
 AISoftPersonalityPointers:

@@ -26,28 +26,28 @@ DEF WILD_EXP_MATCHES_TRAINER EQU 1
 ; level added per slot. The ace (last slot) is BASE + (MONS - 1) * STEP.
 ; Read by gym_team_spec in data/trainers/party_specs.asm.
 DEF GYM_R1_MONS EQU 2
-DEF GYM_R1_BASE EQU 12
+DEF GYM_R1_BASE EQU 13
 DEF GYM_R1_STEP EQU 2
 DEF GYM_R2_MONS EQU 2
-DEF GYM_R2_BASE EQU 18
+DEF GYM_R2_BASE EQU 20
 DEF GYM_R2_STEP EQU 3
 DEF GYM_R3_MONS EQU 3
-DEF GYM_R3_BASE EQU 18
+DEF GYM_R3_BASE EQU 24
 DEF GYM_R3_STEP EQU 3
 DEF GYM_R4_MONS EQU 3
-DEF GYM_R4_BASE EQU 25
+DEF GYM_R4_BASE EQU 32
 DEF GYM_R4_STEP EQU 2
 DEF GYM_R5_MONS EQU 4
-DEF GYM_R5_BASE EQU 37
+DEF GYM_R5_BASE EQU 36
 DEF GYM_R5_STEP EQU 2
 DEF GYM_R6_MONS EQU 4
-DEF GYM_R6_BASE EQU 37
+DEF GYM_R6_BASE EQU 41
 DEF GYM_R6_STEP EQU 2
 DEF GYM_R7_MONS EQU 5
-DEF GYM_R7_BASE EQU 39
+DEF GYM_R7_BASE EQU 44
 DEF GYM_R7_STEP EQU 2
 DEF GYM_R8_MONS EQU 6
-DEF GYM_R8_BASE EQU 40
+DEF GYM_R8_BASE EQU 47
 DEF GYM_R8_STEP EQU 2
 
 ; --- Elite Four -------------------------------------------------------------
@@ -121,7 +121,7 @@ DEF WILD_AREA_EXIT_BATTLES EQU ROUTE_BATTLES
 ; encounters, procedural_facility_gen.asm). They used to be two typed-out
 ; copies that could drift apart.
 MACRO wild_area_levels
-	db 5, 9, 13, 17, 21, 25, 29, 33, 37
+	db 12, 20, 27, 33, 39, 44, 49, 54, 60
 ENDM
 
 ; Chance out of 256 that an offered wild area carries a stage-event trainer.
@@ -129,6 +129,15 @@ ENDM
 ; skips its `cp` entirely at that value rather than comparing against an
 ; 8-bit-unrepresentable 256, so the knob still works for any value below it.
 DEF STAGE_EVENT_CHANCE EQU 256
+
+; --- Roster party sizes ---------------------------------------------------
+; A normal (not final) route or gym trainer whose table size is at least
+; ROSTER_VARY_MIN_SIZE and below ROSTER_FULL_SIZE fields one mon fewer, half the
+; time (GetRandRosterLoop.maybeShrink, func_enc_gen.asm). The final trainer of
+; each block always fields the full size; gym leaders are specs and never vary.
+; MIN_SIZE 3 means a 2-mon team never drops to 1.
+DEF ROSTER_VARY_MIN_SIZE EQU 3
+DEF ROSTER_FULL_SIZE EQU 6
 
 ; --- Reward levels --------------------------------------------------------
 ; GetRewardMonLevel (rogue_reward_menu.asm) = min + range/2 of the current
@@ -138,14 +147,61 @@ DEF STAGE_EVENT_CHANCE EQU 256
 DEF REWARD_LEVEL_FLOOR EQU 5
 DEF REWARD_LEVEL_CAP EQU 50
 
+; --- HM/TM prices -------------------------------------------------------------
+; One price per move grade (MoveRankByID, data/moves/move_ranks.asm). Each HM
+; and TM carries its tier in data/items/tm_prices.asm; GetMachinePrice
+; (engine/items/tm_prices.asm) reads the price here. BCD THOUSANDS, one byte:
+; $20 = Y20,000, so the ceiling is Y99,000. (The old table stored the price
+; itself as a BCD thousands digit, which capped it at Y9,000.)
+	const_def
+	const TM_PRICE_TIER_F ; 0
+	const TM_PRICE_TIER_D ; 1
+	const TM_PRICE_TIER_C ; 2
+	const TM_PRICE_TIER_B ; 3
+	const TM_PRICE_TIER_A ; 4
+	const TM_PRICE_TIER_S ; 5
+DEF NUM_TM_PRICE_TIERS EQU const_value
+DEF TM_PRICE_F_BCD EQU $02
+DEF TM_PRICE_D_BCD EQU $04
+DEF TM_PRICE_C_BCD EQU $06
+DEF TM_PRICE_B_BCD EQU $10
+DEF TM_PRICE_A_BCD EQU $15
+DEF TM_PRICE_S_BCD EQU $20
+
+; --- Lobby clerk (stat/TM) odds ----------------------------------------------
+; Random_StatTM_Mart_Selection (engine/items/random_item_selection_mart.asm).
+; Each slot is a stat item when a roll is below CLERK_STAT_SHARE, else a TM;
+; then a second roll picks the class: a roll <= *_POKEBALL_ODDS is pokeball
+; class, <= *_GREATBALL_ODDS great, <= *_ULTRABALL_ODDS ultra, else master.
+; Cumulative thresholds out of 256 (a threshold t covers rolls 0..t).
+DEF CLERK_STAT_SHARE EQU 128 ; 50% stat items, 50% TMs
+; TMs: 30% / 35% / 25% / 10% (master = the S-grade TMs and Surf)
+DEF CLERK_TM_POKEBALL_ODDS  EQU 76
+DEF CLERK_TM_GREATBALL_ODDS EQU 76 + 90
+DEF CLERK_TM_ULTRABALL_ODDS EQU 76 + 90 + 64
+; Stat: vitamins 35% / HP Up, PP Up 25% / evolution stones 37% / Rare Candy 3%
+DEF CLERK_STAT_POKEBALL_ODDS  EQU 88
+DEF CLERK_STAT_GREATBALL_ODDS EQU 88 + 64
+DEF CLERK_STAT_ULTRABALL_ODDS EQU 88 + 64 + 95
+
 ; --- Lobby sink prices ------------------------------------------------------
-; All BCD thousands bytes: $20 = Y2000. Read by scripts/IndigoPlateauLobby.asm.
-DEF SALESMAN_PRICE_POKEBALL_BCD EQU $20
-DEF SALESMAN_PRICE_GREATBALL_BCD EQU $60
-DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $90
-; Used twice by the move relearner (PCMoveTutorText): once for the
-; HasEnoughMoney check, once for the deduction. The player pays it once.
-DEF MOVE_RELEARNER_PRICE_BCD EQU $50
+; BCD thousands bytes like the TM prices: $20 = Y20,000. Read by
+; scripts/IndigoPlateauLobby.asm.
+DEF SALESMAN_PRICE_POKEBALL_BCD EQU $05
+DEF SALESMAN_PRICE_GREATBALL_BCD EQU $12
+DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $20
+; The lobby Move Tutor (PCMoveTutorText, the rare Stadium/event moves). Used
+; twice: once for the HasEnoughMoney check, once for the deduction; the player
+; pays it once. Held to the top TM price (user rule 2026-09-28: the tutor costs
+; at least as much as the most expensive TM).
+DEF MOVE_RELEARNER_PRICE_BCD EQU TM_PRICE_S_BCD
+	ASSERT MOVE_RELEARNER_PRICE_BCD >= TM_PRICE_S_BCD, "the move tutor must cost at least the top TM"
+; The two high bytes of a 3-byte BCD money value, from a BCD-thousands byte:
+; $TU -> $0T, $U0 (Y TU,000), as (high << 8) | middle for `ld de`/`ld bc`.
+DEF SALESMAN_PRICE_POKEBALL_WORD  EQU ((SALESMAN_PRICE_POKEBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_POKEBALL_BCD & $0F) << 4)
+DEF SALESMAN_PRICE_GREATBALL_WORD EQU ((SALESMAN_PRICE_GREATBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_GREATBALL_BCD & $0F) << 4)
+DEF SALESMAN_PRICE_ULTRABALL_WORD EQU ((SALESMAN_PRICE_ULTRABALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_ULTRABALL_BCD & $0F) << 4)
+DEF MOVE_RELEARNER_PRICE_WORD     EQU ((MOVE_RELEARNER_PRICE_BCD >> 4) << 8) | ((MOVE_RELEARNER_PRICE_BCD & $0F) << 4)
 ; BCD $0500 = Y500 per round. Read by engine/events/lobby_daycare.asm.
 DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
 ; The Psychic's price is computed (Y1000 x (badges + 1)), not a literal here.

@@ -845,18 +845,18 @@ OptionsPageSetInGame:
 
 ; rows, box height, CANCEL Y, row table, prompt column, prompt
 ;
-; Both pages share OptionsRows. The title screen declares 9 rows and so stops
+; Both pages share OptionsRows. The title screen declares 11 rows and so stops
 ; one short of CHEAT, which is the last entry in that table; its box is
-; correspondingly shorter, ending just under IRONMAN.
+; correspondingly shorter, ending just under EXP SHARE.
 OptionsPageTitle:
-	optpage 10, 11, 15, OptionsRows, 0, 0
+	optpage 11, 12, 15, OptionsRows, 0, 0
 OptionsPageInGame:
-	optpage 11, 13, 15, OptionsRows, 0, 0
+	optpage 12, 13, 15, OptionsRows, 0, 0
 
 ; label, screen Y, value column, variable, mask, order, strings, count, hook
 ;
 ; Grouped, with a blank row between groups: on-screen extras, then text/audio
-; presentation, then the three that change how a run plays, then the cheat.
+; presentation, then the four that change how a run plays, then the cheat.
 ; A blank row between EVERY item does not fit - nine rows plus eight gaps plus
 ; two border rows is 19, and the screen holds 18.
 ;
@@ -873,7 +873,8 @@ OptionsRows:
 	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
 	optrow OptBattleStyleLabel, 10, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
 	optrow OptIronmanLabel,     11, 16, wOptions3, 1 << BIT_IRONMAN,           OptIronmanOrder,     OptOnOffValues,       2, 0
-; In-game only. The title page's descriptor declares 9 rows and stops above it.
+	optrow OptExpShareLabel,    12, 16, wOptions3, 1 << BIT_EXP_SHARE,         OptExpShareOrder,    OptOnOffValues,       2, 0
+; In-game only. The title page's descriptor declares 11 rows and stops above it.
 	optrow_custom OptCheatLabel, 13, 9, OptDrawCheat, OptCycleCheat
 
 ; ----------------------------------------------------------------------------
@@ -920,6 +921,8 @@ Opt60FPSOrder:
 	db 1 << BIT_60_FPS, 0
 OptIronmanOrder:
 	db 1 << BIT_IRONMAN, 0
+OptExpShareOrder:
+	db 1 << BIT_EXP_SHARE, 0
 OptBattleSpeedOrder:
 	db 0, BATTLE_SPEED_X2, BATTLE_SPEED_X4
 
@@ -997,6 +1000,7 @@ Opt60FPSLabel:       db "60 FPS@"
 OptCheatLabel:       db "CHEAT@"
 OptIronmanLabel:     db "IRONMAN@"
 OptBattleSpeedLabel: db "BATTLE SPEED@"
+OptExpShareLabel:    db "EXP SHARE@"
 
 ; ----------------------------------------------------------------------------
 ; Values. Every string in one table is padded to the same width, on the LEFT,

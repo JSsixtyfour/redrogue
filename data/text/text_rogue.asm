@@ -86,12 +86,13 @@ _PPTonicDescriptionText::
 	cont "each battle."
 	done
 
-_ExpAllDescriptionText::
-	text "Shares EXP"
-	line "with the whole"
-	cont "party after"
-	cont "each battle."
-	done
+; EXP_ALL is an option now (BIT_EXP_SHARE); its bag description is unused.
+;_ExpAllDescriptionText::
+;	text "Shares EXP"
+;	line "with the whole"
+;	cont "party after"
+;	cont "each battle."
+;	done
 
 _KODefianceDescriptionText::
 	text "Revives your"

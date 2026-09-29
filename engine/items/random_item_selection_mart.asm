@@ -48,16 +48,11 @@ pop bc
 ld a, c                     ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
-ldh   a,  [hProduct+2]      ; load product into a
-ldh [hDividend], a          ; place product in dividend
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
+; index = (rand * count) >> 8, the product's high byte: always < count. It was
+; rand * count / 255, which is count itself on a roll of 255 and read the item
+; one past the class list (measured 2026-09-28: a stray stone and a stray id 99
+; in 480 clerk items).
+ldh   a,  [hProduct+2]
 ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
@@ -116,27 +111,30 @@ dec a
 stattm_duplicate_repeat:
 push af
 push hl
+; Stat item or TM, then the rarity class: two SEPARATE rolls. Both used to read
+; the same hRandomAdd byte, so a stat item (byte <= $80) could never reach the
+; ultra/master classes (stones, Rare Candy) and a TM (byte > $80) could never
+; be pokeball/great class. Measured 2026-09-28 over 480 items: stones 0.2%,
+; Rare Candy 0%, TMs 100% ultra/master. The odds are CLERK_* knobs in
+; constants/balance_constants.asm.
 call Random
-ldh a, [hRandomAdd]
-ld b, a
-ld a, $80
-cp b
-jr nc, stat_item_determineClassSlot
+cp CLERK_STAT_SHARE
+jr c, stat_item_determineClassSlot
 
 tm_item_determineClassSlot:
-ldh a, [hRandomAdd]
+call Random                 ; preserves bc/de/hl
 ld b, a
 ld c, NUM_TM_POKEBALL_CLASS
 ld hl, tm_pokeball_class
-ld a, item_pokeball_odds
+ld a, CLERK_TM_POKEBALL_ODDS
 cp b
 jr nc, stattm_item_selection
 ld c, NUM_TM_GREATBALL_CLASS
 ld hl, tm_greatball_class
-ld a, item_greatball_odds
+ld a, CLERK_TM_GREATBALL_ODDS
 cp b
 jr nc, stattm_item_selection
-ld a, item_ultraball_odds
+ld a, CLERK_TM_ULTRABALL_ODDS
 ld hl, tm_ultraball_class
 ld c, NUM_TM_ULTRABALL_CLASS
 cp b
@@ -146,19 +144,19 @@ ld c, NUM_TM_MASTERBALL_CLASS
 jp stattm_item_selection
 
 stat_item_determineClassSlot:
-ldh a, [hRandomAdd]
+call Random
 ld b, a
 ld c, NUM_STAT_POKEBALL_CLASS
 ld hl, stat_pokeball_class
-ld a, item_pokeball_odds
+ld a, CLERK_STAT_POKEBALL_ODDS
 cp b
 jr nc, stattm_item_selection
 ld c, NUM_STAT_GREATBALL_CLASS
 ld hl, stat_greatball_class
-ld a, item_greatball_odds
+ld a, CLERK_STAT_GREATBALL_ODDS
 cp b
 jr nc, stattm_item_selection
-ld a, item_ultraball_odds
+ld a, CLERK_STAT_ULTRABALL_ODDS
 ld hl, stat_ultraball_class
 ld c, NUM_STAT_ULTRABALL_CLASS
 cp b
@@ -178,16 +176,11 @@ pop bc
 ld a, c                     ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
-ldh   a,  [hProduct+2]      ; load product into a
-ldh [hDividend], a          ; place product in dividend
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
+; index = (rand * count) >> 8, the product's high byte: always < count. It was
+; rand * count / 255, which is count itself on a roll of 255 and read the item
+; one past the class list (measured 2026-09-28: a stray stone and a stray id 99
+; in 480 clerk items).
+ldh   a,  [hProduct+2]
 ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
