@@ -73,9 +73,9 @@ class LobbyPoseLayoutTests(unittest.TestCase):
         self.assertNotIn("ld a, $18", self.pokecenter)
         self.assertRegex(
             self.loader,
-            r"wSprite01StateData1 \+ SPRITESTATEDATA1_PICTUREID\]\s+"
-            r"cp SPRITE_NURSE\s+jr nz, \.findNextVRAMSlotLoop\s+"
-            r"\.reserveFollowerVRAMSlot\s+inc b",
+            # Base 2 is reserved on every indoor map, so Nurse Joy is at base 3.
+            r"cp FIRST_INDOOR_MAP\s+jr c, \.findNextVRAMSlotLoop\s+"
+            r"(?:;[^\n]*\s+)*inc b",
         )
 
 

@@ -13,13 +13,18 @@ _SilphCoB1FDormText::
 	done
 
 _SilphCoB1FCreditExchangeText::
-	text "PROF PALM: This"
-	line "temporary door"
-	cont "leads to the wild"
-	cont "facility."
+	text "PROF PALM: In"
+	line "here, you can buy"
+	cont "key items for"
+	cont "your experience,"
+	cont "plus upgrades and"
+	cont "furniture for"
+	cont "your room."
 
-	para "Use it to review"
-	line "the rebuilt map."
+	para "Everything costs"
+	line "credits earned"
+	cont "through"
+	cont "performance."
 	done
 
 _SilphCoB1FVRText::

@@ -22,6 +22,9 @@ DEF BIT_TEXT_PREDEF EQU 0
 
 ; wFontLoaded
 DEF BIT_FONT_LOADED EQU 0
+; Transient: set by InitOutsideMapSprites when the follower changed the fixed
+; set's order, cleared by LoadMapSpriteTilePatterns before it returns.
+DEF BIT_RELOAD_STANDING_FRAMES EQU 7
 
 ; wCurrentMapScriptFlags
 	const_def 5

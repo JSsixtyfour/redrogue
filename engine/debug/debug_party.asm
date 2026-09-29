@@ -203,6 +203,8 @@ IF DEF(_DEBUG)
 	; and B1F replays the tour on every entry while it is clear. Set it for
 	; both modes before the branch.
 	SetEvent EVENT_INTRO_TOUR_COMPLETE
+	; The same skipped VR intro is where Palm hands over the starter key items.
+	farcall GiveStarterKeyItems
 
 	; Split Debug 1's sandbox state from Debug 2's rogue-run setup.
 	ld a, [wStatusFlags6]

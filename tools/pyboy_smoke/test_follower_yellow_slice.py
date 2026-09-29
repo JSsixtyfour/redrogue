@@ -75,10 +75,33 @@ class YellowFollowerSliceTests(unittest.TestCase):
     def test_active_slot15_reserves_follower_base_two(self):
         self.assertRegex(
             self.loader,
+            # Every indoor map reserves base 2, follower out or not, so NPC
+            # bases never shift when a text-close reload spawns or drops it.
             r"(?ms)ld b, 1.*?cp FIRST_INDOOR_MAP\s+"
-            r"jr c, \.findNextVRAMSlotLoop\s+ld a, \[wSprite15StateData1 \+ "
-            r"SPRITESTATEDATA1_PICTUREID\]\s+and a\s+jr nz, "
-            r"\.reserveFollowerVRAMSlot.*?\.reserveFollowerVRAMSlot\s+inc b",
+            r"jr c, \.findNextVRAMSlotLoop\s+(?:;[^\n]*\s+)*inc b",
+        )
+        # A text-close reload skips standing frames, except base 2's, whose
+        # follower sheet can be new (first starter, lead swap, option on), and
+        # except when an outdoor fixed set was reordered by a follower change.
+        self.assertRegex(
+            self.loader,
+            r"(?s)jr nz, \.fontLoadedFirstLoad.*?\.fontLoadedFirstLoad\s+"
+            r"(?:;[^\n]*\s+)*ldh a, \[hVRAMSlot\]\s+cp 2\s+"
+            r"jr z, \.reloadStandingFrames\s+ld a, \[wFontLoaded\]\s+"
+            r"bit BIT_RELOAD_STANDING_FRAMES, a\s+jr z, \.skipFirstLoad\s+"
+            r"\.reloadStandingFrames.*?call CopyVideoData\s+\.skipFirstLoad",
+        )
+        self.assertRegex(
+            self.loader,
+            r"(?s)\.loadSpriteSet\s+ld a, \[wSpriteSet\]\s+push af.*?"
+            r"pop af\s+ld hl, wSpriteSet\s+cp \[hl\]\s+jr z, \.sameSetOrder\s+"
+            r"ld hl, wFontLoaded\s+set BIT_RELOAD_STANDING_FRAMES, \[hl\]",
+        )
+        # The flag is transient: cleared before LoadMapSpriteTilePatterns returns.
+        self.assertRegex(
+            self.loader,
+            r"jr nz, \.zeroStoredPictureIDLoop\s+ld hl, wFontLoaded\s+"
+            r"res BIT_RELOAD_STANDING_FRAMES, \[hl\]\s+ret",
         )
 
     def test_yellow_queue_sentinel_contract(self):
@@ -514,8 +537,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             generic_loader,
             r"(?s)ld b, 1.*?ldh a, \[hCurMap\]\s+cp FIRST_INDOOR_MAP\s+"
-            r"jr c, \.findNextVRAMSlotLoop\s+ld a, "
-            r"\[wSprite15StateData1 \+ SPRITESTATEDATA1_PICTUREID\]",
+            r"jr c, \.findNextVRAMSlotLoop\s+(?:;[^\n]*\s+)*inc b",
         )
         predicate = outside.split(".isFollowerOutsideMap", 1)[1]
         self.assertIn(

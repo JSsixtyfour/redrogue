@@ -775,12 +775,16 @@ SilphCoB1FDefaultScript:
 	;cp 1
 	;ret nz
     call EndNPCMovementScript
-	ld c, 8
-	call DelayFrames
+	; The player arrives still facing up from climbing the 1F stairs. Turn them
+	; and redraw BEFORE the pause: DelayFrames never rebuilds OAM, so setting the
+	; facing after it left the player shown facing the wall for the whole wait.
 	ld a, PLAYER_DIR_DOWN
 	ld [wPlayerMovingDirection], a
 	ld a, SPRITE_FACING_DOWN
 	ld [wSpritePlayerStateData1FacingDirection], a
+	call UpdateSprites
+	ld c, 8
+	call DelayFrames
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, SCRIPT_SILPHCOB1F_WALK_TO_DORM

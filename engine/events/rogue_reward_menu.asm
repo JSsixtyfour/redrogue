@@ -60,11 +60,17 @@ RogueRewardMenu::
 	hlcoord 7, 1
 	ld de, wNameBuffer
 	call PlaceString
+	; The hover box is the only box this menu draws in rows 0-1, and the
+	; UpdateSprites pass above ran before it existed, so an NPC standing in the
+	; top map row stayed drawn over it. CheckSpriteAvailability hides a sprite
+	; standing on a text-box tile, but only when a sprite pass runs.
+	call UpdateSprites
 	jr .menuLoop
 .eraseTradeHover
 	hlcoord 0, 0
 	lb bc, 18, 3
 	predef LoadScreenTileAreaFromBuffer3
+	call UpdateSprites           ; un-hide the NPC the hover box covered
 	jr .menuLoop
 .aPressed
 	ldh a, [hCurrentMenuItem]
@@ -207,7 +213,13 @@ HandleRewardChoice:
     and a
     ret z                           ; declined or wrong mon selected
     SetEvent EVENT_GOT_ROGUE_POKEMON
-    ret                             ; trade NPC stays visible, unlike the pokeballs
+    ; RogueDoInGameTradeDialogue prints nothing after a TRADE_FOR_RANDOM trade,
+    ; and this menu closes through HoldTextDisplayOpen, which never waits. So the
+    ; restored pre-trade screen flashed for a frame and the box closed. Print the
+    ; result and wait for a button here. The trade NPC stays visible, unlike the
+    ; pokeballs.
+    ld hl, RewardTradedText
+    jp PrintText
 .givePrize
 	ld hl, SoYouWantRewardText
 	call PrintText
@@ -308,14 +320,23 @@ TradeSlotLabel:
 TradeHoverLabel:
 	db "GIVE:@"
 
+RewardTradedText:
+	text_far _TradedForText
+	sound_get_key_item
+	text_waitbutton
+	text_end
+
+; These waits were commented out in e3797812 to stop a double wait, but the menu
+; now closes through HoldTextDisplayOpen (TextScript_RogueRewardMenu), which never
+; waits, so without them these texts flashed for a frame and closed.
 OhFineThenRewardText:
 	text_far _OhFineThenText
-	;text_waitbutton
+	text_waitbutton
 	text_end
 
 Goodluck:
 	text_far _Goodluck
-	;text_waitbutton
+	text_waitbutton
 	text_end
 
 NoThanksText:

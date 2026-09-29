@@ -517,20 +517,8 @@ OaksLabRivalStartBattleScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	ret nz
 
-	; walk is finished: face Blue toward the player (player at x=4 is on his
-	; left -> face left; player at x=5 is on his right -> face right).
-	ld a, [wXCoord]
-	cp 4
-	ld a, SPRITE_FACING_LEFT
-	jr z, .faceSet
-	ld a, SPRITE_FACING_RIGHT
-.faceSet
-	ld b, a
-	ld a, OAKSLAB_RIVAL
-	ldh [hSpriteIndex], a
-	ld a, b
-	ldh [hSpriteFacingDirection], a
-	call SetSpriteFacingDirectionAndDelay
+	; walk is finished: Blue and the player turn to face each other
+	call OaksLabRivalAndPlayerFaceEachOther
 
 	; define which team rival uses, and fight it
 	ld a, 1
@@ -565,28 +553,42 @@ OaksLabRivalStartBattleScript:
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
 	xor a
 	ldh [hJoyIgnore], a
-	ld a, PLAYER_DIR_UP
-	ld [wPlayerMovingDirection], a
     ld a, SCRIPT_OAKSLAB_RIVAL_END_BATTLE
 	ld [wOaksLabCurScript], a
 	ret
+
+; Blue battles beside the player on row 2, on whichever exit tile the player
+; did not walk up to: player at x=4 has him on the right, x=5 on the left.
+; The player's facing is driven by wPlayerMovingDirection every frame, so that
+; is what must change, not just the sprite's facing byte.
+OaksLabRivalAndPlayerFaceEachOther:
+	ld a, [wXCoord]
+	cp 4
+	ld a, SPRITE_FACING_LEFT ; Blue
+	lb bc, SPRITE_FACING_RIGHT, PLAYER_DIR_RIGHT ; player
+	jr z, .faceSet
+	ld a, SPRITE_FACING_RIGHT
+	lb bc, SPRITE_FACING_LEFT, PLAYER_DIR_LEFT
+.faceSet
+	ldh [hSpriteFacingDirection], a
+	ld a, b
+	ld [wSpritePlayerStateData1FacingDirection], a
+	ld a, c
+	ld [wPlayerMovingDirection], a
+	ld a, OAKSLAB_RIVAL
+	ldh [hSpriteIndex], a
+	jp SetSpriteFacingDirectionAndDelay
 
 OaksLabRivalEndBattleScript:
     xor a
 	ld [wIsTrainerBattle], a
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	ld a, PLAYER_DIR_UP
-	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld a, OAKSLAB_RIVAL
 	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
-	ld a, OAKSLAB_RIVAL
-	ldh [hSpriteIndex], a
-	xor a ; SPRITE_FACING_DOWN
-	ldh [hSpriteFacingDirection], a
-	call SetSpriteFacingDirectionAndDelay
+	call OaksLabRivalAndPlayerFaceEachOther
 	predef HealParty
 	SetEvent EVENT_BATTLED_RIVAL_IN_OAKS_LAB
     ld a, SCRIPT_OAKSLAB_RIVAL_STARTS_EXIT
@@ -628,8 +630,8 @@ OaksLabPlayerWatchRivalExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	jr z, .rivalGone
 	; still walking: the player turns south to watch Blue head for the door
-	xor a ; SPRITE_FACING_DOWN
-	ld [wSpritePlayerStateData1FacingDirection], a
+	ld a, PLAYER_DIR_DOWN
+	ld [wPlayerMovingDirection], a
 	ret
 .rivalGone
 	ld a, TOGGLE_OAKS_LAB_RIVAL

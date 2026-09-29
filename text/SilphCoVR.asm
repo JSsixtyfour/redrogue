@@ -7,12 +7,43 @@ _SilphCoVR_ProfPalmText::
     cont "game."
 	done
 
-; The prep line is used by the future VR entrance sequence. It is kept
-; separate from the normal Palm text above so the latter remains unchanged.
+_SilphCoVRGiftText::
+	text "PROF PALM: Before"
+	line "you go in, take"
+	cont "these with you."
+	done
+
+_SilphCoVRReceivedKeyItemsText::
+	text "<PLAYER> received"
+	line "LEFTOVERS,"
+	cont "PP TONIC and"
+	cont "KO DEFIANCE!@"
+	text_end
+
+_SilphCoVRKeyItemsExplainText::
+	text "Those are KEY"
+	line "ITEMS. They work"
+	cont "on their own while"
+	cont "they're in your"
+	cont "bag, and you keep"
+	cont "them between runs."
+
+	para "You can carry 3"
+	line "at once. Extras"
+	cont "go in the PC,"
+	cont "where you can"
+	cont "swap them out."
+
+	para "Upgrade them with"
+	line "CREDITS at the"
+	cont "CREDIT EXCHANGE."
+	done
+
+; Palm's closing line of the intro tour, after the key item handover.
 _SilphCoVRPrepText::
-	text "PROF PALM: I'll"
-	line "get the machine"
-	cont "prepped. Walk in"
+	text "I'll get the"
+	line "machine prepped."
+	cont "Walk in"
 	cont "when you're"
 	cont "ready."
 	done

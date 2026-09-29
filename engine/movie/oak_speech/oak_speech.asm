@@ -61,29 +61,14 @@ OakSpeech:
 	call LoadTextBoxTilePatterns
 	call PrepareOakSpeech
 	predef InitPlayerData2
-	; Give starting items. Key pocket items (LEFTOVERS, PP_TONIC,
-	; KO_DEFIANCE) route through GiveItem so they hit sKeyItemsBitfield +
-	; wKeyItemSlot1/2/3 instead of the item bag. POTION goes to the regular bag.
+	; Give starting items. POTION goes to the regular bag. The player starts
+	; with no key items: Palm hands over LEFTOVERS, PP_TONIC and KO_DEFIANCE
+	; at the end of the VR intro (GiveStarterKeyItems, scripts/SilphCoVR.asm).
 	ld a, POTION
 	ld [wCurItem], a
 	ld a, 1
 	ld [wItemQuantity], a
 	farcall GiveRecoveryItem
-	; EXP_ALL is an option now (BIT_EXP_SHARE), not a starting key item.
-	;ld b, EXP_ALL
-	;ld c, 1
-	;call GiveItem
-	ld b, LEFTOVERS
-	ld c, 1
-	call GiveItem
-	ld b, PP_TONIC
-	ld c, 1
-	call GiveItem
-	ld b, KO_DEFIANCE
-	ld c, 1
-	call GiveItem
-	ld a, 1
-	ld [wKODefianceUsages], a
 	ld a, [wDefaultMap]
 	ld [wDestinationMap], a
 	call PrepareForSpecialWarp

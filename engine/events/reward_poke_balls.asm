@@ -87,8 +87,15 @@ Rogue_Reward_Script_PokeballText_1::
     ld a, c
     and a
     ret z                   ; declined or wrong mon - NPC stays interactable
+    CheckEvent EVENT_GOT_ROGUE_POKEMON
+    ret nz                  ; re-talk after a completed trade: the dialogue already showed its after-trade text
     SetEvent EVENT_GOT_ROGUE_POKEMON
-    ret
+    ; RogueDoInGameTradeDialogue prints nothing after a TRADE_FOR_RANDOM trade.
+    ; Same message as the reward menu's trade slot. It waits for its own button,
+    ; so the TextScriptEnd wait is switched off to avoid a second one.
+    ld hl, RewardTradedNPCText
+    call PrintText
+    jp DisableWaitingAfterTextDisplay
 
 Rogue_Reward_Script_PokeballText_2::
     CheckEvent EVENT_GOT_ROGUE_POKEMON
@@ -184,4 +191,10 @@ PickRewardPokeballText:
     
 GreedyText_Reward:
 	text_far _GreedyText
+	text_end
+
+RewardTradedNPCText:
+	text_far _TradedForText
+	sound_get_key_item
+	text_waitbutton
 	text_end

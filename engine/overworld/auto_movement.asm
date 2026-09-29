@@ -539,8 +539,14 @@ SilphCoB1FMovementScript_DoneAtDorm:
 	jp SilphCoB1FMovementScript_Done
 
 SilphCoB1FMovementScript_WalkToCreditExchange:
-	ld de, RLEList_SilphCoB1FPalmToCreditExchange
+	; The only leg where the player crosses Palm's path, so the only one whose
+	; wait must track the 60 FPS option (see the player lists below).
 	ld hl, RLEList_SilphCoB1FPlayerToCreditExchange
+	call Check60FPS
+	jr z, .gotPlayerList
+	ld hl, RLEList_SilphCoB1FPlayerToCreditExchange60FPS
+.gotPlayerList
+	ld de, RLEList_SilphCoB1FPalmToCreditExchange
 	ld a, 10
 	jp SilphCoB1FMovementScript_Start
 
@@ -670,11 +676,26 @@ RLEList_SilphCoB1FPalmToCreditExchange:
 	db -1
 
 ; Executed backward: wait while Palm passes, then (3,2) -> (3,1) -> (6,1).
+; The player steps UP into (3,1), which Palm crosses on his second step. The
+; wait is 2.5 Palm tiles: the player starts up as Palm is half out of (3,1), so
+; the two sprites only ever touch edges. Two tiles overlapped them diagonally
+; mid-step; three left the player a full empty tile behind (measured in BGB).
+; NO_INPUT is counted in movement ticks, and a tile is 8 ticks normally but 16
+; with 60 FPS on (1 px per tick instead of 2), so the wait has a 60 FPS copy at
+; double length. A single 16-tick wait was two Palm tiles at 30 FPS but one at
+; 60, which walked the player straight into him.
 RLEList_SilphCoB1FPlayerToCreditExchange:
 	db NO_INPUT, 1
 	db PAD_RIGHT, 3
 	db PAD_UP, 1
-	db NO_INPUT, 16
+	db NO_INPUT, 5 * 8 / 2
+	db -1
+
+RLEList_SilphCoB1FPlayerToCreditExchange60FPS:
+	db NO_INPUT, 1
+	db PAD_RIGHT, 3
+	db PAD_UP, 1
+	db NO_INPUT, 5 * 16 / 2
 	db -1
 
 ; Palm/player: (7,1)/(6,1) -> (11,1)/(10,1).

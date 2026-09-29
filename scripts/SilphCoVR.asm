@@ -250,9 +250,50 @@ SilphCoVR_ProfPalmText:
 	text_far _SilphCoVR_ProfPalmText
 	text_end
 
+; Palm hands over the three starter key items at the end of the intro tour,
+; explains the Key Items pocket, then preps the machine.
 SilphCoVRPrepText:
+	text_asm
+	push bc
+	ld hl, .giftText
+	call PrintText
+	farcall GiveStarterKeyItems
+	ld hl, .receivedText
+	call PrintText
+	ld hl, .explainText
+	call PrintText
+	ld hl, .prepText
+	call PrintText
+	pop bc
+	jp TextScriptEnd
+.giftText
+	text_far _SilphCoVRGiftText
+	text_end
+.receivedText
+	text_far _SilphCoVRReceivedKeyItemsText
+	sound_get_key_item
+	text_promptbutton
+	text_end
+.explainText
+	text_far _SilphCoVRKeyItemsExplainText
+	text_end
+.prepText
 	text_far _SilphCoVRPrepText
 	text_end
+
+; The starting key items, equipped into the bag. A fresh file has no active key
+; items, so all three fit (KEY_ITEM_MAX_ACTIVE is 3). Also reached by farcall
+; from PrepareNewGameDebug, whose debug starts skip this room's intro.
+GiveStarterKeyItems::
+	lb bc, LEFTOVERS, 1
+	call GiveItem
+	lb bc, PP_TONIC, 1
+	call GiveItem
+	lb bc, KO_DEFIANCE, 1
+	call GiveItem
+	ld a, 1
+	ld [wKODefianceUsages], a
+	ret
 
 SilphCoVRFinalBriefingText:
 	text_far _SilphCoVRFinalBriefingText

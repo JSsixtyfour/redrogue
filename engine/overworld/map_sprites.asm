@@ -95,16 +95,11 @@ LoadMapSpriteTilePatterns:
 	ldh a, [hCurMap]
 	cp FIRST_INDOOR_MAP
 	jr c, .findNextVRAMSlotLoop
-	ld a, [wSprite15StateData1 + SPRITESTATEDATA1_PICTUREID]
-	and a
-	jr nz, .reserveFollowerVRAMSlot
-	; Nurse Joy's healing poses historically hardcode image base 2. Keep the
-	; follower-era base 2 gap even when the follower option is disabled so the
-	; size-neutral base-3 pose constants remain correct in every Center.
-	ld a, [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID]
-	cp SPRITE_NURSE
-	jr nz, .findNextVRAMSlotLoop
-.reserveFollowerVRAMSlot
+	; Reserve base 2 on every indoor map whether or not a follower is out, so
+	; NPC bases never move when one appears or leaves. A text-close reload
+	; keeps the standing frames already in VRAM, so a shift there made every
+	; NPC draw its neighbour's sheet (Oak's Lab, first starter). This also keeps
+	; Nurse Joy's hardcoded base-3 healing poses correct.
 	inc b ; reserve follower-era image base 2
 ; loop to find the highest tile pattern VRAM slot (among the first 10 slots) used by a previous sprite slot
 ; this is done in order to find the first free VRAM slot available
@@ -201,10 +196,29 @@ LoadMapSpriteTilePatterns:
 	ld b, a
 	ld a, [wFontLoaded]
 	bit BIT_FONT_LOADED, a ; reloading upper half of tile patterns after displaying text?
-	jr nz, .skipFirstLoad ; if so, skip loading data into the lower half
+	jr nz, .fontLoadedFirstLoad ; if so, the lower half is normally still intact
 	ld a, b
 	ld b, 0
 	call FarCopyData2 ; load tile pattern data for sprite when standing still
+	jr .skipFirstLoad
+.fontLoadedFirstLoad
+	; Base 2 is the follower's sheet, which can be new since the last full load
+	; (first starter received, lead swapped, follower option re-enabled), so
+	; its standing frames must be reloaded too. Indoor bases never change here;
+	; outdoors, InitOutsideMapSprites flags a reordered fixed set.
+	ldh a, [hVRAMSlot]
+	cp 2
+	jr z, .reloadStandingFrames
+	ld a, [wFontLoaded]
+	bit BIT_RELOAD_STANDING_FRAMES, a
+	jr z, .skipFirstLoad
+.reloadStandingFrames
+	push de
+	ld d, h
+	ld e, l ; de = source
+	pop hl ; hl = VRAM destination
+	swap c ; 12 tiles
+	call CopyVideoData
 .skipFirstLoad
 	pop de
 	pop hl
@@ -268,6 +282,8 @@ LoadMapSpriteTilePatterns:
 	ld l, a
 	dec b
 	jr nz, .zeroStoredPictureIDLoop
+	ld hl, wFontLoaded
+	res BIT_RELOAD_STANDING_FRAMES, [hl]
 	ret
 
 ; reads data from SpriteSheetPointerTable
@@ -318,6 +334,8 @@ InitOutsideMapSprites:
 	cp b ; has the sprite set ID changed?
 	jr z, .skipLoadingSpriteSet ; if not, don't load it again
 .loadSpriteSet
+	ld a, [wSpriteSet]
+	push af ; entry 0 before this rebuild, to detect a reordered set
 	ld a, b
 	ld [wSpriteSetID], a
 	dec a
@@ -367,6 +385,16 @@ InitOutsideMapSprites:
 	ld [hl], a ; [x#SPRITESTATEDATA2_PICTUREID]
 	dec b
 	jr nz, .zeroRemainingSlotsLoop
+	; The set only reorders when the follower's sheet changed, and that always
+	; changes entry 0. A text-close reload skips standing frames, so a reorder
+	; there would leave every shifted NPC drawing its neighbour's sheet.
+	pop af
+	ld hl, wSpriteSet
+	cp [hl]
+	jr z, .sameSetOrder
+	ld hl, wFontLoaded
+	set BIT_RELOAD_STANDING_FRAMES, [hl]
+.sameSetOrder
 	ld a, [wNumSprites]
 	push af ; save number of sprites
 	ld a, SPRITE_SET_LENGTH ; 11 sprites in sprite set
