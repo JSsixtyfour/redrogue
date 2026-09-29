@@ -161,7 +161,8 @@ class BalanceTablesMatchRomTest(unittest.TestCase):
                     if not pointers[t - 1] or (leader.name, t) in HAND_WRITTEN_SPECS:
                         continue
                     rnd = (t - 1) // NUM_ROUND_VARIANTS + 1
-                    header, _ = image.record(f"{leader.name}Spec{t}")
+                    # Banded design: all three variants of a round share one record.
+                    header, _ = image.record(f"{leader.name}Round{rnd}")
                     with self.subTest(rom=image.name, leader=leader.name, wTrainerNo=t):
                         self.assertEqual(
                             header[:3],

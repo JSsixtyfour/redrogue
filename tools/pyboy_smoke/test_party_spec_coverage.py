@@ -48,8 +48,13 @@ NUM_RIVAL3_TEAMS = 5
 POOL_FORM_ROLL = 0xFF
 OVERRIDES_END = 0xFF
 # PartySpecOverrideFieldWidths, in bit order.
-OVERRIDE_FIELD_WIDTHS = (2, 1, 1, 4, 1, 1)
+OVERRIDE_FIELD_WIDTHS = (2, 1, 1, 4, 1, 1, 1)
 BIT_POVR_SPECIES = 0
+BIT_POVR_POOL = 6
+# PARTY_GEN_OFFTYPE_SLOT: the pseudo-slot whose pool override names the off-type pool.
+OFFTYPE_SLOT = 0xFE
+# party_specs.asm GYM_BAND_ROUNDS: gyms 1-2, 3-4, 5-6, 7-8.
+GYM_BAND_ROUNDS = 2
 
 # round -> (n_mons, base_level, level_step), read from the GYM_Rn_* knobs in
 # constants/balance_constants.asm. Until 2026-09-28 these were literals measured
@@ -66,27 +71,36 @@ GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_LATE",
            4: "MIX_GYM_LATE", 5: "MIX_GYM_LATE", 6: "MIX_ELITE",
            7: "MIX_ELITE", 8: "MIX_ELITE"}
 
-# label prefix -> (trainer class, pool, ace 1-3, ace 4-8, alt 1-3, alt 4-8,
-#                  extra flags from round 7)
+# label prefix -> (trainer class, extra flags from round 7). Since the banded
+# design (BALANCE_PHASE5_PLAN.md F, 2026-09-29) a leader's pools and aces are
+# not spec arguments: each round's record names POOL_BAND_<prefix>_Fod/Ace/Off
+# <band> from data/trainers/gym_band_pools.asm.
 GYM_LEADERS = {
-    "Falkner": ("FALKNER", "POOL_FALKNER", "PIDGEOTTO", "PIDGEOT", "DODUO", "FEAROW", 0),
-    "Brock": ("BROCK", "POOL_BROCK", "ONIX", "RHYDON", "KABUTO", "AERODACTYL", 0),
-    "Misty": ("MISTY", "POOL_MISTY", "STARYU", "STARMIE", "SEADRA", "LAPRAS", 0),
-    "LtSurge": ("LT_SURGE", "POOL_LT_SURGE", "VOLTORB", "RAICHU", "MAGNEMITE", "ELECTRODE", 0),
-    "Erika": ("ERIKA", "POOL_ERIKA", "GLOOM", "VILEPLUME", "WEEPINBELL", "VICTREEBEL", 0),
-    "Koga": ("KOGA", "POOL_KOGA", "KOFFING", "WEEZING", "GRIMER", "MUK", 0),
-    "Blaine": ("BLAINE", "POOL_BLAINE", "GROWLITHE", "ARCANINE", "PONYTA", "RAPIDASH", 0),
-    "Sabrina": ("SABRINA", "POOL_SABRINA", "KADABRA", "ALAKAZAM", "DROWZEE", "HYPNO", ALLOW_UBER),
-    "Giovanni": ("GIOVANNI", "POOL_GIOVANNI", "NIDORINO", "NIDOKING", "RHYHORN", "RHYDON", 0),
-    "Bugsy": ("BUGSY", "POOL_BUGSY", "BUTTERFREE", "SCYTHER", "BEEDRILL", "PINSIR", 0),
-    "Whitney": ("WHITNEY", "POOL_WHITNEY", "CLEFAIRY", "MILTANK", "RATICATE", "CLEFABLE", 0),
-    "Morty": ("MORTY", "POOL_MORTY", "HAUNTER", "GENGAR", "GASTLY", "MISDREAVUS", 0),
-    "Chuck": ("CHUCK", "POOL_CHUCK", "MACHOKE", "MACHAMP", "PRIMEAPE", "HITMONLEE", 0),
-    "Jasmine": ("JASMINE", "POOL_JASMINE", "MAGNETON", "STEELIX", "MAGNEMITE", "FORRETRESS", 0),
-    "Pryce": ("PRYCE", "POOL_PRYCE", "DEWGONG", "PILOSWINE", "SEEL", "DEWGONG", 0),
-    "Clair": ("CLAIR", "POOL_CLAIR", "DRAGONAIR", "DRAGONITE", "DRATINI", "KINGDRA", 0),
-    "Janine": ("JANINE", "POOL_JANINE", "GOLBAT", "CROBAT", "VENONAT", "VENOMOTH", 0),
+    "Falkner": ("FALKNER", 0), "Brock": ("BROCK", 0), "Misty": ("MISTY", 0),
+    "LtSurge": ("LT_SURGE", 0), "Erika": ("ERIKA", 0), "Koga": ("KOGA", 0),
+    "Blaine": ("BLAINE", 0), "Sabrina": ("SABRINA", 0), "Giovanni": ("GIOVANNI", 0),
+    "Bugsy": ("BUGSY", 0), "Whitney": ("WHITNEY", 0), "Morty": ("MORTY", 0),
+    "Chuck": ("CHUCK", 0), "Jasmine": ("JASMINE", 0), "Pryce": ("PRYCE", 0),
+    "Clair": ("CLAIR", 0), "Janine": ("JANINE", 0),
 }
+
+
+def band_pool_labels():
+    """POOL_BAND name -> the BandPool_ label its TrainerPoolTable row must point
+    at, following `band_same` aliases to the pool that owns the bytes."""
+    text = (REPO_ROOT / "data/trainers/gym_band_pools.asm").read_text(encoding="utf-8")
+    out = {}
+    for raw in text.splitlines():
+        code = raw.split(";")[0].strip()
+        m = re.match(r"band_pool\s+(\w+)$", code)
+        if m:
+            out[m.group(1)] = f"BandPool_{m.group(1)}"
+        m = re.match(r"band_same\s+(\w+),\s*(\w+)$", code)
+        if m:
+            out[m.group(1)] = out[m.group(2)]
+    return out
+
+
 # Elite Four only: label prefix -> (class, pool, ace, ace form, alt, alt form).
 # Both aces need an explicit form because neither eeveelution is a species in
 # this tree - Espeon and Umbreon are JOLTEON forms 1 and 2.
@@ -157,6 +171,11 @@ class Image:
         base = self.offset(f"{prefix}Specs")
         count = self.rom[base]
         return count, [self.word(base + 1 + i * 2) for i in range(count)]
+
+    def pool_list_addr(self, pool_id):
+        """The species-list address TrainerPoolTable row `pool_id` points at."""
+        row = self.offset("TrainerPoolTable") + pool_id * 5
+        return self.word(row + 3)
 
     def record(self, label):
         """(header 6-tuple, [(slot, ovr_flags, {bit: bytes})])."""
@@ -271,58 +290,54 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                     for number, pointer in enumerate(
                             pointers[1:] if has_hole else pointers,
                             start=2 if has_hole else 1):
+                        # Gym leaders: every variant of a round shares that
+                        # round's record (banded design), except Falkner's
+                        # hand-written round 1 B and C.
+                        if (prefix, number) in HAND_WRITTEN or not has_hole:
+                            want = f"{prefix}Spec{number}"
+                        else:
+                            want = f"{prefix}Round{(number - 1) // NUM_ROUND_VARIANTS + 1}"
                         self.assertEqual(
-                            pointer, image.addr(f"{prefix}Spec{number}"),
+                            pointer, image.addr(want),
                             f"{prefix} wTrainerNo {number} points at "
-                            f"{pointer:04X}, not at {prefix}Spec{number}")
+                            f"{pointer:04X}, not at {want}")
 
     def test_generated_records_match_the_round_and_variant_they_serve(self):
-        """Every generated record's header and ace pin, decoded from the ROM.
+        """Every banded round record's header and pool overrides, from the ROM.
 
-        The round and variant are derived from the wTrainerNo the pointer list
-        reaches the record through, NOT from the record's position in the file,
-        so a record emitted for the wrong round fails here even though it
-        assembles and links.
+        Header: the round's curve, the band's FODDER pool, the round's mix.
+        Overrides: the last slot draws from the band's ACE pool, and from band 2
+        the PARTY_GEN_OFFTYPE_SLOT pseudo-slot names its OFF-TYPE pool. Each pool
+        id is followed through TrainerPoolTable to the BandPool_ label it must
+        reach, so an id emitted for the wrong leader or band fails here even
+        though it assembles and links.
         """
+        labels = band_pool_labels()
         for image in self.images:
-            for prefix, (_cls, pool, ace_e, ace_l, alt_e, alt_l, extra) \
-                    in GYM_LEADERS.items():
-                for number in range(2, NUM_GYM_TEAMS + 1):
-                    if (prefix, number) in HAND_WRITTEN:
-                        continue
-                    round_no = (number - 1) // NUM_ROUND_VARIANTS + 1
-                    variant = (number - 1) % NUM_ROUND_VARIANTS
+            for prefix, (_cls, extra) in GYM_LEADERS.items():
+                for round_no in range(1, NUM_GYM_ROUNDS + 1):
+                    band = (round_no - 1) // GYM_BAND_ROUNDS + 1
                     mons, base, step = GYM_CURVE[round_no]
-                    want = (mons, base, step, self.pools[pool],
-                            self.mixes[GYM_MIX[round_no]],
-                            BASE_FLAGS | (extra if round_no >= 7 else 0))
-                    label = f"{prefix}Spec{number}"
+                    label = f"{prefix}Round{round_no}"
                     with self.subTest(rom=image.name, spec=label):
                         header, overrides = image.record(label)
                         self.assertEqual(
-                            header, want,
-                            f"{label} serves round {round_no} variant "
-                            f"{'ABC'[variant]}")
-                        if variant == 1:
+                            header[:3] + header[4:],
+                            (mons, base, step, self.mixes[GYM_MIX[round_no]],
+                             BASE_FLAGS | (extra if round_no >= 7 else 0)),
+                            f"{label} serves round {round_no}")
+                        self.assertEqual(
+                            image.pool_list_addr(header[3]),
+                            image.addr(labels[f"{prefix}_Fod{band}"]),
+                            f"{label}'s own pool is not {prefix}_Fod{band}")
+                        want_slots = [mons - 1] + ([OFFTYPE_SLOT] if band >= 2 else [])
+                        self.assertEqual([o[0] for o in overrides], want_slots)
+                        for (slot, flags, fields), kind in zip(overrides, ("Ace", "Off")):
+                            self.assertEqual(flags, 1 << BIT_POVR_POOL)
                             self.assertEqual(
-                                overrides, [],
-                                f"{label} is the B variant and must pin nothing")
-                            continue
-                        if variant == 0:
-                            ace = ace_e if round_no <= 3 else ace_l
-                        else:
-                            ace = alt_e if round_no <= 3 else alt_l
-                        self.assertEqual(len(overrides), 1)
-                        slot, flags, fields = overrides[0]
-                        self.assertEqual(
-                            slot, mons - 1,
-                            f"{label} must pin the LAST slot; BIT_PSPEC_ACE_LAST "
-                            "gives that slot the strongest source")
-                        self.assertEqual(flags, 1 << BIT_POVR_SPECIES)
-                        self.assertEqual(
-                            fields[BIT_POVR_SPECIES],
-                            [self.species[ace], POOL_FORM_ROLL],
-                            f"{label} should pin {ace}")
+                                image.pool_list_addr(fields[BIT_POVR_POOL][0]),
+                                image.addr(labels[f"{prefix}_{kind}{band}"]),
+                                f"{label} slot {slot:02X} is not {prefix}_{kind}{band}")
 
     def test_elite_four_records_use_the_four_tier_grid(self):
         """Twelve teams on the E4 grid, not 24 on the gym grid.
@@ -428,32 +443,21 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 # Level envelope vs the authored rosters: retired with curve D
                 # (see the docstring). The knobs are the source of the levels.
 
-    def test_allow_uber_is_confined_to_sabrina(self):
-        """Only the one leader whose pool holds an uber may set the flag.
+    def test_no_gym_round_allows_ubers(self):
+        """No gym leader's round record sets BIT_PSPEC_ALLOW_UBER.
 
-        RARITY_TIER_UBER in this tree is exactly {MEW, MEWTWO} and only
-        SabrinaPool lists them, so the flag has no business anywhere else. It is
-        checked from the ROM rather than the source because the flags byte is
-        assembled from `GYM_SPEC_FLAGS | (\\7)` under an `IF _rnd >= 7`, and a
+        RARITY_TIER_UBER is exactly {MEW, MEWTWO}, and since the banded design
+        no gym pool lists either. Checked from the ROM because the flags byte is
+        assembled from `GYM_SPEC_FLAGS | (\\3)` under an `IF _rnd >= 7`, and a
         mistake there would hand every leader an uber without changing a single
-        visible argument.
-
-        FalknerSpec3 is the documented exception: it is a test fixture for
-        PartyGenPoolCandidateOk and FalknerPool no longer holds an uber at all.
+        visible argument. FalknerSpec3 is a test fixture and stays exempt.
         """
         for image in self.images:
-            for prefix, entry in GYM_LEADERS.items():
-                extra = entry[6]
-                for number in range(2, NUM_GYM_TEAMS + 1):
-                    if (prefix, number) in HAND_WRITTEN:
-                        continue
-                    round_no = (number - 1) // NUM_ROUND_VARIANTS + 1
-                    header, _ = image.record(f"{prefix}Spec{number}")
-                    expected = bool(extra & ALLOW_UBER) and round_no >= 7
-                    with self.subTest(rom=image.name, spec=f"{prefix}Spec{number}"):
-                        self.assertEqual(
-                            bool(header[5] & ALLOW_UBER), expected,
-                            f"{prefix}Spec{number} (round {round_no})")
+            for prefix in GYM_LEADERS:
+                for round_no in range(1, NUM_GYM_ROUNDS + 1):
+                    header, _ = image.record(f"{prefix}Round{round_no}")
+                    with self.subTest(rom=image.name, spec=f"{prefix}Round{round_no}"):
+                        self.assertFalse(header[5] & ALLOW_UBER)
 
     def test_every_authored_team_is_well_formed(self):
         """Every level/species pair in parties.asm actually is one.

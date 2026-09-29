@@ -9,7 +9,7 @@
 ; AIGetPlayerMoveN is the one routine that branches on AI_OMNISCIENT: an
 ; omniscient tier (T2/T3) still reads the real wBattleMonMoves; a fair-play
 ; tier (T0/T1, AI_OMNISCIENT cleared in ai_core.asm's AITierLayers) reads
-; wAISeenPlayerMoves instead, which only holds moves the player has actually
+; wAISeenPlayerMoveMask instead, which only marks moves this party member has
 ; used this battle (populated by AITrackSeenPlayerMove, ai_fairplay.asm, bank
 ; $2C, hooked at engine/battle/core.asm's PlayerCanExecuteMove). No heuristic
 ; needed editing: every consumer already goes through this seam.
@@ -77,7 +77,30 @@ AIGetPlayerMoveN::
 	farcall AIHasFlag ; z clear = this tier is omniscient; z set = fair play
 	pop bc
 	jr nz, .omniscient
-	ld hl, wAISeenPlayerMoves ; fair play: only what has actually been shown
+; Fair play: the slot is known only if THIS party member revealed it. The mask
+; layout is documented at wAISeenPlayerMoveMask (ram/wram.asm).
+	ld b, 1
+	ld a, c
+	and a
+	jr z, .gotSlotBit
+.shiftSlotBit
+	sla b
+	dec a
+	jr nz, .shiftSlotBit
+.gotSlotBit
+	ld a, [wPlayerMonNumber]
+	srl a ; a = mask byte, carry = odd party slot (high nibble)
+	jr nc, .gotNibble
+	swap b
+.gotNibble
+	ld e, a
+	ld d, 0
+	ld hl, wAISeenPlayerMoveMask
+	add hl, de
+	ld a, [hl]
+	and b
+	jr z, .exit ; a = 0: not revealed by this mon
+	ld hl, wBattleMonMoves
 	jr .known
 .omniscient
 	ld hl, wBattleMonMoves

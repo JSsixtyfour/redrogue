@@ -115,6 +115,7 @@ PartySpecOverrideFieldWidths::
 	db 4 ; BIT_POVR_MOVES   - four literal move ids
 	db 1 ; BIT_POVR_TYPE    - required type
 	db 1 ; BIT_POVR_RARITY  - required rarity tier
+	db 1 ; BIT_POVR_POOL    - pool id
 	assert_table_length NUM_POVR_FIELDS
 
 ; --- Spec records ----------------------------------------------------------
@@ -181,22 +182,15 @@ MixOnlySpecs::
 ; THE SHAPE, three levels:
 ;
 ;   round    1..8, from wBattleCount / 10. Sets team size and levels.
-;   variant  three per round, the rand(3). Sets who the ace is.
+;   variant  three per round, the rand(3).
 ;   wTrainerNo = (round - 1) * 3 + variant + 1, variants A/B/C = 0/1/2.
 ;
-; WHY VARIANTS DIFFER ONLY IN THEIR ACE. Under the old authored system the
-; three variants were the ONLY source of variety, so each was a separately
-; written team. Here every non-ace slot already rolls from the leader's pool,
-; so three identical specs would already produce three different teams. What
-; the pool roll cannot give is a recognisable identity, so that is what the
-; variants carry:
-;
-;   A  the leader's PRIMARY signature pinned as the ace (Falkner -> Pidgeot)
-;   B  no pin at all - the whole team rolls, ace included
-;   C  the leader's SECONDARY signature pinned as the ace
-;
-; so a leader is recognisable about two thirds of the time and can still
-; surprise. A pin costs 5 bytes over the 6-byte header; B costs 1.
+; GYM LEADERS (banded design, 2026-09-29, see gym_round_spec below): the three
+; variants of a round share ONE record, and the ace is rolled from the band's
+; ace pool rather than pinned. The variant now only moves the off-type mon to a
+; different slot. Until then each variant pinned a different signature ace
+; (A primary, B none, C secondary); the ace pool replaces that with a list the
+; designer controls directly.
 ;
 ; WHY wTrainerNo 1 IS A HOLE FOR EVERY CHARACTER. Round 1 variant A is left as
 ; `dw 0` deliberately, on all 19, so it keeps resolving through the authored
@@ -220,14 +214,10 @@ MixOnlySpecs::
 ; unreachable. The .SkipTrainer landmine above cannot fire for them either way:
 ; a full list means RogueBuildParty never declines.
 ;
-; ACE PINS ARE NOT GATED BY SPECIES GROUPS, and that is deliberate and
-; consistent: an authored team shows exactly what you wrote, which is already
-; how TRAINERPARTY_FORMS teams behave and how FalknerData's placeholder team
-; already shows HOOTHOOT and NOCTOWL on a fresh Kanto save. Only the POOL ROLL
-; is group-filtered. The convention followed below is that the eight Kanto
-; leaders pin only Kanto-run species, because Phase 7 can draw them in a
-; Kanto-only run; the eleven Johto characters may pin from either run, because
-; Phase 7 only draws them when Johto is enabled.
+; POOLS ARE GATED BY SPECIES GROUPS, aces included: a gym ace is a pool draw,
+; so its Johto/Warp entries drop out of a run that has not unlocked them. That
+; is why every Kanto leader's Ace list keeps at least one Kanto entry. An E4
+; ace is still a pin and, like an authored team, shows exactly what was written.
 ; ===========================================================================
 
 DEF NUM_ROUND_VARIANTS EQU 3        ; InitGymBattle's own `ld c, 3`
@@ -251,19 +241,28 @@ DEF NUM_E4_TEAMS       EQU NUM_E4_TIERS * NUM_ROUND_VARIANTS
 ; GYM_R<round>_* constants in constants/balance_constants.asm; tune them there.
 DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 
-; \1 = wTrainerNo. Derives round and variant from it, so the record and the
-; pointer that reaches it cannot describe different rounds.
-; \2 = pool id, \3/\4 = primary ace for rounds 1-3 / 4-8, \5/\6 = secondary
-; ace for the same split, \7 = extra spec flags applied from round 7 on.
+; BANDED DESIGN (BALANCE_PHASE5_PLAN.md workstream F, 2026-09-29). Rounds are
+; grouped into bands of GYM_BAND_ROUNDS (gyms 1-2, 3-4, 5-6, 7-8), and each band
+; has three pools per leader in data/trainers/gym_band_pools.asm:
 ;
-; The early/late ace split exists because a PINNED species is never passed
-; through ScaleTrainer_evolution - defeating the pin is the whole point of
-; BIT_POVR_SPECIES - so a leader whose ace should grow across the run has to
-; name both stages.
-MACRO gym_team_spec
-	DEF _t   = \1
-	DEF _rnd = (_t - 1) / NUM_ROUND_VARIANTS + 1
-	DEF _var = (_t - 1) % NUM_ROUND_VARIANTS
+;   Ace<band>  the LAST slot rolls from it, via a BIT_POVR_POOL override. Its
+;              entries are POOL_FORM_KEEP, so the ace is used as written.
+;   Fod<band>  the spec's own pool: every other slot, evolved by level.
+;   Off<band>  from band 2: a BIT_POVR_POOL override on PARTY_GEN_OFFTYPE_SLOT.
+;              One slot per team draws from it, and a fodder slot that finds
+;              every on-type species taken falls back to it.
+;
+; The round variants no longer differ in the record: all three wTrainerNo of a
+; round point at ONE record per round. The off-type mon's POSITION still
+; differs by variant, because PartyGenSlotPoolId derives it from wTrainerNo.
+; This replaced 23 records per leader (4.6 KB for the 17) with 8.
+DEF GYM_BAND_ROUNDS EQU 2
+
+; \1 = label prefix (also the pool-name prefix), \2 = round 1..8, \3 = extra
+; spec flags applied from round 7 on.
+MACRO gym_round_spec
+	DEF _rnd = \2
+	DEF _band = (_rnd - 1) / GYM_BAND_ROUNDS + 1
 	; Team size and level curve: GYM_R<round>_* in constants/balance_constants.asm.
 	DEF _n = GYM_R{d:_rnd}_MONS
 	DEF _bl = GYM_R{d:_rnd}_BASE
@@ -277,51 +276,40 @@ MACRO gym_team_spec
 	ENDC
 	DEF _flags = GYM_SPEC_FLAGS
 	IF _rnd >= 7
-	DEF _flags = _flags | (\7)
+	DEF _flags = _flags | (\3)
 	ENDC
-	party_spec _n, _bl, _st, \2, _mix, _flags
-	IF _var == 0
-	slot_override _n - 1, 1 << BIT_POVR_SPECIES
-	IF _rnd <= 3
-	db \3, POOL_FORM_ROLL
-	ELSE
-	db \4, POOL_FORM_ROLL
-	ENDC
-	ELIF _var == 2
-	slot_override _n - 1, 1 << BIT_POVR_SPECIES
-	IF _rnd <= 3
-	db \5, POOL_FORM_ROLL
-	ELSE
-	db \6, POOL_FORM_ROLL
-	ENDC
+	party_spec _n, _bl, _st, POOL_BAND_\1_Fod{d:_band}, _mix, _flags
+	slot_override _n - 1, 1 << BIT_POVR_POOL
+	db POOL_BAND_\1_Ace{d:_band}
+	IF _band >= 2
+	slot_override PARTY_GEN_OFFTYPE_SLOT, 1 << BIT_POVR_POOL
+	db POOL_BAND_\1_Off{d:_band}
 	ENDC
 	db PARTY_SPEC_OVERRIDES_END
 ENDM
 
-; \1 = label prefix. Emits the pointer list only; the records it names come
-; from gym_leader_records. Split in two so Falkner can keep the two Phase 2
-; worked examples as its round 1 B and C records (FalknerSpec2 / FalknerSpec3,
-; below) while generating rounds 2-8 exactly like everyone else.
+; \1 = label prefix. The 24-entry pointer list: wTrainerNo 1 is the authored
+; hole, every other wTrainerNo points at its round's record. Falkner's 2 and 3
+; point at his hand-written Phase 2 worked examples instead (see below).
 MACRO gym_leader_pointers
 \1Specs::
 	db NUM_GYM_TEAMS
 	dw 0                            ; wTrainerNo 1 - the authored-team hole
 	FOR t, 2, NUM_GYM_TEAMS + 1
-	dw \1Spec{d:t}
+	DEF _r = (t - 1) / NUM_ROUND_VARIANTS + 1
+	IF STRCMP("\1", "Falkner") == 0 && (t == 2 || t == 3)
+	dw FalknerSpec{d:t}
+	ELSE
+	dw \1Round{d:_r}
+	ENDC
 	ENDR
 ENDM
 
-; \1 = label prefix, \2..\7 as gym_team_spec, \8 = first wTrainerNo to emit
-; (optional, default 2 - pass a higher value when earlier records are written
-; by hand).
+; \1 = label prefix, \2 = extra spec flags from round 7 on.
 MACRO gym_leader_records
-	DEF _first = 2
-	IF _NARG >= 8
-	DEF _first = \8
-	ENDC
-	FOR t, _first, NUM_GYM_TEAMS + 1
-\1Spec{d:t}:
-	gym_team_spec t, \2, \3, \4, \5, \6, \7
+	FOR r, 1, NUM_GYM_ROUNDS + 1
+\1Round{d:r}:
+	gym_round_spec \1, r, \2
 	ENDR
 ENDM
 
@@ -472,7 +460,7 @@ ENDR
 ; parser consumes them that way, so a different order silently misreads.
 ; ---------------------------------------------------------------------------
 	gym_leader_pointers Falkner
-	gym_leader_records  Falkner, POOL_FALKNER, PIDGEOTTO, PIDGEOT, DODUO, FEAROW, 0, 4
+	gym_leader_records  Falkner, 0
 
 FalknerSpec2:
 	party_spec 3, 13, 1, POOL_FALKNER, MIX_GYM_EARLY, \
@@ -501,79 +489,68 @@ FalknerSpec3:
 	db PARTY_SPEC_OVERRIDES_END
 
 ; ---------------------------------------------------------------------------
-; The eight Kanto gym leaders. Aces come from each pool's KANTO run only, since
-; Phase 7 can draw these eight in a Kanto-only run where the Johto entries are
-; filtered out of the roll; pinning a Johto species would show one anyway.
-;
-; Each primary/secondary pair is taken from that leader's own shipped roster,
-; so the rolled teams keep the arcs the authored ones had: Brock still ends on
-; Rhydon or Aerodactyl, Blaine on Arcanine or Rapidash.
+; The eight Kanto gym leaders. Their pools are data/trainers/gym_band_pools.asm
+; (Brock_Ace1 .. Giovanni_Off4); the only argument left here is the extra spec
+; flags from round 7, 0 for everyone since no gym pool lists an uber.
 ; ---------------------------------------------------------------------------
 	gym_leader_pointers Brock
-	gym_leader_records  Brock,    POOL_BROCK,     ONIX,       RHYDON,    KABUTO,     AERODACTYL, 0
+	gym_leader_records  Brock, 0
 
 	gym_leader_pointers Misty
-	gym_leader_records  Misty,    POOL_MISTY,     STARYU,     STARMIE,   SEADRA,     LAPRAS,     0
+	gym_leader_records  Misty, 0
 
 	gym_leader_pointers LtSurge
-	gym_leader_records  LtSurge,  POOL_LT_SURGE,  VOLTORB,    RAICHU,    MAGNEMITE,  ELECTRODE,  0
+	gym_leader_records  LtSurge, 0
 
 	gym_leader_pointers Erika
-	gym_leader_records  Erika,    POOL_ERIKA,     GLOOM,      VILEPLUME, WEEPINBELL, VICTREEBEL, 0
+	gym_leader_records  Erika, 0
 
 	gym_leader_pointers Koga
-	gym_leader_records  Koga,     POOL_KOGA,      KOFFING,    WEEZING,   GRIMER,     MUK,        0
+	gym_leader_records  Koga, 0
 
 	gym_leader_pointers Blaine
-	gym_leader_records  Blaine,   POOL_BLAINE,    GROWLITHE,  ARCANINE,  PONYTA,     RAPIDASH,   0
+	gym_leader_records  Blaine, 0
 
-; Sabrina is the one leader whose pool holds RARITY_TIER_UBER species (MEW and
-; MEWTWO), so she is the one who gets BIT_PSPEC_ALLOW_UBER, and only from round
-; 7. Every other leader passes 0 there and can never draw one however its pool
-; is edited later.
 	gym_leader_pointers Sabrina
-	gym_leader_records  Sabrina,  POOL_SABRINA,   KADABRA,    ALAKAZAM,  DROWZEE,    HYPNO,      1 << BIT_PSPEC_ALLOW_UBER
+	gym_leader_records  Sabrina, 0
 
 ; GiovanniData carries 27 authored teams, three more than the 24 a gym leader
 ; can be asked for. wTrainerNo 25-27 are unreachable through InitGymBattle and
 ; stay authored; nothing here touches them.
 	gym_leader_pointers Giovanni
-	gym_leader_records  Giovanni, POOL_GIOVANNI,  NIDORINO,   NIDOKING,  RHYHORN,    RHYDON,     0
+	gym_leader_records  Giovanni, 0
 
 ; ---------------------------------------------------------------------------
 ; The seven remaining Johto gym leaders, plus Janine. Phase 7 only draws these
-; when BIT_GROUP_JOHTO is enabled, so their aces may come from either run - and
-; several must, since the signature IS a Johto species (Whitney's Miltank,
-; Jasmine's Steelix, Clair's Kingdra, Janine's Crobat, Morty's Misdreavus).
+; when BIT_GROUP_JOHTO is enabled, so their ace pools may be Johto-only.
 ;
-; Morty, Jasmine and Clair have four-species pools, which is authentic rather
-; than an oversight - the Gen 2 originals field three distinct species between
-; them - but it does mean their round 7-8 teams lean on BIT_PSPEC_NO_DUPES's
-; bounded-then-accept degrade. That is the documented behaviour, not a hang.
+; Morty and Clair have few on-type lines, so their fodder pools carry themed
+; off-type species (Agatha-style "spooky" for Morty, Lance-style dragons for
+; Clair) and the off-type fallback covers the rest.
 ; ---------------------------------------------------------------------------
 	gym_leader_pointers Bugsy
-	gym_leader_records  Bugsy,    POOL_BUGSY,     BUTTERFREE, SCYTHER,   BEEDRILL,   PINSIR,     0
+	gym_leader_records  Bugsy, 0
 
 	gym_leader_pointers Whitney
-	gym_leader_records  Whitney,  POOL_WHITNEY,   CLEFAIRY,   MILTANK,   RATICATE,   CLEFABLE,   0
+	gym_leader_records  Whitney, 0
 
 	gym_leader_pointers Morty
-	gym_leader_records  Morty,    POOL_MORTY,     HAUNTER,    GENGAR,    GASTLY,     MISDREAVUS, 0
+	gym_leader_records  Morty, 0
 
 	gym_leader_pointers Chuck
-	gym_leader_records  Chuck,    POOL_CHUCK,     MACHOKE,    MACHAMP,   PRIMEAPE,   HITMONLEE,  0
+	gym_leader_records  Chuck, 0
 
 	gym_leader_pointers Jasmine
-	gym_leader_records  Jasmine,  POOL_JASMINE,   MAGNETON,   STEELIX,   MAGNEMITE,  FORRETRESS, 0
+	gym_leader_records  Jasmine, 0
 
 	gym_leader_pointers Pryce
-	gym_leader_records  Pryce,    POOL_PRYCE,     DEWGONG,    PILOSWINE, SEEL,       DEWGONG,    0
+	gym_leader_records  Pryce, 0
 
 	gym_leader_pointers Clair
-	gym_leader_records  Clair,    POOL_CLAIR,     DRAGONAIR,  DRAGONITE, DRATINI,    KINGDRA,    0
+	gym_leader_records  Clair, 0
 
 	gym_leader_pointers Janine
-	gym_leader_records  Janine,   POOL_JANINE,    GOLBAT,     CROBAT,    VENONAT,    VENOMOTH,   0
+	gym_leader_records  Janine, 0
 
 ; ---------------------------------------------------------------------------
 ; Will and Karen are Elite Four only and get TWELVE teams, not 24 - see the

@@ -232,6 +232,33 @@ class RedRogueHarness:
     def write8(self, label: str, value: int, offset: int = 0) -> None:
         self.pyboy.memory[self.address(label) + offset] = value & 0xFF
 
+    SEEN_MASK_BYTES = 3  # PARTY_LENGTH * NUM_MOVES / 8
+
+    def reveal_player_moves(self, party_slot: int, move_slots, *, clear: bool = False) -> None:
+        """Mark move slots as revealed by one player party member.
+
+        Mirrors wAISeenPlayerMoveMask (ram/wram.asm): byte = party_slot // 2,
+        odd party slots use the high nibble, bit n = move slot n. clear=True
+        zeroes the whole mask first.
+        """
+        if not 0 <= party_slot <= 5:
+            raise ValueError("party_slot must be 0-5")
+        if clear:
+            for index in range(self.SEEN_MASK_BYTES):
+                self.write8("wAISeenPlayerMoveMask", 0, offset=index)
+        value = self.read8("wAISeenPlayerMoveMask", offset=party_slot // 2)
+        for slot in move_slots:
+            if not 0 <= slot <= 3:
+                raise ValueError("move slots must be 0-3")
+            value |= 1 << (slot + 4 * (party_slot & 1))
+        self.write8("wAISeenPlayerMoveMask", value, offset=party_slot // 2)
+
+    def revealed_player_moves(self, party_slot: int) -> list[int]:
+        """Move slots currently marked revealed for one player party member."""
+        value = self.read8("wAISeenPlayerMoveMask", offset=party_slot // 2)
+        nibble = (value >> (4 * (party_slot & 1))) & 0xF
+        return [slot for slot in range(4) if nibble & (1 << slot)]
+
     def seed_rng(self, seed) -> None:
         """Deterministically seed the CMWC RNG state from a 4-element seed.
 

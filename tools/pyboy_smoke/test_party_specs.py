@@ -517,6 +517,26 @@ class SetMovesetSmokeTest(HarnessTestCase):
         self.assertFalse(found, "level 101 is outside BAYLEEF's 35-100 record range")
 
 
+def band_ace_pools():
+    """{<Leader>_Ace<band>: {species, ...}} from data/trainers/gym_band_pools.asm,
+    every run, following `band_same` aliases. Aces are used as written, so the
+    fielded ace is always one of these exact species."""
+    out, name = {}, None
+    text = (REPO_ROOT / "data/trainers/gym_band_pools.asm").read_text(encoding="utf-8")
+    for raw in text.splitlines():
+        code = raw.split(";")[0].strip()
+        op, _, arg = code.partition(" ")
+        args = [a.strip() for a in arg.split(",")]
+        if op == "band_pool":
+            name = args[0]
+            out[name] = set()
+        elif op == "band_same":
+            out[args[0]] = out[args[1]]
+        elif op == "band_ace" and name:
+            out[name].add(args[0])
+    return out
+
+
 class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
     """Phase 3: a high wTrainerNo must reach a SPEC, not another class's data.
 
@@ -533,13 +553,14 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
 
       BROCK 4      round 2 A. The authored team 4 is also two mons, so a count
                    check proves nothing - but it is 18 ONIX / 21 AERODACTYL,
-                   ace AERODACTYL, where the spec pins ONIX as the ace. The
-                   ACE, not the size, is the discriminator.
+                   ace AERODACTYL, and the banded spec's gym 1-2 ace pool is
+                   ONIX / SUDOWOODO. The ACE, not the size, is the
+                   discriminator.
       WHITNEY 22   round 8 A. WhitneyData holds ONE team, so the old path would
-                   have walked into MORTY's. Six mons with MILTANK last cannot
-                   come from anywhere else.
-      WHITNEY 24   round 8 C, the secondary ace. Pairs with 22 so a bug that
-                   always pins the primary is caught.
+                   have walked into MORTY's. Six mons ending on a member of her
+                   gym 7-8 ace pool cannot come from anywhere else.
+      WHITNEY 24   round 8 C, the same record (banded design: the variants of a
+                   round share one), reached through a different wTrainerNo.
       KAREN 12     E4 tier 4 C. Proves the twelve-team Elite Four grid resolves
                    at its top end, and that the ace is a JOLTEON carrying a FORM
                    byte - Umbreon is not a species in this tree.
@@ -565,11 +586,12 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
         h.boot_fight2(seed=1)
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
 
-        for trainer_class, trainer_no, mons, ace in (
-            ("BROCK", 4, 2, "ONIX"),
-            ("WHITNEY", 22, 6, "MILTANK"),
-            ("WHITNEY", 24, 6, "CLEFABLE"),
-            ("KAREN", 12, 6, "JOLTEON"),  # six since the Trainer Revamp
+        aces = band_ace_pools()
+        for trainer_class, trainer_no, mons, allowed in (
+            ("BROCK", 4, 2, aces["Brock_Ace1"]),
+            ("WHITNEY", 22, 6, aces["Whitney_Ace4"]),
+            ("WHITNEY", 24, 6, aces["Whitney_Ace4"]),
+            ("KAREN", 12, 6, {"JOLTEON"}),  # six since the Trainer Revamp
         ):
             with self.subTest(trainer=trainer_class, wTrainerNo=trainer_no):
                 count, party = self._build(trainer_class, trainer_no)
@@ -577,10 +599,10 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
                     count, mons,
                     f"{trainer_class} wTrainerNo {trainer_no} built {count} mons")
                 self.assertEqual(party[count], 0xFF, "party list not terminated")
-                self.assertEqual(
-                    party[count - 1], species[ace],
+                self.assertIn(
+                    party[count - 1], {species[s] for s in allowed},
                     f"{trainer_class} wTrainerNo {trainer_no} ace is "
-                    f"{party[count - 1]}, expected {ace}={species[ace]}")
+                    f"{party[count - 1]}, expected one of {sorted(allowed)}")
                 for slot, got in enumerate(party[:count]):
                     self.assertNotIn(
                         got, (0, 0xFF),

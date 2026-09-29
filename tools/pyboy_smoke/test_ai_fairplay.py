@@ -120,36 +120,34 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         )
         self.harness.boot_fight2(seed=1)
 
-    def prime_seen_moves(self, moves: list[int]) -> None:
-        """moves[i] = the move id AITrackSeenPlayerMove would have recorded
-        for slot i, or 0 if nothing has been revealed there yet - the sparse
-        layout AIGetPlayerMoveN's fair-play branch must handle correctly."""
+    def prime_seen_moves(self, slots: list[int], party_slot: int = 0) -> None:
+        """Mark move slots revealed for one player party member, clearing the
+        rest of wAISeenPlayerMoveMask - the sparse state AIGetPlayerMoveN's
+        fair-play branch must handle correctly."""
         assert self.harness is not None
-        base = self.harness.address("wAISeenPlayerMoves")
-        for index, move_id in enumerate(moves):
-            self.harness.pyboy.memory[base + index] = move_id
+        self.harness.reveal_player_moves(party_slot, slots, clear=True)
 
     def test_fair_play_tier_reads_only_revealed_moves(self) -> None:
-        # T1: AI_OMNISCIENT is cleared. wAISeenPlayerMoves is sparse - slot 1
+        # T1: AI_OMNISCIENT is cleared. The revealed set is sparse - slot 1
         # revealed (GROWL), slot 0 not - and the routine must return exactly
         # that, not fall back to the real (unrevealed) moveset.
         assert self.harness is not None
         self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
         growl = self.moves["GROWL"]
-        self.prime_seen_moves([0, growl, 0, 0])
+        self.prime_seen_moves([1])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), growl)
 
     def test_omniscient_tier_ignores_seen_moves_entirely(self) -> None:
-        # T3: AI_OMNISCIENT stays set. Identical wAISeenPlayerMoves state as
+        # T3: AI_OMNISCIENT stays set. Identical revealed-mask state as
         # the fair-play test above, but the routine must return the REAL
         # moveset at every slot regardless - proving the omniscient branch
-        # does not consult wAISeenPlayerMoves at all, not merely that it
+        # does not consult wAISeenPlayerMoveMask at all, not merely that it
         # happens to agree on the revealed slot.
         assert self.harness is not None
         self.boot(ai_tier=3, player_moves=["TACKLE", "GROWL", "SPLASH"])
         growl = self.moves["GROWL"]
-        self.prime_seen_moves([0, growl, 0, 0])
+        self.prime_seen_moves([1])
         tackle = self.moves["TACKLE"]
         splash = self.moves["SPLASH"]
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), tackle)
@@ -161,8 +159,23 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         # ai_core.asm) - confirm the flip applies to both, not just T1.
         assert self.harness is not None
         self.boot(ai_tier=0, player_moves=["TACKLE", "GROWL", "SPLASH"])
-        self.prime_seen_moves([0, 0, 0, 0])
+        self.prime_seen_moves([])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
+
+    def test_revealed_moves_do_not_follow_a_player_switch(self) -> None:
+        # Review F6 (2026-09-29): moves revealed by party member 0 must not be
+        # reported for party member 1. The old slot-indexed buffer did.
+        assert self.harness is not None
+        self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
+        self.prime_seen_moves([0, 1], party_slot=0)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
+                         self.moves["GROWL"])
+        self.harness.write8("wPlayerMonNumber", 1)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
+        self.harness.reveal_player_moves(1, [0])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["TACKLE"])
 
 
 class AITrackSeenPlayerMoveTest(unittest.TestCase):
@@ -203,12 +216,20 @@ class AITrackSeenPlayerMoveTest(unittest.TestCase):
         splash = self.moves["SPLASH"]  # real moveset slot 2
         self.harness.write8("wPlayerSelectedMove", splash)
         self.harness.call_routine("AITrackSeenPlayerMove")
-        recorded = self.harness.read_bytes("wAISeenPlayerMoves", 4)
-        self.assertEqual(recorded, [0, 0, splash, 0],
-                          "must land in slot 2, not slot 0")
+        self.assertEqual(self.harness.revealed_player_moves(0), [2],
+                         "must land in slot 2, not slot 0")
+        self.assertEqual(self.harness.read_bytes("wAISeenPlayerMoveMask", 4),
+                         [0b0100, 0, 0, 0])
+        # An odd party slot writes the high nibble of the same byte.
+        self.harness.write8("wPlayerMonNumber", 1)
+        self.harness.park_before_hijack()
+        self.harness.call_routine("AITrackSeenPlayerMove")
+        self.assertEqual(self.harness.revealed_player_moves(1), [2])
+        self.assertEqual(self.harness.read_bytes("wAISeenPlayerMoveMask", 4),
+                         [0b0100_0100, 0, 0, 0])
 
     def test_zero_selected_move_is_never_recorded(self) -> None:
-        # wPlayerSelectedMove == 0 is also wAISeenPlayerMoves' own "nothing
+        # wPlayerSelectedMove == 0 is never a real move (the old buffer's "nothing
         # revealed" sentinel - the routine must bail rather than ever writing
         # 0 as if it meant something was recorded there.
         assert self.harness is not None
@@ -222,7 +243,7 @@ class AITrackSeenPlayerMoveTest(unittest.TestCase):
         self.harness.boot_fight2(seed=1)
         self.harness.write8("wPlayerSelectedMove", 0)
         self.harness.call_routine("AITrackSeenPlayerMove")
-        recorded = self.harness.read_bytes("wAISeenPlayerMoves", 4)
+        recorded = self.harness.read_bytes("wAISeenPlayerMoveMask", 4)
         self.assertEqual(recorded, [0, 0, 0, 0])
 
 

@@ -1,0 +1,2085 @@
+; Gym leader BANDED pools (BALANCE_PHASE5_PLAN.md workstream F, 2026-09-29).
+;
+; Per leader, per band of GYM_BAND_ROUNDS rounds (gyms 1-2, 3-4, 5-6, 7-8):
+;   Ace<n>  the last slot's pool. `band_ace` entries are used AS WRITTEN (never
+;           evolved), so write the form you want at that band's levels. Listing
+;           a species twice doubles its odds.
+;   Fod<n>  every other slot. `band_mon` entries are evolved by level, so list
+;           base forms.
+;   Off<n>  bands 2-4 only: ONE slot per team, and the fallback when a fodder
+;           slot finds every on-type species already on the team (see
+;           PARTY_GEN_OFFTYPE_SLOT). Also evolved by level.
+;
+; Each pool has a Kanto run, then `band_johto`, then `band_warp`, then
+; `band_end`. A run only takes part when its species group is on, so every Kanto
+; leader's Ace list needs at least one Kanto entry. Regional forms are written as
+; (species, form index) and belong in the Warp run (Espeon/Umbreon: Johto).
+; A form entry without an index (e.g. `band_mon GEODUDE`) may still ROLL a form
+; when Time Warp is on, exactly like any procedural mon.
+;
+; `band_same Brock_Fod4, Brock_Fod3` reuses an identical pool under a second name.
+;
+; This file is INCLUDEd three times by pools.asm with BAND_POOL_PASS 0/1/2 (ids,
+; table rows, lists), so each pool is written exactly once. Generated once from
+; LEADER_REVIEW.md; edit it by hand from here on.
+
+; --- Brock -----------------------------------------------------------------
+	band_pool Brock_Ace1
+	band_ace ONIX
+	band_johto
+	band_ace SUDOWOODO
+	band_warp
+	band_end
+	band_pool Brock_Fod1
+	band_mon GEODUDE
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon RHYHORN
+	band_johto
+	band_mon SHUCKLE
+	band_mon CORSOLA
+	band_mon LARVITAR
+	band_warp
+	band_end
+	band_pool Brock_Ace2
+	band_ace GOLEM
+	band_ace AERODACTYL
+	band_ace RHYDON
+	band_johto
+	band_ace SUDOWOODO
+	band_warp
+	band_end
+	band_pool Brock_Fod2
+	band_mon GEODUDE
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon RHYHORN
+	band_mon ONIX
+	band_johto
+	band_mon CORSOLA
+	band_mon SHUCKLE
+	band_mon LARVITAR
+	band_warp
+	band_mon GROWLITHE, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Brock_Off2
+	band_mon ZUBAT
+	band_mon PINSIR
+	band_mon LICKITUNG
+	band_johto
+	band_warp
+	band_end
+	band_pool Brock_Ace3
+	band_ace GOLEM
+	band_ace RHYDON
+	band_ace KABUTOPS
+	band_ace OMASTAR
+	band_johto
+	band_ace TYRANITAR
+	band_ace STEELIX
+	band_warp
+	band_ace KLEAVOR
+	band_end
+	band_pool Brock_Fod3
+	band_mon GEODUDE
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon RHYHORN
+	band_mon ONIX
+	band_mon AERODACTYL
+	band_johto
+	band_mon SUDOWOODO
+	band_mon CORSOLA
+	band_mon SHUCKLE
+	band_mon SKARMORY
+	band_mon SLUGMA
+	band_warp
+	band_mon GROWLITHE, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Brock_Off3
+	band_mon ZUBAT
+	band_mon PINSIR
+	band_mon LICKITUNG
+	band_mon VULPIX
+	band_mon MANKEY
+	band_mon CHANSEY
+	band_mon SANDSHREW
+	band_johto
+	band_warp
+	band_end
+	band_pool Brock_Ace4
+	band_ace GOLEM
+	band_ace RHYDON
+	band_ace KABUTOPS
+	band_ace OMASTAR
+	band_johto
+	band_ace TYRANITAR
+	band_ace STEELIX
+	band_warp
+	band_ace KLEAVOR
+	band_ace RHYPERIOR
+	band_end
+	band_pool Brock_Fod4
+	band_mon GEODUDE
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon RHYHORN
+	band_mon AERODACTYL
+	band_johto
+	band_mon SUDOWOODO
+	band_mon CORSOLA
+	band_mon SHUCKLE
+	band_mon SKARMORY
+	band_mon SLUGMA
+	band_warp
+	band_mon GROWLITHE, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Brock_Off4
+	band_mon ZUBAT
+	band_mon PINSIR
+	band_mon LICKITUNG
+	band_mon VULPIX
+	band_mon MANKEY
+	band_mon CHANSEY
+	band_mon SANDSHREW
+	band_mon DIGLETT
+	band_mon SLOWPOKE
+	band_johto
+	band_warp
+	band_end
+
+; --- Misty -----------------------------------------------------------------
+	band_pool Misty_Ace1
+	band_ace STARMIE
+	band_ace TENTACRUEL
+	band_ace VAPOREON
+	band_johto
+	band_warp
+	band_end
+	band_pool Misty_Fod1
+	band_mon SEEL
+	band_mon PSYDUCK
+	band_mon KRABBY
+	band_mon KABUTO
+	band_mon SHELLDER
+	band_mon OMANYTE
+	band_mon POLIWAG
+	band_mon TENTACOOL
+	band_mon HORSEA
+	band_mon GOLDEEN
+	band_mon MAGIKARP
+	band_mon EEVEE
+	band_mon SLOWPOKE
+	band_mon SQUIRTLE
+	band_johto
+	band_mon REMORAID
+	band_mon WOOPER
+	band_mon MARILL
+	band_mon TOTODILE
+	band_mon CORSOLA
+	band_warp
+	band_mon DIGLETT, 2
+	band_end
+	band_pool Misty_Ace2
+	band_ace STARMIE
+	band_ace GYARADOS
+	band_ace SLOWBRO
+	band_ace BLASTOISE
+	band_ace VAPOREON
+	band_johto
+	band_warp
+	band_end
+	band_pool Misty_Fod2
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon KRABBY
+	band_mon SHELLDER
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon TENTACOOL
+	band_mon HORSEA
+	band_mon GOLDEEN
+	band_mon MAGIKARP
+	band_mon EEVEE
+	band_mon SLOWPOKE
+	band_mon SQUIRTLE
+	band_mon SEEL
+	band_johto
+	band_mon REMORAID
+	band_mon WOOPER
+	band_mon MARILL
+	band_mon TOTODILE
+	band_mon CORSOLA
+	band_warp
+	band_mon DIGLETT, 2
+	band_end
+	band_pool Misty_Off2
+	band_mon DRATINI
+	band_mon NIDORAN_F
+	band_mon JIGGLYPUFF
+	band_mon DIGLETT
+	band_mon PONYTA
+	band_johto
+	band_warp
+	band_end
+	band_pool Misty_Ace3
+	band_ace STARMIE
+	band_ace LAPRAS
+	band_ace SLOWBRO
+	band_johto
+	band_ace KINGDRA
+	band_warp
+	band_ace TAUROS, 3
+	band_end
+	band_pool Misty_Fod3
+	band_mon SEEL
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon STARYU
+	band_mon SHELLDER
+	band_mon KRABBY
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon TENTACOOL
+	band_mon HORSEA
+	band_mon GOLDEEN
+	band_mon MAGIKARP
+	band_mon LAPRAS
+	band_mon EEVEE
+	band_mon SLOWPOKE
+	band_mon SQUIRTLE
+	band_johto
+	band_mon CHINCHOU
+	band_mon QWILFISH
+	band_mon REMORAID
+	band_mon MANTINE
+	band_mon WOOPER
+	band_mon MARILL
+	band_mon TOTODILE
+	band_mon CORSOLA
+	band_warp
+	band_mon DIGLETT, 2
+	band_end
+	band_pool Misty_Off3
+	band_mon NIDORAN_F
+	band_mon DRATINI
+	band_mon JIGGLYPUFF
+	band_mon DIGLETT
+	band_mon PONYTA
+	band_johto
+	band_warp
+	band_end
+	band_pool Misty_Ace4
+	band_ace STARMIE
+	band_ace LAPRAS
+	band_ace SLOWBRO
+	band_johto
+	band_ace KINGDRA
+	band_ace SUICUNE
+	band_warp
+	band_end
+	band_pool Misty_Fod4
+	band_mon SEEL
+	band_mon KABUTO
+	band_mon OMANYTE
+	band_mon KRABBY
+	band_mon STARYU
+	band_mon SHELLDER
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon TENTACOOL
+	band_mon HORSEA
+	band_mon GOLDEEN
+	band_mon MAGIKARP
+	band_mon LAPRAS
+	band_mon EEVEE
+	band_mon SLOWPOKE
+	band_mon SQUIRTLE
+	band_johto
+	band_mon CHINCHOU
+	band_mon QWILFISH
+	band_mon REMORAID
+	band_mon MANTINE
+	band_mon WOOPER
+	band_mon MARILL
+	band_mon TOTODILE
+	band_mon CORSOLA
+	band_warp
+	band_mon DIGLETT, 2
+	band_mon TAUROS, 3
+	band_end
+	band_pool Misty_Off4
+	band_mon NIDORAN_F
+	band_mon DRATINI
+	band_mon JIGGLYPUFF
+	band_mon DIGLETT
+	band_mon PONYTA
+	band_mon EXEGGCUTE
+	band_johto
+	band_warp
+	band_end
+
+; --- LtSurge ---------------------------------------------------------------
+	band_pool LtSurge_Ace1
+	band_ace RAICHU
+	band_ace MAGNETON
+	band_ace ELECTABUZZ
+	band_johto
+	band_ace LANTURN
+	band_warp
+	band_end
+	band_pool LtSurge_Fod1
+	band_mon PIKACHU
+	band_mon VOLTORB
+	band_mon MAGNEMITE
+	band_johto
+	band_mon MAREEP
+	band_mon CHINCHOU
+	band_warp
+	band_mon GEODUDE, 1
+	band_end
+	band_pool LtSurge_Ace2
+	band_ace RAICHU
+	band_ace ELECTABUZZ
+	band_ace MAGNETON
+	band_ace ELECTRODE
+	band_johto
+	band_ace AMPHAROS
+	band_warp
+	band_ace GOLEM, 1
+	band_end
+	band_pool LtSurge_Fod2
+	band_mon PIKACHU
+	band_mon VOLTORB
+	band_mon MAGNEMITE
+	band_johto
+	band_mon MAREEP
+	band_mon CHINCHOU
+	band_warp
+	band_mon GEODUDE, 1
+	band_mon MAGNETON, 1
+	band_end
+	band_pool LtSurge_Off2
+	band_mon SPEAROW
+	band_mon PORYGON
+	band_mon LICKITUNG
+	band_mon DODUO
+	band_mon RATTATA
+	band_mon TANGELA
+	band_mon MAGIKARP
+	band_johto
+	band_warp
+	band_end
+	band_pool LtSurge_Ace3
+	band_ace JOLTEON
+	band_johto
+	band_warp
+	band_ace ELECTIVIRE
+	band_ace MAGNEZONE
+	band_ace GOLEM, 1
+	band_end
+	band_pool LtSurge_Fod3
+	band_mon PIKACHU
+	band_mon VOLTORB
+	band_mon MAGNEMITE
+	band_mon ELECTABUZZ
+	band_johto
+	band_mon MAREEP
+	band_mon CHINCHOU
+	band_warp
+	band_mon GEODUDE, 1
+	band_mon MAGNETON, 1
+	band_end
+	band_pool LtSurge_Off3
+	band_mon SPEAROW
+	band_mon PORYGON
+	band_mon LICKITUNG
+	band_mon SEEL
+	band_mon DODUO
+	band_mon BELLSPROUT
+	band_mon POLIWAG
+	band_mon RATTATA
+	band_mon TANGELA
+	band_mon MAGIKARP
+	band_johto
+	band_mon QUAGSIRE
+	band_warp
+	band_end
+	band_pool LtSurge_Ace4
+	band_ace JOLTEON
+	band_ace ZAPDOS
+	band_johto
+	band_ace RAIKOU
+	band_warp
+	band_ace ELECTIVIRE
+	band_end
+	band_same LtSurge_Fod4, LtSurge_Fod3
+	band_same LtSurge_Off4, LtSurge_Off3
+
+; --- Erika -----------------------------------------------------------------
+	band_pool Erika_Ace1
+	band_ace GLOOM
+	band_ace WEEPINBELL
+	band_ace TANGELA
+	band_johto
+	band_warp
+	band_end
+	band_pool Erika_Fod1
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon TANGELA
+	band_mon PARAS
+	band_johto
+	band_mon CHIKORITA
+	band_mon HOPPIP
+	band_mon SUNKERN
+	band_warp
+	band_end
+	band_pool Erika_Ace2
+	band_ace VILEPLUME
+	band_ace VICTREEBEL
+	band_ace VENUSAUR
+	band_johto
+	band_ace MEGANIUM
+	band_ace BELLOSSOM
+	band_warp
+	band_ace FLAREON, 1
+	band_ace TANGROWTH
+	band_end
+	band_pool Erika_Fod2
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon TANGELA
+	band_mon PARAS
+	band_mon EXEGGCUTE
+	band_johto
+	band_mon CHIKORITA
+	band_mon HOPPIP
+	band_mon SUNKERN
+	band_warp
+	band_mon TENTACOOL, 1
+	band_mon VOLTORB, 1
+	band_end
+	band_pool Erika_Off2
+	band_mon DRATINI
+	band_mon CUBONE
+	band_mon CLEFAIRY
+	band_mon VULPIX
+	band_mon SEEL
+	band_johto
+	band_warp
+	band_end
+	band_pool Erika_Ace3
+	band_ace VILEPLUME
+	band_ace VICTREEBEL
+	band_ace VENUSAUR
+	band_ace EXEGGUTOR
+	band_johto
+	band_ace MEGANIUM
+	band_ace BELLOSSOM
+	band_warp
+	band_ace TANGROWTH
+	band_end
+	band_pool Erika_Fod3
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon EXEGGCUTE
+	band_mon TANGELA
+	band_mon PARAS
+	band_johto
+	band_mon CHIKORITA
+	band_mon HOPPIP
+	band_mon SUNKERN
+	band_warp
+	band_mon TENTACOOL, 1
+	band_mon VOLTORB, 1
+	band_end
+	band_pool Erika_Off3
+	band_mon CHANSEY
+	band_mon DRATINI
+	band_mon CUBONE
+	band_mon CLEFAIRY
+	band_mon VULPIX
+	band_mon SEEL
+	band_mon EEVEE
+	band_johto
+	band_warp
+	band_end
+	band_pool Erika_Ace4
+	band_ace EXEGGUTOR
+	band_ace VICTREEBEL
+	band_ace VENUSAUR
+	band_johto
+	band_ace MEGANIUM
+	band_warp
+	band_ace TANGROWTH
+	band_end
+	band_pool Erika_Fod4
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon EXEGGCUTE
+	band_mon TANGELA
+	band_mon PARAS
+	band_johto
+	band_mon CHIKORITA
+	band_mon HOPPIP
+	band_mon SUNKERN
+	band_warp
+	band_mon FLAREON, 1
+	band_mon TENTACOOL, 1
+	band_mon VOLTORB, 1
+	band_end
+	band_same Erika_Off4, Erika_Off3
+
+; --- Koga ------------------------------------------------------------------
+	band_pool Koga_Ace1
+	band_ace ARBOK
+	band_ace GOLBAT
+	band_ace VENOMOTH
+	band_johto
+	band_warp
+	band_end
+	band_pool Koga_Fod1
+	band_mon GASTLY
+	band_mon EKANS
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon ZUBAT
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon VENONAT
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon WEEDLE
+	band_mon TENTACOOL
+	band_johto
+	band_mon SPINARAK
+	band_warp
+	band_end
+	band_pool Koga_Ace2
+	band_ace WEEZING
+	band_ace MUK
+	band_ace VENOMOTH
+	band_johto
+	band_warp
+	band_end
+	band_pool Koga_Fod2
+	band_mon GASTLY
+	band_mon EKANS
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon ZUBAT
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon VENONAT
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon WEEDLE
+	band_mon TENTACOOL
+	band_johto
+	band_mon SPINARAK
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon SNEASEL, 1
+	band_mon WOOPER, 1
+	band_end
+	band_pool Koga_Off2
+	band_mon PARAS
+	band_mon TANGELA
+	band_mon DROWZEE
+	band_mon VOLTORB
+	band_mon MAGMAR
+	band_mon LAPRAS
+	band_mon SCYTHER
+	band_mon RHYHORN
+	band_mon VULPIX
+	band_mon CHANSEY
+	band_mon DITTO
+	band_mon PIDGEY
+	band_mon EEVEE
+	band_mon PORYGON
+	band_johto
+	band_mon PINECO
+	band_mon STANTLER
+	band_mon CHINCHOU
+	band_mon GIRAFARIG
+	band_mon CHIKORITA
+	band_mon SHUCKLE
+	band_warp
+	band_end
+	band_pool Koga_Ace3
+	band_ace WEEZING
+	band_ace MUK
+	band_ace NIDOKING
+	band_ace NIDOQUEEN
+	band_ace GENGAR
+	band_johto
+	band_ace CROBAT
+	band_warp
+	band_end
+	band_pool Koga_Fod3
+	band_mon GASTLY
+	band_mon EKANS
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon ZUBAT
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon VENONAT
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon WEEDLE
+	band_mon TENTACOOL
+	band_johto
+	band_mon QWILFISH
+	band_mon SPINARAK
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon SNEASEL, 1
+	band_mon WOOPER, 1
+	band_end
+	band_pool Koga_Off3
+	band_mon PARAS
+	band_mon TANGELA
+	band_mon DROWZEE
+	band_mon VOLTORB
+	band_mon MAGMAR
+	band_mon LAPRAS
+	band_mon SCYTHER
+	band_mon RHYHORN
+	band_mon VULPIX
+	band_mon CHANSEY
+	band_mon DITTO
+	band_mon PIDGEY
+	band_mon EEVEE
+	band_mon PORYGON
+	band_mon TAUROS
+	band_johto
+	band_mon PINECO
+	band_mon STANTLER
+	band_mon CHINCHOU
+	band_mon GIRAFARIG
+	band_mon CHIKORITA
+	band_mon SHUCKLE
+	band_warp
+	band_end
+	band_pool Koga_Ace4
+	band_ace NIDOKING
+	band_ace NIDOQUEEN
+	band_ace GENGAR
+	band_johto
+	band_ace CROBAT
+	band_warp
+	band_end
+	band_pool Koga_Fod4
+	band_mon EKANS
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon ZUBAT
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon VENONAT
+	band_mon GASTLY
+	band_mon BULBASAUR
+	band_mon ODDISH
+	band_mon BELLSPROUT
+	band_mon TENTACOOL
+	band_johto
+	band_mon QWILFISH
+	band_mon SPINARAK
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon SNEASEL, 1
+	band_mon WOOPER, 1
+	band_end
+	band_same Koga_Off4, Koga_Off3
+
+; --- Blaine ----------------------------------------------------------------
+	band_pool Blaine_Ace1
+	band_ace MAGMAR
+	band_ace CHARMELEON
+	band_ace FLAREON
+	band_johto
+	band_warp
+	band_end
+	band_pool Blaine_Fod1
+	band_mon VULPIX
+	band_mon GROWLITHE
+	band_mon PONYTA
+	band_mon CHARMANDER
+	band_johto
+	band_mon CYNDAQUIL
+	band_mon SLUGMA
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_pool Blaine_Ace2
+	band_ace ARCANINE
+	band_ace RAPIDASH
+	band_ace CHARIZARD
+	band_ace NINETALES
+	band_johto
+	band_ace HOUNDOOM
+	band_warp
+	band_ace MAROWAK, 1
+	band_ace MAGMORTAR
+	band_end
+	band_pool Blaine_Fod2
+	band_mon VULPIX
+	band_mon GROWLITHE
+	band_mon PONYTA
+	band_mon CHARMANDER
+	band_mon MAGMAR
+	band_johto
+	band_mon CYNDAQUIL
+	band_mon SLUGMA
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_pool Blaine_Off2
+	band_mon CLEFAIRY
+	band_mon DODUO
+	band_mon TANGELA
+	band_mon KOFFING
+	band_mon GEODUDE
+	band_mon VOLTORB
+	band_mon MANKEY
+	band_mon KABUTO
+	band_mon ODDISH
+	band_mon GRIMER
+	band_mon MEOWTH
+	band_mon PARAS
+	band_johto
+	band_mon OCTILLERY
+	band_warp
+	band_end
+	band_pool Blaine_Ace3
+	band_ace ARCANINE
+	band_ace RAPIDASH
+	band_ace CHARIZARD
+	band_ace NINETALES
+	band_johto
+	band_ace HOUNDOOM
+	band_warp
+	band_ace MAROWAK, 1
+	band_ace MAGMORTAR
+	band_ace TAUROS, 2
+	band_end
+	band_pool Blaine_Fod3
+	band_mon VULPIX
+	band_mon GROWLITHE
+	band_mon PONYTA
+	band_mon CHARMANDER
+	band_mon MAGMAR
+	band_mon FLAREON
+	band_johto
+	band_mon CYNDAQUIL
+	band_mon SLUGMA
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_pool Blaine_Off3
+	band_mon CLEFAIRY
+	band_mon DODUO
+	band_mon TANGELA
+	band_mon KOFFING
+	band_mon GEODUDE
+	band_mon VOLTORB
+	band_mon MANKEY
+	band_mon KABUTO
+	band_mon ODDISH
+	band_mon GRIMER
+	band_mon KANGASKHAN
+	band_mon CHANSEY
+	band_mon MR_MIME
+	band_mon MEOWTH
+	band_mon PARAS
+	band_mon TAUROS
+	band_johto
+	band_mon OCTILLERY
+	band_warp
+	band_end
+	band_pool Blaine_Ace4
+	band_ace MOLTRES
+	band_ace ARCANINE
+	band_ace CHARIZARD
+	band_johto
+	band_ace ENTEI
+	band_warp
+	band_ace MOLTRES, 1
+	band_ace MAROWAK, 1
+	band_end
+	band_pool Blaine_Fod4
+	band_mon VULPIX
+	band_mon GROWLITHE
+	band_mon PONYTA
+	band_mon CHARMANDER
+	band_mon MAGMAR
+	band_mon MOLTRES
+	band_mon FLAREON
+	band_johto
+	band_mon CYNDAQUIL
+	band_mon SLUGMA
+	band_mon HOUNDOUR
+	band_warp
+	band_mon TAUROS, 2
+	band_end
+	band_pool Blaine_Off4
+	band_mon CLEFAIRY
+	band_mon DODUO
+	band_mon TANGELA
+	band_mon KOFFING
+	band_mon GEODUDE
+	band_mon VOLTORB
+	band_mon MANKEY
+	band_mon KABUTO
+	band_mon ODDISH
+	band_mon GRIMER
+	band_mon KANGASKHAN
+	band_mon CHANSEY
+	band_mon MR_MIME
+	band_mon MEOWTH
+	band_mon PARAS
+	band_mon ARTICUNO
+	band_mon TAUROS
+	band_johto
+	band_mon OCTILLERY
+	band_warp
+	band_end
+
+; --- Sabrina ---------------------------------------------------------------
+	band_pool Sabrina_Ace1
+	band_ace MR_MIME
+	band_ace VENOMOTH
+	band_ace HYPNO
+	band_johto
+	band_warp
+	band_end
+	band_pool Sabrina_Fod1
+	band_mon ABRA
+	band_mon DROWZEE
+	band_mon SLOWPOKE
+	band_mon EXEGGCUTE
+	band_johto
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_warp
+	band_mon PONYTA, 1
+	band_end
+	band_pool Sabrina_Ace2
+	band_ace KADABRA
+	band_ace HYPNO
+	band_ace MR_MIME
+	band_ace JYNX
+	band_ace STARMIE
+	band_johto
+	band_warp
+	band_end
+	band_pool Sabrina_Fod2
+	band_mon ABRA
+	band_mon DROWZEE
+	band_mon SLOWPOKE
+	band_mon EXEGGCUTE
+	band_mon MR_MIME
+	band_mon JYNX
+	band_johto
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_warp
+	band_mon PONYTA, 1
+	band_end
+	band_pool Sabrina_Off2
+	band_mon GASTLY
+	band_mon VENONAT
+	band_mon EEVEE
+	band_mon JIGGLYPUFF
+	band_mon PSYDUCK
+	band_mon SANDSHREW
+	band_mon PORYGON
+	band_johto
+	band_mon SENTRET
+	band_mon CYNDAQUIL
+	band_warp
+	band_end
+	band_pool Sabrina_Ace3
+	band_ace ALAKAZAM
+	band_ace EXEGGUTOR
+	band_ace SLOWBRO
+	band_ace STARMIE
+	band_johto
+	band_ace SLOWKING
+	band_ace JOLTEON, 1
+	band_warp
+	band_ace MR_RIME
+	band_end
+	band_pool Sabrina_Fod3
+	band_mon ABRA
+	band_mon DROWZEE
+	band_mon MR_MIME
+	band_mon JYNX
+	band_mon SLOWPOKE
+	band_mon EXEGGCUTE
+	band_mon STARYU
+	band_johto
+	band_mon JOLTEON, 1
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_warp
+	band_mon RAICHU, 1
+	band_mon PONYTA, 1
+	band_end
+	band_pool Sabrina_Off3
+	band_mon GASTLY
+	band_mon VENONAT
+	band_mon EEVEE
+	band_mon JIGGLYPUFF
+	band_mon PSYDUCK
+	band_mon SANDSHREW
+	band_mon SCYTHER
+	band_mon HITMONLEE
+	band_mon PORYGON
+	band_mon LAPRAS
+	band_johto
+	band_mon SENTRET
+	band_mon CYNDAQUIL
+	band_warp
+	band_end
+	band_pool Sabrina_Ace4
+	band_ace ALAKAZAM
+	band_ace EXEGGUTOR
+	band_ace SLOWBRO
+	band_ace STARMIE
+	band_johto
+	band_ace SLOWKING
+	band_ace JOLTEON, 1
+	band_warp
+	band_ace MR_RIME
+	band_ace ARTICUNO, 1
+	band_end
+	band_same Sabrina_Fod4, Sabrina_Fod3
+	band_pool Sabrina_Off4
+	band_mon GASTLY
+	band_mon VENONAT
+	band_mon EEVEE
+	band_mon JIGGLYPUFF
+	band_mon PSYDUCK
+	band_mon SANDSHREW
+	band_mon SCYTHER
+	band_mon HITMONLEE
+	band_mon MOLTRES
+	band_mon SNORLAX
+	band_mon PORYGON
+	band_mon LAPRAS
+	band_johto
+	band_mon SENTRET
+	band_mon CYNDAQUIL
+	band_warp
+	band_end
+
+; --- Giovanni --------------------------------------------------------------
+	band_pool Giovanni_Ace1
+	band_ace ONIX
+	band_ace SANDSLASH
+	band_ace DUGTRIO
+	band_ace MAROWAK
+	band_johto
+	band_warp
+	band_end
+	band_pool Giovanni_Fod1
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon DIGLETT
+	band_mon SANDSHREW
+	band_mon GEODUDE
+	band_mon CUBONE
+	band_mon RHYHORN
+	band_johto
+	band_mon PHANPY
+	band_mon WOOPER
+	band_mon LARVITAR
+	band_mon SWINUB
+	band_warp
+	band_mon WOOPER, 1
+	band_mon TENTACOOL, 1
+	band_end
+	band_pool Giovanni_Ace2
+	band_ace NIDOKING
+	band_ace RHYDON
+	band_ace PERSIAN
+	band_ace NIDOQUEEN
+	band_ace GOLEM
+	band_johto
+	band_warp
+	band_end
+	band_pool Giovanni_Fod2
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon RHYHORN
+	band_mon ONIX
+	band_mon DIGLETT
+	band_mon SANDSHREW
+	band_mon GEODUDE
+	band_mon CUBONE
+	band_johto
+	band_mon PHANPY
+	band_mon WOOPER
+	band_mon LARVITAR
+	band_mon SWINUB
+	band_mon GLIGAR
+	band_warp
+	band_mon WOOPER, 1
+	band_mon TENTACOOL, 1
+	band_end
+	band_pool Giovanni_Off2
+	band_mon MEOWTH
+	band_mon KANGASKHAN
+	band_mon MAGIKARP
+	band_mon MACHOP
+	band_mon CHARMANDER
+	band_mon GROWLITHE
+	band_johto
+	band_mon SNUBBULL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_same Giovanni_Ace3, Giovanni_Ace2
+	band_pool Giovanni_Fod3
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon RHYHORN
+	band_mon ONIX
+	band_mon DIGLETT
+	band_mon SANDSHREW
+	band_mon GEODUDE
+	band_mon CUBONE
+	band_johto
+	band_mon PHANPY
+	band_mon WOOPER
+	band_mon LARVITAR
+	band_mon SWINUB
+	band_mon GLIGAR
+	band_warp
+	band_mon WOOPER, 1
+	band_mon TENTACOOL, 1
+	band_mon MAGNETON, 1
+	band_end
+	band_pool Giovanni_Off3
+	band_mon MEOWTH
+	band_mon KANGASKHAN
+	band_mon MAGIKARP
+	band_mon PINSIR
+	band_mon EXEGGCUTE
+	band_mon HITMONCHAN
+	band_mon HITMONLEE
+	band_mon KOFFING
+	band_mon MACHOP
+	band_mon ELECTABUZZ
+	band_mon TAUROS
+	band_mon CHARMANDER
+	band_mon GROWLITHE
+	band_johto
+	band_mon SNUBBULL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_same Giovanni_Ace4, Giovanni_Ace2
+	band_same Giovanni_Fod4, Giovanni_Fod3
+	band_pool Giovanni_Off4
+	band_mon MEOWTH
+	band_mon KANGASKHAN
+	band_mon MAGIKARP
+	band_mon PINSIR
+	band_mon EXEGGCUTE
+	band_mon HITMONCHAN
+	band_mon HITMONLEE
+	band_mon KOFFING
+	band_mon MACHOP
+	band_mon ELECTABUZZ
+	band_mon TAUROS
+	band_mon CHARMANDER
+	band_mon GROWLITHE
+	band_mon MOLTRES
+	band_johto
+	band_mon SNUBBULL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+
+; --- Falkner ---------------------------------------------------------------
+	band_pool Falkner_Ace1
+	band_ace PIDGEOTTO
+	band_ace FEAROW
+	band_johto
+	band_ace NOCTOWL
+	band_warp
+	band_end
+	band_pool Falkner_Fod1
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon DODUO
+	band_mon FARFETCHD
+	band_mon ZUBAT
+	band_johto
+	band_mon HOOTHOOT
+	band_mon NATU
+	band_mon HOPPIP
+	band_mon LEDYBA
+	band_warp
+	band_end
+	band_pool Falkner_Ace2
+	band_ace PIDGEOT
+	band_ace DODRIO
+	band_ace FEAROW
+	band_johto
+	band_ace NOCTOWL
+	band_ace XATU
+	band_ace SKARMORY
+	band_warp
+	band_end
+	band_same Falkner_Fod2, Falkner_Fod1
+	band_pool Falkner_Off2
+	band_mon DIGLETT
+	band_mon GROWLITHE
+	band_mon POLIWAG
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+	band_pool Falkner_Ace3
+	band_ace PIDGEOT
+	band_ace DODRIO
+	band_ace AERODACTYL
+	band_johto
+	band_ace SKARMORY
+	band_ace XATU
+	band_warp
+	band_end
+	band_pool Falkner_Fod3
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon DODUO
+	band_mon FARFETCHD
+	band_mon ZUBAT
+	band_mon AERODACTYL
+	band_johto
+	band_mon HOOTHOOT
+	band_mon NATU
+	band_mon HOPPIP
+	band_mon LEDYBA
+	band_mon MURKROW
+	band_mon YANMA
+	band_mon GLIGAR
+	band_mon SKARMORY
+	band_warp
+	band_end
+	band_pool Falkner_Off3
+	band_mon DIGLETT
+	band_mon GROWLITHE
+	band_mon POLIWAG
+	band_mon SANDSHREW
+	band_mon MAGNEMITE
+	band_mon MACHOP
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+	band_pool Falkner_Ace4
+	band_ace PIDGEOT
+	band_ace DODRIO
+	band_ace AERODACTYL
+	band_johto
+	band_ace CROBAT
+	band_ace SKARMORY
+	band_warp
+	band_ace MOLTRES, 1
+	band_end
+	band_same Falkner_Fod4, Falkner_Fod3
+	band_pool Falkner_Off4
+	band_mon DIGLETT
+	band_mon GROWLITHE
+	band_mon POLIWAG
+	band_mon SANDSHREW
+	band_mon MAGNEMITE
+	band_mon MACHOP
+	band_mon SNORLAX
+	band_mon LAPRAS
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+
+; --- Bugsy -----------------------------------------------------------------
+	band_pool Bugsy_Ace1
+	band_ace BUTTERFREE
+	band_ace BEEDRILL
+	band_ace SCYTHER
+	band_ace VENOMOTH
+	band_johto
+	band_warp
+	band_end
+	band_pool Bugsy_Fod1
+	band_mon CATERPIE
+	band_mon WEEDLE
+	band_mon PARAS
+	band_mon VENONAT
+	band_johto
+	band_mon LEDYBA
+	band_mon SPINARAK
+	band_mon PINECO
+	band_warp
+	band_end
+	band_pool Bugsy_Ace2
+	band_ace SCYTHER
+	band_ace PINSIR
+	band_ace VENOMOTH
+	band_ace PARASECT
+	band_johto
+	band_ace HERACROSS
+	band_ace ARIADOS
+	band_warp
+	band_end
+	band_same Bugsy_Fod2, Bugsy_Fod1
+	band_pool Bugsy_Off2
+	band_mon ODDISH
+	band_mon POLIWAG
+	band_mon GEODUDE
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+	band_pool Bugsy_Ace3
+	band_ace PINSIR
+	band_ace SCYTHER
+	band_ace VENOMOTH
+	band_johto
+	band_ace SCIZOR
+	band_ace HERACROSS
+	band_ace FORRETRESS
+	band_warp
+	band_end
+	band_pool Bugsy_Fod3
+	band_mon CATERPIE
+	band_mon WEEDLE
+	band_mon PARAS
+	band_mon VENONAT
+	band_mon SCYTHER
+	band_mon PINSIR
+	band_johto
+	band_mon LEDYBA
+	band_mon SPINARAK
+	band_mon YANMA
+	band_mon PINECO
+	band_mon HERACROSS
+	band_mon SHUCKLE
+	band_warp
+	band_end
+	band_pool Bugsy_Off3
+	band_mon ODDISH
+	band_mon POLIWAG
+	band_mon GEODUDE
+	band_mon ONIX
+	band_mon SANDSHREW
+	band_mon TANGELA
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+	band_pool Bugsy_Ace4
+	band_ace PINSIR
+	band_johto
+	band_ace SCIZOR
+	band_ace HERACROSS
+	band_ace FORRETRESS
+	band_warp
+	band_ace KLEAVOR
+	band_end
+	band_same Bugsy_Fod4, Bugsy_Fod3
+	band_pool Bugsy_Off4
+	band_mon ODDISH
+	band_mon POLIWAG
+	band_mon GEODUDE
+	band_mon ONIX
+	band_mon SANDSHREW
+	band_mon TANGELA
+	band_mon CHANSEY
+	band_mon SNORLAX
+	band_johto
+	band_mon SENTRET
+	band_warp
+	band_end
+
+; --- Whitney ---------------------------------------------------------------
+	band_pool Whitney_Ace1
+	band_ace CLEFABLE
+	band_ace WIGGLYTUFF
+	band_ace RATICATE
+	band_johto
+	band_ace MILTANK
+	band_ace FURRET
+	band_warp
+	band_end
+	band_pool Whitney_Fod1
+	band_mon RATTATA
+	band_mon CLEFAIRY
+	band_mon JIGGLYPUFF
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon EEVEE
+	band_johto
+	band_mon SENTRET
+	band_mon SNUBBULL
+	band_mon AIPOM
+	band_mon TEDDIURSA
+	band_mon TOGEPI
+	band_mon DUNSPARCE
+	band_warp
+	band_end
+	band_pool Whitney_Ace2
+	band_ace CLEFABLE
+	band_ace WIGGLYTUFF
+	band_johto
+	band_ace MILTANK
+	band_ace GRANBULL
+	band_ace URSARING
+	band_ace GIRAFARIG
+	band_warp
+	band_end
+	band_pool Whitney_Fod2
+	band_mon RATTATA
+	band_mon CLEFAIRY
+	band_mon JIGGLYPUFF
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon EEVEE
+	band_johto
+	band_mon SENTRET
+	band_mon SNUBBULL
+	band_mon AIPOM
+	band_mon TEDDIURSA
+	band_mon TOGEPI
+	band_mon DUNSPARCE
+	band_mon GIRAFARIG
+	band_warp
+	band_end
+	band_pool Whitney_Off2
+	band_mon DROWZEE
+	band_johto
+	band_mon MARILL
+	band_mon HOPPIP
+	band_mon NATU
+	band_warp
+	band_end
+	band_pool Whitney_Ace3
+	band_ace CLEFABLE
+	band_ace KANGASKHAN
+	band_ace TAUROS
+	band_ace SNORLAX
+	band_johto
+	band_ace MILTANK
+	band_ace URSARING
+	band_ace PORYGON2
+	band_warp
+	band_end
+	band_pool Whitney_Fod3
+	band_mon RATTATA
+	band_mon CLEFAIRY
+	band_mon JIGGLYPUFF
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon CHANSEY
+	band_mon KANGASKHAN
+	band_mon TAUROS
+	band_mon DITTO
+	band_mon EEVEE
+	band_mon SNORLAX
+	band_mon PORYGON
+	band_johto
+	band_mon SENTRET
+	band_mon TOGEPI
+	band_mon STANTLER
+	band_mon DUNSPARCE
+	band_mon SNUBBULL
+	band_mon AIPOM
+	band_mon TEDDIURSA
+	band_mon GIRAFARIG
+	band_warp
+	band_end
+	band_pool Whitney_Off3
+	band_mon DROWZEE
+	band_mon PIKACHU
+	band_mon SLOWPOKE
+	band_mon GASTLY
+	band_johto
+	band_mon MARILL
+	band_mon HOPPIP
+	band_mon NATU
+	band_warp
+	band_end
+	band_pool Whitney_Ace4
+	band_ace SNORLAX
+	band_johto
+	band_ace MILTANK
+	band_ace MILTANK
+	band_ace BLISSEY
+	band_ace URSARING
+	band_ace PORYGON2
+	band_warp
+	band_ace LICKILICKY
+	band_ace PORYGON_Z
+	band_end
+	band_pool Whitney_Fod4
+	band_mon RATTATA
+	band_mon CLEFAIRY
+	band_mon JIGGLYPUFF
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon CHANSEY
+	band_mon KANGASKHAN
+	band_mon TAUROS
+	band_mon DITTO
+	band_mon EEVEE
+	band_mon SNORLAX
+	band_mon PORYGON
+	band_johto
+	band_mon SENTRET
+	band_mon TOGEPI
+	band_mon STANTLER
+	band_mon DUNSPARCE
+	band_mon SNUBBULL
+	band_mon AIPOM
+	band_mon TEDDIURSA
+	band_mon GIRAFARIG
+	band_warp
+	band_mon VAPOREON, 2
+	band_end
+	band_pool Whitney_Off4
+	band_mon DROWZEE
+	band_mon PIKACHU
+	band_mon SLOWPOKE
+	band_mon GASTLY
+	band_mon EXEGGCUTE
+	band_mon LAPRAS
+	band_johto
+	band_mon MARILL
+	band_mon HOPPIP
+	band_mon NATU
+	band_warp
+	band_end
+
+; --- Morty -----------------------------------------------------------------
+	band_pool Morty_Ace1
+	band_ace HAUNTER
+	band_ace GOLBAT
+	band_johto
+	band_ace MISDREAVUS
+	band_warp
+	band_end
+	band_pool Morty_Fod1
+	band_mon GASTLY
+	band_mon ZUBAT
+	band_mon EKANS
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon CUBONE
+	band_johto
+	band_mon MISDREAVUS
+	band_mon SPINARAK
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
+	band_mon GIRAFARIG
+	band_mon SUDOWOODO
+	band_warp
+	band_end
+	band_pool Morty_Ace2
+	band_ace HAUNTER
+	band_ace GENGAR
+	band_ace ARBOK
+	band_ace MAROWAK
+	band_johto
+	band_ace MISDREAVUS
+	band_warp
+	band_ace MAROWAK, 1
+	band_end
+	band_same Morty_Fod2, Morty_Fod1
+	band_pool Morty_Off2
+	band_mon DROWZEE
+	band_mon JYNX
+	band_mon EXEGGCUTE
+	band_johto
+	band_mon SNEASEL
+	band_warp
+	band_end
+	band_pool Morty_Ace3
+	band_ace GENGAR
+	band_johto
+	band_ace CROBAT
+	band_ace HOUNDOOM
+	band_ace JOLTEON, 2
+	band_warp
+	band_ace MISMAGIUS
+	band_ace MAROWAK, 1
+	band_end
+	band_pool Morty_Fod3
+	band_mon GASTLY
+	band_mon ZUBAT
+	band_mon EKANS
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon CUBONE
+	band_mon LAPRAS
+	band_johto
+	band_mon MISDREAVUS
+	band_mon SPINARAK
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
+	band_mon GIRAFARIG
+	band_mon SUDOWOODO
+	band_mon MANTINE
+	band_warp
+	band_mon MAROWAK, 1
+	band_mon ANNIHILAPE
+	band_end
+	band_pool Morty_Off3
+	band_mon DROWZEE
+	band_mon JYNX
+	band_mon EXEGGCUTE
+	band_mon SLOWPOKE
+	band_johto
+	band_mon SNEASEL
+	band_mon JOLTEON, 2
+	band_warp
+	band_end
+	band_pool Morty_Ace4
+	band_ace GENGAR
+	band_ace GENGAR
+	band_johto
+	band_ace CROBAT
+	band_ace HOUNDOOM
+	band_warp
+	band_ace MISMAGIUS
+	band_ace MAROWAK, 1
+	band_ace ANNIHILAPE
+	band_end
+	band_same Morty_Fod4, Morty_Fod3
+	band_same Morty_Off4, Morty_Off3
+
+; --- Chuck -----------------------------------------------------------------
+	band_pool Chuck_Ace1
+	band_ace PRIMEAPE
+	band_ace POLIWRATH
+	band_ace MACHOKE
+	band_ace HITMONCHAN
+	band_johto
+	band_warp
+	band_end
+	band_pool Chuck_Fod1
+	band_mon MANKEY
+	band_mon MACHOP
+	band_mon POLIWAG
+	band_mon HITMONLEE
+	band_mon HITMONCHAN
+	band_johto
+	band_mon HITMONTOP
+	band_warp
+	band_mon FARFETCHD, 1
+	band_end
+	band_pool Chuck_Ace2
+	band_ace PRIMEAPE
+	band_ace POLIWRATH
+	band_ace MACHAMP
+	band_ace HITMONLEE
+	band_ace HITMONCHAN
+	band_johto
+	band_ace HITMONTOP
+	band_ace HERACROSS
+	band_warp
+	band_end
+	band_same Chuck_Fod2, Chuck_Fod1
+	band_pool Chuck_Off2
+	band_mon GEODUDE
+	band_mon ONIX
+	band_mon RHYHORN
+	band_mon MAGNEMITE
+	band_johto
+	band_warp
+	band_end
+	band_pool Chuck_Ace3
+	band_ace MACHAMP
+	band_ace POLIWRATH
+	band_ace PRIMEAPE
+	band_johto
+	band_ace HERACROSS
+	band_ace HITMONTOP
+	band_warp
+	band_ace TAUROS, 1
+	band_ace SIRFETCHD
+	band_end
+	band_pool Chuck_Fod3
+	band_mon MANKEY
+	band_mon MACHOP
+	band_mon POLIWAG
+	band_mon HITMONLEE
+	band_mon HITMONCHAN
+	band_johto
+	band_mon HITMONTOP
+	band_mon HERACROSS
+	band_warp
+	band_mon FARFETCHD, 1
+	band_mon TAUROS, 1
+	band_mon SNEASEL, 1
+	band_end
+	band_pool Chuck_Off3
+	band_mon GEODUDE
+	band_mon ONIX
+	band_mon RHYHORN
+	band_mon MAGNEMITE
+	band_mon KANGASKHAN
+	band_mon TAUROS
+	band_johto
+	band_mon TEDDIURSA
+	band_warp
+	band_end
+	band_pool Chuck_Ace4
+	band_ace MACHAMP
+	band_ace MACHAMP
+	band_ace POLIWRATH
+	band_johto
+	band_ace HERACROSS
+	band_ace HITMONTOP
+	band_warp
+	band_ace ANNIHILAPE
+	band_ace ZAPDOS, 1
+	band_end
+	band_same Chuck_Fod4, Chuck_Fod3
+	band_pool Chuck_Off4
+	band_mon GEODUDE
+	band_mon ONIX
+	band_mon RHYHORN
+	band_mon MAGNEMITE
+	band_mon KANGASKHAN
+	band_mon TAUROS
+	band_mon SNORLAX
+	band_mon LAPRAS
+	band_johto
+	band_mon TEDDIURSA
+	band_warp
+	band_end
+
+; --- Jasmine ---------------------------------------------------------------
+	band_pool Jasmine_Ace1
+	band_ace MAGNETON
+	band_ace ONIX
+	band_johto
+	band_ace FORRETRESS
+	band_warp
+	band_end
+	band_pool Jasmine_Fod1
+	band_mon MAGNEMITE
+	band_mon ONIX
+	band_johto
+	band_mon PINECO
+	band_warp
+	band_mon DIGLETT, 1
+	band_mon SANDSHREW, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Jasmine_Ace2
+	band_ace MAGNETON
+	band_johto
+	band_ace STEELIX
+	band_ace FORRETRESS
+	band_ace SKARMORY
+	band_ace SCIZOR
+	band_warp
+	band_end
+	band_same Jasmine_Fod2, Jasmine_Fod1
+	band_pool Jasmine_Off2
+	band_mon GEODUDE
+	band_mon SANDSHREW
+	band_johto
+	band_mon MAREEP
+	band_mon MARILL
+	band_warp
+	band_end
+	band_pool Jasmine_Ace3
+	band_johto
+	band_ace STEELIX
+	band_ace SCIZOR
+	band_ace SKARMORY
+	band_ace FORRETRESS
+	band_ace AMPHAROS
+	band_warp
+	band_ace MAGNEZONE
+	band_ace PERSIAN, 2
+	band_end
+	band_pool Jasmine_Fod3
+	band_mon MAGNEMITE
+	band_mon ONIX
+	band_mon SCYTHER
+	band_johto
+	band_mon PINECO
+	band_mon SKARMORY
+	band_warp
+	band_mon DIGLETT, 1
+	band_mon SANDSHREW, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Jasmine_Off3
+	band_mon GEODUDE
+	band_mon SANDSHREW
+	band_mon RHYHORN
+	band_johto
+	band_mon MAREEP
+	band_mon MARILL
+	band_mon PHANPY
+	band_mon CHINCHOU
+	band_warp
+	band_end
+	band_pool Jasmine_Ace4
+	band_johto
+	band_ace STEELIX
+	band_ace STEELIX
+	band_ace SCIZOR
+	band_ace SKARMORY
+	band_ace FORRETRESS
+	band_ace AMPHAROS
+	band_warp
+	band_ace MAGNEZONE
+	band_end
+	band_pool Jasmine_Fod4
+	band_mon MAGNEMITE
+	band_mon SCYTHER
+	band_johto
+	band_mon PINECO
+	band_mon SKARMORY
+	band_warp
+	band_mon DIGLETT, 1
+	band_mon SANDSHREW, 1
+	band_mon MEOWTH, 2
+	band_end
+	band_pool Jasmine_Off4
+	band_mon GEODUDE
+	band_mon SANDSHREW
+	band_mon RHYHORN
+	band_mon SNORLAX
+	band_mon LAPRAS
+	band_johto
+	band_mon MAREEP
+	band_mon MARILL
+	band_mon PHANPY
+	band_mon CHINCHOU
+	band_warp
+	band_end
+
+; --- Pryce -----------------------------------------------------------------
+	band_pool Pryce_Ace1
+	band_ace DEWGONG
+	band_ace JYNX
+	band_johto
+	band_ace PILOSWINE
+	band_ace SNEASEL
+	band_warp
+	band_end
+	band_pool Pryce_Fod1
+	band_mon SEEL
+	band_mon SHELLDER
+	band_mon JYNX
+	band_johto
+	band_mon SWINUB
+	band_mon SNEASEL
+	band_warp
+	band_mon VULPIX, 1
+	band_mon SANDSHREW, 1
+	band_end
+	band_pool Pryce_Ace2
+	band_ace DEWGONG
+	band_ace CLOYSTER
+	band_ace JYNX
+	band_ace LAPRAS
+	band_johto
+	band_ace PILOSWINE
+	band_warp
+	band_ace NINETALES, 1
+	band_ace SANDSLASH, 1
+	band_end
+	band_same Pryce_Fod2, Pryce_Fod1
+	band_pool Pryce_Off2
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_johto
+	band_mon WOOPER
+	band_mon MARILL
+	band_warp
+	band_end
+	band_pool Pryce_Ace3
+	band_ace LAPRAS
+	band_ace CLOYSTER
+	band_ace DEWGONG
+	band_ace JYNX
+	band_johto
+	band_ace PILOSWINE
+	band_warp
+	band_ace MAMOSWINE
+	band_ace WEAVILE
+	band_ace VAPOREON, 1
+	band_end
+	band_pool Pryce_Fod3
+	band_mon SEEL
+	band_mon SHELLDER
+	band_mon JYNX
+	band_mon LAPRAS
+	band_johto
+	band_mon SWINUB
+	band_mon SNEASEL
+	band_warp
+	band_mon VULPIX, 1
+	band_mon SANDSHREW, 1
+	band_mon MR_MIME, 1
+	band_end
+	band_pool Pryce_Off3
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon SLOWPOKE
+	band_mon TENTACOOL
+	band_mon KRABBY
+	band_johto
+	band_mon WOOPER
+	band_mon MARILL
+	band_warp
+	band_end
+	band_pool Pryce_Ace4
+	band_ace LAPRAS
+	band_ace CLOYSTER
+	band_ace ARTICUNO
+	band_johto
+	band_warp
+	band_ace MAMOSWINE
+	band_ace WEAVILE
+	band_ace VAPOREON, 1
+	band_ace MR_RIME
+	band_end
+	band_same Pryce_Fod4, Pryce_Fod3
+	band_pool Pryce_Off4
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon SLOWPOKE
+	band_mon TENTACOOL
+	band_mon KRABBY
+	band_mon SNORLAX
+	band_johto
+	band_mon WOOPER
+	band_mon MARILL
+	band_mon QUAGSIRE
+	band_warp
+	band_end
+
+; --- Clair -----------------------------------------------------------------
+	band_pool Clair_Ace1
+	band_ace DRAGONAIR
+	band_ace SEADRA
+	band_ace CHARMELEON
+	band_johto
+	band_warp
+	band_end
+	band_pool Clair_Fod1
+	band_mon DRATINI
+	band_mon HORSEA
+	band_mon MAGIKARP
+	band_mon CHARMANDER
+	band_johto
+	band_warp
+	band_end
+	band_pool Clair_Ace2
+	band_ace DRAGONAIR
+	band_ace GYARADOS
+	band_ace CHARIZARD
+	band_ace AERODACTYL
+	band_johto
+	band_ace KINGDRA
+	band_warp
+	band_ace EXEGGUTOR, 1
+	band_end
+	band_same Clair_Fod2, Clair_Fod1
+	band_pool Clair_Off2
+	band_mon EKANS
+	band_mon ONIX
+	band_johto
+	band_mon MAREEP
+	band_warp
+	band_end
+	band_pool Clair_Ace3
+	band_ace DRAGONITE
+	band_ace GYARADOS
+	band_ace CHARIZARD
+	band_ace AERODACTYL
+	band_johto
+	band_ace KINGDRA
+	band_warp
+	band_ace EXEGGUTOR, 1
+	band_end
+	band_pool Clair_Fod3
+	band_mon DRATINI
+	band_mon HORSEA
+	band_mon MAGIKARP
+	band_mon CHARMANDER
+	band_mon AERODACTYL
+	band_mon LAPRAS
+	band_johto
+	band_warp
+	band_mon EXEGGUTOR, 1
+	band_end
+	band_pool Clair_Off3
+	band_mon EKANS
+	band_mon ONIX
+	band_mon SEEL
+	band_mon MAGNEMITE
+	band_johto
+	band_mon MAREEP
+	band_mon PHANPY
+	band_warp
+	band_end
+	band_pool Clair_Ace4
+	band_ace DRAGONITE
+	band_ace DRAGONITE
+	band_ace GYARADOS
+	band_ace CHARIZARD
+	band_ace AERODACTYL
+	band_johto
+	band_ace KINGDRA
+	band_warp
+	band_ace EXEGGUTOR, 1
+	band_end
+	band_same Clair_Fod4, Clair_Fod3
+	band_pool Clair_Off4
+	band_mon EKANS
+	band_mon ONIX
+	band_mon SEEL
+	band_mon MAGNEMITE
+	band_mon SNORLAX
+	band_johto
+	band_mon MAREEP
+	band_mon PHANPY
+	band_mon LARVITAR
+	band_warp
+	band_end
+
+; --- Janine ----------------------------------------------------------------
+	band_pool Janine_Ace1
+	band_ace GOLBAT
+	band_ace VENOMOTH
+	band_ace WEEZING
+	band_johto
+	band_ace ARIADOS
+	band_warp
+	band_end
+	band_pool Janine_Fod1
+	band_mon ZUBAT
+	band_mon VENONAT
+	band_mon KOFFING
+	band_mon GRIMER
+	band_mon EKANS
+	band_mon NIDORAN_F
+	band_mon NIDORAN_M
+	band_mon TENTACOOL
+	band_mon WEEDLE
+	band_johto
+	band_mon SPINARAK
+	band_mon QWILFISH
+	band_warp
+	band_end
+	band_pool Janine_Ace2
+	band_ace WEEZING
+	band_ace VENOMOTH
+	band_ace MUK
+	band_johto
+	band_ace CROBAT
+	band_ace ARIADOS
+	band_warp
+	band_end
+	band_same Janine_Fod2, Janine_Fod1
+	band_pool Janine_Off2
+	band_mon DROWZEE
+	band_johto
+	band_mon SNEASEL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_warp
+	band_end
+	band_pool Janine_Ace3
+	band_ace WEEZING
+	band_ace VENOMOTH
+	band_ace MUK
+	band_ace TENTACRUEL
+	band_johto
+	band_ace CROBAT
+	band_ace ARIADOS
+	band_warp
+	band_ace SNEASEL, 1
+	band_ace WEEZING, 1
+	band_end
+	band_pool Janine_Fod3
+	band_mon ZUBAT
+	band_mon VENONAT
+	band_mon KOFFING
+	band_mon GRIMER
+	band_mon EKANS
+	band_mon NIDORAN_F
+	band_mon NIDORAN_M
+	band_mon TENTACOOL
+	band_johto
+	band_mon SPINARAK
+	band_mon QWILFISH
+	band_warp
+	band_mon SNEASEL, 1
+	band_mon WOOPER, 1
+	band_end
+	band_pool Janine_Off3
+	band_mon DROWZEE
+	band_mon SCYTHER
+	band_johto
+	band_mon SNEASEL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon JOLTEON, 2
+	band_mon MISDREAVUS
+	band_warp
+	band_end
+	band_pool Janine_Ace4
+	band_ace WEEZING
+	band_ace TENTACRUEL
+	band_ace NIDOQUEEN
+	band_johto
+	band_ace CROBAT
+	band_ace CROBAT
+	band_warp
+	band_ace MUK, 1
+	band_ace SNEASEL, 1
+	band_end
+	band_same Janine_Fod4, Janine_Fod3
+	band_pool Janine_Off4
+	band_mon DROWZEE
+	band_mon SCYTHER
+	band_mon SNORLAX
+	band_johto
+	band_mon SNEASEL
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon JOLTEON, 2
+	band_mon MISDREAVUS
+	band_warp
+	band_end

@@ -321,12 +321,17 @@ def classify(rarity: dict[str, list[Tier]], species: str) -> tuple[str, int] | N
 # --- trainer pools and spec records -----------------------------------------
 
 def load_pools() -> dict[str, dict[str, list[str]]]:
-    """{POOL_X: {KANTO: [...], JOHTO: [...], WARP: [...]}} from data/trainers/pools.asm."""
+    """{POOL_X: {KANTO: [...], JOHTO: [...], WARP: [...]}} from data/trainers/pools.asm,
+    plus the gym leaders' banded pools {POOL_BAND_<Leader>_<Ace|Fod|Off><band>: ...}
+    from data/trainers/gym_band_pools.asm (a `band_same` alias maps to its twin's
+    runs). Entries are species names; a form index is dropped."""
     consts = parse_rgbds_constants(ROOT / "data" / "trainers" / "pools.asm")
+    # Macro bodies (`trainer_pool BandPool_\1`, `const POOL_BAND_\1`) are not rows.
     order = [line.split("trainer_pool", 1)[1].strip()
              for line in (_code(r) for r in _lines("data/trainers/pools.asm"))
-             if line.startswith("trainer_pool ")]
-    pool_ids = sorted((v, k) for k, v in consts.items() if k.startswith("POOL_") and k != "POOL_FORM_ROLL")
+             if line.startswith("trainer_pool ") and "\\" not in line]
+    pool_ids = sorted((v, k) for k, v in consts.items()
+                      if k.startswith("POOL_") and "\\" not in k and not k.startswith("POOL_BAND_"))
     if len(pool_ids) != len(order):
         raise ValueError(f"pools.asm: {len(pool_ids)} POOL_ ids but {len(order)} TrainerPoolTable rows")
 
@@ -341,17 +346,37 @@ def load_pools() -> dict[str, dict[str, list[str]]]:
             continue
         if current and code.startswith("pool_mon "):
             runs[current[0]][current[1]].append(code.split()[1].rstrip(","))
-    return {name: runs[label] for (_, name), label in zip(pool_ids, order)}
+    out = {name: runs[label] for (_, name), label in zip(pool_ids, order)}
+
+    band: dict[str, dict[str, list[str]]] = {}
+    name, grp = None, "KANTO"
+    for raw in _lines("data/trainers/gym_band_pools.asm"):
+        code = _code(raw)
+        if not code:
+            continue
+        op, _, arg = code.partition(" ")
+        args = [a.strip() for a in arg.split(",")]
+        if op == "band_pool":
+            name, grp = args[0], "KANTO"
+            band[name] = {g: [] for g in GROUPS}
+        elif op == "band_same":
+            band[args[0]] = band[args[1]]
+        elif op == "band_johto":
+            grp = "JOHTO"
+        elif op == "band_warp":
+            grp = "WARP"
+        elif op == "band_end":
+            name = None
+        elif op in ("band_mon", "band_ace") and name:
+            band[name][grp].append(args[0])
+    out.update({f"POOL_BAND_{n}": r for n, r in band.items()})
+    return out
 
 
 @dataclass(frozen=True)
 class LeaderRecord:
+    """A gym leader on the banded design: pools are POOL_BAND_<name>_<Ace|Fod|Off><band>."""
     name: str
-    pool: str
-    ace_a_early: str
-    ace_a_late: str
-    ace_c_early: str
-    ace_c_late: str
     late_flags: str       # extra BIT_PSPEC_* expression applied from round 7
 
 
@@ -369,7 +394,7 @@ def load_spec_records() -> tuple[list[LeaderRecord], list[E4Record]]:
         code = _code(raw)
         if code.startswith("gym_leader_records "):
             args = [a.strip() for a in code.split(None, 1)[1].split(",")]
-            leaders.append(LeaderRecord(*args[:7]))
+            leaders.append(LeaderRecord(*args[:2]))
         elif code.startswith("e4_member_records "):
             args = [a.strip() for a in code.split(None, 1)[1].split(",")]
             e4.append(E4Record(args[0], args[1], args[2], args[4]))
@@ -522,8 +547,6 @@ def _validate(d: GameData) -> None:
     for runs in d.pools.values():
         for lst in runs.values():
             names.update(lst)
-    for r in d.leaders:
-        names.update((r.ace_a_early, r.ace_a_late, r.ace_c_early, r.ace_c_late))
     for r in d.e4:
         names.update((r.ace_a, r.ace_c))
     for teams in d.miniboss_teams.values():

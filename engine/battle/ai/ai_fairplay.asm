@@ -4,8 +4,8 @@
 ; status, HP and stat stages stay readable at every tier forever, since a
 ; human opponent can see all of those on screen too - hiding them would read
 ; as artificial, not fair. That makes this file's one job narrow: record which
-; of the player's moves have actually been used this battle, into
-; wAISeenPlayerMoves (Gen 2's wPlayerUsedMoves, allocated back in Phase 1).
+; of the player's moves have actually been used this battle, by which party
+; member, into wAISeenPlayerMoveMask (the successor of Gen 2's wPlayerUsedMoves).
 ; AIGetPlayerMoveN (ai_accessors.asm, bank $0E) is the sole consumer, and the
 ; sole routine Phase 7 edits - see its header for how the two tiers diverge.
 ;
@@ -29,11 +29,10 @@
 
 SECTION "Trainer AI Fair Play", ROMX, BANK[$2C]
 
-; Finds wPlayerSelectedMove's slot in the player's real moveset and copies the
-; move id into the SAME slot of wAISeenPlayerMoves, so a later fair-play query
-; through AIGetPlayerMoveN(slot) returns it. Safe to call every turn for every
-; tier, including omniscient ones that never read the result - the write is
-; cheap and has no observable effect there.
+; Finds wPlayerSelectedMove's slot in the player's real moveset and sets that
+; slot's bit for the active party member (wPlayerMonNumber) in
+; wAISeenPlayerMoveMask, so a later fair-play query through
+; AIGetPlayerMoveN(slot) returns it for this mon only. Layout: see ram/wram.asm.
 ;
 ; Called from PlayerCanExecuteMove right after DisplayUsedMoveText, i.e. once
 ; the move has genuinely been selected and announced for this turn (a
@@ -45,23 +44,29 @@ SECTION "Trainer AI Fair Play", ROMX, BANK[$2C]
 AITrackSeenPlayerMove::
 	ld a, [wPlayerSelectedMove]
 	and a
-	ret z ; defensive: should never be 0 at this hook, but 0 is also
-	      ; wAISeenPlayerMoves' own "nothing here" sentinel, so bail rather
-	      ; than ever writing it as if it were a real move id
+	ret z ; defensive: 0 is never a real move, so there is nothing to reveal
 	ld c, a ; c = the move id just used
 	ld hl, wBattleMonMoves
-	ld de, wAISeenPlayerMoves
-	ld b, NUM_MOVES
+	ld b, 1 ; b = this slot's bit within the party member's nibble
 .findSlot
-	ld a, [hl]
+	ld a, [hli]
 	cp c
 	jr z, .found
-	inc hl
-	inc de
-	dec b
-	jr nz, .findSlot
+	sla b
+	bit NUM_MOVES, b
+	jr z, .findSlot
 	ret ; not in the real moveset (should not happen) - nothing to record
 .found
-	ld a, c
-	ld [de], a
+	ld a, [wPlayerMonNumber]
+	srl a ; a = mask byte, carry = odd party slot (high nibble)
+	jr nc, .gotNibble
+	swap b
+.gotNibble
+	ld e, a
+	ld d, 0
+	ld hl, wAISeenPlayerMoveMask
+	add hl, de
+	ld a, [hl]
+	or b
+	ld [hl], a
 	ret

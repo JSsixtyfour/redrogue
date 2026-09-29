@@ -137,6 +137,16 @@ DEF POOL_ENTRY_SIZE EQU 2
 DEF POOL_FORM_ROLL EQU $FF
 ; Force the ordinary base species; never a regional form.
 DEF POOL_FORM_BASE EQU 0
+; KEEP flag (bit 6): the drawn species is used AS WRITTEN - never promoted by
+; ScaleTrainer_evolution, and deduped as drawn. This is how a gym leader's ACE
+; pool says "Golem means Golem at L30" while its fodder pool evolves by level
+; (BALANCE_PHASE5_PLAN.md F). A per-entry flag rather than a slot flag so a
+; pool can mix both, and so it costs no override bytes. POOL_FORM_ROLL ($FF)
+; also has bit 6 set and is NOT a keep spec; test it first. Roll-and-keep is
+; its own value, $7F. pool.asm's `pool_ace` macro writes these.
+DEF POOL_FORM_KEEP_BIT  EQU 6
+DEF POOL_FORM_KEEP      EQU 1 << POOL_FORM_KEEP_BIT
+DEF POOL_FORM_ROLL_KEEP EQU $7F
 ; 1..NUM_FORM_SLOTS force that form index. UNGATED by species-group unlocks, on
 ; purpose and consistently with authored TRAINERPARTY_FORMS teams: a pinned form
 ; in a pool is authored content, and TRAINER_PARTY_FORMS.md's rule is "authored
@@ -196,9 +206,23 @@ DEF POOL_TABLE_ENTRY_SIZE EQU 5
 	const BIT_POVR_MOVES    ; 3 - +4: literal move ids; implies MSRC_EXPLICIT
 	const BIT_POVR_TYPE     ; 4 - +1: required type for this slot's pool roll
 	const BIT_POVR_RARITY   ; 5 - +1: required rarity tier for the pool roll
+	const BIT_POVR_POOL     ; 6 - +1: pool id this slot rolls from instead of the spec's
 DEF NUM_POVR_FIELDS EQU const_value
 
 DEF PARTY_SPEC_OVERRIDES_END EQU $FF ; terminates a spec's override list
+
+; A pseudo-slot no real slot index reaches. A BIT_POVR_POOL override on it
+; names the team's OFF-TYPE pool (gym leader banded design, BALANCE_PHASE5_PLAN
+; F), which does two things:
+;   1. exactly one real slot draws from it: slot (wTrainerNo - 1) mod 3, capped
+;      at n_mons - 2 so it is never the ace. The three round variants therefore
+;      put the off-type mon in three different positions from ONE shared record.
+;   2. a slot drawing from the spec's own pool whose retries all failed (every
+;      on-type species already on the team) retries once from this pool before
+;      settling for a duplicate.
+; PartyGenAssignSources ignores it (it claims no source), and the slot lookups
+; for rarity/type demands find no such fields on it.
+DEF PARTY_GEN_OFFTYPE_SLOT EQU $FE
 
 ; --- Generator scratch -----------------------------------------------------
 ; Level-up move candidates buffered per mon. MEASURED, not guessed: the longest

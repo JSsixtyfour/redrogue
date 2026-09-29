@@ -594,12 +594,15 @@ wAISwitchedFlags:: db   ; bit per party slot: switch-loop guard
 wAIPlan:: db            ; active strategy plan id (0 = none)
 wAIPlanStep:: db        ; progress within that plan
 
-; Revealed-move memory (Gen 2's wPlayerUsedMoves). Allocated now so the
-; player-state accessor seam has a home; populated in Phase 7, when clearing
-; AI_OMNISCIENT on the low tiers makes the AI reason only from what it has
-; actually seen. Zero means "no move revealed in this slot", which is exactly
-; what the battle-start zeroing gives us - hence it MUST live in this branch.
-wAISeenPlayerMoves:: ds NUM_MOVES
+; Revealed-move memory: one bit per (player party slot, move slot), 24 bits.
+; Byte = party slot / 2; odd party slots use the high nibble; bit n of the
+; nibble = move slot n. Keyed by party member so a revealed move never follows
+; the player onto a different mon after a switch (2026-09-29 review F6: the old
+; slot-indexed move-id buffer did exactly that). Zero = nothing revealed, which
+; the battle-start zeroing gives us - hence it MUST live in this branch. Same
+; 4-byte footprint as the buffer it replaced, so no later address moved.
+wAISeenPlayerMoveMask:: ds (PARTY_LENGTH * NUM_MOVES) / 8
+	ds 1 ; spare, keeps the old 4-byte footprint
 
 ; Party slot that used wWitchPrevPlayerMove (see its comment above). Same deal:
 ; carved from this branch's spare ds 1, zero WRAM0 cost, auto-zeroed per battle.

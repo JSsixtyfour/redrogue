@@ -50,6 +50,71 @@ MACRO trainer_pool
 	dw \1
 ENDM
 
+; --- Banded gym-leader pools (data/trainers/gym_band_pools.asm) -------------
+; That file is INCLUDEd three times; BAND_POOL_PASS picks what each macro emits:
+;   0  `const POOL_BAND_<name>` per pool (inside the const_def below)
+;   1  one TrainerPoolTable row per pool
+;   2  the entry lists with their four run labels
+; so a pool is written once and its id, row and list cannot disagree.
+MACRO band_pool
+	REDEF BAND_CUR EQUS "\1"
+	IF BAND_POOL_PASS == 0
+	const POOL_BAND_\1
+	ELIF BAND_POOL_PASS == 1
+	trainer_pool BandPool_\1
+	ELSE
+BandPool_\1:
+	ENDC
+ENDM
+
+; \1 = new name, \2 = an identical pool already defined. An alias, no bytes.
+MACRO band_same
+	IF BAND_POOL_PASS == 0
+	DEF POOL_BAND_\1 EQU POOL_BAND_\2
+	ENDC
+ENDM
+
+MACRO band_johto
+	IF BAND_POOL_PASS == 2
+BandPool_{BAND_CUR}_Johto:
+	ENDC
+ENDM
+
+MACRO band_warp
+	IF BAND_POOL_PASS == 2
+BandPool_{BAND_CUR}_Warp:
+	ENDC
+ENDM
+
+MACRO band_end
+	IF BAND_POOL_PASS == 2
+BandPool_{BAND_CUR}_End:
+	ENDC
+ENDM
+
+; \1 = species, \2 = optional form index. Evolved by level (fodder, off-type).
+MACRO band_mon
+	IF BAND_POOL_PASS == 2
+	IF _NARG >= 2
+	pool_mon \1, \2
+	ELSE
+	pool_mon \1
+	ENDC
+	ENDC
+ENDM
+
+; \1 = species, \2 = optional form index. Used AS WRITTEN (an ace): the form
+; spec carries POOL_FORM_KEEP, so ScaleTrainer_evolution never touches it.
+MACRO band_ace
+	IF BAND_POOL_PASS == 2
+	IF _NARG >= 2
+	pool_mon \1, POOL_FORM_KEEP | (\2)
+	ELSE
+	pool_mon \1, POOL_FORM_ROLL_KEEP
+	ENDC
+	ENDC
+ENDM
+
 ; Pool ids, in table order. A spec's `pool_id` indexes this table.
 ;
 ; Kanto/Johto run membership below follows engine/pokemon/rarity.asm's own
@@ -79,22 +144,6 @@ ENDM
 ; absent a written brief entry for each of them.
 	const_def
 	const POOL_FALKNER
-	const POOL_BROCK
-	const POOL_MISTY
-	const POOL_LT_SURGE
-	const POOL_ERIKA
-	const POOL_KOGA
-	const POOL_BLAINE
-	const POOL_SABRINA
-	const POOL_GIOVANNI
-	const POOL_BUGSY
-	const POOL_WHITNEY
-	const POOL_MORTY
-	const POOL_CHUCK
-	const POOL_JASMINE
-	const POOL_PRYCE
-	const POOL_CLAIR
-	const POOL_JANINE
 	const POOL_WILL
 	const POOL_KAREN
 ; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).
@@ -111,27 +160,14 @@ ENDM
 	const POOL_LANCE
 	const POOL_KOGA_E4
 	const POOL_RIVAL3
+; Gym leader banded pools, one id each (a `band_same` is an alias, not an id).
+DEF BAND_POOL_PASS = 0
+INCLUDE "data/trainers/gym_band_pools.asm"
 DEF NUM_TRAINER_POOLS EQU const_value
 
 TrainerPoolTable::
 	table_width POOL_TABLE_ENTRY_SIZE, TrainerPoolTable
 	trainer_pool FalknerPool
-	trainer_pool BrockPool
-	trainer_pool MistyPool
-	trainer_pool LtSurgePool
-	trainer_pool ErikaPool
-	trainer_pool KogaPool
-	trainer_pool BlainePool
-	trainer_pool SabrinaPool
-	trainer_pool GiovanniPool
-	trainer_pool BugsyPool
-	trainer_pool WhitneyPool
-	trainer_pool MortyPool
-	trainer_pool ChuckPool
-	trainer_pool JasminePool
-	trainer_pool PrycePool
-	trainer_pool ClairPool
-	trainer_pool JaninePool
 	trainer_pool WillPool
 	trainer_pool KarenPool
 	trainer_pool JessieJamesPool
@@ -145,6 +181,8 @@ TrainerPoolTable::
 	trainer_pool LancePool
 	trainer_pool KogaE4Pool
 	trainer_pool RivalThreePool
+DEF BAND_POOL_PASS = 1
+INCLUDE "data/trainers/gym_band_pools.asm"
 	assert_table_length NUM_TRAINER_POOLS
 
 ; ---------------------------------------------------------------------------
@@ -189,448 +227,12 @@ FalknerPool_Johto:
 FalknerPool_Warp:
 FalknerPool_End:
 
-; ---------------------------------------------------------------------------
-; Brock - Rock. Matches the plan's own pools.txt example verbatim: type ROCK
-; plus explicit additions OMANYTE/OMASTAR/KABUTO/KABUTOPS/AERODACTYL/GOLBAT/
-; CHANSEY, minus PARAS. GOLBAT and CHANSEY are genuinely off-type - the
-; brief's own deliberate "surprising pick" additions, kept rather than
-; smoothed away.
-; ---------------------------------------------------------------------------
-BrockPool:
-	pool_mon GEODUDE
-	pool_mon GRAVELER
-	pool_mon GOLEM
-	pool_mon ONIX
-	pool_mon RHYHORN
-	pool_mon RHYDON
-	pool_mon OMANYTE
-	pool_mon OMASTAR
-	pool_mon KABUTO
-	pool_mon KABUTOPS
-	pool_mon AERODACTYL
-	pool_mon GOLBAT
-	pool_mon CHANSEY
-BrockPool_Johto:
-	pool_mon SUDOWOODO
-	pool_mon CORSOLA
-	pool_mon SHUCKLE
-	pool_mon LARVITAR
-	pool_mon PUPITAR
-	pool_mon TYRANITAR
-BrockPool_Warp:
-BrockPool_End:
-
-; ---------------------------------------------------------------------------
-; Misty - Water.
-; ---------------------------------------------------------------------------
-MistyPool:
-	pool_mon STARYU
-	pool_mon STARMIE
-	pool_mon PSYDUCK
-	pool_mon GOLDUCK
-	pool_mon POLIWAG
-	pool_mon POLIWRATH
-	pool_mon TENTACOOL
-	pool_mon TENTACRUEL
-	pool_mon SEADRA
-	pool_mon SEAKING
-	pool_mon GYARADOS
-	pool_mon LAPRAS
-	pool_mon VAPOREON
-	pool_mon SLOWBRO
-	pool_mon SQUIRTLE
-	pool_mon BLASTOISE
-MistyPool_Johto:
-	pool_mon CHINCHOU
-	pool_mon LANTURN
-	pool_mon QWILFISH
-	pool_mon OCTILLERY
-	pool_mon MANTINE
-	pool_mon WOOPER
-	pool_mon QUAGSIRE
-	pool_mon MARILL
-	pool_mon AZUMARILL
-	pool_mon KINGDRA
-MistyPool_Warp:
-MistyPool_End:
-
-; ---------------------------------------------------------------------------
-; Lt. Surge - Electric.
-; ---------------------------------------------------------------------------
-LtSurgePool:
-	pool_mon PIKACHU
-	pool_mon RAICHU
-	pool_mon VOLTORB
-	pool_mon ELECTRODE
-	pool_mon MAGNEMITE
-	pool_mon MAGNETON
-	pool_mon ELECTABUZZ
-	pool_mon ZAPDOS
-LtSurgePool_Johto:
-	pool_mon MAREEP
-	pool_mon FLAAFFY
-	pool_mon AMPHAROS
-LtSurgePool_Warp:
-LtSurgePool_End:
-
-; ---------------------------------------------------------------------------
-; Erika - Grass.
-; ---------------------------------------------------------------------------
-ErikaPool:
-	pool_mon BULBASAUR
-	pool_mon IVYSAUR
-	pool_mon VENUSAUR
-	pool_mon ODDISH
-	pool_mon GLOOM
-	pool_mon VILEPLUME
-	pool_mon BELLSPROUT
-	pool_mon WEEPINBELL
-	pool_mon VICTREEBEL
-	pool_mon EXEGGCUTE
-	pool_mon EXEGGUTOR
-	pool_mon TANGELA
-	pool_mon PARASECT
-ErikaPool_Johto:
-	pool_mon CHIKORITA
-	pool_mon BAYLEEF
-	pool_mon MEGANIUM
-	pool_mon HOPPIP
-	pool_mon SKIPLOOM
-	pool_mon JUMPLUFF
-	pool_mon SUNKERN
-	pool_mon SUNFLORA
-	pool_mon BELLOSSOM
-ErikaPool_Warp:
-ErikaPool_End:
-
-; ---------------------------------------------------------------------------
-; Koga - Poison.
-; ---------------------------------------------------------------------------
-KogaPool:
-	pool_mon EKANS
-	pool_mon ARBOK
-	pool_mon NIDORAN_M
-	pool_mon NIDORINO
-	pool_mon NIDOKING
-	pool_mon NIDORAN_F
-	pool_mon NIDORINA
-	pool_mon NIDOQUEEN
-	pool_mon ZUBAT
-	pool_mon GOLBAT
-	pool_mon GRIMER
-	pool_mon MUK
-	pool_mon WEEZING
-	pool_mon KOFFING
-	pool_mon VENONAT
-	pool_mon VENOMOTH
-	pool_mon GASTLY
-	pool_mon HAUNTER
-	pool_mon GENGAR
-	pool_mon BULBASAUR
-	pool_mon IVYSAUR
-	pool_mon VENUSAUR
-	pool_mon ODDISH
-	pool_mon GLOOM
-	pool_mon VILEPLUME
-	pool_mon BELLSPROUT
-	pool_mon WEEPINBELL
-	pool_mon VICTREEBEL
-	pool_mon WEEDLE
-	pool_mon KAKUNA
-	pool_mon BEEDRILL ; gym-only - see KogaE4Pool's note
-	pool_mon TENTACOOL
-	pool_mon TENTACRUEL
-	pool_mon PARASECT
-	pool_mon TANGELA
-	pool_mon HYPNO
-	pool_mon ELECTRODE
-	pool_mon MAGMAR
-	pool_mon LAPRAS
-	pool_mon SCYTHER
-	pool_mon RHYDON
-	pool_mon NINETALES
-	pool_mon CHANSEY
-	pool_mon DITTO
-	pool_mon PIDGEY
-	pool_mon PIDGEOTTO
-	pool_mon PIDGEOT
-	pool_mon VAPOREON
-KogaPool_Johto:
-	pool_mon CROBAT
-	pool_mon QWILFISH
-	pool_mon ARIADOS
-	pool_mon SPINARAK
-	pool_mon FORRETRESS
-	pool_mon STANTLER
-	pool_mon LANTURN
-	pool_mon SCIZOR
-	pool_mon GIRAFARIG
-	pool_mon MEGANIUM
-	pool_mon SHUCKLE
-KogaPool_Warp:
-	pool_mon GRIMER, 1 ; Alolan
-	pool_mon MUK, 1 ; Alolan
-	pool_mon QWILFISH, 1 ; Hisuian
-	pool_mon SLOWBRO, 1 ; Galarian
-	pool_mon SLOWKING, 1 ; Galarian
-	pool_mon SNEASEL, 1 ; Hisuian
-	pool_mon WEEZING, 1 ; Galarian
-	pool_mon WOOPER, 1 ; Paldean
-KogaPool_End:
-
-; ---------------------------------------------------------------------------
-; Blaine - Fire.
-; ---------------------------------------------------------------------------
-BlainePool:
-	pool_mon VULPIX
-	pool_mon NINETALES
-	pool_mon GROWLITHE
-	pool_mon ARCANINE
-	pool_mon PONYTA
-	pool_mon RAPIDASH
-	pool_mon CHARMANDER
-	pool_mon CHARMELEON
-	pool_mon CHARIZARD
-	pool_mon MOLTRES
-	pool_mon MAGMAR
-BlainePool_Johto:
-	pool_mon CYNDAQUIL
-	pool_mon QUILAVA
-	pool_mon TYPHLOSION
-	pool_mon SLUGMA
-	pool_mon MAGCARGO
-	pool_mon HOUNDOUR
-	pool_mon HOUNDOOM
-BlainePool_Warp:
-BlainePool_End:
-
-; ---------------------------------------------------------------------------
-; Sabrina - Psychic. MEW and MEWTWO are ordinary entries here (both
-; RARITY_TIER_UBER), gated the normal way by BIT_PSPEC_ALLOW_UBER on
-; whichever spec sets it - matching canon's "Sabrina has Mewtwo" without
-; inventing a second mechanism. This is separate from her named legendary
-; ace-substitution encounter (Celebi/Lugia added to Mew/Mewtwo per
-; GYM_LEADER_EXPANSION_PLAN.md Phase 3), which extends
-; custom_functions/legendary_boss_helpers.asm and is not a pool entry at all.
-; ---------------------------------------------------------------------------
-SabrinaPool:
-	pool_mon ABRA
-	pool_mon KADABRA
-	pool_mon ALAKAZAM
-	pool_mon DROWZEE
-	pool_mon HYPNO
-	pool_mon MR_MIME
-	pool_mon JYNX
-	pool_mon SLOWPOKE
-	pool_mon SLOWBRO
-	pool_mon EXEGGCUTE
-	pool_mon EXEGGUTOR
-	pool_mon STARMIE
-SabrinaPool_Johto:
-	pool_mon NATU
-	pool_mon XATU
-	pool_mon GIRAFARIG
-	pool_mon SLOWKING
-SabrinaPool_Warp:
-SabrinaPool_End:
-
-; ---------------------------------------------------------------------------
-; Giovanni - Ground, plus the "crime boss" off-type picks his authored team
-; already carries (PERSIAN, MEOWTH, KANGASKHAN).
-; ---------------------------------------------------------------------------
-GiovanniPool:
-	pool_mon NIDORAN_M
-	pool_mon NIDORINO
-	pool_mon NIDOKING
-	pool_mon NIDORAN_F
-	pool_mon NIDORINA
-	pool_mon NIDOQUEEN
-	pool_mon RHYHORN
-	pool_mon RHYDON
-	pool_mon ONIX
-	pool_mon DUGTRIO
-	pool_mon DIGLETT
-	pool_mon SANDSHREW
-	pool_mon SANDSLASH
-	pool_mon GEODUDE
-	pool_mon GRAVELER
-	pool_mon GOLEM
-	pool_mon PERSIAN
-	pool_mon MEOWTH
-	pool_mon KANGASKHAN
-	pool_mon CUBONE
-	pool_mon MAROWAK
-	pool_mon GYARADOS
-GiovanniPool_Johto:
-	pool_mon PHANPY
-	pool_mon DONPHAN
-	pool_mon STEELIX
-	pool_mon SNUBBULL
-	pool_mon GRANBULL
-	pool_mon MURKROW
-	pool_mon HOUNDOUR
-	pool_mon HOUNDOOM
-GiovanniPool_Warp:
-GiovanniPool_End:
-
-; ---------------------------------------------------------------------------
-; Bugsy - Bug.
-; ---------------------------------------------------------------------------
-BugsyPool:
-	pool_mon CATERPIE
-	pool_mon METAPOD
-	pool_mon BUTTERFREE
-	pool_mon WEEDLE
-	pool_mon KAKUNA
-	pool_mon BEEDRILL
-	pool_mon PARAS
-	pool_mon PARASECT
-	pool_mon VENONAT
-	pool_mon VENOMOTH
-	pool_mon SCYTHER
-	pool_mon PINSIR
-BugsyPool_Johto:
-	pool_mon LEDYBA
-	pool_mon LEDIAN
-	pool_mon SPINARAK
-	pool_mon ARIADOS
-	pool_mon YANMA
-	pool_mon FORRETRESS
-	pool_mon HERACROSS
-	pool_mon SHUCKLE
-BugsyPool_Warp:
-BugsyPool_End:
-
-; ---------------------------------------------------------------------------
-; Whitney - Normal.
-; ---------------------------------------------------------------------------
-WhitneyPool:
-	pool_mon RATTATA
-	pool_mon RATICATE
-	pool_mon CLEFAIRY
-	pool_mon CLEFABLE
-	pool_mon JIGGLYPUFF
-	pool_mon WIGGLYTUFF
-	pool_mon PERSIAN
-	pool_mon CHANSEY
-	pool_mon KANGASKHAN
-	pool_mon TAUROS
-	pool_mon DITTO
-	pool_mon EEVEE
-	pool_mon SNORLAX
-	pool_mon PORYGON
-WhitneyPool_Johto:
-	pool_mon SENTRET
-	pool_mon FURRET
-	pool_mon TOGEPI
-	pool_mon TOGETIC
-	pool_mon MILTANK
-	pool_mon BLISSEY
-	pool_mon STANTLER
-	pool_mon DUNSPARCE
-	pool_mon GRANBULL
-	pool_mon PORYGON2
-WhitneyPool_Warp:
-WhitneyPool_End:
-
-; ---------------------------------------------------------------------------
-; Morty - Ghost. Small and deliberately so: GASTLY/HAUNTER/GENGAR and
-; MISDREAVUS are the entire pure-or-mixed Ghost roster this dex has: canon's
-; own Morty is likewise almost entirely the Gastly line.
-; ---------------------------------------------------------------------------
-MortyPool:
-	pool_mon GASTLY
-	pool_mon HAUNTER
-	pool_mon GENGAR
-MortyPool_Johto:
-	pool_mon MISDREAVUS
-MortyPool_Warp:
-MortyPool_End:
-
-; ---------------------------------------------------------------------------
-; Chuck - Fighting.
-; ---------------------------------------------------------------------------
-ChuckPool:
-	pool_mon MANKEY
-	pool_mon PRIMEAPE
-	pool_mon MACHOP
-	pool_mon MACHOKE
-	pool_mon MACHAMP
-	pool_mon HITMONLEE
-	pool_mon HITMONCHAN
-ChuckPool_Johto:
-	pool_mon HERACROSS
-ChuckPool_Warp:
-ChuckPool_End:
-
-; ---------------------------------------------------------------------------
-; Jasmine - Steel. Small on purpose: Steel-type coverage in this dex is
-; genuinely thin pre-Warp-group (SCIZOR and MAGNEZONE do not exist as
-; directly rollable entries here - see the header note on Warp species).
-; ---------------------------------------------------------------------------
-JasminePool:
-	pool_mon MAGNEMITE
-	pool_mon MAGNETON
-JasminePool_Johto:
-	pool_mon STEELIX
-	pool_mon FORRETRESS
-JasminePool_Warp:
-JasminePool_End:
-
-; ---------------------------------------------------------------------------
-; Pryce - Ice.
-; ---------------------------------------------------------------------------
-PrycePool:
-	pool_mon SEEL
-	pool_mon DEWGONG
-	pool_mon JYNX
-	pool_mon ARTICUNO
-PrycePool_Johto:
-	pool_mon SWINUB
-	pool_mon PILOSWINE
-	pool_mon SNEASEL
-PrycePool_Warp:
-PrycePool_End:
-
-; ---------------------------------------------------------------------------
-; Clair - Dragon. Small on purpose: DRATINI's line is this dex's only pure
-; Dragon family, so KINGDRA (Water/Dragon) is the only Johto addition that
-; actually shares her type.
-; ---------------------------------------------------------------------------
-ClairPool:
-	pool_mon DRATINI
-	pool_mon DRAGONAIR
-	pool_mon DRAGONITE
-ClairPool_Johto:
-	pool_mon KINGDRA
-ClairPool_Warp:
-ClairPool_End:
-
-; ---------------------------------------------------------------------------
-; Janine - Poison, mirroring Koga's theme (her Fuchsia Gym predecessor).
-; ---------------------------------------------------------------------------
-JaninePool:
-	pool_mon EKANS
-	pool_mon ARBOK
-	pool_mon ZUBAT
-	pool_mon GOLBAT
-	pool_mon GRIMER
-	pool_mon MUK
-	pool_mon WEEZING
-	pool_mon KOFFING
-	pool_mon NIDORAN_M
-	pool_mon NIDORINO
-	pool_mon NIDOKING
-	pool_mon NIDORAN_F
-	pool_mon NIDORINA
-	pool_mon NIDOQUEEN
-	pool_mon VENONAT
-	pool_mon VENOMOTH
-JaninePool_Johto:
-	pool_mon CROBAT
-	pool_mon QWILFISH
-JaninePool_Warp:
-JaninePool_End:
+; The other 16 gym leaders' pools are the banded pools in
+; data/trainers/gym_band_pools.asm (BALANCE_PHASE5_PLAN.md F, 2026-09-29).
+; FalknerPool above stays: FalknerSpec2/3, the Phase 2 worked examples that the
+; party-spec tests drive by name, still read it.
+DEF BAND_POOL_PASS = 2
+INCLUDE "data/trainers/gym_band_pools.asm"
 
 ; ---------------------------------------------------------------------------
 ; Will - Elite Four, Psychic. Named additions (CLEFABLE/

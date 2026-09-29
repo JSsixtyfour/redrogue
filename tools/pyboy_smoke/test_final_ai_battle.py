@@ -152,9 +152,7 @@ class FinalAITest(HarnessTestCase):
         # production FINAL_AI override actually keys off. Set it directly.
         h.write8("wTrainerClass", self.trainer_classes["FINAL_AI"])
         growl = moves["GROWL"]
-        base = h.address("wAISeenPlayerMoves")
-        for index, move_id in enumerate([0, growl, 0, 0]):
-            h.pyboy.memory[base + index] = move_id
+        h.reveal_player_moves(0, [1], clear=True)
 
         tackle = moves["TACKLE"]
         splash = moves["SPLASH"]
@@ -175,9 +173,7 @@ class FinalAITest(HarnessTestCase):
         h.boot_fight2(seed=1)
         h.write8("wTrainerClass", self.trainer_classes["COOLTRAINER_M"])
         growl = moves["GROWL"]
-        base = h.address("wAISeenPlayerMoves")
-        for index, move_id in enumerate([0, growl, 0, 0]):
-            h.pyboy.memory[base + index] = move_id
+        h.reveal_player_moves(0, [1], clear=True)
         self.assertEqual(call_a_preserving(h, "AIGetPlayerMoveN", 0), 0)
 
     def test_read_trainer_loads_archive_and_portrait(self) -> None:

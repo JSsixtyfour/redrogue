@@ -494,6 +494,10 @@ PartyGenBuildSlot:
 	farcall PatchRivalStarterSpecies
 	jr .noEvolve
 .poolDrawn
+; A POOL_FORM_KEEP entry (a gym ace) is used as written, exactly like a pin.
+; This also turns its form spec back into an ordinary one for ResolveForm.
+	call PartyGenTakeKeepFlag
+	jr c, .noEvolve
 	ld a, [wCurPartySpecies]
 	ld d, a
 	farcall ScaleTrainer_evolution ; d = species in; publishes the promoted one
@@ -623,7 +627,9 @@ PartyGenRollFromPool:
 ; strictly better answer than refusing to build the slot. Bounded-then-accept,
 ; the same shape the moveset sampler uses, and for the same reason: a pool
 ; smaller than the team size or a filter no pool member satisfies must degrade,
-; never spin.
+; never spin. Before settling, a slot on the spec's own pool gets one pass at
+; the off-type pool, if the spec names one.
+	call PartyGenTryOffTypeFallback
 .accept
 	xor a                          ; carry clear = came from the pool
 	ret
@@ -639,12 +645,183 @@ PartyGenRollFromPool:
 	xor a
 	ret
 
-; hl -> this spec's TrainerPoolTable entry (the three counts, then the `dw`).
-PartyGenPoolEntry:
+; ===========================================================================
+; PartyGenTryOffTypeFallback
+;
+; Called when a slot's retries are exhausted. If the slot draws from the spec's
+; OWN pool and the spec names an off-type pool (a BIT_POVR_POOL override on
+; PARTY_GEN_OFFTYPE_SLOT), retry the slot from the off-type pool with the same
+; bounded loop. The draw is made with wPartyGenSlot temporarily set to the
+; pseudo-slot, which is what makes PartyGenPoolEntry resolve the off-type pool
+; and the rarity/type lookups find no demands. If that pool is empty for the
+; active groups, or every draw from it fails too, the original last draw is put
+; back: an on-type duplicate beats an off-type duplicate.
+;
+; OUTPUT: wCurPartySpecies/wSpawnForm = the draw to build. CLOBBERS everything.
+; ===========================================================================
+PartyGenTryOffTypeFallback:
+	ld a, [wPartyGenSlot]
+	cp PARTY_GEN_OFFTYPE_SLOT
+	ret z                          ; already the fallback
+	call PartyGenSlotPoolId
+	ld b, a
 	call PartyGenSpecHeader
-	ld bc, 3
-	add hl, bc
-	ld a, [hl]                     ; pool id
+	inc hl
+	inc hl
+	inc hl
+	ld a, [hl]                     ; the spec's own pool
+	cp b
+	ret nz                         ; an ace or off-type slot keeps its own result
+	ld b, PARTY_GEN_OFFTYPE_SLOT
+	call PartyGenSlotPoolOverride
+	ret nc                         ; no off-type pool in this spec
+
+	ld a, [wCurPartySpecies]
+	push af
+	ld a, [wSpawnForm]
+	push af
+	ld a, [wPartyGenSlot]
+	push af
+	ld a, PARTY_GEN_OFFTYPE_SLOT
+	ld [wPartyGenSlot], a
+	ld c, PARTY_GEN_MAX_RETRIES
+.retry
+	push bc
+	call PartyGenDrawFromPool
+	pop bc
+	jr nc, .keepOriginal           ; nothing eligible in the off-type pool
+	push bc
+	call PartyGenPoolCandidateOk
+	pop bc
+	jr c, .took
+	dec c
+	jr nz, .retry
+.keepOriginal
+	pop af
+	ld [wPartyGenSlot], a
+	pop af
+	ld [wSpawnForm], a
+	pop af
+	ld [wCurPartySpecies], a
+	ret
+.took
+	pop af
+	ld [wPartyGenSlot], a
+	pop af                         ; discard the saved on-type draw
+	pop af
+	ret
+
+; ===========================================================================
+; PartyGenSlotPoolOverride
+;
+; INPUT:  b = slot index (or PARTY_GEN_OFFTYPE_SLOT)
+; OUTPUT: carry SET -> a = the pool id that slot's BIT_POVR_POOL override names
+;         carry CLEAR -> no such override
+; CLOBBERS: af, bc, de, hl
+; ===========================================================================
+PartyGenSlotPoolOverride:
+	call PartyGenFindOverrideForSlot
+	ret nc
+	ld b, BIT_POVR_POOL
+	call PartyGenFieldPtr
+	ret nc
+	ld a, [hl]
+	scf
+	ret
+
+; ===========================================================================
+; PartyGenSlotPoolId
+;
+; OUTPUT: a = the pool id slot [wPartyGenSlot] draws from:
+;   1. its own BIT_POVR_POOL override (a gym ace), else
+;   2. the off-type pool, if this is the round variant's off-type slot, else
+;   3. the spec header's pool.
+; CLOBBERS: af, bc, de, hl
+; ===========================================================================
+PartyGenSlotPoolId:
+	ld a, [wPartyGenSlot]
+	ld b, a
+	call PartyGenSlotPoolOverride
+	ret c
+; Is this the off-type slot? slot = (wTrainerNo - 1) mod 3, capped at
+; n_mons - 2 so the ace slot can never be taken.
+	ld a, [wPartyGenNMons]
+	sub 2
+	jr c, .header                  ; a 1-mon team has no off-type slot
+	ld c, a                        ; c = the highest slot allowed
+	ld a, [wTrainerNo]
+	dec a
+.mod3
+	cp 3
+	jr c, .gotVariant
+	sub 3
+	jr .mod3
+.gotVariant
+	cp c
+	jr c, .capped
+	ld a, c
+.capped
+	ld b, a
+	ld a, [wPartyGenSlot]
+	cp b
+	jr nz, .header
+	ld b, PARTY_GEN_OFFTYPE_SLOT
+	call PartyGenSlotPoolOverride
+	ret c
+.header
+	call PartyGenSpecHeader
+	inc hl
+	inc hl
+	inc hl
+	ld a, [hl]
+	ret
+
+; ===========================================================================
+; PartyGenFormSpecKeeps
+;
+; INPUT:  a = a pool entry's form spec
+; OUTPUT: carry SET if it carries POOL_FORM_KEEP (use the species as written).
+;         a PRESERVED.
+; POOL_FORM_ROLL ($FF) has bit 6 set too and is NOT a keep spec.
+; ===========================================================================
+PartyGenFormSpecKeeps:
+	cp POOL_FORM_ROLL
+	jr z, .no
+	bit POOL_FORM_KEEP_BIT, a
+	jr z, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+; ===========================================================================
+; PartyGenTakeKeepFlag
+;
+; OUTPUT: carry SET if wSpawnForm held a keep spec; it is rewritten as the
+;         ordinary spec PartyGenResolveForm expects (POOL_FORM_ROLL_KEEP ->
+;         POOL_FORM_ROLL, POOL_FORM_KEEP | n -> n).
+; CLOBBERS: af
+; ===========================================================================
+PartyGenTakeKeepFlag:
+	ld a, [wSpawnForm]
+	call PartyGenFormSpecKeeps
+	ret nc
+	cp POOL_FORM_ROLL_KEEP
+	jr nz, .literal
+	ld a, POOL_FORM_ROLL
+	jr .store
+.literal
+	res POOL_FORM_KEEP_BIT, a
+.store
+	ld [wSpawnForm], a
+	scf
+	ret
+
+; hl -> the TrainerPoolTable entry (the three counts, then the `dw`) of the
+; pool slot [wPartyGenSlot] draws from - see PartyGenSlotPoolId.
+PartyGenPoolEntry:
+	call PartyGenSlotPoolId        ; a = pool id
 	ld hl, TrainerPoolTable
 	ld bc, POOL_TABLE_ENTRY_SIZE
 	jp AddNTimes
@@ -701,6 +878,10 @@ PartyGenPoolCandidateOk:
 ; ScaleTrainer_evolution has one - so the promotion is knowable now. We restore
 ; the draw afterwards and let PartyGenBuildSlot do the real evolve, so this is
 ; a pure test with no side effect on what gets built.
+; A keep entry (a gym ace) is fielded as drawn, so dedupe it as drawn.
+	ld a, [wSpawnForm]
+	call PartyGenFormSpecKeeps
+	jr c, .dupeTestAsDrawn
 	ld a, [wCurPartySpecies]
 	cp EEVEE
 	jr z, .dupeTestAsDrawn         ; see below

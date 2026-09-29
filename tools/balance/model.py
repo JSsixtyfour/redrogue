@@ -29,6 +29,7 @@ from parse import EVOLVE_ITEM, EVOLVE_TRADE, GameData  # noqa: E402
 
 MAX_LEVEL = 100
 DIFFICULTIES = ("normal", "easy", "very_easy", "hard", "very_hard")   # DIFFICULTY_* order
+GYM_BAND_ROUNDS = 2  # party_specs.asm
 KANTO_LEADERS = ("Brock", "Misty", "LtSurge", "Erika", "Koga", "Blaine", "Sabrina", "Giovanni")
 KANTO_E4 = ("Lorelei", "Bruno", "Agatha", "Lance")
 STAGE_EVENTS = (  # StageEventTrainerTable order; (class, pool)
@@ -232,23 +233,39 @@ def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> B
 
 
 def draw_pool(g: GameData, cfg: Config, pool: str, level: int, used: list[str], allow_uber: bool,
-              rng: random.Random, no_rival: str | None = None) -> str:
+              rng: random.Random, no_rival: str | None = None, keep: bool = False,
+              fallback: str | None = None) -> str:
     """PartyGenRollFromPool + PartyGenPoolCandidateOk: NO_DUPES on the FIELDED
     species, uber filter, bounded retries (the last draw stands), then
-    ScaleTrainer_evolution."""
-    runs = g.pools[pool]
-    eligible = [s for grp in parse.GROUPS if grp in cfg.groups for s in runs[grp]]
+    ScaleTrainer_evolution. keep = a gym ace pool (POOL_FORM_KEEP: used as
+    written, deduped as drawn). fallback = the off-type pool a slot on the
+    spec's own pool retries from when every draw failed
+    (PartyGenTryOffTypeFallback); if that fails too the on-type draw stands."""
+    def eligible_of(name: str) -> list[str]:
+        runs = g.pools[name]
+        return [s for grp in parse.GROUPS if grp in cfg.groups for s in runs[grp]]
+
+    def ok(draw: str) -> bool:
+        fielded = draw if keep or draw == "EEVEE" else scale_trainer_evolution(g, cfg, draw, level, random.Random(0))
+        cls = parse.classify(g.rarity, draw)
+        return not (fielded in used or (not allow_uber and cls and cls[1] == parse.TIER_UBER) or draw == no_rival)
+
+    eligible = eligible_of(pool)
     if not eligible:
-        eligible = runs["KANTO"][:1]
+        eligible = g.pools[pool]["KANTO"][:1]
     draw = eligible[0]
     for _ in range(PARTY_GEN_MAX_RETRIES):
         draw = rng.choice(eligible)
-        fielded = draw if draw == "EEVEE" else scale_trainer_evolution(g, cfg, draw, level, random.Random(0))
-        cls = parse.classify(g.rarity, draw)
-        if fielded in used or (not allow_uber and cls and cls[1] == parse.TIER_UBER) or draw == no_rival:
-            continue
-        break
-    return scale_trainer_evolution(g, cfg, draw, level, rng)
+        if ok(draw):
+            break
+    else:
+        backup = eligible_of(fallback) if fallback else []
+        for _ in range(PARTY_GEN_MAX_RETRIES if backup else 0):
+            d2 = rng.choice(backup)
+            if ok(d2):
+                draw = d2
+                break
+    return draw if keep else scale_trainer_evolution(g, cfg, draw, level, rng)
 
 
 def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: int, step: int, pool: str,
@@ -271,19 +288,33 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
 
 
 def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int, rng: random.Random) -> Battle:
-    """InitGymBattle + gym_team_spec. Round 1 variant A is authored data in the
-    ROM (the wTrainerNo 1 hole); modelled here as variant B, same levels."""
+    """InitGymBattle + gym_round_spec (the banded design). Round 1 variant A is
+    authored data in the ROM (the wTrainerNo 1 hole); modelled like the others.
+
+    Slots are built in order. The last slot draws from Ace<band> as written; the
+    variant's off-type slot, (wTrainerNo - 1) mod 3 capped at n - 2, draws from
+    Off<band> (band 2+); every other slot draws from Fod<band> with Off<band> as
+    its fallback (PartySpecs PARTY_GEN_OFFTYPE_SLOT)."""
     k = g.knobs
     n, base, step = k[f"GYM_R{rnd}_MONS"], k[f"GYM_R{rnd}_BASE"], k[f"GYM_R{rnd}_STEP"]
+    band = (rnd - 1) // GYM_BAND_ROUNDS + 1
+    pre = f"POOL_BAND_{leader.name}_"
+    off = f"{pre}Off{band}" if band >= 2 else None
     var = rng.randrange(3)
-    ace = None
-    if var == 0 and rnd > 1:
-        ace = leader.ace_a_early if rnd <= 3 else leader.ace_a_late
-    elif var == 2:
-        ace = leader.ace_c_early if rnd <= 3 else leader.ace_c_late
+    off_slot = min(var, n - 2) if off and n >= 2 else None
     allow_uber = rnd >= 7 and "ALLOW_UBER" in leader.late_flags
-    return spec_battle(g, cfg, "leader", g.knobs["ROUND_BATTLES"] * rnd, n, base, step, leader.pool, ace, allow_uber,
-                       g.money[class_name(leader.name)], rng)
+    mons: list[tuple[str, int]] = []
+    for slot in range(n):
+        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
+        used = [m for m, _ in mons]
+        if slot == n - 1:
+            sp = draw_pool(g, cfg, f"{pre}Ace{band}", lv, used, allow_uber, rng, keep=True)
+        elif slot == off_slot:
+            sp = draw_pool(g, cfg, off, lv, used, allow_uber, rng)
+        else:
+            sp = draw_pool(g, cfg, f"{pre}Fod{band}", lv, used, allow_uber, rng, fallback=off)
+        mons.append((sp, lv))
+    return Battle("leader", g.knobs["ROUND_BATTLES"] * rnd, mons, True, g.money[class_name(leader.name)])
 
 
 # who -> party-data label. KARATE is modelled here for tests but is not rolled by the

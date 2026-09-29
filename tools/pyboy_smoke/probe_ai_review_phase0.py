@@ -7,7 +7,7 @@ so a failure here means that finding is WRONG and should be dropped.
   F1  slower T2 trainer holding a reliable KO, real battle turn: predicts SWITCH
   F2  Spike Cannon that kills only on 3+ hits: predicts the AI_KILL_FIRST score
   F5  outclassed 2-mon party over 6 real turns: predicts a switch every turn
-  F6  stale revealed move at a fair-play tier: predicts a phantom KO threat
+  F6  FIXED in Phase 1: another party member's reveal must not create a threat
 """
 from pathlib import Path
 import unittest
@@ -149,15 +149,17 @@ class Phase0Probe(unittest.TestCase):
         h.boot_fight2(seed=1)
         yes = h.hook_flag("_AIScanPlayerMovesForKO.yesKO")
         results = {}
-        for label, seen in (("clean", 0), ("stale", self.moves["HYPER_BEAM"])):
+        # Post-fix shape: party member 1 revealed slot 0; member 0 (active,
+        # Splash only) revealed nothing. Must read as no threat either way.
+        for label, stale in (("clean", False), ("stale", True)):
             h.park_before_hijack()
-            h.write8("wAISeenPlayerMoves", seen)
+            h.reveal_player_moves(1, [0] if stale else [], clear=True)
             self.word("wEnemyMonHP", 5)
             before = yes["count"]
             h.call_routine("AIPlayerWouldKO", limit=240)
             results[label] = yes["count"] - before
         print(f"\nF6 real player moves=[SPLASH] phantom-KO hits={results}")
-        self.assertEqual(results, {"clean": 0, "stale": 1})
+        self.assertEqual(results, {"clean": 0, "stale": 0})
 
 
 if __name__ == "__main__":
