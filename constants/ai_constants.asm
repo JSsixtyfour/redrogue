@@ -26,14 +26,9 @@ DEF AI_RISKY      EQU 1 << 8 ; big bonus for a predicted KO
 DEF NUM_AI_LAYERS EQU 9
 
 ; --- Behaviour flags (queried, NEVER dispatched) ---
-; AI_OMNISCIENT is the information-model axis: it controls what the AI is
-; allowed to KNOW, independently of how well it reasons. Phase 7 (2026-08-26)
-; cleared it on T0/T1 - see AITierLayers - so early trainers reason about the
-; player's MOVESET only from what has actually been revealed this battle.
-; Type/status/HP/stat stages are unaffected: they stay readable at every tier,
-; always (see ai_accessors.asm and ai_fairplay.asm).
-DEF AI_OMNISCIENT EQU 1 << 12
-; bits 13-15 reserved for future flags
+; bits 12-15 reserved for per-tier flags, queried with AIHasFlag. Bit 12 was
+; AI_OMNISCIENT until 2026-09-29; moveset knowledge is now a per-class opt-in
+; (AIOmniscientClasses, ai_accessors.asm), so no tier is omniscient.
 
 ; --- Skill tiers ---
 DEF AI_TIER_NOVICE    EQU 0

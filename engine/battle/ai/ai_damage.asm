@@ -115,11 +115,16 @@ AILayerDamage:
 	jr .priorityBonus
 .kill
 ; A kill that might miss is worth less than a kill that cannot - this is the
-; "why use Fire Blast when Flamethrower already kills" rule, and it is the whole
-; reason the KO test above deliberately ran on the unscaled estimate.
-	call AIGetMoveHitChance
-	cp 90 percent
-	jr c, .unreliableKill
+; "why use Fire Blast when Flamethrower already kills" rule. "Cannot miss the
+; kill" also needs the GUARANTEED damage to reach: the possible-KO test above
+; used the max roll and max hit count, so a Spike Cannon needing 3+ hits or a
+; hit needing a high roll only earns the unreliable bonus (2026-09-29 review
+; F2/F4). Re-estimating costs one farcall, paid only on moves that can kill.
+; The loop's hl/de/bc are on the stack, so the clobbers are safe here.
+	farcall AIEstimateDamage
+	call AIAdjustEnemyDamageForReliableDelivery
+	call AIMoveIsReliableKO
+	jr nc, .unreliableKill
 ; F16 (2026-09-02): a RELIABLE kill that also ACTS FIRST outranks a bigger
 ; reliable kill that does not. When two moves both kill, raw damage is the wrong
 ; tiebreak - turn order is, because the bigger one is worthless if the player

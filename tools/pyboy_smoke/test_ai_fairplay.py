@@ -4,7 +4,10 @@ own "honest, load-bearing finding" records, clearing AI_OMNISCIENT on T0/T1
 currently has no observable effect on move SCORING at all - AIGetPlayerMoveN's
 only consumer (AIPlayerWouldKO/AIHealWouldStillDie, ai_threat.asm) is reached
 only through AI_THREAT (T3-only) or AIShouldSwitch's emergency trigger
-(T2+), both of which stay omniscient regardless. So there is no board where a
+(T2+), which were omniscient until 2026-09-29. Since then no tier is: every
+tier reads the per-party-member revealed mask plus a visible-type guess, and
+omniscience is the per-class AIOmniscientClasses opt-in (FINAL_AI). Before
+that change there was no board where a
 score-array assertion could distinguish "fair play worked" from "fair play is
 wired up but nothing reads it yet". The mechanism itself has to be tested
 directly against the routine, which is what this file does.
@@ -128,39 +131,70 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.harness.reveal_player_moves(party_slot, slots, clear=True)
 
     def test_fair_play_tier_reads_only_revealed_moves(self) -> None:
-        # T1: AI_OMNISCIENT is cleared. The revealed set is sparse - slot 1
-        # revealed (GROWL), slot 0 not - and the routine must return exactly
-        # that, not fall back to the real (unrevealed) moveset.
+        # The revealed set is sparse - slot 1 revealed (GROWL), slot 0 not.
+        # Unseen slot 0 returns the visible-type guess (Snorlax is Normal ->
+        # BODY_SLAM), never the real unrevealed TACKLE; unseen slot 2 has no
+        # guess at all.
         assert self.harness is not None
         self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
         growl = self.moves["GROWL"]
         self.prime_seen_moves([1])
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["BODY_SLAM"])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), growl)
 
-    def test_omniscient_tier_ignores_seen_moves_entirely(self) -> None:
-        # T3: AI_OMNISCIENT stays set. Identical revealed-mask state as
-        # the fair-play test above, but the routine must return the REAL
-        # moveset at every slot regardless - proving the omniscient branch
-        # does not consult wAISeenPlayerMoveMask at all, not merely that it
-        # happens to agree on the revealed slot.
+    def test_top_tier_is_fair_play_too(self) -> None:
+        # 2026-09-29: T3 lost omniscience. Identical revealed-mask state as the
+        # test above must give identical answers - the real unrevealed SPLASH
+        # in slot 2 stays hidden.
         assert self.harness is not None
         self.boot(ai_tier=3, player_moves=["TACKLE", "GROWL", "SPLASH"])
-        growl = self.moves["GROWL"]
         self.prime_seen_moves([1])
-        tackle = self.moves["TACKLE"]
-        splash = self.moves["SPLASH"]
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), tackle)
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), growl)
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 2), splash)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["BODY_SLAM"])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
+                         self.moves["GROWL"])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 2), 0)
 
     def test_t0_is_also_fair_play(self) -> None:
-        # AI_OMNISCIENT is cleared on T0 as well as T1 (AITierLayers,
-        # ai_core.asm) - confirm the flip applies to both, not just T1.
+        # Nothing revealed: only the type guess for slot 0 (mono-Normal gets
+        # no second guess in slot 1), and the real moves stay hidden.
         assert self.harness is not None
         self.boot(ai_tier=0, player_moves=["TACKLE", "GROWL", "SPLASH"])
         self.prime_seen_moves([])
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["BODY_SLAM"])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
+
+    def test_dual_type_guesses_one_move_per_visible_type(self) -> None:
+        # Gyarados is Water/Flying: slot 0 guesses SURF, slot 1 DRILL_PECK.
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [{"species": self.species["GYARADOS"], "level": 50,
+              "moves": [self.moves[m] for m in ("SPLASH", "GROWL", "LEER")]}],
+            [self.mon("RATTATA", ["TACKLE"])],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.prime_seen_moves([])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["SURF"])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
+                         self.moves["DRILL_PECK"])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 2), 0)
+
+    def test_empty_slot_gets_no_guess(self) -> None:
+        # A one-move Gyarados must not carry a phantom slot-1 attack forever.
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [{"species": self.species["GYARADOS"], "level": 50,
+              "moves": [self.moves["SPLASH"]]}],
+            [self.mon("RATTATA", ["TACKLE"])],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.prime_seen_moves([])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
 
     def test_revealed_moves_do_not_follow_a_player_switch(self) -> None:
         # Review F6 (2026-09-29): moves revealed by party member 0 must not be
@@ -171,7 +205,10 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
                          self.moves["GROWL"])
         self.harness.write8("wPlayerMonNumber", 1)
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0), 0)
+        # Member 1 revealed nothing: slot 0 is back to the type guess, and
+        # member 0's GROWL does not carry over into slot 1.
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
+                         self.moves["BODY_SLAM"])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
         self.harness.reveal_player_moves(1, [0])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),

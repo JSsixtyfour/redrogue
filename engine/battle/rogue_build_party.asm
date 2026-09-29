@@ -33,6 +33,11 @@ RogueBuildParty::
 	ld [wPartyGenSpecPtr], a
 	ld a, h
 	ld [wPartyGenSpecPtr + 1], a
+; Test entry: a PyBoy test writes wPartyGenSpecPtr and empties the enemy party,
+; then calls here to build a spec no (class, wTrainerNo) reaches - the Phase 2
+; worked examples FalknerSpec2/3 since gym 1 lost its authored hole.
+RogueBuildPartyFromSpecPtr::
+	call PartyGenSpecHeader
 
 ; n_mons is clamped ONCE, here, into wPartyGenNMons, and every later reader
 ; takes it from there rather than from the spec header. Two reasons: the clamp
@@ -48,6 +53,7 @@ RogueBuildParty::
 	ld [wPartyGenNMons], a
 
 	call PartyGenAssignSources
+	call PartyGenPreRollAce
 
 	xor a
 	ld [wPartyGenSlot], a
@@ -584,6 +590,24 @@ PartyGenResolveLevel:
 ;         from the pool.
 ; ===========================================================================
 PartyGenResolveSpecies:
+; The last slot takes the ace PartyGenPreRollAce drew up front, if any. It
+; returns as a pool draw (carry clear), so a keep entry still skips evolution.
+	ld a, [wPartyGenAceSpecies]
+	and a
+	jr z, .notPreRolled
+	ld a, [wPartyGenNMons]
+	dec a
+	ld b, a
+	ld a, [wPartyGenSlot]
+	cp b
+	jr nz, .notPreRolled
+	ld a, [wPartyGenAceSpecies]
+	ld [wCurPartySpecies], a
+	ld a, [wPartyGenAceForm]
+	ld [wSpawnForm], a
+	and a                          ; carry clear = from the pool
+	ret
+.notPreRolled
 	ld a, [wPartyGenSlot]
 	ld b, a
 	call PartyGenFindOverrideForSlot
@@ -643,6 +667,50 @@ PartyGenRollFromPool:
 	xor a
 	ld [wSpawnForm], a
 	xor a
+	ret
+
+; ===========================================================================
+; PartyGenPreRollAce
+;
+; If the last slot draws from a pool of its OWN (a BIT_POVR_POOL override,
+; i.e. a banded gym leader's ace) and is not a species pin, draw it now, before
+; any other slot, into wPartyGenAceSpecies/wPartyGenAceForm. The other slots
+; then dedupe against it (PartyGenSpeciesAlreadyUsed), so fodder that would
+; evolve into the chosen ace is rerolled instead of the ace running out of
+; unused choices. Measured before this: a Kanto Brock gym 8 team whose fodder
+; took Golem, Rhydon and Omastar left the ace a second Kabutops.
+;
+; Ace pools are POOL_FORM_KEEP, so the draw needs no level: it is deduped and
+; fielded as drawn. The party is empty here, so nothing can reject it but the
+; uber/rarity/type filters.
+; ===========================================================================
+PartyGenPreRollAce:
+	xor a
+	ld [wPartyGenAceSpecies], a
+	ld a, [wPartyGenNMons]
+	and a
+	ret z
+	dec a
+	ld b, a
+	push bc
+	call PartyGenFindOverrideForSlot
+	pop bc
+	ret nc                         ; no override on the last slot
+	push bc
+	ld b, BIT_POVR_SPECIES
+	call PartyGenFieldPtr
+	pop bc
+	ret c                          ; a species pin: built as today
+	call PartyGenSlotPoolOverride  ; b = the last slot
+	ret nc                         ; no pool of its own
+	ld a, [wPartyGenNMons]
+	dec a
+	ld [wPartyGenSlot], a
+	call PartyGenRollFromPool
+	ld a, [wCurPartySpecies]
+	ld [wPartyGenAceSpecies], a
+	ld a, [wSpawnForm]
+	ld [wPartyGenAceForm], a
 	ret
 
 ; ===========================================================================
@@ -1160,8 +1228,15 @@ PartyGenSpeciesAlreadyUsed:
 	dec b
 	jr nz, .builtLoop
 
-; --- pinned by an override, built or not ---
+; --- the pre-rolled ace, not built yet ---
 .checkPinned
+	ld a, [wPartyGenAceSpecies]
+	and a
+	jr z, .noAce
+	cp c
+	jr z, .yes
+.noAce
+; --- pinned by an override, built or not ---
 	call PartyGenSpecHeader
 	ld de, PARTY_SPEC_HEADER_SIZE
 	add hl, de

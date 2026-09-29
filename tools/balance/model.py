@@ -288,10 +288,10 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
 
 
 def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int, rng: random.Random) -> Battle:
-    """InitGymBattle + gym_round_spec (the banded design). Round 1 variant A is
-    authored data in the ROM (the wTrainerNo 1 hole); modelled like the others.
+    """InitGymBattle + gym_round_spec (the banded design), every round and
+    variant (no wTrainerNo 1 authored hole since 2026-09-29).
 
-    Slots are built in order. The last slot draws from Ace<band> as written; the
+    The ace is drawn first from Ace<band> as written and fielded last; the
     variant's off-type slot, (wTrainerNo - 1) mod 3 capped at n - 2, draws from
     Off<band> (band 2+); every other slot draws from Fod<band> with Off<band> as
     its fallback (PartySpecs PARTY_GEN_OFFTYPE_SLOT)."""
@@ -303,12 +303,16 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     var = rng.randrange(3)
     off_slot = min(var, n - 2) if off and n >= 2 else None
     allow_uber = rnd >= 7 and "ALLOW_UBER" in leader.late_flags
+    # PartyGenPreRollAce: the ace is drawn first (party still empty) and the
+    # other slots dedupe against it; it is still fielded in the last slot.
+    ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
+    ace = draw_pool(g, cfg, f"{pre}Ace{band}", ace_lv, [], allow_uber, rng, keep=True)
     mons: list[tuple[str, int]] = []
     for slot in range(n):
         lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
-        used = [m for m, _ in mons]
+        used = [m for m, _ in mons] + [ace]
         if slot == n - 1:
-            sp = draw_pool(g, cfg, f"{pre}Ace{band}", lv, used, allow_uber, rng, keep=True)
+            sp = ace
         elif slot == off_slot:
             sp = draw_pool(g, cfg, off, lv, used, allow_uber, rng)
         else:

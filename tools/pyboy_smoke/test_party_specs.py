@@ -7,18 +7,15 @@ real ROM and read the resulting enemy party out of WRAM.
 
 The specs under test are in data/trainers/party_specs.asm:
 
-  FALKNER wTrainerNo 1  a `dw 0` hole - no spec, so the Phase 1 authored
-                        placeholder team still serves this round. Phase 3 made
-                        that hole the convention on all 19 characters rather
-                        than a Falkner quirk; see test_party_spec_coverage.py.
-          wTrainerNo 2  3 mons, base level 13 step +1, POOL_FALKNER,
-                        MIX_GYM_EARLY, NO_DUPES | ACE_LAST, and a slot 2
-                        override pinning PIDGEOT at level 17 with four
-                        explicit moves
-          wTrainerNo 3  the same pool and mix with ALLOW_UBER and no overrides
+  FalknerSpec2  3 mons, base level 13 step +1, POOL_FALKNER, MIX_GYM_EARLY,
+                NO_DUPES | ACE_LAST, and a slot 2 override pinning PIDGEOT at
+                level 17 with four explicit moves
+  FalknerSpec3  the same pool and mix with ALLOW_UBER and no overrides
 
-These two are round 1's B and C variants and are kept hand-written; every other
-round of every character is generated. Phase 3 also removed FalknerPool's
+Until 2026-09-29 these were Falkner's round 1 B and C variants, reached through
+ReadTrainer. The gym 1 authored hole is gone and every round is banded now, so
+no (class, wTrainerNo) reaches them: they are test fixtures, built through
+RogueBuildPartyFromSpecPtr with wPartyGenSpecPtr written by hand. Phase 3 also removed FalknerPool's
 MEWTWO, which was only ever a fixture for test_uber_filter_reads_the_spec_flag -
 and that test never read the pool, it writes wCurPartySpecies itself.
 
@@ -66,20 +63,29 @@ ACE_MOVES = ["WING_ATTACK", "SAND_ATTACK", "QUICK_ATTACK", "AGILITY"]
 
 
 class PartySpecSmokeTest(HarnessTestCase):
-    def _build(self, trainer_no):
-        """Run ReadTrainer for FALKNER at this wTrainerNo; return (count, species)."""
+    def _build(self, spec_label):
+        """Build the fixture spec at `spec_label` as FALKNER; return (count, species).
+
+        RogueBuildPartyFromSpecPtr skips PartyGenFindSpec, so the party reset
+        ReadTrainer does first is done here by hand.
+        """
         h = self.harness
         assert h is not None
         classes = parse_trainer_class_indexes(
             REPO_ROOT / "constants/trainer_constants.asm"
         )
         h.write8("wTrainerClass", classes["FALKNER"])
-        h.write8("wTrainerNo", trainer_no)
-        h.call_routine("ReadTrainer", limit=4000)
+        h.write8("wTrainerNo", 1)
+        spec = h.address(spec_label)
+        h.write8("wPartyGenSpecPtr", spec & 0xFF)
+        h.write8("wPartyGenSpecPtr", spec >> 8, offset=1)
+        h.write8("wEnemyPartyCount", 0)
+        h.write8("wEnemyPartySpecies", 0xFF)
+        h.call_routine("RogueBuildPartyFromSpecPtr", limit=4000)
         count = h.read8("wEnemyPartyCount")
         return count, h.read_bytes("wEnemyPartySpecies", count + 1)
 
-    def _build_many(self, n=MAX_BUILDS, trainer_no=2):
+    def _build_many(self, n=MAX_BUILDS, trainer_no="FalknerSpec2"):
         """Build the same spec n times after ONE boot.
 
         Each ReadTrainer call advances the RNG on its own, so repeated builds
@@ -90,29 +96,41 @@ class PartySpecSmokeTest(HarnessTestCase):
         return [self._build(trainer_no) for _ in range(n)]
 
     def test_spec_and_authored_team_coexist_on_one_class(self):
-        """A `dw 0` hole keeps the authored path for that round only.
+        """A wTrainerNo past a class's spec list keeps the authored path.
 
-        This is the migration property: without it, converting one round of a
-        class to a spec would force converting all 24 at once.
+        This is the migration property: a class may carry specs for some
+        wTrainerNo values and authored teams for the rest. GIOVANNI is the live
+        case since the gym 1 hole went away (2026-09-29): his spec list is 24
+        long, GiovanniData holds 27, and 25-27 are the Rocket Hideout, Silph Co.
+        and Viridian teams, reached through the authored path.
         """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants/trainer_constants.asm"
+        )
 
-        # wTrainerNo 1: the hole. Must still be the Phase 1 authored placeholder.
-        count, party = self._build(1)
+        def read_trainer(trainer_no):
+            h.write8("wTrainerClass", classes["GIOVANNI"])
+            h.write8("wTrainerNo", trainer_no)
+            h.call_routine("ReadTrainer", limit=4000)
+            count = h.read8("wEnemyPartyCount")
+            return count, h.read_bytes("wEnemyPartySpecies", count + 1)
+
+        # wTrainerNo 25: past the list. Must be the authored Rocket Hideout team.
+        count, party = read_trainer(25)
         self.assertEqual(count, 3)
         self.assertEqual(
             party,
-            [species[s] for s in ("PIDGEOTTO", "HOOTHOOT", "NOCTOWL")] + [0xFF],
+            [species[s] for s in ("ONIX", "RHYHORN", "KANGASKHAN")] + [0xFF],
         )
 
-        # wTrainerNo 2: the spec. Three mons, and the ace is the pinned PIDGEOT.
-        count, party = self._build(2)
-        self.assertEqual(count, 3)
-        self.assertEqual(party[2], species["PIDGEOT"])
-        self.assertEqual(party[3], 0xFF)
+        # wTrainerNo 1: a spec now (no hole). Gym 1 is two mons.
+        count, party = read_trainer(1)
+        self.assertEqual(count, 2)
+        self.assertEqual(party[2], 0xFF)
 
     def test_pool_rolls_stay_inside_the_active_group_run(self):
         """Slots without an override roll only from the pool's Kanto run.
@@ -181,7 +199,7 @@ class PartySpecSmokeTest(HarnessTestCase):
         assert h is not None
         h.boot_fight2(seed=1)
         moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
-        self._build(2)
+        self._build("FalknerSpec2")
 
         # The ace is slot 2. The struct stride comes from the built symbol table
         # rather than a hardcoded 44, so it cannot rot if the party struct ever

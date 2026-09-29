@@ -163,9 +163,9 @@ AIPlayerIsStalled::
 ; move lethal" but "is the thing being paid for still worth anything once the
 ; target is gone".
 ;
-; Uses the SAME reliable ordinary-hit determination AI_DAMAGE uses: the raw
-; maximum noncritical estimate must reach HP and the move must have at least 90%
-; hit chance. A crit-weighted expectation is not a KO bound, and an unreliable
+; Uses the SAME reliable determination AI_DAMAGE uses: the guaranteed damage
+; (minimum roll, minimum hit count, after Substitute) must reach HP and the move
+; must have at least 90% hit chance. A crit-weighted expectation is not a KO bound, and an unreliable
 ; possible kill can still benefit from its rider when the target survives.
 ;
 ; Status moves (0 power) return "not lethal" without paying for an estimate. In
@@ -184,7 +184,7 @@ AISmartRiderIsWasted::
 	and a
 	jr z, .notLethal
 	farcall AIEstimateDamage
-	call AIAdjustEnemyDamageForPossibleDelivery
+	call AIAdjustEnemyDamageForReliableDelivery
 	jp AIMoveIsReliableKO
 .notLethal
 	and a ; clear carry
@@ -254,11 +254,14 @@ AIMoveWouldKO::
 	ld b, 0
 	jr AIDamageReachesFraction
 
-; Carry SET if the raw maximum noncritical estimate reaches the player's HP and
-; the move's effective hit chance is at least 90%. This is the shared contract
-; for callers that need a RELIABLE ordinary-hit KO rather than a merely possible
-; one. INPUT: wAIDamageEstimate and the loaded wEnemyMove* block.
-; Clobbers af, bc, de, hl.
+; Carry SET if the estimate reaches the player's HP and the move's effective hit
+; chance is at least 90%. This is the shared contract for callers that need a
+; RELIABLE KO rather than a merely possible one.
+; INPUT: wAIDamageEstimate as left by AIAdjustEnemyDamageForReliableDelivery
+; (minimum damage roll, minimum hit count, after Substitute) and the loaded
+; wEnemyMove* block. Feeding it the POSSIBLE delivery (max roll, 5 hits) is the
+; 2026-09-29 review's F2/F4 bug: a Spike Cannon needing 3+ hits scored as a
+; sure kill. Clobbers af, bc, de, hl.
 AIMoveIsReliableKO::
 	call AIMoveWouldKO
 	ret nc
@@ -267,23 +270,30 @@ AIMoveIsReliableKO::
 	ccf
 	ret
 
-; Checkpoint D: carry SET if the active enemy has a usable move that satisfies
-; the established reliable-KO contract above AND acts before the player. This
-; is the narrow winning-action veto used by voluntary switching: do not give up
-; a high-confidence finish merely because the player can also KO this turn.
+; Checkpoint D: carry SET if the enemy's SELECTED move satisfies the
+; reliable-KO contract above. This is the narrow winning-action veto used by
+; voluntary switching: do not give up a high-confidence finish merely because
+; the player could also KO us.
 ;
-; "Reliable" retains R5's exact meaning: maximum ordinary-hit damage reaches
-; the owner's HP after Substitute delivery and effective accuracy is at least
-; 90%. It is not a minimum-damage-roll guarantee. Turn order uses the existing
-; AIEnemyActsFirstWith contract and never reads the player's selected action.
+; NO TURN-ORDER TEST, deliberately (2026-09-29 review F1). The only caller is
+; AIShouldSwitch, reached only from TrainerAI, which the battle loop calls at
+; the ENEMY'S ACTION POINT (core.asm .enemyMovesFirst / after ExecutePlayerMove
+; on .playerMovesFirst). If the player moved first they have already acted this
+; turn; if we move first we are about to. Either way the selected move lands
+; before the player's next action, whatever the speeds. The old
+; AIEnemyActsFirstWith requirement made a slower mon that had survived the hit
+; switch out of a won exchange (measured: probe_ai_review_phase0 F1). Do not
+; call this from move selection, where turn order has NOT been decided yet.
 ;
-; Forced-action states cannot use a newly selected finisher, so they never
-; qualify. Disable is checked by slot exactly as SelectEnemyMove does. The live
-; wEnemyMove block is restored on every exit.
+; "Reliable" is AIMoveIsReliableKO's meaning, after Substitute delivery. Forced-
+; action states cannot use a newly selected finisher, and paralysis (25% full
+; paralysis) cannot meet the 90% bar, so neither qualifies. Disable is checked
+; by slot exactly as SelectEnemyMove does. The live wEnemyMove block is
+; restored on every exit.
 ; Clobbers af, bc, de, hl.
 AIEnemyHasReliableFirstKO::
 	ld a, [wEnemyMonStatus]
-	and (1 << FRZ) | SLP_MASK
+	and (1 << FRZ) | (1 << PAR) | SLP_MASK
 	jr nz, .noKO
 	ld a, [wEnemyBattleStatus1]
 	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << FLINCHED) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << CONFUSED)
@@ -322,10 +332,8 @@ AIEnemyHasReliableFirstKO::
 	cp FLY_EFFECT
 	jr z, .restoreNoKO
 	farcall AIEstimateDamage
-	call AIAdjustEnemyDamageForPossibleDelivery
+	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
-	jr nc, .restoreNoKO
-	call AIEnemyActsFirstWith
 	jr nc, .restoreNoKO
 	call .restoreMove
 	scf
@@ -631,7 +639,13 @@ AIPrimaryParalyzeIsBlocked::
 ; Adjusts the one-hit maximum in wAIDamageEstimate to damage delivered to the
 ; Pokemon after the target's current Substitute and the move's hit-count
 ; contract. Possible entry points use the maximum count; expected entry points
-; use the engine's actual count distribution, expressed in eighths.
+; use the engine's actual count distribution, expressed in eighths; the
+; reliable entry point uses the MINIMUM damage roll and MINIMUM hit count, i.e.
+; the damage the move is guaranteed to deliver when it hits.
+AIAdjustEnemyDamageForReliableDelivery::
+	call AIScaleEstimateToMinimumRoll
+	ld a, 4
+	jr AIAdjustDamageForDelivery
 AIAdjustEnemyDamageForPossibleDelivery::
 	xor a
 	jr AIAdjustDamageForDelivery
@@ -645,7 +659,8 @@ AIAdjustPlayerDamageForExpectedDelivery::
 	ld a, 3
 
 AIAdjustDamageForDelivery:
-	ld l, a ; bit 0: player attacks; bit 1: expected rather than possible
+	ld l, a ; bit 0: player attacks; bit 1: expected rather than possible;
+	        ; bit 2: reliable (minimum hit count; possible-path arithmetic)
 	bit 0, l
 	jr nz, .playerAttacks
 	ld a, [wEnemyMoveEffect]
@@ -686,6 +701,11 @@ AIAdjustDamageForDelivery:
 .variable
 	ld b, 5
 	ld h, 2
+	bit 2, l
+	jr z, .notReliableCount
+	ld b, 2 ; reliable: 2 hits is the only guaranteed count (3/8 of rolls)
+	jr .countOwnerHits
+.notReliableCount
 	bit 0, l
 	jr z, .countOwnerHits
 	ld a, [wWitchPrizesEarned + 1]
@@ -857,6 +877,53 @@ AICapEnemyDamageAtOwnerHP::
 	ld a, 1
 	call AIAdjustDamageForDelivery.cappedOwnerDamage
 	jp AIAdjustDamageForDelivery.storeDE
+
+; Scales the enemy's one-hit maximum in wAIDamageEstimate down to its MINIMUM
+; roll: floor(estimate * 217 / 255), exactly RandomizeDamage's smallest
+; multiplier (it rejects rolls below 85 percent + 1). Damage 0/1 is left alone,
+; as RandomizeDamage skips those. Exact fixed damage (Seismic Toss, Night Shade,
+; SonicBoom, Dragon Rage, Super Fang) has no roll; Psywave's minimum is 1.
+; Clobbers af, b.
+AIScaleEstimateToMinimumRoll:
+	ld a, [wEnemyMoveEffect]
+	cp SUPER_FANG_EFFECT
+	ret z
+	cp SPECIAL_DAMAGE_EFFECT
+	jr nz, .rolled
+	ld a, [wEnemyMoveNum]
+	cp PSYWAVE
+	ret nz
+	xor a
+	ld [wAIDamageEstimate], a
+	inc a
+	ld [wAIDamageEstimate + 1], a
+	ret
+.rolled
+	ld a, [wAIDamageEstimate]
+	and a
+	jr nz, .scale
+	ld a, [wAIDamageEstimate + 1]
+	cp 2
+	ret c
+.scale
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [wAIDamageEstimate]
+	ldh [hMultiplicand + 1], a
+	ld a, [wAIDamageEstimate + 1]
+	ldh [hMultiplicand + 2], a
+	ld a, 85 percent + 1
+	ldh [hMultiplier], a
+	call Multiply
+	ld a, 255
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ldh a, [hQuotient + 2]
+	ld [wAIDamageEstimate], a
+	ldh a, [hQuotient + 3]
+	ld [wAIDamageEstimate + 1], a
+	ret
 
 ; --- Accuracy (Phase 3 Step 3) ---------------------------------------------
 

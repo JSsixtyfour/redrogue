@@ -237,8 +237,13 @@ class AIShouldSwitchTest(unittest.TestCase):
         enemy: list[dict[str, object]],
         ai_tier: int,
         prime: dict[str, int] | None = None,
+        reveal: list[int] | None = None,
     ) -> bool:
-        """Returns True if AIShouldSwitch chose to switch, False if it stayed."""
+        """Returns True if AIShouldSwitch chose to switch, False if it stayed.
+
+        reveal: player move slots already shown this battle. Every tier is fair
+        play, so an unrevealed slot 0 reads as a visible-type guess.
+        """
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [player], enemy,
@@ -249,6 +254,8 @@ class AIShouldSwitchTest(unittest.TestCase):
         if prime:
             for label, value in prime.items():
                 self.harness.write8(label, value)
+        if reveal is not None:
+            self.harness.reveal_player_moves(0, reveal, clear=True)
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
         self.harness.call_routine("AIShouldSwitch")
@@ -327,7 +334,8 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.harness.call_routine("AIShouldSwitch")
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
-    def test_second_action_ko_does_not_veto_emergency_switch(self) -> None:
+    def slower_selected_finisher(self, enemy_status: int = 0) -> tuple[int, int]:
+        """Slower Slowpoke with Tackle selected; both sides in finishing range."""
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [self.mon("ELECTRODE", ["TACKLE"])],
@@ -336,11 +344,26 @@ class AIShouldSwitchTest(unittest.TestCase):
         )
         self.harness.boot_fight2(seed=1)
         self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wEnemySelectedMove", self.moves["TACKLE"])
+        self.harness.write8("wEnemyMoveListIndex", 0)
+        self.harness.write8("wEnemyMonStatus", enemy_status)
+        self.harness.reveal_player_moves(0, [0], clear=True)
         self.prime_both_sides_lethal()
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
         self.harness.call_routine("AIShouldSwitch")
-        self.assertEqual((switch["count"], stay["count"]), (1, 0))
+        return switch["count"], stay["count"]
+
+    def test_slower_selected_ko_still_vetoes_emergency_switch(self) -> None:
+        # Review F1 (2026-09-29): TrainerAI runs at the enemy's action point,
+        # so a slower mon's selected finisher lands before the player's next
+        # action. It used to switch out here (the old "second action" test
+        # asserted that); the real-turn version is probe_ai_review_phase0 F1.
+        self.assertEqual(self.slower_selected_finisher(), (0, 1))
+
+    def test_paralyzed_finisher_does_not_veto_emergency_switch(self) -> None:
+        # 25% full paralysis puts the KO below the 90% reliability bar.
+        self.assertEqual(self.slower_selected_finisher(enemy_status=1 << 6), (1, 0))
 
     def test_emergency_player_would_ko_forces_switch(self) -> None:
         # T2 deliberately, not T3: this is the highest-priority DETERMINISTIC
@@ -364,7 +387,18 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
     def test_baseline_healthy_no_threat_stays(self) -> None:
+        # Splash is revealed: with no type guess left, there is no threat.
         self.assertFalse(self.call_should_switch(
+            self.mon("SNORLAX", ["SPLASH"]),
+            [self.mon("PIKACHU"), self.mon("RATTATA")],
+            ai_tier=2,
+            reveal=[0],
+        ))
+
+    def test_unrevealed_type_guess_is_a_threat(self) -> None:
+        # Same board with nothing revealed: slot 0 reads as Body Slam (Normal
+        # STAB guess), which can KO the Pikachu, so the emergency trigger fires.
+        self.assertTrue(self.call_should_switch(
             self.mon("SNORLAX", ["SPLASH"]),
             [self.mon("PIKACHU"), self.mon("RATTATA")],
             ai_tier=2,
@@ -395,6 +429,7 @@ class AIShouldSwitchTest(unittest.TestCase):
             [self.mon("PIKACHU"), self.mon("RATTATA")],
             ai_tier=2,
             prime={"wEnemyMonStatus": 1},
+            reveal=[0],
         ))
 
     def test_trapped_and_slower_forces_switch(self) -> None:

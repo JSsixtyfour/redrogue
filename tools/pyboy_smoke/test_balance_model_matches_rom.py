@@ -158,7 +158,7 @@ class BalanceTablesMatchRomTest(unittest.TestCase):
             for leader in self.g.leaders:
                 count, pointers = image.spec_list(leader.name)
                 for t in range(1, count + 1):
-                    if not pointers[t - 1] or (leader.name, t) in HAND_WRITTEN_SPECS:
+                    if not pointers[t - 1]:
                         continue
                     rnd = (t - 1) // NUM_ROUND_VARIANTS + 1
                     # Banded design: all three variants of a round share one record.

@@ -4,7 +4,8 @@ See CHECKPOINT_10_SPEC.md. FINAL_AI is a dedicated trainer class whose party
 is a randomly-selected archived Champion team (custom_functions/
 final_team_archive.asm), loaded link-style so its baked fusion stats/types
 survive, always played at its difficulty's tier ceiling, and always
-omniscient regardless of that tier.
+omniscient regardless of that tier (the only AIOmniscientClasses entry since
+2026-09-29, when every tier became fair play).
 """
 
 from test_ai_fairplay import call_a_preserving
@@ -174,7 +175,8 @@ class FinalAITest(HarnessTestCase):
         h.write8("wTrainerClass", self.trainer_classes["COOLTRAINER_M"])
         growl = moves["GROWL"]
         h.reveal_player_moves(0, [1], clear=True)
-        self.assertEqual(call_a_preserving(h, "AIGetPlayerMoveN", 0), 0)
+        # Unrevealed real SPLASH in slot 2 stays hidden for an ordinary class.
+        self.assertEqual(call_a_preserving(h, "AIGetPlayerMoveN", 2), 0)
 
     def test_read_trainer_loads_archive_and_portrait(self) -> None:
         h = self.harness

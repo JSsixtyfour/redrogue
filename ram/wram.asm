@@ -108,7 +108,15 @@ wTempoModifier:: db
 	; layout moves. Cleared automatically by _CalcStats after every calculation.
 	wBridgeCalcEffectFlags:: db
 
-	ds 5
+	; RogueBuildParty's pre-rolled ace (banded gym leaders, 2026-09-29): the last
+	; slot's pool is drawn BEFORE the other slots so NO_DUPES can steer the
+	; fodder away from it, then built last. 0 = none this build. The form byte is
+	; the pool entry's form SPEC (POOL_FORM_KEEP intact). Written and read inside
+	; one RogueBuildParty call; taken from this pad so no address moves.
+	wPartyGenAceSpecies:: db
+	wPartyGenAceForm::    db
+
+	ds 3
 
 
 SECTION "Sprite State Data", WRAM0

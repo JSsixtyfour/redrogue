@@ -274,9 +274,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 [(p, NUM_GYM_TEAMS) for p in GYM_LEADERS]
                 + [(p, NUM_E4_TEAMS) for p in E4_MEMBERS]
             ):
-                # Gym leaders keep the wTrainerNo 1 hole; the Elite Four do not
-                # (their authored round-1 team was the "not random" report).
-                has_hole = prefix in GYM_LEADERS
+                # Nobody has a wTrainerNo 1 hole any more: the Elite Four lost
+                # theirs 2026-09-23, the gym leaders 2026-09-29.
+                has_hole = False
                 with self.subTest(rom=image.name, character=prefix):
                     count, pointers = image.spec_list(prefix)
                     self.assertEqual(
@@ -291,12 +291,11 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                             pointers[1:] if has_hole else pointers,
                             start=2 if has_hole else 1):
                         # Gym leaders: every variant of a round shares that
-                        # round's record (banded design), except Falkner's
-                        # hand-written round 1 B and C.
-                        if (prefix, number) in HAND_WRITTEN or not has_hole:
-                            want = f"{prefix}Spec{number}"
-                        else:
+                        # round's record (banded design).
+                        if prefix in GYM_LEADERS:
                             want = f"{prefix}Round{(number - 1) // NUM_ROUND_VARIANTS + 1}"
+                        else:
+                            want = f"{prefix}Spec{number}"
                         self.assertEqual(
                             pointer, image.addr(want),
                             f"{prefix} wTrainerNo {number} points at "

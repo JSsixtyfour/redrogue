@@ -74,20 +74,20 @@ AITierCeiling:
 ; shipped classes with no AI layers (YOUNGSTER, CUE_BALL), so this is not a new
 ; category of behaviour.
 ;
-; PHASE 7 (2026-08-26): AI_OMNISCIENT is now CLEARED on T0/T1. Those tiers
-; reason about the player's MOVESET only from what AITrackSeenPlayerMove has
-; actually recorded this battle (ai_fairplay.asm) - see AIGetPlayerMoveN in
-; ai_accessors.asm, the one routine this flip changes. Type/status/HP/stat
-; stages stay live at every tier (design decision, 2026-08-25: a human
-; opponent can see all of those on screen too). T2/T3 keep the bit set and
-; stay fully omniscient, including about the moveset, forever.
+; INFORMATION MODEL: no tier is omniscient. Since the 2026-09-29 review (Phase
+; 2) every tier reasons about the player's MOVESET only from what this party
+; member has revealed plus a visible-type guess (AIGetPlayerMoveN,
+; ai_accessors.asm). Omniscience is a per-class opt-in there
+; (AIOmniscientClasses: FINAL_AI today), not a bit in this table. Type/status/
+; HP/stat stages stay live at every tier (design decision, 2026-08-25: a human
+; opponent can see all of those on screen too).
 AITierLayers:
 	dw AI_REDUNDANT                                                        ; T0 Novice
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP                       ; T1 Competent
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_SMART \
-	   | AI_DAMAGE | AI_OMNISCIENT                                         ; T2 Skilled
+	   | AI_DAMAGE                                                         ; T2 Skilled
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_SMART \
-	   | AI_DAMAGE | AI_THREAT | AI_PLAN | AI_RISKY | AI_OMNISCIENT        ; T3 Expert
+	   | AI_DAMAGE | AI_THREAT | AI_PLAN | AI_RISKY                        ; T3 Expert
 	assert (@ - AITierLayers) / 2 == NUM_AI_TIERS, \
 		"AITierLayers must have one word per tier"
 
@@ -225,12 +225,12 @@ AIGetLayerWord::
 	ld e, a
 	ret
 
-; Test a behaviour flag (AI_OMNISCIENT and friends) for this battle's tier.
+; Test a behaviour flag (bits 12-15 of the layer word) for this battle's tier.
 ; INPUT:  de = flag mask to test
 ; OUTPUT: z clear if any tested bit is set, z set if none are.
-; NOTE: FINAL_AI's forced omniscience does NOT go through this - it is an
-; identity override in AIGetPlayerMoveN, independent of AITierLayers. A future
-; second AI_OMNISCIENT consumer must honour that override itself.
+; No flag is defined today: AI_OMNISCIENT was its only user and became the
+; per-class AIOmniscientClasses list (ai_accessors.asm) on 2026-09-29. Kept as
+; the query for the next per-tier flag.
 AIHasFlag::
 	push de
 	call AIGetLayerWord

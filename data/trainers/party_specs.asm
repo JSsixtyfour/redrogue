@@ -192,20 +192,13 @@ MixOnlySpecs::
 ; (A primary, B none, C secondary); the ace pool replaces that with a list the
 ; designer controls directly.
 ;
-; WHY wTrainerNo 1 IS A HOLE FOR EVERY CHARACTER. Round 1 variant A is left as
-; `dw 0` deliberately, on all 19, so it keeps resolving through the authored
-; path in data/trainers/parties.asm. Three things fall out of that:
-;
-;   - .SkipTrainer does ZERO skips at wTrainerNo 1, so it lands on the class's
-;     FIRST authored team and cannot walk into the next class. The landmine
-;     above needs a team to exist; at index 1 every class has one.
-;   - the Phase 1 placeholder teams and the eight Kanto leaders' hand-authored
-;     round-1 teams stay live content instead of becoming dead bytes.
-;   - test_new_leader_classes_build_their_placeholder_parties and
-;     test_spec_and_authored_team_coexist_on_one_class keep working unchanged.
-;     That test is the only thing proving the eleven new classes landed at the
-;     same index in all six NUM_TRAINERS-keyed tables, which assert_table_length
-;     cannot see; it drives wTrainerNo 1, so the hole is what keeps it alive.
+; NO wTrainerNo 1 HOLE ANY MORE. Until 2026-09-29 round 1 variant A was a
+; `dw 0` on every gym leader, so a third of gym 1 fights used the old authored
+; team in data/trainers/parties.asm. The gym leaders now follow the Elite Four
+; (below): a full 24-entry list, so RogueBuildParty never declines for any
+; wTrainerNo InitGymBattle hands out and the .SkipTrainer landmine above cannot
+; fire. The authored leader teams in parties.asm are unreachable, except
+; GiovanniData 25-27 (past the end of his list).
 ;
 ; THE ELITE FOUR HAVE NO HOLE (Trainer Revamp, 2026-09-23). The seven E4
 ; classes and the Champion rival cover wTrainerNo 1 with a spec too, because
@@ -288,20 +281,15 @@ MACRO gym_round_spec
 	db PARTY_SPEC_OVERRIDES_END
 ENDM
 
-; \1 = label prefix. The 24-entry pointer list: wTrainerNo 1 is the authored
-; hole, every other wTrainerNo points at its round's record. Falkner's 2 and 3
-; point at his hand-written Phase 2 worked examples instead (see below).
+; \1 = label prefix. The 24-entry pointer list: every wTrainerNo points at its
+; round's record, wTrainerNo 1 included (the authored-team hole was removed
+; 2026-09-29, so gym 1 always uses the banded pools).
 MACRO gym_leader_pointers
 \1Specs::
 	db NUM_GYM_TEAMS
-	dw 0                            ; wTrainerNo 1 - the authored-team hole
-	FOR t, 2, NUM_GYM_TEAMS + 1
+	FOR t, 1, NUM_GYM_TEAMS + 1
 	DEF _r = (t - 1) / NUM_ROUND_VARIANTS + 1
-	IF STRCMP("\1", "Falkner") == 0 && (t == 2 || t == 3)
-	dw FalknerSpec{d:t}
-	ELSE
 	dw \1Round{d:_r}
-	ENDC
 	ENDR
 ENDM
 
@@ -447,14 +435,14 @@ ENDR
 	assert_table_length NUM_TRAINERS
 
 ; ---------------------------------------------------------------------------
-; Falkner - also the Phase 2 worked example, which is why he is the one class
-; whose round 1 is hand-written.
+; Falkner. His rounds are banded like everyone's.
 ;
-; wTrainerNo 1 is the hole every character has. wTrainerNo 2 and 3 are the two
-; specs Phase 2 built and verified against the running ROM; they are kept
-; verbatim as round 1's B and C variants because five PyBoy tests drive them by
-; name and by number. They are also still the clearest reading of the record
-; format, so rounds 2-8 are generated below and these two stay as documentation.
+; FalknerSpec2/3 below are the two specs Phase 2 built and verified against the
+; running ROM. No (class, wTrainerNo) reaches them any more (until 2026-09-29
+; they were Falkner's round 1 B and C); they stay as TEST FIXTURES, built via
+; RogueBuildPartyFromSpecPtr, because they exercise a species pin, a level pin,
+; literal moves and the uber flag that no shipping record uses. They are also
+; still the clearest reading of the record format.
 ;
 ; Note the override fields appear in BIT ORDER (species, level, moves) - the
 ; parser consumes them that way, so a different order silently misreads.

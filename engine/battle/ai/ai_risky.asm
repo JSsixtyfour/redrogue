@@ -44,8 +44,8 @@ AILayerRisky:
 	ret nc ; not losing this badly - this layer has no opinion
 
 ; Scan our own moveset for an already-reliable win: a move that acts first,
-; whose raw ordinary-hit maximum reaches the player, and whose effective hit
-; chance is at least 90%. If one exists, AI_DAMAGE (AI_KILL) and
+; whose guaranteed damage (minimum roll, minimum hits) reaches the player, and
+; whose effective hit chance is at least 90%. If one exists, AI_DAMAGE (AI_KILL) and
 ; AI_THREAT's Quick Attack check have already found and scored it - RISKY has
 ; nothing useful to add and should not risk competing with it.
 	ld hl, wEnemyMonMoves
@@ -65,7 +65,7 @@ AILayerRisky:
 	call AIEnemyActsFirstWith
 	jr nc, .notGuaranteed
 	farcall AIEstimateDamage ; -> wAIDamageEstimate (one hit)
-	call AIAdjustEnemyDamageForPossibleDelivery
+	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .notGuaranteed
 	pop bc

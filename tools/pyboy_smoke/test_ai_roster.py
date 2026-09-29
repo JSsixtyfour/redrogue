@@ -235,9 +235,12 @@ class AIHealItemPayoffTest(RosterHarnessTestCase):
         player: dict,
         enemy: dict,
         enemy_status: int = 0,
+        reveal: list[int] | None = None,
     ) -> str:
         assert self.harness is not None
         self.boot(player, [enemy], ai_tier=ai_tier)
+        if reveal is not None:
+            self.harness.reveal_player_moves(0, reveal, clear=True)
         self.harness.write8("wEnemyMonStatus", enemy_status)
         self.harness.write8("wEnemyMonHP", 0, offset=0)
         self.harness.write8("wEnemyMonHP", 1, offset=1)
@@ -267,6 +270,7 @@ class AIHealItemPayoffTest(RosterHarnessTestCase):
                 2,
                 self.mon("SNORLAX", ["SPLASH"]),
                 self.mon("RATTATA", ["TACKLE"]),
+                reveal=[0],  # Splash shown: no Body Slam guess remains
             ),
             "use",
         )

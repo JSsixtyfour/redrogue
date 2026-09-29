@@ -4,8 +4,8 @@ Probe, not a smoke test (probe_ prefix keeps it out of `make smoke`). Each case
 prints its raw observation and asserts the BUGGY behaviour the review predicts,
 so a failure here means that finding is WRONG and should be dropped.
 
-  F1  slower T2 trainer holding a reliable KO, real battle turn: predicts SWITCH
-  F2  Spike Cannon that kills only on 3+ hits: predicts the AI_KILL_FIRST score
+  F1  FIXED in Phase 3: slower T2 trainer holding a reliable KO now STAYS (real turn)
+  F2  FIXED in Phase 4: Spike Cannon needing 3+ hits now scores as unreliable
   F5  outclassed 2-mon party over 6 real turns: predicts a switch every turn
   F6  FIXED in Phase 1: another party member's reveal must not create a threat
 """
@@ -51,7 +51,7 @@ class Phase0Probe(unittest.TestCase):
         return stop()
 
     # F1 -------------------------------------------------------------------
-    def test_f1_slower_reliable_ko_is_switched_out(self):
+    def test_f1_slower_reliable_ko_stays_in(self):
         h = self.h
         h.inject_fight2_spec(
             [self.mon("ELECTRODE", ["TACKLE", "THUNDERBOLT"])],
@@ -75,7 +75,7 @@ class Phase0Probe(unittest.TestCase):
                         f"no switch decision reached: order={order}")
         print(f"\nF1 order={order[:4]} switch={switch['count']} stay={stay['count']}")
         self.assertEqual(order[:2], ["PlayerMove", "TrainerAI"])
-        self.assertEqual((switch["count"], stay["count"]), (1, 0))
+        self.assertEqual((switch["count"], stay["count"]), (0, 1))
 
     # F2 -------------------------------------------------------------------
     def load_enemy_move(self, name):
@@ -111,9 +111,9 @@ class Phase0Probe(unittest.TestCase):
         needs_three = self.damage_score(3 * one_hit)      # 2 hits cannot kill
         out_of_reach = self.damage_score(5 * one_hit + 1)  # 5 hits cannot kill
         print(f"\nF2 one_hit={one_hit} score@3x={needs_three} score@5x+1={out_of_reach}")
-        # AI_KILL_FIRST (9) + best-damage nudge (1) from 20.
-        self.assertEqual(needs_three, 10)
-        self.assertGreater(out_of_reach, needs_three)
+        # Fixed: unreliable kill, AI_STRONG (2) + best-damage nudge (1) from 20.
+        self.assertEqual(needs_three, 17)
+        self.assertGreaterEqual(out_of_reach, needs_three)
 
     # F5 -------------------------------------------------------------------
     def test_f5_outclassed_party_switches_every_turn(self):
@@ -126,8 +126,10 @@ class Phase0Probe(unittest.TestCase):
         turns = []
         switches = []
         def at_trainer_ai():
-            # Keep whichever mon is active inside Thunderbolt's KO range.
+            # Keep whichever mon is active inside Thunderbolt's KO range, and
+            # make Thunderbolt (slot 1) a known threat: fair play since Phase 2.
             self.word("wEnemyMonHP", 2)
+            h.reveal_player_moves(0, [1])
             h.write8("wAICount", 0)
             turns.append(h.read8("wEnemyMonPartyPos"))
         h.hook_flag("TrainerAI", action=at_trainer_ai)
@@ -153,7 +155,9 @@ class Phase0Probe(unittest.TestCase):
         # Splash only) revealed nothing. Must read as no threat either way.
         for label, stale in (("clean", False), ("stale", True)):
             h.park_before_hijack()
-            h.reveal_player_moves(1, [0] if stale else [], clear=True)
+            h.reveal_player_moves(0, [0], clear=True)  # active mon showed Splash
+            if stale:
+                h.reveal_player_moves(1, [0])
             self.word("wEnemyMonHP", 5)
             before = yes["count"]
             h.call_routine("AIPlayerWouldKO", limit=240)

@@ -86,6 +86,44 @@ class AICheckpointBTest(unittest.TestCase):
         # Expected-value ranking still sees a strong hit and the best-damage
         # nudge, but the raw noncritical bound cannot earn the five-point kill.
         self.assertEqual(h.read8("wBuffer"), 17)
+    def single_move_damage_score(self, move, player_hp):
+        """AI_DAMAGE's score for a lone move against a given player HP.
+
+        From 20: 10 = reliable kill that acts first (AI_KILL_FIRST 9 + best
+        nudge 1; Tauros outspeeds Snorlax), 17 = unreliable kill or a strong
+        hit (AI_STRONG 2 + best nudge 1).
+        """
+        h = self.h
+        self.word("wBattleMonHP", player_hp)
+        h.write8("wEnemyMonMoves", self.moves[move])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        for slot in range(4):
+            h.write8("wBuffer", 20, offset=slot)
+        h.park_before_hijack()
+        h.call_routine("AILayerDamage", limit=240)
+        return h.read8("wBuffer")
+
+    def test_kill_needing_a_high_roll_is_not_reliable(self):
+        # Review F4 (2026-09-29): only the maximum roll reaches here.
+        raw = self.estimate("TACKLE")
+        self.assertEqual(self.single_move_damage_score("TACKLE", raw), 17)
+
+    def test_minimum_roll_kill_is_reliable(self):
+        raw = self.estimate("TACKLE")
+        self.assertEqual(self.single_move_damage_score("TACKLE", raw * 217 // 255), 10)
+
+    def test_multihit_kill_needing_three_hits_is_not_reliable(self):
+        # Review F2 (2026-09-29): 2 hits cannot reach, 5 can - a 1-in-8 kill
+        # used to score as a sure one (10).
+        raw = self.estimate("SPIKE_CANNON")
+        self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", 3 * raw), 17)
+
+    def test_multihit_kill_within_two_minimum_hits_is_reliable(self):
+        raw = self.estimate("SPIKE_CANNON")
+        guaranteed = 2 * (raw * 217 // 255)
+        self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", guaranteed), 10)
+
     def test_damage_layer_caps_high_crit_ranking_at_remaining_owner_hp(self):
         h = self.h
         raw = self.estimate("SLASH")
@@ -96,10 +134,15 @@ class AICheckpointBTest(unittest.TestCase):
             h.write8("wEnemyMonMoves", 0, offset=slot)
         for slot in range(4):
             h.write8("wBuffer", 20, offset=slot)
+        # Capture the ranking value where it is used: the .kill path re-estimates
+        # guaranteed damage afterwards (review F2/F4), overwriting it.
+        ranked_values = []
+        h.hook_flag("AILayerDamage.trackBest", action=lambda: ranked_values.append(
+            int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")))
         h.park_before_hijack()
         h.call_routine("AILayerDamage", limit=240)
-        ranked = int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
-        self.assertLessEqual(ranked, hp)
+        self.assertEqual(len(ranked_values), 1)
+        self.assertLessEqual(ranked_values[0], hp)
     def smart_recoil_score(self, substitute_hp=None):
         h = self.h
         raw = self.estimate("TAKE_DOWN")

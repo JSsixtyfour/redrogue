@@ -296,8 +296,8 @@ _AIScanPlayerMovesForKO:
 	jr z, .emptySlot ; unrevealed (Phase 7 fair play) or a real gap - either
 	                 ; way, KEEP SCANNING. Before Phase 7 the real moveset was
 	                 ; always packed (first zero = end of list, safe to stop),
-	                 ; but AIGetPlayerMoveN can now return a sparse revealed set,
-	                 ; which is sparse: the player can reveal slot 2 before
+	                 ; but AIGetPlayerMoveN can now return a sparse revealed set:
+	                 ; the player can reveal slot 2 before
 	                 ; slot 0. Stopping at the first zero would silently skip
 	                 ; every already-revealed move behind an unrevealed one.
 	call AIReadMoveIntoPlayerBlock

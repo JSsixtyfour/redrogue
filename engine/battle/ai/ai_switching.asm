@@ -64,11 +64,10 @@ AIPartySlotBit:
 ; a nominal type counter from outranking a ready reserve when it cannot act or
 ; is badly impaired. Every penalty is relative: if all living reserves are in
 ; bad shape, the lowest-scoring one still wins, preserving the inherited
-; best-of-a-bad-set contract. Revealed-player-move weighting
-; is deliberately NOT included: Phase 7 (fair play) has not landed, so every
-; tier is still omniscient about the player's moveset, and there is no
-; meaningfully different "revealed" subset to weight against yet - see the
-; plan's Phase 7 entry, which is what will give this a real reason to change.
+; best-of-a-bad-set contract. Revealed-player-move weighting is not included
+; YET: since 2026-09-29 no tier is omniscient (see AIGetPlayerMoveN), so the
+; revealed/guessed moveset is the natural input; the AI review's Phase 5 is
+; the planned change that weights candidates by it instead of primary type.
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::
@@ -403,10 +402,11 @@ AIShouldSwitch::
 	cp 2
 	jp nc, .switch
 
-; 2. A reliable first-action KO wins the exchange. Check this before incoming
-;    KO and trapping pressure so a faster finisher, including Quick Attack,
-;    stays in. The predicate rejects forced-action states and never reads the
-;    player's selected move.
+; 2. A reliable KO with the selected move wins the exchange. Check this before
+;    incoming KO and trapping pressure. At this call point the selected move
+;    lands before the player's next action at ANY speed (see the predicate's
+;    header), so a slower finisher that survived the hit stays in too. The
+;    predicate rejects forced-action states and never reads the player's move.
 	farcall AIEnemyHasReliableFirstKO
 	jp c, .stay
 

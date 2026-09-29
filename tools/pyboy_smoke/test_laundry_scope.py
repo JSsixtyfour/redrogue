@@ -53,55 +53,50 @@ class LaundryScopeSmokeTest(HarnessTestCase):
                 self.assertEqual(h.read8("wEnemyPartyCount"), expected_n)
 
     def test_new_leader_classes_build_their_placeholder_parties(self) -> None:
-        """Every new gym-leader class resolves through ReadTrainer end to end.
+        """Every new gym-leader class's TrainerDataPointers row is its own.
 
-        This is the check that the eleven new rows landed in the SAME position
-        in all six NUM_TRAINERS-keyed tables. `assert_table_length` only proves
-        each table has 61 rows; it cannot see a row inserted at the wrong index,
-        which is this repo's documented "misaligned table whose count assert
-        passes" failure mode. Driving ReadTrainer per class and matching the
-        exact species list does see it: a shifted party pointer yields another
-        class's team, and a shifted pic/name row yields the wrong bank or name.
+        This is the check that the new rows landed in the SAME position in the
+        NUM_TRAINERS-keyed tables. `assert_table_length` only proves each table
+        has the right row count; it cannot see a row inserted at the wrong
+        index, which is this repo's documented "misaligned table whose count
+        assert passes" failure mode.
 
-        The parties are Phase 1 placeholders (one team each). When Phase 3
-        replaces them with the real 8-tier pools, update the expectations here
-        rather than deleting the test - the alignment property is permanent.
+        It used to drive ReadTrainer at wTrainerNo 1 and match each class's
+        authored placeholder team. Since 2026-09-29 gym 1 has no authored hole,
+        so wTrainerNo 1 builds a banded spec instead; the alignment is now read
+        straight from the pointer table, row by class index, against each
+        class's own <Name>Data label. The pic/bank row is covered separately by
+        test_trainer_pic_bank_is_data_driven_per_class.
         """
         assert self.harness is not None
         self.harness.boot_fight2(seed=1)
-        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
         classes = parse_trainer_class_indexes(
             REPO_ROOT / "constants" / "trainer_constants.asm"
         )
+        # TrainerDataPointers is ROMX data, so read it from the built image
+        # rather than through the CPU's currently mapped bank.
+        symbols = self.harness.symbols
+        rom = self.harness.rom_path.read_bytes()
 
-        expected = {
-            "FALKNER": ["PIDGEOTTO", "HOOTHOOT", "NOCTOWL"],
-            "BUGSY": ["SPINARAK", "ARIADOS", "SCYTHER"],
-            "WHITNEY": ["CLEFAIRY", "MILTANK", "MILTANK"],
-            "MORTY": ["GASTLY", "HAUNTER", "MISDREAVUS", "GENGAR"],
-            "CHUCK": ["PRIMEAPE", "MACHOKE", "POLIWRATH"],
-            "JASMINE": ["MAGNEMITE", "MAGNETON", "ONIX", "STEELIX"],
-            "PRYCE": ["SEEL", "SWINUB", "DEWGONG", "PILOSWINE"],
-            "CLAIR": ["DRATINI", "HORSEA", "DRAGONAIR", "KINGDRA"],
-            "JANINE": ["KOFFING", "VENOMOTH", "ARBOK", "WEEZING"],
-            # WILL and KAREN left this list with the Trainer Revamp: the Elite
-            # Four lost the wTrainerNo 1 hole, so ReadTrainer now rolls their
-            # team from a spec instead of reading the placeholder. Their table
-            # alignment is still covered - test_party_spec_coverage decodes
-            # their spec lists by class constant.
-        }
+        def rom_offset(label):
+            bank, address = symbols.get(label)
+            return address if bank == 0 else bank * 0x4000 + (address - 0x4000)
 
-        for name, team in expected.items():
+        table_bank, _ = symbols.get("TrainerDataPointers")
+        table = rom_offset("TrainerDataPointers")
+        for name, label in (
+            ("FALKNER", "FalknerData"), ("BUGSY", "BugsyData"),
+            ("WHITNEY", "WhitneyData"), ("MORTY", "MortyData"),
+            ("CHUCK", "ChuckData"), ("JASMINE", "JasmineData"),
+            ("PRYCE", "PryceData"), ("CLAIR", "ClairData"),
+            ("JANINE", "JanineData"),
+        ):
             with self.subTest(leader=name):
-                self.harness.write8("wTrainerClass", classes[name])
-                self.harness.write8("wTrainerNo", 1)
-                self.harness.call_routine("ReadTrainer", limit=600)
-                self.assertEqual(self.harness.read8("wEnemyPartyCount"), len(team))
-                self.assertEqual(
-                    self.harness.read_bytes("wEnemyPartySpecies", len(team) + 1),
-                    [species[s] for s in team] + [0xFF],
-                )
-
+                row = table + (classes[name] - 1) * 2
+                pointer = rom[row] | (rom[row + 1] << 8)
+                data_bank, data_address = symbols.get(label)
+                self.assertEqual(data_bank, table_bank, f"{label} left the table's bank")
+                self.assertEqual(pointer, data_address)
 
     def test_trainer_pic_bank_is_data_driven_per_class(self) -> None:
         """GetTrainerInformation publishes each class's pic pointer AND bank.
