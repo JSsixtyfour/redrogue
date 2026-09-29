@@ -97,9 +97,49 @@ AILayerDamage:
 	push de
 ; Everything past this point ranks moves. Hit-count expectation is applied
 ; before crit and accuracy weighting; it never masquerades as a possible KO.
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .rankIntoSubstitute
 	call AIAdjustEnemyDamageForExpectedDelivery
 	call AIScaleDamageForCrit
 	call AICapEnemyDamageAtOwnerHP
+	jr .rankedByDelivery
+; Behind a Substitute, a single hit that breaks it delivers 0 to the owner, so
+; ranking on owner damage alone left every attack tied at the baseline and the
+; AI with no reason to pick the one that breaks the shield (2026-09-29 review
+; F3). Rank on min(one-hit max, Substitute HP + 1) - the damage the shield
+; actually absorbs, +1 so a hit that BREAKS it outranks one that only leaves a
+; zero-HP shield (engine equality rule) - plus whatever still reaches the
+; owner. Both parts are already capped, so the owner-HP cap is skipped. This
+; is ranking only: the possible-KO test above is unchanged.
+.rankIntoSubstitute
+	ld a, [wAIDamageEstimate]
+	ld d, a
+	ld a, [wAIDamageEstimate + 1]
+	ld e, a ; de = one-hit maximum
+	push de
+	call AIAdjustEnemyDamageForExpectedDelivery ; owner part
+	pop de
+	ld a, [wPlayerSubstituteHP]
+	ld c, a
+	ld b, 0
+	inc bc ; Substitute HP + 1 (at most 250)
+	ld a, e
+	sub c
+	ld a, d
+	sbc b
+	jr nc, .gotShieldPart ; one hit reaches past the shield: bc
+	ld b, d
+	ld c, e ; else the whole hit is absorbed
+.gotShieldPart
+	ld a, [wAIDamageEstimate + 1]
+	add c
+	ld [wAIDamageEstimate + 1], a
+	ld a, [wAIDamageEstimate]
+	adc b
+	ld [wAIDamageEstimate], a
+	call AIScaleDamageForCrit
+.rankedByDelivery
 	call AIScaleDamageByAccuracy
 	call .trackBest
 	pop af

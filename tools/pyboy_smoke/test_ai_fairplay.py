@@ -213,6 +213,11 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.harness.reveal_player_moves(1, [0])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
                          self.moves["TACKLE"])
+        # Switching member 0 back in: what it revealed earlier is still known
+        # (the mask is per party slot and cleared only at battle start).
+        self.harness.write8("wPlayerMonNumber", 0)
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
+                         self.moves["GROWL"])
 
 
 class AITrackSeenPlayerMoveTest(unittest.TestCase):

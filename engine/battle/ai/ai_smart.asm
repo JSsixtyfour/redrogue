@@ -592,34 +592,130 @@ AISmart_Screen:
 	xor a
 	ret
 
-; Prefer retaining our boosts/player debuffs when no beneficial stat reset
-; exists. Haze also clears statuses: leave those mixed cases to later tuning
-; rather than calling them wasted. AIRedundant_Haze owns the exact no-op test.
+; Haze is a TRADE: it clears everything on both sides at once (HazeEffect_,
+; move_effects/haze.asm), so score what it takes from each side (2026-09-29
+; review F7). d counts what we gain, e what we lose:
+;   gain: each player stat above neutral, each of our stats below neutral, the
+;         player's Reflect / Light Screen / Mist / Focus Energy / X Accuracy,
+;         our confusion / Leech Seed / Toxic counter, and our paralysis or burn
+;         stat penalty (ResetStats undoes it; the status itself stays)
+;   lose: each of our stats above neutral, each player stat below neutral, our
+;         own screens / Mist / Focus Energy / X Accuracy, the player's
+;         confusion / Leech Seed, and - counted TWICE - the player's major
+;         status, which enemy Haze cures outright
+; Net +2 or more encourages strongly, +1 mildly, 0 leaves it alone, negative
+; discourages (including "cure the paralysis we inflicted and nothing else",
+; which the old handler let through unpenalized). AIRedundant_Haze still owns
+; the exact nothing-to-clear test.
 AISmart_Haze:
+	ld de, 0 ; d = gain, e = loss
 	ld hl, wPlayerMonAttackMod
 	ld b, 6 ; the 6 real stat mods (Attack/Defense/Speed/Special/Accuracy/
 	        ; Evasion); NUM_STAT_MODS is 8, but the last 2 are const_skip
 	        ; padding ResetStatMods also sweeps that carries no game state
-.checkPlayerBoosted
-	ld a, [hli]
-	cp BASE_STAT_LEVEL + 1
-	jr nc, .found ; strictly boosted, not merely neutral
-	dec b
-	jr nz, .checkPlayerBoosted
-	ld hl, wEnemyMonAttackMod
-	ld b, 6
-.checkEnemyLowered
+.playerStage
 	ld a, [hli]
 	cp BASE_STAT_LEVEL
-	jr c, .found ; enemy stat below neutral -> Haze would restore it
+	jr z, .nextPlayerStage
+	jr c, .playerLowered
+	inc d ; resetting a player boost helps us
+	jr .nextPlayerStage
+.playerLowered
+	inc e ; resetting our debuff on the player hurts us
+.nextPlayerStage
 	dec b
-	jr nz, .checkEnemyLowered
-	call AIHazeHasClearableStatus
-	jr nz, .found ; mixed status trade; no blanket penalty
-	ld a, AI_STRONG
+	jr nz, .playerStage
+	ld hl, wEnemyMonAttackMod
+	ld b, 6
+.enemyStage
+	ld a, [hli]
+	cp BASE_STAT_LEVEL
+	jr z, .nextEnemyStage
+	jr c, .enemyLowered
+	inc e ; our own boost would be lost
+	jr .nextEnemyStage
+.enemyLowered
+	inc d ; our stat is restored
+.nextEnemyStage
+	dec b
+	jr nz, .enemyStage
+
+; The player's side conditions and afflictions.
+	ld a, [wPlayerBattleStatus2]
+	and (1 << USING_X_ACCURACY) | (1 << PROTECTED_BY_MIST) | (1 << GETTING_PUMPED)
+	jr z, .playerNoBuffs
+	inc d
+.playerNoBuffs
+	ld a, [wPlayerBattleStatus3]
+	and (1 << HAS_LIGHT_SCREEN_UP) | (1 << HAS_REFLECT_UP)
+	jr z, .playerNoScreens
+	inc d
+.playerNoScreens
+	ld a, [wBattleMonStatus]
 	and a
+	jr z, .playerNoStatus
+	inc e
+	inc e ; curing the player's major status is the biggest cost
+.playerNoStatus
+	ld a, [wPlayerBattleStatus1]
+	bit CONFUSED, a
+	jr z, .playerNotConfused
+	inc e
+.playerNotConfused
+	ld a, [wPlayerBattleStatus2]
+	bit SEEDED, a
+	jr z, .playerNotSeeded
+	inc e
+.playerNotSeeded
+
+; Our own side.
+	ld a, [wEnemyBattleStatus1]
+	bit CONFUSED, a
+	jr z, .enemyNotConfused
+	inc d
+.enemyNotConfused
+	ld a, [wEnemyBattleStatus2]
+	bit SEEDED, a
+	jr z, .enemyNotSeeded
+	inc d
+.enemyNotSeeded
+	ld a, [wEnemyBattleStatus3]
+	bit BADLY_POISONED, a
+	jr z, .enemyNotToxic
+	inc d
+.enemyNotToxic
+	ld a, [wEnemyMonStatus]
+	and (1 << PAR) | (1 << BRN)
+	jr z, .enemyNoStatPenalty
+	inc d
+.enemyNoStatPenalty
+	ld a, [wEnemyBattleStatus2]
+	and (1 << USING_X_ACCURACY) | (1 << PROTECTED_BY_MIST) | (1 << GETTING_PUMPED)
+	jr z, .enemyNoBuffs
+	inc e
+.enemyNoBuffs
+	ld a, [wEnemyBattleStatus3]
+	and (1 << HAS_LIGHT_SCREEN_UP) | (1 << HAS_REFLECT_UP)
+	jr z, .enemyNoScreens
+	inc e
+.enemyNoScreens
+
+	ld a, d
+	sub e
+	jr z, .noChange
+	jr c, .harmful
+	cp 2
+	ld a, AI_NUDGE ; ld keeps the cp flags
+	jr c, .encourage
+	ld a, AI_STRONG
+.encourage
+	scf
 	ret
-.found
+.harmful
+	ld a, AI_STRONG
+	and a ; carry clear = discourage
+	ret
+.noChange
 	xor a
 	ret
 

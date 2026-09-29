@@ -124,6 +124,28 @@ class AICheckpointBTest(unittest.TestCase):
         guaranteed = 2 * (raw * 217 // 255)
         self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", guaranteed), 10)
 
+    def test_substitute_breaker_outranks_a_hit_the_shield_absorbs(self):
+        # Review F3 (2026-09-29): behind a Substitute every single hit used to
+        # rank at 0 owner damage, so Tackle and Body Slam tied at 20. Now the
+        # move that breaks the shield gets the best-damage nudge.
+        h = self.h
+        tackle = self.estimate("TACKLE")
+        slam = self.estimate("BODY_SLAM")
+        self.assertLess(tackle + 1, slam)
+        sub_hp = (tackle + slam) // 2  # Tackle cannot break it, Body Slam can
+        h.write8("wPlayerBattleStatus2", 1 << self.battle["HAS_SUBSTITUTE_UP"])
+        h.write8("wPlayerSubstituteHP", sub_hp)
+        h.write8("wEnemyMonMoves", self.moves["TACKLE"])
+        h.write8("wEnemyMonMoves", self.moves["BODY_SLAM"], offset=1)
+        for slot in range(2, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        for slot in range(4):
+            h.write8("wBuffer", 20, offset=slot)
+        h.park_before_hijack()
+        h.call_routine("AILayerDamage", limit=240)
+        tackle_score, slam_score = h.read8("wBuffer"), h.read8("wBuffer", 1)
+        self.assertLess(slam_score, tackle_score, (tackle, slam, sub_hp))
+
     # --- AIPlayerWouldKO one-decision cache (AI review option 3) ------------
     def test_ko_cache_hit_skips_the_scan_and_empty_recomputes(self):
         h = self.h

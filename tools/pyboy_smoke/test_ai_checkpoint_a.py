@@ -120,6 +120,32 @@ class AICheckpointATest(unittest.TestCase):
         self.assertGreater(scores[0], scores[1])
         self.assertGreater(scores[0], scores[2])
 
+    def test_smart_haze_scores_the_whole_trade(self):
+        # Review F7 (2026-09-29): enemy Haze also cures the PLAYER's major
+        # status, so a paralysis we inflicted is a cost, not a free reset.
+        # SMART score from 20, read before the cross-cutting rules run:
+        # 22 = discouraged, 19 = mild encourage, 18 = strong encourage.
+        scores = []
+        self.h.hook_flag("AISmartCrossCutting", action=lambda:
+                         scores.append(self.h.read8("wBuffer")))
+        cases = [
+            ("player paralyzed, nothing else", {"wBattleMonStatus": 1 << 6}, 22),
+            ("player +2 Attack, +1 Speed", {"wPlayerMonAttackMod": 9,
+                                            "wPlayerMonSpeedMod": 8}, 18),
+            ("player +2 Attack but paralyzed", {"wPlayerMonAttackMod": 9,
+                                                "wBattleMonStatus": 1 << 6}, 22),
+            ("player Reflect only", {"wPlayerBattleStatus3": 4}, 19),
+        ]
+        for _label, writes, _expected in cases:
+            self.prime_haze()
+            self.h.write8("wAILastMoveNum", 0)
+            self.h.write8("wAISameMoveCount", 0)
+            for label, value in writes.items():
+                self.h.write8(label, value)
+            self.h.call_routine("AILayerSmart", limit=120)
+        self.assertEqual(scores, [expected for _l, _w, expected in cases],
+                         [label for label, _w, _e in cases])
+
     def test_haze_noop_and_all_six_non_neutral_stage_contracts(self):
         self.prime_haze()
         self.h.call_routine("AILayerRedundant", limit=120)
