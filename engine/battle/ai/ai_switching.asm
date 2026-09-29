@@ -57,17 +57,14 @@ AIPartySlotBit:
 ; if it were ever reached, EnemySendOut would load a fainted mon and the battle
 ; would break.
 ;
-; SELECTION RULE: pick the candidate with the lowest COMBINED score of (a) how
-; hard the player's primary type hits it (PreviewTypeMatchup, in twentieths),
+; SELECTION RULE: pick the candidate with the lowest COMBINED score (see
+; AIScoreSendOutMon): (a) how hard the player's WORST believed damaging move type
+; hits it (PreviewTypeMatchup, in twentieths; the believed moveset is fair play
+; since 2026-09-29 - revealed or type-guessed, see AIBuildPlayerThreatTypes),
 ; (b) an HP penalty (+15 below a quarter HP, +5 below half), and (c) a major
-; status penalty (freeze +40, sleep/paralysis/burn +25, poison +10). This keeps
-; a nominal type counter from outranking a ready reserve when it cannot act or
-; is badly impaired. Every penalty is relative: if all living reserves are in
-; bad shape, the lowest-scoring one still wins, preserving the inherited
-; best-of-a-bad-set contract. Revealed-player-move weighting is not included
-; YET: since 2026-09-29 no tier is omniscient (see AIGetPlayerMoveN), so the
-; revealed/guessed moveset is the natural input; the AI review's Phase 5 is
-; the planned change that weights candidates by it instead of primary type.
+; status penalty (freeze +40, sleep/paralysis/burn +25, poison +10). Every
+; penalty is relative: if all living reserves are in bad shape, the
+; lowest-scoring one still wins (the inherited best-of-a-bad-set contract).
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::
@@ -138,188 +135,7 @@ AISelectSendOut::
 	ret
 
 .scoredLead
-; Save the three bytes forged below. PreviewTypeMatchup reads its defender types
-; from wEnemyMonType and its attacking type from wPlayerMoveType, so those are
-; borrowed rather than passed - the same forge-and-restore shape AIEstimateDamage
-; uses on the damage path, and for the same reason: the routine being reused is
-; engine-exact, and reimplementing dual-type stacking a fourth time would be
-; strictly worse than briefly borrowing three bytes.
-	ld a, [wEnemyMonType1]
-	push af
-	ld a, [wEnemyMonType2]
-	push af
-	ld a, [wPlayerMoveType]
-	push af
-
-; The player's primary type is the attacker for every comparison in the loop, so
-; it is set once here rather than per candidate.
-	ld a, [wBattleMonType1]
-	ld [wPlayerMoveType], a
-
-	ld a, $ff
-	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; worse than any real combined score
-	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a  ; $ff = nothing chosen yet
-	xor a
-	ld [wBuffer + AI_BUF_SCANSLOT], a
-
-.nextSlot
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld b, a
-	ld a, [wEnemyPartyCount]
-	cp b
-	jp z, .done ; scanned every slot
-
-	ld a, [wEnemyMonPartyPos]
-	cp b
-	jp z, .skip ; never pick the mon that is already out
-
-; hl = &wEnemyMon1 + slot * PARTYMON_STRUCT_LENGTH
-	ld hl, wEnemyMon1
-	ld a, b
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-
-; Fainted candidates are skipped. HP is a big-endian word at struct offset +1.
-	push hl
-	inc hl
-	ld a, [hli]
-	ld c, a
-	ld a, [hl]
-	or c
-	pop hl
-	jp z, .skip
-
-; Forge this candidate as the "defender" PreviewTypeMatchup will read. Type1 and
-; Type2 sit at struct offsets +5 and +6 (box_struct: Species, HP.w, BoxLevel,
-; Status, Type1, Type2 - see macros/ram.asm).
-	ld bc, 5
-	add hl, bc
-	ld a, [hli]
-	ld [wEnemyMonType1], a
-	ld a, [hl]
-	ld [wEnemyMonType2], a
-
-	farcall PreviewTypeMatchup ; -> e = multiplier in twentieths
-	                           ; (0, 5, 10, 20, 40, 80). LOWER is better for us:
-	                           ; it is how hard the PLAYER hits this candidate.
-	                           ; e survives the farcall return - see the header.
-
-; Blend in the HP penalty. Recomputes the candidate's struct base fresh rather
-; than reusing hl (which the type-forge above already walked past the HP
-; field): one extra AddNTimes call, on a decision made at most once per turn,
-; is free next to the clarity of not threading a saved pointer through code
-; written at a different time. `push de` protects e (the type score) across it.
-	push de
-	ld hl, wEnemyMon1
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	push hl
-	inc hl
-	ld a, [hli]
-	ld d, a
-	ld e, [hl] ; de = current HP
-	pop hl
-	ld bc, 34 ; struct offset of MaxHP (party_struct extends box_struct with
-	         ; OTID/Exp/HPExp/AttackExp/DefenseExp/SpeedExp/SpecialExp/Level
-	         ; before Stats.MaxHP - verified against wEnemyMon1MaxHP's actual
-	         ; symbol address rather than hand-counted from the macro).
-	add hl, bc
-	ld a, [hli]
-	ld b, a
-	ld c, [hl] ; bc = max HP
-; Same shift-and-compare shape as AIHPShiftCompare (ai_predicates.asm, bank
-; $0E), reimplemented locally rather than farcalled: that routine takes its HP
-; pointers as INPUT in hl/de, and farcall's own macro expansion overwrites hl
-; with the jump target before Bankswitch even runs, so a pointer argument
-; cannot survive the trip - see this file's header, and
-; project_farcall_home_clobbers_a in memory.
-	sla e
-	rl d
-	sla e
-	rl d ; de = current HP * 4
-	ld a, e
-	sub c
-	ld a, d
-	sbc b ; carry set iff current*4 < maxHP, i.e. below a quarter HP
-	jp c, .quarterPenalty
-	srl d
-	rr e ; de = current HP * 2 (undo one of the two shifts above)
-	ld a, e
-	sub c
-	ld a, d
-	sbc b ; carry set iff current*2 < maxHP, i.e. below half HP
-	jp c, .halfPenalty
-	xor a
-	jp .gotPenalty
-.quarterPenalty
-	ld a, 15
-	jp .gotPenalty
-.halfPenalty
-	ld a, 5
-.gotPenalty
-	pop de ; de restored (e = type score); a = HP penalty, untouched by the pop
-	add e
-	ld e, a ; e = type + HP score
-
-; Add the candidate's persistent major-status cost. Recompute the struct base
-; instead of carrying a pointer through PreviewTypeMatchup and the HP math.
-; Party status is offset 4: Species, HP.w, BoxLevel, Status.
-	ld hl, wEnemyMon1
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	ld bc, 4
-	add hl, bc
-	ld a, [hl]
-	bit FRZ, a
-	jr nz, .freezePenalty
-	and SLP_MASK
-	jr nz, .majorStatusPenalty
-	ld a, [hl]
-	bit PAR, a
-	jr nz, .majorStatusPenalty
-	bit BRN, a
-	jr nz, .majorStatusPenalty
-	bit PSN, a
-	jr nz, .poisonPenalty
-	xor a
-	jr .gotStatusPenalty
-.freezePenalty
-	ld a, 40
-	jr .gotStatusPenalty
-.majorStatusPenalty
-	ld a, 25
-	jr .gotStatusPenalty
-.poisonPenalty
-	ld a, 10
-.gotStatusPenalty
-	add e
-	ld e, a ; combined maximum: 80 + 15 + 40 = 135, safely one byte
-
-	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
-	cp e
-	jp c, .skip ; current best is already lower (better) - keep it
-	jp z, .skip ; a tie keeps the EARLIER slot, so selection stays deterministic
-	            ; and the scenarios built on it cannot go flaky
-	ld a, e
-	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
-
-.skip
-	ld hl, wBuffer + AI_BUF_SCANSLOT
-	inc [hl]
-	jp .nextSlot
-
-.done
-; Restore in exactly reverse push order.
-	pop af
-	ld [wPlayerMoveType], a
-	pop af
-	ld [wEnemyMonType2], a
-	pop af
-	ld [wEnemyMonType1], a
+	call AIRankSendOutCandidates
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
@@ -348,6 +164,215 @@ AISelectSendOut::
 ; rather than corrupting state silently.
 	xor a
 	ldh [hWhichPokemon], a
+	ret
+
+; ---------------------------------------------------------------------------
+; Ranks every living reserve (never the active mon) with AIScoreSendOutMon.
+; AIRankSendOutCandidates builds the believed attacker types first and accepts
+; any candidate; AIRankSendOutCandidatesBelow reuses the types already built and
+; accepts only a candidate scoring strictly below the bound in a.
+; OUTPUT: wBuffer + AI_BUF_BESTPARTYSLOT = best slot ($ff = none beat the
+; bound), AI_BUF_BESTPARTYSCORE = its score. The three bytes PreviewTypeMatchup
+; is fed through are restored. Clobbers af, bc, de, hl.
+AIRankSendOutCandidates:
+	farcall AIBuildPlayerThreatTypes ; bank $0E; no register contract
+	ld a, $ff ; worse than any real combined score
+AIRankSendOutCandidatesBelow:
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
+; PreviewTypeMatchup reads its defender types from wEnemyMonType and its
+; attacking type from wPlayerMoveType, so those are borrowed rather than
+; passed - the same forge-and-restore shape AIEstimateDamage uses, and for the
+; same reason: the routine being reused is engine-exact.
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wPlayerMoveType]
+	push af
+	ld a, $ff
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a ; $ff = nothing chosen yet
+	xor a
+	ld [wBuffer + AI_BUF_SCANSLOT], a
+.nextSlot
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld b, a
+	ld a, [wEnemyPartyCount]
+	cp b
+	jr z, .done ; scanned every slot
+	ld a, [wEnemyMonPartyPos]
+	cp b
+	jr z, .skip ; never pick the mon that is already out
+	ld hl, wEnemyMon1
+	ld a, b
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+; Fainted candidates are skipped. HP is a big-endian word at struct offset +1.
+	push hl
+	inc hl
+	ld a, [hli]
+	or [hl]
+	pop hl
+	jr z, .skip
+	ld c, wEnemyMon1MaxHP - wEnemyMon1
+	call AIScoreSendOutMon
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp e
+	jr c, .skip ; current best is already lower (better) - keep it
+	jr z, .skip ; a tie keeps the EARLIER slot, so selection stays deterministic
+	ld a, e
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
+.skip
+	ld hl, wBuffer + AI_BUF_SCANSLOT
+	inc [hl]
+	jr .nextSlot
+.done
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	ret
+
+; Scores one enemy mon as a send-out target. LOWER is better.
+; INPUT:  hl = the mon's struct base, c = offset of its MaxHP. Works on both a
+;         party_struct and the live wEnemyMon battle_struct: HP +1, status +4,
+;         and types +5/+6 are the same in both; only MaxHP moves (+34 / +15).
+;         wBuffer + AI_BUF_THREATTYPES holds the attacker types, and
+;         AI_BUF_BESTPARTYSCORE the bound to beat ($ff = none).
+; OUTPUT: e = worst believed player attack on it (twentieths: 0-80)
+;         + HP penalty (+15 below a quarter, +5 below half)
+;         + major-status penalty (freeze +40, sleep/par/burn +25, poison +10);
+;         maximum 135. PRUNED: once the running total reaches the bound the
+;         routine returns early with e >= bound, which every caller already
+;         treats as "not better". The penalties go first because they are cheap
+;         and each type-chart walk is ~8k cycles (measured 2026-09-29).
+; Writes wEnemyMonType1/2 and wPlayerMoveType (the caller saves them).
+; Clobbers af, bc, d, hl.
+AIScoreSendOutMon:
+	push hl
+	inc hl
+	ld a, [hli]
+	ld d, a
+	ld e, [hl] ; de = current HP
+	pop hl
+	push hl
+	ld b, 0
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = max HP
+	pop hl
+	sla e
+	rl d
+	sla e
+	rl d ; de = current HP * 4
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff below a quarter HP
+	ld a, 15 ; ld keeps the carry
+	jr c, .gotHPPenalty
+	srl d
+	rr e ; de = current HP * 2
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff below half HP
+	ld a, 5
+	jr c, .gotHPPenalty
+	xor a
+.gotHPPenalty
+	ld d, a ; d = HP penalty
+	ld bc, 4
+	add hl, bc
+	ld a, [hl] ; status
+	ld e, 40
+	bit FRZ, a
+	jr nz, .gotStatusPenalty
+	ld e, 25
+	and SLP_MASK | (1 << PAR) | (1 << BRN)
+	jr nz, .gotStatusPenalty
+	ld a, [hl]
+	ld e, 10
+	bit PSN, a
+	jr nz, .gotStatusPenalty
+	ld e, 0
+.gotStatusPenalty
+	ld a, e
+	add d
+	ld d, a ; d = both penalties
+	ld e, a ; e = running score, no attack counted yet
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp e
+	ret c
+	ret z ; the penalties alone already fail to beat the bound
+	inc hl ; status -> Type1
+	ld a, [hli]
+	ld [wEnemyMonType1], a
+	ld a, [hl]
+	ld [wEnemyMonType2], a
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld b, NUM_MOVES
+.nextThreat
+	ld a, [hli]
+	cp $ff
+	jr z, .skipThreat
+	ld [wPlayerMoveType], a
+	push hl
+	push bc
+	push de
+	farcall PreviewTypeMatchup ; -> e = multiplier in twentieths; e survives
+	ld a, e
+	pop de ; d = penalties, e = running score
+	pop bc
+	pop hl
+	add d
+	cp e
+	jr c, .skipThreat
+	jr z, .skipThreat
+	ld e, a ; a worse attack: raise the running score
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp e
+	ret c
+	ret z ; can no longer beat the bound
+.skipThreat
+	dec b
+	jr nz, .nextThreat
+	ret
+
+; Carry SET if some living reserve scores strictly better than the active mon
+; under the same AIScoreSendOutMon metric, the active mon being scored on its
+; LIVE HP and status (wEnemyMon). This is what stops an emergency switch into a
+; reserve that is no better off, which only hands the player a free hit
+; (2026-09-29 review F5: an outclassed party switched every turn). The active
+; score is the ranking's bound, so pruning stops at the first proof either way.
+; Clobbers af, bc, de, hl.
+AIReplacementIsBetter:
+	farcall AIBuildPlayerThreatTypes
+	ld a, $ff
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; no bound for the active mon
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wPlayerMoveType]
+	push af
+	ld hl, wEnemyMon
+	ld c, wEnemyMonMaxHP - wEnemyMon
+	call AIScoreSendOutMon
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	ld a, e
+	call AIRankSendOutCandidatesBelow
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	cp $ff ; carry iff a slot beat the active score (any slot < $ff)
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -385,56 +410,14 @@ AIShouldSwitch::
 	cp AI_TIER_SKILLED
 	jp c, .vanilla ; T0/T1 are not supposed to switch intelligently
 
-; --- Emergency triggers and winning-action veto, short-circuiting ---
-; No probability roll on any of these (contrast the generic case at the bottom,
-; which does roll): "sometimes forgets to flee certain death" reads as broken
-; AI to a player, not as personality. Texture belongs on the SOFT preference,
-; not the hard ones.
-;
-; 1. Badly statused: frozen is a total lockout, and a long sleep is close to
-;    one. A short sleep is left alone - waking up next turn is better than
-;    spending the switch and giving the player a free hit anyway.
-	ld a, [wEnemyMonStatus]
-	bit FRZ, a
-	jp nz, .switch
-	ld a, [wEnemyMonStatus]
-	and SLP_MASK
-	cp 2
-	jp nc, .switch
-
-; 2. A reliable KO with the selected move wins the exchange. Check this before
-;    incoming KO and trapping pressure. At this call point the selected move
-;    lands before the player's next action at ANY speed (see the predicate's
-;    header), so a slower finisher that survived the hit stays in too. The
-;    predicate rejects forced-action states and never reads the player's move.
-	farcall AIEnemyHasReliableFirstKO
-	jp c, .stay
-
-; 3. The damage simulator says the player kills us this turn.
-	farcall AIPlayerWouldKO
-	jp c, .switch
-
-; 4. Caught in the player's trapping move AND slower, so we cannot break out by
-;    KOing first. A faster trapped mon is left in: it still gets to act.
-	ld a, [wPlayerBattleStatus1]
-	bit USING_TRAPPING_MOVE, a
-	jp z, .noTrap
-	farcall AIEnemyIsFaster
-	jp nc, .switch
-.noTrap
-
-; --- Anti-ping-pong grace period ---
+; --- Anti-ping-pong grace period, FIRST ---
 ; wAISwitchedFlags is set by AISelectSendOut when it commits to a slot. If the
-; CURRENTLY ACTIVE mon's bit is set, it was switched in on the immediately
-; preceding decision and has not had a turn to act yet - clear its bit (so the
-; NEXT decision evaluates it normally) and stay. This does not weaken the
-; emergency triggers above, which can still force a further switch if the
-; freshly-switched mon is ALSO in real danger; it only suppresses the vetoes
-; and the T3 generic case below from reversing a switch AISelectSendOut just
-; made for exactly that reason - the scenario that actually causes oscillation
-; when the whole party has a type disadvantage against the player, since
-; AISelectSendOut's own best-of-a-bad-set pick can otherwise still fail the
-; generic case's fresh re-evaluation immediately after being sent in.
+; CURRENTLY ACTIVE mon's bit is set, it arrived on the immediately preceding
+; decision and has not acted yet - clear its bit (so the NEXT decision
+; evaluates it normally) and stay. Checked before every trigger, emergencies
+; included (2026-09-29 review F5): with the emergency trigger ahead of it, an
+; outclassed party switched A -> B -> A every single turn, each switch a free
+; hit for the player. A mon that has just come in never leaves before acting.
 	ld a, [wEnemyMonPartyPos]
 	call AIPartySlotBit
 	ld c, a
@@ -449,6 +432,58 @@ AIShouldSwitch::
 	ld [wAISwitchedFlags], a
 	jp .stay
 .noGrace
+
+; --- Emergency triggers and winning-action veto, short-circuiting ---
+; No probability roll on any of these (contrast the generic case at the bottom,
+; which does roll): "sometimes forgets to flee certain death" reads as broken
+; AI to a player, not as personality. Texture belongs on the SOFT preference,
+; not the hard ones. Triggers 1 and 3 only fire when AIReplacementIsBetter says
+; the best reserve is strictly better off than the active mon, scored the same
+; way AISelectSendOut ranks send-outs; switching into an equally bad reserve
+; only spends the turn.
+;
+; 1. Badly statused: frozen is a total lockout, and a long sleep is close to
+;    one. A short sleep is left alone - waking up next turn is better than
+;    spending the switch and giving the player a free hit anyway.
+	ld a, [wEnemyMonStatus]
+	bit FRZ, a
+	jr nz, .badlyStatused
+	and SLP_MASK
+	cp 2
+	jr c, .notBadlyStatused
+.badlyStatused
+	call AIReplacementIsBetter
+	jp c, .switch
+.notBadlyStatused
+
+; 2. The damage simulator says the player's believed moveset kills us.
+; 3. Caught in the player's trapping move AND slower, so we cannot break out by
+;    KOing first. A faster trapped mon is left in: it still gets to act.
+; Both are VETOED by a reliable KO with the selected move: at this call point
+; that move lands before the player's next action at ANY speed (see the
+; predicate's header), so a slower finisher that survived the hit stays in.
+; The veto costs an estimate (20-33k cycles, measured), so it runs only once a
+; trigger would actually fire, not every turn.
+	farcall AIPlayerWouldKO
+	jr nc, .noKOThreat
+	farcall AIEnemyHasReliableFirstKO
+	jp c, .stay
+	call AIReplacementIsBetter
+	jp c, .switch
+; Under a KO threat with no better reserve, nothing below may switch: the
+; generic case is a weaker reason than the one just rejected, and the vetoes
+; only ever say stay. Only the trap still can (a trapped, slower mon cannot act
+; at all). The veto above already came back false, so it is not re-run.
+	call .trappedAndSlower
+	jp c, .switch
+	jp .stay
+.noKOThreat
+	call .trappedAndSlower
+	jr nc, .noTrap
+	farcall AIEnemyHasReliableFirstKO
+	jp c, .stay
+	jp .switch
+.noTrap
 
 ; --- Vetoes: reasons to stay put even though nothing above forced a switch ---
 ; A super-effective move is worth more than a better matchup we would have to
@@ -511,7 +546,10 @@ AIShouldSwitch::
 	call Random
 	cp 75 percent + 1
 	jp nc, .stay
-	jp .switch
+; ...and only into a reserve that is actually better off, or the bad matchup
+; just moves to the next mon and the free hit is wasted (review F5).
+	call AIReplacementIsBetter
+	jp c, .switch
 
 .stay
 	and a ; clear carry
@@ -519,4 +557,13 @@ AIShouldSwitch::
 .vanilla
 .switch
 	scf
+	ret
+
+; Carry SET if the player holds us in a trapping move and we are slower.
+.trappedAndSlower
+	ld a, [wPlayerBattleStatus1]
+	and 1 << USING_TRAPPING_MOVE ; `and` clears carry, so not trapped -> no carry
+	ret z
+	farcall AIEnemyIsFaster ; carry = faster; flags survive the farcall return
+	ccf ; faster -> no carry; slower -> carry
 	ret

@@ -924,42 +924,14 @@ TrainerAI:
 	      ; normal move-based turn
 	ret
 
-; T2+ switching is independent of item eligibility and remaining item uses.
-; Preserve the existing class scope by inspecting the actual dispatch pointer:
-; Juggler, Cooltrainer F, and all classes sharing AgathaAI. The smart predicate
-; owns emergency certainty and its generic probability; low tiers still use
-; the original class rolls below. No selected player input is consulted here.
+; T2+ switching is independent of item eligibility and remaining item uses,
+; and of trainer class: every T2+ trainer can switch intelligently (user
+; decision 2026-09-29; it used to be only Juggler, Cooltrainer F and the
+; AgathaAI classes). The smart predicate owns emergency certainty and its
+; generic probability; T0/T1 never get here and keep the original class rolls.
+; No selected player input is consulted here. Carry SET = switched.
 AITrySmartSwitch:
-	ld a, [wTrainerClass]
-	dec a
-	ld c, a
-	ld b, 0
-	ld hl, TrainerAIPointers + 1
-	add hl, bc
-	add hl, bc
-	add hl, bc
-	ld a, [hli]
-	ld d, [hl]
-	ld e, a
-	ld hl, .handlers
-	ld b, (.handlersEnd - .handlers) / 2
-.loop
-	ld a, [hli]
-	cp e
-	jr nz, .next
-	ld a, [hl]
-	cp d
-	jp z, AISwitchIfEnoughMons
-.next
-	inc hl
-	dec b
-	jr nz, .loop
-	and a
-	ret
-.handlers
-	dw JugglerAI, CooltrainerFAI, AgathaAI
-.handlersEnd
-	ASSERT BANK(TrainerAIPointers) == BANK(@)
+	jp AISwitchIfEnoughMons
 	ASSERT BANK(AISwitchIfEnoughMons) == BANK(@)
 
 INCLUDE "data/trainers/ai_pointers.asm"

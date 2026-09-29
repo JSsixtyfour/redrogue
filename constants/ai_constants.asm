@@ -149,6 +149,11 @@ DEF AI_SATURATE    EQU AI_SCORE_MAX - AI_SCORE_BASE + 1
 ;   +20 .. +27  per-slot move class masks (Phase 5), two bytes each
 ;   +28         magnitude AILayerPlan is applying this turn (+29 free)
 DEF AI_BUF_SCORES     EQU 0
+; +0..+3 again, OUTSIDE move selection only: the believed player attack types
+; ($ff = none) that AIBuildPlayerThreatTypes writes for the switch/send-out
+; ranking. Safe because the score array is dead once SelectEnemyMove has taken
+; its pick, and send-out/switch decisions never run inside move selection.
+DEF AI_BUF_THREATTYPES EQU 0
 
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
 ; That cache was CANCELLED in Phase 2b: its entire justification was avoiding

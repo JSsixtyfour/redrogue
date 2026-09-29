@@ -48,15 +48,18 @@ class AISwitchDispatchTest(unittest.TestCase):
                         self.assertEqual(no_item["count"], before[1])
                         self.assertEqual(h.read8("wAICount"), 0)
 
-    def test_non_switching_class_keeps_non_ace_item_restriction(self):
+    def test_every_class_smart_switches_at_t2_plus(self):
+        # 2026-09-29: smart switching is no longer limited to Juggler /
+        # Cooltrainer F / AgathaAI. A class that never switched before now
+        # switches a frozen mon, without spending an item use.
         h = self.h
         h.write8("wTrainerClass", self.classes["COOLTRAINER_M"])
         h.write8("wEnemyMonStatus", 1 << 5)
         h.write8("wAICount", 3)
         switched = h.hook_flag("SwitchEnemyMon")
         no_item = h.hook_flag("TrainerAI.noItem")
-        h.call_routine("TrainerAI", limit=120)
-        self.assertEqual((switched["count"], no_item["count"]), (0, 1))
+        h.probe_routine_until("TrainerAI", lambda: switched["count"] > 0, limit=120)
+        self.assertEqual((switched["count"], no_item["count"]), (1, 0))
         self.assertEqual(h.read8("wAICount"), 3)
 
     def test_lone_ace_does_not_try_to_switch(self):

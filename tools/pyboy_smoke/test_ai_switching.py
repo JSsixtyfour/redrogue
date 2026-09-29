@@ -397,11 +397,31 @@ class AIShouldSwitchTest(unittest.TestCase):
 
     def test_unrevealed_type_guess_is_a_threat(self) -> None:
         # Same board with nothing revealed: slot 0 reads as Body Slam (Normal
-        # STAB guess), which can KO the Pikachu, so the emergency trigger fires.
+        # STAB guess), which can KO the Pikachu. Geodude resists Normal, so it
+        # is strictly better off and the emergency trigger switches to it.
         self.assertTrue(self.call_should_switch(
+            self.mon("SNORLAX", ["SPLASH"]),
+            [self.mon("PIKACHU"), self.mon("GEODUDE")],
+            ai_tier=2,
+        ))
+
+    def test_no_emergency_switch_into_a_reserve_no_better_off(self) -> None:
+        # Review F5 (2026-09-29): Rattata takes Body Slam exactly as Pikachu
+        # does, at the same full HP, so switching only hands over a free hit.
+        self.assertFalse(self.call_should_switch(
             self.mon("SNORLAX", ["SPLASH"]),
             [self.mon("PIKACHU"), self.mon("RATTATA")],
             ai_tier=2,
+        ))
+
+    def test_grace_period_outranks_emergency_triggers(self) -> None:
+        # Review F5: a mon sent in on the previous decision stays for one
+        # decision even when frozen with a healthy reserve behind it.
+        self.assertFalse(self.call_should_switch(
+            self.mon("SNORLAX", ["SPLASH"]),
+            [self.mon("PIKACHU"), self.mon("GEODUDE")],
+            ai_tier=2,
+            prime={"wEnemyMonStatus": 1 << 5, "wAISwitchedFlags": 1},
         ))
 
     def test_frozen_forces_switch(self) -> None:

@@ -186,3 +186,73 @@ AIStabGuessByType:
 	db ICE_BEAM     ; ICE
 	db DRAGON_RAGE  ; DRAGON (its only Gen 1 move; fixed damage)
 	assert @ - AIStabGuessByType == NUM_TYPES, "AIStabGuessByType must cover every type"
+
+; Fills wBuffer + AI_BUF_THREATTYPES (one byte per move slot, $ff = none) with
+; the types of the player's DAMAGING moves as the AI believes them - revealed,
+; type-guessed, or the full moveset for an omniscient class, all through
+; AIGetPlayerMoveN. Power 0/1 moves are left out: status moves, and fixed-damage
+; moves whose type does not scale their damage. Falls back to the player's first
+; type when nothing damaging is believed, so a ranking always has an attacker.
+; Farcall target for the send-out/switch ranking in bank $2C (no register
+; inputs or outputs, so nothing to lose across Bankswitch).
+; Clobbers af, bc, de, hl.
+AIBuildPlayerThreatTypes::
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld b, NUM_MOVES
+	ld a, $ff
+.clear
+	ld [hli], a
+	dec b
+	jr nz, .clear
+	ld c, 0 ; move slot
+.nextSlot
+	push bc
+	ld a, c
+	call AIGetPlayerMoveN ; a = believed move id, 0 = none
+	pop bc
+	and a
+	jr z, .advance
+	push bc
+	dec a
+	ld hl, Moves + 2 ; power, then type
+	ASSERT BANK(Moves) == BANK(@)
+	ld bc, MOVE_LENGTH
+	call AddNTimes
+	ld a, [hli]
+	cp 2
+	ld a, [hl] ; type; ld keeps the power test's flags
+	pop bc
+	jr c, .advance
+; A type already listed adds nothing but another ~8k-cycle chart walk per
+; candidate in the ranking, so list each type once.
+	ld d, a
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld e, NUM_MOVES
+.alreadyListed
+	ld a, [hli]
+	cp d
+	jr z, .advance
+	dec e
+	jr nz, .alreadyListed
+	ld a, d
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld d, 0
+	ld e, c
+	add hl, de
+	ld [hl], a
+.advance
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .nextSlot
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld b, NUM_MOVES
+.anyThreat
+	ld a, [hli]
+	cp $ff
+	ret nz
+	dec b
+	jr nz, .anyThreat
+	ld a, [wBattleMonType1]
+	ld [wBuffer + AI_BUF_THREATTYPES], a
+	ret

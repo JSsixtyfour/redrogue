@@ -6,7 +6,7 @@ so a failure here means that finding is WRONG and should be dropped.
 
   F1  FIXED in Phase 3: slower T2 trainer holding a reliable KO now STAYS (real turn)
   F2  FIXED in Phase 4: Spike Cannon needing 3+ hits now scores as unreliable
-  F5  outclassed 2-mon party over 6 real turns: predicts a switch every turn
+  F5  FIXED in Phase 5: outclassed 2-mon party switches at most once in 6 turns
   F6  FIXED in Phase 1: another party member's reveal must not create a threat
 """
 from pathlib import Path
@@ -138,8 +138,9 @@ class Phase0Probe(unittest.TestCase):
         self.drive_turns(lambda: len(turns) >= 7, limit=2400)
         print(f"\nF5 active-at-decision={turns[:6]} switched-from={switches}")
         self.assertGreaterEqual(len(turns), 6, f"only {len(turns)} decisions")
-        switched_in_six = sum(1 for _ in switches[:6])
-        self.assertGreaterEqual(switched_in_six, 5)
+        # Both mons sit in the same KO range, so the reserve is never better
+        # off after the first switch (the fresh one has full HP until primed).
+        self.assertLessEqual(len(switches[:6]), 1)
 
     # F6 -------------------------------------------------------------------
     def test_f6_stale_revealed_move_creates_phantom_threat(self):

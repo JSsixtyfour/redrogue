@@ -670,7 +670,10 @@ class RedRogueHarness:
             records.append(dict(pending))
 
         self.register_hook("EnemySendOutFirstMon.next", begin)
-        self.register_hook("AISelectSendOut.done", ranked)
+        # The ranking pass is shared with AIShouldSwitch's better-reserve check
+        # (2026-09-29); `begin` resets per send-out, so the last ranking before
+        # `selected` is always the send-out's own.
+        self.register_hook("AIRankSendOutCandidatesBelow.done", ranked)
         self.register_hook("EnemySendOutFirstMon.next3", selected)
         return records
 
