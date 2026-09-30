@@ -119,14 +119,15 @@ pop hl
 RET
 	
 ;generates a randomized 6-party enemy trainer roster
-; difficulty ramps up every 10 battles won: within each round of 10,
-; wBattleCount mod 10 = 1-4 are the first 4 route trainers, 5 is the final
-; (strongest) route trainer, 6-9 are the gym trainers, and 10 is the gym
-; leader (handled separately by InitGymBattle, never reaches GetRandRoster).
-; wBattleCount/10 (integer) gives the "round" (0-7 for gyms 1-8, 8 for
-; Victory Road), matching up with the gym leader's tier for that round.
-; route trainers (1-5) use trainer_difficulty_settings, gym trainers (6-9)
-; use the separate, higher-level trainer_difficulty_settings_gym table.
+; difficulty ramps up every ROUND_BATTLES battles won: within each round,
+; wBattleCount mod ROUND_BATTLES = 1..ROUTE_BATTLES-1 are the route trainers,
+; FINAL_ROUTE_STEP is the final (strongest) route trainer, FIRST_GYM_STEP..
+; FINAL_GYM_TRAINER_STEP are the gym trainers, and step 0 is the gym leader
+; (handled separately by InitGymBattle, never reaches GetRandRoster).
+; wBattleCount/ROUND_BATTLES (integer) gives the "round" (0-7 for gyms 1-8, 8
+; for Victory Road), matching up with the gym leader's tier for that round.
+; route trainers use trainer_difficulty_settings, gym trainers use the
+; separate, higher-level trainer_difficulty_settings_gym table.
 GetRandRoster:
 	push bc
 	push de
@@ -727,7 +728,7 @@ MiniBossRollFillMon::
 	ret
 
 ; hl -> the 4-byte trainer_difficulty_settings_miniboss block for the current
-; round (wBattleCount / 10, clamped to 9).
+; round (wBattleCount / ROUND_BATTLES, clamped to NUM_ROGUE_ROUNDS).
 GetMiniBossTierPtr:
 	ld a, [wBattleCount]
 	cp LAST_ROUND_BATTLECOUNT + 1

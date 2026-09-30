@@ -13,8 +13,8 @@
 ;   0: level range
 ;   1: minimum level
 ;   2-5: normal class counts (pokeball, greatball, ultraball, masterball)
-;   6: level bonus for the final (5th) route trainer of the round
-;      (wBattleCount mod 10 == 5), making it "somewhat stronger"
+;   6: level bonus for the final route trainer of the round
+;      (wBattleCount mod ROUND_BATTLES == FINAL_ROUTE_STEP), making it "somewhat stronger"
 ;   7-10: class counts for that final route trainer - same total as 2-5,
 ;      but shifted toward rarer classes
 trainer_difficulty_settings:
@@ -127,14 +127,15 @@ db 0x0  ; final trainer: greatball class pokemon
 db 0x3  ; final trainer: ultraball class pokemon
 db 0x3  ; final trainer: masterball class pokemon
 
-; gym trainers (wBattleCount mod 10 == 6-9): same 11-byte layout as
-; trainer_difficulty_settings, but with higher levels that approach the
-; round's gym leader tier. The 4th gym trainer (mod 10 == 9), fought right
+; gym trainers (wBattleCount mod ROUND_BATTLES == FIRST_GYM_STEP..
+; FINAL_GYM_TRAINER_STEP): same 11-byte layout as trainer_difficulty_settings,
+; but with higher levels that approach the round's gym leader tier. The final
+; gym trainer (mod ROUND_BATTLES == FINAL_GYM_TRAINER_STEP), fought right
 ; before the leader, gets the level bonus + rarer class distribution.
 ;   0: level range
 ;   1: minimum level
 ;   2-5: normal class counts (pokeball, greatball, ultraball, masterball)
-;   6: level bonus for the final (4th) gym trainer of the round
+;   6: level bonus for the final gym trainer of the round
 ;   7-10: class counts for that final gym trainer - same total as 2-5,
 ;      but shifted toward rarer classes
 trainer_difficulty_settings_gym:

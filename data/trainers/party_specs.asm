@@ -181,7 +181,7 @@ MixOnlySpecs::
 ;
 ; THE SHAPE, three levels:
 ;
-;   round    1..8, from wBattleCount / 10. Sets team size and levels.
+;   round    1..8, from wBattleCount / ROUND_BATTLES. Sets team size and levels.
 ;   variant  three per round, the rand(3).
 ;   wTrainerNo = (round - 1) * 3 + variant + 1, variants A/B/C = 0/1/2.
 ;
@@ -216,7 +216,7 @@ MixOnlySpecs::
 DEF NUM_ROUND_VARIANTS EQU 3        ; InitGymBattle's own `ld c, 3`
 DEF NUM_GYM_ROUNDS     EQU 8
 DEF NUM_GYM_TEAMS      EQU NUM_GYM_ROUNDS * NUM_ROUND_VARIANTS
-DEF NUM_E4_TIERS       EQU 4        ; InitElite4Battle, wBattleCount 86..89
+DEF NUM_E4_TIERS       EQU 4        ; InitElite4Battle, wBattleCount E4_FIRST_BATTLECOUNT..+3 (69..72)
 DEF NUM_E4_TEAMS       EQU NUM_E4_TIERS * NUM_ROUND_VARIANTS
 
 ; Every gym leader shares one team-size and level curve. MEASURED from the
@@ -302,8 +302,9 @@ MACRO gym_leader_records
 ENDM
 
 ; The Elite Four grid is FOUR tiers, not eight rounds: InitElite4Battle derives
-; the tier linearly from wBattleCount 86-89 rather than from the /10 round grid
-; gym leaders use, so an E4-only character needs 12 teams and asking it for 24
+; the tier linearly from wBattleCount E4_FIRST_BATTLECOUNT..+3 (69-72) rather
+; than from the round grid gym leaders use, so an E4-only character needs 12
+; teams and asking it for 24
 ; is a bug, not extra headroom. Six mons (was five), levels 52-62 at tier 1
 ; through 55-65 at tier 4: the ace at tier 4 lands on 65, the Champion rival's
 ; ace level, which is what Champion Lance draws (ChampionsRoom.asm, wTrainerNo
