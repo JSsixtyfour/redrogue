@@ -222,6 +222,11 @@ AISmartEffectTable:
 	dbw DEFENSE_DOWN_SIDE_EFFECT, AISmart_StatDownSide
 	dbw SPEED_DOWN_SIDE_EFFECT, AISmart_StatDownSide
 	dbw SPECIAL_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+; AI_BACKLOG.md B2 (2026-09-29): Speed control scored by turn order.
+	dbw SPEED_DOWN1_EFFECT, AISmart_SpeedDown1
+	dbw SPEED_DOWN2_EFFECT, AISmart_SpeedDown2
+	dbw SPEED_UP1_EFFECT, AISmart_SpeedUp1
+	dbw SPEED_UP2_EFFECT, AISmart_SpeedUp2
 ; SPECIAL_DAMAGE_EFFECT deliberately has NO handler as of Phase 3 Step 3. It
 ; used to be encouraged whenever the target was above half HP, which was
 ; backwards reasoning - fixed damage is a constant, so a healthier target makes
@@ -815,6 +820,42 @@ AISmartParaSideBlocked:
 ; (BURN_SIDE_EFFECT1, 10%). FREEZE_SIDE_EFFECT2 is unused by any move in this
 ; game (English Blizzard uses the _1 rate) but is included for completeness -
 ; the table entry costs two bytes and nothing currently reaches it.
+; Speed control (AI_BACKLOG.md B2, 2026-09-29). A Speed change that FLIPS who
+; acts first is a clear preference; one we do not need because we already act
+; first is a mild waste (a stopping rule for speed setup). Stage caps, Mist and
+; Substitute stay AI_REDUNDANT's job. The flip predicates predict the new Speed
+; exactly as the engine recomputes it (AIPredictSpeedAtStage).
+AISmart_SpeedDown2:
+	ld a, 2
+	jr AISmartSpeedDownBy
+AISmart_SpeedDown1:
+	ld a, 1
+AISmartSpeedDownBy:
+	call AISpeedDropFlipsTurnOrder
+	jr c, AISmartSpeedFlipBonus
+	jr AISmartSpeedAlreadyAhead
+AISmart_SpeedUp2:
+	ld a, 2
+	jr AISmartSpeedUpBy
+AISmart_SpeedUp1:
+	ld a, 1
+AISmartSpeedUpBy:
+	call AISpeedBoostFlipsTurnOrder
+	jr c, AISmartSpeedFlipBonus
+AISmartSpeedAlreadyAhead:
+	call AIEnemyIsFaster ; carry = we already strictly act first (same bank)
+	jr nc, .noOpinion
+	ld a, AI_NUDGE
+	and a ; carry clear = discourage
+	ret
+.noOpinion
+	xor a
+	ret
+AISmartSpeedFlipBonus:
+	ld a, AI_STRONG
+	scf
+	ret
+
 AISmart_BurnFreezeParaSide:
 	call AISmartParaSideBlocked
 	jr c, .noChange
@@ -829,9 +870,13 @@ AISmart_BurnFreezeParaSide:
 	jr z, .paraStrong
 	cp PARALYZE_SIDE_EFFECT1
 	jr z, .paraMild
-	ld a, AI_NUDGE
-	scf
-	ret
+; Burn riders (the only burn source in Gen 1): burn halves Attack, so a
+; physical attacker is the target it pays off against (AI_BACKLOG.md B1).
+	call AIPlayerIsPhysicalThreat
+	ld a, AI_NUDGE ; ld keeps the predicate's carry
+	jr nc, .encourageRider
+	inc a
+	jr .encourageRider
 ; A paralysis rider that would flip turn order is worth one point more
 ; (2026-09-29), the same turn-order fact AISmart_Paralyze scores.
 .paraStrong
@@ -988,7 +1033,18 @@ AISmart_StatDownSide:
 	jr nz, .noChange
 	call AISmartRiderIsWasted ; F22: no rider bonus on a move that KOs
 	jr c, .noChange
+; A Speed-drop rider (Bubble, BubbleBeam, Constrict) that would flip turn
+; order is worth one point more (AI_BACKLOG.md B2).
+	ld a, [wEnemyMoveEffect]
+	cp SPEED_DOWN_SIDE_EFFECT
 	ld a, AI_NUDGE
+	jr nz, .encourage
+	ld a, 1
+	call AISpeedDropFlipsTurnOrder
+	ld a, AI_NUDGE ; ld keeps the predicate's carry
+	jr nc, .encourage
+	inc a
+.encourage
 	scf
 	ret
 .noChange

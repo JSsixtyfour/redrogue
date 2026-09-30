@@ -124,9 +124,11 @@ class AICheckpointBTest(unittest.TestCase):
         guaranteed = 2 * (raw * 217 // 255)
         self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", guaranteed), 10)
 
-    def smart_scores_by_speed(self, move, boards):
+    def smart_scores_by_speed(self, move, boards, extra=None):
         """AI_SMART score (from 20, before cross-cutting rules) of a lone move
-        for each (our Speed, player Speed) board."""
+        for each (our Speed, player Speed) board. Unmodified Speed matches the
+        live value and both Speed stages are neutral, so stage predictions
+        (Speed control) start from the same numbers the board shows."""
         h = self.h
         scores = []
         h.hook_flag("AISmartCrossCutting", action=lambda: scores.append(h.read8("wBuffer")))
@@ -134,6 +136,16 @@ class AICheckpointBTest(unittest.TestCase):
             h.park_before_hijack()
             self.word("wEnemyMonSpeed", ours)
             self.word("wBattleMonSpeed", theirs)
+            self.word("wEnemyMonUnmodifiedSpeed", ours)
+            self.word("wPlayerMonUnmodifiedSpeed", theirs)
+            h.write8("wEnemyMonSpeedMod", 7)
+            h.write8("wPlayerMonSpeedMod", 7)
+            h.write8("wEnemyMonStatus", 0)
+            for label, value in (extra or {}).items():
+                if isinstance(value, tuple):
+                    self.word(label, value[0])
+                else:
+                    h.write8(label, value)
             h.write8("wBattleMonStatus", 0)
             h.write8("wPlayerBattleStatus1", 0)
             h.write8("wPlayerBattleStatus2", 0)
@@ -163,6 +175,52 @@ class AICheckpointBTest(unittest.TestCase):
         # affect a Normal target - AISmartParaSideBlocked, the Gen 1 rule.)
         scores = self.smart_scores_by_speed("THUNDERBOLT", [(100, 200), (100, 90)])
         self.assertEqual(scores, [18, 19])
+
+    # --- AI_BACKLOG.md B2: Speed control by turn order ----------------------
+    # From 20: 18 = AI_STRONG (flips order), 20 = no opinion, 21 = mild waste
+    # (we already act first). -1 Speed is x66/100, +2 is x2 (StatModifierRatios).
+    def test_string_shot_scored_by_turn_order(self):
+        scores = self.smart_scores_by_speed("STRING_SHOT", [
+            (100, 140),  # 140 * 66 / 100 = 92 < 100: flips
+            (100, 160),  # 105: still ahead, no flip
+            (100, 90),   # already faster: a wasted turn
+        ])
+        self.assertEqual(scores, [18, 20, 21])
+
+    def test_agility_scored_by_turn_order(self):
+        scores = self.smart_scores_by_speed("AGILITY", [
+            (100, 150),  # 100 * 2 = 200 > 150: flips
+            (100, 250),  # 200 < 250: still behind
+            (100, 90),   # already faster
+        ])
+        self.assertEqual(scores, [18, 20, 21])
+
+    def test_speed_drop_rider_that_flips_gains_a_point(self):
+        # Bubble's 33% Speed-drop rider: AI_NUDGE (19), +1 on a flip.
+        scores = self.smart_scores_by_speed("BUBBLE", [(100, 140), (100, 90)])
+        self.assertEqual(scores, [18, 19])
+
+    # --- AI_BACKLOG.md B1: burn against physical threats ----------------------
+    def test_burn_rider_gains_a_point_against_a_physical_attacker(self):
+        # Snorlax (Attack > Special, a believed Normal STAB guess) is physical:
+        # Ember's rider 19 -> 18. With Special above Attack it stays 19.
+        physical = self.smart_scores_by_speed("EMBER", [(100, 90)])
+        special = self.smart_scores_by_speed("EMBER", [(100, 90)], extra={
+            "wBattleMonAttack": (50,), "wBattleMonSpecial": (200,)})
+        # Each helper call adds its own hook, so the first list also records
+        # the second run: compare each run's own (first/last) entry.
+        self.assertEqual((physical[0], special[-1]), (18, 19))
+
+    def test_ai_stat_ratio_copy_matches_the_engine_table(self):
+        rom = (ROOT / "pokeblue_debug.gbc").read_bytes()
+
+        def rom_bytes(label, length):
+            bank, address = self.h.symbols.get(label)
+            offset = address if bank == 0 else bank * 0x4000 + address - 0x4000
+            return rom[offset:offset + length]
+
+        self.assertEqual(rom_bytes("AIStatModifierRatios", 26),
+                         rom_bytes("StatModifierRatios", 26))
 
     def test_substitute_breaker_outranks_a_hit_the_shield_absorbs(self):
         # Review F3 (2026-09-29): behind a Substitute every single hit used to

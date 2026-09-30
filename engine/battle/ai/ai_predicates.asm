@@ -475,6 +475,221 @@ AIParalysisFlipsTurnOrder::
 	sbc b ; carry iff quartered player Speed < ours
 	ret
 
+; --- Speed control and victim-aware burn (AI_BACKLOG.md B1/B2, 2026-09-29) --
+
+; Carry SET if lowering the PLAYER's Speed by a stages (1 or 2) would flip turn
+; order: the player strictly outspeeds us now and would be strictly slower
+; after. Honours the -6 floor. Clobbers af, bc, de, hl.
+AISpeedDropFlipsTurnOrder::
+	ld l, a ; stages; AIPlayerIsStrictlyFaster leaves hl alone
+	call AIPlayerIsStrictlyFaster
+	ret nc
+	ld a, [wPlayerMonSpeedMod]
+	sub l
+	jr z, .floor
+	jr nc, .gotStage
+.floor
+	ld a, 1 ; the lowest stage (-6)
+.gotStage
+	ld c, a
+	ld a, [wBattleMonStatus]
+	and 1 << PAR
+	ld b, a ; nonzero = paralysed
+	ld a, c
+	ld hl, wPlayerMonUnmodifiedSpeed
+	call AIPredictSpeedAtStage ; de = the player's Speed after the drop
+	ld a, [wEnemyMonSpeed]
+	ld b, a
+	ld a, [wEnemyMonSpeed + 1]
+	ld c, a ; bc = ours
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff the dropped Speed is below ours
+	ret
+
+; Carry SET if raising OUR Speed by a stages (1 or 2) would flip turn order:
+; the player strictly outspeeds us now and we would be strictly faster after.
+; Honours the +6 cap. Clobbers af, bc, de, hl.
+AISpeedBoostFlipsTurnOrder::
+	ld l, a
+	call AIPlayerIsStrictlyFaster
+	ret nc
+	ld a, [wEnemyMonSpeedMod]
+	add l
+	cp MAX_STAT_LEVEL + 1
+	jr c, .gotStage
+	ld a, MAX_STAT_LEVEL
+.gotStage
+	ld c, a
+	ld a, [wEnemyMonStatus]
+	and 1 << PAR
+	ld b, a
+	ld a, c
+	ld hl, wEnemyMonUnmodifiedSpeed
+	call AIPredictSpeedAtStage ; de = our Speed after the boost
+	ld a, [wBattleMonSpeed]
+	ld b, a
+	ld a, [wBattleMonSpeed + 1]
+	ld c, a ; bc = the player's
+	ld a, c
+	sub e
+	ld a, b
+	sbc d ; carry iff the player's Speed is below our boosted one
+	ret
+
+; Carry SET if the player's live Speed is strictly above ours. Clobbers af, bc, de.
+AIPlayerIsStrictlyFaster:
+	ld a, [wEnemyMonSpeed]
+	ld b, a
+	ld a, [wEnemyMonSpeed + 1]
+	ld c, a
+	ld a, [wBattleMonSpeed]
+	ld d, a
+	ld a, [wBattleMonSpeed + 1]
+	ld e, a
+	ld a, c
+	sub e
+	ld a, b
+	sbc d ; carry iff ours < the player's
+	ret
+
+; OUTPUT: de = the Speed a mon would have at stage a (1-13), exactly as the
+; engine recomputes a changed stat (effects.asm .recalculateStat): unmodified
+; Speed at hl * numerator / denominator, capped at 999, minimum 1. Then, when
+; b != 0 (paralysed), quartered with minimum 1, because this tree re-applies the
+; paralysis penalty after a stat change (custom_functions/apply_self_stat_penalty.asm).
+; Clobbers af, bc, hl.
+AIPredictSpeedAtStage:
+	push bc
+	push hl
+	dec a
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, AIStatModifierRatios
+	add hl, bc
+	ld a, [hli]
+	ld b, a ; numerator
+	ld c, [hl] ; denominator
+	pop hl
+	xor a
+	ldh [hMultiplicand], a
+	ld a, [hli]
+	ldh [hMultiplicand + 1], a
+	ld a, [hl]
+	ldh [hMultiplicand + 2], a
+	ld a, b
+	ldh [hMultiplier], a
+	push bc
+	call Multiply
+	pop bc
+	ld a, c
+	ldh [hDivisor], a
+	ld b, 4
+	call Divide
+	ldh a, [hQuotient + 2]
+	ld d, a
+	ldh a, [hQuotient + 3]
+	ld e, a
+	ld a, e
+	sub LOW(MAX_STAT_VALUE)
+	ld a, d
+	sbc HIGH(MAX_STAT_VALUE)
+	jr c, .belowCap
+	ld de, MAX_STAT_VALUE
+.belowCap
+	ld a, d
+	or e
+	jr nz, .atLeastOne
+	inc e
+.atLeastOne
+	pop bc
+	ld a, b
+	and a
+	ret z
+	srl d
+	rr e
+	srl d
+	rr e
+	ld a, d
+	or e
+	ret nz
+	inc e
+	ret
+
+; A copy of StatModifierRatios (data/battle/stat_modifiers.asm), which lives in
+; bank $0F: this bank must not read across banks. test_ai_checkpoint_b.py
+; compares the two in the built ROM and fails if they ever differ.
+AIStatModifierRatios:
+	db 25, 100 ; -6
+	db 28, 100
+	db 33, 100
+	db 40, 100
+	db 50, 100
+	db 66, 100 ; -1
+	db  1,   1 ;  0
+	db 15,  10 ; +1
+	db  2,   1
+	db 25,  10
+	db  3,   1
+	db 35,  10
+	db  4,   1 ; +6
+	assert @ - AIStatModifierRatios == MAX_STAT_LEVEL * 2, \
+		"AIStatModifierRatios needs one numerator/denominator pair per stage"
+
+; Carry SET if the player looks like a PHYSICAL attacker: its Attack is at
+; least its Special, and its believed moveset (AIGetPlayerMoveN: revealed,
+; type-guessed, or the full moveset for an omniscient class) holds a damaging
+; move of a physical type. That is when burn's Attack halving pays off.
+; Clobbers af, bc, de, hl.
+AIPlayerIsPhysicalThreat::
+	ld a, [wBattleMonAttack]
+	ld d, a
+	ld a, [wBattleMonAttack + 1]
+	ld e, a
+	ld a, [wBattleMonSpecial]
+	ld b, a
+	ld a, [wBattleMonSpecial + 1]
+	ld c, a
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff Attack < Special
+	ccf
+	ret nc ; a special attacker: burn's Attack cut barely matters
+	ld c, 0
+.nextSlot
+	push bc
+	ld a, c
+	call AIGetPlayerMoveN
+	pop bc
+	and a
+	jr z, .advance
+	push bc
+	dec a
+	ld hl, Moves + 2 ; power, then type
+	ASSERT BANK(Moves) == BANK(@)
+	ld bc, MOVE_LENGTH
+	call AddNTimes
+	ld a, [hli]
+	cp 2
+	ld a, [hl] ; type; ld keeps the power test's flags
+	pop bc
+	jr c, .advance ; status or fixed damage
+	cp SPECIAL
+	jr c, .physical
+.advance
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .nextSlot
+	and a
+	ret
+.physical
+	scf
+	ret
+
 ; Carry SET if the enemy acts FIRST this turn using the move currently loaded in
 ; the wEnemyMove* block.
 ;
