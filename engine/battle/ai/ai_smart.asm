@@ -303,6 +303,12 @@ AISmart_DreamEater:
 ; Source: pokecrystal AI_Smart_Selfdestruct, HP bands only (no party-count check
 ; here - Phase 4's switching engine is a better home for "is this our last mon").
 AISmart_Explode:
+; Into a Substitute the blast is absorbed (no spill past a breaking hit) and the
+; user still faints: never a trade, whatever our HP (Codex follow-up L2,
+; 2026-09-29; the BombTrade plan had its own guard, this handler did not).
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .intoSubstitute
 	call AIEnemyHPAtMax
 	jr c, .discourage
 	call AIEnemyHPBelowQuarter
@@ -316,6 +322,10 @@ AISmart_Explode:
 .discourage
 	ld a, AI_VERY_STRONG
 	and a
+	ret
+.intoSubstitute
+	ld a, AI_HEAVY
+	and a ; carry clear = discourage
 	ret
 
 ; Recover/Softboiled: good when low, wasteful when healthy. AI_Redundant
@@ -615,8 +625,9 @@ AISmart_Screen:
 ; review F7). d counts what we gain, e what we lose:
 ;   gain: each player stat above neutral, each of our stats below neutral, the
 ;         player's Reflect / Light Screen / Mist / Focus Energy / X Accuracy,
-;         our confusion / Leech Seed / Toxic counter, and our paralysis or burn
-;         stat penalty (ResetStats undoes it; the status itself stays)
+;         our confusion / Leech Seed / Toxic counter, a Disable on us, and our
+;         paralysis or burn stat penalty WHILE STILL IN EFFECT
+;         (AIHazeRestoresOurStats; ResetStats undoes it, the status stays)
 ;   lose: each of our stats above neutral, each player stat below neutral, our
 ;         own screens / Mist / Focus Energy / X Accuracy, the player's
 ;         confusion / Leech Seed, and - counted TWICE - the player's major
@@ -702,11 +713,23 @@ AISmart_Haze:
 	jr z, .enemyNotToxic
 	inc d
 .enemyNotToxic
-	ld a, [wEnemyMonStatus]
-	and (1 << PAR) | (1 << BRN)
-	jr z, .enemyNoStatPenalty
+	push de
+	call AIHazeRestoresOurStats ; the stat cut must still be IN EFFECT (R4)
+	pop de
+	jr nc, .enemyNoStatPenalty
 	inc d
 .enemyNoStatPenalty
+; Disable is cleared on both sides (a smaller trade, Codex follow-up R4).
+	ld a, [wEnemyDisabledMove]
+	and a
+	jr z, .weAreNotDisabled
+	inc d
+.weAreNotDisabled
+	ld a, [wPlayerDisabledMove]
+	and a
+	jr z, .playerNotDisabled
+	inc e
+.playerNotDisabled
 	ld a, [wEnemyBattleStatus2]
 	and (1 << USING_X_ACCURACY) | (1 << PROTECTED_BY_MIST) | (1 << GETTING_PUMPED)
 	jr z, .enemyNoBuffs
@@ -1076,6 +1099,13 @@ AISmart_RecoilEffect:
 	srl d
 	rr e ; de = damage / 4
 .gotRecoil
+; RecoilEffect_ never deals less than 1, so a 1-HP user always faints to its
+; own recoil (Codex follow-up L2).
+	ld a, d
+	or e
+	jr nz, .recoilAtLeastOne
+	inc e
+.recoilAtLeastOne
 	ld a, [wEnemyMonHP]
 	ld b, a
 	ld a, [wEnemyMonHP + 1]

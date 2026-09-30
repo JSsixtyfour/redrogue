@@ -3268,6 +3268,7 @@ SwapMovesInMenu:
 	ld bc, MON_PP - MON_MOVES
 	add hl, bc
 	call .swapBytes ; swap move PP
+	farcall AISwapRevealedMoveSlots ; the AI's revealed-move bits follow the moves
 	xor a
 	ld [wMenuItemToSwap], a ; deselect the item
 	jp MoveSelectionMenu

@@ -160,6 +160,14 @@ DEF AI_KO_CACHE_EMPTY EQU 0 ; not computed this decision
 DEF AI_KO_CACHE_NO    EQU 1 ; computed: the believed moveset cannot KO us
 DEF AI_KO_CACHE_YES   EQU 2 ; computed: it can
 
+; AIPredictSpeedAtStage flag byte (b): bit PAR = paralysed; this bit = apply
+; the player earned x1.125 Speed boost. Must not collide with PAR (6).
+DEF AI_SPEED_EARNED_BOOST_BIT EQU 7
+
+; wAILastMoveNum sentinel: a new mon was just sent out (AITrackLastMove).
+; Above every real move id and below CANNOT_MOVE ($ff).
+DEF AI_LAST_MOVE_FRESH_MON EQU $fe
+
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
 ; That cache was CANCELLED in Phase 2b: its entire justification was avoiding
 ; cross-bank ReadMove farcalls, which evaporated once every scoring layer was

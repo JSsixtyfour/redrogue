@@ -176,6 +176,38 @@ class AICheckpointBTest(unittest.TestCase):
         scores = self.smart_scores_by_speed("THUNDERBOLT", [(100, 200), (100, 90)])
         self.assertEqual(scores, [18, 19])
 
+    # --- AI_BACKLOG.md B7: the player also holding Quick Attack --------------
+    # AI_DAMAGE from 20 on a reliable kill: 10 = acts first (AI_KILL_FIRST 9 +
+    # best nudge 1), 14 = does not (AI_KILL 5 + 1). Tauros outspeeds Snorlax.
+    def kill_score_vs_player_quick_attack(self, move, revealed, *, slower=False):
+        h = self.h
+        raw = self.estimate(move)
+        h.write8("wBattleMonMoves", self.moves["QUICK_ATTACK"])
+        h.reveal_player_moves(0, [0] if revealed else [], clear=True)
+        if slower:
+            self.word("wEnemyMonSpeed", 10)
+            self.word("wBattleMonSpeed", 200)
+        return self.single_move_damage_score(move, raw * 217 // 255)
+
+    def test_ordinary_kill_is_not_first_against_a_known_quick_attack(self):
+        self.assertEqual(self.kill_score_vs_player_quick_attack("TACKLE", True), 14)
+
+    def test_an_unrevealed_quick_attack_does_not_count(self):
+        # Only moves the AI has SEEN count; a type guess never does.
+        self.assertEqual(self.kill_score_vs_player_quick_attack("TACKLE", False), 10)
+
+    def test_mirror_quick_attack_falls_back_to_speed(self):
+        # Both Quick Attack: the faster side goes first (MainInBattleLoop).
+        self.assertEqual(self.kill_score_vs_player_quick_attack("QUICK_ATTACK", True), 10)
+
+    def test_slower_quick_attack_loses_priority_to_a_known_mirror(self):
+        self.assertEqual(
+            self.kill_score_vs_player_quick_attack("QUICK_ATTACK", True, slower=True), 14)
+
+    def test_quick_attack_is_first_when_the_player_has_none(self):
+        self.assertEqual(
+            self.kill_score_vs_player_quick_attack("QUICK_ATTACK", False, slower=True), 10)
+
     # --- AI_BACKLOG.md B2: Speed control by turn order ----------------------
     # From 20: 18 = AI_STRONG (flips order), 20 = no opinion, 21 = mild waste
     # (we already act first). -1 Speed is x66/100, +2 is x2 (StatModifierRatios).
@@ -186,6 +218,16 @@ class AICheckpointBTest(unittest.TestCase):
             (100, 90),   # already faster: a wasted turn
         ])
         self.assertEqual(scores, [18, 20, 21])
+
+    def test_speed_drop_prediction_includes_the_earned_speed_boost(self):
+        # Codex follow-up R5: execution re-applies the earned x1.125 Speed boost
+        # after the drop. Unmodified 125 -> -1 stage 82 -> +82/8 = 92 > our 90:
+        # still ahead, no flip (20). Without the boost, 82 < 90 flips (18).
+        boosted = self.smart_scores_by_speed("STRING_SHOT", [(90, 140)], extra={
+            "wPlayerMonUnmodifiedSpeed": (125,), "wEarnedStatBoosts": 1 << 2})
+        plain = self.smart_scores_by_speed("STRING_SHOT", [(90, 125)], extra={
+            "wEarnedStatBoosts": 0})
+        self.assertEqual((boosted[0], plain[-1]), (20, 18))
 
     def test_agility_scored_by_turn_order(self):
         scores = self.smart_scores_by_speed("AGILITY", [
@@ -222,6 +264,38 @@ class AICheckpointBTest(unittest.TestCase):
         self.assertEqual(rom_bytes("AIStatModifierRatios", 26),
                          rom_bytes("StatModifierRatios", 26))
 
+    def substitute_rank(self, move, sub_hp):
+        """The ranking value AI_DAMAGE gives a lone move behind a Substitute."""
+        h = self.h
+        h.write8("wPlayerBattleStatus2", 1 << self.battle["HAS_SUBSTITUTE_UP"])
+        h.write8("wPlayerSubstituteHP", sub_hp)
+        h.write8("wEnemyMonMoves", self.moves[move])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        h.write8("wBuffer", 20)
+        ranked = []
+        h.hook_flag("AILayerDamage.trackBest", action=lambda: ranked.append(
+            int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")))
+        h.park_before_hijack()
+        h.call_routine("AILayerDamage", limit=240)
+        return ranked[-1]
+
+    def test_multihit_shield_progress_counts_every_hit(self):
+        # Codex follow-up R3: a 200-HP shield outlasts all five Fury Attack
+        # hits, so the rank is pure shield progress: ~3 hits on average at 85%
+        # accuracy. It used to be credited ONE hit.
+        one_hit = self.estimate("FURY_ATTACK")
+        self.assertLess(5 * one_hit, 200)
+        self.assertGreater(self.substitute_rank("FURY_ATTACK", 200), 2 * one_hit)
+
+    def test_crit_weighting_cannot_inflate_capped_shield_progress(self):
+        # A 10-HP shield caps a breaking Tackle's shield part at 11, and the
+        # breaking hit never spills to the owner, so 11 is the whole value before
+        # accuracy; AIScaleDamageByAccuracy's x255/256 floors it to 10. Crit
+        # weighting used to be applied on top of the cap (12 before accuracy).
+        self.assertGreater(self.estimate("TACKLE"), 10)
+        self.assertEqual(self.substitute_rank("TACKLE", 10), 11 * 255 // 256)
+
     def test_substitute_breaker_outranks_a_hit_the_shield_absorbs(self):
         # Review F3 (2026-09-29): behind a Substitute every single hit used to
         # rank at 0 owner damage, so Tackle and Body Slam tied at 20. Now the
@@ -243,6 +317,76 @@ class AICheckpointBTest(unittest.TestCase):
         h.call_routine("AILayerDamage", limit=240)
         tackle_score, slam_score = h.read8("wBuffer"), h.read8("wBuffer", 1)
         self.assertLess(slam_score, tackle_score, (tackle, slam, sub_hp))
+
+    def lone_smart_score(self, move, *, enemy_hp=None, substitute=False):
+        """AI_SMART's score for a lone move (from 20), read before the
+        cross-cutting rules."""
+        h = self.h
+        scores = []
+        h.hook_flag("AISmartCrossCutting", action=lambda: scores.append(h.read8("wBuffer")))
+        h.park_before_hijack()
+        if enemy_hp is not None:
+            self.word("wEnemyMonHP", enemy_hp)
+        h.write8("wPlayerBattleStatus2",
+                 (1 << self.battle["HAS_SUBSTITUTE_UP"]) if substitute else 0)
+        h.write8("wPlayerSubstituteHP", 30 if substitute else 0)
+        h.write8("wAILastMoveNum", 0)
+        h.write8("wAISameMoveCount", 0)
+        h.write8("wEnemyMonMoves", self.moves[move])
+        for slot in range(1, 4):
+            h.write8("wEnemyMonMoves", 0, offset=slot)
+        h.write8("wBuffer", 20)
+        h.call_routine("AILayerSmart", limit=240)
+        return scores[-1]
+
+    def test_low_hp_explosion_into_a_substitute_is_heavily_discouraged(self):
+        # Codex follow-up L2: below a quarter HP, Explosion is normally a fine
+        # trade (18), but into a Substitute the user faints for nothing (30).
+        self.assertEqual(self.lone_smart_score("EXPLOSION", enemy_hp=5), 18)
+
+    def test_explosion_into_a_substitute_whatever_our_hp(self):
+        self.assertEqual(self.lone_smart_score("EXPLOSION", enemy_hp=5, substitute=True), 30)
+
+    def test_recoil_of_at_least_one_kills_a_one_hp_user(self):
+        # A level-2 Tauros' Take Down deals under 4, so damage/4 rounds to 0,
+        # but RecoilEffect_ deals at least 1: at 1 HP that is self-KO (AI_HEAVY,
+        # 30), not the mild "survivable recoil" nudge (21).
+        h = self.h
+        h.write8("wEnemyMonLevel", 2)
+        self.word("wBattleMonDefense", 999)
+        self.assertLess(self.estimate("TAKE_DOWN"), 4)
+        self.assertEqual(self.lone_smart_score("TAKE_DOWN", enemy_hp=1), 30)
+
+    def test_fresh_mon_does_not_inherit_the_previous_mons_move_history(self):
+        # Codex follow-up L1: after a send-out the tracker is marked fresh; the
+        # first decision clears streak, last move and last power instead of
+        # recording the previous mon's selection.
+        h = self.h
+        h.park_before_hijack()
+        h.write8("wAILastMoveNum", self.ai["AI_LAST_MOVE_FRESH_MON"])
+        h.write8("wAISameMoveCount", 5)
+        h.write8("wAILastMovePower", 0)
+        h.write8("wEnemySelectedMove", self.moves["GROWL"])
+        h.call_routine("AITrackLastMove", limit=120)
+        self.assertEqual([h.read8("wAILastMoveNum"), h.read8("wAISameMoveCount"),
+                          h.read8("wAILastMovePower")], [0, 0, 0])
+
+    def test_player_psywave_threat_uses_its_maximum_roll(self):
+        # Codex follow-up R6: a level-100 Psywave rolls up to 149, but the
+        # estimator's 3/4-level expectation (75) read as "cannot KO" at 100 HP.
+        h = self.h
+        h.write8("wBattleMonLevel", 100)
+        h.write8("wBattleMonMoves", self.moves["PSYWAVE"])
+        h.reveal_player_moves(0, [0], clear=True)
+        results = []
+        for enemy_hp in (100, 149, 150):
+            h.park_before_hijack()
+            self.word("wEnemyMonHP", enemy_hp)
+            h.write8("wAIPlayerKOCache", self.ai["AI_KO_CACHE_EMPTY"])
+            h.call_routine("AIPlayerWouldKO", limit=240)
+            results.append(h.read8("wAIPlayerKOCache"))
+        yes, no = self.ai["AI_KO_CACHE_YES"], self.ai["AI_KO_CACHE_NO"]
+        self.assertEqual(results, [yes, yes, no])
 
     # --- AIPlayerWouldKO one-decision cache (AI review option 3) ------------
     def test_ko_cache_hit_skips_the_scan_and_empty_recomputes(self):

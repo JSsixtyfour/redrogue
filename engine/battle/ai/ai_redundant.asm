@@ -567,6 +567,8 @@ AIRedundant_Haze:
 	jr nc, .notRedundant
 	call AIHazeHasClearableStatus
 	jr nz, .notRedundant
+	call AIHazeRestoresOurStats
+	jr c, .notRedundant ; restoring our burn/paralysis stat cut is a real effect
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 .notRedundant
@@ -584,6 +586,53 @@ AIRedundant_Haze:
 	ret
 .changed
 	and a ; explicit false, regardless of which side of neutral this stage is
+	ret
+
+; Carry SET if Haze would restore a stat of OURS that burn or paralysis is
+; holding down right now. HazeEffect_ copies every unmodified stat back into the
+; live one (ResetStats) but leaves our status alone, so the gain is real only
+; while the penalty is still applied: we have the status, that stat's stage is
+; neutral (a stage change is counted separately), and the live stat is below
+; the unmodified one. That last test is what stops Haze being rewarded again
+; right after it has already restored the stat (Codex follow-up R4, 2026-09-29).
+; Clobbers af, bc, de, hl.
+AIHazeRestoresOurStats::
+	ld a, [wEnemyMonStatus]
+	bit BRN, a
+	jr z, .notBurned
+	ld a, [wEnemyMonAttackMod]
+	cp BASE_STAT_LEVEL
+	jr nz, .notBurned
+	ld hl, wEnemyMonAttack
+	ld de, wEnemyMonUnmodifiedAttack
+	call .liveBelowUnmodified
+	ret c
+.notBurned
+	ld a, [wEnemyMonStatus]
+	bit PAR, a
+	jr z, .no
+	ld a, [wEnemyMonSpeedMod]
+	cp BASE_STAT_LEVEL
+	jr nz, .no
+	ld hl, wEnemyMonSpeed
+	ld de, wEnemyMonUnmodifiedSpeed
+; fallthrough: carry = live Speed below unmodified
+.liveBelowUnmodified
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = live
+	ld a, [de]
+	ld h, a
+	inc de
+	ld a, [de]
+	ld l, a ; hl = unmodified
+	ld a, c
+	sub l
+	ld a, b
+	sbc h ; carry iff live < unmodified
+	ret
+.no
+	and a
 	ret
 
 ; NZ if enemy Haze would clear a non-stage state. Mirrors HazeEffect_:

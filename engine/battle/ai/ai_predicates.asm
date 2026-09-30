@@ -301,6 +301,14 @@ AIEnemyHasReliableFirstKO::
 	ld a, [wEnemyBattleStatus2]
 	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
 	jr nz, .noKO
+; The PLAYER's state can stop the selected move too, and on a player-first turn
+; it may have changed after SelectEnemyMove (Codex follow-up R1, 2026-09-29):
+; a trapping move that landed this turn makes CheckEnemyStatusConditions skip
+; our move (.checkIfTrapped). Measured: a Wrap that landed first left the veto
+; saying "stay" with a finisher that could not be used.
+	ld a, [wPlayerBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr nz, .noKO
 
 ; SelectEnemyMove has already committed this turn's action before TrainerAI
 ; considers a switch or item. Evaluate that action only: another finisher in
@@ -331,6 +339,14 @@ AIEnemyHasReliableFirstKO::
 	jr z, .restoreNoKO
 	cp FLY_EFFECT
 	jr z, .restoreNoKO
+; A player in the invulnerable turn of Fly/Dig dodges every move but Swift
+; (MoveHitTest returns early for Swift, before .checkForDigOrFlyStatus).
+	cp SWIFT_EFFECT
+	jr z, .canConnect
+	ld a, [wPlayerBattleStatus1]
+	bit INVULNERABLE, a
+	jr nz, .restoreNoKO
+.canConnect
 	farcall AIEstimateDamage
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
@@ -384,8 +400,24 @@ AIDamageWouldKOEnemy::
 ; has already been used several times in a row, so ordinary sensible repetition
 ; is not punished).
 ;
+; SEND-OUT LIFECYCLE (Codex follow-up L1, 2026-09-29): AISelectSendOut marks
+; wAILastMoveNum with AI_LAST_MOVE_FRESH_MON. The first decision after that
+; clears all three history bytes instead of recording last turn's selection,
+; which belonged to the mon that just left - so its streak and zero-power turn
+; no longer penalise its replacement (AISmartCrossCutting reads 0 as "no move
+; tracked yet", as its own comment always assumed).
 ; Clobbers af, hl.
+ASSERT NUM_ATTACKS < AI_LAST_MOVE_FRESH_MON, "a move id would collide with the fresh-mon sentinel"
 AITrackLastMove::
+	ld a, [wAILastMoveNum]
+	cp AI_LAST_MOVE_FRESH_MON
+	jr nz, .tracking
+	xor a
+	ld [wAILastMoveNum], a
+	ld [wAISameMoveCount], a
+	ld [wAILastMovePower], a
+	ret
+.tracking
 	ld a, [wEnemyMovePower]
 	ld [wAILastMovePower], a
 
@@ -494,7 +526,11 @@ AISpeedDropFlipsTurnOrder::
 	ld c, a
 	ld a, [wBattleMonStatus]
 	and 1 << PAR
-	ld b, a ; nonzero = paralysed
+	ld b, a ; bit PAR = paralysed
+	call AIPlayerEarnedSpeedBoost
+	jr nc, .noEarnedBoost
+	set AI_SPEED_EARNED_BOOST_BIT, b
+.noEarnedBoost
 	ld a, c
 	ld hl, wPlayerMonUnmodifiedSpeed
 	call AIPredictSpeedAtStage ; de = the player's Speed after the drop
@@ -554,12 +590,15 @@ AIPlayerIsStrictlyFaster:
 	sbc d ; carry iff ours < the player's
 	ret
 
-; OUTPUT: de = the Speed a mon would have at stage a (1-13), exactly as the
-; engine recomputes a changed stat (effects.asm .recalculateStat): unmodified
-; Speed at hl * numerator / denominator, capped at 999, minimum 1. Then, when
-; b != 0 (paralysed), quartered with minimum 1, because this tree re-applies the
-; paralysis penalty after a stat change (custom_functions/apply_self_stat_penalty.asm).
-; Clobbers af, bc, hl.
+; OUTPUT: de = the Speed a mon would have at stage a (1-13), in execution's own
+; order after a Speed stage change:
+;   1. effects.asm .recalculateStat: unmodified Speed at hl * num / den, capped
+;      at 999, minimum 1;
+;   2. if b bit AI_SPEED_EARNED_BOOST_BIT: the player's earned x1.125 Speed boost
+;      (ApplySingleEarnedStatBoost: + Speed / 8, capped at 999);
+;   3. if b bit PAR: the paralysis quarter, minimum 1 (ApplyTargetStatPenalty /
+;      ApplySelfTargetStatPenalty re-apply it after the recompute).
+; Clobbers af, bc, hl. (2026-09-29 Codex follow-up R5 added step 2.)
 AIPredictSpeedAtStage:
 	push bc
 	push hl
@@ -605,8 +644,27 @@ AIPredictSpeedAtStage:
 	inc e
 .atLeastOne
 	pop bc
-	ld a, b
-	and a
+	bit AI_SPEED_EARNED_BOOST_BIT, b
+	jr z, .noEarnedBoost
+	ld h, d
+	ld l, e
+	srl h
+	rr l
+	srl h
+	rr l
+	srl h
+	rr l ; hl = Speed / 8
+	add hl, de
+	ld d, h
+	ld e, l
+	ld a, e
+	sub LOW(MAX_STAT_VALUE)
+	ld a, d
+	sbc HIGH(MAX_STAT_VALUE)
+	jr c, .noEarnedBoost
+	ld de, MAX_STAT_VALUE
+.noEarnedBoost
+	bit PAR, b
 	ret z
 	srl d
 	rr e
@@ -616,6 +674,23 @@ AIPredictSpeedAtStage:
 	or e
 	ret nz
 	inc e
+	ret
+
+; Carry SET if the player's Speed carries an earned x1.125 boost that execution
+; re-applies after a Speed change (ApplySingleEarnedStatBoost): Speed is bit 2
+; of wEarnedStatBoosts, and link battles never apply these boosts.
+; Clobbers af.
+AIPlayerEarnedSpeedBoost:
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .no
+	ld a, [wEarnedStatBoosts]
+	bit 2, a ; stat index 2 = Speed (0 Attack, 1 Defense, 2 Speed, 3 Special)
+	jr z, .no
+	scf
+	ret
+.no
+	and a
 	ret
 
 ; A copy of StatModifierRatios (data/battle/stat_modifiers.asm), which lives in
@@ -705,21 +780,81 @@ AIPlayerIsPhysicalThreat::
 ; already locked their move in by the time the AI runs. Knowing THIS turn's
 ; choice is a far stronger form of cheating than the roster-level omniscience
 ; the plan permits, and it would make mirror-priority situations unbeatable.
-; The AI assumes the player is not also using Quick Attack - the same assumption
-; a human opponent makes.
+; The player's Quick Attack is weighed only when the AI KNOWS the player holds
+; it (AIPlayerHasKnownMove: revealed by this mon, or an omniscient class; never
+; a type guess), and still never from the current selection (AI_BACKLOG B7,
+; 2026-09-29, overhaul F21). Mirrors MainInBattleLoop's order exactly: Quick
+; Attack beats a non-Quick-Attack, Quick Attack vs Quick Attack falls back to
+; Speed, Counter always goes last.
+; - Our Quick Attack: first, unless the player is known to hold Quick Attack -
+;   then Speed decides (a mirror neutralises priority, it does not win).
+; - Our ordinary move: first on Speed, but NOT guaranteed first when the player
+;   is known to hold Quick Attack, which would jump it.
 ; Clobbers af, bc, de, hl.
 AIEnemyActsFirstWith::
 	ld a, [wEnemyMoveNum]
 	cp QUICK_ATTACK
-	jr z, .actsFirst
+	jr z, .ourQuickAttack
 	cp COUNTER
 	jr z, .actsLast
+	ld a, QUICK_ATTACK
+	call AIPlayerHasKnownMove
+	jr c, .actsLast ; their known Quick Attack can jump our ordinary move
 	jp AIEnemyIsFaster
-.actsFirst
+.ourQuickAttack
+	ld a, QUICK_ATTACK
+	call AIPlayerHasKnownMove
+	jp c, AIEnemyIsFaster ; mirror Quick Attack: Speed decides
 	scf
 	ret
 .actsLast
-	and a ; a holds COUNTER here, so this only clears carry
+	and a ; clears carry whatever a holds
+	ret
+
+; Carry SET if the player is KNOWN to hold move a: the move sits in the active
+; mon's real moveset AND either that slot was revealed by this party member
+; (wAISeenPlayerMoveMask) or this trainer class is omniscient
+; (AIOmniscientClasses). A visible-type guess never counts, so this is the
+; accessor for rules that must rest on what was actually shown.
+; Clobbers af, bc, de, hl.
+AIPlayerHasKnownMove::
+	ld d, a ; d = the move asked about
+	call AIPlayerMovesAreKnown ; carry = omniscient; clobbers a, b, hl
+	ld e, $f ; every slot known
+	jr c, .scan
+	ld a, [wPlayerMonNumber]
+	ld c, a
+	srl a ; mask byte
+	ld hl, wAISeenPlayerMoveMask
+	add l
+	ld l, a
+	jr nc, .gotByte
+	inc h
+.gotByte
+	ld a, [hl]
+	bit 0, c
+	jr z, .lowNibble
+	swap a ; odd party slots use the high nibble
+.lowNibble
+	and $f
+	ld e, a ; e = this mon's revealed-slot bits
+.scan
+	ld hl, wBattleMonMoves
+	ld b, NUM_MOVES
+.nextSlot
+	ld a, [hli]
+	cp d
+	jr nz, .notThisSlot
+	bit 0, e
+	jr nz, .known
+.notThisSlot
+	srl e
+	dec b
+	jr nz, .nextSlot
+	and a
+	ret
+.known
+	scf
 	ret
 
 ; Far target for AIPlanClassMoveLands in bank $2C; returns its boolean in e.
@@ -899,9 +1034,15 @@ AIAdjustEnemyDamageForReliableDelivery::
 	ld a, 4
 	jr AIAdjustDamageForDelivery
 AIAdjustEnemyDamageForPossibleDelivery::
+	ld a, [wEnemyMoveNum]
+	ld hl, wEnemyMonLevel
+	call AIPsywaveMaximumIntoEstimate
 	xor a
 	jr AIAdjustDamageForDelivery
 AIAdjustPlayerDamageForPossibleDelivery::
+	ld a, [wPlayerMoveNum]
+	ld hl, wBattleMonLevel
+	call AIPsywaveMaximumIntoEstimate
 	ld a, 1
 	jr AIAdjustDamageForDelivery
 AIAdjustEnemyDamageForExpectedDelivery::
@@ -1122,6 +1263,26 @@ AIAdjustDamageForDelivery:
 	ld e, a
 	ret
 
+; Possible delivery needs a MAXIMUM, but the shared estimator reports Psywave's
+; EXPECTATION (3/4 level, _AIEstimateForTurn), so a possible-KO check read a
+; level-100 Psywave as 75 when it can deal 149 (Codex follow-up R6). If a is
+; PSYWAVE, replace the estimate with the largest roll: both sides loop until the
+; roll is below b = level + level / 2 (8-bit, as the engine computes it), so the
+; maximum is b - 1. INPUT: a = move id, hl = the attacker's level.
+; Clobbers af, b.
+AIPsywaveMaximumIntoEstimate:
+	cp PSYWAVE
+	ret nz
+	ld a, [hl]
+	ld b, a
+	srl a
+	add b
+	dec a
+	ld [wAIDamageEstimate + 1], a
+	xor a
+	ld [wAIDamageEstimate], a
+	ret
+
 ; Caps a ranking estimate after crit expectation so early faint still bounds it.
 AICapEnemyDamageAtOwnerHP::
 	xor a
@@ -1134,7 +1295,9 @@ AICapEnemyDamageAtOwnerHP::
 ; roll: floor(estimate * 217 / 255), exactly RandomizeDamage's smallest
 ; multiplier (it rejects rolls below 85 percent + 1). Damage 0/1 is left alone,
 ; as RandomizeDamage skips those. Exact fixed damage (Seismic Toss, Night Shade,
-; SonicBoom, Dragon Rage, Super Fang) has no roll; Psywave's minimum is 1.
+; SonicBoom, Dragon Rage, Super Fang) has no roll. The ENEMY's Psywave rolls in
+; [0, level * 1.5) (core.asm, unlike the player's [1, ...)), so its guaranteed
+; damage is 0 (Codex follow-up R6).
 ; Clobbers af, b.
 AIScaleEstimateToMinimumRoll:
 	ld a, [wEnemyMoveEffect]
@@ -1147,7 +1310,6 @@ AIScaleEstimateToMinimumRoll:
 	ret nz
 	xor a
 	ld [wAIDamageEstimate], a
-	inc a
 	ld [wAIDamageEstimate + 1], a
 	ret
 .rolled

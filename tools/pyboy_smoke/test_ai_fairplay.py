@@ -166,6 +166,48 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
                          self.moves["BODY_SLAM"])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
 
+    def menu_swap(self, first: int, second: int) -> None:
+        """What SwapMovesInMenu does to the moves, then its AI hook (1-based)."""
+        assert self.harness is not None
+        h = self.harness
+        moves = h.read_bytes("wBattleMonMoves", 4)
+        moves[first - 1], moves[second - 1] = moves[second - 1], moves[first - 1]
+        for index, move in enumerate(moves):
+            h.write8("wBattleMonMoves", move, offset=index)
+        h.write8("wMenuItemToSwap", first)
+        h.write8("hCurrentMenuItem", second)
+        h.park_before_hijack()
+        h.call_routine("AISwapRevealedMoveSlots")
+
+    def test_move_reorder_keeps_the_revealed_move_known(self) -> None:
+        # Codex follow-up R2: reveal Tackle in slot 0, then swap slots 1<->2 in
+        # the battle menu. Tackle (now slot 1) stays known; Growl, which moved
+        # into slot 0 unseen, must not become known.
+        assert self.harness is not None
+        self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
+        self.prime_seen_moves([0])
+        self.menu_swap(1, 2)
+        self.assertEqual(self.harness.revealed_player_moves(0), [1])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
+                         self.moves["TACKLE"])
+
+    def test_move_reorder_of_two_revealed_moves_changes_nothing(self) -> None:
+        assert self.harness is not None
+        self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
+        self.prime_seen_moves([0, 1])
+        self.menu_swap(1, 2)
+        self.assertEqual(self.harness.revealed_player_moves(0), [0, 1])
+
+    def test_move_reorder_on_an_odd_party_slot_leaves_the_neighbour_alone(self) -> None:
+        assert self.harness is not None
+        self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
+        self.harness.reveal_player_moves(0, [2], clear=True)
+        self.harness.reveal_player_moves(1, [0])
+        self.harness.write8("wPlayerMonNumber", 1)
+        self.menu_swap(1, 3)
+        self.assertEqual(self.harness.revealed_player_moves(1), [2])
+        self.assertEqual(self.harness.revealed_player_moves(0), [2])
+
     def test_dual_type_guesses_one_move_per_visible_type(self) -> None:
         # Gyarados is Water/Flying: slot 0 guesses SURF, slot 1 DRILL_PECK.
         assert self.harness is not None

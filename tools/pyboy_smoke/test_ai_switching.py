@@ -80,6 +80,16 @@ class AISelectSendOutTest(unittest.TestCase):
         self.assertEqual(selected, 1)
         self.assertEqual(multiplier, 20)
 
+    def test_send_out_marks_the_move_history_fresh(self) -> None:
+        # Codex follow-up L1: a replacement must not inherit the previous mon's
+        # anti-spam / fatigue history. AI_LAST_MOVE_FRESH_MON is $fe.
+        self.boot_fixture("SNORLAX", ["PIKACHU", "RATTATA", "PIDGEY"])
+        assert self.harness is not None
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.write8("wAILastMoveNum", 0x21)
+        self.call_selector_with_sentinels()
+        self.assertEqual(self.harness.read8("wAILastMoveNum"), 0xFE)
+
     def test_skips_fainted_best_counter(self) -> None:
         self.boot_fixture("SNORLAX", ["PIKACHU", "RATTATA", "PIDGEY"])
         assert self.harness is not None
@@ -334,19 +344,21 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.harness.call_routine("AIShouldSwitch")
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
-    def slower_selected_finisher(self, enemy_status: int = 0) -> tuple[int, int]:
-        """Slower Slowpoke with Tackle selected; both sides in finishing range."""
+    def slower_selected_finisher(self, enemy_status: int = 0, *, move: str = "TACKLE",
+                                 player_status1: int = 0) -> tuple[int, int]:
+        """Slower Slowpoke with `move` selected; both sides in finishing range."""
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [self.mon("ELECTRODE", ["TACKLE"])],
-            [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("RATTATA")],
+            [self.mon("SLOWPOKE", [move]), self.mon("RATTATA")],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         self.harness.boot_fight2(seed=1)
         self.harness.write8("wEnemyMonPartyPos", 0)
-        self.harness.write8("wEnemySelectedMove", self.moves["TACKLE"])
+        self.harness.write8("wEnemySelectedMove", self.moves[move])
         self.harness.write8("wEnemyMoveListIndex", 0)
         self.harness.write8("wEnemyMonStatus", enemy_status)
+        self.harness.write8("wPlayerBattleStatus1", player_status1)
         self.harness.reveal_player_moves(0, [0], clear=True)
         self.prime_both_sides_lethal()
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
@@ -360,6 +372,20 @@ class AIShouldSwitchTest(unittest.TestCase):
         # action. It used to switch out here (the old "second action" test
         # asserted that); the real-turn version is probe_ai_review_phase0 F1.
         self.assertEqual(self.slower_selected_finisher(), (0, 1))
+
+    # Codex follow-up R1: the player's state at the enemy's action point.
+    # wPlayerBattleStatus1 bit 5 = USING_TRAPPING_MOVE, bit 6 = INVULNERABLE.
+    def test_newly_landed_trap_voids_the_winning_action_veto(self) -> None:
+        # A Wrap that landed first means our finisher cannot be used this turn;
+        # trapped and slower, the trap trigger then switches.
+        self.assertEqual(self.slower_selected_finisher(player_status1=1 << 5), (1, 0))
+
+    def test_invulnerable_target_voids_the_veto_except_for_swift(self) -> None:
+        self.assertEqual(self.slower_selected_finisher(player_status1=1 << 6), (1, 0))
+
+    def test_swift_still_vetoes_against_an_invulnerable_target(self) -> None:
+        self.assertEqual(
+            self.slower_selected_finisher(move="SWIFT", player_status1=1 << 6), (0, 1))
 
     def test_paralyzed_finisher_does_not_veto_emergency_switch(self) -> None:
         # 25% full paralysis puts the KO below the 90% reliability bar.

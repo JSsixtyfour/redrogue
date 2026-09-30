@@ -139,6 +139,70 @@ AIGetPlayerMoveN::
 	xor a
 	jr .exit
 
+; SwapMovesInMenu (core.asm) just swapped two of the active mon's move slots:
+; swap their revealed bits too, so wAISeenPlayerMoveMask keeps marking the
+; MOVES that were shown, not the slots they happened to sit in (Codex
+; follow-up R2, 2026-09-29: a reveal used to jump to the never-used move that
+; took its slot). Slots are 1-based in wMenuItemToSwap and hCurrentMenuItem,
+; both still set at the hook. Farcall target from bank $0F; no register
+; contract. Clobbers af, bc, de, hl.
+AISwapRevealedMoveSlots::
+	ld a, [wPlayerMonNumber]
+	ld c, a
+	srl a ; mask byte
+	ld hl, wAISeenPlayerMoveMask
+	add l
+	ld l, a
+	jr nc, .gotByte
+	inc h
+.gotByte
+	ld a, [hl]
+	bit 0, c
+	jr z, .oriented
+	swap a ; this mon's bits into the low nibble
+.oriented
+	ld e, a
+	ld a, [wMenuItemToSwap]
+	call .slotBit
+	ld b, a
+	ldh a, [hCurrentMenuItem]
+	call .slotBit
+	ld d, a
+	ld a, e
+	and b
+	jr z, .firstClear
+	ld a, e
+	and d
+	ret nz ; both revealed: nothing moves
+	jr .toggle
+.firstClear
+	ld a, e
+	and d
+	ret z ; neither revealed
+.toggle
+	ld a, b
+	or d
+	xor e ; exactly one of the two bits was set: move it to the other slot
+	bit 0, c
+	jr z, .store
+	swap a
+.store
+	ld [hl], a
+	ret
+; a = 1-based slot -> a = its bit. Preserves bc, de, hl.
+.slotBit
+	push bc
+	ld b, a
+	ld a, 1
+.shift
+	dec b
+	jr z, .gotBit
+	add a
+	jr .shift
+.gotBit
+	pop bc
+	ret
+
 ; Carry SET if this trainer class sees the player's full moveset.
 ; Clobbers af, b, hl. Preserves c (AIGetPlayerMoveN's slot).
 AIPlayerMovesAreKnown:

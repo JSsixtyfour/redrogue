@@ -146,6 +146,54 @@ class AICheckpointATest(unittest.TestCase):
         self.assertEqual(scores, [expected for _l, _w, expected in cases],
                          [label for label, _w, _e in cases])
 
+    def read_word(self, label):
+        return int.from_bytes(bytes(self.h.read_bytes(label, 2)), "big")
+
+    def haze_layer_score(self, layer, writes, halve=None):
+        """Score of a lone Haze from `layer`, from 20. `halve` = (live, unmodified)
+        stat labels: write live = unmodified // 2, i.e. a penalty in effect."""
+        self.prime_haze()
+        self.h.write8("wAILastMoveNum", 0)
+        self.h.write8("wAISameMoveCount", 0)
+        for label, value in writes.items():
+            self.h.write8(label, value)
+        if halve:
+            live, unmodified = halve
+            self.word(live, self.read_word(unmodified) // 2)
+        scores = []
+        if layer == "AILayerSmart":
+            self.h.hook_flag("AISmartCrossCutting", action=lambda:
+                             scores.append(self.h.read8("wBuffer")))
+        self.h.call_routine(layer, limit=120)
+        return scores[-1] if scores else self.h.read8("wBuffer")
+
+    def test_haze_that_restores_our_burned_attack_is_not_redundant(self):
+        # Codex follow-up R4: burned, neutral stages, nothing else - Haze's only
+        # effect is restoring our halved Attack. It used to saturate to 79.
+        burned = {"wEnemyMonStatus": 1 << 4}
+        attack = ("wEnemyMonAttack", "wEnemyMonUnmodifiedAttack")
+        self.assertEqual(self.haze_layer_score("AILayerRedundant", burned, attack), 20)
+        self.assertEqual(self.haze_layer_score("AILayerSmart", burned, attack), 19)
+
+    def test_haze_after_the_penalty_is_already_restored_stays_redundant(self):
+        # Burned but the live Attack already equals the unmodified one (a
+        # previous Haze restored it): no repeat reward.
+        h = self.h
+        self.prime_haze()
+        h.write8("wEnemyMonStatus", 1 << 4)
+        self.word("wEnemyMonAttack", self.read_word("wEnemyMonUnmodifiedAttack"))
+        h.call_routine("AILayerRedundant", limit=120)
+        self.assertEqual(h.read8("wBuffer"), 79)
+
+    def test_haze_that_restores_our_paralysed_speed_is_not_redundant(self):
+        paralysed = {"wEnemyMonStatus": 1 << 6}
+        speed = ("wEnemyMonSpeed", "wEnemyMonUnmodifiedSpeed")
+        self.assertEqual(self.haze_layer_score("AILayerRedundant", paralysed, speed), 20)
+
+    def test_haze_counts_disable_on_both_sides(self):
+        self.assertEqual(self.haze_layer_score("AILayerSmart", {"wEnemyDisabledMove": 0x11}), 19)
+        self.assertEqual(self.haze_layer_score("AILayerSmart", {"wPlayerDisabledMove": 0x11}), 22)
+
     def test_haze_noop_and_all_six_non_neutral_stage_contracts(self):
         self.prime_haze()
         self.h.call_routine("AILayerRedundant", limit=120)

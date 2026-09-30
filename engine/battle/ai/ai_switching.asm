@@ -78,6 +78,9 @@ AISelectSendOut::
 	xor a
 	ld [wAIPlan], a
 	ld [wAIPlanStep], a
+; ...and a fresh move history (AITrackLastMove's send-out lifecycle, L1).
+	ld a, AI_LAST_MOVE_FRESH_MON
+	ld [wAILastMoveNum], a
 
 ; ===========================================================================
 ; OPENING LEAD: no scoring. User decision, 2026-09-01.

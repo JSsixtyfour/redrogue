@@ -107,11 +107,14 @@ AILayerDamage:
 ; Behind a Substitute, a single hit that breaks it delivers 0 to the owner, so
 ; ranking on owner damage alone left every attack tied at the baseline and the
 ; AI with no reason to pick the one that breaks the shield (2026-09-29 review
-; F3). Rank on min(one-hit max, Substitute HP + 1) - the damage the shield
-; actually absorbs, +1 so a hit that BREAKS it outranks one that only leaves a
-; zero-HP shield (engine equality rule) - plus whatever still reaches the
-; owner. Both parts are already capped, so the owner-HP cap is skipped. This
-; is ranking only: the possible-KO test above is unchanged.
+; F3). Rank on the EXPECTED shield progress - over the move's real hit-count
+; outcomes, each capped at Substitute HP + 1 (the +1 so a hit that BREAKS it
+; outranks one that only leaves a zero-HP shield, the engine equality rule) -
+; plus the expected damage that still reaches the owner. Crit weighting and the
+; owner-HP cap apply to the owner part only: shield progress is already capped
+; and a crit cannot push it past the shield (Codex follow-up R3, 2026-09-29:
+; multi-hit moves used to be credited one hit, and a 10-HP shield let Tackle
+; rank 12). This is ranking only: the possible-KO test above is unchanged.
 .rankIntoSubstitute
 	ld a, [wAIDamageEstimate]
 	ld d, a
@@ -119,26 +122,16 @@ AILayerDamage:
 	ld e, a ; de = one-hit maximum
 	push de
 	call AIAdjustEnemyDamageForExpectedDelivery ; owner part
+	call AIScaleDamageForCrit
+	call AICapEnemyDamageAtOwnerHP
 	pop de
-	ld a, [wPlayerSubstituteHP]
-	ld c, a
-	ld b, 0
-	inc bc ; Substitute HP + 1 (at most 250)
-	ld a, e
-	sub c
-	ld a, d
-	sbc b
-	jr nc, .gotShieldPart ; one hit reaches past the shield: bc
-	ld b, d
-	ld c, e ; else the whole hit is absorbed
-.gotShieldPart
+	call AIExpectedShieldProgress ; bc = expected shield part
 	ld a, [wAIDamageEstimate + 1]
 	add c
 	ld [wAIDamageEstimate + 1], a
 	ld a, [wAIDamageEstimate]
 	adc b
 	ld [wAIDamageEstimate], a
-	call AIScaleDamageForCrit
 .rankedByDelivery
 	call AIScaleDamageByAccuracy
 	call .trackBest
@@ -278,4 +271,83 @@ AILayerDamage:
 	ld [wBuffer + AI_BUF_BESTDMG + 1], a
 	ld a, [wBuffer + AI_BUF_CURSLOT]
 	ld [wBuffer + AI_BUF_BESTSLOT], a
+	ret
+
+; INPUT: de = the enemy move's one-hit maximum. OUTPUT: bc = the expected damage
+; the player's Substitute absorbs from it: f(n) = min(n * one hit, Sub HP + 1)
+; averaged over the real hit-count outcomes - 1 hit, 2 (ATTACK_TWICE / Twineedle),
+; or 2-5 at 3/8, 3/8, 1/8, 1/8 (TwoToFiveAttacksEffect; Witch multistrike is
+; player-only). Clobbers af, de, hl.
+AIExpectedShieldProgress:
+	ld a, [wPlayerSubstituteHP]
+	ld l, a
+	ld h, 0
+	inc hl ; hl = cap, Sub HP + 1
+	ld a, [wEnemyMoveEffect]
+	cp ATTACK_TWICE_EFFECT
+	jr z, .twoHits
+	cp TWINEEDLE_EFFECT
+	jr z, .twoHits
+	cp TWO_TO_FIVE_ATTACKS_EFFECT
+	jr z, .variable
+	cp EFFECT_1E
+	jr z, .variable
+	ld a, 1
+	jr .shieldAfterHits
+.twoHits
+	ld a, 2
+	jr .shieldAfterHits
+.variable
+	ld a, 2
+	call .shieldAfterHits
+	push bc
+	push bc
+	push bc ; 3 x f(2)
+	ld a, 3
+	call .shieldAfterHits
+	push bc
+	push bc
+	push bc ; 3 x f(3)
+	ld a, 4
+	call .shieldAfterHits
+	push bc ; f(4)
+	ld a, 5
+	call .shieldAfterHits ; bc = f(5); the cap in hl is no longer needed
+	ld h, b
+	ld l, c
+	rept 7
+		pop bc
+		add hl, bc
+	endr
+	rept 3
+		srl h
+		rr l
+	endr ; / 8
+	ld b, h
+	ld c, l
+	ret
+; a = hits, de = one hit, hl = cap -> bc = min(hits * de, cap). Preserves de, hl.
+.shieldAfterHits
+	ld bc, 0
+.addHit
+	push af
+	ld a, c
+	add e
+	ld c, a
+	ld a, b
+	adc d
+	ld b, a
+	ld a, c
+	sub l
+	ld a, b
+	sbc h
+	jr c, .belowCap
+	pop af
+	ld b, h
+	ld c, l
+	ret
+.belowCap
+	pop af
+	dec a
+	jr nz, .addHit
 	ret
