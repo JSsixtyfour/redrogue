@@ -49,21 +49,6 @@ _Route12Fisher2AfterBattleText::
 	cont "better #MON!"
 	done
 
-_Route12CooltrainerMBattleText::
-	text "Have you found a"
-	line "MOON STONE?"
-	done
-
-_Route12CooltrainerMEndBattleText::
-	text "Oww!"
-	prompt
-
-_Route12CooltrainerMAfterBattleText::
-	text "I could have made"
-	line "my #MON evolve"
-	cont "with MOON STONE!"
-	done
-
 _Route12SuperNerdBattleText::
 	text "Electricity is my"
 	line "specialty!"

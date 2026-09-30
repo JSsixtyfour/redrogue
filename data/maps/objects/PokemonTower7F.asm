@@ -1,8 +1,8 @@
 	object_const_def
+	const_export POKEMONTOWER7F_PADDING
 	const_export POKEMONTOWER7F_ROCKET1
 	const_export POKEMONTOWER7F_ROCKET2
 	const_export POKEMONTOWER7F_ROCKET3
-	const_export POKEMONTOWER7F_ROCKET4
 	const_export POKEMONTOWER7F_ROCKET5
     const_export POKEMONTOWER7F_POKE_BALL
     const_export POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_1
@@ -22,10 +22,14 @@ PokemonTower7F_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three rockets and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_ROCKET, STAY, DOWN, TEXT_POKEMONTOWER7F_PADDING
 	object_event  9, 12, SPRITE_ROCKET, STAY, RIGHT, TEXT_POKEMONTOWER7F_ROCKET1, OPP_ROCKET, 1
 	object_event 12, 10, SPRITE_ROCKET, STAY, LEFT, TEXT_POKEMONTOWER7F_ROCKET2, OPP_ROCKET, 1
 	object_event  9,  9, SPRITE_ROCKET, STAY, RIGHT, TEXT_POKEMONTOWER7F_ROCKET3, OPP_ROCKET, 1
-	object_event 12,  7, SPRITE_ROCKET, STAY, LEFT, TEXT_POKEMONTOWER7F_ROCKET4, OPP_ROCKET, 1
 	object_event  9,  6, SPRITE_ROCKET, STAY, RIGHT, TEXT_POKEMONTOWER7F_ROCKET5, OPP_ROCKET, 1
 	object_event 12, 16, SPRITE_POKE_BALL, STAY, NONE, TEXT_POKEMONTOWER7F_RANDOM, 0
 	object_event  8,  4, SPRITE_POKE_BALL, STAY, NONE, TEXT_POKEMONTOWER7F_ROGUE_REWARD_POKEBALL_1

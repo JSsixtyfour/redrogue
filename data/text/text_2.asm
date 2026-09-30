@@ -321,20 +321,10 @@ _GameOverText::
 _CinnabarGymQuizIntroText::
 	text "#MON Quiz!"
 
-	para "Get it right and"
-	line "the door opens to"
-	cont "the next room!"
+	para "Test your #MON"
+	line "knowledge!"
 
-	para "Get it wrong and"
-	line "face a trainer!"
-
-	para "If you want to"
-	line "conserve your"
-	cont "#MON for the"
-	cont "GYM LEADER..."
-
-	para "Then get it right!"
-	line "Here we go!"
+	para "Here we go!"
 	prompt
 
 _CinnabarQuizQuestionsText1::
@@ -376,7 +366,7 @@ _CinnabarGymQuizCorrectText::
 	text "You're absolutely"
 	line "correct!"
 
-	para "Go on through!@"
+	para "Well done!@"
 	text_end
 
 _CinnabarGymQuizIncorrectText::

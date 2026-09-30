@@ -1,8 +1,7 @@
 DEF ROUTE3_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_3_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_3_TRAINER_3 % 8))
 
 Route3_Script:
 
@@ -77,8 +76,7 @@ Route3_ScriptPointers:
 
 Route3_TextPointers:
 	def_text_pointers
-	dw_const Route3SuperNerdText,    TEXT_ROUTE3_SUPER_NERD
-	dw_const Route3BugCatcherText,   TEXT_ROUTE3_BUG_CATCHER
+	dw_const Route3PaddingText,      TEXT_ROUTE3_PADDING
 	dw_const Route3LassText,         TEXT_ROUTE3_LASS
 	dw_const Route3Youngster1Text,   TEXT_ROUTE3_YOUNGSTER1
 	dw_const Route3Youngster2Text,   TEXT_ROUTE3_YOUNGSTER2
@@ -88,50 +86,35 @@ Route3_TextPointers:
     dw_const Route3_Rogue_Reward_Script_PokeballText_2, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_2
     dw_const Route3_Rogue_Reward_Script_PokeballText_3, TEXT_ROUTE3_ROGUE_REWARD_POKEBALL_3
     dw_const Route3_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE3_ROGUE_TRADE_NPC
+	dw_const Route3SuperNerdText,    TEXT_ROUTE3_SUPER_NERD
     dw_const Rogue_Route3_Reward_Text, TEXT_ROUTE3_REWARD_VENDOR_1
     EXPORT TEXT_ROUTE3_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 	dw_const Route3SignText,          TEXT_ROUTE3_SIGN
 	dw_const Route3NoTurningBackText, TEXT_ROUTE3_NO_TURNING_BACK
 
 Route3TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route3TrainerHeader0:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_0, 2, Route3BugCatcherBattleText, Route3BugCatcherEndBattleText, Route3BugCatcherAfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_0, 2, Route3LassBattleText, Route3LassEndBattleText, Route3LassAfterBattleText
 Route3TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 2, Route3LassBattleText, Route3LassEndBattleText, Route3LassAfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_1, 2, Route3Youngster1BattleText, Route3Youngster1EndBattleText, Route3Youngster1AfterBattleText
 Route3TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_2, 2, Route3Youngster1BattleText, Route3Youngster1EndBattleText, Route3Youngster1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_2, 1, Route3Youngster2BattleText, Route3Youngster2EndBattleText, Route3Youngster2AfterBattleText
 Route3TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_3, 1, Route3Youngster2BattleText, Route3Youngster2EndBattleText, Route3Youngster2AfterBattleText
-Route3TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_3_TRAINER_4, 4, Route3JrTrainerFBattleText, Route3JrTrainerFEndBattleText, Route3JrTrainerFAfterBattleText
+	trainer EVENT_BEAT_ROUTE_3_TRAINER_3, 4, Route3JrTrainerFBattleText, Route3JrTrainerFEndBattleText, Route3JrTrainerFAfterBattleText
 	db -1 ; end
 
 Route3SuperNerdText:
 	text_far _Route3Text1
 	text_end
 
-Route3BugCatcherText:
-	text_asm
-	ld hl, Route3TrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route3BugCatcherBattleText:
-	text_far _Route3BugCatcherBattleText
-	text_end
-
-Route3BugCatcherEndBattleText:
-	text_far _Route3BugCatcherEndBattleText
-	text_end
-
-Route3BugCatcherAfterBattleText:
-	text_far _Route3BugCatcherAfterBattleText
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route3PaddingText:
 	text_end
 
 Route3LassText:
 	text_asm
-	ld hl, Route3TrainerHeader1
+	ld hl, Route3TrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -149,7 +132,7 @@ Route3LassAfterBattleText:
 
 Route3Youngster1Text:
 	text_asm
-	ld hl, Route3TrainerHeader2
+	ld hl, Route3TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -167,7 +150,7 @@ Route3Youngster1AfterBattleText:
 
 Route3Youngster2Text:
 	text_asm
-	ld hl, Route3TrainerHeader3
+	ld hl, Route3TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -185,7 +168,7 @@ Route3Youngster2AfterBattleText:
 
 Route3JrTrainerFText:
 	text_asm
-	ld hl, Route3TrainerHeader4
+	ld hl, Route3TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -198,14 +181,14 @@ Route3JrTrainerFEndBattleText:
 	text_end
 
 Route3JrTrainerFAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_3_TRAINER_0 / 8)]
 	and ROUTE3_ALL_TRAINERS_MASK
 	sub ROUTE3_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

@@ -445,7 +445,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         self.seen.clear()
-        h.write8("wBattleCount", 63)  # a band where the grid rolls every slot
+        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls every slot
         h.write8("wTrainerClass", self.classes["GAMBLER"])
         h.write8("wTrainerNo", 1)
         h.call_routine("ReadTrainer", limit=60000)
@@ -460,7 +460,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
             "nothing about the exemption",
         )
         self.assertEqual(
-            self._selected_mix(63), _constants()["MIX_ROUTE_LATE"],
+            self._selected_mix(at(6, 1)), _constants()["MIX_ROUTE_LATE"],
             "the control class did not reach the mix hook either, so this test "
             "cannot tell an exemption from a dead code path",
         )

@@ -1,8 +1,7 @@
 DEF VIRIDIAN_FOREST_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3 % 8))
 
 ViridianForest_Script:
 	
@@ -80,10 +79,10 @@ ViridianForest_ScriptPointers:
 
 ViridianForest_TextPointers:
 	def_text_pointers
+	dw_const ViridianForestPaddingText,         TEXT_VIRIDIANFOREST_PADDING
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
-    dw_const ViridianForestYoungster5Text,      TEXT_VIRIDIANFOREST_YOUNGSTER5
     dw_const ViridianForestCooltrainer_FText,   TEXT_VIRIDIANFOREST_COOLTRAINER_F
     dw_const RandomPickUpItemText,              TEXT_VIRIDIANFOREST_RANDOM
     dw_const ViridianForestRogue_Reward_Script_PokeballText_1, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1
@@ -107,7 +106,7 @@ ViridianForest_TextPointers:
     
 
 ViridianForestTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 ViridianForestTrainerHeader0:
 	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0, 4, ViridianForestYoungster2BattleText, ViridianForestYoungster2EndBattleText, ViridianForestYoungster2AfterBattleText
 ViridianForestTrainerHeader1:
@@ -115,12 +114,12 @@ ViridianForestTrainerHeader1:
 ViridianForestTrainerHeader2:
 	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_2, 4, ViridianForestYoungster4BattleText, ViridianForestYoungster4EndBattleText, ViridianForestYoungster4AfterBattleText
 ViridianForestTrainerHeader3:
-	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3, 4, ViridianForestYoungster5BattleText, ViridianForestYoungster5EndBattleText, ViridianForestYoungster5AfterBattleText
-ViridianForestTrainerHeader4:
-	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_4, 4, ViridianForestCooltrainer_FBattleText, ViridianForestCooltrainer_FEndBattleText, ViridianForestCooltrainer_FAfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3, 4, ViridianForestCooltrainer_FBattleText, ViridianForestCooltrainer_FEndBattleText, ViridianForestCooltrainer_FAfterBattleText
 	db -1 ; end
-    
 
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+ViridianForestPaddingText:
+	text_end
 
 ViridianForestYoungster1Text:
 	text_far _ViridianForestYoungster1Text
@@ -144,12 +143,6 @@ ViridianForestYoungster4Text:
 	call TalkToTrainer
 	jp TextScriptEnd
     
-ViridianForestYoungster5Text:
-	text_asm
-	ld hl, ViridianForestTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 ViridianForestYoungster2BattleText:
 	text_far _ViridianForestYoungster2BattleText
 	text_end
@@ -186,18 +179,6 @@ ViridianForestYoungster4AfterBattleText:
 	text_far _ViridianForestYoungster4AfterBattleText
 	text_end
 
-ViridianForestYoungster5BattleText:
-	text_far _ViridianForestYoungster4BattleText
-	text_end
-
-ViridianForestYoungster5EndBattleText:
-	text_far _ViridianForestYoungster4EndBattleText
-	text_end
-
-ViridianForestYoungster5AfterBattleText:
-	text_far _ViridianForestYoungster4AfterBattleText
-	text_end
-    
 ViridianForestYoungster6Text:
 	text_far _ViridianForestYoungster5Text
 	text_end
@@ -228,7 +209,7 @@ ViridianForestLeavingSignText:
     
 ViridianForestCooltrainer_FText:
 	text_asm
-	ld hl, ViridianForestTrainerHeader4
+	ld hl, ViridianForestTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
     
@@ -244,7 +225,7 @@ ViridianForestCooltrainer_FBattleText:
 	ld hl, .GiovanniMiniBoss
 	ret
 .Vanilla
-	text_far _ViridianForestYoungster4BattleText
+	text_far _ViridianForestCooltrainerFBattleText
 	text_end
 .GiovanniMiniBoss
 	text_far _GiovanniMiniBossBattleText
@@ -266,14 +247,14 @@ ViridianForestCooltrainer_FEndBattleText:
 	text_end
 
 ViridianForestCooltrainer_FAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_0 / 8)]
 	and VIRIDIAN_FOREST_ALL_TRAINERS_MASK
 	sub VIRIDIAN_FOREST_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

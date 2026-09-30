@@ -1,7 +1,7 @@
 	object_const_def
+	const_export SEAFOAMISLANDS1F_PADDING
 	const_export SEAFOAMISLANDS1F_SWIMMER
 	const_export SEAFOAMISLANDS1F_CUE_BALL
-	const_export SEAFOAMISLANDS1F_COOLTRAINER_F
 	const_export SEAFOAMISLANDS1F_HIKER
 	const_export SEAFOAMISLANDS1F_POKEMANIAC
     const_export SEAFOAMISLANDS1F_POKE_BALL
@@ -23,9 +23,13 @@ SeafoamIslands1F_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_SEAFOAMISLANDS1F_PADDING
 	object_event  5, 10, SPRITE_COOLTRAINER_M, STAY, RIGHT, TEXT_SEAFOAMISLANDS1F_SWIMMER, OPP_SWIMMER, 1
 	object_event 10,  9, SPRITE_BIKER, STAY, LEFT, TEXT_SEAFOAMISLANDS1F_CUE_BALL, OPP_CUE_BALL, 1
-	object_event 12,  2, SPRITE_COOLTRAINER_F, STAY, DOWN, TEXT_SEAFOAMISLANDS1F_COOLTRAINER_F, OPP_COOLTRAINER_F, 1
 	object_event 16,  2, SPRITE_HIKER, STAY, DOWN, TEXT_SEAFOAMISLANDS1F_HIKER, OPP_HIKER, 1
 	object_event 22,  6, SPRITE_SUPER_NERD, STAY, LEFT, TEXT_SEAFOAMISLANDS1F_POKEMANIAC, OPP_POKEMANIAC, 1
 	object_event 14, 11, SPRITE_POKE_BALL, STAY, NONE, TEXT_SEAFOAMISLANDS1F_RANDOM, 0

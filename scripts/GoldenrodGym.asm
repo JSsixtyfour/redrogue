@@ -101,7 +101,6 @@ GoldenrodGymScriptReceiveTM:
 GoldenrodGym_TextPointers:
 	def_text_pointers
 	dw_const GoldenrodGymWhitneyText,            TEXT_GOLDENRODGYM_WHITNEY
-	dw_const GoldenrodGymCooltrainerM1Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M1
 	dw_const GoldenrodGymCooltrainerM2Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M2
 	dw_const GoldenrodGymCooltrainerM3Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M3
 	dw_const GoldenrodGymCooltrainerM4Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M4
@@ -117,13 +116,11 @@ GoldenrodGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 GoldenrodGymTrainerHeader0:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_0, 5, GoldenrodGymCooltrainerM1BattleText, GoldenrodGymCooltrainerM1EndBattleText, GoldenrodGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_0, 2, GoldenrodGymCooltrainerM2BattleText, GoldenrodGymCooltrainerM2EndBattleText, GoldenrodGymCooltrainerM2AfterBattleText
 GoldenrodGymTrainerHeader1:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 2, GoldenrodGymCooltrainerM2BattleText, GoldenrodGymCooltrainerM2EndBattleText, GoldenrodGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 5, GoldenrodGymCooltrainerM3BattleText, GoldenrodGymCooltrainerM3EndBattleText, GoldenrodGymCooltrainerM3AfterBattleText
 GoldenrodGymTrainerHeader2:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 5, GoldenrodGymCooltrainerM3BattleText, GoldenrodGymCooltrainerM3EndBattleText, GoldenrodGymCooltrainerM3AfterBattleText
-GoldenrodGymTrainerHeader3:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_3, 5, GoldenrodGymCooltrainerM4BattleText, GoldenrodGymCooltrainerM4EndBattleText, GoldenrodGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 5, GoldenrodGymCooltrainerM4BattleText, GoldenrodGymCooltrainerM4EndBattleText, GoldenrodGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 GoldenrodGymReceivedTMText:
@@ -198,27 +195,9 @@ ReceivedPlainBadgeText:
 	sound_get_key_item
 	text_end
 
-GoldenrodGymCooltrainerM1Text:
-	text_asm
-	ld hl, GoldenrodGymTrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-GoldenrodGymCooltrainerM1BattleText:
-	text_far _GoldenrodGymTrainer1BattleText
-	text_end
-
-GoldenrodGymCooltrainerM1EndBattleText:
-	text_far _GoldenrodGymTrainer1EndBattleText
-	text_end
-
-GoldenrodGymCooltrainerM1AfterBattleText:
-	text_far _GoldenrodGymTrainer1AfterBattleText
-	text_end
-
 GoldenrodGymCooltrainerM2Text:
 	text_asm
-	ld hl, GoldenrodGymTrainerHeader1
+	ld hl, GoldenrodGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -236,7 +215,7 @@ GoldenrodGymCooltrainerM2AfterBattleText:
 
 GoldenrodGymCooltrainerM3Text:
 	text_asm
-	ld hl, GoldenrodGymTrainerHeader2
+	ld hl, GoldenrodGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -254,7 +233,7 @@ GoldenrodGymCooltrainerM3AfterBattleText:
 
 GoldenrodGymCooltrainerM4Text:
 	text_asm
-	ld hl, GoldenrodGymTrainerHeader3
+	ld hl, GoldenrodGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

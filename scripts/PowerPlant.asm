@@ -1,8 +1,7 @@
 DEF POWER_PLANT_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_POWER_PLANT_TRAINER_3 % 8))
 
 PowerPlant_Script:
 
@@ -73,10 +72,10 @@ PowerPlant_ScriptPointers:
 
 PowerPlant_TextPointers:
 	def_text_pointers
+	dw_const PowerPlantPaddingText,     TEXT_POWERPLANT_PADDING
 	dw_const PowerPlantScientist1Text,  TEXT_POWERPLANT_SCIENTIST1
 	dw_const PowerPlantPokemaniac1Text,  TEXT_POWERPLANT_POKEMANIAC1
 	dw_const PowerPlantPokemaniac2Text,  TEXT_POWERPLANT_POKEMANIAC2
-	dw_const PowerPlantScientist4Text,  TEXT_POWERPLANT_SCIENTIST4
 	dw_const PowerPlantCooltrainerMText,  TEXT_POWERPLANT_COOLTRAINER_M
 	dw_const PowerPlantVoltorb1Text,    TEXT_POWERPLANT_VOLTORB1
 	dw_const PowerPlantVoltorb2Text,    TEXT_POWERPLANT_VOLTORB2
@@ -92,18 +91,20 @@ PowerPlant_TextPointers:
 	dw_const PowerPlantNoTurningBackText, TEXT_POWERPLANT_NO_TURNING_BACK
 
 PowerPlantTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 PowerPlantScientist1Header:
 	trainer EVENT_BEAT_POWER_PLANT_TRAINER_0, 3, PowerPlantScientist1BattleText, PowerPlantScientist1EndBattleText, PowerPlantScientist1AfterBattleText
 PowerPlantPokemaniac1Header:
 	trainer EVENT_BEAT_POWER_PLANT_TRAINER_1, 3, PowerPlantPokemaniac1BattleText, PowerPlantPokemaniac1EndBattleText, PowerPlantPokemaniac1AfterBattleText
 PowerPlantPokemaniac2Header:
 	trainer EVENT_BEAT_POWER_PLANT_TRAINER_2, 3, PowerPlantPokemaniac2BattleText, PowerPlantPokemaniac2EndBattleText, PowerPlantPokemaniac2AfterBattleText
-PowerPlantScientist4Header:
-	trainer EVENT_BEAT_POWER_PLANT_TRAINER_3, 3, PowerPlantScientist4BattleText, PowerPlantScientist4EndBattleText, PowerPlantScientist4AfterBattleText
 PowerPlantCooltrainerMHeader:
-	trainer EVENT_BEAT_POWER_PLANT_TRAINER_4, 3, PowerPlantCooltrainerMBattleText, PowerPlantCooltrainerMEndBattleText, PowerPlantCooltrainerMAfterBattleText
+	trainer EVENT_BEAT_POWER_PLANT_TRAINER_3, 3, PowerPlantCooltrainerMBattleText, PowerPlantCooltrainerMEndBattleText, PowerPlantCooltrainerMAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+PowerPlantPaddingText:
+	text_end
 
 PowerPlantInitBattleScript:
 	call TalkToTrainer
@@ -146,12 +147,6 @@ PowerPlantPokemaniac1Text:
 PowerPlantPokemaniac2Text:
 	text_asm
 	ld hl, PowerPlantPokemaniac2Header
-	call TalkToTrainer
-	jp TextScriptEnd
-
-PowerPlantScientist4Text:
-	text_asm
-	ld hl, PowerPlantScientist4Header
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -209,18 +204,6 @@ PowerPlantPokemaniac2AfterBattleText:
 	text_far _PowerPlantScientist1AfterBattleText
 	text_end
 
-PowerPlantScientist4BattleText:
-	text_far _PowerPlantScientist1BattleText
-	text_end
-
-PowerPlantScientist4EndBattleText:
-	text_far _PowerPlantScientist1EndBattleText
-	text_end
-
-PowerPlantScientist4AfterBattleText:
-	text_far _PowerPlantScientist1AfterBattleText
-	text_end
-
 PowerPlantCooltrainerMBattleText:
 	text_far _PowerPlantScientist1BattleText
 	text_end
@@ -230,14 +213,14 @@ PowerPlantCooltrainerMEndBattleText:
 	text_end
 
 PowerPlantCooltrainerMAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_POWER_PLANT_TRAINER_0 / 8)]
 	and POWER_PLANT_ALL_TRAINERS_MASK
 	sub POWER_PLANT_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

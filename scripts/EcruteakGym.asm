@@ -104,7 +104,6 @@ EcruteakGym_TextPointers:
 	dw_const EcruteakGymCooltrainerM1Text,      TEXT_ECRUTEAKGYM_COOLTRAINER_M1
 	dw_const EcruteakGymCooltrainerM2Text,      TEXT_ECRUTEAKGYM_COOLTRAINER_M2
 	dw_const EcruteakGymCooltrainerM3Text,      TEXT_ECRUTEAKGYM_COOLTRAINER_M3
-	dw_const EcruteakGymCooltrainerM4Text,      TEXT_ECRUTEAKGYM_COOLTRAINER_M4
 	dw_const EcruteakGymGuideText,              TEXT_ECRUTEAKGYM_GYM_GUIDE
 	dw_const EcruteakGymMortyWaitTakeThisText, TEXT_ECRUTEAKGYM_MORTY_WAIT_TAKE_THIS
 	dw_const EcruteakGymReceivedTMText,         TEXT_ECRUTEAKGYM_RECEIVED_TM
@@ -122,8 +121,6 @@ EcruteakGymTrainerHeader1:
 	trainer EVENT_BEAT_ECRUTEAK_GYM_TRAINER_1, 2, EcruteakGymCooltrainerM2BattleText, EcruteakGymCooltrainerM2EndBattleText, EcruteakGymCooltrainerM2AfterBattleText
 EcruteakGymTrainerHeader2:
 	trainer EVENT_BEAT_ECRUTEAK_GYM_TRAINER_2, 5, EcruteakGymCooltrainerM3BattleText, EcruteakGymCooltrainerM3EndBattleText, EcruteakGymCooltrainerM3AfterBattleText
-EcruteakGymTrainerHeader3:
-	trainer EVENT_BEAT_ECRUTEAK_GYM_TRAINER_3, 5, EcruteakGymCooltrainerM4BattleText, EcruteakGymCooltrainerM4EndBattleText, EcruteakGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 EcruteakGymReceivedTMText:
@@ -250,24 +247,6 @@ EcruteakGymCooltrainerM3EndBattleText:
 
 EcruteakGymCooltrainerM3AfterBattleText:
 	text_far _EcruteakGymTrainer3AfterBattleText
-	text_end
-
-EcruteakGymCooltrainerM4Text:
-	text_asm
-	ld hl, EcruteakGymTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-EcruteakGymCooltrainerM4BattleText:
-	text_far _EcruteakGymTrainer4BattleText
-	text_end
-
-EcruteakGymCooltrainerM4EndBattleText:
-	text_far _EcruteakGymTrainer4EndBattleText
-	text_end
-
-EcruteakGymCooltrainerM4AfterBattleText:
-	text_far _EcruteakGymTrainer4AfterBattleText
 	text_end
 
 EcruteakGymGuideText:

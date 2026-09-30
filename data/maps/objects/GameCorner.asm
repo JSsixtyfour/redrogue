@@ -24,9 +24,12 @@ GameCorner_Object:
 	bg_event  9,  4, TEXT_GAMECORNER_POSTER
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; four gamblers sit in slots 2-5 so slot 6 stays the random item. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_GAMBLER, STAY, DOWN, TEXT_GAMECORNER_PADDING
 	object_event 17, 10, SPRITE_GAMBLER, STAY, LEFT, TEXT_GAMECORNER_GAMBLER, OPP_GAMBLER
 	object_event 11, 11, SPRITE_GAMBLER, STAY, LEFT, TEXT_GAMECORNER_MIDDLE_AGED_MAN1, OPP_GAMBLER
-	object_event  8, 13, SPRITE_GAMBLER, STAY, RIGHT, TEXT_GAMECORNER_FISHING_GURU, OPP_GAMBLER
 	object_event  2, 14, SPRITE_GAMBLER, STAY, RIGHT, TEXT_GAMECORNER_BEAUTY2, OPP_GAMBLER
 	object_event  5, 10, SPRITE_GAMBLER, STAY, LEFT, TEXT_GAMECORNER_GYM_GUIDE, OPP_GAMBLER
 	object_event 14,  4, SPRITE_POKE_BALL, STAY, NONE, TEXT_GAMECORNER_RANDOM

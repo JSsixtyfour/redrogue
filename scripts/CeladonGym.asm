@@ -107,7 +107,6 @@ CeladonGym_TextPointers:
 	dw_const CeladonGymCooltrainerF1Text,    TEXT_CELADONGYM_COOLTRAINER_F1
 	dw_const CeladonGymBeauty1Text,          TEXT_CELADONGYM_BEAUTY1
 	dw_const CeladonGymBeauty2Text,          TEXT_CELADONGYM_BEAUTY2
-	dw_const CeladonGymCooltrainerF2Text,    TEXT_CELADONGYM_COOLTRAINER_F2
 	dw_const CeladonGymRainbowBadgeInfoText, TEXT_CELADONGYM_RAINBOWBADGE_INFO
 	dw_const CeladonGymReceivedTM21Text,     TEXT_CELADONGYM_RECEIVED_TM21
 	dw_const CeladonGymTM21NoRoomText,       TEXT_CELADONGYM_TM21_NO_ROOM
@@ -132,8 +131,6 @@ CeladonGymTrainerHeader1:
 	trainer EVENT_BEAT_CELADON_GYM_TRAINER_1, 4, CeladonGymBattleText3, CeladonGymEndBattleText3, CeladonGymAfterBattleText3
 CeladonGymTrainerHeader2:
 	trainer EVENT_BEAT_CELADON_GYM_TRAINER_2, 1, CeladonGymBattleText4, CeladonGymEndBattleText4, CeladonGymAfterBattleText4
-CeladonGymTrainerHeader3:
-	trainer EVENT_BEAT_CELADON_GYM_TRAINER_3, 3, CeladonGymBattleText5, CeladonGymEndBattleText5, CeladonGymAfterBattleText5
 	db -1 ; end
 
 CeladonGymErikaText:
@@ -248,12 +245,6 @@ CeladonGymAfterBattleText3:
 	text_far _CeladonGymAfterBattleText3
 	text_end
 
-CeladonGymCooltrainerF2Text:
-	text_asm
-	ld hl, CeladonGymTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 CeladonGymBattleText4:
 	text_far _CeladonGymBattleText4
 	text_end
@@ -272,15 +263,4 @@ CeladonGymBeauty2Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-CeladonGymBattleText5:
-	text_far _CeladonGymBattleText5
-	text_end
-
-CeladonGymEndBattleText5:
-	text_far _CeladonGymEndBattleText5
-	text_end
-
-CeladonGymAfterBattleText5:
-	text_far _CeladonGymAfterBattleText5
-	text_end
 

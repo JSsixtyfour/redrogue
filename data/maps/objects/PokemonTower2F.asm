@@ -1,8 +1,8 @@
 	object_const_def
+	const_export POKEMONTOWER2F_PADDING
 	const_export POKEMONTOWER2F_CHANNELER1
 	const_export POKEMONTOWER2F_CHANNELER2
 	const_export POKEMONTOWER2F_CHANNELER3
-	const_export POKEMONTOWER2F_CHANNELER4
 	const_export POKEMONTOWER2F_CHANNELER5
     const_export POKEMONTOWER2F_POKE_BALL
     const_export POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_1
@@ -21,10 +21,14 @@ PokemonTower2F_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_CHANNELER, STAY, DOWN, TEXT_POKEMONTOWER2F_PADDING
 	object_event 14,  7, SPRITE_CHANNELER, STAY, RIGHT, TEXT_POKEMONTOWER2F_CHANNELER1, OPP_CHANNELER, 1
 	object_event 13,  2, SPRITE_CHANNELER, STAY, DOWN, TEXT_POKEMONTOWER2F_CHANNELER2, OPP_CHANNELER, 1
 	object_event 11,  5, SPRITE_CHANNELER, STAY, UP, TEXT_POKEMONTOWER2F_CHANNELER3, OPP_CHANNELER, 1
-	object_event  8,  4, SPRITE_CHANNELER, STAY, DOWN, TEXT_POKEMONTOWER2F_CHANNELER4, OPP_CHANNELER, 1
 	object_event  7,  7, SPRITE_CHANNELER, STAY, UP, TEXT_POKEMONTOWER2F_CHANNELER5, OPP_CHANNELER, 1
 	object_event 12, 12, SPRITE_POKE_BALL, STAY, NONE, TEXT_POKEMONTOWER2F_RANDOM, 0
 	object_event  5,  8, SPRITE_POKE_BALL, STAY, NONE, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_1

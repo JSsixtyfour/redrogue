@@ -101,7 +101,6 @@ BlackthornGymScriptReceiveTM:
 BlackthornGym_TextPointers:
 	def_text_pointers
 	dw_const BlackthornGymClairText,            TEXT_BLACKTHORNGYM_CLAIR
-	dw_const BlackthornGymCooltrainerM1Text,      TEXT_BLACKTHORNGYM_COOLTRAINER_M1
 	dw_const BlackthornGymCooltrainerM2Text,      TEXT_BLACKTHORNGYM_COOLTRAINER_M2
 	dw_const BlackthornGymCooltrainerM3Text,      TEXT_BLACKTHORNGYM_COOLTRAINER_M3
 	dw_const BlackthornGymCooltrainerM4Text,      TEXT_BLACKTHORNGYM_COOLTRAINER_M4
@@ -117,13 +116,11 @@ BlackthornGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 BlackthornGymTrainerHeader0:
-	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_0, 5, BlackthornGymCooltrainerM1BattleText, BlackthornGymCooltrainerM1EndBattleText, BlackthornGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_0, 2, BlackthornGymCooltrainerM2BattleText, BlackthornGymCooltrainerM2EndBattleText, BlackthornGymCooltrainerM2AfterBattleText
 BlackthornGymTrainerHeader1:
-	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_1, 2, BlackthornGymCooltrainerM2BattleText, BlackthornGymCooltrainerM2EndBattleText, BlackthornGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_1, 5, BlackthornGymCooltrainerM3BattleText, BlackthornGymCooltrainerM3EndBattleText, BlackthornGymCooltrainerM3AfterBattleText
 BlackthornGymTrainerHeader2:
-	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_2, 5, BlackthornGymCooltrainerM3BattleText, BlackthornGymCooltrainerM3EndBattleText, BlackthornGymCooltrainerM3AfterBattleText
-BlackthornGymTrainerHeader3:
-	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_3, 5, BlackthornGymCooltrainerM4BattleText, BlackthornGymCooltrainerM4EndBattleText, BlackthornGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_BLACKTHORN_GYM_TRAINER_2, 5, BlackthornGymCooltrainerM4BattleText, BlackthornGymCooltrainerM4EndBattleText, BlackthornGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 BlackthornGymReceivedTMText:
@@ -198,27 +195,9 @@ ReceivedRisingBadgeText:
 	sound_get_key_item
 	text_end
 
-BlackthornGymCooltrainerM1Text:
-	text_asm
-	ld hl, BlackthornGymTrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-BlackthornGymCooltrainerM1BattleText:
-	text_far _BlackthornGymTrainer1BattleText
-	text_end
-
-BlackthornGymCooltrainerM1EndBattleText:
-	text_far _BlackthornGymTrainer1EndBattleText
-	text_end
-
-BlackthornGymCooltrainerM1AfterBattleText:
-	text_far _BlackthornGymTrainer1AfterBattleText
-	text_end
-
 BlackthornGymCooltrainerM2Text:
 	text_asm
-	ld hl, BlackthornGymTrainerHeader1
+	ld hl, BlackthornGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -236,7 +215,7 @@ BlackthornGymCooltrainerM2AfterBattleText:
 
 BlackthornGymCooltrainerM3Text:
 	text_asm
-	ld hl, BlackthornGymTrainerHeader2
+	ld hl, BlackthornGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -254,7 +233,7 @@ BlackthornGymCooltrainerM3AfterBattleText:
 
 BlackthornGymCooltrainerM4Text:
 	text_asm
-	ld hl, BlackthornGymTrainerHeader3
+	ld hl, BlackthornGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

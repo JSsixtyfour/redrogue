@@ -1,7 +1,7 @@
 	object_const_def
+	const_export ROUTE13_PADDING
 	const_export ROUTE13_BIRD_KEEPER
 	const_export ROUTE13_BEAUTY
-	const_export ROUTE13_JR_TRAINER_F
 	const_export ROUTE13_BIKER
 	const_export ROUTE13_COOLTRAINER_M
     const_export ROUTE13_POKE_BALL
@@ -25,9 +25,13 @@ Route13_Object:
 	bg_event 31, 11, TEXT_ROUTE13_SIGN
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_ROUTE13_PADDING
 	object_event 34, 12, SPRITE_COOLTRAINER_M, STAY, UP, TEXT_ROUTE13_BIRD_KEEPER, OPP_BIRD_KEEPER, 1
 	object_event 16,  8, SPRITE_BEAUTY, STAY, RIGHT, TEXT_ROUTE13_BEAUTY, OPP_BEAUTY, 1
-	object_event 27,  9, SPRITE_COOLTRAINER_F, STAY, DOWN, TEXT_ROUTE13_JR_TRAINER_F, OPP_JR_TRAINER_F, 1
 	object_event 24,  5, SPRITE_BIKER, STAY, DOWN, TEXT_ROUTE13_BIKER, OPP_BIKER, 1
 	object_event 12,  4, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_ROUTE13_COOLTRAINER_M, OPP_COOLTRAINER_M, 1
 	object_event 38, 10, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE13_RANDOM, 0

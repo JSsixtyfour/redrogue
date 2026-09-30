@@ -1,8 +1,7 @@
 DEF GAME_CORNER_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_3 % 8))
 
 GameCorner_Script:
 	; Skip slot machine setup when used as Gambler's Paradise rogue stage
@@ -163,7 +162,7 @@ GameCorner_TextPointers:
 	dw_const GameCornerClerk1Text,            TEXT_GAMECORNER_CLERK1
 	dw_const GameCornerMiddleAgedMan1Text,    TEXT_GAMECORNER_MIDDLE_AGED_MAN1
 	dw_const GameCornerBeauty2Text,           TEXT_GAMECORNER_BEAUTY2
-	dw_const GameCornerFishingGuruText,       TEXT_GAMECORNER_FISHING_GURU
+	dw_const GameCornerPaddingText,           TEXT_GAMECORNER_PADDING
 	dw_const RandomPickUpItemText,            TEXT_GAMECORNER_RANDOM
 	dw_const GameCornerMiddleAgedWomanText,   TEXT_GAMECORNER_MIDDLE_AGED_WOMAN
 	dw_const GameCornerGymGuideText,          TEXT_GAMECORNER_GYM_GUIDE
@@ -291,25 +290,23 @@ GameCornerGreedyText:
 ;	text_end
 
 ; ============================================================
-; Gambler's Paradise trainer scripts (5 trainers, Route1 style)
+; Gambler's Paradise trainer scripts (4 trainers in slots 2-5, Route1 style)
 ; ============================================================
 GameCornerTrainerHeaders:
 	; This map had no def_trainers of its own, so CURRENT_TRAINER_BIT leaked in
 	; from whichever map assembled before it in maps.asm (it happened to be 6,
 	; which the old hand-numbered event constants happened to match). Pinned to
-	; the same 1 every other rogue stage uses, so the block no longer depends on
-	; include order.
-	def_trainers 1
+	; the same 2 every other 4-battle stage uses (slot 1 is padding), so the
+	; block no longer depends on include order.
+	def_trainers 2
 GameCornerTrainerHeader0:
 	trainer EVENT_BEAT_GAME_CORNER_TRAINER_0, 1, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader1:
 	trainer EVENT_BEAT_GAME_CORNER_TRAINER_1, 2, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader2:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 3, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 4, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader3:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 4, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
-GameCornerTrainerHeader4:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_4, 5, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 5, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 	db -1 ; end
 
 GameCornerGamblerBattleText:
@@ -324,36 +321,34 @@ GameCornerGamblerAfterBattleText:
 	text_far _GameCornerGamblerAfterBattleText
 	text_end
 
-; Text IDs for the 5 trainer NPCs — all call TalkToTrainer with their header
-GameCornerGamblerText:           ; Trainer 0 (slot GAMECORNER_BEAUTY1)
+; Text IDs for the 4 trainer NPCs — all call TalkToTrainer with their header
+GameCornerGamblerText:           ; Trainer 0 (slot 2)
 	text_asm
 	ld hl, GameCornerTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GameCornerMiddleAgedMan1Text:    ; Trainer 1 (slot GAMECORNER_CLERK1)
+GameCornerMiddleAgedMan1Text:    ; Trainer 1 (slot 3)
 	text_asm
 	ld hl, GameCornerTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GameCornerFishingGuruText:       ; Trainer 2 (slot GAMECORNER_MIDDLE_AGED_MAN1)
+GameCornerBeauty2Text:           ; Trainer 2 (slot 4)
 	text_asm
 	ld hl, GameCornerTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GameCornerBeauty2Text:           ; Trainer 3 (slot GAMECORNER_BEAUTY2)
+GameCornerGymGuideText:          ; Trainer 3 (slot 5)
 	text_asm
 	ld hl, GameCornerTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GameCornerGymGuideText:          ; Trainer 4 (slot GAMECORNER_FISHING_GURU)
-	text_asm
-	ld hl, GameCornerTrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+GameCornerPaddingText:
+	text_end
 
 GameCornerMiddleAgedWomanText:
 	text_far _GameCornerMiddleAgedWomanText

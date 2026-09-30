@@ -127,26 +127,6 @@ _SaffronGymYoungster1AfterBattleText::
 	cont "and bugs!"
 	done
 
-_SaffronGymChanneler2BattleText::
-	text "#MON take on"
-	line "the appearance of"
-	cont "their trainers."
-
-	para "Your #MON must"
-	line "be tough, then!"
-	done
-
-_SaffronGymChanneler2EndBattleText::
-	text "I knew"
-	line "it!"
-	prompt
-
-_SaffronGymChanneler2AfterBattleText::
-	text "I must teach"
-	line "better techniques"
-	cont "to my #MON!"
-	done
-
 _SaffronGymYoungster2BattleText::
 	text "You know that"
 	line "power alone isn't"

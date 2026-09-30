@@ -68,25 +68,6 @@ _BlackthornGymTMNoRoomText::
 	line "for this!"
 	done
 
-_BlackthornGymTrainer1BattleText::
-	text "Your first battle"
-	line "against dragons?"
-
-	para "I'll show you how"
-	line "tough they are!"
-	done
-
-_BlackthornGymTrainer1EndBattleText::
-	text "Oh…"
-	line "I'm disappointed."
-	prompt
-
-_BlackthornGymTrainer1AfterBattleText::
-	text "Have you met"
-	line "LANCE the dragon"
-	cont "master?"
-	done
-
 _BlackthornGymTrainer2BattleText::
 	text "Dragons are sacred"
 	line "#MON."

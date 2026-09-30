@@ -102,23 +102,6 @@ _Route15Beauty2AfterBattleText::
 	cont "my #MON!"
 	done
 
-_Route15Biker1BattleText::
-	text "Hey kid! C'mon!"
-	line "I just got these!"
-	done
-
-_Route15Biker1EndBattleText::
-	text "Why"
-	line "not?"
-	prompt
-
-_Route15Biker1AfterBattleText::
-	text "You only live"
-	line "once, so I live"
-	cont "as an outlaw!"
-	cont "TEAM ROCKET RULES!"
-	done
-
 _Route15Biker2BattleText::
 	text "Fork over all your"
 	line "cash when you"

@@ -1,7 +1,7 @@
 	object_const_def
+	const_export ROUTE5_PADDING
 	const_export ROUTE5_YOUNGSTER1
 	const_export ROUTE5_YOUNGSTER2
-	const_export ROUTE5_LASS1
 	const_export ROUTE5_LASS2
 	const_export ROUTE5_JR_TRAINER_F
     const_export ROUTE5_POKE_BALL
@@ -23,9 +23,13 @@ Route5_Object:
 	bg_event 17, 29, TEXT_ROUTE5_UNDERGROUND_PATH_SIGN
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_YOUNGSTER, STAY, DOWN, TEXT_ROUTE5_PADDING
 	object_event  4,  9, SPRITE_YOUNGSTER, STAY, LEFT, TEXT_ROUTE5_YOUNGSTER1, OPP_YOUNGSTER, 1
 	object_event  1, 13, SPRITE_YOUNGSTER, STAY, RIGHT, TEXT_ROUTE5_YOUNGSTER2, OPP_YOUNGSTER, 1
-	object_event  4, 16, SPRITE_COOLTRAINER_F, STAY, LEFT, TEXT_ROUTE5_LASS1, OPP_LASS, 1
 	object_event  1, 19, SPRITE_COOLTRAINER_F, STAY, RIGHT, TEXT_ROUTE5_LASS2, OPP_LASS, 1
 	object_event  4, 23, SPRITE_COOLTRAINER_F, STAY, LEFT, TEXT_ROUTE5_JR_TRAINER_F, OPP_JR_TRAINER_F, 1
 	object_event  1,  6, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE5_RANDOM, 0

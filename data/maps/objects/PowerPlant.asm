@@ -1,8 +1,8 @@
 	object_const_def
+	const_export POWERPLANT_PADDING
 	const_export POWERPLANT_SCIENTIST1
 	const_export POWERPLANT_POKEMANIAC1
 	const_export POWERPLANT_POKEMANIAC2
-	const_export POWERPLANT_SCIENTIST4
 	const_export POWERPLANT_COOLTRAINER_M
     const_export POWERPLANT_POKE_BALL
     const_export POWERPLANT_ROGUE_REWARD_POKEBALL_1
@@ -26,11 +26,16 @@ PowerPlant_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_SCIENTIST,     STAY, DOWN,  TEXT_POWERPLANT_PADDING
 	object_event  7, 25, SPRITE_SCIENTIST,     STAY, LEFT,  TEXT_POWERPLANT_SCIENTIST1, OPP_SCIENTIST,    1
 	object_event  1, 23, SPRITE_SUPER_NERD,    STAY, RIGHT,    TEXT_POWERPLANT_POKEMANIAC1, OPP_POKEMANIAC,   1
 	object_event  4, 17, SPRITE_SUPER_NERD,    STAY, RIGHT, TEXT_POWERPLANT_POKEMANIAC2, OPP_POKEMANIAC,   1
-	object_event  8, 14, SPRITE_SCIENTIST,     STAY, DOWN,  TEXT_POWERPLANT_SCIENTIST4, OPP_SCIENTIST,    1
-	object_event  8, 10, SPRITE_COOLTRAINER_M, STAY, DOWN,  TEXT_POWERPLANT_COOLTRAINER_M, OPP_COOLTRAINER_M, 1
+	; Boss reclassed COOLTRAINER_M -> SCIENTIST (TRAINER_CUT_AUDIT.md)
+	object_event  8, 10, SPRITE_SCIENTIST, STAY, DOWN,  TEXT_POWERPLANT_COOLTRAINER_M, OPP_SCIENTIST, 1
 	object_event  1, 32, SPRITE_POKE_BALL, STAY, NONE, TEXT_POWERPLANT_RANDOM,    0
 	object_event  2,  8, SPRITE_POKE_BALL, STAY, NONE, TEXT_POWERPLANT_ROGUE_REWARD_POKEBALL_1
 	object_event  4,  8, SPRITE_POKE_BALL, STAY, NONE, TEXT_POWERPLANT_ROGUE_REWARD_POKEBALL_2

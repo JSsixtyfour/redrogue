@@ -1,8 +1,8 @@
 	object_const_def
+	const_export ROUTE12_PADDING
 	const_export ROUTE12_FISHER1
 	const_export ROUTE12_FISHER2
 	const_export ROUTE12_ROCKER
-	const_export ROUTE12_JR_TRAINER_M
     const_export ROUTE12_FISHER3
     const_export ROUTE12_POKE_BALL
     const_export ROUTE12_ROGUE_REWARD_POKEBALL_1
@@ -27,10 +27,14 @@ Route12_Object:
 	bg_event 11, 63, TEXT_ROUTE12_SPORT_FISHING_SIGN
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_FISHER, STAY, DOWN, TEXT_ROUTE12_PADDING
 	object_event  8, 57, SPRITE_FISHER, STAY, RIGHT, TEXT_ROUTE12_FISHER1, OPP_FISHER, 1
 	object_event  9, 49, SPRITE_FISHER, STAY, LEFT, TEXT_ROUTE12_FISHER2, OPP_FISHER, 1
 	object_event  8, 40, SPRITE_ROCKER, STAY, DOWN, TEXT_ROUTE12_ROCKER, OPP_ROCKER, 1
-	object_event  5, 32, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_ROUTE12_JR_TRAINER_M, OPP_JR_TRAINER_M, 1
 	object_event 13, 26, SPRITE_FISHER, STAY, DOWN, TEXT_ROUTE12_FISHER3, OPP_FISHER, 1
 	object_event 10, 63, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_RANDOM, 0
 	object_event  5, 26, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE12_ROGUE_REWARD_POKEBALL_1

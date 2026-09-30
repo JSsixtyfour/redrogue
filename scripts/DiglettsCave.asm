@@ -1,8 +1,7 @@
 DEF DIGLETTS_CAVE_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3 % 8))
 
 DiglettsCave_Script:
 
@@ -70,8 +69,8 @@ DiglettsCave_ScriptPointers:
 
 DiglettsCave_TextPointers:
 	def_text_pointers
+	dw_const DiglettsCavePaddingText,     TEXT_DIGLETTSCAVE_PADDING
 	dw_const DiglettsCaveHikerText,       TEXT_DIGLETTSCAVE_HIKER
-	dw_const DiglettsCaveBugCatcherText,  TEXT_DIGLETTSCAVE_BUG_CATCHER
 	dw_const DiglettsCaveYoungsterText,   TEXT_DIGLETTSCAVE_YOUNGSTER
 	dw_const DiglettsCaveEngineerText,    TEXT_DIGLETTSCAVE_ENGINEER
 	dw_const DiglettsCaveCooltrainerFText,TEXT_DIGLETTSCAVE_COOLTRAINER_F
@@ -85,18 +84,20 @@ DiglettsCave_TextPointers:
 	dw_const DiglettsCaveNoTurningBackText, TEXT_DIGLETTSCAVE_NO_TURNING_BACK
 
 DiglettsCaveTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 DiglettsCaveTrainerHeader0:
 	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_0, 1, DiglettsCaveHikerBattleText, DiglettsCaveHikerEndBattleText, DiglettsCaveHikerAfterBattleText
 DiglettsCaveTrainerHeader1:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_1, 1, DiglettsCaveBugCatcherBattleText, DiglettsCaveBugCatcherEndBattleText, DiglettsCaveBugCatcherAfterBattleText
+	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_1, 1, DiglettsCaveYoungsterBattleText, DiglettsCaveYoungsterEndBattleText, DiglettsCaveYoungsterAfterBattleText
 DiglettsCaveTrainerHeader2:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_2, 1, DiglettsCaveYoungsterBattleText, DiglettsCaveYoungsterEndBattleText, DiglettsCaveYoungsterAfterBattleText
+	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_2, 1, DiglettsCaveEngineerBattleText, DiglettsCaveEngineerEndBattleText, DiglettsCaveEngineerAfterBattleText
 DiglettsCaveTrainerHeader3:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3, 1, DiglettsCaveEngineerBattleText, DiglettsCaveEngineerEndBattleText, DiglettsCaveEngineerAfterBattleText
-DiglettsCaveTrainerHeader4:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_4, 1, DiglettsCaveCooltrainerFBattleText, DiglettsCaveCooltrainerFEndBattleText, DiglettsCaveCooltrainerFAfterBattleText
+	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3, 1, DiglettsCaveCooltrainerFBattleText, DiglettsCaveCooltrainerFEndBattleText, DiglettsCaveCooltrainerFAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+DiglettsCavePaddingText:
+	text_end
 
 DiglettsCaveHikerText:
 	text_asm
@@ -116,27 +117,9 @@ DiglettsCaveHikerAfterBattleText:
 	text_far _DiglettsCaveBugCatcher1AfterBattleText
 	text_end
 
-DiglettsCaveBugCatcherText:
-	text_asm
-	ld hl, DiglettsCaveTrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-DiglettsCaveBugCatcherBattleText:
-	text_far _DiglettsCaveBugCatcher1BattleText
-	text_end
-
-DiglettsCaveBugCatcherEndBattleText:
-	text_far _DiglettsCaveBugCatcher1EndBattleText
-	text_end
-
-DiglettsCaveBugCatcherAfterBattleText:
-	text_far _DiglettsCaveBugCatcher1AfterBattleText
-	text_end
-
 DiglettsCaveYoungsterText:
 	text_asm
-	ld hl, DiglettsCaveTrainerHeader2
+	ld hl, DiglettsCaveTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -154,7 +137,7 @@ DiglettsCaveYoungsterAfterBattleText:
 
 DiglettsCaveEngineerText:
 	text_asm
-	ld hl, DiglettsCaveTrainerHeader3
+	ld hl, DiglettsCaveTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -172,7 +155,7 @@ DiglettsCaveEngineerAfterBattleText:
 
 DiglettsCaveCooltrainerFText:
 	text_asm
-	ld hl, DiglettsCaveTrainerHeader4
+	ld hl, DiglettsCaveTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -185,14 +168,14 @@ DiglettsCaveCooltrainerFEndBattleText:
 	text_end
 
 DiglettsCaveCooltrainerFAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_DIGLETTS_CAVE_TRAINER_0 / 8)]
 	and DIGLETTS_CAVE_ALL_TRAINERS_MASK
 	sub DIGLETTS_CAVE_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

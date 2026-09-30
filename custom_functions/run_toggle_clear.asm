@@ -43,9 +43,8 @@ RunClearedToggles:
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_1
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_2
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_3
-	db TOGGLE_POKEMON_TOWER_7F_ROCKET_4
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_5
 	db TOGGLE_POKEMON_TOWER_7F_MR_FUJI
-	; SS Anne B1F: the captain hides once the rooms' five trainers are beaten.
+	; SS Anne B1F: the captain hides once the rooms' four trainers are beaten.
 	db TOGGLE_SS_ANNE_B1F_CAPTAIN
 	db -1 ; end

@@ -1,8 +1,7 @@
 DEF MANSION_1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_MANSION_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_MANSION_1_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_MANSION_1_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_MANSION_1_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_MANSION_1_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_MANSION_1_TRAINER_3 % 8))
 
 PokemonMansion1F_Script:
 
@@ -127,10 +126,10 @@ PokemonMansion1F_ScriptPointers:
 
 PokemonMansion1F_TextPointers:
 	def_text_pointers
+	dw_const PokemonMansion1FPaddingText,                          TEXT_POKEMONMANSION1F_PADDING
 	dw_const PokemonMansion1FScientistText,                        TEXT_POKEMONMANSION1F_SCIENTIST
     dw_const PokemonMansion1FScientist2Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_2
     dw_const PokemonMansion1FScientist3Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_3
-    dw_const PokemonMansion1FScientist4Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_4
     dw_const PokemonMansion1FScientist5Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_5
 	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_ESCAPE_ROPE
 	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_CARBOS
@@ -145,7 +144,7 @@ PokemonMansion1F_TextPointers:
 	dw_const PokemonMansion1FNoTurningBackText, TEXT_POKEMONMANSION1F_NO_TURNING_BACK
 
 Mansion1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Mansion1TrainerHeader0:
 	trainer EVENT_BEAT_MANSION_1_TRAINER_0, 3, PokemonMansion1FScientistBattleText, PokemonMansion1FScientistEndBattleText, PokemonMansion1FScientistAfterBattleText
 Mansion1TrainerHeader1:
@@ -153,10 +152,12 @@ Mansion1TrainerHeader1:
 Mansion1TrainerHeader2:
 	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 2, PokemonMansion1FScientist3BattleText, PokemonMansion1FScientist3EndBattleText, PokemonMansion1FScientist3AfterBattleText
 Mansion1TrainerHeader3:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist4BattleText, PokemonMansion1FScientist4EndBattleText, PokemonMansion1FScientist4AfterBattleText
-Mansion1TrainerHeader4:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_4, 2, PokemonMansion1FScientist5BattleText, PokemonMansion1FScientist5EndBattleText, PokemonMansion1FScientist5AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist5BattleText, PokemonMansion1FScientist5EndBattleText, PokemonMansion1FScientist5AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+PokemonMansion1FPaddingText:
+	text_end
 
 PokemonMansion1FScientistText:
 	text_asm
@@ -176,15 +177,9 @@ PokemonMansion1FScientist3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonMansion1FScientist4Text:
-	text_asm
-	ld hl, Mansion1TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 PokemonMansion1FScientist5Text:
 	text_asm
-	ld hl, Mansion1TrainerHeader4
+	ld hl, Mansion1TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -224,18 +219,6 @@ PokemonMansion1FScientist3AfterBattleText:
 	text_far _PokemonMansion1FScientist3AfterBattleText
 	text_end
 
-PokemonMansion1FScientist4BattleText:
-	text_far _PokemonMansion1FScientist4BattleText
-	text_end
-
-PokemonMansion1FScientist4EndBattleText:
-	text_far _PokemonMansion1FScientist4EndBattleText
-	text_end
-
-PokemonMansion1FScientist4AfterBattleText:
-	text_far _PokemonMansion1FScientist4AfterBattleText
-	text_end
-
 PokemonMansion1FScientist5BattleText:
 	text_far _PokemonMansion1FScientist5BattleText
 	text_end
@@ -245,14 +228,14 @@ PokemonMansion1FScientist5EndBattleText:
 	text_end
 
 PokemonMansion1FScientist5AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_MANSION_1_TRAINER_0 / 8)]
 	and MANSION_1_ALL_TRAINERS_MASK
 	sub MANSION_1_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

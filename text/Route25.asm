@@ -99,23 +99,6 @@ _Route25CooltrainerF2AfterBattleText::
 	cont "a CLEFAIRY?"
 	done
 
-_Route25Hiker1BattleText::
-	text "I just got down"
-	line "from MT.MOON,"
-	cont "but I'm ready!"
-	done
-
-_Route25Hiker1EndBattleText::
-	text "You"
-	line "worked hard!"
-	prompt
-
-_Route25Hiker1AfterBattleText::
-	text "Drat!"
-	line "A ZUBAT bit me"
-	cont "back in there."
-	done
-
 _Route25Hiker2BattleText::
 	text "I'm off to see a"
 	line "#MON collector"

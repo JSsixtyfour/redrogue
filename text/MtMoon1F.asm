@@ -78,23 +78,6 @@ _MtMoon1FCooltrainerF2AfterBattleText::
 	cont "fossils here."
 	done
 
-_MtMoon1FYoungster2BattleText::
-	text "Suspicious men"
-	line "are in the cave."
-	cont "What about you?"
-	done
-
-_MtMoon1FYoungster2EndBattleText::
-	text "You"
-	line "got me!"
-	prompt
-
-_MtMoon1FYoungster2AfterBattleText::
-	text "I saw them! I'm"
-	line "sure they're from"
-	cont "TEAM ROCKET!"
-	done
-
 _MtMoon1FYoungster3BattleText::
 	text "Go through this"
 	line "cave to get to"
