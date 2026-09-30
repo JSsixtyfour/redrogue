@@ -53,7 +53,7 @@ class AIPersonalityTest(unittest.TestCase):
             )
             self.h.write8("wBuffer", self.ai["AI_SCORE_BASE"], offset=slot)
 
-    def dispatch(self, records, move_names, trainer_class, *, trainer_no=1, tier=0, disabled_slot=None, player_types=None, player_hp=None):
+    def dispatch(self, records, move_names, trainer_class, *, trainer_no=1, tier=0, disabled_slot=None, player_types=None, player_hp=None, player_status=0):
         """Run the production chooser from the same parked FIGHT 2 state."""
         h = self.h
         h.load_state(self.battle_state)
@@ -65,7 +65,7 @@ class AIPersonalityTest(unittest.TestCase):
         h.write8("wAITier", tier + 1)
         h.write8("wAILayer2Encouragement", 0)
         h.write8("wEnemyDisabledMove", 0)
-        h.write8("wBattleMonStatus", 0)
+        h.write8("wBattleMonStatus", player_status)
         if disabled_slot is not None:
             h.write8("wEnemyDisabledMove", ((disabled_slot + 1) << 4) | 1)
         if player_types is not None:
@@ -283,6 +283,109 @@ class AIPersonalityTest(unittest.TestCase):
         self.assertGreater(personality_timing[0]["cycles"], 0)
         self.assertGreater(personality_timing[1]["cycles"], 0)
 
+
+    def test_psychic_profile_favors_disruption_not_setup_healing_or_empty_slots(self):
+        self.prime(("TACKLE", "HYPNOSIS", "CONFUSE_RAY", "SWORDS_DANCE"))
+        self.h.write8("wTrainerClass", self.trainer_classes["PSYCHIC_TR"])
+        self.h.write8("wTrainerNo", 1)
+        self.call("AIRunPersonality")
+        self.assertEqual(self.scores(), [
+            self.ai["AI_SCORE_BASE"],
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"],
+        ])
+
+        self.prime(("DISABLE", "LEECH_SEED", "BODY_SLAM", "RECOVER"))
+        self.h.write8("wTrainerClass", self.trainer_classes["PSYCHIC_TR"])
+        self.call("AIRunPersonality")
+        self.assertEqual(self.scores(), [
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"],
+        ])
+
+        self.prime(("HYPNOSIS",))
+        self.h.write8("wTrainerClass", self.trainer_classes["PSYCHIC_TR"])
+        self.call("AIRunPersonality")
+        self.assertEqual(self.scores(), [
+            self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
+            self.ai["AI_SCORE_BASE"],
+            self.ai["AI_SCORE_BASE"],
+            self.ai["AI_SCORE_BASE"],
+        ])
+
+    def test_psychic_full_dispatch_selects_hypnosis_and_records_profile_timing(self):
+        decisions = self.h.hook_ai_scores()
+        timings = self.h.hook_ai_personality_timing()
+        neutral = self.dispatch(
+            decisions, ("TACKLE", "HYPNOSIS"),
+            self.trainer_classes["COOLTRAINER_M"], tier=0,
+        )
+        psychic = self.dispatch(
+            decisions, ("TACKLE", "HYPNOSIS"),
+            self.trainer_classes["PSYCHIC_TR"], tier=0,
+        )
+        self.assertEqual(neutral["eligible_slots"], [0, 1])
+        self.assertEqual(psychic["eligible_slots"], [1])
+        self.assertEqual(psychic["candidates"], [self.moves["HYPNOSIS"]])
+        self.assertEqual([record["trainer_class"] for record in timings], [
+            self.trainer_classes["COOLTRAINER_M"],
+            self.trainer_classes["PSYCHIC_TR"],
+        ])
+        self.assertGreater(timings[0]["cycles"], 0)
+        self.assertGreater(timings[1]["cycles"], timings[0]["cycles"])
+        self.assertLess(timings[1]["cycles"], 70224)  # under one DMG frame
+
+    def test_psychic_control_does_not_overturn_a_reliable_ko(self):
+        decisions = self.h.hook_ai_scores()
+        neutral = self.dispatch(
+            decisions, ("TACKLE", "HYPNOSIS"),
+            self.trainer_classes["COOLTRAINER_M"], tier=2, player_hp=1,
+        )
+        psychic = self.dispatch(
+            decisions, ("TACKLE", "HYPNOSIS"),
+            self.trainer_classes["PSYCHIC_TR"], tier=2, player_hp=1,
+        )
+        self.assertEqual(neutral["candidates"], [self.moves["TACKLE"]])
+        self.assertEqual(psychic["candidates"], [self.moves["TACKLE"]])
+        self.assertEqual(psychic["eligible_slots"], [0])
+
+    def test_psychic_control_respects_status_redundancy_immunity_and_disabled_moves(self):
+        decisions = self.h.hook_ai_scores()
+        cases = (
+            ("sleep already present", ("TACKLE", "HYPNOSIS"), 0, None, 1, None),
+            ("paralysis immunity", ("TACKLE", "THUNDER_WAVE"), 0,
+             (self.types["GROUND"], self.types["GROUND"]), 0, None),
+            ("disabled hypnosis", ("TACKLE", "HYPNOSIS"), 0, None, 0, 1),
+        )
+        for label, moves, tier, player_types, player_status, disabled_slot in cases:
+            with self.subTest(case=label):
+                psychic = self.dispatch(
+                    decisions, moves, self.trainer_classes["PSYCHIC_TR"],
+                    tier=tier, player_types=player_types,
+                    player_status=player_status, disabled_slot=disabled_slot,
+                )
+                self.assertEqual(psychic["candidates"], [self.moves[moves[0]]])
+                self.assertEqual(psychic["eligible_slots"], [0])
+                if disabled_slot is not None:
+                    self.assertEqual(psychic["scores"][disabled_slot],
+                                     self.ai["AI_SCORE_DISABLED"])
+
+    def test_psychic_control_preserves_stronger_setup_choice(self):
+        decisions = self.h.hook_ai_scores()
+        neutral = self.dispatch(
+            decisions, ("TACKLE", "SWORDS_DANCE"),
+            self.trainer_classes["COOLTRAINER_M"], tier=1,
+        )
+        psychic = self.dispatch(
+            decisions, ("TACKLE", "SWORDS_DANCE"),
+            self.trainer_classes["PSYCHIC_TR"], tier=1,
+        )
+        self.assertEqual(neutral["candidates"], [self.moves["SWORDS_DANCE"]])
+        self.assertEqual(psychic["candidates"], [self.moves["SWORDS_DANCE"]])
+        self.assertEqual(neutral["scores"], psychic["scores"])
 
 if __name__ == "__main__":
     unittest.main()

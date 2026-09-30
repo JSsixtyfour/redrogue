@@ -27,8 +27,8 @@ class LobbyNotepadTests(unittest.TestCase):
     def test_closed_notepad_uses_sign_count_not_sprite_toggle(self):
         script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()
         self.assertNotIn("TOGGLE_PC_DOOR2_SIGN", script)
-        prefix = script.split("CheckEvent EVENT_ENTER_ROOM", 1)[0]
-        self.assertRegex(prefix, r"call Lobby_IsDoor2Blocked\s+ld a, 1\s+jr nz, \.setSignCount\s+inc a\s+\.setSignCount\s+ld \[wNumSigns\], a")
+        normal = script.split("\n.normal\n", 1)[1].split("IndigoPlateauLobby_TextPointers:", 1)[0]
+        self.assertRegex(normal, r"call Lobby_IsDoor2Blocked\s+ld a, 1\s+jr nz, \.setSignCount\s+inc a\s+\.setSignCount\s+ld \[wNumSigns\], a")
         table = (ROOT / "data/maps/toggleable_objects.asm").read_text()
         lobby = table.split("toggleable_objects_for INDIGO_PLATEAU_LOBBY", 1)[1].split("toggleable_objects_for", 1)[0]
         rows = re.findall(r"toggle_object_state\s+([^;\n]+)", lobby)
@@ -45,6 +45,14 @@ class LobbyNotepadTests(unittest.TestCase):
         self.assertEqual(len(open_block), 16)
         # Right-hand upper quadrant is the notepad; closed is a plain wall.
         self.assertNotEqual(open_block[2:4] + open_block[6:8], closed_block[2:4] + closed_block[6:8])
+
+    def test_stage_selection_precedes_door_presentation(self):
+        script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()
+        selection = script.index("farcall SelectAndPatchLobbyExit")
+        door_block = script.index("; update exit door tile")
+        sign_count = script.index("\n.normal\n")
+        self.assertLess(selection, door_block)
+        self.assertLess(selection, sign_count)
 
 
 if __name__ == "__main__":

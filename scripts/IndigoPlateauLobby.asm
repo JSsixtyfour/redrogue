@@ -12,14 +12,6 @@ IndigoPlateauLobby_Script:
 	ld [wSpritePlayerStateData1FacingDirection], a
 .skipFaceUp
 	call EnableAutoTextBoxDrawing
-	; Door 2's baked-in notepad is absent when its block is a wall.
-	; Refresh even after battle/header reloads, not only on EVENT_ENTER_ROOM.
-	call Lobby_IsDoor2Blocked
-	ld a, 1
-	jr nz, .setSignCount
-	inc a
-.setSignCount
-	ld [wNumSigns], a
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .normal
 
@@ -30,6 +22,12 @@ IndigoPlateauLobby_Script:
 	; Every lobby entry is a safe choke point to (re)assert this.
 	ld a, SILPH_CO_DORM
 	ld [wLastBlackoutMap], a
+	; Pick the next random stage and patch the exit warp before deriving either
+	; the visible door block or the active sign count from that selection.
+	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT, since that flag
+	; would cause an immediate warp before the player could do anything).
+	farcall SelectAndPatchLobbyExit
+	farcall ProcPreloadAssignedWildArea
 	; Lobby music: MapSongBanks (data/maps/songs.asm) defaults this map to
 	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
 	; MUSIC_INDIGO_PLATEAU for the rest of the run (re-applied every visit,
@@ -53,11 +51,6 @@ IndigoPlateauLobby_Script:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 5
 	predef ReplaceTileBlock
-	; Pick the next random stage on map entry and patch the exit warp.
-	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT — that flag
-	; would cause an immediate warp before the player could do anything).
-	farcall SelectAndPatchLobbyExit
-	farcall ProcPreloadAssignedWildArea
 	ld c, TRADE_FOR_RANDOM
 	ld b, FLAG_RESET
 	ld hl, wCompletedInGameTradeFlags
@@ -72,6 +65,14 @@ IndigoPlateauLobby_Script:
 	farcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
 
 .normal
+	; Door 2's baked-in notepad is absent when its block is a wall. Refresh on
+	; the finalized selection and after battle/header reloads.
+	call Lobby_IsDoor2Blocked
+	ld a, 1
+	jr nz, .setSignCount
+	inc a
+.setSignCount
+	ld [wNumSigns], a
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]

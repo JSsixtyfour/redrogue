@@ -287,6 +287,7 @@ AISoftPersonalityByTrainer:
 AISoftPersonalityByClass:
 	; db TRAINER_CLASS, AI_PERSONALITY_* ; opt in one class per reviewed change
 	db BLACKBELT, AI_PERSONALITY_OFFENSE
+	db PSYCHIC_TR, AI_PERSONALITY_CONTROL
 	db $ff
 
 AISoftPersonalityPointers:
@@ -301,9 +302,78 @@ AISoftPersonalityOffense::
 	ld c, 1
 	jr AISoftPersonalityByPower
 
-; Prefer non-damaging control. The shared loop interprets c = 0 as status.
+; Prefer disruptive effects rather than all non-damaging moves. This profile
+; deliberately leaves setup and healing to their existing tactical scoring.
 AISoftPersonalityControl::
-	ld c, 0
+	ld hl, wBuffer
+	ld de, wEnemyMonMoves
+	ld b, NUM_MOVES
+.nextMove
+	ld a, [de]
+	inc de
+	and a
+	jr z, .advance
+	push hl
+	push bc
+	push de
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	ld hl, AISoftPersonalityControlEffects
+	ld de, 1
+	call IsInArray
+	pop de
+	pop bc
+	pop hl
+	jr nc, .advance
+	ld a, AI_NUDGE
+	call AIEncourage
+.advance
+	inc hl
+	dec b
+	jr nz, .nextMove
+	ret
+
+; Status, confusion, trapping, disabling, seeding, and stat-drop effects.
+; Includes damaging moves with a disruption side effect. Pure boosts, screens,
+; healing, Substitute, Transform, and fixed-damage moves are not personality
+; targets. Existing AI_REDUNDANT and AIEncourage keep no-op/disabled moves safe.
+AISoftPersonalityControlEffects:
+	db SLEEP_EFFECT
+	db POISON_EFFECT
+	db PARALYZE_EFFECT
+	db POISON_SIDE_EFFECT1
+	db BURN_SIDE_EFFECT1
+	db FREEZE_SIDE_EFFECT1
+	db PARALYZE_SIDE_EFFECT1
+	db FLINCH_SIDE_EFFECT1
+	db POISON_SIDE_EFFECT2
+	db BURN_SIDE_EFFECT2
+	db FREEZE_SIDE_EFFECT2
+	db PARALYZE_SIDE_EFFECT2
+	db FLINCH_SIDE_EFFECT2
+	db ATTACK_DOWN1_EFFECT
+	db DEFENSE_DOWN1_EFFECT
+	db SPEED_DOWN1_EFFECT
+	db SPECIAL_DOWN1_EFFECT
+	db ACCURACY_DOWN1_EFFECT
+	db EVASION_DOWN1_EFFECT
+	db TRAPPING_EFFECT
+	db CONFUSION_EFFECT
+	db ATTACK_DOWN2_EFFECT
+	db DEFENSE_DOWN2_EFFECT
+	db SPEED_DOWN2_EFFECT
+	db SPECIAL_DOWN2_EFFECT
+	db ACCURACY_DOWN2_EFFECT
+	db EVASION_DOWN2_EFFECT
+	db ATTACK_DOWN_SIDE_EFFECT
+	db DEFENSE_DOWN_SIDE_EFFECT
+	db SPEED_DOWN_SIDE_EFFECT
+	db SPECIAL_DOWN_SIDE_EFFECT
+	db CONFUSION_SIDE_EFFECT
+	db HAZE_EFFECT
+	db LEECH_SEED_EFFECT
+	db DISABLE_EFFECT
+	db -1
 
 AISoftPersonalityByPower:
 	ld hl, wBuffer
