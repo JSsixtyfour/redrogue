@@ -10,7 +10,7 @@ _Route24CooltrainerM2AfterBattleText::
 	done
 
 _Route24CooltrainerM3BattleText::
-	text "OK! I'm No. 5!"
+	text "OK! I'm No. 4!"
 	line "I'll stomp you!"
 	done
 
@@ -22,21 +22,6 @@ _Route24CooltrainerM3EndBattleText::
 _Route24CooltrainerM3AfterBattleText::
 	text "I did my best, I"
 	line "have no regrets!"
-	done
-
-_Route24CooltrainerF1BattleText::
-	text "I'm No. 4!"
-	line "Getting tired?"
-	done
-
-_Route24CooltrainerF1EndBattleText::
-	text "I lost"
-	line "too!"
-	prompt
-
-_Route24CooltrainerF1AfterBattleText::
-	text "I did my best, so"
-	line "I've no regrets!"
 	done
 
 _Route24Youngster1BattleText::
@@ -71,7 +56,7 @@ _Route24CooltrainerF2AfterBattleText::
 
 _Route24Youngster2BattleText::
 	text "This is NUGGET"
-	line "BRIDGE! Beat us 5"
+	line "BRIDGE! Beat us 4"
 	cont "trainers and win"
 	cont "a fabulous prize!"
 

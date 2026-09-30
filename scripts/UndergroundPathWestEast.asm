@@ -1,8 +1,7 @@
 DEF UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3 % 8))
 
 UndergroundPathWestEast_Script:
 	CheckEvent EVENT_ENTER_ROOM
@@ -61,10 +60,10 @@ UndergroundPathWestEast_ScriptPointers:
 
 UndergroundPathWestEast_TextPointers:
 	def_text_pointers
+	dw_const UndergroundPathWestEastPaddingText, TEXT_UNDERGROUNDPATHWESTEAST_PADDING
 	dw_const UndergroundPathWestEastBiker1Text, TEXT_UNDERGROUNDPATHWESTEAST_BIKER_1
 	dw_const UndergroundPathWestEastJugglerText, TEXT_UNDERGROUNDPATHWESTEAST_JUGGLER
 	dw_const UndergroundPathWestEastBurglarText, TEXT_UNDERGROUNDPATHWESTEAST_BURGLAR
-	dw_const UndergroundPathWestEastBiker2Text, TEXT_UNDERGROUNDPATHWESTEAST_BIKER_2
 	dw_const UndergroundPathWestEastCueBallText, TEXT_UNDERGROUNDPATHWESTEAST_CUE_BALL
 	dw_const RandomPickUpItemText, TEXT_UNDERGROUNDPATHWESTEAST_RANDOM
 	dw_const UndergroundPathWestEast_RogueRewardPokeballText1, TEXT_UNDERGROUNDPATHWESTEAST_ROGUE_REWARD_POKEBALL_1
@@ -76,7 +75,7 @@ UndergroundPathWestEast_TextPointers:
 	dw_const UndergroundPathWestEastNoTurningBackText, TEXT_UNDERGROUNDPATHWESTEAST_NO_TURNING_BACK
 
 UndergroundPathWestEastTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 UndergroundPathWestEastTrainerHeader0:
 	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0, 4, UndergroundPathWestEastBiker1BattleText, UndergroundPathWestEastBiker1EndBattleText, UndergroundPathWestEastBiker1AfterBattleText
 UndergroundPathWestEastTrainerHeader1:
@@ -84,10 +83,12 @@ UndergroundPathWestEastTrainerHeader1:
 UndergroundPathWestEastTrainerHeader2:
 	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_2, 4, UndergroundPathWestEastBurglarBattleText, UndergroundPathWestEastBurglarEndBattleText, UndergroundPathWestEastBurglarAfterBattleText
 UndergroundPathWestEastTrainerHeader3:
-	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3, 4, UndergroundPathWestEastBiker2BattleText, UndergroundPathWestEastBiker2EndBattleText, UndergroundPathWestEastBiker2AfterBattleText
-UndergroundPathWestEastTrainerHeader4:
-	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_4, 4, UndergroundPathWestEastCueBallBattleText, UndergroundPathWestEastCueBallEndBattleText, UndergroundPathWestEastCueBallAfterBattleText
+	trainer EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_3, 4, UndergroundPathWestEastCueBallBattleText, UndergroundPathWestEastCueBallEndBattleText, UndergroundPathWestEastCueBallAfterBattleText
 	db -1
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+UndergroundPathWestEastPaddingText:
+	text_end
 
 UndergroundPathWestEastBiker1Text:
 	text_asm
@@ -134,24 +135,9 @@ UndergroundPathWestEastBurglarAfterBattleText:
 	text_far _UndergroundPathWestEastBurglarAfterBattleText
 	text_end
 
-UndergroundPathWestEastBiker2Text:
-	text_asm
-	ld hl, UndergroundPathWestEastTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-UndergroundPathWestEastBiker2BattleText:
-	text_far _UndergroundPathWestEastBiker2BattleText
-	text_end
-UndergroundPathWestEastBiker2EndBattleText:
-	text_far _UndergroundPathWestEastBiker2EndBattleText
-	text_end
-UndergroundPathWestEastBiker2AfterBattleText:
-	text_far _UndergroundPathWestEastBiker2AfterBattleText
-	text_end
-
 UndergroundPathWestEastCueBallText:
 	text_asm
-	ld hl, UndergroundPathWestEastTrainerHeader4
+	ld hl, UndergroundPathWestEastTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 UndergroundPathWestEastCueBallBattleText:
@@ -183,14 +169,14 @@ UndergroundPathWestEastCueBallEndBattleText:
 	text_far _GiovanniMiniBossEndBattleText
 	text_end
 UndergroundPathWestEastCueBallAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_0 / 8)]
 	and UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK
 	sub UNDERGROUND_PATH_WEST_EAST_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

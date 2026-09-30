@@ -122,22 +122,6 @@ _CinnabarGymSuperNerd3AfterBattleText::
 	cont "for you!"
 	done
 
-_CinnabarGymSuperNerd4BattleText::
-	text "I just like using"
-	line "fire #MON!"
-	done
-
-_CinnabarGymSuperNerd4EndBattleText::
-	text "Too hot"
-	line "to handle!"
-	prompt
-
-_CinnabarGymSuperNerd4AfterBattleText::
-	text "I wish there was"
-	line "a thief #MON!"
-	cont "I'd use that!"
-	done
-
 _CinnabarGymSuperNerd5BattleText::
 	text "I know why BLAINE"
 	line "became a trainer!"

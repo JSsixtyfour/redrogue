@@ -1,8 +1,7 @@
 DEF POKEMON_TOWER_2F_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3 % 8))
 
 PokemonTower2F_Script:
 
@@ -196,10 +195,10 @@ ENDC
 
 PokemonTower2F_TextPointers:
 	def_text_pointers
+	dw_const PokemonTower2FPaddingText,    TEXT_POKEMONTOWER2F_PADDING
 	dw_const PokemonTower2FChanneler1Text, TEXT_POKEMONTOWER2F_CHANNELER1
 	dw_const PokemonTower2FChanneler2Text, TEXT_POKEMONTOWER2F_CHANNELER2
 	dw_const PokemonTower2FChanneler3Text, TEXT_POKEMONTOWER2F_CHANNELER3
-	dw_const PokemonTower2FChanneler4Text, TEXT_POKEMONTOWER2F_CHANNELER4
 	dw_const PokemonTower2FChanneler5Text, TEXT_POKEMONTOWER2F_CHANNELER5
 	dw_const PokemonTower2FChannelerText,  TEXT_POKEMONTOWER2F_CHANNELER
     dw_const RandomPickUpItemText,         TEXT_POKEMONTOWER2F_RANDOM
@@ -213,7 +212,7 @@ PokemonTower2F_TextPointers:
 	dw_const PokemonTower2FNoTurningBackText, TEXT_POKEMONTOWER2F_NO_TURNING_BACK
 
 PokemonTower2FTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 PokemonTower2FTrainerHeader0:
 	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0, 4, PokemonTower2FChanneler1BattleText, PokemonTower2FChanneler1EndBattleText, PokemonTower2FChanneler1AfterBattleText
 PokemonTower2FTrainerHeader1:
@@ -221,10 +220,12 @@ PokemonTower2FTrainerHeader1:
 PokemonTower2FTrainerHeader2:
 	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2, 3, PokemonTower2FChanneler3BattleText, PokemonTower2FChanneler3EndBattleText, PokemonTower2FChanneler3AfterBattleText
 PokemonTower2FTrainerHeader3:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 1, PokemonTower2FChanneler4BattleText, PokemonTower2FChanneler4EndBattleText, PokemonTower2FChanneler4AfterBattleText
-PokemonTower2FTrainerHeader4:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_4, 2, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 2, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+PokemonTower2FPaddingText:
+	text_end
 
 PokemonTower2FChanneler1Text:
 	text_asm
@@ -244,15 +245,9 @@ PokemonTower2FChanneler3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonTower2FChanneler4Text:
-	text_asm
-	ld hl, PokemonTower2FTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 PokemonTower2FChanneler5Text:
 	text_asm
-	ld hl, PokemonTower2FTrainerHeader4
+	ld hl, PokemonTower2FTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -292,18 +287,6 @@ PokemonTower2FChanneler3AfterBattleText:
 	text_far _PokemonTower2FChanneler1AfterBattleText
 	text_end
 
-PokemonTower2FChanneler4BattleText:
-	text_far _PokemonTower2FChanneler1BattleText
-	text_end
-
-PokemonTower2FChanneler4EndBattleText:
-	text_far _PokemonTower2FChanneler1EndBattleText
-	text_end
-
-PokemonTower2FChanneler4AfterBattleText:
-	text_far _PokemonTower2FChanneler1AfterBattleText
-	text_end
-
 PokemonTower2FChanneler5BattleText:
 	text_far _PokemonTower2FChanneler1BattleText
 	text_end
@@ -313,14 +296,14 @@ PokemonTower2FChanneler5EndBattleText:
 	text_end
 
 PokemonTower2FChanneler5AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_0 / 8)]
 	and POKEMON_TOWER_2F_ALL_TRAINERS_MASK
 	sub POKEMON_TOWER_2F_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

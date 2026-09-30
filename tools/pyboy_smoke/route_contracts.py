@@ -14,7 +14,7 @@ ROUTE_BATTLES = parse_rgbds_constants(
 
 
 class RewardGate(Enum):
-    STANDARD_FIVE_TRAINERS = "standard_five_trainers"
+    STANDARD_ALL_TRAINERS = "standard_all_trainers"
     NUGGET_BRIDGE = "nugget_bridge"
     SS_ANNE_ROOMS = "ss_anne_rooms"
 
@@ -26,7 +26,7 @@ class RouteContract:
     object_file: str
     script_symbol: str
     trainer_event_prefix: str | None
-    reward_gate: RewardGate = RewardGate.STANDARD_FIVE_TRAINERS
+    reward_gate: RewardGate = RewardGate.STANDARD_ALL_TRAINERS
     standard_object_slots: bool = True
     miniboss_eligible: bool = False
 
@@ -38,7 +38,7 @@ class RouteContract:
 
 
 def route(name, map_constant, object_file, script_symbol, trainer_event_prefix,
-          *, reward_gate=RewardGate.STANDARD_FIVE_TRAINERS,
+          *, reward_gate=RewardGate.STANDARD_ALL_TRAINERS,
           standard_object_slots=True, miniboss_eligible=False):
     return RouteContract(name, map_constant, object_file, script_symbol,
                          trainer_event_prefix, reward_gate,

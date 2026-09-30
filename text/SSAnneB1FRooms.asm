@@ -72,21 +72,6 @@ _SSAnneB1FRoomsCooltrainer_FAfterBattleText::
 	done
     
 
-_SSAnneB1FRoomsGentlemanBattleText::
-	text "My son really"
-	line "likes MACHOKE..."
-	done
-
-_SSAnneB1FRoomsGentlemanEndBattleText::
-	text "Darn!"
-	line "I should've used"
-	cont "MACHOKE!"
-	prompt
-
-_SSAnneB1FRoomsGentlemanAfterBattleText::
-	text "Maybe it's just"
-	line "a phase..."
-	done
     
 _SSAnneB1FRoomsSuperNerdText::
 	text "My buddy, MACHOKE,"

@@ -93,7 +93,6 @@ CeruleanGymReceiveTM11:
 CeruleanGym_TextPointers:
 	def_text_pointers
 	dw_const CeruleanGymMistyText,                 TEXT_CERULEANGYM_MISTY
-    dw_const CeruleanGymSwimmer1Text,              TEXT_CERULEANGYM_SWIMMER_1
     dw_const CeruleanGymSwimmer2Text,              TEXT_CERULEANGYM_SWIMMER_2
     dw_const CeruleanGymSwimmer3Text,              TEXT_CERULEANGYM_SWIMMER_3
 	dw_const CeruleanGymCooltrainerFText,          TEXT_CERULEANGYM_COOLTRAINER_F
@@ -105,13 +104,11 @@ CeruleanGym_TextPointers:
 CeruleanGymTrainerHeaders:
 	def_trainers 2
 CeruleanGymTrainerHeader0:
-	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_0, 2, CeruleanGymBattle1Text, CeruleanGymEndBattle1Text, CeruleanGymAfterBattle1Text
+	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_0, 4, CeruleanGymBattle2Text, CeruleanGymEndBattle2Text, CeruleanGymAfterBattle3Text
 CeruleanGymTrainerHeader1:
-	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_1, 4, CeruleanGymBattle2Text, CeruleanGymEndBattle2Text, CeruleanGymAfterBattle3Text
+	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_1, 4, CeruleanGymBattle3Text, CeruleanGymEndBattle3Text, CeruleanGymAfterBattle3Text
 CeruleanGymTrainerHeader2:
-	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_2, 4, CeruleanGymBattle3Text, CeruleanGymEndBattle3Text, CeruleanGymAfterBattle3Text
-CeruleanGymTrainerHeader3:
-	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_3, 3, CeruleanGymBattle4Text, CeruleanGymEndBattle4Text, CeruleanGymAfterBattle4Text
+	trainer EVENT_BEAT_CERULEAN_GYM_TRAINER_2, 3, CeruleanGymBattle4Text, CeruleanGymEndBattle4Text, CeruleanGymAfterBattle4Text
     db -1 ; end
 
 CeruleanGymMistyText:
@@ -187,7 +184,7 @@ CeruleanGymMistyReceivedCascadeBadgeText:
 
 CeruleanGymCooltrainerFText:
 	text_asm
-	ld hl, CeruleanGymTrainerHeader3
+	ld hl, CeruleanGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -203,27 +200,9 @@ CeruleanGymAfterBattle4Text:
 	text_far _CeruleanGymAfterBattle4Text
 	text_end
 
-CeruleanGymSwimmer1Text:
-	text_asm
-	ld hl, CeruleanGymTrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-CeruleanGymBattle1Text:
-	text_far _CeruleanGymBattle1Text
-	text_end
-
-CeruleanGymEndBattle1Text:
-	text_far _CeruleanGymEndBattle1Text
-	text_end
-
-CeruleanGymAfterBattle1Text:
-	text_far _CeruleanGymAfterBattle1Text
-	text_end
-    
 CeruleanGymSwimmer2Text:
 	text_asm
-	ld hl, CeruleanGymTrainerHeader1
+	ld hl, CeruleanGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -241,7 +220,7 @@ CeruleanGymAfterBattle2Text:
     
 CeruleanGymSwimmer3Text:
 	text_asm
-	ld hl, CeruleanGymTrainerHeader2
+	ld hl, CeruleanGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 

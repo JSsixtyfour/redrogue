@@ -118,22 +118,6 @@ _AzaleaGymTrainer3AfterBattleText::
 	cont "moves…"
 	done
 
-_AzaleaGymTrainer4BattleText::
-	text "Hi! Are you"
-	line "challenging the"
-	cont "LEADER? No way!"
-	done
-
-_AzaleaGymTrainer4EndBattleText::
-	text "Oh,"
-	line "double goodness!"
-	prompt
-
-_AzaleaGymTrainer4AfterBattleText::
-	text "You're really"
-	line "strong!"
-	done
-
 _AzaleaGymGuideAdviceText::
 	text "Yo, challenger!"
 

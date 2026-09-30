@@ -44,16 +44,17 @@ def parse_map_dimensions(path) -> dict[str, tuple[int, int]]:
     }
 
 # map constant -> (expected object count, leader name for the failure message)
-# One row per gym. The object count is Falkner + 4 trainers + the gym guide.
+# One row per gym. The object count is the leader + 3 trainers + the gym guide
+# (FOUR_TRAINER_REVISION_PLAN.md cut one trainer per gym from the original 4).
 GYMS = {
-    "VIOLET_GYM": (6, "FALKNER"),
-    "AZALEA_GYM": (6, "BUGSY"),
-    "GOLDENROD_GYM": (6, "WHITNEY"),
-    "ECRUTEAK_GYM": (6, "MORTY"),
-    "CIANWOOD_GYM": (6, "CHUCK"),
-    "OLIVINE_GYM": (6, "JASMINE"),
-    "MAHOGANY_GYM": (6, "PRYCE"),
-    "BLACKTHORN_GYM": (6, "CLAIR"),
+    "VIOLET_GYM": (5, "FALKNER"),
+    "AZALEA_GYM": (5, "BUGSY"),
+    "GOLDENROD_GYM": (5, "WHITNEY"),
+    "ECRUTEAK_GYM": (5, "MORTY"),
+    "CIANWOOD_GYM": (5, "CHUCK"),
+    "OLIVINE_GYM": (5, "JASMINE"),
+    "MAHOGANY_GYM": (5, "PRYCE"),
+    "BLACKTHORN_GYM": (5, "CLAIR"),
 }
 
 LOBBY_MAP = "INDIGO_PLATEAU_LOBBY"

@@ -40,24 +40,6 @@ _Route5Youngster2AfterBattleText::
 	line "in the LOBBY now"
 	done
     
-_Route5Lass1BattleText::
-	text "I just love"
-	cont "walking my"
-    cont "#MON down this"
-    cont "road"
-    done
-
-_Route5Lass1EndBattleText::
-	text "Okay!"
-	line "You're really"
-	cont "serious"
-	prompt
-
-_Route5Lass1AfterBattleText::
-	text "Don't forget to"
-	line "enjoy it!"
-	done
-
 _Route5Lass2BattleText::
 	text "I was hoping"
 	cont "to bump into"

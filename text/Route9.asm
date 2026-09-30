@@ -98,25 +98,6 @@ _Route9Hiker2AfterBattleText::
 	line "should be tough!"
 	done
 
-_Route9Youngster1BattleText::
-	text "I got up early"
-	line "every day to"
-	cont "raise my #MON"
-	cont "from cocoons!"
-	done
-
-_Route9Youngster1EndBattleText::
-	text "WHAT?"
-
-	para "What a total"
-	line "waste of time!"
-	prompt
-
-_Route9Youngster1AfterBattleText::
-	text "I have to collect"
-	line "more than bugs to"
-	cont "get stronger..."
-	done
 
 _Route9Hiker3BattleText::
 	text "Hahahaha!"

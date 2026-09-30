@@ -136,26 +136,6 @@ _EcruteakGymTrainer3AfterBattleText::
 	line "to win most--will!"
 	done
 
-_EcruteakGymTrainer4BattleText::
-	text "I believe this gym"
-	line "needs renovations"
-
-	para "What do you think"
-	line "of invisible" 
-    cont "floors?"
-	done
-
-_EcruteakGymTrainer4EndBattleText::
-	text "Huh?!"
-	line "Wha-what?"
-	prompt
-
-_EcruteakGymTrainer4AfterBattleText::
-	text "Great, I'm glad"
-    line "you like the idea."
-    cont "I'll tell MORTY"
-	done
-
 _EcruteakGymGuideAdviceText::
 	text "The trainers here"
 	line "have secret mo-"

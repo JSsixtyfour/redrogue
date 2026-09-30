@@ -2,7 +2,6 @@
 	const_export FUCHSIAGYM_KOGA
 	const_export FUCHSIAGYM_ROCKER1
 	const_export FUCHSIAGYM_ROCKER2
-	const_export FUCHSIAGYM_ROCKER3
 	const_export FUCHSIAGYM_ROCKER4
 	const_export FUCHSIAGYM_GYM_GUIDE
 ; Janine is APPENDED LAST, not slotted next to Koga. The first N entries of
@@ -26,7 +25,6 @@ FuchsiaGym_Object:
 	object_event  5,  2, SPRITE_KOGA, STAY, DOWN, TEXT_FUCHSIAGYM_KOGA, OPP_KOGA, 1
 	object_event  7, 11, SPRITE_ROCKER, STAY, RIGHT, TEXT_FUCHSIAGYM_ROCKER1, OPP_JUGGLER, 1
 	object_event  2,  9, SPRITE_ROCKER, STAY, DOWN, TEXT_FUCHSIAGYM_ROCKER2, OPP_JUGGLER, 1
-	object_event  5,  5, SPRITE_ROCKER, STAY, LEFT, TEXT_FUCHSIAGYM_ROCKER3, OPP_JUGGLER, 1
 	object_event  8,  6, SPRITE_ROCKER, STAY, DOWN, TEXT_FUCHSIAGYM_ROCKER4, OPP_TAMER, 1
 	object_event  7, 15, SPRITE_GYM_GUIDE, STAY, DOWN, TEXT_FUCHSIAGYM_GYM_GUIDE
 ; Janine stands on Koga's tile: exactly one of the two is ever visible, so they

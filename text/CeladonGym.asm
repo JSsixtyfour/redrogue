@@ -125,28 +125,6 @@ _CeladonGymAfterBattleText4::
 	cont "lot of gawkers!"
 	done
 
-_CeladonGymBattleText5::
-	text "Look at my grass"
-	line "#MON!"
-
-	para "They're so easy"
-	line "to raise!"
-	done
-
-_CeladonGymEndBattleText5::
-	text "No!"
-	prompt
-
-_CeladonGymAfterBattleText5::
-	text "We use grass-"
-	line "type #MON at"
-	cont "our GYM!"
-
-	para "We also use them"
-	line "for making flower"
-	cont "arrangements!"
-	done
-
 _CeladonGymBattleText6::
 	text "Don't bring any"
 	line "bugs or fire"

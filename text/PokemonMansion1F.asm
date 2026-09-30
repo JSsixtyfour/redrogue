@@ -46,21 +46,6 @@ _PokemonMansion1FScientist3AfterBattleText::
 	cont "display!"
 	done
 
-_PokemonMansion1FScientist4BattleText::
-	text "How did you get"
-	line "this far?"
-	cont "Prepare to lose!"
-	done
-
-_PokemonMansion1FScientist4EndBattleText::
-	text "What?!"
-	line "Unbelievable!"
-	prompt
-
-_PokemonMansion1FScientist4AfterBattleText::
-	text "Our #MON data"
-	line "is classified!"
-	done
 
 _PokemonMansion1FScientist5BattleText::
 	text "You're incredibly"

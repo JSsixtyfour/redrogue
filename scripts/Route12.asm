@@ -1,8 +1,7 @@
 DEF ROUTE12_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_12_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_12_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_12_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_12_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_12_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_12_TRAINER_3 % 8))
 
 Route12_Script:
 
@@ -120,11 +119,11 @@ Route12SnorlaxPostBattleScript:
 
 Route12_TextPointers:
 	def_text_pointers
+	dw_const Route12PaddingText,           TEXT_ROUTE12_PADDING
 	dw_const Route12SnorlaxText,           TEXT_ROUTE12_SNORLAX
 	dw_const Route12Fisher1Text,           TEXT_ROUTE12_FISHER1
 	dw_const Route12Fisher2Text,           TEXT_ROUTE12_FISHER2
 	dw_const Route12RockerText,            TEXT_ROUTE12_ROCKER
-	dw_const Route12JrTrainerMText,        TEXT_ROUTE12_JR_TRAINER_M
 	dw_const Route12Fisher3Text,           TEXT_ROUTE12_FISHER3
 	dw_const PickUpItemText,               TEXT_ROUTE12_TM_PAY_DAY
 	dw_const PickUpItemText,               TEXT_ROUTE12_IRON
@@ -142,7 +141,7 @@ Route12_TextPointers:
 	dw_const Route12NoTurningBackText,     TEXT_ROUTE12_NO_TURNING_BACK
 
 Route12TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route12TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_12_TRAINER_0, 4, Route12Fisher1BattleText, Route12Fisher1EndBattleText, Route12Fisher1AfterBattleText
 Route12TrainerHeader1:
@@ -150,10 +149,12 @@ Route12TrainerHeader1:
 Route12TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_12_TRAINER_2, 4, Route12RockerBattleText, Route12RockerEndBattleText, Route12RockerAfterBattleText
 Route12TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_12_TRAINER_3, 4, Route12JrTrainerMBattleText, Route12JrTrainerMEndBattleText, Route12JrTrainerMAfterBattleText
-Route12TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_12_TRAINER_4, 1, Route12Fisher3BattleText, Route12Fisher3EndBattleText, Route12Fisher3AfterBattleText
+	trainer EVENT_BEAT_ROUTE_12_TRAINER_3, 1, Route12Fisher3BattleText, Route12Fisher3EndBattleText, Route12Fisher3AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route12PaddingText:
+	text_end
 
 Route12SnorlaxText:
 	text_far _Route12SnorlaxText
@@ -221,27 +222,9 @@ Route12RockerAfterBattleText:
 	text_far _Route12SuperNerdAfterBattleText
 	text_end
 
-Route12JrTrainerMText:
-	text_asm
-	ld hl, Route12TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route12JrTrainerMBattleText:
-	text_far _Route12CooltrainerMBattleText
-	text_end
-
-Route12JrTrainerMEndBattleText:
-	text_far _Route12CooltrainerMEndBattleText
-	text_end
-
-Route12JrTrainerMAfterBattleText:
-	text_far _Route12CooltrainerMAfterBattleText
-	text_end
-
 Route12Fisher3Text:
 	text_asm
-	ld hl, Route12TrainerHeader4
+	ld hl, Route12TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -254,14 +237,14 @@ Route12Fisher3EndBattleText:
 	text_end
 
 Route12Fisher3AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_12_TRAINER_0 / 8)]
 	and ROUTE12_ALL_TRAINERS_MASK
 	sub ROUTE12_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

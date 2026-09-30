@@ -100,21 +100,6 @@ _CianwoodGymTrainer2AfterBattleText::
 	cont "chics…"
 	done
 
-_CianwoodGymTrainer3BattleText::
-	text "Words are useless."
-	line "Let your fists do"
-	cont "the talking!"
-	done
-
-_CianwoodGymTrainer3EndBattleText::
-	text "…"
-	prompt
-
-_CianwoodGymTrainer3AfterBattleText::
-	text "I lost! "
-	line "I'm speechless!"
-	done
-
 _CianwoodGymTrainer4BattleText::
 	text "My raging fists"
 	line "will shatter your"

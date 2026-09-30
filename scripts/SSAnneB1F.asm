@@ -4,13 +4,12 @@
 DEF SSANNE10_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_4 % 8))
-ASSERT EVENT_BEAT_SS_ANNE_10_TRAINER_0 / 8 == EVENT_BEAT_SS_ANNE_10_TRAINER_4 / 8, \
+	| (1 << (EVENT_BEAT_SS_ANNE_10_TRAINER_3 % 8))
+ASSERT EVENT_BEAT_SS_ANNE_10_TRAINER_0 / 8 == EVENT_BEAT_SS_ANNE_10_TRAINER_3 / 8, \
 	"SSAnneB1FRooms beat events must share one event byte"
 
 SSAnneB1F_Script:
-	; Reveal the rewards once all five SSAnneB1FRooms trainers are beaten
+	; Reveal the rewards once all four SSAnneB1FRooms trainers are beaten
 	; (checked on each return from the rooms). Latched by the event.
 	CheckEvent EVENT_SSANNE_ALL_TRAINERS_DEFEATED
 	jr nz, .entry

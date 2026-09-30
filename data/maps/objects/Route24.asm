@@ -1,6 +1,6 @@
 	object_const_def
+	const_export ROUTE24_PADDING
 	const_export ROUTE24_COOLTRAINER_M3
-	const_export ROUTE24_COOLTRAINER_F1
 	const_export ROUTE24_YOUNGSTER1
 	const_export ROUTE24_COOLTRAINER_F2
 	const_export ROUTE24_YOUNGSTER2
@@ -24,8 +24,12 @@ Route24_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; and slots 6-10 keep the reward cluster. It stands below the map, so
+	; CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_ROUTE24_PADDING
 	object_event 11, 15, SPRITE_COOLTRAINER_M, STAY, LEFT, TEXT_ROUTE24_COOLTRAINER_M3, OPP_JR_TRAINER_M, 1
-	object_event 10, 18, SPRITE_COOLTRAINER_F, STAY, RIGHT, TEXT_ROUTE24_COOLTRAINER_F1, OPP_LASS, 1
 	object_event 11, 21, SPRITE_YOUNGSTER, STAY, LEFT, TEXT_ROUTE24_YOUNGSTER1, OPP_YOUNGSTER, 1
 	object_event 10, 24, SPRITE_COOLTRAINER_F, STAY, RIGHT, TEXT_ROUTE24_COOLTRAINER_F2, OPP_LASS, 1
 	object_event 11, 27, SPRITE_YOUNGSTER, STAY, LEFT, TEXT_ROUTE24_YOUNGSTER2, OPP_BUG_CATCHER, 1

@@ -99,7 +99,6 @@ PewterGym_TextPointers:
 	dw_const PewterGymBrockText,             TEXT_PEWTERGYM_BROCK
 	dw_const PewterGymCooltrainerM1Text,      TEXT_PEWTERGYM_COOLTRAINER_M1
     dw_const PewterGymCooltrainerM2Text,      TEXT_PEWTERGYM_COOLTRAINER_M2
-    dw_const PewterGymCooltrainerM3Text,      TEXT_PEWTERGYM_COOLTRAINER_M3
     dw_const PewterGymCooltrainerM4Text,      TEXT_PEWTERGYM_COOLTRAINER_M4
 	dw_const PewterGymGuideText,             TEXT_PEWTERGYM_GYM_GUIDE
 	dw_const PewterGymBrockWaitTakeThisText, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
@@ -113,9 +112,7 @@ PewterGymTrainerHeader0:
 PewterGymTrainerHeader1:
 	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 2, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
 PewterGymTrainerHeader2:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 5, PewterGymCooltrainerM3BattleText, PewterGymCooltrainerM3EndBattleText, PewterGymCooltrainerM3AfterBattleText
-PewterGymTrainerHeader3:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_3, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
 	db -1 ; end
     
 PewterGymReceivedTMText:
@@ -232,27 +229,9 @@ PewterGymCooltrainerM2AfterBattleText:
 	text_far _PewterGymCooltrainerMAfterBattleText
 	text_end
     
-PewterGymCooltrainerM3Text:
-	text_asm
-	ld hl, PewterGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-PewterGymCooltrainerM3BattleText:
-	text_far _PewterGymCooltrainerMBattleText
-	text_end
-
-PewterGymCooltrainerM3EndBattleText:
-	text_far _PewterGymCooltrainerMEndBattleText
-	text_end
-
-PewterGymCooltrainerM3AfterBattleText:
-	text_far _PewterGymCooltrainerMAfterBattleText
-	text_end
-
 PewterGymCooltrainerM4Text:
 	text_asm
-	ld hl, PewterGymTrainerHeader3
+	ld hl, PewterGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

@@ -75,27 +75,6 @@ _MahoganyGymTMNoRoomText::
 	line "for this!"
 	done
 
-_MahoganyGymTrainer1BattleText::
-	text "To get to PRYCE,"
-	line "our GYM LEADER,"
-
-	para "you need to think"
-	line "before you act."
-	done
-
-_MahoganyGymTrainer1EndBattleText::
-	text "Hmph!"
-	line "I wouldn't lose to"
-	cont "you in skiing!"
-	prompt
-
-_MahoganyGymTrainer1AfterBattleText::
-	text "If you don't act"
-	line "with precision,"
-
-	para "you won't get far"
-	line "in this GYM."
-	done
 
 _MahoganyGymTrainer2BattleText::
 	text "I'll freeze your"

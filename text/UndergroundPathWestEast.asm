@@ -43,21 +43,6 @@ _UndergroundPathWestEastBurglarAfterBattleText::
 	line "taking anything."
 	done
 
-_UndergroundPathWestEastBiker2BattleText::
-	text "You're still on"
-	line "our turf!"
-	done
-
-_UndergroundPathWestEastBiker2EndBattleText::
-	text "What a"
-	line "wipeout!"
-	prompt
-
-_UndergroundPathWestEastBiker2AfterBattleText::
-	text "The boss is just"
-	line "up ahead."
-	done
-
 _UndergroundPathWestEastCueBallBattleText::
 	text "End of the line!"
 	line "Nobody passes me!"

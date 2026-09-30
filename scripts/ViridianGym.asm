@@ -217,7 +217,6 @@ ViridianGym_TextPointers:
 	def_text_pointers
 	dw_const ViridianGymGiovanniText,               TEXT_VIRIDIANGYM_GIOVANNI
 	dw_const ViridianGymCooltrainerM1Text,          TEXT_VIRIDIANGYM_COOLTRAINER_M1
-	dw_const ViridianGymHiker1Text,                 TEXT_VIRIDIANGYM_HIKER1
 	dw_const ViridianGymRocker1Text,                TEXT_VIRIDIANGYM_ROCKER1
 	dw_const ViridianGymHiker2Text,                 TEXT_VIRIDIANGYM_HIKER2
 	dw_const ViridianGymGymGuideText,               TEXT_VIRIDIANGYM_GYM_GUIDE
@@ -240,11 +239,9 @@ ViridianGymTrainerHeaders:
 ViridianGymTrainerHeader0:
 	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_0, 3, ViridianGymCooltrainerM1BattleText, ViridianGymCooltrainerM1EndBattleText, ViridianGymCooltrainerM1AfterBattleText
 ViridianGymTrainerHeader1:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_1, 4, ViridianGymHiker1BattleText, ViridianGymHiker1EndBattleText, ViridianGymHiker1AfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_1, 4, ViridianGymRocker1BattleText, ViridianGymRocker1EndBattleText, ViridianGymRocker1AfterBattleText
 ViridianGymTrainerHeader2:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_2, 4, ViridianGymRocker1BattleText, ViridianGymRocker1EndBattleText, ViridianGymRocker1AfterBattleText
-ViridianGymTrainerHeader3:
-	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_3, 1, ViridianGymHiker2BattleText, ViridianGymHiker2EndBattleText, ViridianGymHiker2AfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_GYM_TRAINER_2, 1, ViridianGymHiker2BattleText, ViridianGymHiker2EndBattleText, ViridianGymHiker2AfterBattleText
 	db -1 ; end
 
 ViridianGymGiovanniText:
@@ -351,27 +348,9 @@ ViridianGymCooltrainerM1AfterBattleText:
 	text_far _ViridianGymCooltrainerM1AfterBattleText
 	text_end
 
-ViridianGymHiker1Text:
-	text_asm
-	ld hl, ViridianGymTrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-ViridianGymHiker1BattleText:
-	text_far _ViridianGymHiker1BattleText
-	text_end
-
-ViridianGymHiker1EndBattleText:
-	text_far _ViridianGymHiker1EndBattleText
-	text_end
-
-ViridianGymHiker1AfterBattleText:
-	text_far _ViridianGymHiker1AfterBattleText
-	text_end
-
 ViridianGymRocker1Text:
 	text_asm
-	ld hl, ViridianGymTrainerHeader2
+	ld hl, ViridianGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -389,7 +368,7 @@ ViridianGymRocker1AfterBattleText:
 
 ViridianGymHiker2Text:
 	text_asm
-	ld hl, ViridianGymTrainerHeader3
+	ld hl, ViridianGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

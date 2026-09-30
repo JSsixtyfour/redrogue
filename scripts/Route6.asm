@@ -1,8 +1,7 @@
 DEF ROUTE6_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_6_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_6_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_6_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_6_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_6_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_6_TRAINER_3 % 8))
 
 Route6_Script:
 
@@ -69,10 +68,10 @@ Route6_ScriptPointers:
 
 Route6_TextPointers:
 	def_text_pointers
+	dw_const Route6PaddingText,            TEXT_ROUTE6_PADDING
 	dw_const Route6JrTrainerM1Text,       TEXT_ROUTE6_JR_TRAINER_M1
 	dw_const Route6JrTrainerF1Text,       TEXT_ROUTE6_JR_TRAINER_F1
 	dw_const Route6BugCatcherText,          TEXT_ROUTE6_BUG_CATCHER
-	dw_const Route6JrTrainerM2Text,       TEXT_ROUTE6_JR_TRAINER_M2
 	dw_const Route6JrTrainerF2Text,       TEXT_ROUTE6_JR_TRAINER_F2
     dw_const RandomPickUpItemText,          TEXT_ROUTE6_RANDOM
     dw_const Route6_Rogue_Reward_Script_PokeballText_1, TEXT_ROUTE6_ROGUE_REWARD_POKEBALL_1
@@ -85,7 +84,7 @@ Route6_TextPointers:
 	dw_const Route6NoTurningBackText, TEXT_ROUTE6_NO_TURNING_BACK
 
 Route6TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route6TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_6_TRAINER_0, 1, Route6JrTrainerM1BattleText, Route6JrTrainerM1EndBattleText, Route6JrTrainerAfterBattleText
 Route6TrainerHeader1:
@@ -93,10 +92,12 @@ Route6TrainerHeader1:
 Route6TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_6_TRAINER_2, 1, Route6BugCatcherBattleText, Route6BugCatcherEndBattleText, Route6BugCatcherAfterBattleText
 Route6TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_6_TRAINER_3, 1, Route6JrTrainerM2BattleText, Route6JrTrainerM2EndBattleText, Route6JrTrainerM2AfterBattleText
-Route6TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_6_TRAINER_4, 1, Route6JrTrainerF2BattleText, Route6JrTrainerF2EndBattleText, Route6JrTrainerF2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_6_TRAINER_3, 1, Route6JrTrainerF2BattleText, Route6JrTrainerF2EndBattleText, Route6JrTrainerF2AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route6PaddingText:
+	text_end
 
 Route6JrTrainerM1Text:
 	text_asm
@@ -148,27 +149,9 @@ Route6BugCatcherAfterBattleText:
 	text_far _Route6BugCatcherAfterBattleText
 	text_end
 
-Route6JrTrainerM2Text:
-	text_asm
-	ld hl, Route6TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route6JrTrainerM2BattleText:
-	text_far _Route6JrTrainerM2BattleText
-	text_end
-
-Route6JrTrainerM2EndBattleText:
-	text_far _Route6JrTrainerM2EndBattleText
-	text_end
-
-Route6JrTrainerM2AfterBattleText:
-	text_far _Route6JrTrainerM2AfterBattleText
-	text_end
-
 Route6JrTrainerF2Text:
 	text_asm
-	ld hl, Route6TrainerHeader4
+	ld hl, Route6TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -181,14 +164,14 @@ Route6JrTrainerF2EndBattleText:
 	text_end
 
 Route6JrTrainerF2AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_6_TRAINER_0 / 8)]
 	and ROUTE6_ALL_TRAINERS_MASK
 	sub ROUTE6_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

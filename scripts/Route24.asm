@@ -1,5 +1,5 @@
 ; UNIQUE STAGE: reward is gated by Route24CooltrainerM1Text (the Nugget Bridge NPC),
-; which fires after all bridge trainers are beaten — mirrors the vanilla nugget award flow.
+; which fires after all four bridge trainers are beaten — mirrors the vanilla nugget award flow.
 ; Does NOT use ALL_TRAINERS_MASK in the main loop.
 Route24_Script:
     
@@ -115,8 +115,8 @@ Route24_TextPointers:
 	; The first 13 entries MUST be the objects' texts in slot order: DisplayTextID
 	; reroutes any id <= wNumSprites through that slot's declared id (the nugget
 	; guy, fired by name, printed the first trainer's line).
+	dw_const Route24PaddingText,       TEXT_ROUTE24_PADDING
 	dw_const Route24CooltrainerM3Text, TEXT_ROUTE24_COOLTRAINER_M3
-	dw_const Route24CooltrainerF1Text, TEXT_ROUTE24_COOLTRAINER_F1
 	dw_const Route24Youngster1Text,    TEXT_ROUTE24_YOUNGSTER1
 	dw_const Route24CooltrainerF2Text, TEXT_ROUTE24_COOLTRAINER_F2
 	dw_const Route24Youngster2Text,    TEXT_ROUTE24_YOUNGSTER2
@@ -134,18 +134,20 @@ Route24_TextPointers:
 	dw_const Route24NoTurningBackText, TEXT_ROUTE24_NO_TURNING_BACK
 
 Route24TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route24TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_24_TRAINER_0, 4, Route24CooltrainerM3BattleText, Route24CooltrainerM3EndBattleText, Route24CooltrainerM3AfterBattleText
 Route24TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_1, 1, Route24CooltrainerF1BattleText, Route24CooltrainerF1EndBattleText, Route24CooltrainerF1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_1, 1, Route24Youngster1BattleText, Route24Youngster1EndBattleText, Route24Youngster1AfterBattleText
 Route24TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_2, 1, Route24Youngster1BattleText, Route24Youngster1EndBattleText, Route24Youngster1AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_2, 1, Route24CooltrainerF2BattleText, Route24CooltrainerF2EndBattleText, Route24CooltrainerF2AfterBattleText
 Route24TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_3, 1, Route24CooltrainerF2BattleText, Route24CooltrainerF2EndBattleText, Route24CooltrainerF2AfterBattleText
-Route24TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_24_TRAINER_4, 1, Route24Youngster2BattleText, Route24Youngster2EndBattleText, Route24Youngster2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_24_TRAINER_3, 1, Route24Youngster2BattleText, Route24Youngster2EndBattleText, Route24Youngster2AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route24PaddingText:
+	text_end
 
 Route24CooltrainerM1Text:
     text_asm
@@ -204,27 +206,21 @@ Route24CooltrainerM3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24CooltrainerF1Text:
+Route24Youngster1Text:
 	text_asm
 	ld hl, Route24TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24Youngster1Text:
+Route24CooltrainerF2Text:
 	text_asm
 	ld hl, Route24TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route24CooltrainerF2Text:
-	text_asm
-	ld hl, Route24TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 Route24Youngster2Text:
 	text_asm
-	ld hl, Route24TrainerHeader4
+	ld hl, Route24TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -250,18 +246,6 @@ Route24CooltrainerM3EndBattleText:
 
 Route24CooltrainerM3AfterBattleText:
 	text_far _Route24CooltrainerM3AfterBattleText
-	text_end
-
-Route24CooltrainerF1BattleText:
-	text_far _Route24CooltrainerF1BattleText
-	text_end
-
-Route24CooltrainerF1EndBattleText:
-	text_far _Route24CooltrainerF1EndBattleText
-	text_end
-
-Route24CooltrainerF1AfterBattleText:
-	text_far _Route24CooltrainerF1AfterBattleText
 	text_end
 
 Route24Youngster1BattleText:

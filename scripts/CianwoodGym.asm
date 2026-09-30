@@ -103,7 +103,6 @@ CianwoodGym_TextPointers:
 	dw_const CianwoodGymChuckText,            TEXT_CIANWOODGYM_CHUCK
 	dw_const CianwoodGymCooltrainerM1Text,      TEXT_CIANWOODGYM_COOLTRAINER_M1
 	dw_const CianwoodGymCooltrainerM2Text,      TEXT_CIANWOODGYM_COOLTRAINER_M2
-	dw_const CianwoodGymCooltrainerM3Text,      TEXT_CIANWOODGYM_COOLTRAINER_M3
 	dw_const CianwoodGymCooltrainerM4Text,      TEXT_CIANWOODGYM_COOLTRAINER_M4
 	dw_const CianwoodGymGuideText,              TEXT_CIANWOODGYM_GYM_GUIDE
 	dw_const CianwoodGymChuckWaitTakeThisText, TEXT_CIANWOODGYM_CHUCK_WAIT_TAKE_THIS
@@ -121,9 +120,7 @@ CianwoodGymTrainerHeader0:
 CianwoodGymTrainerHeader1:
 	trainer EVENT_BEAT_CIANWOOD_GYM_TRAINER_1, 2, CianwoodGymCooltrainerM2BattleText, CianwoodGymCooltrainerM2EndBattleText, CianwoodGymCooltrainerM2AfterBattleText
 CianwoodGymTrainerHeader2:
-	trainer EVENT_BEAT_CIANWOOD_GYM_TRAINER_2, 5, CianwoodGymCooltrainerM3BattleText, CianwoodGymCooltrainerM3EndBattleText, CianwoodGymCooltrainerM3AfterBattleText
-CianwoodGymTrainerHeader3:
-	trainer EVENT_BEAT_CIANWOOD_GYM_TRAINER_3, 5, CianwoodGymCooltrainerM4BattleText, CianwoodGymCooltrainerM4EndBattleText, CianwoodGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_CIANWOOD_GYM_TRAINER_2, 5, CianwoodGymCooltrainerM4BattleText, CianwoodGymCooltrainerM4EndBattleText, CianwoodGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 CianwoodGymReceivedTMText:
@@ -234,27 +231,9 @@ CianwoodGymCooltrainerM2AfterBattleText:
 	text_far _CianwoodGymTrainer2AfterBattleText
 	text_end
 
-CianwoodGymCooltrainerM3Text:
-	text_asm
-	ld hl, CianwoodGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-CianwoodGymCooltrainerM3BattleText:
-	text_far _CianwoodGymTrainer3BattleText
-	text_end
-
-CianwoodGymCooltrainerM3EndBattleText:
-	text_far _CianwoodGymTrainer3EndBattleText
-	text_end
-
-CianwoodGymCooltrainerM3AfterBattleText:
-	text_far _CianwoodGymTrainer3AfterBattleText
-	text_end
-
 CianwoodGymCooltrainerM4Text:
 	text_asm
-	ld hl, CianwoodGymTrainerHeader3
+	ld hl, CianwoodGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

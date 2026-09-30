@@ -1,8 +1,7 @@
 DEF ROUTE5_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_5_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_5_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_5_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_5_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_5_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_5_TRAINER_3 % 8))
 
 Route5_Script:
 
@@ -72,9 +71,9 @@ Route5_ScriptPointers:
 
 Route5_TextPointers:
 	def_text_pointers
+	dw_const Route5PaddingText,     TEXT_ROUTE5_PADDING
 	dw_const Route5Youngster1Text,  TEXT_ROUTE5_YOUNGSTER1
 	dw_const Route5Youngster2Text,  TEXT_ROUTE5_YOUNGSTER2
-	dw_const Route5Lass1Text,       TEXT_ROUTE5_LASS1
 	dw_const Route5Lass2Text,       TEXT_ROUTE5_LASS2
 	dw_const Route5JrTrainerFText,  TEXT_ROUTE5_JR_TRAINER_F
     dw_const RandomPickUpItemText, TEXT_ROUTE5_RANDOM
@@ -88,18 +87,20 @@ Route5_TextPointers:
 	dw_const Route5NoTurningBackText, TEXT_ROUTE5_NO_TURNING_BACK
 
 Route5TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route5TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_5_TRAINER_0, 3, Route5Youngster1BattleText, Route5Youngster1EndBattleText, Route5Youngster1AfterBattleText
-Route5TrainerHeader1:                     
+Route5TrainerHeader1:
 	trainer EVENT_BEAT_ROUTE_5_TRAINER_1, 3, Route5Youngster2BattleText, Route5Youngster2EndBattleText, Route5Youngster2AfterBattleText
-Route5TrainerHeader2:                     
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_2, 3, Route5Lass1BattleText, Route5Lass1EndBattleText, Route5Lass1AfterBattleText
-Route5TrainerHeader3:                     
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_3, 3, Route5Lass2BattleText, Route5Lass2EndBattleText, Route5Lass2AfterBattleText
-Route5TrainerHeader4:                     
-	trainer EVENT_BEAT_ROUTE_5_TRAINER_4, 3, Route5JrTrainerFBattleText, Route5JrTrainerFEndBattleText, Route5JrTrainerFAfterBattleText
+Route5TrainerHeader2:
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_2, 3, Route5Lass2BattleText, Route5Lass2EndBattleText, Route5Lass2AfterBattleText
+Route5TrainerHeader3:
+	trainer EVENT_BEAT_ROUTE_5_TRAINER_3, 3, Route5JrTrainerFBattleText, Route5JrTrainerFEndBattleText, Route5JrTrainerFAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route5PaddingText:
+	text_end
 
 Route5Youngster1Text:
 	text_asm
@@ -137,27 +138,9 @@ Route5Youngster2AfterBattleText:
 	text_far _Route5Youngster2AfterBattleText
 	text_end
 
-Route5Lass1Text:
-	text_asm
-	ld hl, Route5TrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route5Lass1BattleText:
-	text_far _Route5Lass1BattleText
-	text_end
-
-Route5Lass1EndBattleText:
-	text_far _Route5Lass1EndBattleText
-	text_end
-
-Route5Lass1AfterBattleText:
-	text_far _Route5Lass1AfterBattleText
-	text_end
-
 Route5Lass2Text:
 	text_asm
-	ld hl, Route5TrainerHeader3
+	ld hl, Route5TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -175,7 +158,7 @@ Route5Lass2AfterBattleText:
 
 Route5JrTrainerFText:
 	text_asm
-	ld hl, Route5TrainerHeader4
+	ld hl, Route5TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -188,14 +171,14 @@ Route5JrTrainerFEndBattleText:
 	text_end
 
 Route5JrTrainerFAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_5_TRAINER_0 / 8)]
 	and ROUTE5_ALL_TRAINERS_MASK
 	sub ROUTE5_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

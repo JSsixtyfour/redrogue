@@ -101,7 +101,6 @@ MahoganyGymScriptReceiveTM:
 MahoganyGym_TextPointers:
 	def_text_pointers
 	dw_const MahoganyGymPryceText,            TEXT_MAHOGANYGYM_PRYCE
-	dw_const MahoganyGymCooltrainerM1Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M1
 	dw_const MahoganyGymCooltrainerM2Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M2
 	dw_const MahoganyGymCooltrainerM3Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M3
 	dw_const MahoganyGymCooltrainerM4Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M4
@@ -117,13 +116,11 @@ MahoganyGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 MahoganyGymTrainerHeader0:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_0, 5, MahoganyGymCooltrainerM1BattleText, MahoganyGymCooltrainerM1EndBattleText, MahoganyGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_0, 2, MahoganyGymCooltrainerM2BattleText, MahoganyGymCooltrainerM2EndBattleText, MahoganyGymCooltrainerM2AfterBattleText
 MahoganyGymTrainerHeader1:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_1, 2, MahoganyGymCooltrainerM2BattleText, MahoganyGymCooltrainerM2EndBattleText, MahoganyGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_1, 5, MahoganyGymCooltrainerM3BattleText, MahoganyGymCooltrainerM3EndBattleText, MahoganyGymCooltrainerM3AfterBattleText
 MahoganyGymTrainerHeader2:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_2, 5, MahoganyGymCooltrainerM3BattleText, MahoganyGymCooltrainerM3EndBattleText, MahoganyGymCooltrainerM3AfterBattleText
-MahoganyGymTrainerHeader3:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_3, 5, MahoganyGymCooltrainerM4BattleText, MahoganyGymCooltrainerM4EndBattleText, MahoganyGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_2, 5, MahoganyGymCooltrainerM4BattleText, MahoganyGymCooltrainerM4EndBattleText, MahoganyGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 MahoganyGymReceivedTMText:
@@ -198,27 +195,9 @@ ReceivedGlacierBadgeText:
 	sound_get_key_item
 	text_end
 
-MahoganyGymCooltrainerM1Text:
-	text_asm
-	ld hl, MahoganyGymTrainerHeader0
-	call TalkToTrainer
-	jp TextScriptEnd
-
-MahoganyGymCooltrainerM1BattleText:
-	text_far _MahoganyGymTrainer1BattleText
-	text_end
-
-MahoganyGymCooltrainerM1EndBattleText:
-	text_far _MahoganyGymTrainer1EndBattleText
-	text_end
-
-MahoganyGymCooltrainerM1AfterBattleText:
-	text_far _MahoganyGymTrainer1AfterBattleText
-	text_end
-
 MahoganyGymCooltrainerM2Text:
 	text_asm
-	ld hl, MahoganyGymTrainerHeader1
+	ld hl, MahoganyGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -236,7 +215,7 @@ MahoganyGymCooltrainerM2AfterBattleText:
 
 MahoganyGymCooltrainerM3Text:
 	text_asm
-	ld hl, MahoganyGymTrainerHeader2
+	ld hl, MahoganyGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -254,7 +233,7 @@ MahoganyGymCooltrainerM3AfterBattleText:
 
 MahoganyGymCooltrainerM4Text:
 	text_asm
-	ld hl, MahoganyGymTrainerHeader3
+	ld hl, MahoganyGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

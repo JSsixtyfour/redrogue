@@ -162,13 +162,12 @@ FuchsiaGym_TextPointers:
 	dw_const FuchsiaGymKogaText,              TEXT_FUCHSIAGYM_KOGA
 	dw_const FuchsiaGymRocker1Text,           TEXT_FUCHSIAGYM_ROCKER1
 	dw_const FuchsiaGymRocker2Text,           TEXT_FUCHSIAGYM_ROCKER2
-	dw_const FuchsiaGymRocker3Text,           TEXT_FUCHSIAGYM_ROCKER3
 	dw_const FuchsiaGymRocker4Text,           TEXT_FUCHSIAGYM_ROCKER4
 	dw_const FuchsiaGymGymGuideText,          TEXT_FUCHSIAGYM_GYM_GUIDE
 ; Janine reuses Koga's handler rather than duplicating it: the handler already
 ; picks the OPP class and the pre-battle line from FuchsiaGymIsJanine, so one
 ; code path serves both and there is only one place to change. This entry must
-; sit here, as the 7th, to stay aligned with the 7th object_event.
+; sit here, as the 6th, to stay aligned with the 6th object_event.
 	dw_const FuchsiaGymKogaText,              TEXT_FUCHSIAGYM_JANINE
 	dw_const FuchsiaGymKogaSoulBadgeInfoText, TEXT_FUCHSIAGYM_KOGA_SOUL_BADGE_INFO
 	dw_const FuchsiaGymKogaReceivedTM06Text,  TEXT_FUCHSIAGYM_KOGA_RECEIVED_TM06
@@ -181,9 +180,7 @@ FuchsiaGymTrainerHeader0:
 FuchsiaGymTrainerHeader1:
 	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_1, 1, FuchsiaGymRocker2BattleText, FuchsiaGymRocker2EndBattleText, FuchsiaGymRocker2AfterBattleText
 FuchsiaGymTrainerHeader2:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_2, 1, FuchsiaGymRocker3BattleText, FuchsiaGymRocker3EndBattleText, FuchsiaGymRocker3AfterBattleText
-FuchsiaGymTrainerHeader3:
-	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_3, 1, FuchsiaGymRocker4BattleText, FuchsiaGymRocker4EndBattleText, FuchsiaGymRocker4AfterBattleText
+	trainer EVENT_BEAT_FUCHSIA_GYM_TRAINER_2, 1, FuchsiaGymRocker4BattleText, FuchsiaGymRocker4EndBattleText, FuchsiaGymRocker4AfterBattleText
 	db -1 ; end
 
 FuchsiaGymKogaText:
@@ -305,27 +302,9 @@ FuchsiaGymRocker2AfterBattleText:
 	text_far _FuchsiaGymRocker2AfterBattleText
 	text_end
 
-FuchsiaGymRocker3Text:
-	text_asm
-	ld hl, FuchsiaGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-FuchsiaGymRocker3BattleText:
-	text_far _FuchsiaGymRocker3BattleText
-	text_end
-
-FuchsiaGymRocker3EndBattleText:
-	text_far _FuchsiaGymRocker3EndBattleText
-	text_end
-
-FuchsiaGymRocker3AfterBattleText:
-	text_far _FuchsiaGymRocker3AfterBattleText
-	text_end
-
 FuchsiaGymRocker4Text:
 	text_asm
-	ld hl, FuchsiaGymTrainerHeader3
+	ld hl, FuchsiaGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

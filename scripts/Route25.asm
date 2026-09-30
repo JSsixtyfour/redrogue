@@ -1,8 +1,7 @@
 DEF ROUTE25_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_25_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_25_TRAINER_3 % 8))
 
 Route25_Script:
 
@@ -105,10 +104,10 @@ Route25_ScriptPointers:
 
 Route25_TextPointers:
 	def_text_pointers
+	dw_const Route25PaddingText,       TEXT_ROUTE25_PADDING
 	dw_const Route25YoungsterText,     TEXT_ROUTE25_YOUNGSTER
 	dw_const Route25LassText,          TEXT_ROUTE25_LASS
 	dw_const Route25JrTrainerMText,    TEXT_ROUTE25_JR_TRAINER_M
-	dw_const Route25HikerText,         TEXT_ROUTE25_HIKER
 	dw_const Route25CooltrainerMText,  TEXT_ROUTE25_COOLTRAINER_M
 	dw_const PickUpItemText,           TEXT_ROUTE25_TM_SEISMIC_TOSS
     dw_const RandomPickUpItemText,     TEXT_ROUTE25_RANDOM
@@ -122,7 +121,7 @@ Route25_TextPointers:
 	dw_const Route25NoTurningBackText, TEXT_ROUTE25_NO_TURNING_BACK
 
 Route25TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route25TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_25_TRAINER_0, 3, Route25YoungsterBattleText, Route25YoungsterEndBattleText, Route25YoungsterAfterBattleText
 Route25TrainerHeader1:
@@ -130,10 +129,12 @@ Route25TrainerHeader1:
 Route25TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_25_TRAINER_2, 2, Route25JrTrainerMBattleText, Route25JrTrainerMEndBattleText, Route25JrTrainerMAfterBattleText
 Route25TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_25_TRAINER_3, 2, Route25HikerBattleText, Route25HikerEndBattleText, Route25HikerAfterBattleText
-Route25TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_25_TRAINER_4, 4, Route25CooltrainerMBattleText, Route25CooltrainerMEndBattleText, Route25CooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_25_TRAINER_3, 4, Route25CooltrainerMBattleText, Route25CooltrainerMEndBattleText, Route25CooltrainerMAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route25PaddingText:
+	text_end
 
 Route25YoungsterText:
 	text_asm
@@ -153,15 +154,9 @@ Route25JrTrainerMText:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-Route25HikerText:
-	text_asm
-	ld hl, Route25TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 Route25CooltrainerMText:
 	text_asm
-	ld hl, Route25TrainerHeader4
+	ld hl, Route25TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -201,18 +196,6 @@ Route25JrTrainerMAfterBattleText:
 	text_far _Route25CooltrainerMAfterBattleText
 	text_end
 
-Route25HikerBattleText:
-	text_far _Route25Hiker1BattleText
-	text_end
-
-Route25HikerEndBattleText:
-	text_far _Route25Hiker1EndBattleText
-	text_end
-
-Route25HikerAfterBattleText:
-	text_far _Route25Hiker1AfterBattleText
-	text_end
-
 Route25CooltrainerMBattleText:
 	text_far _Route25CooltrainerMBattleText
 	text_end
@@ -222,14 +205,14 @@ Route25CooltrainerMEndBattleText:
 	text_end
 
 Route25CooltrainerMAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_25_TRAINER_0 / 8)]
 	and ROUTE25_ALL_TRAINERS_MASK
 	sub ROUTE25_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

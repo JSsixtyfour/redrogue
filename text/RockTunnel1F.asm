@@ -14,24 +14,6 @@ _RockTunnel1FHiker1AfterBattleText::
 	cont "squeeze on you!"
 	done
 
-_RockTunnel1FHiker2BattleText::
-	text "Hmm. Maybe I'm"
-	line "lost in here..."
-	done
-
-_RockTunnel1FHiker2EndBattleText::
-	text "Ease up!"
-	line "What am I doing?"
-	cont "Which way is out?"
-	prompt
-
-_RockTunnel1FHiker2AfterBattleText::
-	text "That sleeping"
-	line "#MON on ROUTE"
-	cont "12 forced me to"
-	cont "take this detour."
-	done
-
 _RockTunnel1FHiker3BattleText::
 	text "Outsiders like"
 	line "you need to show"

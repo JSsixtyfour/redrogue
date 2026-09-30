@@ -104,7 +104,6 @@ VermilionGym_TextPointers:
     dw_const VermilionGymSailorText,                  TEXT_VERMILIONGYM_SAILOR
 	dw_const VermilionGymSuperNerdText,               TEXT_VERMILIONGYM_SUPER_NERD
     dw_const VermilionGymGentlemanText,               TEXT_VERMILIONGYM_GENTLEMAN
-    dw_const VermilionGymBikerText,                   TEXT_VERMILIONGYM_BIKER
 	dw_const VermilionGymGymGuideText,                TEXT_VERMILIONGYM_GYM_GUIDE
 	dw_const VermilionGymLTSurgeThunderBadgeInfoText, TEXT_VERMILIONGYM_LT_SURGE_THUNDER_BADGE_INFO
 	dw_const VermilionGymLTSurgeReceivedTM24Text,     TEXT_VERMILIONGYM_LT_SURGE_RECEIVED_TM24
@@ -118,8 +117,6 @@ VermilionGymTrainerHeader1:
 	trainer EVENT_BEAT_VERMILION_GYM_TRAINER_1, 5, VermilionGymSuperNerdBattleText, VermilionGymSuperNerdEndBattleText, VermilionGymSuperNerdAfterBattleText
 VermilionGymTrainerHeader2:
     trainer EVENT_BEAT_VERMILION_GYM_TRAINER_2, 3, VermilionGymGentlemanBattleText, VermilionGymGentlemanEndBattleText, VermilionGymGentlemanAfterBattleText
-VermilionGymTrainerHeader3:
-	trainer EVENT_BEAT_VERMILION_GYM_TRAINER_3, 1, VermilionGymSailorBattleText, VermilionGymSailorEndBattleText, VermilionGymSailorAfterBattleText
 	db -1 ; end
 
 VermilionGymLTSurgeText:
@@ -249,24 +246,6 @@ VermilionGymSailorAfterBattleText:
 	text_far _VermilionGymSailorAfterBattleText
 	text_end
     
-VermilionGymBikerText:
-	text_asm
-	ld hl, VermilionGymTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-VermilionGymBikerBattleText:
-	text_far _VermilionGymSailorBattleText
-	text_end
-
-VermilionGymBikerEndBattleText:
-	text_far _VermilionGymSailorEndBattleText
-	text_end
-
-VermilionGymBikerAfterBattleText:
-	text_far _VermilionGymSailorAfterBattleText
-	text_end
-
 VermilionGymGymGuideText:
 	text_asm
 	ld a, [wObtainedBadges]

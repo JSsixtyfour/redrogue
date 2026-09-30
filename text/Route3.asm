@@ -8,23 +8,6 @@ _Route3Text1::
 	cont "lot out of you!"
 	done
 
-_Route3BugCatcherBattleText::
-	text "Did I meet you in"
-	line "VIRIDIAN FOREST!"
-	done
-
-_Route3BugCatcherEndBattleText::
-	text "You"
-	line "beat me!"
-	prompt
-
-_Route3BugCatcherAfterBattleText::
-	text "There are other"
-	line "kinds of #MON"
-	cont "than those found"
-	cont "in the forest!"
-	done
-
 _Route3Youngster2BattleText::
 	text "Hi! I like shorts!"
 	line "They're comfy and"

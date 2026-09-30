@@ -1,8 +1,7 @@
 DEF POKEMONTOWER_7_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_POKEMONTOWER_7_TRAINER_3 % 8))
 
 PokemonTower7F_Script:
 
@@ -160,8 +159,8 @@ PokemonTower7FRocketLeaveMovementScript:
 ; it matched the wrong rocket or ran into movement data and walked garbage.
 ; No match now means no walk: HideNPCScript hides the rocket where it stands.
 	ldh a, [hActiveSpriteIndex]
-	dec a
-	cp 5            ; rockets are object slots 1-5
+	sub 2
+	cp 4            ; rockets are object slots 2-5 (slot 1 is padding)
 	ret nc
 	add a
 	ld hl, PokemonTower7FRocketExitTables
@@ -201,7 +200,6 @@ PokemonTower7FRocketExitTables:
 	dw PokemonTower7FRocket1Exits
 	dw PokemonTower7FRocket2Exits
 	dw PokemonTower7FRocket3Exits
-	dw PokemonTower7FRocket4Exits
 	dw PokemonTower7FRocket5Exits
 
 PokemonTower7FRocket1Exits:
@@ -225,12 +223,6 @@ PokemonTower7FRocket3Exits:
 	map_coord_movement 11,  9, PokemonTower7FExit10
 	map_coord_movement 12,  9, PokemonTower7FExit11
 	map_coord_movement  9, 10, PokemonTower7FExit12
-	db -1 ; end
-
-PokemonTower7FRocket4Exits:
-	map_coord_movement 11,  7, PokemonTower7FExit13
-	map_coord_movement 12,  6, PokemonTower7FExit13
-	map_coord_movement 12,  8, PokemonTower7FExit14
 	db -1 ; end
 
 PokemonTower7FRocket5Exits:
@@ -370,36 +362,6 @@ PokemonTower7FExit12: ; R D D D D D D D L
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FExit13: ; D D L D D D D D D D L L
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_LEFT
-	db -1 ; end
-
-PokemonTower7FExit14: ; L D D D D D D D D D L L
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_LEFT
-	db -1 ; end
-
 PokemonTower7FExit15: ; D D R D D D D D D D D L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -432,10 +394,10 @@ PokemonTower7FExit16: ; R D D D D D D D D D D L
 
 PokemonTower7F_TextPointers:
 	def_text_pointers
+	dw_const PokemonTower7FPaddingText,   TEXT_POKEMONTOWER7F_PADDING
 	dw_const PokemonTower7FRocket1Text,   TEXT_POKEMONTOWER7F_ROCKET1
 	dw_const PokemonTower7FRocket2Text,   TEXT_POKEMONTOWER7F_ROCKET2
 	dw_const PokemonTower7FRocket3Text,   TEXT_POKEMONTOWER7F_ROCKET3
-	dw_const PokemonTower7FRocket4Text, TEXT_POKEMONTOWER7F_ROCKET4
 	dw_const PokemonTower7FRocket5Text, TEXT_POKEMONTOWER7F_ROCKET5
 	dw_const PokemonTower7FMrFujiText,    TEXT_POKEMONTOWER7F_MR_FUJI
     dw_const RandomPickUpItemText,        TEXT_POKEMONTOWER7F_RANDOM
@@ -448,7 +410,7 @@ PokemonTower7F_TextPointers:
 	dw_const PokemonTower7FNoTurningBackText, TEXT_POKEMONTOWER7F_NO_TURNING_BACK
 
 PokemonTower7TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 PokemonTower7TrainerHeader0:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_0, 3, PokemonTower7FRocket1BattleText, PokemonTower7FRocket1EndBattleText, PokemonTower7FRocket1AfterBattleText
 PokemonTower7TrainerHeader1:
@@ -456,9 +418,7 @@ PokemonTower7TrainerHeader1:
 PokemonTower7TrainerHeader2:
 	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_2, 3, PokemonTower7FRocket3BattleText, PokemonTower7FRocket3EndBattleText, PokemonTower7FRocket3AfterBattleText
 PokemonTower7TrainerHeader3:
-	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_3, 3, PokemonTower7FRocket4BattleText, PokemonTower7FRocket4EndBattleText, PokemonTower7FRocket4AfterBattleText
-PokemonTower7TrainerHeader4:
-	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_4, 3, PokemonTower7FRocket5BattleText, PokemonTower7FRocket5EndBattleText, PokemonTower7FRocket5AfterBattleText
+	trainer EVENT_BEAT_POKEMONTOWER_7_TRAINER_3, 3, PokemonTower7FRocket5BattleText, PokemonTower7FRocket5EndBattleText, PokemonTower7FRocket5AfterBattleText
 	db -1 ; end
 
 PokemonTower7FRocket1Text:
@@ -479,17 +439,15 @@ PokemonTower7FRocket3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonTower7FRocket4Text:
+PokemonTower7FRocket5Text:
 	text_asm
 	ld hl, PokemonTower7TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonTower7FRocket5Text:
-	text_asm
-	ld hl, PokemonTower7TrainerHeader4
-	call TalkToTrainer
-	jp TextScriptEnd
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+PokemonTower7FPaddingText:
+	text_end
 
 PokemonTower7FMrFujiText:
 	text_asm
@@ -545,18 +503,6 @@ PokemonTower7FRocket3AfterBattleText:
 	text_far _PokemonTower7FRocket3AfterBattleText
 	text_end
 
-PokemonTower7FRocket4BattleText:
-	text_far _PokemonTower7FRocket1BattleText
-	text_end
-
-PokemonTower7FRocket4EndBattleText:
-	text_far _PokemonTower7FRocket1EndBattleText
-	text_end
-
-PokemonTower7FRocket4AfterBattleText:
-	text_far _PokemonTower7FRocket1AfterBattleText
-	text_end
-
 PokemonTower7FRocket5BattleText:
 	text_far _PokemonTower7FRocket2BattleText
 	text_end
@@ -566,14 +512,14 @@ PokemonTower7FRocket5EndBattleText:
 	text_end
 
 PokemonTower7FRocket5AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_POKEMONTOWER_7_TRAINER_0 / 8)]
 	and POKEMONTOWER_7_ALL_TRAINERS_MASK
 	sub POKEMONTOWER_7_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

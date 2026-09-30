@@ -52,25 +52,6 @@ _GoldenrodGymTMNoRoomText::
 	line "for this!"
 	done
 
-_GoldenrodGymTrainer1BattleText::
-	text "Don't think I'm a"
-	line "pushover!"
-	done
-
-_GoldenrodGymTrainer1EndBattleText::
-	text "Darn…"
-	line "I thought you were"
-	cont "weak…"
-	prompt
-
-_GoldenrodGymTrainer1AfterBattleText::
-	text "In the world of"
-	line "#MON, I wonder"
-
-	para "what's stronger:"
-	line "male or female?"
-	done
-
 _GoldenrodGymTrainer2BattleText::
 	text "I like cute"
 	line "#MON better"

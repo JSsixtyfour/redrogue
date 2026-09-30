@@ -1,8 +1,8 @@
 	object_const_def
+	const_export POKEMONMANSION1F_PADDING
 	const_export POKEMONMANSION1F_SCIENTIST
     const_export POKEMONMANSION1F_SCIENTIST_2
     const_export POKEMONMANSION1F_SCIENTIST_3
-    const_export POKEMONMANSION1F_SCIENTIST_4
     const_export POKEMONMANSION1F_SCIENTIST_5
     const_export POKEMONMANSION1F_POKE_BALL
     const_export POKEMONMANSION1F_ROGUE_REWARD_POKEBALL_1
@@ -25,10 +25,14 @@ PokemonMansion1F_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_SCIENTIST,  STAY, DOWN,  TEXT_POKEMONMANSION1F_PADDING
 	object_event  7, 23, SPRITE_SCIENTIST,  STAY, LEFT,  TEXT_POKEMONMANSION1F_SCIENTIST,   OPP_SCIENTIST, 1
 	object_event  4, 21, SPRITE_SUPER_NERD, STAY, RIGHT, TEXT_POKEMONMANSION1F_SCIENTIST_2, OPP_BURGLAR,   1
 	object_event  7, 19, SPRITE_SUPER_NERD, STAY, LEFT,  TEXT_POKEMONMANSION1F_SCIENTIST_3, OPP_BURGLAR,   1
-	object_event  4, 17, SPRITE_SCIENTIST,  STAY, RIGHT,  TEXT_POKEMONMANSION1F_SCIENTIST_4, OPP_SCIENTIST, 1
 	object_event  7, 15, SPRITE_SCIENTIST,  STAY, LEFT,  TEXT_POKEMONMANSION1F_SCIENTIST_5, OPP_SCIENTIST, 1
 	object_event  2, 25, SPRITE_POKE_BALL, STAY, NONE,  TEXT_POKEMONMANSION1F_RANDOM, 0
 	object_event  3, 12, SPRITE_POKE_BALL, STAY, NONE,  TEXT_POKEMONMANSION1F_ROGUE_REWARD_POKEBALL_1
