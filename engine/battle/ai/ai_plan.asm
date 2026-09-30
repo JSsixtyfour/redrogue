@@ -113,6 +113,20 @@ AIClassifyMoveset:
 	inc de
 	and a
 	jr z, .emptySlot
+; A Disabled move classifies as an empty slot (AI_BACKLOG B3, 2026-09-29): it
+; can neither enable a plan, satisfy a plan's legality scan
+; (AIPlanClassMoveLandsFar), nor soak up a directive that AIEncourage would
+; refuse to apply to its AI_SCORE_DISABLED score anyway. Slot = NUM_MOVES + 1 - b.
+	ld c, a ; move id; c is otherwise unused here
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	jr z, .notDisabled
+	add b
+	cp NUM_MOVES + 1
+	jr z, .emptySlot
+.notDisabled
+	ld a, c
 	push bc
 	push de
 	push hl

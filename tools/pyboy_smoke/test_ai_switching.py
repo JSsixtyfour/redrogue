@@ -248,6 +248,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         ai_tier: int,
         prime: dict[str, int] | None = None,
         reveal: list[int] | None = None,
+        post_boot=None,
     ) -> bool:
         """Returns True if AIShouldSwitch chose to switch, False if it stayed.
 
@@ -266,6 +267,8 @@ class AIShouldSwitchTest(unittest.TestCase):
                 self.harness.write8(label, value)
         if reveal is not None:
             self.harness.reveal_player_moves(0, reveal, clear=True)
+        if post_boot is not None:
+            post_boot(self.harness)
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
         self.harness.call_routine("AIShouldSwitch")
@@ -296,7 +299,9 @@ class AIShouldSwitchTest(unittest.TestCase):
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [self.mon("SNORLAX", ["BODY_SLAM"])],
-            [self.mon("ELECTRODE", [enemy_move]), self.mon("RATTATA")],
+            # Geodude resists Body Slam and survives it, so the B4 survival gate
+            # does not mask the veto logic these tests are about.
+            [self.mon("ELECTRODE", [enemy_move]), self.mon("GEODUDE")],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         self.harness.boot_fight2(seed=1)
@@ -331,7 +336,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [self.mon("SNORLAX", ["BODY_SLAM"])],
-            [self.mon("ELECTRODE", ["SPLASH", "TACKLE"]), self.mon("RATTATA")],
+            [self.mon("ELECTRODE", ["SPLASH", "TACKLE"]), self.mon("GEODUDE")],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         self.harness.boot_fight2(seed=1)
@@ -401,7 +406,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         assert self.harness is not None
         self.harness.inject_fight2_spec(
             [self.mon("SNORLAX", ["BODY_SLAM"])],
-            [self.mon("PIKACHU"), self.mon("RATTATA")],
+            [self.mon("PIKACHU"), self.mon("GEODUDE")],  # a reserve that survives (B4)
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         self.harness.boot_fight2(seed=1)
@@ -429,6 +434,17 @@ class AIShouldSwitchTest(unittest.TestCase):
             self.mon("SNORLAX", ["SPLASH"]),
             [self.mon("PIKACHU"), self.mon("GEODUDE")],
             ai_tier=2,
+        ))
+
+    def test_no_emergency_switch_into_a_reserve_that_would_be_koed(self) -> None:
+        # B4: Geodude resists the Body Slam guess, so it ranks better than
+        # Pikachu, but at 1 HP it dies to it anyway. Staying at least attacks.
+        self.assertFalse(self.call_should_switch(
+            self.mon("SNORLAX", ["SPLASH"]),
+            [self.mon("PIKACHU"), self.mon("GEODUDE")],
+            ai_tier=2,
+            prime={"wEnemyMon2HP": 0},  # high byte; the low byte is set below
+            post_boot=lambda h: h.write8("wEnemyMon2HP", 1, offset=1),
         ))
 
     def test_no_emergency_switch_into_a_reserve_no_better_off(self) -> None:

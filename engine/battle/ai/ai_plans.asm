@@ -462,11 +462,25 @@ AIRun_AgilityWrap:
 	farcall AIEnemyIsFaster
 	jr c, .trap
 
+; The attempt count belongs to ONE target: its high nibble records the player's
+; party slot, and a different player mon starts the speed race again
+; (AI_BACKLOG B3, 2026-09-29; it used to carry spent attempts to a new target).
+	ld a, [wPlayerMonNumber]
+	swap a
+	ld b, a
 	ld a, [wAIPlanStep]
+	and $f0
+	cp b
+	jr z, .sameTarget
+	ld a, b
+	ld [wAIPlanStep], a ; 0 attempts against this mon
+.sameTarget
+	ld a, [wAIPlanStep]
+	and $f
 	cp AI_AGILITY_MAX_ATTEMPTS
 	jr nc, .trap
-	inc a
-	ld [wAIPlanStep], a
+	ld hl, wAIPlanStep
+	inc [hl]
 	ld de, AICLASS_BOOST_SPD
 	ld hl, AI_VERY_STRONG
 	ret

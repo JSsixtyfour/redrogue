@@ -301,6 +301,112 @@ AIItemHealWouldStillDie::
 	and a
 	ret
 
+; B4 switch-in survival (AI_BACKLOG, 2026-09-29). Farcall target from
+; AIReplacementIsBetter ($2C), NO register inputs: the reserve is the slot in
+; wBuffer + AI_BUF_BESTPARTYSLOT that the ranking just chose. OUTPUT: e = 1 if
+; it would survive every believed player move at its current HP, e = 0 if one
+; would KO it. Stages the reserve's HP, types, Defense and Special into
+; wEnemyMon, with our Substitute and screens OFF (they do not follow a switch),
+; runs the UNCACHED scan (wAIPlayerKOCache must keep describing the active mon),
+; then restores every borrowed byte. Clobbers af, bc, d, hl.
+AIBestReserveSurvivesThreat::
+	ld hl, wEnemyMonHP
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	push de
+	ld a, [wEnemyMonType1]
+	ld d, a
+	ld a, [wEnemyMonType2]
+	ld e, a
+	push de
+	ld hl, wEnemyMonDefense
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	push de
+	ld hl, wEnemyMonSpecial
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	push de
+	ld a, [wEnemyBattleStatus2]
+	ld d, a
+	ld a, [wEnemyBattleStatus3]
+	ld e, a
+	push de
+
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	ld hl, wEnemyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes ; hl = the reserve's party struct
+	push hl
+	inc hl ; HP
+	ld a, [hli]
+	ld [wEnemyMonHP], a
+	ld [wBuffer + AI_BUF_EFFHP], a
+	ld a, [hli]
+	ld [wEnemyMonHP + 1], a
+	ld [wBuffer + AI_BUF_EFFHP + 1], a
+	inc hl ; BoxLevel
+	inc hl ; Status
+	ld a, [hli]
+	ld [wEnemyMonType1], a
+	ld a, [hl]
+	ld [wEnemyMonType2], a
+	pop hl
+	push hl
+	ld bc, wEnemyMon1Defense - wEnemyMon1
+	add hl, bc
+	ld a, [hli]
+	ld [wEnemyMonDefense], a
+	ld a, [hl]
+	ld [wEnemyMonDefense + 1], a
+	pop hl
+	ld bc, wEnemyMon1Special - wEnemyMon1
+	add hl, bc
+	ld a, [hli]
+	ld [wEnemyMonSpecial], a
+	ld a, [hl]
+	ld [wEnemyMonSpecial + 1], a
+	ld hl, wEnemyBattleStatus2
+	res HAS_SUBSTITUTE_UP, [hl]
+	ld hl, wEnemyBattleStatus3
+	res HAS_REFLECT_UP, [hl]
+	res HAS_LIGHT_SCREEN_UP, [hl]
+
+	call _AIScanPlayerMovesForKO ; carry = some believed move KOs the reserve
+	ld e, 1
+	jr nc, .restore
+	dec e
+.restore ; e survives every pop below (they load hl and a only)
+	pop hl
+	ld a, h
+	ld [wEnemyBattleStatus2], a
+	ld a, l
+	ld [wEnemyBattleStatus3], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonSpecial], a
+	ld a, l
+	ld [wEnemyMonSpecial + 1], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonDefense], a
+	ld a, l
+	ld [wEnemyMonDefense + 1], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonType1], a
+	ld a, l
+	ld [wEnemyMonType2], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonHP], a
+	ld a, l
+	ld [wEnemyMonHP + 1], a
+	ret
+
 ; Shared scan. Compares every believed player move against whatever HP total
 ; sits in wBuffer + AI_BUF_EFFHP, which is what lets the "would I survive if I
 ; healed" question reuse this wholesale instead of needing a max-damage value.

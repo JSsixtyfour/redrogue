@@ -378,6 +378,21 @@ AIReplacementIsBetter:
 	cp $ff ; carry iff a slot beat the active score (any slot < $ff)
 	ret
 
+; AIReplacementIsBetter, and the chosen reserve also SURVIVES the believed
+; threat at its current HP (AI_BACKLOG B4, 2026-09-29): when the alternative to
+; switching is attacking, switching into a mon the player KOs anyway only hands
+; over the turn. Not used by the frozen/long-sleep trigger, whose alternative is
+; doing nothing at all. Clobbers af, bc, de, hl.
+AIReplacementIsBetterAndSurvives:
+	call AIReplacementIsBetter
+	ret nc
+	farcall AIBestReserveSurvivesThreat ; e = 1 survives, 0 = would be KO'd
+	ld a, e
+	and a
+	ret z ; carry clear
+	scf
+	ret
+
 ; ---------------------------------------------------------------------------
 ; Carry SET if the enemy should switch its active mon out this turn.
 ;
@@ -471,7 +486,7 @@ AIShouldSwitch::
 	jr nc, .noKOThreat
 	farcall AIEnemyHasReliableFirstKO
 	jp c, .stay
-	call AIReplacementIsBetter
+	call AIReplacementIsBetterAndSurvives
 	jp c, .switch
 ; Under a KO threat with no better reserve, nothing below may switch: the
 ; generic case is a weaker reason than the one just rejected, and the vetoes
@@ -551,7 +566,7 @@ AIShouldSwitch::
 	jp nc, .stay
 ; ...and only into a reserve that is actually better off, or the bad matchup
 ; just moves to the next mon and the free hit is wasted (review F5).
-	call AIReplacementIsBetter
+	call AIReplacementIsBetterAndSurvives
 	jp c, .switch
 
 .stay

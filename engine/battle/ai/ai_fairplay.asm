@@ -27,7 +27,11 @@
 ; argument register for a nested farcall or a callee's own scratch usage to
 ; clobber out from under the caller.
 
-SECTION "Trainer AI Fair Play", ROMX, BANK[$2C]
+; RELOCATED 2026-09-29 from $2C (16 B free on Red) to $0E, to make room for
+; the B4 switch-in survival hook in AIReplacementIsBetter. Safe to move: the
+; only caller farcalls it with no register contract (above), and nothing
+; else in $2C references it.
+SECTION "Trainer AI Fair Play", ROMX, BANK[$0E]
 
 ; Finds wPlayerSelectedMove's slot in the player's real moveset and sets that
 ; slot's bit for the active party member (wPlayerMonNumber) in

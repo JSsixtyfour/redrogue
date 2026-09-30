@@ -357,6 +357,43 @@ class AICheckpointBTest(unittest.TestCase):
         self.assertLess(self.estimate("TAKE_DOWN"), 4)
         self.assertEqual(self.lone_smart_score("TAKE_DOWN", enemy_hp=1), 30)
 
+    # --- AI_BACKLOG.md B3: plan lifecycle ----------------------------------
+    def classify(self, moves, disabled_slot=0):
+        h = self.h
+        h.park_before_hijack()
+        for slot in range(4):
+            h.write8("wEnemyMonMoves",
+                     self.moves[moves[slot]] if slot < len(moves) else 0, offset=slot)
+        h.write8("wEnemyDisabledMove", (disabled_slot << 4) | 3 if disabled_slot else 0)
+        h.call_routine("AIClassifyMoveset", limit=240)
+        raw = h.read_bytes("wBuffer", 8, offset=self.ai["AI_BUF_PLANCLASS"])
+        return [raw[i] | (raw[i + 1] << 8) for i in range(0, 8, 2)]
+
+    def test_disabled_move_enables_no_plan(self):
+        masks = self.classify(["THUNDER_WAVE", "TACKLE"])
+        self.assertNotEqual(masks[0], 0)
+        disabled = self.classify(["THUNDER_WAVE", "TACKLE"], disabled_slot=1)
+        self.assertEqual(disabled[0], 0)
+        self.assertEqual(disabled[1], masks[1])
+
+    def agility_wrap_step(self, step, player_slot):
+        h = self.h
+        h.park_before_hijack()
+        h.write8("wAIPlanStep", step)
+        h.write8("wPlayerMonNumber", player_slot)
+        h.write8("wEnemyBattleStatus1", 0)
+        self.word("wEnemyMonSpeed", 10)
+        self.word("wBattleMonSpeed", 200)
+        h.call_routine("AIRun_AgilityWrap", limit=240)
+        return h.read8("wAIPlanStep")
+
+    def test_agility_wrap_attempts_restart_against_a_new_target(self):
+        # Slot 0 already used both attempts (step $02). Against the same mon it
+        # stays spent (and traps); against party slot 1 it restarts: one new
+        # attempt, recorded as $11.
+        self.assertEqual(self.agility_wrap_step(0x02, 0), 0x02)
+        self.assertEqual(self.agility_wrap_step(0x02, 1), 0x11)
+
     def test_fresh_mon_does_not_inherit_the_previous_mons_move_history(self):
         # Codex follow-up L1: after a send-out the tracker is marked fresh; the
         # first decision clears streak, last move and last power instead of
