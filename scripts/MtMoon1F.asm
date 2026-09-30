@@ -1,8 +1,7 @@
 DEF MT_MOON_1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_MT_MOON_1_TRAINER_3 % 8))
 
 MtMoon1F_Script:
 
@@ -73,8 +72,8 @@ MtMoon1F_ScriptPointers:
 
 MtMoon1F_TextPointers:
 	def_text_pointers
+	dw_const MtMoon1FPaddingText,    TEXT_MTMOON1F_PADDING
 	dw_const MtMoon1FLassText,       TEXT_MTMOON1F_LASS
-	dw_const MtMoon1FBugCatcherText, TEXT_MTMOON1F_BUG_CATCHER
 	dw_const MtMoon1FSuperNerdText,  TEXT_MTMOON1F_SUPER_NERD
 	dw_const MtMoon1FYoungsterText,  TEXT_MTMOON1F_YOUNGSTER
 	dw_const MtMoon1FHikerText,      TEXT_MTMOON1F_HIKER
@@ -93,18 +92,20 @@ MtMoon1F_TextPointers:
 	dw_const MtMoon1FNoTurningBackText, TEXT_MTMOON1F_NO_TURNING_BACK
 
 MtMoon1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 MtMoon1TrainerHeader0:
 	trainer EVENT_BEAT_MT_MOON_1_TRAINER_0, 3, MtMoon1FLassBattleText, MtMoon1FLassEndBattleText, MtMoon1FLassAfterBattleText
 MtMoon1TrainerHeader1:
-	trainer EVENT_BEAT_MT_MOON_1_TRAINER_1, 3, MtMoon1FBugCatcherBattleText, MtMoon1FBugCatcherEndBattleText, MtMoon1FBugCatcherAfterBattleText
+	trainer EVENT_BEAT_MT_MOON_1_TRAINER_1, 3, MtMoon1FSuperNerdBattleText, MtMoon1FSuperNerdEndBattleText, MtMoon1FSuperNerdAfterBattleText
 MtMoon1TrainerHeader2:
-	trainer EVENT_BEAT_MT_MOON_1_TRAINER_2, 3, MtMoon1FSuperNerdBattleText, MtMoon1FSuperNerdEndBattleText, MtMoon1FSuperNerdAfterBattleText
+	trainer EVENT_BEAT_MT_MOON_1_TRAINER_2, 3, MtMoon1FYoungsterBattleText, MtMoon1FYoungsterEndBattleText, MtMoon1FYoungsterAfterBattleText
 MtMoon1TrainerHeader3:
-	trainer EVENT_BEAT_MT_MOON_1_TRAINER_3, 3, MtMoon1FYoungsterBattleText, MtMoon1FYoungsterEndBattleText, MtMoon1FYoungsterAfterBattleText
-MtMoon1TrainerHeader4:
-	trainer EVENT_BEAT_MT_MOON_1_TRAINER_4, 3, MtMoon1FHikerBattleText, MtMoon1FHikerEndBattleText, MtMoon1FHikerAfterBattleText
+	trainer EVENT_BEAT_MT_MOON_1_TRAINER_3, 3, MtMoon1FHikerBattleText, MtMoon1FHikerEndBattleText, MtMoon1FHikerAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+MtMoon1FPaddingText:
+	text_end
 
 MtMoon1FLassText:
 	text_asm
@@ -112,27 +113,21 @@ MtMoon1FLassText:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MtMoon1FBugCatcherText:
+MtMoon1FSuperNerdText:
 	text_asm
 	ld hl, MtMoon1TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MtMoon1FSuperNerdText:
+MtMoon1FYoungsterText:
 	text_asm
 	ld hl, MtMoon1TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MtMoon1FYoungsterText:
-	text_asm
-	ld hl, MtMoon1TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 MtMoon1FHikerText:
 	text_asm
-	ld hl, MtMoon1TrainerHeader4
+	ld hl, MtMoon1TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -146,18 +141,6 @@ MtMoon1FLassEndBattleText:
 
 MtMoon1FLassAfterBattleText:
 	text_far _MtMoon1FCooltrainerF1AfterBattleText
-	text_end
-
-MtMoon1FBugCatcherBattleText:
-	text_far _MtMoon1FYoungster2BattleText
-	text_end
-
-MtMoon1FBugCatcherEndBattleText:
-	text_far _MtMoon1FYoungster2EndBattleText
-	text_end
-
-MtMoon1FBugCatcherAfterBattleText:
-	text_far _MtMoon1FYoungster2AfterBattleText
 	text_end
 
 MtMoon1FSuperNerdBattleText:
@@ -218,14 +201,14 @@ MtMoon1FHikerEndBattleText:
 	text_end
 
 MtMoon1FHikerAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_MT_MOON_1_TRAINER_0 / 8)]
 	and MT_MOON_1_ALL_TRAINERS_MASK
 	sub MT_MOON_1_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

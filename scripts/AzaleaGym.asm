@@ -104,7 +104,6 @@ AzaleaGym_TextPointers:
 	dw_const AzaleaGymCooltrainerM1Text,      TEXT_AZALEAGYM_COOLTRAINER_M1
 	dw_const AzaleaGymCooltrainerM2Text,      TEXT_AZALEAGYM_COOLTRAINER_M2
 	dw_const AzaleaGymCooltrainerM3Text,      TEXT_AZALEAGYM_COOLTRAINER_M3
-	dw_const AzaleaGymCooltrainerM4Text,      TEXT_AZALEAGYM_COOLTRAINER_M4
 	dw_const AzaleaGymGuideText,              TEXT_AZALEAGYM_GYM_GUIDE
 	dw_const AzaleaGymBugsyWaitTakeThisText, TEXT_AZALEAGYM_BUGSY_WAIT_TAKE_THIS
 	dw_const AzaleaGymReceivedTMText,         TEXT_AZALEAGYM_RECEIVED_TM
@@ -122,8 +121,6 @@ AzaleaGymTrainerHeader1:
 	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_1, 2, AzaleaGymCooltrainerM2BattleText, AzaleaGymCooltrainerM2EndBattleText, AzaleaGymCooltrainerM2AfterBattleText
 AzaleaGymTrainerHeader2:
 	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_2, 5, AzaleaGymCooltrainerM3BattleText, AzaleaGymCooltrainerM3EndBattleText, AzaleaGymCooltrainerM3AfterBattleText
-AzaleaGymTrainerHeader3:
-	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_3, 5, AzaleaGymCooltrainerM4BattleText, AzaleaGymCooltrainerM4EndBattleText, AzaleaGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 AzaleaGymReceivedTMText:
@@ -250,24 +247,6 @@ AzaleaGymCooltrainerM3EndBattleText:
 
 AzaleaGymCooltrainerM3AfterBattleText:
 	text_far _AzaleaGymTrainer3AfterBattleText
-	text_end
-
-AzaleaGymCooltrainerM4Text:
-	text_asm
-	ld hl, AzaleaGymTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-AzaleaGymCooltrainerM4BattleText:
-	text_far _AzaleaGymTrainer4BattleText
-	text_end
-
-AzaleaGymCooltrainerM4EndBattleText:
-	text_far _AzaleaGymTrainer4EndBattleText
-	text_end
-
-AzaleaGymCooltrainerM4AfterBattleText:
-	text_far _AzaleaGymTrainer4AfterBattleText
 	text_end
 
 AzaleaGymGuideText:

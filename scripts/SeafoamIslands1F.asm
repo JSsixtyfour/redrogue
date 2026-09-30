@@ -1,8 +1,7 @@
 DEF SEAFOAM_ISLANDS_1F_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3 % 8))
 
 SeafoamIslands1F_Script:
 
@@ -85,9 +84,9 @@ Seafoam1HolesCoords:
 
 SeafoamIslands1F_TextPointers:
 	def_text_pointers
+	dw_const SeafoamIslands1FPaddingText,      TEXT_SEAFOAMISLANDS1F_PADDING
 	dw_const SeafoamIslands1FSwimmerText,      TEXT_SEAFOAMISLANDS1F_SWIMMER
 	dw_const SeafoamIslands1FCueBallText,      TEXT_SEAFOAMISLANDS1F_CUE_BALL
-	dw_const SeafoamIslands1FCooltrainerFText, TEXT_SEAFOAMISLANDS1F_COOLTRAINER_F
 	dw_const SeafoamIslands1FHikerText,        TEXT_SEAFOAMISLANDS1F_HIKER
 	dw_const SeafoamIslands1FPokemaniacText,   TEXT_SEAFOAMISLANDS1F_POKEMANIAC
 	dw_const BoulderText,                  TEXT_SEAFOAMISLANDS1F_BOULDER1
@@ -102,18 +101,20 @@ SeafoamIslands1F_TextPointers:
 	dw_const SeafoamIslands1FNoTurningBackText, TEXT_SEAFOAMISLANDS1F_NO_TURNING_BACK
 
 SeafoamIslands1FTrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 SeafoamIslands1FTrainerHeader0:
 	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0, 3, SeafoamIslands1FSwimmerBattleText, SeafoamIslands1FSwimmerEndBattleText, SeafoamIslands1FSwimmerAfterBattleText
 SeafoamIslands1FTrainerHeader1:
 	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_1, 5, SeafoamIslands1FCueBallBattleText, SeafoamIslands1FCueBallEndBattleText, SeafoamIslands1FCueBallAfterBattleText
 SeafoamIslands1FTrainerHeader2:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2, 2, SeafoamIslands1FCooltrainerFBattleText, SeafoamIslands1FCooltrainerFEndBattleText, SeafoamIslands1FCooltrainerFAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_2, 2, SeafoamIslands1FHikerBattleText, SeafoamIslands1FHikerEndBattleText, SeafoamIslands1FHikerAfterBattleText
 SeafoamIslands1FTrainerHeader3:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3, 2, SeafoamIslands1FHikerBattleText, SeafoamIslands1FHikerEndBattleText, SeafoamIslands1FHikerAfterBattleText
-SeafoamIslands1FTrainerHeader4:
-	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_4, 1, SeafoamIslands1FPokemaniacBattleText, SeafoamIslands1FPokemaniacEndBattleText, SeafoamIslands1FPokemaniacAfterBattleText
+	trainer EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_3, 1, SeafoamIslands1FPokemaniacBattleText, SeafoamIslands1FPokemaniacEndBattleText, SeafoamIslands1FPokemaniacAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+SeafoamIslands1FPaddingText:
+	text_end
 
 SeafoamIslands1FSwimmerText:
 	text_asm
@@ -151,27 +152,9 @@ SeafoamIslands1FCueBallAfterBattleText:
 	text_far _SeafoamIslands1FSwimmer1AfterBattleText
 	text_end
 
-SeafoamIslands1FCooltrainerFText:
-	text_asm
-	ld hl, SeafoamIslands1FTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SeafoamIslands1FCooltrainerFBattleText:
-	text_far _SeafoamIslands1FSwimmer1BattleText
-	text_end
-
-SeafoamIslands1FCooltrainerFEndBattleText:
-	text_far _SeafoamIslands1FSwimmer1EndBattleText
-	text_end
-
-SeafoamIslands1FCooltrainerFAfterBattleText:
-	text_far _SeafoamIslands1FSwimmer1AfterBattleText
-	text_end
-
 SeafoamIslands1FHikerText:
 	text_asm
-	ld hl, SeafoamIslands1FTrainerHeader3
+	ld hl, SeafoamIslands1FTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -189,7 +172,7 @@ SeafoamIslands1FHikerAfterBattleText:
 
 SeafoamIslands1FPokemaniacText:
 	text_asm
-	ld hl, SeafoamIslands1FTrainerHeader4
+	ld hl, SeafoamIslands1FTrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -202,14 +185,14 @@ SeafoamIslands1FPokemaniacEndBattleText:
 	text_end
 
 SeafoamIslands1FPokemaniacAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_SEAFOAM_ISLANDS_1F_TRAINER_0 / 8)]
 	and SEAFOAM_ISLANDS_1F_ALL_TRAINERS_MASK
 	sub SEAFOAM_ISLANDS_1F_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

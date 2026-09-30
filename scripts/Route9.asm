@@ -1,8 +1,7 @@
 DEF ROUTE9_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_9_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_9_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_9_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_9_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_9_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_9_TRAINER_3 % 8))
 
 Route9_Script:
 
@@ -77,10 +76,10 @@ Route9_ScriptPointers:
 
 Route9_TextPointers:
 	def_text_pointers
+	dw_const Route9PaddingText,       TEXT_ROUTE9_PADDING
 	dw_const Route9JrTrainerM1Text,    TEXT_ROUTE9_JR_TRAINER_M1
 	dw_const Route9JrTrainerFText,    TEXT_ROUTE9_JR_TRAINER_F
 	dw_const Route9HikerText,         TEXT_ROUTE9_HIKER
-	dw_const Route9BugCatcherText,    TEXT_ROUTE9_BUG_CATCHER
 	dw_const Route9JrTrainerM2Text,  TEXT_ROUTE9_JR_TRAINER_M2
 	dw_const PickUpItemText,          TEXT_ROUTE9_TM_TELEPORT
     dw_const RandomPickUpItemText,    TEXT_ROUTE9_RANDOM
@@ -94,7 +93,7 @@ Route9_TextPointers:
 	dw_const Route9SignText,          TEXT_ROUTE9_SIGN
 
 Route9TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route9TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_9_TRAINER_0, 1, Route9JrTrainerM1BattleText, Route9JrTrainerM1EndBattleText, Route9JrTrainerM1AfterBattleText
 Route9TrainerHeader1:
@@ -102,10 +101,12 @@ Route9TrainerHeader1:
 Route9TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_9_TRAINER_2, 1, Route9HikerBattleText, Route9HikerEndBattleText, Route9HikerAfterBattleText
 Route9TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_9_TRAINER_3, 4, Route9BugCatcherBattleText, Route9BugCatcherEndBattleText, Route9BugCatcherAfterBattleText
-Route9TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_9_TRAINER_4, 3, Route9JrTrainerM2BattleText, Route9JrTrainerM2EndBattleText, Route9JrTrainerM2AfterBattleText
+	trainer EVENT_BEAT_ROUTE_9_TRAINER_3, 3, Route9JrTrainerM2BattleText, Route9JrTrainerM2EndBattleText, Route9JrTrainerM2AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route9PaddingText:
+	text_end
 
 Route9JrTrainerM1Text:
 	text_asm
@@ -122,14 +123,9 @@ Route9HikerText:
 	ld hl, Route9TrainerHeader2
 	jr Route9TalkToTrainer
 
-Route9BugCatcherText:
-	text_asm
-	ld hl, Route9TrainerHeader3
-	jr Route9TalkToTrainer
-
 Route9JrTrainerM2Text:
 	text_asm
-	ld hl, Route9TrainerHeader4
+	ld hl, Route9TrainerHeader3
 Route9TalkToTrainer:
 	call TalkToTrainer
 	jp TextScriptEnd
@@ -170,18 +166,6 @@ Route9HikerAfterBattleText:
 	text_far _Route9Hiker1AfterBattleText
 	text_end
 
-Route9BugCatcherBattleText:
-	text_far _Route9Youngster1BattleText
-	text_end
-
-Route9BugCatcherEndBattleText:
-	text_far _Route9Youngster1EndBattleText
-	text_end
-
-Route9BugCatcherAfterBattleText:
-	text_far _Route9Youngster1AfterBattleText
-	text_end
-
 Route9JrTrainerM2BattleText:
 	text_far _Route9JrTrainerM2BattleText
 	text_end
@@ -191,14 +175,14 @@ Route9JrTrainerM2EndBattleText:
 	text_end
 
 Route9JrTrainerM2AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_9_TRAINER_0 / 8)]
 	and ROUTE9_ALL_TRAINERS_MASK
 	sub ROUTE9_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

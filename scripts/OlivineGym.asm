@@ -103,7 +103,6 @@ OlivineGym_TextPointers:
 	dw_const OlivineGymJasmineText,            TEXT_OLIVINEGYM_JASMINE
 	dw_const OlivineGymCooltrainerM1Text,      TEXT_OLIVINEGYM_COOLTRAINER_M1
 	dw_const OlivineGymCooltrainerM2Text,      TEXT_OLIVINEGYM_COOLTRAINER_M2
-	dw_const OlivineGymCooltrainerM3Text,      TEXT_OLIVINEGYM_COOLTRAINER_M3
 	dw_const OlivineGymCooltrainerM4Text,      TEXT_OLIVINEGYM_COOLTRAINER_M4
 	dw_const OlivineGymGuideText,              TEXT_OLIVINEGYM_GYM_GUIDE
 	dw_const OlivineGymJasmineWaitTakeThisText, TEXT_OLIVINEGYM_JASMINE_WAIT_TAKE_THIS
@@ -121,9 +120,7 @@ OlivineGymTrainerHeader0:
 OlivineGymTrainerHeader1:
 	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_1, 2, OlivineGymCooltrainerM2BattleText, OlivineGymCooltrainerM2EndBattleText, OlivineGymCooltrainerM2AfterBattleText
 OlivineGymTrainerHeader2:
-	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_2, 5, OlivineGymCooltrainerM3BattleText, OlivineGymCooltrainerM3EndBattleText, OlivineGymCooltrainerM3AfterBattleText
-OlivineGymTrainerHeader3:
-	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_3, 5, OlivineGymCooltrainerM4BattleText, OlivineGymCooltrainerM4EndBattleText, OlivineGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_2, 5, OlivineGymCooltrainerM4BattleText, OlivineGymCooltrainerM4EndBattleText, OlivineGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 OlivineGymReceivedTMText:
@@ -234,27 +231,9 @@ OlivineGymCooltrainerM2AfterBattleText:
 	text_far _OlivineGymCooltrainerMAfterBattleText
 	text_end
 
-OlivineGymCooltrainerM3Text:
-	text_asm
-	ld hl, OlivineGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-OlivineGymCooltrainerM3BattleText:
-	text_far _OlivineGymCooltrainerMBattleText
-	text_end
-
-OlivineGymCooltrainerM3EndBattleText:
-	text_far _OlivineGymCooltrainerMEndBattleText
-	text_end
-
-OlivineGymCooltrainerM3AfterBattleText:
-	text_far _OlivineGymCooltrainerMAfterBattleText
-	text_end
-
 OlivineGymCooltrainerM4Text:
 	text_asm
-	ld hl, OlivineGymTrainerHeader3
+	ld hl, OlivineGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

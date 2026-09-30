@@ -1,6 +1,6 @@
 	object_const_def
+	const_export MTMOON1F_PADDING
 	const_export MTMOON1F_LASS
-	const_export MTMOON1F_BUG_CATCHER
 	const_export MTMOON1F_SUPER_NERD
 	const_export MTMOON1F_YOUNGSTER
 	const_export MTMOON1F_HIKER
@@ -28,8 +28,12 @@ MtMoon1F_Object:
 	bg_event 15, 23, TEXT_MTMOON1F_BEWARE_ZUBAT_SIGN
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_COOLTRAINER_F, STAY, DOWN, TEXT_MTMOON1F_PADDING
 	object_event 12, 29, SPRITE_COOLTRAINER_F, STAY, RIGHT, TEXT_MTMOON1F_LASS, OPP_LASS, 1
-	object_event 16, 22, SPRITE_YOUNGSTER, STAY, DOWN, TEXT_MTMOON1F_BUG_CATCHER, OPP_BUG_CATCHER, 1
 	object_event 19, 25, SPRITE_SUPER_NERD, STAY, UP, TEXT_MTMOON1F_SUPER_NERD, OPP_SUPER_NERD, 1
 	object_event 20, 19, SPRITE_YOUNGSTER, STAY, RIGHT, TEXT_MTMOON1F_YOUNGSTER, OPP_YOUNGSTER, 1
 	object_event 23, 15, SPRITE_HIKER, STAY, LEFT, TEXT_MTMOON1F_HIKER, OPP_HIKER, 1

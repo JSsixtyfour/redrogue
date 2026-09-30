@@ -1,8 +1,7 @@
 DEF ROCK_TUNNEL_1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3 % 8))
 
 RockTunnel1F_Script:
 
@@ -70,8 +69,8 @@ RockTunnel1F_ScriptPointers:
 
 RockTunnel1F_TextPointers:
 	def_text_pointers
+	dw_const RockTunnel1FPaddingText,      TEXT_ROCKTUNNEL1F_PADDING
 	dw_const RockTunnel1FHiker1Text,       TEXT_ROCKTUNNEL1F_HIKER1
-	dw_const RockTunnel1FHiker2Text,       TEXT_ROCKTUNNEL1F_HIKER2
 	dw_const RockTunnel1FJrTrainerFText,   TEXT_ROCKTUNNEL1F_JR_TRAINER_F
 	dw_const RockTunnel1FPokemaniacText,   TEXT_ROCKTUNNEL1F_POKEMANIAC
 	dw_const RockTunnel1FCooltrainerMText, TEXT_ROCKTUNNEL1F_COOLTRAINER_M
@@ -86,42 +85,39 @@ RockTunnel1F_TextPointers:
 	dw_const RockTunnel1FNoTurningBackText, TEXT_ROCKTUNNEL1F_NO_TURNING_BACK
 
 RockTunnel1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 RockTunnel1TrainerHeader0:
 	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0, 4, RockTunnel1FHiker1BattleText, RockTunnel1FHiker1EndBattleText, RockTunnel1FHiker1AfterBattleText
 RockTunnel1TrainerHeader1:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1, 4, RockTunnel1FHiker2BattleText, RockTunnel1FHiker2EndBattleText, RockTunnel1FHiker2AfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1, 3, RockTunnel1FJrTrainerFBattleText, RockTunnel1FJrTrainerFEndBattleText, RockTunnel1FJrTrainerFAfterBattleText
 RockTunnel1TrainerHeader2:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2, 3, RockTunnel1FJrTrainerFBattleText, RockTunnel1FJrTrainerFEndBattleText, RockTunnel1FJrTrainerFAfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2, 3, RockTunnel1FPokemaniacBattleText, RockTunnel1FPokemaniacEndBattleText, RockTunnel1FPokemaniacAfterBattleText
 RockTunnel1TrainerHeader3:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3, 3, RockTunnel1FPokemaniacBattleText, RockTunnel1FPokemaniacEndBattleText, RockTunnel1FPokemaniacAfterBattleText
-RockTunnel1TrainerHeader4:
-	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_4, 4, RockTunnel1FCooltrainerMBattleText, RockTunnel1FCooltrainerMEndBattleText, RockTunnel1FCooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3, 4, RockTunnel1FCooltrainerMBattleText, RockTunnel1FCooltrainerMEndBattleText, RockTunnel1FCooltrainerMAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+RockTunnel1FPaddingText:
+	text_end
 
 RockTunnel1FHiker1Text:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader0
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FHiker2Text:
+RockTunnel1FJrTrainerFText:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader1
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FJrTrainerFText:
+RockTunnel1FPokemaniacText:
 	text_asm
 	ld hl, RockTunnel1TrainerHeader2
 	jr RockTunnel1FTalkToTrainer
 
-RockTunnel1FPokemaniacText:
-	text_asm
-	ld hl, RockTunnel1TrainerHeader3
-	jr RockTunnel1FTalkToTrainer
-
 RockTunnel1FCooltrainerMText:
 	text_asm
-	ld hl, RockTunnel1TrainerHeader4
+	ld hl, RockTunnel1TrainerHeader3
 RockTunnel1FTalkToTrainer:
 	call TalkToTrainer
 	jp TextScriptEnd
@@ -136,18 +132,6 @@ RockTunnel1FHiker1EndBattleText:
 
 RockTunnel1FHiker1AfterBattleText:
 	text_far _RockTunnel1FHiker1AfterBattleText
-	text_end
-
-RockTunnel1FHiker2BattleText:
-	text_far _RockTunnel1FHiker2BattleText
-	text_end
-
-RockTunnel1FHiker2EndBattleText:
-	text_far _RockTunnel1FHiker2EndBattleText
-	text_end
-
-RockTunnel1FHiker2AfterBattleText:
-	text_far _RockTunnel1FHiker2AfterBattleText
 	text_end
 
 RockTunnel1FJrTrainerFBattleText:
@@ -183,14 +167,14 @@ RockTunnel1FCooltrainerMEndBattleText:
 	text_end
 
 RockTunnel1FCooltrainerMAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0 / 8)]
 	and ROCK_TUNNEL_1_ALL_TRAINERS_MASK
 	sub ROCK_TUNNEL_1_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

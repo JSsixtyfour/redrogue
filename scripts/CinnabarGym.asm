@@ -174,7 +174,6 @@ CinnabarGym_TextPointers:
 	dw_const CinnabarGymSuperNerd1,                 TEXT_CINNABARGYM_SUPER_NERD1
 	dw_const CinnabarGymSuperNerd2,                 TEXT_CINNABARGYM_SUPER_NERD2
 	dw_const CinnabarGymSuperNerd3,                 TEXT_CINNABARGYM_SUPER_NERD3
-	dw_const CinnabarGymSuperNerd4,                 TEXT_CINNABARGYM_SUPER_NERD4
     dw_const CinnabarGymBlaineText,                 TEXT_CINNABARGYM_BLAINE
 	dw_const CinnabarGymGymGuideText,               TEXT_CINNABARGYM_GYM_GUIDE
 	dw_const CinnabarGymBlaineVolcanoBadgeInfoText, TEXT_CINNABARGYM_BLAINE_VOLCANO_BADGE_INFO
@@ -357,34 +356,6 @@ CinnabarGymSuperNerd3:
 
 .AfterBattleText:
 	text_far _CinnabarGymSuperNerd3AfterBattleText
-	text_end
-
-CinnabarGymSuperNerd4:
-	text_asm
-	call CinnabarGymSetTrainerHeader
-	CheckEvent EVENT_BEAT_CINNABAR_GYM_TRAINER_3
-	jr nz, .defeated
-	ld hl, .BattleText
-	call PrintText
-	ld hl, .EndBattleText
-	ld de, .EndBattleText
-	call SaveEndBattleTextPointers
-	jp CinnabarGymStartBattleScript
-.defeated
-	ld hl, .AfterBattleText
-	call PrintText
-	jp TextScriptEnd
-
-.BattleText:
-	text_far _CinnabarGymSuperNerd4BattleText
-	text_end
-
-.EndBattleText:
-	text_far _CinnabarGymSuperNerd4EndBattleText
-	text_end
-
-.AfterBattleText:
-	text_far _CinnabarGymSuperNerd4AfterBattleText
 	text_end
 
 CinnabarGymSuperNerd5:

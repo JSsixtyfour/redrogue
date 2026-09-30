@@ -754,7 +754,14 @@ class RouteContractSmokeTest(HarnessTestCase):
                     REPO_ROOT / "data" / "maps" / "objects" / contract.object_file
                 )
                 if contract.standard_object_slots:
-                    self.assertTrue(all(len(obj) == 8 for obj in objects[:5]))
+                    # 4-battle stages (FOUR_TRAINER_REVISION_PLAN.md): slot 1
+                    # is an off-map padding object with no trainer, slots 2-5
+                    # are the three trainers and the boss, slots 6-10 the
+                    # reward cluster.
+                    self.assertLess(
+                        len(objects[0]), 8,
+                        f"{contract.name} slot 1 must be the padding object, not a trainer")
+                    self.assertTrue(all(len(obj) == 8 for obj in objects[1:5]))
                     self.assertIn("_RANDOM", objects[5][5])
                     for reward_index, obj in enumerate(objects[6:9], start=1):
                         self.assertIn(
@@ -798,17 +805,18 @@ class RouteContractSmokeTest(HarnessTestCase):
 
                 if contract.standard_object_slots:
                     source_classes = [
-                        obj[6].removeprefix("OPP_") for obj in objects[:5]
+                        obj[6].removeprefix("OPP_") for obj in objects[1:5]
                     ]
+                    # Slots 2-5: wMapSpriteExtraData is (class, set) per slot.
                     trainer_classes = self.harness.read_bytes(
                         "wMapSpriteExtraData", 10
-                    )[::2]
+                    )[2::2]
                     self.assertEqual(
                         trainer_classes,
                         [trainers[name] for name in source_classes],
                     )
 
-                if contract.reward_gate is RewardGate.STANDARD_FIVE_TRAINERS:
+                if contract.reward_gate is RewardGate.STANDARD_ALL_TRAINERS:
                     for event_name in contract.trainer_events:
                         self.harness.set_event(events[event_name])
                     offered_event = events["EVENT_ROGUE_POKEMON_OFFERED"]
@@ -852,7 +860,7 @@ class RouteContractSmokeTest(HarnessTestCase):
             {
                 contract.map_constant: contract.reward_gate
                 for contract in ROUTE_CONTRACTS
-                if contract.reward_gate is not RewardGate.STANDARD_FIVE_TRAINERS
+                if contract.reward_gate is not RewardGate.STANDARD_ALL_TRAINERS
             },
             {
                 "ROUTE_24": RewardGate.NUGGET_BRIDGE,
@@ -2267,9 +2275,6 @@ class TextContractSmokeTest(unittest.TestCase):
             ),
             EndBattleContract(
                 route_text, "_UndergroundPathWestEastBurglarEndBattleText", "BURGLAR"
-            ),
-            EndBattleContract(
-                route_text, "_UndergroundPathWestEastBiker2EndBattleText", "BIKER"
             ),
             EndBattleContract(
                 route_text, "_UndergroundPathWestEastCueBallEndBattleText", "CUE BALL"

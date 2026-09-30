@@ -82,18 +82,12 @@ CinnabarGymQuiz_AskQuestion:
 	ldh a, [hCurrentMenuItem]
 	cp c
 	jr nz, .wrongAnswer
-	ld hl, wCurrentMapScriptFlags
-	set BIT_CUR_MAP_LOADED_1, [hl]
-	ldh a, [hGymGateIndex]
-	ldh [hBackupGymGateIndex], a
+	; A right answer no longer opens anything (user decision, 2026-09-29): only
+	; beating a trainer opens a gate. It also used to set GATE0 + index, and
+	; machines 5 and 6 have no gate event, so they set whatever event followed
+	; GATE4 (EVENT_BEAT_BLAINE after the four-trainer event reshuffle).
 	ld hl, CinnabarGymQuizCorrectText
-	call PrintText
-	ldh a, [hBackupGymGateIndex]
-	AdjustEventBit EVENT_CINNABAR_GYM_GATE0_UNLOCKED, 0
-	ld c, a
-	ld b, FLAG_SET
-	call CinnabarGymGateFlagAction
-	jp UpdateCinnabarGymGateTileBlocks_
+	jp PrintText
 .wrongAnswer
 	call WaitForSoundToFinish
 	ld a, SFX_DENIED
@@ -120,21 +114,7 @@ CinnabarGymQuizCorrectText:
 	sound_get_item_1
 	text_far _CinnabarGymQuizCorrectText
 	text_promptbutton
-	text_asm
-
-	ldh a, [hBackupGymGateIndex]
-	AdjustEventBit EVENT_CINNABAR_GYM_GATE0_UNLOCKED, 0
-	ld c, a
-	ld b, FLAG_TEST
-	call CinnabarGymGateFlagAction
-	ld a, c
-	and a
-	jp nz, TextScriptEnd
-	call WaitForSoundToFinish
-	ld a, SFX_GO_INSIDE
-	call PlaySound
-	call WaitForSoundToFinish
-	jp TextScriptEnd
+	text_end
 
 CinnabarGymQuizIncorrectText:
 	text_far _CinnabarGymQuizIncorrectText
@@ -143,7 +123,11 @@ CinnabarGymQuizIncorrectText:
 UpdateCinnabarGymGateTileBlocks_::
 ; Update the overworld map with open floor blocks or locked gate blocks
 ; depending on event flags.
-	ld a, 4
+; Only gates 1-3 are drawn. Gate 4 (in front of Blaine) lost its trainer in the
+; 4-battle cut (FOUR_TRAINER_REVISION_PLAN.md): beating the trainer in object
+; slot s opens gate s-1, and slot 5 is now the gym guide. The .blk has open
+; floor at every gate, so a gate this loop skips simply starts open.
+	ld a, 3
 	ldh [hGymGateIndex], a
 .loop
 	ldh a, [hGymGateIndex]
@@ -206,5 +190,5 @@ CinnabarGymGateCoords:
 	gym_gate_coord 9, 3, HORIZONTAL_GATE_BLOCK
 	gym_gate_coord 6, 6, HORIZONTAL_GATE_BLOCK
 	gym_gate_coord 2, 6, HORIZONTAL_GATE_BLOCK
-	gym_gate_coord 2, 3, HORIZONTAL_GATE_BLOCK
+	;gym_gate_coord 2, 3, HORIZONTAL_GATE_BLOCK ; gate 4: starts open, see above
     ;gym_gate_coord 1, 0, HORIZONTAL_GATE_BLOCK

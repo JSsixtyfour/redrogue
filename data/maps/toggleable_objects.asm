@@ -150,7 +150,6 @@ ToggleableObjectStates:
 	toggle_object_state POKEMONTOWER7F_ROCKET1, ON
 	toggle_object_state POKEMONTOWER7F_ROCKET2, ON
 	toggle_object_state POKEMONTOWER7F_ROCKET3, ON
-	toggle_object_state POKEMONTOWER7F_ROCKET4, ON
 	toggle_object_state POKEMONTOWER7F_ROCKET5, ON
 	toggle_object_state POKEMONTOWER7F_MR_FUJI, ON
 

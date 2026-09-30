@@ -1,8 +1,7 @@
 DEF ROUTE1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_3 % 8))
 
 Route1_Script:
 	; One-time setup on first map entry
@@ -20,7 +19,7 @@ Route1_Script:
 	; as the mini-boss door's stage, swap its 5th trainer (slot from
 	; MiniBossStageSlots) in place to the rolled boss + team. No-op otherwise.
 	; wMapSpriteExtraData is read fresh by EngageMapTrainer at engage time, and
-	; the reward unlock keys off the same EVENT_BEAT..._TRAINER_4, so nothing
+	; the reward unlock keys off the same boss beat event, so nothing
 	; else needs changing.
 	farcall MiniBossApplyStageTrainer
 
@@ -136,10 +135,10 @@ Route1_ScriptPointers:
 
 Route1_TextPointers:
 	def_text_pointers
+	dw_const Route1PaddingText,       TEXT_ROUTE1_PADDING
 	dw_const Route1Youngster4Text,    TEXT_ROUTE1_YOUNGSTER4
 	dw_const Route1Youngster5Text,    TEXT_ROUTE1_YOUNGSTER5
 	dw_const Route1Youngster6Text,    TEXT_ROUTE1_YOUNGSTER6
-	dw_const Route1Youngster7Text,    TEXT_ROUTE1_YOUNGSTER7
 	dw_const Route1JrTrainerMText,    TEXT_ROUTE1_JR_TRAINER_M
 	dw_const Route1Youngster1Text, TEXT_ROUTE1_YOUNGSTER1
 	dw_const Route1Youngster2Text, TEXT_ROUTE1_YOUNGSTER2
@@ -154,7 +153,7 @@ Route1_TextPointers:
 	dw_const Route1NoTurningBackText, TEXT_ROUTE1_NO_TURNING_BACK
 
 Route1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route1TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_1_TRAINER_0, 3, Route1Youngster4BattleText, Route1Youngster4EndBattleText, Route1Youngster4AfterBattleText
 Route1TrainerHeader1:
@@ -162,14 +161,12 @@ Route1TrainerHeader1:
 Route1TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_1_TRAINER_2, 4, Route1Youngster6BattleText, Route1Youngster6EndBattleText, Route1Youngster6AfterBattleText
 Route1TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_1_TRAINER_3, 4, Route1Youngster7BattleText, Route1Youngster7EndBattleText, Route1Youngster7AfterBattleText
-Route1TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_1_TRAINER_4, 4, Route1JrTrainerMBattleText, Route1JrTrainerMEndBattleText, Route1JrTrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_1_TRAINER_3, 4, Route1JrTrainerMBattleText, Route1JrTrainerMEndBattleText, Route1JrTrainerMAfterBattleText
 	db -1 ; end
 
 Route1JrTrainerMText:
 	text_asm
-	ld hl, Route1TrainerHeader4
+	ld hl, Route1TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -211,14 +208,14 @@ Route1JrTrainerMEndBattleText:
 	text_end
 
 Route1JrTrainerMAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_1_TRAINER_0 / 8)]
 	and ROUTE1_ALL_TRAINERS_MASK
 	sub ROUTE1_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward
@@ -289,22 +286,8 @@ Route1Youngster6AfterBattleText:
 	text_far _Route1Youngster6AfterBattleText
 	text_end
 
-Route1Youngster7Text:
-	text_asm
-	ld hl, Route1TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route1Youngster7BattleText:
-	text_far _Route1Youngster7BattleText
-	text_end
-
-Route1Youngster7EndBattleText:
-	text_far _Route1Youngster7EndBattleText
-	text_end
-
-Route1Youngster7AfterBattleText:
-	text_far _Route1Youngster7AfterBattleText
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route1PaddingText:
 	text_end
 
 Route1Youngster1Text:

@@ -1,8 +1,7 @@
 DEF ROCKET_HIDEOUT_1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3 % 8))
 
 RocketHideoutB1F_Script:
 
@@ -60,7 +59,7 @@ RocketHideoutB1F_Script:
 ;	ret z
 ;	CheckEvent EVENT_ENTERED_ROCKET_HIDEOUT
 ;	jr nz, .door_open
-;	CheckEventReuseA EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
+;	CheckEventReuseA EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3
 ;	jr nz, .play_sound_door_open
 ;	ld a, $54 ; Door Block
 ;	jr .set_door_block
@@ -101,10 +100,10 @@ RocketHideoutB1F_ScriptPointers:
 
 RocketHideoutB1F_TextPointers:
 	def_text_pointers
+	dw_const RocketHideoutB1FPaddingText, TEXT_ROCKETHIDEOUTB1F_PADDING
 	dw_const RocketHideoutB1FRocket1Text, TEXT_ROCKETHIDEOUTB1F_ROCKET1
 	dw_const RocketHideoutB1FRocket2Text, TEXT_ROCKETHIDEOUTB1F_ROCKET2
 	dw_const RocketHideoutB1FRocket3Text, TEXT_ROCKETHIDEOUTB1F_ROCKET3
-	dw_const RocketHideoutB1FRocket4Text, TEXT_ROCKETHIDEOUTB1F_ROCKET4
 	dw_const RocketHideoutB1FRocket5Text, TEXT_ROCKETHIDEOUTB1F_ROCKET5
 	dw_const PickUpItemText,              TEXT_ROCKETHIDEOUTB1F_ESCAPE_ROPE
 	dw_const PickUpItemText,              TEXT_ROCKETHIDEOUTB1F_HYPER_POTION
@@ -118,7 +117,7 @@ RocketHideoutB1F_TextPointers:
 	dw_const RocketHideoutB1FNoTurningBackText, TEXT_ROCKETHIDEOUTB1F_NO_TURNING_BACK
 
 RocketHideout1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 RocketHideout1TrainerHeader0:
 	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0, 3, RocketHideoutB1FRocket1BattleText, RocketHideoutB1FRocket1EndBattleText, RocketHideoutB1FRocket1AfterBattleText
 RocketHideout1TrainerHeader1:
@@ -126,10 +125,12 @@ RocketHideout1TrainerHeader1:
 RocketHideout1TrainerHeader2:
 	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_2, 2, RocketHideoutB1FRocket3BattleText, RocketHideoutB1FRocket3EndBattleText, RocketHideoutB1FRocket3AfterBattleText
 RocketHideout1TrainerHeader3:
-	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3, 3, RocketHideoutB1FRocket4BattleText, RocketHideoutB1FRocket4EndBattleText, RocketHideoutB1FRocket4AfterBattleText
-RocketHideout1TrainerHeader4:
-	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4, 3, RocketHideoutB1FRocket5BattleText, RocketHideoutB1FRocket5EndBattleText, RocketHideoutB1FRocket5AfterBattleText
+	trainer EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3, 3, RocketHideoutB1FRocket5BattleText, RocketHideoutB1FRocket5EndBattleText, RocketHideoutB1FRocket5AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+RocketHideoutB1FPaddingText:
+	text_end
 
 RocketHideoutB1FRocket1Text:
 	text_asm
@@ -149,15 +150,9 @@ RocketHideoutB1FRocket3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-RocketHideoutB1FRocket4Text:
-	text_asm
-	ld hl, RocketHideout1TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 RocketHideoutB1FRocket5Text:
 	text_asm
-	ld hl, RocketHideout1TrainerHeader4
+	ld hl, RocketHideout1TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -179,7 +174,7 @@ RocketHideoutB1FRocket5EndBattleText:
 .Vanilla
 	text_far _RocketHideoutB1FRocket5EndBattleText
 	text_asm
-	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
+	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3
 	ld hl, .prompt_end1
 	ret
 .prompt_end1
@@ -188,7 +183,7 @@ RocketHideoutB1FRocket5EndBattleText:
 .GiovanniMiniBoss
 	text_far _GiovanniMiniBossEndBattleText
 	text_asm
-	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_4
+	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3
 	ld hl, .prompt_end2
 	ret
 .prompt_end2
@@ -231,18 +226,6 @@ RocketHideoutB1FRocket3AfterBattleText:
 	text_far _RocketHideoutB1FRocket3AfterBattleText
 	text_end
 
-RocketHideoutB1FRocket4BattleText:
-	text_far _RocketHideoutB1FRocket4BattleText
-	text_end
-
-RocketHideoutB1FRocket4EndBattleText:
-	text_far _RocketHideoutB1FRocket4EndBattleText
-	text_end
-
-RocketHideoutB1FRocket4AfterBattleText:
-	text_far _RocketHideoutB1FRocket4AfterBattleText
-	text_end
-
 RocketHideoutB1FRocket5BattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
@@ -259,14 +242,14 @@ RocketHideoutB1FRocket5BattleText:
 	text_end
 
 RocketHideoutB1FRocket5AfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0 / 8)]
 	and ROCKET_HIDEOUT_1_ALL_TRAINERS_MASK
 	sub ROCKET_HIDEOUT_1_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

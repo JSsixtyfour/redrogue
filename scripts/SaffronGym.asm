@@ -105,7 +105,6 @@ SaffronGym_TextPointers:
 	dw_const SaffronGymSabrinaText,               TEXT_SAFFRONGYM_SABRINA
 	dw_const SaffronGymChanneler1Text,            TEXT_SAFFRONGYM_CHANNELER1
 	dw_const SaffronGymYoungster1Text,            TEXT_SAFFRONGYM_YOUNGSTER1
-	dw_const SaffronGymChanneler2Text,            TEXT_SAFFRONGYM_CHANNELER2
 	dw_const SaffronGymYoungster2Text,            TEXT_SAFFRONGYM_YOUNGSTER2
 	dw_const SaffronGymGymGuideText,              TEXT_SAFFRONGYM_GYM_GUIDE
 	dw_const SaffronGymSabrinaMarshBadgeInfoText, TEXT_SAFFRONGYM_SABRINA_MARSH_BADGE_INFO
@@ -128,9 +127,7 @@ SaffronGymTrainerHeader0:
 SaffronGymTrainerHeader1:
 	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_1, 3, SaffronGymYoungster1BattleText, SaffronGymYoungster1EndBattleText, SaffronGymYoungster1AfterBattleText
 SaffronGymTrainerHeader2:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_2, 3, SaffronGymChanneler2BattleText, SaffronGymChanneler2EndBattleText, SaffronGymChanneler2AfterBattleText
-SaffronGymTrainerHeader3:
-	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_3, 3, SaffronGymYoungster2BattleText, SaffronGymYoungster2EndBattleText, SaffronGymYoungster2AfterBattleText
+	trainer EVENT_BEAT_SAFFRON_GYM_TRAINER_2, 3, SaffronGymYoungster2BattleText, SaffronGymYoungster2EndBattleText, SaffronGymYoungster2AfterBattleText
 	db -1 ; end
 
 SaffronGymSabrinaText:
@@ -216,15 +213,9 @@ SaffronGymYoungster1Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-SaffronGymChanneler2Text:
-	text_asm
-	ld hl, SaffronGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
 SaffronGymYoungster2Text:
 	text_asm
-	ld hl, SaffronGymTrainerHeader3
+	ld hl, SaffronGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -271,18 +262,6 @@ SaffronGymYoungster1EndBattleText:
 
 SaffronGymYoungster1AfterBattleText:
 	text_far _SaffronGymYoungster1AfterBattleText
-	text_end
-
-SaffronGymChanneler2BattleText:
-	text_far _SaffronGymChanneler2BattleText
-	text_end
-
-SaffronGymChanneler2EndBattleText:
-	text_far _SaffronGymChanneler2EndBattleText
-	text_end
-
-SaffronGymChanneler2AfterBattleText:
-	text_far _SaffronGymChanneler2AfterBattleText
 	text_end
 
 SaffronGymYoungster2BattleText:

@@ -41,21 +41,6 @@ _Route6BugCatcherAfterBattleText::
 	cont "VIRIDIAN FOREST."
 	done
 
-_Route6JrTrainerM2BattleText::
-	text "Huh? You want"
-	line "to talk to me?"
-	done
-
-_Route6JrTrainerM2EndBattleText::
-	text "I"
-	line "didn't start it!"
-	prompt
-
-_Route6JrTrainerM2AfterBattleText::
-	text "I should carry"
-	line "more #MON with"
-	cont "me for safety."
-	done
 
 _Route6JrTrainerF2BattleText::
 	text "Me? Well, OK."

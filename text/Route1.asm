@@ -98,20 +98,6 @@ _Route1Youngster6AfterBattleText::
 	line "#MON?"
 	done
     
-_Route1Youngster7BattleText::
-	text "There's no way"
-	line "you'll beat me!"
-	done
-
-_Route1Youngster7EndBattleText::
-	text "Waah"
-	line "That's not fair!"
-	prompt
-
-_Route1Youngster7AfterBattleText::
-	text "Go away!"
-	done
-    
 _Route1JrTrainerMBattleText::
 	text "I can't way to"
 	line "show everyone"

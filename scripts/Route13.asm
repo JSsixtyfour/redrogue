@@ -1,8 +1,7 @@
 DEF ROUTE13_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_13_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_13_TRAINER_1 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_13_TRAINER_2 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_13_TRAINER_3 % 8)) \
-	| (1 << (EVENT_BEAT_ROUTE_13_TRAINER_4 % 8))
+	| (1 << (EVENT_BEAT_ROUTE_13_TRAINER_3 % 8))
 
 Route13_Script:
 
@@ -72,9 +71,9 @@ Route13_ScriptPointers:
 
 Route13_TextPointers:
 	def_text_pointers
+	dw_const Route13PaddingText,       TEXT_ROUTE13_PADDING
 	dw_const Route13BirdKeeperText,    TEXT_ROUTE13_BIRD_KEEPER
 	dw_const Route13BeautyText,        TEXT_ROUTE13_BEAUTY
-	dw_const Route13JrTrainerFText,    TEXT_ROUTE13_JR_TRAINER_F
 	dw_const Route13BikerText,         TEXT_ROUTE13_BIKER
 	dw_const Route13CooltrainerMText,  TEXT_ROUTE13_COOLTRAINER_M
     dw_const RandomPickUpItemText,     TEXT_ROUTE13_RANDOM
@@ -90,18 +89,20 @@ Route13_TextPointers:
 	dw_const Route13NoTurningBackText, TEXT_ROUTE13_NO_TURNING_BACK
 
 Route13TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 Route13TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_13_TRAINER_0, 2, Route13BirdKeeperBattleText, Route13BirdKeeperEndBattleText, Route13BirdKeeperAfterBattleText
 Route13TrainerHeader1:
 	trainer EVENT_BEAT_ROUTE_13_TRAINER_1, 1, Route13BeautyBattleText, Route13BeautyEndBattleText, Route13BeautyAfterBattleText
 Route13TrainerHeader2:
-	trainer EVENT_BEAT_ROUTE_13_TRAINER_2, 2, Route13JrTrainerFBattleText, Route13JrTrainerFEndBattleText, Route13JrTrainerFAfterBattleText
+	trainer EVENT_BEAT_ROUTE_13_TRAINER_2, 2, Route13BikerBattleText, Route13BikerEndBattleText, Route13BikerAfterBattleText
 Route13TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_13_TRAINER_3, 2, Route13BikerBattleText, Route13BikerEndBattleText, Route13BikerAfterBattleText
-Route13TrainerHeader4:
-	trainer EVENT_BEAT_ROUTE_13_TRAINER_4, 4, Route13CooltrainerMBattleText, Route13CooltrainerMEndBattleText, Route13CooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_13_TRAINER_3, 4, Route13CooltrainerMBattleText, Route13CooltrainerMEndBattleText, Route13CooltrainerMAfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+Route13PaddingText:
+	text_end
 
 Route13BirdKeeperText:
 	text_asm
@@ -139,27 +140,9 @@ Route13BeautyAfterBattleText:
 	text_far _Route13Beauty1AfterBattleText
 	text_end
 
-Route13JrTrainerFText:
-	text_asm
-	ld hl, Route13TrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-Route13JrTrainerFBattleText:
-	text_far _Route13CooltrainerF1BattleText
-	text_end
-
-Route13JrTrainerFEndBattleText:
-	text_far _Route13CooltrainerF1EndBattleText
-	text_end
-
-Route13JrTrainerFAfterBattleText:
-	text_far _Route13CooltrainerF1AfterBattleText
-	text_end
-
 Route13BikerText:
 	text_asm
-	ld hl, Route13TrainerHeader3
+	ld hl, Route13TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -177,7 +160,7 @@ Route13BikerAfterBattleText:
 
 Route13CooltrainerMText:
 	text_asm
-	ld hl, Route13TrainerHeader4
+	ld hl, Route13TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -190,14 +173,14 @@ Route13CooltrainerMEndBattleText:
 	text_end
 
 Route13CooltrainerMAfterBattleText:
-	; Reward menu only once all five are beaten; otherwise (and after the
+	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
 	text_asm
 	ld a, [wEventFlags + (EVENT_BEAT_ROUTE_13_TRAINER_0 / 8)]
 	and ROUTE13_ALL_TRAINERS_MASK
 	sub ROUTE13_ALL_TRAINERS_MASK
-	ld e, a                       ; e = 0 iff all five beaten
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward

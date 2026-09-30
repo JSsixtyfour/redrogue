@@ -103,7 +103,6 @@ VioletGym_TextPointers:
 	dw_const VioletGymFalknerText,            TEXT_VIOLETGYM_FALKNER
 	dw_const VioletGymCooltrainerM1Text,      TEXT_VIOLETGYM_COOLTRAINER_M1
 	dw_const VioletGymCooltrainerM2Text,      TEXT_VIOLETGYM_COOLTRAINER_M2
-	dw_const VioletGymCooltrainerM3Text,      TEXT_VIOLETGYM_COOLTRAINER_M3
 	dw_const VioletGymCooltrainerM4Text,      TEXT_VIOLETGYM_COOLTRAINER_M4
 	dw_const VioletGymGuideText,              TEXT_VIOLETGYM_GYM_GUIDE
 	dw_const VioletGymFalknerWaitTakeThisText, TEXT_VIOLETGYM_FALKNER_WAIT_TAKE_THIS
@@ -121,9 +120,7 @@ VioletGymTrainerHeader0:
 VioletGymTrainerHeader1:
 	trainer EVENT_BEAT_VIOLET_GYM_TRAINER_1, 2, VioletGymCooltrainerM2BattleText, VioletGymCooltrainerM2EndBattleText, VioletGymCooltrainerM2AfterBattleText
 VioletGymTrainerHeader2:
-	trainer EVENT_BEAT_VIOLET_GYM_TRAINER_2, 5, VioletGymCooltrainerM3BattleText, VioletGymCooltrainerM3EndBattleText, VioletGymCooltrainerM3AfterBattleText
-VioletGymTrainerHeader3:
-	trainer EVENT_BEAT_VIOLET_GYM_TRAINER_3, 5, VioletGymCooltrainerM4BattleText, VioletGymCooltrainerM4EndBattleText, VioletGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_VIOLET_GYM_TRAINER_2, 5, VioletGymCooltrainerM4BattleText, VioletGymCooltrainerM4EndBattleText, VioletGymCooltrainerM4AfterBattleText
 	db -1 ; end
 
 VioletGymReceivedTMText:
@@ -234,27 +231,9 @@ VioletGymCooltrainerM2AfterBattleText:
 	text_far _VioletGymTrainer2AfterBattleText
 	text_end
 
-VioletGymCooltrainerM3Text:
-	text_asm
-	ld hl, VioletGymTrainerHeader2
-	call TalkToTrainer
-	jp TextScriptEnd
-
-VioletGymCooltrainerM3BattleText:
-	text_far _VioletGymCooltrainerMBattleText
-	text_end
-
-VioletGymCooltrainerM3EndBattleText:
-	text_far _VioletGymCooltrainerMEndBattleText
-	text_end
-
-VioletGymCooltrainerM3AfterBattleText:
-	text_far _VioletGymCooltrainerMAfterBattleText
-	text_end
-
 VioletGymCooltrainerM4Text:
 	text_asm
-	ld hl, VioletGymTrainerHeader3
+	ld hl, VioletGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 

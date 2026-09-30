@@ -1,8 +1,8 @@
 	object_const_def
+	const_export ROUTE15_PADDING
 	const_export ROUTE15_JR_TRAINER_F1
 	const_export ROUTE15_BIRD_KEEPER
 	const_export ROUTE15_BEAUTY
-	const_export ROUTE15_BIKER
 	const_export ROUTE15_JR_TRAINER_F2
     const_export ROUTE15_POKE_BALL
     const_export ROUTE15_ROGUE_REWARD_POKEBALL_1
@@ -24,10 +24,14 @@ Route15_Object:
 	bg_event 39,  9, TEXT_ROUTE15_SIGN
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_COOLTRAINER_F, STAY, DOWN, TEXT_ROUTE15_PADDING
 	object_event 47,  9, SPRITE_COOLTRAINER_F, STAY, DOWN, TEXT_ROUTE15_JR_TRAINER_F1, OPP_JR_TRAINER_F, 1
 	object_event 41, 12, SPRITE_COOLTRAINER_M, STAY, UP, TEXT_ROUTE15_BIRD_KEEPER, OPP_BIRD_KEEPER, 1
 	object_event 33,  9, SPRITE_BEAUTY, STAY, DOWN, TEXT_ROUTE15_BEAUTY, OPP_BEAUTY, 1
-	object_event 29, 12, SPRITE_BIKER, STAY, UP, TEXT_ROUTE15_BIKER, OPP_BIKER, 1
 	object_event 25,  9, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_ROUTE15_JR_TRAINER_F2, OPP_COOLTRAINER_F, 1
 	object_event 49, 12, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE15_RANDOM, 0
 	object_event 21,  9, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROUTE15_ROGUE_REWARD_POKEBALL_1

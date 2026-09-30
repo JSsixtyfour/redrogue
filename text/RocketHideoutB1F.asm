@@ -47,22 +47,6 @@ _RocketHideoutB1FRocket3AfterBattleText::
 	cont "where it is!"
 	done
 
-_RocketHideoutB1FRocket4BattleText::
-	text "Why did you come"
-	line "here?"
-	done
-
-_RocketHideoutB1FRocket4EndBattleText::
-	text "This"
-	line "won't do!"
-	prompt
-
-_RocketHideoutB1FRocket4AfterBattleText::
-	text "OK, I'll talk!"
-	line "Take the elevator"
-	cont "to see my BOSS!"
-	done
-
 _RocketHideoutB1FRocket5BattleText::
 	text "Are you lost, you"
 	line "little rat?"

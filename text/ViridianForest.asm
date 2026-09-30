@@ -62,6 +62,10 @@ _ViridianForestYoungster4AfterBattleText::
 	cont "dropped!"
 	done
 
+_ViridianForestCooltrainerFBattleText::
+	text "INSERT TEXT HERE"
+	done
+
 _ViridianForestYoungster5Text::
 	text "I ran out of #"
 	line "BALLs to catch"

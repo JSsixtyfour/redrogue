@@ -15,7 +15,6 @@ SSAnneB1FRooms_ScriptPointers:
 
 SSAnneB1FRooms_TextPointers:
 	def_text_pointers
-	dw_const SSAnneB1FRoomsGentlemanText, TEXT_SSANNEB1FROOMS_GENTLEMAN
 	dw_const SSAnneB1FRoomsSailor1Text,   TEXT_SSANNEB1FROOMS_SAILOR1
 	dw_const SSAnneB1FRoomsFisherText,    TEXT_SSANNEB1FROOMS_FISHER
 	dw_const SSAnneB1FRoomsSailor2Text,   TEXT_SSANNEB1FROOMS_SAILOR2
@@ -29,44 +28,36 @@ SSAnneB1FRooms_TextPointers:
 SSAnne10TrainerHeaders:
 	def_trainers
 SSAnne10TrainerHeader0:
-	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_0, 2, SSAnneB1FRoomsGentlemanBattleText, SSAnneB1FRoomsGentlemanEndBattleText, SSAnneB1FRoomsGentlemanAfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_0, 3, SSAnneB1FRoomsSailor1BattleText, SSAnneB1FRoomsSailor1EndBattleText, SSAnneB1FRoomsSailor1AfterBattleText
 SSAnne10TrainerHeader1:
-	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_1, 3, SSAnneB1FRoomsSailor1BattleText, SSAnneB1FRoomsSailor1EndBattleText, SSAnneB1FRoomsSailor1AfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_1, 3, SSAnneB1FRoomsFisherBattleText, SSAnneB1FRoomsFisherEndBattleText, SSAnneB1FRoomsFisherAfterBattleText
 SSAnne10TrainerHeader2:
-	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_2, 3, SSAnneB1FRoomsFisherBattleText, SSAnneB1FRoomsFisherEndBattleText, SSAnneB1FRoomsFisherAfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_2, 2, SSAnneB1FRoomsSailor2BattleText, SSAnneB1FRoomsSailor2EndBattleText, SSAnneB1FRoomsSailor2AfterBattleText
 SSAnne10TrainerHeader3:
-	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_3, 2, SSAnneB1FRoomsSailor2BattleText, SSAnneB1FRoomsSailor2EndBattleText, SSAnneB1FRoomsSailor2AfterBattleText
-SSAnne10TrainerHeader4:
-	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_4, 2, SSAnneB1FRoomsCooltrainer_FBattleText, SSAnneB1FRoomsCooltrainer_FEndBattleText, SSAnneB1FRoomsCooltrainer_FAfterBattleText
+	trainer EVENT_BEAT_SS_ANNE_10_TRAINER_3, 2, SSAnneB1FRoomsCooltrainer_FBattleText, SSAnneB1FRoomsCooltrainer_FEndBattleText, SSAnneB1FRoomsCooltrainer_FAfterBattleText
 	db -1 ; end
 
 SSAnneB1FRoomsSailor1Text:
-	text_asm
-	ld hl, SSAnne10TrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FRoomsSailor2Text:
-	text_asm
-	ld hl, SSAnne10TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-SSAnneB1FRoomsGentlemanText:
 	text_asm
 	ld hl, SSAnne10TrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
+SSAnneB1FRoomsSailor2Text:
+	text_asm
+	ld hl, SSAnne10TrainerHeader2
+	call TalkToTrainer
+	jp TextScriptEnd
+
 SSAnneB1FRoomsCooltrainer_FText:
 	text_asm
-	ld hl, SSAnne10TrainerHeader4
+	ld hl, SSAnne10TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
 SSAnneB1FRoomsFisherText:
 	text_asm
-	ld hl, SSAnne10TrainerHeader2
+	ld hl, SSAnne10TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -99,18 +90,6 @@ SSAnneB1FRoomsSailor2EndBattleText:
 
 SSAnneB1FRoomsSailor2AfterBattleText:
 	text_far _SSAnneB1FRoomsSailor2AfterBattleText
-	text_end
-
-SSAnneB1FRoomsGentlemanBattleText:
-	text_far _SSAnneB1FRoomsGentlemanBattleText
-	text_end
-
-SSAnneB1FRoomsGentlemanEndBattleText:
-	text_far _SSAnneB1FRoomsGentlemanEndBattleText
-	text_end
-
-SSAnneB1FRoomsGentlemanAfterBattleText:
-	text_far _SSAnneB1FRoomsGentlemanAfterBattleText
 	text_end
 
 SSAnneB1FRoomsCooltrainer_FBattleText:

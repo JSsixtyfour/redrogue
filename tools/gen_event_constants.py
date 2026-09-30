@@ -852,11 +852,43 @@ def allocate(names, klass, refs, trainer_blocks, dead_scripts):
         holes += [bit + o for o in range(size) if o not in set(offsets.values())]
         bit += size
 
+    # Pairs read by CheckBothEventsSet / CheckEitherEventSet (SAME_BYTE_PAIRS)
+    # must share a byte. Neither member is part of a def_trainers/CONTIG run,
+    # so nothing above placed them, and the plain per-name pass below has no
+    # reason to keep two independently-sorted names in the same byte. Commit
+    # them first, in table order (deterministic, independent of holes left
+    # over from this run's own map placement), mirroring what the graveyard
+    # allocator already does for the same table.
+    remaining_set = set(n for n in live if n not in placed)
+    for a, b in SAME_BYTE_PAIRS:
+        if a not in remaining_set or b not in remaining_set:
+            continue
+        by_byte = defaultdict(list)
+        for h in holes:
+            by_byte[h // 8].append(h)
+        same_byte = next((hs for hs in by_byte.values() if len(hs) >= 2), None)
+        if same_byte:
+            oa, ob = sorted(same_byte)[:2]
+            holes.remove(oa)
+            holes.remove(ob)
+        else:
+            if bit % 8 == 7:
+                bit = int(math.ceil(bit / 8.0)) * 8
+            oa, ob = bit, bit + 1
+            bit += 2
+        layout[a], layout[b] = oa, ob
+        order.append((a, "ZONE1", owning_map(a, refs)))
+        order.append((b, "ZONE1", owning_map(b, refs)))
+        placed.add(a)
+        placed.add(b)
+        remaining_set.discard(a)
+        remaining_set.discard(b)
+
     # Sorted, not file-order: the generator reads its own output, so the
     # leftover pass must not depend on how the previous run happened to
     # order things, or regeneration would never reach a fixed point and
     # --check could never pass.
-    remaining = sorted(n for n in live if n not in placed)
+    remaining = sorted(remaining_set)
     for name in remaining:
         if holes:
             layout[name] = holes.pop(0)

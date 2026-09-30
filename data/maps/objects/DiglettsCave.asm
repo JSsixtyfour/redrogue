@@ -1,6 +1,6 @@
 	object_const_def
+	const_export DIGLETTSCAVE_PADDING
 	const_export DIGLETTSCAVE_HIKER
-	const_export DIGLETTSCAVE_BUG_CATCHER
 	const_export DIGLETTSCAVE_YOUNGSTER
 	const_export DIGLETTSCAVE_ENGINEER
 	const_export DIGLETTSCAVE_COOLTRAINER_F
@@ -21,8 +21,12 @@ DiglettsCave_Object:
 	def_bg_events
 
 	def_object_events
+	; Slot 1 is padding (4-battle stages, FOUR_TRAINER_REVISION_PLAN.md): the
+	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
+	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
+	; below the map, so CheckSpriteAvailability never draws it.
+	object_event  0, 63, SPRITE_HIKER, STAY, DOWN, TEXT_DIGLETTSCAVE_PADDING
 	object_event 31, 30, SPRITE_HIKER, STAY, DOWN, TEXT_DIGLETTSCAVE_HIKER, OPP_HIKER, 1
-	object_event 22, 29, SPRITE_YOUNGSTER, STAY, UP, TEXT_DIGLETTSCAVE_BUG_CATCHER, OPP_BUG_CATCHER, 1
 	object_event 16, 26, SPRITE_YOUNGSTER, STAY, DOWN, TEXT_DIGLETTSCAVE_YOUNGSTER, OPP_YOUNGSTER, 1
 	object_event 13, 22, SPRITE_SUPER_NERD, STAY, LEFT, TEXT_DIGLETTSCAVE_ENGINEER, OPP_ENGINEER, 1
 	object_event 11, 18, SPRITE_COOLTRAINER_F, STAY, LEFT, TEXT_DIGLETTSCAVE_COOLTRAINER_F, OPP_COOLTRAINER_F, 1

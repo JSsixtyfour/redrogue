@@ -14,22 +14,6 @@ _Route13CooltrainerM1AfterBattleText::
 	cont "they lost."
 	done
 
-_Route13CooltrainerF1BattleText::
-	text "I'm told I'm good"
-	line "for a kid!"
-	done
-
-_Route13CooltrainerF1EndBattleText::
-	text "Ohh!"
-	line "I lost!"
-	prompt
-
-_Route13CooltrainerF1AfterBattleText::
-	text "I want to become"
-	line "a good trainer."
-	cont "I'll train hard."
-	done
-
 _Route13CooltrainerF2BattleText::
 	text "Wow! Your BADGEs"
 	line "are too cool!"

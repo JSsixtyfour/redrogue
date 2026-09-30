@@ -96,21 +96,6 @@ _ViridianGymCooltrainerM1AfterBattleText::
 	cont "GYM LEADER!"
 	done
 
-_ViridianGymHiker1BattleText::
-	text "Rrrroar! I'm"
-	line "working myself"
-	cont "into a rage!"
-	done
-
-_ViridianGymHiker1EndBattleText::
-	text "Wargh!"
-	prompt
-
-_ViridianGymHiker1AfterBattleText::
-	text "I'm still not"
-	line "worthy!"
-	done
-
 _ViridianGymRocker1BattleText::
 	text "#MON and I, we"
 	line "make wonderful"

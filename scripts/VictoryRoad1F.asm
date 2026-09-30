@@ -57,10 +57,10 @@ VictoryRoad1F_ScriptPointers:
 
 VictoryRoad1F_TextPointers:
 	def_text_pointers
+	dw_const VictoryRoad1FPaddingText,       TEXT_VICTORYROAD1F_PADDING
 	dw_const VictoryRoad1FCooltrainerFText,  TEXT_VICTORYROAD1F_COOLTRAINER_F
 	dw_const VictoryRoad1FCooltrainerMText,  TEXT_VICTORYROAD1F_COOLTRAINER_M
 	dw_const VictoryRoad1FCooltrainerM2Text, TEXT_VICTORYROAD1F_COOLTRAINER_M2
-	dw_const VictoryRoad1FCooltrainerM3Text, TEXT_VICTORYROAD1F_COOLTRAINER_M3
 	dw_const VictoryRoad1FCooltrainerM4Text, TEXT_VICTORYROAD1F_COOLTRAINER_M4
     dw_const RandomPickUpItemText,           TEXT_VICTORYROAD1F_RANDOM
     dw_const VictoryRoad1F_Rogue_Reward_Script_PokeballText_1, TEXT_VICTORYROAD1F_ROGUE_REWARD_POKEBALL_1
@@ -75,7 +75,7 @@ VictoryRoad1F_TextPointers:
     EXPORT TEXT_VICTORYROAD1F_REWARD_VENDOR_1 ; used by engine/events/rogue_reward_menu.asm
 
 VictoryRoad1TrainerHeaders:
-	def_trainers 1
+	def_trainers 2
 VictoryRoad1TrainerHeader0:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0, 2, VictoryRoad1FCooltrainerFBattleText, VictoryRoad1FCooltrainerFEndBattleText, VictoryRoad1FCooltrainerFAfterBattleText
 VictoryRoad1TrainerHeader1:
@@ -83,10 +83,12 @@ VictoryRoad1TrainerHeader1:
 VictoryRoad1TrainerHeader2:
 	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2, 1, VictoryRoad1FCooltrainerM2BattleText, VictoryRoad1FCooltrainerM2EndBattleText, VictoryRoad1FCooltrainerM2AfterBattleText
 VictoryRoad1TrainerHeader3:
-	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3, 1, VictoryRoad1FCooltrainerM3BattleText, VictoryRoad1FCooltrainerM3EndBattleText, VictoryRoad1FCooltrainerM3AfterBattleText
-VictoryRoad1TrainerHeader4:
-	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_4, 2, VictoryRoad1FCooltrainerM4BattleText, VictoryRoad1FCooltrainerM4EndBattleText, VictoryRoad1FCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3, 2, VictoryRoad1FCooltrainerM4BattleText, VictoryRoad1FCooltrainerM4EndBattleText, VictoryRoad1FCooltrainerM4AfterBattleText
 	db -1 ; end
+
+; Slot 1's padding object: never drawn or reachable, so it says nothing.
+VictoryRoad1FPaddingText:
+	text_end
 
 VictoryRoad1FCooltrainerFText:
 	text_asm
@@ -106,15 +108,9 @@ VictoryRoad1FCooltrainerM2Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-VictoryRoad1FCooltrainerM3Text:
-	text_asm
-	ld hl, VictoryRoad1TrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
 VictoryRoad1FCooltrainerM4Text:
 	text_asm
-	ld hl, VictoryRoad1TrainerHeader4
+	ld hl, VictoryRoad1TrainerHeader3
 	call TalkToTrainer
 	jp TextScriptEnd
 
@@ -151,18 +147,6 @@ VictoryRoad1FCooltrainerM2EndBattleText:
 	text_end
 
 VictoryRoad1FCooltrainerM2AfterBattleText:
-	text_far _VictoryRoad1FCooltrainerMAfterBattleText
-	text_end
-
-VictoryRoad1FCooltrainerM3BattleText:
-	text_far _VictoryRoad1FCooltrainerMBattleText
-	text_end
-
-VictoryRoad1FCooltrainerM3EndBattleText:
-	text_far _VictoryRoad1FCooltrainerMEndBattleText
-	text_end
-
-VictoryRoad1FCooltrainerM3AfterBattleText:
 	text_far _VictoryRoad1FCooltrainerMAfterBattleText
 	text_end
 

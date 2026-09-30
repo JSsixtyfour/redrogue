@@ -11,8 +11,8 @@
 ;
 ; Included before ram_constants.asm, which derives its own gates from these.
 
-DEF ROUTE_BATTLES        EQU 5 ; stage trainers per round, boss included
-DEF GYM_TRAINER_BATTLES  EQU 4 ; gym trainers before the leader
+DEF ROUTE_BATTLES        EQU 4 ; stage trainers per round, boss included (was 5 until 2026-09-29)
+DEF GYM_TRAINER_BATTLES  EQU 3 ; gym trainers before the leader (was 4 until 2026-09-29)
 DEF ROUND_BATTLES        EQU ROUTE_BATTLES + GYM_TRAINER_BATTLES + 1 ; + the leader
 
 DEF FINAL_ROUTE_STEP       EQU ROUTE_BATTLES                       ; level bonus, credits
@@ -20,7 +20,7 @@ DEF FIRST_GYM_STEP         EQU ROUTE_BATTLES + 1
 DEF FINAL_GYM_TRAINER_STEP EQU ROUTE_BATTLES + GYM_TRAINER_BATTLES ; level bonus
 
 DEF NUM_ROGUE_ROUNDS     EQU 8 ; gyms before Victory Road
-DEF VICTORY_ROAD_BATTLES EQU 5
+DEF VICTORY_ROAD_BATTLES EQU 4 ; was 5 until 2026-09-29
 DEF NUM_E4_BATTLES       EQU 4
 
 ; Round-indexed tables have NUM_ROGUE_ROUNDS + 1 rows (the last is Victory
