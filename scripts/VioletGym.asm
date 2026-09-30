@@ -186,9 +186,7 @@ VioletGymFalknerReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_FALKNER
 	ld hl, ReceivedZephyrBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedZephyrBadgeText:
 	text_far _VioletGymFalknerReceivedBadgeText

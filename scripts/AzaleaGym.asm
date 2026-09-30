@@ -186,9 +186,7 @@ AzaleaGymBugsyReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_BUGSY
 	ld hl, ReceivedHiveBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedHiveBadgeText:
 	text_far _AzaleaGymBugsyReceivedBadgeText

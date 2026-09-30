@@ -247,9 +247,7 @@ CinnabarGymBlaineText:
     text_asm
     SetEvent EVENT_BEAT_BLAINE
 	ld hl, .CinnabarGymBlaineReceivedVolcanoBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
     
 .CinnabarGymBlaineReceivedVolcanoBadgeText    
     text_far _CinnabarGymBlaineReceivedVolcanoBadgeText

@@ -173,9 +173,7 @@ CeruleanGymMistyReceivedCascadeBadgeText:
     text_asm
     SetEvent EVENT_BEAT_MISTY
     ld hl, .CeruleanGymMistyReceivedCascadeBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
     
 .CeruleanGymMistyReceivedCascadeBadgeText
     text_far _CeruleanGymMistyReceivedCascadeBadgeText

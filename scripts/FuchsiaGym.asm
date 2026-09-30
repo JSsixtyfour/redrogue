@@ -239,9 +239,7 @@ FuchsiaGymKogaText:
     text_asm
     SetEvent EVENT_BEAT_KOGA
     ld hl, .FuchsiaGymKogaReceivedSoulBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
 
     .FuchsiaGymKogaReceivedSoulBadgeText
     text_far _FuchsiaGymKogaReceivedSoulBadgeText

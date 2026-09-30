@@ -186,9 +186,7 @@ BlackthornGymClairReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_CLAIR
 	ld hl, ReceivedRisingBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedRisingBadgeText:
 	text_far _BlackthornGymClairReceivedBadgeText

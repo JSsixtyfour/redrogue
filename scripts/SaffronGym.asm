@@ -174,9 +174,7 @@ SaffronGymSabrinaText:
     text_asm
     SetEvent EVENT_BEAT_SABRINA
 	ld hl, .SaffronGymSabrinaReceivedMarshBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
 
 .SaffronGymSabrinaReceivedMarshBadgeText
     text_far _SaffronGymSabrinaReceivedMarshBadgeText

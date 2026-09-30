@@ -186,9 +186,7 @@ CianwoodGymChuckReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_CHUCK
 	ld hl, ReceivedStormBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedStormBadgeText:
 	text_far _CianwoodGymChuckReceivedBadgeText

@@ -300,9 +300,7 @@ ViridianGymGiovanniText:
     text_asm
     SetEvent EVENT_BEAT_VIRIDIAN_GYM_GIOVANNI
     ld hl, .ViridianGymGiovanniReceivedEarthBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
 
 .ViridianGymGiovanniReceivedEarthBadgeText:
     text_far _ViridianGymGiovanniReceivedEarthBadgeText

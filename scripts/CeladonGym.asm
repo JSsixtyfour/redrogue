@@ -182,9 +182,7 @@ CeladonGymErikaText:
     text_asm
     SetEvent EVENT_BEAT_ERIKA
 	ld hl, .CeladonGymErikaReceivedRainbowBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
 
 .CeladonGymErikaReceivedRainbowBadgeText
     text_far _CeladonGymErikaReceivedRainbowBadgeText

@@ -186,9 +186,7 @@ GoldenrodGymWhitneyReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_WHITNEY
 	ld hl, ReceivedPlainBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedPlainBadgeText:
 	text_far _GoldenrodGymWhitneyReceivedBadgeText

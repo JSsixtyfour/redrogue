@@ -183,9 +183,7 @@ VermilionGymLTSurgeReceivedThunderBadgeText:
     text_asm
     SetEvent EVENT_BEAT_LT_SURGE
     ld hl, .VermilionGymLTSurgeReceivedThunderBadgeText
-    call PrintText
-    jp TextScriptEnd
-	text_end
+	ret
 
 .VermilionGymLTSurgeReceivedThunderBadgeText    
     text_far _VermilionGymLTSurgeReceivedThunderBadgeText

@@ -186,9 +186,7 @@ OlivineGymJasmineReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_JASMINE
 	ld hl, ReceivedMineralBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedMineralBadgeText:
 	text_far _OlivineGymJasmineReceivedBadgeText

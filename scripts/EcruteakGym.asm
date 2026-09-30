@@ -186,9 +186,7 @@ EcruteakGymMortyReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_MORTY
 	ld hl, ReceivedFogBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedFogBadgeText:
 	text_far _EcruteakGymMortyReceivedBadgeText

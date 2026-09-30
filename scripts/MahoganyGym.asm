@@ -186,9 +186,7 @@ MahoganyGymPryceReceivedBadgeText:
 	text_asm
 	SetEvent EVENT_BEAT_PRYCE
 	ld hl, ReceivedGlacierBadgeText
-	call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
 
 ReceivedGlacierBadgeText:
 	text_far _MahoganyGymPryceReceivedBadgeText

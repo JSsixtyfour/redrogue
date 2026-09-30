@@ -183,9 +183,7 @@ PewterGymBrockReceivedBoulderBadgeText:
     text_asm
     SetEvent EVENT_BEAT_BROCK
     ld hl, ReceivedBoulderBadgeText
-    call PrintText
-	jp TextScriptEnd
-	text_end
+	ret
     
 ReceivedBoulderBadgeText:
 	text_far _PewterGymBrockReceivedBoulderBadgeText

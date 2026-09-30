@@ -24,9 +24,11 @@ Name widths follow SaveTrainerName: TrainerNamePointers' short names where the
 row has one, else TrainerNames. The rival classes print wRivalName, counted
 as 7 (the player-name cap).
 
-A `text_asm` end text (the leaders' ReceivedBadge handlers, which print their
-own box) is listed as INFO, not a violation. So is any text whose class could
-not be resolved (a wild legendary's `trainer` header has no prefix at all).
+A `text_asm` end text must continue the active end-battle text stream by
+returning a text pointer in hl. Calling PrintText from inside that handler
+opens another box and erases the name prefix, so the audit rejects it. Other
+dynamic handlers are listed as INFO, as is any text whose class could not be
+resolved (a wild legendary's `trainer` header has no prefix at all).
 
 Maps nothing can reach (gen_event_constants.py's reachable_maps, the graph the
 event layout is built from) are listed under DEAD and do not fail the audit.
@@ -118,10 +120,16 @@ def label_index():
     """label -> (path, line number) for every label in the text-bearing trees."""
     idx = {}
     for path in asm_files("scripts", "text", "data/text", "engine", "custom_functions", "home"):
+        scope = None
         for n, raw in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines()):
-            m = re.match(r"^([A-Za-z_][\w.]*)::?", raw)
+            m = re.match(r"^([A-Za-z_]\w*)::?", raw)
             if m:
-                idx.setdefault(m.group(1), (path, n))
+                scope = m.group(1)
+                idx.setdefault(scope, (path, n))
+                continue
+            m = re.match(r"^(\.\w+):?", raw)
+            if m and scope:
+                idx.setdefault(scope + m.group(1), (path, n))
     return idx
 
 
@@ -142,7 +150,19 @@ def body_at(idx, label, depth=0):
     if first.startswith("text_far"):
         return body_at(idx, first.split()[1], depth + 1)
     if first.startswith("text_asm"):
-        return "asm", None
+        cmds = []
+        started = False
+        for raw in lines:
+            code = strip(raw)
+            if not code:
+                continue
+            if not started:
+                started = code.startswith("text_asm")
+                continue
+            if re.match(r"^(?:[A-Za-z_]\w*|\.\w+)::?$", code):
+                break
+            cmds.append(code)
+        return "asm", cmds
     cmds = []
     for raw in lines:
         code = strip(raw)
@@ -238,9 +258,15 @@ def save_pointer_sources():
                 continue
             label = None
             for back in range(n - 1, max(n - 4, -1), -1):
-                m = re.match(r"ld hl, (\w+)", strip(lines[back]))
+                m = re.match(r"ld hl, ([.\w]+)", strip(lines[back]))
                 if m:
                     label = m.group(1)
+                    if label.startswith("."):
+                        for owner in range(back - 1, -1, -1):
+                            scope = re.match(r"^([A-Za-z_]\w*)::?", strip(lines[owner]))
+                            if scope:
+                                label = scope.group(1) + label
+                                break
                     break
             cls = None
             for near in list(range(n + 1, min(n + 25, len(lines)))) + list(range(n - 1, max(n - 25, -1), -1)):
@@ -281,7 +307,14 @@ def main(argv):
         name, nlen = names.get(cls, ("?", 13)) if cls else ("?", 0)
         prefix = nlen + 2
         if kind == "asm":
-            info.append((where, label, name, "text_asm handler - prints its own box, not measured"))
+            if "call PrintText" in cmds:
+                flagged.append((where, label, name, [
+                    "text_asm calls PrintText, which redraws the box and erases the name prefix"
+                ]))
+            elif "ret" in cmds:
+                info.append((where, label, name, "text_asm handler continues the active text stream"))
+            else:
+                info.append((where, label, name, "text_asm handler - dynamic text, check by hand"))
             continue
         if kind is None:
             info.append((where, label, name, cmds))
