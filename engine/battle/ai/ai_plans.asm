@@ -802,7 +802,7 @@ AIRun_ParaSweep:
 ; moveset actually carries.
 AIFit_SubStall:
 	farcall AISubWouldSurvive ; bank $0E - must farcall, not call
-	ret nc
+	jr nc, .no ; not `ret nc`: a farcall leaves a undefined, and a IS the fitness
 	farcall AIEnemyHPBelowHalf
 	jr c, .no
 	farcall AIEnemyIsFaster ; farcall FIRST, then set a - a farcall clobbers a,
@@ -852,7 +852,7 @@ AIFit_SubSetup:
 	ret z ; nothing to boost behind the sub - this plan has no second act
 
 	farcall AISubWouldSurvive ; bank $0E - must farcall, not call
-	ret nc
+	jr nc, .no ; not `ret nc`: a farcall leaves a undefined, and a IS the fitness
 	farcall AIEnemyHPBelowHalf
 	jr c, .no
 	farcall AIEnemyIsFaster ; farcall FIRST, then set a - see AIFit_SubStall
@@ -938,10 +938,16 @@ AIFit_OhkoFish:
 	call AIPlanClassMoveLands
 	ret nc
 	farcall AIPlayerWouldKO
-	ret nc ; only a losing-position gamble, per the plan document's rank 11
+	jr nc, .no ; only a losing-position gamble, per the plan document's rank 11
 	farcall AIEnemyIsFaster
-	ret nc ; slower means the move auto-misses; nothing to gamble on
+	jr nc, .no ; slower means the move auto-misses; nothing to gamble on
 	ld a, AI_FITNESS_OHKO_FISH
+	ret
+; Every exit after a farcall must zero a itself: a farcall leaves a undefined,
+; and a bare `ret nc` there returned a nonzero "fitness" (L5, 2026-09-30: this
+; plan was selected while slower).
+.no
+	xor a
 	ret
 
 ; Deliberately modest (AI_STRONG, not AI_VERY_STRONG): AI_RISKY (bit 8) may

@@ -544,7 +544,7 @@ AIRevalidateDecisionCaches::
 ; sums) over the PLAYER's attack on us: the player's battle struct except its
 ; HP, our types, moves, level, Defense and Special (not our HP, Attack or
 ; Speed), both sides' battle status bytes, our Substitute HP, the player's slot,
-; revealed moves and Disable, and whether the Bridge Repeat boost is live. A
+; revealed moves and Disable, and the Repeat history when that effect is owned. A
 ; single changed byte always changes e; two changes collide about 1 in 65,536.
 ; Returns de.
 ;
@@ -652,22 +652,22 @@ _AIStateKey:
 	ld a, c
 	and a
 	ret nz
-; The threat key's last input: whether the Bridge Repeat boost is live, i.e.
-; "wBridgeRepeatState == 2" AND the player owns the effect. The raw state is
-; republished by every player action (0 at move selection, 1 or 2 after the
-; player's move), so hash the condition, not the byte; without the effect the
-; state changes nothing (measured: a repeated Growl flipped it every turn).
-	ld a, [wBridgeRepeatState]
-	cp 2
-	ld a, 0
-	jr nz, .gotRepeat
+; The threat key's last input: the Bridge Repeat boost. The estimator predicts
+; it from the player's move HISTORY (_AIEstimateForTurn, AI_BACKLOG L4), so
+; hash wWitchPrevPlayerMove and wWitchPrevPlayerSlot, but only when the player
+; owns the effect: without it the history changes nothing, and hashing it would
+; void the cache after every player move that differs from the last one.
 	push de
 	ld e, BRIDGE_EFFECT_REPEAT
 	farcall BridgeHasGlobalEffect ; carry = owned; clobbers d and hl
 	pop de
-	ld a, 0
-	adc a
-.gotRepeat
+	ret nc
+	ld a, [wWitchPrevPlayerMove]
+	add e
+	ld e, a
+	add d
+	ld d, a
+	ld a, [wWitchPrevPlayerSlot]
 	add e
 	ld e, a
 	add d

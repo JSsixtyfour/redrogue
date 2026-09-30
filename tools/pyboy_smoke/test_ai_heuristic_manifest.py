@@ -21,7 +21,7 @@ import ai_heuristics
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 MANIFEST = HERE / "ai_heuristic_manifest.json"
-MAX_GAPS = 127  # measured 2026-09-30; ratchet down as gaps close
+MAX_GAPS = 4  # measured 2026-09-30 (AI_BACKLOG L5 closed 122 of 127); ratchet down as gaps close
 CASES = ("positive", "negative", "boundary")
 
 

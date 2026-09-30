@@ -92,15 +92,21 @@
    "summary": "Heal-move futility: would the player still KO after the heal resolves.",
    "positive": {
     "requirement": "post-heal HP still dies: futile",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_heal_would_still_die_rest_survives_recover_does_not"
+    ]
    },
    "negative": {
     "requirement": "post-heal HP survives: worthwhile",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_heal_would_still_die_rest_survives_recover_does_not"
+    ]
    },
    "boundary": {
     "requirement": "Rest to full vs half-heal cap",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_heal_would_still_die_rest_survives_recover_does_not"
+    ]
    }
   },
   "AIItemHealWouldStillDie": {
@@ -197,15 +203,21 @@
    "summary": "AI_RISKY: when losing (player KO threat, no guaranteed win) nudge high-variance moves (T3).",
    "positive": {
     "requirement": "losing: a powerful-but-inaccurate or high-crit move is nudged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_risky_nudges_a_high_crit_move_when_losing"
+    ]
    },
    "negative": {
     "requirement": "a guaranteed win of our own keeps the layer silent",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_risky_silent_with_a_guaranteed_win_of_our_own"
+    ]
    },
    "boundary": {
     "requirement": "graded ladder: OHKO vs ordinary unreliable move (F15)",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_risky_graded_ladder_ohko_outranks_ordinary_risky"
+    ]
    }
   },
   "AILayerSmart": {
@@ -227,26 +239,37 @@
    "summary": "AI_THREAT: under a player KO threat, favour priority kills and acting-first disables, discourage investments and futile heals (T3).",
    "positive": {
     "requirement": "under a KO threat, an investment move is discouraged and a priority kill encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_threat_discourages_investment_encourages_priority_kill"
+    ]
    },
    "negative": {
     "requirement": "with no KO threat the layer is silent",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_threat_silent_with_no_ko_threat"
+    ]
    },
    "boundary": {
     "requirement": "acting first vs second decides the disabling-status bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_threat_disabling_status_bonus_when_acting_first",
+     "test_ai_heuristic_gaps.AIThreatDecisionGapsTest.test_layer_threat_disabling_status_no_bonus_when_acting_second"
+    ]
    }
   },
   "AIMoveChoiceModification1": {
    "summary": "AI_BASIC (vanilla): discourage pure status moves against an already-statused target.",
    "positive": {
     "requirement": "a status move into a statused target is discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification1_status_move_into_statused_target"
+    ]
    },
    "negative": {
     "requirement": "a status move into a healthy target is not",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification1_status_move_into_statused_target"
+    ]
    }
   },
   "AIMoveChoiceModification2": {
@@ -259,22 +282,30 @@
    },
    "negative": {
     "requirement": "setup is not encouraged after the first turn",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification2_no_encouragement_after_first_turn"
+    ]
    }
   },
   "AIMoveChoiceModification3": {
    "summary": "AI_TYPES (vanilla): encourage super-effective moves, discourage resisted ones.",
    "positive": {
     "requirement": "a super-effective move is encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification3_effectiveness_scoring"
+    ]
    },
    "negative": {
     "requirement": "a resisted move is discouraged only while a neutral-or-better damaging move exists",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification3_effectiveness_scoring"
+    ]
    },
    "boundary": {
     "requirement": "the last damaging option is not discouraged even if resisted",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AILayerGapsTest.test_move_choice_modification3_effectiveness_scoring"
+    ]
    }
   },
   "AIPlayerWouldKO": {
@@ -319,7 +350,9 @@
    "summary": "AI_REDUNDANT handler: damaging move with a burn/freeze/para rider: only a Substitute blocks it.",
    "positive": {
     "requirement": "Substitute: heavy discourage",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_burn_freeze_para_side_substitute_is_heavy"
+    ]
    },
    "negative": {
     "requirement": "rider-only block: no penalty",
@@ -332,22 +365,30 @@
    "summary": "AI_REDUNDANT handler: Confuse Ray into a confused or Substitute target.",
    "positive": {
     "requirement": "already confused: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_confusion_effect_already_confused_or_substitute_eliminated"
+    ]
    },
    "negative": {
     "requirement": "not confused: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_confusion_effect_already_confused_or_substitute_eliminated"
+    ]
    }
   },
   "AIRedundant_Disable": {
    "summary": "AI_REDUNDANT handler: Disable when the player already has a move disabled.",
    "positive": {
     "requirement": "already disabled: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_disable_already_disabled_eliminated"
+    ]
    },
    "negative": {
     "requirement": "nothing disabled: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_disable_already_disabled_eliminated"
+    ]
    }
   },
   "AIRedundant_DreamEater": {
@@ -360,18 +401,24 @@
    },
    "negative": {
     "requirement": "sleeping target: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_dream_eater_sleeping_target_is_legal"
+    ]
    }
   },
   "AIRedundant_FocusEnergy": {
    "summary": "AI_REDUNDANT handler: Focus Energy already active.",
    "positive": {
     "requirement": "already active: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_focus_energy_already_active_eliminated"
+    ]
    },
    "negative": {
     "requirement": "not active: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_focus_energy_already_active_eliminated"
+    ]
    }
   },
   "AIRedundant_Haze": {
@@ -396,63 +443,87 @@
    "summary": "AI_REDUNDANT handler: Recover/Softboiled at max HP only.",
    "positive": {
     "requirement": "max HP: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_heal_at_max_hp_eliminated_one_below_legal"
+    ]
    },
    "negative": {
     "requirement": "below max: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_heal_at_max_hp_eliminated_one_below_legal"
+    ]
    },
    "boundary": {
     "requirement": "one HP below max",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_heal_at_max_hp_eliminated_one_below_legal"
+    ]
    }
   },
   "AIRedundant_LeechSeed": {
    "summary": "AI_REDUNDANT handler: Leech Seed into a Grass, seeded or Substitute target.",
    "positive": {
     "requirement": "Grass or seeded: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_leech_seed_grass_seeded_or_substitute_eliminated"
+    ]
    },
    "negative": {
     "requirement": "legal target: not penalised",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_leech_seed_grass_seeded_or_substitute_eliminated"
+    ]
    }
   },
   "AIRedundant_LightScreen": {
    "summary": "AI_REDUNDANT handler: Light Screen already up on our side.",
    "positive": {
     "requirement": "already up: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_light_screen_already_up_eliminated"
+    ]
    },
    "negative": {
     "requirement": "not up: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_light_screen_already_up_eliminated"
+    ]
    }
   },
   "AIRedundant_Mist": {
    "summary": "AI_REDUNDANT handler: Mist already up on our side.",
    "positive": {
     "requirement": "already up: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_mist_already_up_eliminated"
+    ]
    },
    "negative": {
     "requirement": "not up: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_mist_already_up_eliminated"
+    ]
    }
   },
   "AIRedundant_OHKO": {
    "summary": "AI_REDUNDANT handler: OHKO moves unless strictly faster.",
    "positive": {
     "requirement": "slower or tied: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+    ]
    },
    "negative": {
     "requirement": "strictly faster: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+    ]
    },
    "boundary": {
     "requirement": "equal Speed",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+    ]
    }
   },
   "AIRedundant_Paralyze": {
@@ -474,55 +545,75 @@
    "summary": "AI_REDUNDANT handler: poison status: statused, Poison-type or Substitute target.",
    "positive": {
     "requirement": "blocked target: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_blocked_target_eliminated"
+    ]
    },
    "negative": {
     "requirement": "legal target: not penalised",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_blocked_target_eliminated"
+    ]
    }
   },
   "AIRedundant_PoisonSide": {
    "summary": "AI_REDUNDANT handler: damaging move with a poison rider: only a Substitute blocks it.",
    "positive": {
     "requirement": "Substitute: heavy discourage",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_only_substitute_blocks_it"
+    ]
    },
    "negative": {
     "requirement": "rider-only block (statused/Poison-type): no penalty",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_only_substitute_blocks_it"
+    ]
    }
   },
   "AIRedundant_Reflect": {
    "summary": "AI_REDUNDANT handler: Reflect already up on our side.",
    "positive": {
     "requirement": "already up: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_reflect_already_up_eliminated"
+    ]
    },
    "negative": {
     "requirement": "not up: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_reflect_already_up_eliminated"
+    ]
    }
   },
   "AIRedundant_StatDown": {
    "summary": "AI_REDUNDANT handler: stat-down: Substitute, or the stat already at -6 (F17).",
    "positive": {
     "requirement": "stat at floor: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_down_at_floor_eliminated_above_floor_legal"
+    ]
    },
    "negative": {
     "requirement": "above floor: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_down_at_floor_eliminated_above_floor_legal"
+    ]
    },
    "boundary": {
     "requirement": "exactly -6",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_down_at_floor_eliminated_above_floor_legal"
+    ]
    }
   },
   "AIRedundant_StatUp": {
    "summary": "AI_REDUNDANT handler: stat-up: our stat already at +6 (cap $D).",
    "positive": {
     "requirement": "capped: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_up_at_cap_eliminated"
+    ]
    },
    "negative": {
     "requirement": "below cap: legal",
@@ -532,33 +623,45 @@
    },
    "boundary": {
     "requirement": "exactly +6",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_up_at_cap_eliminated"
+    ]
    }
   },
   "AIRedundant_SubOnly": {
    "summary": "AI_REDUNDANT handler: flinch/confusion riders and drain: blocked only by a Substitute.",
    "positive": {
     "requirement": "Substitute: discourage",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_blocked_only_by_substitute"
+    ]
    },
    "negative": {
     "requirement": "no Substitute: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_blocked_only_by_substitute"
+    ]
    }
   },
   "AIRedundant_Substitute": {
    "summary": "AI_REDUNDANT handler: Substitute already up, or HP <= max/4 (the engine's fail threshold).",
    "positive": {
     "requirement": "HP at or below a quarter: eliminated",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_substitute_quarter_hp_boundary_and_already_up"
+    ]
    },
    "negative": {
     "requirement": "above a quarter: legal",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_substitute_quarter_hp_boundary_and_already_up"
+    ]
    },
    "boundary": {
     "requirement": "4*HP == MaxHP exactly",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_substitute_quarter_hp_boundary_and_already_up"
+    ]
    }
   },
   "AIRevalidateDecisionCaches": {
@@ -688,80 +791,108 @@
    },
    "boundary": {
     "requirement": "rider blocked by type or existing status",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_burn_freeze_para_side_blocked_by_type_or_status"
+    ]
    }
   },
   "AISmart_Charge": {
    "summary": "AI_SMART handler: exposed two-turn moves give away a turn and a hit; Dig is invulnerable.",
    "positive": {
     "requirement": "Dig (invulnerable charge) is penalised less",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_charge_dig_penalised_less_than_exposed_solarbeam"
+    ]
    },
    "negative": {
     "requirement": "Solar Beam-style exposed charge is penalised",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_charge_dig_penalised_less_than_exposed_solarbeam"
+    ]
    }
   },
   "AISmart_Confusion": {
    "summary": "AI_SMART handler: Confuse Ray loses value as the target gets low; PARAFUSION bonus.",
    "positive": {
     "requirement": "paralysed target: confusion encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_confusion_paralysed_encouraged_low_hp_discouraged"
+    ]
    },
    "negative": {
     "requirement": "low-HP target: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_confusion_paralysed_encouraged_low_hp_discouraged"
+    ]
    }
   },
   "AISmart_ConfusionSide": {
    "summary": "AI_SMART handler: confusion riders: bonus unless already confused.",
    "positive": {
     "requirement": "not confused: bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_confusion_side_bonus_unless_already_confused"
+    ]
    },
    "negative": {
     "requirement": "already confused: none",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_confusion_side_bonus_unless_already_confused"
+    ]
    }
   },
   "AISmart_DrainHP": {
    "summary": "AI_SMART handler: drain moves are worth more when we are not at full HP.",
    "positive": {
     "requirement": "damaged: encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_drain_hp_damaged_bonus_full_hp_none"
+    ]
    },
    "negative": {
     "requirement": "full HP: no bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_drain_hp_damaged_bonus_full_hp_none"
+    ]
    }
   },
   "AISmart_DreamEater": {
    "summary": "AI_SMART handler: Dream Eater into a sleeping target is encouraged.",
    "positive": {
     "requirement": "sleeping target: encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_dream_eater_sleeping_encouraged_awake_left_to_redundant"
+    ]
    },
    "negative": {
     "requirement": "awake target: left to AI_REDUNDANT",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_dream_eater_sleeping_encouraged_awake_left_to_redundant"
+    ]
    }
   },
   "AISmart_Evasion": {
    "summary": "AI_SMART handler: Double Team/Minimize scored by whether the boost is worth the turn (F14).",
    "positive": {
     "requirement": "worthwhile: kept",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_evasion_worthwhile_while_stalled_discouraged_otherwise"
+    ]
    },
    "negative": {
     "requirement": "not worth the turn: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_evasion_worthwhile_while_stalled_discouraged_otherwise"
+    ]
    }
   },
   "AISmart_Explode": {
    "summary": "AI_SMART handler: Explosion is a trade: bad at high HP, acceptable when nearly dead; into a Substitute it is always bad.",
    "positive": {
     "requirement": "low HP (no Substitute): the trade is acceptable",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_explode_hp_bands_low_hp_acceptable_no_substitute"
+    ]
    },
    "negative": {
     "requirement": "into a Substitute, at any HP, it is discouraged",
@@ -772,18 +903,24 @@
    },
    "boundary": {
     "requirement": "HP bands",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_explode_hp_bands_low_hp_acceptable_no_substitute"
+    ]
    }
   },
   "AISmart_FlinchSide": {
    "summary": "AI_SMART handler: flinch riders matter only when we act first (PARA-FLINCH F20).",
    "positive": {
     "requirement": "acting first: bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_flinch_side_bonus_only_when_acting_first"
+    ]
    },
    "negative": {
     "requirement": "acting second: none",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_flinch_side_bonus_only_when_acting_first"
+    ]
    }
   },
   "AISmart_Haze": {
@@ -812,52 +949,72 @@
    "summary": "AI_SMART handler: Recover/Softboiled is good when low, wasteful when healthy.",
    "positive": {
     "requirement": "low HP: heal encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands"
+    ]
    },
    "negative": {
     "requirement": "healthy: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands"
+    ]
    },
    "boundary": {
     "requirement": "HP bands",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands"
+    ]
    }
   },
   "AISmart_HyperBeam": {
    "summary": "AI_SMART handler: Hyper Beam's recharge is worth it healthy, risky when low.",
    "positive": {
     "requirement": "healthy: allowed/encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_healthy_encouraged_low_hp_discouraged"
+    ]
    },
    "negative": {
     "requirement": "low HP: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_healthy_encouraged_low_hp_discouraged"
+    ]
    }
   },
   "AISmart_InvulnerableCharge": {
    "summary": "AI_SMART handler: Fly/Dig: smaller penalty, boosted back when stalling.",
    "positive": {
     "requirement": "player stalled: boosted back",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_invulnerable_charge_boosted_back_when_stalling"
+    ]
    },
    "negative": {
     "requirement": "ordinary turn: small penalty",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_invulnerable_charge_boosted_back_when_stalling"
+    ]
    }
   },
   "AISmart_OHKO": {
    "summary": "AI_SMART handler: OHKO needs our level above the target's.",
    "positive": {
-    "requirement": "higher level: allowed",
-    "tests": []
+    "requirement": "equal or higher level: not discouraged",
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
+    ]
    },
    "negative": {
-    "requirement": "equal or lower level: discouraged",
-    "tests": []
+    "requirement": "strictly lower level: discouraged",
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
+    ]
    },
    "boundary": {
     "requirement": "equal levels",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
+    ]
    }
   },
   "AISmart_Paralyze": {
@@ -870,33 +1027,45 @@
    },
    "negative": {
     "requirement": "a nearly dead target is not worth paralysing",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_paralyze_nearly_dead_target_discouraged_already_faster_no_flip"
+    ]
    },
    "boundary": {
     "requirement": "already faster: no flip bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_paralyze_nearly_dead_target_discouraged_already_faster_no_flip"
+    ]
    }
   },
   "AISmart_Poison": {
    "summary": "AI_SMART handler: Toxic worth more against a long-lived target than a nearly dead one.",
    "positive": {
     "requirement": "healthy target: Toxic encouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_poison_healthy_toxic_encouraged_dying_target_no_bonus"
+    ]
    },
    "negative": {
     "requirement": "nearly dead target: little value",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_poison_healthy_toxic_encouraged_dying_target_no_bonus"
+    ]
    }
   },
   "AISmart_PoisonSide": {
    "summary": "AI_SMART handler: poison riders: bonus when the rider can land.",
    "positive": {
     "requirement": "rider can land: bonus",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_poison_side_bonus_when_it_can_land_none_when_blocked"
+    ]
    },
    "negative": {
     "requirement": "target statused or Poison-type: none",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_poison_side_bonus_when_it_can_land_none_when_blocked"
+    ]
    }
   },
   "AISmart_RecoilEffect": {
@@ -919,22 +1088,30 @@
    "summary": "AI_SMART handler: Reflect/Light Screen is a turn-1 investment; discouraged once damaged.",
    "positive": {
     "requirement": "healthy: allowed",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_healthy_allowed_damaged_discouraged"
+    ]
    },
    "negative": {
     "requirement": "damaged: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_healthy_allowed_damaged_discouraged"
+    ]
    }
   },
   "AISmart_Sleep": {
    "summary": "AI_SMART handler: sleep is worth more when we also know Dream Eater.",
    "positive": {
     "requirement": "sleep + Dream Eater in the moveset is encouraged more",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_sleep_with_dream_eater_in_moveset_encouraged_more"
+    ]
    },
    "negative": {
     "requirement": "sleep without Dream Eater gets no extra",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_sleep_with_dream_eater_in_moveset_encouraged_more"
+    ]
    }
   },
   "AISmart_SpeedDown1": {
@@ -1005,22 +1182,30 @@
    },
    "negative": {
     "requirement": "behind a Substitute: nothing",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_stat_down_side_blocked_by_substitute_gives_nothing"
+    ]
    }
   },
   "AISmart_Substitute": {
    "summary": "AI_SMART handler: Substitute below half HP is a bad trade.",
    "positive": {
     "requirement": "above half HP: allowed",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_substitute_above_half_allowed_below_half_discouraged"
+    ]
    },
    "negative": {
     "requirement": "below half HP: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_substitute_above_half_allowed_below_half_discouraged"
+    ]
    },
    "boundary": {
     "requirement": "exactly half",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_substitute_above_half_allowed_below_half_discouraged"
+    ]
    }
   },
   "AISmart_SuperFang": {
@@ -1033,18 +1218,24 @@
    },
    "negative": {
     "requirement": "no extra encouragement at low target HP",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_super_fang_discourages_a_low_hp_target_not_encourages"
+    ]
    }
   },
   "AISmart_Trapping": {
    "summary": "AI_SMART handler: re-using a trapping move on a trapped target wastes the turn.",
    "positive": {
     "requirement": "untrapped target: allowed",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_trapping_untrapped_allowed_already_trapped_discouraged"
+    ]
    },
    "negative": {
     "requirement": "already trapped: discouraged",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_trapping_untrapped_allowed_already_trapped_discouraged"
+    ]
    }
   },
   "AISoftPersonalityControl": {
@@ -1168,22 +1359,30 @@
    "summary": "Trainer item routine: Guard Spec.",
    "positive": {
     "requirement": "used when the class routine rolls it",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_guard_spec_reaches_the_unconditional_mist_set"
+    ]
    },
    "negative": {
     "requirement": "not used twice",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_guard_spec_not_used_when_no_item_uses_remain"
+    ]
    }
   },
   "AIUseHyperPotion": {
    "summary": "Trainer item routine: Hyper Potion, same payoff gate.",
    "positive": {
     "requirement": "used when it changes survival",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_hyper_potion_used_when_it_helps"
+    ]
    },
    "negative": {
     "requirement": "skipped when futile",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_hyper_potion_skipped_when_futile"
+    ]
    }
   },
   "AIUsePotion": {
@@ -1211,11 +1410,15 @@
    "summary": "Trainer item routine: Super Potion, same payoff gate.",
    "positive": {
     "requirement": "used when it changes survival",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_super_potion_used_when_it_helps"
+    ]
    },
    "negative": {
     "requirement": "skipped when futile",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_super_potion_skipped_when_futile"
+    ]
    }
   },
   "AIUseXAttack": {
@@ -1245,29 +1448,41 @@
    "summary": "Trainer item routine: X Defend via AIIncreaseStat (same gates as X Attack).",
    "positive": {
     "requirement": "used when the gates pass",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_defend_normal_case_proceeds"
+    ]
    },
    "negative": {
     "requirement": "skipped when capped or KO-threatened",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_defend_idempotence_skips_a_capped_stat",
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_defend_ko_gate_skips_setup_when_player_would_kill"
+    ]
    }
   },
   "AIUseXSpeed": {
    "summary": "Trainer item routine: X Speed via AIIncreaseStat (same gates as X Attack).",
    "positive": {
     "requirement": "used when the gates pass",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_speed_normal_case_proceeds"
+    ]
    },
    "negative": {
     "requirement": "skipped when capped or KO-threatened",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_speed_idempotence_skips_a_capped_stat",
+     "test_ai_heuristic_gaps.AIItemGapsTest.test_x_speed_ko_gate_skips_setup_when_player_would_kill"
+    ]
    }
   },
   "Plan_AgilityWrap": {
    "summary": "T3 plan (fitness + run): Agility then trap; attempts keyed to the player's party slot (B3).",
    "positive": {
     "requirement": "qualifies with both moves and room to work",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_agility_wrap_qualifies_with_both_moves_and_room_to_work"
+    ]
    },
    "negative": {
     "requirement": "attempt counter restarts against a new target",
@@ -1280,7 +1495,9 @@
    "summary": "T3 plan (fitness + run): Amnesia boost.",
    "positive": {
     "requirement": "qualifies with the boost",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_amnesia_alone_qualifies_with_the_boost"
+    ]
    },
    "negative": {
     "requirement": "nonessential setup loses to a sleep payoff",
@@ -1293,40 +1510,54 @@
    "summary": "T3 plan (fitness + run): Amnesia with Rest recovery.",
    "positive": {
     "requirement": "qualifies with both classes",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_amnesia_rest_qualifies_stops_when_pointless"
+    ]
    },
    "negative": {
     "requirement": "does not run when the setup is pointless",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_amnesia_rest_qualifies_stops_when_pointless"
+    ]
    }
   },
   "Plan_BombTrade": {
    "summary": "T3 plan (fitness + run): Explosion trade.",
    "positive": {
     "requirement": "qualifies when the trade is favourable",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_bomb_trade_qualifies_when_favourable_not_into_a_substitute"
+    ]
    },
    "negative": {
     "requirement": "does not run into a Substitute",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_bomb_trade_qualifies_when_favourable_not_into_a_substitute"
+    ]
    }
   },
   "Plan_Bruiser": {
    "summary": "T3 plan (fitness + run): the default attack plan when no other plan qualifies.",
    "positive": {
     "requirement": "qualifies when nothing else does",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_bruiser_qualifies_when_nothing_else_does_never_outranks_a_real_plan"
+    ]
    },
    "negative": {
     "requirement": "never outranks a real plan's directive",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_bruiser_qualifies_when_nothing_else_does_never_outranks_a_real_plan"
+    ]
    }
   },
   "Plan_ChanseyStall": {
    "summary": "T3 plan (fitness + run): paralysis plus recovery stall.",
    "positive": {
     "requirement": "qualifies against a paralysable target",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_chansey_stall_qualifies_against_a_paralysable_target"
+    ]
    },
    "negative": {
     "requirement": "Ground blocks only Electric paralysis",
@@ -1338,12 +1569,16 @@
   "Plan_OhkoFish": {
    "summary": "T3 plan (fitness + run): OHKO fishing.",
    "positive": {
-    "requirement": "qualifies when faster and higher level",
-    "tests": []
+    "requirement": "qualifies when losing (player KO threat) and faster",
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_ohko_fish_runs_only_when_losing_and_faster"
+    ]
    },
    "negative": {
     "requirement": "does not run when slower",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_ohko_fish_runs_only_when_losing_and_faster"
+    ]
    }
   },
   "Plan_ParaSweep": {
@@ -1381,40 +1616,56 @@
    "summary": "T3 plan (fitness + run): Substitute then any boost class.",
    "positive": {
     "requirement": "qualifies with a Substitute and a boost",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_setup_qualifies_with_a_boost_no_boost_class_does_not_run"
+    ]
    },
    "negative": {
     "requirement": "no boost class: does not run",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_setup_qualifies_with_a_boost_no_boost_class_does_not_run",
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_plans_do_not_run_when_the_sub_would_not_survive"
+    ]
    }
   },
   "Plan_SubStall": {
    "summary": "T3 plan (fitness + run): Substitute plus recovery or poison stall.",
    "positive": {
     "requirement": "qualifies with a Substitute and a rider",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_stall_qualifies_with_substitute_and_a_rider"
+    ]
    },
    "negative": {
     "requirement": "does not run below Substitute HP",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_stall_does_not_run_when_enemy_is_already_low",
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_sub_plans_do_not_run_when_the_sub_would_not_survive"
+    ]
    }
   },
   "Plan_SwordsDance": {
    "summary": "T3 plan (fitness + run): Swords Dance then attack.",
    "positive": {
     "requirement": "qualifies with the boost and a physical attack",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_swords_dance_qualifies_stops_boosting_when_sufficient"
+    ]
    },
    "negative": {
     "requirement": "stops boosting when sufficient",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_swords_dance_qualifies_stops_boosting_when_sufficient"
+    ]
    }
   },
   "Plan_ToxicStall": {
    "summary": "T3 plan (fitness + run): Toxic plus recovery stall.",
    "positive": {
     "requirement": "qualifies against a poisonable target",
-    "tests": []
+    "tests": [
+     "test_ai_heuristic_gaps.AIPlanGapsTest.test_toxic_stall_qualifies_against_a_poisonable_target"
+    ]
    },
    "negative": {
     "requirement": "Bridge immunities block it whoever moved last",

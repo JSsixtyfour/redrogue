@@ -6131,6 +6131,32 @@ _AIEstimateForTurn:
 	push af
 	ld a, [hl]
 	push af
+; Bridge Repeat (x1.15, BridgeApplyRepeatDamageBoost) reads wBridgeRepeatState,
+; the CURRENT action's result: 0 at move selection and whatever the player's
+; last move left afterwards. Predict it for the move being estimated instead,
+; exactly as BridgePrepareRepeatAction will: 2 if it repeats wWitchPrevPlayerMove
+; from the same party slot (AI_BACKLOG L4, 2026-09-30). Restored at .done.
+	ld a, [wBridgeRepeatState]
+	push af
+	ld a, b
+	and a
+	jr nz, .repeatStaged ; the enemy's turn never reads it
+	ld a, [wWitchPrevPlayerSlot]
+	ld c, a
+	ld a, [wPlayerMonNumber]
+	cp c
+	ld a, 0
+	jr nz, .stageRepeat
+	ld a, [wWitchPrevPlayerMove]
+	ld c, a
+	ld a, [wPlayerMoveNum]
+	cp c
+	ld a, 0
+	jr nz, .stageRepeat
+	ld a, 2
+.stageRepeat
+	ld [wBridgeRepeatState], a
+.repeatStaged
 
 	ld a, b
 	ldh [hWhoseTurn], a ; whichever side this entry point selected
@@ -6266,6 +6292,8 @@ _AIEstimateForTurn:
 	ld a, e
 	ld [wAIDamageEstimate + 1], a
 .done
+	pop af
+	ld [wBridgeRepeatState], a
 	ld hl, wDamage + 1
 	pop af
 	ld [hld], a
