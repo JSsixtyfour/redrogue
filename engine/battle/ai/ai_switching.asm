@@ -487,7 +487,13 @@ AIShouldSwitch::
 	farcall AIEnemyHasReliableFirstKO
 	jp c, .stay
 	call AIReplacementIsBetterAndSurvives
-	jp c, .switch
+	jr nc, .noSafeReserve
+; B5: a safe reserve exists, but sacrificing the active mon may still be the
+; better trade (a replacement after a faint enters free) - see the predicate.
+	farcall AISacrificeBeatsSwitch ; carry = sacrifice; survives the return
+	jp c, .stay
+	jp .switch
+.noSafeReserve
 ; Under a KO threat with no better reserve, nothing below may switch: the
 ; generic case is a weaker reason than the one just rejected, and the vetoes
 ; only ever say stay. Only the trap still can (a trapped, slower mon cannot act

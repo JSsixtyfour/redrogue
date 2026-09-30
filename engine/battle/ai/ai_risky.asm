@@ -64,7 +64,7 @@ AILayerRisky:
 	jr z, .notGuaranteed ; status move cannot KO
 	call AIEnemyActsFirstWith
 	jr nc, .notGuaranteed
-	farcall AIEstimateDamage ; -> wAIDamageEstimate (one hit)
+	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (one hit, cached)
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .notGuaranteed
@@ -102,7 +102,7 @@ AILayerRisky:
 	and a
 	jr z, .noChange ; status move: nothing to gamble with here
 
-	farcall AIEstimateDamage ; -> wAIDamageEstimate (one hit)
+	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (one hit, cached)
 	call AIAdjustEnemyDamageForExpectedDelivery
 	ld a, [wAIDamageEstimate]
 	ld d, a

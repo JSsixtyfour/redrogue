@@ -1086,7 +1086,7 @@ AISmart_StatDownSide:
 ; purpose: recoil only happens when the hit actually connects, so scaling it by
 ; hit chance first would be answering a different question.
 AISmart_RecoilEffect:
-	farcall AIEstimateDamage ; -> wAIDamageEstimate. Clobbers af/bc/de/hl.
+	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (cached). Clobbers af/bc/de/hl.
 	ld a, [wAIDamageEstimate]
 	ld d, a
 	ld a, [wAIDamageEstimate + 1]

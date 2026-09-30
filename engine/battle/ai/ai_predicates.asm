@@ -172,18 +172,15 @@ AIPlayerIsStalled::
 ; practice unreachable - every *_SIDE_EFFECT is attached to a damaging move - but
 ; it is four bytes and it keeps the routine honest if one ever is not.
 ;
-; COST: one AIEstimateDamage farcall per riding move per decision, on top of the
-; one AI_DAMAGE already pays for the same move. Accepted rather than cached:
-; AI_SMART runs BEFORE AI_DAMAGE in bit order, so there is no populated estimate
-; to reuse here, and threading one through would need either new wBuffer state
-; (there is none spare - wBuffer is an exact 30-byte fit, see AI_BUF_PHYSICAL)
-; or a layer reordering, both far larger changes than this is worth.
+; COST: one estimate per riding move per decision, which AI_DAMAGE and the later
+; layers then reuse through AIEstimateEnemyDamage's one-decision cache
+; (FOLLOWUPS #48, 2026-09-30; before that each layer paid for it again).
 ; Clobbers af, bc, de, hl.
 AISmartRiderIsWasted::
 	ld a, [wEnemyMovePower]
 	and a
 	jr z, .notLethal
-	farcall AIEstimateDamage
+	call AIEstimateEnemyDamage
 	call AIAdjustEnemyDamageForReliableDelivery
 	jp AIMoveIsReliableKO
 .notLethal
@@ -275,8 +272,9 @@ AIMoveIsReliableKO::
 ; voluntary switching: do not give up a high-confidence finish merely because
 ; the player could also KO us.
 ;
-; NO TURN-ORDER TEST, deliberately (2026-09-29 review F1). The only caller is
-; AIShouldSwitch, reached only from TrainerAI, which the battle loop calls at
+; NO TURN-ORDER TEST, deliberately (2026-09-29 review F1). The callers are
+; AIShouldSwitch and TrainerAI's item gate (B6), both reached only from
+; TrainerAI, which the battle loop calls at
 ; the ENEMY'S ACTION POINT (core.asm .enemyMovesFirst / after ExecutePlayerMove
 ; on .playerMovesFirst). If the player moved first they have already acted this
 ; turn; if we move first we are about to. Either way the selected move lands
@@ -347,7 +345,7 @@ AIEnemyHasReliableFirstKO::
 	bit INVULNERABLE, a
 	jr nz, .restoreNoKO
 .canConnect
-	farcall AIEstimateDamage
+	call AIEstimateEnemyDamage
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .restoreNoKO
@@ -379,6 +377,308 @@ AIDamageWouldKOEnemy::
 	ld b, 0
 	ld hl, wBuffer + AI_BUF_EFFHP
 	jp AIDamageReachesHP
+
+; --- One-decision estimate cache (FOLLOWUPS #48, 2026-09-30) ---------------
+; Measured before: a T3 decision ran AIEstimateDamage 10 times for a 4-move set
+; (~10k cycles each): AI_SMART's rider/recoil handlers, AI_DAMAGE, AI_THREAT's
+; Quick Attack check and both AI_RISKY passes each re-estimated the same moves.
+; Within one decision every input is fixed (both mons' stats, types, screens,
+; the player's HP for Super Fang), so the answer per move slot is too.
+
+; Drop-in for `farcall AIEstimateDamage` on the ENEMY's loaded move (wEnemyMove*
+; after ReadMove). Same output (wAIDamageEstimate) and clobbers (af, bc, de,
+; hl). The slot is found by move id in wEnemyMonMoves; duplicates share an
+; answer, and a move not in the moveset is estimated uncached.
+AIEstimateEnemyDamage::
+	ld a, [wEnemyMoveNum]
+	ld b, a
+	ld hl, wEnemyMonMoves
+	ld c, 0
+.findSlot
+	ld a, [hli]
+	cp b
+	jr z, .gotSlot
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .findSlot
+	farjp AIEstimateDamage
+.gotSlot
+	ld a, c
+	add a
+	ld e, a
+	ld d, 0
+	ld hl, wAIEnemyEstimateCache
+	add hl, de
+	bit AI_ESTIMATE_VALID_BIT, [hl]
+	jr z, .miss
+	ld a, [hli]
+	res AI_ESTIMATE_VALID_BIT, a
+	ld [wAIDamageEstimate], a
+	ld a, [hl]
+	ld [wAIDamageEstimate + 1], a
+	ret
+.miss
+	push hl
+	farcall AIEstimateDamage
+	pop hl
+	ld a, [wAIDamageEstimate]
+	set AI_ESTIMATE_VALID_BIT, a
+	ld [hli], a
+	ld a, [wAIDamageEstimate + 1]
+	ld [hl], a
+	ret
+
+; A new decision: nothing computed for the previous one is assumed to hold.
+; Also records the state the caches will be filled under (the two state keys).
+; Clobbers af, hl; preserves bc, de.
+AIClearDecisionCaches::
+	push bc
+	push de
+	xor a ; AI_KO_CACHE_EMPTY, and an empty estimate slot
+	ld [wAIPlayerKOCache], a
+	ASSERT wAIPlayerKOMaxDamage == wAIEnemyEstimateCache + NUM_MOVES * 2
+	ld hl, wAIEnemyEstimateCache
+	ld b, NUM_MOVES * 2 + 2 ; the estimates and wAIPlayerKOMaxDamage
+.clear
+	ld [hli], a
+	dec b
+	jr nz, .clear
+	call AIEstimateStateKey
+	ld a, e
+	ld [wAIEstimateStateKey], a
+	call AIThreatStateKey
+	ld hl, wAIThreatStateKey
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	pop de
+	pop bc
+	ret
+
+; TrainerAI on a PLAYER-first turn (FOLLOWUPS #48). The player has moved since
+; move selection. Each cache is kept only if nothing it was computed from has
+; changed since, judged by its own state key:
+;   - the enemy move estimates (our damage to the player): wAIEstimateStateKey;
+;   - the KO answer (the player's damage to us): wAIThreatStateKey, which leaves
+;     out our HP, so the answer is re-derived from the scan's HP-independent
+;     maximum M = wAIPlayerKOMaxDamage against our CURRENT HP:
+;       M >= HP: some believed move delivers M, so YES;
+;       M < HP from a full scan: NO;
+;       M < HP from a scan that stopped early, HP = 1 (Super Fang, left out of
+;       M, can KO), or no M: EMPTY, so the first reader rescans.
+; A stat drop from the player (Growl, Tail Whip) changes only one side's
+; inputs, so it costs only that side's cache. Both keys are left describing the
+; current state. Clobbers af, bc, de, hl.
+AIRevalidateDecisionCaches::
+	call AIEstimateStateKey
+	ld a, [wAIEstimateStateKey]
+	cp e
+	ld a, e
+	ld [wAIEstimateStateKey], a
+	jr z, .estimatesHold
+	xor a
+	ld hl, wAIEnemyEstimateCache
+	ld b, NUM_MOVES * 2
+.clearEstimates
+	ld [hli], a
+	dec b
+	jr nz, .clearEstimates
+.estimatesHold
+	xor a
+	ld [wAIPlayerKOCache], a ; AI_KO_CACHE_EMPTY unless re-derived below
+	call AIThreatStateKey
+	ld hl, wAIThreatStateKey
+	ld a, [hli]
+	cp d
+	jr nz, .threatStale
+	ld a, [hl]
+	cp e
+	jr z, .threatHolds
+.threatStale
+	ld hl, wAIThreatStateKey
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	xor a
+	ld [wAIPlayerKOMaxDamage], a ; no M: the next AIPlayerWouldKO rescans
+	ret
+.threatHolds
+	ld hl, wAIPlayerKOMaxDamage
+	ld a, [hli]
+	ld b, a ; flags
+	bit AI_KO_MAX_VALID_BIT, a
+	ret z
+	and $1f
+	ld d, a
+	ld e, [hl] ; de = M
+	ld hl, wEnemyMonHP
+	ld a, [hli]
+	and a
+	jr nz, .compare
+	ld a, [hl]
+	cp 2
+	ret c ; HP 1: Super Fang can KO, and M does not know it
+.compare
+	ld hl, wEnemyMonHP + 1
+	ld a, e
+	sub [hl]
+	dec hl
+	ld a, d
+	sbc [hl] ; carry iff M < HP
+	ld a, AI_KO_CACHE_YES
+	jr nc, .store
+	bit AI_KO_MAX_PARTIAL_BIT, b
+	ret nz ; only a lower bound, and HP has risen past it
+	ld a, AI_KO_CACHE_NO
+.store
+	ld [wAIPlayerKOCache], a
+	ret
+
+; State keys: checksums over every input one direction of the AI damage
+; estimates reads. Constant-per-battle inputs (tier, Witch prizes, prism, Bridge
+; effects, link state) are left out. Measured ~3.2k cycles for the original
+; single key over both directions.
+;
+; AIThreatStateKey: 16-bit (Fletcher-style: e = sum of bytes, d = sum of those
+; sums) over the PLAYER's attack on us: the player's battle struct except its
+; HP, our types, moves, level, Defense and Special (not our HP, Attack or
+; Speed), both sides' battle status bytes, our Substitute HP, the player's slot,
+; revealed moves and Disable, and whether the Bridge Repeat boost is live. A
+; single changed byte always changes e; two changes collide about 1 in 65,536.
+; Returns de.
+;
+; AIEstimateStateKey: 8-bit rotating sum (e = rlca(e) + byte; each step is a
+; bijection, so a single changed byte always changes it; two changes collide
+; about 1 in 256) over OUR attack on the player: the player's species, HP (Super
+; Fang), status, types, Defense and Special, our struct through Attack plus
+; Special, both sides' battle status bytes, the player's Substitute HP and
+; slot. Returns e. Only 1 byte of WRAM was left for it.
+; Both clobber af, bc, hl.
+AIThreatStateKey:
+	ld c, 0
+	ld hl, .ranges
+	jr _AIStateKey
+.ranges
+	db 1
+	dw wBattleMonSpecies
+	db wBattleMonSpecial + 2 - (wBattleMonHP + 2)
+	dw wBattleMonHP + 2
+	db wEnemyMonAttack - (wEnemyMonHP + 2)
+	dw wEnemyMonHP + 2
+	db 2
+	dw wEnemyMonDefense
+	db 2
+	dw wEnemyMonSpecial
+	db 3
+	dw wPlayerBattleStatus1
+	db 3
+	dw wEnemyBattleStatus1
+	db 1
+	dw wEnemySubstituteHP
+	db 1
+	dw wPlayerMonNumber
+	db (PARTY_LENGTH * NUM_MOVES) / 8
+	dw wAISeenPlayerMoveMask
+	db 1
+	dw wPlayerDisabledMove
+	db 0
+
+AIEstimateStateKey:
+	ld c, 1
+	ld hl, .ranges
+	jr _AIStateKey
+.ranges
+	db wBattleMonType2 + 1 - wBattleMonSpecies
+	dw wBattleMonSpecies
+	db 2
+	dw wBattleMonDefense
+	db 2
+	dw wBattleMonSpecial
+	db 1
+	dw wEnemyMonSpecies
+	db wEnemyMonDefense - (wEnemyMonHP + 2)
+	dw wEnemyMonHP + 2
+	db 2
+	dw wEnemyMonSpecial
+	db 3
+	dw wPlayerBattleStatus1
+	db 3
+	dw wEnemyBattleStatus1
+	db 1
+	dw wPlayerSubstituteHP
+	db 1
+	dw wPlayerMonNumber
+	db 0
+
+; hl = a range table (db length, dw address; length 0 ends it); c = 0 for the
+; 16-bit Fletcher sum in de, else the 8-bit rotating sum in e.
+_AIStateKey:
+	ld de, 0
+.range
+	ld a, [hli]
+	and a
+	jr z, .end
+	ld b, a
+	ld a, [hli]
+	push hl
+	ld h, [hl]
+	ld l, a
+	ld a, c
+	and a
+	jr nz, .rotate
+.fletcher
+	ld a, [hli]
+	add e
+	ld e, a
+	add d
+	ld d, a
+	dec b
+	jr nz, .fletcher
+	jr .rangeDone
+.rotate
+	ld a, e
+	rlca
+	add [hl]
+	inc hl
+	ld e, a
+	dec b
+	jr nz, .rotate
+.rangeDone
+	pop hl
+	inc hl
+	jr .range
+.end
+	ld a, c
+	and a
+	ret nz
+; The threat key's last input: whether the Bridge Repeat boost is live, i.e.
+; "wBridgeRepeatState == 2" AND the player owns the effect. The raw state is
+; republished by every player action (0 at move selection, 1 or 2 after the
+; player's move), so hash the condition, not the byte; without the effect the
+; state changes nothing (measured: a repeated Growl flipped it every turn).
+	ld a, [wBridgeRepeatState]
+	cp 2
+	ld a, 0
+	jr nz, .gotRepeat
+	push de
+	ld e, BRIDGE_EFFECT_REPEAT
+	farcall BridgeHasGlobalEffect ; carry = owned; clobbers d and hl
+	pop de
+	ld a, 0
+	adc a
+.gotRepeat
+	add e
+	ld e, a
+	add d
+	ld d, a
+	ret
+	ASSERT wEnemySubstituteHP == wPlayerSubstituteHP + 1
+	ASSERT wPlayerBattleStatus3 == wPlayerBattleStatus1 + 2
+	ASSERT wEnemyBattleStatus3 == wEnemyBattleStatus1 + 2
+	ASSERT wEnemyMonSpecies + 1 == wEnemyMonHP
+	ASSERT wBattleMonSpecies + 1 == wBattleMonHP
+	ASSERT wEnemyMonAttack + 2 == wEnemyMonDefense
 
 ; --- Repeated-move / anti-spam tracking -----------------------------------
 ; Maintains wAILastMovePower, wAILastMoveNum and wAISameMoveCount for
@@ -733,34 +1033,124 @@ AIStatModifierRatios:
 	assert @ - AIStatModifierRatios == MAX_STAT_LEVEL * 2, \
 		"AIStatModifierRatios needs one numerator/denominator pair per stage"
 
-; Carry SET if the player looks like a PHYSICAL attacker: its Attack is at
-; least its Special, and its believed moveset (AIGetPlayerMoveN: revealed,
-; type-guessed, or the full moveset for an omniscient class) holds a damaging
-; move of a physical type. That is when burn's Attack halving pays off.
+; Carry SET if the player's DOMINANT believed attack is physical: of its
+; believed damaging moves (AIGetPlayerMoveN: revealed, type-guessed, or the
+; full moveset for an omniscient class), the one that would do the most real
+; damage to us has a physical type. That is when burn's Attack halving pays off.
+;
+; REFINED 2026-09-30 (AI_BACKLOG B1, Codex follow-up): the old test was
+; "Attack >= Special and any believed physical move", which called a mon with
+; a weak physical filler and a big special STAB physical. Now:
+;   - only physical damaging moves believed: carry, no estimate needed
+;   - none physical: no carry, no estimate needed
+;   - MIXED: estimate each damaging move against us (AIEstimatePlayerDamage,
+;     expected delivery so multi-hit moves count their hits) and take the
+;     largest; ties keep the earlier slot. Our Substitute is cleared around the
+;     estimates, since it zeroes owner damage for every move alike and would
+;     turn the comparison into a tie.
+; The Attack/Special split, type matchups, STAB and screens all come from the
+; engine formula, so no separate stat test is needed.
 ; Clobbers af, bc, de, hl.
 AIPlayerIsPhysicalThreat::
-	ld a, [wBattleMonAttack]
-	ld d, a
-	ld a, [wBattleMonAttack + 1]
-	ld e, a
-	ld a, [wBattleMonSpecial]
-	ld b, a
-	ld a, [wBattleMonSpecial + 1]
-	ld c, a
-	ld a, e
-	sub c
-	ld a, d
-	sbc b ; carry iff Attack < Special
-	ccf
-	ret nc ; a special attacker: burn's Attack cut barely matters
-	ld c, 0
-.nextSlot
+	ld bc, 0 ; b = kinds seen (bit 0 physical, bit 1 special), c = slot
+.classify
 	push bc
 	ld a, c
 	call AIGetPlayerMoveN
 	pop bc
 	and a
-	jr z, .advance
+	jr z, .nextClassify
+	call .damagingType
+	jr nc, .nextClassify ; status or fixed damage
+	cp SPECIAL
+	ld a, %01
+	jr c, .gotKind
+	add a ; %10
+.gotKind
+	or b
+	ld b, a
+.nextClassify
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .classify
+	ld a, b
+	cp %11
+	jr z, .mixed
+	rra ; carry = physical only (%01); %00 and %10 give no carry
+	ret
+
+.mixed
+	ld hl, wPlayerMoveNum
+	ld de, wBuffer + AI_BUF_MOVESAVE
+	ld bc, MOVE_LENGTH
+	call CopyData
+	ld a, [wEnemyBattleStatus2]
+	push af
+	ld hl, wEnemyBattleStatus2
+	res HAS_SUBSTITUTE_UP, [hl]
+	ld de, 0 ; de = best expected damage so far
+	ld bc, 0 ; b = 1 if that best move is physical, c = slot
+.estimate
+	push bc
+	push de
+	ld a, c
+	call AIGetPlayerMoveN
+	and a
+	jr z, .skip
+	push af
+	call .damagingType
+	jr nc, .skipMove
+	pop af
+	call AIReadMoveIntoPlayerBlock
+	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
+	call AIAdjustPlayerDamageForExpectedDelivery
+	pop de
+	pop bc
+	ld hl, wAIDamageEstimate
+	ld a, [hli]
+	cp d
+	jr c, .nextEstimate
+	jr nz, .better
+	ld a, [hl]
+	cp e
+	jr c, .nextEstimate
+	jr z, .nextEstimate ; a tie keeps the earlier move
+.better
+	ld e, [hl]
+	dec hl
+	ld d, [hl]
+	ld b, 0
+	ld a, [wPlayerMoveType]
+	cp SPECIAL
+	jr nc, .nextEstimate
+	inc b
+	jr .nextEstimate
+.skipMove
+	pop af
+.skip
+	pop de
+	pop bc
+.nextEstimate
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .estimate
+	pop af
+	ld [wEnemyBattleStatus2], a
+	push bc
+	ld hl, wBuffer + AI_BUF_MOVESAVE
+	ld de, wPlayerMoveNum
+	ld bc, MOVE_LENGTH
+	call CopyData
+	pop bc
+	ld a, b
+	rra ; carry = the dominant move is physical
+	ret
+
+; INPUT: a = move id (nonzero). OUTPUT: carry SET if it is damaging (power 2+,
+; so status and fixed-damage moves are out), with a = its type. Preserves bc.
+.damagingType
 	push bc
 	dec a
 	ld hl, Moves + 2 ; power, then type
@@ -768,21 +1158,10 @@ AIPlayerIsPhysicalThreat::
 	ld bc, MOVE_LENGTH
 	call AddNTimes
 	ld a, [hli]
-	cp 2
-	ld a, [hl] ; type; ld keeps the power test's flags
+	cp 2 ; carry = power 0/1
+	ld a, [hl] ; type; ld keeps the flags
 	pop bc
-	jr c, .advance ; status or fixed damage
-	cp SPECIAL
-	jr c, .physical
-.advance
-	inc c
-	ld a, c
-	cp NUM_MOVES
-	jr c, .nextSlot
-	and a
-	ret
-.physical
-	scf
+	ccf
 	ret
 
 ; Carry SET if the enemy acts FIRST this turn using the move currently loaded in

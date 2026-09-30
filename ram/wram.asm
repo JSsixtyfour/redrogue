@@ -116,7 +116,15 @@ wTempoModifier:: db
 	wPartyGenAceSpecies:: db
 	wPartyGenAceForm::    db
 
-	ds 3
+	; FOLLOWUPS #48 (2026-09-30): checksums of the inputs behind the AI's
+	; one-decision caches, so TrainerAI can keep them across the player's move
+	; (AIRevalidateDecisionCaches): the player's damage to us, our HP excluded
+	; (AIThreatStateKey), and ours to the player (AIEstimateStateKey, 8-bit).
+	; Garbage at power-on is harmless: the caches they guard are battle-zeroed,
+	; so a false match only keeps "empty". Takes this pad's last 3 bytes, so no
+	; address moves.
+	wAIThreatStateKey::   dw
+	wAIEstimateStateKey:: db
 
 
 SECTION "Sprite State Data", WRAM0
@@ -619,6 +627,25 @@ wAIPlayerKOCache:: db
 ; Party slot that used wWitchPrevPlayerMove (see its comment above). Same deal:
 ; carved from this branch's spare ds 1, zero WRAM0 cost, auto-zeroed per battle.
 wWitchPrevPlayerSlot:: db
+
+; FOLLOWUPS #48 (2026-09-30): AIEstimateDamage's one-hit maximum for each enemy
+; move slot, for the CURRENT decision only (big-endian; bit 7 of the high byte =
+; valid, which a real estimate <= 999 never sets). Zero reads as empty. Cleared by
+; AIClearDecisionCaches wherever wAIPlayerKOCache is. Costs 0 WRAM: this branch
+; ended 10 bytes short of the union's largest member (wNPCMovementDirections,
+; 180), and the ASSERT below keeps it that way.
+wAIEnemyEstimateCache:: ds NUM_MOVES * 2
+; FOLLOWUPS #48 player-first half (2026-09-30): the largest believed player
+; move's POSSIBLE delivered damage (Super Fang excluded, since it scales with our
+; HP), as last found by AIPlayerWouldKO. Big-endian; bit 7 of the high byte =
+; valid, bit 6 = the scan stopped early at a KO (a lower bound). Independent of
+; our HP, so AIRevalidateDecisionCaches can re-answer the KO question after the
+; player's move without re-running the scan. Must directly follow the estimate
+; cache: AIClearDecisionCaches clears both in one loop. Takes the branch's last
+; 2 spare bytes.
+wAIPlayerKOMaxDamage:: dw
+ASSERT @ - wNPCMovementDirections <= 180, \
+	"the AI block outgrew its union: every later WRAM address would move"
 
 NEXTU
 

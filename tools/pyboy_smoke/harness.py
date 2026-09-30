@@ -138,6 +138,18 @@ class RedRogueHarness:
                 )
         if cgb_mode:
             self._install_key1_speed_fix(rom_data)
+        # AI heuristic execution coverage (AI_BACKLOG L3): with
+        # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
+        # source-derived inventory and, at close, append one JSON line naming
+        # the test and the heuristics it reached. Off by default.
+        self._coverage_path = os.environ.get("REDROGUE_AI_COVERAGE")
+        self._coverage_hits: set[str] = set()
+        self._coverage_detach: list[tuple[tuple[int, int], object]] = []
+        if self._coverage_path:
+            from ai_heuristics import coverage_labels
+
+            for label in coverage_labels(self.repo_root):
+                self.register_hook(label, self._coverage_callback(label))
 
     def _install_key1_speed_fix(self, rom_data: bytearray) -> None:
         """Make KEY1 ($FF4D) bit 7 report the real CPU speed after a switch.
@@ -201,7 +213,49 @@ class RedRogueHarness:
                 "rebuild pokeblue_debug.gbc before running PyBoy"
             )
 
+    def _coverage_callback(self, label: str):
+        """Records the first hit, then detaches: only reachability is wanted,
+        and a hook left on a hot label (AIGetPlayerMoveN runs hundreds of times
+        per decision) made a suite ~80x slower (measured 2026-09-30). PyBoy
+        cannot deregister a hook from inside its own callback, so the detach is
+        queued and done between frames (_drain_coverage)."""
+        key = self.symbols.get(label)
+
+        def hit(_context) -> None:
+            if label not in self._coverage_hits:
+                self._coverage_hits.add(label)
+                self._coverage_detach.append((key, hit))
+
+        return hit
+
+    def _drain_coverage(self) -> None:
+        while self._coverage_detach:
+            key, callback = self._coverage_detach.pop()
+            callbacks = self._hook_callbacks.get(key, [])
+            if callback in callbacks:
+                callbacks.remove(callback)
+            if not callbacks and key in self._registered_hooks:
+                self._registered_hooks.remove(key)
+                self._hook_callbacks.pop(key, None)
+                self.pyboy.hook_deregister(*key)
+
+    def _write_coverage(self) -> None:
+        import inspect
+        import json
+        import unittest
+
+        test_id = "unknown"
+        for frame in inspect.stack():
+            owner = frame.frame.f_locals.get("self")
+            if isinstance(owner, unittest.TestCase):
+                test_id = owner.id()
+                break
+        with open(self._coverage_path, "a", encoding="utf-8") as out:
+            out.write(json.dumps({"test": test_id, "labels": sorted(self._coverage_hits)}) + "\n")
+
     def close(self) -> None:
+        if self._coverage_path:
+            self._write_coverage()
         for bank, address in reversed(self._registered_hooks):
             self.pyboy.hook_deregister(bank, address)
         self._registered_hooks.clear()
@@ -359,6 +413,8 @@ class RedRogueHarness:
     def tick(self, frames: int = 1, *, render: bool = False) -> None:
         for _ in range(frames):
             self.pyboy.tick(render=render)
+            if self._coverage_detach:
+                self._drain_coverage()
 
     def cycle_count(self) -> int:
         """Return PyBoy's current CPU-cycle counter for performance telemetry."""
@@ -385,6 +441,8 @@ class RedRogueHarness:
     def wait_until(self, predicate, description: str, limit: int = 2400) -> int:
         for frame in range(limit):
             self.pyboy.tick(render=False)
+            if self._coverage_detach:
+                self._drain_coverage()
             if predicate():
                 return frame
         raise AssertionError(
@@ -1142,6 +1200,15 @@ class RedRogueHarness:
         therefore runs with interrupt servicing unavailable.
         """
         bank, address = self.symbols.get(label)
+        # A direct call is a fresh AI decision: real decisions empty the
+        # one-decision estimate cache at entry (AIClearDecisionCaches), and a
+        # test that edits stats or moves between two direct calls must not read
+        # the previous call's answers back (FOLLOWUPS #48, 2026-09-30). The 10
+        # bytes are the estimates plus wAIPlayerKOMaxDamage, which follows them.
+        if "wAIEnemyEstimateCache" in self.symbols._symbols:
+            span = 10 if "wAIPlayerKOMaxDamage" in self.symbols._symbols else 8
+            for offset in range(span):
+                self.write8("wAIEnemyEstimateCache", 0, offset=offset)
         register_names = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
         saved_registers = {
             name: getattr(self.pyboy.register_file, name) for name in register_names

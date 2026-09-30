@@ -444,6 +444,8 @@ MainInBattleLoop:
 .enemyMovesFirst
 	ld a, $1
 	ldh [hWhoseTurn], a
+	ld hl, wAIPlayerKOCache ; nothing has happened since SelectEnemyMove, so
+	set AI_KO_CACHE_KEEP_BIT, [hl] ; TrainerAI may keep its caches (#48)
 	callfar TrainerAI
 	jr c, .AIActionUsedEnemyFirst
 	call ExecuteEnemyMove

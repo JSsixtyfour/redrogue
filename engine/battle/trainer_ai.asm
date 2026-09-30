@@ -25,8 +25,7 @@ AIEnemyTrainerChooseMoves:
 ; (the moves themselves are recorded at execution by AITrackExecutedEnemyMove,
 ; so item turns and interrupted moves never count). See ai_predicates.asm.
 	call AITrackLastMove
-	xor a ; AI_KO_CACHE_EMPTY: a new decision starts with nothing cached
-	ld [wAIPlayerKOCache], a
+	call AIClearDecisionCaches ; a new decision starts with nothing cached
 	ld a, AI_SCORE_BASE ; Phase 2b: was a hardcoded $a; the baseline is now a
 	                    ; constant so widening it is a single edit
 	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
@@ -941,6 +940,19 @@ INCLUDE "engine/battle/misc.asm"
 ; classes - a row in each of five NUM_TRAINERS-keyed tables, two of which
 ; (TrainerPicAndMoneyPointers, TrainerNames) stay in this bank.
 TrainerAI:
+; The one-decision caches from move selection (KO answer, move estimates) are
+; stale on a PLAYER-first turn: the player has just moved, changing HP, stats
+; or the revealed moveset, and residual damage has run. On an ENEMY-first turn
+; nothing has happened since SelectEnemyMove - core.asm's .enemyMovesFirst
+; marks that with AI_KO_CACHE_KEEP_BIT just before calling here - so they are
+; still exact and are kept (FOLLOWUPS #48, 2026-09-30). On a player-first turn
+; they are kept only if nothing but our HP changed, with the KO answer
+; re-derived for the new HP (AIRevalidateDecisionCaches). The bit is consumed
+; here, before any reader, whichever way this goes.
+	ld hl, wAIPlayerKOCache
+	bit AI_KO_CACHE_KEEP_BIT, [hl]
+	res AI_KO_CACHE_KEEP_BIT, [hl] ; res keeps the flags
+	call z, AIRevalidateDecisionCaches
 	and a
 	ldh a, [hIsInBattle]
 	dec a
@@ -948,11 +960,6 @@ TrainerAI:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; if in a link battle, we're done as well
-; A new decision: AIPlayerWouldKO's cache from move selection is stale (on a
-; player-first turn the player has just moved, changing our HP and revealing
-; a move), so it is recomputed at most once here.
-	xor a ; AI_KO_CACHE_EMPTY
-	ld [wAIPlayerKOCache], a
 ; AI Overhaul Phase 6: T2+ trainers only consider items when their active
 ; mon is the ace (Gen 2's rule - no other living party member). T0/T1 fall
 ; straight through to .dispatch, unchanged from vanilla item AI. The farcall
@@ -971,6 +978,18 @@ TrainerAI:
 	ret c ; switch and item eligibility are independent
 	farcall AIActiveMonIsAce ; bank $2C - loops the enemy party
 	jr nc, .noItem ; not the ace: no item this turn
+; AI_BACKLOG B6, first slice (2026-09-30): the winning-action veto the switch
+; path already has, applied to items. When the move already selected reliably
+; KOs the player at this action point, any item - a heal, X item, Full Heal on
+; a mon that can act, Guard Spec - trades a won exchange for a free player turn.
+; Asked only when an item use is left ($ff = not loaded yet, also "left"), and
+; only here, on ace turns, where the switch ranking never runs - so it does not
+; add to the measured worst case (FOLLOWUPS #48).
+	ld a, [wAICount]
+	and a
+	jr z, .noItem
+	call AIEnemyHasReliableFirstKO ; same bank; refuses sleep/freeze/paralysis
+	jr c, .noItem
 .dispatch
 	ld a, [wTrainerClass] ; what trainer class is this?
 	dec a

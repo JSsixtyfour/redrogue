@@ -244,14 +244,35 @@ class AICheckpointBTest(unittest.TestCase):
 
     # --- AI_BACKLOG.md B1: burn against physical threats ----------------------
     def test_burn_rider_gains_a_point_against_a_physical_attacker(self):
-        # Snorlax (Attack > Special, a believed Normal STAB guess) is physical:
-        # Ember's rider 19 -> 18. With Special above Attack it stays 19.
-        physical = self.smart_scores_by_speed("EMBER", [(100, 90)])
-        special = self.smart_scores_by_speed("EMBER", [(100, 90)], extra={
+        # Snorlax with only a believed Normal STAB guess is physical: Ember's
+        # rider 19 -> 18. Refined B1 (2026-09-30): the stat split no longer
+        # matters when every believed attack is physical - Special 200 used
+        # to read as "special attacker" (19) here.
+        scores = self.smart_scores_by_speed("EMBER", [(100, 90)], extra={
             "wBattleMonAttack": (50,), "wBattleMonSpecial": (200,)})
-        # Each helper call adds its own hook, so the first list also records
-        # the second run: compare each run's own (first/last) entry.
-        self.assertEqual((physical[0], special[-1]), (18, 19))
+        self.assertEqual(scores, [18])
+
+    def test_burn_rider_follows_the_dominant_attack_not_the_stat_split(self):
+        # Refined B1: Attack 130 > Special 90, but the believed Thunderbolt
+        # (95 x 90) out-damages Rock Throw (50 x 130), so burn barely helps: 19.
+        # The old "Attack >= Special and any physical move" test gave 18.
+        h = self.h
+        h.write8("wBattleMonMoves", self.moves["ROCK_THROW"])
+        h.write8("wBattleMonMoves", self.moves["THUNDERBOLT"], offset=1)
+        h.reveal_player_moves(0, [0, 1], clear=True)
+        scores = self.smart_scores_by_speed("EMBER", [(100, 90)], extra={
+            "wBattleMonAttack": (130,), "wBattleMonSpecial": (90,)})
+        self.assertEqual(scores, [19])
+
+    def test_burn_rider_counts_a_dominant_physical_attack_in_a_mixed_set(self):
+        # Same mixed set, Attack 300 / Special 40: Rock Throw now dominates, 18.
+        h = self.h
+        h.write8("wBattleMonMoves", self.moves["ROCK_THROW"])
+        h.write8("wBattleMonMoves", self.moves["THUNDERBOLT"], offset=1)
+        h.reveal_player_moves(0, [0, 1], clear=True)
+        scores = self.smart_scores_by_speed("EMBER", [(100, 90)], extra={
+            "wBattleMonAttack": (300,), "wBattleMonSpecial": (40,)})
+        self.assertEqual(scores, [18])
 
     def test_ai_stat_ratio_copy_matches_the_engine_table(self):
         rom = (ROOT / "pokeblue_debug.gbc").read_bytes()

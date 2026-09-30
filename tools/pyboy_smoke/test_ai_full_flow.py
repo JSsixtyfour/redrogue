@@ -157,7 +157,9 @@ class AIFullFlowTest(unittest.TestCase):
             pos = h.read8("wEnemyMonPartyPos")
             active.append(pos)
             if pos == 0:
-                self.word("wEnemyMonHP", 2)
+                # Just above a quarter: below it, B5 would sacrifice Slowpoke.
+                max_hp = int.from_bytes(bytes(h.read_bytes("wEnemyMonMaxHP", 2)), "big")
+                self.word("wEnemyMonHP", max_hp // 4 + 1)
 
         def at_decision():
             if h.read8("wEnemyMonPartyPos") == 1 and not first_geodude:
@@ -198,6 +200,213 @@ class AIFullFlowTest(unittest.TestCase):
         print(f"\nL3 refuse active={active} switched-from={switches} gate={gate['count']}")
         self.assertEqual(switches, [])
         self.assertGreaterEqual(gate["count"], 3)
+
+    def test_sacrificed_mon_hands_a_free_entry_to_the_reserve(self):
+        # B5 across real turns. Pikachu (faster) sits at 2 HP facing a known
+        # Body Slam; Geodude would survive a switch-in. Before B5 the AI switched
+        # and Geodude ate the Body Slam. Now Pikachu stays and attacks, faints,
+        # and Geodude comes in after the faint untouched.
+        h = self.h
+        self.boot([self.mon("SNORLAX", ["BODY_SLAM"])],
+                  [self.mon("PIKACHU", ["THUNDERSHOCK"]), self.mon("GEODUDE", ["TACKLE"])])
+        switches, geodude_first = [], []
+
+        def at_trainer_ai():
+            h.write8("wAICount", 0)
+            h.reveal_player_moves(0, [0])
+            if h.read8("wEnemyMonPartyPos") == 0:
+                self.word("wEnemyMonHP", 2)
+
+        def at_decision():
+            if h.read8("wEnemyMonPartyPos") == 1 and not geodude_first:
+                geodude_first.append((self.read_hp("wEnemyMonHP"), self.read_hp("wEnemyMonMaxHP")))
+
+        h.hook_flag("TrainerAI", action=at_trainer_ai)
+        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+        h.hook_flag("SwitchEnemyMon", action=lambda:
+                    switches.append(h.read8("wEnemyMonPartyPos")))
+        self.assertTrue(self.drive_turns(lambda: bool(geodude_first)),
+                        f"switches={switches}")
+        print(f"\nB5 flow switched-from={switches} geodude-at-first-decision={geodude_first}")
+        self.assertEqual(switches, [])
+        hp, max_hp = geodude_first[0]
+        self.assertEqual(hp, max_hp)
+
+    # --- B6 first slice: items never trade away a won exchange ----------------
+    def brock_first_decision(self, player_hp):
+        """Brock (T2) with a lone poisoned Onix: his handler uses Full Heal on
+        any status, with no random roll. Returns (Full Heal used, no-item exit)
+        at the first TrainerAI decision."""
+        h = self.h
+        self.boot([self.mon("SNORLAX", ["SPLASH"])], [self.mon("ONIX", ["TACKLE"])],
+                  trainer="BROCK")
+        state = {"decisions": 0}
+
+        def at_trainer_ai():
+            state["decisions"] += 1
+            if state["decisions"] == 1:
+                h.write8("wAICount", 1)
+                h.write8("wEnemyMonStatus", 1 << 3)  # PSN: Onix can still act
+                if player_hp is not None:
+                    self.word("wBattleMonHP", player_hp)
+
+        h.hook_flag("TrainerAI", action=at_trainer_ai)
+        heal = h.hook_flag("AIUseFullHeal")
+        no_item = h.hook_flag("TrainerAI.noItem")
+        self.assertTrue(self.drive_turns(lambda: heal["count"] + no_item["count"] > 0))
+        return heal["count"], no_item["count"]
+
+    def test_item_is_vetoed_when_the_selected_move_wins(self):
+        # The selected Tackle reliably finishes a 1-HP player at this action
+        # point, so spending the turn on Full Heal would throw the win away.
+        self.assertEqual(self.brock_first_decision(1), (0, 1))
+
+    def test_item_is_used_when_no_win_is_on_the_board(self):
+        self.assertEqual(self.brock_first_decision(None), (1, 0))
+
+    # --- FOLLOWUPS #48: TrainerAI reuses move selection's caches when exact ----
+    def ko_cache_at_trainer_ai(self, player, enemy, reveal=(1,), prime_hp=True,
+                               force_stale=False):
+        """(entry, final, cycles) for the first TrainerAI: wAIPlayerKOCache as
+        AIPlayerWouldKO is entered inside it (0 = empty, so it scans), the
+        answer it holds when TrainerAI hands over, and TrainerAI's cycles.
+        The player always uses slot 0. force_stale corrupts the state key at
+        TrainerAI entry, so the same turn is re-decided with nothing reused."""
+        h = self.h
+        self.boot([player], enemy, tier=3)
+        self.no_items()
+        state = {"in": False, "entry": None, "final": None, "start": 0, "cycles": None,
+                 "selected": None, "max": None}
+        self.last_state = state
+
+        def at_decision():
+            h.reveal_player_moves(0, list(reveal))
+            # Primed BEFORE move selection, so both decisions see one board.
+            if prime_hp is True:
+                self.word("wEnemyMonHP", self.read_hp("wEnemyMonMaxHP") // 4 + 1)
+            elif prime_hp:
+                self.word("wEnemyMonHP", prime_hp)
+
+        def enter():
+            if state["cycles"] is None:
+                state["in"], state["start"] = True, h.cycle_count()
+                # Move selection's answer and scan maximum, before TrainerAI
+                # revalidates or clears them.
+                state["selected"] = h.read8("wAIPlayerKOCache")
+                state["max"] = self.read_hp("wAIPlayerKOMaxDamage")
+                if force_stale:
+                    for key in ("wAIThreatStateKey", "wAIEstimateStateKey"):
+                        h.write8(key, h.read8(key) ^ 1)
+
+        def leave():
+            if state["in"]:
+                state["in"], state["cycles"] = False, h.cycle_count() - state["start"]
+                state["final"] = h.read8("wAIPlayerKOCache")
+
+        def would_ko():
+            if state["in"] and state["entry"] is None:
+                state["entry"] = h.read8("wAIPlayerKOCache")
+
+        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+        h.hook_flag("TrainerAI", action=enter)
+        h.hook_flag("ExecuteEnemyMove", action=leave)
+        h.hook_flag("SwitchEnemyMon", action=leave)
+        h.hook_flag("AIPlayerWouldKO", action=would_ko)
+        self.assertTrue(self.drive_turns(lambda: state["cycles"] is not None))
+        return state["entry"], state["final"], state["cycles"]
+
+    def test_enemy_first_trainer_ai_reuses_the_ko_answer(self):
+        # Electrode outspeeds Snorlax: nothing happens between move selection and
+        # TrainerAI, so move selection's KO answer (YES here) is still exact.
+        entry, _, cycles = self.ko_cache_at_trainer_ai(
+            self.mon("SNORLAX", ["SPLASH", "BODY_SLAM"]),
+            [self.mon("ELECTRODE", ["TACKLE", "THUNDERBOLT"]), self.mon("GEODUDE", ["TACKLE"])])
+        print(f"\n#48 enemy-first TrainerAI KO cache={entry} cycles={cycles}")
+        self.assertEqual(entry, self.ai["AI_KO_CACHE_YES"])
+
+    def test_player_first_new_reveal_forces_a_rescan(self):
+        # Electrode (player) moves first and its Splash is revealed by being
+        # used: the believed moveset changed, so the answer must be rescanned.
+        entry, _, cycles = self.ko_cache_at_trainer_ai(
+            self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"]),
+            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])])
+        print(f"\n#48 player-first new reveal: KO cache={entry} cycles={cycles}")
+        self.assertEqual(entry, self.ai["AI_KO_CACHE_EMPTY"])
+
+    def assert_reused_and_exact(self, tag, player, enemy, **kw):
+        reused = self.ko_cache_at_trainer_ai(player, enemy, **kw)
+        selected = self.last_state["selected"]
+        self.h.close()
+        self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
+        fresh = self.ko_cache_at_trainer_ai(player, enemy, force_stale=True, **kw)
+        print(f"\n#48 {tag}: reused entry={reused[0]} final={reused[1]} "
+              f"cycles={reused[2]}; fresh final={fresh[1]} cycles={fresh[2]}")
+        self.assertNotEqual(reused[0], self.ai["AI_KO_CACHE_EMPTY"])
+        self.assertEqual(fresh[0], self.ai["AI_KO_CACHE_EMPTY"])
+        self.assertEqual(reused[1], fresh[1])
+        self.assertLess(reused[2], fresh[2])
+        self.last_state["selected"] = selected
+        return reused[1]
+
+    def test_player_first_unchanged_board_reuses_the_ko_answer(self):
+        # Splash already revealed: the player's move changes nothing the
+        # estimates read, so the answer is re-derived, not rescanned, and
+        # matches a full rescan of the same turn.
+        final = self.assert_reused_and_exact(
+            "player-first Splash, KO range",
+            self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"]),
+            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+            reveal=(0, 1))
+        self.assertEqual(final, self.ai["AI_KO_CACHE_YES"])
+
+    def test_player_first_hit_rederives_against_the_lower_hp(self):
+        # The player's revealed attack lands first: only our HP changed, which
+        # the key leaves out, so the answer is re-derived for the new HP.
+        self.assert_reused_and_exact(
+            "player-first hit",
+            self.mon("ELECTRODE", ["THUNDERBOLT", "TACKLE"]),
+            [self.mon("SNORLAX", ["TACKLE", "BODY_SLAM"]), self.mon("GEODUDE", ["TACKLE"])],
+            reveal=(0, 1), prime_hp=False)
+
+    def test_player_first_hit_into_ko_range_flips_the_answer(self):
+        # SonicBoom deals exactly 20. Our HP is primed 10 above the scan's
+        # maximum M, so move selection says NO; after the hit HP = M - 10 and the
+        # re-derived answer must be YES without a rescan.
+        player = self.mon("ELECTRODE", ["SONICBOOM", "THUNDERBOLT"])
+        enemy = [self.mon("SNORLAX", ["TACKLE", "BODY_SLAM"]), self.mon("GEODUDE", ["TACKLE"])]
+        self.ko_cache_at_trainer_ai(player, enemy, reveal=(0, 1), prime_hp=False)
+        flags = self.last_state["max"]
+        valid = 1 << (8 + self.ai["AI_KO_MAX_VALID_BIT"])
+        self.assertTrue(flags & valid)
+        m = flags & 0x1FFF
+        self.h.close()
+        self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
+        final = self.assert_reused_and_exact("player-first hit into KO range", player, enemy,
+                                             reveal=(0, 1), prime_hp=m + 10)
+        print(f"  M={m} selected={self.last_state['selected']}")
+        self.assertEqual(self.last_state["selected"], self.ai["AI_KO_CACHE_NO"])
+        self.assertEqual(final, self.ai["AI_KO_CACHE_YES"])
+
+    def test_player_first_defense_drop_forces_a_rescan(self):
+        # Tail Whip lowers our Defense, an input to the player's damage on us:
+        # the KO answer may not be reused.
+        entry, _, _ = self.ko_cache_at_trainer_ai(
+            self.mon("ELECTRODE", ["TAIL_WHIP", "TACKLE"]),
+            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+            reveal=(0, 1))
+        self.assertEqual(entry, self.ai["AI_KO_CACHE_EMPTY"])
+
+    def test_player_first_attack_drop_keeps_the_ko_answer(self):
+        # Growl lowers only OUR Attack, which the player's damage on us does not
+        # read: the KO answer is still reused (our estimates are not).
+        self.assert_reused_and_exact(
+            "player-first Growl",
+            self.mon("ELECTRODE", ["GROWL", "THUNDERBOLT"]),
+            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+            reveal=(0, 1))
+
+    def read_hp(self, label):
+        return int.from_bytes(bytes(self.h.read_bytes(label, 2)), "big")
 
     # --- L3: a T3 plan across real turns ------------------------------------
     def test_para_sweep_paralyses_then_attacks(self):

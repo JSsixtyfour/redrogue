@@ -172,6 +172,20 @@ DEF AI_LAST_MOVE_FRESH_MON EQU $fe
 ; recorded (AITrackExecutedEnemyMove). The streak itself saturates below it.
 DEF AI_MOVE_EXECUTED_BIT EQU 7
 
+; wAIEnemyEstimateCache: set in a slot's high byte when it holds an estimate.
+; Estimates never exceed 999 ($03E7), so the bit is free.
+DEF AI_ESTIMATE_VALID_BIT EQU 7
+
+; wAIPlayerKOCache flag bit, set by core.asm .enemyMovesFirst right before
+; TrainerAI: nothing has changed since move selection, so keep its caches.
+; Consumed (reset) at TrainerAI entry, so AI_KO_CACHE_* comparisons never see it.
+DEF AI_KO_CACHE_KEEP_BIT EQU 7
+
+; wAIPlayerKOMaxDamage flag bits (high byte). Possible delivery never exceeds
+; 5 x 999 = $1383, so bits 5-7 are free.
+DEF AI_KO_MAX_VALID_BIT   EQU 7 ; holds a scan result
+DEF AI_KO_MAX_PARTIAL_BIT EQU 6 ; the scan stopped at a KO: a lower bound only
+
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
 ; That cache was CANCELLED in Phase 2b: its entire justification was avoiding
 ; cross-bank ReadMove farcalls, which evaporated once every scoring layer was

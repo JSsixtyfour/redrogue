@@ -76,7 +76,7 @@ AILayerDamage:
 	                ; farcall here is also most of the layer's cost saved, since
 	                ; a moveset is usually part status.
 .estimate
-	farcall AIEstimateDamage ; -> wAIDamageEstimate (one-hit max, STAB and type
+	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (one-hit max, STAB and type
 	                         ; already applied). Clobbers a/bc/hl, all pushed.
 ; Save the one-hit estimate. Possible KO uses the move's maximum owner-delivered
 ; damage after Substitute; ranking below uses its expected hit-count delivery.
@@ -87,14 +87,18 @@ AILayerDamage:
 	call AIAdjustEnemyDamageForPossibleDelivery
 	ld b, 0
 	call AIDamageReachesFraction
-; Preserve the possible-KO flags while restoring the one-hit estimate.
+; Preserve the possible-KO flags while restoring the one-hit estimate, and keep
+; a copy of that estimate for .kill (it used to re-run AIEstimateDamage there).
 	push af
 	pop de
 	pop af
 	ld [wAIDamageEstimate + 1], a
+	ld c, a
 	pop af
 	ld [wAIDamageEstimate], a
-	push de
+	ld b, a
+	push bc ; STACK: [one-hit max, loop state...]
+	push de ; STACK: [possible-KO flags, one-hit max, loop state...]
 ; Everything past this point ranks moves. Hit-count expectation is applied
 ; before crit and accuracy weighting; it never masquerades as a possible KO.
 	ld a, [wPlayerBattleStatus2]
@@ -136,6 +140,7 @@ AILayerDamage:
 	call AIScaleDamageByAccuracy
 	call .trackBest
 	pop af
+	pop bc ; bc = one-hit max; pop keeps the possible-KO carry
 	jr c, .kill
 	ld b, 1
 	call AIDamageReachesFraction
@@ -152,9 +157,14 @@ AILayerDamage:
 ; kill" also needs the GUARANTEED damage to reach: the possible-KO test above
 ; used the max roll and max hit count, so a Spike Cannon needing 3+ hits or a
 ; hit needing a high roll only earns the unreliable bonus (2026-09-29 review
-; F2/F4). Re-estimating costs one farcall, paid only on moves that can kill.
-; The loop's hl/de/bc are on the stack, so the clobbers are safe here.
-	farcall AIEstimateDamage
+; F2/F4). The reliable value starts from the same one-hit maximum, which the
+; ranking above overwrote, so it comes back from bc (2026-09-30: this used to
+; re-run AIEstimateDamage, a whole damage formula per killing move, for an
+; identical result). The loop's hl/de/bc are on the stack.
+	ld a, b
+	ld [wAIDamageEstimate], a
+	ld a, c
+	ld [wAIDamageEstimate + 1], a
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .unreliableKill

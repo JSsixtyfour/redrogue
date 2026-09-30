@@ -4,6 +4,7 @@
 # the 2026-09-27 sweep (Red Rogue Files/CODE_SWEEP_2026-09-27.md).
 
 A1	engine/pokemon/random_pokemon_selection.asm	AllSpeciesCheck	Uses the stack as a variable-depth worklist terminated by a pushed NO_MON sentinel; .next/.owned pop down to it, so depth legitimately varies per path.
+A1	engine/battle/ai/ai_damage.asm	AIExpectedShieldProgress	.variable pushes 7 values (3+3+1) and pops all 7 via `rept 7 / pop bc`; the analyzer counts a rept body once. Balanced, re-checked 2026-09-30.
 A2	custom_functions/func_enhancedcolor.asm	BufferAllEnhancedColorsGBC	.readwriteinc is a local helper that runs inside a WRAM-bank-2 context and deliberately returns with bank 2 mapped for its caller's loop.
 A2	engine/gfx/palettes.asm	BufferAllPokeyellowColorsGBC	Same .readwriteinc shape as BufferAllEnhancedColorsGBC: returns into a bank-2 caller loop by design.
 B5	home/overworld.asm	OverworldLoopLessDelay	WarpFound2's `sub c` derives wWarpedFromWhichWarp from a stale c on the Safari-game-over and script-warp paths (vanilla). Unlike vanilla, Red Rogue READS that index (lobby/reward-room door capture, .randomStage door parity), so this is safe only while no script warp leaves INDIGO_PLATEAU_LOBBY or REWARD_ROOM or targets ROGUE_MAP. Today the only script warps are HallOfFame -> AI_LAIR and PokemonTower7F -> lobby (re-checked 2026-09-28).

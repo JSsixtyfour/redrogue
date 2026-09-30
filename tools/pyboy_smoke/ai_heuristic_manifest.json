@@ -1,0 +1,1442 @@
+{
+ "schema": 1,
+ "reviewed": "2026-09-30",
+ "note": "A listed test ASSERTS the case (reaching the label is not enough). An empty list is a declared gap. The inventory is source-derived (ai_heuristics.py); test_ai_heuristic_manifest.py keeps both in step.",
+ "heuristics": {
+  "AIBestReserveSurvivesThreat": {
+   "summary": "B4: the chosen reserve must survive the believed threat.",
+   "positive": {
+    "requirement": "a reserve that survives is switched in",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_surviving_switch_in_happens_once_and_holds"
+    ]
+   },
+   "negative": {
+    "requirement": "a reserve that would be KO'd is refused",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_no_emergency_switch_into_a_reserve_that_would_be_koed",
+     "test_ai_full_flow.AIFullFlowTest.test_switch_in_that_would_be_koed_is_refused_every_turn"
+    ]
+   }
+  },
+  "AIEnemyHasReliableFirstKO": {
+   "summary": "Winning-action veto: the selected move reliably KOs (switch veto and B6 item veto).",
+   "positive": {
+    "requirement": "a reliable selected KO vetoes the switch and the item",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_reliable_first_ko_vetoes_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_slower_selected_ko_still_vetoes_emergency_switch",
+     "test_ai_full_flow.AIFullFlowTest.test_item_is_vetoed_when_the_selected_move_wins"
+    ]
+   },
+   "negative": {
+    "requirement": "an unselected or unreliable finisher does not",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_unselected_finisher_does_not_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_unreliable_ko_does_not_veto_emergency_switch",
+     "test_ai_full_flow.AIFullFlowTest.test_item_is_used_when_no_win_is_on_the_board"
+    ]
+   },
+   "boundary": {
+    "requirement": "fixed damage and Swift into invulnerability",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_zero_power_fixed_damage_can_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_swift_still_vetoes_against_an_invulnerable_target"
+    ]
+   }
+  },
+  "AIEstimateEnemyDamage": {
+   "summary": "One-decision enemy estimate cache (FOLLOWUPS #48).",
+   "positive": {
+    "requirement": "cached estimates equal real execution",
+    "tests": [
+     "test_ai_damage_differential.AIDamageDifferentialTest.test_enemy_damaging_moves",
+     "test_ai_damage_differential.AIDamageDifferentialTest.test_enemy_fixed_and_multihit_moves",
+     "test_ai_damage_differential.AIDamageDifferentialTest.test_enemy_moves_into_player_screens"
+    ]
+   },
+   "negative": {
+    "requirement": "kept only when exact: enemy-first keep",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_enemy_first_trainer_ai_reuses_the_ko_answer"
+    ]
+   }
+  },
+  "AIGetPlayerMoveN": {
+   "summary": "Believed player moveset: revealed moves plus a visible-type guess, at every tier.",
+   "positive": {
+    "requirement": "revealed moves and type guesses are returned",
+    "tests": [
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_fair_play_tier_reads_only_revealed_moves",
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_dual_type_guesses_one_move_per_visible_type",
+     "test_ai_switching.AIShouldSwitchTest.test_unrevealed_type_guess_is_a_threat"
+    ]
+   },
+   "negative": {
+    "requirement": "unrevealed moves are hidden; reveals do not follow a switch",
+    "tests": [
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_empty_slot_gets_no_guess",
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_revealed_moves_do_not_follow_a_player_switch",
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_t0_is_also_fair_play",
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_top_tier_is_fair_play_too"
+    ]
+   },
+   "boundary": {
+    "requirement": "move reorder keeps the revealed bits",
+    "tests": [
+     "test_ai_fairplay.AIGetPlayerMoveNTest.test_move_reorder_keeps_the_revealed_move_known"
+    ]
+   }
+  },
+  "AIHealWouldStillDie": {
+   "summary": "Heal-move futility: would the player still KO after the heal resolves.",
+   "positive": {
+    "requirement": "post-heal HP still dies: futile",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "post-heal HP survives: worthwhile",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "Rest to full vs half-heal cap",
+    "tests": []
+   }
+  },
+  "AIItemHealWouldStillDie": {
+   "summary": "Heal-item futility (Checkpoint D).",
+   "positive": {
+    "requirement": "still dies: skipped",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_potion_is_skipped_when_heal_still_dies"
+    ]
+   },
+   "negative": {
+    "requirement": "survives: used",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_potion_proceeds_when_it_changes_survival"
+    ]
+   },
+   "boundary": {
+    "requirement": "T0/T1 bypass",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t1_preserves_vanilla_item_behavior"
+    ]
+   }
+  },
+  "AILayerDamage": {
+   "summary": "AI_DAMAGE: rank damaging moves by simulated delivery; AI_KILL for reliable kills (T2+).",
+   "positive": {
+    "requirement": "a reliable kill is ranked as a kill",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_minimum_roll_kill_is_reliable",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_multihit_kill_within_two_minimum_hits_is_reliable"
+    ]
+   },
+   "negative": {
+    "requirement": "a kill that needs luck is not treated as reliable",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_kill_needing_a_high_roll_is_not_reliable",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_multihit_kill_needing_three_hits_is_not_reliable",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_crit_expectation_cannot_invent_an_ordinary_hit_ko"
+    ]
+   },
+   "boundary": {
+    "requirement": "delivery caps and kill-FIRST turn order (Quick Attack, mirrors, unrevealed)",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_damage_layer_caps_high_crit_ranking_at_remaining_owner_hp",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_substitute_breaker_outranks_a_hit_the_shield_absorbs",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_crit_weighting_cannot_inflate_capped_shield_progress",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_ordinary_kill_is_not_first_against_a_known_quick_attack",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_quick_attack_is_first_when_the_player_has_none",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_mirror_quick_attack_falls_back_to_speed",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_slower_quick_attack_loses_priority_to_a_known_mirror",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_an_unrevealed_quick_attack_does_not_count"
+    ]
+   }
+  },
+  "AILayerPlan": {
+   "summary": "AI_PLAN: one T3 strategy plan per turn issues an encourage-only directive.",
+   "positive": {
+    "requirement": "a qualifying plan steers the choice",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_para_sweep_paralyses_then_attacks"
+    ]
+   },
+   "negative": {
+    "requirement": "a plan cannot out-argue a kill, and a disabled move enables no plan",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_disabled_move_enables_no_plan"
+    ]
+   }
+  },
+  "AILayerRedundant": {
+   "summary": "AI_REDUNDANT: eliminates moves whose effect cannot work (all tiers).",
+   "positive": {
+    "requirement": "a move that cannot work is penalised out of contention",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_after_the_penalty_is_already_restored_stays_redundant",
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_respects_status_redundancy_immunity_and_disabled_moves"
+    ]
+   },
+   "negative": {
+    "requirement": "a move that can work is left alone",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_paralysed_speed_is_not_redundant"
+    ]
+   },
+   "boundary": {
+    "requirement": "per-handler thresholds (see each AIRedundant_* entry)",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_noop_and_all_six_non_neutral_stage_contracts"
+    ]
+   }
+  },
+  "AILayerRisky": {
+   "summary": "AI_RISKY: when losing (player KO threat, no guaranteed win) nudge high-variance moves (T3).",
+   "positive": {
+    "requirement": "losing: a powerful-but-inaccurate or high-crit move is nudged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "a guaranteed win of our own keeps the layer silent",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "graded ladder: OHKO vs ordinary unreliable move (F15)",
+    "tests": []
+   }
+  },
+  "AILayerSmart": {
+   "summary": "AI_SMART: per-effect context scoring through AISmartEffectTable (T2+).",
+   "positive": {
+    "requirement": "an effect handler's encouragement reaches the score",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_thunder_wave_that_flips_turn_order_is_strongly_preferred"
+    ]
+   },
+   "negative": {
+    "requirement": "an effect handler's discouragement reaches the score",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_low_hp_explosion_into_a_substitute_is_heavily_discouraged"
+    ]
+   }
+  },
+  "AILayerThreat": {
+   "summary": "AI_THREAT: under a player KO threat, favour priority kills and acting-first disables, discourage investments and futile heals (T3).",
+   "positive": {
+    "requirement": "under a KO threat, an investment move is discouraged and a priority kill encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "with no KO threat the layer is silent",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "acting first vs second decides the disabling-status bonus",
+    "tests": []
+   }
+  },
+  "AIMoveChoiceModification1": {
+   "summary": "AI_BASIC (vanilla): discourage pure status moves against an already-statused target.",
+   "positive": {
+    "requirement": "a status move into a statused target is discouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "a status move into a healthy target is not",
+    "tests": []
+   }
+  },
+  "AIMoveChoiceModification2": {
+   "summary": "AI_SETUP (vanilla, gated F9): encourage stat-setup moves on the first turn out.",
+   "positive": {
+    "requirement": "setup is encouraged on the send-out turn",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_preserves_stronger_setup_choice"
+    ]
+   },
+   "negative": {
+    "requirement": "setup is not encouraged after the first turn",
+    "tests": []
+   }
+  },
+  "AIMoveChoiceModification3": {
+   "summary": "AI_TYPES (vanilla): encourage super-effective moves, discourage resisted ones.",
+   "positive": {
+    "requirement": "a super-effective move is encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "a resisted move is discouraged only while a neutral-or-better damaging move exists",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "the last damaging option is not discouraged even if resisted",
+    "tests": []
+   }
+  },
+  "AIPlayerWouldKO": {
+   "summary": "One-decision KO answer over the believed player moveset.",
+   "positive": {
+    "requirement": "a believed lethal move answers YES",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_emergency_player_would_ko_forces_switch",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_player_psywave_threat_uses_its_maximum_roll"
+    ]
+   },
+   "negative": {
+    "requirement": "no lethal move answers NO",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_baseline_healthy_no_threat_stays"
+    ]
+   },
+   "boundary": {
+    "requirement": "the cache: hit skips the scan, cleared per decision",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_ko_cache_hit_skips_the_scan_and_empty_recomputes",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_ko_cache_is_cleared_when_move_selection_starts"
+    ]
+   }
+  },
+  "AIRedundant_AlreadyStatused": {
+   "summary": "AI_REDUNDANT handler: pure status (Sleep) into an already-statused target.",
+   "positive": {
+    "requirement": "statused target: eliminated",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_respects_status_redundancy_immunity_and_disabled_moves"
+    ]
+   },
+   "negative": {
+    "requirement": "healthy target: legal",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_psychic_full_dispatch_selects_hypnosis_and_records_profile_timing"
+    ]
+   }
+  },
+  "AIRedundant_BurnFreezeParaSide": {
+   "summary": "AI_REDUNDANT handler: damaging move with a burn/freeze/para rider: only a Substitute blocks it.",
+   "positive": {
+    "requirement": "Substitute: heavy discourage",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "rider-only block: no penalty",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_does_not_resurrect_immune_or_redundant_damage"
+    ]
+   }
+  },
+  "AIRedundant_ConfusionEffect": {
+   "summary": "AI_REDUNDANT handler: Confuse Ray into a confused or Substitute target.",
+   "positive": {
+    "requirement": "already confused: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not confused: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_Disable": {
+   "summary": "AI_REDUNDANT handler: Disable when the player already has a move disabled.",
+   "positive": {
+    "requirement": "already disabled: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "nothing disabled: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_DreamEater": {
+   "summary": "AI_REDUNDANT handler: Dream Eater into an awake or Substitute target.",
+   "positive": {
+    "requirement": "awake target: eliminated",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_does_not_resurrect_immune_or_redundant_damage"
+    ]
+   },
+   "negative": {
+    "requirement": "sleeping target: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_FocusEnergy": {
+   "summary": "AI_REDUNDANT handler: Focus Energy already active.",
+   "positive": {
+    "requirement": "already active: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not active: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_Haze": {
+   "summary": "AI_REDUNDANT handler: Haze with nothing to clear (all stages neutral, no clearable state).",
+   "positive": {
+    "requirement": "nothing to clear: eliminated",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_noop_and_all_six_non_neutral_stage_contracts",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_after_the_penalty_is_already_restored_stays_redundant"
+    ]
+   },
+   "negative": {
+    "requirement": "something to clear: legal",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_recognizes_only_states_the_real_effect_clears",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_paralysed_speed_is_not_redundant"
+    ]
+   }
+  },
+  "AIRedundant_Heal": {
+   "summary": "AI_REDUNDANT handler: Recover/Softboiled at max HP only.",
+   "positive": {
+    "requirement": "max HP: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "below max: legal",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "one HP below max",
+    "tests": []
+   }
+  },
+  "AIRedundant_LeechSeed": {
+   "summary": "AI_REDUNDANT handler: Leech Seed into a Grass, seeded or Substitute target.",
+   "positive": {
+    "requirement": "Grass or seeded: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "legal target: not penalised",
+    "tests": []
+   }
+  },
+  "AIRedundant_LightScreen": {
+   "summary": "AI_REDUNDANT handler: Light Screen already up on our side.",
+   "positive": {
+    "requirement": "already up: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not up: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_Mist": {
+   "summary": "AI_REDUNDANT handler: Mist already up on our side.",
+   "positive": {
+    "requirement": "already up: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not up: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_OHKO": {
+   "summary": "AI_REDUNDANT handler: OHKO moves unless strictly faster.",
+   "positive": {
+    "requirement": "slower or tied: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "strictly faster: legal",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "equal Speed",
+    "tests": []
+   }
+  },
+  "AIRedundant_Paralyze": {
+   "summary": "AI_REDUNDANT handler: Thunder Wave: statused, Substitute, or Ground vs Electric only.",
+   "positive": {
+    "requirement": "Ground target of an Electric paralysis: eliminated",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_paralysis_ground_immunity_is_electric_only"
+    ]
+   },
+   "negative": {
+    "requirement": "non-Electric paralysis into Ground: legal",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_paralysis_ground_immunity_is_electric_only"
+    ]
+   }
+  },
+  "AIRedundant_Poison": {
+   "summary": "AI_REDUNDANT handler: poison status: statused, Poison-type or Substitute target.",
+   "positive": {
+    "requirement": "blocked target: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "legal target: not penalised",
+    "tests": []
+   }
+  },
+  "AIRedundant_PoisonSide": {
+   "summary": "AI_REDUNDANT handler: damaging move with a poison rider: only a Substitute blocks it.",
+   "positive": {
+    "requirement": "Substitute: heavy discourage",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "rider-only block (statused/Poison-type): no penalty",
+    "tests": []
+   }
+  },
+  "AIRedundant_Reflect": {
+   "summary": "AI_REDUNDANT handler: Reflect already up on our side.",
+   "positive": {
+    "requirement": "already up: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not up: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_StatDown": {
+   "summary": "AI_REDUNDANT handler: stat-down: Substitute, or the stat already at -6 (F17).",
+   "positive": {
+    "requirement": "stat at floor: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "above floor: legal",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "exactly -6",
+    "tests": []
+   }
+  },
+  "AIRedundant_StatUp": {
+   "summary": "AI_REDUNDANT handler: stat-up: our stat already at +6 (cap $D).",
+   "positive": {
+    "requirement": "capped: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "below cap: legal",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_does_not_overturn_stronger_setup_score"
+    ]
+   },
+   "boundary": {
+    "requirement": "exactly +6",
+    "tests": []
+   }
+  },
+  "AIRedundant_SubOnly": {
+   "summary": "AI_REDUNDANT handler: flinch/confusion riders and drain: blocked only by a Substitute.",
+   "positive": {
+    "requirement": "Substitute: discourage",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "no Substitute: legal",
+    "tests": []
+   }
+  },
+  "AIRedundant_Substitute": {
+   "summary": "AI_REDUNDANT handler: Substitute already up, or HP <= max/4 (the engine's fail threshold).",
+   "positive": {
+    "requirement": "HP at or below a quarter: eliminated",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "above a quarter: legal",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "4*HP == MaxHP exactly",
+    "tests": []
+   }
+  },
+  "AIRevalidateDecisionCaches": {
+   "summary": "Player-first cache reuse by state keys (FOLLOWUPS #48).",
+   "positive": {
+    "requirement": "unchanged inputs: reused and equal to a rescan",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_unchanged_board_reuses_the_ko_answer",
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_hit_rederives_against_the_lower_hp",
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_attack_drop_keeps_the_ko_answer"
+    ]
+   },
+   "negative": {
+    "requirement": "changed inputs: rescanned",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_new_reveal_forces_a_rescan",
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_defense_drop_forces_a_rescan"
+    ]
+   },
+   "boundary": {
+    "requirement": "HP drop flips NO to YES without a rescan",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_player_first_hit_into_ko_range_flips_the_answer"
+    ]
+   }
+  },
+  "AISacrificeBeatsSwitch": {
+   "summary": "B5: stay and sacrifice when the active mon is low or the switch costs the reserve half its HP.",
+   "positive": {
+    "requirement": "low-value active or costly switch: stay",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_low_value_active_is_sacrificed_for_a_free_entry",
+     "test_ai_switching.AIShouldSwitchTest.test_reserve_that_would_lose_half_is_not_spent_on_a_switch",
+     "test_ai_full_flow.AIFullFlowTest.test_sacrificed_mon_hands_a_free_entry_to_the_reserve"
+    ]
+   },
+   "negative": {
+    "requirement": "a cheap switch still happens",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_reserve_that_keeps_half_is_switched_in"
+    ]
+   },
+   "boundary": {
+    "requirement": "exactly half",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_reserve_that_would_lose_half_is_not_spent_on_a_switch"
+    ]
+   }
+  },
+  "AISelectSendOut": {
+   "summary": "Send-out ranking: resist the believed threat types; HP/status penalties.",
+   "positive": {
+    "requirement": "the best matchup is sent",
+    "tests": [
+     "test_ai_switching.AISelectSendOutTest.test_enemy_send_out_full_flow_uses_effectiveness_ranking"
+    ]
+   },
+   "negative": {
+    "requirement": "the active mon and fainted counters are excluded; state restored",
+    "tests": [
+     "test_ai_switching.AISelectSendOutTest.test_excludes_active_mon_and_restores_borrowed_state",
+     "test_ai_switching.AISelectSendOutTest.test_skips_fainted_best_counter"
+    ]
+   },
+   "boundary": {
+    "requirement": "ties and statused sets",
+    "tests": [
+     "test_ai_switching.AISelectSendOutTest.test_equal_matchups_choose_the_earliest_living_slot",
+     "test_ai_switching.AISelectSendOutTest.test_ready_reserve_outranks_frozen_equal_matchup",
+     "test_ai_switching.AISelectSendOutTest.test_ready_reserve_outranks_sleeping_equal_matchup",
+     "test_ai_switching.AISelectSendOutTest.test_statused_reserve_remains_best_of_bad_set_fallback"
+    ]
+   }
+  },
+  "AIShouldSwitch": {
+   "summary": "Switch decision: KO threat, frozen/long sleep, trapped and slower; grace period; winning-action veto; T0/T1 vanilla.",
+   "positive": {
+    "requirement": "each trigger switches",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_emergency_player_would_ko_forces_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_frozen_forces_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_long_sleep_forces_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_trapped_and_slower_forces_switch",
+     "test_ai_switch_dispatch.AISwitchDispatchTest.test_every_class_smart_switches_at_t2_plus"
+    ]
+   },
+   "negative": {
+    "requirement": "no trigger, grace period, or a reliable winning move keeps us in",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_baseline_healthy_no_threat_stays",
+     "test_ai_switching.AIShouldSwitchTest.test_grace_period_suppresses_reevaluation_after_a_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_reliable_first_ko_vetoes_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_short_sleep_does_not_force_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_trapped_but_faster_does_not_force_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_t0_and_t1_bypass_smart_switching_entirely",
+     "test_ai_switch_dispatch.AISwitchDispatchTest.test_lone_ace_does_not_try_to_switch"
+    ]
+   },
+   "boundary": {
+    "requirement": "veto edge cases: unreliable, disabled, paralysed, charging, trapped, invulnerable",
+    "tests": [
+     "test_ai_switching.AIShouldSwitchTest.test_unreliable_ko_does_not_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_disabled_ko_does_not_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_paralyzed_finisher_does_not_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_charge_turn_damage_does_not_veto_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_newly_landed_trap_voids_the_winning_action_veto",
+     "test_ai_switching.AIShouldSwitchTest.test_invulnerable_target_voids_the_veto_except_for_swift",
+     "test_ai_switching.AIShouldSwitchTest.test_grace_period_outranks_emergency_triggers"
+    ]
+   }
+  },
+  "AISmart_BurnFreezeParaSide": {
+   "summary": "AI_SMART handler: status riders: +1 when the rider can land; burn +1 vs a physical threat; paralysis +1 when it flips turn order.",
+   "positive": {
+    "requirement": "burn rider vs a dominant physical attacker gains a point",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_burn_rider_gains_a_point_against_a_physical_attacker",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_burn_rider_counts_a_dominant_physical_attack_in_a_mixed_set",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_paralysis_rider_that_flips_turn_order_gains_a_point"
+    ]
+   },
+   "negative": {
+    "requirement": "burn rider vs a dominant special attacker gains nothing",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_burn_rider_follows_the_dominant_attack_not_the_stat_split"
+    ]
+   },
+   "boundary": {
+    "requirement": "rider blocked by type or existing status",
+    "tests": []
+   }
+  },
+  "AISmart_Charge": {
+   "summary": "AI_SMART handler: exposed two-turn moves give away a turn and a hit; Dig is invulnerable.",
+   "positive": {
+    "requirement": "Dig (invulnerable charge) is penalised less",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "Solar Beam-style exposed charge is penalised",
+    "tests": []
+   }
+  },
+  "AISmart_Confusion": {
+   "summary": "AI_SMART handler: Confuse Ray loses value as the target gets low; PARAFUSION bonus.",
+   "positive": {
+    "requirement": "paralysed target: confusion encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "low-HP target: discouraged",
+    "tests": []
+   }
+  },
+  "AISmart_ConfusionSide": {
+   "summary": "AI_SMART handler: confusion riders: bonus unless already confused.",
+   "positive": {
+    "requirement": "not confused: bonus",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "already confused: none",
+    "tests": []
+   }
+  },
+  "AISmart_DrainHP": {
+   "summary": "AI_SMART handler: drain moves are worth more when we are not at full HP.",
+   "positive": {
+    "requirement": "damaged: encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "full HP: no bonus",
+    "tests": []
+   }
+  },
+  "AISmart_DreamEater": {
+   "summary": "AI_SMART handler: Dream Eater into a sleeping target is encouraged.",
+   "positive": {
+    "requirement": "sleeping target: encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "awake target: left to AI_REDUNDANT",
+    "tests": []
+   }
+  },
+  "AISmart_Evasion": {
+   "summary": "AI_SMART handler: Double Team/Minimize scored by whether the boost is worth the turn (F14).",
+   "positive": {
+    "requirement": "worthwhile: kept",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not worth the turn: discouraged",
+    "tests": []
+   }
+  },
+  "AISmart_Explode": {
+   "summary": "AI_SMART handler: Explosion is a trade: bad at high HP, acceptable when nearly dead; into a Substitute it is always bad.",
+   "positive": {
+    "requirement": "low HP (no Substitute): the trade is acceptable",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "into a Substitute, at any HP, it is discouraged",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_low_hp_explosion_into_a_substitute_is_heavily_discouraged",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_explosion_into_a_substitute_whatever_our_hp"
+    ]
+   },
+   "boundary": {
+    "requirement": "HP bands",
+    "tests": []
+   }
+  },
+  "AISmart_FlinchSide": {
+   "summary": "AI_SMART handler: flinch riders matter only when we act first (PARA-FLINCH F20).",
+   "positive": {
+    "requirement": "acting first: bonus",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "acting second: none",
+    "tests": []
+   }
+  },
+  "AISmart_Haze": {
+   "summary": "AI_SMART handler: Haze scored as a trade: what it takes from each side (review F7).",
+   "positive": {
+    "requirement": "net gain for us: encouraged",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_smart_haze_scores_the_whole_trade",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_counts_disable_on_both_sides"
+    ]
+   },
+   "negative": {
+    "requirement": "net loss for us: discouraged",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_smart_haze_distinguishes_neutral_from_beneficial_stage_reset"
+    ]
+   },
+   "boundary": {
+    "requirement": "our burn/paralysis penalty restoration counts only while in effect",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant"
+    ]
+   }
+  },
+  "AISmart_Heal": {
+   "summary": "AI_SMART handler: Recover/Softboiled is good when low, wasteful when healthy.",
+   "positive": {
+    "requirement": "low HP: heal encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "healthy: discouraged",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "HP bands",
+    "tests": []
+   }
+  },
+  "AISmart_HyperBeam": {
+   "summary": "AI_SMART handler: Hyper Beam's recharge is worth it healthy, risky when low.",
+   "positive": {
+    "requirement": "healthy: allowed/encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "low HP: discouraged",
+    "tests": []
+   }
+  },
+  "AISmart_InvulnerableCharge": {
+   "summary": "AI_SMART handler: Fly/Dig: smaller penalty, boosted back when stalling.",
+   "positive": {
+    "requirement": "player stalled: boosted back",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "ordinary turn: small penalty",
+    "tests": []
+   }
+  },
+  "AISmart_OHKO": {
+   "summary": "AI_SMART handler: OHKO needs our level above the target's.",
+   "positive": {
+    "requirement": "higher level: allowed",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "equal or lower level: discouraged",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "equal levels",
+    "tests": []
+   }
+  },
+  "AISmart_Paralyze": {
+   "summary": "AI_SMART handler: Thunder Wave: strongly preferred when it flips turn order; wasted on a nearly dead target; PARAFUSION with confusion.",
+   "positive": {
+    "requirement": "paralysis that flips turn order is strongly preferred",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_thunder_wave_that_flips_turn_order_is_strongly_preferred"
+    ]
+   },
+   "negative": {
+    "requirement": "a nearly dead target is not worth paralysing",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "already faster: no flip bonus",
+    "tests": []
+   }
+  },
+  "AISmart_Poison": {
+   "summary": "AI_SMART handler: Toxic worth more against a long-lived target than a nearly dead one.",
+   "positive": {
+    "requirement": "healthy target: Toxic encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "nearly dead target: little value",
+    "tests": []
+   }
+  },
+  "AISmart_PoisonSide": {
+   "summary": "AI_SMART handler: poison riders: bonus when the rider can land.",
+   "positive": {
+    "requirement": "rider can land: bonus",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "target statused or Poison-type: none",
+    "tests": []
+   }
+  },
+  "AISmart_RecoilEffect": {
+   "summary": "AI_SMART handler: recoil moves: the recoil must not kill us for less than it gains.",
+   "positive": {
+    "requirement": "recoil of at least 1 kills a 1 HP user and is penalised",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_recoil_of_at_least_one_kills_a_one_hp_user"
+    ]
+   },
+   "negative": {
+    "requirement": "breaking a Substitute is not an owner KO trade",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_recoil_trade_does_not_treat_substitute_break_as_owner_ko",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_multihit_recoil_into_substitute_is_not_an_owner_ko"
+    ]
+   }
+  },
+  "AISmart_Screen": {
+   "summary": "AI_SMART handler: Reflect/Light Screen is a turn-1 investment; discouraged once damaged.",
+   "positive": {
+    "requirement": "healthy: allowed",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "damaged: discouraged",
+    "tests": []
+   }
+  },
+  "AISmart_Sleep": {
+   "summary": "AI_SMART handler: sleep is worth more when we also know Dream Eater.",
+   "positive": {
+    "requirement": "sleep + Dream Eater in the moveset is encouraged more",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "sleep without Dream Eater gets no extra",
+    "tests": []
+   }
+  },
+  "AISmart_SpeedDown1": {
+   "summary": "AI_SMART handler: String Shot-style: AI_STRONG when it flips turn order (B2).",
+   "positive": {
+    "requirement": "flips turn order: strongly encouraged",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_string_shot_scored_by_turn_order"
+    ]
+   },
+   "negative": {
+    "requirement": "already first: mild discourage",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_string_shot_scored_by_turn_order"
+    ]
+   },
+   "boundary": {
+    "requirement": "prediction includes the earned Speed boost",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_speed_drop_prediction_includes_the_earned_speed_boost"
+    ]
+   }
+  },
+  "AISmart_SpeedDown2": {
+   "summary": "AI_SMART handler: two-stage Speed drop: same contract as SpeedDown1 at -2.",
+   "positive": {
+    "requirement": "flips turn order: strongly encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "already first: mild discourage",
+    "tests": []
+   }
+  },
+  "AISmart_SpeedUp1": {
+   "summary": "AI_SMART handler: one-stage Speed boost: same contract as Agility at +1.",
+   "positive": {
+    "requirement": "flips turn order: strongly encouraged",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "already first: mild discourage",
+    "tests": []
+   }
+  },
+  "AISmart_SpeedUp2": {
+   "summary": "AI_SMART handler: Agility: AI_STRONG when it flips turn order (B2).",
+   "positive": {
+    "requirement": "flips turn order: strongly encouraged",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_agility_scored_by_turn_order"
+    ]
+   },
+   "negative": {
+    "requirement": "already first: mild discourage",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_agility_scored_by_turn_order"
+    ]
+   }
+  },
+  "AISmart_StatDownSide": {
+   "summary": "AI_SMART handler: stat-down riders: Substitute-gated; Speed drop +1 when it flips.",
+   "positive": {
+    "requirement": "a Speed-drop rider that flips turn order gains a point",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_speed_drop_rider_that_flips_gains_a_point"
+    ]
+   },
+   "negative": {
+    "requirement": "behind a Substitute: nothing",
+    "tests": []
+   }
+  },
+  "AISmart_Substitute": {
+   "summary": "AI_SMART handler: Substitute below half HP is a bad trade.",
+   "positive": {
+    "requirement": "above half HP: allowed",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "below half HP: discouraged",
+    "tests": []
+   },
+   "boundary": {
+    "requirement": "exactly half",
+    "tests": []
+   }
+  },
+  "AISmart_SuperFang": {
+   "summary": "AI_SMART handler: Super Fang is left to AI_DAMAGE's real estimate (no nudge).",
+   "positive": {
+    "requirement": "estimate is half the target's current HP, minimum 1",
+    "tests": [
+     "test_ai_checkpoint_a.AICheckpointATest.test_super_fang_boundary_and_crit_exclusion_both_directions"
+    ]
+   },
+   "negative": {
+    "requirement": "no extra encouragement at low target HP",
+    "tests": []
+   }
+  },
+  "AISmart_Trapping": {
+   "summary": "AI_SMART handler: re-using a trapping move on a trapped target wastes the turn.",
+   "positive": {
+    "requirement": "untrapped target: allowed",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "already trapped: discouraged",
+    "tests": []
+   }
+  },
+  "AISoftPersonalityControl": {
+   "summary": "Soft personality (Codex's track): one-point preference for disruption (PSYCHIC_TR).",
+   "positive": {
+    "requirement": "status moves are nudged",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_control_profile_nudges_only_status_moves"
+    ]
+   },
+   "negative": {
+    "requirement": "never overturns legality, a stronger score or a reliable KO",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_respects_status_redundancy_immunity_and_disabled_moves",
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_does_not_overturn_a_reliable_ko",
+     "test_ai_personality.AIPersonalityTest.test_psychic_control_preserves_stronger_setup_choice"
+    ]
+   }
+  },
+  "AISoftPersonalityOffense": {
+   "summary": "Soft personality (Codex's track): one-point preference for direct damage (BLACKBELT).",
+   "positive": {
+    "requirement": "damaging and fixed-damage moves are nudged",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_live_resolver_nudges_damaging_and_fixed_damage_moves"
+    ]
+   },
+   "negative": {
+    "requirement": "never overturns legality, a stronger score or a reliable KO",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_does_not_resurrect_immune_or_redundant_damage",
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_keeps_disabled_damaging_move_excluded",
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_does_not_overturn_stronger_setup_score",
+     "test_ai_personality.AIPersonalityTest.test_blackbelt_reliable_ko_stays_selected_in_full_dispatch"
+    ]
+   }
+  },
+  "AITrackExecutedEnemyMove": {
+   "summary": "L1: history records the executed move once per decision.",
+   "positive": {
+    "requirement": "an executed move extends the streak",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_execution_hook_records_once_per_decision"
+    ]
+   },
+   "negative": {
+    "requirement": "a flinched turn does not count",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_flinched_turn_does_not_extend_the_streak"
+    ]
+   },
+   "boundary": {
+    "requirement": "the streak saturates below the flag bit",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_streak_saturates_below_the_executed_flag"
+    ]
+   }
+  },
+  "AITrackLastMove": {
+   "summary": "Decision entry: fresh-mon history reset; clears the executed flag.",
+   "positive": {
+    "requirement": "a new mon starts with fresh history",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_fresh_mon_does_not_inherit_the_previous_mons_move_history",
+     "test_ai_switching.AISelectSendOutTest.test_send_out_marks_the_move_history_fresh"
+    ]
+   },
+   "negative": {
+    "requirement": "the same mon keeps its streak",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_flinched_turn_does_not_extend_the_streak"
+    ]
+   }
+  },
+  "AITrackSeenPlayerMove": {
+   "summary": "Reveal tracking at the player's real moveset slot.",
+   "positive": {
+    "requirement": "the used move is recorded at its slot",
+    "tests": [
+     "test_ai_fairplay.AITrackSeenPlayerMoveTest.test_records_the_move_at_its_real_moveset_slot"
+    ]
+   },
+   "negative": {
+    "requirement": "a zero selected move is never recorded",
+    "tests": [
+     "test_ai_fairplay.AITrackSeenPlayerMoveTest.test_zero_selected_move_is_never_recorded"
+    ]
+   }
+  },
+  "AIUseFullHeal": {
+   "summary": "Trainer item routine: Full Heal for a status.",
+   "positive": {
+    "requirement": "used on a statused ace with no win on the board",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_item_is_used_when_no_win_is_on_the_board"
+    ]
+   },
+   "negative": {
+    "requirement": "vetoed when the selected move reliably KOs (B6)",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_item_is_vetoed_when_the_selected_move_wins"
+    ]
+   }
+  },
+  "AIUseFullRestore": {
+   "summary": "Trainer item routine: Full Restore: checks full post-heal HP; the status-cure line survives.",
+   "positive": {
+    "requirement": "full post-heal HP is what is checked",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_full_restore_checks_full_post_heal_hp"
+    ]
+   },
+   "negative": {
+    "requirement": "status cure still used when the heal alone is futile",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_full_restore_preserves_status_cure_line"
+    ]
+   }
+  },
+  "AIUseGuardSpec": {
+   "summary": "Trainer item routine: Guard Spec.",
+   "positive": {
+    "requirement": "used when the class routine rolls it",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "not used twice",
+    "tests": []
+   }
+  },
+  "AIUseHyperPotion": {
+   "summary": "Trainer item routine: Hyper Potion, same payoff gate.",
+   "positive": {
+    "requirement": "used when it changes survival",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "skipped when futile",
+    "tests": []
+   }
+  },
+  "AIUsePotion": {
+   "summary": "Trainer item routine: Potion, gated by heal payoff at T2+.",
+   "positive": {
+    "requirement": "used when the heal changes survival",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_potion_proceeds_when_it_changes_survival"
+    ]
+   },
+   "negative": {
+    "requirement": "skipped when the heal still dies",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t2_potion_is_skipped_when_heal_still_dies"
+    ]
+   },
+   "boundary": {
+    "requirement": "T0/T1 keep vanilla behaviour",
+    "tests": [
+     "test_ai_roster.AIHealItemPayoffTest.test_t1_preserves_vanilla_item_behavior"
+    ]
+   }
+  },
+  "AIUseSuperPotion": {
+   "summary": "Trainer item routine: Super Potion, same payoff gate.",
+   "positive": {
+    "requirement": "used when it changes survival",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "skipped when futile",
+    "tests": []
+   }
+  },
+  "AIUseXAttack": {
+   "summary": "Trainer item routine: X items via AIIncreaseStat: cap and KO gates.",
+   "positive": {
+    "requirement": "normal case proceeds",
+    "tests": [
+     "test_ai_roster.AIIncreaseStatGateTest.test_normal_case_proceeds"
+    ]
+   },
+   "negative": {
+    "requirement": "skipped when capped or when the player would KO",
+    "tests": [
+     "test_ai_roster.AIIncreaseStatGateTest.test_idempotence_skips_a_capped_stat",
+     "test_ai_roster.AIIncreaseStatGateTest.test_ko_gate_skips_setup_when_player_would_kill"
+    ]
+   },
+   "boundary": {
+    "requirement": "T0/T1 bypass the KO gate",
+    "tests": [
+     "test_ai_roster.AIIncreaseStatGateTest.test_t0_bypasses_the_ko_gate",
+     "test_ai_roster.AIIncreaseStatGateTest.test_t1_bypasses_the_ko_gate"
+    ]
+   }
+  },
+  "AIUseXDefend": {
+   "summary": "Trainer item routine: X Defend via AIIncreaseStat (same gates as X Attack).",
+   "positive": {
+    "requirement": "used when the gates pass",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "skipped when capped or KO-threatened",
+    "tests": []
+   }
+  },
+  "AIUseXSpeed": {
+   "summary": "Trainer item routine: X Speed via AIIncreaseStat (same gates as X Attack).",
+   "positive": {
+    "requirement": "used when the gates pass",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "skipped when capped or KO-threatened",
+    "tests": []
+   }
+  },
+  "Plan_AgilityWrap": {
+   "summary": "T3 plan (fitness + run): Agility then trap; attempts keyed to the player's party slot (B3).",
+   "positive": {
+    "requirement": "qualifies with both moves and room to work",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "attempt counter restarts against a new target",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_agility_wrap_attempts_restart_against_a_new_target"
+    ]
+   }
+  },
+  "Plan_Amnesia": {
+   "summary": "T3 plan (fitness + run): Amnesia boost.",
+   "positive": {
+    "requirement": "qualifies with the boost",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "nonessential setup loses to a sleep payoff",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_d_sleep_payoff_outranks_nonessential_setup_when_slower"
+    ]
+   }
+  },
+  "Plan_AmnesiaRest": {
+   "summary": "T3 plan (fitness + run): Amnesia with Rest recovery.",
+   "positive": {
+    "requirement": "qualifies with both classes",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "does not run when the setup is pointless",
+    "tests": []
+   }
+  },
+  "Plan_BombTrade": {
+   "summary": "T3 plan (fitness + run): Explosion trade.",
+   "positive": {
+    "requirement": "qualifies when the trade is favourable",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "does not run into a Substitute",
+    "tests": []
+   }
+  },
+  "Plan_Bruiser": {
+   "summary": "T3 plan (fitness + run): the default attack plan when no other plan qualifies.",
+   "positive": {
+    "requirement": "qualifies when nothing else does",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "never outranks a real plan's directive",
+    "tests": []
+   }
+  },
+  "Plan_ChanseyStall": {
+   "summary": "T3 plan (fitness + run): paralysis plus recovery stall.",
+   "positive": {
+    "requirement": "qualifies against a paralysable target",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "Ground blocks only Electric paralysis",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_paralysis_ground_immunity_is_electric_only"
+    ]
+   }
+  },
+  "Plan_OhkoFish": {
+   "summary": "T3 plan (fitness + run): OHKO fishing.",
+   "positive": {
+    "requirement": "qualifies when faster and higher level",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "does not run when slower",
+    "tests": []
+   }
+  },
+  "Plan_ParaSweep": {
+   "summary": "T3 plan (fitness + run): paralyse, then attack.",
+   "positive": {
+    "requirement": "paralyses a healthy target, then switches to attacking",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_para_sweep_paralyses_then_attacks"
+    ]
+   },
+   "negative": {
+    "requirement": "does not re-paralyse once the target is paralysed",
+    "tests": [
+     "test_ai_full_flow.AIFullFlowTest.test_para_sweep_paralyses_then_attacks"
+    ]
+   }
+  },
+  "Plan_SleepLead": {
+   "summary": "T3 plan (fitness + run): sleep first.",
+   "positive": {
+    "requirement": "sleep payoff outranks nonessential setup when slower",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_d_sleep_payoff_outranks_nonessential_setup_when_slower"
+    ]
+   },
+   "negative": {
+    "requirement": "sleep legality ignores Normal/Ghost damage immunity, respects real status immunity",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_sleep_legality_ignores_normal_ghost_damage_immunity",
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_bridge_status_immunities_block_only_their_real_categories"
+    ]
+   }
+  },
+  "Plan_SubSetup": {
+   "summary": "T3 plan (fitness + run): Substitute then any boost class.",
+   "positive": {
+    "requirement": "qualifies with a Substitute and a boost",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "no boost class: does not run",
+    "tests": []
+   }
+  },
+  "Plan_SubStall": {
+   "summary": "T3 plan (fitness + run): Substitute plus recovery or poison stall.",
+   "positive": {
+    "requirement": "qualifies with a Substitute and a rider",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "does not run below Substitute HP",
+    "tests": []
+   }
+  },
+  "Plan_SwordsDance": {
+   "summary": "T3 plan (fitness + run): Swords Dance then attack.",
+   "positive": {
+    "requirement": "qualifies with the boost and a physical attack",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "stops boosting when sufficient",
+    "tests": []
+   }
+  },
+  "Plan_ToxicStall": {
+   "summary": "T3 plan (fitness + run): Toxic plus recovery stall.",
+   "positive": {
+    "requirement": "qualifies against a poisonable target",
+    "tests": []
+   },
+   "negative": {
+    "requirement": "Bridge immunities block it whoever moved last",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_bridge_immunities_hold_whoever_moved_last"
+    ]
+   }
+  },
+  "Plan_WrapLock": {
+   "summary": "T3 plan (fitness + run): trap lock.",
+   "positive": {
+    "requirement": "a legal trap move qualifies",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_later_legal_trap_is_not_hidden_by_immune_first_match"
+    ]
+   },
+   "negative": {
+    "requirement": "an immune first match does not hide a later legal one",
+    "tests": [
+     "test_ai_checkpoint_b.AICheckpointBTest.test_r7_later_legal_trap_is_not_hidden_by_immune_first_match"
+    ]
+   }
+  }
+ }
+}

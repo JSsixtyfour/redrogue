@@ -85,8 +85,8 @@ AILayerThreat:
 	ld a, [wBuffer + AI_BUF_THREATFAST]
 	and a
 	jr nz, .checkHeal ; already faster - nothing to rescue
-	farcall AIEstimateDamage ; AI_DAMAGE's estimate belongs to whichever move it
-	                         ; scored last, so this must be recomputed here
+	call AIEstimateEnemyDamage ; AI_DAMAGE's estimate belongs to whichever move
+	                           ; it scored last; the cache makes this free
 	call AIAdjustEnemyDamageForPossibleDelivery
 	call AIMoveWouldKO
 	jr nc, .noChange
@@ -173,11 +173,11 @@ AILayerThreat:
 ; sides' HP, stats, stages, Substitute, and the believed player moveset - is
 ; fixed for the length of one decision, yet a T3 move selection asked this up to
 ; three times (THREAT, RISKY, plan checks) at ~20-30k cycles each (measured).
-; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves and of
-; TrainerAI, the only two decision entry points, and never survives into the
-; next one: on a player-first turn the player's move lands in between, which
-; changes our HP and reveals a move. A caller outside those two decisions must
-; clear it first (write AI_KO_CACHE_EMPTY).
+; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves. At
+; TrainerAI it is kept on an enemy-first turn, and on a player-first turn
+; re-derived from wAIPlayerKOMaxDamage when nothing but our HP has changed
+; (AIRevalidateDecisionCaches), else cleared. A caller outside those two
+; decisions must clear it first (AIClearDecisionCaches).
 AIPlayerWouldKO::
 	ld a, [wAIPlayerKOCache]
 	and a
@@ -190,12 +190,20 @@ AIPlayerWouldKO::
 	ld [wBuffer + AI_BUF_EFFHP], a
 	ld a, [wEnemyMonHP + 1]
 	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	call _AIScanPlayerMovesForKO
+	call _AIScanPlayerMovesForKO ; de = largest delivery seen (Super Fang excluded)
 	ld a, AI_KO_CACHE_NO
 	jr nc, .store
+	set AI_KO_MAX_PARTIAL_BIT, d ; stopped at the KO: later slots unscanned
 	ld a, AI_KO_CACHE_YES
 .store
 	ld [wAIPlayerKOCache], a
+	ld b, a
+	set AI_KO_MAX_VALID_BIT, d
+	ld hl, wAIPlayerKOMaxDamage
+	ld [hl], d
+	inc hl
+	ld [hl], e ; for AIRevalidateDecisionCaches (ai_predicates.asm)
+	ld a, b
 	dec a
 	rra ; carry = the answer just computed
 	ret
@@ -310,6 +318,12 @@ AIItemHealWouldStillDie::
 ; runs the UNCACHED scan (wAIPlayerKOCache must keep describing the active mon),
 ; then restores every borrowed byte. Clobbers af, bc, d, hl.
 AIBestReserveSurvivesThreat::
+	xor a
+; a = 0: test against the reserve's HP; a = 1: against HALF of it (B5,
+; AIBestReserveKeepsHalf). Carried on the stack under the five saved words and
+; read back with `ld hl, sp + 11` - keep that offset in step with the pushes.
+_AIBestReserveThreatScan:
+	push af
 	ld hl, wEnemyMonHP
 	ld a, [hli]
 	ld d, a
@@ -374,6 +388,15 @@ AIBestReserveSurvivesThreat::
 	ld hl, wEnemyBattleStatus3
 	res HAS_REFLECT_UP, [hl]
 	res HAS_LIGHT_SCREEN_UP, [hl]
+	ld hl, sp + 11 ; the entry flag's a, above the five saved words
+	ld a, [hl]
+	and a
+	jr z, .fullHP
+	ld hl, wBuffer + AI_BUF_EFFHP
+	srl [hl]
+	inc hl
+	rr [hl] ; the scan's bar is now half the reserve's HP
+.fullHP
 
 	call _AIScanPlayerMovesForKO ; carry = some believed move KOs the reserve
 	ld e, 1
@@ -405,11 +428,56 @@ AIBestReserveSurvivesThreat::
 	ld [wEnemyMonHP], a
 	ld a, l
 	ld [wEnemyMonHP + 1], a
+	pop af ; the entry flag; e survives
+	ret
+
+; e = 1 if the best-ranked reserve would keep MORE than half its current HP
+; through every believed player move, e = 0 if one would take half or more.
+; Same staging and contract as AIBestReserveSurvivesThreat. Clobbers af, bc, d, hl.
+AIBestReserveKeepsHalf:
+	ld a, 1
+	jp _AIBestReserveThreatScan
+
+; B5 team preservation (AI_BACKLOG, 2026-09-30). Farcall target from
+; AIShouldSwitch ($2C), asked only once the KO-threat trigger has found a
+; better reserve that survives (so wBuffer + AI_BUF_BESTPARTYSLOT is it).
+; Carry SET = SACRIFICE: stay in and let the active mon fall, because a
+; replacement sent in after a faint enters without taking a hit, while one
+; switched in now takes the player's attack. Two cases make that the better
+; trade:
+;   - the active mon is below a quarter HP: little is kept by saving it;
+;   - the reserve would lose half or more of its HP to the hit, i.e. the
+;     switch spends most of the mon that is meant to answer the threat.
+; The reserve test uses the scan's POSSIBLE delivery (max roll, max hits), so
+; it leans toward the sacrifice. No register inputs; clobbers af, bc, de, hl.
+AISacrificeBeatsSwitch::
+	ld hl, wEnemyMonHP
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	sla e
+	rl d
+	sla e
+	rl d ; de = HP * 4 (HP <= 999, so no overflow)
+	ld hl, wEnemyMonMaxHP + 1
+	ld a, e
+	sub [hl]
+	dec hl
+	ld a, d
+	sbc [hl] ; carry iff HP * 4 < MaxHP
+	ret c ; below a quarter: sacrifice
+	call AIBestReserveKeepsHalf
+	ld a, e
+	cp 1 ; carry iff e = 0: the hit would take half or more
 	ret
 
 ; Shared scan. Compares every believed player move against whatever HP total
 ; sits in wBuffer + AI_BUF_EFFHP, which is what lets the "would I survive if I
 ; healed" question reuse this wholesale instead of needing a max-damage value.
+; Also returns de = the largest delivered damage it saw, Super Fang excluded
+; (half of OUR current HP, so not HP-independent); with carry set that is only a
+; lower bound, since the scan stops at the first KO. Only AIPlayerWouldKO keeps
+; it. The running maximum lives on the stack across the loop.
 _AIScanPlayerMovesForKO:
 	ld hl, wPlayerMoveNum
 	ld de, wBuffer + AI_BUF_MOVESAVE
@@ -417,6 +485,9 @@ _AIScanPlayerMovesForKO:
 	call CopyData
 	xor a
 	ld [wBuffer + AI_BUF_SCANSLOT], a
+	ld h, a
+	ld l, a
+	push hl ; running maximum
 .nextSlot
 	ld a, [wBuffer + AI_BUF_SCANSLOT]
 	cp NUM_MOVES
@@ -434,6 +505,22 @@ _AIScanPlayerMovesForKO:
 	call AIReadMoveIntoPlayerBlock
 	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
 	call AIAdjustPlayerDamageForPossibleDelivery
+	ld a, [wPlayerMoveEffect]
+	cp SUPER_FANG_EFFECT
+	jr z, .maxDone
+	pop hl
+	ld a, [wAIDamageEstimate + 1]
+	sub l
+	ld a, [wAIDamageEstimate]
+	sbc h ; carry iff this move < the maximum so far
+	jr c, .keepMax
+	ld a, [wAIDamageEstimate]
+	ld h, a
+	ld a, [wAIDamageEstimate + 1]
+	ld l, a
+.keepMax
+	push hl
+.maxDone
 	call AIDamageWouldKOEnemy
 	jr c, .yesKO
 .emptySlot
@@ -442,10 +529,12 @@ _AIScanPlayerMovesForKO:
 	jr .nextSlot
 .yesKO
 	call .restorePlayerMove
+	pop de
 	scf
 	ret
 .noKO
 	call .restorePlayerMove
+	pop de
 	and a ; clear carry
 	ret
 .restorePlayerMove

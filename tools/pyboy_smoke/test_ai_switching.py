@@ -276,11 +276,15 @@ class AIShouldSwitchTest(unittest.TestCase):
         return bool(switch["count"])
 
     def prime_lethal_hp(self) -> None:
-        """Primes the ACTIVE enemy mon into the range AIPlayerWouldKO reports true."""
+        """Primes the ACTIVE enemy mon into the range AIPlayerWouldKO reports true.
+
+        Just ABOVE a quarter HP: below it, B5 (AISacrificeBeatsSwitch) keeps a
+        low-value mon in on purpose, which is not what these fixtures test.
+        """
         assert self.harness is not None
         max_hi, max_lo = self.harness.read_bytes("wEnemyMonMaxHP", 2)
         max_hp = (max_hi << 8) | max_lo
-        value = max(1, max_hp * 1 // 20)
+        value = max(1, max_hp // 4 + 1)
         self.harness.write8("wEnemyMonHP", value >> 8, offset=0)
         self.harness.write8("wEnemyMonHP", value & 0xFF, offset=1)
 
@@ -351,11 +355,16 @@ class AIShouldSwitchTest(unittest.TestCase):
 
     def slower_selected_finisher(self, enemy_status: int = 0, *, move: str = "TACKLE",
                                  player_status1: int = 0) -> tuple[int, int]:
-        """Slower Slowpoke with `move` selected; both sides in finishing range."""
+        """Slower Slowpoke with `move` selected; both sides in finishing range.
+
+        The known threat is Thunderbolt (super effective, so it still KOs a
+        Slowpoke kept above a quarter HP) and the reserve is Geodude (immune),
+        so neither B4's survival gate nor B5's sacrifice rule masks the vetoes.
+        """
         assert self.harness is not None
         self.harness.inject_fight2_spec(
-            [self.mon("ELECTRODE", ["TACKLE"])],
-            [self.mon("SLOWPOKE", [move]), self.mon("RATTATA")],
+            [self.mon("ELECTRODE", ["THUNDERBOLT"])],
+            [self.mon("SLOWPOKE", [move]), self.mon("GEODUDE")],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         self.harness.boot_fight2(seed=1)
@@ -416,6 +425,73 @@ class AIShouldSwitchTest(unittest.TestCase):
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
         self.harness.call_routine("AIShouldSwitch")
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
+
+    # --- AI_BACKLOG B5: sacrifice instead of an expensive emergency switch ------
+    def reserve_hit(self, h) -> int:
+        """Body Slam's one-hit maximum into party slot 1, via the estimator."""
+        saved = {label: h.read_bytes(label, 2)
+                 for label in ("wEnemyMonType1", "wEnemyMonDefense", "wEnemyMonSpecial")}
+        for live, party in (("wEnemyMonType1", "wEnemyMon2Type1"),
+                            ("wEnemyMonDefense", "wEnemyMon2Defense"),
+                            ("wEnemyMonSpecial", "wEnemyMon2Special")):
+            for offset, value in enumerate(h.read_bytes(party, 2)):
+                h.write8(live, value, offset=offset)
+        bank, address = h.symbols.get("Moves")
+        rom = (REPO_ROOT / "pokeblue_debug.gbc").read_bytes()
+        start = bank * 0x4000 + address - 0x4000 + (self.moves["BODY_SLAM"] - 1) * 6
+        for offset, value in enumerate(rom[start:start + 6]):
+            h.write8("wPlayerMoveNum", value, offset=offset)
+        h.call_routine("AIEstimatePlayerDamage")
+        hit = int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
+        for label, values in saved.items():
+            for offset, value in enumerate(values):
+                h.write8(label, value, offset=offset)
+        return hit
+
+    def sacrifice_case(self, reserve: str, reserve_hp=None, *, low_active=False):
+        """(switched, sacrifice-gate calls, hit, reserve HP, reserve max HP)."""
+        info = {}
+
+        def post_boot(h):
+            self.prime_lethal_hp()
+            if low_active:
+                max_hp = int.from_bytes(bytes(h.read_bytes("wEnemyMonMaxHP", 2)), "big")
+                h.write8("wEnemyMonHP", 0)
+                h.write8("wEnemyMonHP", max(1, max_hp // 20), offset=1)
+            info["max"] = int.from_bytes(bytes(h.read_bytes("wEnemyMon2MaxHP", 2)), "big")
+            info["hit"] = self.reserve_hit(h)
+            if reserve_hp is not None:
+                info["hp"] = reserve_hp(info["hit"])
+                h.write8("wEnemyMon2HP", info["hp"] >> 8)
+                h.write8("wEnemyMon2HP", info["hp"] & 255, offset=1)
+            info["gate"] = h.hook_flag("AISacrificeBeatsSwitch")
+
+        switched = self.call_should_switch(
+            self.mon("SNORLAX", ["BODY_SLAM"]), [self.mon("PIKACHU"), self.mon(reserve)],
+            ai_tier=2, reveal=[0], post_boot=post_boot)
+        return (switched, info["gate"]["count"], info["hit"], info.get("hp"), info["max"])
+
+    def test_low_value_active_is_sacrificed_for_a_free_entry(self) -> None:
+        # B5: Pikachu at 1/20 HP faces the KO; Geodude would survive the switch,
+        # but saving a nearly spent mon is worth less than a free entry.
+        switched, gate, *_ = self.sacrifice_case("GEODUDE", low_active=True)
+        self.assertEqual((switched, gate), (False, 1))
+
+    def test_reserve_that_would_lose_half_is_not_spent_on_a_switch(self) -> None:
+        # B5: Wigglytuff survives Body Slam but loses at least half its HP to it,
+        # so the switch spends most of the answer. HP = 2 x hit: the hit takes
+        # exactly half (the boundary), it survives, and it is still at least
+        # half its max (no ranking HP penalty), so the sacrifice gate - not the
+        # ranking or B4 - is what decides. Measured: hit 91, max HP 216.
+        switched, gate, hit, hp, max_hp = self.sacrifice_case(
+            "WIGGLYTUFF", lambda hit: 2 * hit)
+        self.assertGreaterEqual(2 * hp, max_hp, f"hit {hit}, hp {hp}/{max_hp}")
+        self.assertEqual((switched, gate), (False, 1))
+
+    def test_reserve_that_keeps_half_is_switched_in(self) -> None:
+        # Control for the case above: at 2 x hit + 2 HP it keeps more than half.
+        switched, gate, *_ = self.sacrifice_case("WIGGLYTUFF", lambda hit: 2 * hit + 2)
+        self.assertEqual((switched, gate), (True, 1))
 
     def test_baseline_healthy_no_threat_stays(self) -> None:
         # Splash is revealed: with no type guess left, there is no threat.

@@ -10,6 +10,7 @@ from math import ceil
 from statistics import mean
 
 from harness import RedRogueHarness
+import benchmark_policies
 
 
 AI_KILL = 5
@@ -124,10 +125,24 @@ def parse_move_powers(path: Path) -> dict[int, int]:
     return powers
 
 
+_RULES: benchmark_policies.Rules | None = None
+
+
+def policy_rules() -> benchmark_policies.Rules:
+    global _RULES
+    if _RULES is None:
+        _RULES = benchmark_policies.load_rules(Path(__file__).resolve().parents[2])
+    return _RULES
+
+
 def choose_player_slot(
     harness: RedRogueHarness, policy: str, powers: dict[int, int]
 ) -> tuple[int, int]:
     """Return (slot, move) for the player's policy choice."""
+    if policy not in ("first_slot", "best_power"):
+        state = benchmark_policies.read_state(harness)
+        slot = benchmark_policies.choose_slot(policy_rules(), state, policy)
+        return slot, state.player.moves[slot]
     moves = harness.read_bytes("wBattleMonMoves", 4)
     pp = harness.read_bytes("wBattleMonPP", 4)
     legal = [
@@ -150,7 +165,14 @@ def choose_player_move(
 
 def prepare_party_driver(
     harness: RedRogueHarness,
+    voluntary: dict[str, int | None] | None = None,
 ) -> tuple[dict[str, int], list[bool], list[dict[str, object]]]:
+    """voluntary["target"], when set by a switching policy at the battle menu,
+    is the party slot to switch to; the next non-forced party menu takes it and
+    counts it in voluntary["count"]. Counting here rather than at the request
+    matters: the first battle menu opens inside boot_fight2, before a trial's
+    counters are baselined."""
+    voluntary = {"target": None, "count": 0} if voluntary is None else voluntary
     party_menu_modes: list[bool] = []
     party_menu_trace: list[dict[str, object]] = []
     party_context = {"choose_next": False}
@@ -165,6 +187,14 @@ def prepare_party_driver(
         forced = bool(
             harness.read8("wForcePlayerToChooseMon") or party_context["choose_next"]
         )
+        target = voluntary["target"]
+        if not forced and target is not None:
+            voluntary["target"] = None
+            voluntary["count"] += 1
+            party_menu_modes.append(True)
+            harness.write8("wPartyAndBillsPCSavedMenuItem", target)
+            party_menu_trace.append({"forced": False, "voluntary": target})
+            return
         party_menu_modes.append(forced)
         if not forced:
             return
@@ -403,10 +433,21 @@ def run_tier(
         ]
         victories = harness.hook_flag("TrainerBattleVictory")
         defeats = harness.hook_flag("HandlePlayerBlackOut")
-        harness.hook_flag(
-            "DisplayBattleMenu",
-            action=lambda: harness.write8("wBattleAndStartSavedMenuItem", 0),
-        )
+        # FIGHT, or PKMN (saved item 2) when a switching policy wants out.
+        voluntary: dict[str, int | None] = {"target": None, "count": 0}
+        switch_memo = {"last_turn": False}
+
+        def battle_menu() -> None:
+            target = None
+            if player_policy in benchmark_policies.SWITCHING_POLICIES:
+                target = benchmark_policies.choose_switch(
+                    policy_rules(), benchmark_policies.read_state(harness),
+                    player_policy, switch_memo["last_turn"])
+            switch_memo["last_turn"] = target is not None
+            voluntary["target"] = target
+            harness.write8("wBattleAndStartSavedMenuItem", 0 if target is None else 2)
+
+        harness.hook_flag("DisplayBattleMenu", action=battle_menu)
         # Open the move menu with the cursor ON the policy's chosen slot. Since
         # SelectMenuItem mirrors the cursor's move into
         # wTestBattlePlayerSelectedMove, pinning the cursor to slot 0 made every
@@ -420,7 +461,7 @@ def run_tier(
                 choose_player_slot(harness, player_policy, move_powers)[0],
             ),
         )
-        party_inputs, party_modes, party_trace = prepare_party_driver(harness)
+        party_inputs, party_modes, party_trace = prepare_party_driver(harness, voluntary)
         harness.boot_fight2(seed=seed)
         identity = matchup_identity(harness)
         fingerprint = matchup_fingerprint(identity)
@@ -445,6 +486,7 @@ def run_tier(
             score_start, turn_start = len(scores), len(turns)
             trainer_ai_start = len(trainer_ai_calls)
             switch_start = switches["count"]
+            player_switch_start = voluntary["count"]
             item_start = sum(item["count"] for item in items)
             victory_start, defeat_start = victories["count"], defeats["count"]
             handled_party_inputs = party_inputs["count"]
@@ -503,6 +545,7 @@ def run_tier(
                     **trial_ai_timing,
                     "cycles": cycle_total,
                     "switches": switches["count"] - switch_start,
+                    "player_switches": voluntary["count"] - player_switch_start,
                     "items": sum(item["count"] for item in items) - item_start,
                     "ai_decisions": classified["decisions"],
                     "damage_layer_ko_candidates": classified["damage_layer_ko_candidates"],
@@ -707,7 +750,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--player-policy",
-        choices=("best_power", "first_slot"),
+        choices=benchmark_policies.POLICIES,
         default="best_power",
     )
     parser.add_argument(
