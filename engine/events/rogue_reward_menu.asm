@@ -343,8 +343,10 @@ NoThanksText:
 	db "NO THANKS@"
 
 GetRewardMonLevel::
-	; Reward Room and Oak's Lab (starter selection) always use a flat level 5
-	; regardless of progress. Everywhere else, the level is tailored to
+	; Reward Room and Oak's Lab's starter selection use a flat level 5 regardless
+	; of progress. Oak's Lab bridge gifts instead use the lobby's battle-count
+	; path because the room was entered as an interlude over the next stage.
+	; Everywhere else, the level is tailored to
 	; whichever tier is relevant (the middle of that tier's standard,
 	; non-final-bonus trainer level band, floored at 5), read directly from
 	; trainer_difficulty_settings/_gym so it can never drift out of sync with
@@ -361,7 +363,12 @@ GetRewardMonLevel::
 	cp REWARD_ROOM
 	jr z, .flatFive
 	cp OAKS_LAB
-	jr z, .flatFive
+	jr nz, .checkLobby
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .lobbyCaller
+	jr .flatFive
+.checkLobby
 	cp INDIGO_PLATEAU_LOBBY
 	jr z, .lobbyCaller
 

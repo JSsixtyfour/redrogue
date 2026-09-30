@@ -6652,6 +6652,8 @@ EnemyCanExecuteMove:
 	xor a
 	ld [wMonIsDisobedient], a
 	call DisplayUsedMoveText
+	farcall AITrackExecutedEnemyMove ; AI_BACKLOG L1: move history records what
+	                                 ; executed. No args - see ai_predicates.asm.
 	ld a, [wEnemyMoveEffect]
 	ld hl, ResidualEffects1
 	ld de, $1

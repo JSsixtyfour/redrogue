@@ -168,6 +168,10 @@ DEF AI_SPEED_EARNED_BOOST_BIT EQU 7
 ; Above every real move id and below CANNOT_MOVE ($ff).
 DEF AI_LAST_MOVE_FRESH_MON EQU $fe
 
+; wAISameMoveCount flag bit: this decision's move has executed and been
+; recorded (AITrackExecutedEnemyMove). The streak itself saturates below it.
+DEF AI_MOVE_EXECUTED_BIT EQU 7
+
 ; +4..+9 was reserved for a per-move cache of {effect, power, type, accuracy}.
 ; That cache was CANCELLED in Phase 2b: its entire justification was avoiding
 ; cross-bank ReadMove farcalls, which evaporated once every scoring layer was

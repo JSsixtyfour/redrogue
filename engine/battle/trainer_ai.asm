@@ -21,10 +21,9 @@ AIEnemyTrainerChooseMoves:
 ; the exit call - which is why the paired call sits AFTER each `ld hl`.
 	predef SetCPUSpeed
 
-; Phase 2b: snapshot last turn's move/power for the anti-spam and
-; repeated-move-fatigue heuristics. MUST run before the scoring layers, whose
-; ReadMove calls overwrite the wEnemyMove* block this reads from. See
-; AITrackLastMove in ai_predicates.asm for why this needs no core.asm hook.
+; Phase 2b / L1: open a new decision in the anti-spam and fatigue history
+; (the moves themselves are recorded at execution by AITrackExecutedEnemyMove,
+; so item turns and interrupted moves never count). See ai_predicates.asm.
 	call AITrackLastMove
 	xor a ; AI_KO_CACHE_EMPTY: a new decision starts with nothing cached
 	ld [wAIPlayerKOCache], a

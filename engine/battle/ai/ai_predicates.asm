@@ -381,63 +381,83 @@ AIDamageWouldKOEnemy::
 	jp AIDamageReachesHP
 
 ; --- Repeated-move / anti-spam tracking -----------------------------------
-; Maintains wAILastMovePower, wAILastMoveNum and wAISameMoveCount, which Phase 1
-; allocated but nothing wrote. Called once per AI decision, from the top of
-; AIEnemyTrainerChooseMoves, BEFORE any ReadMove call in the scoring layers.
+; Maintains wAILastMovePower, wAILastMoveNum and wAISameMoveCount for
+; AISmartCrossCutting: wAILastMovePower drives anti-spam (do not follow a
+; 0-power move with another 0-power move), wAISameMoveCount drives
+; repeated-move fatigue (ExtremeYellow's idea: discourage a move only after a
+; long streak, so ordinary sensible repetition is not punished).
 ;
-; That ordering is the whole trick and is why this needs no core.asm edit:
-;   - wEnemyMovePower still holds the power of the move the enemy executed LAST
-;     turn, because ReadMove (which overwrites the wEnemyMove* block) has not
-;     run yet this cycle. This is ShinRed's technique, verbatim.
-;   - wEnemySelectedMove likewise still holds LAST turn's selection, because
-;     SelectEnemyMove only writes it at its `.done` label, after this routine
-;     has already returned (verified: engine/battle/core.asm, `.done` /
-;     `ld [wEnemySelectedMove], a` sits below the AI call site).
+; EXECUTED, NOT SELECTED (AI_BACKLOG L1, 2026-09-30). The history used to be
+; sampled at decision entry from wEnemySelectedMove/wEnemyMovePower. That
+; recorded moves that never ran: an item or switch turn (the move was scored
+; and selected, then TrainerAI acted instead), full paralysis, flinch, a
+; confusion self-hit, and CANNOT_MOVE ($ff) while trapped. On those turns
+; wEnemyMovePower was worse than stale: it held whatever move the scoring
+; layers' ReadMove loaded last, because GetCurrentMove never re-read the
+; selection. Now the history changes only in AITrackExecutedEnemyMove, which
+; EnemyCanExecuteMove calls after DisplayUsedMoveText, when the move really
+; is being used and wEnemyMove* describes it. A turn where nothing executed
+; leaves the history exactly as it was.
 ;
-; Consumed by AI_SMART: wAILastMovePower drives anti-spam (do not follow a
-; 0-power move with another 0-power move), and wAISameMoveCount drives
-; repeated-move fatigue (ExtremeYellow's idea: discourage a move only after it
-; has already been used several times in a row, so ordinary sensible repetition
-; is not punished).
+; ONCE PER DECISION. EnemyCanExecuteMove can run twice in one turn (Metronome
+; and Mirror Move re-enter it for the called move) and on turns with no
+; decision at all (Thrash, Rage, Bide and trapping continuations, a charging
+; move's second turn). Bit AI_MOVE_EXECUTED_BIT of wAISameMoveCount records
+; "already tracked since the last decision": AITrackLastMove clears it at
+; decision entry, the execution hook sets it and ignores later calls. The
+; first call wins, so Metronome is recorded as Metronome (what the AI chose).
+; The streak saturates below that bit, and the bit is always clear while the
+; scoring layers read the count.
 ;
 ; SEND-OUT LIFECYCLE (Codex follow-up L1, 2026-09-29): AISelectSendOut marks
 ; wAILastMoveNum with AI_LAST_MOVE_FRESH_MON. The first decision after that
-; clears all three history bytes instead of recording last turn's selection,
-; which belonged to the mon that just left - so its streak and zero-power turn
-; no longer penalise its replacement (AISmartCrossCutting reads 0 as "no move
-; tracked yet", as its own comment always assumed).
-; Clobbers af, hl.
+; clears all three history bytes, since they belonged to the mon that just
+; left (AISmartCrossCutting reads a 0 move as "no move tracked yet").
+;
+; Decision side. Called from the top of AIEnemyTrainerChooseMoves, before any
+; scoring. Clobbers af, hl.
 ASSERT NUM_ATTACKS < AI_LAST_MOVE_FRESH_MON, "a move id would collide with the fresh-mon sentinel"
 AITrackLastMove::
 	ld a, [wAILastMoveNum]
 	cp AI_LAST_MOVE_FRESH_MON
-	jr nz, .tracking
+	jr nz, .arm
 	xor a
 	ld [wAILastMoveNum], a
 	ld [wAISameMoveCount], a
 	ld [wAILastMovePower], a
 	ret
-.tracking
+.arm
+	ld hl, wAISameMoveCount
+	res AI_MOVE_EXECUTED_BIT, [hl]
+	ret
+
+; Execution side. Farcall target from core.asm EnemyCanExecuteMove (bank $0F),
+; NO register inputs or outputs, the AITrackSeenPlayerMove contract. Reads
+; wEnemySelectedMove and wEnemyMovePower, both live at that point.
+; Clobbers af, hl.
+AITrackExecutedEnemyMove::
+	ld hl, wAISameMoveCount
+	bit AI_MOVE_EXECUTED_BIT, [hl]
+	ret nz ; this decision's move is already recorded
 	ld a, [wEnemyMovePower]
 	ld [wAILastMovePower], a
-
 	ld a, [wEnemySelectedMove]
 	ld hl, wAILastMoveNum
 	cp [hl]
+	ld hl, wAISameMoveCount
 	jr nz, .differentMove
-; Same move as last turn: bump the streak, saturating so it cannot wrap around
-; to zero during a very long stall and silently cancel the fatigue penalty.
-	ld a, [wAISameMoveCount]
-	cp $ff
-	jr z, .done
-	inc a
-	ld [wAISameMoveCount], a
-	ret
+; Same move as last time: bump the streak, saturating below the flag bit so a
+; very long stall cannot wrap it to zero and cancel the fatigue penalty.
+	ld a, [hl]
+	cp (1 << AI_MOVE_EXECUTED_BIT) - 1
+	jr nc, .flag
+	inc [hl]
+	jr .flag
 .differentMove
-	ld [hl], a ; remember the new move
-	xor a
-	ld [wAISameMoveCount], a
-.done
+	ld [wAILastMoveNum], a
+	ld [hl], 0
+.flag
+	set AI_MOVE_EXECUTED_BIT, [hl]
 	ret
 
 ; --- Speed comparison (Phase 3 Step 2) -------------------------------------

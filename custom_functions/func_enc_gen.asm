@@ -266,6 +266,10 @@ GetRandRosterLoop:
 .useRandMon
     call GetRandMon
 .gotMon
+	; Keep the originally rolled species across evolution. Gambler movesets are
+	; keyed by that base species, even when the mon now evolves normally.
+	ld a, [wCurPartySpecies]
+	push af
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
     call Rangerandom
@@ -277,11 +281,6 @@ GetRandRosterLoop:
 	; wCurPartySpecies, while EvolveMonByLevel expects it in d. Preserve every
 	; live roster-loop register: b/d are loop counters, e is the minimum level,
 	; and hl points into the difficulty settings.
-	; Gambler species must remain unchanged so OverrideGamblerMoves can find the
-	; selected species in its fixed themed moveset table below.
-	ld a, [wTrainerClass]
-	cp GAMBLER
-	jr z, .skipEvolution
 	push hl
 	push bc
 	push de
@@ -291,7 +290,6 @@ GetRandRosterLoop:
 	pop de
 	pop bc
 	pop hl
-.skipEvolution
 ; Increment 8c: roll this roster mon's regional form and publish it IMMEDIATELY
 ; before AddPartyMon, which folds it into this mon's own MON_CATCH_RATE bits 5-6.
 ; That is the whole storage problem solved for free - unlike bosses and wild
@@ -334,11 +332,10 @@ IF FORCE_TRAINER_FORM_TEST
 	ld [wSpawnForm], a
 ENDC
 	call AddPartyMon    ; add the pokemon
-    ; Gambler's Paradise: replace the just-added mon's rolled moves with its
-    ; fixed themed moveset (and correct PP).
-    ld a, [wTrainerClass]
-    cp GAMBLER
-    call z, OverrideGamblerMoves
+	; Gambler's Paradise: replace the just-added mon's rolled moves with the
+	; themed moveset keyed by the pre-evolution species (and correct PP).
+	pop af
+	call OverrideGamblerMoves
 .nextMon
 	dec d           ; decrease loop/run through pokemon
     jr nz, .loop    ; pokeball class loop
@@ -384,20 +381,23 @@ GetGamblerMon:
 
 ; ============================================================
 ; OverrideGamblerMoves
-; Overwrites the last-added enemy mon's 4 moves and their PP with the fixed
-; gambler moveset for its species (looked up in GamblerMonMovesets by the
-; species still held in wCurPartySpecies). Runs right after AddPartyMon.
+; If the current trainer is a Gambler, overwrites the last-added enemy mon's
+; 4 moves and their PP with the fixed moveset keyed by the originally rolled
+; species. Runs right after AddPartyMon.
 ; PP must be rewritten because WriteMonMoves set PP for the rolled moves, and
 ; empty slots (mon didn't know 4 moves yet) would otherwise have 0 PP.
+; Input: a = originally rolled species (before normal level evolution).
 ; Preserves hl/bc/de (GetRandRosterLoop state).
 ; ============================================================
 OverrideGamblerMoves:
 	push hl
 	push bc
 	push de
-	; find this species' 5-byte entry
-	ld a, [wCurPartySpecies]
 	ld b, a
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	jr nz, .done
+	; find this species' 5-byte entry
 	ld hl, GamblerMonMovesets
 .findLoop
 	ld a, [hl]
@@ -981,25 +981,8 @@ ScaleTrainer_level:
 	ret
 
 ScaleTrainer_evolution:
-	push bc
-	ld a, [wCurEnemyLevel]
-	ld b, a
-	;proceed to bias the enemy mon level against evolving for the sake of progression balance
-	;B holds the enemy current level at this line
-	push af
-	cp 30
-	jr c, .next
-	srl b
-.next
-	srl b
-	srl b
-	sub b
-	ld [wCurEnemyLevel], a
-	call EvolveMonByLevel
-	pop af
-	ld [wCurEnemyLevel], a
-	pop bc
-	ret
+	; Trainer species evolve at the same displayed levels as player species.
+	jp EvolveMonByLevel
 
 
 	

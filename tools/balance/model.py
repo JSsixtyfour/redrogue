@@ -124,10 +124,8 @@ def evolve_by_level(g: GameData, cfg: Config, species: str, level: int, rng: ran
 
 
 def scale_trainer_evolution(g: GameData, cfg: Config, species: str, level: int, rng: random.Random) -> str:
-    """ScaleTrainer_evolution: evolve against a biased-down level (L - L/4, or
-    L - L/8 from level 30)."""
-    bias = level >> (3 if level >= 30 else 2)
-    return evolve_by_level(g, cfg, species, level - bias, rng)
+    """ScaleTrainer_evolution: use the trainer mon's displayed level directly."""
+    return evolve_by_level(g, cfg, species, level, rng)
 
 
 def rival_starter_evolve(g: GameData, species: str, level: int) -> str:
@@ -819,12 +817,11 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("reward level r1", reward_level(g, 1),
           max(g.knobs["REWARD_LEVEL_FLOOR"], blk.min_level + blk.level_range // 2))
 
-    # Evolution bias: Pidgey (evolves 18) at L20 -> biased 15 -> stays Pidgey;
-    # at L24 -> biased 18 -> Pidgeotto.
+    # Trainer level evolutions use their ordinary thresholds.
     rng = random.Random(0)
     cfg = Config()
-    check("bias L20 Pidgey", scale_trainer_evolution(g, cfg, "PIDGEY", 20, rng), "PIDGEY")
-    check("bias L24 Pidgey", scale_trainer_evolution(g, cfg, "PIDGEY", 24, rng), "PIDGEOTTO")
+    check("normal L17 Pidgey", scale_trainer_evolution(g, cfg, "PIDGEY", 17, rng), "PIDGEY")
+    check("normal L18 Pidgey", scale_trainer_evolution(g, cfg, "PIDGEY", 18, rng), "PIDGEOTTO")
     check("item evo below 35", evolve_by_level(g, cfg, "POLIWHIRL", 34, rng), "POLIWHIRL")
     check("item evo at 35", evolve_by_level(g, cfg, "POLIWHIRL", 35, rng), "POLIWRATH")
 
