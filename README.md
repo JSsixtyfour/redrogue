@@ -31,6 +31,51 @@ text audits (a few seconds, and only when relevant files are staged) and compile
 A clean build proves only that the ROM links. Visual and timing behavior (palettes, fades, raster
 effects, walk cadence) still needs a BGB check.
 
+## Crash screen
+
+In the debug build, a crash shows a screen instead of freezing. It catches a jump into unused ROM
+or to `$0000`, which is how most of this project's bugs end. Release builds still just hang.
+`tools/crash_lookup.py` turns that screen into routine names, using the `.sym` that `builds/`
+archived for that exact build.
+
+**When a tester sends a crash screenshot**, open PowerShell in the repo folder (type `powershell` in
+File Explorer's address bar while in `redrogue`) and run:
+
+```
+py tools\crash_lookup.py
+```
+
+It asks for four things, all copied from the screen:
+
+| It asks for | Where it is on the screen | Example |
+| --- | --- | --- |
+| ID line | line 4, after `ID` | `9dba3ff3-dirty` |
+| Date and time | line 3 (only needed if you built that commit more than once; Enter skips) | `2026-10-01 13:24` |
+| PC line | after `PC` | `00:3E7C` |
+| The six STACK words | the three `STACK` lines, left to right, top to bottom | `352B 01DC 2240 3733 3785 3070` |
+
+Or type it all on one line: `py tools\crash_lookup.py 9dba3ff3 00:3E7C 352B 01DC 2240 3733 3785 3070`
+(add `--built "2026-10-01 13:24"` to pick between builds of the same commit). From WSL, use
+`python3 tools/crash_lookup.py` the same way.
+
+**Reading the answer:**
+- `PC` is where the CPU ended up. If it says the byte is `$FF` padding, the bug is whatever *jumped
+  there*, not the code at that address.
+- Each `stack` line is a lead on who called whom, most recent first. HOME addresses (below `4000`)
+  are exact. Addresses from `4000` to `7FFF` are looked up in the crash's bank, which is wrong if
+  that call came through a farcall from another bank. A word that lands exactly on a label (no
+  `+$..`) is usually a saved register, not a call.
+- The screen also shows the registers, the WRAM bank (anything other than `01` at a crash is itself
+  a clue, see WRAM Bible section I1), and the map with X and Y.
+
+Next step is the usual one: put a BGB breakpoint on the routine the stack names, and reproduce.
+
+It needs that build's `.sym` in `builds/`, and `BUILD_KEEP` (default 20 per ROM) deletes older
+ones, which can mean within a day or two of normal work. Until `make release` keeps released builds
+for good, copy the `pokeblue_debug_` `.gbc` and `.sym` you send testers somewhere safe and pass the
+`.sym` path in place of the ID. A clean commit can also be rebuilt for the same addresses; a
+`-dirty` build cannot.
+
 ## Project docs
 
 Design plans, the ROM and WRAM space ledgers, and debugging guides live outside the repo, in the

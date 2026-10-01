@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Turn a debug-build crash screen into labels.
+r"""Turn a debug-build crash screen into labels.
 
 The crash screen (engine/debug/crash_screen.asm) shows the build ID, the
 crashing PC as bank:address, and the stack. Type them in:
 
     python3 tools/crash_lookup.py 9dba3ff3 1F:5A3C 5A12 0C4E 39A0 21F3 0000 0000
+
+or run it with no arguments and it asks for each line. From PowerShell:
+`py tools\crash_lookup.py`. README.md's "Crash screen" section has the walkthrough.
 
 The first argument picks the archived build in builds/ (`9dba3ff3`, or with
 `-dirty`). If several archived builds share it, add the screen's date and time
@@ -119,7 +122,20 @@ def describe_return(symbols, crash_bank: int, word: int) -> str:
             if label else f"no label at or before it in bank ${crash_bank:02x}")
 
 
+def ask() -> List[str]:
+    """No arguments: ask for each line of the crash screen in turn."""
+    print("Copy these from the crash screen (or its screenshot).")
+    build = input("ID line, e.g. 9dba3ff3-dirty: ").strip()
+    built = input("Date and time line, e.g. 2026-10-01 13:24 (Enter to skip): ").strip()
+    pc = input("PC line, e.g. 00:3E7C: ").strip()
+    stack = input("The six STACK words, in order, spaces between: ").split()
+    print()
+    return [build, pc, *stack] + (["--built", built] if built else [])
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    if argv is None and len(sys.argv) == 1:
+        argv = ask()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("build", help="build ID from the screen (or a .sym path)")
     parser.add_argument("pc", type=parse_pc, help="the PC line, bank:address")
