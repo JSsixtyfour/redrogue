@@ -50,7 +50,16 @@ SilphCoB1FHandleMapEntry:
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	res BIT_CUR_MAP_LOADED_1, [hl]
-	call SilphCoB1FRestorePalmRoomDoor
+	; Stage actors before the door. The door's ReplaceTileBlock redraws the map
+	; view with the screen already on (~9 frames), so staging after it showed
+	; the room without Lance and popped him in at his staged position late.
+	; Staging only writes coordinates; UpdateSprites resolves the image index,
+	; and nothing runs it during the redraw, so draw once before it.
+	call SilphCoB1FStageMapEntryActors
+	call UpdateSprites
+	jp SilphCoB1FRestorePalmRoomDoor
+
+SilphCoB1FStageMapEntryActors:
 	; A warp can interrupt the shared 1F/B1F dispatcher before its Done state.
 	; Clear that inherited movement owner before staging any B1F actor.
 	call SilphCoB1FClearMovementState

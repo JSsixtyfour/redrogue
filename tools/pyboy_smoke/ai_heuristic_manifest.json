@@ -1255,6 +1255,23 @@
     ]
    }
   },
+  "AISoftPersonalityDefensive": {
+   "summary": "Soft personality: one-point preference for useful defensive moves (HIKER), only when the tactical layers left them at the neutral baseline.",
+   "positive": {
+    "requirement": "Recover below half HP, a screen at full HP that isn't up, a Defense boost at half HP or more below the cap, and Substitute at half HP or more are nudged; full dispatch then picks the defensive move",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_hiker_defensive_profile_uses_state_and_score_guards",
+     "test_ai_personality.AIPersonalityTest.test_hiker_dispatch_nudges_defense_and_respects_tactical_scores"
+    ]
+   },
+   "negative": {
+    "requirement": "outside those HP/state guards nothing is nudged, non-neutral scores are left alone, and a reliable KO or a plan's choice is never overturned",
+    "tests": [
+     "test_ai_personality.AIPersonalityTest.test_hiker_defensive_profile_uses_state_and_score_guards",
+     "test_ai_personality.AIPersonalityTest.test_hiker_dispatch_nudges_defense_and_respects_tactical_scores"
+    ]
+   }
+  },
   "AISoftPersonalityOffense": {
    "summary": "Soft personality (Codex's track): one-point preference for direct damage (BLACKBELT).",
    "positive": {

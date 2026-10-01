@@ -7,9 +7,19 @@
 ; the real Bankswitch, so the target sees exactly what `farcall` gives it
 ; (a = b = bank, hl = target, de and flags passed through) and returns hl/de/
 ; flags the same way.
+;
+; In the debug build, $38 opens the crash screen (engine/debug/crash_screen.asm)
+; instead of hanging. Switching banks and jumping takes 9 bytes and the $38 slot
+; has 8, so the jump sits in rst0's spare bytes: both slots stay within their
+; vectors and HOME pays nothing. A stays lost; F, BC, DE, HL and SP reach the
+; handler untouched, and hLoadedROMBank still names the crash's bank.
 
 SECTION "rst0", ROM0[$0000]
 	rst $38
+IF DEF(_DEBUG)
+CrashVectorJump:
+	jp CrashScreen
+ENDC
 
 	ds $08 - @, 0 ; unused
 
@@ -68,7 +78,14 @@ Predef::
 	ASSERT Predef == RST_PREDEF
 
 SECTION "rst38", ROM0[$0038]
+IF DEF(_DEBUG)
+	di
+	ld a, BANK(CrashScreen)
+	ld [rROMB], a
+	jr CrashVectorJump
+ELSE
 	rst $38
+ENDC
 
 	ds $40 - @, 0 ; unused
 

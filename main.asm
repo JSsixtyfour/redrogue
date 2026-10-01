@@ -106,6 +106,11 @@ INCLUDE "engine/debug/debug_fight2.asm"
 ; the usual reason: bank1 has no slack.
 INCLUDE "engine/debug/debug2_config.asm"
 
+; The debug build's crash screen, entered from the $38 vector (home/header.asm).
+; Its own SECTION, pinned to $3A beside "Build ID" (layout.link); empty in
+; release.
+INCLUDE "engine/debug/crash_screen.asm"
+
 ; RemovePokemon's HOME stub already uses jpfar, and the implementation only
 ; accesses RAM and its own local labels. Keep this infrequent routine out of
 ; bank $01 so per-frame 60 FPS sprite timing can remain in its native bank.
