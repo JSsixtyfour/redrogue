@@ -211,30 +211,108 @@ AIRunPersonality:
 ; explicit AI_PERSONALITY_NONE from a missing record, so NONE can neutralize
 ; one trainer without changing the rest of its class.
 AIGetSoftPersonality:
-	ld a, [wTrainerClass]
-	ld b, a
-	ld a, [wTrainerNo]
-	ld c, a
-	ld hl, AISoftPersonalityByTrainer
-	call AIGetSoftPersonalityByTrainer
-	ret c ; a matching NONE record is an explicit neutral override
-	ld a, b
-	ld hl, AISoftPersonalityByClass
-.next
-	ld a, [hli]
-	cp $ff
-	jr z, .none
-	cp b
-	jr z, .found
-	inc hl
-	jr .next
-.found
-	ld a, [hl]
-	ret
-.none
-	xor a
-	ret
+ ld a, [wTrainerClass]
+ ld b, a
+ ld a, [wTrainerNo]
+ ld c, a
+ ld hl, AISoftPersonalityByTrainer
+ call AIGetSoftPersonalityByTrainer
+ ret c ; a matching NONE record is an explicit neutral override
 
+ ; A staged cached profile remains usable by deterministic fixtures and by a
+ ; future enabled random roll. Normal battle initialization leaves it at zero.
+ ld a, [wAIRandomPersonality]
+ and a
+ jr z, .checkRandomAssignment
+ dec a
+ ret
+
+.checkRandomAssignment
+ ; Ordinary-trainer random assignment is staged off for now. Exact overrides
+ ; above and fixed class assignments below remain live.
+ ld a, AI_RANDOM_PERSONALITIES_ENABLED
+ and a
+ jr z, .classFallback
+
+ ; When enabled, normal offline trainers draw one soft personality per battle.
+ ; Link battles keep their shared RNG stream; fixed classes use the fallback.
+ ld a, [wLinkState]
+ cp LINK_STATE_BATTLING
+ jr z, .classFallback
+ ld a, b
+ call AIIsRandomPersonalityClass
+ jr nc, .classFallback
+
+ ; Cache profile + 1 so the style survives enemy switches.
+ ld c, NUM_AI_PERSONALITIES - 1 ; NONE is not in the random pool
+ call Rangerandom ; HOME Random is equivalent to BattleRandom offline
+ inc a ; profiles are 1..N; NONE is 0
+ inc a ; cache profile + 1
+ ld [wAIRandomPersonality], a
+ dec a
+ ret
+
+.classFallback
+ ld a, b
+ ld hl, AISoftPersonalityByClass
+.next
+ ld a, [hli]
+ cp $ff
+ jr z, .none
+ cp b
+ jr z, .found
+ inc hl
+ jr .next
+.found
+ ld a, [hl]
+ ret
+.none
+ xor a
+ ret
+
+; Input: a = trainer class. Output: carry set for ordinary classes whose soft
+; personality is randomized. Preserve bc for the override and fallback tables.
+AIIsRandomPersonalityClass:
+ push bc
+ ld hl, AIRandomPersonalityClasses
+ ld de, 1
+ call IsInArray
+ pop bc
+ ret
+
+; Explicit allowlist keeps newly added and special classes neutral by default.
+; Regular Gym trainers (for example PSYCHIC_TR) are eligible; leaders have their
+; own excluded classes. BLACKBELT trainer 1 is excluded by an exact override.
+AIRandomPersonalityClasses:
+ db YOUNGSTER
+ db BUG_CATCHER
+ db LASS
+ db SAILOR
+ db JR_TRAINER_M
+ db JR_TRAINER_F
+ db POKEMANIAC
+ db SUPER_NERD
+ db HIKER
+ db BIKER
+ db BURGLAR
+ db ENGINEER
+ db FISHER
+ db SWIMMER
+ db CUE_BALL
+ db BEAUTY
+ db PSYCHIC_TR
+ db ROCKER
+ db JUGGLER
+ db TAMER
+ db BIRD_KEEPER
+ db BLACKBELT
+ db SCIENTIST
+ db ROCKET
+ db COOLTRAINER_M
+ db COOLTRAINER_F
+ db GENTLEMAN
+ db CHANNELER
+ db -1
 ; Input: b = raw wTrainerClass, c = raw wTrainerNo, hl = sparse table.
 ; Table rows are <class, trainer number, profile>, terminated by $ff.
 ; Output: a = profile; carry set when the exact pair matched (including NONE).
@@ -263,34 +341,43 @@ AIGetSoftPersonalityByTrainer:
 IF DEF(_DEBUG)
 ; PyBoy-only seam: interpret a synthetic table at wBuffer + 2. Input bytes at
 ; wBuffer are <class, trainer number>; output is <profile, matched flag>.
-; Production lookup uses the same resolver with AISoftPersonalityByTrainer.
 AISoftPersonalityTestResolveTrainerOverride::
-	ld a, [wBuffer]
-	ld b, a
-	ld a, [wBuffer + 1]
-	ld c, a
-	ld hl, wBuffer + 2
-	call AIGetSoftPersonalityByTrainer
-	ld [wBuffer], a
-	ld a, 0
-	adc a ; matched flag from the helper's carry result
-	ld [wBuffer + 1], a
-	ret
+ ld a, [wBuffer]
+ ld b, a
+ ld a, [wBuffer + 1]
+ ld c, a
+ ld hl, wBuffer + 2
+ call AIGetSoftPersonalityByTrainer
+ ld [wBuffer], a
+ ld a, 0
+ adc a ; matched flag from the helper's carry result
+ ld [wBuffer + 1], a
+ ret
+
+; Resolve a live trainer profile through the production override/random/fallback
+; order, storing it in wBuffer for deterministic PyBoy assertions.
+AISoftPersonalityTestResolve::
+ call AIGetSoftPersonality
+ ld [wBuffer], a
+ ret
 ENDC
 
 AISoftPersonalityByTrainer:
-	; db TRAINER_CLASS, trainer number, AI_PERSONALITY_* ; sparse overrides
-	db $ff ; none assigned yet
+ ; Exact identity exceptions precede random selection.
+ db BLACKBELT, 1, AI_PERSONALITY_NONE ; Fighting Dojo Karate Master
+ IF DEF(_DEBUG)
+ ; Stable defensive-profile fixture for the Debug/PyBoy suite only.
+ db HIKER, 1, AI_PERSONALITY_DEFENSIVE
+ ENDC
+ db $ff
 
 AISoftPersonalityByClass:
-	; db TRAINER_CLASS, AI_PERSONALITY_* ; opt in one class per reviewed change
-	db BLACKBELT, AI_PERSONALITY_OFFENSE
-	db PSYCHIC_TR, AI_PERSONALITY_CONTROL
-	db $ff
-
+ ; db TRAINER_CLASS, AI_PERSONALITY_* ; fixed fallback for reviewed classes
+ db $ff
 AISoftPersonalityPointers:
 	dw AISoftPersonalityOffense
 	dw AISoftPersonalityControl
+	dw AISoftPersonalityDefensive
 	assert (@ - AISoftPersonalityPointers) / 2 == NUM_AI_PERSONALITIES - 1, \
 		"AISoftPersonalityPointers must cover every non-neutral personality"
 
@@ -298,7 +385,7 @@ AISoftPersonalityPointers:
 ; applies a one-point soft preference without changing legality.
 AISoftPersonalityOffense::
 	ld c, 1
-	jr AISoftPersonalityByPower
+	jp AISoftPersonalityByPower
 
 ; Prefer disruptive effects rather than all non-damaging moves. This profile
 ; deliberately leaves setup and healing to their existing tactical scoring.
@@ -373,6 +460,94 @@ AISoftPersonalityControlEffects:
 	db DISABLE_EFFECT
 	db -1
 
+; Prefer useful defensive moves only when the tactical layers left them at the
+; neutral baseline. This keeps stronger choices and explicit penalties intact.
+; Recovery is eligible below half HP. Screens require full HP and no matching
+; screen already active. Defense boosts require at least half HP and room below
+; the stat cap. Substitute requires at least half HP and must survive the
+; believed player attacks. Redundant / disabled scores are never nudged.
+AISoftPersonalityDefensive::
+	ld hl, wBuffer
+	ld de, wEnemyMonMoves
+	ld b, NUM_MOVES
+.nextMove
+	ld a, [de]
+	inc de
+	and a
+	jr z, .advance
+	push hl
+	push bc
+	push de
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	cp HEAL_EFFECT
+	jr z, .checkHeal
+	cp LIGHT_SCREEN_EFFECT
+	jr z, .checkLightScreen
+	cp REFLECT_EFFECT
+	jr z, .checkReflect
+	cp DEFENSE_UP1_EFFECT
+	jr z, .checkDefenseBoost
+	cp DEFENSE_UP2_EFFECT
+	jr z, .checkDefenseBoost
+	cp SUBSTITUTE_EFFECT
+	jr z, .checkSubstitute
+	jr .skip
+.checkHeal
+	call AIEnemyHPBelowHalf
+	jr c, .eligible
+	jr .skip
+.checkLightScreen
+	call AIEnemyHPAtMax
+	jr nc, .skip
+	ld a, [wEnemyBattleStatus3]
+	bit HAS_LIGHT_SCREEN_UP, a
+	jr nz, .skip
+	jr .eligible
+.checkReflect
+	call AIEnemyHPAtMax
+	jr nc, .skip
+	ld a, [wEnemyBattleStatus3]
+	bit HAS_REFLECT_UP, a
+	jr nz, .skip
+	jr .eligible
+.checkDefenseBoost
+	call AIEnemyHPBelowHalf
+	jr c, .skip
+	ld a, [wEnemyMonStatMods + 1]
+	cp $d
+	jr z, .skip
+	jr .eligible
+.checkSubstitute
+	call AIEnemyHPBelowHalf
+	jr c, .skip
+	ld a, [wEnemyBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .skip
+	call AISubWouldSurvive
+	jr c, .eligible
+	jr .skip
+.eligible
+	pop de
+	pop bc
+	pop hl
+	ld a, [hl]
+	cp AI_SCORE_MAX
+	jr nc, .advance ; includes AI_SCORE_MAX (79) and AI_SCORE_DISABLED (80)
+	cp AI_SCORE_BASE
+	jr nz, .advance ; personality never changes a tactical score
+	ld a, AI_NUDGE
+	call AIEncourage
+	jr .advance
+.skip
+	pop de
+	pop bc
+	pop hl
+.advance
+	inc hl
+	dec b
+	jp nz, .nextMove
+	ret
 AISoftPersonalityByPower:
 	ld hl, wBuffer
 	ld de, wEnemyMonMoves

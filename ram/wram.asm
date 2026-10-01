@@ -605,7 +605,9 @@ wAITier:: db            ; 0 = unresolved, else resolved tier + 1
 wAILastMovePower:: db   ; power of the enemy's previous move (anti-spam)
 wAILastMoveNum:: db     ; the enemy's previous move id (repeated-move fatigue)
 wAISameMoveCount:: db   ; consecutive uses of that same move
-wAISentOutFlags:: db    ; bit per party slot: has this mon been sent out yet
+; Battle-scoped randomized soft profile: 0 = unresolved, otherwise personality id + 1.
+; Cached once for the trainer battle so enemy switches retain the same strategy.
+wAIRandomPersonality:: db
 wAISwitchedFlags:: db   ; bit per party slot: switch-loop guard
 wAIPlan:: db            ; active strategy plan id (0 = none)
 wAIPlanStep:: db        ; progress within that plan

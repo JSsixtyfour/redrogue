@@ -123,10 +123,14 @@ DEF AI_KILL_FIRST  EQU AI_KILL + 4
 ; These are soft, post-layer score nudges, not skill tiers or legality rules.
 ; Profile 0 is deliberately neutral. Class assignments are sparse and explicit
 ; in AISoftPersonalityByClass, so each activation is a reviewable balance step.
-DEF AI_PERSONALITY_NONE    EQU 0
-DEF AI_PERSONALITY_OFFENSE EQU 1
-DEF AI_PERSONALITY_CONTROL EQU 2
-DEF NUM_AI_PERSONALITIES   EQU 3
+DEF AI_PERSONALITY_NONE     EQU 0
+DEF AI_PERSONALITY_OFFENSE  EQU 1
+DEF AI_PERSONALITY_CONTROL  EQU 2
+DEF AI_PERSONALITY_DEFENSIVE EQU 3
+DEF NUM_AI_PERSONALITIES    EQU 4
+; Staged ordinary-trainer random assignment. Keep the resolver and pool ready,
+; but leave production battles on explicit individual/class assignments only.
+DEF AI_RANDOM_PERSONALITIES_ENABLED EQU 0
 
 ; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
 ; for the "this move does literally nothing" case. Deliberately expressed as a
