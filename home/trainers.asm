@@ -141,6 +141,12 @@ ENDC
 .trainerEngaging
 	ld hl, wStatusFlags7
 	set BIT_TRAINER_BATTLE, [hl]
+	; Face the player toward the trainer who spotted them. The four facing
+	; constants are arranged in opposite pairs that differ by bit 2.
+	ld a, [wTrainerFacingDirection]
+	xor SPRITE_FACING_UP
+	ld [wSpritePlayerStateData1FacingDirection], a
+	ldh a, [hActiveSpriteIndex]
 	ld [wEmotionBubbleSpriteIndex], a
 	xor a ; EXCLAMATION_BUBBLE
 	ld [wWhichEmotionBubble], a
