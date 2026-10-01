@@ -159,6 +159,12 @@ SilphCoVRWalkPalmToPC:
 	ld a, TEXT_SILPHCOVR_KEY_ITEMS
 	ldh [hTextID], a
 	call DisplayTextID
+	; Turn back up to watch Palm walk to the PC instead of facing the empty tile.
+	ld a, PLAYER_DIR_UP
+	ld [wPlayerMovingDirection], a
+	ld a, SPRITE_FACING_UP
+	ld [wSpritePlayerStateData1FacingDirection], a
+	call UpdateSprites
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld de, SilphCoVRPalmToPCMovement
