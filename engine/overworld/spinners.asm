@@ -14,7 +14,8 @@ LoadSpinnerArrowTiles::
 ;     return immediately without touching VRAM at all.
 ;  2. Fast transfer: CopySpinnerTiles (the di + ld sp,hl + pop trick) replaces
 ;     CopyVideoData - a single-shot copy with a manual VRAM-mode wait instead
-;     of a multi-frame budgeted one.
+;     of a multi-frame budgeted one. All eight source tiles live beside this
+;     routine because the fast copy does not switch to the table's source bank.
 ;  3. OverworldLoopLessDelay now calls CheckForSpinAndDelay (home/overworld.asm)
 ;     instead of DelayFrame unconditionally, so a step that just paid for this
 ;     routine's own transfer does not ALSO pay for a separate delay frame.
@@ -159,6 +160,8 @@ SpinnerPlayerFacingDirections:
 	db $04 ; left -> up
 	db $00 ; right -> down
 
-; these tiles are the animation for the tiles that push the player in dungeons like Rocket HQ
+; Two four-tile states for the tiles that push the player in dungeons like
+; Rocket HQ. Keeping both states here is required because CopySpinnerTiles
+; deliberately ignores the source-bank byte while executing in ROMX.
 SpinnerArrowAnimTiles:
 	INCBIN "gfx/overworld/spinners.2bpp"
