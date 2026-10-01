@@ -635,8 +635,8 @@ OaksLabPlayerWatchRivalExitScript:
 	bit BIT_SCRIPTED_NPC_MOVEMENT, a
 	jr z, .rivalGone
 	; still walking: the player turns south to watch Blue head for the door
-	ld a, PLAYER_DIR_DOWN
-	ld [wPlayerMovingDirection], a
+	xor a ; SPRITE_FACING_DOWN
+	ld [wSpritePlayerStateData1FacingDirection], a
 	ret
 .rivalGone
 	ld a, TOGGLE_OAKS_LAB_RIVAL
