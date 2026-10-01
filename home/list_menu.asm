@@ -9,17 +9,6 @@ DisplayListMenuID::
 	ld a, [wBattleType]
 	and a ; is it the Old Man battle?
 	jr nz, .specialBattleType
-	; Print bag info box for bag (ITEMLISTMENU) or mart (PRICEDITEMLISTMENU)
-	ld a, [wListMenuID]
-	cp ITEMLISTMENU
-	jr z, .doPrintBagInfo
-	cp CREDITLISTMENU
-	jr z, .doPrintBagInfo
-	cp PRICEDITEMLISTMENU
-	jr nz, .skipBagInfo
-.doPrintBagInfo
-    rfarcall PrintBagInfoText ; in ROMX
-.skipBagInfo
 	ld a, $01 ; hardcoded bank
 	jr .bankswitch
 .specialBattleType ; Old Man battle
@@ -63,6 +52,19 @@ DisplayListMenuID::
 	ld [wTopMenuItemX], a
 	ld a, PAD_A | PAD_B | PAD_SELECT | PAD_RIGHT | PAD_LEFT ; marcelnote - added PAD_RIGHT | PAD_LEFT for bag pockets
 	ld [wMenuWatchedKeys], a
+	; Print the initial bag/mart description only after the list input context is
+	; active. PrintBagInfoText deliberately rejects stale list IDs while
+	; wMenuWatchMovingOutOfBounds is zero.
+	ld a, [wListMenuID]
+	cp ITEMLISTMENU
+	jr z, .doPrintBagInfo
+	cp CREDITLISTMENU
+	jr z, .doPrintBagInfo
+	cp PRICEDITEMLISTMENU
+	jr nz, .skipBagInfo
+.doPrintBagInfo
+	rfarcall PrintBagInfoText ; in ROMX
+.skipBagInfo
 	ld c, 10
 	call DelayFrames
 
