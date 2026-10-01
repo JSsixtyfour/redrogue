@@ -542,6 +542,19 @@ TextCommand_SOUND::
 .notKeyItem
 	ld a, [hl]
 	call PlaySound
+	; Level-up uses this command while the battle audio bank is loaded. At 2X,
+	; let its jingle continue under the stats display instead of blocking until it
+	; ends. At 4X the generic sound-wait routine already returns immediately.
+	ld a, b
+	cp TX_SOUND_LEVEL_UP
+	jr nz, .waitForSound
+	ldh a, [hIsInBattle]
+	and a
+	jr z, .waitForSound
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	jr nz, .soundDone
+.waitForSound
 	call WaitForSoundToFinish
 .soundDone
 	pop hl

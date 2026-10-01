@@ -94,7 +94,7 @@ AnimateEXPBar::
 	ld [hl], e ; "<EXP_BAR_FULL>"
 	ld d, 0
 	call DelayFrame
-	call DelayFrame
+	call EXPBarExtraDelayFrame
 	jr .dontLoad
 .loadPartial
 	ld [hl], '<EXP_BAR_PARTIAL>'
@@ -103,7 +103,7 @@ AnimateEXPBar::
 	push de ; save d = current tile, e = "<EXP_BAR_FULL>"
 	ld a, d
 	call LoadExpBarDynamicTile ; contains a DelayFrame via CopyVideoData
-	call DelayFrame
+	call EXPBarExtraDelayFrame
 	pop de  ; restore d = current tile, e = "<EXP_BAR_FULL>"
 	pop bc  ; restore b = number of tiles left, c = pixels left
 	pop hl  ; restore hl = current tile
@@ -121,6 +121,15 @@ AnimateEXPBar::
 .delay
 	ld c, 5
 	jp DelayFrames
+
+; CopyVideoData already contributes one rendered frame for each partial pixel.
+; Keep the original second frame at 1X, but omit it at 2X/4X so the default 2X
+; setting visibly accelerates the EXP bar instead of only its final pause.
+EXPBarExtraDelayFrame:
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	ret nz
+	jp DelayFrame
 
 
 KeepEXPBarFull::

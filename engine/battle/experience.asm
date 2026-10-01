@@ -341,7 +341,20 @@ ENDC
 	call LoadMonData
 	ld d, LEVEL_UP_STATS_BOX
 	callfar PrintStatsBox
+	; At 4X, accept an A/B button that is already held instead of requiring a
+	; fresh low-sensitivity press for every level-up stats box. Move-learning and
+	; evolution prompts retain their normal explicit input handling.
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	cp BATTLE_SPEED_X4
+	jr nz, .waitForLevelUpStats
+	call Joypad
+	ldh a, [hJoyHeld]
+	and PAD_A | PAD_B
+	jr nz, .levelUpStatsDone
+.waitForLevelUpStats
 	call WaitForTextScrollButtonPress
+.levelUpStatsDone
 	call LoadScreenTilesFromBuffer1
 	; Learn every move crossed during a multi-level EXP award. Evolution runs only
 	; after this award completes, so every crossed level uses the pre-evolution

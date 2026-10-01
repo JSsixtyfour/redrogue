@@ -17,11 +17,11 @@ IndigoPlateauLobby_Script:
 
 	SetEvent EVENT_ENTER_ROOM
 	; Blacking out mid-run should respawn the player in their dorm room, not
-	; wherever wLastMap happens to be (SetLastBlackoutMap is only ever called
-	; from the vanilla Pokemon Center heal flow, which this hub bypasses).
-	; Every lobby entry is a safe choke point to (re)assert this.
+	; wherever wLastMap happens to be. This is the run's sole blackout target;
+	; the Lobby nurse deliberately does not update it when healing.
 	ld a, SILPH_CO_DORM
 	ld [wLastBlackoutMap], a
+
 	; Pick the next random stage and patch the exit warp before deriving either
 	; the visible door block or the active sign count from that selection.
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT, since that flag

@@ -133,6 +133,29 @@ TradeFuncPointerTable:
 
 Trade_Delay100:
 	ld c, 100
+	jp Trade_DelayFrames
+
+; NPC trades reuse the BATTLE SPEED option for their long presentation waits.
+; Link trades must keep their original timing so the two consoles remain in
+; step. wLinkState is LINK_STATE_NONE for an NPC trade and nonzero throughout
+; the Cable Club trade path.
+Trade_DelayFrames:
+	ld a, [wLinkState]
+	and a
+	jp nz, DelayFrames
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	jp z, DelayFrames
+	rrca
+.halve
+	srl c
+	dec a
+	jr nz, .halve
+	ld a, c
+	and a
+	jr nz, .delay
+	inc c
+.delay
 	jp DelayFrames
 
 Trade_CopyTileMapToVRAM:
@@ -145,7 +168,7 @@ Trade_CopyTileMapToVRAM:
 
 Trade_Delay80:
 	ld c, 80
-	jp DelayFrames
+	jp Trade_DelayFrames
 
 Trade_ClearTileMap:
 	hlcoord 0, 0
@@ -330,7 +353,7 @@ Trade_AnimateBallEnteringLinkCable:
 	ld a, TRADE_BALL_SHAKE_ANIM
 	call Trade_ShowAnimation
 	ld c, 10
-	call DelayFrames
+	call Trade_DelayFrames
 	ld a, %11100100
 	ldh [rOBP0], a
     call UpdateGBCPal_OBP0
@@ -598,7 +621,7 @@ Trade_CopyCableTilesOffScreen:
 	ld a, REDRAW_ROW
 	ldh [hRedrawRowOrColumnMode], a
 	ld c, 10
-	jp DelayFrames
+	jp Trade_DelayFrames
 
 Trade_AnimMonMoveHorizontal:
 ; Animates the mon going through the link cable horizontally over a distance of
@@ -723,7 +746,7 @@ Trade_AnimMonMoveVertical:
 	call Trade_AddOffsetsToOAMCoords
 	call Trade_AnimCircledMon
 	ld c, 8
-	call DelayFrames
+	call Trade_DelayFrames
 	dec d
 	jr nz, .loop
 	ret
@@ -835,7 +858,7 @@ Trade_LoadMonSprite:
 	hlcoord 7, 2
 	call LoadFlippedFrontSpriteByMonIndex
 	ld c, 10
-	jp DelayFrames
+	jp Trade_DelayFrames
 
 Trade_ShowClearedWindow:
 ; clears the window and covers the BG entirely with the window
@@ -858,7 +881,7 @@ Trade_SlideTextBoxOffScreen:
 ; after Trade_ShowEnemyMon in the external clock sequence, there is a mon pic
 ; above the text box and it is also scrolled off the screen.
 	ld c, 50
-	call DelayFrames
+	call Trade_DelayFrames
 .loop
 	call DelayFrame
 	ldh a, [rWX]
@@ -869,7 +892,7 @@ Trade_SlideTextBoxOffScreen:
 	jr nz, .loop
 	call Trade_ClearTileMap
 	ld c, 10
-	call DelayFrames
+	call Trade_DelayFrames
 	ld a, $7
 	ldh [rWX], a
 	ret
@@ -878,7 +901,7 @@ PrintTradeWentToText:
 	ld hl, TradeWentToText
 	call PrintText
 	ld c, 200
-	call DelayFrames
+	call Trade_DelayFrames
 	jp Trade_SlideTextBoxOffScreen
 
 TradeWentToText:

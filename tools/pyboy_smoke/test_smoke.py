@@ -212,6 +212,8 @@ class BootSmokeTest(HarnessTestCase):
         self.assertNotEqual(self.harness.read8("wLobbyDoor1StageMap"), 0)
         self.assertNotEqual(self.harness.read8("wLobbyDoor2StageMap"), 0)
         self.assertEqual(self.harness.read8("wAIDebugTierOverride"), 0)
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        self.assertEqual(self.harness.read8("wLastBlackoutMap"), maps["SILPH_CO_DORM"])
 
     def test_gym_lobby_entry_closes_door_2_after_selection(self) -> None:
         assert self.harness is not None

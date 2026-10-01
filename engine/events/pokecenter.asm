@@ -12,7 +12,6 @@ DisplayPokemonCenterDialogue_::
 	ld hl, PokemonCenterRepeatHealText
 	call PrintText
 .heal
-	call SetLastBlackoutMap
 	call LoadScreenTilesFromBuffer1 ; restore screen
 	ld hl, NeedYourPokemonText
 	call PrintText

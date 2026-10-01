@@ -30,7 +30,7 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
             flow.index("ld hl, PokemonCenterFirstHealText"),
             flow.index("ld hl, PokemonCenterRepeatHealText"),
         )
-        self.assertIn("call SetLastBlackoutMap", flow)
+        self.assertNotIn("SetLastBlackoutMap", flow)
         self.assertIn("call LoadScreenTilesFromBuffer1", flow)
         self.assertIn("ld hl, NeedYourPokemonText\n\tcall PrintText", flow)
         self.assertIn("ld a, $28", flow)
