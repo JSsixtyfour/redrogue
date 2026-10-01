@@ -39,11 +39,10 @@ _SilphCoVRKeyItemsExplainText::
 	cont "CREDIT EXCHANGE."
 	done
 
-; Palm's closing line of the intro tour, after the key item handover.
 _SilphCoVRPrepText::
-	text "I'll get the"
-	line "machine prepped."
-	cont "Walk in"
+	text "PROF PALM: I'll"
+	line "get the machine"
+	cont "prepped. Walk in"
 	cont "when you're"
 	cont "ready."
 	done

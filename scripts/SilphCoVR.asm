@@ -141,6 +141,26 @@ SilphCoVR_ScriptPointers:
 	dw SilphCoVRWaitForPalm
 
 SilphCoVRWalkPalmToPC:
+	; Palm hands over the starter key items before he leaves for the PC. The
+	; player arrived at (2,7) facing up, beside Palm at (3,7): turn them to face
+	; each other and redraw before the text box opens.
+	ld a, SILPHCOVR_PROF_PALM
+	ldh [hSpriteIndex], a
+	call GetSpriteMovementByte2Pointer
+	ld [hl], LEFT
+	ld a, SPRITE_FACING_LEFT
+	ldh [hSpriteFacingDirection], a
+	call SetSpriteFacingDirection
+	ld a, PLAYER_DIR_RIGHT
+	ld [wPlayerMovingDirection], a
+	ld a, SPRITE_FACING_RIGHT
+	ld [wSpritePlayerStateData1FacingDirection], a
+	call UpdateSprites
+	ld a, TEXT_SILPHCOVR_KEY_ITEMS
+	ldh [hTextID], a
+	call DisplayTextID
+	ld a, PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
 	ld de, SilphCoVRPalmToPCMovement
 	ld a, SILPHCOVR_PROF_PALM
 	ldh [hSpriteIndex], a
@@ -229,6 +249,7 @@ SilphCoVR_TextPointers:
 	dw_const SilphCoVRPrepText,      TEXT_SILPHCOVR_PREP
 	dw_const SilphCoVRFinalBriefingText, TEXT_SILPHCOVR_FINAL_BRIEFING
 	dw_const SilphCoVRFinalRepeatText,   TEXT_SILPHCOVR_FINAL_REPEAT
+	dw_const SilphCoVRKeyItemsText,      TEXT_SILPHCOVR_KEY_ITEMS
 
 SilphCoVR_ProfPalmText:
 	text_asm
@@ -250,9 +271,13 @@ SilphCoVR_ProfPalmText:
 	text_far _SilphCoVR_ProfPalmText
 	text_end
 
-; Palm hands over the three starter key items at the end of the intro tour,
-; explains the Key Items pocket, then preps the machine.
 SilphCoVRPrepText:
+	text_far _SilphCoVRPrepText
+	text_end
+
+; Palm hands over the three starter key items and explains the Key Items
+; pocket, facing the player before his walk to the PC (SilphCoVRWalkPalmToPC).
+SilphCoVRKeyItemsText:
 	text_asm
 	push bc
 	ld hl, .giftText
@@ -261,8 +286,6 @@ SilphCoVRPrepText:
 	ld hl, .receivedText
 	call PrintText
 	ld hl, .explainText
-	call PrintText
-	ld hl, .prepText
 	call PrintText
 	pop bc
 	jp TextScriptEnd
@@ -276,9 +299,6 @@ SilphCoVRPrepText:
 	text_end
 .explainText
 	text_far _SilphCoVRKeyItemsExplainText
-	text_end
-.prepText
-	text_far _SilphCoVRPrepText
 	text_end
 
 ; The starting key items, equipped into the bag. A fresh file has no active key
