@@ -5,10 +5,13 @@
 GBCGamma::
 	call GetPredefRegisters
 	
-	;do not apply the gamma shader if hGBC is !=2
+	; Gamma belongs to the saved Enhanced Colors option, not a startup flag.
 	ld a, [hGBC]
-	cp 2
-	ret nz
+	and a
+	ret z
+	ld a, [wOptions2]
+	bit BIT_ENHANCED_COLORS, a
+	ret z
 	
 	push hl
 	push bc
