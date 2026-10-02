@@ -1,0 +1,30 @@
+{
+ "about": "How each persisted SRAM label is treated when a save is converted (SAVE_COMPATIBILITY_RUNBOOK.md). Keys are full-match regexes over SRAM labels; tools/save_schema.py check fails on any label none of them covers. continue: preserve (copy; translate if the layout changed), header (written by the converter), scratch (contents never read across a load; copied as-is). recovery: keep (permanent progress, carried into the recovery save), template (taken from the target build's post-reset Dorm save, i.e. what a run reset leaves), field (inside the main save block: decided per saved-WRAM field, see recovery_keep_wram).",
+ "sram": {
+  "sSaveHeader.*": {"continue": "header", "recovery": "template", "why": "identifies the layout; the converter writes the target's"},
+  "sSpriteBuffer[012]": {"continue": "scratch", "recovery": "template", "why": "picture decompression buffers, rewritten before every use"},
+  "sFusionDiagBuf": {"continue": "scratch", "recovery": "template", "why": "fusion sprite diagonal-tile buffer, rewritten per draw"},
+  "sTurnRewindBuf": {"continue": "preserve", "recovery": "template", "why": "TURN REWIND snapshot; byte 0 $ff means none, only read in battle"},
+  "sHallOfFame": {"continue": "preserve", "recovery": "keep", "why": "Hall of Fame teams: a permanent record"},
+  "sProc(Cave|Cemetery|Forest).*": {"continue": "preserve", "recovery": "template", "why": "the current run's procedural stage, kept together with its run events"},
+  "sProcFacility.*": {"continue": "preserve", "recovery": "template", "why": "the current run's procedural facility"},
+  "sStageEvent.*": {"continue": "preserve", "recovery": "template", "why": "stage-event placement for the live wild area"},
+  "sStolen.*": {"continue": "preserve", "recovery": "template", "why": "theft record, dies with the wild-area visit"},
+  "sDebugFight2.*": {"continue": "preserve", "recovery": "template", "why": "debug-only FIGHT 2 fixture; release code never reads it"},
+  "sTMBitfield": {"continue": "preserve", "recovery": "template", "why": "TM/HM ownership; ClearTMBitfield at run reset"},
+  "sKeyItemsBitfield|sKeyItemTiers": {"continue": "preserve", "recovery": "keep", "why": "key items and their upgrade tiers survive run resets (meta-progression)"},
+  "sRoom(Furniture|DecorSlots|Owned|OwnedExt)": {"continue": "preserve", "recovery": "keep", "why": "Dorm decoration state, cross-run"},
+  "sElementPrismType|sPrismCartridges": {"continue": "preserve", "recovery": "keep", "why": "ELEMENT PRISM choice and cartridges, cross-run"},
+  "sRogueSpeciesGroupsEnabled": {"continue": "preserve", "recovery": "keep", "why": "species-group toggles, cross-run"},
+  "sGameData|sPlayerName|sMainData|sSpriteData|sPartyData|sCurBoxData|sTileAnimations|sCurMap|sGameDataEnd": {"continue": "preserve", "recovery": "field", "why": "the main save block (copies of saved WRAM and HRAM)"},
+  "sMainDataCheckSum": {"continue": "preserve", "recovery": "template", "why": "recomputed by the converter after any change"},
+  "sFinalTeamArchive.*": {"continue": "preserve", "recovery": "keep", "why": "champion teams for the final AI encounter, cross-run, own checksums"},
+  "sBox([1-9]|1[0-2])|sBank[23](AllBoxesChecksum|IndividualBoxChecksums)": {"continue": "preserve", "recovery": "template", "why": "PC boxes; EmptyAllSRAMBoxes at run reset"},
+  "sFallenLog": {"continue": "preserve", "recovery": "template", "why": "Ironman fallen log; FallenLogClear at run reset"}
+ },
+ "recovery_keep_wram": {
+  "about": "Saved-WRAM fields a recovery carries from the old save into the target's post-reset Dorm template. Everything else in the main save block comes from the template. Measured against RogueResetRunState: see SAVE_COMPATIBILITY_RUNBOOK.md, 'Recovery parity'.",
+  "labels": ["wPlayerName", "wPlayerID", "wRivalName", "wPokedexOwned", "wPokedexSeen", "wOptions", "wOptions2", "wOptions3", "wNumHoFTeams", "wGymsUsedMask"],
+  "event_bytes": "persistent zone: wEventFlags bytes below RUN_EVENTS_START/8 and from RUN_EVENTS_END/8 on"
+ }
+}

@@ -53,6 +53,15 @@ jobs:
       - name: Space report
         run: python3 tools/space_report.py pokered.map pokeblue.map pokeblue_debug.map
 
+      - name: Save layout check
+        run: python3 tools/save_schema.py check
+
+      - name: Save converter tests
+        run: make save_converter
+
+      - name: Release and crash tool tests
+        run: python3 -m unittest tools/test_release.py tools/test_crash_lookup.py tools/test_repro_bundle.py
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

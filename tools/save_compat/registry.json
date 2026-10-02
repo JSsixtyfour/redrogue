@@ -1,0 +1,20 @@
+{
+ "about": "Every save source the converter accepts and every migration between save formats. Hand-maintained; see SAVE_COMPATIBILITY_RUNBOOK.md. Untagged sources (released before the save header existed) are recognised by the SHA-256 of the patched ROM the player played them with. A migration is listed only once its acceptance gates have passed; 'verified' records how.",
+ "sources": [
+  {
+   "id": "baseline_74f82c1b",
+   "label": "2026-10-01 74f82c1b",
+   "schema": "baseline_74f82c1b",
+   "untagged": true,
+   "rom_sha256": ["e6a97a608c72d87550771529b568260af5782b64fe174d0fe6087b79ef6e9707"]
+  }
+ ],
+ "migrations": [
+  {
+   "from": "baseline_74f82c1b",
+   "to": "1",
+   "steps": ["tag"],
+   "verified": "2026-10-02: save_schema.py diff --ignore-header found the same layout and save-semantic sources (only the new header and its constants); the archived ROM rebuilt byte-identical from 74f82c1b; converted baseline saves pass saves.py continue on the schema-1 build (see the runbook's ledger)."
+  }
+ ]
+}

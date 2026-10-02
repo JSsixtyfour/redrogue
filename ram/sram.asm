@@ -273,7 +273,25 @@ sStolenOTName::   ds NAME_LENGTH
 sStolenRecordEnd::
 ASSERT sStolenRecordEnd - sStolenRecord == 57
 
-	ds $3b7 ; was $3bb; 4 bytes carved for sRoomOwnedExt below (room dolls 12-45).
+	ds $40 - (sStolenRecordEnd - sStolenRecord) ; the 7 bytes up to the save header's fixed address
+
+; Save header (constants/save_constants.asm): "RRSG", SAVE_SCHEMA_ID, its
+; complement. Every Save* routine in engine/menus/save.asm rewrites it and
+; TryLoadSaveFile checks it before reading anything else. Its address is part
+; of the save format, read by the patch page's save converter, so it is pinned
+; and asserted: carved from the padding below, nothing else moved. Erasing the
+; save (ClearAllSRAMBanks, $ff) leaves no valid header.
+sSaveHeader::
+sSaveHeaderMagic::           ds 4
+sSaveHeaderSchemaID::        dw
+sSaveHeaderSchemaIDInverse:: dw
+sSaveHeaderEnd::
+ASSERT sSaveHeader == $a040 && BANK(sSaveHeader) == 1, "the save header must stay at SRAM bank 1 $a040"
+ASSERT sSaveHeaderEnd - sSaveHeader == SAVE_HEADER_SIZE
+
+	ds $3b7 - 7 - SAVE_HEADER_SIZE
+	        ; was $3b7; 15 bytes carved for the save header above (7 of them alignment).
+	        ; was $3bb; 4 bytes carved for sRoomOwnedExt below (room dolls 12-45).
 	        ; was $3f4; 57 bytes carved for sStolenRecord above (Phase 7d).
 	        ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
 	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),

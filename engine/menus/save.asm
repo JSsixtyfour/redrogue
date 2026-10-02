@@ -2,6 +2,11 @@ TryLoadSaveFile:
 	call ClearScreen
 	call LoadFontTilePatterns
 	call LoadTextBoxTilePatterns
+; A save from another layout is refused before any of it is read, and is left
+; exactly as it is so the patch page can convert it.
+	call SaveHeaderIsCurrent
+	ld hl, SaveNeedsConvertingText
+	jr nc, .refuse
 	call LoadMainData
 	jr c, .badsum
 	call LoadCurrentBoxData
@@ -21,16 +26,18 @@ TryLoadSaveFile:
 	ld a, $2 ; good checksum
 	jr .done
 .badsum
-	ld hl, wStatusFlags5
-	push hl
-	set BIT_NO_TEXT_DELAY, [hl]
 	ld hl, FileDataDestroyedText
+.refuse
+	ld de, wStatusFlags5
+	ld a, [de]
+	set BIT_NO_TEXT_DELAY, a
+	ld [de], a
 	call PrintText
 	ld c, 100
 	call DelayFrames
-	pop hl
+	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
-	ld a, $1 ; bad checksum
+	ld a, $1 ; no usable save: only NEW GAME is offered
 .done
 	ld [wSaveFileStatus], a
 	ret
@@ -38,6 +45,52 @@ TryLoadSaveFile:
 FileDataDestroyedText:
 	text_far _FileDataDestroyedText
 	text_end
+
+SaveNeedsConvertingText:
+	text_far _SaveNeedsConvertingText
+	text_end
+
+; The save header (constants/save_constants.asm), byte for byte.
+SaveHeaderBytes:
+	db SAVE_HEADER_MAGIC_0, SAVE_HEADER_MAGIC_1, SAVE_HEADER_MAGIC_2, SAVE_HEADER_MAGIC_3
+	dw SAVE_SCHEMA_ID
+	dw ~SAVE_SCHEMA_ID & $ffff
+.end
+ASSERT SaveHeaderBytes.end - SaveHeaderBytes == SAVE_HEADER_SIZE
+
+; Carry set if SRAM holds a save in this build's layout. Opens and closes SRAM.
+SaveHeaderIsCurrent:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK(sSaveHeader) == BMODE_ADVANCED
+	ld [rRAMB], a
+	ld hl, sSaveHeader
+	ld de, SaveHeaderBytes
+	ld c, SAVE_HEADER_SIZE
+.loop
+	ld a, [de]
+	cp [hl]
+	jr nz, .different
+	inc de
+	inc hl
+	dec c
+	jr nz, .loop
+	scf
+	jp GoodCheckSum ; closes SRAM, keeping carry
+.different
+	and a
+	jp GoodCheckSum
+
+; Every Save* routine below calls this with SRAM open and bank 1 selected, so
+; whichever save path runs, the file it leaves says which layout it is in.
+; Clobbers af, bc, de, hl.
+WriteSaveHeader:
+	ld hl, SaveHeaderBytes
+	ld de, sSaveHeader
+	ld bc, SAVE_HEADER_SIZE
+	jp CopyData
 
 LoadMainData:
 	ld a, RAMG_SRAM_ENABLE
@@ -228,6 +281,7 @@ SaveMainData:
 	ld [rBMODE], a
 	ASSERT BANK("Save Data") == BMODE_ADVANCED
 	ld [rRAMB], a
+	call WriteSaveHeader
 
 	ld hl, wPlayerName
 	ld de, sPlayerName
@@ -268,6 +322,7 @@ SaveCurrentBoxData:
 	ld [rBMODE], a
 	ASSERT BANK("Save Data") == BMODE_ADVANCED
 	ld [rRAMB], a
+	call WriteSaveHeader
 	ld hl, wBoxDataStart
 	ld de, sCurBoxData
 	ld bc, wBoxDataEnd - wBoxDataStart
@@ -288,6 +343,7 @@ SavePartyAndDexData:
 	ld [rBMODE], a
 	ASSERT BANK("Save Data") == BMODE_ADVANCED
 	ld [rRAMB], a
+	call WriteSaveHeader
 	ld hl, wPartyDataStart
 	ld de, sPartyData
 	ld bc, wPartyDataEnd - wPartyDataStart

@@ -3,6 +3,15 @@ _FileDataDestroyedText::
 	line "destroyed!"
 	prompt
 
+_SaveNeedsConvertingText::
+	text "This save is from"
+	line "another build."
+	para "Convert it on the"
+	line "patch page first,"
+	cont "or NEW GAME will"
+	cont "start over."
+	prompt
+
 _WouldYouLikeToSaveText::
 	text "Would you like to"
 	line "SAVE the game?"

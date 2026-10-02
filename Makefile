@@ -67,6 +67,8 @@ RGBGFXFLAGS  ?= -Weverything
 	ai_scenarios \
 	balance_report \
 	release \
+	save_schema \
+	save_converter \
 	tools
 
 all: $(roms)
@@ -120,6 +122,19 @@ integration: pokeblue_debug.gbc
 # skips the questions; RELEASE_ARGS=--dry-run does everything but send.
 release:
 	python3 tools/release.py $(RELEASE_ARGS)
+
+# The save layout against tools/save_schemas/schema_<SAVE_SCHEMA_ID>.json: fails if a saved
+# field moved without a schema bump, or a persisted SRAM label has no policy
+# (SAVE_COMPATIBILITY_RUNBOOK.md in Red Rogue Files).
+save_schema: pokeblue_debug.gbc
+	python3 tools/save_schema.py check
+
+# Build the patch page's save converter (tools/save_compat/build_package.py) and run its Node
+# tests. SAVE_FIXTURES=<dir of untagged .sav from saves.py make> adds real-save cases.
+save_converter:
+	@mkdir -p $(BUILD_DIR)/save_pkg
+	RR_SAVE_PACKAGE=$(BUILD_DIR)/save_pkg/$$(python3 tools/save_compat/build_package.py --out $(BUILD_DIR)/save_pkg) \
+	$(if $(SAVE_FIXTURES),RR_SAVE_FIXTURES=$(SAVE_FIXTURES)) node --test tools/save_compat/converter/test_engine.js
 
 # Static audits (bank/call/clobber, stack, SRAM, text traps) against the built
 # .sym/.map of all three ROMs. Fails on any bug-level finding not triaged into
