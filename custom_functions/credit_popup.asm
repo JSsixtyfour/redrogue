@@ -85,7 +85,8 @@ RogueCreditPopupCheck::
 ;    wWitchPrizesEarned, wWitchLevelBonus/wPartyLimit/wBattleTurnLimit/
 ;    wBattleTurnCount (witch challenge params), wRewardClassBonus/
 ;    wItemClassBonus/wMoneyMultiplier/wPrizeExpBoost (witch prize bonuses),
-;    wFusionSecondarySpecies/BaseStats, wCreditsEarnedThisRun,
+;    wFusionSecondarySpecies/BaseStats, wCreditsEarnedThisRun (saved and
+;    restored across the fill, like wGymsUsedMask, for the Dorm popup),
 ;    wRogueFlagsBitfield2, and every map's CurScript byte (every map resets to
 ;    its default entry state) - plus wHealAllItemLevel/wRestorePPItemLevel/
 ;    wKODefianceUsages/wDiceCharges/wPrismType/wPrismDamageBonus/
@@ -106,8 +107,9 @@ RogueCreditPopupCheck::
 ;    ApplyKeyItemTierEffects handles, so that logic (unchanged from what used
 ;    to live in RogueOnBlackout) is inlined below it.
 ;
-; 4. Badges, item pocket counts, TM/HM ownership, money and coins - reset to
-;    the exact values a true new game starts with
+; 4. Badges, item pocket counts, TM/HM ownership and money - reset to
+;    the exact values a true new game starts with. NOT coins: wPlayerCoins is
+;    the persistent Credits balance
 ;    (engine/movie/oak_speech/init_player_data.asm). All outside
 ;    wGameProgressFlags, so step 2 does not touch them. TM/HM ownership lives
 ;    in sTMBitfield (SRAM) - wTMPocketBuf is just a scratch UI display list
@@ -154,6 +156,10 @@ RogueResetRunState::
 	; pair. It is still zeroed at TRUE new game, because init_player_data does
 	; this same blanket clear without this save/restore - which is exactly the
 	; semantics wanted: persistent across runs, fresh per save file.
+	; wCreditsEarnedThisRun also rides across (on the stack): it is the respawn
+	; popup's pending tally, and the popup runs in the Dorm AFTER this wipe.
+	ld a, [wCreditsEarnedThisRun]
+	push af
 	ld a, [wGymsUsedMask]
 	ld d, a
 	ld a, [wGymsUsedMask + 1]
@@ -171,6 +177,8 @@ RogueResetRunState::
 	ld [wGymsUsedMask], a
 	ld a, e
 	ld [wGymsUsedMask + 1], a
+	pop af
+	ld [wCreditsEarnedThisRun], a
 
 	; --- 3. re-derive the SRAM-tier caches step 2 just zeroed ---
 	farcall ApplyKeyItemTierEffects
@@ -213,7 +221,7 @@ RogueResetRunState::
 	xor a
 	ld [rRAMG], a                 ; leave SRAM disabled, never on a farcall boundary
 
-	; --- 4. badges, item pockets, money, coins (matches InitPlayerData) ---
+	; --- 4. badges, item pockets, money (matches InitPlayerData; coins kept) ---
 	; wObtainedBadges is flag_array NUM_BADGES (8 badges -> exactly 1 byte);
 	; a stray +1 write would corrupt wLetterPrintingDelayFlags right after it.
 	xor a
@@ -242,10 +250,10 @@ RogueResetRunState::
 	ld [hli], a
 	inc hl
 	ld [hl], a
-	xor a
-	ld hl, wPlayerCoins
-	ld [hli], a
-	ld [hl], a
+	; wPlayerCoins is NOT reset: it IS the Credits balance, the
+	; meta-progression currency that must survive every run end. Zeroing it
+	; here (as InitPlayerData does at true new game) wiped every credit a
+	; blackout or Hall of Fame had just awarded.
 
 	; --- 5. party, boxes, daycare, starters ---
 	xor a

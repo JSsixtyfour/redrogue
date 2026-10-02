@@ -750,7 +750,11 @@ ItemUseEvoStone:
 	jr nz, .chosenEvolution
 	farcall MistStoneChooseEvolution
 	jr nc, .canceledItemUse
+	ld a, MIST_STONE ; the chooser rewrote wEvoStoneItemID; consume the Mist Stone
 .chosenEvolution
+	; Carry the stone to consume on the stack: TryEvolvingMon zeroes
+	; wEvoStoneItemID on exit, and wCurItem aliases wCurPartySpecies.
+	push af
 	ld a, TRUE
 	ld [wForceEvolution], a
 	ld a, SFX_HEAL_AILMENT
@@ -759,13 +763,16 @@ ItemUseEvoStone:
 	callfar TryEvolvingMon ; try to evolve pokemon
 	ld a, [wEvolutionOccurred]
 	and a
+	pop bc ; b = stone (pop leaves flags alone)
 	jr z, .noEffect
 	pop af
 	ldh [hWhichPokemon], a
-	ld hl, wNumBagItems
-	ld a, 1 ; remove 1 stone
-	ld [wItemQuantity], a
-	jp RemoveItemFromInventory
+	; Stones live in the Stat pocket (wStatItemCounts), so the old bare
+	; wNumBagItems removal never touched the real count. RemoveUsedItem
+	; routes through the pockets and keys on wCurItem.
+	ld a, b
+	ld [wCurItem], a
+	jp RemoveUsedItem
 .noEffect
 	call ItemUseNoEffect
 .canceledItemUse

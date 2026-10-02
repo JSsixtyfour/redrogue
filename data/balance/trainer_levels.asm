@@ -5,14 +5,15 @@
 ; constants/balance_constants.asm.
 
 ; one 11-byte block per round (round = wBattleCount / ROUND_BATTLES, capped at 8).
-; Curve E (2026-10-02, BALANCE_LEVEL_SPIKE.md). Leader aces 14 21 28 34 40 46
-; 51 56. Rule: the leader is the hardest fight of every round. Regular route
-; trainers sit at or just under the player's expected level and wear the team
-; down; the route's final trainer gets +5 and is the stage's challenge. Gym
-; trainers sit near the player, the final gym trainer +3. Round 1's route is the
-; original L2-4 and must not get harder. Picked with tools/balance/model.py by
-; the gap (enemy top level - player level) per battle type, not by absolute
-; levels: the player's level tracks enemy level almost 1:1.
+; Curve F (2026-10-02, BALANCE_LEVEL_SPIKE.md). Leader aces 11 18 25 31 37 44 51 57.
+; Solved with tools/balance/model.py against the ROLLED starter (a random
+; species, ~2/3 medium-fast), not a medium-slow one, with EXP Share at 62.5%.
+; Targets, enemy top level - starter level: route trainers -1.5, the final
+; route trainer +1, gym trainers -1.5, the final gym trainer 0 (round 1: -1),
+; the leader +1.5 (round 1), +2.5 (round 2), +3 after. The leader is the
+; hardest trainer of every round; only the lone wild-area boss sits higher.
+; Round 1's route is the original L2-4 and must not get harder. The player's
+; level tracks enemy level almost 1:1, so tune by the gap, not by absolutes.
 ;
 ; each 11-byte block:
 ;   0: level range
@@ -23,7 +24,7 @@
 ;   7-10: class counts for that final route trainer - same total as 2-5,
 ;      but shifted toward rarer classes
 trainer_difficulty_settings:
-;round 1 (-> Gym 1, leader ace 14; final trainer 4-6)
+;round 1 (-> Gym 1, leader ace 11; final trainer 4-6)
 db 0x3  ; level range
 db 0x2  ; minimum level
 db 0x2  ; pokeball class pokemon
@@ -35,21 +36,21 @@ db 0x1  ; final trainer: pokeball class pokemon
 db 0x1  ; final trainer: greatball class pokemon
 db 0x0  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 2 (-> Gym 2, leader ace 21; final trainer 13-16)
+;round 2 (-> Gym 2, leader ace 18; final trainer 11-14)
 db 0x4  ; level range
-db 0x8  ; minimum level
+db 0x7  ; minimum level
 db 0x2  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
-db 0x5  ; final route trainer level bonus
+db 0x4  ; final route trainer level bonus
 db 0x1  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x0  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 3 (-> Gym 3, leader ace 28; final trainer 19-22)
+;round 3 (-> Gym 3, leader ace 25; final trainer 17-20)
 db 0x4  ; level range
-db 0xE  ; minimum level
+db 0xC  ; minimum level
 db 0x2  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -59,21 +60,21 @@ db 0x1  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 4 (-> Gym 4, leader ace 34; final trainer 26-29)
+;round 4 (-> Gym 4, leader ace 31; final trainer 23-26)
 db 0x4  ; level range
-db 0x15 ; minimum level
+db 0x13 ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
-db 0x5  ; final route trainer level bonus
+db 0x4  ; final route trainer level bonus
 db 0x0  ; final trainer: pokeball class pokemon
 db 0x3  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 5 (-> Gym 5, leader ace 40; final trainer 32-35)
+;round 5 (-> Gym 5, leader ace 37; final trainer 29-32)
 db 0x4  ; level range
-db 0x1B ; minimum level
+db 0x18 ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -83,9 +84,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x3  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x1  ; final trainer: masterball class pokemon
-;round 6 (-> Gym 6, leader ace 46; final trainer 38-41)
+;round 6 (-> Gym 6, leader ace 44; final trainer 36-39)
 db 0x4  ; level range
-db 0x21 ; minimum level
+db 0x1F ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x2  ; ultraball class pokemon
@@ -95,9 +96,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x1  ; final trainer: masterball class pokemon
-;round 7 (-> Gym 7, leader ace 51; final trainer 43-46)
+;round 7 (-> Gym 7, leader ace 51; final trainer 42-45)
 db 0x4  ; level range
-db 0x26 ; minimum level
+db 0x25 ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x2  ; ultraball class pokemon
@@ -107,9 +108,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x2  ; final trainer: masterball class pokemon
-;round 8 (-> Gym 8, leader ace 56; final trainer 48-51)
+;round 8 (-> Gym 8, leader ace 57; final trainer 49-52)
 db 0x4  ; level range
-db 0x2B ; minimum level
+db 0x2C ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -119,9 +120,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x3  ; final trainer: masterball class pokemon
-;round 9 (-> Victory Road, no gym leader; also covers Elite Four overflow)
+;round 9 (-> Victory Road / Elite Four; final trainer 55-58)
 db 0x4  ; level range
-db 0x30 ; minimum level
+db 0x32 ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x2  ; ultraball class pokemon
@@ -144,33 +145,33 @@ db 0x3  ; final trainer: masterball class pokemon
 ;   7-10: class counts for that final gym trainer - same total as 2-5,
 ;      but shifted toward rarer classes
 trainer_difficulty_settings_gym:
-;round 1 (-> Gym 1, leader ace 14; final trainer 7-10)
+;round 1 (-> Gym 1, leader ace 11; final trainer 6-9)
 db 0x4  ; level range
 db 0x4  ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x1  ; greatball class pokemon
 db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
-db 0x3  ; final gym trainer level bonus
+db 0x2  ; final gym trainer level bonus
 db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x0  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 2 (-> Gym 2, leader ace 21; final trainer 15-18)
+;round 2 (-> Gym 2, leader ace 18; final trainer 12-15)
 db 0x4  ; level range
-db 0xC  ; minimum level
+db 0xA  ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x0  ; ultraball class pokemon
 db 0x0  ; masterball class pokemon
-db 0x3  ; final gym trainer level bonus
+db 0x2  ; final gym trainer level bonus
 db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x1  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 3 (-> Gym 3, leader ace 28; final trainer 21-24)
+;round 3 (-> Gym 3, leader ace 25; final trainer 19-22)
 db 0x4  ; level range
-db 0x12 ; minimum level
+db 0x10 ; minimum level
 db 0x1  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -180,9 +181,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 4 (-> Gym 4, leader ace 34; final trainer 27-30)
+;round 4 (-> Gym 4, leader ace 31; final trainer 25-28)
 db 0x4  ; level range
-db 0x18 ; minimum level
+db 0x16 ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x3  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -192,9 +193,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x0  ; final trainer: masterball class pokemon
-;round 5 (-> Gym 5, leader ace 40; final trainer 33-36)
+;round 5 (-> Gym 5, leader ace 37; final trainer 31-34)
 db 0x4  ; level range
-db 0x1E ; minimum level
+db 0x1C ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x3  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -204,9 +205,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x2  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x1  ; final trainer: masterball class pokemon
-;round 6 (-> Gym 6, leader ace 46; final trainer 38-41)
+;round 6 (-> Gym 6, leader ace 44; final trainer 37-40)
 db 0x4  ; level range
-db 0x23 ; minimum level
+db 0x22 ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x2  ; ultraball class pokemon
@@ -216,9 +217,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x1  ; final trainer: greatball class pokemon
 db 0x3  ; final trainer: ultraball class pokemon
 db 0x1  ; final trainer: masterball class pokemon
-;round 7 (-> Gym 7, leader ace 51; final trainer 43-46)
+;round 7 (-> Gym 7, leader ace 51; final trainer 44-47)
 db 0x4  ; level range
-db 0x28 ; minimum level
+db 0x29 ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x2  ; ultraball class pokemon
@@ -228,9 +229,9 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x1  ; final trainer: greatball class pokemon
 db 0x3  ; final trainer: ultraball class pokemon
 db 0x2  ; final trainer: masterball class pokemon
-;round 8 (-> Gym 8, leader ace 56; final trainer 48-51)
+;round 8 (-> Gym 8, leader ace 57; final trainer 50-53)
 db 0x4  ; level range
-db 0x2D ; minimum level
+db 0x2F ; minimum level
 db 0x0  ; pokeball class pokemon
 db 0x2  ; greatball class pokemon
 db 0x1  ; ultraball class pokemon
@@ -240,7 +241,7 @@ db 0x0  ; final trainer: pokeball class pokemon
 db 0x1  ; final trainer: greatball class pokemon
 db 0x2  ; final trainer: ultraball class pokemon
 db 0x3  ; final trainer: masterball class pokemon
-;round 9 (-> Victory Road, no gym leader; also covers Elite Four overflow)
+;round 9 (-> Victory Road / Elite Four; final trainer 56-59)
 db 0x4  ; level range
 db 0x35 ; minimum level
 db 0x0  ; pokeball class pokemon

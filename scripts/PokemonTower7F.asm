@@ -529,10 +529,20 @@ PokemonTower7FRocket5AfterBattleText:
 	call PrintText
 	jr .done
 .reward
+	; EndBattleScript shows this text with the D-pad masked (for the rocket's
+	; walk to the stairs), so when the boss is the last one beaten the reward
+	; menu and naming screen opened with a dead D-pad. Unmask for the menu,
+	; then put the mask back for the walk that follows.
+	ldh a, [hJoyIgnore]
+	push af
+	xor a
+	ldh [hJoyIgnore], a
 	ld a, TEXT_POKEMONTOWER7F_REWARD_VENDOR_1
 	ldh [hTextID], a
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
+	pop af
+	ldh [hJoyIgnore], a
 .done
 	jp TextScriptEnd
 

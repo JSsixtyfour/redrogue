@@ -39,7 +39,10 @@ STAGE_EVENTS = (  # StageEventTrainerTable order; (class, pool)
     ("NURSE_JOY", "POOL_JOY"),
     ("OFFICER_JENNY", "POOL_JENNY"),
 )
-STARTERS = ("CHARMANDER", "SQUIRTLE", "BULBASAUR")
+# Odds-ladder thresholds (engine/pokemon/rarity.asm): a roll b <= POKEBALL_ODDS is
+# the pokeball tier, b <= GREATBALL_ODDS greatball, otherwise ultraball.
+POKEBALL_ODDS = 0x7F
+GREATBALL_ODDS = 0x66 + 0x7F
 GROWTH_CURVES = ("GROWTH_MEDIUM_FAST", "GROWTH_MEDIUM_SLOW", "GROWTH_FAST", "GROWTH_SLOW")
 PARTY_GEN_MAX_RETRIES = 8
 AMULET_COIN_PCT = (10, 15, 20)
@@ -73,7 +76,7 @@ class Config:
     exp_boost: bool = True           # False = drop BoostExp's x1.5 (the parity-at-x1.0 lever)
     # What-if over-level EXP penalty: ((gap, shift), ...) checked in order; a
     # recipient whose level exceeds the KO'd mon's by >= gap gets exp >> shift.
-    # Levels are read on the MedSlow curve. () = off (the ROM today).
+    # Levels are read on the recipient's own growth curve. () = off (the ROM today).
     overlevel: tuple[tuple[int, int], ...] = ()
     groups: tuple[str, ...] = ("KANTO",)
     take_wild: float = 0.5           # chance the player picks an optional wild-area door
@@ -85,6 +88,9 @@ class Config:
     amulet_coin: int = 0             # 0 = none, 1-3 = tier
     champion: str = "RIVAL3"
     reward_joins: int = 1            # reward mons that join per stage (bench)
+    # The player's starter: "random" = Oak's Lab's roll (rogue_pokemon_randomized_batch,
+    # the reward odds ladder), or a GROWTH_* name to pin the starter's curve (what-if).
+    starter: str = "random"
 
 
 # =============================================================================
@@ -163,6 +169,16 @@ def pc_roll_mon_class(round_idx: int, bump: int, rng: random.Random) -> int:
     shift = min(round_idx * 8 + bump, 255)
     eff = min(rng.randrange(256) + shift, 255)
     return 1 if eff < 205 else 2 if eff < 243 else 3 if eff < 253 else 4
+
+
+def roll_reward_mon(g: GameData, cfg: Config, level: int, rng: random.Random) -> str:
+    """Random_Pokemon_Selection with c = 0 (the odds ladder): pokeball 128/256,
+    greatball 102/256, ultraball 26/256, then RogueSelectFromTier. Used by the
+    Oak's Lab starter balls and the stage reward offers. Witch, bridge,
+    mini-boss and Rare Scope bonuses are not modelled."""
+    b = rng.randrange(256)
+    cls = 1 if b <= POKEBALL_ODDS else 2 if b <= GREATBALL_ODDS else 3
+    return select_from_tier_evolved(g, cfg, cls, level, rng)
 
 
 def select_from_tier_evolved(g: GameData, cfg: Config, cls: int, level: int, rng: random.Random) -> str:
@@ -428,13 +444,13 @@ def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
          half, then the whole party (fighter included) splits the other half.
       b: the fighter keeps 100%; each benched mon gets 25%.
       c: the fighter keeps 100%; the bench splits one 50% pool.
-      equal: THE ROM'S RULE (chosen 2026-09-28): every party mon, the fighter
-         included, gets the value halved rounding up, once (FaintEnemyPokemon
-         .expShare)."""
+      equal: THE ROM'S RULE (chosen 2026-09-28 at 50%, raised to 62.5% on
+         2026-10-02): every party mon, the fighter included, gets the value
+         halved rounding up plus an eighth, once (FaintEnemyPokemon .expShare)."""
     bench = party - 1
     if mode == "equal":
-        half = base_exp - (base_exp >> 1)
-        return half, half
+        share = base_exp - (base_exp >> 1) + (base_exp >> 3)
+        return share, share
     if mode == "a":
         half = base_exp - (base_exp >> 1)
         each = half // party
@@ -492,6 +508,12 @@ class Member:
     join_level: int
     join_battle: int          # index into the run's battle list
     exp_gained: int = 0
+    growth: str = "GROWTH_MEDIUM_SLOW"   # the species' growth rate; levels are read on it
+    species: str = ""
+
+    def level(self, g: GameData) -> int:
+        rate = g.growth[self.growth]
+        return level_from_exp(rate, exp_at_level(rate, self.join_level) + self.exp_gained)
 
 
 @dataclass
@@ -503,6 +525,9 @@ class Checkpoint:
     ace_exp: int
     bench: list[tuple[int, int]]   # (join level, exp gained) for every non-ace member
     money: int
+    ace_growth: str = "GROWTH_MEDIUM_SLOW"
+    bench_growth: list[str] = field(default_factory=list)
+    levels: list[int] = field(default_factory=list)   # every member on its own curve, ace first
 
 
 @dataclass
@@ -518,9 +543,17 @@ class Simulator:
     def __init__(self, g: GameData, cfg: Config, seed: int):
         self.g, self.cfg, self.rng = g, cfg, random.Random(seed)
         self.run = Run()
-        self.members = [Member(5, 0)]           # the starter, flat level 5 in Oak's Lab
+        # Oak's Lab: rogue_pokemon_randomized_batch rolls three balls on the reward
+        # ladder (evolution checked at GetRewardMonLevel); GivePokemon gives the pick
+        # at L5. The rival takes one of the other two (RivalPickStarter picks by type
+        # matchup; the model picks at random, which only changes the rival's species).
+        balls = [roll_reward_mon(g, cfg, reward_level(g, 0), self.rng) for _ in range(3)]
+        pick = self.rng.randrange(3)
+        starter = balls[pick]
+        growth = cfg.starter if cfg.starter != "random" else g.species[starter].growth
+        self.members = [Member(5, 0, growth=growth, species=starter)]
         self.money = bcd(g.knobs["START_MONEY"])
-        self.rival_starter = self.rng.choice(STARTERS)
+        self.rival_starter = self.rng.choice([b for i, b in enumerate(balls) if i != pick])
         self.count = 0
         self.ko_turn = 0
 
@@ -528,8 +561,7 @@ class Simulator:
     def _penalize(self, m: "Member", exp: int) -> int:
         if not self.cfg.overlevel:
             return exp
-        rate = self.g.growth["GROWTH_MEDIUM_SLOW"]
-        level = level_from_exp(rate, exp_at_level(rate, m.join_level) + m.exp_gained)
+        level = m.level(self.g)
         for gap, shift in self.cfg.overlevel:
             if level - self._ko_level >= gap:
                 return exp >> shift
@@ -567,13 +599,15 @@ class Simulator:
 
     def join(self, level: int) -> None:
         if len(self.members) < 6:
-            self.members.append(Member(level, len(self.run.battles)))
+            sp = roll_reward_mon(self.g, self.cfg, level, self.rng)
+            self.members.append(Member(level, len(self.run.battles), growth=self.g.species[sp].growth, species=sp))
 
     def checkpoint(self, rnd: int, label: str, enemy_ace: int) -> None:
         ace = self.members[0]
         self.run.checkpoints.append(Checkpoint(
             rnd, label, len(self.run.battles), enemy_ace, ace.exp_gained,
-            [(m.join_level, m.exp_gained) for m in self.members[1:]], self.money))
+            [(m.join_level, m.exp_gained) for m in self.members[1:]], self.money,
+            ace.growth, [m.growth for m in self.members[1:]], [m.level(self.g) for m in self.members]))
 
     # --- stages ---
     def route(self, miniboss: str | None) -> None:
@@ -736,6 +770,14 @@ def summarize(g: GameData, runs: list[Run]) -> list[dict]:
             row[f"ace_{short}_p90"] = pct(lv, 0.9)
             row[f"team_{short}"] = statistics.mean(team_average(g, curve, cp) for cp in cps)
         row["gap_medium_slow"] = row["ace_medium_slow"] - (row["enemy_ace"] - 2)
+        # "rolled": every mon on its own species' growth curve (the real run).
+        ace = [cp.levels[0] for cp in cps]
+        row["ace_rolled"] = statistics.mean(ace)
+        row["ace_rolled_p10"] = pct(ace, 0.1)
+        row["ace_rolled_p90"] = pct(ace, 0.9)
+        row["team_rolled"] = statistics.mean(statistics.mean(cp.levels) for cp in cps)
+        row["team_low_rolled"] = statistics.mean(min(cp.levels) for cp in cps)
+        row["gap_rolled"] = row["enemy_ace"] - row["ace_rolled"]
         rows.append(row)
     return rows
 
@@ -748,15 +790,16 @@ def format_round_table(rows: list[dict], cfg: Config) -> str:
     head = (f"difficulty={cfg.difficulty} exp_all={cfg.exp_all} boost={cfg.exp_boost} policy={cfg.policy} "
             f"take_wild={cfg.take_wild} groups={','.join(cfg.groups)}")
     lines = [head,
-             "| checkpoint | battles | enemy ace | ace MedSlow (p10-p90) | ace MedFast | ace Fast | ace Slow "
-             "| team MedSlow | gap vs ace-2 | money |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "| checkpoint | battles | enemy ace | starter (p10-p90) | team avg | team lowest | enemy ace - starter "
+             "| if MedSlow | if MedFast | if Fast | if Slow | money |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append(
             f"| {r['label']} | {r['battles']:.0f} | {r['enemy_ace']:.1f} "
-            f"| {r['ace_medium_slow']:.1f} ({r['ace_medium_slow_p10']}-{r['ace_medium_slow_p90']}) "
-            f"| {r['ace_medium_fast']:.1f} | {r['ace_fast']:.1f} | {r['ace_slow']:.1f} "
-            f"| {r['team_medium_slow']:.1f} | {r['gap_medium_slow']:+.1f} | {r['money']:,.0f} |")
+            f"| {r['ace_rolled']:.1f} ({r['ace_rolled_p10']}-{r['ace_rolled_p90']}) "
+            f"| {r['team_rolled']:.1f} | {r['team_low_rolled']:.1f} | {r['gap_rolled']:+.1f} "
+            f"| {r['ace_medium_slow']:.1f} | {r['ace_medium_fast']:.1f} | {r['ace_fast']:.1f} | {r['ace_slow']:.1f} "
+            f"| {r['money']:,.0f} |")
     return "\n".join(lines)
 
 
@@ -793,7 +836,8 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("share b", exp_share_split("b", 120, 6), (120, 30))
     check("share c", exp_share_split("c", 120, 6), (120, 12))
     check("share c solo", exp_share_split("c", 120, 1), (120, 0))
-    check("share equal odd", exp_share_split("equal", 55, 6), (28, 28))
+    check("share equal odd", exp_share_split("equal", 55, 6), (34, 34))   # 28 + 6
+    check("share equal max", exp_share_split("equal", 255, 6), (159, 159))  # 128 + 31, no overflow
 
     # Difficulty: RogueApplyDifficulty on the round-1 leader ace (12 + 2 = 14).
     ace1 = g.knobs["GYM_R1_BASE"] + (g.knobs["GYM_R1_MONS"] - 1) * g.knobs["GYM_R1_STEP"]
@@ -916,6 +960,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--round-shape", default=None, metavar="ROUTE,GYM",
                     help="what-if battles per stage and gym trainers per gym, e.g. 4,3")
     ap.add_argument("--policy", choices=("carry", "rotate"), default="carry")
+    ap.add_argument("--starter", default="random", choices=("random",) + GROWTH_CURVES,
+                    help="random = Oak's Lab's roll; a GROWTH_* name pins the starter's curve")
     ap.add_argument("--take-wild", type=float, default=0.5)
     ap.add_argument("--take-miniboss", type=float, default=1.0)
     ap.add_argument("--wild-steps", type=int, default=None,
@@ -952,6 +998,7 @@ def main(argv: list[str] | None = None) -> int:
         wild_path=args.wild_path,
         policy=args.policy,
         amulet_coin=args.amulet_coin,
+        starter=args.starter,
     )
     if args.trace:
         sim = Simulator(g, cfg, args.seed * 100003)

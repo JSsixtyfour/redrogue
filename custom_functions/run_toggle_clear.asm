@@ -47,4 +47,12 @@ RunClearedToggles:
 	db TOGGLE_POKEMON_TOWER_7F_MR_FUJI
 	; SS Anne B1F: the captain hides once the rooms' four trainers are beaten.
 	db TOGGLE_SS_ANNE_B1F_CAPTAIN
+	; Oak's Lab: the player's and rival's starter balls hide when taken, and
+	; the rival hides after the lab battle. Starter selection replays every
+	; run (wPlayerStarter/EVENT_GOT_STARTER are run-scoped), so all four must
+	; come back or run 2 finds one ball, no rival, and a freeze on pickup.
+	db TOGGLE_ROGUE_STARTER_POKEBALL_1
+	db TOGGLE_ROGUE_STARTER_POKEBALL_2
+	db TOGGLE_ROGUE_STARTER_POKEBALL_3
+	db TOGGLE_OAKS_LAB_RIVAL
 	db -1 ; end

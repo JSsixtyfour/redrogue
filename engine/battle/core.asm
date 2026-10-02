@@ -872,12 +872,13 @@ FaintEnemyPokemon:
 	callfar GainExperience
 	jr .tryMidBattleEvo
 
-; EXP Share on: an equal share. Every party mon, the fighter included, gets 50%
-; of a KO in one pass; the fighter gets no separate award of its own
-; (BALANCE_PHASE5_PLAN.md C, chosen 2026-09-28: ace and team both land ~60 at
-; the Champion, carry or rotate). Halve the values that determine exp gain
-; (rounding up): the enemy mon base stats are added to stat exp, and the base
-; exp is the same span, so both are halved together.
+; EXP Share on: an equal share. Every party mon, the fighter included, gets
+; 62.5% of a KO in one pass; the fighter gets no separate award of its own
+; (BALANCE_PHASE5_PLAN.md C, chosen 2026-09-28 at 50%; raised to 62.5% on
+; 2026-10-02, BALANCE_LEVEL_SPIKE.md: at 50% a rolled starter fell 5-7 levels
+; behind every leader). Scale the values that determine exp gain: the enemy mon
+; base stats are added to stat exp, and the base exp is the same span, so both
+; are scaled together. 62.5% = half (rounding up) + an eighth; no overflow.
 .expShare
 	ld hl, wEnemyMonBaseStats
 	ld b, NUM_STATS + 2
@@ -886,7 +887,13 @@ FaintEnemyPokemon:
 	srl a
 	ld c, a                    ; c = value >> 1
 	ld a, [hl]
-	sub c                      ; value - value >> 1
+	sub c
+	ld c, a                    ; c = value - value >> 1
+	ld a, [hl]
+	srl a
+	srl a
+	srl a                      ; value >> 3
+	add c
 	ld [hli], a
 	dec b
 	jr nz, .expShareHalveLoop

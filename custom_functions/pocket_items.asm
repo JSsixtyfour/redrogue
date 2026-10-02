@@ -95,6 +95,16 @@ _AddToCount:
 ; RemovePocketItem — decrement count by wItemQuantity (0=remove all).
 ; Poke Flute is never decremented.
 ; ============================================================
+; RemovePocketItemByID: remove one [hItemToRemoveID] from its count-array
+; pocket, for RemoveItemByID (engine/menus/pc.asm). That routine only scans
+; legacy wBagItems, so script hand-ins of pocket items (guard drinks, Celadon
+; roof drinks) passed IsItemInBag and were never taken. Lives here because
+; bank $05 has no room for the setup. Falls through.
+RemovePocketItemByID::
+    ldh a, [hItemToRemoveID]
+    ld [wCurItem], a
+    ld a, 1
+    ld [wItemQuantity], a
 RemovePocketItem::
     ld a, [wCurItem]
     cp POKE_FLUTE

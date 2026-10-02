@@ -114,7 +114,8 @@ AccessedMyPCText:
 
 ; removes one of the specified item ID [hItemToRemoveID] from bag (if existent)
 RemoveItemByID::
-	ld hl, wBagItems      ; PC key item operations deferred — use legacy bag for now
+	farcall RemovePocketItemByID ; Recovery/Stat/Valuable items; no-op otherwise
+	ld hl, wBagItems      ; everything else (fossils, voucher) is in the legacy bag
 	ldh a, [hItemToRemoveID]
 	ld b, a
 	xor a
@@ -135,12 +136,7 @@ RemoveItemByID::
 	ld [wItemQuantity], a
 	ldh a, [hItemToRemoveIndex]
 	ldh [hWhichPokemon], a
+	; No wIsKeyItem branch: it was stale state from whatever last set it, and
+	; wNumBagKeyItems is a dead alias (always 0), so it could only misfire.
 	ld hl, wNumBagItems
-    ;;;;;;;;;; marcelnote - new for bag pockets
-	ld a, [wIsKeyItem]
-	and a
-	jr z, .notKeyItem2
-	ld hl, wNumBagKeyItems
-.notKeyItem2
-	;;;;;;;;;;
 	jp RemoveItemFromInventory

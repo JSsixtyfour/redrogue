@@ -40,6 +40,22 @@ class BlackoutFixture:
                 h.write8('wPartyMon1HP', 0, i * stride)
                 h.write8('wPartyMon1HP', 0, i * stride + 1)
         h.register_hook('MainInBattleLoop', faint)
+        # Run-end persistence: Credits (wPlayerCoins, BCD) survive the reset,
+        # the pending tally reaches the Dorm popup, and the Oak's Lab objects
+        # a previous run hid come back. Seeded right before the loss.
+        # (toggle_constants.asm's trailing hex comments are stale; parse.)
+        toggles = parse_rgbds_constants(REPO_ROOT / 'constants/toggle_constants.asm')
+        lab_toggles = [toggles[f'TOGGLE_ROGUE_STARTER_POKEBALL_{i}'] for i in (1, 2, 3)]
+        lab_toggles.append(toggles['TOGGLE_OAKS_LAB_RIVAL'])
+        h.write8('wPlayerCoins', 0x12)
+        h.write8('wPlayerCoins', 0x34, 1)
+        h.write8('wCreditsEarnedThisRun', 3)
+        toggle_base = h.address('wToggleableObjectFlags')
+        for bit in lab_toggles:
+            h.pyboy.memory[toggle_base + bit // 8] |= 1 << (bit % 8)
+        popup_tally = []
+        h.register_hook('RogueCreditPopupCheck',
+                        lambda _: popup_tally.append(h.read8('wCreditsEarnedThisRun')))
         # The lower trainer sees (4,7); Brock is spoken to from (4,2).
         for _ in range(11 if leader else 7):
             h.move_tile('up')
@@ -72,7 +88,13 @@ class BlackoutFixture:
         self.assertEqual(h.read8('wPartySpecies'), 0xff)
         self.assertEqual(h.read8('wBattleCount'), 0)
         self.assertEqual(h.read8('hIsInBattle'), 0)
+        self.assertEqual((h.read8('wPlayerCoins'), h.read8('wPlayerCoins', 1)), (0x12, 0x34))
+        self.assertIn(3, popup_tally, popup_tally)
+        for bit in lab_toggles:
+            self.assertFalse(h.pyboy.memory[toggle_base + bit // 8] & (1 << (bit % 8)),
+                             f"Oak's Lab toggle {bit:#x} still hidden after the run reset")
         h.tick(120)
+        self.assertEqual(h.read8('wCreditsEarnedThisRun'), 0)  # popup drew and consumed it
         self.assertEqual(h.read8('hCurMap'), maps['SILPH_CO_DORM'])
         h.move_tile('right')
         self.assertEqual((h.read8('wXCoord'), h.read8('wYCoord')), (2, 7))
