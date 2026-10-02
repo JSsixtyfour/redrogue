@@ -45,5 +45,6 @@ ResetStatusAndHalveMoneyOnBlackout::
 	ldh [hJoyIgnore], a
 	; a blackout is the run boundary for credits: refill the Credit Exchange
 	; slot pulls and re-derive KO Defiance charges from their SRAM tier
-	farcall RogueOnBlackout
-	predef_jump HealParty
+	; The run reset empties the party. HealParty assumes a nonempty party;
+	; its PP loop underflows at count 0 and writes beyond the party data.
+	farjp RogueOnBlackout
