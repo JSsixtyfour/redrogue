@@ -33,3 +33,6 @@
 
 # timestamped ROM archive (see BUILD_DIR in Makefile)
 builds/
+
+# make release: holds RELEASE_WEBHOOK_URL (a secret)
+.env

@@ -65,7 +65,12 @@ def find_sym(build: str, built: Optional[str], builds_dir: Path) -> Path:
     if as_path.suffix == ".sym" and as_path.is_file():
         return as_path
     build = build.lower()
-    matches = sorted(builds_dir.glob(f"pokeblue_debug_*_{build}*.sym"))
+    # builds/releases/ (kept for good by `make release`) first, so a pruned archive copy doesn't matter
+    found = {}
+    for folder in (builds_dir, builds_dir / "releases"):
+        for m in folder.glob(f"pokeblue_debug_*_{build}*.sym"):
+            found[m.name] = m
+    matches = sorted(found.values(), key=lambda m: m.name)
     matches = [m for m in matches if m.stem.endswith(build) or m.stem.endswith(build + "-dirty")]
     if built:
         date, _, clock = built.partition(" ")

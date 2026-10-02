@@ -66,6 +66,7 @@ RGBGFXFLAGS  ?= -Weverything
 	space \
 	ai_scenarios \
 	balance_report \
+	release \
 	tools
 
 all: $(roms)
@@ -113,6 +114,12 @@ smoke: pokeblue_debug.gbc
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py
+
+# Build, smoke-test and send the debug ROM to the playtest bot (tools/release.py).
+# Refuses uncommitted or unpushed work. RELEASE_ARGS='--notes "..." --testing "..."'
+# skips the questions; RELEASE_ARGS=--dry-run does everything but send.
+release:
+	python3 tools/release.py $(RELEASE_ARGS)
 
 # Static audits (bank/call/clobber, stack, SRAM, text traps) against the built
 # .sym/.map of all three ROMs. Fails on any bug-level finding not triaged into

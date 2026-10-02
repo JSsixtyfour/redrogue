@@ -31,6 +31,36 @@ text audits (a few seconds, and only when relevant files are staged) and compile
 A clean build proves only that the ROM links. Visual and timing behavior (palettes, fades, raster
 effects, walk cadence) still needs a BGB check.
 
+## Releasing to testers
+
+```sh
+make release
+```
+
+From WSL, with everything committed and pushed. It asks for "What's new" and "What to test" (Enter
+on "What's new" lets the playtest bot draft it from the commit messages), then:
+
+1. Refuses uncommitted changes or an unpushed commit, before building anything.
+2. Builds all three ROMs and runs `make smoke`. Any failure stops it; nothing is sent.
+3. Keeps that build's `pokeblue_debug_` `.gbc` and `.sym` in `builds/releases/`, which `BUILD_KEEP`
+   never prunes, so crash screens from it can always be looked up.
+4. Sends the ROM to the playtest bot through a Discord webhook. The bot makes the patches, updates the
+   patch page, marks reports Fixed from `Fixes RR-0012` commits, announces, and replies under the
+   webhook's message in that channel.
+
+`make release RELEASE_ARGS='--notes "New gym" --testing "Gym 3"'` skips the questions,
+`--no-announce` sets the build without announcing it, and `--dry-run` does everything except send.
+
+**One-time setup:** in a private developers' channel, **Edit Channel > Integrations > Webhooks > New
+Webhook**, copy its URL, and put it in an untracked `.env` at the repo root:
+
+```
+RELEASE_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+The bot side (its `release_webhook_id` and the Message Content intent) is in the playtest bot's
+README.
+
 ## Crash screen
 
 In the debug build, a crash shows a screen instead of freezing. It catches a jump into unused ROM
@@ -70,11 +100,11 @@ Or type it all on one line: `py tools\crash_lookup.py 9dba3ff3 00:3E7C 352B 01DC
 
 Next step is the usual one: put a BGB breakpoint on the routine the stack names, and reproduce.
 
-It needs that build's `.sym` in `builds/`, and `BUILD_KEEP` (default 20 per ROM) deletes older
-ones, which can mean within a day or two of normal work. Until `make release` keeps released builds
-for good, copy the `pokeblue_debug_` `.gbc` and `.sym` you send testers somewhere safe and pass the
-`.sym` path in place of the ID. A clean commit can also be rebuilt for the same addresses; a
-`-dirty` build cannot.
+It needs that build's `.sym`. Builds sent with `make release` are kept for good in
+`builds/releases/`, which the tool searches too. Anything else lives only in `builds/`, where
+`BUILD_KEEP` (default 20 per ROM) prunes older ones within a day or two of normal work: copy those
+somewhere safe and pass the `.sym` path in place of the ID. A clean commit can also be rebuilt for
+the same addresses; a `-dirty` build cannot.
 
 ## Project docs
 
