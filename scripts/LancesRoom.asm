@@ -82,10 +82,10 @@ LancesRoomDefaultScript:
 ; Lance (LanceTriggerMovementCoords entry (5,1)), 2 = south of him (6,2).
 	cp $1
 	ld a, SPRITE_FACING_LEFT
-	ld b, SPRITE_FACING_RIGHT
+	lb bc, SPRITE_FACING_RIGHT, PLAYER_DIR_RIGHT
 	jr z, .faceLance
 	ld a, SPRITE_FACING_DOWN
-	ld b, SPRITE_FACING_UP
+	lb bc, SPRITE_FACING_UP, PLAYER_DIR_UP
 .faceLance
 	push bc
 	ldh [hSpriteFacingDirection], a
@@ -95,6 +95,8 @@ LancesRoomDefaultScript:
 	pop bc
 	ld a, b
 	ld [wSpritePlayerStateData1FacingDirection], a
+	ld a, c
+	ld [wPlayerMovingDirection], a
 	call UpdateSprites
 	ld c, 6
 	call DelayFrames

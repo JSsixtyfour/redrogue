@@ -146,6 +146,14 @@ ENDC
 	ld a, [wTrainerFacingDirection]
 	xor SPRITE_FACING_UP
 	ld [wSpritePlayerStateData1FacingDirection], a
+	rrca
+	rrca
+	ld e, a
+	ld d, 0
+	ld hl, .playerMovingDirections
+	add hl, de
+	ld a, [hl]
+	ld [wPlayerMovingDirection], a
 	ldh a, [hActiveSpriteIndex]
 	ld [wEmotionBubbleSpriteIndex], a
 	xor a ; EXCLAMATION_BUBBLE
@@ -159,6 +167,9 @@ ENDC
 	ld hl, wCurMapScript
 	inc [hl] ; increment map script index (next script function is usually DisplayEnemyTrainerTextAndStartBattle)
 	ret
+
+.playerMovingDirections
+	db PLAYER_DIR_DOWN, PLAYER_DIR_UP, PLAYER_DIR_LEFT, PLAYER_DIR_RIGHT
 
 ; display the before battle text after the enemy trainer has walked up to the player's sprite
 DisplayEnemyTrainerTextAndStartBattle::
