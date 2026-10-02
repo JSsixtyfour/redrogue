@@ -81,7 +81,11 @@ ReloadMainMenu:
 	xor a
 	ldh [hNoWaitAfterText], a
 	call ReloadMapData
-	call UpdateSprites
+	; Bill's PC replaces the follower's VRAM slot with its animated box icons.
+	; Publish a swapped lead while the font context is still live, then restore
+	; both halves of the follower sheet before drawing sprites on the PC menu.
+	farcall FollowerPrepareMap
+	call ReloadMapSpriteTilePatterns
 	jp PCMainMenu
 LogOff:
 	ld a, SFX_TURN_OFF_PC

@@ -313,54 +313,19 @@ PlayShootingStar:
 	ldpal a, SHADE_BLACK, SHADE_DARK, SHADE_LIGHT, SHADE_WHITE
 	ldh [rBGP], a
     call UpdateGBCPal_BGP
-	ld c, 180
-	;call DelayFrames
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-;joenote - activate/deactivate gamma shader if select is pressed at copyright screen
-;		- Behavior is determined by the destination code in the rom header
+	; Keep the header-selected default CGB shader; no startup button toggle.
 	ld a, [hGBC]
 	and a
-	jr z, .endgammaloop	;do not bother if not in GBC mode
-	
-	;set the default based on the header destination code
-	ld b, a	;B is now 01
-	ld a, [$014A] ;read destination code from rom header (00 for JP or 01 for !JP)
-	xor $01	;invert the code (01 for JP or 00 for !JP)
-	add b ;(A = 02 for JP or 01 for !JP)
-	ld [hGBC], a	;set default shader state (02 for ON or 01 for OFF)
-	
-.gammaloop
-	call DelayFrame
-	push bc
-	call ReadJoypad
-	pop bc
-	ld a, [hJoyInput]
-	and PAD_SELECT
-	jr z, .skipgamma
-	
-	;toggle the shader from its default due to pressing SELECT
-	ld a, [$014A] ;read destination code from rom header (00 for JP or 01 for !JP)
-	xor $01	;invert the code (01 for JP or 00 for !JP)
+	jr z, .copyrightDelay
 	ld b, a
-	ld a, $02
-	sub b 	;A is now 01 for JP or 02 for !JP
-	ld [hGBC], a	;Toggle the shader state from the default
-	
-;	Play a SFX to confirm that it worked. The imported ShinRed code also wrote
-;	tiles $7D/$7E at (18,17), but with Red Rogue's font those look like a stray
-;	menu-border corner on the copyright screen.
-	ld a, SFX_PRESS_AB
-	call PlaySound
-	
-	jr .endgammaloop
+	ld a, [$014A] ; destination code: 00 for JP, 01 for non-JP
+	xor $01
+	add b
+	ld [hGBC], a
 
-.skipgamma	
-	dec c
-	jr nz, .gammaloop
-.endgammaloop
-	inc c
+.copyrightDelay
+	ld c, 181 ; preserve the full copyright-screen wait
 	call DelayFrames
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	call ClearScreen
 	call DisableLCD
 	xor a

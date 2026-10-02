@@ -27,6 +27,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         cls.wram = (ROOT / "ram/wram.asm").read_text()
         cls.ram_constants = (ROOT / "constants/ram_constants.asm").read_text()
         cls.options_menu = (ROOT / "engine/menus/options_menu.asm").read_text()
+        cls.pc = (ROOT / "engine/menus/pc.asm").read_text()
 
     def test_only_scoped_core_is_included(self):
         self.assertIn('INCLUDE "engine/overworld/follower_yellow_test.asm"', self.main)
@@ -103,6 +104,15 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"jr nz, \.zeroStoredPictureIDLoop\s+ld hl, wFontLoaded\s+"
             r"res BIT_RELOAD_STANDING_FRAMES, \[hl\]\s+ret",
         )
+
+    def test_bills_pc_restores_swapped_follower_sheet_before_redraw(self):
+        reload_main = self.pc.split("ReloadMainMenu:", 1)[1].split("LogOff:", 1)[0]
+        self.assertRegex(
+            reload_main,
+            r"call ReloadMapData\s+(?:;[^\n]*\s+)*"
+            r"farcall FollowerPrepareMap\s+call ReloadMapSpriteTilePatterns",
+        )
+        self.assertNotIn("call UpdateSprites", reload_main)
 
     def test_yellow_queue_sentinel_contract(self):
         self.assertIn("DEF FOLLOWER_COMMAND_EMPTY      EQU $ff", self.core)

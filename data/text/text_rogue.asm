@@ -104,7 +104,7 @@ _KODefianceDescriptionText::
 _KODefianceActivatedText::
 	text "KO DEFIANCE"
 	line "activated!"
-	done
+	prompt
 
 _ShinyCharmDescriptionText::
 	text "Ups the odds"
