@@ -17,6 +17,14 @@ MON_LEVEL = 0x21
 PARTYMON_STRUCT_LENGTH = 0x2C
 E4_TEAM_SIZE = 6
 
+_BALANCE = parse_rgbds_constants(REPO_ROOT / "constants" / "balance_constants.asm")
+
+
+def e4_levels(tier: int) -> tuple[int, int]:
+    """e4_team_spec: slot 0 is E4_BASE_LEVEL + tier, each slot adds E4_LEVEL_STEP."""
+    low = _BALANCE["E4_BASE_LEVEL"] + tier
+    return low, low + (E4_TEAM_SIZE - 1) * _BALANCE["E4_LEVEL_STEP"]
+
 # class -> (variant A ace, variant C ace), species names as the ROM stores them.
 # Forms are not visible in wEnemyPartySpecies, so Espeon / Umbreon read JOLTEON,
 # Alolan Marowak MAROWAK and Galarian Weezing WEEZING.
@@ -68,13 +76,13 @@ class TrainerRevampSpecTest(HarnessTestCase):
     def test_e4_tier_one_builds_six_with_the_a_ace(self):
         """wTrainerNo 1 used to be the authored hole: a fixed 4-5 mon team.
 
-        Now it is tier 1 variant A - six mons at 52-62, the A ace last.
+        Now it is tier 1 variant A - six mons from E4_BASE_LEVEL + 1, the A ace last.
         """
-        self._check_e4(1, 0, 52, 62)
+        self._check_e4(1, 0, *e4_levels(1))
 
     def test_e4_tier_four_builds_six_with_the_c_ace(self):
-        """wTrainerNo 12: tier 4 variant C, 55-65. Champion Lance draws 10-12."""
-        self._check_e4(12, 1, 55, 65)
+        """wTrainerNo 12: tier 4 variant C. Champion Lance draws 10-12."""
+        self._check_e4(12, 1, *e4_levels(4))
 
     def test_rival3_ace_is_his_starter_and_the_pool_skips_its_line(self):
         """Slot 5 is wRivalStarter evolved; slots 0-4 never hold its line.
@@ -95,7 +103,9 @@ class TrainerRevampSpecTest(HarnessTestCase):
                 self.assertEqual(count, 6)
                 self.assertEqual(party[5], self.species["CHARIZARD"],
                                  "the ace must be his own starter, evolved")
-                self.assertEqual((levels[0], levels[5]), (60, 65))
+                low = _BALANCE["CHAMPION_BASE_LEVEL"]
+                self.assertEqual((levels[0], levels[5]),
+                                 (low, low + 5 * _BALANCE["CHAMPION_LEVEL_STEP"]))
                 for slot in range(5):
                     self.assertNotIn(party[slot], line,
                                      f"slot {slot} doubled up on his starter line")

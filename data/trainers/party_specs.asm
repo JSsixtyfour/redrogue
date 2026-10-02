@@ -597,8 +597,8 @@ FalknerSpec3:
 ; His ace is always his own selected starter: slot 5 pins
 ; RIVAL_STARTER_PLACEHOLDER, which PartyGenBuildSlot turns into wRivalStarter
 ; evolved to the slot's level (PatchRivalStarterSpecies). NO_RIVAL_STARTER keeps
-; the five pool slots from drawing that same line again. Levels 60-65, the
-; authored rosters' 59-65 with the ace on the same 65.
+; the five pool slots from drawing that same line again. Levels come from
+; CHAMPION_BASE_LEVEL / CHAMPION_LEVEL_STEP (balance_constants.asm).
 ; ---------------------------------------------------------------------------
 DEF NUM_RIVAL3_TEAMS EQU 5          ; ChampionsRoom.asm's `ld c, 5`
 
@@ -609,7 +609,7 @@ Rival3Specs::
 	ENDR
 
 Rival3Spec:
-	party_spec 6, 60, 1, POOL_RIVAL3, MIX_E4_SETS, \
+	party_spec 6, CHAMPION_BASE_LEVEL, CHAMPION_LEVEL_STEP, POOL_RIVAL3, MIX_E4_SETS, \
 	           GYM_SPEC_FLAGS | (1 << BIT_PSPEC_NO_RIVAL_STARTER)
 	slot_override 5, 1 << BIT_POVR_SPECIES
 	db RIVAL_STARTER_PLACEHOLDER, POOL_FORM_BASE

@@ -38,10 +38,10 @@ BIT_ACE_LAST, BIT_NO_DUPES, BIT_ALLOW_UBER, BIT_NO_RIVAL_STARTER = 0, 1, 2, 3
 BASE_FLAGS = (1 << BIT_ACE_LAST) | (1 << BIT_NO_DUPES)
 ALLOW_UBER = 1 << BIT_ALLOW_UBER
 NO_RIVAL_STARTER = 1 << BIT_NO_RIVAL_STARTER
-# e4_team_spec (Trainer Revamp 2026-09-23): six mons, base 51 + tier, step 2,
-# ace pinned in the last slot, and NO wTrainerNo 1 hole.
+# e4_team_spec (Trainer Revamp 2026-09-23): six mons, base E4_BASE_LEVEL + tier
+# (read from balance_constants.asm below), step 2, ace pinned in the last slot,
+# and NO wTrainerNo 1 hole.
 E4_TEAM_SIZE = 6
-E4_BASE_LEVEL = 51
 POOL_FORM_BASE = 0
 # ChampionsRoom.asm hands RIVAL3 wTrainerNo 1-5, all reaching Rival3Spec.
 NUM_RIVAL3_TEAMS = 5
@@ -67,6 +67,7 @@ GYM_CURVE = {
     r: (_BALANCE[f"GYM_R{r}_MONS"], _BALANCE[f"GYM_R{r}_BASE"], _BALANCE[f"GYM_R{r}_STEP"])
     for r in range(1, 9)
 }
+E4_BASE_LEVEL = _BALANCE["E4_BASE_LEVEL"]
 GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_LATE",
            4: "MIX_GYM_LATE", 5: "MIX_GYM_LATE", 6: "MIX_ELITE",
            7: "MIX_ELITE", 8: "MIX_ELITE"}
@@ -392,7 +393,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 header, overrides = image.record("Rival3Spec")
                 self.assertEqual(
                     header,
-                    (6, 60, 1, self.pools["POOL_RIVAL3"],
+                    (6, _BALANCE["CHAMPION_BASE_LEVEL"], _BALANCE["CHAMPION_LEVEL_STEP"],
+                     self.pools["POOL_RIVAL3"],
                      self.mixes["MIX_E4_SETS"], BASE_FLAGS | NO_RIVAL_STARTER))
                 self.assertEqual(len(overrides), 1)
                 slot, flags, fields = overrides[0]
