@@ -67,12 +67,17 @@ count-dropped (the record is still used, just with a defaulted field):
     one record), so the two are swapped into (min(a,b), max(a,b)) rather than
     trusted positionally.
 
-`origin_id` indexes a deduped `MovesetOriginNames` string table built from the
-`Suggested Loss Text` field. 1,115 of 1,946 records (mostly the Stadium rental
-sets, which use a `Set Creator` field instead) have no `Suggested Loss Text`
-at all; those all share one generic fallback entry rather than one invented
-per record, which would be putting words about historical Pokemon sets'
-provenance in the game's mouth that the corpus never actually said.
+`origin_id` indexes `LossOriginLabels`, the "You were defeated by ..." label
+printed on a blackout (engine/battle/loss_origin.asm). Indices 0-3 are fixed
+engine labels (LOSS_ORIGIN_* in constants/party_spec_constants.asm, asserted in
+the output); corpus labels follow, deduped. loss_label() derives one per record
+from `Set Creator` plus the record's heading name ("; SPECIES - Set Name"): a
+named person gives "Elo Bandit's Special Amnesia set", a Stadium rental gives
+its cup name, Red Rogue originals all share fixed index 2 (their heading names
+are internal design labels, not player-facing), and a record with no usable
+creator falls back to its `Suggested Loss Text` category. Labels are pre-wrapped
+for the battle text box: the engine prints "by " in front, so line 1 holds 15
+columns and later lines 18, joined by <CONT>, at most LABEL_MAX_LINES lines.
 
 Usage:  python3 tools/gen_movesets.py [--check] [--source PATH]
 """
@@ -128,19 +133,112 @@ FORM_NAMES = {
     "VOLTORB_HISUI", "VULPIX_ALOLA", "WEEZING_GALAR", "ZAPDOS_GALAR",
 }
 
-GENERIC_ORIGIN = "an old team someone once ran"
+# Fixed engine labels, in LOSS_ORIGIN_* order (constants/party_spec_constants.asm).
+FIXED_LABELS = [
+    "a Basic Learnset",          # LOSS_ORIGIN_LEARNSET
+    "a Generated set",           # LOSS_ORIGIN_GENERATED
+    "a Red Rogue original set",  # LOSS_ORIGIN_ORIGINAL (also hand-authored moves)
+    "your own Champion team",    # LOSS_ORIGIN_CHAMPION (FINAL_AI's archived team)
+]
+LOSS_ORIGIN_ORIGINAL = 2
 
-# The corpus text file carries at least one mangled character from an earlier
-# encoding round-trip (U+FFFD in "Pok� Cup rental set", clearly meant to
-# be an e), not something introduced here. Strings are ASCII-sanitized before
-# being written as `db "...", 0` since nothing here declares a CHARMAP for
-# this file's INCLUDE context and RGBDS's default charmap is not guaranteed
-# to have a tile for arbitrary Unicode.
-def sanitize_ascii(text):
-    text = text.replace("�", "e").replace("’", "'").replace("–", "-")
-    return "".join(c if ord(c) < 128 else "?" for c in text)
+# Set Creator values that are categories, not people.
+CREATOR_CATEGORY = {
+    "Red Rogue project original": FIXED_LABELS[LOSS_ORIGIN_ORIGINAL],
+    "Smogon community standard/reference set — no single creator": "a Smogon standard set",
+    "Smogon GSC adaptation": "a GSC-inspired set",
+    "RBY OU Ladder / Jank Discussion": "an RBY OU ladder jank set",
+    "My RBY OU Team — 2016 historical RMT": "a historical RBY team build",
+}
+# Set Creator values whose display name needs trimming.
+CREATOR_NAME_FIXES = {
+    "Boom — dsm77773 (2015)": "dsm77773",
+    "Ctown6 + Chuva": "Ctown6 and Chuva",
+}
+LINE1_WIDTH = 15         # "by " takes the first 3 of the box's 18 columns
+LINE_WIDTH = 18
+LABEL_MAX_LINES = 3
+# Characters the game font has (constants/charmap.asm) besides letters/digits.
+FONT_PUNCT = set(" ()[]:;'-?!.%/,é")
+
+
+def to_font(text):
+    """Map corpus text onto characters the game font can draw. The corpus
+    carries one U+FFFD from an old encoding round-trip ("Pok? Cup"), meant
+    to be an e-acute, which the font has."""
+    text = (text.replace("�", "é").replace("’", "'")
+            .replace("—", "-").replace("–", "-")
+            .replace("+", "and").replace("&", "and").replace("_", " "))
+    out = "".join(c for c in text if (c.isascii() and c.isalnum()) or c in FONT_PUNCT)
+    return re.sub(r"\s+", " ", out).strip()
+
+
+def article(word):
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def loss_label(rec):
+    creator = rec.get("Set Creator") or ""
+    name = rec.get("_name")
+    if creator in CREATOR_CATEGORY:
+        return CREATOR_CATEGORY[creator]
+    if creator.startswith("Official Pok"):
+        rental = to_font(name) if name else "Stadium rental"
+        return f"{article(rental)} {rental}"
+    if creator and creator != "UNRESOLVED":
+        who = to_font(CREATOR_NAME_FIXES.get(creator, creator))
+        if not name:
+            return f"{who}'s set"
+        what = to_font(name)
+        if not re.search(r"(set|team|build|rental)$", what, re.I):
+            what += " set"
+        return f"{who}'s {what}"
+    loss = rec.get("Suggested Loss Text") or ""
+    loss = re.sub(r"^You (lost to|got caught by) ", "", loss).rstrip(".")
+    return to_font(loss) if loss else "a sourced RBY set"
+
+
+def tiles(text):
+    """Width in font tiles: 's 't 'd 'l 'v 'r 'm are single ligature tiles."""
+    return len(re.sub(r"'[stdlvrm]", "x", text))
+
+
+def wrap_label(label):
+    """Word-wrap into at most LABEL_MAX_LINES lines (15 tiles, then 18), ending
+    in '.', dropping trailing whole words that do not fit. A first word too wide
+    for line 1 leaves line 1 empty ("by" alone) rather than splitting the word."""
+    widths = [LINE1_WIDTH] + [LINE_WIDTH] * (LABEL_MAX_LINES - 1)
+    words = label.split(" ")
+    words[-1] += "."                     # the full stop travels with the last word
+    lines, cur = [], ""
+    for w in words:
+        while True:
+            if len(lines) == LABEL_MAX_LINES:
+                break
+            trial = f"{cur} {w}" if cur else w
+            if tiles(trial) <= widths[len(lines)]:
+                cur = trial
+                break
+            lines.append(cur)            # cur may be "" only on line 1
+            cur = ""
+        if len(lines) == LABEL_MAX_LINES:
+            break
+    else:
+        lines.append(cur)
+    if not lines[-1].endswith("."):      # ran out of lines: trim to fit a '.'
+        last = lines[-1].rstrip(" '-/,")
+        while tiles(last) + 1 > widths[len(lines) - 1]:
+            last = last.rsplit(" ", 1)[0].rstrip(" '-/,")
+        lines[-1] = last + "."
+    assert all(tiles(l) <= widths[i] for i, l in enumerate(lines)), (label, lines)
+    return lines
+
+
+def display_text(label):
+    return "<CONT>".join(wrap_label(label))
 
 FIELD_RE = re.compile(r"^;\s*([A-Za-z ]+?):\s*(.*)$")
+HEAD_RE = re.compile(r"^;\s*[A-Z0-9_' .-]+?\s+[—-]+\s+(.+)$")
 DB_RE = re.compile(r"^db\s+([A-Za-z0-9_]+)(?:\s*,\s*([A-Za-z0-9_]+)){4}\s*$")
 
 
@@ -165,6 +263,7 @@ def parse_records(path):
     paragraph, a documentation example, which this must not pick up)."""
     records = []
     current = {}
+    heading = None   # the "; SPECIES - Set Name" line that opens a block
     for line in open(path, encoding="utf-8").read().splitlines():
         m = FIELD_RE.match(line)
         if m:
@@ -175,9 +274,12 @@ def parse_records(path):
             if not m2:
                 sys.exit(f"malformed db line, expected SPECIES + 4 moves: {line!r}")
             parts = [p.strip() for p in line[3:].split(",")]
-            records.append({"species": parts[0], "moves": parts[1:], **current})
-            current = {}
+            records.append({"species": parts[0], "moves": parts[1:], "_name": heading,
+                            **current})
+            current, heading = {}, None
             continue
+        h = HEAD_RE.match(line)
+        heading = h.group(1).strip() if h else None
         current = {}
     return records
 
@@ -254,6 +356,10 @@ def build(source_path):
             origin_order.append(text)
         return origin_index[text]
 
+    # Deduped on the DISPLAYED text: two labels that wrap/trim to the same
+    # lines share one entry. Indices 0-3 are the engine's LOSS_ORIGIN_*.
+    for label in FIXED_LABELS:
+        origin_id_for(display_text(label))
     by_species = defaultdict(list)
     kept = 0
     for rec in records:
@@ -265,11 +371,11 @@ def build(source_path):
             continue
         tier = resolve_tier(rec, stats)
         lvl_min, lvl_max = resolve_level_range(rec, stats)
-        loss_text = sanitize_ascii(rec.get("Suggested Loss Text") or GENERIC_ORIGIN)
-        origin_id = origin_id_for(loss_text)
+        origin_id = origin_id_for(display_text(loss_label(rec)))
         by_species[species].append((moves, tier, origin_id, lvl_min, lvl_max))
         kept += 1
 
+    assert len(origin_order) <= 255, f"{len(origin_order)} labels overflow the 1-byte origin_id"
     return species_ids, by_species, origin_order, stats, kept, len(records)
 
 
@@ -295,15 +401,6 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
                  f"{stats['inverted_level']} had an inverted range (swapped).")
     lines.append("")
     lines.append('SECTION "Movesets Index", ROMX, BANK[$3D]')
-    lines.append("")
-    lines.append("MovesetOriginNames::")
-    lines.append("\ttable_width 2, MovesetOriginNames")
-    for i, _ in enumerate(origin_order):
-        lines.append(f"\tdw .origin{i}")
-    lines.append(f"\tassert_table_length {len(origin_order)}")
-    for i, text in enumerate(origin_order):
-        escaped = text.replace('"', '\\"')
-        lines.append(f'.origin{i}: db "{escaped}", 0')
     lines.append("")
     lines.append("; One record per curated set: db move1, move2, move3, move4, tier, origin_id,")
     lines.append("; lvl_min, lvl_max. Species is NOT stored per-record - it is implied by which")
@@ -379,6 +476,23 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
         lines.append(f"\tdb {count}, BANK(Moveset_{name})")
     lines.append(f"\tassert_table_length {max_id + 1}")
     lines.append("")
+
+    lines.append('; Blackout labels: "You were defeated / by <label>" (engine/battle/loss_origin.asm,')
+    lines.append("; pinned to this same bank and read with plain [hl]). A record's origin_id")
+    lines.append("; indexes this table.")
+    lines.append('SECTION "Loss Origin Labels", ROMX, BANK[$35]')
+    lines.append("")
+    for i, const in enumerate(("LEARNSET", "GENERATED", "ORIGINAL", "CHAMPION")):
+        lines.append(f"ASSERT LOSS_ORIGIN_{const} == {i}")
+    lines.append(f"DEF NUM_LOSS_ORIGINS EQU {len(origin_order)}")
+    lines.append("LossOriginLabels::")
+    lines.append("\ttable_width 2, LossOriginLabels")
+    for i, _ in enumerate(origin_order):
+        lines.append(f"\tdw .label{i}")
+    lines.append("\tassert_table_length NUM_LOSS_ORIGINS")
+    for i, text in enumerate(origin_order):
+        lines.append(f'.label{i}: db "{text}@"')
+    lines.append("")
     return "\n".join(lines) + "\n"
 
 
@@ -406,7 +520,7 @@ def main():
         f.write(full)
     populated_species = sum(1 for s in by_species if by_species[s])
     print(f"wrote {OUT}: {kept}/{total} records kept, {populated_species} species, "
-          f"{len(origin_order)} distinct origins")
+          f"{len(origin_order)} loss labels")
 
 
 if __name__ == "__main__":
