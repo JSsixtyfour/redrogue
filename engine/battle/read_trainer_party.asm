@@ -25,6 +25,11 @@ ReadTrainer:
 	ld [hli], a
 	dec a
 	ld [hl], a
+; Blackout "You were defeated by" message: every slot starts as LEARNSET (0),
+; which is what the vanilla authored and roster paths produce. The paths that
+; write their own movesets overwrite their slots below.
+	xor a
+	call FillEnemyMoveOrigins
 
 ; Phase 2: a party spec for (wTrainerClass, wTrainerNo) supersedes BOTH older
 ; team paths. RogueBuildParty returns carry clear when there is no spec, and
@@ -49,7 +54,9 @@ ReadTrainer:
 	cp FINAL_AI
 	jr nz, .notFinalAI
 	call ReadFinalAITrainer       ; same bank
-	jp .FinishUp                  ; no SpecialTrainerMoves row exists for it
+	ld a, LOSS_ORIGIN_CHAMPION
+	call FillEnemyMoveOrigins
+	jp .FinishUp                 ; no SpecialTrainerMoves row exists for it
 .notFinalAI
 	call RogueBuildParty          ; same bank, so a plain call
 	jp c, .AddAdditionalMoveData
@@ -157,7 +164,11 @@ ReadTrainer:
 ; wins.
     ld a, [wTrainerClass]
     cp GAMBLER
-    jr z, .AddAdditionalMoveData
+    jr nz, .notGambler
+    ld a, LOSS_ORIGIN_ORIGINAL    ; GamblerMonMovesets is hand-authored
+    call FillEnemyMoveOrigins
+    jp .AddAdditionalMoveData
+.notGambler
     call RogueRosterMixId
     call RogueApplyMixToParty
     jp .AddAdditionalMoveData
@@ -262,6 +273,13 @@ ReadTrainer:
 	and a
 	jp z, .FinishUp
 	dec a
+	push af                   ; a = 0-based party slot; a hand-authored move makes it ORIGINAL
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMoveOrigins
+	add hl, bc
+	ld [hl], LOSS_ORIGIN_ORIGINAL
+	pop af
 	ld hl, wEnemyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
@@ -446,6 +464,12 @@ MiniBossAddMon:
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	jp AddPartyMon
+
+; a = LOSS_ORIGIN_* code: write it to every wEnemyMoveOrigins slot.
+FillEnemyMoveOrigins:
+	ld hl, wEnemyMoveOrigins
+	ld bc, PARTY_LENGTH
+	jp FillMemory
 
 ; FINAL_AI setup, run inside ReadTrainer after GetTrainerInformation and before
 ; _LoadTrainerPic. Loads a random archived Champion team as the enemy party,

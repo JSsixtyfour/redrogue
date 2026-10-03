@@ -183,7 +183,10 @@ def loss_label(rec):
     if creator in CREATOR_CATEGORY:
         return CREATOR_CATEGORY[creator]
     if creator.startswith("Official Pok"):
-        rental = to_font(name) if name else "Stadium rental"
+        # "Poke Cup Rentals" -> "a Poke Cup Rental"
+        event = re.sub(r"Rentals$", "Rental", rec.get("Attribution Event") or "")
+        event = re.sub(r"\bPoke\b", "Poké", event)  # the corpus spells it both ways
+        rental = to_font(name or event or "Stadium rental")
         return f"{article(rental)} {rental}"
     if creator and creator != "UNRESOLVED":
         who = to_font(CREATOR_NAME_FIXES.get(creator, creator))
@@ -237,7 +240,10 @@ def wrap_label(label):
 def display_text(label):
     return "<CONT>".join(wrap_label(label))
 
-FIELD_RE = re.compile(r"^;\s*([A-Za-z ]+?):\s*(.*)$")
+# Keys may carry digits and hyphens ("Rental Species-Aware Score", "Level 15
+# Legality Basis"). A key this rejects resets the block, dropping every field
+# above it - which is how Stadium rentals once lost their Attribution Event.
+FIELD_RE = re.compile(r"^;\s*([A-Za-z][A-Za-z0-9 /()-]*?):\s*(.*)$")
 HEAD_RE = re.compile(r"^;\s*[A-Z0-9_' .-]+?\s+[—-]+\s+(.+)$")
 DB_RE = re.compile(r"^db\s+([A-Za-z0-9_]+)(?:\s*,\s*([A-Za-z0-9_]+)){4}\s*$")
 

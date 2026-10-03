@@ -56,6 +56,14 @@ class BlackoutFixture:
         popup_tally = []
         h.register_hook('RogueCreditPopupCheck',
                         lambda _: popup_tally.append(h.read8('wCreditsEarnedThisRun')))
+        # Loss message: at .gotCode, a = the LossOriginLabels index chosen.
+        # Record it with what wEnemyMoveOrigins says for the mon that was out.
+        loss_codes = []
+        def loss_code(_):
+            pos = h.read8('wEnemyMonPartyPos')
+            loss_codes.append((h.pyboy.register_file.A, h.read8('hIsInBattle'), pos,
+                               h.read8('wEnemyMoveOrigins', pos) if pos < 6 else None))
+        h.register_hook('PrintLossOrigin.gotCode', loss_code)
         # The lower trainer sees (4,7); Brock is spoken to from (4,2).
         for _ in range(11 if leader else 7):
             h.move_tile('up')
@@ -81,6 +89,13 @@ class BlackoutFixture:
                                  'ResetStatusAndHalveMoneyOnBlackout',
                                  'PrepareForSpecialWarp', 'SpecialEnterMap'], trace)
         self.assertEqual(trace[0][-1], 1, trace)  # a genuine loss, not a debug win
+        # "You were defeated by <label>" ran once, on the trainer path (not the
+        # wild fallback), and printed the label recorded for the mon that won.
+        self.assertEqual(len(loss_codes), 1, loss_codes)
+        code, in_battle, pos, recorded = loss_codes[0]
+        self.assertEqual(in_battle, 2, loss_codes)
+        self.assertLess(pos, h.read8('wEnemyPartyCount') or 6, loss_codes)
+        self.assertEqual(code, recorded, loss_codes)
         self.assertEqual(trace[-1][1:4], (maps['SILPH_CO_DORM'], maps['SILPH_CO_DORM'], 0), trace)
         self.assertEqual(h.read8('hCurMap'), maps['SILPH_CO_DORM'], h.diagnostic_state())
         self.assertEqual((h.read8('wXCoord'), h.read8('wYCoord')), (1, 7))

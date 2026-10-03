@@ -3328,6 +3328,15 @@ SECTION "ProcCaveReadyFlag", WRAM0
 wProcCavePreloadReady:: db
 
 
+SECTION "Enemy Move Origins", WRAM0
+
+; Per enemy party slot: where that mon's moveset came from, as a
+; LossOriginLabels index (constants/party_spec_constants.asm LOSS_ORIGIN_*, or a
+; curated set's origin_id). Written while ReadTrainer builds the party, read by
+; PrintLossOrigin for the blackout "You were defeated by" line. Unsaved.
+wEnemyMoveOrigins:: ds PARTY_LENGTH
+
+
 SECTION "Stack", WRAM0
 
 ; the stack grows downward

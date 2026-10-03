@@ -463,6 +463,8 @@ INCLUDE "engine/battle/rogue_build_party.asm"
 ; kind of section-inheritance mistake this file's own next SECTION
 ; ("Stat Penalty Functions") guards against for everything that follows here.
 INCLUDE "data/trainers/movesets.asm"
+; Declares its own SECTION (bank $35, beside LossOriginLabels).
+INCLUDE "engine/battle/loss_origin.asm"
 
 ; Shin Red import Phase 5: UndoBurnParStats needs to be farcall-reachable from
 ; both "bank3" (item_effects.asm) and here (trainer_ai.asm's AICureStatus), so

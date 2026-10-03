@@ -1395,7 +1395,11 @@ PartyGenApplyMoveset:
 	cp MSRC_TUTOR
 	ret z                          ; declared, no table yet: behaves as learnset
 	cp MSRC_EXPLICIT
-	jp z, PartyGenApplyExplicitMoves
+	jr nz, .notExplicit
+	ld a, LOSS_ORIGIN_ORIGINAL     ; literal moves in a spec are hand-authored
+	call PartyGenRecordOrigin
+	jp PartyGenApplyExplicitMoves
+.notExplicit
 	cp MSRC_SET
 	jr nz, PartyGenRollMoveset
 	call PartyGenApplySetMoveset
@@ -1422,6 +1426,8 @@ PartyGenApplyMoveset:
 ;   MSRC_RANDOM_TM_ONLY  TM segment only, rank-weighted
 ; ===========================================================================
 PartyGenRollMoveset:
+	ld a, LOSS_ORIGIN_GENERATED    ; also the MSRC_SET no-match fallback above
+	call PartyGenRecordOrigin
 ; Reload the header for the mon that was just created, so wMonHMoves and
 ; wMonHLearnset describe THIS mon, form included, rather than whatever species
 ; GetMonHeader last saw. Species and form are read back out of the mon's own
@@ -1593,6 +1599,8 @@ PartyGenApplySetMoveset:
 ; among the first `count` pass the SAME filter, so pass 2 finding its target
 ; before i reaches count is guaranteed, not merely hoped for.
 .pass2Found:
+	ld a, [wPartyGenCandidates + 9] ; origin_id = this set's LossOriginLabels index
+	call PartyGenRecordOrigin
 	ld c, 0
 	ld a, [wPartyGenCandidates + 4]
 	call PartyGenWriteMove
@@ -2364,6 +2372,25 @@ PartyGenWriteMove:
 	ld [hl], a
 .noPP
 	pop de
+	ret
+
+; ===========================================================================
+; PartyGenRecordOrigin
+;
+; a = LOSS_ORIGIN_* code / LossOriginLabels index for the mon in wPartyGenSlot.
+; Read back by PrintLossOrigin on a blackout. Clobbers a and hl only.
+; ===========================================================================
+PartyGenRecordOrigin:
+	push bc
+	push af
+	ld a, [wPartyGenSlot]
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMoveOrigins
+	add hl, bc
+	pop af
+	ld [hl], a
+	pop bc
 	ret
 
 ; ===========================================================================

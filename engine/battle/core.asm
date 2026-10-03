@@ -1439,6 +1439,7 @@ HandlePlayerBlackOut:
 .notRival1Battle
 	ld b, SET_PAL_BATTLE_BLACK
 	call RunPaletteCommand
+	farcall PrintLossOrigin      ; "You were defeated by <moveset source>"; no-op in link battles
 	ld hl, PlayerBlackedOutText2
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING

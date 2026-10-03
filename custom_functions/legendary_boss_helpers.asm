@@ -336,6 +336,14 @@ ApplyLegendaryBossMoveset::
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes               ; hl -> this mon's MON_MOVES
 	call ApplyLegendaryMoveset   ; writes moves + PP (same bank, plain call)
+	; Blackout loss message: the themed legendary set is hand-authored.
+	ld a, [wEnemyPartyCount]
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMoveOrigins
+	add hl, bc
+	ld [hl], LOSS_ORIGIN_ORIGINAL
 	ret
 
 ; ============================================================
