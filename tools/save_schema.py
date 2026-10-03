@@ -9,20 +9,24 @@
 and .map: bank, address, size (up to the next label), and for saved WRAM where
 it lands inside the save (block + offset). It also records the save-schema ID
 the ROM declares (constants/save_constants.asm, if present), how each checksum
-is computed, and a SHA-256 of each source file whose values a save stores
-(species, item, move, map and event IDs and so on), read from git at the
-build's commit.
+is computed, and the value of every constant a save can store (species, item,
+move, map, event and toggle IDs and so on), as rgbasm resolves them.
 
 `diff` classifies the change between two schemas:
-  identical      same layout and same save-semantic sources
-  semantic       same layout, but files defining stored IDs/flags changed: review
+  identical      same layout, and every stored constant keeps its value
+  semantic       same layout, but a constant a save can store was renumbered or removed
   layout         stored fields moved, resized, appeared or vanished: migration needed
-Exit status 0 / 1 / 2 for identical / semantic / layout.
+Exit status 0 / 1 / 2 for identical / semantic / layout. Added constants are
+not a change: no existing save holds their numbers. Comments, formatting and
+unsaved RAM never are.
 
 `check` extracts the current build and compares it with
-tools/save_schemas/schema_<id>.json for the schema ID the ROM declares. Any
-layout change without a new schema ID fails, and so does any persisted label
-with no policy in tools/save_schemas/policy.json. `make save_schema` runs it.
+tools/save_schemas/schema_<id>.json for the schema ID the ROM declares, and
+with the constants of the newest `make release` package of that schema (so a
+constant added after the schema was written is protected once it has shipped).
+Any layout change or renumbering without a new schema ID fails, and so does any
+persisted label with no policy in tools/save_schemas/policy.json. `make
+save_schema` runs it, and so does `make release`, right after the build.
 
 Names: symbol names alone never prove two fields mean the same thing; the
 policy file and the migration code carry the meaning.
@@ -31,11 +35,11 @@ policy file and the migration code carry the meaning.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -45,8 +49,13 @@ SYM_LINE = re.compile(r"^([0-9a-fA-F]{2}):([0-9a-fA-F]{4}) (\S+)$")
 SECTION_LINE = re.compile(r'^\s*SECTION: \$([0-9a-f]{4})-\$([0-9a-f]{4}) \(\$[0-9a-f]+ bytes\) \["(.+)"\]')
 SRAM_BANK_LINE = re.compile(r"^SRAM bank #(\d+):")
 
-# Files whose values a save stores: IDs, flag numbers, enum values. A change in
-# one of these can change what saved bytes mean without moving any of them.
+RELEASES = REPO / "builds" / "releases"
+RELEASE_VALUES = "save_values.json"  # what `make release` keeps in each package
+
+# Files whose values a save stores: IDs, flag numbers, enum values. Renumbering
+# one of these changes what saved bytes mean without moving any of them. The
+# check compares the constants named in these files by value, so comments,
+# formatting and additions never trip it. (Saved RAM is the layout check's job.)
 SEMANTIC_SOURCES = [
     "constants/event_constants.asm", "constants/item_constants.asm", "constants/map_constants.asm",
     "constants/move_constants.asm", "constants/pokemon_constants.asm", "constants/pokemon_data_constants.asm",
@@ -54,8 +63,11 @@ SEMANTIC_SOURCES = [
     "constants/sprite_constants.asm", "constants/toggle_constants.asm", "constants/trainer_constants.asm",
     "constants/type_constants.asm", "constants/player_constants.asm", "constants/map_object_constants.asm",
     "constants/tileset_constants.asm", "constants/pokedex_constants.asm", "constants/save_constants.asm",
-    "ram/wram.asm", "ram/sram.asm", "ram/hram.asm",
 ]
+# Everything includes.asm pulls in, for assembling an older commit's constants.
+CONSTANT_TREES = ["includes.asm", "macros", "constants", "vc"]
+STATE_DEF = re.compile(r"^def (\S+) equ \$([0-9a-fA-F]+)$")
+IDENT = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 
 # Saved WRAM spans and the SRAM block each is copied to (engine/menus/save.asm).
 SAVED_SPANS = [
@@ -184,12 +196,37 @@ def _read_source(rel: str, source_root: Path | None, commit: str | None) -> str 
     return path.read_text(encoding="utf-8", errors="replace") if path.is_file() else None
 
 
-def semantic_hashes(commit: str | None) -> dict[str, str | None]:
-    out = {}
-    for rel in SEMANTIC_SOURCES:
-        text = _read_source(rel, None, commit)
-        out[rel] = None if text is None else hashlib.sha256(text.replace("\r\n", "\n").encode()).hexdigest()
-    return out
+def constant_values(commit: str | None) -> dict[str, int]:
+    """{name: value} for every numeric constant named in SEMANTIC_SOURCES, as
+    rgbasm resolves it for the debug ROM (-s writes the assembler's final state).
+    commit=None reads the work tree; otherwise that commit's files via git archive."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = REPO
+        if commit:
+            root = Path(tmp) / "src"
+            root.mkdir()
+            archive = subprocess.run(["git", "archive", commit, *CONSTANT_TREES], cwd=REPO, capture_output=True)
+            if archive.returncode:
+                raise SystemExit(f"git archive {commit} failed: {archive.stderr.decode(errors='replace')}")
+            subprocess.run(["tar", "-x", "-C", str(root)], input=archive.stdout, check=True)
+        empty, state = Path(tmp) / "empty.asm", Path(tmp) / "state.asm"
+        empty.write_text("")
+        result = subprocess.run(["rgbasm", "-Q8", "-P", "includes.asm", "-D", "_BLUE", "-D", "_DEBUG",
+                                 "-s", f"equ:{state}", "-o", str(Path(tmp) / "empty.o"), str(empty)],
+                                cwd=root, capture_output=True, text=True)
+        if result.returncode:
+            raise SystemExit(f"rgbasm couldn't resolve the constants:\n{result.stderr}")
+        names = set()
+        for rel in SEMANTIC_SOURCES:
+            path = root / rel
+            if path.is_file():
+                names |= set(IDENT.findall(re.sub(r";.*", "", path.read_text(encoding="utf-8", errors="replace"))))
+        values = {}
+        for line in state.read_text(encoding="utf-8").splitlines():
+            m = STATE_DEF.match(line)
+            if m and m.group(1) in names:
+                values[m.group(1)] = int(m.group(2), 16)
+        return dict(sorted(values.items()))
 
 
 def extract(sym: Path, map_path: Path, commit: str | None = None) -> dict:
@@ -206,7 +243,7 @@ def extract(sym: Path, map_path: Path, commit: str | None = None) -> dict:
         "sram": sram_fields(labels, sections),
         "saved_wram": saved_wram(labels),
         "checksums": resolve_checksums(labels),
-        "semantic_sources": semantic_hashes(commit),
+        "constants": constant_values(commit),
     }
 
 
@@ -223,7 +260,7 @@ def _layout(schema: dict, ignore_header: bool) -> tuple[dict, dict]:
 def diff(old: dict, new: dict, ignore_header: bool = False) -> dict:
     """What changed between two schemas, by label. ignore_header compares an
     untagged baseline with its first tagged successor."""
-    report = {"sram": {}, "saved_wram": {}, "semantic": [], "kind": "identical"}
+    report = {"sram": {}, "saved_wram": {}, "semantic": {}, "kind": "identical"}
     for part, (a, b) in zip(("sram", "saved_wram"), zip(_layout(old, ignore_header), _layout(new, ignore_header))):
         changed = {}
         for label in sorted(set(a) | set(b)):
@@ -233,13 +270,21 @@ def diff(old: dict, new: dict, ignore_header: bool = False) -> dict:
     if ignore_header:
         # The header's 8 bytes come out of padding: the block around it moves, nothing stored does.
         report["sram"] = {k: v for k, v in report["sram"].items() if not _is_padding_split(k, v)}
-    report["semantic"] = sorted(k for k in set(old["semantic_sources"]) | set(new["semantic_sources"])
-                                if old["semantic_sources"].get(k) != new["semantic_sources"].get(k))
+    report["semantic"] = renumbered(old.get("constants"), new.get("constants"))
     if report["sram"] or report["saved_wram"]:
         report["kind"] = "layout"
     elif report["semantic"]:
         report["kind"] = "semantic"
     return report
+
+
+def renumbered(old: dict | None, new: dict | None) -> dict:
+    """{name: {"old", "new"}} for constants whose value changed or that vanished
+    (new None). Additions are left out: no save made before them holds their
+    numbers. A schema without constants (the untagged baseline) compares as none."""
+    if old is None or new is None:
+        return {}
+    return {name: {"old": value, "new": new.get(name)} for name, value in old.items() if new.get(name) != value}
 
 
 def _is_padding_split(label: str, change: dict) -> bool:
@@ -256,8 +301,11 @@ def print_diff(report: dict) -> None:
             print(f"  {part} {label}: {change['old']} -> {change['new']}")
         if len(report[part]) > 60:
             print(f"  ... {len(report[part]) - 60} more {part} changes")
-    for rel in report["semantic"]:
-        print(f"  semantic source changed: {rel}")
+    for name, change in list(report["semantic"].items())[:60]:
+        new = "removed" if change["new"] is None else f"${change['new']:x}"
+        print(f"  constant {name}: ${change['old']:x} -> {new}")
+    if len(report["semantic"]) > 60:
+        print(f"  ... {len(report['semantic']) - 60} more constants")
 
 
 # --- policy ----------------------------------------------------------------------------
@@ -272,7 +320,29 @@ def unclassified(schema: dict, policy: dict) -> list[str]:
     return missing
 
 
-def check(schema_dir: Path, sym: Path, map_path: Path) -> int:
+def newest_release_values(sid: int, releases: Path = RELEASES) -> tuple[str, dict] | None:
+    """(package name, constants) of the newest `make release` package for schema sid, if any.
+    Package names start with the build stamp, so name order is release order."""
+    for pkg in sorted((p for p in releases.glob("*/") if (p / RELEASE_VALUES).is_file()), reverse=True):
+        data = json.loads((pkg / RELEASE_VALUES).read_text(encoding="utf-8"))
+        if data.get("schema_id") == sid:
+            return pkg.name, data["constants"]
+    return None
+
+
+def expected_constants(stored: dict, release: tuple[str, dict] | None) -> tuple[dict, str]:
+    """The constants saves of this schema may hold: the committed schema's, plus
+    whatever the newest release shipped on top (it can only add names the schema
+    predates), unless --accept was run after that release."""
+    expected, against = dict(stored.get("constants") or {}), "the committed schema"
+    if release and release[0] > (stored.get("accepted_after_release") or ""):
+        expected.update(release[1])
+        against = f"the committed schema and release {release[0]}"
+    return expected, against
+
+
+def check(schema_dir: Path, sym: Path, map_path: Path, accept: bool = False, save_values: Path | None = None,
+          releases: Path = RELEASES) -> int:
     current = extract(sym, map_path)
     sid = current["schema_id"]
     if sid is None:
@@ -290,7 +360,10 @@ def check(schema_dir: Path, sym: Path, map_path: Path) -> int:
         print(f"check: no {committed.relative_to(REPO)} yet. Create it with:\n"
               f"  python3 tools/save_schema.py extract {sym.name} --map {map_path.name} --out {committed.relative_to(REPO)}")
         return 2
-    report = diff(json.loads(committed.read_text(encoding="utf-8")), current)
+    stored = json.loads(committed.read_text(encoding="utf-8"))
+    release = newest_release_values(sid, releases)
+    expected, against = expected_constants(stored, release)
+    report = diff({**stored, "constants": expected}, current)
     if report["kind"] == "layout":
         print_diff(report)
         print(f"check: the save layout changed but SAVE_SCHEMA_ID is still {sid}. Bump it, write the "
@@ -298,10 +371,23 @@ def check(schema_dir: Path, sym: Path, map_path: Path) -> int:
         return 2
     if report["kind"] == "semantic":
         print_diff(report)
-        print(f"check: same layout as schema {sid}, but files defining stored values changed. Review them; if "
-              "no stored value's meaning changed, refresh the committed schema's hashes with --accept.")
-        return 1
-    print(f"check: save layout matches schema {sid}")
+        if not accept:
+            print(f"check: same layout as schema {sid}, but {len(report['semantic'])} constant(s) a save can store "
+                  f"were renumbered or removed since {against}, so old saves would read them wrong. Bump "
+                  "SAVE_SCHEMA_ID and add a migration (SAVE_COMPATIBILITY_RUNBOOK.md). Only if no save can hold "
+                  "these numbers, record that with: python3 tools/save_schema.py check --accept")
+            return 1
+        stored["constants"] = current["constants"]
+        if release:
+            stored["accepted_after_release"] = release[0]
+        committed.write_text(json.dumps(stored, indent=1) + "\n", encoding="utf-8", newline="\n")
+        print(f"check: accepted; stored the current constants in {committed.relative_to(REPO)} (commit it)")
+    else:
+        print(f"check: save layout and stored constants match schema {sid}")
+    if save_values:
+        save_values.parent.mkdir(parents=True, exist_ok=True)
+        save_values.write_text(json.dumps({"schema_id": sid, "constants": current["constants"]}, indent=1) + "\n",
+                               encoding="utf-8", newline="\n")
     return 0
 
 
@@ -320,7 +406,9 @@ def main(argv: list[str] | None = None) -> int:
     ck = sub.add_parser("check")
     ck.add_argument("--sym", type=Path, default=REPO / "pokeblue_debug.sym")
     ck.add_argument("--map", type=Path, default=REPO / "pokeblue_debug.map")
-    ck.add_argument("--accept", action="store_true", help="semantic-only change reviewed: refresh the stored hashes")
+    ck.add_argument("--accept", action="store_true",
+                    help="renumbered constants reviewed and no save can hold them: store the current values")
+    ck.add_argument("--save-values", type=Path, help=f"write this build's constants here ({RELEASE_VALUES} for make release)")
     args = parser.parse_args(argv)
 
     if args.cmd == "extract":
@@ -339,16 +427,7 @@ def main(argv: list[str] | None = None) -> int:
                       args.ignore_header)
         print_diff(report)
         return {"identical": 0, "semantic": 1, "layout": 2}[report["kind"]]
-    code = check(SCHEMAS, args.sym, args.map)
-    if code == 1 and args.accept:
-        current = extract(args.sym, args.map)
-        path = SCHEMAS / f"schema_{current['schema_id']}.json"
-        stored = json.loads(path.read_text(encoding="utf-8"))
-        stored["semantic_sources"] = current["semantic_sources"]
-        path.write_text(json.dumps(stored, indent=1) + "\n", encoding="utf-8", newline="\n")
-        print(f"refreshed the semantic hashes in {path.relative_to(REPO)}")
-        return 0
-    return code
+    return check(SCHEMAS, args.sym, args.map, args.accept, args.save_values)
 
 
 if __name__ == "__main__":

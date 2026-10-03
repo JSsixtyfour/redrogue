@@ -39,18 +39,6 @@ IndigoPlateauLobby_Script:
 	ld a, BANK(Music_IndigoPlateau)
 	ld [wMapMusicROMBank], a
 .lobbyMusicDone
-	; update exit door tile based on whether gym or route is next (or, during
-	; the final sequence, the Elite Four - see Lobby_IsDoor2Blocked)
-	call Lobby_IsDoor2Blocked
-	jr nz, .blockExitToSecondDoor
-	ld a, $08 ; authored open door plus tile-based notepad
-	jr .setExitDoor
-.blockExitToSecondDoor
-	ld a, $C
-.setExitDoor
-	ld [wNewTileBlockID], a
-	lb bc, 0, 5
-	predef ReplaceTileBlock
 	ld c, TRADE_FOR_RANDOM
 	ld b, FLAG_RESET
 	ld hl, wCompletedInGameTradeFlags
@@ -77,6 +65,21 @@ IndigoPlateauLobby_Script:
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
 	ret z
+	; update exit door tile based on whether gym or route is next (or, during
+	; the final sequence, the Elite Four - see Lobby_IsDoor2Blocked). This must
+	; run on EVERY map load, not just the first entry: LoadMapData rebuilds the
+	; blocks from ROM, so continuing a save made in the lobby would otherwise
+	; show door 2 open even though the selection says it is a wall.
+	call Lobby_IsDoor2Blocked
+	jr nz, .blockExitToSecondDoor
+	ld a, $08 ; authored open door plus tile-based notepad
+	jr .setExitDoor
+.blockExitToSecondDoor
+	ld a, $C
+.setExitDoor
+	ld [wNewTileBlockID], a
+	lb bc, 0, 5
+	predef_jump ReplaceTileBlock
 	;ResetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
 	; Reset Elite Four events if the player started challenging them before
 	;ld hl, wElite4Flags

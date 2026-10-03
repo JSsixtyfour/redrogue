@@ -67,6 +67,11 @@ AnimateHealingMachine:
 	pop hl
 	pop af
 	ld [hl], a
+	; The monitor/ball tiles above overwrote sprite tiles $7c-$7e, which is the
+	; second 4-tile NPC slot (the Lobby's Move Relearner). The text-close sprite
+	; reload normally skips standing frames, so force it to restore them.
+	ld hl, wFontLoaded
+	set BIT_RELOAD_STANDING_FRAMES, [hl]
 	farjp FollowerRefreshAfterHeal
 
 PokeCenterFlashingMonitorAndHealBall:

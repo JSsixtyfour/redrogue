@@ -11,8 +11,8 @@ In order, stopping at the first failure (nothing is sent after a failure):
    from git) and a commit that isn't on GitHub yet (the bot reads the commits
    since the last release from there, to link "Fixes RR-0012" and draft notes).
 2. Relinks all three ROMs (so every archive is stamped with this commit), then
-   runs make smoke, make audit, make save_schema, make save_converter and a
-   space report. Each one's output is logged.
+   runs make save_schema, make save_converter, a space report, make audit and
+   make smoke. Each one's output is logged.
 3. Finds this run's archived ROMs by content, not by "newest name": each
    builds/<rom>_<stamp>_<hash>.gbc must match the ROM the build just wrote,
    with its .sym and .map.
@@ -132,14 +132,17 @@ def checks(log_dir: Path, space_json: Path) -> list[dict]:
     # Touching buildid.asm (mtime only; git sees no change) makes make relink all
     # three ROMs, so their archives carry this commit's hash and one shared stamp.
     (REPO / "buildid.asm").touch()
+    # Fastest checks first, so a quick failure doesn't wait out smoke and audit.
     return [
         run_check("build", ["make", "-j8"], log_dir),
-        run_check("smoke", ["make", "smoke"], log_dir),
-        run_check("audit", ["make", "audit"], log_dir),
-        run_check("save_schema", ["make", "save_schema"], log_dir),
+        # Also keeps this build's constants in the package, so the next check protects what testers' saves hold.
+        run_check("save_schema", ["python3", "tools/save_schema.py", "check",
+                                  "--save-values", str(log_dir.parent / "save_values.json")], log_dir),
         run_check("save_converter", ["make", "save_converter"], log_dir),
         run_check("space", ["python3", "tools/space_report.py", "pokered.map", "pokeblue.map", "pokeblue_debug.map",
                             "--save", str(space_json)], log_dir),
+        run_check("audit", ["make", "audit"], log_dir),
+        run_check("smoke", ["make", "smoke"], log_dir),
     ]
 
 

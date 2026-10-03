@@ -42,8 +42,9 @@ on "What's new" lets the playtest bot draft it from the commit messages) and whe
 earlier build still work, then:
 
 1. Refuses uncommitted changes or an unpushed commit, before building anything.
-2. Relinks all three ROMs (so every archive carries this commit), then runs `make smoke`, `make audit`
-   and a space report. Any failure stops it; nothing is sent. Each check's output is logged.
+2. Relinks all three ROMs (so every archive carries this commit), then runs the quick checks
+   (`make save_schema`, `make save_converter`, a space report) before `make audit` and `make smoke`, so a
+   quick failure shows up early. Any failure stops it; nothing is sent. Each check's output is logged.
 3. Finds the ROMs this run built by content (each archive must match the ROM the build just wrote)
    and keeps a package in `builds/releases/pokeblue_debug_<stamp>_<hash>/`: all three ROMs with
    `.sym` and `.map`, the check logs, and `manifest.json` (full commit, SHA-1 and SHA-256 of every
@@ -153,7 +154,7 @@ convert it on the patch page ("Convert your save"), which runs the converter `ma
 
 | Target | What it checks |
 | --- | --- |
-| `make save_schema` | The save layout against `tools/save_schemas/schema_<id>.json`. Fails if a saved field moved without bumping `SAVE_SCHEMA_ID`, or a persisted SRAM label has no policy in `tools/save_schemas/policy.json`. |
+| `make save_schema` | The save layout against `tools/save_schemas/schema_<id>.json`. Fails if a saved field moved, or a constant a save can store (event, toggle, item, species, map...) was renumbered or removed, without bumping `SAVE_SCHEMA_ID`, or a persisted SRAM label has no policy in `tools/save_schemas/policy.json`. Comments, added constants and unsaved RAM never trip it. `make release` runs it right after the build. |
 | `make save_converter` | Builds the converter package and runs its Node tests. `SAVE_FIXTURES=<dir>` adds real saves. |
 
 Changing the save format (bump, migration, tests, real-save gate) is in `SAVE_COMPATIBILITY_RUNBOOK.md`
