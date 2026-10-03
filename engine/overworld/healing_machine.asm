@@ -7,7 +7,8 @@ AnimateHealingMachine:
 .followerHidden
 	ld de, PokeCenterFlashingMonitorAndHealBall
 	ld hl, vChars0 tile $7c
-	lb bc, BANK(PokeCenterFlashingMonitorAndHealBall), 3 ; should be 2
+	; vanilla copied 3 tiles here; the 3rd was the OAM table below, read as junk
+	lb bc, BANK(PokeCenterFlashingMonitorAndHealBall), 2
 	call CopyVideoData
 	ld hl, hUpdateSpritesEnabled
 	ld a, [hl]
@@ -67,7 +68,7 @@ AnimateHealingMachine:
 	pop hl
 	pop af
 	ld [hl], a
-	; The monitor/ball tiles above overwrote sprite tiles $7c-$7e, which is the
+	; The monitor/ball tiles above overwrote sprite tiles $7c-$7d, which is the
 	; second 4-tile NPC slot (the Lobby's Move Relearner). The text-close sprite
 	; reload normally skips standing frames, so force it to restore them.
 	ld hl, wFontLoaded
