@@ -60,13 +60,12 @@ _WitchIntroText::
 
 _WitchChallenge1Text::
 	text "This zone hands"
-	line "out no free"
-	cont "#MON"
+	line "out no #MON"
 	prompt
 
 _WitchChallenge2Text::
-	text "No hidden item"
-	line "in this zone"
+	text "No item in"
+	line "this zone"
 	prompt
 
 _WitchChallenge3Text::
@@ -75,7 +74,7 @@ _WitchChallenge3Text::
 	prompt
 
 _WitchChallenge4Text::
-	text "Rolls favor"
+	text "Luck favors"
 	line "common #MON"
 	cont "this zone"
 	prompt
@@ -91,31 +90,53 @@ _WitchChallenge6Text::
 	line "rarer breeds"
 	prompt
 
+; wPartyLimit is precomputed at roll time (WitchPrepChallengeParams).
 _WitchChallenge7Text::
-	text "Your party stays"
-	line "smaller this"
-	cont "zone"
+	text "You may only"
+	line "bring @"
+	text_decimal wPartyLimit, 1, 1
+	text " #MON"
+	cont "to this zone."
+
+	para "Bring more and"
+	line "the bargain fails!"
 	prompt
+
+; Shown on the first step into a zone with too many #MON (WitchCheckPartyLimit).
+; wPartyLimit is still the limit she quoted.
+_WitchBargainBrokenText::
+	text "CHALLENGE FAILED!"
+
+	para "You brought more"
+	line "than @"
+	text_decimal wPartyLimit, 1, 1
+	text " #MON."
+	cont "No prize for you!"
+	done
 
 _WitchChallenge8Text::
 	text "Your #MON will"
-	line "feel sluggish"
+	line "run at half SPEED"
 	prompt
 
 _WitchChallenge9Text::
 	text "Your whole team"
-	line "starts poisoned"
+	line "will be poisoned"
+	cont "the whole zone"
 	prompt
 
+; wBattleTurnLimit is precomputed at roll time (WitchPrepChallengeParams).
 _WitchChallenge10Text::
-	text "Drag a fight out"
-	line "too long and"
-	cont "you'll pay for it"
+	text "After @"
+	text_decimal wBattleTurnLimit, 1, 2
+	text " turns,"
+	line "a battle will"
+	cont "drain HP"
 	prompt
 
 _WitchChallenge11Text::
 	text "This zone's boss"
-	line "keeps fearsome"
+	line "keeps LEGENDARY"
 	cont "company"
 	prompt
 
@@ -144,21 +165,18 @@ _WitchChallenge15Text::
 	prompt
 
 _WitchChallenge16Text::
-	text "Blows of muscle"
-	line "will cost you"
-	cont "blood."
+	text "ATK moves cost"
+	line "your #MON HP"
 	prompt
 
 _WitchChallenge17Text::
-	text "Blows of the mind"
-	line "will cost you"
-	cont "blood."
+	text "SPC moves cost"
+	line "your #MON HP"
 	prompt
 
 _WitchChallenge18Text::
 	text "Your moves will"
-	line "tire twice as"
-	cont "quickly."
+	line "cost 2 PP"
 	prompt
 
 _WitchPrize1Text::

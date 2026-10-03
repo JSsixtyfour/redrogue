@@ -256,6 +256,11 @@ GetRandRosterLoop:
     res 7, c    ; varied party size: skip this one mon (see .maybeShrink)
     jr .nextMon
 .keepMon
+    ; No-duplicates retry budget, kept on the stack because every register in
+    ; this loop is live. Popped after OverrideGamblerMoves below.
+    ld a, PARTY_GEN_MAX_RETRIES
+.rerollMon
+    push af
     ; Gambler's Paradise: draw species from the themed pool instead of the
     ; normal rarity-class roll. Level logic below is unchanged.
     ld a, [wTrainerClass]
@@ -290,6 +295,24 @@ GetRandRosterLoop:
 	pop de
 	pop bc
 	pop hl
+; No duplicates on a rolled roster. Tested HERE, after the evolve, because
+; wEnemyPartySpecies holds fielded species: a Kabuto drawn next to a built
+; Kabutops would pass a pre-evolve test and then become a second Kabutops (the
+; NO_DUPES bug class, rogue_build_party.asm). Eevee needs no special case, the
+; evolve above was the real one. Bounded, then accepted, so a small pool cannot
+; hang. Gamblers keep their themed pool as drawn.
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	jr z, .rosterUnique
+	call RosterSpeciesAlreadyUsed
+	jr nc, .rosterUnique
+	pop af                  ; the drawn species: rerolled, so dropped
+	pop af                  ; retry budget
+	dec a
+	jr nz, .rerollMon
+	push af                 ; out of retries: accept the duplicate. Rebuild the
+	push af                 ; stack; non-Gamblers ignore the species slot
+.rosterUnique
 ; Increment 8c: roll this roster mon's regional form and publish it IMMEDIATELY
 ; before AddPartyMon, which folds it into this mon's own MON_CATCH_RATE bits 5-6.
 ; That is the whole storage problem solved for free - unlike bosses and wild
@@ -336,6 +359,7 @@ ENDC
 	; themed moveset keyed by the pre-evolution species (and correct PP).
 	pop af
 	call OverrideGamblerMoves
+	pop af                  ; retry budget
 .nextMon
 	dec d           ; decrease loop/run through pokemon
     jr nz, .loop    ; pokeball class loop
@@ -343,7 +367,7 @@ ENDC
 .miniloop
     inc hl          ; next class
     dec b           ; decrease overarching loop
-    jr nz, .overloop    ; overarching class loop
+    jp nz, .overloop    ; overarching class loop
 
 ;end of loop
 	pop de
@@ -375,6 +399,29 @@ GetGamblerMon:
 	ld a, [hl]              ; entry byte 0 = species
 	ld [wCurPartySpecies], a
 	pop de
+	pop bc
+	pop hl
+	ret
+
+; ============================================================
+; RosterSpeciesAlreadyUsed
+; Carry set if wCurPartySpecies is already in wEnemyPartySpecies ($FF
+; terminated; ReadTrainer starts it empty). Preserves bc/de/hl.
+; ============================================================
+RosterSpeciesAlreadyUsed:
+	push hl
+	push bc
+	ld a, [wCurPartySpecies]
+	ld b, a
+	ld hl, wEnemyPartySpecies
+.loop
+	ld a, [hli]
+	cp $FF
+	jr z, .done             ; carry clear: a == $FF
+	cp b
+	jr nz, .loop
+	scf
+.done
 	pop bc
 	pop hl
 	ret

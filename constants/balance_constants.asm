@@ -221,7 +221,7 @@ DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
 ; Rolled in custom_functions/witch_setup.asm (Witch) and
 ; engine/events/lobby_psychic.asm (the other four).
 DEF LOBBY_WITCH_CHANCE EQU 85     ; ~1/3
-DEF LOBBY_PSYCHIC_CHANCE EQU 128  ; 1/2
+DEF LOBBY_PSYCHIC_CHANCE EQU 154  ; ~60% (154/256 = 60.2%)
 DEF LOBBY_SALESMAN_CHANCE EQU 85  ; ~1/3
 DEF LOBBY_TRADER_CHANCE EQU 85    ; ~1/3
 DEF LOBBY_TUTOR_CHANCE EQU 85     ; ~1/3

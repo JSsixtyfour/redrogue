@@ -358,46 +358,6 @@ TurnLimitDrainText:
 	text_end
 
 ; ============================================================
-; WitchInitTurnLimit
-; Called from StartBattle (engine/battle/core.asm). If CHALLENGE_TURN_LIMIT is
-; active, resets the per-battle turn counter and computes this battle's limit
-; as 6 + round, where round = min(wBattleCount / 10, 8).
-;
-; Relocated out of core.asm 2026-09-02 for bank $0F pressure. No inputs and no
-; outputs, and StartBattle has nothing live in a/bc/hl across this point - it
-; reloads hl, bc and d immediately afterwards - so the farcall's clobbers cost
-; nothing. The three in-line gates that used to jump to .noTurnLimitInit
-; become plain `ret`s here, which is where a few of the reclaimed bytes come
-; from.
-; ============================================================
-WitchInitTurnLimit::
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_TURN_LIMIT
-	ret nz
-	xor a
-	ld [wBattleTurnCount], a
-	ld a, [wBattleCount]
-	ld b, 0
-.getRound
-	cp ROUND_BATTLES
-	jr c, .gotRound
-	sub ROUND_BATTLES
-	inc b
-	jr .getRound
-.gotRound
-	ld a, b
-	cp NUM_ROGUE_ROUNDS + 1
-	jr c, .roundOk
-	ld a, NUM_ROGUE_ROUNDS ; cap round at the last
-.roundOk
-	add 6            ; limit = 6 + round
-	ld [wBattleTurnLimit], a
-	ret
-
-; ============================================================
 ; WitchApplyMoneyEffects
 ; Called from TrainerBattleVictory (engine/battle/core.asm) just before the
 ; "money for winning" text. The "no money" challenge zeroes the win before it

@@ -167,6 +167,9 @@ DEF AI_KO_CACHE_YES   EQU 2 ; computed: it can
 ; AIPredictSpeedAtStage flag byte (b): bit PAR = paralysed; this bit = apply
 ; the player earned x1.125 Speed boost. Must not collide with PAR (6).
 DEF AI_SPEED_EARNED_BOOST_BIT EQU 7
+; ...and this bit = witch challenge 8's halving (HalvePlayerSpeedIfSluggish).
+DEF AI_SPEED_SLUGGISH_BIT EQU 5
+ASSERT AI_SPEED_SLUGGISH_BIT != PAR && AI_SPEED_SLUGGISH_BIT != AI_SPEED_EARNED_BOOST_BIT
 
 ; wAILastMoveNum sentinel: a new mon was just sent out (AITrackLastMove).
 ; Above every real move id and below CANNOT_MOVE ($ff).

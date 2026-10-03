@@ -189,6 +189,9 @@ PCWitchSetup::
     jr z, .rollChallenge   ; Game Corner replaces a route, not a gym
 .gotChallenge
     ld [wWitchChallenge], a   ; a = 1-based challenge id
+    ; In "Witch Zone Effects" ($3A). farcall clobbers a/b/c/hl; none is live
+    ; here (d/e are loaded just below).
+    farcall WitchPrepChallengeParams ; the X her challenge text quotes
     ; No dupes: a prize already earned this run must never be offered again.
     ; EVERY prize is permanent now, so unlike the old 1-6/7-10 split there is no
     ; always-available fallback and an unbounded loop COULD spin forever once the

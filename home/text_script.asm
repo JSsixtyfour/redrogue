@@ -27,6 +27,7 @@ DisplayTextID::
 	dict TEXT_MON_FAINTED,      DisplayPokemonFaintedText
 	dict TEXT_BLACKED_OUT,      DisplayPlayerBlackedOutText
 	dict TEXT_REPEL_WORE_OFF,   DisplayRepelWoreOffText
+	dict TEXT_WITCH_BARGAIN_BROKEN, DisplayWitchBargainBrokenText
 
 	ld a, [wNumSprites]
 	ld e, a
@@ -229,9 +230,30 @@ PlayerBlackedOutText::
 
 DisplayRepelWoreOffText::
 	ld hl, RepelWoreOffText
+.printAndClose ; shared with DisplayWitchBargainBrokenText below
 	call PrintText
 	jp AfterDisplayingTextID
 
 RepelWoreOffText::
 	text_far _RepelWoreOffText
+	text_end
+
+; Witch challenge 7 broken on entering a zone (WitchCheckPartyLimit). A
+; special text ID rather than a map text because it fires on any zone map.
+; Costs 15 B of HOME (this, its text_far, the dict line above).
+; IF HOME GETS TIGHT: all of it can go. Drop TEXT_WITCH_BARGAIN_BROKEN and
+; have WitchCheckPartyLimit only clear BIT_WITCH_ACCEPTED and mark the failure
+; (e.g. bit 7 of wPartyLimit - the limit is at most 5, so the bit is free).
+; Then tell the player back in the lobby instead, as a lobby MAP text
+; (a new IndigoPlateauLobby_TextPointers entry fired by DisplayTextID from
+; IndigoPlateauLobby_Script on entry): map texts live in the map's own bank,
+; so that costs no HOME. Mind the low-text-id reroute DisplayTextID applies to
+; script-fired ids when adding the entry. Only the timing changes - the player
+; learns on return rather than on the first step into the zone.
+DisplayWitchBargainBrokenText:
+	ld hl, WitchBargainBrokenText
+	jr DisplayRepelWoreOffText.printAndClose
+
+WitchBargainBrokenText:
+	text_far _WitchBargainBrokenText
 	text_end

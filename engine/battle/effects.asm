@@ -1396,7 +1396,11 @@ ConversionEffect:
 	jpfar ConversionEffect_
 
 HazeEffect:
-	jpfar HazeEffect_
+	callfar HazeEffect_
+	; Haze copies the unmodified stats back over the battle stats, which would
+	; strip witch challenge 8's Speed halving for the rest of the battle - a way
+	; to cheat the challenge. Put it back. (HazeEffect_'s bank $04 has no room.)
+	farjp HalvePlayerSpeedIfSluggish
 
 HealEffect:
 	jpfar HealEffect_

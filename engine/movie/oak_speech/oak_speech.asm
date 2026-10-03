@@ -61,12 +61,13 @@ OakSpeech:
 	call LoadTextBoxTilePatterns
 	call PrepareOakSpeech
 	predef InitPlayerData2
-	; Give starting items. POTION goes to the regular bag. The player starts
+	; Give starting items: 2 POTIONs, matching every later run's start
+	; (RogueResetRunState, custom_functions/credit_popup.asm). The player starts
 	; with no key items: Palm hands over LEFTOVERS, PP_TONIC and KO_DEFIANCE
 	; at the end of the VR intro (GiveStarterKeyItems, scripts/SilphCoVR.asm).
 	ld a, POTION
 	ld [wCurItem], a
-	ld a, 1
+	ld a, 2
 	ld [wItemQuantity], a
 	farcall GiveRecoveryItem
 	ld a, [wDefaultMap]

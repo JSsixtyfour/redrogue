@@ -798,6 +798,10 @@ SECTION "Battle Menu Extras", ROMX
 
 INCLUDE "custom_functions/battle_menu_extras.asm"
 
+; Witch challenge overworld effects (challenge 9's per-step re-poison). Opens
+; its own section, pinned to $3A in layout.link; farcall-only.
+INCLUDE "custom_functions/witch_zone_effects.asm"
+
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map
 ; banks are too tight to hold it. Pinned to $3C (8.6 KB free) so first-fit

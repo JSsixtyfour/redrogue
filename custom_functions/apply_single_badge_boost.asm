@@ -94,6 +94,13 @@ ApplySingleEarnedStatBoost::
 	and a
 	ret nz ; the enemy's stat changed - these boosts never apply to it
 
+; The recompute above rebuilt Speed from wPlayerMonUnmodifiedSpeed, which
+; dropped witch challenge 8's halving - put it back, the same way paralysis is
+; re-applied after a Speed change. Preserves bc (c = stat index).
+	ld a, c
+	cp 2
+	call z, HalvePlayerSpeedIfSluggish
+
 ; BADGES NO LONGER GRANT THIS BOOST - see ApplyEarnedStatBoosts in
 ; engine/battle/core.asm for the full note. The source is now the earned-boost
 ; bitfield in ROGUE_RUN_EVENTS, where the stat bit is the stat index itself
@@ -147,4 +154,35 @@ ApplySingleEarnedStatBoost::
 	ld [hli], a
 	ld a, LOW(MAX_STAT_VALUE)
 	ld [hld], a
+	ret
+
+; Witch challenge 8 (CHALLENGE_SLOWED_POKEMON): halve the player's battle Speed,
+; minimum 1. A battle-only penalty modelled on paralysis's quarter: it touches
+; wBattleMonSpeed only, never party data, so nothing outlasts the zone. Called
+; wherever the earned boosts are (re)applied:
+;   - the tail of ApplyEarnedStatBoosts (core.asm), which every full stat load
+;     reaches: switch-in, level-up, evolution;
+;   - ApplySingleEarnedStatBoost above, after a Speed stage change rebuilt
+;     Speed from the unmodified copy.
+; Link battles never get here (both callers return first). The AI mirrors this
+; in AIPredictSpeedAtStage (AI_SPEED_SLUGGISH_BIT) - keep the two in step.
+; Clobbers af, hl. Preserves bc, de.
+HalvePlayerSpeedIfSluggish::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_SLOWED_POKEMON
+	ret nz
+	ld hl, wBattleMonSpeed ; big-endian
+	ld a, [hl]
+	srl a
+	ld [hli], a ; carry (the dropped bit) survives the store and load
+	ld a, [hl]
+	rra
+	ld [hld], a
+	or [hl]
+	ret nz
+	inc hl
+	inc [hl] ; minimum 1
 	ret

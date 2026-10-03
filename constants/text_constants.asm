@@ -23,5 +23,6 @@ DEF LEADING_ZEROES EQU 1 << BIT_LEADING_ZEROES
 	const TEXT_BLACKED_OUT      ; $d1
 	const TEXT_REPEL_WORE_OFF   ; $d2
 	const TEXT_SAFARI_GAME_OVER ; $d3
+	const TEXT_WITCH_BARGAIN_BROKEN ; $d4 - witch challenge 7 failed (witch_zone_effects.asm)
 
 DEF TEXT_START_MENU EQU $00

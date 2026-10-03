@@ -2494,11 +2494,12 @@ RogueRoundBand:
 ; OUTPUT: a = the MovesetMixTable row for the roster trainer wBattleCount
 ;         implies.
 ;
-; THE ROUTE/TRAINER LINE FALLS AT STEP 5 HERE AND AT STEP 6 IN GetRandRoster,
-; and that is intended, not a drift. GetRandRoster puts step 5 - the final route
-; trainer - on the ROUTE level table; the plan's difficulty grid groups it with
-; the gym trainers, because "final route / gym trainer" is one row of that grid.
-; Step 5 is already the step that alone gets BIT_ROGUE_FINAL_TRAINER's level
+; THE ROUTE/TRAINER LINE FALLS AT FINAL_ROUTE_STEP HERE AND AT FIRST_GYM_STEP IN
+; GetRandRoster, and that is intended, not a drift. GetRandRoster puts
+; FINAL_ROUTE_STEP - the final route trainer - on the ROUTE level table; the
+; plan's difficulty grid groups it with the gym trainers, because "final route /
+; gym trainer" is one row of that grid. FINAL_ROUTE_STEP is already the step
+; that alone gets BIT_ROGUE_FINAL_TRAINER's level
 ; bonus and rarer class distribution, so giving it the tougher moveset row is
 ; the same statement about the same battle.
 ; ===========================================================================

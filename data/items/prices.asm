@@ -18,8 +18,8 @@ ItemPrices::
 	bcd3 3000  ; FULL_RESTORE
 	bcd3 2500  ; MAX_POTION
 	bcd3 1500  ; HYPER_POTION
-	bcd3 700   ; SUPER_POTION
-	bcd3 300   ; POTION
+	bcd3 600   ; SUPER_POTION
+	bcd3 200   ; POTION
 	bcd3 0     ; BOULDERBADGE
 	bcd3 0     ; CASCADEBADGE
 	bcd3 0     ; THUNDERBADGE
@@ -59,9 +59,9 @@ ItemPrices::
 	bcd3 700   ; MAX_REPEL
 	bcd3 650   ; DIRE_HIT
 	bcd3 10    ; COIN
-	bcd3 200   ; FRESH_WATER
-	bcd3 300   ; SODA_POP
-	bcd3 350   ; LEMONADE
+	bcd3 500   ; FRESH_WATER
+	bcd3 700   ; SODA_POP
+	bcd3 800   ; LEMONADE
 	bcd3 0     ; S_S_TICKET
 	bcd3 0     ; GOLD_TEETH
 	bcd3 500   ; X_ATTACK

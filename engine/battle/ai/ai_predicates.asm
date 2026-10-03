@@ -851,6 +851,10 @@ AISpeedDropFlipsTurnOrder::
 	jr nc, .noEarnedBoost
 	set AI_SPEED_EARNED_BOOST_BIT, b
 .noEarnedBoost
+	call AIPlayerSluggish
+	jr nc, .notSluggish
+	set AI_SPEED_SLUGGISH_BIT, b
+.notSluggish
 	ld a, c
 	ld hl, wPlayerMonUnmodifiedSpeed
 	call AIPredictSpeedAtStage ; de = the player's Speed after the drop
@@ -914,6 +918,8 @@ AIPlayerIsStrictlyFaster:
 ; order after a Speed stage change:
 ;   1. effects.asm .recalculateStat: unmodified Speed at hl * num / den, capped
 ;      at 999, minimum 1;
+;   1b. if b bit AI_SPEED_SLUGGISH_BIT: witch challenge 8 halves it, minimum 1
+;      (HalvePlayerSpeedIfSluggish, called from ApplySingleEarnedStatBoost);
 ;   2. if b bit AI_SPEED_EARNED_BOOST_BIT: the player's earned x1.125 Speed boost
 ;      (ApplySingleEarnedStatBoost: + Speed / 8, capped at 999);
 ;   3. if b bit PAR: the paralysis quarter, minimum 1 (ApplyTargetStatPenalty /
@@ -964,6 +970,15 @@ AIPredictSpeedAtStage:
 	inc e
 .atLeastOne
 	pop bc
+	bit AI_SPEED_SLUGGISH_BIT, b
+	jr z, .notSluggish
+	srl d
+	rr e
+	ld a, d
+	or e
+	jr nz, .notSluggish
+	inc e
+.notSluggish
 	bit AI_SPEED_EARNED_BOOST_BIT, b
 	jr z, .noEarnedBoost
 	ld h, d
@@ -1007,6 +1022,25 @@ AIPlayerEarnedSpeedBoost:
 	ld a, [wEarnedStatBoosts]
 	bit 2, a ; stat index 2 = Speed (0 Attack, 1 Defense, 2 Speed, 3 Special)
 	jr z, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+; Carry SET if witch challenge 8 halves the player's Speed after a Speed change
+; (HalvePlayerSpeedIfSluggish). Same gates as that routine plus the link check
+; its callers make. Clobbers af.
+AIPlayerSluggish:
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jr z, .no
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .no
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_SLOWED_POKEMON
+	jr nz, .no
 	scf
 	ret
 .no

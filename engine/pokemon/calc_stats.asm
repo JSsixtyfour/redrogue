@@ -392,36 +392,12 @@ _CalcStat::
 	ldh [hMultiplicand+1], a
 	ld a, LOW(MAX_STAT_VALUE)
 	ldh [hMultiplicand+2], a
-	; Challenge 8 (SLOWED_POKEMON): halve Speed for player party mons.
-	; c=4 at this point is Speed. Only applies to non-enemy mons.
-	ld a, c
-	cp 4
-	jr nz, .noSpdHalve
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noSpdHalve
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_SLOWED_POKEMON
-	jr nz, .noSpdHalve
-	ld a, [wMonDataLocation]
-	cp ENEMY_PARTY_DATA
-	jr z, .noSpdHalve
-	ldh a, [hMultiplicand+1]
-	srl a
-	ldh [hMultiplicand+1], a
-	ldh a, [hMultiplicand+2]
-	rr a
-	ldh [hMultiplicand+2], a
-	; ensure minimum 1
-	ldh a, [hMultiplicand+1]
-	or a
-	jr nz, .noSpdHalve
-	ldh a, [hMultiplicand+2]
-	and a
-	jr nz, .noSpdHalve
-	ld a, 1
-	ldh [hMultiplicand+2], a
-.noSpdHalve
+	; Challenge 8 (SLOWED_POKEMON) used to halve Speed here, but it sat inside
+	; this overflow branch and so only ever ran for a stat above 999 - it was
+	; dead. It is now a battle-only penalty like paralysis, applied to
+	; wBattleMonSpeed by HalvePlayerSpeedIfSluggish
+	; (custom_functions/apply_single_badge_boost.asm). Party data is never
+	; touched, so nothing outlasts the zone.
 .noOverflow
 	pop bc
 	pop de

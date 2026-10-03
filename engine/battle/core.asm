@@ -7777,7 +7777,9 @@ ApplyEarnedStatBoosts:
 	inc hl
 	dec c
 	jr nz, .loop
-	ret
+	; Witch challenge 8 rides on every full stat load that reaches this point
+	; (switch-in, level-up, evolution), right after the paralysis penalty.
+	farjp HalvePlayerSpeedIfSluggish
 
 ; multiply stat at hl by 1.125
 ; cap stat at MAX_STAT_VALUE

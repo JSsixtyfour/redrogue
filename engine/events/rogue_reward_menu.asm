@@ -229,29 +229,15 @@ HandleRewardChoice:
     pop bc
 	jp nz, .printOhFineThen
 .giveMon
-    ; Challenge 7 (PARTY_LIMIT): limit = min(2 + wBattleCount/10, 5).
-    ; Increases by 1 each round (every 10 battles), starting at 2. Cap 5.
+    ; Challenge 7 (PARTY_LIMIT): no reward mon past the limit the witch quoted
+    ; (wPartyLimit, precomputed at roll time by WitchPrepChallengeParams).
     ld a, [wRogueFlagsBitfield]
     bit BIT_WITCH_ACCEPTED, a
     jr z, .noPartyLimit
     ld a, [wWitchChallenge]
     cp CHALLENGE_PARTY_LIMIT
     jr nz, .noPartyLimit
-    ld a, [wBattleCount]
-    ld c, 0
-.limitDivLoop
-    cp ROUND_BATTLES
-    jr c, .limitDivDone
-    sub ROUND_BATTLES
-    inc c
-    jr .limitDivLoop
-.limitDivDone
-    ld a, c
-    add 2               ; limit = 2 + rounds_completed
-    cp 6
-    jr c, .limitCapped
-    ld a, 5
-.limitCapped
+    ld a, [wPartyLimit]
     ld c, a             ; c = party limit
     ld a, [wPartyCount]
     cp c
@@ -516,22 +502,8 @@ RogueRefresh::
     ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
-	; Challenge 9 (ALL_POISONED): poison every party member at stage entry.
-	; Fainted mons are included visually but PSN does no additional battle damage to them.
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_ALL_POISONED
-	ret nz
-	ld a, [wPartyCount]
-	and a
-	ret z
-	ld b, a          ; b = party count
-	ld hl, wPartyMon1Status
-	ld de, PARTYMON_STRUCT_LENGTH
-.poisonLoop
-	set PSN, [hl]            ; set PSN bit on status byte (PSN = bit 3 = $08)
-	add hl, de               ; advance to next mon's status byte
-	dec b
-	jr nz, .poisonLoop
+	; Challenge 9 (ALL_POISONED): poison the team the moment a stage loads. The
+	; per-step overworld hook keeps it poisoned for the rest of the zone (gyms
+	; included, which never run RogueRefresh). This block used to end the file
+	; with no ret and fell through into PrintNotebookText.
+	farjp WitchReapplyPoison
