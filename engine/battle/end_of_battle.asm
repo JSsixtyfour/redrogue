@@ -40,18 +40,12 @@ EndOfBattle:
 	ld hl, PickUpPayDayMoneyText
 	call PrintText
 .evolution
-	farcall IronmanClearFaintedEvolveFlags ; Ironman only: fainted mons don't evolve
-	xor a
-	ld [wForceEvolution], a
-	predef EvolutionAfterBattle
+; Finish victory/recovery messages before opening a queued evolution screen.
+; Keep party indices stable until evolution has consumed their flag bits.
 .resetVariables
 	ld a, [wBattleResult]
 	and a
 	jr nz, .noPPTonic ; don't restore HP/PP from a battle the player lost (or drew)
-	; Ironman: release every mon still at 0 HP. Skipped on a loss, like the
-	; recovery below: a loss is a blackout (the run reset wipes the party) or
-	; the losable Oak's Lab rival fight, which must keep its only mon.
-	farcall IronmanReleaseFaintedMons
 	ld a, LEFTOVERS
 	ld [wCurItem], a
 	farcall IsKeyItemActive     ; NZ = active (in bag)
@@ -78,6 +72,17 @@ EndOfBattle:
 	ld hl, PartyPPRecoveredText
 	call PrintText
 .noPPTonic
+	ld a, [wBattleResult]
+	and a
+	jr nz, .clearBattleState
+	farcall IronmanClearFaintedEvolveFlags
+	xor a
+	ld [wForceEvolution], a
+	predef EvolutionAfterBattle
+	; Release only after evolution: removing a slot shifts party indices.
+	; Losses leave this to blackout, or keep the Oak's Lab starter intact.
+	farcall IronmanReleaseFaintedMons
+.clearBattleState
 	xor a
 	ld [wLowHealthAlarm], a ;disable low health alarm
 	ld [wChannelSoundIDs + CHAN5], a

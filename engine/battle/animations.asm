@@ -2526,7 +2526,8 @@ AnimationShakeEnemyHUD:
 	ld de, vBackPic
 	ld hl, vSprites
 	ld bc, PIC_SIZE
-	call CopyVideoData
+	; VRAM source: use the VBlank path, just like back-pic loading.
+	call CopyVideoDataPaced
 
 	xor a
 	ldh [hSCX], a

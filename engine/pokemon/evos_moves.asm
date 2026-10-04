@@ -437,7 +437,9 @@ CancelledEvolution:
 	call PrintText
 	call ClearScreen
 	pop hl
-	call Evolution_ReloadTilesetTilePatterns
+	ldh a, [hIsInBattle]
+	and a
+	call z, Evolution_ReloadTilesetTilePatterns
 	jp Evolution_PartyMonLoop
 
 EvolvedText:

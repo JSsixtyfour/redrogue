@@ -642,11 +642,11 @@ RogueApplyDifficulty::
 ; ============================================================================
 
 RogueTryMidBattleEvolution::
+	ldh a, [hIsInBattle]
+	cp 2
+	ret nz                      ; only trainer battles have an enemy party
 	farcall AnyEnemyPokemonAliveCheck
 	ret z                       ; last opponent: let EndOfBattle evolve normally
-	ldh a, [hIsInBattle]
-	dec a
-	ret z                       ; wild battle: no mid-battle evolution
 
 ; Only the ACTIVE mon evolves mid-battle.  wCanEvolveFlags has one bit per party
 ; slot (set by GainExperience on level-up, bench mons included via Exp. All);

@@ -31,7 +31,8 @@ EvolveMon:
 	ld de, vFrontPic
 	ld hl, vBackPic
 	ld bc, PIC_SIZE
-	call CopyVideoData
+	; Both pictures live in VRAM: source reads must also wait for VBlank.
+	call CopyVideoDataPaced
 	ld a, [wEvoOldSpecies]
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a

@@ -111,4 +111,5 @@ LoadMonBackPic:
 	ld c, (2 * SPRITEBUFFERSIZE) / TILE_SIZE ; count of 16-byte chunks to be copied
 	ldh a, [hLoadedROMBank]
 	ld b, a
-	jp CopyVideoData
+	; The source is VRAM, which the HBlank copier cannot read safely.
+	jp CopyVideoDataPaced
