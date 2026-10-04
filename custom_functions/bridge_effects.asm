@@ -544,7 +544,7 @@ BridgeFinalizeGiftMonFar::
 	call .perfectDVs
 	call BridgeGiftMaxStatExp
 	ld a, QUICK_ATTACK
-	call BridgeGiftReplaceFirstMove
+	call BridgeGiftAddMove
 	jr .recalcIfParty
 .perfect
 	call .perfectDVs
@@ -554,7 +554,7 @@ BridgeFinalizeGiftMonFar::
 	ret z
 	jp BridgeRecalcStatsFar
 .move
-	jp BridgeGiftReplaceFirstMove
+	jp BridgeGiftAddMove
 
 .perfectDVs
 	push de
@@ -720,24 +720,44 @@ BridgeGiftMaxStatExp:
 	pop de
 	ret
 
-; In: a = move, de = shared party/box struct base. Replace slot 1 and reload
-; PP for the complete resulting moveset while preserving the struct pointer.
-BridgeGiftReplaceFirstMove:
+; In: a = move, de = shared party/box struct base. Teach the move without
+; overwriting the level-up moveset: nothing if it is already known, else the
+; first empty slot, else (four moves already) slot 1. Reloads PP for the
+; complete resulting moveset while preserving the struct pointer.
+BridgeGiftAddMove:
 	push de
 	ld h, d
 	ld l, e
 	ld bc, MON_MOVES
 	add hl, bc
-	ld [hl], a
+	push hl                       ; moves base
+	ld c, a
+	ld b, NUM_MOVES
+.find
+	ld a, [hl]
+	cp c
+	jr z, .known
+	and a
+	jr z, .store                  ; first empty slot
+	inc hl
+	dec b
+	jr nz, .find
+	pop hl                        ; moveset full: replace slot 1
 	push hl
+.store
+	ld [hl], c
 	ld h, d
 	ld l, e
 	ld bc, MON_PP - 1
 	add hl, bc
 	ld d, h
 	ld e, l
-	pop hl
+	pop hl                        ; moves base
 	predef LoadMovePPs
+	pop de
+	ret
+.known
+	pop hl
 	pop de
 	ret
 

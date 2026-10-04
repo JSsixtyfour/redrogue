@@ -198,22 +198,6 @@ BridgeTryQuickClaw::
 	and a
 	ret
 
-; On each player send-out, lower the opposing active mon's Attack one stage
-; when the player form is the special Growlithe family. Stage changes saturate
-; at -6 through the standard 1..13 modifier representation.
-BridgeTryIntimidate::
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	ret z
-	ld de, wBattleMon
-	call GetSpecialFormCaps
-	bit SF_INTIMIDATE, e
-	ret z
-	ld hl, wEnemyMonAttackMod
-	ld a, [hl]
-	cp 1
-	ret z
-	dec [hl]
-	ld e, 0                     ; Attack stat index
-	farcall BridgeRecalculateEnemyStat
-	ret
+; SF_INTIMIDATE's battle hook, BridgeTryIntimidate, lives in its own floating
+; section (custom_functions/bridge_intimidate.asm): "rogue" has no room for its
+; animation and text.

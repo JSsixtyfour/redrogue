@@ -26,7 +26,7 @@
    "from": "2",
    "to": "3",
    "steps": ["legacyInventoriesRemoved"],
-   "verified": "NOT YET: real-save gate pending (2026-10-03). Do not release schema 3 until saves.py continue passes on converted schema-2 saves."
+   "verified": "NOT YET (2026-10-03): engine test 'schema 2 to 3' passes and fails on a mutated step; six real schema-2 saves (ceb51235) convert with every checked field carried; saves.py continue passes for lobby, route, cave, forest, cemetery but the facility save hangs. Measured cause is outside the migration: Continue reuses saved ROM map pointers, and the facility map's data moved in this build (FOLLOWUPS.md #51; patching only those pointers makes it pass). Do not release schema 3 until #51 is fixed and the gate is re-run."
   }
  ]
 }

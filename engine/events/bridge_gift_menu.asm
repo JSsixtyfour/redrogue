@@ -562,8 +562,19 @@ BridgePrintGiftDesc:
 	; rendering, so the bottom box shows the actual mon. Detect the gift by its
 	; GIFT_SPECIAL routine address in the param field.
 	push hl
-	inc hl                       ; -> param low byte
-	ld a, [hli]
+	; GIFT_MON_EVOLVE: name the resolved (possibly evolved) species in
+	; wNameBuffer, the same lookup the menu label uses, so a description can
+	; say GROWLITHE or ARCANINE with text_ram instead of naming the family.
+	ld a, [hli]                  ; kind
+	cp GIFT_MON_EVOLVE
+	jr nz, .notEvolve
+	ld a, [hl]                   ; base species
+	call BridgeResolveEvolveSpecies
+	ld [wNamedObjectIndex], a
+	call GetMonName              ; -> wNameBuffer (@-terminated)
+	jr .notRescue
+.notEvolve
+	ld a, [hli]                  ; param low byte
 	cp LOW(BridgeMrFujiRescue)
 	jr nz, .notRescue
 	ld a, [hl]                   ; param high byte

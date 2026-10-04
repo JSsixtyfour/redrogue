@@ -113,8 +113,9 @@ _TrashedGift7Desc::
 
 _TrashedGift8Desc::
 	text "An intimidating"
-	line "GROWLITHE family"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _MomGift7Desc::
 	text "Healing recovers"
