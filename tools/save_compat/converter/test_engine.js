@@ -83,13 +83,13 @@ test("baseline to schema 1: tagged, every other byte identical, input untouched"
 });
 
 test("a skipped release still arrives through a chain of migrations", () => {
-  // A package with an extra format between schema 1 and the target.
+  // A package with an extra format between schema 2 and the target.
   const chained = JSON.parse(JSON.stringify(PKG));
-  chained.schemas.mid = chained.schemas["1"];
+  chained.schemas.mid = chained.schemas["2"];
   chained.migrations = [
     { from: BASELINE, to: "1", steps: ["tag"] },
-    { from: "1", to: "mid", steps: ["tag"] },
-    { from: "mid", to: TARGET, steps: ["itemCountSlots"] },
+    { from: "1", to: "mid", steps: ["itemCountSlots"] },
+    { from: "mid", to: TARGET, steps: ["legacyInventoriesRemoved"] },
   ];
   const out = api.convert(syntheticSave(BASELINE, { tag: false }), chained, { source: BASELINE, mode: "continue" });
   assert.equal(out.ok, true, out.reason);
@@ -99,16 +99,22 @@ test("a skipped release still arrives through a chain of migrations", () => {
   assert.equal(api.convert(syntheticSave(BASELINE, { tag: false }), looped, { source: BASELINE }).code, "no_migration");
 });
 
-test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
-  const from = PKG.schemas["1"], to = PKG.schemas["2"];
-  const arrays = ["wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts"];
-  const field = (schema, label) => schema.saved_wram.find((f) => f.label === label);
-  const save = syntheticSave("1");
-  // Noise over everything the step touches, then the structure a real save needs, then
-  // checksums, so a byte that lands in the wrong place cannot match by accident.
+// One migration, checked byte for byte against the FULL schemas (the package trims them to
+// the fields the engine names). Noise over everything from the main block's first saved field
+// to the end of bank 1, then the structure a real save needs, then checksums, so a byte that
+// lands in the wrong place cannot match by accident. Every saved field common to both
+// layouts must keep its bytes (over the size both layouts give it: the schema sizes a label by
+// the distance to the next one, so labels inside unions can change size), except `allowDiffer`;
+// every bank-1 SRAM label past the main block's start must too. Returns what the caller checks
+// further.
+function checkMigration(fromId, toId, allowDiffer) {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(fromId), to = full(toId);
+  const pkg = packageTargeting(toId);
+  const save = syntheticSave(String(fromId));
   const start = wramOffset(from, "wRecoveryItemCounts");
   const end = Math.max(...from.sram.filter((f) => f.bank === 1).map((f) => offsetOf(f.bank, f.address) + f.size));
-  let x = 0x2468ace;
+  let x = 0x2468ace ^ fromId;
   for (let i = start; i < end; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[i] = x >>> 24; }
   save[wramOffset(from, "wPartyCount")] = 0;
   save[wramOffset(from, "wPartySpecies")] = 0xff;
@@ -118,44 +124,57 @@ test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest
   recomputeChecksums(save, from);
   recomputeChecksums(save, from);
   for (const [name, good] of Object.entries(api.checksumStatus(save, from))) assert.equal(good, true, `input ${name}`);
-  const out = api.convert(save, PKG, { mode: "continue" });
+  const out = api.convert(save, pkg, { mode: "continue" });
   assert.equal(out.ok, true, out.reason);
   const b = out.bytes;
-  assert.deepEqual(api.readHeader(b), { present: true, valid: true, schemaId: 2 });
+  assert.deepEqual(api.readHeader(b), { present: true, valid: true, schemaId: Number(toId) });
   for (const name of Object.keys(api.checksumStatus(save, from)))
     assert.equal(api.checksumStatus(b, to)[name], true, `checksum ${name}`);
+  const field = (schema, label) => schema.saved_wram.find((f) => f.label === label);
+  const differ = [];
+  for (const f of from.saved_wram) {
+    const t = field(to, f.label);
+    if (!t) continue; // deleted by this migration
+    const o = wramOffset(from, f.label), n = wramOffset(to, f.label);
+    const size = Math.min(f.size, t.size);
+    for (let i = 0; i < size; i++) if (b[n + i] !== save[o + i]) { differ.push(f.label); break; }
+  }
+  assert.deepEqual(differ.sort(), allowDiffer.slice().sort());
+  // The main checksum byte (sMainDataCheckSum, and sGameDataEnd on the same address) is
+  // recomputed by design and verified above; 1 -> 2 only kept it by luck (zeros added to an
+  // 8-bit sum change nothing).
+  const mainSum = from.checksums.find((c) => c.name === "main");
+  const mainAt = offsetOf(mainSum.at_bank, mainSum.at);
+  for (const f of from.sram) {
+    const o = offsetOf(f.bank, f.address);
+    if (f.bank !== 1 || o < start || f.label === "sMainData" || o === mainAt) continue;
+    const t = to.sram.find((s) => s.label === f.label);
+    const n = offsetOf(t.bank, t.address);
+    for (let i = 0; i < f.size; i++) if (b[n + i] !== save[o + i]) assert.fail(`${f.label}+${i} changed`);
+  }
+  return { save, b, from, to, field };
+}
 
-  for (const label of arrays) {
+test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
+  // The only fields allowed to differ are the arrays (checked below) and two labels in the
+  // bag-display union member: it grew (wStatPocketBuf 32 -> 38), so they moved further than
+  // the shift. That member is scratch, rebuilt on every bag open, and the bytes under it belong
+  // to the enemy party, which did shift correctly (wEnemyMon*OT are checked).
+  const { save, b, from, to, field } = checkMigration(1, 2, ["wCreditItemList", "wValuablePocketBuf"]);
+  for (const label of ["wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts"]) {
     const oldSize = field(from, label).size, newSize = field(to, label).size;
     const o = wramOffset(from, label), n = wramOffset(to, label);
     for (let i = 0; i < newSize; i++)
       assert.equal(b[n + i], i < oldSize ? save[o + i] : 0, `${label}[${i}]`);
   }
-  // Every saved field keeps its bytes (over the size both layouts give it; the schema sizes
-  // a label by the distance to the next one, so labels inside unions can change size). The
-  // only fields allowed to differ are two labels in the bag-display union member: it grew
-  // (wStatPocketBuf 32 -> 38), so they moved further than the shift. That member is scratch,
-  // rebuilt on every bag open, and the bytes under it belong to the enemy party, which did
-  // shift correctly (wEnemyMon*OT are checked here).
-  // The package trims schemas to the fields the engine names, so read the full ones.
-  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
-  const fullFrom = full(1), fullTo = full(2);
-  const differ = [];
-  for (const f of fullFrom.saved_wram) {
-    const t = field(fullTo, f.label);
-    const o = wramOffset(fullFrom, f.label), n = wramOffset(fullTo, f.label);
-    const size = Math.min(f.size, t.size);
-    for (let i = 0; i < size; i++) if (b[n + i] !== save[o + i]) { differ.push(f.label); break; }
-  }
-  assert.deepEqual(differ.sort(), ["wCreditItemList", "wValuablePocketBuf"]);
-  // Bank-1 SRAM after the main block's start: the archive and facility state, byte for byte.
-  for (const f of from.sram) {
-    const o = offsetOf(f.bank, f.address);
-    if (f.bank !== 1 || o < start || f.label === "sMainData") continue;
-    const t = to.sram.find((s) => s.label === f.label);
-    const n = offsetOf(t.bank, t.address);
-    for (let i = 0; i < f.size; i++) if (b[n + i] !== save[o + i]) assert.fail(`${f.label}+${i} changed`);
-  }
+});
+
+test("schema 2 to 3: the legacy bag and PC item box are gone, everything else moves unchanged", () => {
+  // wItemCountsEnd is a zero-size end label: it sat on wNumBagItems and now sits on
+  // wBagPocketsFlags, so its 'contents' are a different field's by design.
+  const { to } = checkMigration(2, 3, ["wItemCountsEnd"]);
+  for (const gone of ["wNumBagItems", "wBagItems", "wNumBagKeyItems", "wNumBoxItems", "wBoxItems"])
+    assert.equal(to.saved_wram.find((f) => f.label === gone), undefined, gone);
 });
 
 test("damaged, foreign or wrapped files are refused with a reason", () => {

@@ -1,6 +1,6 @@
-DEF BAG_ITEM_CAPACITY EQU 20
-DEF BAG_KEY_ITEM_CAPACITY EQU 3
-DEF PC_ITEM_CAPACITY  EQU 50
+; BAG_ITEM_CAPACITY / BAG_KEY_ITEM_CAPACITY / PC_ITEM_CAPACITY sized the vanilla
+; list inventories, deleted 2026-10-03. Pocket sizes: *_ITEM_SLOTS in
+; ram_constants.asm; active key items: KEY_ITEM_MAX_ACTIVE.
 
 ; text box IDs
 	const_def 1

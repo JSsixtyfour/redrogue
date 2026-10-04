@@ -154,7 +154,7 @@ INCLUDE "engine/events/poison.asm"
 INCLUDE "engine/overworld/tilesets.asm"
 INCLUDE "data/maps/toggleable_objects.asm"
 INCLUDE "engine/overworld/field_move_messages.asm"
-INCLUDE "engine/items/inventory.asm"
+; engine/items/inventory.asm (vanilla list inventories) removed with the legacy bag, 2026-10-03
 INCLUDE "engine/overworld/wild_mons.asm"
 INCLUDE "engine/items/item_effects.asm"
 INCLUDE "engine/overworld/update_map.asm"

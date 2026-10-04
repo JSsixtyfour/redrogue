@@ -21,7 +21,7 @@ SPECIES = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm
 
 # From the legacy stub through the end of the current-map header: every byte the
 # old index-based removal could reach from a 21-entry Recovery list.
-GUARD_START = "wNumBagItems"
+GUARD_START = "wBagPocketsFlags"  # first saved byte after the item counts (the legacy bag is gone)
 GUARD_END = "wCurMapDataPtr"
 
 

@@ -81,7 +81,9 @@ InitList:
 .notMonster
 	cp INIT_BAG_ITEM_LIST
 	jr nz, .notBag
-	ld hl, wNumBagItems
+	; The only caller (the mart's sell menu) repoints wListPointer at the pocket
+	; it shows; this just has to be a real list, now that the legacy bag is gone.
+	ld hl, wRecoveryPocketBuf
 ;	ld de, ItemNames
 	ld a, ITEM_NAME
 	jr .done

@@ -39,23 +39,7 @@ GetQuantityOfItemInBag:
 	ld a, e
 	pop de
 	pop bc
-	and a
-	jr nz, .gotCount   ; found in a count array
-	; Uncategorized: scan legacy wBagItems
-.loop
-	ld hl, wNumBagItems
-	ld hl, wBagItems - 1
-.scanLoop
-	inc hl
-	ld a, [hli]
-	cp $ff
-	jr z, .zero
-	cp b
-	jr nz, .scanLoop
-	ld a, [hl]
-	ld b, a
-	ret
-.gotCount
+	; 0 also covers every item in no pocket: those are never stored (GiveItem).
 	ld b, a
 	ret
 .zero

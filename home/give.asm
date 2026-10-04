@@ -32,11 +32,10 @@ GiveItem::
 	rfarcall GiveStatItem
 	jr c, .getName
 	rfarcall GiveValuableItem
-	jr c, .getName
-	; Uncategorized — legacy wBagItems (should be empty in normal play)
-	ld hl, wNumBagItems
-	call AddItemToInventory
-	ret nc
+	; Anything else (balls, repels, fossils, the vanilla key items...) has no use
+	; in Red Rogue and no pocket. It is accepted, so a script still prints its
+	; "got item" line, and not stored: the legacy wBagItems list that used to
+	; take it is gone (BAG_SYSTEM_OVERVIEW_2026-10-03.md, step 4).
 .getName
 	call GetItemName
 	call CopyToStringBuffer

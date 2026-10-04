@@ -2142,13 +2142,10 @@ ASSERT wItemCountsEnd - wRecoveryItemCounts == ITEM_COUNT_SLOTS
 ; Key items pocket is pure bitfield in sKeyItemsBitfield (SRAM), no WRAM needed.
 ; The display list is built on demand by BuildKeyItemPocketList (ROMX).
 
-; Legacy stubs — wBagItems/wNumBagItems kept at minimal size so old item-use,
-; pokemart, and inventory code compiles while it is migrated to the new system.
-; Nothing should route here in normal play (GiveItem dispatches to count arrays).
-wNumBagItems:: db
-wBagItems:: ds 6        ; one legacy pad byte reclaimed for MIST_STONE; later addresses stay fixed
-; wNumBagKeyItems alias pointing at the old byte; now meaningless (0 always)
-wNumBagKeyItems:: db
+; The legacy vanilla bag (wNumBagItems, wBagItems, wNumBagKeyItems, 8 bytes) sat
+; here until 2026-10-03; it was deleted with every routine that touched it.
+; Items in no pocket have no use in Red Rogue and are not stored
+; (BAG_SYSTEM_OVERVIEW_2026-10-03.md, step 4; save schema 3).
 
 ; bits related to bag pockets (see ram_constants.asm) ; marcelnote - new for bag pockets
 wBagPocketsFlags:: db
@@ -2294,9 +2291,9 @@ wGrassTile:: db
 
 	ds 4
 
-wNumBoxItems:: db
-; item, quantity
-wBoxItems:: ds PC_ITEM_CAPACITY * 2 + 1
+; The vanilla PC item box (wNumBoxItems, wBoxItems: 102 bytes) sat here until
+; 2026-10-03. Nothing deposited into it any more; deleted with the legacy bag
+; (save schema 3).
 
 ; bits 0-6: box number
 ; bit 7: whether the player has changed boxes before

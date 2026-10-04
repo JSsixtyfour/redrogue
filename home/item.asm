@@ -10,27 +10,6 @@
 UseItem::
 	rfarjp UseItem_
 
-; confirms the item toss and then tosses the item
-; INPUT:
-; hl = address of inventory (either wNumBagItems or wNumBoxItems)
-; [wCurItem] = item ID
-; [hWhichPokemon] = index of item within inventory
-; [wItemQuantity] = quantity to toss
-; OUTPUT:
-; clears carry flag if the item is tossed, sets carry flag if not
-TossItem::
-	ldh a, [hLoadedROMBank]
-	push af
-	ld a, BANK(TossItem_)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	call TossItem_
-	pop de
-	ld a, d
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	ret
-
 ; checks if an item is a key item
 ; INPUT:
 ; [wCurItem] = item ID

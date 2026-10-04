@@ -16,3 +16,4 @@ B7	engine/battle/experience.asm	WitchBoostExp10Percent	The "preserves bc/de/hl" 
 B7	engine/gfx/cgb_attributes.asm	LoadBGMapAttributes	"preserves DE" refers to Bankswitch in home/bankswitch.asm, not to this routine.
 B7	engine/pokemon/random_pokemon_selection.asm	Random_Pokemon_Selection	"Preserves every register" describes the RoguePrismSetRerollBudget call on the next line, not this routine.
 B7	engine/pokemon/status_view.asm	StatusScreen2DrawView	The header tells CALLERS that need de preserved to push/pop it themselves; it is not a preserve claim.
+B2	engine/battle/misc.asm	InitList	Vanilla: stores the ItemPrices pointer in wItemPrices; its only consumer, GetItemPrice (home/item_price.asm), maps BANK(ItemPrices) before dereferencing (CreditItemPrices, the other value stored there, is in the same bank). In scope since the legacy-bag retirement touched this file (2026-10-03).

@@ -113,30 +113,8 @@ AccessedMyPCText:
 	text_end
 
 ; removes one of the specified item ID [hItemToRemoveID] from bag (if existent)
+; Recovery/Stat/Valuable items only: anything else is in no pocket and has no
+; use (the legacy wBagItems list it used to be searched in is gone, 2026-10-03).
 RemoveItemByID::
-	farcall RemovePocketItemByID ; Recovery/Stat/Valuable items; no-op otherwise
-	ld hl, wBagItems      ; everything else (fossils, voucher) is in the legacy bag
-	ldh a, [hItemToRemoveID]
-	ld b, a
-	xor a
-	ldh [hItemToRemoveIndex], a
-.loop
-	ld a, [hli]
-	cp -1 ; reached terminator?
-	ret z
-	cp b
-	jr z, .foundItem
-	inc hl
-	ldh a, [hItemToRemoveIndex]
-	inc a
-	ldh [hItemToRemoveIndex], a
-	jr .loop
-.foundItem
-	ld a, $1
-	ld [wItemQuantity], a
-	ldh a, [hItemToRemoveIndex]
-	ldh [hWhichPokemon], a
-	; No wIsKeyItem branch: it was stale state from whatever last set it, and
-	; wNumBagKeyItems is a dead alias (always 0), so it could only misfire.
-	ld hl, wNumBagItems
-	jp RemoveItemFromInventory
+	farcall RemovePocketItemByID
+	ret

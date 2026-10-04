@@ -297,8 +297,6 @@ StartMenu_Item::
 	jr z, .tossZeroItems  ; TMs: permanent ownership, no toss
 	cp POCKET_KEY_ITEMS
 	jr z, .tossZeroItems  ; Key items: persistent, no toss
-	cp POCKET_RECOVERY
-	jr c, .tossLegacy     ; POCKET_RECOVERY = 0, handled below (shouldn't underflow)
 	; Recovery / Stat / Valuable: decrement count via RemovePocketItem
 	; (wCurItem is set by the bag display selection flow)
 	ld a, [wItemQuantity]
@@ -307,11 +305,6 @@ StartMenu_Item::
 	push bc
 	farcall RemovePocketItem
 	pop bc
-	jr .tossZeroItems
-.tossLegacy
-	; Fallback to legacy wBagItems (effectively empty in normal play)
-	ld hl, wNumBagItems
-	call TossItem
 .tossZeroItems
 	jp ItemMenuLoop
 

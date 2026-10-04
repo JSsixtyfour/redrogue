@@ -15,8 +15,11 @@
 ; layout plus this header; that build's untagged saves convert by tagging.
 ; Schema 2 (2026-10-03): the three item count arrays grew to their *_SLOTS
 ; sizes (21/15/4 -> 24/24/8), shifting the rest of the main data block.
+; Schema 3 (2026-10-03): the legacy bag's 8 bytes (wNumBagItems, wBagItems,
+; wNumBagKeyItems) and the vanilla PC item box (wNumBoxItems, wBoxItems, 102
+; bytes) were deleted, shifting the rest of the main data block down.
 
-DEF SAVE_SCHEMA_ID EQU 2
+DEF SAVE_SCHEMA_ID EQU 3
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

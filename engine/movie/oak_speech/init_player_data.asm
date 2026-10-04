@@ -24,8 +24,6 @@ InitPlayerData2:
 	call InitializeEmptyList
 	ld hl, wBoxCount
 	call InitializeEmptyList
-	ld hl, wNumBagItems
-	call InitializeEmptyList
 	; Key items are pure bitfield in sKeyItemsBitfield (SRAM) — no WRAM slots.
 	; ClearKeyItemsBitfield above already handles the SRAM side.
 	; Clear count arrays for Recovery, Stat, Valuable pockets.
@@ -39,13 +37,6 @@ InitPlayerData2:
 	or c
 	ld a, 0
 	jr nz, .clearCounts
-	; The legacy bag stub is already an empty list (InitializeEmptyList above:
-	; count 0, $ff terminator). This used to also write 0 to wBagItems, which
-	; erased that terminator, so any legacy scan walked on into wBagPocketsFlags,
-	; money and the rival's name looking for one.
-	ld [wNumBagKeyItems], a
-	ld hl, wNumBoxItems
-	call InitializeEmptyList
 
 	ld hl, wPlayerMoney + 1
 	ld a, HIGH(START_MONEY)

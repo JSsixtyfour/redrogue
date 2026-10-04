@@ -16,23 +16,6 @@ AddAmountSoldToMoney::
 	call PlaySoundWaitForCurrent
 	jp WaitForSoundToFinish
 
-; function to remove an item (in varying quantities) from the player's bag or PC box
-; INPUT:
-; HL = address of inventory (either wNumBagItems or wNumBoxItems)
-; [hWhichPokemon] = index (within the inventory) of the item to remove
-; [wItemQuantity] = quantity to remove
-RemoveItemFromInventory::
-	homecall RemoveItemFromInventory_
-	ret
-
-; function to add an item (in varying quantities) to the player's bag or PC box
-; INPUT:
-; HL = address of inventory (either wNumBagItems or wNumBoxItems)
-; [wCurItem] = item ID
-; [wItemQuantity] = item quantity
-; sets carry flag if successful, unsets carry flag if unsuccessful
-AddItemToInventory::
-	push bc
-	homecall_sf AddItemToInventory_
-	pop bc
-	ret
+; RemoveItemFromInventory / AddItemToInventory (vanilla list inventories) were
+; removed with the legacy bag, 2026-10-03. Items live in the pockets now:
+; GiveItem, RemovePocketItem and the key-item / TM bitfields.

@@ -217,6 +217,50 @@
       }
       recomputeChecksums(bytes, to, ["main"]);
       return null;
+    },
+
+    // Schema 2 -> 3 (2026-10-03): the two vanilla list inventories were deleted from the main
+    // block: the legacy bag (wNumBagItems .. before wBagPocketsFlags, 8 bytes) and the PC item
+    // box (wNumBoxItems .. before wCurrentBoxNum, 102 bytes). Neither held anything Red Rogue
+    // uses: items in no pocket have no use, and nothing deposited into the PC box. Every byte
+    // after each hole, to the end of the bank-1 save sections, moves down by the bytes removed
+    // before it, unchanged; the archive's own checksums travel with their data.
+    legacyInventoriesRemoved: function (bytes, from, to) {
+      var src = new Uint8Array(bytes);
+      var holes = [["wNumBagItems", "wBagPocketsFlags", 8], ["wNumBoxItems", "wCurrentBoxNum", 102]];
+      var spans = [], removed = 0;
+      for (var i = 0; i < holes.length; i++) {
+        var s = wramOffset(from, holes[i][0]), e = wramOffset(from, holes[i][1]);
+        if (s < 0 || e < 0 || e - s !== holes[i][2]) return "save field " + holes[i][0] + " not recognised";
+        removed += e - s;
+        if (wramOffset(to, holes[i][1]) !== e - removed) return "save field " + holes[i][1] + " did not move as expected";
+        spans.push([s, e]);
+      }
+      var mainFrom = sramField(from, "sMainData"), mainTo = sramField(to, "sMainData");
+      if (mainFrom.size - mainTo.size !== removed) return "main save block shrank by an unexpected amount";
+      function removedBefore(o) {
+        var n = 0;
+        for (var k = 0; k < spans.length; k++) if (spans[k][1] <= o) n += spans[k][1] - spans[k][0];
+        return n;
+      }
+      var start = spans[0][0], end = start;
+      for (var j = 0; j < from.sram.length; j++) {
+        var f = from.sram[j], o = offsetOf(f.bank, f.address);
+        if (f.bank !== 1 || o < start) continue;
+        var t = sramField(to, f.label);
+        if (!t || o - offsetOf(t.bank, t.address) !== removedBefore(o) || t.size !== f.size)
+          return "save field " + f.label + " did not move as expected";
+        end = Math.max(end, o + f.size);
+      }
+      var dst = start;
+      for (var n = start; n < end; n++) {
+        var inHole = false;
+        for (var h = 0; h < spans.length; h++) if (n >= spans[h][0] && n < spans[h][1]) inHole = true;
+        if (!inHole) bytes[dst++] = src[n];
+      }
+      for (; dst < end; dst++) bytes[dst] = 0; // past the new end of the bank-1 data: unused
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
     }
   };
 

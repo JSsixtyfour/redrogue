@@ -2571,70 +2571,9 @@ GetSelectedMoveOffset2:
 	add hl, bc
 	ret
 
-; confirms the item toss and then tosses the item
-; INPUT:
-; hl = address of inventory (either wNumBagItems or wNumBoxItems)
-; [wCurItem] = item ID
-; [hWhichPokemon] = index of item within inventory
-; [wItemQuantity] = quantity to toss
-; OUTPUT:
-; clears carry flag if the item is tossed, sets carry flag if not
-TossItem_::
-	push hl
-	call IsKeyItem_
-	ld a, [wIsKeyItem]
-	pop hl
-	and a
-	jr nz, .tooImportantToToss
-	push hl
-	ld a, [wCurItem]
-	ld [wNamedObjectIndex], a
-	call GetItemName
-	call CopyToStringBuffer
-	ld hl, IsItOKToTossItemText
-	call PrintText
-	hlcoord 14, 7
-	lb bc, 8, 15
-	ld a, TWO_OPTION_MENU
-	ld [wTextBoxID], a
-	call DisplayTextBoxID ; yes/no menu
-	ld a, [wMenuExitMethod]
-	cp CHOSE_SECOND_ITEM
-	pop hl
-	scf
-	ret z ; return if the player chose No
-; if the player chose Yes
-	push hl
-	ldh a, [hWhichPokemon]
-	call RemoveItemFromInventory
-	ld a, [wCurItem]
-	ld [wNamedObjectIndex], a
-	call GetItemName
-	call CopyToStringBuffer
-	ld hl, ThrewAwayItemText
-	call PrintText
-	pop hl
-	and a
-	ret
-.tooImportantToToss
-	push hl
-	ld hl, TooImportantToTossText
-	call PrintText
-	pop hl
-	scf
-	ret
-
-ThrewAwayItemText:
-	text_far _ThrewAwayItemText
-	text_end
-
-IsItOKToTossItemText:
-	text_far _IsItOKToTossItemText
-	text_end
-
-TooImportantToTossText:
-	text_far _TooImportantToTossText
-	text_end
+; TossItem_ (vanilla toss of a list-inventory slot) was removed with the legacy
+; bag, 2026-10-03; the field bag tosses count-pocket items itself
+; (StartMenu_Item.tossItem -> RemovePocketItem).
 
 ; ============================================================
 ; ItemUseLeftovers

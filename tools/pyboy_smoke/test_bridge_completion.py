@@ -103,7 +103,9 @@ class BridgeCompletionSourceContractTest(unittest.TestCase):
         # until 2026-10-03, which pushed PP UP / M.GENE / M.TOME into the
         # Valuable pocket's counts. pocket_items.asm now asserts it at build time.
         self.assertIn("wStatItemCounts:: ds STAT_ITEM_SLOTS", wram)
-        self.assertIn("wBagItems:: ds 6", wram)
+        # The legacy bag (wNumBagItems/wBagItems/wNumBagKeyItems) was deleted
+        # 2026-10-03 (save schema 3); nothing may bring a list inventory back.
+        self.assertNotIn("wBagItems::", wram)
         constants = (REPO_ROOT / "constants/ram_constants.asm").read_text()
         self.assertIn("DEF NUM_STAT_ITEMS      EQU 18", constants)
 
