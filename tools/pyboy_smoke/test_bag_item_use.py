@@ -113,5 +113,51 @@ class StatPocketSlotsTest(HarnessTestCase):
         )
 
 
+class BattleItemListTest(HarnessTestCase):
+    """The battle ITEM list used to be built into wKeyItemPocketBuf, which sits in
+    the enemy-party UNION over wEnemyMon4's stats and most of wEnemyMon5, so
+    opening ITEM against a trainer with 5+ mons corrupted the 5th before it was
+    sent out. It now has its own wBattleItemList."""
+
+    KEY_ITEMS = ("LEFTOVERS", "PP_TONIC", "KO_DEFIANCE", "SHINY_CHARM", "AMULET_COIN")
+
+    def test_battle_list_leaves_the_enemy_party_alone(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=17)
+        self.assertEqual(h.read8("wEnemyPartyCount"), 6)
+        ram = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
+        bits = [0, 0, 0, 0]
+        for name in self.KEY_ITEMS:  # five owned AND active: more than the cap of 3
+            bit = ram[f"KEY_ITEM_BIT_{name}_OWNED"]
+            for b in (bit, bit + 1):
+                bits[b // 8] |= 1 << (b % 8)
+        h.write_sram_bytes("sKeyItemsBitfield", bits)
+        h.write8("wRecoveryItemCounts", 1, offset=20)  # POKE FLUTE's slot
+        enemy_start = h.address("wEnemyPartyCount")
+        enemy_len = h.address("wEnemyMonNicks") + 6 * 11 - enemy_start
+        before = h.read_bytes("wEnemyPartyCount", enemy_len)
+
+        h.call_routine("BuildBattleItemList")
+
+        after = h.read_bytes("wEnemyPartyCount", enemy_len)
+        changed = [hex(enemy_start + i) for i, (b, a) in enumerate(zip(before, after)) if b != a]
+        self.assertEqual(changed, [], "the battle ITEM list wrote into the enemy party")
+        cap = ram["KEY_ITEM_MAX_ACTIVE"]
+        first = [ITEMS[name] for name in self.KEY_ITEMS[:cap]]
+        expected = [cap + 1]
+        for item in first + [ITEMS["POKE_FLUTE"]]:
+            expected += [item, 1]
+        expected.append(0xFF)
+        size = h.address("wBattleItemListEnd") - h.address("wBattleItemList")
+        self.assertEqual(len(expected), size, "wBattleItemList is sized for the cap plus the flute")
+        self.assertEqual(h.read_bytes("wBattleItemList", size), expected)
+
+        # The field bag's key pocket still builds into its own buffer, same cap.
+        h.call_routine("BuildKeyItemPocketList")
+        bag = [cap] + sum(([item, 1] for item in first), []) + [0xFF]
+        self.assertEqual(h.read_bytes("wKeyItemPocketBuf", len(bag)), bag)
+
+
 if __name__ == "__main__":
     unittest.main()

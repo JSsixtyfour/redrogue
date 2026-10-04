@@ -2629,7 +2629,7 @@ DisplayPlayerBag:
 	; A normal battle's ITEM list is not the bag: only the active key items plus
 	; POKE FLUTE, with no pocket switching (custom_functions/battle_menu_extras.asm).
 	farcall BuildBattleItemList
-	ld hl, wKeyItemPocketBuf
+	ld hl, wBattleItemList ; not a pocket buffer: those overlap the live enemy party
 	; fallthrough
 
 DisplayBagMenu:

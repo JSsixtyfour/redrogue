@@ -419,19 +419,32 @@ ClearKeyItemsBitfield::
 ; ============================================================
 BuildKeyItemBagList::
 BuildKeyItemPocketList::
+    ld de, wKeyItemPocketBuf
+    ; fallthrough
+
+; BuildActiveKeyItemListAt - the same list into the buffer at de. de, not hl:
+; d/e are the only registers that survive a farcall going in. Stops after
+; KEY_ITEM_MAX_ACTIVE entries, the most that can be active, so a buffer sized
+; for that (wBattleItemList) cannot overrun even if a bad save has more bits set.
+BuildActiveKeyItemListAt::
+    push de          ; buffer base: the count is written there at the end
+    inc de
+    ld a, d
+    ld [wPocketListWritePtr], a
+    ld a, e
+    ld [wPocketListWritePtr + 1], a
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
     ASSERT BANK("Save Data") == 1
     ld a, 1
     ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
-    ld a, HIGH(wKeyItemPocketBuf + 1)
-    ld [wPocketListWritePtr], a
-    ld a, LOW(wKeyItemPocketBuf + 1)
-    ld [wPocketListWritePtr + 1], a
     ld b, 0          ; output count
     ld c, 0          ; table index
 .bagScan
     push bc
+    ld a, b
+    cp KEY_ITEM_MAX_ACTIVE
+    jr nc, .bagDone  ; full (.bagDone pops bc)
     ld hl, KeyItemPocketTable
     ld d, 0
     ld e, c
@@ -475,8 +488,8 @@ BuildKeyItemPocketList::
     jr .bagScan
 .bagDone
     pop bc
-    ld a, b
-    ld [wKeyItemPocketBuf], a
+    pop hl           ; buffer base
+    ld [hl], b       ; count
     ld a, [wPocketListWritePtr]
     ld h, a
     ld a, [wPocketListWritePtr + 1]

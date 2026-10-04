@@ -94,8 +94,10 @@ RogueConfirmEndBattle::
 ; ============================================================
 ; BuildBattleItemList - the battle menu's ITEM list (DisplayPlayerBag,
 ; engine/battle/core.asm, which is only reached in a normal battle). The list is
-; the ACTIVE key items plus POKE FLUTE when owned, in wKeyItemPocketBuf's usual
-; format: count, {item, qty} pairs, $FF.
+; the ACTIVE key items plus POKE FLUTE when owned, in the pocket lists' usual
+; format: count, {item, qty} pairs, $FF. Built into wBattleItemList, never a
+; pocket buffer: those share the enemy-party UNION, and this list is on screen
+; while the enemy party is live (ram/wram.asm, wBattleItemList).
 ;
 ; Also sets BIT_BATTLE_ITEM_LIST, which routes PrintBagInfoText's cursor-move
 ; hook to PrintBattleItemInfo below and makes PocketSwitchROMX refuse LEFT/RIGHT.
@@ -112,11 +114,12 @@ RogueConfirmEndBattle::
 DEF POKE_FLUTE_RECOVERY_SLOT EQU 20
 
 BuildBattleItemList::
-	farcall BuildKeyItemPocketList
+	ld de, wBattleItemList
+	farcall BuildActiveKeyItemListAt ; at most KEY_ITEM_MAX_ACTIVE entries
 	ld a, [wRecoveryItemCounts + POKE_FLUTE_RECOVERY_SLOT]
 	and a
 	jr z, .noFlute
-	ld hl, wKeyItemPocketBuf
+	ld hl, wBattleItemList
 	ld a, [hl]
 	inc [hl]                   ; one more entry
 	add a                      ; 2 bytes per entry

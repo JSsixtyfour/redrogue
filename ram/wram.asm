@@ -3166,16 +3166,14 @@ ENDR
 
 NEXTU
 ; Bag pocket display buffers — mutually exclusive with enemy/wild/link data above.
-; Only used during overworld bag display; the union members above are only used
-; during battle, encounter setup, or link battles. Zero net WRAM cost.
+; OVERWORLD ONLY: the field bag, the mart's sell list, the key-item PC and the
+; Credit Exchange. The enemy party (member B) is dead there. Nothing that is on
+; screen during a battle may be built here: the battle ITEM list has its own
+; wBattleItemList for exactly that reason (bug B4, BAG_SYSTEM_OVERVIEW_2026-10-03.md).
+; Zero net WRAM cost.
 ;
-; NOTE: wTMPocketBuf uses 1-byte-per-entry format (PRICEDITEMLISTMENU, no qty byte)
-; NOTE: This placement causes issues if ITEMS are allowed to be used in battle, it would need to be removed from the union if we wanted to allow that
-; because TMs are binary own/not-own. Could be eliminated entirely with a custom
-; display function that reads sTMBitfield directly per-render frame if more space
-; is ever needed.
-;
-; Format: count + item_id bytes (TM: 1 byte each) or {item_id,qty} pairs (others) + $FF
+; Format: count + {item_id, qty} pairs + $FF, for every pocket including TMs
+; (qty 1, its display suppressed by BIT_TM_POCKET in PrintListMenuEntries).
 	; 73-byte pad so the pocket buffers start at wEnemyMon2's offset (union base+73).
 	; This clears BOTH overworld-live and wild-battle-live state of the other two
 	; union members:
@@ -3185,8 +3183,8 @@ NEXTU
 	; Buffers therefore land in wEnemyMon2..6 / OT / nicks (base+73+), which are dead
 	; in the overworld and unused in wild battles, so the bag can never corrupt the
 	; field's wild data or the active wild mon. Zero WRAM cost: member C stays smaller
-	; than the 425-byte enemy member that sets the union size. (Trainer-battle bag still
-	; overlaps benched mons wEnemyMon2..6 — pre-existing, masked, out of scope.)
+	; than the 425-byte enemy member that sets the union size. (The trainer-battle
+	; overlap with benched mons wEnemyMon2..6 is gone: the battle list moved out.)
 	; The ASSERT after ENDU guards this invariant at build time.
 	; wPocketListWritePtr/wPocketListCount no longer live here — they were moved to
 	; free WRAM0 (the wTempoModifier tail near the top of this file) to fix a separate
@@ -3343,6 +3341,20 @@ SECTION "Enemy Move Origins", WRAM0
 ; curated set's origin_id). Written while ReadTrainer builds the party, read by
 ; PrintLossOrigin for the blackout "You were defeated by" line. Unsaved.
 wEnemyMoveOrigins:: ds PARTY_LENGTH
+
+
+SECTION "Battle Item List", WRAM0
+
+; The battle menu's ITEM list (BuildBattleItemList, custom_functions/
+; battle_menu_extras.asm): count, {item, 1} for each ACTIVE key item and POKE
+; FLUTE, $ff. Its own bytes because it is the one bag list shown while the enemy
+; party is live, and every pocket buffer sits in the enemy-party UNION: the old
+; build into wKeyItemPocketBuf overwrote wEnemyMon4's stats and most of
+; wEnemyMon5 (BAG_SYSTEM_OVERVIEW_2026-10-03.md, bug B4). No other union is
+; dead for a whole battle (enemy OT/nick blocks are read on send-out and when a
+; stolen mon is won back). Unsaved.
+wBattleItemList:: ds 1 + (KEY_ITEM_MAX_ACTIVE + 1) * 2 + 1
+wBattleItemListEnd::
 
 
 SECTION "Stack", WRAM0
