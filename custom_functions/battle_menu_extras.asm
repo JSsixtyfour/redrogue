@@ -104,11 +104,12 @@ RogueConfirmEndBattle::
 ; The scroll offset and saved cursor are reset because both are shared with the
 ; field bag, whose pockets can be far longer than this list.
 ; ============================================================
-; POKE FLUTE's slot in wRecoveryItemCounts: it is the last entry of
-; RecoveryItemTable (custom_functions/pocket_items.asm). Read directly rather than
-; through GetPocketItemCount, whose result comes back in a, and a does not survive
-; farcall's return trip through Bankswitch.
-DEF POKE_FLUTE_RECOVERY_SLOT EQU NUM_RECOVERY_ITEMS - 1
+; POKE FLUTE's slot in wRecoveryItemCounts: its position in RecoveryItemTable
+; (custom_functions/pocket_items.asm), entry 20. A fixed number, not
+; NUM_RECOVERY_ITEMS - 1: new items are appended after it, and the flute keeps
+; its slot. Read directly rather than through GetPocketItemCount, whose result
+; comes back in a, and a does not survive farcall's return trip through Bankswitch.
+DEF POKE_FLUTE_RECOVERY_SLOT EQU 20
 
 BuildBattleItemList::
 	farcall BuildKeyItemPocketList

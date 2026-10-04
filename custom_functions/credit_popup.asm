@@ -227,7 +227,7 @@ RogueResetRunState::
 	xor a
 	ld [wObtainedBadges], a
 	ld hl, wRecoveryItemCounts
-	ld bc, NUM_RECOVERY_ITEMS + NUM_STAT_ITEMS + NUM_VALUABLE_ITEMS
+	ld bc, ITEM_COUNT_SLOTS ; all three arrays, spare slots included
 .clearItemCounts
 	ld [hli], a
 	dec bc

@@ -2125,13 +2125,19 @@ wPokedexSeenEnd::
 
 ; Recovery pocket — one count byte per item type (0=none, N=have N).
 ; Display order matches RecoveryItemTable in custom_functions/pocket_items.asm.
-wRecoveryItemCounts:: ds NUM_RECOVERY_ITEMS  ; 21 bytes
+; Each array has spare slots past its table (*_SLOTS vs NUM_*, ram_constants.asm),
+; so appending an item to a table does not move the save layout. The three arrays
+; are cleared as one ITEM_COUNT_SLOTS run (InitPlayerData, RogueOnBlackout), so
+; keep them adjacent and in this order.
+wRecoveryItemCounts:: ds RECOVERY_ITEM_SLOTS  ; 21 items used
 
-; Stat pocket — evolution stones, vitamins, Rare Candy, PP Up.
-wStatItemCounts:: ds NUM_STAT_ITEMS          ; 15 bytes (Bridge: +MIST_STONE)
+; Stat pocket — evolution stones, vitamins, Rare Candy, PP Up, M.Gene, M.Tome.
+wStatItemCounts:: ds STAT_ITEM_SLOTS          ; 18 items used
 
 ; Valuable pocket — sell-only items (Nugget, Pearl, etc.).
-wValuableItemCounts:: ds NUM_VALUABLE_ITEMS  ; 4 bytes
+wValuableItemCounts:: ds VALUABLE_ITEM_SLOTS  ; 4 items used
+wItemCountsEnd::
+ASSERT wItemCountsEnd - wRecoveryItemCounts == ITEM_COUNT_SLOTS
 
 ; Key items pocket is pure bitfield in sKeyItemsBitfield (SRAM), no WRAM needed.
 ; The display list is built on demand by BuildKeyItemPocketList (ROMX).
@@ -3196,9 +3202,11 @@ wTMPocketBuf::      ds 128  ; 1 + 55×2 + 1 = 113 bytes; 128 for slack
 ; BuildKeyItemPCWithdrawList (custom_functions/key_item_pocket.asm:343) lists
 ; every OWNED item, so the old ds 10 would overrun into wRecoveryPocketBuf.
 wKeyItemPocketBuf:: ds 34   ; 1 + 15×2 + 1 = 32 bytes, 34 for slack
-wRecoveryPocketBuf:: ds 44  ; 1 + 21×2 + 1 = 44 bytes
-wStatPocketBuf::    ds 32   ; 1 + 15×2 + 1 = 32 bytes (Bridge: +MIST_STONE)
-wValuablePocketBuf:: ds 10  ; 1 + 4×2 + 1 = 10 bytes
+; count byte + {item, qty} per table entry + $ff. Sized from the tables, not the
+; saved slots: only owned table entries are ever listed.
+wRecoveryPocketBuf:: ds 1 + NUM_RECOVERY_ITEMS * 2 + 1  ; 44
+wStatPocketBuf::    ds 1 + NUM_STAT_ITEMS * 2 + 1       ; 38 (was 32 while the constant said 15)
+wValuablePocketBuf:: ds 1 + NUM_VALUABLE_ITEMS * 2 + 1  ; 10
 ; Credit Exchange vendor stock (engine/events/credit_mart.asm): count + up to
 ; 15 one-byte item ids + $ff terminator. Cannot share wItemList (ds 16) - the
 ; upgrade vendor lists every owned key item, which overflows it at 15 owned.

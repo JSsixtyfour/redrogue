@@ -34,7 +34,9 @@ def schema_id() -> int:
 
 
 # Saved-WRAM fields the engine reads: its structure checks (engine.js boundsProblems) and event flags.
-ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCurrentBoxNum", "wEventFlags"}
+ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCurrentBoxNum", "wEventFlags",
+               # migration itemCountSlots (schema 1 -> 2)
+               "wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts", "wNumBagItems"}
 
 
 def trim(schema: dict) -> dict:

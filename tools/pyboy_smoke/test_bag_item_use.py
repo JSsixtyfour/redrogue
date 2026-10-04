@@ -82,5 +82,36 @@ class MistStoneSpeciesTest(HarnessTestCase):
         )
 
 
+class StatPocketSlotsTest(HarnessTestCase):
+    """NUM_STAT_ITEMS read 15 while StatItemTable held 18, so PP UP, M.GENE and
+    M.TOME (table entries 15-17) were counted in wValuableItemCounts[0-2] - the
+    Pearl, Big Pearl and Nugget counts - and never listed in the Stat pocket."""
+
+    def test_last_stat_items_count_in_their_own_pocket(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        stat_slots = parse_rgbds_constants(
+            REPO_ROOT / "constants" / "ram_constants.asm"
+        )["STAT_ITEM_SLOTS"]
+        for i in range(stat_slots):
+            h.write8("wStatItemCounts", 0, offset=i)
+        for i in range(4):
+            h.write8("wValuableItemCounts", 0, offset=i)
+        for name in ("PP_UP", "M_GENE", "M_TOME"):
+            h.write8("wCurItem", ITEMS[name])
+            h.write8("wItemQuantity", 1)
+            h.call_routine("GiveStatItem")
+        self.assertEqual(h.read_bytes("wStatItemCounts", 3, offset=15), [1, 1, 1])
+        self.assertEqual(h.read_bytes("wValuableItemCounts", 4), [0, 0, 0, 0])
+        h.call_routine("BuildStatPocketList")
+        count = h.read8("wStatPocketBuf")
+        listed = h.read_bytes("wStatPocketBuf", count * 2 + 1, offset=1)
+        self.assertEqual(
+            listed,
+            [ITEMS["PP_UP"], 1, ITEMS["M_GENE"], 1, ITEMS["M_TOME"], 1, 0xFF],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

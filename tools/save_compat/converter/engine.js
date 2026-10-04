@@ -168,7 +168,56 @@
   var STEPS = {
     // Same layout and meaning (tools/save_schema.py diff --ignore-header said identical): only the
     // header is new, and it sits in padding no checksum covers.
-    tag: function () { return null; }
+    tag: function () { return null; },
+
+    // Schema 1 -> 2 (2026-10-03): the three item count arrays grew to their slot sizes
+    // (wRecoveryItemCounts 21 -> 24, wStatItemCounts 15 -> 24, wValuableItemCounts 4 -> 8).
+    // Every byte from the field after them (wNumBagItems) to the end of the bank-1 save
+    // sections (rest of the main block, sprite/party/box data, the main checksum, the Final
+    // Team Archive and the Procedural Facility state) moved up by the total growth unchanged,
+    // so it is shifted as one run; the archive's own checksums travel with their data.
+    // Each count array keeps its old entries at the same indices, and the new spare slots are
+    // 0, as a new game leaves them. Old saves counted PP UP / M.GENE / M.TOME in the
+    // Pearl / Big Pearl / Nugget bytes (the array was one table too short); those bytes can't
+    // be split, so they stay Valuable counts.
+    itemCountSlots: function (bytes, from, to) {
+      var src = new Uint8Array(bytes);
+      var arrays = ["wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts"];
+      var growth = 0;
+      for (var i = 0; i < arrays.length; i++) {
+        var a = wramField(from, arrays[i]), b = wramField(to, arrays[i]);
+        if (!a || !b || b.size < a.size) return "item count layout not recognised (" + arrays[i] + ")";
+        growth += b.size - a.size;
+      }
+      var mainFrom = sramField(from, "sMainData"), mainTo = sramField(to, "sMainData");
+      if (mainTo.size - mainFrom.size !== growth) return "main save block grew by an unexpected amount";
+      var start = wramOffset(from, "wNumBagItems");
+      if (wramOffset(to, "wNumBagItems") - start !== growth) return "wNumBagItems did not move by the item count growth";
+      // The shifted run ends at the last bank-1 label at or after it; each of those labels must
+      // have moved by exactly the growth, and nothing in the old save may sit where the run lands.
+      var end = start;
+      for (var j = 0; j < from.sram.length; j++) {
+        var f = from.sram[j];
+        var o = offsetOf(f.bank, f.address);
+        if (f.bank !== 1 || o < start) continue;
+        var t = sramField(to, f.label);
+        if (!t || offsetOf(t.bank, t.address) - o !== growth || t.size !== f.size)
+          return "save field " + f.label + " did not move by the item count growth";
+        end = Math.max(end, o + f.size);
+      }
+      for (var k = 0; k < from.sram.length; k++) {
+        var g = from.sram[k], go = offsetOf(g.bank, g.address);
+        if (go >= end && go < end + growth) return "the shifted save data would overwrite " + g.label;
+      }
+      for (var n = end - 1; n >= start; n--) bytes[n + growth] = src[n];
+      for (var m = 0; m < arrays.length; m++) {
+        var oldF = wramField(from, arrays[m]), newF = wramField(to, arrays[m]);
+        var so = wramOffset(from, arrays[m]), d = wramOffset(to, arrays[m]);
+        for (var p = 0; p < newF.size; p++) bytes[d + p] = p < oldF.size ? src[so + p] : 0;
+      }
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    }
   };
 
   function convert(save, pkg, options) {

@@ -15,6 +15,12 @@
    "to": "1",
    "steps": ["tag"],
    "verified": "2026-10-02: save_schema.py diff --ignore-header found the same layout and save-semantic sources (only the new header and its constants); the archived ROM rebuilt byte-identical from 74f82c1b; converted baseline saves pass saves.py continue on the schema-1 build (see the runbook's ledger)."
+  },
+  {
+   "from": "1",
+   "to": "2",
+   "steps": ["itemCountSlots"],
+   "verified": "2026-10-03: save_schema.py diff 1 -> 2 classified: three item count arrays resized (old entries kept, spare slots 0), everything from wNumBagItems to the end of the bank-1 save sections moved +16 unchanged, plus two scratch labels in the bag-display union member. Engine test 'schema 1 to 2' checks every saved field and bank-1 label byte for byte (fails on a mutated step). Six real schema-1 saves (lobby, route, cave, forest, cemetery, facility) made on 58019198, converted by the engine, pass saves.py continue on the schema-2 build; an unconverted one is refused."
   }
  ]
 }

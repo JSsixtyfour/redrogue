@@ -98,10 +98,14 @@ class BridgeCompletionSourceContractTest(unittest.TestCase):
 
     def test_mist_count_reclaims_padding_without_shifting_later_main_data(self) -> None:
         wram = (REPO_ROOT / "ram/wram.asm").read_text()
-        self.assertIn("wStatItemCounts:: ds NUM_STAT_ITEMS", wram)
+        # The saved array is sized by STAT_ITEM_SLOTS (spare slots past the
+        # table), and NUM_STAT_ITEMS must match the 18-entry table: it read 15
+        # until 2026-10-03, which pushed PP UP / M.GENE / M.TOME into the
+        # Valuable pocket's counts. pocket_items.asm now asserts it at build time.
+        self.assertIn("wStatItemCounts:: ds STAT_ITEM_SLOTS", wram)
         self.assertIn("wBagItems:: ds 6", wram)
         constants = (REPO_ROOT / "constants/ram_constants.asm").read_text()
-        self.assertIn("DEF NUM_STAT_ITEMS      EQU 15", constants)
+        self.assertIn("DEF NUM_STAT_ITEMS      EQU 18", constants)
 
     def test_second_chance_preserves_the_cur_item_alias_in_its_predicate(self) -> None:
         source = (REPO_ROOT / "custom_functions/bridge_effects_extended.asm").read_text()

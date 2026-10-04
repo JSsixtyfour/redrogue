@@ -2,6 +2,12 @@
 ; Recovery, Stat, Valuable pocket tables, give/remove, and display list builders.
 ; All entry points use wCurItem/wItemQuantity (set before farcall by GiveItem)
 ; instead of b/c registers — farcall clobbers those on entry.
+;
+; An item's position in its table is its index into the saved count array, so
+; only ever APPEND, before the $FF. The asserts tie each table to its NUM_*
+; constant (ram_constants.asm): that constant sizes the display buffer and the
+; build loop, and the saved array has *_SLOTS bytes, so appending past the
+; spare slots fails the build instead of spilling into the next pocket.
 
 RecoveryItemTable::
     db POTION, SUPER_POTION, HYPER_POTION, MAX_POTION, FULL_RESTORE
@@ -11,6 +17,7 @@ RecoveryItemTable::
     db ETHER, MAX_ETHER, ELIXER, MAX_ELIXER
     db POKE_FLUTE  ; infinite use — count never decremented on field use
     db $FF
+ASSERT @ - RecoveryItemTable == NUM_RECOVERY_ITEMS + 1, "RecoveryItemTable length != NUM_RECOVERY_ITEMS"
 
 StatItemTable::
     db MOON_STONE, FIRE_STONE, THUNDER_STONE, WATER_STONE, LEAF_STONE
@@ -19,10 +26,12 @@ StatItemTable::
     db RARE_CANDY, PP_UP
     db M_GENE, M_TOME
     db $FF
+ASSERT @ - StatItemTable == NUM_STAT_ITEMS + 1, "StatItemTable length != NUM_STAT_ITEMS"
 
 ValuableItemTable::
     db PEARL, BIG_PEARL, NUGGET, BIG_NUGGET
     db $FF
+ASSERT @ - ValuableItemTable == NUM_VALUABLE_ITEMS + 1, "ValuableItemTable length != NUM_VALUABLE_ITEMS"
 
 ; ============================================================
 ; _ScanTable (same-bank private)

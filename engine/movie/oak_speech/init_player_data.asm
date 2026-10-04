@@ -31,7 +31,7 @@ InitPlayerData2:
 	; Clear count arrays for Recovery, Stat, Valuable pockets.
 	ld hl, wRecoveryItemCounts
 	xor a
-	ld bc, NUM_RECOVERY_ITEMS + NUM_STAT_ITEMS + NUM_VALUABLE_ITEMS
+	ld bc, ITEM_COUNT_SLOTS ; all three arrays, spare slots included
 .clearCounts
 	ld [hli], a
 	dec bc
@@ -39,9 +39,10 @@ InitPlayerData2:
 	or c
 	ld a, 0
 	jr nz, .clearCounts
-	; Clear the legacy bag stub
-	ld [wNumBagItems], a
-	ld [wBagItems], a
+	; The legacy bag stub is already an empty list (InitializeEmptyList above:
+	; count 0, $ff terminator). This used to also write 0 to wBagItems, which
+	; erased that terminator, so any legacy scan walked on into wBagPocketsFlags,
+	; money and the rival's name looking for one.
 	ld [wNumBagKeyItems], a
 	ld hl, wNumBoxItems
 	call InitializeEmptyList

@@ -503,9 +503,22 @@ DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
 	; The battle menu's ITEM list (key items + POKE FLUTE) is open: no pocket
 	; switching, and the info box describes the item. See battle_menu_extras.asm.
 	DEF BIT_BATTLE_ITEM_LIST EQU 6
+	; Items in each count pocket's table (custom_functions/pocket_items.asm
+	; asserts these against the tables). NUM_STAT_ITEMS read 15 while the table
+	; held 18, so PP UP / M.GENE / M.TOME were counted in wValuableItemCounts.
 	DEF NUM_RECOVERY_ITEMS  EQU 21
-	DEF NUM_STAT_ITEMS      EQU 15
+	DEF NUM_STAT_ITEMS      EQU 18
 	DEF NUM_VALUABLE_ITEMS  EQU 4
+	; Saved count bytes per pocket (wram.asm). Larger than the tables so a new
+	; item can be appended to a table without moving the save layout; raising
+	; a *_SLOTS value is a save-format change (SAVE_COMPATIBILITY_RUNBOOK.md).
+	DEF RECOVERY_ITEM_SLOTS EQU 24
+	DEF STAT_ITEM_SLOTS     EQU 24
+	DEF VALUABLE_ITEM_SLOTS EQU 8
+	DEF ITEM_COUNT_SLOTS    EQU RECOVERY_ITEM_SLOTS + STAT_ITEM_SLOTS + VALUABLE_ITEM_SLOTS
+	ASSERT NUM_RECOVERY_ITEMS <= RECOVERY_ITEM_SLOTS
+	ASSERT NUM_STAT_ITEMS <= STAT_ITEM_SLOTS
+	ASSERT NUM_VALUABLE_ITEMS <= VALUABLE_ITEM_SLOTS
 
 ; sKeyItemsBitfield paired own+active bits (must remain stable once save data exists)
 ; Each item uses two consecutive bits: even = owned, odd = active (in bag).

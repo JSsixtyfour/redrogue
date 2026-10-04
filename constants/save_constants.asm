@@ -13,8 +13,10 @@
 ; each bump needs a migration in the patch page's converter
 ; (SAVE_COMPATIBILITY_RUNBOOK.md). Schema 1 is the 2026-10-01 74f82c1b
 ; layout plus this header; that build's untagged saves convert by tagging.
+; Schema 2 (2026-10-03): the three item count arrays grew to their *_SLOTS
+; sizes (21/15/4 -> 24/24/8), shifting the rest of the main data block.
 
-DEF SAVE_SCHEMA_ID EQU 1
+DEF SAVE_SCHEMA_ID EQU 2
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

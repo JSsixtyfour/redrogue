@@ -125,11 +125,11 @@ Route25TrainerHeaders:
 Route25TrainerHeader0:
 	trainer EVENT_BEAT_ROUTE_25_TRAINER_0, 3, Route25YoungsterBattleText, Route25YoungsterEndBattleText, Route25YoungsterAfterBattleText
 Route25TrainerHeader1:
-	trainer EVENT_BEAT_ROUTE_25_TRAINER_1, 2, Route25LassBattleText, Route25LassEndBattleText, Route25LassAfterBattleText
+	trainer EVENT_BEAT_ROUTE_25_TRAINER_1, 3, Route25LassBattleText, Route25LassEndBattleText, Route25LassAfterBattleText
 Route25TrainerHeader2:
 	trainer EVENT_BEAT_ROUTE_25_TRAINER_2, 2, Route25JrTrainerMBattleText, Route25JrTrainerMEndBattleText, Route25JrTrainerMAfterBattleText
 Route25TrainerHeader3:
-	trainer EVENT_BEAT_ROUTE_25_TRAINER_3, 4, Route25CooltrainerMBattleText, Route25CooltrainerMEndBattleText, Route25CooltrainerMAfterBattleText
+	trainer EVENT_BEAT_ROUTE_25_TRAINER_3, 3, Route25CooltrainerMBattleText, Route25CooltrainerMEndBattleText, Route25CooltrainerMAfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.

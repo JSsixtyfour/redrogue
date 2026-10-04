@@ -56,34 +56,106 @@ test("an untagged save needs the old ROM, and only a known ROM identifies it", (
   assert.equal(api.sourceFromRom(BASELINE_ROM.toUpperCase(), PKG).id, BASELINE);
 });
 
-test("baseline to target: tagged, every other byte identical, input untouched", () => {
+// PKG with its target moved back to schema `id`, keeping only the migrations that lead there.
+function packageTargeting(id) {
+  const pkg = JSON.parse(JSON.stringify(PKG));
+  pkg.target = { schema: Number(id) };
+  pkg.migrations = pkg.migrations.filter((m) => m.from === BASELINE || /^\d+$/.test(m.from) && Number(m.to) <= Number(id));
+  return pkg;
+}
+
+test("baseline to schema 1: tagged, every other byte identical, input untouched", () => {
+  const pkg = packageTargeting("1");
   const save = syntheticSave(BASELINE, { tag: false });
   const before = Array.from(save);
-  const out = api.convert(save, PKG, { source: BASELINE, mode: "continue" });
+  const out = api.convert(save, pkg, { source: BASELINE, mode: "continue" });
   assert.equal(out.ok, true, out.reason);
   assert.deepEqual(Array.from(save), before, "the original must not change");
   const header = api.readHeader(out.bytes);
-  assert.deepEqual(header, { present: true, valid: true, schemaId: Number(TARGET) });
+  assert.deepEqual(header, { present: true, valid: true, schemaId: 1 });
   const h = offsetOf(1, "a040");
   for (let i = 0; i < api.SRAM_SIZE; i++) {
     if (i >= h && i < h + 8) continue;
     if (out.bytes[i] !== save[i]) assert.fail(`byte ${i.toString(16)} changed`);
   }
   assert.equal(out.report.checksums.main, true);
-  assert.equal(api.identify(out.bytes, PKG).source, TARGET);
+  assert.equal(api.identify(out.bytes, pkg).source, "1");
 });
 
 test("a skipped release still arrives through a chain of migrations", () => {
-  // A package with an extra format between the baseline and the target.
+  // A package with an extra format between schema 1 and the target.
   const chained = JSON.parse(JSON.stringify(PKG));
-  chained.schemas.mid = chained.schemas[BASELINE];
-  chained.migrations = [{ from: BASELINE, to: "mid", steps: ["tag"] }, { from: "mid", to: TARGET, steps: ["tag"] }];
+  chained.schemas.mid = chained.schemas["1"];
+  chained.migrations = [
+    { from: BASELINE, to: "1", steps: ["tag"] },
+    { from: "1", to: "mid", steps: ["tag"] },
+    { from: "mid", to: TARGET, steps: ["itemCountSlots"] },
+  ];
   const out = api.convert(syntheticSave(BASELINE, { tag: false }), chained, { source: BASELINE, mode: "continue" });
   assert.equal(out.ok, true, out.reason);
-  assert.equal(out.report.steps.length, 3);
+  assert.equal(out.report.steps.length, 4);
   const looped = JSON.parse(JSON.stringify(chained));
   looped.migrations = [{ from: BASELINE, to: "mid", steps: ["tag"] }, { from: "mid", to: BASELINE, steps: ["tag"] }];
   assert.equal(api.convert(syntheticSave(BASELINE, { tag: false }), looped, { source: BASELINE }).code, "no_migration");
+});
+
+test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
+  const from = PKG.schemas["1"], to = PKG.schemas["2"];
+  const arrays = ["wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts"];
+  const field = (schema, label) => schema.saved_wram.find((f) => f.label === label);
+  const save = syntheticSave("1");
+  // Noise over everything the step touches, then the structure a real save needs, then
+  // checksums, so a byte that lands in the wrong place cannot match by accident.
+  const start = wramOffset(from, "wRecoveryItemCounts");
+  const end = Math.max(...from.sram.filter((f) => f.bank === 1).map((f) => offsetOf(f.bank, f.address) + f.size));
+  let x = 0x2468ace;
+  for (let i = start; i < end; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[i] = x >>> 24; }
+  save[wramOffset(from, "wPartyCount")] = 0;
+  save[wramOffset(from, "wPartySpecies")] = 0xff;
+  save[wramOffset(from, "wBoxCount")] = 0;
+  save[wramOffset(from, "wCurrentBoxNum")] = 0;
+  // Twice: final_team_header's range covers the record checksums written after it.
+  recomputeChecksums(save, from);
+  recomputeChecksums(save, from);
+  for (const [name, good] of Object.entries(api.checksumStatus(save, from))) assert.equal(good, true, `input ${name}`);
+  const out = api.convert(save, PKG, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.deepEqual(api.readHeader(b), { present: true, valid: true, schemaId: 2 });
+  for (const name of Object.keys(api.checksumStatus(save, from)))
+    assert.equal(api.checksumStatus(b, to)[name], true, `checksum ${name}`);
+
+  for (const label of arrays) {
+    const oldSize = field(from, label).size, newSize = field(to, label).size;
+    const o = wramOffset(from, label), n = wramOffset(to, label);
+    for (let i = 0; i < newSize; i++)
+      assert.equal(b[n + i], i < oldSize ? save[o + i] : 0, `${label}[${i}]`);
+  }
+  // Every saved field keeps its bytes (over the size both layouts give it; the schema sizes
+  // a label by the distance to the next one, so labels inside unions can change size). The
+  // only fields allowed to differ are two labels in the bag-display union member: it grew
+  // (wStatPocketBuf 32 -> 38), so they moved further than the shift. That member is scratch,
+  // rebuilt on every bag open, and the bytes under it belong to the enemy party, which did
+  // shift correctly (wEnemyMon*OT are checked here).
+  // The package trims schemas to the fields the engine names, so read the full ones.
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const fullFrom = full(1), fullTo = full(2);
+  const differ = [];
+  for (const f of fullFrom.saved_wram) {
+    const t = field(fullTo, f.label);
+    const o = wramOffset(fullFrom, f.label), n = wramOffset(fullTo, f.label);
+    const size = Math.min(f.size, t.size);
+    for (let i = 0; i < size; i++) if (b[n + i] !== save[o + i]) { differ.push(f.label); break; }
+  }
+  assert.deepEqual(differ.sort(), ["wCreditItemList", "wValuablePocketBuf"]);
+  // Bank-1 SRAM after the main block's start: the archive and facility state, byte for byte.
+  for (const f of from.sram) {
+    const o = offsetOf(f.bank, f.address);
+    if (f.bank !== 1 || o < start || f.label === "sMainData") continue;
+    const t = to.sram.find((s) => s.label === f.label);
+    const n = offsetOf(t.bank, t.address);
+    for (let i = 0; i < f.size; i++) if (b[n + i] !== save[o + i]) assert.fail(`${f.label}+${i} changed`);
+  }
 });
 
 test("damaged, foreign or wrapped files are refused with a reason", () => {

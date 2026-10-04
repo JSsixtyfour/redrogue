@@ -88,11 +88,11 @@ DiglettsCaveTrainerHeaders:
 DiglettsCaveTrainerHeader0:
 	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_0, 1, DiglettsCaveHikerBattleText, DiglettsCaveHikerEndBattleText, DiglettsCaveHikerAfterBattleText
 DiglettsCaveTrainerHeader1:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_1, 1, DiglettsCaveYoungsterBattleText, DiglettsCaveYoungsterEndBattleText, DiglettsCaveYoungsterAfterBattleText
+	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_1, 3, DiglettsCaveYoungsterBattleText, DiglettsCaveYoungsterEndBattleText, DiglettsCaveYoungsterAfterBattleText
 DiglettsCaveTrainerHeader2:
 	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_2, 1, DiglettsCaveEngineerBattleText, DiglettsCaveEngineerEndBattleText, DiglettsCaveEngineerAfterBattleText
 DiglettsCaveTrainerHeader3:
-	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3, 1, DiglettsCaveCooltrainerFBattleText, DiglettsCaveCooltrainerFEndBattleText, DiglettsCaveCooltrainerFAfterBattleText
+	trainer EVENT_BEAT_DIGLETTS_CAVE_TRAINER_3, 4, DiglettsCaveCooltrainerFBattleText, DiglettsCaveCooltrainerFEndBattleText, DiglettsCaveCooltrainerFAfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.
@@ -106,15 +106,15 @@ DiglettsCaveHikerText:
 	jp TextScriptEnd
 
 DiglettsCaveHikerBattleText:
-	text_far _DiglettsCaveBugCatcher1BattleText
+	text_far _DiglettsCaveHikerBattleText
 	text_end
 
 DiglettsCaveHikerEndBattleText:
-	text_far _DiglettsCaveBugCatcher1EndBattleText
+	text_far _DiglettsCaveHikerEndBattleText
 	text_end
 
 DiglettsCaveHikerAfterBattleText:
-	text_far _DiglettsCaveBugCatcher1AfterBattleText
+	text_far _DiglettsCaveHikerAfterBattleText
 	text_end
 
 DiglettsCaveYoungsterText:
@@ -142,15 +142,15 @@ DiglettsCaveEngineerText:
 	jp TextScriptEnd
 
 DiglettsCaveEngineerBattleText:
-	text_far _DiglettsCaveBugCatcher1BattleText
+	text_far _DiglettsCaveSuperNerdBattleText
 	text_end
 
 DiglettsCaveEngineerEndBattleText:
-	text_far _DiglettsCaveBugCatcher1EndBattleText
+	text_far _DiglettsCaveSuperNerdEndBattleText
 	text_end
 
 DiglettsCaveEngineerAfterBattleText:
-	text_far _DiglettsCaveBugCatcher1AfterBattleText
+	text_far _DiglettsCaveSuperNerdAfterBattleText
 	text_end
 
 DiglettsCaveCooltrainerFText:
@@ -160,11 +160,11 @@ DiglettsCaveCooltrainerFText:
 	jp TextScriptEnd
 
 DiglettsCaveCooltrainerFBattleText:
-	text_far _DiglettsCaveBugCatcher1BattleText
+	text_far _DiglettsCaveCoolTrainerFBattleText
 	text_end
 
 DiglettsCaveCooltrainerFEndBattleText:
-	text_far _DiglettsCaveBugCatcher1EndBattleText
+	text_far _DiglettsCaveCoolTrainerFEndBattleText
 	text_end
 
 DiglettsCaveCooltrainerFAfterBattleText:
