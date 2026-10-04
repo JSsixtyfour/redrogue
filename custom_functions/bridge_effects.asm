@@ -765,7 +765,18 @@ MistStoneChooseEvolution::
 ; wEvoStoneItemID rather than special-case anything downstream: the ordinary
 ; EVOLVE_ITEM match then fires, and ApplyEvoStoneForm sets the right form, with
 ; no change to the parser, the evolution data or the form table.
-	ld a, [wCurPartySpecies]
+;
+; The species comes from the party, NOT wCurPartySpecies. That byte is also
+; wCurItem, and ItemUseEvoStone writes the stone's id back into it after the
+; party menu, so here it reads MIST_STONE ($76, internal DUGTRIO, which has no
+; evolutions): nothing was ever offered and the stone was never used.
+; hWhichPokemon is the mon picked in the party menu.
+	ldh a, [hWhichPokemon]
+	ld c, a
+	ld b, 0
+	ld hl, wPartySpecies
+	add hl, bc
+	ld a, [hl]
 	cp EEVEE
 	jr nz, .notEevee
 	call Random           ; HOME; never BattleRandom outside battle
@@ -780,8 +791,7 @@ MistStoneChooseEvolution::
 	ret
 
 .notEevee
-	ld a, [wCurPartySpecies]
-	dec a
+	dec a                 ; a = the party mon's species, from above
 	ld b, 0
 	add a
 	rl b

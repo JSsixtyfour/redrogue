@@ -617,11 +617,13 @@ ItemUseBall:
 	and a ; is this the old man battle?
 	ret nz ; if so, don't remove a ball from the bag
 
-; Remove a ball from the bag.
-	ld hl, wNumBagItems
-	inc a
-	ld [wItemQuantity], a
-	jp RemoveItemFromInventory
+; Vanilla removed the ball here with RemoveItemFromInventory on wNumBagItems,
+; which indexes by hWhichPokemon rather than searching by id. Balls sit in no
+; pocket, so no bag list can select one and there is nothing to remove; that
+; call could only decrement whichever saved byte the index pointed at. See
+; RemoveUsedItem. If balls ever join a pocket, remove them with
+; RemovePocketItem, keyed on the ball's id.
+	ret
 
 ItemUseBallText00:
 ;"It dodged the thrown ball!"
@@ -2299,9 +2301,14 @@ RemoveUsedItem:
 	ld a, 1
 	ld [wItemQuantity], a
 	farcall RemovePocketItem    ; handles Recovery/Stat/Valuable/Poke Flute
-	; Also try legacy wBagItems for anything uncategorized
-	ld hl, wNumBagItems
-	jp RemoveItemFromInventory
+	; No legacy wBagItems removal. It used to `jp RemoveItemFromInventory` with
+	; hl = wNumBagItems, but that routine removes by SLOT, taking the slot from
+	; hWhichPokemon, which here is the item's position in its POCKET list. So
+	; every consumed item decremented the saved byte at wBagItems+1+2*index:
+	; index 3 hit wBagPocketsFlags, 4 money, 11 badges, 18-20 the current map's
+	; tileset/width/data pointer (BAG_SYSTEM_OVERVIEW_2026-10-03.md, bug B1).
+	; Legacy-only items are in no pocket, so no bag list can select them anyway.
+	ret
 
 ItemUseNoEffect:
 	ld hl, ItemUseNoEffectText

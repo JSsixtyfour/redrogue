@@ -285,22 +285,23 @@ BattleItemInfoTable:
 	battle_item_info POKE_FLUTE,    INFO_NONE,      .PokeFlute
 	db $FF
 
-.Leftovers:    db "Heals party@",    "after battles@"
-.PPTonic:      db "Restores PP@",    "after battles@"
-.KODefiance:   db "Revives last@",   "mon on a KO@"
+; Each line may use the box's full 18 tiles; '#' alone takes 4 (POKe).
+.Leftovers:    db "Heals your party@",   "after each battle@"
+.PPTonic:      db "Restores your PP@",   "after each battle@"
+.KODefiance:   db "Revives your last@",  "#MON on a KO@"
 ;.ExpAll:       db "Whole party@",    "shares EXP@"
-.ShinyCharm:   db "Ups the odds@",   "of shinies@"
-.AmuletCoin:   db "More money@",     "from battles@"
-.TurnRewind:   db "Undo last turn@", "No turn used@"
-.RareScope:    db "Rarer wild@",     "#MON appear@"
-.RareLens:     db "Rarer items@",    "are found@"
-.DVBooster:    db "Caught #MON@",    "get better DVs@"
-.StatBooster:  db "More stat EXP@",  "from battles@"
-.DoorDice:     db "Rerolls lobby@",  "doors@"
-.MonDice:      db "Rerolls the@",    "reward #MON@"
-.ItemDice:     db "Rerolls stage@",  "items@"
-.ElementPrism: db "Powers moves@",   "of its type@"
-.PokeFlute:    db "Wakes all #MON@", "Takes a turn@"
+.ShinyCharm:   db "Raises the odds of@", "finding shinies@"
+.AmuletCoin:   db "Earn more money@",    "from each battle@"
+.TurnRewind:   db "Undoes last turn@",   "Takes no turn@"
+.RareScope:    db "Raises the rarity@",  "of wild #MON@"
+.RareLens:     db "Raises the rarity@",  "of items found@"
+.DVBooster:    db "Caught #MON get@",    "better DVs@"
+.StatBooster:  db "Earn more stat EXP@", "from each battle@"
+.DoorDice:     db "Rerolls the doors@",  "in the lobby@"
+.MonDice:      db "Rerolls the reward@", "#MON@"
+.ItemDice:     db "Rerolls the items@",  "in a stage@"
+.ElementPrism: db "Powers up moves@",    "matching its type@"
+.PokeFlute:    db "Wakes all #MON@",     "Uses up your turn@"
 
 ; ============================================================
 ; BattleKeyItemGate - top of UseItem_ (engine/items/item_effects.asm), before

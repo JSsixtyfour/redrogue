@@ -135,3 +135,42 @@ _PewterGymGuidePostBattleText::
 	line "You're #MON"
 	cont "champ material!"
 	done
+
+_PewterGymYoungsterBattleText::
+	text "You'll have to"
+	line "deal with me"
+    cont "first!"
+	done
+
+_PewterGymYoungsterEndBattleText::
+	text "Okay!"
+
+	para "You dealth with"
+	line "me!"
+	prompt
+
+_PewterGymYoungsterAfterBattleText::
+	text "You seem good,"
+	line "but BROCK rocks!"
+	done
+    
+_PewterGymHikerBattleText::
+	text "Hello there!"
+	line "I've known BROCK"
+    cont "since he was a"
+    cont "boy!"
+	done
+
+_PewterGymHikerEndBattleText::
+	text "Ho oh!"
+
+	para "You remind me of"
+	line "BROCK!"
+	prompt
+
+_PewterGymHikerAfterBattleText::
+	text "BROCK would beat"
+	line "me just like that"
+    cont "when he was a" 
+    cont "kid."
+	done

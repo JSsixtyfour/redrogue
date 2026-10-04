@@ -97,9 +97,9 @@ PewterGymScriptReceiveTM34:
 PewterGym_TextPointers:
 	def_text_pointers
 	dw_const PewterGymBrockText,             TEXT_PEWTERGYM_BROCK
-	dw_const PewterGymCooltrainerM1Text,      TEXT_PEWTERGYM_COOLTRAINER_M1
-    dw_const PewterGymCooltrainerM2Text,      TEXT_PEWTERGYM_COOLTRAINER_M2
-    dw_const PewterGymCooltrainerM4Text,      TEXT_PEWTERGYM_COOLTRAINER_M4
+	dw_const PewterGymYoungsterText,         TEXT_PEWTERGYM_YOUNGSTER
+    dw_const PewterGymHikerText,      TEXT_PEWTERGYM_HIKER
+    dw_const PewterGymCooltrainerMText,      TEXT_PEWTERGYM_COOLTRAINER_M
 	dw_const PewterGymGuideText,             TEXT_PEWTERGYM_GYM_GUIDE
 	dw_const PewterGymBrockWaitTakeThisText, TEXT_PEWTERGYM_BROCK_WAIT_TAKE_THIS
 	dw_const PewterGymReceivedTMText,      TEXT_PEWTERGYM_RECEIVED_TM34
@@ -108,11 +108,11 @@ PewterGym_TextPointers:
 PewterGymTrainerHeaders:
 	def_trainers 2
 PewterGymTrainerHeader0:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 5, PewterGymCooltrainerM1BattleText, PewterGymCooltrainerM1EndBattleText, PewterGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_0, 2, PewterGymYoungsterBattleText, PewterGymYoungsterEndBattleText, PewterGymYoungsterAfterBattleText
 PewterGymTrainerHeader1:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 2, PewterGymCooltrainerM2BattleText, PewterGymCooltrainerM2EndBattleText, PewterGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_1, 3, PewterGymHikerBattleText, PewterGymHikerEndBattleText, PewterGymHikerAfterBattleText
 PewterGymTrainerHeader2:
-	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 5, PewterGymCooltrainerM4BattleText, PewterGymCooltrainerM4EndBattleText, PewterGymCooltrainerM4AfterBattleText    
+	trainer EVENT_BEAT_PEWTER_GYM_TRAINER_2, 2, PewterGymCooltrainerMBattleText, PewterGymCooltrainerMEndBattleText, PewterGymCooltrainerMAfterBattleText    
 	db -1 ; end
     
 PewterGymReceivedTMText:
@@ -191,57 +191,57 @@ ReceivedBoulderBadgeText:
     text_end
 
 
-PewterGymCooltrainerM1Text:
+PewterGymYoungsterText:
 	text_asm
 	ld hl, PewterGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PewterGymCooltrainerM1BattleText:
-	text_far _PewterGymCooltrainerMBattleText
+PewterGymYoungsterBattleText:
+	text_far _PewterGymYoungsterBattleText
 	text_end
 
-PewterGymCooltrainerM1EndBattleText:
-	text_far _PewterGymCooltrainerMEndBattleText
+PewterGymYoungsterEndBattleText:
+	text_far _PewterGymYoungsterEndBattleText
 	text_end
 
-PewterGymCooltrainerM1AfterBattleText:
-	text_far _PewterGymCooltrainerMAfterBattleText
+PewterGymYoungsterAfterBattleText:
+	text_far _PewterGymYoungsterAfterBattleText
 	text_end
     
-PewterGymCooltrainerM2Text:
+PewterGymHikerText:
 	text_asm
 	ld hl, PewterGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PewterGymCooltrainerM2BattleText:
-	text_far _PewterGymCooltrainerMBattleText
+PewterGymHikerBattleText:
+	text_far _PewterGymHikerBattleText
 	text_end
 
-PewterGymCooltrainerM2EndBattleText:
-	text_far _PewterGymCooltrainerMEndBattleText
+PewterGymHikerEndBattleText:
+	text_far _PewterGymHikerEndBattleText
 	text_end
 
-PewterGymCooltrainerM2AfterBattleText:
-	text_far _PewterGymCooltrainerMAfterBattleText
+PewterGymHikerAfterBattleText:
+	text_far _PewterGymHikerAfterBattleText
 	text_end
     
-PewterGymCooltrainerM4Text:
+PewterGymCooltrainerMText:
 	text_asm
 	ld hl, PewterGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PewterGymCooltrainerM4BattleText:
+PewterGymCooltrainerMBattleText:
 	text_far _PewterGymCooltrainerMBattleText
 	text_end
 
-PewterGymCooltrainerM4EndBattleText:
+PewterGymCooltrainerMEndBattleText:
 	text_far _PewterGymCooltrainerMEndBattleText
 	text_end
 
-PewterGymCooltrainerM4AfterBattleText:
+PewterGymCooltrainerMAfterBattleText:
 	text_far _PewterGymCooltrainerMAfterBattleText
 	text_end
 

@@ -421,7 +421,7 @@ GetRewardMonLevel::
 	add b                    ; minimum + range/2
 	cp REWARD_LEVEL_FLOOR
 	jr nc, .atLeastFive
-	ld a, REWARD_LEVEL_FLOOR ; round 1 route-next would be 3, below a starter
+	ld a, REWARD_LEVEL_FLOOR ; round 1 gives 3-6, too low next to the starter
 .atLeastFive
 	cp REWARD_LEVEL_CAP + 1
 	jr c, .levelOk

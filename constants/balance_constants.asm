@@ -150,8 +150,11 @@ DEF ROSTER_FULL_SIZE EQU 6
 ; GetRewardMonLevel (rogue_reward_menu.asm) = min + range/2 of the current
 ; round's gym-trainer block (data/balance/trainer_levels.asm), clamped to
 ; [FLOOR, CAP]. The range/2 itself is code (srl a), not a knob. Drives stage
-; balls, the salesman, daycares and the bridge gift.
-DEF REWARD_LEVEL_FLOOR EQU 5
+; balls, the salesman, daycares and the bridge gift. The floor only binds in
+; round 1 (Curve F's gym block gives 6 there; round 2 already gives 9+): 8 puts
+; the first route's gift a couple of levels over the L5 starter (playtest
+; 2026-10-03: L6 was too low). The starter itself stays a flat 5 (.flatFive).
+DEF REWARD_LEVEL_FLOOR EQU 8
 DEF REWARD_LEVEL_CAP EQU 50
 
 ; --- HM/TM prices -------------------------------------------------------------
