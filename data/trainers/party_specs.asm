@@ -121,11 +121,14 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ; its band fields - roster sizes come from data/balance/trainer_levels.asm, gym
 ; sizes from GYM_R<n>_MONS (also asserted at build time in gym_round_spec).
 ;
-;   ROUTE_EARLY    vanilla learnset                    (unchanged)
-;   ROUTE_MID      1 random, rest learnset             (unchanged)
-;   ROUTE_LATE     2 random, rest full learnset
-;   ROUTE_FINAL    3 random, rest full learnset        (the old rounds 6-8
-;                  row's "3 full, 3 random" on a 6-mon team, at any size)
+;   ROUTE_EARLY    vanilla learnset
+;   ROUTE_MID      1 random, rest learnset
+;   ROUTE_LATE     1 random+TM (tm_cap 1), 1 random, rest learnset
+;   ROUTE_FINAL    2 random+TM (tm_cap 1), 1 random, rest learnset
+;                  Route rows fall back to the VANILLA learnset, never the full
+;                  one: MSRC_LEARNSET_FULL draws uniformly from every level-up
+;                  move, so it is variety, not difficulty, and can come out
+;                  softer than the four most recent moves.
 ;   TRAINER_EARLY  all random                          (unchanged: the old "3
 ;                  random" on teams that never exceed 3)
 ;   TRAINER_MID    1 random+TM, rest random            (the old row's TM slot
@@ -143,12 +146,22 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ;   ELITE      5-6 mons: three sets (HARD or ELITE), one random+TM, one
 ;              TM-only; gym 8's sixth mon takes the random+TM fallback.
 ;
-; rank_row never falls band to band within a kind, and rises with the kind at
-; every band: BAD/EASY/EASY/NORMAL down the route column, EASY/NORMAL/NORMAL/HARD
-; down the trainer column, NORMAL/NORMAL/HARD/ELITE down the leader column (gyms
-; 3-4 share NORMAL with their trainers on purpose). It is deliberately NOT the
-; lever AITierByRound pulls - that one scales how well the AI uses a moveset,
-; this one scales what is in the moveset.
+; THE LADDER. rank_row never falls band to band within a kind:
+;
+;   band       gyms 1-2  gyms 3-4  gyms 5-6  gyms 7-8
+;   route      BAD       NORMAL    NORMAL    HARD
+;   trainer    EASY      NORMAL    HARD      HARD
+;   leader     NORMAL    NORMAL    HARD      ELITE
+;
+; Routes sit BETWEEN the leader bands on either side of them: a band's route
+; is no softer than the previous band's leader and no harder than its own
+; (band 1 has no previous leader, so it starts at the bottom). Within a band,
+; route <= trainer <= leader, and where two of them share a rank_row the
+; tougher one names a stronger source (route MID random vs trainer MID
+; random+TM; route FINAL random+TM vs trainer FINAL curated set). All of this
+; is held by test_difficulty_grid.py. It is deliberately NOT the lever
+; AITierByRound pulls - that one scales how well the AI uses a moveset, this
+; one scales what is in the moveset.
 ;
 ; Explosion is forbidden on the ROUTE rows at every band and allowed from the
 ; gym-trainer rows up. A random route battle ending to a one-shot Selfdestruct
@@ -158,12 +171,12 @@ MovesetMixTable::
 	table_width MIX_ENTRY_SIZE, MovesetMixTable
 	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid              fallback
 	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_EARLY
-	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
-	mix     0,   0,   2,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET_FULL  ; ROUTE_LATE
-	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET_FULL  ; ROUTE_FINAL
+	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
+	mix     0,   0,   1,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 1,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_LATE
+	mix     0,   0,   1,   2,  0,   0,  0,                       RANK_ROW_HARD,   1,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_FINAL
 	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_RANDOM         ; TRAINER_EARLY
 	mix     0,   0,   0,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_MID
-	mix     0,   0,   0,   1,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_LATE
+	mix     0,   0,   0,   1,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   2,   0,              0,                  MSRC_RANDOM         ; TRAINER_LATE
 	mix     0,   0,   0,   0,  0,   1,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_FINAL
 	mix     0,   1,   0,   0,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_EARLY
 	mix     0,   0,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_MID

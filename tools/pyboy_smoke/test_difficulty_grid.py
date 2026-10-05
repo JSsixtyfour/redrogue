@@ -51,9 +51,9 @@ GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_MID", "MIX_GYM_LATE", "MIX_ELITE")
 # kind's ladder never falls; the leader's gyms 3-4 row stays on NORMAL on
 # purpose (2026-10-05), sharing it with that band's trainers.
 RANK_LADDER = {
-    "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_EASY",
-              "RANK_ROW_NORMAL"),
-    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_NORMAL",
+    "route": ("RANK_ROW_BAD", "RANK_ROW_NORMAL", "RANK_ROW_NORMAL",
+              "RANK_ROW_HARD"),
+    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
                 "RANK_ROW_HARD"),
     "leader": ("RANK_ROW_NORMAL", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
                "RANK_ROW_ELITE"),
@@ -143,6 +143,12 @@ def expected_round_and_step(battle_count):
     """GetRandRoster's own arithmetic, in Python: clamp, then divide by the round size."""
     clamped = min(battle_count, ROUND["LAST_ROUND_BATTLECOUNT"])
     return clamped // R, clamped % R
+
+
+def strongest_source(row):
+    """The highest MSRC_* a decoded mix row can hand a slot (quota or fallback)."""
+    named = [i for i, q in enumerate(row[:len(QUOTA_COLUMNS)]) if q]
+    return max(named + [row[FALLBACK]])
 
 
 def expected_band(round_index):
@@ -388,16 +394,30 @@ class DifficultyGridContractTest(unittest.TestCase):
                             rows[mix][RANK_ROW], self.const[expected],
                             f"{names[kind][band]} should use {expected}",
                         )
-            # And the cross-kind claim, at every band. Leader >= trainer
-            # rather than >: gyms 3-4 share RANK_ROW_NORMAL with their
-            # trainers on purpose.
+            # And the cross-kind claims, at every band: route <= trainer <=
+            # leader, and the route sits between the leader bands on either
+            # side of it.
             for band in range(NUM_BANDS):
-                route = rows[self.const[ROSTER_GRID[0][band]]][RANK_ROW]
-                trainer = rows[self.const[ROSTER_GRID[1][band]]][RANK_ROW]
+                route_row = rows[self.const[ROSTER_GRID[0][band]]]
+                trainer_row = rows[self.const[ROSTER_GRID[1][band]]]
+                route, trainer = route_row[RANK_ROW], trainer_row[RANK_ROW]
                 leader = rows[self.const[GYM_BAND[band]]][RANK_ROW]
                 with self.subTest(rom=image.name, band=band):
-                    self.assertLess(route, trainer)
+                    self.assertLessEqual(route, trainer)
                     self.assertLessEqual(trainer, leader)
+                    self.assertLessEqual(route, leader)
+                    if band:
+                        previous = rows[self.const[GYM_BAND[band - 1]]][RANK_ROW]
+                        self.assertGreaterEqual(
+                            route, previous,
+                            "a route should be no softer than the leader "
+                            "band before it")
+                    if route == trainer:
+                        self.assertGreater(
+                            strongest_source(trainer_row),
+                            strongest_source(route_row),
+                            "where route and gym trainer share a rank_row the "
+                            "gym trainer must name a stronger source")
 
     def test_a_curated_set_quota_always_carries_a_tier_mask(self):
         """A nonzero MSRC_SET quota with a zero set_tier_mask can never match.
@@ -555,7 +575,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         self.seen.clear()
-        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls every slot
+        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls three slots
         h.write8("wTrainerClass", self.classes["GAMBLER"])
         h.write8("wTrainerNo", 1)
         h.call_routine("ReadTrainer", limit=60000)
@@ -605,8 +625,8 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
     def test_a_late_roster_mon_does_not_keep_its_vanilla_moveset(self):
         """The end-to-end claim, not just the row selection.
 
-        A route trainer in the last band draws under MIX_ROUTE_FINAL, which is
-        MSRC_RANDOM and MSRC_LEARNSET_FULL across every slot - so at least one
+        A route trainer in the last band draws under MIX_ROUTE_FINAL, which
+        rolls MSRC_RANDOM_TM and MSRC_RANDOM on three slots - so at least one
         mon must differ from what AddPartyMon's WriteMonMoves alone produced.
         Compared against the same build at wBattleCount 0, whose row is pure
         MSRC_LEARNSET and therefore IS the vanilla result.
