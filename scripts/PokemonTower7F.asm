@@ -218,17 +218,19 @@ PokemonTower7FRocket2Exits:
 	db -1 ; end
 
 PokemonTower7FRocket3Exits:
-	map_coord_movement 10,  9, PokemonTower7FExit9
-	map_coord_movement  9,  8, PokemonTower7FExit9
-	map_coord_movement 11,  9, PokemonTower7FExit10
-	map_coord_movement 12,  9, PokemonTower7FExit11
-	map_coord_movement  9, 10, PokemonTower7FExit12
+	map_coord_movement 10,  8, PokemonTower7FExit9
+	map_coord_movement  9,  7, PokemonTower7FExit9
+	map_coord_movement 11,  8, PokemonTower7FExit10
+	map_coord_movement 12,  8, PokemonTower7FExit11
+	map_coord_movement  9,  9, PokemonTower7FExit12
 	db -1 ; end
 
 PokemonTower7FRocket5Exits:
-	map_coord_movement 10,  6, PokemonTower7FExit15
-	map_coord_movement  9,  5, PokemonTower7FExit15
-	map_coord_movement  9,  7, PokemonTower7FExit16
+	map_coord_movement 11,  6, PokemonTower7FExit15
+	map_coord_movement 12,  5, PokemonTower7FExit15
+	map_coord_movement 10,  6, PokemonTower7FExit16
+	map_coord_movement  9,  6, PokemonTower7FExit17
+	map_coord_movement 12,  7, PokemonTower7FExit18
 	db -1 ; end
 
 PokemonTower7FExit1: ; U R R D D D D D L L
@@ -315,7 +317,7 @@ PokemonTower7FExit8: ; L D D D D D D L L
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FExit9: ; D D R D D D D D L
+PokemonTower7FExit9: ; D D R D D D D D D L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_RIGHT
@@ -324,34 +326,12 @@ PokemonTower7FExit9: ; D D R D D D D D L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_LEFT
-	db -1 ; end
-
-PokemonTower7FExit10: ; D D D D D D D L
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FExit11: ; D D D D D D D L L
+PokemonTower7FExit10: ; D D D D D D D D L
 	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_DOWN
-	db NPC_MOVEMENT_LEFT
-	db NPC_MOVEMENT_LEFT
-	db -1 ; end
-
-PokemonTower7FExit12: ; R D D D D D D D L
-	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -362,9 +342,20 @@ PokemonTower7FExit12: ; R D D D D D D D L
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FExit15: ; D D R D D D D D D D D L
+PokemonTower7FExit11: ; D D D D D D D D L L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit12: ; R D D D D D D D D L
 	db NPC_MOVEMENT_RIGHT
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -377,8 +368,25 @@ PokemonTower7FExit15: ; D D R D D D D D D D D L
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
-PokemonTower7FExit16: ; R D D D D D D D D D D L
-	db NPC_MOVEMENT_RIGHT
+; Boss starts at (12,6), facing left. Sight approaches stop one tile
+; right of the player; talk from below needs a leftward detour.
+PokemonTower7FExit15: ; D D L D D D D D D D D L L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit16: ; D D D D D D D D D D L L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
@@ -389,6 +397,37 @@ PokemonTower7FExit16: ; R D D D D D D D D D D L
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit17: ; D D D D D D D D D D L
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
+	db -1 ; end
+
+PokemonTower7FExit18: ; L D D D D D D D D D D L L
+	db NPC_MOVEMENT_LEFT
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_DOWN
+	db NPC_MOVEMENT_LEFT
 	db NPC_MOVEMENT_LEFT
 	db -1 ; end
 
