@@ -498,6 +498,8 @@ PlayTrainerMusic::
 	                     ; prior hand-rolled duplicate of PlayMusic's internals
 	                     ; here mishandled the audio bank/fade state and hung
 	                     ; the battle transition.
+	cp OPP_JESSIE_JAMES
+	jr z, .jessieJames   ; own theme, in AUDIO_4; the ambush plays it too
 	ld b, a
 	ld hl, EvilTrainerList
 .evilTrainerListLoop
@@ -523,13 +525,19 @@ PlayTrainerMusic::
 .PlaySound
 	ld [wNewSoundID], a
 	jp PlaySound
+.jessieJames
+	ld a, BANK(Music_MeetJessieJames)
+	ld b, MUSIC_MEET_JESSIE_JAMES
+	jr .playInBank
 .miniBossRival
-; Calls the actual PlayMusic entry point (not a hand-rolled duplicate) - the
-; exact same call Route22FirstRivalBattleScript makes for this same music.
 	ld a, BANK(Music_MeetRival)
-    ld [wAudioROMBank], a
+	ld b, MUSIC_MEET_RIVAL
+; Songs outside the Music_MeetEvilTrainer bank set both audio bank bytes the
+; way PlayMusic does, then share the normal play.
+.playInBank
+	ld [wAudioROMBank], a
 	ld [wAudioSavedROMBank], a
-	ld a, MUSIC_MEET_RIVAL
-	jp .PlaySound
+	ld a, b
+	jr .PlaySound
 
 INCLUDE "data/trainers/encounter_types.asm"

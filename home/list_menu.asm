@@ -170,6 +170,10 @@ DisplayListMenuIDLoop::
 .skipGettingQuantity
 	ld a, [wCurItem]
 	ld [wNameListIndex], a
+	; The TM description leaves MOVE_NAME active. Select from the item list
+	; explicitly, or GetName can return unterminated ROM bytes for a TM ID.
+	ld a, ITEM_NAME
+	ld [wNameListType], a
 	ld a, BANK(ItemNames)
 	ld [wPredefBank], a
 	call GetName

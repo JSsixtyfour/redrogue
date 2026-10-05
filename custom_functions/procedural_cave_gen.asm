@@ -2968,6 +2968,11 @@ PCStageEventVanish::
 	call PCPlaceStageEventNpcs      ; now takes the hideout branch
 	call UpdateSprites
 	call Delay3
+	; End the ambush theme StageEventDoTheft started, while the screen is dark.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JESSIE_JAMES
+	call z, PlayDefaultMusic
 	call GBFadeInFromBlack
 	ret
 

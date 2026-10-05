@@ -2,9 +2,10 @@
 ; engine import). Carries one song, Music_MeetJessieJames (ported from
 ; pret/pokeyellow), and the same 93-entry overworld-common SFX suite as
 ; AUDIO_1/AUDIO_3 (see audio/headers/sfxheaders4.asm's header comment).
-; Nothing in data/maps/songs.asm or any script points at this bank yet -
-; MUSIC_MEET_JESSIE_JAMES has no gameplay hook by design (SHIN_IMPORT_PLAN.md
-; Phase 1.3). Structured identically to engine_2.asm/engine_3.asm: only
+; No map's default music points at this bank. MUSIC_MEET_JESSIE_JAMES plays for
+; the wild-area Jessie & James stage event: their ambush (StageEventDoTheft,
+; ended by each map's *StageEventVanish) and their hideout engage
+; (PlayTrainerMusic). Structured identically to engine_2.asm/engine_3.asm: only
 ; PlaySound, no UpdateMusic/note-command interpreter (that's the single copy
 ; in engine_1.asm, AUDIO_1).
 

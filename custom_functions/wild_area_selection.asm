@@ -81,6 +81,18 @@ ENDC
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 StageEventDoTheft::
+	; Jessie & James ambush to their own theme. Every map's arrival farcalls
+	; this right before the arrival text, so it is the one shared point ahead
+	; of it; each map's *StageEventVanish puts the map music back once they
+	; are gone. Their hideout battle gets the same theme from PlayTrainerMusic.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JESSIE_JAMES
+	jr nz, .noAmbushTheme
+	ld c, BANK(Music_MeetJessieJames)
+	ld a, MUSIC_MEET_JESSIE_JAMES
+	call PlayMusic
+.noAmbushTheme
 	farcall StageEventClearStolenRecord
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
