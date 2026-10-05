@@ -1135,6 +1135,17 @@ TrainerAI:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z ; if in a link battle, we're done as well
+; A mon locked into a multi-turn action can't give up its turn for an item or
+; a switch. TrainerAI returning carry skips ExecuteEnemyMove entirely, so the
+; lock is never advanced or cleared: e.g. Giovanni's Guard Spec during Dig's
+; underground turn kept the mon CHARGING_UP + INVULNERABLE for an extra turn,
+; and an item during Wrap left the player trapped with CANNOT_MOVE.
+	ld a, [wEnemyBattleStatus1]
+	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << INVULNERABLE)
+	jr nz, .noItem
+	ld a, [wEnemyBattleStatus2]
+	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
+	jr nz, .noItem
 ; AI Overhaul Phase 6: T2+ trainers only consider items when their active
 ; mon is the ace (Gen 2's rule - no other living party member). T0/T1 fall
 ; straight through to .dispatch, unchanged from vanilla item AI. The farcall

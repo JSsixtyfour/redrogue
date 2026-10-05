@@ -8,12 +8,16 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_constants
 
 class BlackoutFixture:
-    def run_loss(self, *, leader=False):
+    def run_loss(self, *, leader=False, unvisited_hub=False):
         h = self.harness
         maps = parse_map_constants(REPO_ROOT / 'constants/map_constants.asm')
         stride = h.address('wPartyMon2HP') - h.address('wPartyMon1HP')
         h.boot_to_lobby()
         h.enter_stage_door1(maps['PEWTER_GYM'], description='Brock gym')
+        if unvisited_hub:
+            # New games have not necessarily entered the Lobby, which used to
+            # be the only place that established the Dorm blackout target.
+            h.write8('wLastBlackoutMap', maps['PALLET_TOWN'])
         if leader:
             events = parse_rgbds_constants(REPO_ROOT / 'constants/event_constants.asm')
             for i in range(3):
@@ -119,6 +123,9 @@ class BlackoutFixture:
 
 
 class TrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
+    def test_blackout_before_first_hub_visit(self):
+        self.run_loss(unvisited_hub=True)
+
     def test_regular_trainer_blackout(self):
         self.run_loss()
 

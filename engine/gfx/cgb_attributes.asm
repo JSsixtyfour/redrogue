@@ -243,6 +243,35 @@ LoadCGBScreenAttributesForBlkPacket::
 	db BGMAP_ATTR_BILLS_PC
 	dw 0 ; terminator
 
+; AnimationShakeEnemyHUD (engine/battle/animations.asm) parks a copy of tile map
+; rows 7-17 at vBGMap1 row 0 and shows it through the window from screen row 7.
+; Attributes stay with BG map positions, not screen rows, so without this the
+; window drew those rows with the attributes of battle rows 0-10: the player
+; mon's lower rows took the enemy HP bar palette (green) and the player HP bar
+; took the enemy pic palette (red) for the length of the shake. Call these only
+; while the window is hidden; the battle layout is the only one that animation
+; runs over.
+DEF BATTLE_WINDOW_ATTR_ROWS EQU SCREEN_HEIGHT - 7
+
+ShiftBattleWindowAttributes::
+	ld hl, BGMapAttributes_Battle + $10 + 7 * TILEMAP_WIDTH
+	jr LoadBattleWindowAttributes
+
+RestoreBattleWindowAttributes::
+	ld hl, BGMapAttributes_Battle + $10
+LoadBattleWindowAttributes:
+	ld a, h
+	ldh [hDivideBCDBuffer], a
+	ld a, l
+	ldh [hDivideBCDBuffer + 1], a
+	ld a, %10 ; vBGMap1 only
+	ldh [hDivideBCDBuffer + 2], a
+	lb de, BATTLE_WINDOW_ATTR_ROWS * TILEMAP_WIDTH / 16 - 1, 0 ; no vBGMap1 offset
+	di
+	call LoadBGMapAttributes_Lite
+	ei
+	ret
+
 ; CGB DMA ignores the low four bits of its source address. ShinRed places these
 ; packets at the start of bank $2e, so their 16-byte headers are naturally
 ; aligned. This port puts the loader first, so align the packet data explicitly;

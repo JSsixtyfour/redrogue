@@ -34,6 +34,12 @@ ProceduralCemetery4_ScriptPointers:
 
 
 ProceduralCemetery4DefaultScript:
+	; The overworld runs this once with $ff after an all-faint loss. Do not
+	; queue a boss while still on its trigger tile on the way to blackout.
+	ldh a, [hIsInBattle]
+	inc a
+	ASSERT SCRIPT_PROCEDURALCEMETERY4_DEFAULT == 0
+	ret z ; return the default script index, not the $ff blackout sentinel
 	CheckEvent EVENT_BEAT_PC_BOSS
 	jp nz, CheckFightingMapTrainers
 	ld hl, ProceduralCemetery4BossCoords
@@ -68,7 +74,7 @@ ProceduralCemetery4BossCoords:
 ProceduralCemetery4BossBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
-	jp z, ProceduralCemetery4DefaultScript
+	jp z, .resetScript
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	ld a, [wStatusFlags3]
@@ -82,6 +88,7 @@ ProceduralCemetery4BossBattleScript:
 	ld a, TEXT_PROCEDURALCEMETERY4_BOSS_OFFER
 	ldh [hTextID], a
 	call DisplayTextID
+.resetScript
 	ld a, SCRIPT_PROCEDURALCEMETERY4_DEFAULT
 	ld [wProceduralCemetery4CurScript], a
 	ld [wCurMapScript], a

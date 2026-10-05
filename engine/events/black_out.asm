@@ -37,6 +37,10 @@ ResetStatusAndHalveMoneyOnBlackout::
 	ld [wPlayerMoney + 2], a
 
 .lostmoney
+	; Every run ends in the Dorm, including END or a loss before the first
+	; Lobby visit. Do not depend on the Lobby having initialized this byte.
+	ld a, SILPH_CO_DORM
+	ld [wLastBlackoutMap], a
 	ld hl, wStatusFlags6
 	set BIT_FLY_OR_DUNGEON_WARP, [hl]
 	res BIT_FLY_WARP, [hl]

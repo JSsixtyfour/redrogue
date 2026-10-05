@@ -475,9 +475,12 @@ class AICheckpointBTest(unittest.TestCase):
         # T1 TrainerAI never asks AIPlayerWouldKO (AIIncreaseStat's check is
         # T2+), so the entry clear is all that can change the byte.
         h = self.h
+        h.park_before_hijack()
         h.write8("wAITier", 2)
         h.write8("wAIPlayerKOCache", self.ai["AI_KO_CACHE_YES"])
-        h.park_before_hijack()
+        # The direct call runs inside VBlank. Disable item uses so the random
+        # X Attack path cannot render text and wait for an unavailable frame.
+        h.write8("wAICount", 0)
         h.call_routine("TrainerAI", limit=600)
         self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
 

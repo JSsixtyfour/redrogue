@@ -2546,6 +2546,12 @@ AnimationShakeEnemyHUD:
 ; lined up with row 0 of the window.
 	ld hl, vBGMap1 - $20 * 7
 	call BattleAnimCopyTileMapToVRAM
+; CGB: shift vBGMap1's attributes to match (see ShiftBattleWindowAttributes).
+	ldh a, [hGBC]
+	and a
+	jr z, .noShiftAttributes
+	farcall ShiftBattleWindowAttributes
+.noShiftAttributes
 
 ; Move the window so that the row below the enemy HUD (in BG map 0) lines up
 ; with the top row of the window on the screen. This makes it so that the window
@@ -2580,6 +2586,11 @@ AnimationShakeEnemyHUD:
 	ldh [hWY], a
 	ld hl, vBGMap1
 	call BattleAnimCopyTileMapToVRAM
+	ldh a, [hGBC]
+	and a
+	jr z, .noRestoreAttributes
+	farcall RestoreBattleWindowAttributes
+.noRestoreAttributes
 	xor a
 	ldh [hWY], a
 	call SaveScreenTilesToBuffer1

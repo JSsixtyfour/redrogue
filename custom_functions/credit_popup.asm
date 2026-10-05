@@ -262,6 +262,9 @@ RogueResetRunState::
 
 	; --- 5. party, boxes, daycare, starters ---
 	xor a
+	; A map script may have queued another opponent during loss cleanup.
+	; Never carry that battle into the respawn map with the party now empty.
+	ld [wCurOpponent], a
 	ld [wPartyCount], a
 	ld a, -1
 	ld [wPartySpecies], a

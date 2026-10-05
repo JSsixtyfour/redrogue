@@ -11,5 +11,8 @@ class CGBTrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
     def test_regular_trainer_blackout(self):
         self.run_loss()
 
+    def test_blackout_before_first_hub_visit(self):
+        self.run_loss(unvisited_hub=True)
+
 if __name__ == '__main__':
     unittest.main()

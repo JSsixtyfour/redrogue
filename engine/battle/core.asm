@@ -1381,8 +1381,22 @@ TryKODefiance::
 ;	pop af
 ;	ldh [hWhoseTurn], a
 
+	; the KO can land mid multi-hit (Double Kick etc.) - ExecuteEnemyMove
+	; returns as soon as our HP hits 0, leaving the enemy's hit loop armed so
+	; its NEXT move would repeat too. RemoveFaintedPlayerMon clears this (and
+	; the enemy's Bide tally) on a real faint; mirror it for the revival.
+	ld hl, wEnemyBattleStatus1
+	res ATTACKING_MULTIPLE_TIMES, [hl]
+	xor a
+	ld hl, wEnemyBideAccumulatedDamage
+	ld [hli], a
+	ld [hl], a
+
+	; Redraw just the HUD - don't restore the turn-start screen buffer. That
+	; snapshot predates this turn's moves, so it brought back stale mon pics:
+	; a Dig/Fly user that had landed vanished again (it was underground at
+	; turn start), and an enemy that fainted on the same turn reappeared.
 	call DrawPlayerHUDAndHPBar
-	call LoadScreenTilesFromBuffer1
 	; explicitly clear this in case something earlier in the same turn left it
 	; set - otherwise this text closes immediately with no wait, same bug
 	; class as the reward pokeball/reward menu text-cutoff fixes this session

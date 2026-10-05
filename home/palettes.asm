@@ -36,8 +36,16 @@ GBPalWhiteOutWithDelay3::
 Delay3::
 ; The bg map is updated each frame in thirds.
 ; Wait three frames to let the bg map fully update.
+; Loops on DelayFrame directly rather than going through DelayFrames, whose
+; BATTLE SPEED scaling would cut this to one frame in battle and leave the
+; middle and bottom thirds of the bg map stale (e.g. SE_WAVY_SCREEN showing a
+; blank middle third during Night Shade/Psywave/Psychic at 2X and 4X).
 	ld c, 3
-	jp DelayFrames
+.loop
+	call DelayFrame
+	dec c
+	jr nz, .loop
+	ret
 
 GBPalNormal::
 ; Reset BGP and OBP0.
