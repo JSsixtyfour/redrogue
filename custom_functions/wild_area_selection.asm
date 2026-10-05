@@ -575,7 +575,7 @@ StageEventCopyMonToRecord:
 ; WildAreaPickAndAssign
 ; INPUT: carry = forced (mandatory single door) / clear = choosable one-of-two.
 ; Picks a not-yet-offered-this-cycle wild type (resets after all four are offered),
-; marks it in wWildAreaState + bumps the saturating count, resolves it to its entry
+; marks its offer-rotation bit in wWildAreaState, resolves it to its entry
 ; map, and writes wLobbyDoor1/2StageMap. wRogueMap (the route _PickNextStage picked)
 ; stays on the non-wild door in the choosable case.
 ; Clobbers a/bc/de/hl.
@@ -617,7 +617,7 @@ WildAreaPickAndAssign:
 ; WildAreaPickType
 ; Picks a random wild type whose "offered this cycle" bit is clear; if all four are
 ; already set, resets the cycle mask first (keeping the count bits). Sets the chosen
-; type's bit and increments the saturating count (bits 3-4, cap 3).
+; type's bit, preserving the completion count (bits 3-4).
 ; OUTPUT: a = chosen type (0-3). Clobbers a/bc/de/hl.
 ; ============================================================
 WildAreaPickType:
@@ -689,18 +689,9 @@ ENDC
 	inc b
 	jr .pickLoop
 .chosen:
-	; b = chosen type, e = its mask. Set bit in d, bump count (cap 3), store.
+	; Offers update the type rotation, never the completion count.
 	ld a, d
 	or e
-	ld d, a
-	and WILD_AREA_COUNT_MASK
-	cp WILD_AREA_COUNT_MASK
-	jr z, .store                  ; count already 3 -> leave
-	ld a, d
-	add a, 1 << WILD_AREA_COUNT_SHIFT
-	ld d, a
-.store:
-	ld a, d
 	ld [wWildAreaState], a
 	ld a, b                       ; return chosen type (0-3)
 	ret

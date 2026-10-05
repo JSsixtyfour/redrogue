@@ -337,10 +337,14 @@ Lobby_IsDoor2Blocked:
 	xor a                         ; both bridge -> Z = door 2 open
 	ret
 .notBridge
-	; forced wild-area collapse: door1 == door2 == a wild entry map -> block door 2
+	; A forced single wild area or miniboss collapses both destinations.
 	ld a, [wLobbyDoor1StageMap]
 	call LobbyIsWildEntryMap      ; NZ = wild entry map
+	jr nz, .checkCollapsed
+	ld a, [wRogueFlagsBitfield]
+	and MINIBOSS_TYPE_MASK
 	jr z, .checkGymNext
+.checkCollapsed
 	ld a, [wLobbyDoor1StageMap]
 	ld b, a
 	ld a, [wLobbyDoor2StageMap]
@@ -621,70 +625,130 @@ LobbyBridgeSignTable:
 	line "LAB@"
 	text_end
 
-; Mini-boss door sign: line 1 = the boss, line 2 = the door's item reward
-; category - so both the boss indicator AND the reward stay visible (a full
-; replacement hid the reward). Shared by both door sign handlers.
-; INPUT: a = item category (0-3, from wRogueDoor1/2). Returns hl -> combined text.
-; Dispatches on the offered type (wRogueFlagsBitfield bits 4-5): Karate has his
-; own table, and Rival and Giovanni share the "RIVAL TRAINER" one (unchanged).
-; bc is the live text cursor of the text_asm caller: only a, d, e, hl are used.
+; Door number, named encounter, then item prize. The far text keeps these
+; permutations out of the tight map bank. Preserve bc, the live text cursor.
+; INPUT: a = item category; type and door come from wRogueFlagsBitfield.
 LobbyMiniBossSign:
 	ld e, a
 	ld a, [wRogueFlagsBitfield]
 	and MINIBOSS_TYPE_MASK
-	cp MINIBOSS_KARATE << MINIBOSS_TYPE_SHIFT
-	ld hl, .rivalPtrs
-	jr nz, .havePtrs
-	ld hl, .karatePtrs
-.havePtrs
+	swap a
+	dec a
+	add a
+	add a
+	add e
+	ld e, a
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_DOOR, a
+	jr z, .doorReady
+	ld a, e
+	add 12
+	ld e, a
+.doorReady
 	ld d, 0
+	ld hl, .texts
 	add hl, de
 	add hl, de
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
 	ret
-.karatePtrs
-	dw .karateHealing
-	dw .karateStat
-	dw .karateTM
-	dw .karateMoney
-.karateHealing
-	text "KARATE MASTER"
-	line "HEALING ITEMS@"
+.texts
+	dw .LobbyDoor1RivalHealing
+	dw .LobbyDoor1RivalStat
+	dw .LobbyDoor1RivalTM
+	dw .LobbyDoor1RivalMoney
+	dw .LobbyDoor1GiovanniHealing
+	dw .LobbyDoor1GiovanniStat
+	dw .LobbyDoor1GiovanniTM
+	dw .LobbyDoor1GiovanniMoney
+	dw .LobbyDoor1KarateHealing
+	dw .LobbyDoor1KarateStat
+	dw .LobbyDoor1KarateTM
+	dw .LobbyDoor1KarateMoney
+	dw .LobbyDoor2RivalHealing
+	dw .LobbyDoor2RivalStat
+	dw .LobbyDoor2RivalTM
+	dw .LobbyDoor2RivalMoney
+	dw .LobbyDoor2GiovanniHealing
+	dw .LobbyDoor2GiovanniStat
+	dw .LobbyDoor2GiovanniTM
+	dw .LobbyDoor2GiovanniMoney
+	dw .LobbyDoor2KarateHealing
+	dw .LobbyDoor2KarateStat
+	dw .LobbyDoor2KarateTM
+	dw .LobbyDoor2KarateMoney
+.LobbyDoor1RivalHealing
+	text_far _LobbyDoor1RivalHealingText
 	text_end
-.karateStat
-	text "KARATE MASTER"
-	line "STAT BOOSTS@"
+.LobbyDoor1RivalStat
+	text_far _LobbyDoor1RivalStatText
 	text_end
-.karateTM
-	text "KARATE MASTER"
-	line "TM ITEMS@"
+.LobbyDoor1RivalTM
+	text_far _LobbyDoor1RivalTMText
 	text_end
-.karateMoney
-	text "KARATE MASTER"
-	line "MONEY@"
+.LobbyDoor1RivalMoney
+	text_far _LobbyDoor1RivalMoneyText
 	text_end
-.rivalPtrs
-	dw .rivalHealing
-	dw .rivalStat
-	dw .rivalTM
-	dw .rivalMoney
-.rivalHealing
-	text "RIVAL TRAINER"
-	line "HEALING ITEMS@"
+.LobbyDoor1GiovanniHealing
+	text_far _LobbyDoor1GiovanniHealingText
 	text_end
-.rivalStat
-	text "RIVAL TRAINER"
-	line "STAT BOOSTS@"
+.LobbyDoor1GiovanniStat
+	text_far _LobbyDoor1GiovanniStatText
 	text_end
-.rivalTM
-	text "RIVAL TRAINER"
-	line "TM ITEMS@"
+.LobbyDoor1GiovanniTM
+	text_far _LobbyDoor1GiovanniTMText
 	text_end
-.rivalMoney
-	text "RIVAL TRAINER"
-	line "MONEY@"
+.LobbyDoor1GiovanniMoney
+	text_far _LobbyDoor1GiovanniMoneyText
+	text_end
+.LobbyDoor1KarateHealing
+	text_far _LobbyDoor1KarateHealingText
+	text_end
+.LobbyDoor1KarateStat
+	text_far _LobbyDoor1KarateStatText
+	text_end
+.LobbyDoor1KarateTM
+	text_far _LobbyDoor1KarateTMText
+	text_end
+.LobbyDoor1KarateMoney
+	text_far _LobbyDoor1KarateMoneyText
+	text_end
+.LobbyDoor2RivalHealing
+	text_far _LobbyDoor2RivalHealingText
+	text_end
+.LobbyDoor2RivalStat
+	text_far _LobbyDoor2RivalStatText
+	text_end
+.LobbyDoor2RivalTM
+	text_far _LobbyDoor2RivalTMText
+	text_end
+.LobbyDoor2RivalMoney
+	text_far _LobbyDoor2RivalMoneyText
+	text_end
+.LobbyDoor2GiovanniHealing
+	text_far _LobbyDoor2GiovanniHealingText
+	text_end
+.LobbyDoor2GiovanniStat
+	text_far _LobbyDoor2GiovanniStatText
+	text_end
+.LobbyDoor2GiovanniTM
+	text_far _LobbyDoor2GiovanniTMText
+	text_end
+.LobbyDoor2GiovanniMoney
+	text_far _LobbyDoor2GiovanniMoneyText
+	text_end
+.LobbyDoor2KarateHealing
+	text_far _LobbyDoor2KarateHealingText
+	text_end
+.LobbyDoor2KarateStat
+	text_far _LobbyDoor2KarateStatText
+	text_end
+.LobbyDoor2KarateTM
+	text_far _LobbyDoor2KarateTMText
+	text_end
+.LobbyDoor2KarateMoney
+	text_far _LobbyDoor2KarateMoneyText
 	text_end
 
 IndigoPlateauLobbyNurseText:

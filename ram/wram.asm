@@ -2603,11 +2603,11 @@ wBattleCount:: db
 ; wGameProgressFlagsEnd (ds 40 -> ds 38) so WRAM0 stays net-zero. Transient
 ; per-selection state (offered type, which door, active-this-stage) lives in
 ; wRogueFlagsBitfield bits 4-7 at zero byte cost.
-wRoutesSinceSpecial:: db ; non-special routes since the last special (miniboss OR wild area); drives the escalating chance
-wMiniBossCount:: db       ; mini-bosses encountered this run; drives the >=2 guarantee
+wRoutesSinceSpecial:: db ; eligible selections since the last completed special, capped at 3
+wMiniBossCount:: db       ; scheduled mini-boss victories this run, capped at 2
 wWildAreaState:: db ; bits 0-2 and 7 = cave/forest/cemetery/facility cycle mask;
-                    ; bits 3-4 = saturating wild-area offered-count (0-3) for the
-                    ; >=2-per-run guarantee. Run-scoped: zeroed by FillMemory on new
+                    ; bits 3-4 = completed wild areas (0-2) for the joint
+                    ; half-run quotas. Run-scoped: zeroed by FillMemory on new
                     ; game (inside wGameProgressFlags). See WILD_AREA_* in ram_constants.
 wProcCemBossBattle:: db ; 1 = the next enemy-mon load is the cemetery ghost boss.
                     ; Set by ProceduralCemetery4's boss trigger, checked+cleared in

@@ -1011,6 +1011,7 @@ TrainerBattleVictory:
 	jr z, .creditsDone
 	cp PROCEDURAL_CEMETERY_4
 	jr z, .creditsDone
+	farcall RecordMiniBossVictory
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
 	; Credits award (see custom_functions/credit_award.asm): exactly one of the

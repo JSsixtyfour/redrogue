@@ -193,36 +193,7 @@ ProcBossPatchStageSprite::
 ; homecall) to reach the generators, because homecall is only valid from a HOME
 ; caller and this routine itself lives in ROMX.
 ProcStageLoadDispatch::
-	; Credit one route block when returning to the lobby from a wild
-	; area (cave / forest / last cemetery floor). Applied here, on the destination
-	; map's load, instead of via a HOME hook in the warp handler (saves ROM0). Wild
-	; areas always exit to the lobby (LAST_MAP), which has no wild battles, so
-	; LoadMapData won't re-run there and double-apply before the next warp clears
-	; wWarpedFromWhichMap.
-	; Cemetery stairs and blackout destinations do not complete a stage.
-	ldh a, [hCurMap]
-	cp INDIGO_PLATEAU_LOBBY
-	jr nz, .noExitBattles
-	ld a, [wWarpedFromWhichMap]
-	cp PROCEDURAL_CAVE_1
-	jr z, .addExitBattles
-	cp PROCEDURAL_FOREST
-	jr z, .addExitBattles
-	cp PROCEDURAL_FACILITY
-	jr z, .addExitBattles
-	cp PROCEDURAL_CEMETERY_4
-	jr nz, .noExitBattles
-.addExitBattles
-	; Ordinary routes set this on entry. Procedural maps replace a route,
-	; so they must also queue its gym before the lobby chooses new doors.
-	ld hl, wRogueFlagsBitfield
-	set BIT_ROGUE_GYM_NEXT, [hl]
-	ld a, [wBattleCount]
-	add a, WILD_AREA_EXIT_BATTLES
-	jr nc, .noExitClamp
-	ld a, $ff
-.noExitClamp
-	ld [wBattleCount], a
+	farcall RecordStageMapLoad
 .noExitBattles
 	ldh a, [hCurMap]
 	cp PALLET_TOWN
