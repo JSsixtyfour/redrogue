@@ -68,8 +68,8 @@ GYM_CURVE = {
     for r in range(1, 9)
 }
 E4_BASE_LEVEL = _BALANCE["E4_BASE_LEVEL"]
-GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_LATE",
-           4: "MIX_GYM_LATE", 5: "MIX_GYM_LATE", 6: "MIX_ELITE",
+GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_MID",
+           4: "MIX_GYM_MID", 5: "MIX_GYM_LATE", 6: "MIX_GYM_LATE",
            7: "MIX_ELITE", 8: "MIX_ELITE"}
 
 # label prefix -> (trainer class, extra flags from round 7). Since the banded

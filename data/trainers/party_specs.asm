@@ -10,9 +10,11 @@
 ; Phase 3 convert 19 characters one round at a time without a flag day.
 
 ; --- Moveset mixes ---------------------------------------------------------
-; The "how many of each, at different gyms" control. Quotas sum to at most
-; PARTY_LENGTH and are shuffled across the slots that have no override; a
-; shortfall falls back to MSRC_LEARNSET, an overflow truncates.
+; The "how many of each, at different gyms" control. Quotas are dealt to the
+; slots that have no override STRONGEST SOURCE FIRST (MSRC_SET down to
+; MSRC_LEARNSET), so when a row asks for more units than the team has slots, it
+; is the weakest units that are dropped, never the curated sets. Any slot no
+; quota reaches takes the row's fallback source.
 ;
 ; \1..\6 = quotas for MSRC_LEARNSET, MSRC_LEARNSET_FULL, MSRC_RANDOM,
 ;          MSRC_RANDOM_TM, MSRC_RANDOM_TM_ONLY, MSRC_SET - in MSRC_* order, so
@@ -23,6 +25,14 @@
 ;           MSRC_RANDOM_TM. A move that is both level-learnable and a TM does
 ;           not spend the cap, so tm_cap 4 makes it a fully unrestricted union.
 ; \10     = require_flags, \11 = forbid_flags (MOVEFLAG_* masks)
+; \12     = fallback, an MSRC_* below MSRC_SET. Two jobs: the source of every
+;           slot no quota reaches, and the source an MSRC_SET slot rolls when no
+;           curated record fits this mon even after the level window widens
+;           (see PartyGenApplySetMoveset). One column for both on purpose: "what
+;           this row rolls when it has nothing more specific to say".
+;
+; The macro also records each row's quota total as QUOTA_SUM_OF_MIX_<row>, which
+; gym_round_spec asserts against the team size of every round that uses it.
 ;
 ; ⚠ RGBDS's `\<digit>` substitution only reaches \1-\9 - `\10` parses as `\1`
 ; (parameter 1) followed by a LITERAL character "0", not as parameter 10. An
@@ -33,32 +43,46 @@
 ; by dumping the built ROM's actual table bytes against the source. `SHIFT 9`
 ; is the standard fix: it discards the first 9 arguments, so what was
 ; parameter 10 becomes \1 and what was parameter 11 becomes \2.
+DEF NUM_MIX_ROWS_SEEN = 0
 MACRO mix
 	db \1, \2, \3, \4, \5, \6
 	db \7, \8, \9
+	DEF QUOTA_SUM_OF_MIX_{d:NUM_MIX_ROWS_SEEN} EQU \1 + \2 + \3 + \4 + \5 + \6
 	SHIFT 9
 	dw \1                   ; require_flags (was param 10)
 	dw \2                   ; forbid_flags  (was param 11)
+	ASSERT \3 < MSRC_SET, "a mix's fallback must be a rollable source below MSRC_SET"
+	db \3                   ; fallback      (was param 12)
+	DEF NUM_MIX_ROWS_SEEN += 1
 ENDM
-DEF MIX_ENTRY_SIZE EQU 13
+DEF MIX_ENTRY_SIZE EQU 14
+DEF MIX_FALLBACK_OFFSET EQU 13
 
 ; --- The difficulty grid (Phase 5) -----------------------------------------
-; Ten rows, in the shape the plan's Phase 5 table describes: three trainer
-; KINDS by three ROUND BANDS, plus a sets-only row for the Elite Four.
+; Eleven rows: route and gym-trainer kinds by three ROUND BANDS, the gym leader
+; by four GYM BANDS, plus a sets-only row for the Elite Four.
 ;
-;   kind \ band        rounds 1-2        rounds 3-5        rounds 6-8
-;   route trainer      ROUTE_EARLY       ROUTE_MID         ROUTE_LATE
-;   final route / gym  TRAINER_EARLY     TRAINER_MID       TRAINER_LATE
-;   gym leader         GYM_EARLY         GYM_LATE          ELITE
-;   mini-boss / rival  (the gym leader row of the same band)
+;   kind \ band        rounds 1-2     rounds 3-5     rounds 6-8
+;   route trainer      ROUTE_EARLY    ROUTE_MID      ROUTE_LATE
+;   final route / gym  TRAINER_EARLY  TRAINER_MID    TRAINER_LATE
+;
+;   kind \ gym band    gyms 1-2       gyms 3-4       gyms 5-6       gyms 7-8
+;   gym leader         GYM_EARLY      GYM_MID        GYM_LATE       ELITE
+;   mini-boss / rival  (the gym leader row of the same gym band)
+;
 ;   Elite Four         E4_SETS at every tier
 ;
-; The first two kinds reach their row through RogueRosterMixId, which derives
-; kind and band from wBattleCount. The leader rows are selected by the spec
-; record the round already picks (gym_team_spec), so they need no lookup.
+; The leader column is cut on GYM_BAND_ROUNDS, the same bands the leader's
+; species pools use (data/trainers/gym_band_pools.asm), so a band's pool and its
+; moveset row always change together. GYM_BAND<n>_MIX below is the ONE place a
+; band's row is named: gym_round_spec reads it for the leader's own spec, and
+; GymMixByBand is generated from it for the mini-boss / rival lookup.
+;
+; The route and trainer rows reach their row through RogueRosterMixId, which
+; derives kind and band from wBattleCount.
 ;
 ; MIX_ELITE keeps its Phase 2 name rather than becoming MIX_GYM_ELITE: it is
-; the gym leader's rounds 6-8 row, it is referenced by name in a dozen comments
+; the gym leader's gyms 7-8 row, it is referenced by name in a dozen comments
 ; and five tests, and the genuinely-Elite-Four row is MIX_E4_SETS.
 	const_def
 	const MIX_ROUTE_EARLY     ; 0
@@ -68,18 +92,54 @@ DEF MIX_ENTRY_SIZE EQU 13
 	const MIX_TRAINER_MID     ; 4
 	const MIX_TRAINER_LATE    ; 5
 	const MIX_GYM_EARLY       ; 6
-	const MIX_GYM_LATE        ; 7
-	const MIX_ELITE           ; 8
-	const MIX_E4_SETS         ; 9
+	const MIX_GYM_MID         ; 7
+	const MIX_GYM_LATE        ; 8
+	const MIX_ELITE           ; 9
+	const MIX_E4_SETS         ; 10
 DEF NUM_MOVESET_MIXES EQU const_value
 
-; Reading the rows: a quota that is not spent falls back to MSRC_LEARNSET, so
-; "6 learnset" and "no quotas at all" build the same team. The explicit 6 on
-; MIX_ROUTE_EARLY says "vanilla on purpose" rather than "not filled in yet".
+; Gym leader bands. A band is GYM_BAND_ROUNDS consecutive gyms; the leader's
+; species pools (Ace/Fod/Off<band>) and the moveset row below are both keyed on
+; it. Read by gym_round_spec and by GymMixByBand (rogue_build_party.asm).
+DEF GYM_BAND_ROUNDS EQU 2
+DEF NUM_GYM_BANDS   EQU 4
+DEF GYM_BAND1_MIX   EQU MIX_GYM_EARLY ; gyms 1-2
+DEF GYM_BAND2_MIX   EQU MIX_GYM_MID   ; gyms 3-4
+DEF GYM_BAND3_MIX   EQU MIX_GYM_LATE  ; gyms 5-6
+DEF GYM_BAND4_MIX   EQU MIX_ELITE     ; gyms 7-8
+
+; Reading the rows: the quotas are dealt strongest source first, and any slot
+; left over takes the fallback column. So a row is "these units, then fallback
+; for the rest", and the explicit 6 on MIX_ROUTE_EARLY says "vanilla on
+; purpose" rather than "not filled in yet".
+;
+; The route and trainer rows are written to reproduce what they built before
+; the strongest-first rule (2026-10-05): when the quotas were dealt weakest
+; first, ROUTE_LATE's "3 full, 3 random" was really "3 full, then random", and
+; TRAINER_MID's "5 random, 1 TM" was "5 random, then TM for a 6th". The rows now
+; say that directly. TRAINER_LATE is the one deliberate change: its single
+; curated set used to reach only a sixth mon, and now always lands.
+;
+; The gym leader rows are written to fit the team exactly. A gym team's size is
+; fixed per round (GYM_R<n>_MONS), so gym_round_spec asserts each row's quota
+; total is no more than the smallest team in its band; a larger team in the
+; band takes the fallback for its extra slots (gym 8's sixth mon). The ace
+; always claims the curated set; the fallback also covers an ace whose species
+; has no curated set at its level.
+;
+;   GYM_EARLY  2 mons: ace set (NORMAL), one full learnset. Most gym 1-2 aces
+;              have no curated set at levels 11-18, so the fallback is the
+;              plain level-up roll, keeping the opening gyms soft.
+;   GYM_MID    3 mons: ace set (NORMAL only), one random, one random+TM, all on
+;              RANK_ROW_NORMAL with tm_cap 2. Deliberately softer than the old
+;              rounds 3-5 row (HARD sets, RANK_ROW_HARD, tm_cap 3).
+;   GYM_LATE   4 mons: two sets (NORMAL or HARD), one random+TM, one TM-only.
+;   ELITE      5-6 mons: three sets (HARD or ELITE), one random+TM, one
+;              TM-only; gym 8's sixth mon takes the random+TM fallback.
 ;
 ; rank_row rises with the band on every kind, and with the kind at every band:
 ; BAD/EASY/NORMAL down the route column, EASY/NORMAL/HARD down the trainer
-; column, NORMAL/HARD/ELITE down the leader column. That is the whole
+; column, NORMAL/NORMAL/HARD/ELITE down the leader column. That is the whole
 ; difficulty ladder in one readable diagonal, and it is deliberately NOT the
 ; lever AITierByRound pulls - that one scales how well the AI uses a moveset,
 ; this one scales what is in the moveset.
@@ -90,17 +150,18 @@ DEF NUM_MOVESET_MIXES EQU const_value
 ; the player walked into knowingly.
 MovesetMixTable::
 	table_width MIX_ENTRY_SIZE, MovesetMixTable
-	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid
-	mix     6,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION
-	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION
-	mix     0,   3,   3,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION
-	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0
-	mix     0,   0,   5,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0
-	mix     0,   0,   0,   5,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   3,   0,              0
-	mix     0,   1,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0
-	mix     0,   0,   1,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0
-	mix     0,   0,   1,   1,  1,   3,  TIER_HARD | TIER_ELITE,  RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0
-	mix     0,   0,   0,   0,  0,   6,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0
+	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid              fallback
+	mix     6,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_EARLY
+	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
+	mix     0,   3,   0,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_RANDOM         ; ROUTE_LATE
+	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_LEARNSET       ; TRAINER_EARLY
+	mix     0,   0,   5,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_MID
+	mix     0,   0,   0,   5,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_LATE
+	mix     0,   1,   0,   0,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_EARLY
+	mix     0,   0,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_MID
+	mix     0,   0,   0,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GYM_LATE
+	mix     0,   0,   0,   1,  1,   3,  TIER_HARD | TIER_ELITE,  RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; ELITE
+	mix     0,   0,   0,   0,  0,   6,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; E4_SETS
 	assert_table_length NUM_MOVESET_MIXES
 
 ; --- Slot override field widths --------------------------------------------
@@ -249,7 +310,12 @@ DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 ; round point at ONE record per round. The off-type mon's POSITION still
 ; differs by variant, because PartyGenSlotPoolId derives it from wTrainerNo.
 ; This replaced 23 records per leader (4.6 KB for the 17) with 8.
-DEF GYM_BAND_ROUNDS EQU 2
+;
+; The band also picks the moveset row, through GYM_BAND<n>_MIX (defined with
+; the mix ids above), and the band's row must fit every team in the band: its
+; quota total may not exceed the round's team size, or a unit would be dropped.
+ASSERT NUM_GYM_BANDS * GYM_BAND_ROUNDS == NUM_GYM_ROUNDS, \
+	"NUM_GYM_BANDS bands of GYM_BAND_ROUNDS rounds must cover every gym round"
 
 ; \1 = label prefix (also the pool-name prefix), \2 = round 1..8, \3 = extra
 ; spec flags applied from round 7 on.
@@ -260,13 +326,9 @@ MACRO gym_round_spec
 	DEF _n = GYM_R{d:_rnd}_MONS
 	DEF _bl = GYM_R{d:_rnd}_BASE
 	DEF _st = GYM_R{d:_rnd}_STEP
-	IF _rnd <= 2
-	DEF _mix = MIX_GYM_EARLY
-	ELIF _rnd <= 5
-	DEF _mix = MIX_GYM_LATE
-	ELSE
-	DEF _mix = MIX_ELITE
-	ENDC
+	DEF _mix = GYM_BAND{d:_band}_MIX
+	ASSERT QUOTA_SUM_OF_MIX_{d:_mix} <= _n, \
+		"gym round {d:_rnd}: mix {d:_mix} deals {d:QUOTA_SUM_OF_MIX_{d:_mix}} units to a {d:_n}-mon team"
 	DEF _flags = GYM_SPEC_FLAGS
 	IF _rnd >= 7
 	DEF _flags = _flags | (\3)
@@ -318,7 +380,7 @@ ENDM
 ;
 ; Phase 5 moved these off MIX_ELITE and onto MIX_E4_SETS, the plan's "sets
 ; only, ELITE mask" row. Every slot draws a curated set, and a species with no
-; TIER_ELITE record at this level falls back to MSRC_RANDOM under
+; TIER_ELITE record near this level falls back to the row's MSRC_RANDOM_TM under
 ; RANK_ROW_ELITE - the documented MSRC_SET degradation, and the reason the tier
 ; mask can be this narrow without any slot coming out empty.
 ;

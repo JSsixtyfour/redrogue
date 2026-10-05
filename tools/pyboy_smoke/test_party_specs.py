@@ -49,6 +49,12 @@ ALREADY_SLEEP_FLAGGED_MOVE = "SPORE"
 def _mix_id(name):
     return parse_rgbds_constants(REPO_ROOT / "data/trainers/party_specs.asm")[name]
 
+
+def _balance(name):
+    return parse_rgbds_constants(
+        REPO_ROOT / "constants/balance_constants.asm",
+        parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm"))[name]
+
 # FalknerPool's Kanto run, in data/trainers/pools.asm order. Only this run is
 # eligible on a fresh save: RogueGetActiveGroupMask enables Johto only after a
 # champion win, so the Johto entries must be unreachable here.
@@ -446,6 +452,59 @@ class RequireFlagsSmokeTest(HarnessTestCase):
 
 
 
+class SourceAssignmentSmokeTest(HarnessTestCase):
+    """PartyGenAssignSources: quotas dealt strongest first, the rest fallback.
+
+    Driven directly with a synthetic spec header in wEnemyMon2 (the same trick
+    RequireFlagsSmokeTest uses), so the team size and the ace flag are exact
+    and the result is a multiset of sources with no RNG left in it: the shuffle
+    only decides WHICH slot gets a source, never how many of each.
+    """
+
+    def _assign(self, mix_name, n_mons, ace_last):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        header_addr = h.address("wEnemyMon2")
+        flags = 1 if ace_last else 0  # BIT_PSPEC_ACE_LAST is bit 0
+        header = [n_mons, 0, 0, 0, _mix_id(mix_name), flags, 0xFF]
+        for i, byte in enumerate(header):  # 0xFF: PARTY_SPEC_OVERRIDES_END
+            h.write8("wEnemyMon2", byte, offset=i)
+        h.write8("wPartyGenSpecPtr", header_addr & 0xFF)
+        h.write8("wPartyGenSpecPtr", header_addr >> 8, offset=1)
+        h.write8("wPartyGenNMons", n_mons)
+        h.call_routine("PartyGenAssignSources", limit=20000)
+        return h.read_bytes("wPartyGenSlotSource", n_mons)
+
+    def _msrc(self):
+        return parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+
+    def test_an_overflowing_mix_drops_its_weakest_units(self):
+        """GYM_LATE is 1 random+TM, 1 TM-only, 2 sets: on two mons, two sets.
+
+        Dealt weakest first (the pre-2026-10-05 order) the same row gave a
+        two-mon team random+TM and TM-only and no curated set at all.
+        """
+        m = self._msrc()
+        self.assertEqual(sorted(self._assign("MIX_GYM_LATE", 2, False)),
+                         [m["MSRC_SET"], m["MSRC_SET"]])
+
+    def test_unclaimed_slots_take_the_rows_fallback(self):
+        """GYM_MID on six mons: ace set, one random+TM, one random, and three
+        slots no quota reaches, which take its MSRC_RANDOM fallback."""
+        m = self._msrc()
+        sources = self._assign("MIX_GYM_MID", 6, True)
+        self.assertEqual(sources[-1], m["MSRC_SET"], "the ace takes the set")
+        self.assertEqual(
+            sorted(sources),
+            sorted([m["MSRC_SET"], m["MSRC_RANDOM_TM"]] + [m["MSRC_RANDOM"]] * 4))
+
+    def test_a_learnset_fallback_stays_vanilla(self):
+        m = self._msrc()
+        self.assertEqual(self._assign("MIX_ROUTE_EARLY", 3, False),
+                         [m["MSRC_LEARNSET"]] * 3)
+
+
 class SetMovesetSmokeTest(HarnessTestCase):
     """PartyGenApplySetMoveset (MSRC_SET), driven directly.
 
@@ -523,16 +582,39 @@ class SetMovesetSmokeTest(HarnessTestCase):
         found, _ = self._run()
         self.assertFalse(found, "a zero set_tier_mask should never match")
 
-    def test_falls_back_when_level_is_outside_every_records_range(self):
+    def test_falls_back_when_level_is_outside_even_the_widened_window(self):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        # Tier matches (MIX_ELITE allows TIER_HARD), but 101 is outside
-        # BAYLEEF's recorded 35-100 band - this isolates the level check from
-        # the tier check the previous test isolates.
-        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 101)
+        # Tier matches (MIX_ELITE allows TIER_HARD), but level 31 is below
+        # BAYLEEF's 35-100 record by more than SET_LEVEL_SLACK_ABOVE - this
+        # isolates the level check from the tier check the previous test
+        # isolates, with the widened second attempt included.
+        level = 35 - _balance("SET_LEVEL_SLACK_ABOVE") - 1
+        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", level)
         found, _ = self._run()
-        self.assertFalse(found, "level 101 is outside BAYLEEF's 35-100 record range")
+        self.assertFalse(found, f"level {level} is outside BAYLEEF's 35-100 "
+                                "record range even after widening")
+
+    def test_widened_window_reaches_a_record_just_above_the_level(self):
+        """No set covers the level exactly, so the second attempt widens.
+
+        BAYLEEF's only record starts at 35. One level below it misses the exact
+        window and must be caught by SET_LEVEL_SLACK_ABOVE - the fallback that
+        turns a gappy corpus into a set rather than a random roll.
+        """
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 34)
+        found, result = self._run()
+        self.assertTrue(found, "level 34 is within SET_LEVEL_SLACK_ABOVE of "
+                               "BAYLEEF's 35-100 record")
+        self.assertEqual(
+            result,
+            [moves["RAZOR_LEAF"], moves["BODY_SLAM"], moves["REFLECT"], moves["TOXIC"]],
+        )
 
 
 def band_ace_pools():

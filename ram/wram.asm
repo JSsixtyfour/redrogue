@@ -1084,8 +1084,8 @@ wPartyGenSlot:: db          ; party slot being built, 0-based
 ; only byte of WRAM0 the whole of Phase 5 spends.
 wPartyGenNMons:: db
 ; The MSRC_* actually in force for the slot being built. Distinct from
-; wPartyGenSlotSource[slot] because MSRC_SET degrades to MSRC_RANDOM here
-; without rewriting the slot's assignment.
+; wPartyGenSlotSource[slot] because MSRC_SET degrades to its mix row's fallback
+; source here without rewriting the slot's assignment.
 wPartyGenSource:: db
 ; The spec record itself. Held instead of the six unpacked header fields
 ; (n_mons, base level, level step, pool, mix, flags) because re-reading them
