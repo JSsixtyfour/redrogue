@@ -567,18 +567,23 @@ OaksLabRivalAndPlayerFaceEachOther:
 	ld a, [wXCoord]
 	cp 4
 	ld a, SPRITE_FACING_LEFT ; Blue
-	lb bc, SPRITE_FACING_RIGHT, PLAYER_DIR_RIGHT ; player
+	ld d, LEFT
+	ld c, PLAYER_DIR_RIGHT ; player
 	jr z, .faceSet
 	ld a, SPRITE_FACING_RIGHT
-	lb bc, SPRITE_FACING_LEFT, PLAYER_DIR_LEFT
+	ld d, RIGHT
+	ld c, PLAYER_DIR_LEFT
 .faceSet
 	ldh [hSpriteFacingDirection], a
-	ld a, b
-	ld [wSpritePlayerStateData1FacingDirection], a
+	; UpdateSprites derives the displayed player facing from this direction.
 	ld a, c
 	ld [wPlayerMovingDirection], a
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
+	; STAY with NONE still permits random turns. Hold Blue facing the player
+	; until MoveSprite clears this constraint for his exit.
+	call GetSpriteMovementByte2Pointer
+	ld [hl], d
 	call SetSpriteFacingDirection
 	call UpdateSprites
 	ld c, 6
@@ -589,7 +594,7 @@ OaksLabRivalEndBattleScript:
 	ld [wIsTrainerBattle], a
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
-	call UpdateSprites
+	; Restore position and the fixed facing before advancing any NPC state.
 	ld a, OAKSLAB_RIVAL
 	ldh [hActiveSpriteIndex], a
 	call SetSpritePosition1
