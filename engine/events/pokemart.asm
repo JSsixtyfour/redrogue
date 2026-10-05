@@ -80,6 +80,9 @@ DisplayPokemartDialogue_::
 	ld hl, PokemonSellingGreetingText
 	call PrintText
 	call SaveScreenTilesToBuffer1
+.resetSellCursor
+	xor a
+	ldh [hCurrentMenuItem], a
 .sellMenuLoop
 	call LoadScreenTilesFromBuffer1
 	ld a, MONEY_BOX
@@ -115,7 +118,6 @@ DisplayPokemartDialogue_::
 	ld [wListPointer + 1], a
 	xor a
 	ld [wPrintItemPrices], a
-	ldh [hCurrentMenuItem], a
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
@@ -125,6 +127,10 @@ DisplayPokemartDialogue_::
 	ld a, [wIsKeyItem]
 	and a
 	jr nz, .unsellableItem
+	; Quantity and yes/no menus reuse the cursor. Keep the selected row
+	; on the stack until the sale is confirmed or cancelled.
+	ldh a, [hCurrentMenuItem]
+	push af
 	ld a, PRICEDITEMLISTMENU
 	ld [wListMenuID], a
 	ldh [hHalveItemPrices], a ; halve prices when selling
@@ -135,14 +141,13 @@ DisplayPokemartDialogue_::
 	jr z, .sellTMConfirm
 	call DisplayChooseQuantityMenu
 	inc a
-	jp z, .sellMenuLoop ; if the player closed the choose quantity menu with the B button
+	jp z, .cancelItemSale ; if the player closed the choose quantity menu with the B button
 	jr .sellShowPrice
 .sellTMConfirm
 	ld a, 1
 	ld [wItemQuantity], a
 .sellShowPrice
 	ld hl, PokemartTellSellPriceText
-	lb bc, 14, 1 ; location that PrintText always prints to, this is useless
 	call PrintText
 	hlcoord 14, 7
 	lb bc, 8, 15
@@ -153,15 +158,10 @@ DisplayPokemartDialogue_::
 	call DisplayTextBoxID ; yes/no menu
 	ld a, [wMenuExitMethod]
 	cp CHOSE_SECOND_ITEM
-	jp z, .sellMenuLoop ; if the player chose No or pressed the B button
-
-; The following code is supposed to check if the player chose No, but the above
-; check already catches it.
-	ld a, [wChosenMenuItem]
-	dec a
-	jp z, .sellMenuLoop
+	jp z, .cancelItemSale ; if the player chose No or pressed the B button
 
 ; sell item
+	pop af ; discard the saved row; a completed sale resets the cursor
 	call AddAmountSoldToMoney
 	; Route removal: TMs clear bitfield bit; everything else uses count array
 	ld a, [wBagPocketsFlags]
@@ -169,9 +169,13 @@ DisplayPokemartDialogue_::
 	cp POCKET_TM_PACK
 	jr z, .removeTM
 	farcall RemovePocketItem
-	jp .sellMenuLoop
+	jp .resetSellCursor
 .removeTM
 	farcall RemoveTMHM    ; clears sTMBitfield bit for wCurItem
+	jp .resetSellCursor
+.cancelItemSale
+	pop af
+	ldh [hCurrentMenuItem], a
 	jp .sellMenuLoop
 .unsellableItem
 	ld hl, PokemartUnsellableItemText
