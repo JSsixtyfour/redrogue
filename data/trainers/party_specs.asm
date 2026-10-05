@@ -59,104 +59,112 @@ DEF MIX_ENTRY_SIZE EQU 14
 DEF MIX_FALLBACK_OFFSET EQU 13
 
 ; --- The difficulty grid (Phase 5) -----------------------------------------
-; Eleven rows: route and gym-trainer kinds by three ROUND BANDS, the gym leader
-; by four GYM BANDS, plus a sets-only row for the Elite Four.
+; Thirteen rows: three trainer KINDS by four BANDS, plus a sets-only row for the
+; Elite Four. Every kind uses the same bands, the ones the gym leader's species
+; pools use (GYM_BAND_ROUNDS, data/trainers/gym_band_pools.asm):
 ;
-;   kind \ band        rounds 1-2     rounds 3-5     rounds 6-8
-;   route trainer      ROUTE_EARLY    ROUTE_MID      ROUTE_LATE
-;   final route / gym  TRAINER_EARLY  TRAINER_MID    TRAINER_LATE
-;
-;   kind \ gym band    gyms 1-2       gyms 3-4       gyms 5-6       gyms 7-8
+;   kind \ band        gyms 1-2       gyms 3-4       gyms 5-6       gyms 7-8
+;   route trainer      ROUTE_EARLY    ROUTE_MID      ROUTE_LATE     ROUTE_FINAL
+;   final route / gym  TRAINER_EARLY  TRAINER_MID    TRAINER_LATE   TRAINER_FINAL
 ;   gym leader         GYM_EARLY      GYM_MID        GYM_LATE       ELITE
-;   mini-boss / rival  (the gym leader row of the same gym band)
+;   mini-boss / rival  (the gym leader row of the same band)
 ;
 ;   Elite Four         E4_SETS at every tier
 ;
-; The leader column is cut on GYM_BAND_ROUNDS, the same bands the leader's
-; species pools use (data/trainers/gym_band_pools.asm), so a band's pool and its
-; moveset row always change together. GYM_BAND<n>_MIX below is the ONE place a
-; band's row is named: gym_round_spec reads it for the leader's own spec, and
-; GymMixByBand is generated from it for the mini-boss / rival lookup.
+; A roster trainer's band is the band of the gym it is fought on the way to
+; (RogueBandIndex). <KIND>_BAND<n>_MIX below is the ONE place a band's row is
+; named: gym_round_spec reads the GYM ones for the leader's own spec, and
+; RosterMixByKindAndBand / GymMixByBand (rogue_build_party.asm) are generated
+; from them, so no two readers can disagree about a band.
 ;
-; The route and trainer rows reach their row through RogueRosterMixId, which
-; derives kind and band from wBattleCount.
-;
-; MIX_ELITE keeps its Phase 2 name rather than becoming MIX_GYM_ELITE: it is
-; the gym leader's gyms 7-8 row, it is referenced by name in a dozen comments
-; and five tests, and the genuinely-Elite-Four row is MIX_E4_SETS.
+; MIX_ELITE keeps its Phase 2 name rather than becoming MIX_GYM_FINAL: it is
+; referenced by name in a dozen comments and five tests, and the
+; genuinely-Elite-Four row is MIX_E4_SETS.
 	const_def
 	const MIX_ROUTE_EARLY     ; 0
 	const MIX_ROUTE_MID       ; 1
 	const MIX_ROUTE_LATE      ; 2
-	const MIX_TRAINER_EARLY   ; 3
-	const MIX_TRAINER_MID     ; 4
-	const MIX_TRAINER_LATE    ; 5
-	const MIX_GYM_EARLY       ; 6
-	const MIX_GYM_MID         ; 7
-	const MIX_GYM_LATE        ; 8
-	const MIX_ELITE           ; 9
-	const MIX_E4_SETS         ; 10
+	const MIX_ROUTE_FINAL     ; 3
+	const MIX_TRAINER_EARLY   ; 4
+	const MIX_TRAINER_MID     ; 5
+	const MIX_TRAINER_LATE    ; 6
+	const MIX_TRAINER_FINAL   ; 7
+	const MIX_GYM_EARLY       ; 8
+	const MIX_GYM_MID         ; 9
+	const MIX_GYM_LATE        ; 10
+	const MIX_ELITE           ; 11
+	const MIX_E4_SETS         ; 12
 DEF NUM_MOVESET_MIXES EQU const_value
 
-; Gym leader bands. A band is GYM_BAND_ROUNDS consecutive gyms; the leader's
-; species pools (Ace/Fod/Off<band>) and the moveset row below are both keyed on
-; it. Read by gym_round_spec and by GymMixByBand (rogue_build_party.asm).
-DEF GYM_BAND_ROUNDS EQU 2
-DEF NUM_GYM_BANDS   EQU 4
-DEF GYM_BAND1_MIX   EQU MIX_GYM_EARLY ; gyms 1-2
-DEF GYM_BAND2_MIX   EQU MIX_GYM_MID   ; gyms 3-4
-DEF GYM_BAND3_MIX   EQU MIX_GYM_LATE  ; gyms 5-6
-DEF GYM_BAND4_MIX   EQU MIX_ELITE     ; gyms 7-8
+; Bands. A band is GYM_BAND_ROUNDS consecutive gyms; the leader's species pools
+; (Ace/Fod/Off<band>) and every kind's moveset row are keyed on it.
+DEF GYM_BAND_ROUNDS     EQU 2
+DEF NUM_GYM_BANDS       EQU 4
+DEF ROUTE_BAND1_MIX     EQU MIX_ROUTE_EARLY   ; gyms 1-2
+DEF ROUTE_BAND2_MIX     EQU MIX_ROUTE_MID     ; gyms 3-4
+DEF ROUTE_BAND3_MIX     EQU MIX_ROUTE_LATE    ; gyms 5-6
+DEF ROUTE_BAND4_MIX     EQU MIX_ROUTE_FINAL   ; gyms 7-8
+DEF TRAINER_BAND1_MIX   EQU MIX_TRAINER_EARLY
+DEF TRAINER_BAND2_MIX   EQU MIX_TRAINER_MID
+DEF TRAINER_BAND3_MIX   EQU MIX_TRAINER_LATE
+DEF TRAINER_BAND4_MIX   EQU MIX_TRAINER_FINAL
+DEF GYM_BAND1_MIX       EQU MIX_GYM_EARLY
+DEF GYM_BAND2_MIX       EQU MIX_GYM_MID
+DEF GYM_BAND3_MIX       EQU MIX_GYM_LATE
+DEF GYM_BAND4_MIX       EQU MIX_ELITE
 
-; Reading the rows: the quotas are dealt strongest source first, and any slot
-; left over takes the fallback column. So a row is "these units, then fallback
-; for the rest", and the explicit 6 on MIX_ROUTE_EARLY says "vanilla on
-; purpose" rather than "not filled in yet".
+; READING THE ROWS: a row is "these few units, then the fallback for every
+; other slot". Quotas are dealt strongest source first and the fallback fills
+; whatever is left, so a row says the same thing to a 2-mon team and a 6-mon
+; one, and no unit depends on the team reaching some size. Rule of thumb, held
+; by tests (test_difficulty_grid.py): a row's quota total fits the SMALLEST team
+; its band fields - roster sizes come from data/balance/trainer_levels.asm, gym
+; sizes from GYM_R<n>_MONS (also asserted at build time in gym_round_spec).
 ;
-; The route and trainer rows are written to reproduce what they built before
-; the strongest-first rule (2026-10-05): when the quotas were dealt weakest
-; first, ROUTE_LATE's "3 full, 3 random" was really "3 full, then random", and
-; TRAINER_MID's "5 random, 1 TM" was "5 random, then TM for a 6th". The rows now
-; say that directly. TRAINER_LATE is the one deliberate change: its single
-; curated set used to reach only a sixth mon, and now always lands.
-;
-; The gym leader rows are written to fit the team exactly. A gym team's size is
-; fixed per round (GYM_R<n>_MONS), so gym_round_spec asserts each row's quota
-; total is no more than the smallest team in its band; a larger team in the
-; band takes the fallback for its extra slots (gym 8's sixth mon). The ace
-; always claims the curated set; the fallback also covers an ace whose species
-; has no curated set at its level.
-;
+;   ROUTE_EARLY    vanilla learnset                    (unchanged)
+;   ROUTE_MID      1 random, rest learnset             (unchanged)
+;   ROUTE_LATE     2 random, rest full learnset
+;   ROUTE_FINAL    3 random, rest full learnset        (the old rounds 6-8
+;                  row's "3 full, 3 random" on a 6-mon team, at any size)
+;   TRAINER_EARLY  all random                          (unchanged: the old "3
+;                  random" on teams that never exceed 3)
+;   TRAINER_MID    1 random+TM, rest random            (the old row's TM slot
+;                  only reached a 6th mon, which rounds 3-5 never field)
+;   TRAINER_LATE   1 curated set, 1 random+TM, rest random
+;   TRAINER_FINAL  1 curated set, rest random+TM       (the old rounds 6-8 row,
+;                  with its set always landing; sets now NORMAL or HARD so the
+;                  curated mon is no softer than its random+TM teammates)
 ;   GYM_EARLY  2 mons: ace set (NORMAL), one full learnset. Most gym 1-2 aces
 ;              have no curated set at levels 11-18, so the fallback is the
 ;              plain level-up roll, keeping the opening gyms soft.
 ;   GYM_MID    3 mons: ace set (NORMAL only), one random, one random+TM, all on
-;              RANK_ROW_NORMAL with tm_cap 2. Deliberately softer than the old
-;              rounds 3-5 row (HARD sets, RANK_ROW_HARD, tm_cap 3).
+;              RANK_ROW_NORMAL with tm_cap 2.
 ;   GYM_LATE   4 mons: two sets (NORMAL or HARD), one random+TM, one TM-only.
 ;   ELITE      5-6 mons: three sets (HARD or ELITE), one random+TM, one
 ;              TM-only; gym 8's sixth mon takes the random+TM fallback.
 ;
-; rank_row rises with the band on every kind, and with the kind at every band:
-; BAD/EASY/NORMAL down the route column, EASY/NORMAL/HARD down the trainer
-; column, NORMAL/NORMAL/HARD/ELITE down the leader column. That is the whole
-; difficulty ladder in one readable diagonal, and it is deliberately NOT the
+; rank_row never falls band to band within a kind, and rises with the kind at
+; every band: BAD/EASY/EASY/NORMAL down the route column, EASY/NORMAL/NORMAL/HARD
+; down the trainer column, NORMAL/NORMAL/HARD/ELITE down the leader column (gyms
+; 3-4 share NORMAL with their trainers on purpose). It is deliberately NOT the
 ; lever AITierByRound pulls - that one scales how well the AI uses a moveset,
 ; this one scales what is in the moveset.
 ;
-; Explosion is forbidden on the three ROUTE rows at every band and allowed from
-; the gym-trainer rows up. A random route battle ending to a one-shot
-; Selfdestruct reads as a feel-bad; the same move on a gym trainer is a threat
-; the player walked into knowingly.
+; Explosion is forbidden on the ROUTE rows at every band and allowed from the
+; gym-trainer rows up. A random route battle ending to a one-shot Selfdestruct
+; reads as a feel-bad; the same move on a gym trainer is a threat the player
+; walked into knowingly.
 MovesetMixTable::
 	table_width MIX_ENTRY_SIZE, MovesetMixTable
 	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid              fallback
-	mix     6,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_EARLY
+	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_EARLY
 	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
-	mix     0,   3,   0,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_RANDOM         ; ROUTE_LATE
-	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_LEARNSET       ; TRAINER_EARLY
-	mix     0,   0,   5,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_MID
-	mix     0,   0,   0,   5,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_LATE
+	mix     0,   0,   2,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET_FULL  ; ROUTE_LATE
+	mix     0,   0,   3,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET_FULL  ; ROUTE_FINAL
+	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_RANDOM         ; TRAINER_EARLY
+	mix     0,   0,   0,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_MID
+	mix     0,   0,   0,   1,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_LATE
+	mix     0,   0,   0,   0,  0,   1,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_FINAL
 	mix     0,   1,   0,   0,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_EARLY
 	mix     0,   0,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_MID
 	mix     0,   0,   0,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GYM_LATE
@@ -314,6 +322,8 @@ DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 ; The band also picks the moveset row, through GYM_BAND<n>_MIX (defined with
 ; the mix ids above), and the band's row must fit every team in the band: its
 ; quota total may not exceed the round's team size, or a unit would be dropped.
+; GYM_BAND_ROUNDS and NUM_GYM_BANDS are defined with the mix ids too, because
+; every trainer kind's band is cut on them, not only the leader's.
 ASSERT NUM_GYM_BANDS * GYM_BAND_ROUNDS == NUM_GYM_ROUNDS, \
 	"NUM_GYM_BANDS bands of GYM_BAND_ROUNDS rounds must cover every gym round"
 

@@ -2525,23 +2525,29 @@ RogueBattleRound:
 	jr .roundLoop
 
 ; ===========================================================================
-; RogueRoundBand
+; RogueBandIndex
 ;
-; INPUT:  a = round index, 0-based (0 = the run's first gym)
-; OUTPUT: a = 0 for the plan's rounds 1-2, 1 for rounds 3-5, 2 for 6-8 and up
+; INPUT:  b = round index from RogueBattleRound (gyms already beaten, 0-8)
+; OUTPUT: c = 0-based band, 0 .. NUM_GYM_BANDS - 1
+;
+; One band cut for every trainer kind: the band of the gym being fought towards.
+; Round index r is fought on the way to gym r + 1, so r / GYM_BAND_ROUNDS is
+; that gym's 0-based band - the same band gym_round_spec gives the leader's own
+; spec (data/trainers/party_specs.asm), and the same pools. Index 8 (past gym 8,
+; Victory Road) clamps to the last band.
+; CLOBBERS af.
 ; ===========================================================================
-RogueRoundBand:
-	cp 2
-	jr c, .early
-	cp 5
-	jr c, .mid
-	ld a, 2
-	ret
-.mid
-	ld a, 1
-	ret
-.early
-	xor a
+RogueBandIndex:
+	ld a, b
+	ld c, -1
+.divide
+	inc c
+	sub GYM_BAND_ROUNDS
+	jr nc, .divide                 ; c = round index / GYM_BAND_ROUNDS
+	ld a, c
+	cp NUM_GYM_BANDS
+	ret c
+	ld c, NUM_GYM_BANDS - 1
 	ret
 
 ; ===========================================================================
@@ -2561,14 +2567,14 @@ RogueRoundBand:
 ; ===========================================================================
 RogueRosterMixId::
 	call RogueBattleRound          ; b = round index, a = step
-	ld c, 0                        ; c = kind row 0: route trainers
+	ld d, 0                        ; d = kind row 0: route trainers
 	cp FINAL_ROUTE_STEP
 	jr c, .gotKind
-	ld c, NUM_ROUND_BANDS          ; kind row 1: final route / gym trainers
+	ld d, NUM_GYM_BANDS            ; kind row 1: final route / gym trainers
 .gotKind
-	ld a, b
-	call RogueRoundBand
-	add c
+	call RogueBandIndex            ; c = band
+	ld a, c
+	add d
 	ld c, a
 	ld b, 0
 	ld hl, RosterMixByKindAndBand
@@ -2580,42 +2586,30 @@ RogueRosterMixId::
 ; RogueBossMixId
 ;
 ; OUTPUT: a = the gym-leader mix row for the current round, which is the plan's
-;         "mini-boss / rival matches the gym leader of the same round".
-;
-; Cut on the GYM bands (GYM_BAND_ROUNDS, four of them), not RogueRoundBand's
-; three, so a mini-boss uses exactly the row the next leader's spec does. The
-; round index is the number of gyms already beaten, so index r is fought on the
-; way to gym r + 1, and r / GYM_BAND_ROUNDS is that gym's 0-based band. Index 8
-; (past gym 8, Victory Road) clamps to the last band.
+;         "mini-boss / rival matches the gym leader of the same round": the
+;         row the next leader's own spec uses.
 ; ===========================================================================
 RogueBossMixId::
 	call RogueBattleRound          ; b = round index
-	ld a, b
-	ld c, -1
-.divide
-	inc c
-	sub GYM_BAND_ROUNDS
-	jr nc, .divide                 ; c = round index / GYM_BAND_ROUNDS
-	ld a, c
-	cp NUM_GYM_BANDS
-	jr c, .inRange
-	ld c, NUM_GYM_BANDS - 1
-.inRange
+	call RogueBandIndex            ; c = band
 	ld b, 0
 	ld hl, GymMixByBand
 	add hl, bc
 	ld a, [hl]
 	ret
 
+; Both generated from <KIND>_BAND<n>_MIX (party_specs.asm), the same constants
+; gym_round_spec reads, so no two readers of a band can drift apart.
 RosterMixByKindAndBand:
-	table_width NUM_ROUND_BANDS, RosterMixByKindAndBand
-	;      rounds 1-2         rounds 3-5        rounds 6-8
-	db MIX_ROUTE_EARLY,   MIX_ROUTE_MID,   MIX_ROUTE_LATE    ; steps 0-4
-	db MIX_TRAINER_EARLY, MIX_TRAINER_MID, MIX_TRAINER_LATE  ; steps 5-9
+	table_width NUM_GYM_BANDS, RosterMixByKindAndBand
+	FOR n, 1, NUM_GYM_BANDS + 1
+	db ROUTE_BAND{d:n}_MIX         ; steps 0-4
+	ENDR
+	FOR n, 1, NUM_GYM_BANDS + 1
+	db TRAINER_BAND{d:n}_MIX       ; steps 5-9
+	ENDR
 	assert_table_length 2
 
-; Generated from GYM_BAND<n>_MIX (party_specs.asm), the same constants
-; gym_round_spec reads, so a leader and a mini-boss of one band cannot drift.
 GymMixByBand:
 	table_width 1, GymMixByBand
 	FOR n, 1, NUM_GYM_BANDS + 1
