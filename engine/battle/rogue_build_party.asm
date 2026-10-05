@@ -1540,22 +1540,21 @@ PartyGenRollMoveset:
 ;   wPartyGenCandidates + 3     the bank the records array lives in
 ;   wPartyGenCandidates + 4..11 the record currently being examined (8 B)
 ;   wPartyGenCandidates + 12    loop index i
-;   wPartyGenCandidates + 13    level slack ABOVE: a record whose lvl_min is
-;                               at most this far above the mon's level passes
-;   wPartyGenCandidates + 14    level slack BELOW: likewise for lvl_max below
-;   wPartyGenCandidates + 15    nonzero once the window has been widened
+;   wPartyGenCandidates + 13    level slack below: a record whose lvl_max is
+;                               at most this far under the mon's level passes
+;   wPartyGenCandidates + 14    nonzero once the window has been widened
 ;   wPartyGenTMUsed             this mix's set_tier_mask
 ;   wPartyGenTMCount            pass 1: running match count. pass 2: the
 ;                               target ordinal, countding down to 0
 ;
 ; TWO WINDOWS. The first attempt wants the mon's level inside the record's
 ; lvl_min..lvl_max, exactly as the corpus wrote it. If nothing passes, the
-; window widens once by SET_LEVEL_SLACK_ABOVE / _BELOW (balance_constants.asm)
+; window widens once, DOWNWARD, by SET_LEVEL_SLACK_BELOW (balance_constants.asm)
 ; and both passes run again. The corpus ranges are gappy - a species can have
 ; sets for 20-30 and 45-55 and nothing between - and a set written for a few
-; levels away is a far better match for the slot's intent than no set at all.
-; The window is lopsided on purpose: a set from lower levels is only a little
-; behind the mon, while a set from higher levels hands it moves early.
+; levels lower is a far better match for the slot's intent than no set at all.
+; lvl_min is never relaxed: a set from higher levels would hand the mon its
+; moves early.
 ;
 ; OUTPUT: carry SET and the mon's 4 moves + PP written, if a record passing
 ;         this mix's set_tier_mask near this mon's level exists.
@@ -1586,8 +1585,7 @@ PartyGenApplySetMoveset:
 	ld [wPartyGenTMUsed], a
 	xor a
 	ld [wPartyGenCandidates + 13], a ; exact window first: no slack
-	ld [wPartyGenCandidates + 14], a
-	ld [wPartyGenCandidates + 15], a ; not widened yet
+	ld [wPartyGenCandidates + 14], a ; not widened yet
 
 ; --- pass 1: count how many records pass the filter ---
 .pass1Start
@@ -1612,15 +1610,13 @@ PartyGenApplySetMoveset:
 	and a
 	jr nz, .pass1HasMatch
 ; Nothing passed. Widen the level window once and count again.
-	ld hl, wPartyGenCandidates + 15
+	ld hl, wPartyGenCandidates + 14
 	ld a, [hl]
 	and a
 	jp nz, .noMatch                  ; already widened: nothing near this level
 	inc [hl]
-	ld a, SET_LEVEL_SLACK_ABOVE
-	ld [wPartyGenCandidates + 13], a
 	ld a, SET_LEVEL_SLACK_BELOW
-	ld [wPartyGenCandidates + 14], a
+	ld [wPartyGenCandidates + 13], a
 	jr .pass1Start
 .pass1HasMatch
 
@@ -1692,9 +1688,9 @@ PartyGenApplySetMoveset:
 
 ; OUTPUT: carry SET if the record just loaded (wPartyGenCandidates+4..11)
 ;         passes this mix's set_tier_mask AND the current level window:
-;         lvl_min - slack_above <= level <= lvl_max + slack_below.
-; Written as level + slack_above >= lvl_min and lvl_max + slack_below >= level
-; so nothing underflows; neither sum can pass 255 (see the ASSERT below).
+;         lvl_min <= level <= lvl_max + slack_below.
+; The upper test is written as lvl_max + slack_below >= level so nothing
+; underflows; the sum cannot pass 255 (see the ASSERT below).
 ; CLOBBERS af, hl, d.
 .recordPasses:
 	ld a, [wPartyGenCandidates + 8] ; tier
@@ -1702,14 +1698,12 @@ PartyGenApplySetMoveset:
 	and [hl]
 	jr z, .recordFail
 	ld a, [wCurEnemyLevel]
-	ld hl, wPartyGenCandidates + 13
-	add [hl]                          ; a = level + slack_above
 	ld hl, wPartyGenCandidates + 10 ; lvl_min
 	cp [hl]
-	jr c, .recordFail                ; level + slack_above < lvl_min
+	jr c, .recordFail                ; level < lvl_min
 	inc hl                            ; lvl_max
 	ld a, [hl]
-	ld hl, wPartyGenCandidates + 14
+	ld hl, wPartyGenCandidates + 13
 	add [hl]
 	ld d, a                           ; d = lvl_max + slack_below
 	ld a, [wCurEnemyLevel]
@@ -1724,8 +1718,8 @@ PartyGenApplySetMoveset:
 	ret
 
 ; Corpus lvl_min/lvl_max are levels, so at most MAX_LEVEL (tools/gen_movesets.py).
-ASSERT MAX_LEVEL + SET_LEVEL_SLACK_ABOVE < 256 && MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
-	"a set level slack this large would overflow .recordPasses' 8-bit sums"
+ASSERT MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
+	"a set level slack this large would overflow .recordPasses' 8-bit sum"
 
 ; ===========================================================================
 ; PartyGenPickOne

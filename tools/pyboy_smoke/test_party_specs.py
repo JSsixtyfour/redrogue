@@ -582,39 +582,43 @@ class SetMovesetSmokeTest(HarnessTestCase):
         found, _ = self._run()
         self.assertFalse(found, "a zero set_tier_mask should never match")
 
-    def test_falls_back_when_level_is_outside_even_the_widened_window(self):
+    def test_never_widens_upward_to_a_higher_level_set(self):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        # Tier matches (MIX_ELITE allows TIER_HARD), but level 31 is below
-        # BAYLEEF's 35-100 record by more than SET_LEVEL_SLACK_ABOVE - this
-        # isolates the level check from the tier check the previous test
-        # isolates, with the widened second attempt included.
-        level = 35 - _balance("SET_LEVEL_SLACK_ABOVE") - 1
-        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", level)
+        # Tier matches (MIX_ELITE allows TIER_HARD), but level 34 is one under
+        # BAYLEEF's only record (35-100). The widened window only relaxes
+        # lvl_max, so a set written for higher levels must still be refused -
+        # this isolates the level check from the tier check above.
+        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 34)
         found, _ = self._run()
-        self.assertFalse(found, f"level {level} is outside BAYLEEF's 35-100 "
-                                "record range even after widening")
+        self.assertFalse(found, "level 34 is below BAYLEEF's 35-100 record "
+                                "and the window never widens upward")
 
-    def test_widened_window_reaches_a_record_just_above_the_level(self):
-        """No set covers the level exactly, so the second attempt widens.
+    def test_widened_window_reaches_a_record_just_below_the_level(self):
+        """No set covers the level exactly, so the second attempt widens down.
 
-        BAYLEEF's only record starts at 35. One level below it misses the exact
-        window and must be caught by SET_LEVEL_SLACK_ABOVE - the fallback that
-        turns a gappy corpus into a set rather than a random roll.
+        GROWLITHE's one TIER_NORMAL record (EMBER, LEER, TAKE_DOWN, FIRE_SPIN)
+        covers 30-35 and MIX_GYM_MID allows TIER_NORMAL only. Level 40 misses
+        the exact window and is caught by SET_LEVEL_SLACK_BELOW; one level past
+        the slack is not.
         """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
-        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 34)
+        self._setup(_mix_id("MIX_GYM_MID"), "GROWLITHE", 40)
         found, result = self._run()
-        self.assertTrue(found, "level 34 is within SET_LEVEL_SLACK_ABOVE of "
-                               "BAYLEEF's 35-100 record")
+        self.assertTrue(found, "level 40 is within SET_LEVEL_SLACK_BELOW of "
+                               "GROWLITHE's 30-35 NORMAL record")
         self.assertEqual(
             result,
-            [moves["RAZOR_LEAF"], moves["BODY_SLAM"], moves["REFLECT"], moves["TOXIC"]],
+            [moves["EMBER"], moves["LEER"], moves["TAKE_DOWN"], moves["FIRE_SPIN"]],
         )
+        level = 35 + _balance("SET_LEVEL_SLACK_BELOW") + 1
+        self._setup(_mix_id("MIX_GYM_MID"), "GROWLITHE", level)
+        found, _ = self._run()
+        self.assertFalse(found, f"level {level} is past the widened window")
 
 
 def band_ace_pools():
