@@ -304,7 +304,7 @@ _PCMoveTutorGreetingText::
     cont "might consider"
     cont "...unnatural."
     
-    para "¥{x:MOVE_RELEARNER_PRICE_BCD}000 per move."
+    para "Fees vary by move"
 	line "Interested?"
 	done
     
@@ -315,8 +315,8 @@ _PCMoveTutorByeText::
 _PCMoveTutorNotEnoughMoneyText::
     text "You lack the"
 	line "funds for my"
-    cont "services"
-	done
+    cont "services."
+	prompt
     
 _PCMoveTutorSaidYesText::
 	text "Which #MON"
@@ -326,6 +326,15 @@ _PCMoveTutorSaidYesText::
 _PCMoveTutorWhichMoveText::
 	text "Which move should"
 	line "it learn?"
+	done
+
+_PCMoveTutorConfirmText::
+	text_ram wStringBuffer
+	text_start
+	line "For ¥@"
+	text_bcd hMoney, 3 | LEADING_ZEROES | LEFT_ALIGN
+	text "?"
+	cont "Teach this move?"
 	done
     
 _PCMoveTutorNoMovesText::

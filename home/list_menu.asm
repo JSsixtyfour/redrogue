@@ -151,7 +151,7 @@ DisplayListMenuIDLoop::
 ; if it's an item menu
 	ASSERT wCurListMenuItem == wCurItem
 	push hl
-	call GetItemPrice
+	call GetListEntryPrice
 	pop hl
 	ld a, [wListMenuID]
     
@@ -408,6 +408,19 @@ ExitListMenu::
 	scf
 	ret
 
+; Item lists retain the vanilla lookup. Only priced move lists are tutor menus;
+; unpriced relearner/deleter lists must not interpret move IDs as item IDs.
+GetListEntryPrice::
+	ld a, [wListMenuID]
+	cp MOVESLISTMENU
+	jp nz, GetItemPrice
+	ld a, [wPrintItemPrices]
+	dec a ; 1 = money; tutor prices never use Credit Exchange formatting
+	ret nz
+	ld a, [wCurListMenuItem]
+	ld e, a
+	rfarjp GetTutorMovePrice
+
 PrintListMenuEntries::
 	hlcoord 5, 3
 	ld b, 9
@@ -493,7 +506,7 @@ PrintListMenuEntries::
 	; hItemPrice on both exit paths (GetMachinePrice likewise reads only
 	; wCurItem). Reclaimed for ROM0 headroom.
 	ld [wCurItem], a
-	call GetItemPrice
+	call GetListEntryPrice
 	pop hl
 	ld bc, SCREEN_WIDTH + 5 ; 1 row down and 5 columns right
 	add hl, bc

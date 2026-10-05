@@ -1106,7 +1106,16 @@ PCTraderSuperNerdText:
     
 PCMoveTutorText::
 	text_asm
-; Display the list of moves to the player.
+	push bc ; text engine cursor
+	ld a, [wPrintItemPrices]
+	push af
+	call .teach
+.finish
+	pop af
+	ld [wPrintItemPrices], a
+	pop bc
+	jp TextScriptEnd
+.teach
 	ld hl, PCMoveTutorGreetingText
 	call PrintText
 	ld a, MONEY_BOX
@@ -1116,21 +1125,6 @@ PCMoveTutorText::
 	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
-	xor a
-	; check for MOVE_RELEARNER_PRICE_BCD (BCD thousands; *_WORD is its two
-	; high money bytes, balance_constants.asm)
-	ld [hMoney + 2], a
-	ld a, HIGH(MOVE_RELEARNER_PRICE_WORD)
-	ld [hMoney], a
-	ld a, LOW(MOVE_RELEARNER_PRICE_WORD)
-	ld [hMoney + 1], a
-	call HasEnoughMoney
-	jr nc, .enoughMoney
-	; not enough money
-	ld hl, PCMoveTutorNotEnoughMoneyText
-	call PrintText
-	jp TextScriptEnd
-.enoughMoney
 	ld hl, PCMoveTutorSaidYesText
 	call PrintText
 	; Select pokemon from party.
@@ -1148,23 +1142,31 @@ PCMoveTutorText::
 	pop af
 	jp c, .exit
 	ldh a, [hWhichPokemon]
-	ld b, a
-	push bc
-	ld hl, PrepareMoveTutorList
-	ld b, Bank(PrepareMoveTutorList)
-	call Bankswitch
+	push af ; party index for the lifetime of the move list
+	farcall PrepareMoveTutorList
 	ld a, [wMoveBuffer]
 	and a
-	jr nz, .chooseMove
-	pop bc
+	jr nz, .initMoveMenu
+	pop af
 	ld hl, PCMoveTutorNoMovesText
-	call PrintText
-	jp TextScriptEnd
-.chooseMove
-	ld hl, PCMoveTutorWhichMoveText
-	call PrintText
+	jp PrintText
+.initMoveMenu
 	xor a
 	ldh [hCurrentMenuItem], a
+	ld [wListScrollOffset], a
+.chooseMove
+	; PrintText and the money box reuse menu state. Keep the browsing position.
+	ldh a, [hCurrentMenuItem]
+	ld b, a
+	ld a, [wListScrollOffset]
+	ld c, a
+	push bc
+	ld hl, PCMoveTutorWhichMoveText
+	call PrintText
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	xor a
 	ld [wLastMenuItem], a
 	ld a, MOVESLISTMENU
 	ld [wListMenuID], a
@@ -1173,52 +1175,131 @@ PCMoveTutorText::
 	ld [hl], e
 	inc hl
 	ld [hl], d
-	xor a
-	ld [wPrintItemPrices], a ; don't print prices
-	call DisplayListMenuID
-	pop bc
-	jr c, .exit  ; exit if player chose cancel
-	push bc
-	; Save the selected move id.
-	ld a, [wCurListMenuItem]
-	ld [wMoveNum], a
-	ld [wNamedObjectIndex],a
-	call GetMoveName
-	call CopyToStringBuffer ; copy name to wcf4b
+	ld a, 1
+	ld [wPrintItemPrices], a
 	pop bc
 	ld a, b
+	ldh [hCurrentMenuItem], a
+	ld a, c
+	ld [wListScrollOffset], a
+	call DisplayListMenuID
+	pop bc ; b = selected party index; pop preserves the menu carry
+	jp c, .exit
+	push bc
+	ld d, b
+	ld a, [wCurListMenuItem]
+	ld e, a
+	ldh a, [hCurrentMenuItem]
+	ld b, a
+	ld a, [wListScrollOffset]
+	ld c, a
+	push bc ; position across confirmation and LearnMove
+	call .tryTeach
+	pop bc
+	jr c, .learned
+.retryMove
+	ld a, b
+	ldh [hCurrentMenuItem], a
+	ld a, c
+	ld [wListScrollOffset], a
+	jp .chooseMove
+.learned
+	pop af ; party index
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+.exit
+	ld hl, PCMoveTutorByeText
+	jp PrintText
+
+; d = party index, e = move ID; hItemPrice = the selected list's quote.
+; Carry = learned and paid; no carry = retry without payment.
+.tryTeach
+	push de
+	ld a, e
+	ld [wNamedObjectIndex], a
+	call GetMoveName
+	call CopyToStringBuffer
+	ld hl, hItemPrice
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
+	; Keep the quote across both dialogue and confirmation scratch use.
+	ldh a, [hMoney]
+	ld b, a
+	ldh a, [hMoney + 1]
+	ld c, a
+	push bc
+	ldh a, [hMoney + 2]
+	ld b, a
+	push bc
+.confirmMove
+	ld hl, PCMoveTutorConfirmText
+	call PrintText
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	ld e, a
+	pop bc
+	ld a, b
+	ldh [hMoney + 2], a
+	pop bc
+	ld a, b
+	ldh [hMoney], a
+	ld a, c
+	ldh [hMoney + 1], a
+	ld a, e
+	and a
+	jr nz, .declined
+	call HasEnoughMoney
+	jr c, .notEnoughMoney
+	pop de ; selected Pokemon and move, not the yes/no menu's selection
+	ld a, d
 	ldh [hWhichPokemon], a
+	ld a, e
+	ld [wMoveNum], a
+	ld [wNamedObjectIndex], a
+	call GetMoveName
+	call CopyToStringBuffer
+	ldh a, [hMoney]
+	ld b, a
+	ldh a, [hMoney + 1]
+	ld c, a
+	push bc
+	ldh a, [hMoney + 2]
+	push af
 	ld a, [wLetterPrintingDelayFlags]
 	push af
 	xor a
 	ld [wLetterPrintingDelayFlags], a
+.learnMove
 	predef LearnMove
+	ld e, b ; LearnMove returns b = 1 only when the move was learned
 	pop af
 	ld [wLetterPrintingDelayFlags], a
-	ld a, b
-	and a
-	jr z, .exit
-	; Charge MOVE_RELEARNER_PRICE_BCD
-	xor a
+.restoreQuote
+	pop af
 	ld [wPriceTemp + 2], a
-	ld a, HIGH(MOVE_RELEARNER_PRICE_WORD)
+	pop bc
+	ld a, b
 	ld [wPriceTemp], a
-	ld a, LOW(MOVE_RELEARNER_PRICE_WORD)
+	ld a, c
 	ld [wPriceTemp + 1], a
+	ld a, e
+	and a
+	ret z
 	ld hl, wPriceTemp + 2
 	ld de, wPlayerMoney + 2
 	ld c, $3
 	predef SubBCDPredef
-	ld a, MONEY_BOX
-	ld [wTextBoxID], a
-	call DisplayTextBoxID
-	ld hl, PCMoveTutorByeText
+	scf
+	ret
+.notEnoughMoney
+	ld hl, PCMoveTutorNotEnoughMoneyText
 	call PrintText
-	jp TextScriptEnd
-.exit
-	ld hl, PCMoveTutorByeText
-	call PrintText
-	jp TextScriptEnd
+.declined
+	pop de
+	and a ; clear carry: no lesson, no payment
+	ret
 
 
 PCMoveTutorGreetingText:
@@ -1235,6 +1316,10 @@ PCMoveTutorNotEnoughMoneyText:
 
 PCMoveTutorWhichMoveText:
 	text_far _PCMoveTutorWhichMoveText
+	text_end
+
+PCMoveTutorConfirmText:
+	text_far _PCMoveTutorConfirmText
 	text_end
 
 PCMoveTutorByeText:

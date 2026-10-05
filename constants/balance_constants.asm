@@ -200,18 +200,19 @@ DEF CLERK_STAT_ULTRABALL_ODDS EQU 88 + 64 + 95
 DEF SALESMAN_PRICE_POKEBALL_BCD EQU $05
 DEF SALESMAN_PRICE_GREATBALL_BCD EQU $12
 DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $20
-; The lobby Move Tutor (PCMoveTutorText, the rare Stadium/event moves). Used
-; twice: once for the HasEnoughMoney check, once for the deduction; the player
-; pays it once. Held to the top TM price (user rule 2026-09-28: the tutor costs
-; at least as much as the most expensive TM).
-DEF MOVE_RELEARNER_PRICE_BCD EQU TM_PRICE_S_BCD
-	ASSERT MOVE_RELEARNER_PRICE_BCD >= TM_PRICE_S_BCD, "the move tutor must cost at least the top TM"
+; Lobby Move Tutor fees, ordinary integers encoded by TutorMovePrices (bcd3).
+; Independent of reusable TM prices; OFFLIST tutor moves use the F-tier fee.
+DEF MOVE_TUTOR_PRICE_F EQU 1000
+DEF MOVE_TUTOR_PRICE_D EQU 2000
+DEF MOVE_TUTOR_PRICE_C EQU 3000
+DEF MOVE_TUTOR_PRICE_B EQU 5000
+DEF MOVE_TUTOR_PRICE_A EQU 10000
+DEF MOVE_TUTOR_PRICE_S EQU 15000
 ; The two high bytes of a 3-byte BCD money value, from a BCD-thousands byte:
 ; $TU -> $0T, $U0 (Y TU,000), as (high << 8) | middle for `ld de`/`ld bc`.
 DEF SALESMAN_PRICE_POKEBALL_WORD  EQU ((SALESMAN_PRICE_POKEBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_POKEBALL_BCD & $0F) << 4)
 DEF SALESMAN_PRICE_GREATBALL_WORD EQU ((SALESMAN_PRICE_GREATBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_GREATBALL_BCD & $0F) << 4)
 DEF SALESMAN_PRICE_ULTRABALL_WORD EQU ((SALESMAN_PRICE_ULTRABALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_ULTRABALL_BCD & $0F) << 4)
-DEF MOVE_RELEARNER_PRICE_WORD     EQU ((MOVE_RELEARNER_PRICE_BCD >> 4) << 8) | ((MOVE_RELEARNER_PRICE_BCD & $0F) << 4)
 ; BCD $0500 = Y500 per round. Read by engine/events/lobby_daycare.asm.
 DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
 ; The Psychic's price is computed (Y1000 x (badges + 1)), not a literal here.

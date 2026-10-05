@@ -713,6 +713,10 @@ INCLUDE "engine/movie/evolution.asm"
 INCLUDE "engine/overworld/elevator.asm"
 INCLUDE "engine/items/tm_prices.asm"
 
+SECTION "Move Tutor Prices", ROMX
+
+INCLUDE "engine/pokemon/tutor_prices.asm"
+
 SECTION "Credit Exchange", ROMX
 
 INCLUDE "engine/events/credit_mart.asm"
