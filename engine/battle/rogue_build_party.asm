@@ -159,10 +159,13 @@ PartyGenMixRow:
 ;      names, and spends that source's quota. "Strongest" is the highest MSRC_*
 ;      with a nonzero quota, which works because the MSRC_* order in
 ;      party_spec_constants.asm is ascending in power by construction.
-;   3. The remaining quotas are shuffled across the slots still unassigned.
+;   3. The remaining quotas are shuffled across the slots still unassigned,
+;      STRONGEST SOURCE FIRST. A mix that asks for more units than the team
+;      has free slots therefore drops its weakest units, never its curated
+;      sets - the row's intent survives a small team.
 ;
-; Anything left over is MSRC_LEARNSET, which is free: AddPartyMon's
-; `predef WriteMonMoves` already produces exactly that.
+; Anything left over takes the mix row's fallback column. MSRC_LEARNSET there
+; is free: AddPartyMon's `predef WriteMonMoves` already produces exactly that.
 ; ===========================================================================
 PartyGenAssignSources:
 ; Mark every slot unassigned. $FF, not MSRC_LEARNSET, so the quota shuffle can
@@ -281,11 +284,13 @@ PartyGenAssignSources:
 	pop hl
 
 ; --- claim 3: shuffle the remaining quotas across unassigned slots ---
-; For each source, for each unit of its quota, pick a random still-unassigned
-; slot. Bounded: the outer walk is NUM_MSRC_QUOTAS x PARTY_LENGTH, and a quota
-; unit that finds no free slot is simply dropped (the mix overflowed the team).
+; For each source, strongest (MSRC_SET) down to MSRC_LEARNSET, for each unit of
+; its quota, pick a random still-unassigned slot. Bounded: the outer walk is
+; NUM_MSRC_QUOTAS x PARTY_LENGTH, and a quota unit that finds no free slot is
+; dropped (the mix overflowed the team) - and because the walk runs strongest
+; first, what is dropped is the weakest of the row's units.
 .quotas
-	ld d, 0                        ; d = source id
+	ld d, NUM_MSRC_QUOTAS - 1      ; d = source id
 .quotaSourceLoop
 	call PartyGenMixRow
 	ld c, d
@@ -313,19 +318,25 @@ PartyGenAssignSources:
 	dec e
 	jr .quotaUnitLoop
 .quotaNextSource
-	inc d
 	ld a, d
-	cp NUM_MSRC_QUOTAS
-	jr c, .quotaSourceLoop
+	and a
+	jr z, .quotasDone              ; MSRC_LEARNSET (0) was the last column
+	dec d
+	jr .quotaSourceLoop
+.quotasDone
 
-; --- anything still unclaimed is vanilla ---
+; --- anything still unclaimed takes the row's fallback source ---
+	call PartyGenMixRow
+	ld bc, MIX_FALLBACK_OFFSET
+	add hl, bc
+	ld d, [hl]                     ; d = fallback MSRC_*
 	ld hl, wPartyGenSlotSource
 	ld b, PARTY_LENGTH
 .defaultLoop
 	ld a, [hl]
 	inc a
 	jr nz, .defaultNext
-	ld [hl], MSRC_LEARNSET
+	ld [hl], d
 .defaultNext
 	inc hl
 	dec b
@@ -1404,13 +1415,21 @@ PartyGenApplyMoveset:
 	jr nz, PartyGenRollMoveset
 	call PartyGenApplySetMoveset
 	ret c                          ; a matching curated set was found and written
-; MSRC_SET falls back to MSRC_RANDOM when this species has no curated set
-; passing this mix's set_tier_mask and this mon's level - not a bug, since the
+; MSRC_SET falls back to the mix row's fallback source when this species has
+; no curated set passing this mix's set_tier_mask near this mon's level, even
+; after PartyGenApplySetMoveset widened its level window - not a bug, since the
 ; corpus tier distribution is skewed enough (HARD 1,204 of 1,816 kept records,
-; EASY 114, BAD 26 - see data/trainers/movesets.asm's own header) that a
-; narrow tier mask on an uncommon species legitimately yields zero candidates.
-	ld a, MSRC_RANDOM
+; EASY 114, BAD 26 - see data/trainers/movesets.asm's own header) and its level
+; ranges gappy enough that an uncommon species legitimately yields zero
+; candidates. The row picks the fallback so a band keeps its own difficulty:
+; the soft gym rows roll level-up moves, the hard ones roll with TMs.
+	call PartyGenMixRow
+	ld bc, MIX_FALLBACK_OFFSET
+	add hl, bc
+	ld a, [hl]
 	ld [wPartyGenSource], a
+	cp MSRC_LEARNSET
+	ret z                          ; the mon keeps AddPartyMon's vanilla four
 	; fallthrough
 
 ; ===========================================================================
@@ -1521,13 +1540,25 @@ PartyGenRollMoveset:
 ;   wPartyGenCandidates + 3     the bank the records array lives in
 ;   wPartyGenCandidates + 4..11 the record currently being examined (8 B)
 ;   wPartyGenCandidates + 12    loop index i
+;   wPartyGenCandidates + 13    level slack below: a record whose lvl_max is
+;                               at most this far under the mon's level passes
+;   wPartyGenCandidates + 14    nonzero once the window has been widened
 ;   wPartyGenTMUsed             this mix's set_tier_mask
 ;   wPartyGenTMCount            pass 1: running match count. pass 2: the
 ;                               target ordinal, countding down to 0
 ;
+; TWO WINDOWS. The first attempt wants the mon's level inside the record's
+; lvl_min..lvl_max, exactly as the corpus wrote it. If nothing passes, the
+; window widens once, DOWNWARD, by SET_LEVEL_SLACK_BELOW (balance_constants.asm)
+; and both passes run again. The corpus ranges are gappy - a species can have
+; sets for 20-30 and 45-55 and nothing between - and a set written for a few
+; levels lower is a far better match for the slot's intent than no set at all.
+; lvl_min is never relaxed: a set from higher levels would hand the mon its
+; moves early.
+;
 ; OUTPUT: carry SET and the mon's 4 moves + PP written, if a record passing
-;         this mix's set_tier_mask and this mon's level exists.
-;         carry CLEAR otherwise - caller falls back to MSRC_RANDOM.
+;         this mix's set_tier_mask near this mon's level exists.
+;         carry CLEAR otherwise - caller takes the mix row's fallback source.
 ; ===========================================================================
 PartyGenApplySetMoveset:
 	call PartyGenSlotMonBase       ; hl -> mon struct; MON_SPECIES is byte 0
@@ -1552,11 +1583,14 @@ PartyGenApplySetMoveset:
 	add hl, bc
 	ld a, [hl]                      ; set_tier_mask
 	ld [wPartyGenTMUsed], a
+	xor a
+	ld [wPartyGenCandidates + 13], a ; exact window first: no slack
+	ld [wPartyGenCandidates + 14], a ; not widened yet
 
 ; --- pass 1: count how many records pass the filter ---
+.pass1Start
 	xor a
 	ld [wPartyGenTMCount], a
-	xor a
 	ld [wPartyGenCandidates + 12], a ; i = 0
 .pass1Loop
 	call .loadRecord
@@ -1574,7 +1608,17 @@ PartyGenApplySetMoveset:
 
 	ld a, [wPartyGenTMCount]
 	and a
-	jp z, .noMatch                   ; nothing passed the tier/level filter
+	jr nz, .pass1HasMatch
+; Nothing passed. Widen the level window once and count again.
+	ld hl, wPartyGenCandidates + 14
+	ld a, [hl]
+	and a
+	jp nz, .noMatch                  ; already widened: nothing near this level
+	inc [hl]
+	ld a, SET_LEVEL_SLACK_BELOW
+	ld [wPartyGenCandidates + 13], a
+	jr .pass1Start
+.pass1HasMatch
 
 ; --- roll which of the matches (0..matchcount-1) to use, then find it ---
 	ld c, a
@@ -1643,7 +1687,10 @@ PartyGenApplySetMoveset:
 	jp FarCopyData2                 ; tail call; FarCopyData2 itself ends in ret
 
 ; OUTPUT: carry SET if the record just loaded (wPartyGenCandidates+4..11)
-;         passes this mix's set_tier_mask AND this mon's level range.
+;         passes this mix's set_tier_mask AND the current level window:
+;         lvl_min <= level <= lvl_max + slack_below.
+; The upper test is written as lvl_max + slack_below >= level so nothing
+; underflows; the sum cannot pass 255 (see the ASSERT below).
 ; CLOBBERS af, hl, d.
 .recordPasses:
 	ld a, [wPartyGenCandidates + 8] ; tier
@@ -1655,15 +1702,24 @@ PartyGenApplySetMoveset:
 	cp [hl]
 	jr c, .recordFail                ; level < lvl_min
 	inc hl                            ; lvl_max
-	ld d, a                           ; d = level
 	ld a, [hl]
-	cp d
-	jr c, .recordFail                 ; lvl_max < level
+	ld hl, wPartyGenCandidates + 13
+	add [hl]
+	ld d, a                           ; d = lvl_max + slack_below
+	ld a, [wCurEnemyLevel]
+	ld h, a
+	ld a, d
+	cp h
+	jr c, .recordFail                 ; lvl_max + slack_below < level
 	scf
 	ret
 .recordFail:
 	xor a
 	ret
+
+; Corpus lvl_min/lvl_max are levels, so at most MAX_LEVEL (tools/gen_movesets.py).
+ASSERT MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
+	"a set level slack this large would overflow .recordPasses' 8-bit sum"
 
 ; ===========================================================================
 ; PartyGenPickOne
@@ -2525,12 +2581,26 @@ RogueRosterMixId::
 ;
 ; OUTPUT: a = the gym-leader mix row for the current round, which is the plan's
 ;         "mini-boss / rival matches the gym leader of the same round".
+;
+; Cut on the GYM bands (GYM_BAND_ROUNDS, four of them), not RogueRoundBand's
+; three, so a mini-boss uses exactly the row the next leader's spec does. The
+; round index is the number of gyms already beaten, so index r is fought on the
+; way to gym r + 1, and r / GYM_BAND_ROUNDS is that gym's 0-based band. Index 8
+; (past gym 8, Victory Road) clamps to the last band.
 ; ===========================================================================
 RogueBossMixId::
 	call RogueBattleRound          ; b = round index
 	ld a, b
-	call RogueRoundBand
-	ld c, a
+	ld c, -1
+.divide
+	inc c
+	sub GYM_BAND_ROUNDS
+	jr nc, .divide                 ; c = round index / GYM_BAND_ROUNDS
+	ld a, c
+	cp NUM_GYM_BANDS
+	jr c, .inRange
+	ld c, NUM_GYM_BANDS - 1
+.inRange
 	ld b, 0
 	ld hl, GymMixByBand
 	add hl, bc
@@ -2544,12 +2614,14 @@ RosterMixByKindAndBand:
 	db MIX_TRAINER_EARLY, MIX_TRAINER_MID, MIX_TRAINER_LATE  ; steps 5-9
 	assert_table_length 2
 
+; Generated from GYM_BAND<n>_MIX (party_specs.asm), the same constants
+; gym_round_spec reads, so a leader and a mini-boss of one band cannot drift.
 GymMixByBand:
 	table_width 1, GymMixByBand
-	db MIX_GYM_EARLY
-	db MIX_GYM_LATE
-	db MIX_ELITE
-	assert_table_length NUM_ROUND_BANDS
+	FOR n, 1, NUM_GYM_BANDS + 1
+	db GYM_BAND{d:n}_MIX
+	ENDR
+	assert_table_length NUM_GYM_BANDS
 
 ; ===========================================================================
 ; RogueApplyMixToParty

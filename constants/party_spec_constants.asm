@@ -38,9 +38,11 @@
 	; low rank row unless the spike is intended.
 	const MSRC_RANDOM_TM_ONLY  ; 4
 	; A curated set from the generated corpus, filtered by tier mask and level
-	; band. MUST fall back to MSRC_RANDOM on an empty filtered list rather than
-	; read past the index - the corpus tier distribution is skewed enough that a
-	; narrow mask on an uncommon species legitimately yields zero candidates.
+	; band (widened once by SET_LEVEL_SLACK_* when nothing fits exactly). MUST
+	; fall back to the mix row's fallback source on an empty filtered list rather
+	; than read past the index - the corpus tier distribution is skewed enough
+	; that a narrow mask on an uncommon species legitimately yields zero
+	; candidates.
 	const MSRC_SET             ; 5
 	; Four literal move ids, carried in the slot override itself.
 	const MSRC_EXPLICIT        ; 6
@@ -248,10 +250,12 @@ DEF PARTY_GEN_MAX_RETRIES EQU 8
 ; and taking a low-ranked move there is the right answer anyway.
 DEF PARTY_GEN_MAX_DRAWS EQU 40
 
-; Round bands the difficulty grid is cut into: the plan's rounds 1-2, 3-5 and
-; 6-8. Three, not eight, because the mix table is a coarse ladder on purpose -
-; AITierByRound already scales per round, and a per-round mix row would be nine
-; rows of near-duplicates to maintain.
+; Round bands the ROUTE and TRAINER rows of the difficulty grid are cut into:
+; the plan's rounds 1-2, 3-5 and 6-8. The gym leader column (and the mini-boss
+; that follows it) is cut on four gym bands instead - see GYM_BAND_ROUNDS in
+; data/trainers/party_specs.asm. Three, not eight, because the mix table is a
+; coarse ladder on purpose - AITierByRound already scales per round, and a
+; per-round mix row would be nine rows of near-duplicates to maintain.
 DEF NUM_ROUND_BANDS EQU 3
 
 ; Quota columns in a MovesetMixTable row: one per rollable source. MSRC_EXPLICIT

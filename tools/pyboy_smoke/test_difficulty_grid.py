@@ -25,11 +25,15 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 
 PARTY_LENGTH = 6
 NUM_ROUND_BANDS = 3
+NUM_GYM_BANDS = 4
+GYM_BAND_ROUNDS = 2
 
 # Column order inside a mix row, matching the `mix` macro in party_specs.asm.
 QUOTA_COLUMNS = ("learnset", "learnset_full", "random", "random_tm",
                  "random_tm_only", "set")
 TIER_MASK, RANK_ROW, TM_CAP = 6, 7, 8
+FALLBACK = 13  # MIX_FALLBACK_OFFSET
+MSRC_SET = QUOTA_COLUMNS.index("set")
 
 # The plan's Phase 5 grid, as a model independent of the ROM. The static test
 # checks the ROM's lookup table implements this; the runtime test checks the
@@ -39,14 +43,35 @@ ROSTER_GRID = (
     ("MIX_ROUTE_EARLY", "MIX_ROUTE_MID", "MIX_ROUTE_LATE"),
     ("MIX_TRAINER_EARLY", "MIX_TRAINER_MID", "MIX_TRAINER_LATE"),
 )
-GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_LATE", "MIX_ELITE")
+# The gym leader column has FOUR bands (gyms 1-2, 3-4, 5-6, 7-8), the same
+# GYM_BAND_ROUNDS cut its species pools use; route and trainer rows keep three.
+GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_MID", "MIX_GYM_LATE", "MIX_ELITE")
 
 # The rank_row ladder the grid is meant to describe, per kind, by band.
+# The leader's gyms 3-4 row stays on NORMAL on purpose (2026-10-05): it was
+# the steepest step in the old three-band curve.
 RANK_LADDER = {
     "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_NORMAL"),
     "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD"),
-    "leader": ("RANK_ROW_NORMAL", "RANK_ROW_HARD", "RANK_ROW_ELITE"),
+    "leader": ("RANK_ROW_NORMAL", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
+               "RANK_ROW_ELITE"),
 }
+
+# Gym team size per round (GYM_R<n>_MONS), for the quota-fit check.
+_BALANCE = parse_rgbds_constants(
+    REPO_ROOT / "constants/balance_constants.asm",
+    parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm"))
+GYM_TEAM_SIZE = {r: _BALANCE[f"GYM_R{r}_MONS"] for r in range(1, 9)}
+
+
+def gym_bands_of_round_band(round_band):
+    """The gym bands whose rounds overlap a route/trainer round band.
+
+    Round band 0 is rounds 1-2, 1 is rounds 3-5, 2 is rounds 6-8 (1-based
+    rounds). Each 1-based round r belongs to gym band (r - 1) // 2.
+    """
+    rounds = {0: (1, 2), 1: (3, 4, 5), 2: (6, 7, 8)}[round_band]
+    return sorted({(r - 1) // GYM_BAND_ROUNDS for r in rounds})
 
 
 # Every row the grid model above knows about. Asserted to be the COMPLETE set,
@@ -58,7 +83,7 @@ ALL_MIX_NAMES = sum((list(row) for row in ROSTER_GRID), []) \
 # `DEF NUM_MOVESET_MIXES EQU const_value` does not survive parse_rgbds_constants
 # (const_value is an rgbds builtin, not a name it has seen), so these two sizes
 # are the ones this file reads out of the source rather than hard-coding.
-SIZE_CONSTANTS = ("MIX_ENTRY_SIZE", "MIX_ONLY_SPEC_SIZE")
+SIZE_CONSTANTS = ("MIX_ENTRY_SIZE", "MIX_ONLY_SPEC_SIZE", "MIX_FALLBACK_OFFSET")
 
 
 def _constants():
@@ -178,7 +203,7 @@ class DifficultyGridContractTest(unittest.TestCase):
         roster = image.offset("RosterMixByKindAndBand")
         seen.update(image.rom[roster:roster + 2 * NUM_ROUND_BANDS])
         gym = image.offset("GymMixByBand")
-        seen.update(image.rom[gym:gym + NUM_ROUND_BANDS])
+        seen.update(image.rom[gym:gym + NUM_GYM_BANDS])
         return seen
 
     def test_every_mix_row_is_reachable(self):
@@ -186,8 +211,8 @@ class DifficultyGridContractTest(unittest.TestCase):
 
         Phase 3's infinite loop lived in a branch only MIX_ELITE could reach,
         and stayed invisible while nothing referenced MIX_ELITE. Five new rows
-        landed in Phase 5; this is what says each of them is real content and
-        not a row someone meant to wire up later.
+        landed in Phase 5 and MIX_GYM_MID after it; this is what says each of
+        them is real content and not a row someone meant to wire up later.
         """
         for image in self.images:
             with self.subTest(rom=image.name):
@@ -247,12 +272,40 @@ class DifficultyGridContractTest(unittest.TestCase):
                         "mix, flags, then an immediate override terminator",
                     )
 
-    def test_quotas_never_exceed_a_full_party(self):
-        """An over-full mix silently drops its tail.
+    def test_fallback_is_a_rollable_source_below_set(self):
+        """The fallback column is also MSRC_SET's own fallback.
 
-        PartyGenAssignSources drops a quota unit that finds no free slot, so a
-        row summing past PARTY_LENGTH does not fail - it just means the last
-        columns never apply, which is a tuning bug that reads as a random one.
+        A fallback of MSRC_SET would send a set-less slot straight back to the
+        set path; anything at or past MSRC_EXPLICIT has no roll behind it.
+        """
+        for image in self.images:
+            for mix, row in enumerate(self.mix_rows(image)):
+                with self.subTest(rom=image.name, mix=mix):
+                    self.assertLess(row[FALLBACK], MSRC_SET)
+
+    def test_gym_rows_fit_every_team_in_their_band(self):
+        """A gym row never asks for more units than its rounds have mons.
+
+        The ROM asserts this at build time too (gym_round_spec); checked here
+        against the decoded table so a hand-edited row or a GYM_R<n>_MONS
+        retune that slips past the assert still fails loudly.
+        """
+        for image in self.images:
+            rows = self.mix_rows(image)
+            for round_no, size in GYM_TEAM_SIZE.items():
+                band = (round_no - 1) // GYM_BAND_ROUNDS
+                row = rows[self.const[GYM_BAND[band]]]
+                with self.subTest(rom=image.name, round=round_no):
+                    self.assertLessEqual(
+                        sum(row[:self.const["NUM_MSRC_QUOTAS"]]), size)
+
+    def test_quotas_never_exceed_a_full_party(self):
+        """An over-full mix silently drops its weakest units.
+
+        PartyGenAssignSources deals quotas strongest first and drops a unit
+        that finds no free slot, so a row summing past PARTY_LENGTH does not
+        fail - it just means its weakest columns never apply, which is a tuning
+        bug that reads as a random one.
         """
         for image in self.images:
             for mix, row in enumerate(self.mix_rows(image)):
@@ -284,20 +337,28 @@ class DifficultyGridContractTest(unittest.TestCase):
                             rows[mix][RANK_ROW], self.const[expected],
                             f"{names[kind][band]} should use {expected}",
                         )
-            # And the cross-kind claim, at every band.
+            # The leader ladder never falls band to band.
+            leader_ranks = [rows[self.const[name]][RANK_ROW] for name in GYM_BAND]
+            with self.subTest(rom=image.name, kind="leader monotone"):
+                self.assertEqual(leader_ranks, sorted(leader_ranks))
+            # And the cross-kind claim, at every band. The leader column is cut
+            # on gym bands, so compare it against every gym band a round band
+            # overlaps. Leader >= trainer rather than >: gyms 3-4 share
+            # RANK_ROW_NORMAL with the rounds 3-5 trainers on purpose.
             for band in range(NUM_ROUND_BANDS):
                 route = rows[self.const[ROSTER_GRID[0][band]]][RANK_ROW]
                 trainer = rows[self.const[ROSTER_GRID[1][band]]][RANK_ROW]
-                leader = rows[self.const[GYM_BAND[band]]][RANK_ROW]
                 with self.subTest(rom=image.name, band=band):
                     self.assertLess(route, trainer)
-                    self.assertLess(trainer, leader)
+                    for gym_band in gym_bands_of_round_band(band):
+                        leader = rows[self.const[GYM_BAND[gym_band]]][RANK_ROW]
+                        self.assertLessEqual(trainer, leader)
 
     def test_a_curated_set_quota_always_carries_a_tier_mask(self):
         """A nonzero MSRC_SET quota with a zero set_tier_mask can never match.
 
         PartyGenApplySetMoveset ANDs a record's tier against the mask, so mask 0
-        rejects every record and the slot silently degrades to MSRC_RANDOM. The
+        rejects every record and the slot silently degrades to its fallback. The
         row would look like it curates and never would.
         """
         for image in self.images:
@@ -476,9 +537,13 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         """
         self._boot()
         const = _constants()
+        # wBattleCount r*10..r*10+9 is fought on the way to gym r + 1, so it
+        # takes that gym's band: one cell per band, plus the post-gym-8 clamp.
         for battle_count, expected in ((5, "MIX_GYM_EARLY"),
-                                       (25, "MIX_GYM_LATE"),
-                                       (65, "MIX_ELITE")):
+                                       (25, "MIX_GYM_MID"),
+                                       (45, "MIX_GYM_LATE"),
+                                       (65, "MIX_ELITE"),
+                                       (85, "MIX_ELITE")):
             with self.subTest(battle_count=battle_count):
                 self.assertEqual(
                     self._selected_mix(battle_count,

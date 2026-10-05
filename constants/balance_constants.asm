@@ -50,6 +50,15 @@ DEF GYM_R8_MONS EQU 6
 DEF GYM_R8_BASE EQU 47
 DEF GYM_R8_STEP EQU 2
 
+; --- Curated moveset level window --------------------------------------------
+; A curated set (MSRC_SET) is written for a level range. When no set of the
+; mix's tier covers a mon's exact level, PartyGenApplySetMoveset widens the
+; window once, DOWNWARD only: a set whose range ends up to this many levels
+; under the mon also qualifies. Only after that does the slot take its mix
+; row's fallback source. Never upward - a set written for higher levels would
+; hand the mon its moves early.
+DEF SET_LEVEL_SLACK_BELOW EQU 10
+
 ; --- Elite Four -------------------------------------------------------------
 ; Tier t (1-4, from wBattleCount 86-89): slot 0 is E4_BASE_LEVEL + t, and each
 ; slot adds E4_LEVEL_STEP. Read by e4_team_spec in party_specs.asm.
