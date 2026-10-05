@@ -979,7 +979,7 @@ ReplaceFaintedEnemyMon:
 
 TrainerBattleVictory:
 	; --- Phase 7e: procedural-map trainer victories are FREE -----------------
-	; A trainer-class victory on one of the three procedural maps can only be a
+	; A trainer-class victory on a procedural map can only be a
 	; stage-event NPC, and those must not advance the run: no wBattleCount, no
 	; credits. They are a side encounter the player did not choose, and the
 	; count drives enemy levels, AI tier and reward tiers for everything after.
@@ -1002,6 +1002,14 @@ TrainerBattleVictory:
 	cp PROCEDURAL_FOREST
 	jr z, .creditsDone
 	cp PROCEDURAL_FACILITY
+	jr z, .creditsDone
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .creditsDone
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .creditsDone
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .creditsDone
+	cp PROCEDURAL_CEMETERY_4
 	jr z, .creditsDone
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents
