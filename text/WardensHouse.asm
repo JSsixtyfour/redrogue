@@ -107,5 +107,5 @@ _WardenGift4Desc::
     
 _WardenGift5Desc::
 	text "As valuable as my"
-	line "my teeth!"
+	line "teeth!"
 	done

@@ -128,9 +128,9 @@ PokemonMansion1F_TextPointers:
 	def_text_pointers
 	dw_const PokemonMansion1FPaddingText,                          TEXT_POKEMONMANSION1F_PADDING
 	dw_const PokemonMansion1FScientistText,                        TEXT_POKEMONMANSION1F_SCIENTIST
+    dw_const PokemonMansion1FBurglar1Text,                       TEXT_POKEMONMANSION1F_BURGLAR_1
+    dw_const PokemonMansion1FBurglar2Text,                       TEXT_POKEMONMANSION1F_BURGLAR_2
     dw_const PokemonMansion1FScientist2Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_2
-    dw_const PokemonMansion1FScientist3Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_3
-    dw_const PokemonMansion1FScientist5Text,                       TEXT_POKEMONMANSION1F_SCIENTIST_5
 	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_ESCAPE_ROPE
 	dw_const PickUpItemText,                                       TEXT_POKEMONMANSION1F_CARBOS
     dw_const RandomPickUpItemText,                                 TEXT_POKEMONMANSION1F_RANDOM
@@ -148,11 +148,11 @@ Mansion1TrainerHeaders:
 Mansion1TrainerHeader0:
 	trainer EVENT_BEAT_MANSION_1_TRAINER_0, 3, PokemonMansion1FScientistBattleText, PokemonMansion1FScientistEndBattleText, PokemonMansion1FScientistAfterBattleText
 Mansion1TrainerHeader1:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_1, 2, PokemonMansion1FScientist2BattleText, PokemonMansion1FScientist2EndBattleText, PokemonMansion1FScientist2AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_1, 2, PokemonMansion1FBurglar1BattleText, PokemonMansion1FBurglar1EndBattleText, PokemonMansion1FBurglar1AfterBattleText
 Mansion1TrainerHeader2:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 2, PokemonMansion1FScientist3BattleText, PokemonMansion1FScientist3EndBattleText, PokemonMansion1FScientist3AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 2, PokemonMansion1FBurglar2BattleText, PokemonMansion1FBurglar2EndBattleText, PokemonMansion1FBurglar2AfterBattleText
 Mansion1TrainerHeader3:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist5BattleText, PokemonMansion1FScientist5EndBattleText, PokemonMansion1FScientist5AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist2BattleText, PokemonMansion1FScientist2EndBattleText, PokemonMansion1FScientist2AfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.
@@ -165,19 +165,19 @@ PokemonMansion1FScientistText:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonMansion1FScientist2Text:
+PokemonMansion1FBurglar1Text:
 	text_asm
 	ld hl, Mansion1TrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonMansion1FScientist3Text:
+PokemonMansion1FBurglar2Text:
 	text_asm
 	ld hl, Mansion1TrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonMansion1FScientist5Text:
+PokemonMansion1FScientist2Text:
 	text_asm
 	ld hl, Mansion1TrainerHeader3
 	call TalkToTrainer
@@ -195,6 +195,30 @@ PokemonMansion1FScientistAfterBattleText:
 	text_far _PokemonMansion1FScientistAfterBattleText
 	text_end
 
+PokemonMansion1FBurglar1BattleText:
+	text_far _PokemonMansion1FBurglar1BattleText
+	text_end
+
+PokemonMansion1FBurglar1EndBattleText:
+	text_far _PokemonMansion1FBurglar1EndBattleText
+	text_end
+
+PokemonMansion1FBurglar1AfterBattleText:
+	text_far _PokemonMansion1FBurglar1AfterBattleText
+	text_end
+
+PokemonMansion1FBurglar2BattleText:
+	text_far _PokemonMansion1FBurglar2BattleText
+	text_end
+
+PokemonMansion1FBurglar2EndBattleText:
+	text_far _PokemonMansion1FBurglar2EndBattleText
+	text_end
+
+PokemonMansion1FBurglar2AfterBattleText:
+	text_far _PokemonMansion1FBurglar2AfterBattleText
+	text_end
+
 PokemonMansion1FScientist2BattleText:
 	text_far _PokemonMansion1FScientist2BattleText
 	text_end
@@ -204,30 +228,6 @@ PokemonMansion1FScientist2EndBattleText:
 	text_end
 
 PokemonMansion1FScientist2AfterBattleText:
-	text_far _PokemonMansion1FScientist2AfterBattleText
-	text_end
-
-PokemonMansion1FScientist3BattleText:
-	text_far _PokemonMansion1FScientist3BattleText
-	text_end
-
-PokemonMansion1FScientist3EndBattleText:
-	text_far _PokemonMansion1FScientist3EndBattleText
-	text_end
-
-PokemonMansion1FScientist3AfterBattleText:
-	text_far _PokemonMansion1FScientist3AfterBattleText
-	text_end
-
-PokemonMansion1FScientist5BattleText:
-	text_far _PokemonMansion1FScientist5BattleText
-	text_end
-
-PokemonMansion1FScientist5EndBattleText:
-	text_far _PokemonMansion1FScientist5EndBattleText
-	text_end
-
-PokemonMansion1FScientist5AfterBattleText:
 	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
@@ -316,5 +316,5 @@ PokemonMansion1FNoTurningBackText:
 	text_end
 
 PokemonMansion1FBossAfterText:
-	text_far _PokemonMansion1FScientist5AfterBattleText
+	text_far _PokemonMansion1FScientist2AfterBattleText
 	text_end

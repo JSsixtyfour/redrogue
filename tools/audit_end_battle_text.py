@@ -320,6 +320,14 @@ def main(argv):
             info.append((where, label, name, cmds))
             continue
         problems = measure(cmds, prefix)
+        # A body must open with `text`. TextCommandProcessor reads the first
+        # byte as a command, and any byte >= TX_SOUND_POKEDEX_RATING goes to
+        # TextCommand_SOUND, so `line "Impossible!"` played its $4F and every
+        # letter as sound effects and garbled the victory music (Mansion 1F
+        # burglar, 2026-10-06).
+        if cmds and cmds[0][0] in ("line", "cont", "para", "next"):
+            problems.append(f"opens with `{cmds[0][0]}`, not `text`: the text engine "
+                            "plays its bytes as sound commands")
         # A speaker tag of its own doubles the engine's: "LANCE: LANCE: What?!"
         first = next((arg for op, arg in cmds if op == "text"), "")
         if re.match(r"^[A-Z][A-Z.]*: ", first):

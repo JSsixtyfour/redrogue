@@ -24,24 +24,24 @@
 
 	; Row 0, Great Ball (OBJ 1): blue top
 	RGB 31, 31, 31
-	RGB  8, 14, 31
+	RGB  2,  8, 31
 	RGB  2,  5, 20
 	RGB  3,  3,  3
 
 	; Row 1, Ultra Ball (OBJ 2): near-black top, dark-gold outline
 	RGB 31, 31, 31
-	RGB  3,  3,  3
+	RGB  5,  5,  5
 	RGB  2,  2,  2
-	RGB 15, 12,  0
+	RGB  3,  3,  3
 
 	; Row 2, Master Ball (OBJ 3): purple top
 	RGB 31, 31, 31
-	RGB 20,  6, 26
-	RGB 11,  2, 15
+	RGB 15,  6, 23
+	RGB 10,  4, 12
 	RGB  3,  3,  3
 
 	; Row 3, standard Poke Ball (OBJ 7): red top (colour 2, via rOBP1)
 	RGB 31, 31, 31
-	RGB 20,  2,  2
-	RGB 28,  4,  4
+	RGB 22,  3,  3
+	RGB 26,  4,  4
 	RGB  3,  3,  3

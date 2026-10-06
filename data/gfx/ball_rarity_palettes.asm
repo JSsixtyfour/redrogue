@@ -25,7 +25,7 @@
 
 	; Great Ball: blue top
 	RGB 31, 31, 31
-	RGB  8, 14, 31
+	RGB  2,  8, 31
 	RGB  2,  5, 20
 	RGB  3,  3,  3
 
@@ -37,12 +37,12 @@
 	; and lifts anything else hard: 5,5,6 measured 12,12,12 and 3,3,4 measured
 	; 10,10,10 in OBJ palette RAM, silver rather than black.
 	RGB 31, 31, 31
-	RGB  3,  3,  3
+	RGB  5,  5,  5
 	RGB  2,  2,  2
-	RGB 15, 12,  0
+	RGB  3,  3,  3
 
 	; Master Ball: purple top (colour 1). Colour 2 is the STANDARD ball's red top.
 	RGB 31, 31, 31
-	RGB 20,  6, 26
-	RGB 28,  4,  4
+	RGB 15,  6, 23
+	RGB 10,  4, 12
 	RGB  3,  3,  3
