@@ -330,40 +330,7 @@ DisplayChooseQuantityMenu::
 	cp PRICEDITEMLISTMENU
 	jr nz, .printQuantity
 .printPrice
-	ld c, $03
-	ld a, [wItemQuantity]
-	ld b, a
-	ld hl, hMoney ; total price
-; initialize total price to 0
-	xor a
-	ld [hli], a
-	ld [hli], a
-	ld [hl], a
-.addLoop ; loop to multiply the individual price by the quantity to get the total price
-	ld de, hMoney + 2
-	ld hl, hItemPrice + 2
-	push bc
-	predef AddBCDPredef ; add the individual price to the current sum
-	pop bc
-	dec b
-	jr nz, .addLoop
-	ldh a, [hHalveItemPrices]
-	and a ; should the price be halved (for selling items)?
-	jr z, .skipHalvingPrice
-	xor a
-	ldh [hDivideBCDDivisor], a
-	ldh [hDivideBCDDivisor + 1], a
-	ld a, $02
-	ldh [hDivideBCDDivisor + 2], a
-	predef DivideBCDPredef3 ; halves the price
-; store the halved price
-	ldh a, [hDivideBCDQuotient]
-	ldh [hMoney], a
-	ldh a, [hDivideBCDQuotient + 1]
-	ldh [hMoney + 1], a
-	ldh a, [hDivideBCDQuotient + 2]
-	ldh [hMoney + 2], a
-.skipHalvingPrice
+	call CalculateItemQuantityPrice
 	hlcoord 12, 10
 	ld de, SpacesBetweenQuantityAndPriceText
 	call PlaceString
@@ -635,3 +602,39 @@ PrintListMenuEntries::
 ; marcelnote - moved from home/list_menu.asm
 ListMenuCancelText::
 	db "CANCEL@"
+
+CalculateItemQuantityPrice::
+; hMoney = hItemPrice * wItemQuantity (nonzero), halved for sales.
+; Shared by the quantity menu and the quantity-one TM sale path.
+	ld c, $03
+	ld a, [wItemQuantity]
+	ld b, a
+	ld hl, hMoney
+	xor a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+.addLoop
+	ld de, hMoney + 2
+	ld hl, hItemPrice + 2
+	push bc
+	predef AddBCDPredef
+	pop bc
+	dec b
+	jr nz, .addLoop
+	ldh a, [hHalveItemPrices]
+	and a
+	ret z
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
+	ld a, $02
+	ldh [hDivideBCDDivisor + 2], a
+	predef DivideBCDPredef3
+	ldh a, [hDivideBCDQuotient]
+	ldh [hMoney], a
+	ldh a, [hDivideBCDQuotient + 1]
+	ldh [hMoney + 1], a
+	ldh a, [hDivideBCDQuotient + 2]
+	ldh [hMoney + 2], a
+	ret

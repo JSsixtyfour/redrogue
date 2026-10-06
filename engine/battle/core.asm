@@ -2254,6 +2254,8 @@ DrawPlayerHUDAndHPBar:
 	lb bc, 5, 11
 	call ClearScreenArea
 	callfar PlacePlayerHUDTiles
+	; Party-ball borders also use PlaceHUDTiles, before active mons are loaded.
+	farcall DrawBattleVariantMarker ; e = -1 from PlacePlayerHUDTiles
 	hlcoord 18, 9
 	ld [hl], $73
 	ld de, wBattleMonNick
@@ -2316,6 +2318,7 @@ DrawEnemyHUDAndHPBar:
 	lb bc, 4, 12
 	call ClearScreenArea
 	callfar PlaceEnemyHUDTiles
+	farcall DrawBattleVariantMarker ; e = 1 from PlaceEnemyHUDTiles
 	ld de, wEnemyMonNick
 	hlcoord 1, 0
 	call CenterMonName

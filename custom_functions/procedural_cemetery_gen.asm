@@ -1859,6 +1859,10 @@ PCemNpcToggleTable:
 ; load, and again from the vanish.
 ; ============================================================
 PCemPlaceStageEventNpcs:
+	; Battle return keeps the trainer's approached position and movement state.
+	ld a, [wStatusFlags4]
+	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+	ret nz
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	ret z

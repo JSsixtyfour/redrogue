@@ -6890,6 +6890,10 @@ PFacHideoutFindFloor:
     db $80
 
 PFacPlaceStageEventNpcs:
+    ; Battle return keeps the trainer's approached position and movement state.
+    ld a, [wStatusFlags4]
+    bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+    ret nz
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
     ld a, BMODE_ADVANCED

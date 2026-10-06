@@ -202,6 +202,55 @@ StageEventApplyTrainers::
 	ld [hli], a
 	ld a, e
 	ld [hl], a
+	; Joy's sheet contains healing poses, not directional walking frames.
+	; Reassert her standard standing frame on entry and battle return. Keep
+	; her logical facing consistent with the fixed DOWN movement constraint.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_JOY
+	ret nz
+	ld a, d
+	swap a
+	add SPRITESTATEDATA1_INTRAANIMFRAMECOUNTER
+	ld l, a
+	ld h, HIGH(wSpriteStateData1)
+	xor a
+	ld [hli], a                    ; intra-animation counter
+	ld [hli], a                    ; animation frame
+	ASSERT SPRITE_FACING_DOWN == 0
+	ld [hl], a                     ; facing DOWN selects the standing pose
+	ld a, d
+	dec a
+	add a
+	ld l, a
+	ld h, 0
+	ld bc, wMapSpriteData
+	add hl, bc
+	ld [hl], DOWN
+	ret
+
+; Only stationary event sprites on procedural maps get adjacency-only sight.
+; The engine measures sight in pixels: one movement tile is 16 pixels.
+; Clobbers a/bc/hl; preserves de. TrainerEngage saves its incoming hl/de.
+StageEventLimitTrainerSight::
+	ldh a, [hCurMap]
+	cp POKEMON_TOWER_7F             ; excluded from the keep-sprite table scan
+	ret z
+	call StageEventKeepSpriteOnDefeat
+	ret nc
+	ld a, [wTrainerSpriteOffset]
+	ld l, a
+	ld h, HIGH(wSpriteStateData1)
+	ld a, [hl]                     ; current picture, not stale event state
+	cp SPRITE_NURSE
+	jr z, .adjacent
+	cp SPRITE_JESSIE
+	jr z, .adjacent
+	cp SPRITE_JAMES
+	ret nz
+.adjacent
+	ld a, 16
+	ld [wTrainerEngageDistance], a
 	ret
 
 ; a = wTrainerNo (1-9), the SAME round-tier stage_event_team_spec

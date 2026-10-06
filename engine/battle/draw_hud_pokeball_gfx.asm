@@ -161,7 +161,6 @@ PlaceHUDTiles:
 	add hl, de
 	ld a, [wHUDTriangleTile] ; rightmost tile
 	ld [hl], a
-	farcall DrawBattleVariantMarker
 	ret
 
 SetupPlayerAndEnemyPokeballs:

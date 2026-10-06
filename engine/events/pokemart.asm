@@ -146,6 +146,7 @@ DisplayPokemartDialogue_::
 .sellTMConfirm
 	ld a, 1
 	ld [wItemQuantity], a
+	call CalculateItemQuantityPrice
 .sellShowPrice
 	ld hl, PokemartTellSellPriceText
 	call PrintText
