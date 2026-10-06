@@ -24,8 +24,9 @@ from test_party_spec_coverage import Image, ROMS
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 PARTY_LENGTH = 6
-NUM_ROUND_BANDS = 3
-NUM_GYM_BANDS = 4
+# Every kind is cut on the same four bands (gyms 1-2, 3-4, 5-6, 7-8): the
+# GYM_BAND_ROUNDS cut the leader's species pools use.
+NUM_BANDS = 4
 GYM_BAND_ROUNDS = 2
 
 # Column order inside a mix row, matching the `mix` macro in party_specs.asm.
@@ -40,19 +41,20 @@ MSRC_SET = QUOTA_COLUMNS.index("set")
 # ROM's code reaches that table. Row 0 is the route trainer (step 0-4), row 1
 # the final route trainer and the gym trainers (step 5-9).
 ROSTER_GRID = (
-    ("MIX_ROUTE_EARLY", "MIX_ROUTE_MID", "MIX_ROUTE_LATE"),
-    ("MIX_TRAINER_EARLY", "MIX_TRAINER_MID", "MIX_TRAINER_LATE"),
+    ("MIX_ROUTE_EARLY", "MIX_ROUTE_MID", "MIX_ROUTE_LATE", "MIX_ROUTE_FINAL"),
+    ("MIX_TRAINER_EARLY", "MIX_TRAINER_MID", "MIX_TRAINER_LATE",
+     "MIX_TRAINER_FINAL"),
 )
-# The gym leader column has FOUR bands (gyms 1-2, 3-4, 5-6, 7-8), the same
-# GYM_BAND_ROUNDS cut its species pools use; route and trainer rows keep three.
 GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_MID", "MIX_GYM_LATE", "MIX_ELITE")
 
-# The rank_row ladder the grid is meant to describe, per kind, by band.
-# The leader's gyms 3-4 row stays on NORMAL on purpose (2026-10-05): it was
-# the steepest step in the old three-band curve.
+# The rank_row ladder the grid is meant to describe, per kind, by band. Each
+# kind's ladder never falls; the leader's gyms 3-4 row stays on NORMAL on
+# purpose (2026-10-05), sharing it with that band's trainers.
 RANK_LADDER = {
-    "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_NORMAL"),
-    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD"),
+    "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_NORMAL",
+              "RANK_ROW_HARD"),
+    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
+                "RANK_ROW_HARD"),
     "leader": ("RANK_ROW_NORMAL", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
                "RANK_ROW_ELITE"),
 }
@@ -64,14 +66,38 @@ _BALANCE = parse_rgbds_constants(
 GYM_TEAM_SIZE = {r: _BALANCE[f"GYM_R{r}_MONS"] for r in range(1, 9)}
 
 
-def gym_bands_of_round_band(round_band):
-    """The gym bands whose rounds overlap a route/trainer round band.
+def roster_team_sizes():
+    """{round index: (smallest route team, smallest gym-trainer-row team)}.
 
-    Round band 0 is rounds 1-2, 1 is rounds 3-5, 2 is rounds 6-8 (1-based
-    rounds). Each 1-based round r belongs to gym band (r - 1) // 2.
+    From data/balance/trainer_levels.asm: nine 11-byte blocks for the route
+    table, then nine for the gym trainers. Bytes 2-5 are the normal class
+    counts, 7-10 the final trainer's. A normal team of
+    ROSTER_VARY_MIN_SIZE..ROSTER_FULL_SIZE-1 mons may field one fewer
+    (GetRandRoster's .maybeShrink); a final trainer never does. The gym-trainer
+    mix row also covers the final ROUTE trainer, so its smallest team is taken
+    over that one, the normal gym trainers and the final gym trainer.
     """
-    rounds = {0: (1, 2), 1: (3, 4, 5), 2: (6, 7, 8)}[round_band]
-    return sorted({(r - 1) // GYM_BAND_ROUNDS for r in rounds})
+    values = []
+    text = (REPO_ROOT / "data/balance/trainer_levels.asm").read_text()
+    for raw in text.splitlines():
+        code = raw.split(";", 1)[0].strip()
+        if code.startswith("db "):
+            values.append(int(code[3:].strip(), 0))
+
+    def block(index):
+        cells = values[index * 11:(index + 1) * 11]
+        normal, final = sum(cells[2:6]), sum(cells[7:11])
+        if _BALANCE["ROSTER_VARY_MIN_SIZE"] <= normal < _BALANCE["ROSTER_FULL_SIZE"]:
+            normal -= 1
+        return normal, final
+
+    rounds = len(values) // 22
+    sizes = {}
+    for index in range(rounds):
+        route_normal, route_final = block(index)
+        gym_normal, gym_final = block(rounds + index)
+        sizes[index] = (route_normal, min(route_final, gym_normal, gym_final))
+    return sizes
 
 
 # Every row the grid model above knows about. Asserted to be the COMPLETE set,
@@ -119,12 +145,15 @@ def expected_round_and_step(battle_count):
     return clamped // R, clamped % R
 
 
+def strongest_source(row):
+    """The highest MSRC_* a decoded mix row can hand a slot (quota or fallback)."""
+    named = [i for i, q in enumerate(row[:len(QUOTA_COLUMNS)]) if q]
+    return max(named + [row[FALLBACK]])
+
+
 def expected_band(round_index):
-    if round_index < 2:
-        return 0
-    if round_index < 5:
-        return 1
-    return 2
+    """Round index r is fought on the way to gym r + 1; its band is that gym's."""
+    return min(round_index // GYM_BAND_ROUNDS, NUM_BANDS - 1)
 
 
 def expected_roster_mix(battle_count):
@@ -201,9 +230,9 @@ class DifficultyGridContractTest(unittest.TestCase):
                 record_off = list_off + (record_addr - (list_addr))
                 seen.add(image.rom[record_off + 4])  # header byte 4 = mix id
         roster = image.offset("RosterMixByKindAndBand")
-        seen.update(image.rom[roster:roster + 2 * NUM_ROUND_BANDS])
+        seen.update(image.rom[roster:roster + 2 * NUM_BANDS])
         gym = image.offset("GymMixByBand")
-        seen.update(image.rom[gym:gym + NUM_GYM_BANDS])
+        seen.update(image.rom[gym:gym + NUM_BANDS])
         return seen
 
     def test_every_mix_row_is_reachable(self):
@@ -241,7 +270,7 @@ class DifficultyGridContractTest(unittest.TestCase):
                 for band, name in enumerate(row):
                     with self.subTest(rom=image.name, kind=kind, band=band):
                         self.assertEqual(
-                            image.rom[base + kind * NUM_ROUND_BANDS + band],
+                            image.rom[base + kind * NUM_BANDS + band],
                             self.const[name],
                         )
 
@@ -299,6 +328,30 @@ class DifficultyGridContractTest(unittest.TestCase):
                     self.assertLessEqual(
                         sum(row[:self.const["NUM_MSRC_QUOTAS"]]), size)
 
+    def test_roster_rows_fit_the_smallest_team_in_their_band(self):
+        """No roster unit depends on the team reaching some size.
+
+        A row is "these units, then the fallback": if its quotas add up past
+        the smallest team its band fields, some battles silently lose units.
+        Route rows are checked against normal route teams (which may shrink by
+        one), trainer rows against every team that fields the gym-trainer row.
+        """
+        sizes = roster_team_sizes()
+        for image in self.images:
+            rows = self.mix_rows(image)
+            for band in range(NUM_BANDS):
+                rounds = [r for r in sizes if expected_band(r) == band]
+                smallest_route = min(sizes[r][0] for r in rounds)
+                smallest_trainer = min(sizes[r][1] for r in rounds)
+                for kind, smallest in ((0, smallest_route), (1, smallest_trainer)):
+                    name = ROSTER_GRID[kind][band]
+                    with self.subTest(rom=image.name, row=name):
+                        total = sum(rows[self.const[name]][:self.const["NUM_MSRC_QUOTAS"]])
+                        self.assertLessEqual(
+                            total, smallest,
+                            f"{name} deals {total} units but its band fields "
+                            f"teams of {smallest}")
+
     def test_quotas_never_exceed_a_full_party(self):
         """An over-full mix silently drops its weakest units.
 
@@ -330,6 +383,10 @@ class DifficultyGridContractTest(unittest.TestCase):
         for image in self.images:
             rows = self.mix_rows(image)
             for kind, ladder in RANK_LADDER.items():
+                with self.subTest(rom=image.name, kind=kind, ladder=True):
+                    ranks = [self.const[name] for name in ladder]
+                    self.assertEqual(ranks, sorted(ranks),
+                                     f"the {kind} ladder falls somewhere")
                 for band, expected in enumerate(ladder):
                     mix = self.const[names[kind][band]]
                     with self.subTest(rom=image.name, kind=kind, band=band):
@@ -337,22 +394,30 @@ class DifficultyGridContractTest(unittest.TestCase):
                             rows[mix][RANK_ROW], self.const[expected],
                             f"{names[kind][band]} should use {expected}",
                         )
-            # The leader ladder never falls band to band.
-            leader_ranks = [rows[self.const[name]][RANK_ROW] for name in GYM_BAND]
-            with self.subTest(rom=image.name, kind="leader monotone"):
-                self.assertEqual(leader_ranks, sorted(leader_ranks))
-            # And the cross-kind claim, at every band. The leader column is cut
-            # on gym bands, so compare it against every gym band a round band
-            # overlaps. Leader >= trainer rather than >: gyms 3-4 share
-            # RANK_ROW_NORMAL with the rounds 3-5 trainers on purpose.
-            for band in range(NUM_ROUND_BANDS):
-                route = rows[self.const[ROSTER_GRID[0][band]]][RANK_ROW]
-                trainer = rows[self.const[ROSTER_GRID[1][band]]][RANK_ROW]
+            # And the cross-kind claims, at every band: route <= trainer <=
+            # leader, and a route is no softer than the previous band's gym
+            # trainers.
+            for band in range(NUM_BANDS):
+                route_row = rows[self.const[ROSTER_GRID[0][band]]]
+                trainer_row = rows[self.const[ROSTER_GRID[1][band]]]
+                route, trainer = route_row[RANK_ROW], trainer_row[RANK_ROW]
+                leader = rows[self.const[GYM_BAND[band]]][RANK_ROW]
                 with self.subTest(rom=image.name, band=band):
-                    self.assertLess(route, trainer)
-                    for gym_band in gym_bands_of_round_band(band):
-                        leader = rows[self.const[GYM_BAND[gym_band]]][RANK_ROW]
-                        self.assertLessEqual(trainer, leader)
+                    self.assertLessEqual(route, trainer)
+                    self.assertLessEqual(trainer, leader)
+                    self.assertLessEqual(route, leader)
+                    if band:
+                        previous = rows[self.const[ROSTER_GRID[1][band - 1]]][RANK_ROW]
+                        self.assertGreaterEqual(
+                            route, previous,
+                            "a route should be no softer than the gym "
+                            "trainers of the band before it")
+                    if route == trainer:
+                        self.assertGreater(
+                            strongest_source(trainer_row),
+                            strongest_source(route_row),
+                            "where route and gym trainer share a rank_row the "
+                            "gym trainer must name a stronger source")
 
     def test_a_curated_set_quota_always_carries_a_tier_mask(self):
         """A nonzero MSRC_SET quota with a zero set_tier_mask can never match.
@@ -373,6 +438,8 @@ class DifficultyGridContractTest(unittest.TestCase):
                     )
 
     def test_tm_cap_is_nonzero_wherever_random_tm_is_used(self):
+        # Covers the fallback column too: a row whose fallback is random+TM
+        # rolls it on every slot no quota reaches.
         """MSRC_RANDOM_TM with tm_cap 0 is MSRC_RANDOM with extra steps.
 
         Not fatal - the union still contains every level-learnable move that is
@@ -381,7 +448,8 @@ class DifficultyGridContractTest(unittest.TestCase):
         """
         for image in self.images:
             for mix, row in enumerate(self.mix_rows(image)):
-                if row[QUOTA_COLUMNS.index("random_tm")] == 0:
+                rtm = QUOTA_COLUMNS.index("random_tm")
+                if row[rtm] == 0 and row[FALLBACK] != rtm:
                     continue
                 with self.subTest(rom=image.name, mix=mix):
                     self.assertGreater(row[TM_CAP], 0)
@@ -475,14 +543,15 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
                      at(6, ROUND["FINAL_GYM_TRAINER_STEP"])])
 
     def test_band_edges_and_the_round_clamp(self):
-        """The three values most likely to be off by one.
+        """The values most likely to be off by one.
 
         19 is the last battle of round index 1 (still band 0), 20 the first of
-        round index 2 (band 1), and 95 is past the clamp GetRandRoster applies
-        at 90 - without it the round index would run to 9 and index one past
-        the end of the band table.
+        round index 2 (band 1), 40 the first of band 2, 60 the first of band 3,
+        and 95 is past the clamp GetRandRoster applies at 90 - without it the
+        round index would run to 9 and past the last band.
         """
-        self._check([at(2, 0) - 1, at(2, 0), ROUND["LAST_ROUND_BATTLECOUNT"] + 6])
+        self._check([at(2, 0) - 1, at(2, 0), at(4, 0), at(6, 0),
+                     ROUND["LAST_ROUND_BATTLECOUNT"] + 6])
 
     def test_gambler_is_exempt_from_the_grid(self):
         """Gambler's Paradise owns its own movesets and must not be mixed.
@@ -506,7 +575,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         self.seen.clear()
-        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls every slot
+        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls three slots
         h.write8("wTrainerClass", self.classes["GAMBLER"])
         h.write8("wTrainerNo", 1)
         h.call_routine("ReadTrainer", limit=60000)
@@ -521,7 +590,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
             "nothing about the exemption",
         )
         self.assertEqual(
-            self._selected_mix(at(6, 1)), _constants()["MIX_ROUTE_LATE"],
+            self._selected_mix(at(6, 1)), _constants()[expected_roster_mix(at(6, 1))],
             "the control class did not reach the mix hook either, so this test "
             "cannot tell an exemption from a dead code path",
         )
@@ -556,8 +625,8 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
     def test_a_late_roster_mon_does_not_keep_its_vanilla_moveset(self):
         """The end-to-end claim, not just the row selection.
 
-        A route trainer in the last band draws under MIX_ROUTE_LATE, which is
-        MSRC_LEARNSET_FULL and MSRC_RANDOM across every slot - so at least one
+        A route trainer in the last band draws under MIX_ROUTE_FINAL, which
+        rolls MSRC_RANDOM_TM and MSRC_RANDOM on three slots - so at least one
         mon must differ from what AddPartyMon's WriteMonMoves alone produced.
         Compared against the same build at wBattleCount 0, whose row is pure
         MSRC_LEARNSET and therefore IS the vanilla result.
