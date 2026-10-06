@@ -79,17 +79,14 @@ def run_entry(
     harness.save_state(baseline)
     bank, address = harness.symbols.get(label)
     result: dict[str, object] = {"label": label}
-    return_address = 0x3FFF
-    return_bank = 0
+    # The synthetic caller returns straight into a `jr @` spin loop in WRAM, so
+    # the return is observed without a hook. A hook on a home-bank padding byte
+    # (the old 0:$3FFF) only fires in PyBoy 2.7 while ROM bank 1 is mapped, so
+    # any routine that returned with another bank switched in ran the $FF
+    # padding instead - rst $38, the debug crash screen.
+    return_address = 0xC100
 
-    def capture_return(_context) -> None:
-        if capture is not None:
-            result.update(capture(harness))
-        # Stop at the synthetic return address before its ROM padding executes.
-        harness.pyboy.register_file.PC = 0xC100
-
-    installed: list[tuple[int, int]] = [(return_bank, return_address)]
-    harness.pyboy.hook_register(return_bank, return_address, capture_return, None)
+    installed: list[tuple[int, int]] = []
     for hook_label, callback in (hooks or {}).items():
         hook_bank, hook_address = harness.symbols.get(hook_label)
         harness.pyboy.hook_register(hook_bank, hook_address, callback, None)
@@ -109,7 +106,11 @@ def run_entry(
         if setup is not None:
             setup(harness)
         cpu.PC = address
-        harness.wait_until(lambda: cpu.PC == 0xC100, f"{label} return", limit)
+        harness.wait_until(lambda: cpu.PC == return_address, f"{label} return", limit)
+        # The spin loop changes no register or flag, so capturing here sees
+        # exactly what the routine returned with.
+        if capture is not None:
+            result.update(capture(harness))
         result["sp"] = cpu.SP
         result["flags"] = cpu.F
     finally:
@@ -347,14 +348,9 @@ class TutorTransactionRomTest(unittest.TestCase):
         baseline = io.BytesIO()
         h.save_state(baseline)
         result: dict[str, object] = {}
-        ret_addr = 0x3FFF
-
-        def returned(_context) -> None:
-            result.update(capture(h))
-            h.pyboy.register_file.PC = 0xC100
+        ret_addr = 0xC100  # WRAM spin loop; see run_entry for why not 0:$3FFF
 
         bank_teach, address_teach = h.symbols.get("PCMoveTutorText.teach")
-        h.pyboy.hook_register(0, ret_addr, returned, None)
         h.pyboy.hook_register(bank_teach, address_teach, fake_teach, None)
         try:
             cpu = h.pyboy.register_file
@@ -369,10 +365,10 @@ class TutorTransactionRomTest(unittest.TestCase):
             cpu.C = initial_bc & 0xFF
             setup(h)
             cpu.PC = address
-            h.wait_until(lambda: cpu.PC == 0xC100, "PCMoveTutorText wrapper return", 500)
+            h.wait_until(lambda: cpu.PC == ret_addr, "PCMoveTutorText wrapper return", 500)
+            result.update(capture(h))
             result["sp"] = cpu.SP
         finally:
-            h.pyboy.hook_deregister(0, ret_addr)
             h.pyboy.hook_deregister(bank_teach, address_teach)
             h.load_state(baseline)
         return result
