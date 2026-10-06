@@ -369,7 +369,7 @@ def section_history(g: parse.GameData, args, out: Path) -> list[str]:
         history.append(row)
         fields = list(dict.fromkeys([*(history[0].keys() if history else []), *row.keys()]))
         with HISTORY_CSV.open("w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=fields, restval="")
+            w = csv.DictWriter(f, fieldnames=fields, restval="", lineterminator="\n")
             w.writeheader()
             w.writerows(history)
     shown = history[-HISTORY_ROWS_SHOWN:] + ([row] if (args.set or args.no_history) else [])
