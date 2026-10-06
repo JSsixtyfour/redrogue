@@ -158,33 +158,50 @@ def git_commit() -> str:
 # Sections
 # =============================================================================
 
+# The headline configs. With EXP Share on, every party mon gets the same cut of
+# every KO whoever lands it, so carry and rotate are the same run and only one
+# is shown. With it off, the two are the extremes of how a player spreads KOs.
+HEADLINE_CONFIGS = (
+    ("EXP Share on", "equal", "rotate"),
+    ("EXP Share off, carry (the starter takes every KO)", None, "carry"),
+    ("EXP Share off, rotate (KOs spread across the party)", None, "rotate"),
+)
+
+
 def section_headline(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 1. Headline: Normal, EXP All tier 0, both policies\n",
-             f"Target: player's ace level ~ gym leader's ace level - 2. "
-             f"Rows with `|gap| > 3` are bolded.\n"]
+    lines = ["## 1. Headline: Normal, EXP Share on vs off\n",
+             "Target: player's level ~ the enemy ace's level - 2 (the gym leader's ace at Gyms 1-8). "
+             "Gaps are vs that target, Medium Slow curve; rows with `|gap| > 3` are bolded. "
+             "`ace` is the starter, `team` the party average.\n"]
     all_rows = []
-    for policy in ("carry", "rotate"):
-        cfg = model.Config(difficulty="normal", exp_all="equal", policy=policy)
+    args.headline = {}
+
+    def gap_str(gap: float) -> str:
+        return f"**{gap:+.1f}**" if abs(gap) > 3 else f"{gap:+.1f}"
+
+    for title, exp_all, policy in HEADLINE_CONFIGS:
+        cfg = model.Config(difficulty="normal", exp_all=exp_all, policy=policy)
         runs = model.simulate(g, cfg, args.runs, args.seed)
         rows = model.summarize(g, runs)
-        lines.append(f"### policy={policy}\n")
-        lines.append("| checkpoint | battles | enemy ace | ace MedSlow (p10-p90) | gap vs ace-2 | spendable money |")
-        lines.append("|---|---|---|---|---|---|")
+        args.headline[title] = rows
+        lines.append(f"### {title}\n")
+        lines.append("| checkpoint | battles | enemy ace | ace (p10-p90) | ace gap | team avg | team gap "
+                     "| spendable money |")
+        lines.append("|---|---|---|---|---|---|---|---|")
         for r in rows:
-            gap = r["gap_medium_slow"]
-            gap_str = f"**{gap:+.1f}**" if abs(gap) > 3 else f"{gap:+.1f}"
+            target = r["enemy_ace"] - 2
             lines.append(f"| {r['label']} | {r['battles']:.0f} | {r['enemy_ace']:.1f} "
                          f"| {r['ace_medium_slow']:.1f} ({r['ace_medium_slow_p10']}-{r['ace_medium_slow_p90']}) "
-                         f"| {gap_str} | {r['spendable']:,.0f} |")
+                         f"| {gap_str(r['ace_medium_slow'] - target)} | {r['team_medium_slow']:.1f} "
+                         f"| {gap_str(r['team_medium_slow'] - target)} | {r['spendable']:,.0f} |")
+            all_rows.append({**config_row(cfg), **r, "team_gap_medium_slow": r["team_medium_slow"] - target})
         lines.append("")
-        for r in rows:
-            all_rows.append({**config_row(cfg), **r})
     write_csv(out / "headline.csv", all_rows)
     return lines
 
 
 def section_difficulty(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 2. Per difficulty (policy=rotate, EXP All tier 0)\n"]
+    lines = ["## 2. Per difficulty (EXP Share on)\n"]
     all_rows = []
     for diff in model.DIFFICULTIES:
         cfg = model.Config(difficulty=diff, exp_all="equal", policy="rotate")
@@ -199,31 +216,8 @@ def section_difficulty(g: parse.GameData, args, out: Path) -> list[str]:
     return lines
 
 
-def section_exp_all(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 3. EXP Share comparison: off / equal (the option's rule), both policies\n",
-             "Expected pattern: equal share gives every party mon half of each KO, "
-             "fighter included, so carry and rotate converge; off gives the fighter "
-             "everything.\n"]
-    all_rows = []
-    lines.append("| policy | exp_all | checkpoint | ace MedSlow | team MedSlow |")
-    lines.append("|---|---|---|---|---|")
-    for policy in ("carry", "rotate"):
-        for exp_all in ("off", "equal"):
-            cfg = model.Config(difficulty="normal",
-                               exp_all=None if exp_all == "off" else exp_all, policy=policy)
-            runs = model.simulate(g, cfg, args.runs, args.seed)
-            rows = model.summarize(g, runs)
-            for r in rows:
-                lines.append(f"| {policy} | {exp_all} | {r['label']} "
-                             f"| {r['ace_medium_slow']:.1f} | {r['team_medium_slow']:.1f} |")
-                all_rows.append({**config_row(cfg), **r})
-    lines.append("")
-    write_csv(out / "exp_all.csv", all_rows)
-    return lines
-
-
 def section_wild_vs_route(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 4. Route vs wild area (take_wild 0.0 vs 1.0; forced areas happen in both)\n",
+    lines = ["## 3. Route vs wild area (take_wild 0.0 vs 1.0; forced areas happen in both)\n",
              "Encounter-rolling steps come from ROM-generated layouts measured by "
              "`measure_wild_paths.py` (`tools/balance/data/wild_paths.json`), per wild-area "
              "type, on the `full` route (every ball, then the boss).\n"]
@@ -251,7 +245,7 @@ def section_wild_vs_route(g: parse.GameData, args, out: Path) -> list[str]:
 
 
 def section_money(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 5. Money: spendable earnings, converted to purchases\n",
+    lines = ["## 4. Money: spendable earnings, converted to purchases\n",
              "Every money figure in this report is **spendable**: cumulative earned (starting money "
              "included) minus Elite Four and Champion winnings. Those five battles run back to back "
              "with no shop between them and the run ends after the Champion, so that money can't buy "
@@ -308,7 +302,7 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
 
 def section_duration(g: parse.GameData, args, out: Path) -> list[str]:
     marker = CALIBRATION["source"]
-    lines = [f"## 6. Duration (partly calibrated: {marker})\n",
+    lines = [f"## 5. Duration (partly calibrated: {marker})\n",
              "Coefficients: " + ", ".join(f"{k}={v}" for k, v in CALIBRATION.items() if k != "source") + ".\n",
              "Battle seconds are fitted to `calibrate_battle_time.py` frame counts, a machine-speed "
              "floor (no trainer intro, no reading time). The overworld term is still a guess until "
@@ -353,7 +347,7 @@ def history_row(g: parse.GameData, args) -> dict:
 
 
 def section_history(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 7. Economy history\n",
+    lines = ["## 6. Economy history\n",
              f"`{HISTORY_CSV.relative_to(ROOT).as_posix()}` gets one row per report run on the "
              "unmodified knobs (what-if runs with `--set` are not recorded). Commit it with the "
              "tuning change it measures.\n"]
@@ -392,18 +386,25 @@ def section_history(g: parse.GameData, args, out: Path) -> list[str]:
     return lines
 
 
+def level_findings(args) -> list[str]:
+    """Finding 1: each headline config's gap at a few checkpoints, read off the
+    section 1 tables so the text can't go stale."""
+    picks = ("Gym 1", "Gym 4", "Gym 8", "Champion")
+    out = ["1. **Levels vs \"enemy ace - 2\"** (Medium Slow; ace gap / team gap at "
+           + ", ".join(picks) + "):\n"]
+    for title, rows in args.headline.items():
+        by = {r["label"]: r for r in rows}
+        cells = ", ".join(f"{by[p]['ace_medium_slow'] - by[p]['enemy_ace'] + 2:+.0f} / "
+                          f"{by[p]['team_medium_slow'] - by[p]['enemy_ace'] + 2:+.0f}" for p in picks)
+        out.append(f"   - {title}: {cells}.\n")
+    return ["".join(out)]
+
+
 def section_findings(args) -> list[str]:
     return [
-        "## 8. Findings\n",
-        "1. **The ace runs hot against \"leader ace - 2\" almost everywhere.**\n"
-        "   - Carry (the starter takes every KO): +2 at Gym 1, rising to +22 at Gym 8, "
-        "and +14 at the Champion (Medium Slow).\n"
-        "   - Rotate (KOs spread across the party): +1 / +3 / +7 / +8 / +0.6 / +7 / +9 / +12 "
-        "across Gyms 1-8, +2.9 at the E4 and +2.3 at the Champion.\n"
-        "   - The leader curve is the laggard. Gyms 3-4 (24, 29) and 6-8 (43, 47, 50) sit "
-        "well under the route/gym-trainer bands of the same rounds. Gym 5's jump to 43 is "
-        "the only place the curve catches up (the round 5-6 plateau, as predicted in the plan).\n",
-        "2. **The \"at least 2 per run\" special guarantees fail about 53% of the time** "
+        "## 7. Findings\n",
+        *level_findings(args),
+        "2. **(Measured 2026-09, not recomputed by this report.) The \"at least 2 per run\" special guarantees fail about 53% of the time** "
         "(~80% confident this is real ROM behaviour, not a model artifact; Phase 3 should confirm).\n"
         "   - `SpecialKindForced` forces a kind when `8 - badges <= shortfall`, and it counts offers.\n"
         "   - A run that reaches route 8 one short of each kind has both forced on a single visit, "
@@ -414,16 +415,13 @@ def section_findings(args) -> list[str]:
         f"3. **Spendable money is about Y{args.economy['spend']:,.0f} per run** "
         f"(Y{args.economy['total']:,.0f} earned, minus the Elite Four and Champion prizes). "
         f"Gym leaders give {args.economy['sources'].get('gym leaders', 0) / args.economy['spend']:.0%} "
-        "of it; see section 5 for the full breakdown.\n",
-        "4. **EXP All tier 0 barely changes the ace under carry.** The fighter gets two "
-        "half-shares, which is about one full share. It lifts the bench from a Medium Slow "
-        "average of about 31 to about 64 at the Champion.\n",
+        "of it; see section 4 for the full breakdown.\n",
     ]
 
 
 def section_caveats() -> list[str]:
     return [
-        "## 9. Known approximations\n",
+        "## 8. Known approximations\n",
         "- Round-1 leader variant A is an authored team in the ROM (the `wTrainerNo 1` hole). "
         "The model rolls it from the pool at the same levels.\n",
         "- Johto/Warp runs: leaders are sampled from all 17 records and the E4 stays the Kanto "
@@ -441,7 +439,7 @@ def section_caveats() -> list[str]:
         "Elite Four and Champion prizes (unspendable).\n",
         "- The player wins every battle. Win difficulty is Phase 3.\n",
         "- The Champion is RIVAL3 (`Rival3Spec`, levels 60-65). Champion Lance / Oak aren't modelled.\n",
-        "- Duration (section 6): battle seconds are a measured machine-speed floor; the overworld "
+        "- Duration (section 5): battle seconds are a measured machine-speed floor; the overworld "
         "term waits on a real timed run.\n",
     ]
 
@@ -477,7 +475,7 @@ def main(argv: list[str] | None = None) -> int:
 
     lines = ["# Red Rogue Balance Report\n",
              f"Generated from `tools/balance/report.py`, {args.runs} runs per config, seed {args.seed}.\n"]
-    for section in (section_headline, section_difficulty, section_exp_all,
+    for section in (section_headline, section_difficulty,
                     section_wild_vs_route, section_money, section_duration, section_history):
         lines += section(g, args, out)
     lines += section_findings(args)
