@@ -1585,6 +1585,17 @@ BufferAllEnhancedColorsGBC:
 	add a
 	ld e, a
 
+	; OBJ palettes 1-3 (colour indices 36-47) are the rarity Poke Ball rows,
+	; in every base set (custom_functions/ball_rarity.asm). e is already
+	; palette * 8 = 8, 16 or 24 here, so the table is biased back by one row.
+	ld a, c
+	sub 36
+	cp 12
+	jr nc, .baseSet
+	ld hl, BallRarityPalettes - PAL_SIZE
+	jr .gotSet
+.baseSet
+
 	; Phase 4b: what used to be four map compares plus a wMapPalOffset test,
 	; re-run here on all 64 colours of every rebuild, is now one indexed load.
 	; The base set was chosen once per palette command by
@@ -1602,7 +1613,7 @@ BufferAllEnhancedColorsGBC:
 	ld h, [hl]
 	ld l, a
 
-
+.gotSet
 	add hl, de
 	pop de ;get the pal pattern back
 	ld a, [de]

@@ -156,6 +156,34 @@ PrepareOAMData::
 	ld a, e
 	ldh [hOAMBufferOffset], a
 
+	; Rarity-colored Poke Balls: OR this slot's cached CGB palette (0-3) into
+	; the attribute bytes of the four entries just written. Every facing table
+	; row is four entries, and none sets OBP1, so the palette bits are 0 here.
+	; The cache is zero off CGB (where these bits are ignored anyway) and for
+	; every slot that is not a classified ball (custom_functions/ball_rarity.asm).
+	ldh a, [hSpriteOffset2]
+	swap a
+	add LOW(wBallRarityPal)
+	ld l, a
+	ld h, HIGH(wBallRarityPal)
+	ld a, [hl]
+	and a
+	jr z, .nextSprite
+	ld c, a
+	ld h, d ; HIGH(wShadowOAM)
+	ld l, e ; just past the last entry
+	ld b, 4
+.rarityLoop
+	dec l ; attribute byte, entry + 3
+	ld a, [hl]
+	or c
+	ld [hl], a
+	dec l
+	dec l
+	dec l ; entry + 0
+	dec b
+	jr nz, .rarityLoop
+
 .nextSprite
 	ldh a, [hSpriteOffset2]
 	add $10

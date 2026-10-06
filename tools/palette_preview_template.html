@@ -1,0 +1,223 @@
+<title>Red Rogue Palette Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench. Sticky control rail on top, the 8 registers as a strip, then rendered sheets side by side when comparing. */
+:root {
+  --bg: #eef0ea; --panel: #f8f9f5; --ink: #1d2219; --muted: #5d6656; --line: #cfd4c6;
+  --accent: #2f6b3a; --focus: #3c8a4a; --warn: #9a5a12;
+  --display: "Silkscreen", ui-monospace, monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #151913; --panel: #1d221b; --ink: #e3e8dc; --muted: #9aa48f; --line: #343c2f;
+  --accent: #8cc98f; --focus: #a8dca9; --warn: #e2a65a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #151913; --panel: #1d221b; --ink: #e3e8dc; --muted: #9aa48f; --line: #343c2f;
+  --accent: #8cc98f; --focus: #a8dca9; --warn: #e2a65a; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 20px; }
+h1 { font: 400 22px/1.2 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h2 { font: 600 13px/1.3 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; margin: 4px 0 0; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--line); padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; }
+.field { display: grid; gap: 3px; min-width: 0; }
+.field label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+select, input[type=range] { font: 13px var(--body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; max-width: 100%; }
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 13px; padding-bottom: 6px; }
+.info { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 4px; }
+.info p { margin: 0; }
+.info .warn { color: var(--warn); }
+.cols { display: grid; gap: 20px; grid-template-columns: 1fr; }
+.cols.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); }
+.side { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.side-title { font: 400 15px var(--display); }
+.regs { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.reg { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px; display: grid; gap: 5px;
+  cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.reg[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.reg.unused { opacity: .5; }
+.reg .sw { display: grid; grid-template-columns: repeat(4, 1fr); height: 22px; border-radius: 3px; overflow: hidden; border: 1px solid var(--line); }
+.reg .top { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; font-weight: 600; }
+.reg .top span:last-child { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.reg .note { font-size: 11px; color: var(--muted); line-height: 1.3; }
+.reg .hex { font: 10.5px var(--mono); color: var(--muted); display: grid; grid-template-columns: repeat(4, 1fr); }
+.sheet { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+canvas { display: block; image-rendering: pixelated; }
+.hover { min-height: 1.5em; font: 12.5px var(--mono); color: var(--muted); }
+footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
+@media (prefers-reduced-motion: no-preference) { .reg { transition: border-color .12s, box-shadow .12s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Palette Bench</h1>
+    <p class="lede">Each tileset table picks one of 8 colour slots for every tile. The base set picks the 4 colours in each slot.
+      Swap the base set and the same tiles recolour; that is all a variant is.</p>
+  </header>
+
+  <div class="rail" role="group" aria-label="Preview controls">
+    <div class="field"><label for="ts">Tileset</label><select id="ts"></select></div>
+    <div class="field"><label for="bsA">Base set</label><select id="bsA"></select></div>
+    <label class="check"><input type="checkbox" id="cmp"> Compare with</label>
+    <div class="field"><label for="bsB">Second base set</label><select id="bsB" disabled></select></div>
+    <div class="field"><label for="town">Slot 8 (wild card) on</label><select id="town"></select></div>
+    <div class="field"><label for="zoom">Zoom</label><input type="range" id="zoom" min="1" max="4" value="2"></div>
+    <div class="field"><label for="view">Show</label>
+      <select id="view"><option value="blocks">Blocks (as mapped)</option><option value="tiles">Raw tiles</option><option value="both">Both</option></select></div>
+  </div>
+
+  <section class="info" id="info" aria-live="polite"></section>
+  <div class="cols" id="cols"></div>
+  <p class="hover" id="hover">Hover a tile to see its ID and slot. Click a slot to highlight the tiles that use it.</p>
+
+  <footer>Generated from source by <code>tools/palette_preview.py</code>. Colours are the raw source values; in game they also pass through
+    <code>GBCGamma</code>, so hardware shows them a little darker and flatter. Tiles $60 and up in tilesets other than DORM fall back to GRAY,
+    as <code>MakeOverworldBGMapAttributes</code> does.</footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = id => document.getElementById(id);
+const hex2 = n => n.toString(16).toUpperCase().padStart(2, "0");
+const rgb = c => `rgb(${c.map(v => Math.round(v * 255 / 31)).join(",")})`;
+const ROUTE = -1;
+let focusReg = null;
+
+function store(k, v) { try { localStorage.setItem("pb." + k, v); } catch (e) {} }
+function recall(k) { try { return localStorage.getItem("pb." + k); } catch (e) { return null; } }
+
+function fill() {
+  for (const t of DATA.tilesets) $("ts").add(new Option(`${t.index} ${t.id}${t.suggested ? "  (has variants)" : ""}`, t.index));
+  for (const s of DATA.baseSets) { $("bsA").add(new Option(s.id.replace("ENH_BASE_", ""), s.id)); $("bsB").add(new Option(s.id.replace("ENH_BASE_", ""), s.id)); }
+  $("town").add(new Option("Route / any other map (BROWN)", ROUTE));
+  DATA.towns.forEach((t, i) => $("town").add(new Option(`${t.name} (${DATA.registers[t.reg]})`, i)));
+  const forest = DATA.tilesets.find(t => t.id === "FOREST");
+  $("ts").value = recall("ts") ?? forest.index;
+  $("bsA").value = recall("bsA") ?? "ENH_BASE_FOREST_SPRING";
+  $("bsB").value = recall("bsB") ?? "ENH_BASE_FOREST_FALL";
+  $("cmp").checked = (recall("cmp") ?? "1") === "1";
+  $("bsB").disabled = !$("cmp").checked;
+  $("town").value = recall("town") ?? ROUTE;
+  $("view").value = recall("view") ?? "blocks";
+  $("zoom").value = recall("zoom") ?? 2;
+}
+
+function regOf(ts, tile) {
+  if (tile >= 0x60 && ts.id !== "DORM") return 3;
+  const v = ts.pal[tile];
+  if (v === undefined) return 3;
+  if (v < 8) return v;
+  const town = +$("town").value;
+  return town === ROUTE ? 6 : DATA.towns[town].reg;
+}
+
+function drawTile(ctx, ts, set, tile, x, y, z) {
+  const px = ts.tiles[tile];
+  const reg = regOf(ts, tile);
+  const cols = set.colors[reg].map(rgb);
+  const dim = focusReg !== null && reg !== focusReg;
+  if (!px) { ctx.fillStyle = "#888"; ctx.fillRect(x, y, 8 * z, 8 * z); return; }
+  for (let i = 0; i < 64; i++) {
+    ctx.fillStyle = cols[+px[i]];
+    ctx.fillRect(x + (i % 8) * z, y + (i >> 3) * z, z, z);
+  }
+  if (dim) { ctx.fillStyle = "rgba(0,0,0,.62)"; ctx.fillRect(x, y, 8 * z, 8 * z); }
+}
+
+function sheet(ts, set, mode) {
+  const z = +$("zoom").value, gap = 2;
+  const c = document.createElement("canvas");
+  const ctx = c.getContext("2d");
+  if (mode === "blocks") {
+    const per = 8, n = ts.blocks.length, bw = 32 * z;
+    c.width = per * (bw + gap); c.height = Math.ceil(n / per) * (bw + gap);
+    ts.blocks.forEach((b, i) => {
+      const bx = (i % per) * (bw + gap), by = Math.floor(i / per) * (bw + gap);
+      b.forEach((tile, j) => drawTile(ctx, ts, set, tile, bx + (j % 4) * 8 * z, by + (j >> 2) * 8 * z, z));
+    });
+    c.onmousemove = e => {
+      const r = c.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const i = Math.floor(y / (bw + gap)) * per + Math.floor(x / (bw + gap));
+      const b = ts.blocks[i]; if (!b) return;
+      const tx = Math.floor((x % (bw + gap)) / (8 * z)), ty = Math.floor((y % (bw + gap)) / (8 * z));
+      const tile = b[ty * 4 + tx]; if (tile === undefined) return;
+      say(ts, set, tile, `block $${hex2(i)}`);
+    };
+  } else {
+    const per = 16, n = Math.max(ts.tiles.length, ts.pal.length), tw = 8 * z + gap;
+    c.width = per * tw; c.height = Math.ceil(n / per) * tw;
+    for (let t = 0; t < n; t++) drawTile(ctx, ts, set, t, (t % per) * tw, Math.floor(t / per) * tw, z);
+    c.onmousemove = e => {
+      const r = c.getBoundingClientRect();
+      const t = Math.floor((e.clientY - r.top) / tw) * per + Math.floor((e.clientX - r.left) / tw);
+      if (t < n) say(ts, set, t, "");
+    };
+  }
+  c.setAttribute("aria-label", `${ts.id} ${mode} in ${set.id}`);
+  const wrap = document.createElement("div"); wrap.className = "sheet"; wrap.append(c);
+  return wrap;
+}
+
+function say(ts, set, tile, where) {
+  const raw = ts.pal[tile], reg = regOf(ts, tile);
+  const wild = raw === 8 ? " (wild card 8)" : "";
+  $("hover").textContent = `${where ? where + ", " : ""}tile $${hex2(tile)} -> ${ts.table}[$${hex2(tile)}] = ${raw ?? "n/a"}${wild} -> slot ${reg} ${DATA.registers[reg]}`;
+}
+
+function regStrip(ts, set) {
+  const counts = new Array(8).fill(0);
+  const n = Math.max(ts.tiles.length, ts.pal.length);
+  for (let t = 0; t < n; t++) counts[regOf(ts, t)]++;
+  const box = document.createElement("div"); box.className = "regs";
+  set.colors.forEach((cols, r) => {
+    const b = document.createElement("button");
+    b.className = "reg" + (counts[r] ? "" : " unused");
+    b.setAttribute("aria-pressed", focusReg === r);
+    b.innerHTML = `<div class="top"><span>${r} ${DATA.registers[r]}</span><span>${counts[r]} tiles</span></div>
+      <div class="sw">${cols.map(c => `<i style="background:${rgb(c)}"></i>`).join("")}</div>
+      <div class="hex">${cols.map(c => `<span>${c.join(".")}</span>`).join("")}</div>
+      ${set.notes[r] ? `<div class="note">${set.notes[r]}</div>` : ""}`;
+    b.onclick = () => { focusReg = focusReg === r ? null : r; render(); };
+    box.append(b);
+  });
+  return box;
+}
+
+function side(ts, set) {
+  const s = document.createElement("div"); s.className = "side";
+  const h = document.createElement("div"); h.className = "side-title"; h.textContent = set.id.replace("ENH_BASE_", "");
+  s.append(h, regStrip(ts, set));
+  const v = $("view").value;
+  if (v !== "tiles") { const t = document.createElement("h2"); t.textContent = `Blocks (${ts.blocks.length})`; s.append(t, sheet(ts, set, "blocks")); }
+  if (v !== "blocks") { const t = document.createElement("h2"); t.textContent = `Tiles (${ts.tiles.length})`; s.append(t, sheet(ts, set, "tiles")); }
+  return s;
+}
+
+function render() {
+  const ts = DATA.tilesets[+$("ts").value];
+  const sets = [$("bsA").value].concat($("cmp").checked ? [$("bsB").value] : []).map(id => DATA.baseSets.find(s => s.id === id));
+  const wild = ts.pal.some(v => v === 8);
+  const shared = ts.shared.length ? ` Shared with ${ts.shared.join(", ")}.` : "";
+  $("info").innerHTML = `<p><strong>${ts.id}</strong> draws its slots from <code>${ts.table}</code>.${shared}</p>` +
+    sets.map(s => `<p><code>${s.id}</code>: ${s.uses || "No known consumer."}</p>`).join("") +
+    (wild ? `<p class="warn">This table uses wild card 8. Those tiles take the town's slot in a town and BROWN everywhere else; pick the map above.</p>` : "");
+  const cols = $("cols"); cols.className = "cols" + (sets.length > 1 ? " two" : ""); cols.replaceChildren(...sets.map(s => side(ts, s)));
+}
+
+fill();
+for (const id of ["ts", "bsA", "bsB", "town", "view", "zoom", "cmp"]) {
+  $(id).addEventListener("input", () => {
+    if (id === "cmp") $("bsB").disabled = !$("cmp").checked;
+    if (id === "ts") focusReg = null;
+    store(id, id === "cmp" ? ($("cmp").checked ? "1" : "0") : $(id).value);
+    render();
+  });
+}
+render();
+</script>

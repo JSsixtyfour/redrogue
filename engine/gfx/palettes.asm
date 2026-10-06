@@ -285,6 +285,25 @@ SetPal_Overworld:
 	call GetOverworldPalette
 	ld hl, wPalPacket + 1
 	ld [hld], a
+	; CGB: slots 1-3 carry the rarity Poke Ball palettes, which InitCGBPalettes
+	; and every OBP fade rebuild through wGBCBasePalPointers like slot 0. The
+	; whole-screen attribute block keeps the map on BG palette 0, so the BG
+	; copies of these slots go unused. Not on SGB: these IDs are past
+	; NUM_SGB_PALS and the SGB has no such palettes.
+	ldh a, [hGBC]
+	and a
+	jr z, .gotPacket
+	ld hl, wPalPacket + 3
+	ld a, PAL_BALL_GREAT
+	ld [hli], a
+	inc hl
+	inc a ; PAL_BALL_ULTRA
+	ld [hli], a
+	inc hl
+	inc a ; PAL_BALL_MASTER
+	ld [hl], a
+	ld hl, wPalPacket
+.gotPacket
 	ld de, BlkPacket_WholeScreen
 	ld a, SET_PAL_OVERWORLD
 	ld [wDefaultPaletteCommand], a

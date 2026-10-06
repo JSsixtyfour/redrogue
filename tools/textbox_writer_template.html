@@ -1,0 +1,340 @@
+<title>Red Rogue Textbox Writer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: editor left, the game's text box preview and the assembled macros right; stacks on phones. */
+:root {
+  --bg: #eceef2; --panel: #f8f9fb; --ink: #1b1f27; --muted: #5a6273; --line: #cdd2dc;
+  --accent: #b3261e; --ok: #2c6e3f; --bad: #b3261e; --warnbg: #fbe9e7; --focus: #3b5ba9;
+  --display: "Silkscreen", ui-monospace, monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #14161b; --panel: #1c1f26; --ink: #e2e5ec; --muted: #969eb0; --line: #323743;
+  --accent: #f08a80; --ok: #7cc893; --bad: #f08a80; --warnbg: #3a2220; --focus: #8ea8ec; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #14161b; --panel: #1c1f26; --ink: #e2e5ec; --muted: #969eb0; --line: #323743;
+  --accent: #f08a80; --ok: #7cc893; --bad: #f08a80; --warnbg: #3a2220; --focus: #8ea8ec; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 18px; }
+h1 { font: 400 22px/1.2 var(--display); margin: 0; }
+h2 { font: 600 12px/1.3 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.lede { color: var(--muted); margin: 4px 0 0; max-width: 75ch; }
+code { font-family: var(--mono); font-size: 12.5px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs button { font: 500 13px var(--body); color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 8px 12px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); align-items: start; }
+.col { display: grid; gap: 12px; min-width: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.field { display: grid; gap: 3px; min-width: 0; }
+.field label, .check { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.check { display: flex; gap: 6px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); }
+input[type=text], input[type=number], select, textarea { font: 13px var(--body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 6px 7px; max-width: 100%; }
+input[type=number] { width: 5em; }
+textarea { font: 14px/1.55 var(--mono); width: 100%; min-height: 240px; resize: vertical; box-sizing: border-box; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.hint code { font-size: 12px; }
+pre.asm { font: 13px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.btn { font: 500 13px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+  padding: 5px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.issues { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.issues li { background: var(--warnbg); color: var(--bad); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+.issues li.ok { background: none; color: var(--ok); padding-inline: 0; }
+.screens { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+.screens figure { margin: 0; display: grid; gap: 3px; }
+.screens figcaption { font: 11.5px var(--mono); color: var(--muted); }
+.screens canvas { width: 100%; height: auto; image-rendering: pixelated; border-radius: 3px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.tablewrap { overflow-x: auto; }
+th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  border-bottom: 1px solid var(--line); padding: 5px 8px; }
+td { border-bottom: 1px solid var(--line); padding: 4px 8px; font-family: var(--mono); font-size: 12.5px; vertical-align: top; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.over td { color: var(--bad); }
+.meter { display: inline-block; width: 60px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-left: 6px; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+tr.over .meter i { background: var(--bad); }
+footer { color: var(--muted); font-size: 12.5px; max-width: 85ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Textbox Writer</h1>
+    <p class="lede">Write plain prose. It comes out as <code>text</code> / <code>line</code> / <code>cont</code> / <code>para</code> macros that fit the
+      18-tile dialogue box, counted the way rgbasm's charmap counts them, and drawn in the game's own font.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-write" aria-selected="true" aria-controls="panel-write">Write</button>
+    <button role="tab" id="tab-check" aria-selected="false" aria-controls="panel-check">Check existing text</button>
+  </div>
+
+  <section id="panel-write" role="tabpanel" aria-labelledby="tab-write" class="grid">
+    <div class="col">
+      <div class="opts">
+        <div class="field"><label for="label">Label</label><input type="text" id="label" value="_CreditExchangeClerkText" spellcheck="false"></div>
+        <div class="field"><label for="ending">Ends with</label>
+          <select id="ending">
+            <option value="done">done (closes the box)</option>
+            <option value="prompt">prompt (waits, then continues)</option>
+            <option value="text_end">@ + text_end</option>
+          </select></div>
+        <div class="field"><label for="width">Width</label><input type="number" id="width" min="4" max="20" value="18"></div>
+      </div>
+      <div class="field"><label for="src">Text</label>
+        <textarea id="src" spellcheck="true"></textarea></div>
+      <p class="hint">A blank line starts a new <code>para</code>. A single line break forces a new line. <code>{wStringBuffer:12}</code> inserts
+        <code>text_ram wStringBuffer</code> and reserves 12 tiles. <code>&lt;PLAYER&gt;</code>, <code>&lt;RIVAL&gt;</code> and <code>#MON</code> are counted at their longest.</p>
+      <div class="opts">
+        <label class="check"><input type="checkbox" id="optMon" checked> Pokémon → #MON</label>
+        <label class="check"><input type="checkbox" id="optQuotes" checked> Straight quotes → “ ”</label>
+        <label class="check"><input type="checkbox" id="optFar"> Add a text_far stub</label>
+      </div>
+    </div>
+
+    <div class="col">
+      <ul class="issues" id="issues" aria-live="polite"></ul>
+      <div class="bar"><h2>Assembly</h2><button class="btn" id="copy">Copy</button></div>
+      <pre class="asm" id="asm"></pre>
+      <h2>In game</h2>
+      <div class="screens" id="screens"></div>
+    </div>
+  </section>
+
+  <section id="panel-check" role="tabpanel" aria-labelledby="tab-check" class="grid" hidden>
+    <div class="col">
+      <div class="opts"><div class="field"><label for="cwidth">Width</label><input type="number" id="cwidth" min="4" max="20" value="18"></div></div>
+      <div class="field"><label for="csrc">Paste lines from a text/*.asm file</label><textarea id="csrc" spellcheck="false"></textarea></div>
+      <p class="hint">Measures every <code>text</code>, <code>line</code>, <code>cont</code>, <code>para</code> and <code>next</code> string. A string that follows a
+        <code>text_ram</code> continues the same row, so its count excludes that value.</p>
+    </div>
+    <div class="col">
+      <ul class="issues" id="cissues" aria-live="polite"></ul>
+      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Macro</th><th>String</th><th>Tiles</th></tr></thead><tbody id="crows"></tbody></table></div>
+    </div>
+  </section>
+
+  <footer>Generated by <code>tools/textbox_writer.py</code> from <code>constants/charmap.asm</code> and <code>gfx/font/</code>. Re-run it after changing the
+    charmap or the font.</footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+// ---- tokenizer: longest charmap match first, like rgbasm ----
+const KEYS = [...new Set([...Object.keys(DATA.charmap), ...Object.keys(DATA.expansions)])].sort((a, b) => b.length - a.length);
+function tokenize(s) {
+  const out = [];
+  for (let i = 0; i < s.length;) {
+    const ram = /^\{(\w+):(\d+)\}/.exec(s.slice(i));
+    if (ram) { out.push({ kind: "ram", src: ram[0], sym: ram[1], w: +ram[2] }); i += ram[0].length; continue; }
+    const key = KEYS.find(k => s.startsWith(k, i));
+    if (!key) { const ch = String.fromCodePoint(s.codePointAt(i)); out.push({ kind: "bad", src: ch, w: 1 }); i += ch.length; continue; }
+    const exp = DATA.expansions[key];
+    out.push(exp ? { kind: "exp", src: key, w: exp.width, exp } : { kind: key === " " ? "space" : "char", src: key, w: 1, code: DATA.charmap[key] });
+    i += key.length;
+  }
+  return out;
+}
+const width = toks => toks.reduce((n, t) => n + t.w, 0);
+
+// ---- prose cleanup ----
+function clean(s) {
+  s = s.replace(/\r/g, "").replace(/[ \t]+$/gm, "");
+  if ($("optMon").checked) s = s.replace(/pok[eé]mon/gi, "#MON");
+  if ($("optQuotes").checked) { let opening = true; s = s.replace(/"/g, () => { const q = opening ? "“" : "”"; opening = !opening; return q; }); }
+  return s.replace(/[—–]/g, "-");
+}
+
+// ---- wrap ----
+function wrap(text, W) {
+  const paras = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const issues = [];
+  const out = paras.map(p => {
+    const lines = [];
+    for (const forced of p.split("\n")) {
+      let cur = [];
+      for (const word of forced.split(/ +/).filter(Boolean)) {
+        const wt = tokenize(word);
+        if (width(wt) > W) issues.push(`"${word}" is ${width(wt)} tiles, wider than the ${W}-tile line by itself.`);
+        const next = cur.length ? [...cur, ...tokenize(" "), ...wt] : wt;
+        if (cur.length && width(next) > W) { lines.push(cur); cur = wt; } else cur = next;
+      }
+      if (cur.length) lines.push(cur);
+    }
+    return lines;
+  });
+  return { paras: out, issues };
+}
+
+// ---- assemble ----
+const strOf = toks => toks.map(t => t.src).join("");
+function pieces(toks) {
+  const ps = []; let buf = [];
+  for (const t of toks) { if (t.kind === "ram") { if (buf.length) ps.push({ s: strOf(buf) }); buf = []; ps.push({ ram: t.sym }); } else buf.push(t); }
+  if (buf.length) ps.push({ s: strOf(buf) });
+  return ps;
+}
+function assemble(paras, ending) {
+  const ops = []; let mode = "cmd";
+  paras.forEach((lines, pi) => lines.forEach((toks, li) => {
+    const m = pi === 0 && li === 0 ? "text" : li === 0 ? "para" : li === 1 ? "line" : "cont";
+    if (m === "para") ops.push({ t: "gap" });
+    pieces(toks).forEach((p, k) => {
+      if (p.s !== undefined) {
+        if (k === 0) { if (mode === "cmd" && m !== "text") ops.push({ t: "start" }); ops.push({ t: "str", m, s: p.s }); }
+        else ops.push({ t: "str", m: "text", s: p.s });
+        mode = "text";
+      } else {
+        if (k === 0 && m !== "text") { if (mode === "cmd") ops.push({ t: "start" }); ops.push({ t: "str", m, s: "" }); }
+        ops.push({ t: "ram", sym: p.ram }); mode = "cmd";
+      }
+    });
+  }));
+  if (ending === "text_end") ops.push({ t: "tend" });
+  else { if (mode === "cmd") ops.push({ t: "start" }); ops.push({ t: "end", v: ending }); }
+  ops.forEach((op, i) => { if (op.t === "str" && ["ram", "tend"].includes(ops[i + 1]?.t)) op.s += "@"; });
+  return ops.map(op => op.t === "gap" ? "" : op.t === "str" ? `\t${op.m} "${op.s}"` : op.t === "ram" ? `\ttext_ram ${op.sym}`
+    : op.t === "start" ? "\ttext_start" : op.t === "tend" ? "\ttext_end" : `\t${op.v}`).join("\n");
+}
+
+// ---- font + text box rendering ----
+const font = Uint8Array.from(atob(DATA.font1bpp), c => c.charCodeAt(0));
+const extra = Uint8Array.from(atob(DATA.extra2bpp), c => c.charCodeAt(0));
+function glyph(code) {
+  const px = new Uint8Array(64);
+  if (code >= 0x80) for (let r = 0; r < 8; r++) for (let b = 0; b < 8; b++) px[r * 8 + b] = (font[(code - 0x80) * 8 + r] >> (7 - b)) & 1;
+  else if (code >= 0x60) for (let r = 0; r < 8; r++) for (let b = 0; b < 8; b++) {
+    const o = (code - 0x60) * 16 + r * 2; px[r * 8 + b] = ((extra[o] >> (7 - b)) & 1) | ((extra[o + 1] >> (7 - b)) & 1);
+  }
+  return px;
+}
+const GLYPHS = new Map();
+const g = c => GLYPHS.get(c) ?? (GLYPHS.set(c, glyph(c)), GLYPHS.get(c));
+// One line -> list of cells: {code} or {reserved:true}
+function cells(toks) {
+  const out = [];
+  for (const t of toks) {
+    if (t.kind === "char" || t.kind === "space") out.push({ code: t.code });
+    else if (t.kind === "bad") out.push({ bad: true });
+    else {
+      const sample = t.kind === "ram" ? [] : tokenize(t.exp.sample).filter(x => x.code !== undefined).map(x => ({ code: x.code }));
+      for (let i = 0; i < t.w; i++) out.push(sample[i] ?? { reserved: true });
+    }
+  }
+  return out;
+}
+const LIGHT = "#f4f6ec", INK = "#1a1c18", RES = "rgba(179,38,30,.22)", BADC = "rgba(179,38,30,.85)";
+function box(rows, arrow, W) {
+  const cols = W + 2, S = 3, c = document.createElement("canvas");
+  c.width = cols * 8 * S; c.height = 6 * 8 * S;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = LIGHT; ctx.fillRect(0, 0, c.width, c.height);
+  const put = (code, x, y) => { const p = g(code); ctx.fillStyle = INK;
+    for (let i = 0; i < 64; i++) if (p[i]) ctx.fillRect((x * 8 + (i % 8)) * S, (y * 8 + (i >> 3)) * S, S, S); };
+  put(0x79, 0, 0); put(0x7b, cols - 1, 0); put(0x7d, 0, 5); put(0x7e, cols - 1, 5);
+  for (let x = 1; x < cols - 1; x++) { put(0x7a, x, 0); put(0x7a, x, 5); }
+  for (let y = 1; y < 5; y++) { put(0x7c, 0, y); put(0x7c, cols - 1, y); }
+  rows.forEach((row, r) => row.forEach((cell, x) => {
+    const tx = 1 + x, ty = 2 + r * 2;
+    if (tx >= cols - 1) { ctx.fillStyle = BADC; ctx.fillRect(tx * 8 * S, ty * 8 * S, 8 * S, 8 * S); return; }
+    if (cell.reserved || cell.bad) { ctx.fillStyle = cell.bad ? BADC : RES; ctx.fillRect(tx * 8 * S + S, ty * 8 * S + S, 6 * S, 6 * S); }
+    if (cell.code !== undefined) put(cell.code, tx, ty);
+  }));
+  if (arrow) put(0xee, cols - 2, 5);
+  return c;
+}
+function screens(paras, ending, W) {
+  const out = [];
+  paras.forEach((lines, pi) => {
+    const cl = lines.map(cells);
+    out.push({ rows: cl.slice(0, 2), cap: pi === 0 ? "text / line" : "para / line" });
+    for (let k = 2; k < cl.length; k++) out.push({ rows: [cl[k - 1], cl[k]], cap: "cont (scrolls up)" });
+  });
+  return out.map((s, i) => {
+    const f = document.createElement("figure");
+    const last = i === out.length - 1;
+    f.append(box(s.rows, !last || ending === "prompt", W));
+    const cap = document.createElement("figcaption"); cap.textContent = `${i + 1}. ${s.cap}`; f.append(cap);
+    return f;
+  });
+}
+
+// ---- write tab ----
+function issuesFor(text) {
+  const list = [];
+  const bad = [...new Set(tokenize(text.replace(/\n/g, " ")).filter(t => t.kind === "bad").map(t => t.src))];
+  if (bad.length) list.push(`Not in the charmap, so rgbasm will reject it: ${bad.map(b => `"${b}"`).join(" ")}`);
+  const exps = [...new Set(tokenize(text).filter(t => t.kind === "exp" && t.exp.note).map(t => `${t.src} (${t.exp.width}: ${t.exp.note})`))];
+  return { list, notes: exps };
+}
+function renderWrite() {
+  const W = Math.max(4, Math.min(20, +$("width").value || 18));
+  const text = clean($("src").value);
+  const { paras, issues } = wrap(text, W);
+  const ending = $("ending").value;
+  const { list, notes } = issuesFor(text);
+  const label = ($("label").value.trim() || "_MyText").replace(/:+$/, "");
+  let asm = `${label}::\n${assemble(paras, ending)}`;
+  if ($("optFar").checked) asm = `${label.replace(/^_/, "")}:\n\ttext_far ${label}\n\ttext_end\n\n` + asm;
+  $("asm").textContent = asm;
+  const all = [...list, ...issues];
+  $("issues").innerHTML = (all.length ? all.map(i => `<li>${esc(i)}</li>`).join("") : `<li class="ok">Every line fits in ${W} tiles.</li>`) +
+    (notes.length ? `<li class="ok">Counted at worst case: ${esc(notes.join(", "))}. Shaded cells in the preview are that reserved room.</li>` : "");
+  $("screens").replaceChildren(...screens(paras, ending, W));
+  try { localStorage.setItem("tw.src", $("src").value); } catch (e) {}
+}
+
+// ---- check tab ----
+function renderCheck() {
+  const W = Math.max(4, Math.min(20, +$("cwidth").value || 18));
+  const rows = []; let afterRam = false, over = 0, bad = 0;
+  $("csrc").value.split("\n").forEach((ln, i) => {
+    const code = ln.replace(/;.*$/, "");
+    if (/^\s*text_ram\b/.test(code)) { afterRam = true; return; }
+    const m = /^\s*(text|line|cont|para|next)\s+"(.*)"/.exec(code);
+    if (!m) { if (/^\s*\w+::?\s*$/.test(code)) afterRam = false; return; }
+    const s = m[2].replace(/@$/, "");
+    const toks = tokenize(s), w = width(toks);
+    const isBad = toks.some(t => t.kind === "bad");
+    const cont = afterRam && m[1] === "text";
+    afterRam = false;
+    if (w > W) over++; if (isBad) bad++;
+    rows.push(`<tr class="${w > W || isBad ? "over" : ""}"><td class="n">${i + 1}</td><td>${m[1]}${cont ? " +ram" : ""}</td><td>${esc(m[2])}</td>` +
+      `<td class="n">${w}/${W}<span class="meter"><i style="width:${Math.min(100, w / W * 100)}%"></i></span>${isBad ? " bad char" : ""}</td></tr>`);
+  });
+  $("crows").innerHTML = rows.join("");
+  $("cissues").innerHTML = !rows.length ? `<li class="ok">Paste some text macros to measure them.</li>`
+    : over || bad ? `${over ? `<li>${over} line(s) are wider than ${W} tiles.</li>` : ""}${bad ? `<li>${bad} line(s) use a character the charmap does not have.</li>` : ""}`
+    : `<li class="ok">All ${rows.length} lines fit in ${W} tiles.</li>`;
+}
+
+// ---- wiring ----
+const SAMPLE = `Welcome to the CREDIT EXCHANGE! Trade the credits you earn on each run for rare items.
+
+You have {wStringBuffer:7} credits to spend, <PLAYER>.
+Which #MON item catches your eye?`;
+let saved = null; try { saved = localStorage.getItem("tw.src"); } catch (e) {}
+$("src").value = saved || SAMPLE;
+$("csrc").value = `_BikeShopClerkWelcomeText::\n\ttext "Hi! Welcome to"\n\tline "our BIKE SHOP."\n\n\tpara "Have we got just"\n\tline "the BIKE for you, <PLAYER>!"\n\tprompt`;
+for (const id of ["src", "label", "ending", "width", "optMon", "optQuotes", "optFar"]) $(id).addEventListener("input", renderWrite);
+for (const id of ["csrc", "cwidth"]) $(id).addEventListener("input", renderCheck);
+$("copy").addEventListener("click", () => {
+  navigator.clipboard.writeText($("asm").textContent).then(() => { $("copy").textContent = "Copied"; setTimeout(() => $("copy").textContent = "Copy", 1200); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents($("asm")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+});
+for (const t of ["write", "check"]) $("tab-" + t).addEventListener("click", () => {
+  for (const u of ["write", "check"]) { $("tab-" + u).setAttribute("aria-selected", u === t); $("panel-" + u).hidden = u !== t; }
+});
+renderWrite(); renderCheck();
+</script>

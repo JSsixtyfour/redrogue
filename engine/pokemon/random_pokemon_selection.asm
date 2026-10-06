@@ -650,7 +650,9 @@ ENDC
 ; path that forgets to set its own, not a fix for a known break.
    xor a
    ld [wSpawnForm], a
-RET
+   ; The offers just changed (stage entry or a mon dice reroll): recolour the
+   ; reward balls from them (custom_functions/ball_rarity.asm). Consumes no RNG.
+   farjp RefreshBallRarityCache
 
 ; ---------------------------------------------------------------------------
 ; AllSpeciesCheck

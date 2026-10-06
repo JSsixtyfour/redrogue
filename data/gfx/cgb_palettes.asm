@@ -387,3 +387,6 @@ ENDC
 	RGB 24, 24, 24
 	RGB  8,  8,  8
 	RGB  3,  3,  3
+
+	; PAL_BALL_GREAT, PAL_BALL_ULTRA, PAL_BALL_MASTER (CGB only)
+	INCLUDE "data/gfx/ball_rarity_palettes.asm"

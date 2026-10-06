@@ -227,7 +227,9 @@ ROMX $2C
 	; they run correctly from any bank. Pinned out of the audio banks to keep
 	; that reclaimed space available for the Phase 2 audio/SFX work.
 	"Relocated HOME Routines"
-	"ProcStageHooks"
+	; "ProcStageHooks" moved to $3C 2026-10-06 (rarity-colored Poke Balls): this
+	; bank was fully pinned with 45 B free, and the ball palette reader and item
+	; classifier must sit in "Relocated HOME Routines" beside the tables they read.
 	"Status View Navigation"
 ROMX $2D
 	"Tilesets 4"
@@ -417,6 +419,11 @@ ROMX $3A
 	; pinned rather than floated so first-fit can't drop it into a tight
 	; bank. 2026-10-03.
 	"Witch Zone Effects"
+ROMX $3C
+	; Moved from $2C 2026-10-06 to make room there (see the $2C note). Reached
+	; only by farcall/rfarcall/farjp; its only plain calls are its own two
+	; ProcGeneration*DoubleSpeed helpers, so it runs from any bank.
+	"ProcStageHooks"
 ROMX $3D
 	; Species Groups Phase 2 batch 8 pics (Magcargo plus ten species), moved
 	; from $0E on 2026-09-30 to give the trainer AI room. Pure data: every

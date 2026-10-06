@@ -67,6 +67,13 @@ DEF SET_PAL_DEFAULT EQU $ff
 DEF NUM_SGB_PALS EQU const_value
 	const PAL_BW        ; $28, CGB only
 	const PAL_UBALL     ; $29, CGB only
+	; Rarity-colored overworld Poke Balls (custom_functions/ball_rarity.asm).
+	; SetPal_Overworld installs these three in palette slots 1-3 on CGB, so a
+	; ball whose cached class is N draws with OBJ palette N. Order is the class
+	; order and must stay matched to data/gfx/ball_rarity_palettes.asm.
+	const PAL_BALL_GREAT  ; $2A, CGB only
+	const PAL_BALL_ULTRA  ; $2B, CGB only
+	const PAL_BALL_MASTER ; $2C, CGB only
 
 ; --- Phase 4 (procedural stage palette variants) ---------------------------
 ; Readable aliases for two spare rows claimed by the procedural cave, rather

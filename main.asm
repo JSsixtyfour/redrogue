@@ -772,6 +772,9 @@ INCLUDE "custom_functions/room_pc.asm"
 INCLUDE "custom_functions/room_vendor.asm"
 INCLUDE "custom_functions/relocated_home.asm"
 INCLUDE "engine/items/item_rarity.asm"
+; Same section as the item tier tables and BufferAllEnhancedColorsGBC: it reads
+; the one directly and is read directly by the other.
+INCLUDE "custom_functions/ball_rarity.asm"
 INCLUDE "engine/items/random_item_selection.asm"
 INCLUDE "engine/items/random_item_selection_mart.asm"
 INCLUDE "engine/events/reward_poke_balls.asm"

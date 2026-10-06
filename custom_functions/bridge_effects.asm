@@ -545,6 +545,8 @@ BridgeFinalizeGiftMonFar::
 	call BridgeGiftMaxStatExp
 	ld a, QUICK_ATTACK
 	call BridgeGiftAddMove
+	ld a, LICK
+	call BridgeGiftAddMove
 	jr .recalcIfParty
 .perfect
 	call .perfectDVs
@@ -722,8 +724,14 @@ BridgeGiftMaxStatExp:
 
 ; In: a = move, de = shared party/box struct base. Teach the move without
 ; overwriting the level-up moveset: nothing if it is already known, else the
-; first empty slot, else (four moves already) slot 1. Reloads PP for the
-; complete resulting moveset while preserving the struct pointer.
+; first empty slot, else (four moves already) shift up and append in slot 4,
+; as WriteMonMoves does, so successive gift moves don't evict each other.
+; Reloads PP for the complete resulting moveset while preserving the struct
+; pointer.
+; Relocatable if "rogue" needs space: it touches only the struct and
+; predef LoadMovePPs (bank-agnostic). Its only callers are .intimidate and
+; .move above, so they would become farcalls, and since farcall destroys a,
+; the move id would have to travel in another register or WRAM byte.
 BridgeGiftAddMove:
 	push de
 	ld h, d
@@ -742,8 +750,15 @@ BridgeGiftAddMove:
 	inc hl
 	dec b
 	jr nz, .find
-	pop hl                        ; moveset full: replace slot 1
+	pop hl                        ; moveset full: drop slot 1, shift up
 	push hl
+	ld b, NUM_MOVES - 1
+.shift
+	inc hl
+	ld a, [hld]
+	ld [hli], a
+	dec b
+	jr nz, .shift                 ; ends with hl = slot 4
 .store
 	ld [hl], c
 	ld h, d

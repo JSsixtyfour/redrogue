@@ -3340,6 +3340,20 @@ SECTION "Enemy Move Origins", WRAM0
 wEnemyMoveOrigins:: ds PARTY_LENGTH
 
 
+SECTION "Ball Rarity Cache", WRAM0
+
+; Per sprite slot (0-15): the CGB OBJ palette (0 = standard, 1 Great, 2 Ultra,
+; 3 Master) PrepareOAMData ORs into that sprite's four OAM attribute bytes.
+; Derived, never authoritative: RefreshBallRarityCache (custom_functions/
+; ball_rarity.asm) rebuilds it from the ball's real contents on every map load
+; and after every reward roll. Unsaved, and Init's WRAM0 wipe zeroes it, so it
+; reads as all-standard until the first build. The renderer indexes it with an
+; 8-bit add, hence the page ASSERT.
+wBallRarityPal:: ds NUM_SPRITESTATEDATA_STRUCTS
+ASSERT HIGH(wBallRarityPal) == HIGH(wBallRarityPal + NUM_SPRITESTATEDATA_STRUCTS - 1), \
+	"wBallRarityPal must not cross a page: PrepareOAMData indexes it with add LOW()"
+
+
 SECTION "Battle Item List", WRAM0
 
 ; The battle menu's ITEM list (BuildBattleItemList, custom_functions/

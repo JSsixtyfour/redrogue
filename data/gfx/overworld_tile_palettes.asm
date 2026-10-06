@@ -9,13 +9,17 @@
 ; bank. Keep this section in that same ROM bank unless the reads are converted
 ; to a bank-aware copy.
 ;
-; Each PalSettings_* table has one byte per tile ID ($00-$5F, i.e. every block
-; in a tileset) naming which of the 8 CGB background palette registers colors
-; that tile. A value of 8 is shinpokered's own "wild card": resolved at
-; runtime to a town-specific palette (their PalSettings_TownSpecialPal /
-; TownSpecialPal mechanism). That resolver has NOT been ported - it is a
-; separate, not-yet-scoped piece of work. Until it exists, treat any 8 in
-; these tables as an open item rather than a working feature.
+; Each PalSettings_* table has one byte per tile ID naming which of the 8 CGB
+; BG palette registers colours that tile. A value of 8 is a wild card resolved
+; at runtime to a per-town register via PalSettings_TownSpecialPal
+; (custom_functions/func_enhancedcolor.asm).
+;
+; These tables pick WHICH register a tile uses, never WHAT colours a register
+; holds. The colours come from a 64-byte base set (EnhBasePalSetPointers in
+; func_enhancedcolor.asm), chosen per map by ResolveEnhancedBasePalSet. That is
+; where colour variants live (procedural forest spring/fall, facility/Mansion
+; red, cold cave): a variant is a new base set, NOT a new row here. This table
+; gets a row only when a new TILESET is added.
 ;
 ; Several tilesets share one table because they share their tile IDs' meaning
 ; (e.g. MART and POKECENTER, DOJO and GYM) - preserved exactly as shinpokered
@@ -46,13 +50,7 @@ OverworldTilePalPointers::
 	dw PalSettings_CLUB         ; 21
 	dw PalSettings_FACILITY     ; 22
 	dw PalSettings_PLATEAU      ; 23
-	; DORM (24) is a Red Rogue addition (project_room_decoration_system) with
-	; no shinpokered equivalent. PLACEHOLDER ONLY: points at the neutral
-	; OVERWORLD table so the pointer table's shape is correct (NUM_TILESETS
-	; entries) ahead of the engine landing. A real PalSettings_DORM needs
-	; hand-authoring against DORM's actual tile IDs - ShinRed_Import.md Phase
-	; 3.0b assigns that to a follow-up authoring pass, not this mechanical one.
-	dw PalSettings_DORM    ; 24 DORM - PLACEHOLDER, not authored
+	dw PalSettings_DORM         ; 24 DORM
 
 ASSERT (@ - OverworldTilePalPointers) / 2 == NUM_TILESETS, "OverworldTilePalPointers entry count must track NUM_TILESETS (constants/tileset_constants.asm) - add a new dw row (and its PalSettings_* table) whenever a tileset is added"
 

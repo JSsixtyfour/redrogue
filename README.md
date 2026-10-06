@@ -161,6 +161,35 @@ Changing the save format (bump, migration, tests, real-save gate) is in `SAVE_CO
 in Red Rogue Files. `python3 tools/save_compat/saves.py make|continue` makes real saves with PyBoy and
 cold-boot checks them.
 
+## Preview pages
+
+Two scripts build a single self-contained HTML page each, from the source files they describe. Open
+the page in any browser. Nothing is installed and nothing outside the standard library is needed.
+Re-run a script after editing what it reads; the page never updates on its own.
+
+```
+py tools\palette_preview.py     # writes tools\palette_preview.html
+py tools\textbox_writer.py      # writes tools\textbox_writer.html
+```
+
+From WSL, use `python3` the same way. `--out <path>` writes the page somewhere else.
+
+**Palette Bench** (`palette_preview.py`) draws every tileset in every Enhanced Colors base set, as
+mapped blocks or raw tiles, with two base sets side by side to compare a variant (forest spring vs
+fall, facility default vs red). Hover a tile for its table entry and slot; click a slot to highlight
+the tiles that use it. It reads `data/gfx/overworld_tile_palettes.asm` (which slot each tile uses),
+the base sets in `custom_functions/func_enhancedcolor.asm` (what colours each slot holds), the tileset
+lists, and the built `.2bpp`/`.bst` files, so **run `make` first**. Colours are the source values,
+before the game's `GBCGamma` correction, so hardware looks a little darker. When a base set gains a new
+consumer, update `BASE_SET_USES` at the top of the script so the page's "used by" line stays right.
+
+**Textbox Writer** (`textbox_writer.py`) turns prose into `text`/`line`/`cont`/`para` macros wrapped
+to the 18-tile dialogue box, previewed in the game's own font. A blank line starts a `para`, a single
+line break forces a new line, and `{wStringBuffer:12}` inserts a `text_ram` with 12 tiles reserved.
+Widths follow rgbasm's charmap (`'s` is one tile, `#` is four), and `<PLAYER>`/`<RIVAL>` count at their
+7-tile maximum. Its Check tab measures macros pasted from an existing `text/*.asm` file. It reads
+`constants/charmap.asm` and `gfx/font/`, so re-run it after changing either.
+
 ## Project docs
 
 Design plans, the ROM and WRAM space ledgers, and debugging guides live outside the repo, in the

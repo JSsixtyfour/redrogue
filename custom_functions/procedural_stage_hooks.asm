@@ -193,6 +193,12 @@ ProcBossPatchStageSprite::
 ; homecall) to reach the generators, because homecall is only valid from a HOME
 ; caller and this routine itself lives in ROMX.
 ProcStageLoadDispatch::
+	call .dispatch
+	; Every map load, once sprites and any procedural contents are final and
+	; before LoadMapData's SET_PAL_OVERWORLD: rebuild the rarity ball colours
+	; (custom_functions/ball_rarity.asm). Battle return and Continue land here too.
+	farjp RefreshBallRarityCacheAtLoad
+.dispatch
 	farcall RecordStageMapLoad
 .noExitBattles
 	ldh a, [hCurMap]

@@ -36,3 +36,7 @@ builds/
 
 # make release: holds RELEASE_WEBHOOK_URL (a secret)
 .env
+
+# Generated preview pages (README "Preview pages")
+/tools/palette_preview.html
+/tools/textbox_writer.html

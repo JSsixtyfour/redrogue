@@ -1,6 +1,7 @@
 """Trashed House INTIMIDATE GROWLITHE gift.
 
-BridgeGiftAddMove must fill an empty move slot instead of overwriting slot 1,
+BridgeGiftAddMove must fill an empty move slot, and shift-and-append only when
+the moveset is full (so QUICK_ATTACK and LICK both survive),
 and the Intimidate stat path must cut the enemy's live Attack to the -1 stage
 value. The animation/text half of BridgeTryIntimidate waits on frames, so it is
 not reachable through call_routine and is checked in game instead.
@@ -39,14 +40,18 @@ class BridgeIntimidateGiftTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.harness.close()
 
-    def add_move(self, start: list[int], move: str) -> tuple[list[int], list[int]]:
+    def add_move(
+        self, start: list[str] | None, move: str
+    ) -> tuple[list[int], list[int]]:
+        # start=None keeps the moveset a previous call left.
         h = self.harness
         base = h.address("wPartyMon1")
         memory = h.pyboy.memory
-        memory[base] = self.species["GROWLITHE"]
-        ids = [self.moves[name] if name else 0 for name in start]
-        memory[base + MON_MOVES : base + MON_MOVES + 4] = ids
-        memory[base + MON_PP : base + MON_PP + 4] = [0, 0, 0, 0]
+        if start is not None:
+            memory[base] = self.species["GROWLITHE"]
+            ids = [self.moves[name] if name else 0 for name in start]
+            memory[base + MON_MOVES : base + MON_MOVES + 4] = ids
+            memory[base + MON_PP : base + MON_PP + 4] = [0, 0, 0, 0]
         # Inject every input at entry. a, because call_routine enters through
         # Bankswitch, which overwrites it (the real caller passes the move in a
         # with a plain call). de too: call_routine snapshots the registers it
@@ -83,12 +88,14 @@ class BridgeIntimidateGiftTest(unittest.TestCase):
             moves, [self.moves["BITE"], self.moves["QUICK_ATTACK"], 0, 0]
         )
 
-    def test_gift_move_replaces_slot_1_only_when_full(self) -> None:
-        full = ["BITE", "TACKLE", "EMBER", "LEER"]
-        moves, _ = self.add_move(full, "QUICK_ATTACK")
-        expected = [self.moves[name] for name in full]
-        expected[0] = self.moves["QUICK_ATTACK"]
-        self.assertEqual(moves, expected)
+    def test_gift_moves_shift_and_append_when_full(self) -> None:
+        # The Growlithe gift teaches QUICK_ATTACK then LICK; on a full moveset
+        # the second must not evict the first.
+        self.add_move(["BITE", "TACKLE", "EMBER", "LEER"], "QUICK_ATTACK")
+        moves, pps = self.add_move(None, "LICK")
+        expected = ["EMBER", "LEER", "QUICK_ATTACK", "LICK"]
+        self.assertEqual(moves, [self.moves[name] for name in expected])
+        self.assertTrue(all(pps))
 
     def test_flagged_battle_growlithe_reports_intimidate(self) -> None:
         h = self.harness
