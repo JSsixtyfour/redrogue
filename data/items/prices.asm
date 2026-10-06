@@ -34,11 +34,11 @@ ItemPrices::
 	bcd3 2100  ; FIRE_STONE
 	bcd3 2100  ; THUNDER_STONE
 	bcd3 2100  ; WATER_STONE
-	bcd3 5000  ; HP_UP
-	bcd3 5000  ; PROTEIN
-	bcd3 5000  ; IRON
-	bcd3 5000  ; CARBOS
-	bcd3 5000  ; CALCIUM
+	bcd3 2500  ; HP_UP
+	bcd3 2500  ; PROTEIN
+	bcd3 2500  ; IRON
+	bcd3 2500  ; CARBOS
+	bcd3 2500  ; CALCIUM
 	bcd3 4800  ; RARE_CANDY
 	bcd3 0     ; DOME_FOSSIL
 	bcd3 0     ; HELIX_FOSSIL
@@ -78,7 +78,7 @@ ItemPrices::
 	bcd3 0     ; OLD_ROD
 	bcd3 0     ; GOOD_ROD
 	bcd3 0     ; SUPER_ROD
-	bcd3 5000  ; PP_UP
+	bcd3 3750  ; PP_UP
 	bcd3 500   ; ETHER
 	bcd3 1000  ; MAX_ETHER
 	bcd3 2000  ; ELIXER
