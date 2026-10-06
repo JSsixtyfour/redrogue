@@ -227,7 +227,7 @@ def parse_enhanced():
     tm = re.search(r"PalSettings_TownSpecialPal:\n(.*?)\n\s*\n", text, re.S)
     for m in re.finditer(r"db\s+PAL_ENH_OVW_(\w+)\s*;\s*(\w+)", tm.group(1)):
         towns.append({"name": m.group(2).replace("_", " ").title(), "reg": REGISTER_NAMES.index(m.group(1))})
-    return base_sets, towns
+    return base_sets, towns, macros
 
 
 def decode_2bpp(data):
@@ -251,7 +251,7 @@ def main():
     stems = parse_tileset_stems()
     gfx = parse_gfx_files()
     pointers, pal_tables = parse_pal_settings()
-    base_sets, towns = parse_enhanced()
+    base_sets, towns, macros = parse_enhanced()
 
     if len(ids) != len(stems) or len(ids) != len(pointers):
         sys.exit(f"table length mismatch: {len(ids)} ids, {len(stems)} headers, {len(pointers)} PalSettings pointers")
@@ -272,7 +272,8 @@ def main():
             "suggested": SUGGESTED.get(tid),
         })
 
-    data = {"registers": REGISTER_NAMES, "baseSets": base_sets, "towns": towns, "tilesets": tilesets}
+    # macros lets the page's asm export write GBCEnh_White etc. back by name.
+    data = {"registers": REGISTER_NAMES, "baseSets": base_sets, "towns": towns, "tilesets": tilesets, "macros": macros}
     template = (Path(__file__).with_name("palette_preview_template.html")).read_text(encoding="utf-8")
     html = template.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
     Path(args.out).write_text(html, encoding="utf-8", newline="\n")

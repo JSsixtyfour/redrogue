@@ -179,9 +179,16 @@ mapped blocks or raw tiles, with two base sets side by side to compare a variant
 fall, facility default vs red). Hover a tile for its table entry and slot; click a slot to highlight
 the tiles that use it. It reads `data/gfx/overworld_tile_palettes.asm` (which slot each tile uses),
 the base sets in `custom_functions/func_enhancedcolor.asm` (what colours each slot holds), the tileset
-lists, and the built `.2bpp`/`.bst` files, so **run `make` first**. Colours are the source values,
-before the game's `GBCGamma` correction, so hardware looks a little darker. When a base set gains a new
-consumer, update `BASE_SET_USES` at the top of the script so the page's "used by" line stays right.
+lists, and the built `.2bpp`/`.bst` files, so **run `make` first**. The "In-game gamma" box applies the
+game's `GBCGamma` correction, so the page matches hardware; off, it shows the raw source values. When a
+base set gains a new consumer, update `BASE_SET_USES` at the top of the script so the page's "used by"
+line stays right.
+
+To try colours, click a swatch or any pixel in a sheet and adjust it with the R/G/B sliders (0-31) or
+the picker. Set the second base set to "Same set, as in source" to see your edit next to the original.
+Edits stay in that browser only. **Copy slot asm** gives the 5 lines for that slot, ready to paste over
+the same slot in `func_enhancedcolor.asm`; **Copy set asm** gives the whole set but leaves out comment
+lines inside it. Re-run the script after pasting, and reset the edits once the source has them.
 
 **Textbox Writer** (`textbox_writer.py`) turns prose into `text`/`line`/`cont`/`para` macros wrapped
 to the 18-tile dialogue box, previewed in the game's own font. A blank line starts a `para`, a single

@@ -9,6 +9,10 @@
     "Two guards are already in make smoke via test_static_map_audits.py and are marked in_smoke."
   ],
   "audits": [
+    {"script": "probe_ball_rarity.py", "args": ["/tmp"], "kind": "guard",
+     "guards": "rarity-colored reward/item balls: wrong OAM palette bits or OBJ palette RAM colours on CGB, Enhanced Colors ON and OFF (two CGB boots)"},
+    {"script": "probe_ball_rarity_procedural.py", "args": [], "kind": "guard",
+     "guards": "rarity ball cache on cave/forest/cemetery/Facility disagreeing with the item each pickup gives, or colouring Facility fake balls (four CGB boots)"},
     {"script": "audit_boss_ball_overlap.py", "args": ["--layouts", "200"], "kind": "guard",
      "guards": "pokeball placed on the procedural boss's own cell (forest/cave). CLAUDE.md: run first on any forest failure."},
     {"script": "audit_cave_boss_distance.py", "args": [], "kind": "guard",

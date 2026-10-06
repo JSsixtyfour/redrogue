@@ -247,10 +247,10 @@ GBCEnhancedOverworldPalettes_ForestSpring:
 	RGB 11, 11,  5
 	GBCEnh_Black
 
-	; PAL_ENH_OVW_GREEN    	; $04 - spring trees (maps/springtrees2.pal, day row)
-	RGB 28, 31, 26
-	RGB 25, 14, 14
-	RGB 27, 16, 16
+	; PAL_ENH_OVW_GREEN    	; $04 - spring trees, pink blossom (2026-10-06, was maps/springtrees2.pal's day row)
+	GBCEnh_White
+	RGB 17, 31, 11
+	RGB 28, 15, 24
 	; Colour 3 was the .pal file's RGB 6,0,0 (dark red). Every screen-black hold
 	; (rBGP = $FF) shows each palette's colour 3, so the trees - most of the
 	; Forest - flashed dark red for ~6 frames before every reveal (measured
@@ -300,10 +300,10 @@ GBCEnhancedOverworldPalettes_ForestFall:
 	RGB 11, 11,  5
 	GBCEnh_Black
 
-	; PAL_ENH_OVW_GREEN    	; $04 - fall trees (maps/falltrees2.pal, day row)
-	RGB 28, 31, 26
-	RGB 25, 15,  0
-	RGB 31, 10,  3
+	; PAL_ENH_OVW_GREEN    	; $04 - fall trees, orange leaves (2026-10-06, was maps/falltrees2.pal's day row)
+	GBCEnh_White
+	RGB 17, 31, 11
+	RGB 31, 14,  0
 	GBCEnh_Black ; was RGB 6,0,0 - see the spring row above
 
 	; PAL_ENH_OVW_YELLOW  	; $05
@@ -327,10 +327,9 @@ GBCEnhancedOverworldPalettes_ForestFall:
 ; 2B (2026-09-22): PLACEHOLDER red alt set for the Procedural Facility's coin
 ; flip and for Pokemon Mansion (both use the FACILITY/MANSION tilesets, whose
 ; PalSettings_* tables lean hardest on PAL_ENH_OVW_GRAY (register 3, walls and
-; floor) and PAL_ENH_OVW_BROWN (register 6)). Warms those two registers toward
-; the same reddish hue the SGB path already uses for Cinnabar
-; (data/sgb/sgb_palettes.asm's PAL_CINNABAR); everything else is DEFAULT
-; verbatim, same minimal-diff shape as the Cave's ColdCavern set above.
+; floor) and PAL_ENH_OVW_BROWN (register 6)). Recolours those two registers red
+; (2026-10-06, tuned in tools/palette_preview.py's editor); everything else is
+; DEFAULT verbatim, same minimal-diff shape as the Cave's ColdCavern set above.
 GBCEnhancedOverworldPalettes_FacilityRed:
 	; PAL_ENH_OVW_RED     	; $00
 	GBCEnh_White
@@ -350,10 +349,10 @@ GBCEnhancedOverworldPalettes_FacilityRed:
 	RGB 19,  0, 22
 	GBCEnh_Black
 
-	; PAL_ENH_OVW_GRAY   	; $03 - warm/reddish, was khaki-gray
+	; PAL_ENH_OVW_GRAY   	; $03 - red walls/floor, was khaki-gray
 	GBCEnh_White
-	RGB 27, 14, 10
-	RGB 18,  6,  4
+	RGB 20,  4,  4
+	RGB 25,  3,  5
 	GBCEnh_Black
 
 	; PAL_ENH_OVW_GREEN    	; $04
@@ -368,10 +367,10 @@ GBCEnhancedOverworldPalettes_FacilityRed:
 	RGB 28, 14,  0
 	GBCEnh_Black
 
-	; PAL_ENH_OVW_BROWN    	; $06 - Cinnabar-matched red-brown
+	; PAL_ENH_OVW_BROWN    	; $06 - red-brown
 	GBCEnh_White
-	RGB 26, 10,  6
-	RGB 17,  4,  2
+	RGB 22,  5,  7
+	RGB 15,  7,  3
 	GBCEnh_Black
 
 	; PAL_ENH_OVW_BLUE  	; $07
@@ -1591,8 +1590,17 @@ BufferAllEnhancedColorsGBC:
 	ld a, c
 	sub 36
 	cp 12
-	jr nc, .baseSet
+	jr nc, .notBallTier
 	ld hl, BallRarityPalettes - PAL_SIZE
+	jr .gotSet
+.notBallTier
+	; OBJ palette 7 (colour indices 60-63) is the standard red ball: row 3 of
+	; BallRarityPalettes (read through rOBP1). e = 7 * PAL_SIZE here.
+	ld a, c
+	sub 60
+	cp 4
+	jr nc, .baseSet
+	ld hl, BallRarityPalettes + 3 * PAL_SIZE - 7 * PAL_SIZE
 	jr .gotSet
 .baseSet
 

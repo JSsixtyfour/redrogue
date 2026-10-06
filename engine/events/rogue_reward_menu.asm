@@ -486,6 +486,9 @@ RogueRefresh::
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 .randomItemCheck
+	; Random_Item_Selection has run by now (batch -> item roll -> here), so
+	; the item ball's rarity colour can finally be cached.
+	farcall RefreshBallRarityCache
 	; witch's "no random item" challenge: hide the random item instead of
 	; the usual unconditional show
 	ld a, [wRogueFlagsBitfield]

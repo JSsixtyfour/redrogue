@@ -140,6 +140,7 @@ RogueItemUseItemDice::
 	or b
 	ld [wDiceCharges], a
 	farcall Random_Item_Selection     ; re-rolls wRogueItem using wRogueDoorSelection
+	farcall RefreshBallRarityCache    ; recolour the item ball for the new contents
 	ld hl, ItemDiceRerolledText
 	call PrintText
 	ret

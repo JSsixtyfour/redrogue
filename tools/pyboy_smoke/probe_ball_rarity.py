@@ -17,8 +17,13 @@ from source_constants import parse_rgbds_constants, parse_map_constants  # noqa:
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
 ARTIFACTS = REPO / "tools" / "pyboy_smoke" / "artifacts"
 MONS = parse_rgbds_constants(REPO / "constants" / "pokemon_constants.asm")
+STD = 7  # untiered balls are the red OBJ palette 7
 MAPS = parse_map_constants(REPO / "constants" / "map_constants.asm")
+ITEMS = parse_rgbds_constants(REPO / "constants" / "item_constants.asm")
+# (item, expected palette): one per tier, plus the four single-item money pools.
+ITEM_TIERS = [("POTION", STD), ("SUPER_POTION", 1), ("HYPER_POTION", 2), ("FULL_RESTORE", 3), ("PEARL", STD), ("BIG_PEARL", 1), ("NUGGET", 2), ("BIG_NUGGET", 3)]
 STAGE = MAPS["DIGLETTS_CAVE"]
+SPRITES = parse_rgbds_constants(REPO / "constants" / "sprite_constants.asm")
 FORCED = [("BULBASAUR", 1), ("GASTLY", 2), ("TAUROS", 3)]
 
 
@@ -50,9 +55,12 @@ def run(enhanced):
         h.enter_stage_door1(STAGE, description="Digletts Cave")
         cache = h.read_bytes("wBallRarityPal", 16)
         offers = h.read_bytes("wRoguePokemon1", 3)
-        print(f"[{tag}] natural offers={offers} cache={cache}")
-        if any(cache[i] for i in list(range(0, 7)) + list(range(10, 16))):
-            failures.append(f"{tag}: non-reward slot coloured after entry: {cache}")
+        print(f"[{tag}] natural offers={offers} item={h.read8('wRogueItem')} cache={cache}")
+        pics = h.read_bytes("wSpriteStateData1", 256)[::16]
+        is_ball = [p == SPRITES["SPRITE_POKE_BALL"] for p in pics]
+        base = [STD if b else 0 for b in is_ball]
+        if any(cache[i] != base[i] for i in list(range(0, 6)) + list(range(10, 16))):
+            failures.append(f"{tag}: non-reward slot not standard/zero after entry: {cache} vs {base}")
 
         # Force one offer per tier, no trade, and rebuild.
         for i, (name, _) in enumerate(FORCED):
@@ -60,9 +68,11 @@ def run(enhanced):
             h.write8("wRoguePokemonForm1", 0, offset=i)
         h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") & ~0x04)
         h.park_before_hijack()
+        h.write8("wRogueItem", ITEMS["HYPER_POTION"])
         h.call_routine("RefreshBallRarityCache")
         cache = h.read_bytes("wBallRarityPal", 16)
-        want = [0] * 16
+        want = list(base)
+        want[6] = 2  # the random item ball: HYPER_POTION is an Ultra item
         for i, (_, cls) in enumerate(FORCED):
             want[7 + i] = cls
         print(f"[{tag}] forced cache={cache}")
@@ -101,8 +111,16 @@ def run(enhanced):
             if len(attrs) != 4 or any((a & 7) != exp for a in attrs):
                 failures.append(f"{tag}: slot {slot} attrs {attrs} expected pal {exp} x4")
 
+        for name, tier in ITEM_TIERS:
+            h.write8("wRogueItem", ITEMS[name])
+            h.call_routine("RefreshBallRarityCache")
+            got = h.read_bytes("wBallRarityPal", 16)[6]
+            print(f"[{tag}] item {name} -> slot 6 palette {got} expect {tier}")
+            if got != tier:
+                failures.append(f"{tag}: item {name} slot 6 palette {got} != {tier}")
+
         pals = obj_palettes(h)
-        for p in range(4):
+        for p in (0, 1, 2, 3, 7):
             print(f"[{tag}] OBJ{p} {pals[p]}")
         # The ball's top is pixel shade 2, which rOBP0 = 3,1,0,0 sends to
         # hardware colour 2 (= base colour 1). It must be the tier's hue.
@@ -113,6 +131,10 @@ def run(enhanced):
             failures.append(f"{tag}: OBJ2 top {u} not near-black")
         if not (m[0] > m[1] and m[2] > m[1]):
             failures.append(f"{tag}: OBJ3 top {m} not purple")
+        # OBJ palette 7 is the Master row through rOBP1: its top (colour 2) is red.
+        r = pals[7][2]
+        if not (r[0] > r[1] + 8 and r[0] > r[2] + 8):
+            failures.append(f"{tag}: OBJ7 top {r} not red")
         h.pyboy.screen.image.save(str(OUT / f"ball_rarity_{tag}.png"))
     finally:
         h.close()
