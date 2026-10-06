@@ -51,7 +51,7 @@ GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_MID", "MIX_GYM_LATE", "MIX_ELITE")
 # kind's ladder never falls; the leader's gyms 3-4 row stays on NORMAL on
 # purpose (2026-10-05), sharing it with that band's trainers.
 RANK_LADDER = {
-    "route": ("RANK_ROW_BAD", "RANK_ROW_NORMAL", "RANK_ROW_NORMAL",
+    "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_NORMAL",
               "RANK_ROW_HARD"),
     "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
                 "RANK_ROW_HARD"),
@@ -395,8 +395,8 @@ class DifficultyGridContractTest(unittest.TestCase):
                             f"{names[kind][band]} should use {expected}",
                         )
             # And the cross-kind claims, at every band: route <= trainer <=
-            # leader, and the route sits between the leader bands on either
-            # side of it.
+            # leader, and a route is no softer than the previous band's gym
+            # trainers.
             for band in range(NUM_BANDS):
                 route_row = rows[self.const[ROSTER_GRID[0][band]]]
                 trainer_row = rows[self.const[ROSTER_GRID[1][band]]]
@@ -407,11 +407,11 @@ class DifficultyGridContractTest(unittest.TestCase):
                     self.assertLessEqual(trainer, leader)
                     self.assertLessEqual(route, leader)
                     if band:
-                        previous = rows[self.const[GYM_BAND[band - 1]]][RANK_ROW]
+                        previous = rows[self.const[ROSTER_GRID[1][band - 1]]][RANK_ROW]
                         self.assertGreaterEqual(
                             route, previous,
-                            "a route should be no softer than the leader "
-                            "band before it")
+                            "a route should be no softer than the gym "
+                            "trainers of the band before it")
                     if route == trainer:
                         self.assertGreater(
                             strongest_source(trainer_row),

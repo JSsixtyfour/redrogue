@@ -149,17 +149,17 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ; THE LADDER. rank_row never falls band to band within a kind:
 ;
 ;   band       gyms 1-2  gyms 3-4  gyms 5-6  gyms 7-8
-;   route      BAD       NORMAL    NORMAL    HARD
+;   route      BAD       EASY      NORMAL    HARD
 ;   trainer    EASY      NORMAL    HARD      HARD
 ;   leader     NORMAL    NORMAL    HARD      ELITE
 ;
-; Routes sit BETWEEN the leader bands on either side of them: a band's route
-; is no softer than the previous band's leader and no harder than its own
-; (band 1 has no previous leader, so it starts at the bottom). Within a band,
-; route <= trainer <= leader, and where two of them share a rank_row the
-; tougher one names a stronger source (route MID random vs trainer MID
-; random+TM; route FINAL random+TM vs trainer FINAL curated set). All of this
-; is held by test_difficulty_grid.py. It is deliberately NOT the lever
+; Routes sit between the gyms on either side of them: a band's route is no
+; softer than the previous band's gym trainers and no harder than its own
+; leader. Gyms 3-4 routes stay on EASY, just under the gym 2 leader, so the
+; step from gym 2 to the gym 3-4 trainers is not doubled up on the routes.
+; Within a band, route <= trainer <= leader, and where two of them share a
+; rank_row the tougher one names a stronger source (route FINAL random+TM vs
+; trainer FINAL curated set). All of this is held by test_difficulty_grid.py. It is deliberately NOT the lever
 ; AITierByRound pulls - that one scales how well the AI uses a moveset, this
 ; one scales what is in the moveset.
 ;
@@ -171,7 +171,7 @@ MovesetMixTable::
 	table_width MIX_ENTRY_SIZE, MovesetMixTable
 	;   learn full rand rTM TMonly set  tier_mask                rank_row        tm_cap require         forbid              fallback
 	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_BAD,    0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_EARLY
-	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_NORMAL, 0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
+	mix     0,   0,   1,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_MID
 	mix     0,   0,   1,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 1,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_LATE
 	mix     0,   0,   1,   2,  0,   0,  0,                       RANK_ROW_HARD,   1,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_FINAL
 	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_RANDOM         ; TRAINER_EARLY
