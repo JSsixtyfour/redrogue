@@ -86,8 +86,8 @@ _WardensHouseDisplayMerchandiseText::
 	done
 
 _WardenGift1Desc::
-	text "Teaches STRENGTH"
-	line "to move rocks!"
+	text "Teaches #MON"
+	line "to learn STRENGTH"
 	done
 
 _WardenGift2Desc::
@@ -96,16 +96,16 @@ _WardenGift2Desc::
 	done
 
 _WardenGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "Teaches #MON"
+	line "to learn SURF"
 	done
 
 _WardenGift4Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "A Safari Zone"
+	line "rarity!"
 	done
     
 _WardenGift5Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "As valuable as my"
+	line "my teeth!"
 	done
