@@ -250,14 +250,6 @@ DEF PARTY_GEN_MAX_RETRIES EQU 8
 ; and taking a low-ranked move there is the right answer anyway.
 DEF PARTY_GEN_MAX_DRAWS EQU 40
 
-; Round bands the ROUTE and TRAINER rows of the difficulty grid are cut into:
-; the plan's rounds 1-2, 3-5 and 6-8. The gym leader column (and the mini-boss
-; that follows it) is cut on four gym bands instead - see GYM_BAND_ROUNDS in
-; data/trainers/party_specs.asm. Three, not eight, because the mix table is a
-; coarse ladder on purpose - AITierByRound already scales per round, and a
-; per-round mix row would be nine rows of near-duplicates to maintain.
-DEF NUM_ROUND_BANDS EQU 3
-
 ; Quota columns in a MovesetMixTable row: one per rollable source. MSRC_EXPLICIT
 ; and MSRC_TUTOR are deliberately excluded - explicit moves come from a slot
 ; override, never from a quota - so this is NOT NUM_MSRC.
