@@ -403,3 +403,156 @@ _PCPokemonSalesmanNoRefundsText::
 	text "MAN: Well, I don't"
 	line "give refunds!"
 	done
+
+; Miniboss door signs, indexed by door, boss type, then item category.
+_LobbyDoor1RivalHealingText::
+	text "DOOR 1: RIVAL"
+	line "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor1RivalStatText::
+	text "DOOR 1: RIVAL"
+	line "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor1RivalTMText::
+	text "DOOR 1: RIVAL"
+	line "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor1RivalMoneyText::
+	text "DOOR 1: RIVAL"
+	line "ENCOUNTER"
+	cont "MONEY@"
+	text_end
+
+_LobbyDoor1GiovanniHealingText::
+	text "DOOR 1: GIOVANNI"
+	line "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor1GiovanniStatText::
+	text "DOOR 1: GIOVANNI"
+	line "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor1GiovanniTMText::
+	text "DOOR 1: GIOVANNI"
+	line "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor1GiovanniMoneyText::
+	text "DOOR 1: GIOVANNI"
+	line "ENCOUNTER"
+	cont "MONEY@"
+	text_end
+
+_LobbyDoor1KarateHealingText::
+	text "DOOR 1:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor1KarateStatText::
+	text "DOOR 1:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor1KarateTMText::
+	text "DOOR 1:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor1KarateMoneyText::
+	text "DOOR 1:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "MONEY@"
+	text_end
+
+_LobbyDoor2RivalHealingText::
+	text "DOOR 2: RIVAL"
+	line "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor2RivalStatText::
+	text "DOOR 2: RIVAL"
+	line "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor2RivalTMText::
+	text "DOOR 2: RIVAL"
+	line "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor2RivalMoneyText::
+	text "DOOR 2: RIVAL"
+	line "ENCOUNTER"
+	cont "MONEY@"
+	text_end
+
+_LobbyDoor2GiovanniHealingText::
+	text "DOOR 2: GIOVANNI"
+	line "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor2GiovanniStatText::
+	text "DOOR 2: GIOVANNI"
+	line "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor2GiovanniTMText::
+	text "DOOR 2: GIOVANNI"
+	line "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor2GiovanniMoneyText::
+	text "DOOR 2: GIOVANNI"
+	line "ENCOUNTER"
+	cont "MONEY@"
+	text_end
+
+_LobbyDoor2KarateHealingText::
+	text "DOOR 2:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "HEALING ITEMS@"
+	text_end
+
+_LobbyDoor2KarateStatText::
+	text "DOOR 2:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "STAT BOOSTS@"
+	text_end
+
+_LobbyDoor2KarateTMText::
+	text "DOOR 2:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "TM ITEMS@"
+	text_end
+
+_LobbyDoor2KarateMoneyText::
+	text "DOOR 2:"
+	line "KARATE MASTER"
+	cont "ENCOUNTER"
+	cont "MONEY@"
+	text_end

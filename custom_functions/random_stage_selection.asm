@@ -817,13 +817,12 @@ ENDC
 	ld [wLobbyDoor2StageMap], a
 	; Bridge layer (twice-per-run interlude, on TOP of everything): may turn BOTH
 	; doors into two different bridge rooms and route onward to wRogueMap after the
-	; gift. If it fires, it suppresses the special roll this visit. Fires during
-	; both route and gym cycles; self-gates on first route / per-run cap.
+	; gift. Only gym cycles are eligible, so no route-special slot is consumed.
 	call BridgeRollAndAssign
 	jr c, .selectionDone
 	; Mini-boss / wild-area layer: on a route-next selection past the first route,
-	; this may turn ONE door into a mini-boss stage or a wild area (leaving the
-	; other on the normal route) and record the type/door in wRogueFlagsBitfield
+	; this may offer a special versus a route, both special kinds, or one
+	; mandatory special. Record the type/door in wRogueFlagsBitfield
 	; bits 4-6 (mini-boss) or wWildAreaState (wild area). Self-gates on gym-next /
 	; first route.
 	call SpecialEncounterRollAndAssign

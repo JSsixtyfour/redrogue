@@ -332,7 +332,7 @@ DEF MINIBOSS_RANDOM_FILL EQU $FE
 ; Chance tuning (out of 256). Base 25% ~= 64; +25% per non-mini-boss route.
 DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceSpecial = 0
 DEF MINIBOSS_STEP        EQU 64    ; +~25% per non-mini-boss route (guaranteed by the 4th)
-DEF MINIBOSS_MIN_PER_RUN EQU 2    ; forced-roll floor: at least this many per run
+DEF MINIBOSS_MIN_PER_RUN EQU 2    ; scheduled completion quota (one per half-run)
 DEF MINIBOSS_FIRST_BATTLECOUNT EQU ROUND_BATTLES ; not eligible until wBattleCount >= this (skips route 1)
 DEF MINIBOSS_TOTAL_ROUTES EQU 8   ; ~routes per run (one before each gym); used by the >=2 guarantee
 
@@ -343,13 +343,13 @@ DEF WILD_AREA_FOREST    EQU 1
 DEF WILD_AREA_CEMETERY  EQU 2
 DEF WILD_AREA_FACILITY  EQU 3
 DEF NUM_WILD_AREA_TYPES EQU 4
-DEF WILD_AREA_MIN_PER_RUN EQU 2          ; >=2 wild areas guaranteed per run
+DEF WILD_AREA_MIN_PER_RUN EQU 2          ; completed wild areas, one per half-run
 ; Not eligible until wBattleCount >= this (skips route 1), same as miniboss.
 DEF WILD_AREA_FIRST_BATTLECOUNT EQU ROUND_BATTLES
 
 ; wWildAreaState bit layout:
 ;   bits 0-2 and 7 = "offered this cycle" mask (one bit per wild-area type)
-;   bits 3-4 = saturating count of wild areas offered this run (0-3)
+;   bits 3-4 = completed wild-area count this run (0-2; legacy encoding holds 3)
 ; Facility uses bit 7 so existing saves retain the original count encoding.
 DEF WILD_AREA_MASK        EQU %10000111
 DEF WILD_AREA_COUNT_SHIFT EQU 3

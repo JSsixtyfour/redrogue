@@ -2,7 +2,7 @@
 ; Bridge System: twice-per-run gift-room interludes that sit ON TOP of the lobby
 ; door randomization. When a bridge fires, BOTH lobby doors become two different
 ; bridge rooms; entering either gives a gift (see engine/events/bridge_gift_menu.asm)
-; and its exit warp routes straight to the pre-decided next route/gym (wRogueMap)
+; and its exit warp routes straight to the pre-decided gym (wRogueMap)
 ; via PatchBridgeExit. Bridges do NOT consume a route/gym/special slot.
 ;
 ; Run-state (wBridgeOfferedLo + wBridgeState, in wGameProgressFlags): a per-run
@@ -37,7 +37,8 @@ DEF NUM_BRIDGE_ROOMS EQU 14
 ; visit, overwrites BOTH doors with two different not-yet-offered bridge rooms
 ; and returns carry SET (caller then skips the special roll). Otherwise carry
 ; CLEAR. wRogueMap (the real next stage) is left intact for the rooms' exit
-; warps. Fires during BOTH route and gym cycles. Clobbers a/bc/de/hl.
+; warps. Fires only during gym cycles (except explicit Debug 2 overrides).
+; Counted on room entry by BridgeRecordVisit. Clobbers a/bc/de/hl.
 ; ============================================================
 BridgeRollAndAssign::
 IF DEF(_DEBUG)
@@ -53,10 +54,10 @@ IF DEF(_DEBUG)
 	jr nc, .no                    ; mini-boss/wild choices suppress normal bridge rolls
 .normalGates
 ENDC
-	; gate: not until after the first route
-	ld a, [wBattleCount]
-	cp BRIDGE_FIRST_BATTLECOUNT
-	jr c, .no
+	; Gifts are interludes before gyms, never a competing route selection.
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	jr z, .no
 	; gate: already hit the per-run cap?
 	call GetBridgeCount
 	cp BRIDGE_PER_RUN
@@ -65,7 +66,6 @@ ENDC
 	jr nc, .no
 .fire
 	call BridgePickTwoRooms       ; sets both door maps, marks both offered
-	call BridgeIncCount
 	scf
 	ret
 .no
@@ -74,21 +74,32 @@ ENDC
 
 ; ------------------------------------------------------------
 ; BridgeShouldOccur - OUT: carry set = a bridge fires this visit.
-; Escalating guarantee: force the next bridge once wBattleCount passes its
-; threshold (so ~2 land per run), otherwise a flat ~1-in-N chance. Clobbers all.
+; One gift before gyms 2-4, another before gyms 5-7. Each remaining eligible
+; gym is equally likely; the last one in each window is mandatory.
+; Counts are badges already earned, so the windows are 1-3 and 4-6.
 BridgeShouldOccur:
 	call GetBridgeCount           ; a = current count (0 or 1 here)
+	add a
 	ld e, a
 	ld d, 0
 	ld hl, BridgeGuaranteeThresholds
 	add hl, de
-	ld a, [wBattleCount]
+	push hl
+	call MiniBossCountBadges
+	pop hl
 	cp [hl]
-	jr nc, .fire                  ; wBattleCount >= threshold -> guaranteed
-	ld c, BRIDGE_CHANCE_RANGE
+	jr c, .no
+	ld b, a
+	inc hl
+	ld a, [hl]
+	sub b
+	jr c, .fire
+	inc a
+	ld c, a
 	call Rangerandom              ; a in [0, range-1]
 	and a
 	jr z, .fire                   ; 1-in-range
+.no
 	and a                         ; clear carry
 	ret
 .fire
@@ -96,8 +107,8 @@ BridgeShouldOccur:
 	ret
 
 BridgeGuaranteeThresholds:
-	db 4 * ROUND_BATTLES ; force the 1st bridge once wBattleCount reaches this
-	db 9 * ROUND_BATTLES ; force the 2nd bridge (A5: past the last lobby visit, never fires)
+	db 1, 3 ; first gift: before gym 2, 3 or 4
+	db 4, 6 ; second gift: before gym 5, 6 or 7
 
 ; ------------------------------------------------------------
 ; BridgePickTwoRooms - pick two DISTINCT not-yet-offered bridge rooms, assign to
@@ -284,6 +295,40 @@ BridgeIncCount:
 	and BRIDGE_HI_ROOM_MASK        ; keep room bits 0-5
 	or b
 	ld [wBridgeState], a
+	ret
+
+; Count a gift-room visit, not an offer the player can leave in the lobby.
+; Consume the offered destinations to make map reloads idempotent. Bridge
+; exit patching uses wRogueMap, which remains the queued gym throughout.
+BridgeRecordVisit::
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	ret nz
+	ldh a, [hCurMap]
+	ld c, a
+	ld a, [wLobbyDoor1StageMap]
+	cp c
+	jr z, .offered
+	ld a, [wLobbyDoor2StageMap]
+	cp c
+	ret nz
+.offered
+	ld hl, BridgeRoomMaps
+	ld b, NUM_BRIDGE_ROOMS
+.scan
+	ld a, [hli]
+	cp c
+	jr z, .found
+	dec b
+	jr nz, .scan
+	ret
+.found
+	call GetBridgeCount
+	cp BRIDGE_PER_RUN
+	call c, BridgeIncCount
+	ld a, [wRogueMap]
+	ld [wLobbyDoor1StageMap], a
+	ld [wLobbyDoor2StageMap], a
 	ret
 
 ; ============================================================

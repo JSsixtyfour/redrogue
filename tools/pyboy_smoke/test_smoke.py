@@ -302,8 +302,9 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(states[3] & 0x87, 0x87)
         self.assertIn(picked[4], wild_maps)
         self.assertEqual((states[4] & 0x87).bit_count(), 1)
-        self.assertEqual(states[2] & 0x18, 0x18)
-        self.assertEqual(states[4] & 0x18, 0x18)
+        # Offering maps rotates types but does not complete any encounter.
+        self.assertEqual(states[2] & 0x18, 0)
+        self.assertEqual(states[4] & 0x18, 0)
 
     def test_facility_is_selected_when_other_three_types_were_offered(self) -> None:
         assert self.harness is not None
