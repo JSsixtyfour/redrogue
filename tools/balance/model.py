@@ -528,6 +528,7 @@ class Checkpoint:
     ace_growth: str = "GROWTH_MEDIUM_SLOW"
     bench_growth: list[str] = field(default_factory=list)
     levels: list[int] = field(default_factory=list)   # every member on its own curve, ace first
+    spendable: int = 0        # money minus Elite Four / Champion winnings (see DEAD_MONEY_KINDS)
 
 
 @dataclass
@@ -537,6 +538,14 @@ class Run:
     stages: list[str] = field(default_factory=list)
     wild_types: list[str] = field(default_factory=list)   # the type of each wild area entered
     offers: list[str] = field(default_factory=list)   # special kind offered per lobby visit
+    total_money: int = 0      # every yen the run earns, the Champion's prize included
+    spendable_money: int = 0  # the same, minus DEAD_MONEY_KINDS winnings
+
+
+# Prize money won from here on can't buy anything: the Elite Four and the
+# Champion run back to back with no lobby or shop between them, and the run
+# ends after the Champion. The economy figures leave it out ("spendable").
+DEAD_MONEY_KINDS = ("e4", "champion")
 
 
 class Simulator:
@@ -553,6 +562,7 @@ class Simulator:
         growth = cfg.starter if cfg.starter != "random" else g.species[starter].growth
         self.members = [Member(5, 0, growth=growth, species=starter)]
         self.money = bcd(g.knobs["START_MONEY"])
+        self.dead_money = 0       # winnings from DEAD_MONEY_KINDS battles
         self.rival_starter = self.rng.choice([b for i, b in enumerate(balls) if i != pick])
         self.count = 0
         self.ko_turn = 0
@@ -593,7 +603,10 @@ class Simulator:
                 f.exp_gained += self._penalize(f, share)      # the fighter's own call
                 for m in self.members:                        # then every party mon
                     m.exp_gained += self._penalize(m, share)
-        self.money += money_for(g, battle, cfg.amulet_coin)
+        won = money_for(g, battle, cfg.amulet_coin)
+        self.money += won
+        if battle.kind in DEAD_MONEY_KINDS:
+            self.dead_money += won
         if battle.trainer and battle.kind not in ("stage_event",):
             self.count += 1
 
@@ -607,7 +620,8 @@ class Simulator:
         self.run.checkpoints.append(Checkpoint(
             rnd, label, len(self.run.battles), enemy_ace, ace.exp_gained,
             [(m.join_level, m.exp_gained) for m in self.members[1:]], self.money,
-            ace.growth, [m.growth for m in self.members[1:]], [m.level(self.g) for m in self.members]))
+            ace.growth, [m.growth for m in self.members[1:]], [m.level(self.g) for m in self.members],
+            self.money - self.dead_money))
 
     # --- stages ---
     def route(self, miniboss: str | None) -> None:
@@ -725,6 +739,8 @@ class Simulator:
         self.final_count = self.count
         self.checkpoint(10, "Champion", champ.mons[-1][1])
         self.fight(champ)
+        self.run.total_money = self.money
+        self.run.spendable_money = self.money - self.dead_money
         return self.run
 
 
@@ -761,6 +777,7 @@ def summarize(g: GameData, runs: list[Run]) -> list[dict]:
             "battles": statistics.mean(cp.battle_index for cp in cps),
             "enemy_ace": statistics.mean(cp.enemy_ace_level for cp in cps),
             "money": statistics.mean(cp.money for cp in cps),
+            "spendable": statistics.mean(cp.spendable for cp in cps),
         }
         for curve in GROWTH_CURVES:
             lv = [ace_level(g, curve, cp.ace_exp) for cp in cps]
@@ -791,7 +808,7 @@ def format_round_table(rows: list[dict], cfg: Config) -> str:
             f"take_wild={cfg.take_wild} groups={','.join(cfg.groups)}")
     lines = [head,
              "| checkpoint | battles | enemy ace | starter (p10-p90) | team avg | team lowest | enemy ace - starter "
-             "| if MedSlow | if MedFast | if Fast | if Slow | money |",
+             "| if MedSlow | if MedFast | if Fast | if Slow | spendable money |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append(
@@ -799,7 +816,7 @@ def format_round_table(rows: list[dict], cfg: Config) -> str:
             f"| {r['ace_rolled']:.1f} ({r['ace_rolled_p10']}-{r['ace_rolled_p90']}) "
             f"| {r['team_rolled']:.1f} | {r['team_low_rolled']:.1f} | {r['gap_rolled']:+.1f} "
             f"| {r['ace_medium_slow']:.1f} | {r['ace_medium_fast']:.1f} | {r['ace_fast']:.1f} | {r['ace_slow']:.1f} "
-            f"| {r['money']:,.0f} |")
+            f"| {r['spendable']:,.0f} |")
     return "\n".join(lines)
 
 
@@ -898,6 +915,9 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
         check("e4 counts", [bt.count for bt in run.battles if bt.kind == "e4"],
               list(range(k["E4_FIRST_BATTLECOUNT"], k["CHAMPION_BATTLECOUNT"])))
         check("no specials on route 1", run.offers[0], "none")
+        # Nothing between the E4 checkpoint and the Champion is spendable.
+        check("champion spendable = e4 money", run.checkpoints[-1].spendable, run.checkpoints[-2].money)
+        check("run spendable = e4 money", run.spendable_money, run.checkpoints[-2].money)
         check("wild types never repeat", len(set(run.wild_types)), len(run.wild_types))
         for bt in run.battles:
             if bt.kind in ("route", "route_final", "gym_trainer", "gym_final"):

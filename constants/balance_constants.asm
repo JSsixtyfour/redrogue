@@ -100,9 +100,9 @@ DEF STAGE_EVENT_LEVEL_STEP EQU 1
 ; --- Prize money -------------------------------------------------------------
 ; Money won = base x level of the enemy's last mon (BCD), plus Amulet Coin
 ; +10/15/20%. Read by data/trainers/pic_pointers_money.asm.
-DEF MONEY_BASE_TRAINER EQU 75
-DEF MONEY_BASE_LEADER EQU 200
-DEF MONEY_BASE_LEADER_GIOVANNI EQU 150 ; GIOVANNI's own gym-leader row differs from the other leaders
+DEF MONEY_BASE_TRAINER EQU 80 ; was 75 until 2026-10-06 (+7%; route and gym trainers)
+DEF MONEY_BASE_LEADER EQU 215 ; was 200 until 2026-10-06 (+7.5%)
+DEF MONEY_BASE_LEADER_GIOVANNI EQU 160 ; GIOVANNI's own gym-leader row differs from the other leaders (was 150 until 2026-10-06)
 DEF MONEY_BASE_E4 EQU 200
 DEF MONEY_BASE_RIVAL1 EQU 100
 DEF MONEY_BASE_RIVAL2 EQU 150
@@ -137,7 +137,7 @@ DEF WILD_AREA_EXIT_BATTLES EQU ROUTE_BATTLES
 ; encounters, procedural_facility_gen.asm). They used to be two typed-out
 ; copies that could drift apart.
 MACRO wild_area_levels
-	db 8, 11, 15, 23, 28, 35, 41, 48, 56
+	db 7, 10, 14, 22, 27, 34, 40, 47, 55 ; each -1 on 2026-10-06 (wild mons sat ~0.5 over the team average)
 ENDM
 
 ; Chance out of 256 that an offered wild area carries a stage-event trainer.
@@ -172,6 +172,9 @@ DEF REWARD_LEVEL_CAP EQU 50
 ; (engine/items/tm_prices.asm) reads the price here. BCD THOUSANDS, one byte:
 ; $20 = Y20,000, so the ceiling is Y99,000. (The old table stored the price
 ; itself as a BCD thousands digit, which capped it at Y9,000.)
+; 2026-10-06: cut at least 15% from 2/4/6/10/15/20 thousand, rounded down to
+; the next whole thousand the byte can hold (F 2 -> 1 is the only step that
+; size, since 2 -> 1.7 isn't representable).
 	const_def
 	const TM_PRICE_TIER_F ; 0
 	const TM_PRICE_TIER_D ; 1
@@ -180,12 +183,12 @@ DEF REWARD_LEVEL_CAP EQU 50
 	const TM_PRICE_TIER_A ; 4
 	const TM_PRICE_TIER_S ; 5
 DEF NUM_TM_PRICE_TIERS EQU const_value
-DEF TM_PRICE_F_BCD EQU $02
-DEF TM_PRICE_D_BCD EQU $04
-DEF TM_PRICE_C_BCD EQU $06
-DEF TM_PRICE_B_BCD EQU $10
-DEF TM_PRICE_A_BCD EQU $15
-DEF TM_PRICE_S_BCD EQU $20
+DEF TM_PRICE_F_BCD EQU $01
+DEF TM_PRICE_D_BCD EQU $03
+DEF TM_PRICE_C_BCD EQU $05
+DEF TM_PRICE_B_BCD EQU $08
+DEF TM_PRICE_A_BCD EQU $12
+DEF TM_PRICE_S_BCD EQU $17
 
 ; --- Lobby clerk (stat/TM) odds ----------------------------------------------
 ; Random_StatTM_Mart_Selection (engine/items/random_item_selection_mart.asm).
