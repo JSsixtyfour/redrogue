@@ -34,16 +34,17 @@ Route24SetDefaultScript:
 
 	RogueAutoWalkScripts Route24, PAD_UP, Route24NuggetScript, EVENT_AUTOWALKED_INTO_ROUTE_24, TEXT_ROUTE24_NO_TURNING_BACK, SCRIPT_ROUTE24_PLAYER_IS_MOVING, wRoute24CurScript
 
+; Entry is the WARP_NO_RETURN pair at (10-11,31); push up.
 Route24EntranceCoords:
-	dbmapcoord 31, 10
-	dbmapcoord 31, 11
+	dbmapcoord 10, 31
+	dbmapcoord 11, 31
 	db -1
 
 Route24NoCoords:
-	dbmapcoord 30, 10
-	dbmapcoord 30, 11
-	dbmapcoord 29, 10
-	dbmapcoord 29, 11
+	dbmapcoord 10, 30
+	dbmapcoord 11, 30
+	dbmapcoord 10, 29
+	dbmapcoord 11, 29
 	db -1
 
 Route24_ScriptPointers:

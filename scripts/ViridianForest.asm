@@ -52,22 +52,24 @@ ViridianForest_Script:
 
 	RogueAutoWalkScripts ViridianForest, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_VIRIDIAN_FOREST, TEXT_VIRIDIANFOREST_NO_TURNING_BACK, SCRIPT_VIRIDIANFOREST_PLAYER_IS_MOVING, wViridianForestCurScript
 
+; Entry is the WARP_NO_RETURN row at (11-14,33). (14,32) is deliberately NOT a
+; no-coord: (14,31) is a tree, so pushing up from there never moves the player
+; and the script re-fires every frame (softlock). The entry tile (14,33) still
+; pushes up one step onto (14,32).
 ViridianForestEntranceCoords:
-	dbmapcoord 33, 11
-	dbmapcoord 33, 12
-	dbmapcoord 33, 13
-	dbmapcoord 33, 14
+	dbmapcoord 11, 33
+	dbmapcoord 12, 33
+	dbmapcoord 13, 33
+	dbmapcoord 14, 33
 	db -1
 
 ViridianForestNoCoords:
-	dbmapcoord 32, 11
-	dbmapcoord 32, 12
-	dbmapcoord 32, 13
-	dbmapcoord 32, 14
-	dbmapcoord 31, 11
-	dbmapcoord 31, 12
-	dbmapcoord 31, 13
-	dbmapcoord 31, 14
+	dbmapcoord 11, 32
+	dbmapcoord 12, 32
+	dbmapcoord 13, 32
+	dbmapcoord 11, 31
+	dbmapcoord 12, 31
+	dbmapcoord 13, 31
 	db -1
 
 ViridianForest_ScriptPointers:

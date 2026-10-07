@@ -570,8 +570,9 @@ SetKeyItemTier:
 ; truth; these bytes are just a fast copy, refreshed here so an upgrade takes
 ; effect immediately rather than at the next run boundary.
 ;
-; LEFTOVERS and PP_TONIC heal maxHP/(16 - level), so the tier maps onto the
-; level curve 0/2/4/8 -> 1/16, 1/14, 1/12, 1/8.
+; LEFTOVERS and PP_TONIC heal max/(16 - level); each maps its internal tier to
+; a level through its own table below (LeftoversHealLevels 1/16, 1/12, 1/8;
+; PPTonicRestoreLevels 1/16, 1/14, 1/12 for displayed TIER 1/2/3).
 ;
 ; Exported (2026-09-03) so RogueResetRunState (custom_functions/credit_popup.asm,
 ; the rogue bank) can farcall it after a run-boundary blanket-clear of
@@ -583,12 +584,14 @@ SetKeyItemTier:
 ApplyKeyItemTierEffects::
 	ld c, KEY_ITEM_BIT_LEFTOVERS_OWNED / 2
 	call GetKeyItemTier
-	call TierToHealLevel
+	ld hl, LeftoversHealLevels
+	call TierToLevel
 	ld [wHealAllItemLevel], a
 
 	ld c, KEY_ITEM_BIT_PP_TONIC_OWNED / 2
 	call GetKeyItemTier
-	call TierToHealLevel
+	ld hl, PPTonicRestoreLevels
+	call TierToLevel
 	ld [wRestorePPItemLevel], a
 
 	ld c, KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2
@@ -612,15 +615,20 @@ ApplyKeyItemTierEffects::
 	farcall RoguePrismRefreshCache
 	ret
 
-TierToHealLevel:
-	ld hl, .Table
+; INPUT: a = internal tier, hl = 4-entry level table. OUTPUT: a = level.
+TierToLevel:
 	ld b, 0
 	ld c, a
 	add hl, bc
 	ld a, [hl]
 	ret
-.Table:
-	db 0, 2, 4, 8
+
+; Indexed by internal tier; the 4th entry only serves a stale tier from an old
+; save (MAX_KEY_ITEM_TIER caps live play at internal 2 / TIER 3).
+LeftoversHealLevels:
+	db 0, 4, 8, 8  ; 1/16, 1/12, 1/8 (TIER 1/2/3)
+PPTonicRestoreLevels:
+	db 0, 2, 4, 8  ; 1/16, 1/14, 1/12 (TIER 1/2/3)
 
 ; ============================================================
 ; Data tables.
@@ -644,7 +652,9 @@ CreditSaleTable:
 	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2
 	db $ff
 
-; item id, key item index, cost to reach tier 1 / 2 / 3 (1-byte BCD each)
+; item id, key item index, cost to reach TIER 2 / TIER 3 / (unused) (1-byte
+; BCD each). Indexed by current internal tier; the third cost would buy
+; internal 3 / TIER 4, which MAX_KEY_ITEM_TIER never offers.
 CreditUpgradeTable:
 	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $10, $20, $40
 	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $10, $20, $40

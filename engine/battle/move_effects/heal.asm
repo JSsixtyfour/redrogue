@@ -28,11 +28,17 @@ HealEffect_:
 	ld a, b
 	cp REST
 	jr nz, .healHP
+	; de is the live current-HP pointer: the Bridge predicate loads d and e
+	; with its own arguments, so it must be saved across the farcall.
 	push hl
+	push de
 	farcall BridgePlayerRestIsBlocked
+	pop de
 	pop hl
 	jp c, .failed
-	ld a, REST
+	; The pushed flags carry "full heal" into .healHP. The farcall destroyed
+	; vanilla's Z from cp REST, so set Z again explicitly.
+	xor a
 	push hl
 	push de
 	push af

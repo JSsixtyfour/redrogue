@@ -48,15 +48,19 @@ Route6_Script:
 	ld [wRoute6CurScript], a
 	ret
 
-	RogueAutoWalkScripts Route6, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_6, TEXT_ROUTE6_NO_TURNING_BACK, SCRIPT_ROUTE6_PLAYER_IS_MOVING, wRoute6CurScript
+	RogueAutoWalkScripts Route6, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_6, TEXT_ROUTE6_NO_TURNING_BACK, SCRIPT_ROUTE6_PLAYER_IS_MOVING, wRoute6CurScript
 
+; Entry is the WARP_NO_RETURN pair at (8-9,34); push up.
 Route6EntranceCoords:
-	dbmapcoord 14, 24
+	dbmapcoord 8, 34
+	dbmapcoord 9, 34
 	db -1
 
 Route6NoCoords:
-	dbmapcoord 14, 25
-	dbmapcoord 14, 26
+	dbmapcoord 8, 33
+	dbmapcoord 9, 33
+	dbmapcoord 8, 32
+	dbmapcoord 9, 32
 	db -1
 
 Route6_ScriptPointers:

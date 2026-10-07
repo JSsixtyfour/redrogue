@@ -49,15 +49,18 @@ DiglettsCave_Script:
 	ld [wDiglettsCaveCurScript], a
 	ret
 
-	RogueAutoWalkScripts DiglettsCave, PAD_RIGHT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_DIGLETTS_CAVE, TEXT_DIGLETTSCAVE_NO_TURNING_BACK, SCRIPT_DIGLETTSCAVE_PLAYER_IS_MOVING, wDiglettsCaveCurScript
+	RogueAutoWalkScripts DiglettsCave, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_DIGLETTS_CAVE, TEXT_DIGLETTSCAVE_NO_TURNING_BACK, SCRIPT_DIGLETTSCAVE_PLAYER_IS_MOVING, wDiglettsCaveCurScript
 
+; Entry is the WARP_NO_RETURN ladder at (37,31); (5,5) is the lobby exit.
+; Stepping back onto the ladder from above/below re-fires the entrance check
+; and pushes left, so only the row-31 approach tiles need listing here.
 DiglettsCaveEntranceCoords:
-	dbmapcoord 5, 5
+	dbmapcoord 37, 31
 	db -1
 
 DiglettsCaveNoCoords:
-	dbmapcoord 5, 4
-	dbmapcoord 5, 3
+	dbmapcoord 36, 31
+	dbmapcoord 35, 31
 	db -1
 
 DiglettsCave_ScriptPointers:

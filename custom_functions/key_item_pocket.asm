@@ -227,8 +227,9 @@ HasKeyPocketItem:: jp IsKeyItemActive
 ; a/b/c/h/l on every crossing (project_farcall_home_clobbers_a).
 ; INPUT:  wCurItem = the key item to query
 ; OUTPUT: a = 0 if the item is not ACTIVE (not in the bag), otherwise
-;         1 + tier (1-4; tier 0 is unupgraded, tiers 1-3 are displayed
-;         TIER 1/2/3)
+;         1 + internal tier, which is also the displayed tier: internal 0
+;         (unupgraded) = TIER 1, internal 2 (two upgrades, the max) = TIER 3.
+;         4 only from a stale 2-bit value in an old save.
 ; CLOBBERS: bc/de/hl
 ; ============================================================
 GetKeyItemPower::

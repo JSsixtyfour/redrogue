@@ -2589,15 +2589,11 @@ ItemUseLeftovers:
 ; Heals every party mon by maxHP / (16 - wHealAllItemLevel), capped at maxHP.
 ; wHealAllItemLevel 0 = 1/16 of max HP, 15 = 1/1 (full heal). Incrementing
 ; wHealAllItemLevel "upgrades" the item without touching this routine.
+; Displayed TIER 1/2/3 set level 0/4/8 = 1/16, 1/12, 1/8 (LeftoversHealLevels).
+; Always heals at least 1 HP to a living, damaged mon.
 ; Called from EndOfBattle if the player has LEFTOVERS in their bag.
 ; ============================================================
 LeftoversRecovery::
-	ld a, [wHealAllItemLevel]
-	ld b, a
-	ld a, 16
-	sub b
-	ld c, a                        ; c = heal divisor (16 - level), 1-16
-
 	ld hl, wPartySpecies
 	ld de, wPartyMon1HP
 .healLoop
@@ -2617,8 +2613,14 @@ LeftoversRecovery::
 	ld l, a                        ; hl = maxHP
 	push hl                         ; stash maxHP
 
-	; divide hl (maxHP) by c -> hl = heal amount
-	ld e, c                         ; heal divisor put in e
+	; divide hl (maxHP) by (16 - level) -> hl = heal amount
+	; The divisor is re-read for every mon: bc is reused below for the heal
+	; amount and new HP, so a divisor held in c only survived the first mon.
+	ld a, [wHealAllItemLevel]
+	ld e, a
+	ld a, 16
+	sub e
+	ld e, a                         ; e = heal divisor (16 - level), 1-16
 	ld d, 16                        ; iteration counter
 	xor a                           ; clear to function as hl remainder accumulator
 .divLoop
@@ -2632,6 +2634,11 @@ LeftoversRecovery::
 	dec d                           ; decrease iteration counter
 	jr nz, .divLoop                 ; if not past 16 loops, keep going
 
+	ld a, h
+	or l
+	jr nz, .haveHeal
+	inc l                           ; heal at least 1 HP; the maxHP cap below stops it overhealing
+.haveHeal
 	push hl                         ; stash heal amount
 	pop bc                          ; bc = heal amount
 	pop de                          ; de = maxHP

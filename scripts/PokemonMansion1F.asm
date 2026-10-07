@@ -99,22 +99,23 @@ Mansion1Script_Switches::
 
 	RogueAutoWalkScripts PokemonMansion1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_MANSION_1F, TEXT_POKEMONMANSION1F_NO_TURNING_BACK, SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING, wPokemonMansion1FCurScript
 
+; Entry is the WARP_NO_RETURN row at (4-7,27); push up.
 PokemonMansion1FEntranceCoords:
-	dbmapcoord 27, 4
-	dbmapcoord 27, 5
-	dbmapcoord 27, 6
-	dbmapcoord 27, 7
+	dbmapcoord 4, 27
+	dbmapcoord 5, 27
+	dbmapcoord 6, 27
+	dbmapcoord 7, 27
 	db -1
 
 PokemonMansion1FNoCoords:
-	dbmapcoord 26, 4
-	dbmapcoord 26, 5
-	dbmapcoord 26, 6
-	dbmapcoord 26, 7
-	dbmapcoord 25, 4
-	dbmapcoord 25, 5
-	dbmapcoord 25, 6
-	dbmapcoord 25, 7
+	dbmapcoord 4, 26
+	dbmapcoord 5, 26
+	dbmapcoord 6, 26
+	dbmapcoord 7, 26
+	dbmapcoord 4, 25
+	dbmapcoord 5, 25
+	dbmapcoord 6, 25
+	dbmapcoord 7, 25
 	db -1
 
 PokemonMansion1F_ScriptPointers:

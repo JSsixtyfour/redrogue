@@ -51,13 +51,16 @@ RockTunnel1F_Script:
 
 	RogueAutoWalkScripts RockTunnel1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROCK_TUNNEL_1F, TEXT_ROCKTUNNEL1F_NO_TURNING_BACK, SCRIPT_ROCKTUNNEL1F_PLAYER_IS_MOVING, wRockTunnel1FCurScript
 
+; Entry is the WARP_NO_RETURN ladder at (15,33); (37,17) is the lobby exit.
+; Stepping back onto the ladder from the side re-fires the entrance check
+; and pushes up, so only the column-15 approach tiles need listing here.
 RockTunnel1FEntranceCoords:
-	dbmapcoord 33, 15
+	dbmapcoord 15, 33
 	db -1
 
 RockTunnel1FNoCoords:
-	dbmapcoord 32, 15
-	dbmapcoord 31, 15
+	dbmapcoord 15, 32
+	dbmapcoord 15, 31
 	db -1
 
 RockTunnel1F_ScriptPointers:
