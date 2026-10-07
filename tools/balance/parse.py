@@ -118,19 +118,10 @@ def _blocks(label: str) -> list[LevelBlock]:
             for i in range(0, len(raw), 11)]
 
 
-@dataclass(frozen=True)
-class MiniBossRow:
-    level_range: int
-    min_level: int
-    base_class: int      # GetRandMon convention: 4 = pokeball .. 1 = masterball
-    rare_chance: int     # /256
-
-
 @dataclass
 class Tables:
     route: list[LevelBlock]
     gym: list[LevelBlock]
-    miniboss: list[MiniBossRow]
     wild: list[int]
     wild_boss: list[int]
 
@@ -164,11 +155,9 @@ def _wild_levels() -> list[int]:
 
 
 def load_tables() -> Tables:
-    mb = _db_after_label("data/balance/miniboss_levels.asm", "trainer_difficulty_settings_miniboss")
     return Tables(
         route=_blocks("trainer_difficulty_settings"),
         gym=_blocks("trainer_difficulty_settings_gym"),
-        miniboss=[MiniBossRow(*mb[i:i + 4]) for i in range(0, len(mb), 4)],
         wild=_wild_levels(),
         wild_boss=_db_after_label("data/balance/wild_boss_levels.asm", "PCBossLevelTable"),
     )
@@ -323,7 +312,7 @@ def classify(rarity: dict[str, list[Tier]], species: str) -> tuple[str, int] | N
 def load_pools() -> dict[str, dict[str, list[str]]]:
     """{POOL_X: {KANTO: [...], JOHTO: [...], WARP: [...]}} from data/trainers/pools.asm,
     plus the gym leaders' banded pools {POOL_BAND_<Leader>_<Ace|Fod|Off><band>: ...}
-    from data/trainers/gym_band_pools.asm (a `band_same` alias maps to its twin's
+    from data/trainers/band_pools.asm (a `band_same` alias maps to its twin's
     runs). Entries are species names; a form index is dropped."""
     consts = parse_rgbds_constants(ROOT / "data" / "trainers" / "pools.asm")
     # Macro bodies (`trainer_pool BandPool_\1`, `const POOL_BAND_\1`) are not rows.
@@ -350,7 +339,7 @@ def load_pools() -> dict[str, dict[str, list[str]]]:
 
     band: dict[str, dict[str, list[str]]] = {}
     name, grp = None, "KANTO"
-    for raw in _lines("data/trainers/gym_band_pools.asm"):
+    for raw in _lines("data/trainers/band_pools.asm"):
         code = _code(raw)
         if not code:
             continue
@@ -399,33 +388,6 @@ def load_spec_records() -> tuple[list[LeaderRecord], list[E4Record]]:
             args = [a.strip() for a in code.split(None, 1)[1].split(",")]
             e4.append(E4Record(args[0], args[1], args[2], args[4]))
     return leaders, e4
-
-
-def load_miniboss_teams() -> dict[str, list[list[str]]]:
-    """Curated mini-boss compositions; 'FILL:n' marks MINIBOSS_RANDOM_FILL, n."""
-    out: dict[str, list[list[str]]] = {}
-    current = None
-    for raw in _lines("data/trainers/parties.asm"):
-        code = _code(raw)
-        m = re.match(r"^(RivalMiniBossData|GiovanniMiniBossData|KarateMiniBossData):$", code)
-        if m:
-            current = m.group(1)
-            out[current] = []
-            continue
-        if current and re.match(r"^[A-Za-z_][A-Za-z0-9_]*:$", code):
-            current = None
-        if current and code.startswith("db "):
-            toks = [t.strip() for t in code[3:].split(",")]
-            team, i = [], 0
-            while i < len(toks) and toks[i] != "0":
-                if toks[i] == "MINIBOSS_RANDOM_FILL":
-                    team.append(f"FILL:{int(toks[i + 1])}")
-                    i += 2
-                else:
-                    team.append(toks[i])
-                    i += 1
-            out[current].append(team)
-    return out
 
 
 # --- money -------------------------------------------------------------------
@@ -505,7 +467,6 @@ class GameData:
     pools: dict[str, dict[str, list[str]]]
     leaders: list[LeaderRecord]
     e4: list[E4Record]
-    miniboss_teams: dict[str, list[list[str]]]
     money: dict[str, int]
     growth: dict[str, tuple[int, int, int, int, int]]
     constants: dict[str, int]
@@ -527,7 +488,6 @@ def load_all() -> GameData:
         pools=load_pools(),
         leaders=leaders,
         e4=e4,
-        miniboss_teams=load_miniboss_teams(),
         money=load_money_bases(knobs),
         growth=load_growth_rates(),
         constants=consts,
@@ -549,9 +509,6 @@ def _validate(d: GameData) -> None:
             names.update(lst)
     for r in d.e4:
         names.update((r.ace_a, r.ace_c))
-    for teams in d.miniboss_teams.values():
-        for team in teams:
-            names.update(s for s in team if not s.startswith("FILL:") and s != "RIVAL_STARTER_PLACEHOLDER")
     for sp in list(d.species.values()):
         names.update(target for _, _, target in sp.evos)
     missing = sorted(n for n in names if n not in d.species)

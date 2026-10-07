@@ -598,26 +598,40 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
     def test_mini_boss_takes_the_gym_leader_row_for_its_round(self):
         """"Mini-boss / rival matches the gym leader of the same round."
 
-        A DIFFERENT hook site from the roster one, on a different team builder,
-        so it needs its own runtime check rather than inheriting the roster
-        tests' confidence. GIOVANNI_MINIBOSS is the drivable one of the two:
-        its wTrainerNo 1 team is three literal species plus a random fill, with
-        no dependency on wRivalStarter the way RIVAL_MINIBOSS has.
+        Since party roster Phase 4 (2026-10-07) a mini-boss builds from its own
+        party spec (miniboss_records, party_specs.asm), so the row is that
+        record's mix byte and the mix-only hook must NOT fire. The record is
+        picked by the ROUND (PartyGenSpecIndex), never by wTrainerNo: the
+        stage hands Giovanni a set of 1-3 and Victory Road hands the rival 1,
+        so set 2 here must still land on the round's record.
         """
         self._boot()
+        h = self.harness
+        assert h is not None
         const = _constants()
-        # wBattleCount r*10..r*10+9 is fought on the way to gym r + 1, so it
-        # takes that gym's band: one cell per band, plus the post-gym-8 clamp.
+        rom = h.rom_path.read_bytes()
+        # wBattleCount / ROUND_BATTLES is the 0-based round, fought on the way
+        # to that gym, so it takes that gym's band: one cell per band, plus
+        # the clamp past gym 8 (round 9, Victory Road).
         for battle_count, expected in ((5, "MIX_GYM_EARLY"),
                                        (25, "MIX_GYM_MID"),
                                        (45, "MIX_GYM_LATE"),
                                        (65, "MIX_ELITE"),
                                        (85, "MIX_ELITE")):
+            tier = min(battle_count, ROUND["LAST_ROUND_BATTLECOUNT"]) // ROUND["ROUND_BATTLES"] + 1
             with self.subTest(battle_count=battle_count):
+                self.seen.clear()
+                h.write8("wBattleCount", battle_count)
+                h.write8("wTrainerClass", self.classes["GIOVANNI_MINIBOSS"])
+                h.write8("wTrainerNo", 2)
+                h.call_routine("ReadTrainer", limit=60000)
+                self.assertEqual(self.seen, [], "a spec'd mini-boss should not take the mix-only path")
+                pointer = h.read8("wPartyGenSpecPtr") | (h.read8("wPartyGenSpecPtr", offset=1) << 8)
+                bank, record = h.symbols.get(f"GiovanniMiniBossSpec{tier}")
+                self.assertEqual(pointer, record, f"wBattleCount {battle_count} should build round {tier}'s record")
+                mix = rom[bank * 0x4000 + record - 0x4000 + 4]  # party_spec byte 4 = mix id
                 self.assertEqual(
-                    self._selected_mix(battle_count,
-                                       trainer_class="GIOVANNI_MINIBOSS"),
-                    const[expected],
+                    mix, const[expected],
                     f"a mini-boss at wBattleCount {battle_count} should use "
                     f"{expected}, the gym leader row for that round",
                 )

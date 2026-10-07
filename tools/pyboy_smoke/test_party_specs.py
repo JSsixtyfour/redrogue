@@ -622,11 +622,11 @@ class SetMovesetSmokeTest(HarnessTestCase):
 
 
 def band_ace_pools():
-    """{<Leader>_Ace<band>: {species, ...}} from data/trainers/gym_band_pools.asm,
+    """{<Leader>_Ace<band>: {species, ...}} from data/trainers/band_pools.asm,
     every run, following `band_same` aliases. Aces are used as written, so the
     fielded ace is always one of these exact species."""
     out, name = {}, None
-    text = (REPO_ROOT / "data/trainers/gym_band_pools.asm").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "data/trainers/band_pools.asm").read_text(encoding="utf-8")
     for raw in text.splitlines():
         code = raw.split(";")[0].strip()
         op, _, arg = code.partition(" ")

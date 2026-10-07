@@ -75,7 +75,7 @@ GYM_MIX = {1: "MIX_GYM_EARLY", 2: "MIX_GYM_EARLY", 3: "MIX_GYM_MID",
 # label prefix -> (trainer class, extra flags from round 7). Since the banded
 # design (BALANCE_PHASE5_PLAN.md F, 2026-09-29) a leader's pools and aces are
 # not spec arguments: each round's record names POOL_BAND_<prefix>_Fod/Ace/Off
-# <band> from data/trainers/gym_band_pools.asm.
+# <band> from data/trainers/band_pools.asm.
 GYM_LEADERS = {
     "Falkner": ("FALKNER", 0), "Brock": ("BROCK", 0), "Misty": ("MISTY", 0),
     "LtSurge": ("LT_SURGE", 0), "Erika": ("ERIKA", 0), "Koga": ("KOGA", 0),
@@ -89,7 +89,7 @@ GYM_LEADERS = {
 def band_pool_labels():
     """POOL_BAND name -> the BandPool_ label its TrainerPoolTable row must point
     at, following `band_same` aliases to the pool that owns the bytes."""
-    text = (REPO_ROOT / "data/trainers/gym_band_pools.asm").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "data/trainers/band_pools.asm").read_text(encoding="utf-8")
     out = {}
     for raw in text.splitlines():
         code = raw.split(";")[0].strip()
@@ -133,13 +133,18 @@ HAND_WRITTEN = {("Falkner", 2), ("Falkner", 3)}
 # A separate set, not folded into GYM_LEADERS/E4_MEMBERS above: those two
 # dicts drive the byte-for-byte gym_team_spec/e4_team_spec shape checks
 # elsewhere in this file, and the stage-event classes use a different macro
-# (stage_event_team_spec, data/trainers/party_specs.asm) with no round/variant
+# (stage_event_banded_records, data/trainers/party_specs.asm) with no round/variant
 # grid and no ace pin, so they would fail those checks for having the wrong
 # shape rather than for a real defect. Only test_no_other_trainer_class_...
 # below needs to know these five now carry a spec list.
 STAGE_EVENT_CLASSES = {
     "JESSIE_JAMES", "PSYCHIC_TR", "BURGLAR", "NURSE_JOY", "OFFICER_JENNY",
 }
+
+# The three mini-bosses (party roster Phase 4, miniboss_records): nine round
+# records each, keyed on the round rather than wTrainerNo, so they have the
+# stage-event shape and the same exemption from the gym / E4 checks.
+MINIBOSS_CLASSES = {"RIVAL_MINIBOSS", "GIOVANNI_MINIBOSS", "KARATE_MINIBOSS"}
 
 _SYM_LINE = re.compile(r"^([0-9A-Fa-f]{2,4}):([0-9A-Fa-f]{4})\s+(\S+)$")
 
@@ -208,10 +213,13 @@ def authored_rosters():
     """
     text = (REPO_ROOT / "data/trainers/parties.asm").read_text(encoding="utf-8")
     out = {}
-    for cls in ("Brock", "Misty", "LtSurge", "Erika", "Koga", "Blaine",
-                "Sabrina", "Giovanni"):
-        # ErikaData: carries trailing whitespace in the source, so neither the
-        # anchor nor the lookahead may assume the colon ends the line.
+    # Only Giovanni is left: the other seven Kanto leaders' 24-team ladders were
+    # identical to his round for round, and were deleted as unreachable
+    # (spec_covered_stub, party roster Phase 0, 2026-10-07). GiovanniData keeps
+    # its teams because sets 25-27 are past his spec list.
+    for cls in ("Giovanni",):
+        # A label may carry trailing whitespace in the source (ErikaData did),
+        # so neither the anchor nor the lookahead may assume the colon ends the line.
         match = re.search(
             rf"^{cls}Data:[ \t]*\n(.*?)(?=\n[ \t]*[A-Za-z_0-9]+Data:[ \t]*\n)",
             text, re.S | re.M)
@@ -407,8 +415,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
     def test_curve_tracks_the_authored_rosters(self):
         """The generated team sizes still match the authored rosters.
 
-        All eight shipped Kanto rosters are identical round for round, which is
-        what made one shared curve correct. The LEVEL half of this check is
+        All eight shipped Kanto rosters were identical round for round, which is
+        what made one shared curve correct; GiovanniData is the one still in the
+        tree (see authored_rosters). The LEVEL half of this check is
         retired (2026-09-28): curve D raised the leader levels on purpose
         (BALANCE_PHASE5_PLAN.md D), so the authored level envelopes no longer
         describe the game. Team sizes did not change and are still held.
@@ -463,9 +472,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
     def test_every_authored_team_is_well_formed(self):
         """Every level/species pair in parties.asm actually is one.
 
-        Phase 3 leaves wTrainerNo 1 as a hole on all 19 characters, so the
-        authored rosters stay reachable and a malformed one stays a live bug.
-        This caught a real one on its first run: KogaData's round 5 variant C
+        The authored rosters that remain (Giovanni, the rivals, Prof. Oak, Jessie
+        & James, the route classes' shared blocks) are reachable, so a malformed
+        one is a live bug. This caught a real one on its first run: KogaData's round 5 variant C
         was missing NIDOQUEEN's level byte. ReadTrainer stops on a 0 in the
         LEVEL position, so that team read a species id as a level, 0 as a
         species, and then kept walking into the FOLLOWING teams' bytes - the
@@ -480,11 +489,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
             r"^([A-Za-z_0-9]+Data):[ \t]*\n(.*?)"
             r"(?=\n[ \t]*[A-Za-z_0-9]+Data:[ \t]*\n|\Z)",
             text, re.S | re.M)
-        # BuildMiniBossTeam supplies levels at runtime from
-        # trainer_difficulty_settings_miniboss, so these three carry species
-        # markers with no level bytes at all. Documented in parties.asm.
-        level_less = {"RivalMiniBossData", "GiovanniMiniBossData",
-                      "KarateMiniBossData"}
+        # Nothing is exempt: the mini-boss blocks, the one level-less format,
+        # became spec_covered_stubs in party roster Phase 4 (2026-10-07).
+        level_less = set()
 
         def is_level(token):
             return token.isdigit() and 0 < int(token) <= 100
@@ -532,7 +539,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                         while index < len(tokens) and tokens[index] != "0":
                             index += 1
                     index += 1  # the terminator
-        self.assertGreater(teams_seen, 250,
+        # About 58 since the spec-covered leader/E4 ladders were stubbed
+        # (party roster Phase 0, 2026-10-07); it was ~294 before.
+        self.assertGreater(teams_seen, 50,
                            "the roster scan stopped early, which is itself the "
                            "symptom a malformed team produces")
 
@@ -541,7 +550,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
 
         The table is built by a FOR loop matching `n == BROCK` rather than 61
         positional rows precisely because a positional row at the wrong index is
-        invisible to assert_table_length. This checks the result: exactly the 20
+        invisible to assert_table_length. This checks the result: exactly the 33
         intended classes carry a list and every other row is still `dw 0`, so a
         mistyped ELIF cannot quietly give a route trainer a gym leader's specs.
 
@@ -551,15 +560,17 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         Was 19 before KOGA_E4, the Phase 7 class that carries the Elite Four
         Koga's party grid so it is not the gym Koga's 24-round one, and 20
         before Phase 7f gave JESSIE_JAMES, PSYCHIC_TR, BURGLAR, NURSE_JOY and
-        OFFICER_JENNY their own 9-row stage_event_team_spec lists. Raise this
-        only alongside a deliberate new entry in GYM_LEADERS, E4_MEMBERS or
-        STAGE_EVENT_CLASSES above.
+        OFFICER_JENNY their own 9-row stage_event_banded_records lists, and 30
+        before party roster Phase 4 gave the three MINIBOSS_CLASSES theirs.
+        Raise this only alongside a deliberate new entry in GYM_LEADERS,
+        E4_MEMBERS, STAGE_EVENT_CLASSES or MINIBOSS_CLASSES above.
         """
         expected = {entry[0] for entry in GYM_LEADERS.values()}
         expected |= {entry[0] for entry in E4_MEMBERS.values()}
         expected |= STAGE_EVENT_CLASSES
+        expected |= MINIBOSS_CLASSES
         expected |= {"RIVAL3"}
-        self.assertEqual(len(expected), 30)
+        self.assertEqual(len(expected), 33)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
         for image in self.images:

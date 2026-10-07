@@ -61,7 +61,7 @@ DEF MIX_FALLBACK_OFFSET EQU 13
 ; --- The difficulty grid (Phase 5) -----------------------------------------
 ; Thirteen rows: three trainer KINDS by four BANDS, plus a sets-only row for the
 ; Elite Four. Every kind uses the same bands, the ones the gym leader's species
-; pools use (GYM_BAND_ROUNDS, data/trainers/gym_band_pools.asm):
+; pools use (GYM_BAND_ROUNDS, data/trainers/band_pools.asm):
 ;
 ;   kind \ band        gyms 1-2       gyms 3-4       gyms 5-6       gyms 7-8
 ;   route trainer      ROUTE_EARLY    ROUTE_MID      ROUTE_LATE     ROUTE_FINAL
@@ -219,7 +219,7 @@ ENDM
 ;
 ; RogueApplyMixToParty re-uses the whole Phase 2 source-assignment and moveset
 ; machinery on a party that some OTHER path already built - GetRandRoster's
-; rarity-class roll, or BuildMiniBossTeam's curated list. That machinery reads
+; rarity-class roll. That machinery reads
 ; the mix id, the BIT_PSPEC_* flags and the slot-override list back out of a
 ; spec record through wPartyGenSpecPtr, so the cheapest way to drive it is to
 ; hand it a real record that happens to describe nothing else.
@@ -279,14 +279,15 @@ MixOnlySpecs::
 ; team in data/trainers/parties.asm. The gym leaders now follow the Elite Four
 ; (below): a full 24-entry list, so RogueBuildParty never declines for any
 ; wTrainerNo InitGymBattle hands out and the .SkipTrainer landmine above cannot
-; fire. The authored leader teams in parties.asm are unreachable, except
-; GiovanniData 25-27 (past the end of his list).
+; fire. The authored leader teams were unreachable and are gone: each leader's
+; parties.asm block is a one-byte spec_covered_stub (2026-10-07), except
+; GiovanniData, whose sets 25-27 are past the end of his list.
 ;
 ; THE ELITE FOUR HAVE NO HOLE (Trainer Revamp, 2026-09-23). The seven E4
 ; classes and the Champion rival cover wTrainerNo 1 with a spec too, because
 ; their authored round-1 team was the same fixed 4-5 mon list on every run - the
-; "E4 teams aren't random" report. Their authored data in parties.asm is now
-; unreachable. The .SkipTrainer landmine above cannot fire for them either way:
+; "E4 teams aren't random" report. Their authored data in parties.asm was
+; unreachable and is now a spec_covered_stub. The .SkipTrainer landmine above cannot fire for them either way:
 ; a full list means RogueBuildParty never declines.
 ;
 ; POOLS ARE GATED BY SPECIES GROUPS, aces included: a gym ace is a pool draw,
@@ -318,7 +319,7 @@ DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 
 ; BANDED DESIGN (BALANCE_PHASE5_PLAN.md workstream F, 2026-09-29). Rounds are
 ; grouped into bands of GYM_BAND_ROUNDS (gyms 1-2, 3-4, 5-6, 7-8), and each band
-; has three pools per leader in data/trainers/gym_band_pools.asm:
+; has three pools per leader in data/trainers/band_pools.asm:
 ;
 ;   Ace<band>  the LAST slot rolls from it, via a BIT_POVR_POOL override. Its
 ;              entries are POOL_FORM_KEEP, so the ace is used as written.
@@ -340,30 +341,81 @@ DEF GYM_SPEC_FLAGS EQU (1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 ASSERT NUM_GYM_BANDS * GYM_BAND_ROUNDS == NUM_GYM_ROUNDS, \
 	"NUM_GYM_BANDS bands of GYM_BAND_ROUNDS rounds must cover every gym round"
 
-; \1 = label prefix (also the pool-name prefix), \2 = round 1..8, \3 = extra
-; spec flags applied from round 7 on.
-MACRO gym_round_spec
-	DEF _rnd = \2
-	DEF _band = (_rnd - 1) / GYM_BAND_ROUNDS + 1
-	; Team size and level curve: GYM_R<round>_* in constants/balance_constants.asm.
-	DEF _n = GYM_R{d:_rnd}_MONS
-	DEF _bl = GYM_R{d:_rnd}_BASE
-	DEF _st = GYM_R{d:_rnd}_STEP
-	DEF _mix = GYM_BAND{d:_band}_MIX
+; Which bands have an Ace / Off-type pool: BAND_POOL_PASS 3 defines
+; BAND_HAS_<Char>_<Ace|Fod|Off><band> for every pool in band_pools.asm. It has
+; to run here, because pools.asm (the POOL_BAND_* ids) is assembled after this
+; file, too late for an IF.
+INCLUDE "data/trainers/band_pool_macros.asm"
+DEF BAND_POOL_PASS = 3
+INCLUDE "data/trainers/band_pools.asm"
+
+; One banded round record, for any trainer kind on PARTY_ROSTER.md's pools
+; (party roster Phase 2, 2026-10-07; gym leaders were the only kind before).
+;
+; \1 = character prefix: the label prefix and the pool-name prefix
+;      (POOL_BAND_<Char>_<Ace|Fod|Off><band>)
+; \2 = curve prefix: team size and levels come from <curve><round>_MONS /
+;      _BASE / _STEP in constants/balance_constants.asm (GYM_R, and the kinds
+;      the later phases add)
+; \3 = round (indexes the curve), \4 = band (picks the pools)
+; \5 = mix id, \6 = BIT_PSPEC_* flags
+; \7, \8 = optional: a species and form spec PINNED in the last slot instead
+;      of an Ace pool (the rival's starter placeholder)
+;
+; Every slot draws from Fod<band>. The other two lists are optional per band,
+; exactly as the doc writes them:
+;   Ace<band>  present: the last slot is a BIT_POVR_POOL override on it, as
+;              before. Absent (and no pin): no last-slot override, and
+;              BIT_PSPEC_ACE_LAST is cleared, so every slot is fodder and the
+;              mix deals its quotas over the whole team.
+;   Off<band>  present: a BIT_POVR_POOL override on PARTY_GEN_OFFTYPE_SLOT.
+;              Absent: none. Gym leaders have no Off1, which is what the old
+;              `IF _band >= 2` encoded.
+MACRO banded_round_spec
+	DEF _rnd = \3
+	DEF _band = \4
+	DEF _n = \2{d:_rnd}_MONS
+	DEF _bl = \2{d:_rnd}_BASE
+	DEF _st = \2{d:_rnd}_STEP
+	DEF _mix = \5
 	ASSERT QUOTA_SUM_OF_MIX_{d:_mix} <= _n, \
-		"gym round {d:_rnd}: mix {d:_mix} deals {d:QUOTA_SUM_OF_MIX_{d:_mix}} units to a {d:_n}-mon team"
-	DEF _flags = GYM_SPEC_FLAGS
-	IF _rnd >= 7
-	DEF _flags = _flags | (\3)
+		"\1 round {d:_rnd}: mix {d:_mix} deals {d:QUOTA_SUM_OF_MIX_{d:_mix}} units to a {d:_n}-mon team"
+	ASSERT DEF(BAND_HAS_\1_Fod{d:_band}), "\1 band {d:_band} has no Fodder pool in PARTY_ROSTER.md"
+	DEF _flags = \6
+	IF _NARG >= 7
+	DEF _ace = 2                        ; pinned species
+	ELIF DEF(BAND_HAS_\1_Ace{d:_band})
+	DEF _ace = 1                        ; Ace pool
+	ELSE
+	DEF _ace = 0                        ; ace-less band
+	DEF _flags = _flags & ~(1 << BIT_PSPEC_ACE_LAST)
 	ENDC
 	party_spec _n, _bl, _st, POOL_BAND_\1_Fod{d:_band}, _mix, _flags
+	IF _ace == 2
+	slot_override _n - 1, 1 << BIT_POVR_SPECIES
+	db \7, \8
+	ELIF _ace == 1
 	slot_override _n - 1, 1 << BIT_POVR_POOL
 	db POOL_BAND_\1_Ace{d:_band}
-	IF _band >= 2
+	ENDC
+	IF DEF(BAND_HAS_\1_Off{d:_band})
 	slot_override PARTY_GEN_OFFTYPE_SLOT, 1 << BIT_POVR_POOL
 	db POOL_BAND_\1_Off{d:_band}
 	ENDC
 	db PARTY_SPEC_OVERRIDES_END
+ENDM
+
+; \1 = label prefix (also the pool-name prefix), \2 = round 1..8, \3 = extra
+; spec flags applied from round 7 on. The gym leader's banded_round_spec: the
+; GYM_R curve, the band cut on GYM_BAND_ROUNDS and the GYM_BAND<n>_MIX row.
+MACRO gym_round_spec
+	DEF _grnd = \2
+	DEF _gband = (_grnd - 1) / GYM_BAND_ROUNDS + 1
+	DEF _gflags = GYM_SPEC_FLAGS
+	IF _grnd >= 7
+	DEF _gflags = _gflags | (\3)
+	ENDC
+	banded_round_spec \1, GYM_R, _grnd, _gband, GYM_BAND{d:_gband}_MIX, _gflags
 ENDM
 
 ; \1 = label prefix. The 24-entry pointer list: every wTrainerNo points at its
@@ -514,6 +566,12 @@ FOR n, 1, NUM_TRAINERS + 1
 	dw NurseJoySpecs
 	ELIF n == OFFICER_JENNY
 	dw OfficerJennySpecs
+	ELIF n == RIVAL_MINIBOSS
+	dw RivalMiniBossSpecs
+	ELIF n == GIOVANNI_MINIBOSS
+	dw GiovanniMiniBossSpecs
+	ELIF n == KARATE_MINIBOSS
+	dw KarateMiniBossSpecs
 	ELSE
 	dw 0
 	ENDC
@@ -563,7 +621,7 @@ FalknerSpec3:
 	db PARTY_SPEC_OVERRIDES_END
 
 ; ---------------------------------------------------------------------------
-; The eight Kanto gym leaders. Their pools are data/trainers/gym_band_pools.asm
+; The eight Kanto gym leaders. Their pools are data/trainers/band_pools.asm
 ; (Brock_Ace1 .. Giovanni_Off4); the only argument left here is the extra spec
 ; flags from round 7, 0 for everyone since no gym pool lists an uber.
 ; ---------------------------------------------------------------------------
@@ -677,7 +735,7 @@ FalknerSpec3:
 ; ---------------------------------------------------------------------------
 ; RIVAL3, the Champion rival. ChampionsRoom.asm hands out wTrainerNo 1-5 and
 ; all five reach ONE record: the variety comes from the pool roll, not from
-; five authored teams (Rival3Data in parties.asm is now unreachable).
+; five authored teams (Rival3Data in parties.asm is a spec_covered_stub).
 ;
 ; His ace is always his own selected starter: slot 5 pins
 ; RIVAL_STARTER_PLACEHOLDER, which PartyGenBuildSlot turns into wRivalStarter
@@ -706,40 +764,36 @@ Rival3Spec:
 ; These are not gym leaders - there is no round/variant grid, because
 ; InitGymBattle never touches them. StageEventApplyTrainers
 ; (custom_functions/stage_events.asm) drives wTrainerNo itself, computing it
-; from wBattleCount with the exact same round formula
-; custom_functions/func_enc_gen.asm's GetMiniBossTierPtr uses for
-; trainer_difficulty_settings_miniboss (wBattleCount / 10, clamped to round
-; 9) - a duplicated three-line clamp, not a cross-bank pointer, for the same
-; reason PFRollMonClass/PCAbs are duplicated rather than shared: the routine
-; that needs it lives in a different bank, and GetMiniBossTierPtr returns a
-; pointer into ITS bank's own table, which cannot survive a farcall back out.
+; from wBattleCount with the same round formula RogueBattleRound
+; (rogue_build_party.asm) uses (wBattleCount / 10, clamped to round 9) - a
+; duplicated three-line clamp, because the routine that needs it lives in a
+; different bank.
 ;
-; One spec per round (1-9), matching that same 9-row table, so "scales like a
-; mini-boss" is literally true here: base_level is that table's own min_level
-; per round. Team size ramps 2/2/3/3/4/4/5/5/6, reaching a full team only at
-; the final tier - these are a casual ambush, not a gym battle, so they start
-; smaller than gym_team_spec's 2/2/3/3/4/4/5/6 ladder, which reaches 6 by
-; round 7.
+; One spec per round (1-9), the same nine rounds the mini-bosses use. Team size is that round's LARGEST route team, 2/3/4/4/5/5/6/6/6
+; (party roster Phase 3, 2026-10-07; was 2/2/3/3/4/4/5/5/6): an ambush fields
+; what the round's strongest route trainer does. STAGE_EVENT_R<n>_* in
+; balance_constants.asm.
+;
+; BANDED CHARACTERS (Phase 3). A character with a `### <Prefix>` block under
+; "## Wild-area trainers" in data/trainers/PARTY_ROSTER.md uses
+; stage_event_banded_records: the nine tiers map onto the four bands as
+; 1-2 / 3-4 / 5-6 / 7-9 (tier 9 joins band 4), every slot draws Fod<band>, and
+; a band that lists Aces gets a pool-rolled ace in the last slot. Aces are
+; OPTIONAL per band: an ace-less band is all fodder. All five characters are
+; banded (Phase 3b); the old flat one-pool shape is gone.
 ; ===========================================================================
 
-; \1 = round (1-9). \2 = pool id. \3 = extra BIT_PSPEC_* flags beyond
-; NO_DUPES (0 for none).
-MACRO stage_event_team_spec
-	DEF _r = \1
-	; Team size and level: STAGE_EVENT_R<round>_* in constants/balance_constants.asm.
-	DEF _n = STAGE_EVENT_R{d:_r}_MONS
-	DEF _bl = STAGE_EVENT_R{d:_r}_BASE
-	IF _r <= 2
-	DEF _mix = MIX_ROUTE_EARLY
-	ELIF _r <= 5
-	DEF _mix = MIX_ROUTE_MID
-	ELIF _r <= 8
-	DEF _mix = MIX_ROUTE_LATE
+; Sets _semix to the moveset row for tier \1 (1-9).
+MACRO stage_event_mix
+	IF (\1) <= 2
+	DEF _semix = MIX_ROUTE_EARLY
+	ELIF (\1) <= 5
+	DEF _semix = MIX_ROUTE_MID
+	ELIF (\1) <= 8
+	DEF _semix = MIX_ROUTE_LATE
 	ELSE
-	DEF _mix = MIX_TRAINER_LATE
+	DEF _semix = MIX_TRAINER_LATE
 	ENDC
-	party_spec _n, _bl, STAGE_EVENT_LEVEL_STEP, \2, _mix, (1 << BIT_PSPEC_NO_DUPES) | \3
-	db PARTY_SPEC_OVERRIDES_END
 ENDM
 
 ; \1 = label prefix.
@@ -751,27 +805,85 @@ MACRO stage_event_pointers
 	ENDR
 ENDM
 
-; \1 = label prefix, \2 = pool id, \3 = extra flags (0 for none).
-MACRO stage_event_records
+; \1 = character prefix (its PARTY_ROSTER.md block). The banded shape: tier t
+; is band min((t - 1) / GYM_BAND_ROUNDS + 1, NUM_GYM_BANDS), so tier 9 shares
+; band 4. ACE_LAST is asked for and banded_round_spec drops it on an ace-less
+; band, so those records carry the flat shape's flags.
+MACRO stage_event_banded_records
 	FOR t, 1, NUM_STAGE_EVENT_TIERS + 1
 \1Spec{d:t}:
-	stage_event_team_spec t, \2, \3
+	DEF _seband = (t - 1) / GYM_BAND_ROUNDS + 1
+	IF _seband > NUM_GYM_BANDS
+	DEF _seband = NUM_GYM_BANDS
+	ENDC
+	stage_event_mix t
+	banded_round_spec \1, STAGE_EVENT_R, t, _seband, _semix, \
+		(1 << BIT_PSPEC_NO_DUPES) | (1 << BIT_PSPEC_ACE_LAST)
 	ENDR
 ENDM
 
-DEF NUM_STAGE_EVENT_TIERS EQU 9 ; matches trainer_difficulty_settings_miniboss
+DEF NUM_STAGE_EVENT_TIERS EQU 9 ; rounds 1-9, as NUM_MINIBOSS_TIERS
 
-	stage_event_pointers JessieJames
-	stage_event_records  JessieJames, POOL_JESSIE_JAMES, 0
+	stage_event_pointers       JessieJames
+	stage_event_banded_records JessieJames
 
-	stage_event_pointers Psychic
-	stage_event_records  Psychic, POOL_PSYCHIC, 0
+	stage_event_pointers       Psychic
+	stage_event_banded_records Psychic
 
-	stage_event_pointers Burglar
-	stage_event_records  Burglar, POOL_BURGLAR, 0
+	stage_event_pointers       Burglar
+	stage_event_banded_records Burglar
 
-	stage_event_pointers NurseJoy
-	stage_event_records  NurseJoy, POOL_JOY, 0
+	stage_event_pointers       NurseJoy
+	stage_event_banded_records NurseJoy
 
-	stage_event_pointers OfficerJenny
-	stage_event_records  OfficerJenny, POOL_JENNY, 0
+	stage_event_pointers       OfficerJenny
+	stage_event_banded_records OfficerJenny
+
+; ===========================================================================
+; Mini-bosses (party roster Phase 4, 2026-10-07): the Rival, Giovanni and the
+; Karate Master, on PARTY_ROSTER.md's "## Mini-bosses" pools. Until now they
+; were curated species lists plus rarer-random fill (BuildMiniBossTeam).
+;
+; NINE RECORDS, KEYED ON THE ROUND. PartyGenFindSpec looks these three classes
+; up by RogueBattleRound + 1 rather than by wTrainerNo (PartyGenSpecIndex,
+; rogue_build_party.asm). Their wTrainerNo is whatever the stage object or the
+; Victory Road object wrote, 1-3, and says nothing about the round; it still
+; moves the off-type slot, exactly as a gym leader's variant does.
+;
+; Tier t is band min((t - 1) / GYM_BAND_ROUNDS + 1, NUM_GYM_BANDS), the cut the
+; wild-area trainers use, so tier 9 (Victory Road) shares band 4. The moveset
+; row is that band's gym leader row, GYM_BAND<n>_MIX: "the mini-boss matches the
+; leader of its round", the row RogueBossMixId gave the old curated teams.
+; Team size and levels are MINIBOSS_R<n>_* in balance_constants.asm.
+;
+; The rival's ace is pinned to his own starter (RIVAL_STARTER_PLACEHOLDER,
+; evolved to the slot's level by PatchRivalStarterSpecies), as the Champion
+; rival's is, and NO_RIVAL_STARTER keeps the fodder off that line.
+; ===========================================================================
+DEF NUM_MINIBOSS_TIERS EQU 9
+
+; \1 = character prefix (its PARTY_ROSTER.md block), \2 = extra spec flags,
+; \3, \4 = optional pinned ace species and form spec.
+MACRO miniboss_records
+\1Specs::
+	db NUM_MINIBOSS_TIERS
+	FOR t, 1, NUM_MINIBOSS_TIERS + 1
+	dw \1Spec{d:t}
+	ENDR
+	FOR t, 1, NUM_MINIBOSS_TIERS + 1
+\1Spec{d:t}:
+	DEF _mbband = (t - 1) / GYM_BAND_ROUNDS + 1
+	IF _mbband > NUM_GYM_BANDS
+	DEF _mbband = NUM_GYM_BANDS
+	ENDC
+	IF _NARG >= 4
+	banded_round_spec \1, MINIBOSS_R, t, _mbband, GYM_BAND{d:_mbband}_MIX, GYM_SPEC_FLAGS | (\2), \3, \4
+	ELSE
+	banded_round_spec \1, MINIBOSS_R, t, _mbband, GYM_BAND{d:_mbband}_MIX, GYM_SPEC_FLAGS | (\2)
+	ENDC
+	ENDR
+ENDM
+
+	miniboss_records RivalMiniBoss, 1 << BIT_PSPEC_NO_RIVAL_STARTER, RIVAL_STARTER_PLACEHOLDER, POOL_FORM_BASE
+	miniboss_records GiovanniMiniBoss, 0
+	miniboss_records KarateMiniBoss, 0

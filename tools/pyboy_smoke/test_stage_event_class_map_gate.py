@@ -79,7 +79,7 @@ class StageEventClassMapGateTest(HarnessTestCase):
         print("Wild Area Psychic, spec 1:", levels)
         self.assertEqual(
             levels,
-            [BALANCE["STAGE_EVENT_R1_BASE"] + i * BALANCE["STAGE_EVENT_LEVEL_STEP"]
+            [BALANCE["STAGE_EVENT_R1_BASE"] + i * BALANCE["STAGE_EVENT_R1_STEP"]
              for i in range(BALANCE["STAGE_EVENT_R1_MONS"])],
         )
 

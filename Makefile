@@ -139,7 +139,9 @@ save_converter:
 # Static audits (bank/call/clobber, stack, SRAM, text traps) against the built
 # .sym/.map of all three ROMs. Fails on any bug-level finding not triaged into
 # tools/static_audit/allowlist.txt. INFO=1 also prints info-level findings.
+# Also fails when data/trainers/band_pools.asm is not what PARTY_ROSTER.md generates.
 audit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
+	python3 tools/gen_party_roster.py --check
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(if $(INFO),--info)
 

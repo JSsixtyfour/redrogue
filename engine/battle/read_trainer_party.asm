@@ -79,17 +79,16 @@ ReadTrainer:
 ; trainer with a set above 1 (Pewter Gym sets 2-4, Route 19's swimmers, ...)
 ; loaded the rival's Oak's Lab team, a later rival team, or Prof. Oak's.
 ; Measured 2026-09-28 (BALANCE_PHASE5_PLAN.md A4). So a roster class uses
-; team 1 whatever its set. The mini-boss classes keep walking: their own team
-; format also starts with a species byte, and GIOVANNI_MINIBOSS picks among
-; three teams by wTrainerNo.
-	ld a, [wTrainerClass]
-	cp RIVAL_MINIBOSS
-	jr z, .walkToTeam
-	cp GIOVANNI_MINIBOSS
-	jr z, .walkToTeam
-	cp KARATE_MINIBOSS
-	jr z, .walkToTeam
+; team 1 whatever its set.
 	ld a, [hl]
+IF DEF(_DEBUG)
+; A spec_covered_stub class (parties.asm) is only here when a caller handed it a
+; wTrainerNo its spec list does not cover. Release builds roll a roster below.
+	cp TRAINERPARTY_SPEC_ONLY
+	jr nz, .notSpecOnly
+	rst $38
+.notSpecOnly
+ENDC
 	cp TRAINERPARTY_LEVELS
 	jr z, .walkToTeam
 	cp TRAINERPARTY_FORMS
@@ -118,16 +117,6 @@ ReadTrainer:
 ; - if [wLoneAttackNo] != 0, one pokemon on the team has a special move
 ; else the first byte is the level of every pokemon on the team
 .IterateTrainer
-	; Mini-boss classes use their own team format + runtime level scaling
-	; (BuildMiniBossTeam, below). hl already points at the selected team's data.
-	; Same bank, so a plain call keeps hl valid (unlike the rogue-bank farcalls).
-	ld a, [wTrainerClass]
-	cp RIVAL_MINIBOSS
-	jp z, .miniBoss          ; jp, not jr: increment 8c's form-layout dispatch
-	cp GIOVANNI_MINIBOSS     ; below pushed .miniBoss out of jr range
-	jp z, .miniBoss
-	cp KARATE_MINIBOSS
-	jp z, .miniBoss
 ; Phase 2R increment 8c: the layout marker also selects whether entries carry a
 ; form byte. TRAINERPARTY_FORMS teams are <level, species, form> triples; every
 ; other layout is unchanged. The flag is cleared FIRST so a normal team can never
@@ -230,25 +219,6 @@ ReadTrainer:
 	farcall ApplyLegendaryBossMoveset ; Challenge 11: themed moveset on the just-added legendary
 	pop hl
 	jr .SpecialTrainer
-.miniBoss
-	; Mini-boss classes support BOTH team formats, for flexibility:
-	;  - leading $FF -> the vanilla per-mon-level format (fixed levels, like a
-	;    gym team). Author an 8-tier x 3-team Giovanni here, identical to his
-	;    gym, and it just works - fall through to the normal special path.
-	;  - otherwise -> the runtime-level-scaled mini-boss format (BuildMiniBossTeam).
-	ld a, [hl]
-	cp $FF
-	jr nz, .miniBossCustom
-	inc hl                 ; consume the $FF marker (matches the normal path)
-	jp .SpecialTrainer
-.miniBossCustom
-	call BuildMiniBossTeam ; hl -> mini-boss team data (same bank; builds the enemy party)
-; Phase 5: "mini-boss / rival matches the gym leader of the same round". The
-; mini-boss keeps its curated signature species and its own level scaling; only
-; the movesets come from the leader row for this round.
-	call RogueBossMixId
-	call RogueApplyMixToParty
-	jp .AddAdditionalMoveData
 .AddAdditionalMoveData
 ; does the trainer have additional move data?
 	ld a, [wTrainerClass]
@@ -400,70 +370,6 @@ ReadTrainer:
 
 .AmuletCoinPctTable:
 	db 10, 15, 20
-
-; ============================================================
-; Mini-boss team builder (see MINIBOSS_FRAMEWORK.md)
-; Only the team-data walk lives here (same bank as the party data, so hl/de
-; reads are plain). The bulky level/fill/table logic lives in the rogue bank
-; (func_enc_gen.asm: MiniBossSetLevel / MiniBossRollFillMon) and is reached by
-; farcall - those helpers take no pointer input (they read wBattleCount and
-; write wCurEnemyLevel/wCurPartySpecies), so they're bank-safe.
-;
-; INPUT: hl -> the selected team's data (RivalMiniBossData / GiovanniMiniBossData
-;        format: a 0-terminated list of species/markers, no leading $FF, no
-;        per-mon level bytes). Every mon's level is supplied at runtime from
-;        trainer_difficulty_settings_miniboss[round].
-; ============================================================
-BuildMiniBossTeam::
-	ld d, h
-	ld e, l                    ; de = team data pointer (survives the farcalls below)
-.loop
-	ld a, [de]
-	inc de
-	and a
-	ret z                      ; 0 terminator = team complete
-	cp MINIBOSS_RANDOM_FILL
-	jr z, .fill
-	cp RIVAL_STARTER_PLACEHOLDER
-	jr z, .starter
-	; literal curated "signature" species
-	ld [wCurPartySpecies], a
-	push de
-	farcall MiniBossSetLevel   ; wCurEnemyLevel = this round's level
-	call MiniBossAddMon
-	pop de
-	jr .loop
-.starter
-	ld [wCurPartySpecies], a    ; a = RIVAL_STARTER_PLACEHOLDER (from .loop above)
-	push de
-	farcall MiniBossSetLevel
-	farcall PatchRivalStarterSpecies ; swap in wRivalStarter, evolved to wCurEnemyLevel
-	call MiniBossAddMon
-	pop de
-	jr .loop
-.fill
-	ld a, [de]                 ; fill count (>= 1)
-	inc de
-	ld b, a
-.fillLoop
-	push de
-	push bc
-	farcall MiniBossRollFillMon ; sets wCurPartySpecies (rarer-random) AND wCurEnemyLevel
-	call MiniBossAddMon
-	pop bc
-	pop de
-	dec b
-	jr nz, .fillLoop
-	jr .loop
-
-; Appends the mon in wCurPartySpecies at wCurEnemyLevel to the enemy party.
-; No party-full guard here: the .fill loop caps at the round's team size (<= 6)
-; and curated/starter counts are bounded by the authored data, so the party
-; never exceeds PARTY_LENGTH (same trust model as ReadTrainer's normal loop).
-MiniBossAddMon:
-	ld a, ENEMY_PARTY_DATA
-	ld [wMonDataLocation], a
-	jp AddPartyMon
 
 ; a = LOSS_ORIGIN_* code: write it to every wEnemyMoveOrigins slot.
 FillEnemyMoveOrigins:

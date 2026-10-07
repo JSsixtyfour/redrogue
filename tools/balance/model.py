@@ -32,12 +32,12 @@ DIFFICULTIES = ("normal", "easy", "very_easy", "hard", "very_hard")   # DIFFICUL
 GYM_BAND_ROUNDS = 2  # party_specs.asm
 KANTO_LEADERS = ("Brock", "Misty", "LtSurge", "Erika", "Koga", "Blaine", "Sabrina", "Giovanni")
 KANTO_E4 = ("Lorelei", "Bruno", "Agatha", "Lance")
-STAGE_EVENTS = (  # StageEventTrainerTable order; (class, pool)
-    ("JESSIE_JAMES", "POOL_JESSIE_JAMES"),
-    ("PSYCHIC_TR", "POOL_PSYCHIC"),
-    ("BURGLAR", "POOL_BURGLAR"),
-    ("NURSE_JOY", "POOL_JOY"),
-    ("OFFICER_JENNY", "POOL_JENNY"),
+STAGE_EVENTS = (  # StageEventTrainerTable order; (class, flat pool or banded roster prefix)
+    ("JESSIE_JAMES", "JessieJames"),
+    ("PSYCHIC_TR", "Psychic"),
+    ("BURGLAR", "Burglar"),
+    ("NURSE_JOY", "NurseJoy"),
+    ("OFFICER_JENNY", "OfficerJenny"),
 )
 # Odds-ladder thresholds (engine/pokemon/rarity.asm): a roll b <= POKEBALL_ODDS is
 # the pokeball tier, b <= GREATBALL_ODDS greatball, otherwise ultraball.
@@ -335,40 +335,49 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     return Battle("leader", g.knobs["ROUND_BATTLES"] * rnd, mons, True, g.money[class_name(leader.name)])
 
 
-# who -> party-data label. KARATE is modelled here for tests but is not rolled by the
-# route simulation: he owns a Dojo stage (PLACE_OWN_STAGE), not a route boss slot.
-MINIBOSS_DATA = {"RIVAL": "RivalMiniBossData", "GIOVANNI": "GiovanniMiniBossData",
-                 "KARATE": "KarateMiniBossData"}
+# who -> PARTY_ROSTER.md prefix. KARATE is modelled here for tests but is not rolled by
+# the route simulation: he owns a Dojo stage (PLACE_OWN_STAGE), not a route boss slot.
+MINIBOSS_PREFIX = {"RIVAL": "RivalMiniBoss", "GIOVANNI": "GiovanniMiniBoss", "KARATE": "KarateMiniBoss"}
 
 
 def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starter: str, rng: random.Random,
                     kind: str = "miniboss") -> Battle:
-    """BuildMiniBossTeam: every mon gets its own MiniBossSetLevel roll; fill mons
-    come from MiniBossRollFillMon (base forms, never evolved)."""
-    row = g.tables.miniboss[round_of(g, count)]
-    teams = g.miniboss_teams[MINIBOSS_DATA[who]]
-    team = teams[0] if who == "RIVAL" else rng.choice(teams)
+    """miniboss_records (party roster Phase 4): the ROUND's spec, from wBattleCount
+    whatever the set number. Tier -> band 1-2/3-4/5-6/7-9 like the wild-area
+    trainers. The rival's ace is his starter (pinned, NO_RIVAL_STARTER); the others
+    draw Ace<band> first, as written. The variant's off-type slot draws Off<band>
+    when the band has one, every other slot Fod<band>. The stage writes set 1-3 at
+    random for Giovanni / Karate and set 1 for the rival, which is all the variant
+    still moves."""
+    k = g.knobs
+    r = round_of(g, count) + 1
+    n, base, step = k[f"MINIBOSS_R{r}_MONS"], k[f"MINIBOSS_R{r}_BASE"], k[f"MINIBOSS_R{r}_STEP"]
+    band = min((r - 1) // GYM_BAND_ROUNDS + 1, 4)
+    pre = f"POOL_BAND_{MINIBOSS_PREFIX[who]}_"
+    off = f"{pre}Off{band}" if f"{pre}Off{band}" in g.pools else None
+    var = 0 if who == "RIVAL" else rng.randrange(3)
+    off_slot = min(var, n - 2) if off and n >= 2 else None
 
-    def level() -> int:
-        lv = min(row.min_level + (rng.randrange(row.level_range) if row.level_range else 0), MAX_LEVEL)
-        return apply_difficulty(lv, cfg.difficulty)
+    def level(slot: int) -> int:
+        return apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
 
-    mons = []
-    for tok in team:
-        if tok.startswith("FILL:"):
-            for _ in range(int(tok.split(":")[1])):
-                lv = level()
-                b = row.base_class
-                if rng.randrange(256) < row.rare_chance and b >= 2:
-                    b -= 1
-                mons.append((get_rand_mon(g, cfg, b, rng), lv))
-        elif tok == "RIVAL_STARTER_PLACEHOLDER":
-            lv = level()
-            mons.append((rival_starter_evolve(g, rival_starter, lv), lv))
+    no_rival = rival_starter if who == "RIVAL" else None
+    if who == "RIVAL":
+        ace = rival_starter_evolve(g, rival_starter, level(n - 1))
+    else:
+        ace = draw_pool(g, cfg, f"{pre}Ace{band}", level(n - 1), [], False, rng, keep=True)
+    mons: list[tuple[str, int]] = []
+    for slot in range(n):
+        lv = level(slot)
+        used = [m for m, _ in mons] + [ace]
+        if slot == n - 1:
+            sp = ace
+        elif slot == off_slot:
+            sp = draw_pool(g, cfg, off, lv, used, False, rng, no_rival=no_rival)
         else:
-            mons.append((tok, level()))
-    base = g.money[f"{who}_MINIBOSS"]
-    return Battle(kind, count, mons, True, base)
+            sp = draw_pool(g, cfg, f"{pre}Fod{band}", lv, used, False, rng, no_rival=no_rival, fallback=off)
+        mons.append((sp, lv))
+    return Battle(kind, count, mons, True, g.money[f"{who}_MINIBOSS"])
 
 
 def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng: random.Random) -> Battle:
@@ -382,12 +391,24 @@ def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng:
 
 
 def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """StageEventRoll picks a type; stage_event_team_spec builds it."""
+    """StageEventRoll picks a type; stage_event_banded_records builds it."""
     cls, pool = rng.choice(STAGE_EVENTS)
     r = round_of(g, count) + 1
     k = g.knobs
-    return spec_battle(g, cfg, "stage_event", count, k[f"STAGE_EVENT_R{r}_MONS"], k[f"STAGE_EVENT_R{r}_BASE"],
-                       k["STAGE_EVENT_LEVEL_STEP"], pool, None, False, g.money[cls], rng)
+    n, base, step = k[f"STAGE_EVENT_R{r}_MONS"], k[f"STAGE_EVENT_R{r}_BASE"], k[f"STAGE_EVENT_R{r}_STEP"]
+    if pool.startswith("POOL_"):
+        return spec_battle(g, cfg, "stage_event", count, n, base, step, pool, None, False, g.money[cls], rng)
+    # stage_event_banded_records: tier -> band 1-2/3-4/5-6/7-9, Fod<band> on every
+    # slot, an Ace<band> draw (as written) in the last slot when the band has one.
+    band = min((r - 1) // GYM_BAND_ROUNDS + 1, 4)
+    pre = f"POOL_BAND_{pool}_"
+    ace_pool = f"{pre}Ace{band}" if f"{pre}Ace{band}" in g.pools else None
+    ace = None
+    if ace_pool:
+        ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
+        ace = draw_pool(g, cfg, ace_pool, ace_lv, [], False, rng, keep=True)
+    return spec_battle(g, cfg, "stage_event", count, n, base, step, f"{pre}Fod{band}", ace, False,
+                       g.money[cls], rng)
 
 
 def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:

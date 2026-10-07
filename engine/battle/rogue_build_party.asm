@@ -90,9 +90,10 @@ PartyGenFindSpec:
 ; clobbers are free; carry survives it.
 	farcall StageEventSpecAllowed
 	jr nc, .noSpec
-	ld a, [wTrainerNo]
+	call PartyGenSpecIndex
 	and a
-	jr z, .noSpec                  ; wTrainerNo is 1-based; 0 is never a spec
+	jr z, .noSpec                  ; the index is 1-based; 0 is never a spec
+	ld e, a                        ; e = index, kept to the range check
 	ld a, [wTrainerClass]
 	and a
 	jr z, .noSpec
@@ -111,12 +112,12 @@ PartyGenFindSpec:
 
 	ld a, [hli]                    ; entry count
 	ld b, a
-	ld a, [wTrainerNo]
+	ld a, e
 	cp b
 	jr z, .inRange
-	jr nc, .noSpec                 ; wTrainerNo past the end of the list
+	jr nc, .noSpec                 ; index past the end of the list
 .inRange
-	dec a                          ; 1-based wTrainerNo -> 0-based index
+	dec a                          ; 1-based index -> 0-based
 	add a                          ; * 2
 	ld c, a
 	ld b, 0
@@ -131,6 +132,30 @@ PartyGenFindSpec:
 	ret
 .noSpec
 	xor a                          ; also clears carry
+	ret
+
+; OUTPUT: a = the 1-based index into the class's spec list. CLOBBERS b.
+;
+; wTrainerNo for every class but the three mini-bosses, whose list is keyed on
+; the ROUND (party roster Phase 4, 2026-10-07): RogueBattleRound + 1, 1-9. Their
+; wTrainerNo is the stage object's or Victory Road's set number (1-3) and says
+; nothing about the round, so the round is taken from wBattleCount here, at
+; battle time, the way the old BuildMiniBossTeam took its levels. One place
+; for it, so no caller that hands a mini-boss a set number can pick the tier.
+PartyGenSpecIndex:
+	ld a, [wTrainerClass]
+	cp RIVAL_MINIBOSS
+	jr z, .round
+	cp GIOVANNI_MINIBOSS
+	jr z, .round
+	cp KARATE_MINIBOSS
+	jr z, .round
+	ld a, [wTrainerNo]
+	ret
+.round
+	call RogueBattleRound          ; b = round index 0-8
+	ld a, b
+	inc a
 	ret
 
 ; hl = the current spec record. Re-read rather than cached; see wPartyGenSpecPtr.
@@ -2494,8 +2519,8 @@ PartyGenApplyExplicitMoves:
 ; Gym leaders and the Elite Four already reach their mix row through the spec
 ; record the round selects, so nothing here is needed for them. Everything
 ; below exists for the trainers that have NO spec: GetRandRoster's rarity-class
-; rosters, which are most of the battles in a run, and BuildMiniBossTeam's
-; curated teams. Those keep their own species, form and level choices; this
+; rosters, which are most of the battles in a run. Those keep their own
+; species, form and level choices; this
 ; applies the moveset half of the spec system to the party afterwards.
 ;
 ; Doing it afterwards rather than per-mon inside GetRandRoster is deliberate.

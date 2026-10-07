@@ -114,16 +114,6 @@ class BalanceTablesMatchRomTest(unittest.TestCase):
                             [b.level_range, b.min_level, *b.counts, b.final_bonus, *b.final_counts],
                         )
 
-    def test_miniboss_level_rows(self):
-        for image in self.images:
-            base = image.offset("trainer_difficulty_settings_miniboss")
-            for i, row in enumerate(self.g.tables.miniboss):
-                with self.subTest(rom=image.name, round=i + 1):
-                    self.assertEqual(
-                        list(image.rom[base + i * 4:base + (i + 1) * 4]),
-                        [row.level_range, row.min_level, row.base_class, row.rare_chance],
-                    )
-
     def test_wild_and_boss_level_tables(self):
         for image in self.images:
             for label, table in (("PCWildLevelTable", self.g.tables.wild),
@@ -340,19 +330,15 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
                 self._check_spec("LORELEI", (tier - 1) * NUM_ROUND_VARIANTS + 2, count, battle)
 
     def test_miniboss_levels(self):
+        """GIOVANNI_MINIBOSS on its round's spec (party roster Phase 4): levels
+        are deterministic now, so they are compared exactly, and the record is
+        picked by wBattleCount whatever the set number (3 here)."""
         self._boot()
         cfg = model.Config()
         for count in (5, 35, 65, 85):
             with self.subTest(wBattleCount=count):
-                sizes, band = self._model_band(
-                    lambda rng: model.miniboss_battle(self.g, cfg, "GIOVANNI", count, "CHARMANDER", rng))
-                levels, money = self._read_trainer("GIOVANNI_MINIBOSS", 1, count)
-                self.assertIn(len(levels), sizes, "party size")
-                self.assertTrue(set(levels) <= band,
-                                f"ROM levels {levels} outside model band {sorted(band)}")
-                self._assert_money(
-                    model.miniboss_battle(self.g, cfg, "GIOVANNI", count, "CHARMANDER", random.Random(0)),
-                    levels, money)
+                battle = model.miniboss_battle(self.g, cfg, "GIOVANNI", count, "CHARMANDER", random.Random(0))
+                self._check_spec("GIOVANNI_MINIBOSS", 3, count, battle)
 
     # --- reward / wild / boss levels ------------------------------------------
 

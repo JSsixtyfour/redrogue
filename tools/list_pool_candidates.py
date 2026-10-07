@@ -12,7 +12,7 @@ species from memory. Reads the ROM's own data, not an outside dex:
 
 Forms are printed PINNED (`pool_mon SPECIES, n`) and always in the Warp run:
 a pin bypasses species-group gating, so the Warp run is the only place that
-keeps them out of a Kanto-only or Johto-off run (JoyPool's Sylveon precedent).
+keeps them out of a Kanto-only or Johto-off run (the Nurse Joy pool's Sylveon precedent).
 
 Usage:
   python tools/list_pool_candidates.py ICE

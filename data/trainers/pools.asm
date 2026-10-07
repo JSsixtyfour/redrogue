@@ -50,70 +50,10 @@ MACRO trainer_pool
 	dw \1
 ENDM
 
-; --- Banded gym-leader pools (data/trainers/gym_band_pools.asm) -------------
-; That file is INCLUDEd three times; BAND_POOL_PASS picks what each macro emits:
-;   0  `const POOL_BAND_<name>` per pool (inside the const_def below)
-;   1  one TrainerPoolTable row per pool
-;   2  the entry lists with their four run labels
-; so a pool is written once and its id, row and list cannot disagree.
-MACRO band_pool
-	REDEF BAND_CUR EQUS "\1"
-	IF BAND_POOL_PASS == 0
-	const POOL_BAND_\1
-	ELIF BAND_POOL_PASS == 1
-	trainer_pool BandPool_\1
-	ELSE
-BandPool_\1:
-	ENDC
-ENDM
-
-; \1 = new name, \2 = an identical pool already defined. An alias, no bytes.
-MACRO band_same
-	IF BAND_POOL_PASS == 0
-	DEF POOL_BAND_\1 EQU POOL_BAND_\2
-	ENDC
-ENDM
-
-MACRO band_johto
-	IF BAND_POOL_PASS == 2
-BandPool_{BAND_CUR}_Johto:
-	ENDC
-ENDM
-
-MACRO band_warp
-	IF BAND_POOL_PASS == 2
-BandPool_{BAND_CUR}_Warp:
-	ENDC
-ENDM
-
-MACRO band_end
-	IF BAND_POOL_PASS == 2
-BandPool_{BAND_CUR}_End:
-	ENDC
-ENDM
-
-; \1 = species, \2 = optional form index. Evolved by level (fodder, off-type).
-MACRO band_mon
-	IF BAND_POOL_PASS == 2
-	IF _NARG >= 2
-	pool_mon \1, \2
-	ELSE
-	pool_mon \1
-	ENDC
-	ENDC
-ENDM
-
-; \1 = species, \2 = optional form index. Used AS WRITTEN (an ace): the form
-; spec carries POOL_FORM_KEEP, so ScaleTrainer_evolution never touches it.
-MACRO band_ace
-	IF BAND_POOL_PASS == 2
-	IF _NARG >= 2
-	pool_mon \1, POOL_FORM_KEEP | (\2)
-	ELSE
-	pool_mon \1, POOL_FORM_ROLL_KEEP
-	ENDC
-	ENDC
-ENDM
+; --- Banded pools (data/trainers/band_pools.asm, from PARTY_ROSTER.md) -----
+; The band_* macros live in data/trainers/band_pool_macros.asm, INCLUDEd by
+; party_specs.asm: it runs a fourth pass (BAND_POOL_PASS 3) before this file
+; exists, to learn which bands have an Ace or Off-type pool.
 
 ; Pool ids, in table order. A spec's `pool_id` indexes this table.
 ;
@@ -147,11 +87,6 @@ ENDM
 	const POOL_WILL
 	const POOL_KAREN
 ; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).
-	const POOL_JESSIE_JAMES
-	const POOL_PSYCHIC
-	const POOL_BURGLAR
-	const POOL_JOY
-	const POOL_JENNY
 ; Trainer Revamp (TRAINER_REVAMP_FIXES_PLAN.md step 4). Appended rather than
 ; slotted in by role so no existing pool id moves.
 	const POOL_LORELEI
@@ -162,7 +97,7 @@ ENDM
 	const POOL_RIVAL3
 ; Gym leader banded pools, one id each (a `band_same` is an alias, not an id).
 DEF BAND_POOL_PASS = 0
-INCLUDE "data/trainers/gym_band_pools.asm"
+INCLUDE "data/trainers/band_pools.asm"
 DEF NUM_TRAINER_POOLS EQU const_value
 
 TrainerPoolTable::
@@ -170,11 +105,6 @@ TrainerPoolTable::
 	trainer_pool FalknerPool
 	trainer_pool WillPool
 	trainer_pool KarenPool
-	trainer_pool JessieJamesPool
-	trainer_pool PsychicPool
-	trainer_pool BurglarPool
-	trainer_pool JoyPool
-	trainer_pool JennyPool
 	trainer_pool LoreleiPool
 	trainer_pool BrunoPool
 	trainer_pool AgathaPool
@@ -182,7 +112,7 @@ TrainerPoolTable::
 	trainer_pool KogaE4Pool
 	trainer_pool RivalThreePool
 DEF BAND_POOL_PASS = 1
-INCLUDE "data/trainers/gym_band_pools.asm"
+INCLUDE "data/trainers/band_pools.asm"
 	assert_table_length NUM_TRAINER_POOLS
 
 ; ---------------------------------------------------------------------------
@@ -228,11 +158,11 @@ FalknerPool_Warp:
 FalknerPool_End:
 
 ; The other 16 gym leaders' pools are the banded pools in
-; data/trainers/gym_band_pools.asm (BALANCE_PHASE5_PLAN.md F, 2026-09-29).
+; data/trainers/band_pools.asm (BALANCE_PHASE5_PLAN.md F, 2026-09-29).
 ; FalknerPool above stays: FalknerSpec2/3, the Phase 2 worked examples that the
 ; party-spec tests drive by name, still read it.
 DEF BAND_POOL_PASS = 2
-INCLUDE "data/trainers/gym_band_pools.asm"
+INCLUDE "data/trainers/band_pools.asm"
 
 ; ---------------------------------------------------------------------------
 ; Will - Elite Four, Psychic. Named additions (CLEFABLE/
@@ -331,184 +261,15 @@ KarenPool_Warp:
 	pool_mon QWILFISH, 1 ; Hisuian
 KarenPool_End:
 
-; ===========================================================================
-; Phase 7f pools - procedural stage-event characters
-; (PROCEDURAL_WILD_AREA_PLAN.md, 7f). Team size and level ride
-; stage_event_team_spec's own round ladder (data/trainers/party_specs.asm), so
-; every pool below just supplies the species.
-;
-; The Warp run is left empty on all five, matching FalknerPool's own precedent
-; and the caution above KarenPool's entry: LICKILICKY, PORYGON2/PORYGON_Z and
-; WEAVILE are all classification-only Warp-group species reached by evolving a
-; Kanto/Johto pool member (LICKITUNG, PORYGON, SNEASEL respectively) once that
-; group unlocks, not by a direct pool_mon entry. "Meowth alternates" likewise
-; need no Warp entry - they are FORMS of the one Kanto MEOWTH entry, rolled by
-; the ordinary default POOL_FORM_ROLL, independent of which run a species sits
-; in.
-; ===========================================================================
+; Phase 7f stage-event characters: all five live in PARTY_ROSTER.md now (below).
 
-; ---------------------------------------------------------------------------
-; Jessie & James - the paired villain. "Line" families expanded to every
-; member; the plan's single-species entries (Lickitung, Shellder, Chansey,
-; Scyther, Growlithe, Mr. Mime, Pinsir, Porygon, Hitmonlee) are deliberately
-; NOT expanded to their evolutions, several of which are Warp-group and reach
-; the team automatically once that group unlocks (see the header note above).
-; ---------------------------------------------------------------------------
-JessieJamesPool:
-	pool_mon MEOWTH
-	pool_mon EKANS
-	pool_mon LICKITUNG
-	pool_mon SHELLDER
-	pool_mon CHANSEY
-	pool_mon KOFFING
-	pool_mon SCYTHER
-	pool_mon CLEFAIRY
-	pool_mon GROWLITHE
-	pool_mon MR_MIME
-	pool_mon MAGIKARP
-	pool_mon BELLSPROUT
-	pool_mon PIDGEY
-	pool_mon PINSIR
-	pool_mon GRIMER
-	pool_mon PORYGON
-	pool_mon KRABBY
-	pool_mon HITMONLEE
-	pool_mon MACHOP
-	pool_mon RHYHORN
-	pool_mon ZUBAT
-	pool_mon MANKEY
-JessieJamesPool_Johto:
-	pool_mon YANMA
-	pool_mon STANTLER
-	pool_mon SNEASEL
-	pool_mon HOPPIP
-JessieJamesPool_Warp:
-JessieJamesPool_End:
+; Jessie & James moved to the banded pools (PARTY_ROSTER.md "Wild-area
+; trainers", party roster Phase 3, 2026-10-07): JessieJames_Fod<band> and
+; JessieJames_Ace<band> in data/trainers/band_pools.asm.
 
-; ---------------------------------------------------------------------------
-; The Psychic - themed on the type, the same brief SabrinaPool follows.
-; ---------------------------------------------------------------------------
-PsychicPool:
-	pool_mon ABRA
-	pool_mon SLOWPOKE
-	pool_mon DROWZEE
-	pool_mon EXEGGCUTE
-	pool_mon MR_MIME
-	pool_mon JYNX
-	pool_mon PSYDUCK
-	pool_mon STARYU
-	pool_mon CLEFAIRY
-	pool_mon PORYGON
-PsychicPool_Johto:
-	pool_mon NATU
-	pool_mon GIRAFARIG
-PsychicPool_Warp:
-PsychicPool_End:
-
-; ---------------------------------------------------------------------------
-; The Burglar - sneaky, venomous, urban-pest flavour rather than a type theme
-; (Gen 1 has no Dark type to draw on).
-; ---------------------------------------------------------------------------
-BurglarPool:
-	pool_mon RATTATA
-	pool_mon EKANS
-	pool_mon GRIMER
-	pool_mon KOFFING
-	pool_mon ZUBAT
-	pool_mon MEOWTH
-	pool_mon SANDSHREW
-	pool_mon GASTLY
-	pool_mon MANKEY
-	pool_mon DIGLETT
-BurglarPool_Johto:
-	pool_mon MURKROW
-	pool_mon SNEASEL
-BurglarPool_Warp:
-BurglarPool_End:
-
-; ---------------------------------------------------------------------------
-; Nurse Joy - "healing and cute". Seeded from the donor species in
-; reference/yellow_legacy/joy_jenny/options.asm (cRz-Shadows/Pokemon_Yellow_Legacy),
-; taken as a pool rather than pasted as the donor's flat level-65 team - see
-; that file's own README - then extended per the design brief.
-;
-; SYLVEON is VAPOREON form 2, and it is the one deliberate exception to the
-; "sublist must match the species' rarity group" rule at the top of this file.
-; VAPOREON is a KANTO-group species, so by that rule the entry would belong in
-; the Kanto run - but a PINNED form index is passed through UNGATED
-; (PartyGenResolveForm says so explicitly, matching authored TRAINERPARTY_FORMS
-; teams), and Sylveon is Time Warp content. Sitting it in the _Warp run is the
-; only thing that stops a Kanto-only run fielding one, and it serves exactly
-; the intent that rule exists for: no late-game-only content from round one.
-;
-; It is also the one entry here that is NOT a base form, because Sylveon has no
-; pre-evolution that reaches it - EEVEE picks its evolution at random
-; (EvolveMonByLevel.handleeevee), so a plain EEVEE entry could never guarantee
-; one. Consequence: a round-1 Time Warp run can field a level-5 Sylveon.
-; Accepted as the price of having it at all.
-; ---------------------------------------------------------------------------
-JoyPool:
-	pool_mon KANGASKHAN
-	pool_mon SNORLAX
-	pool_mon STARYU
-	pool_mon PORYGON
-	pool_mon EXEGGCUTE
-	pool_mon CHANSEY
-	pool_mon JIGGLYPUFF
-	pool_mon CLEFAIRY
-	pool_mon PIKACHU
-JoyPool_Johto:
-	pool_mon MILTANK
-	pool_mon MARILL
-	pool_mon TOGEPI
-JoyPool_Warp:
-	pool_mon VAPOREON, 2          ; Sylveon
-JoyPool_End:
-
-; ---------------------------------------------------------------------------
-; Officer Jenny - police-dog and patrol flavour, same donor source and
-; reasoning as JoyPool above, extended per the design brief.
-;
-; Every line here is entered at its BASE form, per this file's own convention:
-; GROWLITHE not Arcanine, GASTLY not Gengar, SQUIRTLE not Blastoise, PIDGEY not
-; Pidgeot, PARAS not Parasect, HOPPIP not Jumpluff, CHIKORITA not Meganium,
-; TOTODILE not Feraligatr, MARILL not Azumarill, SNUBBULL not Granbull, REMORAID
-; not Octillery. ScaleTrainer_evolution promotes each one back at a high enough
-; level, so listing the base fixes the round-1 case without weakening round 9 -
-; and listing BOTH stages, as this pool used to, is exactly what produced the
-; reported level-5 Arcanine.
-;
-; HITMONCHAN is the one entry with no evolution in either direction - there is
-; no TYROGUE in this tree - so it is already its own base form, the same way
-; HITMONLEE sits in JessieJamesPool.
-;
-; The KANTO run is deliberately 9 deep, not 6. Seven of the twelve lines this
-; roster wanted are Johto-group and correctly sit below, which left the Kanto
-; run - the only one a first playthrough ever sees - the same size as a round-9
-; team. PARTY_GEN_MAX_RETRIES is 8 and PartyGenRollFromPool is
-; bounded-then-accept, so a pool that tight repeats a species outright. See
-; audit_stage_pool_base_forms.py.
-; ---------------------------------------------------------------------------
-JennyPool:
-	pool_mon PIDGEY
-	pool_mon SQUIRTLE
-	pool_mon TANGELA
-	pool_mon GASTLY
-	pool_mon PARAS
-	pool_mon GROWLITHE
-	pool_mon MACHOP
-	pool_mon PONYTA
-	pool_mon HITMONCHAN
-JennyPool_Johto:
-	pool_mon SPINARAK
-	pool_mon HOPPIP
-	pool_mon CHIKORITA
-	pool_mon TOTODILE
-	pool_mon MARILL
-	pool_mon SNUBBULL
-	pool_mon REMORAID
-JennyPool_Warp:
-JennyPool_End:
+; The Psychic, the Burglar, Nurse Joy and Officer Jenny moved to the banded pools
+; (PARTY_ROSTER.md "Wild-area trainers", party roster Phase 3, 2026-10-07):
+; <Prefix>_Fod<band> and <Prefix>_Ace<band> in data/trainers/band_pools.asm.
 
 ; ===========================================================================
 ; Trainer Revamp pools (TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7).

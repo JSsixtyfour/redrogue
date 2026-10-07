@@ -17,7 +17,6 @@ DEF WILD_EXP_MATCHES_TRAINER EQU 1
 ;   trainer_levels.asm    route trainers (wBattleCount mod 10 = 1-5) and gym
 ;                         trainers (6-9), one 11-byte block per round. Also
 ;                         the source of every reward level (GetRewardMonLevel).
-;   miniboss_levels.asm   Rival / Giovanni mini-boss tier, 4 bytes per round.
 ;   wild_levels.asm       wild-area encounter levels, one byte per round.
 ;   wild_boss_levels.asm  wild-area boss levels, one byte per round.
 
@@ -71,31 +70,91 @@ DEF E4_LEVEL_STEP EQU 2
 DEF CHAMPION_BASE_LEVEL EQU 59
 DEF CHAMPION_LEVEL_STEP EQU 1
 
+; --- Mini-bosses (Rival, Giovanni, Karate Master) -----------------------------
+; One spec per round (1-9). The round is read from wBattleCount when the battle
+; starts (PartyGenSpecIndex, engine/battle/rogue_build_party.asm), never from
+; the trainer's set number, so the Victory Road rival is round 9 wherever he
+; is met. Slot 0 is BASE, each slot adds STEP; the ace (last slot) is
+; BASE + (MONS - 1) * STEP.
+;
+; MONS is that round's LARGEST route team, as for the wild-area trainers: the
+; mini-boss stands in for the route's final trainer (party roster Phase 4,
+; 2026-10-07; was a flat 5 with randomly rolled levels).
+; test_party_roster_curves.py fails if the two drift apart.
+;
+; Levels come from the old trainer_difficulty_settings_miniboss rows (Curve F,
+; 2026-10-02, BALANCE_LEVEL_SPIKE.md): BASE is the old min_level, and STEP is
+; the largest whole step that keeps the ace within the old min + range - 1, so
+; the mini-boss still lands between the route's final trainer and the round's
+; leader. Round 1 is never reached (mini-bosses start at
+; MINIBOSS_FIRST_BATTLECOUNT) but has a record, so every index is covered.
+; Read by miniboss_records in data/trainers/party_specs.asm.
+DEF MINIBOSS_R1_MONS EQU 2
+DEF MINIBOSS_R1_BASE EQU 5
+DEF MINIBOSS_R1_STEP EQU 2
+DEF MINIBOSS_R2_MONS EQU 3
+DEF MINIBOSS_R2_BASE EQU 11
+DEF MINIBOSS_R2_STEP EQU 1
+DEF MINIBOSS_R3_MONS EQU 4
+DEF MINIBOSS_R3_BASE EQU 17
+DEF MINIBOSS_R3_STEP EQU 1
+DEF MINIBOSS_R4_MONS EQU 4
+DEF MINIBOSS_R4_BASE EQU 23
+DEF MINIBOSS_R4_STEP EQU 1
+DEF MINIBOSS_R5_MONS EQU 5
+DEF MINIBOSS_R5_BASE EQU 28
+DEF MINIBOSS_R5_STEP EQU 1
+DEF MINIBOSS_R6_MONS EQU 5
+DEF MINIBOSS_R6_BASE EQU 34
+DEF MINIBOSS_R6_STEP EQU 1
+DEF MINIBOSS_R7_MONS EQU 6
+DEF MINIBOSS_R7_BASE EQU 41
+DEF MINIBOSS_R7_STEP EQU 1
+DEF MINIBOSS_R8_MONS EQU 6
+DEF MINIBOSS_R8_BASE EQU 47
+DEF MINIBOSS_R8_STEP EQU 1
+DEF MINIBOSS_R9_MONS EQU 6
+DEF MINIBOSS_R9_BASE EQU 53
+DEF MINIBOSS_R9_STEP EQU 1
+
 ; --- Wild-area stage-event trainers (optional battle) ------------------------
 ; Jessie & James, Psychic, Burglar, Joy, Jenny... One spec per round (1-9).
-; Slot 0 is BASE, each slot adds STAGE_EVENT_LEVEL_STEP. Beating one pays money
-; and trainer EXP but never advances wBattleCount (core.asm TrainerBattleVictory).
-; How often one appears is STAGE_EVENT_CHANCE (out of 256).
-; Read by stage_event_team_spec in data/trainers/party_specs.asm.
+; Slot 0 is BASE, each slot adds STEP. Beating one pays money and trainer EXP but
+; never advances wBattleCount (core.asm TrainerBattleVictory). How often one
+; appears is STAGE_EVENT_CHANCE (out of 256).
+;
+; MONS is that round's LARGEST route team (party roster Phase 3, 2026-10-07):
+; the class-count sum of the round's trainer_difficulty_settings block in
+; data/balance/trainer_levels.asm, 2/3/4/4/5/5/6/6/6. It was 2/2/3/3/4/4/5/5/6.
+; test_party_roster_curves.py fails if the two drift apart.
+; Read by banded_round_spec / stage_event_banded_records in data/trainers/party_specs.asm.
 DEF STAGE_EVENT_R1_MONS EQU 2
 DEF STAGE_EVENT_R1_BASE EQU 5
-DEF STAGE_EVENT_R2_MONS EQU 2
+DEF STAGE_EVENT_R1_STEP EQU 1
+DEF STAGE_EVENT_R2_MONS EQU 3
 DEF STAGE_EVENT_R2_BASE EQU 12
-DEF STAGE_EVENT_R3_MONS EQU 3
+DEF STAGE_EVENT_R2_STEP EQU 1
+DEF STAGE_EVENT_R3_MONS EQU 4
 DEF STAGE_EVENT_R3_BASE EQU 16
-DEF STAGE_EVENT_R4_MONS EQU 3
+DEF STAGE_EVENT_R3_STEP EQU 1
+DEF STAGE_EVENT_R4_MONS EQU 4
 DEF STAGE_EVENT_R4_BASE EQU 23
-DEF STAGE_EVENT_R5_MONS EQU 4
+DEF STAGE_EVENT_R4_STEP EQU 1
+DEF STAGE_EVENT_R5_MONS EQU 5
 DEF STAGE_EVENT_R5_BASE EQU 28
-DEF STAGE_EVENT_R6_MONS EQU 4
+DEF STAGE_EVENT_R5_STEP EQU 1
+DEF STAGE_EVENT_R6_MONS EQU 5
 DEF STAGE_EVENT_R6_BASE EQU 34
-DEF STAGE_EVENT_R7_MONS EQU 5
+DEF STAGE_EVENT_R6_STEP EQU 1
+DEF STAGE_EVENT_R7_MONS EQU 6
 DEF STAGE_EVENT_R7_BASE EQU 39
-DEF STAGE_EVENT_R8_MONS EQU 5
+DEF STAGE_EVENT_R7_STEP EQU 1
+DEF STAGE_EVENT_R8_MONS EQU 6
 DEF STAGE_EVENT_R8_BASE EQU 47
+DEF STAGE_EVENT_R8_STEP EQU 1
 DEF STAGE_EVENT_R9_MONS EQU 6
 DEF STAGE_EVENT_R9_BASE EQU 48
-DEF STAGE_EVENT_LEVEL_STEP EQU 1
+DEF STAGE_EVENT_R9_STEP EQU 1
 
 ; --- Prize money -------------------------------------------------------------
 ; Money won = base x level of the enemy's last mon (BCD), plus Amulet Coin

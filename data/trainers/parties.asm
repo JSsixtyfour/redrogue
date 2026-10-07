@@ -28,7 +28,34 @@
 ;       team is authored content, not a roll, so it shows exactly what you wrote
 ;       regardless of whether the player has unlocked Johto or Time Warp. Only
 ;       the RANDOM rollers are gated (RogueFormsUnlocked).
+;
+;   db TRAINERPARTY_SPEC_ONLY                                       ; $fd
+;       No authored team: written by `spec_covered_stub` below.
 ; ===========================================================================
+
+; A class whose party_specs.asm list covers EVERY wTrainerNo any caller can hand
+; it: InitGymBattle (1-24), InitElite4Battle (1-12), ChampionsRoom (Rival3 1-5,
+; Lance 10-12) and the map object_events (set 1 or 2). RogueBuildParty always
+; finds a spec first, so the authored teams these blocks used to hold were
+; unreachable and were deleted (party roster Phase 0, 2026-10-07, ~2.3 KB of
+; bank "Trainer Parties"). test_party_spec_coverage.py holds the coverage.
+;
+; The label stays, one byte long, so each class keeps its own TrainerDataPointers
+; target (test_laundry_scope reads them to prove the table is aligned). If a
+; caller ever does hand one of these classes an uncovered number, ReadTrainer
+; treats the marker like any non-authored first byte: debug builds stop on
+; `rst $38` there, and release builds roll an ordinary roster for the class
+; rather than walking off the end of its data into the next class's teams.
+;
+; NOT stubbed: GiovanniData (sets 25-27 are past his spec list), Rival1/2Data
+; (fixed rival scripts), ProfOakData (ChampionsRoom, no spec yet),
+; JessieJamesData (its spec is gated to Wild Area maps by StageEventSpecAllowed,
+; so off those maps the authored team is a real fallback). The mini-boss
+; classes are stubbed too (party roster Phase 4): their specs are keyed on the
+; round, not wTrainerNo, so every set number is covered.
+MACRO spec_covered_stub
+	db TRAINERPARTY_SPEC_ONLY
+ENDM
 
 TrainerDataPointers:
 	table_width 2
@@ -239,266 +266,28 @@ CooltrainerMData:
 CooltrainerFData:
 db 14, SPEAROW, 0
 BrunoData:
-	; Tier 1 (battle count 86)
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	; Tier 2 (battle count 87)
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	; Tier 3 (battle count 88)
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	; Tier 4 (battle count 89)
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
-	db $FF, 53, ONIX, 55, HITMONCHAN, 55, HITMONLEE, 56, ONIX, 58, MACHAMP, 0
+	spec_covered_stub
 
 BrockData:
-    ; First Gym
-	db $FF, 12, GEODUDE, 14, ONIX, 0
-    db $FF, 12, KABUTO, 14, ONIX, 0
-    db $FF, 12, OMANYTE, 14, ONIX, 0
-    ; Second Gym
-	db $FF, 18, ONIX, 21, AERODACTYL, 0
-	db $FF, 18, GEODUDE, 21, AERODACTYL, 0
-	db $FF, 18, RHYHORN, 21, AERODACTYL, 0
-    ; Third Gym
-	db $FF, 21, OMANYTE, 18, ONIX, 24, AERODACTYL, 0
-	db $FF, 21, KABUTO, 18, ONIX, 24, AERODACTYL, 0
-	db $FF, 21, ZUBAT, 18, RHYHORN, 24, AERODACTYL, 0
-    ; Fourth Gym
-	db $FF, 29, AERODACTYL, 24, LICKITUNG, 29, GOLEM, 0
-	db $FF, 29, AERODACTYL, 24, PINSIR, 29, GOLEM, 0
-	db $FF, 29, GOLBAT, 24, OMANYTE, 29, RHYDON, 0
-    ; Fifth Gym
-	db $FF, 37, OMASTAR, 39, AERODACTYL, 37, VULPIX, 43, GOLEM, 0
-	db $FF, 37, KABUTOPS, 39, GOLBAT, 37, ONIX, 43, RHYDON, 0
-	db $FF, 37, AERODACTYL, 39, CHANSEY, 37, MANKEY, 43, GOLEM, 0
-    ; Sixth Gym
-    db $FF, 38, OMASTAR, 37, NINETALES, 38, AERODACTYL, 43, GOLEM, 0
-	db $FF, 38, KABUTOPS, 37, PRIMEAPE, 38, GOLBAT, 43, RHYDON, 0
-	db $FF, 38, SLOWBRO, 37, SANDSLASH, 38, AERODACTYL, 43, GOLEM, 0
-    ; Seventh Gym
-    db $FF, 42, AERODACTYL, 40, SLOWBRO, 42, GRAVELER, 41, MAROWAK, 47, RHYDON, 0
-	db $FF, 42, KABUTOPS, 40, DUGTRIO, 42, ONIX, 47, GOLEM, 41, NINETALES, 0
-	db $FF, 42, OMASTAR, 40, PINSIR, 47, GOLEM, 41, CHANSEY, 41, DUGTRIO, 0
-    ; Eighth Gym
-    db $FF, 45, PINSIR, 42, OMASTAR, 44, CHANSEY, 45, GOLBAT, 47, AERODACTYL, 50, RHYDON, 0
-	db $FF, 45, AERODACTYL, 42, DUGTRIO, 44, SLOWBRO, 45, PRIMEAPE, 47, KABUTOPS, 50, GOLEM, 0
-	db $FF, 45, NINETALES, 42, KABUTOPS, 44, CHANSEY, 45, GOLBAT, 47, AERODACTYL, 50, GOLEM, 0
+	spec_covered_stub
 
 MistyData:
-     ; First Gym
-	db $FF, 12, STARYU, 14, STARMIE, 0
-    db $FF, 12, PSYDUCK, 14, STARMIE, 0
-    db $FF, 12, GOLDEEN, 14, STARMIE, 0
-    ; Second Gym
-	db $FF, 18, STARYU, 21, STARMIE, 0
-	db $FF, 18, PSYDUCK, 21, STARMIE, 0
-	db $FF, 18, GOLDEEN, 21, STARMIE, 0
-    ; Third Gym
-	db $FF, 21, GOLDEEN, 18, TENTACOOL, 24, STARMIE, 0
-	db $FF, 21, PSYDUCK, 18, SEEL, 24, STARMIE, 0
-	db $FF, 21, SQUIRTLE, 18, SLOWPOKE, 24, STARMIE, 0
-    ; Fourth Gym
-	db $FF, 29, STARMIE, 24, KINGLER, 29, POLIWRATH, 0
-	db $FF, 29, GOLDUCK, 24, DRAGONAIR, 29, STARMIE, 0
-	db $FF, 29, SEAKING, 24, NIDORINA, 29, STARMIE, 0
-    ; Fifth Gym
-	db $FF, 37, PSYDUCK, 39, STARMIE, 37, SEEL, 43, VAPOREON, 0
-	db $FF, 37, GOLDEEN, 39, STARMIE, 37, OMANYTE, 43, SLOWBRO, 0
-	db $FF, 37, HORSEA, 39, LAPRAS, 37, JIGGLYPUFF, 43, STARMIE, 0
-    ; Sixth Gym
-    db $FF, 38, SEADRA, 37, RAPIDASH, 38, CLOYSTER, 43, STARMIE, 0
-	db $FF, 38, KABUTOPS, 37, DUGTRIO, 38, STARMIE, 43, LAPRAS, 0
-	db $FF, 38, KINGLER, 37, WIGGLYTUFF, 38, BLASTOISE, 43, STARMIE, 0
-    ; Seventh Gym
-    db $FF, 42, SEADRA, 40, SLOWBRO, 42, CLOYSTER, 41, NIDOQUEEN, 47, STARMIE, 0
-	db $FF, 42, GOLDUCK, 40, DUGTRIO, 42, DEWGONG, 41, VAPOREON, 47, STARMIE, 0
-	db $FF, 42, OMASTAR, 40, GYARADOS, 42, STARMIE, 41, RAPIDASH, 47, LAPRAS, 0
-    ; Eighth Gym
-    db $FF, 45, SEAKING, 42, EXEGGUTOR, 44, BLASTOISE, 45, WIGGLYTUFF, 47, STARMIE, 50, SLOWBRO, 0
-	db $FF, 45, GOLDUCK, 42, DUGTRIO, 44, SLOWBRO, 45, NIDOQUEEN, 47, LAPRAS, 50, STARMIE, 0
-	db $FF, 45, KINGLER, 42, KABUTOPS, 44, POLIWRATH, 45, TENTACRUEL, 47, VAPOREON, 50, STARMIE, 0
+	spec_covered_stub
 
 LtSurgeData:
-     ; First Gym
-	db $FF, 12, PIKACHU, 14, RAICHU, 0
-    db $FF, 12, MAGNEMITE, 14, RAICHU, 0
-    db $FF, 12, VOLTORB, 14, RAICHU, 0
-    ; Second Gym
-	db $FF, 18, PIKACHU, 21, RAICHU, 0
-	db $FF, 18, MAGNEMITE, 21, RAICHU, 0
-	db $FF, 18, VOLTORB, 21, RAICHU, 0
-    ; Third Gym
-	db $FF, 21, VOLTORB, 18, PIKACHU, 24, RAICHU, 0
-	db $FF, 21, MAGNEMITE, 18, EEVEE, 24, RAICHU, 0
-	db $FF, 21, PIKACHU, 18, SPEAROW, 24, ELECTABUZZ, 0
-    ; Fourth Gym
-	db $FF, 29, FEAROW, 24, ELECTABUZZ, 29, RAICHU, 0
-	db $FF, 29, JOLTEON, 24, PORYGON, 29, RAICHU, 0
-	db $FF, 29, RAICHU, 24, LICKITUNG, 29, ELECTABUZZ, 0
-    ; Fifth Gym
-	db $FF, 37, VOLTORB, 39, RAICHU, 37, DODUO, 43, JOLTEON, 0
-	db $FF, 37, MAGNEMITE, 39, ELECTABUZZ, 37, WEEPINBELL, 43, RAICHU, 0
-	db $FF, 37, VOLTORB, 39, MAGNETON, 37, SEEL, 43, RAICHU, 0
-    ; Sixth Gym
-    db $FF, 38, ELECTABUZZ, 37, RAICHU, 38, RATICATE, 43, JOLTEON, 0
-	db $FF, 38, ELECTABUZZ, 37, POLIWRATH, 38, FEAROW, 43, RAICHU, 0
-	db $FF, 38, ELECTRODE, 37, JOLTEON, 38, VICTREEBEL, 43, RAICHU, 0
-    ; Seventh Gym
-    db $FF, 42, ELECTRODE, 40, POLIWRATH, 42, MAGNETON, 41, DODRIO, 47, RAICHU, 0
-	db $FF, 42, MAGNETON, 40, VICTREEBEL, 42, ELECTABUZZ, 41, PORYGON, 47, JOLTEON, 0
-	db $FF, 42, RAICHU, 40, ELECTRODE, 42, LICKITUNG, 41, FEAROW, 47, ZAPDOS, 0
-    ; Eighth Gym
-    db $FF, 45, RAICHU, 42, SEADRA, 44, ELECTRODE, 45, PORYGON, 47, MAGNETON, 50, ZAPDOS, 0
-	db $FF, 45, MAGNETON, 42, TANGELA, 44, ELECTABUZZ, 45, DEWGONG, 47, FEAROW, 50, JOLTEON, 0
-	db $FF, 45, ELECTRODE, 42, VICTREEBEL, 44, POLIWRATH, 45, JOLTEON, 47, DODRIO, 50, RAICHU, 0
+	spec_covered_stub
 
-ErikaData:  
-    ; First Gym
-	db $FF, 12, PARAS, 14, TANGELA, 0
-    db $FF, 12, ODDISH, 14, WEEPINBELL, 0
-    db $FF, 12, BELLSPROUT, 14, GLOOM, 0
-    ; Second Gym
-	db $FF, 18, EXEGGCUTE, 21, VICTREEBEL, 0
-	db $FF, 18, ODDISH, 21, VICTREEBEL, 0
-	db $FF, 18, TANGELA, 21, VILEPLUME, 0
-    ; Third Gym
-	db $FF, 21, TANGELA, 18, BULBASAUR, 24, VICTREEBEL, 0
-	db $FF, 21, WEEPINBELL, 18, EXEGGCUTE, 24, VILEPLUME, 0
-	db $FF, 21, GLOOM, 18, PARAS, 24, VICTREEBEL, 0
-    ; Fourth Gym
-	db $FF, 29, VICTREEBEL, 24, TANGELA, 29, VILEPLUME, 0
-	db $FF, 29, PARASECT, 24, IVYSAUR, 29, VICTREEBEL, 0
-	db $FF, 29, VENUSAUR, 24, TANGELA, 29, VILEPLUME, 0
-    ; Fifth Gym
-	db $FF, 37, IVYSAUR, 39, EXEGGUTOR, 37, VULPIX, 43, VILEPLUME, 0
-	db $FF, 37, GLOOM, 39, PARASECT, 37, CLEFAIRY, 43, VICTREEBEL, 0
-	db $FF, 37, TANGELA, 39, VILEPLUME, 37, CUBONE, 43, VENUSAUR, 0
-    ; Sixth Gym
-    db $FF, 38, PARASECT, 37, EXEGGUTOR, 38, CLEFABLE, 43, VICTREEBEL, 0
-	db $FF, 38, PARASECT, 37, VICTREEBEL, 38, CHANSEY, 43, VENUSAUR, 0
-	db $FF, 38, TANGELA, 37, VILEPLUME, 38, DEWGONG, 43, EXEGGUTOR, 0
-    ; Seventh Gym
-    db $FF, 42, TANGELA, 40, CLEFABLE, 42, EXEGGUTOR, 40, NINETALES, 47, VICTREEBEL, 0
-	db $FF, 42, PARASECT, 40, CHANSEY, 42, EXEGGUTOR, 40, MAROWAK, 47, VENUSAUR, 0
-	db $FF, 42, WEEPINBELL, 40, DRAGONAIR, 42, VILEPLUME, 40, VAPOREON, 47, EXEGGUTOR, 0
-    ; Eighth Gym
-    db $FF, 45, PARASECT, 42, VAPOREON, 44, VICTREEBEL, 45, DRAGONAIR, 47, CLEFABLE, 50, EXEGGUTOR, 0
-	db $FF, 45, VILEPLUME, 42, MAROWAK, 44, VENUSAUR, 45, NINETALES, 47, CHANSEY, 50, EXEGGUTOR, 0
-	db $FF, 45, VENUSAUR, 42, NINETALES, 44, TANGELA, 45, DEWGONG, 47, VICTREEBEL, 50, EXEGGUTOR, 0
+ErikaData:
+	spec_covered_stub
 
 KogaData:
-    ; First Gym
-	db $FF, 12, KOFFING, 14, BEEDRILL, 0
-    db $FF, 12, GRIMER, 14, VENOMOTH, 0
-    db $FF, 12, ZUBAT, 14, WEEZING, 0
-    ; Second Gym
-	db $FF, 18, KOFFING, 21, VENOMOTH, 0
-	db $FF, 18, GRIMER, 21, WEEZING, 0
-	db $FF, 18, ZUBAT, 21, MUK, 0
-    ; Third Gym
-	db $FF, 21, ZUBAT, 18, BULBASAUR, 24, VENOMOTH, 0
-	db $FF, 21, GRIMER, 18, TENTACOOL, 24, WEEZING, 0
-	db $FF, 21, KOFFING, 18, EKANS, 24, MUK, 0
-    ; Fourth Gym
-	db $FF, 29, VENOMOTH, 24, KOFFING, 29, NIDOQUEEN, 0
-	db $FF, 29, MUK, 24, PORYGON, 29, WEEZING, 0
-	db $FF, 29, VILEPLUME, 24, HAUNTER, 29, NIDOKING, 0
-    ; Fifth Gym
-	db $FF, 37, KOFFING, 39, MUK, 37, DITTO, 43, WEEZING, 0
-	db $FF, 37, ODDISH, 39, NIDOKING, 37, SCYTHER, 43, MUK, 0
-	; NIDOQUEEN's level byte was MISSING here until 2026-09-10. In the
-	; TRAINERPARTY_LEVELS ($FF) layout every mon is a level/species pair and
-	; ReadTrainer stops on a 0 in the LEVEL position, so this team read
-	; NIDOQUEEN's species id as a level, 0 as a species, and then walked the
-	; FOLLOWING teams' bytes as more mons. 43 matches every other round-5
-	; ace across all eight leaders.
-	db $FF, 37, NIDORINO, 39, VICTREEBEL, 37, HAUNTER, 43, NIDOQUEEN, 0
-    ; Sixth Gym
-    db $FF, 38, HAUNTER, 37, HYPNO, 38, SCYTHER, 43, WEEZING, 0
-	db $FF, 38, PARASECT, 37, NIDOQUEEN, 38, TAUROS, 43, VENUSAUR, 0
-	db $FF, 38, TANGELA, 37, VENOMOTH, 38, MAGMAR, 43, NIDOKING, 0
-    ; Seventh Gym
-    db $FF, 42, WEEZING, 40, PARASECT, 42, ARBOK, 40, LAPRAS, 47, GENGAR, 0
-	db $FF, 42, MUK, 40, SCYTHER, 42, VILEPLUME, 40, ELECTRODE, 47, NIDOQUEEN, 0
-	db $FF, 42, TENTACRUEL, 40, GOLDUCK, 42, VENOMOTH, 40, MAGMAR, 47, NIDOKING, 0
-    ; Eighth Gym
-    db $FF, 45, WEEZING, 42, HYPNO, 44, GENGAR, 45, LAPRAS, 47, SCYTHER, 50, NIDOKING, 0
-	db $FF, 45, MUK, 42, MAGMAR, 44, VENUSAUR, 45, RHYDON, 47, TAUROS, 50, NIDOQUEEN, 0
-	db $FF, 45, VENUSAUR, 42, ELECTRODE, 44, NIDOQUEEN, 45, GOLBAT, 47, PIDGEOT, 50, GENGAR, 0
+	spec_covered_stub
 
 BlaineData:
-    ; First Gym
-	db $FF, 12, PONYTA, 14, CHARMELEON, 0
-    db $FF, 12, GROWLITHE, 14, FLAREON, 0
-    db $FF, 12, VULPIX, 14, MAGMAR, 0
-    ; Second Gym
-	db $FF, 18, PONYTA, 21, ARCANINE, 0
-	db $FF, 18, GROWLITHE, 21, NINETALES, 0
-	db $FF, 18, VULPIX, 21, RAPIDASH, 0
-    ; Third Gym
-	db $FF, 21, PONYTA, 18, CHARMANDER, 24, ARCANINE, 0
-	db $FF, 21, GROWLITHE, 18, PONYTA, 24, NINETALES, 0
-	db $FF, 21, VULPIX, 18, GROWLITHE, 24, RAPIDASH, 0
-    ; Fourth Gym
-	db $FF, 29, NINETALES, 24, MAGMAR, 29, CHARIZARD, 0
-	db $FF, 29, RAPIDASH, 24, CHARMELEON, 29, ARCANINE, 0
-	db $FF, 29, CHARIZARD, 24, MAGMAR, 29, RAPIDASH, 0
-    ; Fifth Gym
-	db $FF, 37, MAGMAR, 39, NINETALES, 37, MR_MIME, 43, CHARIZARD, 0
-	db $FF, 37, CHARMELEON, 39, FLAREON, 37, KANGASKHAN, 43, ARCANINE, 0
-	db $FF, 37, MAGMAR, 39, CHARIZARD, 37, CHANSEY, 43, RAPIDASH, 0
-    ; Sixth Gym
-    db $FF, 38, MAGMAR, 37, FLAREON, 38, MR_MIME, 43, CHARIZARD, 0
-	db $FF, 38, CHARMELEON, 37, RAPIDASH, 38, DODRIO, 43, ARCANINE, 0
-	db $FF, 38, MAGMAR, 37, NINETALES, 38, TANGELA, 43, MOLTRES, 0
-    ; Seventh Gym
-    db $FF, 42, FLAREON, 40, KANGASKHAN, 42, NINETALES, 40, WEEZING, 47, CHARIZARD, 0
-	db $FF, 42, MAGMAR, 40, CLEFABLE, 42, MR_MIME, 40, MUK, 47, MOLTRES, 0
-	db $FF, 42, CHARIZARD, 40, DODRIO, 42, RAPIDASH, 40, MR_MIME, 47, ARCANINE, 0
-    ; Eighth Gym
-    db $FF, 45, NINETALES, 42, ELECTRODE, 44, MAGMAR, 45, GOLEM, 47, TAUROS, 50, CHARIZARD, 0
-	db $FF, 45, RAPIDASH, 42, KABUTOPS, 44, FLAREON, 45, VILEPLUME, 47, PERSIAN, 50, MOLTRES, 0
-	db $FF, 45, CHARIZARD, 42, PRIMEAPE, 44, RAPIDASH, 45, CHANSEY, 47, MR_MIME, 50, ARCANINE, 0
+	spec_covered_stub
 
 SabrinaData:
-    ; First Gym
-	db $FF, 12, SLOWPOKE, 14, MR_MIME, 0
-    db $FF, 12, DROWZEE, 14, VENOMOTH, 0
-    db $FF, 12, EXEGGCUTE, 14, HYPNO, 0
-    ; Second Gym
-	db $FF, 18, DROWZEE, 21, KADABRA, 0
-	db $FF, 18, EXEGGCUTE, 21, JYNX, 0
-	db $FF, 18, SLOWPOKE, 21, MR_MIME, 0
-    ; Third Gym
-	db $FF, 21, EXEGGCUTE, 18, DROWZEE, 24, KADABRA, 0
-	db $FF, 21, ABRA, 18, EXEGGCUTE, 24, JYNX, 0
-	db $FF, 21, VENONAT, 18, SLOWPOKE, 24, MR_MIME, 0
-    ; Fourth Gym
-	db $FF, 29, MR_MIME, 24, VENOMOTH, 29, ALAKAZAM, 0
-	db $FF, 29, JYNX, 24, KADABRA, 29, EXEGGUTOR, 0
-	db $FF, 29, KADABRA, 24, HAUNTER, 29, SLOWBRO, 0
-    ; Fifth Gym
-	db $FF, 37, HAUNTER, 39, MR_MIME, 37, VENOMOTH, 43, ALAKAZAM, 0
-	db $FF, 37, EEVEE, 39, JYNX, 37, SCYTHER, 43, EXEGGUTOR, 0
-	db $FF, 37, VENOMOTH, 39, HYPNO, 37, HITMONLEE, 43, SLOWBRO, 0
-    ; Sixth Gym
-    db $FF, 38, HAUNTER, 37, MR_MIME, 38, VENOMOTH, 43, ALAKAZAM, 0
-	db $FF, 38, JYNX, 37, WIGGLYTUFF, 38, HITMONLEE, 43, EXEGGUTOR, 0
-	db $FF, 38, ALAKAZAM, 37, GOLDUCK, 38, SANDSLASH, 43, SLOWBRO, 0
-    ; Seventh Gym
-    db $FF, 42, GENGAR, 40, SLOWBRO, 42, HYPNO, 40, WIGGLYTUFF, 47, ALAKAZAM, 0
-	db $FF, 42, JYNX, 40, SCYTHER, 42, MR_MIME, 40, SANDSLASH, 47, EXEGGUTOR, 0
-	db $FF, 42, MR_MIME, 40, GOLDUCK, 42, EXEGGUTOR, 40, VENOMOTH, 47, SLOWBRO, 0
-    ; Eighth Gym
-    db $FF, 45, EXEGGUTOR, 42, HYPNO, 44, GENGAR, 45, SANDSLASH, 47, SCYTHER, 50, ALAKAZAM, 0
-	db $FF, 45, SLOWBRO, 42, WIGGLYTUFF, 44, MR_MIME, 45, MOLTRES, 47, HITMONLEE, 50, EXEGGUTOR, 0
-	db $FF, 45, ALAKAZAM, 42, SNORLAX, 44, JYNX, 45, GENGAR, 47, VENOMOTH, 50, SLOWBRO, 0
+	spec_covered_stub
 
 GentlemanData:
 db 14, SPEAROW, 0
@@ -521,94 +310,27 @@ Rival2Data:
 	db $FF, 47, PIDGEOT, 45, RHYHORN, 45, EXEGGCUTE, 47, GYARADOS, 50, ALAKAZAM, 53, RIVAL_STARTER_PLACEHOLDER, 0
 
 Rival3Data:
-	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, ARCANINE, 63, EXEGGUTOR, 65, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, GYARADOS, 63, ARCANINE, 65, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, EXEGGUTOR, 63, GYARADOS, 65, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, ARCANINE, 63, EXEGGUTOR, 65, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 61, PIDGEOT, 59, ALAKAZAM, 61, RHYDON, 61, GYARADOS, 63, ARCANINE, 65, RIVAL_STARTER_PLACEHOLDER, 0
+	spec_covered_stub
 
-; Mini-boss team data (see MINIBOSS_FRAMEWORK.md). NOTE: this is a DIFFERENT
-; format from the vanilla trainer data above - it has NO leading $FF and NO
-; per-mon level bytes. BuildMiniBossTeam (read_trainer_party.asm) supplies every
-; mon's level at runtime from trainer_difficulty_settings_miniboss[round], so one
-; species-list scales across the whole run. A team is a list of species/markers
-; terminated by 0:
-;   RIVAL_STARTER_PLACEHOLDER ($1F) = the placed rival starter (evolved to level)
-;   MINIBOSS_RANDOM_FILL ($FE), <count> = add <count> rarer-random mons (count >= 1)
-;   any other byte = a literal curated "signature" species
 RivalMiniBossData:
-	; One team (wTrainerNo = 1). Placed starter as the ace + 4 rarer-random mons.
-	db RIVAL_STARTER_PLACEHOLDER, MINIBOSS_RANDOM_FILL, 4, 0
+	spec_covered_stub
 
 GiovanniMiniBossData:
-	; 3 ground-themed teams (TEAM_RANDOM_3_SET picks one by wTrainerNo). Levels
-	; scale by round, so the same 3 compositions work early and late.
-	db RHYHORN, DUGTRIO, NIDOKING, MINIBOSS_RANDOM_FILL, 2, 0
-	db SANDSLASH, DUGTRIO, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
-	db NIDOQUEEN, MAROWAK, RHYDON, MINIBOSS_RANDOM_FILL, 2, 0
+	spec_covered_stub
 
 KarateMiniBossData:
-	; 3 fighting-themed teams (TEAM_RANDOM_3_SET). The Dojo's reward Pokemon
-	; (Machop line, Hitmonlee, Hitmonchan) headline; two rarer-random fill mons.
-	db HITMONLEE, HITMONCHAN, MACHAMP, MINIBOSS_RANDOM_FILL, 2, 0
-	db PRIMEAPE, POLIWRATH, MACHAMP, MINIBOSS_RANDOM_FILL, 2, 0
-	db HITMONCHAN, PRIMEAPE, HITMONLEE, MINIBOSS_RANDOM_FILL, 2, 0
+	spec_covered_stub
 
 LoreleiData:
-	; Tier 1 (battle count 86)
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	; Tier 2 (battle count 87)
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	; Tier 3 (battle count 88)
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	; Tier 4 (battle count 89)
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
-	db $FF, 54, DEWGONG, 53, CLOYSTER, 54, SLOWBRO, 56, JYNX, 56, LAPRAS, 0
+	spec_covered_stub
 
 ChannelerData:
 db 14, SPEAROW, 0
 AgathaData:
-	; Tier 1 (battle count 86)
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	; Tier 2 (battle count 87)
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	; Tier 3 (battle count 88)
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	; Tier 4 (battle count 89)
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
-	db $FF, 56, GENGAR, 56, GOLBAT, 55, HAUNTER, 58, ARBOK, 60, GENGAR, 0
+	spec_covered_stub
 
 LanceData:
-	; Tier 1 (battle count 86)
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	; Tier 2 (battle count 87)
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	; Tier 3 (battle count 88)
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	; Tier 4 (battle count 89)
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
-	db $FF, 58, GYARADOS, 56, DRAGONAIR, 56, DRAGONAIR, 60, AERODACTYL, 62, DRAGONITE, 0
+	spec_covered_stub
 
 ; Elite4OrderTable was moved to custom_functions/final_sequence.asm (the rogue
 ; bank) so it is same-bank with the code that reads it. A plain ld a,[hl] from
@@ -631,37 +353,30 @@ JessieJamesData:
 
 
 ; Gym-leader expansion: the 8 Johto leaders, Janine, and the two Johto
-; Elite Four members. Added 2026-09-10 (Phase 1).
-; PLACEHOLDER teams - one each, replaced by Phase 3's real pools.
-; One team is deliberate: InitGymBattle picks
-;   wTrainerNo = (round-1)*3 + 1 + rand(3)
-; so a leader wired into gym rotation needs 24 teams, or ReadTrainer's
-; .SkipTrainer scan walks off the end of its data. No map or script
-; references these classes yet, so wTrainerNo is only ever 1 here.
+; Elite Four members. Added 2026-09-10 (Phase 1). Spec-covered stubs, like
+; every other leader's and Elite Four member's block (see spec_covered_stub).
 FalknerData:
-	db $FF, 13, PIDGEOTTO, 13, HOOTHOOT, 15, NOCTOWL, 0
+	spec_covered_stub
 BugsyData:
-	db $FF, 15, SPINARAK, 15, ARIADOS, 17, SCYTHER, 0
+	spec_covered_stub
 WhitneyData:
-	db $FF, 19, CLEFAIRY, 19, MILTANK, 21, MILTANK, 0
+	spec_covered_stub
 MortyData:
-	db $FF, 23, GASTLY, 23, HAUNTER, 25, MISDREAVUS, 27, GENGAR, 0
+	spec_covered_stub
 ChuckData:
-	db $FF, 29, PRIMEAPE, 29, MACHOKE, 31, POLIWRATH, 0
+	spec_covered_stub
 JasmineData:
-	db $FF, 31, MAGNEMITE, 31, MAGNETON, 33, ONIX, 35, STEELIX, 0
+	spec_covered_stub
 PryceData:
-	db $FF, 33, SEEL, 33, SWINUB, 35, DEWGONG, 37, PILOSWINE, 0
+	spec_covered_stub
 ClairData:
-	db $FF, 37, DRATINI, 37, HORSEA, 39, DRAGONAIR, 41, KINGDRA, 0
+	spec_covered_stub
 JanineData:
-	db $FF, 33, KOFFING, 33, VENOMOTH, 35, ARBOK, 37, WEEZING, 0
+	spec_covered_stub
 WillData:
-	db $FF, 51, NATU, 53, XATU, 53, JYNX, 55, EXEGGUTOR, 55, SLOWBRO, 0
+	spec_covered_stub
 KarenData:
-	db $FF, 51, MURKROW, 53, GENGAR, 53, VENOMOTH, 55, HOUNDOOM, 0
-; KOGA_E4. Serves wTrainerNo 1 only - the authored hole every E4 character has,
-; which InitElite4Battle reaches at tier 0 variant 0. Records 2-12 are specs.
+	spec_covered_stub
 KogaE4Data:
-	db $FF, 51, ARIADOS, 53, VENOMOTH, 53, FORRETRESS, 55, MUK, 55, CROBAT, 0
+	spec_covered_stub
 

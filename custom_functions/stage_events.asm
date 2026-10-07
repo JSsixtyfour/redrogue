@@ -253,12 +253,10 @@ StageEventLimitTrainerSight::
 	ld [wTrainerEngageDistance], a
 	ret
 
-; a = wTrainerNo (1-9), the SAME round-tier stage_event_team_spec
-; (data/trainers/party_specs.asm) is keyed on. Duplicates
-; GetMiniBossTierPtr's clamp/divide (custom_functions/func_enc_gen.asm) rather
-; than reaching it by farcall: that routine returns a pointer into its OWN
-; bank's table, which cannot survive the bank restore on the way back out -
-; the same reason PFRollMonClass/PCAbs are duplicated rather than shared.
+; a = wTrainerNo (1-9), the SAME round tier stage_event_banded_records
+; (data/trainers/party_specs.asm) is keyed on. Duplicates RogueBattleRound's
+; clamp/divide (engine/battle/rogue_build_party.asm, another bank) rather than
+; farcalling it for three instructions.
 ; Clobbers a/b.
 StageEventRoundTier:
 	ld a, [wBattleCount]

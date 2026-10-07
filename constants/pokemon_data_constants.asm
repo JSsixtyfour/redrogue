@@ -217,12 +217,16 @@ DEF FORM_TIER_ENTRY_SIZE EQU 3
 ;                       <level, species> pairs.
 ;   TRAINERPARTY_FORMS  ($fe) = per-mon levels AND regional forms; entries are
 ;                       <level, species, form> triples. Phase 2R increment 8c.
+;   TRAINERPARTY_SPEC_ONLY ($fd) = no authored team at all: the class's party
+;                       specs cover every wTrainerNo it can be handed. One byte,
+;                       no terminator. See spec_covered_stub in parties.asm.
 ;
 ; $fe is safe as a marker for the same reason $ff is: the byte is otherwise a
 ; LEVEL, and no mon is level 254. In every layout the 0 terminator is tested on
 ; the level byte, so a form of 0 mid-record is fine.
 DEF TRAINERPARTY_LEVELS EQU $ff
 DEF TRAINERPARTY_FORMS  EQU $fe
+DEF TRAINERPARTY_SPEC_ONLY EQU $fd
 
 ; ===========================================================================
 ; ⚠⚠ TEMPORARY TEST SWITCH - SET BACK TO 0 BEFORE COMMITTING ⚠⚠

@@ -321,13 +321,11 @@ DEF NUM_MINIBOSS_TYPES EQU 3  ; number of *real* bosses (excludes NONE), = highe
 DEF PLACE_REPLACE_5TH EQU 0   ; swap the route's 5th trainer in place
 DEF PLACE_OWN_STAGE   EQU 1   ; boss IS a dedicated stage (routed to via its own map)
 
-; Registry team-selection modes
-DEF TEAM_STARTER_BASED EQU 0  ; wTrainerNo from the player's starter (Rival)
-DEF TEAM_RANDOM_3_SET  EQU 1  ; 1-of-3 teams per tier chosen at random (Giovanni, Karate)
-
-; Party-data marker: fills the remaining team slots with rarer-random mons.
-; Distinct from any real species id and from RIVAL_STARTER_PLACEHOLDER ($1F).
-DEF MINIBOSS_RANDOM_FILL EQU $FE
+; Registry set-number modes. The team itself is the round's party spec
+; (party_specs.asm miniboss_records); the set number only moves the off-type
+; slot, as a gym leader's variant does.
+DEF TEAM_STARTER_BASED EQU 0  ; set 1 (Rival)
+DEF TEAM_RANDOM_3_SET  EQU 1  ; set 1-3 at random (Giovanni, Karate)
 
 ; Chance tuning (out of 256). Base 25% ~= 64; +25% per non-mini-boss route.
 DEF MINIBOSS_BASE_CHANCE EQU 64   ; ~25% at wRoutesSinceSpecial = 0

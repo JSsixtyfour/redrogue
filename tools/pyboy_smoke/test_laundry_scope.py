@@ -33,13 +33,14 @@ class LaundryScopeSmokeTest(HarnessTestCase):
 
         Phase 7f gave JESSIE_JAMES (and PSYCHIC_TR, BURGLAR, NURSE_JOY,
         OFFICER_JENNY) a PartySpecPointers entry - a 9-row, round-tiered
-        pool spec (data/trainers/party_specs.asm's stage_event_team_spec).
+        pool spec (data/trainers/party_specs.asm's stage_event_banded_records).
         RogueBuildParty is consulted BEFORE TrainerDataPointers and finds a
         spec for every wTrainerNo 1-9, so JessieJamesData's old `db $FF,
         level, species, ...` rows - what this test used to load and check
         species-for-species - are now unreachable dead data. What is left to
         prove is the property that replaced them: team SIZE follows
-        stage_event_team_spec's own round ladder (2/2/3/3/4/4/5/5/6), which is
+        the STAGE_EVENT_R<n>_MONS ladder (2/3/4/4/5/5/6/6/6, each round's largest
+        route team), which is
         deterministic even though the pool draw is not.
         """
         h = self.harness
@@ -48,7 +49,8 @@ class LaundryScopeSmokeTest(HarnessTestCase):
         classes = parse_trainer_class_indexes(
             REPO_ROOT / "constants/trainer_constants.asm"
         )
-        team_sizes = (2, 2, 3, 3, 4, 4, 5, 5, 6)
+        # Each round's largest route team (party roster Phase 3, 2026-10-07).
+        team_sizes = (2, 3, 4, 4, 5, 5, 6, 6, 6)
         # The spec is only used on a Wild Area map (StageEventSpecAllowed,
         # 2026-10-06); FIGHT2's map is not one.
         wild_map = parse_map_constants(

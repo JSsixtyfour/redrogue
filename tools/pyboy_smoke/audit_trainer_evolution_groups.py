@@ -129,7 +129,7 @@ def main() -> int:
     failures = []
 
     # ---- boot 1: the Porygon probe, both group states -------------------
-    # JoyPool used to be exactly 6 species against a 6-mon round-9 team, so one
+    # the Nurse Joy pool used to be exactly 6 species against a 6-mon round-9 team, so one
     # build fielded the whole pool and PORYGON was guaranteed. It has since been
     # extended, so a single build no longer guarantees the draw - take the UNION
     # over several builds instead. (Noting this because the original one-build

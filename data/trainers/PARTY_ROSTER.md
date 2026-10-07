@@ -1,0 +1,639 @@
+# Party roster
+
+The source of truth for every banded trainer team: which species each boss-type trainer can field,
+band by band. `tools/gen_party_roster.py` turns this file into `data/trainers/band_pools.asm`, and
+`make audit` fails if the two disagree. **Edit this file, never the asm**, then run:
+
+```
+python3 tools/gen_party_roster.py
+```
+
+Started 2026-10-07 from the shipping gym pools, which matched the old `LEADER_REVIEW.md` sheet
+(v2, 2026-09-28) entry for entry. Team sizes, levels and moveset rows are not set here: they are
+the per-round knobs in `constants/balance_constants.asm` (`GYM_R<n>_*` for gym leaders) and the
+mix rows in `data/trainers/party_specs.asm`.
+
+## How to edit
+
+- **Bands.** Each band covers two rounds: band 1 is rounds 1-2 (gyms 1-2), band 2 rounds 3-4,
+  band 3 rounds 5-6, band 4 rounds 7-8.
+- **Aces:** one is rolled at random for the last slot of every team. Used **exactly as written**,
+  never evolved, so write the form you want at that band's levels. List one twice to double its
+  odds. **Optional:** a band with no `- Aces:` line has no ace, and every slot is fodder.
+- **Fodder:** fills the other slots, **evolved by level** by the trainer engine, so list base
+  forms (`Geodude`, not `Golem`). A pick that matches the ace species is rerolled.
+- **Off-type:** fills **one** slot, and is the fallback when every on-type fodder species is
+  already on the team. Also evolved by level. **Optional**, like Aces: gym leaders have none in
+  band 1. Fodder is the only list every band must have.
+- **(johto)** entries only appear when Johto is on, **(warp)** entries only when Time Warp is on.
+  Untagged entries are always available, so every Aces list needs at least one untagged entry
+  (Johto-only gym leaders excepted). An ace list with nothing eligible does not skip the ace: it
+  fields the list's first entry whatever its run.
+- **Names** are species names (`Nidoran M`, `Mr Mime`, `Porygon2`) or form names (`Hisuian
+  Growlithe`, `Galarian Meowth`, `Espeon`, `Aqua Tauros`, `Sandy Shocks`); a form name is spelled
+  as its file in `data/pokemon/forms/` reads. An unknown name is an error.
+- **Order matters only for the asm:** within a list, the generator keeps your order per run.
+  Identical lists within one character become a zero-byte alias automatically.
+- Anything that is not a `### Name` header, a `**Band n...**` line or one of the three list
+  bullets is free prose and is ignored.
+
+The gym leaders' team sizes and levels, straight from `constants/balance_constants.asm`:
+
+<!-- BEGIN GENERATED: gym curve -->
+<!-- Rewritten by tools/gen_party_roster.py from GYM_R<n>_MONS/BASE/STEP in constants/balance_constants.asm. Do not edit by hand. -->
+
+| Band | Rounds | Team size | Slot 0 L | Ace L |
+|---|---|---|---|---|
+| 1 | 1-2 | 2-2 | 9-15 | 11-18 |
+| 2 | 3-4 | 3-3 | 19-27 | 25-31 |
+| 3 | 5-6 | 4-4 | 31-38 | 37-44 |
+| 4 | 7-8 | 5-6 | 43-47 | 51-57 |
+
+<!-- END GENERATED: gym curve -->
+
+## Gym leaders
+
+**Brock edits applied (2026-09-28):** Brock is Rock only (Sandshrew/Diglett are real off-type);
+Aerodactyl out of the gym 1-2 aces; Sudowoodo added to gym 5-8 fodder; Steelix is ace-only: the
+engine evolves Onix at L43, so from gyms 7-8 (fodder L44+) Steelix is an ace and Onix leaves the
+fodder.
+
+### Brock (ROCK)  (yours)
+
+**Band 1: rounds 1-2**
+- Aces: Onix, Sudowoodo (johto)
+- Fodder: Geodude, Kabuto, Omanyte, Rhyhorn, Shuckle (johto), Corsola (johto), Larvitar (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Golem, Aerodactyl, Rhydon, Sudowoodo (johto)
+- Fodder: Geodude, Kabuto, Omanyte, Rhyhorn, Onix, Corsola (johto), Shuckle (johto), Larvitar (johto), Hisuian Growlithe (warp), Galarian Meowth (warp)
+- Off-type: Zubat, Pinsir, Lickitung
+
+**Band 3: rounds 5-6**
+- Aces: Golem, Rhydon, Kabutops, Omastar, Tyranitar (johto), Steelix (johto), Kleavor (warp)
+- Fodder: Geodude, Kabuto, Omanyte, Rhyhorn, Onix, Aerodactyl, Sudowoodo (johto), Corsola (johto), Shuckle (johto), Skarmory (johto), Slugma (johto), Hisuian Growlithe (warp), Galarian Meowth (warp)
+- Off-type: Zubat, Pinsir, Lickitung, Vulpix, Mankey, Chansey, Sandshrew
+
+**Band 4: rounds 7-8**
+- Aces: Golem, Rhydon, Kabutops, Omastar, Tyranitar (johto), Steelix (johto), Kleavor (warp), Rhyperior (warp)
+- Fodder: Geodude, Kabuto, Omanyte, Rhyhorn, Aerodactyl, Sudowoodo (johto), Corsola (johto), Shuckle (johto), Skarmory (johto), Slugma (johto), Hisuian Growlithe (warp), Galarian Meowth (warp)
+- Off-type: Zubat, Pinsir, Lickitung, Vulpix, Mankey, Chansey, Sandshrew, Diglett, Slowpoke
+
+### Misty (WATER)
+
+**Band 1: rounds 1-2**
+- Aces: Starmie, Tentacruel, Vaporeon
+- Fodder: Seel, Psyduck, Krabby, Kabuto, Shellder, Omanyte, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Eevee, Slowpoke, Squirtle, Remoraid (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Starmie, Gyarados, Slowbro, Blastoise, Vaporeon
+- Fodder: Kabuto, Omanyte, Krabby, Shellder, Psyduck, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Eevee, Slowpoke, Squirtle, Seel, Remoraid (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp)
+- Off-type: Dratini, Nidoran F, Jigglypuff, Diglett, Ponyta
+
+**Band 3: rounds 5-6**
+- Aces: Starmie, Lapras, Slowbro, Kingdra (johto), Aqua Tauros (warp)
+- Fodder: Seel, Kabuto, Omanyte, Staryu, Shellder, Krabby, Psyduck, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Lapras, Eevee, Slowpoke, Squirtle, Chinchou (johto), Qwilfish (johto), Remoraid (johto), Mantine (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp)
+- Off-type: Nidoran F, Dratini, Jigglypuff, Diglett, Ponyta
+
+**Band 4: rounds 7-8**
+- Aces: Starmie, Lapras, Slowbro, Kingdra (johto), Suicune (johto)
+- Fodder: Seel, Kabuto, Omanyte, Krabby, Staryu, Shellder, Psyduck, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Lapras, Eevee, Slowpoke, Squirtle, Chinchou (johto), Qwilfish (johto), Remoraid (johto), Mantine (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp), Aqua Tauros (warp)
+- Off-type: Nidoran F, Dratini, Jigglypuff, Diglett, Ponyta, Exeggcute
+
+### LtSurge (ELECTRIC)
+
+**Band 1: rounds 1-2**
+- Aces: Raichu, Magneton, Electabuzz, Lanturn (johto)
+- Fodder: Pikachu, Voltorb, Magnemite, Mareep (johto), Chinchou (johto), Alolan Geodude (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Raichu, Electabuzz, Magneton, Electrode, Ampharos (johto), Alolan Golem (warp)
+- Fodder: Pikachu, Voltorb, Magnemite, Mareep (johto), Chinchou (johto), Alolan Geodude (warp), Sandy Shocks (warp)
+- Off-type: Spearow, Porygon, Lickitung, Doduo, Rattata, Tangela, Magikarp
+
+**Band 3: rounds 5-6**
+- Aces: Jolteon, Electivire (warp), Magnezone (warp), Alolan Golem (warp)
+- Fodder: Pikachu, Voltorb, Magnemite, Electabuzz, Mareep (johto), Chinchou (johto), Alolan Geodude (warp), Sandy Shocks (warp)
+- Off-type: Spearow, Porygon, Lickitung, Seel, Doduo, Bellsprout, Poliwag, Rattata, Tangela, Magikarp, Quagsire (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Jolteon, Zapdos, Raikou (johto), Electivire (warp)
+- Fodder: Pikachu, Voltorb, Magnemite, Electabuzz, Mareep (johto), Chinchou (johto), Alolan Geodude (warp), Sandy Shocks (warp)
+- Off-type: Spearow, Porygon, Lickitung, Seel, Doduo, Bellsprout, Poliwag, Rattata, Tangela, Magikarp, Quagsire (johto)
+
+### Erika (GRASS)
+
+**Band 1: rounds 1-2**
+- Aces: Gloom, Weepinbell, Tangela
+- Fodder: Bulbasaur, Oddish, Bellsprout, Tangela, Paras, Chikorita (johto), Hoppip (johto), Sunkern (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Vileplume, Victreebel, Venusaur, Meganium (johto), Bellossom (johto), Leafeon (warp), Tangrowth (warp)
+- Fodder: Bulbasaur, Oddish, Bellsprout, Tangela, Paras, Exeggcute, Chikorita (johto), Hoppip (johto), Sunkern (johto), Toedscool (warp), Hisuian Voltorb (warp)
+- Off-type: Dratini, Cubone, Clefairy, Vulpix, Seel
+
+**Band 3: rounds 5-6**
+- Aces: Vileplume, Victreebel, Venusaur, Exeggutor, Meganium (johto), Bellossom (johto), Tangrowth (warp)
+- Fodder: Bulbasaur, Oddish, Bellsprout, Exeggcute, Tangela, Paras, Chikorita (johto), Hoppip (johto), Sunkern (johto), Toedscool (warp), Hisuian Voltorb (warp)
+- Off-type: Chansey, Dratini, Cubone, Clefairy, Vulpix, Seel, Eevee
+
+**Band 4: rounds 7-8**
+- Aces: Exeggutor, Victreebel, Venusaur, Meganium (johto), Tangrowth (warp)
+- Fodder: Bulbasaur, Oddish, Bellsprout, Exeggcute, Tangela, Paras, Chikorita (johto), Hoppip (johto), Sunkern (johto), Leafeon (warp), Toedscool (warp), Hisuian Voltorb (warp)
+- Off-type: Chansey, Dratini, Cubone, Clefairy, Vulpix, Seel, Eevee
+
+### Koga (POISON)
+
+**Band 1: rounds 1-2**
+- Aces: Arbok, Golbat, Venomoth
+- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Spinarak (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Weezing, Muk, Venomoth
+- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Weezing, Muk, Nidoking, Nidoqueen, Gengar, Crobat (johto)
+- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Tauros, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Nidoking, Nidoqueen, Gengar, Crobat (johto)
+- Fodder: Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Gastly, Bulbasaur, Oddish, Bellsprout, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Tauros, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
+
+### Blaine (FIRE)
+
+**Band 1: rounds 1-2**
+- Aces: Magmar, Charmeleon, Flareon
+- Fodder: Vulpix, Growlithe, Ponyta, Charmander, Cyndaquil (johto), Slugma (johto), Houndour (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Arcanine, Rapidash, Charizard, Ninetales, Houndoom (johto), Alolan Marowak (warp), Magmortar (warp)
+- Fodder: Vulpix, Growlithe, Ponyta, Charmander, Magmar, Cyndaquil (johto), Slugma (johto), Houndour (johto)
+- Off-type: Clefairy, Doduo, Tangela, Koffing, Geodude, Voltorb, Mankey, Kabuto, Oddish, Grimer, Meowth, Paras, Octillery (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Arcanine, Rapidash, Charizard, Ninetales, Houndoom (johto), Alolan Marowak (warp), Magmortar (warp), Blaze Tauros (warp)
+- Fodder: Vulpix, Growlithe, Ponyta, Charmander, Magmar, Flareon, Cyndaquil (johto), Slugma (johto), Houndour (johto)
+- Off-type: Clefairy, Doduo, Tangela, Koffing, Geodude, Voltorb, Mankey, Kabuto, Oddish, Grimer, Kangaskhan, Chansey, Mr Mime, Meowth, Paras, Tauros, Octillery (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Moltres, Arcanine, Charizard, Entei (johto), Galarian Moltres (warp), Alolan Marowak (warp)
+- Fodder: Vulpix, Growlithe, Ponyta, Charmander, Magmar, Moltres, Flareon, Cyndaquil (johto), Slugma (johto), Houndour (johto), Blaze Tauros (warp)
+- Off-type: Clefairy, Doduo, Tangela, Koffing, Geodude, Voltorb, Mankey, Kabuto, Oddish, Grimer, Kangaskhan, Chansey, Mr Mime, Meowth, Paras, Articuno, Tauros, Octillery (johto)
+
+### Sabrina (PSYCHIC)
+
+**Band 1: rounds 1-2**
+- Aces: Mr Mime, Venomoth, Hypno
+- Fodder: Abra, Drowzee, Slowpoke, Exeggcute, Natu (johto), Girafarig (johto), Galarian Ponyta (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Kadabra, Hypno, Mr Mime, Jynx, Starmie
+- Fodder: Abra, Drowzee, Slowpoke, Exeggcute, Mr Mime, Jynx, Natu (johto), Girafarig (johto), Galarian Ponyta (warp)
+- Off-type: Gastly, Venonat, Eevee, Jigglypuff, Psyduck, Sandshrew, Porygon, Sentret (johto), Cyndaquil (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Alakazam, Exeggutor, Slowbro, Starmie, Slowking (johto), Espeon (johto), Mr Rime (warp)
+- Fodder: Abra, Drowzee, Mr Mime, Jynx, Slowpoke, Exeggcute, Staryu, Espeon (johto), Natu (johto), Girafarig (johto), Alolan Raichu (warp), Galarian Ponyta (warp)
+- Off-type: Gastly, Venonat, Eevee, Jigglypuff, Psyduck, Sandshrew, Scyther, Hitmonlee, Porygon, Lapras, Sentret (johto), Cyndaquil (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Alakazam, Exeggutor, Slowbro, Starmie, Slowking (johto), Espeon (johto), Mr Rime (warp), Galarian Articuno (warp)
+- Fodder: Abra, Drowzee, Mr Mime, Jynx, Slowpoke, Exeggcute, Staryu, Espeon (johto), Natu (johto), Girafarig (johto), Alolan Raichu (warp), Galarian Ponyta (warp)
+- Off-type: Gastly, Venonat, Eevee, Jigglypuff, Psyduck, Sandshrew, Scyther, Hitmonlee, Moltres, Snorlax, Porygon, Lapras, Sentret (johto), Cyndaquil (johto)
+
+### Giovanni (GROUND)
+
+**Band 1: rounds 1-2**
+- Aces: Onix, Sandslash, Dugtrio, Marowak
+- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Paldean Wooper (warp), Toedscool (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Moltres, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+### Falkner (FLYING)  (Draft)
+
+**Band 1: rounds 1-2**
+- Aces: Pidgeotto, Fearow, Noctowl (johto)
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Pidgeot, Dodrio, Fearow, Noctowl (johto), Xatu (johto), Skarmory (johto)
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto)
+- Off-type: Diglett, Growlithe, Poliwag, Sentret (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Pidgeot, Dodrio, Aerodactyl, Skarmory (johto), Xatu (johto)
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto)
+- Off-type: Diglett, Growlithe, Poliwag, Sandshrew, Magnemite, Machop, Sentret (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Pidgeot, Dodrio, Aerodactyl, Crobat (johto), Skarmory (johto), Galarian Moltres (warp)
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto)
+- Off-type: Diglett, Growlithe, Poliwag, Sandshrew, Magnemite, Machop, Snorlax, Lapras, Sentret (johto)
+
+### Bugsy (BUG)  (Draft)
+
+**Band 1: rounds 1-2**
+- Aces: Butterfree, Beedrill, Scyther, Venomoth
+- Fodder: Caterpie, Weedle, Paras, Venonat, Ledyba (johto), Spinarak (johto), Pineco (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Scyther, Pinsir, Venomoth, Parasect, Heracross (johto), Ariados (johto)
+- Fodder: Caterpie, Weedle, Paras, Venonat, Ledyba (johto), Spinarak (johto), Pineco (johto)
+- Off-type: Oddish, Poliwag, Geodude, Sentret (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Pinsir, Scyther, Venomoth, Scizor (johto), Heracross (johto), Forretress (johto)
+- Fodder: Caterpie, Weedle, Paras, Venonat, Scyther, Pinsir, Ledyba (johto), Spinarak (johto), Yanma (johto), Pineco (johto), Heracross (johto), Shuckle (johto)
+- Off-type: Oddish, Poliwag, Geodude, Onix, Sandshrew, Tangela, Sentret (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Pinsir, Scizor (johto), Heracross (johto), Forretress (johto), Kleavor (warp)
+- Fodder: Caterpie, Weedle, Paras, Venonat, Scyther, Pinsir, Ledyba (johto), Spinarak (johto), Yanma (johto), Pineco (johto), Heracross (johto), Shuckle (johto)
+- Off-type: Oddish, Poliwag, Geodude, Onix, Sandshrew, Tangela, Chansey, Snorlax, Sentret (johto)
+
+### Whitney (NORMAL)  (Draft)
+
+**Band 1: rounds 1-2**
+- Aces: Clefable, Wigglytuff, Raticate, Miltank (johto), Furret (johto)
+- Fodder: Rattata, Clefairy, Jigglypuff, Meowth, Lickitung, Eevee, Sentret (johto), Snubbull (johto), Aipom (johto), Teddiursa (johto), Togepi (johto), Dunsparce (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Clefable, Wigglytuff, Miltank (johto), Granbull (johto), Ursaring (johto), Girafarig (johto)
+- Fodder: Rattata, Clefairy, Jigglypuff, Meowth, Lickitung, Eevee, Sentret (johto), Snubbull (johto), Aipom (johto), Teddiursa (johto), Togepi (johto), Dunsparce (johto), Girafarig (johto)
+- Off-type: Drowzee, Marill (johto), Hoppip (johto), Natu (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Clefable, Kangaskhan, Tauros, Snorlax, Miltank (johto), Ursaring (johto), Porygon2 (johto)
+- Fodder: Rattata, Clefairy, Jigglypuff, Meowth, Lickitung, Chansey, Kangaskhan, Tauros, Ditto, Eevee, Snorlax, Porygon, Sentret (johto), Togepi (johto), Stantler (johto), Dunsparce (johto), Snubbull (johto), Aipom (johto), Teddiursa (johto), Girafarig (johto)
+- Off-type: Drowzee, Pikachu, Slowpoke, Gastly, Marill (johto), Hoppip (johto), Natu (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Snorlax, Miltank (johto), Miltank (johto), Blissey (johto), Ursaring (johto), Porygon2 (johto), Lickilicky (warp), Porygon Z (warp)
+- Fodder: Rattata, Clefairy, Jigglypuff, Meowth, Lickitung, Chansey, Kangaskhan, Tauros, Ditto, Eevee, Snorlax, Porygon, Sentret (johto), Togepi (johto), Stantler (johto), Dunsparce (johto), Snubbull (johto), Aipom (johto), Teddiursa (johto), Girafarig (johto), Sylveon (warp)
+- Off-type: Drowzee, Pikachu, Slowpoke, Gastly, Exeggcute, Lapras, Marill (johto), Hoppip (johto), Natu (johto)
+
+### Morty (GHOST)  (Draft)
+
+Agatha-style: Ghosts plus "spooky" Poisons and Dark (Normal here) mons in fodder, since only 2
+Ghost lines exist without Time Warp.
+
+**Band 1: rounds 1-2**
+- Aces: Haunter, Golbat, Misdreavus (johto)
+- Fodder: Gastly, Zubat, Ekans, Grimer, Koffing, Cubone, Misdreavus (johto), Spinarak (johto), Murkrow (johto), Houndour (johto), Hoothoot (johto), Girafarig (johto), Sudowoodo (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Haunter, Gengar, Arbok, Marowak, Misdreavus (johto), Alolan Marowak (warp)
+- Fodder: Gastly, Zubat, Ekans, Grimer, Koffing, Cubone, Misdreavus (johto), Spinarak (johto), Murkrow (johto), Houndour (johto), Hoothoot (johto), Girafarig (johto), Sudowoodo (johto)
+- Off-type: Drowzee, Jynx, Exeggcute, Sneasel (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Gengar, Crobat (johto), Houndoom (johto), Umbreon (johto), Mismagius (warp), Alolan Marowak (warp)
+- Fodder: Gastly, Zubat, Ekans, Grimer, Koffing, Cubone, Lapras, Misdreavus (johto), Spinarak (johto), Murkrow (johto), Houndour (johto), Hoothoot (johto), Girafarig (johto), Sudowoodo (johto), Mantine (johto), Alolan Marowak (warp), Annihilape (warp)
+- Off-type: Drowzee, Jynx, Exeggcute, Slowpoke, Sneasel (johto), Umbreon (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Gengar, Gengar, Crobat (johto), Houndoom (johto), Mismagius (warp), Alolan Marowak (warp), Annihilape (warp)
+- Fodder: Gastly, Zubat, Ekans, Grimer, Koffing, Cubone, Lapras, Misdreavus (johto), Spinarak (johto), Murkrow (johto), Houndour (johto), Hoothoot (johto), Girafarig (johto), Sudowoodo (johto), Mantine (johto), Alolan Marowak (warp), Annihilape (warp)
+- Off-type: Drowzee, Jynx, Exeggcute, Slowpoke, Sneasel (johto), Umbreon (johto)
+
+### Chuck (FIGHTING)  (Draft)
+
+**Band 1: rounds 1-2**
+- Aces: Primeape, Poliwrath, Machoke, Hitmonchan
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Galarian Farfetchd (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Primeape, Poliwrath, Machamp, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Galarian Farfetchd (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite
+
+**Band 3: rounds 5-6**
+- Aces: Machamp, Poliwrath, Primeape, Heracross (johto), Hitmontop (johto), Combat Tauros (warp), Sirfetchd (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Teddiursa (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Machamp, Machamp, Poliwrath, Heracross (johto), Hitmontop (johto), Annihilape (warp), Galarian Zapdos (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Snorlax, Lapras, Teddiursa (johto)
+
+### Jasmine (STEEL)  (Draft)
+
+The game has no Steel type, so her "on-type" set is the modern Steel species: Magnemite line,
+Onix/Steelix, Skarmory, Scyther/Scizor, Pineco/Forretress, and the Steel forms (Alolan
+Diglett/Sandshrew, Galarian Meowth/Perrserker). Ampharos is her lighthouse Amphy, so it is an
+off-type ace the way Persian is for Giovanni.
+
+**Band 1: rounds 1-2**
+- Aces: Magneton, Onix, Forretress (johto)
+- Fodder: Magnemite, Onix, Pineco (johto), Alolan Diglett (warp), Alolan Sandshrew (warp), Galarian Meowth (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Magneton, Steelix (johto), Forretress (johto), Skarmory (johto), Scizor (johto)
+- Fodder: Magnemite, Onix, Pineco (johto), Alolan Diglett (warp), Alolan Sandshrew (warp), Galarian Meowth (warp)
+- Off-type: Geodude, Sandshrew, Mareep (johto), Marill (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Steelix (johto), Scizor (johto), Skarmory (johto), Forretress (johto), Ampharos (johto), Magnezone (warp), Perrserker (warp)
+- Fodder: Magnemite, Onix, Scyther, Pineco (johto), Skarmory (johto), Alolan Diglett (warp), Alolan Sandshrew (warp), Galarian Meowth (warp)
+- Off-type: Geodude, Sandshrew, Rhyhorn, Mareep (johto), Marill (johto), Phanpy (johto), Chinchou (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Steelix (johto), Steelix (johto), Scizor (johto), Skarmory (johto), Forretress (johto), Ampharos (johto), Magnezone (warp)
+- Fodder: Magnemite, Scyther, Pineco (johto), Skarmory (johto), Alolan Diglett (warp), Alolan Sandshrew (warp), Galarian Meowth (warp)
+- Off-type: Geodude, Sandshrew, Rhyhorn, Snorlax, Lapras, Mareep (johto), Marill (johto), Phanpy (johto), Chinchou (johto)
+
+### Pryce (ICE)  (Draft)
+
+**Band 1: rounds 1-2**
+- Aces: Dewgong, Jynx, Piloswine (johto), Sneasel (johto)
+- Fodder: Seel, Shellder, Jynx, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Dewgong, Cloyster, Jynx, Lapras, Piloswine (johto), Alolan Ninetales (warp), Alolan Sandslash (warp)
+- Fodder: Seel, Shellder, Jynx, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp)
+- Off-type: Psyduck, Poliwag, Wooper (johto), Marill (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Lapras, Cloyster, Dewgong, Jynx, Piloswine (johto), Mamoswine (warp), Weavile (warp), Glaceon (warp)
+- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Galarian Mr Mime (warp)
+- Off-type: Psyduck, Poliwag, Slowpoke, Tentacool, Krabby, Wooper (johto), Marill (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Lapras, Cloyster, Articuno, Mamoswine (warp), Weavile (warp), Glaceon (warp), Mr Rime (warp)
+- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Galarian Mr Mime (warp)
+- Off-type: Psyduck, Poliwag, Slowpoke, Tentacool, Krabby, Snorlax, Wooper (johto), Marill (johto), Quagsire (johto)
+
+### Clair (DRAGON)  (Draft)
+
+Only 2 Dragon lines exist without Time Warp (Dratini, Horsea/Kingdra), so like Morty her
+fodder includes "dragon-like" non-Dragons (Gyarados, Charizard, Aerodactyl, Lapras), the way
+Lance's pool does.
+
+**Band 1: rounds 1-2**
+- Aces: Dragonair, Seadra, Charmeleon
+- Fodder: Dratini, Horsea, Magikarp, Charmander
+
+**Band 2: rounds 3-4**
+- Aces: Dragonair, Gyarados, Charizard, Aerodactyl, Kingdra (johto), Alolan Exeggutor (warp)
+- Fodder: Dratini, Horsea, Magikarp, Charmander
+- Off-type: Ekans, Onix, Mareep (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Dragonite, Gyarados, Charizard, Aerodactyl, Kingdra (johto), Alolan Exeggutor (warp)
+- Fodder: Dratini, Horsea, Magikarp, Charmander, Aerodactyl, Lapras, Alolan Exeggutor (warp)
+- Off-type: Ekans, Onix, Seel, Magnemite, Mareep (johto), Phanpy (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Dragonite, Dragonite, Gyarados, Charizard, Aerodactyl, Kingdra (johto), Alolan Exeggutor (warp)
+- Fodder: Dratini, Horsea, Magikarp, Charmander, Aerodactyl, Lapras, Alolan Exeggutor (warp)
+- Off-type: Ekans, Onix, Seel, Magnemite, Snorlax, Mareep (johto), Phanpy (johto), Larvitar (johto)
+
+### Janine (POISON)  (Draft)
+
+Kept distinct from Koga: her HGSS team (Crobat, Weezing, Ariados, Venomoth) plus the Johto
+Poisons and the Poison forms, with ninja-themed off-types.
+
+**Band 1: rounds 1-2**
+- Aces: Golbat, Venomoth, Weezing, Ariados (johto)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Weedle, Spinarak (johto), Qwilfish (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Weezing, Venomoth, Muk, Crobat (johto), Ariados (johto)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Weedle, Spinarak (johto), Qwilfish (johto)
+- Off-type: Drowzee, Sneasel (johto), Murkrow (johto), Houndour (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Weezing, Venomoth, Muk, Tentacruel, Crobat (johto), Ariados (johto), Hisuian Sneasel (warp), Galarian Weezing (warp)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Off-type: Drowzee, Scyther, Sneasel (johto), Murkrow (johto), Houndour (johto), Umbreon (johto), Misdreavus (johto)
+
+**Band 4: rounds 7-8**
+- Aces: Weezing, Tentacruel, Nidoqueen, Crobat (johto), Crobat (johto), Alolan Muk (warp), Hisuian Sneasel (warp)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Off-type: Drowzee, Scyther, Snorlax, Sneasel (johto), Murkrow (johto), Houndour (johto), Umbreon (johto), Misdreavus (johto)
+
+## Mini-bosses
+
+The Rival, Giovanni and the Karate Master, fought in place of a route's final trainer (or on the
+Dojo stage). One team per round (1-9), on the same bands as the wild-area trainers: **band 4
+covers rounds 7-9**, and round 9 is the Victory Road rival. Round 1 is never reached (mini-bosses
+start at round 2). Team size is that round's largest route team (2/3/4/4/5/5/6/6/6), levels are
+`MINIBOSS_R<n>_BASE` + `MINIBOSS_R<n>_STEP` per slot, and the moveset row is the gym leader's row
+for the band. The round comes from the battle count, not from the trainer's set number, so the
+same team scales wherever the mini-boss is met.
+
+Seeded 2026-10-07 from the matching gym leader (Giovanni from Giovanni, the Karate Master from
+Chuck) plus each mini-boss's old curated signature species; edit freely.
+
+### RivalMiniBoss (Rival)
+
+His ace is always his own starter, evolved to the ace's level, exactly as the Champion rival's is:
+it is pinned in `party_specs.asm`, so this block has no `- Aces:` line. The fodder is drawn from
+his teams in the original games, base forms only, and his starter's own line is never drawn twice.
+Magikarp waits for band 2, when the fodder levels are high enough to field a Gyarados.
+
+**Band 1: rounds 1-2**
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Zubat, Gastly, Magnemite, Sneasel (johto)
+
+**Band 2: rounds 3-4**
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+
+**Band 3: rounds 5-6**
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+
+**Band 4: rounds 7-9**
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+
+### GiovanniMiniBoss (Giovanni)
+
+The Rocket boss on the road. Fodder and off-type are his gym's; the aces are his old mini-boss
+signatures (Rhydon, Dugtrio, Nidoking, Nidoqueen, Sandslash, Marowak) plus Persian and Kangaskhan.
+
+**Band 1: rounds 1-2**
+- Aces: Onix, Sandslash, Dugtrio, Marowak
+- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Paldean Wooper (warp), Toedscool (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+
+### KarateMiniBoss (Karate Master)
+
+The Fighting Dojo's master. Fodder and off-type are Chuck's; the aces are Chuck's plus the old
+mini-boss signatures (Hitmonlee, Hitmonchan, Machamp, Primeape, Poliwrath), so the Dojo's reward
+Pokemon still headline his team.
+
+**Band 1: rounds 1-2**
+- Aces: Primeape, Poliwrath, Machoke, Hitmonchan, Hitmonlee
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Galarian Farfetchd (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Primeape, Poliwrath, Machamp, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Galarian Farfetchd (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite
+
+**Band 3: rounds 5-6**
+- Aces: Machamp, Poliwrath, Primeape, Hitmonlee, Hitmonchan, Heracross (johto), Hitmontop (johto), Combat Tauros (warp), Sirfetchd (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Teddiursa (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Machamp, Poliwrath, Primeape, Hitmonlee, Hitmonchan, Heracross (johto), Hitmontop (johto), Annihilape (warp), Galarian Zapdos (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Snorlax, Lapras, Teddiursa (johto)
+
+## Wild-area trainers
+
+The optional ambush battles in the Wild Area. One team per round (1-9), on the same bands as the
+gym leaders except that **band 4 covers rounds 7-9**. Team size is that round's largest route team
+(2/3/4/4/5/5/6/6/6), levels are `STAGE_EVENT_R<n>_BASE` + 1 per slot, and the moveset row is the
+route row for the round.
+
+**Aces are optional** here, per band: a band with an `- Aces:` line puts a rolled ace in the last
+slot; a band without one is all fodder, as these trainers always were. A band that HAS aces needs
+an untagged one, as for gym leaders: an ace pool with nothing eligible does not skip the ace, it
+fields the list's first entry regardless of run, so a Johto-only ace list would leak into a
+Kanto-only run.
+
+### JessieJames (Jessie & James)
+
+The paired villain. "Line" families expanded to every member; the single-species entries
+(Lickitung, Shellder, Chansey, Scyther, Growlithe, Mr Mime, Pinsir, Porygon, Hitmonlee) are not
+expanded, because several evolutions are Warp-group and arrive by evolving once that group
+unlocks. Band 1 has no ace (a 2-3 mon ambush); bands 2-4 roll Arbok or Weezing, the team's
+signature pair (seeded 2026-10-07, edit freely).
+
+**Band 1: rounds 1-2**
+- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Arbok, Weezing
+- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Arbok, Weezing
+- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Arbok, Weezing
+- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+
+### Psychic (The Psychic)
+
+Themed on the type, the same brief Sabrina's pool follows. Band 1 has no ace; bands 2-4 roll Alakazam or Hypno (seeded 2026-10-07, edit freely).
+
+**Band 1: rounds 1-2**
+- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Alakazam, Hypno
+- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Alakazam, Hypno
+- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Alakazam, Hypno
+- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+
+### Burglar (The Burglar)
+
+Sneaky, venomous, urban-pest flavour rather than a type theme (Gen 1 has no Dark type to draw on). Band 1 has no ace; bands 2-4 roll Muk or Persian (seeded 2026-10-07, edit freely).
+
+**Band 1: rounds 1-2**
+- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Gastly, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Muk, Persian
+- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Gastly, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Muk, Persian
+- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Gastly, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Muk, Persian
+- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Gastly, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
+
+### NurseJoy (Nurse Joy)
+
+"Healing and cute", seeded from the donor species in `reference/yellow_legacy/joy_jenny/options.asm`, taken as a pool rather than pasted as the donor's flat level-65 team. Sylveon is VAPOREON form 2 and the one deliberate non-base entry: it is Time Warp content, so it carries `(warp)`, which is the only thing that stops a Kanto-only run fielding one (a pinned form index is passed through ungated). Eevee cannot guarantee it, because Eevee picks its evolution at random. Consequence: a round-1 Time Warp run can field a level-5 Sylveon, accepted as the price of having it. Band 1 has no ace; bands 2-4 roll Chansey or Snorlax (seeded 2026-10-07, edit freely).
+
+**Band 1: rounds 1-2**
+- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+
+**Band 2: rounds 3-4**
+- Aces: Chansey, Snorlax
+- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+
+**Band 3: rounds 5-6**
+- Aces: Chansey, Snorlax
+- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+
+**Band 4: rounds 7-9**
+- Aces: Chansey, Snorlax
+- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+
+### OfficerJenny (Officer Jenny)
+
+Police-dog and patrol flavour, same donor source as Nurse Joy. Every entry is at its BASE form (Growlithe not Arcanine, Pidgey not Pidgeot, and so on): the trainer evolution engine promotes each one at a high enough level, so listing the base fixes the round-1 case without weakening round 9. Hitmonchan has no evolution in either direction here, so it is its own base. The Kanto run is deliberately 9 deep: the retry cap is 8, so a tighter pool repeats a species outright. Band 1 has no ace; bands 2-4 roll Arcanine (seeded 2026-10-07, edit freely).
+
+**Band 1: rounds 1-2**
+- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+
+**Band 2: rounds 3-4**
+- Aces: Arcanine
+- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+
+**Band 3: rounds 5-6**
+- Aces: Arcanine
+- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+
+**Band 4: rounds 7-9**
+- Aces: Arcanine
+- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+
+## Champions
+
+Not on the banded system yet (Phase 5). The Champion rival draws from `RivalThreePool`, Champion
+Lance from the Elite Four Lance records, and Prof. Oak fields `ProfOakData`.
+
+## Gamblers
+
+Not on the banded system yet (Phase 6). Gambler's Paradise still uses
+`data/trainers/gambler_movesets.asm`.
+
+## Elite Four
+
+Not generated from this file. Their pools are in `data/trainers/pools.asm` (`LoreleiPool` and so
+on) and their aces are pinned in `data/trainers/party_specs.asm`.

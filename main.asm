@@ -414,8 +414,7 @@ INCLUDE "engine/battle/trainer_ai.asm"
 ; SpecialTrainerMoves the same way, so any split between them becomes a silent
 ; cross-bank read. The audit behind the move: no label in parties.asm is
 ; referenced from outside these files, ReadTrainer's only caller already used
-; `callfar`, and BuildMiniBossTeam / MiniBossAddMon are called only from within
-; read_trainer_party.asm.
+; `callfar`.
 ;
 ; The one dependency that could NOT come along is the Moves table (bank $0E),
 ; read for a substituted move's max PP. That is now a farcall to

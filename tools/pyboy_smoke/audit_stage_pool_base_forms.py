@@ -19,7 +19,7 @@ ScaleTrainer_evolution promote it. This audit holds that line.
 every species that appears as an evolution TARGET, so it cannot drift from the
 data.
 
-Known and deliberate exception: JoyPool's Time Warp run pins VAPOREON form 2
+Known and deliberate exception: the Nurse Joy pool's Time Warp run pins VAPOREON form 2
 (Sylveon), which is an evolved species - Sylveon has no pre-evolution that
 reaches it. Round 1 is therefore run with Kanto only, where that run is not
 eligible.
@@ -142,7 +142,7 @@ def main() -> int:
             pass
 
     # ---- Sylveon: the one pinned form, and the one thing gating it ------
-    # JoyPool's _Warp run holds `pool_mon VAPOREON, 2`. A pinned form index is
+    # the Nurse Joy pool's _Warp run holds `pool_mon VAPOREON, 2`. A pinned form index is
     # passed through UNGATED by PartyGenResolveForm, so the run sublist is the
     # ONLY thing keeping Sylveon out of a Kanto game. If someone later "tidies"
     # that entry into the Kanto run to match VAPOREON's own rarity group, this

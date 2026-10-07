@@ -504,35 +504,6 @@ OverrideGamblerMoves:
 
 INCLUDE "data/balance/trainer_levels.asm"
 
-; ============================================================
-; Mini-boss level/fill helpers (see MINIBOSS_FRAMEWORK.md)
-; Live in this (rogue) bank so GetRandMon and the difficulty table are plain
-; reads. Called by BuildMiniBossTeam (trainer bank) via farcall; they take no
-; pointer input (read wBattleCount, write wCurEnemyLevel / wCurPartySpecies),
-; so crossing banks is safe.
-; ============================================================
-
-; wCurEnemyLevel = this round's min_level + random(range), capped at 100.
-MiniBossSetLevel::
-	call GetMiniBossTierPtr      ; hl -> {range, min, class, rare}
-	ld a, [hli]                  ; range
-	ld c, a                      ; Rangerandom count
-	ld a, [hl]                   ; min level
-	push af
-	push hl
-	call Rangerandom             ; a = [0, range-1]; preserves bc/de
-	pop hl
-	ld b, a
-	pop af                       ; a = min level
-	add b
-	cp 101
-	jr c, .ok
-	ld a, 100
-.ok
-	ld [wCurEnemyLevel], a
-	call RogueApplyTrainerLevelModifiers
-	ret
-
 ; Applies all active trainer-level modifiers after a base level is written.
 ; No register arguments. Clobbers a and the Divide/Multiply HRAM scratch;
 ; preserves bc, de, and hl for callers that are walking trainer data.
@@ -748,58 +719,6 @@ RogueRefreshBattleMonAfterEvolution:
 	farcall DrawPlayerHUDAndHPBar
 	call SaveScreenTilesToBuffer1
 	ret
-
-; wCurPartySpecies = one rarer-random mon (this round's base class, with a
-; rare-bump chance); wCurEnemyLevel = this round's level.
-; base class is GetRandMon's convention: 4=pokeball ... 1=masterball.
-MiniBossRollFillMon::
-	call MiniBossSetLevel
-	call GetMiniBossTierPtr
-	inc hl
-	inc hl                       ; hl -> base class byte
-	ld a, [hli]                  ; base class
-	ld b, a
-	ld a, [hl]                   ; rare chance (out of 256)
-	ld c, a
-	push bc
-	call Random                  ; a = 0..255
-	pop bc
-	cp c
-	jr nc, .noRare
-	ld a, b
-	cp 2
-	jr c, .noRare                ; already masterball (b == 1)
-	dec b                        ; one tier rarer
-.noRare
-	call GetRandMon              ; input b = class -> wCurPartySpecies (same bank)
-	ret
-
-; hl -> the 4-byte trainer_difficulty_settings_miniboss block for the current
-; round (wBattleCount / ROUND_BATTLES, clamped to NUM_ROGUE_ROUNDS).
-GetMiniBossTierPtr:
-	ld a, [wBattleCount]
-	cp LAST_ROUND_BATTLECOUNT + 1
-	jr c, .noClamp
-	ld a, LAST_ROUND_BATTLECOUNT
-.noClamp
-	ld b, 0                      ; b = round
-.rndLoop
-	cp ROUND_BATTLES
-	jr c, .gotRound
-	sub ROUND_BATTLES
-	inc b
-	jr .rndLoop
-.gotRound
-	ld a, b
-	add a                        ; *2
-	add a                        ; *4
-	ld c, a
-	ld b, 0
-	ld hl, trainer_difficulty_settings_miniboss
-	add hl, bc
-	ret
-
-INCLUDE "data/balance/miniboss_levels.asm"
 
 ; Rangerandom moved to home/random.asm (HOME bank) so every bank can reach it
 ; with a plain `call` - it used to live here (bank 07 / "rogue" section) and

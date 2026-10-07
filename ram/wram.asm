@@ -1078,8 +1078,8 @@ wPartyGenSlot:: db          ; party slot being built, 0-based
 ;
 ; Held here rather than re-read from the spec header because Phase 5's
 ; RogueApplyMixToParty has NO spec header worth reading: it re-uses this
-; machinery on a party some other path already built (GetRandRoster,
-; BuildMiniBossTeam), driving it from a mix-only pseudo-spec whose every field
+; machinery on a party some other path already built (GetRandRoster),
+; driving it from a mix-only pseudo-spec whose every field
 ; but the mix id is zero. Its count is wEnemyPartyCount - a measurement of a
 ; party that already exists, not an instruction - so it has to come from
 ; somewhere other than ROM.
