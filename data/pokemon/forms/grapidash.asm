@@ -32,4 +32,4 @@
 
 	dname "G-RAPIDASH"
 
-	form_end
+	form_end PAL_PURPLEMON

@@ -32,4 +32,4 @@
 
 	dname "G-PONYTA"
 
-	form_end
+	form_end PAL_PURPLEMON

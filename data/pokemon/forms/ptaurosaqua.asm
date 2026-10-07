@@ -35,4 +35,4 @@
 
 	dname "P-AQUA"
 
-	form_end
+	form_end PAL_CYANMON

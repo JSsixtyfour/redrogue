@@ -22,9 +22,16 @@ EvolveMon:
 	ldh [hTileAnimations], a
 	ld a, [wEvoOldSpecies]
 	ld [wWholeScreenPaletteMonSpecies], a
+	call Evolution_OldForm
+	ld [wWholeScreenPaletteMonForm], a
 	ld c, 0
 	call EvolutionSetWholeScreenPalette
+	; Both pics are loaded with their form published, or an Alolan Vulpix
+	; animates as plain Vulpix -> Ninetales and Eevee -> Espeon as -> Jolteon.
+	ld a, [wEvoNewForm]
+	ld [wFormContextForm], a
 	ld a, [wEvoNewSpecies]
+	ld [wFormContextSpecies], a
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
 	call Evolution_LoadPic
@@ -36,6 +43,8 @@ EvolveMon:
 	ld a, [wEvoOldSpecies]
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
+	ld hl, wLoadedMon          ; still the pre-evolution struct
+	call PublishFormContext
 	call Evolution_LoadPic
 	ld a, $1
 	ldh [hAutoBGTransferEnabled], a
@@ -65,6 +74,8 @@ EvolveMon:
 	ld a, $31
 	ld [wEvoMonTileOffset], a
 	call Evolution_ChangeMonPic ; show the new species pic
+	ld a, [wEvoNewForm]
+	ld [wWholeScreenPaletteMonForm], a
 	ld a, [wEvoNewSpecies]
 .done
 	ld [wWholeScreenPaletteMonSpecies], a
@@ -91,8 +102,20 @@ EvolveMon:
 	pop bc
 	ld a, 1
 	ld [wEvoCancelled], a
+	call Evolution_OldForm
+	ld [wWholeScreenPaletteMonForm], a
 	ld a, [wEvoOldSpecies]
 	jr .done
+
+; OUT: a = the evolving mon's current form (0..3). wLoadedMon still holds its
+; pre-evolution struct for the whole animation.
+Evolution_OldForm:
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ret
 
 EvolutionSetWholeScreenPalette:
 	ld b, SET_PAL_POKEMON_WHOLE_SCREEN

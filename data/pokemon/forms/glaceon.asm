@@ -35,4 +35,4 @@
 
 	dname "GLACEON"
 
-	form_end
+	form_end PAL_CYANMON

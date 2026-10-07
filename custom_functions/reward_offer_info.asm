@@ -326,6 +326,26 @@ RewardInfoPublishForm::
 	ld [wFormContextSpecies], a
 	ret
 
+; From SetPal_Pokedex. OUT: e = the previewed offer's form palette, or 0 when
+; no preview is up or the offer is form 0 (keep the species palette).
+; Clobbers af, bc, d, hl.
+RewardInfoFormPalette::
+	ld a, [wRewardInfoSlot]
+	ld e, a
+	and a
+	ret z
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, wRoguePokemonForm1
+	add hl, bc
+	ld e, [hl]
+	ld hl, wRoguePokemon1
+	add hl, bc
+	ld d, [hl]
+	farcall GetFormPalette
+	ret
+
 ; Replaces the page-2 gate. OUT: nz = show page 2 (base stats). Always during
 ; a preview (Oak's Lab starters come before the Pokedex); otherwise only once
 ; the player has the Pokedex, as before. Flags survive Bankswitch's return.

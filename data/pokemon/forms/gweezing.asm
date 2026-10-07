@@ -32,4 +32,4 @@
 
 	dname "G-WEEZING"
 
-	form_end
+	form_end PAL_GRAYMON

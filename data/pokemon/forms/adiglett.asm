@@ -40,4 +40,4 @@
 
 	dname "A-DIGLETT"
 
-	form_end
+	form_end PAL_BROWNMON

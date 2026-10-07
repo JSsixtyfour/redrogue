@@ -705,7 +705,7 @@ Debug2WildFacilityText: db "   FACILITY@"
 ; forced-door hooks this phase adds to the three pickers that also live there.
 ; It is _DEBUG-only and reached only by farcall, so it relocates freely, and it
 ; belongs beside the configuration screen that now feeds it.
-;   - Rival's starter = Porygon.
+;   - Rival's and player's starter = Porygon (base form).
 ;   - Money = half of max (500000, 3-byte BCD $50 $00 $00).
 ;   - gyms completed = wBattleCount / 10 -> wObtainedBadges = (1 << gyms) - 1
 ;     (clamped to 8), overriding the shared 7-badge debug default.
@@ -714,6 +714,9 @@ Debug2WildFacilityText: db "   FACILITY@"
 Debug2ApplyRoundState::
 	ld a, PORYGON
 	ld [wRivalStarter], a
+	ld [wPlayerStarter], a     ; matches, so Oak's champion text names Porygon
+	xor a
+	ld [wPlayerStarterForm], a
 	ld a, $50
 	ld [wPlayerMoney], a
 	xor a

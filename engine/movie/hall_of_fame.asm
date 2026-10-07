@@ -122,6 +122,7 @@ AIVictoryCredits::
 	ld [wSpriteFlipped], a
 	ld [wLetterPrintingDelayFlags], a ; no delay
 	ld [wWholeScreenPaletteMonSpecies], a ; the HoF's last (player) screen palette
+	ld [wWholeScreenPaletteMonForm], a
 	inc a
 	ldh [hAutoBGTransferEnabled], a
 	call ClearSprites
@@ -144,6 +145,8 @@ HoFShowMonOrPlayer:
 	ld [wCurSpecies], a
 	ld [wBattleMonSpecies2], a
 	ld [wWholeScreenPaletteMonSpecies], a
+	xor a
+	ld [wWholeScreenPaletteMonForm], a ; player pic: no form
 	ld a, [wHoFMonOrPlayer]
 	and a
 	jr z, .showMon
@@ -151,6 +154,15 @@ HoFShowMonOrPlayer:
 	call HoFLoadPlayerPics
 	jr .next1
 .showMon
+	; The live party mon's form, for its pic and the whole-screen palette.
+	; (Saved Hall of Fame records keep no form; the League PC shows base.)
+	ld a, [wHoFPartyMonIndex]
+	ld hl, wPartyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	call PublishFormContext    ; wCurSpecies set above
+	ld a, [wFormContextForm]
+	ld [wWholeScreenPaletteMonForm], a
 	hlcoord 12, 5
 	call GetMonHeader
 	call LoadFrontSpriteByMonIndex
@@ -311,6 +323,7 @@ HoFRecordMonInfo:
 	ld bc, HOF_MON
 	ld a, [wHoFPartyMonIndex]
 	call AddNTimes
+	push hl
 	ld a, [wHoFMonSpecies]
 	ld [hli], a
 	ld a, [wHoFMonLevel]
@@ -319,7 +332,23 @@ HoFRecordMonInfo:
 	ld d, h
 	ld hl, wNameBuffer
 	ld bc, NAME_LENGTH
-	jp CopyData
+	call CopyData
+	; and its form, in the record's first pad byte (HOF_MON_FORM)
+	ASSERT 2 + NAME_LENGTH <= HOF_MON_FORM && HOF_MON_FORM < HOF_MON
+	ld a, [wHoFPartyMonIndex]
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	pop hl
+	ld bc, HOF_MON_FORM
+	add hl, bc
+	ld [hl], a
+	ret
 
 HoFFadeOutScreenAndMusic:
 	ld a, 10

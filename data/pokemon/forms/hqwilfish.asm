@@ -34,4 +34,4 @@
 
 	dname "H-QWILFISH"
 
-	form_end
+	form_end PAL_PURPLEMON

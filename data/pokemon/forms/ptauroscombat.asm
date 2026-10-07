@@ -35,4 +35,4 @@
 
 	dname "P-COMBAT"
 
-	form_end
+	form_end PAL_GRAYMON

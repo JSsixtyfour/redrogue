@@ -40,4 +40,4 @@
 
 	dname "H-SNEASEL"
 
-	form_end
+	form_end PAL_PURPLEMON

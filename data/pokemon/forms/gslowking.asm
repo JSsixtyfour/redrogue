@@ -37,4 +37,4 @@
 
 	dname "G-SLOWKING"
 
-	form_end
+	form_end PAL_PURPLEMON

@@ -34,4 +34,4 @@
 
 	dname "ASANDSLASH"
 
-	form_end
+	form_end PAL_CYANMON

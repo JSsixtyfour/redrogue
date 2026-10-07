@@ -208,6 +208,10 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, $ff
 	ldh [hUpdateSpritesEnabled], a
 	call ClearSprites
+	ld a, [wEvoNewSpecies]     ; the animation's new pic and palette need the
+	ld c, a                    ; evolved form (A-Ninetales, Espeon), which
+	call GetEvolvedForm        ; ApplyEvoStoneForm only writes afterwards
+	ld [wEvoNewForm], a
 	callfar EvolveMon
 	jp c, CancelledEvolution
 	ld hl, EvolvedText
@@ -959,17 +963,36 @@ INCLUDE "data/pokemon/evos_moves.asm"
 ; follows already sees the NEW form.
 ; ---------------------------------------------------------------------------
 ApplyEvoStoneForm:
-	ld a, [wEvoStoneItemID]
-	and a
-	ret z                      ; level or trade evolution: nothing to set
-	ld b, a
 	ld a, [wCurSpecies]
 	ld c, a
+	call GetEvolvedForm
+	rrca                       ; 0-3 -> bits 5-6
+	rrca
+	rrca
+	ld b, a
+	ld hl, wLoadedMon + MON_CATCH_RATE
+	ld a, [hl]
+	and FORM_MASK ^ $FF        ; clear any inherited form, keep the other flags
+	or b
+	ld [hl], a
+	ret
+
+; IN:  c = species being evolved into, wEvoStoneItemID, wLoadedMon = the mon
+;      BEFORE evolution
+; OUT: a = the form index (0..3) it will have: the EvoStoneForms entry for a
+;      form-setting stone evolution, else the mon's own form (form-preserving)
+; CLOBBERS: af, b, hl. Shared by ApplyEvoStoneForm and the evolution animation
+; (wEvoNewForm), so the two can never disagree.
+GetEvolvedForm:
+	ld a, [wEvoStoneItemID]
+	and a
+	jr z, .keepForm            ; level or trade evolution
+	ld b, a
 	ld hl, EvoStoneForms
 .loop
 	ld a, [hl]
 	and a
-	ret z                      ; end of table: an ordinary stone evolution
+	jr z, .keepForm            ; end of table: an ordinary stone evolution
 	cp b
 	jr nz, .next
 	inc hl
@@ -988,15 +1011,14 @@ ApplyEvoStoneForm:
 	inc hl
 	ld a, [hl]                 ; form index, 1..NUM_FORM_SLOTS
 	and NUM_FORM_SLOTS
-	rrca                       ; 0-3 -> bits 5-6
-	rrca
-	rrca
-	ld b, a
-	ld hl, wLoadedMon + MON_CATCH_RATE
-	ld a, [hl]
-	and FORM_MASK ^ $FF        ; clear any inherited form, keep the other flags
-	or b
-	ld [hl], a
+	ret
+
+.keepForm
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
 	ret
 
 EvoStoneForms:

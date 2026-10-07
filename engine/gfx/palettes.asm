@@ -73,6 +73,16 @@ SetPal_Battle:
 	ld a, [wBattleMonSpecies]
 	and a
 	jr z, .playerNotTypeVariant
+	; Regional form palette replaces the species palette BEFORE shiny, so a
+	; shiny form gets the shiny permutation of its own palette. Not while
+	; transformed: DeterminePaletteID gave Ditto's gray there on purpose.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .playerNoFormPalette
+	ld de, wBattleMon
+	ld hl, wPalPacket + 5
+	call ApplyFormPaletteToSlot
+.playerNoFormPalette
 	ld de, wBattleMon
 	farcall IsShiny
 	jr z, .playerNotShiny
@@ -98,6 +108,20 @@ SetPal_Battle:
 	jr z, .playerNotTypeVariant
 	ld [wPalPacket + 5], a
 .playerNotTypeVariant
+	; Enemy form palette. Only when wEnemyMon really is the mon in slot +7: in
+	; the trainer intro wEnemyMonSpecies2 is the trainer class while wEnemyMon
+	; still holds the previous battle's last mon.
+	ld a, [wEnemyBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .enemyNoFormPalette
+	ld a, [wEnemyMonSpecies]
+	ld hl, wEnemyMonSpecies2
+	cp [hl]
+	jr nz, .enemyNoFormPalette
+	ld de, wEnemyMon
+	ld hl, wPalPacket + 7
+	call ApplyFormPaletteToSlot
+.enemyNoFormPalette
 	ld de, wEnemyMon
 	farcall IsGhostVariant
 	jr z, .enemyNotGhostVariant
@@ -142,6 +166,10 @@ SetPal_StatusScreen:
 	inc hl
 	pop af
 	ld [hl], a
+	; Form palette first, then shiny on top of it (same order as SetPal_Battle).
+	ld de, wLoadedMon
+	ld hl, wPalPacket + 3
+	call ApplyFormPaletteToSlot
 	; Shiny (func_shiny.asm) runs FIRST so ghost/type variant below overwrites
 	; it - same ordering rule and same reason as SetPal_Battle above.
 	ld de, wLoadedMon
@@ -230,8 +258,29 @@ SetPal_Pokedex:
 	call DeterminePaletteIDOutOfBattle
 	ld hl, wPalPacket + 3
 	ld [hl], a
+	; Reward INFO preview: the offer's form palette. The real Pokedex describes
+	; the base species, so outside a preview this leaves the slot alone.
+	farcall RewardInfoFormPalette
+	ld a, e
+	and a
+	jr z, .noFormPalette
+	ld [wPalPacket + 3], a
+.noFormPalette
 	ld hl, wPalPacket
 	ld de, BlkPacket_Pokedex
+	ret
+
+; IN: de = mon / battle struct, hl = its palette slot in wPalPacket.
+; Overwrites the slot with the mon's form palette when it has one
+; (GetFormPalette, func_forms.asm). Clobbers af, bc, de.
+ApplyFormPaletteToSlot:
+	push hl
+	farcall GetFormPaletteForStruct
+	pop hl
+	ld a, e
+	and a
+	ret z
+	ld [hl], a
 	ret
 
 SetPal_Slots:
@@ -474,6 +523,19 @@ SetPal_PokemonWholeScreen:
 	jr nz, .next
 	ld a, [wWholeScreenPaletteMonSpecies]
 	call DeterminePaletteIDOutOfBattle
+	; Its form's palette, if any (evolution, Hall of Fame). Callers that set
+	; the species also set wWholeScreenPaletteMonForm (0 when unknown).
+	push af
+	ld a, [wWholeScreenPaletteMonSpecies]
+	ld d, a
+	ld a, [wWholeScreenPaletteMonForm]
+	ld e, a
+	farcall GetFormPalette
+	pop af
+	inc e
+	dec e                      ; z = no form palette; a keeps the species one
+	jr z, .next
+	ld a, e
 .next
 	ld [wPalPacket + 1], a
 	ld hl, wPalPacket

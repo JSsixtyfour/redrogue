@@ -34,4 +34,4 @@
 
 	dname "TOEDSCOOL"
 
-	form_end
+	form_end PAL_BROWNMON

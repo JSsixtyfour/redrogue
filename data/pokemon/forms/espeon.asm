@@ -46,4 +46,4 @@
 
 	dname "ESPEON"
 
-	form_end
+	form_end PAL_PURPLEMON

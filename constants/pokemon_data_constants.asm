@@ -109,6 +109,11 @@ DEF BRIDGE_CALC_SWAP_ATK_SPC EQU 0
 ASSERT BRIDGE_SELECTED_RECORD_COUNT == 2
 
 DEF HOF_MON           EQU $10
+; Hall of Fame record: species, level, 11-byte name (offsets 0-12), then 3 pad
+; bytes. The first pad byte holds the mon's form (0-3) so the League PC can
+; show it. AnimateHallOfFame zero-fills wHallOfFame before recording, so every
+; record saved before this existed reads form 0: no save change, no migration.
+DEF HOF_MON_FORM      EQU 13
 DEF HOF_TEAM          EQU PARTY_LENGTH * HOF_MON
 DEF HOF_TEAM_CAPACITY EQU 50
 
@@ -326,6 +331,7 @@ DEF FORM_REC_BASE    rb        ; base species internal index
 DEF FORM_REC_FORM    rb        ; form index, 1..NUM_FORM_SLOTS
 DEF FORM_REC_DATA    rb BASE_DATA_SIZE     ; full base-stats row, patched over wMonHeader
 DEF FORM_REC_NAME    rb FORM_REC_NAME_LEN  ; 10 chars, no terminator
+DEF FORM_REC_PAL     rb        ; PAL_*MON the form draws in (GetFormPalette)
 DEF FORM_REC_SIZE EQU _RS
 
 ; wMonHGrowthRate values

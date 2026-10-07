@@ -35,4 +35,4 @@
 
 	dname "G-SLOWPOKE"
 
-	form_end
+	form_end PAL_PINKMON

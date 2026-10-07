@@ -277,6 +277,7 @@ RogueResetRunState::
 	ld [wDayCareInUse], a
 	ld [wDayCareInUse2], a
 	ld [wPlayerStarter], a
+	ld [wPlayerStarterForm], a
 	ld [wRivalStarter], a
 	ld [wRivalStarterBallSpriteIndex], a
 	ret

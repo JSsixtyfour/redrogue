@@ -250,6 +250,28 @@ InGameTrade_PrepareTradeData:
 	ld [hli], a ; wTradedPlayerMonSpecies
 	ld a, [wInGameTradeReceiveMonSpecies]
 	ld [hl], a ; wTradedEnemyMonSpecies
+	; Both forms, for the animation's pics, palettes and names. Given: the
+	; party mon's own catch-rate form bits. Received: the rogue trade's offer
+	; form, with the same species guard as the AddPartyMon publish above, so an
+	; authored trade never inherits a reward slot's form.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ld [wTradedPlayerMonForm], a
+	ld a, [wInGameTradeReceiveMonSpecies]
+	ld hl, wRoguePokemon1
+	cp [hl]
+	ld a, 0                    ; not xor a: the cp flags must reach the jr
+	jr nz, .noReceivedForm
+	ld a, [wRoguePokemonForm1]
+.noReceivedForm
+	ld [wTradedEnemyMonForm], a
 	ld hl, wPartyMonOT
 	ld bc, NAME_LENGTH
 	ldh a, [hWhichPokemon]

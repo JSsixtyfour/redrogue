@@ -285,6 +285,24 @@
       }
       for (var n = start; n < end; n++) bytes[n] = 0;
       return null;
+    },
+
+    // Schema 4 -> 5 (2026-10-07): wPlayerStarterForm, one byte carved from the pad after
+    // wFossilMon in the main block, so nothing moved. Zeroed (the base form), as a new game
+    // leaves it, and the main checksum recomputed since the block covers it.
+    playerStarterFormAdded: function (bytes, from, to) {
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      if (wramField(from, "wPlayerStarterForm")) return "this save already has a starter form";
+      var fossil = wramOffset(from, "wFossilMon"), form = wramOffset(to, "wPlayerStarterForm");
+      if (fossil < 0 || wramOffset(to, "wFossilMon") !== fossil || form !== fossil + 1)
+        return "starter form layout not recognised";
+      bytes[form] = 0;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
     }
   };
 

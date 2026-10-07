@@ -186,6 +186,15 @@ test("schema 3 to 4: reward offer DVs are added zeroed, nothing else changes", (
   for (let i = 0; i < 9; i++) assert.equal(b[start + i], 0, `reward offer DV byte ${i}`);
 });
 
+test("schema 4 to 5: the starter form is added zeroed, nothing else changes", () => {
+  // checkMigration fills the old pad byte with noise, so a step that skipped the zeroing fails.
+  const { save, b, from, to } = checkMigration(4, 5, []);
+  const pad = wramOffset(from, "wFossilMon") + 1;
+  assert.notEqual(save[pad], 0, "the noise should have made the old pad byte non-zero");
+  assert.equal(wramOffset(to, "wPlayerStarterForm"), pad);
+  assert.equal(b[pad], 0, "wPlayerStarterForm");
+});
+
 test("damaged, foreign or wrapped files are refused with a reason", () => {
   const good = syntheticSave(TARGET);
   const cases = [

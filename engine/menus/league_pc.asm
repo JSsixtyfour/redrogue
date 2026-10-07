@@ -87,6 +87,8 @@ LeaguePCShowMon:
 	ld [wCurSpecies], a
 	ld [wBattleMonSpecies2], a
 	ld [wWholeScreenPaletteMonSpecies], a
+	ld a, [wHallOfFame + HOF_MON_FORM] ; 0 for records saved before forms were kept
+	ld [wWholeScreenPaletteMonForm], a
 	ld a, [hli]
 	ld [wHoFMonLevel], a
 	ld de, wNameBuffer
@@ -95,6 +97,12 @@ LeaguePCShowMon:
 	ld b, SET_PAL_POKEMON_WHOLE_SCREEN
 	ld c, 0
 	call RunPaletteCommand
+	; The record's form for the pic; PrintMonType's later reload keeps it
+	; (ApplyFormOverride's refresh path), so the types are the form's too.
+	ld a, [wWholeScreenPaletteMonForm]
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
 	hlcoord 12, 5
 	call GetMonHeader
 	call LoadFrontSpriteByMonIndex

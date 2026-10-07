@@ -32,4 +32,4 @@
 
 	dname "A-GRAVELER"
 
-	form_end
+	form_end PAL_GRAYMON

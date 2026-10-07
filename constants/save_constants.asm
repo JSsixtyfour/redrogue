@@ -21,8 +21,11 @@
 ; Schema 4 (2026-10-06): new SRAM bank 2 section "Reward Offer DVs SRAM"
 ; (sRogueOfferDVs, sRogueOfferDVTag, 9 bytes) after the fallen log. Nothing
 ; moved; old saves get it zeroed, as a new game does.
+; Schema 5 (2026-10-07): wPlayerStarterForm, 1 byte carved from the ds 2 pad
+; after wFossilMon in the main data block. Nothing moved; old saves get it
+; zeroed (the base form), as a new game does.
 
-DEF SAVE_SCHEMA_ID EQU 4
+DEF SAVE_SCHEMA_ID EQU 5
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

@@ -38,7 +38,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration itemCountSlots (schema 1 -> 2)
                "wRecoveryItemCounts", "wStatItemCounts", "wValuableItemCounts", "wNumBagItems",
                # migration legacyInventoriesRemoved (schema 2 -> 3)
-               "wBagPocketsFlags", "wNumBoxItems"}
+               "wBagPocketsFlags", "wNumBoxItems",
+               # migration playerStarterFormAdded (schema 4 -> 5)
+               "wFossilMon", "wPlayerStarterForm"}
 
 
 def trim(schema: dict) -> dict:

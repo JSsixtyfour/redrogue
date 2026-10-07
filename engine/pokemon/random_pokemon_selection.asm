@@ -757,6 +757,8 @@ AllSpeciesCheck::
 ;         clobbers a/bc/hl but preserves d/e]
 ; out: wRivalStarter              = Blue's chosen species
 ;      wRivalStarterBallSpriteIndex = ROGUE_STARTER_POKEBALL_1/2/3 (1-based object const) of that slot
+;      wPlayerStarter/wPlayerStarterForm = the player's own pick, recorded here because
+;         every pick path already funnels through this call (bank $07 has no room)
 ; Priority: higher rarity class > type advantage over the player's starter > random.
 RivalPickStarter::
 	; player ball index p = e - 1
@@ -764,8 +766,13 @@ RivalPickStarter::
 	dec a
 	push af                       ; save p
 	; defender types = the player's starter's types (into wBattleMonType/+1)
-	call .speciesFromIndex        ; a(=p) -> a = player's species
+	call .speciesFromIndex        ; a(=p) -> a = player's species, hl = its wRoguePokemon slot
 	ld [wCurSpecies], a
+	ld [wPlayerStarter], a        ; named by Oak's champion text (ChampionsRoom)
+	ld de, wRoguePokemonForm1 - wRoguePokemon1
+	add hl, de
+	ld a, [hl]
+	ld [wPlayerStarterForm], a
 	call GetMonHeader
 	ld a, [wMonHType1]
 	ld [wBattleMonType], a

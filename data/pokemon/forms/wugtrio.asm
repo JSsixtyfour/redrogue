@@ -32,4 +32,4 @@
 
 	dname "WUGTRIO"
 
-	form_end
+	form_end PAL_PINKMON

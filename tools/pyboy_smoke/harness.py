@@ -1294,6 +1294,11 @@ class RedRogueHarness:
             #
             # A test that wants the callee's final bank should assert it from
             # hLoadedROMBank rather than rely on the resume leaking it.
+            # The callee's own registers, captured before the restore below
+            # erases them, for routines that return a result in a register.
+            self.last_call_registers = {
+                name: getattr(self.pyboy.register_file, name) for name in register_names
+            }
             self.pyboy.memory[0x2000] = saved_bank
             self.write8("hLoadedROMBank", saved_bank)
             self.write8("wVBlankSavedROMBank", saved_vblank_bank)

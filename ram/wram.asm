@@ -745,7 +745,12 @@ wOverrideSimulatedJoypadStatesMask:: db
 UNION
 wTradedPlayerMonSpecies:: db
 wTradedEnemyMonSpecies:: db
-	ds 2
+; Forms (0 = base) of the two traded mons, so the trade animation's pics,
+; palettes and names show A-MEOWTH rather than MEOWTH on BOTH sides. Set by
+; InGameTrade_PrepareTradeData (zeroed by the cable club). Carved in place from
+; vanilla's `ds 2` pad: no address moves.
+wTradedPlayerMonForm:: db
+wTradedEnemyMonForm:: db
 wTradedPlayerMonOT:: ds NAME_LENGTH
 wTradedPlayerMonOTID:: dw
 wTradedEnemyMonOT:: ds NAME_LENGTH
@@ -1200,6 +1205,17 @@ wEvoOldSpecies:: db
 wEvoNewSpecies:: db
 wEvoMonTileOffset:: db
 wEvoCancelled:: db
+; Form (0..3) the evolving mon will have, so the animation and its palette show
+; A-Ninetales / Espeon rather than the base species. Set by
+; Evolution_PartyMonLoop just before EvolveMon; the old form is still readable
+; from wLoadedMon. Inside wBuffer's 30 bytes: costs nothing.
+; ⚠ LIFETIME: written before `callfar EvolveMon` and read twice inside it (the
+; new pic at the start, the palette at the end), so nothing may write offset +4
+; of this union during the animation. Checked 2026-10-07: the other members
+; covering +4 (wHPBarNewHP, wTownMapCoords..., raw wBuffer users) do not run
+; there. FarCopyData only hits wBuffer+0. If a form evolution ever ends in the
+; wrong palette or sprite, suspect this byte first.
+wEvoNewForm:: db
 
 NEXTU
 wNamingScreenNameLength:: db
@@ -1304,13 +1320,17 @@ wDefaultPaletteCommand:: db
 
 UNION
 wPlayerHPBarColor:: db
+wEnemyHPBarColor:: db
 
 NEXTU
 ; species of the mon whose palette is used for the whole screen
 wWholeScreenPaletteMonSpecies:: db
+; and its form (0 = base), for GetFormPalette. Shares wEnemyHPBarColor's byte
+; the same way the species shares the player's: whole-screen palettes are only
+; used outside battle, and InitBattleVariables zeroes both colors on entry.
+; Reshaped union, same addresses: costs nothing.
+wWholeScreenPaletteMonForm:: db
 ENDU
-
-wEnemyHPBarColor:: db
 
 ; 0: green
 ; 1: yellow
@@ -3061,7 +3081,13 @@ wFossilItem:: db
 ; mon that will result from the item
 wFossilMon:: db
 
-	ds 2
+; Form (0 = base) of the starter the player took in Oak's Lab, the partner of
+; wPlayerStarter's species. Both are written by RivalPickStarter; Oak's champion
+; text publishes them as the form context before naming the starter. Carved
+; from the ds 2 pad here (saved; schema 5).
+wPlayerStarterForm:: db
+
+	ds 1
 
 ; trainer classes start at OPP_ID_OFFSET
 wEnemyMonOrTrainerClass:: db

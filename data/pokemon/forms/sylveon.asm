@@ -37,4 +37,4 @@
 
 	dname "SYLVEON"
 
-	form_end
+	form_end PAL_PINKMON

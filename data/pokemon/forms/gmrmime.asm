@@ -34,4 +34,4 @@
 
 	dname "G-MRMIME"
 
-	form_end
+	form_end PAL_CYANMON

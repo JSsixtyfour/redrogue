@@ -32,4 +32,4 @@
 
 	dname "A-MUK"
 
-	form_end
+	form_end PAL_GREENMON

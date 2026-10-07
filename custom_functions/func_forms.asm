@@ -211,6 +211,68 @@ GetFormNameSource::
 	ret
 
 ; ---------------------------------------------------------------------------
+; GetFormPaletteForStruct / GetFormPalette
+;
+; The palette a form draws in. MonsterPalettes is indexed by dex number alone,
+; so without this every form drew in its BASE species' palette (A-Ninetales
+; yellow, Espeon in Jolteon's). Each form record carries its own PAL_*MON byte
+; (FORM_REC_PAL, written by form_end).
+;
+; INPUT:  GetFormPaletteForStruct: de = a party / box / battle struct. Species
+;           at +0, form in MON_CATCH_RATE bits 5-6 (battle_struct's CatchRate is
+;           the same offset, which IsGhostVariant already relies on).
+;         GetFormPalette: d = species (internal index), e = form index 0..3
+; OUTPUT: e = the form's palette, or 0 = no override (form 0, or no record)
+; CLOBBERS: af, bc, d, hl
+; Farcall-safe: input in d/e, result in e (only d/e cross Bankswitch).
+; ---------------------------------------------------------------------------
+GetFormPaletteForStruct::
+	ld h, d
+	ld l, e
+	ld d, [hl]                   ; MON_SPECIES
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3, as PublishFormContext
+	rlca
+	rlca
+	ld e, a
+	; fall through
+GetFormPalette::
+	ld a, e
+	and a
+	ret z                        ; form 0: e = 0, keep the species palette
+	ld c, a
+	ld b, d
+	ld hl, FormOverrides
+.palLoop
+	ld a, [hl]
+	and a
+	jr z, .palNotFound
+	cp b
+	jr nz, .palNext
+	inc hl
+	ld a, [hl]
+	dec hl
+	cp c
+	jr z, .palFound
+.palNext
+	ld de, FORM_REC_SIZE
+	add hl, de
+	jr .palLoop
+
+.palNotFound
+	ld e, 0
+	ret
+
+.palFound
+	ld de, FORM_REC_PAL
+	add hl, de
+	ld e, [hl]
+	ret
+
+; ---------------------------------------------------------------------------
 ; RogueRollFormForSpecies
 ;
 ; Decides whether a freshly-rolled species spawns as one of its regional forms.

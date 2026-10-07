@@ -565,6 +565,9 @@ ChampionsRoomOakCongratulatesPlayerText:
 	text_asm
 	ld a, [wPlayerStarter]
 	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a ; name the starter as its form
+	ld a, [wPlayerStarterForm]
+	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, .Text
 	call PrintText
@@ -586,6 +589,9 @@ ChampionsRoomOakChampionCongratulatesText:
 	text_asm
 	ld a, [wPlayerStarter]
 	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a ; name the starter as its form
+	ld a, [wPlayerStarterForm]
+	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, .Text
 	call PrintText

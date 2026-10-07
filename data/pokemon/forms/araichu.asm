@@ -33,4 +33,4 @@
 
 	dname "A-RAICHU"
 
-	form_end
+	form_end PAL_YELLOWMON

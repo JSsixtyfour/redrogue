@@ -35,4 +35,4 @@
 
 	dname "P-BLAZE"
 
-	form_end
+	form_end PAL_REDMON

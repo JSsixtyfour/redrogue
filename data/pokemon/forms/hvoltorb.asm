@@ -32,4 +32,4 @@
 
 	dname "H-VOLTORB"
 
-	form_end
+	form_end PAL_REDMON

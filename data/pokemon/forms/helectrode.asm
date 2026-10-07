@@ -33,4 +33,4 @@
 
 	dname "HELECTRODE"
 
-	form_end
+	form_end PAL_REDMON

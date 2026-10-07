@@ -15,6 +15,7 @@
 ;   db <base species>, <form index 1..NUM_FORM_SLOTS>
 ;   <BASE_DATA_SIZE bytes: an ordinary base-stats row>
 ;   <10 name characters, no terminator>
+;   <1 palette byte, PAL_*MON, emitted by form_end>
 ;
 ; The table is walked linearly by ApplyFormOverride and terminated by a 0
 ; species byte. Linear is fine: the walk only runs when a mon actually has
@@ -24,7 +25,7 @@
 ; order), so this is where the two are tied together.
 ASSERT FORM_REC_NAME_LEN == NAME_LENGTH - 1, \
        "form record name field must match the MonsterNames stride"
-ASSERT FORM_REC_SIZE == 2 + BASE_DATA_SIZE + FORM_REC_NAME_LEN, \
+ASSERT FORM_REC_SIZE == 2 + BASE_DATA_SIZE + FORM_REC_NAME_LEN + 1, \
        "FORM_REC_SIZE is out of step with the FORM_REC_* offsets"
 
 ; A form index must fit in MON_CATCH_RATE bits 5-6.
@@ -39,7 +40,15 @@ MACRO form_record
 ENDM
 
 MACRO form_end
-; Closes a record and proves it is exactly FORM_REC_SIZE bytes.
+; \1 = the form's palette (PAL_*MON). Closes a record and proves it is exactly
+; FORM_REC_SIZE bytes.
+;
+; The palette is an argument rather than a free `db` line so a record cannot
+; forget it. It must be a MON palette: ShinyPaletteConvert only permutes
+; PAL_MEWMON..PAL_GRAYMON, so anything else would make the shiny look identical.
+	ASSERT \1 >= PAL_MEWMON && \1 <= PAL_GRAYMON, \
+	       "form palette must be one of the PAL_*MON palettes"
+	db \1
 ;
 ; NOT optional, and not belt-and-braces. ApplyFormOverride walks this table with
 ; a flat FORM_REC_SIZE stride, so a record that is one byte short or long does

@@ -35,4 +35,4 @@
 
 	dname "P-WOOPER"
 
-	form_end
+	form_end PAL_BROWNMON

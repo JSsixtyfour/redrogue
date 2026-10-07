@@ -33,4 +33,4 @@
 
 	dname "A-GEODUDE"
 
-	form_end
+	form_end PAL_GRAYMON

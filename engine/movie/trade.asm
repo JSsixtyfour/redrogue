@@ -210,7 +210,10 @@ LoadTradingGFXAndMonNames:
 	call EnableLCD
 	xor a
 	ldh [hAutoBGTransferEnabled], a
+	ld a, [wTradedPlayerMonForm] ; the given mon's form name too (A-MEOWTH),
+	ld [wFormContextForm], a     ; for its info box and "sends" text
 	ld a, [wTradedPlayerMonSpecies]
+	ld [wFormContextSpecies], a
 	ld [wNamedObjectIndex], a
 	call GetMonName
 	ld hl, wNameBuffer
@@ -230,18 +233,10 @@ LoadTradingGFXAndMonNames:
 ; eaten by the give-side name and the received mon would fall back to its base
 ; name. Same two-name-paths trap as in_game_trades.asm.
 ;
-; Guarded on the species matching wRoguePokemon1 (the rogue trade's offer) so an
-; authored TradeMons entry can never inherit a reward slot's form.
-;
-; `ld a, 0` not `xor a` - the flags from `cp [hl]` have to survive to the jr.
-; hl is free here: the CopyData above has finished with it.
-	ld a, [wTradedEnemyMonSpecies]
-	ld hl, wRoguePokemon1
-	cp [hl]
-	ld a, 0
-	jr nz, .noNameForm
-	ld a, [wRoguePokemonForm1]
-.noNameForm
+; wTradedEnemyMonForm carries the species guard (InGameTrade_PrepareTradeData:
+; only the rogue trade's offer, wRoguePokemon1, can have a form), so an authored
+; TradeMons entry can never inherit a reward slot's form.
+	ld a, [wTradedEnemyMonForm]
 	ld [wFormContextForm], a
 	ld a, [wTradedEnemyMonSpecies]
 	ld [wFormContextSpecies], a
@@ -293,6 +288,8 @@ Trade_ShowPlayerMon:
 	ld b, HIGH(vBGMap0)
 	call CopyScreenTileBufferToVRAM
 	call ClearScreen
+	ld a, [wTradedPlayerMonForm]
+	ld e, a
 	ld a, [wTradedPlayerMonSpecies]
 	call Trade_LoadMonSprite
 	ld a, $7e
@@ -417,6 +414,8 @@ Trade_ShowEnemyMon:
 	call Trade_CopyTileMapToVRAM
 	ld a, $1
 	ldh [hAutoBGTransferEnabled], a
+	ld a, [wTradedEnemyMonForm]
+	ld e, a
 	ld a, [wTradedEnemyMonSpecies]
 	call Trade_LoadMonSprite
 	ld a, TRADE_BALL_POOF_ANIM
@@ -814,11 +813,14 @@ Trade_CircleOAMBlocks:
 	db ICON_TRADEBUBBLE << 2 + 1, OAM_PAL1 | OAM_XFLIP | OAM_YFLIP
 	db ICON_TRADEBUBBLE << 2 + 0, OAM_PAL1 | OAM_XFLIP | OAM_YFLIP
 
-; a = species
+; a = species, e = its form (0 = base): wTradedPlayerMonForm or
+; wTradedEnemyMonForm, set by InGameTrade_PrepareTradeData.
 Trade_LoadMonSprite:
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
 	ld [wWholeScreenPaletteMonSpecies], a
+	ld a, e
+	ld [wWholeScreenPaletteMonForm], a ; the form's palette too
 	ld b, SET_PAL_POKEMON_WHOLE_SCREEN
 	ld c, 0
 	call RunPaletteCommand
@@ -834,23 +836,13 @@ Trade_LoadMonSprite:
 ; Published HERE, immediately before GetMonHeader, and deliberately NOT earlier:
 ; RunPaletteCommand above can load a header of its own, and the context is
 ; one-shot - ApplyFormOverride consumes it - so an earlier publish would be eaten
-; before it reached this call.
+; before it reached this call. The form is re-read from wWholeScreenPaletteMonForm
+; because RunPaletteCommand does not preserve e.
 ;
-; Guarded on the species matching wRoguePokemon1, the rogue trade's offer. hl is
-; free: hlcoord below loads its own.
-;
-; ⚠ KNOWN GAP: this only forms the RECEIVED mon. The mon the PLAYER gives up
-; animates as its base species even if it is a form - its form lives in that
-; party mon's own MON_CATCH_RATE and would need hWhichPokemon to index it, which
-; is not reliably live this deep in the animation. Cosmetic, one-way, and only
-; visible for the couple of seconds the give-side sprite is on screen.
-	ld a, [wCurSpecies]
-	ld hl, wRoguePokemon1
-	cp [hl]
-	ld a, 0                 ; ld a, 0 not xor a - the cp flags must reach the jr
-	jr nz, .noAnimForm
-	ld a, [wRoguePokemonForm1]
-.noAnimForm
+; Both sides now carry their form (2026-10-07): the given mon's comes from its
+; party struct, captured in InGameTrade_PrepareTradeData while hWhichPokemon is
+; still live, which closes the old "give side animates as base" gap.
+	ld a, [wWholeScreenPaletteMonForm]
 	ld [wFormContextForm], a
 	ld a, [wCurSpecies]
 	ld [wFormContextSpecies], a

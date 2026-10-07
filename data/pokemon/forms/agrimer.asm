@@ -32,4 +32,4 @@
 
 	dname "A-GRIMER"
 
-	form_end
+	form_end PAL_GREENMON

@@ -34,4 +34,4 @@
 
 	dname "UMBREON"
 
-	form_end
+	form_end PAL_MEWMON
