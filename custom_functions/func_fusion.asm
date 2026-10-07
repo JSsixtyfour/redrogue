@@ -394,6 +394,8 @@ CreateFusion::
     ; the "Fusion complete!" box closes) then reloads the sprites on top.
     call ReloadMapData
     xor a
+    ; The secondary selection can now point past the smaller party's last row.
+    ld [wPartyAndBillsPCSavedMenuItem], a
     ldh [hJoyIgnore], a                  ; re-enable the d-pad: the party menu
                                          ; left it masked, which soft-locks
                                          ; movement (START still works, walking
