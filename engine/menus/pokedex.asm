@@ -458,6 +458,9 @@ ShowPokedexDataInternal:
 	ld de, HeightWeightText
 	call PlaceString
 
+	; Reward INFO preview (reward_offer_info.asm): name the offer as its form.
+	; No-op outside a preview, as are the three hooks below.
+	farcall RewardInfoPublishForm
 	call GetMonName
 	hlcoord 9, 2
 	call PlaceString
@@ -507,6 +510,7 @@ ShowPokedexDataInternal:
 
 	call Delay3
 	call GBPalNormal
+	farcall RewardInfoPublishForm ; the form's sprite, types and bars
 	call GetMonHeader ; load pokemon picture location
 	hlcoord 1, 1
 	call LoadFlippedFrontSpriteByMonIndex ; draw pokemon picture
@@ -579,7 +583,8 @@ ShowPokedexDataInternal:
 	call TextCommandProcessor ; print pokedex description text
 	xor a
 	ldh [hClearLetterPrintingDelayFlags], a
-	CheckEvent EVENT_GOT_POKEDEX
+	; EVENT_GOT_POKEDEX, or always during a reward INFO preview
+	farcall RewardInfoWantsPageTwo
 	jr z, .waitForButtonPress ; don't show page 2 while displaying Oak's starters
 .waitForButtonPress2
 	call JoypadLowSensitivity
@@ -611,6 +616,7 @@ ShowPokedexDataInternal:
 	pop af
 	ld [wLoadedMon + MON_CATCH_RATE], a
 	call PrintBaseStats
+	farcall PrintRewardOfferDVs
 .waitForButtonPress
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]
@@ -622,6 +628,11 @@ ShowPokedexDataInternal:
 	call ClearScreen
 	call RunDefaultPaletteCommand
 	call LoadTextBoxTilePatterns
+	; GBPalWhiteOut zeroed rOBP1 and GBPalNormal only restores BGP/OBP0, but it
+	; rebuilds the CGB OBJ 4-7 palettes from rOBP1. The standard red overworld
+	; ball is OBJ 7 (ball_rarity.asm), so restore the overworld value first.
+	ld a, %11100000 ; 3200, FadePal4's rOBP1
+	ldh [rOBP1], a
 	call GBPalNormal
 	ld hl, wStatusFlags2
 	res BIT_NO_AUDIO_FADE_OUT, [hl]

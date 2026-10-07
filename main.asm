@@ -247,6 +247,13 @@ SECTION "Player Appearance", ROMX
 INCLUDE "data/player/appearance.asm"
 
 
+; New-game difficulty screen. Floating: entered only by farcall from OakSpeech,
+; and it reaches ChoosePlayerCharacter by farjp, so any bank works.
+SECTION "Difficulty Select", ROMX
+
+INCLUDE "engine/menus/difficulty_select.asm"
+
+
 SECTION "Play Time", ROMX
 
 INCLUDE "engine/play_time.asm"
@@ -848,3 +855,9 @@ INCLUDE "engine/events/lobby_psychic.asm"
 SECTION "Ironman", ROMX, BANK[$3C]
 
 INCLUDE "custom_functions/ironman.asm"
+
+; Reward offer DVs + INFO screen. Pinned to $3C beside Ironman (whose new-game
+; SRAM init calls RogueOfferDVsClear directly), same first-fit reason.
+SECTION "Reward Offer Info", ROMX, BANK[$3C]
+
+INCLUDE "custom_functions/reward_offer_info.asm"

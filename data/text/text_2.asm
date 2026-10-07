@@ -1748,9 +1748,17 @@ _OakSpeechText2B::
 	cont "research lab."
 	prompt
 
+_ChooseDifficultyText::
+	text "Choose the"
+	line "difficulty you"
+
+	para "would like the"
+	line "experience to"
+	cont "play on."
+	prompt
+
 _ChooseCharacterText::
-	text "First, who will"
-	line "you be?"
+	text "Who will you be?"
 
 	para "Press LEFT or"
 	line "RIGHT, then A."

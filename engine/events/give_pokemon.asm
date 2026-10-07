@@ -38,6 +38,11 @@ _GivePokemon::
 	scf
 	ret
 .boxFull
+; Nothing was created, so nothing consumed the spawn requests: drop them here,
+; or they would attach to the next mon made (e.g. the next wild encounter).
+	xor a
+	ld [wSpawnForm], a
+	ld [wSpawnDVSlot], a
 	ld hl, BoxIsFullText
 	call PrintText
 	and a

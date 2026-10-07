@@ -261,6 +261,30 @@
       for (; dst < end; dst++) bytes[dst] = 0; // past the new end of the bank-1 data: unused
       recomputeChecksums(bytes, to, ["main"]);
       return null;
+    },
+
+    // Schema 3 -> 4 (2026-10-06): a new SRAM bank 2 section, "Reward Offer DVs SRAM"
+    // (sRogueOfferDVs 6 bytes + sRogueOfferDVTag 3 bytes), right after the fallen log. Nothing
+    // moved and no checksum covers it. Zeroed, as a new game leaves it (RogueOfferDVsClear): a
+    // zero tag matches no offer, so each offer rolls its DVs the first time it is looked at.
+    rogueOfferDVsAdded: function (bytes, from, to) {
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      if (sramField(from, "sRogueOfferDVs")) return "this save already has reward offer DVs";
+      var dvs = sramField(to, "sRogueOfferDVs"), tags = sramField(to, "sRogueOfferDVTag");
+      if (!dvs || !tags || dvs.size !== 6 || tags.size !== 3 || dvs.bank !== tags.bank ||
+          offsetOf(tags.bank, tags.address) !== offsetOf(dvs.bank, dvs.address) + dvs.size)
+        return "reward offer DV layout not recognised";
+      var start = offsetOf(dvs.bank, dvs.address), end = start + dvs.size + tags.size;
+      for (var j = 0; j < from.sram.length; j++) {
+        var g = from.sram[j], go = offsetOf(g.bank, g.address);
+        if (g.size && go < end && go + g.size > start) return "the reward offer DVs would overwrite " + g.label;
+      }
+      for (var n = start; n < end; n++) bytes[n] = 0;
+      return null;
     }
   };
 

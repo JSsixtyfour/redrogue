@@ -1,10 +1,10 @@
 _OaksLabRivalIPickedTheWrongPokemonText::
 	text "Get your"
-	line "reward in the "
+	line "reward in the"
 	cont "next room."
-	cont "You'll need"
-    cont "it to keep"
-    cont "pace with me"
+
+	para "You'll need it to"
+	line "keep pace with me."
 	prompt
 
 _OaksLabRivalAmIGreatOrWhatText::

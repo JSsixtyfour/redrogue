@@ -10,6 +10,7 @@ Rule ids match CODE_SWEEP_2026-09-27.md in Red Rogue Files:
   B5 caller reads a register a far call destroyed
   B6 bank switch from ROMX    B7 documented contract vs real clobbers
   B8 `pop af` discards the flags a branch needs
+  B9 wBuffer+0 cached across a call that reaches FarCopyData
   C1 fall-through into data / off a section
   C2 dispatch table without a length assert
   C3 text-script traps        D1 unreachable code
@@ -472,6 +473,108 @@ def rule_c2(p: Program):
                      f"jump table of {codeptrs} routine pointers with no table_width/"
                      "assert_table_length: an index past the end jumps into whatever follows",
                      "info"))
+    return out
+
+
+_WBUF0 = re.compile(r"^\[\s*wBuffer\s*(\+\s*0\s*)?\]$")
+
+
+def _call_target(it: Item):
+    """Routine an instruction transfers control to (call/jp/jr/far call/predef)."""
+    if it.kind != "instr" or not it.args:
+        return None
+    if it.op in FAR_CALL or it.op in FAR_JUMP or it.op in ("predef", "predef_jump",
+                                                         "homecall", "homecall_sf"):
+        return it.args[0].strip()
+    return jump_target(it)
+
+
+def wbuffer0_writer_reach(p: Program):
+    """Set of global routines that can reach a routine which writes wBuffer+0
+    (in practice HOME's FarCopyData) through calls, jumps and fall-through.
+    Jump tables (dw) are not followed: an under-approximation."""
+    items = p.items
+    callees = defaultdict(set)
+    last = {}
+    for it in items:
+        par = p.parent_of(it)
+        if par is None:
+            continue
+        if it.kind == "label" and it.is_global:
+            prev = last.get("__cur")
+            if prev and prev != it.label:
+                tail = last.get(prev)
+                if tail is not None and not (
+                        (tail.op in ("ret", "reti") and not tail.args) or
+                        (tail.op in ("jp", "jr") and len(tail.args) == 1) or
+                        tail.op in FAR_JUMP or tail.op == "predef_jump"):
+                    callees[prev].add(it.label)  # falls through
+            last["__cur"] = it.label
+            continue
+        if it.kind == "instr":
+            last[par] = it
+            t = _call_target(it)
+            if t:
+                lab = p.resolve(t, it)
+                callees[par].add(lab.split(".")[0])
+        elif it.kind == "data":
+            last[par] = None
+    # A soft reset reaches everything (Init -> title -> new game) but never
+    # returns to the caller, so it cannot hand a clobbered wBuffer+0 back.
+    noreturn = {"SoftReset", "Init", "TrySoftReset"}
+    reach = {p.parent_of(it) for it in items
+             if it.kind == "instr" and it.op == "ld" and len(it.args) == 2
+             and _WBUF0.match(it.args[0].strip()) and p.parent_of(it)}
+    changed = True
+    while changed:
+        changed = False
+        for r, cs in callees.items():
+            if r not in reach and r not in noreturn and cs & reach:
+                reach.add(r)
+                changed = True
+    return reach
+
+
+def rule_b9(p: Program):
+    """wBuffer+0 cached across a call that can reach FarCopyData.
+
+    HOME's FarCopyData stashes its source bank in wBuffer+0. A routine that
+    stores a value there, calls something that reaches FarCopyData, and then
+    reads wBuffer+0 back gets a bank number instead (RR-0011: the bridge gift
+    roll's count became 56/49 and rolled indices past its list). Loops count:
+    any qualifying call after the first write is flagged, even if it sits
+    textually after the read."""
+    reach = wbuffer0_writer_reach(p)
+    out = []
+    by_routine = defaultdict(list)
+    for it in p.items:
+        if it.kind == "instr" and p.in_scope(it):
+            par = p.parent_of(it)
+            if par:
+                by_routine[par].append(it)
+    for routine, body in by_routine.items():
+        if routine == "FarCopyData":
+            continue
+        writes = [x for x in body if x.op == "ld" and len(x.args) == 2
+                  and _WBUF0.match(x.args[0].strip())]
+        reads = [x for x in body if x.op == "ld" and len(x.args) == 2
+                 and x.args[0].strip().lower() == "a" and _WBUF0.match(x.args[1].strip())]
+        if not writes or not reads:
+            continue
+        first = writes[0].idx
+        for x in body:
+            if x.idx <= first:
+                continue
+            t = _call_target(x)
+            if not t:
+                continue
+            callee = p.resolve(t, x).split(".")[0]
+            if callee in reach and callee != routine:
+                out.append(F("B9", writes[0], routine,
+                             f"caches a value in wBuffer+0, then `{x.op} {t}` (line {x.line}) "
+                             "can reach a writer of wBuffer+0 (FarCopyData stores its bank "
+                             "there), so the later read can get a bank number"))
+                break
     return out
 
 

@@ -3235,6 +3235,7 @@ SendNewMonToBox:
 ; Leaving it set would give the form to the next mon created as well.
 	xor a
 	ld [wSpawnForm], a
+	ld [wSpawnDVSlot], a ; same contract (reward offer DVs)
 	ret
 
 ; checks if the tile in front of the player is a shore or water tile

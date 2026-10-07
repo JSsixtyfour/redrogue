@@ -101,9 +101,11 @@ OakSpeech:
 	call PrintText
 	call GBFadeOutToWhite
 	call ClearScreen
-; Pick the player's trainer class before naming them, so every pic shown from
-; here on (and the shrink animation below) is already the chosen character.
-	farcall ChoosePlayerCharacter
+; Pick the difficulty, then the player's trainer class before naming them, so
+; every pic shown from here on (and the shrink animation below) is already the
+; chosen character. The difficulty screen chains into ChoosePlayerCharacter
+; itself, keeping this a single same-size farcall in nearly-full bank1.
+	farcall ChooseDifficultyThenCharacter
 	call GBFadeOutToWhite
 	call ClearScreen
 	farcall GetPlayerFrontPic ; -> de (farcall clobbers bc, so set it after)

@@ -177,6 +177,15 @@ test("schema 2 to 3: the legacy bag and PC item box are gone, everything else mo
     assert.equal(to.saved_wram.find((f) => f.label === gone), undefined, gone);
 });
 
+test("schema 3 to 4: reward offer DVs are added zeroed, nothing else changes", () => {
+  // syntheticSave leaves everything outside the main block $ff, so the new region starts
+  // non-zero and must come out zero.
+  const { b, to } = checkMigration(3, 4, []);
+  const dvs = to.sram.find((s) => s.label === "sRogueOfferDVs");
+  const start = offsetOf(dvs.bank, dvs.address);
+  for (let i = 0; i < 9; i++) assert.equal(b[start + i], 0, `reward offer DV byte ${i}`);
+});
+
 test("damaged, foreign or wrapped files are refused with a reason", () => {
   const good = syntheticSave(TARGET);
   const cases = [

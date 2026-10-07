@@ -153,7 +153,9 @@ KarateDojoPlaceNames:
 	ld a, c
 	add a
 	add 4                        ; row = 4 + 2*index
+	push de                      ; coordinate helper clobbers the prefix pointer
 	call KarateDojoCoordRow2
+	pop de
 	call PlaceString             ; bc = cursor just past the prefix
 	ld h, b
 	ld l, c

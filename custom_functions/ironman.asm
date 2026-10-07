@@ -203,9 +203,10 @@ FallenLogOpen:
 	ret
 
 ; New game's single SRAM-init farcall (InitPlayerData, bank $03, ~10 B free):
-; the final-team archive, then the fallen log.
+; the final-team archive, the reward offer DVs, then the fallen log.
 IronmanNewGameSRAMInit::
 	farcall FinalTeamArchiveInit
+	call RogueOfferDVsClear ; same bank ($3C), reward_offer_info.asm
 	jr FallenLogClear
 
 ; TODO(user): placeholder wording. wNameBuffer holds the mon's nickname.

@@ -6,13 +6,15 @@
     "for a regression, never run by default (run_audits.py --kind probe runs them).",
     "Scripts not listed here (analyse_*, profile_*, measure_*, probe_*, simulate_*, dump_*, render_*,",
     "attribute_*, spawnform_probe_labels, inspect_bgb_state) are investigation tools, not checks.",
-    "Two guards are already in make smoke via test_static_map_audits.py and are marked in_smoke."
+    "Guards marked in_smoke already run in make smoke (test_static_map_audits.py, test_bridge_gift_roll_range.py)."
   ],
   "audits": [
     {"script": "probe_ball_rarity.py", "args": ["/tmp"], "kind": "guard",
      "guards": "rarity-colored reward/item balls: wrong OAM palette bits or OBJ palette RAM colours on CGB, Enhanced Colors ON and OFF (two CGB boots)"},
     {"script": "probe_ball_rarity_procedural.py", "args": [], "kind": "guard",
      "guards": "rarity ball cache on cave/forest/cemetery/Facility disagreeing with the item each pickup gives, or colouring Facility fake balls (four CGB boots)"},
+    {"script": "audit_bridge_gift_roll_range.py", "args": [], "kind": "guard", "in_smoke": true,
+     "guards": "bridge gift roll picking entry indices past its giver's list (count cached in wBuffer+0, clobbered by FarCopyData) -> blank menu row that crashes on hover (RR-0011)"},
     {"script": "audit_boss_ball_overlap.py", "args": ["--layouts", "200"], "kind": "guard",
      "guards": "pokeball placed on the procedural boss's own cell (forest/cave). CLAUDE.md: run first on any forest failure."},
     {"script": "audit_cave_boss_distance.py", "args": [], "kind": "guard",

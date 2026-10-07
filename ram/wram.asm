@@ -1916,7 +1916,17 @@ wSpawnForm::          db
 ; saved at the start of a battle and then written back at the end of the battle
 wSavedTileAnimations:: db
 
-	ds 2
+; Companion to wSpawnForm: 1-3 = give the next player mon the stored DVs of
+; reward offer slot N (GetRogueOfferDVs) instead of rolling; 0 = roll. Consumed
+; and zeroed by _AddPartyMon / SendNewMonToBox exactly like wSpawnForm.
+; CARVED IN PLACE from the `ds 2` pad that sat here (unsaved, not in a UNION):
+; no address moves (project_wram_take_padding_not_append).
+wSpawnDVSlot:: db
+
+; 1-3 while ShowRewardOfferInfo has the Pokedex page up for that reward offer
+; slot, 0 otherwise. Turns on ShowPokedexDataInternal's preview hooks (offer's
+; form, page 2 always, DVs). Carved from the same pad, which is now used up.
+wRewardInfoSlot:: db
 
 wDamage:: dw
 

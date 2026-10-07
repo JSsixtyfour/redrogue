@@ -12,6 +12,8 @@ Rogue_Reward_Script_PokeballText_1::
 	jr .done
 
     .GetMon
+    push de ; d = this ball's toggle index, held across the whole INFO loop
+.offer
     ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
@@ -21,11 +23,14 @@ Rogue_Reward_Script_PokeballText_1::
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
-    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
-	call YesNoChoice
+	; YES / NO / INFO. INFO shows the Pokedex page with this offer's form and
+	; DVs, then asks again (the map was reloaded under it: rename, reprint).
+	ld e, 1
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
@@ -36,6 +41,8 @@ Rogue_Reward_Script_PokeballText_1::
     ; mon's MON_CATCH_RATE bits 5-6, and zeroes it again on the way out.
     ld a, [wRoguePokemonForm1]
     ld [wSpawnForm], a
+    ld a, 1 ; and give it the DVs its INFO screen shows (slot 1)
+    ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon1]
 	ld b, a
     ld c, 5
@@ -105,6 +112,8 @@ Rogue_Reward_Script_PokeballText_2::
 	jr .done
 
     .GetMon
+    push de
+.offer
     ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
@@ -112,22 +121,25 @@ Rogue_Reward_Script_PokeballText_2::
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
-    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
-	call YesNoChoice
+	ld e, 2
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
 	jr nz, .done
+    push de
 
     ld a, [wRoguePokemonForm2]
     ld [wSpawnForm], a
+    ld a, 2
+    ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon2]
 	ld b, a
     ld c, 5
-    push de
 	call GivePokemon
     pop de
 	jr nc, .done
@@ -149,6 +161,8 @@ Rogue_Reward_Script_PokeballText_3::
 	jr .done
 
     .GetMon
+    push de
+.offer
     ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
 	; Phase 2R: name the OFFER with its form name ("A-MEOWTH", not "MEOWTH").
@@ -156,22 +170,25 @@ Rogue_Reward_Script_PokeballText_3::
 	ld [wFormContextForm], a
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
-    push de
     call GetMonName
     ld hl, PickRewardPokeballText
 	call PrintText
-	call YesNoChoice
+	ld e, 3
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
 	jr nz, .done
+    push de
 
     ld a, [wRoguePokemonForm3]
     ld [wSpawnForm], a
+    ld a, 3
+    ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon3]
 	ld b, a
     ld c, 5
-    push de
 	call GivePokemon
     pop de
 	jr nc, .done

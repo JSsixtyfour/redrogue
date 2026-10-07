@@ -835,6 +835,18 @@ GetGiftEntry:
 	push bc                      ; save caller's bc BEFORE GetGiverListBase clobbers it
 	push af
 	call GetGiverListBase
+IF DEF(_DEBUG)
+	; An index past the list reads a garbage GiftEntry whose name/desc pointers
+	; jump into RAM, leaving a crash screen with no usable stack (RR-0011).
+	; Trap here instead: the screen's first stack word names this check, then
+	; the pushed af (A = the bad index) and bc, then the caller that passed it.
+	pop af
+	push af
+	cp [hl]                      ; index < this giver's count?
+	jr c, .indexInRange
+	rst $38
+.indexInRange
+ENDC
 	inc hl                       ; skip count byte -> entry 0
 	pop af
 	ld bc, GIFT_ENTRY_SIZE

@@ -62,6 +62,7 @@ def run(roms, only_rules):
         found += rules.rule_c3(p, fl)
         found += rules.rule_d1(p)
         found += rules.rule_d2(p)
+        found += rules.rule_b9(p)
         for f in found:
             if only_rules and f["rule"] not in only_rules:
                 continue

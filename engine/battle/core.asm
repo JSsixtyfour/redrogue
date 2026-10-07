@@ -7247,6 +7247,18 @@ LoadEnemyMonData:
 	ld b, [hl]
 	jr .storeDVs
 .wildDVs
+; Reward offer sent to the box (party full): use the slot's stored DVs, with
+; the DV Booster floor applied here because this path never had one, so the box
+; mon matches its INFO screen. de/hl are reloaded at .storeDVs.
+	ld a, [wSpawnDVSlot]
+	and a
+	jr z, .randomWildDVs
+	ld e, a
+	farcall GetRogueOfferDVsFloored ; h = Spd/Spc, l = Atk/Def
+	ld b, h
+	ld a, l
+	jr .storeDVs
+.randomWildDVs
 ; random DVs for wild mon
 	call BattleRandom
 	ld b, a

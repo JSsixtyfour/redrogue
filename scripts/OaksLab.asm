@@ -115,11 +115,13 @@ Rogue_Lab_Script_PokeballText_1:
 	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
+.greedy
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
 
 .GetMon
+.offer
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
 	ld a, [wRoguePokemonForm1]  ; increment 8j: name the starter as its form
@@ -127,19 +129,21 @@ Rogue_Lab_Script_PokeballText_1:
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
 	call GetMonName
-	ld a, [wRoguePokemon1]
-	call OaksLabShowStarterDex
 	ld hl, PickPokeballText
 	call PrintText
 	ld a, $1
 	ldh [hNoWaitAfterText], a
-	call YesNoChoice
+	ld e, 1
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .end_text
 
 	ld a, [wRoguePokemonForm1]  ; increment 8j: build the starter as its form
 	ld [wSpawnForm], a
+	ld a, 1
+	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon1]
 	ld b, a
 	ld c, 5
@@ -161,11 +165,13 @@ Rogue_Lab_Script_PokeballText_2:
 	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
+.greedy
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
 
 .GetMon
+.offer
 	ld a, [wRoguePokemon2]
 	ld [wNamedObjectIndex], a
 	ld a, [wRoguePokemonForm2]  ; increment 8j
@@ -173,19 +179,21 @@ Rogue_Lab_Script_PokeballText_2:
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
 	call GetMonName
-	ld a, [wRoguePokemon2]
-	call OaksLabShowStarterDex
 	ld hl, PickPokeballText
 	call PrintText
 	ld a, $1
 	ldh [hNoWaitAfterText], a
-	call YesNoChoice
+	ld e, 2
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .end_text
 
 	ld a, [wRoguePokemonForm2]  ; increment 8j
 	ld [wSpawnForm], a
+	ld a, 2
+	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon2]
 	ld b, a
 	ld c, 5
@@ -207,11 +215,13 @@ Rogue_Lab_Script_PokeballText_3:
 	push bc
 	CheckEvent EVENT_GOT_STARTER
 	jr z, .GetMon
+.greedy
 	ld hl, GreedyText
 	call PrintText
 	jr .end_text
 
 .GetMon
+.offer
 	ld a, [wRoguePokemon3]
 	ld [wNamedObjectIndex], a
 	ld a, [wRoguePokemonForm3]  ; increment 8j
@@ -219,19 +229,21 @@ Rogue_Lab_Script_PokeballText_3:
 	ld a, [wNamedObjectIndex]
 	ld [wFormContextSpecies], a
 	call GetMonName
-	ld a, [wRoguePokemon3]
-	call OaksLabShowStarterDex
 	ld hl, PickPokeballText
 	call PrintText
 	ld a, $1
 	ldh [hNoWaitAfterText], a
-	call YesNoChoice
+	ld e, 3
+	farcall RewardOfferChoice
+	jr z, .offer
 	ldh a, [hCurrentMenuItem]
 	and a
 	jr nz, .end_text
 
 	ld a, [wRoguePokemonForm3]  ; increment 8j
 	ld [wSpawnForm], a
+	ld a, 3
+	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon3]
 	ld b, a
 	ld c, 5
@@ -247,45 +259,6 @@ Rogue_Lab_Script_PokeballText_3:
 .end_text
 	pop bc
 	jp TextScriptEnd
-
-; Show the full Pokedex page for an arbitrary (randomized) starter when the
-; player examines its ball, generalizing vanilla StarterDex. IN: a = internal
-; species id. We temporarily set that species' OWNED bit (by its dex number, via
-; IndexToPokedex) so ShowPokedexData renders the complete entry, then clear it
-; again since the player hasn't actually caught it. The species is kept on the
-; stack across ShowPokedexData/ReloadMapData (which clobber registers + WRAM).
-OaksLabShowStarterDex:
-	push af
-	ld [wPokedexNum], a
-	predef IndexToPokedex          ; wPokedexNum = dex # for this species
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	ld hl, wPokedexOwned
-	predef FlagActionPredef         ; temporarily owned -> full entry renders
-	pop af
-	push af
-	ld [wPokedexNum], a             ; ShowPokedexData reads the species from here
-	ld [wCurPartySpecies], a
-	ld hl, wStatusFlags5
-	set BIT_NO_TEXT_DELAY, [hl]
-	predef ShowPokedexData
-	ld hl, wStatusFlags5
-	res BIT_NO_TEXT_DELAY, [hl]
-	call ReloadMapData
-	ld c, 10
-	call DelayFrames
-	pop af
-	ld [wPokedexNum], a
-	predef IndexToPokedex          ; wPokedexNum = dex # again
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_RESET
-	ld hl, wPokedexOwned
-	predef FlagActionPredef         ; clear it (player hasn't caught it yet)
-	ret
 
 ; --- Rival starter pick + walk (Red Rogue) ---
 ; Called from each pokeball handler with e = the slot the player took (1..3).

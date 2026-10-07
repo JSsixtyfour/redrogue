@@ -451,6 +451,35 @@ class Rules(unittest.TestCase):
             	ret
             """, [("A", "ROMX", 2)], "DeadCode", "Used")
 
+    def test_b9_wbuffer0_cached_across_farcopydata(self):
+        self.check("B9", """
+            SECTION "H", ROM0
+            FarCopyData::
+            	ld [wBuffer], a
+            	ret
+            LoadsFarData::
+            	call FarCopyData
+            	ret
+            Harmless::
+            	ret
+            SECTION "A", ROMX
+            Bad::
+            	ld [wBuffer], a
+            .loop
+            	ld a, [wBuffer]
+            	call Helper
+            	jr .loop
+            Helper::
+            	jp LoadsFarData
+            Good::
+            	ld [wBuffer], a
+            	call Harmless
+            	ld a, [wBuffer]
+            	ret
+            SECTION "W", WRAM0
+            wBuffer:: ds 30
+            """, [("H", "ROM0", 0), ("A", "ROMX", 2), ("W", "WRAM0", 0)], "Bad", "Good")
+
     def test_d2_false_same_bank_claim(self):
         self.check("D2", """
             SECTION "A", ROMX

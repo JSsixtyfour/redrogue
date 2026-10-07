@@ -20,7 +20,8 @@
   "sMainDataCheckSum": {"continue": "preserve", "recovery": "template", "why": "recomputed by the converter after any change"},
   "sFinalTeamArchive.*": {"continue": "preserve", "recovery": "keep", "why": "champion teams for the final AI encounter, cross-run, own checksums"},
   "sBox([1-9]|1[0-2])|sBank[23](AllBoxesChecksum|IndividualBoxChecksums)": {"continue": "preserve", "recovery": "template", "why": "PC boxes; EmptyAllSRAMBoxes at run reset"},
-  "sFallenLog": {"continue": "preserve", "recovery": "template", "why": "Ironman fallen log; FallenLogClear at run reset"}
+  "sFallenLog|sFallenLogEnd": {"continue": "preserve", "recovery": "template", "why": "Ironman fallen log; FallenLogClear at run reset"},
+  "sRogueOfferDVs|sRogueOfferDVTag|sRogueOfferDVsEnd": {"continue": "preserve", "recovery": "template", "why": "reward offer DVs, keyed by species tag; any stale value is a valid pair, cleared at new game"}
  },
  "recovery_keep_wram": {
   "about": "Saved-WRAM fields a recovery carries from the old save into the target's post-reset Dorm template. Everything else in the main save block comes from the template. Measured against RogueResetRunState: see SAVE_COMPATIBILITY_RUNBOOK.md, 'Recovery parity'.",

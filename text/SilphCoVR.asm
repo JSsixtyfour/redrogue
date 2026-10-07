@@ -11,7 +11,7 @@ _SilphCoVRGiftText::
 	text "PROF PALM: Before"
 	line "you go in, take"
 	cont "these with you."
-	done
+	prompt
 
 _SilphCoVRReceivedKeyItemsText::
 	text "<PLAYER> received"
@@ -22,11 +22,13 @@ _SilphCoVRReceivedKeyItemsText::
 
 _SilphCoVRKeyItemsExplainText::
 	text "Those are KEY"
-	line "ITEMS. They work"
-	cont "on their own while"
-	cont "they're in your"
-	cont "bag, and you keep"
-	cont "them between runs."
+	line "ITEMS. These ones"
+	cont "work on their own"
+	cont "while they're in"
+	cont "your bag, and you"
+	cont "keep them between"
+	cont "runs."
+	done
 
 	para "You can carry 3"
 	line "at once. Extras"

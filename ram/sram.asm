@@ -436,6 +436,17 @@ SECTION "Fallen Log SRAM", SRAM, BANK[2]
 sFallenLog:: ds FALLEN_LOG_CAPACITY * FALLEN_ENTRY_SIZE
 sFallenLogEnd::
 
+; Reward offer DVs (custom_functions/reward_offer_info.asm): a fixed DV pair per
+; offer slot (wRoguePokemon1-3), rolled lazily and keyed by the species in
+; sRogueOfferDVTag, so the INFO preview and the given mon agree. Outside
+; sGameData and its checksum on purpose: any stale value is still a valid DV
+; pair, and a reset-without-saving must NOT re-roll them. Cleared at new game.
+SECTION "Reward Offer DVs SRAM", SRAM, BANK[2]
+
+sRogueOfferDVs:: ds 3 * 2   ; MON_DVS layout per slot: Atk/Def, Spd/Spc
+sRogueOfferDVTag:: ds 3     ; species each slot's DVs were rolled for
+sRogueOfferDVsEnd::
+
 SECTION "Saved Boxes 1", SRAM
 
 ; sBox1 - sBox6

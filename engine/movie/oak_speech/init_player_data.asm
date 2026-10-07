@@ -48,9 +48,12 @@ InitPlayerData2:
 
 	ld [wMonDataLocation], a
 
-	ld hl, wObtainedBadges
-	ld [hli], a
-	ld [hl], a
+	; ONE byte (flag_array of 8). Vanilla wrote two here because a spare byte
+	; followed; this tree has wLetterPrintingDelayFlags there instead, and the
+	; second write cleared BIT_FAST_TEXT_DELAY, so every new game's text ran at
+	; one frame per letter until the next main-menu visit set it again.
+	ASSERT NUM_BADGES <= 8
+	ld [wObtainedBadges], a
 
 	ld hl, wPlayerCoins
 	ld [hli], a

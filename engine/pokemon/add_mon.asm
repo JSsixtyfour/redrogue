@@ -100,7 +100,7 @@ _AddPartyMon::
 	and $f
 	ld a, ATKDEFDV_TRAINER  ; set enemy trainer mon IVs to fixed average values
 	ld b, SPDSPCDV_TRAINER
-	jr nz, .next4
+	jp nz, .next4 ; was jr: the reward-offer DV branch below pushed it out of range
 
 ; If the mon is being added to the player's party, update the pokedex.
 	ld a, [wCurPartySpecies]
@@ -130,12 +130,30 @@ _AddPartyMon::
 
 	ldh a, [hIsInBattle]
 	and a ; is this a wild mon caught in battle?
-	jr nz, .copyEnemyMonData
+	jp nz, .copyEnemyMonData ; was jr (out of range after the reward-offer DV branch)
 
 ; Not wild.
+; Reward offer: use the slot's stored DVs (the ones its INFO screen showed)
+; instead of rolling. Raw pair; the DV Booster block below floors it exactly as
+; it would a fresh roll. hl (struct base) and de (live write cursor) must
+; survive the farcall.
+	ld a, [wSpawnDVSlot]
+	and a
+	jr z, .rollDVs
+	push hl
+	push de
+	ld e, a
+	farcall GetRogueOfferDVs ; h = Spd/Spc, l = Atk/Def
+	ld b, h
+	ld a, l
+	pop de
+	pop hl
+	jr .gotDVs
+.rollDVs
 	call Random ; generate random IVs
 	ld b, a
 	call Random
+.gotDVs
 
 ; DV BOOSTER: floor each of the four DV nibbles (Atk/Def packed into this
 ; second roll's byte, Spd/Spc into the first) at a per-tier minimum, before
@@ -424,6 +442,7 @@ _AddPartyMon::
 ; on every exit path through .done, success or not, for exactly that reason.
 	xor a
 	ld [wSpawnForm], a
+	ld [wSpawnDVSlot], a ; same one-shot contract as wSpawnForm
 	scf
 	ret
 

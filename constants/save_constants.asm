@@ -18,8 +18,11 @@
 ; Schema 3 (2026-10-03): the legacy bag's 8 bytes (wNumBagItems, wBagItems,
 ; wNumBagKeyItems) and the vanilla PC item box (wNumBoxItems, wBoxItems, 102
 ; bytes) were deleted, shifting the rest of the main data block down.
+; Schema 4 (2026-10-06): new SRAM bank 2 section "Reward Offer DVs SRAM"
+; (sRogueOfferDVs, sRogueOfferDVTag, 9 bytes) after the fallen log. Nothing
+; moved; old saves get it zeroed, as a new game does.
 
-DEF SAVE_SCHEMA_ID EQU 3
+DEF SAVE_SCHEMA_ID EQU 4
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

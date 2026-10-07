@@ -168,22 +168,7 @@ HandleRewardChoice:
     ldh a, [hCurrentMenuItem]
     ld b, a
     push bc
-	ld d, 0
-	ld e, a
-	ld hl, wRoguePokemon1
-	add hl, de
-	ld a, [hl]
-	ld [wNamedObjectIndex], a
-	; Phase 2R: show the offer's form name in the reward list.
-	; Increment 8: the SELECTED slot's form, indexed the same way as the draw loop.
-	ld hl, wRoguePokemonForm1
-	add hl, de
-	ld a, [hl]
-	ld [wFormContextForm], a
-	ld a, [wNamedObjectIndex]
-	ld [wFormContextSpecies], a
-.getMonName
-	call GetMonName
+	call RewardNameSlot
     ; trade offer always occupies slot 1 (index 0); BIT_ROGUE_TRADE_ACTIVE gates it
     ldh a, [hCurrentMenuItem]
     and a
@@ -223,7 +208,21 @@ HandleRewardChoice:
 .givePrize
 	ld hl, SoYouWantRewardText
 	call PrintText
-	call YesNoChoice
+	; YES / NO / INFO (reward_offer_info.asm). INFO shows the Pokedex page with
+	; this offer's form and DVs and returns z: the map was reloaded under it,
+	; and it left wNamedObjectIndex (= wPokedexNum) holding a DEX number, which
+	; .noPartyLimit would give as the species. So re-name the slot and ask again.
+	pop bc
+	push bc
+	ld e, b
+	inc e                        ; slot 1-3
+	farcall RewardOfferChoice
+	jr nz, .answered
+	pop bc
+	push bc
+	call RewardNameSlot
+	jr .givePrize
+.answered
 	ldh a, [hCurrentMenuItem] ; yes/no answer (Y=0, N=1)
 	and a
     pop bc
@@ -256,6 +255,9 @@ HandleRewardChoice:
     add hl, bc
     ld a, [hl]
     ld [wSpawnForm], a
+    ld a, c
+    inc a                        ; and the DVs its INFO screen shows (slot 1-3)
+    ld [wSpawnDVSlot], a
     pop bc
     ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
     add a, b
@@ -510,3 +512,23 @@ RogueRefresh::
 	; included, which never run RogueRefresh). This block used to end the file
 	; with no ret and fell through into PrintNotebookText.
 	farjp WitchReapplyPoison
+
+; IN: b = reward slot 0-2. Names it (form name included) into wNameBuffer and
+; sets wNamedObjectIndex to its species, which .noPartyLimit gives. Called on
+; entry and again after the INFO screen, which overwrites both.
+RewardNameSlot:
+	ld d, 0
+	ld e, b
+	ld hl, wRoguePokemon1
+	add hl, de
+	ld a, [hl]
+	ld [wNamedObjectIndex], a
+	; Phase 2R: show the offer's form name in the reward list.
+	; Increment 8: the SELECTED slot's form, indexed the same way as the draw loop.
+	ld hl, wRoguePokemonForm1
+	add hl, de
+	ld a, [hl]
+	ld [wFormContextForm], a
+	ld a, [wNamedObjectIndex]
+	ld [wFormContextSpecies], a
+	jp GetMonName
