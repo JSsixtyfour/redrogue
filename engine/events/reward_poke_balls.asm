@@ -34,7 +34,7 @@ Rogue_Reward_Script_PokeballText_1::
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
-	jr nz, .done
+	jp nz, RewardBallDeclined
     push de
     ; Increment 8: the offer was NAMED as a form above; this is what makes the
     ; mon actually BE one. _AddPartyMon reads wSpawnForm, folds it into the new
@@ -130,7 +130,7 @@ Rogue_Reward_Script_PokeballText_2::
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
-	jr nz, .done
+	jp nz, RewardBallDeclined
     push de
 
     ld a, [wRoguePokemonForm2]
@@ -179,7 +179,7 @@ Rogue_Reward_Script_PokeballText_3::
 	ldh a, [hCurrentMenuItem]
 	and a
     pop de
-	jr nz, .done
+	jp nz, RewardBallDeclined
     push de
 
     ld a, [wRoguePokemonForm3]
@@ -202,6 +202,13 @@ Rogue_Reward_Script_PokeballText_3::
     .done
 	ret
     
+; NO (or B) at YES / NO / INFO: close the dialogue on that same press, instead
+; of leaving the prompt up for DisplayTextID's end-of-text button wait.
+RewardBallDeclined:
+	ld a, 1
+	ldh [hNoWaitAfterText], a
+	ret
+
 PickRewardPokeballText:
 	text_far _PickPokeBallText
 	text_end

@@ -201,7 +201,11 @@ YesNoInfoChoice::
 .chosen
 	ld c, 15
 	call DelayFrames
-	jp LoadScreenTilesFromBuffer1
+	call LoadScreenTilesFromBuffer1
+	; Re-test sprite visibility: the UpdateSprites above hid every sprite
+	; standing under the menu box (text-box tiles), and nothing else re-runs it
+	; before the dialogue closes, so an NPC there stayed invisible until then.
+	jp UpdateSprites
 
 YesNoInfoText:
 	db   "YES"
