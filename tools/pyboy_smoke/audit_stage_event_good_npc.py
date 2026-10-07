@@ -239,12 +239,17 @@ def run_round_tier(failures: list) -> None:
     classes = parse_trainer_class_indexes(REPO_ROOT / "constants" / "trainer_constants.asm")
     expected_n = {1: 2, 2: 2, 3: 3, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 6}
     battle_counts = {1: 0, 2: 15, 3: 25, 4: 35, 5: 45, 6: 55, 7: 65, 8: 75, 9: 85}
+    # Stage-event classes only use their specs on a Wild Area map
+    # (StageEventSpecAllowed, 2026-10-06); FIGHT2's map is not one.
+    wild_map = parse_map_constants(
+        REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
 
     h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
     try:
         h.boot_fight2(seed=1)
         for round_n, bc in battle_counts.items():
             h.write8("wBattleCount", bc)
+            h.write8("hCurMap", wild_map)
             h.write8("wTrainerClass", classes["NURSE_JOY"])
             # Drive RogueBuildParty directly against the round-derived wTrainerNo,
             # mirroring what StageEventRoundTier would compute for this wBattleCount.

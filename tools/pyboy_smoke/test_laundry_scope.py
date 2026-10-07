@@ -1,5 +1,9 @@
 """Machine-state checks for retired field moves and unused Yellow trainers."""
-from source_constants import parse_rgbds_constants, parse_trainer_class_indexes
+from source_constants import (
+    parse_map_constants,
+    parse_rgbds_constants,
+    parse_trainer_class_indexes,
+)
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 
@@ -45,8 +49,13 @@ class LaundryScopeSmokeTest(HarnessTestCase):
             REPO_ROOT / "constants/trainer_constants.asm"
         )
         team_sizes = (2, 2, 3, 3, 4, 4, 5, 5, 6)
+        # The spec is only used on a Wild Area map (StageEventSpecAllowed,
+        # 2026-10-06); FIGHT2's map is not one.
+        wild_map = parse_map_constants(
+            REPO_ROOT / "constants/map_constants.asm")["PROCEDURAL_CAVE_1"]
         for number, expected_n in enumerate(team_sizes, 1):
             with self.subTest(team=number):
+                h.write8("hCurMap", wild_map)
                 h.write8("wTrainerClass", classes["JESSIE_JAMES"])
                 h.write8("wTrainerNo", number)
                 h.call_routine("ReadTrainer", limit=600)

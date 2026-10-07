@@ -84,6 +84,12 @@ RogueBuildPartyFromSpecPtr::
 ; and generated teams across its wTrainerNo range.
 ; ===========================================================================
 PartyGenFindSpec:
+; The stage-event classes are also vanilla map trainers (Saffron Gym's
+; Psychics, the Mansion Burglars) whose set number is not a round; they only
+; use their specs on a Wild Area map. Nothing is live yet, so the farcall's
+; clobbers are free; carry survives it.
+	farcall StageEventSpecAllowed
+	jr nc, .noSpec
 	ld a, [wTrainerNo]
 	and a
 	jr z, .noSpec                  ; wTrainerNo is 1-based; 0 is never a spec

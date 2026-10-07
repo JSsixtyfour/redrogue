@@ -51,6 +51,8 @@ Route17_Script:
 
 	RogueAutoWalkScripts Route17, PAD_DOWN, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_ROUTE_17, TEXT_ROUTE17_NO_TURNING_BACK, SCRIPT_ROUTE17_PLAYER_IS_MOVING, wRoute17CurScript
 
+; Route 17 is not currently used as a stage (no WARP_NO_RETURN entry warp), so
+; these coords are unverified. Re-derive them from the entry warp if it returns.
 Route17EntranceCoords:
 	dbmapcoord 5, 1
 	dbmapcoord 6, 1

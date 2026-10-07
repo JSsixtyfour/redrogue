@@ -96,8 +96,13 @@ IF FORCE_GIFT_TRADE_FORM_TEST
 	ld a, 1
 	ld [wRoguePokemonForm1], a
 ENDC
+	; The gift count is re-read with GetGiverCount at every use, never cached in
+	; wBuffer: HOME's FarCopyData stores its bank in wBuffer+0, and the
+	; GIFT_MON_EVOLVE eligibility check reaches it twice (GetRewardMonLevel,
+	; LoadEvoListForSpecies). A cached count became 56/49, so later slots rolled
+	; indices past the list end - a blank, glitched menu row whose description
+	; pointer crashed on hover (RR-0011, Oak's Lab).
 	call GetGiverCount          ; a = number of gifts this giver has
-	ld [wBuffer], a             ; gift count / Rangerandom range
 	and a
 	jr nz, .initSlots
 	; Defensive guard for malformed/empty giver lists. Do not dereference entry 0.
@@ -116,7 +121,7 @@ ENDC
 	ld a, BRIDGE_GIFT_ROLL_RETRIES
 	ld [wBuffer + 2], a
 .tryEligible
-	ld a, [wBuffer]
+	call GetGiverCount
 	ld c, a
 	call Rangerandom
 	ld [wBuffer + 3], a         ; candidate entry index
@@ -134,12 +139,11 @@ ENDC
 	xor a
 	ld [wBuffer + 4], a
 .scanEligible
-	ld a, [wBuffer + 4]
+	call GetGiverCount
 	ld b, a
-	ld a, [wBuffer]
+	ld a, [wBuffer + 4]
 	cp b
 	jr z, .eligibleExhausted
-	ld a, b
 	ld [wBuffer + 3], a
 	call BridgeGiftIsEligible
 	jr nc, .nextScan
@@ -167,7 +171,7 @@ ENDC
 .noEligible
 	; Nothing eligible exists, so there is no valid entry to repeat. Preserve a
 	; usable three-choice menu by drawing from the giver's complete list.
-	ld a, [wBuffer]
+	call GetGiverCount
 	ld c, a
 	call Rangerandom
 	ld [wBuffer + 3], a

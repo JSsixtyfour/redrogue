@@ -11,6 +11,7 @@ SECTION "ProcStageHooks", ROMX
 ; BEFORE InitMapSprites loads tile patterns, for the procedural cave/forest maps.
 ; The SPRITE_* constant was staged into SRAM by the assigned-area preload.
 ProcBossPatchStageSprite::
+	farcall StageEventDisarmOnOtherStage ; every map load: took the non-wild door?
 	farcall MiniBossPatchStageSprite   ; chained here to save a HOME farcall; a map is
 	                                   ; never both a miniboss stage and a procedural
 	                                   ; stage, so order between them does not matter

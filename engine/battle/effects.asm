@@ -974,8 +974,12 @@ FlinchSideEffect:
 	jr z, .gotEffectChance
 	ld b, 30 percent + 1 ; chance of flinch otherwise
 .gotEffectChance
+	; hl is the target's BattleStatus1 for the set below, and farcall loads
+	; the callee's address into hl, so it must be saved across the call.
 	ld e, b
+	push hl
 	farcall BridgeAdjustFlinchThreshold
+	pop hl
 	ld b, e
 	call BattleRandom
 	cp b

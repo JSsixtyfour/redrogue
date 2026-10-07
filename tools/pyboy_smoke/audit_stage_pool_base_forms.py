@@ -42,6 +42,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
 from source_constants import (  # noqa: E402
+    parse_map_constants,
     parse_rgbds_constants,
     parse_trainer_class_indexes,
 )
@@ -51,6 +52,11 @@ EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 STAGE_CLASSES = ["JESSIE_JAMES", "PSYCHIC_TR", "BURGLAR", "NURSE_JOY", "OFFICER_JENNY"]
 ALL_GROUPS = 0b111
 EVENTS = parse_rgbds_constants(EVENT_CONSTANTS)
+# These classes only use their stage-event specs on a Wild Area map
+# (StageEventSpecAllowed, 2026-10-06); anywhere else they are vanilla map
+# trainers and roll a GetRandRoster team. Build them where they really appear.
+WILD_AREA_MAP = parse_map_constants(
+    REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
 
 
 def evolution_targets():
@@ -76,6 +82,7 @@ def build(h, class_index, battle_count, trainer_no, unlock_stage):
         h.set_event(EVENTS["EVENT_KANTO_TIMEWARP_ACTIVATED"])
     h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [ALL_GROUPS], bank=1)
     h.write8("wBattleCount", battle_count)
+    h.write8("hCurMap", WILD_AREA_MAP)
     h.write8("wTrainerClass", class_index)
     h.write8("wTrainerNo", trainer_no)
     h.call_routine("ReadTrainer", limit=600)

@@ -2947,6 +2947,9 @@ wGameProgressFlagsEnd::
 ; byte sits BELOW wGameProgressFlagsEnd, so the run-reset FillMemory over
 ; wGameProgressFlags..wGameProgressFlagsEnd does NOT sweep it, and it is
 ; inside wMainData so a Continue restores whatever the save held.
+; Also disarmed on loading a lobby door's NON-wild-area destination
+; (StageEventDisarmOnOtherStage, 2026-10-06), so taking the other door does
+; not carry an armed event through that stage.
 wStageEvent:: db
 
 ; Second options byte, for the extra options menu (SELECT on the OPTION screen).

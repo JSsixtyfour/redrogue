@@ -840,6 +840,96 @@ StageEventRebuildStolenMon:
 	ret
 
 ; ============================================================
+; StageEventIsEventMap  (2026-10-06)
+; OUTPUT: carry SET if hCurMap is a Wild Area map, the only maps a stage
+;         event's characters ever stand on. Clobbers a only.
+;
+; Not GetCurMapStageClass: its wild-area bit comes from WildAreaStageMapTable,
+; which is the 4-pokeball mechanism's list and leaves out the Cemetery floors.
+; ============================================================
+StageEventIsEventMap::
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .yes
+	cp PROCEDURAL_FOREST
+	jr z, .yes
+	cp PROCEDURAL_FACILITY
+	jr z, .yes
+	cp PROCEDURAL_CEMETERY_1
+	jr z, .yes
+	cp PROCEDURAL_CEMETERY_2
+	jr z, .yes
+	cp PROCEDURAL_CEMETERY_3
+	jr z, .yes
+	cp PROCEDURAL_CEMETERY_4
+	jr z, .yes
+	and a                         ; carry clear
+	ret
+.yes
+	scf
+	ret
+
+; ============================================================
+; StageEventSpecAllowed  (2026-10-06)
+; Asked by PartyGenFindSpec before it uses wTrainerClass's spec list.
+; OUTPUT: carry SET = the spec list may be used. Clobbers a only.
+;
+; The five stage-event classes are shared with vanilla map trainers (Saffron
+; Gym's Psychics; the Burglars in Cinnabar Gym, Pokemon Mansion and the
+; Underground Path). Their spec lists are indexed by ROUND, which
+; StageEventApplyTrainers writes into wTrainerNo, so a vanilla trainer's fixed
+; set number picked a fixed round's ambush team: set 1 got round 1's two mons
+; at Lv5-6 whatever round the run was in. Off a Wild Area map these classes
+; decline the spec and roll a GetRandRoster team, as they did before Phase 7f.
+; ============================================================
+StageEventSpecAllowed::
+	ld a, [wTrainerClass]
+	cp JESSIE_JAMES
+	jr z, StageEventIsEventMap
+	cp PSYCHIC_TR
+	jr z, StageEventIsEventMap
+	cp BURGLAR
+	jr z, StageEventIsEventMap
+	cp NURSE_JOY
+	jr z, StageEventIsEventMap
+	cp OFFICER_JENNY
+	jr z, StageEventIsEventMap
+	scf                           ; any other class: no restriction
+	ret
+
+; ============================================================
+; StageEventDisarmOnOtherStage  (2026-10-06)
+; Run on every map load (ProcBossPatchStageSprite). wStageEvent is armed at
+; lobby selection for the wild area on offer, but the player may walk through
+; the OTHER door. If the map just loaded is a lobby door's destination and is
+; not a Wild Area, that is what happened: disarm the event, so nothing reads a
+; live event during a stage it does not belong to. The next lobby selection
+; clears it anyway; this closes the window in between.
+;
+; Keyed on the door maps rather than "any non-Wild-Area map" on purpose: the
+; lobby's own side rooms (the dorm) load between the roll and the door, and
+; must leave the event armed.
+; Clobbers a/hl.
+; ============================================================
+StageEventDisarmOnOtherStage::
+	ld a, [wStageEvent]
+	and a
+	ret z
+	call StageEventIsEventMap
+	ret c
+	ldh a, [hCurMap]
+	ld hl, wLobbyDoor1StageMap
+	cp [hl]
+	jr z, .disarm
+	ld hl, wLobbyDoor2StageMap
+	cp [hl]
+	ret nz
+.disarm
+	xor a
+	ld [wStageEvent], a
+	ret
+
+; ============================================================
 ; StageEventInjectStolenMon  (Phase 7e)
 ; Puts the mon the Psychic stole onto the Psychic's own team, as its last
 ; slot, so the player fights their own Pokemon to get it back.
@@ -855,10 +945,12 @@ StageEventRebuildStolenMon:
 ; THE LAST SLOT, not the first: it reads as the trainer's ace, and it means
 ; the injection cannot be masked by a lead that the AI switches out.
 ;
-; Gated four ways, because this writes into a live enemy party and any of
+; Gated five ways, because this writes into a live enemy party and any of
 ; these being wrong would corrupt an unrelated trainer's team:
 ;   - the armed event is the Psychic
 ;   - the trainer being built IS a Psychic (not some other class on the map)
+;   - we are on a Wild Area map (Saffron Gym's Psychics are PSYCHIC_TR too,
+;     and wStageEvent can still be armed outside one)
 ;   - something was actually stolen, and it was a mon
 ;   - the enemy party is non-empty
 ; Clobbers a/bc/de/hl.
@@ -871,6 +963,8 @@ StageEventInjectStolenMon::
 	ld a, [wTrainerClass]
 	cp PSYCHIC_TR
 	ret nz
+	call StageEventIsEventMap     ; Saffron Gym's Psychics share the class
+	ret nc
 	call StageEventReadStolenKind
 	cp STOLEN_MON
 	ret nz

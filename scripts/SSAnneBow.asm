@@ -47,6 +47,8 @@ SSAnneBow_Script:
 
 	RogueAutoWalkScripts SSAnneBow, PAD_LEFT, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_SS_ANNE_BOW, TEXT_SSANNEBOW_NO_TURNING_BACK, SCRIPT_SSANNEBOW_PLAYER_IS_MOVING, wSSAnneBowCurScript
 
+; SS Anne Bow is not currently used as a stage (no WARP_NO_RETURN entry warp), so
+; these coords are unverified. Re-derive them from the entry warp if it returns.
 SSAnneBowEntranceCoords:
 	dbmapcoord 6, 13
 	dbmapcoord 7, 13

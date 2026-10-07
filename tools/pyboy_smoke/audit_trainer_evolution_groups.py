@@ -50,6 +50,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
 from source_constants import (  # noqa: E402
+    parse_map_constants,
     parse_rgbds_constants,
     parse_trainer_class_indexes,
 )
@@ -60,6 +61,10 @@ ROUND9_BATTLE_COUNT = 85
 ROUND9_TRAINER_NO = 9
 ALL_GROUPS = 0b111
 EVENTS = parse_rgbds_constants(EVENT_CONSTANTS)
+# Stage-event classes only use their specs on a Wild Area map
+# (StageEventSpecAllowed, 2026-10-06). Gym leaders ignore the map.
+WILD_AREA_MAP = parse_map_constants(
+    REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
 
 
 def species_by_name():
@@ -107,6 +112,7 @@ def set_groups(h, unlock_stage):
 def build(h, class_index, unlock_stage):
     set_groups(h, unlock_stage)
     h.write8("wBattleCount", ROUND9_BATTLE_COUNT)
+    h.write8("hCurMap", WILD_AREA_MAP)
     h.write8("wTrainerClass", class_index)
     h.write8("wTrainerNo", ROUND9_TRAINER_NO)
     h.call_routine("ReadTrainer", limit=600)

@@ -9,9 +9,9 @@ _OaksLabRivalIPickedTheWrongPokemonText::
 
 _OaksLabRivalAmIGreatOrWhatText::
 	text "<RIVAL>: Take my"
-	line "prize in the next room"
-    line "you're going"
-    line "to need it"
+	line "prize in the next"
+	cont "room. You're going"
+	cont "to need it!"
 	prompt
     
 _OaksLabRivalSmellYouLaterText::
