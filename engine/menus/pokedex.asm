@@ -596,12 +596,14 @@ ShowPokedexDataInternal:
 	hlcoord 1, 11
 	lb bc, 5, 18
 	call ClearScreenArea ; clear below the sprite
-	hlcoord 9, 6
-	lb bc, 3, 10
-	call ClearScreenArea ; clear height and weight
+	hlcoord 9, 4
+	lb bc, 5, 10
+	call ClearScreenArea ; clear category, height and weight
 	ld c, 20
 	call DelayFrames
-	hlcoord 9, 6
+	; TYPE/ takes the category's row, so the two types land on rows 6 and 8
+	; (where HT and WT were) instead of the second one on the divider at row 9.
+	hlcoord 9, 4
 	ld de, PokedexTypeText
 	call PlaceString
 	; A Pokedex entry identifies a species, not an owned mon instance. Clear
@@ -611,7 +613,7 @@ ShowPokedexDataInternal:
 	push af
 	xor a
 	ld [wLoadedMon + MON_CATCH_RATE], a
-	hlcoord 10, 7
+	hlcoord 10, 6
 	predef PrintMonType
 	pop af
 	ld [wLoadedMon + MON_CATCH_RATE], a
