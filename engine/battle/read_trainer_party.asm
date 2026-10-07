@@ -144,20 +144,10 @@ ENDC
 ; because a future non-z return must NOT be mixed - it would mean the roster
 ; path declined and the authored list below is live.
 ;
-; ⚠ GAMBLER IS EXEMPT, and this is not a special case so much as the one place
-; the roster path already owns its movesets. Gambler's Paradise draws its whole
-; team from GamblerMonMovesets and OverrideGamblerMoves writes each mon's four
-; moves from that table INSIDE GetRandRosterLoop, immediately after AddPartyMon.
-; Mixing on top would roll those away and delete the feature. SpecialTrainerMoves
-; needs no such guard: it runs at .AddAdditionalMoveData, after this, so it still
-; wins.
-    ld a, [wTrainerClass]
-    cp GAMBLER
-    jr nz, .notGambler
-    ld a, LOSS_ORIGIN_ORIGINAL    ; GamblerMonMovesets is hand-authored
-    call FillEnemyMoveOrigins
-    jp .AddAdditionalMoveData
-.notGambler
+; Gamblers go through here too since party roster Phase 6: RogueRosterMixId
+; returns MIX_GAMBLER for them, so every slot takes its forced set from the
+; curated corpus. SpecialTrainerMoves runs at .AddAdditionalMoveData, after
+; this, so it still wins.
     call RogueRosterMixId
     call RogueApplyMixToParty
     jp .AddAdditionalMoveData

@@ -2631,3 +2631,31 @@
 	band_mon TOTODILE
 	band_warp
 	band_end
+
+; --- Gambler -----------------------------------------------------------------
+	band_pool Gambler_Fod1
+	band_mon DUGTRIO
+	band_mon RHYDON
+	band_mon MAROWAK
+	band_mon GOLEM
+	band_mon TAUROS
+	band_mon NIDOKING
+	band_mon DRAGONITE
+	band_mon DRAGONAIR
+	band_mon RAPIDASH
+	band_mon ARBOK
+	band_mon LICKITUNG
+	band_mon ONIX
+	band_mon PINSIR
+	band_mon OMASTAR
+	band_mon KINGLER
+	band_mon CLOYSTER
+	band_mon TENTACRUEL
+	band_mon MOLTRES
+	band_mon NINETALES
+	band_mon ARCANINE
+	band_mon FLAREON
+	band_mon TANGELA
+	band_johto
+	band_warp
+	band_end

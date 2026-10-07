@@ -932,6 +932,8 @@ PartyGenTakeKeepFlag:
 ; pool slot [wPartyGenSlot] draws from - see PartyGenSlotPoolId.
 PartyGenPoolEntry:
 	call PartyGenSlotPoolId        ; a = pool id
+; INPUT a = pool id. hl -> its TrainerPoolTable row.
+PartyGenPoolEntryId:
 	ld hl, TrainerPoolTable
 	ld bc, POOL_TABLE_ENTRY_SIZE
 	jp AddNTimes
@@ -1119,7 +1121,10 @@ PartyGenPoolCandidateOk:
 ; bad indexing.
 ; ===========================================================================
 PartyGenDrawFromPool:
-	call PartyGenPoolEntry
+	call PartyGenSlotPoolId        ; a = pool id
+; INPUT a = pool id: the draw with no spec behind it (RogueDrawFromPoolFar).
+PartyGenDrawFromPoolId:
+	call PartyGenPoolEntryId
 	ld a, [hli]
 	ld b, a                        ; b = Kanto run count
 	ld a, [hli]
@@ -1237,6 +1242,38 @@ PartyGenDrawFromPool:
 .empty
 	pop hl
 	xor a
+	ret
+
+; ===========================================================================
+; RogueDrawFromPoolFar (farcall target)
+;
+; INPUT:  e = pool id (a TrainerPoolTable row, e.g. POOL_BAND_Gambler_Fod1)
+; OUTPUT: wCurPartySpecies = one entry of that pool, drawn from the runs the
+;         active species groups allow; the pool's FIRST entry if none is active
+;         (the same fallback PartyGenRollFromPool's .giveUp takes)
+;
+; For the roster path (GetRandRosterLoop, another bank), which has no spec: the
+; Gambler's pool (party roster Phase 6). The farcall contract is honoured: the
+; argument comes in e, the result goes out in WRAM. No filters, no evolution:
+; the caller evolves by level itself. wSpawnForm is left holding the entry's form
+; SPEC; the roster loop overwrites it with its own form roll before AddPartyMon.
+; CLOBBERS everything.
+; ===========================================================================
+RogueDrawFromPoolFar::
+	ld a, e
+	push af
+	call PartyGenDrawFromPoolId
+	pop bc                         ; b = pool id (pop leaves the flags alone)
+	ret c
+	ld a, b
+	call PartyGenPoolEntryId
+	ld bc, 3
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a                        ; hl = the species list
+	ld a, [hl]
+	ld [wCurPartySpecies], a
 	ret
 
 ; ===========================================================================
@@ -2597,6 +2634,12 @@ RogueBandIndex:
 ; the same statement about the same battle.
 ; ===========================================================================
 RogueRosterMixId::
+; Gambler's Paradise is outside the grid: every gambler slot takes its forced
+; set (MIX_GAMBLER, party roster Phase 6). `ld` leaves the flags alone.
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	ld a, MIX_GAMBLER
+	ret z
 	call RogueBattleRound          ; b = round index, a = step
 	ld d, 0                        ; d = kind row 0: route trainers
 	cp FINAL_ROUTE_STEP

@@ -527,7 +527,10 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
                         elif sg == "warp" and g != "warp":
                             out.append(("error", "{}: {} is a Warp-group species and "
                                         "needs (warp)".format(where, shown)))
-                    if kind in ("Fod", "Off") and sp in evo_targets:
+                    # Gamblers list evolved mons on purpose: a themed, fully
+                    # evolved team, each with its own forced set.
+                    if (kind in ("Fod", "Off") and sp in evo_targets
+                            and c["section"] != "Gamblers"):
                         out.append(("warning", "{}: {} is not a base form".format(where, shown)))
                     if kind == "Ace" and band in WEAK_ACE_BST and c["section"] == "Gym leaders":
                         total = bst(sp, form)
@@ -539,6 +542,142 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
                         out.append(("warning", "{}: {} is listed {} times".format(
                             where, names.display(sp, form), n)))
     return out
+
+
+# --- gambler sets (party roster Phase 6) ---------------------------------------
+#
+# The "#### Sets" table under "## Gamblers": | Species | Move, Move, Move, Move | Notes |.
+# tools/gen_movesets.py reads it through load_gambler_sets() and writes each row into
+# data/trainers/movesets.asm as a TIER_GAMBLER record; --check here fails when the two
+# disagree, so `make audit` catches a doc edit that was never regenerated (gen_movesets
+# itself needs the K: corpus and is not part of the audit).
+
+GAMBLER_PREFIX = "Gambler"
+MOVE_CONSTANTS = os.path.join(ROOT, "constants", "move_constants.asm")
+MOVESETS_ASM = os.path.join(ROOT, "data", "trainers", "movesets.asm")
+MOVE_DISPLAY = {"PSYCHIC_M": "Psychic"}
+
+
+def load_moves():
+    with open(MOVE_CONSTANTS, encoding="utf-8") as f:
+        return {m.group(1) for m in re.finditer(r"^\s*const\s+([A-Z0-9_]+)", f.read(), re.M)}
+
+
+def move_const(name, moves):
+    key = re.sub(r"[ -]+", "_", name.strip().upper())
+    key = {v.upper(): k for k, v in MOVE_DISPLAY.items()}.get(key, key)
+    if key not in moves:
+        raise RosterError("unknown move {!r}".format(name))
+    return key
+
+
+def parse_gambler_sets(text, names, moves=None):
+    """[(SPECIES, (move1, move2, move3, move4))] in table order."""
+    moves = load_moves() if moves is None else moves
+    out, section, inside = [], None, False
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        if line.startswith("## "):
+            section, inside = line[3:].strip(), False
+        elif line.startswith("### "):
+            inside = False
+        elif line.startswith("#### "):
+            inside = section == "Gamblers" and line[5:].strip().lower() == "sets"
+        elif inside and line.startswith("|"):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if cells[0] == "Species" or not cells[0].strip("-: "):
+                continue
+            try:
+                if len(cells) < 2:
+                    raise RosterError("a set row needs | Species | Moves |")
+                species, form = names.lookup(cells[0])
+                if form is not None:
+                    raise RosterError("{} is a form; curated sets are keyed on the species "
+                                      "only".format(cells[0]))
+                mv = tuple(move_const(m, moves) for m in cells[1].split(",") if m.strip())
+                if len(mv) != 4:
+                    raise RosterError("{} lists {} moves, not 4".format(cells[0], len(mv)))
+            except RosterError as e:
+                raise RosterError("PARTY_ROSTER.md:{}: {}".format(lineno, e))
+            out.append((species, mv))
+    return out
+
+
+def load_gambler_sets():
+    """The doc's gambler sets, for tools/gen_movesets.py."""
+    return parse_gambler_sets(read(DOC), Names())
+
+
+def load_evolution_graph():
+    """{SPECIES: [every species it evolves into, by any method]}, from
+    EvosMovesPointerTable's order (internal species id order)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "pyboy_smoke"))
+    from pathlib import Path
+    from source_constants import parse_rgbds_constants
+    ids = parse_rgbds_constants(Path(POKEMON_CONSTANTS))
+    by_id = {}
+    for name in load_species():
+        if name in ids and 0 < ids[name] < 256:
+            by_id.setdefault(ids[name], name)
+    with open(EVOS_ASM, encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    table = re.search(r"EvosMovesPointerTable:\n(.*?)assert_table_length", text, re.S)
+    labels = re.findall(r"dw\s+(\w+)", table.group(1))
+    species_of = {lab: by_id.get(i + 1) for i, lab in enumerate(labels)}
+    graph = {}
+    for lab, body in re.findall(r"^(\w+EvosMoves):\n(.*?)^\tdb 0", text, re.S | re.M):
+        for m in re.finditer(r"db\s+EVOLVE_(?:LEVEL|ITEM|TRADE),([^;\n]*)", body):
+            graph.setdefault(species_of.get(lab), []).append(m.group(1).split(",")[-1].strip())
+    return graph
+
+
+def lint_gamblers(chars, sets, names, graph=None):
+    """Every species the gambler pool can field, evolutions included, needs a set."""
+    out = []
+    pool = next((c for c in chars if c["prefix"] == GAMBLER_PREFIX), None)
+    if pool is None:
+        return out if not sets else [("error", "gambler sets but no ### {} pool".format(
+            GAMBLER_PREFIX))]
+    graph = load_evolution_graph() if graph is None else graph
+    reachable = set()
+    for band in pool["bands"].values():
+        for sp, form, _ in band.get("Fod", []):
+            if form is not None:
+                out.append(("error", "{} Fodder: {} is a pinned form; the roster rolls its own "
+                            "forms and a set cannot name one".format(GAMBLER_PREFIX,
+                                                                     names.display(sp, form))))
+            todo = [sp]
+            while todo:
+                s = todo.pop()
+                if s not in reachable:
+                    reachable.add(s)
+                    todo.extend(graph.get(s, []))
+    have = {sp for sp, _ in sets}
+    for sp in sorted(reachable - have):
+        out.append(("error", "Gambler: {} can be fielded (pool entry or its evolution) but has "
+                    "no row in the Sets table, so it would fall back to random moves".format(
+                        species_display(sp))))
+    for sp in sorted(have - reachable):
+        out.append(("warning", "Gambler: {} has a set but the pool can never field it".format(
+            species_display(sp))))
+    return out
+
+
+def movesets_gambler_records(path=MOVESETS_ASM):
+    """Sorted [(SPECIES, moves)] of movesets.asm's TIER_GAMBLER records."""
+    out, cur = [], None
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r"^Moveset_(\w+)::", line)
+            if m:
+                cur = m.group(1)
+                continue
+            m = re.match(r"^\s*db\s+(\w+),\s*(\w+),\s*(\w+),\s*(\w+),\s*TIER_GAMBLER\b", line)
+            if m and cur:
+                out.append((cur, m.groups()))
+    return sorted(out)
 
 
 # --- generated curve block ----------------------------------------------------------
@@ -627,6 +766,9 @@ def main():
         chars = parse_doc(doc_text, names)
         asm = emit_asm(chars)
         findings = lint(chars, names)
+        gambler_sets = parse_gambler_sets(doc_text, names)
+        findings += lint_gamblers(chars, gambler_sets, names)
+        gambler_stale = movesets_gambler_records() != sorted(gambler_sets)
         new_doc = splice_curve(doc_text, curve_block(load_curve()))
     except RosterError as e:
         print("gen_party_roster: " + str(e), file=sys.stderr)
@@ -665,10 +807,20 @@ def main():
             print("gen_party_roster: the generated curve block in PARTY_ROSTER.md is stale; "
                   "rerun `python3 tools/gen_party_roster.py`", file=sys.stderr)
             bad = True
+        if gambler_stale:
+            print("gen_party_roster: data/trainers/movesets.asm's TIER_GAMBLER records differ "
+                  "from the Gamblers Sets table; run `py tools/gen_movesets.py` (it reads "
+                  "the corpus on the K: drive, so from Windows)", file=sys.stderr)
+            bad = True
         if bad:
             return 1
-        print("gen_party_roster: band_pools.asm and the curve block match PARTY_ROSTER.md")
+        print("gen_party_roster: band_pools.asm, the curve block and the gambler sets "
+              "match PARTY_ROSTER.md")
         return 0
+    if gambler_stale:
+        print("gen_party_roster: note: the gambler sets changed; also run "
+              "`py tools/gen_movesets.py` (from Windows: it reads the K: corpus)",
+              file=sys.stderr)
     write(OUT, asm)
     if new_doc != doc_text:
         write(DOC, new_doc)

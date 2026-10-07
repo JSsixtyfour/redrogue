@@ -233,7 +233,7 @@ BuildMewtwoMoveset:
 ; ApplyLegendaryMoveset
 ; Writes the 4 moves built by BuildLegendaryMoveset (wBuffer+6..9) into a
 ; target mon's MON_MOVES field, and rewrites MON_PP from each move's base PP
-; (Moves struct byte 5) - same pattern as OverrideGamblerMoves. Works for any
+; (Moves struct byte 5) - the pattern the old OverrideGamblerMoves used. Works for any
 ; MON_MOVES pointer (enemy or player array); caller computes the base.
 ; Input: hl = pointer to target mon's MON_MOVES field (4 bytes)
 ; Clobbers: a, b, c, d, e, hl

@@ -104,7 +104,7 @@ def roster_team_sizes():
 # so a new mix row cannot be added to the ROM without this model growing with
 # it - which is the only way the reachability check below stays honest.
 ALL_MIX_NAMES = sum((list(row) for row in ROSTER_GRID), []) \
-    + list(GYM_BAND) + ["MIX_E4_SETS"]
+    + list(GYM_BAND) + ["MIX_E4_SETS", "MIX_GAMBLER"]
 
 # `DEF NUM_MOVESET_MIXES EQU const_value` does not survive parse_rgbds_constants
 # (const_value is an rgbds builtin, not a name it has seen), so these two sizes
@@ -233,6 +233,13 @@ class DifficultyGridContractTest(unittest.TestCase):
         seen.update(image.rom[roster:roster + 2 * NUM_BANDS])
         gym = image.offset("GymMixByBand")
         seen.update(image.rom[gym:gym + NUM_BANDS])
+        # MIX_GAMBLER is an immediate in RogueRosterMixId (party roster Phase
+        # 6): ld a, [wTrainerClass] / cp GAMBLER / ld a, MIX_GAMBLER / ret z.
+        # Read out of the code itself, and the opcodes around it checked, so a
+        # reshuffled prologue fails here instead of reading a stray byte.
+        code = image.offset("RogueRosterMixId")
+        if image.rom[code] == 0xFA and image.rom[code + 3] == 0xFE                 and image.rom[code + 5] == 0x3E and image.rom[code + 7] == 0xC8:
+            seen.add(image.rom[code + 6])
         return seen
 
     def test_every_mix_row_is_reachable(self):
@@ -553,47 +560,56 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         self._check([at(2, 0) - 1, at(2, 0), at(4, 0), at(6, 0),
                      ROUND["LAST_ROUND_BATTLECOUNT"] + 6])
 
-    def test_gambler_is_exempt_from_the_grid(self):
-        """Gambler's Paradise owns its own movesets and must not be mixed.
+    def test_gambler_fields_its_forced_sets(self):
+        """Gambler's Paradise: every gambler mon carries one of ITS forced sets.
 
-        GetRandRosterLoop calls OverrideGamblerMoves per mon, writing the four
-        moves from GamblerMonMovesets straight into the mon it just added.
-        Applying the grid on top would roll those away, which deletes the
-        feature while leaving every other test green - the applier would look
-        like it was working perfectly.
+        Party roster Phase 6 (2026-10-07) moved the sets out of a private table
+        (GamblerMonMovesets / OverrideGamblerMoves) into the curated corpus as
+        TIER_GAMBLER records, and the gambler onto the grid with its own row:
+        RogueRosterMixId returns MIX_GAMBLER, whose six set units cover every
+        slot. The sets are keyed on the species FIELDED, so an evolved pool
+        entry (Dragonair at 55+, Onix at 38+) must find its evolution's row.
 
-        Asserted by the hook NOT firing, not by comparing movesets: a mixed
-        gambler could coincidentally keep its themed four, and the thing under
-        test is the exemption itself.
-
-        A "did not happen" assertion is worthless without a control, so this
-        also drives YOUNGSTER at the same wBattleCount in the same boot. If the
-        hook fires for one class and not the other, the exemption is real; if it
-        fires for neither, this test was passing for the wrong reason.
+        This is the plan's "the fallback never fires" check: a slot that found
+        no TIER_GAMBLER record would take MIX_GAMBLER's MSRC_RANDOM_TM fallback
+        and miss every row of the table. Two rounds, so both stages of an
+        evolving entry get a chance to appear; the Sets table is read from the
+        doc, the same source tools/gen_movesets.py builds the corpus from.
         """
+        import sys
+        sys.path.insert(0, str(REPO_ROOT / "tools"))
+        import gen_party_roster
+        species_ids = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        sets = {}
+        for species, moves in gen_party_roster.load_gambler_sets():
+            sets.setdefault(species_ids[species], []).append(
+                sorted(move_ids[m] for m in moves))
         self._boot()
         h = self.harness
         assert h is not None
-        self.seen.clear()
-        h.write8("wBattleCount", at(6, 1))  # a late-band route step: the grid rolls three slots
-        h.write8("wTrainerClass", self.classes["GAMBLER"])
-        h.write8("wTrainerNo", 1)
-        h.call_routine("ReadTrainer", limit=60000)
-        self.assertEqual(
-            self.seen, [],
-            "RogueApplyMixToParty ran for a GAMBLER; its themed movesets have "
-            "just been rolled away",
-        )
-        self.assertGreater(
-            h.read8("wEnemyPartyCount"), 0,
-            "the gambler roster was never built, so the exemption above proved "
-            "nothing about the exemption",
-        )
-        self.assertEqual(
-            self._selected_mix(at(6, 1)), _constants()[expected_roster_mix(at(6, 1))],
-            "the control class did not reach the mix hook either, so this test "
-            "cannot tell an exemption from a dead code path",
-        )
+        mix = _constants()["MIX_GAMBLER"]
+        fielded = 0
+        for battle_count in (at(4, 1), at(8, 3)):
+            with self.subTest(battle_count=battle_count):
+                self.seen.clear()
+                h.write8("wBattleCount", battle_count)
+                h.write8("wTrainerClass", self.classes["GAMBLER"])
+                h.write8("wTrainerNo", 1)
+                h.call_routine("ReadTrainer", limit=60000)
+                self.assertEqual(self.seen, [mix], "a gambler must take MIX_GAMBLER")
+                count = h.read8("wEnemyPartyCount")
+                self.assertGreater(count, 0)
+                for slot in range(count):
+                    species = h.read8("wEnemyPartySpecies", offset=slot)
+                    # PARTYMON_STRUCT_LENGTH 0x2C, MON_MOVES at offset 8
+                    moves = sorted(h.read8("wEnemyMons", offset=slot * 0x2C + 8 + i)
+                                   for i in range(4))
+                    self.assertIn(species, sets, f"slot {slot}: species {species} has no gambler set")
+                    self.assertIn(moves, sets[species],
+                                  f"slot {slot}: species {species} fielded {moves}, not a gambler set")
+                    fielded += 1
+        self.assertGreater(fielded, 2)
 
     def test_mini_boss_takes_the_gym_leader_row_for_its_round(self):
         """"Mini-boss / rival matches the gym leader of the same round."

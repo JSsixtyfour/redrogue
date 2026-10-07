@@ -77,6 +77,12 @@ DEF MIX_FALLBACK_OFFSET EQU 13
 ; RosterMixByKindAndBand / GymMixByBand (rogue_build_party.asm) are generated
 ; from them, so no two readers can disagree about a band.
 ;
+; MIX_GAMBLER is outside the grid: Gambler's Paradise (party roster Phase 6). Every
+; slot takes a TIER_GAMBLER set, i.e. its species' row in PARTY_ROSTER.md's
+; Gamblers Sets table, keyed on the species actually FIELDED (after evolution).
+; RogueRosterMixId returns it for the GAMBLER class. Its quota of 6 is meant for
+; every slot: a smaller team just leaves the extra units unplaced.
+;
 ; MIX_ELITE keeps its Phase 2 name rather than becoming MIX_GYM_FINAL: it is
 ; referenced by name in a dozen comments and five tests, and the
 ; genuinely-Elite-Four row is MIX_E4_SETS.
@@ -94,6 +100,7 @@ DEF MIX_FALLBACK_OFFSET EQU 13
 	const MIX_GYM_LATE        ; 10
 	const MIX_ELITE           ; 11
 	const MIX_E4_SETS         ; 12
+	const MIX_GAMBLER         ; 13
 DEF NUM_MOVESET_MIXES EQU const_value
 
 ; Bands. A band is GYM_BAND_ROUNDS consecutive gyms; the leader's species pools
@@ -183,6 +190,7 @@ MovesetMixTable::
 	mix     0,   0,   0,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GYM_LATE
 	mix     0,   0,   0,   1,  1,   3,  TIER_HARD | TIER_ELITE,  RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; ELITE
 	mix     0,   0,   0,   0,  0,   6,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; E4_SETS
+	mix     0,   0,   0,   0,  0,   6,  TIER_GAMBLER,            RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GAMBLER
 	assert_table_length NUM_MOVESET_MIXES
 
 ; --- Slot override field widths --------------------------------------------

@@ -109,12 +109,18 @@ DEF NUM_RANK_ROWS EQU const_value
 
 ; --- Curated set tiers -----------------------------------------------------
 ; Bit mask over the corpus's own grading, used as a mix row's `set_tier_mask`.
-; A mask of 0 means "any tier".
+; STRICT: a record qualifies only when (its tier & the mask) is nonzero
+; (.recordPasses in rogue_build_party.asm), so a mask of 0 matches NOTHING and a
+; new bit never leaks into an existing row.
 DEF TIER_BAD    EQU 1 << 0
 DEF TIER_EASY   EQU 1 << 1
 DEF TIER_NORMAL EQU 1 << 2
 DEF TIER_HARD   EQU 1 << 3
 DEF TIER_ELITE  EQU 1 << 4
+; Not a corpus grade: Gambler's Paradise's forced sets (PARTY_ROSTER.md
+; "## Gamblers", copied into movesets.asm by tools/gen_movesets.py). Only
+; MIX_GAMBLER asks for it (party roster Phase 6, 2026-10-07).
+DEF TIER_GAMBLER EQU 1 << 5
 
 ; --- Species pools ---------------------------------------------------------
 ; A pool entry is (species, form spec). TWO bytes, not one, and fixed width.
@@ -261,7 +267,7 @@ DEF NUM_MSRC_QUOTAS EQU MSRC_SET + 1
 ; a curated record's origin_id byte is its label index directly.
 DEF LOSS_ORIGIN_LEARNSET  EQU 0 ; vanilla WriteMonMoves (also every wild mon)
 DEF LOSS_ORIGIN_GENERATED EQU 1 ; MSRC_RANDOM / _TM / _TM_ONLY / LEARNSET_FULL
-DEF LOSS_ORIGIN_ORIGINAL  EQU 2 ; hand-authored: MSRC_EXPLICIT, Gambler, legendary, SpecialTrainerMoves
+DEF LOSS_ORIGIN_ORIGINAL  EQU 2 ; hand-authored: MSRC_EXPLICIT, legendary, SpecialTrainerMoves
 DEF LOSS_ORIGIN_CHAMPION  EQU 3 ; FINAL_AI: the player's own archived Champion team
 
 ; Champion Lance's wTrainerNo (party roster Phase 5, 2026-10-07). LanceSpecs is

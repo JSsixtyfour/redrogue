@@ -666,8 +666,65 @@ partners and the Johto starters; edit freely.
 
 ## Gamblers
 
-Not on the banded system yet (Phase 6). Gambler's Paradise still uses
-`data/trainers/gambler_movesets.asm`.
+Gambler's Paradise (witch challenge 13) sends the next stage to the Game Corner, whose trainers
+are Gamblers fielding themed teams with forced movesets, mostly one-hit KOs and trapping moves. Team sizes and levels are the route
+trainer's (the roster path). Only the species and the moves come from here (party roster Phase 6,
+2026-10-07; until then both were `data/trainers/gambler_movesets.asm`).
+
+### Gambler (Gambler's Paradise)
+
+**The pool** is one Fodder list, used in every round. Entries are **evolved by level** like any
+fodder (Dragonair becomes Dragonite at 55, Onix becomes Steelix at 38), and the moves are looked
+up on the species actually fielded. Duplicates are allowed, as they always were for gamblers.
+No pinned forms: the roster rolls its own forms, and a set cannot name one.
+
+**Band 1: every round**
+- Fodder: Dugtrio, Rhydon, Marowak, Golem, Tauros, Nidoking, Dragonite, Dragonair, Rapidash, Arbok, Lickitung, Onix, Pinsir, Omastar, Kingler, Cloyster, Tentacruel, Moltres, Ninetales, Arcanine, Flareon, Tangela
+
+#### Sets
+
+One row per set, four moves. `tools/gen_movesets.py` copies them into the curated corpus
+(`data/trainers/movesets.asm`) as `TIER_GAMBLER` records, and `MIX_GAMBLER` gives every gambler
+slot one. **Every species the pool can field needs a row**, its evolutions included:
+`gen_party_roster.py --check` (part of `make audit`) fails otherwise, and also fails when
+`movesets.asm` is out of step with this table. A species may have more than one row; one is
+picked at random.
+
+Design rules (carried over from the old table): one OHKO move at most, and a trap may pair with
+it; slow OHKO users carry a paralysis move (Body Slam, Thunder Wave, Glare) so the AI can flip
+Gen 1's slower-misses rule before firing; fast ones skip setup and carry a nuke; every setup move
+is backed by a real attack. Level timing is ignored: a move is fair if the species learns it at
+any level or by TM/tutor. Notes cite this repo's data (`e:NNNN` = a line of
+`data/pokemon/evos_moves.asm`, TM = its base stats tmhm list, tut = the tutor block).
+
+| Species | Moves | Notes |
+|---|---|---|
+| Dugtrio | Fissure, Earthquake, Rock Slide, Slash | spd120 fast: FISSURE TM, EQ TM, ROCK_SLIDE TM, SLASH e:2357 |
+| Rhydon | Fissure, Body Slam, Earthquake, Rock Slide | spd40 slow: FISSURE TM, BODY_SLAM TM(para), EQ e:231, ROCK_SLIDE e:230 |
+| Marowak | Fissure, Body Slam, Earthquake, Fire Blast | spd45 slow: all TM |
+| Golem | Fissure, Body Slam, Earthquake, Metronome | spd45 slow: all TM; METRONOME = gambler chaos |
+| Tauros | Horn Drill, Body Slam, Earthquake, Fire Blast | spd110 fast: all TM |
+| Nidoking | Horn Drill, Earthquake, Thunderbolt, Body Slam | spd85: all TM |
+| Dragonite | Horn Drill, Wrap, Thunder Wave, Blizzard | HORN_DRILL TM, WRAP lv1, T-WAVE lv1(para), BLIZZARD TM |
+| Dragonair | Horn Drill, Wrap, Thunder Wave, Thunderbolt | HORN_DRILL TM, WRAP lv1, T-WAVE lv1(para), TBOLT TM |
+| Rapidash | Horn Drill, Fire Spin, Fire Blast, Body Slam | spd105 fast: HORN_DRILL TM, FIRE_SPIN e:3032, FIRE_BLAST e:3034, BODY_SLAM TM |
+| Arbok | Wrap, Fissure, Glare, Earthquake | WRAP lv1, FISSURE TM, GLARE e:1139(para), EQ TM |
+| Lickitung | Wrap, Fissure, Body Slam, Thunderbolt | spd30 slow: WRAP lv1, FISSURE TM, BODY_SLAM e:463(para), TBOLT TM |
+| Onix | Fissure, Bind, Body Slam, Earthquake | FISSURE TM, BIND e:921, BODY_SLAM TM(para), EQ TM |
+| Pinsir | Guillotine, Bind, Slash, Seismic Toss | GUILLOTINE e:846, BIND e:847, SLASH e:845, SEISMIC_TOSS e:842 |
+| Omastar | Clamp, Horn Drill, Hydro Pump, Spike Cannon | CLAMP e:2005, HORN_DRILL TM, HYDRO_PUMP e:2006, SPIKE_CANNON e:2002 |
+| Kingler | Guillotine, Crabhammer, Body Slam, Bubblebeam | GUILLOTINE e:2639, CRABHAMMER e:2637, BODY_SLAM TM(para), BUBBLEBEAM e:2634 |
+| Cloyster | Clamp, Blizzard, Ice Beam, Spike Cannon | CLAMP lv1, BLIZZARD TM, ICE_BEAM TM, SPIKE_CANNON e:2658 |
+| Tentacruel | Wrap, Hydro Pump, Bubblebeam, Constrict | WRAP e:2920, HYDRO_PUMP e:2921, BUBBLEBEAM e:2915, CONSTRICT e:2916(spd drop) |
+| Moltres | Fire Spin, Fire Blast, Sky Attack, Agility | FIRE_SPIN e:1594, FIRE_BLAST e:1592, SKY_ATTACK e:1593, AGILITY e:1590 |
+| Ninetales | Fire Spin, Fire Blast, Flamethrower, Confuse Ray | FIRE_SPIN e:1718, FIRE_BLAST TM, FLAMETHROWER e:1716, CONFUSE_RAY e:1714 |
+| Arcanine | Fire Spin, Fire Blast, Body Slam, Take Down | FIRE_SPIN tut e:666, FIRE_BLAST TM, BODY_SLAM TM, TAKE_DOWN e:661 |
+| Flareon | Fire Spin, Fire Blast, Body Slam, Quick Attack | FIRE_SPIN e:2095, FIRE_BLAST e:2096, BODY_SLAM TM, QUICK_ATTACK e:2089 |
+| Tangela | Bind, Sleep Powder, Mega Drain, Stun Spore | BIND e:869, SLEEP_POWDER e:865, MEGA_DRAIN e:866, STUN_SPORE e:864 |
+| Rhyperior | Horn Drill, Body Slam, Earthquake, Rock Slide | Rhydon evolves at L40 (trade rule). spd40 slow: HORN_DRILL e:4765/TM, BODY_SLAM TM(para), EQ e:4767/TM, ROCK_SLIDE e:4764/TM. Horn Drill, not Rhydon's Fissure, for variety |
+| Lickilicky | Fissure, Body Slam, Thunderbolt, Ice Beam | Lickitung evolves at L32. spd50 slow: FISSURE TM, BODY_SLAM TM(para), TBOLT TM, ICE_BEAM TM. No trap: Wrap is not in its own learnset |
+| Steelix | Fissure, Bind, Body Slam, Earthquake | Onix evolves at L38. Onix's set, all legal here: FISSURE TM, BIND e:4148, BODY_SLAM TM(para), EQ TM |
+| Tangrowth | Bind, Sleep Powder, Mega Drain, Stun Spore | Tangela evolves at L44. Tangela's set, all legal here: BIND e:4747, SLEEP_POWDER e:4752, MEGA_DRAIN TM, STUN_SPORE e:4751 |
 
 ## Elite Four
 
