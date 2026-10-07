@@ -176,6 +176,10 @@ class BalanceTablesMatchRomTest(unittest.TestCase):
         for image in self.images:
             for member in self.g.e4:
                 count, _ = image.spec_list(member.name)
+                # Lance's list ends with Champion Lance's record (party roster
+                # Phase 5), which is on the Champion curve, not the E4 grid.
+                if member.name == "Lance":
+                    count -= 1
                 for t in range(1, count + 1):
                     tier = (t - 1) // NUM_ROUND_VARIANTS + 1
                     header, _ = image.record(f"{member.name}Spec{t}")

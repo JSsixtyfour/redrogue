@@ -625,8 +625,44 @@ Police-dog and patrol flavour, same donor source as Nurse Joy. Every entry is at
 
 ## Champions
 
-Not on the banded system yet (Phase 5). The Champion rival draws from `RivalThreePool`, Champion
-Lance from the Elite Four Lance records, and Prof. Oak fields `ProfOakData`.
+The final battle: the Champion rival, or Champion Lance (when he missed the Elite Four draw), or
+Prof. Oak (Kanto Time Warp). One team each, so each has a single band. Six mons at
+`CHAMPION_R1_BASE` + `CHAMPION_R1_STEP` per slot (`CHAMPION_BASE_LEVEL` / `CHAMPION_LEVEL_STEP`
+in `constants/balance_constants.asm`), every slot a curated set (`MIX_E4_SETS`).
+
+### Rival3 (Champion rival)
+
+His ace is always his own starter, evolved, pinned in `party_specs.asm`, so this block has no
+`- Aces:` line. Fodder entries are BASE forms, and that is load-bearing: NO_RIVAL_STARTER rejects
+a draw equal to his starter, which is always a base species, so a base-form pool blocks the whole
+line of whatever he picked (list Charmander, never Charmeleon; Seadra is entered as Horsea, and
+the engine evolves it to Kingdra at these levels anyway). The accepted exceptions are the
+eeveelutions and Scizor/Electivire: only an Eevee / Scyther / Electabuzz starter can double up
+with those. Moved from `RivalThreePool` (party roster Phase 5, 2026-10-07), entry for entry.
+
+**Band 1: the Champion**
+- Fodder: Growlithe, Ponyta, Weedle, Charmander, Nidoran M, Electabuzz, Slowpoke, Pidgey, Bulbasaur, Squirtle, Rhyhorn, Nidoran F, Magmar, Scyther, Krabby, Geodude, Doduo, Eevee, Vaporeon, Jolteon, Flareon, Pinsir, Spearow, Abra, Horsea, Magikarp, Exeggcute, Sandshrew, Vulpix, Magnemite, Shellder, Machop, Aerodactyl, Tauros, Cubone, Clefairy, Gastly, Dratini, Zapdos, Rattata, Scizor (johto), Larvitar (johto), Houndour (johto), Skarmory (johto), Heracross (johto), Miltank (johto), Swinub (johto), Espeon (johto), Umbreon (johto), Electivire (warp), Glaceon (warp), Sylveon (warp), Leafeon (warp)
+
+### ChampionLance (Champion Lance)
+
+Lance on the Champion's throne. Until now he fielded the Elite Four Lance's tier-4 records; he
+now has his own team at Champion levels. Seeded from the Elite Four Lance's pool (fodder at base
+forms) with his signature dragons as aces; edit freely.
+
+**Band 1: the Champion**
+- Aces: Dragonite, Dragonite, Gyarados, Aerodactyl, Charizard, Kingdra (johto), Tyranitar (johto)
+- Fodder: Dratini, Magikarp, Aerodactyl, Charmander, Horsea, Lapras, Exeggcute, Kangaskhan, Growlithe, Snorlax, Electabuzz, Larvitar (johto), Totodile (johto), Mareep (johto), Alolan Exeggutor (warp)
+
+### ProfOak (Prof. Oak)
+
+The Time Warp Champion. Seeded from his old authored team (Tauros, Exeggutor, Arcanine, Gyarados
+and one Kanto starter's final form): those are his aces, plus Mew, which only he may field (his
+spec sets ALLOW_UBER). The fodder is the same team at base forms plus a few classic Kanto
+partners and the Johto starters; edit freely.
+
+**Band 1: the Champion**
+- Aces: Blastoise, Venusaur, Charizard, Tauros, Gyarados, Arcanine, Exeggutor, Mew
+- Fodder: Tauros, Exeggcute, Growlithe, Magikarp, Bulbasaur, Charmander, Squirtle, Pidgey, Kangaskhan, Lapras, Chikorita (johto), Cyndaquil (johto), Totodile (johto)
 
 ## Gamblers
 

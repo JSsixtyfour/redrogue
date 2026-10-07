@@ -556,6 +556,8 @@ FOR n, 1, NUM_TRAINERS + 1
 	dw LanceSpecs
 	ELIF n == RIVAL3
 	dw Rival3Specs
+	ELIF n == PROF_OAK
+	dw ProfOakSpecs
 	ELIF n == JESSIE_JAMES
 	dw JessieJamesSpecs
 	ELIF n == PSYCHIC_TR
@@ -716,8 +718,9 @@ FalknerSpec3:
 
 ; ---------------------------------------------------------------------------
 ; The Kanto Elite Four (Trainer Revamp, 2026-09-23). Until now they had no
-; spec list at all, so every tier fielded the same authored five - LANCE's
-; list also serves Champion Lance, who draws wTrainerNo 10-12 (tier 4).
+; spec list at all, so every tier fielded the same authored five. LANCE's
+; list carries one more record after the twelve: Champion Lance's
+; (LANCE_CHAMPION_TEAM, see the Champions block below).
 ; Aces: A is each member's shipped ace, C a second signature.
 ; ---------------------------------------------------------------------------
 	e4_member_pointers Lorelei
@@ -729,21 +732,47 @@ FalknerSpec3:
 	e4_member_pointers Agatha
 	e4_member_records  Agatha,  POOL_AGATHA,  GENGAR,    0, MAROWAK,   1 ; Alolan
 
-	e4_member_pointers Lance
+LanceSpecs::
+	db LANCE_CHAMPION_TEAM
+	FOR t, 1, NUM_E4_TEAMS + 1
+	dw LanceSpec{d:t}
+	ENDR
+	dw ChampionLanceSpec              ; LANCE_CHAMPION_TEAM
+	ASSERT LANCE_CHAMPION_TEAM == NUM_E4_TEAMS + 1, \
+		"Champion Lance's record must follow the twelve Elite Four records"
 	e4_member_records  Lance,   POOL_LANCE,   DRAGONITE, 0, KINGDRA,   0
 
 ; ---------------------------------------------------------------------------
-; RIVAL3, the Champion rival. ChampionsRoom.asm hands out wTrainerNo 1-5 and
-; all five reach ONE record: the variety comes from the pool roll, not from
-; five authored teams (Rival3Data in parties.asm is a spec_covered_stub).
+; The Champions (party roster Phase 5, 2026-10-07), on PARTY_ROSTER.md's
+; "## Champions" pools: one band each, six mons on the CHAMPION_R1 curve
+; (CHAMPION_BASE_LEVEL / CHAMPION_LEVEL_STEP), every slot under MIX_E4_SETS.
 ;
-; His ace is always his own selected starter: slot 5 pins
-; RIVAL_STARTER_PLACEHOLDER, which PartyGenBuildSlot turns into wRivalStarter
-; evolved to the slot's level (PatchRivalStarterSpecies). NO_RIVAL_STARTER keeps
-; the five pool slots from drawing that same line again. Levels come from
-; CHAMPION_BASE_LEVEL / CHAMPION_LEVEL_STEP (balance_constants.asm).
+;   RIVAL3   ChampionsRoom.asm hands out wTrainerNo 1-5 and all five reach ONE
+;            record. His ace is always his own starter: the last slot pins
+;            RIVAL_STARTER_PLACEHOLDER, which PartyGenBuildSlot turns into
+;            wRivalStarter evolved to the slot's level, and NO_RIVAL_STARTER
+;            keeps the pool slots off that line. Rival3_Fod1 is the old
+;            RivalThreePool entry for entry.
+;   LANCE    Champion Lance is wTrainerNo LANCE_CHAMPION_TEAM, the record
+;            after the Elite Four Lance's twelve (see LanceSpecs above). Until
+;            now he fielded the E4 tier-4 records.
+;   PROF_OAK wTrainerNo 1-3 (ChampionsRoom.asm's roll), one record. ALLOW_UBER
+;            lets his Ace pool's Mew through.
+;
+; Their parties.asm blocks (Rival3Data, LanceData, ProfOakData) are
+; spec_covered_stubs.
 ; ---------------------------------------------------------------------------
 DEF NUM_RIVAL3_TEAMS EQU 5          ; ChampionsRoom.asm's `ld c, 5`
+DEF NUM_PROF_OAK_TEAMS EQU 3        ; ChampionsRoom.asm's `ld c, 3`
+
+; \1 = character prefix, \2 = extra spec flags, \3/\4 = optional pinned ace.
+MACRO champion_spec
+	IF _NARG >= 4
+	banded_round_spec \1, CHAMPION_R, 1, 1, MIX_E4_SETS, GYM_SPEC_FLAGS | (\2), \3, \4
+	ELSE
+	banded_round_spec \1, CHAMPION_R, 1, 1, MIX_E4_SETS, GYM_SPEC_FLAGS | (\2)
+	ENDC
+ENDM
 
 Rival3Specs::
 	db NUM_RIVAL3_TEAMS
@@ -752,11 +781,19 @@ Rival3Specs::
 	ENDR
 
 Rival3Spec:
-	party_spec 6, CHAMPION_BASE_LEVEL, CHAMPION_LEVEL_STEP, POOL_RIVAL3, MIX_E4_SETS, \
-	           GYM_SPEC_FLAGS | (1 << BIT_PSPEC_NO_RIVAL_STARTER)
-	slot_override 5, 1 << BIT_POVR_SPECIES
-	db RIVAL_STARTER_PLACEHOLDER, POOL_FORM_BASE
-	db PARTY_SPEC_OVERRIDES_END
+	champion_spec Rival3, 1 << BIT_PSPEC_NO_RIVAL_STARTER, RIVAL_STARTER_PLACEHOLDER, POOL_FORM_BASE
+
+ChampionLanceSpec:
+	champion_spec ChampionLance, 0
+
+ProfOakSpecs::
+	db NUM_PROF_OAK_TEAMS
+	REPT NUM_PROF_OAK_TEAMS
+	dw ProfOakSpec
+	ENDR
+
+ProfOakSpec:
+	champion_spec ProfOak, 1 << BIT_PSPEC_ALLOW_UBER
 
 ; ===========================================================================
 ; Phase 7f: procedural stage-event characters (PROCEDURAL_WILD_AREA_PLAN.md).

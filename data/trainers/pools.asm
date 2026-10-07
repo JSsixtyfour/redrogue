@@ -94,7 +94,6 @@ ENDM
 	const POOL_AGATHA
 	const POOL_LANCE
 	const POOL_KOGA_E4
-	const POOL_RIVAL3
 ; Gym leader banded pools, one id each (a `band_same` is an alias, not an id).
 DEF BAND_POOL_PASS = 0
 INCLUDE "data/trainers/band_pools.asm"
@@ -110,7 +109,6 @@ TrainerPoolTable::
 	trainer_pool AgathaPool
 	trainer_pool LancePool
 	trainer_pool KogaE4Pool
-	trainer_pool RivalThreePool
 DEF BAND_POOL_PASS = 1
 INCLUDE "data/trainers/band_pools.asm"
 	assert_table_length NUM_TRAINER_POOLS
@@ -512,80 +510,5 @@ KogaE4Pool_Warp:
 	pool_mon WOOPER, 1 ; Paldean
 KogaE4Pool_End:
 
-; ---------------------------------------------------------------------------
-; Rival (Champion). Full roster list, transcribed as specified.
-;
-; Entries are BASE forms, and that is load-bearing: the Champion spec sets
-; BIT_PSPEC_NO_RIVAL_STARTER, which rejects a draw EQUAL to wRivalStarter, and
-; the starter is always a base species. A base-form pool therefore blocks the
-; whole line of whatever he picked - list CHARMANDER, never CHARMELEON.
-; SEADRA is entered as HORSEA for exactly that reason (at level 60+
-; ScaleTrainer_evolution promotes it to Kingdra anyway).
-;
-; The accepted exceptions, listed by name: the eeveelutions
-; (VAPOREON / JOLTEON / FLAREON and the pinned Espeon / Umbreon / Glaceon /
-; Sylveon / Leafeon forms), SCIZOR and ELECTIVIRE. Only an EEVEE / SCYTHER /
-; ELECTABUZZ starter can double up with those. test_rival3_pool_is_base_forms
-; holds the rest of the pool to the rule.
-;
-; Groups follow engine/pokemon/rarity.asm (tools/list_pool_candidates.py
-; --species): SCIZOR is Johto, ELECTIVIRE is Warp. Espeon / Umbreon sit in the
-; Johto run, as KarenPool's Umbreon does; the three later eeveelutions are Warp.
-; ---------------------------------------------------------------------------
-RivalThreePool:
-	pool_mon GROWLITHE
-	pool_mon PONYTA
-	pool_mon WEEDLE
-	pool_mon CHARMANDER
-	pool_mon NIDORAN_M
-	pool_mon ELECTABUZZ
-	pool_mon SLOWPOKE
-	pool_mon PIDGEY
-	pool_mon BULBASAUR
-	pool_mon SQUIRTLE
-	pool_mon RHYHORN
-	pool_mon NIDORAN_F
-	pool_mon MAGMAR
-	pool_mon SCYTHER
-	pool_mon KRABBY
-	pool_mon GEODUDE
-	pool_mon DODUO
-	pool_mon EEVEE
-	pool_mon VAPOREON
-	pool_mon JOLTEON
-	pool_mon FLAREON
-	pool_mon PINSIR
-	pool_mon SPEAROW
-	pool_mon ABRA
-	pool_mon HORSEA
-	pool_mon MAGIKARP
-	pool_mon EXEGGCUTE
-	pool_mon SANDSHREW
-	pool_mon VULPIX
-	pool_mon MAGNEMITE
-	pool_mon SHELLDER
-	pool_mon MACHOP
-	pool_mon AERODACTYL
-	pool_mon TAUROS
-	pool_mon CUBONE
-	pool_mon CLEFAIRY
-	pool_mon GASTLY
-	pool_mon DRATINI
-	pool_mon ZAPDOS
-	pool_mon RATTATA
-RivalThreePool_Johto:
-	pool_mon SCIZOR
-	pool_mon LARVITAR
-	pool_mon HOUNDOUR
-	pool_mon SKARMORY
-	pool_mon HERACROSS
-	pool_mon MILTANK
-	pool_mon SWINUB
-	pool_mon JOLTEON, 1 ; Espeon
-	pool_mon JOLTEON, 2 ; Umbreon
-RivalThreePool_Warp:
-	pool_mon ELECTIVIRE
-	pool_mon VAPOREON, 1 ; Glaceon
-	pool_mon VAPOREON, 2 ; Sylveon
-	pool_mon FLAREON, 1 ; Leafeon
-RivalThreePool_End:
+; The Champion rival's pool moved to PARTY_ROSTER.md ("## Champions", Rival3,
+; party roster Phase 5, 2026-10-07): Rival3_Fod1 in data/trainers/band_pools.asm.

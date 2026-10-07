@@ -263,3 +263,9 @@ DEF LOSS_ORIGIN_LEARNSET  EQU 0 ; vanilla WriteMonMoves (also every wild mon)
 DEF LOSS_ORIGIN_GENERATED EQU 1 ; MSRC_RANDOM / _TM / _TM_ONLY / LEARNSET_FULL
 DEF LOSS_ORIGIN_ORIGINAL  EQU 2 ; hand-authored: MSRC_EXPLICIT, Gambler, legendary, SpecialTrainerMoves
 DEF LOSS_ORIGIN_CHAMPION  EQU 3 ; FINAL_AI: the player's own archived Champion team
+
+; Champion Lance's wTrainerNo (party roster Phase 5, 2026-10-07). LanceSpecs is
+; the Elite Four Lance's twelve tier records followed by ONE Champion record, so
+; ChampionsRoom.asm hands out this number and InitElite4Battle (1-12) never
+; reaches it. party_specs.asm ASSERTs it is NUM_E4_TEAMS + 1.
+DEF LANCE_CHAMPION_TEAM EQU 13

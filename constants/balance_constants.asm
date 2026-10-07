@@ -64,11 +64,16 @@ DEF SET_LEVEL_SLACK_BELOW EQU 10
 DEF E4_BASE_LEVEL EQU 49
 DEF E4_LEVEL_STEP EQU 2
 
-; --- Champion (RIVAL3) ------------------------------------------------------
+; --- Champions (RIVAL3, Champion Lance, Prof. Oak) ----------------------------
 ; Six mons: slot 0 is CHAMPION_BASE_LEVEL, each slot adds CHAMPION_LEVEL_STEP,
-; the ace (his starter) last. Read by Rival3Spec in party_specs.asm.
+; the ace last. Read by champion_spec in party_specs.asm.
 DEF CHAMPION_BASE_LEVEL EQU 59
 DEF CHAMPION_LEVEL_STEP EQU 1
+; The same curve under the names banded_round_spec builds (<curve><round>_*):
+; every Champion is one round of six (party roster Phase 5, 2026-10-07).
+DEF CHAMPION_R1_MONS EQU 6
+DEF CHAMPION_R1_BASE EQU CHAMPION_BASE_LEVEL
+DEF CHAMPION_R1_STEP EQU CHAMPION_LEVEL_STEP
 
 ; --- Mini-bosses (Rival, Giovanni, Karate Master) -----------------------------
 ; One spec per round (1-9). The round is read from wBattleCount when the battle

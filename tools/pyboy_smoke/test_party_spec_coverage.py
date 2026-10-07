@@ -281,7 +281,9 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         for image in self.images:
             for prefix, teams in (
                 [(p, NUM_GYM_TEAMS) for p in GYM_LEADERS]
-                + [(p, NUM_E4_TEAMS) for p in E4_MEMBERS]
+                # LANCE's list has one more: Champion Lance's record
+                # (LANCE_CHAMPION_TEAM, party roster Phase 5).
+                + [(p, NUM_E4_TEAMS + (p == "Lance")) for p in E4_MEMBERS]
             ):
                 # Nobody has a wTrainerNo 1 hole any more: the Elite Four lost
                 # theirs 2026-09-23, the gym leaders 2026-09-29.
@@ -303,6 +305,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                         # round's record (banded design).
                         if prefix in GYM_LEADERS:
                             want = f"{prefix}Round{(number - 1) // NUM_ROUND_VARIANTS + 1}"
+                        elif prefix == "Lance" and number == NUM_E4_TEAMS + 1:
+                            want = "ChampionLanceSpec"
                         else:
                             want = f"{prefix}Spec{number}"
                         self.assertEqual(
@@ -393,6 +397,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         NO_RIVAL_STARTER flag is what keeps the other five slots off that line;
         without it the pool's CHARMANDER could stand next to his Charizard.
         """
+        labels = band_pool_labels()
         for image in self.images:
             with self.subTest(rom=image.name):
                 count, pointers = image.spec_list("Rival3")
@@ -400,10 +405,12 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 self.assertEqual(set(pointers), {image.addr("Rival3Spec")})
                 header, overrides = image.record("Rival3Spec")
                 self.assertEqual(
-                    header,
+                    header[:3] + header[4:],
                     (6, _BALANCE["CHAMPION_BASE_LEVEL"], _BALANCE["CHAMPION_LEVEL_STEP"],
-                     self.pools["POOL_RIVAL3"],
                      self.mixes["MIX_E4_SETS"], BASE_FLAGS | NO_RIVAL_STARTER))
+                # Party roster Phase 5: his pool is the roster doc's Rival3_Fod1.
+                self.assertEqual(image.pool_list_addr(header[3]),
+                                 image.addr(labels["Rival3_Fod1"]))
                 self.assertEqual(len(overrides), 1)
                 slot, flags, fields = overrides[0]
                 self.assertEqual(slot, 5)
@@ -550,7 +557,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
 
         The table is built by a FOR loop matching `n == BROCK` rather than 61
         positional rows precisely because a positional row at the wrong index is
-        invisible to assert_table_length. This checks the result: exactly the 33
+        invisible to assert_table_length. This checks the result: exactly the 34
         intended classes carry a list and every other row is still `dw 0`, so a
         mistyped ELIF cannot quietly give a route trainer a gym leader's specs.
 
@@ -561,7 +568,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         Koga's party grid so it is not the gym Koga's 24-round one, and 20
         before Phase 7f gave JESSIE_JAMES, PSYCHIC_TR, BURGLAR, NURSE_JOY and
         OFFICER_JENNY their own 9-row stage_event_banded_records lists, and 30
-        before party roster Phase 4 gave the three MINIBOSS_CLASSES theirs.
+        before party roster Phase 4 gave the three MINIBOSS_CLASSES theirs, and
+        33 before Phase 5 gave PROF_OAK his Champion list.
         Raise this only alongside a deliberate new entry in GYM_LEADERS,
         E4_MEMBERS, STAGE_EVENT_CLASSES or MINIBOSS_CLASSES above.
         """
@@ -569,8 +577,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         expected |= {entry[0] for entry in E4_MEMBERS.values()}
         expected |= STAGE_EVENT_CLASSES
         expected |= MINIBOSS_CLASSES
-        expected |= {"RIVAL3"}
-        self.assertEqual(len(expected), 33)
+        expected |= {"RIVAL3", "PROF_OAK"}
+        self.assertEqual(len(expected), 34)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
         for image in self.images:

@@ -48,7 +48,7 @@
 ; rather than walking off the end of its data into the next class's teams.
 ;
 ; NOT stubbed: GiovanniData (sets 25-27 are past his spec list), Rival1/2Data
-; (fixed rival scripts), ProfOakData (ChampionsRoom, no spec yet),
+; (fixed rival scripts),
 ; JessieJamesData (its spec is gated to Wild Area maps by StageEventSpecAllowed,
 ; so off those maps the authored team is a real fallback). The mini-boss
 ; classes are stubbed too (party roster Phase 4): their specs are keyed on the
@@ -206,10 +206,7 @@ Rival1Data:
 	db $FF, 18, PIDGEOTTO, 15, ABRA, 15, RATTATA, 17, RIVAL_STARTER_PLACEHOLDER, 0
 
 ProfOakData:
-; Unused
-	db $FF, 66, TAUROS, 67, EXEGGUTOR, 68, ARCANINE, 69, BLASTOISE, 70, GYARADOS, 0
-	db $FF, 66, TAUROS, 67, EXEGGUTOR, 68, ARCANINE, 69, VENUSAUR, 70, GYARADOS, 0
-	db $FF, 66, TAUROS, 67, EXEGGUTOR, 68, ARCANINE, 69, CHARIZARD, 70, GYARADOS, 0
+	spec_covered_stub
 
 ; Empty deliberately, like NurseJoyData above: PartySpecPointers carries
 ; OFFICER_JENNY's real team (Phase 7f).

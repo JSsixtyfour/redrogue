@@ -755,7 +755,7 @@ class Simulator:
         self.fight(first)
         for member in e4[1:]:
             self.fight(e4_battle(g, cfg, member, self.count, rng))
-        champ = spec_battle(g, cfg, "champion", self.count, 6, k["CHAMPION_BASE_LEVEL"], k["CHAMPION_LEVEL_STEP"], "POOL_RIVAL3",
+        champ = spec_battle(g, cfg, "champion", self.count, 6, k["CHAMPION_BASE_LEVEL"], k["CHAMPION_LEVEL_STEP"], "POOL_BAND_Rival3_Fod1",
                             "RIVAL_STARTER_PLACEHOLDER", False, g.money["RIVAL3"], rng, self.rival_starter)
         self.final_count = self.count
         self.checkpoint(10, "Champion", champ.mons[-1][1])

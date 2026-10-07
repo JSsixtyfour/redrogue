@@ -2509,3 +2509,125 @@
 	band_same OfficerJenny_Fod3, OfficerJenny_Fod1
 	band_same OfficerJenny_Ace4, OfficerJenny_Ace2
 	band_same OfficerJenny_Fod4, OfficerJenny_Fod1
+
+; --- Rival3 ------------------------------------------------------------------
+	band_pool Rival3_Fod1
+	band_mon GROWLITHE
+	band_mon PONYTA
+	band_mon WEEDLE
+	band_mon CHARMANDER
+	band_mon NIDORAN_M
+	band_mon ELECTABUZZ
+	band_mon SLOWPOKE
+	band_mon PIDGEY
+	band_mon BULBASAUR
+	band_mon SQUIRTLE
+	band_mon RHYHORN
+	band_mon NIDORAN_F
+	band_mon MAGMAR
+	band_mon SCYTHER
+	band_mon KRABBY
+	band_mon GEODUDE
+	band_mon DODUO
+	band_mon EEVEE
+	band_mon VAPOREON
+	band_mon JOLTEON
+	band_mon FLAREON
+	band_mon PINSIR
+	band_mon SPEAROW
+	band_mon ABRA
+	band_mon HORSEA
+	band_mon MAGIKARP
+	band_mon EXEGGCUTE
+	band_mon SANDSHREW
+	band_mon VULPIX
+	band_mon MAGNEMITE
+	band_mon SHELLDER
+	band_mon MACHOP
+	band_mon AERODACTYL
+	band_mon TAUROS
+	band_mon CUBONE
+	band_mon CLEFAIRY
+	band_mon GASTLY
+	band_mon DRATINI
+	band_mon ZAPDOS
+	band_mon RATTATA
+	band_johto
+	band_mon SCIZOR
+	band_mon LARVITAR
+	band_mon HOUNDOUR
+	band_mon SKARMORY
+	band_mon HERACROSS
+	band_mon MILTANK
+	band_mon SWINUB
+	band_mon JOLTEON, 1
+	band_mon JOLTEON, 2
+	band_warp
+	band_mon ELECTIVIRE
+	band_mon VAPOREON, 1
+	band_mon VAPOREON, 2
+	band_mon FLAREON, 1
+	band_end
+
+; --- ChampionLance -----------------------------------------------------------
+	band_pool ChampionLance_Ace1
+	band_ace DRAGONITE
+	band_ace DRAGONITE
+	band_ace GYARADOS
+	band_ace AERODACTYL
+	band_ace CHARIZARD
+	band_johto
+	band_ace KINGDRA
+	band_ace TYRANITAR
+	band_warp
+	band_end
+	band_pool ChampionLance_Fod1
+	band_mon DRATINI
+	band_mon MAGIKARP
+	band_mon AERODACTYL
+	band_mon CHARMANDER
+	band_mon HORSEA
+	band_mon LAPRAS
+	band_mon EXEGGCUTE
+	band_mon KANGASKHAN
+	band_mon GROWLITHE
+	band_mon SNORLAX
+	band_mon ELECTABUZZ
+	band_johto
+	band_mon LARVITAR
+	band_mon TOTODILE
+	band_mon MAREEP
+	band_warp
+	band_mon EXEGGUTOR, 1
+	band_end
+
+; --- ProfOak -----------------------------------------------------------------
+	band_pool ProfOak_Ace1
+	band_ace BLASTOISE
+	band_ace VENUSAUR
+	band_ace CHARIZARD
+	band_ace TAUROS
+	band_ace GYARADOS
+	band_ace ARCANINE
+	band_ace EXEGGUTOR
+	band_ace MEW
+	band_johto
+	band_warp
+	band_end
+	band_pool ProfOak_Fod1
+	band_mon TAUROS
+	band_mon EXEGGCUTE
+	band_mon GROWLITHE
+	band_mon MAGIKARP
+	band_mon BULBASAUR
+	band_mon CHARMANDER
+	band_mon SQUIRTLE
+	band_mon PIDGEY
+	band_mon KANGASKHAN
+	band_mon LAPRAS
+	band_johto
+	band_mon CHIKORITA
+	band_mon CYNDAQUIL
+	band_mon TOTODILE
+	band_warp
+	band_end

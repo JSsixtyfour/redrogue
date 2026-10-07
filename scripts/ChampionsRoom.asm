@@ -147,13 +147,12 @@ RivalEntrance_RLEMovement:
 ; ChampionsRoomRivalReadyToBattleScript
 ; Branches on wRunChampion (rolled by RollElite4AndChampion,
 ; custom_functions/final_sequence.asm) to set up the correct opponent, team
-; roll and end-of-battle text before starting the Champion battle. RIVAL3
-; keeps its original 5-variant roll and RIVAL_STARTER_PLACEHOLDER ace; LANCE
-; and PROF_OAK use their own OPP_ class and their own authored
-; TrainerDataPointers team (LanceData's variants are all identical, so
-; wTrainerNo just needs to be in range; ProfOakData has 3 distinct variants,
-; the same "Unused" level-66-70 team already sitting in parties.asm, rolled
-; the same way the rival's 5 variants are).
+; roll and end-of-battle text before starting the Champion battle. All three
+; build from party specs (party roster Phase 5, data/trainers/party_specs.asm,
+; pools in data/trainers/PARTY_ROSTER.md "## Champions"): RIVAL3's five
+; numbers and PROF_OAK's three each reach one record, so the roll below only
+; has to stay in range; LANCE takes LANCE_CHAMPION_TEAM, his Champion record
+; after the Elite Four Lance's twelve.
 ; ============================================================
 ChampionsRoomRivalReadyToBattleScript:
 	ldh a, [hSimulatedJoypadStatesIndex]
@@ -185,9 +184,7 @@ ChampionsRoomRivalReadyToBattleScript:
 	ld a, OPP_RIVAL3
 	ld [wCurOpponent], a
 
-	; select which of the 5 Champion teams to use (each keeps the rival's
-	; starter as the ace via RIVAL_STARTER_PLACEHOLDER - PatchRivalStarterSpecies
-	; patches it in at battle setup, same as every other rival team)
+	; 1-5, all one record (Rival3Specs); the ace is his starter, pinned there
 	ld c, 5
 	call Rangerandom
 	inc a
@@ -207,12 +204,8 @@ ChampionsRoomRivalReadyToBattleScript:
 	call SaveEndBattleTextPointers
 	ld a, OPP_LANCE
 	ld [wCurOpponent], a
-	; Champion Lance takes the Elite Four's TOP tier (wTrainerNo 10-12, tier 4
-	; of the 4x3 E4 grid - see e4_team_spec). Once LANCE is spec-driven, the old
-	; fixed `1` would hand the Champion tier-1 E4 levels.
-	ld c, 3
-	call Rangerandom
-	add 10
+	; His own Champion record, after the Elite Four Lance's twelve (LanceSpecs).
+	ld a, LANCE_CHAMPION_TEAM
 	ld [wTrainerNo], a
 	jr .startBattle
 
@@ -229,7 +222,7 @@ ChampionsRoomRivalReadyToBattleScript:
 	call SaveEndBattleTextPointers
 	ld a, OPP_PROF_OAK
 	ld [wCurOpponent], a
-	ld c, 3 ; ProfOakData's 3 authored variants
+	ld c, 3 ; NUM_PROF_OAK_TEAMS (party_specs.asm): 3 numbers, one record
 	call Rangerandom
 	inc a
 	ld [wTrainerNo], a
