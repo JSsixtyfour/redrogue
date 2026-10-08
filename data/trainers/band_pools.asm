@@ -2659,3 +2659,346 @@
 	band_johto
 	band_warp
 	band_end
+
+; --- Lorelei -----------------------------------------------------------------
+	band_pool Lorelei_Ace1
+	band_ace LAPRAS
+	band_ace CLOYSTER
+	band_johto
+	band_warp
+	band_end
+	band_pool Lorelei_Fod1
+	band_mon DEWGONG
+	band_mon CLOYSTER
+	band_mon SLOWBRO
+	band_mon JYNX
+	band_mon LAPRAS
+	band_mon ARTICUNO
+	band_mon EXEGGUTOR
+	band_mon WIGGLYTUFF
+	band_mon STARMIE
+	band_mon OMASTAR
+	band_mon POLIWRATH
+	band_johto
+	band_mon SWINUB
+	band_mon PILOSWINE
+	band_mon SNEASEL
+	band_mon SLOWKING
+	band_warp
+	band_mon MAMOSWINE
+	band_mon MR_RIME
+	band_mon WEAVILE
+	band_mon MR_MIME, 1
+	band_mon NINETALES, 1
+	band_mon SANDSHREW, 1
+	band_mon SANDSLASH, 1
+	band_mon VAPOREON, 1
+	band_mon VULPIX, 1
+	band_end
+
+; --- Bruno -------------------------------------------------------------------
+	band_pool Bruno_Ace1
+	band_ace MACHAMP
+	band_johto
+	band_ace HITMONTOP
+	band_warp
+	band_end
+	band_pool Bruno_Fod1
+	band_mon HITMONCHAN
+	band_mon HITMONLEE
+	band_mon MACHAMP
+	band_mon MACHOKE
+	band_mon MACHOP
+	band_mon MANKEY
+	band_mon POLIWRATH
+	band_mon PRIMEAPE
+	band_mon CLEFABLE
+	band_mon MUK
+	band_mon SLOWBRO
+	band_mon RHYDON
+	band_mon GOLEM
+	band_mon ONIX
+	band_mon KANGASKHAN
+	band_mon BLASTOISE
+	band_mon EXEGGUTOR
+	band_mon CLOYSTER
+	band_johto
+	band_mon HERACROSS
+	band_mon HITMONTOP
+	band_mon STEELIX
+	band_mon GRANBULL
+	band_mon URSARING
+	band_warp
+	band_mon ANNIHILAPE
+	band_mon SIRFETCHD
+	band_mon FARFETCHD, 1
+	band_mon SNEASEL, 1
+	band_mon TAUROS, 1
+	band_mon TAUROS, 2
+	band_mon TAUROS, 3
+	band_mon ZAPDOS, 1
+	band_mon GOLEM, 1
+	band_end
+
+; --- Agatha ------------------------------------------------------------------
+	band_pool Agatha_Ace1
+	band_ace GENGAR
+	band_johto
+	band_warp
+	band_ace MAROWAK, 1
+	band_end
+	band_pool Agatha_Fod1
+	band_mon GASTLY
+	band_mon HAUNTER
+	band_mon GENGAR
+	band_mon ARBOK
+	band_mon BEEDRILL
+	band_mon BELLSPROUT
+	band_mon BULBASAUR
+	band_mon EKANS
+	band_mon GLOOM
+	band_mon GOLBAT
+	band_mon GRIMER
+	band_mon IVYSAUR
+	band_mon KAKUNA
+	band_mon KOFFING
+	band_mon MUK
+	band_mon NIDOKING
+	band_mon NIDOQUEEN
+	band_mon NIDORAN_F
+	band_mon NIDORAN_M
+	band_mon NIDORINA
+	band_mon NIDORINO
+	band_mon ODDISH
+	band_mon TENTACOOL
+	band_mon TENTACRUEL
+	band_mon VENOMOTH
+	band_mon VENONAT
+	band_mon VENUSAUR
+	band_mon VICTREEBEL
+	band_mon VILEPLUME
+	band_mon WEEDLE
+	band_mon WEEPINBELL
+	band_mon WEEZING
+	band_mon ZUBAT
+	band_mon MAROWAK
+	band_mon NINETALES
+	band_mon JYNX
+	band_mon ALAKAZAM
+	band_mon GYARADOS
+	band_johto
+	band_mon MISDREAVUS
+	band_mon ARIADOS
+	band_mon CROBAT
+	band_mon QWILFISH
+	band_mon SPINARAK
+	band_warp
+	band_mon ANNIHILAPE
+	band_mon MISMAGIUS
+	band_mon MAROWAK, 1
+	band_mon GRIMER, 1
+	band_mon MUK, 1
+	band_mon QWILFISH, 1
+	band_mon SLOWBRO, 1
+	band_mon SLOWKING, 1
+	band_mon SNEASEL, 1
+	band_mon WEEZING, 1
+	band_mon WOOPER, 1
+	band_end
+
+; --- Lance -------------------------------------------------------------------
+	band_pool Lance_Ace1
+	band_ace DRAGONITE
+	band_johto
+	band_ace KINGDRA
+	band_warp
+	band_end
+	band_pool Lance_Fod1
+	band_mon DRAGONAIR
+	band_mon DRAGONITE
+	band_mon DRATINI
+	band_mon GYARADOS
+	band_mon AERODACTYL
+	band_mon CHARIZARD
+	band_mon HORSEA
+	band_mon SEADRA
+	band_mon LAPRAS
+	band_mon EXEGGUTOR
+	band_mon KANGASKHAN
+	band_mon ARCANINE
+	band_mon SNORLAX
+	band_mon ELECTABUZZ
+	band_johto
+	band_mon KINGDRA
+	band_mon LARVITAR
+	band_mon PUPITAR
+	band_mon TYRANITAR
+	band_mon STEELIX
+	band_mon FERALIGATR
+	band_mon AMPHAROS
+	band_warp
+	band_mon EXEGGUTOR, 1
+	band_mon ELECTIVIRE
+	band_end
+
+; --- KogaE4 ------------------------------------------------------------------
+	band_pool KogaE4_Ace1
+	band_johto
+	band_ace CROBAT
+	band_warp
+	band_ace WEEZING, 1
+	band_end
+	band_pool KogaE4_Fod1
+	band_mon EKANS
+	band_mon ARBOK
+	band_mon NIDORAN_M
+	band_mon NIDORINO
+	band_mon NIDOKING
+	band_mon NIDORAN_F
+	band_mon NIDORINA
+	band_mon NIDOQUEEN
+	band_mon ZUBAT
+	band_mon GOLBAT
+	band_mon GRIMER
+	band_mon MUK
+	band_mon WEEZING
+	band_mon KOFFING
+	band_mon VENONAT
+	band_mon VENOMOTH
+	band_mon GASTLY
+	band_mon HAUNTER
+	band_mon GENGAR
+	band_mon BULBASAUR
+	band_mon IVYSAUR
+	band_mon VENUSAUR
+	band_mon ODDISH
+	band_mon GLOOM
+	band_mon VILEPLUME
+	band_mon BELLSPROUT
+	band_mon WEEPINBELL
+	band_mon VICTREEBEL
+	band_mon WEEDLE
+	band_mon KAKUNA
+	band_mon TENTACOOL
+	band_mon TENTACRUEL
+	band_mon PARASECT
+	band_mon TANGELA
+	band_mon HYPNO
+	band_mon ELECTRODE
+	band_mon MAGMAR
+	band_mon LAPRAS
+	band_mon SCYTHER
+	band_mon RHYDON
+	band_mon NINETALES
+	band_mon CHANSEY
+	band_mon DITTO
+	band_mon PIDGEY
+	band_mon PIDGEOTTO
+	band_mon PIDGEOT
+	band_mon VAPOREON
+	band_mon ARTICUNO
+	band_johto
+	band_mon CROBAT
+	band_mon QWILFISH
+	band_mon ARIADOS
+	band_mon SPINARAK
+	band_mon FORRETRESS
+	band_mon STANTLER
+	band_mon LANTURN
+	band_mon SCIZOR
+	band_mon GIRAFARIG
+	band_mon MEGANIUM
+	band_mon SHUCKLE
+	band_warp
+	band_mon GRIMER, 1
+	band_mon MUK, 1
+	band_mon QWILFISH, 1
+	band_mon SLOWBRO, 1
+	band_mon SLOWKING, 1
+	band_mon SNEASEL, 1
+	band_mon WEEZING, 1
+	band_mon WOOPER, 1
+	band_end
+
+; --- Will --------------------------------------------------------------------
+	band_pool Will_Ace1
+	band_johto
+	band_ace XATU
+	band_ace JOLTEON, 1
+	band_warp
+	band_end
+	band_pool Will_Fod1
+	band_mon EXEGGUTOR
+	band_mon SLOWBRO
+	band_mon JYNX
+	band_mon ALAKAZAM
+	band_mon CLEFABLE
+	band_mon ELECTABUZZ
+	band_mon FLAREON
+	band_mon CHANSEY
+	band_mon HYPNO
+	band_mon ABRA
+	band_mon KADABRA
+	band_mon DROWZEE
+	band_mon MR_MIME
+	band_mon SLOWPOKE
+	band_mon STARMIE
+	band_johto
+	band_mon NATU
+	band_mon XATU
+	band_mon SLOWKING
+	band_mon GIRAFARIG
+	band_mon MANTINE
+	band_warp
+	band_mon JOLTEON, 1
+	band_mon MR_RIME
+	band_mon ARTICUNO, 1
+	band_mon JIGGLYPUFF, 1
+	band_mon MR_MIME, 1
+	band_mon PONYTA, 1
+	band_mon RAICHU, 1
+	band_mon RAPIDASH, 1
+	band_mon SLOWBRO, 1
+	band_mon SLOWKING, 1
+	band_mon SLOWPOKE, 1
+	band_end
+
+; --- Karen -------------------------------------------------------------------
+	band_pool Karen_Ace1
+	band_johto
+	band_ace HOUNDOOM
+	band_ace JOLTEON, 2
+	band_warp
+	band_end
+	band_pool Karen_Fod1
+	band_mon GENGAR
+	band_mon VILEPLUME
+	band_mon ARBOK
+	band_mon PERSIAN
+	band_mon GOLBAT
+	band_mon MAGMAR
+	band_mon SLOWBRO
+	band_mon ELECTRODE
+	band_mon RAPIDASH
+	band_mon FLAREON
+	band_johto
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon HOUNDOOM
+	band_mon SNEASEL
+	band_mon TYRANITAR
+	band_mon LARVITAR
+	band_mon PUPITAR
+	band_mon MISDREAVUS
+	band_mon URSARING
+	band_warp
+	band_mon JOLTEON, 2
+	band_mon PERSIAN, 1
+	band_mon MEOWTH, 1
+	band_mon RATTATA, 1
+	band_mon RATICATE, 1
+	band_mon MUK, 1
+	band_mon GRIMER, 1
+	band_mon MOLTRES, 1
+	band_mon QWILFISH, 1
+	band_end

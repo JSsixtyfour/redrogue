@@ -121,6 +121,14 @@ DEF TIER_ELITE  EQU 1 << 4
 ; "## Gamblers", copied into movesets.asm by tools/gen_movesets.py). Only
 ; MIX_GAMBLER asks for it (party roster Phase 6, 2026-10-07).
 DEF TIER_GAMBLER EQU 1 << 5
+; The last two bits, reserved for character-signature sets (party roster
+; Phase 7c, 2026-10-07). Wired but unused: no Sets table in PARTY_ROSTER.md
+; names them and no mix row asks for them, so they change nothing yet. To give
+; a character its own sets: put a `#### Sets: TIER_SIGNATURE_6` table in its
+; block (rename the constant to the character if you like), add a mix row whose
+; set_tier_mask is that bit, and pass that mix to the character's spec macro.
+DEF TIER_SIGNATURE_6 EQU 1 << 6
+DEF TIER_SIGNATURE_7 EQU 1 << 7
 
 ; --- Species pools ---------------------------------------------------------
 ; A pool entry is (species, form spec). TWO bytes, not one, and fixed width.

@@ -43,40 +43,50 @@ DisplayPokemartDialogue_::
 	ld [wInitListType], a
 	callfar InitList
 
-	; Build the current pocket's display list and check if anything to sell.
-	; Recovery pocket is the default sell pocket (potions, etc. are most sellable).
+	; Open on the pocket the bag was last left on. Key items can't be sold, so
+	; that one opens on Recovery instead.
 	ld a, [wBagPocketsFlags]
 	and POCKET_INDEX_MASK
-	cp POCKET_RECOVERY
-	jr z, .sellRecovery
-	cp POCKET_STAT
-	jr z, .sellStat
-	cp POCKET_VALUABLE
-	jr z, .sellValuable
-	cp POCKET_TM_PACK
-	jr z, .sellTM
-	; Key items can't be sold — redirect to Recovery
-	xor a
-	ld [wBagPocketsFlags], a   ; switch to Recovery pocket
-.sellRecovery
-	farcall BuildRecoveryPocketList
-	ld hl, wRecoveryPocketBuf
-	jr .checkSellEmpty
-.sellStat
-	farcall BuildStatPocketList
-	ld hl, wStatPocketBuf
-	jr .checkSellEmpty
-.sellValuable
-	farcall BuildValuablePocketList
-	ld hl, wValuablePocketBuf
-	jr .checkSellEmpty
-.sellTM
-	farcall BuildTMPocketList
-	ld hl, wTMPocketBuf
-.checkSellEmpty
+	cp POCKET_KEY_ITEMS
+	jr nz, .tryLastPocket
+	ld a, [wBagPocketsFlags]
+	and ~POCKET_INDEX_MASK
+	ld [wBagPocketsFlags], a   ; POCKET_RECOVERY = 0
+.tryLastPocket
+	call BuildSellPocketList
 	ld a, [hl]                  ; a = count of items in this pocket
 	and a
-	jp z, .bagEmpty
+	jr nz, .haveSellItems
+	; That pocket is empty, but another may not be: only say the bag is empty
+	; when every sellable pocket is. Open on the first one holding something.
+	ld a, [wBagPocketsFlags]
+	push af                     ; restored if the whole bag turns out empty
+	ld e, POCKET_RECOVERY
+.findSellablePocket
+	ld a, e
+	cp POCKET_KEY_ITEMS
+	jr z, .nextSellablePocket
+	ld a, [wBagPocketsFlags]
+	and ~POCKET_INDEX_MASK
+	or e
+	ld [wBagPocketsFlags], a
+	push de                     ; farcall and the builders clobber e
+	call BuildSellPocketList
+	pop de
+	ld a, [hl]
+	and a
+	jr nz, .foundSellablePocket
+.nextSellablePocket
+	inc e
+	ld a, e
+	cp NUM_POCKETS
+	jr c, .findSellablePocket
+	pop af
+	ld [wBagPocketsFlags], a
+	jp .bagEmpty
+.foundSellablePocket
+	pop af                      ; drop the saved pocket, keep the new one
+.haveSellItems
 	ld hl, PokemonSellingGreetingText
 	call PrintText
 	call SaveScreenTilesToBuffer1
@@ -89,29 +99,7 @@ DisplayPokemartDialogue_::
 	ld [wTextBoxID], a
 	call DisplayTextBoxID
 	; Rebuild display list for current pocket
-	ld a, [wBagPocketsFlags]
-	and POCKET_INDEX_MASK
-	cp POCKET_STAT
-	jr z, .sellDisplayStat
-	cp POCKET_VALUABLE
-	jr z, .sellDisplayValuable
-	cp POCKET_TM_PACK
-	jr z, .sellDisplayTM
-	farcall BuildRecoveryPocketList
-	ld hl, wRecoveryPocketBuf
-	jr .gotSellSource
-.sellDisplayStat
-	farcall BuildStatPocketList
-	ld hl, wStatPocketBuf
-	jr .gotSellSource
-.sellDisplayValuable
-	farcall BuildValuablePocketList
-	ld hl, wValuablePocketBuf
-	jr .gotSellSource
-.sellDisplayTM
-	farcall BuildTMPocketList
-	ld hl, wTMPocketBuf
-.gotSellSource
+	call BuildSellPocketList
 	ld a, l
 	ld [wListPointer], a
 	ld a, h
@@ -307,6 +295,34 @@ DisplayPokemartDialogue_::
 	call UpdateSprites
 	ld a, [wSavedListScrollOffset]
 	ld [wListScrollOffset], a
+	ret
+
+; Builds the display list for the sell menu's current pocket (wBagPocketsFlags)
+; and returns hl = that pocket's buffer, whose first byte is its item count.
+; The key item pocket isn't sellable and builds Recovery instead.
+BuildSellPocketList:
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_STAT
+	jr z, .stat
+	cp POCKET_VALUABLE
+	jr z, .valuable
+	cp POCKET_TM_PACK
+	jr z, .tm
+	farcall BuildRecoveryPocketList
+	ld hl, wRecoveryPocketBuf
+	ret
+.stat
+	farcall BuildStatPocketList
+	ld hl, wStatPocketBuf
+	ret
+.valuable
+	farcall BuildValuablePocketList
+	ld hl, wValuablePocketBuf
+	ret
+.tm
+	farcall BuildTMPocketList
+	ld hl, wTMPocketBuf
 	ret
 
 PokemartBuyingGreetingText:

@@ -266,7 +266,10 @@ def draw_pool(g: GameData, cfg: Config, pool: str, level: int, used: list[str], 
 
     eligible = eligible_of(pool)
     if not eligible:
-        eligible = g.pools[pool]["KANTO"][:1]
+        # PartyGenRollFromPool's .giveUp: the list's first entry, unfiltered. The
+        # list is Kanto, Johto, Warp back to back, so that is the first entry of
+        # the first non-empty run.
+        eligible = [s for grp in parse.GROUPS for s in g.pools[pool][grp]][:1]
     draw = eligible[0]
     for _ in range(PARTY_GEN_MAX_RETRIES):
         draw = rng.choice(eligible)
@@ -381,18 +384,25 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
 
 
 def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng: random.Random) -> Battle:
-    """InitElite4Battle + e4_team_spec: tier from wBattleCount - E4_FIRST_BATTLECOUNT."""
+    """InitElite4Battle + e4_member_records (party roster Phase 7a): tier from
+    wBattleCount - E4_FIRST_BATTLECOUNT; one band, the ace drawn from Ace1 as
+    written every fight, every other slot from Fod1."""
     k = g.knobs
     tier = min(max(count - k["E4_FIRST_BATTLECOUNT"], 0), k["NUM_E4_BATTLES"] - 1) + 1
-    var = rng.randrange(3)
-    ace = member.ace_a if var == 0 else member.ace_c if var == 2 else None
-    return spec_battle(g, cfg, "e4", count, 6, g.knobs["E4_BASE_LEVEL"] + tier, g.knobs["E4_LEVEL_STEP"],
-                       member.pool, ace, False, g.money[class_name(member.name)], rng)
+    base, step = k["E4_BASE_LEVEL"] + tier, k["E4_LEVEL_STEP"]
+    pre = f"POOL_BAND_{member.name}_"
+    ace_lv = apply_difficulty(max(1, min(base + 5 * step, MAX_LEVEL)), cfg.difficulty)
+    ace = draw_pool(g, cfg, f"{pre}Ace1", ace_lv, [], False, rng, keep=True)
+    return spec_battle(g, cfg, "e4", count, 6, base, step, f"{pre}Fod1", ace, False,
+                       g.money[class_name(member.name)], rng)
 
 
-def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """StageEventRoll picks a type; stage_event_banded_records builds it."""
-    cls, pool = rng.choice(STAGE_EVENTS)
+def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
+                       pick: str | None = None) -> Battle:
+    """StageEventRoll picks a type; stage_event_banded_records builds it.
+    pick = a roster prefix to build that character instead of rolling one."""
+    cls, pool = (next(e for e in STAGE_EVENTS if e[1] == pick) if pick
+                 else rng.choice(STAGE_EVENTS))
     r = round_of(g, count) + 1
     k = g.knobs
     n, base, step = k[f"STAGE_EVENT_R{r}_MONS"], k[f"STAGE_EVENT_R{r}_BASE"], k[f"STAGE_EVENT_R{r}_STEP"]

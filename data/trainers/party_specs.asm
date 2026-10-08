@@ -456,49 +456,41 @@ ENDM
 ; 10-12). The base moved from 52 + tier to 51 + tier along with the sixth slot so
 ; the ace stayed within one level of the shipped rosters' 62.
 ;
-; \1 = wTrainerNo, \2 = pool, \3/\4 = primary ace species and form spec,
-; \5/\6 = secondary. Forms are parameters here and not on the gym macro
-; because both shipping E4 secondaries need one: there is no ESPEON or UMBREON
-; species in this tree, they are JOLTEON forms 1 and 2.
-;
-; Phase 5 moved these off MIX_ELITE and onto MIX_E4_SETS, the plan's "sets
-; only, ELITE mask" row. Every slot draws a curated set, and a species with no
-; TIER_ELITE record near this level falls back to the row's MSRC_RANDOM_TM under
-; RANK_ROW_ELITE - the documented MSRC_SET degradation, and the reason the tier
-; mask can be this narrow without any slot coming out empty.
-;
-; There is no tier ladder here, unlike the gym rows: all four E4 tiers are
-; within 3 levels of each other, so the same row serves all of them and the
-; ladder lives in the levels instead.
 DEF E4_TEAM_SIZE EQU 6
 
-MACRO e4_team_spec
-	DEF _t    = \1
-	DEF _tier = (_t - 1) / NUM_ROUND_VARIANTS + 1
-	DEF _var  = (_t - 1) % NUM_ROUND_VARIANTS
-	party_spec E4_TEAM_SIZE, E4_BASE_LEVEL + _tier, E4_LEVEL_STEP, \2, MIX_E4_SETS, GYM_SPEC_FLAGS
-	IF _var == 0
-	slot_override E4_TEAM_SIZE - 1, 1 << BIT_POVR_SPECIES
-	db \3, \4
-	ELIF _var == 2
-	slot_override E4_TEAM_SIZE - 1, 1 << BIT_POVR_SPECIES
-	db \5, \6
-	ENDC
-	db PARTY_SPEC_OVERRIDES_END
-ENDM
+; The E4_T curve banded_round_spec reads (<curve><tier>_MONS/_BASE/_STEP): six
+; mons, slot 0 at E4_BASE_LEVEL + tier, E4_LEVEL_STEP per slot.
+FOR t, 1, NUM_E4_TIERS + 1
+	DEF E4_T{d:t}_MONS EQU E4_TEAM_SIZE
+	DEF E4_T{d:t}_BASE EQU E4_BASE_LEVEL + t
+	DEF E4_T{d:t}_STEP EQU E4_LEVEL_STEP
+ENDR
 
+; Party roster Phase 7a (2026-10-07): each member is ONE band of
+; PARTY_ROSTER.md pools (<Member>_Ace1 / _Fod1), so the three variants of a
+; tier share one record, \1Tier<t>, as a gym round's do. The ace is drawn
+; from Ace1 every fight; until now variant A pinned one ace, C another and B
+; had none.
+;
+; Every slot is on MIX_E4_SETS, the "sets only, ELITE mask" row: each slot draws
+; a curated set, and a species with no TIER_ELITE record near its level falls
+; back to the row's MSRC_RANDOM_TM under RANK_ROW_ELITE. There is no tier ladder
+; in the row: the four tiers are within three levels, so the ladder lives in the
+; levels instead.
 MACRO e4_member_pointers
 \1Specs::
 	db NUM_E4_TEAMS
 	FOR t, 1, NUM_E4_TEAMS + 1      ; no wTrainerNo 1 hole - see above
-	dw \1Spec{d:t}
+	DEF _e4t = (t - 1) / NUM_ROUND_VARIANTS + 1
+	dw \1Tier{d:_e4t}
 	ENDR
 ENDM
 
+; \1 = member prefix (its PARTY_ROSTER.md block).
 MACRO e4_member_records
-	FOR t, 1, NUM_E4_TEAMS + 1
-\1Spec{d:t}:
-	e4_team_spec t, \2, \3, \4, \5, \6
+	FOR t, 1, NUM_E4_TIERS + 1
+\1Tier{d:t}:
+	banded_round_spec \1, E4_T, t, 1, MIX_E4_SETS, GYM_SPEC_FLAGS
 	ENDR
 ENDM
 
@@ -696,15 +688,14 @@ FalknerSpec3:
 
 ; ---------------------------------------------------------------------------
 ; Will and Karen are Elite Four only and get TWELVE teams, not 24 - see the
-; e4_team_spec note. Each pins its Gen 2 signature as the A ace and its
-; eeveelution as the C ace; neither eeveelution is a species in this tree, so
-; both go in as a JOLTEON form index.
+; E4 note above. Their aces (PARTY_ROSTER.md) are their Gen 2 signature and an
+; eeveelution, which is a JOLTEON form index in this tree.
 ; ---------------------------------------------------------------------------
 	e4_member_pointers Will
-	e4_member_records  Will,  POOL_WILL,  XATU,     POOL_FORM_ROLL, JOLTEON, 1 ; Espeon
+	e4_member_records  Will
 
 	e4_member_pointers Karen
-	e4_member_records  Karen, POOL_KAREN, HOUNDOOM, POOL_FORM_ROLL, JOLTEON, 2 ; Umbreon
+	e4_member_records  Karen
 
 ; ---------------------------------------------------------------------------
 ; KOGA_E4 - the Elite Four Koga, a SEPARATE class from the gym KOGA.
@@ -717,38 +708,37 @@ FalknerSpec3:
 ;
 ; Because he is his own class, this is the Will/Karen shape verbatim: no macro
 ; of his own, no offset arithmetic, and InitElite4Battle needs no branch. He
-; draws from POOL_KOGA_E4, his own pool since the Trainer Revamp split the two
-; roles (Articuno is E4-only, Beedrill gym-only). Aces: Crobat, and Galarian
-; Weezing (WEEZING form 1).
+; draws from his own KogaE4 pools (PARTY_ROSTER.md), separate from the gym
+; Koga's since the Trainer Revamp (Articuno is E4-only, Beedrill gym-only).
 ; ---------------------------------------------------------------------------
 	e4_member_pointers KogaE4
-	e4_member_records  KogaE4, POOL_KOGA_E4, CROBAT, 0, WEEZING, 1 ; Galarian
+	e4_member_records  KogaE4
 
 ; ---------------------------------------------------------------------------
 ; The Kanto Elite Four (Trainer Revamp, 2026-09-23). Until now they had no
 ; spec list at all, so every tier fielded the same authored five. LANCE's
 ; list carries one more record after the twelve: Champion Lance's
 ; (LANCE_CHAMPION_TEAM, see the Champions block below).
-; Aces: A is each member's shipped ace, C a second signature.
 ; ---------------------------------------------------------------------------
 	e4_member_pointers Lorelei
-	e4_member_records  Lorelei, POOL_LORELEI, LAPRAS,    0, CLOYSTER,  0
+	e4_member_records  Lorelei
 
 	e4_member_pointers Bruno
-	e4_member_records  Bruno,   POOL_BRUNO,   MACHAMP,   0, HITMONTOP, 0
+	e4_member_records  Bruno
 
 	e4_member_pointers Agatha
-	e4_member_records  Agatha,  POOL_AGATHA,  GENGAR,    0, MAROWAK,   1 ; Alolan
+	e4_member_records  Agatha
 
 LanceSpecs::
 	db LANCE_CHAMPION_TEAM
 	FOR t, 1, NUM_E4_TEAMS + 1
-	dw LanceSpec{d:t}
+	DEF _e4t = (t - 1) / NUM_ROUND_VARIANTS + 1
+	dw LanceTier{d:_e4t}
 	ENDR
 	dw ChampionLanceSpec              ; LANCE_CHAMPION_TEAM
 	ASSERT LANCE_CHAMPION_TEAM == NUM_E4_TEAMS + 1, \
 		"Champion Lance's record must follow the twelve Elite Four records"
-	e4_member_records  Lance,   POOL_LANCE,   DRAGONITE, 0, KINGDRA,   0
+	e4_member_records  Lance
 
 ; ---------------------------------------------------------------------------
 ; The Champions (party roster Phase 5, 2026-10-07), on PARTY_ROSTER.md's

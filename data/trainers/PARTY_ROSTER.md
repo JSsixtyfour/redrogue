@@ -34,8 +34,15 @@ mix rows in `data/trainers/party_specs.asm`.
   as its file in `data/pokemon/forms/` reads. An unknown name is an error.
 - **Order matters only for the asm:** within a list, the generator keeps your order per run.
   Identical lists within one character become a zero-byte alias automatically.
-- Anything that is not a `### Name` header, a `**Band n...**` line or one of the three list
-  bullets is free prose and is ignored.
+- **Sets (optional, any character):** a `#### Sets: <tiers>` heading inside a character's block,
+  followed by a `| Species | Move, Move, Move, Move | Notes |` table, adds curated movesets to
+  the corpus (`tools/gen_movesets.py`, run from Windows). The heading's tiers decide who can
+  draw them: a corpus grade (`TIER_HARD`, ...) puts them in the shared pool, a character's own
+  bit (`TIER_GAMBLER`, or the reserved `TIER_SIGNATURE_6/7`) keeps them for a mix that asks for
+  it. A character with a Sets table needs a row for every species it can field, evolutions
+  included, or `make audit` fails. Today only the Gambler has one.
+- Anything that is not a `### Name` header, a `**Band n...**` line, one of the three list
+  bullets or a Sets table is free prose and is ignored.
 
 The gym leaders' team sizes and levels, straight from `constants/balance_constants.asm`:
 
@@ -681,11 +688,14 @@ No pinned forms: the roster rolls its own forms, and a set cannot name one.
 **Band 1: every round**
 - Fodder: Dugtrio, Rhydon, Marowak, Golem, Tauros, Nidoking, Dragonite, Dragonair, Rapidash, Arbok, Lickitung, Onix, Pinsir, Omastar, Kingler, Cloyster, Tentacruel, Moltres, Ninetales, Arcanine, Flareon, Tangela
 
-#### Sets
+#### Sets: TIER_GAMBLER | TIER_HARD
 
 One row per set, four moves. `tools/gen_movesets.py` copies them into the curated corpus
-(`data/trainers/movesets.asm`) as `TIER_GAMBLER` records, and `MIX_GAMBLER` gives every gambler
-slot one. **Every species the pool can field needs a row**, its evolutions included:
+(`data/trainers/movesets.asm`) with the tiers the heading names, and `MIX_GAMBLER` gives every
+gambler slot one through `TIER_GAMBLER`. `TIER_HARD` also puts them in the shared pool: any
+trainer whose moveset row draws hard sets (gym leaders and mini-bosses from gym 5 on, and the
+gyms 7-8 gym trainers) can roll one for a species listed here. Drop `TIER_HARD` from the
+heading to make them gambler-only again. **Every species the pool can field needs a row**, its evolutions included:
 `gen_party_roster.py --check` (part of `make audit`) fails otherwise, and also fails when
 `movesets.asm` is out of step with this table. A species may have more than one row; one is
 picked at random.
@@ -728,5 +738,78 @@ any level or by TM/tutor. Notes cite this repo's data (`e:NNNN` = a line of
 
 ## Elite Four
 
-Not generated from this file. Their pools are in `data/trainers/pools.asm` (`LoreleiPool` and so
-on) and their aces are pinned in `data/trainers/party_specs.asm`.
+Seven members, four of them per run (Will, Karen and Koga only with Johto on). One team per
+member per tier, four tiers, all on one band: six mons at `E4_BASE_LEVEL` + tier + 2 per slot,
+every slot a curated set (`MIX_E4_SETS`). Moved here from flat pools and pinned aces in party
+roster Phase 7a (2026-10-07): until then one fight in three had no ace at all (the old variant
+B); now every fight draws one from Aces. List an ace twice to double its odds.
+
+### Lorelei (ICE)
+
+The member's original team plus every species of the type, expanded with `tools/list_pool_candidates.py` (Trainer Revamp, TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7). Uber-tier species (Mew, Mewtwo, Celebi, Lugia, Ho-Oh) are left out: an Elite Four spec does not allow them.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Lapras, Cloyster
+- Fodder: Dewgong, Cloyster, Slowbro, Jynx, Lapras, Articuno, Exeggutor, Wigglytuff, Starmie, Omastar, Poliwrath, Swinub (johto), Piloswine (johto), Sneasel (johto), Slowking (johto), Mamoswine (warp), Mr Rime (warp), Weavile (warp), Galarian Mr Mime (warp), Alolan Ninetales (warp), Alolan Sandshrew (warp), Alolan Sandslash (warp), Glaceon (warp), Alolan Vulpix (warp)
+
+### Bruno (FIGHTING)
+
+The member's original team plus every species of the type, expanded with `tools/list_pool_candidates.py` (Trainer Revamp, TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7). Uber-tier species (Mew, Mewtwo, Celebi, Lugia, Ho-Oh) are left out: an Elite Four spec does not allow them.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Machamp, Hitmontop (johto)
+- Fodder: Hitmonchan, Hitmonlee, Machamp, Machoke, Machop, Mankey, Poliwrath, Primeape, Clefable, Muk, Slowbro, Rhydon, Golem, Onix, Kangaskhan, Blastoise, Exeggutor, Cloyster, Heracross (johto), Hitmontop (johto), Steelix (johto), Granbull (johto), Ursaring (johto), Annihilape (warp), Sirfetchd (warp), Galarian Farfetchd (warp), Hisuian Sneasel (warp), Combat Tauros (warp), Blaze Tauros (warp), Aqua Tauros (warp), Galarian Zapdos (warp), Alolan Golem (warp)
+
+### Agatha (GHOST)
+
+The member's original team plus every species of the type, expanded with `tools/list_pool_candidates.py` (Trainer Revamp, TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7). Uber-tier species (Mew, Mewtwo, Celebi, Lugia, Ho-Oh) are left out: an Elite Four spec does not allow them.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Gengar, Alolan Marowak (warp)
+- Fodder: Gastly, Haunter, Gengar, Arbok, Beedrill, Bellsprout, Bulbasaur, Ekans, Gloom, Golbat, Grimer, Ivysaur, Kakuna, Koffing, Muk, Nidoking, Nidoqueen, Nidoran F, Nidoran M, Nidorina, Nidorino, Oddish, Tentacool, Tentacruel, Venomoth, Venonat, Venusaur, Victreebel, Vileplume, Weedle, Weepinbell, Weezing, Zubat, Marowak, Ninetales, Jynx, Alakazam, Gyarados, Misdreavus (johto), Ariados (johto), Crobat (johto), Qwilfish (johto), Spinarak (johto), Annihilape (warp), Mismagius (warp), Alolan Marowak (warp), Alolan Grimer (warp), Alolan Muk (warp), Hisuian Qwilfish (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Hisuian Sneasel (warp), Galarian Weezing (warp), Paldean Wooper (warp)
+
+### Lance (DRAGON)
+
+The member's original team plus every species of the type, expanded with `tools/list_pool_candidates.py` (Trainer Revamp, TRAINER_REVAMP_FIXES_PLAN.md steps 4 and 7). Uber-tier species (Mew, Mewtwo, Celebi, Lugia, Ho-Oh) are left out: an Elite Four spec does not allow them.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Dragonite, Kingdra (johto)
+- Fodder: Dragonair, Dragonite, Dratini, Gyarados, Aerodactyl, Charizard, Horsea, Seadra, Lapras, Exeggutor, Kangaskhan, Arcanine, Snorlax, Electabuzz, Kingdra (johto), Larvitar (johto), Pupitar (johto), Tyranitar (johto), Steelix (johto), Feraligatr (johto), Ampharos (johto), Alolan Exeggutor (warp), Electivire (warp)
+
+### KogaE4 (POISON)
+
+The Elite Four Koga's own pool, split from the gym KogaPool because the two roles now differ: Articuno is Elite Four only (and Beedrill gym only).
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Crobat (johto), Galarian Weezing (warp)
+- Fodder: Ekans, Arbok, Nidoran M, Nidorino, Nidoking, Nidoran F, Nidorina, Nidoqueen, Zubat, Golbat, Grimer, Muk, Weezing, Koffing, Venonat, Venomoth, Gastly, Haunter, Gengar, Bulbasaur, Ivysaur, Venusaur, Oddish, Gloom, Vileplume, Bellsprout, Weepinbell, Victreebel, Weedle, Kakuna, Tentacool, Tentacruel, Parasect, Tangela, Hypno, Electrode, Magmar, Lapras, Scyther, Rhydon, Ninetales, Chansey, Ditto, Pidgey, Pidgeotto, Pidgeot, Vaporeon, Articuno, Crobat (johto), Qwilfish (johto), Ariados (johto), Spinarak (johto), Forretress (johto), Stantler (johto), Lanturn (johto), Scizor (johto), Girafarig (johto), Meganium (johto), Shuckle (johto), Alolan Grimer (warp), Alolan Muk (warp), Hisuian Qwilfish (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Hisuian Sneasel (warp), Galarian Weezing (warp), Paldean Wooper (warp)
+
+### Will (PSYCHIC)
+
+Will - Elite Four, Psychic. Named additions (CLEFABLE/ ELECTABUZZ/MANTINE/FLAREON/CHANSEY/HYPNO) plus every PSYCHIC_TYPE species and form (tools/list_pool_candidates.py PSYCHIC_TYPE). ESPEON is this tree's JOLTEON form 1 (there is no ESPEON species - see [[project_forms_are_not_species]]), sitting in the Warp run with every other pinned form so it stays gated on a Kanto-only run. NATU is added alongside the brief's own XATU as its pre-evolution.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Xatu (johto), Espeon (johto)
+- Fodder: Exeggutor, Slowbro, Jynx, Alakazam, Clefable, Electabuzz, Flareon, Chansey, Hypno, Abra, Kadabra, Drowzee, Mr Mime, Slowpoke, Starmie, Natu (johto), Xatu (johto), Slowking (johto), Girafarig (johto), Mantine (johto), Espeon (warp), Mr Rime (warp), Galarian Articuno (warp), Scream Tail (warp), Galarian Mr Mime (warp), Galarian Ponyta (warp), Alolan Raichu (warp), Galarian Rapidash (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Slowpoke (warp)
+
+### Karen (DARK)
+
+Karen - Elite Four, Dark. UMBREON is JOLTEON form 2 in this tree, pinned for the same reason WillPool pins Espeon.  Dark did not exist as a type until Generation 2, so no Gen 1 species in this dex was ever Dark-typed, and this tree has no DARK type to sweep with tools/list_pool_candidates.py - the Warp pins below are the real-world Dark-types named by hand (Alolan Persian/Meowth/Rattata/Raticate/ Muk/Grimer, Galarian Moltres, Hisuian Qwilfish).  An empty Kanto run is a real fault, not just thin content: with Johto locked every run of the pool would be ineligible, PartyGenRollFromPool takes its .giveUp branch, and that branch falls back to the pool's FIRST entry UNFILTERED - yielding a team of six identical Murkrow rather than a crash, which is exactly the kind of fault that survives a clean build. The Kanto run below (her own Gen 2 roster's Kanto half plus other Kanto-side additions) keeps that from ever happening, even though Karen is only expected to be drawn with Johto enabled.
+
+Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
+
+**Band 1: every tier**
+- Aces: Houndoom (johto), Umbreon (johto)
+- Fodder: Gengar, Vileplume, Arbok, Persian, Golbat, Magmar, Slowbro, Electrode, Rapidash, Flareon, Murkrow (johto), Houndour (johto), Houndoom (johto), Sneasel (johto), Tyranitar (johto), Larvitar (johto), Pupitar (johto), Misdreavus (johto), Ursaring (johto), Umbreon (warp), Alolan Persian (warp), Alolan Meowth (warp), Alolan Rattata (warp), Alolan Raticate (warp), Alolan Muk (warp), Alolan Grimer (warp), Galarian Moltres (warp), Hisuian Qwilfish (warp)

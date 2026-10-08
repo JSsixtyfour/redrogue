@@ -38,9 +38,10 @@ BIT_ACE_LAST, BIT_NO_DUPES, BIT_ALLOW_UBER, BIT_NO_RIVAL_STARTER = 0, 1, 2, 3
 BASE_FLAGS = (1 << BIT_ACE_LAST) | (1 << BIT_NO_DUPES)
 ALLOW_UBER = 1 << BIT_ALLOW_UBER
 NO_RIVAL_STARTER = 1 << BIT_NO_RIVAL_STARTER
-# e4_team_spec (Trainer Revamp 2026-09-23): six mons, base E4_BASE_LEVEL + tier
-# (read from balance_constants.asm below), step 2, ace pinned in the last slot,
-# and NO wTrainerNo 1 hole.
+# e4_member_records (party roster Phase 7a, 2026-10-07): six mons, base
+# E4_BASE_LEVEL + tier (read from balance_constants.asm below), step 2, one
+# record per tier on PARTY_ROSTER.md's <Member>_Fod1 with an Ace1 pool override
+# in the last slot, and NO wTrainerNo 1 hole.
 E4_TEAM_SIZE = 6
 POOL_FORM_BASE = 0
 # ChampionsRoom.asm hands RIVAL3 wTrainerNo 1-5, all reaching Rival3Spec.
@@ -307,6 +308,8 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                             want = f"{prefix}Round{(number - 1) // NUM_ROUND_VARIANTS + 1}"
                         elif prefix == "Lance" and number == NUM_E4_TEAMS + 1:
                             want = "ChampionLanceSpec"
+                        elif prefix in E4_MEMBERS:
+                            want = f"{prefix}Tier{(number - 1) // NUM_ROUND_VARIANTS + 1}"
                         else:
                             want = f"{prefix}Spec{number}"
                         self.assertEqual(
@@ -364,30 +367,28 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         round, because the four tiers are within three levels of each other and
         the ladder lives in the levels instead.
         """
+        labels = band_pool_labels()
         for image in self.images:
-            for prefix, (_cls, pool, ace, ace_form, alt, alt_form) \
-                    in E4_MEMBERS.items():
-                for number in range(1, NUM_E4_TEAMS + 1):
-                    tier = (number - 1) // NUM_ROUND_VARIANTS + 1
-                    variant = (number - 1) % NUM_ROUND_VARIANTS
-                    label = f"{prefix}Spec{number}"
+            for prefix in E4_MEMBERS:
+                for tier in range(1, NUM_E4_TIERS + 1):
+                    label = f"{prefix}Tier{tier}"
                     with self.subTest(rom=image.name, spec=label):
                         header, overrides = image.record(label)
                         self.assertEqual(
-                            header,
-                            (E4_TEAM_SIZE, E4_BASE_LEVEL + tier, 2, self.pools[pool],
+                            header[:3] + header[4:],
+                            (E4_TEAM_SIZE, E4_BASE_LEVEL + tier, 2,
                              self.mixes["MIX_E4_SETS"], BASE_FLAGS),
                             f"{label} serves tier {tier}")
-                        if variant == 1:
-                            self.assertEqual(overrides, [])
-                            continue
-                        pinned, form = ((ace, ace_form) if variant == 0
-                                        else (alt, alt_form))
+                        self.assertEqual(image.pool_list_addr(header[3]),
+                                         image.addr(labels[f"{prefix}_Fod1"]))
+                        # Party roster Phase 7a: the ace is an Ace1 pool draw on
+                        # every tier and variant, no longer a per-variant pin.
                         self.assertEqual(len(overrides), 1)
-                        slot, _flags, fields = overrides[0]
+                        slot, flags, fields = overrides[0]
                         self.assertEqual(slot, E4_TEAM_SIZE - 1)
-                        self.assertEqual(fields[BIT_POVR_SPECIES],
-                                         [self.species[pinned], form])
+                        self.assertEqual(flags, 1 << BIT_POVR_POOL)
+                        self.assertEqual(image.pool_list_addr(fields[BIT_POVR_POOL][0]),
+                                         image.addr(labels[f"{prefix}_Ace1"]))
 
     def test_rival3_champion_record(self):
         """All five Champion-rival numbers reach one pool-rolled record.

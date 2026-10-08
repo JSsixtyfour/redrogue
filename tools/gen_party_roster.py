@@ -59,7 +59,7 @@ BALANCE_ASM = os.path.join(ROOT, "constants", "balance_constants.asm")
 
 NUM_BANDS = 4
 GENERATED_SECTIONS = ("Gym leaders", "Mini-bosses", "Wild-area trainers",
-                      "Champions", "Gamblers")
+                      "Champions", "Gamblers", "Elite Four")
 # doc bullet -> pool kind, in emitted order
 LISTS = (("Aces", "Ace"), ("Fodder", "Fod"), ("Off-type", "Off"))
 KIND_OF_BULLET = dict(LISTS)
@@ -82,7 +82,8 @@ REGION_PREFIX = {"a": "Alolan", "g": "Galarian", "h": "Hisuian", "p": "Paldean"}
 # GymLeaderPool indexes 8-15 (Falkner..Clair) are Johto-only, and Janine's coin flip
 # only runs when the pool is NUM_GYM_POOL_ALL.
 JOHTO_GATED = ("Falkner", "Bugsy", "Whitney", "Morty", "Chuck", "Jasmine", "Pryce",
-               "Clair", "Janine")
+               "Clair", "Janine",
+               "KogaE4", "Will", "Karen")  # Elite Four: drawn only with Johto on
 # Pinned forms that may sit in the Johto run (band_pools.asm header rule): every
 # other pinned form is Time Warp content.
 JOHTO_FORMS = (("JOLTEON", 1), ("JOLTEON", 2))  # Espeon, Umbreon
@@ -544,23 +545,41 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
     return out
 
 
-# --- gambler sets (party roster Phase 6) ---------------------------------------
+# --- character sets (party roster Phase 6, generalized in Phase 7) ----------------
 #
-# The "#### Sets" table under "## Gamblers": | Species | Move, Move, Move, Move | Notes |.
-# tools/gen_movesets.py reads it through load_gambler_sets() and writes each row into
-# data/trainers/movesets.asm as a TIER_GAMBLER record; --check here fails when the two
-# disagree, so `make audit` catches a doc edit that was never regenerated (gen_movesets
-# itself needs the K: corpus and is not part of the audit).
+# Any character block may carry a curated-moveset table:
+#
+#   #### Sets: TIER_GAMBLER | TIER_HARD
+#   | Species | Move, Move, Move, Move | Notes |
+#
+# The heading names the tier bits the records carry (constants/party_spec_constants.asm).
+# tools/gen_movesets.py reads every table through load_signature_sets() and writes each
+# row into data/trainers/movesets.asm, tagged `; roster <Prefix>`; --check here fails
+# when the two disagree, so `make audit` catches a doc edit that was never regenerated
+# (gen_movesets itself needs the K: corpus and is not part of the audit).
+#
+# A set reaches a battle only through a mix row whose set_tier_mask shares a bit with
+# its tiers. A character's OWN bit (TIER_GAMBLER, or a free TIER_SIGNATURE_6/7) is
+# asked for only by that character's mix; a corpus grade (TIER_HARD...) also puts the
+# set in the shared pool every row with that grade draws from.
 
-GAMBLER_PREFIX = "Gambler"
 MOVE_CONSTANTS = os.path.join(ROOT, "constants", "move_constants.asm")
+SPEC_CONSTANTS = os.path.join(ROOT, "constants", "party_spec_constants.asm")
 MOVESETS_ASM = os.path.join(ROOT, "data", "trainers", "movesets.asm")
 MOVE_DISPLAY = {"PSYCHIC_M": "Psychic"}
+# Characters whose species come from the ROSTER path (GetRandRosterLoop), which
+# rolls its own forms after the draw, so a pinned form in their pool is lost.
+ROSTER_DRAWN = {"Gambler"}
 
 
 def load_moves():
     with open(MOVE_CONSTANTS, encoding="utf-8") as f:
         return {m.group(1) for m in re.finditer(r"^\s*const\s+([A-Z0-9_]+)", f.read(), re.M)}
+
+
+def load_tier_names():
+    with open(SPEC_CONSTANTS, encoding="utf-8") as f:
+        return set(re.findall(r"^DEF\s+(TIER_[A-Z0-9_]+)\s+EQU", f.read(), re.M))
 
 
 def move_const(name, moves):
@@ -571,19 +590,41 @@ def move_const(name, moves):
     return key
 
 
-def parse_gambler_sets(text, names, moves=None):
-    """[(SPECIES, (move1, move2, move3, move4))] in table order."""
+def parse_signature_sets(text, names, moves=None, tier_names=None):
+    """[{prefix, label, tiers, sets: [(SPECIES, (m1, m2, m3, m4))]}] in doc order.
+    label is the header's display name ("### Gambler (Gambler's Paradise)")."""
     moves = load_moves() if moves is None else moves
-    out, section, inside = [], None, False
+    tier_names = load_tier_names() if tier_names is None else tier_names
+    out, section, char, table = [], None, None, None
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
+
+        def fail(msg):
+            raise RosterError("PARTY_ROSTER.md:{}: {}".format(lineno, msg))
+
         if line.startswith("## "):
-            section, inside = line[3:].strip(), False
+            section, char, table = line[3:].strip(), None, None
         elif line.startswith("### "):
-            inside = False
+            table = None
+            m = re.match(r"###\s+([A-Za-z][A-Za-z0-9]*)\b\s*(?:\(([^)]*)\))?", line)
+            char = (m.group(1), m.group(2) or m.group(1)) if (
+                m and section in GENERATED_SECTIONS) else None
         elif line.startswith("#### "):
-            inside = section == "Gamblers" and line[5:].strip().lower() == "sets"
-        elif inside and line.startswith("|"):
+            table = None
+            m = re.match(r"####\s+Sets\b\s*:?\s*(.*)$", line, re.I)
+            if m:
+                if char is None:
+                    fail("a Sets table must sit inside a ### character block")
+                tiers = [t.strip() for t in m.group(1).split("|") if t.strip()]
+                if not tiers:
+                    fail("name the set tiers in the heading, e.g. "
+                         "'#### Sets: TIER_GAMBLER | TIER_HARD'")
+                for t in tiers:
+                    if t not in tier_names:
+                        fail("unknown tier {!r}".format(t))
+                table = {"prefix": char[0], "label": char[1], "tiers": tiers, "sets": []}
+                out.append(table)
+        elif table is not None and line.startswith("|"):
             cells = [c.strip() for c in line.strip("|").split("|")]
             if cells[0] == "Species" or not cells[0].strip("-: "):
                 continue
@@ -598,14 +639,19 @@ def parse_gambler_sets(text, names, moves=None):
                 if len(mv) != 4:
                     raise RosterError("{} lists {} moves, not 4".format(cells[0], len(mv)))
             except RosterError as e:
-                raise RosterError("PARTY_ROSTER.md:{}: {}".format(lineno, e))
-            out.append((species, mv))
+                fail(str(e))
+            table["sets"].append((species, mv))
     return out
 
 
+def load_signature_sets():
+    """The doc's character Sets tables, for tools/gen_movesets.py."""
+    return parse_signature_sets(read(DOC), Names())
+
+
 def load_gambler_sets():
-    """The doc's gambler sets, for tools/gen_movesets.py."""
-    return parse_gambler_sets(read(DOC), Names())
+    """[(SPECIES, moves)] of the Gambler's table (tests)."""
+    return [x for t in load_signature_sets() if t["prefix"] == "Gambler" for x in t["sets"]]
 
 
 def load_evolution_graph():
@@ -631,40 +677,68 @@ def load_evolution_graph():
     return graph
 
 
-def lint_gamblers(chars, sets, names, graph=None):
-    """Every species the gambler pool can field, evolutions included, needs a set."""
-    out = []
-    pool = next((c for c in chars if c["prefix"] == GAMBLER_PREFIX), None)
-    if pool is None:
-        return out if not sets else [("error", "gambler sets but no ### {} pool".format(
-            GAMBLER_PREFIX))]
-    graph = load_evolution_graph() if graph is None else graph
-    reachable = set()
-    for band in pool["bands"].values():
-        for sp, form, _ in band.get("Fod", []):
-            if form is not None:
-                out.append(("error", "{} Fodder: {} is a pinned form; the roster rolls its own "
-                            "forms and a set cannot name one".format(GAMBLER_PREFIX,
-                                                                     names.display(sp, form))))
-            todo = [sp]
-            while todo:
-                s = todo.pop()
-                if s not in reachable:
-                    reachable.add(s)
-                    todo.extend(graph.get(s, []))
-    have = {sp for sp, _ in sets}
-    for sp in sorted(reachable - have):
-        out.append(("error", "Gambler: {} can be fielded (pool entry or its evolution) but has "
-                    "no row in the Sets table, so it would fall back to random moves".format(
-                        species_display(sp))))
-    for sp in sorted(have - reachable):
-        out.append(("warning", "Gambler: {} has a set but the pool can never field it".format(
-            species_display(sp))))
+def fieldable_species(char, graph):
+    """Every species a character can field: Aces as written, Fodder and Off-type
+    entries plus everything they evolve into."""
+    out = set()
+    for lists in char["bands"].values():
+        for kind, entries in lists.items():
+            for sp, _, _ in entries:
+                todo = [sp]
+                while todo:
+                    s = todo.pop()
+                    if s not in out:
+                        out.add(s)
+                        if kind != "Ace":
+                            todo.extend(graph.get(s, []))
     return out
 
 
-def movesets_gambler_records(path=MOVESETS_ASM):
-    """Sorted [(SPECIES, moves)] of movesets.asm's TIER_GAMBLER records."""
+def lint_signature_sets(chars, tables, names, graph=None):
+    """A character with a Sets table needs a row for every species it can field."""
+    out = []
+    if not tables:
+        return out
+    graph = load_evolution_graph() if graph is None else graph
+    by_prefix = {c["prefix"]: c for c in chars}
+    for t in tables:
+        who = t["prefix"]
+        char = by_prefix.get(who)
+        if char is None:
+            out.append(("error", "{}: a Sets table but no pools".format(who)))
+            continue
+        if who in ROSTER_DRAWN:
+            for lists in char["bands"].values():
+                for sp, form, _ in lists.get("Fod", []):
+                    if form is not None:
+                        out.append(("error", "{} Fodder: {} is a pinned form; the roster "
+                                    "rolls its own forms and a set cannot name one".format(
+                                        who, names.display(sp, form))))
+        reachable = fieldable_species(char, graph)
+        have = {sp for sp, _ in t["sets"]}
+        for sp in sorted(reachable - have):
+            out.append(("error", "{}: {} can be fielded (pool entry or its evolution) but has "
+                        "no row in the Sets table, so it would fall back to its mix's "
+                        "fallback source".format(who, species_display(sp))))
+        for sp in sorted(have - reachable):
+            out.append(("warning", "{}: {} has a set but the pools can never field it".format(
+                who, species_display(sp))))
+    return out
+
+
+def tier_expr(tiers):
+    return " | ".join(tiers)
+
+
+def doc_set_records(tables):
+    """Sorted [(prefix, SPECIES, moves, tier expression)] the doc implies."""
+    return sorted((t["prefix"], sp, tuple(mv), tier_expr(t["tiers"]))
+                  for t in tables for sp, mv in t["sets"])
+
+
+def movesets_roster_records(path=MOVESETS_ASM):
+    """Sorted [(prefix, SPECIES, moves, tier expression)] of movesets.asm's
+    `; roster <Prefix>` records."""
     out, cur = [], None
     if not os.path.exists(path):
         return out
@@ -674,9 +748,10 @@ def movesets_gambler_records(path=MOVESETS_ASM):
             if m:
                 cur = m.group(1)
                 continue
-            m = re.match(r"^\s*db\s+(\w+),\s*(\w+),\s*(\w+),\s*(\w+),\s*TIER_GAMBLER\b", line)
+            m = re.match(r"^\s*db\s+(\w+),\s*(\w+),\s*(\w+),\s*(\w+),\s*([^,]+),"
+                         r"[^;]*;\s*roster\s+(\w+)", line)
             if m and cur:
-                out.append((cur, m.groups()))
+                out.append((m.group(6), cur, tuple(m.groups()[:4]), m.group(5).strip()))
     return sorted(out)
 
 
@@ -766,9 +841,9 @@ def main():
         chars = parse_doc(doc_text, names)
         asm = emit_asm(chars)
         findings = lint(chars, names)
-        gambler_sets = parse_gambler_sets(doc_text, names)
-        findings += lint_gamblers(chars, gambler_sets, names)
-        gambler_stale = movesets_gambler_records() != sorted(gambler_sets)
+        set_tables = parse_signature_sets(doc_text, names)
+        findings += lint_signature_sets(chars, set_tables, names)
+        sets_stale = movesets_roster_records() != doc_set_records(set_tables)
         new_doc = splice_curve(doc_text, curve_block(load_curve()))
     except RosterError as e:
         print("gen_party_roster: " + str(e), file=sys.stderr)
@@ -807,18 +882,18 @@ def main():
             print("gen_party_roster: the generated curve block in PARTY_ROSTER.md is stale; "
                   "rerun `python3 tools/gen_party_roster.py`", file=sys.stderr)
             bad = True
-        if gambler_stale:
-            print("gen_party_roster: data/trainers/movesets.asm's TIER_GAMBLER records differ "
-                  "from the Gamblers Sets table; run `py tools/gen_movesets.py` (it reads "
+        if sets_stale:
+            print("gen_party_roster: data/trainers/movesets.asm's `; roster` records differ "
+                  "from the doc's Sets tables; run `py tools/gen_movesets.py` (it reads "
                   "the corpus on the K: drive, so from Windows)", file=sys.stderr)
             bad = True
         if bad:
             return 1
-        print("gen_party_roster: band_pools.asm, the curve block and the gambler sets "
+        print("gen_party_roster: band_pools.asm, the curve block and the Sets tables "
               "match PARTY_ROSTER.md")
         return 0
-    if gambler_stale:
-        print("gen_party_roster: note: the gambler sets changed; also run "
+    if sets_stale:
+        print("gen_party_roster: note: a Sets table changed; also run "
               "`py tools/gen_movesets.py` (from Windows: it reads the K: corpus)",
               file=sys.stderr)
     write(OUT, asm)

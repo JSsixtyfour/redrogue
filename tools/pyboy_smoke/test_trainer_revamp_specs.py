@@ -21,7 +21,7 @@ _BALANCE = parse_rgbds_constants(REPO_ROOT / "constants" / "balance_constants.as
 
 
 def e4_levels(tier: int) -> tuple[int, int]:
-    """e4_team_spec: slot 0 is E4_BASE_LEVEL + tier, each slot adds E4_LEVEL_STEP."""
+    """E4_T curve: slot 0 is E4_BASE_LEVEL + tier, each slot adds E4_LEVEL_STEP."""
     low = _BALANCE["E4_BASE_LEVEL"] + tier
     return low, low + (E4_TEAM_SIZE - 1) * _BALANCE["E4_LEVEL_STEP"]
 
@@ -60,7 +60,7 @@ class TrainerRevampSpecTest(HarnessTestCase):
                   for i in range(count)]
         return count, party, levels
 
-    def _check_e4(self, trainer_no, ace_index, low, high):
+    def _check_e4(self, trainer_no, low, high):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
@@ -69,20 +69,23 @@ class TrainerRevampSpecTest(HarnessTestCase):
                 count, party, levels = self._build(cls, trainer_no)
                 self.assertEqual(count, E4_TEAM_SIZE,
                                  f"{cls} fielded {count} mons")
-                self.assertEqual(party[-1], self.species[aces[ace_index]],
-                                 f"{cls} ace is species {party[-1]}")
+                # Party roster Phase 7a: the ace is drawn from the member's
+                # Ace1 pool (these two signatures) on every variant.
+                self.assertIn(party[-1], {self.species[a] for a in aces},
+                              f"{cls} ace is species {party[-1]}")
                 self.assertEqual((levels[0], levels[-1]), (low, high))
 
-    def test_e4_tier_one_builds_six_with_the_a_ace(self):
+    def test_e4_tier_one_builds_six_with_an_ace(self):
         """wTrainerNo 1 used to be the authored hole: a fixed 4-5 mon team.
 
-        Now it is tier 1 variant A - six mons from E4_BASE_LEVEL + 1, the A ace last.
+        Now it is tier 1 - six mons from E4_BASE_LEVEL + 1, an Ace1 draw last.
         """
-        self._check_e4(1, 0, *e4_levels(1))
+        self._check_e4(1, *e4_levels(1))
 
-    def test_e4_tier_four_builds_six_with_the_c_ace(self):
-        """wTrainerNo 12: tier 4 variant C. Champion Lance draws 10-12."""
-        self._check_e4(12, 1, *e4_levels(4))
+    def test_e4_tier_four_middle_variant_has_an_ace_too(self):
+        """wTrainerNo 11: tier 4, the old variant B, which had no ace until
+        party roster Phase 7a."""
+        self._check_e4(11, *e4_levels(4))
 
     def test_rival3_ace_is_his_starter_and_the_pool_skips_its_line(self):
         """Slot 5 is wRivalStarter evolved; slots 0-4 never hold its line.
@@ -132,7 +135,7 @@ class TrainerRevampSpecTest(HarnessTestCase):
         for spec_label, mon, expected in (
             ("Rival3Spec", "CHARMANDER", False),
             ("Rival3Spec", "SQUIRTLE", True),
-            ("LoreleiSpec2", "CHARMANDER", True),
+            ("LoreleiTier1", "CHARMANDER", True),
         ):
             with self.subTest(spec=spec_label, mon=mon):
                 verdict.clear()

@@ -182,7 +182,7 @@ class BalanceTablesMatchRomTest(unittest.TestCase):
                     count -= 1
                 for t in range(1, count + 1):
                     tier = (t - 1) // NUM_ROUND_VARIANTS + 1
-                    header, _ = image.record(f"{member.name}Spec{t}")
+                    header, _ = image.record(f"{member.name}Tier{tier}")
                     with self.subTest(rom=image.name, member=member.name, wTrainerNo=t):
                         self.assertEqual(
                             header[:3], (6, k["E4_BASE_LEVEL"] + tier, k["E4_LEVEL_STEP"]),

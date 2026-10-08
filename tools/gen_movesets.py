@@ -134,8 +134,6 @@ FORM_NAMES = {
 }
 
 # Fixed engine labels, in LOSS_ORIGIN_* order (constants/party_spec_constants.asm).
-GAMBLER_LABEL = "a Gambler's Paradise set"
-
 FIXED_LABELS = [
     "a Basic Learnset",          # LOSS_ORIGIN_LEARNSET
     "a Generated set",           # LOSS_ORIGIN_GENERATED
@@ -383,16 +381,19 @@ def build(source_path):
         by_species[species].append((moves, tier, origin_id, lvl_min, lvl_max))
         kept += 1
 
-    # Gambler's Paradise sets (party roster Phase 6): the "#### Sets" table under
-    # "## Gamblers" in data/trainers/PARTY_ROSTER.md, appended AFTER the corpus so
-    # every corpus origin_id keeps its index. TIER_GAMBLER is a bit no mix but
-    # MIX_GAMBLER asks for, and 1-100 makes the level window always pass.
+    # Character sets (party roster Phases 6-7): every "#### Sets: <tiers>" table in
+    # data/trainers/PARTY_ROSTER.md, appended AFTER the corpus so every corpus
+    # origin_id keeps its index. The heading's tiers are written as-is; levels are
+    # 1-100, so the level window always passes. Each record is tagged
+    # `; roster <Prefix>` so gen_party_roster.py --check can compare it to the doc.
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import gen_party_roster
-    gambler_origin = origin_id_for(display_text(GAMBLER_LABEL))
-    for species, moves in gen_party_roster.load_gambler_sets():
-        by_species[species].append((list(moves), "TIER_GAMBLER", gambler_origin, 1, 100))
-        stats["gambler"] += 1
+    for table in gen_party_roster.load_signature_sets():
+        origin = origin_id_for(display_text("a {} set".format(table["label"])))
+        tiers = gen_party_roster.tier_expr(table["tiers"])
+        for species, moves in table["sets"]:
+            by_species[species].append((list(moves), tiers, origin, 1, 100, table["prefix"]))
+            stats["roster_sets"] += 1
 
     assert len(origin_order) <= 255, f"{len(origin_order)} labels overflow the 1-byte origin_id"
     return species_ids, by_species, origin_order, stats, kept, len(records)
@@ -418,8 +419,8 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
                  "(-> TIER_NORMAL),")
     lines.append(f";   {stats['no_level']} had no level range (-> 1-100), "
                  f"{stats['inverted_level']} had an inverted range (swapped).")
-    lines.append(f"; Plus {stats['gambler']} Gambler's Paradise sets (TIER_GAMBLER, levels 1-100) from")
-    lines.append(";   the Gamblers Sets table in data/trainers/PARTY_ROSTER.md.")
+    lines.append(f"; Plus {stats['roster_sets']} character sets (levels 1-100, tagged `; roster <Prefix>`)")
+    lines.append(";   from the Sets tables in data/trainers/PARTY_ROSTER.md.")
     lines.append("")
     lines.append('SECTION "Movesets Index", ROMX, BANK[$3D]')
     lines.append("")
@@ -453,20 +454,22 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
     lines.append("")
     for name in part1:
         lines.append(f"Moveset_{name}::")
-        for moves, tier, origin_id, lvl_min, lvl_max in by_species[name]:
+        for moves, tier, origin_id, lvl_min, lvl_max, *roster in by_species[name]:
             lines.append(
                 f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
                 f"{tier}, {origin_id}, {lvl_min}, {lvl_max}"
+                + (f" ; roster {roster[0]}" if roster else "")
             )
     lines.append("")
     lines.append('SECTION "Movesets 2", ROMX, BANK[$3B]')
     lines.append("")
     for name in part2:
         lines.append(f"Moveset_{name}::")
-        for moves, tier, origin_id, lvl_min, lvl_max in by_species[name]:
+        for moves, tier, origin_id, lvl_min, lvl_max, *roster in by_species[name]:
             lines.append(
                 f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
                 f"{tier}, {origin_id}, {lvl_min}, {lvl_max}"
+                + (f" ; roster {roster[0]}" if roster else "")
             )
     lines.append("")
     lines.append('SECTION "Movesets Index Tail", ROMX, BANK[$3D]')

@@ -666,8 +666,8 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
       WHITNEY 24   round 8 C, the same record (banded design: the variants of a
                    round share one), reached through a different wTrainerNo.
       KAREN 12     E4 tier 4 C. Proves the twelve-team Elite Four grid resolves
-                   at its top end, and that the ace is a JOLTEON carrying a FORM
-                   byte - Umbreon is not a species in this tree.
+                   at its top end, ending on a member of her Ace1 pool (party
+                   roster Phase 7a; the form byte is the next test's job).
 
     Capped well under the harness's ~10-invocation ceiling; see the module note.
     """
@@ -695,7 +695,7 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
             ("BROCK", 4, 2, aces["Brock_Ace1"]),
             ("WHITNEY", 22, 6, aces["Whitney_Ace4"]),
             ("WHITNEY", 24, 6, aces["Whitney_Ace4"]),
-            ("KAREN", 12, 6, {"JOLTEON"}),  # six since the Trainer Revamp
+            ("KAREN", 12, 6, aces["Karen_Ace1"]),  # six since the Trainer Revamp
         ):
             with self.subTest(trainer=trainer_class, wTrainerNo=trainer_no):
                 count, party = self._build(trainer_class, trainer_no)
@@ -713,7 +713,11 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
                         f"slot {slot} holds {got}, which is not a species")
 
     def test_ace_form_byte_survives_into_the_built_mon(self):
-        """KAREN's ace is JOLTEON form 2 (Umbreon), and the form must stick.
+        """KAREN's Ace1 holds Umbreon, JOLTEON form 2, and the form must stick.
+
+        Since party roster Phase 7a her ace is a pool draw (Houndoom or Umbreon,
+        both Johto), so Johto is switched on and she is built until an Umbreon
+        comes up; every Houndoom on the way must carry form 0.
 
         AddPartyMon folds wSpawnForm into that mon's MON_CATCH_RATE bits 5-6 and
         then clears wSpawnForm, so reading the species alone cannot tell Umbreon
@@ -725,14 +729,22 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        count, _ = self._build("KAREN", 12)
-        self.assertEqual(count, 6)  # E4 teams are six since the Trainer Revamp
+        events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [0b111], bank=1)
+        jolteon = parse_rgbds_constants(
+            REPO_ROOT / "constants/pokemon_constants.asm")["JOLTEON"]
         stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
-        forms = []
-        for slot in range(count):
-            catch_rate = h.read8("wEnemyMon1CatchRate", offset=slot * stride)
-            forms.append((catch_rate >> 5) & 0b11)
-        self.assertEqual(
-            forms[-1], 2,
-            f"the ace's form index is {forms[-1]}, expected 2 (Umbreon); "
-            f"whole party read {forms}")
+        for _attempt in range(6):
+            count, party = self._build("KAREN", 12)
+            self.assertEqual(count, 6)  # E4 teams are six since the Trainer Revamp
+            forms = [(h.read8("wEnemyMon1CatchRate", offset=slot * stride) >> 5) & 0b11
+                     for slot in range(count)]
+            if party[count - 1] == jolteon:
+                self.assertEqual(
+                    forms[-1], 2,
+                    f"the ace's form index is {forms[-1]}, expected 2 (Umbreon); "
+                    f"whole party read {forms}")
+                return
+            self.assertEqual(forms[-1], 0, f"a non-Umbreon ace carries form {forms[-1]}")
+        self.fail("six Karen builds drew no Umbreon ace; the form byte went untested")

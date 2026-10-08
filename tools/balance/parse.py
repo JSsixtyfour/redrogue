@@ -371,10 +371,7 @@ class LeaderRecord:
 
 @dataclass(frozen=True)
 class E4Record:
-    name: str
-    pool: str
-    ace_a: str
-    ace_c: str
+    name: str  # PARTY_ROSTER.md prefix; pools POOL_BAND_<name>_Ace1 / _Fod1
 
 
 def load_spec_records() -> tuple[list[LeaderRecord], list[E4Record]]:
@@ -385,8 +382,7 @@ def load_spec_records() -> tuple[list[LeaderRecord], list[E4Record]]:
             args = [a.strip() for a in code.split(None, 1)[1].split(",")]
             leaders.append(LeaderRecord(*args[:2]))
         elif code.startswith("e4_member_records "):
-            args = [a.strip() for a in code.split(None, 1)[1].split(",")]
-            e4.append(E4Record(args[0], args[1], args[2], args[4]))
+            e4.append(E4Record(code.split(None, 1)[1].strip()))
     return leaders, e4
 
 
@@ -507,8 +503,6 @@ def _validate(d: GameData) -> None:
     for runs in d.pools.values():
         for lst in runs.values():
             names.update(lst)
-    for r in d.e4:
-        names.update((r.ace_a, r.ace_c))
     for sp in list(d.species.values()):
         names.update(target for _, _, target in sp.evos)
     missing = sorted(n for n in names if n not in d.species)

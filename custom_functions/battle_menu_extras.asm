@@ -42,7 +42,7 @@ RogueConfirmEndBattle::
 
 	ld hl, .ConfirmText
 	call PrintText
-	xor a ; YES_NO_MENU
+	ld a, YES_NO_MENU | (1 << BIT_SECOND_MENU_OPTION_DEFAULT) ; cursor starts on NO
 	ld [wTwoOptionMenuID], a
 	hlcoord 13, 9
 	lb bc, 10, 14

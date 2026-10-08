@@ -60,7 +60,7 @@ DEF SET_LEVEL_SLACK_BELOW EQU 10
 
 ; --- Elite Four -------------------------------------------------------------
 ; Tier t (1-4, from wBattleCount 86-89): slot 0 is E4_BASE_LEVEL + t, and each
-; slot adds E4_LEVEL_STEP. Read by e4_team_spec in party_specs.asm.
+; slot adds E4_LEVEL_STEP. Read through the E4_T curve in party_specs.asm.
 DEF E4_BASE_LEVEL EQU 49
 DEF E4_LEVEL_STEP EQU 2
 
