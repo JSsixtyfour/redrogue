@@ -702,7 +702,8 @@ AIMoveChoiceModification2:
 ;                   Amnesia is worth using even on a mon with no special attack
 ;   SPECIAL_DOWN* - same reason in mirror: it weakens their special attacks as
 ;                   well as helping ours, so it is never purely wasted
-;   SPEED/ACCURACY/EVASION - category-independent
+;   SPEED/ACCURACY/EVASION - category-independent (Speed boosts DO get their
+;                   own turn-order gate below, added 2026-10-08)
 	ld a, [wEnemyMoveEffect] ; still this move's effect: ReadMove above is the
 	                         ; last thing that wrote the block
 	cp ATTACK_UP1_EFFECT
@@ -712,7 +713,24 @@ AIMoveChoiceModification2:
 	cp DEFENSE_DOWN1_EFFECT
 	jr z, .needsPhysical
 	cp DEFENSE_DOWN2_EFFECT
+	jr z, .needsPhysical
+; Speed boosts (2026-10-08, FOLLOWUPS #61): no blanket encourage when we already
+; act first. AISmartSpeedAlreadyAhead (AI_BACKLOG B2) nudges such a boost DOWN
+; by 1, which this layer's 2 used to drown out: a Pidgeot already faster than a
+; 47-HP Golbat chose Agility over a Take Down that could KO. AIEnemyIsFaster
+; clobbers af/bc/de; b is the loop counter and de the move cursor.
+	cp SPEED_UP1_EFFECT
+	jr z, .speedBoost
+	cp SPEED_UP2_EFFECT
 	jr nz, .doPrefer
+.speedBoost
+	push bc
+	push de
+	call AIEnemyIsFaster
+	pop de
+	pop bc ; pop keeps the carry
+	jr c, .nextMove ; already strictly faster: the boost buys no turn order
+	jr .doPrefer
 .needsPhysical
 	ld a, [wBuffer + AI_BUF_PHYSICAL]
 	and a

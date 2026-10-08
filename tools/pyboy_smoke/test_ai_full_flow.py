@@ -459,7 +459,8 @@ class AIFullFlowTest(unittest.TestCase):
         # hands the player a free hit. Before 2026-10-08 AI_DAMAGE scored it
         # AI_KILL_FIRST (-10) and AI_SMART's +2 charge penalty was noise. Now it
         # reaches the kill branch, is capped at AI_STRONG, sets no
-        # wAIReliableKOFound, and the half-HP Vine Whip wins (18 vs 17).
+        # wAIReliableKOFound, and the half-HP Vine Whip wins. Since Solar Beam
+        # also ranks at half (#61), the best-damage nudge is Vine Whip's: 19 vs 16.
         h = self.h
         self.boot([self.mon("GOLEM", ["SPLASH"])],
                   [self.mon("VENUSAUR", ["SOLARBEAM", "VINE_WHIP"])],
@@ -480,6 +481,40 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertGreater(damage[0][0], -self.ai["AI_KILL"])  # ...and capped below it
         self.assertEqual(flag[:1], [0])
         self.assertEqual(executed[0], self.moves["VINE_WHIP"])
+
+    def test_attack_that_can_ko_beats_a_pointless_speed_boost(self):
+        # FOLLOWUPS #61 (benchmark seed 17): an already-faster Pidgeot vs a
+        # 47-HP Golbat chose Agility (18) over a Take Down that could KO (19).
+        # AI_SETUP's blanket -2 drowned out B2's "already faster" +1, and the
+        # best-damage nudge went to Sky Attack (two turns ranked as one). Now
+        # AI_SETUP skips speed boosts when already faster, Sky Attack ranks at
+        # half, and Take Down takes the nudge and wins outright.
+        h = self.h
+        self.boot([self.mon("GOLBAT", ["SPLASH"], level=45)],
+                  [self.mon("PIDGEOT", ["TAKE_DOWN", "AGILITY", "SKY_ATTACK", "MIRROR_MOVE"])],
+                  trainer="COOLTRAINER_M", tier=3)
+        self.no_items()
+        primed = []
+
+        def prime():
+            if not primed:
+                primed.append(1)
+                self.word("wBattleMonHP", 47)
+
+        h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
+        decisions = h.hook_ai_scores()
+        executed = []
+        h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
+            h.read8("wEnemySelectedMove")))
+        self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
+        first = decisions[0]
+        layers = {t["layer"]: t["delta"] for t in first["layer_trace"]}
+        print(f"\nL3 speed-boost scores={first['scores']} setup={layers.get('SETUP')} "
+              f"damage={layers.get('DAMAGE')} executed={executed}")
+        self.assertEqual(layers["SETUP"][1], 0)  # no blanket encourage for Agility
+        take_down = first["scores"][0]
+        self.assertTrue(all(take_down < s for s in first["scores"][1:]), first["scores"])
+        self.assertEqual(executed[0], self.moves["TAKE_DOWN"])
 
 
 if __name__ == "__main__":

@@ -72,9 +72,10 @@ AILayerDamage:
 	jr z, .estimate
 	ld a, [wEnemyMovePower]
 	and a
-	jr z, .noChange ; status move: this layer has no opinion. Skipping the
+	jp z, .noChange ; status move: this layer has no opinion. Skipping the
 	                ; farcall here is also most of the layer's cost saved, since
-	                ; a moveset is usually part status.
+	                ; a moveset is usually part status. jp, not jr: the two-turn
+	                ; halving at .rankedByDelivery pushed it out of range.
 .estimate
 	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (one-hit max, STAB and type
 	                         ; already applied). Clobbers a/bc/hl, all pushed.
@@ -137,6 +138,24 @@ AILayerDamage:
 	adc b
 	ld [wAIDamageEstimate], a
 .rankedByDelivery
+; Two-turn moves (CHARGE_EFFECT, FLY_EFFECT) rank at HALF: two turns for one hit
+; is half the damage per turn, and per-turn damage is what this layer compares
+; (2026-10-08, user's rule, FOLLOWUPS #61). It feeds the best-damage nudge and
+; the half/quarter tiers below. The possible-KO test above already ran on the
+; full hit, and .kill caps these moves anyway. Hyper Beam is deliberately not
+; here: it lands THIS turn, and its recharge is AISmart_HyperBeam's business.
+; wAIDamageEstimate is big-endian; hl is free (the score pointer is stacked).
+	ld a, [wEnemyMoveEffect]
+	cp CHARGE_EFFECT
+	jr z, .halveTwoTurn
+	cp FLY_EFFECT
+	jr nz, .scaleAccuracy
+.halveTwoTurn
+	ld hl, wAIDamageEstimate
+	srl [hl]
+	inc hl
+	rr [hl]
+.scaleAccuracy
 	call AIScaleDamageByAccuracy
 	call .trackBest
 	pop af
@@ -168,8 +187,8 @@ AILayerDamage:
 ; switch, heal or hit first, so they take the unreliable-kill tier (2026-10-08,
 ; found in the #55 benchmark trace: a killing Solar Beam scored AI_KILL_FIRST,
 ; -10, against which AISmart_Charge's AI_STRONG penalty was noise). Same rule as
-; the TrainerAI KO check in ai_predicates.asm. The simulator still credits full
-; damage for ranking, as F14 decided. wEnemyMoveEffect is still this slot's:
+; the TrainerAI KO check in ai_predicates.asm. Ranking uses half the hit (see
+; .rankedByDelivery). wEnemyMoveEffect is still this slot's:
 ; nothing between the loop's ReadMove and here reloads the move block.
 	ld a, [wEnemyMoveEffect]
 	cp CHARGE_EFFECT
