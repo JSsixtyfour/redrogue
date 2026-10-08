@@ -437,6 +437,7 @@ AIClearDecisionCaches::
 	push de
 	xor a ; AI_KO_CACHE_EMPTY, and an empty estimate slot
 	ld [wAIPlayerKOCache], a
+	ld [wAIReliableKOFound], a ; set by AI_DAMAGE, read by AI_PLAN (#55)
 	ASSERT wAIPlayerKOMaxDamage == wAIEnemyEstimateCache + NUM_MOVES * 2
 	ld hl, wAIEnemyEstimateCache
 	ld b, NUM_MOVES * 2 + 2 ; the estimates and wAIPlayerKOMaxDamage

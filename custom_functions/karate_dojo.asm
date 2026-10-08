@@ -53,6 +53,13 @@ KarateDojoRewardMenu::
 	lb bc, 6, 18
 	call TextBoxBorder
 	call KarateDojoPlaceNames
+	; The post-battle script fires this with hJoyIgnore = PAD_CTRL_PAD (to pin
+	; the player during the text), which masks the menu's UP/DOWN and the
+	; nickname YES/NO. Open the d-pad for the menu; restore the caller's mask.
+	ldh a, [hJoyIgnore]
+	push af
+	xor a
+	ldh [hJoyIgnore], a
 	; Same as BridgeGiftMenu: freeze object rendering so map actors can't
 	; composite over the names, and restore the caller's state afterwards.
 	ldh a, [hUpdateSpritesEnabled]
@@ -84,6 +91,9 @@ KarateDojoRewardMenu::
 	pop bc                       ; b = saved hUpdateSpritesEnabled; flags kept
 	ld a, b
 	ldh [hUpdateSpritesEnabled], a
+	pop bc                       ; b = saved hJoyIgnore; flags kept
+	ld a, b
+	ldh [hJoyIgnore], a
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]  ; res leaves carry alone
 	ret

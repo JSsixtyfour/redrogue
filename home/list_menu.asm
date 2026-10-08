@@ -595,7 +595,7 @@ PrintListMenuEntries::
 	ld de, ListMenuCancelText
 	jp PlaceString
 
-; PrintBagInfoText, GetCurrentMenuItem, GetTMHMContent and their strings
+; PrintBagInfoText, GetCurrentMenuItem and their strings
 ; live in ROMX (custom_functions/tm_bag.asm) to keep the HOME bank free.
 ; All callers use farcall.
 

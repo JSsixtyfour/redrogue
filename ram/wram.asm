@@ -1836,7 +1836,11 @@ wSpriteOutputBitOffset:: db
 ; bit 0 determines used buffer (0 -> sSpriteBuffer1, 1 -> sSpriteBuffer2)
 ; bit 1 loading last sprite chunk? (there are at most 2 chunks per load operation)
 wSpriteLoadFlags:: db
-wSpriteUnpackMode:: db
+; Was wSpriteUnpackMode, dead since the LZ pic switch (2026-10-07); reused in
+; place so no address moves (FOLLOWUPS #55). Nonzero when AI_DAMAGE found a
+; RELIABLE kill this decision; AILayerPlan then issues no directive. Cleared by
+; AIClearDecisionCaches at every decision, so it is never read stale.
+wAIReliableKOFound:: db
 wSpriteFlipped:: db
 
 ; pointer to next input byte

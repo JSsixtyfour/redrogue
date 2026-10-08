@@ -1530,13 +1530,6 @@ _WhatDoYouWantText::
 ;	line "to toss away?"
 ;	done
     
-_TMItContainsText:: ; marcelnote - new for TM printing
-	text "It contains"
-	line "@"
-	text_ram wStringBuffer
-	text "."
-	done
-
 ; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
 ;_TossHowManyText::
 ;	text "How many?"

@@ -348,8 +348,8 @@ WhatDoYouWantText:
 ;	text_far _TossHowManyText
 ;	text_end
 
-;; TMItContainsText moved to custom_functions/tm_bag.asm (same ROMX bank as
-;; PrintBagInfoText, which needs to read it with that bank active)
+;; TMItContainsText was replaced by item descriptions
+;; (custom_functions/item_descriptions.asm)
 ;	text_end
 
 ; ============================================================

@@ -13,7 +13,7 @@ TextBoxCoordTable:
 	db LIST_MENU_BOX,     4,  2, 19, 12
 	db MENU_TEMPLATE_10,  7,  0, 19, 17
 	db MON_SPRITE_POPUP,  6,  4, 14, 13
-    db BAG_INFO_BOX,      4, 13, 19, 15 ; marcelnote - new for bag pockets
+    db BAG_INFO_BOX,      4, 13, 19, 17 ; marcelnote - new for bag pockets; rows 15-16 hold the item description (item_descriptions.asm)
 	db -1 ; end
 
 MACRO text_box_text

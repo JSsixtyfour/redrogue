@@ -152,6 +152,9 @@ ROMX $16
 	"Battle Engine 10"
 	"Maps 14"
 	"Saffron Guards"
+	; TM/HM display names (HOME GetMachineName switches here explicitly) and,
+	; later, the bag/mart item descriptions. $16 is map data that does not grow.
+	"Item Descriptions"
 ROMX $17
 	"Maps 15"
 	"Starter Dex"

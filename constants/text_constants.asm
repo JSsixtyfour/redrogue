@@ -6,6 +6,10 @@ DEF TRAINER_NAME_LENGTH EQU 13
 DEF MOVE_NAME_LENGTH    EQU 14
 DEF GYM_CITY_LENGTH     EQU 17
 DEF NAME_BUFFER_LENGTH  EQU 20
+; "TM44 " (5) + move part (up to 7) + '@' fills ITEM_NAME_LENGTH exactly;
+; TMHMDisplayNames (data/items/tmhm_names.asm) stores 8-byte move parts.
+DEF TMHM_DISPLAY_NAME_LENGTH EQU 8
+ASSERT 5 + TMHM_DISPLAY_NAME_LENGTH == ITEM_NAME_LENGTH
 
 ; PrintNumber, PrintBCDNumber
 	const_def 5

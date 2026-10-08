@@ -168,6 +168,11 @@ AILayerDamage:
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .unreliableKill
+; Tell AI_PLAN a reliable kill is on the board, so no plan steers past it
+; (FOLLOWUPS #55: a plan directive stacked with AI_SMART's opinion of the same
+; status move tied a kill). `ld` sets no flags.
+	ld a, 1
+	ld [wAIReliableKOFound], a
 ; F16 (2026-09-02): a RELIABLE kill that also ACTS FIRST outranks a bigger
 ; reliable kill that does not. When two moves both kill, raw damage is the wrong
 ; tiebreak - turn order is, because the bigger one is worthless if the player

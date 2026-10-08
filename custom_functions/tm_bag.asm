@@ -339,7 +339,8 @@ PocketSwitchROMX::
 	ret
 
 ; ============================================================
-; PrintBagInfoText, GetCurrentMenuItem, GetTMHMContent, strings
+; PrintBagInfoText, GetCurrentMenuItem, strings
+; (item descriptions: custom_functions/item_descriptions.asm)
 ; Moved here from home/list_menu.asm so they live in the same ROMX
 ; bank as PocketSwitchROMX and the strings they reference (avoiding
 ; cross-bank read issues). Call sites use farcall.
@@ -347,10 +348,6 @@ PocketSwitchROMX::
 ; ClearScreenArea, etc.) are plain `call` — HOME code is always accessible
 ; from any bank.
 ; ============================================================
-
-TMItContainsText:: ; moved from engine/menus/players_pc.asm (bank1) so the
-	text_far _TMItContainsText   ; bank is active when PrintText reads [hl]
-    text_end
 
 ; The left arrow uses global font tile $ea, supplied in gfx/font.asm.
 ; Keep it outside the screen-specific $60-$78 graphics range.
@@ -416,61 +413,40 @@ PrintBagInfoText::
 .notStat2
 	ld de, BagValuableText
 .mainPocket
-	call GetCurrentMenuItem
+	; Row 14: the pocket label, or for a key item its upgrade tier. Rows 15-16:
+	; the highlighted item's description (PrintItemDescription). de = label.
+	push de
 	hlcoord 5, 14
-	cp $ff ; CANCEL?
-	jr z, .notTM
-	cp HM_CUT
-	jr c, .maybeKeyItemTier
-	call GetTMHMContent
-	hlcoord 5, 14
-	ld a, ' '
-	ld b, 14 ; clear whole line
-.clearLine
-	ld [hli], a
-	dec b
-	jr nz, .clearLine
-	ld de, wStringBuffer
-	hlcoord 6, 14
-.notTM
-	jp PlaceString
-
-; Key items reuse the box that shows a TM's move name, displaying the selected
-; item's upgrade tier in place of the pocket label. a = the selected item id.
-.maybeKeyItemTier
-	push af                    ; stash the item id
+	lb bc, 3, 14
+	call ClearScreenArea
+	call GetCurrentMenuItem    ; a = item id, $ff = CANCEL
+	pop de
+	cp $ff
+	jr z, .placeLabel          ; CANCEL: the label alone
+	push af                    ; the item id, for the description
 	ld a, [wBagPocketsFlags]
 	and POCKET_INDEX_MASK
 	cp POCKET_KEY_ITEMS
-	; branch BEFORE the pop: `pop af` restores the pushed flags and would wipe
-	; the comparison result, which is what silently sent every key item down
-	; the plain-label path
-	jr z, .keyItemTier
+	jr nz, .gotLabel
 	pop af
-	jr .notTM                  ; other pockets keep their plain label
-.keyItemTier
-	pop af                     ; a = the selected item id again
+	push af
 	ld [wCurItem], a
 	call GetKeyItemTierForCurItem ; same bank, so a plain call is safe
 	ld hl, .TierStrings
-	ld de, 7                   ; each entry below is 6 chars + terminator
-	inc a
-.findTier
-	dec a
-	jr z, .gotTier
-	add hl, de
-	jr .findTier
-.gotTier
+	ld bc, 7                   ; each entry below is 6 chars + terminator
+	call AddNTimes
 	ld d, h
 	ld e, l
+.gotLabel
 	hlcoord 5, 14
-	ld a, ' '
-	ld b, 14 ; clear whole line, as the TM path does
-.clearTierLine
-	ld [hli], a
-	dec b
-	jr nz, .clearTierLine
-	hlcoord 6, 14
+	call PlaceString
+	pop af
+	ld e, a
+	ld d, 0                    ; the bag's info box layout
+	farcall PrintItemDescription
+	ret
+.placeLabel
+	hlcoord 5, 14
 	jp PlaceString
 
 ; Displayed tier is the internal tier + 1: an item fresh out of the box is
@@ -497,18 +473,26 @@ PrintBagInfoText::
 	cp PRICEDITEMLISTMENU
 	ret nz
 .continue
+	; The mart's buy and sell lists: describe the highlighted item in the
+	; clerk's text box.
 	call GetCurrentMenuItem
 	cp $ff
 	jr z, .restoreDefaultText
-	cp HM_CUT
-	jr c, .restoreDefaultText
-	call GetTMHMContent
+	; The Player's PC key item lists come through here too and keep a plain
+	; text box. BIT_NO_MENU_BUTTON_SOUND is set for the whole PC session
+	; (engine/menus/players_pc.asm, pc.asm) and cleared on the way out.
+	ld hl, wMiscFlags
+	bit BIT_NO_MENU_BUTTON_SOUND, [hl]
+	jr nz, .restoreDefaultText
+	push af
 	hlcoord 1, 14
 	lb bc, 3, 18
 	call ClearScreenArea
-	ld hl, TMItContainsText
-	call PrintText_NoCreatingTextBox
-    ret
+	pop af
+	ld e, a
+	ld d, 1                    ; the clerk's text box layout
+	farcall PrintItemDescription
+	ret
 ; Credit Exchange upgrade vendor: show which tier the highlighted item would be
 ; bought up to. Must NOT fall through to .restoreDefaultText - that repaints
 ; from wTextBoxBuffer, which only the mart populates (via
@@ -589,19 +573,6 @@ GetCurrentMenuItem::
 	add hl, bc
 	ld a, [hl]
 	ret
-
-GetTMHMContent::
-	sub TM01
-	jr nc, .skipAdding
-	add NUM_TMS + NUM_HMS
-.skipAdding
-	inc a
-	ld [wTempTMHM], a
-	predef TMToMove
-	ld a, [wTempTMHM]
-	ld [wMoveNum], a
-	call GetMoveName
-	jp CopyToStringBuffer
 
 ; ============================================================
 ; MartHideOwnedTMs  (farcall'd from DisplayPokemartDialogue_'s .buyMenuLoop)

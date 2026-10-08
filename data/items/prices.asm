@@ -15,10 +15,10 @@ ItemPrices::
 	bcd3 250   ; ICE_HEAL
 	bcd3 200   ; AWAKENING
 	bcd3 200   ; PARLYZ_HEAL
-	bcd3 3000  ; FULL_RESTORE
-	bcd3 2500  ; MAX_POTION
+	bcd3 2500  ; FULL_RESTORE
+	bcd3 2000  ; MAX_POTION
 	bcd3 1500  ; HYPER_POTION
-	bcd3 600   ; SUPER_POTION
+	bcd3 450   ; SUPER_POTION
 	bcd3 200   ; POTION
 	bcd3 0     ; BOULDERBADGE
 	bcd3 0     ; CASCADEBADGE
@@ -53,15 +53,15 @@ ItemPrices::
 	bcd3 1000  ; POKE_DOLL
 	bcd3 600   ; FULL_HEAL
 	bcd3 1500  ; REVIVE
-	bcd3 4000  ; MAX_REVIVE
+	bcd3 3000  ; MAX_REVIVE
 	bcd3 700   ; GUARD_SPEC
 	bcd3 500   ; SUPER_REPEL
 	bcd3 700   ; MAX_REPEL
 	bcd3 650   ; DIRE_HIT
 	bcd3 10    ; COIN
-	bcd3 500   ; FRESH_WATER
-	bcd3 700   ; SODA_POP
-	bcd3 800   ; LEMONADE
+	bcd3 450   ; FRESH_WATER
+	bcd3 550   ; SODA_POP
+	bcd3 650   ; LEMONADE
 	bcd3 0     ; S_S_TICKET
 	bcd3 0     ; GOLD_TEETH
 	bcd3 500   ; X_ATTACK

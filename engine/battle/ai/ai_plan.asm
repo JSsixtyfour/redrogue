@@ -37,6 +37,16 @@ AILayerPlan:
 
 	farcall AIPlanSelectAndExecute ; de = class mask to encourage, l = magnitude
 
+; A reliable kill outranks every plan (FOLLOWUPS #55). The magnitude clamp below
+; holds per layer only: AI_SMART's own opinion of the plan's move stacks on the
+; directive, and ParaSweep's Thunder Wave (SMART 3 + PLAN 3) tied a Thunderbolt
+; that KOs (AI_KILL 5 + best nudge 1). Selection and execute above still ran,
+; so plan state advances as on any kill-override turn (AIRun_AgilityWrap counts
+; ATTEMPTS for exactly this case); only this turn's push is withheld.
+	ld a, [wAIReliableKOFound] ; ld a, [nn] leaves l intact
+	and a
+	ret nz
+
 	ld a, l
 	and a
 	ret z ; the active plan wants nothing steered this turn

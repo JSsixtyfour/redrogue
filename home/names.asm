@@ -104,8 +104,33 @@ GetMachineName::
 	add b
 	ld [de], a
 	inc de
-	ld a, '@'
+; then " " and the move part from TMHMDisplayNames ("TM44 REST"); each entry
+; is '@'-padded, so the copy brings its own terminator. Bank switched inline,
+; not via FarCopyData, which leaves its bank in wBuffer+0.
+	ld a, ' '
 	ld [de], a
+	inc de
+	pop af ; the original item id
+	push af
+	sub HM01
+	ld l, a
+	ld h, 0
+	add hl, hl
+	add hl, hl
+	add hl, hl ; * TMHM_DISPLAY_NAME_LENGTH
+	ASSERT TMHM_DISPLAY_NAME_LENGTH == 8
+	ld bc, TMHMDisplayNames
+	add hl, bc
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, BANK(TMHMDisplayNames)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+	ld bc, TMHM_DISPLAY_NAME_LENGTH
+	call CopyData
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 	pop af
 	ld [wNamedObjectIndex], a
 	pop bc

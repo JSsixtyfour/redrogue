@@ -46,8 +46,10 @@ class TMItemNameTest(unittest.TestCase):
                 pb.hook_register(*symbols.get("DisplayListMenuIDLoop.skipStoringItemName"), finished, None)
                 pb.hook_register(*symbols.get("CopyString"), bound_copy, None)
                 # TM12, TM24, HM01, plus a normal item with a stale move type.
-                for item, expected in ((0xD4, "TM12"), (0xE0, "TM24"),
-                                       (0xC4, "HM01"), (0x14, "POTION")):
+                # Machine names carry their move since 2026-10-08
+                # (data/items/tmhm_names.asm).
+                for item, expected in ((0xD4, "TM12 WATRGUN"), (0xE0, "TM24 THRBOLT"),
+                                       (0xC4, "HM01 CUT"), (0x14, "POTION")):
                     with self.subTest(variant=variant, item=item):
                         result.clear()
                         pb.memory[start:start + 400] = [0xA5] * 400
@@ -64,6 +66,7 @@ class TMItemNameTest(unittest.TestCase):
                                 break
                         self.assertTrue(result.get("finished"), result)
                         encoded = [ord(c) - ord("A") + 0x80 if c.isalpha()
+                                   else 0x7F if c == " "
                                    else int(c) + 0xF6 for c in expected] + [0x50]
                         self.assertEqual(list(pb.memory[start:start + len(encoded)]), encoded)
                         # The name routine legitimately writes control fields

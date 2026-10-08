@@ -2209,8 +2209,10 @@ LoadMapHeader::
 	res BIT_NO_PREVIOUS_MAP, a
 	ld [wCurMapTileset], a
 	ldh [hPreviousTileset], a
-	bit BIT_NO_PREVIOUS_MAP, b
-	ret nz
+; Continue (BIT_NO_PREVIOUS_MAP) keeps the saved objects, warps and sprites, but
+; the fixed header and connection headers hold ROM addresses from the build that
+; wrote the save. Always reload those from this ROM (FOLLOWUPS #51).
+	push bc
 	ld hl, MapHeaderPointers
 	ldh a, [hCurMap]
 	sla a
@@ -2259,10 +2261,13 @@ LoadMapHeader::
 	call CopyMapConnectionHeader
 .checkEast
 	bit EAST_F, b
-	jr z, .getObjectDataPointer
+	jr z, .connectionsDone
 	ld de, wEastConnectionHeader
 	call CopyMapConnectionHeader
-.getObjectDataPointer
+.connectionsDone
+	pop bc
+	bit BIT_NO_PREVIOUS_MAP, b
+	ret nz
 	ld a, [hli]
 	ld [wObjectDataPointerTemp], a
 	ld a, [hli]

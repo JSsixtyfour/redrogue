@@ -608,6 +608,12 @@ SECTION "Saffron Guards", ROMX
 INCLUDE "engine/events/saffron_guards.asm"
 
 
+SECTION "Item Descriptions", ROMX
+
+INCLUDE "data/items/tmhm_names.asm"
+INCLUDE "custom_functions/item_descriptions.asm"
+
+
 SECTION "Starter Dex", ROMX
 
 INCLUDE "engine/events/starter_dex.asm"

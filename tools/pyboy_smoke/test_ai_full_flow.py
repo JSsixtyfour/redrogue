@@ -29,8 +29,8 @@ class AIFullFlowTest(unittest.TestCase):
     def tearDown(self):
         self.h.close()
 
-    def mon(self, name, moves):
-        return {"species": self.species[name], "level": 50,
+    def mon(self, name, moves, level=50):
+        return {"species": self.species[name], "level": level,
                 "moves": [self.moves[m] for m in moves]}
 
     def word(self, label, value, offset=0):
@@ -413,8 +413,13 @@ class AIFullFlowTest(unittest.TestCase):
         # Raichu is slower than Aerodactyl until paralysis quarters its Speed,
         # so ParaSweep fits with the flip bonus. Turn 1 must be Thunder Wave;
         # once it lands the plan goes quiet and Thunderbolt follows.
+        #
+        # Level 62 keeps Thunderbolt out of kill range (measured: half-HP tier,
+        # final scores TW 13 / TB 14, a strict win). At level 50 Thunderbolt is a
+        # reliable KO and ties Thunder Wave at 13, and the AI must take a kill
+        # over a plan (FOLLOWUPS #55), so that board tests something else.
         h = self.h
-        self.boot([self.mon("AERODACTYL", ["SPLASH"])],
+        self.boot([self.mon("AERODACTYL", ["SPLASH"], level=62)],
                   [self.mon("RAICHU", ["THUNDER_WAVE", "THUNDERBOLT"])],
                   trainer="COOLTRAINER_M", tier=3)
         self.no_items()
@@ -426,6 +431,28 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual([m for m, _ in executed[:2]],
                          [self.moves["THUNDER_WAVE"], self.moves["THUNDERBOLT"]])
         self.assertNotEqual(executed[1][1], 0)  # the second move saw a paralysed target
+
+    def test_reliable_kill_outranks_the_para_sweep_plan(self):
+        # FOLLOWUPS #55. At level 50 Thunderbolt reliably KOs Aerodactyl
+        # (measured 147 -> 0), and Thunder Wave's SMART 3 + PLAN 3 used to tie
+        # that kill at 13, leaving it to the RNG. A plan must never steer past a
+        # reliable kill: PLAN issues nothing, and Thunderbolt wins on score.
+        h = self.h
+        self.boot([self.mon("AERODACTYL", ["SPLASH"])],
+                  [self.mon("RAICHU", ["THUNDER_WAVE", "THUNDERBOLT"])],
+                  trainer="COOLTRAINER_M", tier=3)
+        self.no_items()
+        decisions = h.hook_ai_scores()
+        executed = []
+        h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
+            h.read8("wEnemySelectedMove")))
+        self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
+        first = decisions[0]
+        print(f"\nL3 kill-over-plan scores={first['scores']} executed={executed}")
+        plan = [t for t in first["layer_trace"] if t["layer"] == "PLAN"]
+        self.assertEqual([t["delta"] for t in plan], [[0, 0, 0, 0]])
+        self.assertLess(first["scores"][1], first["scores"][0])  # TB strictly below TW
+        self.assertEqual(executed[0], self.moves["THUNDERBOLT"])
 
 
 if __name__ == "__main__":
