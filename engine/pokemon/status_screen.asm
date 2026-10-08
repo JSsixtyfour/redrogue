@@ -216,7 +216,11 @@ StatusScreen:
 	farcall OverlayFusionSecondaryPic
 .notFusionOverlay
 	ld a, [wCurPartySpecies]
-	call PlayCry
+	; PlayCry minus its WaitForSoundToFinish: input is live while the cry plays,
+	; so Up/Down party cycling does not sit through a full cry per mon
+	; (measured 46-94 frames of a 100-127 frame switch).
+	call GetCryData
+	call PlaySound
 	farcall StatusScreenWaitView
 	pop af
 	ldh [hTileAnimations], a
