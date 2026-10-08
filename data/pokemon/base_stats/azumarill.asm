@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 153 ; base exp
 
-	INCBIN "gfx/pokemon/front/azumarill.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/azumarill.dim" ; sprite dimensions
 	dw AzumarillPicFront, AzumarillPicBack
 
 	db TACKLE, DEFENSE_CURL, TAIL_WHIP, WATER_GUN ; level 1 learnset

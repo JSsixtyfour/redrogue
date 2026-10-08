@@ -7,7 +7,7 @@
 	db 30 ; catch rate
 	db 217 ; base exp
 
-	INCBIN "gfx/pokemon/front/rhyperior.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/rhyperior.dim" ; sprite dimensions
 	dw RhyperiorPicFront, RhyperiorPicBack
 
 	db HORN_ATTACK, STOMP, TAIL_WHIP, FURY_ATTACK ; level 1 learnset

@@ -523,6 +523,11 @@ SECTION "Status View Navigation", ROMX
 
 INCLUDE "engine/pokemon/status_view.asm"
 
+; ALIGN[8]: SpriteNybbleReverseTable is the first thing in it and is page-indexed.
+SECTION "Sprite Plane Split", ROMX, ALIGN[8]
+
+INCLUDE "engine/gfx/split_sprite_planes.asm"
+
 
 SECTION "bank10", ROMX
 

@@ -15,7 +15,7 @@
 	db 45 ; catch rate
 	db 177 ; base exp
 
-	INCBIN "gfx/pokemon/front/agolem.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/agolem.dim" ; sprite dimensions
 	dw AGolemPicFront, AGolemPicBack
 
 	db TACKLE, DEFENSE_CURL, NO_MOVE, NO_MOVE ; level 1 learnset

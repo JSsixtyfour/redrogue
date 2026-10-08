@@ -16,7 +16,7 @@
 	db 255 ; catch rate
 	db 93 ; base exp
 
-	INCBIN "gfx/pokemon/front/asandshrew.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/asandshrew.dim" ; sprite dimensions
 	dw ASandshrewPicFront, ASandshrewPicBack
 
 	db SCRATCH, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

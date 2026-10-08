@@ -7,7 +7,7 @@
 	db 60 ; catch rate
 	db 149 ; base exp
 
-	INCBIN "gfx/pokemon/front/girafarig.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/girafarig.dim" ; sprite dimensions
 	dw GirafarigPicFront, GirafarigPicBack
 
 	db TACKLE, GROWL, CONFUSION, STOMP ; level 1 learnset

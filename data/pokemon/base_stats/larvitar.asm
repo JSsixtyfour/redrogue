@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 67 ; base exp
 
-	INCBIN "gfx/pokemon/front/larvitar.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/larvitar.dim" ; sprite dimensions
 	dw LarvitarPicFront, LarvitarPicBack
 
 	db BITE, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

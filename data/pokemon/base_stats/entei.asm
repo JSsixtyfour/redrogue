@@ -7,7 +7,7 @@
 	db 3 ; catch rate
 	db 217 ; base exp
 
-	INCBIN "gfx/pokemon/front/entei.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/entei.dim" ; sprite dimensions
 	dw EnteiPicFront, EnteiPicBack
 
 	db BITE, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

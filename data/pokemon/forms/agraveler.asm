@@ -14,7 +14,7 @@
 	db 120 ; catch rate
 	db 134 ; base exp
 
-	INCBIN "gfx/pokemon/front/agraveler.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/agraveler.dim" ; sprite dimensions
 	dw AGravelerPicFront, AGravelerPicBack
 
 	db TACKLE, DEFENSE_CURL, NO_MOVE, NO_MOVE ; level 1 learnset

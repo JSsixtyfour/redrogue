@@ -17,7 +17,7 @@
 	db 170 ; catch rate
 	db 76 ; base exp
 
-	INCBIN "gfx/pokemon/front/screamtail.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/screamtail.dim" ; sprite dimensions
 	dw ScreamTailPicFront, ScreamTailPicBack
 
 	db SING, POUND, NO_MOVE, NO_MOVE ; level 1 learnset

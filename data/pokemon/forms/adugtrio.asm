@@ -24,7 +24,7 @@
 	db 50 ; catch rate
 	db 153 ; base exp
 
-	INCBIN "gfx/pokemon/front/adugtrio.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/adugtrio.dim" ; sprite dimensions
 	dw ADugtrioPicFront, ADugtrioPicBack
 
 	db SCRATCH, GROWL, DIG, NO_MOVE ; level 1 learnset

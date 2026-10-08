@@ -15,7 +15,7 @@
 	db 90 ; catch rate
 	db 116 ; base exp
 
-	INCBIN "gfx/pokemon/front/araticate.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/araticate.dim" ; sprite dimensions
 	dw ARaticatePicFront, ARaticatePicBack
 
 	db TACKLE, TAIL_WHIP, QUICK_ATTACK, NO_MOVE ; level 1 learnset

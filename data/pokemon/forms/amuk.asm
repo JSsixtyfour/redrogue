@@ -15,7 +15,7 @@
 	db 75 ; catch rate
 	db 157 ; base exp
 
-	INCBIN "gfx/pokemon/front/amuk.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/amuk.dim" ; sprite dimensions
 	dw AMukPicFront, AMukPicBack
 
 	db POUND, DISABLE, POISON_GAS, NO_MOVE ; level 1 learnset

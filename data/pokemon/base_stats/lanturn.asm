@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 156 ; base exp
 
-	INCBIN "gfx/pokemon/front/lanturn.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/lanturn.dim" ; sprite dimensions
 	dw LanturnPicFront, LanturnPicBack
 
 	db BUBBLE, THUNDER_WAVE, SUPERSONIC, NO_MOVE ; level 1 learnset

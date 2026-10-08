@@ -16,7 +16,7 @@
 	db 190 ; catch rate
 	db 90 ; base exp
 
-	INCBIN "gfx/pokemon/front/agrimer.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/agrimer.dim" ; sprite dimensions
 	dw AGrimerPicFront, AGrimerPicBack
 
 	db POUND, DISABLE, NO_MOVE, NO_MOVE ; level 1 learnset

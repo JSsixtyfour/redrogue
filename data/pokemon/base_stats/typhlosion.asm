@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 209 ; base exp
 
-	INCBIN "gfx/pokemon/front/typhlosion.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/typhlosion.dim" ; sprite dimensions
 	dw TyphlosionPicFront, TyphlosionPicBack
 
 	db TACKLE, LEER, SMOKESCREEN, EMBER ; level 1 learnset

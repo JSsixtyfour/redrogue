@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 73 ; base exp
 
-	INCBIN "gfx/pokemon/front/natu.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/natu.dim" ; sprite dimensions
 	dw NatuPicFront, NatuPicBack
 
 	db PECK, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

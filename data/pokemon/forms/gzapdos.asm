@@ -16,7 +16,7 @@
 	db 3 ; catch rate
 	db 216 ; base exp
 
-	INCBIN "gfx/pokemon/front/gzapdos.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/gzapdos.dim" ; sprite dimensions
 	dw GZapdosPicFront, GZapdosPicBack
 
 	db THUNDERSHOCK, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

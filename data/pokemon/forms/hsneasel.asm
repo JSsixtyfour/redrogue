@@ -23,7 +23,7 @@
 	db 60 ; catch rate
 	db 132 ; base exp
 
-	INCBIN "gfx/pokemon/front/hsneasel.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/hsneasel.dim" ; sprite dimensions
 	dw HSneaselPicFront, HSneaselPicBack
 
 	db SCRATCH, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

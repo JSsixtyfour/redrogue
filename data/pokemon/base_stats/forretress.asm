@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 118 ; base exp
 
-	INCBIN "gfx/pokemon/front/forretress.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/forretress.dim" ; sprite dimensions
 	dw ForretressPicFront, ForretressPicBack
 
 	db TACKLE, METRONOME, SELFDESTRUCT, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME

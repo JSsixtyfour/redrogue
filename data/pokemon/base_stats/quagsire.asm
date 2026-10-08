@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 137 ; base exp
 
-	INCBIN "gfx/pokemon/front/quagsire.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/quagsire.dim" ; sprite dimensions
 	dw QuagsirePicFront, QuagsirePicBack
 
 	db WATER_GUN, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 114 ; base exp
 
-	INCBIN "gfx/pokemon/front/togetic.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/togetic.dim" ; sprite dimensions
 	dw TogeticPicFront, TogeticPicBack
 
 	db GROWL, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM filled with METRONOME

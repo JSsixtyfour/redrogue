@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 100 ; base exp
 
-	INCBIN "gfx/pokemon/front/qwilfish.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/qwilfish.dim" ; sprite dimensions
 	dw QwilfishPicFront, QwilfishPicBack
 
 	db TACKLE, POISON_STING, NO_MOVE, NO_MOVE ; level 1 learnset

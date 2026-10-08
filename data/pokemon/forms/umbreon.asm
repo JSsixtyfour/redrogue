@@ -17,7 +17,7 @@
 	db 45 ; catch rate
 	db 197 ; base exp
 
-	INCBIN "gfx/pokemon/front/umbreon.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/umbreon.dim" ; sprite dimensions
 	dw UmbreonPicFront, UmbreonPicBack
 
 	db TACKLE, SAND_ATTACK, QUICK_ATTACK, THUNDERSHOCK ; level 1 learnset

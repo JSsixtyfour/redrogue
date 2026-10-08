@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 204 ; base exp
 
-	INCBIN "gfx/pokemon/front/kleavor.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/kleavor.dim" ; sprite dimensions
 	dw KleavorPicFront, KleavorPicBack
 
 	db QUICK_ATTACK, ROCK_THROW, NO_MOVE, NO_MOVE ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 207 ; base exp
 
-	INCBIN "gfx/pokemon/front/kingdra.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/kingdra.dim" ; sprite dimensions
 	dw KingdraPicFront, KingdraPicBack
 
 	db BUBBLE, SMOKESCREEN, LEER, NO_MOVE ; level 1 learnset

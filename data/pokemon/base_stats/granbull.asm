@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 178 ; base exp
 
-	INCBIN "gfx/pokemon/front/granbull.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/granbull.dim" ; sprite dimensions
 	dw GranbullPicFront, GranbullPicBack
 
 	db TACKLE, METRONOME, TAIL_WHIP, NO_MOVE ; level 1 learnset - SCARY_FACE filled with METRONOME

@@ -18,7 +18,7 @@
 	db 45 ; catch rate
 	db 196 ; base exp
 
-	INCBIN "gfx/pokemon/front/glaceon.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/glaceon.dim" ; sprite dimensions
 	dw GlaceonPicFront, GlaceonPicBack
 
 	db TACKLE, SAND_ATTACK, QUICK_ATTACK, WATER_GUN ; level 1 learnset

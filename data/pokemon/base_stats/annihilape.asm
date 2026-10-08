@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 210 ; base exp
 
-	INCBIN "gfx/pokemon/front/annihilape.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/annihilape.dim" ; sprite dimensions
 	dw AnnihilapePicFront, AnnihilapePicBack
 
 	db SCRATCH, LEER, KARATE_CHOP, NO_MOVE ; level 1 learnset

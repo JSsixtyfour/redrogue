@@ -7,7 +7,7 @@
 	db 70 ; catch rate
 	db 164 ; base exp
 
-	INCBIN "gfx/pokemon/front/slowking.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/slowking.dim" ; sprite dimensions
 	dw SlowkingPicFront, SlowkingPicBack
 
 	db CONFUSION, DISABLE, HEADBUTT, NO_MOVE ; level 1 learnset

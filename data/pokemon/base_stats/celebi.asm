@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 64 ; base exp
 
-	INCBIN "gfx/pokemon/front/celebi.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/celebi.dim" ; sprite dimensions
 	dw CelebiPicFront, CelebiPicBack
 
 	db LEECH_SEED, CONFUSION, RECOVER, NO_MOVE ; level 1 learnset

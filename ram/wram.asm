@@ -1842,6 +1842,10 @@ wSpriteFlipped:: db
 ; pointer to next input byte
 wSpriteInputPtr:: dw
 ; pointer to current output byte
+; LZ pics (2026-10-07): the old bit-stream decoder that used wSpriteOutputPtr
+; and the scratch around it is gone. Decompress (home/uncompress.asm) keeps the
+; output start here instead; a label alias, so no WRAM address moves.
+wLZAddress::
 wSpriteOutputPtr:: dw
 ; used to revert pointer for different bit offsets
 wSpriteOutputPtrCached:: dw

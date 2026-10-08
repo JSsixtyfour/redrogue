@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 138 ; base exp
 
-	INCBIN "gfx/pokemon/front/hitmontop.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/hitmontop.dim" ; sprite dimensions
 	dw HitmontopPicFront, HitmontopPicBack
 
 	db ROLLING_KICK, FOCUS_ENERGY, NO_MOVE, NO_MOVE ; level 1 learnset

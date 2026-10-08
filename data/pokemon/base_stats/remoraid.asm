@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 78 ; base exp
 
-	INCBIN "gfx/pokemon/front/remoraid.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/remoraid.dim" ; sprite dimensions
 	dw RemoraidPicFront, RemoraidPicBack
 
 	db WATER_GUN, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 120 ; catch rate
 	db 136 ; base exp
 
-	INCBIN "gfx/pokemon/front/skiploom.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/skiploom.dim" ; sprite dimensions
 	dw SkiploomPicFront, SkiploomPicBack
 
 	db SPLASH, METRONOME, TAIL_WHIP, TACKLE ; level 1 learnset - SYNTHESIS filled with METRONOME

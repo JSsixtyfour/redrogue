@@ -16,7 +16,7 @@
 	db 50 ; catch rate
 	db 153 ; base exp
 
-	INCBIN "gfx/pokemon/front/wugtrio.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/wugtrio.dim" ; sprite dimensions
 	dw WugtrioPicFront, WugtrioPicBack
 
 	db SCRATCH, GROWL, DIG, NO_MOVE ; level 1 learnset

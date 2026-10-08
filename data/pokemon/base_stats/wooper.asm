@@ -7,7 +7,7 @@
 	db 255 ; catch rate
 	db 52 ; base exp
 
-	INCBIN "gfx/pokemon/front/wooper.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/wooper.dim" ; sprite dimensions
 	dw WooperPicFront, WooperPicBack
 
 	db WATER_GUN, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset

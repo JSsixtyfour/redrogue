@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 204 ; base exp
 
-	INCBIN "gfx/pokemon/front/houndoom.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/houndoom.dim" ; sprite dimensions
 	dw HoundoomPicFront, HoundoomPicBack
 
 	db LEER, EMBER, NO_MOVE, NO_MOVE ; level 1 learnset

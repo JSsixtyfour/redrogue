@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 185 ; base exp
 
-	INCBIN "gfx/pokemon/front/politoed.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/politoed.dim" ; sprite dimensions
 	dw PolitoedPicFront, PolitoedPicBack
 
 	db HYPNOSIS, WATER_GUN, DOUBLESLAP, BODY_SLAM ; level 1 learnset

@@ -15,7 +15,7 @@
 	db 60 ; catch rate
 	db 192 ; base exp
 
-	INCBIN "gfx/pokemon/front/grapidash.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/grapidash.dim" ; sprite dimensions
 	dw GRapidashPicFront, GRapidashPicBack
 
 	db EMBER, TAIL_WHIP, STOMP, GROWL ; level 1 learnset

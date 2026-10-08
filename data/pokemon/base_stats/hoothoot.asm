@@ -7,7 +7,7 @@
 	db 255 ; catch rate
 	db 58 ; base exp
 
-	INCBIN "gfx/pokemon/front/hoothoot.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/hoothoot.dim" ; sprite dimensions
 	dw HoothootPicFront, HoothootPicBack
 
 	db TACKLE, GROWL, NO_MOVE, NO_MOVE ; level 1 learnset

@@ -16,7 +16,7 @@
 	db 75 ; catch rate
 	db 178 ; base exp
 
-	INCBIN "gfx/pokemon/front/aninetales.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/aninetales.dim" ; sprite dimensions
 	dw ANinetalesPicFront, ANinetalesPicBack
 
 	db EMBER, TAIL_WHIP, QUICK_ATTACK, NO_MOVE ; level 1 learnset

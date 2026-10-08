@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 58 ; base exp
 
-	INCBIN "gfx/pokemon/front/marill.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/marill.dim" ; sprite dimensions
 	dw MarillPicFront, MarillPicBack
 
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

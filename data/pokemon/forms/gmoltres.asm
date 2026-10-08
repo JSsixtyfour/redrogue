@@ -15,7 +15,7 @@
 	db 3 ; catch rate
 	db 217 ; base exp
 
-	INCBIN "gfx/pokemon/front/gmoltres.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/gmoltres.dim" ; sprite dimensions
 	dw GMoltresPicFront, GMoltresPicBack
 
 	db PECK, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

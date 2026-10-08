@@ -15,7 +15,7 @@
 	db 45 ; catch rate
 	db 212 ; base exp
 
-	INCBIN "gfx/pokemon/front/aexeggutor.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/aexeggutor.dim" ; sprite dimensions
 	dw AExeggutorPicFront, AExeggutorPicBack
 
 	db BARRAGE, HYPNOSIS, NO_MOVE, NO_MOVE ; level 1 learnset

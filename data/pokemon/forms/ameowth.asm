@@ -29,7 +29,7 @@
 	db 255 ; catch rate
 	db 69 ; base exp
 
-	INCBIN "gfx/pokemon/front/ameowth.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ameowth.dim" ; sprite dimensions
 	dw AMeowthPicFront, AMeowthPicBack
 
 	db SCRATCH, GROWL, NO_MOVE, NO_MOVE ; level 1 learnset

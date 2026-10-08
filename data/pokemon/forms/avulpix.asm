@@ -15,7 +15,7 @@
 	db 190 ; catch rate
 	db 63 ; base exp
 
-	INCBIN "gfx/pokemon/front/avulpix.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/avulpix.dim" ; sprite dimensions
 	dw AVulpixPicFront, AVulpixPicBack
 
 	db EMBER, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset

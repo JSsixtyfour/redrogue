@@ -7,7 +7,7 @@
 	db 30 ; catch rate
 	db 185 ; base exp
 
-	INCBIN "gfx/pokemon/front/porygonz.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/porygonz.dim" ; sprite dimensions
 	dw PorygonZPicFront, PorygonZPicBack
 
 	db TACKLE, SHARPEN, CONVERSION, NO_MOVE ; level 1 learnset

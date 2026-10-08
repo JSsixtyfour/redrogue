@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 63 ; base exp
 
-	INCBIN "gfx/pokemon/front/snubbull.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/snubbull.dim" ; sprite dimensions
 	dw SnubbullPicFront, SnubbullPicBack
 
 	db TACKLE, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - SCARY_FACE filled with METRONOME

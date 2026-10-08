@@ -17,7 +17,7 @@
 	db 45 ; catch rate
 	db 211 ; base exp
 
-	INCBIN "gfx/pokemon/front/ptaurosaqua.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ptaurosaqua.dim" ; sprite dimensions
 	dw PTaurosAquaPicFront, PTaurosAquaPicBack
 
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

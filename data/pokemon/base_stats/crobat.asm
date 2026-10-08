@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 204 ; base exp
 
-	INCBIN "gfx/pokemon/front/crobat.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/crobat.dim" ; sprite dimensions
 	dw CrobatPicFront, CrobatPicBack
 
 	db LEECH_LIFE, TACKLE, BITE, SCREECH ; level 1 learnset

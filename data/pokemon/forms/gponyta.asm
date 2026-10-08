@@ -15,7 +15,7 @@
 	db 190 ; catch rate
 	db 152 ; base exp
 
-	INCBIN "gfx/pokemon/front/gponyta.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/gponyta.dim" ; sprite dimensions
 	dw GPonytaPicFront, GPonytaPicBack
 
 	db EMBER, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

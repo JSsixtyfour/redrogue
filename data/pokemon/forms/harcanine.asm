@@ -15,7 +15,7 @@
 	db 75 ; catch rate
 	db 213 ; base exp
 
-	INCBIN "gfx/pokemon/front/harcanine.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/harcanine.dim" ; sprite dimensions
 	dw HArcaninePicFront, HArcaninePicBack
 
 	db TAKE_DOWN, EMBER, LEER, BITE ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 75 ; base exp
 
-	INCBIN "gfx/pokemon/front/dunsparce.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/dunsparce.dim" ; sprite dimensions
 	dw DunsparcePicFront, DunsparcePicBack
 
 	db RAGE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

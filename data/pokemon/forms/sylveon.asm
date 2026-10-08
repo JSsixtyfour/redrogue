@@ -17,7 +17,7 @@
 	db 45 ; catch rate
 	db 196 ; base exp
 
-	INCBIN "gfx/pokemon/front/sylveon.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/sylveon.dim" ; sprite dimensions
 	dw SylveonPicFront, SylveonPicBack
 
 	db TACKLE, SAND_ATTACK, QUICK_ATTACK, SWIFT ; level 1 learnset

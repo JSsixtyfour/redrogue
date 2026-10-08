@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 134 ; base exp
 
-	INCBIN "gfx/pokemon/front/ledian.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ledian.dim" ; sprite dimensions
 	dw LedianPicFront, LedianPicBack
 
 	db TACKLE, SUPERSONIC, NO_MOVE, NO_MOVE ; level 1 learnset

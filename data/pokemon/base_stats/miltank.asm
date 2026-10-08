@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 200 ; base exp
 
-	INCBIN "gfx/pokemon/front/miltank.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/miltank.dim" ; sprite dimensions
 	dw MiltankPicFront, MiltankPicBack
 
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

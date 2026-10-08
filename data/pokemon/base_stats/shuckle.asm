@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 80 ; base exp
 
-	INCBIN "gfx/pokemon/front/shuckle.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/shuckle.dim" ; sprite dimensions
 	dw ShucklePicFront, ShucklePicBack
 
 	db CONSTRICT, WITHDRAW, NO_MOVE, NO_MOVE ; level 1 learnset

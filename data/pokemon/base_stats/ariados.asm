@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 134 ; base exp
 
-	INCBIN "gfx/pokemon/front/ariados.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ariados.dim" ; sprite dimensions
 	dw AriadosPicFront, AriadosPicBack
 
 	db POISON_STING, STRING_SHOT, METRONOME, CONSTRICT ; level 1 learnset - SCARY_FACE filled with METRONOME

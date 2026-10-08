@@ -7,7 +7,7 @@
 	db 30 ; catch rate
 	db 193 ; base exp
 
-	INCBIN "gfx/pokemon/front/lickilicky.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/lickilicky.dim" ; sprite dimensions
 	dw LickilickyPicFront, LickilickyPicBack
 
 	db WRAP, SUPERSONIC, STOMP, NO_MOVE ; level 1 learnset

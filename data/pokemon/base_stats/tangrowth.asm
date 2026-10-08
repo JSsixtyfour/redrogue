@@ -7,7 +7,7 @@
 	db 30 ; catch rate
 	db 211 ; base exp
 
-	INCBIN "gfx/pokemon/front/tangrowth.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/tangrowth.dim" ; sprite dimensions
 	dw TangrowthPicFront, TangrowthPicBack
 
 	db CONSTRICT, BIND, ABSORB, NO_MOVE ; level 1 learnset

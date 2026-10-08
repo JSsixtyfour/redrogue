@@ -17,7 +17,7 @@
 	db 45 ; catch rate
 	db 211 ; base exp
 
-	INCBIN "gfx/pokemon/front/ptaurosblaze.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ptaurosblaze.dim" ; sprite dimensions
 	dw PTaurosBlazePicFront, PTaurosBlazePicBack
 
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

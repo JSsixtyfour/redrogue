@@ -7,7 +7,7 @@
 	db 60 ; catch rate
 	db 189 ; base exp
 
-	INCBIN "gfx/pokemon/front/donphan.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/donphan.dim" ; sprite dimensions
 	dw DonphanPicFront, DonphanPicBack
 
 	db HORN_ATTACK, GROWL, NO_MOVE, NO_MOVE ; level 1 learnset

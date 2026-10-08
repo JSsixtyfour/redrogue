@@ -15,7 +15,7 @@
 	db 75 ; catch rate
 	db 122 ; base exp
 
-	INCBIN "gfx/pokemon/front/araichu.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/araichu.dim" ; sprite dimensions
 	dw ARaichuPicFront, ARaichuPicBack
 
 	db THUNDERSHOCK, GROWL, THUNDER_WAVE, NO_MOVE ; level 1 learnset

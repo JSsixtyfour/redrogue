@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 90 ; base exp
 
-	INCBIN "gfx/pokemon/front/chinchou.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/chinchou.dim" ; sprite dimensions
 	dw ChinchouPicFront, ChinchouPicBack
 
 	db BUBBLE, THUNDER_WAVE, NO_MOVE, NO_MOVE ; level 1 learnset

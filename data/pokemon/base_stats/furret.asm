@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 116 ; base exp
 
-	INCBIN "gfx/pokemon/front/furret.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/furret.dim" ; sprite dimensions
 	dw FurretPicFront, FurretPicBack
 
 	db SCRATCH, DEFENSE_CURL, QUICK_ATTACK, NO_MOVE ; level 1 learnset

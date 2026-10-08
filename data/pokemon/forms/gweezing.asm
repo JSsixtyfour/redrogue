@@ -16,7 +16,7 @@
 	db 60 ; catch rate
 	db 173 ; base exp
 
-	INCBIN "gfx/pokemon/front/gweezing.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/gweezing.dim" ; sprite dimensions
 	dw GWeezingPicFront, GWeezingPicBack
 
 	db TACKLE, SMOG, SLUDGE, NO_MOVE ; level 1 learnset

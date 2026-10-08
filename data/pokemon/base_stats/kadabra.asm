@@ -7,7 +7,7 @@
 	db 100 ; catch rate
 	db 145 ; base exp
 
-	INCBIN "gfx/pokemon/front/kadabra.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/kadabra.dim" ; sprite dimensions
 	dw KadabraPicFront, KadabraPicBack
 
 	db PSYWAVE, CONFUSION, DISABLE, NO_MOVE ; level 1 learnset

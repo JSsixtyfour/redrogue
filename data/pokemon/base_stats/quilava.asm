@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 142 ; base exp
 
-	INCBIN "gfx/pokemon/front/quilava.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/quilava.dim" ; sprite dimensions
 	dw QuilavaPicFront, QuilavaPicBack
 
 	db TACKLE, LEER, SMOKESCREEN, NO_MOVE ; level 1 learnset

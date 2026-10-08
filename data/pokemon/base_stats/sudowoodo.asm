@@ -7,7 +7,7 @@
 	db 65 ; catch rate
 	db 135 ; base exp
 
-	INCBIN "gfx/pokemon/front/sudowoodo.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/sudowoodo.dim" ; sprite dimensions
 	dw SudowoodoPicFront, SudowoodoPicBack
 
 	db ROCK_THROW, MIMIC, NO_MOVE, NO_MOVE ; level 1 learnset

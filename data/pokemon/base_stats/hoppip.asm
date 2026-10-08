@@ -7,7 +7,7 @@
 	db 255 ; catch rate
 	db 74 ; base exp
 
-	INCBIN "gfx/pokemon/front/hoppip.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/hoppip.dim" ; sprite dimensions
 	dw HoppipPicFront, HoppipPicBack
 
 	db SPLASH, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - SYNTHESIS filled with METRONOME

@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 207 ; base exp
 
-	INCBIN "gfx/pokemon/front/mrrime.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/mrrime.dim" ; sprite dimensions
 	dw MrRimePicFront, MrRimePicBack
 
 	db CONFUSION, BARRIER, REFLECT, NO_MOVE ; level 1 learnset

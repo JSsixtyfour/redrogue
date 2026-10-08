@@ -50,19 +50,15 @@ class SpriteDecompressionTest(HarnessTestCase):
         size = SPRITEBUFFERSIZE
         failures = []
         for label, path in pic_labels():
-            # string concat, not with_suffix: names like "mr.mime" contain dots
-            stem = str(REPO_ROOT / path[: -len(".pic")])
+            # string ops, not with_suffix: names like "mr.mime" contain dots
+            stem = str(REPO_ROOT / path.rsplit(".", 1)[0])
             width, height = png_tiles(Path(stem + ".png"))
-            art = Path(stem + ".2bpp").read_bytes()
-            expected_lo = bytearray(size)
-            expected_hi = bytearray(size)
-            for ty in range(height):
-                for tx in range(width):
-                    for row in range(8):
-                        source = (ty * width + tx) * 16 + row * 2
-                        dest = tx * height * 8 + ty * 8 + row
-                        expected_lo[dest] = art[source]
-                        expected_hi[dest] = art[source + 1]
+            # rgbgfx --columns output (Makefile %.col.2bpp): interleaved rows of
+            # column-major tiles, so the planes are simply its even/odd bytes.
+            art = Path(stem + ".col.2bpp").read_bytes()
+            self.assertEqual(len(art), width * height * 16, f"{label}: art size")
+            expected_lo = bytearray(art[0::2]) + bytearray(size - width * height * 8)
+            expected_hi = bytearray(art[1::2]) + bytearray(size - width * height * 8)
             plain = results[f"{label}/0"]["buffers"][size:]
             flipped = results[f"{label}/1"]["buffers"][size:]
             if plain != bytes(expected_lo + expected_hi):

@@ -39,11 +39,12 @@ FILL = 0xA5  # pre-fill pattern; proves which bytes the decoder writes
 SENTINEL = "DelayFrame"
 DMG_FRAME_CYCLES = 70224
 
-PIC_LABEL = re.compile(r"^([A-Za-z0-9_]+)::?\s+INCBIN\s+\"([^\"]+\.pic)\"", re.M)
+# Every compressed pic: LZ (.lz) since 2026-10-07, Gen 1 .pic before that.
+PIC_LABEL = re.compile(r"^([A-Za-z0-9_]+)::?\s+INCBIN\s+\"([^\"]+\.(?:lz|pic))\"", re.M)
 
 
 def pic_labels(repo_root: Path = REPO_ROOT) -> list[tuple[str, str]]:
-    """(label, .pic path) for every labelled compressed pic, in source order."""
+    """(label, compressed pic path) for every labelled pic, in source order."""
     pics = []
     for source in PIC_SOURCES:
         pics.extend(PIC_LABEL.findall((repo_root / source).read_text()))

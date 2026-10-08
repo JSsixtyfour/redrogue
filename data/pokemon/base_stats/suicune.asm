@@ -7,7 +7,7 @@
 	db 3 ; catch rate
 	db 215 ; base exp
 
-	INCBIN "gfx/pokemon/front/suicune.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/suicune.dim" ; sprite dimensions
 	dw SuicunePicFront, SuicunePicBack
 
 	db BITE, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

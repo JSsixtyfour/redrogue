@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 210 ; base exp
 
-	INCBIN "gfx/pokemon/front/feraligatr.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/feraligatr.dim" ; sprite dimensions
 	dw FeraligatrPicFront, FeraligatrPicBack
 
 	db SCRATCH, LEER, RAGE, WATER_GUN ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 255 ; catch rate
 	db 54 ; base exp
 
-	INCBIN "gfx/pokemon/front/spinarak.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/spinarak.dim" ; sprite dimensions
 	dw SpinarakPicFront, SpinarakPicBack
 
 	db POISON_STING, STRING_SHOT, NO_MOVE, NO_MOVE ; level 1 learnset

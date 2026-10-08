@@ -15,7 +15,7 @@
 	db 190 ; catch rate
 	db 103 ; base exp
 
-	INCBIN "gfx/pokemon/front/hvoltorb.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/hvoltorb.dim" ; sprite dimensions
 	dw HVoltorbPicFront, HVoltorbPicBack
 
 	db TACKLE, SCREECH, NO_MOVE, NO_MOVE ; level 1 learnset

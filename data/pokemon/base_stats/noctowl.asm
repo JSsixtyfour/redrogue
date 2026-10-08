@@ -7,7 +7,7 @@
 	db 90 ; catch rate
 	db 162 ; base exp
 
-	INCBIN "gfx/pokemon/front/noctowl.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/noctowl.dim" ; sprite dimensions
 	dw NoctowlPicFront, NoctowlPicBack
 
 	db TACKLE, GROWL, METRONOME, PECK ; level 1 learnset - FORESIGHT filled with METRONOME

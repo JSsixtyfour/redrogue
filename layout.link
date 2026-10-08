@@ -123,6 +123,11 @@ ROMX $12
 	"Screen Effects"
 	"Procedural Forest Maps"
 	"Maps 8"
+	; Second half of UncompressSpriteData (LZ pics, 2026-10-07); reached only by
+	; an explicit BANK(SplitSpritePlanes) switch from HOME. Page-aligned: its
+	; SpriteNybbleReverseTable is indexed by low byte alone.
+	ALIGN 8
+	"Sprite Plane Split"
 ROMX $13
 	; "Trainer Pics" also holds RedPicFront/GreenPicFront so that every pic
 	; PlayerAppearanceTable can select shares one bank. That pushed "Predefs"
@@ -187,6 +192,9 @@ ROMX $1F
 	"Music 3"
 ROMX $20
 	"Text 1"
+	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
+	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
+	"Pics 17"
 ROMX $21
 	"Text 2"
 ROMX $22
@@ -199,8 +207,14 @@ ROMX $24
 	; Every consumer uses BANK(label) and a far-copy path, so the assets are
 	; pinned together in this bank instead of floating between build variants.
 	"Yellow Legacy Unique Icons"
+	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
+	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
+	"Pics 18"
 ROMX $25
 	"Text 6"
+	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
+	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
+	"Pics 16"
 ROMX $26
 	"Text 7"
 ROMX $27
@@ -369,6 +383,9 @@ ROMX $35
 ROMX $36
 	; Galarian + Hisuian forms (18 species, ~8.5 KB).
 	"Pics 14"
+	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
+	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
+	"Pics 19"
 ROMX $37
 	; Paldean + Gen-9 convergents + eeveelutions/Perrserker (15 species, ~7 KB).
 	"Pics 15"

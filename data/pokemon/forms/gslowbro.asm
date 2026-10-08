@@ -16,7 +16,7 @@
 	db 75 ; catch rate
 	db 164 ; base exp
 
-	INCBIN "gfx/pokemon/front/gslowbro.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/gslowbro.dim" ; sprite dimensions
 	dw GSlowbroPicFront, GSlowbroPicBack
 
 	db CONFUSION, DISABLE, HEADBUTT, NO_MOVE ; level 1 learnset

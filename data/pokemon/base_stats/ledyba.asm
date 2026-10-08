@@ -7,7 +7,7 @@
 	db 255 ; catch rate
 	db 54 ; base exp
 
-	INCBIN "gfx/pokemon/front/ledyba.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/ledyba.dim" ; sprite dimensions
 	dw LedybaPicFront, LedybaPicBack
 
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

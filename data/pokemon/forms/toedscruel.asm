@@ -17,7 +17,7 @@
 	db 60 ; catch rate
 	db 205 ; base exp
 
-	INCBIN "gfx/pokemon/front/toedscruel.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/toedscruel.dim" ; sprite dimensions
 	dw ToedscruelPicFront, ToedscruelPicBack
 
 	db ACID, SUPERSONIC, WRAP, NO_MOVE ; level 1 learnset

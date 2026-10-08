@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 176 ; base exp
 
-	INCBIN "gfx/pokemon/front/jumpluff.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/jumpluff.dim" ; sprite dimensions
 	dw JumpluffPicFront, JumpluffPicBack
 
 	db SPLASH, METRONOME, TAIL_WHIP, TACKLE ; level 1 learnset - SYNTHESIS filled with METRONOME

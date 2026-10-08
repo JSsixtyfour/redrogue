@@ -7,7 +7,7 @@
 	db 120 ; catch rate
 	db 114 ; base exp
 
-	INCBIN "gfx/pokemon/front/houndour.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/houndour.dim" ; sprite dimensions
 	dw HoundourPicFront, HoundourPicBack
 
 	db LEER, EMBER, NO_MOVE, NO_MOVE ; level 1 learnset

@@ -7,7 +7,7 @@
 	db 75 ; catch rate
 	db 147 ; base exp
 
-	INCBIN "gfx/pokemon/front/yanma.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/yanma.dim" ; sprite dimensions
 	dw YanmaPicFront, YanmaPicBack
 
 	db TACKLE, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - FORESIGHT filled with METRONOME

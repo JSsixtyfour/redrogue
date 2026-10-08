@@ -15,7 +15,7 @@
 	db 75 ; catch rate
 	db 124 ; base exp
 
-	INCBIN "gfx/pokemon/front/amarowak.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/amarowak.dim" ; sprite dimensions
 	dw AMarowakPicFront, AMarowakPicBack
 
 	db BONE_CLUB, GROWL, LEER, FOCUS_ENERGY ; level 1 learnset

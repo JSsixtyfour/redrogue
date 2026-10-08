@@ -7,7 +7,7 @@
 	db 30 ; catch rate
 	db 199 ; base exp
 
-	INCBIN "gfx/pokemon/front/magmortar.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/magmortar.dim" ; sprite dimensions
 	dw MagmortarPicFront, MagmortarPicBack
 
 	db EMBER, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

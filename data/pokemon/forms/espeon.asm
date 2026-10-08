@@ -27,7 +27,7 @@
 	db 45 ; catch rate
 	db 197 ; base exp
 
-	INCBIN "gfx/pokemon/front/espeon.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/espeon.dim" ; sprite dimensions
 	dw EspeonPicFront, EspeonPicBack
 
 	db TACKLE, SAND_ATTACK, QUICK_ATTACK, CONFUSION ; level 1 learnset

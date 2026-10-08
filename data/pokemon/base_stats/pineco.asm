@@ -7,7 +7,7 @@
 	db 190 ; catch rate
 	db 60 ; base exp
 
-	INCBIN "gfx/pokemon/front/pineco.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/pineco.dim" ; sprite dimensions
 	dw PinecoPicFront, PinecoPicBack
 
 	db TACKLE, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME

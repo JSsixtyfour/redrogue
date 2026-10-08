@@ -7,7 +7,7 @@
 	db 25 ; catch rate
 	db 196 ; base exp
 
-	INCBIN "gfx/pokemon/front/steelix.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/steelix.dim" ; sprite dimensions
 	dw SteelixPicFront, SteelixPicBack
 
 	db TACKLE, SCREECH, NO_MOVE, NO_MOVE ; level 1 learnset

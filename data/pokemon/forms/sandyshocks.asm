@@ -17,7 +17,7 @@
 	db 60 ; catch rate
 	db 161 ; base exp
 
-	INCBIN "gfx/pokemon/front/sandyshocks.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/sandyshocks.dim" ; sprite dimensions
 	dw SandyShocksPicFront, SandyShocksPicBack
 
 	db TACKLE, SONICBOOM, THUNDERSHOCK, NO_MOVE ; level 1 learnset

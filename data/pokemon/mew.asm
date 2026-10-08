@@ -13,5 +13,7 @@
 ; hole it left at dex 151 shifted every species added after it by one row. With
 ; BASE_PIC_BANK the row can name these pics from any bank, so nothing about this
 ; section had to move with it.
-MewPicFront:: INCBIN "gfx/pokemon/front/mew.pic"
-MewPicBack::  INCBIN "gfx/pokemon/back/mewb.pic"
+;
+; The pics themselves left too (2026-10-07): as LZ they are 49 bytes bigger and
+; "bank1" had 37 free. MewPicFront/MewPicBack now live in SECTION "Pics 19"
+; (gfx/pics.asm).

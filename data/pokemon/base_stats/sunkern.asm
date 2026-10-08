@@ -7,7 +7,7 @@
 	db 235 ; catch rate
 	db 52 ; base exp
 
-	INCBIN "gfx/pokemon/front/sunkern.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/sunkern.dim" ; sprite dimensions
 	dw SunkernPicFront, SunkernPicBack
 
 	db ABSORB, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset

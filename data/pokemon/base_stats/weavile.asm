@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 199 ; base exp
 
-	INCBIN "gfx/pokemon/front/weavile.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/weavile.dim" ; sprite dimensions
 	dw WeavilePicFront, WeavilePicBack
 
 	db SCRATCH, LEER, NO_MOVE, NO_MOVE ; level 1 learnset

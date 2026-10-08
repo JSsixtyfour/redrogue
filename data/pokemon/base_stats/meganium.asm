@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 208 ; base exp
 
-	INCBIN "gfx/pokemon/front/meganium.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/meganium.dim" ; sprite dimensions
 	dw MeganiumPicFront, MeganiumPicBack
 
 	db TACKLE, GROWL, RAZOR_LEAF, REFLECT ; level 1 learnset

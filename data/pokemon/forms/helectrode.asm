@@ -16,7 +16,7 @@
 	db 60 ; catch rate
 	db 150 ; base exp
 
-	INCBIN "gfx/pokemon/front/helectrode.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/helectrode.dim" ; sprite dimensions
 	dw HElectrodePicFront, HElectrodePicBack
 
 	db TACKLE, SCREECH, SONICBOOM, NO_MOVE ; level 1 learnset

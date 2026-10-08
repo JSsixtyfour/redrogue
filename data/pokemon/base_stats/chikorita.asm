@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 64 ; base exp
 
-	INCBIN "gfx/pokemon/front/chikorita.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/chikorita.dim" ; sprite dimensions
 	dw ChikoritaPicFront, ChikoritaPicBack
 
 	db TACKLE, GROWL, NO_MOVE, NO_MOVE ; level 1 learnset

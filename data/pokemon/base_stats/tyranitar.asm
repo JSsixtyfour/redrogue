@@ -7,7 +7,7 @@
 	db 45 ; catch rate
 	db 218 ; base exp
 
-	INCBIN "gfx/pokemon/front/tyranitar.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/tyranitar.dim" ; sprite dimensions
 	dw TyranitarPicFront, TyranitarPicBack
 
 	db BITE, LEER, SCREECH, NO_MOVE ; level 1 learnset

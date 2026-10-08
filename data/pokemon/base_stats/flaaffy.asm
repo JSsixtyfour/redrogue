@@ -7,7 +7,7 @@
 	db 120 ; catch rate
 	db 117 ; base exp
 
-	INCBIN "gfx/pokemon/front/flaaffy.pic", 0, 1 ; sprite dimensions
+	INCBIN "gfx/pokemon/front/flaaffy.dim" ; sprite dimensions
 	dw FlaaffyPicFront, FlaaffyPicBack
 
 	db TACKLE, GROWL, THUNDERSHOCK, NO_MOVE ; level 1 learnset
