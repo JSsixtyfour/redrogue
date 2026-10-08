@@ -49,8 +49,12 @@ ld b, a
 jp RogueSelectFromTier
 
 .rollClass
+; c = the roll, b = the rarity bonus. They used to be one byte (the bonus was
+; added to the roll), which gave every point of bonus to ultraball and left
+; greatball stuck at 40%; RollSpreadClass now splits it evenly.
 ldh a, [hRandomAdd]
-ld b, a
+ld c, a
+ld b, 0
 
 .determineClassSlot
 ; Apply witch challenge/prize rarity modifiers to the class roll. Two
@@ -67,13 +71,14 @@ jr z, .noChallengeMod
 ld a, [wWitchChallenge]
 cp CHALLENGE_REDUCED_RARITY
 jr nz, .noChallengeMod
-; Push roll toward pokeball (SUBTRACT from b → smaller b = more likely pokeball)
-ld a, b
-sub 64         ; smaller b = more likely pokeball class (worse)
+; Push the ROLL toward pokeball (SUBTRACT from c → smaller c = more likely
+; pokeball). A malus, so it moves the roll itself rather than the bonus.
+ld a, c
+sub 64         ; smaller c = more likely pokeball class (worse)
 jr nc, .challengeModDone
 xor a          ; clamp at 0
 .challengeModDone
-ld b, a
+ld c, a
 .noChallengeMod
 ; PRIZE_RARITY_POKEMON (a): PERMANENT (2026-09-02) - does NOT gate on
 ; BIT_WITCH_ACCEPTED. Once earned, applies to every roll for the rest of the
@@ -148,23 +153,19 @@ ld a, $FF
 .rareScopeDone
 ld b, a
 .noRareScope
-ld a, pokeball_odds
-cp b
-jr nc, .tierPokeball
-ld a, greatball_odds
-cp b
-jr nc, .tierGreatball
-ld b, RARITY_TIER_ULTRABALL     ; ultraball is the fall-through, by design
-jp RogueSelectFromTier
-.tierPokeball
-ld b, RARITY_TIER_POKEBALL
-jp RogueSelectFromTier
-.tierGreatball
-ld b, RARITY_TIER_GREATBALL
+ld a, c
+ld hl, RewardClassWidths
+call RollSpreadClass           ; c = class 1-3
+ld b, c
+dec b                          ; class ids are 1-based, tier ids 0-based
 jp RogueSelectFromTier
 
 .RareScopeBonusTable:
 	db 31, 63, 95
+
+; pokeball 128 / great 102 / ultra 26. Ultraball is the fall-through, by design.
+RewardClassWidths:
+	db 2, pokeball_odds + 1, greatball_odds + 1, 0
 
 ; ---------------------------------------------------------------------------
 ; RogueSelectFromTier

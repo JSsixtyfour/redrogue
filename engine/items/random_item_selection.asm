@@ -48,41 +48,49 @@ push bc
 
 
 item_determineClassSlot:
+; d/e are the ultraball/masterball class sizes the class branches read after
+; their `pop bc`. Both the Rare Lens lookup below (its farcall answers in e)
+; and RollSpreadClass clobber them.
+push de
+; c = the roll, b = the rarity bonus. They used to be one byte (the bonus was
+; added to the roll), which handed every point of bonus to masterball; the
+; spread roll below splits it evenly over great, ultra and master.
 ldh a, [hRandomAdd]
-ld  b, a
+ld c, a
 
 ; bonus rarity check — existing gym bonus
 ld a, [wItemBonusRarity]
-add a, b
 ld b, a
-jr nc, .no_overflow1
-ld b, $FF
-.no_overflow1
 ; Witch prize b (PRIZE_RARITY_ITEM): extra item class bonus — larger b = better
 ; tier. PERMANENT (2026-09-02): does NOT gate on BIT_WITCH_ACCEPTED - once
 ; earned it applies to every item roll for the rest of the run.
+; Each bonus skips only itself. These two used to jump straight to the class
+; roll, so the mini-boss bonus needed the witch prize too and RARE LENS needed
+; both.
 ld a, [wWitchPrizesEarned]
 and 1 << (PRIZE_RARITY_ITEM - 1)
-jr z, .no_overflow
+jr z, .noWitchItemBonus
 ld a, b
 add 51             ; same bump as the gym leader bonus
 jr nc, .witchItemDone
 ld a, $FF
 .witchItemDone
 ld b, a
+.noWitchItemBonus
 
 ; Mini-boss framework: stacks an ADDITIONAL bonus on top of wItemBonusRarity
 ; and any witch prize bonus above (see MINIBOSS_FRAMEWORK.md "rarity stacks
 ; additively").
 ld a, [wRogueFlagsBitfield]
 bit BIT_MINIBOSS_ACTIVE, a
-jr z, .no_overflow
+jr z, .noMiniBossItemBonus
 ld a, b
 add MINIBOSS_ITEM_RARITY_BONUS
 jr nc, .miniBossItemDone
 ld a, $FF
 .miniBossItemDone
 ld b, a
+.noMiniBossItemBonus
 
 ; RARE LENS: additional bonus stacked on top of wItemBonusRarity/witch/mini-boss
 ; above (same additive-stacking shape). Deliberately NOT the same raw number as
@@ -116,22 +124,24 @@ ld a, $FF
 ld b, a
 
 .no_overflow
-ld a, item_pokeball_odds
-cp b
-jr nc, item_pokeball_class_selection
-ld a, item_greatball_odds
-cp b
-jr nc, item_greatball_class_selection
-ld a, item_ultraball_odds
-cp b
-jr nc, item_ultraball_class_selection_jump
+ld a, c
+ld hl, ItemClassWidths
+call RollSpreadClass         ; c = class 1-4
+pop de
+dec c
+jp z, item_pokeball_class_selection
+dec c
+jp z, item_greatball_class_selection
+dec c
+jp z, item_ultraball_class_selection
 jp item_masterball_class_selection
 
 .RareLensBonusTable:
 	db 12, 25, 38
 
-item_ultraball_class_selection_jump:
-jp item_ultraball_class_selection
+; pokeball 52 / great 77 / ultra 76 / master 51
+ItemClassWidths:
+	db 3, item_pokeball_odds + 1, item_greatball_odds + 1, item_ultraball_odds + 1, 0
 
 ; common
 item_pokeball_class_selection:
@@ -372,7 +382,7 @@ AllTMCheck::
 
 GymLeaderRandomItem::
     ld a, [wItemBonusRarity]
-    add a, item_pokeball_odds       ; increased rarity for gym leaders, prevents a pokeball class TM
+    add a, item_pokeball_odds + 1   ; the whole pokeball band: a gym leader never gives a pokeball class TM
     ld [wItemBonusRarity], a
     ld a, [wRogueDoorSelection]
     push af                         ; restored below via pop - this call forces TM
@@ -383,7 +393,7 @@ GymLeaderRandomItem::
     ld [wRogueDoorSelection], a
     farcall Random_Item_Selection
     ld a, [wItemBonusRarity]
-    sub a, item_pokeball_odds       ; restores Bonus Rarity to normal
+    sub a, item_pokeball_odds + 1   ; restores Bonus Rarity to normal
     ld [wItemBonusRarity], a
     pop af
     ld [wRogueDoorSelection], a

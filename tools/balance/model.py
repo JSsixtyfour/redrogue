@@ -164,11 +164,37 @@ def get_rand_mon(g: GameData, cfg: Config, b_class: int, rng: random.Random) -> 
     return roll_tier_species(g, cfg, 4 - b_class, rng)
 
 
-def pc_roll_mon_class(round_idx: int, bump: int, rng: random.Random) -> int:
+def spread_class(roll: int, bonus: int, widths: list[int]) -> int:
+    """RollSpreadClass (home/rarity_class.asm): widths are the cumulative class
+    widths below the top class. The bonus cascades: it drains the lowest band
+    and splits what it takes evenly over every class above (remainder to the
+    top), then whatever is left drains the next band up, and so on."""
+    w = [b - a for a, b in zip([0] + widths, widths)]
+    left = bonus
+    for i in range(len(w)):
+        if not left:
+            break
+        taken = min(left, w[i])
+        w[i] -= taken
+        left -= taken
+        share = taken // (len(w) - i)
+        for j in range(i + 1, len(w)):
+            w[j] += share
+    cum = 0
+    for k, width in enumerate(w):
+        cum += width
+        if roll < cum:
+            return k + 1
+    return len(w) + 1
+
+
+WILD_CLASS_WIDTHS = [205, 205 + 38, 205 + 38 + 10]
+
+
+def pc_roll_mon_class(round_idx: int, bump: int, rng: random.Random, step: int = 8) -> int:
     """PCRollMonClass: 1 pokeball .. 4 masterball, biased by round."""
-    shift = min(round_idx * 8 + bump, 255)
-    eff = min(rng.randrange(256) + shift, 255)
-    return 1 if eff < 205 else 2 if eff < 243 else 3 if eff < 253 else 4
+    bonus = min(round_idx * step + bump, 255)
+    return spread_class(rng.randrange(256), bonus, WILD_CLASS_WIDTHS)
 
 
 def roll_reward_mon(g: GameData, cfg: Config, level: int, rng: random.Random) -> str:
@@ -444,10 +470,11 @@ def facility_fake_balls(g: GameData, count: int, rng: random.Random) -> list[Bat
 
 
 def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """PCRollBoss: PCGetBossLevel + a class roll bumped by 60."""
+    """PCRollBoss: PCGetBossLevel + a class roll bumped by WILD_BOSS_RARITY_BUMP."""
     idx = round_of(g, count)
     lv = g.tables.wild_boss[idx]
-    sp = select_from_tier_evolved(g, cfg, pc_roll_mon_class(idx, 60, rng), lv, rng)
+    cls = pc_roll_mon_class(idx, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
+    sp = select_from_tier_evolved(g, cfg, cls, lv, rng)
     return Battle("wild_boss", count, [(sp, lv)], False)
 
 

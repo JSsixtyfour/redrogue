@@ -6112,53 +6112,6 @@ PFacAbs:
     inc a
     ret
 
-; ============================================================
-; PFacRollMonClass
-; Duplicate of PCRollMonClass/PFRollMonClass (takes rarity bump in B, so it
-; can't be farcall'd - Bankswitch clobbers B). INPUT: b = rarity bump.
-; OUTPUT: c = class 1-4. Clobbers a, d (b preserved).
-; ============================================================
-PFacRollMonClass:
-    ld a, [wBattleCount]
-    cp LAST_ROUND_BATTLECOUNT + 1
-    jr c, .noClamp
-    ld a, LAST_ROUND_BATTLECOUNT
-.noClamp
-    ld d, 0
-.divLoop
-    cp ROUND_BATTLES
-    jr c, .gotRound
-    sub ROUND_BATTLES
-    inc d
-    jr .divLoop
-.gotRound
-    ld a, d
-    add a, a
-    add a, a
-    add a, a            ; round * 8
-    add a, b
-    jr nc, .noShiftClamp
-    ld a, 255
-.noShiftClamp
-    ld d, a
-    call Random
-    add a, d
-    jr nc, .noEffClamp
-    ld a, 255
-.noEffClamp
-    ld c, 1
-    cp 205
-    jr c, .done
-    inc c
-    cp 243
-    jr c, .done
-    inc c
-    cp 253
-    jr c, .done
-    inc c
-.done
-    ret
-
 ; Reassert facility SRAM ownership after a farcall. Shared item/species helpers
 ; may disable SRAM or leave another bank selected.
 PFacRestoreSRAMBank:
@@ -6177,9 +6130,8 @@ PFacRestoreSRAMBank:
 ; ============================================================
 PFacRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel
-    ld b, 60                         ; boss rarity bump (matches cave/forest)
-    call PFacRollMonClass            ; c = rarity class (same-bank call)
-    ld e, c                          ; the class can only cross a farcall in e
+    ld e, WILD_BOSS_RARITY_BUMP      ; boss rarity bump (matches cave/forest)
+    farcall PCRollMonClassFar        ; e = rarity class 1-4
     farcall Random_Pokemon_Selection_Far ; -> d = species, e = form
     call PFacRestoreSRAMBank
     ld a, d
@@ -6286,6 +6238,26 @@ PFacPreload::
     ; Re-asserts SRAM bank 0 itself (this routine has been on bank 1 -
     ; "facility SRAM" - throughout) and leaves the window open; the close
     ; below does not care which bank was last selected.
+    ;
+    ; The facility picks its hideout at finalize (PFacPickHideout), so the
+    ; hideout bytes here are whatever the PREVIOUS stage left, and a stale
+    ; STAGE_EVENT_NO_HIDEOUT staged no sprites under an armed wStageEvent:
+    ; the invisible ambush, measured 2026-10-08 (sprites 0/0, hideout (11,10)).
+    ; Claim a pending hideout so the pair loads with the map. The first
+    ; finalize always generates (sProcFacilityBaked was cleared above) and
+    ; PFacPickHideout overwrites it on every path, with the real cell or with
+    ; NO_HIDEOUT, which PFacRestageEventSprites then disarms. Same fix as the
+    ; forest's PFPreloadForest.
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    ASSERT BANK("Sprite Buffers") == 0
+    xor a
+    ld [rRAMB], a
+    ld a, 1                         ; any non-sentinel value, never read
+    ld [sStageEventHideoutX], a
+    ld [sStageEventHideoutY], a
     farcall StageEventStageSprites
 
     ld a, BMODE_SIMPLE
@@ -6644,8 +6616,51 @@ PFacFinalize::
     ; both paths already converge at .placeSprites, well before this point.
     ; Each routine opens its own SRAM window (sStageEventHideoutX/Y are bank
     ; 0; everything above this point has been bank 1).
+    call PFacRestageEventSprites
     call PFacPlaceStageEventNpcs
     call PFacApplyStageEventTrainers
+    ret
+
+; ============================================================
+; PFacRestageEventSprites
+; Facility twin of the forest's PFRestageEventSprites, for slots 10-11: the
+; hideout is resolved at finalize, after LoadMapData already loaded sprite
+; tiles from the preload's staged bytes. Recompute the pair and reload tiles
+; only when it changed - a NO_HIDEOUT disarm, or a save made while the preload
+; still staged nothing. Normal play costs one compare, no InitMapSprites.
+; An event left with no sprite is disarmed even if nothing changed.
+; Clobbers a/bc/de/hl.
+; ============================================================
+PFacRestageEventSprites:
+    ld a, [wSprite10StateData1PictureID]
+    ld d, a
+    ld a, [wSprite11StateData1PictureID]
+    ld e, a                         ; de = what LoadMapData loaded (survives farcall)
+    farcall StageEventStageSprites  ; re-asserts bank 0, leaves SRAM open
+    ld a, [sStageEventSprite6]
+    ld b, a
+    and a
+    jr nz, .haveSprite
+    ld [wStageEvent], a             ; no body: the arrival script must not run
+.haveSprite
+    ld a, [sStageEventSprite7]
+    ld c, a
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+    ld a, b
+    cp d
+    jr nz, .reloadStageSprites
+    ld a, c
+    cp e
+    ret z                           ; already loaded with the map
+.reloadStageSprites
+    ld a, b
+    ld [wSprite10StateData1PictureID], a
+    ld a, c
+    ld [wSprite11StateData1PictureID], a
+    farcall InitMapSprites
     ret
 
 ; ============================================================

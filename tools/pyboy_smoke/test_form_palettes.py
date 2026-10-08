@@ -83,8 +83,20 @@ class FormPalettesTest(unittest.TestCase):
         h.write8("wHoFPartyMonIndex", 0)
         h.write8("wHoFMonSpecies", VULPIX)
         h.write8("wHoFMonLevel", 50)
+        # Read the record at the routine's own final `ld [hl], a / ret`, not
+        # after call_routine: wHallOfFame is UNION scratch, and the lobby code
+        # that runs out the rest of the frame after the return reuses it.
+        # Measured 2026-10-07 (LZ pic switch shifted boot timing): the record
+        # was right at the ret, then bytes 0-7 were overwritten before the read.
+        bank, address = h.symbols.get("HoFRecordMonInfo")
+        rom = h.rom_path.read_bytes()
+        ret = rom.index(bytes([0x77, 0xC9]), bank * 0x4000 + address - 0x4000) + 1
+        captured = {}
+        h.pyboy.hook_register(
+            bank, ret - bank * 0x4000 + 0x4000,
+            lambda _: captured.setdefault("record", h.read_bytes("wHallOfFame", 16)), None)
         h.call_routine("HoFRecordMonInfo", limit=4000)
-        record = h.read_bytes("wHallOfFame", 16)
+        record = captured["record"]
         self.assertEqual(record[0], VULPIX)
         self.assertEqual(record[1], 50)
         self.assertEqual(record[13], 1, "HOF_MON_FORM")

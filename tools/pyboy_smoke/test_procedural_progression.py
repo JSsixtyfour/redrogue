@@ -57,6 +57,13 @@ class ProceduralProgressionTest(HarnessTestCase):
                      'PROCEDURAL_CEMETERY_2', 'PROCEDURAL_CEMETERY_3',
                      'PROCEDURAL_CEMETERY_4', 'ROUTE_1', 'VICTORY_ROAD_1F'):
             with self.subTest(map=name):
+                # Restore the parked state every call, as the other tests here
+                # do. Without it each call_routine hijacks wherever the previous
+                # one's trailing frame happened to stop: measured 2026-10-07,
+                # SP drifted every call and the 7th hijack landed in bank $32
+                # code with SP=$C398 and tick() never returned (the LZ pic
+                # switch made boot faster, which moved the drift).
+                self.restore()
                 # Keep hooks installed; these calls stop before any map scripts run.
                 h.write8('hCurMap', self.maps[name])
                 h.write8('wBattleCount', 17)

@@ -667,7 +667,7 @@ PCRollExitLadder:
 ; ============================================================
 PCRollBoss:
 	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
-	ld b, 60                        ; boss rarity bump (notably rarer than wild)
+	ld b, WILD_BOSS_RARITY_BUMP     ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	ld e, c                         ; the class can only cross a farcall in e
 	farcall Random_Pokemon_Selection_Far ; → d = species
@@ -1496,7 +1496,7 @@ INCLUDE "data/balance/wild_boss_levels.asm"
 ; biased toward rarer tiers as wBattleCount rises. Reuses the existing
 ; reward-pool class system instead of a bespoke species table.
 ; INPUT:  b = extra rarity bump (0 = wild baseline, higher = rarer, e.g. boss)
-; OUTPUT: c = class 1-4.  Clobbers a, d (b preserved).
+; OUTPUT: c = class 1-4.  Clobbers a, b, d, e, hl.
 ; Exported (::) so procedural_CEMETERY_gen.asm can farcall it (cross-bank -
 ; see PCemAvoidGhostBoss) rather than duplicating this formula.
 ; ============================================================
@@ -1515,39 +1515,30 @@ PCRollMonClass::
 	inc d
 	jr .divLoop
 .gotRound
-	; shift = round*8 + bump (saturating at 255)
+	; bonus = round * WILD_CLASS_ROUND_STEP + bump (saturating at 255)
 	ld a, d
+	ASSERT WILD_CLASS_ROUND_STEP == 8
 	add a, a
 	add a, a
-	add a, a            ; round * 8
-	add a, b            ; + bump
-	jr nc, .noShiftClamp
+	add a, a
+	add a, b
+	jr nc, .noBonusClamp
 	ld a, 255
-.noShiftClamp
-	ld d, a
+.noBonusClamp
+	ld b, a
 	call Random         ; a = 0-255
-	add a, d            ; effective rarity (saturating)
-	jr nc, .noEffClamp
-	ld a, 255
-.noEffClamp
-	ld c, 1             ; pokeball
-	cp 205
-	jr c, .done
-	inc c               ; greatball
-	cp 243
-	jr c, .done
-	inc c               ; ultraball
-	cp 253
-	jr c, .done
-	inc c               ; masterball
-.done
-	ret
+	ld hl, PCWildClassWidths
+	jp RollSpreadClass  ; c = class 1-4
+
+; pokeball 205 / great 38 / ultra 10 / master 3, the pre-spread odds
+PCWildClassWidths:
+	db 3, 205, 205 + 38, 205 + 38 + 10, 0
 
 ; ============================================================
 ; PCRollMonClassFar
 ; Farcall-safe face of PCRollMonClass, for callers in another bank.
 ; INPUT:  e = extra rarity bump (0 = wild baseline, higher = rarer)
-; OUTPUT: e = class 1-4.  Clobbers a, bc, d.
+; OUTPUT: e = class 1-4.  Clobbers a, bc, d, hl.
 ;
 ; Bankswitch takes the target bank in b and then overwrites bc with its own
 ; return address before jumping, so NEITHER the bump (b) nor the class (c) can

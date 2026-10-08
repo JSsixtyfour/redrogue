@@ -9,6 +9,17 @@
 ;   EVENT_PC_BUDGET_ENDED / EVENT_PC_CALMED_SHOWN - wild budget calmed message
 
 ProceduralForest_Script:
+IF DEF(FOREST_X7_PROBE)
+	; Diagnostic-only: SELECT samples the SRAM page implicated by the X7
+	; snapshot. No writes to cartridge IO or new persistent RAM fields.
+	ldh a, [hJoyPressed]
+	bit B_PAD_SELECT, a
+	jr z, .noX7Probe
+	ld a, TEXT_PROCEDURALFOREST_X7_PROBE
+	ldh [hTextID], a
+	call DisplayTextID
+.noX7Probe
+ENDC
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
@@ -723,3 +734,79 @@ ProceduralForest_TextPointers:
 	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN
 	dw_const PFStageEventArrivalText, TEXT_PROCEDURALFOREST_STAGE_EVENT
 	dw_const PFStageEventRecoverText, TEXT_PROCEDURALFOREST_STAGE_RECOVER
+
+IF DEF(FOREST_X7_PROBE)
+	dw_const PFX7ProbeText, TEXT_PROCEDURALFOREST_X7_PROBE
+
+; Prints 4 bytes of the baked forest from SRAM beside the same 4 bytes of the
+; live map in WRAM. The staging buffer is a byte-for-byte copy of
+; wOverworldMap, so on a healthy cart the two lines always match. Press SELECT
+; after an X7 snapshot but BEFORE any battle (WRAM is still good then): a
+; mismatch means SRAM reads are not reaching SRAM even with RAMG/RAMB
+; re-asserted, which is what the battle-return blit would copy into the map.
+DEF X7_PROBE_OFFSET EQU $bd00 - $bc41 ; the page the X7 snapshot implicated
+	ASSERT X7_PROBE_OFFSET + 4 <= 600, "probe must stay inside the staging buffer"
+
+PFX7ProbeText:
+	text_asm
+	push bc
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK("Sprite Buffers") == 0
+	xor a
+	ld [rRAMB], a
+	ld hl, sProcForestStagingBuffer + X7_PROBE_OFFSET
+	ld de, wStringBuffer
+	call .sample4
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld a, '@'
+	ld [de], a
+	inc de                  ; de = wStringBuffer + 9
+	ld hl, wOverworldMap + X7_PROBE_OFFSET
+	call .sample4
+	ld a, '@'
+	ld [de], a
+	ld hl, .message
+	call PrintText
+	call DisableWaitingAfterTextDisplay
+	pop bc
+	jp TextScriptEnd
+; hl = source, de = output; writes 8 hex digits. Clobbers a, b.
+.sample4
+	ld b, 4
+.sampleLoop
+	ld a, [hli]
+	push af
+	swap a
+	call .hex
+	pop af
+	call .hex
+	dec b
+	jr nz, .sampleLoop
+	ret
+.hex
+	and $f
+	cp 10
+	jr c, .digit
+	add 'A' - 10
+	jr .write
+.digit
+	add '0'
+.write
+	ld [de], a
+	inc de
+	ret
+.message
+	text "SRAM @"
+	text_ram wStringBuffer
+	text_start
+	line "WRAM @"
+	text_ram wStringBuffer + 9
+	text_promptbutton
+	text_end
+ENDC

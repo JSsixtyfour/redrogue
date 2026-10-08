@@ -193,6 +193,13 @@ DEF WILD_BUDGET_DIVISOR EQU ROUND_BATTLES / 2
 ; block (ROUTE_BATTLES) a wild area replaces, so the next battle is the
 ; round's first gym trainer. Read by procedural_stage_hooks.asm.
 DEF WILD_AREA_EXIT_BATTLES EQU ROUTE_BATTLES
+; Rarity class of wild-area mons (PCRollMonClass, via RollSpreadClass): base
+; widths out of 256 are pokeball 205 / great 38 / ultra 10 / master 3. The
+; bonus is round * STEP (+ BOSS_BUMP for the boss); it shrinks the pokeball band
+; and the freed width is split evenly over great, ultra and master. A boss is
+; 103/256 = 40% pokeball in round 1 and 39/256 = 15% from round 9 on.
+DEF WILD_CLASS_ROUND_STEP EQU 8
+DEF WILD_BOSS_RARITY_BUMP EQU 102
 
 ; Wild encounter base level per round (0-8); the caller adds 0-2. Emitted in
 ; two banks, so it is a macro rather than one table: PCWildLevelTable

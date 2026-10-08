@@ -3,3 +3,5 @@ make_patch
 pkmncompress
 trim_sgb_tilemap
 scan_includes
+lzcompress
+picdims
