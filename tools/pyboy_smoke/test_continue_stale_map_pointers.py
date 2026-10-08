@@ -6,6 +6,10 @@ old build carries addresses that point at something else in the new ROM; the
 facility hung on exactly that. LoadMapHeader now reloads the fixed header and
 connection headers from this ROM even on Continue.
 
+The tileset header has the same hazard and a different reload: Continue skips
+LoadTilesetHeader, so LoadMainData refreshes it. The collision lists sit in HOME
+and move with any HOME edit; a stale wTilesetCollisionPtr made every tile a wall.
+
 The save is shifted the way a moved map would leave it, and the test checks the
 live pointers after Continue, not just that it arrived: on the unfixed build
 these particular wrong pointers continue without hanging, so arrival alone
@@ -20,7 +24,10 @@ from harness import RedRogueHarness
 from source_constants import parse_map_constants
 from test_save_header import ARTIFACTS, REPO_ROOT, BANK, ColdBoot, SRAM_LABELS, dump_sram
 
-POINTERS = ("wCurMapDataPtr", "wCurMapTextPtr", "wCurMapScriptPtr")
+POINTERS = (
+    "wCurMapDataPtr", "wCurMapTextPtr", "wCurMapScriptPtr",
+    "wTilesetBlocksPtr", "wTilesetGfxPtr", "wTilesetCollisionPtr",
+)
 SHIFT = 0x01FC  # the facility's measured move between schema 2 and 3 builds
 
 

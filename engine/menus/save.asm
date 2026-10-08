@@ -139,6 +139,31 @@ LoadMainData:
 	ld a, [sCurMap]         ; restore current map id into HRAM so Continue enters
 	ldh [hCurMap], a        ; the saved map (not map 0), fixing the sprite-set glitch
 
+; Continue skips LoadTilesetHeader, but the saved tileset header holds ROM
+; addresses from the build that wrote the save (the collision lists sit in HOME
+; and move with any HOME edit; a stale pointer turns floor into walls). Reload
+; it from this ROM, the same way LoadTilesetHeader selects it.
+	ld hl, MiniSaffronTilesetHeader
+	cp MINI_SAFFRON
+	jr z, .copyTilesetHeader
+	ld a, [wCurMapTileset]
+	and ~(1 << BIT_NO_PREVIOUS_MAP)
+	ld l, a
+	ld h, 0
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, de
+	add hl, hl
+	add hl, hl ; hl = tileset * 12
+	ld de, Tilesets
+	add hl, de
+.copyTilesetHeader
+	ld de, wTilesetBank
+	ld bc, wGrassTile + 1 - wTilesetBank
+	ld a, BANK(Tilesets)
+	call FarCopyData
+
 ; this part is redundant, LoadCurrentBoxData is always called next
 	ld hl, sCurBoxData
 	ld de, wBoxDataStart

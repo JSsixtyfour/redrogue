@@ -6,7 +6,7 @@ MACRO tileset
 	db \6         ; animations (TILEANIM_* value)
 ENDM
 
-Tilesets:
+Tilesets::
 	table_width 12
 	; name, 3 counter tiles, grass tile, animations
 	tileset Overworld,    -1, -1, -1, $52, TILEANIM_WATER_FLOWER
