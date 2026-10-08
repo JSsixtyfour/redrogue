@@ -111,6 +111,11 @@ DEF NUM_BADGES EQU const_value
 	const_def
 	const BIT_WILD_ENCOUNTER_COOLDOWN ; 0
 	const BIT_NO_AUDIO_FADE_OUT       ; 1
+	; Status screen party cycling (StatusScreenCycle, engine/pokemon/status_view.asm).
+	; All three are transient: set and cleared within one visit to the screen.
+	const BIT_STATUS_SCREEN_CYCLE     ; 2 - Up/Down may switch party mon
+	const BIT_STATUS_SCREEN_CYCLED    ; 3 - a wait loop just switched hWhichPokemon
+	const BIT_STATUS_SCREEN_PAGE2     ; 4 - reopen on page 2: page 1 draws unseen, no wait
 
 ; wStatusFlags3
 	const_def

@@ -2825,9 +2825,8 @@ PartyMenuOrRockOrRun:
 	ld [wMonDataLocation], a
 	ld hl, wPartyMon1
 	call ClearSprites
-; display the two status screens
-	predef StatusScreen
-	predef StatusScreen2
+; display the two status screens (Up/Down steps through the party)
+	farcall StatusScreenCycle
 ; now we need to reload the enemy mon pic
 ; Shin Red import Phase 6 (kep-hack placement): the status screen leaves hWhoseTurn
 ; on the player, so the substitute and minimize animations below redraw over the

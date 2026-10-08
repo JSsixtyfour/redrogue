@@ -346,16 +346,6 @@ RewardInfoFormPalette::
 	farcall GetFormPalette
 	ret
 
-; Replaces the page-2 gate. OUT: nz = show page 2 (base stats). Always during
-; a preview (Oak's Lab starters come before the Pokedex); otherwise only once
-; the player has the Pokedex, as before. Flags survive Bankswitch's return.
-RewardInfoWantsPageTwo::
-	ld a, [wRewardInfoSlot]
-	and a
-	ret nz
-	CheckEvent EVENT_GOT_POKEDEX
-	ret
-
 ; After PrintBaseStats: swap the long stat labels for short ones and print the
 ; offer's DVs (DV Booster floor applied, i.e. exactly what taking it gives) in
 ; the gap: label at col 2, DV at cols 7-8, bars untouched from col 10.

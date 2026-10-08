@@ -7,7 +7,14 @@ DEF STATUS_START_TILE EQU STATUS_EXP_TILE + 11
 StatusScreenInitView:
 	call LoadStatusViewGraphics
 	ld e, STATS_BOX_NORMAL
-	jp StatusScreenDrawView
+	call StatusScreenDrawView
+	call Delay3
+	; Reopening on page 2 (StatusScreenCycle): stay white so page 1 never
+	; shows; StatusScreen2WaitView fades in once page 2 is drawn over it.
+	ld a, [wStatusFlags2]
+	bit BIT_STATUS_SCREEN_PAGE2, a
+	ret nz
+	jp GBPalNormal
 
 LoadStatusViewGraphics::
 	ld de, StatusViewGraphics
@@ -17,6 +24,9 @@ LoadStatusViewGraphics::
 	ret
 
 StatusScreenWaitView:
+	ld a, [wStatusFlags2]
+	bit BIT_STATUS_SCREEN_PAGE2, a
+	ret nz ; reopening on page 2: StatusScreen2 takes the input
 	ld e, STATS_BOX_NORMAL
 .wait
 	push de
@@ -26,6 +36,8 @@ StatusScreenWaitView:
 	ldh a, [hJoyPressed]
 	and PAD_A | PAD_B
 	ret nz ; retain the caller's existing move-page behavior
+	call StatusScreenTryCycle
+	ret nz ; switched party mon; StatusScreenCycle redraws page 1 for it
 	ldh a, [hJoyPressed]
 	bit B_PAD_START, a
 	jr z, .wait
@@ -235,6 +247,72 @@ StatusViewGraphics:
 StatusViewGraphicsEnd:
 	ASSERT StatusViewGraphicsEnd - StatusViewGraphics == 14 * TILE_SIZE
 
+; Party-menu STATS (field and battle): both status pages, with Up/Down
+; stepping through the party and wrapping at either end. Drop-in for the
+; caller's `predef StatusScreen` / `predef StatusScreen2` pair: same inputs
+; (wMonDataLocation = PLAYER_PARTY_DATA, hWhichPokemon = the chosen mon).
+; PC and trade center still call the predefs directly, so with
+; BIT_STATUS_SCREEN_CYCLE clear their Up/Down behave exactly as before.
+; A predef's own `a`/flags never reach its caller (PredefContinue pops af),
+; so the wait loops report back through wStatusFlags2 instead.
+StatusScreenCycle::
+	ld hl, wStatusFlags2
+	set BIT_STATUS_SCREEN_CYCLE, [hl]
+	res BIT_STATUS_SCREEN_PAGE2, [hl]
+.reopen
+	ld hl, wStatusFlags2
+	res BIT_STATUS_SCREEN_CYCLED, [hl]
+	predef StatusScreen
+	ld hl, wStatusFlags2
+	bit BIT_STATUS_SCREEN_CYCLED, [hl]
+	jr nz, .reopen ; switched from page 1
+	predef StatusScreen2
+	ld hl, wStatusFlags2
+	bit BIT_STATUS_SCREEN_CYCLED, [hl]
+	jr nz, .reopen ; switched from page 2 (PAGE2 set: reopens there)
+	res BIT_STATUS_SCREEN_CYCLE, [hl]
+	ldh a, [hWhichPokemon]
+	ld [wPartyAndBillsPCSavedMenuItem], a ; party menu cursor lands on the last mon viewed
+	ret
+
+; Called from a status-page wait loop right after Joypad. If cycling is on
+; and Up/Down was pressed, steps hWhichPokemon to the previous/next party
+; mon (wrapping), sets BIT_STATUS_SCREEN_CYCLED and returns nz.
+; Otherwise returns z. Clobbers a, c, hl; preserves de (the loops' state).
+StatusScreenTryCycle:
+	ld hl, wStatusFlags2
+	bit BIT_STATUS_SCREEN_CYCLE, [hl]
+	ret z
+	ld a, [wPartyCount]
+	cp 2
+	jr c, .noSwitch
+	ld c, a
+	ldh a, [hJoyPressed]
+	and PAD_UP | PAD_DOWN
+	ret z
+	and PAD_UP
+	ldh a, [hWhichPokemon]
+	jr z, .next
+	and a
+	jr nz, .prev
+	ld a, c ; first mon: wrap to the last
+.prev
+	dec a
+	jr .switch
+.next
+	inc a
+	cp c
+	jr c, .switch
+	xor a ; last mon: wrap to the first
+.switch
+	ldh [hWhichPokemon], a
+	set BIT_STATUS_SCREEN_CYCLED, [hl]
+	or 1 ; nz
+	ret
+.noSwitch
+	xor a ; z
+	ret
+
 ; ============================================================================
 ; Status Screen page 2 sub-views (Learndex, LEARNDEX_DESIGN.md D-1).
 ;
@@ -394,6 +472,12 @@ StatusScreen2SelectHook:
 	ret
 
 StatusScreen2WaitView:
+	ld hl, wStatusFlags2
+	bit BIT_STATUS_SCREEN_PAGE2, [hl]
+	jr z, .fadedIn
+	res BIT_STATUS_SCREEN_PAGE2, [hl]
+	call GBPalNormal ; reopened here by StatusScreenCycle, still white
+.fadedIn
 	ld d, 0
 	ld e, MOVES_BOX_CURRENT
 .wait
@@ -434,6 +518,17 @@ StatusScreen2WaitView:
 	ldh a, [hJoyPressed]
 	and PAD_UP | PAD_DOWN
 	jr z, .wait
+	; Up/Down belong to the list cursor on LEVELUP/TMHM/TUTOR; only the
+	; cursorless CURRENT view gives them to party cycling.
+	ld a, e
+	cp MOVES_BOX_CURRENT
+	jr nz, .moveCursor
+	call StatusScreenTryCycle
+	jr z, .wait
+	ld hl, wStatusFlags2
+	set BIT_STATUS_SCREEN_PAGE2, [hl] ; the next mon opens on this page too
+	ret
+.moveCursor
 	call StatusScreen2MoveCursor ; a = direction, de = (cursor,view); updates
 	                              ; d AND redraws whatever actually needs it
 	                              ; itself - see its own comment for why a

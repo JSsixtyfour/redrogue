@@ -196,9 +196,7 @@ StatusScreen:
 	ld de, wLoadedMonOTID
 	lb bc, LEADING_ZEROES | 2, 5
 	call PrintNumber ; ID Number
-	farcall StatusScreenInitView
-	call Delay3
-	call GBPalNormal
+	farcall StatusScreenInitView ; also Delay3 + GBPalNormal (see there)
 	; Fusion (Phase 4a): pre-load the secondary's front sprite into vBackPic
 	; BEFORE drawing the primary, so the diagonal overlay after it is instant
 	; (no visible "primary first, then secondary" flicker) and wMonHIndex is left
@@ -583,9 +581,12 @@ StatusScreen2:
 	pop af
 	ldh [hTileAnimations], a
 	ld hl, wStatusFlags2
+	bit BIT_STATUS_SCREEN_CYCLED, [hl]
+	jr nz, .keepStatusAudio ; switching party mon: the screen reopens at once
 	res BIT_NO_AUDIO_FADE_OUT, [hl]
 	ld a, $77
 	ldh [rAUDVOL], a
+.keepStatusAudio
 	call GBPalWhiteOut
 	jp ClearScreen
 

@@ -508,12 +508,30 @@ ShowPokedexDataInternal:
 	push de
 	push hl
 
+	; A reward INFO preview goes straight to page 2: wipe page 1's category
+	; and HT/WT labels before the palette comes up so they never flash.
+	ld a, [wRewardInfoSlot]
+	and a
+	jr z, .notPreview
+	hlcoord 9, 4
+	lb bc, 5, 10
+	call ClearScreenArea
+.notPreview
 	call Delay3
 	call GBPalNormal
 	farcall RewardInfoPublishForm ; the form's sprite, types and bars
 	call GetMonHeader ; load pokemon picture location
 	hlcoord 1, 1
 	call LoadFlippedFrontSpriteByMonIndex ; draw pokemon picture
+	ld a, [wRewardInfoSlot]
+	and a
+	jr z, .playCry
+	pop hl
+	pop de
+	pop bc
+	pop af
+	jp .drawPageTwo ; plays the cry once the page is up
+.playCry
 	ld a, [wCurPartySpecies]
 	call PlayCry
 
@@ -583,8 +601,7 @@ ShowPokedexDataInternal:
 	call TextCommandProcessor ; print pokedex description text
 	xor a
 	ldh [hClearLetterPrintingDelayFlags], a
-	; EVENT_GOT_POKEDEX, or always during a reward INFO preview
-	farcall RewardInfoWantsPageTwo
+	CheckEvent EVENT_GOT_POKEDEX
 	jr z, .waitForButtonPress ; don't show page 2 while displaying Oak's starters
 .waitForButtonPress2
 	call JoypadLowSensitivity
@@ -601,6 +618,7 @@ ShowPokedexDataInternal:
 	call ClearScreenArea ; clear category, height and weight
 	ld c, 20
 	call DelayFrames
+.drawPageTwo
 	; TYPE/ takes the category's row, so the two types land on rows 6 and 8
 	; (where HT and WT were) instead of the second one on the divider at row 9.
 	hlcoord 9, 4
@@ -619,6 +637,11 @@ ShowPokedexDataInternal:
 	ld [wLoadedMon + MON_CATCH_RATE], a
 	call PrintBaseStats
 	farcall PrintRewardOfferDVs
+	ld a, [wRewardInfoSlot]
+	and a
+	jr z, .waitForButtonPress
+	ld a, [wCurPartySpecies]
+	call PlayCry
 .waitForButtonPress
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]

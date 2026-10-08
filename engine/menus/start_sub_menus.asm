@@ -83,8 +83,7 @@ StartMenu_Pokemon::
 	call ClearSprites
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
-	predef StatusScreen
-	predef StatusScreen2
+	farcall StatusScreenCycle ; both pages; Up/Down steps through the party
 	call ReloadMapData
 	jp StartMenu_Pokemon
 ; writes a blank tile to all possible menu cursor positions on the party menu
