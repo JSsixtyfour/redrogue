@@ -20,7 +20,7 @@ _CeruleanGymMistyPreBattleText::
 _CeruleanGymMistyTM11ExplanationText::
 	text "Only certain"
 	line "#MON can learn"
-    line "a TM"
+    cont "a TM"
 	done
 
 _CeruleanGymMistyCascadeBadgeInfoText::
