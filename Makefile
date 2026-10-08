@@ -83,6 +83,8 @@ clean: tidy
 	     \( -iname '*.1bpp' \
 	        -o -iname '*.2bpp' \
 	        -o -iname '*.pic' \
+	        -o -iname '*.lz' \
+	        -o -iname '*.dim' \
 	        -o -iname '*.sgb.tilemap' \) \
 	     -delete
 
@@ -305,6 +307,19 @@ $(yellow_legacy_menu_icon_2bpp): gfx/icons/%.2bpp: gfx/icons/%.png
 
 %.pic: %.2bpp
 	tools/pkmncompress $< $@
+
+# LZ-compressed pics: pokecrystal's lz3 format (tools/lzcompress.c), decoded by
+# Decompress. Compressed from COLUMN-major 2bpp, the tile order the decoder's
+# plane split relies on. %.dim is the 1-byte sprite size (width << 4 | height)
+# that a .pic used to carry as its first byte. See SPRITE_DECOMPRESSION_PLAN.md.
+%.col.2bpp: %.png
+	$(RGBGFX) --colors dmg $(RGBGFXFLAGS) --columns -o $@ $<
+
+%.lz: %.col.2bpp
+	tools/lzcompress $< $@
+
+%.dim: %.png
+	tools/picdims $< $@
 
 %.sgb.tilemap: %.tilemap
 	tools/trim_sgb_tilemap $< $@

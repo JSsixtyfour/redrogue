@@ -5,6 +5,8 @@
 *.1bpp
 *.2bpp
 *.pic
+*.lz
+*.dim
 
 # compiled roms
 *.gbc
