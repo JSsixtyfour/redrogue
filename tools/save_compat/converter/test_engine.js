@@ -83,13 +83,16 @@ test("baseline to schema 1: tagged, every other byte identical, input untouched"
 });
 
 test("a skipped release still arrives through a chain of migrations", () => {
-  // A package with an extra format between schema 2 and the target.
+  // A package with an extra format between schema 2 and schema 3. It ends at schema 3, not the
+  // build's target: legacyInventoriesRemoved checks bank 1 label by label, and schema 6 deleted a
+  // bank-1 label (sProcFacilityRoomBuf), so only schema 3 is a valid end for that step.
   const chained = JSON.parse(JSON.stringify(PKG));
+  chained.target = { schema: 3 };
   chained.schemas.mid = chained.schemas["2"];
   chained.migrations = [
     { from: BASELINE, to: "1", steps: ["tag"] },
     { from: "1", to: "mid", steps: ["itemCountSlots"] },
-    { from: "mid", to: TARGET, steps: ["legacyInventoriesRemoved"] },
+    { from: "mid", to: "3", steps: ["legacyInventoriesRemoved"] },
   ];
   const out = api.convert(syntheticSave(BASELINE, { tag: false }), chained, { source: BASELINE, mode: "continue" });
   assert.equal(out.ok, true, out.reason);
@@ -193,6 +196,77 @@ test("schema 4 to 5: the starter form is added zeroed, nothing else changes", ()
   assert.notEqual(save[pad], 0, "the noise should have made the old pad byte non-zero");
   assert.equal(wramOffset(to, "wPlayerStarterForm"), pad);
   assert.equal(b[pad], 0, "wPlayerStarterForm");
+});
+
+// Schema 5 -> 6 moves bank-0 and bank-2 fields, which checkMigration's bank-1 noise never reaches,
+// so this builds its own save: noise over all of bank 0, the bank-2 fallen log + offer DVs, and
+// bank 1 from the item counts on (as checkMigration does).
+function x7Save(fallenCount) {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(5), to = full(6);
+  const save = syntheticSave("5");
+  let x = 0x5eed0b0e;
+  const noise = (a, b) => { for (let i = a; i < b; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[i] = x >>> 24; } };
+  noise(offsetOf(0, "a000"), offsetOf(0, "c000"));
+  noise(offsetOf(2, "ba53"), offsetOf(2, "bd74"));
+  const bank1End = Math.max(...from.sram.filter((f) => f.bank === 1).map((f) => offsetOf(f.bank, f.address) + f.size));
+  noise(wramOffset(from, "wRecoveryItemCounts"), bank1End);
+  save[wramOffset(from, "wPartyCount")] = 0;
+  save[wramOffset(from, "wPartySpecies")] = 0xff;
+  save[wramOffset(from, "wBoxCount")] = 0;
+  save[wramOffset(from, "wCurrentBoxNum")] = 0;
+  save[wramOffset(from, "wFallenCount")] = fallenCount;
+  recomputeChecksums(save, from);
+  recomputeChecksums(save, from);
+  return { save, from, to };
+}
+
+test("schema 5 to 6: X7 page vacated, fields moved by label, forest map repacked, fallen log trimmed", () => {
+  const { save, from, to } = x7Save(12);
+  const out = api.convert(save, packageTargeting(6), { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.deepEqual(api.readHeader(b), { present: true, valid: true, schemaId: 6 });
+  for (const [name, good] of Object.entries(api.checksumStatus(b, to))) assert.equal(good, true, `checksum ${name}`);
+  const mainSum = from.checksums.find((c) => c.name === "main");
+  const mainAt = offsetOf(mainSum.at_bank, mainSum.at);
+  // Every SRAM field that survives keeps its bytes at its new address (the reshaped two below).
+  for (const t of to.sram) {
+    if (["sProcForestStagingBuffer", "sFallenLog", "sFallenLogEnd", "sMainData"].includes(t.label)) continue;
+    if (t.label.startsWith("sSaveHeader")) continue; // rewritten as schema 6 by design
+    const f = from.sram.find((s) => s.label === t.label);
+    const o = offsetOf(f.bank, f.address), n = offsetOf(t.bank, t.address);
+    if (n === mainAt) continue; // recomputed by design
+    for (let i = 0; i < t.size; i++) if (b[n + i] !== save[o + i]) assert.fail(`${t.label}+${i} changed`);
+    const a = parseInt(t.address, 16);
+    assert.ok(!t.size || a + t.size <= 0xbd00 || a >= 0xbe00, `${t.label} lies in the X7 page`);
+  }
+  // Forest map: old stride copy (base 81, stride 26) -> compact 20x20.
+  const oldMap = from.sram.find((s) => s.label === "sProcForestStagingBuffer");
+  const newMap = to.sram.find((s) => s.label === "sProcForestStagingBuffer");
+  const mo = offsetOf(oldMap.bank, oldMap.address), md = offsetOf(newMap.bank, newMap.address);
+  for (let r = 0; r < 20; r++)
+    for (let c = 0; c < 20; c++)
+      assert.equal(b[md + r * 20 + c], save[mo + 81 + r * 26 + c], `forest map row ${r} col ${c}`);
+  // Fallen log: first 10 entries kept in place, count clamped 12 -> 10.
+  const log = to.sram.find((s) => s.label === "sFallenLog");
+  const lo = offsetOf(log.bank, log.address);
+  for (let i = 0; i < log.size; i++) assert.equal(b[lo + i], save[lo + i], `fallen log byte ${i}`);
+  assert.equal(b[wramOffset(to, "wFallenCount")], 10);
+  // Every other saved WRAM field is untouched.
+  for (const f of from.saved_wram) {
+    if (f.label === "wFallenCount") continue;
+    const t = to.saved_wram.find((s) => s.label === f.label);
+    const o = wramOffset(from, f.label), n = wramOffset(to, f.label);
+    for (let i = 0; i < Math.min(f.size, t.size); i++) if (b[n + i] !== save[o + i]) assert.fail(`${f.label}+${i} changed`);
+  }
+});
+
+test("schema 5 to 6: a fallen count within the new capacity is kept", () => {
+  const { save, to } = x7Save(3);
+  const out = api.convert(save, packageTargeting(6), { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  assert.equal(out.bytes[wramOffset(to, "wFallenCount")], 3);
 });
 
 test("damaged, foreign or wrapped files are refused with a reason", () => {

@@ -303,6 +303,63 @@
       bytes[form] = 0;
       recomputeChecksums(bytes, to, ["main"]);
       return null;
+    },
+
+    // Schema 5 -> 6 (2026-10-08): SRAM $BD00-$BDFF is reserved in every bank, because the EverDrive
+    // X7's in-game menu covers that page until power-off (measured on hardware; end of
+    // ram/sram.asm, PFOREST_X7_INVESTIGATION.md). Everything that lived in the page moved out:
+    //   - sProcForestStagingBuffer left bank 0's "Sprite Buffers" for its own section at $BE00 and
+    //     became COMPACT: 20 rows x 20 blocks (400 bytes) instead of the old copy of wOverworldMap's
+    //     stride (600 bytes: base 81, stride 26; the other 200 bytes were never written). So the
+    //     bank-0 fields after it (forest/stage-event state) moved down 600 bytes.
+    //   - sProcFacilityRoomBuf (bank 1) was deleted: dead, never referenced.
+    //   - sFallenLog (bank 2) shrank 12 -> 10 entries; the reward offer DVs moved down after it.
+    // Every other field keeps its address. Each surviving field is copied by label from a snapshot
+    // of the source (same bank, same meaning), the forest map is repacked row by row, the log keeps
+    // its first 10 entries, and wFallenCount is clamped to the new capacity (main checksum redone).
+    // The diff also shows FORM_REC_SIZE $28 -> $29 and MINIBOSS_RANDOM_FILL removed: both are ROM
+    // data (form-record stride, a marker in ROM team tables) that no save can hold.
+    x7MenuPageReserved: function (bytes, from, to) {
+      var src = new Uint8Array(bytes);
+      var PAGE_LO = 0xbd00, PAGE_HI = 0xbe00;
+      var PF_SIZE = 20, PF_BASE = 81, PF_STRIDE = 26;
+      var oldMap = sramField(from, "sProcForestStagingBuffer"), newMap = sramField(to, "sProcForestStagingBuffer");
+      if (!oldMap || !newMap || oldMap.size !== 600 || newMap.size !== PF_SIZE * PF_SIZE ||
+          oldMap.bank !== 0 || newMap.bank !== 0)
+        return "forest map layout not recognised";
+      var oldLog = sramField(from, "sFallenLog"), newLog = sramField(to, "sFallenLog");
+      if (!oldLog || !newLog || oldLog.bank !== newLog.bank || oldLog.address !== newLog.address ||
+          newLog.size > oldLog.size)
+        return "fallen log layout not recognised";
+      // The package trims schema constants, so the capacity comes from the log's size: an entry
+      // is the party struct (44) + OT name (11) + nickname (11) = FALLEN_ENTRY_SIZE.
+      var ENTRY = 66;
+      if (oldLog.size % ENTRY || newLog.size % ENTRY) return "fallen log entry size not recognised";
+      var capacity = newLog.size / ENTRY;
+      if (sramField(to, "sProcFacilityRoomBuf")) return "this save format still has the facility room buffer";
+      for (var i = 0; i < to.sram.length; i++) {
+        var t = to.sram[i], f = sramField(from, t.label);
+        if (!f) return "save field " + t.label + " is new, which this step does not expect";
+        if (f.bank !== t.bank) return "save field " + t.label + " changed bank, which this step does not expect";
+        var a = parseInt(t.address, 16);
+        if (t.size && a < PAGE_HI && a + t.size > PAGE_LO)
+          return "save field " + t.label + " lies in the reserved X7 page";
+        if (t.label === "sProcForestStagingBuffer" || t.label === "sFallenLog") continue;
+        if (t.size !== f.size && t.label !== "sFallenLogEnd")
+          return "save field " + t.label + " changed size, which this step does not expect";
+        var so = offsetOf(f.bank, f.address), d = offsetOf(t.bank, t.address);
+        for (var n = 0; n < Math.min(f.size, t.size); n++) bytes[d + n] = src[so + n];
+      }
+      var mo = offsetOf(oldMap.bank, oldMap.address), md = offsetOf(newMap.bank, newMap.address);
+      for (var r = 0; r < PF_SIZE; r++)
+        for (var c = 0; c < PF_SIZE; c++)
+          bytes[md + r * PF_SIZE + c] = src[mo + PF_BASE + r * PF_STRIDE + c];
+      // The log stays in place; entries past the new capacity are dropped with the count.
+      var count = wramOffset(from, "wFallenCount");
+      if (count < 0 || wramOffset(to, "wFallenCount") !== count) return "wFallenCount not recognised";
+      if (bytes[count] > capacity) bytes[count] = capacity;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
     }
   };
 

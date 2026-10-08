@@ -738,57 +738,204 @@ ProceduralForest_TextPointers:
 IF DEF(FOREST_X7_PROBE)
 	dw_const PFX7ProbeText, TEXT_PROCEDURALFOREST_X7_PROBE
 
-; Prints 4 bytes of the baked forest from SRAM beside the same 4 bytes of the
-; live map in WRAM. The staging buffer is a byte-for-byte copy of
-; wOverworldMap, so on a healthy cart the two lines always match. Press SELECT
-; after an X7 snapshot but BEFORE any battle (WRAM is still good then): a
-; mismatch means SRAM reads are not reaching SRAM even with RAMG/RAMB
-; re-asserted, which is what the battle-return blit would copy into the map.
-DEF X7_PROBE_OFFSET EQU $bd00 - $bc41 ; the page the X7 snapshot implicated
-	ASSERT X7_PROBE_OFFSET + 4 <= 600, "probe must stay inside the staging buffer"
+; X7 probe, v3: which SRAM pages does the X7 in-game menu disturb?
+; SELECT (first time, or with B held) records a baseline: an 8-bit sum of every
+; 256-byte page in SRAM banks 0-3 (128 pages), stored in free bank-3 space
+; ($BB00-$BB7F, magic at $BB80; bank 3 is empty from $BA53). SELECT again
+; compares and prints how many pages changed and up to six of them as
+; bank:page. Bank 3 page $BB (the probe's own scratch) is skipped.
+; Take the baseline, open the X7 menu, close it, SELECT. Do not battle or
+; load pictures in between: sprite decompression rewrites bank 0 $A0-$A4.
+; Writes only to the free bank-3 page; reads everything else.
+DEF X7_SCRATCH_PAGE EQU $bb
+DEF X7_MAGIC EQU $5a
+DEF X7_MAX_LISTED EQU 6
 
 PFX7ProbeText:
 	text_asm
 	push bc
+	call .openSram
+	ld a, 3
+	ld [rRAMB], a
+	ldh a, [hJoyHeld]
+	bit B_PAD_B, a
+	jr nz, .rebase
+	ld a, [X7_SCRATCH_PAGE << 8 | $80]
+	cp X7_MAGIC
+	jr z, .check
+.rebase
+	ld de, 0                ; d = bank, e = page index 0-31
+.rebaseLoop
+	call .skipScratch
+	jr z, .rebaseNext
+	call .pageSum
+	push af
+	call .baseAddr
+	pop af
+	ld [hl], a
+.rebaseNext
+	call .nextPage
+	jr nz, .rebaseLoop
+	ld a, 3
+	ld [rRAMB], a
+	ld a, X7_MAGIC
+	ld [X7_SCRATCH_PAGE << 8 | $80], a
+	call .closeSram
+	ld hl, .messageBase
+	call PrintText
+	jr .done
+
+.check
+	ld de, 0
+	ld c, 0                 ; c = pages that changed
+.checkLoop
+	call .skipScratch
+	jr z, .checkNext
+	call .pageSum
+	push af
+	call .baseAddr
+	pop af
+	cp [hl]
+	jr z, .checkNext
+	ld a, c
+	cp X7_MAX_LISTED
+	jr nc, .counted
+	add a                   ; record (bank, page) at $BB90 + 2*c
+	add $90
+	ld l, a
+	ld h, X7_SCRATCH_PAGE
+	ld [hl], d
+	inc hl
+	ld [hl], e
+.counted
+	inc c
+.checkNext
+	call .nextPage
+	jr nz, .checkLoop
+	; --- format: wStringBuffer = count, then entries 1-3; wNameBuffer = 4-6
+	ld a, 3
+	ld [rRAMB], a
+	ld de, wStringBuffer
+	ld a, c
+	call .hexByte
+	call .terminate         ; de = wStringBuffer + 3
+	ld a, c
+	cp X7_MAX_LISTED + 1
+	jr c, .listCount
+	ld a, X7_MAX_LISTED
+.listCount
+	ld c, a                 ; c = entries to list
+	ld hl, X7_SCRATCH_PAGE << 8 | $90
+	ld b, 0
+.fmtLoop
+	ld a, b
+	cp c
+	jr nc, .fmtDone
+	cp 3
+	jr nz, .sameLine
+	call .terminate
+	ld de, wNameBuffer
+.sameLine
+	ld a, [hli]
+	add '0'
+	ld [de], a
+	inc de
+	ld a, ':'
+	ld [de], a
+	inc de
+	ld a, [hli]
+	add $a0
+	call .hexByte
+	ld a, ' '
+	ld [de], a
+	inc de
+	inc b
+	jr .fmtLoop
+.fmtDone
+	call .terminate
+	ld a, c
+	cp 4
+	jr nc, .haveSecondLine
+	ld a, '@'
+	ld [wNameBuffer], a
+.haveSecondLine
+	call .closeSram
+	ld hl, .messageCheck
+	call PrintText
+.done
+	call DisableWaitingAfterTextDisplay
+	pop bc
+	jp TextScriptEnd
+
+; Z set when (d, e) is the probe's own scratch page. Clobbers a.
+.skipScratch
+	ld a, d
+	cp 3
+	ret nz
+	ld a, e
+	cp X7_SCRATCH_PAGE - $a0
+	ret
+; Advance (d, e) through banks 0-3 x pages 0-31. Z set when done. Clobbers a.
+.nextPage
+	inc e
+	ld a, e
+	cp 32
+	jr nz, .notDone
+	ld e, 0
+	inc d
+	ld a, d
+	cp 4
+	ret
+.notDone
+	or a                    ; e is nonzero here: clear Z
+	ret
+; a = 8-bit sum of the 256 bytes of page e in bank d. Clobbers b, hl.
+.pageSum
+	ld a, d
+	ld [rRAMB], a
+	ld a, e
+	add $a0
+	ld h, a
+	ld l, 0
+	xor a
+	ld b, a                 ; 256 iterations
+.sumLoop
+	add [hl]
+	inc l
+	dec b
+	jr nz, .sumLoop
+	ret
+; hl = baseline slot for (d, e); selects bank 3. Clobbers a.
+.baseAddr
+	ld a, 3
+	ld [rRAMB], a
+	ld a, d
+	swap a
+	add a                   ; d * 32
+	add e
+	ld l, a
+	ld h, X7_SCRATCH_PAGE
+	ret
+
+.openSram
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
 	ld [rBMODE], a
-	ASSERT BANK("Sprite Buffers") == 0
+	ret
+.closeSram
 	xor a
 	ld [rRAMB], a
-	ld hl, sProcForestStagingBuffer + X7_PROBE_OFFSET
-	ld de, wStringBuffer
-	call .sample4
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
-	ld a, '@'
-	ld [de], a
-	inc de                  ; de = wStringBuffer + 9
-	ld hl, wOverworldMap + X7_PROBE_OFFSET
-	call .sample4
-	ld a, '@'
-	ld [de], a
-	ld hl, .message
-	call PrintText
-	call DisableWaitingAfterTextDisplay
-	pop bc
-	jp TextScriptEnd
-; hl = source, de = output; writes 8 hex digits. Clobbers a, b.
-.sample4
-	ld b, 4
-.sampleLoop
-	ld a, [hli]
+	ret
+.hexByte
 	push af
 	swap a
 	call .hex
 	pop af
-	call .hex
-	dec b
-	jr nz, .sampleLoop
-	ret
 .hex
 	and $f
 	cp 10
@@ -801,12 +948,25 @@ PFX7ProbeText:
 	ld [de], a
 	inc de
 	ret
-.message
-	text "SRAM @"
+.terminate
+	ld a, '@'
+	ld [de], a
+	inc de
+	ret
+.messageBase
+	text "BASELINE SAVED"
+	line "128 PAGES@"
+	text_promptbutton
+	text_end
+.messageCheck
+	text "PAGES CHANGED @"
 	text_ram wStringBuffer
 	text_start
-	line "WRAM @"
-	text_ram wStringBuffer + 9
+	line "@"
+	text_ram wStringBuffer + 3
+	text_start
+	para "@"
+	text_ram wNameBuffer
 	text_promptbutton
 	text_end
 ENDC

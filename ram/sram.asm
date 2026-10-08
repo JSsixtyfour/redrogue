@@ -48,10 +48,12 @@ sProcCaveBallXY:: ds 8             ; X,Y interleaved for each of the 4 pokeballs
 sProcCaveBallItems:: ds 4          ; item ID for each pokeball
 sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED tiles
 
-; Procedural forest maze: 20x20 block map staged here at warp-in time.
-; Separate from cave staging buffer so cave→forest→cave bouncing doesn't
-; require cave regeneration. 400 bytes = 20*20 blocks.
-sProcForestStagingBuffer:: ds 600  ; same as cave: stride layout needs PF_BASE+(PF_SIZE-1)*PF_STRIDE+PF_SIZE = 595
+; Procedural forest maze state. The baked 20x20 map itself
+; (sProcForestStagingBuffer) is NOT here any more: since 2026-10-08 it lives in
+; its own section, "Procedural Forest Staging", above the reserved X7 page (see
+; the end of this file). It used to sit here as a 600-byte stride copy that
+; ran $BC41-$BE98, straight through $BD00-$BDFF. Everything below moved down
+; 600 bytes as a result (save schema 6 carries old saves across).
 sProcForestExitI:: db              ; 0-8: which cell (col for N, row for W/E) is
                                    ; the exit, along whichever edge sProcForestExitEdge
                                    ; selects
@@ -123,7 +125,9 @@ sProcCemeteryPalette:: db          ; 0=default cemetery; 1+ added in Phase 4d
 ; APPENDED AT THE END for the same reason the palette bytes above were: the
 ; pyboy harness reads the staging buffers by offset, so nothing may be
 ; inserted ahead of them. Measured 2026-09-16: SRAM bank 0 had $00fe (254)
-; free before this block.
+; free before this block. (2026-10-08: this whole tail moved down 600 bytes
+; when the forest map left this section for the X7 fix; harness reads go by
+; label, so they followed.)
 ;
 ; Only ONE wild area is live at a time (the lobby offers exactly one), so a
 ; single set of fields serves all four stages rather than one set per stage.
@@ -201,18 +205,15 @@ sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion
   sProcFacilityEntryBattleCount:: db ; wBattleCount snapshot taken on first Facility
                                      ; warp-in; owns all four fake-ball species/levels
 ; Generation-time scratch — NEVER use wOverworldMap's border padding (same hazard
-; as forest). Reused across non-concurrent generation phases.
+; as forest). Reused across non-concurrent generation phases. The room records
+; (PFAC_ROOM_MAX x PFAC_ROOM_STRIDE, ASSERTed <= 81) live here too.
   sProcFacilityGenScratch:: ds 81    ; bytes 72-79 persist four fake-ball Y/X pairs
 
-; Packed wall-room tessellation (redesign v2, see Red Rogue Files/
-; 1-i-need-you-foamy-otter.md): every grown room is tracked here as it's placed
-; (X,Y,W,H,role), 5 bytes/room, so later growths can pick a parent wall and
-; overlap-check against everything placed so far. No Parent field - a room's
-; doorway to its parent is punched into the map at growth time, so the spanning
-; tree lives in the map itself, not in this table. Room count lives in WRAM
-; (wPFacRoomCount, same as the old 6-byte-record model). role: 0=entry, 1=item,
-; 2=exit, 3=plain.
-sProcFacilityRoomBuf:: ds 240 ; 48 rooms x 5 bytes
+; REMOVED 2026-10-08: sProcFacilityRoomBuf (240 bytes, "redesign v2" packed
+; room table). Dead: never referenced by any asm or tool, and measured
+; untouched across 80 generated Facility layouts with a marker fill. It was
+; the tail of this section and ran $BCA5-$BD94, through the X7 page reserved at
+; the end of this file; deleting it ends the section at $BCA4.
 
 
 ; Four-entry rolling archive of champion parties for the final AI encounter.
@@ -430,7 +431,10 @@ ENDM
 ; exactly. wFallenCount (WRAM, saved) says how many entries are valid; the rest
 ; is garbage by definition. Outside the box checksums and sGameData. Cleared at
 ; new game and at every run end (FallenLogClear). Bank 2 shares with "Saved
-; Boxes 1", which leaves ~1.4 KB of it unused.
+; Boxes 1". Capacity is 10, not 12, since 2026-10-08: at 12 x 66 bytes the
+; log ran $BA53-$BD6A, into the X7 page reserved at the end of this file, and
+; neither bank 2 nor bank 3 has 792 contiguous bytes below that page (685).
+; Nothing reads the log yet, so the cut is invisible in play.
 SECTION "Fallen Log SRAM", SRAM, BANK[2]
 
 sFallenLog:: ds FALLEN_LOG_CAPACITY * FALLEN_ENTRY_SIZE
@@ -466,3 +470,40 @@ sBank3IndividualBoxChecksums:: ds 6
 		"boxes: Expected {d:NUM_BOXES} total boxes, got {d:box_n}"
 
 ENDSECTION
+
+
+; ============================================================================
+; EVERDRIVE X7 RESERVED PAGE: $BD00-$BDFF in EVERY SRAM bank. Keep it empty.
+;
+; Measured on hardware 2026-10-08 (PFOREST_X7_INVESTIGATION.md, FOLLOWUPS #58):
+; once the EverDrive GB X7's in-game menu is OPENED (no save state needs to be
+; taken or loaded), reads of $BD00-$BDFF return the cartridge's own data
+; (starting 01 00 40 3E) instead of our SRAM, in all four banks, with the bank
+; select ignored, until power-off. Re-asserting RAMG/RAMB, or an RTC-select
+; "kick", does not clear it. The real SRAM underneath is untouched (a power
+; cycle reads it back intact), and no other page changes (whole-SRAM page sums:
+; exactly 0:BD 1:BD 2:BD 3:BD). Anything stored in this page therefore reads
+; back as garbage for the rest of a session in which the menu was used. The
+; first symptom was the procedural forest refilling with junk after a battle.
+;
+; layout.link places these four empty sections at `org $bd00` in banks 0-3, so
+; the linker refuses to build if anything grows into the page. Do NOT put data
+; here, even "scratch": writes made while the menu's overlay is active are
+; unmeasured and may not reach the real SRAM.
+; ============================================================================
+SECTION "X7 Menu Page 0", SRAM, BANK[0]
+	ds $100
+SECTION "X7 Menu Page 1", SRAM, BANK[1]
+	ds $100
+SECTION "X7 Menu Page 2", SRAM, BANK[2]
+	ds $100
+SECTION "X7 Menu Page 3", SRAM, BANK[3]
+	ds $100
+
+; The forest's baked map, moved here from "Sprite Buffers" for the page above.
+; COMPACT: 20 rows of 20 blocks, no stride padding (the bake and the fast blit
+; in PFinalizeForest skip wOverworldMap's border on the WRAM side only). The old
+; 600-byte stride copy's other 200 bytes were never written. Placed by
+; layout.link right after "X7 Menu Page 0", at $BE00.
+SECTION "Procedural Forest Staging", SRAM, BANK[0]
+sProcForestStagingBuffer:: ds 20 * 20

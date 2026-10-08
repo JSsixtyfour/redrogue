@@ -4,6 +4,8 @@
 ;
 ; SRAM: uses sProcForestStagingBuffer (dedicated 400-byte buffer, separate
 ; from cave's sProcCaveStagingBuffer). sProcForestBaked controls fast re-entry.
+; The buffer is COMPACT (row after row, no wOverworldMap stride padding) and
+; sits at $BE00, above the EverDrive X7 page reserved at $BD00 (2026-10-08).
 ;
 ; Map layout: identical to cave — 20x20 blocks with MAP_BORDER=3 border pad.
 ;   wOverworldMap + PC_BASE + x + y*PC_STRIDE (PC_BASE=81, PC_STRIDE=26)
@@ -2667,8 +2669,18 @@ PFinalizeForest::
     dec b
     jr nz, .pfbItemCopy
 
+    ; The SRAM copy is COMPACT (20x20 = 400 bytes, row after row), while
+    ; wOverworldMap keeps its 26-byte stride. Until 2026-10-08 the SRAM copy
+    ; mirrored the stride (600 bytes, 200 of them never-written $FF padding) and
+    ; ran $BC41-$BE98 - straight through $BD00-$BDFF, the page the EverDrive X7
+    ; covers in every SRAM bank once its in-game menu opens (until power-off).
+    ; After any X7 menu use the next battle return blitted the X7's bytes into
+    ; the forest. Compact, the copy fits at $BE00 above that page; layout.link
+    ; reserves the page itself. See PFOREST_X7_INVESTIGATION.md / FOLLOWUPS #58.
+    ASSERT BANK(sProcForestStagingBuffer) == 0
+    ASSERT SIZEOF("Procedural Forest Staging") == PF_SIZE * PF_SIZE
     ld hl, wOverworldMap + PF_BASE
-    ld de, sProcForestStagingBuffer + PF_BASE
+    ld de, sProcForestStagingBuffer
     ld b, PF_SIZE
 .bakeRowLoop
     push bc
@@ -2679,18 +2691,12 @@ PFinalizeForest::
     inc de
     dec c
     jr nz, .bakeColLoop
-    ld a, l
+    ld a, l                         ; skip wOverworldMap's border; de stays packed
     add a, PF_STRIDE - PF_SIZE
     ld l, a
     jr nc, .bakeNoCarryHL
     inc h
 .bakeNoCarryHL
-    ld a, e
-    add a, PF_STRIDE - PF_SIZE
-    ld e, a
-    jr nc, .bakeNoCarryDE
-    inc d
-.bakeNoCarryDE
     pop bc
     dec b
     jr nz, .bakeRowLoop
@@ -2711,7 +2717,9 @@ PFinalizeForest::
 
 .fastBlit
     ; === Re-entry: blit SRAM staging buffer → wOverworldMap ===
-    ld hl, sProcForestStagingBuffer + PF_BASE
+    ; The SRAM copy is compact (see the bake above): read it straight through
+    ; and only skip wOverworldMap's stride padding on the destination side.
+    ld hl, sProcForestStagingBuffer
     ld de, wOverworldMap + PF_BASE
     ld b, PF_SIZE
 .blitRowLoop
@@ -2723,12 +2731,6 @@ PFinalizeForest::
     inc de
     dec c
     jr nz, .blitColLoop
-    ld a, l
-    add a, PF_STRIDE - PF_SIZE
-    ld l, a
-    jr nc, .blitNoCarryHL
-    inc h
-.blitNoCarryHL
     ld a, e
     add a, PF_STRIDE - PF_SIZE
     ld e, a

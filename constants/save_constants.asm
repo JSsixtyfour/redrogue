@@ -24,8 +24,16 @@
 ; Schema 5 (2026-10-07): wPlayerStarterForm, 1 byte carved from the ds 2 pad
 ; after wFossilMon in the main data block. Nothing moved; old saves get it
 ; zeroed (the base form), as a new game does.
+; Schema 6 (2026-10-08): SRAM $BD00-$BDFF reserved in every bank (the EverDrive
+; X7 menu covers it; see the end of ram/sram.asm). The forest's baked map left
+; "Sprite Buffers" for its own section at $BE00 and became compact (600 -> 400
+; bytes), so the bank-0 tail after it moved down 600 bytes; the dead
+; sProcFacilityRoomBuf was deleted; the Ironman fallen log shrank 12 -> 10
+; entries and the reward offer DVs moved down after it. Old saves: fields
+; copied by label, the forest map repacked, the log trimmed and wFallenCount
+; clamped (migration x7MenuPageReserved).
 
-DEF SAVE_SCHEMA_ID EQU 5
+DEF SAVE_SCHEMA_ID EQU 6
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

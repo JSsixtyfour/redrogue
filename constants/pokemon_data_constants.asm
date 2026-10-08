@@ -70,7 +70,10 @@ DEF NUM_BOXES    EQU 12
 ; Ironman fallen log (sFallenLog, custom_functions/ironman.asm): one entry per
 ; released mon = party struct + OT name + nickname. 11 is NAME_LENGTH, which is
 ; defined after this file; ironman.asm ASSERTs the two agree.
-DEF FALLEN_LOG_CAPACITY EQU 12
+; 10, was 12 until 2026-10-08: 12 entries (792 bytes) crossed SRAM $BD00-$BDFF,
+; the page the EverDrive X7 menu covers (ram/sram.asm, end). 10 x 66 = 660 fits
+; below it. Save schema 6 trims old logs to the first 10 entries.
+DEF FALLEN_LOG_CAPACITY EQU 10
 DEF FALLEN_ENTRY_SIZE   EQU PARTYMON_STRUCT_LENGTH + 11 + 11
 
 ; Bridge selected-Pokémon effects use a sparse run-scoped registry instead of

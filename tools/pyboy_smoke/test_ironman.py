@@ -15,7 +15,9 @@ NAME_LENGTH = 11
 BIT_IRONMAN = 0
 # Arbitrary distinct internal species ids; only their order is asserted.
 SPECIES = [0x99, 0xB0, 0xB1, 0xB2]
-FALLEN_LOG_CAPACITY = 12
+# Mirrors constants/pokemon_data_constants.asm: 10 since 2026-10-08 (12 entries
+# crossed the SRAM page the EverDrive X7 menu covers; see ram/sram.asm's end).
+FALLEN_LOG_CAPACITY = 10
 FALLEN_ENTRY_SIZE = PARTYMON_STRUCT_LENGTH + NAME_LENGTH + NAME_LENGTH
 FALLEN_LOG_BANK = 2
 

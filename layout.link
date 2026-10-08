@@ -520,14 +520,27 @@ WRAM0
 	"Stack"
 VRAM
 	"VRAM"
+; $BD00-$BDFF is reserved in every SRAM bank: the EverDrive X7's in-game menu
+; covers that page until power-off (measured 2026-10-08; see the "X7 MENU
+; PAGE" block at the end of ram/sram.asm). The org pins make the link fail if
+; the section before a page ever grows into it.
 SRAM $0
 	"Sprite Buffers"
+	org $bd00
+	"X7 Menu Page 0"
+	"Procedural Forest Staging"
 SRAM $1
 	"Save Data"
+	org $bd00
+	"X7 Menu Page 1"
 SRAM $2
 	"Saved Boxes 1"
+	org $bd00
+	"X7 Menu Page 2"
 SRAM $3
 	"Saved Boxes 2"
+	org $bd00
+	"X7 Menu Page 3"
 HRAM
 	"OAM DMA"
 	"HRAM"

@@ -39,6 +39,12 @@
    "to": "5",
    "steps": ["playerStarterFormAdded"],
    "verified": "NOT YET (2026-10-07): save_schema.py diff 4 -> 5 shows only the new saved field wPlayerStarterForm (carved from the pad after wFossilMon, whose schema size drops 3 -> 1) and the ID bump; nothing moved. Engine test 'schema 4 to 5' checks every saved field and bank-1 label byte for byte and that the new byte comes out zero. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
+  },
+  {
+   "from": "5",
+   "to": "6",
+   "steps": ["x7MenuPageReserved"],
+   "verified": "NOT YET (2026-10-08): SRAM $BD00-$BDFF reserved in every bank for the EverDrive X7 menu (FOLLOWUPS #58). save_schema.py diff 5 -> 6 shows exactly: sProcForestStagingBuffer bc41/600 -> be00/400 (compact), the 26 bank-0 forest/stage-event/palette labels after it moved down 600 bytes, sProcFacilityRoomBuf removed, sFallenLog 792 -> 660, sFallenLogEnd/sRogueOfferDVs/sRogueOfferDVTag moved down; constants FALLEN_LOG_CAPACITY 12 -> 10 plus FORM_REC_SIZE and MINIBOSS_RANDOM_FILL (ROM-only, no save holds them). Engine test 'schema 5 to 6' checks every field byte for byte, the forest map repack, the log trim and the wFallenCount clamp. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
   }
  ]
 }
