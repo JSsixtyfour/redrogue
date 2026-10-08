@@ -42,8 +42,8 @@ _GroundRoseText::
 	done
 
 _BoulderText::
-	text "This requires"
-	line "STRENGTH to move!"
+	text "This boulder"
+	line "cannot be moved."
 	done
 
 _MartSignText::
