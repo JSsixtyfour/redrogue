@@ -273,5 +273,50 @@ class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
         self.assertEqual(self.tile_row(1, 16, 18), "")
 
 
+def table_items(path: Path, label: str, first_only: bool = False) -> set[str]:
+    """Item constants in the `db` lines of one $FF-terminated table."""
+    items: set[str] = set()
+    lines = (REPO_ROOT / path).read_text().splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(label + ":"))
+    for line in lines[start + 1:]:
+        code = line.split(";", 1)[0].strip()
+        if not code:
+            continue
+        if not code.startswith("db "):
+            break
+        args = [arg.strip() for arg in code[3:].split(",")]
+        if "$FF" in args:
+            break
+        items.update(args[:1] if first_only else args)
+    return items
+
+
+class ItemDescriptionCoverageTest(unittest.TestCase):
+    """Source-only: every pocket or mart item must have an item_desc entry,
+    so a new item can't land with a blank description box."""
+
+    def test_every_pocket_and_mart_item_is_described(self) -> None:
+        described = set(re.findall(r"^\s*item_desc\s+(\w+)",
+                                   (REPO_ROOT / "data/items/descriptions.asm").read_text(),
+                                   re.MULTILINE))
+        sources = {
+            "RecoveryItemTable": table_items(Path("custom_functions/pocket_items.asm"), "RecoveryItemTable"),
+            "StatItemTable": table_items(Path("custom_functions/pocket_items.asm"), "StatItemTable"),
+            "ValuableItemTable": table_items(Path("custom_functions/pocket_items.asm"), "ValuableItemTable"),
+            "KeyItemPocketTable": table_items(Path("custom_functions/key_item_pocket.asm"),
+                                              "KeyItemPocketTable", first_only=True),
+            "marts": {item.strip()
+                      for line in (REPO_ROOT / "data/items/marts.asm").read_text().splitlines()
+                      if line.split(";", 1)[0].strip().startswith("script_mart ")
+                      for item in line.split(";", 1)[0].strip()[len("script_mart "):].split(",")
+                      if not item.strip().startswith(("TM_", "HM_"))},
+        }
+        for source, items in sources.items():
+            with self.subTest(source=source):
+                self.assertTrue(items, f"parsed nothing from {source}")
+                self.assertEqual(sorted(items - described), [],
+                                 f"{source} items with no item_desc entry")
+
+
 if __name__ == "__main__":
     unittest.main()

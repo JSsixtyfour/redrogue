@@ -161,6 +161,21 @@ AILayerDamage:
 ; ranking above overwrote, so it comes back from bc (2026-09-30: this used to
 ; re-run AIEstimateDamage, a whole damage formula per killing move, for an
 ; identical result). The loop's hl/de/bc are on the stack.
+;
+; Two-turn moves (CHARGE_EFFECT: Solar Beam, Razor Wind, Skull Bash, Sky Attack,
+; Dig; FLY_EFFECT: Fly) deal nothing THIS turn, so they never earn a kill tier
+; or set wAIReliableKOFound. They can still finish next turn, but the player can
+; switch, heal or hit first, so they take the unreliable-kill tier (2026-10-08,
+; found in the #55 benchmark trace: a killing Solar Beam scored AI_KILL_FIRST,
+; -10, against which AISmart_Charge's AI_STRONG penalty was noise). Same rule as
+; the TrainerAI KO check in ai_predicates.asm. The simulator still credits full
+; damage for ranking, as F14 decided. wEnemyMoveEffect is still this slot's:
+; nothing between the loop's ReadMove and here reloads the move block.
+	ld a, [wEnemyMoveEffect]
+	cp CHARGE_EFFECT
+	jr z, .unreliableKill
+	cp FLY_EFFECT
+	jr z, .unreliableKill
 	ld a, b
 	ld [wAIDamageEstimate], a
 	ld a, c

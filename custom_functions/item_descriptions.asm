@@ -182,7 +182,7 @@ PrintItemDescription::
 	ret
 
 ; item_desc ITEM, "line 1", "line 2" - each line at most ITEM_DESC_WIDTH
-; tiles, counting '#' as the four it prints. Order does not matter; an item
+; tiles, counting '#' as the four it prints (so "#MON" is 7). Order does not matter; an item
 ; listed twice shows its first entry.
 MACRO item_desc
 	ASSERT CHARLEN(STRRPL(\2, "#", "POKé")) <= ITEM_DESC_WIDTH, \

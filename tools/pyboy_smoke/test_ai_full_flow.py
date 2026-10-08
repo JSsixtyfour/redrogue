@@ -454,6 +454,33 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertLess(first["scores"][1], first["scores"][0])  # TB strictly below TW
         self.assertEqual(executed[0], self.moves["THUNDERBOLT"])
 
+    def test_two_turn_kill_is_capped_at_the_unreliable_tier(self):
+        # Solar Beam KOs Golem (4x), but only on turn 2: turn 1 charges and
+        # hands the player a free hit. Before 2026-10-08 AI_DAMAGE scored it
+        # AI_KILL_FIRST (-10) and AI_SMART's +2 charge penalty was noise. Now it
+        # reaches the kill branch, is capped at AI_STRONG, sets no
+        # wAIReliableKOFound, and the half-HP Vine Whip wins (18 vs 17).
+        h = self.h
+        self.boot([self.mon("GOLEM", ["SPLASH"])],
+                  [self.mon("VENUSAUR", ["SOLARBEAM", "VINE_WHIP"])],
+                  trainer="COOLTRAINER_M", tier=3)
+        self.no_items()
+        kill_branch, flag = [], []
+        h.hook_flag("AILayerDamage.kill", action=lambda: kill_branch.append(1))
+        h.hook_flag("AILayerPlan", action=lambda: flag.append(h.read8("wAIReliableKOFound")))
+        decisions = h.hook_ai_scores()
+        executed = []
+        h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
+            h.read8("wEnemySelectedMove")))
+        self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
+        first = decisions[0]
+        damage = [t["delta"] for t in first["layer_trace"] if t["layer"] == "DAMAGE"]
+        print(f"\nL3 two-turn kill scores={first['scores']} damage={damage} executed={executed}")
+        self.assertTrue(kill_branch)  # Solar Beam really is in KO range
+        self.assertGreater(damage[0][0], -self.ai["AI_KILL"])  # ...and capped below it
+        self.assertEqual(flag[:1], [0])
+        self.assertEqual(executed[0], self.moves["VINE_WHIP"])
+
 
 if __name__ == "__main__":
     unittest.main()
