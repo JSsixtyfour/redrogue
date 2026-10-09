@@ -8,14 +8,17 @@ Reads straight from source, so the page always matches the tree:
   - data/gfx/overworld_tile_palettes.asm   PalSettings_* (tile -> register)
   - custom_functions/func_enhancedcolor.asm base sets (register -> 4 colours),
                                             EnhBasePalSetPointers, TownSpecialPal
+  - data/gfx/cgb_palettes.asm              the overworld PAL_* rows the game uses
+                                            when Enhanced Colors is OFF (one
+                                            palette for the whole map)
 
 Needs the built .2bpp files (run `make` first). No third-party modules.
 
     python tools/palette_preview.py [--out PATH]
 
-Colours are the raw source values. The game also runs them through
-GBCGamma (custom_functions/func_gamma.asm) before they reach the screen, so
-on hardware they look lighter and much less saturated.
+Colours are the raw source values, which is what the game sends with the
+ENH GAMMA option off (the default). With it on, GBCGamma
+(custom_functions/func_gamma.asm) makes them lighter and much less saturated.
 """
 
 import argparse
@@ -38,6 +41,36 @@ BASE_SET_USES = {
     "ENH_BASE_FOREST_FALL": "Procedural Forest variant 1 (fall).",
     "ENH_BASE_FACILITY_RED": "Procedural Facility variant 1 (Mansion), and Pokemon Mansion 1F-3F, B1F.",
 }
+
+# Regular-GBC overworld palettes (Enhanced Colors off): what GetOverworldPalette
+# (engine/gfx/palettes.asm) can return for a map. Each is one 4-colour row of
+# data/gfx/cgb_palettes.asm, applied to the whole screen. Listed in menu order;
+# the name is matched against the row's leading comment, aliases included.
+REGULAR_PAL_USES = {
+    "PAL_FOREST_SPRING": "Procedural Forest variant 0 (spring), Enhanced Colors off. Paired with the PAL_25 row of data/sgb/sgb_palettes.asm.",
+    "PAL_FOREST_FALL": "Procedural Forest variant 1 (fall), Enhanced Colors off. Paired with the PAL_27 row of data/sgb/sgb_palettes.asm.",
+    "PAL_VIRIDIAN": "Viridian City and what is inside it. Also Procedural Forest variant 2 (default green) and the forest's fallback for a bad save byte.",
+    "PAL_ROUTE": "Every route, and Procedural Facility variant 0 (PowerPlant).",
+    "PAL_CAVE": "CAVERN-tileset caves without an override, Cerulean Cave, Bruno, Procedural Cave variant 0.",
+    "PAL_CAVE_COLD": "Procedural Cave variant 1 (cold). Paired with the PAL_0F row of data/sgb/sgb_palettes.asm.",
+    "PAL_GRAYMON": "CEMETERY tileset: Pokemon Tower, Agatha, the procedural cemeteries.",
+    "PAL_PALLET": "Pallet Town and what is inside it, Lorelei.",
+    "PAL_PEWTER": "Pewter City and what is inside it.",
+    "PAL_CERULEAN": "Cerulean City and what is inside it.",
+    "PAL_LAVENDER": "Lavender Town and what is inside it.",
+    "PAL_VERMILION": "Vermilion City and what is inside it.",
+    "PAL_CELADON": "Celadon City and what is inside it.",
+    "PAL_FUCHSIA": "Fuchsia City and what is inside it.",
+    "PAL_CINNABAR": "Cinnabar Island and what is inside it, and Procedural Facility variant 1 (Mansion).",
+    "PAL_INDIGO": "Indigo Plateau and what is inside it.",
+    "PAL_SAFFRON": "Saffron City and what is inside it, and the Silph Co hub maps.",
+}
+
+# What parse_regular treats as defined: a pokeblue build (see the Makefile;
+# _YSPRITES, _GREEN and _JPLOGO are never defined).
+BUILD_DEFINES = {"_BLUE"}
+# cgb_palettes.asm keeps shinpokered's spelling in one comment.
+SPELLING = {"PAL_GREYMON": "PAL_GRAYMON"}
 
 # Tilesets that are worth opening first for the variant work.
 SUGGESTED = {"FOREST": "ENH_BASE_FOREST_SPRING", "FACILITY": "ENH_BASE_FACILITY_RED"}
@@ -230,6 +263,67 @@ def parse_enhanced():
     return base_sets, towns, macros
 
 
+def parse_regular():
+    """The REGULAR_PAL_USES rows of CGBPalettes, 4 colours each. A row's name
+    comes from its leading `; PAL_X` or `; PAL_25 / PAL_FOREST_SPRING` comment;
+    only rows named in REGULAR_PAL_USES are kept, so the _RED/_BLUE branches
+    some non-overworld rows carry never matter."""
+    rows = {}
+    names, cols, started = None, [], False
+    # IF/ELIF/ELSE/ENDC frames [live, taken]; only what a Blue build assembles
+    # counts. Conditions here are DEF(...) terms joined by && (checked below).
+    frames = []
+    live = lambda: all(f[0] for f in frames)
+    def cond(expr):
+        if re.sub(r"DEF\(\w+\)|&&|[()\s]", "", expr):
+            sys.exit(f"cgb_palettes.asm: cannot evaluate IF {expr!r}")
+        return all(d in BUILD_DEFINES for d in re.findall(r"DEF\((\w+)\)", expr))
+    for line in read("data/gfx/cgb_palettes.asm").splitlines():
+        if line.startswith("CGBPalettes:"):
+            started = True
+            continue
+        if not started:
+            continue
+        code = strip_comment(line).strip()
+        im = re.match(r"(IF|ELIF)\s+(.*)", code)
+        if im and im.group(1) == "IF":
+            c = cond(im.group(2))
+            frames.append([c, c])
+            continue
+        if im:
+            f = frames[-1]
+            f[0] = not f[1] and cond(im.group(2))
+            f[1] = f[1] or f[0]
+            continue
+        if code == "ELSE":
+            f = frames[-1]
+            f[0], f[1] = not f[1], True
+            continue
+        if code == "ENDC":
+            frames.pop()
+            continue
+        if not live():
+            continue
+        cm = re.match(r"\s*;\s*(PAL_\w+(?:\s*,?\s*/?\s*PAL_\w+)*)", line)
+        if cm and not strip_comment(line).strip():
+            names, cols = re.findall(r"PAL_\w+", cm.group(1)), []
+            continue
+        rm = re.match(r"\s*RGB\s+(.*)", strip_comment(line))
+        if rm and names is not None and len(cols) < 4:
+            nums = [parse_int(x) for x in rm.group(1).replace(" ", "").split(",") if x]
+            cols += [nums[i:i + 3] for i in range(0, len(nums), 3)]
+            if len(cols) == 4:
+                for n in names:
+                    rows[SPELLING.get(n, n)] = cols
+    out = []
+    for name, uses in REGULAR_PAL_USES.items():
+        if name not in rows:
+            sys.exit(f"cgb_palettes.asm: no 4-colour row named {name}")
+        out.append({"id": name, "label": name, "kind": "cgb", "colors": [rows[name]],
+                    "uses": uses, "notes": {}})
+    return out
+
+
 def decode_2bpp(data):
     tiles = []
     for t in range(len(data) // 16):
@@ -273,11 +367,12 @@ def main():
         })
 
     # macros lets the page's asm export write GBCEnh_White etc. back by name.
-    data = {"registers": REGISTER_NAMES, "baseSets": base_sets, "towns": towns, "tilesets": tilesets, "macros": macros}
+    data = {"registers": REGISTER_NAMES, "baseSets": base_sets, "regular": parse_regular(),
+            "towns": towns, "tilesets": tilesets, "macros": macros}
     template = (Path(__file__).with_name("palette_preview_template.html")).read_text(encoding="utf-8")
     html = template.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
     Path(args.out).write_text(html, encoding="utf-8", newline="\n")
-    print(f"wrote {args.out}: {len(tilesets)} tilesets, {len(base_sets)} base sets")
+    print(f"wrote {args.out}: {len(tilesets)} tilesets, {len(base_sets)} base sets, {len(data['regular'])} regular palettes")
 
 
 if __name__ == "__main__":

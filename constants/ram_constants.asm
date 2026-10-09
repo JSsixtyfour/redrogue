@@ -80,6 +80,12 @@ DEF BIT_EXP_SHARE EQU 3
 ; options row clears whenever it sets this. A save from before the option reads
 ; OFF, i.e. full animations.
 DEF BIT_REDUCED_ANIM EQU 4
+; ENH GAMMA (2026-10-09): set = Enhanced Colors runs every colour through
+; GBCGamma's mix matrix + gamma-2 curve (custom_functions/func_gamma.asm), the
+; ShinRed look meant for backlit screens. Clear = the authored colours go to the
+; hardware raw, which a real GBC LCD already softens. Off by default, and every
+; save from before the option reads off. Meaningless while Enhanced Colors is off.
+DEF BIT_GBC_GAMMA EQU 5
 
 ; wLetterPrintingDelayFlags
 	const_def

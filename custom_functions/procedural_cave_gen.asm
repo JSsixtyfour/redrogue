@@ -670,7 +670,7 @@ PCRollBoss:
 	ld b, WILD_BOSS_RARITY_BUMP     ; boss rarity bump (notably rarer than wild)
 	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
 	ld e, c                         ; the class can only cross a farcall in e
-	farcall Random_Pokemon_Selection_Far ; → d = species
+	farcall Random_Boss_Selection_Far ; → d = species (never Ditto)
 	; Random_Pokemon_Selection routes through GetKeyItemPower for the RARE SCOPE
 	; rarity bonus (custom_functions/key_item_pocket.asm). IsKeyItemActive /
 	; GetKeyItemTierForCurItem both select SRAM bank 1 for sKeyItem* and then

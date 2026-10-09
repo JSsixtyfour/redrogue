@@ -928,16 +928,19 @@ OptionsPageSetInGame:
 ; one short of CHEAT, which is the last entry in that table; its box is
 ; correspondingly shorter, ending just under EXP SHARE.
 OptionsPageTitle:
-	optpage 11, 12, 15, OptionsRows, 0, 0
+	optpage 12, 12, 15, OptionsRows, 0, 0
 OptionsPageInGame:
-	optpage 12, 13, 15, OptionsRows, 0, 0
+	optpage 13, 13, 15, OptionsRows, 0, 0
 
 ; label, screen Y, value column, variable, mask, order, strings, count, hook
 ;
-; Grouped, with a blank row between groups: on-screen extras, then text/audio
-; presentation, then the four that change how a run plays, then the cheat.
+; Grouped: on-screen extras, then text/audio presentation, then the four that
+; change how a run plays, then the cheat. There is no longer room for a blank
+; row between groups.
 ; A blank row between EVERY item does not fit - nine rows plus eight gaps plus
-; two border rows is 19, and the screen holds 18.
+; two border rows is 19, and the screen holds 18. ENH GAMMA (2026-10-09) took
+; the old gap row between AUDIO and DIFFICULTY: the box cannot grow, because
+; CANCEL would land on row 16, which debug builds use for the build stamp.
 ;
 ; Value columns are OPT_VALUE_RIGHT + 1 minus the row's value width, so every
 ; value ends flush on column 18.
@@ -945,15 +948,16 @@ OptionsRows:
 	optrow OptFollowerLabel,     1, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
 	optrow_custom OptBattleAnimLabel, 2, 12, OptDrawBattleAnim, OptCycleBattleAnim
 	optrow OptColorLabel,        3, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
-	optrow Opt60FPSLabel,        4, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
-	optrow OptBattleSpeedLabel,  5, 16, wOptions3, BATTLE_SPEED_MASK,          OptBattleSpeedOrder, OptBattleSpeedValues, 3, 0
-	optrow OptTextSpeedLabel,    6, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
-	optrow OptAudioLabel,        7, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
+	optrow OptGammaLabel,        4, 16, wOptions3, 1 << BIT_GBC_GAMMA,         OptGammaOrder,       OptOnOffValues,       2, 0
+	optrow Opt60FPSLabel,        5, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
+	optrow OptBattleSpeedLabel,  6, 16, wOptions3, BATTLE_SPEED_MASK,          OptBattleSpeedOrder, OptBattleSpeedValues, 3, 0
+	optrow OptTextSpeedLabel,    7, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
+	optrow OptAudioLabel,        8, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
 	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
 	optrow OptBattleStyleLabel, 10, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
 	optrow OptIronmanLabel,     11, 16, wOptions3, 1 << BIT_IRONMAN,           OptIronmanOrder,     OptOnOffValues,       2, 0
 	optrow OptExpShareLabel,    12, 16, wOptions3, 1 << BIT_EXP_SHARE,         OptExpShareOrder,    OptOnOffValues,       2, 0
-; In-game only. The title page's descriptor declares 11 rows and stops above it.
+; In-game only. The title page's descriptor declares 12 rows and stops above it.
 	optrow_custom OptCheatLabel, 13, 9, OptDrawCheat, OptCycleCheat
 
 ; ----------------------------------------------------------------------------
@@ -994,6 +998,8 @@ OptBattleStyleOrder:
 	db 0, 1 << BIT_BATTLE_SHIFT
 OptColorOrder:
 	db 1 << BIT_ENHANCED_COLORS, 0
+OptGammaOrder:
+	db 1 << BIT_GBC_GAMMA, 0
 Opt60FPSOrder:
 	db 1 << BIT_60_FPS, 0
 OptIronmanOrder:
@@ -1073,6 +1079,7 @@ OptAudioLabel:       db "AUDIO@"
 OptDifficultyLabel:  db "DIFFICULTY@"
 OptFollowerLabel:    db "FOLLOWER@"
 OptColorLabel:       db "ENH COLOR@"
+OptGammaLabel:       db "ENH GAMMA@"
 Opt60FPSLabel:       db "60 FPS@"
 OptCheatLabel:       db "CHEAT@"
 OptIronmanLabel:     db "IRONMAN@"

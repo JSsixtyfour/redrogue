@@ -12,10 +12,15 @@ GBCGamma::
 	ld a, [wOptions2]
 	bit BIT_ENHANCED_COLORS, a
 	ret z
-	
+	; ...and only when the separate ENH GAMMA option is on. Returning here
+	; leaves de holding the untouched colour, exactly like the two exits above.
+	ld a, [wOptions3]
+	bit BIT_GBC_GAMMA, a
+	ret z
+
 	push hl
 	push bc
-	
+
 	call GetRGB	;store the RGB values at wRGB
 	
 	call .isBlack

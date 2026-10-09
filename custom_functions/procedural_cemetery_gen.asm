@@ -206,7 +206,7 @@ PCemRollBoss:
 	farcall PCGetBossLevel            ; sets wCurEnemyLevel before the species pick
 	ld e, WILD_BOSS_RARITY_BUMP       ; boss rarity bump (matches PCRollBoss)
 	farcall PCRollMonClassFar         ; e = class 1-4 (b and c cannot cross a farcall)
-	farcall Random_Pokemon_Selection_Far ; d = species
+	farcall Random_Boss_Selection_Far ; d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	ld a, e                           ; increment 8f: e = the form the roll picked
@@ -1326,7 +1326,7 @@ PCemAvoidGhostBoss:
 	ret z                        ; retry budget exhausted, accept whatever we have
 	ld e, WILD_BOSS_RARITY_BUMP  ; same boss rarity bump PCRollBoss uses
 	farcall PCRollMonClassFar    ; e = class 1-4 (b and c cannot cross a farcall)
-	farcall Random_Pokemon_Selection_Far ; -> d = species
+	farcall Random_Boss_Selection_Far ; -> d = species
 	ld a, d
 	ld [wRoguePokemon1], a
 	jr .checkLoop

@@ -65,7 +65,8 @@ input[type=color] { width: 44px; height: 30px; padding: 0 2px; border: 1px solid
 .side { display: grid; gap: 14px; min-width: 0; align-content: start; }
 .side-title { font: 400 15px var(--display); }
 .side-title small { font: 500 12px var(--body); color: var(--warn); letter-spacing: 0; }
-.regs { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+/* 200px: four "31.31.31" value labels need it, or the cards overlap. */
+.regs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .reg { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px; display: grid; gap: 5px; }
 .reg.focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .reg.unused { opacity: .55; }
@@ -77,7 +78,7 @@ input[type=color] { width: 44px; height: 30px; padding: 0 2px; border: 1px solid
 .reg .sw button.on { box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--panel); }
 .reg .sw button.ed::after { content: ""; position: absolute; top: 0; right: 0; border: 4px solid var(--warn); border-left-color: transparent; border-bottom-color: transparent; }
 .reg .note { font-size: 11px; color: var(--muted); line-height: 1.3; }
-.reg .hex { font: 10.5px var(--mono); color: var(--muted); display: grid; grid-template-columns: repeat(4, 1fr); }
+.reg .hex { font: 10.5px var(--mono); color: var(--muted); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .reg .hex .ed { color: var(--warn); font-weight: 500; }
 .sheet { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
 canvas { display: block; image-rendering: pixelated; cursor: crosshair; }
@@ -102,7 +103,9 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
     <div class="field"><label for="zoom">Zoom</label><input type="range" id="zoom" min="1" max="4" value="2"></div>
     <div class="field"><label for="view">Show</label>
       <select id="view"><option value="blocks">Blocks (as mapped)</option><option value="tiles">Raw tiles</option><option value="both">Both</option></select></div>
-    <label class="check" title="Apply the game's GBCGamma colour matrix and gamma table, as Enhanced Colors does on hardware"><input type="checkbox" id="gamma"> In-game gamma</label>
+    <label class="check" title="The in-game ENH GAMMA option: Enhanced Colors runs every colour through GBCGamma's matrix and gamma table. Regular GBC palettes never do."><input type="checkbox" id="gamma"> ENH GAMMA option on</label>
+    <div class="field"><label for="screen">Screen</label>
+      <select id="screen"><option value="raw">Raw values (PC, uncorrected emulator)</option><option value="gbc">Real GBC screen (approx.)</option></select></div>
     <div class="edits" id="edits" hidden><span id="editsText"></span><button class="btn quiet" id="resetAll" type="button">Reset all edits</button></div>
 
     <section class="editor" id="editor" hidden aria-label="Colour editor">
@@ -130,9 +133,12 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
   <p class="hover" id="hover">Hover a tile to see its ID, slot and colour. Click a slot name to highlight the tiles that use it.</p>
 
   <footer>Generated from source by <code>tools/palette_preview.py</code>. Edits live only in this browser until you paste the copied asm into
-    <code>custom_functions/func_enhancedcolor.asm</code> and re-run the script. Colours are the source values unless "In-game gamma" is on, which applies
-    <code>GBCGamma</code> (colour matrix, then the gamma table; near-blacks with every channel under 4 are left alone). Tiles $60 and up in tilesets other
-    than DORM fall back to GRAY, as <code>MakeOverworldBGMapAttributes</code> does.</footer>
+    <code>custom_functions/func_enhancedcolor.asm</code> (Enhanced base sets) or <code>data/gfx/cgb_palettes.asm</code> (Regular GBC rows) and re-run
+    the script. Regular GBC rows are what the game uses with Enhanced Colors off: one palette for the whole map, never gamma-corrected.
+    "ENH GAMMA option on" applies <code>GBCGamma</code> to Enhanced sets (colour matrix, then the gamma table; near-blacks with every channel
+    under 4 are left alone). "Real GBC screen" is an approximation of the unlit GBC LCD (byuu's colour-correction matrix, as used by higan and
+    several other emulators), so the final check is still real hardware. Tiles $60 and up in tilesets other than DORM fall back to GRAY, as
+    <code>MakeOverworldBGMapAttributes</code> does.</footer>
 </div>
 
 <script>
@@ -152,7 +158,10 @@ function recall(k) { try { return localStorage.getItem("pb." + k); } catch (e) {
 // Edits are sparse: "SET|reg|i" -> [r,g,b], only where they differ from source.
 let edits = {};
 try { edits = JSON.parse(recall("edits") || "{}") || {}; } catch (e) { edits = {}; }
-const setById = id => DATA.baseSets.find(s => s.id === id);
+const setById = id => DATA.baseSets.find(s => s.id === id) || DATA.regular.find(s => s.id === id);
+// A Regular GBC row (Enhanced Colors off): one 4-colour palette for the whole map.
+const isCgb = set => set.kind === "cgb";
+const regName = (set, r) => isCgb(set) ? "WHOLE MAP" : DATA.registers[r];
 const key = (set, reg, i) => `${set.id}|${reg}|${i}`;
 const editCount = set => Object.keys(edits).filter(k => k.startsWith(set.id + "|")).length;
 function colorOf(set, reg, i, source) { return (!source && edits[key(set, reg, i)]) || set.colors[reg][i]; }
@@ -163,13 +172,27 @@ function gamma([r, g, b]) {
   const R = ((13 * r + 2 * g + b) >> 4) & 0xFF, G = (3 * g + b) >> 2, B = ((g + 7 * b) >> 3) & 0x1F;
   return [GAMMA[R], GAMMA[G], GAMMA[B]];
 }
-const shown = c => $("gamma").checked ? gamma(c) : c;
-const css = c => `rgb(${to8(shown(c)).join(",")})`;
+// The unlit GBC LCD, approximated with byuu's colour-correction matrix (higan
+// and other emulators): channels bleed into each other and white tops out at
+// 240, so everything reads softer than the raw values on a backlit monitor.
+function lcd([r, g, b]) {
+  return [r * 26 + g * 4 + b * 2, g * 24 + b * 8, r * 6 + g * 4 + b * 22].map(v => Math.min(960, v) >> 2);
+}
+// Source 5-bit colour -> what the game writes to palette RAM. Gamma is an
+// Enhanced-only step; the regular path never calls GBCGamma.
+const shown = (c, set) => $("gamma").checked && !isCgb(set) ? gamma(c) : c;
+// Palette RAM -> 8-bit pixel on the chosen screen.
+const out8 = c => $("screen").value === "gbc" ? lcd(c) : to8(c);
+const css = (c, set) => `rgb(${out8(shown(c, set)).join(",")})`;
 
 function fill() {
   for (const t of DATA.tilesets) $("ts").add(new Option(`${t.index} ${t.id}${t.suggested ? "  (has variants)" : ""}`, t.index));
   $("bsB").add(new Option("Same set, as in source", ORIG));
-  for (const s of DATA.baseSets) { $("bsA").add(new Option("", s.id)); $("bsB").add(new Option("", s.id)); }
+  for (const box of [$("bsA"), $("bsB")]) for (const [title, sets] of [["Enhanced Colors on", DATA.baseSets], ["Regular GBC (Enhanced off)", DATA.regular]]) {
+    const g = document.createElement("optgroup"); g.label = title;
+    for (const s of sets) g.append(new Option("", s.id));
+    box.append(g);
+  }
   labels();
   $("town").add(new Option("Route / any other map (BROWN)", ROUTE));
   DATA.towns.forEach((t, i) => $("town").add(new Option(`${t.name} (${DATA.registers[t.reg]})`, i)));
@@ -179,11 +202,12 @@ function fill() {
   $("bsB").value = recall("bsB") ?? "ENH_BASE_FOREST_FALL";
   $("cmp").checked = (recall("cmp") ?? "1") === "1";
   $("gamma").checked = recall("gamma") === "1";
+  $("screen").value = recall("screen") ?? "raw";
   $("bsB").disabled = !$("cmp").checked;
   $("town").value = recall("town") ?? ROUTE;
   $("view").value = recall("view") ?? "blocks";
   $("zoom").value = recall("zoom") ?? 2;
-  for (const id of ["ts", "bsA", "bsB", "town", "view"]) if ($(id).selectedIndex < 0) $(id).selectedIndex = 0;
+  for (const id of ["ts", "bsA", "bsB", "town", "view", "screen"]) if ($(id).selectedIndex < 0) $(id).selectedIndex = 0;
 }
 
 function labels() {
@@ -197,7 +221,8 @@ function labels() {
   $("editsText").textContent = `${total} colour${total === 1 ? "" : "s"} edited, not yet in the asm`;
 }
 
-function regOf(ts, tile) {
+function regOf(ts, tile, set) {
+  if (isCgb(set)) return 0;
   if (tile >= 0x60 && ts.id !== "DORM") return 3;
   const v = ts.pal[tile];
   if (v === undefined) return 3;
@@ -209,7 +234,7 @@ function regOf(ts, tile) {
 // Each side is a view: a base set, either with this browser's edits or exactly as in source.
 function sheet(ts, view, mode) {
   const z = +$("zoom").value, gap = 2;
-  const pal = [0, 1, 2, 3, 4, 5, 6, 7].map(r => [0, 1, 2, 3].map(i => to8(shown(colorOf(view.set, r, i, view.source)))));
+  const pal = view.set.colors.map((_, r) => [0, 1, 2, 3].map(i => out8(shown(colorOf(view.set, r, i, view.source), view.set))));
   const place = []; // [tile, x, y]
   let W, H, hit;
   if (mode === "blocks") {
@@ -236,7 +261,7 @@ function sheet(ts, view, mode) {
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d"), img = ctx.createImageData(W, H), d = img.data;
   for (const [tile, x0, y0] of place) {
-    const px = ts.tiles[tile], reg = regOf(ts, tile), f = focusReg !== null && reg !== focusReg ? .38 : 1;
+    const px = ts.tiles[tile], reg = regOf(ts, tile, view.set), f = focusReg !== null && reg !== focusReg ? .38 : 1;
     for (let i = 0; i < 64; i++) {
       const col = px ? pal[reg][+px[i]] : [136, 136, 136];
       const bx = x0 + (i % 8) * z, by = y0 + (i >> 3) * z;
@@ -251,7 +276,7 @@ function sheet(ts, view, mode) {
   c.onmousemove = e => { const h = at(e); if (h) say(ts, view, h); };
   c.onclick = e => {
     const h = at(e); if (!h || !ts.tiles[h.tile]) return;
-    pick(view.set, regOf(ts, h.tile), +ts.tiles[h.tile][h.px]);
+    pick(view.set, regOf(ts, h.tile, view.set), +ts.tiles[h.tile][h.px]);
   };
   c.setAttribute("aria-label", `${ts.id} ${mode} in ${view.set.id}${view.source ? " as in source" : ""}`);
   const wrap = document.createElement("div"); wrap.className = "sheet"; wrap.append(c);
@@ -259,34 +284,36 @@ function sheet(ts, view, mode) {
 }
 
 function say(ts, view, h) {
-  const raw = ts.pal[h.tile], reg = regOf(ts, h.tile);
+  const raw = ts.pal[h.tile], reg = regOf(ts, h.tile, view.set);
   const wild = raw === 8 ? " (wild card 8)" : "";
   const ci = ts.tiles[h.tile] ? +ts.tiles[h.tile][h.px] : null;
   const col = ci === null ? "" : `, colour ${ci} (${colorOf(view.set, reg, ci, view.source).join(",")})`;
-  $("hover").textContent = `${h.where ? h.where + ", " : ""}tile $${hex2(h.tile)} -> ${ts.table}[$${hex2(h.tile)}] = ${raw ?? "n/a"}${wild} -> slot ${reg} ${DATA.registers[reg]}${col}`;
+  const route = isCgb(view.set) ? `${view.set.id}, whole map` : `${ts.table}[$${hex2(h.tile)}] = ${raw ?? "n/a"}${wild} -> slot ${reg} ${DATA.registers[reg]}`;
+  $("hover").textContent = `${h.where ? h.where + ", " : ""}tile $${hex2(h.tile)} -> ${route}${col}`;
 }
 
 function regStrip(ts, view) {
-  const counts = new Array(8).fill(0);
+  const slots = view.set.colors.length;
+  const counts = new Array(slots).fill(0);
   const n = Math.max(ts.tiles.length, ts.pal.length);
-  for (let t = 0; t < n; t++) counts[regOf(ts, t)]++;
+  for (let t = 0; t < n; t++) counts[regOf(ts, t, view.set)]++;
   const box = document.createElement("div"); box.className = "regs";
-  for (let r = 0; r < 8; r++) {
+  for (let r = 0; r < slots; r++) {
     const card = document.createElement("div");
     card.className = "reg" + (counts[r] ? "" : " unused") + (focusReg === r ? " focus" : "");
     const top = document.createElement("button"); top.type = "button"; top.className = "top";
     top.setAttribute("aria-pressed", focusReg === r);
     top.title = "Highlight the tiles in this slot";
-    top.innerHTML = `<span>${r} ${DATA.registers[r]}</span><span>${counts[r]} tiles</span>`;
+    top.innerHTML = `<span>${isCgb(view.set) ? "" : r + " "}${regName(view.set, r)}</span><span>${counts[r]} tiles</span>`;
     top.onclick = () => { focusReg = focusReg === r ? null : r; render(); };
     const sw = document.createElement("div"); sw.className = "sw";
     const hex = document.createElement("div"); hex.className = "hex";
     for (let i = 0; i < 4; i++) {
       const c = colorOf(view.set, r, i, view.source), ed = !view.source && !!edits[key(view.set, r, i)];
       const b = document.createElement("button"); b.type = "button";
-      b.style.background = css(c);
+      b.style.background = css(c, view.set);
       b.className = (ed ? "ed" : "") + (sel && !view.source && sel.set === view.set.id && sel.reg === r && sel.i === i ? " on" : "");
-      b.setAttribute("aria-label", `Edit ${DATA.registers[r]} colour ${i}, ${c.join(" ")}`);
+      b.setAttribute("aria-label", `Edit ${regName(view.set, r)} colour ${i}, ${c.join(" ")}`);
       b.onclick = () => pick(view.set, r, i);
       sw.append(b);
       const s = document.createElement("span"); s.textContent = c.join(".");
@@ -327,22 +354,28 @@ function render() {
   const seen = new Set();
   $("info").innerHTML = `<p><strong>${ts.id}</strong> draws its slots from <code>${ts.table}</code>.${shared}</p>` +
     vs.filter(v => !seen.has(v.set.id) && seen.add(v.set.id)).map(v => `<p><code>${v.set.id}</code>: ${v.set.uses || "No known consumer."}</p>`).join("") +
-    (wild ? `<p class="warn">This table uses wild card 8. Those tiles take the town's slot in a town and BROWN everywhere else; pick the map above.</p>` : "");
+    (wild && vs.some(v => !isCgb(v.set)) ? `<p class="warn">This table uses wild card 8. Those tiles take the town's slot in a town and BROWN everywhere else; pick the map above.</p>` : "") +
+    (vs.some(v => isCgb(v.set)) ? `<p>Regular GBC rows colour every tile with the same 4 colours, and ENH GAMMA never applies to them.</p>` : "");
   const cols = $("cols"); cols.className = "cols" + (vs.length > 1 ? " two" : ""); cols.replaceChildren(...vs.map(v => side(ts, v)));
 }
 
 // ---- editor
 const pad = n => String(n).padStart(2, " ");
 const same = (a, b) => a.every((v, j) => v === b[j]);
-function asmColor(c) {
-  for (const [name, v] of Object.entries(DATA.macros)) if (same(v, c)) return "\t" + name;
+// cgb_palettes.asm spells every colour as RGB, so the GBCEnh_* macros are
+// only offered for Enhanced sets.
+function asmColor(c, set) {
+  if (!isCgb(set)) for (const [name, v] of Object.entries(DATA.macros)) if (same(v, c)) return "\t" + name;
   return `\tRGB ${pad(c[0])}, ${pad(c[1])}, ${pad(c[2])}`;
 }
 function asmSlot(set, r) {
+  const colors = [0, 1, 2, 3].map(i => asmColor(colorOf(set, r, i), set)).join("\n");
+  if (isCgb(set)) return colors;
   const note = set.notes[r] ? " - " + set.notes[r] : "";
-  return `\t; PAL_ENH_OVW_${DATA.registers[r]}\t; $${hex2(r)}${note}\n` + [0, 1, 2, 3].map(i => asmColor(colorOf(set, r, i))).join("\n");
+  return `\t; PAL_ENH_OVW_${DATA.registers[r]}\t; $${hex2(r)}${note}\n` + colors;
 }
-const asmSet = set => `${set.label}:\n` + [0, 1, 2, 3, 4, 5, 6, 7].map(r => asmSlot(set, r)).join("\n\n");
+const asmSet = set => isCgb(set) ? asmSlot(set, 0) : `${set.label}:\n` + [0, 1, 2, 3, 4, 5, 6, 7].map(r => asmSlot(set, r)).join("\n\n");
+const asmFile = set => isCgb(set) ? "data/gfx/cgb_palettes.asm" : "func_enhancedcolor.asm";
 
 function pick(set, reg, i) {
   sel = { set: set.id, reg, i };
@@ -354,9 +387,12 @@ function editor(skip) {
   $("editor").hidden = !sel;
   if (!sel) return;
   const set = setById(sel.set), src = set.colors[sel.reg][sel.i], c = colorOf(set, sel.reg, sel.i);
-  $("edTitle").textContent = `${set.id.replace("ENH_BASE_", "")}, slot ${sel.reg} ${DATA.registers[sel.reg]}, colour ${sel.i}`;
-  $("edSub").textContent = `source ${src.join(",")}` + (same(src, c) ? "" : ` -> ${c.join(",")}`) + `; in game ${gamma(c).join(",")}`;
-  const sw = $("edSw").children; sw[0].style.background = css(src); sw[1].style.background = css(c);
+  $("edTitle").textContent = isCgb(set) ? `${set.id}, colour ${sel.i}`
+    : `${set.id.replace("ENH_BASE_", "")}, slot ${sel.reg} ${DATA.registers[sel.reg]}, colour ${sel.i}`;
+  const ram = isCgb(set) ? "" : `; with ENH GAMMA ${gamma(c).join(",")}`;
+  $("edSub").textContent = `source ${src.join(",")}` + (same(src, c) ? "" : ` -> ${c.join(",")}`) + ram +
+    `; GBC screen ~#${lcd(shown(c, set)).map(v => v.toString(16).padStart(2, "0")).join("")}`;
+  const sw = $("edSw").children; sw[0].style.background = css(src, set); sw[1].style.background = css(c, set);
   ["R", "G", "B"].forEach((ch, j) => {
     if (skip !== "ed" + ch) $("ed" + ch).value = c[j];
     if (skip !== "ed" + ch + "n") $("ed" + ch + "n").value = c[j];
@@ -373,7 +409,10 @@ function setColor(c, skip) {
 }
 
 async function copy(text, what) {
-  try { await navigator.clipboard.writeText(text); $("edMsg").textContent = `Copied ${what}. Paste it over the matching lines in func_enhancedcolor.asm.`; }
+  const set = setById(sel.set);
+  const pair = /Paired with the (\w+) row of ([\w/.]+)/.exec(set.uses || "");
+  const also = pair ? ` Also copy it to the ${pair[1]} row of ${pair[2]}: test_enhanced_color_variants checks the two match.` : "";
+  try { await navigator.clipboard.writeText(text); $("edMsg").textContent = `Copied ${what}. Paste it over the matching lines in ${asmFile(set)}.${also}`; }
   catch (e) {
     $("edAsm").textContent = text;
     const r = document.createRange(); r.selectNodeContents($("edAsm"));
@@ -394,9 +433,15 @@ $("edPick").addEventListener("input", () => {
   setColor([1, 3, 5].map(o => Math.round(parseInt(h.substr(o, 2), 16) * 31 / 255)), "edPick");
 });
 $("edReset").onclick = () => setColor(setById(sel.set).colors[sel.reg][sel.i].slice());
-$("edCopySlot").onclick = () => copy(asmSlot(setById(sel.set), sel.reg), `the ${DATA.registers[sel.reg]} slot (5 lines)`);
-$("edCopySet").onclick = () => copy(asmSet(setById(sel.set)),
-  "the whole set. Comment lines inside the set are not included, so check the diff before you save");
+$("edCopySlot").onclick = () => {
+  const set = setById(sel.set);
+  copy(asmSlot(set, sel.reg), isCgb(set) ? `the ${set.id} row (4 lines)` : `the ${DATA.registers[sel.reg]} slot (5 lines)`);
+};
+$("edCopySet").onclick = () => {
+  const set = setById(sel.set);
+  copy(asmSet(set), isCgb(set) ? `the ${set.id} row (4 lines)`
+    : "the whole set. Comment lines inside the set are not included, so check the diff before you save");
+};
 $("edResetSet").onclick = () => {
   for (const k of Object.keys(edits)) if (k.startsWith(sel.set + "|")) delete edits[k];
   store("edits", JSON.stringify(edits)); labels(); editor(); render();
@@ -408,7 +453,7 @@ $("resetAll").onclick = () => {
 };
 
 fill();
-for (const id of ["ts", "bsA", "bsB", "town", "view", "zoom", "cmp", "gamma"]) {
+for (const id of ["ts", "bsA", "bsB", "town", "view", "zoom", "cmp", "gamma", "screen"]) {
   $(id).addEventListener("input", () => {
     if (id === "cmp") $("bsB").disabled = !$("cmp").checked;
     if (id === "ts") focusReg = null;

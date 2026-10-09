@@ -29,6 +29,30 @@ Random_Pokemon_Selection_Any_Far::
 	ld c, e
 	jp Random_Pokemon_Selection_Any
 
+; Random_Boss_Selection_Far: Random_Pokemon_Selection_Far that never yields
+; Ditto. Shared by all four wild-area boss rollers (cave, forest, facility,
+; cemetery). Same contract: e = class in, d = species and e = form out.
+; Rerolls the same class up to BOSS_REROLL_BUDGET - 1 times, then accepts.
+DEF BOSS_REROLL_BUDGET EQU 8
+Random_Boss_Selection_Far::
+	ld a, BOSS_REROLL_BUDGET
+.loop
+	push af                        ; retry budget
+	ld a, e
+	push af                        ; class
+	call Random_Pokemon_Selection_Far ; d = species, e = form
+	pop bc                         ; b = class
+	pop af                         ; a = budget
+	dec a
+	ret z                          ; budget spent, accept whatever we have
+	ld c, a
+	ld a, d
+	cp DITTO
+	ret nz
+	ld e, b
+	ld a, c
+	jr .loop
+
 Random_Pokemon_Selection::
 ; ELEMENT PRISM encounter bias: set this selection's type-mismatch re-roll
 ; budget (custom_functions/element_prism.asm). Preserves every register - c

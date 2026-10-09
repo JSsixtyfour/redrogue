@@ -6132,7 +6132,7 @@ PFacRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel
     ld e, WILD_BOSS_RARITY_BUMP      ; boss rarity bump (matches cave/forest)
     farcall PCRollMonClassFar        ; e = rarity class 1-4
-    farcall Random_Pokemon_Selection_Far ; -> d = species, e = form
+    farcall Random_Boss_Selection_Far ; -> d = species, e = form
     call PFacRestoreSRAMBank
     ld a, d
     ld [wRoguePokemon1], a
