@@ -3028,7 +3028,9 @@ wStageEventScratch:: db
 ; as wOptions2 above: saved, NOT auto-zeroed on new game, seeded by InitOptions_
 ; and carried across PrepareOakSpeech's fill.
 ;   bit 0: BIT_IRONMAN - any party mon that faints is released (custom_functions/ironman.asm)
-;   bits 1-7: unused.
+;   bits 1-2: BATTLE_SPEED_MASK; bit 3: BIT_EXP_SHARE
+;   bit 4: BIT_REDUCED_ANIM - no screen shakes/waves/flashes (see constant)
+;   bits 5-7: unused.
 wOptions3:: db
 
 	ds 3  ; was ds 4; 1 byte carved in place for wOptions3 above.

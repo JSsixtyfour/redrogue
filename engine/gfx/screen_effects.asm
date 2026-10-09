@@ -15,7 +15,10 @@ ChangeBGPalColor0_4Frames:
 
 PredefShakeScreenVertically:
 ; Moves the window down and then back in a sequence of progressively smaller
-; numbers of pixels, starting at b.
+; numbers of pixels, starting at b. Skipped under REDUCED battle animations.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	call GetPredefRegisters
 	ld a, 1
 	ld [wDisableVBlankWYUpdate], a
@@ -41,7 +44,10 @@ PredefShakeScreenVertically:
 
 PredefShakeScreenHorizontally:
 ; Moves the window right and then back in a sequence of progressively smaller
-; numbers of pixels, starting at b.
+; numbers of pixels, starting at b. Skipped under REDUCED battle animations.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	call GetPredefRegisters
 	xor a
 .loop

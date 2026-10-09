@@ -109,7 +109,7 @@ DEF PROC_CAVE_PAL_COUNT EQU 2
 ; 2026-09-22). Same reasoning as PROC_CAVE_PAL_COUNT: fresh SRAM powers up
 ; $ff, so both the CGB enhanced path (func_enhancedcolor.asm) and the
 ; SGB/DMG path range-check against these before indexing a table.
-DEF PROC_FOREST_PAL_COUNT   EQU 2 ; sProcForestPalette: 0 spring, 1 fall
+DEF PROC_FOREST_PAL_COUNT   EQU 3 ; sProcForestPalette: 0 spring, 1 fall, 2 default green
 DEF PROC_FACILITY_PAL_COUNT EQU 2 ; sProcFacilityPalette: 0 PowerPlant, 1 Mansion
 
 ; SHINY CHARM adds NO palettes here. Shin Red's system (which this is ported

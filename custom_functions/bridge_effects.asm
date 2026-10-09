@@ -856,7 +856,6 @@ MistStoneChooseEvolution::
 .skipRequirement
 	inc hl                       ; minimum level
 	ld a, [hli]                  ; target species
-	ld [wEvoNewSpecies], a
 	push hl
 	ld [wNamedObjectIndex], a
 	call GetMonName
@@ -870,6 +869,13 @@ MistStoneChooseEvolution::
 	cp CHOSE_SECOND_ITEM
 	pop hl
 	jr z, .nextEvolution
+; Write wEvoNewSpecies only AFTER the Yes/No menu has closed. It is wBuffer+1
+; (UNION), and TwoOptionMenu_SaveScreenTiles/RestoreScreenTiles copy 30 bytes of
+; tilemap through wBuffer, so a species stored before the menu came back as a
+; tile id: the evolution parser matched no entry and printed "no effect".
+	dec hl                       ; back onto the target species byte
+	ld a, [hl]
+	ld [wEvoNewSpecies], a
 	scf
 	ret
 .noneChosen

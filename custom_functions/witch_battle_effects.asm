@@ -82,7 +82,15 @@ HandlePostPlayerMoveWitchEffects::
 	jr c, .noEffect        ; physical move under the special-only challenge
 
 ; --- Challenge 12 (and the tail of 16/17): wDamage/4, minimum 1.
+; Only when a move actually executed this turn. A switch, item, or run sets
+; wActionResultOrTookBattleTurn, so ExecutePlayerMove bails before
+; PlayerCanExecuteMove and wDamage still holds a STALE value from an earlier
+; turn; wBridgeRepeatState stays 0 on exactly those turns (same gate Life Orb
+; uses below).
 .recoilAnyMove
+	ld a, [wBridgeRepeatState]
+	and a
+	jr z, .noEffect
 	ld a, [wDamage]
 	ld b, a
 	ld a, [wDamage + 1]

@@ -92,8 +92,13 @@ ApplyOutOfBattlePoisonDamage:
 	ld a, e
 	and a ; are any party members poisoned?
 	jr z, .skipPoisonEffectAndSound
+	; REDUCED battle animations drops the flash but keeps the sound.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	jr nz, .skipPoisonFlash
 	ld b, $2
 	predef ChangeBGPalColor0_4Frames ; change BG white to dark gray for 4 frames
+.skipPoisonFlash
 	ld a, SFX_POISONED
 	call PlaySound
 .skipPoisonEffectAndSound

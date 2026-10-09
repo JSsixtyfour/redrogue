@@ -466,14 +466,16 @@ ProcForestOverworldPalette:
 	ld a, BANK(sProcForestPalette)
 	ld hl, sProcForestPalette
 	call ReadOverworldPaletteVariant
-	cp PROC_FOREST_PAL_COUNT
-	ld a, PAL_VIRIDIAN ; the pre-2B green, for $ff / out-of-range
-	ret nc
-	ld a, c            ; ReadOverworldPaletteVariant leaves the byte in c too
+	; 0 spring, 1 fall. Variant 2 (the default green forest) and anything past
+	; PROC_FOREST_PAL_COUNT, $ff included, all fall through to the pre-2B green,
+	; so no separate range check is needed.
 	and a
 	ld a, PAL_FOREST_SPRING
 	ret z
+	dec c              ; ReadOverworldPaletteVariant leaves the byte in c too
 	ld a, PAL_FOREST_FALL
+	ret z
+	ld a, PAL_VIRIDIAN
 	ret
 
 ProcFacilityOverworldPalette:

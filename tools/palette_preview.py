@@ -15,7 +15,7 @@ Needs the built .2bpp files (run `make` first). No third-party modules.
 
 Colours are the raw source values. The game also runs them through
 GBCGamma (custom_functions/func_gamma.asm) before they reach the screen, so
-on hardware they look somewhat darker and less saturated.
+on hardware they look lighter and much less saturated.
 """
 
 import argparse
@@ -31,7 +31,7 @@ REGISTER_NAMES = ["RED", "PINK", "PURPLE", "GRAY", "GREEN", "YELLOW", "BROWN", "
 # Which maps each base set reaches. Mirrors ResolveEnhancedBasePalSet; update
 # this when a base set gains or loses a consumer.
 BASE_SET_USES = {
-    "ENH_BASE_DEFAULT": "Every map without an override. Procedural Cave variant 0, Procedural Facility variant 0 (PowerPlant).",
+    "ENH_BASE_DEFAULT": "Every map without an override. Procedural Cave variant 0, Procedural Forest variant 2, Procedural Facility variant 0 (PowerPlant).",
     "ENH_BASE_COLD": "Seafoam Islands. Procedural Cave variant 1 (cold).",
     "ENH_BASE_DARK": "Only through wMapPalOffset == 6, which nothing in Red Rogue writes. Cut as a cave variant.",
     "ENH_BASE_FOREST_SPRING": "Procedural Forest variant 0 (spring).",

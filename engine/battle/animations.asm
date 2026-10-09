@@ -509,7 +509,7 @@ ShakeScreenHorizontallyHeavy:
 
 ShakeScreenHorizontallySlow:
 	lb bc, 6, 2
-	jr AnimationShakeScreenHorizontallySlow
+	jr ShakeScreenHorizontallySlowCommon
 
 BlinkEnemyMonSprite:
 	call PlayApplyingAttackSound
@@ -522,6 +522,13 @@ ShakeScreenHorizontallyLight:
 
 ShakeScreenHorizontallySlow2:
 	lb bc, 3, 2
+
+; The gate sits above the loop label because the loop re-enters at
+; AnimationShakeScreenHorizontallySlow once per pass.
+ShakeScreenHorizontallySlowCommon:
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 
 AnimationShakeScreenHorizontallySlow:
 	push bc
@@ -966,6 +973,10 @@ CallWithTurnFlipped:
 
 ; flashes the screen for an extended period (48 frames)
 AnimationFlashScreenLong:
+; Skipped under REDUCED battle animations, like every flash and screen motion.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	ld a, 3 ; cycle through the palettes 3 times
 	ld [wFlashScreenLongCounter], a
 	ld a, [wOnSGB] ; running on SGB?
@@ -1039,6 +1050,10 @@ FlashScreenLongDelay:
 	jp DelayFrames
 
 AnimationFlashScreen:
+; Skipped under REDUCED battle animations.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	ldh a, [rBGP]
 	push af ; save initial palette
 	ld a, %00011011 ; 0, 1, 2, 3 (inverted colors)
@@ -1453,6 +1468,11 @@ AnimationShowEnemyMonPic:
 AnimationShakeBackAndForth:
 ; Shakes the mon's sprite back and forth rapidly. This is used in Double Team.
 ; The mon's sprite disappears after this animation.
+; Skipped under REDUCED battle animations. Double Team, its only user, follows
+; it with SE_SHOW_MON_PIC, so leaving the pic in place changes nothing after.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	ldh a, [hWhoseTurn]
 	and a
 	hlcoord 0, 5
@@ -1922,7 +1942,11 @@ CopyTempPicToMonPic:
 	jp CopyVideoData
 
 AnimationWavyScreen:
-; used in Psywave/Psychic etc.
+; used in Psywave/Psychic etc. Skipped under REDUCED battle animations: nothing
+; has been touched yet, so returning here leaves the screen as it was.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 	ld hl, vBGMap0
 	call BattleAnimCopyTileMapToVRAM
 	call Delay3
@@ -2520,7 +2544,11 @@ FallingObjects_InitialMovementData:
 	db $00, $84, $06, $81, $02, $88, $01, $83, $05, $89, $09, $80, $07, $87, $03, $82, $04, $85, $08, $86
 
 AnimationShakeEnemyHUD:
-; Shakes the enemy HUD.
+; Shakes the enemy HUD. Skipped outright under REDUCED battle animations: the
+; routine's whole job is the shake, and nothing has been touched yet here.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret nz
 
 ; Make a copy of the back pic's tile patterns in sprite tile pattern VRAM.
 	ld de, vBackPic

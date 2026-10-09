@@ -2304,14 +2304,18 @@ PFPreloadForest::
     and 1
     ld [sProcForestSignVariant], a
 
-    ; 2B (2026-09-22): the forest's palette variant, spring (0) or fall (1),
-    ; rolled once here and stable for the whole visit, same mechanism as the
-    ; sign variant roll just above. PROC_FOREST_PAL_COUNT (2) is what both
-    ; colour paths range-check against - see ProcForestPalSets in
-    ; func_enhancedcolor.asm and ProcForestOverworldPalette in
-    ; engine/gfx/palettes.asm.
+    ; 2B (2026-09-22): the forest's palette variant, spring (0), fall (1) or
+    ; the ordinary green forest (2, added 2026-10-09), rolled once here and
+    ; stable for the whole visit, same mechanism as the sign variant roll just
+    ; above. PROC_FOREST_PAL_COUNT is what both colour paths range-check
+    ; against - see ProcForestPalSets in func_enhancedcolor.asm and
+    ; ProcForestOverworldPalette in engine/gfx/palettes.asm. Rejection sampling
+    ; keeps the three variants equally likely.
+.rollPalette
     call Random
-    and 1
+    and 3
+    cp PROC_FOREST_PAL_COUNT
+    jr nc, .rollPalette
     ld [sProcForestPalette], a
 
     ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
@@ -2343,6 +2347,11 @@ PFPreloadForest::
     ; %8==1 for a slot-1 trainer, and that alignment was already spent here.
     ResetEvent EVENT_PF_ITEM_GOT
     ResetEvent EVENT_BEAT_PC_BOSS
+    ; The offer text is the forest's ONLY HideObject for the boss, so a stale
+    ; OFFERED (any earlier wild-area boss, even last run's) skipped it and left
+    ; a beaten boss standing: talk = name + cry, no battle, flank guard off.
+    ; Cave and Facility already reset this in their own preloads.
+    ResetEvent EVENT_PC_BOSS_OFFERED
     ; Phase 7: the stage-event NPCs need the same per-preload reset the boss
     ; gets. They are run-scoped events, so without this a run whose SECOND
     ; wild area also rolls an event would find the flag already set by the

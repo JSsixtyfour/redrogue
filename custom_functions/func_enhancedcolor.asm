@@ -464,6 +464,7 @@ ASSERT ProcCavePalSets_End - ProcCavePalSets == PROC_CAVE_PAL_COUNT, \
 ProcForestPalSets:
 	db ENH_BASE_FOREST_SPRING ; sProcForestPalette 0
 	db ENH_BASE_FOREST_FALL   ; 1
+	db ENH_BASE_DEFAULT       ; 2 - ordinary green trees
 ProcForestPalSets_End:
 
 ASSERT ProcForestPalSets_End - ProcForestPalSets == PROC_FOREST_PAL_COUNT, \

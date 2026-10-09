@@ -59,12 +59,26 @@ class ForestRollTest(unittest.TestCase):
         write = "ld [sProcForestPalette], a"
         self.assertIn(write, src)
         preceding = src[:src.index(write)]
-        # The roll (`call Random` / `and 1`) must be the last thing before the
-        # write, not a leftover `xor a` forcing variant 0 every visit.
-        window = preceding[-120:]
+        # The roll must be the last thing before the write, not a leftover
+        # `xor a` forcing variant 0 every visit. Since 2026-10-09 it rejection-
+        # samples `and 3` against the count so all three variants can come up.
+        window = preceding[-160:]
         self.assertIn("call Random", window)
-        self.assertIn("and 1", window)
+        self.assertIn("and 3", window)
+        self.assertIn("cp PROC_FOREST_PAL_COUNT", window)
+        self.assertIn("jr nc, .rollPalette", window)
         self.assertNotIn("xor a", window)
+
+    def test_rejection_mask_covers_every_variant(self) -> None:
+        # `and 3` can only yield 0-3: a 5th variant needs a wider mask.
+        self.assertLessEqual(const("PROC_FOREST_PAL_COUNT"), 4)
+
+    def test_forest_default_variant_is_the_plain_default_set(self) -> None:
+        src = enh_source()
+        start = src.index("ProcForestPalSets:")
+        end = src.index("ProcForestPalSets_End:")
+        rows = [l for l in src[start:end].split("\n") if "\tdb " in l]
+        self.assertIn("ENH_BASE_DEFAULT", rows[2])
 
     def test_forest_palette_is_written_exactly_once(self) -> None:
         self.assertEqual(
@@ -204,7 +218,6 @@ class SgbForestSeasonMirrorTest(unittest.TestCase):
         end = src.index("\nProcFacilityOverworldPalette:\n")
         body = src[start:end]
         self.assertIn("sProcForestPalette", body)
-        self.assertIn("PROC_FOREST_PAL_COUNT", body)
         self.assertIn("PAL_FOREST_SPRING", body)
         self.assertIn("PAL_FOREST_FALL", body)
         self.assertIn("PAL_VIRIDIAN", body, "out-of-range must still fall back safely")

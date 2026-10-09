@@ -118,7 +118,7 @@ sProcForestGenScratch:: ds 81
 ; back to 0 (the stage's default look) rather than indexing a table with it.
 ; 0 is always "default", so the fallback is also the correct-looking answer.
 sProcCavePalette:: db              ; 0=default cavern, 1=cold/blue, 2=dark
-sProcForestPalette:: db            ; 0=default forest; 1+ added in Phase 4d
+sProcForestPalette:: db            ; 0=spring, 1=fall, 2=default green forest
 sProcCemeteryPalette:: db          ; 0=default cemetery; 1+ added in Phase 4d
 
 ; --- Phase 7: stage-event placement state -------------------------------

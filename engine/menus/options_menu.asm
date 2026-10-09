@@ -820,6 +820,85 @@ OptCycleCheat:
 	ret
 
 ; ============================================================================
+; The B. ANIM. row: ON / REDUCED / OFF over two bits in two bytes, which is why
+; it is a custom row. OFF is vanilla's wOptions BIT_BATTLE_ANIMATION (set = no
+; move animations); REDUCED is wOptions3 BIT_REDUCED_ANIM (animations play;
+; screen shakes, the wavy screen, flashes and the overworld poison flash do
+; not, see BIT_REDUCED_ANIM). The cycle writes both
+; bits every time, so OFF always leaves REDUCED clear and OFF keeps vanilla's
+; post-move damage shake.
+;
+;   index 0  ON       neither bit set
+;   index 1  REDUCED  BIT_REDUCED_ANIM
+;   index 2  OFF      BIT_BATTLE_ANIMATION
+; ============================================================================
+
+; Returns a = the B. ANIM. row's current index, 0-2. Clobbers af.
+OptBattleAnimIndex:
+	ld a, [wOptions]
+	bit BIT_BATTLE_ANIMATION, a
+	ld a, 2
+	ret nz
+	ld a, [wOptions3]
+	and 1 << BIT_REDUCED_ANIM
+	ret z
+	ld a, 1
+	ret
+
+; hl = the value cell.
+OptDrawBattleAnim:
+	push hl
+	call OptBattleAnimIndex
+	add a
+	ld e, a
+	ld d, 0
+	ld hl, OptBattleAnimValues
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	pop hl
+	jp PlaceString
+
+OptCycleBattleAnim:
+	call OptBattleAnimIndex
+	ld c, a
+	ldh a, [hJoy5]
+	bit B_PAD_RIGHT, a
+	ld a, c
+	jr nz, .stepRight
+	and a
+	jr nz, .stepLeft
+	ld a, 3 ; wrap past the first entry
+.stepLeft
+	dec a
+	jr .indexReady
+.stepRight
+	inc a
+	cp 3
+	jr c, .indexReady
+	xor a
+.indexReady
+	ld c, a
+	ld hl, wOptions
+	res BIT_BATTLE_ANIMATION, [hl]
+	cp 2
+	jr nz, .animBitDone
+	set BIT_BATTLE_ANIMATION, [hl]
+.animBitDone
+	ld hl, wOptions3
+	res BIT_REDUCED_ANIM, [hl]
+	dec c
+	ret nz
+	set BIT_REDUCED_ANIM, [hl]
+	ret
+
+OptBattleAnimValues:
+	dw OptTextAnimOn
+	dw OptTextAnimReduced
+	dw OptTextAnimOff
+
+; ============================================================================
 ; Hooks
 ; ============================================================================
 
@@ -864,7 +943,7 @@ OptionsPageInGame:
 ; value ends flush on column 18.
 OptionsRows:
 	optrow OptFollowerLabel,     1, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
-	optrow OptBattleAnimLabel,   2, 16, wOptions,  1 << BIT_BATTLE_ANIMATION,  OptBattleAnimOrder,  OptOnOffValues,       2, 0
+	optrow_custom OptBattleAnimLabel, 2, 12, OptDrawBattleAnim, OptCycleBattleAnim
 	optrow OptColorLabel,        3, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
 	optrow Opt60FPSLabel,        4, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
 	optrow OptBattleSpeedLabel,  5, 16, wOptions3, BATTLE_SPEED_MASK,          OptBattleSpeedOrder, OptBattleSpeedValues, 3, 0
@@ -907,9 +986,7 @@ OptTextSpeedOrder:
 	db TEXT_DELAY_MEDIUM
 	db TEXT_DELAY_SLOW
 
-; Both of these bits read inverted: the bit CLEAR is the "on" state.
-OptBattleAnimOrder:
-	db 0, 1 << BIT_BATTLE_ANIMATION
+; This bit reads inverted: the bit CLEAR is the "on" state.
 OptFollowerOrder:
 	db 0, 1 << BIT_FOLLOWER_DISABLED
 
@@ -1020,6 +1097,11 @@ OptTextOff:       db "OFF@"
 OptTextSpeed1x:   db " 1X@"
 OptTextSpeed2x:   db " 2X@"
 OptTextSpeed4x:   db " 4X@"
+
+; width 7, column 12: B. ANIM.
+OptTextAnimOn:      db "     ON@"
+OptTextAnimReduced: db "REDUCED@"
+OptTextAnimOff:     db "    OFF@"
 
 ; width 5, column 14
 OptTextShift:     db "SHIFT@"
