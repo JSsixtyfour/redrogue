@@ -28,6 +28,12 @@ int main(int argc, char *argv[]) {
 	if (width % 8 || height % 8 || width < 8 || height < 8 || width > 7 * 8 || height > 7 * 8) {
 		error_exit("%s: %ux%u is not a 1-7 x 1-7 tile sprite\n", argv[1], width, height);
 	}
+	// LoadUncompressedSpriteData takes the LOW nybble as the width, the reverse of
+	// the byte written below, so the two only agree for square pics (every vanilla
+	// pic is square). A non-square pic draws scrambled, e.g. a 5x6 Spinarak.
+	if (width != height) {
+		error_exit("%s: %ux%u is not square; pad it to a square tile box\n", argv[1], width, height);
+	}
 	uint8_t dimensions = (uint8_t)((width / 8) << 4 | (height / 8));
 	write_u8(argv[2], &dimensions, 1);
 	return 0;
