@@ -38,14 +38,14 @@ PlayerAppearanceTable::
 	player_appearance HikerSprite,        BikerPic,        RedPicBack,    .biker        ; BikerSprite is a rider on a motorcycle
 	player_appearance CooltrainerMSprite, BirdKeeperPic,   RedPicBack,    .birdKeeper
 	player_appearance HikerSprite,        BlackbeltPic,    RedPicBack,    .blackbelt
-	player_appearance YoungsterSprite,    BugCatcherPic,   RedPicBack,    .bugCatcher
+	player_appearance YoungsterSprite,    BugCatcherPic,   BugCatcherPicBack, .bugCatcher
 	player_appearance SuperNerdSprite,    BurglarPic,      RedPicBack,    .burglar
 	player_appearance CooltrainerMSprite, CooltrainerMPic, RedPicBack,    .coolTrainerM
 	player_appearance HikerSprite,        CueBallPic,      RedPicBack,    .cueBall
 	player_appearance SuperNerdSprite,    EngineerPic,     RedPicBack,    .engineer
 	player_appearance FisherSprite,       FisherPic,       RedPicBack,    .fisherman
-	player_appearance GamblerSprite,      GamblerPic,      OldManPicBack, .gambler      ; the one class with a back pic of its own
-	player_appearance GentlemanSprite,    GentlemanPic,    RedPicBack,    .gentleman
+	player_appearance GamblerSprite,      GamblerPic,      OldManPicBack, .gambler
+	player_appearance GentlemanSprite,    GentlemanPic,    GentlemanPicBack, .gentleman
 	player_appearance HikerSprite,        HikerPic,        RedPicBack,    .hiker
 	player_appearance CooltrainerMSprite, JrTrainerMPic,   RedPicBack,    .jrTrainerM
 	player_appearance SuperNerdSprite,    JugglerPic,      RedPicBack,    .juggler

@@ -246,13 +246,15 @@ HaunterPicBack::       INCBIN "gfx/pokemon/back/haunterb.lz"
 AbraPicFront::         INCBIN "gfx/pokemon/front/abra.lz"
 AbraPicBack::          INCBIN "gfx/pokemon/back/abrab.lz"
 
-; All three player back pics must stay in this one section: LoadPlayerBackPic
+; All player back pics must stay in this one section: LoadPlayerBackPic
 ; (engine/battle/core.asm) and HoFLoadPlayerPics (engine/movie/hall_of_fame.asm)
 ; load whichever one applies using a single BANK(RedPicBack), guarded by the
 ; ASSERTs below.
 RedPicBack::           INCBIN "gfx/player/redb.lz"
 GreenPicBack::         INCBIN "gfx/player/greenb.lz" ; ported from Pokemon Yume
 OldManPicBack::        INCBIN "gfx/battle/oldmanb.lz"
+GentlemanPicBack::     INCBIN "gfx/player/gentlemanb.lz"
+BugCatcherPicBack::    INCBIN "gfx/player/bugcatcherb.lz"
 
 
 SECTION "Pics 5", ROMX
