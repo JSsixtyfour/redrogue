@@ -27,7 +27,7 @@ KogasRoomShowOrHideExitBlock:
 	farcall Elite4PatchRoomWarps
 	CheckEvent EVENT_BEAT_KOGAS_ROOM_TRAINER_0
 	jr z, .blockExitToNextRoom
-	ld a, $00
+	ld a, $1B
 	jp .setExitBlock
 .blockExitToNextRoom
 	ld a, $17
