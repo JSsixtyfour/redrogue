@@ -319,6 +319,25 @@
     // its first 10 entries, and wFallenCount is clamped to the new capacity (main checksum redone).
     // The diff also shows FORM_REC_SIZE $28 -> $29 and MINIBOSS_RANDOM_FILL removed: both are ROM
     // data (form-record stride, a marker in ROM team tables) that no save can hold.
+    // Schema 6 -> 7 (2026-10-09): wGymChoice, the gym-next lobby's latched pair of gyms (player
+    // feedback #1), took the saved pad byte after wCreditsEarnedThisRun (wExpAllLevel's old slot,
+    // retired 2026-09-28; an old save may still hold 0-3 there). Nothing moved. Zeroed: nothing
+    // latched, so the next gym-next lobby rolls a fresh pair, as after a badge.
+    gymChoiceAdded: function (bytes, from, to) {
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      if (wramField(from, "wGymChoice")) return "this save already has a gym choice";
+      var credits = wramOffset(from, "wCreditsEarnedThisRun"), choice = wramOffset(to, "wGymChoice");
+      if (credits < 0 || wramOffset(to, "wCreditsEarnedThisRun") !== credits || choice !== credits + 1)
+        return "gym choice layout not recognised";
+      bytes[choice] = 0;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     x7MenuPageReserved: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var PAGE_LO = 0xbd00, PAGE_HI = 0xbe00;

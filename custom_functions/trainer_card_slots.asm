@@ -81,32 +81,14 @@ RogueSyncBadgeSlots::
 	ld a, c
 	call RogueCardLeaderForBadgeBit
 	call RogueRecordBadgeSlot
-	; Carry = this leader is newly recorded, i.e. the gym foresight was bought
-	; for has just been beaten. Foresight is per-gym, so spend it here rather
-	; than letting one purchase reveal the rest of the run.
-	call c, RogueSpendForesight
+	; (Foresight used to be spent here. Reveals now live in wGymChoice, which the
+	; badge award itself clears, so there is nothing per-gym left to spend.)
 	pop bc
 .nextBit
 	inc c
 	ld a, c
 	cp NUM_BADGES
 	jr c, .bitLoop
-	ret
-
-; ============================================================
-; RogueSpendForesight
-; Consumes BIT_ROGUE_PREDICT_BADGES.
-;
-; Foresight is bought per gym, not once per run: whoever grants it reveals the
-; leader behind the NEXT gym door, and beating that leader uses it up. Without
-; this the bit is simply persistent run state and a single purchase would name
-; every remaining leader, which is not what it is worth paying for.
-;
-; Single-bit `res` so the rest of wRogueFlagsBitfield2 survives - bits 0-1 are
-; Credit Exchange slot pulls and bits 2-6 are the Shin Red VRAM/DMA flags.
-RogueSpendForesight::
-	ld hl, wRogueFlagsBitfield2
-	res BIT_ROGUE_PREDICT_BADGES, [hl]
 	ret
 
 ; ============================================================
@@ -195,12 +177,8 @@ RogueCardBlockForSlot::
 	ld a, [hl]
 	and a
 	jr nz, .haveClass
-	call RogueCardRevealedSlot ; preserves e
+	call RogueCardRevealedLeaderForSlot ; carry + a = class of a revealed gym door
 	jr nc, .unknown
-	cp e                       ; is THIS the one slot being revealed?
-	jr nz, .unknown
-	call RogueCardNextGymBadgeBit  ; carry is guaranteed: the check above passed
-	call RogueCardLeaderForBadgeBit
 .haveClass
 	ld b, a
 	ld hl, CardLeaderClasses
@@ -235,11 +213,25 @@ RogueCardBlockForSlot::
 ; choose a face, by RogueBlitCardBadges to choose a name strip, and by
 ; DrawBadges to decide which cell draws the name.
 RogueCardRevealedSlot::
-	ld a, [wRogueFlagsBitfield2]
-	bit BIT_ROGUE_PREDICT_BADGES, a
-	jr z, .none
-	call RogueCardNextGymBadgeBit
+	push de
+	ld a, 1
+	call RogueGymDoorSlot      ; carry: door 1 is a gym door; b = revealed
+	pop de
 	jr nc, .none
+	ld a, b
+	and a
+	jr z, .none
+	jp RogueCardFirstEmptySlot
+.none
+	and a                      ; clear carry
+	ret
+
+; ============================================================
+; RogueCardFirstEmptySlot
+; OUTPUT: carry + a = the first empty card slot (the one the next win fills);
+;         carry clear if all eight are earned. Clobbers c, hl.
+; ============================================================
+RogueCardFirstEmptySlot:
 	ld hl, wBadgeSlotOrder
 	ld c, 0
 .scan
@@ -250,12 +242,118 @@ RogueCardRevealedSlot::
 	ld a, c
 	cp NUM_BADGES
 	jr c, .scan
-.none
 	and a                      ; clear carry
 	ret
 .found
 	ld a, c
 	scf
+	ret
+
+; ============================================================
+; RogueCardRevealedLeaderForSlot
+; INPUT:  e = card slot (0-7), known to be unearned
+; OUTPUT: carry + a = the leader whose face this slot shows; carry clear = "?"
+; The first empty slot shows door 1's gym, the next one door 2's, each only
+; while revealed (door 1 of a pair always is; door 2, or a single last door,
+; once the Psychic is paid). Preserves e.
+; ============================================================
+RogueCardRevealedLeaderForSlot:
+	push de
+	call RogueCardFirstEmptySlot
+	pop de
+	ret nc
+	ld c, a
+	ld a, e
+	sub c                      ; 0 = door 1's slot, 1 = door 2's
+	jr c, .no
+	cp 2
+	jr nc, .no
+	inc a                      ; door number
+	push de
+	call RogueGymDoorSlot      ; preserves de
+	pop de
+	ret nc
+	dec b
+	jr nz, .no                 ; b was 0: hidden
+	push de
+	call RogueCardLeaderForBadgeBit
+	pop de
+	scf
+	ret
+.no
+	and a
+	ret
+
+; ============================================================
+; RogueGymDoorSlot
+; INPUT:  a = lobby door (1 or 2)
+; OUTPUT: carry set if that door is a gym door this visit (gym next, a choice
+;         latched, and for door 2 a second gym exists); then a = its badge
+;         slot and b = 1 if revealed, 0 if hidden.
+; Door 1 of a pair is always revealed; door 2, or the single door when one
+; gym is left, is revealed by the Psychic (BIT_GYM_CHOICE_REVEALED).
+; Preserves de and hl.
+; ============================================================
+RogueGymDoorSlot:
+	push de
+	ld e, a                    ; e = door
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	jr z, .no
+	ld a, [wGymChoice]
+	bit BIT_GYM_CHOICE_LATCHED, a
+	jr z, .no
+	ld c, a                    ; c = the latch
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	ld d, a                    ; d = door 2's slot
+	ld a, c
+	and GYM_CHOICE_DOOR1_MASK  ; a = door 1's slot
+	cp d
+	jr z, .single
+	dec e
+	jr nz, .door2
+	ld b, 1                    ; door 1 of a pair: always revealed
+	jr .yes
+.door2
+	ld a, d
+.revealBit
+	ld b, 0
+	bit BIT_GYM_CHOICE_REVEALED, c
+	jr z, .yes
+	inc b
+	jr .yes
+.single
+	dec e
+	jr nz, .no                 ; one gym left: there is no door 2
+	jr .revealBit
+.yes
+	pop de
+	scf
+	ret
+.no
+	pop de
+	and a
+	ret
+
+; ============================================================
+; RogueGymDoorInfoFar  (farcall, from the lobby Psychic and door signs, $3C)
+; INPUT:  e = lobby door (1 or 2)
+; OUTPUT: d = the leader class behind that door (0 = not a gym door), and
+;         e = 1 if revealed, 0 if hidden. In d/e: Bankswitch destroys a/b/c/h/l.
+; ============================================================
+RogueGymDoorInfoFar::
+	ld a, e
+	call RogueGymDoorSlot
+	ld d, 0
+	ret nc
+	push bc
+	call RogueCardLeaderForBadgeBit ; a = class; clobbers de/hl
+	pop bc
+	ld d, a
+	ld e, b
 	ret
 
 ; ============================================================

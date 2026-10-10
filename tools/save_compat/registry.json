@@ -6,45 +6,67 @@
    "label": "2026-10-01 74f82c1b",
    "schema": "baseline_74f82c1b",
    "untagged": true,
-   "rom_sha256": ["e6a97a608c72d87550771529b568260af5782b64fe174d0fe6087b79ef6e9707"]
+   "rom_sha256": [
+    "e6a97a608c72d87550771529b568260af5782b64fe174d0fe6087b79ef6e9707"
+   ]
   }
  ],
  "migrations": [
   {
    "from": "baseline_74f82c1b",
    "to": "1",
-   "steps": ["tag"],
+   "steps": [
+    "tag"
+   ],
    "verified": "2026-10-02: save_schema.py diff --ignore-header found the same layout and save-semantic sources (only the new header and its constants); the archived ROM rebuilt byte-identical from 74f82c1b; converted baseline saves pass saves.py continue on the schema-1 build (see the runbook's ledger)."
   },
   {
    "from": "1",
    "to": "2",
-   "steps": ["itemCountSlots"],
+   "steps": [
+    "itemCountSlots"
+   ],
    "verified": "2026-10-03: save_schema.py diff 1 -> 2 classified: three item count arrays resized (old entries kept, spare slots 0), everything from wNumBagItems to the end of the bank-1 save sections moved +16 unchanged, plus two scratch labels in the bag-display union member. Engine test 'schema 1 to 2' checks every saved field and bank-1 label byte for byte (fails on a mutated step). Six real schema-1 saves (lobby, route, cave, forest, cemetery, facility) made on 58019198, converted by the engine, pass saves.py continue on the schema-2 build; an unconverted one is refused."
   },
   {
    "from": "2",
    "to": "3",
-   "steps": ["legacyInventoriesRemoved"],
+   "steps": [
+    "legacyInventoriesRemoved"
+   ],
    "verified": "NOT YET (2026-10-03): engine test 'schema 2 to 3' passes and fails on a mutated step; six real schema-2 saves (ceb51235) convert with every checked field carried; saves.py continue passes for lobby, route, cave, forest, cemetery but the facility save hangs. Measured cause is outside the migration: Continue reuses saved ROM map pointers, and the facility map's data moved in this build (FOLLOWUPS.md #51; patching only those pointers makes it pass). Do not release schema 3 until #51 is fixed and the gate is re-run."
   },
   {
    "from": "3",
    "to": "4",
-   "steps": ["rogueOfferDVsAdded"],
+   "steps": [
+    "rogueOfferDVsAdded"
+   ],
    "verified": "NOT YET (2026-10-06): save_schema.py diff 3 -> 4 shows only the new bank-2 labels sRogueOfferDVs/sRogueOfferDVTag (plus sFallenLogEnd, the fallen log's end label, now landing on them) and the ID bump; nothing moved. Engine test 'schema 3 to 4' checks every saved field and bank-1 label byte for byte and that the 9 new bytes come out zero. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
   },
   {
    "from": "4",
    "to": "5",
-   "steps": ["playerStarterFormAdded"],
+   "steps": [
+    "playerStarterFormAdded"
+   ],
    "verified": "NOT YET (2026-10-07): save_schema.py diff 4 -> 5 shows only the new saved field wPlayerStarterForm (carved from the pad after wFossilMon, whose schema size drops 3 -> 1) and the ID bump; nothing moved. Engine test 'schema 4 to 5' checks every saved field and bank-1 label byte for byte and that the new byte comes out zero. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
   },
   {
    "from": "5",
    "to": "6",
-   "steps": ["x7MenuPageReserved"],
+   "steps": [
+    "x7MenuPageReserved"
+   ],
    "verified": "NOT YET (2026-10-08): SRAM $BD00-$BDFF reserved in every bank for the EverDrive X7 menu (FOLLOWUPS #58). save_schema.py diff 5 -> 6 shows exactly: sProcForestStagingBuffer bc41/600 -> be00/400 (compact), the 26 bank-0 forest/stage-event/palette labels after it moved down 600 bytes, sProcFacilityRoomBuf removed, sFallenLog 792 -> 660, sFallenLogEnd/sRogueOfferDVs/sRogueOfferDVTag moved down; constants FALLEN_LOG_CAPACITY 12 -> 10 plus FORM_REC_SIZE and MINIBOSS_RANDOM_FILL (ROM-only, no save holds them). Engine test 'schema 5 to 6' checks every field byte for byte, the forest map repack, the log trim and the wFallenCount clamp. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
+  },
+  {
+   "from": "6",
+   "to": "7",
+   "steps": [
+    "gymChoiceAdded"
+   ],
+   "verified": "NOT YET (2026-10-09): save_schema.py diff 6 -> 7 shows only the new saved field wGymChoice (the pad after wCreditsEarnedThisRun) and the ID bump; nothing moved. Engine test 'schema 6 to 7' checks every saved field and bank-1 label byte for byte and that the new byte comes out zero. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
   }
  ]
 }

@@ -135,9 +135,8 @@ LobbyDoor1SignText:
 	call LobbyMiniBossSign        ; hl -> "boss + reward category" combined text
 	ret
 .noMiniBoss
-; door 2 is hidden whenever a gym is next (see IndigoPlateauLobby_Script), so
-; this is the only sign visible in that case. Gyms don't grant the door's item
-; reward, so just say "GYM" rather than a misleading reward category.
+; Gym next: door 1 is the first of the two latched gyms (or the single hidden
+; last one). The sign names it once revealed (LobbyGymSign).
 	ld a, [wRogueFlagsBitfield]
 	bit 0, a
 	jr nz, .gymSign
@@ -152,38 +151,13 @@ LobbyDoor1SignText:
 	ld l, a
 	ret
 .gymSign
-	; Foresight bought from the Psychic: name the leader too. bc is the live
-	; text cursor and a farcall destroys it, hence the push.
-	ld a, [wRogueFlagsBitfield2]
-	bit BIT_ROGUE_PREDICT_BADGES, a
-	jr z, .plainGymSign
-	push bc
-	farcall PCPsychicLeaderName   ; wNameBuffer = leader, e = 0 if no gym queued
-	pop bc
-	ld a, e
-	and a
-	jr z, .plainGymSign
-	ld hl, .gymForesightSignText
-	ret
-.plainGymSign
-	ld hl, .gymSignText
-	ret
-.gymSignText
-	text "GYM AHEAD@"
-	text_end
-.gymForesightSignText
-	text_far _LobbyGymForesightSignText
-	text_end
+	ld e, 1
+	jp LobbyGymSign
 .itemPtrs
 	dw .healingText
 	dw .statText
 	dw .tmText
 	dw .moneyText
-.itemPtrsGym ; unused (gyms now use .gymSignText); kept to avoid touching the texts below
-	dw .healingTextGym
-	dw .statTextGym
-	dw .tmTextGym
-	dw .moneyTextGym
 .healingText
 	text "DOOR 1:"
 	line "HEALING ITEMS@"
@@ -198,22 +172,6 @@ LobbyDoor1SignText:
 	text_end
 .moneyText
 	text "DOOR 1:"
-	line "MONEY@"
-	text_end
-.healingTextGym
-	text "GYM:"
-	line "HEALING ITEMS@"
-	text_end
-.statTextGym
-	text "GYM:"
-	line "STAT BOOSTS@"
-	text_end
-.tmTextGym
-	text "GYM:"
-	line "TM ITEMS@"
-	text_end
-.moneyTextGym
-	text "GYM:"
 	line "MONEY@"
 	text_end
 
@@ -243,6 +201,10 @@ LobbyDoor2SignText:
 	call LobbyMiniBossSign        ; hl -> "boss + reward category" combined text
 	ret
 .noMiniBoss
+	ld a, [wRogueFlagsBitfield]
+	bit 0, a
+	ld e, 2
+	jp nz, LobbyGymSign
 	ld a, [wRogueDoor2]
 	ld hl, .itemPtrs
 	ld d, 0
@@ -353,9 +315,37 @@ Lobby_IsDoor2Blocked:
 	or 1                          ; NZ = blocked
 	ret
 .checkGymNext
+	; Gym next: door 2 is open when it leads to a second gym (SelectAndPatchLobbyExit
+	; points it there), blocked when one gym is left (both doors the same map).
 	ld a, [wRogueFlagsBitfield]
 	bit 0, a
+	ret z
+	ld a, [wLobbyDoor1StageMap]
+	ld b, a
+	ld a, [wLobbyDoor2StageMap]
+	cp b
+	jr z, .gymSingle
+	xor a                         ; Z = open
 	ret
+.gymSingle
+	or 1                          ; NZ = blocked
+	ret
+
+; e = door (1 or 2). The gym sign's two lines, built in $3C (LobbyBuildGymSign):
+; "PEWTER GYM" / "BROCK/ROCK", or "??? GYM" / "???/???" while hidden.
+; bc is the live text cursor in these text_asm handlers; a farcall destroys it.
+LobbyGymSign:
+	push bc
+	farcall LobbyBuildGymSign
+	pop bc
+	ld hl, .text
+	ret
+.text
+	text_ram wNameBuffer
+	text_start
+	line "@"
+	text_ram wStringBuffer
+	text_end
 
 ; CLOBBERS: a, de, hl
 LobbyFinaleSignCheck:

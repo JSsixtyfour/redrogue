@@ -2862,7 +2862,14 @@ wFusionSecondaryBaseStats:: ds NUM_STATS  ; secondary's BASE_HP..BASE_SPC only
 ; wPlayerCoins; these are run-scoped state, above wGameProgressFlagsEnd so they
 ; zero on new game.
 wCreditsEarnedThisRun:: db   ; tally for the respawn popup; nonzero IS "popup pending"
-	ds 1 ; free (was wExpAllLevel, retired 2026-09-28 when EXP_ALL became the EXP Share option)
+; The two gym doors of a gym-next lobby (player feedback #1, 2026-10-09), latched
+; on the first gym-next lobby visit and kept across re-entries and saves until a
+; badge is won (RogueAwardCurrentGymBadge clears it). Bit layout: GYM_CHOICE_*
+; (constants/ram_constants.asm). Door 1 is revealed, door 2 hidden until the
+; Psychic is paid; with one unbeaten gym left both fields hold the same slot and
+; that single door starts hidden. Took the `ds 1` left by wExpAllLevel (retired
+; 2026-09-28), so no address moved; save schema 7 zero-fills it for old saves.
+wGymChoice:: db
 
 ; General-purpose second rogue-run bitfield: wRogueFlagsBitfield (above) has
 ; zero free bits (see its own comment), so new run-scoped flags land here
@@ -2884,7 +2891,7 @@ wCreditsEarnedThisRun:: db   ; tally for the respawn popup; nonzero IS "popup pe
 ;bit 4 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
 ;bit 5 - DMARoutine will not run in Vblank while this bit is set, was bit 0 in Shinred hFlagsFFFA
 ;bit 6 - BGmap update functions will not run in Vblank while this bit is set
-;   bit 7: BIT_ROGUE_PREDICT_BADGES - the trainer card reveals the face of each
+;   bit 7: RETIRED 2026-10-09 (was BIT_ROGUE_PREDICT_BADGES; reveals live in wGymChoice). Was: the trainer card reveals the face of each
 ;          UNearned badge slot instead of CARD_BLOCK_UNKNOWN's "?" glyph. Read
 ;          by RogueCardBlockForSlot (custom_functions/trainer_card_slots.asm).
 ;          The saved enhanced-color option that used to be proposed for this bit

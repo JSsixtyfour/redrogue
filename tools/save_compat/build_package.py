@@ -42,7 +42,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration playerStarterFormAdded (schema 4 -> 5)
                "wFossilMon", "wPlayerStarterForm",
                # migration x7MenuPageReserved (schema 5 -> 6): clamped to the new fallen log capacity
-               "wFallenCount"}
+               "wFallenCount",
+               # migration gymChoiceAdded (schema 6 -> 7)
+               "wCreditsEarnedThisRun", "wGymChoice"}
 
 
 def trim(schema: dict) -> dict:

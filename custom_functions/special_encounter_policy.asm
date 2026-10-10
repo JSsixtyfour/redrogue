@@ -138,6 +138,8 @@ RecordMiniBossVictory::
 ; Called from the existing LoadMapData dispatch, before lobby selection.
 RecordStageMapLoad::
 	farcall BridgeRecordVisit
+	; Gym choice: the badge (and the statues) follow the gym entered, door 1 or 2.
+	farcall RogueGymChoiceMapLoad
 	ldh a, [hCurMap]
 	cp INDIGO_PLATEAU_LOBBY
 	ret nz

@@ -228,7 +228,14 @@ DEF NUM_BADGES EQU const_value
 ; Set: the trainer card reveals the FACE of the leader behind the NEXT gym door
 ; in the slot that beating them will fill. One slot only, and only while a gym
 ; is actually queued; every other unearned slot stays CARD_BLOCK_UNKNOWN.
-DEF BIT_ROGUE_PREDICT_BADGES EQU 7
+DEF BIT_ROGUE_PREDICT_BADGES EQU 7 ; RETIRED 2026-10-09: reveals now live in wGymChoice; never set
+
+; wGymChoice (ram/wram.asm): the gym-next lobby's two doors.
+DEF GYM_CHOICE_DOOR1_MASK  EQU %00000111 ; door 1's badge slot (0-7)
+DEF GYM_CHOICE_DOOR2_SHIFT EQU 3
+DEF GYM_CHOICE_DOOR2_MASK  EQU %00111000 ; door 2's badge slot; == door 1's when one gym is left
+DEF BIT_GYM_CHOICE_REVEALED EQU 6        ; the Psychic revealed the hidden door
+DEF BIT_GYM_CHOICE_LATCHED  EQU 7        ; 0 = nothing latched (new game, or a badge was just won)
 
 ; wRogueFlagsBitfield bits 4-5 encode the offered mini-boss type (see MINIBOSS_* below).
 ; Read/written as a 2-bit field: (flags & MINIBOSS_TYPE_MASK) >> MINIBOSS_TYPE_SHIFT.

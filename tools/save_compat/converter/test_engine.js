@@ -198,6 +198,15 @@ test("schema 4 to 5: the starter form is added zeroed, nothing else changes", ()
   assert.equal(b[pad], 0, "wPlayerStarterForm");
 });
 
+test("schema 6 to 7: the gym choice is added zeroed, nothing else changes", () => {
+  // checkMigration fills the old pad byte with noise, so a step that skipped the zeroing fails.
+  const { save, b, from, to } = checkMigration(6, 7, []);
+  const pad = wramOffset(from, "wCreditsEarnedThisRun") + 1;
+  assert.notEqual(save[pad], 0, "the noise should have made the old pad byte non-zero");
+  assert.equal(wramOffset(to, "wGymChoice"), pad);
+  assert.equal(b[pad], 0, "wGymChoice");
+});
+
 // Schema 5 -> 6 moves bank-0 and bank-2 fields, which checkMigration's bank-1 noise never reaches,
 // so this builds its own save: noise over all of bank 0, the bank-2 fallen log + offer DVs, and
 // bank 1 from the item counts on (as checkMigration does).

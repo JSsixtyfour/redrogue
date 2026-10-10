@@ -319,90 +319,178 @@ GymLineupApplyJanineFlip:
 
 ; ============================================================
 ; _PickNextGym  (private)
-; Picks a RANDOM unvisited gym using wObtainedBadges as the visited
-; bitfield (unset bit = gym not yet beaten this run).
-; If all 8 gyms are done, treats all 8 as available again.
+; The gym-next lobby offers TWO unbeaten gyms (player feedback #1, 2026-10-09),
+; latched in wGymChoice by RogueLatchGymChoice. Door 1's gym becomes wRogueMap,
+; the stage both doors default to; SelectAndPatchLobbyExit then points door 2 at
+; the second gym. wRogueCurGymBadgeMask is written here as a DEFAULT (door 1):
+; RogueGymChoiceMapLoad rewrites it on the gym's map load from the gym the
+; player really entered, so it always matches the door taken.
 ; ============================================================
 _PickNextGym:
-	; Pass 1: count unvisited gyms (unset bits in wObtainedBadges)
-	ld a, [wObtainedBadges]
-	ld b, 0             ; b = unvisited count
-	ld d, a             ; d = badges copy for iteration
-	ld e, 8             ; e = loop counter (8 gyms)
-.gym_cnt
-	bit 0, d
-	jr nz, .gym_cntSkip
-	inc b
-.gym_cntSkip
-	srl d
-	dec e
-	jr nz, .gym_cnt
-	ld a, b
-	and a
-	jr nz, .gym_has
-	; All gyms beaten — pick from all 8
-	ld b, 8
-.gym_has
-	; Pick random index in [0, b-1]
-	ld c, b
-	call Rangerandom    ; a = random in [0, c-1] (same bank, safe call)
-	ld c, a             ; c = target (0-based index into unvisited gyms)
-
-	; Pass 2: find the c-th unset bit in wObtainedBadges
-	ld a, [wObtainedBadges]
-	ld e, 0             ; e = gym index (= GymMapByBadge offset)
-.gym_pick
-	bit 0, a            ; is this gym already beaten?
-	jr nz, .gym_pickSkip
-	ld b, a             ; stash badges while checking counter
-	ld a, c
-	and a               ; reached target?
-	jr z, .gym_chosen
-	dec c
-	ld a, b
-.gym_pickSkip
-	srl a
-	inc e
-	jr .gym_pick
-.gym_chosen
-	; e = the badge bit index just selected. Stash it as a PRE-SHIFTED MASK for
-	; RogueAwardCurrentGymBadge (gym victory) and GymStatues (flavour text),
-	; both of which need to know which badge THIS gym awards. Must happen here,
-	; before e is consumed as a GymMapByBadge offset below, and it is the only
-	; place the index exists: Phase 7 swaps the table lookup for
-	; wRunGymLineup[e] -> GymMapByLeader, but e keeps exactly this meaning.
-	ld a, 1
-	ld b, e
-	inc b
-	jr .badgeMaskEntry
-.badgeMaskLoop
-	add a
-.badgeMaskEntry
-	dec b
-	jr nz, .badgeMaskLoop
+	call RogueLatchGymChoice
+	ld a, [wGymChoice]
+	and GYM_CHOICE_DOOR1_MASK
+	ld e, a
+	call RogueBadgeMaskForSlot
 	ld [wRogueCurGymBadgeMask], a
+	ld a, e
+	call RogueSlotMap
+	ldh [hWarpDestinationMap], a
+	ld [wRogueMap], a
+	ret
 
-	; PHASE 7: badge bit e now selects wRunGymLineup[e], and THAT leader picks
-	; the map. Badge bit i and lineup slot i are the same gym by construction,
-	; which is also what RogueCardLeaderForBadgeBit relies on to render the card.
+; ============================================================
+; RogueLatchGymChoice  (private)
+; If nothing is latched, picks door 1's gym and door 2's gym as two DISTINCT
+; random unbeaten badge slots (the same slot twice when only one is left) and
+; latches them, nothing revealed. Already latched: no change, so lobby
+; re-entries, saves and bridge returns keep the same two gyms until a badge is
+; won (RogueAwardCurrentGymBadge clears wGymChoice). With all eight won (debug
+; states only) every slot counts as unbeaten, as _PickNextGym always did.
+; Clobbers a/bc/de/hl.
+; ============================================================
+RogueLatchGymChoice:
+	ld a, [wGymChoice]
+	bit BIT_GYM_CHOICE_LATCHED, a
+	ret nz
+	ld a, [wObtainedBadges]
+	cp $ff
+	jr nz, .haveMask
+	xor a
+.haveMask
+	ld d, a                     ; d = taken slots
+	call .countFree             ; b = free slots, 1-8
+	ld c, b
+	call Rangerandom            ; a = [0, b-1]; preserves bc/de/hl
+	ld c, a
+	ld l, a                     ; l = door 1's index among the free slots
+	call .nthFree               ; e = door 1's slot
+	ld h, e                     ; h = door 1's slot
+	ld a, b
+	cp 2
+	jr c, .single
+	dec a
+	ld c, a
+	call Rangerandom            ; a = [0, b-2]
+	cp l
+	jr c, .belowFirst
+	inc a                       ; skip door 1's index: distinct by construction
+.belowFirst
+	ld c, a
+	call .nthFree               ; e = door 2's slot
+	jr .store
+.single
+	ld e, h
+.store
+	ld a, e
+	add a
+	add a
+	add a                       ; door 2's slot << GYM_CHOICE_DOOR2_SHIFT
+	ASSERT GYM_CHOICE_DOOR2_SHIFT == 3
+	or h
+	or 1 << BIT_GYM_CHOICE_LATCHED
+	ld [wGymChoice], a
+	ret
+
+; d = taken mask -> b = number of free slots. Clobbers a, e.
+.countFree
+	ld b, 0
+	ld a, d
+	ld e, NUM_BADGES
+.countLoop
+	srl a
+	jr c, .countTaken
+	inc b
+.countTaken
+	dec e
+	jr nz, .countLoop
+	ret
+
+; d = taken mask, c = n (0-based) -> e = the n-th free slot. Clobbers a, c.
+.nthFree
+	ld a, d
+	ld e, 0
+.nthLoop
+	srl a
+	jr c, .nthNext              ; taken
+	inc c
+	dec c
+	ret z                       ; the n-th free slot
+	dec c
+.nthNext
+	inc e
+	jr .nthLoop
+
+; ============================================================
+; RogueSlotMap
+; INPUT:  a = badge slot (0-7)
+; OUTPUT: a = that slot's gym map this run: its lineup leader's gym, or the
+;         fixed Kanto gym while the lineup is unrolled.
+; Preserves bc/de/hl.
+; ============================================================
+RogueSlotMap:
+	push de
+	push hl
+	ld e, a
 	ld d, 0
 	ld hl, wRunGymLineup
 	add hl, de
 	ld a, [hl]
 	and a
-	jr z, .noLineup
-	call GymMapForLeader
-	jr .gotMap
-.noLineup
-	; No lineup rolled: a save from before Phase 7, or a run whose first lobby
-	; entry has not happened yet. Fall back to the fixed Kanto eight, which is
-	; exactly what this did before the lineup existed.
+	jr z, .kanto
+	call GymMapForLeader        ; preserves bc and hl
+	jr .done
+.kanto
 	ld hl, GymMapByBadge
 	add hl, de
 	ld a, [hl]
-.gotMap
-	ldh [hWarpDestinationMap], a
-	ld [wRogueMap], a
+.done
+	pop hl
+	pop de
+	ret
+
+; INPUT: e = badge slot (0-7). OUTPUT: a = 1 << e. Clobbers b.
+RogueBadgeMaskForSlot:
+	ld a, 1
+	ld b, e
+	inc b
+	jr .entry
+.loop
+	add a
+.entry
+	dec b
+	jr nz, .loop
+	ret
+
+; ============================================================
+; RogueGymChoiceMapLoad  (farcall, from RecordStageMapLoad on every map load)
+; When the map just loaded is one of the latched gyms, points
+; wRogueCurGymBadgeMask at THAT gym's slot, so the badge awarded (and the gym
+; statues) follow the door the player took. Any other map: no change.
+; ============================================================
+RogueGymChoiceMapLoad::
+	ld a, [wGymChoice]
+	bit BIT_GYM_CHOICE_LATCHED, a
+	ret z
+	ld c, a
+	and GYM_CHOICE_DOOR1_MASK
+	call .trySlot
+	ld a, c
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	; fallthrough
+; a = slot: set the mask if hCurMap is this slot's gym. Preserves c.
+.trySlot
+	ld e, a
+	call RogueSlotMap           ; preserves bc/de
+	ld b, a
+	ldh a, [hCurMap]
+	cp b
+	ret nz
+	call RogueBadgeMaskForSlot
+	ld [wRogueCurGymBadgeMask], a
 	ret
 
 ; ============================================================
@@ -815,6 +903,26 @@ ENDC
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
+	; Gym choice (player feedback #1): door 2 leads to the second latched gym,
+	; unless only one unbeaten gym is left (both fields hold the same slot).
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	jr z, .noGymChoice
+	ld a, [wGymChoice]
+	ld c, a
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	ld b, a
+	ld a, c
+	and GYM_CHOICE_DOOR1_MASK
+	cp b
+	jr z, .noGymChoice
+	ld a, b
+	call RogueSlotMap
+	ld [wLobbyDoor2StageMap], a
+.noGymChoice
 	; Bridge layer (twice-per-run interlude, on TOP of everything): may turn BOTH
 	; doors into two different bridge rooms and route onward to wRogueMap after the
 	; gift. Only gym cycles are eligible, so no route-special slot is consumed.

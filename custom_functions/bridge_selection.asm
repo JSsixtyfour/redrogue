@@ -2,8 +2,9 @@
 ; Bridge System: twice-per-run gift-room interludes that sit ON TOP of the lobby
 ; door randomization. When a bridge fires, BOTH lobby doors become two different
 ; bridge rooms; entering either gives a gift (see engine/events/bridge_gift_menu.asm)
-; and its exit warp routes straight to the pre-decided gym (wRogueMap)
-; via PatchBridgeExit. Bridges do NOT consume a route/gym/special slot.
+; and its exit warp returns to the lobby (PatchBridgeExit), where the gym-next
+; doors offer the gym choice (player feedback #1, 2026-10-09; it used to route
+; straight to the pre-decided gym, wRogueMap). Bridges do NOT consume a route/gym/special slot.
 ;
 ; Run-state (wBridgeOfferedLo + wBridgeState, in wGameProgressFlags): a per-run
 ; "offered" bitmask over the bridge rooms (no repeat until the pool is exhausted)
@@ -334,8 +335,8 @@ BridgeRecordVisit::
 ; ============================================================
 ; PatchBridgeExit  (farcall'd from each bridge room's setup script on load)
 ; Redirect every warp in the current map whose destination is the lobby
-; (LAST_MAP) to instead land on the pre-decided next route/gym (wRogueMap),
-; entrance warp. Handles rooms with two entrance warps both -> LAST_MAP.
+; (LAST_MAP) to land on the lobby's first warp explicitly (the gym choice is
+; made there since 2026-10-09; this used to be the pre-decided gym, wRogueMap). Handles rooms with two entrance warps both -> LAST_MAP.
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 PatchBridgeExit::
@@ -350,8 +351,7 @@ PatchBridgeExit::
 	and a
 	ret z
 	ld e, a                        ; e = warp count
-	ld a, [wRogueMap]
-	ld d, a                        ; d = new destination map
+	ld d, INDIGO_PLATEAU_LOBBY     ; back to the lobby for the gym choice
 	ld bc, 4                       ; warp entry stride (Y,X,warpID,mapID)
 	ld hl, wWarpEntries + 2        ; -> first entry's warpID byte
 .loop
@@ -371,7 +371,7 @@ PatchBridgeExit::
 
 ; ============================================================
 ; PatchBridgeExitAll  (farcall'd from dual-exit bridge rooms, e.g. OaksLab)
-; Like PatchBridgeExit, but reroutes EVERY warp in the map to wRogueMap - for
+; Like PatchBridgeExit, but reroutes EVERY warp in the map to the lobby - for
 ; rooms whose non-LAST_MAP exit would otherwise lead somewhere wrong during a
 ; bridge (OaksLab's north exit normally goes to REWARD_ROOM). Same lobby-entry
 ; gate, so the vanilla intro path is untouched. Clobbers a/bc/de/hl.
@@ -384,8 +384,7 @@ PatchBridgeExitAll::
 	and a
 	ret z
 	ld e, a
-	ld a, [wRogueMap]
-	ld d, a
+	ld d, INDIGO_PLATEAU_LOBBY     ; back to the lobby for the gym choice
 	ld bc, 4
 	ld hl, wWarpEntries + 2        ; -> first entry's warpID byte
 .loop

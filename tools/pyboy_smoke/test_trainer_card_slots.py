@@ -247,76 +247,37 @@ class TrainerCardSlotSyncSmokeTest(HarnessTestCase):
         )
         self.assertEqual(once[2:], [0] * (NUM_BADGES - 2))
 
-    def _foresight(self) -> bool:
-        h = self.harness
-        assert h is not None
-        return bool(h.read8("wRogueFlagsBitfield2") & 0x80)
+    def test_sync_never_touches_the_gym_choice(self) -> None:
+        """Reveals live in wGymChoice since 2026-10-09 (the gym choice).
 
-    def test_beating_the_revealed_gym_spends_foresight(self) -> None:
-        """Foresight is bought per gym, not once per run.
-
-        The whole point: without this, one purchase would name every remaining
-        leader for the rest of the run.
+        The lobby sync runs on every return, after routes too, so it must leave
+        the latched pair and its reveal alone, with and without a new badge.
         """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        latched = 0x80 | 0x40 | (6 << 3) | 4     # doors 4/6, door 2 revealed
+        h.write8("wGymChoice", latched)
         self._seed(0)
         self._sync()
-
-        # Buy foresight, then beat the gym it was bought for.
-        h.write8("wRogueFlagsBitfield2", 0x80)
+        self.assertEqual(h.read8("wGymChoice"), latched)
         self._seed(1 << 5)
-        self.assertEqual(self._sync()[0], self.classes["SABRINA"])
-        self.assertFalse(
-            self._foresight(), "foresight survived the gym it was bought for"
-        )
-
-        # Buying again covers exactly one more gym.
-        h.write8("wRogueFlagsBitfield2", 0x80)
-        self._seed((1 << 5) | (1 << 1))
         self._sync()
-        self.assertFalse(self._foresight())
+        self.assertEqual(h.read8("wGymChoice"), latched)
 
-    def test_foresight_survives_until_a_gym_is_actually_beaten(self) -> None:
-        """Syncing without a new badge must not silently eat the purchase.
-
-        The lobby sync runs on every return, including after routes, so an
-        unconditional clear would consume foresight before it revealed anything.
-        """
+    def test_winning_a_badge_clears_the_gym_choice(self) -> None:
+        """RogueAwardCurrentGymBadge: the next gym cycle latches a fresh pair,
+        so a reveal covers the gym it was bought for and no further."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        self._seed(1 << 5)
-        self._sync()
-        h.write8("wRogueFlagsBitfield2", 0x80)
-        for _ in range(3):
-            self._sync()
-            self.assertTrue(
-                self._foresight(), "a sync with no new badge spent foresight"
-            )
-
-    def test_zero_badges_resets_the_array_but_keeps_foresight(self) -> None:
-        """Gym 1 must be revealable, and zero badges IS the walk-in state.
-
-        The zero-badge branch is the run reset for wBadgeSlotOrder, so it is
-        tempting to clear foresight there too. That makes the first gym of every
-        run the one gym that can never be previewed, which is the bug this
-        pins. Unspent foresight leaking into a later run is the smaller evil,
-        and a new game zeroes the byte regardless.
-        """
-        h = self.harness
-        assert h is not None
-        h.boot_fight2(seed=1)
-        for index in range(NUM_BADGES):
-            h.write8("wBadgeSlotOrder", self.classes["CLAIR"], offset=index)
-        h.write8("wRogueFlagsBitfield2", 0x80)
-        self._seed(0)
-        self.assertEqual(self._sync(), [0] * NUM_BADGES)
-        self.assertTrue(
-            self._foresight(),
-            "foresight bought before the first gym was spent by the run reset",
-        )
+        h.write8("wObtainedBadges", 0)
+        h.write8("wRogueCurGymBadgeMask", 1 << 6)
+        h.write8("wGymChoice", 0x80 | 0x40 | (6 << 3) | 4)
+        h.park_before_hijack()
+        h.call_routine("RogueAwardCurrentGymBadge")
+        self.assertEqual(h.read8("wObtainedBadges"), 1 << 6)
+        self.assertEqual(h.read8("wGymChoice"), 0)
 
     def test_a_rolled_lineup_overrides_the_kanto_default(self) -> None:
         """Phase 7's contract, proven now so Phase 7 only has to roll the array.
@@ -441,31 +402,32 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         self.constants = parse_rgbds_constants(TRAINER_CONSTANTS)
         self.maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
 
-    def _blocks(
-        self, badges: int, predict: bool, queued_map: int = 0, lineup=None
-    ) -> list[int]:
-        """Drive the real blit and return the block chosen for slots 0-7."""
+    def _blocks(self, badges: int, choice=None, gym_next: bool = True, lineup=None) -> list[int]:
+        """Drive the real blit and return the block chosen for slots 0-7.
+
+        choice = (door 1 slot, door 2 slot, revealed) is written to wGymChoice
+        (latched); None leaves it unlatched. gym_next sets BIT_ROGUE_GYM_NEXT.
+        """
         h = self.harness
         assert h is not None
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
         chosen: list[int] = []
 
-        # Written whole rather than bit-set: bits 2-6 are the Shin Red VRAM/DMA
-        # flags and a stray one would change how the blit behaves.
-        h.write8("wRogueFlagsBitfield2", 0x80 if predict else 0x00)
         h.write8("wObtainedBadges", badges)
-        h.write8("wRogueMap", queued_map)
+        flags = h.read8("wRogueFlagsBitfield") & 0xFE
+        h.write8("wRogueFlagsBitfield", flags | (1 if gym_next else 0))
+        if choice is None:
+            h.write8("wGymChoice", 0)
+        else:
+            door1, door2, revealed = choice
+            h.write8("wGymChoice", 0x80 | (0x40 if revealed else 0) | (door2 << 3) | door1)
         for index in range(NUM_BADGES):
             h.write8("wRunGymLineup", 0, offset=index)
         for index, value in (lineup or {}).items():
             h.write8("wRunGymLineup", value, offset=index)
 
-        # Seed wBadgeSlotOrder to AGREE with wObtainedBadges, rather than
-        # wiping it. RogueBlitCardBadges syncs before it resolves anything, and
-        # that sync is not side-effect free: recording a new leader spends
-        # foresight. Leaving the array empty would make every badge look newly
-        # earned, so the flag would be consumed before the reveal was resolved
-        # and every prediction test would silently check the wrong thing.
+        # Seed wBadgeSlotOrder to AGREE with wObtainedBadges, so the sync inside
+        # the blit records nothing new and the slots under test are exact.
         recorded = [
             (lineup or {}).get(bit) or self.classes[EXPECTED_BLOCKS[bit]]
             for bit in range(NUM_BADGES)
@@ -484,21 +446,20 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         )
         h.park_before_hijack()
         h.call_routine("RogueBlitCardBadges")
-        # A ninth hit means the blit resolved the revealed slot again to pick a
-        # NAME strip. Split it out: the first eight are the badge cells, and the
-        # extra one must agree with them or the card would name one leader while
-        # showing another's face.
+        # A ninth hit is the name strip's own resolve; it must agree with the
+        # face it names.
         self.name_block = chosen[NUM_BADGES] if len(chosen) > NUM_BADGES else None
         return chosen[:NUM_BADGES]
+
+    def block(self, name: str) -> int:
+        return EXPECTED_BLOCKS.index(name)
 
     def test_every_unearned_slot_draws_the_question_mark(self) -> None:
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
-        self.assertEqual(
-            self._blocks(badges=0, predict=False), [unknown] * NUM_BADGES
-        )
+        self.assertEqual(self._blocks(badges=0), [unknown] * NUM_BADGES)
 
     def test_earned_slots_keep_their_leader_and_the_rest_stay_hidden(self) -> None:
         """Sabrina beaten first: her block in slot 0, seven question marks."""
@@ -506,130 +467,108 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
-        sabrina_block = EXPECTED_BLOCKS.index("SABRINA")
         self.assertEqual(
-            self._blocks(badges=1 << 5, predict=False),
-            [sabrina_block] + [unknown] * (NUM_BADGES - 1),
+            self._blocks(badges=1 << 5),
+            [self.block("SABRINA")] + [unknown] * (NUM_BADGES - 1),
         )
 
-    def test_prediction_reveals_exactly_one_slot(self) -> None:
-        """Foresight names the next opponent; it is not a run table of contents.
-
-        Celadon queued with no badges: Erika's face in slot 0, and the other
-        seven slots must STILL be question marks.
-        """
+    def test_door_1s_gym_shows_in_the_next_slot(self) -> None:
+        """Door 1 of a pair is always revealed: Erika (slot 3) behind door 1,
+        Sabrina (slot 5) hidden behind door 2. One face, named Erika."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
         self.assertEqual(
-            self._blocks(badges=0, predict=True, queued_map=self.maps["CELADON_GYM"]),
-            [EXPECTED_BLOCKS.index("ERIKA")] + [unknown] * (NUM_BADGES - 1),
+            self._blocks(badges=0, choice=(3, 5, False)),
+            [self.block("ERIKA")] + [unknown] * (NUM_BADGES - 1),
         )
-        # The name strip has to be Erika's too, not merely present.
-        self.assertEqual(self.name_block, EXPECTED_BLOCKS.index("ERIKA"))
+        self.assertEqual(self.name_block, self.block("ERIKA"))
+
+    def test_a_paid_reveal_shows_door_2s_gym_in_the_following_slot(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        unknown = self.constants["CARD_BLOCK_UNKNOWN"]
+        self.assertEqual(
+            self._blocks(badges=0, choice=(3, 5, True)),
+            [self.block("ERIKA"), self.block("SABRINA")] + [unknown] * (NUM_BADGES - 2),
+        )
+        # One name strip only (the card has room for one): door 1's leader.
+        self.assertEqual(self.name_block, self.block("ERIKA"))
+
+    def test_the_single_last_door_stays_hidden_until_revealed(self) -> None:
+        """One unbeaten gym left (Koga, slot 4): a mystery until the Psychic."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        unknown = self.constants["CARD_BLOCK_UNKNOWN"]
+        badges = 0xFF & ~(1 << 4)
+        self.assertEqual(self._blocks(badges=badges, choice=(4, 4, False))[7], unknown)
+        self.assertIsNone(self.name_block)
+        self.assertEqual(self._blocks(badges=badges, choice=(4, 4, True))[7], self.block("KOGA"))
 
     def test_nothing_names_a_leader_when_nothing_is_revealed(self) -> None:
         """No reveal means no name blit at all, so no name can linger in VRAM."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        self._blocks(badges=1 << 5, predict=False, queued_map=self.maps["CELADON_GYM"])
+        self._blocks(badges=1 << 5)
         self.assertIsNone(self.name_block)
-        self._blocks(badges=0, predict=True, queued_map=self.maps["ROUTE_3"])
+        self._blocks(badges=0, choice=(3, 5, True), gym_next=False)
         self.assertIsNone(self.name_block)
 
     def test_reveal_lands_on_the_next_slot_not_the_badge_bit(self) -> None:
-        """The two indexes differ as soon as any badge is earned.
-
-        Two badges earned, so the reveal belongs in slot 2. The queued gym is
-        Fuchsia, badge bit 4 - if the reveal were keyed off the badge bit it
-        would land in slot 4 instead, which is the bug this guards.
-
-        Slots 0 and 1 come back in BADGE BIT order (Misty, Sabrina) rather than
-        defeat order here, and that is correct: _blocks wipes wBadgeSlotOrder,
-        so the sync inside the blit rebuilds it cold from wObtainedBadges and
-        has no history to preserve. In play the lobby sync builds it one badge
-        at a time, which is what keeps defeat order exact - see
-        test_slots_fill_in_defeat_order_not_badge_bit_order, which syncs twice.
-        """
+        """Two badges earned, so door 1's gym belongs in slot 2 (and door 2's in
+        slot 3) whatever their badge bits (4 and 6). Slots 0-1 come back in badge
+        bit order because _blocks seeds the array cold; see
+        test_slots_fill_in_defeat_order_not_badge_bit_order for defeat order."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
-        blocks = self._blocks(
-            badges=(1 << 5) | (1 << 1),
-            predict=True,
-            queued_map=self.maps["FUCHSIA_GYM"],
-        )
+        blocks = self._blocks(badges=(1 << 5) | (1 << 1), choice=(4, 6, True))
         self.assertEqual(
-            blocks[:3],
-            [
-                EXPECTED_BLOCKS.index("MISTY"),
-                EXPECTED_BLOCKS.index("SABRINA"),
-                EXPECTED_BLOCKS.index("KOGA"),
-            ],
+            blocks[:4],
+            [self.block("MISTY"), self.block("SABRINA"), self.block("KOGA"), self.block("BLAINE")],
         )
-        self.assertEqual(blocks[3:], [unknown] * (NUM_BADGES - 3))
+        self.assertEqual(blocks[4:], [unknown] * (NUM_BADGES - 4))
 
     def test_nothing_is_revealed_while_a_route_is_queued(self) -> None:
-        """Foresight is silent between gyms, which is most of the run."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
         self.assertEqual(
-            self._blocks(badges=0, predict=True, queued_map=self.maps["ROUTE_3"]),
+            self._blocks(badges=0, choice=(3, 5, True), gym_next=False),
             [unknown] * NUM_BADGES,
         )
 
     def test_reveal_follows_a_rolled_lineup(self) -> None:
-        """Phase 7's contract on the reveal path, not just the earned path.
-
-        With MORTY in lineup slot 3, _PickNextGym queues HIS gym
-        (GymMapForLeader -> ECRUTEAK_GYM), so that is what must reveal Morty.
-        This used to queue CELADON_GYM - a state the game cannot produce - and
-        so pinned the Kanto-only reverse scan that named the wrong leader for
-        7 of 8 real lineup slots (fixed 2026-09-25).
-        """
+        """MORTY in lineup slot 3: door 1 on slot 3 must reveal Morty."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        blocks = self._blocks(
-            badges=0,
-            predict=True,
-            queued_map=self.maps["ECRUTEAK_GYM"],
-            lineup={3: self.classes["MORTY"]},
-        )
-        self.assertEqual(blocks[0], EXPECTED_BLOCKS.index("MORTY"))
+        blocks = self._blocks(badges=0, choice=(3, 5, False), lineup={3: self.classes["MORTY"]})
+        self.assertEqual(blocks[0], self.block("MORTY"))
 
     def test_shuffled_kanto_leader_reveals_the_slot_holding_him(self) -> None:
-        """The wrong-leader half of the 2026-09-25 bug.
-
-        Brock in slot 1 and Falkner in slot 0: queuing PEWTER_GYM must reveal
-        BROCK. The old Kanto-only reverse scan read PEWTER_GYM as badge bit 0
-        and revealed slot 0's leader, Falkner.
-        """
+        """Brock in slot 1, Falkner in slot 0: door 1 on slot 1 reveals BROCK."""
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         blocks = self._blocks(
-            badges=0,
-            predict=True,
-            queued_map=self.maps["PEWTER_GYM"],
+            badges=0, choice=(1, 0, False),
             lineup={0: self.classes["FALKNER"], 1: self.classes["BROCK"]},
         )
-        self.assertEqual(blocks[0], EXPECTED_BLOCKS.index("BROCK"))
+        self.assertEqual(blocks[0], self.block("BROCK"))
 
-    def test_a_queued_gym_reveals_nothing_without_foresight(self) -> None:
+    def test_an_unlatched_gym_visit_reveals_nothing(self) -> None:
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         unknown = self.constants["CARD_BLOCK_UNKNOWN"]
-        self.assertEqual(
-            self._blocks(badges=0, predict=False, queued_map=self.maps["CELADON_GYM"]),
-            [unknown] * NUM_BADGES,
-        )
+        self.assertEqual(self._blocks(badges=0, choice=None), [unknown] * NUM_BADGES)
 
 
 if __name__ == "__main__":

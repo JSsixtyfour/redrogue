@@ -215,19 +215,6 @@ class BootSmokeTest(HarnessTestCase):
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
         self.assertEqual(self.harness.read8("wLastBlackoutMap"), maps["SILPH_CO_DORM"])
 
-    def test_gym_lobby_entry_closes_door_2_after_selection(self) -> None:
-        assert self.harness is not None
-        self.harness.boot_to_lobby(battle_count=15)
-        stride = self.harness.read8("wCurMapWidth") + 6
-        door_block_offset = 3 * stride + 3 + 5
-        self.assertEqual(self.harness.read8("wOverworldMap", door_block_offset), 0x0C)
-        self.harness.wait_until(
-            lambda: self.harness.read8("wNumSigns") == 1,
-            "the finalized gym sign count",
-            300,
-        )
-        self.assertEqual(self.harness.read8("wNumSigns"), 1)
-
     def test_debug2_can_force_expert_ai_tier(self) -> None:
         assert self.harness is not None
         self.harness.boot_to_lobby(ai_tier=3)

@@ -56,6 +56,9 @@ RogueItemUseDoorDice::
 ; so despite being INCLUDEd under "rogue" in main.asm it floats to another bank. This
 ; used to be a plain call on the belief the two shared a SECTION, and it jumped into
 ; whatever was mapped at that address in this bank (fixed 2026-09-24).
+	; On a gym cycle the reroll picks a fresh pair of gyms (and forgets a reveal).
+	xor a
+	ld [wGymChoice], a
 	call SelectAndPatchLobbyExit
 	farcall ProcPreloadAssignedWildArea
 	ld hl, DoorDiceRerolledText

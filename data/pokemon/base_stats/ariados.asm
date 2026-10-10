@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/ariados.dim" ; sprite dimensions
 	dw AriadosPicFront, AriadosPicBack
 
-	db POISON_STING, STRING_SHOT, METRONOME, CONSTRICT ; level 1 learnset - SCARY_FACE filled with METRONOME
+	db POISON_STING, STRING_SHOT, FOCUS_ENERGY, CONSTRICT ; level 1 learnset - SCARY_FACE filled with METRONOME
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         MEGA_DRAIN,   \
 	     SOLARBEAM,    PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         REST,         PSYWAVE,      SUBSTITUTE
+	     BIDE,         REST,         PSYWAVE,      SUBSTITUTE,   LIGHT_SCREEN, \
+         DIG,          SWIFT,        HYPER_BEAM                                \
 	; end
 
 	db BANK(AriadosPicFront) ; pic bank

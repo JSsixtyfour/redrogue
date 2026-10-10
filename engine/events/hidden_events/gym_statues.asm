@@ -44,6 +44,9 @@ GymStatues:
 ; Output: wObtainedBadges updated
 ; ============================================================
 RogueAwardCurrentGymBadge::
+	; The gym-next doors are decided afresh for the next gym (wGymChoice).
+	xor a
+	ld [wGymChoice], a
 	ld a, [wRogueCurGymBadgeMask]
 	and a
 	jr z, .noMask

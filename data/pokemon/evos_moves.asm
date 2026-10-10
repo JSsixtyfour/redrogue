@@ -2198,14 +2198,18 @@ SpinarakEvosMoves:
 	db 0
 ; Learnset - canon Gen 2 levels; SCARY_FACE/SPIDER_WEB do not exist in Gen 1,
 ; filled with METRONOME.
-	db 6, METRONOME ; was SCARY_FACE
+	db 7, LEECH_LIFE ; was SCARY_FACE
+    db 9, ABSORB
 	db 11, CONSTRICT
+    db 13, CONFUSION
+    db 15, WRAP
 	db 17, NIGHT_SHADE
-	db 23, LEECH_LIFE
-	db 30, FURY_SWIPES
-	db 37, METRONOME ; was SPIDER_WEB
-	db 45, SCREECH
-	db 53, PSYCHIC_M
+	db 20, FURY_SWIPES
+    db 23, PIN_MISSILE
+	db 24, PSYCHIC ; was SPIDER_WEB
+    db 30, CONFUSE_RAY
+	db 35, SCREECH
+	db 40, AGILITY
 	db 0
 
 AriadosEvosMoves:
@@ -2213,14 +2217,19 @@ AriadosEvosMoves:
 	db 0
 ; Learnset - POISON_STING/STRING_SHOT/CONSTRICT already granted at level 1
 ; (SCARY_FACE's level-1 slot is METRONOME, see base_stats/ariados.asm)
-	db 6, METRONOME ; was SCARY_FACE
+	db 7, LEECH_LIFE ; was SCARY_FACE
+    db 9, ABSORB
 	db 11, CONSTRICT
+    db 13, CONFUSION
+    db 15, WRAP
 	db 17, NIGHT_SHADE
-	db 25, LEECH_LIFE
-	db 34, FURY_SWIPES
-	db 43, METRONOME ; was SPIDER_WEB
-	db 53, SCREECH
-	db 63, PSYCHIC_M
+	db 20, FURY_SWIPES
+    db 22, SWORDS_DANCE
+    db 25, PIN_MISSILE
+	db 27, PSYCHIC ; was SPIDER_WEB
+    db 32, CONFUSE_RAY
+	db 37, SCREECH
+	db 42, AGILITY
 	db 0
 
 SandshrewEvosMoves:
@@ -3597,9 +3606,9 @@ AerodactylEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 10, ROCK_THROW
 	db 15, BITE	
 	db 22, SUPERSONIC
-	db 27, ROCK_THROW
 	db 32, WING_ATTACK
 	db 40, ROCK_SLIDE
 	db 43, TAKE_DOWN

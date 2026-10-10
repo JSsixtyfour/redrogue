@@ -45,12 +45,6 @@ _PsychicNoGymText::
 	done
 
 ; Door 1's sign on a gym cycle once foresight is bought (LobbyDoor1SignText).
-_LobbyGymForesightSignText::
-	text "GYM AHEAD:"
-	line "@"
-	text_ram wNameBuffer
-	text_end
-
 _WitchIntroText::
 	text "Kekeke...."
     para "I have a"

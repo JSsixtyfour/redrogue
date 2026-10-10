@@ -449,7 +449,9 @@ def section_shopping(g: parse.GameData, args, out: Path) -> list[str]:
     cost = sum(prices[l["item"]] * l["count"] for l in plan)
     lines = ["## 6. Shopping plan per difficulty (assumed plan)\n",
              f"_{plan_doc['note']}_ Plan cost Y{cost:,}. Each cell is the stop where that line is fully "
-             "bought (`-` = never). Money is the mean spendable at each leader; Amulet Coin off.\n"]
+             "bought (`-` = never). Money is the mean spendable at each leader; Amulet Coin off. "
+             "**Not a real budget:** the model spends nothing elsewhere (balls, Psychic, daycare, healing, "
+             "salesman mons), so the money left over is overstated; use it only to compare difficulties.\n"]
     header = "| Line | Cost |"
     sep = "|---|---|"
     results = {}

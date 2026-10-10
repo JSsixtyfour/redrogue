@@ -33,7 +33,13 @@
 ; copied by label, the forest map repacked, the log trimmed and wFallenCount
 ; clamped (migration x7MenuPageReserved).
 
-DEF SAVE_SCHEMA_ID EQU 6
+; Schema 7 (2026-10-09): wGymChoice (the gym-next lobby's latched pair of gyms,
+; player feedback #1) took the saved `ds 1` after wCreditsEarnedThisRun, the
+; byte wExpAllLevel left in 2026-09. Nothing moved; old saves get it zeroed
+; (nothing latched, so the next gym-next lobby rolls a pair), migration
+; gymChoiceAdded.
+
+DEF SAVE_SCHEMA_ID EQU 7
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.
