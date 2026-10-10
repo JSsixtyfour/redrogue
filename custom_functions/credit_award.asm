@@ -14,6 +14,14 @@
 ; WRAM0 has no spare bytes. Note the carry from Has9990Coins must be tested
 ; BEFORE the matching pop, since `pop af` restores flags and would wipe it.
 
+RogueAwardCredits5::
+	ld a, 5                       ; the AI Lair (since 2026-10-10)
+	jr RogueAwardCreditsCommon
+
+RogueAwardCredits4::
+	ld a, 4                       ; the Champion (since 2026-10-10)
+	jr RogueAwardCreditsCommon
+
 RogueAwardCredits1::
 	ld a, 1
 	jr RogueAwardCreditsCommon
@@ -51,7 +59,7 @@ RogueAwardCreditsCommon:
 	xor a
 	ldh [hUnusedCoinsByte], a
 	ldh [hCoins], a
-	ld a, b                       ; amounts are 1-5, so this is already valid BCD
+	ld a, b                       ; amounts are 1-7 (5 + two group bonuses), so already valid BCD
 	ldh [hCoins + 1], a
 	ld de, wPlayerCoins + 1
 	ld hl, hCoins + 1

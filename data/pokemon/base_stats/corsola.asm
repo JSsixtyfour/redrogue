@@ -13,11 +13,12 @@
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_FAST ; growth rate
 
-	; tm/hm learnset - modeled on Golduck (Water) plus Rock coverage
+	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
 	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   SURF,         STRENGTH
+	     ROCK_SLIDE,   SUBSTITUTE,   SURF,         STRENGTH,     DIG,          \
+         REFLECT,      LIGHT_SCREEN, EARTHQUAKE,   PSYCHIC_M
 	; end
 
 	db BANK(CorsolaPicFront) ; pic bank

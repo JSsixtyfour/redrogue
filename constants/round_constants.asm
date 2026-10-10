@@ -20,6 +20,15 @@ DEF FIRST_GYM_STEP         EQU ROUTE_BATTLES + 1
 DEF FINAL_GYM_TRAINER_STEP EQU ROUTE_BATTLES + GYM_TRAINER_BATTLES ; level bonus
 
 DEF NUM_ROGUE_ROUNDS     EQU 8 ; gyms before Victory Road
+
+; Back-to-back gyms (player feedback #2, 2026-10-09). The badge that brings the
+; count to one of these skips the next round's route: the leader's exits lead
+; to the Reward Room (the route's reward, and its ROUTE_BATTLES credit), then
+; the lobby's single door to the gym the player did not take. Never three gyms
+; in a row. Moving a pair is a one-line change here plus the curve.
+DEF PAIR_BADGES_A        EQU 3 ; gym 3 -> gym 4: round 4's route skipped
+DEF PAIR_BADGES_B        EQU 6 ; gym 6 -> gym 7: round 7's route skipped
+	ASSERT 0 < PAIR_BADGES_A && PAIR_BADGES_A + 1 < PAIR_BADGES_B && PAIR_BADGES_B < NUM_ROGUE_ROUNDS - 1
 DEF VICTORY_ROAD_BATTLES EQU 4 ; was 5 until 2026-09-29
 DEF NUM_E4_BATTLES       EQU 4
 

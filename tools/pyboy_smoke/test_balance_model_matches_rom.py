@@ -384,7 +384,7 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
                                  battle.mons[0][1])
 
     def test_oaks_lab_bridge_gift_uses_battle_count(self):
-        """Oak's starter stays level 5, while its bridge gift scales normally."""
+        """Oak's starter stays at STARTER_LEVEL, while its bridge gift scales normally."""
         self._boot()
         h = self.harness
         saved_map = h.read8("hCurMap")
@@ -392,7 +392,7 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
         h.write8("hCurMap", self.maps["OAKS_LAB"])
         try:
             h.write8("wWarpedFromWhichMap", self.maps["PALLET_TOWN"])
-            self.assertEqual(self._level_after("GetRewardMonLevel", 12), 5)
+            self.assertEqual(self._level_after("GetRewardMonLevel", 12), model.Config().starter_level)
             h.write8("wWarpedFromWhichMap", self.maps["INDIGO_PLATEAU_LOBBY"])
             self.assertEqual(self._level_after("GetRewardMonLevel", 12),
                              model.reward_level(self.g, 12))

@@ -5,11 +5,30 @@ RewardRoom_Script:
     jr nz, .step_forward
     
     SetEvent EVENT_ENTER_ROOM
+    ; Mid-run (a badge won) this is a back-to-back pair's stand-in for the skipped
+    ; route, between gym A and the lobby (RoguePairRewardRoomEntry, gym_statues.asm).
+    ld a, [wObtainedBadges]
+    and a
+    jr z, .runStart
+    farcall RoguePairRewardRoomEntry
+    jr .exitsReady
+.runStart
     ; Pick the next random stage and patch exit warps before the player can walk out.
     ; Uses SelectAndPatchRewardRoomExit (no BIT_WARP_FROM_CUR_SCRIPT).
     farcall SelectAndPatchRewardRoomExit
+.exitsReady
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
+    ld a, [wObtainedBadges]
+    and a
+    jr z, .runStartObjects
+    farcall RoguePairRewardRoomObjects ; the route's item ball, not the flat-level balls
+    jr .objectsReady
+.runStartObjects
+    ld a, TOGGLE_STAGE_RANDOM_ITEM
+    ld [wToggleableObjectIndex], a
+    predef HideObject
+.objectsReady
     
     call EnableAutoTextBoxDrawing
 	call Delay3
@@ -44,6 +63,9 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Script_PokeballText_1, TEXT_ROGUE_REWARD_POKEBALL_1
     dw_const Rogue_RewardRoom_Script_PokeballText_2, TEXT_ROGUE_REWARD_POKEBALL_2
     dw_const Rogue_RewardRoom_Script_PokeballText_3, TEXT_ROGUE_REWARD_POKEBALL_3
+    ; Object 4 (the mid-run item ball). Objects' texts come first, in slot order:
+    ; DisplayTextID reroutes any script-fired id <= wNumSprites through a slot.
+    dw_const RandomPickUpItemText,                   TEXT_REWARDROOM_RANDOM_ITEM
 	dw_const RewardRoomDoor1SignText,    TEXT_REWARDROOM_DOOR1_SIGN
 	dw_const RewardRoomDoor2SignText,    TEXT_REWARDROOM_DOOR2_SIGN
     dw_const Rogue_RewardRoom_Reward_Text, TEXT_REWARDROOM_REWARD_VENDOR_1
@@ -51,6 +73,10 @@ RewardRoom_TextPointers:
 
 RewardRoomDoor1SignText:
 	text_asm
+	ld hl, RewardRoomLobbySignText
+	ld a, [wObtainedBadges]
+	and a
+	jr nz, .print           ; mid-run: both doors lead back to the lobby
 	ld a, [wRogueDoor1]
 	ld hl, .itemPtrs
 	ld d, 0
@@ -60,6 +86,7 @@ RewardRoomDoor1SignText:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
+.print
 	call PrintText
 	jp TextScriptEnd
 .itemPtrs
@@ -86,6 +113,10 @@ RewardRoomDoor1SignText:
 
 RewardRoomDoor2SignText:
 	text_asm
+	ld hl, RewardRoomLobbySignText
+	ld a, [wObtainedBadges]
+	and a
+	jr nz, .print           ; mid-run: both doors lead back to the lobby
 	ld a, [wRogueDoor2]
 	ld hl, .itemPtrs
 	ld d, 0
@@ -95,6 +126,7 @@ RewardRoomDoor2SignText:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
+.print
 	call PrintText
 	jp TextScriptEnd
 .itemPtrs
@@ -119,6 +151,10 @@ RewardRoomDoor2SignText:
 	line "MONEY@"
 	text_end
 	
+RewardRoomLobbySignText:
+	text "TO THE LOBBY@"
+	text_end
+
 PlayerEntryMovementRLE:
 	db PAD_UP, 1
 	db -1 ; end
@@ -144,7 +180,7 @@ Rogue_RewardRoom_Script_PokeballText_1:
 
     ld a, [wRoguePokemon1]
 	ld b, a
-    ld c, 5
+    ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .done
     
@@ -182,7 +218,7 @@ Rogue_RewardRoom_Script_PokeballText_2:
 
     ld a, [wRoguePokemon2]
 	ld b, a
-    ld c, 5
+    ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .done
     
@@ -220,7 +256,7 @@ Rogue_RewardRoom_Script_PokeballText_3:
 
     ld a, [wRoguePokemon3]
 	ld b, a
-    ld c, 5
+    ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .done
     

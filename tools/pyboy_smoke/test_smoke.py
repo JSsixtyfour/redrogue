@@ -976,7 +976,13 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
         assert self.harness is not None
         map_id = maps[map_name]
-        self.harness.boot_to_lobby()
+        # The lobby itself offers and preloads this type (FOLLOWUPS #64): since
+        # Phase 4's quota re-base (2026-10-10) the default boot lobby (badge 1) owes
+        # a mandatory wild area and preloads its OWN pick, and injecting a different
+        # type over it zeroed the cemetery's stage-event slots, a state real play
+        # cannot reach.
+        wild_type = next(t for t in ("cave", "forest", "cemetery", "facility") if t.upper() in map_name)
+        self.harness.boot_to_lobby(encounter_kind=4, wild_type=wild_type)
         self.harness.preload_and_enter_wild_area(map_id, name)
 
         self.assertEqual(self.harness.read8("hCurMap"), map_id)

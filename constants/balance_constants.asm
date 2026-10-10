@@ -25,16 +25,16 @@ DEF WILD_EXP_MATCHES_TRAINER EQU 1
 ; level added per slot. The ace (last slot) is BASE + (MONS - 1) * STEP.
 ; Read by gym_team_spec in data/trainers/party_specs.asm.
 DEF GYM_R1_MONS EQU 2
-DEF GYM_R1_BASE EQU 9
+DEF GYM_R1_BASE EQU 11
 DEF GYM_R1_STEP EQU 2
 DEF GYM_R2_MONS EQU 2
-DEF GYM_R2_BASE EQU 15
+DEF GYM_R2_BASE EQU 17
 DEF GYM_R2_STEP EQU 3
 DEF GYM_R3_MONS EQU 3
-DEF GYM_R3_BASE EQU 19
+DEF GYM_R3_BASE EQU 21
 DEF GYM_R3_STEP EQU 3
 DEF GYM_R4_MONS EQU 3
-DEF GYM_R4_BASE EQU 27
+DEF GYM_R4_BASE EQU 26
 DEF GYM_R4_STEP EQU 2
 DEF GYM_R5_MONS EQU 4
 DEF GYM_R5_BASE EQU 31
@@ -43,10 +43,10 @@ DEF GYM_R6_MONS EQU 4
 DEF GYM_R6_BASE EQU 38
 DEF GYM_R6_STEP EQU 2
 DEF GYM_R7_MONS EQU 5
-DEF GYM_R7_BASE EQU 43
+DEF GYM_R7_BASE EQU 40
 DEF GYM_R7_STEP EQU 2
 DEF GYM_R8_MONS EQU 6
-DEF GYM_R8_BASE EQU 47
+DEF GYM_R8_BASE EQU 45
 DEF GYM_R8_STEP EQU 2
 
 ; --- Curated moveset level window --------------------------------------------
@@ -61,13 +61,13 @@ DEF SET_LEVEL_SLACK_BELOW EQU 10
 ; --- Elite Four -------------------------------------------------------------
 ; Tier t (1-4, from wBattleCount 86-89): slot 0 is E4_BASE_LEVEL + t, and each
 ; slot adds E4_LEVEL_STEP. Read through the E4_T curve in party_specs.asm.
-DEF E4_BASE_LEVEL EQU 49
+DEF E4_BASE_LEVEL EQU 48
 DEF E4_LEVEL_STEP EQU 2
 
 ; --- Champions (RIVAL3, Champion Lance, Prof. Oak) ----------------------------
 ; Six mons: slot 0 is CHAMPION_BASE_LEVEL, each slot adds CHAMPION_LEVEL_STEP,
 ; the ace last. Read by champion_spec in party_specs.asm.
-DEF CHAMPION_BASE_LEVEL EQU 59
+DEF CHAMPION_BASE_LEVEL EQU 58
 DEF CHAMPION_LEVEL_STEP EQU 1
 ; The same curve under the names banded_round_spec builds (<curve><round>_*):
 ; every Champion is one round of six (party roster Phase 5, 2026-10-07).
@@ -95,13 +95,13 @@ DEF CHAMPION_R1_STEP EQU CHAMPION_LEVEL_STEP
 ; MINIBOSS_FIRST_BATTLECOUNT) but has a record, so every index is covered.
 ; Read by miniboss_records in data/trainers/party_specs.asm.
 DEF MINIBOSS_R1_MONS EQU 2
-DEF MINIBOSS_R1_BASE EQU 5
+DEF MINIBOSS_R1_BASE EQU 7
 DEF MINIBOSS_R1_STEP EQU 2
 DEF MINIBOSS_R2_MONS EQU 3
-DEF MINIBOSS_R2_BASE EQU 11
+DEF MINIBOSS_R2_BASE EQU 13
 DEF MINIBOSS_R2_STEP EQU 1
 DEF MINIBOSS_R3_MONS EQU 4
-DEF MINIBOSS_R3_BASE EQU 17
+DEF MINIBOSS_R3_BASE EQU 19
 DEF MINIBOSS_R3_STEP EQU 1
 DEF MINIBOSS_R4_MONS EQU 4
 DEF MINIBOSS_R4_BASE EQU 23
@@ -113,13 +113,13 @@ DEF MINIBOSS_R6_MONS EQU 5
 DEF MINIBOSS_R6_BASE EQU 34
 DEF MINIBOSS_R6_STEP EQU 1
 DEF MINIBOSS_R7_MONS EQU 6
-DEF MINIBOSS_R7_BASE EQU 41
+DEF MINIBOSS_R7_BASE EQU 38
 DEF MINIBOSS_R7_STEP EQU 1
 DEF MINIBOSS_R8_MONS EQU 6
-DEF MINIBOSS_R8_BASE EQU 47
+DEF MINIBOSS_R8_BASE EQU 45
 DEF MINIBOSS_R8_STEP EQU 1
 DEF MINIBOSS_R9_MONS EQU 6
-DEF MINIBOSS_R9_BASE EQU 53
+DEF MINIBOSS_R9_BASE EQU 52
 DEF MINIBOSS_R9_STEP EQU 1
 
 ; --- Wild-area stage-event trainers (optional battle) ------------------------
@@ -134,13 +134,13 @@ DEF MINIBOSS_R9_STEP EQU 1
 ; test_party_roster_curves.py fails if the two drift apart.
 ; Read by banded_round_spec / stage_event_banded_records in data/trainers/party_specs.asm.
 DEF STAGE_EVENT_R1_MONS EQU 2
-DEF STAGE_EVENT_R1_BASE EQU 5
+DEF STAGE_EVENT_R1_BASE EQU 7
 DEF STAGE_EVENT_R1_STEP EQU 1
 DEF STAGE_EVENT_R2_MONS EQU 3
-DEF STAGE_EVENT_R2_BASE EQU 12
+DEF STAGE_EVENT_R2_BASE EQU 14
 DEF STAGE_EVENT_R2_STEP EQU 1
 DEF STAGE_EVENT_R3_MONS EQU 4
-DEF STAGE_EVENT_R3_BASE EQU 16
+DEF STAGE_EVENT_R3_BASE EQU 18
 DEF STAGE_EVENT_R3_STEP EQU 1
 DEF STAGE_EVENT_R4_MONS EQU 4
 DEF STAGE_EVENT_R4_BASE EQU 23
@@ -152,13 +152,13 @@ DEF STAGE_EVENT_R6_MONS EQU 5
 DEF STAGE_EVENT_R6_BASE EQU 34
 DEF STAGE_EVENT_R6_STEP EQU 1
 DEF STAGE_EVENT_R7_MONS EQU 6
-DEF STAGE_EVENT_R7_BASE EQU 39
+DEF STAGE_EVENT_R7_BASE EQU 36
 DEF STAGE_EVENT_R7_STEP EQU 1
 DEF STAGE_EVENT_R8_MONS EQU 6
-DEF STAGE_EVENT_R8_BASE EQU 47
+DEF STAGE_EVENT_R8_BASE EQU 44
 DEF STAGE_EVENT_R8_STEP EQU 1
 DEF STAGE_EVENT_R9_MONS EQU 6
-DEF STAGE_EVENT_R9_BASE EQU 48
+DEF STAGE_EVENT_R9_BASE EQU 47
 DEF STAGE_EVENT_R9_STEP EQU 1
 
 ; --- Prize money -------------------------------------------------------------
@@ -191,15 +191,17 @@ DEF DIFF_LEVEL_PCT_HARD      EQU 0
 DEF DIFF_LEVEL_PCT_VERY_HARD EQU 10
 ; DIFF_PRIZE_BONUS_PCT_*: extra prize money, percent of base x level, added to the
 ; Amulet Coin's percent before ReadTrainer's money loop (read_trainer_party.asm).
-; Solved on the balance model (curve A+, BALANCE_FEEDBACK_PHASE0_2026-10-09.md):
-; HARD restores the pre-route-cut end-of-run money, +5%; each easier tier really
-; ends x1.1/1.2/1.3 of HARD despite its lower enemy levels. VERY HARD keeps HARD's
-; bonus and ends ~8% richer (FOLLOWUPS #63).
-DEF DIFF_PRIZE_BONUS_PCT_NORMAL    EQU 40  ; x1.396 solved
-DEF DIFF_PRIZE_BONUS_PCT_EASY      EQU 71  ; x1.709
-DEF DIFF_PRIZE_BONUS_PCT_VERY_EASY EQU 111 ; x2.110
-DEF DIFF_PRIZE_BONUS_PCT_HARD      EQU 16  ; x1.164
-DEF DIFF_PRIZE_BONUS_PCT_VERY_HARD EQU 16  ; x1.164
+; Re-solved 2026-10-10 on the ROM's Curve G (L8 start, routes 4 and 7 skipped, EXP
+; Share 68.75%): HARD ends at the pre-pass run's end-of-run money (b6025506 measured
+; with today's model: 185,321 spendable) +5%; each easier tier really ends
+; x1.1/1.2/1.3 of HARD despite its lower enemy levels. VERY HARD keeps HARD's bonus
+; and ends ~8% richer (FOLLOWUPS #63). Phase 0's 40/71/111/16 came from the model
+; before its quota fix.
+DEF DIFF_PRIZE_BONUS_PCT_NORMAL    EQU 41  ; x1.41 (was 40)
+DEF DIFF_PRIZE_BONUS_PCT_EASY      EQU 74  ; x1.74 (was 71)
+DEF DIFF_PRIZE_BONUS_PCT_VERY_EASY EQU 115 ; x2.15 (was 111)
+DEF DIFF_PRIZE_BONUS_PCT_HARD      EQU 18  ; x1.18 (was 16)
+DEF DIFF_PRIZE_BONUS_PCT_VERY_HARD EQU 18  ; x1.18 (was 16)
 
 ; --- Economy -------------------------------------------------------------
 ; BCD, $3000 = Y3000. Read by engine/movie/oak_speech/init_player_data.asm.
@@ -233,7 +235,7 @@ DEF WILD_BOSS_RARITY_BUMP EQU 102
 ; encounters, procedural_facility_gen.asm). They used to be two typed-out
 ; copies that could drift apart.
 MACRO wild_area_levels
-	db 7, 10, 14, 22, 27, 34, 40, 47, 55 ; each -1 on 2026-10-06 (wild mons sat ~0.5 over the team average)
+	db 9, 12, 16, 22, 27, 34, 37, 44, 54 ; Curve G 2026-10-10 (was 7, 10, 14, 22, 27, 34, 40, 47, 55)
 ENDM
 
 ; Chance out of 256 that an offered wild area carries a stage-event trainer.
@@ -256,10 +258,17 @@ DEF ROSTER_FULL_SIZE EQU 6
 ; round's gym-trainer block (data/balance/trainer_levels.asm), clamped to
 ; [FLOOR, CAP]. The range/2 itself is code (srl a), not a knob. Drives stage
 ; balls, the salesman, daycares and the bridge gift. The floor only binds in
-; round 1 (Curve F's gym block gives 6 there; round 2 already gives 9+): 8 puts
-; the first route's gift a couple of levels over the L5 starter (playtest
-; 2026-10-03: L6 was too low). The starter itself stays a flat 5 (.flatFive).
-DEF REWARD_LEVEL_FLOOR EQU 8
+; round 1 (Curve G's gym block gives 8 there; round 2 already gives 14): 10 puts
+; the first route's gift two levels over the L8 starter (8 until 2026-10-10,
+; when it sat over an L5 starter; playtest 2026-10-03: L6 was too low). The
+; starter itself is STARTER_LEVEL (.flatStart).
+DEF REWARD_LEVEL_FLOOR EQU 10
+
+; The run's opening level (player feedback, 2026-10-10; was a hard-coded 5):
+; Oak's Lab starter balls and rival (Rival1Data's Oak's Lab rows), and the
+; run-start Reward Room's balls and flat level (GetRewardMonLevel .flatStart).
+; Curve G is solved around it (BALANCE_FEEDBACK_PHASE0, curve_solver --curve G).
+DEF STARTER_LEVEL EQU 8
 DEF REWARD_LEVEL_CAP EQU 50
 
 ; --- HM/TM prices -------------------------------------------------------------

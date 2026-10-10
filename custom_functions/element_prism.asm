@@ -40,7 +40,7 @@
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
 RogueGymLeaderVictory::
-	call RogueAwardCredits2       ; same bank (custom_functions/credit_award.asm)
+	call RogueAwardCredits3       ; same bank (custom_functions/credit_award.asm); 3, was 2 until 2026-10-10
 
 	ld a, [wGymLeaderNo]
 	and a

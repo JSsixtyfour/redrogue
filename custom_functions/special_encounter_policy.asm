@@ -4,7 +4,8 @@ SECTION "Special Encounter Policy", ROMX, BANK[$2E]
 
 ; e = eligible kinds (bits 0/1), mandatory (bit 2), both doors special (bit 3).
 ; One of each before gym 4; two of each before gym 8. Completed encounters
-; alone satisfy a quota. Normal routes remain available until the joint
+; alone satisfy a quota. Routes skipped by back-to-back gyms (PAIR_BADGES_A/B)
+; are not slots, so each half counts only the routes it really has. Normal routes remain available until the joint
 ; deficit consumes every remaining route in this half.
 SpecialEncounterPolicy::
 	ld a, [wObtainedBadges]
@@ -58,7 +59,13 @@ SpecialEncounterPolicy::
 	and a
 	ret z
 	ld a, d
-	sub c ; remaining route slots, including this selection
+	sub c ; route slots left in this half, including this selection,
+	ld l, a
+	ld a, PAIR_BADGES_A ; minus the routes back-to-back gyms skip
+	call .skipInHalf
+	ld a, PAIR_BADGES_B
+	call .skipInHalf
+	ld a, l
 	cp h
 	jr c, .mandatory
 	jr z, .mandatory
@@ -85,6 +92,16 @@ SpecialEncounterPolicy::
 	ret
 .none
 	ld e, 0
+	ret
+
+; a = a pair's badge count: its route is skipped, so if it lies in [c, d) this
+; half has one route slot fewer (l).
+.skipInHalf
+	cp c
+	ret c
+	cp d
+	ret nc
+	dec l
 	ret
 
 ; Preserve the existing 25/50/75/100% curve. Offering a special does not
@@ -140,6 +157,8 @@ RecordStageMapLoad::
 	farcall BridgeRecordVisit
 	; Gym choice: the badge (and the statues) follow the gym entered, door 1 or 2.
 	farcall RogueGymChoiceMapLoad
+	; Back-to-back gyms: gym A's exits lead to the Reward Room, also after a reload.
+	farcall RoguePairMapLoad
 	ldh a, [hCurMap]
 	cp INDIGO_PLATEAU_LOBBY
 	ret nz

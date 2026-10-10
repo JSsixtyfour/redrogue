@@ -51,10 +51,10 @@ The gym leaders' team sizes and levels, straight from `constants/balance_constan
 
 | Band | Rounds | Team size | Slot 0 L | Ace L |
 |---|---|---|---|---|
-| 1 | 1-2 | 2-2 | 9-15 | 11-18 |
-| 2 | 3-4 | 3-3 | 19-27 | 25-31 |
+| 1 | 1-2 | 2-2 | 11-17 | 13-20 |
+| 2 | 3-4 | 3-3 | 21-26 | 27-30 |
 | 3 | 5-6 | 4-4 | 31-38 | 37-44 |
-| 4 | 7-8 | 5-6 | 43-47 | 51-57 |
+| 4 | 7-8 | 5-6 | 40-45 | 48-55 |
 
 <!-- END GENERATED: gym curve -->
 

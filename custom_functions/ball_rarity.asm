@@ -157,7 +157,16 @@ RefreshBallRarityCache::
 	jr nz, .rewardLoop
 	ld a, c
 	cp BALL_RARITY_REWARD_SLOT + 3
-	ret nz                   ; Reward Room / Oak's Lab: no item ball
+	jr z, .stageItem
+	; Oak's Lab: no item ball. The Reward Room's mid-run item ball is slot 4
+	; (BallRarityItemSlot leaves it alone while it is hidden).
+	ldh a, [hCurMap]
+	cp REWARD_ROOM
+	ret nz
+	ld a, [wRogueItem]
+	ld c, 4
+	jr BallRarityItemSlot
+.stageItem
 	ld a, [wRogueItem]
 	ld c, BALL_RARITY_ITEM_SLOT
 	; fall through

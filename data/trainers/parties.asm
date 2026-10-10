@@ -192,10 +192,11 @@ BlackbeltData:
 db 14, SPEAROW, 0
 
 Rival1Data:
-
-	db $FF, 5, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 5, RIVAL_STARTER_PLACEHOLDER, 0
-	db $FF, 5, RIVAL_STARTER_PLACEHOLDER, 0
+; Oak's Lab: STARTER_LEVEL (balance_constants.asm). Kept a literal because the
+; roster tooling parses levels as numbers; the model selfcheck ties them.
+	db $FF, 8, RIVAL_STARTER_PLACEHOLDER, 0
+	db $FF, 8, RIVAL_STARTER_PLACEHOLDER, 0
+	db $FF, 8, RIVAL_STARTER_PLACEHOLDER, 0
 ; Route 22
 	db $FF, 9, PIDGEY, 8, RIVAL_STARTER_PLACEHOLDER, 0
 	db $FF, 9, PIDGEY, 8, RIVAL_STARTER_PLACEHOLDER, 0

@@ -57,7 +57,7 @@ AILair_Script:
 	ld [wIsTrainerBattle], a
 	ld a, AILAIR_STATE_DONE
 	ld [wSilphCo1FCurScript], a
-	farcall RogueAwardCredits3 ; the largest award, live option bonuses included
+	farcall RogueAwardCredits5 ; 5 (was 3 until 2026-10-10), live option bonuses included
 	call UpdateSprites
 	ld a, TEXT_AILAIR_POSTBATTLE
 	ldh [hTextID], a

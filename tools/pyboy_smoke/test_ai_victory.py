@@ -1,6 +1,6 @@
 """Checkpoint 12 runtime contracts for the final AI victory and postgame.
 
-A win in the AI Lair awards the largest credit distribution, shows the
+A win in the AI Lair awards the largest credit distribution (5 since 2026-10-10), shows the
 placeholder line, sets EVENT_AI_DEFEATED, resets the run and saves, rolls
 credits without another Hall of Fame record, then sets EVENT_POST_GAME, saves
 again and reboots. Postgame, the facility maps drop the crisis overrides.
@@ -99,7 +99,7 @@ class AILairVictorySequenceTest(_EventHelpers):
             )
 
         # Observed and allowed to run for real.
-        observed = ("RogueAwardCredits3", "RogueResetRunState", "SaveGameData")
+        observed = ("RogueAwardCredits5", "RogueResetRunState", "SaveGameData")
         # Observed and skipped: text and button waits need input, the credits
         # and DelayFrame halt on a VBlank that never arrives under
         # call_routine, and Init never returns. Init is reached by `jp` from
@@ -140,7 +140,7 @@ class AILairVictorySequenceTest(_EventHelpers):
         self.assertEqual(
             order,
             [
-                "RogueAwardCredits3",
+                "RogueAwardCredits5",
                 "DisplayTextID",
                 "RogueResetRunState",
                 "SaveGameData",

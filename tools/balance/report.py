@@ -360,7 +360,35 @@ def history_row(g: parse.GameData, args) -> dict:
         row["leader_aces"] = " ".join(map(str, curve.leader_aces(g)))
     row["wild_levels"] = " ".join(map(str, g.tables.wild))
     row["wild_boss_levels"] = " ".join(map(str, g.tables.wild_boss))
+    # EXP and run shape (added 2026-10-10): what the level columns above were
+    # measured under, plus the team's level at every gym. Older rows leave them empty.
+    cfg = model.Config()
+    row["starter_level"] = cfg.starter_level
+    row["skip_rounds"] = " ".join(map(str, cfg.skip_rounds))
+    row["exp_share_pct"] = round(100 * model.exp_share_split(cfg.exp_all, 1600, 6)[0] / 1600, 2)
+    if lv:
+        for r, cp in enumerate(lv["rows"][:8], 1):
+            row[f"team_gym{r}"] = round(cp["team_rolled"], 2)
+    row.update(credit_awards())
     return row
+
+
+def credit_awards() -> dict:
+    """Credits paid per route boss / wild-area boss / gym leader, read from the
+    call sites (RogueAwardCreditsN; the N is the amount, before expansion bonuses)."""
+    import re
+    def amount(path: str, anchor: str) -> int | str:
+        text = (ROOT / path).read_text(encoding="utf-8")
+        i = text.find(anchor)
+        m = re.search(r"RogueAwardCredits(\d)", text[i:]) if i >= 0 else None
+        return int(m.group(1)) if m else ""
+    return {
+        "credits_route": amount("engine/battle/core.asm", "cp FINAL_ROUTE_STEP + 1"),
+        "credits_wild_boss": amount("scripts/ProceduralForest.asm", "farcall RogueAwardCredits"),
+        "credits_gym_leader": amount("custom_functions/element_prism.asm", "RogueGymLeaderVictory::"),
+        "credits_champion": amount("scripts/ChampionsRoom.asm", "farcall RogueAwardCredits"),
+        "credits_ai_lair": amount("scripts/AILair.asm", "farcall RogueAwardCredits"),
+    }
 
 
 def section_levels(g: parse.GameData, args, out: Path) -> list[str]:

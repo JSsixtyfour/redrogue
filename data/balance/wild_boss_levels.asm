@@ -10,12 +10,12 @@ PCBossLevelTable:
 ; ~6.5 over the team average on entry; it is now ~4.5 over. Row 0 is
 ; unreachable (wild areas start at count ROUND_BATTLES); the last entry
 ; (Victory Road) is 57.
-	db 9  ; round 0
-	db 17  ; round 1
-	db 21  ; round 2
+	db 11  ; round 0
+	db 19  ; round 1
+	db 23  ; round 2
 	db 28  ; round 3
 	db 34  ; round 4
 	db 40  ; round 5
-	db 46  ; round 6
-	db 53  ; round 7
-	db 57  ; round 8
+	db 43  ; round 6
+	db 50  ; round 7
+	db 56  ; round 8

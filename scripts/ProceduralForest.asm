@@ -162,7 +162,7 @@ ENDC
 	; RogueAwardCredits1 draws nothing - it adds to wPlayerCoins and
 	; wCreditsEarnedThisRun and returns - so it is safe to run immediately
 	; before the join-offer text box.
-	farcall RogueAwardCredits1
+	farcall RogueAwardCredits2 ; a wild area stands in for a route: 2, as a route (was 1)
 	call Delay3
 	ld a, TEXT_PROCEDURALFOREST_BOSS_OFFER
 	ldh [hTextID], a

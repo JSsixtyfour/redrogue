@@ -146,7 +146,7 @@ Rogue_Lab_Script_PokeballText_1:
 	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon1]
 	ld b, a
-	ld c, 5
+	ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_1
@@ -196,7 +196,7 @@ Rogue_Lab_Script_PokeballText_2:
 	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon2]
 	ld b, a
-	ld c, 5
+	ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_2
@@ -246,7 +246,7 @@ Rogue_Lab_Script_PokeballText_3:
 	ld [wSpawnDVSlot], a
 	ld a, [wRoguePokemon3]
 	ld b, a
-	ld c, 5
+	ld c, STARTER_LEVEL
 	call GivePokemon
 	jr nc, .pickRival
 	ld a, TOGGLE_ROGUE_STARTER_POKEBALL_3

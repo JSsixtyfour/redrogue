@@ -331,7 +331,7 @@ NoThanksText:
 	db "NO THANKS@"
 
 GetRewardMonLevel::
-	; Reward Room and Oak's Lab's starter selection use a flat level 5 regardless
+	; The run-start Reward Room and Oak's Lab's starter selection use a flat STARTER_LEVEL regardless
 	; of progress. Oak's Lab bridge gifts instead use the lobby's battle-count
 	; path because the room was entered as an interlude over the next stage.
 	; Everywhere else, the level is tailored to
@@ -349,17 +349,25 @@ GetRewardMonLevel::
 	;   the round (remainder 0-4 = route next, 5-9 = gym next).
 	ldh a, [hCurMap]
 	cp REWARD_ROOM
-	jr z, .flatFive
+	jr nz, .notRewardRoom
+	; Mid-run the Reward Room stands in for a back-to-back pair's skipped
+	; route (its ROUTE_BATTLES already credited), so it rewards like a stage.
+	ld a, [wObtainedBadges]
+	and a
+	jr z, .flatStart
+	jr .stageCaller
+.notRewardRoom
 	cp OAKS_LAB
 	jr nz, .checkLobby
 	ld a, [wWarpedFromWhichMap]
 	cp INDIGO_PLATEAU_LOBBY
 	jr z, .lobbyCaller
-	jr .flatFive
+	jr .flatStart
 .checkLobby
 	cp INDIGO_PLATEAU_LOBBY
 	jr z, .lobbyCaller
 
+.stageCaller
 	ld a, [wBattleCount]
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClampRoundStage
@@ -431,8 +439,8 @@ GetRewardMonLevel::
 .levelOk
 	ld [wCurEnemyLevel], a
 	ret
-.flatFive
-	ld a, 5
+.flatStart
+	ld a, STARTER_LEVEL
 	ld [wCurEnemyLevel], a
 	ret
 

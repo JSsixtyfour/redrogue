@@ -56,9 +56,36 @@ RogueItemUseDoorDice::
 ; so despite being INCLUDEd under "rogue" in main.asm it floats to another bank. This
 ; used to be a plain call on the belief the two shared a SECTION, and it jumped into
 ; whatever was mapped at that address in this bank (fixed 2026-09-24).
-	; On a gym cycle the reroll picks a fresh pair of gyms (and forgets a reveal).
-	xor a
+	; On a gym cycle the reroll forgets a reveal and rolls new gyms: a two-door
+	; lobby gets a fresh pair; a single-door one (a back-to-back pair's lobby, or
+	; the last gym) stays single, so a reroll never adds a door (2026-10-10).
+	ld a, [wGymChoice]
+	bit BIT_GYM_CHOICE_LATCHED, a
+	jr z, .rollDoors            ; a route visit: nothing latched
+	ld c, a
+	and GYM_CHOICE_DOOR1_MASK
+	ld b, a
+	ld a, c
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	ASSERT GYM_CHOICE_DOOR2_SHIFT == 3
+	cp b
+	ld a, 0                     ; (keeps the flags) forget the old choice
 	ld [wGymChoice], a
+	jr nz, .rollDoors           ; two doors: SelectAndPatchLobbyExit latches a pair
+	call RogueLatchGymChoice    ; one door: roll, then keep only door 1's gym
+	ld a, [wGymChoice]
+	and ~GYM_CHOICE_DOOR2_MASK
+	ld c, a
+	and GYM_CHOICE_DOOR1_MASK
+	add a
+	add a
+	add a
+	or c
+	ld [wGymChoice], a
+.rollDoors
 	call SelectAndPatchLobbyExit
 	farcall ProcPreloadAssignedWildArea
 	ld hl, DoorDiceRerolledText

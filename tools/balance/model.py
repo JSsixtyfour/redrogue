@@ -98,13 +98,19 @@ class Config:
     # the reward odds ladder), or a GROWTH_* name to pin the starter's curve (what-if).
     starter: str = "random"
     # --- What-ifs for the 2026-10-09 player-feedback pass (defaults = the ROM today) ---
-    starter_level: int = 5           # GivePokemon's level for the Oak's Lab pick (.flatFive)
-    rival_level: int = 5             # the Oak's Lab rival's starter
+    starter_level: int = 8           # STARTER_LEVEL (balance_constants.asm), 5 until 2026-10-10
+    rival_level: int = 8             # the Oak's Lab rival's starter (Rival1Data, STARTER_LEVEL)
     # Rounds (1-8) whose route is skipped: the previous gym's leader is followed by
     # the Reward Room (one reward join) and this round's gym, and wBattleCount gets
     # the ROUTE_BATTLES credit a wild-area exit gives. () = every round has a route.
-    skip_rounds: tuple[int, ...] = ()
+    # The ROM since 2026-10-10: PAIR_BADGES_A/B + 1 (round_constants.asm), checked
+    # against the knobs by --selfcheck.
+    skip_rounds: tuple[int, ...] = (4, 7)
     money_mult: float = 1.0          # per-tier prize money multiplier (proposed ladder)
+    # Bridge (gift) rooms, two per run (BridgeShouldOccur): the chance the player
+    # takes a Pokemon when one of the room's 3 offers is a Pokemon. 0 = never
+    # (items/moves/effects instead), which drops bridges out of the level curve.
+    bridge_take_mon: float = 1.0
 
 
 # The 2026-10-09 Phase 0 PROPOSAL, kept for tools/balance/feedback_curves.py's
@@ -518,7 +524,7 @@ def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool, boost: boo
     return e
 
 
-EXP_SHARE_CANDIDATES = ("equal", "equal6875", "equal75", "a", "b", "c")
+EXP_SHARE_CANDIDATES = ("equal", "equal625", "equal6875", "equal75", "a", "b", "c")
 
 
 def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
@@ -528,16 +534,18 @@ def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
          half, then the whole party (fighter included) splits the other half.
       b: the fighter keeps 100%; each benched mon gets 25%.
       c: the fighter keeps 100%; the bench splits one 50% pool.
-      equal: THE ROM'S RULE (chosen 2026-09-28 at 50%, raised to 62.5% on
-         2026-10-02): every party mon, the fighter included, gets the value
-         halved rounding up plus an eighth, once (FaintEnemyPokemon .expShare).
+      equal: THE ROM'S RULE (chosen 2026-09-28 at 50%, 62.5% on 2026-10-02, 68.75%
+         on 2026-10-10 with Curve G): every party mon, the fighter included, gets
+         the value halved rounding up plus an eighth plus a sixteenth, once
+         (FaintEnemyPokemon .expShare). Same as equal6875.
+      equal625: the ROM's rule 2026-10-02..10-09 (half rounding up + an eighth).
       equal75: what-if (2026-10-09): the same rule with a quarter instead of an eighth (75%).
-      equal6875: what-if (2026-10-09): half rounding up + an eighth + a sixteenth (68.75%)."""
+      equal6875: half rounding up + an eighth + a sixteenth (68.75%), the ROM's since 2026-10-10."""
     bench = party - 1
-    if mode == "equal":
+    if mode == "equal625":
         share = base_exp - (base_exp >> 1) + (base_exp >> 3)
         return share, share
-    if mode == "equal6875":
+    if mode in ("equal", "equal6875"):
         share = base_exp - (base_exp >> 1) + (base_exp >> 3) + (base_exp >> 4)
         return share, share
     if mode == "equal75":
@@ -682,6 +690,7 @@ class Run:
     stages: list[str] = field(default_factory=list)
     wild_types: list[str] = field(default_factory=list)   # the type of each wild area entered
     offers: list[str] = field(default_factory=list)   # special kind offered per lobby visit
+    bridges: list[tuple[int, str]] = field(default_factory=list)  # (badges, "mon"/"other") per gift visit
     total_money: int = 0      # every yen the run earns, the Champion's prize included
     spendable_money: int = 0  # the same, minus DEAD_MONEY_KINDS winnings
     # One row per enemy-side battle: (round 1-8, 9 = Victory Road/E4/Champion,
@@ -714,6 +723,7 @@ class Simulator:
         self.rival_starter = self.rng.choice([b for i, b in enumerate(balls) if i != pick])
         self.count = 0
         self.ko_turn = 0
+        self.bridge_count = 0
 
     # --- bookkeeping ---
     def _penalize(self, m: "Member", exp: int) -> int:
@@ -767,6 +777,35 @@ class Simulator:
         if len(self.members) < 6:
             sp = roll_reward_mon(self.g, self.cfg, level, self.rng)
             self.members.append(Member(level, len(self.run.battles), growth=self.g.species[sp].growth, species=sp))
+
+    def bridge_visit(self, rnd: int) -> None:
+        """A gym-next lobby visit's gift roll (BridgeRollAndAssign / BridgeShouldOccur):
+        one gift before gym 2 or 3, one before gym 5 or 6 (badges 1-2 and 4-5; a
+        back-to-back pair's lobby never hosts one); each eligible lobby is 1-in-
+        (remaining), the window's last is mandatory. The player enters one of two
+        distinct rooms; its giver offers 3 distinct gifts (rogue_gift_randomized_batch;
+        eligibility rules not modelled) and a Pokemon joins at GetRewardMonLevel's
+        lobby gym-next level, the same as a stage reward of this round."""
+        k, rng = self.g.knobs, self.rng
+        badges = rnd - 1
+        pairs = (k["PAIR_BADGES_A"], k["PAIR_BADGES_B"])
+        windows = ((1, pairs[0] - 1), (pairs[0] + 1, pairs[1] - 1))
+        if self.bridge_count >= len(windows) or badges in pairs:
+            return
+        lo, hi = windows[self.bridge_count]
+        if badges < lo:
+            return
+        if badges <= hi and rng.randrange(hi - badges + 1):
+            return
+        self.bridge_count += 1
+        lists = list(self.g.bridge_gifts.values())
+        room = rng.sample(range(len(lists)), 2)[rng.randrange(2)]
+        offers = rng.sample(lists[room], min(3, len(lists[room])))
+        if any(o in ("MON", "MON_EVOLVE") for o in offers) and rng.random() < self.cfg.bridge_take_mon:
+            self.run.bridges.append((badges, "mon"))
+            self.join(reward_level(self.g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+        else:
+            self.run.bridges.append((badges, "other"))
 
     def checkpoint(self, rnd: int, label: str, enemy_ace: int) -> None:
         ace = self.members[0]
@@ -829,6 +868,7 @@ class Simulator:
                 self.count += k["ROUTE_BATTLES"]
                 for _ in range(cfg.reward_joins):
                     self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+                self.bridge_visit(rnd)   # never fires on a pair's lobby; kept for symmetry
                 for _ in range(k["GYM_TRAINER_BATTLES"]):
                     self.fight(roster_battle(g, cfg, self.count, rng))
                 leader = leader_battle(g, cfg, lineup[rnd - 1], rnd, rng)
@@ -876,6 +916,7 @@ class Simulator:
                 self.route(None)
             for _ in range(cfg.reward_joins):
                 self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+            self.bridge_visit(rnd)      # the gym-next lobby
 
             for _ in range(k["GYM_TRAINER_BATTLES"]):
                 self.fight(roster_battle(g, cfg, self.count, rng))
@@ -1016,8 +1057,9 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("share b", exp_share_split("b", 120, 6), (120, 30))
     check("share c", exp_share_split("c", 120, 6), (120, 12))
     check("share c solo", exp_share_split("c", 120, 1), (120, 0))
-    check("share equal odd", exp_share_split("equal", 55, 6), (34, 34))   # 28 + 6
-    check("share equal max", exp_share_split("equal", 255, 6), (159, 159))  # 128 + 31, no overflow
+    check("share equal odd", exp_share_split("equal", 55, 6), (37, 37))   # 28 + 6 + 3
+    check("share equal max", exp_share_split("equal", 255, 6), (174, 174))  # 128 + 31 + 15, no overflow
+    check("share equal625 odd", exp_share_split("equal625", 55, 6), (34, 34))  # 28 + 6 (before 2026-10-10)
 
     # Difficulty: RogueApplyDifficulty, the 2026-10-09 ladder, on L43 (30% truncates).
     for diff, want in (("hard", 43), ("normal", 39), ("easy", 35), ("very_easy", 31), ("very_hard", 47)):
@@ -1071,7 +1113,7 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
         trainer = [bt for bt in run.battles if bt.trainer]
         check("trainer battles", len(trainer),
               1 + k["NUM_ROGUE_ROUNDS"] * k["ROUND_BATTLES"] + k["VICTORY_ROAD_BATTLES"] + k["NUM_E4_BATTLES"] + 1
-              - k["ROUTE_BATTLES"] * n_wild + n_event)
+              - k["ROUTE_BATTLES"] * (n_wild + len(sim.cfg.skip_rounds)) + n_event)
         leaders = [bt for bt in run.battles if bt.kind == "leader"]
         check("leader counts", [bt.count for bt in leaders],
               [k["ROUND_BATTLES"] * r for r in range(1, k["NUM_ROGUE_ROUNDS"] + 1)])
@@ -1112,6 +1154,22 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     # SpecialEncounterPolicy's joint quota (completions, by half-run) guarantees
     # two of each per run even for a player who declines every optional door,
     # with or without skipped routes (the latter on the Phase 4 re-basing).
+    k = g.knobs
+    # Bridges: exactly two gift visits per run, in their windows, never on a pair's lobby.
+    for run in simulate(g, Config(), runs, seed=13):
+        when = [b for b, _ in run.bridges]
+        if not (len(when) == 2 and 1 <= when[0] <= k["PAIR_BADGES_A"] - 1
+                and k["PAIR_BADGES_A"] + 1 <= when[1] <= k["PAIR_BADGES_B"] - 1):
+            fails.append(f"bridge visits at badges {when}")
+            break
+    import re as _re
+    _rival = (parse.ROOT / "data/trainers/parties.asm").read_text(encoding="utf-8")
+    _m = _re.search(r"^Rival1Data:.*?db \$FF, (\d+),", _rival, _re.S | _re.M)
+    check("Rival1Data's Oak's Lab level = STARTER_LEVEL", int(_m.group(1)) if _m else None, k["STARTER_LEVEL"])
+    check("default starter/rival level = STARTER_LEVEL (balance_constants.asm)",
+          (Config().starter_level, Config().rival_level), (k["STARTER_LEVEL"],) * 2)
+    check("default skip_rounds = the ROM's pairs (round_constants.asm PAIR_BADGES_A/B + 1)",
+          Config().skip_rounds, (k["PAIR_BADGES_A"] + 1, k["PAIR_BADGES_B"] + 1))
     for skips in ((), (4, 7)):
         for run in simulate(g, Config(take_wild=0.0, take_miniboss=0.0, skip_rounds=skips), runs, seed=11):
             wild, mini = run.stages.count("wild"), run.stages.count("miniboss")
@@ -1142,11 +1200,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--difficulty", choices=DIFFICULTIES, default="hard")
     ap.add_argument("--tier", choices=tuple(PROPOSED_TIERS), default=None,
                     help="proposed 2026-10-09 ladder (level %% and money x); overrides --difficulty")
-    ap.add_argument("--starter-level", type=int, default=5, help="Oak's Lab starter (and rival) level")
-    ap.add_argument("--skip-rounds", default="", metavar="R,R",
-                    help="rounds whose route is skipped (back-to-back gyms via the Reward Room), e.g. 4,7")
+    ap.add_argument("--starter-level", type=int, default=8, help="Oak's Lab starter (and rival) level")
+    ap.add_argument("--skip-rounds", default=None, metavar="R,R",
+                    help="rounds whose route is skipped (back-to-back gyms via the Reward Room); "
+                         "default the ROM's (4,7), 'none' for every round's route")
     ap.add_argument("--exp-all", default="equal",
-                    help="equal (the ROM's EXP Share on), off, a retired key-item tier 0-3, or candidate a/b/c")
+                    help="equal (the ROM's EXP Share on, 68.75%%), equal625 (before 2026-10-10), off, "
+                         "a retired key-item tier 0-3, or candidate a/b/c")
     ap.add_argument("--no-exp-boost", action="store_true", help="drop BoostExp's x1.5")
     ap.add_argument("--round-shape", default=None, metavar="ROUTE,GYM",
                     help="what-if battles per stage and gym trainers per gym, e.g. 4,3")
@@ -1183,7 +1243,8 @@ def main(argv: list[str] | None = None) -> int:
         money_mult=tier_money,
         starter_level=args.starter_level,
         rival_level=args.starter_level,
-        skip_rounds=tuple(int(x) for x in args.skip_rounds.split(",") if x.strip()),
+        skip_rounds=Config.skip_rounds if args.skip_rounds is None else
+        tuple(int(x) for x in args.skip_rounds.split(",") if x.strip() and x.strip() != "none"),
         exp_all=None if args.exp_all == "off" else args.exp_all if args.exp_all in EXP_SHARE_CANDIDATES
         else int(args.exp_all),
         exp_boost=not args.no_exp_boost,

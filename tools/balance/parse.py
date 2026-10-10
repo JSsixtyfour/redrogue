@@ -421,6 +421,35 @@ def load_item_prices() -> dict[str, int]:
     return out
 
 
+def load_bridge_gifts() -> dict[str, list[str]]:
+    """{giver list label: [gift kind per entry]} from engine/events/bridge_gift_menu.asm
+    (each giver's list: `db count` then `gift_entry KIND, ...`). Kinds are the
+    GIFT_* names without the prefix: MON, MON_EVOLVE, ITEM, TEACH_MOVE, SPECIAL,
+    GLOBAL_EFFECT, SELECTED_EFFECT."""
+    out: dict[str, list[str]] = {}
+    cur = None
+    for raw in _lines("engine/events/bridge_gift_menu.asm"):
+        m = re.match(r"^(\w+GiftList):", raw)
+        if m:
+            cur = m.group(1)
+            out[cur] = []
+            continue
+        if cur is None:
+            continue
+        line = raw.split(";")[0].strip()
+        if not line or line.startswith("db "):
+            continue
+        m = re.match(r"gift_entry\s+GIFT_(\w+)\s*,", line)
+        if m:
+            out[cur].append(m.group(1))
+        else:
+            cur = None
+    out = {k: v for k, v in out.items() if v}
+    if not out:
+        raise ValueError("bridge_gift_menu.asm: no gift lists found")
+    return out
+
+
 def load_credit_prices() -> dict[str, int]:
     """{ITEM_NAME: credits} from data/items/prices.asm's CreditItemPrices block
     (the Credit Exchange key-item seller; upgrade costs live elsewhere)."""
@@ -487,6 +516,7 @@ class GameData:
     constants: dict[str, int]
     item_prices: dict[str, int]
     wild_paths: dict[str, dict[str, list[int]]]
+    bridge_gifts: dict[str, list[str]] = field(default_factory=dict)
 
 
 def load_all() -> GameData:
@@ -508,6 +538,7 @@ def load_all() -> GameData:
         constants=consts,
         item_prices=load_item_prices(),
         wild_paths=load_wild_paths(),
+        bridge_gifts=load_bridge_gifts(),
     )
     _validate(data)
     return data

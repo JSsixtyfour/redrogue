@@ -75,9 +75,10 @@ ENDC
 
 ; ------------------------------------------------------------
 ; BridgeShouldOccur - OUT: carry set = a bridge fires this visit.
-; One gift before gyms 2-4, another before gyms 5-7. Each remaining eligible
+; One gift before gyms 2-3, another before gyms 5-6. Each remaining eligible
 ; gym is equally likely; the last one in each window is mandatory.
-; Counts are badges already earned, so the windows are 1-3 and 4-6.
+; Counts are badges already earned, so the windows are 1-2 and 4-5: the
+; back-to-back pairs' lobbies (PAIR_BADGES_A/B) are never eligible.
 BridgeShouldOccur:
 	call GetBridgeCount           ; a = current count (0 or 1 here)
 	add a
@@ -88,6 +89,11 @@ BridgeShouldOccur:
 	push hl
 	call MiniBossCountBadges
 	pop hl
+	; A back-to-back pair's lobby comes straight from the Reward Room.
+	cp PAIR_BADGES_A
+	jr z, .no
+	cp PAIR_BADGES_B
+	jr z, .no
 	cp [hl]
 	jr c, .no
 	ld b, a
@@ -108,8 +114,11 @@ BridgeShouldOccur:
 	ret
 
 BridgeGuaranteeThresholds:
-	db 1, 3 ; first gift: before gym 2, 3 or 4
-	db 4, 6 ; second gift: before gym 5, 6 or 7
+	; Each window ends before its back-to-back pair's lobby, which never hosts
+	; a gift (until 2026-10-09 these were 1-3 and 4-6).
+	db 1, PAIR_BADGES_A - 1 ; first gift: before gym 2 or 3
+	db PAIR_BADGES_A + 1, PAIR_BADGES_B - 1 ; second gift: before gym 5 or 6
+	ASSERT PAIR_BADGES_A - 1 >= 1 && PAIR_BADGES_B - 1 >= PAIR_BADGES_A + 1
 
 ; ------------------------------------------------------------
 ; BridgePickTwoRooms - pick two DISTINCT not-yet-offered bridge rooms, assign to

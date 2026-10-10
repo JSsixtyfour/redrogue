@@ -2206,7 +2206,7 @@ SpinarakEvosMoves:
 	db 17, NIGHT_SHADE
 	db 20, FURY_SWIPES
     db 23, PIN_MISSILE
-	db 24, PSYCHIC ; was SPIDER_WEB
+	db 24, PSYCHIC_M ; was SPIDER_WEB
     db 30, CONFUSE_RAY
 	db 35, SCREECH
 	db 40, AGILITY
@@ -2226,7 +2226,7 @@ AriadosEvosMoves:
 	db 20, FURY_SWIPES
     db 22, SWORDS_DANCE
     db 25, PIN_MISSILE
-	db 27, PSYCHIC ; was SPIDER_WEB
+	db 27, PSYCHIC_M ; was SPIDER_WEB
     db 32, CONFUSE_RAY
 	db 37, SCREECH
 	db 42, AGILITY
@@ -2482,10 +2482,10 @@ ZubatEvosMoves:
 ; Learnset
 	db 5, SUPERSONIC
 	db 7, GUST
+    db 10, ACID
 	db 12, BITE
 	db 19, CONFUSE_RAY
 	db 23, WING_ATTACK
-	db 27, ACID
 	db 36, SLUDGE
 	db 46, HAZE
 	db 0
@@ -2623,18 +2623,18 @@ BeedrillEvosMoves:
 CrobatEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
+; Learnset - was from KEP
 ; LEECH_LIFE/TACKLE/BITE/SCREECH already granted at level 1.
-	db 7, WING_ATTACK
-	db 12, GUST
-	db 14, SUPERSONIC
-	db 20, BITE
-	db 26, CONFUSE_RAY
-	db 32, DISABLE
-	db 38, SCREECH
-	db 42, SLUDGE
-	db 46, HAZE
-	db 50, AGILITY
+	db 5, SUPERSONIC
+	db 7, GUST
+    db 10, ACID
+	db 12, BITE
+	db 19, CONFUSE_RAY
+	db 22, WING_ATTACK
+	db 36, SLUDGE
+    db 40, SCREECH
+	db 47, HAZE
+	db 51, AGILITY
 	db 0
 
 DodrioEvosMoves:
@@ -2890,10 +2890,10 @@ GolbatEvosMoves:
 ; Learnset
 	db 5, SUPERSONIC
 	db 7, GUST
+    db 10, ACID
 	db 12, BITE
 	db 19, CONFUSE_RAY
 	db 22, WING_ATTACK
-	db 27, ACID
 	db 36, SLUDGE
 	db 46, HAZE
 	db 0
@@ -4359,12 +4359,12 @@ CorsolaEvosMoves:
 ; Learnset - TACKLE already granted at level 1; MIRROR_COAT/ANCIENTPOWER do
 ; not exist in Gen 1, filled with METRONOME.
 	db 7, HARDEN
-	db 13, BUBBLE
+	db 10, BUBBLE
+    db 15, ROCK_THROW
+    db 17, WATER_GUN
 	db 19, RECOVER
-	db 25, BUBBLEBEAM
-	db 31, SPIKE_CANNON
-	db 37, METRONOME ; was MIRROR_COAT
-	db 43, METRONOME ; was ANCIENTPOWER
+	db 23, BUBBLEBEAM
+	db 30, SPIKE_CANNON
 	db 0
 
 RemoraidEvosMoves:

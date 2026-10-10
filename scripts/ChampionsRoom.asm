@@ -253,7 +253,7 @@ ChampionsRoomRivalDefeatedScript:
 	ld [wIsTrainerBattle], a
 	call UpdateSprites
 	SetEvent EVENT_BEAT_CHAMPION_RIVAL
-	farcall RogueAwardCredits3
+	farcall RogueAwardCredits4 ; 4 (was 3 until 2026-10-10)
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 

@@ -3,7 +3,13 @@ import io
 from itertools import product
 
 from test_smoke import HarnessTestCase, REPO_ROOT
-from source_constants import parse_map_constants, parse_trainer_class_indexes
+from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_class_indexes
+
+ROUNDS = parse_rgbds_constants(REPO_ROOT / 'constants/round_constants.asm')
+# Back-to-back gyms: no route is selected at these badge counts (gym-next stays set).
+PAIRS = (ROUNDS['PAIR_BADGES_A'], ROUNDS['PAIR_BADGES_B'])
+ROUTE_BADGES = [b for b in range(1, 8) if b not in PAIRS]
+HALF_ENDS = (max(b for b in ROUTE_BADGES if b < 4), max(ROUTE_BADGES))
 
 
 def return_now(h, value):
@@ -73,7 +79,7 @@ class SpecialScheduleTest(HarnessTestCase):
         states = {(0, 0, 0)}
         probes = 0
         try:
-            for badges in range(1, 8):
+            for badges in ROUTE_BADGES:
                 following = set()
                 for mini, wild, pressure in states:
                     # All comparison boundaries of the 25/50/75% curve and
@@ -101,18 +107,19 @@ class SpecialScheduleTest(HarnessTestCase):
                             cap = 1 if badges < 4 else 2
                             self.assertLessEqual(next_state[0], cap)
                             self.assertLessEqual(next_state[1], cap)
-                            if badges in (3, 7):
+                            if badges in HALF_ENDS:  # each half's last route
                                 self.assertEqual(next_state[:2], (cap, cap))
                             following.add(next_state)
                 states = following
             self.assertTrue(all(s[:2] == (2, 2) for s in states))
-            print(f'\nSpecial policy: {probes} ROM probes; all reachable choices meet 1+1 / 2+2 quotas')
+            print(f'\nSpecial policy: {probes} ROM probes over route counts {ROUTE_BADGES}; '
+                  'all reachable choices meet 1+1 / 2+2 quotas')
         finally:
             h.pyboy.hook_deregister(bank, ready)
 
     def test_mixed_and_mandatory_doors_and_completion_accounting(self):
         h = self.harness
-        self.setup_selection(2, 0, 0, 0)  # two requirements, two slots
+        self.setup_selection(1, 0, 0, 0)  # two requirements, two slots (badges 1 and 2)
         h.call_routine('SpecialEncounterRollAndAssign')
         flags = h.read8('wRogueFlagsBitfield')
         self.assertNotEqual(flags & 0x30, 0)
@@ -139,7 +146,7 @@ class SpecialScheduleTest(HarnessTestCase):
         self.assertEqual(h.read8('wRoutesSinceSpecial'), 0)
         for mini, wild, expected in ((1, 0, 'wild'), (0, 1, 'mini')):
             self.reset()
-            self.setup_selection(3, mini, wild, 0)
+            self.setup_selection(HALF_ENDS[0], mini, wild, 0)  # the half's last route
             h.call_routine('SpecialEncounterRollAndAssign')
             door = h.read8('wLobbyDoor1StageMap')
             self.assertEqual(door, h.read8('wLobbyDoor2StageMap'))
@@ -178,7 +185,8 @@ class SpecialScheduleTest(HarnessTestCase):
                 self.assertEqual(h.read8('wBridgeState') >> 6, count)
                 door = h.read8('wLobbyDoor1StageMap')
                 if door != gym:
-                    self.assertIn(badges, (1, 2, 3) if count == 0 else (4, 5, 6))
+                    # Windows end before each pair's lobby, which never hosts a gift.
+                    self.assertIn(badges, (1, 2) if count == 0 else (4, 5))
                     self.assertNotEqual(door, h.read8('wLobbyDoor2StageMap'))
                     h.write8('hCurMap', door)
                     h.write8('wWarpedFromWhichMap', self.maps['INDIGO_PLATEAU_LOBBY'])

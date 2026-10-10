@@ -140,9 +140,14 @@ class CurveBlockTest(unittest.TestCase):
         self.assertIn("| 1 | 1-2 | 2-2 | 9-15 | 11-18 |", rows)
         self.assertIn("| 4 | 7-8 | 5-6 | 43-47 | 51-57 |", rows)
 
+    # The live curve (Curve G, 2026-10-10). ROUNDS above is Curve F, kept as a
+    # fixed fixture for the formatting tests.
+    CURRENT = {1: (2, 11, 2), 2: (2, 17, 3), 3: (3, 21, 3), 4: (3, 26, 2),
+               5: (4, 31, 2), 6: (4, 38, 2), 7: (5, 40, 2), 8: (6, 45, 2)}
+
     def test_block_tracks_the_constants(self):
         loaded = gpr.load_curve()
-        for r, (mons, base, step) in self.ROUNDS.items():
+        for r, (mons, base, step) in self.CURRENT.items():
             self.assertEqual((mons, base, step), loaded[r],
                              "GYM_R{} changed: update this test and rerun the tool".format(r))
 

@@ -873,12 +873,14 @@ FaintEnemyPokemon:
 	jr .tryMidBattleEvo
 
 ; EXP Share on: an equal share. Every party mon, the fighter included, gets
-; 62.5% of a KO in one pass; the fighter gets no separate award of its own
+; 68.75% of a KO in one pass (62.5% until 2026-10-10: Curve G, the L8 start and
+; two fewer routes, BALANCE_FEEDBACK_PHASE0); the fighter gets no separate award of its own
 ; (BALANCE_PHASE5_PLAN.md C, chosen 2026-09-28 at 50%; raised to 62.5% on
 ; 2026-10-02, BALANCE_LEVEL_SPIKE.md: at 50% a rolled starter fell 5-7 levels
 ; behind every leader). Scale the values that determine exp gain: the enemy mon
 ; base stats are added to stat exp, and the base exp is the same span, so both
-; are scaled together. 62.5% = half (rounding up) + an eighth; no overflow.
+; are scaled together. 68.75% = half (rounding up) + an eighth + a sixteenth;
+; at most 128 + 31 + 15 = 174, no overflow.
 .expShare
 	ld hl, wEnemyMonBaseStats
 	ld b, NUM_STATS + 2
@@ -893,6 +895,9 @@ FaintEnemyPokemon:
 	srl a
 	srl a
 	srl a                      ; value >> 3
+	ld d, a
+	srl a                      ; value >> 4
+	add d
 	add c
 	ld [hli], a
 	dec b
@@ -1043,7 +1048,7 @@ TrainerBattleVictory:
 	; BEFORE it (measured 2026-09-28, BALANCE_PHASE5_PLAN.md A2).
 	cp FINAL_ROUTE_STEP + 1
 	jr nz, .creditsDone
-	farcall RogueAwardCredits1
+	farcall RogueAwardCredits2 ; a route: 2 (was 1 until 2026-10-10)
 .creditsDone
 	call EndLowHealthAlarm
 	ld b, MUSIC_DEFEATED_GYM_LEADER
