@@ -281,7 +281,7 @@ Music_Credits_Ch1::
 	note A_, 1
 	note_type 12, 11, 1
 	note A_, 8
-	sound_ret
+	sound_loop 0, Music_Credits_Ch1 ; loops: the Red Rogue roll outlasts the song
 
 Music_Credits_Ch2::
 	duty_cycle 3
@@ -570,7 +570,7 @@ Music_Credits_Ch2::
 	note A_, 1
 	note_type 12, 12, 1
 	note A_, 8
-	sound_ret
+	sound_loop 0, Music_Credits_Ch2
 
 Music_Credits_Ch3::
 	note_type 12, 1, 0
@@ -713,7 +713,7 @@ Music_Credits_Ch3::
 	note A_, 1
 	note A_, 1
 	rest 7
-	sound_ret
+	sound_loop 0, Music_Credits_Ch3
 
 .sub1:
 	octave 4

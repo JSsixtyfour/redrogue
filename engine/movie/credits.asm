@@ -1,7 +1,19 @@
+; A normal Champion clear shows the Hall of Fame only. The credits roll only
+; after the final AI victory (scripts/AILair.asm) and from the title menu.
 HallOfFamePC:
-	farcall AnimateHallOfFame
+	farjp AnimateHallOfFame
+
+; Title menu CREDITS (MainMenuCredits in engine/menus/main_menu.asm). Ends in
+; a soft reset back to the title screen, like the end of a run.
+MainMenuCredits_::
+	farcall AIVictoryCredits
+	ld c, 60
+	call DelayFrames
+	call WaitForTextScrollButtonPress
+	jp Init
+
 ; AIVictoryCredits (engine/movie/hall_of_fame.asm) enters here after reproducing
-; the screen state AnimateHallOfFame leaves, so the AI victory rolls the same
+; the screen state AnimateHallOfFame leaves, so the AI victory rolls the
 ; credits without recording another Hall of Fame team.
 HallOfFameCredits::
 	call ClearScreen
@@ -35,6 +47,10 @@ HallOfFameCredits::
 	call DelayFrames
 	xor a
 	ld [wNumCreditsMonsDisplayed], a
+	; SELECT starts "held" so a press already down on entry doesn't toggle;
+	; START starts unarmed for the same reason (the title menu watches START).
+	ld a, 1 << BIT_CREDITS_SELECT_HELD
+	ld [wCreditsFlags], a
 	jp Credits
 
 FadeInCredits:
@@ -45,9 +61,65 @@ FadeInCredits:
 	ldh [rBGP], a
     call UpdateGBCPal_BGP
 	ld c, 5
-	call DelayFrames
+	call CreditsDelayFrames
 	dec b
 	jr nz, .loop
+	ret
+
+; DelayFrames for the roll: wait c frames, counting CREDITS_FAST_STEP per frame
+; while SELECT's fast mode is on, and returning at once when START asks to skip.
+; Preserves b, de and hl (FadeInCredits and Credits keep state in them).
+CreditsDelayFrames:
+	call DelayFrame
+	call CreditsReadInput
+	bit BIT_CREDITS_SKIP, a
+	ret nz
+	bit BIT_CREDITS_FAST, a
+	jr nz, .fast
+	dec c
+	jr nz, CreditsDelayFrames
+	ret
+.fast
+	ld a, c
+	sub CREDITS_FAST_STEP
+	ret c
+	ret z
+	ld c, a
+	jr CreditsDelayFrames
+
+; Update wCreditsFlags from hJoyInput (VBlank's ReadJoypad keeps it current).
+; START skips only after it has been seen released; SELECT toggles on each new
+; press. Returns the new flags in a. Preserves bc, de and hl.
+CreditsReadInput:
+	push bc
+	ldh a, [hJoyInput]
+	ld b, a
+	ld a, [wCreditsFlags]
+	ld c, a
+	bit B_PAD_START, b
+	jr nz, .startDown
+	set BIT_CREDITS_START_ARMED, c
+	jr .select
+.startDown
+	bit BIT_CREDITS_START_ARMED, c
+	jr z, .select
+	set BIT_CREDITS_SKIP, c
+.select
+	bit B_PAD_SELECT, b
+	jr z, .selectUp
+	bit BIT_CREDITS_SELECT_HELD, c
+	jr nz, .store
+	set BIT_CREDITS_SELECT_HELD, c
+	ld a, c
+	xor 1 << BIT_CREDITS_FAST
+	ld c, a
+	jr .store
+.selectUp
+	res BIT_CREDITS_SELECT_HELD, c
+.store
+	ld a, c
+	ld [wCreditsFlags], a
+	pop bc
 	ret
 
 DisplayCreditsMon:
@@ -204,10 +276,11 @@ Credits:
 	jr z, .showTheEnd
 	push hl
 	push hl
-	ld hl, CreditsTextPointers
-	add a
+	; 16-bit index: the string ids passed 127 with the Red Rogue sections
 	ld c, a
 	ld b, 0
+	ld hl, CreditsTextPointers
+	add hl, bc
 	add hl, bc
 	ld e, [hl]
 	inc hl
@@ -231,7 +304,12 @@ Credits:
 .showTextAndShowMon
 	ld c, 110
 .next1
-	call DelayFrames
+	call CreditsDelayFrames
+	; START skips at a screen boundary, before a mon scroll can start. The
+	; stack holds the one pushed de that .showTheEnd pops.
+	ld a, [wCreditsFlags]
+	bit BIT_CREDITS_SKIP, a
+	jr nz, .showTheEnd
 	call DisplayCreditsMon
 	jr .nextCreditsScreen
 .fadeInText
@@ -241,7 +319,10 @@ Credits:
 .showText
 	ld c, 140
 .next2
-	call DelayFrames
+	call CreditsDelayFrames
+	ld a, [wCreditsFlags]
+	bit BIT_CREDITS_SKIP, a
+	jr nz, .showTheEnd
 	jr .nextCreditsScreen
 .showCopyrightText
 	push de
@@ -250,6 +331,13 @@ Credits:
 	pop de
 	jr .nextCreditsCommand
 .showTheEnd
+	; Music_Credits loops now that the roll outlasts it: fade it out here, the
+	; same way HoFFadeOutScreenAndMusic does.
+	ld a, 10
+	ld [wAudioFadeOutCounterReloadValue], a
+	ld [wAudioFadeOutCounter], a
+	ld a, $ff
+	ld [wAudioFadeOutControl], a
 	ld c, 16
 	call DelayFrames
 	call FillMiddleOfScreenWithWhite

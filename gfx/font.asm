@@ -1,12 +1,14 @@
 PokemonLogoGraphics: INCBIN "gfx/title/pokemon_logo.2bpp"
 FontGraphics::
-	; Replace unused kana $e9/$ea without changing the 128-tile font layout.
+	; Replace unused kana $e9-$eb without changing the 128-tile font layout.
 	INCBIN "gfx/font/font.1bpp", 0, ($e9 - $80) * TILE_1BPP_SIZE
 	; User-supplied 7x7 percent glyph, padded with a blank final row/column.
 	db $c2, $c4, $08, $10, $20, $46, $86, $00
 	; Yume 35d3bf9 font tile $ef: left arrow, remapped to our free $ea.
 	db $0c, $1c, $3c, $7c, $3c, $1c, $0c, $00
-	INCBIN "gfx/font/font.1bpp", ($eb - $80) * TILE_1BPP_SIZE
+	; $eb: 5x5 plus, centred in the 7x7 glyph cell like the letters.
+	db $00, $10, $10, $7c, $10, $10, $00, $00
+	INCBIN "gfx/font/font.1bpp", ($ec - $80) * TILE_1BPP_SIZE
 FontGraphicsEnd::
 	ASSERT FontGraphicsEnd - FontGraphics == 128 * TILE_1BPP_SIZE
 

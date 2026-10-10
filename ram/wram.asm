@@ -965,6 +965,10 @@ wTempObtainedBadgesBooleans:: ds NUM_BADGES
 NEXTU
 ; the number of credits mons that have been displayed so far
 wNumCreditsMonsDisplayed:: db
+; credits roll input state, bit CREDITS_* (engine/movie/credits.asm). Must stay
+; after wNumCreditsMonsDisplayed, which PewterPokecenter reads as
+; wJigglypuffFacingDirections - 1.
+wCreditsFlags:: db
 
 NEXTU
 	ds 1

@@ -246,6 +246,8 @@ DEF REWARD_LEVEL_CAP EQU 50
 ; 2026-10-06: cut at least 15% from 2/4/6/10/15/20 thousand, rounded down to
 ; the next whole thousand the byte can hold (F 2 -> 1 is the only step that
 ; size, since 2 -> 1.7 isn't representable).
+; 2026-10-09 (player feedback #10): D-S another -15%, rounded down the same way
+; (3/5/8/12/17 -> 2/4/6/10/14 thousand); F stays Y1,000.
 	const_def
 	const TM_PRICE_TIER_F ; 0
 	const TM_PRICE_TIER_D ; 1
@@ -255,11 +257,11 @@ DEF REWARD_LEVEL_CAP EQU 50
 	const TM_PRICE_TIER_S ; 5
 DEF NUM_TM_PRICE_TIERS EQU const_value
 DEF TM_PRICE_F_BCD EQU $01
-DEF TM_PRICE_D_BCD EQU $03
-DEF TM_PRICE_C_BCD EQU $05
-DEF TM_PRICE_B_BCD EQU $08
-DEF TM_PRICE_A_BCD EQU $12
-DEF TM_PRICE_S_BCD EQU $17
+DEF TM_PRICE_D_BCD EQU $02
+DEF TM_PRICE_C_BCD EQU $04
+DEF TM_PRICE_B_BCD EQU $06
+DEF TM_PRICE_A_BCD EQU $10
+DEF TM_PRICE_S_BCD EQU $14
 
 ; --- Lobby clerk (stat/TM) odds ----------------------------------------------
 ; Random_StatTM_Mart_Selection (engine/items/random_item_selection_mart.asm).
@@ -285,12 +287,13 @@ DEF SALESMAN_PRICE_GREATBALL_BCD EQU $12
 DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $20
 ; Lobby Move Tutor fees, ordinary integers encoded by TutorMovePrices (bcd3).
 ; Independent of reusable TM prices; OFFLIST tutor moves use the F-tier fee.
-DEF MOVE_TUTOR_PRICE_F EQU 1000
-DEF MOVE_TUTOR_PRICE_D EQU 2000
-DEF MOVE_TUTOR_PRICE_C EQU 3000
-DEF MOVE_TUTOR_PRICE_B EQU 5000
-DEF MOVE_TUTOR_PRICE_A EQU 10000
-DEF MOVE_TUTOR_PRICE_S EQU 15000
+; 2026-10-09 (player feedback #11): -10% from 1000/2000/3000/5000/10000/15000.
+DEF MOVE_TUTOR_PRICE_F EQU 900
+DEF MOVE_TUTOR_PRICE_D EQU 1800
+DEF MOVE_TUTOR_PRICE_C EQU 2700
+DEF MOVE_TUTOR_PRICE_B EQU 4500
+DEF MOVE_TUTOR_PRICE_A EQU 9000
+DEF MOVE_TUTOR_PRICE_S EQU 13500
 ; The two high bytes of a 3-byte BCD money value, from a BCD-thousands byte:
 ; $TU -> $0T, $U0 (Y TU,000), as (high << 8) | middle for `ld de`/`ld bc`.
 DEF SALESMAN_PRICE_POKEBALL_WORD  EQU ((SALESMAN_PRICE_POKEBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_POKEBALL_BCD & $0F) << 4)

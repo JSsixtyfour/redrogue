@@ -227,8 +227,10 @@ class VictorySourceContractTest(unittest.TestCase):
         for forbidden in ("wNumHoFTeams", "SaveHallOfFameTeams", "FinalTeamArchiveCapture", "AnimateHallOfFame"):
             self.assertNotIn(forbidden, body)
         self.assertTrue(body.rstrip().endswith("farjp HallOfFameCredits"))
-        credits = (REPO_ROOT / "engine/movie/credits.asm").read_text()
-        self.assertRegex(credits, r"HallOfFamePC:\n\tfarcall AnimateHallOfFame\n(?:;.*\n)*HallOfFameCredits::\n")
+        # A normal Champion clear shows the Hall of Fame only; the credits
+        # belong to the AI victory (and the title menu).
+        hall_of_fame_pc = self._routine("engine/movie/credits.asm", "HallOfFamePC")
+        self.assertEqual(hall_of_fame_pc.strip(), "farjp AnimateHallOfFame")
 
     def test_vr_palm_uses_his_ordinary_line_postgame(self) -> None:
         body = self._routine("scripts/SilphCoVR.asm", "SilphCoVR_ProfPalmText")

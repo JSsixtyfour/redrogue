@@ -341,6 +341,10 @@ def history_row(g: parse.GameData, args) -> dict:
         row[k.lower()] = g.knobs[k]
     for k, v in eco["prices"].items():
         row[f"price_{k}"] = v
+    # Credit Exchange key items (credits, not yen); added 2026-10-09. Rows before
+    # that date have these columns empty.
+    for k, v in parse.load_credit_prices().items():
+        row[f"credit_{k.lower()}"] = v
     row["wild_levels"] = " ".join(map(str, g.tables.wild))
     row["wild_boss_levels"] = " ".join(map(str, g.tables.wild_boss))
     return row

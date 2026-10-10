@@ -14,6 +14,7 @@ from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants, parse_trainer_constants
 
 ROOT = Path(__file__).resolve().parents[2]
+TRAINER_ITEMS = bool(parse_rgbds_constants(ROOT / "constants/ai_constants.asm")["AI_TRAINER_ITEMS"])
 
 
 class AIFullFlowTest(unittest.TestCase):
@@ -256,13 +257,24 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertTrue(self.drive_turns(lambda: heal["count"] + no_item["count"] > 0))
         return heal["count"], no_item["count"]
 
+    # Both B6 tests need trainer items on: with AI_TRAINER_ITEMS 0 the veto
+    # is not assembled, and "no item" would pass for the wrong reason.
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the B6 item veto is not assembled")
     def test_item_is_vetoed_when_the_selected_move_wins(self):
         # The selected Tackle reliably finishes a 1-HP player at this action
         # point, so spending the turn on Full Heal would throw the win away.
         self.assertEqual(self.brock_first_decision(1), (0, 1))
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: trainers never use items")
     def test_item_is_used_when_no_win_is_on_the_board(self):
         self.assertEqual(self.brock_first_decision(None), (1, 0))
+
+    @unittest.skipIf(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 1: trainers use items")
+    def test_no_item_when_trainer_items_are_off(self):
+        # Player feedback #8 (2026-10-09). Brock's handler used Full Heal on any
+        # status with no roll, so a poisoned lone Onix with no win on the board
+        # is the case most sure to use an item if any path still could.
+        self.assertEqual(self.brock_first_decision(None), (0, 1))
 
     # --- FOLLOWUPS #48: TrainerAI reuses move selection's caches when exact ----
     def ko_cache_at_trainer_ai(self, player, enemy, reveal=(1,), prime_hp=True,

@@ -30,6 +30,14 @@ DEF NUM_AI_LAYERS EQU 9
 ; AI_OMNISCIENT until 2026-09-29; moveset knowledge is now a per-class opt-in
 ; (AIOmniscientClasses, ai_accessors.asm), so no tier is omniscient.
 
+; --- Trainer items -------------------------------------------------------------
+; 1 = enemy trainers use items (potions, X items, Full Heal, Guard Spec) from their
+; class handlers in trainer_ai.asm; 0 = never (player feedback #8, 2026-10-09).
+; With 0 the class handlers keep only their switch rolls (Juggler, Cooltrainer F,
+; Agatha's classes, T0/T1) and T2+ goes straight from the smart switch to no item.
+; The AIUse* routines stay assembled either way (their tests call them directly).
+DEF AI_TRAINER_ITEMS EQU 0
+
 ; --- Skill tiers ---
 DEF AI_TIER_NOVICE    EQU 0
 DEF AI_TIER_COMPETENT EQU 1

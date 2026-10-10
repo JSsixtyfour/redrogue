@@ -1180,6 +1180,11 @@ TrainerAI:
 	jr c, .dispatch ; T0/T1: vanilla, no ace restriction
 	call AITrySmartSwitch
 	ret c ; switch and item eligibility are independent
+IF !AI_TRAINER_ITEMS
+; No trainer items: past the smart switch, the class handlers could only use an
+; item (their switch rolls can't fire on the ace turns this path reaches).
+	jr .noItem
+ELSE
 	farcall AIActiveMonIsAce ; bank $2C - loops the enemy party
 	jr nc, .noItem ; not the ace: no item this turn
 ; AI_BACKLOG B6, first slice (2026-09-30): the winning-action veto the switch
@@ -1194,6 +1199,7 @@ TrainerAI:
 	jr z, .noItem
 	call AIEnemyHasReliableFirstKO ; same bank; refuses sleep/freeze/paralysis
 	jr c, .noItem
+ENDC
 .dispatch
 	ld a, [wTrainerClass] ; what trainer class is this?
 	dec a
@@ -1258,6 +1264,40 @@ JugglerAI:
 	ret nc
 	jp AISwitchIfEnoughMons
 
+CooltrainerFAI:
+	; AI Overhaul Phase 6: fixed - the intended 25% gate was dead code (the
+	; `ret nc` right after the roll was commented out), so Cooltrainer F's
+	; Hyper Potion and switch-consideration checks ran on EVERY call
+	; regardless of the roll. This is a real balance change: Cooltrainer F is
+	; now noticeably less item-happy than she has been up to this point.
+	cp 25 percent + 1
+	ret nc
+IF AI_TRAINER_ITEMS
+	ld a, 10
+	call AICheckIfHPBelowFraction
+	jp c, AIUseHyperPotion
+ENDC
+	ld a, 5
+	call AICheckIfHPBelowFraction
+	ret nc
+	jp AISwitchIfEnoughMons
+
+AgathaAI:
+	cp 8 percent
+	jp c, AISwitchIfEnoughMons
+IF AI_TRAINER_ITEMS
+	cp 50 percent + 1
+	ret nc
+	ld a, 4
+	call AICheckIfHPBelowFraction
+	ret nc
+	jp AIUseSuperPotion
+ELSE
+	and a ; carry clear: no item
+	ret
+ENDC
+
+IF AI_TRAINER_ITEMS
 BlackbeltAI:
 	cp 13 percent - 1
 	ret nc
@@ -1272,22 +1312,6 @@ CooltrainerMAI:
 	cp 25 percent + 1
 	ret nc
 	jp AIUseXAttack
-
-CooltrainerFAI:
-	; AI Overhaul Phase 6: fixed - the intended 25% gate was dead code (the
-	; `ret nc` right after the roll was commented out), so Cooltrainer F's
-	; Hyper Potion and switch-consideration checks ran on EVERY call
-	; regardless of the roll. This is a real balance change: Cooltrainer F is
-	; now noticeably less item-happy than she has been up to this point.
-	cp 25 percent + 1
-	ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	jp c, AIUseHyperPotion
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AISwitchIfEnoughMons
 
 BrockAI:
 ; if his active monster has a status condition, use a full heal
@@ -1367,16 +1391,6 @@ BrunoAI:
 	ret nc
 	jp AIUseXDefend
 
-AgathaAI:
-	cp 8 percent
-	jp c, AISwitchIfEnoughMons
-	cp 50 percent + 1
-	ret nc
-	ld a, 4
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
 LanceAI:
 	cp 50 percent + 1
 	ret nc
@@ -1384,6 +1398,29 @@ LanceAI:
 	call AICheckIfHPBelowFraction
 	ret nc
 	jp AIUseHyperPotion
+
+ELSE
+; Classes whose handler only ever used an item: with AI_TRAINER_ITEMS off they
+; share one no-action exit (carry clear = a normal move-based turn).
+BlackbeltAI:
+GiovanniAI:
+CooltrainerMAI:
+BrockAI:
+MistyAI:
+LtSurgeAI:
+ErikaAI:
+KogaAI:
+BlaineAI:
+SabrinaAI:
+Rival2AI:
+Rival3AI:
+LoreleiAI:
+BrunoAI:
+LanceAI:
+	and a
+	ret
+
+ENDC
 
 GenericAI:
 	and a ; clear carry

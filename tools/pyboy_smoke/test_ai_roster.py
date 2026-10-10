@@ -33,6 +33,9 @@ from source_constants import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# AI_TRAINER_ITEMS (constants/ai_constants.asm): 0 since 2026-10-09 (player
+# feedback #8), when enemy trainers stopped using items.
+TRAINER_ITEMS = bool(parse_rgbds_constants(REPO_ROOT / "constants/ai_constants.asm")["AI_TRAINER_ITEMS"])
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 ENEMY_PARTY_DATA = 1
 PARTYMON_STRUCT_LENGTH = 44
@@ -145,8 +148,15 @@ class TrainerAIItemGateTest(RosterHarnessTestCase):
     def test_t2_non_ace_is_blocked_from_item_consideration(self) -> None:
         self.assertFalse(self.reaches_dispatch(ai_tier=2, ace=False))
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: no T2+ item dispatch")
     def test_t2_ace_reaches_item_dispatch(self) -> None:
         self.assertTrue(self.reaches_dispatch(ai_tier=2, ace=True))
+
+    @unittest.skipIf(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 1: the ace reaches dispatch")
+    def test_t2_ace_never_reaches_item_dispatch_when_items_are_off(self) -> None:
+        # With trainer items off, T2+ goes from the smart switch straight to
+        # .noItem: past it the class handlers could only have used an item.
+        self.assertFalse(self.reaches_dispatch(ai_tier=2, ace=True))
 
     def test_t1_has_no_ace_restriction(self) -> None:
         # T0/T1 fall straight to .dispatch, unchanged from vanilla item AI -

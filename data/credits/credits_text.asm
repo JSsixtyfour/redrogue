@@ -65,6 +65,59 @@ CreditsTextPointers:
 	dw CredFukui
 	dw CredClub
 	dw CredPAAD
+	dw CredRRTitle
+	dw CredRRBy
+	dw CredRRJSsixtyfour
+	dw CredRRThanks
+	dw CredRRThanks2
+	dw CredRRBase
+	dw CredRRPret
+	dw CredRRPokered
+	dw CredRRContribs
+	dw CredRRPorted
+	dw CredRRPorted2
+	dw CredRRShinRed
+	dw CredRRJojobear
+	dw CredRRYLegacy
+	dw CredRRCrzShadows
+	dw CredRRPureRGB
+	dw CredRRVortyne
+	dw CredRRYume
+	dw CredRRPokefanMarc
+	dw CredRRExYellow
+	dw CredRRRainbowMP
+	dw CredRRKEP
+	dw CredRRMemento
+	dw CredRRRedPP
+	dw CredRRLuna
+	dw CredRRPolished
+	dw CredRRRangi
+	dw CredRRArt
+	dw CredRRSkidMarc
+	dw CredRRYLArt
+	dw CredRRZuperZach
+	dw CredRRKarlos
+	dw CredRRAlgorithms
+	dw CredRRRak
+	dw CredRRSaukas
+	dw CredRRAlbrecht
+	dw CredRRCode
+	dw CredRRMateo
+	dw CredRRXillicis
+	dw CredRRYakiNeen
+	dw CredRRTutorials
+	dw CredRRPretWiki
+	dw CredRRAuthors
+	dw CredRRResearch
+	dw CredRRSmogon
+	dw CredRRPmariglia
+	dw CredRRGenericMad
+	dw CredRREmerald
+	dw CredRRExpansion
+	dw CredRRTools
+	dw CredRRRGBDS
+	dw CredRRBGB
+	dw CredRRPyBoy
 	assert_table_length NUM_CRED_STRINGS
 
 CredVersion:
@@ -200,3 +253,67 @@ CredClub:
 	db -9, "NCL SUPER MARIO CLUB@"
 CredPAAD:
 	db -5, "PAAD TESTING@"
+
+; Red Rogue sections. Source: CREDITS_COMPILATION.md Part 1 (Red Rogue Files).
+; Still open there (Part 3): the Yellow Legacy artist list (#3) and
+; SkidMarc25's preferred credit name (#1).
+; Centred like the vanilla strings above: the cursor is column 9, so the
+; offset is -(length - 1) / 2. Max 20 characters.
+MACRO credits_string
+	ASSERT STRLEN(\1) <= SCREEN_WIDTH, "credits string longer than the screen"
+	db -((STRLEN(\1) - 1) / 2), \1, "@"
+ENDM
+
+CredRRTitle:       credits_string "RED ROGUE"
+CredRRBy:          credits_string "BY"
+CredRRJSsixtyfour: credits_string "JSSIXTYFOUR"
+CredRRThanks:      credits_string "BUILT WITH WORK"
+CredRRThanks2:     credits_string "FROM THESE PEOPLE"
+CredRRBase:        credits_string "BASE DISASSEMBLY"
+CredRRPret:        credits_string "PRET"
+CredRRPokered:     credits_string "AND ALL POKERED"
+CredRRContribs:    credits_string "CONTRIBUTORS"
+CredRRPorted:      credits_string "CODE AND SYSTEMS"
+CredRRPorted2:     credits_string "FROM ROM HACKS"
+CredRRShinRed:     credits_string "SHIN POKEMON RED"
+CredRRJojobear:    credits_string "JOJOBEAR13"
+CredRRYLegacy:     credits_string "YELLOW LEGACY"
+CredRRCrzShadows:  credits_string "CRZ-SHADOWS"
+CredRRPureRGB:     credits_string "PURERGB"
+CredRRVortyne:     credits_string "VORTYNE"
+CredRRYume:        credits_string "POKEMON YUME"
+CredRRPokefanMarc: credits_string "POKEFANMARCEL"
+CredRRExYellow:    credits_string "EXTREME YELLOW"
+CredRRRainbowMP:   credits_string "RAINBOWMETALPIGEON"
+CredRRKEP:         credits_string "KANTO EXPANSION PAK"
+CredRRMemento:     credits_string "MEMENTOMARTHA"
+CredRRRedPP:       credits_string "RED++"
+CredRRLuna:        credits_string "JUSTREGULARLUNA"
+CredRRPolished:    credits_string "POLISHED CRYSTAL"
+CredRRRangi:       credits_string "RANGI"
+CredRRArt:         credits_string "ART"
+CredRRSkidMarc:    credits_string "SKIDMARC25"
+CredRRYLArt:       credits_string "YELLOW LEGACY ART"
+CredRRZuperZach:   credits_string "ZUPERZACH"
+CredRRKarlos:      credits_string "KARLOS"
+CredRRAlgorithms:  credits_string "ALGORITHMS"
+CredRRRak:         credits_string "PATRIK RAK"
+CredRRSaukas:      credits_string "EINAR SAUKAS"
+CredRRAlbrecht:    credits_string "ALAN ALBRECHT"
+CredRRCode:        credits_string "CODE CONTRIBUTIONS"
+CredRRMateo:       credits_string "MATEO"
+CredRRXillicis:    credits_string "XILLICIS"
+CredRRYakiNeen:    credits_string "YAKINEEN"
+CredRRTutorials:   credits_string "TUTORIALS"
+CredRRPretWiki:    credits_string "PRET/POKERED WIKI"
+CredRRAuthors:     credits_string "AUTHORS"
+CredRRResearch:    credits_string "RESEARCH AND IDEAS"
+CredRRSmogon:      credits_string "SMOGON RBY COMMUNITY"
+CredRRPmariglia:   credits_string "PMARIGLIA"
+CredRRGenericMad:  credits_string "GENERICMADSCIENTIST"
+CredRREmerald:     credits_string "POKEEMERALD"
+CredRRExpansion:   credits_string "EXPANSION"
+CredRRTools:       credits_string "TOOLS"
+CredRRRGBDS:       credits_string "RGBDS"
+CredRRBGB:         credits_string "BGB"
+CredRRPyBoy:       credits_string "PYBOY"

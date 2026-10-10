@@ -91,6 +91,26 @@ class Config:
     # The player's starter: "random" = Oak's Lab's roll (rogue_pokemon_randomized_batch,
     # the reward odds ladder), or a GROWTH_* name to pin the starter's curve (what-if).
     starter: str = "random"
+    # --- What-ifs for the 2026-10-09 player-feedback pass (defaults = the ROM today) ---
+    starter_level: int = 5           # GivePokemon's level for the Oak's Lab pick (.flatFive)
+    rival_level: int = 5             # the Oak's Lab rival's starter
+    # Rounds (1-8) whose route is skipped: the previous gym's leader is followed by
+    # the Reward Room (one reward join) and this round's gym, and wBattleCount gets
+    # the ROUTE_BATTLES credit a wild-area exit gives. () = every round has a route.
+    skip_rounds: tuple[int, ...] = ()
+    money_mult: float = 1.0          # per-tier prize money multiplier (proposed ladder)
+
+
+# Proposed difficulty ladder (2026-10-09): label -> (enemy level %, money x).
+# Hard is the balance baseline (= today's NORMAL, money x1.05 baked into the bases);
+# each step down pays 10% more of that baseline. Used as difficulty="pct:N".
+PROPOSED_TIERS = {
+    "very_easy": (-30, 1.05 * 1.3),
+    "easy": (-20, 1.05 * 1.2),
+    "normal": (-10, 1.05 * 1.1),
+    "hard": (0, 1.05),
+    "very_hard": (10, 1.05),
+}
 
 
 # =============================================================================
@@ -98,7 +118,14 @@ class Config:
 # =============================================================================
 
 def apply_difficulty(level: int, difficulty: str) -> int:
-    """RogueApplyDifficulty (func_enc_gen.asm)."""
+    """RogueApplyDifficulty (func_enc_gen.asm). "pct:N" is the proposed ladder's
+    signed-percent form (not in the ROM yet): level +/- level*|N|//100."""
+    if difficulty.startswith("pct:"):
+        p = int(difficulty[4:])
+        delta = level * abs(p) // 100
+        if p < 0:
+            return max(1, level - delta)
+        return min(level + delta, MAX_LEVEL)
     if difficulty == "normal":
         return level
     delta = level // (5 if difficulty.startswith("very") else 10)
@@ -492,7 +519,7 @@ def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool, boost: boo
     return e
 
 
-EXP_SHARE_CANDIDATES = ("equal", "a", "b", "c")
+EXP_SHARE_CANDIDATES = ("equal", "equal6875", "equal75", "a", "b", "c")
 
 
 def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
@@ -504,10 +531,18 @@ def exp_share_split(mode: str, base_exp: int, party: int) -> tuple[int, int]:
       c: the fighter keeps 100%; the bench splits one 50% pool.
       equal: THE ROM'S RULE (chosen 2026-09-28 at 50%, raised to 62.5% on
          2026-10-02): every party mon, the fighter included, gets the value
-         halved rounding up plus an eighth, once (FaintEnemyPokemon .expShare)."""
+         halved rounding up plus an eighth, once (FaintEnemyPokemon .expShare).
+      equal75: what-if (2026-10-09): the same rule with a quarter instead of an eighth (75%).
+      equal6875: what-if (2026-10-09): half rounding up + an eighth + a sixteenth (68.75%)."""
     bench = party - 1
     if mode == "equal":
         share = base_exp - (base_exp >> 1) + (base_exp >> 3)
+        return share, share
+    if mode == "equal6875":
+        share = base_exp - (base_exp >> 1) + (base_exp >> 3) + (base_exp >> 4)
+        return share, share
+    if mode == "equal75":
+        share = base_exp - (base_exp >> 1) + (base_exp >> 2)
         return share, share
     if mode == "a":
         half = base_exp - (base_exp >> 1)
@@ -587,6 +622,7 @@ class Checkpoint:
     bench_growth: list[str] = field(default_factory=list)
     levels: list[int] = field(default_factory=list)   # every member on its own curve, ace first
     spendable: int = 0        # money minus Elite Four / Champion winnings (see DEAD_MONEY_KINDS)
+    ace_join: int = 5         # the starter's level at Oak's Lab
 
 
 @dataclass
@@ -598,6 +634,9 @@ class Run:
     offers: list[str] = field(default_factory=list)   # special kind offered per lobby visit
     total_money: int = 0      # every yen the run earns, the Champion's prize included
     spendable_money: int = 0  # the same, minus DEAD_MONEY_KINDS winnings
+    # One row per enemy-side battle: (round 1-8, 9 = Victory Road/E4/Champion,
+    # kind, enemy top level - the starter's level when the battle starts).
+    gaps: list[tuple[int, str, int]] = field(default_factory=list)
 
 
 # Prize money won from here on can't buy anything: the Elite Four and the
@@ -618,7 +657,8 @@ class Simulator:
         pick = self.rng.randrange(3)
         starter = balls[pick]
         growth = cfg.starter if cfg.starter != "random" else g.species[starter].growth
-        self.members = [Member(5, 0, growth=growth, species=starter)]
+        self.members = [Member(cfg.starter_level, 0, growth=growth, species=starter)]
+        self.cur_round = 0        # for Run.gaps: 0 = Oak's Lab, 1-8 rounds, 9 = the finale
         self.money = bcd(g.knobs["START_MONEY"])
         self.dead_money = 0       # winnings from DEAD_MONEY_KINDS battles
         self.rival_starter = self.rng.choice([b for i, b in enumerate(balls) if i != pick])
@@ -638,6 +678,9 @@ class Simulator:
     def fight(self, battle: Battle) -> None:
         g, cfg = self.g, self.cfg
         self.run.battles.append(battle)
+        if battle.mons:
+            self.run.gaps.append((self.cur_round, battle.kind,
+                                  max(lv for _, lv in battle.mons) - self.members[0].level(g)))
         for sp, lv in battle.mons:
             base = g.species[sp].base_exp
             if cfg.policy == "rotate":
@@ -662,6 +705,8 @@ class Simulator:
                 for m in self.members:                        # then every party mon
                     m.exp_gained += self._penalize(m, share)
         won = money_for(g, battle, cfg.amulet_coin)
+        if cfg.money_mult != 1.0:
+            won = int(won * cfg.money_mult)
         self.money += won
         if battle.kind in DEAD_MONEY_KINDS:
             self.dead_money += won
@@ -679,7 +724,7 @@ class Simulator:
             rnd, label, len(self.run.battles), enemy_ace, ace.exp_gained,
             [(m.join_level, m.exp_gained) for m in self.members[1:]], self.money,
             ace.growth, [m.growth for m in self.members[1:]], [m.level(self.g) for m in self.members],
-            self.money - self.dead_money))
+            self.money - self.dead_money, ace.join_level))
 
     # --- stages ---
     def route(self, miniboss: str | None) -> None:
@@ -718,17 +763,35 @@ class Simulator:
         lineup = rng.sample(leaders, 8)
 
         # Oak's Lab: the rival's starter at 5, pays RIVAL1 money, count -> 1.
-        self.fight(Battle("oak_rival", 0, [(self.rival_starter, apply_difficulty(5, cfg.difficulty))], True,
-                          g.money["RIVAL1"]))
+        self.fight(Battle("oak_rival", 0, [(self.rival_starter, apply_difficulty(cfg.rival_level, cfg.difficulty))],
+                          True, g.money["RIVAL1"]))
 
         mb_count = wa_count = since_special = 0
         types_left = list(parse.WILD_AREA_TYPES)   # WildAreaSelect: no repeats until all four are offered
         wtype = None
         for rnd in range(1, k["NUM_ROGUE_ROUNDS"] + 1):
+            self.cur_round = rnd
             badges = rnd - 1
+            if rnd in cfg.skip_rounds:
+                # Back-to-back gyms: the previous leader -> Reward Room -> this gym.
+                self.run.stages.append("skipped")
+                self.run.offers.append("skipped")
+                self.count += k["ROUTE_BATTLES"]
+                for _ in range(cfg.reward_joins):
+                    self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+                for _ in range(k["GYM_TRAINER_BATTLES"]):
+                    self.fight(roster_battle(g, cfg, self.count, rng))
+                leader = leader_battle(g, cfg, lineup[rnd - 1], rnd, rng)
+                self.checkpoint(rnd, lineup[rnd - 1].name, leader.mons[-1][1])
+                self.fight(leader)
+                continue
             kind = None
             if self.count >= c["MINIBOSS_FIRST_BATTLECOUNT"]:
-                remaining = c["MINIBOSS_TOTAL_ROUTES"] - badges
+                # Route slots left, this one included. With no skipped rounds this is
+                # exactly MINIBOSS_TOTAL_ROUTES - badges (the ROM today); with skips it
+                # is the re-based quota the Phase 4 plan calls for.
+                remaining = (c["MINIBOSS_TOTAL_ROUTES"] - badges if not cfg.skip_rounds else
+                             sum(1 for r in range(rnd, k["NUM_ROGUE_ROUNDS"] + 1) if r not in cfg.skip_rounds))
 
                 def forced(have: int, need: int) -> bool:
                     short = need - have
@@ -780,6 +843,7 @@ class Simulator:
             self.fight(leader)
 
         # Victory Road: roster trainers, then the static rival mini-boss.
+        self.cur_round = 9
         self.run.stages.append("victory_road")
         for _ in range(k["VICTORY_ROAD_BATTLES"] - 1):
             self.fight(roster_battle(g, cfg, self.count, rng))
@@ -811,14 +875,14 @@ def pct(values: list[float], p: float) -> float:
     return s[min(len(s) - 1, max(0, round(p * (len(s) - 1))))]
 
 
-def ace_level(g: GameData, curve: str, ace_exp: int) -> int:
+def ace_level(g: GameData, curve: str, ace_exp: int, join: int = 5) -> int:
     rate = g.growth[curve]
-    return level_from_exp(rate, exp_at_level(rate, 5) + ace_exp)
+    return level_from_exp(rate, exp_at_level(rate, join) + ace_exp)
 
 
 def team_average(g: GameData, curve: str, cp: Checkpoint) -> float:
     rate = g.growth[curve]
-    levels = [ace_level(g, curve, cp.ace_exp)]
+    levels = [ace_level(g, curve, cp.ace_exp, cp.ace_join)]
     levels += [level_from_exp(rate, exp_at_level(rate, lv) + gained) for lv, gained in cp.bench]
     return sum(levels) / len(levels)
 
@@ -838,7 +902,7 @@ def summarize(g: GameData, runs: list[Run]) -> list[dict]:
             "spendable": statistics.mean(cp.spendable for cp in cps),
         }
         for curve in GROWTH_CURVES:
-            lv = [ace_level(g, curve, cp.ace_exp) for cp in cps]
+            lv = [ace_level(g, curve, cp.ace_exp, cp.ace_join) for cp in cps]
             short = curve.removeprefix("GROWTH_").lower()
             row[f"ace_{short}"] = statistics.mean(lv)
             row[f"ace_{short}_p10"] = pct(lv, 0.1)
@@ -1032,6 +1096,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--difficulty", choices=DIFFICULTIES, default="normal")
+    ap.add_argument("--tier", choices=tuple(PROPOSED_TIERS), default=None,
+                    help="proposed 2026-10-09 ladder (level %% and money x); overrides --difficulty")
+    ap.add_argument("--starter-level", type=int, default=5, help="Oak's Lab starter (and rival) level")
+    ap.add_argument("--skip-rounds", default="", metavar="R,R",
+                    help="rounds whose route is skipped (back-to-back gyms via the Reward Room), e.g. 4,7")
     ap.add_argument("--exp-all", default="equal",
                     help="equal (the ROM's EXP Share on), off, a retired key-item tier 0-3, or candidate a/b/c")
     ap.add_argument("--no-exp-boost", action="store_true", help="drop BoostExp's x1.5")
@@ -1064,8 +1133,13 @@ def main(argv: list[str] | None = None) -> int:
         if fails:
             return 1
 
+    tier_pct, tier_money = PROPOSED_TIERS[args.tier] if args.tier else (None, 1.0)
     cfg = Config(
-        difficulty=args.difficulty,
+        difficulty=f"pct:{tier_pct}" if args.tier else args.difficulty,
+        money_mult=tier_money,
+        starter_level=args.starter_level,
+        rival_level=args.starter_level,
+        skip_rounds=tuple(int(x) for x in args.skip_rounds.split(",") if x.strip()),
         exp_all=None if args.exp_all == "off" else args.exp_all if args.exp_all in EXP_SHARE_CANDIDATES
         else int(args.exp_all),
         exp_boost=not args.no_exp_boost,

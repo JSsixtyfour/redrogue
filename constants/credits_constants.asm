@@ -64,6 +64,60 @@
 	const CRED_FUKUI          ; $3D
 	const CRED_CLUB           ; $3E
 	const CRED_PAAD           ; $3F
+; Red Rogue sections (rolled before the vanilla staff, see credits_order.asm)
+	const CRED_RR_TITLE       ; $40
+	const CRED_RR_BY          ; $41
+	const CRED_RR_JSSIXTYFOUR ; $42
+	const CRED_RR_THANKS      ; $43
+	const CRED_RR_THANKS_2    ; $44
+	const CRED_RR_BASE        ; $45
+	const CRED_RR_PRET        ; $46
+	const CRED_RR_POKERED     ; $47
+	const CRED_RR_CONTRIBS    ; $48
+	const CRED_RR_PORTED      ; $49
+	const CRED_RR_PORTED_2    ; $4A
+	const CRED_RR_SHINRED     ; $4B
+	const CRED_RR_JOJOBEAR    ; $4C
+	const CRED_RR_YLEGACY     ; $4D
+	const CRED_RR_CRZSHADOWS  ; $4E
+	const CRED_RR_PURERGB     ; $4F
+	const CRED_RR_VORTYNE     ; $50
+	const CRED_RR_YUME        ; $51
+	const CRED_RR_POKEFANMARC ; $52
+	const CRED_RR_EXYELLOW    ; $53
+	const CRED_RR_RAINBOWMP   ; $54
+	const CRED_RR_KEP         ; $55
+	const CRED_RR_MEMENTO     ; $56
+	const CRED_RR_REDPP       ; $57
+	const CRED_RR_LUNA        ; $58
+	const CRED_RR_POLISHED    ; $59
+	const CRED_RR_RANGI       ; $5A
+	const CRED_RR_ART         ; $5B
+	const CRED_RR_SKIDMARC    ; $5C
+	const CRED_RR_YL_ART      ; $5D
+	const CRED_RR_ZUPERZACH   ; $5E
+	const CRED_RR_KARLOS      ; $5F
+	const CRED_RR_ALGORITHMS  ; $60
+	const CRED_RR_RAK         ; $61
+	const CRED_RR_SAUKAS      ; $62
+	const CRED_RR_ALBRECHT    ; $63
+	const CRED_RR_CODE        ; $64
+	const CRED_RR_MATEO       ; $65
+	const CRED_RR_XILLICIS    ; $66
+	const CRED_RR_YAKINEEN    ; $67
+	const CRED_RR_TUTORIALS   ; $68
+	const CRED_RR_PRET_WIKI   ; $69
+	const CRED_RR_AUTHORS     ; $6A
+	const CRED_RR_RESEARCH    ; $6B
+	const CRED_RR_SMOGON      ; $6C
+	const CRED_RR_PMARIGLIA   ; $6D
+	const CRED_RR_GENERICMAD  ; $6E
+	const CRED_RR_EMERALD     ; $6F
+	const CRED_RR_EXPANSION   ; $70
+	const CRED_RR_TOOLS       ; $71
+	const CRED_RR_RGBDS       ; $72
+	const CRED_RR_BGB         ; $73
+	const CRED_RR_PYBOY       ; $74
 DEF NUM_CRED_STRINGS EQU const_value
 
 	const_def -1, -1
@@ -73,3 +127,13 @@ DEF NUM_CRED_STRINGS EQU const_value
 	const CRED_TEXT          ; $FC
 	const CRED_COPYRIGHT     ; $FB
 	const CRED_THE_END       ; $FA
+
+; string ids share CreditsOrder's byte space with the commands above
+	assert NUM_CRED_STRINGS <= LOW(CRED_THE_END), "too many credits strings"
+
+; wCreditsFlags bits (engine/movie/credits.asm)
+DEF BIT_CREDITS_SKIP        EQU 0 ; START pressed: jump to THE END
+DEF BIT_CREDITS_START_ARMED EQU 1 ; START seen released since the roll began
+DEF BIT_CREDITS_FAST        EQU 2 ; SELECT toggled 4x speed on
+DEF BIT_CREDITS_SELECT_HELD EQU 3 ; SELECT was down last frame (edge detect)
+DEF CREDITS_FAST_STEP       EQU 4 ; frames counted per real frame while fast

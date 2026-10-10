@@ -21,15 +21,16 @@ MOVES = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
 ITEMS = parse_rgbds_constants(REPO_ROOT / "constants" / "item_constants.asm")
 LISTS = parse_rgbds_constants(REPO_ROOT / "constants" / "list_constants.asm")
 
+# Fees cut 10% on 2026-10-09 (player feedback #11): 900/1800/2700/4500/9000/13500.
 PRICE_CASES = (
-    ("POUND", (0x00, 0x10, 0x00), "F"),
-    ("KARATE_CHOP", (0x00, 0x20, 0x00), "D"),
-    ("GUILLOTINE", (0x00, 0x30, 0x00), "C"),
-    ("FIRE_PUNCH", (0x00, 0x50, 0x00), "B"),
-    ("SWORDS_DANCE", (0x01, 0x00, 0x00), "A"),
-    ("BODY_SLAM", (0x01, 0x50, 0x00), "S"),
+    ("POUND", (0x00, 0x09, 0x00), "F"),
+    ("KARATE_CHOP", (0x00, 0x18, 0x00), "D"),
+    ("GUILLOTINE", (0x00, 0x27, 0x00), "C"),
+    ("FIRE_PUNCH", (0x00, 0x45, 0x00), "B"),
+    ("SWORDS_DANCE", (0x00, 0x90, 0x00), "A"),
+    ("BODY_SLAM", (0x01, 0x35, 0x00), "S"),
     # OFFLIST means excluded from random generation, not from tutoring.
-    ("SPLASH", (0x00, 0x10, 0x00), "OFFLIST -> F"),
+    ("SPLASH", (0x00, 0x09, 0x00), "OFFLIST -> F"),
 )
 
 
@@ -178,7 +179,7 @@ class TutorMovePriceRomTest(unittest.TestCase):
         self.assertEqual(unpriced["price"], [0xAA, 0xBB, 0xCC])
 
         priced_move = self._list_price(moves_menu, 1, MOVES["SWORDS_DANCE"])
-        self.assertEqual(priced_move["price"], [0x01, 0x00, 0x00])
+        self.assertEqual(priced_move["price"], [0x00, 0x90, 0x00])
         self.assertEqual(priced_move["de"], h.address("hItemPrice"))
 
         item_price = self._list_price(
@@ -190,7 +191,7 @@ class TutorMovePriceRomTest(unittest.TestCase):
         credit_price = self._list_price(
             LISTS["CREDITLISTMENU"], 2, ITEMS["SHINY_CHARM"], credit_prices
         )
-        self.assertEqual(credit_price["price"], [0x00, 0x00, 0x30])
+        self.assertEqual(credit_price["price"], [0x00, 0x00, 0x15])  # halved 2026-10-09
 
 
 class TutorTransactionRomTest(unittest.TestCase):

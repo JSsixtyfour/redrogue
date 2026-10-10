@@ -91,13 +91,10 @@ HallOfFameResetEventsAndSaveScript:
 	pop af
 	and a
 	jr nz, .warpToAILair
-	ld b, 5
-.delayLoop
-	ld c, 600 / 5
+	; No credits here any more (they belong to the AI victory), so the Hall of
+	; Fame's fade to white is the end: a short beat, then the title screen.
+	ld c, 60
 	call DelayFrames
-	dec b
-	jr nz, .delayLoop
-	call WaitForTextScrollButtonPress
 	jp Init
 
 .warpToAILair

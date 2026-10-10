@@ -131,14 +131,17 @@ ItemPrices::
 ; ten ids below are ever looked up here, and they are contiguous by design.
 ;
 ; ELEMENT_PRISM is deliberately absent - it is an NPC gift, never for sale.
+;
+; 2026-10-09 (player feedback #4): halved, halves rounded up (was 30/20/25/25/25/
+; 35/30/15/15/15). Upgrade costs (credit_mart.asm) are unchanged.
 CreditItemPrices::
-	bcd3 30    ; SHINY_CHARM
-	bcd3 20    ; AMULET_COIN
-	bcd3 25    ; TURN_REWIND
-	bcd3 25    ; RARE_SCOPE
-	bcd3 25    ; RARE_LENS
-	bcd3 35    ; DV_BOOSTER
-	bcd3 30    ; STAT_BOOSTER
-	bcd3 15    ; DOOR_DICE
-	bcd3 15    ; MON_DICE
-	bcd3 15    ; ITEM_DICE
+	bcd3 15    ; SHINY_CHARM
+	bcd3 10    ; AMULET_COIN
+	bcd3 13    ; TURN_REWIND
+	bcd3 13    ; RARE_SCOPE
+	bcd3 13    ; RARE_LENS
+	bcd3 18    ; DV_BOOSTER
+	bcd3 15    ; STAT_BOOSTER
+	bcd3 8     ; DOOR_DICE
+	bcd3 8     ; MON_DICE
+	bcd3 8     ; ITEM_DICE

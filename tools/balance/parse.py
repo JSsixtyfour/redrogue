@@ -421,6 +421,25 @@ def load_item_prices() -> dict[str, int]:
     return out
 
 
+def load_credit_prices() -> dict[str, int]:
+    """{ITEM_NAME: credits} from data/items/prices.asm's CreditItemPrices block
+    (the Credit Exchange key-item seller; upgrade costs live elsewhere)."""
+    out: dict[str, int] = {}
+    inside = False
+    for raw in _lines("data/items/prices.asm"):
+        if raw.startswith("CreditItemPrices"):
+            inside = True
+            continue
+        if inside:
+            m = re.match(r"^\s*bcd3\s+(\d+)\s*;\s*([A-Z0-9_]+)\s*$", raw)
+            if not m:
+                break
+            out[m.group(2)] = int(m.group(1))
+    if not out:
+        raise ValueError("data/items/prices.asm: CreditItemPrices not found or empty")
+    return out
+
+
 def load_growth_rates() -> dict[str, tuple[int, int, int, int, int]]:
     names = [n for n, _ in sorted(((k, v) for k, v in parse_rgbds_constants(
         ROOT / "constants" / "pokemon_data_constants.asm").items() if k.startswith("GROWTH_")), key=lambda kv: kv[1])]

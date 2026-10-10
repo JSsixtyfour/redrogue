@@ -43,7 +43,7 @@ MainMenu:
 	jr z, .noSaveFile
 ; there's a save file
 	hlcoord 0, 0
-	ld b, 6
+	ld b, 8
 	ld c, 13
 	call TextBoxBorder
 	hlcoord 2, 2
@@ -52,7 +52,7 @@ MainMenu:
 	jr .next2
 .noSaveFile
 	hlcoord 0, 0
-	ld b, 4
+	ld b, 6
 	ld c, 13
 	call TextBoxBorder
 	hlcoord 2, 2
@@ -73,6 +73,7 @@ MainMenu:
 	ld a, PAD_A | PAD_B | PAD_START
 	ld [wMenuWatchedKeys], a
 	ld a, [wSaveFileStatus]
+	inc a ; + CREDITS
 	ld [wMaxMenuItem], a
 	call HandleMenuInput
 	bit B_PAD_B, a
@@ -93,6 +94,8 @@ MainMenu:
 	jr z, .choseContinue
 	cp 1
 	jp z, StartNewGame
+	cp 3
+	jp z, MainMenuCredits
 	call DisplayOptionMenu
 	ld a, TRUE
 	ld [wOptionsInitialized], a
@@ -369,7 +372,8 @@ ContinueText:
 
 NewGameText:
 	db   "NEW GAME"
-	next "OPTION@"
+	next "OPTION"
+	next "CREDITS@"
 
 CableClubOptionsText:
 	db   "TRADE CENTER"
@@ -469,6 +473,11 @@ SaveScreenInfoText:
 ; CheckForPlayerNameInSRAM below. Both callers are unchanged.
 DisplayOptionMenu:
 	farjp DisplayOptionMenu_
+
+; Title menu CREDITS. The roll lives with the credits engine and never returns:
+; it ends in jp Init (engine/movie/credits.asm).
+MainMenuCredits:
+	farjp MainMenuCredits_
 
 CheckForPlayerNameInSRAM:
 	farjp CheckForPlayerNameInSRAM_

@@ -186,7 +186,7 @@
 
 	charmap "%",         $e9 ; supplied glyph, overlaid in gfx/font.asm
 	charmap "◀",         $ea ; Yume left arrow, overlaid in gfx/font.asm
-	charmap "ェ",         $eb ; katakana small e, unused
+	charmap "+",         $eb ; plus glyph, overlaid in gfx/font.asm (was unused kana ェ)
 
 	charmap "▷",         $ec
 	charmap "▶",         $ed
