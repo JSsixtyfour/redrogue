@@ -3588,6 +3588,11 @@ PFacPlaceFakeBalls:
     call Rangerandom
     pop bc
     add a, b
+    ; The LEVELS setting, as on every other wild-area mon (2026-10-09). The level
+    ; crosses the farcall in e; RogueApplyDifficultyE touches no SRAM or rRAMB.
+    ld e, a
+    farcall RogueApplyDifficultyE
+    ld a, e
     ld [sProcFacilityGenScratch + 80], a
     ret
 

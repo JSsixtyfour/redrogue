@@ -64,6 +64,13 @@ class SymbolTable:
         return label if offset == 0 else f"{label}+${offset:x}"
 
 
+# wWildAreaState's "offered this cycle" bits per type (constants/ram_constants.asm:
+# bits 0-2 and 7 = WILD_AREA_MASK; WILD_AREA_CAVE/FOREST/CEMETERY are bits 0-2 and
+# the facility took bit 7 so old saves keep the count encoding in bits 3-4).
+WILD_AREA_OFFER_BITS = {"cave": 0x01, "forest": 0x02, "cemetery": 0x04, "facility": 0x80}
+WILD_AREA_OFFER_MASK = 0x87
+
+
 class RedRogueHarness:
     TARGET_ROUTE = 0x79  # UNDERGROUND_PATH_WEST_EAST
     LOBBY_MAP = 0xAE  # INDIGO_PLATEAU_LOBBY
@@ -276,6 +283,16 @@ class RedRogueHarness:
 
         self.pyboy.hook_register(bank, address, dispatch, None)
         self._registered_hooks.append(key)
+
+    def unregister_hook(self, label: str, callback) -> None:
+        """Remove only this subscriber, keeping other probes at the same label."""
+        key = self.symbols.get(label)
+        callbacks = self._hook_callbacks[key]
+        callbacks.remove(callback)
+        if not callbacks:
+            self.pyboy.hook_deregister(*key)
+            del self._hook_callbacks[key]
+            self._registered_hooks.remove(key)
 
     def address(self, label: str) -> int:
         return self.symbols.address(label)
@@ -892,6 +909,17 @@ class RedRogueHarness:
         )
         self.tick(180)
 
+    def set_difficulty(self, name: str = "HARD") -> None:
+        """Write a LEVELS setting into wOptions2 (DIFFICULTY_<name>). HARD is the
+        balance baseline (0% levels, the original AI ladder); a fresh boot is on
+        NORMAL, the new-game default, which is -10% since 2026-10-09. Tests that
+        derive expected levels from the balance knobs pin HARD after booting.
+        Affects what is built AFTER the call, not a battle already set up."""
+        from source_constants import parse_rgbds_constants
+        ram = parse_rgbds_constants(self.repo_root / "constants" / "ram_constants.asm")
+        mask, value = ram["DIFFICULTY_MASK"], ram[f"DIFFICULTY_{name}"]
+        self.write8("wOptions2", (self.read8("wOptions2") & ~mask & 0xFF) | value)
+
     def boot_fight2(self, seed: int = 1) -> None:
         if not 1 <= seed <= 99:
             raise ValueError("FIGHT 2 seed must be in the range 1-99")
@@ -950,7 +978,16 @@ class RedRogueHarness:
         battle_count: int = 11,
         ai_tier: int | None = None,
         encounter_kind: int = 1,
+        wild_type: str | None = None,
     ) -> None:
+        """wild_type ("cave"/"forest"/"cemetery"/"facility", with encounter_kind
+        4) makes the game's own picker choose that type: the other three are
+        marked already offered this cycle in wWildAreaState, so the lobby rolls
+        and PRELOADS it exactly as in play. For fixtures configured after boot,
+        preload_and_enter_wild_area queues a new preload at a lobby-script
+        boundary; neither path injects a generator into interrupted VBlank work."""
+        if wild_type is not None and wild_type not in WILD_AREA_OFFER_BITS:
+            raise ValueError(f"wild_type must be one of {sorted(WILD_AREA_OFFER_BITS)}")
         if not 1 <= battle_count <= 99:
             raise ValueError("Battle count must be 1-99")
         if ai_tier is not None and not 0 <= ai_tier <= 3:
@@ -1015,6 +1052,10 @@ class RedRogueHarness:
         self.write8("wAIDebugTierOverride", 0 if ai_tier is None else ai_tier + 1)
         self.write8("wDebug2ForcedDoor1", (encounter_kind - 1) << 6)
         self.write8("wDebug2ForcedDoor2", 0)
+        if wild_type is not None:
+            others = sum(bit for name, bit in WILD_AREA_OFFER_BITS.items() if name != wild_type)
+            state = self.read8("wWildAreaState")
+            self.write8("wWildAreaState", (state & ~WILD_AREA_OFFER_MASK & 0xFF) | others)
         # B and START both exit the row engine from anywhere without touching
         # the bytes just written, since we never move its cursor. Measured: the
         # default 2-frame tap() hold is too short here - OptionsMenuEngine.loop
@@ -1143,8 +1184,11 @@ class RedRogueHarness:
         provably innocent - identical party, identical lead, identical
         species/level/HP, and zero symbols changed bank.
 
-        Interrupting the VBlank handler is safe for the interrupted stack and
-        bank context because it saves/restores its registers and ROM bank.
+        Interrupting VBlank preserves the interrupted stack and bank context,
+        but NOT shared scratch RAM live in the interrupted mainline routine.
+        In particular, never inject wild-area preload here: FOLLOWUPS #64
+        measured it overwriting a live wEvoDataBuffer pointer. Use
+        preload_wild_area for the lobby-owned execution path.
         It is NOT a general gameplay context: IME is disabled during interrupt
         service. A hijacked routine must not wait for a frame/VBlank or require
         interrupts to run. Use a real integration path for such routines.
@@ -1346,27 +1390,78 @@ class RedRogueHarness:
         finally:
             self.load_state(baseline)
 
-    def preload_and_enter_wild_area(self, map_id: int, description: str) -> None:
-        door_maps = {
-            self.read8("wLobbyDoor1StageMap"),
-            self.read8("wLobbyDoor2StageMap"),
-        }
-        candidate_warps = [
-            (index, entry[0], entry[1])
-            for index, entry in enumerate(self.warp_entries())
-            if entry[3] in door_maps
-        ]
-        if not candidate_warps:
-            raise AssertionError(
-                f"No lobby stage warp found for {description}: "
-                f"doors={sorted(door_maps)} warps={self.warp_entries()}"
-            )
+    def preload_wild_area(self, map_id: int) -> None:
+        """Run the lobby's preload call on its NEXT script invocation.
 
-        self.write8("wLobbyDoor1StageMap", map_id)
-        self.write8("wLobbyDoor2StageMap", map_id)
-        for index, _y, _x in candidate_warps:
-            self.write8("wWarpEntries", map_id, offset=index * 4 + 3)
-        self.call_routine("ProcPreloadAssignedWildArea", limit=60000)
+        FOLLOWUPS #64: a VBlank boundary can interrupt LoadEvoListForSpecies
+        with a live wEvoDataBuffer pointer. Injecting another generator there
+        overwrites the pointer even when registers, stack and banks survive.
+        Let that invocation finish. At the next lobby-script entry, select the
+        requested fixture doors and start at the ROM's existing preload call,
+        skipping selection (which would overwrite caller-supplied stage events).
+        The engine owns the stack, interrupt state, call and normal return;
+        the rest of lobby initialization runs as usual. No call_routine hijack.
+        """
+        from source_constants import parse_map_constants
+        maps = parse_map_constants(self.repo_root / "constants" / "map_constants.asm")
+        entries = {maps[name] for name in (
+            "PROCEDURAL_CAVE_1", "PROCEDURAL_FOREST",
+            "PROCEDURAL_CEMETERY_1", "PROCEDURAL_FACILITY",
+        )}
+        if map_id not in entries:
+            raise ValueError(f"Not a wild-area entry map: ${map_id:02x}")
+        if self.read8("hCurMap") != self.LOBBY_MAP:
+            raise AssertionError("Wild-area preload requires the Indigo Plateau Lobby")
+
+        # Resolve the actual farcall from this ROM, not a layout-specific PC.
+        # Fail closed if the lobby lifecycle or farcall encoding changes.
+        bank, start = self.symbols.get("IndigoPlateauLobby_Script")
+        end_bank, end = self.symbols.get("IndigoPlateauLobby_Script.lobbyMusicDone")
+        target_bank, target = self.symbols.get("ProcPreloadAssignedWildArea")
+        trampoline = self.address("Bankswitch")
+        call = bytes((0x06, target_bank, 0x21, target & 255, target >> 8,
+                      0xCD, trampoline & 255, trampoline >> 8))
+        if bank != end_bank or not 0x4000 <= start < end <= 0x8000:
+            raise AssertionError("Lobby preload call is no longer in its expected section")
+        offset = bank * 0x4000 + start - 0x4000
+        body = self._rom_file.getvalue()[offset:offset + end - start]
+        if body.count(call) != 1:
+            raise AssertionError("Expected exactly one lobby preload farcall before lobbyMusicDone")
+        preload_pc = start + body.index(call)
+        state = {"started": False, "returned": False}
+
+        def start_preload(_context) -> None:
+            if state["started"]:
+                return
+            if self.read8("hCurMap") != self.LOBBY_MAP:
+                raise AssertionError("Left the lobby before queued preload")
+            doors = {self.read8("wLobbyDoor1StageMap"), self.read8("wLobbyDoor2StageMap")}
+            warps = [i for i, entry in enumerate(self.warp_entries()) if entry[3] in doors]
+            if not warps:
+                raise AssertionError("No lobby stage warp found for queued preload")
+            self.write8("wLobbyDoor1StageMap", map_id)
+            self.write8("wLobbyDoor2StageMap", map_id)
+            for i in warps:
+                self.write8("wWarpEntries", map_id, offset=i * 4 + 3)
+            state["started"] = True
+            self.pyboy.register_file.PC = preload_pc
+
+        def returned(_context) -> None:
+            if state["started"]:
+                state["returned"] = True
+
+        hooks = (("IndigoPlateauLobby_Script", start_preload),
+                 ("RunMapScript.return", returned))
+        for label, callback in hooks:
+            self.register_hook(label, callback)
+        try:
+            self.wait_until(lambda: state["returned"], "queued lobby wild-area preload", 2400)
+        finally:
+            for label, callback in reversed(hooks):
+                self.unregister_hook(label, callback)
+
+    def preload_and_enter_wild_area(self, map_id: int, description: str) -> None:
+        self.preload_wild_area(map_id)
 
         baseline = io.BytesIO()
         self.save_state(baseline)

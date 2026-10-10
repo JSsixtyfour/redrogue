@@ -57,6 +57,7 @@ class ChampionSpecTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         cases = [("LANCE", SPEC["LANCE_CHAMPION_TEAM"], "ChampionLance")]
         cases += [("PROF_OAK", n, "ProfOak") for n in (1, 3)]
         for cls, number, prefix in cases:

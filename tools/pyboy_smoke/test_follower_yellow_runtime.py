@@ -279,9 +279,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
                     if map_name.startswith("PROCEDURAL_CEMETERY_")
                     else maps[map_name]
                 )
-                self.harness.write8("wLobbyDoor1StageMap", preload_map)
-                self.harness.write8("wLobbyDoor2StageMap", preload_map)
-                self.harness.call_routine("ProcPreloadAssignedWildArea")
+                self.harness.preload_wild_area(preload_map)
                 self.harness.enter_stage_door1(maps[map_name], description=map_name)
                 self.assertLessEqual(self.harness.read8("wNumSprites"), 14)
                 if map_name in ("PROCEDURAL_CAVE_1", "PROCEDURAL_FOREST"):

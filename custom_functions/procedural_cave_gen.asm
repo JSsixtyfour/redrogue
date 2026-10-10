@@ -1476,6 +1476,10 @@ PCGetBossLevel::
 	add hl, bc
 	ld a, [hl]
 	ld [wCurEnemyLevel], a
+; The LEVELS setting applies to wild areas too (2026-10-09): without it the boss
+; stayed at full level while the easier settings' players ran lower, so on VERY
+; EASY it sat ~7 levels over the starter, the hardest fight of its round.
+	farcall RogueApplyDifficulty ; preserves bc/de/hl
 	ret
 
 ; Entrance table for randomized entrance experiment.
@@ -1584,6 +1588,7 @@ PCGetWildLevel:
 	pop bc              ; b = base level
 	add a, b            ; base + rand(3)
 	ld [wCurEnemyLevel], a
+	farcall RogueApplyDifficulty ; the LEVELS setting, as on the boss above
 	ret
 
 INCLUDE "data/balance/wild_levels.asm"

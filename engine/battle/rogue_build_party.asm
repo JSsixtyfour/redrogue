@@ -1481,8 +1481,15 @@ PartyGenApplyMoveset:
 .notExplicit
 	cp MSRC_SET
 	jr nz, PartyGenRollMoveset
+; VERY EASY never uses curated sets (player feedback #7): the slot takes its mix
+; row's fallback, the same path as a species with no matching set.
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp DIFFICULTY_VERY_EASY
+	jr z, .setFallback
 	call PartyGenApplySetMoveset
 	ret c                          ; a matching curated set was found and written
+.setFallback
 ; MSRC_SET falls back to the mix row's fallback source when this species has
 ; no curated set passing this mix's set_tier_mask near this mon's level, even
 ; after PartyGenApplySetMoveset widened its level window - not a bug, since the

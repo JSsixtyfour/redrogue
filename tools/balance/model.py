@@ -29,6 +29,12 @@ from parse import EVOLVE_ITEM, EVOLVE_TRADE, GameData  # noqa: E402
 
 MAX_LEVEL = 100
 DIFFICULTIES = ("normal", "easy", "very_easy", "hard", "very_hard")   # DIFFICULTY_* order
+# The LEVELS ladder as the ROM reads it (balance_constants.asm DIFF_*, since 2026-10-09):
+# signed enemy-level percent and prize bonus percent per stored setting. HARD is
+# the balance baseline (0%), and the model's default difficulty.
+_KNOBS = parse.load_knobs()
+DIFFICULTY_LEVEL_PCT = {d: _KNOBS[f"DIFF_LEVEL_PCT_{d.upper()}"] for d in DIFFICULTIES}
+DIFFICULTY_PRIZE_PCT = {d: _KNOBS[f"DIFF_PRIZE_BONUS_PCT_{d.upper()}"] for d in DIFFICULTIES}
 GYM_BAND_ROUNDS = 2  # party_specs.asm
 KANTO_LEADERS = ("Brock", "Misty", "LtSurge", "Erika", "Koga", "Blaine", "Sabrina", "Giovanni")
 KANTO_E4 = ("Lorelei", "Bruno", "Agatha", "Lance")
@@ -69,7 +75,7 @@ def bcd(value: int) -> int:
 
 @dataclass
 class Config:
-    difficulty: str = "normal"
+    difficulty: str = "hard"         # the balance baseline; the ROM's new-game default is "normal"
     exp_all: int | str | None = "equal"  # the ROM's EXP Share option: "equal" = on, None/"off" = off;
                                      # 0-3 = the retired key-item tiers;
                                      # "a"/"b"/"c" = the Phase 5 option candidates (exp_share_split)
@@ -101,9 +107,9 @@ class Config:
     money_mult: float = 1.0          # per-tier prize money multiplier (proposed ladder)
 
 
-# Proposed difficulty ladder (2026-10-09): label -> (enemy level %, money x).
-# Hard is the balance baseline (= today's NORMAL, money x1.05 baked into the bases);
-# each step down pays 10% more of that baseline. Used as difficulty="pct:N".
+# The 2026-10-09 Phase 0 PROPOSAL, kept for tools/balance/feedback_curves.py's
+# what-ifs (difficulty="pct:N" plus money_mult; a "pct:" difficulty gets no ROM
+# prize bonus). The ROM ladder is DIFFICULTY_LEVEL_PCT / DIFFICULTY_PRIZE_PCT.
 PROPOSED_TIERS = {
     "very_easy": (-30, 1.05 * 1.3),
     "easy": (-20, 1.05 * 1.2),
@@ -118,20 +124,12 @@ PROPOSED_TIERS = {
 # =============================================================================
 
 def apply_difficulty(level: int, difficulty: str) -> int:
-    """RogueApplyDifficulty (func_enc_gen.asm). "pct:N" is the proposed ladder's
-    signed-percent form (not in the ROM yet): level +/- level*|N|//100."""
-    if difficulty.startswith("pct:"):
-        p = int(difficulty[4:])
-        delta = level * abs(p) // 100
-        if p < 0:
-            return max(1, level - delta)
-        return min(level + delta, MAX_LEVEL)
-    if difficulty == "normal":
-        return level
-    delta = level // (5 if difficulty.startswith("very") else 10)
-    if difficulty.endswith("easy"):
-        v = level - delta
-        return v if v > 0 else 1
+    """RogueApplyDifficulty (func_enc_gen.asm): level +/- level*|pct|//100, floor 1,
+    cap 100. A named setting reads DIFFICULTY_LEVEL_PCT; "pct:N" is a what-if."""
+    p = int(difficulty[4:]) if difficulty.startswith("pct:") else DIFFICULTY_LEVEL_PCT[difficulty]
+    delta = level * abs(p) // 100
+    if p < 0:
+        return max(1, level - delta)
     return min(level + delta, MAX_LEVEL)
 
 
@@ -475,9 +473,9 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
 
 
 def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """PCRollWildEncounter: PCGetWildLevel + class roll, no difficulty modifier."""
+    """PCRollWildEncounter: PCGetWildLevel (+ the LEVELS setting since 2026-10-09) + class roll."""
     idx = round_of(g, count)
-    lv = g.tables.wild[idx] + rng.randrange(3)
+    lv = apply_difficulty(g.tables.wild[idx] + rng.randrange(3), cfg.difficulty)
     sp = select_from_tier_evolved(g, cfg, pc_roll_mon_class(idx, 0, rng), lv, rng)
     return Battle("wild", count, [(sp, lv)], False)
 
@@ -485,21 +483,22 @@ def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Bat
 FACILITY_FAKE_BALLS = 4
 
 
-def facility_fake_balls(g: GameData, count: int, rng: random.Random) -> list[Battle]:
+def facility_fake_balls(g: GameData, cfg: Config, count: int, rng: random.Random) -> list[Battle]:
     """The facility's four fake item balls (object slots 6-9): each is a wild
     Voltorb, Electrode from an entry wBattleCount of 60, all four at ONE
     PFacFakeWildLevelTable level rolled at generation (the same wild_area_levels
     table plus 0-2). A full clear touches them all, since they look like the
-    real balls; they sit outside the encounter budget."""
-    lv = g.tables.wild[round_of(g, count)] + rng.randrange(3)
+    real balls; they sit outside the encounter budget. The LEVELS setting applies
+    at generation (RogueApplyDifficultyE), as on every wild-area mon."""
+    lv = apply_difficulty(g.tables.wild[round_of(g, count)] + rng.randrange(3), cfg.difficulty)
     sp = "VOLTORB" if count < 6 * g.knobs["ROUND_BATTLES"] else "ELECTRODE"
     return [Battle("facility_voltorb", count, [(sp, lv)], False) for _ in range(FACILITY_FAKE_BALLS)]
 
 
 def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """PCRollBoss: PCGetBossLevel + a class roll bumped by WILD_BOSS_RARITY_BUMP."""
+    """PCRollBoss: PCGetBossLevel (+ the LEVELS setting) + a class roll bumped by WILD_BOSS_RARITY_BUMP."""
     idx = round_of(g, count)
-    lv = g.tables.wild_boss[idx]
+    lv = apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty)
     cls = pc_roll_mon_class(idx, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
     sp = select_from_tier_evolved(g, cfg, cls, lv, rng)
     return Battle("wild_boss", count, [(sp, lv)], False)
@@ -560,13 +559,64 @@ def exp_all_base(base_exp: int, tier: int) -> int:
     return base_exp if tier == 3 else base_exp - (base_exp >> (tier + 1))
 
 
-def money_for(g: GameData, battle: Battle, amulet_tier: int) -> int:
-    """ReadTrainer .FinishUp: base x level of the last mon, + Amulet Coin %."""
+SPECIAL_MINIBOSS, SPECIAL_WILD, SPECIAL_MANDATORY, SPECIAL_BOTH_DOORS = 1, 2, 4, 8
+SPECIAL_KINDS = SPECIAL_MINIBOSS | SPECIAL_WILD
+
+
+def special_encounter_policy(badges: int, mb_done: int, wa_done: int, since: int,
+                             rng: random.Random, skip_rounds: tuple[int, ...] = (),
+                             rnd: int = 0) -> tuple[int, int]:
+    """SpecialEncounterPolicy (special_encounter_policy.asm) -> (e, wRoutesSinceSpecial).
+    e: bit 0 mini-boss owed, bit 1 wild area owed, bit 2 mandatory, bit 3 both doors.
+    Joint quota by half-run: one of each before gym 4, two of each before gym 8,
+    COMPLETED encounters only. Mandatory when the combined deficit reaches the
+    route slots left in the half (this one included); otherwise the 25/50/75/100%
+    escalation (SpecialChanceOccur), which a declined offer does not reset.
+    With skip_rounds the slots left are the half's remaining non-skipped rounds,
+    the re-basing Phase 4 must give the ROM (today it is half_end - badges)."""
+    if badges == 0 or badges >= 8:
+        return 0, since
+    target, half_end = (1, 4) if badges < 4 else (2, 8)
+    e = deficit = 0
+    if target - mb_done > 0:
+        e |= SPECIAL_MINIBOSS
+        deficit += target - mb_done
+    if target - wa_done > 0:
+        e |= SPECIAL_WILD
+        deficit += target - wa_done
+    if not e:
+        return 0, since
+    if skip_rounds:
+        remaining = sum(1 for r in range(rnd, half_end + 1) if r not in skip_rounds)
+    else:
+        remaining = half_end - badges
+    if remaining <= deficit:
+        e |= SPECIAL_MANDATORY
+        if e & SPECIAL_KINDS == SPECIAL_KINDS:
+            e |= SPECIAL_BOTH_DOORS
+        return e, since
+    if since >= 3:
+        hit = True
+    else:
+        since += 1
+        hit = rng.randrange(256) < since * 64
+    if not hit:
+        return 0, since
+    if e & SPECIAL_KINDS == SPECIAL_KINDS and rng.randrange(256) < 64:
+        e |= SPECIAL_BOTH_DOORS
+    return e, since
+
+
+def money_for(g: GameData, battle: Battle, amulet_tier: int, difficulty: str = "pct:0") -> int:
+    """ReadTrainer .FinishUp: base x (level of the last mon + level x pct // 100),
+    pct = Amulet Coin % + the LEVELS setting's prize bonus %, added. A "pct:"
+    what-if difficulty has no prize bonus (Config.money_mult covers those)."""
     if not battle.money_base:
         return 0
     lv = battle.money_level
-    if amulet_tier:
-        lv += lv * AMULET_COIN_PCT[amulet_tier - 1] // 100
+    pct = AMULET_COIN_PCT[amulet_tier - 1] if amulet_tier else 0
+    pct += 0 if difficulty.startswith("pct:") else g.knobs[f"DIFF_PRIZE_BONUS_PCT_{difficulty.upper()}"]
+    lv += lv * pct // 100
     return battle.money_base * lv
 
 
@@ -704,7 +754,7 @@ class Simulator:
                 f.exp_gained += self._penalize(f, share)      # the fighter's own call
                 for m in self.members:                        # then every party mon
                     m.exp_gained += self._penalize(m, share)
-        won = money_for(g, battle, cfg.amulet_coin)
+        won = money_for(g, battle, cfg.amulet_coin, cfg.difficulty)
         if cfg.money_mult != 1.0:
             won = int(won * cfg.money_mult)
         self.money += won
@@ -748,7 +798,7 @@ class Simulator:
         for _ in range(min(budget, encounters)):
             self.fight(wild_battle(g, cfg, self.count, rng))
         if wtype == "facility" and cfg.wild_path == "full":
-            for bt in facility_fake_balls(g, self.count, rng):
+            for bt in facility_fake_balls(g, cfg, self.count, rng):
                 self.fight(bt)
         if stage_event and rng.random() < cfg.fight_stage_event:
             self.fight(stage_event_battle(g, cfg, self.count, rng))
@@ -766,8 +816,8 @@ class Simulator:
         self.fight(Battle("oak_rival", 0, [(self.rival_starter, apply_difficulty(cfg.rival_level, cfg.difficulty))],
                           True, g.money["RIVAL1"]))
 
-        mb_count = wa_count = since_special = 0
-        types_left = list(parse.WILD_AREA_TYPES)   # WildAreaSelect: no repeats until all four are offered
+        mb_done = wa_done = since_special = 0   # completed encounters (the ROM counts completions)
+        types_left = list(parse.WILD_AREA_TYPES)   # WildAreaPickType: no repeats until all four are offered
         wtype = None
         for rnd in range(1, k["NUM_ROGUE_ROUNDS"] + 1):
             self.cur_round = rnd
@@ -787,38 +837,25 @@ class Simulator:
                 continue
             kind = None
             if self.count >= c["MINIBOSS_FIRST_BATTLECOUNT"]:
-                # Route slots left, this one included. With no skipped rounds this is
-                # exactly MINIBOSS_TOTAL_ROUTES - badges (the ROM today); with skips it
-                # is the re-based quota the Phase 4 plan calls for.
-                remaining = (c["MINIBOSS_TOTAL_ROUTES"] - badges if not cfg.skip_rounds else
-                             sum(1 for r in range(rnd, k["NUM_ROGUE_ROUNDS"] + 1) if r not in cfg.skip_rounds))
-
-                def forced(have: int, need: int) -> bool:
-                    short = need - have
-                    return short > 0 and remaining <= short
-
-                mbf, waf = forced(mb_count, c["MINIBOSS_MIN_PER_RUN"]), forced(wa_count, c["WILD_AREA_MIN_PER_RUN"])
-                if mbf and not waf:
-                    kind = "miniboss"
-                elif waf and not mbf:
-                    kind = "wild_forced"
-                elif mbf or since_special >= 3 or rng.randrange(256) < (since_special + 1) * 64:
-                    kind = ("wild" if wa_count < mb_count else "miniboss" if wa_count > mb_count
-                            else rng.choice(("miniboss", "wild")))
-                if kind == "wild" and waf:
-                    kind = "wild_forced"
-                if kind is None:
-                    since_special += 1
-                else:
-                    since_special = 0
+                e, since_special = special_encounter_policy(
+                    badges, mb_done, wa_done, since_special, rng, cfg.skip_rounds, rnd)
+                mandatory = bool(e & SPECIAL_MANDATORY)
+                if e & SPECIAL_BOTH_DOORS:
+                    # SpecialEncounterRollAndAssign .doBoth: a boss door and a wild door,
+                    # no route; the player picks one.
+                    tw, tm = cfg.take_wild, cfg.take_miniboss
+                    kind = "wild_forced" if rng.random() < (tw / (tw + tm) if tw + tm else 0.5) else "miniboss_forced"
+                elif e & SPECIAL_KINDS:
+                    pick_wild = (e & SPECIAL_KINDS) == SPECIAL_WILD or (
+                        (e & SPECIAL_KINDS) == SPECIAL_KINDS and rng.randrange(2))
+                    if pick_wild:
+                        kind = "wild_forced" if mandatory else "wild"
+                    else:
+                        kind = "miniboss_forced" if mandatory else "miniboss"
                 if kind and kind.startswith("wild"):
                     if not types_left:
-                        kind = None          # all four types offered; the pick fails open to a route
-                    else:
-                        wtype = types_left.pop(rng.randrange(len(types_left)))
-                        wa_count = min(wa_count + 1, 3)
-                elif kind == "miniboss":
-                    mb_count += 1
+                        types_left = list(parse.WILD_AREA_TYPES)   # cycle mask reset, count kept
+                    wtype = types_left.pop(rng.randrange(len(types_left)))
 
             self.run.offers.append(kind or "none")
             stage_event = kind is not None and kind.startswith("wild") and \
@@ -827,9 +864,13 @@ class Simulator:
                 self.run.stages.append("wild")
                 self.run.wild_types.append(wtype)
                 self.wild_area(stage_event, wtype)
-            elif kind == "miniboss" and rng.random() < cfg.take_miniboss:
+                wa_done = min(wa_done + 1, 3)          # completion count, bits 3-4 of wWildAreaState
+            elif kind == "miniboss_forced" or (kind == "miniboss" and rng.random() < cfg.take_miniboss):
                 self.run.stages.append("miniboss")
                 self.route(rng.choice(("RIVAL", "GIOVANNI")))
+                if mb_done < c["MINIBOSS_MIN_PER_RUN"]:  # RecordMiniBossVictory
+                    mb_done += 1
+                    since_special = 0
             else:
                 self.run.stages.append("route")
                 self.route(None)
@@ -978,18 +1019,22 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     check("share equal odd", exp_share_split("equal", 55, 6), (34, 34))   # 28 + 6
     check("share equal max", exp_share_split("equal", 255, 6), (159, 159))  # 128 + 31, no overflow
 
-    # Difficulty: RogueApplyDifficulty on the round-1 leader ace (12 + 2 = 14).
-    ace1 = g.knobs["GYM_R1_BASE"] + (g.knobs["GYM_R1_MONS"] - 1) * g.knobs["GYM_R1_STEP"]
-    for diff, want in (("normal", ace1), ("easy", ace1 - ace1 // 10), ("very_easy", ace1 - ace1 // 5),
-                       ("hard", ace1 + ace1 // 10), ("very_hard", ace1 + ace1 // 5)):
-        check(f"difficulty {diff}", apply_difficulty(ace1, diff), want)
+    # Difficulty: RogueApplyDifficulty, the 2026-10-09 ladder, on L43 (30% truncates).
+    for diff, want in (("hard", 43), ("normal", 39), ("easy", 35), ("very_easy", 31), ("very_hard", 47)):
+        check(f"difficulty {diff}", apply_difficulty(43, diff), want)
     check("difficulty floor", apply_difficulty(1, "very_easy"), 1)
+    check("difficulty cap", apply_difficulty(95, "very_hard"), 100)
 
     # Money: route trainer base x last level; Amulet Coin tier 3 (+20%).
     b = Battle("route", 1, [("PIDGEY", 4)], True, g.knobs["MONEY_BASE_TRAINER"])
     check("money route L4", money_for(g, b, 0), g.knobs["MONEY_BASE_TRAINER"] * 4)
     b = Battle("route", 1, [("PIDGEY", 10)], True, g.knobs["MONEY_BASE_TRAINER"])
     check("money amulet t3 L10", money_for(g, b, 3), g.knobs["MONEY_BASE_TRAINER"] * 12)
+    # Prize bonus: added to the Amulet Coin's percent, both of the level.
+    vh, ve = g.knobs["DIFF_PRIZE_BONUS_PCT_VERY_HARD"], g.knobs["DIFF_PRIZE_BONUS_PCT_VERY_EASY"]
+    check("money very_hard L10", money_for(g, b, 0, "very_hard"), g.knobs["MONEY_BASE_TRAINER"] * (10 + 10 * vh // 100))
+    check("money very_easy amulet t3 L10", money_for(g, b, 3, "very_easy"),
+          g.knobs["MONEY_BASE_TRAINER"] * (10 + 10 * (ve + 20) // 100))
     check("wild pays nothing", money_for(g, Battle("wild", 1, [("PIDGEY", 5)], False), 0), 0)
     check("GIOVANNI leader base", g.money["GIOVANNI"], g.knobs["MONEY_BASE_LEADER_GIOVANNI"])
     check("BROCK leader base", g.money["BROCK"], g.knobs["MONEY_BASE_LEADER"])
@@ -1064,16 +1109,15 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     b2 = simulate(g, Config(), 1, seed=3)[0]
     check("seeded reproducibility", [bt.mons for bt in a.battles], [bt.mons for bt in b2.battles])
 
-    # SpecialKindForced counts OFFERS, not visits, and it cannot keep both
-    # "min 2 per run" promises: a run reaching route 8 short one of EACH has both
-    # forced on one visit, and .chooseKind's tie-break drops one. What does hold
-    # is at least one of each kind.
-    for run in simulate(g, Config(take_wild=0.0), runs, seed=11):
-        wild = sum(o.startswith("wild") for o in run.offers)
-        mini = run.offers.count("miniboss")
-        if wild < 1 or mini < 1:
-            fails.append(f"a run was offered no wild area or no mini-boss: {run.offers}")
-            break
+    # SpecialEncounterPolicy's joint quota (completions, by half-run) guarantees
+    # two of each per run even for a player who declines every optional door,
+    # with or without skipped routes (the latter on the Phase 4 re-basing).
+    for skips in ((), (4, 7)):
+        for run in simulate(g, Config(take_wild=0.0, take_miniboss=0.0, skip_rounds=skips), runs, seed=11):
+            wild, mini = run.stages.count("wild"), run.stages.count("miniboss")
+            if (wild, mini) != (2, 2):
+                fails.append(f"skips={skips}: {wild} wild areas, {mini} mini-bosses: {run.offers}")
+                break
     return fails
 
 
@@ -1095,7 +1139,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--difficulty", choices=DIFFICULTIES, default="normal")
+    ap.add_argument("--difficulty", choices=DIFFICULTIES, default="hard")
     ap.add_argument("--tier", choices=tuple(PROPOSED_TIERS), default=None,
                     help="proposed 2026-10-09 ladder (level %% and money x); overrides --difficulty")
     ap.add_argument("--starter-level", type=int, default=5, help="Oak's Lab starter (and rival) level")
@@ -1158,7 +1202,7 @@ def main(argv: list[str] | None = None) -> int:
         print("stages:", " ".join(run.stages), "| rival starter:", sim.rival_starter)
         for bt in run.battles:
             mons = ", ".join(f"{sp} L{lv}" for sp, lv in bt.mons)
-            print(f"  count {bt.count:3d} {bt.kind:12s} money {money_for(g, bt, cfg.amulet_coin):6d}  {mons}")
+            print(f"  count {bt.count:3d} {bt.kind:12s} money {money_for(g, bt, cfg.amulet_coin, cfg.difficulty):6d}  {mons}")
         return 0
     runs = simulate(g, cfg, args.runs, args.seed)
     print(format_round_table(summarize(g, runs), cfg))

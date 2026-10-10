@@ -16,15 +16,16 @@
 
 ; ---------------------------------------------------------------------------
 ; Tier descriptions: 2 lines of at most 18 characters each, split by <NEXT>.
-; PLACEHOLDER TEXT, replace with the final blurbs.
+; Numbers from balance_constants.asm (DIFF_LEVEL_PCT_* / DIFF_PRIZE_BONUS_PCT_*),
+; 2026-10-09. HARD is the balance baseline.
 ; ---------------------------------------------------------------------------
 DifficultySelectDescriptions:
 	dw .veryEasy, .easy, .normal, .hard, .veryHard
-.veryEasy: db "TODO VERY EASY<NEXT>line two@"
-.easy:     db "TODO EASY<NEXT>line two@"
-.normal:   db "TODO NORMAL<NEXT>line two@"
-.hard:     db "TODO HARD<NEXT>line two@"
-.veryHard: db "TODO VERY HARD<NEXT>line two@"
+.veryEasy: db "Foes 30% lower.<NEXT>Simple AI, most ¥.@"
+.easy:     db "Foes 20% lower.<NEXT>More prize money.@"
+.normal:   db "Foes 10% lower.<NEXT>A bit more money.@"
+.hard:     db "The intended run:<NEXT>full-level foes.@"
+.veryHard: db "Foes 10% higher.<NEXT>Smarter AI early.@"
 
 ; Display order, easiest to hardest -> stored DIFFICULTY_* value. Same values as
 ; OptDifficultyOrder in options_menu.asm (a different bank, so duplicated).

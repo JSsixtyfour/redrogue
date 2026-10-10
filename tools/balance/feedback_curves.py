@@ -194,8 +194,8 @@ def main() -> int:
     n, ns = args.runs, args.solve_runs
 
     g0 = parse.load_all()
-    base_cfg = Config()
-    new_cfg = Config(starter_level=args.starter_level, rival_level=args.starter_level, skip_rounds=skip)
+    base_cfg = Config(difficulty="pct:0")   # 0% levels, no ROM prize bonus (the Phase 0 baseline)
+    new_cfg = Config(difficulty="pct:0", starter_level=args.starter_level, rival_level=args.starter_level, skip_rounds=skip)
     cfg75 = replace(new_cfg, exp_all=args.lift_mode)
     lift = {"equal75": "75%", "equal6875": "68.75%"}.get(args.lift_mode, args.lift_mode)
 

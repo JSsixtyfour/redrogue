@@ -64,6 +64,7 @@ class TrainerRevampSpecTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         for cls, aces in E4_ACES.items():
             with self.subTest(trainer=cls, trainer_no=trainer_no):
                 count, party, levels = self._build(cls, trainer_no)
@@ -74,6 +75,26 @@ class TrainerRevampSpecTest(HarnessTestCase):
                 self.assertIn(party[-1], {self.species[a] for a in aces},
                               f"{cls} ace is species {party[-1]}")
                 self.assertEqual((levels[0], levels[-1]), (low, high))
+
+    def test_very_easy_never_reads_a_curated_set(self):
+        """Player feedback #7 (2026-10-09): VERY EASY has no curated movesets.
+        The HARD half is the control: the same builds do reach the reader, so a
+        zero on VERY EASY means the gate, not a mix without MSRC_SET quota. One
+        boot (a second fails), three tier-4 E4 builds per setting (call budget)."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        members = list(E4_ACES)[:3]
+        reads = h.hook_flag("PartyGenApplySetMoveset")
+        counts = {}
+        for difficulty in ("HARD", "VERY_EASY"):
+            h.set_difficulty(difficulty)
+            before = reads["count"]
+            for cls in members:
+                self._build(cls, 11)
+            counts[difficulty] = reads["count"] - before
+        self.assertGreater(counts["HARD"], 0, counts)
+        self.assertEqual(counts["VERY_EASY"], 0, counts)
 
     def test_e4_tier_one_builds_six_with_an_ace(self):
         """wTrainerNo 1 used to be the authored hole: a fixed 4-5 mon team.
@@ -98,6 +119,7 @@ class TrainerRevampSpecTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         h.write8("wRivalStarter", self.species["CHARMANDER"])
         line = {self.species[s] for s in CHARMANDER_LINE}
         for trainer_no in (1, 2, 3, 4, 5, 1):
@@ -126,6 +148,7 @@ class TrainerRevampSpecTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         h.write8("wRivalStarter", self.species["CHARMANDER"])
         verdict = []
         h.register_hook("PartyGenPoolCandidateOk.accept",

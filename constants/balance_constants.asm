@@ -176,6 +176,31 @@ DEF MONEY_BASE_MINIBOSS_RIVAL EQU 100
 DEF MONEY_BASE_MINIBOSS_GIOVANNI EQU 200
 DEF MONEY_BASE_MINIBOSS_KARATE EQU 150
 
+; --- Difficulty (LEVELS option) ------------------------------------------------
+; One pair per stored DIFFICULTY_* value (constants/ram_constants.asm). The labels
+; moved one step easier on 2026-10-09 (player feedback #5): HARD is the balance
+; baseline (the old NORMAL), NORMAL is the old EASY, and so on; the old +20% tier is
+; gone. Stored values did not change, so NORMAL (0) stays the new-game default.
+;
+; DIFF_LEVEL_PCT_*: enemy levels change by level*|pct|//100, signed (negative =
+; lower), floor 1, cap 100. Read by RogueApplyDifficulty (func_enc_gen.asm).
+DEF DIFF_LEVEL_PCT_NORMAL    EQU -10
+DEF DIFF_LEVEL_PCT_EASY      EQU -20
+DEF DIFF_LEVEL_PCT_VERY_EASY EQU -30
+DEF DIFF_LEVEL_PCT_HARD      EQU 0
+DEF DIFF_LEVEL_PCT_VERY_HARD EQU 10
+; DIFF_PRIZE_BONUS_PCT_*: extra prize money, percent of base x level, added to the
+; Amulet Coin's percent before ReadTrainer's money loop (read_trainer_party.asm).
+; Solved on the balance model (curve A+, BALANCE_FEEDBACK_PHASE0_2026-10-09.md):
+; HARD restores the pre-route-cut end-of-run money, +5%; each easier tier really
+; ends x1.1/1.2/1.3 of HARD despite its lower enemy levels. VERY HARD keeps HARD's
+; bonus and ends ~8% richer (FOLLOWUPS #63).
+DEF DIFF_PRIZE_BONUS_PCT_NORMAL    EQU 40  ; x1.396 solved
+DEF DIFF_PRIZE_BONUS_PCT_EASY      EQU 71  ; x1.709
+DEF DIFF_PRIZE_BONUS_PCT_VERY_EASY EQU 111 ; x2.110
+DEF DIFF_PRIZE_BONUS_PCT_HARD      EQU 16  ; x1.164
+DEF DIFF_PRIZE_BONUS_PCT_VERY_HARD EQU 16  ; x1.164
+
 ; --- Economy -------------------------------------------------------------
 ; BCD, $3000 = Y3000. Read by engine/movie/oak_speech/init_player_data.asm.
 DEF START_MONEY EQU $3000

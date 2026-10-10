@@ -445,40 +445,52 @@ RogueApplyWitchLevelBonus::
 	pop bc
 	ret
 
-; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2).
-; No register arguments.  Clobbers a and the Divide HRAM scratch.
+; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2):
+; level +/- level*|pct|//100 with pct = DifficultyLevelPct[setting] (signed).
+; No register arguments.  Clobbers a and the Multiply/Divide HRAM scratch.
 RogueApplyDifficulty::
 	ld a, [wOptions2]
 	and DIFFICULTY_MASK
-	ret z                        ; DIFFICULTY_NORMAL: leave the level untouched
+	cp NUM_AI_DIFFICULTY_ROWS
+	ret nc                       ; corrupt option byte: leave the level untouched
 	push bc
 	push de
 	push hl
-	ld e, a                      ; e = difficulty setting, 1..4
-
-; divisor: 10 for EASY/HARD (10%), 5 for VERY EASY/VERY HARD (20%)
-	cp DIFFICULTY_VERY_EASY
-	jr z, .fifth
-	cp DIFFICULTY_VERY_HARD
-	jr z, .fifth
-	ld a, 10
-	jr .gotDivisor
-.fifth
-	ld a, 5
-.gotDivisor
-	ldh [hDivisor], a
+	ld c, a
+	ld b, 0
+	ld hl, DifficultyLevelPct
+	add hl, bc
+	ld a, [hl]                   ; a = signed percent
+	and a
+	jr z, .done                  ; 0%: the balance baseline (HARD)
+	ld e, a                      ; e bit 7 = lower
+	bit 7, a
+	jr z, .gotMagnitude
+	cpl
+	inc a                        ; |pct|
+.gotMagnitude
+	ldh [hMultiplier], a
+	xor a
+	ldh [hMultiplicand], a
+	ldh [hMultiplicand + 1], a
 	ld a, [wCurEnemyLevel]
 	ld d, a                      ; d = base level
+	ldh [hMultiplicand + 2], a
+	call Multiply                ; level * |pct| <= 255 * 128, fits hProduct+2/+3
+	ldh a, [hProduct + 2]
 	ldh [hDividend], a
-	ld b, $1                     ; 1-byte dividend, do not remove
+	ldh a, [hProduct + 3]
+	ldh [hDividend + 1], a
+	ld a, 100
+	ldh [hDivisor], a
+	ld b, 2                      ; 2-byte dividend
 	call Divide
 	ldh a, [hQuotient + 3]
 	ld c, a                      ; c = delta
 
-	ld a, e
-	cp DIFFICULTY_HARD
-	jr nc, .harder               ; HARD (3) or VERY HARD (4) -> add
-; EASY / VERY EASY -> subtract, floor at 1
+	bit 7, e
+	jr z, .harder
+; lower, floor at 1
 	ld a, d
 	sub c
 	jr c, .floor
@@ -497,10 +509,36 @@ RogueApplyDifficulty::
 	ld a, 100
 .store
 	ld [wCurEnemyLevel], a
+.done
 	pop hl
 	pop de
 	pop bc
 	ret
+
+; RogueApplyDifficulty for a level that is not in wCurEnemyLevel, for callers in
+; another bank. INPUT/OUTPUT: e = level (e survives a farcall both ways; a does
+; not). wCurEnemyLevel is saved and restored around the call.
+RogueApplyDifficultyE::
+	ld a, [wCurEnemyLevel]
+	push af
+	ld a, e
+	ld [wCurEnemyLevel], a
+	call RogueApplyDifficulty
+	ld a, [wCurEnemyLevel]
+	ld e, a
+	pop af
+	ld [wCurEnemyLevel], a
+	ret
+
+; Signed level percent per stored DIFFICULTY_* value (balance_constants.asm).
+DifficultyLevelPct:
+	db LOW(DIFF_LEVEL_PCT_NORMAL)
+	db LOW(DIFF_LEVEL_PCT_EASY)
+	db LOW(DIFF_LEVEL_PCT_VERY_EASY)
+	db LOW(DIFF_LEVEL_PCT_HARD)
+	db LOW(DIFF_LEVEL_PCT_VERY_HARD)
+	assert @ - DifficultyLevelPct == NUM_AI_DIFFICULTY_ROWS, \
+		"DifficultyLevelPct must have one entry per difficulty"
 
 ; ============================================================================
 ; Mid-battle evolution (Extreme Yellow import).

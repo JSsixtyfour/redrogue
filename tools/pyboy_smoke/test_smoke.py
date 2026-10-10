@@ -329,13 +329,13 @@ class BootSmokeTest(HarnessTestCase):
         events = parse_rgbds_constants(
             REPO_ROOT / "constants" / "event_constants.asm"
         )
-        self.harness.boot_to_lobby(encounter_kind=4)
+        self.harness.boot_to_lobby(encounter_kind=4, wild_type="facility")
         self.assertTrue(self.harness.event_is_set(events["EVENT_ENTER_ROOM"]))
 
-        self.harness.write8("wWildAreaState", 0x07)
-        self.harness.write8("wDebug2ForcedDoor1", 0xC0)
-        self.harness.call_routine("SelectAndPatchLobbyExit", limit=60000)
-        self.harness.call_routine("ProcPreloadAssignedWildArea", limit=60000)
+        selection = self.harness.hook_flag("SelectAndPatchLobbyExit")
+        self.harness.preload_wild_area(maps["PROCEDURAL_FACILITY"])
+        self.harness.tick(30)
+        self.assertEqual(selection["count"], 0, "preload restarted lobby selection")
         self.assertEqual(
             self.harness.read8("wLobbyDoor1StageMap"),
             maps["PROCEDURAL_FACILITY"],
@@ -346,11 +346,7 @@ class BootSmokeTest(HarnessTestCase):
         )
         self.assertTrue(self.harness.event_is_set(events["EVENT_ENTER_ROOM"]))
 
-        # EVENT_ENTER_ROOM is the next-frame gate. Its persistence, together
-        # with the still-patched destination above, proves preload cannot send
-        # the lobby back through selection. User runtime acceptance covers the
-        # actual resumed-frame choreography; stacked direct routine probes do
-        # not provide a valid arbitrary-frame resume point in this harness.
+        # This now checks resumed gameplay, not a pair of injected calls.
 
 
 

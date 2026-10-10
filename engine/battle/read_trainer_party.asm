@@ -306,6 +306,11 @@ ENDC
 ; at call time, so b comes back as 2, not the level, without a copy saved
 ; somewhere else first. farcall also clobbers b, hence the copy is taken
 ; before it, not after.
+;
+; The LEVELS setting's prize bonus (DIFF_PRIZE_BONUS_PCT_*, player feedback #6)
+; rides the same loop: its percent is ADDED to the Amulet Coin's, so both are
+; percents of base x level. Worst case 100 * (111 + 20) = 13,100 fits the 16-bit
+; product, and level + 131% of 100 = 231 still fits b.
 	push de
 	ld c, b                        ; c = level, safe across the b=2 clobber below
 	push bc
@@ -314,14 +319,28 @@ ENDC
 	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
 	ld a, e                        ; not a: Bankswitch returns the caller's bank in a
 	pop bc
+	ld d, 0                        ; d = Amulet Coin percent
 	and a
-	jr z, .noAmuletCoin
+	jr z, .gotAmuletPct
 	dec a
 	ld hl, .AmuletCoinPctTable
 	ld e, a
+	add hl, de                     ; d is 0 here
+	ld d, [hl]                     ; 10/15/20
+.gotAmuletPct
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp NUM_AI_DIFFICULTY_ROWS
+	jr c, .difficultyInRange
+	xor a                          ; corrupt option byte: NORMAL, as AIResolveTier does
+.difficultyInRange
+	ld e, a
+	ld a, d
 	ld d, 0
+	ld hl, .PrizeBonusPctTable
 	add hl, de
-	ld a, [hl]                     ; a = percent bonus (10/15/20)
+	add [hl]                       ; a = Amulet Coin % + difficulty %
+	jr z, .noAmuletCoin
 	ldh [hMultiplier], a
 	xor a
 	ldh [hMultiplicand], a
@@ -329,7 +348,7 @@ ENDC
 	ld a, b
 	ldh [hMultiplicand + 2], a
 	call Multiply                  ; level * pct always fits in 16 bits
-	                                ; (max 100*20=2000), so hProduct+2/+3 hold it
+	                                ; (max 100*131=13100), so hProduct+2/+3 hold it
 	ldh a, [hProduct + 2]
 	ldh [hDividend], a
 	ldh a, [hProduct + 3]
@@ -340,7 +359,7 @@ ENDC
 	call Divide
 	ldh a, [hQuotient + 3]         ; a = extra loop iterations
 	add c                          ; c = original level, saved above
-	ld b, a                        ; b = level + extra, still fits a byte (max 120)
+	ld b, a                        ; b = level + extra, still fits a byte (max 231)
 .noAmuletCoin
 	pop de
 
@@ -360,6 +379,16 @@ ENDC
 
 .AmuletCoinPctTable:
 	db 10, 15, 20
+
+; Per stored DIFFICULTY_* value (balance_constants.asm).
+.PrizeBonusPctTable:
+	db DIFF_PRIZE_BONUS_PCT_NORMAL
+	db DIFF_PRIZE_BONUS_PCT_EASY
+	db DIFF_PRIZE_BONUS_PCT_VERY_EASY
+	db DIFF_PRIZE_BONUS_PCT_HARD
+	db DIFF_PRIZE_BONUS_PCT_VERY_HARD
+	assert @ - .PrizeBonusPctTable == NUM_AI_DIFFICULTY_ROWS, \
+		"PrizeBonusPctTable must have one entry per difficulty"
 
 ; a = LOSS_ORIGIN_* code: write it to every wEnemyMoveOrigins slot.
 FillEnemyMoveOrigins:

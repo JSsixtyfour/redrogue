@@ -1,0 +1,75 @@
+# Level-gap targets (enemy top level - rolled starter). Measured 2026-10-09 at 3f1d22e3+dirty from the source as it stands (today's run shape, HARD), 2000 runs.
+# Written by tools/balance/curve_solver.py --write-targets; edit by hand to retarget.
+round,column,target,tolerance
+1,Route,-2.5,0.5
+1,Route boss,-1.6,0.5
+1,Gym,-1.8,0.5
+1,Gym final,-0.8,0.5
+1,Leader,+1.5,0.5
+2,Route,-2.0,0.5
+2,Route boss,+1.0,0.5
+2,Mini-boss,+0.6,0.5
+2,Wild,-0.6,0.5
+2,Stage ev.,+1.9,0.5
+2,Wild boss,+3.8,0.5
+2,Gym,-1.4,0.5
+2,Gym final,-0.1,0.5
+2,Leader,+2.6,0.5
+3,Route,-2.4,0.5
+3,Route boss,+1.2,0.5
+3,Mini-boss,+1.6,0.5
+3,Wild,-1.9,0.5
+3,Stage ev.,+1.8,0.5
+3,Wild boss,+2.6,0.5
+3,Gym,-1.1,0.5
+3,Gym final,+0.8,0.5
+3,Leader,+3.1,0.5
+4,Route,-1.7,0.5
+4,Route boss,+0.6,0.5
+4,Mini-boss,+1.5,0.5
+4,Wild,-0.5,0.5
+4,Stage ev.,+2.2,0.5
+4,Wild boss,+3.2,0.5
+4,Gym,-1.0,0.5
+4,Gym final,+1.1,0.5
+4,Leader,+3.6,0.5
+5,Route,-2.3,0.5
+5,Route boss,+1.1,0.5
+5,Mini-boss,+1.5,0.5
+5,Wild,-0.7,0.5
+5,Stage ev.,+3.0,0.5
+5,Wild boss,+3.9,0.5
+5,Gym,-1.2,0.5
+5,Gym final,+0.6,0.5
+5,Leader,+3.0,0.5
+6,Route,-1.9,0.5
+6,Route boss,+1.6,0.5
+6,Mini-boss,+0.9,0.5
+6,Wild,-0.5,0.5
+6,Stage ev.,+2.2,0.5
+6,Wild boss,+3.3,0.5
+6,Gym,-1.7,0.5
+6,Gym final,+0.2,0.5
+6,Leader,+3.6,0.5
+7,Route,-2.3,0.5
+7,Route boss,+0.8,0.5
+7,Mini-boss,+1.9,0.5
+7,Wild,-0.8,0.5
+7,Stage ev.,+1.9,0.5
+7,Wild boss,+2.9,0.5
+7,Gym,-1.4,0.5
+7,Gym final,+0.2,0.5
+7,Leader,+3.4,0.5
+8,Route,-1.8,0.5
+8,Route boss,+1.1,0.5
+8,Mini-boss,+1.8,0.5
+8,Wild,-1.3,0.5
+8,Stage ev.,+2.4,0.5
+8,Wild boss,+2.6,0.5
+8,Gym,-1.5,0.5
+8,Gym final,+0.1,0.5
+8,Leader,+3.5,0.5
+9,Route,-2.4,0.5
+9,VR rival,+1.2,0.5
+9,E4,+2.7,0.5
+9,Champion,+3.3,0.5

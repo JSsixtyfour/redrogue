@@ -25,24 +25,28 @@ SECTION "Trainer AI Core", ROMX
 ;
 ; User's design, 2026-09-01: difficulty changes WHERE the ladder starts and
 ; where it stops, not merely how fast it climbs.
-;   VERY EASY  half T0, half T1
-;   EASY       thirds of T0 / T1 / T2
-;   NORMAL     unchanged from the original ladder
-;   HARD       thirds of T1 / T2 / T3
-;   VERY HARD  half T2, half T3
+; 2026-10-09 (player feedback #5/#7): every label moved one step easier, so each
+; row is the row one step harder in the old ladder, and VERY EASY is all T0.
+;   VERY EASY  T0 only, bosses included (ceiling T0)
+;   EASY       half T0, half T1 (the old VERY EASY)
+;   NORMAL     thirds of T0 / T1 / T2 (the old EASY)
+;   HARD       the original ladder, the balance baseline (the old NORMAL)
+;   VERY HARD  thirds of T1 / T2 / T3 (the old HARD)
+; The old VERY HARD (half T2, half T3) is gone.
 ; Verified monotone: read down any round column and the tier never decreases as
 ; difficulty rises.
 ;
-; Consequence worth knowing before retuning: VERY EASY never reaches T2 and
-; EASY never reaches T3, so neither ever meets the plan system, the switching
-; engine or threat awareness. That is what "stop" means here, not an oversight.
+; Consequence worth knowing before retuning: VERY EASY and EASY never reach
+; T2 and NORMAL never reaches T3, so they never meet the plan system, the
+; switching engine or threat awareness. That is what "stop" means here, not an
+; oversight.
 AITierByRound:
 ;	round: 0  1  2  3  4  5  6  7  8
-	db 0, 0, 1, 1, 2, 2, 2, 3, 3 ; DIFFICULTY_NORMAL
-	db 0, 0, 0, 1, 1, 1, 2, 2, 2 ; DIFFICULTY_EASY
-	db 0, 0, 0, 0, 0, 1, 1, 1, 1 ; DIFFICULTY_VERY_EASY
-	db 1, 1, 1, 2, 2, 2, 3, 3, 3 ; DIFFICULTY_HARD
-	db 2, 2, 2, 2, 2, 3, 3, 3, 3 ; DIFFICULTY_VERY_HARD
+	db 0, 0, 0, 1, 1, 1, 2, 2, 2 ; DIFFICULTY_NORMAL
+	db 0, 0, 0, 0, 0, 1, 1, 1, 1 ; DIFFICULTY_EASY
+	db 0, 0, 0, 0, 0, 0, 0, 0, 0 ; DIFFICULTY_VERY_EASY
+	db 0, 0, 1, 1, 2, 2, 2, 3, 3 ; DIFFICULTY_HARD
+	db 1, 1, 1, 2, 2, 2, 3, 3, 3 ; DIFFICULTY_VERY_HARD
 	assert @ - AITierByRound == (AI_MAX_ROUND + 1) * NUM_AI_DIFFICULTY_ROWS, \
 		"AITierByRound must have one row per difficulty and one entry per round"
 
@@ -56,9 +60,9 @@ ASSERT FINAL_AI > AI_MAX_TIER, "FINAL_AI's tier trick needs the class id above e
 ; TUNING KNOB: raise a row here if bosses should stay a real spike even on the
 ; easy settings. One byte per difficulty.
 AITierCeiling:
-	db AI_TIER_EXPERT    ; DIFFICULTY_NORMAL
-	db AI_TIER_SKILLED   ; DIFFICULTY_EASY
-	db AI_TIER_COMPETENT ; DIFFICULTY_VERY_EASY
+	db AI_TIER_SKILLED   ; DIFFICULTY_NORMAL
+	db AI_TIER_COMPETENT ; DIFFICULTY_EASY
+	db AI_TIER_NOVICE    ; DIFFICULTY_VERY_EASY
 	db AI_TIER_EXPERT    ; DIFFICULTY_HARD
 	db AI_TIER_EXPERT    ; DIFFICULTY_VERY_HARD
 	assert @ - AITierCeiling == NUM_AI_DIFFICULTY_ROWS, \

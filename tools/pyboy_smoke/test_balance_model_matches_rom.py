@@ -231,7 +231,7 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
         h.write8("wBattleCount", battle_count)
 
     def _read_trainer(self, trainer_class: str, trainer_no: int, battle_count: int,
-                      difficulty: str = "normal") -> tuple[list[int], int]:
+                      difficulty: str = "hard") -> tuple[list[int], int]:
         """Build one enemy party; return (levels, money won)."""
         h = self.harness
         self._neutral_state(difficulty, battle_count)
@@ -249,11 +249,12 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
         money = _bcd(h.read_bytes("wAmountMoneyWon", 3))
         return levels, money
 
-    def _assert_money(self, battle: model.Battle, rom_levels: list[int], rom_money: int) -> None:
+    def _assert_money(self, battle: model.Battle, rom_levels: list[int], rom_money: int,
+                      difficulty: str = "hard") -> None:
         """model.money_for over the ROM's own last level (the roll is random)."""
         priced = model.Battle(battle.kind, battle.count,
                               [("?", lv) for lv in rom_levels], True, battle.money_base)
-        self.assertEqual(rom_money, model.money_for(self.g, priced, 0),
+        self.assertEqual(rom_money, model.money_for(self.g, priced, 0, difficulty),
                          f"money: ROM paid {rom_money} for last level {rom_levels[-1]}")
 
     def _model_band(self, build) -> tuple[set[int], set[int]]:
@@ -295,10 +296,10 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
     # --- gym leaders and the Elite Four (RogueBuildParty) ---------------------
 
     def _check_spec(self, trainer_class: str, trainer_no: int, count: int, battle: model.Battle,
-                    difficulty: str = "normal") -> None:
+                    difficulty: str = "hard") -> None:
         levels, money = self._read_trainer(trainer_class, trainer_no, count, difficulty)
         self.assertEqual(levels, [lv for _, lv in battle.mons], "levels")
-        self._assert_money(battle, levels, money)
+        self._assert_money(battle, levels, money, difficulty)
 
     def test_leader_levels_every_round(self):
         """Brock, variant B (no pinned ace), rounds 1-8. Levels are
@@ -312,8 +313,8 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
                 self._check_spec("BROCK", (rnd - 1) * NUM_ROUND_VARIANTS + 2, at(rnd, 0), battle)
 
     def test_difficulty_modes(self):
-        """RogueApplyDifficulty's rounding, all five modes, on a round-6 team
-        (L37-43) where 10% and 20% both truncate."""
+        """RogueApplyDifficulty's rounding and each setting's prize bonus, all five
+        modes, on a round-6 team (L37-43) where 10%, 20% and 30% truncate."""
         self._boot()
         leader = next(l for l in self.g.leaders if l.name == "Brock")
         for difficulty in model.DIFFICULTIES:
@@ -346,8 +347,8 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
 
     # --- reward / wild / boss levels ------------------------------------------
 
-    def _level_after(self, routine: str, count: int) -> int:
-        self._neutral_state("normal", count)
+    def _level_after(self, routine: str, count: int, difficulty: str = "hard") -> int:
+        self._neutral_state(difficulty, count)
         self.harness.write8("wCurEnemyLevel", 0)
         self._call(routine)
         return self.harness.read8("wCurEnemyLevel")
@@ -369,6 +370,18 @@ class BalanceModelMatchesRomSmokeTest(HarnessTestCase):
                     self.assertEqual(self._level_after("PCGetBossLevel", count), battle.mons[0][1])
         finally:
             h.write8("hCurMap", saved_map)
+
+    def test_wild_boss_level_follows_the_levels_setting(self):
+        """PCGetBossLevel applies RogueApplyDifficulty (2026-10-09), all five
+        settings at the last round, where 10/20/30% all truncate differently."""
+        self._boot()
+        count = 89
+        for difficulty in model.DIFFICULTIES:
+            with self.subTest(difficulty=difficulty):
+                battle = model.wild_boss_battle(self.g, model.Config(difficulty=difficulty), count,
+                                                random.Random(0))
+                self.assertEqual(self._level_after("PCGetBossLevel", count, difficulty),
+                                 battle.mons[0][1])
 
     def test_oaks_lab_bridge_gift_uses_battle_count(self):
         """Oak's starter stays level 5, while its bridge gift scales normally."""

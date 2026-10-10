@@ -94,9 +94,10 @@ class FinalAITest(HarnessTestCase):
         final_ai = self.trainer_classes["FINAL_AI"]
         difficulty_mask = self.ram_constants["DIFFICULTY_MASK"]
         final_trainer_bit = self.ram_constants["BIT_ROGUE_FINAL_TRAINER"]
-        # NORMAL, EASY, VERY_EASY, HARD, VERY_HARD = Expert, Skilled,
-        # Competent, Expert, Expert (AITierCeiling, ai_core.asm).
-        expected = [3, 2, 1, 3, 3]
+        # NORMAL, EASY, VERY_EASY, HARD, VERY_HARD = Skilled, Competent,
+        # Novice, Expert, Expert (AITierCeiling, ai_core.asm; labels moved one
+        # step easier on 2026-10-09, and VERY EASY is T0 throughout).
+        expected = [2, 1, 0, 3, 3]
         for difficulty, expected_tier in enumerate(expected):
             h.write8("wAIDebugTierOverride", 0)
             h.write8("wAITier", 0)

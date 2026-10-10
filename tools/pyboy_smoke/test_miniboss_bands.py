@@ -71,6 +71,7 @@ class MiniBossBandTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         for tier in (2, 5, 9):
             with self.subTest(tier=tier):
                 party, levels = self._build("GIOVANNI_MINIBOSS", tier, 3)
@@ -83,6 +84,7 @@ class MiniBossBandTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # expected levels are the 0% knobs
         h.write8("wRivalStarter", SPECIES["CHARMANDER"])
         # Tier 2's ace is level 13, below Charmeleon's 16; tier 9's is 58.
         for tier, ace in ((2, "CHARMANDER"), (9, "CHARIZARD")):

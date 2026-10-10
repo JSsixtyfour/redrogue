@@ -1,0 +1,15 @@
+{
+  "note": "ASSUMED player plan (no playtest data yet, 2026-10-09). Priority order; each line buys up to `count` units of a report.shop_prices key once the player has reached `from_gym` gyms. Edit freely; the report re-runs it per difficulty.",
+  "plan": [
+    {"item": "tm_C", "count": 1, "from_gym": 1, "why": "first coverage TM"},
+    {"item": "vitamin", "count": 2, "from_gym": 2, "why": "stat boosts on the starter"},
+    {"item": "tm_B", "count": 2, "from_gym": 3, "why": "mid-game coverage"},
+    {"item": "tutor_B", "count": 1, "from_gym": 4, "why": "one tutor move"},
+    {"item": "pp_up", "count": 1, "from_gym": 4, "why": "PP on the main attack"},
+    {"item": "tm_A", "count": 2, "from_gym": 5, "why": "strong TMs for the core team"},
+    {"item": "vitamin", "count": 4, "from_gym": 5, "why": "more stat boosts"},
+    {"item": "tutor_A", "count": 1, "from_gym": 6, "why": "a late tutor move"},
+    {"item": "tm_S", "count": 2, "from_gym": 7, "why": "top-grade TMs for the finale"},
+    {"item": "rare_candy", "count": 3, "from_gym": 7, "why": "levels before the Elite Four"}
+  ]
+}
