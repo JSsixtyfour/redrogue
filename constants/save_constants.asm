@@ -49,7 +49,9 @@
 ; Existing Main Data offsets stay fixed; subsequent bank-1 save blocks move.
 ; Migration stolenSaveSnapshotAdded copies the old raw holder into the new
 ; snapshot and shifts the subsequent save blocks by their schema labels.
-DEF SAVE_SCHEMA_ID EQU 9
+; Schema 10: append the dedicated 16-byte rental contract and latched offer.
+; Older saves have no rental; rentalRecordAdded initializes it to zero.
+DEF SAVE_SCHEMA_ID EQU 10
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

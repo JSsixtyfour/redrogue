@@ -83,6 +83,12 @@
     "stolenSaveSnapshotAdded"
    ],
    "verified": "2026-10-11: all three ROMs build; schema diff 8->9 appends the 57-byte snapshot and shifts later bank-1 data by 57. Converter tests preserve every existing field and all holder tags with nonuniform payloads (17 pass, 1 real legacy-fixture skip). Focused ROM test restores all 57 holder bytes and saved party, and leaves the holder unchanged on checksum failure. Full smoke 904 tests OK (3 skipped); audit zero unallowlisted bugs. Converted legacy-save cold Continue and BGB theft/recovery acceptance remain pending."
+  },
+  {
+   "from": "9",
+   "to": "10",
+   "steps": ["rentalRecordAdded"],
+   "verified": "2026-10-11: all three ROMs build; save_schema matches schema 10. Converter 18 pass/1 real legacy-fixture skip preserves prior saved fields and zeros all 16 rental bytes. Six rental ROM fixtures pass; full smoke 910 tests OK (3 skipped); all-variant audit zero unallowlisted bugs. Service remains disabled. Converted legacy-save cold Continue and BGB lifecycle acceptance pending."
   }
  ]
 }

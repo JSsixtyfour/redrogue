@@ -136,6 +136,7 @@ RogueCreditPopupCheck::
 ; EVENT_BATTLED_RIVAL_IN_OAKS_LAB to run-scoped for exactly this reason).
 ; ============================================================
 RogueResetRunState::
+	rfarcall RentalResetRecord
 	; --- 1. events ---
 	ResetEventRange RUN_EVENTS_START, RUN_EVENTS_END
 	; --- 1b. toggles - the listed hidden objects come back. Hide bits are not

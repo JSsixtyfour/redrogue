@@ -183,6 +183,7 @@ StageEventStealMon:
 	ldh [hWhichPokemon], a
 	xor a
 	ld [wRemoveMonFromBox], a     ; 0 = party, not the current box
+	rfarcall RentalTrackTheft
 	; RemovePokemon ALREADY does the bridge bookkeeping: _RemovePokemon
 	; farcalls BridgeTrackRemovePokemon on BOTH of its exit paths
 	; (engine/pokemon/remove_mon.asm:46 and :112). The plan's instruction to

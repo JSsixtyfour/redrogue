@@ -870,3 +870,8 @@ INCLUDE "custom_functions/ironman.asm"
 SECTION "Reward Offer Info", ROMX, BANK[$3C]
 
 INCLUDE "custom_functions/reward_offer_info.asm"
+
+; Dedicated rental lifecycle leaves. No plain calls/data edges from other
+; sections; keep the core out of the nearly full rogue and lobby banks.
+SECTION "Rental Core", ROMX, BANK[$31]
+INCLUDE "custom_functions/rental_core.asm"

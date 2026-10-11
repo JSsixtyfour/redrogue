@@ -47,7 +47,7 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                "wCreditsEarnedThisRun", "wGymChoice",
                # migration dayCareDepositCountsSaved (schema 7 -> 8)
                  "wCurMapScript", "wBattleCount", "wDayCareDepositBattleCount", "wDayCareDepositBattleCount2",
-                 "wStolenSaveSnapshot"}
+                 "wStolenSaveSnapshot", "wRentalRecord"}
 
 
 def trim(schema: dict) -> dict:

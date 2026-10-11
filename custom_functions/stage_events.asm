@@ -557,12 +557,14 @@ StageEventGiveBack::
 	cp PARTY_LENGTH
 	jr nc, .giveMonToBox
 	call StageEventRebuildStolenMon
+	rfarcall RentalTrackPartyRecovery
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_MON
 	jr .settle
 .giveMonToBox
 	call StageEventStolenMonToBox ; carry set = it fitted
 	jr nc, .noRoom                ; party AND box both full
+	rfarcall RentalTrackBoxRecovery
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_TO_BOX
 .settle

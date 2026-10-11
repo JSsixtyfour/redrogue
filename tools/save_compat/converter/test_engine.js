@@ -237,6 +237,12 @@ test("schema 8 to 9: theft holder joins the save transaction and shifted data su
   }
 });
 
+test("schema 9 to 10: no legacy rental, every previous saved field survives", () => {
+  const { b, to } = checkMigration(9, 10, []);
+  const start = wramOffset(to, "wRentalRecord");
+  assert.deepEqual(Array.from(b.slice(start, start + 16)), Array(16).fill(0));
+});
+
 // Schema 5 -> 6 moves bank-0 and bank-2 fields, which checkMigration's bank-1 noise never reaches,
 // so this builds its own save: noise over all of bank 0, the bank-2 fallen log + offer DVs, and
 // bank 1 from the item counts on (as checkMigration does).

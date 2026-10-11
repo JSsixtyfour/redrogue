@@ -391,6 +391,31 @@
       return null;
     },
 
+    // Schema 9 -> 10: dedicated rental state, all zero for a legacy save.
+    rentalRecordAdded: function (bytes, from, to) {
+      var src = new Uint8Array(bytes);
+      var oldMain = sramField(from, "sMainData"), newMain = sramField(to, "sMainData");
+      var record = wramField(to, "wRentalRecord");
+      var start = offsetOf(oldMain.bank, oldMain.address) + oldMain.size;
+      if (!record || record.size !== 1 || newMain.size !== oldMain.size + 16 ||
+          wramOffset(to, "wRentalRecord") !== start)
+        return "rental record layout not recognised";
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || f.bank !== t.bank || (f.label !== "sMainData" && f.size !== t.size))
+          return "save field " + f.label + " changed unexpectedly";
+        var oldOffset = offsetOf(f.bank, f.address), newOffset = offsetOf(t.bank, t.address);
+        var expected = f.bank === oldMain.bank && oldOffset >= start ? 16 : 0;
+        if (newOffset - oldOffset !== expected)
+          return "save field " + f.label + " moved unexpectedly";
+        var size = f.label === "sMainData" ? oldMain.size : f.size;
+        bytes.set(src.subarray(oldOffset, oldOffset + size), newOffset);
+      }
+      bytes.fill(0, start, start + 16);
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     x7MenuPageReserved: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var PAGE_LO = 0xbd00, PAGE_HI = 0xbe00;

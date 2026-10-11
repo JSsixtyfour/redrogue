@@ -3334,10 +3334,25 @@ wDayCareMon2:: box_struct wDayCareMon2
 ; SaveMainData captures it here; LoadMainData restores it only after checksum
 ; validation. Keep the entire holder, including its validity tag and names.
 wStolenSaveSnapshot:: ds 57
-wStolenSaveSnapshotEnd::
-ASSERT wStolenSaveSnapshotEnd - wStolenSaveSnapshot == sStolenRecordEnd - sStolenRecord
 
+; Dedicated rental record, saved with the Pokemon and theft snapshot.
+; Explicitly cleared on true new game and at run reset (outside run flags).
+wRentalRecord::
+ASSERT wRentalRecord - wStolenSaveSnapshot == sStolenRecordEnd - sStolenRecord
+wRentalState:: db
+wRentalOwner:: db
+wRentalZone:: db
+wRentalFlags:: db
+wRentalOfferSpecies:: db
+wRentalOfferForm:: db
+wRentalOfferClass:: db
+wRentalOfferLevel:: db
+wRentalOfferSource:: db
+wRentalOfferMoves:: ds NUM_MOVES
+wRentalOfferDVs:: ds 2
+wRentalOfferFlags:: db
 wMainDataEnd::
+ASSERT wMainDataEnd - wRentalRecord == 16
 
 ; Unsaved identity sidecar for an archived fusion loaded as the final AI's
 ; party. The party record itself carries the fusion bit, form, moves, types,

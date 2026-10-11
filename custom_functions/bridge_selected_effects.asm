@@ -356,6 +356,9 @@ BridgeMoveSelectedOwner::
 	jr nc, .failed
 	ld d, b
 	ld e, c
+	push bc
+	rfarcall RentalMoveOwner
+	pop bc
 	ld a, e
 	call BridgeFindSelectedRecordByOwner
 	jr c, .failed
@@ -387,6 +390,10 @@ BridgeMoveSelectedOwner::
 BridgeClearSelectedOwner::
 	and a
 	ret z
+	push af
+	ld e, a
+	rfarcall RentalClearOwner
+	pop af
 	ld c, a
 	ld hl, wBridgeSelectedEffects
 	ld b, BRIDGE_SELECTED_RECORD_COUNT
@@ -418,6 +425,11 @@ BridgeShiftSelectedOwnersDown:
 	ld a, c
 	cp b
 	jr c, .done
+	push bc
+	ld d, b
+	ld e, c
+	rfarcall RentalShiftOwnerDown
+	pop bc
 	ld hl, wBridgeSelectedEffects
 	ld d, BRIDGE_SELECTED_RECORD_COUNT
 .loop
@@ -444,6 +456,11 @@ BridgeShiftSelectedOwnersUp:
 	ld a, c
 	cp b
 	jr c, .done
+	push bc
+	ld d, b
+	ld e, c
+	rfarcall RentalShiftOwnerUp
+	pop bc
 	ld hl, wBridgeSelectedEffects
 	ld d, BRIDGE_SELECTED_RECORD_COUNT
 .loop
@@ -683,6 +700,9 @@ BridgeSwapSelectedOwners:
 	ret z
 	ld d, b
 	ld e, c
+	push bc
+	rfarcall RentalSwapOwners
+	pop bc
 	ld hl, wBridgeSelectedEffects
 	ld b, BRIDGE_SELECTED_RECORD_COUNT
 .loop
