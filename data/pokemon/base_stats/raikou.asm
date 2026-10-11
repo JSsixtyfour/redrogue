@@ -1,6 +1,6 @@
 	db DEX_RAIKOU ; pokedex id
 
-	db  90,  85,  75, 115, 115
+	db  90,  90,  80, 115, 115
 	;   hp  atk  def  spd  spc
 
 	db ELECTRIC, ELECTRIC ; type
@@ -17,7 +17,7 @@
 	tmhm LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         THUNDERBOLT,  THUNDER,      MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        REST,         THUNDER_WAVE, \
-	     SUBSTITUTE,   FLASH
+	     SUBSTITUTE,   FLASH,        CUT,          STRENGTH,     DIG
 	; end
 
 	db BANK(RaikouPicFront) ; pic bank
