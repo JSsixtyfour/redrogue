@@ -25,7 +25,7 @@
 	tmhm TOXIC,        TAKE_DOWN,    RAGE,         THUNDERBOLT,  THUNDER,      \
 	     LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     SELFDESTRUCT, SWIFT,        REST,         THUNDER_WAVE, EXPLOSION,    \
-	     SUBSTITUTE,   FLASH,        MEGA_DRAIN,   SOLAR_BEAM
+	     SUBSTITUTE,   FLASH,        MEGA_DRAIN,   SOLARBEAM
 	; end
 
 	db BANK(HVoltorbPicFront) ; pic bank

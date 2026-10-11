@@ -11,7 +11,7 @@ GzapdosFormEvosMoves:
 ; Learnset
     db 10, DOUBLE_KICK
     db 18, LOW_KICK
-    db 22, TAKEDOWN
+    db 22, TAKE_DOWN
     db 30, COUNTER
     db 32, ROLLING_KICK
 	db 35, AGILITY
