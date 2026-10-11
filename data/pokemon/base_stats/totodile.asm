@@ -1,6 +1,6 @@
 	db DEX_TOTODILE ; pokedex id
 
-	db  50,  65,  64,  43,  48
+	db  46,  61,  60,  43,  40
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type
@@ -18,7 +18,8 @@
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         DIG,          \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   SURF,         STRENGTH
+	     REST,         SUBSTITUTE,   SURF,         STRENGTH,     ROCK_SLIDE,   \
+         DRAGON_RAGE
 	; end
 
 	db BANK(TotodilePicFront) ; pic bank

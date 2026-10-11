@@ -1,6 +1,6 @@
 	db DEX_CROCONAW ; pokedex id
 
-	db  65,  80,  80,  58,  63
+	db  60,  75,  75,  55,  60
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type
@@ -18,7 +18,7 @@
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         DIG,          \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   SURF,         STRENGTH
-	; end
+	     REST,         SUBSTITUTE,   SURF,         STRENGTH,     ROCK_SLIDE,   \
+         DRAGON_RAGE
 
 	db BANK(CroconawPicFront) ; pic bank

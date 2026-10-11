@@ -897,8 +897,8 @@ BlastoiseEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 5, BUBBLE
-	db 10, WATER_GUN
+	db 9, BUBBLE
+    db 14, WATER_GUN
 	db 15, BITE
 	db 21, BUBBLEBEAM
 	db 27, BODY_SLAM
@@ -1629,13 +1629,14 @@ TotodileEvosMoves:
 	db 0
 ; Learnset - canon Gen 2 levels; SCARY_FACE does not exist in Gen 1, filled
 ; with METRONOME.
-	db 7, RAGE
+    db 7, RAGE
+    db 9, BUBBLE
 	db 13, WATER_GUN
-	db 20, BITE
-	db 27, METRONOME ; was SCARY_FACE
-	db 35, SLASH
+	db 15, BITE
+    db 21, BUBBLEBEAM
+	db 32, SLASH
 	db 43, SCREECH
-	db 52, HYDRO_PUMP
+	db 50, HYDRO_PUMP
 	db 0
 
 FarfetchdEvosMoves:
@@ -1711,23 +1712,26 @@ CroconawEvosMoves:
 	db EVOLVE_LEVEL, 30, FERALIGATR
 	db 0
 ; Learnset - RAGE already granted at level 1
-	db 13, WATER_GUN
-	db 21, BITE
-	db 28, METRONOME ; was SCARY_FACE
-	db 37, SLASH
+	db 9, BUBBLE
+    db 13, WATER_GUN
+	db 20, BITE
+	db 25, BUBBLEBEAM
+	db 35, SLASH
 	db 45, SCREECH
-	db 55, HYDRO_PUMP
+	db 52, HYDRO_PUMP
 	db 0
+    
 
 FeraligatrEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - RAGE/WATER_GUN already granted at level 1
+    db 9, BUBBLE
 	db 21, BITE
-	db 28, METRONOME ; was SCARY_FACE
+	db 28, BUBBLEBEAM
 	db 38, SLASH
 	db 47, SCREECH
-	db 58, HYDRO_PUMP
+	db 55, HYDRO_PUMP
 	db 0
 
 SentretEvosMoves:
@@ -3707,8 +3711,8 @@ SquirtleEvosMoves:
 	db EVOLVE_LEVEL, 16, WARTORTLE
 	db 0
 ; Learnset
-	db 5, BUBBLE
-	db 10, WATER_GUN
+	db 9, BUBBLE
+    db 14, WATER_GUN
 	db 15, BITE
 	db 21, BUBBLEBEAM
 	db 27, BODY_SLAM
@@ -3754,8 +3758,8 @@ WartortleEvosMoves:
 	db EVOLVE_LEVEL, 36, BLASTOISE
 	db 0
 ; Learnset
-	db 5, BUBBLE
-	db 10, WATER_GUN
+	db 9, BUBBLE
+    db 14, WATER_GUN
 	db 15, BITE
 	db 21, BUBBLEBEAM
 	db 27, BODY_SLAM

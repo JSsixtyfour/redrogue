@@ -1,6 +1,6 @@
 	db DEX_FERALIGATR ; pokedex id
 
-	db  85, 105, 100,  78,  83
+	db  80, 100, 95,  70,  80
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type
@@ -19,7 +19,7 @@
 	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     SURF,         STRENGTH
+	     SURF,         STRENGTH,     ROCK_SLIDE,   DRAGON_RAGE
 	; end
 
 	db BANK(FeraligatrPicFront) ; pic bank

@@ -97,7 +97,65 @@ Mansion1Script_Switches::
 	ldh [hTextID], a
 	jp DisplayTextID
 
-	RogueAutoWalkScripts PokemonMansion1F, PAD_UP, CheckFightingMapTrainers, EVENT_AUTOWALKED_INTO_POKEMON_MANSION_1F, TEXT_POKEMONMANSION1F_NO_TURNING_BACK, SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING, wPokemonMansion1FCurScript
+PokemonMansion1FDefaultScript:
+	ld hl, PokemonMansion1FNoCoords
+	call ArePlayerCoordsInArray
+	jp c, .stopPlayerFromLeaving
+	ld hl, PokemonMansion1FEntranceCoords
+	call ArePlayerCoordsInArray
+	jp nc, CheckFightingMapTrainers
+	xor a
+	ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ldh [hSimulatedJoypadStatesIndex], a
+	CheckAndSetEvent EVENT_AUTOWALKED_INTO_POKEMON_MANSION_1F
+	jr z, PokemonMansion1FScriptWalkIntoRoom
+.stopPlayerFromLeaving
+	ldh [hJoyPressed], a
+	ldh [hJoyHeld], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ld a, TEXT_POKEMONMANSION1F_NO_TURNING_BACK
+	ldh [hTextID], a
+	call DisplayTextID  ; "No turning back"
+	ld a, PAD_UP
+	ld [wSimulatedJoypadStatesEnd], a
+	ld a, $1
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING
+	ld [wPokemonMansion1FCurScript], a
+	ld [wCurMapScript], a
+	ret
+
+PokemonMansion1FScriptWalkIntoRoom:
+; Mansion entrance: walk three tiles north.
+	ld hl, wSimulatedJoypadStatesEnd
+	ld a, PAD_UP
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ld [hl], a
+	ld a, $3
+	ldh [hSimulatedJoypadStatesIndex], a
+	call StartSimulatingJoypadStates
+	ld a, SCRIPT_POKEMONMANSION1F_PLAYER_IS_MOVING
+	ld [wPokemonMansion1FCurScript], a
+	ld [wCurMapScript], a
+	ret
+
+PokemonMansion1FPlayerIsMovingScript:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	ret nz
+	call Delay3
+	xor a
+	ldh [hJoyIgnore], a
+	ld [wPokemonMansion1FCurScript], a
+	ld [wCurMapScript], a
+	ret
 
 ; Entry is the WARP_NO_RETURN row at (4-7,27); push up.
 PokemonMansion1FEntranceCoords:
