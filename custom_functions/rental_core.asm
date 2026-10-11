@@ -106,3 +106,49 @@ RentalSwapOwners::
 .store
 	ld [wRentalOwner], a
 	ret
+
+; Carry when zero-based party slot e is the rental. Owner 0 is absent;
+; box/daycare/stolen owners cannot match a valid party slot.
+RentalIsPartySlot::
+	ld a, e
+	cp PARTY_LENGTH
+	jr nc, .notRental
+	inc a
+	ld hl, wRentalOwner
+	cp [hl]
+	jr z, .rental
+.notRental
+	and a
+	ret
+.rental
+	scf
+	ret
+
+; Called after the trade menu closes, before any trade flags or data change.
+RentalRejectSelectedTrade::
+	ldh a, [hWhichPokemon]
+	ld e, a
+	call RentalIsPartySlot
+	ret nc
+	jr RentalRejectAction
+
+; Both fusion menus have closed; neither Pokemon has been altered yet.
+RentalRejectFusion::
+	ldh a, [hSpriteDataOffset]
+	ld e, a
+	call RentalIsPartySlot
+	jr c, RentalRejectAction
+	ldh a, [hSpriteHeight]
+	ld e, a
+	call RentalIsPartySlot
+	ret nc
+RentalRejectAction:
+	ld hl, .text
+	call PrintText
+	scf
+	ret
+.text
+	text "Rental POKEMON"
+	line "can't be traded"
+	cont "or fused!"
+	prompt

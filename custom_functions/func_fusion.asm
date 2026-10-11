@@ -229,6 +229,9 @@ CreateFusion::
     ldh [hSpriteDataOffset], a           ; primary index (safe now - both menus done)
     ld a, b
     ldh [hSpriteHeight], a              ; secondary index
+.checkRental
+	rfarcall RentalRejectFusion
+	jp c, .cancelled
 
     ; --- Cache secondary data while both mons are still in party ---
     ldh a, [hSpriteHeight]

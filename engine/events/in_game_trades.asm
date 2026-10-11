@@ -147,6 +147,10 @@ InGameTrade_DoTrade:
 	pop af
 	ld a, TRADETEXT_NO_TRADE
 	jp c, .tradeFailed ; jump if the player didn't select a pokemon
+.checkRental
+	rfarcall RentalRejectSelectedTrade
+	ld a, TRADETEXT_NO_TRADE
+	jp c, .tradeFailed
 	ld a, [wInGameTradeGiveMonSpecies]
 	ld b, a
 	ld a, [wCurPartySpecies]
