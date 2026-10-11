@@ -1,6 +1,6 @@
 	db DEX_ENTEI ; pokedex id
 
-	db 115, 115,  85, 100,  90
+	db 115, 115,  85, 100,  80
 	;   hp  atk  def  spd  spc
 
 	db FIRE, FIRE ; type

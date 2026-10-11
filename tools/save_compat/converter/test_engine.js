@@ -207,6 +207,18 @@ test("schema 6 to 7: the gym choice is added zeroed, nothing else changes", () =
   assert.equal(b[pad], 0, "wGymChoice");
 });
 
+test("schema 7 to 8: both daycare deposit counts are added as the save's battle count", () => {
+  // checkMigration fills the old pad with noise, so a step that skipped either write fails.
+  const { save, b, from, to } = checkMigration(7, 8, []);
+  const pad = wramOffset(from, "wCurMapScript") + 1;
+  const battles = save[wramOffset(from, "wBattleCount")];
+  assert.notEqual(save[pad], battles, "the noise should differ from wBattleCount");
+  assert.equal(wramOffset(to, "wDayCareDepositBattleCount"), pad);
+  assert.equal(wramOffset(to, "wDayCareDepositBattleCount2"), pad + 1);
+  assert.equal(b[pad], battles, "wDayCareDepositBattleCount");
+  assert.equal(b[pad + 1], battles, "wDayCareDepositBattleCount2");
+});
+
 // Schema 5 -> 6 moves bank-0 and bank-2 fields, which checkMigration's bank-1 noise never reaches,
 // so this builds its own save: noise over all of bank 0, the bank-2 fallen log + offer DVs, and
 // bank 1 from the item counts on (as checkMigration does).

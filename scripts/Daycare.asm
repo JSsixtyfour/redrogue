@@ -75,8 +75,9 @@ DaycareGentlemanText:
 	ld d, a
 	; Growth gate: no growth until at least one battle since drop-off (see
 	; engine/events/lobby_daycare.asm's header). Z from this cp has to reach the
-	; jr below AFTER wDayCareStartLevel is written - .leaveMonInDayCare copies
-	; that byte back into the box level. The ld's in between keep the flags.
+	; jr below AFTER wDayCareStartLevel is written - the retrieval commit and
+	; DaycareRetrieveUpgrade read it as the deposit level. The ld's in between
+	; keep the flags.
 	ld a, [wDayCareDepositBattleCount]
 	ld e, a
 	ld a, [wBattleCount]
@@ -87,24 +88,17 @@ DaycareGentlemanText:
 	jr z, .noGrowth
 	cp d
 	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
-	callfar CalcExperience
-	ld hl, wDayCareMonExp
-	ldh a, [hExperience]
-	ld [hli], a
-	ldh a, [hExperience + 1]
-	ld [hli], a
-	ldh a, [hExperience + 2]
-	ld [hl], a
-	ld hl, wDayCareMonBoxLevel
-	ld [hl], d
-	ld a, [wDayCareStartLevel]  ; display-only: how many levels it gained, no longer used for pricing
+	; Report only; .enoughMoney commits it once the mon really leaves (see
+	; engine/events/lobby_daycare.asm's header for why).
 	ld b, a
 	ld a, d
 	sub b
-	ld [wDayCareNumLevelsGrown], a
+	ld [wDayCareNumLevelsGrown], a ; also the deferred-growth amount .enoughMoney commits
 	ld hl, .MonHasGrownText
 	jr .next
 .noGrowth
+	xor a
+	ld [wDayCareNumLevelsGrown], a ; nothing for .enoughMoney to commit
 	ld hl, .MonNeedsMoreTimeText
 
 .next
@@ -178,6 +172,30 @@ DaycareGentlemanText:
 	jp .leaveMonInDayCare
 
 .enoughMoney
+	; Commit the reported growth before the zeroing below (the grown count is the
+	; price's top byte) and before MoveMon, which recomputes level from exp.
+	ld a, [wDayCareNumLevelsGrown]
+	and a
+	jr z, .growthCommitted
+	ld b, a
+	ld a, [wDayCareStartLevel]
+	add b
+	ld [wDayCareMonBoxLevel], a
+	push af
+	ld a, DAYCARE_DATA
+	ld [wMonDataLocation], a
+	call LoadMonData            ; reload the header: CalcExperience reads its growth rate
+	pop af
+	ld d, a
+	callfar CalcExperience
+	ld hl, wDayCareMonExp
+	ldh a, [hExperience]
+	ld [hli], a
+	ldh a, [hExperience + 1]
+	ld [hli], a
+	ldh a, [hExperience + 2]
+	ld [hl], a
+.growthCommitted
 	xor a
 	ld [wDayCareInUse], a
 	ld hl, wDayCareNumLevelsGrown
@@ -227,10 +245,7 @@ DaycareGentlemanText:
 	ld hl, .GotMonBackText
 	jr .done
 
-.leaveMonInDayCare
-	ld a, [wDayCareStartLevel]
-	ld [wDayCareMonBoxLevel], a
-
+.leaveMonInDayCare               ; the stored mon was never modified, nothing to undo
 .done
 	call PrintText
 	jp TextScriptEnd

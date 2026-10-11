@@ -1,6 +1,6 @@
 	db DEX_TYPHLOSION ; pokedex id
 
-	db  78,  84,  78, 100, 109
+	db  78,  84,  78, 100, 85
 	;   hp  atk  def  spd  spc
 
 	db FIRE, FIRE ; type
@@ -16,10 +16,10 @@
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   SWORDS_DANCE, MEGA_KICK,    TOXIC,        BODY_SLAM,    \
 	     TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      \
-	     SEISMIC_TOSS, RAGE,         DRAGON_RAGE,  EARTHQUAKE,   FISSURE,      \
+	     SEISMIC_TOSS, RAGE,         FLAMETHROWER,  EARTHQUAKE,   FISSURE,      \
 	     DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     CUT,          STRENGTH,     FLAMETHROWER
+	     CUT,          STRENGTH,    
 	; end
 
 	db BANK(TyphlosionPicFront) ; pic bank

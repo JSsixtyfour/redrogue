@@ -413,8 +413,8 @@ VoltorbEvosMoves:
 	db EVOLVE_LEVEL, 30, ELECTRODE
 	db 0
 ; Learnset
+    db 10, THUNDERSHOCK
 	db 17, SONICBOOM
-	db 19, THUNDERSHOCK
 	db 22, SELFDESTRUCT
 	db 26, SWIFT
 	db 30, LIGHT_SCREEN
@@ -1438,13 +1438,11 @@ MeganiumEvosMoves:
 
 ElectabuzzEvosMoves:
 ; Evolutions
-; Species Groups Phase 2: canon Electabuzz->Electivire is an item
-; evolution - THUNDER_STONE, already in this project, is the exact canon
-; trigger.
-	db EVOLVE_ITEM, THUNDER_STONE, 1, ELECTIVIRE
+	db EVOLVE_TRADE, 40, ELECTIVIRE
 	db 0
 ; Learnset
-	db 15, THUNDERSHOCK
+	db 9, THUNDERSHOCK
+    db 17, LOW_KICK
 	db 20, THUNDER_WAVE
 	db 25, SCREECH
 	db 31, THUNDERPUNCH
@@ -1514,14 +1512,16 @@ CyndaquilEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 14, QUILAVA
 	db 0
-; Learnset - canon Gen 2 levels; FLAME_WHEEL does not exist in Gen 1, filled
-; with METRONOME.
+; Learnset
 	db 6, SMOKESCREEN
-	db 12, EMBER
-	db 19, QUICK_ATTACK
-	db 27, METRONOME ; was FLAME_WHEEL
-	db 36, SWIFT
-	db 46, FLAMETHROWER
+	db 9, EMBER
+	db 15, QUICK_ATTACK
+	db 21, FIRE_PUNCH ; was FLAME_WHEEL
+    db 23, DEFENSE_CURL
+	db 33, SWIFT
+	db 38, FLAMETHROWER
+    db 46, FIRE_SPIN
+    db 50, DOUBLE_EDGE
 	db 0
 
 MankeyEvosMoves:
@@ -1551,6 +1551,7 @@ SeelEvosMoves:
 	db 0
 ; Learnset
 	db 5, GROWL
+    db 9, BUBBLE
 	db 13, WATER_GUN
 	db 16, AURORA_BEAM
 	db 21, REST
@@ -1571,9 +1572,9 @@ DiglettEvosMoves:
 	db EVOLVE_LEVEL, 26, DUGTRIO
 	db 0
 ; Learnset
+    db 7, SAND_ATTACK
 	db 15, GROWL
 	db 19, DIG
-	db 24, SAND_ATTACK
 	db 31, SLASH
 	db 35, SCREECH
 	db 40, EARTHQUAKE
@@ -1607,20 +1608,26 @@ QuilavaEvosMoves:
 	db 0
 ; Learnset - SMOKESCREEN already granted at level 1, see base_stats/quilava.asm
 	db 12, EMBER
-	db 21, QUICK_ATTACK
-	db 31, METRONOME ; was FLAME_WHEEL
-	db 42, SWIFT
-	db 54, FLAMETHROWER
+	db 17, QUICK_ATTACK
+	db 23, FIRE_PUNCH ; was FLAME_WHEEL
+    db 25, DEFENSE_CURL
+	db 35, SWIFT
+	db 40, FLAMETHROWER
+    db 48, FIRE_SPIN
+    db 52, DOUBLE_EDGE
 	db 0
 
 TyphlosionEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - SMOKESCREEN/EMBER already granted at level 1
-	db 21, QUICK_ATTACK
-	db 31, METRONOME ; was FLAME_WHEEL
-	db 45, SWIFT
-	db 60, FLAMETHROWER
+	db 17, QUICK_ATTACK
+	db 23, FIRE_PUNCH ; was FLAME_WHEEL
+    db 25, DEFENSE_CURL
+	db 35, SWIFT
+	db 42, FLAMETHROWER
+    db 50, FIRE_SPIN
+    db 55, DOUBLE_EDGE
 	db 0
 
 TotodileEvosMoves:
@@ -1688,9 +1695,10 @@ DragoniteEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 9, BUBBLE
 	db 10, THUNDER_WAVE
-	db 20, DRAGON_RAGE
-	db 25, AGILITY
+	db 20, AGILITY
+    db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 55, WING_ATTACK
 	db 60, HYPER_BEAM
@@ -1752,8 +1760,9 @@ DoduoEvosMoves:
 	db EVOLVE_LEVEL, 31, DODRIO
 	db 0
 ; Learnset
-	db 20, GROWL
-	db 24, FURY_ATTACK
+    db 9, QUICK_ATTACK
+	db 15, GROWL
+	db 20, FURY_ATTACK
 	db 30, DRILL_PECK
 	db 36, RAGE
 	db 39, TRI_ATTACK
@@ -2065,9 +2074,10 @@ DratiniEvosMoves:
 	db EVOLVE_LEVEL, 30, DRAGONAIR
 	db 0
 ; Learnset
+    db 9, BUBBLE
 	db 10, THUNDER_WAVE
-	db 20, DRAGON_RAGE
-	db 25, AGILITY
+	db 20, AGILITY
+    db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 60, HYPER_BEAM
 	db 0
@@ -2086,9 +2096,10 @@ DragonairEvosMoves:
 	db EVOLVE_LEVEL, 55, DRAGONITE
 	db 0
 ; Learnset
+    db 9, BUBBLE
 	db 10, THUNDER_WAVE
-	db 20, DRAGON_RAGE
-	db 25, AGILITY
+	db 20, AGILITY
+    db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 45, DRAGON_RAGE
 	db 60, HYPER_BEAM
@@ -2645,14 +2656,16 @@ DodrioEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 20, GROWL
-	db 24, FURY_ATTACK
+    db 9, QUICK_ATTACK
+	db 15, GROWL
+	db 20, FURY_ATTACK
 	db 30, DRILL_PECK
 	db 36, RAGE
 	db 39, TRI_ATTACK
-	db 45, JUMP_KICK
+	db 45, LOW_KICK
 	db 51, AGILITY
 	db 0
+    
 ; Tutoring Learnset  
     db 2, SWIFT
     db 2, HAZE
@@ -2690,9 +2703,9 @@ DugtrioEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 7, SAND_ATTACK
 	db 15, GROWL
 	db 19, DIG
-	db 24, SAND_ATTACK
 	db 31, SLASH
 	db 35, SCREECH
 	db 40, EARTHQUAKE
@@ -2727,6 +2740,7 @@ DewgongEvosMoves:
 	db 0
 ; Learnset
 	db 5, GROWL
+    db 9, BUBBLE
 	db 13, WATER_GUN
 	db 16, AURORA_BEAM
 	db 21, REST
@@ -3064,8 +3078,8 @@ ElectrodeEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 10, THUNDERSHOCK
 	db 17, SONICBOOM
-	db 19, THUNDERSHOCK
 	db 22, SELFDESTRUCT
 	db 26, SWIFT
 	db 30, LIGHT_SCREEN
@@ -4473,10 +4487,10 @@ PhanpyEvosMoves:
 ; Learnset - TACKLE/GROWL already granted at level 1; FLAIL/ENDURE do not
 ; exist in Gen 1, filled with METRONOME.
 	db 9, DEFENSE_CURL
-	db 17, METRONOME ; was FLAIL
-	db 25, TAKE_DOWN
-	db 33, METRONOME ; was ROLLOUT
-	db 41, METRONOME ; was ENDURE
+	db 17, DIG ; was FLAIL
+	db 24, TAKE_DOWN
+	db 30, SLAM ; was ROLLOUT
+	db 41, EARTHQUAKE ; was ENDURE
 	db 49, DOUBLE_EDGE
 	db 0
 
@@ -4486,11 +4500,12 @@ DonphanEvosMoves:
 ; Learnset - HORN_ATTACK/GROWL already granted at level 1; FLAIL/ROLLOUT do
 ; not exist in Gen 1, filled with METRONOME; RAPID_SPIN likewise.
 	db 9, DEFENSE_CURL
-	db 17, METRONOME ; was FLAIL
-	db 25, FURY_ATTACK
-	db 33, METRONOME ; was ROLLOUT
-	db 41, METRONOME ; was RAPID_SPIN
-	db 49, EARTHQUAKE
+	db 17, DIG ; was FLAIL
+	db 24, TAKE_DOWN
+    db 25, FURY_ATTACK
+	db 30, SLAM ; was ROLLOUT
+	db 41, EARTHQUAKE ; was ENDURE
+	db 49, DOUBLE_EDGE
 	db 0
 
 Porygon2EvosMoves:
@@ -4569,27 +4584,26 @@ RaikouEvosMoves:
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
 ; in Gen 1; CRUNCH does not exist in Gen 1, filled with METRONOME.
-	db 11, THUNDERSHOCK
-	db 21, WHIRLWIND ; was ROAR
-	db 31, QUICK_ATTACK
-	db 41, METRONOME ; was SPARK
-	db 51, REFLECT
-	db 61, METRONOME ; was CRUNCH
-	db 71, THUNDER
+	db 8, GROWL
+    db 11, THUNDERSHOCK
+	db 25, QUICK_ATTACK
+	db 30, THUNDER_WAVE ; was SPARK
+	db 35, REFLECT
+	db 40, THUNDERBOLT ; was CRUNCH
+	db 50, THUNDER
 	db 0
 
 EnteiEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
-; in Gen 1; SWAGGER does not exist in Gen 1, filled with METRONOME.
-	db 11, EMBER
-	db 21, WHIRLWIND ; was ROAR
-	db 31, FIRE_SPIN
-	db 41, STOMP
-	db 51, FLAMETHROWER
-	db 61, METRONOME ; was SWAGGER
-	db 71, FIRE_BLAST
+; Learnset - BITE/LEER already granted at level 1
+	db 8, GROWL
+    db 11, EMBER
+    db 25, STOMP
+	db 30, FIRE_SPIN
+    db 35, SMOKESCREEN
+	db 40, FLAMETHROWER
+	db 50, FIRE_BLAST
 	db 0
 
 SuicuneEvosMoves:
@@ -4597,13 +4611,14 @@ SuicuneEvosMoves:
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
 ; in Gen 1; MIRROR_COAT does not exist in Gen 1, filled with METRONOME.
+    db 8, GROWL
 	db 11, WATER_GUN
-	db 21, WHIRLWIND ; was ROAR
-	db 31, GUST
-	db 41, BUBBLEBEAM
-	db 51, MIST
-	db 61, METRONOME ; was MIRROR_COAT
-	db 71, HYDRO_PUMP
+	db 25, GUST
+	db 30, BUBBLEBEAM
+	db 35, MIST
+	db 40, SURF ; was MIRROR_COAT
+    db 45, AURORA_BEAM
+	db 50, HYDRO_PUMP
 	db 0
 
 LarvitarEvosMoves:
@@ -4812,12 +4827,14 @@ ElectivireEvosMoves:
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; QUICK_ATTACK/LEER already granted at level 1.
-	db 34, THUNDERSHOCK
-	db 37, SCREECH
-	db 42, THUNDERPUNCH
-	db 49, LIGHT_SCREEN
+    db 9, THUNDERSHOCK
+    db 17, LOW_KICK
+	db 20, THUNDER_WAVE
+	db 25, SCREECH
+	db 31, THUNDERPUNCH
+	db 40, LIGHT_SCREEN
+	db 43, THUNDERBOLT
 	db 54, THUNDER
-	db 58, LOW_KICK
 	db 0
 
 MagmortarEvosMoves:

@@ -39,7 +39,13 @@
 ; (nothing latched, so the next gym-next lobby rolls a pair), migration
 ; gymChoiceAdded.
 
-DEF SAVE_SCHEMA_ID EQU 7
+; Schema 8 (2026-10-11): wDayCareDepositBattleCount / wDayCareDepositBattleCount2
+; left unsaved union scratch (where the two were one shared byte, so depositing
+; at either daycare reset the other's growth clock) for the saved pad after
+; wCurMapScript. Nothing moved; old saves get both set to their wBattleCount,
+; migration dayCareDepositCountsSaved.
+
+DEF SAVE_SCHEMA_ID EQU 8
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

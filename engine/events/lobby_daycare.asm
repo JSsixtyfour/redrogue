@@ -10,6 +10,11 @@
 ; and their text_far stubs live below in this same section, so PrintText finds
 ; them in the bank that is loaded while this code runs.
 ;
+; Growth is reported when you talk to them but only written to the stored mon
+; when it actually leaves (.enoughMoney). Writing it up front and undoing just
+; the level on the stay-behind paths left the new exp behind, and withdrawal
+; recomputes level from exp, so the mon later came back grown for free.
+;
 ; Two lobby-fix changes against the code that was moved (identical in both):
 ;   - Growth gate: a mon picked up before ANY battle since drop-off does not
 ;     grow. Every stage kind advances wBattleCount (routes, gyms, and wild areas
@@ -89,9 +94,9 @@ LobbyDaycareLady::
 	ld a, [wCurEnemyLevel]
 	ld d, a
 	; Growth gate (see the file header). Z from this cp has to reach the jr
-	; below, AFTER wDayCareStartLevel2 is written: .leaveMonInDayCare copies that
-	; byte back into the box level, so skipping the write would stamp a stale
-	; level onto the mon. The three ld's in between leave the flags alone.
+	; below, AFTER wDayCareStartLevel2 is written: the retrieval commit and
+	; DaycareRetrieveUpgrade both read that byte as the deposit level. The three
+	; ld's in between leave the flags alone.
 	ld a, [wDayCareDepositBattleCount2]
 	ld e, a
 	ld a, [wBattleCount]
@@ -102,25 +107,20 @@ LobbyDaycareLady::
 	jr z, .noGrowth
 	cp d
 	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
-	callfar CalcExperience
-	ld hl, wDayCareMon2Exp
-	ldh a, [hExperience]
-	ld [hli], a
-	ldh a, [hExperience + 1]
-	ld [hli], a
-	ldh a, [hExperience + 2]
-	ld [hl], a
-	ld hl, wDayCareMon2BoxLevel
-	ld [hl], d
-	ld a, [wDayCareStartLevel2]  ; display-only: how many levels it gained, no longer used for pricing
+	; Only REPORT the growth here. The stored mon is not touched until it really
+	; leaves (.enoughMoney): every path that keeps it here (full party, declined,
+	; can't pay) used to restore the old level but keep the new exp, and the
+	; withdrawal recomputes level from exp, so it came back grown for free later.
 	ld b, a
 	ld a, d
 	sub b
-	ld [wDayCareNumLevelsGrown2], a
+	ld [wDayCareNumLevelsGrown2], a ; also the deferred-growth amount .enoughMoney commits
 	ld [wDayCareNumLevelsGrown], a  ; MonHasGrownText is shared with the Gentleman and hardcodes this variable
 	ld hl, LobbyDaycareMonHasGrownText
 	jr .next
 .noGrowth
+	xor a
+	ld [wDayCareNumLevelsGrown2], a ; nothing for .enoughMoney to commit
 	ld hl, LobbyDaycareMonNeedsMoreTimeText
 
 .next
@@ -194,6 +194,31 @@ LobbyDaycareLady::
 	jp .leaveMonInDayCare
 
 .enoughMoney
+	; Commit the growth reported above, now that the mon is really leaving. Has
+	; to run before the zeroing below (wDayCareNumLevelsGrown2 is the top byte of
+	; the 3-byte price) and before MoveMon, which recomputes level from exp.
+	ld a, [wDayCareNumLevelsGrown2]
+	and a
+	jr z, .growthCommitted
+	ld b, a
+	ld a, [wDayCareStartLevel2]
+	add b
+	ld [wDayCareMon2BoxLevel], a
+	push af
+	ld a, DAYCARE_DATA2
+	ld [wMonDataLocation], a
+	call LoadMonData            ; reload the header: CalcExperience reads its growth rate
+	pop af
+	ld d, a
+	callfar CalcExperience
+	ld hl, wDayCareMon2Exp
+	ldh a, [hExperience]
+	ld [hli], a
+	ldh a, [hExperience + 1]
+	ld [hli], a
+	ldh a, [hExperience + 2]
+	ld [hl], a
+.growthCommitted
 	xor a
 	ld [wDayCareInUse2], a
 	ld hl, wDayCareNumLevelsGrown2
@@ -245,10 +270,7 @@ LobbyDaycareLady::
 	ld hl, LobbyDaycareGotMonBackText
 	jr .done
 
-.leaveMonInDayCare
-	ld a, [wDayCareStartLevel2]
-	ld [wDayCareMon2BoxLevel], a
-
+.leaveMonInDayCare               ; the stored mon was never modified, nothing to undo
 .done
 	jp PrintText
 
@@ -327,24 +349,16 @@ LobbyDaycareGentleman::
 	jr z, .noGrowth
 	cp d
 	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
-	callfar CalcExperience
-	ld hl, wDayCareMonExp
-	ldh a, [hExperience]
-	ld [hli], a
-	ldh a, [hExperience + 1]
-	ld [hli], a
-	ldh a, [hExperience + 2]
-	ld [hl], a
-	ld hl, wDayCareMonBoxLevel
-	ld [hl], d
-	ld a, [wDayCareStartLevel]  ; display-only: how many levels it gained, no longer used for pricing
+	; Report only; .enoughMoney commits it (see LobbyDaycareLady).
 	ld b, a
 	ld a, d
 	sub b
-	ld [wDayCareNumLevelsGrown], a
+	ld [wDayCareNumLevelsGrown], a ; also the deferred-growth amount .enoughMoney commits
 	ld hl, LobbyDaycareMonHasGrownText
 	jr .next
 .noGrowth
+	xor a
+	ld [wDayCareNumLevelsGrown], a ; nothing for .enoughMoney to commit
 	ld hl, LobbyDaycareMonNeedsMoreTimeText
 
 .next
@@ -418,6 +432,29 @@ LobbyDaycareGentleman::
 	jp .leaveMonInDayCare
 
 .enoughMoney
+	; Commit the reported growth; see LobbyDaycareLady for the ordering.
+	ld a, [wDayCareNumLevelsGrown]
+	and a
+	jr z, .growthCommitted
+	ld b, a
+	ld a, [wDayCareStartLevel]
+	add b
+	ld [wDayCareMonBoxLevel], a
+	push af
+	ld a, DAYCARE_DATA
+	ld [wMonDataLocation], a
+	call LoadMonData            ; reload the header: CalcExperience reads its growth rate
+	pop af
+	ld d, a
+	callfar CalcExperience
+	ld hl, wDayCareMonExp
+	ldh a, [hExperience]
+	ld [hli], a
+	ldh a, [hExperience + 1]
+	ld [hli], a
+	ldh a, [hExperience + 2]
+	ld [hl], a
+.growthCommitted
 	xor a
 	ld [wDayCareInUse], a
 	ld hl, wDayCareNumLevelsGrown
@@ -462,10 +499,7 @@ LobbyDaycareGentleman::
 	ld hl, LobbyDaycareGotMonBackText
 	jr .done
 
-.leaveMonInDayCare
-	ld a, [wDayCareStartLevel]
-	ld [wDayCareMonBoxLevel], a
-
+.leaveMonInDayCare               ; the stored mon was never modified, nothing to undo
 .done
 	jp PrintText
 

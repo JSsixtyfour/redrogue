@@ -67,6 +67,14 @@
     "gymChoiceAdded"
    ],
    "verified": "NOT YET (2026-10-09): save_schema.py diff 6 -> 7 shows only the new saved field wGymChoice (the pad after wCreditsEarnedThisRun) and the ID bump; nothing moved. Engine test 'schema 6 to 7' checks every saved field and bank-1 label byte for byte and that the new byte comes out zero. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
+  },
+  {
+   "from": "7",
+   "to": "8",
+   "steps": [
+    "dayCareDepositCountsSaved"
+   ],
+   "verified": "NOT YET (2026-10-11): save_schema.py diff 7 -> 8 shows only the new saved fields wDayCareDepositBattleCount / wDayCareDepositBattleCount2 (carved from the pad after wCurMapScript, whose schema size drops 8 -> 1) and the ID bump; nothing moved. Engine test 'schema 7 to 8' checks every saved field and bank-1 label byte for byte and that both new bytes come out equal to wBattleCount. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
   }
  ]
 }

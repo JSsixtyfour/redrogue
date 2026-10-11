@@ -1,6 +1,6 @@
 	db DEX_CYNDAQUIL ; pokedex id
 
-	db  39,  52,  43,  65,  60
+	db  39,  52,  43,  65,  50
 	;   hp  atk  def  spd  spc
 
 	db FIRE, FIRE ; type
@@ -16,9 +16,9 @@
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   SWORDS_DANCE, MEGA_KICK,    TOXIC,        BODY_SLAM,    \
 	     TAKE_DOWN,    DOUBLE_EDGE,  SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
-	     RAGE,         DRAGON_RAGE,  DIG,          MIMIC,        DOUBLE_TEAM,  \
+	     RAGE,         FLAMETHROWER,  DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   CUT,          STRENGTH,     FLAMETHROWER
+	     REST,         SUBSTITUTE,   CUT,          STRENGTH
 	; end
 
 	db BANK(CyndaquilPicFront) ; pic bank

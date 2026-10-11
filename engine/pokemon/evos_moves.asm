@@ -235,6 +235,9 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld [wNameListType], a
 	ld a, BANK(TrainerNames) ; bank is not used for monster names
 	ld [wPredefBank], a
+	push hl
+	call PublishEvolvedNameForm ; "into SYLVEON", not "into VAPOREON"
+	pop hl
 	call GetName
 	push hl
 	ld hl, IntoText
@@ -418,11 +421,25 @@ Evolution_PartyMonLoop: ; loop over party mons
 RenameEvolvedMon:
 ; Renames the mon to its new, evolved form's standard name unless it had a
 ; nickname, in which case the nickname is kept.
+;
+; Both name lookups must be FORM-aware. A form's name lives in its form record
+; and GetMonName only returns it when a form context is published for that
+; exact species. Without it, an A-Vulpix's "A-VULPIX" never matched the plain
+; "VULPIX" and was misread as a nickname (stuck forever), and an Eevee that
+; became Sylveon (VAPOREON form 2) was renamed "VAPOREON". wLoadedMon still
+; holds the PRE-evolution struct here: ApplyEvoStoneForm runs after this.
 	ASSERT wCurSpecies == wNameListIndex ; save+restore wCurSpecies while using wNameListIndex
 	ld a, [wCurSpecies]
 	push af
 	ld a, [wMonHIndex]
 	ld [wNameListIndex], a
+	ld [wFormContextSpecies], a  ; old side: the mon's own, current form
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ld [wFormContextForm], a
 	call GetName
 	pop af
 	ld [wCurSpecies], a
@@ -436,6 +453,8 @@ RenameEvolvedMon:
 	ret nz
 	cp '@'
 	jr nz, .compareNamesLoop
+	call PublishEvolvedNameForm  ; new side: the form it evolves into. Before
+	                             ; `ld bc`: it clobbers bc, CopyData's length
 	ldh a, [hWhichPokemon]
 	ld bc, NAME_LENGTH
 	ld hl, wPartyMonNicks
@@ -445,6 +464,21 @@ RenameEvolvedMon:
 	ld hl, wNameBuffer
 	pop de
 	jp CopyData
+
+; Publishes the form the evolving mon WILL have, so the next GetName names it
+; (SYLVEON, A-PERSIAN) instead of the bare species. Separate from
+; PublishFormContext because the new form is not in any struct yet.
+; IN:  wCurSpecies = species being evolved into; wLoadedMon = the mon BEFORE
+;      evolution (GetEvolvedForm's contract)
+; CLOBBERS: af, b, c, hl
+PublishEvolvedNameForm:
+	ld a, [wCurSpecies]
+	ld c, a
+	call GetEvolvedForm
+	ld [wFormContextForm], a
+	ld a, [wCurSpecies]
+	ld [wFormContextSpecies], a
+	ret
 
 CancelledEvolution:
 	ld hl, StoppedEvolvingText

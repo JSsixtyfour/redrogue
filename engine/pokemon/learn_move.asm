@@ -134,6 +134,13 @@ TryingToLearn:
 	ld b, 4
 	ld c, 14
 	call TextBoxBorder
+; Shin Red import (joenote): an overworld caller with live map sprites (the
+; daycare retrieval) sets this bit so the sprite pass hides every sprite that
+; now stands on the box's tiles. Opt-in because the bag also leaves
+; hUpdateSpritesEnabled at 1 while its party menu is on screen.
+	ld a, [wStatusFlags7]
+	bit BIT_LEARN_MOVE_HIDES_SPRITES, a
+	call nz, UpdateSprites
 	hlcoord 6, 8
 	ld de, wMovesString
 	ldh a, [hUILayoutFlags]

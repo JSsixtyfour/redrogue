@@ -338,6 +338,30 @@
       return null;
     },
 
+    // Schema 7 -> 8 (2026-10-11): wDayCareDepositBattleCount / ...2 (the wBattleCount snapshot taken
+    // when a mon goes into daycare slot 1 / 2) left unsaved union scratch, where they were ONE shared
+    // byte, for the two pad bytes after wCurMapScript. Nothing moved. An old save never stored a
+    // count, so both are set to the save's wBattleCount: a mon already in daycare counts as deposited
+    // now (grows after the next battle, free until then) instead of charging for every battle of
+    // the run.
+    dayCareDepositCountsSaved: function (bytes, from, to) {
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      if (wramField(from, "wDayCareDepositBattleCount")) return "this save already has daycare deposit counts";
+      var script = wramOffset(from, "wCurMapScript"), one = wramOffset(to, "wDayCareDepositBattleCount");
+      var two = wramOffset(to, "wDayCareDepositBattleCount2"), battles = wramOffset(from, "wBattleCount");
+      if (script < 0 || battles < 0 || wramOffset(to, "wCurMapScript") !== script ||
+          wramOffset(to, "wBattleCount") !== battles || one !== script + 1 || two !== script + 2)
+        return "daycare deposit count layout not recognised";
+      bytes[one] = bytes[battles];
+      bytes[two] = bytes[battles];
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     x7MenuPageReserved: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var PAGE_LO = 0xbd00, PAGE_HI = 0xbe00;

@@ -819,6 +819,7 @@ PCGetDedicatedPokemonSprite::
 
 .speciesSprites
 	db DODUO, SPRITE_DODUO
+	db DODRIO, SPRITE_DODUO
 	db PSYDUCK, SPRITE_PSYDUCK
 	db NIDORINO, SPRITE_NIDORINO
 	db KABUTO, SPRITE_KABUTO
@@ -910,7 +911,9 @@ PCBossSpriteCategoryTable:
 	assert @ - PCBossSpriteCategoryTable == NUM_MON_SPRITE_CATEGORIES
 
 ; 95-byte nibble-packed species -> neutral overworld sprite category table.
-; High nibble = even species index, low nibble = odd.
+; High nibble = FIRST species named in each row's comment (odd internal ID),
+; low nibble = second (even internal ID). e.g. $01 ; XATU,KINGLER makes KINGLER
+; the bird, not XATU - this exact swap gave eight rows the wrong sprite.
 ; M=MONSTER(0) B=BIRD(1) S=SEEL(2) F=FAIRY(3) P=POKEBALL(4) N=SNORLAX(5) O=FOSSIL(6) K=PIKACHU(7) C=CHANSEY(8)
 PokemonSpriteCategoryTable:
 	db $00 ; $01,$02 RHYDON,KANGASKHAN
@@ -952,8 +955,8 @@ PokemonSpriteCategoryTable:
 	db $11 ; $49,$4A MOLTRES,ARTICUNO
 	db $10 ; $4B,$4C ZAPDOS,DITTO
 	db $02 ; $4D,$4E MEOWTH,KRABBY
-	db $10 ; $4F,$50 FURRET,HOOTHOOT (bird sprite for Hoothoot, matches Pidgey/Fearow)
-	db $01 ; $51,$52 NOCTOWL,VULPIX (bird sprite for Noctowl)
+	db $01 ; $4F,$50 FURRET,HOOTHOOT (bird sprite for Hoothoot, matches Pidgey/Fearow)
+	db $10 ; $51,$52 NOCTOWL,VULPIX (bird sprite for Noctowl)
 	db $07 ; $53,$54 NINETALES,PIKACHU
 	db $00 ; $55,$56 RAICHU,LEDYBA
 	db $00 ; $57,$58 LEDIAN,DRATINI
@@ -981,7 +984,7 @@ PokemonSpriteCategoryTable:
 	db $05 ; $83,$84 MEWTWO,SNORLAX
 	db $00 ; $85,$86 MAGIKARP,TOGETIC
 	db $00 ; $87,$88 NATU,MUK
-	db $01 ; $89,$8A XATU,KINGLER (bird sprite for Xatu)
+	db $10 ; $89,$8A XATU,KINGLER (bird sprite for Xatu)
 	db $00 ; $8B,$8C CLOYSTER,MAREEP
 	db $43 ; $8D,$8E ELECTRODE,CLEFABLE
 	db $00 ; $8F,$90 WEEZING,PERSIAN
@@ -1016,7 +1019,7 @@ PokemonSpriteCategoryTable:
 	; table desyncs from PokemonSpriteCategoryTableEnd's own assert.
 	db $00 ; $C1,$C2 MISMAGIUS,YANMA
 	db $00 ; $C3,$C4 WOOPER,QUAGSIRE
-	db $01 ; $C5,$C6 MURKROW,SLOWKING (bird sprite for Murkrow)
+	db $10 ; $C5,$C6 MURKROW,SLOWKING (bird sprite for Murkrow)
 	db $00 ; $C7,$C8 MISDREAVUS,GIRAFARIG
 	db $00 ; $C9,$CA PINECO,FORRETRESS
 	db $00 ; $CB,$CC DUNSPARCE,GLIGAR
@@ -1029,7 +1032,7 @@ PokemonSpriteCategoryTable:
 	db $00 ; $D9,$DA SWINUB,PILOSWINE
 	db $00 ; $DB,$DC CORSOLA,REMORAID
 	db $00 ; $DD,$DE OCTILLERY,MANTINE
-	db $01 ; $DF,$E0 SKARMORY,HOUNDOUR (bird sprite for Skarmory)
+	db $10 ; $DF,$E0 SKARMORY,HOUNDOUR (bird sprite for Skarmory)
 	db $00 ; $E1,$E2 HOUNDOOM,KINGDRA
 	db $00 ; $E3,$E4 PHANPY,DONPHAN
 	db $00 ; $E5,$E6 PORYGON2,STANTLER
@@ -1037,10 +1040,10 @@ PokemonSpriteCategoryTable:
 	db $00 ; $E9,$EA BLISSEY,RAIKOU
 	db $00 ; $EB,$EC ENTEI,SUICUNE
 	db $00 ; $ED,$EE LARVITAR,PUPITAR
-	db $10 ; $EF,$F0 TYRANITAR,LUGIA (bird sprite for Lugia)
-	db $01 ; $F1,$F2 HO_OH,CELEBI (bird sprite for Ho-oh)
+	db $01 ; $EF,$F0 TYRANITAR,LUGIA (bird sprite for Lugia)
+	db $10 ; $F1,$F2 HO_OH,CELEBI (bird sprite for Ho-oh)
 	db $00 ; $F3,$F4 ANNIHILAPE,LICKILICKY
-	db $01 ; $F5,$F6 SIRFETCHD,MAGNEZONE (bird sprite for Sirfetch'd)
+	db $10 ; $F5,$F6 SIRFETCHD,MAGNEZONE (bird sprite for Sirfetch'd)
 	db $00 ; $F7,$F8 TANGROWTH,RHYPERIOR
 	db $00 ; $F9,$FA KLEAVOR,MR_RIME
 	db $00 ; $FB,$FC ELECTIVIRE,MAGMORTAR

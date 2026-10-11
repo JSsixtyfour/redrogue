@@ -6,8 +6,9 @@
 ; reference, all deliberate:
 ;   * shinpokered sets bit 6 of its wFlags_D733 around both routines. That bit
 ;     is a joenote-only addition (ghost battle / "learn skipped moves as if in
-;     a battle" / sprite refresh during the move-forget list) and has no
-;     equivalent here, so it is not ported.
+;     a battle" / sprite refresh during the move-forget list). Only the sprite
+;     refresh is ported (BIT_LEARN_MOVE_HIDES_SPRITES, set around the learn pass
+;     below): without it the lobby NPCs drew on top of the forget-move list.
 ;   * shinpokered also seeds wStartBattleLevels so its own evolution path
 ;     re-learns skipped moves. This fork's evolution path only learns moves at
 ;     exactly [wCurEnemyLevel], so instead we run our own move-learning pass
@@ -113,7 +114,11 @@ DaycareRetrieveUpgrade::
 	call PublishFormContext
 	call GetMonHeader
 	push de
+	ld hl, wStatusFlags7
+	set BIT_LEARN_MOVE_HIDES_SPRITES, [hl] ; the forget-move box covers the map's NPCs
 	predef LearnMoveFromLevelUp
+	ld hl, wStatusFlags7
+	res BIT_LEARN_MOVE_HIDES_SPRITES, [hl]
 	pop de
 	jr .learnLoop
 

@@ -850,7 +850,6 @@ wDayCareStartLevel:: db
 wDayCareNumLevelsGrown:: db
 wDayCareTotalCost:: dw ; BCD
 wDayCarePerLevelCost:: dw ; BCD (always $100)
-wDayCareDepositBattleCount:: db ; wBattleCount snapshot at deposit time
 
 NEXTU
 ; the level of the mon at the time it entered day care
@@ -858,7 +857,11 @@ wDayCareStartLevel2:: db
 wDayCareNumLevelsGrown2:: db
 wDayCareTotalCost2:: dw ; BCD
 wDayCarePerLevelCost2:: dw ; BCD (always $100)
-wDayCareDepositBattleCount2:: db ; wBattleCount snapshot at deposit time
+; The deposit battle counts used to sit at the end of these two members. Sibling
+; members of a union share offsets, so slot 1's and slot 2's count were ONE byte:
+; depositing at one daycare reset the other's "battles since drop-off" to 0. The
+; union is also unsaved scratch that the fly list and others overwrite. Both
+; counts now live in saved WRAM next to wCurMapScript.
 
 NEXTU
 ; which wheel the player is trying to stop
@@ -3291,7 +3294,13 @@ wOpponentAfterWrongAnswer:: db
 ; mostly copied from map-specific map script pointer and written back later
 wCurMapScript:: db
 
-	ds 7
+; wBattleCount snapshot at deposit time, one per daycare slot (gentleman = 1,
+; lobby lady = 2). Carved from the pad that followed (was ds 7): must outlive
+; the conversation, a save and a power cycle, so not union scratch.
+wDayCareDepositBattleCount:: db
+wDayCareDepositBattleCount2:: db
+
+	ds 5
 
 wPlayTimeHours:: db
 wPlayTimeMaxed:: db
