@@ -9,11 +9,13 @@ PtauroscombatFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
+    db 6, TAIL_WHIP
+    db 10, DOUBLE_KICK
 	db 13, HORN_ATTACK
 	db 15, LEER
 	db 19, STOMP
-	db 23, TAIL_WHIP
 	db 27, HEADBUTT
+    db 30, JUMP_KICK
 	db 35, RAGE
 	db 40, TAKE_DOWN
 	db 45, THRASH

@@ -10,7 +10,7 @@
 	db DEX_TAUROS ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  75, 110, 105,  85,  65
+	db  75, 110, 105, 100,  60
 	;   hp  atk  def  spd  spc
 
 	db FIGHTING, WATER ; type
@@ -27,8 +27,8 @@
 	tmhm TOXIC,        HORN_DRILL,   BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         THUNDERBOLT,  \
 	     THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     STRENGTH,     FLAMETHROWER
+	     BIDE,         SURF,   SKULL_BASH,   REST,         SUBSTITUTE,   \
+	     STRENGTH,     BUBBLE_BEAM, MEGA_KICK,    WATER_GUN
 	; end
 
 	db BANK(PTaurosAquaPicFront) ; pic bank

@@ -10,7 +10,7 @@
 	db DEX_TAUROS ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  75, 100,  95, 110,  70
+	db  75, 110, 105, 100,  60
 	;   hp  atk  def  spd  spc
 
 	db FIGHTING, FIGHTING ; type
@@ -28,7 +28,7 @@
 	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         THUNDERBOLT,  \
 	     THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     STRENGTH,     FLAMETHROWER
+	     STRENGTH,     FLAMETHROWER, MEGA_KICK
 	; end
 
 	db BANK(PTaurosCombatPicFront) ; pic bank
