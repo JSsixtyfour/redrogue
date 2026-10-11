@@ -28,7 +28,7 @@
 	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         THUNDERBOLT,  \
 	     THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SURF,   SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     STRENGTH,     BUBBLE_BEAM, MEGA_KICK,    WATER_GUN
+	     STRENGTH,     BUBBLEBEAM, MEGA_KICK,    WATER_GUN
 	; end
 
 	db BANK(PTaurosAquaPicFront) ; pic bank

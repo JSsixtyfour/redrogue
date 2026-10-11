@@ -156,9 +156,10 @@ ld hl, stat_greatball_class
 ld a, CLERK_STAT_GREATBALL_ODDS
 cp b
 jr nc, stattm_item_selection
+call GetStatUltraballCount  ; a = 5 Kanto stones, or 8 with Johto/Warp; keeps b
+ld c, a
 ld a, CLERK_STAT_ULTRABALL_ODDS
 ld hl, stat_ultraball_class
-ld c, NUM_STAT_ULTRABALL_CLASS
 cp b
 jr nc, stattm_item_selection
 ld hl, stat_masterball_class

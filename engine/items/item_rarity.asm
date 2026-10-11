@@ -29,7 +29,11 @@ DEF NUM_MONEY_MASTERBALL_CLASS EQU $0
 
 DEF NUM_STAT_POKEBALL_CLASS EQU 4  ; PROTEIN CARBOS CALCIUM IRON
 DEF NUM_STAT_GREATBALL_CLASS EQU 2 ; HP_UP PP_UP
-DEF NUM_STAT_ULTRABALL_CLASS EQU 5 ; MOON/FIRE/WATER/THUNDER/LEAF STONE
+; The ultraball stat list is the 5 Kanto stones, then SUN/DUSK/ICE. Rollers use
+; only the Kanto prefix unless the Johto or Time Warp group is active (see
+; GetStatUltraballCount). The full length is what ball_rarity.asm classifies by.
+DEF NUM_STAT_ULTRABALL_CLASS_KANTO EQU 5 ; MOON/FIRE/WATER/THUNDER/LEAF STONE
+DEF NUM_STAT_ULTRABALL_CLASS EQU 8       ; + SUN/DUSK/ICE STONE
 DEF NUM_STAT_MASTERBALL_CLASS EQU 1 ; RARE_CANDY
 
 item_pokeball_classes::
@@ -183,6 +187,11 @@ db FIRE_STONE
 db WATER_STONE
 db THUNDER_STONE
 db LEAF_STONE
+; Johto / Time Warp only - must stay after the Kanto prefix above
+db SUN_STONE
+db DUSK_STONE
+db ICE_STONE
+ASSERT @ - stat_ultraball_class == NUM_STAT_ULTRABALL_CLASS
 
 stat_masterball_class:
 db RARE_CANDY

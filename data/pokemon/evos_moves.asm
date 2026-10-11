@@ -853,8 +853,8 @@ ScytherEvosMoves:
 ; level 40, same as every other held-item trade substitute this import.
 ; Multiple evolution entries on one species are already supported (see
 ; EeveeEvosMoves's three stone branches).
-	db EVOLVE_LEVEL, 41, SCIZOR
-	db EVOLVE_TRADE, 40, KLEAVOR
+	db EVOLVE_TRADE, 40, SCIZOR
+	db EVOLVE_ITEM, DUSK_STONE, 1, KLEAVOR
 	db 0
 ; Learnset
 	db 6, FOCUS_ENERGY
@@ -1086,7 +1086,7 @@ SlowpokeEvosMoves:
 ; Species Groups Phase 2: canon Slowpoke->Slowking is a trade evolution
 ; (holding King's Rock); EVOLVE_TRADE is the closest fit this engine has.
 ; Min level 40, per project convention for this import's trade evolutions.
-	db EVOLVE_TRADE, 40, SLOWKING
+	db EVOLVE_ITEM, WATER_STONE, 1, SLOWKING
 	db 0
 ; Learnset
 	db 5, GROWL
@@ -4500,7 +4500,7 @@ Porygon2EvosMoves:
 ; - per the project's own trade-evolution convention (EVOLVE_TRADE at
 ; level 40, same as Porygon->Porygon2) - a plain trade threshold is used
 ; instead.
-	db EVOLVE_TRADE, 40, PORYGON_Z
+	db EVOLVE_TRADE, 50, PORYGON_Z
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; TACKLE/SHARPEN/CONVERSION already granted at level 1.

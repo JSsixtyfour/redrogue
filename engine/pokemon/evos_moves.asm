@@ -179,7 +179,17 @@ Evolution_PartyMonLoop: ; loop over party mons
 	                             ; input cannot survive a farcall
 	farcall RogueIsSpeciesEvolutionAllowedFar
 	pop hl
+	jr nc, .evoBlocked
+; The species check above cannot see eeveelution FORMS: Espeon is JOLTEON form
+; 1, and JOLTEON is Kanto, so Leaf/Moon Stones made Leafeon/Sylveon in a
+; Kanto-only run. A form-setting stone evolution also asks the roller's form
+; gate (IsFormAllowed), so the two can never disagree.
+	push hl
+	ld c, [hl]                   ; target species
+	call IsEvoStoneFormAllowed
+	pop hl                       ; pop does not disturb flags
 	jr c, .evoGroupActive
+.evoBlocked
 	pop af                       ; discard the saved level, keep the stack even
 	jp .nextEvoEntry2            ; hl is still on the species byte - skip past it
 .evoGroupActive
@@ -984,15 +994,30 @@ ApplyEvoStoneForm:
 ; CLOBBERS: af, b, hl. Shared by ApplyEvoStoneForm and the evolution animation
 ; (wEvoNewForm), so the two can never disagree.
 GetEvolvedForm:
+	call FindEvoStoneForm
+	ret c                      ; form-SETTING stone evolution
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ret
+
+; IN:  c = species being evolved into, wEvoStoneItemID
+; OUT: carry SET, a = form index (1..NUM_FORM_SLOTS) if this stone evolution SETS
+;      a form (EvoStoneForms hit); carry CLEAR otherwise (level/trade evolution,
+;      or an ordinary form-preserving stone evolution)
+; CLOBBERS: af, b, hl
+FindEvoStoneForm:
 	ld a, [wEvoStoneItemID]
-	and a
-	jr z, .keepForm            ; level or trade evolution
+	and a                      ; clears carry
+	ret z                      ; level or trade evolution
 	ld b, a
 	ld hl, EvoStoneForms
 .loop
 	ld a, [hl]
-	and a
-	jr z, .keepForm            ; end of table: an ordinary stone evolution
+	and a                      ; clears carry
+	ret z                      ; end of table: an ordinary stone evolution
 	cp b
 	jr nz, .next
 	inc hl
@@ -1009,17 +1034,25 @@ GetEvolvedForm:
 .found
 	inc hl
 	inc hl
-	ld a, [hl]                 ; form index, 1..NUM_FORM_SLOTS
+	ld a, [hl]
 	and NUM_FORM_SLOTS
+	scf
 	ret
 
-.keepForm
-	ld a, [wLoadedMon + MON_CATCH_RATE]
-	and FORM_MASK
-	rlca                       ; bits 5-6 -> 0-3
-	rlca
-	rlca
-	ret
+; May this evolution's stone-set form appear in this run? Form-preserving
+; evolutions always pass: the mon already has its form, and blocking it would
+; strand e.g. an Alolan Meowth whose group was toggled off mid-run.
+; IN:  c = species being evolved into, wEvoStoneItemID
+; OUT: carry SET = allowed
+; CLOBBERS: af, bc, de, hl
+IsEvoStoneFormAllowed:
+	call FindEvoStoneForm
+	ccf                        ; no form-setting entry -> carry set -> allow
+	ret c
+	ld d, c                    ; d = species
+	ld e, a                    ; e = form (only d/e cross a farcall)
+	farcall IsFormUnlockedFar
+	ret                        ; flags survive the Bankswitch return
 
 EvoStoneForms:
 ; db <stone>, <target species>, <form index>

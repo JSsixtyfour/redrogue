@@ -32,9 +32,10 @@ push bc
 jp item_determineClassSlot
 
 stat_items:
+call GetStatUltraballCount  ; a = 5 Kanto stones, or 8 with Johto/Warp active
+ld d, a
 ld b, NUM_STAT_POKEBALL_CLASS
-ld c, NUM_STAT_GREATBALL_CLASS 
-ld d, NUM_STAT_ULTRABALL_CLASS 
+ld c, NUM_STAT_GREATBALL_CLASS
 ld e, NUM_STAT_MASTERBALL_CLASS
 push bc
 jp item_determineClassSlot
@@ -201,16 +202,8 @@ pop bc
 ld a, c                     ; multiply by amount of this class
 ldh [hMultiplier], a
 call Multiply
+; index = (rand * count) >> 8, always < count (see the ultraball branch).
 ldh   a, [hProduct+2]
-ldh [hDividend], a
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
 ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
@@ -255,16 +248,11 @@ pop bc
 ld a, d                     ; multiply by amount of this class
 ldh [hMultiplier], a
 call Multiply
+; index = (rand * count) >> 8, always < count - the clerk roller's 2026-09-28
+; fix. rand * count / 255 returned count itself on a roll of 255 and read one
+; past the list, which since SUN/DUSK/ICE follow the Kanto stones would hand a
+; Kanto-only run a SUN_STONE.
 ldh   a, [hProduct+2]
-ldh [hDividend], a
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
 ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
@@ -309,16 +297,8 @@ pop bc
 ld a, e                     ; multiply by amount of this class
 ldh [hMultiplier], a        ; place amount of class in multiplier
 call Multiply               ; multiply random number by amount in class
-ldh   a, [hProduct+2]       ; load product into a
-ldh [hDividend], a          ; place product in divident
-ldh   a, [hProduct+3]
-ldh [hDividend+1], a
-
-ld a, $FF                   ; load 255
-ldh [hDivisor], a           ; place 255 as divisor
-ld b, $2                    ; number of bytes
-call Divide
-ldh   a, [hQuotient+3]      ; load in quotient
+; index = (rand * count) >> 8, always < count (see the ultraball branch).
+ldh   a, [hProduct+2]
 ld c, a                     ; load offset to add to pointer, to get address
 ld b, $0
 
@@ -398,3 +378,28 @@ GymLeaderRandomItem::
     pop af
     ld [wRogueDoorSelection], a
     ret
+; ---------------------------------------------------------------------------
+; GetStatUltraballCount
+; OUTPUT: a = how many entries of stat_ultraball_class may be rolled: the 5
+;         Kanto stones, or all 8 (+ SUN/DUSK/ICE) when the Johto or Time Warp
+;         group is active. Shared by the route roller above and the Celadon
+;         clerk (random_item_selection_mart.asm).
+; PRESERVES: bc, de, hl (farcall clobbers bc/hl, so they are stacked)
+; The mask comes back in e: RogueGetActiveGroupMask's `a` cannot survive a
+; farcall (see RogueGetActiveGroupMaskFar), and rarity.asm is another bank.
+; ---------------------------------------------------------------------------
+GetStatUltraballCount:
+	push bc
+	push de
+	push hl
+	farcall RogueGetActiveGroupMaskFar ; e = active group mask
+	ld a, e
+	and (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	ld a, NUM_STAT_ULTRABALL_CLASS_KANTO ; ld leaves the flags from `and`
+	jr z, .done
+	ld a, NUM_STAT_ULTRABALL_CLASS
+.done
+	pop hl
+	pop de
+	pop bc
+	ret

@@ -814,9 +814,9 @@ MistStoneChooseEvolution::
 	ld a, [hl]
 	cp EEVEE
 	jr nz, .notEevee
-	call Random           ; HOME; never BattleRandom outside battle
-	and %00000111         ; 0-7, one per Eevee branch - uniform, 8 is a power of 2
-	ld e, a
+	; Uniform over the branches whose form is unlocked this run (the roller's
+	; IsFormAllowed gate), so a Kanto-only Eevee can't become Espeon.
+	farcall RogueRollEeveeIndexFar ; e = branch index 0-7
 	ld d, 0
 	ld hl, EeveeMistStones
 	add hl, de

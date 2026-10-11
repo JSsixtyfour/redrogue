@@ -538,8 +538,19 @@ IsFormCandidate:
 ; CLOBBERS: af, bc, hl
 ; ---------------------------------------------------------------------------
 RogueRollEeveeBranch::
+	call RollAllowedEeveeBranch
+	ld d, b
+	ld e, c
+	ret
+
+; The shared roll behind RogueRollEeveeBranch and RogueRollEeveeIndexFar.
+; INPUT:  d = active group mask
+; OUTPUT: a = branch index 0-7, b = species, c = form
+; CLOBBERS: af, bc, hl
+RollAllowedEeveeBranch:
 	call Random
 	and %111
+	push af                      ; branch index, returned in a
 	add a                        ; 2-byte (species, form) pairs
 	ld c, a
 	ld b, 0
@@ -552,11 +563,46 @@ RogueRollEeveeBranch::
 	and a
 	jr z, .accept                ; a base eeveelution is always allowed
 	call IsFormAllowed           ; b = species, a = form, d = mask
-	jr nc, RogueRollEeveeBranch
+	jr c, .accept
+	pop af
+	jr RollAllowedEeveeBranch
 .accept
-	ld d, b
-	ld e, c
+	pop af
 	ret
+
+; ---------------------------------------------------------------------------
+; RogueRollEeveeIndexFar
+; The Mist Stone's Eevee pick (bridge_effects.asm MistStoneChooseEvolution): a
+; uniform pick over the branches whose form is unlocked this run. It used to be
+; an unconditional 0-7, which handed out Espeon/Glaceon/etc. with their group
+; locked. EeveeMistStones is in EeveeBranches' order, so the index carries over.
+; OUTPUT: e = branch index 0-7
+; CLOBBERS: af, bc, d, hl
+; ---------------------------------------------------------------------------
+RogueRollEeveeIndexFar::
+	farcall RogueGetActiveGroupMaskFar ; e = active group mask
+	ld d, e
+	call RollAllowedEeveeBranch
+	ld e, a
+	ret
+
+; ---------------------------------------------------------------------------
+; IsFormUnlockedFar
+; IsFormAllowed for callers in another bank (the stone evolution in
+; engine/pokemon/evos_moves.asm). Fetches the group mask itself.
+; INPUT:  d = species, e = form index
+; OUTPUT: carry SET if the form may appear (flags survive the farcall return)
+; CLOBBERS: af, bc, de, hl
+; ---------------------------------------------------------------------------
+IsFormUnlockedFar::
+	push de
+	farcall RogueGetActiveGroupMaskFar ; e = active group mask
+	ld a, e
+	pop de                       ; d = species, e = form
+	ld b, d
+	ld d, a                      ; d = mask
+	ld a, e                      ; a = form
+	jp IsFormAllowed
 
 EeveeBranches:
 ; Same eight outcomes as EeveeEvosMoves' stone entries plus evos_moves.asm's
