@@ -219,6 +219,24 @@ test("schema 7 to 8: both daycare deposit counts are added as the save's battle 
   assert.equal(b[pad + 1], battles, "wDayCareDepositBattleCount2");
 });
 
+test("schema 8 to 9: theft holder joins the save transaction and shifted data survives", () => {
+  const { save, b, from, to } = checkMigration(8, 9, []);
+  const holder = from.sram.find((f) => f.label === "sStolenRecord");
+  const raw = offsetOf(holder.bank, holder.address);
+  const snapshot = wramOffset(to, "wStolenSaveSnapshot");
+  assert.deepEqual(Array.from(b.slice(snapshot, snapshot + 57)), Array.from(save.slice(raw, raw + 57)));
+  for (const kind of [0, 1, 2, 255]) {
+    const input = syntheticSave("8");
+    const payload = Uint8Array.from({ length: 57 }, (_, i) => i ? (i * 19 + 7) & 255 : kind);
+    input.set(payload, raw);
+    const converted = api.convert(input, packageTargeting(9), { mode: "continue" });
+    assert.equal(converted.ok, true, converted.reason);
+    assert.deepEqual(converted.bytes.slice(snapshot, snapshot + 57), payload);
+    assert.deepEqual(converted.bytes.slice(raw, raw + 57), payload, "raw holder also preserved");
+    assert.equal(api.checksumStatus(converted.bytes, to).main, true);
+  }
+});
+
 // Schema 5 -> 6 moves bank-0 and bank-2 fields, which checkMigration's bank-1 noise never reaches,
 // so this builds its own save: noise over all of bank 0, the bank-2 fallen log + offer DVs, and
 // bank 1 from the item counts on (as checkMigration does).

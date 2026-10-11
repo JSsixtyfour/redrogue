@@ -75,6 +75,14 @@
     "dayCareDepositCountsSaved"
    ],
    "verified": "NOT YET (2026-10-11): save_schema.py diff 7 -> 8 shows only the new saved fields wDayCareDepositBattleCount / wDayCareDepositBattleCount2 (carved from the pad after wCurMapScript, whose schema size drops 8 -> 1) and the ID bump; nothing moved. Engine test 'schema 7 to 8' checks every saved field and bank-1 label byte for byte and that both new bytes come out equal to wBattleCount. Real-save gate (saves.py make/continue) not yet run; it shares schema 3's #51 blocker."
+  },
+  {
+   "from": "8",
+   "to": "9",
+   "steps": [
+    "stolenSaveSnapshotAdded"
+   ],
+   "verified": "2026-10-11: all three ROMs build; schema diff 8->9 appends the 57-byte snapshot and shifts later bank-1 data by 57. Converter tests preserve every existing field and all holder tags with nonuniform payloads (17 pass, 1 real legacy-fixture skip). Focused ROM test restores all 57 holder bytes and saved party, and leaves the holder unchanged on checksum failure. Full smoke 904 tests OK (3 skipped); audit zero unallowlisted bugs. Converted legacy-save cold Continue and BGB theft/recovery acceptance remain pending."
   }
  ]
 }

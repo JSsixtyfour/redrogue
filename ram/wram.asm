@@ -3330,6 +3330,13 @@ wDayCareMonOT2::   ds NAME_LENGTH
 wDayCareMon2:: box_struct wDayCareMon2
 
 
+; Raw stage-event theft SRAM is live state, not the battery-save transaction.
+; SaveMainData captures it here; LoadMainData restores it only after checksum
+; validation. Keep the entire holder, including its validity tag and names.
+wStolenSaveSnapshot:: ds 57
+wStolenSaveSnapshotEnd::
+ASSERT wStolenSaveSnapshotEnd - wStolenSaveSnapshot == sStolenRecordEnd - sStolenRecord
+
 wMainDataEnd::
 
 ; Unsaved identity sidecar for an archived fusion loaded as the final AI's

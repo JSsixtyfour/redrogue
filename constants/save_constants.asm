@@ -45,7 +45,11 @@
 ; wCurMapScript. Nothing moved; old saves get both set to their wBattleCount,
 ; migration dayCareDepositCountsSaved.
 
-DEF SAVE_SCHEMA_ID EQU 8
+; Schema 9: append the complete 57-byte theft holder snapshot to Main Data.
+; Existing Main Data offsets stay fixed; subsequent bank-1 save blocks move.
+; Migration stolenSaveSnapshotAdded copies the old raw holder into the new
+; snapshot and shifts the subsequent save blocks by their schema labels.
+DEF SAVE_SCHEMA_ID EQU 9
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

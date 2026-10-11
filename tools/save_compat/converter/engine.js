@@ -362,6 +362,35 @@
       return null;
     },
 
+    // Schema 8 -> 9: append the raw theft holder to Main Data's transaction.
+    stolenSaveSnapshotAdded: function (bytes, from, to) {
+      var src = new Uint8Array(bytes);
+      var oldMain = sramField(from, "sMainData"), newMain = sramField(to, "sMainData");
+      var holder = sramField(from, "sStolenRecord");
+      var snapshot = wramField(to, "wStolenSaveSnapshot");
+      if (!oldMain || !newMain || !holder || !snapshot || snapshot.size !== 57 ||
+          newMain.size !== oldMain.size + 57 ||
+          wramOffset(to, "wStolenSaveSnapshot") !== offsetOf(oldMain.bank, oldMain.address) + oldMain.size)
+        return "theft snapshot layout not recognised";
+      // Snapshot source bytes before shifting overlapping bank-1 save blocks.
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || f.bank !== t.bank || (f.label !== "sMainData" && f.size !== t.size))
+          return "save field " + f.label + " changed unexpectedly";
+        var oldOffset = offsetOf(f.bank, f.address), newOffset = offsetOf(t.bank, t.address);
+        var expected = f.bank === oldMain.bank && oldOffset >= offsetOf(oldMain.bank, oldMain.address) + oldMain.size ? 57 : 0;
+        if (newOffset - oldOffset !== expected)
+          return "save field " + f.label + " moved unexpectedly";
+        var size = f.label === "sMainData" ? oldMain.size : f.size;
+        bytes.set(src.subarray(offsetOf(f.bank, f.address), offsetOf(f.bank, f.address) + size),
+                  offsetOf(t.bank, t.address));
+      }
+      var raw = offsetOf(holder.bank, holder.address);
+      bytes.set(src.subarray(raw, raw + 57), wramOffset(to, "wStolenSaveSnapshot"));
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     x7MenuPageReserved: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var PAGE_LO = 0xbd00, PAGE_HI = 0xbe00;

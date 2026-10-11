@@ -1,6 +1,6 @@
 	db DEX_ENTEI ; pokedex id
 
-	db 115, 115,  85, 100,  80
+	db 115, 115,  85, 100,  75
 	;   hp  atk  def  spd  spc
 
 	db FIRE, FIRE ; type
@@ -16,7 +16,9 @@
 	; tm/hm learnset - modeled on Moltres (Fire legendary bird)
 	tmhm FLAMETHROWER, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     FIRE_BLAST,   SWIFT,        REST,         SUBSTITUTE,   STRENGTH
+	     FIRE_BLAST,   SWIFT,        REST,         SUBSTITUTE,   STRENGTH,     \
+         SOLARBEAM,    DIG,          CUT,          STRENGTH,     FLASH,        \
+         BODY_SLAM    
 	; end
 
 	db BANK(EnteiPicFront) ; pic bank

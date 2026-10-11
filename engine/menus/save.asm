@@ -128,6 +128,13 @@ LoadMainData:
 	ld de, wMainDataStart
 	ld bc, wMainDataEnd - wMainDataStart
 	call CopyData
+	; Restore the live theft holder from the SAME save as the party/boxes.
+	; Both SRAM records are in bank 1; no farcall may disturb this window.
+	ASSERT BANK(sStolenRecord) == BANK(sMainData)
+	ld hl, wStolenSaveSnapshot
+	ld de, sStolenRecord
+	ld bc, sStolenRecordEnd - sStolenRecord
+	call CopyData
 	ld hl, wCurMapTileset
 	set BIT_NO_PREVIOUS_MAP, [hl]
 	ld hl, sSpriteData
@@ -307,6 +314,14 @@ SaveMainData:
 	ASSERT BANK("Save Data") == BMODE_ADVANCED
 	ld [rRAMB], a
 	call WriteSaveHeader
+	; Capture raw theft SRAM before copying Main Data and checksumming it.
+	; Do not do this in partial party/box saves: they must retain the last
+	; complete save's theft snapshot, just as they retain its run state.
+	ASSERT BANK(sStolenRecord) == BANK(sMainData)
+	ld hl, sStolenRecord
+	ld de, wStolenSaveSnapshot
+	ld bc, sStolenRecordEnd - sStolenRecord
+	call CopyData
 
 	ld hl, wPlayerName
 	ld de, sPlayerName
