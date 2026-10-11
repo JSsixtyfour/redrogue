@@ -454,12 +454,12 @@ SlowbroEvosMoves:
 	db 0
 ; Learnset
 	db 5, GROWL
-	db 5, WATER_GUN
+	db 9, BUBBLE
 	db 10, CONFUSION 
 	db 18, DISABLE
 	db 22, HEADBUTT
 	db 25, PSYBEAM
-	db 28, WATERFALL
+	db 28, WATER_GUN
 	db 36, WITHDRAW
 	db 40, AMNESIA
 	db 45, PSYCHIC_M
@@ -1090,12 +1090,12 @@ SlowpokeEvosMoves:
 	db 0
 ; Learnset
 	db 5, GROWL
-	db 5, WATER_GUN
+	db 8, BUBBLE
 	db 10, CONFUSION 
 	db 18, DISABLE
 	db 22, HEADBUTT
 	db 25, PSYBEAM
-	db 28, WATERFALL
+	db 28, WATER_GUN
 	db 36, WITHDRAW
 	db 40, AMNESIA
 	db 45, PSYCHIC_M
@@ -4073,10 +4073,12 @@ SlowkingEvosMoves:
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
 ; CONFUSION/DISABLE/HEADBUTT already granted at level 1.
-	db 10, BIDE
+	db 5, GROWL
+    db 9, BUBBLE
+    db 10, CONFUSION
 	db 18, DISABLE
 	db 22, HEADBUTT
-	db 27, GROWL
+    db 25, PSYBEAM
 	db 33, WATER_GUN
 	db 44, AMNESIA
 	db 55, PSYCHIC_M

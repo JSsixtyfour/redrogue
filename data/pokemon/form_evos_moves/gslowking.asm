@@ -10,10 +10,13 @@ GslowkingFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
 ; CONFUSION/DISABLE/HEADBUTT already granted at level 1.
-	db 10, BIDE
+	db 5, GROWL
+    db 9, BUBBLE
+    db 10, CONFUSION
 	db 18, DISABLE
 	db 22, HEADBUTT
-	db 27, GROWL
+    db 25, PSYBEAM
+    db 30, SLUDGE
 	db 33, WATER_GUN
 	db 44, AMNESIA
 	db 55, PSYCHIC_M

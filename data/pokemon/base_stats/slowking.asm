@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/slowking.dim" ; sprite dimensions
 	dw SlowkingPicFront, SlowkingPicBack
 
-	db CONFUSION, DISABLE, HEADBUTT, NO_MOVE ; level 1 learnset
+	db CONFUSION, TACKLE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/slowking.asm, minus

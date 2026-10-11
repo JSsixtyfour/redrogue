@@ -9,7 +9,7 @@
 	db DEX_SLOWBRO ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  95, 100,  95,  30, 100
+	db  95, 100,  95,  30, 70
 	;   hp  atk  def  spd  spc
 
 	db POISON, PSYCHIC_TYPE ; type
@@ -19,7 +19,7 @@
 	INCBIN "gfx/pokemon/front/gslowbro.dim" ; sprite dimensions
 	dw GSlowbroPicFront, GSlowbroPicBack
 
-	db CONFUSION, DISABLE, HEADBUTT, NO_MOVE ; level 1 learnset
+	db CONFUSION, ACID, GROWL, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

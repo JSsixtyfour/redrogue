@@ -10,12 +10,12 @@ GslowpokeFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 5, GROWL
-	db 5, WATER_GUN
+	db 8, BUBBLE
 	db 10, CONFUSION 
 	db 18, DISABLE
 	db 22, HEADBUTT
 	db 25, PSYBEAM
-	db 28, WATERFALL
+	db 28, WATER_GUN
 	db 36, WITHDRAW
 	db 40, AMNESIA
 	db 45, PSYCHIC_M
