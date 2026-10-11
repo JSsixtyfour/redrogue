@@ -19,7 +19,7 @@
 	INCBIN "gfx/pokemon/front/pwooper.dim" ; sprite dimensions
 	dw PWooperPicFront, PWooperPicBack
 
-	db WATER_GUN, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
+	db POISON_STING, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

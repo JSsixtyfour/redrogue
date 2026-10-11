@@ -18,14 +18,14 @@
 	INCBIN "gfx/pokemon/front/avulpix.dim" ; sprite dimensions
 	dw AVulpixPicFront, AVulpixPicBack
 
-	db EMBER, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-         FLAMETHROWER
+	     BLIZZARD,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
+         ICE_BEAM,  LIGHT_SCREEN
 	; end
 
 	db BANK(AVulpixPicFront) ; pic bank

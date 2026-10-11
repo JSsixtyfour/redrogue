@@ -20,14 +20,14 @@
 	INCBIN "gfx/pokemon/front/toedscool.dim" ; sprite dimensions
 	dw ToedscoolPicFront, ToedscoolPicBack
 
-	db ACID, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db ABSORB, TACKLE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
-	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     RAGE,         MEGA_DRAIN,   \
+	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  DIG,   \
+	     FISSURE,    SOLAR_BEAM,     EARTHQUAKE,     RAGE,         MEGA_DRAIN,   \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   CUT,          SURF
+	     REST,         SUBSTITUTE,   CUT
 	; end
 
 	db BANK(ToedscoolPicFront) ; pic bank

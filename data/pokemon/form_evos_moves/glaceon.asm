@@ -10,14 +10,14 @@ GlaceonFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 8, SAND_ATTACK
-	db 16, WATER_GUN
+	db 16, TAKE_DOWN
 	db 23, QUICK_ATTACK
-	db 26, BUBBLEBEAM
+	db 26, AURORA_BEAM
 	db 30, BITE
-	db 36, AURORA_BEAM
+	db 36, ICE_BEAM
 	db 39, MIST
 	db 39, HAZE
-	db 41, ACID_ARMOR
+	db 41, BARRIER
 	db 47, REST
-	db 52, HYDRO_PUMP
+	db 52, BLIZZARD
 	db 0

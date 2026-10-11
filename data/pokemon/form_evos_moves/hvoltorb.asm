@@ -9,8 +9,10 @@ HvoltorbFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 17, SONICBOOM
-	db 19, THUNDERSHOCK
+    db 10, ABSORB
+    db 14, THUNDERSHOCK
+    db 16, STUN_SPORE
+	db 18, SONICBOOM
 	db 22, SELFDESTRUCT
 	db 26, SWIFT
 	db 30, LIGHT_SCREEN

@@ -9,9 +9,14 @@ GzapdosFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
+    db 10, DOUBLE_KICK
+    db 18, LOW_KICK
+    db 22, TAKEDOWN
+    db 30, COUNTER
+    db 32, ROLLING_KICK
 	db 35, AGILITY
 	db 40, DRILL_PECK
-	db 45, THUNDERBOLT
-	db 51, THUNDER
-	db 60, LIGHT_SCREEN
+	db 45, JUMP_KICK
+    db 51, HI_JUMP_KICK
+    db 55, MEGA_KICK
 	db 0

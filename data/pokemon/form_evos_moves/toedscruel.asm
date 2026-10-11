@@ -10,13 +10,14 @@ ToedscruelFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 7, SUPERSONIC
-	db 13, WATER_GUN
-	db 18, ACID
-	db 23, BUBBLEBEAM
+	db 13, GROWTH
+    db 15, VINE_WHIP
+	db 17, POISONPOWDER
+	db 22, STUN_SPORE
+    db 25, MEGA_DRAIN
 	db 27, CONSTRICT
-	db 35, BARRIER
+	db 33, SOLARBEAM
 	db 40, SCREECH
-	db 43, SLUDGE
 	db 47, WRAP
-	db 50, HYDRO_PUMP
+	db 48, SPORE
 	db 0

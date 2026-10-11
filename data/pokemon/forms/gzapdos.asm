@@ -9,7 +9,7 @@
 	db DEX_ZAPDOS ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  90, 125,  90, 100,  90
+	db  90, 125,  90, 100,  85
 	;   hp  atk  def  spd  spc
 
 	db FIGHTING, FLYING ; type
@@ -19,14 +19,15 @@
 	INCBIN "gfx/pokemon/front/gzapdos.dim" ; sprite dimensions
 	dw GZapdosPicFront, GZapdosPicBack
 
-	db THUNDERSHOCK, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db PECK, FOCUS_ENERGY, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         THUNDERBOLT,  THUNDER,      MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        SKY_ATTACK,   \
-	     REST,         THUNDER_WAVE, SUBSTITUTE,   FLY,          FLASH
+	     REST,         THUNDER_WAVE, SUBSTITUTE,   FLY,          FLASH,        \
+         MEGA_KICK,    COUNTER
 	; end
 
 	db BANK(GZapdosPicFront) ; pic bank

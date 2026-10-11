@@ -19,14 +19,14 @@
 	INCBIN "gfx/pokemon/front/aninetales.dim" ; sprite dimensions
 	dw ANinetalesPicFront, ANinetalesPicBack
 
-	db EMBER, TAIL_WHIP, QUICK_ATTACK, NO_MOVE ; level 1 learnset
+	db TACKLE, TAIL_WHIP, QUICK_ATTACK, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   FLAMETHROWER
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
+	     DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     BLIZZARD,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
+         ICE_BEAM,  LIGHT_SCREEN
 	; end
 
 	db BANK(ANinetalesPicFront) ; pic bank
