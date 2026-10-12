@@ -706,24 +706,21 @@ OptCycleValue:
 ; ============================================================================
 ; The CHEAT row (in-game entry only)
 ;
-; A fully reversible four-way selector over the two species-group activation
-; events and the SRAM enable byte - the same state Prof. Palm's Silph Co B1F
-; script and the Room PC toggle menu write, so all three stay consistent.
+; A reversible four-way selector over active species groups. Enabling a group
+; grants its permanent unlock; disabling it only changes the SRAM enable byte.
+; Never clear activation events: they also remember completed Palm scenes.
 ; Debug 2's UPGRADES row calls these same two routines.
 ;
-;   index 0  KANTO       %001   both events clear
-;   index 1  JOHTO       %011   EVENT_JOHTO_ACTIVATED set
-;   index 2  TIME WARP   %101   EVENT_KANTO_TIMEWARP_ACTIVATED set
-;   index 3  WARP/JOHTO  %111   both set
+;   index 0  KANTO       %001
+;   index 1  JOHTO       %011
+;   index 2  TIME WARP   %101
+;   index 3  WARP/JOHTO  %111
 ;
 ; Kanto is never removable: RogueGetActiveGroupMask re-adds it unconditionally
 ; and RogueRollGroupForTier assumes it.
 ;
-; The events are the source of truth on read, matching RogueGetActiveGroupMask.
-; The write follows the Silph script's sequence (SRAM enable, explicit bank 1,
-; read-modify-write, close SRAM, FlagActionPredef, SaveGameData), except that it
-; REPLACES the group bits instead of OR-ing them and uses FLAG_RESET as well as
-; FLAG_SET, which is what makes it reversible.
+; Read the effective mask, including the Room PC's toggles. Writes replace the
+; active mask but only SET unlocks, preserving story history across all choices.
 ;
 ; NOT retroactive within a run: wRunGymLineup, wRunElite4 and wRunChampion are
 ; rolled once at run start, so Johto leaders and a Johto Elite Four only appear
@@ -733,11 +730,16 @@ OptCycleValue:
 
 ; Returns a = the CHEAT row's current index, 0-3. Clobbers af.
 OptCheatIndex:
-	ASSERT EVENT_KANTO_TIMEWARP_ACTIVATED % 8 == (EVENT_JOHTO_ACTIVATED % 8) + 1
-	ld a, [wEventFlags + (EVENT_JOHTO_ACTIVATED / 8)]
-	and (1 << (EVENT_JOHTO_ACTIVATED % 8)) | (1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8))
-	swap a ; bits 5-6 -> bits 1-2
-	rrca   ; -> bits 0-1; bit 0 was clear, so nothing rotates in
+	push bc
+	push de
+	push hl
+	farcall RogueGetActiveGroupMaskFar
+	ld a, e
+	and (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	rrca ; group bits 1-2 -> selector bits 0-1
+	pop hl
+	pop de
+	pop bc
 	ret
 
 ; hl = the value cell.
@@ -792,24 +794,22 @@ OptCycleCheat:
 	ld [rRAMG], a ; never leave SRAM enabled across a return
 	ld a, c
 	push af
-	ld b, FLAG_RESET
 	bit 0, c
-	jr z, .johtoAction
+	jr z, .johtoDone
 	ld b, FLAG_SET
-.johtoAction
 	ld hl, wEventFlags
 	ld c, EVENT_JOHTO_ACTIVATED
 	predef FlagActionPredef
+.johtoDone
 	pop af
 	ld c, a
-	ld b, FLAG_RESET
 	bit 1, c
-	jr z, .warpAction
+	jr z, .warpDone
 	ld b, FLAG_SET
-.warpAction
 	ld hl, wEventFlags
 	ld c, EVENT_KANTO_TIMEWARP_ACTIVATED
 	predef FlagActionPredef
+.warpDone
 ; The engine redraws this row from hCurrentMenuItem on return, and save.asm
 ; writes that byte on at least one path, so carry it across the save.
 	ldh a, [hCurrentMenuItem]
