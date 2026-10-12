@@ -199,7 +199,10 @@ RentalDVFloorTable:
 
 ; Complete a stable offer without creating a player mon or charging money.
 ; Enemy mon and the trainer/menu union are backed up on the 256-byte stack.
+; Fixed assembly-time copies keep stack depth independent of counted loops.
 ; Header/learnset scratch is intentionally clobbered, as in identity generation.
+DEF RENTAL_TRAINER_BACKUP_LENGTH EQU 32
+ASSERT ((wPartyGenScratchEnd - wPartyGenScratch + 1) / 2) * 2 == RENTAL_TRAINER_BACKUP_LENGTH
 ASSERT PARTYMON_STRUCT_LENGTH % 2 == 0
 RentalPrepareOfferMoves::
 	call RentalPrepareOfferIdentity
@@ -222,26 +225,22 @@ RentalPrepareOfferMoves::
 	ld a, [wEnemyMoveOrigins]
 	push af
 	ld hl, wEnemyMon1
-	ld b, PARTYMON_STRUCT_LENGTH / 2
-.saveEnemy
+	REPT PARTYMON_STRUCT_LENGTH / 2
 	ld e, [hl]
 	inc hl
 	ld d, [hl]
 	inc hl
 	push de
-	dec b
-	jr nz, .saveEnemy
+	ENDR
 ; Include the adjacent byte in this even-sized backup; restore it unchanged.
 	ld hl, wPartyGenScratch
-	ld b, (wPartyGenScratchEnd - wPartyGenScratch + 1) / 2
-.saveScratch
+	REPT RENTAL_TRAINER_BACKUP_LENGTH / 2
 	ld e, [hl]
 	inc hl
 	ld d, [hl]
 	inc hl
 	push de
-	dec b
-	jr nz, .saveScratch
+	ENDR
 	ld hl, wEnemyMon1
 	ld bc, PARTYMON_STRUCT_LENGTH
 	xor a
@@ -263,25 +262,21 @@ RentalPrepareOfferMoves::
 	ld bc, NUM_MOVES
 	call CopyData
 	ld hl, wPartyGenScratch + ((wPartyGenScratchEnd - wPartyGenScratch + 1) / 2) * 2 - 1
-	ld b, (wPartyGenScratchEnd - wPartyGenScratch + 1) / 2
-.restoreScratch
+	REPT RENTAL_TRAINER_BACKUP_LENGTH / 2
 	pop de
 	ld [hl], d
 	dec hl
 	ld [hl], e
 	dec hl
-	dec b
-	jr nz, .restoreScratch
+	ENDR
 	ld hl, wEnemyMon1 + PARTYMON_STRUCT_LENGTH - 1
-	ld b, PARTYMON_STRUCT_LENGTH / 2
-.restoreEnemy
+	REPT PARTYMON_STRUCT_LENGTH / 2
 	pop de
 	ld [hl], d
 	dec hl
 	ld [hl], e
 	dec hl
-	dec b
-	jr nz, .restoreEnemy
+	ENDR
 	pop af
 	ld [wEnemyMoveOrigins], a
 	pop af
@@ -323,9 +318,10 @@ RentalValidateOfferMoves:
 	and a
 	ret
 
-; Paid delivery API, still provider-free. No implicit reroll or box delivery.
-; Carry = success; e = 0 success, 1 unavailable, 2 invalid offer, 3 full party,
-; 4 insufficient money, 5 another spawn request pending. Failure is mutation-free
+; Paid delivery API. Full parties append to the current box if it has room.
+; Carry = success; e = owner slot on success, 1 unavailable, 2 invalid offer,
+; 3 creation rejected, 4 insufficient money, 5 spawn pending, 6 party/box full.
+; Failure is mutation-free
 ; except hMoney/scratch. Caller must provide a complete displayed offer.
 RentalDeliverOffer::
 	call RentalCanPrepareOffer
@@ -344,7 +340,12 @@ RentalDeliverOffer::
 	ld e, 3
 	ld a, [wPartyCount]
 	cp PARTY_LENGTH
+	jr c, .capacityReady
+	ld e, 6
+	ld a, [wBoxCount]
+	cp MONS_PER_BOX
 	jp nc, .fail
+.capacityReady
 	ld e, 5
 	ld a, [wSpawnForm]
 	and a
@@ -356,6 +357,13 @@ RentalDeliverOffer::
 	call HasEnoughMoney
 	ld e, 4
 	jp c, .fail
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	jr c, .partyCreation
+	call RentalCreateBoxOffer
+	jp nc, .fail
+	jr .created
+.partyCreation
 	ld a, [wMonDataLocation]
 	push af
 	ld a, $10                     ; player party, no blocking naming screen
@@ -371,6 +379,11 @@ RentalDeliverOffer::
 	pop af
 	ld [wMonDataLocation], a
 	call RentalFinalizeDeliveredMon
+	ld a, [wPartyCount]
+	ld e, a
+.created
+	ld a, e
+	ld [wRentalOwner], a
 ; Re-quote after creation's scratch work, then charge exactly once. No money
 ; mutation occurs in AddPartyMon/finalization between preflight and this point.
 	call RentalQuoteOffer
@@ -378,8 +391,6 @@ RentalDeliverOffer::
 	ld de, wPlayerMoney + 2
 	ld c, 3
 	predef SubBCDPredef
-	ld a, [wPartyCount]
-	ld [wRentalOwner], a
 	ld a, RENTAL_RESERVED
 	ld [wRentalState], a
 	xor a
@@ -508,21 +519,6 @@ DrawBattleOwnershipMarkers::
 	ld [hl], 'R'
 	ret
 
-; de = party row's nickname origin. The HP row starts one column further
-; right, leaving this cell free even with a ten-character nickname.
-RentalDrawPartyMarker::
-	ld hl, SCREEN_WIDTH
-	add hl, de
-	push hl
-	ldh a, [hWhichPokemon]
-	ld e, a
-	call RentalHasPartyMarker
-	pop hl
-	ld [hl], ' '
-	ret nc
-	ld [hl], 'R'
-	ret
-
 RentalHasPartyMarker:
 	ld a, [wRentalState]
 	cp RENTAL_RESERVED
@@ -536,9 +532,9 @@ RentalHasPartyMarker:
 	ret
 
 ; Same location mapping as BridgePrepareCalcStats' loaded-mon query.
-; The chosen cell is outside the picture, name, and both status-page boxes.
+; Place the marker immediately left of the HP label on the HP status page.
 RentalDrawStatusMarker::
-	hlcoord 8, 7
+	hlcoord 10, 3
 	ld [hl], ' '
 	ld a, [wRentalState]
 	cp RENTAL_RESERVED
@@ -589,7 +585,7 @@ RentalDrawStatusMarker::
 	ld a, [wRentalOwner]
 	cp b
 	ret nz
-	hlcoord 8, 7
+	hlcoord 10, 3
 	ld [hl], 'R'
 	ret
 
@@ -1589,3 +1585,316 @@ RentalIsStadiumOrigin::
 	ret
 
 INCLUDE "data/trainers/rental_origins.asm"
+
+; Shared loaded-map interaction. Caller owns the ordinary text-window lifecycle.
+; Preserve the text_asm cursor across generation, menus and delivery.
+RentalInteraction::
+	push bc
+	call RentalInteractionBody
+	; Each terminal message already waits via prompt. Do not wait twice.
+	call DisableWaitingAfterTextDisplay
+	pop bc
+	ret
+
+RentalInteractionBody:
+	call RentalCanPrepareOffer
+	ld hl, RentalUnavailableText
+	jp nc, PrintText
+	ld a, [wRentalFlags]
+	bit BIT_RENTAL_OPPORTUNITY_USED, a
+	ld hl, RentalUsedText
+	jp nz, PrintText
+	call RentalPrepareOfferMoves
+	ld hl, RentalUnavailableText
+	jp nc, PrintText
+	call RentalQuoteOffer
+	ld hl, RentalUnavailableText
+	jp nc, PrintText
+	ld hl, hMoney
+	ld de, wPriceTemp
+	ld bc, 3
+	call CopyData
+	ld a, [wRentalOfferSpecies]
+	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a
+	ld a, [wRentalOfferForm]
+	ld [wFormContextForm], a
+	call GetMonName
+	ld hl, RentalOfferText
+	call PrintText
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	and a
+	ld hl, RentalDeclinedText
+	jp nz, PrintText
+	; Revalidates every precondition and re-quotes after menu scratch use.
+	call RentalDeliverOffer
+	jr c, .delivered
+	ld a, e
+	cp 3
+	ld hl, RentalPartyFullText
+	jp z, PrintText
+	cp 6
+	ld hl, RentalBoxFullText
+	jp z, PrintText
+	cp 4
+	ld hl, RentalNoMoneyText
+	jp z, PrintText
+	ld hl, RentalUnavailableText
+	jp PrintText
+.delivered
+	ld a, SFX_PURCHASE
+	call PlaySoundWaitForCurrent
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	ld a, [wRentalOwner]
+	cp 7
+	ld hl, RentalDeliveredText
+	jp c, PrintText
+	ld hl, RentalBoxDeliveredText
+	jp PrintText
+
+RentalOfferText:
+	text "Rent this #MON?"
+	para "@"
+	text_ram wNameBuffer
+	text_start
+	line "Level @"
+	text_decimal wRentalOfferLevel, 1, 3
+	text_start
+	para "One zone: ¥@"
+	text_bcd wPriceTemp, 3 | LEADING_ZEROES | LEFT_ALIGN
+	text_start
+	line "Rent it?"
+	prompt
+RentalDeliveredText:
+	text "Rental is ready!"
+	line "Enjoy your zone!"
+	prompt
+RentalDeclinedText:
+	text "Come back later!"
+	prompt
+RentalUnavailableText:
+	text "No rental is"
+	line "available now."
+	prompt
+RentalUsedText:
+	text "You've rented for"
+	line "this opportunity."
+	prompt
+RentalPartyFullText:
+	text "Make room in your"
+	line "party first."
+	prompt
+RentalNoMoneyText:
+	text "Not enough money!"
+	prompt
+
+; Two lobby-only fixed poses share the otherwise unused 12-tile base 10.
+; d = candidate full-sheet slot; e = picture ID. Return e = image base.
+RentalResolveSpriteSlot::
+	ld a, e
+	cp SPRITE_LOBBY_MOVE_TUTOR
+	ld e, 13
+	ret z
+	cp SPRITE_LOBBY_RENTAL_OFFICIAL
+	ld e, 14
+	ret z
+	ld e, d
+	cp FIRST_EXTRA_WALKING_SPRITE
+	ret nc
+	cp FIRST_STILL_SPRITE
+	ret c
+	ldh a, [hFourTileSpriteCount]
+	add 11
+	ld e, a
+	ret
+
+RentalSmallSpriteDestination::
+	ldh a, [hVRAMSlot]
+	cp 13
+	ld hl, vSprites tile $6c
+	ret z
+	cp 14
+	ld hl, vSprites tile $70
+	ret z
+	ld hl, vSprites tile $7c
+	ldh a, [hFourTileSpriteCount]
+	and a
+	ret nz
+	ld hl, vSprites tile $78
+	inc a
+	ldh [hFourTileSpriteCount], a
+	ret
+
+RentalBoxFullText:
+	text "Your party and"
+	line "PC box are full!"
+	prompt
+
+; Full-party delivery borrows the final slot only while synchronous creation
+; runs, then appends its boxed representation and restores the owned mon.
+; No menus, owner-transfer hooks or removal routines run on the borrowed slot.
+RentalCreateBoxOffer:
+	ld a, [wBoxCount]
+	push af
+	ld hl, wPartyMon6
+	REPT 22
+	ld e, [hl]
+	inc hl
+	ld d, [hl]
+	inc hl
+	push de
+	ENDR
+	ld hl, wPartyMon6OT
+	REPT 5
+	ld e, [hl]
+	inc hl
+	ld d, [hl]
+	inc hl
+	push de
+	ENDR
+	ld a, [hl]
+	push af
+	ld hl, wPartyMon6Nick
+	REPT 5
+	ld e, [hl]
+	inc hl
+	ld d, [hl]
+	inc hl
+	push de
+	ENDR
+	ld a, [hl]
+	push af
+	ld a, [wMonDataLocation]
+	push af
+	ld a, 5
+	ld [wPartyCount], a
+	ld a, $10
+	ld [wMonDataLocation], a
+	ld a, [wRentalOfferSpecies]
+	ld [wCurPartySpecies], a
+	ld a, [wRentalOfferLevel]
+	ld [wCurEnemyLevel], a
+	ld a, [wRentalOfferForm]
+	ld [wSpawnForm], a
+	call AddPartyMon
+	jr nc, .failed
+	call RentalFinalizeDeliveredMon
+	pop af
+	ld [wMonDataLocation], a
+	ld a, [wBoxCount]
+	ld hl, wBoxMons
+	ld bc, BOXMON_STRUCT_LENGTH
+	call AddNTimes
+	push hl
+	ld d, h
+	ld e, l
+	ld hl, wPartyMon6
+	ld bc, BOXMON_STRUCT_LENGTH
+	call CopyData
+	pop hl
+	ld bc, MON_BOX_LEVEL
+	add hl, bc
+	ld a, [wPartyMon6Level]
+	ld [hl], a
+	ld a, [wBoxCount]
+	ld hl, wBoxMonOT
+	call SkipFixedLengthTextEntries
+	ld d, h
+	ld e, l
+	ld hl, wPartyMon6OT
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wBoxCount]
+	ld hl, wBoxMonNicks
+	call SkipFixedLengthTextEntries
+	ld d, h
+	ld e, l
+	ld hl, wPartyMon6Nick
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wBoxCount]
+	ld e, a
+	ld d, 0
+	ld hl, wBoxSpecies
+	add hl, de
+	ld a, [wRentalOfferSpecies]
+	ld [hli], a
+	ld [hl], $ff
+	ld hl, wBoxCount
+	inc [hl]
+	jr .restore
+.failed
+	pop af
+	ld [wMonDataLocation], a
+	xor a
+	ld [wSpawnForm], a
+	ld [wSpawnDVSlot], a
+.restore
+	ld hl, wPartyMon6Nick + 10
+	pop af
+	ld [hl], a
+	dec hl
+	REPT 5
+	pop de
+	ld [hl], d
+	dec hl
+	ld [hl], e
+	dec hl
+	ENDR
+	ld hl, wPartyMon6OT + 10
+	pop af
+	ld [hl], a
+	dec hl
+	REPT 5
+	pop de
+	ld [hl], d
+	dec hl
+	ld [hl], e
+	dec hl
+	ENDR
+	ld hl, wPartyMon6 + 43
+	REPT 22
+	pop de
+	ld [hl], d
+	dec hl
+	ld [hl], e
+	dec hl
+	ENDR
+	ld a, [wPartyMon6Species]
+	ld [wPartySpecies + 5], a
+	ld a, PARTY_LENGTH
+	ld [wPartyCount], a
+	pop de ; d = original box count
+	ld a, [wBoxCount]
+	cp d
+	ld e, 3
+	ret z
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	ld b, a
+	ld a, [wBoxCount]
+	dec a
+	ld e, a
+	ld a, b
+	add a
+	add a
+	ld b, a
+	add a
+	add a
+	add b
+	add e
+	add 7
+	ld e, a
+	scf
+	ret
+
+RentalBoxDeliveredText:
+	text "Rental is ready!"
+	line "Sent to PC box."
+	prompt

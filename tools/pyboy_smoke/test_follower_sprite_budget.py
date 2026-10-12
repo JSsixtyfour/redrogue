@@ -177,17 +177,19 @@ class FollowerSpriteBudgetTests(unittest.TestCase):
                 # Slot 1 belongs to the player, 2 is reserved even when OFF.
                 # Slots 3..10 hold eight walking sheets; 11..12 two stills.
                 self.assertLessEqual(len(walking), 8, sorted(walking))
-                self.assertLessEqual(len(still), 2, sorted(still))
+                self.assertLessEqual(len(still), 4 if name == "IndigoPlateauLobby" else 2, sorted(still))
+                self.assertLessEqual(24 + 12 * len(walking) + 4 * len(still), 128)
 
     def test_lobby_fixed_pose_layout_fits_follower_budget(self):
         sizes = sprite_sizes()
         pictures = set(map_pictures()["IndigoPlateauLobby"])
         walking = {p for p in pictures if sizes[p] == 12}
         still = {p for p in pictures if sizes[p] == 4}
-        self.assertEqual(len(walking), 8, sorted(walking))
+        self.assertEqual(len(walking), 7, sorted(walking))
         self.assertEqual(
             still,
-            {"SPRITE_LOBBY_MOVE_RELEARNER", "SPRITE_LOBBY_DAYCARE_LADY"},
+            {"SPRITE_LOBBY_MOVE_RELEARNER", "SPRITE_LOBBY_DAYCARE_LADY",
+             "SPRITE_LOBBY_MOVE_TUTOR", "SPRITE_LOBBY_RENTAL_OFFICIAL"},
         )
 
     def test_object_slot_budget_after_explicit_approved_cuts(self):

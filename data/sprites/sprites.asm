@@ -126,4 +126,6 @@ SpriteSheetPointerTable:
 	overworld_sprite JolteonSprite, 12         ; SPRITE_JOLTEON
 	overworld_sprite FlareonSprite, 12         ; SPRITE_FLAREON
 	overworld_sprite WigglytuffSprite, 12      ; SPRITE_WIGGLYTUFF
+	overworld_sprite_slice GameboyKidSprite, 0, 4 ; SPRITE_LOBBY_MOVE_TUTOR
+	overworld_sprite_slice LinkReceptionistSprite, 0, 4 ; SPRITE_LOBBY_RENTAL_OFFICIAL
 	assert_table_length NUM_SPRITES

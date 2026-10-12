@@ -378,7 +378,7 @@ ENDM
 	const TOGGLE_PC_POKESALESMAN ; CA, ; D8
     const TOGGLE_PC_TRADENERD ; CB, ; D9
     const TOGGLE_PC_MOVETUTOR ; CC, ; DA
-    const TOGGLE_PC_DOOR2_SIGN ; CD, ; DB
+    const TOGGLE_PC_RENTAL_OFFICIAL ; CD, formerly reserved non-object sign toggle
 
 	; Wild area pokeballs (procedurally generated stages, e.g. ProceduralCave1) -
 	; 4 independent random items, one per dead-end. Hardcoded slot check lives

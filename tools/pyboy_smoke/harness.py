@@ -1425,9 +1425,13 @@ class RedRogueHarness:
             raise AssertionError("Lobby preload call is no longer in its expected section")
         offset = bank * 0x4000 + start - 0x4000
         body = self._rom_file.getvalue()[offset:offset + end - start]
-        if body.count(call) != 1:
+        # Both established farcall forms share the same call lifecycle.
+        compact = bytes((0xCF, target_bank, target & 255, target >> 8))
+        matches = [body.index(encoded) for encoded in (call, compact)
+                   if body.count(encoded) == 1]
+        if len(matches) != 1:
             raise AssertionError("Expected exactly one lobby preload farcall before lobbyMusicDone")
-        preload_pc = start + body.index(call)
+        preload_pc = start + matches[0]
         state = {"started": False, "returned": False}
 
         def start_preload(_context) -> None:

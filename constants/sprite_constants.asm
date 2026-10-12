@@ -120,6 +120,8 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_JOLTEON                ; $6e one pose: dolls, never walk
 	const SPRITE_FLAREON                ; $6f
 	const SPRITE_WIGGLYTUFF             ; $70
+	const SPRITE_LOBBY_MOVE_TUTOR
+	const SPRITE_LOBBY_RENTAL_OFFICIAL
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

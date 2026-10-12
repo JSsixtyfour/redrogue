@@ -11,6 +11,7 @@
 	const_export PC_POKESALESMAN
     const_export PC_TRADENERD
     const_export PC_MOVETUTOR
+	const_export PC_RENTAL_OFFICIAL
 
 
 IndigoPlateauLobby_Object:
@@ -23,15 +24,14 @@ IndigoPlateauLobby_Object:
 	warp_event  10,  0, ROGUE_MAP, 1
 
 	def_bg_events
-	; Text IDs 12/13 follow the eleven service NPCs. Keep door 2 last:
+	; Text IDs 13/14 follow the twelve service NPCs. Keep door 2 last:
 	; the lobby script reduces wNumSigns to one while that exit is a wall.
 	bg_event  9,  0, TEXT_PC_DOOR1_SIGN
 	bg_event 11,  0, TEXT_PC_DOOR2_SIGN
 
 	def_object_events
-	; FOLLOWER SPRITE LIMIT: this map uses exactly eight authored 12-tile
-	; sheets and both 4-tile slots when the follower is present. New distinct
-	; sprite art requires another VRAM-budget review.
+	; Seven full NPC sheets, player and follower use 108 standing tiles.
+	; Tutor/receptionist use $6c-$73; legacy fixed poses use $78-$7f.
 	object_event  7,  5, SPRITE_NURSE, STAY, DOWN, TEXT_PC_NURSE
 	object_event  0,  5, SPRITE_CLERK, STAY, RIGHT, TEXT_PC_CLERK1                              ; Sells Recovery Items
 	object_event  0,  7, SPRITE_CLERK, STAY, RIGHT, TEXT_PC_CLERK2                              ; Sells evolutionary items, TMs, stat boosters
@@ -42,6 +42,8 @@ IndigoPlateauLobby_Object:
 	object_event 11, 10, SPRITE_CHANNELER, STAY, LEFT, TEXT_PC_WITCH                            ; issues mystical challenges that provide rewards
 	object_event  2, 10, SPRITE_MIDDLE_AGED_MAN, WALK, LEFT_RIGHT, TEXT_PC_POKEMON_SALESMAN     ; sells a random pokemon to trainer
 	object_event  5, 11, SPRITE_SUPER_NERD, STAY, UP, TEXT_PC_TRADER_SUPER_NERD                 ; trades a random pokemon of the same rarity as a pokemon you currently have
-	object_event  0,  2, SPRITE_GAMEBOY_KID, STAY, DOWN, TEXT_PC_MOVE_TUTOR                      ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
+	object_event  0,  2, SPRITE_LOBBY_MOVE_TUTOR, STAY, DOWN, TEXT_PC_MOVE_TUTOR                      ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
+
+	object_event 7, 1, SPRITE_LOBBY_RENTAL_OFFICIAL, STAY, DOWN, TEXT_PC_RENTAL_OFFICIAL
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

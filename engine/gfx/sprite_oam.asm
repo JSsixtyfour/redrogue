@@ -102,20 +102,16 @@ PrepareOAMData::
 	swap a                   ; high nybble determines sprite used (0 is always player sprite, next are some npcs)
 	and $f
 
-	; Sprites $a and $b have one face (and therefore 4 tiles instead of 12).
-	; As a result, sprite $b's tile offset is less than normal.
-	cp $b
-	jr nz, .notFourTileSprite
-	ld a, $a * 12 + 4
-	jr .next2
-
-.notFourTileSprite
-	; a *= 12
-	sla a
-	sla a
+	; Preserve the two legacy small slots; lobby slices use the freed base 10.
+	push hl
+	push bc
 	ld c, a
-	sla a
-	add c
+	ld b, 0
+	ld hl, .tileBases
+	add hl, bc
+	ld a, [hl]
+	pop bc
+	pop hl
 
 .next2
 	add b ; add the tile offset from the table (based on frame and facing direction)
@@ -211,6 +207,9 @@ PrepareOAMData::
 	ld [hl], b
 	add hl, de
 	jr .clear
+
+.tileBases
+	db 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 124, 108, 112
 
 GetSpriteScreenXY:
 	inc e

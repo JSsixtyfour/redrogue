@@ -14,14 +14,14 @@ class LobbyNotepadTests(unittest.TestCase):
     def test_notepads_are_background_events_after_eleven_service_texts(self):
         source = (ROOT / "data/maps/objects/IndigoPlateauLobby.asm").read_text()
         objects = re.findall(r"(?m)^\s*object_event\s+(.+)", source)
-        self.assertEqual(len(objects), 11)
+        self.assertEqual(len(objects), 12)
         self.assertFalse(any("SPRITE_CLIPBOARD" in obj for obj in objects))
         self.assertRegex(source, r"bg_event\s+9,\s*0,\s*TEXT_PC_DOOR1_SIGN")
         self.assertRegex(source, r"bg_event\s+11,\s*0,\s*TEXT_PC_DOOR2_SIGN")
         script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()
         table = script.split("IndigoPlateauLobby_TextPointers:")[1].split("LobbyDoor1SignText:")[0]
         ids = re.findall(r"dw_const\s+\w+,\s*(\w+)", table)
-        self.assertEqual(len(ids), 13)
+        self.assertEqual(len(ids), 14)
         self.assertEqual(ids[-2:], ["TEXT_PC_DOOR1_SIGN", "TEXT_PC_DOOR2_SIGN"])
 
     def test_closed_notepad_uses_sign_count_not_sprite_toggle(self):
@@ -33,7 +33,7 @@ class LobbyNotepadTests(unittest.TestCase):
         lobby = table.split("toggleable_objects_for INDIGO_PLATEAU_LOBBY", 1)[1].split("toggleable_objects_for", 1)[0]
         rows = re.findall(r"toggle_object_state\s+([^;\n]+)", lobby)
         self.assertEqual(len(rows), 6)  # Preserve later saved toggle indices.
-        self.assertEqual(rows[-1].strip(), "0, OFF")
+        self.assertEqual(rows[-1].strip(), "PC_RENTAL_OFFICIAL, OFF")
 
     def test_open_door_retains_user_notepad_block(self):
         script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()

@@ -351,4 +351,5 @@ DEF LOBBY_WITCH_CHANCE EQU 85     ; ~1/3
 DEF LOBBY_PSYCHIC_CHANCE EQU 154  ; RETIRED 2026-10-09: the Psychic is always present on gym-next visits (gym choice)
 DEF LOBBY_SALESMAN_CHANCE EQU 85  ; ~1/3
 DEF LOBBY_TRADER_CHANCE EQU 85    ; ~1/3
+DEF LOBBY_RENTAL_CHANCE EQU 85   ; same independent rate as other services
 DEF LOBBY_TUTOR_CHANCE EQU 85     ; ~1/3

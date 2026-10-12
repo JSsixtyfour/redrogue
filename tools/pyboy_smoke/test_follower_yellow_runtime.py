@@ -110,7 +110,7 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
         self.harness.boot_to_lobby(battle_count=1)
 
         self.assertEqual(self.harness.read8("hCurMap"), self.harness.LOBBY_MAP)
-        self.assertEqual(self.harness.read8("wNumSprites"), 11)
+        self.assertEqual(self.harness.read8("wNumSprites"), 12)
         expected = [
             (sprites["SPRITE_NURSE"], 3),
             (sprites["SPRITE_CLERK"], 4),
@@ -122,7 +122,8 @@ class YellowFollowerRuntimeTest(unittest.TestCase):
             (sprites["SPRITE_CHANNELER"], 7),
             (sprites["SPRITE_MIDDLE_AGED_MAN"], 8),
             (sprites["SPRITE_SUPER_NERD"], 9),
-            (sprites["SPRITE_GAMEBOY_KID"], 10),
+            (sprites["SPRITE_LOBBY_MOVE_TUTOR"], 13),
+            (sprites["SPRITE_LOBBY_RENTAL_OFFICIAL"], 14),
         ]
         for slot, (picture, image_base) in enumerate(expected, start=1):
             with self.subTest(slot=slot):

@@ -123,22 +123,19 @@ LoadMapSpriteTilePatterns:
 	ld a, b ; a = next VRAM tile pattern slot
 	jr .selectedVRAMSlot
 .followerVRAMSlot
-	ld a, 2 ; Yellow's dedicated follower walking-sheet base
+	ld a, 2
 .selectedVRAMSlot
-	push af
-	ld a, [hl] ; [x#SPRITESTATEDATA2_IMAGEBASEOFFSET]
-	ld b, a ; b = current sprite picture ID
-	; Appended walking sprites preserve all existing sprite IDs.
-	cp FIRST_EXTRA_WALKING_SPRITE
-	jr nc, .notFourTileSprite
-	cp FIRST_STILL_SPRITE ; is it a 4-tile sprite?
-	jr c, .notFourTileSprite
-	pop af
-	ldh a, [hFourTileSpriteCount]
-	add 11
-	jr .storeVRAMSlot
-.notFourTileSprite
-	pop af
+	ld d, a
+	ld e, [hl]
+	push bc ; preserve the remaining sprite count in c
+	push hl
+	push de
+	rfarcall RentalResolveSpriteSlot
+	ld a, e
+	pop de ; e = original picture ID
+	pop hl
+	pop bc
+	ld b, e
 .storeVRAMSlot
 	ld [hl], a ; store VRAM slot at [x#SPRITESTATEDATA2_IMAGEBASEOFFSET]
 	ldh [hVRAMSlot], a ; used to determine if it's 4-tile sprite later
@@ -169,21 +166,14 @@ LoadMapSpriteTilePatterns:
 	jr nc, .fourTileSpriteVRAMAddr
 	ld d, a
 	dec d
-; hl = vSprites + [hVRAMSlot] * 12 tiles
 .calculateVRAMAddrLoop
 	add hl, bc
 	dec d
 	jr nz, .calculateVRAMAddrLoop
 	jr .loadStillTilePattern
 .fourTileSpriteVRAMAddr
-	ld hl, vSprites tile $7c ; address for second 4-tile sprite
-	ldh a, [hFourTileSpriteCount]
-	and a
-	jr nz, .loadStillTilePattern
-; if it's the first 4-tile sprite
-	ld hl, vSprites tile $78 ; address for first 4-tile sprite
-	inc a
-	ldh [hFourTileSpriteCount], a
+	rfarcall RentalSmallSpriteDestination
+
 .loadStillTilePattern
 	pop bc
 	pop de

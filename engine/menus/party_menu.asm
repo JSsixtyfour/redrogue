@@ -38,11 +38,6 @@ RedrawPartyMenu_::
 	call LoadMonData
 	pop hl
 	push hl
-	ld d, h
-	ld e, l
-	rfarcall RentalDrawPartyMarker
-	pop hl
-	push hl
 	ld a, [wMenuItemToSwap]
 	and a ; is the player swapping pokemon positions?
 	jr z, .skipUnfilledRightArrow

@@ -50,6 +50,9 @@ PCLobbyExtrasSetup:
 	ld a, TOGGLE_PC_TRADENERD
 	ld b, LOBBY_TRADER_CHANCE
 	call LobbyRollNPC
+	ld a, TOGGLE_PC_RENTAL_OFFICIAL
+	ld b, LOBBY_RENTAL_CHANCE
+	call LobbyRollNPC
 	ld a, TOGGLE_PC_MOVETUTOR
 	ld b, LOBBY_TUTOR_CHANCE
 	jr LobbyRollNPC

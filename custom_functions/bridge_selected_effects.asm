@@ -285,13 +285,12 @@ BridgeSelectedOwnerFromCurrentBoxSlot:
 	ret
 
 ; Out: a = absolute owner for slot 0 of the currently loaded box.
+; Preserve bc: move/swap callers keep the other owner there.
 ; wCurrentBoxNum bit 7 is a save/UI marker, so mask it before indexing.
 BridgeSelectedCurrentBoxBase:
 	ld a, [wCurrentBoxNum]
 	and BOX_NUM_MASK
-	ld c, a
-	add a
-	ld b, a                      ; 2*n
+	add a                         ; 2*n
 	add a                         ; 4*n
 	ld e, a                      ; 4*n
 	add a                         ; 8*n

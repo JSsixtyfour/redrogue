@@ -402,7 +402,7 @@ ToggleableObjectStates:
 	toggle_object_state PC_POKESALESMAN, ON
     toggle_object_state PC_TRADENERD, ON
     toggle_object_state PC_MOVETUTOR, ON
-    toggle_object_state 0, OFF ; reserved TOGGLE_PC_DOOR2_SIGN; no NPC slot 0
+    toggle_object_state PC_RENTAL_OFFICIAL, OFF ; reuse reserved non-object toggle
 
 	; Wild area pokeballs - see constants/toggle_constants.asm. The hardcoded
 	; slot 1-4 bypass in IsObjectHidden/RandomPickUpItem never actually reads

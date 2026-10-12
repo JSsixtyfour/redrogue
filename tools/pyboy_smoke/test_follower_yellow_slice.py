@@ -539,7 +539,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         lobby = (ROOT / "data" / "maps" / "objects" / "IndigoPlateauLobby.asm").read_text()
         self.assertRegex(
             lobby,
-            r"object_event\s+0,\s+2,\s+SPRITE_GAMEBOY_KID,\s+STAY,\s+DOWN,",
+            r"object_event\s+0,\s+2,\s+SPRITE_LOBBY_MOVE_TUTOR,\s+STAY,\s+DOWN,",
         )
         generic_loader = self.loader.split("LoadMapSpriteTilePatterns:", 1)[1].split(
             "InitOutsideMapSprites:", 1

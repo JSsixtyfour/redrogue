@@ -26,7 +26,7 @@ class LobbyPoseLayoutTests(unittest.TestCase):
             for line in self.objects.splitlines()
             if line.strip().startswith("object_event ")
         ]
-        self.assertEqual(len(actors), 11)
+        self.assertEqual(len(actors), 12)
         for actor in actors:
             picture, movement = actor[2].strip(), actor[3].strip()
             expected = "WALK" if picture == "SPRITE_MIDDLE_AGED_MAN" else "STAY"
@@ -39,7 +39,7 @@ class LobbyPoseLayoutTests(unittest.TestCase):
     def test_two_fixed_south_services_use_the_four_tile_slots(self):
         self.assertIn("SPRITE_LOBBY_MOVE_RELEARNER, STAY, DOWN", self.objects)
         self.assertIn("SPRITE_LOBBY_DAYCARE_LADY, STAY, DOWN", self.objects)
-        self.assertIn("SPRITE_GAMEBOY_KID, STAY, DOWN", self.objects)
+        self.assertIn("SPRITE_LOBBY_MOVE_TUTOR, STAY, DOWN", self.objects)
         self.assertIn(
             "overworld_sprite_slice SilphPresidentSprite, 0, 4",
             self.sprites,
@@ -54,9 +54,9 @@ class LobbyPoseLayoutTests(unittest.TestCase):
         self.assertNotIn("SpriteFacingAndAnimationTableFixedRight", self.oam)
 
     def test_object_file_records_exact_budget(self):
-        self.assertIn("FOLLOWER SPRITE LIMIT", self.objects)
-        self.assertIn("exactly eight authored 12-tile", self.objects)
-        self.assertIn("both 4-tile slots", self.objects)
+        self.assertIn("Seven full NPC sheets", self.objects)
+        self.assertIn("108 standing tiles", self.objects)
+        self.assertIn("Tutor/receptionist use $6c-$73", self.objects)
 
     def test_healing_hides_before_freeze_and_restores_through_update(self):
         hide = self.healing.index(

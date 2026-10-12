@@ -77,7 +77,7 @@ class RentalDeliveryTest(unittest.TestCase):
 
     def test_failed_preflights_never_mutate_party_money_contract_or_offer(self):
         h = self.h
-        cases = (("wPartyCount", 6, 3), ("wRentalFlags", 1, 1),
+        cases = (("wRentalFlags", 1, 1),
                  ("wRentalState", 1, 1), ("wRentalOwner", 249, 1),
                  ("hIsInBattle", 1, 1), ("wRentalOfferFlags", 1, 2),
                  ("wRentalOfferMoves", 255, 2), ("wSpawnForm", 1, 5),

@@ -28,7 +28,7 @@ IndigoPlateauLobby_Script:
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT, since that flag
 	; would cause an immediate warp before the player could do anything).
 	rfarcall SelectAndPatchLobbyExit
-	farcall ProcPreloadAssignedWildArea
+	rfarcall ProcPreloadAssignedWildArea
 	; Lobby music: MapSongBanks (data/maps/songs.asm) defaults this map to
 	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
 	; MUSIC_INDIGO_PLATEAU for the rest of the run (re-applied every visit,
@@ -53,8 +53,8 @@ IndigoPlateauLobby_Script:
 	; receive species, rather than the salesman's species, owns the trade nickname.
 	call PCTraderSuperNerdSetup
 	call PCClerksSetup
-	farcall PCWitchSetup
-	farcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
+	rfarcall PCWitchSetup
+	rfarcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
 
 .normal
 	; Door 2's baked-in notepad is absent when its block is a wall. Refresh on
@@ -96,6 +96,7 @@ IndigoPlateauLobby_TextPointers:
 	dw_const PCPokemonSalesmanText,                  TEXT_PC_POKEMON_SALESMAN
     dw_const PCTraderSuperNerdText,                  TEXT_PC_TRADER_SUPER_NERD
     dw_const PCMoveTutorText,                        TEXT_PC_MOVE_TUTOR
+	dw_const IndigoPlateauLobbyLinkReceptionistText, TEXT_PC_RENTAL_OFFICIAL
 	dw_const LobbyDoor1SignText,                     TEXT_PC_DOOR1_SIGN
 	dw_const LobbyDoor2SignText,                     TEXT_PC_DOOR2_SIGN
 
@@ -991,13 +992,17 @@ PCWitchText:
 	text_end
 
 IndigoPlateauLobbyLinkReceptionistText:
-	script_cable_club_receptionist
+	text_asm
+	push bc ; preserve the cursor before Bankswitch clobbers it
+	rfarcall RentalInteraction
+	pop bc
+	jp TextScriptEnd
 
 ; The daycare NPCs live in engine/events/lobby_daycare.asm (pinned to $3C):
 ; this map's bank ($06) had 13 bytes free. See that file's header.
 PCDaycareLadyText:
 	text_asm
-	farcall LobbyDaycareLady
+	rfarcall LobbyDaycareLady
 	jp TextScriptEnd
 
 PCDaycareGentlemanText:
