@@ -836,7 +836,8 @@ PCGetDedicatedPokemonSprite::
 	db KANGASKHAN, SPRITE_KANGASKHAN
 	db LAPRAS, SPRITE_LAPRAS
 	db MACHOP, SPRITE_MACHOP
-	db MEW, SPRITE_MEW
+	; Mew's sheet is a party pose; use its generic monster category.
+	db 0, 0 ; unused slot, preserves ROM placement
 	db NIDORAN_F, SPRITE_NIDORAN_F
 	db PIDGEY, SPRITE_PIDGEY
 	db SLOWPOKE, SPRITE_SLOWPOKE

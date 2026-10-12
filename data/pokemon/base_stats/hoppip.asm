@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/hoppip.dim" ; sprite dimensions
 	dw HoppipPicFront, HoppipPicBack
 
-	db SPLASH, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - SYNTHESIS filled with METRONOME
+	db SPLASH, TACKLE, NO_MOVE, NO_MOVE ; level 1 learnset - SYNTHESIS filled with METRONOME
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
 	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     MEGA_DRAIN,   SOLARBEAM,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         REST,         SUBSTITUTE,   CUT,          FLY
+	     BIDE,         REST,         SUBSTITUTE,   CUT,          FLASH,        \
+         LIGHT_SCREEN
 	; end
 
 	db BANK(HoppipPicFront) ; pic bank

@@ -14,7 +14,7 @@ class BattleVariantMarkerContractTest(unittest.TestCase):
         shiny = (REPO_ROOT / "custom_functions" / "func_shiny.asm").read_text()
 
         self.assertNotIn("farcall DrawBattleVariantMarker", hud)
-        self.assertEqual(core.count("farcall DrawBattleVariantMarker"), 2)
+        self.assertEqual(core.count("farcall DrawBattleOwnershipMarkers"), 2)
         self.assertLess(shiny.index("bit BIT_TYPE_VARIANT, a"), shiny.index("bit BIT_GHOST_VARIANT, a"))
         self.assertLess(shiny.index("bit BIT_GHOST_VARIANT, a"), shiny.index("bit BIT_SHINY, a"))
         self.assertIn("hlcoord 9, 1", shiny)

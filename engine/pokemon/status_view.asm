@@ -6,6 +6,7 @@ DEF STATUS_START_TILE EQU STATUS_EXP_TILE + 11
 
 StatusScreenInitView:
 	call LoadStatusViewGraphics
+	rfarcall RentalDrawStatusMarker
 	ld e, STATS_BOX_NORMAL
 	call StatusScreenDrawView
 	call Delay3

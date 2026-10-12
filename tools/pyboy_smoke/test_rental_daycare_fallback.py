@@ -161,11 +161,11 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
         h.write8("wPlayerCoins", 0x12)
         h.write8("wPlayerCoins", 0x34, offset=1)
         trace = []
-        for label in ("HandleBlackOut", "RogueOnBlackout", "HealParty", "SaveGameData", "CrashScreen"):
+        for label in ("HandleBlackOut", "RogueOnBlackout", "HealParty", "SaveGameData", "CrashScreen", "RentalSettlementPopup.restored"):
             h.register_hook(label, lambda _, label=label: trace.append(label))
         # Enter the normal nonreturning path from a live overworld frame. The
         # synthetic farcall return is never reached, just like a zone caller.
-        self.live_entry(lambda h: None, lambda: "SaveGameData" in trace
+        self.live_entry(lambda h: None, lambda: "RentalSettlementPopup.restored" in trace
                         and h.read8("hCurMap") == maps["SILPH_CO_DORM"]
                         and h.read8("wRentalState") == 0 and h.read8("hJoyIgnore") == 0)
         h.tick(20)

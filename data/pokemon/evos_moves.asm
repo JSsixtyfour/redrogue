@@ -3669,22 +3669,17 @@ MagnemiteEvosMoves:
     db 0
 HoppipEvosMoves:
 ; Evolutions
-; Restored 2026-09-17: SKIPLOOM was the "later batch" this note was waiting on
-; and it has existed for a while - it is in JohtoPokeball_Evos and carries its
-; own `EVOLVE_LEVEL, 27, JUMPLUFF`. Without this line nothing reached Skiploom,
-; so the whole Jumpluff line was dead: a pooled Hoppip stayed a Hoppip at any
-; level, and Skiploom's own entry was unreachable.
 	db EVOLVE_LEVEL, 18, SKIPLOOM
 	db 0
 ; Learnset - canon Gen 2 levels; SYNTHESIS (level 1, filled with METRONOME)
 ; and COTTON_SPORE do not exist in Gen 1.
 	db 5, TAIL_WHIP
-	db 10, TACKLE
+	db 10, ABSORB
 	db 13, POISONPOWDER
 	db 15, STUN_SPORE
+    db 16, RECOVER ; was COTTON_SPORE
 	db 17, SLEEP_POWDER
 	db 20, LEECH_SEED
-	db 25, METRONOME ; was COTTON_SPORE
 	db 30, MEGA_DRAIN
 	db 0
 
@@ -3692,15 +3687,14 @@ SkiploomEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 27, JUMPLUFF
 	db 0
-; Learnset - SPLASH/TAIL_WHIP/TACKLE already granted at level 1 (SYNTHESIS's
-; slot is METRONOME, see base_stats/skiploom.asm)
+; Learnset - SPLASH/TAIL_WHIP/TACKLE already granted at level 1
 	db 5, TAIL_WHIP
-	db 10, TACKLE
+	db 10, ABSORB
 	db 13, POISONPOWDER
 	db 15, STUN_SPORE
+    db 16, RECOVER ; was COTTON_SPORE
 	db 17, SLEEP_POWDER
 	db 22, LEECH_SEED
-	db 29, METRONOME ; was COTTON_SPORE
 	db 36, MEGA_DRAIN
 	db 0
 
@@ -3825,13 +3819,13 @@ JumpluffEvosMoves:
 	db 0
 ; Learnset - SPLASH/TAIL_WHIP/TACKLE already granted at level 1
 	db 5, TAIL_WHIP
-	db 10, TACKLE
+	db 10, ABSORB
 	db 13, POISONPOWDER
 	db 15, STUN_SPORE
+    db 16, RECOVER ; was COTTON_SPORE
 	db 17, SLEEP_POWDER
 	db 22, LEECH_SEED
-	db 33, METRONOME ; was COTTON_SPORE
-	db 44, MEGA_DRAIN
+	db 38, MEGA_DRAIN
 	db 0
 
 AipomEvosMoves:
@@ -4460,12 +4454,15 @@ HoundourEvosMoves:
 	db 0
 ; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
 ; not exist in Gen 1, filled with METRONOME.
-	db 7, WHIRLWIND ; ROAR renamed WHIRLWIND in Gen 1
+	db 7, EMBER
+    db 8, GROWL
+    db 10, LICK
 	db 13, SMOG
-	db 20, BITE
-	db 27, METRONOME ; was FAINT_ATTACK
+	db 18, BITE
+    db 23, FURY_SWIPES
+	db 27, SWIFT ; was FAINT_ATTACK
 	db 35, FLAMETHROWER
-	db 43, METRONOME ; was CRUNCH
+	db 43, FIRE_BLAST ; was CRUNCH
 	db 0
 
 HoundoomEvosMoves:
@@ -4473,12 +4470,15 @@ HoundoomEvosMoves:
 	db 0
 ; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
 ; not exist in Gen 1, filled with METRONOME.
-	db 7, WHIRLWIND ; ROAR renamed WHIRLWIND in Gen 1
+	db 7, EMBER
+    db 8, GROWL
+    db 10, LICK
 	db 13, SMOG
-	db 20, BITE
-	db 30, METRONOME ; was FAINT_ATTACK
+	db 18, BITE
+    db 23, FURY_SWIPES
+	db 30, SWIFT ; was FAINT_ATTACK
 	db 41, FLAMETHROWER
-	db 52, METRONOME ; was CRUNCH
+	db 47, FIRE_BLAST ; was CRUNCH
 	db 0
 
 KingdraEvosMoves:
@@ -4643,7 +4643,7 @@ LarvitarEvosMoves:
 ; Learnset - BITE/LEER already granted at level 1; SANDSTORM/SCARY_FACE/
 ; CRUNCH do not exist in Gen 1, filled with METRONOME.
 	db 8, TAIL_WHIP ; was SANDSTORM
-    db 10, ROCK_THROWW
+    db 10, ROCK_THROW
 	db 15, BITE
 	db 22, SCREECH
 	db 29, THRASH

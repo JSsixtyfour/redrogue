@@ -2,6 +2,217 @@
 ; provider: delivery and expiry will own the state transitions separately.
 ; Inputs use de/e because Bankswitch replaces a, bc and hl.
 
+DEF RENTAL_RESERVED EQU 1
+DEF RENTAL_ACTIVE EQU 2
+
+; Keep the variant renderer in its existing bank. e identifies the HUD side;
+; the rental uses a separate cell and the actual player party slot.
+DrawBattleOwnershipMarkers::
+	push de
+	rfarcall DrawBattleVariantMarker
+	pop de
+	ld a, e
+	cp 1
+	ret z
+	ld a, [wPlayerMonNumber]
+	ld e, a
+	call RentalHasPartyMarker
+	ret nc
+	hlcoord 12, 8
+	ld [hl], 'R'
+	ret
+
+; de = party row's nickname origin. The HP row starts one column further
+; right, leaving this cell free even with a ten-character nickname.
+RentalDrawPartyMarker::
+	ld hl, SCREEN_WIDTH
+	add hl, de
+	push hl
+	ldh a, [hWhichPokemon]
+	ld e, a
+	call RentalHasPartyMarker
+	pop hl
+	ld [hl], ' '
+	ret nc
+	ld [hl], 'R'
+	ret
+
+RentalHasPartyMarker:
+	ld a, [wRentalState]
+	cp RENTAL_RESERVED
+	jr z, .party
+	cp RENTAL_ACTIVE
+	jr nz, .absent
+.party
+	jp RentalIsPartySlot
+.absent
+	and a
+	ret
+
+; Same location mapping as BridgePrepareCalcStats' loaded-mon query.
+; The chosen cell is outside the picture, name, and both status-page boxes.
+RentalDrawStatusMarker::
+	hlcoord 8, 7
+	ld [hl], ' '
+	ld a, [wRentalState]
+	cp RENTAL_RESERVED
+	jr z, .location
+	cp RENTAL_ACTIVE
+	ret nz
+.location
+	ld a, [wMonDataLocation]
+	and a ; PLAYER_PARTY_DATA
+	jr z, .party
+	cp BOX_DATA
+	jr z, .box
+	ld b, BRIDGE_SELECTED_OWNER_DAYCARE1
+	cp DAYCARE_DATA
+	jr z, .match
+	inc b
+	cp DAYCARE_DATA2
+	ret nz
+	jr .match
+.party
+	ldh a, [hWhichPokemon]
+	cp PARTY_LENGTH
+	ret nc
+	inc a
+	ld b, a
+	jr .match
+.box
+	ldh a, [hWhichPokemon]
+	cp MONS_PER_BOX
+	ret nc
+	ld e, a
+	ld a, [wCurrentBoxNum]
+	and $7f
+	cp NUM_BOXES
+	ret nc
+	ld b, a
+	ld a, 7
+	inc b
+.boxLoop
+	dec b
+	jr z, .boxSlot
+	add MONS_PER_BOX
+	jr .boxLoop
+.boxSlot
+	add e
+	ld b, a
+.match
+	ld a, [wRentalOwner]
+	cp b
+	ret nz
+	hlcoord 8, 7
+	ld [hl], 'R'
+	ret
+
+; LoadMapData runs before graphics restoration. Only latch identity here;
+; never open text, upgrade a daycare Pokemon, or save from this seam.
+; An active contract keeps its root map across internal maps and reloads.
+RentalRecordMapLoad::
+	ld a, [wRentalState]
+	cp RENTAL_RESERVED
+	ret nz
+	call GetCurMapStageClass
+	and 3
+	jr nz, .bind
+	ldh a, [hCurMap]
+	ld hl, .extraZones
+.scan
+	ld b, [hl]
+	inc hl
+	inc b
+	ret z
+	dec b
+	cp b
+	jr nz, .scan
+.bind
+	ldh a, [hCurMap]
+	ld [wRentalZone], a
+	ld a, RENTAL_ACTIVE
+	ld [wRentalState], a
+	ret
+.extraZones
+	; Cemetery floors are one area. A new in-area delivery binds on its
+	; current floor; subsequent floor changes cannot rebind or consume it.
+	db PROCEDURAL_CEMETERY_1, PROCEDURAL_CEMETERY_2
+	db PROCEDURAL_CEMETERY_3, PROCEDURAL_CEMETERY_4
+	db PEWTER_GYM, CERULEAN_GYM, VERMILION_GYM, CELADON_GYM
+	db FUCHSIA_GYM, SAFFRON_GYM, CINNABAR_GYM, VIRIDIAN_GYM
+	db VIOLET_GYM, AZALEA_GYM, GOLDENROD_GYM, ECRUTEAK_GYM
+	db CIANWOOD_GYM, OLIVINE_GYM, MAHOGANY_GYM, BLACKTHORN_GYM
+	db -1
+
+; Loaded hub scripts call this BEFORE setting EVENT_ENTER_ROOM or selecting
+; the next destination. A settlement save can therefore resume hub setup on
+; Continue. Reserved rentals survive pre-use hub/Dorm/bridge visits.
+RentalSettleZoneReturn::
+	ld a, [wRentalState]
+	cp RENTAL_ACTIVE
+	ret nz
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .settle
+	cp REWARD_ROOM
+	ret nz
+.settle
+	call UpdateSprites
+	call RentalSettleAndSave
+	ret nc
+	ld de, RentalTeamReadyText
+	jr RentalSettlementPopup
+
+; Match RogueCreditPopupCheck's bounded map overlay lifecycle. Buffer3 is
+; temporary screen storage, never saved contract state. Settlement has already
+; saved before this notice, so reset/Continue cannot repeat the transaction.
+RentalSettlementPopup::
+	push de
+	hlcoord 1, 1
+	lb bc, 18, 5
+	predef SaveScreenTileAreaToBuffer3
+	hlcoord 1, 1
+	ld b, 3
+	ld c, 16
+	call TextBoxBorder
+	hlcoord 2, 2
+	ld de, RentalEndedText
+	call PlaceString
+	pop de
+	hlcoord 2, 3
+	call PlaceString
+	hlcoord 2, 4
+	ld de, RentalSavedText
+	call PlaceString
+	; Use the ordinary text-window lifecycle. WRAM tiles alone are invisible
+	; in the overworld (automatic transfer is off and WY is below the screen).
+	; CloseTextDisplay consumes this saved bank before returning to our caller.
+	ldh a, [hLoadedROMBank]
+	push af
+	ld hl, wAutoTextBoxDrawingControl
+	ld a, [hl]
+	push af
+	set BIT_NO_AUTO_TEXT_BOX, [hl] ; the overlay already has its own border
+	rfarcall DisplayTextIDInit
+	pop af
+	ld [wAutoTextBoxDrawingControl], a
+	ld c, 90
+	call DelayFrames
+	hlcoord 1, 1
+	lb bc, 18, 5
+	predef LoadScreenTileAreaFromBuffer3
+.restored
+	jp CloseTextDisplay
+
+RentalEndedText:
+	db "RENTAL ENDED.@"
+RentalTeamReadyText:
+	db "TEAM HEALED.@"
+RentalRunEndedText:
+	db "NO OWNED #MON.@"
+RentalSavedText:
+	db "GAME SAVED.@"
+
 RentalResetRecord::
 	ld hl, wRentalRecord
 	ld bc, wMainDataEnd - wRentalRecord
@@ -32,7 +243,9 @@ RentalFinishRunEndSave::
 	ret nz
 	xor a
 	ld [wRentalState], a
-	rfarjp SaveGameData
+	rfarcall SaveGameData
+	ld de, RentalRunEndedText
+	jp RentalSettlementPopup
 
 ; Archive records can become live owned Pokemon again. Settle a party rental
 ; before capture; holders outside the captured party are not being replaced.
@@ -830,6 +1043,9 @@ RentalSettleAndSave::
 	predef HealParty
 .save
 	xor a
+	; Match fusion's post-removal reset: the old selected row may no longer
+	; exist, and daycare recovery may also have used the party menu.
+	ld [wPartyAndBillsPCSavedMenuItem], a
 	ld [wRentalState], a
 	ld [wRentalZone], a
 	rfarcall SaveGameData

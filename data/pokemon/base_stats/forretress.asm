@@ -10,14 +10,15 @@
 	INCBIN "gfx/pokemon/front/forretress.dim" ; sprite dimensions
 	dw ForretressPicFront, ForretressPicBack
 
-	db TACKLE, METRONOME, SELFDESTRUCT, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
+	db TACKLE, SELFDESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    DIG,          \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   CUT,          LIGHT_SCREEN
+	tmhm SELFDESTRUCT, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
+	     LIGHT_SCREEN,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    DIG,          \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,   \
+	     REST,         SUBSTITUTE,   STRENGTH,     ROCK_SLIDE,   EXPLOSION, \
+         HYPER_BEAM
 	; end
 
 	db BANK(ForretressPicFront) ; pic bank

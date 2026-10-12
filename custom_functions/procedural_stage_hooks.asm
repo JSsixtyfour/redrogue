@@ -201,6 +201,7 @@ ProcStageLoadDispatch::
 	farjp RefreshBallRarityCacheAtLoad
 .dispatch
 	farcall RecordStageMapLoad
+	farcall RentalRecordMapLoad
 .noExitBattles
 	ldh a, [hCurMap]
 	cp PALLET_TOWN

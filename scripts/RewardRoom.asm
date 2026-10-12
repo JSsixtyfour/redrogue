@@ -4,6 +4,7 @@ RewardRoom_Script:
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .step_forward
     
+    rfarcall RentalSettleZoneReturn
     SetEvent EVENT_ENTER_ROOM
     ; Mid-run (a badge won) this is a back-to-back pair's stand-in for the skipped
     ; route, between gym A and the lobby (RoguePairRewardRoomEntry, gym_statues.asm).

@@ -15,6 +15,7 @@ IndigoPlateauLobby_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .normal
 
+	rfarcall RentalSettleZoneReturn
 	SetEvent EVENT_ENTER_ROOM
 	; Blacking out mid-run should respawn the player in their dorm room, not
 	; wherever wLastMap happens to be. This is the run's sole blackout target;
@@ -26,7 +27,7 @@ IndigoPlateauLobby_Script:
 	; the visible door block or the active sign count from that selection.
 	; Uses SelectAndPatchLobbyExit (no BIT_WARP_FROM_CUR_SCRIPT, since that flag
 	; would cause an immediate warp before the player could do anything).
-	farcall SelectAndPatchLobbyExit
+	rfarcall SelectAndPatchLobbyExit
 	farcall ProcPreloadAssignedWildArea
 	; Lobby music: MapSongBanks (data/maps/songs.asm) defaults this map to
 	; MUSIC_POKECENTER; once Victory Road is cleared, permanently override to
