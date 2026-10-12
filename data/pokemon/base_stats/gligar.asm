@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   MIMIC,        DOUBLE_TEAM,  \
+	     HYPER_BEAM,   RAGE,         ROCK_SLIDE,   MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SWIFT,        REST,         EARTHQUAKE,   FISSURE,      \
-	     DIG,          FLY
+	     DIG,          FLY,          SWORDS_DANCE,
 	; end
 
 	db BANK(GligarPicFront) ; pic bank

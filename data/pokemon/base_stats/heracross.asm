@@ -17,8 +17,9 @@
 	; attackers)
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   CUT,          STRENGTH
+	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         EARTHQUAKE,        \
+	     SKULL_BASH,   REST,         SUBSTITUTE,   CUT,          STRENGTH,  \
+         ROCK_SLIDE,   SWORDS_DANCE, DIG
 	; end
 
 	db BANK(HeracrossPicFront) ; pic bank

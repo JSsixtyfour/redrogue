@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/larvitar.dim" ; sprite dimensions
 	dw LarvitarPicFront, LarvitarPicBack
 
-	db BITE, LEER, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, LEER, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset - modeled on Onix (Rock/Ground)
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   \
+         DRAGON_RAGE
 	; end
 
 	db BANK(LarvitarPicFront) ; pic bank

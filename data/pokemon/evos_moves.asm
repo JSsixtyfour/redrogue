@@ -579,7 +579,7 @@ GrimerEvosMoves:
 	db 0
 ; Learnset
 	db 10, HARDEN
-	db 16, ACID
+	db 11, ACID
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE
@@ -732,8 +732,8 @@ ArcanineEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 18, EMBER
-	db 23, LEER
+	db 10, EMBER
+	db 20, LEER
 	db 30, TAKE_DOWN
 	db 45, FLAMETHROWER
 	db 46, AGILITY
@@ -1007,8 +1007,8 @@ GrowlitheEvosMoves:
 	db EVOLVE_ITEM, FIRE_STONE, 1, ARCANINE
 	db 0
 ; Learnset
-	db 18, EMBER
-	db 23, LEER
+	db 10, EMBER
+	db 20, LEER
 	db 30, TAKE_DOWN
 	db 35, FLAMETHROWER
 	db 36, AGILITY
@@ -1137,7 +1137,7 @@ GravelerEvosMoves:
 	db 0
 ; Learnset
 	db 6, DEFENSE_CURL
-	db 12, ROCK_THROW
+	db 11, ROCK_THROW
 	db 21, DIG
 	db 26, HARDEN
 	db 31, SELFDESTRUCT
@@ -1242,10 +1242,10 @@ HitmonchanEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 25, KARATE_CHOP
-	db 33, FIRE_PUNCH
-	db 35, ICE_PUNCH
-	db 37, THUNDERPUNCH
+	db 16, KARATE_CHOP
+	db 30, FIRE_PUNCH
+	db 32, ICE_PUNCH
+	db 35, THUNDERPUNCH
 	db 40, DIZZY_PUNCH
 	db 42, SUBMISSION
 	db 48, MEGA_PUNCH
@@ -1301,6 +1301,7 @@ PsyduckEvosMoves:
 	db EVOLVE_LEVEL, 33, GOLDUCK
 	db 0
 ; Learnset
+    db 8, BUBBLE
 	db 10, DISABLE
 	db 15, CONFUSION
 	db 17, BUBBLEBEAM
@@ -1353,7 +1354,7 @@ GolemEvosMoves:
 	db 0
 ; Learnset
 	db 6, DEFENSE_CURL
-	db 12, ROCK_THROW
+	db 11, ROCK_THROW
 	db 21, DIG
 	db 26, HARDEN
 	db 31, SELFDESTRUCT
@@ -2855,11 +2856,12 @@ GolduckEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 28, TAIL_WHIP
+	db 8, BUBBLE
 	db 10, DISABLE
 	db 15, CONFUSION
 	db 17, BUBBLEBEAM
 	db 23, SCREECH
+    db 28, TAIL_WHIP
 	db 40, FURY_SWIPES
 	db 42, PSYCHIC_M
 	db 45, AMNESIA
@@ -2999,7 +3001,7 @@ MukEvosMoves:
 	db 0
 ; Learnset
 	db 10, HARDEN
-	db 16, ACID
+	db 11, ACID
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE
@@ -3358,6 +3360,7 @@ GoldeenEvosMoves:
 	db 0
 ; Learnset
 	db 7, PECK
+    db 9, BUBBLE
 	db 10, SUPERSONIC
 	db 13, WATER_GUN
 	db 15, HORN_ATTACK
@@ -3378,6 +3381,7 @@ SeakingEvosMoves:
 	db 0
 ; Learnset
 	db 7, PECK
+    db 9, BUBBLE
 	db 10, SUPERSONIC
 	db 13, WATER_GUN
 	db 15, HORN_ATTACK
@@ -3588,7 +3592,7 @@ GeodudeEvosMoves:
 	db 0
 	; Learnset
 	db 6, DEFENSE_CURL
-	db 10, ROCK_THROW
+	db 11, ROCK_THROW
 	db 21, DIG
 	db 26, HARDEN
 	db 31, SELFDESTRUCT
@@ -4168,7 +4172,7 @@ GligarEvosMoves:
 	db 6, SAND_ATTACK
 	db 13, HARDEN
 	db 20, QUICK_ATTACK
-	db 28, METRONOME ; was FAINT_ATTACK
+	db 28, SWIFT ; was FAINT_ATTACK
 	db 36, SLASH
 	db 44, SCREECH
 	db 52, GUILLOTINE
@@ -4265,12 +4269,15 @@ HeracrossEvosMoves:
 ; Learnset - TACKLE/LEER already granted at level 1; ENDURE/REVERSAL/MEGAHORN
 ; do not exist in Gen 1, filled with METRONOME.
 	db 6, HORN_ATTACK
-	db 12, METRONOME ; was ENDURE
+    db 10, KARATE_CHOP
+	db 18, LOW_KICK ; was ENDURE
 	db 19, FURY_ATTACK
 	db 27, COUNTER
+    db 30, PIN_MISSILE
 	db 35, TAKE_DOWN
-	db 44, METRONOME ; was REVERSAL
-	db 54, METRONOME ; was MEGAHORN
+    db 40, THRASH
+	db 44, SUBMISSION ; was REVERSAL
+	db 50, SWORDS_DANCE ; was MEGAHORN
 	db 0
 
 SneaselEvosMoves:
@@ -4636,10 +4643,11 @@ LarvitarEvosMoves:
 ; Learnset - BITE/LEER already granted at level 1; SANDSTORM/SCARY_FACE/
 ; CRUNCH do not exist in Gen 1, filled with METRONOME.
 	db 8, TAIL_WHIP ; was SANDSTORM
-	db 15, SCREECH
-	db 22, ROCK_THROW
+    db 10, ROCK_THROWW
+	db 15, BITE
+	db 22, SCREECH
 	db 29, THRASH
-	db 36, ROCK_SLIDE ; was SCARY_FACE
+	db 30, ROCK_SLIDE ; was SCARY_FACE
 	db 43, STOMP ; was CRUNCH
 	db 45, EARTHQUAKE
 	db 50, HYPER_BEAM
@@ -4652,8 +4660,8 @@ PupitarEvosMoves:
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
 ; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
 	db 8,  TAIL_WHIP ; was SANDSTORM
-	db 15, SCREECH
-	db 22, ROCK_THROW
+	db 11, ROCK_THROW
+	db 22, SCREECH
 	db 29, THRASH
 	db 38, ROCK_SLIDE ; was SCARY_FACE
 	db 44, STOMP ; was CRUNCH
@@ -4667,14 +4675,15 @@ TyranitarEvosMoves:
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
 ; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
 	db 8,  TAIL_WHIP ; was SANDSTORM
-	db 15, SCREECH
-	db 22, ROCK_THROW
+	db 15, ROCK_THROW
+	db 22, SCREECH
 	db 29, THRASH
 	db 38, ROCK_SLIDE ; was SCARY_FACE
 	db 44, STOMP ; was CRUNCH
 	db 49, EARTHQUAKE
 	db 55, HYPER_BEAM
 	db 0
+
 
 LugiaEvosMoves:
 ; Evolutions
