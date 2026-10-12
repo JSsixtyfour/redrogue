@@ -469,6 +469,37 @@ BoxSRAMPointerTable:
 	dw sBox5 ; sBox11
 	dw sBox6 ; sBox12
 
+; Transaction-only box exchange. e = absolute target box (0..11).
+; Uses the ordinary PC copy/checksum lifecycle without menus or an early save.
+; Caller MUST complete party recovery and SaveGameData before player control.
+RentalExchangeBox::
+	ld a, e
+	cp NUM_BOXES
+	jr nc, .invalid
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	cp e
+	jr z, .done
+	push de
+	call GetBoxSRAMLocation
+	ld e, l
+	ld d, h
+	ld hl, wBoxDataStart
+	call CopyBoxToOrFromSRAM
+	pop de
+	ld a, e
+	set BIT_HAS_CHANGED_BOXES, a
+	ld [wCurrentBoxNum], a
+	call GetBoxSRAMLocation
+	ld de, wBoxDataStart
+	call CopyBoxToOrFromSRAM
+.done
+	scf
+	ret
+.invalid
+	and a
+	ret
+
 ChangeBox::
 	ld hl, WhenYouChangeBoxText
 	call PrintText

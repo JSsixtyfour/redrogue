@@ -344,3 +344,220 @@ RentalReclaimAccessible::
 	ld [wRentalOwner], a
 	scf
 	ret
+
+; Read-only boxed fallback search. Carry = found, d = absolute box, e = slot.
+; Current WRAM box first, then inactive boxes in numerical order. The rental
+; never qualifies as its own replacement. Does not change the current box,
+; any Pokemon, checksums or save data. SRAM is closed before returning.
+RentalFindBoxFallback::
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	ld d, a
+	ld a, [wBoxCount]
+	call .scanBox
+	ret c
+	ld a, [wCurrentBoxNum]
+	bit BIT_HAS_CHANGED_BOXES, a
+	jr z, .notFound ; inactive SRAM boxes do not exist until first box change
+	ld d, 0
+.boxLoop
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	cp d
+	jr z, .nextBox
+	push de
+	ld a, d
+	ld b, BANK(sBox1)
+	cp NUM_BOXES / 2
+	jr c, .bankReady
+	ld b, BANK(sBox7)
+	sub NUM_BOXES / 2
+.bankReady
+	ld hl, .boxPointers
+	add a
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, b
+	ld [rRAMB], a
+	ld a, [hl] ; only read the box count, no banked calls while SRAM is open
+	pop de
+	call .scanBox
+	push af
+	xor a
+	ld [rBMODE], a
+	ld [rRAMG], a
+	pop af
+	ret c
+.nextBox
+	inc d
+	ld a, d
+	cp NUM_BOXES
+	jr c, .boxLoop
+.notFound
+	and a
+	ret
+.scanBox
+	and a
+	ret z
+	cp MONS_PER_BOX + 1
+	jr nc, .badCount
+	ld b, a
+	ld e, 0
+.slotLoop
+	; Absolute owner = 7 + 20*box + slot. Preserve the candidate in de.
+	ld a, d
+	add a
+	add a
+	add d
+	add a
+	add a
+	add e
+	add BRIDGE_SELECTED_OWNER_BOX_BASE
+	ld hl, wRentalOwner
+	cp [hl]
+	jr nz, .found
+	inc e
+	dec b
+	jr nz, .slotLoop
+.badCount
+	and a
+	ret
+.found
+	scf
+	ret
+.boxPointers
+	dw sBox1, sBox2, sBox3, sBox4, sBox5, sBox6
+	ASSERT sBox1 == sBox7 && sBox2 == sBox8 && sBox3 == sBox9
+	ASSERT sBox4 == sBox10 && sBox5 == sBox11 && sBox6 == sBox12
+
+; All-holder reclaim, including an inactive box. Transaction-only: raw box
+; changes require a final full save. Preserve the player's selected box.
+RentalReclaimAll::
+	ld a, [wRentalOwner]
+	cp BRIDGE_SELECTED_OWNER_BOX_BASE
+	jp c, RentalReclaimAccessible
+	cp BRIDGE_SELECTED_OWNER_DAYCARE1
+	jp nc, RentalReclaimAccessible
+	sub BRIDGE_SELECTED_OWNER_BOX_BASE
+	ld e, a
+	ld d, 0
+.divideBox
+	ld a, e
+	cp MONS_PER_BOX
+	jr c, .decoded
+	sub MONS_PER_BOX
+	ld e, a
+	inc d
+	jr .divideBox
+.decoded
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	cp d
+	jp z, RentalReclaimAccessible
+	ld a, [wCurrentBoxNum]
+	bit BIT_HAS_CHANGED_BOXES, a
+	jr z, .unavailable
+	push af
+	ld e, d
+	rfarcall RentalExchangeBox
+	call RentalReclaimAccessible
+	pop af
+	and BOX_NUM_MASK
+	ld e, a
+	rfarcall RentalExchangeBox
+	scf
+	ret
+.unavailable
+	and a
+	ret
+
+; After reclaim (owner 0), restore from current box then numerical boxes.
+; Carry = healthy owned party available. Transaction-only for inactive boxes.
+RentalRestoreBoxedParty::
+	ld a, [wRentalOwner]
+	and a
+	jr nz, .failed
+	ld a, [wPartyCount]
+	and a
+	jr nz, .heal
+	call RentalFindBoxFallback
+	ret nc
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	cp d
+	jr z, .current
+	ld a, [wCurrentBoxNum]
+	push af
+	push de
+	ld e, d
+	rfarcall RentalExchangeBox
+	pop de
+	call .withdraw
+	pop af
+	and BOX_NUM_MASK
+	ld e, a
+	rfarcall RentalExchangeBox
+	jr .checkParty
+.current
+	call .withdraw
+.checkParty
+	ld a, [wPartyCount]
+	and a
+	ret z
+.heal
+	predef HealParty
+	scf
+	ret
+.failed
+	and a
+	ret
+.withdraw
+	ld a, e
+	ldh [hWhichPokemon], a
+	ld hl, wBoxSpecies
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	ld [wCurPartySpecies], a
+	ld a, BOX_TO_PARTY
+	ld [wMoveMonType], a
+	call MoveMon
+	ret c
+	ld a, 1
+	ld [wRemoveMonFromBox], a
+	jp RemovePokemon
+
+; Complete save-point settlement when owned party/boxed fallback exists.
+; No candidate (including daycare-only fallback) returns NC BEFORE mutation.
+; Daycare fallback/no-owned ending will extend this preflight separately.
+RentalSettleBoxedAndSave::
+	ld a, [wPartyCount]
+	cp 2
+	jr nc, .ready
+	and a
+	jr z, .needBox
+	ld a, [wRentalOwner]
+	cp 1
+	jr nz, .ready
+.needBox
+	call RentalFindBoxFallback
+	ret nc
+.ready
+	call RentalReclaimAll
+	ret nc
+	call RentalRestoreBoxedParty
+	ret nc
+	xor a
+	ld [wRentalState], a
+	ld [wRentalZone], a
+	rfarcall SaveGameData
+	scf
+	ret
