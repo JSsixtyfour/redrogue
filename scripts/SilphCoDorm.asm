@@ -8,6 +8,7 @@ SilphCoDorm_Script:
 	; Blackout and Hall of Fame both respawn here, so this is where the
 	; "EARNED N CREDITS" box belongs. A no-op unless a tally is pending.
 	farcall RogueCreditPopupCheck
+	rfarcall RentalFinishRunEndSave
 
 	; Stage Lance's global toggle while still in the Dorm, before B1F loads its
 	; object data. This prevents the final-opening actor from appearing a frame

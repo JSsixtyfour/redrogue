@@ -8,6 +8,32 @@ RentalResetRecord::
 	xor a
 	jp FillMemory
 
+; Only the run-reset caller preserves this transient save request. New-game
+; initialization continues to use RentalResetRecord unconditionally.
+DEF RENTAL_RUN_END_SAVE_PENDING EQU $ff
+RentalResetAtRunBoundary::
+	ld a, [wRentalState]
+	push af
+	call RentalResetRecord
+	pop af
+	cp RENTAL_RUN_END_SAVE_PENDING
+	ret nz
+	ld [wRentalState], a
+	ret
+
+; Dorm first-load seam, after the ordinary credit popup and map restoration.
+; The map check keeps a stale temporary marker from saving another context.
+RentalFinishRunEndSave::
+	ldh a, [hCurMap]
+	cp SILPH_CO_DORM
+	ret nz
+	ld a, [wRentalState]
+	cp RENTAL_RUN_END_SAVE_PENDING
+	ret nz
+	xor a
+	ld [wRentalState], a
+	rfarjp SaveGameData
+
 ; d = old owner, e = new owner. Preserve de for central mutation callers.
 RentalMoveOwner::
 	ld a, [wRentalOwner]
@@ -561,3 +587,205 @@ RentalSettleBoxedAndSave::
 	rfarcall SaveGameData
 	scf
 	ret
+
+; Read-only final fallback, after the box search. e = daycare 0/1, carry found.
+RentalFindDaycareFallback::
+	ld a, [wRentalOwner]
+	cp BRIDGE_SELECTED_OWNER_DAYCARE1
+	jr z, .second
+	ld a, [wDayCareInUse]
+	and a
+	ld e, 0
+	jr nz, .found
+.second
+	ld a, [wRentalOwner]
+	cp BRIDGE_SELECTED_OWNER_DAYCARE2
+	jr z, .absent
+	ld a, [wDayCareInUse2]
+	and a
+	ld e, 1
+	jr nz, .found
+.absent
+	and a
+	ret
+.found
+	scf
+	ret
+
+; e = occupied owned daycare slot. Match the voluntary lobby growth commit,
+; MoveMon, and upgrade order; automatic payment never refuses a shortfall.
+; Caller has reclaimed the rental and confirmed the party is empty.
+RentalRetrieveDaycare::
+	push de
+	call RentalChargeDaycare
+	pop de
+	push de
+	rfarcall GetRewardMonLevel
+	pop de
+	ld hl, wDayCareMonBoxLevel
+	ld bc, wDayCareDepositBattleCount
+	ld a, DAYCARE_DATA
+	ld d, a
+	ld a, e
+	and a
+	jr z, .slotReady
+	ld hl, wDayCareMon2BoxLevel
+	ld bc, wDayCareDepositBattleCount2
+	ld d, DAYCARE_DATA2
+.slotReady
+	ld a, [hl]
+	push af ; deposited level, retained across growth and MoveMon
+	push de ; daycare index and data location
+	ld a, [bc]
+	ld b, a
+	ld a, [wBattleCount]
+	cp b
+	jr z, .move
+	ld a, [wCurEnemyLevel]
+	cp [hl]
+	jr c, .move
+	jr z, .move
+	ld [hl], a
+	push af ; target level
+	ld a, d
+	ld [wMonDataLocation], a
+	call LoadMonData
+	pop af
+	ld d, a
+	rfarcall CalcExperience
+	pop de
+	push de
+	ld hl, wDayCareMonExp
+	ld a, e
+	and a
+	jr z, .expReady
+	ld hl, wDayCareMon2Exp
+.expReady
+	ldh a, [hExperience]
+	ld [hli], a
+	ldh a, [hExperience + 1]
+	ld [hli], a
+	ldh a, [hExperience + 2]
+	ld [hl], a
+.move
+	pop de
+	push de
+	ld a, [wDayCareMonSpecies]
+	ld b, a
+	ld a, e
+	and a
+	jr z, .speciesReady
+	ld a, [wDayCareMon2Species]
+	ld b, a
+.speciesReady
+	ld a, b
+	ld [wCurPartySpecies], a
+	ld a, DAYCARE_TO_PARTY
+	ld b, a
+	ld a, e
+	and a
+	jr z, .typeReady
+	ld b, DAYCARE_TO_PARTY2
+.typeReady
+	ld a, b
+	ld [wMoveMonType], a
+	call MoveMon
+	pop de
+	pop af ; deposited level
+	; Upgrade uses slot 1's scratch for either slot. Preserve the other slot.
+	ld b, a
+	ld a, [wDayCareStartLevel]
+	push af
+	ld a, b
+	ld [wDayCareStartLevel], a
+	push de
+	call SaveScreenTilesToBuffer2
+	rfarcall DaycareRetrieveUpgrade
+	pop de
+	pop af
+	ld [wDayCareStartLevel], a
+	; MoveMon has already transferred bridge-effect ownership to the party.
+	ld a, e
+	and a
+	jp z, RentalReclaimDaycare.clearFirst
+	jp RentalReclaimDaycare.clearSecond
+
+; Full settlement entry. Valid owners are preflighted before any mutation.
+; Success returns carry with an owned healed party and a full save. No owned
+; candidate uses the normal nonreturning blackout/Dorm lifecycle instead.
+RentalSettleAndSave::
+	ld a, [wRentalState]
+	and a
+	ret z
+	cp RENTAL_RUN_END_SAVE_PENDING
+	jp z, .invalid
+	ld a, [wRentalOwner]
+	cp BRIDGE_SELECTED_OWNER_MAX + 2
+	jp nc, .invalid
+	; An inactive-box owner requires initialized SRAM boxes.
+	cp BRIDGE_SELECTED_OWNER_BOX_BASE
+	jr c, .ready
+	cp BRIDGE_SELECTED_OWNER_DAYCARE1
+	jr nc, .ready
+	ld a, [wCurrentBoxNum]
+	bit BIT_HAS_CHANGED_BOXES, a
+	jr nz, .ready
+	; Before the first box change, only the current WRAM box is valid.
+	ld a, [wRentalOwner]
+	sub BRIDGE_SELECTED_OWNER_BOX_BASE
+	ld b, a
+	ld a, [wCurrentBoxNum]
+	and BOX_NUM_MASK
+	ld e, a
+	add a
+	add a
+	add e
+	add a
+	add a
+	ld e, a
+	ld a, b
+	sub e
+	cp MONS_PER_BOX
+	jp nc, .invalid
+.ready
+	; Identify an owned survivor before destructive reclaim. Finders exclude
+	; the exact rental location, even when its daycare would otherwise win.
+	ld a, [wPartyCount]
+	cp 2
+	jr nc, .recover
+	and a
+	jr z, .needFallback
+	ld a, [wRentalOwner]
+	cp 1
+	jr nz, .recover
+.needFallback
+	call RentalFindBoxFallback
+	jr c, .recover
+	call RentalFindDaycareFallback
+	jr c, .recover
+	call RentalReclaimAll
+	ret nc
+	jr .endRun
+.recover
+	call RentalReclaimAll
+	ret nc
+	call RentalRestoreBoxedParty
+	jr c, .save
+	call RentalFindDaycareFallback
+	jr nc, .endRun
+	call RentalRetrieveDaycare
+	predef HealParty
+.save
+	xor a
+	ld [wRentalState], a
+	ld [wRentalZone], a
+	rfarcall SaveGameData
+	scf
+	ret
+.invalid
+	and a
+	ret
+.endRun
+	ld a, RENTAL_RUN_END_SAVE_PENDING
+	ld [wRentalState], a
+	jp HandleBlackOut
