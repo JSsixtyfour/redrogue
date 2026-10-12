@@ -10,14 +10,14 @@
 	INCBIN "gfx/pokemon/front/pineco.dim" ; sprite dimensions
 	dw PinecoPicFront, PinecoPicBack
 
-	db TACKLE, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
+	db TACKLE, SELF_DESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    DIG,          \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   CUT,          LIGHT_SCREEN
+	tmhm SELF_DESTRUCT, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
+	     LIGHT_SCREEN,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    DIG,          \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,   \
+	     REST,         SUBSTITUTE,   STRENGTH,     ROCK_SLIDE,   EXPLOSION
 	; end
 
 	db BANK(PinecoPicFront) ; pic bank

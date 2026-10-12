@@ -57,6 +57,8 @@ FinalTeamArchiveInit::
 FinalTeamArchiveCapture::
 	xor a
 	ld [wActionResultOrTookBattleTurn], a
+	rfarcall RentalPrepareArchiveCapture
+	ret nc
 	call FinalTeamArchiveValidateFusion
 	ret nc
 	; Preserve the two sidecar bytes across the copy using the stack.
@@ -177,6 +179,7 @@ FinalTeamArchiveRestoreLatest::
 	ld a, [hl]
 	ld [wFusionSecondaryForm], a
 	call FinalTeamArchiveClose
+	rfarcall RentalOnPartyReplacement
 	predef HealParty
 	ld a, 1
 	ld [wActionResultOrTookBattleTurn], a

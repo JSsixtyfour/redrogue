@@ -502,6 +502,7 @@ ExeggutorEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 9, ABSORB
 	db 10, POISONPOWDER
 	db 13, LEECH_SEED
 	db 19, CONFUSION
@@ -554,6 +555,7 @@ ExeggcuteEvosMoves:
 	db EVOLVE_ITEM, LEAF_STONE, 1, EXEGGUTOR
 	db 0
 ; Learnset
+    db 8, ABSORB
 	db 10, POISONPOWDER
 	db 13, LEECH_SEED
 	db 19, CONFUSION
@@ -3586,7 +3588,7 @@ GeodudeEvosMoves:
 	db 0
 	; Learnset
 	db 6, DEFENSE_CURL
-	db 12, ROCK_THROW
+	db 10, ROCK_THROW
 	db 21, DIG
 	db 26, HARDEN
 	db 31, SELFDESTRUCT
@@ -4119,12 +4121,14 @@ PinecoEvosMoves:
 ; see base_stats/pineco.asm); RAPID_SPIN/SPIKES do not exist in Gen 1, filled
 ; with METRONOME.
 	db 8, SELFDESTRUCT
-	db 15, TAKE_DOWN
-	db 22, METRONOME ; was RAPID_SPIN
-	db 29, BIDE
+    db 9, LEECH_LIFE
+    db 11, HARDEN ; was RAPID_SPIN
+	db 12, TAKE_DOWN
+    db 20, TWINEEDLE
+	db 25, BIDE
 	db 36, EXPLOSION
-	db 43, METRONOME ; was SPIKES
-	db 50, DOUBLE_EDGE
+	db 39, PIN_MISSILE ; was SPIKES
+	db 40, DOUBLE_EDGE
 	db 0
 
 ForretressEvosMoves:
@@ -4133,12 +4137,14 @@ ForretressEvosMoves:
 ; Learnset - TACKLE/SELFDESTRUCT already granted at level 1 (PROTECT's slot is
 ; METRONOME, see base_stats/forretress.asm)
 	db 8, SELFDESTRUCT
-	db 15, TAKE_DOWN
-	db 22, METRONOME ; was RAPID_SPIN
-	db 29, BIDE
-	db 39, EXPLOSION
-	db 49, METRONOME ; was SPIKES
-	db 59, DOUBLE_EDGE
+    db 9, LEECH_LIFE
+    db 11, HARDEN ; was RAPID_SPIN
+	db 12, TAKE_DOWN
+    db 20, TWINEEDLE
+	db 25, BIDE
+	db 36, EXPLOSION
+	db 39, PIN_MISSILE ; was SPIKES
+	db 40, DOUBLE_EDGE
 	db 0
 
 DunsparceEvosMoves:

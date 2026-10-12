@@ -34,6 +34,59 @@ RentalFinishRunEndSave::
 	ld [wRentalState], a
 	rfarjp SaveGameData
 
+; Archive records can become live owned Pokemon again. Settle a party rental
+; before capture; holders outside the captured party are not being replaced.
+RentalPrepareArchiveCapture::
+	ld a, [wRentalOwner]
+	and a
+	jr z, .ownedParty
+	cp PARTY_LENGTH + 1
+	jr nc, .ownedParty
+	call RentalSettleAndSave
+	ret c
+	xor a
+	ld [wActionResultOrTookBattleTurn], a
+	ret
+.ownedParty
+	scf
+	ret
+
+; A successful full-party overwrite discards only its old location pointer.
+; Retain contract/opportunity metadata and every rental outside the party.
+RentalOnPartyReplacement::
+	ld a, [wRentalOwner]
+	and a
+	ret z
+	cp PARTY_LENGTH + 1
+	ret nc
+	ld c, a
+	xor a
+	ld [wRentalOwner], a
+	; Full-party restore bypasses RemovePokemon. Discard the old rental's
+	; sparse bridge effect so it cannot attach to an incoming archived mon.
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.effects
+	ld a, [hl]
+	cp c
+	jr nz, .nextEffect
+	xor a
+	ld [hli], a
+	ld [hl], a
+	dec hl
+.nextEffect
+	inc hl
+	inc hl
+	dec b
+	jr nz, .effects
+	ret
+
+; Same-size replacement of both debug bridge-clear calls; no new bank-$38
+; bytes. Rebuilt debug parties cannot inherit either kind of old ownership.
+RentalPrepareDebugParty::
+	call RentalOnPartyReplacement
+	rfarjp BridgeClearSelectedEffects
+
 ; d = old owner, e = new owner. Preserve de for central mutation callers.
 RentalMoveOwner::
 	ld a, [wRentalOwner]
