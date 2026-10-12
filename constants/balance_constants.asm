@@ -319,6 +319,9 @@ DEF CLERK_STAT_ULTRABALL_ODDS EQU 88 + 64 + 95
 DEF SALESMAN_PRICE_POKEBALL_BCD EQU $05
 DEF SALESMAN_PRICE_GREATBALL_BCD EQU $12
 DEF SALESMAN_PRICE_ULTRABALL_BCD EQU $20
+; Inclusive endpoints of the salesman/rental class roll (0..255).
+DEF SALESMAN_CLASS_POKEBALL_MAX EQU $99
+DEF SALESMAN_CLASS_GREATBALL_MAX EQU $99 + $5e
 ; Lobby Move Tutor fees, ordinary integers encoded by TutorMovePrices (bcd3).
 ; Independent of reusable TM prices; OFFLIST tutor moves use the F-tier fee.
 ; 2026-10-09 (player feedback #11): -10% from 1000/2000/3000/5000/10000/15000.

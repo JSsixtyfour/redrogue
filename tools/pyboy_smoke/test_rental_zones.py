@@ -31,6 +31,34 @@ class RentalZoneTest(unittest.TestCase):
             h.call_routine("RentalSettleZoneReturn")
             self.assertEqual(h.read_bytes("wRentalRecord", 4), [1,0,42,3])
 
+    def test_unused_offer_advances_only_after_zone_and_hub(self):
+        h = self.h
+        self.seed(h, 0, {}, 0)
+        h.write8("wRentalState", 0)
+        h.write8("wRentalFlags", 1)
+        original = h.read_bytes("wRentalOfferSpecies", 12)
+        for name in ("INDIGO_PLATEAU_LOBBY", "OAKS_LAB", "SILPH_CO_DORM"):
+            self.map(name)
+            h.call_routine("RentalRecordMapLoad")
+            h.call_routine("RentalSettleZoneReturn")
+            self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), original)
+            self.assertEqual(h.read8("wRentalFlags"), 1)
+        self.map("PEWTER_GYM")
+        h.call_routine("RentalRecordMapLoad")
+        self.assertEqual(h.read8("wRentalFlags"), 129)
+        self.map("SILPH_CO_DORM")
+        h.call_routine("RentalSettleZoneReturn")
+        self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), original)
+        self.map("REWARD_ROOM")
+        h.call_routine("RentalSettleZoneReturn")
+        self.assertEqual(h.read8("wRentalFlags"), 0)
+        self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), [0] * 12)
+        # Reward Room -> lobby is the same next opportunity, not another reset.
+        h.write8("wRentalOfferSpecies", 25)
+        self.map("INDIGO_PLATEAU_LOBBY")
+        h.call_routine("RentalSettleZoneReturn")
+        self.assertEqual(h.read8("wRentalOfferSpecies"), 25)
+
     def test_export_phase1_party_rental_fixture_and_cold_continue(self):
         h = self.h
         owned = h.read_bytes("wPartyMons", 33, offset=44)
@@ -111,7 +139,7 @@ class RentalZoneTest(unittest.TestCase):
             self.seed(h, 0, {}, 0)
             zone = self.map(name)
             h.call_routine("RentalRecordMapLoad")
-            self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,0,zone,3], name)
+            self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,0,zone,131], name)
             self.map("PROCEDURAL_CEMETERY_2")
             h.call_routine("RentalRecordMapLoad")
             self.assertEqual(h.read8("wRentalZone"), zone)
@@ -129,7 +157,7 @@ class RentalZoneTest(unittest.TestCase):
             self.assertEqual(h.read8("wRentalZone"), zone)
             self.map(hub)
             h.call_routine("RentalSettleZoneReturn")
-            self.assertEqual(h.read_bytes("wRentalRecord", 4), [0,0,0,3])
+            self.assertEqual(h.read_bytes("wRentalRecord", 4), [0,0,0,2])
             self.assertEqual(h.read8("wPartyCount"), 1)
             self.assertEqual(h.read8("wPartyMons", offset=12), 25)
             self.assertEqual(h.read_sram_bytes("sBox9", 1, bank=3), [0])
@@ -147,7 +175,7 @@ class RentalZoneTest(unittest.TestCase):
             self.map(name)
             h.call_routine("RentalRecordMapLoad")
             h.call_routine("RentalSettleZoneReturn")
-            self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,249,zone,3])
+            self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,249,zone,131])
 
     def test_live_lobby_settles_before_selection_and_saves_setup_as_pending(self):
         h = self.h
@@ -188,6 +216,7 @@ class RentalZoneTest(unittest.TestCase):
             started.append(True)
             self.seed(h, 5, {5:[25], 8:[30]}, 167)
             h.write8("wRentalState", 2)
+            h.write8("wRentalFlags", 131)
             h.pyboy.memory[address] &= 255 ^ mask
         h.register_hook("IndigoPlateauLobby_Script", enter)
         h.register_hook("SaveGameData", lambda _: trace.append(
@@ -224,7 +253,7 @@ class RentalZoneTest(unittest.TestCase):
         notices = boot.h.hook_flag("RentalSettlementPopup")
         selections = boot.h.hook_flag("SelectAndPatchLobbyExit")
         boot.continue_game()
-        self.assertEqual(boot.h.read_bytes("wRentalRecord", 4), [0,0,0,3])
+        self.assertEqual(boot.h.read_bytes("wRentalRecord", 4), [0,0,0,2])
         self.assertEqual(boot.h.read8("wPartyCount"), 1)
         self.assertEqual(boot.h.read8("wPartyMons", offset=12), 25)
         self.assertEqual(boot.h.read8("wCurrentBoxNum"), 133)

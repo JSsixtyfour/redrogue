@@ -1618,6 +1618,7 @@ PartyGenRollMoveset:
 ;   wPartyGenCandidates + 13    level slack below: a record whose lvl_max is
 ;                               at most this far under the mon's level passes
 ;   wPartyGenCandidates + 14    nonzero once the window has been widened
+;   wPartyGenCandidates + 15    rental-only provenance filter (ordinary entry clears)
 ;   wPartyGenTMUsed             this mix's set_tier_mask
 ;   wPartyGenTMCount            pass 1: running match count. pass 2: the
 ;                               target ordinal, countding down to 0
@@ -1635,7 +1636,30 @@ PartyGenRollMoveset:
 ;         this mix's set_tier_mask near this mon's level exists.
 ;         carry CLEAR otherwise - caller takes the mix row's fallback source.
 ; ===========================================================================
+; Provider-free rental selector checkpoint. Input e = allowed tier mask;
+; wPartyGenSlot identifies an existing temporary enemy mon, level is in
+; wCurEnemyLevel. Carry clear requests generated fallback without mutation.
+; Special forms have no matching form records in the existing corpus.
+RentalApplyStadiumSetMoveset::
+	ld a, e
+	ld [wPartyGenTMUsed], a
+	ld a, 1
+	ld [wPartyGenCandidates + 15], a
+	call PartyGenSlotMonBase
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	jr z, PartyGenApplySetMoveset.begin
+	xor a
+	ret
+
+; Ordinary entry always resets the scratch filter, including after a rental.
 PartyGenApplySetMoveset:
+	xor a
+	ld [wPartyGenCandidates + 15], a
+
+.begin
 	call PartyGenSlotMonBase       ; hl -> mon struct; MON_SPECIES is byte 0
 	ld a, [hl]
 	ld c, a
@@ -1653,11 +1677,15 @@ PartyGenApplySetMoveset:
 	and a
 	jp z, .noMatch                  ; this species has no curated sets at all
 
+	ld a, [wPartyGenCandidates + 15]
+	and a
+	jr nz, .tierReady
 	call PartyGenMixRow             ; hl -> this spec's mix row
 	ld bc, 6
 	add hl, bc
 	ld a, [hl]                      ; set_tier_mask
 	ld [wPartyGenTMUsed], a
+.tierReady
 	xor a
 	ld [wPartyGenCandidates + 13], a ; exact window first: no slack
 	ld [wPartyGenCandidates + 14], a ; not widened yet
@@ -1766,8 +1794,16 @@ PartyGenApplySetMoveset:
 ;         lvl_min <= level <= lvl_max + slack_below.
 ; The upper test is written as lvl_max + slack_below >= level so nothing
 ; underflows; the sum cannot pass 255 (see the ASSERT below).
-; CLOBBERS af, hl, d.
+; CLOBBERS af, hl, d; rental provenance query also clobbers bc/de.
 .recordPasses:
+	ld a, [wPartyGenCandidates + 15]
+	and a
+	jr z, .provenanceReady
+	ld a, [wPartyGenCandidates + 9]
+	ld e, a
+	rfarcall RentalIsStadiumOrigin
+	jr nc, .recordFail
+.provenanceReady
 	ld a, [wPartyGenCandidates + 8] ; tier
 	ld hl, wPartyGenTMUsed          ; set_tier_mask
 	and [hl]
@@ -2787,3 +2823,190 @@ ASSERT BANK(RogueBuildParty) == BANK(MoveRankWeightTable), \
        "RogueBuildParty reads MoveRankWeightTable in-bank"
 ASSERT BANK(RogueBuildParty) == BANK(TMMovesForPartyGen), \
        "RogueBuildParty reads TMMovesForPartyGen in-bank"
+
+; Outside-battle rental generation. Caller owns a temporary initialized enemy
+; mon at slot 0, preserves overworld scratch, and copies out the result.
+; Full final-trainer team size, quota assignment, then uniform slot sampling:
+; no one-mon quota shrink, Gambler shortcut, leader mix or literal overrides.
+RentalChooseTrainerSource::
+	call RogueBattleRound
+	push bc                         ; b = current round
+	call RogueBandIndex
+	ld b, 0
+	ld hl, RosterMixByKindAndBand + NUM_GYM_BANDS
+	add hl, bc
+	ld a, [hl]
+	ld hl, MixOnlySpecs
+	ld bc, MIX_ONLY_SPEC_SIZE
+	call AddNTimes
+	ld a, l
+	ld [wPartyGenSpecPtr], a
+	ld a, h
+	ld [wPartyGenSpecPtr + 1], a
+	pop bc
+	call RentalReadTrainerCounts
+	ld hl, wPartyGenCandidates
+	ld a, [hli]
+	add [hl]
+	inc hl
+	add [hl]
+	inc hl
+	add [hl]
+	and a
+	jr nz, .nonempty
+	inc a
+.nonempty
+	cp PARTY_LENGTH + 1
+	jr c, .countReady
+	ld a, PARTY_LENGTH
+.countReady
+	ld [wPartyGenNMons], a
+	call PartyGenAssignSources
+.sampleSlot
+	ld a, [wPartyGenNMons]
+	ld c, a
+	call Rangerandom
+	ld c, a
+	ld b, 0
+	ld hl, wPartyGenSlotSource
+	add hl, bc
+	ld a, [hl]
+	ld [wPartyGenSource], a
+	xor a
+	ld [wPartyGenSlot], a
+	ret
+
+; Same upcoming-zone context as reward levels. Non-hub callers are in-stage;
+; lobby and lobby bridge use the next door's route/gym tier. Run-start reward
+; room precedes a route; paired-gym reward room precedes the next gym.
+; b is the round index. Copy four class-count bytes to trainer scratch.
+; Both tables share a bank; no returned raw ROM pointer escapes this reader.
+RentalReadTrainerCounts:
+	ldh a, [hCurMap]
+	cp REWARD_ROOM
+	jr nz, .notRewardRoom
+	ld a, [wObtainedBadges]
+	and a
+	jr z, .route
+	jr .gym
+.notRewardRoom
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .hub
+	cp OAKS_LAB
+	jr nz, .gym
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .gym
+.hub
+	push bc
+	call RogueBattleRound
+	pop bc
+	cp ROUTE_BATTLES
+	jr c, .route
+.gym
+	ld hl, trainer_difficulty_settings_gym
+	jr .copy
+.route
+	ld hl, trainer_difficulty_settings
+.copy
+	ld a, b
+	ld bc, 11
+	call AddNTimes
+	ld bc, 7                       ; final-trainer class counts, no size shrink
+	add hl, bc
+	ld a, BANK(trainer_difficulty_settings)
+	ld de, wPartyGenCandidates
+	ld bc, 4
+	jp FarCopyData2
+
+RentalGenerateMovesForSlot::
+	call RentalChooseOfferSource
+	ld a, [wPartyGenSource]
+	cp MSRC_SET
+	jr nz, .generated
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp DIFFICULTY_VERY_EASY
+	jr z, .fallback
+	call PartyGenMixRow
+	ld bc, 6                       ; set tier mask
+	add hl, bc
+	ld e, [hl]
+	call RentalApplyStadiumSetMoveset
+	jr c, .ready
+.fallback
+	call PartyGenMixRow
+	ld bc, MIX_FALLBACK_OFFSET
+	add hl, bc
+	ld a, [hl]
+	ld [wPartyGenSource], a
+.generated
+	call PartyGenRollMoveset
+.ready
+	ld a, [wPartyGenSource]
+	ld [wRentalOfferSource], a
+	ret
+
+ASSERT BANK(trainer_difficulty_settings) == BANK(trainer_difficulty_settings_gym)
+
+; Rental-only override approved for rounds 5-8. Ordinary trainers and the
+; representative team allocation remain unchanged. Half choose SET; half
+; uniformly sample only generated slots from that allocation (no rejection).
+RentalChooseOfferSource::
+	call RentalChooseTrainerSource
+	call RogueBattleRound
+	ld a, b
+	cp 4
+	ret c
+	cp 8
+	ret nc
+.stadiumRoll
+	call Random
+	add a
+	jr nc, .generated
+	ld a, MSRC_SET
+	ld [wPartyGenSource], a
+	ret
+.generated
+	ld hl, wPartyGenSlotSource
+	ld a, [wPartyGenNMons]
+	ld b, a
+	ld c, 0
+.count
+	ld a, [hli]
+	cp MSRC_SET
+	jr z, .next
+	inc c
+.next
+	dec b
+	jr nz, .count
+	ld a, c
+	and a
+	jr z, .fallback
+.generatedRoll
+	call Rangerandom
+	ld c, a
+	ld hl, wPartyGenSlotSource
+	ld a, [wPartyGenNMons]
+	ld b, a
+.scan
+	ld a, [hli]
+	cp MSRC_SET
+	jr z, .scanNext
+	ld d, a
+	ld a, c
+	and a
+	jr z, .found
+	dec c
+.scanNext
+	dec b
+	jr nz, .scan
+.fallback
+	call PartyGenMixRow
+	ld bc, MIX_FALLBACK_OFFSET
+	add hl, bc
+	ld d, [hl]
+.found
+	ld a, d
+	ld [wPartyGenSource], a
+	ret

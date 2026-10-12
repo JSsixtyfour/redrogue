@@ -860,9 +860,9 @@ ScytherEvosMoves:
 	db 0
 ; Learnset
 	db 6, FOCUS_ENERGY
+    db 11, WING_ATTACK
 	db 16, CUT
 	db 24, AGILITY
-	db 30, WING_ATTACK
 	db 36, SLASH
 	db 42, TWINEEDLE
 	db 48, DOUBLE_TEAM
@@ -2121,10 +2121,11 @@ KabutoEvosMoves:
 	db EVOLVE_LEVEL, 40, KABUTOPS
 	db 0
 ; Learnset
+    db 8, BUBBLE
 	db 11, LEER	
 	db 15, WATER_GUN
 	db 19, ABSORB
-	db 25, ROCK_THROW
+	db 20, ROCK_THROW
 	db 35, MEGA_DRAIN
 	db 39, SLASH
 	db 43, SWORDS_DANCE
@@ -2140,10 +2141,11 @@ KabutopsEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 8, BUBBLE
 	db 11, LEER	
 	db 15, WATER_GUN
 	db 19, ABSORB
-	db 25, ROCK_THROW
+	db 20, ROCK_THROW
 	db 35, MEGA_DRAIN
 	db 39, SLASH
 	db 43, SWORDS_DANCE

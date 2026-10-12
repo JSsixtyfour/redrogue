@@ -1462,8 +1462,6 @@ PCTraderSuperNerdSetup:
     pop hl
     ret 
     
-    DEF salesman_pokeball_odds EQU $99
-    DEF salesman_greatball_odds EQU $99 + $5E
     DEF salesman_ultraball_odds EQU $8 + $5E + $99
 
 PCPokemonSalesmanSetup:
@@ -1473,13 +1471,13 @@ PCPokemonSalesmanSetup:
     ld hl, wroguenpcclass
     
     .determineClassSlot
-    ld a, salesman_pokeball_odds
+    ld a, SALESMAN_CLASS_POKEBALL_MAX
     ld [hl], c
     cp b
     jr nc, .get_pokemon
     inc c       ; greatball class
     ld [hl], c
-    ld a, salesman_greatball_odds
+    ld a, SALESMAN_CLASS_GREATBALL_MAX
     cp b
     jr nc, .get_pokemon
     inc c       ; ultraball class

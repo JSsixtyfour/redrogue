@@ -4,6 +4,492 @@
 
 DEF RENTAL_RESERVED EQU 1
 DEF RENTAL_ACTIVE EQU 2
+DEF BIT_RENTAL_OPPORTUNITY_USED EQU 0
+DEF BIT_RENTAL_ZONE_ENTERED EQU 7
+
+; Offer flag 0 latches identity/DVs; flag 1 latches the completed moveset.
+; Provider integration must still wait for safe delivery/opportunity wiring.
+DEF BIT_RENTAL_OFFER_IDENTITY EQU 0
+DEF BIT_RENTAL_OFFER_MOVES EQU 1
+
+; No ordinary caller yet. Repeated inspection never consumes RNG or changes
+; identity. The caller must clear the offer at a completed logical opportunity,
+; never merely on dialogue cancellation, bridge return, or lobby reload.
+RentalPrepareOfferIdentity::
+	call RentalCanPrepareOffer
+	ret nc
+	ld a, [wRentalOfferFlags]
+	bit BIT_RENTAL_OFFER_IDENTITY, a
+	jp nz, RentalValidateOfferIdentity
+	ld a, [wCurEnemyLevel]
+	push af
+	ld a, [wCurPartySpecies]
+	push af
+	ld a, [wCurSpecies]
+	push af
+	ld a, [wFormContextSpecies]
+	push af
+	ld a, [wFormContextForm]
+	push af
+	call RentalClearOfferBytes
+	call Random
+	ld b, a
+	ld e, 1
+	ld a, SALESMAN_CLASS_POKEBALL_MAX
+	cp b
+	jr nc, .classReady
+	inc e
+	ld a, SALESMAN_CLASS_GREATBALL_MAX
+	cp b
+	jr nc, .classReady
+	inc e
+.classReady
+	ld a, e
+	ld [wRentalOfferClass], a
+	rfarcall GetRewardMonLevel
+	ld a, [wCurEnemyLevel]
+	ld [wRentalOfferLevel], a
+	ld a, [wRentalOfferClass]
+	ld e, a
+	rfarcall Random_Pokemon_Selection_Far
+	ld a, d
+	ld [wRentalOfferSpecies], a
+	ld a, e
+	ld [wRentalOfferForm], a
+	call Random
+	ld [wRentalOfferDVs], a
+	call Random
+	ld [wRentalOfferDVs + 1], a
+	ld a, DV_BOOSTER
+	ld [wCurItem], a
+	rfarcall GetKeyItemPowerInE
+	ld a, e
+	and a
+	jr z, .dvsReady
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, RentalDVFloorTable
+	add hl, bc
+	ld e, [hl]
+	ld hl, wRentalOfferDVs
+	ld a, [hl]
+	call RentalApplyDVFloor
+	ld [hli], a
+	ld a, [hl]
+	call RentalApplyDVFloor
+	ld [hl], a
+.dvsReady
+	pop af
+	ld [wFormContextForm], a
+	pop af
+	ld [wFormContextSpecies], a
+	pop af
+	ld [wCurSpecies], a
+	pop af
+	ld [wCurPartySpecies], a
+	pop af
+	ld [wCurEnemyLevel], a
+	ld a, 1 << BIT_RENTAL_OFFER_IDENTITY
+	ld [wRentalOfferFlags], a
+	jr RentalValidateOfferIdentity
+
+RentalCanPrepareOffer:
+	ldh a, [hIsInBattle]
+	and a
+	ret nz
+	ld a, [wRentalState]
+	and a
+	ret nz
+	ld a, [wRentalOwner]
+	and a
+	ret nz
+	scf
+	ret
+
+; Carry = coherent identity. Fail closed on corrupted latched fields rather
+; than silently rerolling a displayed offer. Source/moves remain unfinished.
+RentalValidateOfferIdentity:
+	ld a, [wRentalOfferSpecies]
+	and a
+	ret z
+	ld a, [wRentalOfferForm]
+	cp 4
+	jr nc, .invalid
+	ld a, [wRentalOfferClass]
+	dec a
+	cp 3
+	jr nc, .invalid
+	ld a, [wRentalOfferLevel]
+	and a
+	ret z
+	cp MAX_LEVEL + 1
+	jr nc, .invalid
+	scf
+	ret
+.invalid
+	and a
+	ret
+
+RentalClearOfferIdentity::
+	call RentalCanPrepareOffer
+	ret nc
+	call RentalClearOfferBytes
+	scf
+	ret
+RentalClearOfferBytes:
+	ld hl, wRentalOfferSpecies
+	ld bc, wMainDataEnd - wRentalOfferSpecies
+	xor a
+	jp FillMemory
+
+; Exact half of the salesman's BCD-thousands price, encoded at assembly time.
+; Carry = quote in hMoney; no money/party mutation, no RNG or SRAM access.
+RentalQuoteOffer::
+	ld a, [wRentalOfferFlags]
+	bit BIT_RENTAL_OFFER_IDENTITY, a
+	jr z, .invalid
+	call RentalValidateOfferIdentity
+	ret nc
+	ld a, [wRentalOfferClass]
+	dec a
+	ld e, a
+	add a
+	add e
+	ld e, a
+	ld d, 0
+	ld hl, RentalPriceTable
+	add hl, de
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
+	scf
+	ret
+.invalid
+	and a
+	ret
+
+RentalPriceTable:
+	bcd3 (((SALESMAN_PRICE_POKEBALL_BCD >> 4) * 10 + (SALESMAN_PRICE_POKEBALL_BCD & $f)) * 1000) / 2
+	bcd3 (((SALESMAN_PRICE_GREATBALL_BCD >> 4) * 10 + (SALESMAN_PRICE_GREATBALL_BCD & $f)) * 1000) / 2
+	bcd3 (((SALESMAN_PRICE_ULTRABALL_BCD >> 4) * 10 + (SALESMAN_PRICE_ULTRABALL_BCD & $f)) * 1000) / 2
+
+; Same packed-nibble rule/floors as AddPartyMon and GetRogueOfferDVsFloored.
+; Capture the floor once so changing a key item later cannot change the offer.
+RentalApplyDVFloor:
+	push af
+	and $f
+	cp e
+	jr nc, .lowReady
+	ld a, e
+.lowReady
+	ld d, a
+	pop af
+	swap a
+	and $f
+	cp e
+	jr nc, .highReady
+	ld a, e
+.highReady
+	swap a
+	or d
+	ret
+RentalDVFloorTable:
+	db 6, 10, 13
+
+; Complete a stable offer without creating a player mon or charging money.
+; Enemy mon and the trainer/menu union are backed up on the 256-byte stack.
+; Header/learnset scratch is intentionally clobbered, as in identity generation.
+ASSERT PARTYMON_STRUCT_LENGTH % 2 == 0
+RentalPrepareOfferMoves::
+	call RentalPrepareOfferIdentity
+	ret nc
+	ld a, [wRentalOfferFlags]
+	bit BIT_RENTAL_OFFER_MOVES, a
+	jp nz, RentalValidateOfferMoves
+	ld a, [wCurEnemyLevel]
+	push af
+	ld a, [wCurPartySpecies]
+	push af
+	ld a, [wCurSpecies]
+	push af
+	ld a, [wFormContextSpecies]
+	push af
+	ld a, [wFormContextForm]
+	push af
+	ld a, [wEnemyPartyCount]
+	push af
+	ld a, [wEnemyMoveOrigins]
+	push af
+	ld hl, wEnemyMon1
+	ld b, PARTYMON_STRUCT_LENGTH / 2
+.saveEnemy
+	ld e, [hl]
+	inc hl
+	ld d, [hl]
+	inc hl
+	push de
+	dec b
+	jr nz, .saveEnemy
+; Include the adjacent byte in this even-sized backup; restore it unchanged.
+	ld hl, wPartyGenScratch
+	ld b, (wPartyGenScratchEnd - wPartyGenScratch + 1) / 2
+.saveScratch
+	ld e, [hl]
+	inc hl
+	ld d, [hl]
+	inc hl
+	push de
+	dec b
+	jr nz, .saveScratch
+	ld hl, wEnemyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	xor a
+	call FillMemory
+	inc a
+	ld [wEnemyPartyCount], a
+	ld a, [wRentalOfferSpecies]
+	ld [wEnemyMon1Species], a
+	ld a, [wRentalOfferForm]
+	swap a
+	add a
+	ld [wEnemyMon1CatchRate], a
+	ld a, [wRentalOfferLevel]
+	ld [wCurEnemyLevel], a
+	ld [wEnemyMon1Level], a
+	rfarcall RentalGenerateMovesForSlot
+	ld hl, wEnemyMon1Moves
+	ld de, wRentalOfferMoves
+	ld bc, NUM_MOVES
+	call CopyData
+	ld hl, wPartyGenScratch + ((wPartyGenScratchEnd - wPartyGenScratch + 1) / 2) * 2 - 1
+	ld b, (wPartyGenScratchEnd - wPartyGenScratch + 1) / 2
+.restoreScratch
+	pop de
+	ld [hl], d
+	dec hl
+	ld [hl], e
+	dec hl
+	dec b
+	jr nz, .restoreScratch
+	ld hl, wEnemyMon1 + PARTYMON_STRUCT_LENGTH - 1
+	ld b, PARTYMON_STRUCT_LENGTH / 2
+.restoreEnemy
+	pop de
+	ld [hl], d
+	dec hl
+	ld [hl], e
+	dec hl
+	dec b
+	jr nz, .restoreEnemy
+	pop af
+	ld [wEnemyMoveOrigins], a
+	pop af
+	ld [wEnemyPartyCount], a
+	pop af
+	ld [wFormContextForm], a
+	pop af
+	ld [wFormContextSpecies], a
+	pop af
+	ld [wCurSpecies], a
+	pop af
+	ld [wCurPartySpecies], a
+	pop af
+	ld [wCurEnemyLevel], a
+	call RentalValidateOfferMoves
+	ret nc
+	ld hl, wRentalOfferFlags
+	set BIT_RENTAL_OFFER_MOVES, [hl]
+	scf
+	ret
+
+RentalValidateOfferMoves:
+	call RentalValidateOfferIdentity
+	ret nc
+	ld hl, wRentalOfferMoves
+	ld a, [hl]
+	and a
+	ret z
+	ld b, NUM_MOVES
+.check
+	ld a, [hli]
+	cp NUM_ATTACKS + 1
+	jr nc, .invalid
+	dec b
+	jr nz, .check
+	scf
+	ret
+.invalid
+	and a
+	ret
+
+; Paid delivery API, still provider-free. No implicit reroll or box delivery.
+; Carry = success; e = 0 success, 1 unavailable, 2 invalid offer, 3 full party,
+; 4 insufficient money, 5 another spawn request pending. Failure is mutation-free
+; except hMoney/scratch. Caller must provide a complete displayed offer.
+RentalDeliverOffer::
+	call RentalCanPrepareOffer
+	ld e, 1
+	ret nc
+	ld a, [wRentalFlags]
+	bit BIT_RENTAL_OPPORTUNITY_USED, a
+	jp nz, .fail
+	ld e, 2
+	ld a, [wRentalOfferFlags]
+	and 3
+	cp 3
+	jp nz, .fail
+	call RentalValidateOfferMoves
+	jp nc, .invalid
+	ld e, 3
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	jp nc, .fail
+	ld e, 5
+	ld a, [wSpawnForm]
+	and a
+	jp nz, .fail
+	ld a, [wSpawnDVSlot]
+	and a
+	jp nz, .fail
+	call RentalQuoteOffer
+	call HasEnoughMoney
+	ld e, 4
+	jp c, .fail
+	ld a, [wMonDataLocation]
+	push af
+	ld a, $10                     ; player party, no blocking naming screen
+	ld [wMonDataLocation], a
+	ld a, [wRentalOfferSpecies]
+	ld [wCurPartySpecies], a
+	ld a, [wRentalOfferLevel]
+	ld [wCurEnemyLevel], a
+	ld a, [wRentalOfferForm]
+	ld [wSpawnForm], a
+	call AddPartyMon
+	jr nc, .creationFailed
+	pop af
+	ld [wMonDataLocation], a
+	call RentalFinalizeDeliveredMon
+; Re-quote after creation's scratch work, then charge exactly once. No money
+; mutation occurs in AddPartyMon/finalization between preflight and this point.
+	call RentalQuoteOffer
+	ld hl, hMoney + 2
+	ld de, wPlayerMoney + 2
+	ld c, 3
+	predef SubBCDPredef
+	ld a, [wPartyCount]
+	ld [wRentalOwner], a
+	ld a, RENTAL_RESERVED
+	ld [wRentalState], a
+	xor a
+	ld [wRentalZone], a
+	ld hl, wRentalFlags
+	set BIT_RENTAL_OPPORTUNITY_USED, [hl]
+	call RentalRecordMapLoad
+	ld e, 0
+	scf
+	ret
+.creationFailed
+	pop af
+	ld [wMonDataLocation], a
+	xor a
+	ld [wSpawnForm], a
+	ld [wSpawnDVSlot], a
+	ld e, 3
+	ret
+.invalid
+	ld e, 2
+.fail
+	and a
+	ret
+
+RentalDeliveredMonBase:
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	jp AddNTimes
+
+RentalFinalizeDeliveredMon:
+	call RentalDeliveredMonBase
+	ld bc, MON_DVS
+	add hl, bc
+	ld d, h
+	ld e, l
+	ld hl, wRentalOfferDVs
+	ld bc, 2
+	call CopyData
+	call RentalDeliveredMonBase
+	ld bc, MON_MOVES
+	add hl, bc
+	ld d, h
+	ld e, l
+	ld hl, wRentalOfferMoves
+	ld bc, NUM_MOVES
+	call CopyData
+	call RentalDeliveredMonBase
+	ld bc, MON_MOVES
+	add hl, bc
+	ld b, NUM_MOVES
+.pp
+	push bc
+	push hl
+	ld e, [hl]
+	ld a, e
+	and a
+	jr z, .ppReady
+	rfarcall GetMoveMaxPPFar
+.ppReady
+	pop hl
+	push hl
+	ld bc, MON_PP - MON_MOVES
+	add hl, bc
+	ld [hl], e
+	pop hl
+	inc hl
+	pop bc
+	dec b
+	jr nz, .pp
+	call RentalDeliveredMonBase
+	ld a, [hl]
+	ld [wCurSpecies], a
+	ld [wNamedObjectIndex], a
+	call PublishFormContext
+	call GetMonHeader
+	call GetMonName
+	ld hl, wPartyMonNicks
+	ld a, [wPartyCount]
+	dec a
+	call SkipFixedLengthTextEntries
+	ld d, h
+	ld e, l
+	ld hl, wNameBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	call RentalDeliveredMonBase
+	ld bc, MON_MAXHP
+	add hl, bc
+	ld d, h
+	ld e, l
+	rfarcall PrepareFusionAndBridgeRayCalcStats
+	ld hl, (MON_HP_EXP - 1) - MON_MAXHP
+	add hl, de
+	ld b, 0
+	call CalcStats
+	call RentalDeliveredMonBase
+	push hl
+	ld bc, MON_MAXHP
+	add hl, bc
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	pop hl
+	inc hl                        ; MON_HP
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	ret
 
 ; Keep the variant renderer in its existing bank. e identifies the HUD side;
 ; the rental uses a separate cell and the actual player party slot.
@@ -111,9 +597,6 @@ RentalDrawStatusMarker::
 ; never open text, upgrade a daycare Pokemon, or save from this seam.
 ; An active contract keeps its root map across internal maps and reloads.
 RentalRecordMapLoad::
-	ld a, [wRentalState]
-	cp RENTAL_RESERVED
-	ret nz
 	call GetCurMapStageClass
 	and 3
 	jr nz, .bind
@@ -128,6 +611,11 @@ RentalRecordMapLoad::
 	cp b
 	jr nz, .scan
 .bind
+	ld hl, wRentalFlags
+	set BIT_RENTAL_ZONE_ENTERED, [hl]
+	ld a, [wRentalState]
+	cp RENTAL_RESERVED
+	ret nz
 	ldh a, [hCurMap]
 	ld [wRentalZone], a
 	ld a, RENTAL_ACTIVE
@@ -148,20 +636,37 @@ RentalRecordMapLoad::
 ; the next destination. A settlement save can therefore resume hub setup on
 ; Continue. Reserved rentals survive pre-use hub/Dorm/bridge visits.
 RentalSettleZoneReturn::
-	ld a, [wRentalState]
-	cp RENTAL_ACTIVE
-	ret nz
 	ldh a, [hCurMap]
 	cp INDIGO_PLATEAU_LOBBY
 	jr z, .settle
 	cp REWARD_ROOM
 	ret nz
 .settle
+	ld a, [wRentalState]
+	cp RENTAL_ACTIVE
+	jp nz, RentalAdvanceOpportunity
 	call UpdateSprites
 	call RentalSettleAndSave
 	ret nc
 	ld de, RentalTeamReadyText
 	jr RentalSettlementPopup
+
+ ; Advance only after a real ordinary zone was entered. No rental is required.
+; Preserve a reserved contract and refuse pending run-end/corrupt ownership.
+; Called again before settlement saves, so Continue cannot revive the old offer.
+RentalAdvanceOpportunity::
+	ld a, [wRentalState]
+	and a
+	ret nz
+	ld a, [wRentalOwner]
+	and a
+	ret nz
+	ld hl, wRentalFlags
+	bit BIT_RENTAL_ZONE_ENTERED, [hl]
+	ret z
+	res BIT_RENTAL_ZONE_ENTERED, [hl]
+	res BIT_RENTAL_OPPORTUNITY_USED, [hl]
+	jp RentalClearOfferBytes
 
 ; Match RogueCreditPopupCheck's bounded map overlay lifecycle. Buffer3 is
 ; temporary screen storage, never saved contract state. Settlement has already
@@ -850,6 +1355,7 @@ RentalSettleBoxedAndSave::
 	xor a
 	ld [wRentalState], a
 	ld [wRentalZone], a
+	call RentalAdvanceOpportunity
 	rfarcall SaveGameData
 	scf
 	ret
@@ -1048,6 +1554,7 @@ RentalSettleAndSave::
 	ld [wPartyAndBillsPCSavedMenuItem], a
 	ld [wRentalState], a
 	ld [wRentalZone], a
+	call RentalAdvanceOpportunity
 	rfarcall SaveGameData
 	scf
 	ret
@@ -1058,3 +1565,27 @@ RentalSettleAndSave::
 	ld a, RENTAL_RUN_END_SAVE_PENDING
 	ld [wRentalState], a
 	jp HandleBlackOut
+
+; e = curated origin ID. Carry = official Stadium rental provenance.
+; Bitmap is local to this bank; no text-label heuristics at runtime.
+RentalIsStadiumOrigin::
+	ld a, e
+	and 7
+	ld c, a
+	ld a, e
+	srl a
+	srl a
+	srl a
+	ld e, a
+	ld d, 0
+	ld hl, RentalStadiumOrigins
+	add hl, de
+	ld a, [hl]
+	inc c
+.shift
+	srl a
+	dec c
+	jr nz, .shift
+	ret
+
+INCLUDE "data/trainers/rental_origins.asm"
