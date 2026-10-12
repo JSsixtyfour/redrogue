@@ -458,16 +458,16 @@ his teams in the original games, base forms only, and his starter's own line is 
 Magikarp waits for band 2, when the fodder levels are high enough to field a Gyarados.
 
 **Band 1: rounds 1-2**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Zubat, Gastly, Magnemite, Sneasel (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, (johto)
 
 **Band 2: rounds 3-4**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
 
 **Band 3: rounds 5-6**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
 
 **Band 4: rounds 7-9**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Sneasel (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
 
 ### GiovanniMiniBoss (Giovanni)
 
