@@ -86,7 +86,7 @@ RogueGymLeaderVictory::
 	; compile-time CheckEvent/SetEvent call sites. This event number is
 	; ~2600+, so it travels in de (a 16-bit add), never a - NUM_EVENTS is
 	; thousands, so it does not fit an 8-bit register or an 8-bit `add a, n`.
-	call RogueGetJohtoPrismIndex   ; a = 0-2 for FALKNER/BUGSY/WHITNEY, carry if one
+	call RogueGetJohtoPrismIndex   ; a = 0-7 for FALKNER..CLAIR, carry if one
 	jr nc, .kantoEvent
 	add a
 	ld e, a
@@ -114,9 +114,10 @@ RogueGymLeaderVictory::
 
 ; wGymLeaderNo (1-8) -> a = signature type. Order is badge order, matching
 ; the `ld a, $N / ld [wGymLeaderNo], a` in each gym script.
-; Johto leaders reuse wGymLeaderNo 1-8 (Falkner is 1, like Brock), so the
-; three with their own cartridge are told apart by wTrainerClass first;
-; the other five Johto leaders still grant their Kanto counterpart's type.
+; Johto leaders reuse wGymLeaderNo 1-8 (Falkner is 1, like Brock), so they
+; are told apart by wTrainerClass first and each grants their OWN type, never
+; their Kanto counterpart's. Janine has no entry: she reuses Koga's slot 5,
+; and both are Poison.
 RogueGetGymLeaderType:
 	call RogueGetJohtoPrismIndex
 	ld hl, JohtoCartridgeTable
@@ -131,27 +132,41 @@ RogueGetGymLeaderType:
 	ld a, [hl]
 	ret
 
-; OUTPUT: carry + a = 0-2 when the beaten leader is FALKNER / BUGSY / WHITNEY
-; (consecutive trainer classes), else no carry. CLOBBERS: af
+; OUTPUT: carry + a = 0-7 when the beaten leader is one of the eight Johto
+; leaders FALKNER..CLAIR (consecutive trainer classes), else no carry.
+; CLOBBERS: af
 RogueGetJohtoPrismIndex:
 	ld a, [wTrainerClass]
 	sub FALKNER
-	cp WHITNEY - FALKNER + 1
+	cp CLAIR - FALKNER + 1
 	ret
-	ASSERT BUGSY == FALKNER + 1 && WHITNEY == FALKNER + 2
+	ASSERT CLAIR == FALKNER + 7
 
 ; The NORMAL / FLYING / BUG trio used to be the Champion's (2026-09-23 moved).
+; Jasmine's Steel is Rock per the project type rules (Steelix is ROCK/GROUND).
 JohtoCartridgeTable:
 	db FLYING        ; Falkner
 	db BUG           ; Bugsy
 	db NORMAL        ; Whitney
+	db GHOST         ; Morty
+	db FIGHTING      ; Chuck
+	db ROCK          ; Jasmine
+	db ICE           ; Pryce
+	db DRAGON        ; Clair
 
-; Separate events, not GYM1-3: Brock and Falkner share wGymLeaderNo 1, so a
-; shared event would silence whichever of the two was beaten second.
+; Keyed by TYPE, not by gym slot: Brock and Falkner share wGymLeaderNo 1, so a
+; slot-keyed event would silence whichever of the two was beaten second. The
+; five later leaders reuse the event of whoever else grants their type, so the
+; "new cartridge" message fires once per cartridge, not once per grantor.
 JohtoPrismEventTable:
 	dw EVENT_PRISM_FALKNER_SHOWN
 	dw EVENT_PRISM_BUGSY_SHOWN
 	dw EVENT_PRISM_WHITNEY_SHOWN
+	dw EVENT_PRISM_E4_GHOST_SHOWN    ; Morty, shared with Agatha
+	dw EVENT_PRISM_E4_FIGHTING_SHOWN ; Chuck, shared with Bruno
+	dw EVENT_PRISM_GYM1_SHOWN        ; Jasmine, shared with Brock (Rock)
+	dw EVENT_PRISM_E4_ICE_SHOWN      ; Pryce, shared with Lorelei
+	dw EVENT_PRISM_E4_DRAGON_SHOWN   ; Clair, shared with Lance
 
 GymLeaderCartridgeTable:
 	db ROCK          ; 1 Brock
