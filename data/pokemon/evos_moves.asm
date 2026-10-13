@@ -4005,10 +4005,15 @@ MamoswineEvosMoves:
 	db 0
 ; Learnset - Mamoswine evolves from Piloswine (added in batch 6, see
 ; PiloswineEvosMoves for the EVOLVE_LEVEL, 44 wiring).
-	db 32, METRONOME ; FILLER - real moveset TBD
-	db 40, METRONOME ; FILLER - real moveset TBD
-	db 48, METRONOME ; FILLER - real moveset TBD
-	db 56, METRONOME ; FILLER - real moveset TBD
+    db 7, SAND_ATTACK ; was POWDER_SNOW
+	db 19, DEFENSE_CURL ; was ENDURE
+	db 28, TAKE_DOWN
+	db 33, FURY_ATTACK
+    db 34, HORN_ATTACK
+	db 39, MIST
+    db 42, EARTHQUAKE
+	db 48, BLIZZARD
+    db 52, AMNESIA
 	db 0
 
 MismagiusEvosMoves:
@@ -4369,11 +4374,6 @@ SwinubEvosMoves:
 
 PiloswineEvosMoves:
 ; Evolutions
-; Canon Piloswine has no further evolution; Mamoswine is a Gen 4 addition to
-; this line kept in the roster (see MamoswineEvosMoves's own note). Mirrors
-; KEP's own precedent for Tangela->Tangrowth: a level-up threshold standing
-; in for the real "level up knowing Ancient Power" condition, which this
-; engine cannot express directly.
 	db EVOLVE_LEVEL, 44, MAMOSWINE
 	db 0
 ; Learnset - HORN_ATTACK already granted at level 1
@@ -4382,8 +4382,9 @@ PiloswineEvosMoves:
 	db 28, TAKE_DOWN
 	db 33, FURY_ATTACK
     db 34, HORN_ATTACK
-	db 42, MIST
-	db 56, BLIZZARD
+	db 39, MIST
+	db 48, BLIZZARD
+    db 52, AMNESIA
 	db 0
 
 CorsolaEvosMoves:

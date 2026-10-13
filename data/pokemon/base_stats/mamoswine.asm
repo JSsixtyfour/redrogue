@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/mamoswine.dim" ; sprite dimensions
 	dw MamoswinePicFront, MamoswinePicBack
 
-	db PECK, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset - FILLER, expand later
+	db PECK, HORN_ATTACK, NO_MOVE, NO_MOVE ; level 1 learnset - FILLER, expand later
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        \
-	     DOUBLE_TEAM,  BIDE,         REST,         SUBSTITUTE,   BLIZZARD
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
+	     ICE_BEAM,     BLIZZARD,     RAGE,         EARTHQUAKE,   FISSURE,      \
+	     DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   \
+	     REST,         SUBSTITUTE,   STRENGTH,     ROCK_SLIDE
 	; end
 
 	db BANK(MamoswinePicFront) ; pic bank

@@ -458,16 +458,16 @@ his teams in the original games, base forms only, and his starter's own line is 
 Magikarp waits for band 2, when the fodder levels are high enough to field a Gyarados.
 
 **Band 1: rounds 1-2**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, sneasel (johto), sandshrew, vulpix, shellder, slowpoke, machop, larvitar (johto), cubone, clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
 
 **Band 2: rounds 3-4**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar, cubone, clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
 
 **Band 3: rounds 5-6**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
+- Fodder: Pidgey, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), tauros, Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar (johto), clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
 
 **Band 4: rounds 7-9**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Zubat, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto)
+- Fodder: Pidgey, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), tauros, Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar (johto), clefairy, Electabuzz, Pinsir, houndour (johto), dratini, Nidoran M, Nidoran F, geodude
 
 ### GiovanniMiniBoss (Giovanni)
 
@@ -648,7 +648,7 @@ eeveelutions and Scizor/Electivire: only an Eevee / Scyther / Electabuzz starter
 with those. Moved from `RivalThreePool` (party roster Phase 5, 2026-10-07), entry for entry.
 
 **Band 1: the Champion**
-- Fodder: Growlithe, Ponyta, Weedle, Charmander, Nidoran M, Electabuzz, Slowpoke, Pidgey, Bulbasaur, Squirtle, Rhyhorn, Nidoran F, Magmar, Scyther, Krabby, Geodude, Doduo, Eevee, Vaporeon, Jolteon, Flareon, Pinsir, Spearow, Abra, Horsea, Magikarp, Exeggcute, Sandshrew, Vulpix, Magnemite, Shellder, Machop, Aerodactyl, Tauros, Cubone, Clefairy, Gastly, Dratini, Zapdos, Rattata, Scizor (johto), Larvitar (johto), Houndour (johto), Skarmory (johto), Heracross (johto), Miltank (johto), Swinub (johto), Espeon (johto), Umbreon (johto), Electivire (warp), Glaceon (warp), Sylveon (warp), Leafeon (warp)
+- Fodder: Growlithe, Charmander, Nidoran M, Electivire (time warp), Slowpoke, Bulbasaur, Squirtle, Rhyhorn, Nidoran F, Scyther, Geodude, Doduo, Eevee, Abra, Kingdra (Johto), Magikarp, Exeggcute, Shellder, Tauros, Clefairy, Gastly, Dratini, Zapdos, Larvitar (johto), Houndour (johto), Skarmory (johto), Heracross (johto), Miltank (johto), Mamoswine (timewarp), Nidoran M, Nidoran F
 
 ### ChampionLance (Champion Lance)
 
@@ -657,7 +657,7 @@ now has his own team at Champion levels. Seeded from the Elite Four Lance's pool
 forms) with his signature dragons as aces; edit freely.
 
 **Band 1: the Champion**
-- Aces: Dragonite, Dragonite, Gyarados, Aerodactyl, Charizard, Kingdra (johto), Tyranitar (johto)
+- Aces: Dragonite, Gyarados, Aerodactyl, Charizard, Kingdra (johto), Tyranitar (johto)
 - Fodder: Dratini, Magikarp, Aerodactyl, Charmander, Horsea, Lapras, Exeggcute, Kangaskhan, Growlithe, Snorlax, Electabuzz, Larvitar (johto), Totodile (johto), Mareep (johto), Alolan Exeggutor (warp)
 
 ### ProfOak (Prof. Oak)
