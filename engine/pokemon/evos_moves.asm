@@ -135,13 +135,17 @@ Evolution_PartyMonLoop: ; loop over party mons
 .checkTradeEvo
 	ld a, [wLinkState]
 	cp LINK_STATE_TRADING
-	jp nz, .nextEvoEntry1 ; if not trading, go to the next evolution entry
-	ld a, [hli] ; level requirement
-	ld b, a
+	jr nz, .tradeLevelEvo
+; Trading bypasses the level requirement; hl must point at the target species.
+	inc hl
 	ld a, [wLoadedMonLevel]
-	cp b ; is the mon's level greater than the evolution requirement?
-	jp c, Evolution_PartyMonLoop ; if so, go the next mon
 	jr .doEvolution
+.tradeLevelEvo
+; Otherwise use the authored level threshold, only on ordinary level-up checks.
+	ld a, [wForceEvolution]
+	and a
+	jp nz, .nextEvoEntry1
+	jr .checkLevel
 .checkItemEvo
 	ld a, [hli]
 	ld b, a ; evolution item

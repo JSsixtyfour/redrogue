@@ -2,7 +2,7 @@
 ; - Evolution methods:
 ;    * db EVOLVE_LEVEL, level, species
 ;    * db EVOLVE_ITEM, used item, min level (1), species
-;    * db EVOLVE_TRADE, min level (1), species
+;    * db EVOLVE_TRADE, level-up threshold, species (trade at any level)
 ; - db 0 ; no more evolutions
 ; - Learnset (in increasing level order):
 ;    * db level, move
@@ -1110,7 +1110,7 @@ SlowpokeEvosMoves:
     
 KadabraEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 42, ALAKAZAM
+	db EVOLVE_TRADE, 42, ALAKAZAM
 	db 0
 ; Learnset
 	db 16, CONFUSION
@@ -1133,7 +1133,7 @@ KadabraEvosMoves:
 
 GravelerEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 38, GOLEM
+	db EVOLVE_TRADE, 38, GOLEM
 	db 0
 ; Learnset
 	db 6, DEFENSE_CURL
@@ -1177,7 +1177,7 @@ ChanseyEvosMoves:
 
 MachokeEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 38, MACHAMP
+	db EVOLVE_TRADE, 38, MACHAMP
 	db 0
 ; Learnset
 	db 5, LEER
@@ -3186,7 +3186,7 @@ FlaaffyEvosMoves:
 
 HaunterEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 42, GENGAR
+	db EVOLVE_TRADE, 42, GENGAR
 	db 0
 ; Learnset
 	db 10, SMOG

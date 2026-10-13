@@ -952,18 +952,14 @@ EvolveMonByLevel:
 	;else item evolve
 	inc hl              ; past the item id; hl -> [level][species]
 .trade_evolve
-; EVOLVE_TRADE is handled here, NOT skipped. A trade evolution can never fire
-; in a run - the player path (engine/pokemon/evos_moves.asm) requires
-; LINK_STATE_TRADING - so skipping it on the trainer side too made PORYGON2,
-; PORYGON_Z, RHYPERIOR, KLEAVOR, SLOWKING, KINGDRA and POLITOED unobtainable by
-; ANYONE. That contradicts data/trainers/pools.asm's own design note, which
-; lists those species as deliberately reached "by including its Kanto/Johto
-; pre-evolution and letting ScaleTrainer_evolution promote it".
+; EVOLVE_TRADE is handled here, NOT skipped. Generated trainer/reward mons
+; use the authored level threshold. The player path also uses that threshold
+; on level-up, or bypasses it when actually trading.
 ;
 ; It shares EVOLVE_ITEM's level-35 floor. Both are "cannot happen in the wild"
 ; methods and neither belongs on an early-round trainer, so they take one gate
-; rather than each inventing its own. Every authored EVOLVE_TRADE entry is at
-; level 40 today, so the per-entry level below dominates in practice; the floor
+; rather than each inventing its own. Authored EVOLVE_TRADE entries are at
+; level 38 or higher, so the per-entry level below dominates in practice; the floor
 ; is here to hold if one is ever written lower.
 ;
 ; The two layouts differ - EVOLVE_ITEM is [method][item][level][species] and
