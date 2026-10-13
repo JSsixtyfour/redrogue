@@ -25,6 +25,7 @@ An entry is a species name ("Nidoran M", "Mr Mime", "Porygon2") or a form name
 ("Hisuian Growlithe", "Espeon", "Aqua Tauros"), optionally tagged (johto) or
 (warp) to put it in that run; untagged entries are the Kanto run. Listing an
 entry twice doubles its odds. Within a run, doc order is asm order.
+Run tags are case-insensitive; (time warp) and (timewarp) also mean (warp).
 
 EMITTED SHAPE. Per character, band 1..n, lists in Ace / Fod / Off order, one
 `band_pool <Prefix>_<Ace|Fod|Off><band>` each. Pool ORDER IS POOL IDS: pools.asm
@@ -176,7 +177,7 @@ class Names:
 # characters: list of dicts {section, prefix, header, prose, bands}
 # bands: {band: {kind: [(species, form, group), ...]}}
 
-ENTRY_RE = re.compile(r"^(?P<name>.+?)(?:\s*\((?P<tag>johto|warp)\))?$")
+ENTRY_RE = re.compile(r"^(?P<name>.+?)(?:\s*\((?P<tag>johto|(?:time\s*)?warp)\))?$", re.I)
 
 
 def parse_doc(text, names):
@@ -232,7 +233,9 @@ def parse_doc(text, names):
                     species, form = names.lookup(em.group("name"))
                 except RosterError as e:
                     fail(str(e))
-                entries.append((species, form, em.group("tag") or "kanto"))
+                tag = (em.group("tag") or "kanto").lower()
+                group = "warp" if tag.endswith("warp") else tag
+                entries.append((species, form, group))
             if not entries:
                 fail("{} band {} {} is empty; delete the line instead".format(
                     cur["prefix"], band, bullet))

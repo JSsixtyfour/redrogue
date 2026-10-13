@@ -63,6 +63,10 @@ class BatchTwoSourceTest(unittest.TestCase):
         source = (ROOT / "custom_functions" / "procedural_cave_gen.asm").read_text(encoding="utf-8")
         table = source.split("\n.speciesSprites\n", 1)[1].split(".speciesSpritesEnd", 1)[0]
         for name in WALKING:
+            if name == "MEW":
+                # The 16x96 asset is a party pose sheet, not follower art.
+                self.assertNotRegex(table, r"\b(?:MEW|SPRITE_MEW)\b")
+                continue
             self.assertIn(f"db {name}, SPRITE_{name}", table)
         for name in STANDING + ONE_POSE:
             self.assertNotIn(f"SPRITE_{name}", table, f"{name} has no walk frames")

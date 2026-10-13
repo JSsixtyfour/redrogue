@@ -1,28 +1,35 @@
 #!/usr/bin/env python3
-"""Measure where Facility warp-pad landing sites can live (PROCEDURAL_SUBROOMS_PLAN Phase 0).
+"""Measure and check Facility warp-pad sites (PROCEDURAL_SUBROOMS_PLAN Phases 0 and 2).
 
 Warp arrival coordinates are fixed in ROM (LoadDestinationWarpPosition reads
 the def_warps_to table), so a pad can only land on one of K pre-declared
-warp_events. Before choosing those K coordinates, this audit measures, per
-block, how often that block would be a VALID pad site across a seed corpus.
+warp_events. This audit applies the SAME validity rule PFacPlacePads uses at
+runtime, so the rates it reports are the rates the game produces.
 
-A block is a valid site when all of these hold:
-  1. all four quadrants are walkable floor;
-  2. it lies inside the floor rect of a MIDDLE room (ids 1-10: not the entry
-     room 0, not the exit/boss room 11);
-  3. no real ball, fake ball or the boss stands on any of its quadrants;
-  4. it is reachable from the entrance;
-  5. treating the whole block as SOLID strands nothing else. A pad teleports
-     whoever steps on it, so it is a wall for walking purposes, and a pad in
-     a one-wide neck would cut the map.
+A site block is valid when:
+  1. it and all 8 neighbouring blocks are plain floor (PFAC_FLOOR). Blocking
+     the middle of a 3x3 floor patch can never cut a path: any route through
+     it can go round on the ring of 8. (A pad teleports whoever steps on it,
+     so for walking it is a wall.) The flood fill below verifies this claim
+     on every layout instead of trusting it;
+  2. no real ball, fake ball, the boss or the stage-event hideout lies in
+     the 3x3 blocks centred on the site;
+  3. it is not inside the exit (boss) room, room 11, so a pad cannot skip the
+     stage.
+A pair needs two valid sites at least PAD_MIN_DISTANCE blocks apart
+(Manhattan), so a pad is a shortcut and not a hop across one room.
 
 Usage (from the repo root, inside WSL):
-    python3 tools/pyboy_smoke/audit_facility_pad_sites.py [--seeds N] [--dump N]
+    python3 tools/pyboy_smoke/audit_facility_pad_sites.py [--seeds N] [--k K]
+    python3 tools/pyboy_smoke/audit_facility_pad_sites.py --evaluate [--prefix N]
+    python3 tools/pyboy_smoke/audit_facility_pad_sites.py --scan-block 0x2F
 """
 
 from __future__ import annotations
 
 import argparse
+import io
+import re
 import sys
 from collections import Counter
 from itertools import combinations
@@ -34,20 +41,31 @@ from harness import RedRogueHarness  # noqa: E402
 from audit_facility_stranded_quadrants import (  # noqa: E402
     BLOCKSET, ENTRANCE, flood, passable,
 )
-import io  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+SITE_CONSTANTS = REPO_ROOT / "constants" / "facility_pad_site_constants.asm"
 
+PFAC_FLOOR = 0x0E
 ROOM_STRIDE = 6
-ROOM_MAX = 12
-ENTRY_ROOM = 0
 EXIT_ROOM = 11
 FAKE_BALL_OFFSET = 72  # sProcFacilityGenScratch bytes 72-79: fake-ball Y/X pairs
+NO_HIDEOUT = 0xFF      # STAGE_EVENT_NO_HIDEOUT
+PAD_MIN_DISTANCE = 8   # blocks, Manhattan; keep equal to FACILITY_PAD_MIN_DISTANCE
 
 
-def block_cells(bx: int, by: int) -> set[tuple[int, int]]:
-    return {(2 * bx + qx, 2 * by + qy) for qy in range(2) for qx in range(2)}
+def load_pad_sites() -> tuple[tuple[int, int], ...]:
+    """The shipped site list, from the one constants file the ROM also uses."""
+    if not SITE_CONSTANTS.exists():
+        return ()
+    text = SITE_CONSTANTS.read_text(encoding="utf-8")
+    return tuple((int(x), int(y)) for x, y in re.findall(r"^\s*pad_site\s+(\d+),\s*(\d+)", text, re.M))
+
+
+PAD_SITES = load_pad_sites()
+FIRST_PAD_WARP = 3   # FACILITY_FIRST_PAD_WARP
+PAD_BLOCK = 0x2F
+PAD_NONE = 0xFF
 
 
 def layout(harness, seed, edge, baseline):
@@ -60,61 +78,153 @@ def layout(harness, seed, edge, baseline):
     scratch = harness.read_sram_bytes("sProcFacilityGenScratch", 81)
     balls = harness.read_sram_bytes("sProcFacilityBallXY", 8)
     boss = harness.read_bytes("wSprite01StateData2MapY", 2)
-    return playable, scratch, balls, boss
+    hideout = harness.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
+    warps = harness.read_bytes("wWarpEntries", 4 * (FIRST_PAD_WARP + len(PAD_SITES)))
+    return playable, scratch, balls, boss, hideout, warps
 
 
-def rooms_from(scratch):
-    rooms = []
-    for rid in range(ROOM_MAX):
-        x, y, w, h, parent, typ = scratch[rid * ROOM_STRIDE: rid * ROOM_STRIDE + 6]
-        rooms.append((rid, x, y, w, h, parent, typ))
-    return rooms
-
-
-def object_tiles(scratch, balls, boss):
-    """Tile coords (no map border offset) of every ball and the boss."""
-    tiles = set()
+def object_blocks(scratch, balls, boss, hideout) -> set[tuple[int, int]]:
+    """Block coords of every ball, the boss and the hideout."""
+    blocks = set()
     for i in range(4):
         y, x = balls[2 * i], balls[2 * i + 1]
-        tiles.add((x - 4, y - 4))
-    for i in range(4):
+        blocks.add(((x - 4) // 2, (y - 4) // 2))
         y, x = scratch[FAKE_BALL_OFFSET + 2 * i], scratch[FAKE_BALL_OFFSET + 2 * i + 1]
-        tiles.add((x - 4, y - 4))
-    tiles.add((boss[1] - 4, boss[0] - 4))
-    return tiles
+        blocks.add(((x - 4) // 2, (y - 4) // 2))
+    blocks.add(((boss[1] - 4) // 2, (boss[0] - 4) // 2))
+    if hideout[0] != NO_HIDEOUT:
+        blocks.add((hideout[0], hideout[1]))
+    return blocks
 
 
-def valid_sites(blockset, playable, scratch, balls, boss):
+RULE = "quad"  # set by --rule; "quad" is what the ROM does
+
+
+def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
+    """Runtime rule. The pad is block $2F, whose only non-floor quadrant is the
+    bottom-right one (the warp tile), so for walking only THAT quadrant is a
+    wall. If the 8 quadrants around it are walkable, any route through it can
+    go round, so nothing is stranded.
+      ring:  the site block is PFAC_FLOOR and the blocks to its E, S and SE
+             are PFAC_FLOOR (block-id test, what the asm does)
+      quad:  the site block is PFAC_FLOOR and the five outside ring quadrants
+             are walkable per the blockset (precise, for comparison)
+      3x3:   the site and all 8 neighbouring blocks are PFAC_FLOOR"""
+    occupied = object_blocks(scratch, balls, boss, hideout)
+    ex, ey, ew, eh = scratch[EXIT_ROOM * ROOM_STRIDE: EXIT_ROOM * ROOM_STRIDE + 4]
+    cells = passable(blockset, playable) if RULE == "quad" else None
+    sites = set()
+    for by in range(1, 19):
+        for bx in range(1, 19):
+            if playable[by * 20 + bx] != PFAC_FLOOR:
+                continue
+            if RULE == "3x3":
+                patch = [(bx + dx, by + dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
+            else:
+                patch = [(bx, by), (bx + 1, by), (bx, by + 1), (bx + 1, by + 1)]
+            if RULE in ("3x3", "ring"):
+                if any(playable[y * 20 + x] != PFAC_FLOOR for x, y in patch):
+                    continue
+            else:
+                qx, qy = 2 * bx + 1, 2 * by + 1
+                ring = [(qx + 1, qy - 1), (qx + 1, qy), (qx + 1, qy + 1), (qx, qy + 1), (qx - 1, qy + 1)]
+                if any(q not in cells for q in ring):
+                    continue
+            # Objects: the 3x3 blocks centred on the site (PFacPadObjectsClear).
+            if any((bx + dx, by + dy) in occupied for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                continue
+            if ex <= bx < ex + ew and ey <= by < ey + eh:
+                continue
+            sites.add((bx, by))
+    return sites
+
+
+def strands_nothing(blockset, playable, site) -> bool:
     cells = passable(blockset, playable)
     reachable = flood(cells, ENTRANCE)
-    occupied = object_tiles(scratch, balls, boss)
-    sites = {}
-    for rid, x, y, w, h, _parent, _typ in rooms_from(scratch):
-        if rid in (ENTRY_ROOM, EXIT_ROOM) or w == 0:
-            continue
-        for by in range(y, y + h):
-            for bx in range(x, x + w):
-                if not (0 <= bx < 20 and 0 <= by < 20):
-                    continue
-                quads = block_cells(bx, by)
-                if not quads <= cells or not quads <= reachable:
-                    continue
-                if quads & occupied:
-                    continue
-                rest = flood(cells - quads, ENTRANCE)
-                if rest != reachable - quads:
-                    continue
-                sites[(bx, by)] = rid
-    return sites  # block -> room id
+    bx, by = site
+    pad = {(2 * bx + 1, 2 * by + 1)}  # the only non-floor quadrant of block $2F
+    return flood(cells - pad, ENTRANCE) == reachable - pad
+
+
+def unstamp(playable, scratch):
+    """The map as it was before PFacPlacePads stamped its two pads (the model
+    judges sites on that map; a stamped site is no longer PFAC_FLOOR)."""
+    before = list(playable)
+    if scratch[0] < len(PAD_SITES) and scratch[1] < len(PAD_SITES):
+        for site in scratch[:2]:
+            x, y = PAD_SITES[site]
+            if before[y * 20 + x] == PAD_BLOCK:
+                before[y * 20 + x] = PFAC_FLOOR
+    return tuple(before)
+
+
+def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -> int:
+    """Compare what PFacPlacePads/PFacArmPads did with this audit's own model."""
+    a, b = scratch[0], scratch[1]
+    # The model judges the map as it was BEFORE the two pads were stamped.
+    before = list(playable)
+    placed = a != PAD_NONE
+    if placed:
+        for site in (a, b):
+            x, y = PAD_SITES[site]
+            before[y * 20 + x] = PFAC_FLOOR
+    sites = valid_sites(tuple(before), scratch, balls, boss, hideout, BLOCKSET.read_bytes())
+    shipped = sites & set(PAD_SITES)
+    possible = has_pair(shipped)
+    tally["possible"] += possible
+    problems = []
+    if not placed:
+        if b != PAD_NONE:
+            problems.append(f"half a pair stored: {a}, {b}")
+    else:
+        tally["placed"] += 1
+        tally["placed_when_possible"] += possible
+        ends = [PAD_SITES[a], PAD_SITES[b]]
+        for end in ends:
+            if end not in sites:
+                problems.append(f"end {end} fails the model")
+            if playable[end[1] * 20 + end[0]] != PAD_BLOCK:
+                problems.append(f"end {end} is not the pad block")
+        if abs(ends[0][0] - ends[1][0]) + abs(ends[0][1] - ends[1][1]) < PAD_MIN_DISTANCE:
+            problems.append(f"ends {ends} are too close")
+    for n, (x, y) in enumerate(PAD_SITES):
+        entry = warps[4 * (FIRST_PAD_WARP + n): 4 * (FIRST_PAD_WARP + n) + 4]
+        if placed and n in (a, b):
+            partner = b if n == a else a
+            want = [2 * y + 1, 2 * x + 1, FIRST_PAD_WARP + partner]
+            if entry[:3] != want:
+                problems.append(f"site {n} armed as {entry[:3]}, want {want}")
+        elif entry[0] != PAD_NONE:
+            problems.append(f"site {n} not disarmed: {entry}")
+    for line in problems:
+        print(f"seed {seed}: {line}")
+    return len(problems)
+
+
+def has_pair(sites) -> bool:
+    return any(abs(a[0] - b[0]) + abs(a[1] - b[1]) >= PAD_MIN_DISTANCE
+               for a, b in combinations(sites, 2))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=200)
-    parser.add_argument("--dump", type=int, default=0,
-                        help="print raw room records / ball coords for N seeds and stop")
-    parser.add_argument("--k", type=int, default=8, help="site-set size to evaluate")
+    parser.add_argument("--k", type=int, default=27, help="site-set size to pick")
+    parser.add_argument("--seed-state", type=lambda s: int(s, 0), default=0x1234_5678,
+                        help="xorshift start state; change it for an out-of-sample corpus")
+    parser.add_argument("--evaluate", action="store_true",
+                        help="score the shipped PAD_SITES instead of picking a new set")
+    parser.add_argument("--prefix", type=int, default=0,
+                        help="with --evaluate: score only the first N sites")
+    parser.add_argument("--scan-block", type=lambda s: int(s, 0), default=None,
+                        help="report every layout that contains this block id, then stop")
+    parser.add_argument("--rule", choices=("ring", "quad", "3x3"), default="quad")
+    parser.add_argument("--runtime", action="store_true",
+                        help="check the pair PFacPlacePads actually placed on each layout")
     args = parser.parse_args()
+    global RULE
+    RULE = args.rule
 
     blockset = BLOCKSET.read_bytes()
     harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
@@ -123,68 +233,68 @@ def main() -> int:
     baseline = io.BytesIO()
     harness.save_state(baseline)
 
-    state = 0x1234_5678
+    state = args.seed_state
     per_layout_sites = []
     heat: Counter = Counter()
-    count = args.dump or args.seeds
-    for index in range(count):
+    scan_hits = 0
+    stranding = 0
+    problems = 0
+    runtime = Counter()
+    for _ in range(args.seeds):
         state ^= (state << 13) & 0xFFFFFFFF
         state ^= state >> 17
         state ^= (state << 5) & 0xFFFFFFFF
         seed = [(state >> shift) & 0xFF for shift in (0, 8, 16, 24)]
         # Exit edge 0 (north) only: W/E are debug-only per sram.asm.
-        playable, scratch, balls, boss = layout(harness, seed, 0, baseline)
-        if args.dump:
-            print(f"--- seed {' '.join(f'{b:02X}' for b in seed)}")
-            for room in rooms_from(scratch):
-                print("  room %2d x=%3d y=%3d w=%3d h=%3d parent=%3d type=%02X" % room)
-            print("  balls YX", balls, " fake YX", scratch[72:80], " boss YX", boss)
-            cells = passable(blockset, playable)
-            print("  walkable", len(cells), " reachable", len(flood(cells, ENTRANCE)))
+        playable, scratch, balls, boss, hideout, warps = layout(harness, seed, 0, baseline)
+        if args.runtime:
+            problems += check_runtime(seed, playable, scratch, balls, boss, hideout, warps, runtime)
             continue
-        sites = valid_sites(blockset, playable, scratch, balls, boss)
+        if args.scan_block is not None:
+            hits = [i for i, b in enumerate(playable) if b == args.scan_block]
+            if hits:
+                scan_hits += 1
+            continue
+        playable = unstamp(playable, scratch)
+        sites = valid_sites(playable, scratch, balls, boss, hideout, blockset)
+        for site in sites:
+            if not strands_nothing(blockset, playable, site):
+                stranding += 1
+                print(f"seed {seed}: site {site} strands floor - the 3x3 rule is wrong")
         per_layout_sites.append(sites)
-        heat.update(sites.keys())  # a dict would add its values as counts
-    if args.dump:
+        heat.update(sites)
+    if args.scan_block is not None:
+        print(f"{scan_hits} of {args.seeds} layouts contain block ${args.scan_block:02X}")
         return 0
+    if args.runtime:
+        print(f"layouts {args.seeds}: pads placed {runtime['placed']}, "
+              f"model says a pair was possible {runtime['possible']}, "
+              f"placed when possible {runtime['placed_when_possible']}, "
+              f"problems {problems}")
+        return 1 if problems else 0
 
     total = len(per_layout_sites)
     counts = [len(s) for s in per_layout_sites]
-    print(f"layouts {total}")
-    print(f"valid sites per layout: min {min(counts)} max {max(counts)} "
-          f"mean {sum(counts) / total:.1f}")
-    print("\nper-block validity % (rows 0-19, '.' = never valid):")
-    for by in range(20):
-        row = ""
-        for bx in range(20):
-            pct = 100 * heat[(bx, by)] // total
-            row += " ." if pct == 0 else f"{min(pct, 99):2d}"
-            row += " "
-        print("   " + row)
+    print(f"layouts {total}; valid blocks per layout min {min(counts)} max {max(counts)} "
+          f"mean {sum(counts) / total:.1f}; stranding sites {stranding}")
 
-    # Greedy pick of K sites, maximising the share of layouts whose valid
-    # sites in the set span >=2 DISTINCT rooms (a pad pair inside one room is
-    # not a shortcut), tie-broken by >=3 distinct rooms.
-    candidates = [b for b, _ in heat.most_common()]
+    if args.evaluate:
+        fixed = set(PAD_SITES[: args.prefix or len(PAD_SITES)])
+        hit = sum(1 for s in per_layout_sites if has_pair(s & fixed))
+        print(f"shipped set of {len(fixed)} sites: a pad pair is possible in "
+              f"{100 * hit / total:.0f}% of layouts")
+        return 1 if stranding else 0
+
+    candidates = [b for b, _ in heat.most_common(60)]
     chosen: list[tuple[int, int]] = []
-
-    def rooms_hit(sites, site_set):
-        return len({rid for block, rid in sites.items() if block in site_set})
-
-    def score(site_set):
-        ge2 = sum(1 for s in per_layout_sites if rooms_hit(s, site_set) >= 2)
-        ge3 = sum(1 for s in per_layout_sites if rooms_hit(s, site_set) >= 3)
-        return ge2, ge3
-
     for _ in range(args.k):
         best = max((c for c in candidates if c not in chosen),
-                   key=lambda c: score(set(chosen) | {c}))
+                   key=lambda c: sum(1 for s in per_layout_sites if has_pair(s & (set(chosen) | {c}))))
         chosen.append(best)
-        ge2, ge3 = score(set(chosen))
-        print(f"K={len(chosen)} add block {best}: >=2 rooms {100 * ge2 / total:.0f}%  "
-              f">=3 rooms {100 * ge3 / total:.0f}%")
+        hit = sum(1 for s in per_layout_sites if has_pair(s & set(chosen)))
+        print(f"K={len(chosen)} add block {best}: pair possible {100 * hit / total:.0f}%")
     print("chosen blocks:", chosen)
-    return 0
+    return 1 if stranding else 0
 
 
 if __name__ == "__main__":

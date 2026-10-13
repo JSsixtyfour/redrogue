@@ -81,6 +81,15 @@ class RunRuleTest(unittest.TestCase):
     def band(self, fodder):
         return "**Band 1: rounds 1-2**\n- Aces: Onix\n- Fodder: {}\n".format(fodder)
 
+    def test_run_tags_accept_capitalization_and_time_warp_spellings(self):
+        for tag, species, group in (("Johto", "SKARMORY", "johto"),
+                                    ("WARP", "ELECTIVIRE", "warp"),
+                                    ("time warp", "ELECTIVIRE", "warp"),
+                                    ("TimeWarp", "MAMOSWINE", "warp")):
+            with self.subTest(tag=tag):
+                chars = gpr.parse_doc(doc(self.band("{} ({})".format(species, tag))), NAMES)
+                self.assertEqual([(species, None, group)], chars[0]["bands"][1]["Fod"])
+
     def test_johto_species_needs_a_tag(self):
         self.assertEqual(1, len(messages(self.band("Geodude, Larvitar"), "error")))
         self.assertEqual([], messages(self.band("Geodude, Larvitar (johto)"), "error"))

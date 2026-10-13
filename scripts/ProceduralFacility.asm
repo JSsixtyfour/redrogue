@@ -249,6 +249,14 @@ ProceduralFacilityDefaultScript:
 	ld [rRAMB], a
 	ld a, [sProcFacilityExitEdge]
 	ld c, a
+	; rRAMB is deliberately left on bank 1 here (checked 2026-10-13, ~85%).
+	; Leaving bank 1 can only hurt code that touches bank-0 SRAM without
+	; selecting it. A static scan (static_audit flow, inherited-bank variant)
+	; found every such reader is either self-selecting (UncompressSpriteData,
+	; MergeFinalAIFusionFrontPic) or a cave/forest/cemetery helper reached only
+	; after its generator or finalize re-selects the bank on its own map load.
+	; Vanilla save.asm leaves bank 1 the same way. Recheck if new bank-0 SRAM
+	; code can run in the Facility without selecting its bank.
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE

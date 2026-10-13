@@ -13,6 +13,14 @@ ProceduralFacility_Object:
 	warp_event 18, 39, LAST_MAP, 1 ; south entry socket at generated block (9,19), bottom-left quadrant
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  - runtime-patched to (4*exitI+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile - runtime-patched to (4*exitI+3, 0)
+	; Warp-pad sites (constants/facility_pad_site_constants.asm). These
+	; coordinates are what a pad ARRIVES on. PFacArmPads disarms every one on
+	; each load and re-arms only the stored pair, pointing each end at the
+	; other, so the destination warp here is a placeholder.
+	ASSERT FACILITY_FIRST_PAD_WARP == 3
+	FOR n, NUM_FACILITY_PAD_SITES
+		warp_event 2 * FACILITY_PAD_SITE_{d:n}_X + 1, 2 * FACILITY_PAD_SITE_{d:n}_Y + 1, PROCEDURAL_FACILITY, 1
+	ENDR
 
 	; No bg events. The Facility has no sign art, so the sign inherited from
 	; ProceduralCave1 was invisible and unreachable; removed 2026-09-16.

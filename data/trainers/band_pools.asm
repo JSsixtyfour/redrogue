@@ -2099,11 +2099,32 @@
 	band_mon GROWLITHE
 	band_mon EXEGGCUTE
 	band_mon RHYHORN
-	band_mon ZUBAT
 	band_mon GASTLY
 	band_mon MAGNEMITE
+	band_mon EEVEE
+	band_mon CHARMANDER
+	band_mon SQUIRTLE
+	band_mon BULBASAUR
+	band_mon SANDSHREW
+	band_mon VULPIX
+	band_mon SHELLDER
+	band_mon SLOWPOKE
+	band_mon MACHOP
+	band_mon CUBONE
+	band_mon CLEFAIRY
+	band_mon ELECTABUZZ
+	band_mon PINSIR
+	band_mon HORSEA
+	band_mon KRABBY
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon MAGMAR
+	band_mon GEODUDE
 	band_johto
 	band_mon SNEASEL
+	band_mon LARVITAR
+	band_mon HOUNDOUR
+	band_mon SWINUB
 	band_warp
 	band_end
 	band_pool RivalMiniBoss_Fod2
@@ -2114,16 +2135,110 @@
 	band_mon GROWLITHE
 	band_mon EXEGGCUTE
 	band_mon RHYHORN
-	band_mon MAGIKARP
-	band_mon ZUBAT
 	band_mon GASTLY
 	band_mon MAGNEMITE
+	band_mon EEVEE
+	band_mon CHARMANDER
+	band_mon SQUIRTLE
+	band_mon BULBASAUR
+	band_mon SHELLDER
+	band_mon VULPIX
+	band_mon SLOWPOKE
+	band_mon AERODACTYL
+	band_mon MACHOP
+	band_mon CUBONE
+	band_mon CLEFAIRY
+	band_mon ELECTABUZZ
+	band_mon PINSIR
+	band_mon HORSEA
+	band_mon KRABBY
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon MAGMAR
+	band_mon GEODUDE
 	band_johto
 	band_mon SNEASEL
+	band_mon MILTANK
+	band_mon HERACROSS
+	band_mon SKARMORY
+	band_mon LARVITAR
+	band_mon HOUNDOUR
+	band_mon SWINUB
 	band_warp
 	band_end
-	band_same RivalMiniBoss_Fod3, RivalMiniBoss_Fod2
-	band_same RivalMiniBoss_Fod4, RivalMiniBoss_Fod2
+	band_pool RivalMiniBoss_Fod3
+	band_mon PIDGEY
+	band_mon ABRA
+	band_mon GROWLITHE
+	band_mon EXEGGCUTE
+	band_mon RHYHORN
+	band_mon MAGIKARP
+	band_mon GASTLY
+	band_mon MAGNEMITE
+	band_mon EEVEE
+	band_mon CHARMANDER
+	band_mon SQUIRTLE
+	band_mon BULBASAUR
+	band_mon TAUROS
+	band_mon SHELLDER
+	band_mon VULPIX
+	band_mon SLOWPOKE
+	band_mon AERODACTYL
+	band_mon MACHOP
+	band_mon CLEFAIRY
+	band_mon ELECTABUZZ
+	band_mon PINSIR
+	band_mon HORSEA
+	band_mon KRABBY
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon MAGMAR
+	band_mon GEODUDE
+	band_johto
+	band_mon SNEASEL
+	band_mon MILTANK
+	band_mon HERACROSS
+	band_mon SKARMORY
+	band_mon LARVITAR
+	band_mon HOUNDOUR
+	band_mon SWINUB
+	band_warp
+	band_end
+	band_pool RivalMiniBoss_Fod4
+	band_mon PIDGEY
+	band_mon ABRA
+	band_mon GROWLITHE
+	band_mon EXEGGCUTE
+	band_mon RHYHORN
+	band_mon MAGIKARP
+	band_mon GASTLY
+	band_mon MAGNEMITE
+	band_mon EEVEE
+	band_mon CHARMANDER
+	band_mon SQUIRTLE
+	band_mon BULBASAUR
+	band_mon TAUROS
+	band_mon SHELLDER
+	band_mon VULPIX
+	band_mon SLOWPOKE
+	band_mon AERODACTYL
+	band_mon MACHOP
+	band_mon CLEFAIRY
+	band_mon ELECTABUZZ
+	band_mon PINSIR
+	band_mon DRATINI
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon GEODUDE
+	band_johto
+	band_mon SNEASEL
+	band_mon MILTANK
+	band_mon HERACROSS
+	band_mon SKARMORY
+	band_mon LARVITAR
+	band_mon HOUNDOUR
+	band_warp
+	band_end
 
 ; --- GiovanniMiniBoss --------------------------------------------------------
 	band_pool GiovanniMiniBoss_Ace1
@@ -2513,65 +2628,42 @@
 ; --- Rival3 ------------------------------------------------------------------
 	band_pool Rival3_Fod1
 	band_mon GROWLITHE
-	band_mon PONYTA
-	band_mon WEEDLE
 	band_mon CHARMANDER
 	band_mon NIDORAN_M
-	band_mon ELECTABUZZ
 	band_mon SLOWPOKE
-	band_mon PIDGEY
 	band_mon BULBASAUR
 	band_mon SQUIRTLE
 	band_mon RHYHORN
 	band_mon NIDORAN_F
-	band_mon MAGMAR
 	band_mon SCYTHER
-	band_mon KRABBY
 	band_mon GEODUDE
 	band_mon DODUO
 	band_mon EEVEE
-	band_mon VAPOREON
-	band_mon JOLTEON
-	band_mon FLAREON
-	band_mon PINSIR
-	band_mon SPEAROW
 	band_mon ABRA
-	band_mon HORSEA
 	band_mon MAGIKARP
 	band_mon EXEGGCUTE
-	band_mon SANDSHREW
-	band_mon VULPIX
-	band_mon MAGNEMITE
 	band_mon SHELLDER
-	band_mon MACHOP
-	band_mon AERODACTYL
 	band_mon TAUROS
-	band_mon CUBONE
 	band_mon CLEFAIRY
 	band_mon GASTLY
 	band_mon DRATINI
 	band_mon ZAPDOS
-	band_mon RATTATA
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
 	band_johto
-	band_mon SCIZOR
+	band_mon KINGDRA
 	band_mon LARVITAR
 	band_mon HOUNDOUR
 	band_mon SKARMORY
 	band_mon HERACROSS
 	band_mon MILTANK
-	band_mon SWINUB
-	band_mon JOLTEON, 1
-	band_mon JOLTEON, 2
 	band_warp
 	band_mon ELECTIVIRE
-	band_mon VAPOREON, 1
-	band_mon VAPOREON, 2
-	band_mon FLAREON, 1
+	band_mon MAMOSWINE
 	band_end
 
 ; --- ChampionLance -----------------------------------------------------------
 	band_pool ChampionLance_Ace1
-	band_ace DRAGONITE
 	band_ace DRAGONITE
 	band_ace GYARADOS
 	band_ace AERODACTYL

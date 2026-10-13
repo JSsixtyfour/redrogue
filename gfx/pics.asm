@@ -255,6 +255,7 @@ GreenPicBack::         INCBIN "gfx/player/greenb.lz" ; ported from Pokemon Yume
 OldManPicBack::        INCBIN "gfx/battle/oldmanb.lz"
 GentlemanPicBack::     INCBIN "gfx/player/gentlemanb.lz"
 BugCatcherPicBack::    INCBIN "gfx/player/bugcatcherb.lz"
+BikerPicBack::         INCBIN "gfx/player/bikerb.lz"
 
 
 SECTION "Pics 5", ROMX

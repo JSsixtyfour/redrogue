@@ -39,6 +39,8 @@
      "guards": "stage events on the Facility"},
     {"script": "audit_facility_stranded_quadrants.py", "args": [], "kind": "guard",
      "guards": "walkable Facility quadrants unreachable from the entrance"},
+    {"script": "audit_facility_pad_sites.py", "args": ["--runtime", "--seeds", "300", "--seed-state", "0x9E3779B9"], "kind": "guard",
+     "guards": "Facility warp pads: a placed end failing the no-strand rule, ends too close, a pad block missing, a warp not armed to its partner or a spare site left armed"},
     {"script": "audit_forest_stage_event.py", "args": [], "kind": "guard",
      "guards": "stage events on the Forest"},
     {"script": "audit_map_object_const_order.py", "args": [], "kind": "guard", "in_smoke": true,

@@ -461,7 +461,7 @@ Magikarp waits for band 2, when the fodder levels are high enough to field a Gya
 - Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, sneasel (johto), sandshrew, vulpix, shellder, slowpoke, machop, larvitar (johto), cubone, clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
 
 **Band 2: rounds 3-4**
-- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar, cubone, clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
+- Fodder: Pidgey, Rattata, Spearow, Abra, Growlithe, Exeggcute, Rhyhorn, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar (johto), cubone, clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude
 
 **Band 3: rounds 5-6**
 - Fodder: Pidgey, Abra, Growlithe, Exeggcute, Rhyhorn, Magikarp, Gastly, Magnemite, Eevee, charmander, squirtle, bulbasaur, Sneasel (johto), tauros, Shellder, Vulpix, slowpoke, Miltank (johto), Aerodactyl, machop, Heracross (johto), Skarmory (Johto), larvitar (johto), clefairy, Electabuzz, Pinsir, houndour (johto), swinub (johto), horsea, krabby, Nidoran M, Nidoran F, magmar, geodude

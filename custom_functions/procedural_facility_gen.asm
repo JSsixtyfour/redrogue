@@ -6347,6 +6347,11 @@ PFacFinalize::
     dec b
     jr nz, .itemSave
 
+    ; Warp pads (Phase 2). After .ballSave (frees scratch bytes 0-1 for the
+    ; pair) and .itemSave (frees wPFacItemTemp), after PFacPickHideout (pads
+    ; avoid the hideout), and before the bake so the pad blocks persist.
+    call PFacPlacePads
+
     ; === Bake: copy wOverworldMap -> sProcFacilityStagingBuffer ===
     ld hl, wOverworldMap + PFAC_BASE
     ld de, sProcFacilityStagingBuffer + PFAC_BASE
@@ -6411,6 +6416,9 @@ PFacFinalize::
     jr nz, .blitRowLoop
 
 .placeSprites
+    ; Warp pads: disarm every site warp, re-arm the stored pair (both paths).
+    call PFacArmPads
+
     ; --- Patch the south entrance and the selected two-tile exit ---
     ; THIS, not the object list, is where the facility's entrance actually
     ; comes from: the literals below overwrite warp entry 0 on every
@@ -7103,3 +7111,405 @@ PFacShowStageEventNpcs::
     ld [wToggleableObjectIndex], a
     predef ShowObject
     ret
+
+; ============================================================
+; Warp pads (PROCEDURAL_SUBROOMS_PLAN Phase 2)
+; ============================================================
+; Sites are fixed at build time (constants/facility_pad_site_constants.asm),
+; because a warp's ARRIVAL tile is read from ROM. At generation PFacPlacePads
+; picks two valid sites, stamps the pad block into both and stores the pair;
+; on every load PFacArmPads disarms all site warps and re-arms that pair, each
+; end pointing at the other.
+;
+; THE PAIR LIVES IN sProcFacilityGenScratch BYTES 0-1 (site indices, or
+; FACILITY_PAD_NONE). Those bytes hold the real balls' block coords only until
+; PFacFinalize's .ballSave copies them into sProcFacilityBallXY; nothing reads
+; them after that, and they are saved with the rest of the bank. Reusing them
+; adds no SRAM label, so the save format does not change. An old save still
+; holds ball coords there, which PFacArmPads rejects unless both named sites
+; hold the pad block.
+DEF PFAC_PAD_PAIR EQUS "sProcFacilityGenScratch" ; a link-time label, so EQUS
+
+; wBuffer scratch, valid only after PFacFinalize's .itemSave (wPFacItemTemp,
+; 12-15, has been copied out by then).
+DEF wPFacPadCount EQU 4    ; valid sites, counted once for the first-end roll
+DEF wPFacPadFirst EQU 5    ; first end (site index)
+DEF wPFacPadTries EQU 6    ; first-end rolls left
+DEF wPFacPadFar   EQU 7    ; non-zero: walk only sites far from the first end
+DEF wPFacPadAX    EQU 8    ; first end's block X
+DEF wPFacPadAY    EQU 9    ; first end's block Y
+DEF wPFacPadIter  EQU 10   ; site being tested by PFacPadNth
+DEF wPFacPadLeft  EQU 11   ; ordinal PFacPadNth stops at ($FF: just count)
+DEF wPFacPadHits  EQU 12   ; sites PFacPadNth has passed
+DEF PFAC_PAD_TRIES EQU 4
+
+ASSERT FACILITY_FIRST_PAD_WARP + NUM_FACILITY_PAD_SITES <= MAX_WARP_EVENTS
+ASSERT NUM_FACILITY_PAD_SITES < FACILITY_PAD_NONE
+
+; Two bytes per site: block X, block Y. Every site keeps its E/S/SE neighbours
+; on the map (X, Y <= 18) and sits below the boss and the exit row (Y >= 3).
+PFacPadSiteTable:
+FOR n, NUM_FACILITY_PAD_SITES
+	ASSERT FACILITY_PAD_SITE_{d:n}_X >= 1 && FACILITY_PAD_SITE_{d:n}_X <= 18
+	ASSERT FACILITY_PAD_SITE_{d:n}_Y >= 3 && FACILITY_PAD_SITE_{d:n}_Y <= 18
+	db FACILITY_PAD_SITE_{d:n}_X, FACILITY_PAD_SITE_{d:n}_Y
+ENDR
+
+INCLUDE "data/tilesets/facility_quad_masks.asm"
+
+; ------------------------------------------------------------
+; PFacPlacePads - generation only, from PFacFinalize's first-visit path.
+; SRAM open on bank 1 on entry and on exit. Clobbers a/bc/de/hl.
+; ------------------------------------------------------------
+PFacPlacePads:
+	ld a, FACILITY_PAD_NONE
+	ld [PFAC_PAD_PAIR], a
+	ld [PFAC_PAD_PAIR + 1], a
+	xor a
+	ld [wBuffer + wPFacPadFar], a
+	call PFacPadCount
+	cp 2
+	ret c                            ; fewer than two valid sites: no pads
+	ld [wBuffer + wPFacPadCount], a
+	ld a, PFAC_PAD_TRIES
+	ld [wBuffer + wPFacPadTries], a
+.pickFirst
+	xor a
+	ld [wBuffer + wPFacPadFar], a
+	ld a, [wBuffer + wPFacPadCount]
+	ld c, a
+	call Rangerandom
+	call PFacPadNth                  ; a = first end
+	ld [wBuffer + wPFacPadFirst], a
+	call PFacPadSiteXY
+	ld a, d
+	ld [wBuffer + wPFacPadAX], a
+	ld a, e
+	ld [wBuffer + wPFacPadAY], a
+	ld a, 1
+	ld [wBuffer + wPFacPadFar], a
+	call PFacPadCount                ; sites far enough from this first end
+	and a
+	jr nz, .pickSecond
+	ld hl, wBuffer + wPFacPadTries
+	dec [hl]
+	jr nz, .pickFirst
+	ret                              ; no first end found a partner: no pads
+.pickSecond
+	ld c, a
+	call Rangerandom
+	call PFacPadNth                  ; a = second end (wPFacPadFar still set)
+	ld [PFAC_PAD_PAIR + 1], a
+	call PFacPadSiteXY
+	call PFacPadBlockAddr
+	ld [hl], FACILITY_PAD_BLOCK
+	ld a, [wBuffer + wPFacPadFirst]
+	ld [PFAC_PAD_PAIR], a
+	call PFacPadSiteXY
+	call PFacPadBlockAddr
+	ld [hl], FACILITY_PAD_BLOCK
+	ret
+
+; Walk the sites that pass PFacPadSiteValid and, when wPFacPadFar is set, lie at
+; least FACILITY_PAD_MIN_DISTANCE blocks (Manhattan) from the first end.
+; PFacPadCount: out a = how many.
+; PFacPadNth:   in a = k, out a = the site index of the k-th one (k < count).
+PFacPadCount:
+	ld a, $FF                        ; never reached: 27 sites cannot count down 255
+PFacPadNth:
+	ld [wBuffer + wPFacPadLeft], a
+	xor a
+	ld [wBuffer + wPFacPadIter], a
+	ld [wBuffer + wPFacPadHits], a
+.site
+	ld a, [wBuffer + wPFacPadIter]
+	cp NUM_FACILITY_PAD_SITES
+	jr nc, .end
+	call PFacPadSiteValid            ; d/e = its block
+	jr nc, .next
+	ld a, [wBuffer + wPFacPadFar]
+	and a
+	jr z, .take
+	ld a, [wBuffer + wPFacPadAX]
+	sub d
+	jr nc, .dxPositive
+	cpl
+	inc a
+.dxPositive
+	ld b, a
+	ld a, [wBuffer + wPFacPadAY]
+	sub e
+	jr nc, .dyPositive
+	cpl
+	inc a
+.dyPositive
+	add b
+	cp FACILITY_PAD_MIN_DISTANCE
+	jr c, .next                      ; also rejects the first end itself (0)
+.take
+	ld a, [wBuffer + wPFacPadLeft]
+	and a
+	jr z, .found
+	dec a
+	ld [wBuffer + wPFacPadLeft], a
+	ld hl, wBuffer + wPFacPadHits
+	inc [hl]
+.next
+	ld hl, wBuffer + wPFacPadIter
+	inc [hl]
+	jr .site
+.found
+	ld a, [wBuffer + wPFacPadIter]
+	ret
+.end
+	ld a, [wBuffer + wPFacPadHits]
+	ret
+
+; In: a = site index. Out: carry set = a pad may go here; d/e = its block X/Y.
+; The pad is block $2F, whose only non-floor quadrant is the bottom-right one,
+; the warp tile. A pad teleports whoever steps on it, so for walking that one
+; quadrant is a wall. If the 8 quadrants around it are walkable, every route
+; through it can go round, so nothing is stranded. Three of the 8 are the
+; site's own other quadrants (floor in $0E and in $2F); the other five are the
+; E block's left column, the S block's top row and the SE block's top-left.
+; tools/pyboy_smoke/audit_facility_pad_sites.py applies this same rule and
+; floods every accepted site to confirm it.
+; SRAM bank 1 open; leaves it so. Clobbers a/bc/hl.
+PFacPadSiteValid:
+	call PFacPadSiteXY
+	call PFacPadBlockAddr
+	ld a, [hl]
+	cp PFAC_FLOOR
+	jr nz, .no
+	inc hl                           ; E
+	ld a, [hl]
+	call PFacQuadMask
+	and %0101
+	cp %0101                         ; TL and BL
+	jr nz, .no
+	ld bc, PFAC_STRIDE - 1
+	add hl, bc                       ; S
+	ld a, [hli]
+	call PFacQuadMask
+	and %0011
+	cp %0011                         ; TL and TR
+	jr nz, .no
+	ld a, [hl]                       ; SE
+	call PFacQuadMask
+	bit 0, a                         ; TL
+	jr z, .no
+	; No object in the 3x3 blocks centred on the site: it must not stand on the
+	; pad or plug the ring the argument above relies on (E, S, SE), and a pad
+	; must not crowd a ball from the W or N either. Measured: with the 2x2
+	; window a pad landed beside a corridor fake ball, breaking the "corridor
+	; fakes sit in a plain straight run" invariant test_procedural_facility_
+	; generation asserts (seed 70 114 82 186).
+	ld hl, sProcFacilityBallXY
+	ld b, 4
+	call PFacPadObjectsClear
+	jr nc, .no
+	ld hl, sProcFacilityGenScratch + 72  ; fake balls, same (Y, X) layout
+	ld b, 4
+	call PFacPadObjectsClear
+	jr nc, .no
+	xor a
+	ld [rRAMB], a                    ; bank 0: the hideout block
+	ld a, [sStageEventHideoutX]
+	ld b, a
+	ld a, [sStageEventHideoutY]
+	ld c, a
+	ld a, BANK(sProcFacilityGenScratch)
+	ld [rRAMB], a
+	ld a, b
+	cp STAGE_EVENT_NO_HIDEOUT
+	jr z, .hideoutClear
+	sub d
+	inc a                            ; -1..1 -> 0..2
+	cp 3
+	jr nc, .hideoutClear
+	ld a, c
+	sub e
+	inc a
+	cp 3
+	jr c, .no
+.hideoutClear
+	; Not inside the exit room, so a pad can never skip the boss. Room 11's
+	; record is intact after generation (only bytes 0-7 are reused).
+	ld hl, sProcFacilityGenScratch + 11 * PFAC_ROOM_STRIDE
+	ld a, d
+	sub [hl]                         ; X
+	jr c, .yes
+	inc hl
+	inc hl
+	cp [hl]                          ; W
+	jr nc, .yes
+	dec hl
+	ld a, e
+	sub [hl]                         ; Y
+	jr c, .yes
+	inc hl
+	inc hl
+	cp [hl]                          ; H
+	jr c, .no
+.yes
+	scf
+	ret
+.no
+	and a
+	ret
+
+; In: hl = b (Y, X) tile-coord pairs, map border included (+4); d/e = site block.
+; Out: carry set = none of them lies in the 3x3 blocks centred on the site.
+; Clobbers a/b/c/hl.
+PFacPadObjectsClear:
+	ld a, [hli]
+	sub 4
+	srl a
+	sub e
+	inc a
+	ld c, a                          ; dy + 1 (0..2 inside; wraps high outside)
+	ld a, [hli]
+	sub 4
+	srl a
+	sub d
+	inc a                            ; dx + 1
+	cp 3
+	jr nc, .next
+	ld a, c
+	cp 3
+	jr nc, .next
+	and a                            ; hit: carry clear
+	ret
+.next
+	dec b
+	jr nz, PFacPadObjectsClear
+	scf
+	ret
+
+; In: a = block id. Out: a = its walkable-quadrant mask, 0 past the table.
+; Keeps bc/de/hl.
+PFacQuadMask:
+	cp NUM_FACILITY_QUAD_MASKS
+	jr nc, .none
+	push hl
+	push de
+	ld e, a
+	ld d, 0
+	ld hl, FacilityQuadWalkMasks
+	add hl, de
+	ld a, [hl]
+	pop de
+	pop hl
+	ret
+.none
+	xor a
+	ret
+
+; In: a = site index. Out: d = block X, e = block Y. Keeps bc. Clobbers hl.
+PFacPadSiteXY:
+	push bc
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, PFacPadSiteTable
+	add hl, bc
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	pop bc
+	ret
+
+; In: d = block X, e = block Y. Out: hl = that block in wOverworldMap.
+; Keeps bc/de.
+PFacPadBlockAddr:
+	push bc
+	ld hl, wOverworldMap + PFAC_BASE
+	ld b, 0
+	ld c, d
+	add hl, bc
+	ld c, PFAC_STRIDE
+	ld a, e
+	and a
+	jr z, .done
+.row
+	add hl, bc
+	dec a
+	jr nz, .row
+.done
+	pop bc
+	ret
+
+; ------------------------------------------------------------
+; PFacArmPads - every load, from PFacFinalize's .placeSprites (wWarpEntries
+; has just been loaded from ROM, wOverworldMap holds the final map).
+; Disarms every site warp (Y = $FF matches no player position), then re-arms
+; the stored pair if both ends still hold the pad block.
+; SRAM open on bank 1. Clobbers a/bc/de/hl.
+; ------------------------------------------------------------
+PFacArmPads:
+	ld hl, wWarpEntries + FACILITY_FIRST_PAD_WARP * 4
+	ld b, NUM_FACILITY_PAD_SITES
+	ld de, 4
+.disarm
+	ld [hl], FACILITY_PAD_NONE
+	add hl, de
+	dec b
+	jr nz, .disarm
+	ld a, [PFAC_PAD_PAIR]
+	ld b, a
+	ld a, [PFAC_PAD_PAIR + 1]
+	ld c, a
+	cp NUM_FACILITY_PAD_SITES
+	ret nc                           ; FACILITY_PAD_NONE, or not a site
+	ld a, b
+	cp NUM_FACILITY_PAD_SITES
+	ret nc
+	cp c
+	ret z
+	call PFacPadEndIntact
+	ret nz
+	ld a, c
+	call PFacPadEndIntact
+	ret nz
+	call PFacPadArmEnd               ; b's warp -> c
+	ld a, b
+	ld b, c
+	ld c, a
+	; fall through: c's warp -> b
+
+; In: b = this end, c = its partner (site indices). Writes this end's warp
+; entry: its tile, and the partner's warp index as the destination.
+; Keeps bc. Clobbers a/de/hl.
+PFacPadArmEnd:
+	ld a, b
+	call PFacPadSiteXY
+	ld a, b
+	add FACILITY_FIRST_PAD_WARP
+	add a, a
+	add a, a                         ; entry * 4 (at most 116)
+	ld l, a
+	ld h, 0
+	push de
+	ld de, wWarpEntries
+	add hl, de
+	pop de
+	ld a, e
+	add a, a
+	inc a
+	ld [hli], a                      ; Y = 2 * blockY + 1
+	ld a, d
+	add a, a
+	inc a
+	ld [hli], a                      ; X = 2 * blockX + 1
+	ld a, c
+	add FACILITY_FIRST_PAD_WARP
+	ld [hl], a                       ; destination warp (0-based): the partner
+	ret
+
+; In: a = site index. Out: Z = its block is the pad block. Keeps bc.
+PFacPadEndIntact:
+	call PFacPadSiteXY
+	call PFacPadBlockAddr
+	ld a, [hl]
+	cp FACILITY_PAD_BLOCK
+	ret
