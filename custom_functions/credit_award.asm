@@ -13,6 +13,13 @@
 ; AddBCDPredef (both clobber a/bc/hl) rather than living in a WRAM byte -
 ; WRAM0 has no spare bytes. Note the carry from Has9990Coins must be tested
 ; BEFORE the matching pop, since `pop af` restores flags and would wipe it.
+;
+; Own SECTION, pinned to $3A in layout.link: moved out of "rogue" ($38) on
+; 2026-10-13 to make room for masterball-tier stage rewards. Every caller
+; reaches it by farcall, so BANK() resolves wherever it sits. Its one reach
+; back into "rogue" (the active-group mask) is a farcall too.
+
+SECTION "Credit Award", ROMX
 
 RogueAwardCredits5::
 	ld a, 5                       ; the AI Lair (since 2026-10-10)
@@ -43,8 +50,8 @@ RogueAwardCreditsCommon:
 	jr nc, .atCap                 ; carry clear = balance >= 9990, skip
 	pop af
 	push af                       ; preserve the base amount across the mask call
-	call RogueGetActiveGroupMask  ; a = currently unlocked AND enabled groups
-	ld b, a
+	farcall RogueGetActiveGroupMaskFar ; e = currently unlocked AND enabled groups
+	ld b, e
 	pop af
 	bit BIT_GROUP_JOHTO, b
 	jr z, .noJohtoBonus

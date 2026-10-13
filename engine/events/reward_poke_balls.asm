@@ -5,6 +5,9 @@ Rogue_Reward_Script_PokeballText_1::
     ld a, [wRogueFlagsBitfield]
     bit BIT_ROGUE_TRADE_ACTIVE, a
     jr nz, .tradeNPC
+; The Reward Room's ball 1 enters here: the room has no trade NPC, so its ball 1
+; is always a Poke Ball.
+.noTrade::
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon
 	ld hl, GreedyText_Reward
@@ -39,13 +42,13 @@ Rogue_Reward_Script_PokeballText_1::
     ; Increment 8: the offer was NAMED as a form above; this is what makes the
     ; mon actually BE one. _AddPartyMon reads wSpawnForm, folds it into the new
     ; mon's MON_CATCH_RATE bits 5-6, and zeroes it again on the way out.
+    call RewardBallLevel ; c = level, before wSpawnForm (it clobbers b/de/hl)
     ld a, [wRoguePokemonForm1]
     ld [wSpawnForm], a
     ld a, 1 ; and give it the DVs its INFO screen shows (slot 1)
     ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon1]
 	ld b, a
-    ld c, 5
 	call GivePokemon
     pop de
 	jr nc, .done
@@ -133,13 +136,13 @@ Rogue_Reward_Script_PokeballText_2::
 	jp nz, RewardBallDeclined
     push de
 
+    call RewardBallLevel ; c = level, before wSpawnForm (it clobbers b/de/hl)
     ld a, [wRoguePokemonForm2]
     ld [wSpawnForm], a
     ld a, 2
     ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon2]
 	ld b, a
-    ld c, 5
 	call GivePokemon
     pop de
 	jr nc, .done
@@ -182,13 +185,13 @@ Rogue_Reward_Script_PokeballText_3::
 	jp nz, RewardBallDeclined
     push de
 
+    call RewardBallLevel ; c = level, before wSpawnForm (it clobbers b/de/hl)
     ld a, [wRoguePokemonForm3]
     ld [wSpawnForm], a
     ld a, 3
     ld [wSpawnDVSlot], a
     ld a, [wRoguePokemon3]
 	ld b, a
-    ld c, 5
 	call GivePokemon
     pop de
 	jr nc, .done
@@ -202,6 +205,15 @@ Rogue_Reward_Script_PokeballText_3::
     .done
 	ret
     
+; c = the level a stage reward ball gives: GetRewardMonLevel, the same level the
+; vendor's menu gives for this stage. These used to give a flat level 5.
+; GetRewardMonLevel's return in a doesn't survive the farcall; wCurEnemyLevel does.
+RewardBallLevel:
+	farcall GetRewardMonLevel
+	ld a, [wCurEnemyLevel]
+	ld c, a
+	ret
+
 ; NO (or B) at YES / NO / INFO: close the dialogue on that same press, instead
 ; of leaving the prompt up for DisplayTextID's end-of-text button wait.
 RewardBallDeclined:

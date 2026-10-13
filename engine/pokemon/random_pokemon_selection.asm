@@ -65,14 +65,19 @@ call RoguePrismSetRerollBudget
 ; Class ids are 1-based and tier ids 0-based, hence the dec.
 ld a, c
 and a
-jr z, .rollClass
+jr z, .rollClass              ; a = 0: standard ladder
+cp REWARD_CLASS_STAGE
+jr z, .rollClass              ; a = REWARD_CLASS_STAGE: stage-reward ladder
 cp NUM_SELECTABLE_CLASSES + 1
-jr nc, .rollClass             ; out of range - roll the class instead
+jr nc, .rollClassStandard     ; out of range - roll the class instead
 dec a
 ld b, a
 jp RogueSelectFromTier
 
+.rollClassStandard
+xor a
 .rollClass
+push af                       ; which ladder; popped at the class roll below
 ; c = the roll, b = the rarity bonus. They used to be one byte (the bonus was
 ; added to the roll), which gave every point of bonus to ultraball and left
 ; greatball stuck at 40%; RollSpreadClass now splits it evenly.
@@ -177,9 +182,21 @@ ld a, $FF
 .rareScopeDone
 ld b, a
 .noRareScope
-ld a, c
+; Stage rewards open the masterball class, but only once some rarity bonus is
+; live: the class table cannot hold a masterball width of 0 (its cumulative
+; would be 256), so the no-bonus case keeps the 3-class table and its exact
+; base odds rather than leaking 1/256 masterballs.
+pop af                         ; ladder selector from the entry
 ld hl, RewardClassWidths
-call RollSpreadClass           ; c = class 1-3
+and a
+jr z, .gotLadder
+ld a, b
+and a
+jr z, .gotLadder               ; no rarity bonus: masterball stays out of reach
+ld hl, StageRewardClassWidths
+.gotLadder
+ld a, c
+call RollSpreadClass           ; c = class 1-3, or 1-4 on the stage-reward ladder
 ld b, c
 dec b                          ; class ids are 1-based, tier ids 0-based
 jp RogueSelectFromTier
@@ -190,6 +207,12 @@ jp RogueSelectFromTier
 ; pokeball 128 / great 102 / ultra 26. Ultraball is the fall-through, by design.
 RewardClassWidths:
 	db 2, pokeball_odds + 1, greatball_odds + 1, 0
+
+; pokeball 128 / great 102 / ultra 25 / master 1. Used only with a rarity bonus
+; above 0, which RollSpreadClass cascades into the masterball class (one +51
+; prize: ~7% master per offer).
+StageRewardClassWidths:
+	db 3, pokeball_odds + 1, greatball_odds + 1, 255, 0
 
 ; ---------------------------------------------------------------------------
 ; RogueSelectFromTier
@@ -599,7 +622,7 @@ rogue_pokemon_randomized_batch::
    .rollpokemon1
    farcall GetRewardMonLevel  ; wCurEnemyLevel must be set before species pick for evolution check
    call Random
-   ld c, 0              ; class 0 = roll from the odds ladder. The farcall above
+   ld c, REWARD_CLASS_STAGE ; roll on the stage-reward ladder (masterball once a rarity bonus is live). The farcall above
    ; leaves c = Bankswitch's saved flags byte, which only worked by accident
    ; (code sweep 2026-09-27, F3)
    call Random_Pokemon_Selection
@@ -620,7 +643,7 @@ rogue_pokemon_randomized_batch::
    .rollpokemon2
    farcall GetRewardMonLevel
    call Random
-   ld c, 0              ; class 0 = roll (see slot 1)
+   ld c, REWARD_CLASS_STAGE ; stage-reward ladder (see slot 1)
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d
@@ -638,7 +661,7 @@ rogue_pokemon_randomized_batch::
    .rollpokemon3
    farcall GetRewardMonLevel
    call Random
-   ld c, 0              ; class 0 = roll (see slot 1)
+   ld c, REWARD_CLASS_STAGE ; stage-reward ladder (see slot 1)
    call Random_Pokemon_Selection
    ld a, [wRoguePokemon1]
    cp d

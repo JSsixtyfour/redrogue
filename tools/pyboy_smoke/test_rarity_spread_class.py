@@ -27,6 +27,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 sys.path.insert(0, str(REPO_ROOT / "tools" / "balance"))
 from model import spread_class  # noqa: E402
+from source_constants import parse_rgbds_constants  # noqa: E402
+
+CONSTANTS = {
+    **parse_rgbds_constants(REPO_ROOT / "constants" / "rogue_species_groups.asm"),
+    **parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm"),
+}
 
 # 0 = the pre-spread odds; 52 empties the item pokeball band exactly and is a
 # partial drain elsewhere; 166 (the round-9 boss bonus) cascades into greatball
@@ -122,6 +128,56 @@ class RollSpreadClassTest(unittest.TestCase):
 
     def test_item_table(self) -> None:
         self.check_table("ItemClassWidths", [52, 129, 205])
+
+    def test_stage_reward_table(self) -> None:
+        self.check_table("StageRewardClassWidths", [128, 230, 255])
+
+    def ladder(self, class_arg: int, prize: bool) -> tuple[str, int]:
+        """Enter Random_Pokemon_Selection with c = class_arg and stop at
+        RollSpreadClass: (which table it was handed, the bonus in b)."""
+        h = self.harness
+        self.baseline.seek(0)
+        h.load_state(self.baseline)
+        bank, entry = h.symbols.get("Random_Pokemon_Selection")
+        spread_bank, spread = h.symbols.get("RollSpreadClass")
+        tables = {h.symbols.get(name)[1]: name
+                  for name in ("RewardClassWidths", "StageRewardClassWidths")}
+        result: dict[str, object] = {}
+
+        def capture(_context) -> None:
+            if "table" not in result:
+                result["table"] = tables.get(h.pyboy.register_file.HL, hex(h.pyboy.register_file.HL))
+                result["bonus"] = h.pyboy.register_file.B
+
+        prizes = h.read8("wWitchPrizesEarned")
+        bit = 1 << (CONSTANTS["PRIZE_RARITY_POKEMON"] - 1)
+        h.write8("wWitchPrizesEarned", (prizes | bit) if prize else (prizes & ~bit & 0xFF))
+        h.pyboy.hook_register(spread_bank, spread, capture, None)
+        try:
+            sp = (h.pyboy.register_file.SP - 2) & 0xFFFF
+            h.pyboy.memory[sp] = 0xFF
+            h.pyboy.memory[sp + 1] = 0x3F
+            h.pyboy.register_file.SP = sp
+            h.pyboy.memory[0x2000] = bank
+            h.write8("hLoadedROMBank", bank)
+            h.pyboy.register_file.C = class_arg
+            h.pyboy.register_file.PC = entry
+            h.wait_until(lambda: "table" in result, "RollSpreadClass entry", limit=120)
+        finally:
+            h.pyboy.hook_deregister(spread_bank, spread)
+        return result["table"], result["bonus"]
+
+    def test_stage_reward_ladder_gate(self) -> None:
+        """Masterball opens only for the stage-reward class AND a live bonus."""
+        stage = CONSTANTS["REWARD_CLASS_STAGE"]
+        table, bonus = self.ladder(stage, prize=True)
+        self.assertGreater(bonus, 0)
+        self.assertEqual(table, "StageRewardClassWidths", "stage reward with a bonus")
+        table, bonus = self.ladder(0, prize=True)
+        self.assertEqual(table, "RewardClassWidths", "class 0 (bridge gift) never opens masterball")
+        table, bonus = self.ladder(stage, prize=False)
+        want = "StageRewardClassWidths" if bonus else "RewardClassWidths"
+        self.assertEqual(table, want, f"stage reward, bonus={bonus}: zero bonus keeps the 3-class table")
 
 
 if __name__ == "__main__":

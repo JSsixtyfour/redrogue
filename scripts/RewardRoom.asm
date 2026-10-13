@@ -23,7 +23,7 @@ RewardRoom_Script:
     ld a, [wObtainedBadges]
     and a
     jr z, .runStartObjects
-    farcall RoguePairRewardRoomObjects ; the route's item ball, not the flat-level balls
+    farcall RoguePairRewardRoomObjects ; the balls and the route's item ball
     jr .objectsReady
 .runStartObjects
     ld a, TOGGLE_STAGE_RANDOM_ITEM
@@ -160,127 +160,26 @@ PlayerEntryMovementRLE:
 	db PAD_UP, 1
 	db -1 ; end
 
+; The balls are a stage's balls (reward_poke_balls.asm): the offer's form, DVs
+; and INFO page, at GetRewardMonLevel's level (STARTER_LEVEL at run start, the
+; stage level on a back-to-back pair's mid-run visit).
 Rogue_RewardRoom_Script_PokeballText_1:
 	text_asm
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-	jr z, .GetMon
-	ld hl, GreedyText_Reward
-	call PrintText
-	jr .done
-    
-    .GetMon
-    ld a, [wRoguePokemon1]
-	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickRewardPokeballText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .done
-
-    ld a, [wRoguePokemon1]
-	ld b, a
-    ld c, STARTER_LEVEL
-	call GivePokemon
-	jr nc, .done
-    
-	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    SetEvent EVENT_GOT_ROGUE_POKEMON
-    
-    .done
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	farcall Rogue_Reward_Script_PokeballText_1.noTrade
 	jp TextScriptEnd
-    
+
 Rogue_RewardRoom_Script_PokeballText_2:
 	text_asm
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-	jr z, .GetMon
-	ld hl, GreedyText_Reward
-	call PrintText
-	jr .done
-    
-    .GetMon
-    ld a, [wRoguePokemon2]
-	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickRewardPokeballText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .done
-
-    ld a, [wRoguePokemon2]
-	ld b, a
-    ld c, STARTER_LEVEL
-	call GivePokemon
-	jr nc, .done
-    
-	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    SetEvent EVENT_GOT_ROGUE_POKEMON
-    
-    .done
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	farcall Rogue_Reward_Script_PokeballText_2
 	jp TextScriptEnd
 
 Rogue_RewardRoom_Script_PokeballText_3:
 	text_asm
-    CheckEvent EVENT_GOT_ROGUE_POKEMON
-	jr z, .GetMon
-	ld hl, GreedyText_Reward
-	call PrintText
-	jr .done
-    
-    .GetMon
-    ld a, [wRoguePokemon3]
-	ld [wNamedObjectIndex], a
-    call GetMonName
-    ld hl, PickRewardPokeballText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .done
-
-    ld a, [wRoguePokemon3]
-	ld b, a
-    ld c, STARTER_LEVEL
-	call GivePokemon
-	jr nc, .done
-    
-	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    SetEvent EVENT_GOT_ROGUE_POKEMON
-    
-    .done
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
+	farcall Rogue_Reward_Script_PokeballText_3
 	jp TextScriptEnd
-    
-    PickRewardPokeballText:
-	text_far _PickPokeBallText
-	text_end
-    
-    GreedyText_Reward:
-	text_far _GreedyText
-	text_end
-    
+
     Rogue_RewardRoom_Reward_Text:
 	script_rogue_reward

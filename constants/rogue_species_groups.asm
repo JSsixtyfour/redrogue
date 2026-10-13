@@ -50,3 +50,9 @@ DEF RARITY_TIER_ENTRY_SIZE EQU 4
 ; which exists because every farcall caller passes this argument in a register
 ; Bankswitch destroys, so `c` arrives as garbage at those sites.
 DEF NUM_SELECTABLE_CLASSES EQU 4
+
+; Out-of-range on purpose: rolls the class like 0 does, but on the stage-reward
+; ladder, which opens the masterball class once any rarity bonus is active
+; (StageRewardClassWidths). Only rogue_pokemon_randomized_batch passes it; the
+; bridge gift room passes 0 and stays capped at ultraball.
+DEF REWARD_CLASS_STAGE EQU NUM_SELECTABLE_CLASSES + 1

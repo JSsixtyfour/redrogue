@@ -24,6 +24,8 @@ LOBBY, REWARD_ROOM = MAPS["INDIGO_PLATEAU_LOBBY"], MAPS["REWARD_ROOM"]
 REWARD_BALL_TOGGLES = (0x0B, 0x0C, 0x0D)
 STAGE_ITEM_TOGGLE = 0x0E  # TOGGLE_STAGE_RANDOM_ITEM: the Reward Room's object 4
 EVENT_STEP_FORWARD = 297
+TRADE_ACTIVE_BIT = RAM["BIT_ROGUE_TRADE_ACTIVE"]
+START_LEVEL = parse_rgbds_constants(REPO_ROOT / "constants" / "balance_constants.asm", ROUNDS)["STARTER_LEVEL"]
 
 
 def badges(n: int, skip: int = -1) -> int:
@@ -214,9 +216,9 @@ class PairRewardRoomTest(HarnessTestCase):
         h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") & ~1)
         item_flags = h.read8("wToggleableObjectFlags", STAGE_ITEM_TOGGLE // 8)  # as if picked up
         h.write8("wToggleableObjectFlags", item_flags | 1 << STAGE_ITEM_TOGGLE % 8, offset=STAGE_ITEM_TOGGLE // 8)
-        for toggle in REWARD_BALL_TOGGLES:                  # as if shown by the last route
+        for toggle in REWARD_BALL_TOGGLES:                  # hidden, as if taken at run start
             byte = h.read8("wToggleableObjectFlags", toggle // 8)
-            h.write8("wToggleableObjectFlags", byte & ~(1 << toggle % 8), offset=toggle // 8)
+            h.write8("wToggleableObjectFlags", byte | 1 << toggle % 8, offset=toggle // 8)
         # Door 1's warp stands in for gym A's patched exit: a direct warp to the
         # Reward Room's first warp (the lobby patched it to a concrete map on entry).
         warps = h.warp_entries()
@@ -225,6 +227,8 @@ class PairRewardRoomTest(HarnessTestCase):
         for i in door1:
             h.write8("wWarpEntries", 0, offset=4 * i + 2)
             h.write8("wWarpEntries", REWARD_ROOM, offset=4 * i + 3)
+        h.write8("wPartyCount", 3)                          # room for the ball's mon
+        h.write8("wPartySpecies", 0xFF, offset=3)
         menu = h.hook_flag("RogueRewardMenu")
         h.move_tile("up")
         for _ in range(6):
@@ -241,18 +245,53 @@ class PairRewardRoomTest(HarnessTestCase):
         self.assertEqual(h.read8("wLobbyDoor1StageMap"), LOBBY)
         self.assertEqual(h.read8("wLobbyDoor2StageMap"), LOBBY)
         self.assertEqual(h.read8("wGymChoice"), LATCHED | 5 << SHIFT | 5, "the kept gym")
-        for toggle in REWARD_BALL_TOGGLES:
-            self.assertTrue(h.read8("wToggleableObjectFlags", toggle // 8) & 1 << toggle % 8,
-                            f"reward ball toggle {toggle:#04x} still shown")
+        self.assert_balls_shown()
         self.assertFalse(h.read8("wToggleableObjectFlags", STAGE_ITEM_TOGGLE // 8) & 1 << STAGE_ITEM_TOGGLE % 8,
                          "the skipped route's item ball is not shown")
         self.assertEqual(h.read8("wNumSprites"), 4)
-        # The vendor's menu is the reward: it opens once the entry walk ends
-        # (EVENT_STEP_FORWARD, re-armed on entry, is set when it closes).
+        # The vendor's menu opens once the entry walk ends (EVENT_STEP_FORWARD,
+        # re-armed on entry, is set when it closes); the balls stay as a second way.
         self.assertFalse(h.read8("wEventFlags", EVENT_STEP_FORWARD // 8) & 1 << EVENT_STEP_FORWARD % 8)
         h.wait_until(lambda: menu["count"], "the reward vendor's menu", 600)
         exits = [e for e in h.warp_entries() if e[3] == 0xFE]  # ROGUE_MAP: via wLobbyDoorNStageMap
         self.assertEqual(len(exits), 2)
+        # Decline the vendor, then take ball 2 (straight above the walk's end):
+        # it joins at the stage reward level, not the run-start one.
+        for _ in range(8):
+            h.tap("b", 4)
+            h.tick(30)
+        self.assertEqual(h.read8("wYCoord"), 6)
+        party = h.read8("wPartyCount")
+        h.tap("up", 4)
+        h.tick(20)
+        h.tap("a", 4)
+        for _ in range(40):                                 # name, YES, the join text
+            if h.read8("wPartyCount") != party:
+                break
+            h.tap("a", 4)
+            h.tick(20)
+        self.assertEqual(h.read8("wPartyCount"), party + 1, "ball 2 did not join the party")
+        # The count goes up before the nickname prompt; the struct is written after.
+        for _ in range(10):                                 # no nickname, close the text
+            h.tap("b", 4)
+            h.tick(20)
+        stride = h.address("wPartyMon2") - h.address("wPartyMon1")
+        got = h.read8("wPartyMon1Level", offset=stride * party)
+        h.park_before_hijack()
+        h.call_routine("GetRewardMonLevel")
+        self.assertEqual(got, h.read8("wCurEnemyLevel"), "mid-run ball level")
+        self.assertGreater(got, START_LEVEL)
+        # A live trade swaps a route's ball 1 for its trade NPC; the room has none.
+        h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | 1 << TRADE_ACTIVE_BIT)
+        h.park_before_hijack()
+        h.call_routine("RoguePairRewardRoomObjects", limit=60000)
+        self.assert_balls_shown()
+
+    def assert_balls_shown(self) -> None:
+        h = self.harness
+        for toggle in REWARD_BALL_TOGGLES:
+            self.assertFalse(h.read8("wToggleableObjectFlags", toggle // 8) & 1 << toggle % 8,
+                             f"reward ball toggle {toggle:#04x} hidden")
 
 
 if __name__ == "__main__":

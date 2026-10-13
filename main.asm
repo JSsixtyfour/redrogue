@@ -754,7 +754,6 @@ INCLUDE "custom_functions/bridge_selected_effects.asm"
 INCLUDE "custom_functions/final_sequence.asm"
 INCLUDE "custom_functions/tm_bag.asm"
 INCLUDE "custom_functions/key_item_pocket.asm"
-INCLUDE "custom_functions/credit_award.asm"
 INCLUDE "custom_functions/credit_popup.asm"
 INCLUDE "custom_functions/pocket_items.asm"
 INCLUDE "custom_functions/dice_items.asm"
@@ -826,6 +825,10 @@ INCLUDE "custom_functions/battle_menu_extras.asm"
 ; Witch challenge overworld effects (challenge 9's per-step re-poison). Opens
 ; its own section, pinned to $3A in layout.link; farcall-only.
 INCLUDE "custom_functions/witch_zone_effects.asm"
+
+; Run-milestone credit awards. Opens its own section, pinned to $3A in
+; layout.link (moved out of "rogue" 2026-10-13); farcall-only.
+INCLUDE "custom_functions/credit_award.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map
