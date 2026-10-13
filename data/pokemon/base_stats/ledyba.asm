@@ -15,9 +15,10 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    \
+	     SWORDS_DANCE,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    \
 	     PSYWAVE,      MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        REST,         FLY
+	     SWIFT,        REST,         COUNTER,     DIG,          SUBMISSION,    \
+         LIGHT_SCREEN, FLASH
 	; end
 
 	db BANK(LedybaPicFront) ; pic bank

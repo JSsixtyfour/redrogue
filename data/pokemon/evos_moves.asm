@@ -2046,30 +2046,34 @@ LedybaEvosMoves:
 	db 0
 ; Learnset - canon Gen 2 levels; SAFEGUARD/BATON_PASS do not exist in Gen 1,
 ; filled with METRONOME.
-	db 8, SUPERSONIC
-	db 15, COMET_PUNCH
-	db 22, LIGHT_SCREEN
+	db 5, SUPERSONIC
+	db 10, COMET_PUNCH
+	db 20, LIGHT_SCREEN
 	db 22, REFLECT
-	db 22, METRONOME ; was SAFEGUARD
-	db 29, METRONOME ; was BATON_PASS
-	db 36, SWIFT
-	db 43, AGILITY
-	db 50, DOUBLE_EDGE
+	db 25, THUNDERPUNCH ; was BATON_PASS
+    db 26, FIRE_PUNCH
+    db 27, ICE_PUNCH
+    db 29, MEGA_PUNCH ; was SAFEGUARD
+	db 30, SWIFT
+	db 40, AGILITY
+	db 45, DOUBLE_EDGE
 	db 0
 
 LedianEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/SUPERSONIC already granted at level 1
-	db 8, SUPERSONIC
-	db 15, COMET_PUNCH
-	db 24, LIGHT_SCREEN
-	db 24, REFLECT
-	db 24, METRONOME ; was SAFEGUARD
-	db 33, METRONOME ; was BATON_PASS
-	db 42, SWIFT
-	db 51, AGILITY
-	db 60, DOUBLE_EDGE
+	db 5, SUPERSONIC
+	db 10, COMET_PUNCH
+	db 20, LIGHT_SCREEN
+	db 23, REFLECT
+	db 26, THUNDERPUNCH ; was BATON_PASS
+    db 27, FIRE_PUNCH
+    db 28, ICE_PUNCH
+    db 30, MEGA_PUNCH ; was SAFEGUARD
+	db 32, SWIFT
+	db 42, AGILITY
+	db 47, DOUBLE_EDGE
 	db 0
 
 DratiniEvosMoves:
@@ -2480,10 +2484,10 @@ MachopEvosMoves:
 	db 5, LEER
 	db 7, FOCUS_ENERGY
 	db 19, SEISMIC_TOSS
+    db 20, LOW_KICK
 	db 28, SUBMISSION
 	db 33, TAKE_DOWN
 	db 37, COUNTER
-	db 45, KARATE_CHOP
 	db 0
 ; Tutoring Learnset  
     db 2, FIRE_PUNCH
@@ -4692,17 +4696,17 @@ LugiaEvosMoves:
 	db 0
 ; Learnset - GUST already granted at level 1; AEROBLAST/SAFEGUARD/
 ; RAIN_DANCE/WHIRLWIND(dup)/ANCIENTPOWER/FUTURE_SIGHT do not exist in
-; Gen 1 (WHIRLWIND is a real Gen 1 move but is already used elsewhere in
-; this list's spirit), filled with METRONOME.
-	db 11, METRONOME ; was SAFEGUARD
-	db 22, GUST
+; Gen 1.
+    db 9, PECK
+	db 11, MIST ; was SAFEGUARD
+    db 16, CONFUSION
+	db 22, PSYBEAM
 	db 33, RECOVER
-	db 44, HYDRO_PUMP
-	db 55, METRONOME ; was RAIN_DANCE
-	db 66, SWIFT
-	db 77, WHIRLWIND
-	db 88, METRONOME ; was ANCIENTPOWER
-	db 99, METRONOME ; was FUTURE_SIGHT
+    db 35, WATERFALL
+	db 40, HYDRO_PUMP
+	db 45, SWIFT
+	db 50, PSYCHIC
+	db 55, SKY_ATTACK ; was FUTURE_SIGHT
 	db 0
 
 HoOhEvosMoves:
