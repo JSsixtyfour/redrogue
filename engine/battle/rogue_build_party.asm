@@ -525,8 +525,11 @@ PartyGenSkipFields:
 PartyGenBuildSlot:
 ; --- level, before the species roll: ScaleTrainer_evolution needs it ---
 	call PartyGenResolveLevel
+	ld c, PARTY_GEN_MAX_RETRIES
+	push bc
 
 ; --- species and form ---
+.speciesRetry
 	call PartyGenResolveSpecies    ; sets wCurPartySpecies, carry set if pinned
 	push af                        ; remember whether it was pinned
 
@@ -536,7 +539,7 @@ PartyGenBuildSlot:
 	jr nc, .poolDrawn
 ; The one pin that IS evolved: RIVAL_STARTER_PLACEHOLDER becomes this run's
 ; wRivalStarter, promoted by the same rule every authored rival team uses
-; (RivalStarterEvolve), so a spec-built rival keeps his starter as the ace.
+; (ScaleTrainer_evolution), so a spec-built rival keeps his starter as the ace.
 ; A no-op for every other pinned species. wCurEnemyLevel is already resolved
 ; above, and the pinned-carry is safe on the stack.
 	farcall PatchRivalStarterSpecies
@@ -550,13 +553,31 @@ PartyGenBuildSlot:
 	ld d, a
 	farcall ScaleTrainer_evolution ; d = species in; publishes the promoted one
 .noEvolve
+	pop af                        ; pinned species bypass duplicate preferences
+	jr c, .resolvedForm
+; Split evolutions can differ from the earlier candidate probe. Check the
+; actual chosen species, retrying within the same bounded preference policy.
+	call PartyGenSpecHeader
+	ld bc, 5
+	add hl, bc
+	bit BIT_PSPEC_NO_DUPES, [hl]
+	jr z, .poolForm
+	call PartyGenSpeciesAlreadyUsed
+	jr nc, .poolForm
+	pop bc
+	dec c
+	push bc
+	jr nz, .speciesRetry
+.poolForm
+	and a                         ; carry clear = resolve the pool form spec
+.resolvedForm
+	pop bc                        ; discard retry counter, preserving carry
 
 ; --- form ---
 ; wCurPartySpecies is FINAL here, after any evolution step, which matters
 ; because a form record is keyed to the species that carries the sprite: rolling
 ; before the evolve would ask for (EXEGGCUTE, 1), which does not exist, instead
 ; of (EXEGGUTOR, 1), which does.
-	pop af
 	call PartyGenResolveForm
 
 ; --- create it ---
@@ -987,9 +1008,9 @@ PartyGenPoolCandidateOk:
 ;
 ; The level is already resolved here - PartyGenBuildSlot calls
 ; PartyGenResolveLevel before the species roll precisely so
-; ScaleTrainer_evolution has one - so the promotion is knowable now. We restore
-; the draw afterwards and let PartyGenBuildSlot do the real evolve, so this is
-; a pure test with no side effect on what gets built.
+; ScaleTrainer_evolution has one. This preliminary probe catches deterministic
+; duplicates cheaply; PartyGenBuildSlot also checks the actual evolved result
+; because a split evolution can choose a different branch on the real build.
 ; A keep entry (a gym ace) is fielded as drawn, so dedupe it as drawn.
 	ld a, [wSpawnForm]
 	call PartyGenFormSpecKeeps
@@ -1010,11 +1031,8 @@ PartyGenPoolCandidateOk:
 	ld [wCurPartySpecies], a
 	jp .reject
 .dupeTestAsDrawn
-; EEVEE is the one species whose evolution is a Random roll rather than a
-; function of species and level (EvolveMonByLevel.handleeevee), so "what this
-; slot will field" is not knowable in advance. Test-evolving it would both
-; consume an RNG draw the real build then repeats, and dedupe against an
-; eeveelution other than the one fielded. Dedupe it as EEVEE instead.
+; Eevee's form-aware branch roll is deferred to the real build. Check it as
+; drawn here; PartyGenBuildSlot checks its actual evolved species afterwards.
 	call PartyGenSpeciesAlreadyUsed
 	jp c, .reject
 .dupesOk
@@ -1381,7 +1399,11 @@ PartyGenResolveForm:
 	ld b, BIT_POVR_SPECIES
 	call PartyGenFieldPtr
 	jr nc, .noForm
-	inc hl
+; The starter resolver already published any Eevee evolution form. Keep it
+; instead of overwriting the shared evolution's choice with the base-form pin.
+	ld a, [hli]
+	cp RIVAL_STARTER_PLACEHOLDER
+	ret z
 	ld a, [hl]
 	ld [wSpawnForm], a
 .haveSpec

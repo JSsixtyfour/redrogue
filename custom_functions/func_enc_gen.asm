@@ -939,11 +939,12 @@ EvolveMonByLevel:
 	push de
 	call LoadEvoListForSpecies
 	pop de
+	ld bc, 0                   ; b = eligible count, c = sampled target
 
 .evoloop
 	ld a, [hli]
 	and a
-	ret z
+	jr z, .chooseEvolution
 	cp EVOLVE_LEVEL
 	jr z, .lvl_evolve
 	cp EVOLVE_TRADE
@@ -982,9 +983,9 @@ EvolveMonByLevel:
 	cp EEVEE	;deal with eevee separately
 	jr z, .handleeevee
 	ld a, [hli]
-	ld b, a
+	ld e, a
 	ld a, [wCurEnemyLevel]
-	cp b
+	cp e
 	jr c, .tooLowForThisEntry
 ; SPECIES GROUPS. The player's evolution path has gated on this since Phase 2
 ; (engine/pokemon/evos_moves.asm's .doEvolution) so a Kanto-locked run cannot
@@ -996,6 +997,7 @@ EvolveMonByLevel:
 ; hl is stacked because the farcall macro loads it with the target address.
 ; `pop` does not disturb flags, so the callee's carry survives to the branch.
 	push hl
+	push bc             ; preserve the reservoir across the group check
 	push de             ; d = the species we are evolving FROM; the callee
 	                    ; clobbers de and the loop still needs d for its
 	                    ; EEVEE test on a later entry
@@ -1004,19 +1006,36 @@ EvolveMonByLevel:
 	                    ; input cannot cross a farcall
 	farcall RogueIsSpeciesEvolutionAllowedFar
 	pop de              ; pop does not disturb flags
+	pop bc
 	pop hl              ; carry still set = this group is active
 	jr nc, .tooLowForThisEntry
-	ld a, [hl]
-	ld [wCurPartySpecies], a
-	ld d, a             ; carry the evolved species forward so chains (e.g. Charmander->Charmeleon->Charizard) cascade
-	jp EvolveMonByLevel
+; Reservoir sampling: eligible entry n replaces the saved target with
+; probability 1/n. Rangerandom is unbiased and preserves hl/de/bc.
+; A single eligible entry needs no RNG draw.
+	inc b
+	ld a, b
+	cp 1
+	jr z, .takeEvolution
+	push bc
+	ld c, b
+	call Rangerandom
+	pop bc
+	and a
+	jr nz, .tooLowForThisEntry
+.takeEvolution
+	ld c, [hl]
 .tooLowForThisEntry
-; hl is on the species byte. Try the NEXT entry rather than abandoning the
-; search, matching the player path's .nextEvoEntry2. Abandoning it meant a
-; Scyther at level 40 never saw its second entry (Kleavor, also 40) because its
-; first (Scizor, 41) failed.
+; Scan every entry before committing, so table order cannot prefer a branch.
 	inc hl
 	jr .evoloop
+.chooseEvolution
+	ld a, b
+	and a
+	ret z
+	ld a, c
+	ld [wCurPartySpecies], a
+	ld d, a
+	jp EvolveMonByLevel         ; repeat for the chosen species' next stage
 
 ; Reached only at level 35+ (every Eevee entry is EVOLVE_ITEM, so the item floor
 ; above gates it). Uniform over the eight stone branches, like the Mist Stone,
@@ -1118,75 +1137,23 @@ PatchRivalStarterSpecies::
 	ld a, [wCurPartySpecies]
 	cp RIVAL_STARTER_PLACEHOLDER
 	jr nz, .done
+	xor a
+	ld [wSpawnForm], a
 	ld a, [wRivalStarter]
+	ld [wCurPartySpecies], a
 	ld d, a
-	call RivalStarterEvolve
+	call ScaleTrainer_evolution
+; Eevee's shared evolution path chooses a species AND a form. Authored
+; parties do not roll forms, so publish that choice here for both loaders.
+	ld a, [wPendingEeveeForm]
+	bit 7, a
+	jr z, .done
+	and %11
+	ld [wSpawnForm], a
+	xor a
+	ld [wPendingEeveeForm], a
 .done
 	pop de
 	pop bc
 	pop hl
-	ret
-
-; Input: d = base species, wCurEnemyLevel = level
-; Output: wCurPartySpecies = species evolved up to 2 stages based on level
-;         (item/trade evolutions and Eevee's stone evolutions are skipped,
-;          since the rival can't perform those)
-RivalStarterEvolve::
-	ld a, d
-	ld [wCurPartySpecies], a
-	cp EEVEE
-	ret z
-	call EvolveStep
-	ret nc
-	call EvolveStep
-	ret
-
-; Input: d = species, wCurEnemyLevel = level
-; Output: if a level-evolution threshold is met, carry set, d and
-;         wCurPartySpecies updated to the evolved species; else carry clear
-EvolveStep:
-	push hl
-	push bc
-	ld hl, EvosMovesPointerTable
-	ld b, 0
-	ld a, d
-	dec a
-	add a
-	rl b
-	ld c, a
-	add hl, bc
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, 2
-	call FarCopyData
-	ld hl, wEvoDataBuffer
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, 4
-	call FarCopyData
-	ld hl, wEvoDataBuffer
-	ld a, [hl]
-	cp EVOLVE_LEVEL
-	jr nz, .noEvo
-	inc hl
-	ld a, [hl]
-	ld b, a
-	ld a, [wCurEnemyLevel]
-	cp b
-	jr c, .noEvo
-	inc hl
-	ld a, [hl]
-	ld d, a
-	ld [wCurPartySpecies], a
-	pop bc
-	pop hl
-	scf
-	ret
-.noEvo
-	pop bc
-	pop hl
-	and a
 	ret

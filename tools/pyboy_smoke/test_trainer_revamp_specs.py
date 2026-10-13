@@ -135,6 +135,116 @@ class TrainerRevampSpecTest(HarnessTestCase):
                     self.assertNotIn(party[slot], line,
                                      f"slot {slot} doubled up on his starter line")
 
+    def test_rival_starter_uses_shared_item_evolution_in_both_loaders(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")
+        h.write8("wRivalStarter", self.species["GROWLITHE"])
+        for cls, number, expected in (
+            ("RIVAL1", 1, "GROWLITHE"),
+            ("RIVAL2", 7, "ARCANINE"),
+            ("RIVAL3", 1, "ARCANINE"),
+        ):
+            with self.subTest(trainer=cls):
+                count, party, _ = self._build(cls, number)
+                self.assertEqual(party[-1], self.species[expected])
+                form = h.read8("wEnemyMons", offset=(count - 1) * PARTYMON_STRUCT_LENGTH + 7)
+                self.assertEqual(form & 0x60, 0)
+
+    def test_rival_eevee_preserves_shared_branch_form_in_both_loaders(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")
+        events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+        h.set_event(events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [7], bank=1)
+        h.write8("wRivalStarter", self.species["EEVEE"])
+        picks = []
+        def capture_branch(*_):
+            picks.append(h.read8("wSpawnForm"))
+        h.register_hook("PatchRivalStarterSpecies.done", capture_branch)
+        forms = []
+        for cls in ("RIVAL2", "RIVAL3") * 3:
+            with self.subTest(trainer=cls):
+                picks.clear()
+                count, party, _ = self._build(cls, 7 if cls == "RIVAL2" else 1)
+                self.assertNotEqual(party[-1], self.species["EEVEE"])
+                form = h.read8("wEnemyMons", offset=(count - 1) * PARTYMON_STRUCT_LENGTH + 7)
+                self.assertEqual((form >> 5) & 3, picks[-1])
+                forms.append(picks[-1])
+                self.assertEqual(h.read8("wPendingEeveeForm"), 0)
+        self.assertTrue(any(forms), "probe must exercise a non-base Eevee form")
+
+    def test_rival_starter_obeys_shared_group_gates(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")
+        events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+        h.set_event(events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
+        for starter, mask, expected in (
+            ("ZUBAT", 1, "GOLBAT"),
+            ("ZUBAT", 7, "CROBAT"),
+            ("SCYTHER", 3, "SCIZOR"),
+            ("SCYTHER", 5, "KLEAVOR"),
+        ):
+            with self.subTest(starter=starter, mask=mask):
+                h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [mask], bank=1)
+                h.write8("wRivalStarter", self.species[starter])
+                _, party, _ = self._build("RIVAL3", 1)
+                self.assertEqual(party[-1], self.species[expected])
+
+    def test_scyther_random_evolution_respects_level_and_group_eligibility(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.set_event(events["EVENT_JOHTO_ACTIVATED"])
+        h.set_event(events["EVENT_KANTO_TIMEWARP_ACTIVATED"])
+        h.write8("wRivalStarter", self.species["SCYTHER"])
+        sample = {"value": 0, "calls": 0}
+        def force_sample(*_):
+            self.assertEqual(h.pyboy.register_file.C, 2)
+            sample["calls"] += 1
+            h.pyboy.register_file.A = sample["value"]
+        h.register_hook("Rangerandom.done", force_sample)
+        for level, mask, draw, expected, calls in (
+            (34, 7, 0, "SCYTHER", 0),
+            (35, 7, 0, "KLEAVOR", 0),
+            (39, 7, 1, "KLEAVOR", 0),
+            (40, 7, 0, "KLEAVOR", 1),
+            (40, 7, 1, "SCIZOR", 1),
+            (40, 1, 0, "SCYTHER", 0),
+            (40, 3, 0, "SCIZOR", 0),
+            (40, 5, 1, "KLEAVOR", 0),
+        ):
+            with self.subTest(level=level, mask=mask, draw=draw):
+                sample.update(value=draw, calls=0)
+                h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [mask], bank=1)
+                h.write8("wCurEnemyLevel", level)
+                h.write8("wCurPartySpecies", self.species["RIVAL_STARTER_PLACEHOLDER"])
+                h.call_routine("PatchRivalStarterSpecies")
+                self.assertEqual(h.read8("wCurPartySpecies"), self.species[expected])
+                self.assertEqual(sample["calls"], calls)
+
+    def test_actual_evolution_duplicate_is_retried_before_building(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")
+        h.write8("wRivalStarter", self.species["CHARMANDER"])
+        attempts = []
+        def force_post_evolution_duplicate(*_):
+            if h.read8("wPartyGenSlot") == 1:
+                attempts.append(1)
+                species = (h.read8("wEnemyPartySpecies") if len(attempts) < 3
+                           else self.species["LAPRAS"])
+                h.write8("wCurPartySpecies", species)
+        h.register_hook("PartyGenBuildSlot.noEvolve", force_post_evolution_duplicate)
+        _, party, _ = self._build("RIVAL3", 1)
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(party[1], self.species["LAPRAS"])
+        self.assertNotEqual(party[0], party[1])
+
     def test_no_rival_starter_filter_predicate(self):
         """BIT_PSPEC_NO_RIVAL_STARTER, deterministically and in both directions.
 
