@@ -543,11 +543,33 @@ PokemonTower7FRocket3AfterBattleText:
 	text_end
 
 PokemonTower7FRocket5BattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PokemonTower7FRocket2BattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossBattleText
 	text_end
 
 PokemonTower7FRocket5EndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PokemonTower7FRocket2EndBattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossEndBattleText
 	text_end
 
 PokemonTower7FRocket5AfterBattleText:

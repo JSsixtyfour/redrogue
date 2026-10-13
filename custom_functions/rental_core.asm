@@ -1,5 +1,5 @@
-; Saved location ownership for the single rental. This does not enable a
-; provider: delivery and expiry will own the state transitions separately.
+; Single-rental ownership, stable offers, delivery and zone-return settlement.
+; The lobby receptionist uses the shared interaction; wild providers can reuse it.
 ; Inputs use de/e because Bankswitch replaces a, bc and hl.
 
 DEF RENTAL_RESERVED EQU 1
@@ -8,12 +8,12 @@ DEF BIT_RENTAL_OPPORTUNITY_USED EQU 0
 DEF BIT_RENTAL_ZONE_ENTERED EQU 7
 
 ; Offer flag 0 latches identity/DVs; flag 1 latches the completed moveset.
-; Provider integration must still wait for safe delivery/opportunity wiring.
+; Both flags must be set before delivery can charge for the displayed offer.
 DEF BIT_RENTAL_OFFER_IDENTITY EQU 0
 DEF BIT_RENTAL_OFFER_MOVES EQU 1
 
-; No ordinary caller yet. Repeated inspection never consumes RNG or changes
-; identity. The caller must clear the offer at a completed logical opportunity,
+; Repeated inspection of a latched offer consumes no RNG and preserves its
+; identity. Clear the offer only at a completed logical opportunity,
 ; never merely on dialogue cancellation, bridge return, or lobby reload.
 RentalPrepareOfferIdentity::
 	call RentalCanPrepareOffer
@@ -776,8 +776,11 @@ RentalOnPartyReplacement::
 	ld c, a
 	xor a
 	ld [wRentalOwner], a
-	; Full-party restore bypasses RemovePokemon. Discard the old rental's
-	; sparse bridge effect so it cannot attach to an incoming archived mon.
+	; Full-party restore bypasses RemovePokemon, just like daycare reclamation.
+	; Fall through to discard the outgoing rental's independent bridge effect.
+
+; c = discarded owner. Leave every other Pokemon's bridge effects unchanged.
+RentalClearBridgeOwner:
 	ld hl, wBridgeSelectedEffects
 	ld b, BRIDGE_SELECTED_RECORD_COUNT
 .effects
@@ -1047,8 +1050,14 @@ RentalReclaimDaycare::
 	xor a
 	call FillMemory
 .clearOwner
+	ld a, [wRentalOwner]
+	and a
+	jr z, .done ; owned daycare retrieval already moved its effects to the party
+	ld c, a
+	call RentalClearBridgeOwner
 	xor a
 	ld [wRentalOwner], a
+.done
 	scf
 	ret
 
@@ -1327,34 +1336,6 @@ RentalRestoreBoxedParty::
 	ld a, 1
 	ld [wRemoveMonFromBox], a
 	jp RemovePokemon
-
-; Complete save-point settlement when owned party/boxed fallback exists.
-; No candidate (including daycare-only fallback) returns NC BEFORE mutation.
-; Daycare fallback/no-owned ending will extend this preflight separately.
-RentalSettleBoxedAndSave::
-	ld a, [wPartyCount]
-	cp 2
-	jr nc, .ready
-	and a
-	jr z, .needBox
-	ld a, [wRentalOwner]
-	cp 1
-	jr nz, .ready
-.needBox
-	call RentalFindBoxFallback
-	ret nc
-.ready
-	call RentalReclaimAll
-	ret nc
-	call RentalRestoreBoxedParty
-	ret nc
-	xor a
-	ld [wRentalState], a
-	ld [wRentalZone], a
-	call RentalAdvanceOpportunity
-	rfarcall SaveGameData
-	scf
-	ret
 
 ; Read-only final fallback, after the box search. e = daycare 0/1, carry found.
 RentalFindDaycareFallback::

@@ -13,7 +13,7 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
     test_inactive_rental_removed_and_boxed_owned_mon_recovered_before_save = None
     test_party_rental_uses_current_box_and_saves_healthy_replacement = None
     test_current_box_recovery_has_priority = None
-    test_only_rental_returns_without_mutation = None
+    test_invalid_owner_returns_without_mutation = None
 
     def live_entry(self, setup, finished=None):
         """Inject at a live main-loop seam, with interrupts available for UI."""
@@ -126,12 +126,17 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
             self.assertEqual(h.read8("wPartyMons", offset=12), 30 + slot)
 
     def test_rental_daycare_then_owned_daycare_are_billed_independently(self):
+        effect_offset = self.h.address("wBridgeSelectedEffects") - self.h.address("wMainDataStart")
         for rental in (0, 1):
             for balance, expected in ((200, 0), (1000, 0), (1200, 200)):
                 def setup(h):
                     self.seed(h, 5, {}, 247 + rental)
                     self.daycare(h, 0, 30)
                     self.daycare(h, 1, 31)
+                    h.write8("wBridgeSelectedEffectOwner1", 247 + rental)
+                    h.write8("wBridgeSelectedEffect1", 3)
+                    h.write8("wBridgeSelectedEffectOwner2", 248 - rental)
+                    h.write8("wBridgeSelectedEffect2", 4)
                     h.write8("wBattleCount", 1)
                     digits = f"{balance:06d}"
                     start = h.address("wPlayerMoney")
@@ -142,11 +147,17 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
                     hooks={"DaycareRetrieveUpgrade": lambda _: return_from_call(self.h)},
                     capture=lambda h: {"money": h.read_bytes("wPlayerMoney",3),
                         "marker": h.read8("wPartyMons", offset=12),
+                        "effects": h.read_bytes("wBridgeSelectedEffects", 4),
+                        "saved_effects": h.read_sram_bytes("sMainData", effect_offset + 4)[effect_offset:],
                         "occupied": [h.read8("wDayCareInUse"), h.read8("wDayCareInUse2")]})
                 self.assertTrue(result["flags"] & 16)
                 self.assertEqual(result["marker"], 31 - rental)
                 self.assertEqual(result["occupied"], [0,0])
                 self.assertEqual(result["money"], [0, expected // 100, 0])
+                self.assertEqual(result["effects"], [0, 0, 1, 4])
+                # run_entry restores its baseline after capture, so inspect
+                # the transaction's saved bytes before that fixture rollback.
+                self.assertEqual(result["saved_effects"], [0, 0, 1, 4])
 
     def test_no_owned_mon_follows_blackout_to_dorm_and_saves_once(self):
         h = self.h

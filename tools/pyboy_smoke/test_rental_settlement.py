@@ -40,7 +40,7 @@ class RentalSettlementTest(unittest.TestCase):
     def test_inactive_rental_removed_and_boxed_owned_mon_recovered_before_save(self):
         h = self.h
         self.seed(h, 5, {0: [20, 21], 8: [30]}, 7 + 8 * 20)
-        h.call_routine("RentalSettleBoxedAndSave")
+        h.call_routine("RentalSettleAndSave")
         self.assertEqual(h.read8("wPartyCount"), 1)
         self.assertEqual(h.read8("wPartyMons", offset=12), 20)
 
@@ -72,7 +72,7 @@ class RentalSettlementTest(unittest.TestCase):
         h.write8("wPartyCount", 1)
         h.write8("wPartySpecies", self.mon[0])
         h.write8("wPartySpecies", 255, offset=1)
-        h.call_routine("RentalSettleBoxedAndSave")
+        h.call_routine("RentalSettleAndSave")
         self.assertEqual(h.read8("wPartyCount"), 1)
         self.assertEqual(h.read8("wPartyMons", offset=12), 25)
         self.assertEqual(h.read8("wBoxCount"), 0)
@@ -83,17 +83,17 @@ class RentalSettlementTest(unittest.TestCase):
     def test_current_box_recovery_has_priority(self):
         def setup(h):
             self.seed(h, 5, {0: [20], 5: [25], 8: [30]}, 167)
-        result = run_entry(self.h, "RentalSettleBoxedAndSave", setup=setup, capture=lambda h: {
+        result = run_entry(self.h, "RentalSettleAndSave", setup=setup, capture=lambda h: {
             "marker": h.read8("wPartyMons", offset=12), "box": h.read8("wCurrentBoxNum"),
         })
         self.assertTrue(result["flags"] & 16)
         self.assertEqual((result["marker"], result["box"]), (25, 133))
 
-    def test_only_rental_returns_without_mutation(self):
-        result = run_entry(self.h, "RentalSettleBoxedAndSave",
-                           setup=lambda h: self.seed(h, 5, {8: [30]}, 167),
+    def test_invalid_owner_returns_without_mutation(self):
+        result = run_entry(self.h, "RentalSettleAndSave",
+                           setup=lambda h: self.seed(h, 5, {8: [30]}, 250),
                            capture=lambda h: {"record": h.read_bytes("wRentalRecord", 4),
                                               "count": h.read_sram_bytes("sBox9", 1, bank=3)})
         self.assertFalse(result["flags"] & 16)
-        self.assertEqual(result["record"], [1, 167, 42, 3])
+        self.assertEqual(result["record"], [1, 250, 42, 3])
         self.assertEqual(result["count"], [1])

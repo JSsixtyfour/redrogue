@@ -205,11 +205,33 @@ PowerPlantPokemaniac2AfterBattleText:
 	text_end
 
 PowerPlantCooltrainerMBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PowerPlantScientist1BattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossBattleText
 	text_end
 
 PowerPlantCooltrainerMEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PowerPlantScientist1EndBattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossEndBattleText
 	text_end
 
 PowerPlantCooltrainerMAfterBattleText:

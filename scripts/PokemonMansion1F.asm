@@ -279,11 +279,33 @@ PokemonMansion1FBurglar2AfterBattleText:
 	text_end
 
 PokemonMansion1FScientist2BattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PokemonMansion1FScientist2BattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossBattleText
 	text_end
 
 PokemonMansion1FScientist2EndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _PokemonMansion1FScientist2EndBattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossEndBattleText
 	text_end
 
 PokemonMansion1FScientist2AfterBattleText:

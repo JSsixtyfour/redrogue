@@ -80,6 +80,33 @@ class RentalDaycareTest(unittest.TestCase):
             self.assertEqual(result["snapshot"], before["snapshot"])
             self.assertEqual(result["money"], [0] * 3)
 
+    def test_reclaim_clears_only_rental_effect_before_daycare_reuse(self):
+        for slot in (0, 1):
+            with self.subTest(slot=slot):
+                h = self.h
+                owner = 247 + slot
+                h.write8("wRentalState", 2)
+                h.write8("wRentalOwner", owner)
+                h.write8("wDayCareInUse" + ("2" if slot else ""), 1)
+                h.write8("wDayCareDepositBattleCount" + ("2" if slot else ""),
+                         h.read8("wBattleCount"))
+                h.write8("wBridgeSelectedEffectOwner1", owner)
+                h.write8("wBridgeSelectedEffect1", 3)
+                h.write8("wBridgeSelectedEffectOwner2", 248 - slot)
+                h.write8("wBridgeSelectedEffect2", 4)
+                h.call_routine("RentalReclaimDaycare")
+                expected = [0, 0, 248 - slot, 4]
+                self.assertEqual(h.read_bytes("wBridgeSelectedEffects", 4), expected)
+                self.assertEqual(h.read8("wRentalOwner"), 0)
+                # Reuse the real deposit/withdraw ownership seams. The next
+                # occupant must neither inherit the expired effect nor move
+                # the other daycare's effect.
+                for source, target in ((1, owner), (owner, 1)):
+                    result = run_entry(h, "BridgeMoveSelectedOwner",
+                        registers={"B": source, "C": target},
+                        capture=lambda h: {"effects": h.read_bytes("wBridgeSelectedEffects", 4)})
+                    self.assertEqual(result["effects"], expected)
+
     def test_other_owner_and_empty_repeated_reclaim_never_charge(self):
         for owner in (0, 1, 7, 246, 247, 248, 249):
             def setup(h):

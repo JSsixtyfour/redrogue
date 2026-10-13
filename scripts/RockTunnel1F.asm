@@ -162,11 +162,33 @@ RockTunnel1FPokemaniacAfterBattleText:
 	text_end
 
 RockTunnel1FCooltrainerMBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _RockTunnel1FCooltrainerF1BattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossBattleText
 	text_end
 
 RockTunnel1FCooltrainerMEndBattleText:
+	text_asm
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_MINIBOSS_ACTIVE, a
+	ld hl, .Normal
+	ret z
+	ld hl, .RivalMiniBoss
+	ret
+.Normal
 	text_far _RockTunnel1FCooltrainerF1EndBattleText
+	text_end
+.RivalMiniBoss
+	text_far _RivalMiniBossEndBattleText
 	text_end
 
 RockTunnel1FCooltrainerMAfterBattleText:
