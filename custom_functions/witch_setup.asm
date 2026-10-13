@@ -50,6 +50,11 @@ RollLobbyNPCAppearance:
 ; tier). Effects of the challenge/prize are applied elsewhere (Phase 2 hooks),
 ; not here - this is just the roll and bookkeeping.
 PCWitchSetup::
+    ; Challenge 11's fielded legendary belongs to the gym just left. A new
+    ; lobby visit ends that trade window. Cleared here, not in the lobby
+    ; script, because "Maps 2" has no room; this runs once per lobby entry.
+    xor a
+    ld [wLegendaryBossSpecies], a
     ; --- Permanent prize grant (prizes 7-10) ---
     ; Arriving in the lobby with BIT_WITCH_ACCEPTED STILL SET is the success
     ; test, and it needs no separate detection: the player accepted a challenge

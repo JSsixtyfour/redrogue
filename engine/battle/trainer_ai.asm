@@ -1595,7 +1595,8 @@ AISwitchIfEnoughMons:
 ; decision. T2+ reaches here through AITrySmartSwitch before item gates.
 ; T0/T1 retain the JugglerAI / CooltrainerFAI / AgathaAI class rolls, with
 ; AIShouldSwitch deliberately returning carry SET for those low tiers.
-	farcall AIShouldSwitch
+	farcall AIShouldSwitchAtSelectedSpeed
+.switchDecisionReady
 	jp c, SwitchEnemyMon
 .noSwitch
 	and a

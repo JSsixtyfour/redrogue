@@ -234,11 +234,34 @@ ProceduralFacility_ScriptPointers:
 	dw_const ProceduralFacilityDefaultScript,       SCRIPT_PROCEDURALFACILITY_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_PROCEDURALFACILITY_START_BATTLE
 	dw_const EndTrainerBattle,                      SCRIPT_PROCEDURALFACILITY_END_BATTLE
+	dw_const ProceduralFacilityPlayerSpinningScript, SCRIPT_PROCEDURALFACILITY_PLAYER_SPINNING
 
 ; The fixed-facing boss guards one of the two exit tiles through ordinary
 ; trainer sight. Detect the unguarded flank and dispatch the same object text
 ; interaction used when the player presses A, matching Procedural Forest.
 ProceduralFacilityDefaultScript:
+IF NUM_FACILITY_SPINNER_ROOMS > 0
+	; Spinner rooms (PROCEDURAL_SUBROOMS_PLAN Phase 3), same shape as
+	; RocketHideoutB2FDefaultScript: an arrow tile under the player decodes its
+	; slide into the simulated joypad buffer, then this map runs the spinning
+	; state until the slide is used up. The lookup is in bank $2F because the
+	; arrow tables are room-local and live with the room data.
+	farcall PFacSpinnerStep          ; e = 1: a slide is queued
+	ld a, e
+	and a
+	jr z, .notOnArrow
+	ld hl, wMovementFlags
+	set BIT_SPINNING, [hl]
+	call StartSimulatingJoypadStates
+	ld a, SFX_ARROW_TILES
+	call PlaySound
+	ld a, PAD_BUTTONS | PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
+	ld a, SCRIPT_PROCEDURALFACILITY_PLAYER_SPINNING
+	ld [wCurMapScript], a
+	ret
+.notOnArrow
+ENDC
 	CheckEvent EVENT_BEAT_PC_BOSS
 	jp nz, CheckFightingMapTrainers
 	ld a, RAMG_SRAM_ENABLE
@@ -300,6 +323,22 @@ ProceduralFacilityDefaultScript:
 	ldh [hTextID], a
 	call DisplayTextID
 	ret
+
+; Copy of ViridianGymPlayerSpinningScript: wait out the slide, then hand
+; control back. In the table even in a build without spinner rooms (unreached).
+ProceduralFacilityPlayerSpinningScript:
+	ldh a, [hSimulatedJoypadStatesIndex]
+	and a
+	jr nz, .spinning
+	xor a
+	ldh [hJoyIgnore], a
+	ld hl, wMovementFlags
+	res BIT_SPINNING, [hl]
+	ld a, SCRIPT_PROCEDURALFACILITY_DEFAULT
+	ld [wCurMapScript], a
+	ret
+.spinning
+	farjp LoadSpinnerArrowTiles
 
 ; The join offer itself. Shown via DisplayTextID so the text box / font are set
 ; up properly (raw PrintText from a map-script state left the tiles unloaded,

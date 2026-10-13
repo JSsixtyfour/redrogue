@@ -419,6 +419,27 @@ AIReplacementIsBetterAndSurvives:
 ; because that call is what RESOLVES wAITier on first use; the value is then
 ; read back from WRAM, where it is stored as tier+1.
 ; Clobbers af, bc, de, hl.
+; Only the predicate runs at double speed. The caller's switch text, animation,
+; and move execution retain their incoming speed. Like procedural generation,
+; leave DMG, option-off, and already-double callers alone. No register inputs;
+; preserve the predicate's flags across the restoring predef (carry = switch).
+AIShouldSwitchAtSelectedSpeed::
+	ldh a, [hGBC]
+	and a
+	jp z, AIShouldSwitch
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	jp z, AIShouldSwitch
+	ldh a, [rKEY1]
+	bit 7, a
+	jp nz, AIShouldSwitch
+	predef SetCPUSpeed
+	call AIShouldSwitch
+	push af
+	predef SingleCPUSpeed
+	pop af
+	ret
+
 AIShouldSwitch::
 	farcall AIGetTier ; resolve wAITier - its `a` return cannot survive the trip
 	ld a, [wAITier]

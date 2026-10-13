@@ -1840,9 +1840,12 @@ wSpriteInputBitCounter:: db
 ; 0 -> 000000XX   4th column
 wSpriteOutputBitOffset:: db
 
-; bit 0 determines used buffer (0 -> sSpriteBuffer1, 1 -> sSpriteBuffer2)
-; bit 1 loading last sprite chunk? (there are at most 2 chunks per load operation)
-wSpriteLoadFlags:: db
+; Was wSpriteLoadFlags, dead since the LZ pic switch (2026-10-07); reused in
+; place so no address moves. Challenge 11: the legendary the gym leader's ace
+; was swapped to (RollLegendaryBossAce), read by the post-battle trade because
+; wGymLeaderNo is zeroed by then. 0 = none. Cleared at every lobby entry.
+; Unsaved (below wMainDataStart).
+wLegendaryBossSpecies:: db
 ; Was wSpriteUnpackMode, dead since the LZ pic switch (2026-10-07); reused in
 ; place so no address moves (FOLLOWUPS #55). Nonzero when AI_DAMAGE found a
 ; RELIABLE kill this decision; AILayerPlan then issues no directive. Cleared by

@@ -26,12 +26,12 @@ SaffronGym_Object:
 	warp_event  9,  9, SAFFRON_GYM, 27; 15
 	warp_event 11,  9, SAFFRON_GYM, 4; 16
 	warp_event  9, 11, SAFFRON_GYM, 8; 17
-	warp_event 11,  5, SAFFRON_GYM, 5; 18
+	warp_event 11,  5, SAFFRON_GYM, 21; 18
 	warp_event 11, 11, SAFFRON_GYM, 5 ; 19
 	warp_event 11, 15, SAFFRON_GYM, 32 ; 20
-	warp_event 15,  3, SAFFRON_GYM, 4; 21
+	warp_event 15,  3, SAFFRON_GYM, 18; 21
 	warp_event 19,  3, SAFFRON_GYM, 14; 22
-	warp_event 15,  5, SAFFRON_GYM, 6 ; 23
+	warp_event 15,  5, SAFFRON_GYM, 18 ; 23
 	warp_event 19,  5, SAFFRON_GYM, 12 ; 24
 	warp_event 15,  9, SAFFRON_GYM, 21 ; 25
 	warp_event 19,  9, SAFFRON_GYM, 30 ; 26

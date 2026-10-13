@@ -580,6 +580,11 @@ PartyGenBuildSlot:
 ; of (EXEGGUTOR, 1), which does.
 	call PartyGenResolveForm
 
+; --- Challenge 11: the ace may become a legendary ---
+; After the form, because the swap zeroes wSpawnForm, and before AddPartyMon,
+; which is the creation the species must be final for.
+	call PartyGenLegendaryBossAce
+
 ; --- create it ---
 ; wSpawnForm is written immediately before AddPartyMon and nothing between them
 ; creates a mon, which is the "write wSpawnForm only just before a creation"
@@ -591,6 +596,39 @@ PartyGenBuildSlot:
 
 ; --- moveset ---
 	jp PartyGenApplyMoveset
+
+; ===========================================================================
+; PartyGenLegendaryBossAce
+;
+; Challenge 11 (Legendary Boss). On the team's LAST slot, the ace, asks
+; RollLegendaryBossAce (rogue bank) whether this trainer's ace becomes a
+; legendary. That routine owns every gate (bargain accepted, challenge 11,
+; trainer class in LegendaryBossTable) and writes the species itself, because
+; only the flags survive the farcall back.
+;
+; A swapped ace takes no form and its moveset source is forced to MSRC_SET,
+; the curated corpus, whatever the mix row assigned the slot. The swap runs
+; after the pool draw, so the uber filter in PartyGenPoolCandidateOk never sees
+; the legendary: it keeps every leader uber-free outside this challenge.
+; ===========================================================================
+PartyGenLegendaryBossAce:
+	ld a, [wPartyGenNMons]
+	dec a
+	ld b, a
+	ld a, [wPartyGenSlot]
+	cp b
+	ret nz                         ; not the ace
+	farcall RollLegendaryBossAce   ; WRAM in, carry out
+	ret nc
+	xor a
+	ld [wSpawnForm], a
+	ld a, [wPartyGenSlot]
+	ld c, a
+	ld b, 0
+	ld hl, wPartyGenSlotSource
+	add hl, bc
+	ld [hl], MSRC_SET
+	ret
 
 ; ===========================================================================
 ; PartyGenResolveLevel

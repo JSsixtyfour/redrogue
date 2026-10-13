@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import sys
 import io
 import unittest
 
@@ -53,6 +54,16 @@ def _facility_template_interiors() -> set[tuple[int, int]]:
 _FACILITY_INCBIN_BLOCKS: set[int] | None = None
 
 
+def _spinner_pieces() -> list:
+    """Spinner decor pieces in PFacSpinnerRooms order (tools/facility_spinners.py)."""
+    sys.path.insert(0, str(REPO_ROOT / "tools"))
+    import facility_spinners
+
+    pieces, errors = facility_spinners.load()
+    assert not errors, errors
+    return pieces
+
+
 def _facility_incbin_blocks() -> set[int]:
     """Every block id reachable through a Facility payload the generator INCBINs.
 
@@ -67,6 +78,11 @@ def _facility_incbin_blocks() -> set[int]:
     if _FACILITY_INCBIN_BLOCKS is None:
         source = (
             REPO_ROOT / "custom_functions" / "procedural_facility_gen.asm"
+        ).read_text(encoding="utf-8", errors="replace")
+        # Spinner rooms (Phase 3) are INCLUDEd from a generated file, so their
+        # payloads are wired in from there.
+        source += (
+            REPO_ROOT / "data" / "maps" / "facility_spinner_rooms.asm"
         ).read_text(encoding="utf-8", errors="replace")
         blocks: set[int] = set()
         for name in re.findall(
@@ -1480,15 +1496,30 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
                 ball_xy = self.harness.read_sram_bytes("sProcFacilityBallXY", 8)
                 ball_blocks = []
-                for tile_y, tile_x in zip(ball_xy[::2], ball_xy[1::2]):
+                # Spinner decor (PROCEDURAL_SUBROOMS_PLAN Phase 3): that room's
+                # ball stands on the piece's own tile, any quadrant and any
+                # block of the piece, so it is checked against the piece
+                # instead (tools/pyboy_smoke/audit_facility_spinner_rooms.py
+                # checks the rest of the placement over a corpus).
+                spin_rec = self.harness.read_sram_bytes("sProcFacilityGenScratch", 6)[2:6]
+                spin_ball = spin_rec[3] if spin_rec[2] & 0x80 else None
+                for ball_index, (tile_y, tile_x) in enumerate(zip(ball_xy[::2], ball_xy[1::2])):
                     self.assertGreaterEqual(tile_y, 4)
                     self.assertGreaterEqual(tile_x, 4)
-                    self.assertEqual((tile_y - 4) % 2, 0)
-                    self.assertEqual((tile_x - 4) % 2, 0)
                     block_y = (tile_y - 4) // 2
                     block_x = (tile_x - 4) // 2
                     self.assertIn(block_y, range(20))
                     self.assertIn(block_x, range(20))
+                    if ball_index == spin_ball:
+                        piece = _spinner_pieces()[spin_rec[2] & 0x7F]
+                        self.assertEqual(
+                            (tile_x - 4, tile_y - 4),
+                            (2 * spin_rec[0] + piece.ball[0], 2 * spin_rec[1] + piece.ball[1]),
+                        )
+                        ball_blocks.append((block_x, block_y))
+                        continue
+                    self.assertEqual((tile_y - 4) % 2, 0)
+                    self.assertEqual((tile_x - 4) % 2, 0)
                     self.assertIn(
                         playable[block_y * 20 + block_x], item_anchor_blocks
                     )

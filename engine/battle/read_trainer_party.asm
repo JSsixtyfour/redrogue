@@ -198,15 +198,14 @@ ENDC
 	push hl
 	farcall PatchRivalStarterSpecies
 	pop hl
-	ld e, [hl]                ; peek terminator byte (0 => this mon is the team's ace/last)
-	push hl
-	farcall PatchLegendaryBossSpecies ; Challenge 11: substitute legendary for the ace
-	pop hl
+; Challenge 11's legendary swap is NOT here any more. Every gym leader has a
+; party spec, so RogueBuildParty builds the team and this loop never sees a
+; leader (measured in BGB 2026-10-13: the old hook never fired). The swap lives
+; in the spec builder, PartyGenLegendaryBossAce.
 	ld a, ENEMY_PARTY_DATA
 	ld [wMonDataLocation], a
 	push hl
 	call AddPartyMon
-	farcall ApplyLegendaryBossMoveset ; Challenge 11: themed moveset on the just-added legendary
 	pop hl
 	jr .SpecialTrainer
 .AddAdditionalMoveData

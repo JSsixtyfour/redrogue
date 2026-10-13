@@ -21,9 +21,8 @@ DEF BIT_FUSION EQU 1  ; bit within MON_CATCH_RATE (bit 0 = ghost variant)
 ; expands to `ld hl, LABEL / ld b, BANK(LABEL) / call Bankswitch` - it
 ; OVERWRITES hl with the callee's own address as the jump vector, it does not
 ; preserve the caller's hl. de is untouched by Bankswitch, so it's the only
-; register safe to carry a pointer input across a farcall boundary (same
-; reason PatchLegendaryBossSpecies takes its terminator-peek byte in e, not
-; hl - see custom_functions/legendary_boss_helpers.asm). Same-bank callers
+; register safe to carry a pointer input across a farcall boundary (see the
+; BANK CONTRACT in engine/battle/rogue_build_party.asm). Same-bank callers
 ; can just `ld de, <ptr>` before a plain `call` same as any other input.
 ; ---------------------------------------------------------------------------
 IsFusionMon::

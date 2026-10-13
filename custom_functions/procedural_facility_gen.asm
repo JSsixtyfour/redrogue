@@ -286,6 +286,12 @@ DEF BIT_PFAC_FAKE_ROOM EQU 4
 ; room's ring may be load-bearing for a solid authored interior the same way
 ; a premade's is (PROCEDURAL_FACILITY_CONTENT_PLAN.md, C7).
 DEF PFAC_ROOM_DECORATED_MASK EQU $C0
+; Spinner decor (Phase 3, see PFacPlaceSpinnerDecor). Type bits 2-3 hold the
+; piece index + 1; nothing else uses them. Item rooms 1-4 only.
+DEF PFAC_TYPE_SPIN_MASK  EQU %00001100
+DEF PFAC_SPIN_FIRST_ROOM EQU 1
+DEF PFAC_SPIN_END_ROOM   EQU 5
+DEF PFAC_SPIN_CHANCE     EQU 256      ; of 256; 256 = place one whenever a room fits
 DEF PFAC_SOCKET_N EQU 1
 DEF PFAC_SOCKET_E EQU 2
 DEF PFAC_SOCKET_S EQU 4
@@ -2626,9 +2632,11 @@ PFacPlaceLargeDecor:
     ; against the GENERIC room's socket-to-center cross - a template's interior
     ; routes are its own. Skip it. This never mattered while templates were
     ; 1x1 interiors, because decor skips 1xN rooms anyway (R4).
+    ; Spinner decor (Phase 3) owns its room the same way.
     inc hl
     inc hl
-    bit 7, [hl]
+    ld a, [hl]
+    and PFAC_TEMPLATE_FLAG | PFAC_TYPE_SPIN_MASK
     jp nz, .nextRoom
 
     ld a, [wBuffer + wPFacRmW]
@@ -2996,6 +3004,8 @@ PFacPlaceItems:
     xor a
     ld [wBuffer + wPFacBallIdx], a
 .ballLoop
+    call PFacSpinnerBallAnchor    ; Phase 3: a spinner room's ball is its reward
+    jp z, .positionOK
     call PFacTryHallAnchor        ; C8: one real ball in four goes in a hall
     jp z, .positionOK
     ld a, [wBuffer + wPFacBallIdx]
@@ -3406,7 +3416,7 @@ PFacPlaceFakeBalls:
     call PFacRoomRecordAddr
     inc hl
     inc hl
-    ld a, [hl]
+    call PFacWUnlessSpinner     ; W, 0 = unplaced or a spinner room (Phase 3)
     and a
     jr z, .nextRoom
     ld a, [wBuffer + wPFacFakeReusePass]
@@ -4425,6 +4435,7 @@ PFacGenerateFacility:
     call PFacApplyWallEndCaps
     call PFacApplyCornerCaps
     call PFacRemoveStrandedJambs
+    call PFacPlaceSpinnerDecor     ; Phase 3: before large decor takes the room
     call PFacPlaceLargeDecor
     call PFacPlaceItems
     call PFacDecorateExploreRooms
@@ -6328,6 +6339,9 @@ PFacFinalize::
     ld [hli], a                     ; then tile X
     dec b
     jr nz, .ballSave
+    ; Phase 3: a spinner room's ball stands on its exact tile, not its block's
+    ; top-left one.
+    call PFacSpinnerRecord
 
     ; Phase 7 rollout: pick the stage-event hideout. Must run after
     ; PFacGenerateFacility (room records need to be final) and works fine
@@ -6713,7 +6727,7 @@ PFacPickHideout:
     call PFacRoomRecordAddr
     ld de, 2
     add hl, de
-    ld a, [hl]                      ; W byte (0 = not placed)
+    call PFacWUnlessSpinner           ; W, 0 = not placed or a spinner room
     and a
     jr z, .countNext
     inc c
@@ -6736,7 +6750,7 @@ PFacPickHideout:
     push hl
     ld de, 2
     add hl, de
-    ld a, [hl]                      ; W byte
+    call PFacWUnlessSpinner           ; W, 0 = a spinner room
     pop hl
     and a
     jr z, .pickNext
@@ -6779,7 +6793,7 @@ PFacPickHideout:
     push hl
     ld de, 2
     add hl, de
-    ld a, [hl]                      ; W byte (0 = not placed)
+    call PFacWUnlessSpinner           ; W, 0 = not placed or a spinner room
     pop hl
     and a
     jr z, .nextRoom
@@ -7333,6 +7347,10 @@ PFacPadSiteValid:
 	cp 3
 	jr c, .no
 .hideoutClear
+	; Not inside a spinner room (Phase 3): the pad art IS the arrow art, so a
+	; pad there would animate with every slide and read as another arrow.
+	call PFacBlockInSpinnerRoom      ; keeps de
+	jr c, .no
 	; Not inside the exit room, so a pad can never skip the boss. Room 11's
 	; record is intact after generation (only bytes 0-7 are reused).
 	ld hl, sProcFacilityGenScratch + 11 * PFAC_ROOM_STRIDE
@@ -7512,4 +7530,613 @@ PFacPadEndIntact:
 	call PFacPadBlockAddr
 	ld a, [hl]
 	cp FACILITY_PAD_BLOCK
+	ret
+
+; ============================================================
+; Spinner decor (PROCEDURAL_SUBROOMS_PLAN Phase 3)
+; ============================================================
+; An item puzzle: a hand-drawn interior piece whose arrow tiles slide the
+; player, with the item room's pokeball on a tile only the slides reach. Pieces
+; are large decor, not full rooms: PFacPlaceSpinnerDecor centres one inside an
+; item room's GENERIC interior (rooms 2-4; room 1's record X/Y do not survive
+; generation, and the runtime needs them). tools/facility_spinners.py reads the
+; arrows and stoppers from the art, generates the slide tables and proves every
+; piece safe in every interior size it may be used in
+; (data/maps/facility_spinner_rooms.asm, constants/facility_spinner_constants.asm).
+;
+; The room is recorded in its Type byte: bit 6 (decor-owned, so large decor,
+; light decor and C7 wall decor all leave it alone) plus bits 2-3 = the piece's
+; index in PFacSpinnerRooms + 1. Nothing else uses bits 2-3, so no SRAM is
+; added. The piece's position is never stored: it is centred, so it is
+; recomputed from the room record and the piece size.
+DEF PFAC_SPIN_STRIDE     EQU 10
+
+; Where the piece is, kept for the runtime in sProcFacilityGenScratch bytes 2-5
+; (dead after .ballSave, like the pad pair in bytes 0-1; saved with the bank,
+; so no new SRAM label). Written by PFacSpinnerRecord at every generation.
+;   +2 piece top-left block X, +3 Y, +4 piece index | $80 (bit 7 clear: none;
+;   an older save holds a ball X there, always < $80), +5 ball index.
+DEF PFAC_SPIN_REC_X    EQUS "sProcFacilityGenScratch + 2"
+DEF PFAC_SPIN_REC_Y    EQUS "sProcFacilityGenScratch + 3"
+DEF PFAC_SPIN_REC_KEY  EQUS "sProcFacilityGenScratch + 4"
+DEF PFAC_SPIN_REC_BALL EQUS "sProcFacilityGenScratch + 5"
+DEF PFAC_SPIN_REC_LIVE EQU $80
+
+; wBuffer, PFacPlaceSpinnerDecor only. Facility generation owns 0-25; 26-29
+; belong otherwise only to the cave/forest generators, never in the same
+; generation.
+DEF wPFacSpinRoom   EQU 26  ; room id being walked
+DEF wPFacSpinK      EQU 27  ; piece index being walked
+DEF wPFacSpinLeft   EQU 28  ; ordinal the walk stops at ($FF: just count)
+DEF wPFacSpinHits   EQU 29  ; (room, piece) pairs passed
+
+INCLUDE "data/maps/facility_spinner_rooms.asm"
+DEF NUM_PFAC_SPINNER_DESCRIPTORS EQU (PFacSpinnerRoomsEnd - PFacSpinnerRooms) / PFAC_SPIN_STRIDE
+
+; ------------------------------------------------------------
+; PFacPlaceSpinnerDecor - generation, right before PFacPlaceLargeDecor (the
+; ring, jambs and caps are final; no decor or item is placed yet). Picks one
+; (item room 2-4, piece) pair uniformly from every pair that fits and stamps
+; it. SRAM bank 1 open. Clobbers a/bc/de/hl.
+; ------------------------------------------------------------
+PFacPlaceSpinnerDecor:
+IF NUM_FACILITY_SPINNER_ROOMS > 0
+IF PFAC_SPIN_CHANCE < 256
+	call Random
+	cp PFAC_SPIN_CHANCE
+	ret nc
+ENDC
+	ld a, $FF
+	call .walk                       ; a = how many pairs fit
+	and a
+	ret z
+	ld c, a
+	call Rangerandom
+	call .walk                       ; stops on the chosen pair
+	ret nc                           ; unreachable: the walk is deterministic
+	; wPFacRmX/Y/W/H still hold the chosen room. Centre the piece.
+	ld a, [wBuffer + wPFacSpinK]
+	call .descriptor                 ; hl -> descriptor
+	ld a, [wBuffer + wPFacRmW]
+	sub [hl]
+	srl a
+	ld b, a                          ; x offset in the interior
+	ld a, [hli]
+	ld [wBuffer + wPFacTplW], a
+	ld a, [wBuffer + wPFacRmH]
+	sub [hl]
+	srl a
+	ld c, a                          ; y offset
+	ld a, [hl]
+	ld [wBuffer + wPFacTplH], a
+	ld de, 5
+	add hl, de                       ; +6 payload
+	ld a, [hli]
+	ld [wBuffer + wPFacTplPtrLo], a
+	ld a, [hl]
+	ld [wBuffer + wPFacTplPtrHi], a
+	; PFacStampPremadeFootprint starts one block up-left of wPFacRmX/Y (it was
+	; written for footprints with a ring), so point Rm at origin + 1.
+	ld a, [wBuffer + wPFacRmX]
+	add b
+	inc a
+	ld [wBuffer + wPFacRmX], a
+	ld a, [wBuffer + wPFacRmY]
+	add c
+	inc a
+	ld [wBuffer + wPFacRmY], a
+	call PFacStampPremadeFootprint
+	ld a, [wBuffer + wPFacSpinRoom]
+	call PFacRoomRecordAddr
+	ld de, 5
+	add hl, de
+	ld a, [wBuffer + wPFacSpinK]
+	inc a
+	add a, a
+	add a, a                         ; (K + 1) << 2
+	or 1 << 6                        ; decor-owned
+	or [hl]
+	ld [hl], a
+	ret
+
+; In: a = ordinal to stop at, $FF to count. Out: when stopping, carry set with
+; wPFacSpinRoom/wPFacSpinK on the pair and wPFacRmX..H on its room; otherwise
+; a = the number of pairs, carry clear.
+.walk
+	ld [wBuffer + wPFacSpinLeft], a
+	xor a
+	ld [wBuffer + wPFacSpinHits], a
+	ld a, PFAC_SPIN_FIRST_ROOM
+	ld [wBuffer + wPFacSpinRoom], a
+.room
+	ld a, [wBuffer + wPFacSpinRoom]
+	call PFacSpinnerRoomClean
+	jr nc, .nextRoom
+	xor a
+	ld [wBuffer + wPFacSpinK], a
+.piece
+	ld a, [wBuffer + wPFacSpinK]
+	call .descriptor
+	ld a, [wBuffer + wPFacRmW]
+	cp [hl]                          ; W >= piece W
+	jr c, .nextPiece
+	inc hl
+	inc hl
+	cp [hl]                          ; ... <= proven max W
+	jr z, .wOK
+	jr nc, .nextPiece
+.wOK
+	dec hl
+	ld a, [wBuffer + wPFacRmH]
+	cp [hl]
+	jr c, .nextPiece
+	inc hl
+	inc hl
+	cp [hl]
+	jr z, .fits
+	jr nc, .nextPiece
+.fits
+	ld a, [wBuffer + wPFacSpinLeft]
+	and a
+	jr z, .found
+	dec a
+	ld [wBuffer + wPFacSpinLeft], a
+	ld hl, wBuffer + wPFacSpinHits
+	inc [hl]
+.nextPiece
+	ld hl, wBuffer + wPFacSpinK
+	inc [hl]
+	ld a, [hl]
+	cp NUM_PFAC_SPINNER_DESCRIPTORS
+	jr c, .piece
+.nextRoom
+	ld hl, wBuffer + wPFacSpinRoom
+	inc [hl]
+	ld a, [hl]
+	cp PFAC_SPIN_END_ROOM
+	jr c, .room
+	ld a, [wBuffer + wPFacSpinHits]
+	and a                            ; carry clear
+	ret
+.found
+	scf
+	ret
+
+.descriptor
+	jp PFacSpinnerDescAddr
+ELSE
+	ret
+ENDC
+
+; In: a = piece index. Out: hl -> its descriptor. Keeps bc/de.
+PFacSpinnerDescAddr:
+	push de
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, hl
+	add hl, de                       ; * 10
+	ASSERT PFAC_SPIN_STRIDE == 10
+	ld de, PFacSpinnerRooms
+	add hl, de
+	pop de
+	ret
+
+; In: a = room id. Out: carry set when the room is a placed GENERIC room whose
+; interior is all plain floor and whose ring keeps its whole inner baseboard
+; walkable (every ring block's inner quadrants). That baseboard loop is what
+; tools/facility_spinners.py proves against; an opening anywhere only adds
+; walkable outer quadrants, which join the loop. Jambs and corner caps keep
+; their wall's mask, so they pass.
+; Leaves the room rect in wPFacRmX/Y/W/H. SRAM bank 1. Clobbers a/bc/de/hl.
+PFacSpinnerRoomClean:
+	call PFacRoomRecordAddr
+	ld a, [hli]
+	ld [wBuffer + wPFacRmX], a
+	ld a, [hli]
+	ld [wBuffer + wPFacRmY], a
+	ld a, [hli]
+	ld [wBuffer + wPFacRmW], a
+	and a
+	jr z, .no
+	ld a, [hli]
+	ld [wBuffer + wPFacRmH], a
+	inc hl
+	ld a, [hl]
+	and PFAC_ROOM_DECORATED_MASK     ; a template, or already decor-owned
+	jr nz, .no
+	xor a
+	ld [wBuffer + wPFacLoopY], a
+.row
+	xor a
+	ld [wBuffer + wPFacLoopX], a
+.col
+	ld a, [wBuffer + wPFacRmX]
+	dec a
+	ld hl, wBuffer + wPFacLoopX
+	add [hl]
+	ld d, a
+	ld a, [wBuffer + wPFacRmY]
+	dec a
+	ld hl, wBuffer + wPFacLoopY
+	add [hl]
+	ld e, a
+	call PFacPadBlockAddr
+	ld b, [hl]                       ; block id
+	call .classify                   ; a = baseboard quadrants, or $FF inside
+	cp $FF
+	jr nz, .ring
+	ld a, b
+	cp PFAC_FLOOR
+	jr nz, .no
+	jr .next
+.ring
+	ld d, a
+	ld a, b
+	call PFacQuadMask
+	and d
+	cp d
+	jr nz, .no                       ; a baseboard quadrant is blocked
+.next
+	ld hl, wBuffer + wPFacLoopX
+	inc [hl]
+	ld a, [wBuffer + wPFacRmW]
+	add 2
+	cp [hl]
+	jr nz, .col
+	ld hl, wBuffer + wPFacLoopY
+	inc [hl]
+	ld a, [wBuffer + wPFacRmH]
+	add 2
+	cp [hl]
+	jr nz, .row
+	scf
+	ret
+.no
+	and a
+	ret
+
+; (LoopX, LoopY) relative to the footprint's top-left. Out: a = $FF for an
+; interior cell, else that ring position's inner (baseboard) quadrants.
+.classify
+	ld a, [wBuffer + wPFacRmW]
+	inc a
+	ld d, a                          ; last column
+	ld a, [wBuffer + wPFacRmH]
+	inc a
+	ld e, a                          ; last row
+	ld a, [wBuffer + wPFacLoopY]
+	and a
+	jr z, .top
+	cp e
+	jr z, .bottom
+	ld a, [wBuffer + wPFacLoopX]
+	and a
+	jr z, .left
+	cp d
+	jr z, .right
+	ld a, $FF
+	ret
+.left
+	ld a, %1010                      ; $44: TR + BR
+	ret
+.right
+	ld a, %0101                      ; $46: TL + BL
+	ret
+.top
+	ld a, [wBuffer + wPFacLoopX]
+	and a
+	ld a, %1000                      ; $40: BR
+	ret z
+	ld a, [wBuffer + wPFacLoopX]
+	cp d
+	ld a, %0100                      ; $42: BL
+	ret z
+	ld a, %1100                      ; $41: BL + BR
+	ret
+.bottom
+	ld a, [wBuffer + wPFacLoopX]
+	and a
+	ld a, %0010                      ; $48: TR
+	ret z
+	ld a, [wBuffer + wPFacLoopX]
+	cp d
+	ld a, %0001                      ; $4A: TL
+	ret z
+	ld a, %0011                      ; $49: TL + TR
+	ret
+
+; In: a = room id. Out: carry set when that room holds spinner decor; then
+; hl -> its descriptor and d/e = the piece's top-left block. SRAM bank 1 open.
+; A Type index past the table (a save from another build) reads as none.
+; Clobbers a/bc.
+PFacSpinnerDescriptor:
+	cp PFAC_SPIN_FIRST_ROOM
+	jr c, .none
+	cp PFAC_SPIN_END_ROOM
+	jr nc, .none
+	call PFacRoomRecordAddr          ; clobbers de only
+	ld a, [hli]
+	ld d, a                          ; interior X
+	ld a, [hli]
+	ld e, a                          ; interior Y
+	ld a, [hli]
+	ld b, a                          ; interior W
+	ld a, [hli]
+	ld c, a                          ; interior H
+	inc hl
+	ld a, [hl]
+	and PFAC_TYPE_SPIN_MASK
+	jr z, .none
+	rrca
+	rrca
+	dec a                            ; piece index
+	cp NUM_PFAC_SPINNER_DESCRIPTORS
+	jr nc, .none
+	push de
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, hl
+	add hl, de
+	ld de, PFacSpinnerRooms
+	add hl, de
+	pop de
+	ld a, b
+	sub [hl]
+	srl a
+	add d
+	ld d, a                          ; X + (W - piece W) / 2
+	inc hl
+	ld a, c
+	sub [hl]
+	srl a
+	add e
+	ld e, a
+	dec hl
+	scf
+	ret
+.none
+	and a
+	ret
+
+; In: d/e = a block. Out: carry set when it lies within one block of the
+; spinner piece (a pad there would animate with every slide: same art).
+; Reads the record PFacSpinnerRecord wrote, so it works for room 1 too.
+; Preserves de. SRAM bank 1 open. Clobbers a/bc/hl.
+PFacBlockInSpinnerRoom:
+	ld a, [PFAC_SPIN_REC_KEY]
+	bit 7, a
+	jr z, .no
+	and ~PFAC_SPIN_REC_LIVE & $FF
+	cp NUM_PFAC_SPINNER_DESCRIPTORS
+	jr nc, .no
+	call PFacSpinnerDescAddr
+	ld a, [PFAC_SPIN_REC_X]
+	ld b, a
+	ld a, d
+	inc a
+	sub b                            ; d - (X - 1)
+	jr c, .no
+	ld c, a
+	ld a, [hli]                      ; piece W
+	add 2
+	cp c
+	jr c, .no
+	jr z, .no
+	ld a, [PFAC_SPIN_REC_Y]
+	ld b, a
+	ld a, e
+	inc a
+	sub b
+	jr c, .no
+	ld c, a
+	ld a, [hl]                       ; piece H
+	add 2
+	cp c
+	jr c, .no
+	jr z, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+; In: hl -> a room record's W byte. Out: a = that W, or 0 for a spinner room,
+; so room scans that must stay out of one (fake balls, hideout) see it as
+; unplaced. Preserves hl. Z set when a = 0.
+PFacWUnlessSpinner:
+	push hl
+	inc hl
+	inc hl
+	inc hl                           ; Type
+	ld a, [hl]
+	pop hl
+	and PFAC_TYPE_SPIN_MASK
+	ld a, [hl]
+	jr z, .done
+	xor a
+.done
+	and a
+	ret
+
+; From PFacPlaceItems, per ball. Out: Z when this ball's room (ball index + 1)
+; holds spinner decor; wPFacCurX/Y are then the BLOCK holding the ball tile
+; (PFacSpinnerRecord writes the exact tile after .ballSave). SRAM bank 1 open.
+; Clobbers a/bc/de/hl.
+PFacSpinnerBallAnchor:
+	ld a, [wBuffer + wPFacBallIdx]
+	inc a
+	call PFacSpinnerDescriptor
+	jr nc, .notSpinner
+	ld bc, 4
+	add hl, bc
+	ld a, [hli]                      ; ball tile X, piece-local
+	srl a
+	add d
+	ld [wBuffer + wPFacCurX], a
+	ld a, [hl]
+	srl a
+	add e
+	ld [wBuffer + wPFacCurY], a
+	xor a                            ; Z
+	ret
+.notSpinner
+	or 1                             ; NZ
+	ret
+
+; From PFacFinalize right after .ballSave. Records where the piece is for the
+; runtime (PFAC_SPIN_REC_*), and gives the room's ball its exact tile, which may
+; be any quadrant (.ballSave wrote every ball as its block's top-left tile).
+; The origin is recovered from the ball's block, not the room record, because
+; room 1's record X/Y were overwritten by PFacPlaceItems; its Type byte (+5)
+; is intact. SRAM bank 1 open. Clobbers a/bc/de/hl.
+; The key byte (+4) is written LAST on every path: until then bytes 2-5 still
+; hold balls 1-2's block coords, and this routine reads one of them. (Clearing
+; it first destroyed ball 2's X: measured, seed F0 BE F7 98 recorded X = 253.)
+PFacSpinnerRecord:
+	ld b, PFAC_SPIN_FIRST_ROOM
+.room
+	ld a, b
+	call PFacRoomRecordAddr          ; clobbers de only
+	ld de, 5
+	add hl, de
+	ld a, [hl]
+	and PFAC_TYPE_SPIN_MASK
+	jr nz, .found
+	inc b
+	ld a, b
+	cp PFAC_SPIN_END_ROOM
+	jr c, .room
+.none
+	xor a
+	ld [PFAC_SPIN_REC_KEY], a        ; no spinner decor in this Facility
+	ret
+.found
+	rrca
+	rrca
+	dec a
+	cp NUM_PFAC_SPINNER_DESCRIPTORS
+	jr nc, .none
+	ld c, a                          ; piece index
+	dec b                            ; ball index = room id - 1
+	; The ball's block: still in sProcFacilityGenScratch[2 * ball] (X, Y).
+	; Read it before this routine overwrites bytes 2-5.
+	ld a, b
+	add a, a
+	ld e, a
+	ld d, 0
+	ld hl, sProcFacilityGenScratch
+	add hl, de
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]                       ; d/e = ball block
+	ld a, c
+	call PFacSpinnerDescAddr
+	inc hl
+	inc hl
+	inc hl
+	inc hl                           ; +4 ball tile (piece-local)
+	ld a, [hli]
+	srl a
+	cpl
+	inc a
+	add d
+	ld d, a                          ; piece X = ball block X - tile X / 2
+	ld a, [hld]
+	srl a
+	cpl
+	inc a
+	add e
+	ld e, a
+	ld a, d
+	ld [PFAC_SPIN_REC_X], a
+	ld a, e
+	ld [PFAC_SPIN_REC_Y], a
+	ld a, c
+	or PFAC_SPIN_REC_LIVE
+	ld [PFAC_SPIN_REC_KEY], a
+	ld a, b
+	ld [PFAC_SPIN_REC_BALL], a
+	; Exact tile: 2 * piece + ball tile + 4 (map border), Y first.
+	ld a, d
+	add a, a
+	add [hl]
+	add 4
+	ld d, a                          ; tile X
+	inc hl
+	ld a, e
+	add a, a
+	add [hl]
+	add 4
+	ld e, a                          ; tile Y
+	ld a, b
+	add a, a
+	ld c, a
+	ld b, 0
+	ld hl, sProcFacilityBallXY
+	add hl, bc
+	ld a, e
+	ld [hli], a
+	ld [hl], d
+	ret
+
+; ------------------------------------------------------------
+; PFacSpinnerStep - every frame, from ProceduralFacilityDefaultScript.
+; Out: e = 1 when the player stands on an arrow tile; the slide has been
+; decoded into the simulated joypad buffer (hSimulatedJoypadStatesIndex). e = 0
+; otherwise. Returned in e because farcall's return trip destroys a/b/c.
+; ------------------------------------------------------------
+PFacSpinnerStep::
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityGenScratch)
+	ld [rRAMB], a
+	ld e, 0
+	ld a, [PFAC_SPIN_REC_KEY]
+	bit 7, a
+	jr z, .close                     ; no spinner decor in this Facility
+	and ~PFAC_SPIN_REC_LIVE & $FF
+	cp NUM_PFAC_SPINNER_DESCRIPTORS
+	jr nc, .close
+	call PFacSpinnerDescAddr
+	; Player tile relative to the piece. Off-piece positions wrap to values
+	; past every table entry, so they cannot match.
+	ld a, [PFAC_SPIN_REC_X]
+	add a, a
+	ld d, a
+	ld a, [wXCoord]
+	sub d
+	ld c, a
+	ld a, [PFAC_SPIN_REC_Y]
+	add a, a
+	ld d, a
+	ld a, [wYCoord]
+	sub d
+	ld b, a
+	ld de, 8
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a                          ; arrow table, map_coord_movement format
+	call DecodeArrowMovementRLE
+	cp $ff
+	ld e, 0
+	jr z, .close
+	ld e, 1
+.close
+	xor a
+	ld [rRAMB], a                    ; restore the ambient SRAM bank 0
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
 	ret

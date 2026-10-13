@@ -51,26 +51,88 @@ HasMasterballClassMon::
 	scf                          ; set carry = found
 	ret
 
-; GetLegendaryForLeader: Return Mew or Mewtwo based on wGymLeaderNo.
-; wGymLeaderNo: 4(Erika)->Mew, 6(Sabrina)->Mewtwo, 7(Blaine)->Mew, 8(Giovanni)->Mewtwo
-; Output: a = species
-GetLegendaryForLeader::
-	ld a, [wGymLeaderNo]
-	cp 4
-	jr z, .returnMew
-	cp 6
-	jr z, .returnMewtwo
-	cp 7
-	jr z, .returnMew
-	cp 8
-	jr z, .returnMewtwo
-	ld a, MEW                   ; fallback
+; ============================================================
+; LegendaryBossTable
+; Challenge 11's leaders and the legendaries each can field, keyed on TRAINER
+; CLASS. Never key this on wGymLeaderNo: Kanto and Johto share 1-8 (Morty and
+; Erika are both 4, Pryce and Blaine both 7), and gyms are drawn in a random
+; order every run, so neither the number nor a "gym N" says who the leader is.
+;
+; Row: db class, count, species x count. Terminated by db 0.
+; The witch's offer gate (witch_setup.asm) checks the same seven leaders by
+; their gym MAP, since at lobby time no battle has set wTrainerClass. Keep the
+; two lists in step.
+; ============================================================
+LegendaryBossTable:
+	db ERIKA,    2, MEW, CELEBI
+	db SABRINA,  4, MEWTWO, MEW, CELEBI, LUGIA
+	db BLAINE,   2, MEW, HO_OH
+	db GIOVANNI, 1, MEWTWO
+	db FALKNER,  2, LUGIA, HO_OH
+	db MORTY,    1, HO_OH
+	db PRYCE,    1, CELEBI
+	db 0
+
+; GetLegendaryPoolForClass
+; Input:  a = trainer class
+; Output: carry SET -> hl = the row's count byte, species follow it
+;         carry CLEAR -> the class has no legendary
+; Clobbers: a, b, hl
+GetLegendaryPoolForClass::
+	ld b, a
+	ld hl, LegendaryBossTable
+.loop
+	ld a, [hli]
+	and a
+	ret z                        ; end of table; `and a` cleared carry
+	cp b
+	jr z, .found
+	ld a, [hli]                  ; count: skip that many species
+	add l
+	ld l, a
+	jr nc, .loop
+	inc h
+	jr .loop
+.found
+	scf
 	ret
-.returnMew
-	ld a, MEW
+
+; RollLegendaryBossAce
+; The Challenge 11 swap, farcalled by the party spec builder for a team's LAST
+; slot (its ace) after the slot's species is final and before AddPartyMon
+; creates it (rogue_build_party.asm PartyGenLegendaryBossAce). Every input
+; comes from WRAM and the answer goes back in WRAM plus carry, because a
+; farcall keeps only d, e and the flags.
+;
+; If the bargain is accepted, the challenge is Legendary Boss and this
+; trainer's class has a pool, rolls one species from the pool into
+; wCurPartySpecies and records it in wLegendaryBossSpecies, which the
+; post-battle trade reads (wGymLeaderNo is zeroed by then).
+; Output: carry SET if the ace was swapped
+; Clobbers: a, b, c, d, e, hl
+RollLegendaryBossAce::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .no
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	jr nz, .no
+	ld a, [wTrainerClass]
+	call GetLegendaryPoolForClass
+	ret nc
+	ld a, [hli]
+	ld c, a
+	call Rangerandom             ; a = 0..count-1; preserves hl
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	ld [wCurPartySpecies], a
+	ld [wLegendaryBossSpecies], a
+	scf
 	ret
-.returnMewtwo
-	ld a, MEWTWO
+.no
+	and a
 	ret
 
 ; LegendaryLeaderTradeSetup
@@ -86,10 +148,9 @@ GetLegendaryForLeader::
 ; is aliased to wGymLeaderNo (ram/wram.asm - two labels on one db, not a
 ; UNION), so a wGymLeaderNo read here always sees 0, not the leader that was
 ; just fought. Each caller already knows its own leader, so it passes the
-; species directly instead. GetLegendaryForLeader is still correct for the
-; IN-BATTLE substitution (PatchLegendaryBossSpecies), which reads wGymLeaderNo
-; before EndOfBattle runs.
-; Input: b = species to give (MEW or MEWTWO)
+; species directly instead, from wLegendaryBossSpecies (written by
+; RollLegendaryBossAce when the ace was swapped).
+; Input: b = species to give
 ; Clobbers: a, b, c, d, e, hl
 LegendaryLeaderTradeSetup::
 	push bc                      ; preserve input species (b) across the scan below, which reuses b/c as scratch
@@ -270,83 +331,6 @@ ApplyLegendaryMoveset::
 	ret
 
 ; ============================================================
-; PatchLegendaryBossSpecies
-; Called via farcall from ReadTrainer's .SpecialTrainer loop, right after
-; farcall PatchRivalStarterSpecies (same call convention). If Challenge 11 is
-; active, wGymLeaderNo is one of the four eligible leaders (4/6/7/8), and the
-; mon just read into wCurPartySpecies is the team's ACE (last mon), substitute
-; the fixed legendary (Mew/Mewtwo) into wCurPartySpecies before AddPartyMon.
-;
-; NOTE ON THE ACE PEEK: farcall (macros/farcall.asm -> Bankswitch) clobbers a,
-; bc, and hl before jumping to the callee, so hl does NOT carry the caller's
-; trainer-data cursor in here - only d/e survive a farcall. The caller peeks
-; the byte AFTER the species (the level of the next mon, or the 0 terminator)
-; and passes it in e. e == 0 means the mon just read is the last/ace mon.
-; Input: e = terminator-peek byte (0 => this is the ace/last mon of the team)
-; Clobbers: a  (reads e; leaves hl untouched - caller preserves its own cursor)
-; ============================================================
-PatchLegendaryBossSpecies::
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	ret nz
-	ld a, [wGymLeaderNo]
-	cp 4
-	jr z, .leaderOk
-	cp 6
-	jr z, .leaderOk
-	cp 7
-	jr z, .leaderOk
-	cp 8
-	jr z, .leaderOk
-	ret                          ; not an eligible leader - no-op
-.leaderOk
-	ld a, e
-	and a
-	ret nz                       ; not the ace/last mon - no-op
-	call GetLegendaryForLeader   ; a = MEW or MEWTWO (same bank, plain call)
-	ld [wCurPartySpecies], a
-	ret
-
-; ============================================================
-; ApplyLegendaryBossMoveset
-; Called via farcall from ReadTrainer's .SpecialTrainer loop, right after
-; AddPartyMon adds the just-loaded mon to the enemy party. If that mon is the
-; legendary (Mew/Mewtwo - no vanilla trainer data uses these, so this species
-; check alone is a safe gate), build the themed moveset and write it into the
-; last-added ENEMY mon's MON_MOVES + MON_PP fields.
-; Input: none (reads wCurPartySpecies / wEnemyPartyCount)
-; Clobbers: a, b, c, d, e, hl
-; ============================================================
-ApplyLegendaryBossMoveset::
-	ld a, [wCurPartySpecies]
-	cp MEW
-	jr z, .isLegendary
-	cp MEWTWO
-	ret nz                       ; not a legendary - no-op
-.isLegendary
-	ld b, a                      ; b = species (MEW/MEWTWO)
-	call BuildLegendaryMoveset   ; writes wBuffer+6..9 (same bank, plain call)
-	; hl = last-added enemy mon's MON_MOVES = wEnemyMon1Moves + (count-1)*struct
-	ld a, [wEnemyPartyCount]
-	dec a
-	ld hl, wEnemyMon1Moves
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes               ; hl -> this mon's MON_MOVES
-	call ApplyLegendaryMoveset   ; writes moves + PP (same bank, plain call)
-	; Blackout loss message: the themed legendary set is hand-authored.
-	ld a, [wEnemyPartyCount]
-	dec a
-	ld c, a
-	ld b, 0
-	ld hl, wEnemyMoveOrigins
-	add hl, bc
-	ld [hl], LOSS_ORIGIN_ORIGINAL
-	ret
-
-; ============================================================
 ; Gym-specific legendary trade offer helpers (Step 5)
 ;
 ; IMPORTANT: these are NOT called raw from the gym map script. They are
@@ -369,7 +353,8 @@ ApplyLegendaryBossMoveset::
 ; ============================================================
 
 ; IsLegendaryTradeReady: shared pre-dispatch gate. Carry set if Challenge 11 is
-; accepted AND the party still holds a masterball-class mon. The per-leader
+; accepted, a legendary was fielded (wLegendaryBossSpecies nonzero) AND the
+; party still holds a masterball-class mon. The per-leader
 ; "already offered" event is a compile-time constant, so the caller checks it
 ; separately with CheckEvent.
 ; Clobbers: a, b, c, e, hl
@@ -380,6 +365,9 @@ IsLegendaryTradeReady::
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_LEGENDARY_BOSS
 	jr nz, .notReady
+	ld a, [wLegendaryBossSpecies]
+	and a
+	jr z, .notReady              ; this leader fielded no legendary: nothing to trade
 	call HasMasterballClassMon   ; returns carry set if a masterball mon is present
 	ret
 .notReady
@@ -398,7 +386,10 @@ OfferLegendaryTradeErika::
 	ret nz                       ; wrong challenge
 	call HasMasterballClassMon   ; same bank, plain call
 	ret nc                       ; no masterball mon in party
-	ld b, MEW                    ; Erika's legendary (see GetLegendaryForLeader)
+	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
+	and a
+	ret z                        ; no swap happened (e.g. a reload cleared it)
+	ld b, a
 	call LegendaryLeaderTradeSetup   ; same bank, plain call
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a          ; InGameTrade_DoTrade indexes wCompletedInGameTradeFlags by
@@ -443,7 +434,10 @@ OfferLegendaryTradeSabrina::
 	ret nz
 	call HasMasterballClassMon
 	ret nc
-	ld b, MEWTWO                 ; Sabrina's legendary (see GetLegendaryForLeader)
+	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
+	and a
+	ret z                        ; no swap happened (e.g. a reload cleared it)
+	ld b, a
 	call LegendaryLeaderTradeSetup
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a
@@ -480,7 +474,10 @@ OfferLegendaryTradeBlaine::
 	ret nz
 	call HasMasterballClassMon
 	ret nc
-	ld b, MEW                    ; Blaine's legendary (see GetLegendaryForLeader)
+	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
+	and a
+	ret z                        ; no swap happened (e.g. a reload cleared it)
+	ld b, a
 	call LegendaryLeaderTradeSetup
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a
@@ -517,7 +514,10 @@ OfferLegendaryTradeGiovanni::
 	ret nz
 	call HasMasterballClassMon
 	ret nc
-	ld b, MEWTWO                 ; Giovanni's legendary (see GetLegendaryForLeader)
+	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
+	and a
+	ret z                        ; no swap happened (e.g. a reload cleared it)
+	ld b, a
 	call LegendaryLeaderTradeSetup
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a
