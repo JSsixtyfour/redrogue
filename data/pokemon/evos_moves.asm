@@ -4706,7 +4706,7 @@ LugiaEvosMoves:
     db 35, WATERFALL
 	db 40, HYDRO_PUMP
 	db 45, SWIFT
-	db 50, PSYCHIC
+	db 50, PSYCHIC_M
 	db 55, SKY_ATTACK ; was FUTURE_SIGHT
 	db 0
 
