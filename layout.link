@@ -185,6 +185,11 @@ ROMX $1D
 	"Vending Machine"
 	"Maps 21"
 	"Itemfinder 2"
+	; Pinned 2026-10-13 (PROCEDURAL_SUBROOMS_PLAN Phase 0). It used to float and
+	; first-fit landed it in `$01`, leaving that bank 4 B free, so the planned
+	; warp pads (new warp_events) had nowhere to grow. Self-contained: every
+	; outside reference is BANK()-paired (map_header_banks) or a HOME/farcall.
+	"Procedural Facility Maps"
 ROMX $1E
 	"bank1E"
 ROMX $1F

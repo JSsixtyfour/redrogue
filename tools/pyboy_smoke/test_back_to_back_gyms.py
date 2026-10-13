@@ -24,7 +24,9 @@ LOBBY, REWARD_ROOM = MAPS["INDIGO_PLATEAU_LOBBY"], MAPS["REWARD_ROOM"]
 REWARD_BALL_TOGGLES = (0x0B, 0x0C, 0x0D)
 STAGE_ITEM_TOGGLE = 0x0E  # TOGGLE_STAGE_RANDOM_ITEM: the Reward Room's object 4
 EVENT_STEP_FORWARD = 297
+EVENT_GOT_ROGUE_POKEMON = 230
 TRADE_ACTIVE_BIT = RAM["BIT_ROGUE_TRADE_ACTIVE"]
+TRADE_NPC_TOGGLE = 0x0F  # TOGGLE_ROGUE_TRADE_NPC: the Reward Room's object 5
 START_LEVEL = parse_rgbds_constants(REPO_ROOT / "constants" / "balance_constants.asm", ROUNDS)["STARTER_LEVEL"]
 
 
@@ -230,6 +232,10 @@ class PairRewardRoomTest(HarnessTestCase):
         h.write8("wPartyCount", 3)                          # room for the ball's mon
         h.write8("wPartySpecies", 0xFF, offset=3)
         menu = h.hook_flag("RogueRewardMenu")
+        # A trade is up (set after the offer roll, as the roll would): ball 1
+        # gives way to the trade NPC, as on a route.
+        h.hook_flag("RoguePairRewardRoomObjects", action=lambda: h.write8(
+            "wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | 1 << TRADE_ACTIVE_BIT))
         h.move_tile("up")
         for _ in range(6):
             if h.read8("hCurMap") == REWARD_ROOM:
@@ -245,10 +251,11 @@ class PairRewardRoomTest(HarnessTestCase):
         self.assertEqual(h.read8("wLobbyDoor1StageMap"), LOBBY)
         self.assertEqual(h.read8("wLobbyDoor2StageMap"), LOBBY)
         self.assertEqual(h.read8("wGymChoice"), LATCHED | 5 << SHIFT | 5, "the kept gym")
-        self.assert_balls_shown()
+        self.assertTrue(h.read8("wRogueFlagsBitfield") & 1 << TRADE_ACTIVE_BIT)
+        self.assert_rewards_shown()
         self.assertFalse(h.read8("wToggleableObjectFlags", STAGE_ITEM_TOGGLE // 8) & 1 << STAGE_ITEM_TOGGLE % 8,
                          "the skipped route's item ball is not shown")
-        self.assertEqual(h.read8("wNumSprites"), 4)
+        self.assertEqual(h.read8("wNumSprites"), 5)        # 3 balls, item ball, trade NPC
         # The vendor's menu opens once the entry walk ends (EVENT_STEP_FORWARD,
         # re-armed on entry, is set when it closes); the balls stay as a second way.
         self.assertFalse(h.read8("wEventFlags", EVENT_STEP_FORWARD // 8) & 1 << EVENT_STEP_FORWARD % 8)
@@ -281,17 +288,29 @@ class PairRewardRoomTest(HarnessTestCase):
         h.call_routine("GetRewardMonLevel")
         self.assertEqual(got, h.read8("wCurEnemyLevel"), "mid-run ball level")
         self.assertGreater(got, START_LEVEL)
-        # A live trade swaps a route's ball 1 for its trade NPC; the room has none.
-        h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | 1 << TRADE_ACTIVE_BIT)
-        h.park_before_hijack()
-        h.call_routine("RoguePairRewardRoomObjects", limit=60000)
-        self.assert_balls_shown()
+        # The trade NPC runs the route's trade dialogue (the ball already taken is
+        # cleared so the NPC offers the trade rather than "greedy").
+        for _ in range(3):                                  # below ball 1 / the trade NPC
+            h.move_tile("left")
+        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (5, 6))
+        h.write8("wEventFlags", h.read8("wEventFlags", EVENT_GOT_ROGUE_POKEMON // 8)
+                 & ~(1 << EVENT_GOT_ROGUE_POKEMON % 8), offset=EVENT_GOT_ROGUE_POKEMON // 8)
+        trade = h.hook_flag("RogueDoInGameTradeDialogue")
+        h.tap("up", 4)
+        h.tick(20)
+        h.tap("a", 4)
+        h.wait_until(lambda: trade["count"], "the trade NPC's dialogue", 600)
 
-    def assert_balls_shown(self) -> None:
-        h = self.harness
-        for toggle in REWARD_BALL_TOGGLES:
-            self.assertFalse(h.read8("wToggleableObjectFlags", toggle // 8) & 1 << toggle % 8,
-                             f"reward ball toggle {toggle:#04x} hidden")
+    def hidden(self, toggle: int) -> bool:
+        return bool(self.harness.read8("wToggleableObjectFlags", toggle // 8) & 1 << toggle % 8)
+
+    def assert_rewards_shown(self) -> None:
+        """Balls 2-3, and ball 1 or the trade NPC by the offer roll's trade bit."""
+        trade = bool(self.harness.read8("wRogueFlagsBitfield") & 1 << TRADE_ACTIVE_BIT)
+        for toggle in REWARD_BALL_TOGGLES[1:]:
+            self.assertFalse(self.hidden(toggle), f"reward ball toggle {toggle:#04x} hidden")
+        self.assertEqual(self.hidden(REWARD_BALL_TOGGLES[0]), trade, f"ball 1, trade up: {trade}")
+        self.assertEqual(self.hidden(TRADE_NPC_TOGGLE), not trade, f"trade NPC, trade up: {trade}")
 
 
 if __name__ == "__main__":

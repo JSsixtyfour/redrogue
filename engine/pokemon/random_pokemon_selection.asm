@@ -86,29 +86,11 @@ ld c, a
 ld b, 0
 
 .determineClassSlot
-; Apply witch challenge/prize rarity modifiers to the class roll. Two
-; INDEPENDENT effects, both able to apply on the same roll (2026-09-02: they
-; used to be mutually exclusive by code structure - if prize a was active,
-; challenge 4 was skipped even when both were live at once. Fixed to match the
-; additive-stacking shape every other rarity source here already uses - see
-; the mini-boss/RARE SCOPE stack below).
+; Every rarity source below adds to b, and the witch's CHALLENGE_REDUCED_RARITY
+; subtracts from the total after the last of them (see .noRareScope), so all of
+; them act on the same "luck" number. The challenge used to shift the roll c
+; down by 64 instead, which wiped out ultraball outright whatever bonus was live.
 ;
-; CHALLENGE_REDUCED_RARITY (4): zone-scoped, only while BIT_WITCH_ACCEPTED.
-ld a, [wRogueFlagsBitfield]
-bit BIT_WITCH_ACCEPTED, a
-jr z, .noChallengeMod
-ld a, [wWitchChallenge]
-cp CHALLENGE_REDUCED_RARITY
-jr nz, .noChallengeMod
-; Push the ROLL toward pokeball (SUBTRACT from c → smaller c = more likely
-; pokeball). A malus, so it moves the roll itself rather than the bonus.
-ld a, c
-sub 64         ; smaller c = more likely pokeball class (worse)
-jr nc, .challengeModDone
-xor a          ; clamp at 0
-.challengeModDone
-ld c, a
-.noChallengeMod
 ; PRIZE_RARITY_POKEMON (a): PERMANENT (2026-09-02) - does NOT gate on
 ; BIT_WITCH_ACCEPTED. Once earned, applies to every roll for the rest of the
 ; run, stacking with mini-boss/RARE SCOPE exactly like they stack with each
@@ -182,6 +164,37 @@ ld a, $FF
 .rareScopeDone
 ld b, a
 .noRareScope
+; CHALLENGE_REDUCED_RARITY (4): zone-scoped, only while BIT_WITCH_ACCEPTED.
+; Takes CHALLENGE_REDUCED_RARITY_PENALTY off the stacked bonus, so it exactly
+; cancels the +51 rarity prize. Whatever is still owed after the bonus runs out
+; is bad luck, rolled as a REVERSE cascade: RewardClassWidthsDown lists the
+; same three bands top class first, so RollSpreadClass drains ultraball evenly
+; into great and poke, then greatball into poke, and the class comes back
+; mirrored (4 - c). A uniform roll makes the band order irrelevant to the odds.
+; Masterball needs positive luck, so the reverse ladder is 3-class only.
+ld a, [wRogueFlagsBitfield]
+bit BIT_WITCH_ACCEPTED, a
+jr z, .noLuckPenalty
+ld a, [wWitchChallenge]
+cp CHALLENGE_REDUCED_RARITY
+jr nz, .noLuckPenalty
+ld a, b
+sub CHALLENGE_REDUCED_RARITY_PENALTY
+jr nc, .luckStillGood          ; the bonus covered the penalty; a = what is left
+cpl
+inc a                          ; a = the penalty still owed (1-51)
+ld b, a
+pop af                         ; drop the ladder selector: no masterball here
+ld a, c
+ld hl, RewardClassWidthsDown
+call RollSpreadClass           ; c = mirrored class 1-3 (1 = ultraball)
+ld a, RARITY_TIER_ULTRABALL + 1
+sub c
+ld b, a                        ; tier id = 3 - mirrored class
+jp RogueSelectFromTier
+.luckStillGood
+ld b, a
+.noLuckPenalty
 ; Stage rewards open the masterball class, but only once some rarity bonus is
 ; live: the class table cannot hold a masterball width of 0 (its cumulative
 ; would be 256), so the no-bonus case keeps the 3-class table and its exact
@@ -207,6 +220,11 @@ jp RogueSelectFromTier
 ; pokeball 128 / great 102 / ultra 26. Ultraball is the fall-through, by design.
 RewardClassWidths:
 	db 2, pokeball_odds + 1, greatball_odds + 1, 0
+
+; The same three bands top class first (ultra 26 / great 102 / poke 128), for
+; the challenge-4 reverse cascade: pokeball is the fall-through that absorbs.
+RewardClassWidthsDown:
+	db 2, 256 - (greatball_odds + 1), 256 - (pokeball_odds + 1), 0
 
 ; pokeball 128 / great 102 / ultra 25 / master 1. Used only with a rarity bonus
 ; above 0, which RollSpreadClass cascades into the masterball class (one +51

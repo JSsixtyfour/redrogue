@@ -132,52 +132,96 @@ class RollSpreadClassTest(unittest.TestCase):
     def test_stage_reward_table(self) -> None:
         self.check_table("StageRewardClassWidths", [128, 230, 255])
 
-    def ladder(self, class_arg: int, prize: bool) -> tuple[str, int]:
-        """Enter Random_Pokemon_Selection with c = class_arg and stop at
-        RollSpreadClass: (which table it was handed, the bonus in b)."""
+    def test_reward_down_table(self) -> None:
+        # challenge 4's reverse cascade: the reward bands listed top class first
+        self.check_table("RewardClassWidthsDown", [26, 128])
+
+    def ladder(self, class_arg: int, prize: bool, challenge: bool = False) -> dict[str, object]:
+        """Enter Random_Pokemon_Selection with c = class_arg and run to
+        RogueSelectFromTier: the table and bonus RollSpreadClass was handed,
+        the class it returned, and the tier id that reached the species pick."""
         h = self.harness
         self.baseline.seek(0)
         h.load_state(self.baseline)
         bank, entry = h.symbols.get("Random_Pokemon_Selection")
         spread_bank, spread = h.symbols.get("RollSpreadClass")
-        tables = {h.symbols.get(name)[1]: name
-                  for name in ("RewardClassWidths", "StageRewardClassWidths")}
+        done_bank, done = h.symbols.get("RollSpreadClass.done")
+        tier_bank, tier_entry = h.symbols.get("RogueSelectFromTier")
+        tables = {h.symbols.get(name)[1]: name for name in
+                  ("RewardClassWidths", "StageRewardClassWidths", "RewardClassWidthsDown")}
         result: dict[str, object] = {}
+        regs = h.pyboy.register_file
 
-        def capture(_context) -> None:
-            if "table" not in result:
-                result["table"] = tables.get(h.pyboy.register_file.HL, hex(h.pyboy.register_file.HL))
-                result["bonus"] = h.pyboy.register_file.B
+        def at_spread(_context) -> None:
+            result.setdefault("table", tables.get(regs.HL, hex(regs.HL)))
+            result.setdefault("bonus", regs.B)
+
+        def at_done(_context) -> None:
+            result.setdefault("class", regs.C)
+
+        def at_tier(_context) -> None:
+            result.setdefault("tier", regs.B)
 
         prizes = h.read8("wWitchPrizesEarned")
         bit = 1 << (CONSTANTS["PRIZE_RARITY_POKEMON"] - 1)
         h.write8("wWitchPrizesEarned", (prizes | bit) if prize else (prizes & ~bit & 0xFF))
-        h.pyboy.hook_register(spread_bank, spread, capture, None)
+        flags = h.read8("wRogueFlagsBitfield")
+        accepted = 1 << CONSTANTS["BIT_WITCH_ACCEPTED"]
+        h.write8("wRogueFlagsBitfield", (flags | accepted) if challenge else (flags & ~accepted & 0xFF))
+        h.write8("wWitchChallenge", CONSTANTS["CHALLENGE_REDUCED_RARITY"] if challenge else 0)
+        hooks = ((spread_bank, spread, at_spread), (done_bank, done, at_done),
+                 (tier_bank, tier_entry, at_tier))
+        for hook_bank, address, callback in hooks:
+            h.pyboy.hook_register(hook_bank, address, callback, None)
         try:
-            sp = (h.pyboy.register_file.SP - 2) & 0xFFFF
+            sp = (regs.SP - 2) & 0xFFFF
             h.pyboy.memory[sp] = 0xFF
             h.pyboy.memory[sp + 1] = 0x3F
-            h.pyboy.register_file.SP = sp
+            regs.SP = sp
             h.pyboy.memory[0x2000] = bank
             h.write8("hLoadedROMBank", bank)
-            h.pyboy.register_file.C = class_arg
-            h.pyboy.register_file.PC = entry
-            h.wait_until(lambda: "table" in result, "RollSpreadClass entry", limit=120)
+            regs.C = class_arg
+            regs.PC = entry
+            h.wait_until(lambda: "tier" in result, "RogueSelectFromTier entry", limit=120)
         finally:
-            h.pyboy.hook_deregister(spread_bank, spread)
-        return result["table"], result["bonus"]
+            for hook_bank, address, _ in hooks:
+                h.pyboy.hook_deregister(hook_bank, address)
+        # the tier id must follow from the class: mirrored on the reverse ladder
+        if result["table"] == "RewardClassWidthsDown":
+            self.assertEqual(result["tier"], 3 - result["class"], f"reverse ladder tier {result}")
+        else:
+            self.assertEqual(result["tier"], result["class"] - 1, f"tier {result}")
+        return result
 
     def test_stage_reward_ladder_gate(self) -> None:
         """Masterball opens only for the stage-reward class AND a live bonus."""
         stage = CONSTANTS["REWARD_CLASS_STAGE"]
-        table, bonus = self.ladder(stage, prize=True)
-        self.assertGreater(bonus, 0)
-        self.assertEqual(table, "StageRewardClassWidths", "stage reward with a bonus")
-        table, bonus = self.ladder(0, prize=True)
-        self.assertEqual(table, "RewardClassWidths", "class 0 (bridge gift) never opens masterball")
-        table, bonus = self.ladder(stage, prize=False)
-        want = "StageRewardClassWidths" if bonus else "RewardClassWidths"
-        self.assertEqual(table, want, f"stage reward, bonus={bonus}: zero bonus keeps the 3-class table")
+        got = self.ladder(stage, prize=True)
+        self.assertGreater(got["bonus"], 0)
+        self.assertEqual(got["table"], "StageRewardClassWidths", "stage reward with a bonus")
+        got = self.ladder(0, prize=True)
+        self.assertEqual(got["table"], "RewardClassWidths", "class 0 (bridge gift) never opens masterball")
+        got = self.ladder(stage, prize=False)
+        want = "StageRewardClassWidths" if got["bonus"] else "RewardClassWidths"
+        self.assertEqual(got["table"], want, f"stage reward {got}: zero bonus keeps the 3-class table")
+
+    def test_reduced_rarity_challenge_is_a_luck_penalty(self) -> None:
+        """Challenge 4 subtracts its penalty from the stacked bonus; a shortfall
+        rolls the reverse cascade, and with the +51 prize it nets to base odds."""
+        stage = CONSTANTS["REWARD_CLASS_STAGE"]
+        penalty = CONSTANTS["CHALLENGE_REDUCED_RARITY_PENALTY"]
+        self.assertEqual(penalty, 51, "mirrors PRIZE_RARITY_POKEMON's +51")
+        base = self.ladder(stage, prize=False)["bonus"]
+        got = self.ladder(stage, prize=False, challenge=True)
+        if base < penalty:
+            self.assertEqual(got["table"], "RewardClassWidthsDown", got)
+            self.assertEqual(got["bonus"], penalty - base, got)
+        with_prize = self.ladder(stage, prize=True)["bonus"]
+        got = self.ladder(stage, prize=True, challenge=True)
+        net = with_prize - penalty
+        self.assertEqual(got["table"], "StageRewardClassWidths" if net > 0 else "RewardClassWidths", got)
+        if net > 0:
+            self.assertEqual(got["bonus"], net, got)
 
 
 if __name__ == "__main__":

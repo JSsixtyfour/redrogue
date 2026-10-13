@@ -26,6 +26,20 @@ RewardRoom_Script:
     farcall RoguePairRewardRoomObjects ; the balls and the route's item ball
     jr .objectsReady
 .runStartObjects
+    ; Explicitly: stages share these toggles and nothing resets them per run, so
+    ; the last run's last stage could leave a ball taken or the trade NPC up.
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_2
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
+    ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
+    ld [wToggleableObjectIndex], a
+    predef ShowObject
+    ld a, TOGGLE_ROGUE_TRADE_NPC
+    ld [wToggleableObjectIndex], a
+    predef HideObject
     ld a, TOGGLE_STAGE_RANDOM_ITEM
     ld [wToggleableObjectIndex], a
     predef HideObject
@@ -64,9 +78,10 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Script_PokeballText_1, TEXT_ROGUE_REWARD_POKEBALL_1
     dw_const Rogue_RewardRoom_Script_PokeballText_2, TEXT_ROGUE_REWARD_POKEBALL_2
     dw_const Rogue_RewardRoom_Script_PokeballText_3, TEXT_ROGUE_REWARD_POKEBALL_3
-    ; Object 4 (the mid-run item ball). Objects' texts come first, in slot order:
+    ; Objects 4-5 (the mid-run item ball, the trade NPC). Objects' texts come first, in slot order:
     ; DisplayTextID reroutes any script-fired id <= wNumSprites through a slot.
     dw_const RandomPickUpItemText,                   TEXT_REWARDROOM_RANDOM_ITEM
+    dw_const RewardRoomTradeNPCText,                 TEXT_REWARDROOM_TRADE_NPC
 	dw_const RewardRoomDoor1SignText,    TEXT_REWARDROOM_DOOR1_SIGN
 	dw_const RewardRoomDoor2SignText,    TEXT_REWARDROOM_DOOR2_SIGN
     dw_const Rogue_RewardRoom_Reward_Text, TEXT_REWARDROOM_REWARD_VENDOR_1
@@ -167,6 +182,13 @@ Rogue_RewardRoom_Script_PokeballText_1:
 	text_asm
 	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
 	farcall Rogue_Reward_Script_PokeballText_1.noTrade
+	jp TextScriptEnd
+
+; The trade NPC: the full ball 1 routine, whose trade path runs while a trade is up.
+RewardRoomTradeNPCText:
+	text_asm
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	farcall Rogue_Reward_Script_PokeballText_1
 	jp TextScriptEnd
 
 Rogue_RewardRoom_Script_PokeballText_2:

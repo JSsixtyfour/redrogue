@@ -196,7 +196,9 @@ sProcFacilityBossSprite:: db       ; SPRITE_* overworld category (PCGetBossOWSpr
                                    ; patched into wSprite01 PICTUREID BEFORE InitMapSprites
 sProcFacilityBallXY:: ds 8         ; Y0,X0,Y1,X1,Y2,X2,Y3,X3 in tile coords (block*2+4)
 sProcFacilityBallItems:: ds 4      ; item ID per pokeball
-sProcFacilityItemGot:: db          ; bit N = pokeball N collected this run
+sProcFacilityItemGot:: db          ; bits 0-3 unused (ball hide state is the toggle flags);
+                                   ; bit 7 = fresh-entry objects shown for this stage
+                                   ; (BIT_PFAC_OBJECTS_SHOWN, scripts/ProceduralFacility.asm)
 sProcFacilitySignVariant:: db      ; 0=items text, 1=boss text; rolled once at Pallet
                                    ; Town entry (PFacPreload), stable for the run
 sProcFacilityPalette:: db          ; 0=PowerPlant (PAL_ROUTE/green), 1=Mansion

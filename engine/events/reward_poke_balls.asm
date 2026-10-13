@@ -5,8 +5,9 @@ Rogue_Reward_Script_PokeballText_1::
     ld a, [wRogueFlagsBitfield]
     bit BIT_ROGUE_TRADE_ACTIVE, a
     jr nz, .tradeNPC
-; The Reward Room's ball 1 enters here: the room has no trade NPC, so its ball 1
-; is always a Poke Ball.
+; The Reward Room's ball 1 enters here, past the trade check: at run start the
+; vendor and balls ignore the trade bit; mid-run ball 1 is hidden while a trade
+; is up and the room's trade NPC runs the full routine.
 .noTrade::
     CheckEvent EVENT_GOT_ROGUE_POKEMON
 	jr z, .GetMon

@@ -68,8 +68,8 @@ _WitchChallenge3Text::
 	prompt
 
 _WitchChallenge4Text::
-	text "Luck favors"
-	line "common #MON"
+	text "Worse luck for"
+	line "reward #MON"
 	cont "this zone"
 	prompt
 
@@ -174,18 +174,18 @@ _WitchChallenge18Text::
 	prompt
 
 _WitchPrize1Text::
-	text "Win and your"
-	line "reward #MON"
-	cont "will be rarer"
+	text "Win and reward"
+	line "#MON are rarer"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"
 	done
 
 _WitchPrize2Text::
-	text "Win and your"
-	line "item finds"
-	cont "get rarer"
+	text "Win and item"
+	line "finds get rarer"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"

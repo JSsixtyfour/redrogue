@@ -248,24 +248,8 @@ RoguePairRewardRoomEntry::
 	ret
 
 ; Farcalled from RewardRoom_Script mid-run, after the offers and item are rolled.
-; Shows what a route shows (the three Poke Balls and the item ball, under the
-; witch's rules, with their colours) via RogueRefresh. A route swaps ball 1 for
-; its trade NPC when a trade is up; the room has none, so ball 1 stays a ball.
+; Shows what a route shows via RogueRefresh: the three Poke Balls (ball 1
+; swapped for the trade NPC while a trade is up) and the item ball, under the
+; witch's rules, with their colours.
 RoguePairRewardRoomObjects::
-	farcall RogueRefresh
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_ROGUE_TRADE_ACTIVE, a
-	ret z
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .showBall1
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_REWARD_POKEMON
-	ret z                       ; the witch hid all three
-.showBall1
-	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
-	ld [wToggleableObjectIndex], a
-	predef ShowObject
-	ld a, TOGGLE_ROGUE_TRADE_NPC
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	ret
+	farjp RogueRefresh

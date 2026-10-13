@@ -268,6 +268,11 @@ DEF CHALLENGE_RECOIL_SPECIAL        EQU 17 ; tier: medium - recoil on special mo
 DEF CHALLENGE_DOUBLE_PP             EQU 18 ; tier: medium - your moves burn 2 PP per use
 DEF NUM_WITCH_CHALLENGES            EQU 18
 
+; CHALLENGE_REDUCED_RARITY's luck penalty on the reward mon roll: subtracted
+; from the stacked rarity bonus, any shortfall rolled as a reverse cascade.
+; Equal to PRIZE_RARITY_POKEMON's +51 on purpose, so prize + challenge = base odds.
+DEF CHALLENGE_REDUCED_RARITY_PENALTY EQU 51
+
 ; Gambler's Paradise fields fully-evolved mons with high-level movesets
 ; (Fissure/Horn Drill/etc.). PCWitchSetup rerolls it if wBattleCount is below
 ; this, so it only appears once the run's levels/species make sense. round =

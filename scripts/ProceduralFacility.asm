@@ -6,10 +6,39 @@
 ;   EVENT_PC_BOSS_OFFERED
 ;   EVENT_PC_BUDGET_ENDED / EVENT_PC_CALMED_SHOWN - wild budget calmed message
 
+; sProcFacilityItemGot bit 7: the fresh-entry ShowObject block below has run
+; for this generated stage. PFacPreload zeroes the whole byte.
+DEF BIT_PFAC_OBJECTS_SHOWN EQU 7
+
 ProceduralFacility_Script:
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .afterSetup
+	jp nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
+	; ONCE PER GENERATED STAGE, not once per entry (PROCEDURAL_SUBROOMS_PLAN
+	; Phase 1). Every warp clears EVENT_ENTER_ROOM, and nothing ever re-entered
+	; this map until warp pads and subroom returns did, so the block below used
+	; to re-show every collected ball on the way back in: an item dupe. The
+	; toggle flags already carry each object's hidden state across warps; the
+	; shows are only needed to undo the previous stage's hides, so they belong
+	; to the first entry after PFacPreload and nowhere else.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityItemGot)
+	ld [rRAMB], a
+	ld hl, sProcFacilityItemGot
+	ld a, [hl]
+	set BIT_PFAC_OBJECTS_SHOWN, [hl]
+	ld b, a
+	xor a
+	ld [rRAMB], a                   ; restore the ambient SRAM bank 0
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	bit BIT_PFAC_OBJECTS_SHOWN, b
+	jp nz, .afterSetup
 	; Fresh entry: show the four item pokeballs.
 	ld a, TOGGLE_WILD_AREA_POKEBALL_1
 	ld [wToggleableObjectIndex], a
