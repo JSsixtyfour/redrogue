@@ -1445,7 +1445,11 @@ AnimationFlashMonPic:
 	ld [wChangeMonPicPlayerTurnSpecies], a
 	ld a, [wEnemyMonSpecies]
 	ld [wChangeMonPicEnemyTurnSpecies], a
-	jp ChangeMonPic
+	call ChangeMonPic
+	ldh a, [hWhoseTurn]
+	and a
+	ret z
+	rfarjp MergeFinalAIFusionFrontPic
 
 AnimationFlashEnemyMonPic:
 ; Flashes the enemy mon's sprite on and off

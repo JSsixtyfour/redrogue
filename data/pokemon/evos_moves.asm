@@ -4360,12 +4360,12 @@ SwinubEvosMoves:
 	db 0
 ; Learnset - TACKLE already granted at level 1; POWDER_SNOW/ENDURE do not
 ; exist in Gen 1, filled with METRONOME.
-	db 10, METRONOME ; was POWDER_SNOW
-	db 19, METRONOME ; was ENDURE
+	db 7, SAND_ATTACK ; was POWDER_SNOW
+	db 19, DEFENSE_CURL ; was ENDURE
 	db 28, TAKE_DOWN
 	db 37, MIST
 	db 46, BLIZZARD
-	db 0
+	db 50, AMNESIA
 
 PiloswineEvosMoves:
 ; Evolutions
@@ -4376,12 +4376,12 @@ PiloswineEvosMoves:
 ; engine cannot express directly.
 	db EVOLVE_LEVEL, 44, MAMOSWINE
 	db 0
-; Learnset - HORN_ATTACK already granted at level 1; POWDER_SNOW/ENDURE do
-; not exist in Gen 1, filled with METRONOME.
-	db 10, METRONOME ; was POWDER_SNOW
-	db 19, METRONOME ; was ENDURE
+; Learnset - HORN_ATTACK already granted at level 1
+	db 7, SAND_ATTACK ; was POWDER_SNOW
+	db 19, DEFENSE_CURL ; was ENDURE
 	db 28, TAKE_DOWN
 	db 33, FURY_ATTACK
+    db 34, HORN_ATTACK
 	db 42, MIST
 	db 56, BLIZZARD
 	db 0

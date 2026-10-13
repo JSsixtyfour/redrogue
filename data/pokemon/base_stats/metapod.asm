@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/metapod.dim" ; sprite dimensions
 	dw MetapodPicFront, MetapodPicBack
 
-	db HARDEN, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, HARDEN, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

@@ -1749,7 +1749,7 @@ EnemySendOutFirstMon:
 	ld [wCurSpecies], a
 	call GetMonHeader
 	ld de, vFrontPic
-	call LoadMonFrontSprite
+	rfarcall LoadEnemyFrontSprite
 	ld a, -$31
 	ldh [hStartTileID], a
 	farcall RogueAnimateEnemySendOut ; the grow-in, or a ghost variant's fade-in
@@ -2856,7 +2856,7 @@ PartyMenuOrRockOrRun:
 	call PublishFormContext
 	call GetMonHeader
 	ld de, vFrontPic
-	call LoadMonFrontSprite
+	rfarcall LoadEnemyFrontSprite
 	jr .enemyMonPicReloaded
 .doEnemyMonAnimation
 	ld b, BANK(AnimationSubstitute) ; BANK(AnimationMinimizeMon)

@@ -1,3 +1,79 @@
+; Enemy send-out and party-menu reload share the normal front-pic loader.
+LoadEnemyFrontSprite::
+	call LoadMonFrontSprite
+	; fall through
+
+; Match the player's fusion diagonal without borrowing vBackPic (the player's
+; live sprite). Stage the secondary in the existing SRAM sprite buffers and
+; overwrite only the six lower-right column runs of the primary in vFrontPic.
+; AnimationFlashMonPic also calls this after restoring the normal picture.
+; Transform keeps its replacement picture, even when the original was fused.
+MergeFinalAIFusionFrontPic::
+	ldh a, [hIsInBattle]
+	cp 2
+	ret nz
+	ld a, [wTrainerClass]
+	cp FINAL_AI
+	ret nz
+	ld a, [wEnemyBattleStatus3]
+	bit TRANSFORMED, a
+	ret nz
+	ld a, [wEnemyMonCatchRate]
+	bit BIT_FUSION, a
+	ret z
+	ld a, [wFinalAISecondarySpecies]
+	and a
+	ret z
+	ld a, [wCurPartySpecies]
+	push af
+	ld a, [wCurSpecies]
+	push af
+	ld a, [wFinalAISecondaryForm]
+	ld [wFormContextForm], a
+	ld a, [wFinalAISecondarySpecies]
+	ld [wFormContextSpecies], a
+	ld [wCurPartySpecies], a
+	ld [wCurSpecies], a
+	call GetMonHeader
+	; InterlaceMergeSpriteBuffers already produces its final 2bpp image here.
+	; Its final CopyVideoData is an in-place copy, leaving VRAM untouched.
+	ld de, sSpriteBuffer1
+	call LoadMonFrontSprite
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	xor a
+	ld [rRAMB], a
+	ld hl, vFrontPic + 13 * TILE_SIZE
+	ld de, sSpriteBuffer1 + 13 * TILE_SIZE
+	ld c, 1
+.column
+	ldh a, [hLoadedROMBank]
+	ld b, a
+	call CopyVideoData
+	ld a, l
+	add 6 * TILE_SIZE
+	ld l, a
+	jr nc, .destReady
+	inc h
+.destReady
+	ld a, e
+	add 6 * TILE_SIZE
+	ld e, a
+	jr nc, .sourceReady
+	inc d
+.sourceReady
+	inc c
+	ld a, c
+	cp 7
+	jr nz, .column
+	pop af
+	ld [wCurSpecies], a
+	pop af
+	ld [wCurPartySpecies], a
+	ld hl, wEnemyMon
+	call PublishFormContext
+	jp GetMonHeader
+
 ; animates the mon "growing" out of the pokeball
 AnimateSendingOutMon:
 	ld a, [wPredefHL]

@@ -250,6 +250,97 @@ class FinalAITest(HarnessTestCase):
             [foreign_max_hp & 0xFF, foreign_max_hp >> 8],
         )
 
+    def test_archived_fusion_front_pic_composes_tiles_and_preserves_player(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=7)
+        self._empty_archive()
+        primary = self.species["MEOWTH"]
+        secondary = self.species["RAICHU"]
+
+        def load_pic(species, flags):
+            h.park_before_hijack()
+            h.write8("hIsInBattle", 2)
+            h.write8("wEnemyMon1Species", species)
+            h.write8("wEnemyMon1CatchRate", flags)
+            h.write8("wEnemyMonSpecies2", species)
+            h.write8("wCurPartySpecies", species)
+            h.write8("hWhichPokemon", 0)
+            h.call_routine("LoadEnemyMonData")
+            h.pyboy.register_file.D = h.address("vFrontPic") >> 8
+            h.pyboy.register_file.E = h.address("vFrontPic") & 0xFF
+            h.call_routine("LoadEnemyFrontSprite")
+            return h.read_bytes("vFrontPic", 49 * 16)
+
+        h.write8("wTrainerClass", self.trainer_classes["FINAL_AI"])
+        h.write8("wEnemyBattleStatus3", 0)
+        h.write8("wSpriteFlipped", 0)
+        # Independent full-sprite references, including both regional forms.
+        primary_pic = load_pic(primary, 1 << 5)
+        secondary_base = load_pic(secondary, 0)
+        secondary_pic = load_pic(secondary, 1 << 5)
+        self.assertNotEqual(secondary_pic, secondary_base)
+
+        self._party(primary)
+        h.write8("wPartyMon1Level", 42)
+        h.write8("wPartyMon1CatchRate", (1 << 5) | (1 << 1))
+        h.write8("wFusionSecondarySpecies", secondary)
+        h.write8("wFusionSecondaryForm", 1)
+        h.park_before_hijack()
+        h.call_routine("FinalTeamArchiveCapture")
+        self.assertEqual(h.read8("wActionResultOrTookBattleTurn"), 1)
+        h.call_routine("FinalTeamArchiveLoadRandomEnemy")
+        # The renderer must use the archive sidecar, not the player's fusion.
+        h.write8("wFusionSecondarySpecies", self.species["CHARIZARD"])
+        h.write8("wFusionSecondaryForm", 0)
+        player_pic = h.read_bytes("vBackPic", 49 * 16)
+        fused_pic = load_pic(primary, (1 << 5) | (1 << 1))
+        expected = list(primary_pic)
+        for column in range(7):
+            for row in range(7):
+                if column + row >= 7:
+                    offset = (column * 7 + row) * 16
+                    expected[offset:offset + 16] = secondary_pic[offset:offset + 16]
+        self.assertNotEqual(expected, primary_pic)
+        self.assertEqual(fused_pic, expected)
+        self.assertEqual(h.read_bytes("vBackPic", 49 * 16), player_pic)
+        self.assertEqual(h.read8("wCurPartySpecies"), primary)
+        self.assertEqual(h.read8("wCurSpecies"), primary)
+        self.assertEqual(h.read8("wMonHForm"), 1)
+        self.assertEqual(h.read8("wMonHFormSpecies"), primary)
+
+        # Reloading, including the animation restoration seam, is idempotent.
+        h.call_routine("MergeFinalAIFusionFrontPic")
+        self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
+        # The normal animation restoration entry merges; Transform deliberately
+        # bypasses it before TRANSFORMED has been set by TransformEffect_.
+        h.write8("hWhoseTurn", 1)
+        h.call_routine("AnimationFlashMonPic")
+        self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
+        merge_hook = h.hook_flag("MergeFinalAIFusionFrontPic")
+        h.call_routine("AnimationTransformMon")
+        self.assertEqual(merge_hook["count"], 0)
+        # Switching to an ordinary slot replaces the entire composite.
+        self.assertEqual(load_pic(primary, 1 << 5), primary_pic)
+        fused_pic = load_pic(primary, (1 << 5) | (1 << 1))
+        self.assertEqual(fused_pic, expected)
+        for trainer, flags, partner, status, battle in (
+            ("FINAL_AI", 1 << 5, secondary, 0, 2),  # nonfused party slot
+            ("BROCK", (1 << 5) | 2, secondary, 0, 2),
+            ("FINAL_AI", (1 << 5) | 2, 0, 0, 2),  # fallback without sidecar
+            ("FINAL_AI", (1 << 5) | 2, secondary, 1 << 3, 2),  # Transform
+            ("FINAL_AI", (1 << 5) | 2, secondary, 0, 1),  # wild battle
+        ):
+            with self.subTest(trainer=trainer, flags=flags, partner=partner,
+                              status=status, battle=battle):
+                h.write8("wTrainerClass", self.trainer_classes[trainer])
+                h.write8("wEnemyMonCatchRate", flags)
+                h.write8("wFinalAISecondarySpecies", partner)
+                h.write8("wEnemyBattleStatus3", status)
+                h.write8("hIsInBattle", battle)
+                h.call_routine("MergeFinalAIFusionFrontPic")
+                self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
+
     def test_wild_battle_after_final_ai_does_not_load_link_style(self) -> None:
         h = self.harness
         assert h is not None

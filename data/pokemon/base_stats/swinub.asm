@@ -13,11 +13,11 @@
 	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_SLOW ; growth rate
 
-	; tm/hm learnset - modeled on Marowak (Ground) plus Ice coverage
+	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     \
 	     BLIZZARD,     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          \
 	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   STRENGTH
+	     SUBSTITUTE,   STRENGTH,     ROCK_SLIDE
 	; end
 
 	db BANK(SwinubPicFront) ; pic bank
