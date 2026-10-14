@@ -92,6 +92,11 @@ class RentalStadiumSetTest(unittest.TestCase):
             h.write8("wEnemyMon2", constants["MIX_ELITE"] if i == 4 else 0, offset=i)
         h.write8("wPartyGenSpecPtr", header & 255)
         h.write8("wPartyGenSpecPtr", header >> 8, offset=1)
+        # call_routine lets the parked game finish its frame after returning, and
+        # that tail can write wCurEnemyLevel (GetRewardMonLevel, FOLLOWUPS #67).
+        h.write8("wEnemyPartyCount", 1)
+        h.write8("wPartyGenSlot", 0)
+        h.write8("wCurEnemyLevel", 50)
         h.call_routine("PartyGenApplySetMoveset")
         self.assertTrue(h.last_call_registers["F"] & 0x10)
         self.assertEqual(h.read8("wPartyGenCandidates", offset=15), 0)

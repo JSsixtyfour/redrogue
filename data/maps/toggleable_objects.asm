@@ -330,21 +330,20 @@ ToggleableObjectStates:
 	toggle_object_state POKEMONMANSIONB1F_TM_SOLARBEAM, ON
 	toggle_object_state POKEMONMANSIONB1F_SECRET_KEY,   ON
 
-	toggleable_objects_for SAFARI_ZONE_EAST
-	toggle_object_state SAFARIZONEEAST_FULL_RESTORE, ON
-	toggle_object_state SAFARIZONEEAST_MAX_RESTORE,  ON
-	toggle_object_state SAFARIZONEEAST_CARBOS,       ON
-	toggle_object_state SAFARIZONEEAST_TM_EGG_BOMB,  ON
-
-	toggleable_objects_for SAFARI_ZONE_NORTH
-	toggle_object_state SAFARIZONENORTH_PROTEIN,       ON
-	toggle_object_state SAFARIZONENORTH_TM_SKULL_BASH, ON
+	; All OFF: nobody is home until PFRestHouseRollResidents rolls this forest.
+	toggleable_objects_for PROCEDURAL_FOREST_REST_HOUSE
+	toggle_object_state PFRESTHOUSE_RENTAL_OFFICIAL, OFF
+	toggle_object_state PFRESTHOUSE_CLERK_HEALING,   OFF
+	toggle_object_state PFRESTHOUSE_CLERK_STOCK,     OFF
+	toggle_object_state PFRESTHOUSE_MOVE_TUTOR,      OFF
+	toggle_object_state PFRESTHOUSE_TRADER,          OFF
+	toggle_object_state PFRESTHOUSE_SALESMAN,        OFF
+	toggle_object_state PFRESTHOUSE_GAMBLER,         OFF
 
 	toggleable_objects_for SAFARI_ZONE_WEST
 	toggle_object_state SAFARIZONEWEST_MAX_POTION,     ON
 	toggle_object_state SAFARIZONEWEST_TM_DOUBLE_TEAM, ON
 	toggle_object_state SAFARIZONEWEST_MAX_REVIVE,     ON
-	toggle_object_state SAFARIZONEWEST_GOLD_TEETH,     ON
 
 	toggleable_objects_for SAFARI_ZONE_CENTER
 	toggle_object_state SAFARIZONECENTER_NUGGET, ON

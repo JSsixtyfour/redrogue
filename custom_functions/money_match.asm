@@ -1,10 +1,10 @@
 ; custom_functions/money_match.asm
 ;
-; Money Match (PROCEDURAL_SUBROOMS_PLAN.md Phase M, 2026-10-13). A Gambler found
-; at a wild area's stage-event hideout (STAGE_EVENT_MONEY_MATCH) offers a bet:
-; beat him in few turns and he pays double the prize, less for every turn past
-; the free ones. He never engages on sight (StageEventLimitTrainerSight), only
-; after a YES here, and he leaves once beaten.
+; Money Match (PROCEDURAL_SUBROOMS_PLAN.md Phase M, 2026-10-13). A Gambler in
+; the forest rest house (Phase 4) offers a bet: beat him in few turns and he
+; pays double the prize, less for every turn past the free ones. He is a plain
+; object; his text_asm starts the battle after a YES (MoneyMatchHouseTalk). He
+; stays after a win and says MoneyMatchAfterText for the rest of that forest.
 ;
 ; Battle side, all keyed on wMoneyMatchState (BIT_MONEY_MATCH_ACTIVE):
 ;   - BattleTurnCommitted (bridge_effects.asm) counts the player's turns.
@@ -14,8 +14,8 @@
 ;     him as an ordinary trainer.
 ;   - MoneyMatchApplyPayout below, from WitchApplyMoneyEffects.
 ;   - EndOfBattle zeroes the byte, so it cannot reach the next battle.
-; Like every stage-event trainer, the win does not advance wBattleCount
-; (TrainerBattleVictory's procedural-map guard).
+; The win does not advance wBattleCount: the house is on TrainerBattleVictory's
+; procedural-map list.
 ;
 ; Opens its own section, pinned to $3A in layout.link; farcall-only, and its
 ; text is read in-bank by PrintText while this bank is mapped.
@@ -69,8 +69,6 @@ MoneyMatchTalkGate::
 ; Multiplying before dividing keeps the rounding to one truncation. AddBCD
 ; saturates at 999999, so a prize over 62499 caps rather than wraps.
 ;
-; Also hides him (sets his toggle flag) so he is gone when the overworld
-; returns: a WON trainer battle never reaches EndTrainerBattle's own hide.
 ; Clobbers a/bc/de/hl.
 MoneyMatchApplyPayout::
 	ld a, [wMoneyMatchState]
@@ -122,37 +120,80 @@ MoneyMatchApplyPayout::
 	ld [wAmountMoneyWon + 1], a
 	ldh a, [hDivideBCDQuotient + 2]
 	ld [wAmountMoneyWon + 2], a
-	ld hl, wStageEvent
-	set BIT_STAGE_EVENT_MONEY_MATCH_WON, [hl]
+	ret
 
-	; Hide him. hActiveSpriteIndex is still his object index from the talk
-	; (EndTrainerBattle reads it the same way after the battle). Setting the
-	; flag is enough: CheckSpriteAvailability hides a flagged object on the
-	; first overworld frame. HideObject itself would also run UpdateSprites,
-	; which has no business running mid-battle.
-	ld hl, wToggleableObjectList
-	ld de, 2
-	ldh a, [hActiveSpriteIndex]
-	call IsInArray
-	ret nc
-	inc hl
-	ld c, [hl]
-	ld hl, wToggleableObjectFlags
-	ld b, FLAG_SET
-	predef_jump FlagActionPredef
+; The house gambler's talk, from his text_asm. Already beaten in this forest:
+; his after line, no offer. Otherwise the offer and a YES/NO.
+; OUTPUT: carry = accepted (wMoneyMatchState armed; the caller starts the
+; battle). Clobbers a/bc/de/hl.
+MoneyMatchHouseTalk::
+	call MoneyMatchHouseWon
+	ld hl, MoneyMatchAfterText
+	jr nz, .say
+	ld hl, MoneyMatchOfferText
+	call PrintText
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	and a
+	ld hl, MoneyMatchDeclinedText   ; he stays; talking again repeats the offer
+	jr nz, .say
+	ld a, 1 << BIT_MONEY_MATCH_ACTIVE ; active, no turns yet
+	ld [wMoneyMatchState], a
+	scf
+	ret
+.say
+	call PrintText
+	and a
+	ret
+
+; The house's after-battle script, on a win. Clobbers a/hl.
+MoneyMatchHouseRecordWin::
+	call MoneyMatchOpenForestSRAM
+	ld hl, sProcForestItemGot
+	set BIT_PF_MONEY_MATCH_WON, [hl]
+	jr MoneyMatchCloseSRAM
+
+; OUTPUT: nz = he was beaten in this forest (PFPreloadForest zeroes the byte).
+; Clobbers a/hl.
+MoneyMatchHouseWon:
+	call MoneyMatchOpenForestSRAM
+	ld a, [sProcForestItemGot]
+	and 1 << BIT_PF_MONEY_MATCH_WON
+	ld l, a
+	call MoneyMatchCloseSRAM
+	ld a, l
+	and a
+	ret
+
+MoneyMatchOpenForestSRAM:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ASSERT BANK(sProcForestItemGot) == 0
+	xor a
+	ld [rRAMB], a
+	ret
+
+MoneyMatchCloseSRAM:
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ret
 
 MoneyMatchOfferText:
-	text "Hey, high roller!"
-	line "Fancy a MONEY"
-	cont "MATCH?"
+	text "Looking for a"
+	line "fight?"
 
-	para "Beat me fast and"
-	line "I pay double the"
-	cont "prize money."
+	para "The faster you"
+	line "beat me the"
+	cont "bigger the payday."
+	done
 
-	para "Every turn you"
-	line "dawdle costs you."
-	cont "Wanna play?"
+MoneyMatchAfterText:
+	text "That match was"
+	line "worth every penny!"
 	done
 
 MoneyMatchDeclinedText:

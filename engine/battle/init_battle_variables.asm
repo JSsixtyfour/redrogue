@@ -42,7 +42,7 @@ InitBattleVariables:
 	ldh a, [hCurMap]
 	cp SAFARI_ZONE_EAST
 	jr c, .notSafariBattle
-	cp SAFARI_ZONE_CENTER_REST_HOUSE
+	cp PROCEDURAL_FOREST_REST_HOUSE ; first map past the Safari range (same id the Safari rest house had)
 	jr nc, .notSafariBattle
 	ld a, BATTLE_TYPE_SAFARI
 	ld [wBattleType], a

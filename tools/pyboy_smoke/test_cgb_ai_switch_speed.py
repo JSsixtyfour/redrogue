@@ -30,9 +30,17 @@ class CGBSwitchSpeedTest(unittest.TestCase):
             h.write8('wOptions2', (h.read8('wOptions2') & 0x7F) | (0x80 if enabled else 0))
             if already_double:
                 # Test an alternate caller context by leaving move selection's
-                # already-enabled double speed intact. Keep predef restoration.
-                h.register_hook('SingleCPUSpeed', lambda _: setattr(
-                    h.pyboy.register_file, 'PC', h.address('SingleCPUSpeed.return')))
+                # already-enabled double speed intact. Do not intercept the
+                # wrapper's restoration: doing so would hide a wrapper bug.
+                keep_choice_speed = {'value': True}
+                h.hook_flag('AIEnemyTrainerChooseMoves', action=lambda:
+                            keep_choice_speed.update(value=True))
+                h.hook_flag('AIShouldSwitchAtSelectedSpeed', action=lambda:
+                            keep_choice_speed.update(value=False))
+                def leave_choice_double(_):
+                    if keep_choice_speed['value']:
+                        h.pyboy.register_file.PC = h.address('SingleCPUSpeed.return')
+                h.register_hook('SingleCPUSpeed', leave_choice_double)
             def prepare():
                 h.write8('wAICount', 0)
                 h.reveal_player_moves(0, [1])

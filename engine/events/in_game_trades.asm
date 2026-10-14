@@ -65,15 +65,17 @@ DoInGameTradeDialogue:
 ; is one-shot and GetFormNameSource consumes it, so the GIVE call above must not
 ; be allowed to eat it.
 ;
-; Guarded on the species so only the rogue random trade (offer = wRoguePokemon1)
-; can show a form; authored TradeMons entries must not. hl is free here - the
-; trade-data walk above has finished with it and .printText reloads its own.
-	ld a, [wInGameTradeReceiveMonSpecies]
-	ld hl, wRoguePokemon1
-	cp [hl]
+; Guarded on wWhichTrade so only a rogue random trade can show a form; authored
+; TradeMons entries (every other wWhichTrade) must not. Every TRADE_FOR_RANDOM
+; caller writes wroguenpctradeform with its offer - the reward roll, the
+; lobby/rest-house trader and the legendary trade (2026-10-13; this used to
+; match the species against wRoguePokemon1, which only the reward roll sets, so
+; the trader's forms were dropped).
+	ld a, [wWhichTrade]
+	cp TRADE_FOR_RANDOM
 	ld a, 0
 	jr nz, .noOfferForm
-	ld a, [wRoguePokemonForm1]
+	ld a, [wroguenpctradeform]
 .noOfferForm
 	ld [wFormContextForm], a
 	ld a, [wInGameTradeReceiveMonSpecies]
@@ -196,19 +198,17 @@ InGameTrade_DoTrade:
 ; post-processes this mon (InGameTrade_CopyDataToReceivedMon, below) touches only
 ; the nickname, OT name and OT ID - never the catch-rate byte.
 ;
-; Guarded on the species so ONLY the rogue random trade can carry a form: its
-; offer is wRoguePokemon1, set by RogueRewardTradeRoll. An authored TradeMons
-; entry or the legendary-boss trade must not inherit a reward slot's form, and
-; the 0 on the mismatch path stops one inheriting a stale wSpawnForm either.
+; Guarded the same way as the offer's name above: only a TRADE_FOR_RANDOM trade
+; carries a form, from wroguenpctradeform, which every such caller writes with
+; its offer (the legendary trade writes 0). An authored TradeMons entry gets 0,
+; and the 0 also stops one inheriting a stale wSpawnForm.
 ;
-; `ld a, 0` not `xor a` - the flags from `cp [hl]` have to reach the jr. hl is
-; free: the next routine loads its own.
-	ld a, [wInGameTradeReceiveMonSpecies]
-	ld hl, wRoguePokemon1
-	cp [hl]
+; `ld a, 0` not `xor a` - the flags from the `cp` have to reach the jr.
+	ld a, [wWhichTrade]
+	cp TRADE_FOR_RANDOM
 	ld a, 0
 	jr nz, .noTradeForm
-	ld a, [wRoguePokemonForm1]
+	ld a, [wroguenpctradeform]
 .noTradeForm
 	ld [wSpawnForm], a
 	call AddPartyMon

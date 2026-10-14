@@ -48,7 +48,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "PROCEDURAL_CEMETERY_4",
             "PROCEDURAL_FACILITY",
         ):
-            self.assertNotIn(f"db {enabled_procedural}", self.core)
+            self.assertNotRegex(self.core, rf"db {enabled_procedural}\b")  # not ..._REST_HOUSE
         for excluded in (
             "TRADE_CENTER",
             "COLOSSEUM",
@@ -193,7 +193,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "ROUTE_2_GATE",
             "FUCHSIA_GOOD_ROD_HOUSE",
             "VIRIDIAN_FOREST",
-            "SAFARI_ZONE_CENTER_REST_HOUSE",
+            "PROCEDURAL_FOREST_REST_HOUSE",
             "SAFARI_ZONE_WEST_REST_HOUSE",
             "SAFARI_ZONE_EAST_REST_HOUSE",
             "SAFARI_ZONE_NORTH_REST_HOUSE",

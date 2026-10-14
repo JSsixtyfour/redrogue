@@ -51,7 +51,12 @@
 ; snapshot and shifts the subsequent save blocks by their schema labels.
 ; Schema 10: append the dedicated 16-byte rental contract and latched offer.
 ; Older saves have no rental; rentalRecordAdded initializes it to zero.
-DEF SAVE_SCHEMA_ID EQU 10
+; Schema 11 (2026-10-13): wroguenpctradeform (the form of the random trade's
+; offered mon, which the lobby/rest-house trader used to drop) took the first
+; byte of the saved pad after wOptions3. Nothing moved; old saves get it zeroed
+; (form 0, the plain species, as an offer rolled before this change would have
+; delivered), migration tradeFormAdded.
+DEF SAVE_SCHEMA_ID EQU 11
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

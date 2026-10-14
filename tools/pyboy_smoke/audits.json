@@ -41,6 +41,8 @@
      "guards": "walkable Facility quadrants unreachable from the entrance"},
     {"script": "audit_forest_clearings.py", "args": ["--seeds", "200"], "kind": "guard",
      "guards": "Procedural Forest clearings: piece art changed after stamping, the clearing over the entrance/sign/boss, ball 0 off the clearing's spot, another ball or the hideout inside it, a ball or the exit unreachable"},
+    {"script": "audit_forest_house.py", "args": ["--seeds", "200"], "kind": "guard",
+     "guards": "Procedural Forest rest house: a forest without one, its blocks missing, a door warp armed without a house (or this one's not armed), its door front unreachable or occupied, a ball or the exit cut off"},
     {"script": "audit_facility_spinner_rooms.py", "args": ["--seeds", "300"], "kind": "guard",
      "guards": "Facility spinner rooms (debug placeholder): more than one per layout, payload not stamped, ball off the reward block, a fake ball, hideout or warp pad inside the room"},
     {"script": "audit_facility_pad_sites.py", "args": ["--runtime", "--seeds", "300", "--seed-state", "0x9E3779B9"], "kind": "guard",

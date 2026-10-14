@@ -14,6 +14,14 @@ ProceduralForest_Object:
 	warp_event 18, 35, LAST_MAP, 1 ; entrance at cell (4,8) = block(9,17), bottom-left quadrant
 	warp_event  1,  0, LAST_MAP, 1 ; exit left tile  — runtime-patched to (4i+2, 0)
 	warp_event  2,  0, LAST_MAP, 1 ; exit right tile — runtime-patched to (4i+3, 0)
+	; Rest house door spots (constants/forest_house_site_constants.asm). These
+	; coordinates are what the way back out of the house ARRIVES on, so they
+	; must stay put; PFArmHouseDoor disarms every one but this forest's on
+	; each load.
+	ASSERT FOREST_FIRST_HOUSE_WARP == 3
+	FOR n, NUM_FOREST_HOUSE_SITES
+		warp_event 2 * FOREST_HOUSE_SITE_{d:n}_X + 1, 2 * FOREST_HOUSE_SITE_{d:n}_Y + 1, PROCEDURAL_FOREST_REST_HOUSE, 1
+	ENDR
 
 	def_bg_events
 	bg_event 18, 33, TEXT_PROCEDURALFOREST_SIGN ; x,y runtime-patched in PFinalizeForest per placed block (21 vs 22)

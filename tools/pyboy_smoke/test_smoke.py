@@ -1006,8 +1006,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         warps = self.harness.warp_entries()
         self.assertGreaterEqual(len(warps), 2)
         for y, x, _warp_id, _destination in warps:
+            if y == 0xFF:
+                continue  # disarmed: a spare Facility pad or forest house door
             self.assertIn(y, range(height))
             self.assertIn(x, range(width))
+        self.assertTrue(any(w[0] != 0xFF for w in warps[1:3]), "both exit warps disarmed")
 
         positions = self.harness.sprite_positions(sprites)
         for y, x in positions:

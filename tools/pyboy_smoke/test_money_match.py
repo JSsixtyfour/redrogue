@@ -1,7 +1,7 @@
 """Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M).
 
-A Gambler found at a wild area's stage-event hideout (STAGE_EVENT_MONEY_MATCH)
-offers a bet: win in few turns for double the prize. These tests cover:
+The Gambler in the forest rest house (Phase 4) offers a bet: win in few turns
+for double the prize. These tests cover:
 
 Routines, run directly (PC + `jr @` return stub, IE masked):
   - MoneyMatchApplyPayout: 2B at or under the free turns, 1/16 of 2B less per
@@ -13,12 +13,13 @@ Routines, run directly (PC + `jr @` return stub, IE masked):
   - RogueRosterMixId: a Money Match Gambler takes the route grid row, not
     MIX_GAMBLER; a Gambler's Paradise gambler (bit clear) still gets MIX_GAMBLER.
 
-End to end, in a real Facility (Gambler moved beside the entrance):
-  - walking up to him in his line of sight does not start a battle;
-  - NO leaves him standing and starts nothing; talking again re-offers;
+End to end, in a real forest rest house (walked to through the maze):
+  - NO starts nothing; talking again re-offers;
   - YES starts a battle as route step MONEY_MATCH_STEP with the ordinary AI
-    (the themed AI never runs), the win pays the scaled prize, he is gone
-    afterwards, wBattleCount is unchanged and the state byte is cleared.
+    (the themed AI never runs), the win pays the scaled prize, wBattleCount is
+    unchanged and the state byte is cleared;
+  - he stays, the win is recorded for the forest, and talking to him again
+    gives his after line and no battle.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
+from test_forest_rest_house import SITE_MASK, ForestWalk  # noqa: E402
 from source_constants import (  # noqa: E402
     parse_map_constants,
     parse_rgbds_constants,
@@ -52,7 +54,8 @@ STEP = RAM["MONEY_MATCH_STEP"]
 FREE_BUFFER = RAM["MONEY_MATCH_FREE_TURN_BUFFER"]
 DECAY = RAM["MONEY_MATCH_DECAY_STEPS"]
 ROUND_BATTLES = ROUNDS["ROUND_BATTLES"]
-FACILITY_NPC_SLOT = 10          # PFacStageNpc1Header's object slot
+HOUSE_CONSTANTS = parse_rgbds_constants(ROOT / "constants/forest_house_site_constants.asm")
+WON = 1 << HOUSE_CONSTANTS["BIT_PF_MONEY_MATCH_WON"]
 
 
 def bcd(value: int) -> list[int]:
@@ -120,7 +123,6 @@ class MoneyMatchRoutineTest(unittest.TestCase):
             h.write8("wAmountMoneyWon", v, offset=i)
         h.write8("wEnemyPartyCount", party)
         h.write8("wMoneyMatchState", state)
-        h.write8("hActiveSpriteIndex", 0)    # no toggle: skip the hide
         self.run_routine("MoneyMatchApplyPayout")
         return from_bcd(h.read_bytes("wAmountMoneyWon", 3))
 
@@ -149,37 +151,11 @@ class MoneyMatchRoutineTest(unittest.TestCase):
             h.write8("wAmountMoneyWon", v, offset=i)
         h.write8("wEnemyPartyCount", 3)
         h.write8("wMoneyMatchState", ACTIVE | 2)
-        h.write8("hActiveSpriteIndex", 0)
         self.run_routine("WitchApplyMoneyEffects")
         got = from_bcd(h.read_bytes("wAmountMoneyWon", 3))
         scaled = 3200                                   # 2 x 1600, 2 turns of 4 free
         self.assertEqual(got, scaled + scaled // 10,
                          "PRIZE_MONEY did not apply on top of the Money Match pay")
-
-    def test_beaten_gambler_offers_nothing(self) -> None:
-        # A beaten Gambler shown again (the cemetery re-shows per floor) must
-        # pass straight to TalkToTrainer's after line: no offer box (it would
-        # wait for input and never return here) and no state for the next
-        # battle to inherit.
-        h = self.h
-        won = 1 << RAM["BIT_STAGE_EVENT_MONEY_MATCH_WON"]
-        settled = RAM["STAGE_EVENT_PHASE_SETTLED"] << RAM["STAGE_EVENT_PHASE_SHIFT"]
-        h.write8("wStageEvent", RAM["STAGE_EVENT_MONEY_MATCH"] | settled | won)
-        h.write8("wMoneyMatchState", 0)
-        regs = self.run_routine("MoneyMatchTalkGate")
-        self.assertFalse(regs["F"] & 0x10, "carry set: the map would skip TalkToTrainer")
-        self.assertEqual(h.read8("wMoneyMatchState"), 0)
-
-    def test_win_marks_the_event(self) -> None:
-        h = self.h
-        settled = RAM["STAGE_EVENT_PHASE_SETTLED"] << RAM["STAGE_EVENT_PHASE_SHIFT"]
-        h.write8("wStageEvent", RAM["STAGE_EVENT_MONEY_MATCH"] | settled)
-        self.payout(1000, 2, ACTIVE)
-        self.assertTrue(h.read8("wStageEvent") & 1 << RAM["BIT_STAGE_EVENT_MONEY_MATCH_WON"])
-        h.write8("wStageEvent", RAM["STAGE_EVENT_JOY"] | settled)
-        self.payout(1000, 2, 0)
-        self.assertFalse(h.read8("wStageEvent") & 1 << RAM["BIT_STAGE_EVENT_MONEY_MATCH_WON"],
-                         "an ordinary win marked the event")
 
     def test_turn_counter(self) -> None:
         h = self.h
@@ -222,90 +198,38 @@ class MoneyMatchRoutineTest(unittest.TestCase):
                          "the override row is not the real step-3 row")
 
 
-class MoneyMatchFacilityTest(unittest.TestCase):
-    """Real offer, real battle, real payout, on the Facility."""
+class MoneyMatchHouseTest(ForestWalk, unittest.TestCase):
+    """Real offer, real battle, real payout, in the forest rest house."""
 
-    def setUp(self) -> None:
-        self.maps = parse_map_constants(ROOT / "constants/map_constants.asm")
-        self.h = RedRogueHarness(ROOT, ARTIFACTS)
-
-    def tearDown(self) -> None:
-        self.h.close()
-
-    def enter_beside_gambler(self) -> None:
-        """Facility with the Gambler two tiles above the entrance tile."""
+    def test_decline_then_win_then_after_line(self) -> None:
         h = self.h
-        facility = self.maps["PROCEDURAL_FACILITY"]
-        lobby = self.maps["INDIGO_PLATEAU_LOBBY"]
+        forest = self.maps["PROCEDURAL_FOREST"]
+        house = self.maps["PROCEDURAL_FOREST_REST_HOUSE"]
         h.boot_to_lobby(battle_count=ROUND_BATTLES + 1, encounter_kind=4)
-        h.write8("wStageEvent", RAM["STAGE_EVENT_MONEY_MATCH"])
-        h.preload_and_enter_wild_area(facility, "facility")
-        h.write8("wLastMap", lobby)
-        h.tick(60)
-        self.assertEqual(h.read8("wStageEvent") & RAM["STAGE_EVENT_TYPE_MASK"],
-                         RAM["STAGE_EVENT_MONEY_MATCH"])
-        base = h.address("wMapSpriteExtraData") + (FACILITY_NPC_SLOT - 1) * 2
-        self.assertEqual(h.pyboy.memory[base], OPPONENTS["GAMBLER"],
-                         "stage NPC slot is not a Gambler trainer")
-        # Placement re-reads the hideout on every load: move it to the block
-        # above the entrance and re-enter through a self-warp (the
-        # test_facility_self_warp mechanism).
-        h.write_sram_bytes("sStageEventHideoutX", [9], bank=0)
-        h.write_sram_bytes("sStageEventHideoutY", [18], bank=0)
-        h.write8("wWarpEntries", 0, offset=2)
-        h.write8("wWarpEntries", facility, offset=3)
-        h.wait_until(lambda: h.read8("wYCoord") == 39, "on the entrance", 600)
-        start = h.pyboy.frame_count
-        h.pyboy.button_press("down")
-        try:
-            h.wait_until(lambda: h.read8("hCurMap") == facility
-                         and h.read8("wWarpedFromWhichMap") == facility
-                         and h.pyboy.frame_count - start > 20, "self-warp", 600)
-        finally:
-            h.pyboy.button_release("down")
-        h.tick(180)
-        y, x = h.sprite_positions(FACILITY_NPC_SLOT)[FACILITY_NPC_SLOT - 1]
-        self.gambler = (x, y)
-        self.assertEqual(self.gambler, (18, 36), "Gambler not where the hideout puts him")
-        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (18, 39))
-        # Two steps up, straight down his line of sight: a sight-4 trainer
-        # would engage on the first.
-        seen_bit = 1 << RAM["BIT_SEEN_BY_TRAINER"]
+        h.write8("wStageEvent", 0)
+        h.preload_and_enter_wild_area(forest, "forest")
+        self.assertFalse(self.hidden("TOGGLE_PFRESTHOUSE_GAMBLER"), "the Gambler is not always home")
+        for name in ("SALESMAN", "MOVE_TUTOR"):          # clear of the walk
+            self.hide(f"TOGGLE_PFRESTHOUSE_{name}")
+        site = (h.read_sram_bytes("sProcForestItemGot", 1, bank=0)[0] & SITE_MASK) - 1
+        x, y = self.sites[site]
+        h.write8("wProcForestWildBudget", 0)
+        self.walk_to((2 * x + 1, 2 * y + 2))
+        self.press_until("up", house, "into the rest house")
+        for move in ("up", "up", "up", "up", "right", "right", "right"):   # (2,7) -> (5,3)
+            self.step(move)
+        h.move_tile("up")                                # face him: only turns
+        h.tick(10)
+
+        # NO: B answers every prompt and picks NO on the YES/NO box. Twice.
         for _ in range(2):
-            h.move_tile("up")
+            h.tap("a", frames=8)
             h.tick(30)
-            self.assertFalse(h.read8("wMiscFlags") & seen_bit, "the Gambler engaged on sight")
-            self.assertEqual(h.read8("hIsInBattle"), 0, "the Gambler engaged on sight")
-        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (18, 37))
-
-    def gambler_hidden(self) -> bool:
-        h = self.h
-        table = h.read_bytes("wToggleableObjectList", 64)
-        for i in range(0, len(table) - 1, 2):
-            if table[i] == 0xFF:
-                break
-            if table[i] == FACILITY_NPC_SLOT:
-                index = table[i + 1]
-                return bool(h.read8("wToggleableObjectFlags", offset=index // 8) & 1 << index % 8)
-        self.fail("stage NPC slot not in wToggleableObjectList")
-
-    def test_decline_then_win(self) -> None:
-        h = self.h
-        self.enter_beside_gambler()
-
-        # NO: B answers every prompt and picks NO on the YES/NO box.
-        for _ in range(16):
-            h.tap("b", frames=8)
-            h.tick(20)
-        self.assertEqual(h.read8("hIsInBattle"), 0, "declining started a battle")
-        h.tap("a", frames=8)                 # talk again: the offer is back
-        h.tick(30)
-        for _ in range(16):
-            h.tap("b", frames=8)
-            h.tick(20)
-        self.assertEqual(h.read8("hIsInBattle"), 0)
-        self.assertEqual(h.read8("wMoneyMatchState"), 0)
-        self.assertFalse(self.gambler_hidden())
+            for _ in range(16):
+                h.tap("b", frames=8)
+                h.tick(20)
+            self.assertEqual(h.read8("hIsInBattle"), 0, "declining started a battle")
+            self.assertEqual(h.read8("wMoneyMatchState"), 0)
 
         battle_count = h.read8("wBattleCount")
         money_before = from_bcd(h.read_bytes("wPlayerMoney", 3))
@@ -348,18 +272,13 @@ class MoneyMatchFacilityTest(unittest.TestCase):
                     break
                 h.tap("b", frames=8)
                 h.tick(20)
-            h.tick(120)
+            h.tick(180)
         finally:
             for label, callback in reversed(hooks):
                 h.unregister_hook(label, callback)
 
-        if h.read8("hIsInBattle"):
-            pc = h.pyboy.register_file.PC
-            where = h.symbols.nearest(h.read8("hLoadedROMBank") if pc >= 0x4000 else 0, pc)
-            tiles = h.read_bytes("wTileMap", 360)
-            self.fail(f"battle never ended at {where}; steps={seen['step']} "
-                      f"payout={seen['payout']} enemyHP={h.read_bytes('wEnemyMonHP', 2)} "
-                      f"menu={h.read8('hCurrentMenuItem')} tiles12-17={tiles[240:360]}")
+        self.assertEqual(h.read8("hIsInBattle"), 0, f"battle never ended; payout={seen['payout']}")
+        self.assertEqual(h.read8("hCurMap"), house)
         self.assertEqual(seen["step"], [STEP], "party not rolled as the Money Match step")
         self.assertEqual(seen["themed"], 0, "Gambler's Paradise AI ran in a Money Match")
         self.assertEqual(len(seen["payout"]), 1)
@@ -370,9 +289,16 @@ class MoneyMatchFacilityTest(unittest.TestCase):
         self.assertEqual(got, want, f"paid {got}, expected {want} (B={prize}, N={party}, T={state & 0x7F})")
         self.assertEqual(h.read8("wMoneyMatchState"), 0, "state byte leaked past the battle")
         self.assertEqual(h.read8("wBattleCount"), battle_count, "the Money Match advanced the run")
-        self.assertTrue(self.gambler_hidden(), "the Gambler is still on the map after losing")
-        self.assertTrue(h.read8("wStageEvent") & 1 << RAM["BIT_STAGE_EVENT_MONEY_MATCH_WON"],
-                        "the win was not recorded on the stage event")
+        self.assertFalse(self.hidden("TOGGLE_PFRESTHOUSE_GAMBLER"), "the Gambler left after losing")
+        self.assertTrue(h.read_sram_bytes("sProcForestItemGot", 1, bank=0)[0] & WON,
+                        "the win was not recorded for this forest")
+        self.assertEqual(h.read8("wSafariZoneGateCurScript"), 0, "the house script did not settle")
+
+        # Talking again: his after line, no offer, no battle.
+        self.talk("up", "worth", "the beaten Gambler")
+        h.tick(60)
+        self.assertEqual(h.read8("hIsInBattle"), 0)
+        self.assertEqual(h.read8("wMoneyMatchState"), 0)
 
 
 if __name__ == "__main__":

@@ -79,6 +79,23 @@ PCWitchSetup::
     ld hl, wRogueFlagsBitfield
     res BIT_WITCH_ACCEPTED, [hl]
 
+    ; Gift rooms return straight to the lobby, so they cannot host a bargain.
+    ; Check finalized doors (including Debug 2), after granting the prior prize.
+    ld a, [wLobbyDoor1StageMap]
+    ld c, a
+    ld a, [wLobbyDoor2StageMap]
+    ld d, a
+    ld hl, BridgeRoomMaps
+    ld b, NUM_BRIDGE_ROOMS
+.checkBridgeDoors
+    ld a, [hli]
+    cp c
+    jp z, .hideWitch
+    cp d
+    jp z, .hideWitch
+    dec b
+    jr nz, .checkBridgeDoors
+
     ; --- Finale gating ---
     ; Once all 8 badges are in, the run is on rails and the witch needs two
     ; special cases:

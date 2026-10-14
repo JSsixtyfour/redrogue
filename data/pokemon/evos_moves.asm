@@ -4716,15 +4716,15 @@ HoOhEvosMoves:
 ; Learnset - EMBER already granted at level 1; SACRED_FIRE/SAFEGUARD/
 ; SUNNY_DAY/ANCIENTPOWER/FUTURE_SIGHT do not exist in Gen 1, filled with
 ; METRONOME.
-	db 11, METRONOME ; was SAFEGUARD
+    db 9, PECK
+	db 11, SAND_ATTACK ; was SAFEGUARD
 	db 22, GUST
 	db 33, RECOVER
-	db 44, FIRE_BLAST
-	db 55, METRONOME ; was SUNNY_DAY
-	db 66, SWIFT
-	db 77, WHIRLWIND
-	db 88, METRONOME ; was ANCIENTPOWER
-	db 99, METRONOME ; was FUTURE_SIGHT
+    db 35, FLAMETHROWER
+	db 40, FIRE_BLAST
+    db 45, SWIFT
+    db 50, FIRE_SPIN
+	db 55, SKY_ATTACK ; was FUTURE_SIGHT
 	db 0
 
 CelebiEvosMoves:
@@ -4733,11 +4733,12 @@ CelebiEvosMoves:
 ; Learnset - LEECH_SEED/CONFUSION/RECOVER already granted at level 1;
 ; HEAL_BELL/SAFEGUARD/ANCIENTPOWER/FUTURE_SIGHT/BATON_PASS/PERISH_SONG do
 ; not exist in Gen 1, filled with METRONOME.
-	db 10, METRONOME ; was SAFEGUARD
-	db 20, METRONOME ; was ANCIENTPOWER
-	db 30, METRONOME ; was FUTURE_SIGHT
-	db 40, METRONOME ; was BATON_PASS
-	db 50, METRONOME ; was PERISH_SONG
+	db 10, BARRIER ; was SAFEGUARD
+	db 20, RAZOR_LEAF ; was ANCIENTPOWER
+	db 30, PSYBEAM ; was FUTURE_SIGHT
+	db 40, PETAL_DANCE ; was BATON_PASS
+    db 45, MEGA_DRAIN
+	db 50, PSYCHIC_M ; was PERISH_SONG
 	db 0
 
 AnnihilapeEvosMoves:

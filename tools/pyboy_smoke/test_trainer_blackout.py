@@ -60,6 +60,16 @@ class BlackoutFixture:
         popup_tally = []
         h.register_hook('RogueCreditPopupCheck',
                         lambda _: popup_tally.append(h.read8('wCreditsEarnedThisRun')))
+        # The tally alone proved nothing: the box was drawn only into WRAM with
+        # the BG transfer off, so it never reached the screen. Read what the
+        # window actually shows right before the popup restores the area.
+        popup_screen = []
+        def popup_restore(_):
+            if popup_tally and not popup_screen:
+                row = 0x9c00 + 2 * 32 + 2
+                popup_screen.append((h.read8('hWY'),
+                                     bytes(h.pyboy.memory[row:row + 6])))
+        h.register_hook('LoadScreenTileAreaFromBuffer3', popup_restore)
         # Loss message: at .gotCode, a = the LossOriginLabels index chosen.
         # Record it with what wEnemyMoveOrigins says for the mon that was out.
         loss_codes = []
@@ -109,10 +119,13 @@ class BlackoutFixture:
         self.assertEqual(h.read8('hIsInBattle'), 0)
         self.assertEqual((h.read8('wPlayerCoins'), h.read8('wPlayerCoins', 1)), (0x12, 0x34))
         self.assertIn(3, popup_tally, popup_tally)
+        h.tick(120)
+        # "EARNED" in charmap tile ids, on an on-screen window.
+        self.assertEqual(popup_screen, [(0, bytes([0x84, 0x80, 0x91, 0x8d, 0x84, 0x83]))],
+                         popup_screen)
         for bit in lab_toggles:
             self.assertFalse(h.pyboy.memory[toggle_base + bit // 8] & (1 << (bit % 8)),
                              f"Oak's Lab toggle {bit:#x} still hidden after the run reset")
-        h.tick(120)
         self.assertEqual(h.read8('wCreditsEarnedThisRun'), 0)  # popup drew and consumed it
         self.assertEqual(h.read8('hCurMap'), maps['SILPH_CO_DORM'])
         h.move_tile('right')

@@ -220,7 +220,11 @@ PrintSafariZoneSteps::
 	ldh a, [hCurMap]
 	cp SAFARI_ZONE_EAST
 	ret c
-	cp CERULEAN_CAVE_2F
+	; Same upper bound as InitBattleVariables' Safari check: the forest rest
+	; house took the Safari Center rest house's id ($DD), so the old
+	; CERULEAN_CAVE_2F bound drew the step counter on its start menu. The other
+	; Safari rest houses past it are unreachable (the Safari Zone is closed).
+	cp PROCEDURAL_FOREST_REST_HOUSE
 	ret nc
 	hlcoord 0, 0
 	ld b, 3

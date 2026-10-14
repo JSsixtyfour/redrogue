@@ -190,6 +190,8 @@ LegendaryLeaderTradeSetup::
 	ld [wroguenpctradegive], a
 
 	pop bc                       ; restore input species (b = MEW or MEWTWO)
+	xor a                        ; MEW/MEWTWO come formless; also clears any
+	ld [wroguenpctradeform], a   ; form a previous TRADE_FOR_RANDOM offer left
     ld a, b
     ld [wroguenpctradeget], a
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName

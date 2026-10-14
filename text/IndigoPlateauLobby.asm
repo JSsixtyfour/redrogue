@@ -192,9 +192,9 @@ _WitchPrize2Text::
 	done
 
 _WitchPrize3Text::
-	text "Win and I'll"
-	line "boost your prize"
-	cont "money"
+	text "Win and I'll boost"
+	line "your prize money"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -202,8 +202,8 @@ _WitchPrize3Text::
 
 _WitchPrize4Text::
 	text "Win and your"
-	line "#MON gain"
-	cont "extra EXP"
+	line "#MON gain extra"
+	cont "EXP for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -211,8 +211,8 @@ _WitchPrize4Text::
 
 _WitchPrize5Text::
 	text "Win and your"
-	line "critical hits"
-	cont "increase"
+	line "critical hits rise"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -220,8 +220,8 @@ _WitchPrize5Text::
 
 _WitchPrize6Text::
 	text "Win and your"
-	line "moves land"
-	cont "more often"
+	line "moves land more"
+	cont "often for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -230,7 +230,7 @@ _WitchPrize6Text::
 _WitchPrize7Text::
 	text "Win and your"
 	line "SPECIAL rises"
-	cont "for the whole run"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -239,25 +239,25 @@ _WitchPrize7Text::
 _WitchPrize8Text::
 	text "Win and foes hit"
 	line "your weak spots"
-	cont "softer, for good"
+	cont "softer this run"
 
 	para "Do we have a"
 	line "bargain?"
 	done
 
 _WitchPrize9Text::
-	text "Win and your"
-	line "multi-hit moves"
-	cont "hit more often"
+	text "Win and multi-hit"
+	line "moves hit more"
+	cont "often for this run"
 
 	para "Do we have a"
 	line "bargain?"
 	done
 
 _WitchPrize10Text::
-	text "Win and every"
-	line "shop cuts you a"
-	cont "permanent deal"
+	text "Win and shops"
+	line "cut you a deal"
+	cont "for this run"
 
 	para "Do we have a"
 	line "bargain?"

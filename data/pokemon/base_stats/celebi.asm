@@ -17,7 +17,8 @@
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         \
 	     MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         REST,         PSYWAVE,      \
-	     SUBSTITUTE,   STRENGTH
+	     SUBSTITUTE,   SWIFT,        DREAM_EATER,  FLASH,        CUT,          \
+         THUNDER_WAVE, METRONOME,    SWORDS_DANCE
 	; end
 
 	db BANK(CelebiPicFront) ; pic bank

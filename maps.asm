@@ -262,18 +262,17 @@ INCLUDE "data/maps/objects/LavenderTown.asm"
 INCLUDE "scripts/LavenderTown.asm"
 
 
-; Unpinned 2026-09-17. Pure block data, no code: every consumer reaches these
-; through a map header, which carries its own bank, so they have no same-bank
-; dependency at all - unlike the Seafoam Islands and Victory Road 3F scripts
-; in "Maps 6", which plain-call IsPlayerOnDungeonWarp in "Hidden Events Core"
-; and are the reason that bank cannot simply be rearranged. Floated out of
-; pinned bank $11 to make room for the Cemetery's stage-event scripts.
-SECTION "Small Map Blocks", ROMX
+; Back in "Maps 5" (pinned $11, with "Maps 6") since 2026-10-13. These were
+; floated out as "Small Map Blocks" on 2026-09-17 on the belief that a map
+; header carries its blocks' bank. It does not: map_header stores a bankless
+; `dw <Map>_Blocks` that LoadTileBlockMap reads with the header's bank mapped,
+; so all four maps drew garbage once the section left $11. map_header now
+; ASSERTs the two share a bank.
 
 LavenderTown_Blocks: INCBIN "maps/LavenderTown.blk"
 ViridianPokecenter_Blocks: INCBIN "maps/ViridianPokecenter.blk"
 
-SafariZoneCenterRestHouse_Blocks:
+
 SafariZoneWestRestHouse_Blocks:
 SafariZoneEastRestHouse_Blocks:
 SafariZoneNorthRestHouse_Blocks: INCBIN "maps/SafariZoneCenterRestHouse.blk"
@@ -408,9 +407,6 @@ INCLUDE "scripts/SafariZoneCenter.asm"
 INCLUDE "data/maps/objects/SafariZoneCenter.asm"
 SafariZoneCenter_Blocks: INCBIN "maps/SafariZoneCenter.blk"
 
-INCLUDE "data/maps/headers/SafariZoneCenterRestHouse.asm"
-INCLUDE "scripts/SafariZoneCenterRestHouse.asm"
-INCLUDE "data/maps/objects/SafariZoneCenterRestHouse.asm"
 
 INCLUDE "data/maps/headers/SafariZoneWestRestHouse.asm"
 INCLUDE "scripts/SafariZoneWestRestHouse.asm"
@@ -1429,3 +1425,14 @@ INCLUDE "data/maps/headers/KarensRoom.asm"
 INCLUDE "scripts/KarensRoom.asm"
 INCLUDE "data/maps/objects/KarensRoom.asm"
 KarensRoom_Blocks: INCBIN "maps/KarensRoom.blk"
+
+; The forest rest house (PROCEDURAL_SUBROOMS_PLAN Phase 4) on the old Safari
+; Zone center rest house id. Its own section: "Maps 6" ($11) is tight
+; and the house grows a handler per resident.
+SECTION "Procedural Forest Rest House Map", ROMX
+INCLUDE "data/maps/headers/ProceduralForestRestHouse.asm"
+INCLUDE "scripts/ProceduralForestRestHouse.asm"
+INCLUDE "data/maps/objects/ProceduralForestRestHouse.asm"
+; The blocks MUST share the header's bank: map_header stores a bankless
+; `dw ProceduralForestRestHouse_Blocks`, read with the header's bank mapped.
+ProceduralForestRestHouse_Blocks: INCBIN "maps/ProceduralForestRestHouse.blk"

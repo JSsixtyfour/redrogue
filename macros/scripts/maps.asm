@@ -144,6 +144,12 @@ MACRO map_header
 	DEF CURRENT_MAP_HEIGHT = \2_HEIGHT
 	DEF CURRENT_MAP_OBJECT EQUS "\1_Object"
 \1_h::
+	; The pointers below carry no bank: they are read with the header's bank
+	; mapped, so everything they name must live in it (2026-10-13: the forest
+	; rest house's blocks stayed behind when its header moved, and the room
+	; drew whatever sat at that address in the new bank).
+	ASSERT BANK(\1_Blocks) == BANK(\1_h), "\1_Blocks must share \1_h's bank"
+	ASSERT BANK(\1_Script) == BANK(\1_h), "\1_Script must share \1_h's bank"
 	db \3
 	db CURRENT_MAP_HEIGHT, CURRENT_MAP_WIDTH
 	dw \1_Blocks

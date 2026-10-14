@@ -392,6 +392,24 @@
     },
 
     // Schema 9 -> 10: dedicated rental state, all zero for a legacy save.
+    // Schema 10 -> 11 (2026-10-13): wroguenpctradeform, the form of the random trade's offered
+    // mon, took the first byte of the saved pad after wOptions3. Nothing moved. Zeroed: form 0,
+    // the plain species, which is what an offer rolled before this change delivered anyway.
+    tradeFormAdded: function (bytes, from, to) {
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      if (wramField(from, "wroguenpctradeform")) return "this save already has a trade form";
+      var options = wramOffset(from, "wOptions3"), form = wramOffset(to, "wroguenpctradeform");
+      if (options < 0 || wramOffset(to, "wOptions3") !== options || form !== options + 1)
+        return "trade form layout not recognised";
+      bytes[form] = 0;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     rentalRecordAdded: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var oldMain = sramField(from, "sMainData"), newMain = sramField(to, "sMainData");

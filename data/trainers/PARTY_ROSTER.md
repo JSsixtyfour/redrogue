@@ -827,11 +827,11 @@ block has no bands or lists. Only the moves come from here.
 
 The swapped ace draws one of these rows first. A species with no row here (Mew and Mewtwo today)
 takes the shared corpus's `TIER_ELITE | TIER_HARD` sets instead, and only then its mix's fallback.
-A row is used at every level. **PLACEHOLDERS (2026-10-13):** replace with the real boss sets, then
-run `py tools/gen_movesets.py` from Windows and commit the regenerated `movesets.asm`.
+A row is used at every level. After editing a row, run `py tools/gen_movesets.py` from Windows
+(never hand-edit `movesets.asm`; the next regen overwrites it).
 
 | Species | Moves | Notes |
 |---|---|---|
-| Lugia | Psychic, Ice Beam, Recover, Amnesia | placeholder |
-| Ho-Oh | Fire Blast, Sky Attack, Recover, Earthquake | placeholder |
-| Celebi | Psychic, Mega Drain, Recover, Leech Seed | placeholder |
+| Lugia | Psychic, Blizzard, Recover, Thunder Wave | |
+| Ho-Oh | Fire Blast, Hyper Beam, Recover, Earthquake | |
+| Celebi | Psychic, Mega Drain, Recover, Leech Seed | |

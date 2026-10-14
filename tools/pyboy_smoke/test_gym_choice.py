@@ -76,6 +76,9 @@ class GymChoiceLobbyTest(HarnessTestCase):
         h.boot_to_lobby(battle_count=15)
         before = (h.read8("wGymChoice"), h.read8("wLobbyDoor1StageMap"), h.read8("wLobbyDoor2StageMap"))
         h.park_before_hijack()
+        # Both gifts already given: a second roll may otherwise land a bridge visit,
+        # which overrides both doors while correctly keeping the latch (FOLLOWUPS #67).
+        h.write8("wBridgeState", (h.read8("wBridgeState") & 0x3F) | (2 << 6))
         h.call_routine("SelectAndPatchLobbyExit", limit=60000)
         after = (h.read8("wGymChoice"), h.read8("wLobbyDoor1StageMap"), h.read8("wLobbyDoor2StageMap"))
         self.assertEqual(before, after)

@@ -13,7 +13,7 @@ SafariZoneCenter_Object:
 	warp_event 15,  0, SAFARI_ZONE_NORTH, 6
 	warp_event 29, 10, SAFARI_ZONE_EAST, 3
 	warp_event 29, 11, SAFARI_ZONE_EAST, 4
-	warp_event 17, 19, SAFARI_ZONE_CENTER_REST_HOUSE, 1
+	warp_event 17, 19, SAFARI_ZONE_WEST_REST_HOUSE, 1 ; the center rest house is now the forest rest house (Safari is unreachable)
 
 	def_bg_events
 	bg_event 18, 20, TEXT_SAFARIZONECENTER_REST_HOUSE_SIGN

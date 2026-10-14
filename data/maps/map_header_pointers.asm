@@ -222,7 +222,7 @@ MapHeaderPointers::
 	dw SafariZoneNorth_h
 	dw SafariZoneWest_h
 	dw SafariZoneCenter_h
-	dw SafariZoneCenterRestHouse_h
+	dw ProceduralForestRestHouse_h
 	dw SafariZoneSecretHouse_h
 	dw SafariZoneWestRestHouse_h
 	dw SafariZoneEastRestHouse_h

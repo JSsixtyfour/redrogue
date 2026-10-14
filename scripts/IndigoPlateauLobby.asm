@@ -1015,6 +1015,12 @@ PCDaycareGentlemanText:
 
 PCPokemonSalesmanText:
 	text_asm
+	call PCPokemonSalesmanTalk
+	jp TextScriptEnd
+
+; Also the forest rest house's salesman (farcall; PROCEDURAL_SUBROOMS_PLAN
+; Phase 4). Returns; the caller ends the text.
+PCPokemonSalesmanTalk::
 	CheckEvent EVENT_BOUGHT_POKEMON
 	jp nz, .alreadyBoughtPokemon ; CheckEvent's 1-arg form returns via Z, not carry - jp c never fired
     
@@ -1132,7 +1138,7 @@ PCPokemonSalesmanText:
 .printText
 	call PrintText
 .done
-	jp TextScriptEnd
+	ret
 
 .IGotADealTextPokeball
 	text_far _PCPokemonSalesmanIGotADealPokeballText
@@ -1162,13 +1168,69 @@ PCPokemonSalesmanText:
 ; it through Random_Pokemon_Selection, whose AllSpeciesCheck rejects the family.
 PCTraderSuperNerdText:
 	text_asm
+	call PCTraderSuperNerdTalk
+	jp TextScriptEnd
+
+; Also the forest rest house's trader (farcall; the caller saves bc around it).
+; Returns with bc as it found it.
+;
+; Same shape as the reward room's trade NPC (reward_poke_balls.asm): tile
+; animations off around the trade, then after a trade completed by THIS talk,
+; the result text and DisableWaitingAfterTextDisplay. RogueDoInGameTradeDialogue
+; prints nothing after a TRADE_FOR_RANDOM trade, so TextScriptEnd's wait used to
+; sit on an empty box with every sprite hidden until A (2026-10-13). A re-talk
+; after a completed trade is left alone: the dialogue prints its own after-trade
+; text then.
+PCTraderSuperNerdTalk::
+	push bc ; text engine cursor
+	call .talk
+	pop bc
+	ret
+
+.talk
+	call .tradeDone
+	push af                      ; nz: this offer was already traded
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a
-    predef RogueDoInGameTradeDialogue
-	jp TextScriptEnd
+	ldh a, [hTileAnimations]
+	push af
+	xor a
+	ldh [hTileAnimations], a
+	predef RogueDoInGameTradeDialogue
+	pop af
+	ldh [hTileAnimations], a
+	pop af
+	ret nz
+	call .tradeDone
+	ret z                        ; declined, or the wrong mon
+	ld hl, PCTraderTradedText
+	call PrintText
+	jp DisableWaitingAfterTextDisplay
+
+; nz = the TRADE_FOR_RANDOM offer is completed.
+.tradeDone
+	ld hl, wCompletedInGameTradeFlags
+	ld c, TRADE_FOR_RANDOM
+	ld b, FLAG_TEST
+	predef FlagActionPredef
+	ld a, c
+	and a
+	ret
+
+PCTraderTradedText:
+	text_far _TradedForText
+	sound_get_key_item
+	text_waitbutton
+	text_end
     
 PCMoveTutorText::
 	text_asm
+	call PCMoveTutorTalk
+	jp TextScriptEnd
+
+; Also the forest rest house's tutor (farcall; PROCEDURAL_SUBROOMS_PLAN Phase 4).
+; Returns with bc (the text cursor) and wPrintItemPrices as it found them.
+PCMoveTutorTalk::
 	push bc ; text engine cursor
 	ld a, [wPrintItemPrices]
 	push af
@@ -1177,7 +1239,7 @@ PCMoveTutorText::
 	pop af
 	ld [wPrintItemPrices], a
 	pop bc
-	jp TextScriptEnd
+	ret
 .teach
 	ld hl, PCMoveTutorGreetingText
 	call PrintText
@@ -1394,7 +1456,7 @@ PCMoveTutorNoMovesText:
 	text_end
     
     
-PCTraderSuperNerdSetup:
+PCTraderSuperNerdSetup::
     ld b, 0
     ld c, 0
     ld hl, wPartySpecies
@@ -1458,7 +1520,17 @@ PCTraderSuperNerdSetup:
     pop bc
     ld e, c                     ; only d/e survive a farcall - c would arrive as garbage
     farcall Random_Pokemon_Selection_Far ; bank $2F; plain call would execute garbage
+    ; d = species, e = form. The form used to be dropped, so a masterball roll
+    ; that landed on a tier-placed form (Scream Tail = JIGGLYPUFF form 1) was
+    ; offered and delivered as a plain Jigglypuff. Same shape as the reward
+    ; trade (RogueRewardTradeRoll): store the form for the trade, and publish
+    ; the form context so the name baked below - the received mon's nickname -
+    ; is the form's.
+    ld a, e
+    ld [wroguenpctradeform], a
+    ld [wFormContextForm], a
     ld a, d
+    ld [wFormContextSpecies], a
     ld [wroguenpctradeget], a ; load in pokemon that they will give player
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
     call GetMonName         ; get name of pokemon to receive
@@ -1472,7 +1544,7 @@ PCTraderSuperNerdSetup:
     
     DEF salesman_ultraball_odds EQU $8 + $5E + $99
 
-PCPokemonSalesmanSetup:
+PCPokemonSalesmanSetup::
     call Random
     ld b, a     ; move random number to b
     ld c, 1     ; auto pokeball class

@@ -1602,7 +1602,7 @@ PCRollWildEncounter::
 	ld b, 0                              ; no extra bump - wild is the baseline
 	call PCRollMonClass                  ; c = rarity class biased by wBattleCount
 	ld e, c                              ; the class can only cross a farcall in e
-	farcall Random_Pokemon_Selection_Any_Far ; → d = species, NO ownership check
+	farcall Random_Wild_Selection_Far ; → d = species, NO ownership check; master gated by round
 	ld a, d
 	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a

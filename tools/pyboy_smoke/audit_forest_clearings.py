@@ -37,24 +37,31 @@ NO_HIDEOUT = 0xFF
 
 
 def walkable_cells(playable, blockset, walk_tiles):
-    cells = set()
+    """{tile: its collision tile} for every walkable quadrant."""
+    cells = {}
     for by in range(20):
         for bx in range(20):
             block = playable[by * 20 + bx]
             for qy in range(2):
                 for qx in range(2):
-                    if blockset[block * 16 + fc.QUADRANT_TILES[qy * 2 + qx]] in walk_tiles:
-                        cells.add((2 * bx + qx, 2 * by + qy))
+                    tile = blockset[block * 16 + fc.QUADRANT_TILES[qy * 2 + qx]]
+                    if tile in walk_tiles:
+                        cells[(2 * bx + qx, 2 * by + qy)] = tile
     return cells
 
 
+PAIRS = fc.forest_tile_pairs()
+
+
 def flood(cells, start):
+    """Reachable tiles, honouring FOREST's elevation pairs (no step between
+    the two tiles of a pair, e.g. raised ground $2E and floor $20)."""
     seen = {start} if start in cells else set()
     todo = list(seen)
     while todo:
         x, y = todo.pop()
         for nxt in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if nxt in cells and nxt not in seen:
+            if nxt in cells and nxt not in seen and frozenset((cells[(x, y)], cells[nxt])) not in PAIRS:
                 seen.add(nxt)
                 todo.append(nxt)
     return seen
@@ -132,7 +139,9 @@ def main() -> int:
         else:
             used["(none)"] += 1
 
-        cells = walkable_cells(playable, blockset, walk_tiles) - set(ball_tiles)
+        cells = walkable_cells(playable, blockset, walk_tiles)
+        for tile in ball_tiles:
+            cells.pop(tile, None)
         reach = flood(cells, ENTRANCE_TILE)
         for i, (bx, by) in enumerate(ball_tiles):
             if not any((bx + dx, by + dy) in reach for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):

@@ -410,9 +410,12 @@ DEF NUM_STAGE_EVENT_TYPES    EQU 6
 
 ; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled, the same escape hatch
 ; MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss registry: a type can sit in
-; every table without being reachable. All six are rolled, uniformly, so each
-; type is one wild area in six (STAGE_EVENT_CHANCE is 256).
-DEF STAGE_EVENT_MAX_ROLLABLE EQU 6
+; every table without being reachable. Types 1-5 are rolled, uniformly. The
+; Money Match Gambler (6) is NOT rolled (user, 2026-10-13): he must never
+; replace a stage event and will instead always appear in a wild area's
+; subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4). Until that room exists he is
+; reachable only by writing wStageEvent (test_money_match.py does).
+DEF STAGE_EVENT_MAX_ROLLABLE EQU 5
 
 ; wMoneyMatchState (ram/wram.asm): bit 7 = this battle is a Money Match, bits
 ; 0-6 = player actions taken so far, saturating. Set by MoneyMatchTalkGate on

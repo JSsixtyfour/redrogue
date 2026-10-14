@@ -237,6 +237,11 @@ ProcStageLoadDispatch::
 	call ProcGenerationEndDoubleSpeed
 	ret
 .notForest
+	cp PROCEDURAL_FOREST_REST_HOUSE
+	jr nz, .notForestRestHouse
+	farcall PFRestHouseLoad         ; its way out leads to this forest's door
+	ret
+.notForestRestHouse
 	cp PROCEDURAL_FACILITY
 	jr nz, .notFacility
 	call ProcGenerationBeginDoubleSpeed

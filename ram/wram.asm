@@ -3047,10 +3047,22 @@ wStageEventScratch:: db
 ;   bit 0: BIT_IRONMAN - any party mon that faints is released (custom_functions/ironman.asm)
 ;   bits 1-2: BATTLE_SPEED_MASK; bit 3: BIT_EXP_SHARE
 ;   bit 4: BIT_REDUCED_ANIM - no screen shakes/waves/flashes (see constant)
-;   bits 5-7: unused.
+;   bit 5: BIT_GBC_GAMMA - Enhanced Colors runs GBCGamma (ENH GAMMA option)
+;   bits 6-7: unused.
 wOptions3:: db
 
-	ds 3  ; was ds 4; 1 byte carved in place for wOptions3 above.
+; Form of the species in wroguenpctradeget, for every TRADE_FOR_RANDOM caller of
+; RogueDoInGameTradeDialogue: the reward trade roll, the lobby/forest-rest-house
+; trader (PCTraderSuperNerdSetup) and the legendary trade (always 0). Each one
+; writes it alongside the rest of the wroguenpctrade* block; the trade reads it
+; for the offer's name and the received mon (engine/events/in_game_trades.asm).
+; It cannot sit in that block, which is a streamed 14-byte TradeMons record.
+; CARVED IN PLACE from the dead pad below (ds 3 -> ds 2): zero WRAM0 cost, no
+; later address shifts (2026-10-13).
+wroguenpctradeform:: db
+
+	ds 2  ; was ds 3; 1 byte carved in place for wroguenpctradeform above.
+	      ; was ds 4; 1 byte carved in place for wOptions3 above.
 	      ; was ds 5; 1 byte carved in place for wStageEventScratch above.
 	      ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
 	      ; net WRAM0 growth (3 CurScript bytes minus 1 reclaimed ds, wRogueItem2-4 +

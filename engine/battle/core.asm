@@ -1016,6 +1016,8 @@ TrainerBattleVictory:
 	jr z, .creditsDone
 	cp PROCEDURAL_CEMETERY_4
 	jr z, .creditsDone
+	cp PROCEDURAL_FOREST_REST_HOUSE ; the Money Match gambler: part of the forest
+	jr z, .creditsDone
 	farcall RecordMiniBossVictory
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents

@@ -356,7 +356,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const SAFARI_ZONE_NORTH,             20, 18 ; $DA
 	map_const SAFARI_ZONE_WEST,              15, 13 ; $DB
 	map_const SAFARI_ZONE_CENTER,            15, 13 ; $DC
-	map_const SAFARI_ZONE_CENTER_REST_HOUSE,  4,  4 ; $DD
+	map_const PROCEDURAL_FOREST_REST_HOUSE,   4,  4 ; $DD, was SAFARI_ZONE_CENTER_REST_HOUSE (unreachable)
 	map_const SAFARI_ZONE_SECRET_HOUSE,       4,  4 ; $DE
 	map_const SAFARI_ZONE_WEST_REST_HOUSE,    4,  4 ; $DF
 	map_const SAFARI_ZONE_EAST_REST_HOUSE,    4,  4 ; $E0

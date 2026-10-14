@@ -39,7 +39,19 @@ RogueCreditPopupCheck::
 	ld de, wPlayerCoins
 	ld c, 2 | LEADING_ZEROES | LEFT_ALIGN
 	call PrintBCDNumber
-	call UpdateSprites
+	; WRAM tiles alone are invisible in the overworld (automatic transfer is
+	; off and WY is below the screen), so open the ordinary text window the
+	; same way RentalSettlementPopup does. CloseTextDisplay consumes the saved
+	; bank before returning to our caller.
+	ldh a, [hLoadedROMBank]
+	push af
+	ld hl, wAutoTextBoxDrawingControl
+	ld a, [hl]
+	push af
+	set BIT_NO_AUTO_TEXT_BOX, [hl] ; the overlay already has its own border
+	rfarcall DisplayTextIDInit
+	pop af
+	ld [wAutoTextBoxDrawingControl], a
 	ld c, 90
 	call DelayFrames
 
@@ -49,7 +61,7 @@ RogueCreditPopupCheck::
 
 	xor a
 	ld [wCreditsEarnedThisRun], a
-	ret
+	jp CloseTextDisplay
 
 .EarnedText:
 	db "EARNED @"

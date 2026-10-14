@@ -21,8 +21,29 @@ IF DEF(FOREST_X7_PROBE)
 .noX7Probe
 ENDC
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .afterSetup
+	jp nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
+	; ONCE PER GENERATED FOREST, not once per entry: the Facility's Phase 1 fix
+	; (scripts/ProceduralFacility.asm), needed here since the rest house made
+	; the forest re-enterable. Every warp clears EVENT_ENTER_ROOM, so without
+	; this the way back out of the house re-showed every collected ball (an item
+	; dupe) and the stage-event NPCs. PFPreloadForest zeroes the byte.
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld hl, sProcForestItemGot
+	ld a, [hl]
+	set BIT_PF_OBJECTS_SHOWN, [hl]
+	ld b, a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	bit BIT_PF_OBJECTS_SHOWN, b
+	jp nz, .afterSetup
 ; Fresh entry: show the four item pokeballs.
 	ld a, TOGGLE_WILD_AREA_POKEBALL_1
 	ld [wToggleableObjectIndex], a

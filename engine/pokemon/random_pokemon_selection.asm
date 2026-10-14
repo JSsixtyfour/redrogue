@@ -29,6 +29,21 @@ Random_Pokemon_Selection_Any_Far::
 	ld c, e
 	jp Random_Pokemon_Selection_Any
 
+; Random_Wild_Selection_Far: Random_Pokemon_Selection_Any_Far for wild GRASS
+; encounters (PCRollWildEncounter), with the masterball class held back until
+; round WILD_MASTER_MIN_ROUND by folding it into ultraball. A separate entry
+; point so debug FIGHT2's _Any_Far roll stays ungated. Same contract.
+ASSERT (WILD_MASTER_MIN_ROUND - 1) * ROUND_BATTLES < 256
+Random_Wild_Selection_Far::
+	ld a, e
+	cp RARITY_TIER_MASTERBALL + 1 ; class ids are 1-based
+	jr nz, Random_Pokemon_Selection_Any_Far
+	ld a, [wBattleCount]
+	cp (WILD_MASTER_MIN_ROUND - 1) * ROUND_BATTLES
+	jr nc, Random_Pokemon_Selection_Any_Far
+	dec e                         ; masterball -> ultraball
+	jr Random_Pokemon_Selection_Any_Far
+
 ; Random_Boss_Selection_Far: Random_Pokemon_Selection_Far that never yields
 ; Ditto. Shared by all four wild-area boss rollers (cave, forest, facility,
 ; cemetery). Same contract: e = class in, d = species and e = form out.
@@ -597,6 +612,7 @@ ENDC
 ; (engine/events/in_game_trades.asm).
     ld a, e
     ld [wRoguePokemonForm1], a
+    ld [wroguenpctradeform], a      ; what the trade itself reads
     ld [wFormContextForm], a
     ld a, [wNamedObjectIndex]
     ld [wFormContextSpecies], a

@@ -2653,6 +2653,8 @@ PFinalizeForest::
     ; inside a clearing at (1,1)).
     push bc
     call PFStampClearing
+    ; Phase 4: the rest house, judged on the final blocks (see PFPlaceHouse).
+    call PFPlaceHouse
     pop bc
     ; === Bake: copy wOverworldMap → sProcForestStagingBuffer, then mark baked ===
     ; SRAM is already open (kept open since the top of the first-visit path).
@@ -2752,6 +2754,10 @@ PFinalizeForest::
     pop bc
     dec b
     jr nz, .bakeRowLoop
+
+    ; Phase 4: who is home in this forest's rest house (toggles, WRAM).
+    call PFRestHouseRollResidents
+    call PFRestHouseRollOffers          ; leaves SRAM open on bank 0
 
     ld a, 1
     ld [sProcForestBaked], a
@@ -3015,6 +3021,9 @@ PFinalizeForest::
     ld [wSignCoords], a      ; sign 0 Y
     ld a, $12
     ld [wSignCoords + 1], a  ; sign 0 X (same for both blocks)
+
+    ; Phase 4: only this forest's rest house door may warp.
+    call PFArmHouseDoor
 
     ld a, BMODE_SIMPLE
     ld [rBMODE], a
@@ -3510,3 +3519,412 @@ PFCellInClearing:
 .no
 	and a
 	ret
+
+; ============================================================
+; Rest house (PROCEDURAL_SUBROOMS_PLAN Phase 4)
+; ============================================================
+; Every forest gets one rest house on a free door spot (all 28 taken is never
+; seen; then the forest simply has none). The house stands over two TREE
+; blocks (constants/forest_house_site_constants.asm), so it cuts no path.
+; sProcForestItemGot - zeroed by PFPreloadForest, otherwise unused since the
+; toggles took over ball hiding - keeps the spot as index + 1 in bits 0-4;
+; scripts/ProceduralForest.asm owns bit 7. No new SRAM.
+
+DEF PF_HOUSE_SITE_MASK EQU %00011111
+; Valid spots while PFPlaceHouse runs. Generation-only: bytes 0-31 hold the
+; balls and dead ends, 72-79 the clearing.
+DEF PF_HOUSE_LIST EQUS "sProcForestGenScratch + 32"
+	ASSERT NUM_FOREST_HOUSE_SITES <= 40
+
+PFHouseSiteTable:
+FOR n, NUM_FOREST_HOUSE_SITES
+    db FOREST_HOUSE_SITE_{d:n}_X, FOREST_HOUSE_SITE_{d:n}_Y
+ENDR
+
+; The front cell must be one of these (all four quadrants walkable): walking
+; out of the house steps the player down into its top-right quadrant.
+PFHouseFrontFloors:
+    db 1, 41, 27, $20, $22, $23, $24, $25, -1
+
+; In: a = site index. Out: b = block x, c = block y. Keeps de.
+PFHouseSiteXY:
+    add a, a
+    ld c, a
+    ld b, 0
+    ld hl, PFHouseSiteTable
+    add hl, bc
+    ld a, [hli]
+    ld b, a
+    ld c, [hl]
+    ret
+
+; PFPlaceHouse
+; First visit, SRAM open on bank 0. Runs after every pass that changes blocks
+; (braid, sign, exit, clearing restamp), so it judges the final map, and
+; before the bake. Collects every valid spot, picks one uniformly, stamps the
+; house and records the spot. Clobbers a/bc/de/hl.
+PFPlaceHouse:
+    ld a, [sProcForestItemGot]
+    and ~PF_HOUSE_SITE_MASK
+    ld [sProcForestItemGot], a
+    ld de, PF_HOUSE_LIST
+    ld c, 0                     ; site index
+.site
+    push bc
+    push de
+    ld a, c
+    call PFHouseSiteXY
+    call PFHouseSiteValid
+    pop de
+    pop bc
+    jr nc, .next
+    ld a, c
+    ld [de], a
+    inc de
+.next
+    inc c
+    ld a, c
+    cp NUM_FOREST_HOUSE_SITES
+    jr c, .site
+    ld a, e
+    sub LOW(PF_HOUSE_LIST)      ; count (mod 256, so a page crossing is fine)
+    ret z                       ; no free spot: no house in this forest
+    ld c, a
+    call Rangerandom            ; a = 0..count-1
+    ld e, a
+    ld d, 0
+    ld hl, PF_HOUSE_LIST
+    add hl, de
+    ld a, [hl]                  ; the chosen site
+    ld e, a
+    inc a
+    ld b, a
+    ld a, [sProcForestItemGot]
+    or b
+    ld [sProcForestItemGot], a
+    ld a, e
+    call PFHouseSiteXY
+    ld a, b
+    ld [wBuffer + wPFCurX], a
+    ld a, c
+    ld [wBuffer + wPFCurY], a
+    ld a, FOREST_HOUSE_LEFT_BLOCK
+    call PFWriteBlock
+    ld a, [wBuffer + wPFCurX]
+    inc a
+    ld [wBuffer + wPFCurX], a
+    ld a, FOREST_HOUSE_RIGHT_BLOCK
+    jp PFWriteBlock
+
+; In: b = block x, c = block y of the house's left half. Out: carry = the
+; house may stand here: both blocks are plain trees, the cell below is plain
+; floor, and nothing stands in that cell (a ball, the boss) or within one cell
+; of the stage-event hideout (its NPC pair). Clobbers a/de/hl.
+PFHouseSiteValid:
+    ld a, b
+    ld [wBuffer + wPFCurX], a
+    ld a, c
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock            ; keeps bc
+    cp PF_TREE
+    jr nz, .no
+    ld a, b
+    inc a
+    ld [wBuffer + wPFCurX], a
+    call PFReadBlock
+    cp PF_TREE
+    jr nz, .no
+    ld a, b
+    ld [wBuffer + wPFCurX], a
+    inc c                       ; c = the front cell's row
+    ld a, c
+    ld [wBuffer + wPFCurY], a
+    call PFReadBlock
+    ld d, a
+    ld hl, PFHouseFrontFloors
+.floor
+    ld a, [hli]
+    cp -1
+    jr z, .no
+    cp d
+    jr nz, .floor
+    ; The four balls, still block X,Y pairs in scratch 0-7 before the bake.
+    ld hl, sProcForestGenScratch
+    ld d, 4
+.ball
+    ld a, [hli]
+    cp b
+    ld a, [hli]
+    jr nz, .nextBall
+    cp c
+    jr z, .no
+.nextBall
+    dec d
+    jr nz, .ball
+    call PFBossCell
+    ld a, d
+    cp b
+    jr nz, .notBoss
+    ld a, e
+    cp c
+    jr z, .no
+.notBoss
+    ld a, [sStageEventHideoutX]
+    sub b
+    jr nc, .dxPositive
+    cpl
+    inc a
+.dxPositive
+    cp 3
+    jr nc, .yes
+    ld a, [sStageEventHideoutY]
+    sub c
+    jr nc, .dyPositive
+    cpl
+    inc a
+.dyPositive
+    cp 3
+    jr c, .no
+.yes
+    scf
+    ret
+.no
+    and a
+    ret
+
+; Out: d = block x, e = block y of the boss's cell (one cell inward from the
+; exit; see PFinalizeForest's .bossNorth/.bossNotNorth). Keeps bc.
+PFBossCell:
+    ld a, [sProcForestExitI]
+    add a, a
+    inc a                       ; 2i+1
+    ld e, a
+    ld a, [sProcForestExitEdge]
+    and a
+    jr nz, .side
+    ld d, e
+    ld e, 1
+    ret
+.side
+    cp 1
+    ld d, 1
+    ret z
+    ld d, 17
+    ret
+
+; PFArmHouseDoor
+; Every load, SRAM open on bank 0, after LoadMapHeader filled wWarpEntries from
+; ROM. Disarms every door warp but this forest's (no house: all of them).
+; Clobbers a/bc/de/hl.
+PFArmHouseDoor:
+    ; Re-select bank 0: the boss-level farcall sits between the caller's SRAM
+    ; open and here (RARE LENS lesson, see the top of PFinalizeForest).
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a
+    ld a, [sProcForestItemGot]
+    and PF_HOUSE_SITE_MASK
+    ld c, a                     ; site + 1, 0 = no house
+    ld hl, wWarpEntries + FOREST_FIRST_HOUSE_WARP * 4
+    ld de, 4
+    ld b, 1
+.loop
+    ld a, b
+    cp c
+    jr z, .keep
+    ld [hl], FOREST_HOUSE_NONE  ; Y off the map
+.keep
+    add hl, de
+    inc b
+    ld a, b
+    cp NUM_FOREST_HOUSE_SITES + 1
+    jr c, .loop
+    ret
+
+; PFRestHouseRollResidents
+; Once per forest, at generation: who is home in this forest's rest house.
+; Toggle flags persist across warps, so this holds until the next forest. Each
+; resident is in on PF_REST_HOUSE_CHANCE (the lobby's ~1/3), every one in
+; Debug mode, like LobbyRollNPC. (6,6) is one spot for two residents, the
+; rental official and the healing clerk: when both roll in, a coin decides.
+; The Money Match gambler is always in. Clobbers a/bc/de/hl.
+DEF PF_REST_HOUSE_CHANCE EQU 85
+PFRestHouseRollResidents:
+    ld a, TOGGLE_PFRESTHOUSE_CLERK_STOCK
+    call .roll
+    ld a, TOGGLE_PFRESTHOUSE_MOVE_TUTOR
+    call .roll
+    ld a, TOGGLE_PFRESTHOUSE_TRADER
+    call .roll
+    ld a, TOGGLE_PFRESTHOUSE_SALESMAN
+    call .roll
+    ld a, TOGGLE_PFRESTHOUSE_GAMBLER
+    ld b, $FF
+    call .set
+    call .chance
+    sbc a                       ; $FF = rolled in
+    ld d, a                     ; d = rental official
+    call .chance
+    sbc a
+    ld e, a                     ; e = healing clerk
+    and d
+    jr z, .apply
+    call Random
+    rrca
+    jr c, .keepRental
+    ld d, 0
+    jr .apply
+.keepRental
+    ld e, 0
+.apply
+    ld a, TOGGLE_PFRESTHOUSE_RENTAL_OFFICIAL
+    ld b, d
+    call .set
+    ld a, TOGGLE_PFRESTHOUSE_CLERK_HEALING
+    ld b, e
+    jr .set
+
+; Out: carry = in this forest.
+.chance
+    ld a, [wStatusFlags6]
+    bit BIT_DEBUG_MODE, a
+    scf
+    ret nz
+    call Random
+    cp PF_REST_HOUSE_CHANCE
+    ret
+
+; In: a = toggle.
+.roll
+    push af
+    call .chance
+    sbc a
+    ld b, a
+    pop af
+    ; fall through
+; In: a = toggle, b = $FF in (shown), 0 out (hidden). Keeps de.
+.set
+    push de
+    ld c, a
+    ld a, b
+    and a
+    ld b, FLAG_RESET            ; flag clear = shown
+    jr nz, .write
+    ld b, FLAG_SET
+.write
+    ld hl, wToggleableObjectFlags
+    predef FlagActionPredef
+    pop de
+    ret
+
+; PFRestHouseLoad
+; ProcStageLoadDispatch, every load of the rest house: point its way out at
+; this forest's door. With no house recorded the ROM default (the forest's
+; entrance) stands.
+PFRestHouseLoad::
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a
+    ld a, [sProcForestItemGot]
+    and PF_HOUSE_SITE_MASK
+    ld b, a
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+    ld a, b
+    and a
+    ret z
+    add FOREST_FIRST_HOUSE_WARP - 1 ; warp index of site b - 1 (0-based)
+    ld [wWarpEntries + 2], a
+    ld [wWarpEntries + 4 + 2], a
+    ret
+
+; Offers, rolled once per forest like the lobby rolls them once per visit. The
+; salesman and the trader use the lobby's own WRAM (wroguenpc*), which the
+; lobby re-rolls on every entry, and the only way out of a forest is back to
+; the lobby. The clerks' lists go in the forest's generation scratch, which
+; nothing reads between the bake and the next forest's generation: the
+; lobby's mart buffers share a UNION with wProcForestWildBudget, so a list
+; built there would cost the forest its wild budget.
+DEF PF_HOUSE_MART_LEN EQU 12        ; count, 10 items, $FF (LoadItemList's format)
+DEF PF_HOUSE_MART_HEALING EQUS "sProcForestGenScratch + 40"
+DEF PF_HOUSE_MART_STOCK   EQUS "sProcForestGenScratch + 52"
+	ASSERT 52 + PF_HOUSE_MART_LEN <= 72, "house marts must stay below the clearing record (72-79)"
+
+; PFRestHouseRollOffers
+; First visit, after the bake. Leaves SRAM open on bank 0 (the caller writes
+; sProcForestBaked next). Clobbers everything.
+PFRestHouseRollOffers:
+    ld c, TRADE_FOR_RANDOM
+    ld b, FLAG_RESET
+    ld hl, wCompletedInGameTradeFlags
+    predef FlagActionPredef
+    ResetEvent EVENT_BOUGHT_POKEMON
+    farcall PCPokemonSalesmanSetup
+    ; Both setups use wroguenpctradename as scratch; the trader goes last so
+    ; its offer owns the trade nickname (the lobby's own order).
+    farcall PCTraderSuperNerdSetup
+    ld de, wItemList + 1
+    farcall Random_Healing_Mart_Selection
+    ld de, PF_HOUSE_MART_HEALING
+    call .store
+    ld de, wItemList + 1
+    farcall Random_StatTM_Mart_Selection
+    ld de, PF_HOUSE_MART_STOCK
+.store
+    ; The item rolls can leave SRAM closed on bank 1 (RARE LENS).
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a
+    ld a, PF_HOUSE_MART_LEN - 2     ; 10 items
+    ld [de], a
+    inc de
+    ld hl, wItemList + 1
+    ld bc, PF_HOUSE_MART_LEN - 1
+    jp CopyData
+
+; PFRestHouseRunMart
+; A house clerk's mart, from its text_asm. In: e = 0 healing list, 1 stock
+; list. LoadItemList copies the list into wItemList and the mart works from
+; that copy only, so the list can come straight out of SRAM. What
+; DisplayPokemartDialogue does, minus its jump to AfterDisplayingTextID: the
+; caller ends the text with TextScriptEnd.
+PFRestHouseRunMart::
+    push de
+    ld hl, PokemartGreetingText
+    call PrintText
+    pop de
+    ld hl, PF_HOUSE_MART_HEALING
+    ld a, e
+    and a
+    jr z, .open
+    ld hl, PF_HOUSE_MART_STOCK
+.open
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ld a, BMODE_ADVANCED
+    ld [rBMODE], a
+    xor a
+    ld [rRAMB], a
+    ld a, [hl]
+    cp PF_HOUSE_MART_LEN - 2
+    call z, LoadItemList            ; anything else: never rolled (a save from before the house)
+    ld a, BMODE_SIMPLE
+    ld [rBMODE], a
+    ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+    ld [rRAMG], a
+    ret nz
+    ld a, PRICEDITEMLISTMENU
+    ld [wListMenuID], a
+    farcall DisplayPokemartDialogue_
+    ret

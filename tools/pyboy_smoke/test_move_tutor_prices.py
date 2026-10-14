@@ -223,8 +223,8 @@ class TutorTransactionRomTest(unittest.TestCase):
         def learn_move(_context) -> None:
             observed["learn_calls"] += 1
             observed["learn_predef_bytes"] = list(
-                h.pyboy.memory[h.address("PCMoveTutorText.learnMove"):
-                               h.address("PCMoveTutorText.learnMove") + 3]
+                h.pyboy.memory[h.address("PCMoveTutorTalk.learnMove"):
+                               h.address("PCMoveTutorTalk.learnMove") + 3]
             )
             h.pyboy.register_file.B = learned
             if corrupt_scratch:
@@ -233,7 +233,7 @@ class TutorTransactionRomTest(unittest.TestCase):
                         h.write8(label, 0x99, offset=offset)
             # `predef LearnMove` is ld a, id / rst $28, exactly three bytes.
             # The byte pattern assertion below catches a changed macro shape.
-            h.pyboy.register_file.PC = h.address("PCMoveTutorText.learnMove") + 3
+            h.pyboy.register_file.PC = h.address("PCMoveTutorTalk.learnMove") + 3
 
         def capture(harness: RedRogueHarness) -> dict[str, object]:
             return {
@@ -257,13 +257,13 @@ class TutorTransactionRomTest(unittest.TestCase):
 
         actual = run_entry(
             h,
-            "PCMoveTutorText.tryTeach",
+            "PCMoveTutorTalk.tryTeach",
             registers={"D": 3, "E": move_id},
             setup=setup,
             hooks={
                 "PrintText": print_text,
                 "YesNoChoice": yes_no,
-                "PCMoveTutorText.learnMove": learn_move,
+                "PCMoveTutorTalk.learnMove": learn_move,
             },
             capture=capture,
             limit=1200,
@@ -351,7 +351,7 @@ class TutorTransactionRomTest(unittest.TestCase):
         result: dict[str, object] = {}
         ret_addr = 0xC100  # WRAM spin loop; see run_entry for why not 0:$3FFF
 
-        bank_teach, address_teach = h.symbols.get("PCMoveTutorText.teach")
+        bank_teach, address_teach = h.symbols.get("PCMoveTutorTalk.teach")
         h.pyboy.hook_register(bank_teach, address_teach, fake_teach, None)
         try:
             cpu = h.pyboy.register_file
