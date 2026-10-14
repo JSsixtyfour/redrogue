@@ -506,6 +506,12 @@ wAddedToParty::
 ; The purpose of these flags is to track which mons levelled up during the
 ; current battle at the end of the battle when evolution occurs.
 ; Other methods of evolution simply set it by calling TryEvolvingMon.
+; FOLLOWUPS #49 CLOSED: InitBattleVariables deliberately retains its established
+; 210-byte clear from here ($CCD0-$CDA1 in the 2026-10-14 build). The end label
+; below is in a DIFFERENT UNION branch; its negative difference wraps to $D2.
+; State anywhere in that swept span must tolerate battle-start zeroing.
+; Do not narrow the clear or relocate its end label as a cleanup. See the
+; accepted-behavior note in WRAM_BIBLE.md and FOLLOWUPS.md #49.
 wMiscBattleData::
 wCanEvolveFlags:: db
 
@@ -666,6 +672,9 @@ ENDU
 	; InitBattleVariables zeroes, and it aliases wNPCMovementDirections2. It is
 	; therefore NOT usable for battle-scoped AI state - see AI_OVERHAUL_PLAN.md.
 	ds 8
+; Historical name, NOT the end of the wMiscBattleData branch. FOLLOWUPS #49 is
+; closed as accepted behavior: keep this placement and the resulting wide clear
+; unless a separate battle-init change audits every affected consumer.
 wMiscBattleDataEnd::
 ENDU
 

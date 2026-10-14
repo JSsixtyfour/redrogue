@@ -49,7 +49,62 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                  "wCurMapScript", "wBattleCount", "wDayCareDepositBattleCount", "wDayCareDepositBattleCount2",
                  "wStolenSaveSnapshot", "wRentalRecord",
                # migration tradeFormAdded (schema 10 -> 11)
-               "wOptions3", "wroguenpctradeform"}
+               "wOptions3", "wroguenpctradeform",
+               # migration flagsRenumbered (schema 10 -> 11)
+               "wToggleableObjectFlags"}
+
+# Steps whose per-migration table flag_translation() computes and attaches to the target schema.
+FLAG_STEP = "flagsRenumbered"
+FLAG_ARRAYS = (("EVENT_", "NUM_EVENTS", "wEventFlags"),
+               ("TOGGLE_", "NUM_TOGGLEABLE_OBJECTS", "wToggleableObjectFlags"))
+
+
+def toggles_off_at_new_game() -> set[str]:
+    """TOGGLE_* names whose object starts hidden (bit set) on a new game, read from the tree this
+    package is built from. Only consulted for toggles a migration ADDS, which by construction exist
+    in this tree's target schema."""
+    text = (REPO / "data" / "maps" / "toggleable_objects.asm").read_text(encoding="utf-8")
+    return {"TOGGLE_" + m.group(1)
+            for m in re.finditer(r"^\s*toggle_object_state\s+(\w+)\s*,\s*OFF\b", text, re.M)}
+
+
+def flag_translation(old: dict, new: dict) -> dict:
+    """Event and toggle bits translated BY NAME between two full schemas.
+
+    Returns {label: {"bytes": n, "bits": [[new_bit, [old_bits] | None, default], ...]}} listing only
+    the bits whose meaning changed; every other bit stays where it is (the arrays did not move).
+    A new bit takes the OR of its names' old bits (names can alias one bit); a bit whose names are
+    all new takes the new-game default (events clear, toggles per toggleable_objects.asm); a bit
+    that lost every name is cleared. Refuses a renumbering it can't express."""
+    oc, nc = old["constants"], new["constants"]
+    off = toggles_off_at_new_game()
+    out = {}
+    for prefix, count, label in FLAG_ARRAYS:
+        if oc.get(count) != nc.get(count):
+            raise SystemExit(f"{count} changed {oc.get(count)} -> {nc.get(count)}: {FLAG_STEP} can't resize {label}")
+        n = nc[count]
+        def named(c):
+            groups = {}
+            for k, v in c.items():
+                if k.startswith(prefix) and isinstance(v, int) and 0 <= v < n:
+                    groups.setdefault(v, []).append(k)
+            return groups
+        old_bits, new_bits = named(oc), named(nc)
+        bits = []
+        for nb in sorted(set(new_bits) | set(old_bits)):
+            names = new_bits.get(nb, [])
+            sources = sorted({oc[k] for k in names if k in oc and 0 <= oc[k] < n})
+            if not names:
+                bits.append([nb, None, 0])            # lost every name: nothing reads it now
+            elif sources == [nb]:
+                continue                              # same meaning, already in place
+            elif sources:
+                bits.append([nb, sources, 0])
+            else:
+                default = 1 if prefix == "TOGGLE_" and any(k in off for k in names) else 0
+                bits.append([nb, None, default])
+        out[label] = {"bytes": (n + 7) // 8, "bits": bits}
+    return out
 
 
 def trim(schema: dict) -> dict:
@@ -98,6 +153,10 @@ def build(out_dir: Path, template: Path | None) -> Path:
             if end not in schemas:
                 path = SCHEMAS / (f"schema_{end}.json" if end.isdigit() else f"{end}.json")
                 schemas[end] = trim(json.loads(path.read_text(encoding="utf-8")))
+    for m in registry["migrations"]:
+        if FLAG_STEP in m["steps"]:
+            full = [json.loads((SCHEMAS / f"schema_{end}.json").read_text(encoding="utf-8")) for end in (m["from"], m["to"])]
+            schemas[m["to"]].setdefault("flag_translation", {})[m["from"]] = flag_translation(*full)
     package = {
         "format": 1,
         "target": {"schema": target_id},

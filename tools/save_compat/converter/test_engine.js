@@ -237,6 +237,40 @@ test("schema 8 to 9: theft holder joins the save transaction and shifted data su
   }
 });
 
+test("schema 10 to 11: every event and toggle keeps its meaning by name", () => {
+  // checkMigration fills both flag arrays with noise, so every named bit starts at a random value.
+  const { save, b, from, to } = checkMigration(10, 11, ["wEventFlags", "wToggleableObjectFlags"]);
+  const off = new Set(fs.readFileSync(path.join(__dirname, "..", "..", "..", "data", "maps", "toggleable_objects.asm"), "utf8")
+    .split("\n").map((l) => /^\s*toggle_object_state\s+(\w+)\s*,\s*OFF\b/.exec(l)).filter(Boolean).map((m) => "TOGGLE_" + m[1]));
+  for (const [prefix, count, label] of [["EVENT_", "NUM_EVENTS", "wEventFlags"],
+                                        ["TOGGLE_", "NUM_TOGGLEABLE_OBJECTS", "wToggleableObjectFlags"]]) {
+    const n = to.constants[count];
+    const bit = (bytes, base, i) => (bytes[base + (i >> 3)] >> (i & 7)) & 1;
+    const a = wramOffset(from, label), z = wramOffset(to, label);
+    const names = (c) => Object.keys(c).filter((k) => k.startsWith(prefix) && c[k] >= 0 && c[k] < n);
+    let moved = 0, fresh = 0;
+    for (const k of names(to.constants)) {
+      const nb = to.constants[k];
+      // A bit's value is the OR over every name now on it (aliases share a bit).
+      const sharing = names(to.constants).filter((j) => to.constants[j] === nb);
+      const olds = sharing.filter((j) => j in from.constants && from.constants[j] < n).map((j) => from.constants[j]);
+      const want = olds.length ? olds.some((o) => bit(save, a, o)) : (prefix === "TOGGLE_" && sharing.some((j) => off.has(j)));
+      assert.equal(bit(b, z, nb), want ? 1 : 0, `${k} (bit ${nb})`);
+      if (olds.length && olds[0] !== nb) moved++;
+      if (!olds.length) fresh++;
+    }
+    assert.ok(moved > 0, `${label}: expected some renumbered names`);
+    assert.ok(fresh > 0, `${label}: expected some new names`);
+  }
+  // Spot checks against the measured diff: a moved event, a new event, a reused toggle slot.
+  const ev = (s, k) => s.constants[k];
+  assert.equal(ev(from, "EVENT_PC_BOSS_OFFERED"), 0x115);
+  assert.equal(ev(to, "EVENT_PC_BOSS_OFFERED"), 0x11c);
+  assert.equal(bit(b, wramOffset(to, "wToggleableObjectFlags"), ev(to, "TOGGLE_PFRESTHOUSE_TRADER")), 1,
+    "a new rest-house resident starts hidden, whatever the retired Safari toggle in its slot held");
+  function bit(bytes, base, i) { return (bytes[base + (i >> 3)] >> (i & 7)) & 1; }
+});
+
 test("schema 9 to 10: no legacy rental, every previous saved field survives", () => {
   const { b, to } = checkMigration(9, 10, []);
   const start = wramOffset(to, "wRentalRecord");
@@ -245,7 +279,7 @@ test("schema 9 to 10: no legacy rental, every previous saved field survives", ()
 
 test("schema 10 to 11: the trade form is added zeroed, nothing else changes", () => {
   // checkMigration fills the old pad byte with noise, so a step that skipped the zeroing fails.
-  const { save, b, from, to } = checkMigration(10, 11, []);
+  const { save, b, from, to } = checkMigration(10, 11, ["wEventFlags", "wToggleableObjectFlags"]);
   const pad = wramOffset(from, "wOptions3") + 1;
   assert.notEqual(save[pad], 0, "the noise should have made the old pad byte non-zero");
   assert.equal(wramOffset(to, "wroguenpctradeform"), pad);

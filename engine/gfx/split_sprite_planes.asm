@@ -17,7 +17,12 @@ FOR n, 256
 ENDR
 	PURGE hi_nybble, lo_nybble
 
-; In: de = end of Decompress's output (sSpriteBuffer0 + 2n, n <= SPRITEBUFFERSIZE).
+; In: de = end of Decompress's output (sSpriteBuffer0 + 2n, 0 < n <= SPRITEBUFFERSIZE).
+; Pics contain whole tiles, so n is a multiple of TILE_1BPP_SIZE. Four-byte
+; batches fit in an 8-bit counter even when flipping both full planes.
+ASSERT TILE_1BPP_SIZE % 4 == 0
+ASSERT SPRITEBUFFERSIZE % 4 == 0
+ASSERT 2 * SPRITEBUFFERSIZE / 4 <= $ff
 ; Assumes SRAM enabled, bank 0. Clobbers everything.
 ;
 ; Both copies run BACKWARDS, which is what makes splitting in place safe without
@@ -71,15 +76,15 @@ SplitSpritePlanes::
 	; Nybble-reverse every byte of both planes (zero maps to zero, so the
 	; tails need no special case).
 	ld hl, sSpriteBuffer1
-	ld bc, 2 * SPRITEBUFFERSIZE
+	ld b, 2 * SPRITEBUFFERSIZE / 4
 	ld d, HIGH(SpriteNybbleReverseTable)
 .flipLoop
+	REPT 4
 	ld e, [hl]
 	ld a, [de]
 	ld [hli], a
-	dec bc
-	ld a, b
-	or c
+	ENDR
+	dec b
 	jr nz, .flipLoop
 	ret
 
@@ -87,14 +92,19 @@ SplitSpritePlanes::
 ; Copies every other byte, walking both pointers down: dest[k] = src[2k].
 .copyPlane
 	add hl, bc ; hl = destination plane + n - 1
+	srl b
+	rr c
+	srl b
+	rr c
+	ld b, c ; n / 4 batches; original n is saved by the caller
 .copyLoop
+	REPT 4
 	ld a, [de]
 	dec de
 	dec de
 	ld [hld], a
-	dec bc
-	ld a, b
-	or c
+	ENDR
+	dec b
 	jr nz, .copyLoop
 	ret
 

@@ -410,6 +410,36 @@
       return null;
     },
 
+    // Schema 10 -> 11 (2026-10-14): event flags and toggles renumbered without their own schema bump
+    // (Money Match / legendary trade / forest rest house work): 27 EVENT_* moved, 3 new; the 7
+    // retired Safari item toggles and TOGGLE_PC_DOOR2_SIGN gave their slots to the rest-house
+    // residents and TOGGLE_PC_RENTAL_OFFICIAL. Translated BY NAME: build_package.py computes the
+    // table from the two schemas' constants and attaches it to the target schema
+    // (flag_translation[from]), listing only bits whose meaning changed, as
+    // [newBit, oldBits | null, default]: a bit takes the OR of its old bits, or its default
+    // (events clear; a new toggle its new-game state; a bit that lost every name, clear).
+    flagsRenumbered: function (bytes, from, to) {
+      var table = to.flag_translation && to.flag_translation[String(from.schema_id)];
+      if (!table) return "this package has no flag translation for save format " + from.schema_id;
+      var src = new Uint8Array(bytes);
+      for (var label in table) {
+        var a = wramOffset(from, label), b = wramOffset(to, label), t = table[label];
+        if (a < 0 || b < 0) return label + " is missing from the save format";
+        if (wramField(to, label).size < t.bytes) return label + " is smaller than its flag count";
+        for (var i = 0; i < t.bits.length; i++) {
+          var nb = t.bits[i][0], olds = t.bits[i][1], on = !!t.bits[i][2];
+          if (olds) {
+            on = false;
+            for (var j = 0; j < olds.length; j++) if (src[a + (olds[j] >> 3)] & (1 << (olds[j] & 7))) on = true;
+          }
+          if (on) bytes[b + (nb >> 3)] |= 1 << (nb & 7);
+          else bytes[b + (nb >> 3)] &= ~(1 << (nb & 7)) & 0xff;
+        }
+      }
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     rentalRecordAdded: function (bytes, from, to) {
       var src = new Uint8Array(bytes);
       var oldMain = sramField(from, "sMainData"), newMain = sramField(to, "sMainData");

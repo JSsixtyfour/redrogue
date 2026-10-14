@@ -32,6 +32,11 @@ InitBattleVariables:
 	ld [hli], a ; wPlayerHPBarColor
 	ld [hl], a ; wEnemyHPBarColor
 	ld hl, wCanEvolveFlags
+	; FOLLOWUPS #49: deliberately preserve the established 210-byte clear.
+	; These labels are in different UNION branches: -46 wraps to $D2.
+	; Current span is $CCD0-$CDA1, including scratch after the battle branch.
+	; Confirmed by canaries 2026-10-14; accepted behavior, not an open fix.
+	; Do not shorten it or move the end label without auditing all consumers.
 	ld b, wMiscBattleDataEnd - wMiscBattleData
 .loop
 	ld [hli], a

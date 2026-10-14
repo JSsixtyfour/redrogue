@@ -1801,6 +1801,20 @@ AIGetMoveHitChance::
 	ld a, [wEnemyMoveEffect]
 	cp SWIFT_EFFECT
 	jr z, .neverMisses ; Swift returns before MoveHitTest's accuracy roll
+; Neutral stages multiply by 1/1 twice. Keep CalcHitChance's minimum of one,
+; without touching its shared arithmetic scratch or the loaded move block.
+	ld a, [wEnemyMonAccuracyMod]
+	cp 7
+	jr nz, .modifiedStages
+	ld a, [wPlayerMonEvasionMod]
+	cp 7
+	jr nz, .modifiedStages
+	ld a, [wEnemyMoveAccuracy]
+	and a
+	ret nz
+	inc a
+	ret
+.modifiedStages
 	ld a, [wEnemyMoveAccuracy]
 	push af
 	ldh a, [hWhoseTurn]

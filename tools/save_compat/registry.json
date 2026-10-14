@@ -93,8 +93,8 @@
   {
    "from": "10",
    "to": "11",
-   "steps": ["tradeFormAdded"],
-   "verified": "NOT YET (2026-10-14, Claude): all three ROMs build; save_schema matches schema 11; converter 19 pass/1 real legacy-fixture skip, incl. 'schema 10 to 11' (the old pad byte, filled with noise, comes out 0); full smoke 1035 OK (3 skipped). Real-save gate not run. INCOMPLETE: the 10 -> 11 diff also carries stored-constant changes this step does NOT translate (commit 356e87b7 plus uncommitted work landed after schema 10 without a bump): EVENT_* from EVENT_OFFERED_LEGENDARY_TRADE_GYM5 on renumbered (e.g. EVENT_PC_BOSS_OFFERED $115 -> $11c), Safari TOGGLE_* removed/shifted, TOGGLE_PC_DOOR2_SIGN removed. A converted schema-10 save needs an event/toggle translation step before this migration can be released."
+   "steps": ["tradeFormAdded", "flagsRenumbered"],
+   "verified": "NOT YET (2026-10-14, Claude): all three ROMs build; save_schema matches schema 11; converter 19 pass/1 real legacy-fixture skip, incl. 'schema 10 to 11' (the old pad byte, filled with noise, comes out 0); full smoke 1035 OK (3 skipped). Real-save gate not run. Step flagsRenumbered (added 2026-10-14) translates the event/toggle renumbering that landed after schema 10 without its own bump (356e87b7 + ba0cd58b: 27 EVENT_* moved, 3 new; 7 Safari item toggles + TOGGLE_PC_DOOR2_SIGN retired, their slots reused by the rest-house residents + TOGGLE_PC_RENTAL_OFFICIAL) BY NAME, from a table build_package.py computes out of the two schemas' constants. Converter 20 pass/1 skip: 'every event and toggle keeps its meaning by name' checks each named bit against the noise-filled input; both 10 -> 11 tests fail with the step removed (mutation-checked). save_schema still matches schema 11 at 2026-10-14 08:50; if constants change again before release, re-extract schema 11 and the table follows."
   }
  ]
 }
