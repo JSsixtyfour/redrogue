@@ -1844,9 +1844,10 @@ wSpriteInputBitCounter:: db
 
 ; Was wSpriteOutputBitOffset, dead since the LZ pic switch (2026-10-07); reused
 ; in place so no address moves. Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M):
-; bit 7 = this battle is a Money Match, bits 0-6 = player actions so far
-; (BIT_MONEY_MATCH_ACTIVE / MONEY_MATCH_TURNS_MASK). Set on YES by
-; MoneyMatchHouseTalk, zeroed by EndOfBattle. Unsaved (below wMainDataStart).
+; bit 7 = this battle is a Money Match, bit 6 = no bet (the Facility Super
+; Nerd), bits 0-5 = player actions so far (BIT_MONEY_MATCH_ACTIVE /
+; BIT_MONEY_MATCH_NO_PAYOUT / MONEY_MATCH_TURNS_MASK). Set on YES by
+; MoneyMatchHouseTalk / FacSuperNerdTalk, zeroed by EndOfBattle. Unsaved (below wMainDataStart).
 wMoneyMatchState:: db
 
 ; Was wSpriteLoadFlags, dead since the LZ pic switch (2026-10-07); reused in

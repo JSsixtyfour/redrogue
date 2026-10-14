@@ -169,6 +169,7 @@ def strands_nothing(blockset, playable, site) -> bool:
 
 
 SUBROOM_PAD = 7  # sProcFacilityGenScratch byte 7: the subroom pad's site (Phase 4)
+SUBROOM_PIECE = 6  # byte 6: the room piece, or $80 | X for the Super Nerd's fallback block
 
 
 def unstamp(playable, scratch):
@@ -177,7 +178,7 @@ def unstamp(playable, scratch):
     site is no longer PFAC_FLOOR)."""
     before = list(playable)
     stamped = list(scratch[:2]) if scratch[0] < len(PAD_SITES) and scratch[1] < len(PAD_SITES) else []
-    if scratch[SUBROOM_PAD] < len(PAD_SITES):
+    if scratch[SUBROOM_PAD] < len(PAD_SITES):   # $40 and up: no subroom pad
         stamped.append(scratch[SUBROOM_PAD])
     for site in stamped:
         x, y = PAD_SITES[site]
@@ -189,6 +190,8 @@ def unstamp(playable, scratch):
 def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -> int:
     """Compare what PFacPlacePads/PFacArmPads did with this audit's own model."""
     a, b, sub = scratch[0], scratch[1], scratch[SUBROOM_PAD]
+    if sub >= len(PAD_SITES):
+        sub = PAD_NONE            # $FF, or the Super Nerd's fallback row ($40 | Y)
     # The pair was judged on the map as it was BEFORE any pad was stamped, the
     # subroom pad on the map with the pair already in it.
     before = list(playable)
@@ -225,6 +228,20 @@ def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -
         & set(PAD_SITES)
     tally["subroom_possible"] += bool(sub_sites)
     if sub == PAD_NONE:
+        # The Super Nerd's fallback: a random block (rows 3-18) passing the
+        # same rule, stored as $80 | X in byte 6 and $40 | Y in byte 7; $FF in
+        # both when there is none.
+        anywhere = {(x, y) for x, y in valid_sites(tuple(playable), scratch, balls, boss, hideout,
+                                                    BLOCKSET.read_bytes()) if y >= 3}
+        x_byte, y_byte = scratch[SUBROOM_PIECE], scratch[SUBROOM_PAD]
+        if x_byte == 0xFF and y_byte == 0xFF:
+            if anywhere:
+                problems.append(f"no Super Nerd although {len(anywhere)} blocks were valid")
+        else:
+            tally["fallback_placed"] += 1
+            spot = (x_byte & 0x7F, y_byte & 0x3F)
+            if x_byte & 0x80 == 0 or y_byte & 0xC0 != 0x40 or spot not in anywhere:
+                problems.append(f"Super Nerd fallback {x_byte:#x}/{y_byte:#x} fails the model")
         if sub_sites:
             problems.append(f"no subroom pad although sites were valid: "
                             f"{sorted(PAD_SITES[i] for i in range(len(PAD_SITES)) if PAD_SITES[i] in sub_sites)}"
@@ -327,6 +344,7 @@ def main() -> int:
               f"placed when possible {runtime['placed_when_possible']}, "
               f"subroom pad placed {runtime['subroom_placed']} "
               f"(possible {runtime['subroom_possible']}), "
+              f"Super Nerd fallback placed {runtime['fallback_placed']}, "
               f"problems {problems}")
         return 1 if problems else 0
 

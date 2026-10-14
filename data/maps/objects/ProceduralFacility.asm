@@ -55,4 +55,10 @@ ProceduralFacility_Object:
 	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALFACILITY_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
 	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALFACILITY_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
 
+	; The Super Nerd (PROCEDURAL_SUBROOMS_PLAN Phase 4), only when this Facility
+	; got no subroom pad: hidden by default, moved onto a room hub and shown by
+	; facility_subroom.asm's fallback.
+	object_event 10, 10, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_PROCEDURALFACILITY_SUPER_NERD
+	ASSERT FACILITY_SUPER_NERD == 12 ; the twelfth object_event
+
 	def_warps_to PROCEDURAL_FACILITY

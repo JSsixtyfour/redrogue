@@ -451,6 +451,7 @@ ToggleableObjectStates:
 	; own pair - shown explicitly by the map script once an event is armed.
 	toggle_object_state 10, OFF               ; slot 10 = stage-event NPC 1
 	toggle_object_state 11, OFF               ; slot 11 = stage-event NPC 2
+	toggle_object_state FACILITY_SUPER_NERD, OFF ; slot 12 = the Super Nerd (fallback)
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_1
 	toggle_object_state 1, ON    ; slot 1 = pokeball
@@ -519,6 +520,9 @@ ToggleableObjectStates:
 	toggleable_objects_for PALMS_ROOM
 	toggle_object_state PALMSROOM_PROF_PALM, OFF
 	toggle_object_state PALMSROOM_LANCE, OFF
+
+	toggleable_objects_for PROCEDURAL_FACILITY_SUBROOM
+	toggle_object_state FACSUBROOM_BALL, OFF
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

@@ -68,14 +68,25 @@ ProceduralFacility_Script:
 	predef ShowObject
 	; Show the boss only if it hasn't been beaten yet.
 	CheckEvent EVENT_BEAT_PC_BOSS
-	jr nz, .afterSetup
+	jr nz, .showSuperNerd
 	ld a, TOGGLE_WILD_AREA_BOSS
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 	; Phase 7 rollout: reveal the stage-event NPC slots (10-11), but only for
 	; the slots this event actually uses.
 	farcall PFacShowStageEventNpcs
+.showSuperNerd
+	; Phase 4: the Super Nerd stands here only when there is no subroom pad;
+	; the subroom's ball is put back for the new stage.
+	farcall FacSubroomStageObjects
 .afterSetup
+	; His battle, if one just ended: record a win and hand over the prize.
+	farcall FacSuperNerdSettle
+	jr nc, .afterSuperNerd
+	ld a, TEXT_PROCEDURALFACILITY_SUPER_NERD_PRIZE
+	ldh [hTextID], a
+	call DisplayTextID
+.afterSuperNerd
 	; --- Phase 7 rollout: stage-event arrival -----------------------------
 	; Byte-for-byte the same shape as the cave's own .afterSetup block.
 	ld hl, wCurrentMapScriptFlags
@@ -392,12 +403,29 @@ ProceduralFacility_TextPointers:
 	dw_const ProceduralFacilityFakeBall4Text, TEXT_PROCEDURALFACILITY_FAKE_BALL_4
 	dw_const PFacStageEventNpc1Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_1
 	dw_const PFacStageEventNpc2Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_2
-	; --- end of the object block (11 objects); script-only ids follow ---
+	dw_const PFacSuperNerdText, TEXT_PROCEDURALFACILITY_SUPER_NERD
+	; --- end of the object block (12 objects); script-only ids follow ---
+	dw_const PFacSuperNerdPrizeText, TEXT_PROCEDURALFACILITY_SUPER_NERD_PRIZE
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
 	EXPORT TEXT_PROCEDURALFACILITY_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFacStageEventArrivalText, TEXT_PROCEDURALFACILITY_STAGE_EVENT
 	dw_const PFacStageEventRecoverText, TEXT_PROCEDURALFACILITY_STAGE_RECOVER
+
+; The Super Nerd's fallback spot (facility_subroom.asm).
+PFacSuperNerdText:
+	text_asm
+	push bc
+	farcall FacSuperNerdTalk
+	pop bc
+	jp TextScriptEnd
+
+PFacSuperNerdPrizeText:
+	text_asm
+	push bc
+	farcall FacSuperNerdPrize
+	pop bc
+	jp TextScriptEnd
 
 ProceduralFacilityTrainerHeaders:
 PFacBossTrainerHeader:

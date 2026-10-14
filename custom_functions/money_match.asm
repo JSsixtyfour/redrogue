@@ -38,6 +38,8 @@ MoneyMatchApplyPayout::
 	ld a, [wMoneyMatchState]
 	bit BIT_MONEY_MATCH_ACTIVE, a
 	ret z
+	bit BIT_MONEY_MATCH_NO_PAYOUT, a
+	ret nz                          ; the Facility Super Nerd: no bet
 	and MONEY_MATCH_TURNS_MASK
 	ld b, a                         ; b = T
 	ld a, [wEnemyPartyCount]

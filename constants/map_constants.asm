@@ -360,7 +360,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const SAFARI_ZONE_SECRET_HOUSE,       4,  4 ; $DE
 	map_const SAFARI_ZONE_WEST_REST_HOUSE,    4,  4 ; $DF
 	map_const PROCEDURAL_FACILITY_SUBROOM,   11,  9 ; $E0, was SAFARI_ZONE_EAST_REST_HOUSE (unreachable)
-	map_const SAFARI_ZONE_NORTH_REST_HOUSE,   4,  4 ; $E1
+	map_const PROCEDURAL_CAVE_SUBROOM,         8,  4 ; $E1, was SAFARI_ZONE_NORTH_REST_HOUSE (unreachable)
 	end_indoor_group SAFARI_ZONE_2
 
 	map_const CERULEAN_CAVE_2F,              15,  9 ; $E2

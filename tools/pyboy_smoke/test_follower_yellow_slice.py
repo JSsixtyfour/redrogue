@@ -196,7 +196,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "PROCEDURAL_FOREST_REST_HOUSE",
             "SAFARI_ZONE_WEST_REST_HOUSE",
             "PROCEDURAL_FACILITY_SUBROOM",
-            "SAFARI_ZONE_NORTH_REST_HOUSE",
+            "PROCEDURAL_CAVE_SUBROOM",
             "SAFARI_ZONE_SECRET_HOUSE",
             "SILPH_CO_ELEVATOR",
             "CELADON_MART_ELEVATOR",

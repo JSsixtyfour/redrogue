@@ -1018,6 +1018,8 @@ TrainerBattleVictory:
 	jr z, .creditsDone
 	cp PROCEDURAL_FOREST_REST_HOUSE ; the Money Match gambler: part of the forest
 	jr z, .creditsDone
+	cp PROCEDURAL_FACILITY_SUBROOM  ; the Super Nerd: part of the Facility
+	jr z, .creditsDone
 	farcall RecordMiniBossVictory
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents

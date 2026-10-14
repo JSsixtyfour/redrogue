@@ -7320,6 +7320,9 @@ PFacPadNth:
 ; SRAM bank 1 open; leaves it so. Clobbers a/bc/hl.
 PFacPadSiteValid:
 	call PFacPadSiteXY
+; The same rule for any block: in d/e = block X/Y (the Super Nerd's fallback
+; spot, facility_subroom.asm).
+PFacPadBlockValid::
 	call PFacPadBlockAddr
 	ld a, [hl]
 	cp PFAC_FLOOR
@@ -7505,10 +7508,10 @@ PFacArmPads:
 	; The subroom pad: to this Facility's room piece's landing warp.
 	ld a, [PFAC_SUBROOM_PAD]
 	cp NUM_FACILITY_PAD_SITES
-	jr nc, .pair                     ; FACILITY_PAD_NONE, or an old save's ball byte
+	jr nc, .noSubroomPad             ; FACILITY_PAD_NONE, or an old save's ball byte
 	ld b, a
 	call PFacPadEndIntact
-	jr nz, .pair
+	jr nz, .noSubroomPad
 	push bc
 	farcall FacSubroomLanding        ; e = the landing (0-based warp), SRAM kept open
 	pop bc
@@ -7518,6 +7521,9 @@ PFacArmPads:
 	call PFacPadArmEnd
 	inc hl
 	ld [hl], PROCEDURAL_FACILITY_SUBROOM
+	jr .pair
+.noSubroomPad
+	farcall FacSuperNerdFallbackLoad ; he stands in the Facility instead
 .pair
 	ld a, [PFAC_PAD_PAIR]
 	ld b, a

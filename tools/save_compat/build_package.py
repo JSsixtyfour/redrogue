@@ -80,9 +80,16 @@ def flag_translation(old: dict, new: dict) -> dict:
     off = toggles_off_at_new_game()
     out = {}
     for prefix, count, label in FLAG_ARRAYS:
-        if oc.get(count) != nc.get(count):
-            raise SystemExit(f"{count} changed {oc.get(count)} -> {nc.get(count)}: {FLAG_STEP} can't resize {label}")
-        n = nc[count]
+        # The arrays are declared at a fixed size (wToggleableObjectFlags is
+        # flag_array $100), so a count that grows inside it moves nothing; only
+        # a different array size needs a layout step. Bits past the old count
+        # were never used, so an old save holds 0 there.
+        sizes = [next((f["size"] for f in s["saved_wram"] if f["label"] == label), None) for s in (old, new)]
+        if sizes[0] != sizes[1] or sizes[1] is None:
+            raise SystemExit(f"{label} is {sizes[0]} -> {sizes[1]} bytes: {FLAG_STEP} can't resize it")
+        n = max(oc[count], nc[count])
+        if n > 8 * sizes[1]:
+            raise SystemExit(f"{count} {n} overflows {label} ({sizes[1]} bytes)")
         def named(c):
             groups = {}
             for k, v in c.items():

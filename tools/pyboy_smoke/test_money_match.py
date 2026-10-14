@@ -7,7 +7,7 @@ Routines, run directly (PC + `jr @` return stub, IE masked):
   - MoneyMatchApplyPayout: 2B at or under the free turns, 1/16 of 2B less per
     extra turn, floor B/8; a normal battle (bit clear) pays B untouched.
   - WitchApplyMoneyEffects: PRIZE_MONEY's +10% applies on top of the scaled pay.
-  - BattleTurnCommitted: counts only while active, saturates at 127.
+  - BattleTurnCommitted: counts only while active, saturates at TURNS_MASK (63).
   - RogueBattleRound: the step is MONEY_MATCH_STEP while active, the round is
     the count's own, and carry is still set as every caller always got it.
   - RogueRosterMixId: a Money Match Gambler takes the route grid row, not
@@ -51,6 +51,7 @@ OPPONENTS = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
 
 ACTIVE = 1 << RAM["BIT_MONEY_MATCH_ACTIVE"]
 STEP = RAM["MONEY_MATCH_STEP"]
+TURNS = RAM["MONEY_MATCH_TURNS_MASK"]   # the saturated counter
 FREE_BUFFER = RAM["MONEY_MATCH_FREE_TURN_BUFFER"]
 DECAY = RAM["MONEY_MATCH_DECAY_STEPS"]
 ROUND_BATTLES = ROUNDS["ROUND_BATTLES"]
@@ -131,7 +132,7 @@ class MoneyMatchRoutineTest(unittest.TestCase):
         # N = 4 enemy mons: 5 free turns. The plan's own three examples, then
         # the floor's edges and the saturated counter.
         for turns, want in ((0, 2 * prize), (5, 2 * prize), (6, 2 * prize * 15 // 16),
-                            (20, prize // 8), (21, prize // 8), (127, prize // 8)):
+                            (20, prize // 8), (21, prize // 8), (TURNS, prize // 8)):
             with self.subTest(turns=turns):
                 self.assertEqual(self.payout(prize, 4, ACTIVE | turns), want)
                 self.assertEqual(want, expected_payout(prize, 4, turns))
@@ -159,8 +160,8 @@ class MoneyMatchRoutineTest(unittest.TestCase):
 
     def test_turn_counter(self) -> None:
         h = self.h
-        for before, after in ((ACTIVE, ACTIVE | 1), (ACTIVE | 126, ACTIVE | 127),
-                              (ACTIVE | 127, ACTIVE | 127), (0, 0), (5, 5)):
+        for before, after in ((ACTIVE, ACTIVE | 1), (ACTIVE | TURNS - 1, ACTIVE | TURNS),
+                              (ACTIVE | TURNS, ACTIVE | TURNS), (0, 0), (5, 5)):
             with self.subTest(before=before):
                 h.write8("wMoneyMatchState", before)
                 self.run_routine("BattleTurnCommitted")

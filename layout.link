@@ -534,6 +534,9 @@ ROMX $3F
 	; farcall-only; reads the pieces from PFacRoomDescriptors' bank with
 	; FarCopyData. 2026-10-14.
 	"Facility Subroom"
+	; The cave's subroom map (PROCEDURAL_SUBROOMS_PLAN Phase 4, 2026-10-14),
+	; same reasoning as the other two subroom maps.
+	"Procedural Cave Subroom Map"
 WRAM0
 	"Audio RAM"
 	org $c100

@@ -49,7 +49,7 @@ FacSubroomGenerate::
 	add hl, de
 	ld a, [hl]
 	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE], a
-	ret
+	jp FacSuperNerdFallbackGenerate  ; no subroom pad: he stands in the Facility
 
 ; PFacArmPads, every Facility load, SRAM bank 1 open (and left open).
 ; Out: e = the rolled piece's landing, its 0-based warp in the subroom.
@@ -106,13 +106,19 @@ FacSubroomLoad::
 	ld bc, FACSUB_PIECE_STRIDE
 	call CopyData
 
-	; The Super Nerd (object slot 1) on his proven tile.
+	; The Super Nerd (object slot 1) and the ball (slot 2) on their proven tiles.
 	ld a, [wFacSubRec + FACSUB_REC_NERD_Y]
 	add 4
 	ld [wSprite01StateData2MapY], a
 	ld a, [wFacSubRec + FACSUB_REC_NERD_X]
 	add 4
 	ld [wSprite01StateData2MapX], a
+	ld a, [wFacSubRec + FACSUB_REC_BALL_Y]
+	add 4
+	ld [wSprite02StateData2MapY], a
+	ld a, [wFacSubRec + FACSUB_REC_BALL_X]
+	add 4
+	ld [wSprite02StateData2MapX], a
 
 	; The piece, row by row from its own bank.
 	ld a, [wFacSubRec + FACSUB_REC_Y]
@@ -213,3 +219,338 @@ FacSubroomLoad::
 	ld bc, wOverworldMap
 	add hl, bc
 	ret
+
+
+; ============================================================
+; The Super Nerd (Phase 4 step 3). A plain object, like the forest house's
+; Money Match Gambler; he lives in the subroom, or, when a Facility got no
+; subroom pad, in the Facility itself (the fallback, object slot
+; FACILITY_SUPER_NERD). Both maps' texts farcall FacSuperNerdTalk, which
+; starts the battle on a YES. He fights as the Gambler does, a route trainer at
+; MONEY_MATCH_STEP with the ordinary AI, but it is no bet:
+; BIT_MONEY_MATCH_NO_PAYOUT keeps the prize money normal. Beating him gives one
+; random item, rolled the way the Facility's balls are; he stays and says his
+; after line. Per Facility, in sProcFacilityItemGot (PFacPreload zeroes it;
+; bit 7 is BIT_PFAC_OBJECTS_SHOWN): won, and the prize handed over (a full bag
+; leaves it owed, and talking to him again retries).
+; ============================================================
+DEF BIT_PFAC_SUPER_NERD_WON  EQU 0
+DEF BIT_PFAC_SUPER_NERD_PAID EQU 1
+
+; From a text_asm (the caller keeps bc). Offers, and on a YES arms the battle:
+; the overworld starts it once the text closes.
+FacSuperNerdTalk::
+	call FacSuperNerdFlags
+	bit BIT_PFAC_SUPER_NERD_WON, a
+	jr z, .offer
+	bit BIT_PFAC_SUPER_NERD_PAID, a
+	jp z, FacSuperNerdPrize         ; owed from a full bag
+	ld hl, FacSuperNerdAfterText
+	jp PrintText
+.offer
+	ld hl, FacSuperNerdOfferText
+	call PrintText
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	and a
+	ld hl, FacSuperNerdDeclinedText ; he stays; talking again repeats the offer
+	jp nz, PrintText
+	ld a, (1 << BIT_MONEY_MATCH_ACTIVE) | (1 << BIT_MONEY_MATCH_NO_PAYOUT)
+	ld [wMoneyMatchState], a
+	; Started here, the way AILair starts its fight: a map trainer would need
+	; an event flag to remember the win, and the event array is full.
+	ld hl, wStatusFlags3
+	set BIT_TALKED_TO_TRAINER, [hl]
+	set BIT_PRINT_END_BATTLE_TEXT, [hl]
+	ld hl, FacSuperNerdBeatenText
+	ld de, FacSuperNerdWonText
+	call SaveEndBattleTextPointers  ; this bank, read back after the battle
+	ld a, OPP_SUPER_NERD
+	ld [wCurOpponent], a
+	ld a, 1                         ; his party is the roster's (MONEY_MATCH_STEP)
+	ld [wTrainerNo], a
+	ld [wIsTrainerBattle], a
+	ld a, SCRIPT_SUPER_NERD_AFTER_BATTLE
+	ld [wSafariZoneGateCurScript], a
+	ret
+
+; Every frame of the map script that hosts him. Out: carry = the battle just
+; ended in a win (recorded): the caller shows its prize text. Clobbers a/hl.
+FacSuperNerdSettle::
+	ld a, [wSafariZoneGateCurScript]
+	cp SCRIPT_SUPER_NERD_AFTER_BATTLE
+	jr nz, .no
+	; The overworld starts the battle on the frame wCurOpponent is set; until
+	; it has run (the battle zeroes wCurOpponent) there is nothing to settle.
+	ld a, [wCurOpponent]
+	and a
+	jr nz, .no
+	xor a
+	ld [wSafariZoneGateCurScript], a
+	ld [wIsTrainerBattle], a
+	ld hl, wStatusFlags3
+	res BIT_PRINT_END_BATTLE_TEXT, [hl]
+	; The overworld runs this once with $ff after an all-faint loss: the
+	; blackout takes it from there.
+	ldh a, [hIsInBattle]
+	inc a
+	jr z, .no
+	call FacSubOpenSRAM
+	ld hl, sProcFacilityItemGot
+	set BIT_PFAC_SUPER_NERD_WON, [hl]
+	call FacSubCloseSRAM
+	scf
+	ret
+.no
+	and a
+	ret
+
+; Rolls the prize the way PFacPlaceItems rolls a ball's, and gives it.
+; Prints. Clobbers everything.
+FacSuperNerdPrize::
+	ld c, 4
+	call Rangerandom
+	ld [wRogueDoorSelection], a
+	farcall Random_Item_Selection
+	ld a, [wRogueItem]
+	ld b, a
+	ld c, 1
+	call GiveItem                   ; the name goes to wStringBuffer
+	ld hl, FacSuperNerdNoRoomText
+	jr nc, .say
+	call FacSubOpenSRAM
+	ld hl, sProcFacilityItemGot
+	set BIT_PFAC_SUPER_NERD_PAID, [hl]
+	call FacSubCloseSRAM
+	ld hl, FacSuperNerdGotItemText
+.say
+	jp PrintText
+
+; Out: a = sProcFacilityItemGot. Clobbers hl.
+FacSuperNerdFlags:
+	call FacSubOpenSRAM
+	ld a, [sProcFacilityItemGot]
+	ld l, a
+	call FacSubCloseSRAM
+	ld a, l
+	ret
+
+FacSubOpenSRAM:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityItemGot)
+	ld [rRAMB], a
+	ret
+
+FacSubCloseSRAM:
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ret
+
+; ------------------------------------------------------------
+; The fallback: no subroom pad this Facility, so he stands in the Facility, on a
+; block picked uniformly from every block that passes the pad rule
+; (PFacPadBlockValid): plain floor, nothing within a block, not in the exit or a
+; spinner room, and its bottom-right quadrant blocks no path. He stands on that
+; quadrant, exactly where a pad's warp tile would be, and is talked to from the
+; floor below it. The block is stored in the two scratch bytes the subroom
+; would have used: byte 6 = FACSUB_FALLBACK | X, byte 7 = FACSUB_FALLBACK_ROW | Y.
+; Byte 7 at or above NUM_FACILITY_PAD_SITES already means "no subroom pad" to
+; every reader; $FF in both means no spot at all.
+; ------------------------------------------------------------
+DEF FACSUB_FALLBACK     EQU $80
+DEF FACSUB_FALLBACK_ROW EQU $40
+ASSERT FACSUB_FALLBACK_ROW >= NUM_FACILITY_PAD_SITES
+DEF FACSUB_FALLBACK_TOP EQU 3   ; rows 0-2 hold the exit and the boss, as for pad sites
+DEF FACSUB_FALLBACK_MAX EQU 18  ; the block's E/S/SE neighbours stay on the map
+
+; FacSubroomGenerate's tail, SRAM bank 1 open (and left open).
+FacSuperNerdFallbackGenerate:
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD]
+	cp NUM_FACILITY_PAD_SITES
+	ret c                           ; a subroom pad: he lives in the subroom
+	ld a, $ff
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE], a
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD], a
+	call FacSuperNerdScan           ; b = how many valid blocks
+	ld a, b
+	and a
+	ret z                           ; nowhere: no Super Nerd this time
+	ld c, a
+	call Rangerandom
+	inc a                           ; the 1-based ordinal to stop at
+	ld b, a
+	call FacSuperNerdScan.from      ; d/e = that block
+	ld a, d
+	or FACSUB_FALLBACK
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE], a
+	ld a, e
+	or FACSUB_FALLBACK_ROW
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD], a
+	ret
+
+; Walks the candidate blocks in row order. Counting: out b = how many pass.
+; .from, b = k >= 1: stops on the k-th, d/e = its block. Clobbers a/c/hl.
+FacSuperNerdScan:
+	ld b, $ff                       ; never reached: at most 16 x 18 blocks pass
+.from
+	ld e, FACSUB_FALLBACK_TOP
+	ld c, 0                         ; passes so far
+.row
+	ld d, 1
+.block
+	push bc
+	push de
+	farcall PFacPadBlockValid       ; carry = it passes; keeps d/e
+	pop de
+	pop bc
+	jr nc, .next
+	inc c
+	ld a, c
+	cp b
+	ret z                           ; the k-th: d/e
+.next
+	inc d
+	ld a, d
+	cp FACSUB_FALLBACK_MAX + 1
+	jr c, .block
+	inc e
+	ld a, e
+	cp FACSUB_FALLBACK_MAX + 1
+	jr c, .row
+	ld b, c                         ; counted them all
+	ret
+
+; PFacArmPads, every Facility load without a subroom pad; SRAM bank 1 open (and
+; left open). Stands him on his tile; FacSubroomStageObjects shows him.
+FacSuperNerdFallbackLoad::
+	call FacSuperNerdSpot
+	ret nc
+	ld a, e
+	add a
+	add 4 + 1                       ; bottom-right quadrant, map border included
+	ld [wSprite{d:FACILITY_SUPER_NERD}StateData2MapY], a
+	ld a, d
+	add a
+	add 4 + 1
+	ld [wSprite{d:FACILITY_SUPER_NERD}StateData2MapX], a
+	ret
+
+; SRAM bank 1 open. Out: carry = there is a fallback spot, d/e = its block.
+; Clobbers a.
+FacSuperNerdSpot:
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE]
+	cp FACSUB_FALLBACK
+	ccf
+	ret nc                          ; a room piece, not a spot
+	cp FACSUB_FALLBACK | (FACSUB_FALLBACK_MAX + 1)
+	ret nc
+	and ~FACSUB_FALLBACK & $ff
+	ld d, a
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD]
+	sub FACSUB_FALLBACK_ROW
+	ccf
+	ret nc
+	cp FACSUB_FALLBACK_MAX + 1
+	ret nc
+	ld e, a
+	ret                             ; carry from the cp: in range
+
+; The Facility's once-per-stage show block. The subroom's ball comes back for
+; the new stage (its map is not loaded, so the flag is written directly). The
+; Super Nerd is shown with a fallback spot and hidden otherwise: toggle bits
+; outlive the stage, so one shown in the last Facility would stay.
+; Clobbers everything.
+FacSubroomStageObjects::
+	ld c, TOGGLE_FACSUBROOM_BALL
+	ld b, FLAG_RESET
+	ld hl, wToggleableObjectFlags
+	predef FlagActionPredef
+	call FacSubOpenSRAM
+	call FacSuperNerdSpot
+	push af
+	call FacSubCloseSRAM
+	ld a, TOGGLE_FACILITY_SUPER_NERD
+	ld [wToggleableObjectIndex], a
+	pop af
+	jr nc, .hide
+	predef_jump ShowObject
+.hide
+	predef_jump HideObject
+
+; The subroom's ball, from its text_asm (the caller keeps bc). Rolls its item
+; the way PFacPlaceItems rolls a Facility ball's, gives it and hides the ball; a
+; full bag leaves it there. Prints. Clobbers everything.
+FacSubroomPickUpBall::
+	ld c, 4
+	call Rangerandom
+	ld [wRogueDoorSelection], a
+	farcall Random_Item_Selection
+	ld a, [wRogueItem]
+	ld b, a
+	ld c, 1
+	call GiveItem                   ; the name goes to wStringBuffer
+	ld hl, FacSuperNerdNoRoomText
+	jp nc, PrintText
+	ld a, TOGGLE_FACSUBROOM_BALL
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld hl, FacSubroomFoundItemText
+	jp PrintText
+
+FacSubroomFoundItemText:
+	text "<PLAYER> found"
+	line "@"
+	text_ram wStringBuffer
+	text "!@"
+	sound_get_item_1
+	text_end
+
+; Placeholder lines (user, 2026-10-14).
+FacSuperNerdOfferText:
+	text "Beat me and I'll"
+	line "give you an item"
+	cont "from my stash!"
+
+	para "Ready?"
+	done
+
+FacSuperNerdDeclinedText:
+	text "Scared? I'll be"
+	line "right here."
+	done
+
+FacSuperNerdAfterText:
+	text "Enjoy the item,"
+	line "you earned it."
+	done
+
+FacSuperNerdGotItemText:
+	text "<PLAYER> got"
+	line "@"
+	text_ram wStringBuffer
+	text "!@"
+	sound_get_item_1
+	text_end
+
+FacSuperNerdNoRoomText:
+	text "Your BAG is full!"
+	line "Come back for it."
+	done
+
+; In battle: he lost.
+FacSuperNerdBeatenText:
+	text ""
+	para "Ugh! You win"
+	line "fair and square."
+	prompt
+
+; In battle: he won.
+FacSuperNerdWonText:
+	text "My stash stays"
+	line "with me!"
+	prompt

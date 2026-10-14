@@ -448,26 +448,29 @@ ENDM
 	; PROCEDURAL_FACILITY block.
 	const TOGGLE_FACILITY_NPC_1 ; D9        ; slot 10
 	const TOGGLE_FACILITY_NPC_2 ; DA        ; slot 11
+	; The Super Nerd's fallback spot (PROCEDURAL_SUBROOMS_PLAN Phase 4): shown once
+	; per stage only when the Facility got no subroom pad (FacSubroomStageObjects).
+	const TOGGLE_FACILITY_SUPER_NERD ; DB   ; slot 12
 
 	toggle_consts_for PROCEDURAL_CEMETERY_1
-	const TOGGLE_CEMETERY_1_POKEBALL ; DB
-	const TOGGLE_CEMETERY_1_NPC_1 ; DC
-	const TOGGLE_CEMETERY_1_NPC_2 ; DD
+	const TOGGLE_CEMETERY_1_POKEBALL ; DC
+	const TOGGLE_CEMETERY_1_NPC_1 ; DD
+	const TOGGLE_CEMETERY_1_NPC_2 ; DE
 
 	toggle_consts_for PROCEDURAL_CEMETERY_2
-	const TOGGLE_CEMETERY_2_POKEBALL ; DE
-	const TOGGLE_CEMETERY_2_NPC_1 ; DF
-	const TOGGLE_CEMETERY_2_NPC_2 ; E0
+	const TOGGLE_CEMETERY_2_POKEBALL ; DF
+	const TOGGLE_CEMETERY_2_NPC_1 ; E0
+	const TOGGLE_CEMETERY_2_NPC_2 ; E1
 
 	toggle_consts_for PROCEDURAL_CEMETERY_3
-	const TOGGLE_CEMETERY_3_POKEBALL ; E1
-	const TOGGLE_CEMETERY_3_NPC_1 ; E2
-	const TOGGLE_CEMETERY_3_NPC_2 ; E3
+	const TOGGLE_CEMETERY_3_POKEBALL ; E2
+	const TOGGLE_CEMETERY_3_NPC_1 ; E3
+	const TOGGLE_CEMETERY_3_NPC_2 ; E4
 
 	toggle_consts_for PROCEDURAL_CEMETERY_4
-	const TOGGLE_CEMETERY_4_POKEBALL ; E4
-	const TOGGLE_CEMETERY_4_NPC_1 ; E5
-	const TOGGLE_CEMETERY_4_NPC_2 ; E6
+	const TOGGLE_CEMETERY_4_POKEBALL ; E5
+	const TOGGLE_CEMETERY_4_NPC_1 ; E6
+	const TOGGLE_CEMETERY_4_NPC_2 ; E7
 
 ; Fuchsia Gym carries BOTH leader objects and hides one per run, so the
 ; Koga/Janine coin flip needs no map swap. APPENDED at the end of this file
@@ -478,8 +481,8 @@ ENDM
 ; block next to the other gyms would shift every later TOGGLE_* constant and
 ; require the same move in that file to stay in lockstep.
 	toggle_consts_for FUCHSIA_GYM
-	const TOGGLE_FUCHSIA_KOGA ; E7
-	const TOGGLE_FUCHSIA_JANINE ; E8
+	const TOGGLE_FUCHSIA_KOGA ; E8
+	const TOGGLE_FUCHSIA_JANINE ; E9
 
 ; New Johto gyms. Each needs its OWN gym-guide toggle: the Kanto gyms hide
 ; TOGGLE_GYM_GUY, which belongs to PEWTER_CITY, and ToggleableObjectStates rows
@@ -487,42 +490,48 @@ ENDM
 ; object instead. Append each new gym here AND in the same order at the end of
 ; data/maps/toggleable_objects.asm.
 	toggle_consts_for VIOLET_GYM
-	const TOGGLE_VIOLET_GYM_GUIDE ; E9
+	const TOGGLE_VIOLET_GYM_GUIDE ; EA
 
 	toggle_consts_for AZALEA_GYM
-	const TOGGLE_AZALEA_GYM_GUIDE ; EA
+	const TOGGLE_AZALEA_GYM_GUIDE ; EB
 
 	toggle_consts_for GOLDENROD_GYM
-	const TOGGLE_GOLDENROD_GYM_GUIDE ; EB
+	const TOGGLE_GOLDENROD_GYM_GUIDE ; EC
 
 	toggle_consts_for ECRUTEAK_GYM
-	const TOGGLE_ECRUTEAK_GYM_GUIDE ; EC
+	const TOGGLE_ECRUTEAK_GYM_GUIDE ; ED
 
 	toggle_consts_for CIANWOOD_GYM
-	const TOGGLE_CIANWOOD_GYM_GUIDE ; ED
+	const TOGGLE_CIANWOOD_GYM_GUIDE ; EE
 
 	toggle_consts_for OLIVINE_GYM
-	const TOGGLE_OLIVINE_GYM_GUIDE ; EE
+	const TOGGLE_OLIVINE_GYM_GUIDE ; EF
 
 	toggle_consts_for MAHOGANY_GYM
-	const TOGGLE_MAHOGANY_GYM_GUIDE ; EF
+	const TOGGLE_MAHOGANY_GYM_GUIDE ; F0
 
 	toggle_consts_for BLACKTHORN_GYM
-	const TOGGLE_BLACKTHORN_GYM_GUIDE ; F0
+	const TOGGLE_BLACKTHORN_GYM_GUIDE ; F1
 
 ; B1F keeps Palm separate from the stair scientist. Appended so no existing
 ; toggle id shifts; keep this block last in data/maps/toggleable_objects.asm.
 	toggle_consts_for SILPH_CO_B1F
-	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; F1
-	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; F2
-	const TOGGLE_SILPH_CO_B1F_LANCE ; F3
-	const TOGGLE_SILPH_CO_B1F_ROCKET ; F4
+	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; F2
+	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; F3
+	const TOGGLE_SILPH_CO_B1F_LANCE ; F4
+	const TOGGLE_SILPH_CO_B1F_ROCKET ; F5
 
 	toggle_consts_for AI_LAIR
-	const TOGGLE_AI_LAIR_OPPONENT ; F5
+	const TOGGLE_AI_LAIR_OPPONENT ; F6
 
 	toggle_consts_for PALMS_ROOM
-	const TOGGLE_PALMS_ROOM_PROF_PALM ; F6
-	const TOGGLE_PALMS_ROOM_LANCE ; F7
+	const TOGGLE_PALMS_ROOM_PROF_PALM ; F7
+	const TOGGLE_PALMS_ROOM_LANCE ; F8
+
+	; The Facility subroom's item ball (PROCEDURAL_SUBROOMS_PLAN Phase 4).
+	; Appended last so no earlier id moves. Shown once per Facility
+	; (FacSubroomStageObjects), hidden when picked up.
+	toggle_consts_for PROCEDURAL_FACILITY_SUBROOM
+	const TOGGLE_FACSUBROOM_BALL ; F9
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

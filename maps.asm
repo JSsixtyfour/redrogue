@@ -273,8 +273,7 @@ LavenderTown_Blocks: INCBIN "maps/LavenderTown.blk"
 ViridianPokecenter_Blocks: INCBIN "maps/ViridianPokecenter.blk"
 
 
-SafariZoneWestRestHouse_Blocks:
-SafariZoneNorthRestHouse_Blocks: INCBIN "maps/SafariZoneCenterRestHouse.blk"
+SafariZoneWestRestHouse_Blocks: INCBIN "maps/SafariZoneCenterRestHouse.blk"
 
 
 SECTION "Maps 6", ROMX
@@ -410,10 +409,6 @@ SafariZoneCenter_Blocks: INCBIN "maps/SafariZoneCenter.blk"
 INCLUDE "data/maps/headers/SafariZoneWestRestHouse.asm"
 INCLUDE "scripts/SafariZoneWestRestHouse.asm"
 INCLUDE "data/maps/objects/SafariZoneWestRestHouse.asm"
-
-INCLUDE "data/maps/headers/SafariZoneNorthRestHouse.asm"
-INCLUDE "scripts/SafariZoneNorthRestHouse.asm"
-INCLUDE "data/maps/objects/SafariZoneNorthRestHouse.asm"
 
 INCLUDE "data/maps/headers/CeruleanCave2F.asm"
 INCLUDE "scripts/CeruleanCave2F.asm"
@@ -1439,3 +1434,11 @@ INCLUDE "scripts/ProceduralFacilitySubroom.asm"
 INCLUDE "data/maps/objects/ProceduralFacilitySubroom.asm"
 ; Same bank as the header (map_header ASSERTs it).
 ProceduralFacilitySubroom_Blocks: INCBIN "maps/ProceduralFacilitySubroom.blk"
+
+
+SECTION "Procedural Cave Subroom Map", ROMX
+INCLUDE "data/maps/headers/ProceduralCaveSubroom.asm"
+INCLUDE "scripts/ProceduralCaveSubroom.asm"
+INCLUDE "data/maps/objects/ProceduralCaveSubroom.asm"
+; Same bank as the header (map_header ASSERTs it).
+ProceduralCaveSubroom_Blocks: INCBIN "maps/ProceduralCaveSubroom.blk"

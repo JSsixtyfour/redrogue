@@ -20,6 +20,11 @@ DEF FACILITY_FIRST_PAD_WARP EQU 3 ; after the entrance and the two exit tiles
 DEF FACILITY_PAD_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between a pair's ends
 DEF FACILITY_PAD_BLOCK EQU $2F
 DEF FACILITY_PAD_NONE EQU $FF
+; The Super Nerd's object slot in the Facility, used only when a Facility got no
+; subroom pad (custom_functions/facility_subroom.asm, the fallback). The
+; objects file ASSERTs it. Named like an object const on purpose: the save
+; converter finds a toggle's new-game default by TOGGLE_<object name>.
+DEF FACILITY_SUPER_NERD EQU 12
 
 DEF NUM_FACILITY_PAD_SITES = 0
 MACRO pad_site

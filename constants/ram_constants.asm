@@ -409,12 +409,26 @@ DEF NUM_STAGE_EVENT_TYPES    EQU 5
 ; every table without being reachable. All five are rolled, uniformly.
 DEF STAGE_EVENT_MAX_ROLLABLE EQU 5
 
-; wMoneyMatchState (ram/wram.asm): bit 7 = this battle is a Money Match, bits
-; 0-6 = player actions taken so far, saturating. Set by MoneyMatchHouseTalk on
+; wMoneyMatchState (ram/wram.asm): bit 7 = this battle is a Money Match, bit 6 =
+; no bet (the Facility Super Nerd), bits 0-5 = player actions taken so far,
+; saturating. Set by MoneyMatchHouseTalk on
 ; YES, counted by BattleTurnCommitted, paid by MoneyMatchApplyPayout, zeroed by
 ; EndOfBattle so it can never reach the next battle.
 DEF BIT_MONEY_MATCH_ACTIVE    EQU 7
-DEF MONEY_MATCH_TURNS_MASK    EQU %01111111
+; Set together with ACTIVE by the Facility's Super Nerd (FacSuperNerdTalk): the
+; same route-step-3 fight with the ordinary AI, but no bet, so the payout
+; leaves the prize alone.
+DEF BIT_MONEY_MATCH_NO_PAYOUT EQU 6
+; wSafariZoneGateCurScript while a Super Nerd battle is pending, in the subroom
+; or the Facility (FacSuperNerdSettle). The forest rest house uses 1 in the same
+; byte; the Safari Zone is unreachable and the maps never run at once.
+DEF SCRIPT_SUPER_NERD_AFTER_BATTLE EQU 2
+; The turn count lives below both flags and saturates at TURNS_MASK, so it can
+; never set NO_PAYOUT (at 7 bits a 64-turn Gambler match lost its payout). The
+; payout floor is reached by 15 turns past the free ones (at most 22), well
+; under 63.
+DEF MONEY_MATCH_TURNS_MASK    EQU %00111111
+	ASSERT MONEY_MATCH_TURNS_MASK < 1 << BIT_MONEY_MATCH_NO_PAYOUT
 ; He fights as this route step of the current round (a typical route trainer:
 ; the user's "3rd trainer of the route"), whatever wBattleCount's own step is.
 DEF MONEY_MATCH_STEP          EQU 3
