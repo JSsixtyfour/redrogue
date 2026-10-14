@@ -1,6 +1,6 @@
 ; tests if mon [wCurPartySpecies] can learn move [wMoveNum]
 ; Fusion (Phase 5a): a fusion can learn any TM that EITHER of its two species
-; can learn. Non-fusions take the stock path below, byte-for-byte unchanged.
+; can learn. Both paths explicitly load the selected mon's form.
 ;
 ; HISTORY (2026-07-16): this was reverted once, when WRAM corruption (wild
 ; battles triggering indoors, MissingNo encounters, crashes) showed up during
@@ -30,9 +30,7 @@ CanLearnTM:
 	jr nz, .fusionMon
 
 ; --- stock path: non-fusion mons ---
-	ld a, [wCurPartySpecies]
-	ld [wCurSpecies], a
-	call GetMonHeader
+	call .restorePrimaryHeader
 	ld hl, wMonHLearnset
 	push hl
 	ld a, [wMoveNum]
@@ -87,9 +85,7 @@ CanLearnTM:
 	ld d, a                          ; d = byte offset into the learnset
 
 ; test the PRIMARY species
-	ld a, [wCurPartySpecies]
-	ld [wCurSpecies], a
-	call GetMonHeader
+	call .restorePrimaryHeader
 	ld hl, wMonHLearnset
 	ld b, $00
 	ld c, d
@@ -101,6 +97,9 @@ CanLearnTM:
 ; test the SECONDARY species
 	ld a, [wFusionSecondarySpecies]
 	ld [wCurSpecies], a
+	ld [wFormContextSpecies], a
+	ld a, [wFusionSecondaryForm]
+	ld [wFormContextForm], a
 	call GetMonHeader
 	ld hl, wMonHLearnset
 	ld b, $00
@@ -120,8 +119,18 @@ CanLearnTM:
 	ret
 
 .restorePrimaryHeader
+	; Called before each primary lookup, including restoration after testing
+	; the secondary. Do not inherit the last party row's cached form/header.
+	; Preserve the fusion path's mask/offset in de and its index in bc.
+	push bc
 	ld a, [wCurPartySpecies]
 	ld [wCurSpecies], a
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	call PublishFormContext
+	pop bc
 	jp GetMonHeader
 
 ; converts TM/HM number in [wTempTMHM] into move number

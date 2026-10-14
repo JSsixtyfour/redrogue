@@ -242,6 +242,11 @@ ProcStageLoadDispatch::
 	farcall PFRestHouseLoad         ; its way out leads to this forest's door
 	ret
 .notForestRestHouse
+	cp PROCEDURAL_FACILITY_SUBROOM
+	jr nz, .notFacilitySubroom
+	farcall FacSubroomLoad          ; stamps this Facility's rolled room piece
+	ret
+.notFacilitySubroom
 	cp PROCEDURAL_FACILITY
 	jr nz, .notFacility
 	call ProcGenerationBeginDoubleSpeed

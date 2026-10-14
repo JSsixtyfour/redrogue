@@ -6365,6 +6365,10 @@ PFacFinalize::
     ; pair) and .itemSave (frees wPFacItemTemp), after PFacPickHideout (pads
     ; avoid the hideout), and before the bake so the pad blocks persist.
     call PFacPlacePads
+    ; Phase 4: the subroom's pad, then its room piece (scratch bytes 7 and 6,
+    ; free after .ballSave). Last, so they move no generation roll.
+    call PFacPlaceSubroomPad
+    farcall FacSubroomGenerate
 
     ; === Bake: copy wOverworldMap -> sProcFacilityStagingBuffer ===
     ld hl, wOverworldMap + PFAC_BASE
@@ -7143,6 +7147,10 @@ PFacShowStageEventNpcs::
 ; holds ball coords there, which PFacArmPads rejects unless both named sites
 ; hold the pad block.
 DEF PFAC_PAD_PAIR EQUS "sProcFacilityGenScratch" ; a link-time label, so EQUS
+; The subroom pad (Phase 4): one more site, whose warp leads to the Facility's
+; subroom (PROCEDURAL_FACILITY_SUBROOM), and where its way back lands. Byte 7,
+; dead after .ballSave like 0-1; byte 6 is the subroom's room piece.
+DEF PFAC_SUBROOM_PAD EQUS "(sProcFacilityGenScratch + 7)"
 
 ; wBuffer scratch, valid only after PFacFinalize's .itemSave (wPFacItemTemp,
 ; 12-15, has been copied out by then).
@@ -7219,6 +7227,27 @@ PFacPlacePads:
 	ld [hl], FACILITY_PAD_BLOCK
 	ld a, [wBuffer + wPFacPadFirst]
 	ld [PFAC_PAD_PAIR], a
+	call PFacPadSiteXY
+	call PFacPadBlockAddr
+	ld [hl], FACILITY_PAD_BLOCK
+	ret
+
+; PFacPlaceSubroomPad - generation only, after PFacPlacePads (so its two ends,
+; no longer plain floor, cannot be picked). Any valid site; none leaves
+; PFAC_SUBROOM_PAD at FACILITY_PAD_NONE and the subroom unreachable this time.
+; SRAM open on bank 1 on entry and on exit. Clobbers a/bc/de/hl.
+PFacPlaceSubroomPad:
+	ld a, FACILITY_PAD_NONE
+	ld [PFAC_SUBROOM_PAD], a
+	xor a
+	ld [wBuffer + wPFacPadFar], a
+	call PFacPadCount
+	and a
+	ret z
+	ld c, a
+	call Rangerandom
+	call PFacPadNth
+	ld [PFAC_SUBROOM_PAD], a
 	call PFacPadSiteXY
 	call PFacPadBlockAddr
 	ld [hl], FACILITY_PAD_BLOCK
@@ -7461,7 +7490,7 @@ PFacPadBlockAddr:
 ; PFacArmPads - every load, from PFacFinalize's .placeSprites (wWarpEntries
 ; has just been loaded from ROM, wOverworldMap holds the final map).
 ; Disarms every site warp (Y = $FF matches no player position), then re-arms
-; the stored pair if both ends still hold the pad block.
+; the subroom pad and the stored pair if they still hold the pad block.
 ; SRAM open on bank 1. Clobbers a/bc/de/hl.
 ; ------------------------------------------------------------
 PFacArmPads:
@@ -7473,6 +7502,23 @@ PFacArmPads:
 	add hl, de
 	dec b
 	jr nz, .disarm
+	; The subroom pad: to this Facility's room piece's landing warp.
+	ld a, [PFAC_SUBROOM_PAD]
+	cp NUM_FACILITY_PAD_SITES
+	jr nc, .pair                     ; FACILITY_PAD_NONE, or an old save's ball byte
+	ld b, a
+	call PFacPadEndIntact
+	jr nz, .pair
+	push bc
+	farcall FacSubroomLanding        ; e = the landing (0-based warp), SRAM kept open
+	pop bc
+	ld a, e
+	sub FACILITY_FIRST_PAD_WARP      ; PFacPadArmEnd adds it back (8-bit wrap)
+	ld c, a
+	call PFacPadArmEnd
+	inc hl
+	ld [hl], PROCEDURAL_FACILITY_SUBROOM
+.pair
 	ld a, [PFAC_PAD_PAIR]
 	ld b, a
 	ld a, [PFAC_PAD_PAIR + 1]
@@ -7522,7 +7568,7 @@ PFacPadArmEnd:
 	ld a, c
 	add FACILITY_FIRST_PAD_WARP
 	ld [hl], a                       ; destination warp (0-based): the partner
-	ret
+	ret                              ; hl = that destination byte
 
 ; In: a = site index. Out: Z = its block is the pad block. Keeps bc.
 PFacPadEndIntact:

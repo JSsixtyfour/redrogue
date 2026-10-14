@@ -1365,7 +1365,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                                 near_row = row + step[1]
                                 if not (0 <= near_col < 20 and 0 <= near_row < 20):
                                     return False
-                                return playable[near_row * 20 + near_col] == 0x0E
+                                # A warp pad ($2F) is floor with the pad in one
+                                # quadrant, stamped AFTER the caps over a plain
+                                # floor block, so it counts as the floor it was.
+                                return playable[near_row * 20 + near_col] in (0x0E, 0x2F)
 
                             actual_case = (1 if _ends(arm_a) else 0) | (
                                 2 if _ends(arm_b) else 0

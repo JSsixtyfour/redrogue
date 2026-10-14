@@ -38,6 +38,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from harness import RedRogueHarness  # noqa: E402
+from source_constants import parse_map_constants  # noqa: E402
 from audit_facility_stranded_quadrants import (  # noqa: E402
     BLOCKSET, ENTRANCE, flood, passable,
 )
@@ -66,6 +67,7 @@ PAD_SITES = load_pad_sites()
 FIRST_PAD_WARP = 3   # FACILITY_FIRST_PAD_WARP
 PAD_BLOCK = 0x2F
 PAD_NONE = 0xFF
+SUBROOM_MAP = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_FACILITY_SUBROOM"]
 
 
 def layout(harness, seed, edge, baseline):
@@ -98,6 +100,23 @@ def object_blocks(scratch, balls, boss, hideout) -> set[tuple[int, int]]:
 
 
 RULE = "quad"  # set by --rule; "quad" is what the ROM does
+
+# Spinner pieces' W/H, in data/maps/facility_spinner_rooms.asm's order (the
+# first two bytes of each descriptor row).
+SPINNER_SIZES = [tuple(map(int, m)) for m in re.findall(
+    r"^\tdb (\d+), (\d+), \d+, \d+, \d+, \d+$",
+    (REPO_ROOT / "data/maps/facility_spinner_rooms.asm").read_text(encoding="utf-8"), re.M)]
+
+
+def in_spinner_room(scratch, bx, by) -> bool:
+    """PFacBlockInSpinnerRoom: scratch 2/3 = piece X/Y, 4 = $80 | descriptor;
+    the room is the piece plus a one-block ring."""
+    key = scratch[4]
+    if not key & 0x80 or (key & 0x7F) >= len(SPINNER_SIZES):
+        return False
+    w, h = SPINNER_SIZES[key & 0x7F]
+    x, y = scratch[2], scratch[3]
+    return x - 1 <= bx <= x + w and y - 1 <= by <= y + h
 
 
 def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
@@ -135,6 +154,8 @@ def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
                 continue
             if ex <= bx < ex + ew and ey <= by < ey + eh:
                 continue
+            if in_spinner_room(scratch, bx, by):
+                continue
             sites.add((bx, by))
     return sites
 
@@ -147,24 +168,35 @@ def strands_nothing(blockset, playable, site) -> bool:
     return flood(cells - pad, ENTRANCE) == reachable - pad
 
 
+SUBROOM_PAD = 7  # sProcFacilityGenScratch byte 7: the subroom pad's site (Phase 4)
+
+
 def unstamp(playable, scratch):
-    """The map as it was before PFacPlacePads stamped its two pads (the model
-    judges sites on that map; a stamped site is no longer PFAC_FLOOR)."""
+    """The map as it was before PFacPlacePads stamped its two pads and
+    PFacPlaceSubroomPad its one (the model judges sites on that map; a stamped
+    site is no longer PFAC_FLOOR)."""
     before = list(playable)
-    if scratch[0] < len(PAD_SITES) and scratch[1] < len(PAD_SITES):
-        for site in scratch[:2]:
-            x, y = PAD_SITES[site]
-            if before[y * 20 + x] == PAD_BLOCK:
-                before[y * 20 + x] = PFAC_FLOOR
+    stamped = list(scratch[:2]) if scratch[0] < len(PAD_SITES) and scratch[1] < len(PAD_SITES) else []
+    if scratch[SUBROOM_PAD] < len(PAD_SITES):
+        stamped.append(scratch[SUBROOM_PAD])
+    for site in stamped:
+        x, y = PAD_SITES[site]
+        if before[y * 20 + x] == PAD_BLOCK:
+            before[y * 20 + x] = PFAC_FLOOR
     return tuple(before)
 
 
 def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -> int:
     """Compare what PFacPlacePads/PFacArmPads did with this audit's own model."""
-    a, b = scratch[0], scratch[1]
-    # The model judges the map as it was BEFORE the two pads were stamped.
+    a, b, sub = scratch[0], scratch[1], scratch[SUBROOM_PAD]
+    # The pair was judged on the map as it was BEFORE any pad was stamped, the
+    # subroom pad on the map with the pair already in it.
     before = list(playable)
     placed = a != PAD_NONE
+    if sub != PAD_NONE:
+        x, y = PAD_SITES[sub]
+        before[y * 20 + x] = PFAC_FLOOR
+    with_pair = tuple(before)
     if placed:
         for site in (a, b):
             x, y = PAD_SITES[site]
@@ -188,9 +220,32 @@ def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -
                 problems.append(f"end {end} is not the pad block")
         if abs(ends[0][0] - ends[1][0]) + abs(ends[0][1] - ends[1][1]) < PAD_MIN_DISTANCE:
             problems.append(f"ends {ends} are too close")
+    # The subroom pad: any site still valid once the pair is in, if there is one.
+    sub_sites = valid_sites(with_pair, scratch, balls, boss, hideout, BLOCKSET.read_bytes()) \
+        & set(PAD_SITES)
+    tally["subroom_possible"] += bool(sub_sites)
+    if sub == PAD_NONE:
+        if sub_sites:
+            problems.append(f"no subroom pad although sites were valid: "
+                            f"{sorted(PAD_SITES[i] for i in range(len(PAD_SITES)) if PAD_SITES[i] in sub_sites)}"
+                            f" pair {[PAD_SITES[i] for i in (a, b) if i < len(PAD_SITES)]}")
+    else:
+        tally["subroom_placed"] += 1
+        end = PAD_SITES[sub]
+        if end not in sub_sites:
+            problems.append(f"subroom pad {end} fails the model")
+        if playable[end[1] * 20 + end[0]] != PAD_BLOCK:
+            problems.append(f"subroom pad {end} is not the pad block")
+        if placed and sub in (a, b):
+            problems.append(f"subroom pad shares site {sub} with the pair")
     for n, (x, y) in enumerate(PAD_SITES):
         entry = warps[4 * (FIRST_PAD_WARP + n): 4 * (FIRST_PAD_WARP + n) + 4]
-        if placed and n in (a, b):
+        if n == sub:
+            # Armed into the subroom; its landing is the room piece's
+            # (test_facility_subroom.py checks that value).
+            if entry[:2] != [2 * y + 1, 2 * x + 1] or entry[3] != SUBROOM_MAP:
+                problems.append(f"subroom pad site {n} armed as {entry}")
+        elif placed and n in (a, b):
             partner = b if n == a else a
             want = [2 * y + 1, 2 * x + 1, FIRST_PAD_WARP + partner]
             if entry[:3] != want:
@@ -270,6 +325,8 @@ def main() -> int:
         print(f"layouts {args.seeds}: pads placed {runtime['placed']}, "
               f"model says a pair was possible {runtime['possible']}, "
               f"placed when possible {runtime['placed_when_possible']}, "
+              f"subroom pad placed {runtime['subroom_placed']} "
+              f"(possible {runtime['subroom_possible']}), "
               f"problems {problems}")
         return 1 if problems else 0
 

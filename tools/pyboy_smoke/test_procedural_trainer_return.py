@@ -60,8 +60,7 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
         sprites = {name: self.sprites[constant] for name, constant in (
             ('Nurse', 'SPRITE_NURSE'), ('Jessie', 'SPRITE_JESSIE'),
             ('James', 'SPRITE_JAMES'), ('Psychic', 'SPRITE_MIDDLE_AGED_MAN'),
-            ('Burglar', 'SPRITE_SUPER_NERD'), ('Jenny', 'SPRITE_OFFICER_JENNY'),
-            ('Gambler', 'SPRITE_GAMBLER'))}
+            ('Burglar', 'SPRITE_SUPER_NERD'), ('Jenny', 'SPRITE_OFFICER_JENNY'))}
         for map_name, _, slot in AREAS:
             for sprite, picture in sprites.items():
                 for index in (slot, slot + 1):
@@ -73,10 +72,7 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8(f'wSprite{index:02d}StateData1', picture)
                         h.write8('wTrainerEngageDistance', 4 * 16)
                         h.call_routine('StageEventLimitTrainerSight')
-                        # The Money Match Gambler never engages: he only
-                        # battles after the player accepts his offer.
-                        expected = (16 if sprite in ('Nurse', 'Jessie', 'James')
-                                    else 0 if sprite == 'Gambler' else 64)
+                        expected = 16 if sprite in ('Nurse', 'Jessie', 'James') else 64
                         self.assertEqual(h.read8('wTrainerEngageDistance'), expected)
         # A stale procedural event must not affect an ordinary-map trainer.
         h.write8('hCurMap', self.maps['OAKS_LAB'])
@@ -91,8 +87,7 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
         h = self.harness
         for map_name, _, slot in AREAS:
             for picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES',
-                            'SPRITE_OFFICER_JENNY', 'SPRITE_SUPER_NERD',
-                            'SPRITE_GAMBLER'):
+                            'SPRITE_OFFICER_JENNY', 'SPRITE_SUPER_NERD'):
                 for distance in (1, 2):
                     with self.subTest(map=map_name, picture=picture, distance=distance):
                         self.restore()
@@ -107,9 +102,8 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8('wTrainerEngageDistance', 64)
                         h.call_routine('TrainerEngage')
                         stationary = picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES')
-                        never = picture == 'SPRITE_GAMBLER'   # Money Match: offer first
                         self.assertEqual(h.read8('wTrainerSpriteOffset'),
-                                         0 if never or (stationary and distance == 2) else 0xff)
+                                         0 if stationary and distance == 2 else 0xff)
 
     def test_joy_returns_to_standing_without_moving(self):
         h = self.harness

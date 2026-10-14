@@ -833,6 +833,7 @@ INCLUDE "custom_functions/credit_award.asm"
 ; Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M). Opens its own section, pinned
 ; to $3A in layout.link; farcall-only.
 INCLUDE "custom_functions/money_match.asm"
+INCLUDE "custom_functions/facility_subroom.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map

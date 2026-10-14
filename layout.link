@@ -530,6 +530,10 @@ ROMX $3F
 	; The Facility's subroom, same reasoning (PROCEDURAL_SUBROOMS_PLAN Phase 4,
 	; 2026-10-14).
 	"Procedural Facility Subroom Map"
+	; Its loader and room-piece table (custom_functions/facility_subroom.asm).
+	; farcall-only; reads the pieces from PFacRoomDescriptors' bank with
+	; FarCopyData. 2026-10-14.
+	"Facility Subroom"
 WRAM0
 	"Audio RAM"
 	org $c100
