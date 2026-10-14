@@ -527,6 +527,9 @@ ROMX $3F
 	; dropped it into $01's last bytes. It grows a handler per resident.
 	; 2026-10-13.
 	"Procedural Forest Rest House Map"
+	; The Facility's subroom, same reasoning (PROCEDURAL_SUBROOMS_PLAN Phase 4,
+	; 2026-10-14).
+	"Procedural Facility Subroom Map"
 WRAM0
 	"Audio RAM"
 	org $c100

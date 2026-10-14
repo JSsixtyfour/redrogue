@@ -573,11 +573,6 @@ PFacStageEventRecoverText:
 
 PFacStageEventNpc1Text:
 	text_asm
-	; Money Match (Phase M): the Gambler offers his bet first and battles only
-	; on YES. Carry = declined, his text already shown. Every other event type
-	; passes straight through. Slot 1 of the pair only: he has no partner.
-	farcall MoneyMatchTalkGate
-	jp c, TextScriptEnd
 	ld hl, PFacStageNpc1Header
 	jp ProceduralFacilityInitBattleScript
 
@@ -608,8 +603,7 @@ PFacStageEventArrivalTexts:
 	dw PFacStageArrivalBurglar
 	dw PFacStageArrivalJoy
 	dw PFacStageArrivalJenny
-	dw PFacStageArrivalJoy   ; STAGE_EVENT_MONEY_MATCH: never shown, good NPCs skip the arrival
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFacStageEventArrivalTexts needs a row per stage-event type"
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventArrivalTexts needs a row per stage-event type"
 
 PFacStageEventHideoutTexts:
 	dw PFacStageHideoutJessieJames
@@ -617,8 +611,7 @@ PFacStageEventHideoutTexts:
 	dw PFacStageHideoutBurglar
 	dw PFacStageHideoutJoy
 	dw PFacStageHideoutJenny
-	dw PFacStageHideoutMoneyMatch
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFacStageEventHideoutTexts needs a row per stage-event type"
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventHideoutTexts needs a row per stage-event type"
 
 PFacStageEventDefeatTexts:
 	dw PFacStageDefeatJessieJames
@@ -626,8 +619,7 @@ PFacStageEventDefeatTexts:
 	dw PFacStageDefeatBurglar
 	dw PFacStageDefeatJoy
 	dw PFacStageDefeatJenny
-	dw PFacStageDefeatMoneyMatch
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFacStageEventDefeatTexts needs a row per stage-event type"
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFacStageEventDefeatTexts needs a row per stage-event type"
 
 PFacStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -660,9 +652,6 @@ PFacStageHideoutJoy:
 PFacStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
-PFacStageHideoutMoneyMatch:
-	text_far _StageEventHideoutMoneyMatchText
-	text_end
 
 PFacStageDefeatJessieJames:
 	text_far _StageEventDefeatJessieJamesText
@@ -678,7 +667,4 @@ PFacStageDefeatJoy:
 	text_end
 PFacStageDefeatJenny:
 	text_far _StageEventDefeatJennyText
-	text_end
-PFacStageDefeatMoneyMatch:
-	text_far _StageEventDefeatMoneyMatchText
 	text_end

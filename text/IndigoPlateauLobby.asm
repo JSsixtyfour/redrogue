@@ -86,17 +86,16 @@ _WitchChallenge6Text::
 
 ; wPartyLimit is precomputed at roll time (WitchPrepChallengeParams).
 _WitchChallenge7Text::
-	text "You may only"
-	line "bring @"
+	text "Enter this stage"
+	line "with at most @"
 	text_decimal wPartyLimit, 1, 1
-	text " #MON"
-	cont "to this zone."
+	cont "#MON."
 
 	para "Bring more and"
-	line "the bargain fails!"
+	line "the deal fails!"
 	prompt
 
-; Shown on the first step into a zone with too many #MON (WitchCheckPartyLimit).
+; Shown at lobby-door departure with too many #MON (WitchCheckPartyLimit).
 ; wPartyLimit is still the limit she quoted.
 _WitchBargainBrokenText::
 	text "CHALLENGE FAILED!"
@@ -312,12 +311,6 @@ _WitchPrizeLegendaryText::
 
 	para "Do we have a"
 	line "bargain?"
-	done
-
-_WitchPartyLimitText::
-	text "The bargain won't"
-	line "allow it. Your"
-	cont "party is full."
 	done
 
 _WitchAcceptanceText::

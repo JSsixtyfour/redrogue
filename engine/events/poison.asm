@@ -1,8 +1,7 @@
 ApplyOutOfBattlePoisonDamage:
-	; Per-step witch checks (challenge 7's party limit on entering a zone,
-	; challenge 9's re-poison). Nothing is live yet, so farcall's clobbers are
-	; free.
-	farcall WitchOverworldStep
+	; Challenge 9's re-poison. Challenge 7 is checked once at lobby departure.
+	; Nothing is live yet, so farcall's clobbers are free.
+	farcall WitchReapplyPoison
 	ld a, [wStatusFlags5]
 	ASSERT BIT_SCRIPTED_MOVEMENT_STATE == 7
 	add a ; overflows scripted movement state bit into carry flag

@@ -399,26 +399,18 @@ DEF STAGE_EVENT_PSYCHIC      EQU 2  ; villain, steals a party mon (rebuilt into 
 DEF STAGE_EVENT_BURGLAR      EQU 3  ; villain, steals a bag item
 DEF STAGE_EVENT_JOY          EQU 4  ; good NPC (7f)
 DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
-; Money Match Gambler (PROCEDURAL_SUBROOMS_PLAN Phase M, 2026-10-13). Found at
-; the hideout like Joy/Jenny (every placement test is `cp STAGE_EVENT_JOY /
-; jr nc`), never engages on sight, and only battles after the player accepts
-; his offer (MoneyMatchTalkGate). Took the number of the retired
-; STAGE_EVENT_BOTH_GOOD (Joy + Jenny together), whose rows had already left
-; the tables.
-DEF STAGE_EVENT_MONEY_MATCH  EQU 6
-DEF NUM_STAGE_EVENT_TYPES    EQU 6
+; Type 6 is free. It was STAGE_EVENT_BOTH_GOOD (Joy + Jenny together, retired
+; 2026-09-17), then briefly the Money Match Gambler (2026-10-13), who moved to
+; the wild areas' subrooms instead (PROCEDURAL_SUBROOMS_PLAN Phase 4).
+DEF NUM_STAGE_EVENT_TYPES    EQU 5
 
 ; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled, the same escape hatch
 ; MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss registry: a type can sit in
-; every table without being reachable. Types 1-5 are rolled, uniformly. The
-; Money Match Gambler (6) is NOT rolled (user, 2026-10-13): he must never
-; replace a stage event and will instead always appear in a wild area's
-; subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4). Until that room exists he is
-; reachable only by writing wStageEvent (test_money_match.py does).
+; every table without being reachable. All five are rolled, uniformly.
 DEF STAGE_EVENT_MAX_ROLLABLE EQU 5
 
 ; wMoneyMatchState (ram/wram.asm): bit 7 = this battle is a Money Match, bits
-; 0-6 = player actions taken so far, saturating. Set by MoneyMatchTalkGate on
+; 0-6 = player actions taken so far, saturating. Set by MoneyMatchHouseTalk on
 ; YES, counted by BattleTurnCommitted, paid by MoneyMatchApplyPayout, zeroed by
 ; EndOfBattle so it can never reach the next battle.
 DEF BIT_MONEY_MATCH_ACTIVE    EQU 7
@@ -438,15 +430,11 @@ DEF MONEY_MATCH_DECAY_STEPS   EQU 16
 ;   bits 3-4 = phase (STAGE_EVENT_PHASE_*)
 ;   bit 5    = the theft took an ITEM, not a mon (set by the party-size and
 ;              fusion-ineligibility fallbacks, so recovery knows what to give back)
-;   bit 6    = the Money Match Gambler was beaten (MoneyMatchApplyPayout). His
-;              talk gate then offers nothing and sets no state, and the
-;              cemetery's per-floor re-show leaves him hidden.
-;   bit 7    = free
+;   bits 6-7 = free
 DEF STAGE_EVENT_TYPE_MASK      EQU %00000111
 DEF STAGE_EVENT_PHASE_MASK     EQU %00011000
 DEF STAGE_EVENT_PHASE_SHIFT    EQU 3
 DEF BIT_STAGE_EVENT_STOLE_ITEM EQU 5
-DEF BIT_STAGE_EVENT_MONEY_MATCH_WON EQU 6
 
 DEF STAGE_EVENT_PHASE_WAITING EQU 0 ; standing in front of the player, not yet spoken to
 DEF STAGE_EVENT_PHASE_HIDING  EQU 1 ; spoke, robbed the player, vanished to the hideout

@@ -211,7 +211,7 @@ HandleRewardChoice:
 	; YES / NO / INFO (reward_offer_info.asm). INFO shows the Pokedex page with
 	; this offer's form and DVs and returns z: the map was reloaded under it,
 	; and it left wNamedObjectIndex (= wPokedexNum) holding a DEX number, which
-	; .noPartyLimit would give as the species. So re-name the slot and ask again.
+	; .giveMon would give as the species. So re-name the slot and ask again.
 	pop bc
 	push bc
 	ld e, b
@@ -228,23 +228,7 @@ HandleRewardChoice:
     pop bc
 	jp nz, .printOhFineThen
 .giveMon
-    ; Challenge 7 (PARTY_LIMIT): no reward mon past the limit the witch quoted
-    ; (wPartyLimit, precomputed at roll time by WitchPrepChallengeParams).
-    ld a, [wRogueFlagsBitfield]
-    bit BIT_WITCH_ACCEPTED, a
-    jr z, .noPartyLimit
-    ld a, [wWitchChallenge]
-    cp CHALLENGE_PARTY_LIMIT
-    jr nz, .noPartyLimit
-    ld a, [wPartyLimit]
-    ld c, a             ; c = party limit
-    ld a, [wPartyCount]
-    cp c
-    jr c, .noPartyLimit ; wPartyCount < limit: allow
-    ld hl, WitchPartyLimitText
-    call PrintText
-    ret
-.noPartyLimit
+    ; Challenge 7 limits stage entry only; gifts may grow the party afterward.
     ; Increment 8: publish the chosen slot's form before the mon is built. b is
     ; still the slot index here and is reloaded with the SPECIES a few lines down
     ; (just before GivePokemon), so this has to read it now, not there.
@@ -293,10 +277,6 @@ HandleRewardChoice:
 .printOhFineThen
 	ld hl, OhFineThenRewardText
 	jp PrintText
-
-WitchPartyLimitText:
-	text_far _WitchPartyLimitText
-	text_end
 
 SoYouWantRewardText:
 	text_far _SoYouWantPrizeText
@@ -522,7 +502,7 @@ RogueRefresh::
 	farjp WitchReapplyPoison
 
 ; IN: b = reward slot 0-2. Names it (form name included) into wNameBuffer and
-; sets wNamedObjectIndex to its species, which .noPartyLimit gives. Called on
+; sets wNamedObjectIndex to its species, which .giveMon gives. Called on
 ; entry and again after the INFO screen, which overwrites both.
 RewardNameSlot:
 	ld d, 0

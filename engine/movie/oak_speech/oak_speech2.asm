@@ -79,13 +79,15 @@ OakSpeechSlidePicLeft:
 	call CopyData
 	call Delay3
 	hlcoord 12, 4
-	lb de, 6, 6 * SCREEN_WIDTH + 5
+	; Include all seven tiles of the pic's last row (FOLLOWUPS #56).
+	lb de, 6, 6 * SCREEN_WIDTH + 7
 	ld a, $ff
 	jr OakSpeechSlidePicCommon
 
 OakSpeechSlidePicRight:
 	hlcoord 5, 4
-	lb de, 6, 6 * SCREEN_WIDTH + 5
+	; Same full-picture span as the return slide; displacement stays six tiles.
+	lb de, 6, 6 * SCREEN_WIDTH + 7
 	xor a
 
 OakSpeechSlidePicCommon:
@@ -127,12 +129,14 @@ OakSpeechSlidePicCommon:
 	jr nz, .loop
 	ldh a, [hSlideDirection]
 	and a
-	jr z, .next3
-; If sliding left, we need to zero the last tile in the pic (there is no need
-; to take a corresponding action when sliding right because hl initially points
-; to a 0 tile in that case).
-	xor a
+	jr nz, .clearVacatedTile
+; Clear the vacated first tile when sliding right, last tile when sliding left.
+; Tile $00 is picture data and need not be blank (e.g. Channeler, FOLLOWUPS #56).
+	inc hl
+	inc hl
+.clearVacatedTile
 	dec hl
+	ld a, CHARVAL(" ")
 	ld [hl], a
 .next3
 	ld a, 1

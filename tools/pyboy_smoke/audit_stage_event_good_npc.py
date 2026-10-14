@@ -27,7 +27,7 @@ So the contract measured here is:
      no greeting was shown and none is waiting to be dismissed
   C. on entry, both NPC slots are at the HIDEOUT, not at the entrance
   D. they still never move afterwards, and never enter HIDING
-  E. StageEventRoundTier's ladder still gives 2/2/3/3/4/4/5/5/6 across rounds
+  E. Stage-event party sizes match STAGE_EVENT_R<n>_MONS in balance_constants.asm
 
 B and C are differential: the same checks run for a VILLAIN, which must still
 arrive at the entrance with its greeting up. Without that control, a build
@@ -50,7 +50,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
-from source_constants import parse_map_constants, parse_trainer_class_indexes  # noqa: E402
+from source_constants import (  # noqa: E402
+    parse_map_constants, parse_rgbds_constants, parse_trainer_class_indexes,
+)
 
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
 SRAM_BANK = 0
@@ -237,8 +239,11 @@ def run_roll_distribution(const: dict, failures: list) -> None:
 
 def run_round_tier(failures: list) -> None:
     classes = parse_trainer_class_indexes(REPO_ROOT / "constants" / "trainer_constants.asm")
-    expected_n = {1: 2, 2: 2, 3: 3, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 6}
     battle_counts = {1: 0, 2: 15, 3: 25, 4: 35, 5: 45, 6: 55, 7: 65, 8: 75, 9: 85}
+    round_constants = parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm")
+    balance = parse_rgbds_constants(
+        REPO_ROOT / "constants/balance_constants.asm", round_constants)
+    expected_n = {r: balance[f"STAGE_EVENT_R{r}_MONS"] for r in battle_counts}
     # Stage-event classes only use their specs on a Wild Area map
     # (StageEventSpecAllowed, 2026-10-06); FIGHT2's map is not one.
     wild_map = parse_map_constants(

@@ -225,7 +225,7 @@ MapHeaderBanks::
 	db BANK(ProceduralForestRestHouse_h)
 	db BANK(SafariZoneSecretHouse_h)
 	db BANK(SafariZoneWestRestHouse_h)
-	db BANK(SafariZoneEastRestHouse_h)
+	db BANK(ProceduralFacilitySubroom_h) ; was SafariZoneEastRestHouse_h
 	db BANK(SafariZoneNorthRestHouse_h)
 	db BANK(CeruleanCave2F_h)
 	db BANK(CeruleanCaveB1F_h)

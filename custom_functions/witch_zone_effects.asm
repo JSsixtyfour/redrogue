@@ -11,34 +11,20 @@
 SECTION "Witch Zone Effects", ROMX
 
 ; ============================================================
-; WitchOverworldStep
-; Farcalled from the top of ApplyOutOfBattlePoisonDamage on every overworld
-; step. Runs the per-step witch checks. Nothing is live at that call site.
-; Clobbers everything.
-; ============================================================
-WitchOverworldStep::
-	call WitchCheckPartyLimit
-	jr WitchReapplyPoison
-
-; ============================================================
 ; WitchCheckPartyLimit
-; Challenge 7 (PARTY_LIMIT): "You may only bring X #MON to this zone". On the
-; first step after walking through a lobby DOOR, a party larger than
+; Challenge 7 (PARTY_LIMIT): enter a stage with at most X #MON. At departure
+; through a lobby stage door, a party larger than
 ; wPartyLimit (precomputed at roll time by WitchPrepChallengeParams) breaks
 ; the bargain: BIT_WITCH_ACCEPTED is cleared, so PCWitchSetup grants no prize
 ; on the next lobby visit and every challenge effect stops, and the player
 ; is told.
 ;
-; "Came through a lobby door" = wWarpedFromWhichMap is the lobby and the warp
-; used was 2 or 3 (the top ROGUE_MAP doors; 0/1 are LAST_MAP
-; arrival points, not exits the player can take - the test is just defensive). Both stay valid until the next warp, so
-; this needs no load hook and no pending flag: passing re-checks harmlessly
-; on every step of the first map, and failing clears the accepted bit, which
-; gates out every later step.
-;
-; Waits out scripted movement: DisplayTextID there would fight the script.
+; Called only by WarpFound2 after it records the source map/warp, before the
+; transition. Only lobby warps 2/3 count. No pending flag is needed: later
+; steps, battles, reloads and internal warps never call this entry check.
+; Captures and reward gifts after entry may grow the party normally.
 ; ============================================================
-WitchCheckPartyLimit:
+WitchCheckPartyLimit::
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	ret z
@@ -51,9 +37,8 @@ WitchCheckPartyLimit:
 	ld a, [wWarpedFromWhichWarp]
 	cp 2
 	ret c ; a bottom exit, not a zone door
-	ld a, [wStatusFlags5]
-	bit BIT_SCRIPTED_MOVEMENT_STATE, a
-	ret nz
+	cp 4
+	ret nc ; only the two stage doors
 	ld a, [wPartyLimit]
 	ld b, a
 	ld a, [wPartyCount]
@@ -64,6 +49,7 @@ WitchCheckPartyLimit:
 	res BIT_WITCH_ACCEPTED, [hl]
 	xor a
 	ldh [hJoyIgnore], a
+	call UpdateSprites
 	call EnableAutoTextBoxDrawing
 	ld a, TEXT_WITCH_BARGAIN_BROKEN
 	ldh [hTextID], a
@@ -73,7 +59,7 @@ WitchCheckPartyLimit:
 ; WitchReapplyPoison
 ; Challenge 9 (ALL_POISONED): "Your whole team will be poisoned the whole zone".
 ; Sets PSN on every party mon that is alive and has no other status. Called:
-;   - every overworld step, via WitchOverworldStep above, so an Antidote or a
+;   - every overworld step, via ApplyOutOfBattlePoisonDamage, so an Antidote or a
 ;     heal lasts one step and
 ;     gyms are covered too;
 ;   - once at stage load, from the end of RogueRefresh, so the team is
@@ -199,7 +185,7 @@ WitchPrepChallengeParams::
 	cp CHALLENGE_PARTY_LIMIT
 	ret nz
 	; Challenge 7: limit = 2 + round, capped at 5. Read by the entry check
-	; (WitchCheckPartyLimit) and the reward menu's party-full refusal.
+	; (WitchCheckPartyLimit); later party growth is allowed.
 	call WitchZoneRound
 	add 2
 	cp PARTY_LENGTH

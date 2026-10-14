@@ -22,42 +22,6 @@
 
 SECTION "Money Match", ROMX
 
-; Farcalled first thing by each stage map's slot-1 stage-NPC text_asm, ahead of
-; its TalkToTrainer. Any other event type passes straight through.
-; OUTPUT: carry set = no battle (the player declined; the text is shown), the
-; caller ends the text script. Carry clear = carry on into TalkToTrainer.
-; Clobbers a/bc/de/hl; the callers' text scripts end right after, so bc (the
-; text cursor) is dead.
-MoneyMatchTalkGate::
-	ld a, [wStageEvent]
-	and STAGE_EVENT_TYPE_MASK
-	cp STAGE_EVENT_MONEY_MATCH
-	jr nz, .battle
-	; Already beaten: no offer and, above all, no state. TalkToTrainer sees
-	; his beat flag and only says his after line, so a bit set here would
-	; ride into the next, unrelated battle. Reachable wherever a beaten
-	; Gambler is shown again (the cemetery re-shows per floor entry).
-	ld a, [wStageEvent]
-	bit BIT_STAGE_EVENT_MONEY_MATCH_WON, a
-	jr nz, .battle
-	ld hl, MoneyMatchOfferText
-	call PrintText
-	call YesNoChoice
-	ldh a, [hCurrentMenuItem]
-	and a
-	jr nz, .declined
-	ld a, 1 << BIT_MONEY_MATCH_ACTIVE ; active, no turns yet
-	ld [wMoneyMatchState], a
-.battle
-	and a
-	ret
-.declined
-	; He stays put: talking to him again repeats the offer.
-	ld hl, MoneyMatchDeclinedText
-	call PrintText
-	scf
-	ret
-
 ; Called by WitchApplyMoneyEffects at every trainer victory, after the witch
 ; no-money zeroing and before PRIZE_MONEY / Oak's grant.
 ;

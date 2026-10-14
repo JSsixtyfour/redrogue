@@ -274,7 +274,6 @@ ViridianPokecenter_Blocks: INCBIN "maps/ViridianPokecenter.blk"
 
 
 SafariZoneWestRestHouse_Blocks:
-SafariZoneEastRestHouse_Blocks:
 SafariZoneNorthRestHouse_Blocks: INCBIN "maps/SafariZoneCenterRestHouse.blk"
 
 
@@ -411,10 +410,6 @@ SafariZoneCenter_Blocks: INCBIN "maps/SafariZoneCenter.blk"
 INCLUDE "data/maps/headers/SafariZoneWestRestHouse.asm"
 INCLUDE "scripts/SafariZoneWestRestHouse.asm"
 INCLUDE "data/maps/objects/SafariZoneWestRestHouse.asm"
-
-INCLUDE "data/maps/headers/SafariZoneEastRestHouse.asm"
-INCLUDE "scripts/SafariZoneEastRestHouse.asm"
-INCLUDE "data/maps/objects/SafariZoneEastRestHouse.asm"
 
 INCLUDE "data/maps/headers/SafariZoneNorthRestHouse.asm"
 INCLUDE "scripts/SafariZoneNorthRestHouse.asm"
@@ -1436,3 +1431,11 @@ INCLUDE "data/maps/objects/ProceduralForestRestHouse.asm"
 ; The blocks MUST share the header's bank: map_header stores a bankless
 ; `dw ProceduralForestRestHouse_Blocks`, read with the header's bank mapped.
 ProceduralForestRestHouse_Blocks: INCBIN "maps/ProceduralForestRestHouse.blk"
+
+
+SECTION "Procedural Facility Subroom Map", ROMX
+INCLUDE "data/maps/headers/ProceduralFacilitySubroom.asm"
+INCLUDE "scripts/ProceduralFacilitySubroom.asm"
+INCLUDE "data/maps/objects/ProceduralFacilitySubroom.asm"
+; Same bank as the header (map_header ASSERTs it).
+ProceduralFacilitySubroom_Blocks: INCBIN "maps/ProceduralFacilitySubroom.blk"

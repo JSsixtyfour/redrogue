@@ -209,11 +209,6 @@ PCemStageInitBattleScript::
 ; ============================================================
 PCemStageEventNpc1Text::
 	text_asm
-	; Money Match (Phase M): the Gambler offers his bet first and battles only
-	; on YES. Carry = declined, his text already shown. Every other event type
-	; passes straight through. Slot 1 of the pair only: he has no partner.
-	farcall MoneyMatchTalkGate
-	jp c, TextScriptEnd
 	ld hl, PCemStageNpc1Header
 	jp PCemStageInitBattleScript
 
@@ -274,8 +269,7 @@ PCemStageEventArrivalTexts:
 	dw PCemStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PCemStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PCemStageArrivalJenny        ; STAGE_EVENT_JENNY
-	dw PCemStageArrivalJoy   ; STAGE_EVENT_MONEY_MATCH: never shown, good NPCs skip the arrival
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PCemStageEventArrivalTexts needs a row per stage-event type"
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCemStageEventArrivalTexts needs a row per stage-event type"
 
 PCemStageEventHideoutTexts:
 	dw PCemStageHideoutJessieJames
@@ -283,8 +277,7 @@ PCemStageEventHideoutTexts:
 	dw PCemStageHideoutBurglar
 	dw PCemStageHideoutJoy
 	dw PCemStageHideoutJenny
-	dw PCemStageHideoutMoneyMatch
-	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PCemStageEventHideoutTexts needs a row per stage-event type"
+	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCemStageEventHideoutTexts needs a row per stage-event type"
 
 PCemStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -316,9 +309,6 @@ PCemStageHideoutJoy:
 	text_end
 PCemStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
-	text_end
-PCemStageHideoutMoneyMatch:
-	text_far _StageEventHideoutMoneyMatchText
 	text_end
 
 ProceduralCemetery1_TextPointers:

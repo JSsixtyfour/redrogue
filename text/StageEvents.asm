@@ -151,14 +151,6 @@ _StageEventHideoutJennyText::
 	text_promptbutton
 	text_end
 
-; Money Match: shown by TalkToTrainer only after the player said YES to his
-; offer (MoneyMatchTalkGate), so it is the "clock starts now" line.
-_StageEventHideoutMoneyMatchText::
-	text "The clock's"
-	line "ticking. Deal!@"
-	text_promptbutton
-	text_end
-
 ; --- DEFEAT: spoken by the trainer the moment the player wins -------------
 ; Printed by PrintEndBattleText, which has ALREADY written "<CLASS>: " into
 ; the box from _TrainerNameText. Line 1 is therefore not empty when these
@@ -206,13 +198,6 @@ _StageEventDefeatJennyText::
 	cont "yourself fine!"
 	prompt
 
-; "GAMBLER: " 9 used, 9 left.
-_StageEventDefeatMoneyMatchText::
-	text "Busted!"
-	line "A deal's a deal."
-	cont "Here's your cut."
-	prompt
-
 ; --- AFTER BATTLE: spoken when the player talks to them again ------------
 ; These did not exist before 1C (2026-09-22), because there was nothing to
 ; say: both NPCs were hidden the instant either was beaten, so the headers'
@@ -249,12 +234,6 @@ _StageEventAfterJoyText::
 _StageEventAfterJennyText::
 	text "I'll keep watch"
 	line "here. Go on.@"
-	text_end
-
-; Normally unreachable: he leaves the map once beaten (MoneyMatchApplyPayout).
-_StageEventAfterMoneyMatchText::
-	text "Lady Luck smiled"
-	line "on you today.@"
 	text_end
 
 ; --- RECOVERY: what the player is told after beating the villain ---------

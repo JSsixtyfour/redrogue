@@ -1846,7 +1846,7 @@ wSpriteInputBitCounter:: db
 ; in place so no address moves. Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M):
 ; bit 7 = this battle is a Money Match, bits 0-6 = player actions so far
 ; (BIT_MONEY_MATCH_ACTIVE / MONEY_MATCH_TURNS_MASK). Set on YES by
-; MoneyMatchTalkGate, zeroed by EndOfBattle. Unsaved (below wMainDataStart).
+; MoneyMatchHouseTalk, zeroed by EndOfBattle. Unsaved (below wMainDataStart).
 wMoneyMatchState:: db
 
 ; Was wSpriteLoadFlags, dead since the LZ pic switch (2026-10-07); reused in

@@ -225,7 +225,7 @@ MapHeaderPointers::
 	dw ProceduralForestRestHouse_h
 	dw SafariZoneSecretHouse_h
 	dw SafariZoneWestRestHouse_h
-	dw SafariZoneEastRestHouse_h
+	dw ProceduralFacilitySubroom_h ; was SafariZoneEastRestHouse_h
 	dw SafariZoneNorthRestHouse_h
 	dw CeruleanCave2F_h
 	dw CeruleanCaveB1F_h

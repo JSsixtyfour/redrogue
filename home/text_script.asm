@@ -238,8 +238,8 @@ RepelWoreOffText::
 	text_far _RepelWoreOffText
 	text_end
 
-; Witch challenge 7 broken on entering a zone (WitchCheckPartyLimit). A
-; special text ID rather than a map text because it fires on any zone map.
+; Witch challenge 7 broken at lobby-door departure (WitchCheckPartyLimit).
+; Uses the shared special-text dispatch while the player is still in the lobby.
 ; Costs 15 B of HOME (this, its text_far, the dict line above).
 ; IF HOME GETS TIGHT: all of it can go. Drop TEXT_WITCH_BARGAIN_BROKEN and
 ; have WitchCheckPartyLimit only clear BIT_WITCH_ACCEPTED and mark the failure

@@ -526,6 +526,8 @@ WarpFound2::
 	cp INDIGO_PLATEAU_LOBBY
 	jr nz, .speedRestored
 	predef SingleCPUSpeed
+	; Challenge 7 checks the party once at the actual lobby-door departure.
+	farcall WitchCheckPartyLimit
 .speedRestored
 	ldh a, [hCurMap]
 	; (Wild-area exit "+5 battles" is applied on the destination map's load in

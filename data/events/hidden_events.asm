@@ -71,7 +71,6 @@ HiddenEventMaps:
 	hidden_event_map BILLS_HOUSE
 	hidden_event_map VIRIDIAN_CITY
 	hidden_event_map SAFARI_ZONE_WEST_REST_HOUSE
-	hidden_event_map SAFARI_ZONE_EAST_REST_HOUSE
 	hidden_event_map SAFARI_ZONE_NORTH_REST_HOUSE
 	hidden_event_map ROUTE_15_GATE_2F
 	hidden_event_map MR_FUJIS_HOUSE
@@ -466,11 +465,6 @@ DEF ANY_FACING EQU $d0
 	db -1 ; end
 
 	hidden_events_for SAFARI_ZONE_WEST_REST_HOUSE
-	hidden_event  0,  4, PrintBenchGuyText, SPRITE_FACING_LEFT
-	hidden_event 13,  3, OpenPokemonCenterPC, SPRITE_FACING_UP
-	db -1 ; end
-
-	hidden_events_for SAFARI_ZONE_EAST_REST_HOUSE
 	hidden_event  0,  4, PrintBenchGuyText, SPRITE_FACING_LEFT
 	hidden_event 13,  3, OpenPokemonCenterPC, SPRITE_FACING_UP
 	db -1 ; end

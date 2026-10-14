@@ -47,7 +47,6 @@ INCLUDE "text/SafariZoneCenter.asm"
 
 INCLUDE "text/SafariZoneSecretHouse.asm"
 INCLUDE "text/SafariZoneWestRestHouse.asm"
-INCLUDE "text/SafariZoneEastRestHouse.asm"
 INCLUDE "text/SafariZoneNorthRestHouse.asm"
 INCLUDE "text/CeruleanCaveB1F.asm"
 INCLUDE "text/VictoryRoad1F.asm"
