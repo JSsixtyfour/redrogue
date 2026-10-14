@@ -38,7 +38,7 @@ mix rows in `data/trainers/party_specs.asm`.
   followed by a `| Species | Move, Move, Move, Move | Notes |` table, adds curated movesets to
   the corpus (`tools/gen_movesets.py`, run from Windows). The heading's tiers decide who can
   draw them: a corpus grade (`TIER_HARD`, ...) puts them in the shared pool, a character's own
-  bit (`TIER_GAMBLER`, or the reserved `TIER_SIGNATURE_6/7`) keeps them for a mix that asks for
+  bit (`TIER_GAMBLER`, `TIER_LEGENDARY_BOSS`, or the reserved `TIER_SIGNATURE_7`) keeps them for a mix that asks for
   it. A character with a Sets table needs a row for every species it can field, evolutions
   included, or `make audit` fails. Today only the Gambler has one.
 - Anything that is not a `### Name` header, a `**Band n...**` line, one of the three list
@@ -813,3 +813,25 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 **Band 1: every tier**
 - Aces: Houndoom (johto), Umbreon (johto)
 - Fodder: Gengar, Vileplume, Arbok, Persian, Golbat, Magmar, Slowbro, Electrode, Rapidash, Flareon, Murkrow (johto), Houndour (johto), Houndoom (johto), Sneasel (johto), Tyranitar (johto), Larvitar (johto), Pupitar (johto), Misdreavus (johto), Ursaring (johto), Umbreon (warp), Alolan Persian (warp), Alolan Meowth (warp), Alolan Rattata (warp), Alolan Raticate (warp), Alolan Muk (warp), Alolan Grimer (warp), Galarian Moltres (warp), Hisuian Qwilfish (warp)
+
+## Legendary bosses
+
+Witch challenge 11 (Legendary Boss) swaps a gym leader's ace for a legendary rolled from
+`LegendaryBossTable` (`custom_functions/legendary_boss_helpers.asm`): Erika, Sabrina, Blaine,
+Giovanni, Falkner, Morty and Pryce. The species come from that table, not from here, so this
+block has no bands or lists. Only the moves come from here.
+
+### LegendaryBoss (Challenge 11 ace)
+
+#### Sets: TIER_LEGENDARY_BOSS
+
+The swapped ace draws one of these rows first. A species with no row here (Mew and Mewtwo today)
+takes the shared corpus's `TIER_ELITE | TIER_HARD` sets instead, and only then its mix's fallback.
+A row is used at every level. **PLACEHOLDERS (2026-10-13):** replace with the real boss sets, then
+run `py tools/gen_movesets.py` from Windows and commit the regenerated `movesets.asm`.
+
+| Species | Moves | Notes |
+|---|---|---|
+| Lugia | Psychic, Ice Beam, Recover, Amnesia | placeholder |
+| Ho-Oh | Fire Blast, Sky Attack, Recover, Earthquake | placeholder |
+| Celebi | Psychic, Mega Drain, Recover, Leech Seed | placeholder |

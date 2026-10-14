@@ -14,7 +14,10 @@ are the cases a number-keyed table would have swapped by mistake.
 Each test boots once and stays under the harness's ~10 ReadTrainer calls per boot
 (see the module note in test_party_specs.py).
 """
-from source_constants import parse_rgbds_constants, parse_trainer_class_indexes
+import re
+
+from source_constants import (
+    parse_map_constants, parse_rgbds_constants, parse_trainer_class_indexes)
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 # Mirrors LegendaryBossTable in custom_functions/legendary_boss_helpers.asm.
@@ -31,6 +34,21 @@ NOT_ELIGIBLE = ["BROCK", "JASMINE", "CLAIR"]
 
 # Round 6 A: a gym-5-or-later team, the only place the witch offers the challenge.
 TRAINER_NO = 16
+
+
+def curated_sets(species, tiers):
+    """{frozenset(moves)} of movesets.asm's rows for `species` whose tier
+    expression names any of `tiers`. Level is not filtered: boss and corpus
+    ELITE/HARD rows all start at or below a gym 5+ ace's level."""
+    text = (REPO_ROOT / "data/trainers/movesets.asm").read_text(encoding="utf-8")
+    body = re.search(r"^Moveset_{}::\n(.*?)^(?:Moveset_|SECTION|$)".format(species),
+                     text, re.S | re.M).group(1)
+    out = set()
+    for m in re.finditer(r"db ([A-Z_0-9]+), ([A-Z_0-9]+), ([A-Z_0-9]+), ([A-Z_0-9]+), ([^,]+),",
+                         body):
+        if any(t in m.group(5) for t in tiers):
+            out.add(frozenset(m.group(i) for i in range(1, 5)))
+    return out
 
 
 class LegendaryBossSwapSmokeTest(HarnessTestCase):
@@ -58,10 +76,25 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
         count = h.read8("wEnemyPartyCount")
         return count, h.read_bytes("wEnemyPartySpecies", count + 1)
 
+    def _assert_boss_moves(self, ace, slot, stride):
+        """A boss row if the species has one, else a corpus ELITE/HARD row."""
+        name = next(n for n, v in self.species.items()
+                    if v == ace and n in {s for p in LEGENDARY_POOLS.values() for s in p})
+        boss = curated_sets(name, ["TIER_LEGENDARY_BOSS"])
+        allowed = boss or curated_sets(name, ["TIER_ELITE", "TIER_HARD"])
+        self.assertTrue(allowed, f"{name} has no curated sets to draw")
+        allowed = {frozenset(self.moves[m] for m in row) for row in allowed}
+        got = frozenset(self.harness.read_bytes("wEnemyMon1Moves", 4, offset=slot * stride))
+        self.assertIn(got, allowed,
+                      f"{name}'s moves {sorted(got)} are not one of its "
+                      f"{'boss' if boss else 'ELITE/HARD'} sets")
+
     def test_every_eligible_leader_fields_a_legendary_from_its_pool(self):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        h.set_difficulty("HARD")  # VERY EASY would skip curated sets by design
+        self.moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
         self._set_challenge(True)
         stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
         for leader, pool in LEGENDARY_POOLS.items():
@@ -77,6 +110,7 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
                 form = (h.read8("wEnemyMon1CatchRate",
                                 offset=(count - 1) * stride) >> 5) & 0b11
                 self.assertEqual(form, 0, "a swapped ace must carry no form")
+                self._assert_boss_moves(ace, count - 1, stride)
 
     def test_no_swap_for_number_twins_or_without_the_challenge(self):
         h = self.harness
@@ -95,3 +129,137 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
                 count, party = self._build(leader)
                 self.assertNotIn(party[count - 1], legendaries)
                 self.assertEqual(h.read8("wLegendaryBossSpecies"), 0)
+
+
+CARRY = 1 << 4
+
+
+class LegendaryBossGateSmokeTest(HarnessTestCase):
+    """Phase 3: the witch's gate and the wrong-door rule.
+
+    GYM LEADERS HAVE NO ORDER. The lobby's two doors are two random unbeaten
+    badge slots (wGymChoice) and wRunGymLineup holds each slot's leader CLASS,
+    so these write a lineup and a door pair by hand and ask the real routines.
+    """
+
+    def setUp(self):
+        super().setUp()
+        h = self.harness
+        h.boot_fight2(seed=1)
+        self.classes = parse_trainer_class_indexes(
+            REPO_ROOT / "constants/trainer_constants.asm")
+        self.ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        self.species = parse_rgbds_constants(
+            REPO_ROOT / "constants/pokemon_constants.asm")
+        # Slot 0 BROCK (no legendary), slot 1 SABRINA, slot 2 MORTY, the rest
+        # leaders without one. Badge slots, not gym numbers.
+        lineup = ["BROCK", "SABRINA", "MORTY", "JASMINE", "CLAIR", "MISTY",
+                  "LT_SURGE", "KOGA"]
+        for i, name in enumerate(lineup):
+            h.write8("wRunGymLineup", self.classes[name], offset=i)
+
+    def _doors(self, door1, door2):
+        latched = 1 << self.ram["BIT_GYM_CHOICE_LATCHED"]
+        self.harness.write8("wGymChoice", latched | door1 | (door2 << 3))
+
+    def _call(self, label):
+        self.harness.call_routine(label, limit=4000)
+        return self.harness.last_call_registers
+
+    def test_doors_report_which_leader_holds_a_legendary(self):
+        for door1, door2, want in ((0, 1, 0b10), (1, 0, 0b01), (0, 3, 0b00),
+                                   (1, 2, 0b11), (2, 2, 0b11)):
+            with self.subTest(door1=door1, door2=door2):
+                self._doors(door1, door2)
+                self.assertEqual(self._call("LegendaryBossDoors")["E"], want)
+        self.harness.write8("wGymChoice", 0)  # nothing latched: a route visit
+        self.assertEqual(self._call("LegendaryBossDoors")["E"], 0)
+
+    def test_offer_needs_four_badges_a_door_and_a_masterball_mon(self):
+        h = self.harness
+        mewtwo, pidgey = self.species["MEWTWO"], self.species["PIDGEY"]
+
+        def offerable(badges, door1, door2, party):
+            h.write8("wObtainedBadges", badges)
+            self._doors(door1, door2)
+            for i, sp in enumerate(party + [0xFF]):
+                h.write8("wPartySpecies", sp, offset=i)
+            return bool(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
+
+        # Badges are lineup slots; door slots must be unbeaten, so leave 0-2 clear.
+        self.assertTrue(offerable(0b11110000, 0, 1, [pidgey, mewtwo]))
+        self.assertFalse(offerable(0b01110000, 0, 1, [mewtwo]), "3 badges")
+        self.assertFalse(offerable(0b11110000, 0, 3, [mewtwo]), "no eligible door")
+        self.assertFalse(offerable(0b11110000, 0, 1, [pidgey]), "no masterball mon")
+        self.assertFalse(offerable(0xFF, 1, 1, [mewtwo]), "finale")
+
+    def test_wrong_door_breaks_the_bargain_and_right_door_keeps_it(self):
+        h = self.harness
+        maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
+        bit = 1 << self.ram["BIT_WITCH_ACCEPTED"]
+        for gym, slot, keeps in (("SAFFRON_GYM", 1, True), ("PEWTER_GYM", 0, False)):
+            with self.subTest(gym=gym):
+                self._doors(0, 1)
+                h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | bit)
+                h.write8("wWitchChallenge", self.ram["CHALLENGE_LEGENDARY_BOSS"])
+                h.write8("hCurMap", maps[gym])
+                self._call("RogueGymChoiceMapLoad")
+                self.assertEqual(h.read8("wRogueCurGymBadgeMask"), 1 << slot,
+                                 "the badge must still follow the door taken")
+                accepted = bool(h.read8("wRogueFlagsBitfield") & bit)
+                challenge = h.read8("wWitchChallenge")
+                if keeps:
+                    self.assertTrue(accepted)
+                    self.assertEqual(challenge, self.ram["CHALLENGE_LEGENDARY_BOSS"])
+                else:
+                    self.assertFalse(accepted, "wrong door must clear the bargain")
+                    self.assertEqual(challenge, 0)
+
+
+def learnable_moves(species):
+    """Level-1 moves (base stats) plus every level-up move: all WriteMonMoves
+    can give. Levels are ignored; this asks "learnset or not", not which four."""
+    base = (REPO_ROOT / "data/pokemon/base_stats/{}.asm".format(
+        species.lower().replace("_", ""))).read_text(encoding="utf-8")
+    first = re.search(r"db (\w+), (\w+), (\w+), (\w+) ; level 1 learnset", base)
+    evos = (REPO_ROOT / "data/pokemon/evos_moves.asm").read_text(encoding="utf-8")
+    label = "".join(p.capitalize() for p in species.split("_")) + "EvosMoves:"
+    body = evos[evos.index(label):]
+    body = body[body.index("; Learnset"):body.index("db 0", body.index("; Learnset"))]
+    return set(first.groups()) | set(re.findall(r"db \d+, (\w+)", body))
+
+
+class LegendaryBossVeryEasySmokeTest(HarnessTestCase):
+    """VERY EASY (user decision 2026-10-13): the boss keeps its level-up
+    learnset - not a curated set, and not the mix's random fallback, which
+    measured empty move slots on a VERY EASY Lugia before this rule."""
+
+    def test_very_easy_boss_uses_its_learnset(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        h.set_difficulty("VERY_EASY")
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
+        ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        h.write8("wRogueFlagsBitfield",
+                 h.read8("wRogueFlagsBitfield") | (1 << ram["BIT_WITCH_ACCEPTED"]))
+        h.write8("wWitchChallenge", ram["CHALLENGE_LEGENDARY_BOSS"])
+        stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
+        # One-species pools, so the ace is known: Giovanni MEWTWO, Morty HO_OH, Pryce CELEBI.
+        for leader, legend in (("GIOVANNI", "MEWTWO"), ("MORTY", "HO_OH"),
+                               ("PRYCE", "CELEBI")):
+            with self.subTest(leader=leader):
+                h.write8("wTrainerClass", classes[leader])
+                h.write8("wTrainerNo", TRAINER_NO)
+                h.call_routine("ReadTrainer", limit=4000)
+                count = h.read8("wEnemyPartyCount")
+                self.assertEqual(h.read_bytes("wEnemyPartySpecies", count)[-1],
+                                 species[legend])
+                got = [m for m in h.read_bytes("wEnemyMon1Moves", 4,
+                                               offset=(count - 1) * stride) if m]
+                legal = {moves[m] for m in learnable_moves(legend) if m in moves}
+                self.assertTrue(got, f"{legend} has no moves")
+                self.assertTrue(set(got) <= legal,
+                                f"{legend}'s moves {got} are not all from its learnset")

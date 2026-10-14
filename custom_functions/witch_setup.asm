@@ -102,6 +102,15 @@ PCWitchSetup::
     ld b, LOBBY_WITCH_CHANCE
     call RollLobbyNPCAppearance
     jp nz, .hideWitch         ; jp: .hideWitch is out of jr range, as above
+    ; Challenge 11 priority (user decision 2026-10-13): when it is offerable,
+    ; take it outright on LEGENDARY_BOSS_PRIORITY_CHANCE of visits, before the
+    ; uniform roll (which can still land on it). The masterball-class
+    ; requirement inside the gate is the intended limiter.
+    call IsLegendaryBossOfferable
+    jr nc, .rollChallenge
+    call Random
+    cp LEGENDARY_BOSS_PRIORITY_CHANCE
+    jr c, .setLegendaryBoss
     ; Debug 2 used to force CHALLENGE_LEGENDARY_BOSS here unconditionally,
     ; skipping the roll and the map/badge/masterball gates below. Removed
     ; 2026-09-02 at user request: the witch now rolls normally in every build,
@@ -127,41 +136,14 @@ PCWitchSetup::
     jr z, .rollChallenge
     ld a, b                   ; restore the rolled challenge id
 .notEarlyGamblerGate
-    ; Gate Challenge 11 (Legendary Boss): only offer if next gym is eligible,
-    ; badges >= 4, and party has masterball mon. Then set fixed reward.
+    ; Gate Challenge 11 (Legendary Boss): IsLegendaryBossOfferable (badges
+    ; >= 4, a door whose leader has a legendary, a masterball-class mon).
+    ; Then set the fixed reward.
     cp CHALLENGE_LEGENDARY_BOSS
     jr nz, .notLegendaryGate
-    ; Check 1: wRogueMap ∈ {CELADON_GYM, SAFFRON_GYM, CINNABAR_GYM, VIRIDIAN_GYM}
-    ld a, [wRogueMap]
-    cp CELADON_GYM
-    jr z, .legendaryMapOk
-    cp SAFFRON_GYM
-    jr z, .legendaryMapOk
-    cp CINNABAR_GYM
-    jr z, .legendaryMapOk
-    cp VIRIDIAN_GYM
-    jr z, .legendaryMapOk
-    jp .rollChallenge      ; Map not eligible - reroll
-.legendaryMapOk
-    ; Check 2: badge count >= 4 using popcount
-    ld a, [wObtainedBadges]
-    ld b, 0             ; b = badge count
-    ld d, a             ; d = badges copy for popcount
-    ld e, 8             ; e = loop counter (8 badges)
-.legendaryBadgeCnt
-    bit 0, d
-    jr z, .legendaryBadgeCntSkip
-    inc b
-.legendaryBadgeCntSkip
-    srl d
-    dec e
-    jr nz, .legendaryBadgeCnt
-    ld a, b
-    cp 4
-    jp c, .rollChallenge  ; < 4 badges - reroll
-    ; Check 3: party has masterball mon
-    call HasMasterballClassMon    ; same bank ($2F) now that this routine moved here
-    jp nc, .rollChallenge  ; no masterball mon - reroll
+    call IsLegendaryBossOfferable ; same bank
+    jp nc, .rollChallenge
+.setLegendaryBoss
     ; All checks passed! Set fixed reward marker (0 = no random roll).
     ld a, CHALLENGE_LEGENDARY_BOSS
     ld [wWitchChallenge], a

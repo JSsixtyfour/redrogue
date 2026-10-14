@@ -830,6 +830,10 @@ INCLUDE "custom_functions/witch_zone_effects.asm"
 ; layout.link (moved out of "rogue" 2026-10-13); farcall-only.
 INCLUDE "custom_functions/credit_award.asm"
 
+; Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M). Opens its own section, pinned
+; to $3A in layout.link; farcall-only.
+INCLUDE "custom_functions/money_match.asm"
+
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map
 ; banks are too tight to hold it. Pinned to $3C (8.6 KB free) so first-fit

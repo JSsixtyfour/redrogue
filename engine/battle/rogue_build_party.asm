@@ -606,8 +606,9 @@ PartyGenBuildSlot:
 ; trainer class in LegendaryBossTable) and writes the species itself, because
 ; only the flags survive the farcall back.
 ;
-; A swapped ace takes no form and its moveset source is forced to MSRC_SET,
-; the curated corpus, whatever the mix row assigned the slot. The swap runs
+; A swapped ace takes no form, and its slot source is overwritten with the
+; boss marker, whatever the mix row assigned: PartyGenApplyMoveset gives it a
+; TIER_LEGENDARY_BOSS set, else a corpus TIER_ELITE | TIER_HARD one. The swap runs
 ; after the pool draw, so the uber filter in PartyGenPoolCandidateOk never sees
 ; the legendary: it keeps every leader uber-free outside this challenge.
 ; ===========================================================================
@@ -627,7 +628,7 @@ PartyGenLegendaryBossAce:
 	ld b, 0
 	ld hl, wPartyGenSlotSource
 	add hl, bc
-	ld [hl], MSRC_SET
+	ld [hl], MSRC_SET | (1 << MSRC_LEGENDARY_BOSS_BIT)
 	ret
 
 ; ===========================================================================
@@ -1527,6 +1528,8 @@ PartyGenApplyMoveset:
 	ld hl, wPartyGenSlotSource
 	add hl, bc
 	ld a, [hl]
+	bit MSRC_LEGENDARY_BOSS_BIT, a
+	jr nz, .legendaryBoss
 	ld [wPartyGenSource], a
 
 	cp MSRC_LEARNSET
@@ -1549,6 +1552,28 @@ PartyGenApplyMoveset:
 	jr z, .setFallback
 	call PartyGenApplySetMoveset
 	ret c                          ; a matching curated set was found and written
+	jr .setFallback
+
+; Challenge 11's swapped ace (PartyGenLegendaryBossAce). Its own boss sets
+; first, then the shared corpus's strongest grades, then the mix's fallback
+; like any MSRC_SET slot. VERY EASY keeps the legendary's level-up learnset
+; (user decision 2026-10-13) rather than the mix's random fallback: AddPartyMon
+; already wrote those four moves, so there is nothing to do.
+.legendaryBoss
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp DIFFICULTY_VERY_EASY
+	ld a, MSRC_LEARNSET            ; (keeps the flags)
+	ld [wPartyGenSource], a
+	ret z
+	ld a, MSRC_SET
+	ld [wPartyGenSource], a
+	ld e, TIER_LEGENDARY_BOSS
+	call PartyGenApplySetMovesetMask
+	ret c
+	ld e, TIER_ELITE | TIER_HARD
+	call PartyGenApplySetMovesetMask
+	ret c
 .setFallback
 ; MSRC_SET falls back to the mix row's fallback source when this species has
 ; no curated set passing this mix's set_tier_mask near this mon's level, even
@@ -1710,12 +1735,23 @@ RentalApplyStadiumSetMoveset::
 	add hl, bc
 	ld a, [hl]
 	and FORM_MASK
-	jr z, PartyGenApplySetMoveset.begin
+	jr z, PartyGenApplySetMovesetMask.begin
 	xor a
 	ret
 
-; Ordinary entry always resets the scratch filter, including after a rental.
+; Ordinary entry: the mix row's set_tier_mask.
 PartyGenApplySetMoveset:
+	call PartyGenMixRow             ; hl -> this spec's mix row
+	ld bc, 6
+	add hl, bc
+	ld e, [hl]                      ; set_tier_mask
+	; fallthrough
+
+; Same, with the tier mask in e (the Challenge 11 boss slot). Both ordinary
+; entries reset the rental scratch filter, including after a rental.
+PartyGenApplySetMovesetMask:
+	ld a, e
+	ld [wPartyGenTMUsed], a
 	xor a
 	ld [wPartyGenCandidates + 15], a
 
@@ -1737,15 +1773,6 @@ PartyGenApplySetMoveset:
 	and a
 	jp z, .noMatch                  ; this species has no curated sets at all
 
-	ld a, [wPartyGenCandidates + 15]
-	and a
-	jr nz, .tierReady
-	call PartyGenMixRow             ; hl -> this spec's mix row
-	ld bc, 6
-	add hl, bc
-	ld a, [hl]                      ; set_tier_mask
-	ld [wPartyGenTMUsed], a
-.tierReady
 	xor a
 	ld [wPartyGenCandidates + 13], a ; exact window first: no slack
 	ld [wPartyGenCandidates + 14], a ; not widened yet
@@ -2690,10 +2717,21 @@ RogueBattleRound:
 	ld b, 0
 .roundLoop
 	cp ROUND_BATTLES
-	ret c
+	jr c, .gotStep
 	sub ROUND_BATTLES
 	inc b
 	jr .roundLoop
+.gotStep
+; A Money Match fights as route step MONEY_MATCH_STEP of this round (Phase M),
+; the same override GetRandRoster applies. Touches only a and Z: `bit` leaves
+; the carry from the `cp` above set, as callers always got it.
+	push hl
+	ld hl, wMoneyMatchState
+	bit BIT_MONEY_MATCH_ACTIVE, [hl]
+	pop hl
+	ret z
+	ld a, MONEY_MATCH_STEP
+	ret
 
 ; ===========================================================================
 ; RogueBandIndex
@@ -2741,8 +2779,12 @@ RogueRosterMixId::
 ; set (MIX_GAMBLER, party roster Phase 6). `ld` leaves the flags alone.
 	ld a, [wTrainerClass]
 	cp GAMBLER
+	jr nz, .notGambler
+	ld a, [wMoneyMatchState]       ; a Money Match Gambler takes the route
+	bit BIT_MONEY_MATCH_ACTIVE, a  ; grid row (Phase M)
 	ld a, MIX_GAMBLER
 	ret z
+.notGambler
 	call RogueBattleRound          ; b = round index, a = step
 	ld d, 0                        ; d = kind row 0: route trainers
 	cp FINAL_ROUTE_STEP

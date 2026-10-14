@@ -11,7 +11,7 @@
 ;   0 named a move absent from this tree (after PSYCHIC->PSYCHIC_M: [])
 ; Defaulted rather than dropped: 0 records had no tier rating (-> TIER_NORMAL),
 ;   0 had no level range (-> 1-100), 2 had an inverted range (swapped).
-; Plus 26 character sets (levels 1-100, tagged `; roster <Prefix>`)
+; Plus 29 character sets (levels 1-100, tagged `; roster <Prefix>`)
 ;   from the Sets tables in data/trainers/PARTY_ROSTER.md.
 
 SECTION "Movesets Index", ROMX, BANK[$3D]
@@ -2064,16 +2064,19 @@ Moveset_LUGIA::
 	db PSYCHIC_M, SURF, ICE_BEAM, RECOVER, TIER_ELITE, 2, 40, 100
 	db PSYCHIC_M, THUNDER_WAVE, RECOVER, FLY, TIER_HARD, 2, 35, 100
 	db PSYCHIC_M, RECOVER, SURF, REFLECT, TIER_ELITE, 2, 40, 45
+	db PSYCHIC_M, ICE_BEAM, RECOVER, AMNESIA, TIER_LEGENDARY_BOSS, 171, 1, 100 ; roster LegendaryBoss
 Moveset_HO_OH::
 	db FIRE_BLAST, TOXIC, RECOVER, FLY, TIER_ELITE, 169, 40, 100
 	db FIRE_BLAST, FLY, EARTHQUAKE, RECOVER, TIER_ELITE, 2, 40, 100
 	db FIRE_BLAST, BODY_SLAM, REFLECT, RECOVER, TIER_HARD, 2, 35, 100
 	db FIRE_BLAST, SOLARBEAM, FLY, RECOVER, TIER_NORMAL, 2, 25, 100
+	db FIRE_BLAST, SKY_ATTACK, RECOVER, EARTHQUAKE, TIER_LEGENDARY_BOSS, 171, 1, 100 ; roster LegendaryBoss
 Moveset_CELEBI::
 	db RECOVER, LEECH_SEED, PSYCHIC_M, REFLECT, TIER_ELITE, 169, 40, 100
 	db PSYCHIC_M, MEGA_DRAIN, RECOVER, THUNDER_WAVE, TIER_ELITE, 2, 40, 100
 	db PSYCHIC_M, MEGA_DRAIN, THUNDERBOLT, RECOVER, TIER_HARD, 2, 35, 100
 	db PSYCHIC_M, RECOVER, LEECH_SEED, THUNDER_WAVE, TIER_ELITE, 2, 40, 45
+	db PSYCHIC_M, MEGA_DRAIN, RECOVER, LEECH_SEED, TIER_LEGENDARY_BOSS, 171, 1, 100 ; roster LegendaryBoss
 Moveset_ANNIHILAPE::
 	db SUBMISSION, NIGHT_SHADE, BODY_SLAM, COUNTER, TIER_HARD, 2, 35, 100
 	db RAGE, SUBMISSION, BODY_SLAM, NIGHT_SHADE, TIER_NORMAL, 2, 25, 100
@@ -2605,11 +2608,11 @@ MovesetSpeciesIndex::
 	dw Moveset_TYRANITAR
 	db 5, BANK(Moveset_TYRANITAR)
 	dw Moveset_LUGIA
-	db 5, BANK(Moveset_LUGIA)
+	db 6, BANK(Moveset_LUGIA)
 	dw Moveset_HO_OH
-	db 4, BANK(Moveset_HO_OH)
+	db 5, BANK(Moveset_HO_OH)
 	dw Moveset_CELEBI
-	db 4, BANK(Moveset_CELEBI)
+	db 5, BANK(Moveset_CELEBI)
 	dw Moveset_ANNIHILAPE
 	db 3, BANK(Moveset_ANNIHILAPE)
 	dw Moveset_LICKILICKY
@@ -2643,7 +2646,7 @@ ASSERT LOSS_ORIGIN_LEARNSET == 0
 ASSERT LOSS_ORIGIN_GENERATED == 1
 ASSERT LOSS_ORIGIN_ORIGINAL == 2
 ASSERT LOSS_ORIGIN_CHAMPION == 3
-DEF NUM_LOSS_ORIGINS EQU 171
+DEF NUM_LOSS_ORIGINS EQU 172
 LossOriginLabels::
 	table_width 2, LossOriginLabels
 	dw .label0
@@ -2817,6 +2820,7 @@ LossOriginLabels::
 	dw .label168
 	dw .label169
 	dw .label170
+	dw .label171
 	assert_table_length NUM_LOSS_ORIGINS
 .label0: db "a Basic<CONT>Learnset.@"
 .label1: db "a Generated<CONT>set.@"
@@ -2989,4 +2993,5 @@ LossOriginLabels::
 .label168: db "Peasounay's 2025<CONT>OU Revamp Hyper<CONT>Beam set.@"
 .label169: db "a GSC-inspired<CONT>set.@"
 .label170: db "a Gambler's<CONT>Paradise set.@"
+.label171: db "a Challenge 11<CONT>ace set.@"
 

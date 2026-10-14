@@ -234,12 +234,18 @@ class DifficultyGridContractTest(unittest.TestCase):
         gym = image.offset("GymMixByBand")
         seen.update(image.rom[gym:gym + NUM_BANDS])
         # MIX_GAMBLER is an immediate in RogueRosterMixId (party roster Phase
-        # 6): ld a, [wTrainerClass] / cp GAMBLER / ld a, MIX_GAMBLER / ret z.
-        # Read out of the code itself, and the opcodes around it checked, so a
-        # reshuffled prologue fails here instead of reading a stray byte.
+        # 6): ld a, [wTrainerClass] / cp GAMBLER / ... / ld a, MIX_GAMBLER /
+        # ret z. Since the Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M) a
+        # `jr nz` + bit test sits between the cp and the ld, so the ld/ret pair
+        # is searched for in the next few bytes. Read out of the code itself,
+        # and the opcodes around it checked, so a reshuffled prologue fails
+        # here instead of reading a stray byte.
         code = image.offset("RogueRosterMixId")
-        if image.rom[code] == 0xFA and image.rom[code + 3] == 0xFE                 and image.rom[code + 5] == 0x3E and image.rom[code + 7] == 0xC8:
-            seen.add(image.rom[code + 6])
+        if image.rom[code] == 0xFA and image.rom[code + 3] == 0xFE:
+            for at in range(code + 5, code + 16):
+                if image.rom[at] == 0x3E and image.rom[at + 2] == 0xC8:
+                    seen.add(image.rom[at + 1])
+                    break
         return seen
 
     def test_every_mix_row_is_reachable(self):

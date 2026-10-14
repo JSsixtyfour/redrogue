@@ -44,6 +44,20 @@ DEF PF_RIVER_BODY EQU 45
 ; cave's dense floor-block scan.
 DEF PF_ITEM_MIN_DIST EQU 2   ; min Chebyshev distance (CELL units) between balls
 DEF PF_MAX_DEADENDS  EQU 32  ; candidate list cap — fits in sProcForestGenScratch
+; Phase F clearings: see PFPlaceClearing near the end of this file.
+DEF PF_CLEAR_STRIDE EQU 6
+DEF PF_CLEAR_CHANCE EQU 128          ; of 256: a forest gets a clearing
+DEF PF_CLEAR_TRIES  EQU 8            ; position rolls before giving up
+DEF PF_CLEAR_KEY    EQUS "sProcForestGenScratch + 72" ; piece index | $80, 0 = none
+DEF PF_CLEAR_X      EQUS "sProcForestGenScratch + 73" ; top-left block
+DEF PF_CLEAR_Y      EQUS "sProcForestGenScratch + 74"
+DEF PF_CLEAR_W      EQUS "sProcForestGenScratch + 75"
+DEF PF_CLEAR_H      EQUS "sProcForestGenScratch + 76"
+DEF PF_CLEAR_BALLX  EQUS "sProcForestGenScratch + 77" ; ball block, absolute
+DEF PF_CLEAR_BALLY  EQUS "sProcForestGenScratch + 78"
+DEF PF_CLEAR_LEFT   EQUS "sProcForestGenScratch + 79" ; position rolls left
+DEF PF_CLEAR_LIVE   EQU $80
+ASSERT PF_MAX_DEADENDS <= 72
 
 ; wBuffer scratch offsets (18 bytes; safe — forest never runs concurrently with
 ; cave/cemetery gen which also uses wBuffer)
@@ -1827,6 +1841,8 @@ PFScanForBall:
     ld a, [wBuffer + wPFPassCount]
     cp 1
     jr nz, .sfbCollectNext     ; not a dead end
+    call PFCellInClearing      ; Phase F: a clearing cell is not a dead end
+    jr c, .sfbCollectNext      ; (its walls are the piece's art, not the maze's)
 
     ; Dead end — store if the candidate list still has room
     ld a, [wBuffer + wPFCandCount]
@@ -1892,6 +1908,20 @@ PFScanForBall:
     ld [wBuffer + wPFBallIdx], a
 
 .sfbPickBall
+    ; Phase F: ball 0 is the clearing's, on its own block; balls 1-3 then keep
+    ; their PF_ITEM_MIN_DIST spacing from it through the usual check.
+    ld a, [wBuffer + wPFBallIdx]
+    and a
+    jr nz, .sfbNotClearingBall
+    ld a, [PF_CLEAR_KEY]
+    bit 7, a
+    jr z, .sfbNotClearingBall
+    ld a, [PF_CLEAR_BALLX]
+    ld [wBuffer + wPFCurX], a
+    ld a, [PF_CLEAR_BALLY]
+    ld [wBuffer + wPFCurY], a
+    jp .sfbAcceptPos
+.sfbNotClearingBall
     ld a, 20
     ld [wBuffer + wPFSpaceRetry], a
 
@@ -2504,6 +2534,11 @@ PFinalizeForest::
     ; PFRollExitIndex's header.
     call PFRollExitIndex
 
+    ; Phase F: maybe stamp a clearing over an aligned patch of the maze. After
+    ; the exit roll (it avoids the boss cell), before the ball scan (which
+    ; leaves clearing cells out and gives the clearing's ball slot 0).
+    call PFPlaceClearing
+
     ; Phase 4: scan for a dead-end cell to place the pokeball (BEFORE braid
     ; removes dead ends). Stores block coords in wBuffer+wPFBallX/Y,
     ; rolls item into wRogueItem.
@@ -2611,6 +2646,14 @@ PFinalizeForest::
     call PFWriteBlock
 .exitConnDone
 
+    ; Phase F: restamp the clearing so the passes since it was placed cannot
+    ; have changed its art (see PFStampClearing). B IS LIVE HERE: it carries
+    ; the exit index into the ld [sProcForestExitI] below. Without the push,
+    ; the stamp loop's counter landed there (measured: exit index 0, boss
+    ; inside a clearing at (1,1)).
+    push bc
+    call PFStampClearing
+    pop bc
     ; === Bake: copy wOverworldMap → sProcForestStagingBuffer, then mark baked ===
     ; SRAM is already open (kept open since the top of the first-visit path).
 
@@ -3215,3 +3258,255 @@ PFStageEventVanish::
     call z, PlayDefaultMusic
     call GBFadeInFromBlack
     ret
+
+; ============================================================
+; Clearings (PROCEDURAL_SUBROOMS_PLAN Phase F)
+; ============================================================
+; Hand-drawn pieces (data/maps/forest_clearings/*.clear, proven and generated
+; by tools/forest_clearings.py) stamped over an aligned patch of the maze. The
+; maze is a spanning tree and every piece's edge is proven internally connected
+; with an open outer side on every edge block, so any patch keeps every path
+; connected; the only cells to avoid are the entrance (and its sign) and the
+; boss. Runs after PFRollExitIndex (the boss cell is known) and before
+; PFScanForBall, which leaves clearing cells out of the dead-end list (so no
+; ball, and no stage-event hideout, lands in a pond or a tree) and gives the
+; clearing's ball the ball-0 slot.
+;
+; Generation-only state in sProcForestGenScratch bytes 72-79 (free once the
+; maze algorithm's stack is dead; later passes use bytes 0-31). No new SRAM.
+; (PF_CLEAR_* constants are defined at the top of this file: the ball scan
+; above uses them, and EQUS aliases must exist before first use.)
+
+INCLUDE "data/maps/forest_clearing_pieces.asm"
+
+; SRAM open on bank 0 (the first-visit generation window). Clobbers a/bc/de/hl.
+PFPlaceClearing:
+	xor a
+	ld [PF_CLEAR_KEY], a
+IF NUM_FOREST_CLEARINGS > 0
+	call Random
+	cp PF_CLEAR_CHANCE
+	ret nc
+	ld c, NUM_FOREST_CLEARINGS
+	call Rangerandom
+	ld [PF_CLEAR_KEY], a             ; piece index, not live yet
+	call PFClearingDescAddr
+	ld a, [hli]
+	ld [PF_CLEAR_W], a
+	ld a, [hl]
+	ld [PF_CLEAR_H], a
+	ld a, PF_CLEAR_TRIES
+	ld [PF_CLEAR_LEFT], a
+.roll
+	; Odd top-left so the piece starts on a cell; the far edge stays <= 17
+	; (the last cell row/column), so (19 - size) / 2 positions per axis.
+	ld a, [PF_CLEAR_W]
+	ld b, a
+	ld a, 19
+	sub b
+	srl a
+	ld c, a
+	call Rangerandom
+	add a, a
+	inc a
+	ld [PF_CLEAR_X], a
+	ld a, [PF_CLEAR_H]
+	ld b, a
+	ld a, 19
+	sub b
+	srl a
+	ld c, a
+	call Rangerandom
+	add a, a
+	inc a
+	ld [PF_CLEAR_Y], a
+	; Keep the entrance block, the sign in front of it and the boss clear.
+	lb de, 9, 17
+	call .covers
+	jr c, .retry
+	lb de, 9, 16
+	call .covers
+	jr c, .retry
+	call .bossBlock                  ; d/e = boss block, or carry clear if none in range
+	jr nc, .place
+	call .covers
+	jr nc, .place
+.retry
+	ld hl, PF_CLEAR_LEFT
+	dec [hl]
+	jr nz, .roll
+	xor a
+	ld [PF_CLEAR_KEY], a             ; no legal spot: no clearing this forest
+	ret
+
+.place
+	ld a, [PF_CLEAR_KEY]
+	call PFClearingDescAddr
+	inc hl
+	inc hl
+	ld a, [PF_CLEAR_X]
+	add [hl]
+	ld [PF_CLEAR_BALLX], a
+	inc hl
+	ld a, [PF_CLEAR_Y]
+	add [hl]
+	ld [PF_CLEAR_BALLY], a
+	ld a, [PF_CLEAR_KEY]
+	or PF_CLEAR_LIVE
+	ld [PF_CLEAR_KEY], a
+	jp PFStampClearing
+
+; In: d/e = a block. Out: carry set when the piece's rect covers it.
+.covers
+	ld a, [PF_CLEAR_X]
+	ld b, a
+	ld a, d
+	sub b
+	jr c, .no                        ; left of the piece
+	ld b, a
+	ld a, [PF_CLEAR_W]
+	dec a
+	cp b                             ; carry when W - 1 < d - X: right of it
+	jr c, .no
+	ld a, [PF_CLEAR_Y]
+	ld b, a
+	ld a, e
+	sub b
+	jr c, .no
+	ld b, a
+	ld a, [PF_CLEAR_H]
+	dec a
+	cp b
+	jr c, .no
+	scf
+	ret
+.no
+	and a
+	ret
+
+; Out: carry set and d/e = the boss's block when it is a cell a piece could
+; cover (north: (2 * exitI + 1, 1); west: (1, 2 * exitJ + 1)); carry clear for
+; the east edge, where the boss stands on block 18, outside every piece.
+.bossBlock
+	ld a, [sProcForestExitI]
+	add a, a
+	inc a
+	ld b, a
+	ld a, [sProcForestExitEdge]
+	and a
+	jr z, .bossNorth
+	dec a
+	jr nz, .no
+	lb de, 1, 0
+	ld e, b
+	scf
+	ret
+.bossNorth
+	ld d, b
+	ld e, 1
+	scf
+	ret
+ENDC
+	ret
+
+; Writes the live clearing's piece over its rect (PF_CLEAR_*). Called twice:
+; when the clearing is placed, and again right before the bake, because the
+; passes in between (braid carving, floor and stump decor) write into maze
+; cells, and the piece's cells are cells too. Measured before the second
+; stamp: 11 of 69 clearings had a block changed (floor variants, a carved
+; trunk, a $1B stump). Restamping ships exactly the art the tool proved.
+; SRAM open on bank 0. Clobbers a/bc/de/hl.
+PFStampClearing:
+	ld a, [PF_CLEAR_KEY]
+	bit 7, a
+	ret z
+	call PFClearingDescAddr
+	inc hl
+	inc hl
+	inc hl
+	inc hl
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a                          ; payload, row-major
+	ld a, [PF_CLEAR_Y]
+	ld [wBuffer + wPFCurY], a
+	ld a, [PF_CLEAR_H]
+	ld c, a
+.row
+	ld a, [PF_CLEAR_X]
+	ld [wBuffer + wPFCurX], a
+	ld a, [PF_CLEAR_W]
+	ld b, a
+.col
+	ld a, [hli]
+	push hl
+	call PFWriteBlock                ; keeps a/bc, clobbers de/hl
+	pop hl
+	ld a, [wBuffer + wPFCurX]
+	inc a
+	ld [wBuffer + wPFCurX], a
+	dec b
+	jr nz, .col
+	ld a, [wBuffer + wPFCurY]
+	inc a
+	ld [wBuffer + wPFCurY], a
+	dec c
+	jr nz, .row
+	ret
+
+; In: a = piece index (bit 7 ignored). Out: hl -> its descriptor. Keeps bc/de.
+PFClearingDescAddr:
+	push de
+	and ~PF_CLEAR_LIVE & $FF
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, de                       ; * 6
+	ASSERT PF_CLEAR_STRIDE == 6
+	ld de, PFClearingPieces
+	add hl, de
+	pop de
+	ret
+
+; From PFScanForBall's dead-end collection. In: wPFCellCol/Row = the cell.
+; Out: carry set when that cell's block lies in the clearing. Clobbers a/b/de.
+PFCellInClearing:
+	ld a, [PF_CLEAR_KEY]
+	bit 7, a
+	jr z, .no
+	ld a, [wBuffer + wPFCellCol]
+	add a, a
+	inc a
+	ld d, a
+	ld a, [PF_CLEAR_X]
+	ld b, a
+	ld a, d
+	sub b
+	jr c, .no
+	ld b, a
+	ld a, [PF_CLEAR_W]
+	dec a
+	cp b
+	jr c, .no
+	ld a, [wBuffer + wPFCellRow]
+	add a, a
+	inc a
+	ld d, a
+	ld a, [PF_CLEAR_Y]
+	ld b, a
+	ld a, d
+	sub b
+	jr c, .no
+	ld b, a
+	ld a, [PF_CLEAR_H]
+	dec a
+	cp b
+	jr c, .no
+	scf
+	ret
+.no
+	and a
+	ret

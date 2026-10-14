@@ -615,8 +615,9 @@ def scrape_refs(names):
         parts = dirpath.replace("\\", "/").split("/")
         # .claude holds agent worktrees: full checkouts whose EVENT_ refs
         # (possibly from another branch) must not count as references here.
+        # builds/ (gitignored) holds whole-tree snapshots with the same refs.
         if ("tmp" in parts or ".git" in parts or "pyboy_smoke" in parts
-                or ".claude" in parts):
+                or ".claude" in parts or "builds" in parts):
             continue
         for fn in files:
             if not fn.endswith(".asm") or fn.startswith("delete"):

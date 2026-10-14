@@ -283,7 +283,7 @@ class AfterBattleTextContractTest(unittest.TestCase):
                           end="StageEventAfterJessieJames:")
         self.assertEqual(after.count("\tdw "), const("NUM_STAGE_EVENT_TYPES"))
         self.assertEqual(recover.count("\tdw "), const("NUM_STAGE_GIVEBACK_RESULTS"))
-        self.assertIn("ASSERT NUM_STAGE_EVENT_TYPES == 5", after)
+        self.assertIn(f"ASSERT NUM_STAGE_EVENT_TYPES == {const('NUM_STAGE_EVENT_TYPES')}", after)
         self.assertIn("ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5", recover)
 
     def test_map_recover_handlers_are_thin_stubs(self) -> None:

@@ -448,6 +448,10 @@ ROMX $3A
 	; out of "rogue" ($38) to make room for masterball-tier stage rewards.
 	; farcall-only, pinned for the same first-fit reason. 2026-10-13.
 	"Credit Award"
+	; Money Match offer, payout and hide-on-win (custom_functions/money_match.asm,
+	; PROCEDURAL_SUBROOMS_PLAN Phase M). farcall-only; its text is read in-bank.
+	; Pinned for the same first-fit reason. 2026-10-13.
+	"Money Match"
 ROMX $3C
 	; Moved from $2C 2026-10-06 to make room there (see the $2C note). Reached
 	; only by farcall/rfarcall/farjp; its only plain calls are its own two

@@ -146,6 +146,14 @@ GetRandRoster:
     jr .getRoundIndex
 .gotRoundIndex
     ; a = step within the round (constants/round_constants.asm).
+    ; A Money Match fights as route step MONEY_MATCH_STEP of this round,
+    ; whatever the count's own step is. RogueBattleRound applies the same
+    ; override for the moveset row, so the two always agree.
+    ld hl, wMoneyMatchState
+    bit BIT_MONEY_MATCH_ACTIVE, [hl]
+    jr z, .stepReady
+    ld a, MONEY_MATCH_STEP
+.stepReady
     ; route steps, then gym steps -> pick the matching table.
     ld hl, trainer_difficulty_settings
     cp FIRST_GYM_STEP
@@ -247,14 +255,14 @@ GetRandRosterLoop:
 	.overloop
     ld  a, [hl] ; load number of pokemon/loops
     cp  a, 0
-    jr  z, .miniloop    ; overarching class loop
+    jp  z, .miniloop    ; overarching class loop
     ld  d, a
     
     .loop
     bit 7, c
     jr z, .keepMon
     res 7, c    ; varied party size: skip this one mon (see .maybeShrink)
-    jr .nextMon
+    jp .nextMon
 .keepMon
     ; No-duplicates retry budget, kept on the stack because every register in
     ; this loop is live. Popped after AddPartyMon below.
@@ -267,6 +275,9 @@ GetRandRosterLoop:
     ; come later, from MIX_GAMBLER, keyed on the species actually fielded.
     ld a, [wTrainerClass]
     cp GAMBLER
+    jr nz, .useRandMon
+    ld a, [wMoneyMatchState]        ; a Money Match Gambler rolls like a
+    bit BIT_MONEY_MATCH_ACTIVE, a   ; route trainer (Phase M)
     jr nz, .useRandMon
     push hl
     push bc
@@ -308,7 +319,11 @@ GetRandRosterLoop:
 ; hang. Gamblers keep their themed pool as drawn.
 	ld a, [wTrainerClass]
 	cp GAMBLER
+	jr nz, .checkUnique
+	ld a, [wMoneyMatchState]        ; a Money Match Gambler is a route
+	bit BIT_MONEY_MATCH_ACTIVE, a   ; trainer: no duplicates either
 	jr z, .rosterUnique
+.checkUnique
 	call RosterSpeciesAlreadyUsed
 	jr nc, .rosterUnique
 	pop af                  ; retry budget
@@ -361,7 +376,7 @@ ENDC
 	pop af                  ; retry budget
 .nextMon
 	dec d           ; decrease loop/run through pokemon
-    jr nz, .loop    ; pokeball class loop
+    jp nz, .loop    ; pokeball class loop (jp: the Money Match checks pushed it out of jr range)
 
 .miniloop
     inc hl          ; next class

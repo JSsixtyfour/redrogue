@@ -352,7 +352,7 @@ MainInBattleLoop:
 	pop af
 	jr nz, MainInBattleLoop ; if the player didn't select a move, jump
 .selectEnemyMove
-	farcall BridgeBeginRepeatAction
+	farcall BattleTurnCommitted ; Money Match turn count, then BridgeBeginRepeatAction
 ; TURN REWIND: snapshot at move-commit time, before this turn's outcome is
 ; resolved. Every path reaching this label (freely chosen, or forced by
 ; sleep/freeze/trapping/recharge) means "the player's action for this turn is

@@ -762,6 +762,8 @@ YesNoScript:
 PCWitchText:
 	text_asm
 	call SaveScreenTilesToBuffer2
+	farcall WitchLegendaryOfferCheck ; door dice may have moved Challenge 11's door
+	jp nc, TextScriptEnd
 	ld hl, .WitchIntroText
 	call YesNoScript
 	jr nz, .refuse
@@ -803,6 +805,7 @@ PCWitchText:
 	ld l, a
 	jr .prizeAsk
 .legendaryPrize
+	farcall WitchLegendaryDoorLine ; which door leads to the legendary
 	ld hl, .PrizeLegendary
 .prizeAsk
 	call YesNoScript           ; prize teaser + "Do we have a bargain?"

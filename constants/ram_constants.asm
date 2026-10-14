@@ -399,31 +399,51 @@ DEF STAGE_EVENT_PSYCHIC      EQU 2  ; villain, steals a party mon (rebuilt into 
 DEF STAGE_EVENT_BURGLAR      EQU 3  ; villain, steals a bag item
 DEF STAGE_EVENT_JOY          EQU 4  ; good NPC (7f)
 DEF STAGE_EVENT_JENNY        EQU 5  ; good NPC (7f)
-;DEF STAGE_EVENT_BOTH_GOOD    EQU 6  ; Joy + Jenny together, both NPC slots (7f)
-DEF NUM_STAGE_EVENT_TYPES    EQU 5
+; Money Match Gambler (PROCEDURAL_SUBROOMS_PLAN Phase M, 2026-10-13). Found at
+; the hideout like Joy/Jenny (every placement test is `cp STAGE_EVENT_JOY /
+; jr nc`), never engages on sight, and only battles after the player accepts
+; his offer (MoneyMatchTalkGate). Took the number of the retired
+; STAGE_EVENT_BOTH_GOOD (Joy + Jenny together), whose rows had already left
+; the tables.
+DEF STAGE_EVENT_MONEY_MATCH  EQU 6
+DEF NUM_STAGE_EVENT_TYPES    EQU 6
 
 ; Only types 1..STAGE_EVENT_MAX_ROLLABLE are rolled, the same escape hatch
 ; MINIBOSS_MAX_ROLLABLE_TYPE gives the mini-boss registry: a type can sit in
-; every table without being reachable.
-;
-; FIVE, not six, since 2026-09-17. STAGE_EVENT_BOTH_GOOD put Joy and Jenny on
-; the map together, but they are two SEPARATE encounters and only one should
-; appear per wild area. Its row is deliberately left in all seven parallel
-; tables rather than deleted - index 6 simply becomes unreachable, and
-; churning seven 6-row tables to save nothing is how a table drifts out of
-; step with its siblings. Joy and Jenny go from 1-in-6 each to 1-in-5 each.
-DEF STAGE_EVENT_MAX_ROLLABLE EQU 5
+; every table without being reachable. All six are rolled, uniformly, so each
+; type is one wild area in six (STAGE_EVENT_CHANCE is 256).
+DEF STAGE_EVENT_MAX_ROLLABLE EQU 6
+
+; wMoneyMatchState (ram/wram.asm): bit 7 = this battle is a Money Match, bits
+; 0-6 = player actions taken so far, saturating. Set by MoneyMatchTalkGate on
+; YES, counted by BattleTurnCommitted, paid by MoneyMatchApplyPayout, zeroed by
+; EndOfBattle so it can never reach the next battle.
+DEF BIT_MONEY_MATCH_ACTIVE    EQU 7
+DEF MONEY_MATCH_TURNS_MASK    EQU %01111111
+; He fights as this route step of the current round (a typical route trainer:
+; the user's "3rd trainer of the route"), whatever wBattleCount's own step is.
+DEF MONEY_MATCH_STEP          EQU 3
+	ASSERT MONEY_MATCH_STEP >= 1 && MONEY_MATCH_STEP < FINAL_ROUTE_STEP, \
+		"Money Match must be an ordinary route step (no final-trainer bonus)"
+; Payout = 2 x prize x k/16, k = 16 minus each turn past the free ones (enemy
+; party size + MONEY_MATCH_FREE_TURN_BUFFER), never below 1.
+DEF MONEY_MATCH_FREE_TURN_BUFFER EQU 1
+DEF MONEY_MATCH_DECAY_STEPS   EQU 16
 
 ; wStageEvent bit layout (ram/wram.asm). One byte holds the whole lifecycle.
 ;   bits 0-2 = type (STAGE_EVENT_*)
 ;   bits 3-4 = phase (STAGE_EVENT_PHASE_*)
 ;   bit 5    = the theft took an ITEM, not a mon (set by the party-size and
 ;              fusion-ineligibility fallbacks, so recovery knows what to give back)
-;   bits 6-7 = free
+;   bit 6    = the Money Match Gambler was beaten (MoneyMatchApplyPayout). His
+;              talk gate then offers nothing and sets no state, and the
+;              cemetery's per-floor re-show leaves him hidden.
+;   bit 7    = free
 DEF STAGE_EVENT_TYPE_MASK      EQU %00000111
 DEF STAGE_EVENT_PHASE_MASK     EQU %00011000
 DEF STAGE_EVENT_PHASE_SHIFT    EQU 3
 DEF BIT_STAGE_EVENT_STOLE_ITEM EQU 5
+DEF BIT_STAGE_EVENT_MONEY_MATCH_WON EQU 6
 
 DEF STAGE_EVENT_PHASE_WAITING EQU 0 ; standing in front of the player, not yet spoken to
 DEF STAGE_EVENT_PHASE_HIDING  EQU 1 ; spoke, robbed the player, vanished to the hideout

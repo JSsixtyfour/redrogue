@@ -426,6 +426,11 @@ PCStageEventAfterText::
 ; must be able to beat each independently.
 PCStageEventNpc1Text:
 	text_asm
+	; Money Match (Phase M): the Gambler offers his bet first and battles only
+	; on YES. Carry = declined, his text already shown. Every other event type
+	; passes straight through. Slot 1 of the pair only: he has no partner.
+	farcall MoneyMatchTalkGate
+	jp c, TextScriptEnd
 	ld hl, PCStageNpc1Header
 	jp ProceduralCaveInitBattleScript
 
@@ -462,7 +467,8 @@ PCStageEventArrivalTexts:
 	dw PCStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PCStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PCStageArrivalJenny        ; STAGE_EVENT_JENNY
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventArrivalTexts needs a row per stage-event type"
+	dw PCStageArrivalJoy   ; STAGE_EVENT_MONEY_MATCH: never shown, good NPCs skip the arrival
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PCStageEventArrivalTexts needs a row per stage-event type"
 
 PCStageEventHideoutTexts:
 	dw PCStageHideoutJessieJames
@@ -470,7 +476,8 @@ PCStageEventHideoutTexts:
 	dw PCStageHideoutBurglar
 	dw PCStageHideoutJoy
 	dw PCStageHideoutJenny
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventHideoutTexts needs a row per stage-event type"
+	dw PCStageHideoutMoneyMatch
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PCStageEventHideoutTexts needs a row per stage-event type"
 
 PCStageEventDefeatTexts:
 	dw PCStageDefeatJessieJames
@@ -478,7 +485,8 @@ PCStageEventDefeatTexts:
 	dw PCStageDefeatBurglar
 	dw PCStageDefeatJoy
 	dw PCStageDefeatJenny
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PCStageEventDefeatTexts needs a row per stage-event type"
+	dw PCStageDefeatMoneyMatch
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PCStageEventDefeatTexts needs a row per stage-event type"
 
 PCStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -511,6 +519,9 @@ PCStageHideoutJoy:
 PCStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
+PCStageHideoutMoneyMatch:
+	text_far _StageEventHideoutMoneyMatchText
+	text_end
 
 PCStageDefeatJessieJames:
 	text_far _StageEventDefeatJessieJamesText
@@ -526,6 +537,9 @@ PCStageDefeatJoy:
 	text_end
 PCStageDefeatJenny:
 	text_far _StageEventDefeatJennyText
+	text_end
+PCStageDefeatMoneyMatch:
+	text_far _StageEventDefeatMoneyMatchText
 	text_end
 
 ; TalkToTrainer's before-battle text for both NPC slots (7e). Still one shared

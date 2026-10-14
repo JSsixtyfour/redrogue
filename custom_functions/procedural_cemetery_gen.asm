@@ -2003,6 +2003,10 @@ PCemApplyStageEventTrainers:
 PCemShowStageEventNpcs::
 	call PCemStageEventNpcsHere
 	ret nz
+	; A beaten Money Match Gambler has left; every other event NPC stays.
+	ld a, [wStageEvent]
+	bit BIT_STAGE_EVENT_MONEY_MATCH_WON, a
+	ret nz
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED

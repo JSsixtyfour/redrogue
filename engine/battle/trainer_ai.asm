@@ -189,7 +189,11 @@ AIScoringPointers:
 AIRunPersonality:
 	ld a, [wTrainerClass]
 	cp GAMBLER
+	jr nz, .softPersonality
+	ld a, [wMoneyMatchState]        ; a Money Match Gambler plays as an
+	bit BIT_MONEY_MATCH_ACTIVE, a   ; ordinary route trainer (Phase M)
 	jp z, AIMoveChoiceModification5 ; Gambler's Paradise themed AI
+.softPersonality
 	call AIGetSoftPersonality
 	and a
 	ret z

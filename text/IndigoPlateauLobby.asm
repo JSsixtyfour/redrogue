@@ -263,6 +263,45 @@ _WitchPrize10Text::
 	line "bargain?"
 	done
 
+; Challenge 11's door line (WitchLegendaryDoorLine) and her withdrawal when the
+; door dice moved every eligible gym away (WitchLegendaryOfferCheck).
+_WitchLegendaryDoor1Text::
+	text "Its master waits"
+	line "behind DOOR 1."
+	para "Take DOOR 2 and"
+	line "the bargain"
+	cont "breaks!"
+	prompt
+
+_WitchLegendaryDoor2Text::
+	text "Its master waits"
+	line "behind DOOR 2."
+	para "Take DOOR 1 and"
+	line "the bargain"
+	cont "breaks!"
+	prompt
+
+_WitchLegendaryEitherDoorText::
+	text "Either door leads"
+	line "to its master."
+	prompt
+
+_WitchLegendaryWithdrawText::
+	text "Hm… the fates"
+	line "have shifted."
+	para "I have no"
+	line "bargain for you"
+	cont "now."
+	done
+
+; DoorDiceLegendaryWarning: rolling after striking Challenge 11's bargain.
+_DoorDiceLegendaryWarnText::
+	text "Rolling will"
+	line "break the witch's"
+	cont "bargain!"
+	para "Roll anyway?"
+	done
+
 ; Fixed teaser for CHALLENGE_LEGENDARY_BOSS (wWitchPrize = 0 sentinel).
 ; Shown instead of a random prize; the boss trades a LEGENDARY for one
 ; of your masterball-class #MON.

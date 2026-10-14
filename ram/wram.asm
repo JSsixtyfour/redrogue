@@ -1833,12 +1833,12 @@ wSpriteInputCurByte:: db
 ; bit offset of last read input bit
 wSpriteInputBitCounter:: db
 
-; determines where in the output byte the two bits are placed. Each byte contains four columns (2bpp data)
-; 3 -> XX000000   1st column
-; 2 -> 00XX0000   2nd column
-; 1 -> 0000XX00   3rd column
-; 0 -> 000000XX   4th column
-wSpriteOutputBitOffset:: db
+; Was wSpriteOutputBitOffset, dead since the LZ pic switch (2026-10-07); reused
+; in place so no address moves. Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M):
+; bit 7 = this battle is a Money Match, bits 0-6 = player actions so far
+; (BIT_MONEY_MATCH_ACTIVE / MONEY_MATCH_TURNS_MASK). Set on YES by
+; MoneyMatchTalkGate, zeroed by EndOfBattle. Unsaved (below wMainDataStart).
+wMoneyMatchState:: db
 
 ; Was wSpriteLoadFlags, dead since the LZ pic switch (2026-10-07); reused in
 ; place so no address moves. Challenge 11: the legendary the gym leader's ace

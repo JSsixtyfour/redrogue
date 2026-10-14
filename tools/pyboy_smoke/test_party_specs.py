@@ -540,7 +540,7 @@ class SetMovesetSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         verdict = []
-        h.register_hook("PartyGenApplySetMoveset.noMatch", lambda ctx: verdict.append(False))
+        h.register_hook("PartyGenApplySetMovesetMask.noMatch", lambda ctx: verdict.append(False))
         h.call_routine("PartyGenApplySetMoveset", limit=4000)
         # PartyGenApplySetMoveset's success path has no single labelled exit
         # (it returns straight from the fourth PartyGenWriteMove call), so the

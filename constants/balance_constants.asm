@@ -348,6 +348,10 @@ DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
 ; Rolled in custom_functions/witch_setup.asm (Witch) and
 ; engine/events/lobby_psychic.asm (the other four).
 DEF LOBBY_WITCH_CHANCE EQU 85     ; ~1/3
+; Out of 256: once the witch appears and Challenge 11 is offerable, she picks it
+; outright this often (75%, user decision 2026-10-13). Simulated: ~55% of runs
+; with a masterball-class mon get at least one offer (was ~4%).
+DEF LEGENDARY_BOSS_PRIORITY_CHANCE EQU 192
 DEF LOBBY_PSYCHIC_CHANCE EQU 154  ; RETIRED 2026-10-09: the Psychic is always present on gym-next visits (gym choice)
 DEF LOBBY_SALESMAN_CHANCE EQU 85  ; ~1/3
 DEF LOBBY_TRADER_CHANCE EQU 85    ; ~1/3

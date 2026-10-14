@@ -78,6 +78,17 @@ MahoganyGymScriptReceiveTM:
 	ldh [hTextID], a
 	call DisplayTextID
 	SetEvent EVENT_GOT_TM_MAHOGANY
+	; Offer the legendary trade as an immediate post-battle consequence.
+	; Dispatched through DisplayTextID so the text display is open; pre-gated
+	; so it only fires when a trade will really happen. See
+	; legendary_boss_helpers.asm.
+	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_PRYCE
+	jr nz, .gymVictory
+	farcall IsLegendaryTradeReady
+	jr nc, .gymVictory
+	ld a, TEXT_MAHOGANYGYM_PRYCE_TRADE
+	ldh [hTextID], a
+	call DisplayTextID
 	jr .gymVictory
 .BagFull
 	ld a, TEXT_MAHOGANYGYM_TM_NO_ROOM
@@ -108,6 +119,15 @@ MahoganyGym_TextPointers:
 	dw_const MahoganyGymPryceWaitTakeThisText, TEXT_MAHOGANYGYM_PRYCE_WAIT_TAKE_THIS
 	dw_const MahoganyGymReceivedTMText,         TEXT_MAHOGANYGYM_RECEIVED_TM
 	dw_const MahoganyGymTMNoRoomText,           TEXT_MAHOGANYGYM_TM_NO_ROOM
+	dw_const MahoganyGymPryceTradeText,  TEXT_MAHOGANYGYM_PRYCE_TRADE
+
+; Legendary trade offer (Challenge 11), run as a text_asm so DisplayTextID sets
+; up the open text display the trade UI needs.
+MahoganyGymPryceTradeText:
+	text_asm
+	farcall OfferLegendaryTradePryce
+	call DisableWaitingAfterTextDisplay
+	jp TextScriptEnd
 
 MahoganyGymTrainerHeaders:
 ; def_trainers MUST be present and MUST come before the first `trainer`. Without
@@ -139,6 +159,10 @@ MahoganyGymPryceText:
 	call DisableWaitingAfterTextDisplay
 	jr .done
 .afterBeat
+	; Re-offer the legendary trade if it wasn't completed yet. Runs inside the
+	; open text_asm display, so no DisplayTextID dispatch. No-ops once done
+	; or if Challenge 11 isn't active.
+	farcall OfferLegendaryTradePryce
 	ld hl, .PostBattleAdviceText
 	call PrintText
 	jr .done

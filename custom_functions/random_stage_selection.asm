@@ -491,7 +491,8 @@ RogueGymChoiceMapLoad::
 	ret nz
 	call RogueBadgeMaskForSlot
 	ld [wRogueCurGymBadgeMask], a
-	ret
+	ld a, e
+	jp LegendaryBossEnteredSlot ; Challenge 11: wrong door breaks it; preserves c
 
 ; ============================================================
 ; GymMapForLeader  (private)

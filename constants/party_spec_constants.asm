@@ -50,6 +50,11 @@
 	; deliberately; behaves as MSRC_LEARNSET until given its own table.
 	const MSRC_TUTOR           ; 7
 DEF NUM_MSRC EQU const_value
+; Set on a wPartyGenSlotSource entry (over MSRC_SET) by PartyGenLegendaryBossAce
+; to mark Challenge 11's swapped ace. Only PartyGenApplyMoveset reads it; source
+; assignment is finished before any slot is built.
+DEF MSRC_LEGENDARY_BOSS_BIT EQU 7
+ASSERT NUM_MSRC <= 1 << MSRC_LEGENDARY_BOSS_BIT
 
 ; --- Move ranks ------------------------------------------------------------
 ; Rank codes as they appear in the generated MoveRankByID table (one byte per
@@ -121,13 +126,17 @@ DEF TIER_ELITE  EQU 1 << 4
 ; "## Gamblers", copied into movesets.asm by tools/gen_movesets.py). Only
 ; MIX_GAMBLER asks for it (party roster Phase 6, 2026-10-07).
 DEF TIER_GAMBLER EQU 1 << 5
-; The last two bits, reserved for character-signature sets (party roster
-; Phase 7c, 2026-10-07). Wired but unused: no Sets table in PARTY_ROSTER.md
-; names them and no mix row asks for them, so they change nothing yet. To give
-; a character its own sets: put a `#### Sets: TIER_SIGNATURE_6` table in its
-; block (rename the constant to the character if you like), add a mix row whose
-; set_tier_mask is that bit, and pass that mix to the character's spec macro.
-DEF TIER_SIGNATURE_6 EQU 1 << 6
+; Challenge 11's legendary boss sets (PARTY_ROSTER.md "## Legendary bosses").
+; Was the reserved TIER_SIGNATURE_6. No mix row asks for it: the boss slot
+; (PartyGenApplyMoveset .legendaryBoss) passes it directly, then falls back to
+; the corpus's TIER_ELITE | TIER_HARD rows.
+DEF TIER_LEGENDARY_BOSS EQU 1 << 6
+; The last bit, reserved for character-signature sets (party roster Phase 7c,
+; 2026-10-07). Wired but unused: no Sets table in PARTY_ROSTER.md names it and
+; no mix row asks for it. To give a character its own sets: put a
+; `#### Sets: TIER_SIGNATURE_7` table in its block (rename the constant to the
+; character if you like), add a mix row whose set_tier_mask is that bit, and
+; pass that mix to the character's spec macro.
 DEF TIER_SIGNATURE_7 EQU 1 << 7
 
 ; --- Species pools ---------------------------------------------------------
@@ -275,7 +284,7 @@ DEF NUM_MSRC_QUOTAS EQU MSRC_SET + 1
 ; a curated record's origin_id byte is its label index directly.
 DEF LOSS_ORIGIN_LEARNSET  EQU 0 ; vanilla WriteMonMoves (also every wild mon)
 DEF LOSS_ORIGIN_GENERATED EQU 1 ; MSRC_RANDOM / _TM / _TM_ONLY / LEARNSET_FULL
-DEF LOSS_ORIGIN_ORIGINAL  EQU 2 ; hand-authored: MSRC_EXPLICIT, legendary, SpecialTrainerMoves
+DEF LOSS_ORIGIN_ORIGINAL  EQU 2 ; hand-authored: MSRC_EXPLICIT, SpecialTrainerMoves
 DEF LOSS_ORIGIN_CHAMPION  EQU 3 ; FINAL_AI: the player's own archived Champion team
 
 ; Champion Lance's wTrainerNo (party roster Phase 5, 2026-10-07). LanceSpecs is

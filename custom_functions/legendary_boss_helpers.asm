@@ -209,128 +209,6 @@ LegendaryLeaderTradeSetup::
 	ret
 
 ; ============================================================
-; BuildLegendaryMoveset / BuildMewMoveset / BuildMewtwoMoveset
-; Builds the themed 4-move set for the gym leader's battle-team legendary
-; (Step 4 consumes this; the traded copy is intentionally left with whatever
-; the normal engine path gives it - see plan doc).
-; Input: b = species (MEW or MEWTWO)
-; Output: wBuffer+6..9 = 4 move IDs
-; Clobbers: a, b, c, d, hl
-;
-; Mew:    Swords Dance, Earthquake, {Body Slam | Hyper Beam}, Softboiled
-; Mewtwo: Amnesia, {Psychic | Thunderbolt | Submission}, {Thunderbolt | Ice Beam}, Recover
-;         (de-dup: slot 3 never rolls Thunderbolt if slot 2 already did)
-; ============================================================
-BuildLegendaryMoveset::
-	ld a, b
-	cp MEWTWO
-	jr z, BuildMewtwoMoveset
-	; fall through to BuildMewMoveset (default/fallback = Mew)
-
-BuildMewMoveset:
-	ld a, SWORDS_DANCE
-	ld [wBuffer + 6], a
-	ld a, EARTHQUAKE
-	ld [wBuffer + 7], a
-
-	ld c, 2
-	call Rangerandom             ; a = 0/1
-	and a
-	jr nz, .slot3HyperBeam
-	ld a, BODY_SLAM
-	jr .gotSlot3
-.slot3HyperBeam
-	ld a, HYPER_BEAM
-.gotSlot3
-	ld [wBuffer + 8], a
-
-	ld a, SOFTBOILED
-	ld [wBuffer + 9], a
-	ret
-
-BuildMewtwoMoveset:
-	ld a, AMNESIA
-	ld [wBuffer + 6], a
-
-	ld c, 3
-	call Rangerandom             ; a = 0(Psychic)/1(Thunderbolt)/2(Submission)
-	ld d, a                      ; stash roll - survives Rangerandom (only touches af/bc)
-	cp 1
-	jr z, .slot2Thunderbolt
-	cp 2
-	jr z, .slot2Submission
-	ld a, PSYCHIC_M
-	jr .gotSlot2
-.slot2Thunderbolt
-	ld a, THUNDERBOLT
-	jr .gotSlot2
-.slot2Submission
-	ld a, SUBMISSION
-.gotSlot2
-	ld [wBuffer + 7], a
-
-	ld a, d
-	cp 1                          ; was slot 2 Thunderbolt?
-	jr z, .slot3ForceIceBeam
-	ld c, 2
-	call Rangerandom              ; a = 0(Thunderbolt)/1(Ice Beam)
-	and a
-	jr z, .slot3Thunderbolt
-	ld a, ICE_BEAM
-	jr .gotSlot3
-.slot3Thunderbolt
-	ld a, THUNDERBOLT
-	jr .gotSlot3
-.slot3ForceIceBeam
-	ld a, ICE_BEAM
-.gotSlot3
-	ld [wBuffer + 8], a
-
-	ld a, RECOVER
-	ld [wBuffer + 9], a
-	ret
-
-; ============================================================
-; ApplyLegendaryMoveset
-; Writes the 4 moves built by BuildLegendaryMoveset (wBuffer+6..9) into a
-; target mon's MON_MOVES field, and rewrites MON_PP from each move's base PP
-; (Moves struct byte 5) - the pattern the old OverrideGamblerMoves used. Works for any
-; MON_MOVES pointer (enemy or player array); caller computes the base.
-; Input: hl = pointer to target mon's MON_MOVES field (4 bytes)
-; Clobbers: a, b, c, d, e, hl
-; ============================================================
-ApplyLegendaryMoveset::
-	ld de, wBuffer + 6           ; source: 4 built move IDs
-	ld b, NUM_MOVES
-.copyLoop
-	ld a, [de]
-	ld [hl], a                    ; MON_MOVES[slot] = move id
-	push bc
-	push de
-	push hl
-	dec a
-	ld hl, Moves
-	ld bc, MOVE_LENGTH
-	call AddNTimes                ; hl -> move struct (Moves bank)
-	ld de, wBuffer
-	ld a, BANK(Moves)
-	call FarCopyData               ; wBuffer+0..5 = move struct
-	pop hl                         ; hl = MON_MOVES[slot]
-	push hl
-	ld bc, MON_PP - MON_MOVES
-	add hl, bc                     ; hl -> MON_PP[slot]
-	ld a, [wBuffer + 5]            ; base PP
-	ld [hl], a
-	pop hl                         ; hl = MON_MOVES[slot]
-	pop de                         ; source ptr
-	pop bc                         ; move counter
-	inc hl                         ; next MON_MOVES slot
-	inc de                         ; next source move
-	dec b
-	jr nz, .copyLoop
-	ret
-
-; ============================================================
 ; Gym-specific legendary trade offer helpers (Step 5)
 ;
 ; IMPORTANT: these are NOT called raw from the gym map script. They are
@@ -351,6 +229,206 @@ ApplyLegendaryMoveset::
 ;
 ; Callers in different banks (gym scripts) MUST use farcall.
 ; ============================================================
+
+; ============================================================
+; Challenge 11's witch gate, door line, gym-entry enforcement and dice warning.
+;
+; GYM LEADERS HAVE NO ORDER: the lobby's two doors lead to two random unbeaten
+; badge slots (wGymChoice), and wRunGymLineup holds each slot's leader as a
+; TRAINER CLASS. So "does this door lead to a legendary" is the same class
+; lookup the swap uses, LegendaryBossTable, and the two can never drift apart.
+; ============================================================
+
+; LegendaryBossDoors
+; Output: e bit 0 = door 1's gym has a legendary, bit 1 = door 2's. 0 when no
+;         pair is latched. With one gym left both doors share a slot, so both
+;         bits agree.
+; Clobbers: a, b, c, d, hl
+LegendaryBossDoors::
+	ld e, 0
+	ld a, [wGymChoice]
+	bit BIT_GYM_CHOICE_LATCHED, a
+	ret z
+	ld d, a
+	and GYM_CHOICE_DOOR1_MASK
+	call SlotIsLegendaryBoss
+	jr nc, .door2
+	set 0, e
+.door2
+	ld a, d
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	ASSERT GYM_CHOICE_DOOR2_SHIFT == 3
+	call SlotIsLegendaryBoss
+	ret nc
+	set 1, e
+	ret
+
+; SlotIsLegendaryBoss
+; Input:  a = badge slot (0-7)
+; Output: carry SET if that slot's lineup leader has a LegendaryBossTable row.
+;         An unrolled lineup (old saves, never at 4+ badges) counts as no.
+; Clobbers: a, b, c, hl. Preserves de.
+SlotIsLegendaryBoss::
+	ld c, a
+	ld b, 0
+	ld hl, wRunGymLineup
+	add hl, bc
+	ld a, [hl]
+	and a
+	ret z                        ; `and a` cleared carry
+	push de
+	call GetLegendaryPoolForClass
+	pop de
+	ret
+
+; IsLegendaryBossOfferable: the witch's gate for Challenge 11.
+; Carry SET when: not the finale, at least 4 badges (so the next gym is gym 5-8,
+; whatever leaders those are), at least one door leads to a leader with a
+; legendary, and the party holds a masterball-class mon to trade.
+; Clobbers: a, b, c, d, e, hl
+IsLegendaryBossOfferable::
+	ld a, [wObtainedBadges]
+	cp $FF
+	jr z, .no                    ; finale: no gym is next
+	ld b, 0
+	ld c, NUM_BADGES
+.count
+	add a
+	jr nc, .notSet
+	inc b
+.notSet
+	dec c
+	jr nz, .count
+	ld a, b
+	cp 4
+	jr c, .no
+	call LegendaryBossDoors
+	ld a, e
+	and a
+	ret z                        ; no eligible door; `and a` cleared carry
+	jp HasMasterballClassMon     ; carry = has one
+.no
+	and a
+	ret
+
+; WitchLegendaryOfferCheck  (farcall, from PCWitchText's text_asm)
+; Re-checks the doors LIVE when the player talks to her: the door dice can
+; reroll the pair after PCWitchSetup rolled the offer. If Challenge 11 is on
+; offer and neither door qualifies any more, she withdraws: wWitchChallenge = 0
+; so nothing downstream sees an offer, and every later talk this visit lands
+; on the same withdrawal (a visible witch with challenge 0 only happens here).
+; Output: carry SET = carry on with the offer; CLEAR = she withdrew, end text.
+WitchLegendaryOfferCheck::
+	ld a, [wWitchChallenge]
+	and a
+	jr z, .withdrawn
+	cp CHALLENGE_LEGENDARY_BOSS
+	jr nz, .go
+	call LegendaryBossDoors
+	ld a, e
+	and a
+	jr nz, .go
+	ld [wWitchChallenge], a      ; a = 0
+.withdrawn
+	ld hl, WitchLegendaryWithdrawText
+	call PrintText
+	and a
+	ret
+.go
+	scf
+	ret
+
+; WitchLegendaryDoorLine  (farcall, from PCWitchText after the challenge text)
+; Names the door whose leader holds the legendary: taking the other one breaks
+; the bargain (LegendaryBossEnteredSlot). WitchLegendaryOfferCheck already
+; proved at least one door qualifies.
+WitchLegendaryDoorLine::
+	call LegendaryBossDoors
+	ld hl, WitchLegendaryEitherDoorText
+	ld a, e
+	cp %11
+	jr z, .print
+	ld hl, WitchLegendaryDoor1Text
+	dec a
+	jr z, .print
+	ld hl, WitchLegendaryDoor2Text
+.print
+	jp PrintText
+
+; LegendaryBossEnteredSlot  (from RogueGymChoiceMapLoad, same bank)
+; Called when the map just loaded is the gym of latched slot a. If Challenge 11
+; is active and that gym's leader has no legendary, the player took the wrong
+; door: the bargain breaks. Silent here (a map load is no text context); the
+; witch named the door when the bargain was struck.
+; Input: a = badge slot entered. Preserves c (the caller's wGymChoice copy).
+LegendaryBossEnteredSlot::
+	ld b, a
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	ret nz
+	push bc
+	ld a, b
+	call SlotIsLegendaryBoss
+	pop bc
+	ret c
+	; fallthrough
+; Ends the bargain with nothing granted: Challenge 11's prize id is the 0
+; sentinel, and with the accepted bit clear the next lobby grants nothing.
+BreakLegendaryBargain:
+	xor a
+	ld [wWitchChallenge], a
+	ld hl, wRogueFlagsBitfield
+	res BIT_WITCH_ACCEPTED, [hl]
+	ret
+
+; DoorDiceLegendaryWarning  (from RogueItemUseDoorDice, same bank, before a
+; charge is spent). Rerolling the doors after striking Challenge 11's bargain
+; would move the legendary's door, so the player is warned first.
+; Output: carry SET = roll (YES, or no bargain at stake; on YES the bargain is
+;         broken); carry CLEAR = NO, cancel without spending a charge.
+DoorDiceLegendaryWarning::
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .roll
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	jr nz, .roll
+	ld hl, DoorDiceLegendaryWarnText
+	call PrintText
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	and a
+	ret nz                       ; NO; `and a` cleared carry
+	call BreakLegendaryBargain
+.roll
+	scf
+	ret
+
+WitchLegendaryWithdrawText:
+	text_far _WitchLegendaryWithdrawText
+	text_end
+
+WitchLegendaryDoor1Text:
+	text_far _WitchLegendaryDoor1Text
+	text_end
+
+WitchLegendaryDoor2Text:
+	text_far _WitchLegendaryDoor2Text
+	text_end
+
+WitchLegendaryEitherDoorText:
+	text_far _WitchLegendaryEitherDoorText
+	text_end
+
+DoorDiceLegendaryWarnText:
+	text_far _DoorDiceLegendaryWarnText
+	text_end
 
 ; IsLegendaryTradeReady: shared pre-dispatch gate. Carry set if Challenge 11 is
 ; accepted, a legendary was fielded (wLegendaryBossSpecies nonzero) AND the
@@ -374,23 +452,45 @@ IsLegendaryTradeReady::
 	and a                        ; clear carry = not ready
 	ret
 
-; Erika (Gym 5, EVENT_OFFERED_LEGENDARY_TRADE_GYM5)
+; Per-leader entry points. Each names its own "already offered" event, the
+; one thing that differs between leaders; the species is whatever the battle
+; actually fielded (wLegendaryBossSpecies). Gym scripts farcall these.
+MACRO legendary_trade_entry
+	ld hl, wEventFlags + (\1) / 8
+	ld e, 1 << ((\1) % 8)
+	jr OfferLegendaryTradeCommon
+ENDM
+
 OfferLegendaryTradeErika::
-	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM5
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM5
+OfferLegendaryTradeSabrina::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM6
+OfferLegendaryTradeBlaine::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM7
+OfferLegendaryTradeGiovanni::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM8
+OfferLegendaryTradeFalkner::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_FALKNER
+OfferLegendaryTradeMorty::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_MORTY
+OfferLegendaryTradePryce::
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_PRYCE
+
+; OfferLegendaryTradeCommon
+; Input: hl = the leader's EVENT_OFFERED_LEGENDARY_TRADE_* byte in wEventFlags,
+;        e = that event's bit mask (a runtime CheckEvent/SetEvent, since the
+;        macros only take a constant)
+OfferLegendaryTradeCommon:
+	ld a, [hl]
+	and e
 	ret nz                       ; already offered, no-op
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z                        ; challenge not accepted
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	ret nz                       ; wrong challenge
-	call HasMasterballClassMon   ; same bank, plain call
-	ret nc                       ; no masterball mon in party
-	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
-	and a
-	ret z                        ; no swap happened (e.g. a reload cleared it)
+	push hl
+	push de
+	call IsLegendaryTradeReady   ; accepted, Challenge 11, a fielded legendary, a masterball mon
+	jr nc, .popRet
+	ld a, [wLegendaryBossSpecies]
 	ld b, a
-	call LegendaryLeaderTradeSetup   ; same bank, plain call
+	call LegendaryLeaderTradeSetup
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a          ; InGameTrade_DoTrade indexes wCompletedInGameTradeFlags by
 	                             ; wWhichTrade; TRADE_FOR_RANDOM is FLAG_RESET every lobby entry
@@ -416,129 +516,16 @@ OfferLegendaryTradeErika::
 	ld c, a
 	ld b, FLAG_TEST
 	predef FlagActionPredef
+	pop de
+	pop hl
 	ld a, c
 	and a
 	ret z                        ; not traded - leave the offer available
-	SetEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM5
+	ld a, [hl]
+	or e
+	ld [hl], a                   ; SetEvent
 	ret
-
-; Sabrina (Gym 6, EVENT_OFFERED_LEGENDARY_TRADE_GYM6)
-OfferLegendaryTradeSabrina::
-	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM6
-	ret nz
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	ret nz
-	call HasMasterballClassMon
-	ret nc
-	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
-	and a
-	ret z                        ; no swap happened (e.g. a reload cleared it)
-	ld b, a
-	call LegendaryLeaderTradeSetup
-	ld a, TRADE_FOR_RANDOM
-	ld [wWhichTrade], a
-	xor a
-	ldh [hJoyIgnore], a          ; clear the gym's PAD_CTRL_PAD d-pad mask so the
-	                             ; party-menu cursor can move (see OfferLegendaryTradeErika)
-	ldh a, [hTileAnimations]
-	push af
-	xor a
-	ldh [hTileAnimations], a
-	predef RogueDoInGameTradeDialogue
-	pop af
-	ldh [hTileAnimations], a
-	ld hl, wCompletedInGameTradeFlags   ; only mark done on a completed trade
-	ld a, TRADE_FOR_RANDOM
-	ld c, a
-	ld b, FLAG_TEST
-	predef FlagActionPredef
-	ld a, c
-	and a
-	ret z                        ; declined/wrong mon - leave the offer available
-	SetEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM6
+.popRet
+	pop de
+	pop hl
 	ret
-
-; Blaine (Gym 7, EVENT_OFFERED_LEGENDARY_TRADE_GYM7)
-OfferLegendaryTradeBlaine::
-	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM7
-	ret nz
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	ret nz
-	call HasMasterballClassMon
-	ret nc
-	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
-	and a
-	ret z                        ; no swap happened (e.g. a reload cleared it)
-	ld b, a
-	call LegendaryLeaderTradeSetup
-	ld a, TRADE_FOR_RANDOM
-	ld [wWhichTrade], a
-	xor a
-	ldh [hJoyIgnore], a          ; clear the gym's PAD_CTRL_PAD d-pad mask so the
-	                             ; party-menu cursor can move (see OfferLegendaryTradeErika)
-	ldh a, [hTileAnimations]
-	push af
-	xor a
-	ldh [hTileAnimations], a
-	predef RogueDoInGameTradeDialogue
-	pop af
-	ldh [hTileAnimations], a
-	ld hl, wCompletedInGameTradeFlags   ; only mark done on a completed trade
-	ld a, TRADE_FOR_RANDOM
-	ld c, a
-	ld b, FLAG_TEST
-	predef FlagActionPredef
-	ld a, c
-	and a
-	ret z                        ; declined/wrong mon - leave the offer available
-	SetEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM7
-	ret
-
-; Giovanni (Gym 8, EVENT_OFFERED_LEGENDARY_TRADE_GYM8)
-OfferLegendaryTradeGiovanni::
-	CheckEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM8
-	ret nz
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	ret z
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	ret nz
-	call HasMasterballClassMon
-	ret nc
-	ld a, [wLegendaryBossSpecies] ; the species this battle actually fielded
-	and a
-	ret z                        ; no swap happened (e.g. a reload cleared it)
-	ld b, a
-	call LegendaryLeaderTradeSetup
-	ld a, TRADE_FOR_RANDOM
-	ld [wWhichTrade], a
-	xor a
-	ldh [hJoyIgnore], a          ; clear the gym's PAD_CTRL_PAD d-pad mask so the
-	                             ; party-menu cursor can move (see OfferLegendaryTradeErika)
-	ldh a, [hTileAnimations]
-	push af
-	xor a
-	ldh [hTileAnimations], a
-	predef RogueDoInGameTradeDialogue
-	pop af
-	ldh [hTileAnimations], a
-	ld hl, wCompletedInGameTradeFlags   ; only mark done on a completed trade
-	ld a, TRADE_FOR_RANDOM
-	ld c, a
-	ld b, FLAG_TEST
-	predef FlagActionPredef
-	ld a, c
-	and a
-	ret z                        ; declined/wrong mon - leave the offer available
-	SetEvent EVENT_OFFERED_LEGENDARY_TRADE_GYM8
-	ret
-

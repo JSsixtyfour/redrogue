@@ -198,6 +198,24 @@ BridgeApplySuperEffectiveDamageBoost::
 	ret nc
 	jp BridgeScaleDamage120
 
+; MainInBattleLoop's .selectEnemyMove seam: the player's action for this turn is
+; locked in (a chosen move, an item, a switch, a failed run, or a forced
+; recharge/sleep/trap turn), and it is reached exactly once per turn. A Money
+; Match counts its turns here (PROCEDURAL_SUBROOMS_PLAN Phase M). KO turns
+; count too, which is what "enemy party size + 1 free turns" assumes; the witch
+; turn limit's count skips them, so it could not be reused. Folded into this
+; existing farcall so Battle Core ($0F) pays nothing. Falls through.
+BattleTurnCommitted::
+	ld hl, wMoneyMatchState
+	bit BIT_MONEY_MATCH_ACTIVE, [hl]
+	jr z, BridgeBeginRepeatAction
+	ld a, [hl]
+	and MONEY_MATCH_TURNS_MASK
+	cp MONEY_MATCH_TURNS_MASK
+	jr z, BridgeBeginRepeatAction   ; saturated: the payout floor is long reached
+	inc [hl]
+	; fallthrough
+
 ; Reset the current-action Repeat result. The previous successful move remains
 ; live until execution either publishes the actual move or the post-move hook
 ; confirms that no move occurred.

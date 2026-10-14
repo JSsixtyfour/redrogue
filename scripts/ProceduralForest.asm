@@ -615,6 +615,11 @@ PFStageEventRecoverText:
 
 PFStageEventNpc1Text:
 	text_asm
+	; Money Match (Phase M): the Gambler offers his bet first and battles only
+	; on YES. Carry = declined, his text already shown. Every other event type
+	; passes straight through. Slot 1 of the pair only: he has no partner.
+	farcall MoneyMatchTalkGate
+	jp c, TextScriptEnd
 	ld hl, PFStageNpc1Header
 	jp ProceduralForestInitBattleScript
 
@@ -647,7 +652,8 @@ PFStageEventArrivalTexts:
 	dw PFStageArrivalBurglar      ; STAGE_EVENT_BURGLAR
 	dw PFStageArrivalJoy          ; STAGE_EVENT_JOY
 	dw PFStageArrivalJenny        ; STAGE_EVENT_JENNY
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventArrivalTexts needs a row per stage-event type"
+	dw PFStageArrivalJoy   ; STAGE_EVENT_MONEY_MATCH: never shown, good NPCs skip the arrival
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFStageEventArrivalTexts needs a row per stage-event type"
 
 PFStageEventHideoutTexts:
 	dw PFStageHideoutJessieJames
@@ -655,7 +661,8 @@ PFStageEventHideoutTexts:
 	dw PFStageHideoutBurglar
 	dw PFStageHideoutJoy
 	dw PFStageHideoutJenny
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventHideoutTexts needs a row per stage-event type"
+	dw PFStageHideoutMoneyMatch
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFStageEventHideoutTexts needs a row per stage-event type"
 
 PFStageEventDefeatTexts:
 	dw PFStageDefeatJessieJames
@@ -663,7 +670,8 @@ PFStageEventDefeatTexts:
 	dw PFStageDefeatBurglar
 	dw PFStageDefeatJoy
 	dw PFStageDefeatJenny
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "PFStageEventDefeatTexts needs a row per stage-event type"
+	dw PFStageDefeatMoneyMatch
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "PFStageEventDefeatTexts needs a row per stage-event type"
 
 PFStageArrivalJessieJames:
 	text_far _StageEventArrivalJessieJamesText
@@ -696,6 +704,9 @@ PFStageHideoutJoy:
 PFStageHideoutJenny:
 	text_far _StageEventHideoutJennyText
 	text_end
+PFStageHideoutMoneyMatch:
+	text_far _StageEventHideoutMoneyMatchText
+	text_end
 
 PFStageDefeatJessieJames:
 	text_far _StageEventDefeatJessieJamesText
@@ -711,6 +722,9 @@ PFStageDefeatJoy:
 	text_end
 PFStageDefeatJenny:
 	text_far _StageEventDefeatJennyText
+	text_end
+PFStageDefeatMoneyMatch:
+	text_far _StageEventDefeatMoneyMatchText
 	text_end
 
 ProceduralForest_TextPointers:

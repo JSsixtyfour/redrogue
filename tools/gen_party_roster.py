@@ -562,7 +562,7 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
 # (gen_movesets itself needs the K: corpus and is not part of the audit).
 #
 # A set reaches a battle only through a mix row whose set_tier_mask shares a bit with
-# its tiers. A character's OWN bit (TIER_GAMBLER, or a free TIER_SIGNATURE_6/7) is
+# its tiers. A character's OWN bit (TIER_GAMBLER, or a free TIER_SIGNATURE_7) is
 # asked for only by that character's mix; a corpus grade (TIER_HARD...) also puts the
 # set in the shared pool every row with that grade draws from.
 
@@ -573,6 +573,11 @@ MOVE_DISPLAY = {"PSYCHIC_M": "Psychic"}
 # Characters whose species come from the ROSTER path (GetRandRosterLoop), which
 # rolls its own forms after the draw, so a pinned form in their pool is lost.
 ROSTER_DRAWN = {"Gambler"}
+# Sections whose characters carry ONLY a Sets table: no pools, so parse_doc skips
+# them and the coverage lint has nothing to check against. "Legendary bosses" is
+# Challenge 11's swapped ace (custom_functions/legendary_boss_helpers.asm
+# LegendaryBossTable), which takes TIER_LEGENDARY_BOSS sets directly.
+SETS_ONLY_SECTIONS = ("Legendary bosses",)
 
 
 def load_moves():
@@ -599,6 +604,7 @@ def parse_signature_sets(text, names, moves=None, tier_names=None):
     moves = load_moves() if moves is None else moves
     tier_names = load_tier_names() if tier_names is None else tier_names
     out, section, char, table = [], None, None, None
+    sets_only = set()
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
 
@@ -611,7 +617,9 @@ def parse_signature_sets(text, names, moves=None, tier_names=None):
             table = None
             m = re.match(r"###\s+([A-Za-z][A-Za-z0-9]*)\b\s*(?:\(([^)]*)\))?", line)
             char = (m.group(1), m.group(2) or m.group(1)) if (
-                m and section in GENERATED_SECTIONS) else None
+                m and section in GENERATED_SECTIONS + SETS_ONLY_SECTIONS) else None
+            if char is not None and section in SETS_ONLY_SECTIONS:
+                sets_only.add(char[0])
         elif line.startswith("#### "):
             table = None
             m = re.match(r"####\s+Sets\b\s*:?\s*(.*)$", line, re.I)
@@ -625,7 +633,8 @@ def parse_signature_sets(text, names, moves=None, tier_names=None):
                 for t in tiers:
                     if t not in tier_names:
                         fail("unknown tier {!r}".format(t))
-                table = {"prefix": char[0], "label": char[1], "tiers": tiers, "sets": []}
+                table = {"prefix": char[0], "label": char[1], "tiers": tiers, "sets": [],
+                         "sets_only": char[0] in sets_only}
                 out.append(table)
         elif table is not None and line.startswith("|"):
             cells = [c.strip() for c in line.strip("|").split("|")]
@@ -707,6 +716,8 @@ def lint_signature_sets(chars, tables, names, graph=None):
     for t in tables:
         who = t["prefix"]
         char = by_prefix.get(who)
+        if t.get("sets_only"):
+            continue  # no pools to cover: the species come from elsewhere
         if char is None:
             out.append(("error", "{}: a Sets table but no pools".format(who)))
             continue

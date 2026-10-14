@@ -113,8 +113,8 @@ StageEventSpriteTable:
 	db SPRITE_SUPER_NERD,    0                    ; STAGE_EVENT_BURGLAR
 	db SPRITE_NURSE,         0                    ; STAGE_EVENT_JOY
 	db SPRITE_OFFICER_JENNY, 0                    ; STAGE_EVENT_JENNY
-	;db SPRITE_NURSE,         SPRITE_OFFICER_JENNY ; STAGE_EVENT_BOTH_GOOD
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventSpriteTable needs a row per type"
+	db SPRITE_GAMBLER,       0                    ; STAGE_EVENT_MONEY_MATCH
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventSpriteTable needs a row per type"
 
 ; ============================================================
 ; StageEventShowCaveNpcs  (Phase 7b)
@@ -242,6 +242,12 @@ StageEventLimitTrainerSight::
 	ld l, a
 	ld h, HIGH(wSpriteStateData1)
 	ld a, [hl]                     ; current picture, not stale event state
+	; The Money Match Gambler never engages: he battles only after the
+	; player accepts his offer (MoneyMatchTalkGate). Sight 0 can never
+	; match, since the distance along the trainer's line is at least one
+	; 16-pixel tile.
+	cp SPRITE_GAMBLER
+	jr z, .never
 	cp SPRITE_NURSE
 	jr z, .adjacent
 	cp SPRITE_JESSIE
@@ -250,6 +256,10 @@ StageEventLimitTrainerSight::
 	ret nz
 .adjacent
 	ld a, 16
+	ld [wTrainerEngageDistance], a
+	ret
+.never
+	xor a
 	ld [wTrainerEngageDistance], a
 	ret
 
@@ -286,8 +296,10 @@ StageEventTrainerTable:
 	db OPP_BURGLAR,       0                  ; STAGE_EVENT_BURGLAR
 	db OPP_NURSE_JOY,     0                  ; STAGE_EVENT_JOY
 	db OPP_OFFICER_JENNY, 0                  ; STAGE_EVENT_JENNY
-	;db OPP_NURSE_JOY,     OPP_OFFICER_JENNY  ; STAGE_EVENT_BOTH_GOOD
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventTrainerTable needs a row per type"
+	; A roster class: his party is rolled as route step MONEY_MATCH_STEP while
+	; the Money Match bit is set (GetRandRoster), so the team number is unused.
+	db OPP_GAMBLER,       0                  ; STAGE_EVENT_MONEY_MATCH
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventTrainerTable needs a row per type"
 
 ; ============================================================
 ; StageEventSyncPairScreenPos  (2026-09-17)
@@ -1154,7 +1166,8 @@ StageEventAfterTexts:
 	dw StageEventAfterBurglar     ; STAGE_EVENT_BURGLAR
 	dw StageEventAfterJoy         ; STAGE_EVENT_JOY
 	dw StageEventAfterJenny       ; STAGE_EVENT_JENNY
-	ASSERT NUM_STAGE_EVENT_TYPES == 5, "StageEventAfterTexts needs a row per stage-event type"
+	dw StageEventAfterMoneyMatch  ; STAGE_EVENT_MONEY_MATCH
+	ASSERT NUM_STAGE_EVENT_TYPES == 6, "StageEventAfterTexts needs a row per stage-event type"
 
 ; The ONLY recover-line table now - all four stages print from it. The TO_BOX
 ; row is still listed so the table stays dense and indexable by the result,
@@ -1184,6 +1197,9 @@ StageEventAfterJoy:
 	text_end
 StageEventAfterJenny:
 	text_far _StageEventAfterJennyText
+	text_end
+StageEventAfterMoneyMatch:
+	text_far _StageEventAfterMoneyMatchText
 	text_end
 StageEventRecoverNothing:
 	text_far _StageEventRecoverNothingText

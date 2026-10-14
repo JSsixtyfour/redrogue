@@ -31,7 +31,11 @@ AILayerPlan:
 ; the layer IS that, expressed in six bytes instead of a plan-table entry.
 	ld a, [wTrainerClass]
 	cp GAMBLER
+	jr nz, .planned
+	ld a, [wMoneyMatchState]       ; a Money Match Gambler has no forced
+	bit BIT_MONEY_MATCH_ACTIVE, a  ; personality, so it plans (Phase M)
 	ret z
+.planned
 
 	call AIClassifyMoveset ; fills wBuffer + AI_BUF_PLANCLASS .. +7
 

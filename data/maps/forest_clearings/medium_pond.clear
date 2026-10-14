@@ -1,0 +1,5 @@
+# Procedural Forest clearing (PROCEDURAL_SUBROOMS_PLAN Phase F), drawn by the user.
+# Optional: ball <bx> <by> to choose the block whose top-left tile holds the ball.
+
+blk maps/ProceduralForestmediumponddrop.blk
+size 6 6

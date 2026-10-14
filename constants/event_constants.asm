@@ -608,20 +608,20 @@ DEF EVENT_MET_BILL_2                             EQU  271 ; byte 33 bit 7
 ; -- Route24  [def_trainers 2, 4 trainers]
 DEF EVENT_NUGGET_REWARD_AVAILABLE                EQU  272 ; byte 34 bit 0
 
+; -- VioletGym  [def_trainers 2, 3 trainers]
+DEF EVENT_OFFERED_LEGENDARY_TRADE_FALKNER        EQU  273 ; byte 34 bit 1
+
 ; -- CeladonGym  [def_trainers 2, 3 trainers]
-DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM5           EQU  273 ; byte 34 bit 1
+DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM5           EQU  274 ; byte 34 bit 2
 
 ; -- SaffronGym  [def_trainers 2, 3 trainers]
-DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM6           EQU  274 ; byte 34 bit 2
+DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM6           EQU  275 ; byte 34 bit 3
 
 ; -- CinnabarGym
-DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM7           EQU  275 ; byte 34 bit 3
+DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM7           EQU  276 ; byte 34 bit 4
 
 ; -- ViridianGym  [def_trainers 2, 3 trainers]
-DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM8           EQU  276 ; byte 34 bit 4
-
-; -- ProceduralCave1  [def_trainers 6, 2 trainers]
-DEF EVENT_PC_BOSS_OFFERED                        EQU  277 ; byte 34 bit 5
+DEF EVENT_OFFERED_LEGENDARY_TRADE_GYM8           EQU  277 ; byte 34 bit 5
 
 ; -- ProceduralFacility  [def_trainers 6, 4 trainers, def_trainers 10, 2 trainers]
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_1              EQU  278 ; byte 34 bit 6
@@ -629,47 +629,47 @@ DEF EVENT_BEAT_FACILITY_FAKE_BALL_2              EQU  279 ; byte 34 bit 7
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_3              EQU  280 ; byte 35 bit 0
 DEF EVENT_BEAT_FACILITY_FAKE_BALL_4              EQU  281 ; byte 35 bit 1
 
+; -- EcruteakGym  [def_trainers 2, 3 trainers]
+DEF EVENT_OFFERED_LEGENDARY_TRADE_MORTY          EQU  282 ; byte 35 bit 2
+
+; -- MahoganyGym  [def_trainers 2, 3 trainers]
+DEF EVENT_OFFERED_LEGENDARY_TRADE_PRYCE          EQU  283 ; byte 35 bit 3
+
 ; -- ProceduralCave1  [def_trainers 6, 2 trainers]
-DEF EVENT_PC_BUDGET_ENDED                        EQU  282 ; byte 35 bit 2
-DEF EVENT_PC_CALMED_SHOWN                        EQU  283 ; byte 35 bit 3
+DEF EVENT_PC_BOSS_OFFERED                        EQU  284 ; byte 35 bit 4
+DEF EVENT_PC_BUDGET_ENDED                        EQU  285 ; byte 35 bit 5
+DEF EVENT_PC_CALMED_SHOWN                        EQU  286 ; byte 35 bit 6
 
 ; -- (engine / cross-map)
-DEF EVENT_PC_CEM_BUDGET_ENDED                    EQU  284 ; byte 35 bit 4
-DEF EVENT_PC_CEM_CALMED_SHOWN                    EQU  285 ; byte 35 bit 5
-DEF EVENT_PF_ITEM_GOT                            EQU  286 ; byte 35 bit 6
-
-; -- PokemonFanClub
-DEF EVENT_PIKACHU_FAN_BOAST                      EQU  287 ; byte 35 bit 7
-
-; -- LavenderMart
-DEF EVENT_RESCUED_MR_FUJI                        EQU  288 ; byte 36 bit 0
+DEF EVENT_PC_CEM_BUDGET_ENDED                    EQU  287 ; byte 35 bit 7
+DEF EVENT_PC_CEM_CALMED_SHOWN                    EQU  288 ; byte 36 bit 0
 
 ; -- ProceduralForest  [def_trainers 1, 1 trainers, def_trainers 6, 2 trainers]
 DEF EVENT_BEAT_PC_BOSS                           EQU  289 ; byte 36 bit 1
 
-; -- PokemonTower7F  [def_trainers 2, 4 trainers]
-DEF EVENT_RESCUED_MR_FUJI_2                      EQU  290 ; byte 36 bit 2
-
-; -- DiglettsCave  [def_trainers 2, 4 trainers]
-DEF EVENT_ROGUE_POKEMON_OFFERED                  EQU  291 ; byte 36 bit 3
-
-; -- Route22
-DEF EVENT_ROUTE22_RIVAL_WANTS_BATTLE             EQU  292 ; byte 36 bit 4
-
-; -- SSAnneCaptainsRoom
-DEF EVENT_RUBBED_CAPTAINS_BACK                   EQU  293 ; byte 36 bit 5
-
-; -- SafariZoneGate
-DEF EVENT_SAFARI_GAME_OVER                       EQU  294 ; byte 36 bit 6
+; -- (engine / cross-map)
+DEF EVENT_PF_ITEM_GOT                            EQU  290 ; byte 36 bit 2
 
 ; -- PokemonFanClub
-DEF EVENT_SEEL_FAN_BOAST                         EQU  295 ; byte 36 bit 7
+DEF EVENT_PIKACHU_FAN_BOAST                      EQU  291 ; byte 36 bit 3
 
-; -- SSAnneB1F
-DEF EVENT_SSANNE_ALL_TRAINERS_DEFEATED           EQU  296 ; byte 37 bit 0
+; -- LavenderMart
+DEF EVENT_RESCUED_MR_FUJI                        EQU  292 ; byte 36 bit 4
 
-; -- RewardRoom
-DEF EVENT_STEP_FORWARD                           EQU  297 ; byte 37 bit 1
+; -- PokemonTower7F  [def_trainers 2, 4 trainers]
+DEF EVENT_RESCUED_MR_FUJI_2                      EQU  293 ; byte 36 bit 5
+
+; -- DiglettsCave  [def_trainers 2, 4 trainers]
+DEF EVENT_ROGUE_POKEMON_OFFERED                  EQU  294 ; byte 36 bit 6
+
+; -- Route22
+DEF EVENT_ROUTE22_RIVAL_WANTS_BATTLE             EQU  295 ; byte 36 bit 7
+
+; -- SSAnneCaptainsRoom
+DEF EVENT_RUBBED_CAPTAINS_BACK                   EQU  296 ; byte 37 bit 0
+
+; -- SafariZoneGate
+DEF EVENT_SAFARI_GAME_OVER                       EQU  297 ; byte 37 bit 1
 
 ; -- RockTunnel1F  [def_trainers 2, 4 trainers]
 DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0           EQU  298 ; byte 37 bit 2
@@ -677,15 +677,17 @@ DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_1           EQU  299 ; byte 37 bit 3
 DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_2           EQU  300 ; byte 37 bit 4
 DEF EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_3           EQU  301 ; byte 37 bit 5
 
+; -- PokemonFanClub
+DEF EVENT_SEEL_FAN_BOAST                         EQU  302 ; byte 37 bit 6
+
+; -- SSAnneB1F
+DEF EVENT_SSANNE_ALL_TRAINERS_DEFEATED           EQU  303 ; byte 37 bit 7
+
+; -- RewardRoom
+DEF EVENT_STEP_FORWARD                           EQU  304 ; byte 38 bit 0
+
 ; -- BillsHouse
-DEF EVENT_USED_CELL_SEPARATOR_ON_BILL            EQU  302 ; byte 37 bit 6
-
-; -- VictoryRoad2F  [def_trainers 1, 6 trainers]
-DEF EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH       EQU  303 ; byte 37 bit 7
-
-; -- Route23
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  304 ; byte 38 bit 0
-DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  305 ; byte 38 bit 1
+DEF EVENT_USED_CELL_SEPARATOR_ON_BILL            EQU  305 ; byte 38 bit 1
 
 ; -- RocketHideoutB1F  [def_trainers 2, 4 trainers]
 DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0        EQU  306 ; byte 38 bit 2
@@ -693,18 +695,25 @@ DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_1        EQU  307 ; byte 38 bit 3
 DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_2        EQU  308 ; byte 38 bit 4
 DEF EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3        EQU  309 ; byte 38 bit 5
 
-; -- Route23
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  310 ; byte 38 bit 6
-DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  311 ; byte 38 bit 7
+; -- VictoryRoad2F  [def_trainers 1, 6 trainers]
+DEF EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH       EQU  310 ; byte 38 bit 6
 
-; -- IndigoPlateauLobby
-DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  312 ; byte 39 bit 0
+; -- Route23
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH1      EQU  311 ; byte 38 bit 7
+DEF EVENT_VICTORY_ROAD_2_BOULDER_ON_SWITCH2      EQU  312 ; byte 39 bit 0
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH1      EQU  313 ; byte 39 bit 1
 
 ; -- Route1  [def_trainers 2, 4 trainers]
 DEF EVENT_BEAT_ROUTE_1_TRAINER_0                 EQU  314 ; byte 39 bit 2
 DEF EVENT_BEAT_ROUTE_1_TRAINER_1                 EQU  315 ; byte 39 bit 3
 DEF EVENT_BEAT_ROUTE_1_TRAINER_2                 EQU  316 ; byte 39 bit 4
 DEF EVENT_BEAT_ROUTE_1_TRAINER_3                 EQU  317 ; byte 39 bit 5
+
+; -- Route23
+DEF EVENT_VICTORY_ROAD_3_BOULDER_ON_SWITCH2      EQU  318 ; byte 39 bit 6
+
+; -- IndigoPlateauLobby
+DEF EVENT_VICTORY_ROAD_CLEARED                   EQU  319 ; byte 39 bit 7
 
 ; -- Route12  [def_trainers 2, 4 trainers]
 DEF EVENT_BEAT_ROUTE_12_TRAINER_0                EQU  322 ; byte 40 bit 2

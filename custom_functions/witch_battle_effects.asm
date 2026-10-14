@@ -395,6 +395,10 @@ WitchApplyMoneyEffects::
 	ld [hli], a
 	ld [hl], a
 .checkMoneyPrize
+	; Money Match scales the prize here: after the no-money zeroing (that
+	; challenge still pays 0), before PRIZE_MONEY and Oak's grant, so both of
+	; those multiply the Money Match result.
+	farcall MoneyMatchApplyPayout
 	ld a, [wWitchPrizesEarned]
 	and 1 << (PRIZE_MONEY - 1)
 	jr z, .checkBridgeMoney

@@ -90,6 +90,7 @@ EndOfBattle:
 	ld [wBattleType], a
 	ld [wMoveMissed], a
 	ld [wCurOpponent], a
+	ld [wMoneyMatchState], a ; win, loss or blackout: never into the next battle
 	ld [wForcePlayerToChooseMon], a
 	ld [wNumRunAttempts], a
 	ld [wEscapedFromBattle], a
