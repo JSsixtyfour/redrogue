@@ -813,11 +813,12 @@ def rule_d2(p: Program):
     return out
 
 
-def rule_d3(programs):
+def rule_d3(files_seen_per_rom):
+    """files_seen_per_rom: each ROM's Program.walker.files_seen."""
     out = []
     seen = set()
-    for p in programs:
-        seen |= p.walker.files_seen
+    for files_seen in files_seen_per_rom:
+        seen |= files_seen
     tracked = subprocess.run(["git", "ls-files", "*.asm"], cwd=REPO, capture_output=True,
                              text=True).stdout.splitlines() if (REPO / ".git").exists() else []
     for f in tracked:

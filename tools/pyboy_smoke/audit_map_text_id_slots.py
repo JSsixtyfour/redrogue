@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -110,24 +111,51 @@ def text_table(path: Path):
     return out
 
 
+def lines_mentioning_text_ids():
+    """(path, line) for every live-tree .asm line containing "TEXT_".
+
+    `git grep` over tracked plus untracked-but-not-ignored files takes ~1s.
+    Walking the repo took ~25s of this audit's ~40s (measured 2026-10-14):
+    84% of the 27k .asm files it visited sit in tmp/ (the reference fork) and
+    builds/ snapshots and were then discarded, and reading the rest over WSL's
+    /mnt/c was most of the remainder. Git also leaves out what the walk had to
+    blacklist by hand: agent worktrees under .claude/ (2026-09-24), builds/ A/B
+    snapshots (2026-10-13), and the ignored reference copy in
+    tools/pyboy_smoke/artifacts/, which contributed 12 false "firings".
+    A line without "TEXT_" cannot match TEXT_ID_RE, so the prefilter is exact.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "grep", "--untracked", "-I", "-e", "TEXT_", "--", "*.asm"],
+            cwd=REPO_ROOT, capture_output=True, text=True, errors="ignore",
+        )
+    except OSError:
+        out = None
+    if out is not None and out.returncode in (0, 1):  # 1 = no matches
+        for hit in out.stdout.splitlines():
+            name, _, line = hit.partition(":")
+            yield REPO_ROOT / name, line
+        return
+    skip = {"tmp", ".git", ".claude", "builds", "artifacts"}
+    for path in REPO_ROOT.rglob("*.asm"):
+        if skip & set(path.relative_to(REPO_ROOT).parts):
+            continue
+        for line in path.read_text(encoding="utf-8", errors="ignore").split("\n"):
+            if "TEXT_" in line:
+                yield path, line
+
+
 def fired_by_name():
     """Every TEXT_* constant referenced anywhere but an object list or a
     def_text_pointers entry - i.e. every one something could set hTextID to."""
     fired = set()
-    for path in REPO_ROOT.rglob("*.asm"):
-        parts = path.parts
-        # .claude: agent worktrees are full checkouts inside the repo; one
-        # appearing mid-session failed this audit with no source change (2026-09-24).
-        # builds: A/B source snapshots (builds/followup48/) did the same, 2026-10-13.
-        if "tmp" in parts or ".git" in parts or ".claude" in parts or "builds" in parts:
-            continue
+    for path, raw in lines_mentioning_text_ids():
         if path.parent == OBJECTS:
             continue        # a declaration, not a firing
-        for raw in path.read_text(encoding="utf-8", errors="ignore").split("\n"):
-            line = strip_comment(raw)
-            if DW_CONST_RE.match(line):
-                continue    # the table entry itself
-            fired.update(TEXT_ID_RE.findall(line))
+        line = strip_comment(raw)
+        if DW_CONST_RE.match(line):
+            continue    # the table entry itself
+        fired.update(TEXT_ID_RE.findall(line))
     return fired
 
 

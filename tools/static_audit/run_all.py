@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -45,36 +47,55 @@ def allowed(f, allow):
     return False
 
 
-def run(roms, only_rules):
+def analyze_rom(rom, only_rules):
+    """One ROM's findings (vanilla-downgraded, idx dropped) and the files it INCLUDEs.
+
+    Runs in its own process: the ROMs are independent until rule_d3, which only
+    needs each one's files_seen, so nothing large crosses the process boundary.
+    """
+    t = time.time()
+    p = Program(rom)
+    found = []
+    flow_found, fl, labels = rules.run_flow(p)
+    found += flow_found
+    found += rules.rule_calls(p)
+    found += rules.rule_b2(p)
+    found += rules.rule_b7(p, fl, labels)
+    found += rules.rule_c2(p)
+    found += rules.rule_c3(p, fl)
+    found += rules.rule_d1(p)
+    found += rules.rule_d2(p)
+    found += rules.rule_b9(p)
+    kept = []
+    for f in found:
+        if only_rules and f["rule"] not in only_rules:
+            continue
+        if f["severity"] == "bug" and "idx" in f and rules.is_vanilla_routine(p, f["idx"]):
+            # unchanged pret/pokered routine: same behaviour as the original game
+            f["severity"] = "info"
+            f["msg"] = "[vanilla] " + f["msg"]
+        f.pop("idx", None)
+        kept.append(f)
+    print(f"[{rom}] {len(found)} raw findings in {time.time() - t:.0f}s", file=sys.stderr, flush=True)
+    return kept, p.walker.files_seen
+
+
+def run(roms, only_rules, jobs):
+    # Each ROM costs ~75-100s (source parse plus the flow solve), so running the
+    # three in parallel cuts make audit from ~260s to the slowest one (2026-10-14).
+    if jobs > 1 and len(roms) > 1:
+        with ProcessPoolExecutor(max_workers=min(jobs, len(roms))) as pool:
+            results = list(pool.map(analyze_rom, roms, [only_rules] * len(roms)))
+    else:
+        results = [analyze_rom(rom, only_rules) for rom in roms]
     merged = {}
-    programs = []
-    for rom in roms:
-        t = time.time()
-        p = Program(rom)
-        programs.append(p)
-        found = []
-        flow_found, fl, labels = rules.run_flow(p)
-        found += flow_found
-        found += rules.rule_calls(p)
-        found += rules.rule_b2(p)
-        found += rules.rule_b7(p, fl, labels)
-        found += rules.rule_c2(p)
-        found += rules.rule_c3(p, fl)
-        found += rules.rule_d1(p)
-        found += rules.rule_d2(p)
-        found += rules.rule_b9(p)
+    # Merge in ROM order, whatever order the workers finished in, so each
+    # finding's "roms" list (and so the report) is the same as a serial run.
+    for rom, (found, _) in zip(roms, results):
         for f in found:
-            if only_rules and f["rule"] not in only_rules:
-                continue
-            if f["severity"] == "bug" and "idx" in f and rules.is_vanilla_routine(p, f["idx"]):
-                # unchanged pret/pokered routine: same behaviour as the original game
-                f["severity"] = "info"
-                f["msg"] = "[vanilla] " + f["msg"]
-            f.pop("idx", None)
             k = (f["rule"], f["file"], f["line"], f["msg"])
             merged.setdefault(k, dict(f, roms=[]))["roms"].append(rom)
-        print(f"[{rom}] {len(found)} raw findings in {time.time() - t:.0f}s", file=sys.stderr)
-    for f in rules.rule_d3(programs):
+    for f in rules.rule_d3([files_seen for _, files_seen in results]):
         if not only_rules or f["rule"] in only_rules:
             merged[(f["rule"], f["file"], f["line"], f["msg"])] = dict(f, roms=list(roms))
     # code is only dead if no build references it (debug-only callers exist)
@@ -88,13 +109,15 @@ def main():
     ap.add_argument("--rule", action="append")
     ap.add_argument("--info", action="store_true", help="also print info-level findings")
     ap.add_argument("--json")
+    ap.add_argument("--jobs", type=int, default=os.cpu_count() or 1,
+                    help="ROMs analysed in parallel (1 = serial)")
     args = ap.parse_args()
     roms = args.rom or ["pokered", "pokeblue", "pokeblue_debug"]
     for r in roms:
         if not (REPO / f"{r}.sym").exists():
             raise SystemExit(f"{r}.sym missing: build the ROMs first")
     allow = load_allowlist()
-    findings = run(roms, set(args.rule or []))
+    findings = run(roms, set(args.rule or []), args.jobs)
     for f in findings:
         f["allowlisted"] = allowed(f, allow)
     failing = [f for f in findings if f["severity"] == "bug" and not f["allowlisted"]]

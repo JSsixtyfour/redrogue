@@ -204,8 +204,12 @@ $(info $(shell $(MAKE) -C tools))
 # As a side effect, they're evaluated immediately instead of when the rule is invoked.
 # It doesn't look like $(shell) can be deferred so there might not be a better way.
 preinclude_deps := includes.asm $(shell tools/scan_includes includes.asm)
+# Scan each source once, not once per ROM variant: all five variants assemble the same
+# .asm files and scan_includes ignores -D flags. Scanning per variant made EVERY make
+# invocation spend ~31s parsing on WSL's /mnt/c before doing anything (2026-10-14).
+$(foreach src,$(rom_obj:.o=.asm),$(eval $(src)_deps := $(shell tools/scan_includes $(src))))
 define DEP
-$1: $2 $$(shell tools/scan_includes $2) $(preinclude_deps) | rgbdscheck.o
+$1: $2 $$($2_deps) $(preinclude_deps) | rgbdscheck.o
 	$$(RGBASM) $$(RGBASMFLAGS) -o $$@ $$<
 endef
 
