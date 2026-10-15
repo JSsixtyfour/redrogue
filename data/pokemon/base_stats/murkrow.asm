@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/murkrow.dim" ; sprite dimensions
 	dw MurkrowPicFront, MurkrowPicBack
 
-	db PECK, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db PECK, LEER, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY
+	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY,          \
+         NIGHT_SHADE,  THUNDER_WAVE, PSYCHIC,      DREAM_EATER
 	; end
 
 	db BANK(MurkrowPicFront) ; pic bank

@@ -4075,11 +4075,14 @@ MurkrowEvosMoves:
 	db 0
 ; Learnset - PECK already granted at level 1; PURSUIT/FAINT_ATTACK/
 ; MEAN_LOOK do not exist in Gen 1, filled with METRONOME.
-	db 11, METRONOME ; was PURSUIT
-	db 16, HAZE
+	db 8, GUST ; was PURSUIT
+    db 15, FURY_ATTACK
+	db 16, WING_ATTACK
+    db 20, HAZE
 	db 26, NIGHT_SHADE
-	db 31, METRONOME ; was FAINT_ATTACK
-	db 41, METRONOME ; was MEAN_LOOK
+	db 31, SWIFT ; was FAINT_ATTACK
+    db 36, CONFUSE_RAY
+	db 41, SCREECH ; was MEAN_LOOK
 	db 0
 
 SlowkingEvosMoves:
