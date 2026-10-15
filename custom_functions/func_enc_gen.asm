@@ -147,12 +147,18 @@ GetRandRoster:
 .gotRoundIndex
     ; a = step within the round (constants/round_constants.asm).
     ; A Money Match fights as route step MONEY_MATCH_STEP of this round,
-    ; whatever the count's own step is. RogueBattleRound applies the same
-    ; override for the moveset row, so the two always agree.
+    ; whatever the count's own step is; the PokeManiac (a subroom resident on
+    ; the same path) as the route's last trainer, FINAL_ROUTE_STEP (user,
+    ; 2026-10-14: "the 4th trainer of a route"). RogueBattleRound applies the
+    ; same override for the moveset row, so the two always agree.
     ld hl, wMoneyMatchState
     bit BIT_MONEY_MATCH_ACTIVE, [hl]
     jr z, .stepReady
+    ld a, [wTrainerClass]
+    cp POKEMANIAC
     ld a, MONEY_MATCH_STEP
+    jr nz, .stepReady
+    ld a, FINAL_ROUTE_STEP
 .stepReady
     ; route steps, then gym steps -> pick the matching table.
     ld hl, trainer_difficulty_settings

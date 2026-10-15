@@ -3,8 +3,9 @@
 
 One byte per block in gfx/blocksets/facility.bst: bit 0 = top-left quadrant
 walkable, bit 1 = top-right, bit 2 = bottom-left, bit 3 = bottom-right. A
-quadrant is walkable when its collision tile (block tile offsets 5, 7, 13, 15,
-the same ones audit_facility_stranded_quadrants.py uses) is in Facility_Coll.
+quadrant is walkable when its collision tile (block tile offsets 4, 6, 12, 14:
+the quadrant's bottom-LEFT tile, the one the engine tests; measured 2026-10-14,
+FOLLOWUPS #69) is in Facility_Coll.
 
 Derived, never hand-edited: PFacPlacePads trusts it to prove a pad cannot strand
 anything, so a stale table is a softlock risk. FacilityQuadMaskFreshnessTest
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BLOCKSET = ROOT / "gfx" / "blocksets" / "facility.bst"
 COLLISION = ROOT / "data" / "tilesets" / "collision_tile_ids.asm"
 OUT = ROOT / "data" / "tilesets" / "facility_quad_masks.asm"
-QUADRANT_TILE_INDEXES = (5, 7, 13, 15)
+QUADRANT_TILE_INDEXES = (4, 6, 12, 14)  # bottom-LEFT tile, measured 2026-10-14 (FOLLOWUPS #69)
 
 
 def walkable_tiles() -> set[int]:

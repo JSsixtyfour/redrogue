@@ -1206,11 +1206,11 @@ MrMimeEvosMoves:
 	db 15, CONFUSION
 	db 23, LIGHT_SCREEN
 	db 23, REFLECT
-	db 27, DOUBLESLAP
-	db 31, PSYBEAM
-	db 39, MEDITATE
-	db 43, PSYCHIC_M
-	db 47, SUBSTITUTE
+	db 25, DOUBLESLAP
+	db 28, PSYBEAM
+	db 31, MEDITATE
+	db 39, PSYCHIC_M
+	db 44, SUBSTITUTE
 	db 50, BARRIER
 	db 0
 ; Tutoring Learnset   
@@ -4019,11 +4019,14 @@ MamoswineEvosMoves:
 MismagiusEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - Mismagius evolves from Misdreavus (part of a later batch); when
-; Misdreavus's own entry is added, give it
 ; `db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS` (DUSK_STONE already exists).
-	db 24, METRONOME ; FILLER - real moveset TBD
-	db 48, METRONOME ; FILLER - real moveset TBD
+	db 6, LICK ; was SPITE
+    db 10, CONFUSION
+	db 12, CONFUSE_RAY
+	db 19, NIGHT_SHADE ; was MEAN_LOOK
+	db 25, PSYBEAM
+	db 32, LIGHT_SCREEN ; was PAIN_SPLIT
+	db 40, PSYCHIC_M ; was PERISH_SONG
 	db 0
 
 YanmaEvosMoves:
@@ -4101,12 +4104,13 @@ MisdreavusEvosMoves:
 	db 0
 ; Learnset - GROWL/PSYWAVE already granted at level 1; SPITE/MEAN_LOOK/
 ; PAIN_SPLIT/PERISH_SONG do not exist in Gen 1, filled with METRONOME.
-	db 6, METRONOME ; was SPITE
+	db 6, LICK ; was SPITE
+    db 10, CONFUSION
 	db 12, CONFUSE_RAY
-	db 19, METRONOME ; was MEAN_LOOK
-	db 27, PSYBEAM
-	db 36, METRONOME ; was PAIN_SPLIT
-	db 46, METRONOME ; was PERISH_SONG
+	db 19, NIGHT_SHADE ; was MEAN_LOOK
+	db 25, PSYBEAM
+	db 32, LIGHT_SCREEN ; was PAIN_SPLIT
+	db 40, PSYCHIC_M ; was PERISH_SONG
 	db 0
 
 GirafarigEvosMoves:
@@ -4839,12 +4843,14 @@ MrRimeEvosMoves:
 	db 0
 ; Learnset - CONFUSION/BARRIER/REFLECT already granted at level 1;
 ; FEINT_ATTACK does not exist in Gen 1, filled with METRONOME.
-	db 23, LIGHT_SCREEN
-	db 28, PSYBEAM
-	db 31, AURORA_BEAM
+    db 23, LIGHT_SCREEN
+    db 23, REFLECT
+    db 25, DOUBLESLAP
+	db 28, AURORA_BEAM
+    db 31, PSYBEAM
 	db 39, ICE_BEAM
 	db 44, PSYCHIC_M
-	db 50, METRONOME ; was FEINT_ATTACK
+	db 50, MIST ; was FEINT_ATTACK
 	db 0
 
 ElectivireEvosMoves:

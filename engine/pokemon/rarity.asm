@@ -265,24 +265,24 @@ JohtoPokeball:
 	db HOOTHOOT
 	db LEDYBA
 	db SPINARAK
-	db MAREEP
 	db MARILL
 	db HOPPIP
 	db AIPOM
 	db SUNKERN
 	db WOOPER
-	db GIRAFARIG
 	db PINECO
 	db SNUBBULL
 	db TEDDIURSA
-	db PHANPY
+	db SLUGMA
+	db SWINUB
+	db CORSOLA
+	db REMORAID
 JohtoPokeball_Evos:
 ; stage 1
 	db FURRET
 	db NOCTOWL
 	db LEDIAN
 	db ARIADOS
-	db FLAAFFY
 	db AZUMARILL
 	db SKIPLOOM
 	db SUNFLORA
@@ -290,9 +290,10 @@ JohtoPokeball_Evos:
 	db FORRETRESS
 	db GRANBULL
 	db URSARING
-	db DONPHAN
+	db MAGCARGO
+	db PILOSWINE
+	db OCTILLERY
 ; stage 2
-	db AMPHAROS
 	db JUMPLUFF
 ; Crobat/Bellossom/Politoed are evolved-only (from Golbat/Gloom/Poliwhirl, all
 ; Kanto base species - see the EVOLVE_LEVEL/EVOLVE_ITEM/EVOLVE_TRADE additions
@@ -316,27 +317,39 @@ JohtoGreatball:
 	db TOTODILE
 	db MISDREAVUS
 	db SNEASEL
-	db SLUGMA
-	db SWINUB
-	db CORSOLA
-	db REMORAID
 	db HOUNDOUR
-	db MILTANK
+	db PHANPY
+	db GIRAFARIG
+	db MAREEP
+	db CHINCHOU
+	db YANMA
+	db SUDOWOODO
+	db MURKROW
+	db QWILFISH
+	db DUNSPARCE
+	db SHUCKLE
+	db MANTINE
+	db NATU
+	db TOGEPI
 JohtoGreatball_Evos:
 ; stage 1
 	db BAYLEEF
 	db QUILAVA
 	db CROCONAW
-	db MAGCARGO
-	db PILOSWINE
-	db OCTILLERY
 	db HOUNDOOM
+	db DONPHAN
+	db FLAAFFY
+	db LANTURN
+	db XATU
+	db TOGETIC
 ; stage 2
 	db MEGANIUM
 	db TYPHLOSION
 	db FERALIGATR
+	db AMPHAROS
 ; Weavile/Mamoswine/Mismagius are post-Gen-2 evolutions (of Sneasel/Piloswine/
-; Misdreavus), so they live in the WARP group, not here - see WarpGreatball.
+; Misdreavus), so they live in the WARP group, not here - see WarpGreatball
+; (Mamoswine follows Piloswine into WarpPokeball).
 ; Slowking is evolved-only (from Slowpoke, a Kanto GREATBALL-tier base
 ; species - see the EVOLVE_TRADE added to SlowpokeEvosMoves). Same
 ; classification-only-placeholder pattern as above, matched to Slowpoke's
@@ -356,25 +369,15 @@ JohtoGreatball_Evos:
 JohtoGreatball_End:
 
 JohtoUltraball:
-	db CHINCHOU
-	db NATU
-	db SUDOWOODO
-	db YANMA
-	db MURKROW
-	db DUNSPARCE
 	db GLIGAR
-	db QWILFISH
-	db SHUCKLE
 	db HERACROSS
-	db MANTINE
 	db SKARMORY
 	db STANTLER
 	db HITMONTOP
 	db LARVITAR
+	db MILTANK
 JohtoUltraball_Evos:
 ; stage 1
-	db LANTURN
-	db XATU
 	db PUPITAR
 ; Scizor is evolved-only (from Scyther, a Kanto ULTRABALL-tier base species -
 ; see the EVOLVE_LEVEL added to ScytherEvosMoves). Same classification-only-
@@ -394,15 +397,12 @@ JohtoUltraball_Evos:
 JohtoUltraball_End:
 
 JohtoMasterball:
-	db TOGEPI
 ; Raikou/Entei/Suicune are the legendary beasts - no evolution, same
 ; singular-legendary rarity treatment as Zapdos in the Kanto pool.
 	db RAIKOU
 	db ENTEI
 	db SUICUNE
 JohtoMasterball_Evos:
-; stage 1
-	db TOGETIC
 JohtoMasterball_End:
 
 ; Never rollable and never reached by evolution - same pattern as KantoUber,
@@ -436,18 +436,18 @@ WarpPokeball:
 WarpPokeball_Evos:
 ; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
 ; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
-; FarfetchdEvosMoves.
+; FarfetchdEvosMoves - and Piloswine (Johto POKEBALL).
 	db ANNIHILAPE
 	db MAGNEZONE
 	db SIRFETCHD
+	db MAMOSWINE
 WarpPokeball_End:
 
 WarpGreatball:
 WarpGreatball_Evos:
-; from Sneasel/Piloswine/Misdreavus (Johto GREATBALL) and Lickitung/Tangela/
+; from Sneasel/Misdreavus (Johto GREATBALL) and Lickitung/Tangela/
 ; Porygon2 (Kanto and Johto GREATBALL).
 	db WEAVILE
-	db MAMOSWINE
 	db MISMAGIUS
 	db LICKILICKY
 	db TANGROWTH

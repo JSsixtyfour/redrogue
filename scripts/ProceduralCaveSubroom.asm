@@ -1,9 +1,9 @@
 ; The cave's subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4), on the map id of the
 ; unreachable SAFARI_ZONE_NORTH_REST_HOUSE. Reached by either of the cave's two
-; ladders down; each of its two ladders up leads back to its own. The room is a
-; placeholder cut from Mt. Moon B1F's two-ladder chamber
-; (maps/ProceduralCaveSubroom.blk), to be redrawn. Its resident is a coin flip
-; per cave: the Gambler (Money Match) or the Super Nerd, the Facility's.
+; ladders down; each of its two ladders up leads back to its own. The room is
+; one of the user's drawn rooms, rolled per cave (CaveSubRooms). Its resident
+; is rolled per cave too: the Gambler (Money Match), the Super Nerd (the
+; Facility's) or the PokeManiac.
 
 ProceduralCaveSubroom_Script:
 	call EnableAutoTextBoxDrawing
@@ -23,6 +23,8 @@ ProceduralCaveSubroom_TextPointers:
 	dw_const CaveSubGamblerText,   TEXT_CAVESUB_GAMBLER
 	dw_const CaveSubSuperNerdText, TEXT_CAVESUB_SUPER_NERD
 	dw_const CaveSubBallText,      TEXT_CAVESUB_BALL
+	dw_const CaveSubSceneryText,   TEXT_CAVESUB_WATER_MON
+	dw_const CaveSubSceneryText,   TEXT_CAVESUB_LAND_MON
 	dw_const CaveSubPrizeText,     TEXT_CAVESUB_PRIZE
 
 ; Money Match (custom_functions/money_match.asm), started here as the forest
@@ -63,6 +65,10 @@ CaveSubBallText:
 	farcall FacSubroomPickUpBall    ; shared with the Facility subroom's ball
 	pop bc
 	jp TextScriptEnd
+
+; The lake and mountain Pokemon stand out of reach; nothing to say.
+CaveSubSceneryText:
+	text_end
 
 CaveSubPrizeText:
 	text_asm

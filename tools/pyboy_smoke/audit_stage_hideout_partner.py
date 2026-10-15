@@ -30,8 +30,9 @@ flood fill from the player's spawn.
 THE COLLISION MODEL, and its self-check. A movement step is a 2x2 patch of
 tiles, and _GetTileAndCoordsInFrontOfPlayer reads screen tile (8,9) for the
 player's own square and (8,11)/(8,7)/(6,9)/(10,9) for the four neighbours -
-all of them the TOP-LEFT tile of the step. So the tile that decides a step is
-blockset[block * 16 + (qy * 2) * 4 + (qx * 2)], which is what this script uses
+all of them the BOTTOM-LEFT tile of the step (measured 2026-10-14, FOLLOWUPS
+#69: this docstring said top-left until then). So the tile that decides a step is
+blockset[block * 16 + (qy * 2 + 1) * 4 + (qx * 2)], which is what this script uses
 and what audit_cave_hideout.py validated over 400 layouts.
 
 `audit_facility_stranded_quadrants.py` models the same thing with indexes
@@ -112,7 +113,9 @@ def step_walkable(blockset, passable, block, qx, qy, bottom_right=False):
     if bottom_right:
         index = (qy * 2 + 1) * 4 + (qx * 2 + 1)
     else:
-        index = (qy * 2) * 4 + (qx * 2)
+        # The quadrant's bottom-left tile: the engine's (measured 2026-10-14,
+        # FOLLOWUPS #69; this said top-left before).
+        index = (qy * 2 + 1) * 4 + (qx * 2)
     return blockset[block * 16 + index] in passable
 
 
@@ -306,13 +309,13 @@ def run_area(area, layouts):
         print("    MODEL BROKEN seed %d: the player's own spawn step %s reads "
               "as wall" % (seed, player))
     if model_disagreements:
-        print("  top-left vs bottom-right collision model disagreed on %d "
+        print("  bottom-left (engine) vs bottom-right collision model disagreed on %d "
               "layouts (worst %d steps): %s"
               % (len(model_disagreements),
                  max(d for _, d in model_disagreements),
                  [s for s, _ in model_disagreements[:10]]))
     else:
-        print("  top-left and bottom-right collision models agree on every "
+        print("  bottom-left (engine) and bottom-right collision models agree on every "
               "step of every layout")
 
     return (len(partner_bad) + len(leader_bad) + len(stacked)

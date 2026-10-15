@@ -53,11 +53,18 @@ CaveSubCloseSRAM:
 ; holds the finished cave. Clobbers everything; leaves SRAM closed.
 ; ------------------------------------------------------------
 CaveSubroomPlaceLadders::
-	; Fresh cave: objects not shown yet, nobody beaten, and the coin flip for
-	; the subroom's resident (the Gambler or the Super Nerd).
+	; Fresh cave: objects not shown yet, nobody beaten, and the roll for the
+	; subroom's resident: the Gambler, the Super Nerd or, rarer, the
+	; PokeManiac (who uses the Super Nerd's object; his bit rides with SUPER_NERD).
 	call Random
-	and 1 << BIT_CAVESUB_SUPER_NERD
-	ld b, a
+	ld b, 0                         ; the Gambler
+	cp CAVESUB_GAMBLER_ODDS
+	jr c, .gotResident
+	ld b, 1 << BIT_CAVESUB_SUPER_NERD
+	cp CAVESUB_GAMBLER_ODDS + CAVESUB_NERD_ODDS
+	jr c, .gotResident
+	ld b, (1 << BIT_CAVESUB_SUPER_NERD) | (1 << BIT_CAVESUB_MANIAC)
+.gotResident
 	call CaveSubOpenSRAM
 	ld a, b
 	ld [CAVESUB_STATE], a
@@ -100,6 +107,22 @@ CaveSubroomPlaceLadders::
 	ld a, [CAVESUB_LADDER_B]
 	call .stampSite
 .done
+	; Last, as CAVESUB_ROOM reuses CAVESUB_TMP_X: the subroom's room and the
+	; Pokemon on its lake and mountain (0 = none for either).
+	ld c, CAVESUB_NUM_ROOMS
+	call Rangerandom                ; keeps bc
+	ld b, a
+	ld c, 3                         ; none, LAPRAS, SEEL
+	call Rangerandom
+	add a
+	add a
+	or b
+	ld b, a
+	ld c, 5                         ; none, CLEFAIRY, MACHOP, MACHOKE, CUBONE
+	call Rangerandom
+	swap a
+	or b
+	ld [CAVESUB_ROOM], a
 	jp CaveSubCloseSRAM
 
 .fallback
@@ -434,21 +457,31 @@ CaveSubroomArm::
 	ld [wSprite{02d:CAVE_GAMBLER}StateData2MapX], a
 	ld [wSprite{02d:CAVE_SUPER_NERD}StateData2MapX], a
 .noFallback
+	; The rolled room's two ladders, as warps of the subroom map.
+	ld a, [CAVESUB_ROOM]
+	call CaveSubRoomRecord          ; hl = its row; clobbers a/de
+	ld de, CSR_LADDER0
+	add hl, de
+	ld a, [hli]
+	ld d, a                         ; d = its ladder 0's warp
+	ld e, [hl]                      ; e = its ladder 1's
 	ld a, [CAVESUB_LADDER_A]
 	ld b, a
 	ld a, [CAVESUB_LADDER_B]
 	ld c, a
 	call CaveSubCloseSRAM
+	push de
 	push bc
 	ld a, b
-	ld c, 0                         ; the subroom's ladder 0
+	ld c, d                         ; A -> the room's ladder 0
 	call .arm
 	pop bc
+	pop de
 	ld a, c
-	ld c, 1                         ; the subroom's ladder 1
+	ld c, e                         ; B -> its ladder 1
 	; fall through
 
-; In: a = site (or NONE / an old save's fill byte), c = the subroom ladder.
+; In: a = site (or NONE / an old save's fill byte), c = the subroom warp.
 .arm
 	cp NUM_CAVE_LADDER_SITES
 	ret nc
@@ -482,9 +515,88 @@ CaveSubroomArm::
 	ret
 
 ; ------------------------------------------------------------
-; ProcStageLoadDispatch, every load of the subroom: its ladder 0 climbs back
-; onto ladder A, its ladder 1 onto ladder B (or A when there is only one).
-; Without any (an old save) the ROM destinations, the cave entrance, stay.
+; The subroom's drawn rooms (the user's, 2026-10-14). The map is as big as the
+; biggest; every load fills it with CAVESUB_FILL_BLOCK and copies the cave's
+; rolled room in at its top-left. The map declares one warp per distinct ladder
+; tile over all rooms (data/maps/objects/ProceduralCaveSubroom.asm); a room
+; names its two, and every other one is disarmed at load. All tiles are tile
+; coordinates inside the room; the spots were picked against a flood of each
+; room with the CAVERN elevation pairs (the lake and mountain Pokemon stand
+; where nobody can reach them, so they need no text).
+; ------------------------------------------------------------
+DEF CAVESUB_MAP_W EQU PROCEDURAL_CAVE_SUBROOM_WIDTH
+DEF CAVESUB_MAP_H EQU PROCEDURAL_CAVE_SUBROOM_HEIGHT
+DEF CAVESUB_MAP_STRIDE EQU CAVESUB_MAP_W + 6 ; wOverworldMap row, border included
+DEF CAVESUB_FILL_BLOCK EQU $03 ; solid rock, the map's border block
+DEF CAVESUB_NUM_WARPS EQU 5    ; the map's warp_events, all ladders
+
+RSRESET
+DEF CSR_BLOCKS  RW 1
+DEF CSR_W       RB 1
+DEF CSR_H       RB 1
+DEF CSR_LADDER0 RB 1 ; warp index of the ladder cave ladder A leads to
+DEF CSR_LADDER1 RB 1 ; and B
+DEF CSR_RES_X   RB 1 ; the resident (Gambler / Super Nerd / PokeManiac),
+DEF CSR_RES_Y   RB 1 ; talked to from the tile below
+DEF CSR_BALL_X  RB 1 ; the item ball, picked up from the tile below
+DEF CSR_BALL_Y  RB 1
+DEF CSR_WATER_X RB 1 ; the lake Pokemon
+DEF CSR_WATER_Y RB 1
+DEF CSR_LAND_X  RB 1 ; the mountain Pokemon
+DEF CSR_LAND_Y  RB 1
+DEF CSR_SIZE EQU _RS
+DEF wCaveSubRec EQUS "(wBuffer + 1)"
+
+DEF CAVESUB_ROOMS_LISTED = 0
+MACRO cave_subroom_room
+; label, w, h, ladder 0 warp, ladder 1 warp, resident x/y, ball x/y,
+; water x/y, land x/y
+	ASSERT \2 <= CAVESUB_MAP_W && \3 <= CAVESUB_MAP_H
+	ASSERT \4 < CAVESUB_NUM_WARPS && \5 < CAVESUB_NUM_WARPS
+	dw \1
+	db \2, \3, \4, \5, \6, \7, \8, \9
+	SHIFT 9
+	db \1, \2, \3, \4
+	REDEF CAVESUB_ROOMS_LISTED = CAVESUB_ROOMS_LISTED + 1
+ENDM
+
+CaveSubRooms:
+	cave_subroom_room CaveSubRoomLake,       11, 7, 0, 1, 10,  3,  3,  0, 12,  8,  4,  6
+	cave_subroom_room CaveSubRoomLake2,      15, 9, 2, 3, 20,  2,  7, 14, 22,  8,  7,  1
+	cave_subroom_room CaveSubRoomMountains1, 15, 6, 0, 4,  8,  1, 10,  4, 24, 10, 12,  7
+	ASSERT CAVESUB_ROOMS_LISTED == CAVESUB_NUM_ROOMS
+
+CaveSubRoomLake:       INCBIN "maps/ProceduralCave_B1F_Lake.blk"
+	ASSERT @ - CaveSubRoomLake == 11 * 7
+CaveSubRoomLake2:      INCBIN "maps/ProceduralCave_B1F_Lake2.blk"
+	ASSERT @ - CaveSubRoomLake2 == 15 * 9
+CaveSubRoomMountains1: INCBIN "maps/ProceduralCave_B1F_Mountains1.blk"
+	ASSERT @ - CaveSubRoomMountains1 == 15 * 6
+
+; In: a = CAVESUB_ROOM. Out: hl = that room's row (a room past the table, as an
+; older save's byte can name, is the first). Clobbers a/de.
+CaveSubRoomRecord:
+	and CAVESUB_ROOM_MASK
+	cp CAVESUB_NUM_ROOMS
+	jr c, .ok
+	xor a
+.ok
+	ld hl, CaveSubRooms
+	ld de, CSR_SIZE
+	and a
+	ret z
+.add
+	add hl, de
+	dec a
+	jr nz, .add
+	ret
+
+; ------------------------------------------------------------
+; ProcStageLoadDispatch, every load of the subroom, after LoadTileBlockMap and
+; before the view is drawn: draws the cave's room, stands its objects, and
+; arms its two ladders: ladder 0 climbs back onto cave ladder A, ladder 1 onto
+; B (or A when there is only one). Without any ladder (an old save) the ROM
+; destinations, the cave entrance, stay. Clobbers everything.
 ; ------------------------------------------------------------
 CaveSubroomLoad::
 	call CaveSubOpenSRAM
@@ -492,22 +604,159 @@ CaveSubroomLoad::
 	ld b, a
 	ld a, [CAVESUB_LADDER_B]
 	ld c, a
+	ld a, [CAVESUB_ROOM]
+	ld e, a
 	call CaveSubCloseSRAM
-	ld a, b
-	cp NUM_CAVE_LADDER_SITES
-	ret nc
+	push bc
+	ld a, e
+	call CaveSubRoomRecord
+	ld de, wCaveSubRec
+	ld bc, CSR_SIZE
+	call CopyData
+
+	; The objects on the room's spots (map border included: +4).
+	ld a, [wCaveSubRec + CSR_RES_Y]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_GAMBLER}StateData2MapY], a
+	ld [wSprite{02d:CAVESUB_SLOT_SUPER_NERD}StateData2MapY], a
+	ld a, [wCaveSubRec + CSR_RES_X]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_GAMBLER}StateData2MapX], a
+	ld [wSprite{02d:CAVESUB_SLOT_SUPER_NERD}StateData2MapX], a
+	ld a, [wCaveSubRec + CSR_BALL_Y]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_BALL}StateData2MapY], a
+	ld a, [wCaveSubRec + CSR_BALL_X]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_BALL}StateData2MapX], a
+	ld a, [wCaveSubRec + CSR_WATER_Y]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_WATER_MON}StateData2MapY], a
+	ld a, [wCaveSubRec + CSR_WATER_X]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_WATER_MON}StateData2MapX], a
+	ld a, [wCaveSubRec + CSR_LAND_Y]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_LAND_MON}StateData2MapY], a
+	ld a, [wCaveSubRec + CSR_LAND_X]
+	add 4
+	ld [wSprite{02d:CAVESUB_SLOT_LAND_MON}StateData2MapX], a
+
+	; The map: solid rock, then the room at its top-left, row by row.
+	DEF CAVESUB_MAP_ORIGIN EQUS "(wOverworldMap + 3 * CAVESUB_MAP_STRIDE + 3)"
+	ld hl, CAVESUB_MAP_ORIGIN
+	ld c, CAVESUB_MAP_H
+.fillRow
+	ld b, CAVESUB_MAP_W
+	ld a, CAVESUB_FILL_BLOCK
+.fill
+	ld [hli], a
+	dec b
+	jr nz, .fill
+	ld de, CAVESUB_MAP_STRIDE - CAVESUB_MAP_W
+	add hl, de
+	dec c
+	jr nz, .fillRow
+	ld hl, wCaveSubRec + CSR_BLOCKS
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ld de, CAVESUB_MAP_ORIGIN
+.row
+	; CopyData leaves hl on the room's next row; de steps a whole map row.
+	push de
+	ld a, [wCaveSubRec + CSR_W]
+	ld c, a
+	ld b, 0
+	call CopyData
+	pop de
+	ld a, e
+	add CAVESUB_MAP_STRIDE
+	ld e, a
+	jr nc, .noCarry
+	inc d
+.noCarry
+	ld a, [wCaveSubRec + CSR_H]
+	dec a
+	ld [wCaveSubRec + CSR_H], a
+	jr nz, .row
+
+	; The ladders: the room's two lead back onto A and B; the rest are
+	; disarmed (a departure Y of $FF matches no player position).
+	pop bc                          ; b = A, c = B
 	ld a, c
 	cp NUM_CAVE_LADDER_SITES
 	jr c, .two
-	ld c, b                         ; one ladder serves both
+	ld c, b                         ; one ladder serves both (or neither)
 .two
+	ld hl, wWarpEntries
+	ld d, 0                         ; d = warp index
+.warp
+	ld a, [wCaveSubRec + CSR_LADDER0]
+	cp d
 	ld a, b
-	add CAVE_FIRST_LADDER_WARP
-	ld [wWarpEntries + 2], a        ; ladder 0's destination warp
+	jr z, .armed
+	ld a, [wCaveSubRec + CSR_LADDER1]
+	cp d
 	ld a, c
+	jr z, .armed
+	ld [hl], $ff                    ; departure Y
+	jr .nextWarp
+.armed
+	cp NUM_CAVE_LADDER_SITES
+	jr nc, .nextWarp                ; no ladder (an old save): the ROM one stays
 	add CAVE_FIRST_LADDER_WARP
-	ld [wWarpEntries + 4 + 2], a    ; ladder 1's
+	inc hl
+	inc hl
+	ld [hld], a                     ; destination warp (0-based)
+	dec hl
+.nextWarp
+	ld a, l
+	add 4
+	ld l, a
+	jr nc, .noWarpCarry
+	inc h
+.noWarpCarry
+	inc d
+	ld a, d
+	cp CAVESUB_NUM_WARPS
+	jr nz, .warp
 	ret
+
+; ProcBossPatchStageSprite, every subroom load before InitMapSprites: the lake
+; and mountain Pokemon this cave rolled; a zero picture (none) takes no VRAM
+; slot. Clobbers everything.
+CaveSubroomPatchSprites::
+	call CaveSubOpenSRAM
+	ld a, [CAVESUB_ROOM]
+	ld b, a
+	call CaveSubCloseSRAM
+	ld a, b
+	and CAVESUB_WATER_MASK
+	rrca
+	rrca
+	ld hl, .water
+	call .pick
+	ld [wSprite{02d:CAVESUB_SLOT_WATER_MON}StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld a, b
+	and CAVESUB_LAND_MASK
+	swap a
+	ld hl, .land
+	call .pick
+	ld [wSprite{02d:CAVESUB_SLOT_LAND_MON}StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ret
+
+.pick
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	ret
+
+.water ; indexed by the 2-bit field
+	db 0, SPRITE_LAPRAS, SPRITE_SEEL, 0
+.land ; indexed by the 3-bit field
+	db 0, SPRITE_CLEFAIRY, SPRITE_MACHOP, SPRITE_MACHOKE, SPRITE_CUBONE, 0, 0, 0
 
 ; Out: carry = this cave's subroom resident is the Super Nerd (else the
 ; Gambler). Clobbers a.

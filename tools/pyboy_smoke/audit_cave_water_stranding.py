@@ -76,12 +76,13 @@ def passable_tiles() -> set:
 def step_walkable(blockset: bytes, passable: set, block: int, qx: int, qy: int) -> bool:
     """Is the 16px step at quadrant (qx,qy) of this block walkable?
 
-    The tile the engine tests is the top-left 8x8 tile of the quadrant, so
-    quadrant (qx,qy) maps to tile row qy*2, column qx*2 of the block's 4x4.
+    The tile the engine tests is the bottom-left 8x8 tile of the quadrant
+    (measured 2026-10-14, FOLLOWUPS #69), so quadrant (qx,qy) maps to tile row
+    qy*2+1, column qx*2 of the block's 4x4.
     """
     if block * 16 + 15 >= len(blockset):
         return False
-    tile = blockset[block * 16 + (qy * 2) * 4 + (qx * 2)]
+    tile = blockset[block * 16 + (qy * 2 + 1) * 4 + (qx * 2)]
     return tile in passable
 
 

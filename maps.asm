@@ -1437,7 +1437,9 @@ INCLUDE "data/maps/headers/ProceduralCaveSubroom.asm"
 INCLUDE "scripts/ProceduralCaveSubroom.asm"
 INCLUDE "data/maps/objects/ProceduralCaveSubroom.asm"
 ; Same bank as the header (map_header ASSERTs it).
-ProceduralCaveSubroom_Blocks: INCBIN "maps/ProceduralCaveSubroom.blk"
+; Never shown as is: every load draws the cave's rolled room over it
+; (CaveSubroomLoad). Any 15x9 room serves; this is the Lake2 room.
+ProceduralCaveSubroom_Blocks: INCBIN "maps/ProceduralCave_B1F_Lake2.blk"
 
 
 SECTION "Procedural Cave Map", ROMX

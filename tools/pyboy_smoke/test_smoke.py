@@ -1639,7 +1639,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                 # quadrants. Half-height/half-width decor remains traversable
                 # through its open quadrants, while solid decor does not.
                 passable_cells = set()
-                quadrant_tile_indexes = (5, 7, 13, 15)
+                quadrant_tile_indexes = (4, 6, 12, 14)  # bottom-left: the engine's (FOLLOWUPS #69)
                 for block_y in range(20):
                     for block_x in range(20):
                         block_id = playable[block_y * 20 + block_x]
@@ -1960,7 +1960,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                     if all(
                         facility_blockset[block_id * 16 + tile_offset]
                         in facility_walkable_tiles
-                        for tile_offset in (0, 2, 8, 10)
+                        for tile_offset in (4, 6, 12, 14)  # bottom-left (FOLLOWUPS #69)
                     )
                 }
                 eligible_fake_rooms = set()

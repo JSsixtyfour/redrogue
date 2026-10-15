@@ -49,6 +49,15 @@ FacSubroomGenerate::
 	add hl, de
 	ld a, [hl]
 	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE], a
+	; Rarely the PokeManiac takes the Super Nerd's place (and his object), in the
+	; subroom or the fallback alike. PFacPreload zeroed the byte.
+	call Random
+	cp FAC_MANIAC_ODDS
+	jr nc, .nerd
+	ASSERT BANK(sProcFacilityItemGot) == BANK(sProcFacilityGenScratch)
+	ld hl, sProcFacilityItemGot
+	set BIT_PFAC_MANIAC, [hl]
+.nerd
 	jp FacSuperNerdFallbackGenerate  ; no subroom pad: he stands in the Facility
 
 ; PFacArmPads, every Facility load, SRAM bank 1 open (and left open).
@@ -236,28 +245,50 @@ FacSubroomLoad::
 ; ============================================================
 DEF BIT_PFAC_SUPER_NERD_WON  EQU 0
 DEF BIT_PFAC_SUPER_NERD_PAID EQU 1
-; The cave's subroom keeps the same two bits in its own state byte.
+; The PokeManiac (user, 2026-10-14): a rarer resident in the Super Nerd's place
+; and object. He fights as the route's last trainer (FINAL_ROUTE_STEP; the step
+; override keys on his class), no bet, and his prize is one of his Pokemon
+; (FacManiacPrize). Losing to him is an ordinary blackout.
+DEF BIT_PFAC_MANIAC          EQU 3
+DEF FAC_MANIAC_ODDS          EQU 51 ; out of 256: 20%, as in the cave
+; The cave's subroom keeps the same bits in its own state byte.
 ASSERT BIT_CAVESUB_RESIDENT_WON == BIT_PFAC_SUPER_NERD_WON
 ASSERT BIT_CAVESUB_PRIZE_PAID == BIT_PFAC_SUPER_NERD_PAID
+ASSERT BIT_CAVESUB_MANIAC == BIT_PFAC_MANIAC
 
 ; From a text_asm (the caller keeps bc). Offers, and on a YES arms the battle:
 ; the overworld starts it once the text closes.
 FacSuperNerdTalk::
 	call FacSuperNerdFlags
-	bit BIT_PFAC_SUPER_NERD_WON, a
+	ld b, a
+	bit BIT_PFAC_SUPER_NERD_WON, b
 	jr z, .offer
-	bit BIT_PFAC_SUPER_NERD_PAID, a
+	bit BIT_PFAC_MANIAC, b
+	ld hl, FacManiacAfterText       ; his prize was settled at once
+	jp nz, PrintText
+	bit BIT_PFAC_SUPER_NERD_PAID, b
 	jp z, FacSuperNerdPrize         ; owed from a full bag
 	ld hl, FacSuperNerdAfterText
 	jp PrintText
 .offer
 	ld hl, FacSuperNerdOfferText
+	bit BIT_PFAC_MANIAC, b
+	jr z, .gotOffer
+	ld hl, FacManiacOfferText
+.gotOffer
+	push bc
 	call PrintText
 	call YesNoChoice
+	pop bc
 	ldh a, [hCurrentMenuItem]
 	and a
+	jr z, .accepted
 	ld hl, FacSuperNerdDeclinedText ; he stays; talking again repeats the offer
-	jp nz, PrintText
+	bit BIT_PFAC_MANIAC, b
+	jp z, PrintText
+	ld hl, FacManiacDeclinedText
+	jp PrintText
+.accepted
 	ld a, (1 << BIT_MONEY_MATCH_ACTIVE) | (1 << BIT_MONEY_MATCH_NO_PAYOUT)
 	ld [wMoneyMatchState], a
 	; Nothing more to read: close the box as the battle starts. Without this
@@ -271,10 +302,19 @@ FacSuperNerdTalk::
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
 	ld hl, FacSuperNerdBeatenText
 	ld de, FacSuperNerdWonText
+	ld c, OPP_SUPER_NERD
+	bit BIT_PFAC_MANIAC, b
+	jr z, .gotFoe
+	ld hl, FacManiacBeatenText
+	ld de, FacManiacWonText
+	ld c, OPP_POKEMANIAC
+.gotFoe
+	push bc
 	call SaveEndBattleTextPointers  ; this bank, read back after the battle
-	ld a, OPP_SUPER_NERD
+	pop bc
+	ld a, c
 	ld [wCurOpponent], a
-	ld a, 1                         ; his party is the roster's (MONEY_MATCH_STEP)
+	ld a, 1                         ; his party is the roster's (the step override)
 	ld [wTrainerNo], a
 	ld [wIsTrainerBattle], a
 	ld a, SCRIPT_SUPER_NERD_AFTER_BATTLE
@@ -311,9 +351,12 @@ FacSuperNerdSettle::
 	and a
 	ret
 
-; Rolls the prize the way PFacPlaceItems rolls a ball's, and gives it.
-; Prints. Clobbers everything.
+; Rolls the prize the way PFacPlaceItems rolls a ball's, and gives it; the
+; PokeManiac's is one of his Pokemon. Prints. Clobbers everything.
 FacSuperNerdPrize::
+	call FacSuperNerdFlags
+	bit BIT_PFAC_MANIAC, a
+	jp nz, FacManiacPrize
 	call FacSubRollItem
 	ld c, 1
 	call GiveItem                   ; the name goes to wStringBuffer
@@ -325,6 +368,100 @@ FacSuperNerdPrize::
 	ld hl, FacSuperNerdGotItemText
 .say
 	jp PrintText
+
+; The PokeManiac's prize: the Pokemon MoneyMatchApplyPayout set aside in
+; wEnemyMon6's slot when his battle was won, as it was in his party: species,
+; level, form, shiny, DVs, moves, stat experience. It comes healed and cured,
+; with the player as its OT, named by its species and form. With the party full
+; it goes to the BOX through GivePokemon instead: species, level and form, the
+; rest rolled fresh. Marked paid either way, even with the BOX full too: the
+; set-aside copy does not outlive the next battle, so there is nothing to owe.
+; Prints. Clobbers everything.
+FacManiacPrize:
+	call FacSubOpenHost
+	set BIT_PFAC_SUPER_NERD_PAID, [hl]
+	call FacSubCloseSRAM
+	ld hl, wEnemyMon6
+	ld de, wLoadedMon
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call CopyData
+	ld a, [wLoadedMonSpecies]
+	and a
+	ld hl, FacManiacNoRoomText      ; nothing set aside: never a glitch Pokemon
+	jp z, PrintText
+	ld a, [wLoadedMonMaxHP]
+	ld [wLoadedMonHP], a
+	ld a, [wLoadedMonMaxHP + 1]
+	ld [wLoadedMonHP + 1], a
+	xor a
+	ld [wLoadedMonStatus], a
+	ld hl, wLoadedMonCatchRate
+	res 1, [hl]                     ; never a fusion: its partner did not come along
+	ld a, [wPlayerID]
+	ld [wLoadedMonOTID], a
+	ld a, [wPlayerID + 1]
+	ld [wLoadedMonOTID + 1], a
+	; Its name, by species and form (names are baked into the nickname).
+	call .form
+	ld [wFormContextForm], a
+	ld a, [wLoadedMonSpecies]
+	ld [wFormContextSpecies], a
+	ld [wNamedObjectIndex], a
+	ld [wCurPartySpecies], a
+	call GetMonName
+	ld hl, wNameBuffer
+	ld de, wStringBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	jr nc, .box
+	ld a, PARTY_LENGTH - 1          ; its OT and name are written over below
+	ldh [hWhichPokemon], a
+	farcall _AddEnemyMonToPlayerParty ; wLoadedMon to the party's end, dex flags
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMonOT
+	call SkipFixedLengthTextEntries
+	ld d, h
+	ld e, l
+	ld hl, wPlayerName
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld a, [wPartyCount]
+	dec a
+	ld hl, wPartyMonNicks
+	call SkipFixedLengthTextEntries
+	ld d, h
+	ld e, l
+	ld hl, wStringBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld hl, FacManiacGotMonText
+	jp PrintText
+.box
+	ld a, [wBoxCount]
+	cp MONS_PER_BOX
+	ld hl, FacManiacNoRoomText
+	jp nc, PrintText
+	ld hl, FacManiacGotMonText
+	call PrintText
+	call .form
+	ld [wSpawnForm], a
+	ld a, [wLoadedMonSpecies]
+	ld b, a
+	ld a, [wLoadedMonLevel]
+	ld c, a
+	jp GivePokemon                  ; prints where it went
+
+; Out: a = wLoadedMon's form index (0 = base).
+.form
+	ld a, [wLoadedMonCatchRate]
+	and FORM_MASK
+	ASSERT FORM_SHIFT == 5
+	swap a
+	rrca
+	ret
 
 ; Out: b = one item, rolled the way PFacPlaceItems rolls a ball's. Leaves
 ; wRogueItem and wRogueDoorSelection as they were: Random_Item_Selection writes
@@ -597,4 +734,50 @@ FacSuperNerdBeatenText:
 FacSuperNerdWonText:
 	text "My stash stays"
 	line "with me!"
+	prompt
+
+; The PokeManiac's placeholder lines (user, 2026-10-14).
+FacManiacOfferText:
+	text "Beat me and one"
+	line "of my #MON is"
+	cont "yours to keep!"
+
+	para "Ready?"
+	done
+
+FacManiacDeclinedText:
+	text "My #MON can"
+	line "wait. Can you?"
+	done
+
+FacManiacAfterText:
+	text "Take good care of"
+	line "it, OK?"
+	done
+
+FacManiacGotMonText:
+	text "<PLAYER> got"
+	line "@"
+	text_ram wStringBuffer
+	text "!@"
+	sound_get_key_item
+	text_end
+
+FacManiacNoRoomText:
+	text "No room for it?"
+	line "Then it stays"
+	cont "with me."
+	done
+
+; In battle: he lost. Line 1 already holds "POKEMANIAC: " (12 of 18).
+FacManiacBeatenText:
+	text "No way!"
+	para "Pick... no, I'll"
+	line "pick one for you."
+	prompt
+
+; In battle: he won.
+FacManiacWonText:
+	text "My collection"
+	line "stays whole!"
 	prompt

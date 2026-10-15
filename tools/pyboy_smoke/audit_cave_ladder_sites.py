@@ -56,6 +56,9 @@ ENTRANCE_BLOCK = (9, 19)
 RNG_STATE_BYTES = 10
 TAIL = 81 + 19 * 26 + 20     # CAVESUB_TAIL: ladder A, ladder B
 RUNTIME = []                 # what the ROM stored and armed, for the last sample
+ROOM_WARPS = [tuple(int(v) for v in m) for m in re.findall(
+    r"^\tcave_subroom_room \w+,\s*\d+,\s*\d+,\s*(\d+),\s*(\d+),",
+    (REPO_ROOT / "custom_functions/cave_subroom.asm").read_text(encoding="utf-8"), re.M)]
 _SITE_TEXT = (REPO_ROOT / "constants" / "cave_ladder_site_constants.asm").read_text(encoding="utf-8")
 SITES = [(int(x), int(y)) for x, y in re.findall(r"^\tladder_site\s+(\d+),\s*(\d+)", _SITE_TEXT, re.M)]
 FIRST_WARP = int(re.search(r"CAVE_FIRST_LADDER_WARP EQU (\d+)", _SITE_TEXT).group(1))
@@ -111,7 +114,7 @@ def sample(harness_seed: int, map_id: int):
         sprites = [(x, y) for y, x in h.sprite_positions(5)]          # boss, 4 balls (steps)
         exit_yx = h.read_sram_bytes("sProcCaveStagingExitY", 2, bank=0)
         hideout = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
-        RUNTIME[:] = [h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 2, bank=0)[TAIL:],
+        RUNTIME[:] = [h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 4, bank=0)[TAIL:],
                       h.warp_entries()]
         return grid, player, sprites, (exit_yx[1], exit_yx[0]), hideout
     finally:
@@ -155,7 +158,10 @@ def has_pair(sites, distance) -> bool:
 
 
 def check_runtime(seed, grid, player, sprites, exit_block, hideout, blockset, passable, map_ids, tally) -> int:
-    (a, b), warps = RUNTIME
+    (a, b, _state, room_byte), warps = RUNTIME
+    # The subroom room this cave rolled names the two warps its ladders lead to
+    # (CaveSubRooms in custom_functions/cave_subroom.asm; past the table = the first).
+    room_warps = ROOM_WARPS[room_byte & 3] if room_byte & 3 < len(ROOM_WARPS) else ROOM_WARPS[0]
     unstamped = [row[:] for row in grid]
     for site in (a, b):
         if site < len(SITES):
@@ -201,7 +207,7 @@ def check_runtime(seed, grid, player, sprites, exit_block, hideout, blockset, pa
     for n, (x, y) in enumerate(SITES):
         entry = warps[FIRST_WARP + n]
         if n == a or n == b:
-            if entry != [2 * y + 1, 2 * x + 1, 0 if n == a else 1, map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
+            if entry != [2 * y + 1, 2 * x + 1, room_warps[0 if n == a else 1], map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
                 problems.append(f"site {n} armed as {entry}")
         elif entry[0] != NONE:
             problems.append(f"site {n} not disarmed: {entry}")

@@ -72,7 +72,32 @@ DEF CAVESUB_TMP_Y    EQUS "(sProcCaveStagingBuffer + CAVESUB_TAIL + 4)"
 DEF BIT_CAVESUB_RESIDENT_WON  EQU 0 ; the subroom's resident was beaten
 DEF BIT_CAVESUB_PRIZE_PAID    EQU 1 ; the Super Nerd's prize was handed over
 DEF BIT_CAVESUB_SUPER_NERD    EQU 2 ; the resident is the Super Nerd (else the Gambler)
+DEF BIT_CAVESUB_MANIAC        EQU 3 ; with SUPER_NERD: the PokeManiac, who uses his object
 DEF BIT_CAVESUB_OBJECTS_SHOWN EQU 7
+; The resident roll, out of 256 (user, 2026-10-14: 40% Gambler, 40% Super
+; Nerd, 20% PokeManiac).
+DEF CAVESUB_GAMBLER_ODDS EQU 102
+DEF CAVESUB_NERD_ODDS    EQU 102
+
+; The subroom's drawn room and its decoration, rolled once per cave at the end
+; of generation into CAVESUB_TMP_X, which is dead from there on. Bits 0-1: the
+; room (CaveSubRooms); 2-3: the Pokemon on its lake (0 none); 4-6: the one on
+; its unreachable mountain (0 none).
+DEF CAVESUB_ROOM EQUS "CAVESUB_TMP_X"
+DEF CAVESUB_ROOM_MASK  EQU %00000011
+; The subroom's object slots (data/maps/objects/ProceduralCaveSubroom.asm
+; ASSERTs them; its object consts are not visible outside maps.asm).
+DEF CAVESUB_SLOT_GAMBLER    EQU 1
+DEF CAVESUB_SLOT_SUPER_NERD EQU 2
+DEF CAVESUB_SLOT_BALL       EQU 3
+DEF CAVESUB_SLOT_WATER_MON  EQU 4
+DEF CAVESUB_SLOT_LAND_MON   EQU 5
+DEF CAVESUB_NUM_ROOMS  EQU 3 ; rows of CaveSubRooms (cave_subroom.asm)
+	ASSERT CAVESUB_NUM_ROOMS <= CAVESUB_ROOM_MASK + 1
+DEF CAVESUB_WATER_SHIFT EQU 2
+DEF CAVESUB_WATER_MASK EQU %00001100
+DEF CAVESUB_LAND_SHIFT EQU 4
+DEF CAVESUB_LAND_MASK  EQU %01110000
 
 ; The resident's fallback: when no ladder fits a cave (about 1 in 300), the
 ; rolled resident stands in the cave itself, on a block passing the ladder rule.

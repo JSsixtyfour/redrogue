@@ -144,7 +144,10 @@ class CemeteryChannelerTest(unittest.TestCase):
         ball = tuple(h.sprite_positions(1)[0])
         self.assertNotEqual((cy, cx), ball, "standing on the ball")
 
-        # Walk to the step below him and talk; decline once.
+        # Walk to the step below him and talk; decline once. No wild encounters
+        # on the way, as every stage walk does: an encounter here stalled the
+        # walk once the layout moved.
+        h.write8("wProcCemWildBudget", 0)
         blocked = {(x, y) for y, x in h.sprite_positions(4)}
         self.walk_to((cx, cy + 1), blocked)
         self.talk_up()

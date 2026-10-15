@@ -39,7 +39,7 @@ MoneyMatchApplyPayout::
 	bit BIT_MONEY_MATCH_ACTIVE, a
 	ret z
 	bit BIT_MONEY_MATCH_NO_PAYOUT, a
-	ret nz                          ; the Facility Super Nerd: no bet
+	jr nz, .noBet                   ; a subroom resident: no bet
 	and MONEY_MATCH_TURNS_MASK
 	ld b, a                         ; b = T
 	ld a, [wEnemyPartyCount]
@@ -87,6 +87,26 @@ MoneyMatchApplyPayout::
 	ldh a, [hDivideBCDQuotient + 2]
 	ld [wAmountMoneyWon + 2], a
 	ret
+
+; A subroom resident's no-bet fight, won. The PokeManiac's prize is one of his
+; Pokemon, picked here while his party is intact: once the battle ends the map
+; is entered again and its wild data, which shares wEnemyMon1's bytes (the
+; union in ram/wram.asm), is reloaded. The pick is copied to wEnemyMon6's slot,
+; which nothing writes before his prize text runs (FacManiacPrize).
+.noBet
+	ld a, [wTrainerClass]
+	cp POKEMANIAC
+	ret nz
+	ld a, [wEnemyPartyCount]
+	ld c, a
+	call Rangerandom
+	cp PARTY_LENGTH - 1
+	ret z                           ; already in the last slot
+	ld hl, wEnemyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld de, wEnemyMon6
+	jp CopyData
 
 ; The house gambler's talk, from his text_asm. Already beaten in this forest:
 ; his after line, no offer. Otherwise the offer and a YES/NO.

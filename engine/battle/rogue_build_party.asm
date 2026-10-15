@@ -2723,14 +2723,22 @@ RogueBattleRound:
 	jr .roundLoop
 .gotStep
 ; A Money Match fights as route step MONEY_MATCH_STEP of this round (Phase M),
-; the same override GetRandRoster applies. Touches only a and Z: `bit` leaves
-; the carry from the `cp` above set, as callers always got it.
+; the PokeManiac as FINAL_ROUTE_STEP: the same override GetRandRoster applies.
+; Touches only a and the flags, which leave as callers always got them: carry
+; set (from the `cp` above), and Z clear on the override path.
 	push hl
 	ld hl, wMoneyMatchState
 	bit BIT_MONEY_MATCH_ACTIVE, [hl]
 	pop hl
 	ret z
+	ld a, [wTrainerClass]
+	cp POKEMANIAC
 	ld a, MONEY_MATCH_STEP
+	jr nz, .mmStep
+	ld a, FINAL_ROUTE_STEP
+.mmStep
+	or a                            ; Z clear (a is a step, never 0)
+	scf                             ; the carry the `cp ROUND_BATTLES` left
 	ret
 
 ; ===========================================================================

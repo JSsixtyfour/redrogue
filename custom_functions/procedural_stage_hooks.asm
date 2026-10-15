@@ -26,6 +26,8 @@ ProcBossPatchStageSprite::
 	jr z, .dorm
 	cp AI_LAIR
 	jr z, .aiLair
+	cp PROCEDURAL_CAVE_SUBROOM
+	jr z, .caveSubroom
 	cp PROCEDURAL_CEMETERY_1
 	jp z, .cemetery
 	cp PROCEDURAL_CEMETERY_2
@@ -37,6 +39,9 @@ ProcBossPatchStageSprite::
 	ret
 .dorm
 	farcall RoomPatchSprites
+	ret
+.caveSubroom
+	farcall CaveSubroomPatchSprites ; the lake and mountain Pokemon
 	ret
 .aiLair
 	farcall AILairPatchMirrorSprite

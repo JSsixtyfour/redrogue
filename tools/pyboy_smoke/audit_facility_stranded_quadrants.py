@@ -40,7 +40,7 @@ WALKABLE_TILES = {
     0x01, 0x10, 0x11, 0x13, 0x1B, 0x20, 0x21, 0x22, 0x30,
     0x31, 0x32, 0x42, 0x43, 0x48, 0x52, 0x55, 0x58, 0x5E,
 }
-QUADRANT_TILE_INDEXES = (5, 7, 13, 15)
+QUADRANT_TILE_INDEXES = (4, 6, 12, 14)  # bottom-LEFT tile, measured 2026-10-14 (FOLLOWUPS #69)
 # Bottom-left quadrant of block (9,19) since 2026-09-17; the top two
 # quadrants of that block are the stage-event NPC pair's arrival cells.
 ENTRANCE = (18, 39)
