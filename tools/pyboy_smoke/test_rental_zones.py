@@ -21,6 +21,29 @@ class RentalZoneTest(unittest.TestCase):
         self.h.write8("hCurMap", maps[name])
         return maps[name]
 
+    def baseline_steps(self):
+        """step(map, routine) from one parked baseline, carrying the record.
+
+        Back-to-back call_routines on one park point drift the parked machine
+        until a call freezes pyboy.tick() on an illegal opcode (measured
+        2026-10-14; the harness now fails fast on that state). Every step
+        starts from the same baseline and carries only the 16-byte rental
+        record, which is all the state these tests exercise.
+        """
+        h = self.h
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+
+        def step(name, routine):
+            record = h.read_bytes("wRentalRecord", 16)
+            h.load_state(baseline)
+            start = h.address("wRentalRecord")
+            h.pyboy.memory[start:start + 16] = record
+            zone = self.map(name)
+            h.call_routine(routine)
+            return zone
+        return step
+
     def test_reserved_survives_hubs_dorm_bridges_and_internal_maps(self):
         h = self.h
         self.seed(h, 0, {}, 0)
@@ -37,26 +60,22 @@ class RentalZoneTest(unittest.TestCase):
         h.write8("wRentalState", 0)
         h.write8("wRentalFlags", 1)
         original = h.read_bytes("wRentalOfferSpecies", 12)
+        step = self.baseline_steps()
         for name in ("INDIGO_PLATEAU_LOBBY", "OAKS_LAB", "SILPH_CO_DORM"):
-            self.map(name)
-            h.call_routine("RentalRecordMapLoad")
-            h.call_routine("RentalSettleZoneReturn")
+            step(name, "RentalRecordMapLoad")
+            step(name, "RentalSettleZoneReturn")
             self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), original)
             self.assertEqual(h.read8("wRentalFlags"), 1)
-        self.map("PEWTER_GYM")
-        h.call_routine("RentalRecordMapLoad")
+        step("PEWTER_GYM", "RentalRecordMapLoad")
         self.assertEqual(h.read8("wRentalFlags"), 129)
-        self.map("SILPH_CO_DORM")
-        h.call_routine("RentalSettleZoneReturn")
+        step("SILPH_CO_DORM", "RentalSettleZoneReturn")
         self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), original)
-        self.map("REWARD_ROOM")
-        h.call_routine("RentalSettleZoneReturn")
+        step("REWARD_ROOM", "RentalSettleZoneReturn")
         self.assertEqual(h.read8("wRentalFlags"), 0)
         self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), [0] * 12)
         # Reward Room -> lobby is the same next opportunity, not another reset.
         h.write8("wRentalOfferSpecies", 25)
-        self.map("INDIGO_PLATEAU_LOBBY")
-        h.call_routine("RentalSettleZoneReturn")
+        step("INDIGO_PLATEAU_LOBBY", "RentalSettleZoneReturn")
         self.assertEqual(h.read8("wRentalOfferSpecies"), 25)
 
     def test_export_phase1_party_rental_fixture_and_cold_continue(self):
@@ -169,12 +188,11 @@ class RentalZoneTest(unittest.TestCase):
     def test_active_internal_map_load_does_not_expire_or_rebind(self):
         h = self.h
         self.seed(h, 0, {}, 249)
-        zone = self.map("ROUTE_1")
-        h.call_routine("RentalRecordMapLoad")
+        step = self.baseline_steps()
+        zone = step("ROUTE_1", "RentalRecordMapLoad")
         for name in ("ROUTE_1", "SS_ANNE_B1F_ROOMS", "SILPH_CO_DORM", "OAKS_LAB"):
-            self.map(name)
-            h.call_routine("RentalRecordMapLoad")
-            h.call_routine("RentalSettleZoneReturn")
+            step(name, "RentalRecordMapLoad")
+            step(name, "RentalSettleZoneReturn")
             self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,249,zone,131])
 
     def test_live_lobby_settles_before_selection_and_saves_setup_as_pending(self):

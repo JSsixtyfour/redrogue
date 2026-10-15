@@ -14,9 +14,9 @@
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset - modeled on Onix (defensive Rock-type tank)
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
-	     DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   STRENGTH
+	tmhm TOXIC,        RAGE,         EARTHQUAKE,   SUBSTITUTE,   STRENGTH, \
+	     DIG,          MIMIC,        DOUBLE_TEAM,  FLASH,      BIDE,         \
+	     REST,         ROCK_SLIDE
 	; end
 
 	db BANK(ShucklePicFront) ; pic bank

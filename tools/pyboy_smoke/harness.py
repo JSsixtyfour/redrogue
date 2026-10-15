@@ -50,6 +50,13 @@ class SymbolTable:
     def address(self, label: str) -> int:
         return self.get(label)[1]
 
+    def routine_range(self, label: str) -> tuple[int, int, int]:
+        """(bank, start, end): from the label up to the next global label."""
+        bank, start = self.get(label)
+        end = next((address for address, other in self._by_bank.get(bank, ())
+                    if address > start and "." not in other), 0x8000)
+        return bank, start, end
+
     def nearest(self, bank: int, address: int) -> str | None:
         candidates = self._by_bank.get(bank, ())
         nearest = None
@@ -130,6 +137,9 @@ class RedRogueHarness:
             rom_data[0x14F] = global_checksum & 0xFF
         self._rom_file = io.BytesIO(rom_data)
         self.artifacts_dir = artifacts_dir.resolve()
+        self._call_streak = 0
+        self._sp_trick_ranges = None
+        self._last_call_label = None
         options = {
             "window": "null",
             "sound_emulated": sound_emulated,
@@ -426,6 +436,7 @@ class RedRogueHarness:
         """Restore a trial baseline from an open binary file."""
         file_object.seek(0)
         self.pyboy.load_state(file_object)
+        self._call_streak = 0
 
     def tick(self, frames: int = 1, *, render: bool = False) -> None:
         for _ in range(frames):
@@ -1244,6 +1255,9 @@ class RedRogueHarness:
         therefore runs with interrupt servicing unavailable.
         """
         bank, address = self.symbols.get(label)
+        self._assert_parked_machine_sane(label)
+        self._call_streak += 1
+        self._last_call_label = label
         # A direct call is a fresh AI decision: real decisions empty the
         # one-decision estimate cache at entry (AIClearDecisionCaches), and a
         # test that edits stats or moves between two direct calls must not read
@@ -1400,6 +1414,50 @@ class RedRogueHarness:
             self.pyboy.hook_deregister(di_bank, di_address + 1)
             self.pyboy.hook_deregister(enter_bank, enter_address)
             self.pyboy.hook_deregister(return_bank, return_address)
+
+    # Routines that point SP at a data buffer to copy it with `pop`. A park
+    # point inside one legitimately has SP outside the stack.
+    SP_TRICK_ROUTINES = (
+        "AutoBgMapTransfer", "TransferBgRows", "VBlankCopyBgMap", "VBlankCopy",
+        "CopyVideoData", "CopyVideoDataDouble", "LoadCurrentMapView",
+        "CopySpinnerTiles",
+    )
+
+    def _assert_parked_machine_sane(self, label: str) -> None:
+        """Refuse to hijack a park point that an earlier call corrupted.
+
+        After its restore, call_routine lets the parked game run out the rest
+        of the frame on the test's edited WRAM, so every call leaves a new park
+        point. Measured 2026-10-14 (test_rental_zones): after six calls the park
+        point was DetectCollisionBetweenSprites with SP inside wTileMap, and the
+        seventh call ran into an illegal opcode that froze pyboy.tick() for
+        good, hanging the whole suite. Checked at ENTRY: a bad park point left
+        by a test's last call before it restores a baseline is harmless
+        (test_procedural_trainer_return does exactly that, every subtest).
+        Fix a failure by reloading a saved baseline between calls
+        (test_rental_zones.baseline_steps), not by loosening this check.
+        """
+        sp = self.pyboy.register_file.SP
+        stack_top = self.address("wStack")
+        if stack_top - 0xFF <= sp <= stack_top:
+            return
+        pc = self.pyboy.register_file.PC
+        bank = 0 if pc < 0x4000 else self.read8("hLoadedROMBank")
+        if self._sp_trick_ranges is None:
+            self._sp_trick_ranges = [
+                self.symbols.routine_range(name) for name in self.SP_TRICK_ROUTINES
+                if name in self.symbols._symbols
+            ]
+        if any(bank == r_bank and start <= pc < end
+               for r_bank, start, end in self._sp_trick_ranges):
+            return
+        raise AssertionError(
+            f"call_routine({label!r}) refused: the park point left by "
+            f"call_routine({self._last_call_label!r}) is corrupted (SP=${sp:04X} "
+            f"outside the stack, PC=${bank:02X}:{pc:04X}), "
+            f"{self._call_streak} calls since the last boot or harness.load_state. "
+            f"Hijacking it would likely hang. Reload a saved baseline between calls."
+        )
 
     def probe_routine_until(self, label: str, predicate, limit: int = 12000) -> None:
         """Enter a non-waiting routine path, capture a seam, and restore state.
@@ -1647,7 +1705,8 @@ class RedRogueHarness:
             "screenshot": image_path.name,
             "state": state_path.name,
         }
-        temporary = index_path.with_suffix(".tmp")
+        # Per-process temp name: run_smoke.py runs modules in parallel workers.
+        temporary = index_path.with_suffix(f".{os.getpid()}.tmp")
         temporary.write_text(
             json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )

@@ -14,8 +14,6 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/sirfetchd.asm;
-	; WHIRLWIND is not a valid TM/HM in this project (same class of error as
-	; Crobat's WHIRLWIND in batch 2), dropped rather than substituted
 	tmhm RAZOR_WIND,   SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \

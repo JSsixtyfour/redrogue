@@ -141,11 +141,14 @@ save_converter:
 # Static audits (bank/call/clobber, stack, SRAM, text traps) against the built
 # .sym/.map of all three ROMs. Fails on any bug-level finding not triaged into
 # tools/static_audit/allowlist.txt. INFO=1 also prints info-level findings.
-# Also fails when data/trainers/band_pools.asm is not what PARTY_ROSTER.md generates.
+# Also fails when data/trainers/band_pools.asm is not what PARTY_ROSTER.md generates,
+# and runs the slow source-only test modules that `make smoke` skips
+# (SOURCE_ONLY_MODULES in tools/pyboy_smoke/run_smoke.py).
 audit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
 	python3 tools/gen_party_roster.py --check
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(if $(INFO),--info)
+	python3 tools/pyboy_smoke/run_smoke.py --source-only
 
 # Per-bank free space (total and largest gap, min across all three ROMs) and what moved,
 # both relative to the previous `make space` run. SPACE_ARGS passes extra flags, e.g.

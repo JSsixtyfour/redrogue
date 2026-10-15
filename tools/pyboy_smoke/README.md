@@ -14,8 +14,25 @@ python3 tools/pyboy_smoke/run_smoke.py --list
 ```
 
 The target builds `pokeblue_debug.gbc`, resolves current addresses from
-`pokeblue_debug.sym`, and runs the focused smoke suite with Python's standard
-`unittest` runner.
+`pokeblue_debug.sym`, and runs the suite with Python's standard `unittest`
+machinery in parallel worker processes (`--jobs N`, default every CPU; about
+80 seconds for ~1000 tests on 6 cores). Modules are packed into batches using
+the previous run's timings (`builds/smoke_durations.json`). Passing batches
+print one line each; failures print their tracebacks (`--verbose` prints
+everything).
+
+Every test runs under a hang watchdog (`--test-timeout`, default 180 s). A test
+that hangs dumps its Python stack, is reported as `TIMEOUT`, and the rest of
+its batch carries on in a fresh worker, so a hang never stalls `make release`.
+
+Slow modules that never start an emulator (`SOURCE_ONLY_MODULES` in
+`run_smoke.py`) run under `make audit` instead (`run_smoke.py --source-only`).
+An explicit `TEST=` pattern still reaches them.
+
+`call_routine` refuses to hijack a park point that an earlier call corrupted
+(SP outside the stack, away from the SP-copy routines) and fails with a
+message instead of hanging. The fix is to reload a saved baseline between
+calls; `test_rental_zones.RentalZoneTest.baseline_steps` shows the pattern.
 
 Deterministic seeds make failures reproducible; they do not make an incidental
 RNG sequence an API. Random-generation tests should assert structural and

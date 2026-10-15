@@ -293,8 +293,8 @@ RhydonEvosMoves:
 ; Learnset
 	db 10, TAIL_WHIP
 	db 10, FURY_ATTACK
-	db 13, STOMP
-	db 19, ROCK_THROW
+	db 13, ROCK_THROW
+	db 19, STOMP
 	db 24, DIG
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
@@ -691,8 +691,8 @@ RhyhornEvosMoves:
 ; Learnset
 	db 10, TAIL_WHIP
 	db 10, FURY_ATTACK
-	db 13, STOMP
-	db 19, ROCK_THROW
+	db 13, ROCK_THROW
+	db 19, STOMP
 	db 24, DIG
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
@@ -2297,6 +2297,7 @@ OmanyteEvosMoves:
 	db EVOLVE_LEVEL, 40, OMASTAR
 	db 0
 ; Learnset
+    db 10, BUBBLE
 	db 15, CONSTRICT
 	db 18, BUBBLEBEAM
 	db 22, HORN_ATTACK
@@ -2318,6 +2319,7 @@ OmastarEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 10, BUBBLE
 	db 15, CONSTRICT
 	db 18, BUBBLEBEAM
 	db 22, HORN_ATTACK
@@ -3029,10 +3031,11 @@ XatuEvosMoves:
 	db 0
 ; Learnset - PECK/LEER/NIGHT_SHADE already granted at level 1; FUTURE_SIGHT
 ; does not exist in Gen 1, filled with METRONOME.
-	db 20, TELEPORT
-	db 35, METRONOME ; was FUTURE_SIGHT
-	db 50, CONFUSE_RAY
-	db 65, PSYCHIC_M
+	db 12, NIGHT_SHADE
+	db 20, CONFUSION
+	db 32, PSYBEAM ; was FUTURE_SIGHT
+	db 42, CONFUSE_RAY
+	db 52, PSYCHIC_M
 	db 0
 
 KinglerEvosMoves:
@@ -4059,7 +4062,7 @@ WooperEvosMoves:
 	db 0
 
 QuagsireEvosMoves:
-; Evolutions
+; Evolutionsf
 	db 0
 ; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1
 	db 11, SLAM
@@ -4239,12 +4242,15 @@ QwilfishEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/POISON_STING already granted at level 1
+    db 8, BUBBLE
 	db 10, HARDEN
 	db 10, MINIMIZE
-	db 19, WATER_GUN
-	db 28, PIN_MISSILE
-	db 37, TAKE_DOWN
-	db 46, HYDRO_PUMP
+	db 17, WATER_GUN
+	db 25, PIN_MISSILE
+	db 30, TAKE_DOWN
+    db 35, SLUDGE
+	db 44, HYDRO_PUMP
+    db 48, TOXIC
 	db 0
 
 ScizorEvosMoves:
@@ -4254,13 +4260,13 @@ ScizorEvosMoves:
 ; already granted at level 1; PURSUIT/FALSE_SWIPE/METAL_CLAW do not exist in
 ; Gen 1, filled with METRONOME.
 	db 6, FOCUS_ENERGY
-	db 12, METRONOME ; was PURSUIT
-	db 18, METRONOME ; was FALSE_SWIPE
+    db 11, WING_ATTACK
+	db 16, CUT
 	db 24, AGILITY
-	db 30, METRONOME ; was METAL_CLAW
 	db 36, SLASH
-	db 42, SWORDS_DANCE
+	db 42, TWINEEDLE
 	db 48, DOUBLE_TEAM
+	db 54, SWORDS_DANCE
 	db 0
 
 ShuckleEvosMoves:
@@ -4269,10 +4275,10 @@ ShuckleEvosMoves:
 ; Learnset - CONSTRICT/WITHDRAW already granted at level 1; ENCORE/SAFEGUARD
 ; do not exist in Gen 1, filled with METRONOME.
 	db 9, WRAP
-	db 14, METRONOME ; was ENCORE
-	db 23, METRONOME ; was SAFEGUARD
-	db 28, BIDE
-	db 37, REST
+    db 11, ROCK_THROW
+	db 25, BIDE
+	db 35, REST
+    db 40, ROCK_SLIDE
 	db 0
 
 HeracrossEvosMoves:
@@ -4456,10 +4462,14 @@ SkarmoryEvosMoves:
 ; Learnset - LEER/PECK already granted at level 1; STEEL_WING does not exist
 ; in Gen 1, filled with METRONOME.
 	db 13, SAND_ATTACK
+    db 14, WING_ATTACK
+    db 16, ROCK_THROW
 	db 19, SWIFT
 	db 25, AGILITY
-	db 37, FURY_ATTACK
-	db 49, METRONOME ; was STEEL_WING
+	db 30, FURY_ATTACK
+    db 35, ROCK_SLIDE
+	db 40, SLASH ; was STEEL_WING
+    db 45, DRILL_PECK
 	db 0
 
 HoundourEvosMoves:
@@ -4779,13 +4789,16 @@ SirfetchdEvosMoves:
 	db 0
 ; Learnset - PECK/SAND_ATTACK already granted at level 1; BRUTAL_SWING
 ; does not exist in Gen 1, filled with METRONOME.
-	db 13, LEER
+	db 7, LEER
+    db 9, SHARPEN
+    db 13, FURY_ATTACK
 	db 17, DOUBLE_KICK
-	db 21, METRONOME ; was BRUTAL_SWING
-	db 25, SWORDS_DANCE
-	db 29, LOW_KICK
-	db 33, JUMP_KICK
-	db 41, ROLLING_KICK
+    db 18, WING_ATTACK
+	db 23, SLASH ; was BRUTAL_SWING
+    db 25, QUICK_ATTACK
+	db 28, SWORDS_DANCE
+    db 31, DRILL_PECK
+    db 39, AGILITY
 	db 0
 
 MagnezoneEvosMoves:
@@ -4816,15 +4829,17 @@ TangrowthEvosMoves:
 RhyperiorEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
+; Learnset
 ; HORN_ATTACK/STOMP/TAIL_WHIP/FURY_ATTACK already granted at level 1.
-	db 20, STOMP
-	db 25, TAIL_WHIP
-	db 30, FURY_ATTACK
-	db 35, ROCK_SLIDE
-	db 40, HORN_DRILL
-	db 48, LEER
-	db 55, EARTHQUAKE
+	db 10, TAIL_WHIP
+	db 10, FURY_ATTACK
+	db 13, ROCK_THROW
+	db 19, STOMP
+	db 24, DIG
+	db 39, ROCK_SLIDE
+	db 44, EARTHQUAKE
+	db 49, TAKE_DOWN
+	db 55, HORN_DRILL
 	db 0
 
 KleavorEvosMoves:

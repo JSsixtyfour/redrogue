@@ -14,12 +14,10 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
+	tmhm MEGA_DRAIN,   FLY,    TOXIC,        RAZOR_WIND,    SUBSTITUTE,     \
+	     THUNDER_WAVE,  SWIFT,   DREAM_EATER,      REST, DREAM_EATER,         \
 	     PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         METRONOME,    SKULL_BASH,   DREAM_EATER,  REST,         \
-	     THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   SUBSTITUTE,   FLASH,        \
-	     FLY
+	     PSYWAVE                                                               \
 	; end
 
 	db BANK(NatuPicFront) ; pic bank
