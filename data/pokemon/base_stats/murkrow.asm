@@ -17,7 +17,7 @@
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
 	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY,          \
-         NIGHT_SHADE,  THUNDER_WAVE, PSYCHIC,      DREAM_EATER
+         THUNDER_WAVE, PSYCHIC_M,      DREAM_EATER
 	; end
 
 	db BANK(MurkrowPicFront) ; pic bank
