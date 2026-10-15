@@ -1730,8 +1730,8 @@ AICapEnemyDamageAtOwnerHP::
 ; multiplier (it rejects rolls below 85 percent + 1). Damage 0/1 is left alone,
 ; as RandomizeDamage skips those. Exact fixed damage (Seismic Toss, Night Shade,
 ; SonicBoom, Dragon Rage, Super Fang) has no roll. The ENEMY's Psywave rolls in
-; [0, level * 1.5) (core.asm, unlike the player's [1, ...)), so its guaranteed
-; damage is 0 (Codex follow-up R6).
+; [1, level * 1.5) (core.asm, same as the player's), so its guaranteed damage
+; is 1 (Codex follow-up R6).
 ; Clobbers af, b.
 AIScaleEstimateToMinimumRoll:
 	ld a, [wEnemyMoveEffect]
@@ -1744,6 +1744,7 @@ AIScaleEstimateToMinimumRoll:
 	ret nz
 	xor a
 	ld [wAIDamageEstimate], a
+	inc a
 	ld [wAIDamageEstimate + 1], a
 	ret
 .rolled
