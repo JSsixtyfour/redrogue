@@ -4199,14 +4199,16 @@ SteelixEvosMoves:
 ; Learnset - canon Gen 2 levels (tmp/pokegold, since KEP's own Steelix
 ; learnset uses Gen 4+ moves); TACKLE/SCREECH already granted at level 1;
 ; SANDSTORM/CRUNCH do not exist in Gen 1, filled with METRONOME.
-	db 10, BIND
-	db 14, ROCK_THROW
-	db 23, HARDEN
-	db 27, RAGE
-	db 36, METRONOME ; was SANDSTORM
-	db 40, SLAM
-	db 49, METRONOME ; was CRUNCH
+	db 12, ROCK_THROW
+	db 19, DIG
+	db 25, RAGE
+	db 29, HARDEN
+	db 31, SLAM
+	db 37, ROCK_SLIDE
+	db 43, EARTHQUAKE
+	db 48, BIND
 	db 0
+    
 
 SnubbullEvosMoves:
 ; Evolutions

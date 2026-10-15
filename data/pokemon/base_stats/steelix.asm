@@ -13,13 +13,12 @@
 	db TACKLE, SCREECH, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
-	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/steelix.asm,
-	; already Gen 1 valid
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         DRAGON_RAGE,  EARTHQUAKE,   FISSURE,      DIG,          \
-	     MIMIC,        DOUBLE_TEAM,  BIDE,         SELFDESTRUCT, SKULL_BASH,   \
-	     REST,         EXPLOSION,    ROCK_SLIDE,   SUBSTITUTE,   CUT,          \
-	     STRENGTH
+	; tm/hm learnset
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
+	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
+	     BIDE,         SELFDESTRUCT, SKULL_BASH,   REST,         EXPLOSION,    \
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     HYPER_BEAM,   CUT,          \
+         DRAGON_RAGE
 	; end
 
 	db BANK(SteelixPicFront) ; pic bank
