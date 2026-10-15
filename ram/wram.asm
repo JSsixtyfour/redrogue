@@ -1839,8 +1839,12 @@ wSpriteWidth:: db
 wSpriteHeight:: db
 ; current input byte
 wSpriteInputCurByte:: db
-; bit offset of last read input bit
-wSpriteInputBitCounter:: db
+; Was wSpriteInputBitCounter, dead since the LZ pic switch (2026-10-07); reused
+; in place so no address moves. Sleep Clause (custom_functions/sleep_clause.asm):
+; low nibble = the player's mon the ENEMY put to sleep, high nibble = the
+; enemy's mon the PLAYER put to sleep, each as party slot + 1 (0 = none). Rest
+; never sets it. Zeroed by InitBattleVariables. Unsaved (below wMainDataStart).
+wSleepClauseState:: db
 
 ; Was wSpriteOutputBitOffset, dead since the LZ pic switch (2026-10-07); reused
 ; in place so no address moves. Money Match (PROCEDURAL_SUBROOMS_PLAN Phase M):

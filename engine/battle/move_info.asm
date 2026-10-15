@@ -165,7 +165,7 @@ PrintMenuItem:
 	lb bc, 1, 3
 	call PrintNumber
 	ld [hl], '%'
-	jr .moveDisabled
+	jp .moveDisabled
 
 .guaranteedCrit
 	ld a, 100
@@ -175,7 +175,7 @@ PrintMenuItem:
 	lb bc, 1, 3
 	call PrintNumber
 	ld [hl], '%'
-	jr .moveDisabled
+	jp .moveDisabled
 
 .noPower
 	hlcoord 6, 6
@@ -184,12 +184,27 @@ PrintMenuItem:
 	hlcoord 2, 7
 	predef PrintMoveType
 	; Status moves have no damage/effectiveness/crit rate to preview.
+	; Sleep Clause: a sleep move that would be blocked shows SLEEP BAN in the
+	; PWR row (always "---" for it). A warning only: it stays selectable,
+	; because the clause is re-checked when the move runs.
+	ld a, [wPlayerMoveEffect]
+	cp SLEEP_EFFECT
+	jr nz, .showNoPower
+	ld d, SLEEP_CLAUSE_ENEMY_SIDE
+	farcall SleepClauseIsActive
+	jr nc, .showNoPower
+	hlcoord 1, 8
+	ld de, SleepBanText
+	call PlaceString
+	jr .noPowerAccuracy
+.showNoPower
 	hlcoord 1, 8
 	ld de, PowerText
 	call PlaceString
 	hlcoord 6, 8
 	ld de, NoPowerText
 	call PlaceString
+.noPowerAccuracy
 	hlcoord 1, 9
 	ld de, AccuracyText
 	call PlaceString
@@ -220,6 +235,9 @@ PrintMenuItem:
 
 DisabledText:
 	db "disabled!@"
+
+SleepBanText:
+	db "SLEEP BAN@"
 
 TypeText:
 	db "TYPE@"

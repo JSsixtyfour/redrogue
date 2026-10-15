@@ -70,6 +70,12 @@ DEF SLP_MASK EQU %111 ; 0-7 turns
 	const FRZ ; 5
 	const PAR ; 6
 
+; Sleep Clause (custom_functions/sleep_clause.asm): which side's party a
+; clause query is about. Equal to hWhoseTurn of that side, so the target of the
+; current move is side (hWhoseTurn ^ 1) and the user is side hWhoseTurn.
+DEF SLEEP_CLAUSE_PLAYER_SIDE EQU 0
+DEF SLEEP_CLAUSE_ENEMY_SIDE  EQU 1
+
 DEF MAX_STAT_VALUE EQU 999
 
 ; trainer dvs

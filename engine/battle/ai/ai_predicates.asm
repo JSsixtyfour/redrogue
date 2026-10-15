@@ -1408,6 +1408,11 @@ AIPrimarySleepIsBlocked::
 	ld a, [wBattleMonStatus]
 	and a
 	jr nz, .blocked
+	; Sleep Clause: one of the player's mons is already asleep from an enemy
+	; sleep move. Takes the side explicitly, so stale hWhoseTurn is harmless.
+	ld d, SLEEP_CLAUSE_PLAYER_SIDE
+	farcall SleepClauseIsActive
+	jr c, .blocked
 	ld e, BRIDGE_STATUS_CHECK_OTHER
 	jp AIBridgePlayerTargetBlocksStatus
 .blocked

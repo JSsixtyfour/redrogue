@@ -57,6 +57,12 @@ SleepEffect:
 	ld a, [wMoveMissed]
 	and a
 	jr nz, .didntAffect
+	; Sleep Clause (custom_functions/sleep_clause.asm): checked after the hit
+	; test, as Showdown does. On carry the message is already printed.
+	push bc
+	farcall SleepClauseCheckAndClaim
+	pop bc ; leaves F intact
+	ret c
 	; Shin Red import Phase 4 (4.6): the recharge-bit clear moves here, after
 	; every check above has passed. It used to run first and jump straight to
 	; .setSleepCounter whenever the target needed to recharge, skipping the

@@ -801,6 +801,8 @@ INCLUDE "custom_functions/func_enhancedcolor.asm"
 SECTION "Bridge Extended Effects", ROMX
 
 INCLUDE "custom_functions/bridge_effects_extended.asm"
+; Must stay in this section: RestPrecheck plain-calls BridgePlayerRestIsBlocked.
+INCLUDE "custom_functions/sleep_clause.asm"
 
 ; Procedural stage events (Phase 7): the farcall-only half, in its own section
 ; so it can float. See custom_functions/stage_events.asm's header for why the

@@ -13,6 +13,7 @@ InitBattleVariables:
 	ldh a, [hTileAnimations]
 	ld [wSavedTileAnimations], a
 	xor a
+	ld [wSleepClauseState], a ; Sleep Clause: only this battle's sleeps count
     ld [wWasTrainerBattle], a
 	ld [wActionResultOrTookBattleTurn], a
 	ld [wBattleResult], a

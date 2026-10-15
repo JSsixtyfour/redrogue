@@ -403,10 +403,20 @@ class BridgeBattleSourceContractTest(unittest.TestCase):
         heal = (
             REPO_ROOT / "engine" / "battle" / "move_effects" / "heal.asm"
         ).read_text()
+        # Since Sleep Clause the farcall goes through RestPrecheck
+        # (custom_functions/sleep_clause.asm), which must ask the Bridge first
+        # and bail on its carry before doing anything else.
         self.assertLess(
-            heal.index("farcall BridgePlayerRestIsBlocked"),
+            heal.index("farcall RestPrecheck"),
             heal.index("ld [hl], 2"),
         )
+        clause = (
+            REPO_ROOT / "custom_functions" / "sleep_clause.asm"
+        ).read_text()
+        body = clause.split("RestPrecheck::", 1)[1].split("\n\n", 1)[0]
+        lines = [line.split(";")[0].strip() for line in body.splitlines()]
+        lines = [line for line in lines if line]
+        self.assertEqual(lines[:2], ["call BridgePlayerRestIsBlocked", "ret c"])
 
     def test_damage_bonus_order_places_life_orb_before_critical_mastery(self) -> None:
         core = (REPO_ROOT / "engine" / "battle" / "core.asm").read_text()

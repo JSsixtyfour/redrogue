@@ -32,7 +32,7 @@ HealEffect_:
 	; with its own arguments, so it must be saved across the farcall.
 	push hl
 	push de
-	farcall BridgePlayerRestIsBlocked
+	farcall RestPrecheck ; Bridge Rest block + Sleep Clause release
 	pop de
 	pop hl
 	jp c, .failed
