@@ -33,6 +33,6 @@
 
 	db BANK(PTaurosCombatPicFront) ; pic bank
 
-	dname "P-COMBAT"
+	dname "C-TAUROS"
 
 	form_end PAL_GRAYMON

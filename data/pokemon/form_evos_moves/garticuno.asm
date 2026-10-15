@@ -9,10 +9,13 @@ GarticunoFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-    db 6,  AURORA_BEAM
+    db 8,  GUST
+	db 16, CONFUSION
+	db 21, HYPNOSIS
+	db 26, REFLECT
+	db 30, PSYBEAM
 	db 35, AGILITY
-	db 45, ICE_BEAM
-	db 51, BLIZZARD
+	db 45, PSYCHIC_M
+	db 50, RECOVER
 	db 55, SKY_ATTACK
-	db 60, MIST
 	db 0

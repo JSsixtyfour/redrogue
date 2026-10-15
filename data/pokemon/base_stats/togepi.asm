@@ -10,17 +10,17 @@
 	INCBIN "gfx/pokemon/front/togepi.dim" ; sprite dimensions
 	dw TogepiPicFront, TogepiPicBack
 
-	db GROWL, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM filled with METRONOME
+	db GROWL, POUND, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
+	     DOUBLE_EDGE,  EGG_BOMB,     SOFTBOILED,   DREAM_EATER,  FLAMETHROWER, \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         SOLARBEAM,    \
 	     THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    FIRE_BLAST,   \
 	     SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
-	     SUBSTITUTE,   STRENGTH,     FLASH,        FLAMETHROWER
+	     SUBSTITUTE,   FLASH                                                   \
 	; end
 
 	db BANK(TogepiPicFront) ; pic bank

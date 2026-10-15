@@ -152,12 +152,17 @@ RedrawPartyMenu_::
 ; if it's a stone evolution entry
 	dec hl
 	dec hl
-	ld b, [hl]
-	ld a, [wEvoStoneItemID] ; the stone the player used
+	ld a, [hl]
 	inc hl
 	inc hl
 	inc hl
-	cp b ; does the player's stone match this evolution entry's stone?
+	push hl
+	ld e, a ; the entry's stone (only d/e cross a farcall)
+	; does the player's stone match? A form may need a different stone than
+	; the entry names (Alolan Vulpix: Ice), so ask the evolution parser's check.
+	farcall EvoStoneMatchesUsed
+	pop hl
+	ld de, .notAbleToEvolveText ; the farcall input clobbered it; ld keeps flags
 	jr nz, .checkEvolutionsLoop
 ; if it does match
 	ld de, .ableToEvolveText

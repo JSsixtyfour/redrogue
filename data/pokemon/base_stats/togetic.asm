@@ -10,17 +10,18 @@
 	INCBIN "gfx/pokemon/front/togetic.dim" ; sprite dimensions
 	dw TogeticPicFront, TogeticPicBack
 
-	db GROWL, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM filled with METRONOME
+	db GROWL, POUND, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM filled with METRONOME
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
+	     DOUBLE_EDGE,  RAZOR_WIND,   EGG_BOMB,     SOFTBOILED,   SKY_ATTACK,   \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         SOLARBEAM,    \
 	     THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    FIRE_BLAST,   \
 	     SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
-	     SUBSTITUTE,   STRENGTH,     FLASH,        FLAMETHROWER, FLY
+	     SUBSTITUTE,   FLASH,        FLAMETHROWER, FLY,          HYPER_BEAM,   \
+		 DREAM_EATER
 	; end
 
 	db BANK(TogeticPicFront) ; pic bank

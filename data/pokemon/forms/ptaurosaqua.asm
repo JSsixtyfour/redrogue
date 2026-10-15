@@ -33,6 +33,6 @@
 
 	db BANK(PTaurosAquaPicFront) ; pic bank
 
-	dname "P-AQUA"
+	dname "A-TAUROS"
 
 	form_end PAL_CYANMON

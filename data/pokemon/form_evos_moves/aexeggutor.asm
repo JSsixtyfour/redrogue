@@ -11,6 +11,7 @@ AexeggutorFormEvosMoves:
 ; Learnset
 	db 10, POISONPOWDER
 	db 13, LEECH_SEED
+	db 18, DRAGON_RAGE
 	db 19, CONFUSION
 	db 20, MEGA_DRAIN
 	db 25, REFLECT

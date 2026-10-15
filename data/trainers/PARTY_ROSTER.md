@@ -481,7 +481,7 @@ signatures (Rhydon, Dugtrio, Nidoking, Nidoqueen, Sandslash, Marowak) plus Persi
 **Band 2: rounds 3-4**
 - Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
 - Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp)
-- Off-type: Meowth, Kangaskhan, Magikarp, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
+- Off-type: Meowth, Kangaskhan, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 **Band 3: rounds 5-6**
 - Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan

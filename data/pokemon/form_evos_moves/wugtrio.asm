@@ -9,11 +9,12 @@ WugtrioFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 15, GROWL
-	db 19, DIG
+	db 10, SAND_ATTACK
+	db 14, WATER_GUN
+	db 20, SLAM
+	db 22, BUBBLEBEAM
 	db 24, SAND_ATTACK
-	db 31, SLASH
-	db 35, SCREECH
-	db 40, EARTHQUAKE
-	db 55, FISSURE
+	db 30, WRAP
+	db 35, HEADBUTT
+	db 45, HYDRO_PUMP
 	db 0

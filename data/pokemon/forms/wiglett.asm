@@ -9,7 +9,7 @@
 	db DEX_DIGLETT ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  10,  55,  25,  95,  35
+	db  10,  55,  25, 95,  45
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type
@@ -19,13 +19,14 @@
 	INCBIN "gfx/pokemon/front/wiglett.dim" ; sprite dimensions
 	dw WiglettPicFront, WiglettPicBack
 
-	db SCRATCH, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db BUBBLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
-	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         REST,         ROCK_SLIDE,   SUBSTITUTE
+	     WATER_GUN,    BUBBLEBEAM,   DIG,          MIMIC,        DOUBLE_TEAM,  \
+	     BIDE,         REST,         ROCK_SLIDE,   SUBSTITUTE,   SWIFT,        \
+		 ICE_BEAM,     BLIZZARD,     SURF
 	; end
 
 	db BANK(WiglettPicFront) ; pic bank

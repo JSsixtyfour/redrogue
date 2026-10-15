@@ -8,7 +8,7 @@
 	db DEX_ARTICUNO ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  90,  85,  85,  95, 125
+	db  90,  85,  90, 95, 125
 	;   hp  atk  def  spd  spc
 
 	db PSYCHIC_TYPE, FLYING ; type
@@ -23,9 +23,9 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   \
+	     DREAM_EATER,  SUBSTITUTE,   REST,         SKY_ATTACK,   HYPER_BEAM,   \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        SKY_ATTACK,   REST,         SUBSTITUTE,   FLY
+	     SWIFT,        FLY
 	; end
 
 	db BANK(GArticunoPicFront) ; pic bank

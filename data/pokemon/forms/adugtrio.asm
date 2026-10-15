@@ -17,7 +17,7 @@
 	db DEX_DUGTRIO ; pokedex id (documentation only - GetMonHeader overwrites
 	               ; byte 0 with the species index right after the patch)
 
-	db  35, 100,  50, 120,  70
+	db  35, 80,  60, 110,  70
 	;   hp  atk  def  spd  spc
 
 	db GROUND, GROUND ; type (secondary Steel dropped per the type rules)

@@ -148,14 +148,14 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jr .checkLevel
 .checkItemEvo
 	ld a, [hli]
-	ld b, a ; evolution item
+	ld e, a ; evolution item (de is scratch in this loop)
 	; Trade context was rejected above; require explicit stone use.
 	ld a, [wForceEvolution]
 	and a
 	jp z, .nextEvoEntry1
-	; wCurItem aliases the species; use the stable stone-menu item ID.
-	ld a, [wEvoStoneItemID]
-	cp b ; was the evolution item in this entry used?
+	; wCurItem aliases the species; use the stable stone-menu item ID. A form
+	; may need a different stone than the entry names (Alolan Vulpix: Ice).
+	call EvoStoneMatchesUsed ; was the evolution item in this entry used?
 	jp nz, .nextEvoEntry1 ; if not, go to the next evolution entry
 .checkLevel
 	ld a, [hli] ; level requirement
@@ -1099,4 +1099,57 @@ EvoStoneForms:
 	db DUSK_STONE,  JOLTEON,  2 ; Umbreon
 	db ICE_STONE,   VAPOREON, 1 ; Glaceon
 	db MOON_STONE,  VAPOREON, 2 ; Sylveon
+	db 0 ; terminator
+
+; Is the stone the player used the one THIS mon needs for an EVOLVE_ITEM entry?
+; Usually that is the entry's own stone, but a form listed in FormEvoStones
+; swaps it: Alolan Vulpix keeps VulpixEvosMoves' single FIRE_STONE -> NINETALES
+; entry and answers to ICE_STONE instead. Swapping the stone, rather than adding
+; a second NINETALES entry, keeps a plain Vulpix off the Ice Stone and keeps the
+; Mist Stone chooser from offering NINETALES twice. Evolution preserves the form,
+; so the result is Alolan Ninetales with no EvoStoneForms entry.
+;
+; Farcall-safe: the stone goes in e and the answer comes back in the flags,
+; which survive the Bankswitch return.
+; IN:  e = the stone an EVOLVE_ITEM entry names; wLoadedMon = the evolving mon
+; OUT: z SET if wEvoStoneItemID is the stone this mon needs for that entry
+; CLOBBERS: af, e  (bc, d, hl PRESERVED - the evolution parser's hl is live)
+EvoStoneMatchesUsed::
+	push bc
+	push hl
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ld c, a                    ; c = the mon's form
+	ld a, [wLoadedMonSpecies]
+	ld b, a                    ; b = the mon's species
+	ld hl, FormEvoStones
+.loop
+	ld a, [hli]
+	and a
+	jr z, .compare             ; terminator: the entry's stone stands
+	cp b
+	jr nz, .skipForm
+	ld a, [hli]
+	cp c
+	jr nz, .skipStone
+	ld e, [hl]                 ; this form's stone replaces the entry's
+	jr .compare
+.skipForm
+	inc hl
+.skipStone
+	inc hl
+	jr .loop
+.compare
+	ld a, [wEvoStoneItemID]
+	cp e
+	pop hl                     ; pops do not disturb the flags
+	pop bc
+	ret
+
+FormEvoStones:
+; db <species>, <form index>, <stone that replaces the EVOLVE_ITEM entry's>
+	db VULPIX, 1, ICE_STONE ; Alolan Vulpix -> Alolan Ninetales
 	db 0 ; terminator

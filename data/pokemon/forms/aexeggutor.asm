@@ -8,7 +8,7 @@
 	db DEX_EXEGGUTOR ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  95, 107,  95,  45, 125
+	db  95, 105,  95,  35, 125
 	;   hp  atk  def  spd  spc
 
 	db GRASS, DRAGON ; type
@@ -25,7 +25,8 @@
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         \
 	     MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         SELFDESTRUCT, EGG_BOMB,     \
-	     REST,         PSYWAVE,      EXPLOSION,    SUBSTITUTE,   STRENGTH
+	     REST,         PSYWAVE,      EXPLOSION,    SUBSTITUTE,   STRENGTH,	   \
+		 DRAGON_RAGE,  FLAMETHROWER, EARTHQUAKE
 	; end
 
 	db BANK(AExeggutorPicFront) ; pic bank

@@ -2300,7 +2300,6 @@
 	band_pool GiovanniMiniBoss_Off2
 	band_mon MEOWTH
 	band_mon KANGASKHAN
-	band_mon MAGIKARP
 	band_mon MACHOP
 	band_mon CHARMANDER
 	band_mon GROWLITHE

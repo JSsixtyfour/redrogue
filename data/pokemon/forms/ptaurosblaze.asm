@@ -33,6 +33,6 @@
 
 	db BANK(PTaurosBlazePicFront) ; pic bank
 
-	dname "P-BLAZE"
+	dname "B-TAUROS"
 
 	form_end PAL_REDMON

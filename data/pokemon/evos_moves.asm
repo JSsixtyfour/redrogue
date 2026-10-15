@@ -810,6 +810,7 @@ TentacoolEvosMoves:
 	db 0
 ; Learnset
 	db 7, SUPERSONIC
+    db 10, BUBBLE
 	db 13, WATER_GUN
 	db 18, ACID
 	db 23, BUBBLEBEAM
@@ -1681,7 +1682,7 @@ VenonatEvosMoves:
 	db 0
 ; Learnset
 	db 11, SUPERSONIC
-	db 13, LEECH_LIFE
+	db 12, LEECH_LIFE
 	db 17, CONFUSION
 	db 20, POISONPOWDER
 	db 29, STUN_SPORE
@@ -1842,7 +1843,8 @@ ArticunoEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-    db 6,  AURORA_BEAM
+    db 8,  GUST
+    db 16, AURORA_BEAM
 	db 35, AGILITY
 	db 45, ICE_BEAM
 	db 51, BLIZZARD
@@ -2731,7 +2733,7 @@ VenomothEvosMoves:
 	db 0
 ; Learnset
 	db 11, SUPERSONIC
-	db 13, LEECH_LIFE
+	db 12, LEECH_LIFE
 	db 17, CONFUSION
 	db 20, POISONPOWDER
 	db 25, ACID
@@ -2851,12 +2853,13 @@ TogepiEvosMoves:
 	db EVOLVE_LEVEL, 20, TOGETIC ; substitute for canon happiness evolution -
 	                              ; no friendship system in this engine
 	db 0
-; Learnset - canon Gen 2 levels; SWEET_KISS/ENCORE/SAFEGUARD do not exist in
-; Gen 1, filled with METRONOME. Level 7's METRONOME is the real canon move.
+; Learnset
 	db 7, METRONOME
-	db 18, METRONOME ; was SWEET_KISS
-	db 25, METRONOME ; was ENCORE
-	db 31, METRONOME ; was SAFEGUARD
+    db 10, DEFENSE_CURL
+	db 15, SING ; was SWEET_KISS
+	db 18, DOUBLESLAP ; was ENCORE
+	db 31, REFLECT ; was SAFEGUARD
+    db 35, LOVELY_KISS
 	db 38, DOUBLE_EDGE
 	db 0
 
@@ -2985,9 +2988,13 @@ TogeticEvosMoves:
 ; Learnset - GROWL/CHARM already granted at level 1 (CHARM's slot is
 ; METRONOME, see base_stats/togetic.asm)
 	db 7, METRONOME
-	db 18, METRONOME ; was SWEET_KISS
-	db 25, METRONOME ; was ENCORE
-	db 31, METRONOME ; was SAFEGUARD
+    db 10, DEFENSE_CURL
+	db 15, SING ; was SWEET_KISS
+	db 18, DOUBLESLAP ; was ENCORE
+    db 20, WING_ATTACK
+    db 25, GUST
+	db 31, REFLECT ; was SAFEGUARD
+    db 35, LOVELY_KISS
 	db 38, DOUBLE_EDGE
 	db 0
 
@@ -3335,6 +3342,7 @@ TentacruelEvosMoves:
 	db 0
 ; Learnset
 	db 7, SUPERSONIC
+    db 10, BUBBLE
 	db 13, WATER_GUN
 	db 18, ACID
 	db 23, BUBBLEBEAM
@@ -4035,16 +4043,15 @@ MismagiusEvosMoves:
 YanmaEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - TACKLE already granted at level 1 (FORESIGHT's slot is
-; METRONOME, see base_stats/yanma.asm); DETECT does not exist in Gen 1,
-; filled with METRONOME.
+; Learnset
 	db 7, QUICK_ATTACK
+    db 11, WING_ATTACK
 	db 13, DOUBLE_TEAM
-	db 19, SONICBOOM
-	db 25, METRONOME ; was DETECT
-	db 31, SUPERSONIC
-	db 37, SWIFT
-	db 43, SCREECH
+	db 18, SONICBOOM
+    db 20, SUPERSONIC
+	db 25, HYPNOSIS
+	db 30, SWIFT
+	db 40, SCREECH
 	db 0
 
 WooperEvosMoves:
