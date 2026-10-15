@@ -47,6 +47,8 @@
      "guards": "Facility spinner rooms (debug placeholder): more than one per layout, payload not stamped, ball off the reward block, a fake ball, hideout or warp pad inside the room"},
     {"script": "audit_facility_pad_sites.py", "args": ["--runtime", "--seeds", "300", "--seed-state", "0x9E3779B9"], "kind": "guard",
      "guards": "Facility warp pads: a placed end failing the no-strand rule, ends too close, a pad block missing, a warp not armed to its partner or a spare site left armed"},
+    {"script": "audit_cave_ladder_sites.py", "args": ["--runtime", "--layouts", "300"], "kind": "guard",
+     "guards": "Cave subroom ladders: a drawn ladder failing the no-strand rule or too close to the other, one ladder when a far pair existed, none when a site was valid, a ladder block missing, or a site warp armed wrong or left armed"},
     {"script": "audit_forest_stage_event.py", "args": [], "kind": "guard",
      "guards": "stage events on the Forest"},
     {"script": "audit_map_object_const_order.py", "args": [], "kind": "guard", "in_smoke": true,

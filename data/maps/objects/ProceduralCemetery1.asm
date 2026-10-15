@@ -19,4 +19,9 @@ ProceduralCemetery1_Object:
 	object_event 5, 5, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
 	object_event 6, 5, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
 
+	; The possessed Channeler (custom_functions/cemetery_channeler.asm): on one
+	; random floor per Cemetery; moved, shown and given his picture there only.
+	object_event 5, 5, SPRITE_CHANNELER, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_CHANNELER
+	ASSERT CEMETERY_1_CHANNELER == 4 ; the fourth object_event
+
 	def_warps_to PROCEDURAL_CEMETERY_1

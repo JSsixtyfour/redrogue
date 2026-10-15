@@ -130,6 +130,9 @@ PCemGenerateMaps::
 	ld [sProcCemeteryItemGot], a
 	ld [sProcCemeteryUsedPrefabs], a
 	ld [sProcCemeteryUsedPrefabs+1], a
+	; Phase 4: the possessed Channeler's floor (cemetery_channeler.asm).
+	farcall CemChannelerRoll
+	xor a
 	; Phase 4a: the cemetery's palette variant. Variant 0 only until Phase 4d
 	; authors its alternates; written anyway because fresh SRAM powers up $ff.
 	ld [sProcCemeteryPalette], a
@@ -1478,6 +1481,7 @@ PCemFinalizeMap::
 	; when no event is armed.
 	call PCemPlaceStageEventNpcs
 	call PCemApplyStageEventTrainers
+	call PCemPlaceChanneler
 	ret
 
 ; ============================================================
@@ -1653,6 +1657,85 @@ PCemPickStageHideoutCell:
 	ld [sStageEventHideoutX], a
 	ld a, [wBuffer + wCemTryY]
 	ld [sStageEventHideoutY], a
+	ret
+
+; ============================================================
+; PCemPlaceChanneler (Phase 4, every floor load)
+; On his floor, stands the possessed Channeler (object 4) on a cell the hideout
+; rule accepts, other than the hideout's own: a fully walkable block, so the one
+; quadrant he takes always has a way round. The cell is not stored: the scan
+; starts at a fixed index and the floor's blocks, ball and hideout are saved,
+; so every load finds the same one. Elsewhere he is hidden (his flag) and has
+; no picture; nothing to place. Clobbers everything.
+; ============================================================
+PCemPlaceChanneler:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCemeteryItemGot]
+	and CEM_CHANNELER_FLOOR_MASK
+	swap a
+	ld b, a
+	ld a, [wBuffer + wCemMapIndex]
+	cp b
+	jr nz, .close
+	ld c, 37                        ; a fixed start: the same cell every load
+	ld b, CEMAP_SIZE
+.scan
+	ld a, c
+	ld d, 0
+.div
+	cp CEMAP_WIDTH
+	jr c, .divDone
+	sub CEMAP_WIDTH
+	inc d
+	jr .div
+.divDone
+	ld [wBuffer + wCemTryX], a
+	ld a, d
+	ld [wBuffer + wCemTryY], a
+	push bc
+	call PCemStageHideoutCellOk     ; Z set = usable
+	pop bc
+	jr nz, .next
+	ld a, [sStageEventHideoutFloor] ; not the stage-event pair's cell
+	ld hl, wBuffer + wCemMapIndex
+	cp [hl]
+	jr nz, .found
+	ld a, [sStageEventHideoutX]
+	ld hl, wBuffer + wCemTryX
+	cp [hl]
+	jr nz, .found
+	ld a, [sStageEventHideoutY]
+	ld hl, wBuffer + wCemTryY
+	cp [hl]
+	jr nz, .found
+.next
+	inc c
+	ld a, c
+	cp CEMAP_SIZE
+	jr c, .noWrap
+	ld c, 0
+.noWrap
+	dec b
+	jr nz, .scan
+	jr .close                       ; nowhere: he keeps the declared tile
+.found
+	ld a, [wBuffer + wCemTryY]
+	add a
+	add 4                           ; block * 2 + 4, as the ball and the pair
+	ld [wSprite{02d:CEMETERY_1_CHANNELER}StateData2MapY], a
+	ld a, [wBuffer + wCemTryX]
+	add a
+	add 4
+	ld [wSprite{02d:CEMETERY_1_CHANNELER}StateData2MapX], a
+.close
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ld [rRAMG], a
 	ret
 
 ; ============================================================

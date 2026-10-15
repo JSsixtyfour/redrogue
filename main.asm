@@ -834,6 +834,8 @@ INCLUDE "custom_functions/credit_award.asm"
 ; to $3A in layout.link; farcall-only.
 INCLUDE "custom_functions/money_match.asm"
 INCLUDE "custom_functions/facility_subroom.asm"
+INCLUDE "custom_functions/cave_subroom.asm"
+INCLUDE "custom_functions/cemetery_channeler.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map

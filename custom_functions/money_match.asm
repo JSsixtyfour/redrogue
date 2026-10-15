@@ -105,6 +105,10 @@ MoneyMatchHouseTalk::
 	jr nz, .say
 	ld a, 1 << BIT_MONEY_MATCH_ACTIVE ; active, no turns yet
 	ld [wMoneyMatchState], a
+	; Nothing more to read: close the box as the battle starts. Without this
+	; DisplayTextID waits for one more A on the offer (user, BGB 2026-10-14).
+	ld a, 1
+	ldh [hNoWaitAfterText], a
 	scf
 	ret
 .say
@@ -114,31 +118,47 @@ MoneyMatchHouseTalk::
 
 ; The house's after-battle script, on a win. Clobbers a/hl.
 MoneyMatchHouseRecordWin::
-	call MoneyMatchOpenForestSRAM
-	ld hl, sProcForestItemGot
-	set BIT_PF_MONEY_MATCH_WON, [hl]
+	call MoneyMatchOpenHost
+	ld a, [hl]
+	or b
+	ld [hl], a
 	jr MoneyMatchCloseSRAM
 
-; OUTPUT: nz = he was beaten in this forest (PFPreloadForest zeroes the byte).
-; Clobbers a/hl.
+; OUTPUT: nz = he was beaten in this stage (each stage's preload clears its
+; byte). Clobbers a/b/hl.
 MoneyMatchHouseWon:
-	call MoneyMatchOpenForestSRAM
-	ld a, [sProcForestItemGot]
-	and 1 << BIT_PF_MONEY_MATCH_WON
+	call MoneyMatchOpenHost
+	ld a, [hl]
+	and b
 	ld l, a
 	call MoneyMatchCloseSRAM
 	ld a, l
 	and a
 	ret
 
-MoneyMatchOpenForestSRAM:
+; Opens SRAM bank 0 on the stage's state byte. Out: hl = it, b = his "beaten"
+; bit: the forest rest house's sProcForestItemGot, or the cave subroom's
+; CAVESUB_STATE (shared with its Super Nerd; FacSuperNerdSettle records it).
+MoneyMatchOpenHost:
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
 	ld [rBMODE], a
 	ASSERT BANK(sProcForestItemGot) == 0
+	ASSERT BANK(sProcCaveStagingBuffer) == 0
 	xor a
 	ld [rRAMB], a
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_SUBROOM
+	jr z, .cave
+	cp PROCEDURAL_CAVE_1            ; the resident's fallback
+	jr z, .cave
+	ld hl, sProcForestItemGot
+	ld b, 1 << BIT_PF_MONEY_MATCH_WON
+	ret
+.cave
+	ld hl, CAVESUB_STATE
+	ld b, 1 << BIT_CAVESUB_RESIDENT_WON
 	ret
 
 MoneyMatchCloseSRAM:

@@ -42,6 +42,7 @@ ProcBossPatchStageSprite::
 	farcall AILairPatchMirrorSprite
 	ret
 .cave
+	farcall CaveFallbackPatchSprites ; Phase 4: objects 8-9, zero unless used
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -156,6 +157,7 @@ ProcBossPatchStageSprite::
 	;
 	; The answer comes back in e, not in a or the flags: this is a farcall,
 	; and Bankswitch destroys a/b/c/h/l on the return leg.
+	farcall CemChannelerPatchSprite     ; Phase 4: his picture on his floor only
 	farcall PCemStageEventNpcsHereFar   ; -> e = 1 here, 0 not here
 	ld a, e
 	and a
@@ -242,6 +244,11 @@ ProcStageLoadDispatch::
 	farcall PFRestHouseLoad         ; its way out leads to this forest's door
 	ret
 .notForestRestHouse
+	cp PROCEDURAL_CAVE_SUBROOM
+	jr nz, .notCaveSubroom
+	farcall CaveSubroomLoad         ; its ladders climb back onto the cave's
+	ret
+.notCaveSubroom
 	cp PROCEDURAL_FACILITY_SUBROOM
 	jr nz, .notFacilitySubroom
 	farcall FacSubroomLoad          ; stamps this Facility's rolled room piece

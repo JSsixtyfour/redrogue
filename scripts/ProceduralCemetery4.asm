@@ -5,6 +5,8 @@ ProceduralCemetery4_Script:
 	call PCemStageEnterSetup
 .afterSetup
 	call PCemCalmedCheck
+	ld d, TEXT_PROCEDURALCEMETERY4_CHANNELER_HEAL
+	call PCemChannelerFrame
 	; Phase 7 rollout: floor 4 can be the rolled hideout like floors 2 and 3,
 	; so it runs the same shared recovery. It sits BEFORE the script dispatch
 	; below, so the boss trigger is untouched by it.
@@ -147,7 +149,9 @@ ProceduralCemetery4_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETERY4_POKEBALL
 	dw_const PCemStageEventNpc1Text, TEXT_PROCEDURALCEMETERY4_STAGE_NPC_1
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY4_STAGE_NPC_2
-	; --- end of the object block (3 objects); script-only ids follow ---
+	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY4_CHANNELER
+	; --- end of the object block (4 objects); script-only ids follow ---
+	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY4_CHANNELER_HEAL
 	dw_const ProceduralCemetery4BeGoneText,    TEXT_PROCEDURALCEMETERY4_BEGONE
 	dw_const ProceduralCemetery4BossOfferText, TEXT_PROCEDURALCEMETERY4_BOSS_OFFER
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY4_CALMED

@@ -1103,9 +1103,10 @@ DEF wPFacRmH          EQU 8   ; loaded room record: H
 DEF wPFacRmCounter    EQU 9   ; inner row/col loop counter (Stamp/Enclose)
 DEF wPFacBallIdx      EQU 10  ; PFacPlaceItems: item-room loop index (0-3)
 DEF wPFacItemRetry    EQU 11  ; PFacPlaceItems: item-dedup retry counter
-DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs. PFacFinalize's
-                              ; existing bake step copies this to
-                              ; sProcFacilityBallItems by name, unchanged.
+DEF wPFacItemTemp     EQU 12  ; 4 bytes (12-15): rolled item IDs, for the dedup
+                              ; check only. Valid during PFacPlaceItems alone:
+                              ; later passes reuse 12-15 (wPFacWall*), so each
+                              ; item is saved to sProcFacilityBallItems as rolled.
 DEF wPFacItemCheckX   EQU 16  ; item-anchor adjacency check: saved block X
 DEF wPFacItemCheckY   EQU 17  ; item-anchor adjacency check: saved block Y
 DEF wPFacFakeRoomId   EQU 18  ; PFacPlaceFakeBalls: current middle-room id
@@ -3141,6 +3142,14 @@ PFacPlaceItems:
     ld hl, wBuffer + wPFacItemTemp
     add hl, bc
     ld a, [wRogueItem]
+    ld [hl], a
+    ; Saved NOW, not by PFacFinalize after generation: the later passes reuse
+    ; wBuffer 12-15 (PFacDecorateCorridorWalls' wPFacWall* scratch), and from
+    ; 2026-09-16 to 2026-10-14 every Facility stored those leftovers instead
+    ; (always SUPER POTION, X ACCURACY or LIFT KEY, POKE DOLL, RARE CANDY).
+    ; SRAM bank 1 is open (PFacRestoreSRAMBank above).
+    ld hl, sProcFacilityBallItems
+    add hl, bc
     ld [hl], a
 
     ld a, [wBuffer + wPFacBallIdx]
@@ -6350,19 +6359,12 @@ PFacFinalize::
     ; PFacPickHideout never reads rooms 0 or 1.
     call PFacPickHideout
 
-    ; Save 4 rolled items (wPFacItemTemp) to sProcFacilityBallItems.
-    ld hl, wBuffer + wPFacItemTemp
-    ld de, sProcFacilityBallItems
-    ld b, 4
-.itemSave
-    ld a, [hli]
-    ld [de], a
-    inc de
-    dec b
-    jr nz, .itemSave
+    ; The 4 rolled items are already in sProcFacilityBallItems: PFacPlaceItems
+    ; saves each as it rolls it, since wPFacItemTemp does not survive the
+    ; generator's later passes.
 
     ; Warp pads (Phase 2). After .ballSave (frees scratch bytes 0-1 for the
-    ; pair) and .itemSave (frees wPFacItemTemp), after PFacPickHideout (pads
+    ; pair), after the generator (wPFacItemTemp is long dead), after PFacPickHideout (pads
     ; avoid the hideout), and before the bake so the pad blocks persist.
     call PFacPlacePads
     ; Phase 4: the subroom's pad, then its room piece (scratch bytes 7 and 6,
@@ -7152,8 +7154,8 @@ DEF PFAC_PAD_PAIR EQUS "sProcFacilityGenScratch" ; a link-time label, so EQUS
 ; dead after .ballSave like 0-1; byte 6 is the subroom's room piece.
 DEF PFAC_SUBROOM_PAD EQUS "(sProcFacilityGenScratch + 7)"
 
-; wBuffer scratch, valid only after PFacFinalize's .itemSave (wPFacItemTemp,
-; 12-15, has been copied out by then).
+; wBuffer scratch, valid only after the generator: wPFacItemTemp (12-15) is
+; dead by then, its items saved as PFacPlaceItems rolled them.
 DEF wPFacPadCount EQU 4    ; valid sites, counted once for the first-end roll
 DEF wPFacPadFirst EQU 5    ; first end (site index)
 DEF wPFacPadTries EQU 6    ; first-end rolls left
@@ -7369,14 +7371,18 @@ PFacPadBlockValid::
 	ld a, b
 	cp STAGE_EVENT_NO_HIDEOUT
 	jr z, .hideoutClear
+	; Two blocks, not one: the event NPCs stand here and the villains see 4
+	; tiles. A pad's tile two blocks off is at least 5 tiles away, so nobody can
+	; spot the player arriving on it (a battle started on a warp tile takes the
+	; warp afterwards). User, 2026-10-14.
 	sub d
-	inc a                            ; -1..1 -> 0..2
-	cp 3
+	add 2                            ; -2..2 -> 0..4
+	cp 5
 	jr nc, .hideoutClear
 	ld a, c
 	sub e
-	inc a
-	cp 3
+	add 2
+	cp 5
 	jr c, .no
 .hideoutClear
 	; Not inside a spinner room (Phase 3): the pad art IS the arrow art, so a

@@ -988,7 +988,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         height: int,
         sprites: int,
         has_boss: bool,
+        placed: int | None = None,
     ) -> None:
+        # placed: how many of the sprites the generator must stand on distinct
+        # tiles (default all). Objects past it exist only on some layouts.
+        placed = sprites if placed is None else placed
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
         assert self.harness is not None
         map_id = maps[map_name]
@@ -1012,11 +1016,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             self.assertIn(x, range(width))
         self.assertTrue(any(w[0] != 0xFF for w in warps[1:3]), "both exit warps disarmed")
 
-        positions = self.harness.sprite_positions(sprites)
+        positions = self.harness.sprite_positions(placed)
         for y, x in positions:
             self.assertIn(y, range(height))
             self.assertIn(x, range(width))
-        self.assertEqual(len({tuple(position) for position in positions}), sprites)
+        self.assertEqual(len({tuple(position) for position in positions}), placed)
 
         if has_boss:
             boss_species = self.harness.read8("wMapSpriteExtraData")
@@ -1032,9 +1036,17 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         # position assertion below covers them - PCPlaceStageEventNpcs places
         # both on every cave precisely so that assertion stays meaningful
         # rather than needing an exemption.
+        #
+        # 9 since PROCEDURAL_SUBROOMS_PLAN Phase 4: objects 8-9 are the subroom
+        # resident's fallback (Gambler, Super Nerd), used only when no ladder
+        # fits a cave (about 1 in 300). Otherwise they keep the declared tile
+        # with picture 0 (no VRAM slot), so only the first 7 are placed.
         self.assert_generation_contract(
-            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 7, True
+            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 9, True, placed=7
         )
+        for slot in (8, 9):
+            self.assertEqual(self.harness.read8(f"wSprite{slot:02d}StateData1"), 0,
+                             f"fallback slot {slot} has a picture in a cave with ladders")
 
     def test_silph_b1f_doors_lead_to_credit_exchange_and_stage_nothing(self) -> None:
         """SILPH_CO_B1F's (7,0)/(6,0) doors are the Credit Exchange again.
@@ -2276,9 +2288,19 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         # two stage-event NPC slots, which every cemetery floor now declares
         # (floor 1 hosts the arrival, floors 2-4 can hold the hideout). Same
         # reasoning as the forest's 5 -> 7 above.
+        #
+        # 4 since PROCEDURAL_SUBROOMS_PLAN Phase 4: object 4 is the possessed
+        # Channeler, on one random floor per Cemetery. He has his picture only
+        # on that floor (test_cemetery_channeler.py checks the rest), so only
+        # the first 3 are placed on distinct tiles here.
         self.assert_generation_contract(
-            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 3, False
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 4, False, placed=3
         )
+        floor = (self.harness.read_sram_bytes("sProcCemeteryItemGot", 1, bank=0)[0] >> 4) & 3
+        sprites = parse_rgbds_constants(REPO_ROOT / "constants" / "sprite_constants.asm")
+        self.assertEqual(self.harness.read8("wSprite04StateData1"),
+                         sprites["SPRITE_CHANNELER"] if floor == 0 else 0,
+                         "the Channeler's picture does not match his floor")
 
 
 class TextContractSmokeTest(unittest.TestCase):

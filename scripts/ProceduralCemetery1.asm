@@ -64,6 +64,8 @@ ProceduralCemetery1_Script:
 	ld [wStageEvent], a
 .afterStageEvent
 	call PCemCalmedCheck
+	ld d, TEXT_PROCEDURALCEMETERY1_CHANNELER_HEAL
+	call PCemChannelerFrame
 	jp PCemStageRunScripts
 
 ; ============================================================
@@ -81,6 +83,32 @@ PCemStageEnterSetup::
 	farcall PCemRefreshBall
 	farcall PCemShowStageEventNpcs
 	ret
+
+; The possessed Channeler's per-frame step, shared by all four floors: settle
+; his battle if one just ended, and on a win show this floor's heal text.
+; In: d = that text id.
+PCemChannelerFrame::
+	push de
+	farcall CemChannelerSettle       ; carry = he was just beaten
+	pop de
+	ret nc
+	ld a, d
+	ldh [hTextID], a
+	jp DisplayTextID
+
+PCemChannelerText::
+	text_asm
+	push bc
+	farcall CemChannelerTalk
+	pop bc
+	jp TextScriptEnd
+
+PCemChannelerHealText::
+	text_asm
+	push bc
+	farcall CemChannelerHeal
+	pop bc
+	jp TextScriptEnd
 
 ; Shared script dispatch for floors 1-3. Floor 4 has its own copy because it
 ; passes its own five-entry pointer table.
@@ -321,7 +349,9 @@ ProceduralCemetery1_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCEMETERY1_POKEBALL
 	dw_const PCemStageEventNpc1Text, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_1
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_2
-	; --- end of the object block (3 objects); script-only ids follow ---
+	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY1_CHANNELER
+	; --- end of the object block (4 objects); script-only ids follow ---
+	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY1_CHANNELER_HEAL
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY1_CALMED
 	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY1_STAGE_EVENT
 	dw_const PCemStageEventRecoverText, TEXT_PROCEDURALCEMETERY1_STAGE_RECOVER

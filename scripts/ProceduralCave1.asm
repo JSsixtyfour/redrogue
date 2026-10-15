@@ -2,6 +2,12 @@ ProceduralCave1_Script:
 	CheckEvent EVENT_ENTER_ROOM
 	jr nz, .afterSetup
 	SetEvent EVENT_ENTER_ROOM
+	; ONCE PER GENERATED CAVE, not once per entry (PROCEDURAL_SUBROOMS_PLAN
+	; Phase 1, ported for the subroom's ladders): every warp clears
+	; EVENT_ENTER_ROOM, so climbing back up from the subroom would re-show a
+	; collected ball. The toggle flags carry hide state across warps.
+	farcall CaveStageFirstEntry
+	jr nc, .afterSetup
 	; Fresh entry: show the four item pokeballs.
 	ld a, TOGGLE_WILD_AREA_POKEBALL_1
 	ld [wToggleableObjectIndex], a
@@ -29,6 +35,16 @@ ProceduralCave1_Script:
 	ld [wToggleableObjectIndex], a
 	predef ShowObject
 .afterSetup
+	; Phase 4: the subroom resident's fallback, if its battle just ended here:
+	; record a win; the Super Nerd then hands over his prize.
+	farcall FacSuperNerdSettle
+	jr nc, .afterResident
+	farcall CaveSubroomResidentIsNerd
+	jr nc, .afterResident
+	ld a, TEXT_PROCEDURALCAVE1_SUPER_NERD_PRIZE
+	ldh [hTextID], a
+	call DisplayTextID
+.afterResident
 	; --- Phase 7c: stage-event arrival ------------------------------------
 	; The villains are standing in front of the player when the map fades in;
 	; this fires their line on the first script tick after the load, then the
@@ -560,7 +576,10 @@ ProceduralCave1_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALCAVE1_WILD_AREA_POKEBALL_4
 	dw_const PCStageEventNpc1Text, TEXT_PROCEDURALCAVE1_STAGE_NPC_1
 	dw_const PCStageEventNpc2Text, TEXT_PROCEDURALCAVE1_STAGE_NPC_2
-	; --- end of the object block (7 objects); script-only ids follow ---
+	dw_const PCGamblerText, TEXT_PROCEDURALCAVE1_GAMBLER
+	dw_const PCSuperNerdText, TEXT_PROCEDURALCAVE1_SUPER_NERD
+	; --- end of the object block (9 objects); script-only ids follow ---
+	dw_const PCSuperNerdPrizeText, TEXT_PROCEDURALCAVE1_SUPER_NERD_PRIZE
 	dw_const ProceduralCave1BossOfferText, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
 	EXPORT TEXT_PROCEDURALCAVE1_CALMED ; used by engine/battle/wild_encounters.asm
@@ -647,3 +666,52 @@ ProceduralCave1BossBattleText:
 	; TalkToTrainer increments wCurMapScript after this text returns, and
 	; StartTrainerBattle increments it again. Setting it here corrupts
 	; the state machine and causes a post-battle freeze.
+
+; --- Phase 4: the subroom resident's fallback (objects 8 and 9) -------------
+; Only when no ladder fits this cave. Same routines as the cave subroom's.
+PCGamblerText:
+	text_asm
+	push bc
+	farcall MoneyMatchHouseTalk     ; carry = the player accepted
+	pop bc
+	jr nc, .done
+	ld hl, wStatusFlags3
+	set BIT_TALKED_TO_TRAINER, [hl]
+	set BIT_PRINT_END_BATTLE_TEXT, [hl]
+	ld hl, PCGamblerBeatenText
+	ld de, PCGamblerWonText
+	call SaveEndBattleTextPointers  ; this bank, read back after the battle
+	ld a, OPP_GAMBLER
+	ld [wCurOpponent], a
+	ld a, 1                         ; his party is the roster's (MONEY_MATCH_STEP)
+	ld [wTrainerNo], a
+	ld [wIsTrainerBattle], a
+	ld a, SCRIPT_SUPER_NERD_AFTER_BATTLE
+	ld [wSafariZoneGateCurScript], a
+.done
+	jp TextScriptEnd
+
+PCSuperNerdText:
+	text_asm
+	push bc
+	farcall FacSuperNerdTalk
+	pop bc
+	jp TextScriptEnd
+
+PCSuperNerdPrizeText:
+	text_asm
+	push bc
+	farcall FacSuperNerdPrize
+	pop bc
+	jp TextScriptEnd
+
+; In battle: he lost. Line 1 already holds "GAMBLER: " (9 of 18).
+PCGamblerBeatenText:
+	text "Ah ha!"
+	para "You earned this!"
+	prompt
+
+; In battle: he won.
+PCGamblerWonText:
+	text "House wins!"
+	prompt

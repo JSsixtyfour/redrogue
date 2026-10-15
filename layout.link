@@ -137,6 +137,14 @@ ROMX $13
 ROMX $14
 	"Maps 10"
 	"Battle Engine 8"
+	; The procedural cave's map (header, script, objects, blocks), moved out of
+	; "Maps 6" ($11) 2026-10-14: its 30 subroom-ladder warp_events left $11 with
+	; 14 B. Self-contained: the script's plain calls all go to HOME, and every
+	; outside reference is BANK()-paired (map_header_banks) or a farcall.
+	"Procedural Cave Map"
+	; The Cemetery's possessed Channeler (custom_functions/cemetery_channeler.asm,
+	; PROCEDURAL_SUBROOMS_PLAN Phase 4). farcall-only. 2026-10-14.
+	"Cemetery Channeler"
 	; Unpinned (Species Groups Phase 2): this bank overflowed by 4 bytes once
 	; batch 3/4's table growth landed elsewhere in the ROM and shifted first-fit
 	; placement. "Hidden Events 2" had no documented reason to sit specifically
@@ -537,6 +545,9 @@ ROMX $3F
 	; The cave's subroom map (PROCEDURAL_SUBROOMS_PLAN Phase 4, 2026-10-14),
 	; same reasoning as the other two subroom maps.
 	"Procedural Cave Subroom Map"
+	; Its ladders and their state (custom_functions/cave_subroom.asm).
+	; farcall-only. 2026-10-14.
+	"Cave Subroom"
 WRAM0
 	"Audio RAM"
 	org $c100

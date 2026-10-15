@@ -1271,6 +1271,24 @@ class RedRogueHarness:
         return_bank, return_address = self.symbols.get("Bankswitch.Return")
         expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
         completed = {"value": False}
+        restoring = {"value": False}
+        vblank_start = self.address("VBlank")
+        vblank_end = self.address("DelayFrame")
+        restore_vblank_ime = (
+            vblank_start <= saved_registers["PC"] < vblank_end
+            or self._in_vblank_callee(vblank_start, vblank_end)
+        )
+        # Execute an existing HOME DI, intercepting before its next instruction.
+        # Init is unsuitable: victory tests hook that entry to skip a reboot.
+        # Validate the instruction seam; no ROM bytes or map-copy state change.
+        di_bank, copy_address = self.symbols.get(
+            "LoadCurrentMapView.copyToVisibleAreaBuffer"
+        )
+        di_address = copy_address + 2
+        if (di_bank != 0
+                or list(self.pyboy.memory[copy_address:di_address + 1])
+                != [0x54, 0x5D, 0xF3]):
+            raise AssertionError("call_routine needs map-copy's HOME DI seam")
         # Nesting depth, not stack position, is what identifies our return.
         #
         # Bankswitch has exactly one entry and reaches .Return exactly once per
@@ -1313,7 +1331,7 @@ class RedRogueHarness:
             # $dfdb and never collided, and under CMWC they sit at exactly
             # $dfdd and collide every frame. The repeated restores walked the
             # stack from $dfdf down to $ca5d and failed 70 tests.
-            if completed["value"]:
+            if completed["value"] or restoring["value"]:
                 return
             if depth["value"] > 0:
                 return
@@ -1343,6 +1361,23 @@ class RedRogueHarness:
             self.last_call_registers = {
                 name: getattr(self.pyboy.register_file, name) for name in register_names
             }
+            restoring["value"] = True
+            if restore_vblank_ime:
+                self.pyboy.register_file.PC = di_address
+            else:
+                # Consecutive calls can resume outside the handler after a
+                # frame completes. Do not leave mainline DelayFrame with IME
+                # disabled: there is no interrupted RETI to re-enable it.
+                restore_after_di(None)
+
+        def restore_after_di(_context) -> None:
+            if not restoring["value"] or completed["value"]:
+                return
+            # FOLLOWUPS #57: CopyVideoData ends with EI. Restoring a paused
+            # VBlank with IME still enabled allows nested VBlanks to overwrite
+            # wVBlankSavedROMBank. The original handler can then RETI into the
+            # wrong ROM bank. Disable interrupts BEFORE restoring its context;
+            # its own RETI will enable them again at the proper boundary.
             self.pyboy.memory[0x2000] = saved_bank
             self.write8("hLoadedROMBank", saved_bank)
             self.write8("wVBlankSavedROMBank", saved_vblank_bank)
@@ -1350,6 +1385,7 @@ class RedRogueHarness:
                 setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
 
+        self.pyboy.hook_register(di_bank, di_address + 1, restore_after_di, None)
         self.pyboy.hook_register(enter_bank, enter_address, entered, None)
         self.pyboy.hook_register(return_bank, return_address, returned, None)
         try:
@@ -1361,6 +1397,7 @@ class RedRogueHarness:
             self.pyboy.register_file.PC = self.address("Bankswitch")
             self.wait_until(lambda: completed["value"], label, limit)
         finally:
+            self.pyboy.hook_deregister(di_bank, di_address + 1)
             self.pyboy.hook_deregister(enter_bank, enter_address)
             self.pyboy.hook_deregister(return_bank, return_address)
 

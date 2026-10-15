@@ -1020,6 +1020,8 @@ TrainerBattleVictory:
 	jr z, .creditsDone
 	cp PROCEDURAL_FACILITY_SUBROOM  ; the Super Nerd: part of the Facility
 	jr z, .creditsDone
+	cp PROCEDURAL_CAVE_SUBROOM      ; its Gambler or Super Nerd: part of the cave
+	jr z, .creditsDone
 	farcall RecordMiniBossVictory
     ld hl, wBattleCount
     inc [hl]            ; increase battle count to have a measure of difficulty for future opponents

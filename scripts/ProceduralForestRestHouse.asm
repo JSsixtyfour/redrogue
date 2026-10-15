@@ -114,8 +114,9 @@ PFRestHouseGamblerText:
 	jp TextScriptEnd
 
 ; In battle: he lost.
+; Line 1 already holds "GAMBLER: " (9 of 18).
 PFRestHouseGamblerBeatenText:
-	text ""
+	text "Ah ha!"
 	para "You earned this!"
 	prompt
 

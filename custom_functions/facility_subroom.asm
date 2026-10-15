@@ -236,6 +236,9 @@ FacSubroomLoad::
 ; ============================================================
 DEF BIT_PFAC_SUPER_NERD_WON  EQU 0
 DEF BIT_PFAC_SUPER_NERD_PAID EQU 1
+; The cave's subroom keeps the same two bits in its own state byte.
+ASSERT BIT_CAVESUB_RESIDENT_WON == BIT_PFAC_SUPER_NERD_WON
+ASSERT BIT_CAVESUB_PRIZE_PAID == BIT_PFAC_SUPER_NERD_PAID
 
 ; From a text_asm (the caller keeps bc). Offers, and on a YES arms the battle:
 ; the overworld starts it once the text closes.
@@ -257,6 +260,10 @@ FacSuperNerdTalk::
 	jp nz, PrintText
 	ld a, (1 << BIT_MONEY_MATCH_ACTIVE) | (1 << BIT_MONEY_MATCH_NO_PAYOUT)
 	ld [wMoneyMatchState], a
+	; Nothing more to read: close the box as the battle starts. Without this
+	; DisplayTextID waits for one more A on the offer (user, BGB 2026-10-14).
+	ld a, 1
+	ldh [hNoWaitAfterText], a
 	; Started here, the way AILair starts its fight: a map trainer would need
 	; an event flag to remember the win, and the event array is full.
 	ld hl, wStatusFlags3
@@ -295,8 +302,7 @@ FacSuperNerdSettle::
 	ldh a, [hIsInBattle]
 	inc a
 	jr z, .no
-	call FacSubOpenSRAM
-	ld hl, sProcFacilityItemGot
+	call FacSubOpenHost
 	set BIT_PFAC_SUPER_NERD_WON, [hl]
 	call FacSubCloseSRAM
 	scf
@@ -308,31 +314,68 @@ FacSuperNerdSettle::
 ; Rolls the prize the way PFacPlaceItems rolls a ball's, and gives it.
 ; Prints. Clobbers everything.
 FacSuperNerdPrize::
-	ld c, 4
-	call Rangerandom
-	ld [wRogueDoorSelection], a
-	farcall Random_Item_Selection
-	ld a, [wRogueItem]
-	ld b, a
+	call FacSubRollItem
 	ld c, 1
 	call GiveItem                   ; the name goes to wStringBuffer
 	ld hl, FacSuperNerdNoRoomText
 	jr nc, .say
-	call FacSubOpenSRAM
-	ld hl, sProcFacilityItemGot
+	call FacSubOpenHost
 	set BIT_PFAC_SUPER_NERD_PAID, [hl]
 	call FacSubCloseSRAM
 	ld hl, FacSuperNerdGotItemText
 .say
 	jp PrintText
 
-; Out: a = sProcFacilityItemGot. Clobbers hl.
+; Out: b = one item, rolled the way PFacPlaceItems rolls a ball's. Leaves
+; wRogueItem and wRogueDoorSelection as they were: Random_Item_Selection writes
+; its result to wRogueItem, which is the stage's ball 1 slot (an in-Facility
+; Super Nerd would otherwise hand ball 1's pickup his prize), and the next
+; route's item roll reads the lobby door's wRogueDoorSelection.
+; Clobbers everything else.
+FacSubRollItem:
+	ld a, [wRogueDoorSelection]
+	push af
+	ld a, [wRogueItem]
+	push af
+	ld c, 4
+	call Rangerandom
+	ld [wRogueDoorSelection], a
+	farcall Random_Item_Selection
+	ld a, [wRogueItem]
+	ld b, a
+	pop af
+	ld [wRogueItem], a
+	pop af
+	ld [wRogueDoorSelection], a
+	ret
+
+; Out: a = this stage's resident state byte (FacSubOpenHost). Clobbers hl.
 FacSuperNerdFlags:
-	call FacSubOpenSRAM
-	ld a, [sProcFacilityItemGot]
+	call FacSubOpenHost
+	ld a, [hl]
 	ld l, a
 	call FacSubCloseSRAM
 	ld a, l
+	ret
+
+; Opens SRAM on the bank of the state byte the stage hosting the resident keeps
+; (the Facility and its subroom: sProcFacilityItemGot; the cave and its
+; subroom: CAVESUB_STATE, same WON/PAID bits). Out: hl = that byte. Clobbers a.
+FacSubOpenHost:
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_SUBROOM
+	jr z, .cave
+	cp PROCEDURAL_CAVE_1
+	jr z, .cave
+	call FacSubOpenSRAM
+	ld hl, sProcFacilityItemGot
+	ret
+.cave
+	call FacSubOpenSRAM
+	ASSERT BANK(sProcCaveStagingBuffer) == 0
+	xor a
+	ld [rRAMB], a
+	ld hl, CAVESUB_STATE
 	ret
 
 FacSubOpenSRAM:
@@ -486,17 +529,18 @@ FacSubroomStageObjects::
 ; the way PFacPlaceItems rolls a Facility ball's, gives it and hides the ball; a
 ; full bag leaves it there. Prints. Clobbers everything.
 FacSubroomPickUpBall::
-	ld c, 4
-	call Rangerandom
-	ld [wRogueDoorSelection], a
-	farcall Random_Item_Selection
-	ld a, [wRogueItem]
-	ld b, a
+	call FacSubRollItem
 	ld c, 1
 	call GiveItem                   ; the name goes to wStringBuffer
 	ld hl, FacSuperNerdNoRoomText
 	jp nc, PrintText
+	; The cave's subroom has a ball of its own (same roll, its own flag).
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_SUBROOM
+	ld a, TOGGLE_CAVESUB_BALL
+	jr z, .hide
 	ld a, TOGGLE_FACSUBROOM_BALL
+.hide
 	ld [wToggleableObjectIndex], a
 	predef HideObject
 	ld hl, FacSubroomFoundItemText
@@ -542,11 +586,11 @@ FacSuperNerdNoRoomText:
 	line "Come back for it."
 	done
 
-; In battle: he lost.
+; In battle: he lost. Line 1 already holds "SUPER NERD: " (12 of 18).
 FacSuperNerdBeatenText:
-	text ""
-	para "Ugh! You win"
-	line "fair and square."
+	text "Ugh!"
+	para "You win fair"
+	line "and square."
 	prompt
 
 ; In battle: he won.

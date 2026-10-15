@@ -341,6 +341,41 @@ class FinalAITest(HarnessTestCase):
                 h.call_routine("MergeFinalAIFusionFrontPic")
                 self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
 
+    def test_fused_enemy_transform_completes_through_battle_turn(self) -> None:
+        """Exercise Transform with normal interrupt ownership, without PC hijacks."""
+        h = self.harness
+        assert h is not None
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        h.inject_fight2_spec(
+            [{"species": self.species["MEWTWO"], "level": 50,
+              "moves": [moves["SPLASH"]]}],
+            [{"species": self.species["MEOWTH"], "level": 50,
+              "moves": [moves["TRANSFORM"]]}],
+            trainer_class=self.trainer_opp_ids["JUGGLER"], ai_tier=1,
+        )
+        h.boot_fight2(seed=7)
+        h.write8("wTrainerClass", self.trainer_classes["FINAL_AI"])
+        h.write8("wEnemyMonCatchRate", 1 << 1)
+        h.write8("wFinalAISecondarySpecies", self.species["RAICHU"])
+        h.write8("wFinalAISecondaryForm", 0)
+        h.write8("wOptions", h.read8("wOptions") & 0x7F)
+        redraw = h.hook_flag("AnimationTransformMon")
+        menu = h.hook_flag("DisplayBattleMenu", action=lambda:
+                           h.write8("wBattleAndStartSavedMenuItem", 0))
+        returned_to_menu = None
+        for _ in range(600):
+            h.tap("a", 1)
+            h.tick(8)
+            if h.read8("wEnemyBattleStatus3") & (1 << 3):
+                if returned_to_menu is None:
+                    returned_to_menu = menu["count"]
+                elif menu["count"] > returned_to_menu:
+                    break
+        self.assertGreater(redraw["count"], 0)
+        self.assertIsNotNone(returned_to_menu)
+        self.assertGreater(menu["count"], returned_to_menu)
+        self.assertEqual(h.read8("wEnemyMonSpecies"), self.species["MEWTWO"])
+
     def test_wild_battle_after_final_ai_does_not_load_link_style(self) -> None:
         h = self.harness
         assert h is not None

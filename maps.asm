@@ -292,10 +292,6 @@ INCLUDE "scripts/RockTunnel1F.asm"
 INCLUDE "data/maps/objects/RockTunnel1F.asm"
 RockTunnel1F_Blocks: INCBIN "maps/RockTunnel1F.blk"
 
-INCLUDE "data/maps/headers/ProceduralCave1.asm"
-INCLUDE "scripts/ProceduralCave1.asm"
-INCLUDE "data/maps/objects/ProceduralCave1.asm"
-ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
 INCLUDE "data/maps/headers/ProceduralCemetery1.asm"
 INCLUDE "scripts/ProceduralCemetery1.asm"
@@ -1442,3 +1438,11 @@ INCLUDE "scripts/ProceduralCaveSubroom.asm"
 INCLUDE "data/maps/objects/ProceduralCaveSubroom.asm"
 ; Same bank as the header (map_header ASSERTs it).
 ProceduralCaveSubroom_Blocks: INCBIN "maps/ProceduralCaveSubroom.blk"
+
+
+SECTION "Procedural Cave Map", ROMX
+INCLUDE "data/maps/headers/ProceduralCave1.asm"
+INCLUDE "scripts/ProceduralCave1.asm"
+INCLUDE "data/maps/objects/ProceduralCave1.asm"
+; Same bank as the header (map_header ASSERTs it).
+ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"

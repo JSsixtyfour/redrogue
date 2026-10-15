@@ -12,8 +12,9 @@ A site block is valid when:
      it can go round on the ring of 8. (A pad teleports whoever steps on it,
      so for walking it is a wall.) The flood fill below verifies this claim
      on every layout instead of trusting it;
-  2. no real ball, fake ball, the boss or the stage-event hideout lies in
-     the 3x3 blocks centred on the site;
+  2. no real ball, fake ball or the boss lies in the 3x3 blocks centred on the
+     site, and the stage-event hideout is not within two blocks (its villains
+     see 4 tiles; a battle started on a warp tile takes the warp afterwards);
   3. it is not inside the exit (boss) room, room 11, so a pad cannot skip the
      stage.
 A pair needs two valid sites at least PAD_MIN_DISTANCE blocks apart
@@ -86,7 +87,8 @@ def layout(harness, seed, edge, baseline):
 
 
 def object_blocks(scratch, balls, boss, hideout) -> set[tuple[int, int]]:
-    """Block coords of every ball, the boss and the hideout."""
+    """Block coords of every ball and the boss (the hideout has its own,
+    wider rule in valid_sites)."""
     blocks = set()
     for i in range(4):
         y, x = balls[2 * i], balls[2 * i + 1]
@@ -94,9 +96,13 @@ def object_blocks(scratch, balls, boss, hideout) -> set[tuple[int, int]]:
         y, x = scratch[FAKE_BALL_OFFSET + 2 * i], scratch[FAKE_BALL_OFFSET + 2 * i + 1]
         blocks.add(((x - 4) // 2, (y - 4) // 2))
     blocks.add(((boss[1] - 4) // 2, (boss[0] - 4) // 2))
-    if hideout[0] != NO_HIDEOUT:
-        blocks.add((hideout[0], hideout[1]))
     return blocks
+
+
+def near_hideout(hideout, bx, by) -> bool:
+    """PFacPadSiteValid: within two blocks of the stage-event hideout. The
+    villains there see 4 tiles; two blocks keeps a pad's tile 5 away."""
+    return hideout[0] != NO_HIDEOUT and abs(hideout[0] - bx) <= 2 and abs(hideout[1] - by) <= 2
 
 
 RULE = "quad"  # set by --rule; "quad" is what the ROM does
@@ -151,6 +157,8 @@ def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
                     continue
             # Objects: the 3x3 blocks centred on the site (PFacPadObjectsClear).
             if any((bx + dx, by + dy) in occupied for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                continue
+            if near_hideout(hideout, bx, by):
                 continue
             if ex <= bx < ex + ew and ey <= by < ey + eh:
                 continue

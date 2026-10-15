@@ -19,6 +19,16 @@ ProceduralCave1_Object:
 	; Bottom confirmed: block(9,19)→warp_event(19,38). Left block(1,9)→(3,18), Right block(18,9)→(37,18).
 	; Top view ptr falls below PC_BASE. Left/right spawn in fill — not yet solved.
 
+	; The subroom's ladders (PROCEDURAL_SUBROOMS_PLAN Phase 4,
+	; constants/cave_ladder_site_constants.asm). These coordinates are where the
+	; player climbs back out. CaveSubroomArm disarms every one on each load and
+	; arms only the two (or one) this cave drew, so the destination here is a
+	; placeholder.
+	ASSERT CAVE_FIRST_LADDER_WARP == 2
+	FOR n, NUM_CAVE_LADDER_SITES
+		warp_event 2 * CAVE_LADDER_SITE_{d:n}_X + 1, 2 * CAVE_LADDER_SITE_{d:n}_Y + 1, PROCEDURAL_CAVE_SUBROOM, 1
+	ENDR
+
 	def_bg_events
 	bg_event 19, 35, TEXT_PROCEDURALCAVE1_SIGN
 
@@ -69,5 +79,13 @@ ProceduralCave1_Object:
 	; itself has to be right at build time.
 	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
 	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALCAVE1_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
+
+	; The subroom resident's fallback (PROCEDURAL_SUBROOMS_PLAN Phase 4): only
+	; when no ladder fits this cave. CaveFallbackPatchSprites zeroes both
+	; pictures otherwise (no VRAM slot), and the rolled one's position and
+	; visibility are set by CaveSubroomArm / CaveStageFirstEntry.
+	object_event 10, 10, SPRITE_GAMBLER, STAY, DOWN, TEXT_PROCEDURALCAVE1_GAMBLER
+	object_event 10, 10, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_PROCEDURALCAVE1_SUPER_NERD
+	ASSERT CAVE_GAMBLER == 8 && CAVE_SUPER_NERD == 9
 
 	def_warps_to PROCEDURAL_CAVE_1

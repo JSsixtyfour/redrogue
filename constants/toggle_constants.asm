@@ -315,30 +315,28 @@ ENDM
 	const TOGGLE_PFRESTHOUSE_SALESMAN ; A9
 	const TOGGLE_PFRESTHOUSE_GAMBLER ; AA
 
-	toggle_consts_for SAFARI_ZONE_WEST
-	const TOGGLE_SAFARI_ZONE_WEST_ITEM_1 ; AB X
-	const TOGGLE_SAFARI_ZONE_WEST_ITEM_2 ; AC X
-	const TOGGLE_SAFARI_ZONE_WEST_ITEM_3 ; AD X
+	; SAFARI_ZONE_WEST's three item-ball toggles were reclaimed 2026-10-14 for the
+	; Cemetery's Channeler: the Safari Zone is unreachable and nothing named them.
 
 	toggle_consts_for SAFARI_ZONE_CENTER
-	const TOGGLE_SAFARI_ZONE_CENTER_ITEM ; AE X
+	const TOGGLE_SAFARI_ZONE_CENTER_ITEM ; AB X
 
 	toggle_consts_for CERULEAN_CAVE_2F
-	const TOGGLE_CERULEAN_CAVE_2F_ITEM_1 ; AF X
-	const TOGGLE_CERULEAN_CAVE_2F_ITEM_2 ; B0 X
-	const TOGGLE_CERULEAN_CAVE_2F_ITEM_3 ; B1 X
+	const TOGGLE_CERULEAN_CAVE_2F_ITEM_1 ; AC X
+	const TOGGLE_CERULEAN_CAVE_2F_ITEM_2 ; AD X
+	const TOGGLE_CERULEAN_CAVE_2F_ITEM_3 ; AE X
 
 	toggle_consts_for CERULEAN_CAVE_B1F
-	const TOGGLE_MEWTWO ; B2 X
-	const TOGGLE_CERULEAN_CAVE_B1F_ITEM_1 ; B3 X
-	const TOGGLE_CERULEAN_CAVE_B1F_ITEM_2 ; B4 X
+	const TOGGLE_MEWTWO ; AF X
+	const TOGGLE_CERULEAN_CAVE_B1F_ITEM_1 ; B0 X
+	const TOGGLE_CERULEAN_CAVE_B1F_ITEM_2 ; B1 X
 
 	toggle_consts_for VICTORY_ROAD_1F
-	const TOGGLE_VICTORY_ROAD_1F_ITEM_1 ; B5 X
-	const TOGGLE_VICTORY_ROAD_1F_ITEM_2 ; B6 X
+	const TOGGLE_VICTORY_ROAD_1F_ITEM_1 ; B2 X
+	const TOGGLE_VICTORY_ROAD_1F_ITEM_2 ; B3 X
 
 	toggle_consts_for CHAMPIONS_ROOM
-	const TOGGLE_CHAMPIONS_ROOM_OAK ; B7
+	const TOGGLE_CHAMPIONS_ROOM_OAK ; B4
 ; Lance and Oak as alternate Champions (Phase 7e). Appended directly after the
 ; map's existing single entry, NOT at the file's end like the Johto gym guides:
 ; ToggleableObjectMapPointers holds exactly ONE pointer per map, and
@@ -347,40 +345,40 @@ ENDM
 ; contiguous run in data/maps/toggleable_objects.asm. There is no way to add
 ; to it except in place. This renumbers every later TOGGLE_* constant, which
 ; is safe: nothing outside these two files reads a TOGGLE_* value as a literal.
-	const TOGGLE_CHAMPIONS_ROOM_RIVAL ; B8
-	const TOGGLE_CHAMPIONS_ROOM_LANCE ; B9
-	const TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION ; BA
+	const TOGGLE_CHAMPIONS_ROOM_RIVAL ; B5
+	const TOGGLE_CHAMPIONS_ROOM_LANCE ; B6
+	const TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION ; B7
 
 	toggle_consts_for SEAFOAM_ISLANDS_1F
-	const TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_1 ; BB
-	const TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_2 ; BC
+	const TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_1 ; B8
+	const TOGGLE_SEAFOAM_ISLANDS_1F_BOULDER_2 ; B9
 
 	toggle_consts_for SEAFOAM_ISLANDS_B1F
-	const TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_1 ; BD
-	const TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_2 ; BE
+	const TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_1 ; BA
+	const TOGGLE_SEAFOAM_ISLANDS_B1F_BOULDER_2 ; BB
 
 	toggle_consts_for SEAFOAM_ISLANDS_B2F
-	const TOGGLE_SEAFOAM_ISLANDS_B2F_BOULDER_1 ; BF
-	const TOGGLE_SEAFOAM_ISLANDS_B2F_BOULDER_2 ; C0
+	const TOGGLE_SEAFOAM_ISLANDS_B2F_BOULDER_1 ; BC
+	const TOGGLE_SEAFOAM_ISLANDS_B2F_BOULDER_2 ; BD
 
 	toggle_consts_for SEAFOAM_ISLANDS_B3F
-	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_1 ; C1
-	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_2 ; C2
-	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_3 ; C3
-	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_4 ; C4
+	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_1 ; BE
+	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_2 ; BF
+	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_3 ; C0
+	const TOGGLE_SEAFOAM_ISLANDS_B3F_BOULDER_4 ; C1
 
 	toggle_consts_for SEAFOAM_ISLANDS_B4F
-	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_1 ; C5
-	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_2 ; C6
-	const TOGGLE_ARTICUNO ; C7 X
+	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_1 ; C2
+	const TOGGLE_SEAFOAM_ISLANDS_B4F_BOULDER_2 ; C3
+	const TOGGLE_ARTICUNO ; C4 X
     
     toggle_consts_for INDIGO_PLATEAU_LOBBY
-    const TOGGLE_PC_PSYCHIC ; C8, ; D6
-	const TOGGLE_PC_WITCH ; C9, ; D7
-	const TOGGLE_PC_POKESALESMAN ; CA, ; D8
-    const TOGGLE_PC_TRADENERD ; CB, ; D9
-    const TOGGLE_PC_MOVETUTOR ; CC, ; DA
-    const TOGGLE_PC_RENTAL_OFFICIAL ; CD, formerly reserved non-object sign toggle
+    const TOGGLE_PC_PSYCHIC ; C5, ; D6
+	const TOGGLE_PC_WITCH ; C6, ; D7
+	const TOGGLE_PC_POKESALESMAN ; C7, ; D8
+    const TOGGLE_PC_TRADENERD ; C8, ; D9
+    const TOGGLE_PC_MOVETUTOR ; C9, ; DA
+    const TOGGLE_PC_RENTAL_OFFICIAL ; CA, formerly reserved non-object sign toggle
 
 	; Wild area pokeballs (procedurally generated stages, e.g. ProceduralCave1) -
 	; 4 independent random items, one per dead-end. Hardcoded slot check lives
@@ -407,11 +405,11 @@ ENDM
 	; slots 1-5 - so this per-map table is never consulted for them either.
 
 	toggle_consts_for PROCEDURAL_CAVE_1
-    const TOGGLE_WILD_AREA_BOSS ; CE       ; slot 1 (first object_event)
-	const TOGGLE_WILD_AREA_POKEBALL_1 ; CF ; slot 2
-	const TOGGLE_WILD_AREA_POKEBALL_2 ; D0 ; slot 3
-	const TOGGLE_WILD_AREA_POKEBALL_3 ; D1 ; slot 4
-	const TOGGLE_WILD_AREA_POKEBALL_4 ; D2 ; slot 5
+    const TOGGLE_WILD_AREA_BOSS ; CB       ; slot 1 (first object_event)
+	const TOGGLE_WILD_AREA_POKEBALL_1 ; CC ; slot 2
+	const TOGGLE_WILD_AREA_POKEBALL_2 ; CD ; slot 3
+	const TOGGLE_WILD_AREA_POKEBALL_3 ; CE ; slot 4
+	const TOGGLE_WILD_AREA_POKEBALL_4 ; CF ; slot 5
 	; Phase 7b stage-event NPCs. Unlike slots 1-5, these need NO new branch in
 	; IsObjectHidden: its hardcoded wild-area mapping only covers slots 1-5,
 	; and slots 6+ fall through .checkMaybeGenericRoguePB, which tests
@@ -420,8 +418,12 @@ ENDM
 	; from wToggleableObjectList, i.e. from these constants. (The Facility
 	; needed its own branch precisely because its slots 6-9 collided with the
 	; generic rogue-stage reward meanings.)
-	const TOGGLE_WILD_AREA_NPC_1 ; D3      ; slot 6
-	const TOGGLE_WILD_AREA_NPC_2 ; D4      ; slot 7
+	const TOGGLE_WILD_AREA_NPC_1 ; D0      ; slot 6
+	const TOGGLE_WILD_AREA_NPC_2 ; D1      ; slot 7
+	; The subroom resident's fallback (PROCEDURAL_SUBROOMS_PLAN Phase 4): only when
+	; no ladder fits this cave, and then only the rolled one (CaveStageFirstEntry).
+	const TOGGLE_CAVE_GAMBLER ; D2        ; slot 8
+	const TOGGLE_CAVE_SUPER_NERD ; D3     ; slot 9
 
 	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants above (same
 	; port-don't-reimplement pattern as PROCEDURAL_FOREST above) - still needs
@@ -434,10 +436,10 @@ ENDM
 	;const TOGGLE_FACILITY_POKEBALL_2   ; slot 3
 	;const TOGGLE_FACILITY_POKEBALL_3   ; slot 4
 	;const TOGGLE_FACILITY_POKEBALL_4   ; slot 5
-	const TOGGLE_FACILITY_FAKE_BALL_1 ; D5  ; slot 6
-	const TOGGLE_FACILITY_FAKE_BALL_2 ; D6  ; slot 7
-	const TOGGLE_FACILITY_FAKE_BALL_3 ; D7  ; slot 8
-	const TOGGLE_FACILITY_FAKE_BALL_4 ; D8  ; slot 9
+	const TOGGLE_FACILITY_FAKE_BALL_1 ; D4  ; slot 6
+	const TOGGLE_FACILITY_FAKE_BALL_2 ; D5  ; slot 7
+	const TOGGLE_FACILITY_FAKE_BALL_3 ; D6  ; slot 8
+	const TOGGLE_FACILITY_FAKE_BALL_4 ; D7  ; slot 9
 	; Stage-event NPC pair (Phase 7 rollout), slots 10-11. Unlike the cave and
 	; forest's shared TOGGLE_WILD_AREA_NPC_1/2 (resolved by a hardcoded
 	; WildAreaStageMapTable fast path in IsObjectHidden), slots 10-11 are NOT
@@ -446,31 +448,35 @@ ENDM
 	; (its slot 6-9 fake-ball branch only claims b-6 < 4). So these need real
 	; entries, both here and in data/maps/toggleable_objects.asm's
 	; PROCEDURAL_FACILITY block.
-	const TOGGLE_FACILITY_NPC_1 ; D9        ; slot 10
-	const TOGGLE_FACILITY_NPC_2 ; DA        ; slot 11
+	const TOGGLE_FACILITY_NPC_1 ; D8        ; slot 10
+	const TOGGLE_FACILITY_NPC_2 ; D9        ; slot 11
 	; The Super Nerd's fallback spot (PROCEDURAL_SUBROOMS_PLAN Phase 4): shown once
 	; per stage only when the Facility got no subroom pad (FacSubroomStageObjects).
-	const TOGGLE_FACILITY_SUPER_NERD ; DB   ; slot 12
+	const TOGGLE_FACILITY_SUPER_NERD ; DA   ; slot 12
 
 	toggle_consts_for PROCEDURAL_CEMETERY_1
-	const TOGGLE_CEMETERY_1_POKEBALL ; DC
-	const TOGGLE_CEMETERY_1_NPC_1 ; DD
-	const TOGGLE_CEMETERY_1_NPC_2 ; DE
+	const TOGGLE_CEMETERY_1_POKEBALL ; DB
+	const TOGGLE_CEMETERY_1_NPC_1 ; DC
+	const TOGGLE_CEMETERY_1_NPC_2 ; DD
+	const TOGGLE_CEMETERY_1_CHANNELER ; DE ; slot 4: the possessed Channeler
 
 	toggle_consts_for PROCEDURAL_CEMETERY_2
 	const TOGGLE_CEMETERY_2_POKEBALL ; DF
 	const TOGGLE_CEMETERY_2_NPC_1 ; E0
 	const TOGGLE_CEMETERY_2_NPC_2 ; E1
+	const TOGGLE_CEMETERY_2_CHANNELER ; E2 ; slot 4: the possessed Channeler
 
 	toggle_consts_for PROCEDURAL_CEMETERY_3
-	const TOGGLE_CEMETERY_3_POKEBALL ; E2
-	const TOGGLE_CEMETERY_3_NPC_1 ; E3
-	const TOGGLE_CEMETERY_3_NPC_2 ; E4
+	const TOGGLE_CEMETERY_3_POKEBALL ; E3
+	const TOGGLE_CEMETERY_3_NPC_1 ; E4
+	const TOGGLE_CEMETERY_3_NPC_2 ; E5
+	const TOGGLE_CEMETERY_3_CHANNELER ; E6 ; slot 4: the possessed Channeler
 
 	toggle_consts_for PROCEDURAL_CEMETERY_4
-	const TOGGLE_CEMETERY_4_POKEBALL ; E5
-	const TOGGLE_CEMETERY_4_NPC_1 ; E6
-	const TOGGLE_CEMETERY_4_NPC_2 ; E7
+	const TOGGLE_CEMETERY_4_POKEBALL ; E7
+	const TOGGLE_CEMETERY_4_NPC_1 ; E8
+	const TOGGLE_CEMETERY_4_NPC_2 ; E9
+	const TOGGLE_CEMETERY_4_CHANNELER ; EA ; slot 4: the possessed Channeler
 
 ; Fuchsia Gym carries BOTH leader objects and hides one per run, so the
 ; Koga/Janine coin flip needs no map swap. APPENDED at the end of this file
@@ -481,8 +487,8 @@ ENDM
 ; block next to the other gyms would shift every later TOGGLE_* constant and
 ; require the same move in that file to stay in lockstep.
 	toggle_consts_for FUCHSIA_GYM
-	const TOGGLE_FUCHSIA_KOGA ; E8
-	const TOGGLE_FUCHSIA_JANINE ; E9
+	const TOGGLE_FUCHSIA_KOGA ; EB
+	const TOGGLE_FUCHSIA_JANINE ; EC
 
 ; New Johto gyms. Each needs its OWN gym-guide toggle: the Kanto gyms hide
 ; TOGGLE_GYM_GUY, which belongs to PEWTER_CITY, and ToggleableObjectStates rows
@@ -490,48 +496,55 @@ ENDM
 ; object instead. Append each new gym here AND in the same order at the end of
 ; data/maps/toggleable_objects.asm.
 	toggle_consts_for VIOLET_GYM
-	const TOGGLE_VIOLET_GYM_GUIDE ; EA
+	const TOGGLE_VIOLET_GYM_GUIDE ; ED
 
 	toggle_consts_for AZALEA_GYM
-	const TOGGLE_AZALEA_GYM_GUIDE ; EB
+	const TOGGLE_AZALEA_GYM_GUIDE ; EE
 
 	toggle_consts_for GOLDENROD_GYM
-	const TOGGLE_GOLDENROD_GYM_GUIDE ; EC
+	const TOGGLE_GOLDENROD_GYM_GUIDE ; EF
 
 	toggle_consts_for ECRUTEAK_GYM
-	const TOGGLE_ECRUTEAK_GYM_GUIDE ; ED
+	const TOGGLE_ECRUTEAK_GYM_GUIDE ; F0
 
 	toggle_consts_for CIANWOOD_GYM
-	const TOGGLE_CIANWOOD_GYM_GUIDE ; EE
+	const TOGGLE_CIANWOOD_GYM_GUIDE ; F1
 
 	toggle_consts_for OLIVINE_GYM
-	const TOGGLE_OLIVINE_GYM_GUIDE ; EF
+	const TOGGLE_OLIVINE_GYM_GUIDE ; F2
 
 	toggle_consts_for MAHOGANY_GYM
-	const TOGGLE_MAHOGANY_GYM_GUIDE ; F0
+	const TOGGLE_MAHOGANY_GYM_GUIDE ; F3
 
 	toggle_consts_for BLACKTHORN_GYM
-	const TOGGLE_BLACKTHORN_GYM_GUIDE ; F1
+	const TOGGLE_BLACKTHORN_GYM_GUIDE ; F4
 
 ; B1F keeps Palm separate from the stair scientist. Appended so no existing
 ; toggle id shifts; keep this block last in data/maps/toggleable_objects.asm.
 	toggle_consts_for SILPH_CO_B1F
-	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; F2
-	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; F3
-	const TOGGLE_SILPH_CO_B1F_LANCE ; F4
-	const TOGGLE_SILPH_CO_B1F_ROCKET ; F5
+	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; F5
+	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; F6
+	const TOGGLE_SILPH_CO_B1F_LANCE ; F7
+	const TOGGLE_SILPH_CO_B1F_ROCKET ; F8
 
 	toggle_consts_for AI_LAIR
-	const TOGGLE_AI_LAIR_OPPONENT ; F6
+	const TOGGLE_AI_LAIR_OPPONENT ; F9
 
 	toggle_consts_for PALMS_ROOM
-	const TOGGLE_PALMS_ROOM_PROF_PALM ; F7
-	const TOGGLE_PALMS_ROOM_LANCE ; F8
+	const TOGGLE_PALMS_ROOM_PROF_PALM ; FA
+	const TOGGLE_PALMS_ROOM_LANCE ; FB
 
 	; The Facility subroom's item ball (PROCEDURAL_SUBROOMS_PLAN Phase 4).
 	; Appended last so no earlier id moves. Shown once per Facility
 	; (FacSubroomStageObjects), hidden when picked up.
 	toggle_consts_for PROCEDURAL_FACILITY_SUBROOM
-	const TOGGLE_FACSUBROOM_BALL ; F9
+	const TOGGLE_FACSUBROOM_BALL ; FC
+
+	; The cave subroom's resident (PROCEDURAL_SUBROOMS_PLAN Phase 4): one of the
+	; two is shown per cave (CaveStageFirstEntry). Appended last.
+	toggle_consts_for PROCEDURAL_CAVE_SUBROOM
+	const TOGGLE_CAVESUB_GAMBLER ; FD
+	const TOGGLE_CAVESUB_SUPER_NERD ; FE
+	const TOGGLE_CAVESUB_BALL ; FF
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

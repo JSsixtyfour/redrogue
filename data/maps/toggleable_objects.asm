@@ -340,10 +340,6 @@ ToggleableObjectStates:
 	toggle_object_state PFRESTHOUSE_SALESMAN,        OFF
 	toggle_object_state PFRESTHOUSE_GAMBLER,         OFF
 
-	toggleable_objects_for SAFARI_ZONE_WEST
-	toggle_object_state SAFARIZONEWEST_MAX_POTION,     ON
-	toggle_object_state SAFARIZONEWEST_TM_DOUBLE_TEAM, ON
-	toggle_object_state SAFARIZONEWEST_MAX_REVIVE,     ON
 
 	toggleable_objects_for SAFARI_ZONE_CENTER
 	toggle_object_state SAFARIZONECENTER_NUGGET, ON
@@ -432,6 +428,8 @@ ToggleableObjectStates:
 	; them on the far more common no-event path.
 	toggle_object_state 6, OFF             ; slot 6 = stage-event NPC 1
 	toggle_object_state 7, OFF             ; slot 7 = stage-event NPC 2
+	toggle_object_state CAVE_GAMBLER, OFF  ; slot 8 = the resident's fallback
+	toggle_object_state CAVE_SUPER_NERD, OFF ; slot 9
 
 	; Facility reuses the cave's TOGGLE_WILD_AREA_* constants (ShowObject calls
 	; in scripts/ProceduralFacility.asm reference them directly at
@@ -457,21 +455,25 @@ ToggleableObjectStates:
 	toggle_object_state 1, ON    ; slot 1 = pokeball
 	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
 	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
+	toggle_object_state CEMETERY_1_CHANNELER, OFF ; slot 4 = the Channeler
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_2
 	toggle_object_state 1, ON
 	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
 	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
+	toggle_object_state CEMETERY_2_CHANNELER, OFF ; slot 4 = the Channeler
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_3
 	toggle_object_state 1, ON
 	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
 	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
+	toggle_object_state CEMETERY_3_CHANNELER, OFF ; slot 4 = the Channeler
 
 	toggleable_objects_for PROCEDURAL_CEMETERY_4
 	toggle_object_state 1, ON
 	toggle_object_state 2, OFF   ; slot 2 = stage-event NPC 1
 	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
+	toggle_object_state CEMETERY_4_CHANNELER, OFF ; slot 4 = the Channeler
 
 ; Both Fuchsia leaders start ON; FuchsiaGymHideUnusedLeader hides exactly one on
 ; map load. Must stay LAST here to match the matching block at the end of
@@ -523,6 +525,11 @@ ToggleableObjectStates:
 
 	toggleable_objects_for PROCEDURAL_FACILITY_SUBROOM
 	toggle_object_state FACSUBROOM_BALL, OFF
+
+	toggleable_objects_for PROCEDURAL_CAVE_SUBROOM
+	toggle_object_state CAVESUB_GAMBLER, OFF
+	toggle_object_state CAVESUB_SUPER_NERD, OFF
+	toggle_object_state CAVESUB_BALL, OFF
 
 	assert_table_length NUM_TOGGLEABLE_OBJECTS
 

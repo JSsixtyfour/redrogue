@@ -837,8 +837,9 @@ PCGetDedicatedPokemonSprite::
 	db LAPRAS, SPRITE_LAPRAS
 	db MACHOP, SPRITE_MACHOP
 	; Mew's sheet is a party pose; use its generic monster category.
-	db 0, 0 ; unused slot, preserves ROM placement
+	db NIDORAN_M, SPRITE_NIDORINO ; family share, like DODRIO above
 	db NIDORAN_F, SPRITE_NIDORAN_F
+	db NIDORINA, SPRITE_NIDORAN_F
 	db PIDGEY, SPRITE_PIDGEY
 	db SLOWPOKE, SPRITE_SLOWPOKE
 .speciesSpritesEnd
@@ -1275,6 +1276,9 @@ PCFinalizeCave::
 	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
+	; Phase 4: the subroom's ladders, after every block-changing pass so the
+	; bake keeps them.
+	farcall CaveSubroomPlaceLadders
 
 	; --- BAKE: copy the now-finished tiles back into the staging buffer, so
 	; every subsequent entry (returning from a battle, mainly) can skip this
@@ -1319,6 +1323,7 @@ PCFinalizeCave::
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
+	farcall CaveSubroomArm           ; Phase 4: the ladders into the subroom
 
 	; Fresh entry only (slow path): set the wild-battle budget for this visit.
 	; cap = WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR, saturating at 255.
@@ -1432,6 +1437,7 @@ PCFinalizeCaveFast:
 	call PCPlaceBoss                 ; species/level into wMapSpriteExtraData
 	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
 	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
+	farcall CaveSubroomArm           ; Phase 4: the ladders into the subroom
 
 	xor a
 	ld [wProcCavePreloadReady], a
