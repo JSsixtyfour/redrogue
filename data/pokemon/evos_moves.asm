@@ -2996,8 +2996,8 @@ NatuEvosMoves:
 ; Learnset - canon Gen 2 levels; FUTURE_SIGHT does not exist in Gen 1, filled
 ; with METRONOME.
 	db 10, NIGHT_SHADE
-	db 20, TELEPORT
-	db 30, METRONOME ; was FUTURE_SIGHT
+	db 18, CONFUSION
+	db 30, PSYBEAM ; was FUTURE_SIGHT
 	db 40, CONFUSE_RAY
 	db 50, PSYCHIC_M
 	db 0
