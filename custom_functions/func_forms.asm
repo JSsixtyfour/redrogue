@@ -326,7 +326,7 @@ RogueRollFormForSpecies::
 	jr nc, .noForm               ; the common case - an ordinary base-species spawn
 
 ; Count this species' records first, then walk again to fetch the chosen one.
-; Two passes rather than one pass into a scratch buffer: the table is 52 records
+; Two passes rather than one pass into a scratch buffer: the table is 49 records
 ; of ROM that cannot change between the passes, only 1 spawn in 8 gets this far,
 ; and it needs no WRAM at all. Reservoir sampling would be one pass but costs a
 ; Random call PER match, which is strictly worse here.
@@ -603,6 +603,26 @@ IsFormUnlockedFar::
 	ld d, a                      ; d = mask
 	ld a, e                      ; a = form
 	jp IsFormAllowed
+
+; ---------------------------------------------------------------------------
+; IsFormRecordedFar
+; Does (species, form) have a record in FormOverrides? Used by evolution, which
+; preserves a form only when the evolved species has the same form: Galarian
+; Farfetch'd becomes a plain Sirfetch'd, not SIRFETCHD with a dangling form 1
+; that a later record would silently claim.
+; Rides on GetFormPalette: every record's palette is a PAL_*MON (>= $10), so
+; palette 0 can only mean "no record".
+; INPUT:  d = species, e = form index (0 = base, never "recorded")
+; OUTPUT: carry SET if the record exists (flags survive the farcall return)
+; CLOBBERS: af, bc, de, hl
+; ---------------------------------------------------------------------------
+IsFormRecordedFar::
+	call GetFormPalette          ; e = palette, 0 = no record
+	ld a, e
+	and a                        ; clears carry
+	ret z
+	scf
+	ret
 
 EeveeBranches:
 ; Same eight outcomes as EeveeEvosMoves' stone entries plus evos_moves.asm's

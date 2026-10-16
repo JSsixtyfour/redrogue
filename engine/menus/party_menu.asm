@@ -113,6 +113,9 @@ RedrawPartyMenu_::
 	db "NOT ABLE@"
 .evolutionStoneMenu
 	push hl
+	farcall IsPartyMonEvoBlocked ; hWhichPokemon = this entry
+	ld de, .notAbleToEvolveText
+	jr c, .placeEvolutionStoneString
 	ld hl, EvosMovesPointerTable
 	ld b, 0
 	ld a, [wLoadedMonSpecies]

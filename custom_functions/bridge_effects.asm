@@ -824,6 +824,8 @@ MistStoneChooseEvolution::
 ; party menu, so here it reads MIST_STONE ($76, internal DUGTRIO, which has no
 ; evolutions): nothing was ever offered and the stone was never used.
 ; hWhichPokemon is the mon picked in the party menu.
+	farcall IsPartyMonEvoBlocked  ; paradox forms, plain Farfetch'd
+	jp c, .noneChosen
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld b, 0

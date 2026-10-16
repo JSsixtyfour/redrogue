@@ -86,12 +86,11 @@ ENDM
 ;   JOLTEON     Espeon        Umbreon       -
 ;   FLAREON     Leafeon       -             -
 ;   TAUROS      P-Combat      P-Blaze       P-Aqua
-;   SNEASEL     Hisuian       -             -
 ;   (every other Group R base) its one regional variant
 ;
-; SNEASEL isn't listed in PHASE_2R_SONNET_SPEC.md section 3's table (an
-; omission there, not a capacity problem) but follows the same one-slot
-; default as every other single-form base; see hsneasel.asm.
+; Hisuian Sneasel, Paldean Wooper and Hisuian Qwilfish were cut 2026-10-15:
+; placeholder art only, and their evolutions (Sneasler, Clodsire, Overqwil)
+; do not exist here.
 
 FormOverrides::
 ; Records must be dex-order-independent - ApplyFormOverride walks linearly and
@@ -144,10 +143,7 @@ INCLUDE "data/pokemon/forms/gzapdos.asm"
 INCLUDE "data/pokemon/forms/harcanine.asm"
 INCLUDE "data/pokemon/forms/helectrode.asm"
 INCLUDE "data/pokemon/forms/hgrowlithe.asm"
-INCLUDE "data/pokemon/forms/hqwilfish.asm"
-INCLUDE "data/pokemon/forms/hsneasel.asm"
 INCLUDE "data/pokemon/forms/hvoltorb.asm"
-INCLUDE "data/pokemon/forms/pwooper.asm"
 
 	db 0 ; terminator
 
@@ -155,7 +151,7 @@ INCLUDE "data/pokemon/forms/pwooper.asm"
 ; Which species-group unlock each form rides on - Phase 2R increment 8c.
 ;
 ; Forms are expansion content and must never appear in a base Kanto run, even
-; though 48 of the 52 records hang off KANTO base species (Meowth, Dugtrio,
+; though 48 of the 50 records hang off KANTO base species (Meowth, Dugtrio,
 ; Moltres, Tauros...). Without this, Alolan Meowth shows up on turn one of a
 ; fresh game - which is exactly what testing found.
 ;

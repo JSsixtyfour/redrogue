@@ -644,9 +644,9 @@ RogueGetSpeciesTierFar::
 ;
 ; ⚠ This is NOT the same as asking whether a form's BASE species is in an
 ; unlocked group, and that distinction is the whole reason this exists: 48 of the
-; 52 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
-; Tauros...), and Kanto is always active. Only gslowking/hqwilfish/hsneasel/
-; pwooper have Johto bases. Without an explicit gate, Alolan Meowth shows up on
+; 49 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
+; Tauros...), and Kanto is always active. Only gslowking has a Johto base.
+; Without an explicit gate, Alolan Meowth shows up on
 ; turn one of a fresh run - which is exactly what happened in testing.
 ; ---------------------------------------------------------------------------
 RogueFormsUnlocked::

@@ -595,8 +595,6 @@
 	band_mon SPINARAK
 	band_warp
 	band_mon SLOWPOKE, 1
-	band_mon SNEASEL, 1
-	band_mon WOOPER, 1
 	band_end
 	band_pool Koga_Off2
 	band_mon PARAS
@@ -651,8 +649,6 @@
 	band_mon SPINARAK
 	band_warp
 	band_mon SLOWPOKE, 1
-	band_mon SNEASEL, 1
-	band_mon WOOPER, 1
 	band_end
 	band_pool Koga_Off3
 	band_mon PARAS
@@ -705,8 +701,6 @@
 	band_mon SPINARAK
 	band_warp
 	band_mon SLOWPOKE, 1
-	band_mon SNEASEL, 1
-	band_mon WOOPER, 1
 	band_end
 	band_same Koga_Off4, Koga_Off3
 
@@ -1015,7 +1009,6 @@
 	band_mon LARVITAR
 	band_mon SWINUB
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool Giovanni_Ace2
@@ -1043,7 +1036,6 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool Giovanni_Off2
@@ -1076,7 +1068,6 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_mon MAGNETON, 1
 	band_end
@@ -1647,7 +1638,6 @@
 	band_warp
 	band_mon FARFETCHD, 1
 	band_mon TAUROS, 1
-	band_mon SNEASEL, 1
 	band_end
 	band_pool Chuck_Off3
 	band_mon GEODUDE
@@ -2035,7 +2025,6 @@
 	band_ace CROBAT
 	band_ace ARIADOS
 	band_warp
-	band_ace SNEASEL, 1
 	band_ace WEEZING, 1
 	band_end
 	band_pool Janine_Fod3
@@ -2051,8 +2040,6 @@
 	band_mon SPINARAK
 	band_mon QWILFISH
 	band_warp
-	band_mon SNEASEL, 1
-	band_mon WOOPER, 1
 	band_end
 	band_pool Janine_Off3
 	band_mon DROWZEE
@@ -2074,7 +2061,6 @@
 	band_ace CROBAT
 	band_warp
 	band_ace MUK, 1
-	band_ace SNEASEL, 1
 	band_end
 	band_same Janine_Fod4, Janine_Fod3
 	band_pool Janine_Off4
@@ -2263,7 +2249,6 @@
 	band_mon LARVITAR
 	band_mon SWINUB
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool GiovanniMiniBoss_Ace2
@@ -2294,7 +2279,6 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool GiovanniMiniBoss_Off2
@@ -2326,7 +2310,6 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
-	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_mon MAGNETON, 1
 	band_end
@@ -2420,7 +2403,6 @@
 	band_warp
 	band_mon FARFETCHD, 1
 	band_mon TAUROS, 1
-	band_mon SNEASEL, 1
 	band_end
 	band_pool KarateMiniBoss_Off3
 	band_mon GEODUDE
@@ -2823,7 +2805,6 @@
 	band_mon ANNIHILAPE
 	band_mon SIRFETCHD
 	band_mon FARFETCHD, 1
-	band_mon SNEASEL, 1
 	band_mon TAUROS, 1
 	band_mon TAUROS, 2
 	band_mon TAUROS, 3
@@ -2889,12 +2870,9 @@
 	band_mon MAROWAK, 1
 	band_mon GRIMER, 1
 	band_mon MUK, 1
-	band_mon QWILFISH, 1
 	band_mon SLOWBRO, 1
 	band_mon SLOWKING, 1
-	band_mon SNEASEL, 1
 	band_mon WEEZING, 1
-	band_mon WOOPER, 1
 	band_end
 
 ; --- Lance -------------------------------------------------------------------
@@ -3003,12 +2981,9 @@
 	band_warp
 	band_mon GRIMER, 1
 	band_mon MUK, 1
-	band_mon QWILFISH, 1
 	band_mon SLOWBRO, 1
 	band_mon SLOWKING, 1
-	band_mon SNEASEL, 1
 	band_mon WEEZING, 1
-	band_mon WOOPER, 1
 	band_end
 
 ; --- Will --------------------------------------------------------------------
@@ -3091,5 +3066,4 @@
 	band_mon MUK, 1
 	band_mon GRIMER, 1
 	band_mon MOLTRES, 1
-	band_mon QWILFISH, 1
 	band_end

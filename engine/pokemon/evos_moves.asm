@@ -61,6 +61,9 @@ Evolution_PartyMonLoop: ; loop over party mons
 	farcall GetSpecialFormCaps
 	bit SF_NO_EVOLVE, e
 	jp nz, Evolution_PartyMonLoop
+	; Paradox forms and plain Farfetch'd never evolve (FormNoEvolve).
+	call IsPartyMonEvoBlocked
+	jp c, Evolution_PartyMonLoop
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld hl, wCanEvolveFlags
@@ -1029,16 +1032,30 @@ ApplyEvoStoneForm:
 ;      BEFORE evolution
 ; OUT: a = the form index (0..3) it will have: the EvoStoneForms entry for a
 ;      form-setting stone evolution, else the mon's own form (form-preserving)
-; CLOBBERS: af, b, hl. Shared by ApplyEvoStoneForm and the evolution animation
-; (wEvoNewForm), so the two can never disagree.
+; CLOBBERS: af, bc, hl (de PRESERVED). Shared by ApplyEvoStoneForm, the
+; evolution animation (wEvoNewForm) and the name, so they can never disagree.
 GetEvolvedForm:
 	call FindEvoStoneForm
 	ret c                      ; form-SETTING stone evolution
 	ld a, [wLoadedMon + MON_CATCH_RATE]
 	and FORM_MASK
+	ret z                      ; base form evolves into the base form
 	rlca                       ; bits 5-6 -> 0-3
 	rlca
 	rlca
+; Form-preserving, but only into a form that exists: Galarian Farfetch'd ->
+; Sirfetch'd has no SIRFETCHD form 1, so it lands on form 0 rather than keeping
+; a dangling form bit.
+	push de
+	ld d, c                    ; d = species being evolved into
+	ld e, a                    ; e = form (only d/e cross a farcall)
+	push de
+	farcall IsFormRecordedFar
+	pop de                     ; pops and loads do not disturb the flags
+	ld a, e
+	pop de
+	ret c
+	xor a                      ; no such record: plain evolved species
 	ret
 
 ; IN:  c = species being evolved into, wEvoStoneItemID
@@ -1152,4 +1169,63 @@ EvoStoneMatchesUsed::
 FormEvoStones:
 ; db <species>, <form index>, <stone that replaces the EVOLVE_ITEM entry's>
 	db VULPIX, 1, ICE_STONE ; Alolan Vulpix -> Alolan Ninetales
+	db 0 ; terminator
+
+; Does the party mon in slot hWhichPokemon belong to a (species, form) that never
+; evolves? Checked once per mon at the top of the evolution loop, so it blocks
+; every method (level, stone, Mist Stone, trade, Rare Candy); the party menu's
+; ABLE/NOT ABLE and the Mist Stone chooser ask too, so neither offers one.
+; Reads the party struct, not wLoadedMon: the Mist Stone chooser runs after the
+; party menu, when wLoadedMon holds whichever mon was drawn last.
+; IN:  hWhichPokemon = party slot
+; OUT: carry SET = this mon never evolves (flags survive a farcall return)
+; CLOBBERS: af, bc, hl (de PRESERVED)
+IsPartyMonEvoBlocked::
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]                 ; species
+	push af
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	rlca                       ; bits 5-6 -> 0-3
+	rlca
+	rlca
+	ld c, a                    ; c = form
+	pop af
+	ld b, a                    ; b = species
+	jr IsFormNoEvolve
+
+; The same question for a mon that is not in the party yet: the trainer party
+; builder asks it before ScaleTrainer_evolution, with the pool entry's form.
+; IN:  d = species, e = form index
+; OUT: carry SET = never evolves (flags survive the farcall return)
+; CLOBBERS: af, bc, hl (de PRESERVED)
+IsFormNoEvolveFar::
+	ld b, d
+	ld c, e
+	; fall through
+; IN: b = species, c = form. OUT/CLOBBERS as above.
+IsFormNoEvolve:
+	ld hl, FormNoEvolve
+.loop
+	ld a, [hli]
+	and a                      ; clears carry
+	ret z                      ; terminator: evolves normally
+	cp b
+	ld a, [hli]                ; loads do not disturb the flags
+	jr nz, .loop
+	cp c
+	jr nz, .loop
+	scf
+	ret
+
+FormNoEvolve:
+; db <species>, <form index>
+	db JIGGLYPUFF, 1 ; Scream Tail: paradox
+	db MAGNETON,   1 ; Sandy Shocks: paradox
+	db FARFETCHD,  0 ; plain Farfetch'd: only Galarian Farfetch'd -> Sirfetch'd
 	db 0 ; terminator

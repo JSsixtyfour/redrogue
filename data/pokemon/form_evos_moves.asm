@@ -103,14 +103,8 @@ FormEvosMovesPointers::
 	dw HelectrodeFormEvosMoves
 	db GROWLITHE, 1
 	dw HgrowlitheFormEvosMoves
-	db QWILFISH, 1
-	dw HqwilfishFormEvosMoves
-	db SNEASEL, 1
-	dw HsneaselFormEvosMoves
 	db VOLTORB, 1
 	dw HvoltorbFormEvosMoves
-	db WOOPER, 1
-	dw PwooperFormEvosMoves
 	db 0 ; terminator
 
 	INCLUDE "data/pokemon/form_evos_moves/ameowth.asm"
@@ -161,7 +155,4 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/harcanine.asm"
 	INCLUDE "data/pokemon/form_evos_moves/helectrode.asm"
 	INCLUDE "data/pokemon/form_evos_moves/hgrowlithe.asm"
-	INCLUDE "data/pokemon/form_evos_moves/hqwilfish.asm"
-	INCLUDE "data/pokemon/form_evos_moves/hsneasel.asm"
 	INCLUDE "data/pokemon/form_evos_moves/hvoltorb.asm"
-	INCLUDE "data/pokemon/form_evos_moves/pwooper.asm"

@@ -549,6 +549,20 @@ PartyGenBuildSlot:
 ; This also turns its form spec back into an ordinary one for ResolveForm.
 	call PartyGenTakeKeepFlag
 	jr c, .noEvolve
+; Forms that never evolve (FormNoEvolve: paradoxes, plain Farfetch'd) stay put,
+; or a Sandy Shocks fodder entry came out as a Magnezone. wSpawnForm is the
+; entry's form spec; a POOL_FORM_ROLL entry is judged as its base form, since
+; its form is only rolled after this.
+	ld a, [wSpawnForm]
+	cp POOL_FORM_ROLL
+	jr nz, .formKnown
+	xor a
+.formKnown
+	ld e, a
+	ld a, [wCurPartySpecies]
+	ld d, a
+	farcall IsFormNoEvolveFar
+	jr c, .noEvolve
 	ld a, [wCurPartySpecies]
 	ld d, a
 	farcall ScaleTrainer_evolution ; d = species in; publishes the promoted one
@@ -1449,7 +1463,16 @@ PartyGenResolveForm:
 	ld a, [wSpawnForm]
 	cp POOL_FORM_ROLL
 	jr z, .roll
-	ret                            ; POOL_FORM_BASE (0) or a literal index
+	and a
+	ret z                          ; POOL_FORM_BASE (0)
+; A literal index survives only if the FINAL species has that form: a Galarian
+; Farfetch'd fodder entry evolved into Sirfetch'd, which has no form 1.
+	ld e, a
+	ld a, [wCurPartySpecies]
+	ld d, a
+	farcall IsFormRecordedFar
+	ret c
+	jr .noForm
 .roll
 ; Gate on the species-group unlocks exactly the way the procedural roster path
 ; does (custom_functions/func_enc_gen.asm). Flags survive Bankswitch - it only

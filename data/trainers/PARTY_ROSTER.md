@@ -157,17 +157,17 @@ fodder.
 
 **Band 2: rounds 3-4**
 - Aces: Weezing, Muk, Venomoth
-- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Spinarak (johto), Galarian Slowpoke (warp)
 - Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
 
 **Band 3: rounds 5-6**
 - Aces: Weezing, Muk, Nidoking, Nidoqueen, Gengar, Crobat (johto)
-- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Fodder: Gastly, Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Bulbasaur, Oddish, Bellsprout, Weedle, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp)
 - Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Tauros, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
 
 **Band 4: rounds 7-8**
 - Aces: Nidoking, Nidoqueen, Gengar, Crobat (johto)
-- Fodder: Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Gastly, Bulbasaur, Oddish, Bellsprout, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Fodder: Ekans, Nidoran M, Nidoran F, Zubat, Grimer, Koffing, Venonat, Gastly, Bulbasaur, Oddish, Bellsprout, Tentacool, Qwilfish (johto), Spinarak (johto), Galarian Slowpoke (warp)
 - Off-type: Paras, Tangela, Drowzee, Voltorb, Magmar, Lapras, Scyther, Rhyhorn, Vulpix, Chansey, Ditto, Pidgey, Eevee, Porygon, Tauros, Pineco (johto), Stantler (johto), Chinchou (johto), Girafarig (johto), Chikorita (johto), Shuckle (johto)
 
 ### Blaine (FIRE)
@@ -216,21 +216,21 @@ fodder.
 
 **Band 1: rounds 1-2**
 - Aces: Onix, Sandslash, Dugtrio, Marowak
-- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Paldean Wooper (warp), Toedscool (warp)
+- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Toedscool (warp)
 
 **Band 2: rounds 3-4**
 - Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 **Band 3: rounds 5-6**
 - Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp), Sandy Shocks (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 **Band 4: rounds 7-8**
 - Aces: Nidoking, Rhydon, Persian, Nidoqueen, Golem
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp), Sandy Shocks (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Moltres, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 ### Falkner (FLYING)  (Draft)
@@ -333,12 +333,12 @@ Ghost lines exist without Time Warp.
 
 **Band 3: rounds 5-6**
 - Aces: Machamp, Poliwrath, Primeape, Heracross (johto), Hitmontop (johto), Combat Tauros (warp), Sirfetchd (warp)
-- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp)
 - Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Teddiursa (johto)
 
 **Band 4: rounds 7-8**
 - Aces: Machamp, Machamp, Poliwrath, Heracross (johto), Hitmontop (johto), Annihilape (warp), Galarian Zapdos (warp)
-- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp)
 - Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Snorlax, Lapras, Teddiursa (johto)
 
 ### Jasmine (STEEL)  (Draft)
@@ -428,13 +428,13 @@ Poisons and the Poison forms, with ninja-themed off-types.
 - Off-type: Drowzee, Sneasel (johto), Murkrow (johto), Houndour (johto)
 
 **Band 3: rounds 5-6**
-- Aces: Weezing, Venomoth, Muk, Tentacruel, Crobat (johto), Ariados (johto), Hisuian Sneasel (warp), Galarian Weezing (warp)
-- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Aces: Weezing, Venomoth, Muk, Tentacruel, Crobat (johto), Ariados (johto), Galarian Weezing (warp)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto)
 - Off-type: Drowzee, Scyther, Sneasel (johto), Murkrow (johto), Houndour (johto), Umbreon (johto), Misdreavus (johto)
 
 **Band 4: rounds 7-8**
-- Aces: Weezing, Tentacruel, Nidoqueen, Crobat (johto), Crobat (johto), Alolan Muk (warp), Hisuian Sneasel (warp)
-- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto), Hisuian Sneasel (warp), Paldean Wooper (warp)
+- Aces: Weezing, Tentacruel, Nidoqueen, Crobat (johto), Crobat (johto), Alolan Muk (warp)
+- Fodder: Zubat, Venonat, Koffing, Grimer, Ekans, Nidoran F, Nidoran M, Tentacool, Spinarak (johto), Qwilfish (johto)
 - Off-type: Drowzee, Scyther, Snorlax, Sneasel (johto), Murkrow (johto), Houndour (johto), Umbreon (johto), Misdreavus (johto)
 
 ## Mini-bosses
@@ -476,21 +476,21 @@ signatures (Rhydon, Dugtrio, Nidoking, Nidoqueen, Sandslash, Marowak) plus Persi
 
 **Band 1: rounds 1-2**
 - Aces: Onix, Sandslash, Dugtrio, Marowak
-- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Paldean Wooper (warp), Toedscool (warp)
+- Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Toedscool (warp)
 
 **Band 2: rounds 3-4**
 - Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp)
 - Off-type: Meowth, Kangaskhan, Machop, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 **Band 3: rounds 5-6**
 - Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp), Sandy Shocks (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 **Band 4: rounds 7-9**
 - Aces: Nidoking, Nidoqueen, Rhydon, Dugtrio, Marowak, Sandslash, Persian, Kangaskhan
-- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Paldean Wooper (warp), Toedscool (warp), Sandy Shocks (warp)
+- Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp), Sandy Shocks (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
 ### KarateMiniBoss (Karate Master)
@@ -510,12 +510,12 @@ Pokemon still headline his team.
 
 **Band 3: rounds 5-6**
 - Aces: Machamp, Poliwrath, Primeape, Hitmonlee, Hitmonchan, Heracross (johto), Hitmontop (johto), Combat Tauros (warp), Sirfetchd (warp)
-- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp)
 - Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Teddiursa (johto)
 
 **Band 4: rounds 7-9**
 - Aces: Machamp, Poliwrath, Primeape, Hitmonlee, Hitmonchan, Heracross (johto), Hitmontop (johto), Annihilape (warp), Galarian Zapdos (warp)
-- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp), Hisuian Sneasel (warp)
+- Fodder: Mankey, Machop, Poliwag, Hitmonlee, Hitmonchan, Hitmontop (johto), Heracross (johto), Galarian Farfetchd (warp), Combat Tauros (warp)
 - Off-type: Geodude, Onix, Rhyhorn, Magnemite, Kangaskhan, Tauros, Snorlax, Lapras, Teddiursa (johto)
 
 ## Wild-area trainers
@@ -762,7 +762,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Machamp, Hitmontop (johto)
-- Fodder: Hitmonchan, Hitmonlee, Machamp, Machoke, Machop, Mankey, Poliwrath, Primeape, Clefable, Muk, Slowbro, Rhydon, Golem, Onix, Kangaskhan, Blastoise, Exeggutor, Cloyster, Heracross (johto), Hitmontop (johto), Steelix (johto), Granbull (johto), Ursaring (johto), Annihilape (warp), Sirfetchd (warp), Galarian Farfetchd (warp), Hisuian Sneasel (warp), Combat Tauros (warp), Blaze Tauros (warp), Aqua Tauros (warp), Galarian Zapdos (warp), Alolan Golem (warp)
+- Fodder: Hitmonchan, Hitmonlee, Machamp, Machoke, Machop, Mankey, Poliwrath, Primeape, Clefable, Muk, Slowbro, Rhydon, Golem, Onix, Kangaskhan, Blastoise, Exeggutor, Cloyster, Heracross (johto), Hitmontop (johto), Steelix (johto), Granbull (johto), Ursaring (johto), Annihilape (warp), Sirfetchd (warp), Galarian Farfetchd (warp), Combat Tauros (warp), Blaze Tauros (warp), Aqua Tauros (warp), Galarian Zapdos (warp), Alolan Golem (warp)
 
 ### Agatha (GHOST)
 
@@ -772,7 +772,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Gengar, Alolan Marowak (warp)
-- Fodder: Gastly, Haunter, Gengar, Arbok, Beedrill, Bellsprout, Bulbasaur, Ekans, Gloom, Golbat, Grimer, Ivysaur, Kakuna, Koffing, Muk, Nidoking, Nidoqueen, Nidoran F, Nidoran M, Nidorina, Nidorino, Oddish, Tentacool, Tentacruel, Venomoth, Venonat, Venusaur, Victreebel, Vileplume, Weedle, Weepinbell, Weezing, Zubat, Marowak, Ninetales, Jynx, Alakazam, Gyarados, Misdreavus (johto), Ariados (johto), Crobat (johto), Qwilfish (johto), Spinarak (johto), Annihilape (warp), Mismagius (warp), Alolan Marowak (warp), Alolan Grimer (warp), Alolan Muk (warp), Hisuian Qwilfish (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Hisuian Sneasel (warp), Galarian Weezing (warp), Paldean Wooper (warp)
+- Fodder: Gastly, Haunter, Gengar, Arbok, Beedrill, Bellsprout, Bulbasaur, Ekans, Gloom, Golbat, Grimer, Ivysaur, Kakuna, Koffing, Muk, Nidoking, Nidoqueen, Nidoran F, Nidoran M, Nidorina, Nidorino, Oddish, Tentacool, Tentacruel, Venomoth, Venonat, Venusaur, Victreebel, Vileplume, Weedle, Weepinbell, Weezing, Zubat, Marowak, Ninetales, Jynx, Alakazam, Gyarados, Misdreavus (johto), Ariados (johto), Crobat (johto), Qwilfish (johto), Spinarak (johto), Annihilape (warp), Mismagius (warp), Alolan Marowak (warp), Alolan Grimer (warp), Alolan Muk (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Weezing (warp)
 
 ### Lance (DRAGON)
 
@@ -792,7 +792,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Crobat (johto), Galarian Weezing (warp)
-- Fodder: Ekans, Arbok, Nidoran M, Nidorino, Nidoking, Nidoran F, Nidorina, Nidoqueen, Zubat, Golbat, Grimer, Muk, Weezing, Koffing, Venonat, Venomoth, Gastly, Haunter, Gengar, Bulbasaur, Ivysaur, Venusaur, Oddish, Gloom, Vileplume, Bellsprout, Weepinbell, Victreebel, Weedle, Kakuna, Tentacool, Tentacruel, Parasect, Tangela, Hypno, Electrode, Magmar, Lapras, Scyther, Rhydon, Ninetales, Chansey, Ditto, Pidgey, Pidgeotto, Pidgeot, Vaporeon, Articuno, Crobat (johto), Qwilfish (johto), Ariados (johto), Spinarak (johto), Forretress (johto), Stantler (johto), Lanturn (johto), Scizor (johto), Girafarig (johto), Meganium (johto), Shuckle (johto), Alolan Grimer (warp), Alolan Muk (warp), Hisuian Qwilfish (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Hisuian Sneasel (warp), Galarian Weezing (warp), Paldean Wooper (warp)
+- Fodder: Ekans, Arbok, Nidoran M, Nidorino, Nidoking, Nidoran F, Nidorina, Nidoqueen, Zubat, Golbat, Grimer, Muk, Weezing, Koffing, Venonat, Venomoth, Gastly, Haunter, Gengar, Bulbasaur, Ivysaur, Venusaur, Oddish, Gloom, Vileplume, Bellsprout, Weepinbell, Victreebel, Weedle, Kakuna, Tentacool, Tentacruel, Parasect, Tangela, Hypno, Electrode, Magmar, Lapras, Scyther, Rhydon, Ninetales, Chansey, Ditto, Pidgey, Pidgeotto, Pidgeot, Vaporeon, Articuno, Crobat (johto), Qwilfish (johto), Ariados (johto), Spinarak (johto), Forretress (johto), Stantler (johto), Lanturn (johto), Scizor (johto), Girafarig (johto), Meganium (johto), Shuckle (johto), Alolan Grimer (warp), Alolan Muk (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Weezing (warp)
 
 ### Will (PSYCHIC)
 
@@ -806,13 +806,13 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 ### Karen (DARK)
 
-Karen - Elite Four, Dark. UMBREON is JOLTEON form 2 in this tree, pinned for the same reason WillPool pins Espeon.  Dark did not exist as a type until Generation 2, so no Gen 1 species in this dex was ever Dark-typed, and this tree has no DARK type to sweep with tools/list_pool_candidates.py - the Warp pins below are the real-world Dark-types named by hand (Alolan Persian/Meowth/Rattata/Raticate/ Muk/Grimer, Galarian Moltres, Hisuian Qwilfish).  An empty Kanto run is a real fault, not just thin content: with Johto locked every run of the pool would be ineligible, PartyGenRollFromPool takes its .giveUp branch, and that branch falls back to the pool's FIRST entry UNFILTERED - yielding a team of six identical Murkrow rather than a crash, which is exactly the kind of fault that survives a clean build. The Kanto run below (her own Gen 2 roster's Kanto half plus other Kanto-side additions) keeps that from ever happening, even though Karen is only expected to be drawn with Johto enabled.
+Karen - Elite Four, Dark. UMBREON is JOLTEON form 2 in this tree, pinned for the same reason WillPool pins Espeon.  Dark did not exist as a type until Generation 2, so no Gen 1 species in this dex was ever Dark-typed, and this tree has no DARK type to sweep with tools/list_pool_candidates.py - the Warp pins below are the real-world Dark-types named by hand (Alolan Persian/Meowth/Rattata/Raticate/ Muk/Grimer, Galarian Moltres).  An empty Kanto run is a real fault, not just thin content: with Johto locked every run of the pool would be ineligible, PartyGenRollFromPool takes its .giveUp branch, and that branch falls back to the pool's FIRST entry UNFILTERED - yielding a team of six identical Murkrow rather than a crash, which is exactly the kind of fault that survives a clean build. The Kanto run below (her own Gen 2 roster's Kanto half plus other Kanto-side additions) keeps that from ever happening, even though Karen is only expected to be drawn with Johto enabled.
 
 Aces: the two signature aces the old records pinned (variant A and C), now one is drawn for every fight. Fodder: the old pool, entry for entry.
 
 **Band 1: every tier**
 - Aces: Houndoom (johto), Umbreon (johto)
-- Fodder: Gengar, Vileplume, Arbok, Persian, Golbat, Magmar, Slowbro, Electrode, Rapidash, Flareon, Murkrow (johto), Houndour (johto), Houndoom (johto), Sneasel (johto), Tyranitar (johto), Larvitar (johto), Pupitar (johto), Misdreavus (johto), Ursaring (johto), Umbreon (warp), Alolan Persian (warp), Alolan Meowth (warp), Alolan Rattata (warp), Alolan Raticate (warp), Alolan Muk (warp), Alolan Grimer (warp), Galarian Moltres (warp), Hisuian Qwilfish (warp)
+- Fodder: Gengar, Vileplume, Arbok, Persian, Golbat, Magmar, Slowbro, Electrode, Rapidash, Flareon, Murkrow (johto), Houndour (johto), Houndoom (johto), Sneasel (johto), Tyranitar (johto), Larvitar (johto), Pupitar (johto), Misdreavus (johto), Ursaring (johto), Umbreon (warp), Alolan Persian (warp), Alolan Meowth (warp), Alolan Rattata (warp), Alolan Raticate (warp), Alolan Muk (warp), Alolan Grimer (warp), Galarian Moltres (warp)
 
 ## Legendary bosses
 
