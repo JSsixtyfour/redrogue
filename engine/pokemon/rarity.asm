@@ -501,8 +501,6 @@ WarpGreatball_Evos:
 WarpGreatball_End:
 
 WarpUltraball:
-; Direct form picks, equal weight to each ordinary species entry.
-	rarity_mon MR_MIME, 1 ; Galarian Mr. Mime; currently no Mr. Rime evolution
 ; Mr. Rime has no implemented evolution path, so remains a direct pick.
 	rarity_mon MR_RIME
 WarpUltraball_Evos:
@@ -710,8 +708,8 @@ RogueGetSpeciesTierFar::
 ; one.
 ;
 ; ⚠ This is NOT the same as asking whether a form's BASE species is in an
-; unlocked group, and that distinction is the whole reason this exists: 48 of the
-; 49 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
+; unlocked group, and that distinction is the whole reason this exists: 47 of the
+; 48 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
 ; Tauros...), and Kanto is always active. Only gslowking has a Johto base.
 ; Without an explicit gate, Alolan Meowth shows up on
 ; turn one of a fresh run - which is exactly what happened in testing.

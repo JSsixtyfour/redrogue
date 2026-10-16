@@ -132,7 +132,6 @@ INCLUDE "data/pokemon/forms/avulpix.asm"
 INCLUDE "data/pokemon/forms/garticuno.asm"
 INCLUDE "data/pokemon/forms/gfarfetchd.asm"
 INCLUDE "data/pokemon/forms/gmoltres.asm"
-INCLUDE "data/pokemon/forms/gmrmime.asm"
 INCLUDE "data/pokemon/forms/gponyta.asm"
 INCLUDE "data/pokemon/forms/grapidash.asm"
 INCLUDE "data/pokemon/forms/gslowbro.asm"
@@ -151,14 +150,14 @@ INCLUDE "data/pokemon/forms/hvoltorb.asm"
 ; Which species-group unlock each form rides on - Phase 2R increment 8c.
 ;
 ; Forms are expansion content and must never appear in a base Kanto run, even
-; though 48 of the 50 records hang off KANTO base species (Meowth, Dugtrio,
+; though most records hang off KANTO base species (Meowth, Dugtrio,
 ; Moltres, Tauros...). Without this, Alolan Meowth shows up on turn one of a
 ; fresh game - which is exactly what testing found.
 ;
 ; The rule is GENERATIONAL, by design: Gen 2 content unlocks with
 ; JOHTO, everything Gen 4 and later with KANTO TIME WARP.
 ;
-; That makes Warp the overwhelming default (50 of 52), so only the Johto
+; That makes Warp the default for every other record, so only the Johto
 ; exceptions are listed here. A form absent from this table is a Warp form. A new
 ; record therefore needs no edit here unless it is Gen 2.
 FormJohtoPairs::

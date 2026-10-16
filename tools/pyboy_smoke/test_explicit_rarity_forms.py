@@ -84,16 +84,17 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     self.assertEqual((regs['D'], regs['E']), pair, (label, index))
         self.assertEqual(len(ordinary), 252)
         self.assertEqual(len(set(ordinary)), 252)
-        self.assertEqual(len(direct_forms), 28)
-        self.assertEqual(len(set(direct_forms)), 28)
+        self.assertEqual(len(direct_forms), 27)
+        self.assertEqual(len(set(direct_forms)), 27)
         # All active form records occur either in direct lists or commented
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
                       re.findall(r'^; rarity_mon (\w+),\s*(\d+)', source, re.M)}
-        records = self.rom_bytes('FormOverrides', 49 * 41)
+        records = self.rom_bytes('FormOverrides', 48 * 41)
         active = {(records[i], records[i+1]) for i in range(0, len(records), 41)}
         self.assertFalse(set(direct_forms) & references)
         self.assertEqual(set(direct_forms) | references, active)
+        self.assertNotIn((SPECIES['MR_MIME'], 1), active)
 
     def test_evolution_keeps_explicit_identity(self):
         cases = [

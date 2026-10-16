@@ -1845,7 +1845,6 @@
 	band_warp
 	band_mon VULPIX, 1
 	band_mon SANDSHREW, 1
-	band_mon MR_MIME, 1
 	band_end
 	band_pool Pryce_Off3
 	band_mon PSYDUCK
@@ -2761,7 +2760,6 @@
 	band_mon MAMOSWINE
 	band_mon MR_RIME
 	band_mon WEAVILE
-	band_mon MR_MIME, 1
 	band_mon NINETALES, 1
 	band_mon SANDSHREW, 1
 	band_mon SANDSLASH, 1
@@ -3020,7 +3018,6 @@
 	band_mon MR_RIME
 	band_mon ARTICUNO, 1
 	band_mon JIGGLYPUFF, 1
-	band_mon MR_MIME, 1
 	band_mon PONYTA, 1
 	band_mon RAICHU, 1
 	band_mon RAPIDASH, 1
