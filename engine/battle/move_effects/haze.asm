@@ -12,26 +12,46 @@ HazeEffect_:
 	ld hl, wEnemyMonUnmodifiedAttack
 	ld de, wEnemyMonAttack
 	call ResetStats
-; cure non-volatile status, but only for the target
+; Shin Red import Phase 13.6: cure non-volatile status on BOTH sides, as Shin
+; does (vanilla cured only the target, leaving the user's burn/paralysis on with
+; its stat penalty already wiped by ResetStats above).
+	ld hl, wBattleMonStatus
+	ld de, wPlayerSelectedMove
+	ld bc, wPlayerBattleStatus1
+	call .cureStatus
 	ld hl, wEnemyMonStatus
 	ld de, wEnemySelectedMove
-	ldh a, [hWhoseTurn]
-	and a
-	jr z, .cureStatuses
-	ld hl, wBattleMonStatus
-	dec de ; wPlayerSelectedMove
+	ld bc, wEnemyBattleStatus1
+	call .cureStatus
+	jr .cureVolatileStatuses
 
-.cureStatuses
+.cureStatus
+; A side that was asleep or frozen skipped move selection this round, so its
+; selected move is stale (0 at battle start); CANNOT_MOVE stops it acting.
+; Shin drops this write outright, but Shin lets sleepers select a move and
+; Red Rogue does not. A side locked into a move keeps its move instead: the
+; vanilla write there was the Bide/Thrash/Rage/Hyper Beam never-acts glitch.
 	ld a, [hl]
-	ld [hl], $0
+	ld [hl], 0
 	and (1 << FRZ) | SLP_MASK
-	jr z, .cureVolatileStatuses
-; prevent the Pokemon from executing a move if it was asleep or frozen
-	ld a, $ff
+	ret z
+	ld a, [bc]
+	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE)
+	ret nz
+	inc bc ; BATTSTATUS2
+	ld a, [bc]
+	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
+	ret nz
+	ld a, CANNOT_MOVE
 	ld [de], a
+	ret
 
 .cureVolatileStatuses
 	xor a
+	; Shin Red import Phase 13.6: CureVolatileStatuses clears BADLY_POISONED on
+	; both sides; zero the matching counters with it.
+	ld [wPlayerToxicCounter], a
+	ld [wEnemyToxicCounter], a
 	ld [wPlayerDisabledMove], a
 	ld [wEnemyDisabledMove], a
 	ld hl, wPlayerDisabledMoveNumber

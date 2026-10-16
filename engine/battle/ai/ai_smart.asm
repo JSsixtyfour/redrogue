@@ -625,9 +625,10 @@ AISmart_Screen:
 ; review F7). d counts what we gain, e what we lose:
 ;   gain: each player stat above neutral, each of our stats below neutral, the
 ;         player's Reflect / Light Screen / Mist / Focus Energy / X Accuracy,
-;         our confusion / Leech Seed / Toxic counter, a Disable on us, and our
-;         paralysis or burn stat penalty WHILE STILL IN EFFECT
-;         (AIHazeRestoresOurStats; ResetStats undoes it, the status stays)
+;         our confusion / Leech Seed / Toxic counter, a Disable on us, and -
+;         counted TWICE - our own major status, which Haze now cures on both
+;         sides (Shin Red import Phase 13.6; this also lifts its burn/paralysis
+;         stat cut, so that is not counted separately)
 ;   lose: each of our stats above neutral, each player stat below neutral, our
 ;         own screens / Mist / Focus Energy / X Accuracy, the player's
 ;         confusion / Leech Seed, and - counted TWICE - the player's major
@@ -713,12 +714,12 @@ AISmart_Haze:
 	jr z, .enemyNotToxic
 	inc d
 .enemyNotToxic
-	push de
-	call AIHazeRestoresOurStats ; the stat cut must still be IN EFFECT (R4)
-	pop de
-	jr nc, .enemyNoStatPenalty
+	ld a, [wEnemyMonStatus]
+	and a
+	jr z, .enemyNoStatus
 	inc d
-.enemyNoStatPenalty
+	inc d ; curing our own major status mirrors the player's cost above
+.enemyNoStatus
 ; Disable is cleared on both sides (a smaller trade, Codex follow-up R4).
 	ld a, [wEnemyDisabledMove]
 	and a

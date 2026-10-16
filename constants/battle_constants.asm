@@ -106,7 +106,7 @@ DEF MOVE_MISSED_NO_DAMAGE EQU 2 ; the move connected but damage rounded to 0
 	const USING_X_ACCURACY    ; 0
 	const PROTECTED_BY_MIST   ; 1
 	const GETTING_PUMPED      ; 2 ; Focus Energy
-	const_skip                ; 3 ; unused
+	const MOVING_SECOND       ; 3 ; the other side already acted this round (Disable fix, see DisableCounterFixup)
 	const HAS_SUBSTITUTE_UP   ; 4
 	const NEEDS_TO_RECHARGE   ; 5 ; Hyper Beam
 	const USING_RAGE          ; 6

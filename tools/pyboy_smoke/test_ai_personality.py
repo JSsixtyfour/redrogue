@@ -13,6 +13,8 @@ from source_constants import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+LINK_STATE_BATTLING = 0x04  # constants/serial_constants.asm
+
 class AIPersonalityTest(unittest.TestCase):
     def setUp(self):
         self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
@@ -223,19 +225,46 @@ class AIPersonalityTest(unittest.TestCase):
         self.assertEqual(probe(2, self.ai["AI_PERSONALITY_CONTROL"]),
                          [self.ai["AI_PERSONALITY_NONE"], 0])
 
-    def test_ordinary_random_assignment_is_disabled_but_cached_styles_remain(self):
+    def test_ordinary_random_assignment_rolls_once_and_caches(self):
         h = self.h
-        self.assertEqual(self.ai["AI_RANDOM_PERSONALITIES_ENABLED"], 0)
+        self.assertEqual(self.ai["AI_RANDOM_PERSONALITIES_ENABLED"], 1)
+        profiles = (self.ai["AI_PERSONALITY_OFFENSE"], self.ai["AI_PERSONALITY_CONTROL"],
+                    self.ai["AI_PERSONALITY_DEFENSIVE"])
+        seen = set()
         for trainer_name in ("YOUNGSTER", "BLACKBELT", "PSYCHIC_TR"):
-            with self.subTest(trainer_class=trainer_name):
-                h.write8("wTrainerClass", self.trainer_classes[trainer_name])
-                h.write8("wTrainerNo", 2)
-                h.write8("wAIRandomPersonality", 0)
-                h.write8("wLinkState", 0)
-                random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
-                self.assertEqual(h.read8("wBuffer"), self.ai["AI_PERSONALITY_NONE"])
-                self.assertEqual(h.read8("wAIRandomPersonality"), 0)
-                self.assertEqual(random_calls, 1)  # ambient VBlank draw only
+            for seed in ((17, 29, 43, 71), (23, 51, 79, 107), (5, 9, 200, 3), (88, 1, 64, 150)):
+                with self.subTest(trainer_class=trainer_name, seed=seed):
+                    h.write8("wTrainerClass", self.trainer_classes[trainer_name])
+                    h.write8("wTrainerNo", 2)
+                    h.write8("wAIRandomPersonality", 0)
+                    h.write8("wLinkState", 0)
+                    h.seed_rng(seed)
+                    random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
+                    profile = h.read8("wBuffer")
+                    self.assertIn(profile, profiles)  # never NONE, never out of range
+                    self.assertEqual(h.read8("wAIRandomPersonality"), profile + 1)
+                    self.assertGreaterEqual(random_calls, 2)  # VBlank + the roll
+                    seen.add(profile)
+                    # Cached: a second resolve (an enemy switch) keeps the style.
+                    random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
+                    self.assertEqual(h.read8("wBuffer"), profile)
+                    self.assertEqual(random_calls, 1)  # ambient VBlank draw only
+        self.assertGreater(len(seen), 1)  # the roll actually varies
+
+    def test_link_battles_never_roll_a_personality(self):
+        h = self.h
+        h.write8("wTrainerClass", self.trainer_classes["YOUNGSTER"])
+        h.write8("wTrainerNo", 2)
+        h.write8("wAIRandomPersonality", 0)
+        h.write8("wLinkState", LINK_STATE_BATTLING)
+        random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
+        self.assertEqual(h.read8("wBuffer"), self.ai["AI_PERSONALITY_NONE"])
+        self.assertEqual(h.read8("wAIRandomPersonality"), 0)
+        self.assertEqual(random_calls, 1)
+        h.write8("wLinkState", 0)
+
+    def test_cached_styles_resolve_to_their_profile(self):
+        h = self.h
 
         for profile in (
             self.ai["AI_PERSONALITY_OFFENSE"],

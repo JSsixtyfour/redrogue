@@ -181,14 +181,14 @@
    "positive": {
     "requirement": "a move that cannot work is penalised out of contention",
     "tests": [
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_after_the_penalty_is_already_restored_stays_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_noop_and_all_six_non_neutral_stage_contracts",
      "test_ai_personality.AIPersonalityTest.test_psychic_control_respects_status_redundancy_immunity_and_disabled_moves"
     ]
    },
    "negative": {
     "requirement": "a move that can work is left alone",
     "tests": [
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_cures_our_burn_is_not_redundant",
      "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_paralysed_speed_is_not_redundant"
     ]
    },
@@ -426,15 +426,15 @@
    "positive": {
     "requirement": "nothing to clear: eliminated",
     "tests": [
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_noop_and_all_six_non_neutral_stage_contracts",
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_after_the_penalty_is_already_restored_stays_redundant"
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_noop_and_all_six_non_neutral_stage_contracts"
     ]
    },
    "negative": {
     "requirement": "something to clear: legal",
     "tests": [
      "test_ai_checkpoint_a.AICheckpointATest.test_haze_recognizes_only_states_the_real_effect_clears",
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_cures_our_burn_is_not_redundant",
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_cures_our_burn_even_with_the_stat_already_restored",
      "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_paralysed_speed_is_not_redundant"
     ]
    }
@@ -939,9 +939,9 @@
     ]
    },
    "boundary": {
-    "requirement": "our burn/paralysis penalty restoration counts only while in effect",
+    "requirement": "curing our own major status counts twice, mirroring the player's (Haze cures both sides)",
     "tests": [
-     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_restores_our_burned_attack_is_not_redundant"
+     "test_ai_checkpoint_a.AICheckpointATest.test_haze_that_cures_our_burn_is_not_redundant"
     ]
    }
   },

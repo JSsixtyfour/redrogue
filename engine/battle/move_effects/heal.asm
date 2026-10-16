@@ -50,6 +50,24 @@ HealEffect_:
 	jr z, .restEffect
 	ld hl, wEnemyMonStatus
 .restEffect
+	; Shin Red import Phase 13.2: Rest cured the status byte but left the
+	; burn/paralysis stat penalty and the Toxic bit. A stale BADLY_POISONED kept
+	; Leech Seed's damage ramping. UndoBurnParStats reads the status, so it runs
+	; before the write below; hWhoseTurn already names the Rest user.
+	push hl
+	farcall UndoBurnParStats
+	ld hl, wPlayerBattleStatus3
+	ld de, wPlayerToxicCounter
+	ldh a, [hWhoseTurn]
+	and a
+	jr z, .clearToxic
+	ld hl, wEnemyBattleStatus3
+	ld de, wEnemyToxicCounter
+.clearToxic
+	res BADLY_POISONED, [hl]
+	xor a
+	ld [de], a
+	pop hl
 	ld a, [hl]
 	and a
 	ld [hl], 2 ; clear status and set number of turns asleep to 2

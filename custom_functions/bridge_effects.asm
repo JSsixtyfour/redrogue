@@ -206,6 +206,7 @@ BridgeApplySuperEffectiveDamageBoost::
 ; turn limit's count skips them, so it could not be reused. Folded into this
 ; existing farcall so Battle Core ($0F) pays nothing. Falls through.
 BattleTurnCommitted::
+	predef BattleRoundStartFixups ; Rage/Thrash accuracy, MOVING_SECOND reset
 	ld hl, wMoneyMatchState
 	bit BIT_MONEY_MATCH_ACTIVE, [hl]
 	jr z, BridgeBeginRepeatAction

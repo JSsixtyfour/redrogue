@@ -439,8 +439,7 @@ MainInBattleLoop:
 .invertOutcome
 	call BattleRandom
 	cp 50 percent + 1
-	jr c, .enemyMovesFirst
-	jr .playerMovesFirst
+	jp nc, .playerMovesFirst ; else fall through: enemy first
 .enemyMovesFirst
 	ld a, $1
 	ldh [hWhoseTurn], a
@@ -462,6 +461,8 @@ MainInBattleLoop:
 	call HandlePoisonBurnLeechSeed
 	jp z, HandleEnemyMonFainted
 	call DrawHUDsAndHPBars
+	ld hl, wPlayerBattleStatus2 ; the enemy has acted, so the player moves second
+	set MOVING_SECOND, [hl]     ; (cleared each round by BattleRoundStartFixups)
 	call ExecutePlayerMove
 	ld a, [wEscapedFromBattle]
 	and a ; was Teleport, Roar, or Whirlwind used to escape from battle?
@@ -530,6 +531,8 @@ MainInBattleLoop:
 	ldh [hWhoseTurn], a
 	callfar TrainerAI
 	jr c, .AIActionUsedPlayerFirst
+	ld hl, wEnemyBattleStatus2 ; the player has acted, so the enemy moves second
+	set MOVING_SECOND, [hl]    ; (cleared each round by BattleRoundStartFixups)
 	call ExecuteEnemyMove
 	ld a, [wEscapedFromBattle]
 	and a ; was Teleport, Roar, or Whirlwind used to escape from battle?
@@ -3253,7 +3256,10 @@ AnyMoveToSelect:
 	or c
 	jr .handleDisabledMovePPLoop
 .allMovesChecked
-	and a ; any PP left?
+	; Shin Red import Phase 13.1: mask off the PP Up bits as the no-Disable path
+	; above does. Plain `and a` counted a 0-PP move with PP Ups as having PP, so
+	; Struggle never triggered and the player was left with nothing selectable.
+	and PP_MASK ; any PP left?
 	ret nz ; return if a move has PP left
 .noMovesLeft
 	ld hl, NoMovesLeftText
@@ -3841,6 +3847,8 @@ CheckPlayerStatusConditions:
 	ld a, [hl]
 	and a
 	jr z, .ConfusedCheck
+	predef DisableCounterFixup ; Shin Red import Phase 13.7; returns hl intact
+	ld a, [hl]
 	dec a
 	ld [hl], a
 	and $f ; did Disable counter hit 0?
@@ -5554,9 +5562,16 @@ AttackSubstitute:
 .nullifyEffect
 ; Multi-hit moves keep their effect when a hit breaks Substitute. The normal
 ; post-damage dispatcher initializes or retains the hit count, so remaining
-; hits continue into the now-exposed Pokemon. Other effects keep Gen 1's
-; existing break-time suppression.
+; hits continue into the now-exposed Pokemon. Explosion/Selfdestruct and recoil
+; also keep theirs (Shin Red import Phase 13.5): vanilla let an exploder survive
+; and skipped recoil whenever the hit broke a Substitute. Hyper Beam still loses
+; its recharge here, Gen 1 style (optional, FOLLOWUPS.md #77).
+; Other effects keep Gen 1's existing break-time suppression.
 	ld a, [hl]
+	cp EXPLODE_EFFECT
+	jr z, .keepEffect
+	cp RECOIL_EFFECT
+	jr z, .keepEffect
 	cp TWO_TO_FIVE_ATTACKS_EFFECT
 	jr z, .keepEffect
 	cp EFFECT_1E
@@ -6956,6 +6971,8 @@ CheckEnemyStatusConditions:
 	ld a, [hl]
 	and a
 	jr z, .checkIfConfused
+	predef DisableCounterFixup ; Shin Red import Phase 13.7; returns hl intact
+	ld a, [hl]
 	dec a ; decrement disable counter
 	ld [hl], a
 	and $f ; did disable counter hit 0?

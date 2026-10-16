@@ -569,6 +569,7 @@ INCLUDE "engine/battle/init_battle_variables.asm"
 INCLUDE "engine/battle/move_effects/heal.asm"                 ; marcelnote - moved from Battle Engine 7
 INCLUDE "engine/battle/move_effects/transform.asm"            ; marcelnote - moved from Battle Engine 7
 INCLUDE "engine/battle/move_effects/reflect_light_screen.asm" ; marcelnote - moved from Battle Engine 7
+INCLUDE "engine/battle/shinred_turn_fixes.asm" ; predefs only, so placement is free
 
 
 SECTION "Hidden Events 2", ROMX

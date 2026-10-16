@@ -118,6 +118,8 @@ PredefPointers::
     add_predef SetCPUSpeed
     add_predef SetAttackANimPal
     add_predef RogueAwardCurrentGymBadge
+	add_predef BattleRoundStartFixups ; Shin Red import Phase 13
+	add_predef DisableCounterFixup    ; Shin Red import Phase 13
 
 ; GetPredefPointer (engine/predefs.asm) computes offset = 3 * wPredefID using an 8-bit multiply
 ; that discards the carry out of the doubling step, so it silently wraps for IDs >= 128 instead of

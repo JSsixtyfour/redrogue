@@ -167,23 +167,25 @@ class AICheckpointATest(unittest.TestCase):
         self.h.call_routine(layer, limit=120)
         return scores[-1] if scores else self.h.read8("wBuffer")
 
-    def test_haze_that_restores_our_burned_attack_is_not_redundant(self):
-        # Codex follow-up R4: burned, neutral stages, nothing else - Haze's only
-        # effect is restoring our halved Attack. It used to saturate to 79.
+    def test_haze_that_cures_our_burn_is_not_redundant(self):
+        # Shin Red import Phase 13.6: Haze cures both sides, so our own burn is
+        # a real effect (it used to saturate to 79), and SMART counts it twice,
+        # mirroring the player's status: net +2 = strong encourage.
         burned = {"wEnemyMonStatus": 1 << 4}
         attack = ("wEnemyMonAttack", "wEnemyMonUnmodifiedAttack")
         self.assertEqual(self.haze_layer_score("AILayerRedundant", burned, attack), 20)
-        self.assertEqual(self.haze_layer_score("AILayerSmart", burned, attack), 19)
+        self.assertEqual(self.haze_layer_score("AILayerSmart", burned, attack), 18)
 
-    def test_haze_after_the_penalty_is_already_restored_stays_redundant(self):
-        # Burned but the live Attack already equals the unmodified one (a
-        # previous Haze restored it): no repeat reward.
+    def test_haze_cures_our_burn_even_with_the_stat_already_restored(self):
+        # The old R4 repeat-reward guard (live Attack already equal to the
+        # unmodified one) is gone: the burn itself is now cured, so a second
+        # Haze can only follow a fresh burn.
         h = self.h
         self.prime_haze()
         h.write8("wEnemyMonStatus", 1 << 4)
         self.word("wEnemyMonAttack", self.read_word("wEnemyMonUnmodifiedAttack"))
         h.call_routine("AILayerRedundant", limit=120)
-        self.assertEqual(h.read8("wBuffer"), 79)
+        self.assertEqual(h.read8("wBuffer"), 20)
 
     def test_haze_that_restores_our_paralysed_speed_is_not_redundant(self):
         paralysed = {"wEnemyMonStatus": 1 << 6}
@@ -208,6 +210,7 @@ class AICheckpointATest(unittest.TestCase):
 
     def test_haze_recognizes_only_states_the_real_effect_clears(self):
         states = {"wBattleMonStatus": [1, 8, 16, 32, 64],
+                  "wEnemyMonStatus": [8, 16, 64],  # Phase 13.6: both sides
                   "wPlayerDisabledMove": [0x11], "wEnemyDisabledMove": [0x11],
                   "wPlayerBattleStatus1": [128], "wEnemyBattleStatus1": [128],
                   "wPlayerBattleStatus2": [1, 2, 4, 128],
@@ -219,10 +222,6 @@ class AICheckpointATest(unittest.TestCase):
                 self.h.write8(label, value)
                 self.h.call_routine("AILayerRedundant", limit=120)
                 self.assertEqual(self.h.read8("wBuffer"), 20, (label, value))
-        self.prime_haze()
-        self.h.write8("wEnemyMonStatus", 32)  # enemy Haze does not cure its user
-        self.h.call_routine("AILayerRedundant", limit=120)
-        self.assertEqual(self.h.read8("wBuffer"), 79)
 
 
 if __name__ == "__main__":

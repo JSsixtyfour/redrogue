@@ -223,8 +223,8 @@ AIGetSoftPersonality:
  call AIGetSoftPersonalityByTrainer
  ret c ; a matching NONE record is an explicit neutral override
 
- ; A staged cached profile remains usable by deterministic fixtures and by a
- ; future enabled random roll. Normal battle initialization leaves it at zero.
+ ; The cached profile from this battle's roll (fixtures may inject one).
+ ; Battle initialization zeroes it with wMiscBattleData.
  ld a, [wAIRandomPersonality]
  and a
  jr z, .checkRandomAssignment
@@ -232,8 +232,8 @@ AIGetSoftPersonality:
  ret
 
 .checkRandomAssignment
- ; Ordinary-trainer random assignment is staged off for now. Exact overrides
- ; above and fixed class assignments below remain live.
+ ; Ordinary-trainer random assignment. Exact overrides above take precedence;
+ ; classes outside the allowlist go to the fixed class assignments below.
  ld a, AI_RANDOM_PERSONALITIES_ENABLED
  and a
  jr z, .classFallback
@@ -1566,6 +1566,9 @@ AIPrintItemUseAndUpdateHPBar:
 	xor a
 	ld [wHPBarType], a
 	predef UpdateHPBar2
+	push af
+	farcall DrawEnemyHUDAndHPBar ; Shin Red import Phase 13.4: redraw the enemy HUD
+	pop af
 	jp DecrementAICount
 
 AISwitchIfEnoughMons:
@@ -1678,8 +1681,11 @@ AICureStatus:
 	xor a
 	ld [hl], a ; clear status in enemy team roster
 	ld [wEnemyMonStatus], a ; clear status of active enemy
+	ld [wEnemyToxicCounter], a
 	ld hl, wEnemyBattleStatus3
 	res BADLY_POISONED, [hl]
+	; Shin Red import Phase 13.4: the cured status stayed on the enemy HUD.
+	farcall DrawEnemyHUDAndHPBar
 	ret
 
 ; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM

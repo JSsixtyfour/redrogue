@@ -14,7 +14,7 @@ GmoltresFormEvosMoves:
 	db 15, WING_ATTACK
 	db 20, RAGE
 	db 23, SHARPEN
-	db 25, NIGHTSHADE
+	db 25, NIGHT_SHADE
 	db 30, SLAM
 	db 35, AGILITY
 	db 40, DRILL_PECK

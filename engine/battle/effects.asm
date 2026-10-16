@@ -1374,6 +1374,10 @@ DisableEffect:
 	call BattleRandom
 	and $7
 	inc a ; 1-8 turns disabled
+	; Shin Red import Phase 13.7: mark the count as fresh by storing n + 8
+	; (9-F, and 8 wraps to 0). DisableCounterFixup decodes it on the first tick.
+	add 8
+	res 4, a
 	inc c ; move 1-4 will be disabled
 	swap c
 	add c ; map disabled move to high nibble of wEnemyDisabledMove / wPlayerDisabledMove

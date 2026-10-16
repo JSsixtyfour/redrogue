@@ -132,9 +132,11 @@ class WarningRulesTest(unittest.TestCase):
         self.assertTrue(any("listed 3 times" in m for m in messages(thrice, "warning")))
 
     def test_form_bst_comes_from_the_form_file(self):
-        # data/pokemon/forms/agolem.asm: 80/120/130/45/65
-        self.assertEqual(440, gpr.base_stat_total("GOLEM", 1))
-        self.assertEqual(420, gpr.base_stat_total("GOLEM", None))
+        # data/pokemon/forms/amarowak.asm: 60/80/110/45/80 vs vanilla's Special 50.
+        # (Was Alolan Golem, until its 2026-10 rebalance matched vanilla Golem's
+        # 420 exactly, which no longer tells the two sources apart.)
+        self.assertEqual(375, gpr.base_stat_total("MAROWAK", 1))
+        self.assertEqual(345, gpr.base_stat_total("MAROWAK", None))
 
 
 class CurveBlockTest(unittest.TestCase):

@@ -136,9 +136,11 @@ DEF AI_PERSONALITY_OFFENSE  EQU 1
 DEF AI_PERSONALITY_CONTROL  EQU 2
 DEF AI_PERSONALITY_DEFENSIVE EQU 3
 DEF NUM_AI_PERSONALITIES    EQU 4
-; Staged ordinary-trainer random assignment. Keep the resolver and pool ready,
-; but leave production battles on explicit individual/class assignments only.
-DEF AI_RANDOM_PERSONALITIES_ENABLED EQU 0
+; Ordinary-trainer random assignment (enabled 2026-10-16): each battle, a
+; trainer of an AIRandomPersonalityClasses class draws one non-neutral profile,
+; cached in wAIRandomPersonality (zeroed with wMiscBattleData at battle start).
+; Explicit individual/class assignments still take precedence.
+DEF AI_RANDOM_PERSONALITIES_ENABLED EQU 1
 
 ; Enough to saturate a score to AI_SCORE_MAX from the baseline in one step,
 ; for the "this move does literally nothing" case. Deliberately expressed as a
