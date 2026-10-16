@@ -9,8 +9,8 @@ AmukFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 10, HARDEN
-	db 16, ACID
+	db 10, BITE
+	db 11, ACID
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE

@@ -2,14 +2,13 @@
 ;
 ; Poison/Dark. SECONDARY Dark is DROPPED per the type rules, leaving
 ; POISON/POISON, same as vanilla Grimer.
-; Special split: modern SpA 40 / SpD 50, take the HIGHER -> spc 50.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Grimer.
 	form_record GRIMER, 1
 
 	db DEX_GRIMER ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  80,  80,  50,  25,  50
+	db  80,  80,  50,  25,  40
 	;   hp  atk  def  spd  spc
 
 	db POISON, POISON ; type

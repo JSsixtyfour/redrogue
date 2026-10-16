@@ -268,6 +268,9 @@ def load_rarity() -> dict[str, list[Tier]]:
     current: str | None = None
     for raw in _lines("engine/pokemon/rarity.asm"):
         code = _code(raw)
+        if current and code == '.defaultEvos:':
+            evos_at[current] = len(lists[current])
+            continue
         m = re.match(r"^((?:Kanto|Johto|Warp)[A-Za-z]+?)(_Evos|_End)?:$", code)
         if m:
             base, suffix = m.group(1), m.group(2)
@@ -275,7 +278,7 @@ def load_rarity() -> dict[str, list[Tier]]:
                 current = base
                 lists.setdefault(base, [])
             elif suffix == "_Evos":
-                evos_at[base] = len(lists.get(base, []))
+                evos_at.setdefault(base, len(lists.get(base, [])))
                 current = base
             else:
                 current = None
@@ -299,11 +302,24 @@ def load_rarity() -> dict[str, list[Tier]]:
     return out
 
 
-def classify(rarity: dict[str, list[Tier]], species: str) -> tuple[str, int] | None:
+def base_species_for_tier(rarity, group, tier, groups):
+    """Effective direct picks, including RogueGetTierEntry's conditional view."""
+    picks = rarity[group][tier].base
+    if group == 'JOHTO' and {'JOHTO', 'WARP'} <= set(groups):
+        if tier == 0:
+            return [species for species in picks if species != 'SWINUB']
+        if tier == 1:
+            return picks + ['SWINUB']
+    return picks
+
+
+def classify(rarity: dict[str, list[Tier]], species: str, groups=()) -> tuple[str, int] | None:
     """RogueClassifySpecies: first (group, tier) whose full list holds it."""
     for group in GROUPS:
         for t, tier in enumerate(rarity[group]):
             if species in tier.all:
+                if species in {'SWINUB', 'PILOSWINE', 'MAMOSWINE'} and {'JOHTO', 'WARP'} <= set(groups):
+                    return group, 1
                 return group, t
     return None
 

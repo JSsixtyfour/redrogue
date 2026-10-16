@@ -1,14 +1,13 @@
 ; Alolan Muk - MUK form 1.
 ;
 ; Poison/Dark. SECONDARY Dark is DROPPED, leaving POISON/POISON like vanilla Muk.
-; Special split: modern SpA 65 / SpD 100, take the HIGHER -> spc 100.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Muk.
 	form_record MUK, 1
 
 	db DEX_MUK ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db 105, 105,  75,  50, 100
+	db 105, 105,  75,  50, 65
 	;   hp  atk  def  spd  spc
 
 	db POISON, POISON ; type

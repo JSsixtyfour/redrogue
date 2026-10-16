@@ -1833,8 +1833,8 @@ MoltresEvosMoves:
 	db 35, AGILITY
 	db 45, FLAMETHROWER
 	db 51, FIRE_BLAST
-	db 55, SKY_ATTACK
-	db 60, FIRE_SPIN
+	db 53, SKY_ATTACK
+	db 55, FIRE_SPIN
 	db 0
 ; Tutoring Learnset  
     db 2, WING_ATTACK
@@ -1848,8 +1848,8 @@ ArticunoEvosMoves:
 	db 35, AGILITY
 	db 45, ICE_BEAM
 	db 51, BLIZZARD
-	db 55, SKY_ATTACK
-	db 60, MIST
+	db 53, SKY_ATTACK
+	db 55, MIST
 	db 0
  ; Tutoring Learnset  
     db 2, GUST
@@ -1863,7 +1863,7 @@ ZapdosEvosMoves:
 	db 40, DRILL_PECK
 	db 45, THUNDERBOLT
 	db 51, THUNDER
-	db 60, LIGHT_SCREEN
+	db 54, LIGHT_SCREEN
 	db 0
     
 ; Tutoring Learnset  

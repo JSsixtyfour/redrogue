@@ -756,3 +756,81 @@ BridgeResolveEvolveSpeciesFar::
 	pop af
 	ld [wCurPartySpecies], a
 	ret
+
+; Ownership family walk, beside the evolution loader. Called through the
+; bank-$38 AllSpeciesCheck wrapper. INPUT d=species; OUTPUT e=owned (0/1).
+; No ROM data from bank $38 is read here; the owned list and cursor are WRAM.
+DEF FAMILY_WALK_BUDGET EQU 16   ; expansions; Eevee's 8 duplicate branches cost 9
+
+AllSpeciesCheckFar::
+	ASSERT PARTY_LENGTH + MONS_PER_BOX + 1 <= $40, \
+	       "wAllSpecies (ds $40, ram/wram.asm) must hold a full party, a full box and the terminator"
+	push de
+	ld bc, wAllSpecies
+	ld hl, wPartySpecies
+	call .appendList
+	ld hl, wBoxSpecies
+	call .appendList
+	ld a, $ff
+	ld [bc], a
+
+; Depth-first over the evolution tree, with the pending species on the stack.
+; Each species' evolution list is fully consumed (pushed) before the next
+; LoadEvoListForSpecies overwrites wEvoDataBuffer, so one buffer serves all.
+	xor a
+	push af                       ; NO_MON sentinel marks the bottom
+	ld a, d
+	ld b, FAMILY_WALK_BUDGET
+.visit                            ; a = species to test
+	ld d, a
+	ld hl, wAllSpecies
+.scan
+	ld a, [hli]
+	cp d
+	jr z, .owned
+	inc a                         ; $ff terminator -> 0
+	jr nz, .scan
+	inc b                         ; test b for 0 without changing it: the budget
+	dec b                         ; must SATURATE at 0, not wrap to 255 on the
+	jr z, .next                   ; next visit (budget spent: stop expanding, keep testing)
+	dec b
+	push bc
+	call LoadEvoListForSpecies
+	pop bc
+.evoEntry
+	ld a, [hli]
+	and a
+	jr z, .next
+	cp EVOLVE_ITEM
+	jr nz, .noItem
+	inc hl                        ; [method][item][level][species]
+.noItem
+	inc hl                        ; past [level]
+	ld a, [hli]                   ; target species
+	push af
+	jr .evoEntry
+.next
+	pop af
+	and a
+	jr nz, .visit
+	ld c, a                       ; sentinel reached: not owned, c = 0
+	jr .end
+
+.owned
+	pop af                        ; discard pending species down to the sentinel
+	and a
+	jr nz, .owned
+	ld c, 1
+.end                              ; single exit, c = result
+	pop de
+	ld e, c                      ; farcall-safe ownership result
+	ret
+
+; copy [hl] to [bc] up to (not including) the $ff terminator
+.appendList
+	ld a, [hli]
+	cp $ff
+	ret z
+	ld [bc], a
+	inc bc
+	jr .appendList

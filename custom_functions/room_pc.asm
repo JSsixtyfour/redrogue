@@ -200,6 +200,11 @@ RoomPC::
 	and a
 	jr nz, .consumeHofSlot
 	farcall PKMNLeaguePC
+	; The Hall of Fame pics land in vFrontPic (vChars2 $00-$30), over the Dorm
+	; tileset, so the room drew as repeated garbage tiles after log off. The
+	; generic PC's PKMNLeague follows this call with ReloadMainMenu's
+	; ReloadMapData (engine/menus/pc.asm); do the same.
+	call ReloadMapData
 	jp .menu
 .consumeHofSlot
 	dec c

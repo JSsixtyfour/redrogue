@@ -52,8 +52,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                 def pairs(text):
                     return [(SPECIES[m[0]], int(m[1] or 0)) for m in
                             re.findall(r'^\s*rarity_mon (\w+)(?:,\s*(\d+))?', text, re.M)]
-                direct, evolved = pairs(before), pairs(after)
-                expected = direct + evolved
+                direct = pairs(before.split('.defaultEvos:', 1)[0])
+                expected = pairs(before) + pairs(after)
                 self.assertEqual(list(self.rom_bytes(label, len(expected)*2)),
                                  [x for pair in expected for x in pair], label)
                 ordinary += [sp for sp, form in expected if not form]
@@ -67,7 +67,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     self.reset()
                     self.h.pyboy.register_file.E = species
                     self.h.call_routine('RogueGetSpeciesTierFar')
-                    self.assertEqual(self.h.last_call_registers['E'], tier_id,
+                    expected_tier = 1 if species in {SPECIES['SWINUB'], SPECIES['PILOSWINE'], SPECIES['MAMOSWINE']} else tier_id
+                    self.assertEqual(self.h.last_call_registers['E'], expected_tier,
                                      (label, species))
                 for index, pair in enumerate(direct):
                     self.reset()
@@ -82,7 +83,9 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                         self.h.pyboy.hook_deregister(bank, entry)
                     regs = self.h.last_call_registers
                     self.assertEqual((regs['D'], regs['E']), pair, (label, index))
-        self.assertEqual(len(ordinary), 252)
+        # Swinub has two physical placements; the active tier view exposes one.
+        self.assertEqual(len(ordinary), 253)
+        self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(len(set(ordinary)), 252)
         self.assertEqual(len(direct_forms), 27)
         self.assertEqual(len(set(direct_forms)), 27)

@@ -11,10 +11,10 @@ AgravelerFormEvosMoves:
 ; Learnset
 	db 6, DEFENSE_CURL
 	db 12, ROCK_THROW
-	db 21, DIG
+	db 25, THUNDERPUNCH
 	db 26, HARDEN
 	db 31, SELFDESTRUCT
 	db 40, ROCK_SLIDE
-	db 45, EARTHQUAKE
+	db 45, THUNDER
 	db 48, EXPLOSION
 	db 0

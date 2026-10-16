@@ -13,6 +13,7 @@ Nerd, PokeManiac) are fought in the rooms.
 
 from __future__ import annotations
 
+import io
 import re
 import unittest
 from collections import deque
@@ -164,12 +165,26 @@ class CaveSubroomTest(unittest.TestCase):
         toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
         h.write8("wStageEvent", 0)
-        h.preload_and_enter_wild_area(cave, "cave")
+        # One ladder is an intentional generator outcome when no distant partner
+        # site fits. This fixture exercises BOTH return warps, so obtain a real
+        # two-ladder cave rather than depending on unrelated ROM/RNG timing.
+        lobby = io.BytesIO()
+        h.save_state(lobby)
+        attempts = []
+        for seed in (None, 17, 53, 91, 137, 203, 251, 7):
+            lobby.seek(0)
+            h.load_state(lobby)
+            if seed is not None:
+                h.seed_rng((seed, seed ^ 0xA5, 0, 1))
+            h.preload_and_enter_wild_area(cave, "cave")
+            raw = h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 4, bank=0)
+            a, b, state = raw[TAIL], raw[TAIL + 1], raw[TAIL + 2]
+            attempts.append((seed, a, b))
+            self.assertLess(a, len(SITES), "no ladder this cave")
+            if b != 0xFF:
+                break
+        self.assertLess(b, len(SITES), f"no two-ladder fixture found: {attempts}")
         h.write8("wProcCaveWildBudget", 0)
-        raw = h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 4, bank=0)
-        a, b, state = raw[TAIL], raw[TAIL + 1], raw[TAIL + 2]
-        self.assertLess(a, len(SITES), "no ladder this cave")
-        self.assertLess(b, len(SITES), "only one ladder this cave (rare: rerun or pick another seed)")
         self.assertTrue(state & 0x80, "the cave's objects were not marked shown")
         self.assertLess(raw[TAIL + 3] & 3, len(ROOMS), "rolled a room past the table")
         # Exactly the rolled resident is shown (the PokeManiac uses the Super Nerd's object).

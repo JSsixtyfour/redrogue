@@ -151,7 +151,7 @@ def evolve_by_level(g: GameData, cfg: Config, species: str, level: int, rng: ran
                 return "EEVEE" if r < 3 else "FLAREON" if r < 7 else "VAPOREON" if r < 11 else "JOLTEON"
             if level < min_level:
                 continue
-            cls = parse.classify(g.rarity, target)
+            cls = parse.classify(g.rarity, target, cfg.groups)
             if cls is not None and cls[0] not in cfg.groups:
                 continue
             species = target
@@ -184,7 +184,8 @@ def rival_starter_evolve(g: GameData, species: str, level: int) -> str:
 def roll_tier_species(g: GameData, cfg: Config, tier: int, rng: random.Random) -> str:
     """RogueRollGroupForTier + RogueRollSpeciesInList: uniform over the union
     of the active groups' base forms at this tier; Kanto pokeball fallback."""
-    union = [s for grp in cfg.groups for s in g.rarity[grp][tier].base]
+    union = [s for grp in cfg.groups
+             for s in parse.base_species_for_tier(g.rarity, grp, tier, cfg.groups)]
     if not union:
         union = g.rarity["KANTO"][0].base
     return rng.choice(union)
@@ -318,7 +319,7 @@ def draw_pool(g: GameData, cfg: Config, pool: str, level: int, used: list[str], 
 
     def ok(draw: str) -> bool:
         fielded = draw if keep or draw == "EEVEE" else scale_trainer_evolution(g, cfg, draw, level, random.Random(0))
-        cls = parse.classify(g.rarity, draw)
+        cls = parse.classify(g.rarity, draw, cfg.groups)
         return not (fielded in used or (not allow_uber and cls and cls[1] == parse.TIER_UBER) or draw == no_rival)
 
     eligible = eligible_of(pool)

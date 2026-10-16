@@ -25,9 +25,14 @@
 DEF pokeball_odds  EQU $7F
 DEF greatball_odds EQU $66 + $7F
 
-; \1 = list label. Requires \1, \1_Evos and \1_End to be defined.
+; \1 = list label. Optional \2 is the default direct-pick boundary.
+; Conditional pools can extend that boundary without duplicating whole lists.
 MACRO rarity_tier
+	IF _NARG == 2
+	db (\2 - \1) / 2
+	ELSE
 	db (\1_Evos - \1) / 2   ; rollable base-form count
+	ENDC
 	db (\1_End  - \1) / 2   ; total count, for classification
 	dw \1
 ENDM
@@ -56,10 +61,21 @@ RarityKanto:
 ; group behaves exactly like a fully filled smaller one.
 RarityJohto:
 	rarity_tier JohtoPokeball
-	rarity_tier JohtoGreatball
+	rarity_tier JohtoGreatball, JohtoGreatball.defaultEvos
 	rarity_tier JohtoUltraball
 	rarity_tier JohtoMasterball
 	rarity_tier JohtoUber
+
+; When Johto AND Warp are active, Swinub's whole line becomes Great Ball.
+; Skip its first pair in Poke Ball and include its extra Great Ball pair.
+; The other three Johto tiers are unchanged and use RarityJohto directly.
+RarityJohtoWarp:
+	db (JohtoPokeball_Evos - JohtoPokeball.withoutSwinub) / 2
+	db (JohtoPokeball_End - JohtoPokeball.withoutSwinub) / 2
+	dw JohtoPokeball.withoutSwinub
+	rarity_tier JohtoGreatball
+RarityJohtoWarpEnd:
+ASSERT RarityJohtoWarpEnd - RarityJohtoWarp == 2 * RARITY_TIER_ENTRY_SIZE
 
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
 RarityWarp:
@@ -271,6 +287,8 @@ KantoUber_End:
 ; Starters sit in greatball, matching where the Kanto starters live.
 ; Base form of the Johto pokeball tier - common early-route mons.
 JohtoPokeball:
+	rarity_mon SWINUB ; Great Ball instead when Johto + Warp are both active
+.withoutSwinub:
 	rarity_mon SENTRET
 	rarity_mon HOOTHOOT
 	rarity_mon LEDYBA
@@ -284,7 +302,6 @@ JohtoPokeball:
 	rarity_mon SNUBBULL
 	rarity_mon TEDDIURSA
 	rarity_mon SLUGMA
-	rarity_mon SWINUB
 	rarity_mon CORSOLA
 	rarity_mon REMORAID
 JohtoPokeball_Evos:
@@ -301,7 +318,7 @@ JohtoPokeball_Evos:
 	rarity_mon GRANBULL
 	rarity_mon URSARING
 	rarity_mon MAGCARGO
-	rarity_mon PILOSWINE
+	rarity_mon PILOSWINE ; classified as Great Ball with Johto + Warp
 	rarity_mon OCTILLERY
 ; stage 2
 	rarity_mon JUMPLUFF
@@ -341,6 +358,9 @@ JohtoGreatball:
 	rarity_mon MANTINE
 	rarity_mon NATU
 	rarity_mon TOGEPI
+.defaultEvos:
+; Conditional direct pick: excluded by the default RarityJohto row above.
+	rarity_mon SWINUB ; direct only with Johto + Warp; evolves through Mamoswine
 JohtoGreatball_Evos:
 ; rarity_mon JOLTEON, 1 ; Eevee + Sun Stone -> Espeon (evolution only)
 ; rarity_mon JOLTEON, 2 ; Eevee + Dusk Stone -> Umbreon (evolution only)
@@ -460,7 +480,7 @@ WarpPokeball_Evos:
 	rarity_mon ANNIHILAPE
 	rarity_mon MAGNEZONE
 	rarity_mon SIRFETCHD
-	rarity_mon MAMOSWINE
+	rarity_mon MAMOSWINE ; classified as Great Ball with Johto + Warp
 WarpPokeball_End:
 
 WarpGreatball:
@@ -560,6 +580,19 @@ ASSERT RARITY_TIER_ENTRY_SIZE == 4, "RogueGetTierEntry hardcodes a 4-byte stride
 ; ---------------------------------------------------------------------------
 RogueGetTierEntry::
 	push de
+	push af
+	cp SPECIES_GROUP_JOHTO
+	jr nz, .ordinaryGroup
+	ld a, b
+	cp RARITY_TIER_GREATBALL + 1
+	jr nc, .ordinaryGroup
+	call RogueSwinubRarityBoostActive
+	jr nz, .ordinaryGroup
+	pop af
+	ld hl, RarityJohtoWarp
+	jr .tierTable
+.ordinaryGroup
+	pop af
 	ld hl, RarityGroupTable
 	add a                        ; group * 2 (dw)
 	ld e, a
@@ -568,6 +601,7 @@ RogueGetTierEntry::
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a                      ; hl = tier table for this group
+.tierTable
 	ld a, b
 	add a
 	add a                        ; tier * RARITY_TIER_ENTRY_SIZE
@@ -584,6 +618,15 @@ RogueGetTierEntry::
 	ld l, a                      ; hl = species list
 	ld a, b
 	and a
+	ret
+
+; Z SET only if both expansions are unlocked AND enabled for this run.
+; The same condition owns pool selection and family classification.
+; CLOBBERS af only; bc/de/hl preserved by RogueGetActiveGroupMask.
+RogueSwinubRarityBoostActive::
+	call RogueGetActiveGroupMask
+	and (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
+	cp (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -875,6 +918,18 @@ RogueClassifySpecies::
 .hit
 	pop bc                       ; b = tier index
 	ld c, d                      ; c = group index
+	ld a, e
+	cp SWINUB
+	jr z, .swinubFamily
+	cp PILOSWINE
+	jr z, .swinubFamily
+	cp MAMOSWINE
+	jr nz, .classified
+.swinubFamily
+	call RogueSwinubRarityBoostActive
+	jr nz, .classified
+	ld b, RARITY_TIER_GREATBALL
+.classified
 	and a                        ; clear carry (a holds the match, non-zero)
 	ret
 

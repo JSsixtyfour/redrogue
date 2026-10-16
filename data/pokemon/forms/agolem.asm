@@ -8,7 +8,7 @@
 	db DEX_GOLEM ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  80, 120, 130,  45,  65
+	db  80, 110, 130,  45,  55
 	;   hp  atk  def  spd  spc
 
 	db ROCK, ELECTRIC ; type
@@ -25,9 +25,9 @@
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
 	     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        \
-	     DOUBLE_TEAM,  BIDE,         METRONOME,    SELFDESTRUCT, FIRE_BLAST,   \
+	     DOUBLE_TEAM,  BIDE,         FLASH,    SELFDESTRUCT, FIRE_BLAST,   \
 	     REST,         EXPLOSION,    ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     \
-         FLAMETHROWER
+         FLAMETHROWER, THUNDER_WAVE, THUNDERBOLT,  THUNDER
 	; end
 
 	db BANK(AGolemPicFront) ; pic bank

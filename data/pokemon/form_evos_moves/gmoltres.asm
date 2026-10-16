@@ -9,10 +9,15 @@ GmoltresFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-    db 6,  EMBER
+    db 6,  GUST
+	db 12, FURY_ATTACK
+	db 15, WING_ATTACK
+	db 20, RAGE
+	db 23, SHARPEN
+	db 25, NIGHTSHADE
+	db 30, SLAM
 	db 35, AGILITY
-	db 45, FLAMETHROWER
-	db 51, FIRE_BLAST
+	db 40, DRILL_PECK
+	db 50, TRI_ATTACK
 	db 55, SKY_ATTACK
-	db 60, FIRE_SPIN
 	db 0
