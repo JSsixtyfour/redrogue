@@ -17704,9 +17704,6 @@
   "FORM_REC_PAL": 40,
   "FORM_REC_SIZE": 41,
   "FORM_SHIFT": 5,
-  "FORM_SPAWN_ODDS": 32,
-  "FORM_TIER_ENTRY_SIZE": 3,
-  "FORM_TIER_ODDS": 16,
   "FORRETRESS": 202,
   "FRESH_WATER": 60,
   "FUCHSIA_BILLS_GRANDPAS_HOUSE": 153,
@@ -19105,5 +19102,6 @@
   "YOUNGSTER": 1,
   "ZAPDOS": 75,
   "ZUBAT": 107
- }
+ },
+ "accepted_after_release": "pokeblue_debug_2026-10-15_002048_865af2f1"
 }
