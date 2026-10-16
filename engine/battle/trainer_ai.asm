@@ -247,11 +247,18 @@ AIGetSoftPersonality:
  call AIIsRandomPersonalityClass
  jr nc, .classFallback
 
- ; Cache profile + 1 so the style survives enemy switches.
- ld c, NUM_AI_PERSONALITIES - 1 ; NONE is not in the random pool
- call Rangerandom ; HOME Random is equivalent to BattleRandom offline
+ ; Half of these trainers keep the neutral style (user, 2026-10-16); the rest
+ ; split evenly over the N - 1 real profiles. Cache profile + 1 so the style,
+ ; NONE included, survives enemy switches without a re-roll.
+ call Random ; HOME Random is equivalent to BattleRandom offline
+ add a ; carry = the draw's top bit: a fair coin
+ ld a, AI_PERSONALITY_NONE + 1 ; ld keeps the carry
+ jr nc, .cacheProfile
+ ld c, NUM_AI_PERSONALITIES - 1
+ call Rangerandom
  inc a ; profiles are 1..N; NONE is 0
  inc a ; cache profile + 1
+.cacheProfile
  ld [wAIRandomPersonality], a
  dec a
  ret

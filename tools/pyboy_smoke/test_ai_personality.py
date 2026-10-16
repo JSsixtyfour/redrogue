@@ -226,30 +226,39 @@ class AIPersonalityTest(unittest.TestCase):
                          [self.ai["AI_PERSONALITY_NONE"], 0])
 
     def test_ordinary_random_assignment_rolls_once_and_caches(self):
+        # User 2026-10-16: half of ordinary trainers stay neutral, the other
+        # half split evenly over the three real profiles.
         h = self.h
         self.assertEqual(self.ai["AI_RANDOM_PERSONALITIES_ENABLED"], 1)
-        profiles = (self.ai["AI_PERSONALITY_OFFENSE"], self.ai["AI_PERSONALITY_CONTROL"],
-                    self.ai["AI_PERSONALITY_DEFENSIVE"])
-        seen = set()
-        for trainer_name in ("YOUNGSTER", "BLACKBELT", "PSYCHIC_TR"):
-            for seed in ((17, 29, 43, 71), (23, 51, 79, 107), (5, 9, 200, 3), (88, 1, 64, 150)):
-                with self.subTest(trainer_class=trainer_name, seed=seed):
-                    h.write8("wTrainerClass", self.trainer_classes[trainer_name])
-                    h.write8("wTrainerNo", 2)
-                    h.write8("wAIRandomPersonality", 0)
-                    h.write8("wLinkState", 0)
-                    h.seed_rng(seed)
-                    random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
-                    profile = h.read8("wBuffer")
-                    self.assertIn(profile, profiles)  # never NONE, never out of range
-                    self.assertEqual(h.read8("wAIRandomPersonality"), profile + 1)
-                    self.assertGreaterEqual(random_calls, 2)  # VBlank + the roll
-                    seen.add(profile)
-                    # Cached: a second resolve (an enemy switch) keeps the style.
-                    random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
-                    self.assertEqual(h.read8("wBuffer"), profile)
-                    self.assertEqual(random_calls, 1)  # ambient VBlank draw only
-        self.assertGreater(len(seen), 1)  # the roll actually varies
+        allowed = (self.ai["AI_PERSONALITY_NONE"], self.ai["AI_PERSONALITY_OFFENSE"],
+                   self.ai["AI_PERSONALITY_CONTROL"], self.ai["AI_PERSONALITY_DEFENSIVE"])
+        counts = {profile: 0 for profile in allowed}
+        classes = ("YOUNGSTER", "BLACKBELT", "PSYCHIC_TR")
+        for trial in range(48):
+            trainer_name = classes[trial % len(classes)]
+            seed = tuple((trial * mult + add) & 0xFF for mult, add in
+                         ((37, 11), (59, 101), (83, 7), (131, 199)))
+            with self.subTest(trainer_class=trainer_name, seed=seed):
+                h.write8("wTrainerClass", self.trainer_classes[trainer_name])
+                h.write8("wTrainerNo", 2)
+                h.write8("wAIRandomPersonality", 0)
+                h.write8("wLinkState", 0)
+                h.seed_rng(seed)
+                random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
+                profile = h.read8("wBuffer")
+                self.assertIn(profile, allowed)
+                # NONE is cached as 1, so it is never mistaken for "not rolled".
+                self.assertEqual(h.read8("wAIRandomPersonality"), profile + 1)
+                self.assertGreaterEqual(random_calls, 2)  # VBlank + the coin
+                counts[profile] += 1
+                # Cached: a second resolve (an enemy switch) keeps the style.
+                random_calls = self.call_counting_random("AISoftPersonalityTestResolve")
+                self.assertEqual(h.read8("wBuffer"), profile)
+                self.assertEqual(random_calls, 1)  # ambient VBlank draw only
+        # 48 draws at p = 1/2 for NONE: 12-36 is beyond 3.4 sigma either way.
+        self.assertTrue(12 <= counts[self.ai["AI_PERSONALITY_NONE"]] <= 36, counts)
+        for profile in allowed[1:]:
+            self.assertGreater(counts[profile], 0, counts)
 
     def test_link_battles_never_roll_a_personality(self):
         h = self.h
