@@ -273,179 +273,30 @@ GetFormPalette::
 	ret
 
 ; ---------------------------------------------------------------------------
-; RogueRollFormForSpecies
-;
-; Decides whether a freshly-rolled species spawns as one of its regional forms.
-; This is the ONLY thing that makes the 48 records in data/pokemon/forms/
-; reachable from ordinary play - everything before increment 8 could only be
-; reached by setting wSpawnForm by hand from a debugger.
-;
-; INPUT:  e = species. Must be the FINAL species, after any evolution step:
-;         RogueSelectFromTier rolls a base form and then promotes it with
-;         EvolveMonByLevel, and it is the promoted species that has to own a
-;         form record. Rolling before the evolve would ask for (EXEGGCUTE, 1),
-;         which does not exist, instead of (EXEGGUTOR, 1), which does.
-; OUTPUT: e = form index; 0 = ordinary base species, 1..NUM_FORM_SLOTS = a form
-; CLOBBERS: af, bc, hl  (d PRESERVED - callers park the species there)
-;
-; Farcall-safe by construction. Bankswitch destroys a/b/c/h/l on BOTH legs of a
-; farcall and only d/e/flags survive, so the species arrives and the answer
-; leaves in e - the same contract RogueClassifySpeciesFar uses, and for the same
-; reason. Do NOT "simplify" this to return in a or c.
-;
-; Random and Rangerandom are both HOME (home/random.asm), so they are plain
-; calls from this bank and Random's internal farcall restores bank $30 on the
-; way back.
-; ---------------------------------------------------------------------------
+ ; RogueRollFormForSpecies
+; Compatibility entry for existing trainer callers. Random form substitution
+; has ended: only an explicitly selected Eevee evolution may publish a form.
+; INPUT e = final species. OUTPUT e = evolution form or 0. d preserved.
 RogueRollFormForSpecies::
-	ld b, e                      ; b = species; e is the return slot from here on
-; An Eevee that EvolveMonByLevel just evolved has already had its branch picked
-; (RogueRollEeveeBranch below), form included - use it rather than rolling. The
-; byte is consumed by ANY call, so a pick whose mon never reached a form roll
-; cannot be claimed by a later one; the species check covers the same case for
-; a call that does arrive, but for a different mon.
+	ld b, e
 	ld hl, wPendingEeveeForm
 	ld a, [hl]
 	ld [hl], 0
 	bit 7, a
-	jr z, .roll
+	jr z, .none
 	ld c, a
 	rrca
 	rrca
-	and %11                      ; a = species - FLAREON as recorded
+	and %11
 	add FLAREON
 	cp b
-	jr nz, .roll                 ; stale: recorded for some other mon
+	jr nz, .none
 	ld a, c
 	and %11
-	ld e, a                      ; the picked form, possibly 0
+	ld e, a
 	ret
-.roll
-	call Random                  ; preserves bc/de/hl
-	cp FORM_SPAWN_ODDS
-	jr nc, .noForm               ; the common case - an ordinary base-species spawn
-
-; Count this species' records first, then walk again to fetch the chosen one.
-; Two passes rather than one pass into a scratch buffer: the table is 49 records
-; of ROM that cannot change between the passes, only 1 spawn in 8 gets this far,
-; and it needs no WRAM at all. Reservoir sampling would be one pass but costs a
-; Random call PER match, which is strictly worse here.
-; ⚠ The record stride is added to hl by hand, NOT via `ld de, FORM_REC_SIZE` +
-; `add hl, de`. That is not a style choice. This routine's contract says d is
-; PRESERVED because every caller parks the species there across the farcall
-; (Bankswitch spares only d/e/flags), and loading the stride into de sets
-; d = HIGH(40) = 0 - so the caller's species silently became SPECIES 0.
-;
-; It only fired when the odds roll SUCCEEDED, since .noForm returns above this
-; point, which made it intermittent: 1 reward offer in 8 came out as a species-0
-; glitch mon. Cost a smoke failure and an in-game repro to find. Keep hl's
-; advance af-only.
-	ld c, 0                      ; c = matching records found
-	ld hl, FormOverrides
-.countLoop
-	ld a, [hl]
-	and a
-	jr z, .counted               ; terminator
-; The terminator test above runs BEFORE the compare, which is what makes a
-; species of 0 safe: it can never "match" the terminator byte and walk off the
-; end of the table.
-	cp b
-	jr nz, .countNext
-; Skip records that are not candidates: tier-pinned ones (reachable only through
-; FormTierTable, or Scream Tail would still fall out of a pokeball Jigglypuff)
-; and ones whose species group is not unlocked this run.
-	call IsFormCandidate         ; preserves bc/de/hl
-	jr nc, .countNext
-	inc c
-.countNext
-	ld a, l
-	add FORM_REC_SIZE
-	ld l, a
-	jr nc, .countLoop
-	inc h
-	jr .countLoop
-.counted
-	ld a, c
-	and a
-	jr z, .noForm                ; this species has no forms - most of them
-	call Rangerandom             ; a = 0 .. matches-1, unbiased; preserves bc/de
-	ld c, a                      ; c = which match to take, counted down below
-
-	ld hl, FormOverrides
-.pickLoop
-	ld a, [hl]
-	cp b
-	jr nz, .pickNext
-	call IsFormCandidate         ; MUST match the count pass exactly, or the
-	jr nc, .pickNext             ; ordinal chosen from the count selects the
-	ld a, c                      ; wrong record
-	and a
-	jr z, .found
-	dec c
-.pickNext
-	ld a, l                      ; af-only advance, same reason as .countNext
-	add FORM_REC_SIZE
-	ld l, a
-	jr nc, .pickLoop
-	inc h
-	jr .pickLoop
-.found
-	inc hl
-	ld e, [hl]                   ; the record's OWN form index, not its ordinal -
-	                             ; so a species with records for forms 1 and 3 but
-	                             ; not 2 still returns a valid index
-	ret
-
-.noForm
+.none
 	ld e, 0
-	ret
-
-; ---------------------------------------------------------------------------
-; IsFormTierPlaced
-;
-; Is this (species, form) listed in FormTierTable - i.e. is its rarity pinned to
-; a specific tier rather than inherited from its base species?
-;
-; INPUT:  b = species, a = form index
-; OUTPUT: carry SET if the pair is tier-placed
-; CLOBBERS: af   (bc, de, hl PRESERVED - both callers are mid-walk over
-;           FormOverrides with a live cursor in hl and a stride in de)
-;
-; Walks FormTierPairs..FormTierPairsEnd as one flat pair array. The five per-tier
-; lists are contiguous by declaration order, so this sees every entry regardless
-; of which tier it sits under, and a tier added later is covered automatically.
-; ---------------------------------------------------------------------------
-IsFormTierPlaced:
-	push bc
-	push hl
-	ld c, a                      ; c = wanted form
-	ld a, (FormTierPairsEnd - FormTierPairs) / 2
-	and a
-	jr z, .notFound              ; no overrides exist at all - the usual case
-	ld hl, FormTierPairs
-.loop
-	push af                      ; a = pairs remaining
-	ld a, [hli]                  ; species
-	cp b
-	jr nz, .next
-	ld a, [hl]                   ; form
-	cp c
-	jr z, .foundPop
-.next
-	inc hl
-	pop af
-	dec a
-	jr nz, .loop
-.notFound
-	pop hl
-	pop bc
-	and a                        ; clear carry
-	ret
-.foundPop
-	pop af
-	pop hl
-	pop bc
-	scf
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -495,33 +346,6 @@ IsFormAllowed:
 	pop bc                       ; pops do not disturb the flags
 	ret z                        ; locked - carry clear
 	scf
-	ret
-
-; ---------------------------------------------------------------------------
-; IsFormCandidate
-;
-; May this record be rolled as a form OF ITS BASE SPECIES? Two independent
-; reasons it might not be: its rarity is pinned to a specific tier (so it is
-; reached only through FormTierTable), or its species group is not unlocked.
-;
-; INPUT:  hl -> a form record whose species already matches, b = species,
-;         d = active group mask
-; OUTPUT: carry SET if the record is a candidate
-; CLOBBERS: af   (bc, de, hl PRESERVED)
-; ---------------------------------------------------------------------------
-IsFormCandidate:
-	push hl
-	inc hl
-	ld a, [hl]                   ; a = this record's form index
-	pop hl
-	push af                      ; the tier test clobbers a
-	call IsFormTierPlaced
-	jr c, .excluded
-	pop af
-	jp IsFormAllowed
-.excluded
-	pop af
-	and a                        ; clear carry
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -641,70 +465,6 @@ ASSERT JOLTEON == FLAREON + 1 && VAPOREON == FLAREON + 2, \
        "wPendingEeveeForm stores the species as a 2-bit offset from FLAREON"
 
 ; ---------------------------------------------------------------------------
-; RogueRollFormForTier
-;
-; Gives tier-placed forms first refusal on a pick at this tier. A hit REPLACES
-; the species the tier's own list would have rolled - that is the whole point:
-; Scream Tail's base species is only ever rolled at pokeball tier, so a form that
-; was merely blocked at low tiers would be unreachable instead of rare.
-;
-; INPUT:  e = tier id (RARITY_TIER_*)
-; OUTPUT: d = species, e = form index. d = 0 means "no tier-placed form, roll a
-;         species normally" - the overwhelmingly common answer.
-; CLOBBERS: af, bc, hl
-;
-; Consumes NO randomness when the tier has an empty list, so tiers with no
-; overrides roll byte-identically to before this existed. That is deliberate:
-; this project has had smoke tests shift on RNG consumption alone.
-; ---------------------------------------------------------------------------
-RogueRollFormForTier::
-	ld a, e
-	cp NUM_RARITY_TIERS
-	jr nc, .none                 ; defensive - an out-of-range tier picks nothing
-	ld l, a
-	ld h, 0
-	add hl, hl                   ; tier * 2
-	ld c, a
-	ld b, 0
-	add hl, bc                   ; tier * 3 = tier * FORM_TIER_ENTRY_SIZE
-	ASSERT FORM_TIER_ENTRY_SIZE == 3, "RogueRollFormForTier hardcodes a 3-byte stride"
-	ld bc, FormTierTable
-	add hl, bc
-	ld a, [hli]                  ; pair count for this tier
-	and a
-	jr z, .none                  ; empty tier - return before touching Random
-	ld c, a
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a                      ; hl = this tier's pair list
-	push hl
-	push bc
-	call Random
-	pop bc
-	pop hl
-	cp FORM_TIER_ODDS
-	jr nc, .none
-	call Rangerandom             ; a = 0 .. count-1; preserves hl
-	add a                        ; pairs are 2 bytes
-	ld c, a
-	ld b, 0
-	add hl, bc
-	ld a, [hli]
-	ld b, a                      ; b = species
-	ld c, [hl]                   ; c = form (IsFormAllowed preserves bc)
-	ld a, c
-	call IsFormAllowed           ; tier-placed forms are group-gated too - Scream
-	jr nc, .none                 ; Tail is Gen 9, so it rides the Warp unlock
-	ld d, b                      ; species - written only AFTER the mask in d has
-	ld e, c                      ; been consumed by IsFormAllowed
-	ret
-
-.none
-	ld d, 0
-	ld e, 0
-	ret
-
-; ---------------------------------------------------------------------------
 ; GetEnemySpawnForm
 ;
 ; The form index for the enemy mon LoadEnemyMonData is about to build.
@@ -783,4 +543,216 @@ PublishEnemyFormContext::
 	ld [wFormContextForm], a
 	ld a, [wEnemyMonSpecies2]
 	ld [wFormContextSpecies], a
+	ret
+
+; Generated-pool evolution shares this bank with the form records.
+; EvolvePoolMon: explicit d=species/e=form in and out. wCurPartySpecies is
+; published for existing consumers. Never writes wSpawnForm (bosses defer creation).
+; Plain Farfetch'd and paradox forms obey the same no-evolution rule as the player.
+EvolvePoolMon::
+	xor a
+	ld [wPendingEeveeForm], a
+	ld a, d
+	ld [wCurPartySpecies], a
+	push de
+	farcall IsFormNoEvolveFar
+	pop de
+	ret c
+	push de
+	call EvolveMonByLevel
+	pop de
+	ld a, [wCurPartySpecies]
+	ld d, a
+	ld a, [wPendingEeveeForm]
+	bit 7, a
+	jr z, .preserveForm
+	ld e, d
+	farcall RogueRollFormForSpecies ; consumes the exact Eevee evolution choice
+	ld a, [wCurPartySpecies]
+	ld d, a
+	ret
+.preserveForm
+	ld a, e
+	and a
+	ret z
+	push de
+	farcall IsFormRecordedFar
+	pop de
+	ret c
+	ld e, 0                     ; e.g. Galarian Farfetch'd -> ordinary Sirfetch'd
+	ret
+
+; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
+; allows (used for enemy trainer mons AND reward/given mons - despite the
+; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
+EvolveMonByLevel:
+	xor a
+	ld [wPendingEeveeForm], a     ; only .handleeevee below may leave one pending
+; d must survive the load: .lvl_evolve's EEVEE test reads it. LoadEvoListForSpecies
+; ends with de pointing past wEvoDataBuffer, so without this push the test compared
+; that address's high byte ($CD) and .handleeevee never ran - every Eevee at 35+
+; became FLAREON, its first-listed entry (measured 2026-09-25, 24/24 runs).
+	push de
+	call LoadEvoListForSpecies
+	pop de
+	ld bc, 0                   ; b = eligible count, c = sampled target
+
+.evoloop
+	ld a, [hli]
+	and a
+	jr z, .chooseEvolution
+	cp EVOLVE_LEVEL
+	jr z, .lvl_evolve
+	cp EVOLVE_TRADE
+	jr z, .trade_evolve
+	;else item evolve
+	inc hl              ; past the item id; hl -> [level][species]
+.trade_evolve
+; EVOLVE_TRADE is handled here, NOT skipped. Generated trainer/reward mons
+; use the authored level threshold. The player path also uses that threshold
+; on level-up, or bypasses it when actually trading.
+;
+; It shares EVOLVE_ITEM's level-35 floor. Both are "cannot happen in the wild"
+; methods and neither belongs on an early-round trainer, so they take one gate
+; rather than each inventing its own. Authored EVOLVE_TRADE entries are at
+; level 38 or higher, so the per-entry level below dominates in practice; the floor
+; is here to hold if one is ever written lower.
+;
+; The two layouts differ - EVOLVE_ITEM is [method][item][level][species] and
+; EVOLVE_TRADE is [method][level][species] - which is why the item path does
+; its extra `inc hl` above and then falls in here with hl on the level byte,
+; exactly where a trade entry already is.
+	ld a, [wCurEnemyLevel]
+	cp 35
+	jr nc, .lvl_evolve
+.skipentry
+	inc hl              ; past [level]
+	inc hl              ; past [species]
+	jr .evoloop
+
+.lvl_evolve
+	ld a, d
+	cp EEVEE	;deal with eevee separately
+	jr z, .handleeevee
+	ld a, [hli]
+	ld e, a
+	ld a, [wCurEnemyLevel]
+	cp e
+	jr c, .tooLowForThisEntry
+; SPECIES GROUPS. The player's evolution path has gated on this since Phase 2
+; (engine/pokemon/evos_moves.asm's .doEvolution) so a Kanto-locked run cannot
+; produce a Johto evolution. The TRAINER path never did, so a trainer's Zubat
+; at level 45 became a Johto CROBAT in a Kanto-only run. Gating per ENTRY keeps
+; split evolutions independent: with Johto off and Warp on, Scyther still
+; reaches Kleavor even though Scizor is blocked.
+;
+; hl is stacked because the farcall macro loads it with the target address.
+; `pop` does not disturb flags, so the callee's carry survives to the branch.
+	push hl
+	push bc             ; preserve the reservoir across the group check
+	push de             ; d = the species we are evolving FROM; the callee
+	                    ; clobbers de and the loop still needs d for its
+	                    ; EEVEE test on a later entry
+	ld e, [hl]          ; target species in e, NOT a - Bankswitch's first
+	                    ; instruction is `ldh a, [hLoadedROMBank]`, so an `a`
+	                    ; input cannot cross a farcall
+	farcall RogueIsSpeciesEvolutionAllowedFar
+	pop de              ; pop does not disturb flags
+	pop bc
+	pop hl              ; carry still set = this group is active
+	jr nc, .tooLowForThisEntry
+; Reservoir sampling: eligible entry n replaces the saved target with
+; probability 1/n. Rangerandom is unbiased and preserves hl/de/bc.
+; A single eligible entry needs no RNG draw.
+	inc b
+	ld a, b
+	cp 1
+	jr z, .takeEvolution
+	push bc
+	ld c, b
+	call Rangerandom
+	pop bc
+	and a
+	jr nz, .tooLowForThisEntry
+.takeEvolution
+	ld c, [hl]
+.tooLowForThisEntry
+; Scan every entry before committing, so table order cannot prefer a branch.
+	inc hl
+	jr .evoloop
+.chooseEvolution
+	ld a, b
+	and a
+	ret z
+	ld a, c
+	ld [wCurPartySpecies], a
+	ld d, a
+	jp EvolveMonByLevel         ; repeat for the chosen species' next stage
+
+; Reached only at level 35+ (every Eevee entry is EVOLVE_ITEM, so the item floor
+; above gates it). Uniform over the eight stone branches, like the Mist Stone,
+; restricted to the ones this run has unlocked: the three Kanto eeveelutions
+; always, Espeon/Umbreon with Johto, Leafeon/Glaceon/Sylveon with Time Warp.
+; Five of the eight are FORMS, so the form is published in wPendingEeveeForm for
+; the caller's next RogueRollFormForSpecies instead of being left to that roll.
+.handleeevee
+	farcall RogueGetActiveGroupMaskFar
+	ld a, e                      ; farcall-safe mask
+	ld d, a
+	farcall RogueRollEeveeBranch  ; d = species, e = form
+	ld a, d
+	ld [wCurPartySpecies], a
+	sub FLAREON
+	add a
+	add a                         ; species offset -> bits 2-3
+	or e                          ; form -> bits 0-1
+	or $80                        ; pending
+	ld [wPendingEeveeForm], a
+	ret
+
+; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
+; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.
+; Shared by EvolveMonByLevel and AllSpeciesCheck's family walk.
+LoadEvoListForSpecies::
+	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
+	ld b, 0
+	ld a, d
+	dec a
+	add a
+	rl b
+	ld c, a		;BC now contains the pokemon's offset in the pointer table
+	add hl, bc	;and HL now points to the correct position in the pointer table
+	ld de, wEvoDataBuffer
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, 2
+	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBuffer
+	ld hl, wEvoDataBuffer	;let's now point HL to said address
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a				;HL now points to the address of the pokemon's evolution list
+	ld de, wEvoDataBuffer
+	ld a, BANK(EvosMovesPointerTable)
+	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
+	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
+	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
+	ret
+
+; Far worker for the bridge menu's level-resolved Pokemon gifts.
+; In: e = base species. Out: e = resolved species.
+BridgeResolveEvolveSpeciesFar::
+	ld d, e
+	ld a, [wCurPartySpecies]
+	push af
+	push de
+	farcall GetBridgeRewardMonLevelFar
+	ld a, e
+	ld [wCurEnemyLevel], a
+	pop de
+	ld a, d
+	ld [wCurPartySpecies], a
+	call EvolveMonByLevel
+	ld a, [wCurPartySpecies]
+	ld e, a
+	pop af
+	ld [wCurPartySpecies], a
 	ret

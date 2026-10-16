@@ -21,14 +21,14 @@
 	INCBIN "gfx/pokemon/front/leafeon.dim" ; sprite dimensions
 	dw LeafeonPicFront, LeafeonPicBack
 
-	db TACKLE, SAND_ATTACK, QUICK_ATTACK, EMBER ; level 1 learnset
+	db TACKLE, SAND_ATTACK, QUICK_ATTACK, ABSORB ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-         FLAMETHROWER
+	     SOLARBEAM,    SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
+         MEGA_DRAIN,   DIG,          SWORDS_DANCE, FLASH,        STRENGTH
 	; end
 
 	db BANK(LeafeonPicFront) ; pic bank

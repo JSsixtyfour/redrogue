@@ -428,8 +428,9 @@ def load_rarity_groups():
                 if cur:
                     lists.setdefault(cur, [])
                 continue
-            if cur and code.startswith("db "):
-                lists[cur].append(code[3:].strip())
+            if cur and code.startswith("rarity_mon ") and "," not in code:
+                # Species-only classification skips the explicit form pairs.
+                lists[cur].append(code[len("rarity_mon "):].strip())
     out = {}
     for group in GROUPS:
         for label, species in sorted(lists.items()):

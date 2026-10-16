@@ -7,7 +7,7 @@
 ;        +-> per-group tier table, NUM_RARITY_TIERS x RARITY_TIER_ENTRY_SIZE
 ;                 db base count, db total count, dw species list
 ;
-; Each species list is laid out as [base forms][evolved forms]. Only the
+; Each two-byte (species, form) list is laid out as [base forms][evolved forms]. Only the
 ; base-form prefix is rolled directly; evolved forms are reached through
 ; EvolveMonByLevel and exist here so an arbitrary owned species can still be
 ; classified back to its tier (RogueClassifySpecies).
@@ -16,9 +16,8 @@
 ; hand-summed EQUs kept in sync by hand in TWO files, which is exactly the kind
 ; of bookkeeping that silently rots - do not reintroduce them.
 ;
-; Johto and Kanto Time Warp ship EMPTY. A zero base count makes a group
-; invisible to the roller, so behaviour is bit-identical to the pre-group code
-; until their lists are populated.
+; A zero base count makes a group invisible to the roller at that tier.
+; Every direct species/form entry in enabled groups has equal weight.
 
 ; Class-roll thresholds against a 0-255 roll. Ultraball is the fall-through, so
 ; it deliberately has no threshold of its own. Masterball and uber are never
@@ -28,8 +27,8 @@ DEF greatball_odds EQU $66 + $7F
 
 ; \1 = list label. Requires \1, \1_Evos and \1_End to be defined.
 MACRO rarity_tier
-	db \1_Evos - \1   ; rollable base-form count
-	db \1_End  - \1   ; total count, for classification
+	db (\1_Evos - \1) / 2   ; rollable base-form count
+	db (\1_End  - \1) / 2   ; total count, for classification
 	dw \1
 ENDM
 
@@ -67,180 +66,191 @@ RarityWarp:
 	rarity_tier WarpPokeball
 	rarity_tier WarpGreatball
 	rarity_tier WarpUltraball
-	rarity_tier_empty ; masterball
-	rarity_tier_empty ; uber
+	rarity_tier WarpMasterball
+	rarity_tier WarpUber
 
+
+; Each entry explicitly names its species and form. Omitted form means 0.
+; The prefix before _Evos is rolled uniformly; the tail is classification only.
+MACRO rarity_mon
+	db \1
+	IF _NARG == 2
+		db \2
+	ELSE
+		db 0
+	ENDC
+ENDM
 
 KantoPokeball:
-	db CATERPIE
-	db WEEDLE
-	db PIDGEY
-	db RATTATA
-	db FARFETCHD
-	db EKANS
-	db DITTO
-	db MANKEY
-	db KRABBY
-	db CUBONE
-	db GRIMER
-	db GROWLITHE
-	db SEEL
-	db VOLTORB
-	db SPEAROW
-	db KABUTO
-	db MAGNEMITE
-	db POLIWAG
-	db ODDISH
-	db ZUBAT
-	db JIGGLYPUFF
-	db SANDSHREW
-	db PARAS
-	db PSYDUCK
-	db BELLSPROUT
-	db KOFFING
-	db HORSEA
-	db GOLDEEN
+	rarity_mon CATERPIE
+	rarity_mon WEEDLE
+	rarity_mon PIDGEY
+	rarity_mon RATTATA
+	rarity_mon FARFETCHD
+	rarity_mon EKANS
+	rarity_mon DITTO
+	rarity_mon MANKEY
+	rarity_mon KRABBY
+	rarity_mon CUBONE
+	rarity_mon GRIMER
+	rarity_mon GROWLITHE
+	rarity_mon SEEL
+	rarity_mon VOLTORB
+	rarity_mon SPEAROW
+	rarity_mon KABUTO
+	rarity_mon MAGNEMITE
+	rarity_mon POLIWAG
+	rarity_mon ODDISH
+	rarity_mon ZUBAT
+	rarity_mon JIGGLYPUFF
+	rarity_mon SANDSHREW
+	rarity_mon PARAS
+	rarity_mon PSYDUCK
+	rarity_mon BELLSPROUT
+	rarity_mon KOFFING
+	rarity_mon HORSEA
+	rarity_mon GOLDEEN
 KantoPokeball_Evos:
 ; stage 2
-	db METAPOD
-	db KAKUNA
-	db PIDGEOTTO
-	db RATICATE
-	db ARBOK
-	db PRIMEAPE
-	db KINGLER
-	db MAROWAK
-	db MUK
-	db ARCANINE
-	db DEWGONG
-	db ELECTRODE
-	db FEAROW
-	db KABUTOPS
-	db MAGNETON
-	db POLIWHIRL
-	db GLOOM
-	db GOLBAT
-	db WIGGLYTUFF
-	db SANDSLASH
-	db PARASECT
-	db GOLDUCK
-	db WEEPINBELL
-	db WEEZING
-	db SEADRA
-	db SEAKING
+	rarity_mon METAPOD
+	rarity_mon KAKUNA
+	rarity_mon PIDGEOTTO
+	rarity_mon RATICATE
+	rarity_mon ARBOK
+	rarity_mon PRIMEAPE
+	rarity_mon KINGLER
+	rarity_mon MAROWAK
+	rarity_mon MUK
+	rarity_mon ARCANINE
+	rarity_mon DEWGONG
+	rarity_mon ELECTRODE
+	rarity_mon FEAROW
+	rarity_mon KABUTOPS
+	rarity_mon MAGNETON
+	rarity_mon POLIWHIRL
+	rarity_mon GLOOM
+	rarity_mon GOLBAT
+	rarity_mon WIGGLYTUFF
+	rarity_mon SANDSLASH
+	rarity_mon PARASECT
+	rarity_mon GOLDUCK
+	rarity_mon WEEPINBELL
+	rarity_mon WEEZING
+	rarity_mon SEADRA
+	rarity_mon SEAKING
 ; stage 3
-	db BUTTERFREE
-	db BEEDRILL
-	db PIDGEOT
-	db POLIWRATH
-	db VILEPLUME
-	db VICTREEBEL
+	rarity_mon BUTTERFREE
+	rarity_mon BEEDRILL
+	rarity_mon PIDGEOT
+	rarity_mon POLIWRATH
+	rarity_mon VILEPLUME
+	rarity_mon VICTREEBEL
 KantoPokeball_End:
 
 KantoGreatball:
-	db BULBASAUR
-	db CHARMANDER
-	db SQUIRTLE
-	db EEVEE
-	db DODUO
-	db DRATINI
-	db OMANYTE
-	db MACHOP
-	db SHELLDER
-	db GEODUDE
-	db LICKITUNG
-	db NIDORAN_F
-	db CLEFAIRY
-	db DIGLETT
-	db MAGIKARP
-	db PIKACHU
-	db SLOWPOKE
-	db DROWZEE
-	db PONYTA
-	db MEOWTH
-	db VULPIX
-	db TANGELA
-	db VENONAT
-	db NIDORAN_M
-	db HITMONCHAN
-	db TENTACOOL
-	db ONIX
-	db PORYGON
+	rarity_mon BULBASAUR
+	rarity_mon CHARMANDER
+	rarity_mon SQUIRTLE
+	rarity_mon EEVEE
+	rarity_mon DODUO
+	rarity_mon DRATINI
+	rarity_mon OMANYTE
+	rarity_mon MACHOP
+	rarity_mon SHELLDER
+	rarity_mon GEODUDE
+	rarity_mon LICKITUNG
+	rarity_mon NIDORAN_F
+	rarity_mon CLEFAIRY
+	rarity_mon DIGLETT
+	rarity_mon MAGIKARP
+	rarity_mon PIKACHU
+	rarity_mon SLOWPOKE
+	rarity_mon DROWZEE
+	rarity_mon PONYTA
+	rarity_mon MEOWTH
+	rarity_mon VULPIX
+	rarity_mon TANGELA
+	rarity_mon VENONAT
+	rarity_mon NIDORAN_M
+	rarity_mon HITMONCHAN
+	rarity_mon TENTACOOL
+	rarity_mon ONIX
+	rarity_mon PORYGON
 KantoGreatball_Evos:
 ; stage 2
-	db IVYSAUR
-	db CHARMELEON
-	db WARTORTLE
-	db JOLTEON
-	db FLAREON
-	db VAPOREON
-	db DODRIO
-	db DRAGONAIR
-	db OMASTAR
-	db MACHOKE
-	db CLOYSTER
-	db GRAVELER
-	db NIDORINA
-	db CLEFABLE
-	db DUGTRIO
-	db GYARADOS
-	db RAICHU
-	db SLOWBRO
-	db HYPNO
-	db RAPIDASH
-	db PERSIAN
-	db NINETALES
-	db VENOMOTH
-	db NIDORINO
-	db TENTACRUEL
+	rarity_mon IVYSAUR
+	rarity_mon CHARMELEON
+	rarity_mon WARTORTLE
+	rarity_mon JOLTEON
+	rarity_mon FLAREON
+	rarity_mon VAPOREON
+	rarity_mon DODRIO
+	rarity_mon DRAGONAIR
+	rarity_mon OMASTAR
+	rarity_mon MACHOKE
+	rarity_mon CLOYSTER
+	rarity_mon GRAVELER
+	rarity_mon NIDORINA
+	rarity_mon CLEFABLE
+	rarity_mon DUGTRIO
+	rarity_mon GYARADOS
+	rarity_mon RAICHU
+	rarity_mon SLOWBRO
+	rarity_mon HYPNO
+	rarity_mon RAPIDASH
+	rarity_mon PERSIAN
+	rarity_mon NINETALES
+	rarity_mon VENOMOTH
+	rarity_mon NIDORINO
+	rarity_mon TENTACRUEL
 ; stage 3
-	db VENUSAUR
-	db CHARIZARD
-	db BLASTOISE
-	db DRAGONITE
-	db MACHAMP
-	db GOLEM
-	db NIDOQUEEN
-	db NIDOKING
+	rarity_mon VENUSAUR
+	rarity_mon CHARIZARD
+	rarity_mon BLASTOISE
+	rarity_mon DRAGONITE
+	rarity_mon MACHAMP
+	rarity_mon GOLEM
+	rarity_mon NIDOQUEEN
+	rarity_mon NIDOKING
 KantoGreatball_End:
 
 KantoUltraball:
-	db GASTLY
-	db ABRA
-	db JYNX
-	db CHANSEY
-	db RHYHORN
-	db LAPRAS
-	db KANGASKHAN
-	db SCYTHER
-	db HITMONLEE
-	db MR_MIME
-	db ELECTABUZZ
-	db MAGMAR
-	db PINSIR
-	db AERODACTYL
+	rarity_mon GASTLY
+	rarity_mon ABRA
+	rarity_mon JYNX
+	rarity_mon CHANSEY
+	rarity_mon RHYHORN
+	rarity_mon LAPRAS
+	rarity_mon KANGASKHAN
+	rarity_mon SCYTHER
+	rarity_mon HITMONLEE
+	rarity_mon MR_MIME
+	rarity_mon ELECTABUZZ
+	rarity_mon MAGMAR
+	rarity_mon PINSIR
+	rarity_mon AERODACTYL
 KantoUltraball_Evos:
 ; stage 2
-	db HAUNTER
-	db KADABRA
-	db RHYDON
+	rarity_mon HAUNTER
+	rarity_mon KADABRA
+	rarity_mon RHYDON
 ; stage 3
-	db GENGAR
-	db ALAKAZAM
+	rarity_mon GENGAR
+	rarity_mon ALAKAZAM
 KantoUltraball_End:
 
 KantoMasterball:
-	db TAUROS
-	db SNORLAX
-	db EXEGGCUTE
-	db STARYU
-	db ZAPDOS
-	db ARTICUNO ; masterball with Zapdos since 2026-09-28 (user); was ultraball
-	db MOLTRES
+	rarity_mon TAUROS
+	rarity_mon SNORLAX
+	rarity_mon EXEGGCUTE
+	rarity_mon STARYU
+	rarity_mon ZAPDOS
+	rarity_mon ARTICUNO ; masterball with Zapdos since 2026-09-28 (user); was ultraball
+	rarity_mon MOLTRES
 KantoMasterball_Evos:
 ; stage 2
-	db EXEGGUTOR
-	db STARMIE
+	rarity_mon EXEGGUTOR
+	rarity_mon STARMIE
 KantoMasterball_End:
 
 ; Never rollable and never reached by evolution - uber exists so MEW and MEWTWO
@@ -248,8 +258,8 @@ KantoMasterball_End:
 ; directly). Its base count is 0, so the roller skips it like an empty group.
 KantoUber:
 KantoUber_Evos:
-	db MEW
-	db MEWTWO
+	rarity_mon MEW
+	rarity_mon MEWTWO
 KantoUber_End:
 
 ; ===========================================================================
@@ -261,92 +271,94 @@ KantoUber_End:
 ; Starters sit in greatball, matching where the Kanto starters live.
 ; Base form of the Johto pokeball tier - common early-route mons.
 JohtoPokeball:
-	db SENTRET
-	db HOOTHOOT
-	db LEDYBA
-	db SPINARAK
-	db MARILL
-	db HOPPIP
-	db AIPOM
-	db SUNKERN
-	db WOOPER
-	db PINECO
-	db SNUBBULL
-	db TEDDIURSA
-	db SLUGMA
-	db SWINUB
-	db CORSOLA
-	db REMORAID
+	rarity_mon SENTRET
+	rarity_mon HOOTHOOT
+	rarity_mon LEDYBA
+	rarity_mon SPINARAK
+	rarity_mon MARILL
+	rarity_mon HOPPIP
+	rarity_mon AIPOM
+	rarity_mon SUNKERN
+	rarity_mon WOOPER
+	rarity_mon PINECO
+	rarity_mon SNUBBULL
+	rarity_mon TEDDIURSA
+	rarity_mon SLUGMA
+	rarity_mon SWINUB
+	rarity_mon CORSOLA
+	rarity_mon REMORAID
 JohtoPokeball_Evos:
 ; stage 1
-	db FURRET
-	db NOCTOWL
-	db LEDIAN
-	db ARIADOS
-	db AZUMARILL
-	db SKIPLOOM
-	db SUNFLORA
-	db QUAGSIRE
-	db FORRETRESS
-	db GRANBULL
-	db URSARING
-	db MAGCARGO
-	db PILOSWINE
-	db OCTILLERY
+	rarity_mon FURRET
+	rarity_mon NOCTOWL
+	rarity_mon LEDIAN
+	rarity_mon ARIADOS
+	rarity_mon AZUMARILL
+	rarity_mon SKIPLOOM
+	rarity_mon SUNFLORA
+	rarity_mon QUAGSIRE
+	rarity_mon FORRETRESS
+	rarity_mon GRANBULL
+	rarity_mon URSARING
+	rarity_mon MAGCARGO
+	rarity_mon PILOSWINE
+	rarity_mon OCTILLERY
 ; stage 2
-	db JUMPLUFF
+	rarity_mon JUMPLUFF
 ; Crobat/Bellossom/Politoed are evolved-only (from Golbat/Gloom/Poliwhirl, all
 ; Kanto base species - see the EVOLVE_LEVEL/EVOLVE_ITEM/EVOLVE_TRADE additions
 ; to their EvosMoves). Parked here as classification-only placeholders, same
 ; pattern as Weavile/Mamoswine/Mismagius in JohtoGreatball - the Kanto base
 ; species stay in the Kanto pool, since they predate this project.
-	db CROBAT
-	db BELLOSSOM
-	db POLITOED
+	rarity_mon CROBAT
+	rarity_mon BELLOSSOM
+	rarity_mon POLITOED
 ; Kingdra is evolved-only (from Seadra, a Kanto POKEBALL-tier base species -
 ; see the EVOLVE_TRADE added to SeadraEvosMoves). Same classification-only-
 ; placeholder pattern as above, matched to Seadra's own tier.
-	db KINGDRA
+	rarity_mon KINGDRA
 ; Annihilape/Magnezone/Sirfetch'd are post-Gen-2 evolutions of Kanto species,
 ; so they live in the WARP group, not here - see WarpPokeball below.
 JohtoPokeball_End:
 
 JohtoGreatball:
-	db CHIKORITA
-	db CYNDAQUIL
-	db TOTODILE
-	db MISDREAVUS
-	db SNEASEL
-	db HOUNDOUR
-	db PHANPY
-	db GIRAFARIG
-	db MAREEP
-	db CHINCHOU
-	db YANMA
-	db SUDOWOODO
-	db MURKROW
-	db QWILFISH
-	db DUNSPARCE
-	db SHUCKLE
-	db MANTINE
-	db NATU
-	db TOGEPI
+	rarity_mon CHIKORITA
+	rarity_mon CYNDAQUIL
+	rarity_mon TOTODILE
+	rarity_mon MISDREAVUS
+	rarity_mon SNEASEL
+	rarity_mon HOUNDOUR
+	rarity_mon PHANPY
+	rarity_mon GIRAFARIG
+	rarity_mon MAREEP
+	rarity_mon CHINCHOU
+	rarity_mon YANMA
+	rarity_mon SUDOWOODO
+	rarity_mon MURKROW
+	rarity_mon QWILFISH
+	rarity_mon DUNSPARCE
+	rarity_mon SHUCKLE
+	rarity_mon MANTINE
+	rarity_mon NATU
+	rarity_mon TOGEPI
 JohtoGreatball_Evos:
+; rarity_mon JOLTEON, 1 ; Eevee + Sun Stone -> Espeon (evolution only)
+; rarity_mon JOLTEON, 2 ; Eevee + Dusk Stone -> Umbreon (evolution only)
 ; stage 1
-	db BAYLEEF
-	db QUILAVA
-	db CROCONAW
-	db HOUNDOOM
-	db DONPHAN
-	db FLAAFFY
-	db LANTURN
-	db XATU
-	db TOGETIC
+	rarity_mon BAYLEEF
+	rarity_mon QUILAVA
+	rarity_mon CROCONAW
+	rarity_mon HOUNDOOM
+	rarity_mon DONPHAN
+	rarity_mon FLAAFFY
+	rarity_mon LANTURN
+	rarity_mon XATU
+	rarity_mon TOGETIC
 ; stage 2
-	db MEGANIUM
-	db TYPHLOSION
-	db FERALIGATR
-	db AMPHAROS
+	rarity_mon MEGANIUM
+	rarity_mon TYPHLOSION
+	rarity_mon FERALIGATR
+	rarity_mon AMPHAROS
 ; Weavile/Mamoswine/Mismagius are post-Gen-2 evolutions (of Sneasel/Piloswine/
 ; Misdreavus), so they live in the WARP group, not here - see WarpGreatball
 ; (Mamoswine follows Piloswine into WarpPokeball).
@@ -354,54 +366,54 @@ JohtoGreatball_Evos:
 ; species - see the EVOLVE_TRADE added to SlowpokeEvosMoves). Same
 ; classification-only-placeholder pattern as above, matched to Slowpoke's
 ; own tier rather than JohtoPokeball.
-	db SLOWKING
+	rarity_mon SLOWKING
 ; Steelix is evolved-only (from Onix, a Kanto GREATBALL-tier base species -
 ; see the EVOLVE_LEVEL added to OnixEvosMoves). Same pattern as Slowking
 ; above, matched to Onix's own tier.
-	db STEELIX
+	rarity_mon STEELIX
 ; Porygon2 is evolved-only (from Porygon, a Kanto GREATBALL-tier base
 ; species - see the EVOLVE_TRADE added to PorygonEvosMoves). Same
 ; classification-only-placeholder pattern as above, matched to Porygon's
 ; own tier.
-	db PORYGON2
+	rarity_mon PORYGON2
 ; Lickilicky/Tangrowth/Porygon-Z are post-Gen-2 evolutions (of Lickitung/
 ; Tangela/Porygon2), so they live in the WARP group - see WarpGreatball.
 JohtoGreatball_End:
 
 JohtoUltraball:
-	db GLIGAR
-	db HERACROSS
-	db SKARMORY
-	db STANTLER
-	db HITMONTOP
-	db LARVITAR
-	db MILTANK
+	rarity_mon GLIGAR
+	rarity_mon HERACROSS
+	rarity_mon SKARMORY
+	rarity_mon STANTLER
+	rarity_mon HITMONTOP
+	rarity_mon LARVITAR
+	rarity_mon MILTANK
 JohtoUltraball_Evos:
 ; stage 1
-	db PUPITAR
+	rarity_mon PUPITAR
 ; Scizor is evolved-only (from Scyther, a Kanto ULTRABALL-tier base species -
 ; see the EVOLVE_LEVEL added to ScytherEvosMoves). Same classification-only-
 ; placeholder pattern as Slowking/Steelix in JohtoGreatball, matched to
 ; Scyther's own tier. Scyther's OTHER branch, Kleavor, is post-Gen-2 and
 ; lives in the WARP group instead - see WarpUltraball.
-	db SCIZOR
+	rarity_mon SCIZOR
 ; Blissey is evolved-only (from Chansey, a Kanto ULTRABALL-tier base
 ; species - see the EVOLVE_LEVEL added to ChanseyEvosMoves). Same pattern
 ; as Scizor above, matched to Chansey's own tier.
-	db BLISSEY
+	rarity_mon BLISSEY
 ; Rhyperior/Electivire/Magmortar are post-Gen-2 evolutions (of Rhydon/
 ; Electabuzz/Magmar), so they live in the WARP group - see WarpUltraball.
 ; stage 3 - Tyranitar continues the Larvitar/Pupitar line already placed in
 ; this tier's base/stage-1 sections above.
-	db TYRANITAR
+	rarity_mon TYRANITAR
 JohtoUltraball_End:
 
 JohtoMasterball:
 ; Raikou/Entei/Suicune are the legendary beasts - no evolution, same
 ; singular-legendary rarity treatment as Zapdos in the Kanto pool.
-	db RAIKOU
-	db ENTEI
-	db SUICUNE
+	rarity_mon RAIKOU
+	rarity_mon ENTEI
+	rarity_mon SUICUNE
 JohtoMasterball_Evos:
 JohtoMasterball_End:
 
@@ -411,65 +423,120 @@ JohtoMasterball_End:
 ; Its base count is 0, so the roller skips it like an empty group.
 JohtoUber:
 JohtoUber_Evos:
-	db LUGIA
-	db HO_OH
-	db CELEBI
+	rarity_mon LUGIA
+	rarity_mon HO_OH
+	rarity_mon CELEBI
 JohtoUber_End:
 
 ; ===========================================================================
-; Kanto Time Warp lists. Every post-Gen-2 evolution of a Kanto or Johto line:
-; Kanto (and a few Johto) species "warped forward" into evolutions they only
-; gained in later generations.
-;
-; Almost the whole group is classification-only. Each of these is reached by
-; EVOLVING something in the Kanto or Johto pool, not by being rolled, so all
-; but one tier has a base count of 0 and the roller simply never picks this
-; group for that tier - exactly the shape the JohtoUber tier already uses.
-; Mr. Rime is the sole exception: nothing evolves into it (canon's own
-; pre-evolution is Galarian Mr. Mime, a form this project has no equivalent
-; for), so it is the group's only rollable base form.
-;
-; Each species sits in the tier its OWN pre-evolution occupies, the same rule
-; every Johto _Evos entry follows.
+; Kanto Time Warp: explicit regional/convergent/paradox form picks, followed
+; by ordinary evolution-only species. Form indices are declared on every pick.
+; Commented rarity_mon lines document evolved forms at their assigned tier.
+; Mr. Rime remains directly rollable: MrMimeEvosMoves currently has no evolution.
+; Alolan Raichu/Marowak/Exeggutor and Galarian Weezing remain direct picks because
+; their ordinary predecessors currently cannot set these forms through evolution.
 ; ===========================================================================
 WarpPokeball:
+; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon RATTATA, 1 ; Alolan Rattata
+	rarity_mon FARFETCHD, 1 ; Galarian Farfetch'd
+	rarity_mon GRIMER, 1 ; Alolan Grimer
+	rarity_mon MAROWAK, 1 ; Alolan Marowak; no form-setting Cubone evolution
+	rarity_mon GROWLITHE, 1 ; Hisuian Growlithe
+	rarity_mon VOLTORB, 1 ; Hisuian Voltorb
+	rarity_mon SANDSHREW, 1 ; Alolan Sandshrew
+	rarity_mon MAGNETON, 1 ; Sandy Shocks; never evolves
+	rarity_mon WEEZING, 1 ; Galarian Weezing; no form-setting Koffing evolution
 WarpPokeball_Evos:
+; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon RATICATE, 1 ; Alolan Rattata -> Alolan Raticate
+; rarity_mon MUK, 1 ; Alolan Grimer -> Alolan Muk
+; rarity_mon ARCANINE, 1 ; Hisuian Growlithe -> Hisuian Arcanine
+; rarity_mon ELECTRODE, 1 ; Hisuian Voltorb -> Hisuian Electrode
+; rarity_mon SANDSLASH, 1 ; Alolan Sandshrew -> Alolan Sandslash
 ; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
 ; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
 ; FarfetchdEvosMoves - and Piloswine (Johto POKEBALL).
-	db ANNIHILAPE
-	db MAGNEZONE
-	db SIRFETCHD
-	db MAMOSWINE
+	rarity_mon ANNIHILAPE
+	rarity_mon MAGNEZONE
+	rarity_mon SIRFETCHD
+	rarity_mon MAMOSWINE
 WarpPokeball_End:
 
 WarpGreatball:
+; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon MEOWTH, 1 ; Alolan Meowth
+	rarity_mon MEOWTH, 2 ; Galarian Meowth
+	rarity_mon DIGLETT, 1 ; Alolan Diglett
+	rarity_mon DIGLETT, 2 ; Wiglett
+	rarity_mon GEODUDE, 1 ; Alolan Geodude
+	rarity_mon VULPIX, 1 ; Alolan Vulpix
+	rarity_mon RAICHU, 1 ; Alolan Raichu; no form-setting Pikachu evolution
+	rarity_mon PONYTA, 1 ; Galarian Ponyta
+	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
+	rarity_mon TENTACOOL, 1 ; Toedscool
 WarpGreatball_Evos:
+; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon PERSIAN, 1 ; Alolan Meowth -> Alolan Persian
+; rarity_mon PERSIAN, 2 ; Galarian Meowth -> Perrserker
+; rarity_mon DUGTRIO, 1 ; Alolan Diglett -> Alolan Dugtrio
+; rarity_mon DUGTRIO, 2 ; Wiglett -> Wugtrio
+; rarity_mon GRAVELER, 1 ; Alolan Geodude -> Alolan Graveler
+; rarity_mon GOLEM, 1 ; Alolan Graveler -> Alolan Golem
+; rarity_mon NINETALES, 1 ; Alolan Vulpix + Ice Stone -> Alolan Ninetales
+; rarity_mon RAPIDASH, 1 ; Galarian Ponyta -> Galarian Rapidash
+; rarity_mon SLOWBRO, 1 ; Galarian Slowpoke -> Galarian Slowbro
+; rarity_mon SLOWKING, 1 ; Galarian Slowpoke + Water Stone -> Galarian Slowking
+; rarity_mon TENTACRUEL, 1 ; Toedscool -> Toedscruel
+; rarity_mon FLAREON, 1 ; Eevee + Leaf Stone -> Leafeon
+; rarity_mon VAPOREON, 1 ; Eevee + Ice Stone -> Glaceon
+; rarity_mon VAPOREON, 2 ; Eevee + Moon Stone -> Sylveon
 ; from Sneasel/Misdreavus (Johto GREATBALL) and Lickitung/Tangela/
 ; Porygon2 (Kanto and Johto GREATBALL).
-	db WEAVILE
-	db MISMAGIUS
-	db LICKILICKY
-	db TANGROWTH
-	db PORYGON_Z
+	rarity_mon WEAVILE
+	rarity_mon MISMAGIUS
+	rarity_mon LICKILICKY
+	rarity_mon TANGROWTH
+	rarity_mon PORYGON_Z
 WarpGreatball_End:
 
 WarpUltraball:
-; The group's only rollable base form - see the header note above.
-	db MR_RIME
+; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon MR_MIME, 1 ; Galarian Mr. Mime; currently no Mr. Rime evolution
+; Mr. Rime has no implemented evolution path, so remains a direct pick.
+	rarity_mon MR_RIME
 WarpUltraball_Evos:
+; Evolution-only form references. Commented entries are NOT direct picks.
 ; from Scyther/Rhydon/Electabuzz/Magmar, all Kanto ULTRABALL tier.
-	db KLEAVOR
-	db RHYPERIOR
-	db ELECTIVIRE
-	db MAGMORTAR
+	rarity_mon KLEAVOR
+	rarity_mon RHYPERIOR
+	rarity_mon ELECTIVIRE
+	rarity_mon MAGMORTAR
 WarpUltraball_End:
 
+WarpMasterball:
+; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon ARTICUNO, 1 ; Galarian Articuno
+	rarity_mon ZAPDOS, 1 ; Galarian Zapdos
+	rarity_mon MOLTRES, 1 ; Galarian Moltres
+	rarity_mon TAUROS, 1 ; Paldean Combat Tauros
+	rarity_mon TAUROS, 2 ; Paldean Blaze Tauros
+	rarity_mon TAUROS, 3 ; Paldean Aqua Tauros
+	rarity_mon EXEGGUTOR, 1 ; Alolan Exeggutor; no form-setting Exeggcute evolution
+	rarity_mon JIGGLYPUFF, 1 ; Scream Tail; never evolves
+WarpMasterball_Evos:
+; Evolution-only form references. Commented entries are NOT direct picks.
+WarpMasterball_End:
+WarpUber:
+; Direct form picks, equal weight to each ordinary species entry.
+WarpUber_Evos:
+; Evolution-only form references. Commented entries are NOT direct picks.
+WarpUber_End:
 
 ; The Kanto pool must still describe exactly the 151 Kanto species.
 ASSERT (KantoPokeball_End - KantoPokeball) + (KantoGreatball_End - KantoGreatball) + \
        (KantoUltraball_End - KantoUltraball) + (KantoMasterball_End - KantoMasterball) + \
-       (KantoUber_End - KantoUber) == 151, "Kanto rarity pool is no longer 151 species"
+       (KantoUber_End - KantoUber) == 151 * 2, "Kanto rarity pool is no longer 151 species"
 
 
 ; ===========================================================================
@@ -738,8 +805,8 @@ RogueRollGroupForTier::
 ; ---------------------------------------------------------------------------
 ; RogueRollSpeciesInList
 ; INPUT:  hl = species list, a = count (must be at least 1)
-; OUTPUT: d = species
-; CLOBBERS: af, bc, hl   (e PRESERVED)
+; OUTPUT: d = species, e = explicit form index
+; CLOBBERS: af, bc, hl
 ;
 ; The single index formula for every species roll in the game. Uses Rangerandom,
 ; which rejection-samples and is therefore unbiased; the two hand-rolled formulas
@@ -750,10 +817,14 @@ RogueRollGroupForTier::
 RogueRollSpeciesInList::
 	ld c, a
 	call Rangerandom             ; a = 0 .. count-1
+RogueSpeciesAtIndex::             ; a = entry index, hl = pair list
 	ld c, a
 	ld b, 0
 	add hl, bc
+	add hl, bc
 	ld d, [hl]
+	inc hl
+	ld e, [hl]
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -783,7 +854,12 @@ RogueClassifySpecies::
 .scan
 	ld a, [hli]
 	cp e
+	jr nz, .nextEntry
+	ld a, [hl]                   ; species-only classification ignores form entries
+	and a
 	jr z, .hit
+.nextEntry
+	inc hl
 	dec b
 	jr nz, .scan
 .nextTier

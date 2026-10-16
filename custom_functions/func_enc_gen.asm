@@ -97,10 +97,10 @@ GetRandMon:
     ld b, a
     call RogueRollGroupForTier    ; a = group; b (tier) preserved
     jr c, .fallback
-    call RogueGetTierEntry        ; hl = list, b = base count, c = total
+    call RogueGetTierEntry        ; hl = pair list, b = direct count
     jr z, .fallback
     ld a, b
-    call RogueRollSpeciesInList   ; d = species
+    call RogueRollSpeciesInList   ; d = species, e = form
     jr .gotSpecies
 .fallback
     ; No active group offers this tier - fall back to the Kanto pokeball list.
@@ -110,6 +110,8 @@ GetRandMon:
     ld a, b
     call RogueRollSpeciesInList
 .gotSpecies
+    ld a, e
+    ld [wSpawnForm], a
     ld a, d
     pop de
     ld [wCurPartySpecies], a
@@ -290,6 +292,8 @@ GetRandRosterLoop:
     push de
     ld e, POOL_BAND_Gambler_Fod1
     farcall RogueDrawFromPoolFar ; wCurPartySpecies; clobbers everything
+    xor a
+    ld [wSpawnForm], a            ; this species-only pool explicitly selects form 0
     pop de
     pop bc
     pop hl
@@ -311,9 +315,17 @@ GetRandRosterLoop:
 	push hl
 	push bc
 	push de
+	ld a, [wSpawnForm]
+	cp NUM_FORM_SLOTS + 1
+	jr c, .literalRosterForm
+	xor a
+.literalRosterForm
+	ld e, a
 	ld a, [wCurPartySpecies]
 	ld d, a
-	call ScaleTrainer_evolution
+	farcall EvolvePoolMon
+	ld a, e
+	ld [wSpawnForm], a
 	pop de
 	pop bc
 	pop hl
@@ -337,38 +349,7 @@ GetRandRosterLoop:
 	jr nz, .rerollMon
 	push af                 ; out of retries: accept the duplicate
 .rosterUnique
-; Increment 8c: roll this roster mon's regional form and publish it IMMEDIATELY
-; before AddPartyMon, which folds it into this mon's own MON_CATCH_RATE bits 5-6.
-; That is the whole storage problem solved for free - unlike bosses and wild
-; encounters, every roster mon gets its own party struct, so no side table is
-; needed and the "write wSpawnForm only just before a creation" rule holds by
-; construction: the two are adjacent.
-;
-; wCurPartySpecies is FINAL here - ScaleTrainer_evolution has already run - which
-; matters because a form record is keyed to the species that carries the sprite.
-;
-; Every register in this loop is live (b = class loop, d = inner counter,
-; e = minimum level, hl = difficulty table cursor) and the form roll needs d and
-; e for its own arguments, so the whole thing is bracketed by pushes.
-	push hl
-	push bc
-	push de
-	call RogueFormsUnlocked
-	jr z, .noRosterForm
-	ld a, [wCurPartySpecies]
-	ld e, a                 ; e = species
-	call RogueGetActiveGroupMask
-	ld d, a                 ; d = active group mask, for the per-form gate
-	farcall RogueRollFormForSpecies ; e = form index, 0 if none
-	ld a, e
-	jr .storeRosterForm
-.noRosterForm
-	xor a
-.storeRosterForm
-	ld [wSpawnForm], a
-	pop de
-	pop bc
-	pop hl
+; wSpawnForm already holds this explicit pool entry's evolved form.
 IF FORCE_TRAINER_FORM_TEST
 ; ⚠ TEMPORARY - see FORCE_TRAINER_FORM_TEST in pokemon_data_constants.asm.
 ; Forces the whole enemy roster to Alolan Grimer so the stored-form send-out path
@@ -903,7 +884,8 @@ ScaleTrainer_level:
 
 ScaleTrainer_evolution:
 	; Trainer species evolve at the same displayed levels as player species.
-	jp EvolveMonByLevel
+	farcall EvolveMonByLevel
+	ret
 
 
 	
@@ -918,161 +900,6 @@ PreventARegOverflow:
 	ld a, $FF
 	ret
 
-
-
-; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
-; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.
-; Shared by EvolveMonByLevel and AllSpeciesCheck's family walk.
-LoadEvoListForSpecies::
-	ld hl, EvosMovesPointerTable	;load the address of the pointer table, and worry about the bank later
-	ld b, 0
-	ld a, d
-	dec a
-	add a
-	rl b
-	ld c, a		;BC now contains the pokemon's offset in the pointer table
-	add hl, bc	;and HL now points to the correct position in the pointer table
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, 2
-	call FarCopyData	;switches banks, then copies the 2-byte address that HL points to into wEvoDataBuffer
-	ld hl, wEvoDataBuffer	;let's now point HL to said address
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a				;HL now points to the address of the pokemon's evolution list
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
-	call FarCopyData	;now copy the evolution list pointed to by HL into wEvoDataBuffer
-	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
-	ret
-
-; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
-; allows (used for enemy trainer mons AND reward/given mons - despite the
-; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
-EvolveMonByLevel:
-	xor a
-	ld [wPendingEeveeForm], a     ; only .handleeevee below may leave one pending
-; d must survive the load: .lvl_evolve's EEVEE test reads it. LoadEvoListForSpecies
-; ends with de pointing past wEvoDataBuffer, so without this push the test compared
-; that address's high byte ($CD) and .handleeevee never ran - every Eevee at 35+
-; became FLAREON, its first-listed entry (measured 2026-09-25, 24/24 runs).
-	push de
-	call LoadEvoListForSpecies
-	pop de
-	ld bc, 0                   ; b = eligible count, c = sampled target
-
-.evoloop
-	ld a, [hli]
-	and a
-	jr z, .chooseEvolution
-	cp EVOLVE_LEVEL
-	jr z, .lvl_evolve
-	cp EVOLVE_TRADE
-	jr z, .trade_evolve
-	;else item evolve
-	inc hl              ; past the item id; hl -> [level][species]
-.trade_evolve
-; EVOLVE_TRADE is handled here, NOT skipped. Generated trainer/reward mons
-; use the authored level threshold. The player path also uses that threshold
-; on level-up, or bypasses it when actually trading.
-;
-; It shares EVOLVE_ITEM's level-35 floor. Both are "cannot happen in the wild"
-; methods and neither belongs on an early-round trainer, so they take one gate
-; rather than each inventing its own. Authored EVOLVE_TRADE entries are at
-; level 38 or higher, so the per-entry level below dominates in practice; the floor
-; is here to hold if one is ever written lower.
-;
-; The two layouts differ - EVOLVE_ITEM is [method][item][level][species] and
-; EVOLVE_TRADE is [method][level][species] - which is why the item path does
-; its extra `inc hl` above and then falls in here with hl on the level byte,
-; exactly where a trade entry already is.
-	ld a, [wCurEnemyLevel]
-	cp 35
-	jr nc, .lvl_evolve
-.skipentry
-	inc hl              ; past [level]
-	inc hl              ; past [species]
-	jr .evoloop
-
-.lvl_evolve
-	ld a, d
-	cp EEVEE	;deal with eevee separately
-	jr z, .handleeevee
-	ld a, [hli]
-	ld e, a
-	ld a, [wCurEnemyLevel]
-	cp e
-	jr c, .tooLowForThisEntry
-; SPECIES GROUPS. The player's evolution path has gated on this since Phase 2
-; (engine/pokemon/evos_moves.asm's .doEvolution) so a Kanto-locked run cannot
-; produce a Johto evolution. The TRAINER path never did, so a trainer's Zubat
-; at level 45 became a Johto CROBAT in a Kanto-only run. Gating per ENTRY keeps
-; split evolutions independent: with Johto off and Warp on, Scyther still
-; reaches Kleavor even though Scizor is blocked.
-;
-; hl is stacked because the farcall macro loads it with the target address.
-; `pop` does not disturb flags, so the callee's carry survives to the branch.
-	push hl
-	push bc             ; preserve the reservoir across the group check
-	push de             ; d = the species we are evolving FROM; the callee
-	                    ; clobbers de and the loop still needs d for its
-	                    ; EEVEE test on a later entry
-	ld e, [hl]          ; target species in e, NOT a - Bankswitch's first
-	                    ; instruction is `ldh a, [hLoadedROMBank]`, so an `a`
-	                    ; input cannot cross a farcall
-	farcall RogueIsSpeciesEvolutionAllowedFar
-	pop de              ; pop does not disturb flags
-	pop bc
-	pop hl              ; carry still set = this group is active
-	jr nc, .tooLowForThisEntry
-; Reservoir sampling: eligible entry n replaces the saved target with
-; probability 1/n. Rangerandom is unbiased and preserves hl/de/bc.
-; A single eligible entry needs no RNG draw.
-	inc b
-	ld a, b
-	cp 1
-	jr z, .takeEvolution
-	push bc
-	ld c, b
-	call Rangerandom
-	pop bc
-	and a
-	jr nz, .tooLowForThisEntry
-.takeEvolution
-	ld c, [hl]
-.tooLowForThisEntry
-; Scan every entry before committing, so table order cannot prefer a branch.
-	inc hl
-	jr .evoloop
-.chooseEvolution
-	ld a, b
-	and a
-	ret z
-	ld a, c
-	ld [wCurPartySpecies], a
-	ld d, a
-	jp EvolveMonByLevel         ; repeat for the chosen species' next stage
-
-; Reached only at level 35+ (every Eevee entry is EVOLVE_ITEM, so the item floor
-; above gates it). Uniform over the eight stone branches, like the Mist Stone,
-; restricted to the ones this run has unlocked: the three Kanto eeveelutions
-; always, Espeon/Umbreon with Johto, Leafeon/Glaceon/Sylveon with Time Warp.
-; Five of the eight are FORMS, so the form is published in wPendingEeveeForm for
-; the caller's next RogueRollFormForSpecies instead of being left to that roll.
-.handleeevee
-	call RogueGetActiveGroupMask  ; a = mask; preserves bc
-	ld d, a
-	farcall RogueRollEeveeBranch  ; d = species, e = form
-	ld a, d
-	ld [wCurPartySpecies], a
-	sub FLAREON
-	add a
-	add a                         ; species offset -> bits 2-3
-	or e                          ; form -> bits 0-1
-	or $80                        ; pending
-	ld [wPendingEeveeForm], a
-	ret
 
 
 ; d = Current Gym Leader/Battle, ie. OPP_BROCK

@@ -9,7 +9,7 @@
 	db DEX_FARFETCHD ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  52,  90,  55,  55,  62
+	db  52,  70,  55,  55,  58
 	;   hp  atk  def  spd  spc
 
 	db FIGHTING, FIGHTING ; type

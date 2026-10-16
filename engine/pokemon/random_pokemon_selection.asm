@@ -261,34 +261,6 @@ StageRewardClassWidths:
 ; duplicate. Falling back to the last roll is strictly better than not returning.
 ; ---------------------------------------------------------------------------
 RogueSelectFromTier::
-; Phase 2R increment 8b: tier-placed forms get first refusal on this pick, and a
-; hit REPLACES the species this tier's list would have offered. Scream Tail's
-; base species is only ever rolled at pokeball tier, so pinning its rarity to
-; masterball has to be able to override the species, not merely veto it.
-;
-; b (the tier) does not survive the farcall - Bankswitch spares only d/e/flags -
-; hence the push.
-	call RogueFormsUnlocked       ; forms are Johto/Warp-gated expansion content
-	jr z, .noTierForm
-	ld e, b                       ; e = tier
-	push bc
-	call RogueGetActiveGroupMask  ; preserves de, so the tier in e survives
-	ld d, a                       ; d = active group mask, per-form gate input
-	farcall RogueRollFormForTier  ; d = species (0 = no tier-placed pick), e = form
-	pop bc
-	ld a, d
-	and a
-	jr z, .noTierForm
-	; This pick used to skip the ownership check entirely. If the player already
-	; owns its line, fall back to the ordinary roll for this tier.
-	push bc
-	call AllSpeciesCheck          ; c = 1 if owned; de preserved
-	ld a, c
-	pop bc
-	and a
-	ret z                         ; d and e are both final; no evolve step, a form
-	                              ; record already names the exact species
-.noTierForm
 	ld c, 32                      ; retry budget
 .attempt
 	push bc                       ; b = tier, c = budget
@@ -298,63 +270,34 @@ RogueSelectFromTier::
 	jr z, .noPool
 	ld a, b
 	call RogueRollSpeciesInList   ; d = species
+	push de
 	call AllSpeciesCheck          ; c = 1 if already in the party or a box
+	pop de
 	ld a, c
 	and a
 	jr nz, .reject
 	; ELEMENT PRISM encounter bias: discard an off-type species and re-roll.
 	; Deliberately before the evolve step, exactly as the old code ordered it.
-	call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains; preserves d
+	push de
+	call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains
+	pop de
 	jr nz, .reject
 	pop bc
 	jr .evolve
 .reject
-	pop bc                        ; b = tier, c = budget
+	pop bc
 	dec c
 	jr nz, .attempt
-	jr .evolve                    ; budget spent - accept the last roll
+	jr .evolve
 .noPool
 	pop bc
-	; No active group offers anything at this tier. Fall back to the Kanto
-	; pokeball list so a caller always gets a real species rather than a stale d.
 	ld a, SPECIES_GROUP_KANTO
 	ld b, RARITY_TIER_POKEBALL
 	call RogueGetTierEntry
 	ld a, b
 	call RogueRollSpeciesInList
 .evolve
-	ld a, d
-	ld [wCurPartySpecies], a      ; EvolveMonByLevel reads d, writes back here
-	call EvolveMonByLevel
-	ld a, [wCurPartySpecies]
-	ld d, a                       ; d = possibly-evolved species
-; Phase 2R increment 8: roll a form for the species we ended up with, and RETURN
-; it in e rather than writing wSpawnForm.
-;
-; Returning it is the whole trick. wSpawnForm means "the form of the very next
-; mon to be created", and most of this routine's callers do not create anything
-; for a long time - PCRollBoss (procedural_cave_gen.asm) rolls the cave boss
-; during PRELOAD and the mon is not built until the player walks into the
-; overworld sprite, an unbounded number of wild battles later. A form written to
-; the global here would sit stale across all of them and be eaten by whichever
-; unrelated mon got created first.
-;
-; So: wSpawnForm is written only IMMEDIATELY before a creation, by the caller.
-; This routine just answers the question. Callers that defer store the answer
-; themselves - see rogue_pokemon_randomized_batch's per-offer form bytes.
-;
-; AFTER the evolve step, never before: the tier lists hold base forms and this
-; routine promotes them, so rolling earlier would ask the table about
-; (EXEGGCUTE, 1), which has no record, instead of (EXEGGUTOR, 1), which does.
-	call RogueFormsUnlocked         ; preserves d (the species we just settled on)
-	ld e, 0                         ; ld does not touch flags
-	ret z                           ; base Kanto run - no forms at all
-	ld e, d                         ; e = species, BEFORE d is reused for the mask
-	call RogueGetActiveGroupMask
-	ld d, a                         ; d = active group mask, per-form gate input
-	farcall RogueRollFormForSpecies ; e = form index, 0 if none
-	ld a, [wCurPartySpecies]
-	ld d, a                         ; restore the species this routine returns
+	farcall EvolvePoolMon          ; returns final species/form without publishing
 	ret
 
 ; Like Random_Pokemon_Selection but skips AllSpeciesCheck entirely - the
@@ -390,21 +333,6 @@ Random_Pokemon_Selection_Any::
 .tierGreatball
 	ld b, RARITY_TIER_GREATBALL
 .pick
-; Phase 2R increment 8b: tier-placed forms get first refusal here too, so a
-; masterball-tier wild encounter can be the Scream Tail that no Jigglypuff roll
-; is allowed to produce. b (tier) does not survive the farcall.
-	call RogueFormsUnlocked       ; Johto/Warp-gated, same as RogueSelectFromTier
-	jr z, .noTierForm
-	ld e, b                       ; e = tier
-	push bc
-	call RogueGetActiveGroupMask  ; preserves de
-	ld d, a                       ; d = active group mask
-	farcall RogueRollFormForTier  ; d = species (0 = none), e = form
-	pop bc
-	ld a, d
-	and a
-	jr nz, .tierForm
-.noTierForm
 	call RogueRollGroupForTier    ; a = group; b (tier) preserved
 	jr c, .fallback
 	call RogueGetTierEntry        ; hl = list, b = base count, c = total
@@ -413,95 +341,14 @@ Random_Pokemon_Selection_Any::
 	call RogueRollSpeciesInList   ; d = species
 	jr .evolve
 .fallback
-	; No active group offers anything at this tier. Fall back to the Kanto
-	; pokeball list so a caller always gets a real species rather than a stale d.
 	ld a, SPECIES_GROUP_KANTO
 	ld b, RARITY_TIER_POKEBALL
 	call RogueGetTierEntry
 	ld a, b
 	call RogueRollSpeciesInList
 .evolve
-	ld a, d
-	ld [wCurPartySpecies], a
-	call EvolveMonByLevel
-	ld a, [wCurPartySpecies]
-	ld d, a
-; ⚠⚠ THE TWO PARAGRAPHS BELOW ARE INCREMENT 8b HISTORY AND DESCRIBE BEHAVIOUR
-; THIS ROUTINE NO LONGER HAS. Increment 8e restored the write, and the write is
-; live today - see the note at .tierForm and the `ld [wSpawnForm], a` at the end
-; of this routine. Read them as "what was tried and reverted", not as a
-; description of the code.
-;
-; Left in place rather than deleted because they record a real regression and the
-; reasoning that caused it. But they are written in the present tense, and that
-; cost real time: PROCEDURAL_WILD_AREA_PLAN.md's Phase 6.5 was specified from
-; them, concluding that wild encounters get no forms and that any nonzero
-; wSpawnForm on a wild build must therefore be a stale value leaked from some
-; other writer. Measured 2026-09-16 and that is false - see the correction note
-; at .tierForm.
-;
-; ⚠ This routine originally DID write wSpawnForm, on the reasoning that a wild
-; encounter is built immediately so the value could not go stale. That reasoning
-; was WRONG and the smoke suite caught it:
-; test_fight2_seed17_party_generation_is_well_formed started finding a species of
-; 0 in the enemy trainer party. Bisected 2026-09-09 by probe - with the write
-; disabled and forms otherwise fully live, it passes; with the write restored it
-; fails - so the global, not RNG drift, was the cause.
-;
-; The mistake: the procedural stage generators PRE-ROLL their wild encounter
-; species during preload, exactly like PCRollBoss pre-rolls the boss. So this
-; roller is a DEFERRED path too, and the leaked form was still sitting in
-; wSpawnForm when the enemy trainer roster was built.
-;
-; Wild encounters therefore get no forms for now. Giving them one needs
-; per-encounter storage alongside wherever the stage stages its species, which is
-; its own increment - the enemy-side plumbing to render one already exists from
-; increment 4b. No caller reads e here yet; it is returned for that future work.
-;
-; ⚠ END OF THE 8b HISTORY BLOCK. "Wild encounters therefore get no forms" has
-; been FALSE since increment 8e. They do, at about 3%. Measured below.
-	call RogueFormsUnlocked
-	ld e, 0
-	jr z, .tierForm                 ; base Kanto run - no forms at all
-	ld e, d                         ; e = species, before d becomes the mask
-	call RogueGetActiveGroupMask
-	ld d, a
-	farcall RogueRollFormForSpecies ; e = form index, 0 if none
-	ld a, [wCurPartySpecies]
-	ld d, a                         ; restore the species this routine returns
-.tierForm
-; Increment 8e: publishing the global IS correct here. This roller's only real
-; caller is PCRollWildEncounter (procedural_cave_gen.asm), which rolls the
-; species at ENCOUNTER time - it sets wEnemyMonSpecies2 and returns straight into
-; the battle - so the mon is genuinely built immediately and there is no window
-; for the value to go stale.
-;
-; ⚠ Increment 8b removed this write on the theory that stages pre-roll their wild
-; species at preload. That was WRONG on both counts: the probe that "proved" it
-; was really catching the d-clobber in RogueRollFormForSpecies, and PCRollWildEncounter
-; does not pre-roll at all. The BOSS is the deferred one (PCRollBoss at preload),
-; and it needs its own storage - see wRoguePokemonForm1.
-;
-; MEASURED 2026-09-16 (Phase 6.5), and this settles it with numbers rather than
-; another round of reasoning. tools/pyboy_smoke/probe_spawnform_writers.py hooks
-; every one of the 23 assembled `ld [wSpawnForm], a` sites individually and
-; delimits builds by LoadEnemyMonData itself, so one hook hit is exactly one mon:
-;
-;   forest  175 builds, 5 nonzero (2.9%)   cave  122 builds, 4 nonzero (3.3%)
-;   writes 175 / builds 175, ORPHANED 0    writes 122 / builds 122, ORPHANED 0
-;
-; This site is the ONLY writer that fires at all on the wild path, in either
-; stage, and every single write is consumed by the very next build - zero writes
-; left sitting across a build, which is the only shape a stale-value leak can
-; take. Every nonzero value was form 1 for a species that genuinely has a form 1
-; record (VOLTORB, FARFETCHD, JIGGLYPUFF, RATTATA). So publishing here is not
-; leaking: it is the wild encounter's own form, rolled and consumed immediately,
-; exactly as 8e intended.
-;
-; The earlier "2 of 60 forest encounters leaked a form, cave was clean on 36"
-; observation was this same ~3% behaviour plus sample size: 0 of 36 at 3.3% has
-; probability 0.29, so the cave arm never showed it. Do not re-derive a leak from
-; a small clean run.
+	farcall EvolvePoolMon
+; Wild encounters are created immediately; deferred bosses/rewards store e instead.
 	ld a, e
 	ld [wSpawnForm], a
 	ret
@@ -748,12 +595,9 @@ ENDC
 ; in the party used to let an EXEGGCUTE through, because only the exact species
 ; byte was compared. Forms ride along - Alolan Exeggutor is still EXEGGUTOR.
 ;
-; The walk only goes FORWARD from d, so it is complete only when d is the root
-; of its line. That holds for every caller today: the tier lists roll only
-; their base-form prefix and FormTierTable's lone entry is JIGGLYPUFF. Measured
-; 2026-09-25 against data/pokemon/evos_moves.asm: no rollable species has a
-; pre-evolution, no species has two parents, deepest chain 2, largest family 4
-; (Eevee/Oddish/Poliwag). Form records carry no evolutions of their own.
+; Ownership remains species/family-based: forms share their base species.
+; Direct evolved-form picks scan forward from that species, as ordinary picks do.
+; A pre-evolution alone does not reject its directly listed evolved form.
 ;
 ; The owned list is $ff-terminated here. It never used to be: the scan ran on
 ; into whatever an earlier, longer list or another union member left behind,
@@ -795,7 +639,8 @@ AllSpeciesCheck::
 	jr z, .next                   ; next visit (budget spent: stop expanding, keep testing)
 	dec b
 	push bc
-	call LoadEvoListForSpecies    ; hl = wEvoDataBuffer; clobbers af/bc/de
+	farcall LoadEvoListForSpecies
+	ld hl, wEvoDataBuffer         ; farcall does not return hl
 	pop bc
 .evoEntry
 	ld a, [hli]

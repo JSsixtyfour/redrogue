@@ -9,14 +9,19 @@ LeafeonFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
+	db 6, SCRATCH
 	db 8, SAND_ATTACK
 	db 10, LEER
+	db 16, ABSORB
+	db 20, LEECH_SEED
 	db 23, QUICK_ATTACK
-	db 26, EMBER
-	db 30, DOUBLE_KICK
-	db 36, FLAMETHROWER
+	db 25, VINE_WHIP
+	db 30, RAZOR_LEAF
+	db 33, MEGA_DRAIN
+	db 36, SLASH
 	db 39, DOUBLE_EDGE
-	db 41, GROWTH
-	db 47, FIRE_SPIN
-	db 52, FIRE_BLAST
+	db 41, SWORDS_DANCE
+	db 47, RECOVER
+	db 50, PETAL_DANCE
+	db 52, GUILLOTINE
 	db 0

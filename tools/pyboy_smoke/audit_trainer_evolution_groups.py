@@ -94,7 +94,7 @@ def non_kanto_species():
             continue
         if not (current.startswith("Johto") or current.startswith("Warp")):
             continue
-        m = re.match(r"^\s+db\s+([A-Z_][A-Z0-9_]*)\s*$", line)
+        m = re.match(r"^\s+rarity_mon\s+([A-Z_][A-Z0-9_]*)\s*$", line)
         if m:
             out.add(m.group(1))
     return out

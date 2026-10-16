@@ -280,8 +280,9 @@ def load_rarity() -> dict[str, list[Tier]]:
             else:
                 current = None
             continue
-        if current and code.startswith("db "):
-            lists[current].append(code[3:].strip())
+        if current and code.startswith("rarity_mon "):
+            # Every explicit form contributes one pick, just like a species.
+            lists[current].append(code[len("rarity_mon "):].split(",")[0].strip())
 
     tier_names = ("Pokeball", "Greatball", "Ultraball", "Masterball", "Uber")
     out: dict[str, list[Tier]] = {}

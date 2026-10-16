@@ -63,7 +63,7 @@ def species_runs():
         if re.match(r"^[A-Za-z]\w*:", line):
             run = None
             continue
-        mon = re.match(r"^db\s+(\w+)$", line)
+        mon = re.match(r"^rarity_mon\s+(\w+)$", line)
         if run and mon:
             out.setdefault(mon.group(1), run)
     return out

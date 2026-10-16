@@ -139,7 +139,7 @@ DEF HOF_TEAM_CAPACITY EQU 50
 ; evolution data (see data/pokemon/evos_moves.asm)
 ;
 ; Raised 3 -> 8 for Species Groups Phase 2R (plan 2R.8b). This is NOT cosmetic:
-; EvolveMonByLevel (custom_functions/func_enc_gen.asm) does not stream the
+; EvolveMonByLevel (custom_functions/func_forms.asm) does not stream the
 ; evolution list, it BULK-COPIES it into wEvoDataBuffer, which is sized
 ; NUM_EVOS_IN_BUFFER * 4 + 1. The old comment on that WRAM line read "enough for
 ; Eevee's three 4-byte evolutions" - and Eevee reaches EIGHT once the
@@ -184,33 +184,7 @@ DEF FORM_MASK      EQU %01100000 ; MON_CATCH_RATE bits 5-6
 DEF FORM_SHIFT     EQU 5
 DEF NUM_FORM_SLOTS EQU 3         ; non-zero form indexes per base species
 
-; How often a rolled species spawns as one of its regional forms, out of 256.
-; Checked ONCE per spawn, before the form table is consulted, so it is the rate
-; for "this mon is a form at all" and NOT a per-form rate: a species with three
-; forms is no more likely to be formed than a species with one, it just picks
-; uniformly among its own once the roll succeeds.
-;
-; 32/256 = 12.5%. Deliberately in the same "pleasant surprise" band as the shiny
-; rate rather than the "every other Meowth is Alolan" band. This is the one knob
-; that tunes how often the 48 records in data/pokemon/forms/ are actually seen -
-; raise it to make forms common, set it to 0 to switch the whole system off
-; without touching code.
-DEF FORM_SPAWN_ODDS EQU 32
-
-; How often a pick at a given rarity tier is taken over by a TIER-PLACED form
-; instead of an ordinary species roll, out of 256. Only forms listed in
-; FormTierTable (data/pokemon/forms.asm) are reachable this way - the ones whose
-; power does not match their base species' tier, currently just Scream Tail.
-;
-; Checked only after confirming the tier HAS entries, so tiers with an empty list
-; consume no randomness and roll exactly as they did before this existed.
-;
-; 16/256 = 6.25%, half the ordinary form rate: these are the outliers, and a
-; tier-placed form displaces the species the tier would otherwise have offered.
-DEF FORM_TIER_ODDS EQU 16
-
-; One FormTierTable row: pair count + list pointer.
-DEF FORM_TIER_ENTRY_SIZE EQU 3
+; Forms are explicit rarity-pool entries. No form-substitution odds.
 
 ; Trainer party layout markers - the FIRST byte of a team in data/trainers/parties.asm.
 ;
@@ -259,7 +233,7 @@ DEF FORCE_TRAINER_FORM_TEST EQU 0
 ;
 ; It writes wSpawnForm DIRECTLY, which deliberately bypasses BOTH gates that make
 ; casual testing so slow:
-;   - FORM_SPAWN_ODDS (32/256 = 12.5%), so you are not waiting on a 1-in-8 roll
+;   - the explicit rarity pools, so no random species pick is needed
 ;   - RogueFormsUnlocked, so it works with NO champion wins and NO Debug 2
 ;
 ; Forcing only the species is not enough on its own: at that point the roll has
@@ -275,7 +249,7 @@ DEF FORCE_WILD_FORM_TEST EQU 0
 ;     a different record.
 ;
 ; Forces both wRoguePokemon1 and wRoguePokemonForm1, so it also bypasses
-; FORM_SPAWN_ODDS and RogueFormsUnlocked - no Debug 2 or champion wins needed.
+; rarity-pool selection and RogueFormsUnlocked - no Debug 2 or champion wins needed.
 ; Without it you would be waiting for a random boss species that happens to own a
 ; form record AND for a 1-in-8 roll on top.
 ;
@@ -296,7 +270,7 @@ DEF FORCE_BOSS_FORM_TEST EQU 0
 ; name. Three distinct names means each slot is reading its own byte.
 ;
 ; Forced after the batch has rolled, so the duplicate-species rejection in
-; rogue_pokemon_randomized_batch cannot interfere. Bypasses FORM_SPAWN_ODDS and
+; rogue_pokemon_randomized_batch cannot interfere. Bypasses rarity-pool selection and
 ; RogueFormsUnlocked - no Debug 2 or champion wins needed.
 DEF FORCE_REWARD_FORM_TEST EQU 0
 
@@ -312,7 +286,7 @@ DEF FORCE_REWARD_FORM_TEST EQU 0
 ;                              FORCE_REWARD_FORM_TEST is also on
 ;
 ; Deliberately different species so it is obvious which path you are looking at.
-; All bypass FORM_SPAWN_ODDS and RogueFormsUnlocked.
+; All bypass rarity-pool selection and RogueFormsUnlocked.
 ;
 ; ⚠ The TRADE still needs its own preconditions to fire at all: at least 3 party
 ; members, and Debug 2 (which skips the ~10% trade roll and always attempts one).

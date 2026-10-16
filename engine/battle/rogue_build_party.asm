@@ -1434,8 +1434,8 @@ PartyGenSpeciesAlreadyUsed:
 ;         entry's form SPEC).
 ; OUTPUT: wSpawnForm holds a literal form index, 0 for none.
 ;
-; POOL_FORM_ROLL defers to RogueRollFormForSpecies, which is the same gated
-; roller a procedural roster mon uses, so unlock state is respected. A pinned
+; POOL_FORM_ROLL no longer substitutes a random regional form. It only
+; consumes an explicitly selected Eevee evolution, or resolves to form 0. A pinned
 ; 1..NUM_FORM_SLOTS is passed through UNGATED, deliberately and consistently
 ; with authored TRAINERPARTY_FORMS teams: TRAINER_PARTY_FORMS.md's rule is that
 ; authored content shows what you wrote regardless of unlock state, and that a
@@ -1474,26 +1474,10 @@ PartyGenResolveForm:
 	ret c
 	jr .noForm
 .roll
-; Gate on the species-group unlocks exactly the way the procedural roster path
-; does (custom_functions/func_enc_gen.asm). Flags survive Bankswitch - it only
-; does `pop bc` and two `ld`s on the way out - so testing Z after a farcall is
-; sound, unlike testing `a`.
-	farcall RogueFormsUnlocked
-	jr z, .noForm
-
-; ⚠ RogueRollFormForSpecies takes TWO inputs, not one: e = species AND
-; d = the active group mask, which its IsFormCandidate check uses as the
-; per-form unlock gate. An earlier version of this routine set only e, leaving
-; whatever happened to be in d as the mask - which does not crash and does not
-; fail to assemble, it just gates forms against garbage. The visible symptom
-; would have been regional forms appearing in a fresh Kanto run, which is the
-; exact bug TRAINER_PARTY_FORMS.md records from the last time this was got
-; wrong ("Alolan Meowth shows up on turn one").
-	farcall RogueGetActiveGroupMaskFar ; e = mask
-	ld d, e                            ; d = mask, the per-form gate
+; Legacy POOL_FORM_ROLL means base form, except an already selected Eevee branch.
 	ld a, [wCurPartySpecies]
 	ld e, a
-	farcall RogueRollFormForSpecies ; e = form index, 0 if none (d preserved)
+	farcall RogueRollFormForSpecies
 	ld a, e
 	ld [wSpawnForm], a
 	ret

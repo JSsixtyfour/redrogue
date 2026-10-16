@@ -35,7 +35,7 @@ DEF RARITY_TIER_MASTERBALL EQU 3
 DEF RARITY_TIER_UBER       EQU 4
 DEF NUM_RARITY_TIERS       EQU 5
 
-; One tier entry: base count, total count, list pointer.
+; One tier entry: direct count, total count, pointer to (species, form) pairs.
 ;   base count  = rollable base forms (the prefix of the list)
 ;   total count = base forms + evolved forms (the whole list)
 ; Only the base-form prefix is ever rolled directly; evolved forms are reached
