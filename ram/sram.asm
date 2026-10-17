@@ -22,7 +22,9 @@ sProcCemeteryMaps:: ds 4 * 90  ; indexed by (mapIndex*90 + row*10 + col)
 sProcCemeteryBallX:: ds 4      ; pokeball block X per map
 sProcCemeteryBallY:: ds 4      ; pokeball block Y per map
 sProcCemeteryItem:: ds 4       ; item ID per map (for pickup)
-sProcCemeteryReady:: db        ; bit N = floor N has been generated (lazy per-map)
+sProcCemeteryReady:: db        ; bit N = floor N has been generated (lazy per-map);
+                                ; bits 4-5 = the boss's form index (PCemRollBoss /
+                                ; PCemRestoreBossSpecies), bits 6-7 unused
 sProcCemeteryItemGot:: db      ; bit N = floor N item has been collected; cleared on new generation
 sProcCemeteryUsedPrefabs:: dw  ; bit N = prefab N (PCemPrefabTable) already used this run;
                                 ; at most 4 bits ever set (one per floor), cleared per-run

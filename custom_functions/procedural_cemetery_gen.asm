@@ -235,6 +235,20 @@ PCemRollBoss:
 	ld [sProcCemeteryBossSpecies], a
 	ld a, b
 	ld [sProcCemeteryBossMove], a
+	; the rolled form (final after PCemAvoidGhostBoss) rides in bits 4-5 of
+	; sProcCemeteryReady, whose floor bits 0-3 are only ever touched through a
+	; 1<<floor mask. Without it the boss fought and was gifted as its base
+	; species. Packed rather than given its own byte so the save layout is
+	; unchanged: an older save reads 0 there, the base species.
+	ld a, [wRoguePokemonForm1]
+	and %11
+	swap a                            ; -> bits 4-5
+	ld c, a
+	ld hl, sProcCemeteryReady
+	ld a, [hl]
+	and %00001111                     ; keep the floor bits
+	or c
+	ld [hl], a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
@@ -252,7 +266,13 @@ PCemGhostMoves:
 ; battles clobber wRoguePokemon1 (random_pokemon_selection.asm) between the
 ; preload roll and the floor-4 engage, so the boss script calls this right
 ; before it reads the species (both the battle trigger and the join offer).
-; farcall'd from ProceduralCemetery4.asm. Clobbers a/b.
+; Also restores the boss's form (bits 4-5 of sProcCemeteryReady, see
+; PCemRollBoss) and publishes it as wSpawnForm, 0 included. The cemetery boss
+; starts on a coordinate trigger, so it never passes through the sprite-engage
+; republish in home/trainers.asm; without this both the battle and the gift
+; took whatever form the last wild encounter left in wSpawnForm (measured in
+; BGB 2026-10-17: a stale 02 made the boss and its gift G-MEOWTH).
+; farcall'd from ProceduralCemetery4.asm. Clobbers a/b/c.
 ; ============================================================
 PCemRestoreBossSpecies::
 	ld a, RAMG_SRAM_ENABLE
@@ -263,12 +283,19 @@ PCemRestoreBossSpecies::
 	ld [rRAMB], a
 	ld a, [sProcCemeteryBossSpecies]
 	ld b, a
+	ld a, [sProcCemeteryReady]
+	swap a
+	and %11                       ; bits 4-5 -> form index 0-3
+	ld c, a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 	ld a, b
 	ld [wRoguePokemon1], a
+	ld a, c
+	ld [wRoguePokemonForm1], a
+	ld [wSpawnForm], a
 	ret
 
 ; ============================================================

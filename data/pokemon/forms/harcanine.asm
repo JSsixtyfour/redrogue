@@ -25,7 +25,7 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         DRAGON_RAGE,  DIG,          FLAMETHROWER, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK
+	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK_SLIDE
 	; end
 
 	db BANK(HArcaninePicFront) ; pic bank

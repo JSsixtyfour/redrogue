@@ -107,6 +107,11 @@ ProceduralCemetery4BossOfferText:
 	farcall PCemRestoreBossSpecies
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
+	; name it by the form GivePokemon is about to create (wSpawnForm, just
+	; republished above), or a G-MEOWTH boss is offered as plain MEOWTH
+	ld [wFormContextSpecies], a
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
 	call GetMonName
 	; Use PCBossJoinText (cave's join text) for the offer message
 	ld hl, PCemBossJoinTextWrap

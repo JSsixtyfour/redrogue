@@ -440,6 +440,11 @@ ProceduralForestBossOfferText:
 	text_asm
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
+	; name it by the form GivePokemon is about to create: wSpawnForm still
+	; holds the boss's form from the engage republish (home/trainers.asm)
+	ld [wFormContextSpecies], a
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, PFBossJoinText
 	call PrintText

@@ -999,6 +999,19 @@ BridgeBillDuplicate::
 	call AddNTimes               ; hl = source struct base
 	ld a, [hl]
 	ld b, a                      ; b = species
+	; Carry the source's form into the clone. GivePokemon creates from
+	; wSpawnForm, which otherwise still holds the last wild encounter's form:
+	; the box fallback came out as that form, and "You got X!" named it so.
+	push hl
+	ld de, MON_CATCH_RATE
+	add hl, de
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3, as GetEnemySpawnForm
+	rlca
+	rlca
+	ld [wSpawnForm], a
+	pop hl
 	push hl                      ; save source base across GivePokemon
 	ld de, MON_LEVEL
 	add hl, de

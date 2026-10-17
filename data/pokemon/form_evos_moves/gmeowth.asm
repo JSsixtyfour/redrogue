@@ -10,10 +10,11 @@ GmeowthFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 10, FURY_SWIPES
+	db 12, ROCK_THROW
 	db 15, BITE
 	db 18, PAY_DAY
 	db 22, SCREECH
-	db 29, TAKE_DOWN
+	db 29, THRASH
 	db 34, SLASH
-	db 45, HYPER_BEAM
+	db 44, ROCK_SLIDE
 	db 0

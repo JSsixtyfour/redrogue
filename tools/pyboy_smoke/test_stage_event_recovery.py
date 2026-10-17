@@ -30,7 +30,10 @@ STAGE_SCRIPTS = (
     ("scripts/ProceduralCave1.asm", "EVENT_BEAT_STAGE_EVENT_NPC", "PCStageEventAfterText"),
     ("scripts/ProceduralForest.asm", "EVENT_BEAT_STAGE_EVENT_NPC", "PFStageEventAfterText"),
     ("scripts/ProceduralFacility.asm", "EVENT_BEAT_FACILITY_STAGE_NPC", "PFacStageEventAfterText"),
-    ("scripts/ProceduralCemetery1.asm", "EVENT_BEAT_FACILITY_STAGE_NPC", "PCStageEventAfterText"),
+    # A local text_far wrapper since the 2026-10-16 bank repair: a trainer
+    # header's text pointers are read in the header's own bank, and the cave's
+    # PCStageEventAfterText lives in a different one.
+    ("scripts/ProceduralCemetery1.asm", "EVENT_BEAT_FACILITY_STAGE_NPC", "PCemStageEventAfterText"),
 )
 
 # Each map's recover-line handler, which must be a thin farcall stub. The four
@@ -259,8 +262,13 @@ class AfterBattleTextContractTest(unittest.TestCase):
     def test_map_stubs_delegate_to_the_shared_body(self) -> None:
         """Bank 17 has tens of bytes free; four copies of this do not fit."""
         for rel, _, handler in STAGE_SCRIPTS:
-            if handler == "PCStageEventAfterText" and "Cemetery" in rel:
-                continue  # the Cemetery borrows the Cave's, by design
+            if "Cemetery" in rel:
+                # the Cemetery borrows the Cave's stub, by design, through a
+                # local text_far wrapper (its header can only reach this bank)
+                with self.subTest(rel):
+                    body = routine(read(rel), handler + "::")
+                    self.assertIn("text_far PCStageEventAfterText", body)
+                continue
             with self.subTest(rel):
                 body = routine(read(rel), handler + "::" if "Cave" in rel else handler + ":")
                 self.assertIn("farcall StageEventPrintAfterLine", body)

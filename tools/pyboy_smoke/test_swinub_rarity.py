@@ -102,8 +102,16 @@ class SwinubRarityTest(unittest.TestCase):
         rng_bank, rng_entry = h.symbols.get('Rangerandom')
         for mask in (1, 3, 5, 7):
             for tier in (0, 1):
-                counts = [28, (15, 20)[tier] if mask == 7 else (16, 19)[tier], (9, 10)[tier]]
-                counts = [count if mask & (1 << group) else 0 for group, count in enumerate(counts)]
+                # Pool sizes come from the ROM's own pool getter, not literals:
+                # hardcoded Kanto/Warp sizes went stale every time a form was
+                # added to a pool. The Swinub boost itself (Johto 15/20 vs
+                # 16/19) stays pinned in test_pool_membership_and_weights_...
+                counts = []
+                for group in range(3):
+                    self.configure(7, mask)
+                    counts.append(self.entry(group, tier)[0] if mask & (1 << group) else 0)
+                if mask & 2:
+                    self.assertEqual(counts[1], ((15, 20) if mask == 7 else (16, 19))[tier])
                 start = 0
                 for group, count in enumerate(counts):
                     if not count:
