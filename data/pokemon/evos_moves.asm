@@ -553,6 +553,7 @@ LickitungEvosMoves:
 ExeggcuteEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, LEAF_STONE, 1, EXEGGUTOR
+	db EVOLVE_ITEM, MOON_STONE, 1, EXEGGUTOR ; Alolan Exeggutor
 	db 0
 ; Learnset
     db 8, ABSORB
@@ -664,6 +665,7 @@ NidoqueenEvosMoves:
 CuboneEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 28, MAROWAK
+	db EVOLVE_ITEM, DUSK_STONE, 1, MAROWAK ; Alolan Marowak
 	db 0
 ; Learnset
 	db 5, LEER
@@ -1494,6 +1496,7 @@ MagnetonEvosMoves:
 KoffingEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 35, WEEZING
+	db EVOLVE_ITEM, MOON_STONE, 1, WEEZING ; Galarian Weezing
 	db 0
 ; Learnset
 	db 23, ACID
@@ -1988,6 +1991,7 @@ NinetalesEvosMoves:
 PikachuEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, THUNDER_STONE, 1, RAICHU
+	db EVOLVE_ITEM, MOON_STONE, 1, RAICHU ; Alolan Raichu
 	db 0
 ; Learnset
 	db 6, QUICK_ATTACK

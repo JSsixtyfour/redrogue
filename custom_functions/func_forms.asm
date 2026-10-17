@@ -275,7 +275,7 @@ GetFormPalette::
 ; ---------------------------------------------------------------------------
  ; RogueRollFormForSpecies
 ; Compatibility entry for existing trainer callers. Random form substitution
-; has ended: only an explicitly selected Eevee evolution may publish a form.
+; has ended: only an explicitly selected evolution may publish a form.
 ; INPUT e = final species. OUTPUT e = evolution form or 0. d preserved.
 RogueRollFormForSpecies::
 	ld b, e
@@ -285,10 +285,25 @@ RogueRollFormForSpecies::
 	bit 7, a
 	jr z, .none
 	ld c, a
+	bit 6, a                    ; regional branch: bits 2-3 index the pair table
+	jr z, .eevee
+	and %1100
+	rrca                        ; pair offset = index * 2
+	push de
+	ld e, a
+	ld d, 0
+	ld hl, RegionalStoneBranches + 1
+	add hl, de
+	ld a, [hl]
+	pop de
+	jr .matchSpecies
+.eevee
+	ld a, c
 	rrca
 	rrca
 	and %11
 	add FLAREON
+.matchSpecies
 	cp b
 	jr nz, .none
 	ld a, c
@@ -587,7 +602,45 @@ EvolvePoolMon::
 ; "enemy" scratch vars it reads/writes, it has no actual enemy-specific logic).
 EvolveMonByLevel:
 	xor a
-	ld [wPendingEeveeForm], a     ; only .handleeevee below may leave one pending
+	ld [wPendingEeveeForm], a     ; stone branches may leave an exact form pending
+	ld a, [wCurEnemyLevel]
+	cp 35                       ; shared generated stone-evolution floor
+	jr c, .loadList
+	ld hl, RegionalStoneBranches
+	ld b, 0                     ; pair offset; packed into pending bits 2-3
+.regionalScan
+	ld a, [hli]
+	and a
+	jr z, .loadList
+	cp d
+	jr z, .regionalMatch
+	inc hl
+	inc b
+	inc b
+	jr .regionalScan
+.regionalMatch
+	ld c, [hl]                  ; target species
+	ld d, c
+	ld e, 1
+	push bc
+	call IsFormUnlockedFar      ; same-bank call, gates the Alolan form
+	ld e, 0                     ; regular evolution if Time Warp is unavailable
+	jr nc, .regionalChosen
+	call Random
+	and 1                       ; equal probability for the two eligible outcomes
+	ld e, a
+.regionalChosen
+	pop bc
+	ld a, b
+	add a                       ; pair offset -> pending species index bits 2-3
+	or e
+	or $c0                      ; pending + regional tag + exact form
+	ld [wPendingEeveeForm], a
+	ld a, c
+	ld [wCurPartySpecies], a
+	ld d, a
+	ret
+.loadList
 ; d must survive the load: .lvl_evolve's EEVEE test reads it. LoadEvoListForSpecies
 ; ends with de pointing past wEvoDataBuffer, so without this push the test compared
 ; that address's high byte ($CD) and .handleeevee never ran - every Eevee at 35+
@@ -709,6 +762,17 @@ EvolveMonByLevel:
 	or $80                        ; pending
 	ld [wPendingEeveeForm], a
 	ret
+
+; Two equally eligible generated outcomes at level 35+: target forms 0 and 1.
+; The player uses the authored stone entries; this table identifies pool branches.
+RegionalStoneBranches:
+	db CUBONE, MAROWAK
+	db PIKACHU, RAICHU
+	db EXEGGCUTE, EXEGGUTOR
+	db KOFFING, WEEZING
+RegionalStoneBranchesEnd:
+ASSERT RegionalStoneBranchesEnd - RegionalStoneBranches == 4 * 2
+	db 0
 
 ; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
 ; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.

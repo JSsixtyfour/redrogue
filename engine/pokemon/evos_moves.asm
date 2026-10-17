@@ -1111,6 +1111,10 @@ IsEvoStoneFormAllowed:
 
 EvoStoneForms:
 ; db <stone>, <target species>, <form index>
+	db DUSK_STONE,  MAROWAK,  1 ; Alolan Marowak
+	db MOON_STONE,  RAICHU,   1 ; Alolan Raichu
+	db MOON_STONE,  EXEGGUTOR, 1 ; Alolan Exeggutor
+	db MOON_STONE,  WEEZING,  1 ; Galarian Weezing
 	db LEAF_STONE,  FLAREON,  1 ; Leafeon
 	db SUN_STONE,   JOLTEON,  1 ; Espeon
 	db DUSK_STONE,  JOLTEON,  2 ; Umbreon

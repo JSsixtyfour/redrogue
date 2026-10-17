@@ -116,6 +116,11 @@ class EeveeFormGateTest(unittest.TestCase):
     def test_stone_evolution_checks_the_form_group(self) -> None:
         for enabled in (KANTO, KANTO | JOHTO, KANTO | WARP, KANTO | JOHTO | WARP):
             self.set_groups(enabled)
+            self.assertEqual(self.stone_allowed(ITEMS['DUSK_STONE'], SPECIES['MAROWAK']),
+                             bool(enabled & WARP))
+            for target in ('RAICHU', 'EXEGGUTOR', 'WEEZING'):
+                self.assertEqual(self.stone_allowed(ITEMS['MOON_STONE'], SPECIES[target]),
+                                 bool(enabled & WARP))
             for stone, target, needs in FORM_EVOLUTIONS:
                 with self.subTest(enabled=enabled, stone=stone):
                     self.assertEqual(
@@ -127,6 +132,22 @@ class EeveeFormGateTest(unittest.TestCase):
                 self.assertTrue(self.stone_allowed(ITEMS["FIRE_STONE"], SPECIES["FLAREON"]))
                 self.assertTrue(self.stone_allowed(ITEMS["MOON_STONE"], SPECIES["NIDOKING"]))
                 self.assertTrue(self.stone_allowed(0, SPECIES["VAPOREON"]))
+
+    def test_cubone_stone_sets_alolan_form_only(self) -> None:
+        self.h.pyboy.memory[self.h.address('wLoadedMon') + MON_CATCH_RATE] = 0
+        for stone, expected in ((ITEMS['DUSK_STONE'], 1), (0, 0)):
+            self.h.write8('wEvoStoneItemID', stone)
+            out = self.run_routine('GetEvolvedForm', C=SPECIES['MAROWAK'])
+            self.assertEqual(out['A'], expected)
+
+    def test_moon_stone_sets_regional_forms(self) -> None:
+        self.h.pyboy.memory[self.h.address('wLoadedMon') + MON_CATCH_RATE] = 0
+        for target, normal_stone in (('RAICHU', 'THUNDER_STONE'),
+                                     ('EXEGGUTOR', 'LEAF_STONE'), ('WEEZING', None)):
+            for stone, expected in (('MOON_STONE', 1), (normal_stone, 0)):
+                self.h.write8('wEvoStoneItemID', ITEMS[stone] if stone else 0)
+                out = self.run_routine('GetEvolvedForm', C=SPECIES[target])
+                self.assertEqual(out['A'], expected, (target, stone))
 
     def test_mist_stone_eevee_rolls_only_unlocked_forms(self) -> None:
         h = self.h

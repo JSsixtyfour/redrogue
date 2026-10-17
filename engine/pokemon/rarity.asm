@@ -453,22 +453,21 @@ JohtoUber_End:
 ; by ordinary evolution-only species. Form indices are declared on every pick.
 ; Commented rarity_mon lines document evolved forms at their assigned tier.
 ; Mr. Rime remains directly rollable: MrMimeEvosMoves currently has no evolution.
-; Alolan Raichu/Marowak/Exeggutor and Galarian Weezing remain direct picks because
-; their ordinary predecessors currently cannot set these forms through evolution.
+; Regional evolved forms below are reached through their ordinary predecessors.
 ; ===========================================================================
 WarpPokeball:
 ; Direct form picks, equal weight to each ordinary species entry.
 	rarity_mon RATTATA, 1 ; Alolan Rattata
 	rarity_mon FARFETCHD, 1 ; Galarian Farfetch'd
 	rarity_mon GRIMER, 1 ; Alolan Grimer
-	rarity_mon MAROWAK, 1 ; Alolan Marowak; no form-setting Cubone evolution
 	rarity_mon GROWLITHE, 1 ; Hisuian Growlithe
 	rarity_mon VOLTORB, 1 ; Hisuian Voltorb
 	rarity_mon SANDSHREW, 1 ; Alolan Sandshrew
 	rarity_mon MAGNETON, 1 ; Sandy Shocks; never evolves
-	rarity_mon WEEZING, 1 ; Galarian Weezing; no form-setting Koffing evolution
 WarpPokeball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon MAROWAK, 1 ; Cubone + Dusk Stone -> Alolan Marowak
+; rarity_mon WEEZING, 1 ; Koffing + Moon Stone -> Galarian Weezing
 ; rarity_mon RATICATE, 1 ; Alolan Rattata -> Alolan Raticate
 ; rarity_mon MUK, 1 ; Alolan Grimer -> Alolan Muk
 ; rarity_mon ARCANINE, 1 ; Hisuian Growlithe -> Hisuian Arcanine
@@ -491,12 +490,12 @@ WarpGreatball:
 	rarity_mon DIGLETT, 2 ; Wiglett
 	rarity_mon GEODUDE, 1 ; Alolan Geodude
 	rarity_mon VULPIX, 1 ; Alolan Vulpix
-	rarity_mon RAICHU, 1 ; Alolan Raichu; no form-setting Pikachu evolution
 	rarity_mon PONYTA, 1 ; Galarian Ponyta
 	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
 	rarity_mon TENTACOOL, 1 ; Toedscool
 WarpGreatball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon RAICHU, 1 ; Pikachu + Moon Stone -> Alolan Raichu
 ; rarity_mon PERSIAN, 1 ; Alolan Meowth -> Alolan Persian
 ; rarity_mon PERSIAN, 2 ; Galarian Meowth -> Perrserker
 ; rarity_mon DUGTRIO, 1 ; Alolan Diglett -> Alolan Dugtrio
@@ -540,10 +539,10 @@ WarpMasterball:
 	rarity_mon TAUROS, 1 ; Paldean Combat Tauros
 	rarity_mon TAUROS, 2 ; Paldean Blaze Tauros
 	rarity_mon TAUROS, 3 ; Paldean Aqua Tauros
-	rarity_mon EXEGGUTOR, 1 ; Alolan Exeggutor; no form-setting Exeggcute evolution
 	rarity_mon JIGGLYPUFF, 1 ; Scream Tail; never evolves
 WarpMasterball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon EXEGGUTOR, 1 ; Exeggcute + Moon Stone -> Alolan Exeggutor
 WarpMasterball_End:
 WarpUber:
 ; Direct form picks, equal weight to each ordinary species entry.

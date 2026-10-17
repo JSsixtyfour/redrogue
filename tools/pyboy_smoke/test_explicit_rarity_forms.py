@@ -87,8 +87,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.assertEqual(len(ordinary), 253)
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(len(set(ordinary)), 252)
-        self.assertEqual(len(direct_forms), 27)
-        self.assertEqual(len(set(direct_forms)), 27)
+        self.assertEqual(len(direct_forms), 23)
+        self.assertEqual(len(set(direct_forms)), 23)
         # All active form records occur either in direct lists or commented
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
@@ -137,6 +137,32 @@ class ExplicitRarityFormsTest(unittest.TestCase):
             self.h.call_routine('RogueRollFormForSpecies')
             self.assertEqual(self.h.last_call_registers['E'], 0, sp)
 
+    def test_cubone_generated_branches(self):
+        for mask, level, expected in ((1, 50, {0}), (3, 50, {0}),
+                                      (5, 34, {0}), (7, 27, {0}),
+                                      (5, 35, {0, 1}), (7, 50, {0, 1})):
+            seen = set()
+            for seed in range(32):
+                self.reset()
+                self.h.pyboy.memory[0x0000] = 0x0A
+                self.h.pyboy.memory[0x4000] = 1
+                self.h.write8('sRogueSpeciesGroupsEnabled', mask)
+                self.h.pyboy.memory[0x0000] = 0
+                self.h.seed_rng((seed, seed ^ 0xa5, 3, 7))
+                self.h.write8('hRandomAdd', seed * 7)
+                self.h.write8('hRandomSub', seed * 11)
+                self.h.write8('wCurEnemyLevel', level)
+                self.h.write8('wSpawnForm', 3)
+                self.h.pyboy.register_file.D = SPECIES['CUBONE']
+                self.h.pyboy.register_file.E = 0
+                self.h.call_routine('EvolvePoolMon')
+                regs = self.h.last_call_registers
+                self.assertEqual(regs['D'], SPECIES['CUBONE' if level < 28 else 'MAROWAK'])
+                seen.add(regs['E'])
+                self.assertEqual(self.h.read8('wPendingEeveeForm'), 0)
+                self.assertEqual(self.h.read8('wSpawnForm'), 3)
+            self.assertEqual(seen, expected, (mask, level))
+
     def test_eevee_keeps_its_selected_branch_and_consumes_pending(self):
         for mask in (1, 3, 5, 7):
             branches = [('FLAREON',0), ('JOLTEON',0), ('VAPOREON',0)]
@@ -162,3 +188,29 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                 self.assertIn((regs['D'], regs['E']), allowed, (mask, seed))
                 self.assertEqual(self.h.read8('wPendingEeveeForm'), 0)
                 self.assertEqual(self.h.read8('wSpawnForm'), 3)
+
+    def test_generated_moon_stone_branches(self):
+        for source, target in (('PIKACHU', 'RAICHU'), ('EXEGGCUTE', 'EXEGGUTOR'),
+                               ('KOFFING', 'WEEZING')):
+            for mask in (1, 3, 5, 7):
+                for level in (34, 35, 50):
+                    seen = set()
+                    for seed in range(16):
+                        self.reset()
+                        self.h.pyboy.memory[0x0000] = 0x0A
+                        self.h.pyboy.memory[0x4000] = 1
+                        self.h.write8('sRogueSpeciesGroupsEnabled', mask)
+                        self.h.pyboy.memory[0x0000] = 0
+                        self.h.seed_rng((seed, seed ^ 0xa5, 3, 7))
+                        self.h.write8('wCurEnemyLevel', level)
+                        self.h.write8('wSpawnForm', 3)
+                        self.h.pyboy.register_file.D = SPECIES[source]
+                        self.h.pyboy.register_file.E = 0
+                        self.h.call_routine('EvolvePoolMon')
+                        regs = self.h.last_call_registers
+                        self.assertEqual(regs['D'], SPECIES[source if level < 35 else target])
+                        seen.add(regs['E'])
+                        self.assertEqual(self.h.read8('wPendingEeveeForm'), 0)
+                        self.assertEqual(self.h.read8('wSpawnForm'), 3)
+                    self.assertEqual(seen, {0, 1} if level >= 35 and mask & 4 else {0},
+                                     (source, mask, level))
