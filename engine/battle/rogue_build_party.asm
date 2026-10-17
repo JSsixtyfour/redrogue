@@ -1813,7 +1813,8 @@ PartyGenRollMoveset:
 ; Provider-free rental selector checkpoint. Input e = allowed tier mask;
 ; wPartyGenSlot identifies an existing temporary enemy mon, level is in
 ; wCurEnemyLevel. Carry clear requests generated fallback without mutation.
-; Special forms have no matching form records in the existing corpus.
+; Special forms are refused outright: the corpus's form sets (MovesetFormIndex)
+; are never Stadium rentals, so the provenance filter would reject them anyway.
 RentalApplyStadiumSetMoveset::
 	ld a, e
 	ld [wPartyGenTMUsed], a
@@ -1847,6 +1848,13 @@ PartyGenApplySetMovesetMask:
 .begin
 	call PartyGenSlotMonBase       ; hl -> mon struct; MON_SPECIES is byte 0
 	ld a, [hl]
+	ld [wPartyGenCandidates + 4], a ; species (record scratch, free until .loadRecord)
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	jp nz, .formLookup             ; a form never reads its base species' sets
+	ld a, [wPartyGenCandidates + 4]
 	ld c, a
 	ld b, 0
 	ld hl, MovesetSpeciesIndex
@@ -1858,6 +1866,7 @@ PartyGenApplySetMovesetMask:
 	ld de, wPartyGenCandidates
 	ld bc, 4
 	call FarCopyData2               ; wPartyGenCandidates[0..3] = offset,count,bank
+.haveIndex
 	ld a, [wPartyGenCandidates + 2]
 	and a
 	jp z, .noMatch                  ; this species has no curated sets at all
@@ -1941,6 +1950,52 @@ PartyGenApplySetMovesetMask:
 .noMatch:
 	xor a
 	ret
+
+; Form index nonzero (a = form bits, still masked): scan MovesetFormIndex
+; (data/trainers/movesets.asm) for (species, form). A hit copies the entry's
+; last 4 bytes, which have MovesetSpeciesIndex's layout, to [0..3]. No entry
+; means no sets: carry clear, and the caller takes the mix row's fallback,
+; which rolls from the form's own learnset. Entry scratch is [6..11], the
+; walk pointer [12..13]; .pass1Start resets both before they are reused.
+.formLookup:
+	rlca
+	rlca
+	rlca                            ; FORM_MASK bits 5-6 -> bits 0-1
+	ld [wPartyGenCandidates + 5], a
+	ld hl, MovesetFormIndex
+.formScan
+	ld a, l
+	ld [wPartyGenCandidates + 12], a
+	ld a, h
+	ld [wPartyGenCandidates + 13], a
+	ld a, BANK(MovesetFormIndex)
+	ld de, wPartyGenCandidates + 6
+	ld bc, MOVESET_FORM_ENTRY_SIZE
+	call FarCopyData2
+	ld a, [wPartyGenCandidates + 6] ; entry species; 0 ends the list
+	and a
+	jr z, .noMatch
+	ld hl, wPartyGenCandidates + 4
+	cp [hl]
+	jr nz, .formNext
+	ld a, [wPartyGenCandidates + 7] ; entry form index
+	inc hl
+	cp [hl]
+	jr z, .formFound
+.formNext
+	ld a, [wPartyGenCandidates + 12]
+	ld l, a
+	ld a, [wPartyGenCandidates + 13]
+	ld h, a
+	ld bc, MOVESET_FORM_ENTRY_SIZE
+	add hl, bc
+	jr .formScan
+.formFound
+	ld hl, wPartyGenCandidates + 8
+	ld de, wPartyGenCandidates
+	ld bc, 4
+	call CopyData
+	jp .haveIndex
 
 ; Loads the i-th record (wPartyGenCandidates+12) of the species array
 ; described by wPartyGenCandidates+0..3 into wPartyGenCandidates+4..11.

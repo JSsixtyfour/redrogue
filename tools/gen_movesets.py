@@ -10,11 +10,12 @@ Source: K:\\Other computers\\My Laptop\\Red Rogue Files\\
   red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt
 
 Every `db SPECIES, MOVE1, MOVE2, MOVE3, MOVE4` line in the whole file is one
-record; there are exactly 1,946 of them, measured. The 307-record CUT SETS
+record; there are exactly 1,953 of them, measured. The 307-record CUT SETS
 ARCHIVE mentioned in the corpus's own changelog turns out to carry ZERO `db`
 lines of its own (its sets are preserved as prose/metadata only, not as
 runtime records), so no special-cased line-range exclusion is needed - a
-plain whole-file scan for `db ` lines already returns exactly 1,946 and
+plain whole-file scan for `db ` lines returns exactly 1,953 (including the seven
+2026-10-17 Umbreon additions) and
 already excludes the CUT archive. Verified by counting `db ` lines inside vs
 outside the V71 CUT SETS ARCHIVE section before writing this script.
 
@@ -22,7 +23,7 @@ Filtering, measured against this tree's constants (not assumed):
 
   - Exactly ONE unknown move name appears anywhere in the corpus: `PSYCHIC`,
     250 times. Same fix as tools/reorder_move_ranks.py: PSYCHIC -> PSYCHIC_M.
-  - 130 records (57 distinct names) name a species this tree has no constant
+  - 137 records (57 distinct names) name a species this tree has no constant
     for. 39 of those names are REGIONAL/EEVEELUTION FORMS this tree encodes
     as (base species, form index) via data/pokemon/forms/*.asm's
     `form_record` lines, not as separate species constants - see FORM_MAP
@@ -36,8 +37,16 @@ Filtering, measured against this tree's constants (not assumed):
     species or form, confirmed by grep against constants/pokemon_constants.asm
     and every data/pokemon/forms/*.asm. Dropped, reported.
 
-FORM RECORDS ARE DROPPED HERE TOO, DELIBERATELY, NOT MERGED INTO THE BASE
-SPECIES' LIST. The 8-byte runtime record has no form field, and MSRC_SET's
+FORM RECORDS (2026-10-17): now kept, in their own "Movesets Forms" section
+found through MovesetFormIndex, keyed by (base species, form index) read from
+each form's data/pokemon/forms/*.asm. PartyGenApplySetMovesetMask scans that
+index for any mon whose form index is nonzero and NEVER falls back to the base
+species' list (no form sets = the mix row's fallback, which already rolls from
+the form's own learnset). The paragraph below is the original reasoning for not
+MERGING form records into the base list, which still holds.
+
+Original note: form records were dropped, deliberately, not merged into the
+base species' list. The 8-byte runtime record has no form field, and MSRC_SET's
 species-only lookup (PartyGenApplyMoveset) has no way to ask for "the form
 variant" of a set. Folding e.g. EXEGGUTOR_ALOLA's Fire-coverage set into
 EXEGGUTOR's own list would make it reachable for a plain Kanto Exeggutor,
@@ -111,7 +120,8 @@ DEFAULT_SOURCE = (
     r"\00_CURRENT\red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt"
 )
 
-NAME_FIXES = {"PSYCHIC": "PSYCHIC_M"}
+# NIGHTSHADE: the 2026-10-17 Umbreon additions spell it without the underscore.
+NAME_FIXES = {"PSYCHIC": "PSYCHIC_M", "NIGHTSHADE": "NIGHT_SHADE"}
 
 # Corpus name -> the (base species, form index) it names, per data/pokemon/
 # forms/*.asm's form_record lines. Built by hand 2026-09-10 against every
@@ -119,19 +129,49 @@ NAME_FIXES = {"PSYCHIC": "PSYCHIC_M"}
 # actually uses (see the module docstring). Records naming these are DROPPED
 # (not merged - see the docstring), so this table is used only to tell a
 # form apart from a genuinely nonexistent species in the drop report.
-FORM_NAMES = {
-    "ARCANINE_HISUI", "ARTICUNO_GALAR", "DIGLETT_ALOLA", "DUGTRIO_ALOLA",
-    "ELECTRODE_HISUI", "ESPEON", "EXEGGUTOR_ALOLA", "FARFETCHD_GALAR",
-    "GEODUDE_ALOLA", "GLACEON", "GOLEM_ALOLA", "GRAVELER_ALOLA",
-    "GRIMER_ALOLA", "GROWLITHE_HISUI", "LEAFEON", "MAROWAK_ALOLA",
-    "MEOWTH_ALOLA", "MEOWTH_GALAR", "MOLTRES_GALAR", "MR_MIME_GALAR",
-    "MUK_ALOLA", "NINETALES_ALOLA", "PERRSERKER", "PERSIAN_ALOLA",
-    "PONYTA_GALAR", "RAICHU_ALOLA", "RAPIDASH_GALAR", "RATICATE_ALOLA",
-    "RATTATA_ALOLA", "SANDSHREW_ALOLA", "SANDSLASH_ALOLA", "SLOWBRO_GALAR",
-    "SLOWKING_GALAR", "SLOWPOKE_GALAR", "SYLVEON", "TAUROS_PALDEA_AQUA",
-    "TAUROS_PALDEA_BLAZE", "TAUROS_PALDEA_COMBAT", "UMBREON",
-    "VOLTORB_HISUI", "VULPIX_ALOLA", "WEEZING_GALAR", "ZAPDOS_GALAR",
+#
+# 2026-10-17: form records are now KEPT. Each corpus form name maps to its
+# data/pokemon/forms/<file>.asm, whose `form_record BASE, index` line supplies
+# the (base, index) - read from the file, never restated here, so a renumbered
+# form cannot silently desync. None = no such form in this tree (still dropped).
+FORM_FILES = {
+    "ARCANINE_HISUI": "harcanine", "ARTICUNO_GALAR": "garticuno",
+    "DIGLETT_ALOLA": "adiglett", "DUGTRIO_ALOLA": "adugtrio",
+    "ELECTRODE_HISUI": "helectrode", "ESPEON": "espeon",
+    "EXEGGUTOR_ALOLA": "aexeggutor", "FARFETCHD_GALAR": "gfarfetchd",
+    "GEODUDE_ALOLA": "ageodude", "GLACEON": "glaceon",
+    "GOLEM_ALOLA": "agolem", "GRAVELER_ALOLA": "agraveler",
+    "GRIMER_ALOLA": "agrimer", "GROWLITHE_HISUI": "hgrowlithe",
+    "LEAFEON": "leafeon", "MAROWAK_ALOLA": "amarowak",
+    "MEOWTH_ALOLA": "ameowth", "MEOWTH_GALAR": "gmeowth",
+    "MOLTRES_GALAR": "gmoltres", "MR_MIME_GALAR": None,
+    "MUK_ALOLA": "amuk", "NINETALES_ALOLA": "aninetales",
+    "PERRSERKER": "perrserker", "PERSIAN_ALOLA": "apersian",
+    "PONYTA_GALAR": "gponyta", "RAICHU_ALOLA": "araichu",
+    "RAPIDASH_GALAR": "grapidash", "RATICATE_ALOLA": "araticate",
+    "RATTATA_ALOLA": "arattata", "SANDSHREW_ALOLA": "asandshrew",
+    "SANDSLASH_ALOLA": "asandslash", "SLOWBRO_GALAR": "gslowbro",
+    "SLOWKING_GALAR": "gslowking", "SLOWPOKE_GALAR": "gslowpoke",
+    "SYLVEON": "sylveon", "TAUROS_PALDEA_AQUA": "ptaurosaqua",
+    "TAUROS_PALDEA_BLAZE": "ptaurosblaze", "TAUROS_PALDEA_COMBAT": "ptauroscombat",
+    "UMBREON": "umbreon", "VOLTORB_HISUI": "hvoltorb",
+    "VULPIX_ALOLA": "avulpix", "WEEZING_GALAR": "gweezing",
+    "ZAPDOS_GALAR": "gzapdos",
 }
+FORM_NAMES = set(FORM_FILES)
+FORM_RECORD_RE = re.compile(r"^\s*form_record\s+([A-Z_][A-Z0-9_]*)\s*,\s*(\d+)", re.M)
+
+
+def form_key(name):
+    """(BASE, index) for a corpus form name, from its forms/*.asm, or None."""
+    fname = FORM_FILES.get(name)
+    if fname is None:
+        return None
+    text = open(os.path.join(FORMS_DIR, fname + ".asm"), encoding="utf-8").read()
+    m = FORM_RECORD_RE.search(text)
+    if not m:
+        sys.exit(f"{fname}.asm has no form_record line (corpus form {name})")
+    return m.group(1), int(m.group(2))
 
 # Fixed engine labels, in LOSS_ORIGIN_* order (constants/party_spec_constants.asm).
 FIXED_LABELS = [
@@ -324,8 +364,10 @@ def resolve_species(name, species_ids, stats):
     if name in species_ids:
         return name
     if name in FORM_NAMES:
-        stats["dropped_form"] += 1
-        return None
+        if form_key(name) is None:
+            stats["dropped_form"] += 1
+            stats["dropped_form_names"].add(name)
+        return None                       # kept form records are handled by build()
     stats["dropped_unknown_species"] += 1
     stats["dropped_unknown_species_names"].add(name)
     return None
@@ -347,10 +389,14 @@ def build(source_path):
     species_ids = parse_species_constants(POKEMON_CONSTANTS)
     move_names = parse_move_constants(MOVE_CONSTANTS)
     records = parse_records(source_path)
-    assert len(records) == 1946, f"expected 1946 corpus records, got {len(records)}"
+    # A floor, not an exact count: the corpus grows by hand (the 2026-10-17
+    # Umbreon sets), and an exact assert broke on every addition. The floor
+    # still catches a parser that silently stops matching `db` lines.
+    assert len(records) >= 1946, f"only {len(records)} corpus records parsed"
 
     stats = defaultdict(int)
     stats["dropped_unknown_species_names"] = set()
+    stats["dropped_form_names"] = set()
     stats["dropped_unknown_move_names"] = set()
 
     origin_order = []
@@ -367,10 +413,14 @@ def build(source_path):
     for label in FIXED_LABELS:
         origin_id_for(display_text(label))
     by_species = defaultdict(list)
+    by_form = defaultdict(list)
+    form_recs = []
     kept = 0
     for rec in records:
         species = resolve_species(rec["species"], species_ids, stats)
         if species is None:
+            if form_key(rec["species"]) is not None:
+                form_recs.append(rec)    # after the roster sets: see below
             continue
         moves = resolve_moves(rec["moves"], move_names, stats)
         if moves is None:
@@ -395,11 +445,25 @@ def build(source_path):
             by_species[species].append((list(moves), tiers, origin, 1, 100, table["prefix"]))
             stats["roster_sets"] += 1
 
+    # Form records go LAST so every origin_id assigned above keeps its index
+    # (rental_origins.asm's bitmap is keyed by them). Keyed by corpus name;
+    # render() emits them in their own section with MovesetFormIndex.
+    for rec in form_recs:
+        moves = resolve_moves(rec["moves"], move_names, stats)
+        if moves is None:
+            continue
+        tier = resolve_tier(rec, stats)
+        lvl_min, lvl_max = resolve_level_range(rec, stats)
+        origin_id = origin_id_for(display_text(loss_label(rec)))
+        by_form[rec["species"]].append((moves, tier, origin_id, lvl_min, lvl_max))
+        stats["form_kept"] += 1
+        kept += 1
+
     assert len(origin_order) <= 255, f"{len(origin_order)} labels overflow the 1-byte origin_id"
-    return species_ids, by_species, origin_order, stats, kept, len(records)
+    return species_ids, by_species, origin_order, stats, kept, len(records), by_form
 
 
-def render(species_ids, by_species, origin_order, stats, kept, total):
+def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
     max_id = max(species_ids.values())
     lines = []
     lines.append("; Curated moveset corpus for MSRC_SET, generated by tools/gen_movesets.py.")
@@ -410,9 +474,8 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
     lines.append(f";   {stats['dropped_unknown_species']} named a species absent from this tree entirely")
     lines.append(f";     ({len(stats['dropped_unknown_species_names'])} distinct: "
                  + ", ".join(sorted(stats["dropped_unknown_species_names"])) + ")")
-    lines.append(f";   {stats['dropped_form']} named a regional/eeveelution FORM - dropped rather than")
-    lines.append(";     merged into the base species (see this script's module docstring: the 8-byte")
-    lines.append(";     record has no form field, and a form's moveset can be illegal for its base)")
+    lines.append(f";   {stats['dropped_form']} named a FORM this tree does not have "
+                 f"({', '.join(sorted(stats['dropped_form_names'])) or 'none'})")
     lines.append(f";   {stats['dropped_unknown_move']} named a move absent from this tree "
                  f"(after PSYCHIC->PSYCHIC_M: {sorted(stats['dropped_unknown_move_names'])})")
     lines.append(f"; Defaulted rather than dropped: {stats['no_tier']} records had no tier rating "
@@ -421,6 +484,9 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
                  f"{stats['inverted_level']} had an inverted range (swapped).")
     lines.append(f"; Plus {stats['roster_sets']} character sets (levels 1-100, tagged `; roster <Prefix>`)")
     lines.append(";   from the Sets tables in data/trainers/PARTY_ROSTER.md.")
+    lines.append(f"; Plus {stats['form_kept']} regional/eeveelution FORM records in their own")
+    lines.append(";   section, found through MovesetFormIndex. A form mon never reads its base")
+    lines.append(";   species' sets: a base set can carry moves the form cannot learn.")
     lines.append("")
     lines.append('SECTION "Movesets Index", ROMX, BANK[$3D]')
     lines.append("")
@@ -501,6 +567,33 @@ def render(species_ids, by_species, origin_order, stats, kept, total):
     lines.append(f"\tassert_table_length {max_id + 1}")
     lines.append("")
 
+    # Form sets: same 8-byte records, one run per corpus form name, then a
+    # short list the runtime scans when the mon's form index is nonzero.
+    forms = sorted(by_form, key=lambda n: (species_ids[form_key(n)[0]], form_key(n)[1]))
+    keys = [form_key(n) for n in forms]
+    assert len(set(keys)) == len(keys), f"two corpus names share a form: {keys}"
+    lines.append('SECTION "Movesets Forms", ROMX, BANK[$3D]')
+    lines.append("")
+    for name in forms:
+        lines.append(f"MovesetForm_{name}::")
+        for moves, tier, origin_id, lvl_min, lvl_max in by_form[name]:
+            lines.append(
+                f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
+                f"{tier}, {origin_id}, {lvl_min}, {lvl_max}")
+    lines.append("")
+    lines.append("; Scanned linearly by PartyGenApplySetMovesetMask for a mon whose form index")
+    lines.append("; is nonzero: db base species, form index; dw records; db count, bank. The")
+    lines.append("; last four bytes have MovesetSpeciesIndex's layout. Ends at species 0.")
+    lines.append("; MOVESET_FORM_ENTRY_SIZE lives in constants/party_spec_constants.asm.")
+    lines.append("MovesetFormIndex::")
+    for name, (base, idx) in zip(forms, keys):
+        lines.append(f"\tdb {base}, {idx}")
+        lines.append(f"\tdw MovesetForm_{name}")
+        lines.append(f"\tdb {len(by_form[name])}, BANK(MovesetForm_{name})")
+    lines.append("\tdb 0 ; end")
+    lines.append(f"\tASSERT @ - MovesetFormIndex == {len(forms)} * MOVESET_FORM_ENTRY_SIZE + 1")
+    lines.append("")
+
     lines.append('; Blackout labels: "You were defeated / by <label>" (engine/battle/loss_origin.asm,')
     lines.append("; pinned to this same bank and read with plain [hl]). A record's origin_id")
     lines.append("; indexes this table.")
@@ -529,8 +622,9 @@ def main():
     if not os.path.exists(args.source):
         sys.exit(f"source not found: {args.source}")
 
-    species_ids, by_species, origin_order, stats, kept, total = build(args.source)
-    full = render(species_ids, by_species, origin_order, stats, kept, total)
+    built = build(args.source)
+    species_ids, by_species, origin_order, stats, kept, total, by_form = built
+    full = render(*built)
 
     if args.check:
         with open(OUT, encoding="utf-8") as f:
@@ -544,6 +638,7 @@ def main():
         f.write(full)
     populated_species = sum(1 for s in by_species if by_species[s])
     print(f"wrote {OUT}: {kept}/{total} records kept, {populated_species} species, "
+          f"{len(by_form)} forms ({stats['form_kept']} records), "
           f"{len(origin_order)} loss labels")
 
 

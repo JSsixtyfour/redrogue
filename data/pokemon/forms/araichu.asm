@@ -8,7 +8,7 @@
 	db DEX_RAICHU ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  60,  85,  50, 110,  95
+	db  60,  85,  50, 110, 100
 	;   hp  atk  def  spd  spc
 
 	db ELECTRIC, PSYCHIC_TYPE ; type
@@ -26,7 +26,8 @@
 	     DOUBLE_EDGE,  HYPER_BEAM,   PAY_DAY,      SUBMISSION,   SEISMIC_TOSS, \
 	     RAGE,         THUNDERBOLT,  THUNDER,      MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        SKULL_BASH,   REST,         \
-	     THUNDER_WAVE, SUBSTITUTE,   FLASH,        LIGHT_SCREEN, SURF
+	     THUNDER_WAVE, SUBSTITUTE,   FLASH,        LIGHT_SCREEN, SURF,		   \
+		 PSYCHIC_M,      PSYWAVE
 	; end
 
 	db BANK(ARaichuPicFront) ; pic bank

@@ -13,6 +13,7 @@ ApersianFormEvosMoves:
 	db 15, BITE
 	db 18, PAY_DAY
 	db 22, SCREECH
+	db 28, ROCK_SLIDE
 	db 29, TAKE_DOWN
 	db 34, SLASH
 	db 50, HYPER_BEAM

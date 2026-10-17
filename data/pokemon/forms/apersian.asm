@@ -2,7 +2,6 @@
 ;
 ; Dark (single type in modern games). PRIMARY Dark becomes NORMAL, matching
 ; vanilla Persian's typing.
-; Special split: modern SpA 115 / SpD 60, take the HIGHER -> spc 115.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Persian.
 ; Form 2 on this base is Perrserker - see perrserker.asm.
 	form_record PERSIAN, 1
@@ -10,7 +9,7 @@
 	db DEX_PERSIAN ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  65,  60,  60, 115, 115
+	db  65,  60,  60, 115, 75
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

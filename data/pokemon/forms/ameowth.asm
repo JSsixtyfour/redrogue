@@ -13,9 +13,7 @@
 ;  - TM/HM list kept identical - Gen 1 has no Dark-type TMs to differentiate.
 ;
 ; So this form differs from vanilla Meowth in exactly four observable ways:
-; ATK 45 -> 35, SPC 40 -> 50, the sprite, and the name. All four are worth
-; checking in the emulator, because each one exercises a different part of the
-; override path.
+; ATK 45 -> 35, SPC 40 -> 50, the sprite, and the name.
 	form_record MEOWTH, 1
 
 	db DEX_MEOWTH ; pokedex id - byte 0 is overwritten with the species index by
