@@ -478,6 +478,12 @@ ProceduralForestBossText:
 	push bc
 	ld a, [wRoguePokemon1]
 	ld [wNamedObjectIndex], a
+	; name it by its own form. This runs before the engage republish
+	; (home/trainers.asm), so wSpawnForm may still be a wild mon's: read
+	; the byte that travels with wRoguePokemon1 instead
+	ld [wFormContextSpecies], a
+	ld a, [wRoguePokemonForm1]
+	ld [wFormContextForm], a
 	call GetMonName             ; fill wNameBuffer before TalkToTrainer runs
 	pop bc
 	ld hl, .goBattle

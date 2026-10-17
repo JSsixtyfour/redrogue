@@ -592,7 +592,10 @@ PartyGenBuildSlot:
 ; because a form record is keyed to the species that carries the sprite: rolling
 ; before the evolve would ask for (EXEGGCUTE, 1), which does not exist, instead
 ; of (EXEGGUTOR, 1), which does.
+	push af                        ; carry = pinned by an override
 	call PartyGenResolveForm
+	pop af
+	call nc, PartyGenTypeDemandKeepsForm ; pool draws only
 
 ; --- Challenge 11: the ace may become a legendary ---
 ; After the form, because the swap zeroes wSpawnForm, and before AddPartyMon,
@@ -980,6 +983,77 @@ PartyGenFormSpecKeeps:
 	ret
 
 ; ===========================================================================
+; PartyGenSpecPinnedForm
+;
+; INPUT:  a = a pool entry's form spec
+; OUTPUT: a = the form index it pins (POOL_FORM_KEEP | n and a literal n both
+;         give n), 0 for POOL_FORM_ROLL / POOL_FORM_ROLL_KEEP / POOL_FORM_BASE
+; ===========================================================================
+PartyGenSpecPinnedForm:
+	cp POOL_FORM_ROLL
+	jr z, .none
+	cp POOL_FORM_ROLL_KEEP
+	jr z, .none
+	ASSERT NUM_FORM_SLOTS <= %11
+	and %11                        ; drops POOL_FORM_KEEP
+	ret
+.none
+	xor a
+	ret
+
+; ===========================================================================
+; PartyGenHeaderHasType
+;
+; INPUT:  d = a type
+; OUTPUT: Z if wMonHType1 or wMonHType2 is that type
+; CLOBBERS: a
+; ===========================================================================
+PartyGenHeaderHasType:
+	ld a, [wMonHType1]
+	cp d
+	ret z
+	ld a, [wMonHType2]
+	cp d
+	ret
+
+; ===========================================================================
+; PartyGenTypeDemandKeepsForm
+;
+; A BIT_POVR_TYPE slot is filtered before its form is known (the form is
+; resolved after the evolution step). A form that resolves afterwards can drop
+; the demanded type - an Eevee branch is a FORM of Jolteon, and Espeon is
+; Psychic - so if the resolved form lacks the type, field the base species,
+; which is what the filter judged. Pool draws only; a pinned form is the
+; author's call.
+; CLOBBERS: af, bc, de, hl
+; ===========================================================================
+PartyGenTypeDemandKeepsForm:
+	ld a, [wSpawnForm]
+	and a
+	ret z                          ; base species: the filter already judged it
+	ld a, [wPartyGenSlot]
+	ld b, a
+	call PartyGenFindOverrideForSlot
+	ret nc
+	ld b, BIT_POVR_TYPE
+	call PartyGenFieldPtr
+	ret nc
+	ld d, [hl]                     ; d = the demanded type
+	ld a, [wCurPartySpecies]
+	ld [wCurSpecies], a
+	ld [wFormContextSpecies], a
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
+	push de
+	call GetMonHeader
+	pop de
+	call PartyGenHeaderHasType
+	ret z
+	xor a
+	ld [wSpawnForm], a
+	ret
+
+; ===========================================================================
 ; PartyGenTakeKeepFlag
 ;
 ; OUTPUT: carry SET if wSpawnForm held a keep spec; it is rewritten as the
@@ -1039,11 +1113,12 @@ PartyGenPoolList:
 ;   BIT_POVR_RARITY        this slot demands a specific rarity tier
 ;   BIT_POVR_TYPE          this slot demands a type
 ;
-; The type test reads the species AS DRAWN, before form substitution, because
-; the form is not resolved until after the evolution step. That matters for a
-; pool entry with a pinned form that changes type (Alolan Ninetales is Ice, not
-; Fire): such an entry is filtered on its BASE type. Pin the species on the slot
-; instead of filtering by type if that distinction matters.
+; The type test reads the species AS DRAWN, before the evolution step, but with
+; the form its entry PINS (an Alolan Ninetales ace is judged Ice, not Fire). A
+; ROLLED form is not known yet - it resolves after the evolution step - so
+; PartyGenTypeDemandKeepsForm re-checks it there and falls back to the base
+; species if the form lost the demanded type (2026-10-17; this used to filter
+; every entry on its BASE type).
 ; ===========================================================================
 PartyGenPoolCandidateOk:
 ; --- duplicates ---
@@ -1151,14 +1226,16 @@ PartyGenPoolCandidateOk:
 	ld d, [hl]                     ; d = the demanded type
 	ld a, [wCurPartySpecies]
 	ld [wCurSpecies], a
+	; judged with the form the entry PINS (an Alolan Ninetales ace is Ice);
+	; a rolled form is checked after it resolves, PartyGenTypeDemandKeepsForm
+	ld [wFormContextSpecies], a
+	ld a, [wSpawnForm]
+	call PartyGenSpecPinnedForm
+	ld [wFormContextForm], a
 	push de
 	call GetMonHeader              ; HOME; publishes wMonHType1/2
 	pop de
-	ld a, [wMonHType1]
-	cp d
-	jr z, .typeOk
-	ld a, [wMonHType2]
-	cp d
+	call PartyGenHeaderHasType
 	jr nz, .rejectPopped
 .typeOk
 	pop hl

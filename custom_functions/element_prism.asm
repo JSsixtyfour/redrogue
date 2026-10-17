@@ -608,7 +608,7 @@ RoguePrismSetRerollBudget::
 ; ============================================================
 ; RoguePrismShouldRerollSpecies — called from Random_Pokemon_Selection once a
 ; species has passed the existing AllSpeciesCheck.
-; INPUT:  d = candidate species
+; INPUT:  d = candidate species, e = its explicit form index
 ; OUTPUT: Z set = keep it, Z clear (NZ) = discard and re-roll (budget spent)
 ;         d preserved.
 ; CLOBBERS: af, bc, e, hl  (d preserved; the caller's hl is saved by the
@@ -628,6 +628,11 @@ RoguePrismShouldRerollSpecies::
 	push de
 	ld a, d
 	ld [wCurSpecies], a
+	; judge the candidate by its FORM's types: e is the pool entry's explicit
+	; form (RogueRollSpeciesInList), so an A-VULPIX counts as Ice, not Fire
+	ld [wFormContextSpecies], a
+	ld a, e
+	ld [wFormContextForm], a
 	call GetMonHeader             ; HOME; fills wMonHTypes for this species
 	pop de
 	ld a, [wMonHType1]

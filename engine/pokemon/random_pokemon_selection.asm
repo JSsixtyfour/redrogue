@@ -627,11 +627,15 @@ RivalPickStarter::
 	; defender types = the player's starter's types (into wBattleMonType/+1)
 	call .speciesFromIndex        ; a(=p) -> a = player's species, hl = its wRoguePokemon slot
 	ld [wCurSpecies], a
+	ld [wFormContextSpecies], a   ; form follows below
 	ld [wPlayerStarter], a        ; named by Oak's champion text (ChampionsRoom)
 	ld de, wRoguePokemonForm1 - wRoguePokemon1
 	add hl, de
 	ld a, [hl]
 	ld [wPlayerStarterForm], a
+	; the starter's FORM types (species context set above): against an
+	; A-VULPIX the rival used to pick as if it faced a Fire type
+	ld [wFormContextForm], a
 	call GetMonHeader
 	ld a, [wMonHType1]
 	ld [wBattleMonType], a

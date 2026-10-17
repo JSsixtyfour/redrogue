@@ -9,7 +9,7 @@
 	db DEX_SANDSHREW ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  50,  75,  90,  40,  35
+	db  50,  75,  90,  40,  25
 	;   hp  atk  def  spd  spc
 
 	db ICE, ICE ; type
@@ -27,7 +27,7 @@
 	     SUBMISSION,   SEISMIC_TOSS, RAGE,         EARTHQUAKE,   FISSURE,      \
 	     DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
 	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   CUT,          \
-	     STRENGTH
+	     STRENGTH,     ICE_BEAM,	 BLIZZARD
 	; end
 
 	db BANK(ASandshrewPicFront) ; pic bank

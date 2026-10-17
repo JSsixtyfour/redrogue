@@ -468,6 +468,10 @@ RentalFinalizeDeliveredMon:
 	ld [wNamedObjectIndex], a
 	call PublishFormContext
 	call GetMonHeader
+	; publish again: GetMonHeader consumed the one above, and this name becomes
+	; the rental's nickname (A-EXEGGUTOR arrived as "EXEGGUTOR", 2026-10-17)
+	call RentalDeliveredMonBase
+	call PublishFormContext
 	call GetMonName
 	ld hl, wPartyMonNicks
 	ld a, [wPartyCount]

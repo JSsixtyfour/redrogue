@@ -1445,6 +1445,7 @@ AnimationFlashMonPic:
 	ld [wChangeMonPicPlayerTurnSpecies], a
 	ld a, [wEnemyMonSpecies]
 	ld [wChangeMonPicEnemyTurnSpecies], a
+	ld d, 0                       ; ChangeMonPic: the mon's OWN picture
 	call ChangeMonPic
 	ldh a, [hWhoseTurn]
 	and a
@@ -2103,7 +2104,12 @@ AnimationTransformMon:
 	ld [wChangeMonPicPlayerTurnSpecies], a
 	ld a, [wBattleMonSpecies]
 	ld [wChangeMonPicEnemyTurnSpecies], a
+	ld d, 1                       ; ChangeMonPic: the OPPOSING mon's picture
+	; fall through
 
+; d = 0: redraw the mon's own picture (AnimationFlashMonPic); d = 1: draw the
+; opposing mon's (Transform, before the species copy). The form comes from
+; that mon's battle struct; without it a form drew as its base species.
 ChangeMonPic:
 	ldh a, [hWhoseTurn]
 	and a
@@ -2113,6 +2119,12 @@ ChangeMonPic:
 	ld [wCurSpecies], a
 	xor a
 	ld [wSpriteFlipped], a
+	ld hl, wEnemyMon
+	dec d
+	jr nz, .enemyPicForm          ; d was 0: own
+	ld hl, wBattleMon
+.enemyPicForm
+	call PublishFormContext
 	call GetMonHeader
 	hlcoord 12, 0
 	call LoadFrontSpriteByMonIndex
@@ -2123,6 +2135,12 @@ ChangeMonPic:
 	ld a, [wChangeMonPicPlayerTurnSpecies]
 	ld [wBattleMonSpecies2], a
 	ld [wCurSpecies], a
+	ld hl, wBattleMon
+	dec d
+	jr nz, .playerPicForm         ; d was 0: own
+	ld hl, wEnemyMon
+.playerPicForm
+	call PublishFormContext
 	call GetMonHeader
 	predef LoadMonBackPic
 	xor a ; TILEMAP_MON_PIC

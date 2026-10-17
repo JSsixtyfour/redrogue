@@ -15,7 +15,7 @@ GrapidashFormEvosMoves:
 	db 25, QUICK_ATTACK
 	db 26, PSYBEAM
 	db 35, AGILITY
-	db 36, PSYCHIC
+	db 36, PSYCHIC_M
 	db 40, TAKE_DOWN
 	db 41, TWINEEDLE
 	db 47, RECOVER

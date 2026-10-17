@@ -156,9 +156,18 @@ TransformEffect_:
 	jr nz, .lessThanFourMoves
 .copyStats
 ; original (unmodified) stats and stat mods
-	pop hl
+	pop hl                       ; the TARGET's battle struct
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a  ; "transformed into A-MEOWTH": the target's
+	ld bc, MON_CATCH_RATE        ; own form (bc is reloaded below)
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, wEnemyMonUnmodifiedAttack
 	ld de, wPlayerMonUnmodifiedAttack
@@ -329,9 +338,18 @@ SuperTransformEffect_:
 	predef LoadMovePPs
 .copyStats
 ; original (unmodified) stats and stat mods
-	pop hl
+	pop hl                       ; the TARGET's battle struct
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a  ; "transformed into A-MEOWTH": the target's
+	ld bc, MON_CATCH_RATE        ; own form (bc is reloaded below)
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, wEnemyMonUnmodifiedAttack
 	ld de, wPlayerMonUnmodifiedAttack

@@ -357,6 +357,9 @@ BridgeRecalcStatsFar::
 	push hl
 	ld a, [hl]
 	ld [wCurSpecies], a
+	; this mon's own form, or CalcStats below rebuilt a form from its base
+	; species' stats whenever another header was held (G-MEOWTH Speed 41 -> 81)
+	call PublishFormContext
 	call GetMonHeader
 	pop hl
 	push hl
@@ -859,6 +862,30 @@ MistStoneChooseEvolution::
 	ld a, [hli]                  ; target species
 	push hl
 	ld [wNamedObjectIndex], a
+	; Name the target by the form the evolution will give it: the mon's own,
+	; if the target has that form (GetEvolvedForm's form-preserving rule), so
+	; an A-MEOWTH is offered A-PERSIAN rather than PERSIAN.
+	ld d, a
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld e, a
+	push de
+	farcall IsFormRecordedFar    ; carry = target has this form; clobbers e
+	pop de                       ; pop leaves the flags alone
+	ld a, e
+	jr c, .targetHasForm
+	xor a
+.targetHasForm
+	ld [wFormContextForm], a
+	ld a, d
+	ld [wFormContextSpecies], a
 	call GetMonName
 	ld hl, MistStoneChoiceText
 	call PrintText

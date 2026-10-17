@@ -9,11 +9,13 @@ AsandshrewFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 5,  POISON_STING
+	db 5,  DEFENSE_CURL
 	db 8,  FURY_SWIPES
 	db 10, SAND_ATTACK
-	db 14, DIG
+	db 14, ROCK_THROW
 	db 18, SWIFT
+	db 20, ICE_PUNCH
 	db 22, SLASH
-	db 33, EARTHQUAKE
+	db 33, BLIZZARD
+	db 40, MIST
 	db 0

@@ -54,12 +54,27 @@ DoYouWantToNicknameText:
 	text_end
 
 DisplayNameRaterScreen::
+	; PrintNamingText names the species by the form in wSpawnForm (see there).
+	; Point it at this party mon's form for the screen, then clear it: nothing
+	; is created here, and a stale wild-battle form must not survive either.
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ldh a, [hWhichPokemon]
+	call AddNTimes
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld [wSpawnForm], a
 	ld hl, wBuffer
 	xor a
 	ldh [hUpdateSpritesEnabled], a
 	ld a, NAME_MON_SCREEN
 	ld [wNamingScreenType], a
 	call DisplayNamingScreen
+	xor a
+	ld [wSpawnForm], a
 	call GBPalWhiteOutWithDelay3
 	call RestoreScreenTilesAndReloadTilePatterns
 	call LoadGBPal
@@ -437,6 +452,14 @@ PrintNamingText:
 	farcall WriteMonPartySpriteOAMBySpecies
 	pop af
 	ld [wNamedObjectIndex], a
+	; "A-MEOWTH's NICKNAME?". The form is the pending wSpawnForm: AskName runs
+	; before the new mon consumes it, and DisplayNameRaterScreen sets it from
+	; the renamed mon. This also writes wNameBuffer, which AskName copies into
+	; the nickname when the player confirms an EMPTY name - so without the
+	; form here, YES + empty name named an A-MEOWTH "MEOWTH".
+	ld [wFormContextSpecies], a
+	ld a, [wSpawnForm]
+	ld [wFormContextForm], a
 	call GetMonName
 	hlcoord 4, 1
 	call PlaceString

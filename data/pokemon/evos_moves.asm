@@ -2290,7 +2290,7 @@ SandslashEvosMoves:
 	db 14, DIG
 	db 18, SWIFT
 	db 22, SLASH
-	db 30, EARTHQUAKE
+	db 33, EARTHQUAKE
 	db 42, SWORDS_DANCE
 	db 0
 ; Tutoring Learnset  

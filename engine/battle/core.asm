@@ -5087,11 +5087,16 @@ INCLUDE "data/battle/unused_critical_hit_moves.asm"
 CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm, bank $0E)
 	ldh a, [hWhoseTurn]
 	and a
-	ld a, [wEnemyMonSpecies]
+	ld hl, wEnemyMon
 	jr nz, .handleAttacker
-	ld a, [wBattleMonSpecies]
+	ld hl, wBattleMon
 .handleAttacker
+	ld a, [hl]                   ; species is the struct's first byte
 	ld [wCurSpecies], a
+	; the attacker's OWN form: without it this read whichever header was held
+	; last, and an enemy G-MEOWTH crit at plain Meowth's base Speed (measured
+	; 2026-10-17). hl is reloaded below.
+	call PublishFormContext
 	call GetMonHeader
 	ld a, [wMonHBaseSpeed]
 	ld b, a

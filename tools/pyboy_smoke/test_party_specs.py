@@ -293,6 +293,70 @@ class PartySpecSmokeTest(HarnessTestCase):
                     f"{'accepted' if expected else 'rejected'}",
                 )
 
+    def _type_demand_spec(self, demanded_type):
+        """A synthetic spec in wEnemyMon2's struct: a zeroed 6-byte header, then
+        one slot-0 override demanding `demanded_type`. No shipping spec uses
+        BIT_POVR_TYPE yet, so the mechanism is exercised directly, the same
+        isolation style as the uber test above."""
+        h = self.harness
+        povr = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        body = [0] * 6 + [0, 1 << povr["BIT_POVR_TYPE"], demanded_type, povr["PARTY_SPEC_OVERRIDES_END"]]
+        for i, value in enumerate(body):
+            h.write8("wEnemyMon2", value, offset=i)
+        addr = h.address("wEnemyMon2")
+        h.write8("wPartyGenSpecPtr", addr & 0xFF)
+        h.write8("wPartyGenSpecPtr", addr >> 8, offset=1)
+        h.write8("wPartyGenSlot", 0)
+        h.write8("wEnemyPartyCount", 0)
+
+    def test_type_demand_judges_the_entrys_form(self):
+        """BIT_POVR_TYPE judges a pool entry by the form it PINS (2026-10-17).
+
+        It used to read every entry as its base species, so an Alolan Vulpix
+        entry passed a Fire demand and failed an Ice one. A rolled spec
+        (POOL_FORM_ROLL) is still judged as the base species here; its form is
+        re-checked once resolved (next test).
+        """
+        h = self.harness
+        h.boot_fight2(seed=1)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        types = parse_rgbds_constants(REPO_ROOT / "constants/type_constants.asm")
+        povr = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        verdict = []
+        h.register_hook("PartyGenPoolCandidateOk.accept", lambda ctx: verdict.append(True))
+        h.register_hook("PartyGenPoolCandidateOk.reject", lambda ctx: verdict.append(False))
+        cases = (
+            (povr["POOL_FORM_ROLL"], "FIRE", True),
+            (povr["POOL_FORM_BASE"], "ICE", False),
+            (1, "FIRE", False),                          # Alolan Vulpix is Ice
+            (1, "ICE", True),
+            ((1 << povr["POOL_FORM_KEEP_BIT"]) | 1, "ICE", True),  # an ace pin, as pool_ace writes it
+        )
+        for spec, wanted, expected in cases:
+            with self.subTest(spec=spec, type=wanted):
+                verdict.clear()
+                self._type_demand_spec(types[wanted])
+                h.write8("wCurPartySpecies", species["VULPIX"])
+                h.write8("wSpawnForm", spec)
+                h.call_routine("PartyGenPoolCandidateOk", limit=600)
+                self.assertEqual(verdict, [expected])
+
+    def test_type_demand_drops_a_resolved_form_that_loses_the_type(self):
+        """PartyGenTypeDemandKeepsForm: Espeon is JOLTEON form 1 and Psychic, so a
+        slot demanding Electric fields plain Jolteon instead, and one demanding
+        Psychic keeps the form."""
+        h = self.harness
+        h.boot_fight2(seed=1)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        types = parse_rgbds_constants(REPO_ROOT / "constants/type_constants.asm")
+        for wanted, form_after in (("ELECTRIC", 0), ("PSYCHIC_TYPE", 1)):
+            with self.subTest(type=wanted):
+                self._type_demand_spec(types[wanted])
+                h.write8("wCurPartySpecies", species["JOLTEON"])
+                h.write8("wSpawnForm", 1)
+                h.call_routine("PartyGenTypeDemandKeepsForm", limit=600)
+                self.assertEqual(h.read8("wSpawnForm"), form_after)
+
 
 class RequireFlagsSmokeTest(HarnessTestCase):
     """PartyGenApplyRequireFlags, driven directly rather than through a full

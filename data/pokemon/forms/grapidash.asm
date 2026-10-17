@@ -24,7 +24,7 @@
 	; tm/hm learnset
 	tmhm TOXIC,        HORN_DRILL,   BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         PSYCHIC,      SWIFT,        SKULL_BASH,   REST,         \
+	     BIDE,         PSYCHIC_M,    SWIFT,        SKULL_BASH,   REST,         \
 	     SUBSTITUTE,   DREAM_EATER,  PSYWAVE
 	; end
 

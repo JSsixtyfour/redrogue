@@ -663,6 +663,19 @@ TradeCenter_PrintPartyListNames:
 	push hl
 	ld a, c
 	ldh [hPastLeadingZeros], a
+	; name each mon by its form. de is this entry's byte in one of the two
+	; species lists; the player's lies below the enemy's in WRAM.
+	ASSERT wPartySpecies < wEnemyPartySpecies
+	ld hl, wPartyMons
+	ld a, e
+	sub LOW(wEnemyPartySpecies)
+	ld a, d
+	sbc HIGH(wEnemyPartySpecies)
+	jr c, .playerList
+	ld hl, wEnemyMons
+.playerList
+	ld a, c
+	call TradeCenter_PublishForm  ; bc and hl are saved on the stack
 	call GetMonName
 	pop hl
 	call PlaceString
@@ -674,6 +687,25 @@ TradeCenter_PrintPartyListNames:
 	pop bc
 	inc c
 	jr .loop
+
+; Publishes the form of party mon a in the struct table at hl (wPartyMons or
+; wEnemyMons) for the GetMonName that follows; the species must already be in
+; wNamedObjectIndex. Without it a traded A-MEOWTH was listed as MEOWTH.
+; CLOBBERS: af, bc, hl
+TradeCenter_PublishForm:
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld [wFormContextForm], a
+	ld a, [wNamedObjectIndex]
+	ld [wFormContextSpecies], a
+	ret
 
 TradeCenter_Trade:
 	ld c, 100
@@ -694,6 +726,9 @@ TradeCenter_Trade:
 	add hl, bc
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
+	ld a, [wTradingWhichPlayerMon]
+	ld hl, wPartyMons
+	call TradeCenter_PublishForm
 	call GetMonName
 	ld hl, wNameBuffer
 	ld de, wNameOfPlayerMonToBeTraded
@@ -706,6 +741,9 @@ TradeCenter_Trade:
 	add hl, bc
 	ld a, [hl]
 	ld [wNamedObjectIndex], a
+	ld a, [wTradingWhichEnemyMon]
+	ld hl, wEnemyMons
+	call TradeCenter_PublishForm
 	call GetMonName
 	ld hl, WillBeTradedText
 	bccoord 1, 14
