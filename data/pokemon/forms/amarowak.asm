@@ -8,7 +8,7 @@
 	db DEX_MAROWAK ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  60,  80, 110,  45,  80
+	db  60,  80, 110,  45,  50
 	;   hp  atk  def  spd  spc
 
 	db FIRE, GHOST ; type

@@ -10,11 +10,14 @@ AmarowakFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 5, LEER
+	db 8, LICK
 	db 10, BONE_CLUB
 	db 13, TAIL_WHIP
 	db 18, HEADBUTT
+	db 22, FIRE_PUNCH
 	db 25, FOCUS_ENERGY
 	db 31, BONEMERANG
 	db 38, THRASH
-	db 46, EARTHQUAKE
+	db 46, FLAMETHROWER
+	db 50, FIRE_SPIN
 	db 0
