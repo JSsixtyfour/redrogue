@@ -8,7 +8,7 @@
 	db DEX_ARCANINE ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  90, 115,  80,  90,  95
+	db  95, 115,  80,  90,  75
 	;   hp  atk  def  spd  spc
 
 	db FIRE, ROCK ; type
@@ -25,7 +25,7 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         DRAGON_RAGE,  DIG,          FLAMETHROWER, MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE
+	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK
 	; end
 
 	db BANK(HArcaninePicFront) ; pic bank

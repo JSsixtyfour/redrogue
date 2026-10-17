@@ -750,7 +750,8 @@ ProceduralForest_TextPointers:
 	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
 	; --- end of the object block (7 objects); script-only ids follow ---
 	dw_const ProceduralForestBossOfferText, TEXT_PROCEDURALFOREST_BOSS_OFFER
-	dw_const PCWildCalmedText, TEXT_PROCEDURALFOREST_CALMED
+	dw_const ProceduralForestCalmedText, TEXT_PROCEDURALFOREST_CALMED
+	ASSERT BANK(ProceduralForestCalmedText) == BANK(ProceduralForest_TextPointers)
 	EXPORT TEXT_PROCEDURALFOREST_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN
 	dw_const PFStageEventArrivalText, TEXT_PROCEDURALFOREST_STAGE_EVENT

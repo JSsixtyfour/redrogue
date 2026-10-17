@@ -9,9 +9,9 @@ HarcanineFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 18, EMBER
-	db 23, LEER
+	db 10, EMBER
+	db 20, LEER
 	db 30, TAKE_DOWN
-	db 45, FLAMETHROWER
-	db 46, AGILITY
+	db 35, FLAMETHROWER
+	db 36, ROCK_SLIDE
 	db 0

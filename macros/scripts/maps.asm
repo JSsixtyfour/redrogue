@@ -115,6 +115,9 @@ ENDM
 ;\4 TextEndBattle
 ;\5 TextAfterBattle
 MACRO trainer
+	; Trainer text pointers carry no bank; use a local text_far wrapper.
+	ASSERT BANK(\3) == BANK(@) || BANK(\3) == 0, "Trainer before-battle text must be in-bank"
+	ASSERT BANK(\4) == BANK(@) || BANK(\4) == 0, "Trainer end-battle text must be in-bank"
 	DEF _ev_bit = \1 % 8
 	DEF _cur_bit = CURRENT_TRAINER_BIT % 8
 	ASSERT _ev_bit == _cur_bit, \

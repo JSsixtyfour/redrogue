@@ -200,7 +200,7 @@ PCemGenerateMaps::
 ; Rolls the cemetery boss species + its ghost move, persisting both to SRAM
 ; (and wRoguePokemon1). Mirrors the cave's PCRollBoss / forest's PFRollBoss so
 ; the cemetery is self-sufficient regardless of how it's reached. The species
-; excludes the Gastly line (it becomes a GHOST *variant* of a non-ghost species,
+; excludes native Ghost typing (it becomes a GHOST *variant* of a non-ghost mon,
 ; via func_ghost_variant.asm, applied to the battle enemy + gifted mon later).
 ; SRAM is closed on entry (PCemGenerateMaps closed it before this call); opened
 ; here only for the two stores. Clobbers a/bc/de/hl.
@@ -214,12 +214,7 @@ PCemRollBoss:
 	ld [wRoguePokemon1], a
 	ld a, e                           ; increment 8f: e = the form the roll picked
 	ld [wRoguePokemonForm1], a
-; Stored BEFORE PCemAvoidGhostBoss on purpose. If that reroll swaps the species,
-; the form no longer belongs to it - but ApplyFormOverride keys on (species,
-; form) and simply finds no record, so the boss comes out as its plain self
-; rather than wearing another species' form. Failing to "no form" is the right
-; outcome here, and it costs nothing to get.
-	call PCemAvoidGhostBoss           ; reroll if it landed on Gastly/Haunter/Gengar
+	call PCemAvoidGhostBoss           ; checks native typing of the species/form pair
 	; roll the ghost move -> b (0=LICK, 1=NIGHT_SHADE, 2=CONFUSE_RAY)
 	ld c, 3
 	call Rangerandom                  ; a = 0..2 (Rangerandom preserves bc)
@@ -1304,35 +1299,49 @@ ASSERT wCemPrefabIndex < 30, "cemetery wBuffer overlay overflows the 30-byte are
 
 ; ============================================================
 ; PCemAvoidGhostBoss
-; Cemetery-only exclusion: the cemetery's boss must never be Gastly,
-; Haunter, or Gengar. Rerolls wRoguePokemon1 (using the same class-roll
-; PCRollBoss itself uses) if the shared cave/cemetery boss roll landed
-; on one of them. Called once, only for floor 4 (the boss floor), from
-; PCemFinalizeMap's lazy-generation branch.
+; Cemetery-only exclusion: neither native type may be Ghost. Publish the
+; candidate's form explicitly, including form 0, before loading its header.
+; Reroll the complete species/form pair using PCRollBoss's class roll.
+; Called by PCemRollBoss at preload, before persisting the accepted species.
+; After 20 rejected candidates, use ordinary Marowak (Ground), never accept
+; a Ghost just because the retry budget expired. No new RAM is required.
 ; ============================================================
 PCemAvoidGhostBoss:
 	ld a, 20
 	ld [wBuffer + wCemGhostRetry], a
 .checkLoop
 	ld a, [wRoguePokemon1]
-	cp GASTLY
+	ld [wCurSpecies], a
+	ld [wFormContextSpecies], a
+	ld a, [wRoguePokemonForm1]
+	ld [wFormContextForm], a
+	call GetMonHeader
+	ld a, [wMonHType1]
+	cp GHOST
 	jr z, .reroll
-	cp HAUNTER
-	jr z, .reroll
-	cp GENGAR
-	jr z, .reroll
-	ret                          ; not a banned species, done
+	ld a, [wMonHType2]
+	cp GHOST
+	ret nz
 .reroll
 	ld a, [wBuffer + wCemGhostRetry]
 	dec a
 	ld [wBuffer + wCemGhostRetry], a
-	ret z                        ; retry budget exhausted, accept whatever we have
+	jr z, .fallback
 	ld e, WILD_BOSS_RARITY_BUMP  ; same boss rarity bump PCRollBoss uses
 	farcall PCRollMonClassFar    ; e = class 1-4 (b and c cannot cross a farcall)
 	farcall Random_Boss_Selection_Far ; -> d = species
+.storeReroll
 	ld a, d
 	ld [wRoguePokemon1], a
+	ld a, e
+	ld [wRoguePokemonForm1], a
 	jr .checkLoop
+.fallback
+	ld a, MAROWAK
+	ld [wRoguePokemon1], a
+	xor a
+	ld [wRoguePokemonForm1], a
+	ret
 
 ; ============================================================
 ; PCemFinalizeMap
@@ -1373,7 +1382,7 @@ PCemFinalizeMap::
 	; generate this floor now
 	call PCemGenerateOneMap
 	; Floor 4 is the boss floor. The boss species is no longer adjusted here:
-	; it is rolled (Gastly line already excluded) and persisted to SRAM at
+	; it is rolled (native Ghost typing excluded) and persisted to SRAM at
 	; preload by PCemRollBoss, and restored into wRoguePokemon1 by
 	; PCemRestoreBossSpecies right before the battle/offer (wild battles clobber
 	; wRoguePokemon1 in between). Nothing floor-4-specific to do at generation.

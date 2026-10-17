@@ -382,11 +382,8 @@ PCStageEventHideoutText:
 ; screen. Saving bc across the call is what makes the `ld hl` / `ret` shape
 ; legal here; do not drop the push/pop.
 ;
-; SHARED WITH THE CEMETERY. scripts/ProceduralCemetery1.asm points its own
-; trainer headers at this label rather than carrying a second copy. Legal
-; because maps.asm includes both files in the one "Maps 6" SECTION and a
-; section cannot span banks, so they always share a bank. If the Cemetery is
-; ever moved into a section of its own it needs its own copy back.
+; Shared with the cemetery through its local text_far wrappers. The cave
+; and cemetery scripts occupy different banks.
 PCStageEventDefeatText::
 	text_asm
 	push bc

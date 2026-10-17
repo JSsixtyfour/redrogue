@@ -190,23 +190,16 @@ PCemStageEventRecoverCheck::
 ; area is ever offered per lobby visit, and every stage's preload now resets
 ; both pairs.
 ; ============================================================
-; The END-BATTLE pointer below is the CAVE's PCStageEventDefeatText, not a
-; local one. maps.asm includes ProceduralCave1.asm and this file in the one
-; "Maps 6" SECTION, and a SECTION cannot straddle a bank, so the call is
-; always in-bank. Bank 17 had 95 free bytes when this was written and a
-; second dispatcher plus table plus six text_far wrappers does not fit in
-; that. The dispatcher reads wStageEvent and nothing map-specific, and this
-; map's own PCemStageEventPickText is byte-identical to the Cave's, so there
-; is nothing to diverge. If this file ever moves to its own SECTION, give it
-; a local copy back.
+; The cave dialogue dispatchers live in another bank. Trainer headers need
+; local text_far wrappers so the text engine switches and restores that bank.
 PCemStageTrainerHeaders::
 	def_trainers 2  ; slot 1 is the pokeball; the NPC pair is slots 2-3, and
 	                ; EVENT_BEAT_FACILITY_STAGE_NPC_1 % 8 == 2 == 2 % 8
 	                ; satisfies the trainer macro's alignment ASSERT.
 PCemStageNpc1Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCemStageEventDefeatText, PCemStageEventAfterText
 PCemStageNpc2Header::
-	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
+	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCemStageEventDefeatText, PCemStageEventAfterText
 	db -1 ; end
 
 ; Shared by floors 1-3. Floor 4 keeps its own five-entry table because it also
@@ -244,6 +237,17 @@ PCemStageEventNpc2Text::
 	text_asm
 	ld hl, PCemStageNpc2Header
 	jp PCemStageInitBattleScript
+
+PCemStageEventDefeatText::
+	text_far PCStageEventDefeatText
+	text_end
+
+PCemStageEventAfterText::
+	text_far PCStageEventAfterText
+	text_end
+
+	ASSERT BANK(PCemStageEventAfterText) == BANK(PCemStageNpc1Header)
+	ASSERT BANK(PCemStageEventAfterText) == BANK(PCemStageNpc2Header)
 
 PCemStageEventArrivalText::
 	text_asm
