@@ -5,18 +5,18 @@ GrapidashFormEvosMoves:
 ; species-keyed EvosMovesPointerTable. This terminator exists only
 ; because every consumer skips this block before reading the learnset.
 	db 0
-; Learnset - verbatim copy of RAPIDASH's (RapidashEvosMoves)
+; Learnset 
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
+	db 8, TAIL_WHIP
+    db 12, CONFUSION
 	db 19, STOMP
-	db 25, DOUBLE_KICK
-	db 28, GROWL
-	db 30, TAIL_WHIP
-	db 33, FLAMETHROWER
+	db 25, QUICK_ATTACK
+	db 26, PSYBEAM
 	db 35, AGILITY
-	db 36, FIRE_SPIN
+	db 36, PSYCHIC
 	db 40, TAKE_DOWN
-	db 45, FIRE_BLAST
-	db 50, HI_JUMP_KICK
+	db 41, TWINEEDLE
+	db 47, RECOVER
 	db 0

@@ -18,14 +18,14 @@
 	INCBIN "gfx/pokemon/front/gponyta.dim" ; sprite dimensions
 	dw GPonytaPicFront, GPonytaPicBack
 
-	db EMBER, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, GROWL, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        HORN_DRILL,   BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-         FLAMETHROWER
+	     PSYCHIC,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
+         DREAM_EATER, PSYWAVE
 	; end
 
 	db BANK(GPonytaPicFront) ; pic bank

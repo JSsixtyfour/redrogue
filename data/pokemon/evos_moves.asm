@@ -3474,9 +3474,9 @@ PonytaEvosMoves:
 	db EVOLVE_LEVEL, 40, RAPIDASH
 	db 0
 ; Learnset
+    db 7, TAIL_WHIP
 	db 19, STOMP
 	db 25, DOUBLE_KICK
-	db 30, TAIL_WHIP
 	db 33, FLAMETHROWER
 	db 35, AGILITY
 	db 36, FIRE_SPIN
@@ -3496,10 +3496,10 @@ RapidashEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+    db 7, TAIL_WHIP
 	db 19, STOMP
 	db 25, DOUBLE_KICK
 	db 28, GROWL
-	db 30, TAIL_WHIP
 	db 33, FLAMETHROWER
 	db 35, AGILITY
 	db 36, FIRE_SPIN

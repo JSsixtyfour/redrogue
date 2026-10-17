@@ -9,12 +9,13 @@ GponytaFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
+	db 8, TAIL_WHIP
+    db 12, CONFUSION
 	db 19, STOMP
-	db 25, DOUBLE_KICK
-	db 30, TAIL_WHIP
-	db 33, FLAMETHROWER
+	db 25, QUICK_ATTACK
+	db 26, PSYBEAM
 	db 35, AGILITY
-	db 36, FIRE_SPIN
+	db 36, PSYCHIC
 	db 40, TAKE_DOWN
-	db 45, FIRE_BLAST
+	db 45, RECOVER
 	db 0

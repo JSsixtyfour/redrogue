@@ -18,14 +18,14 @@
 	INCBIN "gfx/pokemon/front/grapidash.dim" ; sprite dimensions
 	dw GRapidashPicFront, GRapidashPicBack
 
-	db EMBER, TAIL_WHIP, STOMP, GROWL ; level 1 learnset
+	db CONFUSION, TAIL_WHIP, STOMP, GROWL ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        HORN_DRILL,   BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   FLAMETHROWER
+	     BIDE,         PSYCHIC,      SWIFT,        SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   DREAM_EATER,  PSYWAVE
 	; end
 
 	db BANK(GRapidashPicFront) ; pic bank
