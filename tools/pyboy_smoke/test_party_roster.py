@@ -132,11 +132,26 @@ class WarningRulesTest(unittest.TestCase):
         self.assertTrue(any("listed 3 times" in m for m in messages(thrice, "warning")))
 
     def test_form_bst_comes_from_the_form_file(self):
-        # data/pokemon/forms/amarowak.asm: 60/80/110/45/80 vs vanilla's Special 50.
-        # (Was Alolan Golem, until its 2026-10 rebalance matched vanilla Golem's
-        # 420 exactly, which no longer tells the two sources apart.)
-        self.assertEqual(375, gpr.base_stat_total("MAROWAK", 1))
-        self.assertEqual(345, gpr.base_stat_total("MAROWAK", None))
+        # Needs a form whose total DIFFERS from its base species', or the two
+        # sources cannot be told apart - and forms get rebalanced to equal totals
+        # (Alolan Golem, then Alolan Marowak in f1bea8e9, each pinned here once
+        # and each broke this test). So any such form is found in the data, and
+        # its expected total is summed straight from its own file's stat line.
+        import re
+        forms_dir = Path(gpr.FORMS_DIR)
+        checked = 0
+        for path in sorted(forms_dir.glob("*.asm")):
+            text = path.read_text(encoding="utf-8")
+            key = re.search(r"form_record\s+([A-Z0-9_]+)\s*,\s*(\d+)", text)
+            stats = re.search(r"^\s*db\s+(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\s*$", text, re.M)
+            species, form = key.group(1), int(key.group(2))
+            own = sum(int(g) for g in stats.groups())
+            if own == gpr.base_stat_total(species, None):
+                continue
+            with self.subTest(form=path.name):
+                self.assertEqual(own, gpr.base_stat_total(species, form))
+            checked += 1
+        self.assertGreater(checked, 0, "no form differs from its base total")
 
 
 class CurveBlockTest(unittest.TestCase):

@@ -1,9 +1,9 @@
 LeafeonFormEvosMoves:
-; Evolutions - never read through this record. Evolution stays
-; species-keyed (the form's own bits ride along in the block-copied
-; party struct), so it already evolves correctly through the
-; species-keyed EvosMovesPointerTable. This terminator exists only
-; because every consumer skips this block before reading the learnset.
+; Evolutions - this FORM's own list (FORM_EVOLUTION_LISTS_PLAN.md). An
+; empty list means it never evolves, like any final Pokemon. Seeded by
+; tools/seed_form_evolutions.py from FlareonEvosMoves's list with the old
+; implicit rules applied; hand-edit freely (a block with entries is never
+; re-seeded).
 	db 0
 ; Learnset - verbatim copy of FLAREON's (FlareonEvosMoves)
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;

@@ -53,6 +53,10 @@ BASE_STONES = {ITEMS[n] for n in ("FIRE_STONE", "THUNDER_STONE", "WATER_STONE")}
 STONE_GROUP = {ITEMS[stone]: group for stone, _, group in FORM_EVOLUTIONS}
 
 
+# wEvoNewForm after EvoEntryTakeForm reads a plain (non-FORM) evolution entry
+PLAIN_ENTRY = 0xFF
+
+
 class EeveeFormGateTest(unittest.TestCase):
     def setUp(self) -> None:
         self.h = RedRogueHarness(REPO_ROOT, Path(__file__).parent / "artifacts")
@@ -110,6 +114,9 @@ class EeveeFormGateTest(unittest.TestCase):
 
     def stone_allowed(self, stone: int, species: int) -> bool:
         self.h.write8("wEvoStoneItemID", stone)
+        # As the evolution loop leaves it for a PLAIN entry (EvoEntryTakeForm):
+        # these rows all come from base species' lists.
+        self.h.write8("wEvoNewForm", PLAIN_ENTRY)
         out = self.run_routine("IsEvoStoneFormAllowed", C=species)
         return bool(out["F"] & FLAG_C)
 
@@ -137,6 +144,7 @@ class EeveeFormGateTest(unittest.TestCase):
         self.h.pyboy.memory[self.h.address('wLoadedMon') + MON_CATCH_RATE] = 0
         for stone, expected in ((ITEMS['DUSK_STONE'], 1), (0, 0)):
             self.h.write8('wEvoStoneItemID', stone)
+            self.h.write8('wEvoNewForm', PLAIN_ENTRY)
             out = self.run_routine('GetEvolvedForm', C=SPECIES['MAROWAK'])
             self.assertEqual(out['A'], expected)
 
@@ -146,6 +154,7 @@ class EeveeFormGateTest(unittest.TestCase):
                                      ('EXEGGUTOR', 'LEAF_STONE'), ('WEEZING', None)):
             for stone, expected in (('MOON_STONE', 1), (normal_stone, 0)):
                 self.h.write8('wEvoStoneItemID', ITEMS[stone] if stone else 0)
+                self.h.write8('wEvoNewForm', PLAIN_ENTRY)
                 out = self.run_routine('GetEvolvedForm', C=SPECIES[target])
                 self.assertEqual(out['A'], expected, (target, stone))
 
@@ -176,6 +185,10 @@ class EeveeFormGateTest(unittest.TestCase):
         h.write8("wMonHIndex", SPECIES[old])  # the pre-evolution header
         h.write8("wCurSpecies", SPECIES[new])
         h.write8("wEvoStoneItemID", ITEMS[stone] if stone else 0)
+        # What EvoEntryTakeForm leaves for the entry evolved through: a form
+        # evolves through its OWN list, whose entry names the target form (both
+        # form cases here carry form 1 forward); a base mon's entry is plain.
+        h.write8("wEvoNewForm", old_form if old_form else PLAIN_ENTRY)
         h.write8("wFormContextSpecies", 0)
         catch_rate = h.address("wLoadedMon") + MON_CATCH_RATE
         memory[catch_rate] = (memory[catch_rate] & ~FORM_MASK & 0xFF) | (old_form << 5)

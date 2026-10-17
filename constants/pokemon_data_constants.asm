@@ -135,6 +135,23 @@ DEF HOF_TEAM_CAPACITY EQU 50
 	const EVOLVE_LEVEL ; 1
 	const EVOLVE_ITEM  ; 2
 	const EVOLVE_TRADE ; 3
+; Form-aware variants (FORM_EVOLUTION_LISTS_PLAN.md): the SAME entry with the
+; target form inserted straight after the type byte, so a reader that consumes
+; that byte up front then parses an ordinary entry. Written by the evo_*_form
+; macros below, which forbid form 0 - several readers find the end of the
+; evolution block by scanning for a zero byte.
+;    db EVOLVE_LEVEL_FORM, form, level, species
+;    db EVOLVE_ITEM_FORM,  form, item, min level, species
+;    db EVOLVE_TRADE_FORM, form, level, species
+; Phase 1: they appear only in a FORM's own block (data/pokemon/form_evos_moves),
+; which only the evolution loop's GetEvoListForMon reads. A base species list
+; must not use them until every reader of those lists learns the widths.
+	const EVOLVE_LEVEL_FORM ; 4
+	const EVOLVE_ITEM_FORM  ; 5
+	const EVOLVE_TRADE_FORM ; 6
+DEF EVOLVE_FORM_TYPE_DELTA EQU EVOLVE_LEVEL_FORM - EVOLVE_LEVEL
+	ASSERT EVOLVE_ITEM_FORM - EVOLVE_ITEM == EVOLVE_FORM_TYPE_DELTA
+	ASSERT EVOLVE_TRADE_FORM - EVOLVE_TRADE == EVOLVE_FORM_TYPE_DELTA
 
 ; evolution data (see data/pokemon/evos_moves.asm)
 ;

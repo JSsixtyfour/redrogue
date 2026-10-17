@@ -9,7 +9,7 @@
 	db DEX_SANDSLASH ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  75, 100, 120,  65,  55
+	db  75, 100, 120,  65,  45
 	;   hp  atk  def  spd  spc
 
 	db ICE, ICE ; type

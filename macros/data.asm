@@ -93,3 +93,22 @@ MACRO? dname
 	db \1
 	ds n - CHARLEN(\1), '@'
 ENDM
+
+; Form-aware evolution entries (constants/pokemon_data_constants.asm). The
+; target form goes straight after the type byte and may never be 0: readers
+; that skip an evolution block scan for its zero terminator.
+; evo_level_form <form>, <level>, <species>
+MACRO? evo_level_form
+	ASSERT 1 <= (\1) && (\1) <= NUM_FORM_SLOTS, "evolution target form must be 1..NUM_FORM_SLOTS"
+	db EVOLVE_LEVEL_FORM, \1, \2, \3
+ENDM
+; evo_item_form <form>, <item>, <min level>, <species>
+MACRO? evo_item_form
+	ASSERT 1 <= (\1) && (\1) <= NUM_FORM_SLOTS, "evolution target form must be 1..NUM_FORM_SLOTS"
+	db EVOLVE_ITEM_FORM, \1, \2, \3, \4
+ENDM
+; evo_trade_form <form>, <level>, <species>
+MACRO? evo_trade_form
+	ASSERT 1 <= (\1) && (\1) <= NUM_FORM_SLOTS, "evolution target form must be 1..NUM_FORM_SLOTS"
+	db EVOLVE_TRADE_FORM, \1, \2, \3
+ENDM

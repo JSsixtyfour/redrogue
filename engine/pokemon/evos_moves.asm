@@ -72,18 +72,6 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, c
 	and a ; is the mon's bit set?
 	jp z, Evolution_PartyMonLoop ; if not, go to the next mon
-	ld a, [wEvoOldSpecies]
-	dec a
-	ld b, 0
-	ld hl, EvosMovesPointerTable
-	add a
-	rl b
-	ld c, a
-	add hl, bc
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	push hl
 	ld a, [wCurPartySpecies]
 	push af
 	xor a ; PLAYER_PARTY_DATA
@@ -91,13 +79,25 @@ Evolution_PartyMonLoop: ; loop over party mons
 	call LoadMonData
 	pop af
 	ld [wCurPartySpecies], a
-	pop hl
+; This mon's OWN list: the species' list for a base form, the form's own block
+; otherwise (FORM_EVOLUTION_LISTS_PLAN.md). Read after LoadMonData because the
+; form comes from wLoadedMon.
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	rlca                         ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld e, a
+	ld a, [wLoadedMonSpecies]    ; not wEvoOldSpecies: that is wBuffer+0
+	ld d, a
+	call GetEvoListForMon        ; hl = the list
 
 .evoEntryLoop ; loop over evolution entries
 	ld a, [hli]
 	and a ; have we reached the end of the evolution data?
 	jr z, Evolution_PartyMonLoop
 	ld b, a ; evolution type
+	call EvoEntryTakeForm ; a FORM entry's target form -> wEvoNewForm; b = plain type
 	ld a, [wForceEvolution]
 	and a
 	jr z, .normalEvolutionChecks
@@ -1028,35 +1028,97 @@ ApplyEvoStoneForm:
 	ld [hl], a
 	ret
 
-; IN:  c = species being evolved into, wEvoStoneItemID, wLoadedMon = the mon
-;      BEFORE evolution
-; OUT: a = the form index (0..3) it will have: the EvoStoneForms entry for a
-;      form-setting stone evolution, else the mon's own form (form-preserving)
+; IN:  c = species being evolved into, wEvoStoneItemID, wEvoNewForm as left by
+;      EvoEntryTakeForm for the entry being evolved through
+; OUT: a = the form index (0..3) it will have: the entry's own target form for a
+;      FORM entry; else the EvoStoneForms form for a form-setting stone row of a
+;      base species' list (until Phase 2 moves those rows into the lists); else 0
 ; CLOBBERS: af, bc, hl (de PRESERVED). Shared by ApplyEvoStoneForm, the
 ; evolution animation (wEvoNewForm) and the name, so they can never disagree.
+;
+; There is no implicit form-preserving rule any more: a form evolves through its
+; OWN list, where an A-Rattata's entry says RATICATE form 1 explicitly. The loop
+; stores the answer back into wEvoNewForm before the animation, so later calls
+; for the same evolution (the header, the name) return it unchanged.
 GetEvolvedForm:
+	ld a, [wEvoNewForm]
+	cp $ff
+	ret nz                     ; a FORM entry's form, or this evolution's answer
 	call FindEvoStoneForm
-	ret c                      ; form-SETTING stone evolution
-	ld a, [wLoadedMon + MON_CATCH_RATE]
-	and FORM_MASK
-	ret z                      ; base form evolves into the base form
-	rlca                       ; bits 5-6 -> 0-3
-	rlca
-	rlca
-; Form-preserving, but only into a form that exists: Galarian Farfetch'd ->
-; Sirfetch'd has no SIRFETCHD form 1, so it lands on form 0 rather than keeping
-; a dangling form bit.
-	push de
-	ld d, c                    ; d = species being evolved into
-	ld e, a                    ; e = form (only d/e cross a farcall)
-	push de
-	farcall IsFormRecordedFar
-	pop de                     ; pops and loads do not disturb the flags
-	ld a, e
-	pop de
-	ret c
-	xor a                      ; no such record: plain evolved species
+	ret c                      ; form-SETTING stone row
+	xor a                      ; a plain entry: the base form
 	ret
+
+; Reads the type byte's FORM variant at the start of an evolution entry.
+; IN:  b = the entry's type byte, hl = the byte after it
+; OUT: b = the plain type (EVOLVE_LEVEL / _ITEM / _TRADE), hl past the form byte
+;      of a FORM entry; wEvoNewForm = that form, or $FF for a plain entry
+; CLOBBERS: a. The rest of the entry is then laid out exactly as a plain one, so
+; none of the loop's skip paths needs a second width.
+EvoEntryTakeForm:
+	ld a, $ff
+	ld [wEvoNewForm], a
+	ld a, b
+	cp EVOLVE_LEVEL_FORM
+	ret c                      ; plain entry
+	ld a, [hli]                ; the target form
+	ld [wEvoNewForm], a
+	ld a, b
+	sub EVOLVE_FORM_TYPE_DELTA
+	ld b, a
+	ret
+
+; The evolution list for one mon.
+; IN:  d = species, e = form (0..NUM_FORM_SLOTS)
+; OUT: hl = its list in this bank: EvosMovesPointerTable's for form 0, else the
+;      form's own block in FormEvosMovesPointers. A form NEVER falls back to its
+;      base species' list - an empty block means it does not evolve, like any
+;      final Pokemon - and a form with no record at all gets the empty list too.
+;      (GetEvosMovesEntry's learnset fallback to the base species is deliberately
+;      not reused here.)
+; CLOBBERS: af, bc (de PRESERVED)
+GetEvoListForMon::
+	ld a, e
+	and a
+	jr nz, .form
+	ld a, d
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, EvosMovesPointerTable
+	add hl, bc                 ; twice, not `add a`: species ids pass $80
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+.form
+	ld hl, FormEvosMovesPointers
+.loop
+	ld a, [hli]                ; entry's base species
+	and a
+	jr z, .noRecord
+	cp d
+	jr nz, .skipForm
+	ld a, [hli]                ; entry's form index
+	cp e
+	jr nz, .skipPointer
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+.skipForm
+	inc hl
+.skipPointer
+	inc hl
+	inc hl
+	jr .loop
+.noRecord
+	ld hl, NoEvolutionsList
+	ret
+
+NoEvolutionsList:
+	db 0
 
 ; IN:  c = species being evolved into, wEvoStoneItemID
 ; OUT: carry SET, a = form index (1..NUM_FORM_SLOTS) if this stone evolution SETS
@@ -1101,6 +1163,21 @@ FindEvoStoneForm:
 ; OUT: carry SET = allowed
 ; CLOBBERS: af, bc, de, hl
 IsEvoStoneFormAllowed:
+	ld a, [wEvoNewForm]
+	cp $ff
+	jr z, .stoneRow
+; A FORM entry. A form carrying its own form forward (A-Rattata -> A-Raticate,
+; a form's own list) always passes, as form-preserving evolution always did. A
+; base mon's entry that SETS a form is gated like an EvoStoneForms row.
+	ld e, a                    ; e = form (only d/e cross a farcall)
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	scf
+	ret nz                     ; the mon already has a form
+	ld d, c                    ; d = species
+	farcall IsFormUnlockedFar
+	ret                        ; flags survive the Bankswitch return
+.stoneRow
 	call FindEvoStoneForm
 	ccf                        ; no form-setting entry -> carry set -> allow
 	ret c
